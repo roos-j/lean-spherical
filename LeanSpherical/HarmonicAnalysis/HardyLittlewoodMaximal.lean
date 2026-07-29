@@ -43,7 +43,8 @@ operator. -/
 def relativeLowpassMaximal (d : ℕ) (φ : SchwartzMap (Euclidean d) ℂ)
     (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) : ℝ :=
   (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
-    surfaceFourier d (-r.1 • ξ) * φ (r.1 • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x‖).toReal
+    surfaceFourier d (-r.1 • ξ) * φ (r.1 • ξ) *
+      𝓕 (f : Euclidean d → ℂ) ξ) x‖).toReal
 
 /-- The `j`th oscillatory relative-frequency annulus. -/
 def relativeBandpassMaximal (d : ℕ) (φ : SchwartzMap (Euclidean d) ℂ) (j : ℕ)
@@ -308,7 +309,7 @@ estimate.  This is stated in `ℝ≥0∞`, so it applies to arbitrary inputs
 without a boundedness or measurability hypothesis. -/
 theorem dyadic_ball_maximal_raw_weak_one
     {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
-    {s : ℝ} (hs : 0 < s) :
+    {s : ℝ} (_hs : 0 < s) :
     ENNReal.ofReal s * volume {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} ≤
       (ENNReal.ofReal (4 : ℝ)) ^ d *
         ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
@@ -359,7 +360,7 @@ theorem dyadic_hardy_littlewood_weak_one
 /-- The weak `(1,1)` endpoint specialized to `L¹` input. -/
 theorem dyadic_hardy_littlewood_weak_one_memLp
     {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
-    (hf : MemLp g 1 volume) {s : ℝ} (hs : 0 < s) :
+    (_hf : MemLp g 1 volume) {s : ℝ} (hs : 0 < s) :
     ENNReal.ofReal s * volume {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} ≤
       (ENNReal.ofReal (4 : ℝ)) ^ d * eLpNorm g 1 volume := by
   simpa only [eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
@@ -370,7 +371,7 @@ theorem dyadic_hardy_littlewood_weak_one_memLp
 theorem dyadic_ball_maximal_weak_one
     {d : ℕ} (hd : 0 < d)
     (g : Euclidean d → ℂ) (_hg : Measurable g)
-    {a : ℝ} (_ha : 0 ≤ a) (hga : ∀ x, ‖g x‖ ≤ a)
+    {a : ℝ} (_ha : 0 ≤ a) (_hga : ∀ x, ‖g x‖ ≤ a)
     {s : ℝ} (hs : 0 < s) :
     ENNReal.ofReal s * volume {x | s <
       (⨆ n : ℤ,
@@ -440,7 +441,7 @@ theorem exists_iSup_relative_surface_scaled_schwartz_multiplier_weak_one
     have h := hpoint j f x
     change _ ≤ A * H (f : Euclidean d → ℂ) x
     dsimp [A, V, H]
-    convert h using 1 <;> ring
+    convert h using 1; ring
   have hset :
       {x | s <
         (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
@@ -469,7 +470,7 @@ theorem exists_iSup_relative_surface_scaled_schwartz_multiplier_weak_one
 
 /- The raw `ENNReal` dyadic-ball supremum is finite on bounded inputs. -/
 private theorem dyadic_ball_maximal_raw_le_of_norm_le
-    {d : ℕ} (g : Euclidean d → ℂ) (a : ℝ) (ha : 0 ≤ a)
+    {d : ℕ} (g : Euclidean d → ℂ) (a : ℝ) (_ha : 0 ≤ a)
     (hg : ∀ y, ‖g y‖ ≤ a) (x : Euclidean d) :
     (⨆ n : ℤ,
       ((volume (Metric.ball x ((2 : ℝ) ^ n)))⁻¹ *
@@ -1119,7 +1120,8 @@ private theorem dyadic_ball_maximal_schwartz_sub_le
   have hfirst :
       dyadicBallMaximal d (f : Euclidean d → ℂ) x ≤
         dyadicBallMaximal d (g : Euclidean d → ℂ) x +
-          dyadicBallMaximal d ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+          dyadicBallMaximal d
+            ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
     simpa using hfg
   have hneg :
       dyadicBallMaximal d ((g - f : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x =
@@ -1133,7 +1135,8 @@ private theorem dyadic_ball_maximal_schwartz_sub_le
   have hsecond :
       dyadicBallMaximal d (g : Euclidean d → ℂ) x ≤
         dyadicBallMaximal d (f : Euclidean d → ℂ) x +
-          dyadicBallMaximal d ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+          dyadicBallMaximal d
+            ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
     rw [← hneg]
     simpa using hgf
   rw [abs_sub_le_iff]
@@ -1297,7 +1300,6 @@ theorem dyadic_hardy_littlewood_maximal_Lp_bound
         dyadicHardyLittlewoodMaximalLpBound hd hp * ‖hf.toLp f‖ :=
   ⟨Lp.memLp _, dyadicHardyLittlewoodMaximalLp_norm_le hd hp (hf.toLp f)⟩
 
-set_option maxHeartbeats 1000000 in
 /- Compact frequency support makes the lowpass supremum a lower-semicontinuous
 supremum of continuous scaled Schwartz multipliers. -/
 private theorem relative_lowpass_aestrongly_measurable
@@ -1350,7 +1352,6 @@ private theorem relative_lowpass_aestrongly_measurable
       (continuous_fourierInv_scaled_schwartz_multiplier χ f hrinv)
   exact (ENNReal.continuous_ofReal.comp hcont.norm).lowerSemicontinuous
 
-set_option maxHeartbeats 1000000 in
 /- A pointwise lowpass majorant transfers a dyadic-ball strong estimate to
 the lowpass operator. -/
 private theorem relative_lowpass_strong_type_of_majorant

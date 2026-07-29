@@ -57,16 +57,14 @@ theorem lintegral_iSup_finset_Icc_sq_le
     rw [Finset.mem_Icc] at hk ⊢
     constructor <;> omega
   have hv_mono : Monotone v := by
-    intro n m hnm
-    intro x
+    intro n m hnm x
     change (K n).sup' (hKnonempty n) (fun k => u k x) ≤
       (K m).sup' (hKnonempty m) (fun k => u k x)
     exact Finset.sup'_mono _ (hK_mono n m hnm) (hKnonempty n)
   have hF_meas (n : ℕ) : Measurable (fun x => ENNReal.ofReal ((v n x) ^ 2)) :=
     ENNReal.continuous_ofReal.measurable.comp ((hv_meas n).pow_const 2)
   have hF_mono : Monotone (fun n : ℕ => fun x => ENNReal.ofReal ((v n x) ^ 2)) := by
-    intro n m hnm
-    intro x
+    intro n m hnm x
     apply ENNReal.ofReal_le_ofReal
     exact pow_le_pow_left₀ (hv_nonneg n x) (hv_mono hnm x) 2
   have hF_bound (n : ℕ) :
@@ -454,7 +452,8 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
             2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
               (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
-                  ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                    ‖((SchwartzMap.fderivCLM ℂ
+                      (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := by
   classical
@@ -481,7 +480,8 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
       2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
         (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
-            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+            ‖((SchwartzMap.fderivCLM ℂ
+              (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((d : ℝ) / 2)))
   let J : ℝ := ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2
   let B : ℝ := 24 * L * J
@@ -605,11 +605,11 @@ theorem relative_dyadic_global_coefficient_le_exponential
           (4 * C0) * (4 * C1) *
             (x ^ (-((d : ℝ) / 2)) * x ^ (-((d : ℝ) / 2 - 1))) := by
         simp only [div_eq_mul_inv, ← Real.rpow_neg hx.le]
-        ring
+        ring_nf
       _ = (4 * C0) * (4 * C1) * x ^ (-((d : ℝ) - 1)) := by
         rw [← Real.rpow_add hx]
         congr 1
-        ring
+        ring_nf
   have hAE :
       ((4 * C0) / x ^ ((d : ℝ) / 2)) *
         ((12 * C0 * Dphi) / x ^ ((d : ℝ) / 2)) =
@@ -624,7 +624,7 @@ theorem relative_dyadic_global_coefficient_le_exponential
       _ = (4 * C0) * (12 * C0 * Dphi) * x ^ (-(d : ℝ)) := by
         rw [← Real.rpow_add hx]
         congr 1
-        ring
+        ring_nf
   have hA2_le : (4 * C0) ^ 2 * x ^ (-(d : ℝ)) ≤
       (4 * C0) ^ 2 * x ^ (-((d : ℝ) - 1)) := by
     exact mul_le_mul_of_nonneg_left hpow (sq_nonneg _)

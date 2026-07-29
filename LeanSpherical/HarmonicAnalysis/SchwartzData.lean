@@ -166,7 +166,7 @@ theorem fderiv_schwartzMap_eq_zero_of_norm_lt_one
     have hdist : ‖y - z‖ < 1 - ‖z‖ := by
       simpa only [Metric.mem_ball, dist_eq_norm] using hy
     exact (calc
-      ‖y‖ = ‖(y - z) + z‖ := by congr 1 <;> abel
+      ‖y‖ = ‖(y - z) + z‖ := by congr 1; abel
       _ ≤ ‖y - z‖ + ‖z‖ := norm_add_le _ _
       _ < (1 - ‖z‖) + ‖z‖ := by
         simpa only [add_comm] using add_lt_add_right hdist ‖z‖
@@ -188,7 +188,7 @@ theorem fderiv_schwartzMap_eq_zero_of_two_lt_norm
       simpa only [Metric.mem_ball, dist_eq_norm] using hy
     have htri : ‖z‖ ≤ ‖z - y‖ + ‖y‖ := by
       calc
-        ‖z‖ = ‖(z - y) + y‖ := by congr 1 <;> abel
+        ‖z‖ = ‖(z - y) + y‖ := by congr 1; abel
         _ ≤ ‖z - y‖ + ‖y‖ := norm_add_le _ _
     have hdist' : ‖z - y‖ < ‖z‖ - 2 := by
       simpa only [norm_sub_rev] using hdist
@@ -848,7 +848,8 @@ theorem measurable_rational_low_profile_lintegral
     {μ : Measure (Euclidean d)} [SFinite μ] :
     Measurable (fun t : ℝ => ∫⁻ x,
       ENNReal.ofReal
-        (‖((1 + ‖(t⁻¹ : ℝ) • f x‖ ^ 2) ^ (-1 : ℝ)) • f x‖ ^ (2 : ℕ)) ∂μ) := by
+        (‖((1 + ‖(t⁻¹ : ℝ) • f x‖ ^ 2) ^ (-1 : ℝ)) • f x‖ ^ (2 : ℕ))
+          ∂μ) := by
   apply Measurable.lintegral_prod_right
   change Measurable (fun q : ℝ × Euclidean d =>
     ENNReal.ofReal
@@ -887,7 +888,8 @@ theorem measurable_rational_low_high_profile_lintegrals
       ENNReal.ofReal (‖low t x‖ ^ (2 : ℕ)) ∂μ) =
         (fun t : ℝ => ∫⁻ x,
           ENNReal.ofReal
-            (‖((1 + ‖(t⁻¹ : ℝ) • f x‖ ^ 2) ^ (-1 : ℝ)) • f x‖ ^ (2 : ℕ)) ∂μ) := by
+            (‖((1 + ‖(t⁻¹ : ℝ) • f x‖ ^ 2) ^ (-1 : ℝ)) • f x‖ ^ (2 : ℕ))
+              ∂μ) := by
       funext t
       apply lintegral_congr
       intro x
@@ -1029,7 +1031,7 @@ theorem smooth_low_norm_le_half_height
   have hη : η y = smooth_half_height_bump ((t⁻¹ : ℝ) • f x) := by rfl
   by_cases hzero : η y = 0
   · rw [hlow x, ← hη, hzero]
-    simp
+    simp only [Complex.ofReal_zero, smul_eq_mul, zero_mul, norm_zero, ge_iff_le]
     positivity
   have hyr : ‖y‖ < (1 : ℝ) / 2 := by
     have hdist : dist y (0 : ℂ) < η.rOut := by
@@ -1150,7 +1152,8 @@ theorem measurable_smooth_high_profile_lintegral
     Measurable (fun t : ℝ => ∫⁻ x,
       (ENNReal.ofReal
         ‖f x -
-          ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x‖) ^ q ∂μ) := by
+          ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x‖) ^ q
+          ∂μ) := by
   apply Measurable.lintegral_prod_right
   exact ENNReal.continuous_rpow_const.measurable.comp
     (measurable_smooth_high_family f).norm.ennreal_ofReal
@@ -1171,7 +1174,8 @@ theorem measurable_smooth_high_profile_lintegrals
       (fun t : ℝ => ∫⁻ x,
         (ENNReal.ofReal
           ‖f x -
-            ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x‖) ^ q ∂μ) := by
+            ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x‖) ^ q
+            ∂μ) := by
     funext t
     apply lintegral_congr
     intro x
@@ -1236,7 +1240,7 @@ theorem exists_lipschitz_extension_of_denseRange
   have hcore_apply (a : A) : core ⟨e a, ⟨a, rfl⟩⟩ = T a := by
     apply congrArg T
     apply heinj
-    simpa only [hpreimage]
+    simp only [hpreimage]
   have hcore_lipschitz : LipschitzWith C.toNNReal core := by
     apply LipschitzWith.of_dist_le_mul
     intro x y

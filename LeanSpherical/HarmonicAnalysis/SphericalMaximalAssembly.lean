@@ -105,9 +105,7 @@ private theorem relative_dyadic_bandpass_eq_scaled
 
 /-- The weak one endpoint for a literal dyadic annulus. -/
 private theorem relative_dyadic_bandpass_weak_one
-    {d : ℕ} (hd : 3 ≤ d) (φ : SchwartzMap (Euclidean d) ℂ)
-    (hφone : ∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1)
-    (hφzero : ∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) :
+    {d : ℕ} (hd : 3 ≤ d) (φ : SchwartzMap (Euclidean d) ℂ) :
     ∃ D : ℝ, 0 < D ∧ ∀ (j : ℕ) (f : SchwartzMap (Euclidean d) ℂ)
       {a : ℝ}, 0 ≤ a → (∀ x, ‖f x‖ ≤ a) → ∀ {s : ℝ}, 0 < s →
       ENNReal.ofReal s * volume {x | s < relativeBandpassMaximal d φ j f x} ≤
@@ -979,7 +977,7 @@ private theorem relative_dyadic_two_top_real_bound
     _ = A * (2 : ℝ) ^ (-((d : ℝ) - 2) * j) *
           ∫ x : Euclidean d, ‖f x‖ ^ p := by
             congr 2
-            ring
+            ring_nf
 
 /-- Interpolation of the weak square endpoint with a uniform top endpoint. -/
 private theorem relative_dyadic_strong_type_two_top
@@ -1176,7 +1174,9 @@ private theorem relative_bandpass_fixed_radius_bound
           ∫ y : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) y‖) *
           surfaceMass d) := by
       rw [hmₐ', hmᵦ']
-      exact add_le_add (relative_lowpass_fixed_radius_bound φ f ha r x) (relative_lowpass_fixed_radius_bound φ f hb r x)
+      exact add_le_add
+        (relative_lowpass_fixed_radius_bound φ f ha r x)
+        (relative_lowpass_fixed_radius_bound φ f hb r x)
     _ = _ := by ring
 
 private theorem relative_cutoff_maximal_aestronglyMeasurable
@@ -1282,7 +1282,6 @@ private theorem relative_cutoff_moment_bound_of_eLpNorm
       rw [Real.rpow_inv_rpow hI (ne_of_gt hp0)]
     _ ≤ C * I := mul_le_mul_of_nonneg_right hcoefficient hI
 
-set_option maxHeartbeats 1000000 in
 /-- Strong type with exponentially decaying constants for relative bands. -/
 theorem relative_dyadic_strong_type
     {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
@@ -1330,7 +1329,7 @@ theorem relative_dyadic_strong_type
         toReal_iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_add_le
           ψ f g j x
     obtain ⟨D1, hD1, hweak1⟩ :=
-      relative_dyadic_bandpass_weak_one hd φ hφone hφzero
+      relative_dyadic_bandpass_weak_one hd φ
     have hT_weak_one :
         ∃ D : ℝ, 0 < D ∧ ∀ (j : ℕ) (f : SchwartzMap (Euclidean d) ℂ)
           {a : ℝ}, 0 ≤ a → (∀ x, ‖f x‖ ≤ a) → ∀ {s : ℝ}, 0 < s →
@@ -1709,7 +1708,8 @@ private theorem relative_cutoff_maximal_le_low_add_band_sum
     apply ciSup_le
     intro r
     calc
-      pval r ≤ rval r + ∑ j ∈ Finset.range N, tval j r := relative_cutoff_fixed_radius_le_low_add_band_sum φ N f r x
+      pval r ≤ rval r + ∑ j ∈ Finset.range N, tval j r :=
+        relative_cutoff_fixed_radius_le_low_add_band_sum φ N f r x
       _ ≤ (⨆ r : Ioi (0 : ℝ), rval r) +
           ∑ j ∈ Finset.range N, ⨆ r : Ioi (0 : ℝ), tval j r := by
         apply add_le_add
@@ -1979,7 +1979,6 @@ private theorem finite_relative_reassembly_from_estimates
   · dsimp only [C]
     exact le_add_of_nonneg_right (by norm_num)
 
-set_option maxHeartbeats 1000000 in
 /-- Uniform strong type for finite relative-frequency reassembly. -/
 theorem finite_relative_reassembly
     {d : ℕ} (hd : 3 ≤ d) {p : ℝ}

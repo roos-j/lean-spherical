@@ -504,10 +504,14 @@ private theorem intervalIntegral_meridian_t_mul_height_succ_two_relation
           ∫ θ in (-(Real.pi / 2) : ℝ)..(Real.pi / 2),
             (d : ℂ) * ((Real.cos θ ^ (d - 1) : ℝ) : ℂ) * E θ := by
         rw [intervalIntegral.integral_sub]
-        · exact (by fun_prop : Continuous fun θ : ℝ =>
-            ((d : ℂ) + 1) * ((Real.cos θ ^ (d + 1) : ℝ) : ℂ) * E θ).continuousOn.intervalIntegrable
-        · exact (by fun_prop : Continuous fun θ : ℝ =>
-            (d : ℂ) * ((Real.cos θ ^ (d - 1) : ℝ) : ℂ) * E θ).continuousOn.intervalIntegrable
+        · have hcontinuous : Continuous fun θ : ℝ =>
+              ((d : ℂ) + 1) * ((Real.cos θ ^ (d + 1) : ℝ) : ℂ) * E θ := by
+            fun_prop
+          exact hcontinuous.continuousOn.intervalIntegrable
+        · have hcontinuous : Continuous fun θ : ℝ =>
+              (d : ℂ) * ((Real.cos θ ^ (d - 1) : ℝ) : ℂ) * E θ := by
+            fun_prop
+          exact hcontinuous.continuousOn.intervalIntegrable
       _ = _ := by
         have hfirst :
             (∫ θ in (-(Real.pi / 2) : ℝ)..(Real.pi / 2),
@@ -1015,7 +1019,7 @@ private theorem exists_height_power_decay_and_moment (k : Nat) :
                         l ^ (((k + 2 : ℕ) : ℝ) / 2 + 1))) ≤
                     ((k + 3 : ℕ) : ℝ) * (((k + 2 : ℕ) : ℝ) * B) /
                       l ^ (((k + 2 : ℕ) : ℝ) / 2 + 1) := by
-                convert hhigh using 1 <;> ring
+                simpa only [mul_div_assoc] using hhigh
               have hlow :
                   (1 / l) *
                     (((k + 2 : ℕ) : ℝ) * (A / l ^ ((k : ℝ) / 2 + 1))) =
@@ -1103,17 +1107,20 @@ private theorem exists_surfaceFourier_succ_sharp_decay {d : Nat} (hd : 2 ≤ d) 
       apply div_le_div_of_nonneg_right _ hdenξ.le
       nlinarith
 
-set_option maxHeartbeats 800000 in
+private def surfaceFourierHeightRadialDerivative
+    (d : Nat) (ξ : Euclidean (d + 1)) (r : ℝ) : ℂ :=
+  (surfaceMass d : ℂ) *
+    ((2 * Real.pi * ‖ξ‖ : ℝ) •
+      ∫ t in (-1 : ℝ)..1,
+        ((Real.sqrt (1 - t ^ 2) ^ (d - 2) : ℝ) : ℂ) *
+          Complex.exp (((-(2 * Real.pi * r * ‖ξ‖) * t : ℝ) : ℂ) * Complex.I) *
+            (((-t : ℝ) : ℂ) * Complex.I))
+
 -- The local radial reparametrization expands a nested interval integral.
 private theorem hasDerivAt_surfaceFourier_succ_height_smul
     {d : Nat} (hd : 2 ≤ d) (ξ : Euclidean (d + 1)) {r : ℝ} (hr : 0 < r) :
     HasDerivAt (fun s : ℝ => surfaceFourier (d + 1) (s • ξ))
-      ((surfaceMass d : ℂ) *
-        ((2 * Real.pi * ‖ξ‖ : ℝ) •
-          ∫ t in (-1 : ℝ)..1,
-            ((Real.sqrt (1 - t ^ 2) ^ (d - 2) : ℝ) : ℂ) *
-              Complex.exp (((-(2 * Real.pi * r * ‖ξ‖) * t : ℝ) : ℂ) * Complex.I) *
-                (((-t : ℝ) : ℂ) * Complex.I))) r := by
+      (surfaceFourierHeightRadialDerivative d ξ r) r := by
   let I : ℝ → ℂ := fun l =>
     ∫ t in (-1 : ℝ)..1,
       ((Real.sqrt (1 - t ^ 2) ^ (d - 2) : ℝ) : ℂ) *
@@ -1146,9 +1153,9 @@ private theorem hasDerivAt_surfaceFourier_succ_height_smul
     apply intervalIntegral.integral_congr
     intro t _
     push_cast
-    ring
+    ring_nf
   have hresult := hmodel.congr_of_eventuallyEq hlocal
-  simpa [I, Complex.real_smul, mul_assoc, mul_left_comm, mul_comm] using hresult
+  simpa only [surfaceFourierHeightRadialDerivative, I, Complex.real_smul] using hresult
 
 private theorem exists_surfaceFourier_succ_sharp_deriv {d : Nat} (hd : 2 ≤ d) :
     ∃ C : ℝ, 0 < C ∧ ∀ ξ : Euclidean (d + 1), ∀ r : ℝ,
@@ -1227,7 +1234,7 @@ private theorem exists_surfaceFourier_succ_sharp_deriv {d : Nat} (hd : 2 ≤ d) 
       push_cast
       ring
     rw [hnegfactor, norm_mul, norm_neg, Complex.norm_I, one_mul]
-  rw [hderiv.deriv]
+  rw [hderiv.deriv, surfaceFourierHeightRadialDerivative]
   rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg hmass,
     norm_smul, Real.norm_of_nonneg (by positivity), hmomentfactor]
   have hpowsplit :

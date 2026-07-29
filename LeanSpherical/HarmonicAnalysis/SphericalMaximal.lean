@@ -19,7 +19,6 @@ open scoped Convolution FourierTransform Topology
 
 noncomputable section
 
-set_option maxHeartbeats 1000000 in
 private theorem relative_cutoff_tendsto_spherical_average
     {d : ℕ} (hd0 : 0 < d) (φ : SchwartzMap (Euclidean d) ℂ)
     (hφone : ∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1) (f : SchwartzMap (Euclidean d) ℂ) (r : ℝ)
@@ -156,10 +155,12 @@ private theorem relative_cutoff_raw_ne_top
   have hB : 0 ≤ B := by
     dsimp only [B]
     positivity
-  apply ne_top_of_le_ne_top ENNReal.ofReal_ne_top
-  apply iSup_le
+  refine ne_top_of_le_ne_top
+    (ENNReal.ofReal_ne_top :
+      ENNReal.ofReal (B * ∫ ξ : Euclidean d, ‖𝓕 (f : Euclidean d → ℂ) ξ‖) ≠ ⊤) ?_
+  refine iSup_le ?_
   intro r
-  apply ENNReal.ofReal_le_ofReal
+  refine ENNReal.ofReal_le_ofReal ?_
   rw [Real.fourierInv_eq]
   change ‖∫ ξ : Euclidean d, (Real.fourierChar (inner ℝ ξ x) : ℂ) *
     (surfaceFourier d (-r.1 • ξ) *
@@ -191,7 +192,8 @@ private theorem relative_cutoff_raw_ne_top
             φ.continuous.comp
               ((continuous_const : Continuous fun _ : Euclidean d => ((2 : ℝ) ^ N)⁻¹).smul
                 ((continuous_const : Continuous fun _ : Euclidean d => r.1).smul continuous_id))
-          exact ((hchar_cont.mul ((hsurf.mul hcut).mul (𝓕 f).continuous)).norm).aestronglyMeasurable
+          exact
+            ((hchar_cont.mul ((hsurf.mul hcut).mul (𝓕 f).continuous)).norm).aestronglyMeasurable
         · filter_upwards with ξ
           dsimp only [B]
           have hchar : ‖(Real.fourierChar (inner ℝ ξ x) : ℂ)‖ = 1 := by
@@ -204,21 +206,21 @@ private theorem relative_cutoff_raw_ne_top
                 norm_surfaceFourier_le_surfaceMass d (-r.1 • ξ))
               (hφbound _)
               (norm_nonneg _) hmass.le)
-            (norm_nonneg _)
+            (norm_nonneg (𝓕 (f : Euclidean d → ℂ) ξ))
       · exact (𝓕 f).integrable.norm.const_mul B
       · filter_upwards with ξ
         dsimp only [B]
         have hchar : ‖(Real.fourierChar (inner ℝ ξ x) : ℂ)‖ = 1 := by
           rw [Real.fourierChar_apply]
           exact Complex.norm_exp_ofReal_mul_I _
-        simp only [norm_mul, norm_norm, hchar, one_mul]
+        simp only [norm_mul, hchar, one_mul]
         exact mul_le_mul_of_nonneg_right
           (mul_le_mul
             (by simpa [surfaceMass] using
               norm_surfaceFourier_le_surfaceMass d (-r.1 • ξ))
             (hφbound _)
             (norm_nonneg _) hmass.le)
-          (norm_nonneg _)
+          (norm_nonneg (𝓕 (f : Euclidean d → ℂ) ξ))
     _ = B * ∫ ξ : Euclidean d, ‖𝓕 (f : Euclidean d → ℂ) ξ‖ := by
       rw [integral_const_mul]
 
@@ -304,23 +306,26 @@ private theorem normalized_spherical_maximal_power_le_liminf_relative_cutoff
   have hnormalfixed (f : SchwartzMap (Euclidean d) ℂ)
       (r : Ioi (0 : ℝ)) (x : Euclidean d) :
       ENNReal.ofReal (‖normalizedSphericalAverage d (f : Euclidean d → ℂ) r.1 x‖ ^ p) ≤
-        K * liminf (fun N : ℕ => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop := by
+        K * liminf
+          (fun N : ℕ => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop := by
     rw [hnorm]
     exact mul_le_mul_right
       (spherical_average_power_le_liminf_relative_cutoff hd0 hpNN φ hφone f r x) K
   have hVtop (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
       normalizedSphericalMaximal d (f : Euclidean d → ℂ) x ≠ ⊤ := by
-    apply ne_top_of_le_ne_top ENNReal.ofReal_ne_top
-    apply normalizedSphericalMaximal_le_of_norm_le hd0 _ x
-    intro y
-    change ‖f.toBoundedContinuousFunction y‖ ≤ ‖f.toBoundedContinuousFunction‖
-    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+    refine ne_top_of_le_ne_top
+      (ENNReal.ofReal_ne_top : ENNReal.ofReal ‖f.toBoundedContinuousFunction‖ ≠ ⊤) ?_
+    exact normalizedSphericalMaximal_le_of_norm_le hd0 _ x
+      (fun y => by
+        change ‖f.toBoundedContinuousFunction y‖ ≤ ‖f.toBoundedContinuousFunction‖
+        exact BoundedContinuousFunction.norm_coe_le_norm _ _)
   have hV_eq (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
       ENNReal.ofReal (V f x) = normalizedSphericalMaximal d (f : Euclidean d → ℂ) x := by
     exact ENNReal.ofReal_toReal (hVtop f x)
   have hpoint (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
       ENNReal.ofReal ((V f x) ^ p) ≤
-        K * liminf (fun N : ℕ => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop := by
+        K * liminf
+          (fun N : ℕ => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop := by
     have hVnonneg : 0 ≤ V f x := ENNReal.toReal_nonneg
     rw [← ENNReal.ofReal_rpow_of_nonneg hVnonneg hpNN, hV_eq]
     unfold normalizedSphericalMaximal
@@ -328,7 +333,8 @@ private theorem normalized_spherical_maximal_power_le_liminf_relative_cutoff
         (⨆ r : Ioi (0 : ℝ),
           ENNReal.ofReal ‖normalizedSphericalAverage d (f : Euclidean d → ℂ) r.1 x‖) ^ p =
           ⨆ r : Ioi (0 : ℝ),
-            (ENNReal.ofReal ‖normalizedSphericalAverage d (f : Euclidean d → ℂ) r.1 x‖) ^ p := by
+            (ENNReal.ofReal
+              ‖normalizedSphericalAverage d (f : Euclidean d → ℂ) r.1 x‖) ^ p := by
       let e : ENNReal ≃o ENNReal :=
         (ENNReal.strictMono_rpow_of_pos hp0).orderIsoOfSurjective _
           (ENNReal.rpow_left_bijective hp0.ne.symm).2
@@ -349,7 +355,7 @@ private theorem relative_reassembly_lintegral_bound
     (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
     (φ : SchwartzMap (Euclidean d) ℂ)
     (hφone : ∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1)
-    (A : ℝ) (hA : 0 < A)
+    (A : ℝ) (_hA : 0 < A)
     (hfinite : ∀ (N : ℕ) (f : SchwartzMap (Euclidean d) ℂ),
       MemLp (relativeCutoffMaximal d φ N f) (ENNReal.ofReal p) volume ∧
       (∫ x : Euclidean d, (relativeCutoffMaximal d φ N f x) ^ p) ≤
@@ -375,7 +381,9 @@ private theorem relative_reassembly_lintegral_bound
   have hpEN0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0
   have hpENT : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
   have hUmeas (N : ℕ) (f : SchwartzMap (Euclidean d) ℂ) :
-      AEMeasurable (fun x : Euclidean d => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) volume := by
+      AEMeasurable
+        (fun x : Euclidean d => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p))
+        volume := by
     have hmeas : AEMeasurable (fun x : Euclidean d =>
         (ENNReal.ofReal (relativeCutoffMaximal d φ N f x)) ^ p) volume :=
       ENNReal.continuous_rpow_const.measurable.comp_aemeasurable
@@ -404,14 +412,23 @@ private theorem relative_reassembly_lintegral_bound
       _ ≤ ENNReal.ofReal (A * ∫ x : Euclidean d, ‖f x‖ ^ p) :=
         ENNReal.ofReal_le_ofReal (hfinite N f).2
   have hFatou (f : SchwartzMap (Euclidean d) ℂ) :
-      (∫⁻ x : Euclidean d, ENNReal.ofReal (((normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal) ^ p)) ≤
-        K * liminf (fun N : ℕ =>
-          ∫⁻ x : Euclidean d, ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop := by
+      (∫⁻ x : Euclidean d,
+        ENNReal.ofReal
+          (((normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal) ^ p)) ≤
+        K * liminf
+          (fun N : ℕ =>
+            ∫⁻ x : Euclidean d,
+              ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p))
+          atTop := by
     calc
-      (∫⁻ x : Euclidean d, ENNReal.ofReal (((normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal) ^ p)) ≤
+      (∫⁻ x : Euclidean d,
+        ENNReal.ofReal
+          (((normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal) ^ p)) ≤
           ∫⁻ x : Euclidean d, K *
             liminf (fun N : ℕ => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop :=
-        lintegral_mono (fun x => normalized_spherical_maximal_power_le_liminf_relative_cutoff hd0 hp0 hpNN φ hφone f x)
+        lintegral_mono (fun x =>
+          normalized_spherical_maximal_power_le_liminf_relative_cutoff
+            hd0 hp0 hpNN φ hφone f x)
       _ = K * (∫⁻ x : Euclidean d,
           liminf (fun N : ℕ => ENNReal.ofReal ((relativeCutoffMaximal d φ N f x) ^ p)) atTop) :=
         lintegral_const_mul' K _ hKtop
@@ -425,7 +442,9 @@ private theorem relative_reassembly_lintegral_bound
     exact Filter.liminf_le_of_frequently_le'
       (Filter.Frequently.of_forall fun N => hUint N f)
   have hlin (f : SchwartzMap (Euclidean d) ℂ) :
-      (∫⁻ x : Euclidean d, ENNReal.ofReal (((normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal) ^ p)) ≤
+      (∫⁻ x : Euclidean d,
+        ENNReal.ofReal
+          (((normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal) ^ p)) ≤
         K * ENNReal.ofReal (A * ∫ x : Euclidean d, ‖f x‖ ^ p) :=
     (hFatou f).trans (mul_le_mul_right (hLiminfBound f) K)
   simpa only [K] using hlin f
@@ -511,7 +530,6 @@ private theorem relative_reassembly_finish
       dsimp only [C]
       ring
 
-set_option maxHeartbeats 1000000 in
 /-- Passing uniform finite relative-cutoff estimates to all radii. -/
 theorem relative_reassembly_limit
     {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
@@ -531,7 +549,6 @@ theorem relative_reassembly_limit
   exact relative_reassembly_finish hd hp A hA
     (fun f => relative_reassembly_lintegral_bound hd hp φ hφone A hA hfinite f)
 
-set_option maxHeartbeats 1000000 in
 /-- Stein's spherical maximal theorem, in its Schwartz-core form. -/
 theorem stein_spherical_maximal
     {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
@@ -592,11 +609,12 @@ private theorem normalizedSphericalMaximalReal_schwartz_add_le
       normalizedSphericalMaximalReal d f x + normalizedSphericalMaximalReal d g x := by
   have hbound (h : SchwartzMap (Euclidean d) ℂ) :
       normalizedSphericalMaximal d (h : Euclidean d → ℂ) x ≠ ⊤ := by
-    apply ne_top_of_le_ne_top ENNReal.ofReal_ne_top
-    apply normalizedSphericalMaximal_le_of_norm_le hd0 _ x
-    intro y
-    change ‖h.toBoundedContinuousFunction y‖ ≤ ‖h.toBoundedContinuousFunction‖
-    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+    refine ne_top_of_le_ne_top
+      (ENNReal.ofReal_ne_top : ENNReal.ofReal ‖h.toBoundedContinuousFunction‖ ≠ ⊤) ?_
+    exact normalizedSphericalMaximal_le_of_norm_le hd0 _ x
+      (fun y => by
+        change ‖h.toBoundedContinuousFunction y‖ ≤ ‖h.toBoundedContinuousFunction‖
+        exact BoundedContinuousFunction.norm_coe_le_norm _ _)
   have hf := hbound f
   have hg := hbound g
   have hfg := hbound (f + g)

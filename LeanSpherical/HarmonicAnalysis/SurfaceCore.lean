@@ -685,7 +685,8 @@ private theorem map_unitSurfaceMeasure_linearIsometry (d : Nat)
       · rintro ⟨r, hr, z, hz, rfl⟩
         rcases hz with ⟨ω, hω, rfl⟩
         refine ⟨r • ((uSphere.symm ω : sphere (0 : Euclidean d) 1) : Euclidean d), ?_, ?_⟩
-        · refine ⟨r, hr, ((uSphere.symm ω : sphere (0 : Euclidean d) 1) : Euclidean d), ?_, rfl⟩
+        · refine ⟨r, hr,
+            ((uSphere.symm ω : sphere (0 : Euclidean d) 1) : Euclidean d), ?_, rfl⟩
           refine ⟨uSphere.symm ω, ?_, rfl⟩
           simpa using hω
         · simp [uSphere]
@@ -1252,7 +1253,8 @@ theorem integral_norm_fderiv_convolution_right_le_of_hasFDerivAt
       filter_upwards with x
       rw [(hderiv x).fderiv]
     _ ≤ ∫ x : Euclidean d, ∫ t : Euclidean d, ‖f t‖ * ‖D (x - t)‖ := hfirst
-    _ = (∫ x : Euclidean d, ‖f x‖) * (∫ x : Euclidean d, ‖D x‖) := hswap.trans htranslate
+    _ = (∫ x : Euclidean d, ‖f x‖) * (∫ x : Euclidean d, ‖D x‖) :=
+      hswap.trans htranslate
     _ = (∫ x : Euclidean d, ‖f x‖) * (∫ x : Euclidean d, ‖fderiv ℝ k x‖) := by rfl
 
 /-- A compactly supported `C¹` smoothing convolution obeys the direct `L¹`
@@ -1290,7 +1292,8 @@ theorem integral_norm_fderiv_convolution_right_le_schwartz
     {d : ℕ} (f : Euclidean d → ℂ) (hf : Integrable f volume)
     (k : SchwartzMap (Euclidean d) ℂ) :
     (∫ x : Euclidean d,
-      ‖fderiv ℝ (f ⋆[ContinuousLinearMap.mul ℝ ℂ, volume] (k : Euclidean d → ℂ)) x‖) ≤
+      ‖fderiv ℝ
+        (f ⋆[ContinuousLinearMap.mul ℝ ℂ, volume] (k : Euclidean d → ℂ)) x‖) ≤
       (∫ x : Euclidean d, ‖f x‖) *
         (∫ x : Euclidean d, ‖fderiv ℝ (k : Euclidean d → ℂ) x‖) := by
   let dk : SchwartzMap (Euclidean d) (Euclidean d →L[ℝ] ℂ) :=

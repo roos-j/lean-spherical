@@ -348,7 +348,7 @@ theorem finite_relative_dyadic_fat_cutoff_square_sum_le
           _ = (2 : ℝ) ^ ((1 : ℤ) + ((j : ℤ) + 3 - k)) :=
               (zpow_add₀ (by norm_num) _ _).symm
           _ = (2 : ℝ) ^ ((j : ℤ) + 4 - k) := by
-            congr 1 <;> ring
+            congr 1; ring
       have hleftpow : (2 : ℝ) ^ ((j : ℤ) - 2 - k) <
           (2 : ℝ) ^ (n + 1) :=
         lt_of_lt_of_le hsupport.1 hnhi.le
@@ -418,7 +418,7 @@ theorem relative_dyadic_bandpass_fat_cutoff_eq_one
           (2 : ℝ) ^ (k + ((j : ℤ) + 3 - k)) :=
         (zpow_add₀ (by norm_num) _ _).symm
       _ = (2 : ℝ) ^ ((j : ℤ) + 3) := by
-        congr 1 <;> ring
+        congr 1; ring
       _ = (2 : ℝ) ^ (j + 3) := by norm_cast
   have hscale_b : (2 : ℝ) ^ (k + 1) * (2 * b) = (2 : ℝ) ^ j := by
     dsimp [b]
@@ -429,7 +429,7 @@ theorem relative_dyadic_bandpass_fat_cutoff_eq_one
       _ = (2 : ℝ) ^ ((k + 1) + ((1 : ℤ) + ((j : ℤ) - 2 - k))) := by
         rw [← zpow_add₀ (by norm_num), ← zpow_add₀ (by norm_num)]
       _ = (2 : ℝ) ^ (j : ℤ) := by
-        congr 1 <;> ring
+        congr 1; ring
       _ = (2 : ℝ) ^ j := by norm_cast
   have hupper_scale : (2 : ℝ) ^ (j + 3) ≤ r * a := by
     calc
@@ -692,7 +692,8 @@ theorem integral_norm_fourierInv_scaled_schwartz_multiplier_le
   let k : SchwartzMap (Euclidean d) ℂ :=
     (R ^ d) • (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) (𝓕⁻ φ)
   have hk (y : Euclidean d) : k y =
-      (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) := by
+      (R ^ d) •
+        ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) := by
     change (R ^ d) • (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (A y) = _
     simp [A]
   have hphysical (y : Euclidean d) :
@@ -719,7 +720,9 @@ theorem integral_norm_fourierInv_scaled_schwartz_multiplier_le
     _ = (∫ x : Euclidean d, ‖f x‖) *
         (∫ x : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) x‖) := by
       rw [show (k : Euclidean d → ℂ) =
-          fun y => (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) by
+          fun y =>
+            (R ^ d) •
+              ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) by
             funext y
             exact hk y]
       rw [integral_norm_dilate_eq d
@@ -744,7 +747,8 @@ theorem integral_norm_fderiv_fourierInv_scaled_schwartz_multiplier_le
   let k : SchwartzMap (Euclidean d) ℂ :=
     (R ^ d) • (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) (𝓕⁻ φ)
   have hk (y : Euclidean d) : k y =
-      (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) := by
+      (R ^ d) •
+        ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) := by
     change (R ^ d) • (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (A y) = _
     simp [A]
   have hphysical (y : Euclidean d) :
@@ -776,7 +780,9 @@ theorem integral_norm_fderiv_fourierInv_scaled_schwartz_multiplier_le
         R * ∫ x : Euclidean d, ‖fderiv ℝ
           ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖ := by
     rw [show (k : Euclidean d → ℂ) =
-        fun y => (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) by
+        fun y =>
+          (R ^ d) •
+            ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) by
       funext y
       exact hk y]
     exact integral_norm_fderiv_dilate_eq
@@ -802,7 +808,8 @@ frequency scale; its constant is the `L¹` norm of the unscaled kernel. -/
 theorem norm_fourierInv_scaled_schwartz_multiplier_le
     {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R)
     {C : ℝ} (hfbound : ∀ x, ‖f x‖ ≤ C) (x : Euclidean d) :
-    ‖𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x‖ ≤
+    ‖𝓕⁻ (fun ξ : Euclidean d =>
+      φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x‖ ≤
       C * ∫ y : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) y‖ := by
   rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hR x]
   have hkernel : Integrable (fun y : Euclidean d => R ^ d •
@@ -825,7 +832,8 @@ theorem norm_fourierInv_scaled_schwartz_multiplier_le
 theorem continuous_fourierInv_scaled_schwartz_multiplier
     {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R) :
     Continuous (fun x : Euclidean d =>
-      𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x) := by
+      𝓕⁻ (fun ξ : Euclidean d =>
+        φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x) := by
   let A : Euclidean d ≃L[ℝ] Euclidean d :=
     ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
   let φR : SchwartzMap (Euclidean d) ℂ :=
@@ -1409,7 +1417,8 @@ theorem fourierInv_sub_scaled_schwartz_multiplier_eq_sub_convolution
         𝓕⁻ (fun ξ : Euclidean d => φR ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x :=
       fourierInv_sub_schwartz_multiplier φS φR f x
     _ = 𝓕⁻ (fun ξ : Euclidean d => φ (S⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x -
-        𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+        𝓕⁻ (fun ξ : Euclidean d =>
+          φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
       congr 2
     _ = ((fun y : Euclidean d => S ^ d •
         (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (S • y))

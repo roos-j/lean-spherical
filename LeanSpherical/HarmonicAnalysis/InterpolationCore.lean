@@ -359,7 +359,8 @@ theorem lintegral_swap_indicator_le
     simp only [F, S, Set.indicator_apply]
     by_cases ht : t ≤ u x <;> simp [ht]
   rw [hFx]
-  change (∫⁻ t, (Iic (u x)).indicator (fun t => w t * v x) t ∂(volume.restrict (Ioi (0 : ℝ)))) = _
+  change (∫⁻ t, (Iic (u x)).indicator (fun t => w t * v x) t
+    ∂(volume.restrict (Ioi (0 : ℝ)))) = _
   rw [lintegral_indicator measurableSet_Iic]
   rw [Measure.restrict_restrict measurableSet_Iic, inter_comm, Ioi_inter_Iic]
   rw [show (fun t : ℝ => w t * v x) = fun t => v x * w t by
@@ -1636,4 +1637,3 @@ theorem marcinkiewicz_one_two_on_additive_split_real
       (hinput_two g hg) (hbound_two g hg)
 
 end LeanSpherical.HarmonicAnalysis
-

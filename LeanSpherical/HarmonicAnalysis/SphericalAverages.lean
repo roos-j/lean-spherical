@@ -575,7 +575,8 @@ private theorem integrable_and_integral_norm_sq_sphericalAverage_radiusDerivativ
       rw [Real.norm_of_nonneg (sq_nonneg _), Real.norm_of_nonneg (sq_nonneg _)]
       calc
         ‖fderiv ℝ f (p.1 + r • (p.2 : Euclidean d)) (p.2 : Euclidean d)‖ ^ 2 ≤
-            (‖fderiv ℝ f (p.1 + r • (p.2 : Euclidean d))‖ * ‖(p.2 : Euclidean d)‖) ^ 2 := by
+            (‖fderiv ℝ f (p.1 + r • (p.2 : Euclidean d))‖ *
+              ‖(p.2 : Euclidean d)‖) ^ 2 := by
           gcongr
           exact (fderiv ℝ f (p.1 + r • (p.2 : Euclidean d))).le_opNorm _
         _ = ‖fderiv ℝ f (p.1 + r • (p.2 : Euclidean d))‖ ^ 2 := by
@@ -665,7 +666,8 @@ private theorem integrable_and_integral_norm_sq_sphericalAverage_radiusDerivativ
         intro x
         calc
           ‖fderiv ℝ f (x + r • (ω : Euclidean d)) (ω : Euclidean d)‖ ^ 2 ≤
-              (‖fderiv ℝ f (x + r • (ω : Euclidean d))‖ * ‖(ω : Euclidean d)‖) ^ 2 := by
+              (‖fderiv ℝ f (x + r • (ω : Euclidean d))‖ *
+                ‖(ω : Euclidean d)‖) ^ 2 := by
             gcongr
             exact (fderiv ℝ f (x + r • (ω : Euclidean d))).le_opNorm _
           _ = ‖fderiv ℝ f (x + r • (ω : Euclidean d))‖ ^ 2 := by
@@ -1216,13 +1218,15 @@ theorem hasDerivAt_fourierInv_surfaceMultiplier_radial_schwartz
       (Real.fourierChar (inner ℝ ξ x) : ℂ) *
         (D ξ * 𝓕 (f : Euclidean d → ℂ) ξ)) volume
     exact (hchar_cont.mul (hDcont.mul (𝓕 f).continuous)).aestronglyMeasurable
-  have hweighted : Integrable (fun ξ : Euclidean d => ‖ξ‖ * ‖𝓕 (f : Euclidean d → ℂ) ξ‖)
+  have hweighted :
+      Integrable (fun ξ : Euclidean d => ‖ξ‖ * ‖𝓕 (f : Euclidean d → ℂ) ξ‖)
       volume := by
     convert (𝓕 f).integrable_pow_mul volume 1 using 1
     funext ξ
     simp only [pow_one, SchwartzMap.fourier_coe]
   have hbound_int : Integrable (fun ξ : Euclidean d =>
-      (2 * Real.pi * surfaceMass d) * (‖ξ‖ * ‖𝓕 (f : Euclidean d → ℂ) ξ‖)) volume :=
+      (2 * Real.pi * surfaceMass d) *
+        (‖ξ‖ * ‖𝓕 (f : Euclidean d → ℂ) ξ‖)) volume :=
     hweighted.const_mul _
   have hbound : ∀ᵐ ξ : Euclidean d ∂volume, ∀ s ∈ (Set.univ : Set ℝ),
       ‖F' s ξ‖ ≤ (2 * Real.pi * surfaceMass d) *

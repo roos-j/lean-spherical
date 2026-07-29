@@ -321,7 +321,9 @@ theorem marcinkiewicz_weak_one_top
     change ‖{x | u x < t / 2}.indicator f y‖ ≤ t / 2
     by_cases hy : u y < t / 2
     · simpa [hy, u] using hy.le
-    · simp [hy]
+    · have hnot : y ∉ {x | u x < t / 2} := by
+        simpa only [Set.mem_setOf_eq] using hy
+      rw [Set.indicator_of_notMem hnot, norm_zero]
       positivity
   have hlow_bounded (t : ℝ) (ht : 0 < t) :
       ∃ a : ℝ, 0 ≤ a ∧ ∀ x, ‖low t x‖ ≤ a := by
@@ -425,7 +427,8 @@ theorem marcinkiewicz_weak_one_top
       have htwoT : ENNReal.ofReal (2 : ℝ) ≠ ∞ := ENNReal.ofReal_ne_top
       have hhalf : ENNReal.ofReal ((1 : ℝ) / 2) =
           (ENNReal.ofReal (2 : ℝ))⁻¹ := by
-        convert ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < 2) using 1 <;> norm_num
+        rw [show (1 : ℝ) / 2 = (2 : ℝ)⁻¹ by norm_num]
+        exact ENNReal.ofReal_inv_of_pos (by norm_num)
       have hinvhalf : ENNReal.ofReal (((1 : ℝ) / 2)⁻¹) = ENNReal.ofReal (2 : ℝ) := by
         norm_num
       rw [hhalf, hinvhalf, ENNReal.inv_rpow, ENNReal.rpow_neg, inv_inv]
@@ -541,7 +544,7 @@ private theorem rpow_mul_lintegral_rpow_Ioc_eq
     _ = ENNReal.ofReal u ^ p * (ENNReal.ofReal (p - q))⁻¹ := by
       rw [← ENNReal.rpow_add _ _ hu0 hutop]
       congr 1
-      ring
+      ring_nf
     _ = (ENNReal.ofReal (p - q))⁻¹ * ENNReal.ofReal u ^ p := by ac_rfl
 
 /-- The exact high-amplitude tail identity behind weak `(q,q)`--`L∞`
@@ -607,8 +610,8 @@ theorem lintegral_high_tail_rpow_eq
     have htwoT : ENNReal.ofReal (2 : ℝ) ≠ ⊤ := ENNReal.ofReal_ne_top
     have hhalf : ENNReal.ofReal ((1 : ℝ) / 2) =
         (ENNReal.ofReal (2 : ℝ))⁻¹ := by
-      convert ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < 2) using 1 <;>
-        norm_num
+      rw [show (1 : ℝ) / 2 = (2 : ℝ)⁻¹ by norm_num]
+      exact ENNReal.ofReal_inv_of_pos (by norm_num)
     have hinvhalf : ENNReal.ofReal (((1 : ℝ) / 2)⁻¹) = ENNReal.ofReal (2 : ℝ) := by
       norm_num
     rw [hhalf, hinvhalf, ENNReal.inv_rpow, ENNReal.rpow_neg, inv_inv]
@@ -869,7 +872,7 @@ private theorem ofReal_q_top_coefficient
       rw [ENNReal.ofReal_mul htwoq]
     _ = ENNReal.ofReal (p * ((2 : ℝ) ^ q * (C * A))) := by
       rw [ENNReal.ofReal_mul hp]
-    _ = ENNReal.ofReal (p * 2 ^ q * C * A) := by ring
+    _ = ENNReal.ofReal (p * 2 ^ q * C * A) := by ring_nf
 
 /-- A real-constant supplied-split weak `(q,q)`--`L∞` interpolation bound.
 Its conclusion keeps the coefficient inside `ENNReal.ofReal`, so dyadic

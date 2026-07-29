@@ -496,7 +496,8 @@ theorem norm_scaled_schwartz_convolution_le_dyadic_ball
       ((fun y : Euclidean d => (r⁻¹) ^ d • K (r⁻¹ • y))
           ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x =
         ((fun y : Euclidean d => (s⁻¹) ^ d • K (s⁻¹ • y))
-          ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (g : Euclidean d → ℂ)) (a⁻¹ • x) := by
+          ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (g : Euclidean d → ℂ))
+          (a⁻¹ • x) := by
     rw [← has, hgfun]
     exact scaled_schwartz_convolution_under_dilation (a := a) (s := s) K f ha x
   rw [hconvolution]
@@ -845,8 +846,8 @@ theorem shell_weighted_integral_le_dyadic_average_sup
           ‖f y‖ * ((r⁻¹) ^ d * W (r⁻¹ • (y - x))) ≤
               ‖f y‖ * ((r⁻¹) ^ d * A) := by
             apply mul_le_mul_of_nonneg_left
-            exact mul_le_mul_of_nonneg_left hW hrpow_nonneg
-            exact norm_nonneg _
+            · exact mul_le_mul_of_nonneg_left hW hrpow_nonneg
+            · exact norm_nonneg _
           _ = F 0 y := by
             dsimp [F, q]
             rw [Set.indicator_of_mem hyball]
@@ -901,8 +902,8 @@ theorem shell_weighted_integral_le_dyadic_average_sup
           ‖f y‖ * ((r⁻¹) ^ d * W (r⁻¹ • (y - x))) ≤
               ‖f y‖ * ((r⁻¹) ^ d * (A * q ^ n)) := by
             apply mul_le_mul_of_nonneg_left
-            exact mul_le_mul_of_nonneg_left (by simpa [A, q] using hW) hrpow_nonneg
-            exact norm_nonneg _
+            · exact mul_le_mul_of_nonneg_left (by simpa [A, q] using hW) hrpow_nonneg
+            · exact norm_nonneg _
           _ = F n y := by
             dsimp [F]
             rw [Set.indicator_of_mem hyball]
@@ -935,7 +936,7 @@ theorem shell_weighted_integral_le_dyadic_average_sup
           (mul_nonneg (mul_nonneg hA hrpow_nonneg) (pow_nonneg hq_nonneg _))
       _ = (A * M * (2 : ℝ) ^ (3 * d)) * (1 / 8 : ℝ) ^ n := by
         dsimp [q]
-        convert shell_tail_coefficient (A * M) r n d hr using 1 <;> ring
+        convert shell_tail_coefficient (A * M) r n d hr using 1; ring
   have hG_summable : Summable fun n : ℕ =>
       (A * M * (2 : ℝ) ^ (3 * d)) * (1 / 8 : ℝ) ^ n := by
     have heighth : ‖(1 / 8 : ℝ)‖ < 1 := by norm_num
@@ -1214,8 +1215,9 @@ theorem exists_surface_smoothed_schwartz_kernel_shell_bound
     dsimp [F]
     rw [integral_const_mul]
     change (B * L ^ d * q ^ n) *
-      (∫ ω : sphere (0 : Euclidean d) 1, (S n).indicator (1 : sphere (0 : Euclidean d) 1 → ℝ) ω
-        ∂unitSurfaceMeasure d) = _
+      (∫ ω : sphere (0 : Euclidean d) 1,
+        (S n).indicator (1 : sphere (0 : Euclidean d) 1 → ℝ) ω
+          ∂unitSurfaceMeasure d) = _
     rw [integral_indicator_one (hSmeas n)]
     simp only [Measure.real]
   have hradius_nonneg (n : ℕ) : 0 ≤ (2 : ℝ) ^ (n + 1) / L := by
@@ -1243,7 +1245,8 @@ theorem exists_surface_smoothed_schwartz_kernel_shell_bound
       ∫ ω : sphere (0 : Euclidean d) 1, ‖F n ω‖ ∂unitSurfaceMeasure d := by
     refine Summable.of_nonneg_of_le
       (f := fun n : ℕ => B * D * L * (2 : ℝ) ^ (d - 1) * s ^ n)
-      (g := fun n : ℕ => ∫ ω : sphere (0 : Euclidean d) 1, ‖F n ω‖ ∂unitSurfaceMeasure d)
+      (g := fun n : ℕ =>
+        ∫ ω : sphere (0 : Euclidean d) 1, ‖F n ω‖ ∂unitSurfaceMeasure d)
       ?_ ?_ hG_summable
     · intro n
       apply integral_nonneg
@@ -1375,7 +1378,8 @@ theorem exists_surface_smoothed_schwartz_kernel_shell_bound
       exact hterm.trans ((hF_pointwise_summable ω).le_tsum n fun j _ => hF_nonneg j ω)
   have huniform :
       (∫ ω : sphere (0 : Euclidean d) 1,
-        ‖(L ^ d) • K (L • (z - (ω : Euclidean d)))‖ ∂unitSurfaceMeasure d) ≤ C * L := by
+        ‖(L ^ d) • K (L • (z - (ω : Euclidean d)))‖
+          ∂unitSurfaceMeasure d) ≤ C * L := by
     calc
       (∫ ω : sphere (0 : Euclidean d) 1,
         ‖(L ^ d) • K (L • (z - (ω : Euclidean d)))‖ ∂unitSurfaceMeasure d) ≤
@@ -1431,7 +1435,8 @@ theorem exists_surface_smoothed_schwartz_kernel_shell_bound
     exact hI_zero n (Finset.mem_range.mp hn)
   have htail_eq :
       (∑' n : ℕ, ∫ ω : sphere (0 : Euclidean d) 1, F n ω ∂unitSurfaceMeasure d) =
-        ∑' n : ℕ, ∫ ω : sphere (0 : Euclidean d) 1, F (n + m) ω ∂unitSurfaceMeasure d := by
+        ∑' n : ℕ,
+          ∫ ω : sphere (0 : Euclidean d) 1, F (n + m) ω ∂unitSurfaceMeasure d := by
     rw [← Summable.sum_add_tsum_nat_add m hF_summable_integral, hpref_zero, zero_add]
   have hF_tail_summable : Summable fun n : ℕ =>
       ∫ ω : sphere (0 : Euclidean d) 1, F (n + m) ω ∂unitSurfaceMeasure d :=
@@ -1497,7 +1502,8 @@ private theorem relative_surface_kernel_argument
 /-- The `j`-th relative-frequency piece of the spherical average is bounded
 pointwise by `O(2^j)` times the dyadic ball maximal average.  This is the
 physical-space high-frequency endpoint used in the interpolation argument. -/
-theorem exists_fixed_radius_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
+theorem
+    exists_fixed_radius_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
     {d : Nat} (hd : 0 < d) (ψ : SchwartzMap (Euclidean d) ℂ) :
     ∃ D : ℝ, 0 < D ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean d) ℂ)
       {r : ℝ}, 0 < r → ∀ x : Euclidean d,
@@ -1561,7 +1567,7 @@ theorem exists_fixed_radius_fourierInv_relative_surface_scaled_schwartz_multipli
     dsimp [s, L, K]
     rw [mul_inv_rev, inv_inv]
     funext y
-    congr 2 <;> ring
+    congr 2 <;> ring_nf
   have hinner (y : Euclidean d) :
       (∫ w : Metric.sphere (0 : Euclidean d) 1,
         ‖s ^ d • K (s • (x + r • (w : Euclidean d) - y))‖
@@ -1622,7 +1628,8 @@ theorem exists_fixed_radius_fourierInv_relative_surface_scaled_schwartz_multipli
 
 /-- Raw `ℝ≥0∞` form of the high-frequency endpoint, retaining the genuine
 supremum over all radii. -/
-theorem exists_iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
+theorem
+    exists_iSup_ennreal_norm_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
     {d : Nat} (hd : 0 < d) (ψ : SchwartzMap (Euclidean d) ℂ) :
     ∃ D : ℝ, 0 < D ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean d) ℂ)
       (x : Euclidean d),
@@ -1637,7 +1644,8 @@ theorem exists_iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_mul
                 ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖f y‖)).toReal *
               (volume (Metric.ball (0 : Euclidean d) 1)).toReal)) := by
   obtain ⟨D, hD, hfixed⟩ :=
-    exists_fixed_radius_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup hd ψ
+    exists_fixed_radius_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
+      hd ψ
   refine ⟨D, hD, ?_⟩
   intro j f x
   apply iSup_le
@@ -1645,7 +1653,8 @@ theorem exists_iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_mul
   exact ENNReal.ofReal_le_ofReal (hfixed j f r.2 x)
 
 /-- Real-valued form of the high-frequency endpoint. -/
-theorem exists_iSup_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
+theorem
+    exists_iSup_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup
     {d : Nat} (hd : 0 < d) (ψ : SchwartzMap (Euclidean d) ℂ) :
     ∃ D : ℝ, 0 < D ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean d) ℂ)
       (x : Euclidean d),
@@ -1659,7 +1668,7 @@ theorem exists_iSup_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_
                 ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖f y‖)).toReal *
               (volume (Metric.ball (0 : Euclidean d) 1)).toReal) := by
   obtain ⟨D, hD, hraw⟩ :=
-    exists_iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup hd ψ
+    exists_iSup_ennreal_norm_relative_surface_scaled_schwartz_multiplier_le_dyadic_average_sup hd ψ
   refine ⟨D, hD, ?_⟩
   intro j f x
   let M : ℝ :=

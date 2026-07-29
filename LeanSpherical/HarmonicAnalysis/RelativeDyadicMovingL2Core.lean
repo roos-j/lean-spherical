@@ -100,12 +100,16 @@ theorem norm_surfaceFourier_succ_neg_smul_mul_deriv_relative_dyadic_bandpass_le_
       deriv (fun t : ℝ =>
         phi (((2 : ℝ) ^ (j + 1))⁻¹ • (t • xi)) -
           phi (((2 : ℝ) ^ j)⁻¹ • (t • xi))) r‖ ≤
-      (6 * C0 * ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+      (6 * C0 *
+          ‖((SchwartzMap.fderivCLM ℂ
+            (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2) := by
   let B' : ℂ := deriv (fun t : ℝ =>
     phi (((2 : ℝ) ^ (j + 1))⁻¹ • (t • xi)) -
       phi (((2 : ℝ) ^ j)⁻¹ • (t • xi))) r
-  let Dphi : ℝ := ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖
+  let Dphi : ℝ :=
+    ‖((SchwartzMap.fderivCLM ℂ
+      (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖
   have hscale : 0 < dyadicScale j := dyadicScale_pos j
   have hscale_one : 1 ≤ dyadicScale j := by
     calc
@@ -400,10 +404,14 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_bandpass_deriv_multiplier_le
           phi (((2 : ℝ) ^ (j + 1))⁻¹ • (t • xi)) -
             phi (((2 : ℝ) ^ j)⁻¹ • (t • xi))) r * theta xi *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2) ≤
-      ((12 * C0 * ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+      ((12 * C0 *
+          ‖((SchwartzMap.fderivCLM ℂ
+            (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 *
         ∫ xi : Euclidean (d + 1), ‖𝓕 (f : Euclidean (d + 1) → ℂ) xi‖ ^ 2 := by
-  let Dphi : ℝ := ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖
+  let Dphi : ℝ :=
+    ‖((SchwartzMap.fderivCLM ℂ
+      (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖
   rcases exists_compactlySupported_schwartzMap_deriv_relative_dyadic_bandpass_mul
       phi theta htheta j r with ⟨psi, hpsi, hpsi_compact⟩
   rcases exists_schwartz_compactSupport_mul_surfaceFourier psi hpsi_compact r with
@@ -620,12 +628,15 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
           theta xi * 𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2) ≤
       (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2 +
         2 * ((12 * C0 *
-          ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+          ‖((SchwartzMap.fderivCLM ℂ
+            (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2) *
         ∫ xi : Euclidean (d + 1), ‖𝓕 (f : Euclidean (d + 1) → ℂ) xi‖ ^ 2 := by
   let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
-  let T : ℝ := (12 * C0 *
-    ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+  let T : ℝ :=
+    (12 * C0 *
+      ‖((SchwartzMap.fderivCLM ℂ
+        (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
     (dyadicScale j) ^ ((d : ℝ) / 2)
   let E : ℝ := ∫ xi : Euclidean (d + 1), ‖𝓕 (f : Euclidean (d + 1) → ℂ) xi‖ ^ 2
   have hrne : r ≠ 0 := ne_of_gt (lt_of_lt_of_le zero_lt_one hr.1)
@@ -697,7 +708,8 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
                 phi (((2 : ℝ) ^ j)⁻¹ • (t • xi))) r‖ * ‖theta xi‖ := by
         rw [norm_mul]
       _ ≤ ((6 * C0 *
-            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+            ‖((SchwartzMap.fderivCLM ℂ
+              (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((d : ℝ) / 2)) * 2 :=
         mul_le_mul hpoint (htheta_norm xi) (norm_nonneg _)
           (div_nonneg (mul_nonneg (mul_nonneg (by norm_num) hC0.le) (norm_nonneg _))
@@ -783,7 +795,8 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_of_sharp
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
             (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
-                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  ‖((SchwartzMap.fderivCLM ℂ
+                    (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ xi : Euclidean (d + 1), ‖𝓕 (f : Euclidean (d + 1) → ℂ) xi‖ ^ 2) := by
   let F : ℝ → Euclidean (d + 1) → ℂ := fun s x =>
@@ -1076,7 +1089,8 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_compact_data
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
             (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
-                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  ‖((SchwartzMap.fderivCLM ℂ
+                    (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2) := by
   obtain ⟨chi, hchi_compact, hchi_norm, hchi_mul⟩ :=
@@ -1102,7 +1116,11 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_compact_data
               phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) * (chi xi * g xi) := by ring
       _ = _ := by rw [hchi_mul]
   have hfourier (xi : Euclidean (d + 1)) :
-      𝓕 ((𝓕⁻ g : SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ) xi = g xi := by
+      𝓕
+          ((𝓕⁻ g : SchwartzMap (Euclidean (d + 1)) ℂ) :
+            Euclidean (d + 1) → ℂ)
+          xi =
+        g xi := by
     rw [← SchwartzMap.fourier_coe, fourier_fourierInv_eq]
   have hsymbol' (s : ℝ) (xi : Euclidean (d + 1)) :
       surfaceFourier (d + 1) (-s • xi) *
@@ -1146,7 +1164,8 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
             (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
-                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  ‖((SchwartzMap.fderivCLM ℂ
+                    (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2) := by
   let A : Euclidean (d + 1) ≃L[ℝ] Euclidean (d + 1) :=
@@ -1174,7 +1193,8 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
             (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
-                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  ‖((SchwartzMap.fderivCLM ℂ
+                    (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2) := by
     simpa only [M] using hlocal
@@ -1213,7 +1233,7 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
         rw [smul_smul, inv_mul_cancel₀ ha.ne', one_smul]
       rw [hscale]
       simp only [smul_smul]
-      ring
+      ring_nf
     rw [hfun]
     simpa only [q, finrank_euclideanSpace_fin, mul_assoc] using
       fourierInv_relative_surface_multiplier_dilate a ha s
@@ -1301,24 +1321,29 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
                     surfaceFourier (d + 1) (-s.1 • eta) *
                       (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s.1 • eta)) -
                         phi (((2 : ℝ) ^ j)⁻¹ • (s.1 • eta))) * ga eta) (a⁻¹ • x)‖ =
-                    ENNReal.ofReal (q * ‖𝓕⁻ (fun eta : Euclidean (d + 1) =>
+                    ENNReal.ofReal (q *
+                      ‖𝓕⁻ (fun eta : Euclidean (d + 1) =>
                       surfaceFourier (d + 1) (-s.1 • eta) *
                         (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s.1 • eta)) -
-                          phi (((2 : ℝ) ^ j)⁻¹ • (s.1 • eta))) * ga eta) (a⁻¹ • x)‖) :=
+                          phi (((2 : ℝ) ^ j)⁻¹ • (s.1 • eta))) * ga eta)
+                        (a⁻¹ • x)‖) :=
                       (ENNReal.ofReal_mul hq).symm
-                _ = ENNReal.ofReal ‖q • 𝓕⁻ (fun eta : Euclidean (d + 1) =>
+                _ = ENNReal.ofReal ‖q •
+                    𝓕⁻ (fun eta : Euclidean (d + 1) =>
                     surfaceFourier (d + 1) (-s.1 • eta) *
                       (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s.1 • eta)) -
-                        phi (((2 : ℝ) ^ j)⁻¹ • (s.1 • eta))) * ga eta) (a⁻¹ • x)‖ := by
+                        phi (((2 : ℝ) ^ j)⁻¹ • (s.1 • eta))) * ga eta)
+                      (a⁻¹ • x)‖ := by
                       rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg hq]
                 _ = _ := by rw [← hd]
         _ ≤ ⨆ r : Icc a (2 * a), ENNReal.ofReal ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
             surfaceFourier (d + 1) (-r.1 • xi) *
               (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
                 phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) * g xi) x‖ :=
-              le_iSup (fun t : Icc a (2 * a) => ENNReal.ofReal ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
-                surfaceFourier (d + 1) (-t.1 • xi) *
-                  (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (t.1 • xi)) -
+              le_iSup (fun t : Icc a (2 * a) =>
+                ENNReal.ofReal ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+                  surfaceFourier (d + 1) (-t.1 • xi) *
+                    (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (t.1 • xi)) -
                     phi (((2 : ℝ) ^ j)⁻¹ • (t.1 • xi))) * g xi) x‖) r
   have hBM (x : Euclidean (d + 1)) : B x = q * M (a⁻¹ • x) := by
     dsimp only [B, M]
@@ -1399,7 +1424,8 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
             (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
-                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  ‖((SchwartzMap.fderivCLM ℂ
+                    (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2)) :=
       mul_le_mul_of_nonneg_left hMlocal.2 hq
@@ -1408,7 +1434,8 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
             (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
-                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  ‖((SchwartzMap.fderivCLM ℂ
+                    (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2) := by
       rw [hgaint]
@@ -1444,7 +1471,8 @@ theorem finite_relative_dyadic_radius_blocks_l2
             2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
               (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
-                  ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                    ‖((SchwartzMap.fderivCLM ℂ
+                      (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((d : ℝ) / 2)))) *
           (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := by
   classical
@@ -1484,7 +1512,8 @@ theorem finite_relative_dyadic_radius_blocks_l2
       2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
         (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
-            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+            ‖((SchwartzMap.fderivCLM ℂ
+              (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((d : ℝ) / 2))))
   have hL : 0 ≤ L := by
     dsimp only [L]
@@ -1496,7 +1525,8 @@ theorem finite_relative_dyadic_radius_blocks_l2
         (Real.rpow_pos_of_pos (dyadicScale_pos j) _).le
     have hC : 0 ≤
         (12 * C0 *
-          ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+          ‖((SchwartzMap.fderivCLM ℂ
+            (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2) := by
       exact div_nonneg (by positivity)
         (Real.rpow_pos_of_pos (dyadicScale_pos j) _).le

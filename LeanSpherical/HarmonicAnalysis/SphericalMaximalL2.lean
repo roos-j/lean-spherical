@@ -924,14 +924,16 @@ theorem exists_smooth_dyadic_sphericalMaximal_succ_memLp_two_of_sharp
             ENNReal.ofReal ‖sphericalAverage (d + 1)
               ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
                 (psi : Euclidean (d + 1) → ℂ) (𝓕 f)) :
-                  SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ) r.1 x‖).toReal)
+                  SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ)
+                    r.1 x‖).toReal)
         2 volume ∧
       (∫ x : Euclidean (d + 1),
         ‖(⨆ r : Icc (1 : ℝ) 2,
           ENNReal.ofReal ‖sphericalAverage (d + 1)
             ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
               (psi : Euclidean (d + 1) → ℂ) (𝓕 f)) :
-                SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ) r.1 x‖).toReal‖ ^ 2) ≤
+                SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ)
+                  r.1 x‖).toReal‖ ^ 2) ≤
         (2 * ((2 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((2 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2) *
           ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2 := by
@@ -1224,7 +1226,8 @@ theorem smooth_dyadic_sphericalMaximal_succ_memLp_two_of_sharp_of_bandpass
         ENNReal.ofReal ‖sphericalAverage (d + 1)
           ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
             (psi : Euclidean (d + 1) → ℂ) (𝓕 f)) :
-              SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ) r.1 x‖).toReal‖ ^ 2) ≤
+              SchwartzMap (Euclidean (d + 1)) ℂ) : Euclidean (d + 1) → ℂ)
+                r.1 x‖).toReal‖ ^ 2) ≤
       (2 * ((2 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
         2 * ((2 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2) *
         ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2 := by

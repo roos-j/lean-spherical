@@ -437,7 +437,8 @@ theorem integrable_norm_sq_fourierInv_schwartz_multiplier
       𝓕⁻ (fun ξ : E => m ξ * g ξ) := by
     rw [SchwartzMap.fourierInv_coe, hh]
   have hsq : Integrable (fun x : E => ‖(𝓕⁻ h : SchwartzMap E ℂ) x‖ ^ 2) volume :=
-    (memLp_two_iff_integrable_sq_norm (𝓕⁻ h : SchwartzMap E ℂ).continuous.aestronglyMeasurable).mp
+    (memLp_two_iff_integrable_sq_norm
+      (𝓕⁻ h : SchwartzMap E ℂ).continuous.aestronglyMeasurable).mp
       ((𝓕⁻ h : SchwartzMap E ℂ).memLp 2 volume)
   apply hsq.congr
   filter_upwards with x

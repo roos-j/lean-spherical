@@ -627,8 +627,8 @@ theorem lintegral_high_tail_rpow_quarter_eq
     have htwoT : ENNReal.ofReal (2 : ℝ) ≠ ⊤ := ENNReal.ofReal_ne_top
     have hhalf : ENNReal.ofReal ((1 : ℝ) / 2) =
         (ENNReal.ofReal (2 : ℝ))⁻¹ := by
-      convert ENNReal.ofReal_inv_of_pos (by norm_num : (0 : ℝ) < 2) using 1 <;>
-        norm_num
+      rw [show (1 : ℝ) / 2 = (2 : ℝ)⁻¹ by norm_num]
+      exact ENNReal.ofReal_inv_of_pos (by norm_num)
     have hinvhalf : ENNReal.ofReal (((1 : ℝ) / 2)⁻¹) = ENNReal.ofReal (2 : ℝ) := by
       norm_num
     rw [hhalf, hinvhalf, ENNReal.inv_rpow, ENNReal.rpow_neg, inv_inv]
@@ -664,7 +664,7 @@ theorem lintegral_high_tail_rpow_quarter_eq
       intro t
       congr 2
       congr 3
-      ring
+      ring_nf
     _ = (ENNReal.ofReal ((1 : ℝ) / 2)) ^ (-(p - q - 1)) *
         (ENNReal.ofReal (((1 : ℝ) / 2)⁻¹) *
           ∫⁻ t in Ioi (0 : ℝ), G t * (ENNReal.ofReal t) ^ (p - q - 1)) :=
@@ -1042,7 +1042,8 @@ theorem exists_smooth_dyadic_sphericalMaximal_l1_uniform
                   (∫ x : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) x‖) +
                 3 * (2 : ℝ) ^ j * (∫ x : Euclidean d, ‖f x‖) *
                   (∫ x : Euclidean d, ‖fderiv ℝ
-                    ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖))) := by
+                    ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)
+                      x‖))) := by
   rcases exists_schwartzMap_smooth_dyadic_bandpass φ j with ⟨ψ, hψ⟩
   refine ⟨ψ, hψ, ?_⟩
   intro f
@@ -1240,7 +1241,8 @@ theorem smooth_dyadic_sphericalMaximal_memLp_one_of_bandpass_geometric
         (2 * (∫ x : Euclidean d,
             ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) x‖) +
           3 * (∫ x : Euclidean d,
-            ‖fderiv ℝ ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖)) := by
+            ‖fderiv ℝ
+              ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖)) := by
   rcases exists_smooth_dyadic_sphericalMaximal_l1_uniform_geometric φ j with
     ⟨χ, hχ, hbound⟩
   have hχψ : χ = ψ :=

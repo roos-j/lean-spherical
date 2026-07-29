@@ -512,7 +512,7 @@ comparably sized Euclidean ball.  Polar coordinates therefore turn the cap
 measure into a literal ball-volume upper bound. -/
 theorem unitSurfaceMeasure_cap_cone_le_volume_ball
     {d : Nat} (hd : 0 < d) (z : Euclidean d) {ε : ℝ}
-    (hε : 0 < ε) (hεhalf : ε ≤ 1 / 2) :
+    (_hε : 0 < ε) (hεhalf : ε ≤ 1 / 2) :
     let S : Set (sphere (0 : Euclidean d) 1) :=
       (fun ω : sphere (0 : Euclidean d) 1 => (ω : Euclidean d)) ⁻¹' Metric.ball z ε
     let lo : Ioi (0 : ℝ) :=
@@ -892,7 +892,8 @@ theorem exists_unitSurfaceMeasure_cap_real_le_power
     {d : Nat} (hd : 0 < d) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (z : Euclidean d) (r : ℝ), 0 ≤ r →
       ((unitSurfaceMeasure d)
-        ((fun ω : sphere (0 : Euclidean d) 1 => (ω : Euclidean d)) ⁻¹' Metric.ball z r)).toReal ≤
+        ((fun ω : sphere (0 : Euclidean d) 1 => (ω : Euclidean d)) ⁻¹'
+          Metric.ball z r)).toReal ≤
         C * r ^ (d - 1) := by
   obtain ⟨C, hCtop, hcap⟩ := exists_unitSurfaceMeasure_cap_le_power hd
   refine ⟨C.toReal, ENNReal.toReal_nonneg, ?_⟩
