@@ -1,1 +1,1 @@
-import LeanSpherical.Basic
+import LeanSpherical.HarmonicAnalysis.SphericalMaximal

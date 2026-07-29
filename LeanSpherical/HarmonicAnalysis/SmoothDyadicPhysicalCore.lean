@@ -1,0 +1,1426 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.SurfaceCore
+import LeanSpherical.HarmonicAnalysis.CoordinateIntegration
+import LeanSpherical.HarmonicAnalysis.FourierRadius
+import LeanSpherical.HarmonicAnalysis.SphericalAverages
+import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
+import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
+import Mathlib.Analysis.Fourier.Convolution
+
+/-!
+# Core smooth dyadic physical-space estimates
+
+This module consolidates the smooth cutoff, dyadic partition, multiplier
+realization, and core physical-space estimates used by the dyadic argument.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open scoped ContDiff
+
+noncomputable section
+
+/-- There is a complex-valued Schwartz cutoff which equals one on the unit
+ball and vanishes outside the ball of radius two. -/
+theorem exists_schwartz_frequency_cutoff (d : Nat) :
+    ∃ φ : SchwartzMap (Euclidean d) ℂ,
+      (∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1) ∧
+      (∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) := by
+  let f : ContDiffBump (0 : Euclidean d) := ⟨1, 2, zero_lt_one, one_lt_two⟩
+  let g : Euclidean d → ℂ := Complex.ofRealCLM ∘ f
+  have hcompact : HasCompactSupport g := by
+    exact f.hasCompactSupport.comp_left (by rfl)
+  have hsmooth : ContDiff ℝ ∞ g := by
+    exact Complex.ofRealCLM.contDiff.comp f.contDiff
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_⟩
+  · intro ξ hξ
+    change (f ξ : ℂ) = 1
+    have hmem : ξ ∈ Metric.closedBall (0 : Euclidean d) f.rIn := by
+      simpa only [Metric.mem_closedBall, dist_zero_right] using hξ
+    rw [f.one_of_mem_closedBall hmem]
+    norm_num
+  · intro ξ hξ
+    change (f ξ : ℂ) = 0
+    have hdist : f.rOut ≤ dist ξ (0 : Euclidean d) := by
+      simpa only [dist_zero_right] using hξ
+    rw [f.zero_of_le_dist hdist]
+    norm_num
+
+/-- The cutoff can be chosen with pointwise norm at most one. -/
+theorem exists_schwartz_frequency_cutoff_norm_le_one (d : Nat) :
+    ∃ φ : SchwartzMap (Euclidean d) ℂ,
+      (∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1) ∧
+      (∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) ∧
+      (∀ ξ, ‖φ ξ‖ ≤ 1) := by
+  let f : ContDiffBump (0 : Euclidean d) := ⟨1, 2, zero_lt_one, one_lt_two⟩
+  let g : Euclidean d → ℂ := Complex.ofRealCLM ∘ f
+  have hcompact : HasCompactSupport g := by
+    exact f.hasCompactSupport.comp_left (by rfl)
+  have hsmooth : ContDiff ℝ ∞ g := by
+    exact Complex.ofRealCLM.contDiff.comp f.contDiff
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_, ?_⟩
+  · intro ξ hξ
+    change (f ξ : ℂ) = 1
+    have hmem : ξ ∈ Metric.closedBall (0 : Euclidean d) f.rIn := by
+      simpa only [Metric.mem_closedBall, dist_zero_right] using hξ
+    rw [f.one_of_mem_closedBall hmem]
+    norm_num
+  · intro ξ hξ
+    change (f ξ : ℂ) = 0
+    have hdist : f.rOut ≤ dist ξ (0 : Euclidean d) := by
+      simpa only [dist_zero_right] using hξ
+    rw [f.zero_of_le_dist hdist]
+    norm_num
+  · intro ξ
+    change ‖(f ξ : ℂ)‖ ≤ 1
+    rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg f.nonneg]
+    exact f.le_one
+
+/-- The concrete bump cutoff is even as well as bounded by one. -/
+theorem exists_even_schwartz_frequency_cutoff_norm_le_one (d : Nat) :
+    ∃ φ : SchwartzMap (Euclidean d) ℂ,
+      (∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1) ∧
+      (∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) ∧
+      (∀ ξ, ‖φ ξ‖ ≤ 1) ∧
+      (∀ ξ, φ (-ξ) = φ ξ) := by
+  let f : ContDiffBump (0 : Euclidean d) := ⟨1, 2, zero_lt_one, one_lt_two⟩
+  let g : Euclidean d → ℂ := Complex.ofRealCLM ∘ f
+  have hcompact : HasCompactSupport g := by
+    exact f.hasCompactSupport.comp_left (by rfl)
+  have hsmooth : ContDiff ℝ ∞ g := by
+    exact Complex.ofRealCLM.contDiff.comp f.contDiff
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_, ?_, ?_⟩
+  · intro ξ hξ
+    change (f ξ : ℂ) = 1
+    have hmem : ξ ∈ Metric.closedBall (0 : Euclidean d) f.rIn := by
+      simpa only [Metric.mem_closedBall, dist_zero_right] using hξ
+    rw [f.one_of_mem_closedBall hmem]
+    norm_num
+  · intro ξ hξ
+    change (f ξ : ℂ) = 0
+    have hdist : f.rOut ≤ dist ξ (0 : Euclidean d) := by
+      simpa only [dist_zero_right] using hξ
+    rw [f.zero_of_le_dist hdist]
+    norm_num
+  · intro ξ
+    change ‖(f ξ : ℂ)‖ ≤ 1
+    rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg f.nonneg]
+    exact f.le_one
+  · intro ξ
+    change (f (-ξ) : ℂ) = f ξ
+    rw [f.neg]
+
+/-- The cutoff may moreover be chosen even.  Symmetrizing the concrete
+cutoff preserves both of its radial support properties. -/
+theorem exists_even_schwartz_frequency_cutoff (d : Nat) :
+    ∃ φ : SchwartzMap (Euclidean d) ℂ,
+      (∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1) ∧
+      (∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) ∧
+      (∀ ξ, φ (-ξ) = φ ξ) := by
+  rcases exists_schwartz_frequency_cutoff d with ⟨φ, hφone, hφzero⟩
+  let ψ : SchwartzMap (Euclidean d) ℂ :=
+    (2 : ℂ)⁻¹ • (φ +
+      (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ
+        ((LinearIsometryEquiv.neg ℝ : Euclidean d ≃ₗᵢ[ℝ] Euclidean d) :
+          Euclidean d ≃L[ℝ] Euclidean d)) φ)
+  refine ⟨ψ, ?_, ?_, ?_⟩
+  · intro ξ hξ
+    change (2 : ℂ)⁻¹ * (φ ξ + φ (-ξ)) = 1
+    rw [hφone ξ hξ, hφone (-ξ)]
+    · norm_num
+    · simpa using hξ
+  · intro ξ hξ
+    change (2 : ℂ)⁻¹ * (φ ξ + φ (-ξ)) = 0
+    rw [hφzero ξ hξ, hφzero (-ξ)]
+    · norm_num
+    · simpa using hξ
+  · intro ξ
+    change (2 : ℂ)⁻¹ * (φ (-ξ) + φ (-(-ξ))) =
+      (2 : ℂ)⁻¹ * (φ ξ + φ (-ξ))
+    rw [neg_neg]
+    ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+noncomputable section
+
+/-- The finite sum of literal dyadic differences telescopes. -/
+theorem smooth_dyadic_bandpass_sum
+    {d : Nat} (phi : SchwartzMap (Euclidean d) ℂ) (N : Nat) (xi : Euclidean d) :
+    ∑ j ∈ Finset.range N,
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ j)⁻¹ • xi)) =
+      phi (((2 : ℝ) ^ N)⁻¹ • xi) - phi xi := by
+  simpa using
+    (Finset.sum_range_sub
+      (fun j : Nat => phi (((2 : ℝ) ^ j)⁻¹ • xi)) N)
+
+/-- The same finite telescoping identity holds after multiplication by any
+literal Fourier-side input. -/
+theorem smooth_dyadic_bandpass_multiplier_sum
+    {d : Nat} (phi : SchwartzMap (Euclidean d) ℂ) (N : Nat)
+    (g : Euclidean d → ℂ) (xi : Euclidean d) :
+    ∑ j ∈ Finset.range N,
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ j)⁻¹ • xi)) * g xi =
+      (phi (((2 : ℝ) ^ N)⁻¹ • xi) - phi xi) * g xi := by
+  rw [← Finset.sum_mul]
+  rw [smooth_dyadic_bandpass_sum]
+
+/-- A dyadic difference vanishes below its inner frequency scale. -/
+theorem smooth_dyadic_bandpass_eq_zero_of_norm_le
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    {j : Nat} {xi : Euclidean d} (hxi : ‖xi‖ ≤ (2 : ℝ) ^ j) :
+    phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ j)⁻¹ • xi) = 0 := by
+  have hpj : 0 < (2 : ℝ) ^ j := pow_pos (by norm_num) _
+  have hpj_succ : 0 < (2 : ℝ) ^ (j + 1) := pow_pos (by norm_num) _
+  have hjle : (2 : ℝ) ^ j ≤ (2 : ℝ) ^ (j + 1) := by
+    rw [pow_succ]
+    nlinarith
+  have hsmall_j : ‖((2 : ℝ) ^ j)⁻¹ • xi‖ ≤ 1 := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hpj)]
+    exact (inv_mul_le_one₀ hpj).2 hxi
+  have hsmall_succ : ‖((2 : ℝ) ^ (j + 1))⁻¹ • xi‖ ≤ 1 := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hpj_succ)]
+    exact (inv_mul_le_one₀ hpj_succ).2 (hxi.trans hjle)
+  rw [hphi _ hsmall_succ, hphi _ hsmall_j]
+  norm_num
+
+/-- A dyadic difference vanishes above its outer frequency scale. -/
+theorem smooth_dyadic_bandpass_eq_zero_of_le_norm
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    {j : Nat} {xi : Euclidean d} (hxi : (2 : ℝ) ^ (j + 2) ≤ ‖xi‖) :
+    phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ j)⁻¹ • xi) = 0 := by
+  have hpj : 0 < (2 : ℝ) ^ j := pow_pos (by norm_num) _
+  have hpj_succ : 0 < (2 : ℝ) ^ (j + 1) := pow_pos (by norm_num) _
+  have hpow_j : (2 : ℝ) ^ j * 2 = (2 : ℝ) ^ (j + 1) := by
+    simpa using (pow_succ (2 : ℝ) j).symm
+  have hpow_succ : (2 : ℝ) ^ (j + 1) * 2 = (2 : ℝ) ^ (j + 2) := by
+    simpa [Nat.add_assoc] using (pow_succ (2 : ℝ) (j + 1)).symm
+  have hlarge_j : 2 ≤ ‖((2 : ℝ) ^ j)⁻¹ • xi‖ := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hpj)]
+    apply (le_inv_mul_iff₀ hpj).2
+    calc
+      (2 : ℝ) ^ j * 2 = (2 : ℝ) ^ (j + 1) := hpow_j
+      _ ≤ (2 : ℝ) ^ (j + 1) * 2 := by nlinarith
+      _ = (2 : ℝ) ^ (j + 2) := hpow_succ
+      _ ≤ ‖xi‖ := hxi
+  have hlarge_succ : 2 ≤ ‖((2 : ℝ) ^ (j + 1))⁻¹ • xi‖ := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hpj_succ)]
+    apply (le_inv_mul_iff₀ hpj_succ).2
+    calc
+      (2 : ℝ) ^ (j + 1) * 2 = (2 : ℝ) ^ (j + 2) := hpow_succ
+      _ ≤ ‖xi‖ := hxi
+  rw [hphi _ hlarge_succ, hphi _ hlarge_j]
+  norm_num
+
+/-- A smooth dyadic band-pass supported by the cutoff is genuinely confined
+between its inner and outer dyadic scales. -/
+theorem smooth_dyadic_bandpass_norm_bounds_of_ne_zero
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    {j : Nat} {xi : Euclidean d}
+    (h : phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) -
+        phi (((2 : ℝ) ^ j)⁻¹ • xi) ≠ 0) :
+    (2 : ℝ) ^ j < ‖xi‖ ∧ ‖xi‖ < (2 : ℝ) ^ (j + 2) := by
+  constructor
+  · apply lt_of_not_ge
+    intro hsmall
+    exact h (smooth_dyadic_bandpass_eq_zero_of_norm_le hphi_one hsmall)
+  · apply lt_of_not_ge
+    intro hlarge
+    exact h (smooth_dyadic_bandpass_eq_zero_of_le_norm hphi_zero hlarge)
+
+/-- If the cutoff is pointwise bounded by one, its dyadic difference has
+pointwise norm at most two. -/
+theorem norm_smooth_dyadic_bandpass_le_two
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat) (xi : Euclidean d) :
+    ‖phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) -
+        phi (((2 : ℝ) ^ j)⁻¹ • xi)‖ ≤ 2 := by
+  calc
+    ‖phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) -
+        phi (((2 : ℝ) ^ j)⁻¹ • xi)‖ ≤
+        ‖phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi)‖ +
+          ‖phi (((2 : ℝ) ^ j)⁻¹ • xi)‖ := norm_sub_le _ _
+    _ ≤ 1 + 1 := add_le_add
+      (hphi _) (hphi _)
+    _ = 2 := by norm_num
+
+/-- A two-scale cutoff can be nonzero only between its inner scale and twice
+its outer scale. -/
+theorem scaled_cutoff_norm_bounds_of_ne_zero
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    {a b : ℝ} (ha : 0 < a) (hb : 0 < b) (hba : b ≤ a)
+    {xi : Euclidean d}
+    (h : phi (a⁻¹ • xi) - phi (b⁻¹ • xi) ≠ 0) :
+    b < ‖xi‖ ∧ ‖xi‖ < 2 * a := by
+  constructor
+  · apply lt_of_not_ge
+    intro hsmall
+    apply h
+    have hsmall_b : ‖b⁻¹ • xi‖ ≤ 1 := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hb)]
+      exact (inv_mul_le_one₀ hb).2 hsmall
+    have hsmall_a : ‖a⁻¹ • xi‖ ≤ 1 := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr ha)]
+      exact (inv_mul_le_one₀ ha).2 (hsmall.trans hba)
+    rw [hphi_one _ hsmall_a, hphi_one _ hsmall_b]
+    norm_num
+  · apply lt_of_not_ge
+    intro hlarge
+    apply h
+    have hlarge_a : 2 ≤ ‖a⁻¹ • xi‖ := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr ha)]
+      apply (le_inv_mul_iff₀ ha).2
+      nlinarith
+    have hlarge_b : 2 ≤ ‖b⁻¹ • xi‖ := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hb)]
+      apply (le_inv_mul_iff₀ hb).2
+      calc
+        b * 2 ≤ a * 2 := mul_le_mul_of_nonneg_right hba (by norm_num)
+        _ = 2 * a := by ring
+        _ ≤ ‖xi‖ := hlarge
+    rw [hphi_zero _ hlarge_a, hphi_zero _ hlarge_b]
+    norm_num
+
+/-- At a fixed frequency, the shifted fat cutoffs needed to localize the
+dyadic radius blocks have uniformly bounded square overlap.  This is the
+literal integer-scale counting step: no Littlewood--Paley interface is used. -/
+theorem finite_relative_dyadic_fat_cutoff_square_sum_le
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (j : Nat) (K : Finset ℤ) (xi : Euclidean d) :
+    ∑ k ∈ K, ‖phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+      phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)‖ ^ (2 : ℕ) ≤ 24 := by
+  let q : ℤ → ℂ := fun k =>
+    phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+      phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)
+  let S : Finset ℤ := K.filter fun k => q k ≠ 0
+  have hSsub : S ⊆ K := Finset.filter_subset _ _
+  have hzero : ∀ k ∈ K, k ∉ S → ‖q k‖ ^ (2 : ℕ) = 0 := by
+    intro k hk hks
+    have hq : q k = 0 := by
+      by_contra hq
+      exact hks (Finset.mem_filter.mpr ⟨hk, hq⟩)
+    simp [hq]
+  have hsum : (∑ k ∈ K, ‖q k‖ ^ (2 : ℕ)) =
+      ∑ k ∈ S, ‖q k‖ ^ (2 : ℕ) := by
+    exact (Finset.sum_subset hSsub hzero).symm
+  by_cases hxi0 : xi = 0
+  · simp [hxi0]
+  have hxi_pos : 0 < ‖xi‖ := norm_pos_iff.mpr hxi0
+  obtain ⟨n, hnlo, hnhi⟩ :=
+    exists_mem_Ico_zpow (x := ‖xi‖) (y := (2 : ℝ)) hxi_pos (by norm_num)
+  have hScard : S.card ≤ 6 := by
+    have hSrange : S ⊆ Finset.Icc ((j : ℤ) - 2 - n) ((j : ℤ) + 3 - n) := by
+      intro k hk
+      have hkS : k ∈ S := hk
+      have hq : q k ≠ 0 := (Finset.mem_filter.mp hkS).2
+      have hpos_a : 0 < (2 : ℝ) ^ ((j : ℤ) + 3 - k) :=
+        zpow_pos (by norm_num) _
+      have hpos_b : 0 < (2 : ℝ) ^ ((j : ℤ) - 2 - k) :=
+        zpow_pos (by norm_num) _
+      have hba : (2 : ℝ) ^ ((j : ℤ) - 2 - k) ≤
+          (2 : ℝ) ^ ((j : ℤ) + 3 - k) := by
+        exact (zpow_right_strictMono₀ (by norm_num : (1 : ℝ) < 2)).monotone (by omega)
+      have hsupport := scaled_cutoff_norm_bounds_of_ne_zero hphi_one hphi_zero
+        hpos_a hpos_b hba hq
+      have hupper : 2 * (2 : ℝ) ^ ((j : ℤ) + 3 - k) =
+          (2 : ℝ) ^ ((j : ℤ) + 4 - k) := by
+        calc
+          2 * (2 : ℝ) ^ ((j : ℤ) + 3 - k) =
+              (2 : ℝ) ^ (1 : ℤ) * (2 : ℝ) ^ ((j : ℤ) + 3 - k) := by norm_num
+          _ = (2 : ℝ) ^ ((1 : ℤ) + ((j : ℤ) + 3 - k)) :=
+              (zpow_add₀ (by norm_num) _ _).symm
+          _ = (2 : ℝ) ^ ((j : ℤ) + 4 - k) := by
+            congr 1 <;> ring
+      have hleftpow : (2 : ℝ) ^ ((j : ℤ) - 2 - k) <
+          (2 : ℝ) ^ (n + 1) :=
+        lt_of_lt_of_le hsupport.1 hnhi.le
+      have hrightpow : (2 : ℝ) ^ n < (2 : ℝ) ^ ((j : ℤ) + 4 - k) := by
+        rw [← hupper]
+        exact lt_of_le_of_lt hnlo hsupport.2
+      have hleft : (j : ℤ) - 2 - k < n + 1 := by
+        rw [zpow_lt_zpow_iff_right₀ (by norm_num : (1 : ℝ) < 2)] at hleftpow
+        exact hleftpow
+      have hright : n < (j : ℤ) + 4 - k := by
+        rw [zpow_lt_zpow_iff_right₀ (by norm_num : (1 : ℝ) < 2)] at hrightpow
+        exact hrightpow
+      exact Finset.mem_Icc.mpr (by omega)
+    calc
+      S.card ≤ (Finset.Icc ((j : ℤ) - 2 - n) ((j : ℤ) + 3 - n)).card :=
+        Finset.card_le_card hSrange
+      _ = 6 := by
+        rw [Int.card_Icc]
+        have hcard : ((j : ℤ) + 3 - n + 1 - ((j : ℤ) - 2 - n)) = 6 := by omega
+        rw [hcard]
+        rfl
+  have hterm : ∀ k ∈ S, ‖q k‖ ^ (2 : ℕ) ≤ (4 : ℝ) := by
+    intro k hk
+    have hqnorm : ‖q k‖ ≤ 2 := by
+      dsimp [q]
+      calc
+        ‖phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+            phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)‖ ≤
+            ‖phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi)‖ +
+              ‖phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)‖ := norm_sub_le _ _
+        _ ≤ 1 + 1 := add_le_add (hphi_norm _) (hphi_norm _)
+        _ = 2 := by norm_num
+    nlinarith [norm_nonneg (q k)]
+  calc
+    ∑ k ∈ K, ‖phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+      phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)‖ ^ (2 : ℕ) =
+        ∑ k ∈ K, ‖q k‖ ^ (2 : ℕ) := by rfl
+    _ = ∑ k ∈ S, ‖q k‖ ^ (2 : ℕ) := hsum
+    _ ≤ S.card • (4 : ℝ) := Finset.sum_le_card_nsmul S _ 4 hterm
+    _ ≤ 6 • (4 : ℝ) := by gcongr
+    _ = 24 := by norm_num
+
+/-- The fat cutoff at a dyadic radius block is identically one on the
+relative annulus selected by the corresponding bandpass. -/
+theorem relative_dyadic_bandpass_fat_cutoff_eq_one
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    {j : Nat} {k : ℤ} {r : ℝ}
+    (hr : r ∈ Set.Icc ((2 : ℝ) ^ k) ((2 : ℝ) ^ (k + 1)))
+    (xi : Euclidean d)
+    (hband : phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+        phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)) ≠ 0) :
+    phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+      phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi) = 1 := by
+  have hsupport := smooth_dyadic_bandpass_norm_bounds_of_ne_zero
+    hphi_one hphi_zero hband
+  let a : ℝ := (2 : ℝ) ^ ((j : ℤ) + 3 - k)
+  let b : ℝ := (2 : ℝ) ^ ((j : ℤ) - 2 - k)
+  have hrpos : 0 < r := lt_of_lt_of_le (zpow_pos (by norm_num) k) hr.1
+  have ha : 0 < a := by dsimp [a]; exact zpow_pos (by norm_num) _
+  have hb : 0 < b := by dsimp [b]; exact zpow_pos (by norm_num) _
+  have hscale_a : (2 : ℝ) ^ k * a = (2 : ℝ) ^ (j + 3) := by
+    dsimp [a]
+    calc
+      (2 : ℝ) ^ k * (2 : ℝ) ^ ((j : ℤ) + 3 - k) =
+          (2 : ℝ) ^ (k + ((j : ℤ) + 3 - k)) :=
+        (zpow_add₀ (by norm_num) _ _).symm
+      _ = (2 : ℝ) ^ ((j : ℤ) + 3) := by
+        congr 1 <;> ring
+      _ = (2 : ℝ) ^ (j + 3) := by norm_cast
+  have hscale_b : (2 : ℝ) ^ (k + 1) * (2 * b) = (2 : ℝ) ^ j := by
+    dsimp [b]
+    calc
+      (2 : ℝ) ^ (k + 1) * (2 * (2 : ℝ) ^ ((j : ℤ) - 2 - k)) =
+          (2 : ℝ) ^ (k + 1) * ((2 : ℝ) ^ (1 : ℤ) *
+            (2 : ℝ) ^ ((j : ℤ) - 2 - k)) := by norm_num
+      _ = (2 : ℝ) ^ ((k + 1) + ((1 : ℤ) + ((j : ℤ) - 2 - k))) := by
+        rw [← zpow_add₀ (by norm_num), ← zpow_add₀ (by norm_num)]
+      _ = (2 : ℝ) ^ (j : ℤ) := by
+        congr 1 <;> ring
+      _ = (2 : ℝ) ^ j := by norm_cast
+  have hupper_scale : (2 : ℝ) ^ (j + 3) ≤ r * a := by
+    calc
+      (2 : ℝ) ^ (j + 3) = (2 : ℝ) ^ k * a := hscale_a.symm
+      _ ≤ r * a := mul_le_mul_of_nonneg_right hr.1 ha.le
+  have hpow_succ : (2 : ℝ) ^ (j + 2) < (2 : ℝ) ^ (j + 3) := by
+    rw [show (2 : ℝ) ^ (j + 3) = (2 : ℝ) ^ (j + 2) * 2 by
+      rw [← pow_succ]]
+    nlinarith [pow_pos (by norm_num : (0 : ℝ) < 2) (j + 2)]
+  have hxi_lt_a : ‖xi‖ < a := by
+    refine lt_of_mul_lt_mul_left ?_ hrpos.le
+    calc
+      r * ‖xi‖ = ‖r • xi‖ := by
+        rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrpos]
+      _ < (2 : ℝ) ^ (j + 2) := hsupport.2
+      _ < (2 : ℝ) ^ (j + 3) := hpow_succ
+      _ ≤ r * a := hupper_scale
+  have hinner_scale : r * (2 * b) ≤ (2 : ℝ) ^ j := by
+    calc
+      r * (2 * b) ≤ (2 : ℝ) ^ (k + 1) * (2 * b) :=
+        mul_le_mul_of_nonneg_right hr.2 (mul_nonneg (by norm_num) hb.le)
+      _ = (2 : ℝ) ^ j := hscale_b
+  have htwo_b_lt : 2 * b < ‖xi‖ := by
+    refine lt_of_mul_lt_mul_left ?_ hrpos.le
+    calc
+      r * (2 * b) ≤ (2 : ℝ) ^ j := hinner_scale
+      _ < ‖r • xi‖ := hsupport.1
+      _ = r * ‖xi‖ := by
+        rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrpos]
+  have houter : phi (a⁻¹ • xi) = 1 := by
+    apply hphi_one
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr ha)]
+    exact (inv_mul_le_one₀ ha).2 hxi_lt_a.le
+  have hinner : phi (b⁻¹ • xi) = 0 := by
+    apply hphi_zero
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hb)]
+    apply (le_inv_mul_iff₀ hb).2
+    linarith
+  change phi (a⁻¹ • xi) - phi (b⁻¹ • xi) = 1
+  rw [houter, hinner]
+  norm_num
+
+/-- On a dyadic radius block, inserting the corresponding fat frequency
+cutoff leaves the literal relative bandpass multiplier unchanged. -/
+theorem relative_dyadic_bandpass_mul_fat_cutoff
+    {d : Nat} {phi : SchwartzMap (Euclidean d) ℂ}
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    {j : Nat} {k : ℤ} {r : ℝ}
+    (hr : r ∈ Set.Icc ((2 : ℝ) ^ k) ((2 : ℝ) ^ (k + 1)))
+    (xi : Euclidean d) (a : ℂ) (g : Euclidean d → ℂ) :
+    a * (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+      phi (((2 : ℝ) ^ j)⁻¹ • (r • xi))) * g xi =
+      a * (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+        phi (((2 : ℝ) ^ j)⁻¹ • (r • xi))) *
+        (phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+          phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)) * g xi := by
+  by_cases hband : phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+      phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)) = 0
+  · rw [hband]
+    ring
+  · rw [relative_dyadic_bandpass_fat_cutoff_eq_one hphi_one hphi_zero hr xi hband]
+    ring
+
+/-- There is a Schwartz cutoff whose finite dyadic bandpass sums telescope,
+and whose individual differences vanish outside their two-scale frequency
+regions. -/
+theorem exists_schwartz_frequency_cutoff_finite_dyadic_bandpass (d : Nat) :
+    ∃ phi : SchwartzMap (Euclidean d) ℂ,
+      (∀ xi, ‖xi‖ ≤ 1 → phi xi = 1) ∧
+      (∀ xi, 2 ≤ ‖xi‖ → phi xi = 0) ∧
+      (∀ N xi,
+        ∑ j ∈ Finset.range N,
+            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ j)⁻¹ • xi)) =
+          phi (((2 : ℝ) ^ N)⁻¹ • xi) - phi xi) ∧
+      (∀ j xi, ‖xi‖ ≤ (2 : ℝ) ^ j ∨ (2 : ℝ) ^ (j + 2) ≤ ‖xi‖ →
+        phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ j)⁻¹ • xi) = 0) := by
+  rcases exists_schwartz_frequency_cutoff d with ⟨phi, hphi_one, hphi_zero⟩
+  refine ⟨phi, hphi_one, hphi_zero, ?_, ?_⟩
+  · intro N xi
+    exact smooth_dyadic_bandpass_sum phi N xi
+  · intro j xi hxi
+    rcases hxi with hxi | hxi
+    · exact smooth_dyadic_bandpass_eq_zero_of_norm_le hphi_one hxi
+    · exact smooth_dyadic_bandpass_eq_zero_of_le_norm hphi_zero hxi
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory FourierTransform
+open scoped Convolution FourierTransform
+
+noncomputable section
+
+/-- Multiplication of the Fourier transform of a Schwartz function by a
+Schwartz frequency cutoff is, after literal inverse Fourier transformation,
+convolution with the inverse transform of that cutoff. -/
+theorem fourierInv_schwartz_multiplier_eq_convolution
+    {d : ℕ} (φ f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d => φ ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+      (((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+  have h :
+      (𝓕⁻ (SchwartzMap.smulLeftCLM ℂ (φ : Euclidean d → ℂ) (𝓕 f)) :
+        SchwartzMap (Euclidean d) ℂ) =
+      SchwartzMap.convolution (ContinuousLinearMap.mul ℂ ℂ) (𝓕⁻ φ) f := by
+    have hinv :
+        (𝓕⁻ (𝓕 (SchwartzMap.convolution (ContinuousLinearMap.mul ℂ ℂ) (𝓕⁻ φ) f)) :
+          SchwartzMap (Euclidean d) ℂ) =
+        SchwartzMap.convolution (ContinuousLinearMap.mul ℂ ℂ) (𝓕⁻ φ) f := by
+      exact fourierInv_fourier_eq _
+    rw [← hinv]
+    congr 1
+    ext y
+    simp [SchwartzMap.fourier_convolution, SchwartzMap.smulLeftCLM_apply_apply,
+      φ.hasTemperateGrowth]
+  simpa only [SchwartzMap.fourierInv_coe, SchwartzMap.fourier_coe,
+    SchwartzMap.smulLeftCLM_apply φ.hasTemperateGrowth, smul_eq_mul,
+    SchwartzMap.convolution_apply] using
+    congrArg (fun g : SchwartzMap (Euclidean d) ℂ => g x) h
+
+/-- The physical realization of a smooth Fourier multiplier has the concrete
+`L∞` estimate supplied by the `L¹` norm of its inverse-Fourier kernel. -/
+theorem norm_fourierInv_schwartz_multiplier_le
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ)
+    {C : ℝ} (hfbound : ∀ x, ‖f x‖ ≤ C) (x : Euclidean d) :
+    ‖𝓕⁻ (fun ξ : Euclidean d => φ ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x‖ ≤
+      C * ∫ y : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) y‖ := by
+  rw [fourierInv_schwartz_multiplier_eq_convolution]
+  simpa [mul_comm] using
+    norm_convolution_mul_le_integral_norm_mul_bound
+      ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)
+      (f : Euclidean d → ℂ) (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ).integrable
+      f.continuous hfbound x
+
+/-- Inverse Fourier transformation distributes over the difference of two
+Schwartz-multiplied Schwartz inputs.  This is the literal band-pass identity
+needed to pass from smooth low-pass projections to their differences. -/
+theorem fourierInv_sub_schwartz_multiplier
+    {d : Nat} (φ ψ f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d =>
+      (φ ξ - ψ ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+      𝓕⁻ (fun ξ : Euclidean d => φ ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x -
+        𝓕⁻ (fun ξ : Euclidean d => ψ ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+  let gφ : SchwartzMap (Euclidean d) ℂ :=
+    SchwartzMap.smulLeftCLM ℂ (φ : Euclidean d → ℂ) (𝓕 f)
+  let gψ : SchwartzMap (Euclidean d) ℂ :=
+    SchwartzMap.smulLeftCLM ℂ (ψ : Euclidean d → ℂ) (𝓕 f)
+  have hgφ : (gφ : Euclidean d → ℂ) =
+      fun ξ : Euclidean d => φ ξ * 𝓕 (f : Euclidean d → ℂ) ξ := by
+    funext ξ
+    simp only [gφ, SchwartzMap.smulLeftCLM_apply φ.hasTemperateGrowth,
+      SchwartzMap.fourier_coe, smul_eq_mul]
+  have hgψ : (gψ : Euclidean d → ℂ) =
+      fun ξ : Euclidean d => ψ ξ * 𝓕 (f : Euclidean d → ℂ) ξ := by
+    funext ξ
+    simp only [gψ, SchwartzMap.smulLeftCLM_apply ψ.hasTemperateGrowth,
+      SchwartzMap.fourier_coe, smul_eq_mul]
+  have hdiff : ((gφ - gψ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) =
+      fun ξ : Euclidean d => (φ ξ - ψ ξ) * 𝓕 (f : Euclidean d → ℂ) ξ := by
+    funext ξ
+    change gφ ξ - gψ ξ = _
+    rw [congrFun hgφ ξ, congrFun hgψ ξ]
+    ring
+  calc
+    𝓕⁻ (fun ξ : Euclidean d =>
+        (φ ξ - ψ ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+        𝓕⁻ ((gφ - gψ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+      rw [hdiff]
+    _ = (𝓕⁻ (gφ - gψ) : SchwartzMap (Euclidean d) ℂ) x := by
+      rw [SchwartzMap.fourierInv_coe]
+    _ = ((𝓕⁻ gφ : SchwartzMap (Euclidean d) ℂ) -
+        (𝓕⁻ gψ : SchwartzMap (Euclidean d) ℂ)) x := by
+      rw [sub_eq_add_neg, fourierInv_add, fourierInv_neg]
+      rfl
+    _ = 𝓕⁻ (gφ : Euclidean d → ℂ) x - 𝓕⁻ (gψ : Euclidean d → ℂ) x := by
+      simp only [sub_apply, SchwartzMap.fourierInv_coe]
+    _ = 𝓕⁻ (fun ξ : Euclidean d => φ ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x -
+        𝓕⁻ (fun ξ : Euclidean d => ψ ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+      rw [hgφ, hgψ]
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory FourierTransform
+open scoped BigOperators Convolution FourierTransform Pointwise
+
+noncomputable section
+
+/-- A smooth frequency multiplier at scale `R` is convolution with the
+literal `R ^ d` dilation of the inverse-Fourier kernel. -/
+theorem fourierInv_scaled_schwartz_multiplier_eq_convolution
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R)
+    (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+      ((fun y : Euclidean d => R ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+  let A : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
+  let φR : SchwartzMap (Euclidean d) ℂ :=
+    (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) φ
+  have hφR (ξ : Euclidean d) : φR ξ = φ (R⁻¹ • ξ) := by
+    change φ (A ξ) = φ (R⁻¹ • ξ)
+    simp [A]
+  calc
+    𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+        𝓕⁻ (fun ξ : Euclidean d => φR ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+      congr 2
+    _ = (((𝓕⁻ φR : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+      exact fourierInv_schwartz_multiplier_eq_convolution φR f x
+    _ = ((fun y : Euclidean d => R ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+      congr 2
+      funext y
+      rw [SchwartzMap.fourierInv_coe, SchwartzMap.fourierInv_coe]
+      rw [show (φR : Euclidean d → ℂ) =
+          fun ξ : Euclidean d => φ (R⁻¹ • ξ) by
+            funext ξ
+            exact hφR ξ]
+      simpa only [finrank_euclideanSpace_fin] using
+        fourierInv_comp_inv_smul (φ : Euclidean d → ℂ) hR y
+
+/-- A multiplier localized at the relative frequency `r ξ` is convolution
+with the corresponding inverse-scale dilation of its Schwartz kernel. -/
+theorem fourierInv_relative_lowpass_eq_convolution
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {r : ℝ} (hr : 0 < r)
+    (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d => φ (r • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+      ((fun y : Euclidean d => (r⁻¹) ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (r⁻¹ • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+  have hr_inv : 0 < r⁻¹ := inv_pos.mpr hr
+  rw [← fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hr_inv x]
+  rw [show (fun ξ : Euclidean d => φ (r • ξ) *
+      𝓕 (f : Euclidean d → ℂ) ξ) =
+      fun ξ => φ ((r⁻¹)⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ by
+    funext ξ
+    rw [inv_inv]]
+
+/-- A scaled smooth frequency projection obeys the literal `L¹` Young
+bound, uniformly in its scale. -/
+theorem integral_norm_fourierInv_scaled_schwartz_multiplier_le
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R) :
+    (∫ x : Euclidean d,
+      ‖𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x‖) ≤
+      (∫ x : Euclidean d, ‖f x‖) *
+        (∫ x : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) x‖) := by
+  let A : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 R (ne_of_gt hR))
+  let k : SchwartzMap (Euclidean d) ℂ :=
+    (R ^ d) • (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) (𝓕⁻ φ)
+  have hk (y : Euclidean d) : k y =
+      (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) := by
+    change (R ^ d) • (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (A y) = _
+    simp [A]
+  have hphysical (y : Euclidean d) :
+      𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) *
+        𝓕 (f : Euclidean d → ℂ) ξ) y =
+      ((k : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (f : Euclidean d → ℂ)) y := by
+    rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hR y]
+    congr 2
+  calc
+    (∫ x : Euclidean d,
+      ‖𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x‖) =
+        ∫ x : Euclidean d,
+          ‖((k : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+            (f : Euclidean d → ℂ)) x‖ := by
+      apply MeasureTheory.integral_congr_ae
+      filter_upwards with x
+      rw [hphysical x]
+    _ ≤
+        (∫ x : Euclidean d, ‖k x‖) * (∫ x : Euclidean d, ‖f x‖) :=
+      integral_norm_convolution_mul_le (k : Euclidean d → ℂ) (f : Euclidean d → ℂ)
+        k.integrable f.integrable
+    _ = (∫ x : Euclidean d, ‖f x‖) *
+        (∫ x : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) x‖) := by
+      rw [show (k : Euclidean d → ℂ) =
+          fun y => (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) by
+            funext y
+            exact hk y]
+      rw [integral_norm_dilate_eq d
+        ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) hR]
+      ring
+
+/-- The total spatial derivative of a scaled smooth Fourier projection has
+the expected `L¹` bound: one power of the frequency scale is lost.  The proof
+uses the literal convolution realization, the non-compact Schwartz-kernel
+differentiation theorem, and the exact dilation formula. -/
+theorem integral_norm_fderiv_fourierInv_scaled_schwartz_multiplier_le
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R) :
+    (∫ x : Euclidean d,
+      ‖fderiv ℝ (fun y : Euclidean d =>
+        𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) *
+          𝓕 (f : Euclidean d → ℂ) ξ) y) x‖) ≤
+      R * (∫ x : Euclidean d, ‖f x‖) *
+        (∫ x : Euclidean d, ‖fderiv ℝ
+          ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖) := by
+  let A : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 R (ne_of_gt hR))
+  let k : SchwartzMap (Euclidean d) ℂ :=
+    (R ^ d) • (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) (𝓕⁻ φ)
+  have hk (y : Euclidean d) : k y =
+      (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) := by
+    change (R ^ d) • (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (A y) = _
+    simp [A]
+  have hphysical (y : Euclidean d) :
+      𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) *
+        𝓕 (f : Euclidean d → ℂ) ξ) y =
+      ((k : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (f : Euclidean d → ℂ)) y := by
+    rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hR y]
+    congr 2
+  have hcomm (y : Euclidean d) :
+      ((k : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (f : Euclidean d → ℂ)) y =
+      ((f : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (k : Euclidean d → ℂ)) y := by
+    rw [convolution_mul_swap]
+    apply MeasureTheory.integral_congr_ae
+    filter_upwards with z
+    change k (y - z) * f z = f z * k (y - z)
+    ring
+  have hleft :
+      (fun y : Euclidean d => 𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) *
+        𝓕 (f : Euclidean d → ℂ) ξ) y) =
+      fun y => ((f : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (k : Euclidean d → ℂ)) y := by
+    funext y
+    rw [hphysical y, hcomm y]
+  have hdk :
+      (∫ x : Euclidean d, ‖fderiv ℝ (k : Euclidean d → ℂ) x‖) =
+        R * ∫ x : Euclidean d, ‖fderiv ℝ
+          ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖ := by
+    rw [show (k : Euclidean d → ℂ) =
+        fun y => (R ^ d) • ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) (R • y) by
+      funext y
+      exact hk y]
+    exact integral_norm_fderiv_dilate_eq
+      ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)
+      (by simpa using (𝓕⁻ φ).smooth (1 : ℕ∞)) hR
+  rw [hleft]
+  calc
+    (∫ x : Euclidean d,
+      ‖fderiv ℝ ((f : Euclidean d → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (k : Euclidean d → ℂ)) x‖) ≤
+        (∫ x : Euclidean d, ‖f x‖) *
+          (∫ x : Euclidean d, ‖fderiv ℝ (k : Euclidean d → ℂ) x‖) :=
+      integral_norm_fderiv_convolution_right_le_schwartz
+        (f : Euclidean d → ℂ) f.integrable k
+    _ = R * (∫ x : Euclidean d, ‖f x‖) *
+        (∫ x : Euclidean d, ‖fderiv ℝ
+          ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖) := by
+      rw [hdk]
+      ring
+
+/-- The scaled smooth multiplier has an `L∞` bound independent of its
+frequency scale; its constant is the `L¹` norm of the unscaled kernel. -/
+theorem norm_fourierInv_scaled_schwartz_multiplier_le
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R)
+    {C : ℝ} (hfbound : ∀ x, ‖f x‖ ≤ C) (x : Euclidean d) :
+    ‖𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x‖ ≤
+      C * ∫ y : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) y‖ := by
+  rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hR x]
+  have hkernel : Integrable (fun y : Euclidean d => R ^ d •
+      (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y)) volume :=
+    integrable_dilate d ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)
+      hR (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ).integrable
+  calc
+    ‖((fun y : Euclidean d => R ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x‖ ≤
+        (∫ y : Euclidean d, ‖R ^ d •
+          (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y)‖) * C :=
+      norm_convolution_mul_le_integral_norm_mul_bound _ _ hkernel f.continuous hfbound x
+    _ = C * ∫ y : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) y‖ := by
+      rw [integral_norm_dilate_eq d
+        ((𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) hR]
+      ring
+
+/-- The output of a scaled Schwartz frequency projection is continuous. -/
+theorem continuous_fourierInv_scaled_schwartz_multiplier
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ) {R : ℝ} (hR : 0 < R) :
+    Continuous (fun x : Euclidean d =>
+      𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x) := by
+  let A : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
+  let φR : SchwartzMap (Euclidean d) ℂ :=
+    (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) φ
+  let g : SchwartzMap (Euclidean d) ℂ :=
+    SchwartzMap.smulLeftCLM ℂ (φR : Euclidean d → ℂ) (𝓕 f)
+  have hφR (ξ : Euclidean d) : φR ξ = φ (R⁻¹ • ξ) := by
+    change φ (A ξ) = φ (R⁻¹ • ξ)
+    simp [A]
+  have hg : (g : Euclidean d → ℂ) =
+      fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ := by
+    funext ξ
+    simp only [g, SchwartzMap.smulLeftCLM_apply φR.hasTemperateGrowth,
+      SchwartzMap.fourier_coe, smul_eq_mul]
+    rw [hφR]
+  rw [show (fun x : Euclidean d =>
+      𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x) =
+      (𝓕⁻ g : SchwartzMap (Euclidean d) ℂ) by
+        ext x
+        rw [SchwartzMap.fourierInv_coe, hg]]
+  exact (𝓕⁻ g : SchwartzMap (Euclidean d) ℂ).continuous
+
+/-- Applying the normalized spherical maximal operator to one smooth scaled
+frequency projection preserves its scale-uniform `L∞` bound. -/
+theorem normalizedSphericalMaximal_fourierInv_scaled_schwartz_multiplier_le
+    {d : Nat} (hd : 0 < d) (φ f : SchwartzMap (Euclidean d) ℂ)
+    {R : ℝ} (hR : 0 < R) {C : ℝ} (hfbound : ∀ x, ‖f x‖ ≤ C)
+    (x : Euclidean d) :
+    normalizedSphericalMaximal d
+        (fun y => 𝓕⁻ (fun ξ : Euclidean d =>
+          φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) y) x ≤
+      ENNReal.ofReal
+        (C * ∫ y : Euclidean d, ‖(𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) y‖) := by
+  apply normalizedSphericalMaximal_le_of_norm_le hd _ x
+  intro y
+  exact norm_fourierInv_scaled_schwartz_multiplier_le φ f hR hfbound y
+
+/-- The literal high relative-frequency projection has a scale-uniform
+`L∞` endpoint.  This is stated directly with its surface multiplier: after
+the Fourier/surface bridge it is a spherical average of one scaled Schwartz
+projection, so neither the radius nor the dyadic index changes the bound. -/
+theorem iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le
+    {d : Nat} (ψ f : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    {C : ℝ} (hfbound : ∀ x, ‖f x‖ ≤ C) (x : Euclidean d) :
+    (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) *
+        ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x‖) ≤
+      ENNReal.ofReal
+        ((C * ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+          surfaceMass d) := by
+  let a : ℝ := ((2 : ℝ) ^ j)⁻¹
+  have ha : 0 < a := by
+    dsimp [a]
+    exact inv_pos.mpr (pow_pos (by norm_num) _)
+  have hfixed (r : Set.Ioi (0 : ℝ)) :
+      ‖𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+        ψ (a • (r.1 • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ) x‖ ≤
+        (C * ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+          surfaceMass d := by
+    let R : ℝ := (a * r.1)⁻¹
+    have hR : 0 < R := inv_pos.mpr (mul_pos ha r.2)
+    let A : Euclidean d ≃L[ℝ] Euclidean d :=
+      ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
+    let ψR : SchwartzMap (Euclidean d) ℂ :=
+      SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A ψ
+    let h : SchwartzMap (Euclidean d) ℂ :=
+      SchwartzMap.smulLeftCLM ℂ (ψR : Euclidean d → ℂ) (𝓕 f)
+    have hψR (ξ : Euclidean d) : ψR ξ = ψ (a • (r.1 • ξ)) := by
+      change ψ (A ξ) = ψ (a • (r.1 • ξ))
+      change ψ (R⁻¹ • ξ) = ψ (a • (r.1 • ξ))
+      dsimp only [R]
+      rw [inv_inv]
+      simp only [smul_smul]
+    have hh (ξ : Euclidean d) : h ξ =
+        ψ (a • (r.1 • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ := by
+      simp only [h, SchwartzMap.smulLeftCLM_apply ψR.hasTemperateGrowth,
+        SchwartzMap.fourier_coe, smul_eq_mul]
+      rw [hψR]
+    have hbridge := sphericalAverage_fourierInv_schwartz_eq_surfaceMultiplier h r.1
+    have hbound : ∀ y : Euclidean d,
+        ‖(𝓕⁻ h : SchwartzMap (Euclidean d) ℂ) y‖ ≤
+          C * ∫ z : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) z‖ := by
+      intro y
+      rw [SchwartzMap.fourierInv_coe]
+      rw [show (h : Euclidean d → ℂ) =
+          fun ξ : Euclidean d => ψ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ by
+        funext ξ
+        rw [hh]
+        exact (congrArg (fun z : ℂ => z * 𝓕 (f : Euclidean d → ℂ) ξ)
+          (hψR ξ)).symm]
+      exact norm_fourierInv_scaled_schwartz_multiplier_le ψ f hR hfbound y
+    calc
+      ‖𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ) x‖ =
+          ‖𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) * h ξ) x‖ := by
+        apply congrArg (fun q : Euclidean d → ℂ => ‖𝓕⁻ q x‖)
+        funext ξ
+        rw [hh]
+        ring
+      _ = ‖sphericalAverage d ((𝓕⁻ h : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) r.1 x‖ := by
+        exact congrArg norm (congrFun hbridge x).symm
+      _ ≤ _ := norm_sphericalAverage_le_surfaceMass_mul d
+        ((𝓕⁻ h : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) r.1 x hbound
+  have hs :
+      (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+        surfaceFourier d (-r.1 • ξ) *
+          ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+          𝓕 (f : Euclidean d → ℂ) ξ) x‖) ≤
+        ENNReal.ofReal
+          ((C * ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+            surfaceMass d) := by
+    apply iSup_le
+    intro r
+    change ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) * ψ (a • (r.1 • ξ)) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x‖ ≤ _
+    exact ENNReal.ofReal_le_ofReal (hfixed r)
+  exact hs
+
+/-- The real-valued form of the preceding literal `L∞` estimate. -/
+theorem iSup_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le
+    {d : Nat} (ψ f : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    {C : ℝ} (hfbound : ∀ x, ‖f x‖ ≤ C) (x : Euclidean d) :
+    (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) *
+        ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x‖).toReal ≤
+      (C * ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+        surfaceMass d := by
+  have hC : 0 ≤ C := (norm_nonneg (f 0)).trans (hfbound 0)
+  have hmass : 0 ≤ surfaceMass d := ENNReal.toReal_nonneg
+  have hright_nonneg : 0 ≤
+      (C * ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+        surfaceMass d := by
+    apply mul_nonneg
+    · apply mul_nonneg hC
+      exact integral_nonneg fun y => norm_nonneg _
+    · exact hmass
+  have hs := iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le
+    ψ f j hfbound x
+  calc
+    (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) *
+        ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x‖).toReal ≤
+        (ENNReal.ofReal
+          ((C * ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+            surfaceMass d)).toReal :=
+      (ENNReal.toReal_le_toReal
+        (ne_top_of_le_ne_top ENNReal.ofReal_ne_top hs) ENNReal.ofReal_ne_top).2 hs
+    _ = _ := ENNReal.toReal_ofReal hright_nonneg
+
+/-- The literal all-radius relative-frequency maximal multiplier is subadditive
+on Schwartz inputs. -/
+theorem toReal_iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_add_le
+    {d : ℕ} (ψ f g : SchwartzMap (Euclidean d) ℂ) (j : ℕ) (x : Euclidean d) :
+    (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) *
+        ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+        𝓕 ((f + g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) ξ) x‖).toReal ≤
+      (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+        surfaceFourier d (-r.1 • ξ) *
+          ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+          𝓕 (f : Euclidean d → ℂ) ξ) x‖).toReal +
+        (⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+          surfaceFourier d (-r.1 • ξ) *
+            ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+            𝓕 (g : Euclidean d → ℂ) ξ) x‖).toReal := by
+  let Q : SchwartzMap (Euclidean d) ℂ → ENNReal := fun h =>
+    ⨆ r : Set.Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) *
+        ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+        𝓕 (h : Euclidean d → ℂ) ξ) x‖
+  have hbound (h : SchwartzMap (Euclidean d) ℂ) (y : Euclidean d) :
+      ‖(h : Euclidean d → ℂ) y‖ ≤ ‖h.toBoundedContinuousFunction‖ := by
+    change ‖h.toBoundedContinuousFunction y‖ ≤ ‖h.toBoundedContinuousFunction‖
+    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+  have hQle (h : SchwartzMap (Euclidean d) ℂ) :
+      Q h ≤ ENNReal.ofReal
+        ((‖h.toBoundedContinuousFunction‖ *
+          ∫ y : Euclidean d, ‖(𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) y‖) *
+          surfaceMass d) := by
+    exact iSup_ennreal_norm_fourierInv_relative_surface_scaled_schwartz_multiplier_le
+      ψ h j (hbound h) x
+  have hQfin (h : SchwartzMap (Euclidean d) ℂ) : Q h ≠ ⊤ :=
+    ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hQle h)
+  have hraw : Q (f + g) ≤ Q f + Q g := by
+    apply iSup_le
+    intro r
+    let a : ℝ := ((2 : ℝ) ^ j)⁻¹
+    have ha : 0 < a := by
+      dsimp [a]
+      exact inv_pos.mpr (pow_pos (by norm_num) _)
+    let R : ℝ := (a * r.1)⁻¹
+    have hR : 0 < R := inv_pos.mpr (mul_pos ha r.2)
+    let A : Euclidean d ≃L[ℝ] Euclidean d :=
+      ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
+    let ψR : SchwartzMap (Euclidean d) ℂ :=
+      SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A ψ
+    let hf : SchwartzMap (Euclidean d) ℂ :=
+      SchwartzMap.smulLeftCLM ℂ (ψR : Euclidean d → ℂ) (𝓕 f)
+    let hg : SchwartzMap (Euclidean d) ℂ :=
+      SchwartzMap.smulLeftCLM ℂ (ψR : Euclidean d → ℂ) (𝓕 g)
+    let hfg : SchwartzMap (Euclidean d) ℂ :=
+      SchwartzMap.smulLeftCLM ℂ (ψR : Euclidean d → ℂ) (𝓕 (f + g))
+    have hψR (ξ : Euclidean d) : ψR ξ = ψ (a • (r.1 • ξ)) := by
+      change ψ (A ξ) = ψ (a • (r.1 • ξ))
+      change ψ (R⁻¹ • ξ) = ψ (a • (r.1 • ξ))
+      dsimp only [R]
+      rw [inv_inv]
+      simp only [smul_smul]
+    have hhf (ξ : Euclidean d) : hf ξ =
+        ψ (a • (r.1 • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ := by
+      simp only [hf, SchwartzMap.smulLeftCLM_apply ψR.hasTemperateGrowth,
+        SchwartzMap.fourier_coe, smul_eq_mul]
+      rw [hψR]
+    have hhg (ξ : Euclidean d) : hg ξ =
+        ψ (a • (r.1 • ξ)) * 𝓕 (g : Euclidean d → ℂ) ξ := by
+      simp only [hg, SchwartzMap.smulLeftCLM_apply ψR.hasTemperateGrowth,
+        SchwartzMap.fourier_coe, smul_eq_mul]
+      rw [hψR]
+    have hhfg (ξ : Euclidean d) : hfg ξ =
+        ψ (a • (r.1 • ξ)) * 𝓕 ((f + g : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) ξ := by
+      simp only [hfg, SchwartzMap.smulLeftCLM_apply ψR.hasTemperateGrowth,
+        SchwartzMap.fourier_coe, smul_eq_mul]
+      rw [hψR]
+    have hhadd : hfg = hf + hg := by
+      dsimp [hfg, hf, hg]
+      rw [fourier_add f g]
+      rw [(SchwartzMap.smulLeftCLM ℂ (ψR : Euclidean d → ℂ)).map_add]
+    have hinvadd : (𝓕⁻ hfg : SchwartzMap (Euclidean d) ℂ) =
+        (𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ) +
+          (𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ) := by
+      rw [hhadd, fourierInv_add]
+    have hint (h : SchwartzMap (Euclidean d) ℂ) : Integrable
+        (fun ω : Metric.sphere (0 : Euclidean d) 1 =>
+          (𝓕⁻ h : SchwartzMap (Euclidean d) ℂ)
+            (x + r.1 • (ω : Euclidean d)))
+        (unitSurfaceMeasure d) := by
+      apply Continuous.integrable_of_hasCompactSupport
+      · exact (𝓕⁻ h : SchwartzMap (Euclidean d) ℂ).continuous.comp
+          ((continuous_const : Continuous fun _ : Metric.sphere (0 : Euclidean d) 1 => x).add
+            ((continuous_const : Continuous fun _ : Metric.sphere (0 : Euclidean d) 1 => r.1).smul
+              continuous_subtype_val))
+      · exact HasCompactSupport.of_compactSpace _
+    have havgadd :
+        sphericalAverage d ((𝓕⁻ hfg : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) r.1 x =
+          sphericalAverage d ((𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x +
+            sphericalAverage d ((𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ) :
+              Euclidean d → ℂ) r.1 x := by
+      rw [hinvadd]
+      unfold sphericalAverage
+      change ∫ ω : Metric.sphere (0 : Euclidean d) 1,
+        ((𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ)
+          (x + r.1 • (ω : Euclidean d)) +
+          (𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ)
+            (x + r.1 • (ω : Euclidean d))) ∂unitSurfaceMeasure d = _
+      rw [MeasureTheory.integral_add (hint hf) (hint hg)]
+    have hbridge (h : SchwartzMap (Euclidean d) ℂ) :
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) * h ξ) x =
+          sphericalAverage d ((𝓕⁻ h : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x := by
+      exact congrFun
+        (sphericalAverage_fourierInv_schwartz_eq_surfaceMultiplier h r.1).symm x
+    have heqf :
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+          sphericalAverage d ((𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x := by
+      calc
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+            𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) * hf ξ) x := by
+              apply congrArg (fun q : Euclidean d → ℂ => 𝓕⁻ q x)
+              funext ξ
+              rw [hhf]
+              ring
+        _ = _ := hbridge hf
+    have heqg :
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) * 𝓕 (g : Euclidean d → ℂ) ξ) x =
+          sphericalAverage d ((𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x := by
+      calc
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) * 𝓕 (g : Euclidean d → ℂ) ξ) x =
+            𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) * hg ξ) x := by
+              apply congrArg (fun q : Euclidean d → ℂ => 𝓕⁻ q x)
+              funext ξ
+              rw [hhg]
+              ring
+        _ = _ := hbridge hg
+    have heqfg :
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) *
+            𝓕 ((f + g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) ξ) x =
+          sphericalAverage d ((𝓕⁻ hfg : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x := by
+      calc
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+          ψ (a • (r.1 • ξ)) *
+            𝓕 ((f + g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) ξ) x =
+            𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) * hfg ξ) x := by
+              apply congrArg (fun q : Euclidean d → ℂ => 𝓕⁻ q x)
+              funext ξ
+              rw [hhfg]
+              ring
+        _ = _ := hbridge hfg
+    change ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+      surfaceFourier d (-r.1 • ξ) * ψ (a • (r.1 • ξ)) *
+        𝓕 ((f + g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) ξ) x‖ ≤ _
+    rw [heqfg, havgadd]
+    calc
+      ENNReal.ofReal ‖sphericalAverage d ((𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) r.1 x +
+          sphericalAverage d ((𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x‖ ≤
+          ENNReal.ofReal ‖sphericalAverage d ((𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x‖ +
+            ENNReal.ofReal ‖sphericalAverage d ((𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ) :
+              Euclidean d → ℂ) r.1 x‖ := by
+        rw [← ENNReal.ofReal_add (norm_nonneg _) (norm_nonneg _)]
+        exact ENNReal.ofReal_le_ofReal (norm_add_le _ _)
+      _ ≤ Q f + Q g := by
+        apply add_le_add
+        · calc
+            ENNReal.ofReal ‖sphericalAverage d
+                ((𝓕⁻ hf : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) r.1 x‖ =
+                ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+                  surfaceFourier d (-r.1 • ξ) * ψ (a • (r.1 • ξ)) *
+                    𝓕 (f : Euclidean d → ℂ) ξ) x‖ := by rw [heqf]
+            _ ≤ Q f := by
+              exact le_iSup (fun r : Set.Ioi (0 : ℝ) => ENNReal.ofReal
+                ‖𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+                  ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+                  𝓕 (f : Euclidean d → ℂ) ξ) x‖) r
+        · calc
+            ENNReal.ofReal ‖sphericalAverage d
+                ((𝓕⁻ hg : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) r.1 x‖ =
+                ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+                  surfaceFourier d (-r.1 • ξ) * ψ (a • (r.1 • ξ)) *
+                    𝓕 (g : Euclidean d → ℂ) ξ) x‖ := by rw [heqg]
+            _ ≤ Q g := by
+              exact le_iSup (fun r : Set.Ioi (0 : ℝ) => ENNReal.ofReal
+                ‖𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r.1 • ξ) *
+                  ψ (((2 : ℝ) ^ j)⁻¹ • (r.1 • ξ)) *
+                  𝓕 (g : Euclidean d → ℂ) ξ) x‖) r
+  change (Q (f + g)).toReal ≤ (Q f).toReal + (Q g).toReal
+  calc
+    (Q (f + g)).toReal ≤ (Q f + Q g).toReal :=
+      (ENNReal.toReal_le_toReal (hQfin (f + g))
+        (ENNReal.add_ne_top.mpr ⟨hQfin f, hQfin g⟩)).mpr hraw
+    _ = (Q f).toReal + (Q g).toReal := ENNReal.toReal_add (hQfin f) (hQfin g)
+
+/-- Exact physical realization of one literal high relative-frequency
+surface multiplier.  The right-hand side is the surface average of the
+`(2^j / r)`-scale inverse-Fourier kernel convolved with the original input. -/
+theorem fourierInv_relative_surface_scaled_schwartz_multiplier_eq_surface_convolution
+    {d : Nat} (ψ f : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    {r : ℝ} (hr : 0 < r) (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r • ξ) *
+      ψ (((2 : ℝ) ^ j)⁻¹ • (r • ξ)) *
+      𝓕 (f : Euclidean d → ℂ) ξ) x =
+      ∫ ω : Metric.sphere (0 : Euclidean d) 1,
+        ((fun y : Euclidean d =>
+          ((((2 : ℝ) ^ j)⁻¹ * r)⁻¹) ^ d •
+            (𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ)
+              ((((2 : ℝ) ^ j)⁻¹ * r)⁻¹ • y))
+          ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+          (f : Euclidean d → ℂ)) (x + r • (ω : Euclidean d))
+        ∂unitSurfaceMeasure d := by
+  let t : ℝ := ((2 : ℝ) ^ j)⁻¹ * r
+  have ht : 0 < t := mul_pos (inv_pos.mpr (pow_pos (by norm_num) _)) hr
+  let A : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 t ht.ne')
+  let ψt : SchwartzMap (Euclidean d) ℂ :=
+    SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A ψ
+  let h : SchwartzMap (Euclidean d) ℂ :=
+    SchwartzMap.smulLeftCLM ℂ (ψt : Euclidean d → ℂ) (𝓕 f)
+  have hψt (ξ : Euclidean d) : ψt ξ = ψ (t • ξ) := by
+    change ψ (A ξ) = ψ (t • ξ)
+    simp [A]
+  have hh (ξ : Euclidean d) : h ξ =
+      ψ (t • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ := by
+    simp only [h, SchwartzMap.smulLeftCLM_apply ψt.hasTemperateGrowth,
+      SchwartzMap.fourier_coe, smul_eq_mul]
+    rw [hψt]
+  have hbridge := sphericalAverage_fourierInv_schwartz_eq_surfaceMultiplier h r
+  have hphysical (z : Euclidean d) :
+      (𝓕⁻ h : SchwartzMap (Euclidean d) ℂ) z =
+        ((fun y : Euclidean d => (t⁻¹) ^ d •
+          (𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) (t⁻¹ • y))
+          ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+          (f : Euclidean d → ℂ)) z := by
+    rw [SchwartzMap.fourierInv_coe]
+    rw [show (h : Euclidean d → ℂ) =
+        fun ξ : Euclidean d => ψ (t • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ by
+      funext ξ
+      exact hh ξ]
+    exact fourierInv_relative_lowpass_eq_convolution ψ f ht z
+  calc
+    𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r • ξ) *
+        ψ (((2 : ℝ) ^ j)⁻¹ • (r • ξ)) *
+        𝓕 (f : Euclidean d → ℂ) ξ) x =
+        𝓕⁻ (fun ξ : Euclidean d => surfaceFourier d (-r • ξ) * h ξ) x := by
+      apply congrArg (fun q : Euclidean d → ℂ => 𝓕⁻ q x)
+      funext ξ
+      rw [hh]
+      dsimp only [t]
+      rw [smul_smul]
+      ring
+    _ = sphericalAverage d ((𝓕⁻ h : SchwartzMap (Euclidean d) ℂ) :
+        Euclidean d → ℂ) r x := congrFun hbridge x |>.symm
+    _ = ∫ ω : Metric.sphere (0 : Euclidean d) 1,
+        ((fun y : Euclidean d => (t⁻¹) ^ d •
+          (𝓕⁻ ψ : SchwartzMap (Euclidean d) ℂ) (t⁻¹ • y))
+          ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+          (f : Euclidean d → ℂ)) (x + r • (ω : Euclidean d))
+        ∂unitSurfaceMeasure d := by
+      unfold sphericalAverage
+      apply integral_congr_ae
+      filter_upwards with ω
+      exact hphysical _
+    _ = _ := by
+      dsimp only [t]
+
+/-- Fubini turns the literal spherical average of a scaled Schwartz
+convolution into the positive surface-smoothed kernel which is used for the
+high-frequency weak endpoint. -/
+theorem norm_sphericalAverage_scaled_schwartz_convolution_le
+    {d : Nat} (K f : SchwartzMap (Euclidean d) ℂ)
+    {s r : ℝ} (hs : 0 < s) (x : Euclidean d) :
+    ‖sphericalAverage d
+      (fun z : Euclidean d =>
+        ((fun y : Euclidean d => s ^ d • K (s • y))
+          ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+          (f : Euclidean d → ℂ)) z) r x‖ ≤
+      ∫ y : Euclidean d, ‖f y‖ *
+        (∫ ω : Metric.sphere (0 : Euclidean d) 1,
+          ‖s ^ d • K (s • (x + r • (ω : Euclidean d) - y))‖
+          ∂unitSurfaceMeasure d) := by
+  let k : Euclidean d → ℂ := fun y => s ^ d • K (s • y)
+  let B : ℝ := s ^ d * SchwartzMap.seminorm ℂ 0 0 K
+  have hspow : 0 ≤ s ^ d := pow_nonneg hs.le _
+  have hB : 0 ≤ B := by
+    dsimp [B]
+    exact mul_nonneg hspow (by
+      calc
+        0 ≤ ‖K (0 : Euclidean d)‖ := norm_nonneg _
+        _ ≤ SchwartzMap.seminorm ℂ 0 0 K := SchwartzMap.norm_le_seminorm ℂ K 0)
+  have hkbound (z : Euclidean d) : ‖k z‖ ≤ B := by
+    dsimp [k, B]
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hspow]
+    exact mul_le_mul_of_nonneg_left
+      (SchwartzMap.norm_le_seminorm ℂ K (s • z)) hspow
+  have hkcont : Continuous k := by
+    dsimp [k]
+    have hinner : Continuous (fun y : Euclidean d => s • y) :=
+      (continuous_const : Continuous fun _ : Euclidean d => s).smul continuous_id
+    exact (continuous_const : Continuous fun _ : Euclidean d => ((s ^ d : ℝ) : ℂ)).mul
+      (K.continuous.comp hinner)
+  have harg : Continuous (fun p : Metric.sphere (0 : Euclidean d) 1 × Euclidean d =>
+      x + r • (p.1 : Euclidean d) - p.2) := by
+    exact ((continuous_const : Continuous fun _ :
+      Metric.sphere (0 : Euclidean d) 1 × Euclidean d => x).add
+      ((continuous_const : Continuous fun _ :
+        Metric.sphere (0 : Euclidean d) 1 × Euclidean d => r).smul
+        (continuous_subtype_val.comp continuous_fst))).sub continuous_snd
+  have hprod_cont : Continuous (fun p : Metric.sphere (0 : Euclidean d) 1 × Euclidean d =>
+      k (x + r • (p.1 : Euclidean d) - p.2) * f p.2) :=
+    (hkcont.comp harg).mul (f.continuous.comp continuous_snd)
+  have hmajor_meas : AEStronglyMeasurable
+      (fun p : Metric.sphere (0 : Euclidean d) 1 × Euclidean d => B * ‖f p.2‖)
+      ((unitSurfaceMeasure d).prod volume) :=
+    (continuous_const.mul (f.continuous.comp continuous_snd).norm).aestronglyMeasurable
+  have hmajor_integrable : Integrable
+      (fun p : Metric.sphere (0 : Euclidean d) 1 × Euclidean d => B * ‖f p.2‖)
+      ((unitSurfaceMeasure d).prod volume) := by
+    refine (integrable_prod_iff hmajor_meas).2 ?_
+    constructor
+    · filter_upwards with ω
+      exact f.integrable.norm.const_mul B
+    · have heq : (fun ω : Metric.sphere (0 : Euclidean d) 1 =>
+          ∫ y : Euclidean d, ‖B * ‖f (ω, y).2‖‖) =
+          fun _ => ∫ y : Euclidean d, B * ‖f y‖ := by
+        funext ω
+        apply integral_congr_ae
+        filter_upwards with y
+        rw [Real.norm_of_nonneg (mul_nonneg hB (norm_nonneg _))]
+      rw [heq]
+      exact integrable_const _
+  have hprod : Integrable
+      (fun p : Metric.sphere (0 : Euclidean d) 1 × Euclidean d =>
+        k (x + r • (p.1 : Euclidean d) - p.2) * f p.2)
+      ((unitSurfaceMeasure d).prod volume) :=
+    hmajor_integrable.mono' hprod_cont.aestronglyMeasurable
+      (Filter.Eventually.of_forall fun p => by
+        rw [norm_mul]
+        exact mul_le_mul_of_nonneg_right (hkbound _) (norm_nonneg _))
+  unfold sphericalAverage
+  change ‖∫ ω : Metric.sphere (0 : Euclidean d) 1,
+      ((k ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+        (f : Euclidean d → ℂ)) (x + r • (ω : Euclidean d)))
+      ∂unitSurfaceMeasure d‖ ≤ _
+  calc
+    ‖∫ ω : Metric.sphere (0 : Euclidean d) 1,
+        ((k ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+          (f : Euclidean d → ℂ)) (x + r • (ω : Euclidean d)))
+        ∂unitSurfaceMeasure d‖ ≤
+        ∫ ω : Metric.sphere (0 : Euclidean d) 1,
+          ‖(k ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+            (f : Euclidean d → ℂ)) (x + r • (ω : Euclidean d))‖
+          ∂unitSurfaceMeasure d := norm_integral_le_integral_norm _
+    _ ≤ ∫ ω : Metric.sphere (0 : Euclidean d) 1,
+          (∫ y : Euclidean d,
+            ‖k (x + r • (ω : Euclidean d) - y) * f y‖)
+          ∂unitSurfaceMeasure d := by
+      apply integral_mono_of_nonneg
+      · filter_upwards with ω
+        exact norm_nonneg _
+      · exact hprod.norm.integral_prod_left
+      · filter_upwards with ω
+        rw [convolution_mul_swap]
+        exact norm_integral_le_integral_norm _
+    _ = ∫ y : Euclidean d,
+          (∫ ω : Metric.sphere (0 : Euclidean d) 1,
+            ‖k (x + r • (ω : Euclidean d) - y) * f y‖
+            ∂unitSurfaceMeasure d) := integral_integral_swap hprod.norm
+    _ = ∫ y : Euclidean d, ‖f y‖ *
+          (∫ ω : Metric.sphere (0 : Euclidean d) 1,
+            ‖k (x + r • (ω : Euclidean d) - y)‖
+            ∂unitSurfaceMeasure d) := by
+      apply integral_congr_ae
+      filter_upwards with y
+      simp only [norm_mul, integral_mul_const]
+      ring
+    _ = _ := by
+      apply integral_congr_ae
+      filter_upwards with y
+      dsimp [k]
+
+/-- A literal smooth band-pass multiplier is the difference of the two
+corresponding scaled physical convolutions. -/
+theorem fourierInv_sub_scaled_schwartz_multiplier_eq_sub_convolution
+    {d : Nat} (φ f : SchwartzMap (Euclidean d) ℂ)
+    {R S : ℝ} (hR : 0 < R) (hS : 0 < S) (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d =>
+      (φ (S⁻¹ • ξ) - φ (R⁻¹ • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+      ((fun y : Euclidean d => S ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (S • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x -
+      ((fun y : Euclidean d => R ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+  let A_R : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
+  let A_S : Euclidean d ≃L[ℝ] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 S⁻¹ (inv_ne_zero hS.ne'))
+  let φR : SchwartzMap (Euclidean d) ℂ :=
+    (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A_R) φ
+  let φS : SchwartzMap (Euclidean d) ℂ :=
+    (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A_S) φ
+  have hφR (ξ : Euclidean d) : φR ξ = φ (R⁻¹ • ξ) := by
+    change φ (A_R ξ) = φ (R⁻¹ • ξ)
+    simp [A_R]
+  have hφS (ξ : Euclidean d) : φS ξ = φ (S⁻¹ • ξ) := by
+    change φ (A_S ξ) = φ (S⁻¹ • ξ)
+    simp [A_S]
+  calc
+    𝓕⁻ (fun ξ : Euclidean d =>
+        (φ (S⁻¹ • ξ) - φ (R⁻¹ • ξ)) * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+        𝓕⁻ (fun ξ : Euclidean d =>
+          (φS ξ - φR ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+      congr 2
+    _ = 𝓕⁻ (fun ξ : Euclidean d => φS ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x -
+        𝓕⁻ (fun ξ : Euclidean d => φR ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x :=
+      fourierInv_sub_schwartz_multiplier φS φR f x
+    _ = 𝓕⁻ (fun ξ : Euclidean d => φ (S⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x -
+        𝓕⁻ (fun ξ : Euclidean d => φ (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+      congr 2
+    _ = ((fun y : Euclidean d => S ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (S • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x -
+      ((fun y : Euclidean d => R ^ d •
+        (𝓕⁻ φ : SchwartzMap (Euclidean d) ℂ) (R • y))
+        ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Euclidean d → ℂ)) x := by
+      rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hS x,
+        fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hR x]
+
+
+end
+
+end LeanSpherical.HarmonicAnalysis

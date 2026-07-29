@@ -4,24 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: LeanSpherical contributors
 -/
 
-import LeanSpherical.HarmonicAnalysis.SphericalAverageDerivative
 import LeanSpherical.HarmonicAnalysis.SurfaceHeight
-import LeanSpherical.HarmonicAnalysis.DyadicFrequency
-import LeanSpherical.HarmonicAnalysis.MultiplierL2
-import LeanSpherical.HarmonicAnalysis.DerivativePrototype
-import LeanSpherical.HarmonicAnalysis.SurfaceContinuity
-import LeanSpherical.HarmonicAnalysis.SmoothDyadicPartition
-import LeanSpherical.HarmonicAnalysis.SchwartzMultiplierL2
-import LeanSpherical.HarmonicAnalysis.SmoothDyadicSchwartz
-import LeanSpherical.HarmonicAnalysis.SphericalAverageInverseFourierBridge
-import LeanSpherical.HarmonicAnalysis.SphericalAveragePhysicalFourierDerivative
-import LeanSpherical.HarmonicAnalysis.RadiusMaximalL2
-import LeanSpherical.HarmonicAnalysis.SphericalAverageContinuity
-import LeanSpherical.HarmonicAnalysis.SmoothDyadicSphericalL1
-import LeanSpherical.HarmonicAnalysis.MarcinkiewiczInterpolation
-import LeanSpherical.HarmonicAnalysis.RationalSchwartzLowTail
-import LeanSpherical.HarmonicAnalysis.RationalSchwartzHighTail
-import Mathlib.Analysis.Distribution.SchwartzSpace.Deriv
+import LeanSpherical.HarmonicAnalysis.SurfaceCore
+import LeanSpherical.HarmonicAnalysis.SphericalAverages
+import LeanSpherical.HarmonicAnalysis.SmoothDyadicPhysicalCore
+import LeanSpherical.HarmonicAnalysis.FourierRadius
+import LeanSpherical.HarmonicAnalysis.RationalTails
 
 /-!
 # A compact-radius Sobolev maximal square estimate

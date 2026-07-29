@@ -4,20 +4,309 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: LeanSpherical contributors
 -/
 
-import LeanSpherical.HarmonicAnalysis.StationaryPhase
-import LeanSpherical.HarmonicAnalysis.MeridianEndpoint
-import Mathlib.Analysis.SpecialFunctions.Integrals.Basic
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.InverseDeriv
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
+import Mathlib.Analysis.SpecialFunctions.Integrals.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.InverseDeriv
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 
 /-!
-# The semicircle oscillatory integral
+# One-dimensional oscillatory and surface-decay prerequisites
 
-Elementary reductions used for the four-dimensional spherical Fourier
-transform.  The endpoint decay estimate is developed here directly rather
-than postulated as an abstract oscillatory-integral principle.
+This module consolidates the stationary-phase, endpoint, semicircle, and
+elementary oscillatory-integral estimates used in Fourier surface decay.
 -/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory intervalIntegral
+
+noncomputable section
+
+private theorem intervalIntegral_inv_sq {a b : ℝ} (ha : 0 < a) (hab : a ≤ b) :
+    (∫ t in a..b, (t ^ 2)⁻¹) = a⁻¹ - b⁻¹ := by
+  have hpos : ∀ x ∈ Set.uIcc a b, 0 < x := by
+    intro x hx
+    have hx' : x ∈ Set.Icc a b := by
+      simpa [Set.uIcc_of_le hab] using hx
+    exact lt_of_lt_of_le ha hx'.1
+  have hcont : ContinuousOn (fun x : ℝ => (x ^ 2)⁻¹) (Set.uIcc a b) := by
+    refine (continuous_id.pow 2).continuousOn.inv₀ ?_
+    intro x hx
+    exact pow_ne_zero 2 (ne_of_gt (hpos x hx))
+  have hderiv : ∀ x ∈ Set.uIcc a b,
+      HasDerivAt (-(fun y : ℝ => y⁻¹)) ((x ^ 2)⁻¹) x := by
+    intro x hx
+    simpa using (hasDerivAt_inv (ne_of_gt (hpos x hx))).neg
+  have h := intervalIntegral.integral_mul_deriv_eq_deriv_mul
+    (u := fun _ : ℝ => (1 : ℝ)) (u' := fun _ : ℝ => (0 : ℝ))
+    (v := -(fun y : ℝ => y⁻¹)) (v' := fun y : ℝ => (y ^ 2)⁻¹)
+    (fun _ _ => hasDerivAt_const _ (1 : ℝ)) hderiv
+    (Continuous.intervalIntegrable (by fun_prop) a b)
+    hcont.intervalIntegrable
+  simp only [one_mul, Pi.neg_apply, zero_mul, intervalIntegral.integral_zero, sub_zero] at h
+  calc
+    (∫ t in a..b, (t ^ 2)⁻¹) = -b⁻¹ - -a⁻¹ := h
+    _ = a⁻¹ - b⁻¹ := by ring
+
+private theorem quadratic_phase_integration_by_parts {a b c : ℝ} (ha : 0 < a) (hab : a ≤ b)
+    (hc : c ≠ 0) :
+    (∫ t in a..b, Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)) =
+      (((2 * c * b : ℝ) : ℂ) * Complex.I)⁻¹ *
+          Complex.exp (((c * b ^ 2 : ℝ) : ℂ) * Complex.I) -
+        (((2 * c * a : ℝ) : ℂ) * Complex.I)⁻¹ *
+          Complex.exp (((c * a ^ 2 : ℝ) : ℂ) * Complex.I) -
+        ∫ t in a..b,
+          (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+            ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+          Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I) := by
+  let E : ℝ → ℂ := fun t => Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)
+  let u : ℝ → ℂ := fun t => (((2 * c * t : ℝ) : ℂ) * Complex.I)⁻¹
+  let du : ℝ → ℂ := fun t =>
+    -(((2 * c : ℝ) : ℂ) * Complex.I) /
+      ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)
+  let dE : ℝ → ℂ := fun t =>
+    E t * (((2 * c * t : ℝ) : ℂ) * Complex.I)
+  have hpos : ∀ x ∈ Set.uIcc a b, 0 < x := by
+    intro x hx
+    have hx' : x ∈ Set.Icc a b := by
+      simpa [Set.uIcc_of_le hab] using hx
+    exact lt_of_lt_of_le ha hx'.1
+  have hbase_ne : ∀ x ∈ Set.uIcc a b,
+      ((2 * c * x : ℝ) : ℂ) * Complex.I ≠ 0 := by
+    intro x hx
+    have hx0 : x ≠ 0 := ne_of_gt (hpos x hx)
+    have hcx : (2 * c * x : ℝ) ≠ 0 := mul_ne_zero (mul_ne_zero (by norm_num) hc) hx0
+    exact mul_ne_zero (Complex.ofReal_ne_zero.mpr hcx) Complex.I_ne_zero
+  have hu : ∀ x ∈ Set.uIcc a b, HasDerivAt u (du x) x := by
+    intro x hx
+    dsimp [u, du]
+    have hbase : HasDerivAt
+        (fun y : ℝ => ((2 * c * y : ℝ) : ℂ) * Complex.I)
+        (((2 * c : ℝ) : ℂ) * Complex.I) x := by
+      have hreal : HasDerivAt (fun y : ℝ => 2 * c * y) (2 * c) x := by
+        simpa [mul_assoc] using (hasDerivAt_id x).const_mul (2 * c)
+      simpa only [Complex.real_smul] using hreal.smul_const Complex.I
+    exact hbase.inv (hbase_ne x hx)
+  have hv : ∀ x ∈ Set.uIcc a b, HasDerivAt E (dE x) x := by
+    intro x hx
+    dsimp [E, dE]
+    have hpoly : HasDerivAt
+        (fun y : ℝ => ((c * y ^ 2 : ℝ) : ℂ) * Complex.I)
+        (((2 * c * x : ℝ) : ℂ) * Complex.I) x := by
+      have hreal : HasDerivAt (fun y : ℝ => c * y ^ 2) (2 * c * x) x := by
+        simpa [mul_assoc, mul_left_comm, mul_comm] using
+          (hasDerivAt_pow 2 x).const_mul c
+      simpa only [Complex.real_smul] using hreal.smul_const Complex.I
+    simpa [mul_assoc] using hpoly.cexp
+  have hdu_cont : ContinuousOn du (Set.uIcc a b) := by
+    dsimp [du]
+    refine ContinuousOn.div₀ (by fun_prop) (by fun_prop) ?_
+    intro x hx
+    exact pow_ne_zero 2 (hbase_ne x hx)
+  have hdE_cont : ContinuousOn dE (Set.uIcc a b) := by
+    dsimp [dE, E]
+    fun_prop
+  have hparts := intervalIntegral.integral_mul_deriv_eq_deriv_mul hu hv
+    hdu_cont.intervalIntegrable hdE_cont.intervalIntegrable
+  have hleft :
+      (∫ t in a..b, E t) = ∫ t in a..b, u t * dE t := by
+    apply intervalIntegral.integral_congr
+    intro x hx
+    dsimp [u, dE]
+    have hcx : ((2 * c * x : ℝ) : ℂ) ≠ 0 := by
+      rw [Complex.ofReal_ne_zero]
+      exact mul_ne_zero (mul_ne_zero (by norm_num) hc) (ne_of_gt (hpos x hx))
+    field_simp [hbase_ne x hx, hcx]
+  dsimp [E, u, du] at hparts hleft ⊢
+  rw [hleft, hparts]
+
+private theorem quadratic_phase_endpoint_norm {c x : ℝ} (hc : 0 < c) (hx : 0 < x) :
+    ‖(((2 * c * x : ℝ) : ℂ) * Complex.I)⁻¹ *
+        Complex.exp (((c * x ^ 2 : ℝ) : ℂ) * Complex.I)‖ =
+      (2 * c * x)⁻¹ := by
+  rw [norm_mul, norm_inv, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos (by positivity), Complex.norm_exp_ofReal_mul_I]
+  simp [Complex.norm_I]
+
+private theorem quadratic_phase_remainder_norm_le {a b c : ℝ} (ha : 0 < a) (hab : a ≤ b)
+    (hc : 0 < c) :
+    ‖∫ t in a..b,
+        (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+          ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+        Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ ≤
+      (2 * c)⁻¹ * (a⁻¹ - b⁻¹) := by
+  have hpos : ∀ x ∈ Set.uIcc a b, 0 < x := by
+    intro x hx
+    have hx' : x ∈ Set.Icc a b := by
+      simpa [Set.uIcc_of_le hab] using hx
+    exact lt_of_lt_of_le ha hx'.1
+  have hinvsq := intervalIntegral_inv_sq ha hab
+  calc
+    ‖∫ t in a..b,
+        (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+          ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+        Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ ≤
+        ∫ t in a..b,
+          ‖(-(((2 * c : ℝ) : ℂ) * Complex.I) /
+            ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+            Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ :=
+      intervalIntegral.norm_integral_le_integral_norm hab
+    _ = ∫ t in a..b, (2 * c)⁻¹ * (t ^ 2)⁻¹ := by
+      apply intervalIntegral.integral_congr
+      intro x hx
+      dsimp
+      have hxpos : 0 < x := hpos x hx
+      rw [norm_mul, norm_div, norm_neg, norm_mul, norm_pow, norm_mul,
+        Complex.norm_real, Complex.norm_real, Real.norm_eq_abs, Real.norm_eq_abs,
+        abs_of_pos (by positivity), abs_of_pos (by positivity),
+        Complex.norm_exp_ofReal_mul_I]
+      simp [Complex.norm_I]
+      field_simp
+    _ = (2 * c)⁻¹ * (∫ t in a..b, (t ^ 2)⁻¹) :=
+      intervalIntegral.integral_const_mul _ _
+    _ = (2 * c)⁻¹ * (a⁻¹ - b⁻¹) := by rw [hinvsq]
+
+theorem quadratic_phase_tail_norm_le_inv {a b c : ℝ} (ha : 0 < a) (hab : a ≤ b)
+    (hc : 0 < c) :
+    ‖∫ t in a..b, Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ ≤ (c * a)⁻¹ := by
+  have hparts := quadratic_phase_integration_by_parts ha hab hc.ne'
+  have hrem := quadratic_phase_remainder_norm_le ha hab hc
+  have hb : 0 < b := lt_of_lt_of_le ha hab
+  have hendpoint_b := quadratic_phase_endpoint_norm hc hb
+  have hendpoint_a := quadratic_phase_endpoint_norm hc ha
+  calc
+    ‖∫ t in a..b, Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ =
+        ‖(((2 * c * b : ℝ) : ℂ) * Complex.I)⁻¹ *
+            Complex.exp (((c * b ^ 2 : ℝ) : ℂ) * Complex.I) -
+          (((2 * c * a : ℝ) : ℂ) * Complex.I)⁻¹ *
+            Complex.exp (((c * a ^ 2 : ℝ) : ℂ) * Complex.I) -
+          ∫ t in a..b,
+            (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+              ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+            Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ := by rw [hparts]
+    _ ≤ ‖(((2 * c * b : ℝ) : ℂ) * Complex.I)⁻¹ *
+            Complex.exp (((c * b ^ 2 : ℝ) : ℂ) * Complex.I) -
+          (((2 * c * a : ℝ) : ℂ) * Complex.I)⁻¹ *
+            Complex.exp (((c * a ^ 2 : ℝ) : ℂ) * Complex.I)‖ +
+          ‖∫ t in a..b,
+            (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+              ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+            Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ :=
+      norm_sub_le _ _
+    _ ≤ (‖(((2 * c * b : ℝ) : ℂ) * Complex.I)⁻¹ *
+            Complex.exp (((c * b ^ 2 : ℝ) : ℂ) * Complex.I)‖ +
+          ‖(((2 * c * a : ℝ) : ℂ) * Complex.I)⁻¹ *
+            Complex.exp (((c * a ^ 2 : ℝ) : ℂ) * Complex.I)‖) +
+          ‖∫ t in a..b,
+            (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+              ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+            Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ :=
+      add_le_add_left (norm_sub_le _ _) _
+    _ = (2 * c * b)⁻¹ + (2 * c * a)⁻¹ +
+          ‖∫ t in a..b,
+            (-(((2 * c : ℝ) : ℂ) * Complex.I) /
+              ((((2 * c * t : ℝ) : ℂ) * Complex.I) ^ 2)) *
+            Complex.exp (((c * t ^ 2 : ℝ) : ℂ) * Complex.I)‖ := by
+      rw [hendpoint_b, hendpoint_a]
+    _ ≤ (2 * c * b)⁻¹ + (2 * c * a)⁻¹ +
+          (2 * c)⁻¹ * (a⁻¹ - b⁻¹) := by
+      gcongr
+    _ = (c * a)⁻¹ := by
+      field_simp
+      ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+noncomputable section
+
+/-- The endpoint parametrization turns the meridional sine into `1 - u²`. -/
+theorem sin_pi_div_two_sub_two_arcsin_div_sqrt_two
+    {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    Real.sin (Real.pi / 2 - 2 * Real.arcsin (u / Real.sqrt 2)) = 1 - u ^ 2 := by
+  have hsqrt_pos : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hsqrt_sq : Real.sqrt (2 : ℝ) ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+  have hsqrt_one : 1 ≤ Real.sqrt (2 : ℝ) := by
+    nlinarith [Real.sqrt_nonneg (2 : ℝ)]
+  have hquot_nonneg : 0 ≤ u / Real.sqrt 2 := div_nonneg hu0 hsqrt_pos.le
+  have hquot_le : u / Real.sqrt 2 ≤ 1 := by
+    rw [div_le_iff₀ hsqrt_pos]
+    nlinarith
+  rw [Real.sin_pi_div_two_sub, Real.cos_two_mul]
+  have hcos_sq : Real.cos (Real.arcsin (u / Real.sqrt 2)) ^ 2 =
+      1 - (u / Real.sqrt 2) ^ 2 := by
+    nlinarith [Real.sin_sq_add_cos_sq (Real.arcsin (u / Real.sqrt 2)),
+      Real.sin_arcsin (by linarith : -1 ≤ u / Real.sqrt 2) hquot_le]
+  rw [hcos_sq]
+  field_simp [hsqrt_pos.ne']
+  nlinarith
+
+/-- The derivative of the endpoint parametrization has the explicit
+semicircle Jacobian. -/
+theorem hasDerivAt_pi_div_two_sub_two_arcsin_div_sqrt_two
+    {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    HasDerivAt
+      (fun v : ℝ => Real.pi / 2 - 2 * Real.arcsin (v / Real.sqrt 2))
+      (-2 / Real.sqrt (2 - u ^ 2)) u := by
+  have hsqrt_pos : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hsqrt_sq : Real.sqrt (2 : ℝ) ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+  have hsqrt_one : 1 ≤ Real.sqrt (2 : ℝ) := by
+    nlinarith [Real.sqrt_nonneg (2 : ℝ)]
+  have hquot_nonneg : 0 ≤ u / Real.sqrt 2 := div_nonneg hu0 hsqrt_pos.le
+  have hquot_le : u / Real.sqrt 2 ≤ 1 := by
+    rw [div_le_iff₀ hsqrt_pos]
+    nlinarith
+  have hquot_ne_neg : u / Real.sqrt 2 ≠ -1 := by
+    nlinarith
+  have hquot_ne_one : u / Real.sqrt 2 ≠ 1 := by
+    have hlt : u / Real.sqrt 2 < 1 := by
+      rw [div_lt_iff₀ hsqrt_pos]
+      nlinarith [hsqrt_sq, Real.sqrt_nonneg (2 : ℝ)]
+    nlinarith
+  have hdiv : HasDerivAt (fun v : ℝ => v / Real.sqrt 2)
+      (1 / Real.sqrt 2) u := by
+    simpa [div_eq_mul_inv] using (hasDerivAt_id u).mul_const (Real.sqrt 2)⁻¹
+  have harcsin : HasDerivAt
+      (fun v : ℝ => Real.arcsin (v / Real.sqrt 2))
+      ((1 / Real.sqrt (1 - (u / Real.sqrt 2) ^ 2)) * (1 / Real.sqrt 2)) u := by
+    exact (Real.hasDerivAt_arcsin hquot_ne_neg hquot_ne_one).comp u hdiv
+  have hphi : HasDerivAt
+      (fun v : ℝ => Real.pi / 2 - 2 * Real.arcsin (v / Real.sqrt 2))
+      (0 - 2 * ((1 / Real.sqrt (1 - (u / Real.sqrt 2) ^ 2)) *
+        (1 / Real.sqrt 2))) u := by
+    have h := (hasDerivAt_const u (Real.pi / 2)).sub
+      (HasDerivAt.const_mul (2 : ℝ) harcsin)
+    change HasDerivAt
+      (fun v : ℝ => Real.pi / 2 - 2 * Real.arcsin (v / Real.sqrt 2)) _ u at h
+    exact h
+  have hinside : 0 < 2 - u ^ 2 := by nlinarith [sq_nonneg (u - 1)]
+  have hroot :
+      Real.sqrt (1 - (u / Real.sqrt 2) ^ 2) * Real.sqrt 2 =
+        Real.sqrt (2 - u ^ 2) := by
+    have hleft_nonneg : 0 ≤ 1 - (u / Real.sqrt 2) ^ 2 := by
+      rw [show (u / Real.sqrt 2) ^ 2 = u ^ 2 / 2 by
+        field_simp [hsqrt_pos.ne']
+        nlinarith]
+      nlinarith [sq_nonneg (u - 1)]
+    rw [← Real.sqrt_mul (by positivity : 0 ≤ (1 - (u / Real.sqrt 2) ^ 2))]
+    congr 1
+    field_simp [hsqrt_pos.ne']
+    nlinarith
+  have hcoef :
+      0 - 2 * ((1 / Real.sqrt (1 - (u / Real.sqrt 2) ^ 2)) *
+        (1 / Real.sqrt 2)) = -2 / Real.sqrt (2 - u ^ 2) := by
+    rw [← hroot]
+    field_simp [hsqrt_pos.ne', ne_of_gt hinside]
+    ring
+  rw [hcoef] at hphi
+  exact hphi
+
+end
+
+end LeanSpherical.HarmonicAnalysis
 
 namespace LeanSpherical.HarmonicAnalysis
 
@@ -1541,6 +1830,61 @@ theorem norm_intervalIntegral_t_mul_semicircle_le (l : ℝ) (hl : 1 ≤ l) :
     _ = 92 / (l * Real.sqrt l) := by
       field_simp [hlpos.ne', hsqrtpos.ne']
 
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory intervalIntegral
+
+noncomputable section
+
+/-- The elementary oscillatory integral appearing after reducing the
+three-dimensional sphere to its height coordinate. -/
+theorem intervalIntegral_exp_surfacePhase (a : ℝ) (ha : a ≠ 0) :
+    ∫ t in (-1 : ℝ)..1, Complex.exp (((-2 * Real.pi * a * t : ℝ) : ℂ) * Complex.I) =
+      (Complex.exp (((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I) -
+        Complex.exp (((2 * Real.pi * a : ℝ) : ℂ) * Complex.I)) /
+        (((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I) := by
+  rw [show (fun t : ℝ => Complex.exp (((-2 * Real.pi * a * t : ℝ) : ℂ) * Complex.I)) =
+      fun (t : ℝ) => Complex.exp ((((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I) * (t : ℂ)) by
+        funext t
+        push_cast
+        ring_nf]
+  rw [integral_exp_mul_complex]
+  · congr 2 <;> push_cast <;> ring_nf
+  · simp [ha, Real.pi_ne_zero]
+
+/-- The preceding integral has the quantitative `|a|⁻¹` cancellation bound. -/
+theorem norm_intervalIntegral_exp_surfacePhase_le (a : ℝ) (ha : a ≠ 0) :
+    ‖∫ t in (-1 : ℝ)..1, Complex.exp (((-2 * Real.pi * a * t : ℝ) : ℂ) * Complex.I)‖ ≤
+      1 / (Real.pi * |a|) := by
+  rw [intervalIntegral_exp_surfacePhase a ha, norm_div]
+  have hnum :
+      ‖Complex.exp (((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I) -
+        Complex.exp (((2 * Real.pi * a : ℝ) : ℂ) * Complex.I)‖ ≤ 2 := by
+    calc
+      ‖Complex.exp (((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I) -
+          Complex.exp (((2 * Real.pi * a : ℝ) : ℂ) * Complex.I)‖ ≤
+          ‖Complex.exp (((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I)‖ +
+            ‖Complex.exp (((2 * Real.pi * a : ℝ) : ℂ) * Complex.I)‖ := norm_sub_le _ _
+      _ = 2 := by
+        rw [Complex.norm_exp_ofReal_mul_I, Complex.norm_exp_ofReal_mul_I]
+        norm_num
+  have hden : ‖(((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I)‖ = 2 * Real.pi * |a| := by
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, Complex.norm_I, mul_one]
+    rw [abs_mul, abs_mul, abs_neg, abs_of_nonneg Real.pi_pos.le]
+    ring
+  rw [hden]
+  have hden_pos : 0 < 2 * Real.pi * |a| := by
+    positivity
+  calc
+    ‖Complex.exp (((-2 * Real.pi * a : ℝ) : ℂ) * Complex.I) -
+        Complex.exp (((2 * Real.pi * a : ℝ) : ℂ) * Complex.I)‖ / (2 * Real.pi * |a|) ≤
+        2 / (2 * Real.pi * |a|) := (div_le_div_iff_of_pos_right hden_pos).2 hnum
+    _ = 1 / (Real.pi * |a|) := by field_simp
 
 end
 

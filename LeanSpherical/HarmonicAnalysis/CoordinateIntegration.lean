@@ -4,17 +4,407 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: LeanSpherical contributors
 -/
 
-import LeanSpherical.HarmonicAnalysis.PolarDecomposition
+import LeanSpherical.HarmonicAnalysis.SurfaceCore
+import Mathlib.Analysis.SpecialFunctions.PolarCoord
+import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
+import Mathlib.Analysis.Complex.Trigonometric
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Inverse
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+import Mathlib.MeasureTheory.Function.JacobianOneDim
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
 
 /-!
-# Radial integration for the concrete surface measure
+# Coordinate and polar-integration prerequisites
 
-These are direct polar-coordinate identities for the concrete measure
-`unitSurfaceMeasure`.  They provide the dimension-uniform measure calculation
-needed before reducing a spherical Fourier integral to a one-dimensional
-height integral.
+This module collects the cylindrical, spherical, polar, radial, and
+height-coordinate integration formulas used by surface-measure analysis.
 -/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory
+open scoped ENNReal
+
+noncomputable section
+
+/-- Fubini followed by polar coordinates in the horizontal plane. -/
+theorem integral_cylindrical
+    (F : ℂ × ℝ → ℂ) (hF : Integrable F ((volume : Measure ℂ).prod volume)) :
+    (∫ x : ℂ × ℝ, F x ∂((volume : Measure ℂ).prod volume)) =
+      ∫ p in Complex.polarCoord.target,
+        p.1 • (∫ z : ℝ, F (Complex.polarCoord.symm p, z) ∂volume) ∂volume := by
+  calc
+    (∫ x : ℂ × ℝ, F x ∂((volume : Measure ℂ).prod volume)) =
+        ∫ w : ℂ, (∫ z : ℝ, F (w, z) ∂volume) ∂volume :=
+      integral_prod F hF
+    _ = ∫ p in Complex.polarCoord.target,
+        p.1 • (∫ z : ℝ, F (Complex.polarCoord.symm p, z) ∂volume) ∂volume := by
+      symm
+      exact Complex.integral_comp_polarCoord_symm
+        (fun w : ℂ => ∫ z : ℝ, F (w, z) ∂volume)
+
+/-- The nonnegative version of `integral_cylindrical`, suitable for computing
+volumes of cones by Tonelli's theorem. -/
+theorem lintegral_cylindrical
+    (F : ℂ × ℝ → ℝ≥0∞) (hF : Measurable F) :
+    (∫⁻ x : ℂ × ℝ, F x ∂((volume : Measure ℂ).prod volume)) =
+      ∫⁻ p in Complex.polarCoord.target,
+        ENNReal.ofReal p.1 *
+          (∫⁻ z : ℝ, F (Complex.polarCoord.symm p, z) ∂volume) ∂volume := by
+  calc
+    (∫⁻ x : ℂ × ℝ, F x ∂((volume : Measure ℂ).prod volume)) =
+        ∫⁻ w : ℂ, (∫⁻ z : ℝ, F (w, z) ∂volume) ∂volume :=
+      lintegral_prod F hF.aemeasurable
+    _ = ∫⁻ p in Complex.polarCoord.target,
+        ENNReal.ofReal p.1 *
+          (∫⁻ z : ℝ, F (Complex.polarCoord.symm p, z) ∂volume) ∂volume := by
+      symm
+      exact Complex.lintegral_comp_polarCoord_symm
+        (fun w : ℂ => ∫⁻ z : ℝ, F (w, z) ∂volume)
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- Polar coordinates on the upper half-plane.  The input coordinate order is
+`(vertical, horizontal)`, so the horizontal coordinate is `rho * sin phi`. -/
+theorem lintegral_meridian_halfPlane
+    (F : ℝ × ℝ → ℝ≥0∞) :
+    (∫⁻ q in Set.univ ×ˢ Set.Ioi (0 : ℝ), F q) =
+      ∫⁻ p in Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi,
+        ENNReal.ofReal p.1 * F (polarCoord.symm p) := by
+  rw [← lintegral_indicator (MeasurableSet.univ.prod measurableSet_Ioi) F]
+  rw [← lintegral_comp_polarCoord_symm
+    ((Set.univ ×ˢ Set.Ioi (0 : ℝ)).indicator F)]
+  rw [← lintegral_indicator polarCoord.open_target.measurableSet]
+  rw [← lintegral_indicator (measurableSet_Ioi.prod measurableSet_Ioo)]
+  apply lintegral_congr
+  intro p
+  by_cases hp : p ∈ polarCoord.target
+  · rw [Set.indicator_of_mem hp]
+    have hmem : polarCoord.symm p ∈ Set.univ ×ˢ Set.Ioi (0 : ℝ) ↔
+        p ∈ Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi := by
+      rw [polarCoord_symm_apply]
+      simp only [Set.mem_prod, mem_univ, true_and, mem_Ioi, mem_Ioo]
+      change 0 < p.1 * Real.sin p.2 ↔ 0 < p.1 ∧ 0 < p.2 ∧ p.2 < Real.pi
+      rw [polarCoord_target] at hp
+      change 0 < p.1 ∧ -Real.pi < p.2 ∧ p.2 < Real.pi at hp
+      constructor
+      · intro h
+        refine ⟨hp.1, ?_, hp.2.2⟩
+        by_contra hphi
+        have hsin : Real.sin p.2 ≤ 0 :=
+          Real.sin_nonpos_of_nonpos_of_neg_pi_le (le_of_not_gt hphi) hp.2.1.le
+        exact (not_lt_of_ge (mul_nonpos_of_nonneg_of_nonpos hp.1.le hsin)) h
+      · rintro ⟨_, hphi, _⟩
+        exact mul_pos hp.1 (Real.sin_pos_of_pos_of_lt_pi hphi hp.2.2)
+    by_cases hp' : p ∈ Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi
+    · rw [Set.indicator_of_mem hp' _, Set.indicator_of_mem (hmem.mpr hp') _]
+      exact smul_eq_mul _ _
+    · rw [Set.indicator_of_notMem hp' _, Set.indicator_of_notMem (mt hmem.mp hp') _]
+      simp
+  · rw [Set.indicator_of_notMem hp _]
+    have hp' : p ∉ Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi := by
+      intro h
+      exact hp (by
+        rw [polarCoord_target]
+        change 0 < p.1 ∧ -Real.pi < p.2 ∧ p.2 < Real.pi
+        change 0 < p.1 ∧ 0 < p.2 ∧ p.2 < Real.pi at h
+        exact ⟨h.1, by linarith [Real.pi_pos], h.2.2⟩)
+    rw [Set.indicator_of_notMem hp' _]
+
+/-- Combining the meridian polar Jacobian with the horizontal-radius factor
+from cylindrical coordinates gives the spherical density
+`rho * (rho * sin phi)`. -/
+theorem lintegral_meridian_cylindrical_density
+    (G : ℝ × ℝ → ℝ≥0∞) :
+    (∫⁻ q in Set.univ ×ˢ Set.Ioi (0 : ℝ),
+      ENNReal.ofReal q.2 * G (q.2, q.1)) =
+      ∫⁻ p in Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi,
+        ENNReal.ofReal p.1 * ENNReal.ofReal (p.1 * Real.sin p.2) *
+          G (p.1 * Real.sin p.2, p.1 * Real.cos p.2) := by
+  simpa only [polarCoord_symm_apply, mul_assoc] using
+    (lintegral_meridian_halfPlane
+      (fun q : ℝ × ℝ => ENNReal.ofReal q.2 * G (q.2, q.1)))
+
+/-- The Bochner polar-coordinate transport on the meridian half-plane.  It
+is unconditional because the underlying polar change-of-variables theorem is
+stated for the Bochner integral itself. -/
+theorem integral_meridian_halfPlane
+    (F : ℝ × ℝ → ℂ) :
+    (∫ q in Set.univ ×ˢ Set.Ioi (0 : ℝ), F q) =
+      ∫ p in Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi,
+        p.1 • F (polarCoord.symm p) := by
+  rw [← integral_indicator (MeasurableSet.univ.prod measurableSet_Ioi)]
+  rw [← integral_comp_polarCoord_symm
+    ((Set.univ ×ˢ Set.Ioi (0 : ℝ)).indicator F)]
+  rw [← integral_indicator polarCoord.open_target.measurableSet]
+  rw [← integral_indicator (measurableSet_Ioi.prod measurableSet_Ioo)]
+  apply integral_congr_ae
+  filter_upwards with p
+  by_cases hp : p ∈ polarCoord.target
+  · rw [Set.indicator_of_mem hp]
+    have hmem : polarCoord.symm p ∈ Set.univ ×ˢ Set.Ioi (0 : ℝ) ↔
+        p ∈ Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi := by
+      rw [polarCoord_symm_apply]
+      simp only [Set.mem_prod, mem_univ, true_and, mem_Ioi, mem_Ioo]
+      change 0 < p.1 * Real.sin p.2 ↔ 0 < p.1 ∧ 0 < p.2 ∧ p.2 < Real.pi
+      rw [polarCoord_target] at hp
+      change 0 < p.1 ∧ -Real.pi < p.2 ∧ p.2 < Real.pi at hp
+      constructor
+      · intro h
+        refine ⟨hp.1, ?_, hp.2.2⟩
+        by_contra hphi
+        have hsin : Real.sin p.2 ≤ 0 :=
+          Real.sin_nonpos_of_nonpos_of_neg_pi_le (le_of_not_gt hphi) hp.2.1.le
+        exact (not_lt_of_ge (mul_nonpos_of_nonneg_of_nonpos hp.1.le hsin)) h
+      · rintro ⟨_, hphi, _⟩
+        exact mul_pos hp.1 (Real.sin_pos_of_pos_of_lt_pi hphi hp.2.2)
+    by_cases hp' : p ∈ Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi
+    · rw [Set.indicator_of_mem hp' _, Set.indicator_of_mem (hmem.mpr hp') _]
+    · rw [Set.indicator_of_notMem hp' _, Set.indicator_of_notMem (mt hmem.mp hp') _]
+      simp
+  · rw [Set.indicator_of_notMem hp _]
+    have hp' : p ∉ Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi := by
+      intro h
+      exact hp (by
+        rw [polarCoord_target]
+        change 0 < p.1 ∧ -Real.pi < p.2 ∧ p.2 < Real.pi
+        change 0 < p.1 ∧ 0 < p.2 ∧ p.2 < Real.pi at h
+        exact ⟨h.1, by linarith [Real.pi_pos], h.2.2⟩)
+    rw [Set.indicator_of_notMem hp' _]
+
+/-- Combining the meridian Jacobian with the horizontal cylindrical factor
+gives the complex-valued spherical density `ρ * (ρ * sin φ)`. -/
+theorem integral_meridian_cylindrical_density
+    (G : ℝ × ℝ → ℂ) :
+    (∫ q in Set.univ ×ˢ Set.Ioi (0 : ℝ),
+      (q.2 : ℂ) * G (q.2, q.1)) =
+      ∫ p in Set.Ioi (0 : ℝ) ×ˢ Set.Ioo (0 : ℝ) Real.pi,
+        (p.1 : ℂ) * ((p.1 * Real.sin p.2 : ℝ) : ℂ) *
+          G (p.1 * Real.sin p.2, p.1 * Real.cos p.2) := by
+  simpa only [polarCoord_symm_apply, Complex.real_smul, mul_assoc] using
+    (integral_meridian_halfPlane
+      (fun q : ℝ × ℝ => (q.2 : ℂ) * G (q.2, q.1)))
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- Integrating a nonnegative measurable function independent of the
+azimuthal variable over the full angular interval contributes a factor
+`2π`. -/
+theorem lintegral_Ioi_prod_Ioo_angle_factor
+    (F : ℝ → ℝ≥0∞) (hF : Measurable F) :
+    (∫⁻ p in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+      F p.1 ∂((volume : Measure ℝ).prod volume)) =
+      ENNReal.ofReal (2 * Real.pi) * ∫⁻ r in Ioi (0 : ℝ), F r := by
+  calc
+    (∫⁻ p in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+      F p.1 ∂((volume : Measure ℝ).prod volume)) =
+        ∫⁻ r in Ioi (0 : ℝ), ∫⁻ θ in Ioo (-Real.pi) Real.pi,
+          F r ∂volume ∂volume := by
+      apply setLIntegral_prod
+      exact (hF.comp measurable_fst).aemeasurable
+    _ = ∫⁻ r in Ioi (0 : ℝ), F r * volume (Ioo (-Real.pi) Real.pi) ∂volume := by
+      apply lintegral_congr
+      intro r
+      simp [lintegral_const]
+    _ = (∫⁻ r in Ioi (0 : ℝ), F r ∂volume) * volume (Ioo (-Real.pi) Real.pi) := by
+      exact lintegral_mul_const _ hF
+    _ = ENNReal.ofReal (2 * Real.pi) * ∫⁻ r in Ioi (0 : ℝ), F r := by
+      rw [Real.volume_Ioo]
+      have hangle : Real.pi - -Real.pi = 2 * Real.pi := by ring
+      rw [hangle, mul_comm]
+
+/-- The Bochner counterpart of the angular factorization.  The radial input
+is assumed integrable on `(0, ∞)`, which is exactly what Fubini needs on the
+product with the finite angular interval. -/
+theorem integral_Ioi_prod_Ioo_angle_factor
+    (F : ℝ → ℂ) (hF : IntegrableOn F (Ioi (0 : ℝ)) volume) :
+    (∫ p in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+      F p.1 ∂((volume : Measure ℝ).prod volume)) =
+      ((2 * Real.pi : ℝ) : ℂ) * ∫ r in Ioi (0 : ℝ), F r := by
+  have hprod : IntegrableOn (fun p : ℝ × ℝ => F p.1)
+      (Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi) ((volume : Measure ℝ).prod volume) := by
+    rw [IntegrableOn, ← Measure.prod_restrict]
+    exact hF.comp_fst (volume.restrict (Ioo (-Real.pi) Real.pi))
+  have hangle : (volume : Measure ℝ).real (Ioo (-Real.pi) Real.pi) = 2 * Real.pi := by
+    rw [Measure.real, Real.volume_Ioo]
+    calc
+      (ENNReal.ofReal (Real.pi - -Real.pi)).toReal = Real.pi - -Real.pi :=
+        ENNReal.toReal_ofReal (by linarith [Real.pi_pos])
+      _ = 2 * Real.pi := by ring
+  calc
+    (∫ p in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+      F p.1 ∂((volume : Measure ℝ).prod volume)) =
+        ∫ r in Ioi (0 : ℝ), ∫ θ in Ioo (-Real.pi) Real.pi, F r ∂volume ∂volume := by
+      exact setIntegral_prod _ hprod
+    _ = ∫ r in Ioi (0 : ℝ), ((2 * Real.pi : ℝ) : ℂ) * F r ∂volume := by
+      apply integral_congr_ae
+      filter_upwards with r
+      rw [setIntegral_const, hangle, Complex.real_smul]
+    _ = ((2 * Real.pi : ℝ) : ℂ) * ∫ r in Ioi (0 : ℝ), F r := by
+      rw [integral_const_mul]
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- Lebesgue integration in `ℂ × ℝ`, for functions depending on the horizontal
+coordinate only through its radius, is the usual three-dimensional spherical
+coordinate integral. -/
+theorem lintegral_threeDimensional_spherical
+    (G : ℝ × ℝ → ℝ≥0∞) (hG : Measurable G) :
+    (∫⁻ y : ℂ × ℝ, G (‖y.1‖, y.2) ∂((volume : Measure ℂ).prod volume)) =
+      ENNReal.ofReal (2 * Real.pi) *
+        ∫⁻ p in Ioi (0 : ℝ) ×ˢ Ioo (0 : ℝ) Real.pi,
+          ENNReal.ofReal p.1 * ENNReal.ofReal (p.1 * Real.sin p.2) *
+            G (p.1 * Real.sin p.2, p.1 * Real.cos p.2) := by
+  have hF : Measurable (fun y : ℂ × ℝ => G (‖y.1‖, y.2)) :=
+    hG.comp ((measurable_norm.comp measurable_fst).prodMk measurable_snd)
+  have hRadial : Measurable (fun r : ℝ =>
+      ENNReal.ofReal r * ∫⁻ z : ℝ, G (r, z)) :=
+    measurable_id.ennreal_ofReal.mul hG.lintegral_prod_right'
+  have hMeridian : Measurable (fun q : ℝ × ℝ =>
+      ENNReal.ofReal q.2 * G (q.2, q.1)) :=
+    (measurable_snd.ennreal_ofReal).mul
+      (hG.comp (measurable_snd.prodMk measurable_fst))
+  calc
+    (∫⁻ y : ℂ × ℝ, G (‖y.1‖, y.2) ∂((volume : Measure ℂ).prod volume)) =
+        ∫⁻ p in Complex.polarCoord.target,
+          ENNReal.ofReal p.1 *
+            (∫⁻ z : ℝ, G (‖Complex.polarCoord.symm p‖, z)) :=
+      lintegral_cylindrical _ hF
+    _ = ∫⁻ p in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+          ENNReal.ofReal p.1 *
+            (∫⁻ z : ℝ, G (‖Complex.polarCoord.symm p‖, z)) := by
+      rw [Complex.polarCoord_target]
+    _ = ∫⁻ p in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+          ENNReal.ofReal p.1 * (∫⁻ z : ℝ, G (p.1, z)) := by
+      apply setLIntegral_congr_fun (measurableSet_Ioi.prod measurableSet_Ioo)
+      intro p hp
+      have hp0 : 0 < p.1 := hp.1
+      simp [abs_of_pos hp0]
+    _ = ENNReal.ofReal (2 * Real.pi) *
+          ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * ∫⁻ z : ℝ, G (r, z) :=
+      lintegral_Ioi_prod_Ioo_angle_factor _ hRadial
+    _ = ENNReal.ofReal (2 * Real.pi) *
+          ∫⁻ q in Set.univ ×ˢ Ioi (0 : ℝ),
+            ENNReal.ofReal q.2 * G (q.2, q.1) := by
+      congr 1
+      calc
+        (∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * ∫⁻ z : ℝ, G (r, z)) =
+            ∫⁻ r in Ioi (0 : ℝ), ∫⁻ z : ℝ, ENNReal.ofReal r * G (r, z) := by
+          apply setLIntegral_congr_fun measurableSet_Ioi
+          intro r hr
+          change ENNReal.ofReal r * (∫⁻ z : ℝ, G (r, z)) =
+            ∫⁻ z : ℝ, ENNReal.ofReal r * G (r, z)
+          exact (lintegral_const_mul (μ := volume) (ENNReal.ofReal r)
+            (hG.comp (measurable_const.prodMk measurable_id))).symm
+        _ = ∫⁻ q in Set.univ ×ˢ Ioi (0 : ℝ),
+            ENNReal.ofReal q.2 * G (q.2, q.1) := by
+          symm
+          change
+            (∫⁻ q in Set.univ ×ˢ Ioi (0 : ℝ),
+              ENNReal.ofReal q.2 * G (q.2, q.1) ∂((volume : Measure ℝ).prod volume)) =
+            ∫⁻ r in Ioi (0 : ℝ), ∫⁻ z : ℝ, ENNReal.ofReal r * G (r, z)
+          simpa using
+            (setLIntegral_prod_symm (μ := volume) (ν := volume)
+              (s := Set.univ) (t := Ioi (0 : ℝ))
+              (fun q : ℝ × ℝ => ENNReal.ofReal q.2 * G (q.2, q.1))
+              hMeridian.aemeasurable.restrict)
+    _ = ENNReal.ofReal (2 * Real.pi) *
+          ∫⁻ p in Ioi (0 : ℝ) ×ˢ Ioo (0 : ℝ) Real.pi,
+            ENNReal.ofReal p.1 * ENNReal.ofReal (p.1 * Real.sin p.2) *
+              G (p.1 * Real.sin p.2, p.1 * Real.cos p.2) := by
+      rw [lintegral_meridian_cylindrical_density]
+
+/-- The Euclidean radius of the meridian coordinates `(ρ sin φ, ρ cos φ)` is
+`ρ` when `ρ` is nonnegative. -/
+theorem sqrt_spherical_meridian_norm_sq (ρ φ : ℝ) (hρ : 0 ≤ ρ) :
+    Real.sqrt ((ρ * Real.sin φ) ^ 2 + (ρ * Real.cos φ) ^ 2) = ρ := by
+  rw [show (ρ * Real.sin φ) ^ 2 + (ρ * Real.cos φ) ^ 2 = ρ ^ 2 by
+    calc
+      (ρ * Real.sin φ) ^ 2 + (ρ * Real.cos φ) ^ 2 =
+          ρ ^ 2 * (Real.sin φ ^ 2 + Real.cos φ ^ 2) := by ring
+      _ = ρ ^ 2 := by rw [Real.sin_sq_add_cos_sq, mul_one]]
+  simpa [abs_of_nonneg hρ] using (Real.sqrt_sq_eq_abs ρ)
+
+/-- In meridian spherical coordinates, normalizing the vertical coordinate
+returns `cos φ` away from the origin. -/
+theorem spherical_normalized_vertical_eq_cos (ρ φ : ℝ) (hρ : 0 < ρ) :
+    (ρ * Real.cos φ) /
+        Real.sqrt ((ρ * Real.sin φ) ^ 2 + (ρ * Real.cos φ) ^ 2) = Real.cos φ := by
+  rw [sqrt_spherical_meridian_norm_sq ρ φ hρ.le]
+  field_simp
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Metric Set
+
+noncomputable section
+
+/-- Polar decomposition of Lebesgue integration in positive Euclidean
+dimension, using the concrete `unitSurfaceMeasure`.  The radial factor is
+`Measure.volumeIoiPow (d - 1)`, i.e. Lebesgue measure on positive radii with
+density `r ^ (d - 1)`. -/
+theorem integral_polar_unitSurfaceMeasure {d : ℕ} (hd : 0 < d)
+    (H : Euclidean d → ℂ) :
+    (∫ x : Euclidean d, H x) =
+      ∫ p : sphere (0 : Euclidean d) 1 × Ioi (0 : ℝ),
+        H (p.2.1 • (p.1 : Euclidean d)) ∂
+          ((unitSurfaceMeasure d).prod (Measure.volumeIoiPow (d - 1))) := by
+  let i : Fin d := ⟨0, hd⟩
+  letI : Nonempty (Fin d) := ⟨i⟩
+  calc
+    (∫ x : Euclidean d, H x) =
+        ∫ x : ({0}ᶜ : Set (Euclidean d)), H x.1 ∂
+          ((volume : Measure (Euclidean d)).comap (↑)) := by
+      rw [integral_subtype_comap (measurableSet_singleton _).compl H,
+        restrict_compl_singleton]
+    _ = ∫ p : sphere (0 : Euclidean d) 1 × Ioi (0 : ℝ),
+        (H ∘ Subtype.val ∘ (homeomorphUnitSphereProd (Euclidean d)).symm) p ∂
+          (((volume : Measure (Euclidean d)).toSphere).prod
+            (Measure.volumeIoiPow (Module.finrank ℝ (Euclidean d) - 1))) := by
+      simpa using
+        (volume : Measure (Euclidean d)).measurePreserving_homeomorphUnitSphereProd.integral_comp
+          (Homeomorph.measurableEmbedding _)
+          (H ∘ Subtype.val ∘ (homeomorphUnitSphereProd (Euclidean d)).symm)
+    _ = ∫ p : sphere (0 : Euclidean d) 1 × Ioi (0 : ℝ),
+        H (p.2.1 • (p.1 : Euclidean d)) ∂
+          ((unitSurfaceMeasure d).prod (Measure.volumeIoiPow (d - 1))) := by
+      simp [unitSurfaceMeasure]
+
+end
+
+end LeanSpherical.HarmonicAnalysis
 
 namespace LeanSpherical.HarmonicAnalysis
 
@@ -516,6 +906,124 @@ theorem exists_unitSurfaceMeasure_cap_real_le_power
     rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hpow]
   rw [← hrightreal]
   exact (ENNReal.toReal_le_toReal (measure_ne_top _ _) hright).mpr hbound
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Metric Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- A nonnegative function of the final coordinate and the radius in the
+first `d` coordinates has the expected height--radial integral formula in
+`Euclidean (d + 1)`. -/
+theorem lintegral_euclideanSucc_radial_last {d : Nat} (hd : 0 < d)
+    (G : ℝ × ℝ → ℝ≥0∞) (hG : Measurable G) :
+    (∫⁻ x : Euclidean (d + 1),
+      G (‖MeasurableEquiv.toLp 2 (Fin d → ℝ) (fun i => x (Fin.castAdd 1 i))‖,
+        x (Fin.last d))) =
+      ENNReal.ofReal (surfaceMass d) *
+        ∫⁻ z : ℝ, ∫⁻ r in Ioi (0 : ℝ),
+          ENNReal.ofReal r ^ (d - 1) * G (r, z) := by
+  let C : Euclidean (d + 1) → Euclidean d × ℝ := fun x =>
+    (MeasurableEquiv.toLp 2 (Fin d → ℝ) (fun i => x (Fin.castAdd 1 i)),
+      x (Fin.last d))
+  have hfirst : Measurable (fun x : Euclidean (d + 1) =>
+      MeasurableEquiv.toLp 2 (Fin d → ℝ) (fun i => x (Fin.castAdd 1 i))) := by
+    apply (MeasurableEquiv.toLp 2 (Fin d → ℝ)).measurable.comp
+    apply measurable_pi_lambda
+    intro i
+    fun_prop
+  have hC : Measurable C := by
+    exact hfirst.prodMk (by fun_prop)
+  have hGC : Measurable (fun q : Euclidean d × ℝ => G (‖q.1‖, q.2)) :=
+    hG.comp ((measurable_norm.comp measurable_fst).prodMk measurable_snd)
+  have hmeridian : Measurable (fun q : ℝ × ℝ =>
+      ENNReal.ofReal q.2 ^ (d - 1) * G (q.2, q.1)) :=
+    (measurable_snd.ennreal_ofReal.pow_const (d - 1)).mul
+      (hG.comp (measurable_snd.prodMk measurable_fst))
+  have hinner : Measurable (fun z : ℝ =>
+      ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r ^ (d - 1) * G (r, z)) := by
+    change Measurable (fun z : ℝ =>
+      ∫⁻ r, (fun q : ℝ × ℝ =>
+        ENNReal.ofReal q.2 ^ (d - 1) * G (q.2, q.1)) (z, r) ∂
+          volume.restrict (Ioi (0 : ℝ)))
+    exact hmeridian.lintegral_prod_right'
+  calc
+    (∫⁻ x : Euclidean (d + 1),
+      G (‖MeasurableEquiv.toLp 2 (Fin d → ℝ) (fun i => x (Fin.castAdd 1 i))‖,
+        x (Fin.last d))) =
+        ∫⁻ q : Euclidean d × ℝ, G (‖q.1‖, q.2) ∂Measure.map C volume := by
+      exact (MeasureTheory.lintegral_map hGC hC).symm
+    _ = ∫⁻ q : Euclidean d × ℝ,
+        G (‖q.1‖, q.2) ∂((volume : Measure (Euclidean d)).prod volume) := by
+      rw [show C = fun x : Euclidean (d + 1) =>
+        (MeasurableEquiv.toLp 2 (Fin d → ℝ) (fun i => x (Fin.castAdd 1 i)),
+          x (Fin.last d)) by rfl,
+        map_euclideanSucc_coordinates_volume]
+    _ = ∫⁻ z : ℝ, ∫⁻ y : Euclidean d, G (‖y‖, z) := by
+      exact lintegral_prod_symm' _ hGC
+    _ = ∫⁻ z : ℝ, ENNReal.ofReal (surfaceMass d) *
+          ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r ^ (d - 1) * G (r, z) := by
+      apply lintegral_congr
+      intro z
+      exact lintegral_euclidean_radial hd (fun r => G (r, z))
+        (hG.comp (measurable_id.prodMk measurable_const))
+    _ = ENNReal.ofReal (surfaceMass d) *
+        ∫⁻ z : ℝ, ∫⁻ r in Ioi (0 : ℝ),
+          ENNReal.ofReal r ^ (d - 1) * G (r, z) := by
+      rw [lintegral_const_mul _ hinner]
+
+end
+
+end LeanSpherical.HarmonicAnalysis
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory
+open scoped ENNReal Interval
+
+noncomputable section
+
+/-- The substitution `u = cos φ` on the meridian. -/
+theorem integral_comp_cos_mul_sin (g : ℝ → ℂ) (hg : Continuous g) :
+    (∫ φ in (0 : ℝ)..Real.pi, g (Real.cos φ) * (Real.sin φ : ℂ)) =
+      ∫ u in (-1 : ℝ)..1, g u := by
+  have hsubst := intervalIntegral.integral_deriv_smul_comp
+    (a := (0 : ℝ)) (b := Real.pi) (f := Real.cos) (f' := fun φ => -Real.sin φ)
+    (g := g) (fun φ _ => Real.hasDerivAt_cos φ) (by fun_prop) hg
+  simp only [Function.comp_apply, Real.cos_zero, Real.cos_pi] at hsubst
+  calc
+    (∫ φ in (0 : ℝ)..Real.pi, g (Real.cos φ) * (Real.sin φ : ℂ)) =
+        -∫ φ in (0 : ℝ)..Real.pi, (-Real.sin φ) • g (Real.cos φ) := by
+      rw [← intervalIntegral.integral_neg]
+      apply intervalIntegral.integral_congr
+      intro φ _
+      simp only [neg_smul, neg_neg, Complex.real_smul]
+      ring
+    _ = -∫ u in (1 : ℝ)..(-1 : ℝ), g u := by rw [hsubst]
+    _ = ∫ u in (-1 : ℝ)..1, g u := by
+      rw [intervalIntegral.integral_symm]
+      ring
+
+/-- The measurable change of variables `u = cos φ` on the open meridian. -/
+theorem lintegral_comp_cos_mul_sin (u : ℝ → ℝ≥0∞) :
+    (∫⁻ φ in Set.Ioo (0 : ℝ) Real.pi,
+      ENNReal.ofReal (Real.sin φ) * u (Real.cos φ)) =
+      ∫⁻ t in Set.Ioo (-1 : ℝ) 1, u t := by
+  let s : Set ℝ := Set.Ioo (0 : ℝ) Real.pi
+  have himage : Real.cos '' s = Set.Ioo (-1 : ℝ) 1 := by
+    simpa [s] using Real.cosPartialHomeomorph.image_source_eq_target
+  rw [← himage]
+  simpa [s] using
+    (lintegral_image_eq_lintegral_deriv_mul_of_antitoneOn
+      (f := Real.cos) (f' := fun φ => -Real.sin φ) (s := s) measurableSet_Ioo
+      (fun φ _ => (Real.hasDerivAt_cos φ).hasDerivWithinAt)
+      (Real.strictAntiOn_cos.antitoneOn.mono Set.Ioo_subset_Icc_self) u).symm
 
 end
 
