@@ -558,6 +558,313 @@ theorem stein_spherical_maximal
       C * ∫ x : Euclidean d, ‖f x‖ ^ p
   exact relative_reassembly_limit (d := d) (p := p) hd hp φ hφone D hD hfinite
 
+/-- On Schwartz inputs, a normalized spherical average commutes with negation. -/
+private theorem normalizedSphericalAverage_schwartz_neg
+    {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ) (r : ℝ) (x : Euclidean d) :
+    normalizedSphericalAverage d ((-f : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) r x =
+      -normalizedSphericalAverage d (f : Euclidean d → ℂ) r x := by
+  unfold normalizedSphericalAverage sphericalAverage
+  change (surfaceMass d : ℂ)⁻¹ *
+      ∫ ω : Metric.sphere (0 : Euclidean d) 1, -f (x + r • (ω : Euclidean d))
+        ∂unitSurfaceMeasure d =
+    -((surfaceMass d : ℂ)⁻¹ *
+      ∫ ω : Metric.sphere (0 : Euclidean d) 1, f (x + r • (ω : Euclidean d))
+        ∂unitSurfaceMeasure d)
+  rw [integral_neg]
+  ring
+
+/-- The concrete normalized maximal function is even on Schwartz inputs. -/
+private theorem normalizedSphericalMaximalReal_schwartz_neg
+    {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    normalizedSphericalMaximalReal d (-f) x = normalizedSphericalMaximalReal d f x := by
+  unfold normalizedSphericalMaximalReal normalizedSphericalMaximal
+  congr with r
+  rw [normalizedSphericalAverage_schwartz_neg]
+  simp
+
+/-- The real-valued concrete maximal function is subadditive on Schwartz
+inputs.  The positivity of the dimension ensures that the extended-real
+suprema are finite before taking `toReal`. -/
+private theorem normalizedSphericalMaximalReal_schwartz_add_le
+    {d : ℕ} (hd0 : 0 < d) (f g : SchwartzMap (Euclidean d) ℂ)
+    (x : Euclidean d) :
+    normalizedSphericalMaximalReal d (f + g) x ≤
+      normalizedSphericalMaximalReal d f x + normalizedSphericalMaximalReal d g x := by
+  have hbound (h : SchwartzMap (Euclidean d) ℂ) :
+      normalizedSphericalMaximal d (h : Euclidean d → ℂ) x ≠ ⊤ := by
+    apply ne_top_of_le_ne_top ENNReal.ofReal_ne_top
+    apply normalizedSphericalMaximal_le_of_norm_le hd0 _ x
+    intro y
+    change ‖h.toBoundedContinuousFunction y‖ ≤ ‖h.toBoundedContinuousFunction‖
+    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+  have hf := hbound f
+  have hg := hbound g
+  have hfg := hbound (f + g)
+  have hadd := normalizedSphericalMaximal_add_le
+    (f : Euclidean d → ℂ) (g : Euclidean d → ℂ) f.continuous g.continuous x
+  have hcoe : ((f + g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) =
+      (f : Euclidean d → ℂ) + (g : Euclidean d → ℂ) := by
+    rfl
+  change (normalizedSphericalMaximal d ((f + g : SchwartzMap (Euclidean d) ℂ) :
+      Euclidean d → ℂ) x).toReal ≤
+    (normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal +
+      (normalizedSphericalMaximal d (g : Euclidean d → ℂ) x).toReal
+  calc
+    (normalizedSphericalMaximal d ((f + g : SchwartzMap (Euclidean d) ℂ) :
+        Euclidean d → ℂ) x).toReal ≤
+        (normalizedSphericalMaximal d (f : Euclidean d → ℂ) x +
+          normalizedSphericalMaximal d (g : Euclidean d → ℂ) x).toReal := by
+      apply ENNReal.toReal_le_toReal hfg (ENNReal.add_ne_top.mpr ⟨hf, hg⟩) |>.mpr
+      rw [hcoe]
+      exact hadd
+    _ = _ := ENNReal.toReal_add hf hg
+
+/-- Pointwise difference domination for the concrete normalized maximal
+function on Schwartz inputs. -/
+private theorem abs_sub_normalizedSphericalMaximalReal_schwartz_le
+    {d : ℕ} (hd0 : 0 < d) (f g : SchwartzMap (Euclidean d) ℂ)
+    (x : Euclidean d) :
+    |normalizedSphericalMaximalReal d f x - normalizedSphericalMaximalReal d g x| ≤
+      normalizedSphericalMaximalReal d (f - g) x := by
+  rw [abs_sub_le_iff]
+  constructor
+  · rw [sub_le_iff_le_add]
+    have h := normalizedSphericalMaximalReal_schwartz_add_le hd0 g (f - g) x
+    have hsum : g + (f - g) = f := by
+      ext y
+      simp
+    rw [hsum] at h
+    simpa [add_comm] using h
+  · rw [sub_le_iff_le_add]
+    have h := normalizedSphericalMaximalReal_schwartz_add_le hd0 f (g - f) x
+    have hsum : f + (g - f) = g := by
+      ext y
+      simp
+    rw [hsum] at h
+    have hneg : normalizedSphericalMaximalReal d (g - f) x =
+        normalizedSphericalMaximalReal d (f - g) x := by
+      rw [show g - f = -(f - g) by
+          ext y
+          simp,
+        normalizedSphericalMaximalReal_schwartz_neg]
+    rw [hneg] at h
+    simpa [add_comm] using h
+
+/-- The admissible spherical-maximal exponent is positive. -/
+private theorem steinSphericalMaximalExponent_pos
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    0 < p := by
+  have hd0 : 0 < d := by omega
+  have hdreal : 0 < (d : ℝ) := by exact_mod_cast hd0
+  have hdenom : 0 < (d : ℝ) - 1 := by
+    have : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
+    linarith
+  exact (div_pos hdreal hdenom).trans hp
+
+/-- A chosen strong-type constant for the Schwartz core of Stein's theorem. -/
+private noncomputable def steinSphericalMaximalSchwartzConstant
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) : ℝ :=
+  (stein_spherical_maximal hd hp).choose
+
+private theorem steinSphericalMaximalSchwartzConstant_pos
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    0 < steinSphericalMaximalSchwartzConstant hd hp :=
+  (stein_spherical_maximal hd hp).choose_spec.1
+
+private theorem steinSphericalMaximalSchwartzConstant_bound
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    MemLp (normalizedSphericalMaximalReal d f) (ENNReal.ofReal p) volume ∧
+      (∫ x : Euclidean d, (normalizedSphericalMaximalReal d f x) ^ p) ≤
+        steinSphericalMaximalSchwartzConstant hd hp * ∫ x : Euclidean d, ‖f x‖ ^ p :=
+  (stein_spherical_maximal hd hp).choose_spec.2 f
+
+/-- The operator norm bound inherited from the Schwartz strong-type estimate. -/
+noncomputable def steinSphericalMaximalLpBound
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) : ℝ :=
+  steinSphericalMaximalSchwartzConstant hd hp ^ p⁻¹
+
+/-- The concrete maximal function, regarded as an `L^p` element on the
+Schwartz core. -/
+private noncomputable def steinSphericalMaximalSchwartzLp
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    Lp ℝ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) :=
+  (steinSphericalMaximalSchwartzConstant_bound hd hp f).1.toLp
+    (normalizedSphericalMaximalReal d f)
+
+private theorem steinSphericalMaximalSchwartzLp_coeFn
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    steinSphericalMaximalSchwartzLp hd hp f =ᵐ[volume]
+      normalizedSphericalMaximalReal d f := by
+  exact (steinSphericalMaximalSchwartzConstant_bound hd hp f).1.coeFn_toLp
+
+private theorem steinSphericalMaximalSchwartzLp_norm_le
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    ‖steinSphericalMaximalSchwartzLp hd hp f‖ ≤
+      steinSphericalMaximalLpBound hd hp *
+        ‖f.toLp (ENNReal.ofReal p) volume‖ := by
+  have hstrong := steinSphericalMaximalSchwartzConstant_bound hd hp f
+  simpa only [steinSphericalMaximalSchwartzLp, steinSphericalMaximalLpBound,
+    SchwartzMap.toLp] using
+    (norm_toLp_real_nonneg_le_of_rpow_bound
+      (steinSphericalMaximalExponent_pos hd hp)
+      (steinSphericalMaximalSchwartzConstant_pos hd hp).le
+      (normalizedSphericalMaximalReal d f) (f : Euclidean d → ℂ)
+      hstrong.1 (f.memLp (ENNReal.ofReal p) volume)
+      (fun _ => ENNReal.toReal_nonneg) hstrong.2)
+
+private theorem steinSphericalMaximalExponent_one_lt
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    1 < p := by
+  have hdreal : (1 : ℝ) < d := by
+    exact_mod_cast (show 1 < d by omega)
+  have hdenom : 0 < (d : ℝ) - 1 := by linarith
+  have hcritical : 1 < (d : ℝ) / ((d : ℝ) - 1) := by
+    rw [lt_div_iff₀ hdenom]
+    linarith
+  exact hcritical.trans hp
+
+private theorem steinSphericalMaximalSchwartzLp_zero
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    steinSphericalMaximalSchwartzLp hd hp 0 = 0 := by
+  letI : Fact (1 ≤ ENNReal.ofReal p) := ⟨by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal (steinSphericalMaximalExponent_one_lt hd hp).le⟩
+  have htoLp0 : (0 : SchwartzMap (Euclidean d) ℂ).toLp
+      (ENNReal.ofReal p) volume = 0 := by
+    change (SchwartzMap.toLpCLM ℝ ℂ (ENNReal.ofReal p) volume) 0 = 0
+    exact map_zero _
+  have hle : ‖steinSphericalMaximalSchwartzLp hd hp 0‖ ≤ 0 := by
+    simpa only [htoLp0, Lp.norm_zero, mul_zero] using
+      (steinSphericalMaximalSchwartzLp_norm_le hd hp
+        (0 : SchwartzMap (Euclidean d) ℂ))
+  have hnorm : ‖steinSphericalMaximalSchwartzLp hd hp 0‖ = 0 :=
+    le_antisymm hle (norm_nonneg _)
+  exact norm_eq_zero.mp hnorm
+
+private theorem steinSphericalMaximalSchwartzLp_difference_le
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (f g : SchwartzMap (Euclidean d) ℂ) :
+    ‖-steinSphericalMaximalSchwartzLp hd hp f +
+        steinSphericalMaximalSchwartzLp hd hp g‖ ≤
+      ‖steinSphericalMaximalSchwartzLp hd hp (f - g)‖ := by
+  have hnegsub :
+      -steinSphericalMaximalSchwartzLp hd hp f +
+          steinSphericalMaximalSchwartzLp hd hp g =
+        -(steinSphericalMaximalSchwartzLp hd hp f -
+          steinSphericalMaximalSchwartzLp hd hp g) := by
+    abel
+  rw [hnegsub, Lp.norm_neg]
+  apply Lp.norm_le_norm_of_ae_le
+  filter_upwards [Lp.coeFn_sub
+    (steinSphericalMaximalSchwartzLp hd hp f)
+    (steinSphericalMaximalSchwartzLp hd hp g),
+    steinSphericalMaximalSchwartzLp_coeFn hd hp f,
+    steinSphericalMaximalSchwartzLp_coeFn hd hp g,
+    steinSphericalMaximalSchwartzLp_coeFn hd hp (f - g)] with x hsub hf hg hfg
+  rw [hsub]
+  simp only [Pi.sub_apply]
+  rw [hf, hg, hfg]
+  simpa [normalizedSphericalMaximalReal, Real.norm_eq_abs,
+    abs_of_nonneg ENNReal.toReal_nonneg, sub_eq_add_neg, add_comm] using
+    abs_sub_normalizedSphericalMaximalReal_schwartz_le (by omega) f g x
+
+/-- The dense `L^p` extension of the spherical maximal function.  On
+Schwartz functions it agrees almost everywhere with the concrete pointwise
+maximal function; for arbitrary `L^p` inputs it is an `Lp`-class, which is
+the representative-independent formulation of the theorem. -/
+private theorem exists_steinSphericalMaximalLp
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    ∃ Tbar : Lp ℂ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) →
+      Lp ℝ (ENNReal.ofReal p) (volume : Measure (Euclidean d)),
+      (∀ f, Tbar (f.toLp (ENNReal.ofReal p)
+        (volume : Measure (Euclidean d))) =
+        steinSphericalMaximalSchwartzLp hd hp f) ∧
+        ∀ F, ‖Tbar F‖ ≤ steinSphericalMaximalLpBound hd hp * ‖F‖ := by
+  letI : Fact (1 ≤ ENNReal.ofReal p) := ⟨by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal (steinSphericalMaximalExponent_one_lt hd hp).le⟩
+  obtain ⟨Tbar, hagree, _hLipschitz, hbound⟩ :=
+    exists_schwartzLp_extension_of_a_priori_bound ENNReal.ofReal_ne_top
+    (steinSphericalMaximalSchwartzLp hd hp) (steinSphericalMaximalLpBound hd hp)
+    (Real.rpow_nonneg (steinSphericalMaximalSchwartzConstant_pos hd hp).le _)
+    (steinSphericalMaximalSchwartzLp_zero hd hp)
+    (by
+      intro f g
+      rw [Lp.dist_eq_norm]
+      exact steinSphericalMaximalSchwartzLp_difference_le hd hp f g)
+    (steinSphericalMaximalSchwartzLp_norm_le hd hp)
+  refine ⟨Tbar, ?_, hbound⟩
+  intro f
+  simpa only [SchwartzMap.toLpCLM_apply] using hagree f
+
+/-- The `L^p`-valued spherical maximal operator obtained by dense extension
+from Schwartz functions. -/
+noncomputable def steinSphericalMaximalLp
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    Lp ℂ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) →
+      Lp ℝ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) :=
+  (exists_steinSphericalMaximalLp hd hp).choose
+
+/-- The dense extension agrees with the original pointwise spherical maximal
+function on Schwartz inputs, up to almost-everywhere equality. -/
+theorem steinSphericalMaximalLp_agrees_schwartz_ae
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    (steinSphericalMaximalLp hd hp
+      (f.toLp (ENNReal.ofReal p) volume) : Euclidean d → ℝ) =ᵐ[volume]
+      normalizedSphericalMaximalReal d f := by
+  have hagree : steinSphericalMaximalLp hd hp
+      (f.toLp (ENNReal.ofReal p) volume) =
+      steinSphericalMaximalSchwartzLp hd hp f := by
+    simpa only [steinSphericalMaximalLp] using
+      (exists_steinSphericalMaximalLp hd hp).choose_spec.1 f
+  rw [hagree]
+  exact steinSphericalMaximalSchwartzLp_coeFn hd hp f
+
+/-- Norm form of Stein's spherical maximal estimate on all `L^p` classes. -/
+theorem steinSphericalMaximalLp_norm_le
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p)
+    (F : Lp ℂ (ENNReal.ofReal p) (volume : Measure (Euclidean d))) :
+    ‖steinSphericalMaximalLp hd hp F‖ ≤
+      steinSphericalMaximalLpBound hd hp * ‖F‖ := by
+  simpa only [steinSphericalMaximalLp] using
+    (exists_steinSphericalMaximalLp hd hp).choose_spec.2 F
+
+/-- Honest `L^p` form of Stein's spherical maximal theorem.  An arbitrary
+`MemLp` representative is first passed to its `Lp` class, so no pointwise
+operator is asserted on potentially different null-set representatives. -/
+theorem stein_spherical_maximal_Lp
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (f : Euclidean d → ℂ)
+      (hf : MemLp f (ENNReal.ofReal p) volume),
+      MemLp (steinSphericalMaximalLp hd hp (hf.toLp f) : Euclidean d → ℝ)
+        (ENNReal.ofReal p) volume ∧
+        ‖steinSphericalMaximalLp hd hp (hf.toLp f)‖ ≤ C * ‖hf.toLp f‖ := by
+  refine ⟨steinSphericalMaximalLpBound hd hp,
+    Real.rpow_pos_of_pos (steinSphericalMaximalSchwartzConstant_pos hd hp) _, ?_⟩
+  intro f hf
+  exact ⟨Lp.memLp _, steinSphericalMaximalLp_norm_le hd hp (hf.toLp f)⟩
+
 end
 
 

@@ -9,6 +9,9 @@ import LeanSpherical.HarmonicAnalysis.SmoothDyadicPhysical
 import Mathlib.Analysis.Distribution.SchwartzSpace.Deriv
 import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
 import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
+import Mathlib.MeasureTheory.Function.LpSpace.Complete
+import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
+import Mathlib.Topology.Instances.ENNReal.Lemmas
 
 /-!
 # Schwartz realizations of smooth dyadic and rational decompositions
@@ -1177,6 +1180,183 @@ theorem measurable_smooth_high_profile_lintegrals
     rw [hlow t x]
   rw [heq]
   exact measurable_smooth_high_profile_lintegral f q
+
+/-- Convert a real `p`-moment estimate for a nonnegative output into the
+corresponding norm estimate in `L^p`.  The comparison input may take values
+in any normed additive commutative group. -/
+theorem norm_toLp_real_nonneg_le_of_rpow_bound
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    {μ : Measure α} {p B : ℝ} (hp : 0 < p) (hB : 0 ≤ B)
+    (f : α → ℝ) (g : α → E)
+    (hf : MemLp f (ENNReal.ofReal p) μ)
+    (hg : MemLp g (ENNReal.ofReal p) μ)
+    (hfnn : ∀ x, 0 ≤ f x)
+    (hbound : (∫ x, f x ^ p ∂μ) ≤ B * ∫ x, ‖g x‖ ^ p ∂μ) :
+    ‖hf.toLp f‖ ≤ B ^ p⁻¹ * ‖hg.toLp g‖ := by
+  have hpE0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
+  have hpET : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
+  have hIf : 0 ≤ ∫ x, f x ^ p ∂μ :=
+    integral_nonneg fun x => Real.rpow_nonneg (hfnn x) p
+  have hIg : 0 ≤ ∫ x, ‖g x‖ ^ p ∂μ :=
+    integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p
+  rw [Lp.norm_toLp f hf, hf.eLpNorm_eq_integral_rpow_norm hpE0 hpET]
+  simp only [ENNReal.toReal_ofReal hp.le]
+  rw [ENNReal.toReal_ofReal (Real.rpow_nonneg
+    (integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p) _)]
+  rw [Lp.norm_toLp g hg, hg.eLpNorm_eq_integral_rpow_norm hpE0 hpET]
+  simp only [ENNReal.toReal_ofReal hp.le]
+  rw [ENNReal.toReal_ofReal (Real.rpow_nonneg
+    (integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p) _)]
+  have habsf : (fun x => ‖f x‖ ^ p) = fun x => f x ^ p := by
+    funext x
+    rw [Real.norm_eq_abs, abs_of_nonneg (hfnn x)]
+  calc
+    (∫ x, ‖f x‖ ^ p ∂μ) ^ p⁻¹ = (∫ x, f x ^ p ∂μ) ^ p⁻¹ := by rw [habsf]
+    _ ≤ (B * ∫ x, ‖g x‖ ^ p ∂μ) ^ p⁻¹ :=
+      Real.rpow_le_rpow hIf hbound (inv_nonneg.mpr hp.le)
+    _ = B ^ p⁻¹ * (∫ x, ‖g x‖ ^ p ∂μ) ^ p⁻¹ := Real.mul_rpow hB hIg
+
+/-- A Lipschitz operator defined on an injectively parametrized dense subset
+of a metric space extends to the ambient space with the same Lipschitz
+constant.  This is the nonlinear density principle used to pass from a
+Schwartz-core estimate to an `L^p` estimate. -/
+theorem exists_lipschitz_extension_of_denseRange
+    {A X Y : Type*} [PseudoMetricSpace X] [MetricSpace Y] [CompleteSpace Y]
+    (e : A → X) (he : DenseRange e) (heinj : Function.Injective e)
+    (T : A → Y) (C : ℝ) (hC : 0 ≤ C)
+    (hT : ∀ a b, dist (T a) (T b) ≤ C * dist (e a) (e b)) :
+    ∃ Tbar : X → Y,
+      (∀ a, Tbar (e a) = T a) ∧ LipschitzWith C.toNNReal Tbar := by
+  let s : Set X := Set.range e
+  have hs : Dense s := he
+  let preimage : s → A := fun x => Classical.choose x.2
+  have hpreimage (x : s) : e (preimage x) = x.1 :=
+    Classical.choose_spec x.2
+  let core : s → Y := fun x => T (preimage x)
+  have hcore_apply (a : A) : core ⟨e a, ⟨a, rfl⟩⟩ = T a := by
+    apply congrArg T
+    apply heinj
+    simpa only [hpreimage]
+  have hcore_lipschitz : LipschitzWith C.toNNReal core := by
+    apply LipschitzWith.of_dist_le_mul
+    intro x y
+    change dist (T (preimage x)) (T (preimage y)) ≤
+      (C.toNNReal : ℝ) * dist (x : X) (y : X)
+    rw [show (C.toNNReal : ℝ) = C by exact Real.coe_toNNReal C hC]
+    simpa only [hpreimage] using hT (preimage x) (preimage y)
+  refine ⟨hs.extend core, ?_, hs.lipschitzWith_extend hcore_lipschitz⟩
+  intro a
+  let x : s := ⟨e a, ⟨a, rfl⟩⟩
+  change hs.extend core (x : X) = T a
+  calc
+    hs.extend core (x : X) = core x :=
+      hs.extend_of_ind hcore_lipschitz.uniformContinuous x
+    _ = T a := hcore_apply a
+
+/-- The extension in `exists_lipschitz_extension_of_denseRange` inherits the
+usual operator-norm bound whenever the core operator sends a distinguished
+preimage of zero to zero. -/
+theorem exists_lipschitz_extension_of_denseRange_norm_bound
+    {A X Y : Type*} [NormedAddCommGroup X] [NormedAddCommGroup Y]
+    [CompleteSpace Y]
+    (e : A → X) (he : DenseRange e) (heinj : Function.Injective e)
+    (T : A → Y) (C : ℝ) (hC : 0 ≤ C)
+    (a0 : A) (he0 : e a0 = 0) (hT0 : T a0 = 0)
+    (hT : ∀ a b, dist (T a) (T b) ≤ C * dist (e a) (e b)) :
+    ∃ Tbar : X → Y,
+      (∀ a, Tbar (e a) = T a) ∧ LipschitzWith C.toNNReal Tbar ∧
+        ∀ x, ‖Tbar x‖ ≤ C * ‖x‖ := by
+  obtain ⟨Tbar, hagree, hTbar⟩ :=
+    exists_lipschitz_extension_of_denseRange e he heinj T C hC hT
+  refine ⟨Tbar, hagree, hTbar, ?_⟩
+  have hTbar0 : Tbar 0 = 0 := by
+    rw [← he0, hagree a0, hT0]
+  intro x
+  simpa only [dist_zero_right, hTbar0, Real.coe_toNNReal C hC] using
+    hTbar.dist_le_mul x 0
+
+/-- Schwartz maps are dense in finite-exponent `L^p` on Euclidean space, so
+any Lipschitz `L^p`-valued operator on Schwartz data has a canonical
+Lipschitz extension to all `L^p` inputs. -/
+theorem exists_schwartzLp_extension_of_lipschitz
+    {d : ℕ} {q : ENNReal} [Fact (1 ≤ q)] (hqtop : q ≠ ⊤)
+    (T : SchwartzMap (Euclidean d) ℂ →
+      Lp ℝ q (volume : Measure (Euclidean d)))
+    (C : ℝ) (hC : 0 ≤ C)
+    (hT : ∀ f g, dist (T f) (T g) ≤ C *
+      dist ((SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) f)
+        ((SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) g)) :
+    ∃ Tbar : Lp ℂ q (volume : Measure (Euclidean d)) →
+      Lp ℝ q (volume : Measure (Euclidean d)),
+      (∀ f, Tbar ((SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) f) = T f) ∧
+        LipschitzWith C.toNNReal Tbar := by
+  apply exists_lipschitz_extension_of_denseRange
+    (e := fun f : SchwartzMap (Euclidean d) ℂ =>
+      (SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) f)
+  · exact SchwartzMap.denseRange_toLpCLM hqtop
+  · simpa only [SchwartzMap.toLpCLM_apply] using
+      (SchwartzMap.injective_toLp (E := Euclidean d) (F := ℂ) q
+        (volume : Measure (Euclidean d)))
+  · exact hC
+  · exact hT
+
+/-- The Schwartz-to-`L^p` extension also preserves an a priori norm bound
+when the core operator vanishes at zero. -/
+theorem exists_schwartzLp_extension_of_lipschitz_norm_bound
+    {d : ℕ} {q : ENNReal} [Fact (1 ≤ q)] (hqtop : q ≠ ⊤)
+    (T : SchwartzMap (Euclidean d) ℂ →
+      Lp ℝ q (volume : Measure (Euclidean d)))
+    (C : ℝ) (hC : 0 ≤ C) (hT0 : T 0 = 0)
+    (hT : ∀ f g, dist (T f) (T g) ≤ C *
+      dist ((SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) f)
+        ((SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) g)) :
+    ∃ Tbar : Lp ℂ q (volume : Measure (Euclidean d)) →
+      Lp ℝ q (volume : Measure (Euclidean d)),
+      (∀ f, Tbar ((SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) f) = T f) ∧
+        LipschitzWith C.toNNReal Tbar ∧ ∀ x, ‖Tbar x‖ ≤ C * ‖x‖ := by
+  apply exists_lipschitz_extension_of_denseRange_norm_bound
+    (e := fun f : SchwartzMap (Euclidean d) ℂ =>
+      (SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) f)
+    (a0 := (0 : SchwartzMap (Euclidean d) ℂ))
+  · exact SchwartzMap.denseRange_toLpCLM hqtop
+  · simpa only [SchwartzMap.toLpCLM_apply] using
+      (SchwartzMap.injective_toLp (E := Euclidean d) (F := ℂ) q
+        (volume : Measure (Euclidean d)))
+  · exact hC
+  · change (SchwartzMap.toLpCLM ℝ ℂ q (volume : Measure (Euclidean d))) 0 = 0
+    exact map_zero _
+  · exact hT0
+  · exact hT
+
+/-- A reusable density principle for nonlinear operators initially defined on
+Schwartz functions.  A core a-priori bound, together with pointwise
+difference domination, yields a Lipschitz `L^p` extension with the same
+global norm bound. -/
+theorem exists_schwartzLp_extension_of_a_priori_bound
+    {d : ℕ} {q : ENNReal} [Fact (1 ≤ q)] (hqtop : q ≠ ⊤)
+    (T : SchwartzMap (Euclidean d) ℂ →
+      Lp ℝ q (volume : Measure (Euclidean d)))
+    (C : ℝ) (hC : 0 ≤ C) (hT0 : T 0 = 0)
+    (hdiff : ∀ f g, dist (T f) (T g) ≤ ‖T (f - g)‖)
+    (hbound : ∀ f, ‖T f‖ ≤ C *
+      ‖f.toLp q (volume : Measure (Euclidean d))‖) :
+    ∃ Tbar : Lp ℂ q (volume : Measure (Euclidean d)) →
+      Lp ℝ q (volume : Measure (Euclidean d)),
+      (∀ f, Tbar ((SchwartzMap.toLpCLM ℝ ℂ q
+        (volume : Measure (Euclidean d))) f) = T f) ∧
+        LipschitzWith C.toNNReal Tbar ∧ ∀ x, ‖Tbar x‖ ≤ C * ‖x‖ := by
+  apply exists_schwartzLp_extension_of_lipschitz_norm_bound hqtop T C hC hT0
+  intro f g
+  calc
+    dist (T f) (T g) ≤ ‖T (f - g)‖ := hdiff f g
+    _ ≤ C * ‖(f - g).toLp q (volume : Measure (Euclidean d))‖ := hbound (f - g)
+    _ = C * dist ((SchwartzMap.toLpCLM ℝ ℂ q
+        (volume : Measure (Euclidean d))) f)
+        ((SchwartzMap.toLpCLM ℝ ℂ q
+          (volume : Measure (Euclidean d))) g) := by
+      change C * ‖(SchwartzMap.toLpCLM ℝ ℂ q
+        (volume : Measure (Euclidean d))) (f - g)‖ = _
+      rw [map_sub, ← dist_eq_norm_sub]
 
 end
 

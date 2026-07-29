@@ -8,6 +8,7 @@ import LeanSpherical.HarmonicAnalysis.SurfaceCore
 import LeanSpherical.HarmonicAnalysis.SphericalAverages
 import LeanSpherical.HarmonicAnalysis.InterpolationTail
 import LeanSpherical.HarmonicAnalysis.SmoothDyadicPhysical
+import LeanSpherical.HarmonicAnalysis.SchwartzData
 import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
 import Mathlib.MeasureTheory.Covering.Vitali
 import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
@@ -23,10 +24,19 @@ open scoped Convolution FourierTransform Topology
 
 noncomputable section
 
+/-- The centered dyadic-ball maximal function, with values in `ℝ≥0∞`.
+
+Keeping the supremum in `ℝ≥0∞` is important at the weak `(1,1)` endpoint:
+no pointwise boundedness assumption is needed merely to take a real part. -/
+def dyadicBallMaximalRaw (d : ℕ) (g : Euclidean d → ℂ) (x : Euclidean d) : ENNReal :=
+  ⨆ n : ℤ,
+    (volume (Metric.ball x ((2 : ℝ) ^ n)))⁻¹ *
+      ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖g y‖
+
+/-- The real-valued dyadic-ball maximal function.  The raw `ENNReal` version
+is the appropriate formulation at the weak endpoint. -/
 def dyadicBallMaximal (d : ℕ) (g : Euclidean d → ℂ) (x : Euclidean d) : ℝ :=
-  (⨆ n : ℤ,
-    ((volume (Metric.ball x ((2 : ℝ) ^ n)))⁻¹ *
-      ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖g y‖)).toReal
+  (dyadicBallMaximalRaw d g x).toReal
 
 /-- The regular, low relative-frequency component of the spherical maximal
 operator. -/
@@ -114,39 +124,24 @@ private theorem dyadic_ball_average_le_of_norm_le
               rw [ENNReal.inv_mul_cancel hvolpos.ne' hvoltop]
               simp
 
-private theorem dyadic_ball_average_iSup_ne_top
-    {d : ℕ} [NeZero d] (g : Euclidean d → ℂ)
-    {a : ℝ} (hga : ∀ x, ‖g x‖ ≤ a) (x : Euclidean d) :
-    (⨆ n : ℤ, dyadicBallAverage g x n) ≠ ⊤ := by
-  have hbound : (⨆ n : ℤ, dyadicBallAverage g x n) ≤ ENNReal.ofReal a :=
-    iSup_le fun n => dyadic_ball_average_le_of_norm_le g hga x n
-  exact ne_top_of_le_ne_top ENNReal.ofReal_ne_top hbound
-
-private theorem dyadic_ball_level_set_eq_iUnion
-    {d : ℕ} [NeZero d] (g : Euclidean d → ℂ)
-    {a : ℝ} (hga : ∀ x, ‖g x‖ ≤ a)
-    {s : ℝ} (hs : 0 < s) :
-    {x | s < (⨆ n : ℤ, dyadicBallAverage g x n).toReal} =
+private theorem dyadic_ball_raw_level_set_eq_iUnion
+    {d : ℕ} (g : Euclidean d → ℂ) (s : ℝ) :
+    {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} =
       ⋃ N : ℕ, dyadicBallLevelSet g s N := by
   ext x
   simp only [dyadicBallLevelSet, mem_setOf_eq, mem_iUnion]
   constructor
   · intro hx
-    have hx' : ENNReal.ofReal s < ⨆ n : ℤ, dyadicBallAverage g x n := by
-      simpa using
-        (ENNReal.ofReal_lt_iff_lt_toReal hs.le
-          (dyadic_ball_average_iSup_ne_top g hga x)).2 hx
+    change ENNReal.ofReal s < ⨆ n : ℤ, dyadicBallAverage g x n at hx
+    have hx' : ENNReal.ofReal s < ⨆ n : ℤ, dyadicBallAverage g x n := hx
     rcases lt_iSup_iff.mp hx' with ⟨n, hn⟩
     have hnlo : -((n.natAbs : ℕ) : ℤ) ≤ n := by
       have h := neg_le_neg (Int.le_natAbs (a := -n))
       simpa using h
     exact ⟨n.natAbs, n, hnlo, Int.le_natAbs (a := n), hn⟩
   · rintro ⟨N, n, hnlo, hnhi, hn⟩
-    have hx' : s < (⨆ n : ℤ, dyadicBallAverage g x n).toReal :=
-      (ENNReal.ofReal_lt_iff_lt_toReal hs.le
-        (dyadic_ball_average_iSup_ne_top g hga x)).1
-          (hn.trans_le (le_iSup (fun n : ℤ => dyadicBallAverage g x n) n))
-    exact hx'
+    change ENNReal.ofReal s < ⨆ n : ℤ, dyadicBallAverage g x n
+    exact hn.trans_le (le_iSup (fun n : ℤ => dyadicBallAverage g x n) n)
 
 private theorem dyadic_ball_level_set_monotone
     {d : ℕ} (g : Euclidean d → ℂ) (s : ℝ) :
@@ -308,6 +303,68 @@ private theorem dyadic_ball_level_set_weak_one
         (∫⁻ x, ENNReal.ofReal ‖g x‖) :=
       mul_le_mul_right hsum _
 
+/-- The raw centered dyadic-ball maximal function satisfies the weak `(1,1)`
+estimate.  This is stated in `ℝ≥0∞`, so it applies to arbitrary inputs
+without a boundedness or measurability hypothesis. -/
+theorem dyadic_ball_maximal_raw_weak_one
+    {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
+    {s : ℝ} (hs : 0 < s) :
+    ENNReal.ofReal s * volume {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} ≤
+      (ENNReal.ofReal (4 : ℝ)) ^ d *
+        ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
+  letI : NeZero d := ⟨Nat.ne_of_gt hd⟩
+  rw [dyadic_ball_raw_level_set_eq_iUnion g s]
+  rw [(dyadic_ball_level_set_monotone g s).measure_iUnion]
+  rw [ENNReal.mul_iSup _ _]
+  exact iSup_le (dyadic_ball_level_set_weak_one g s)
+
+/-- The real-valued dyadic maximal function has the same weak estimate on
+positive level sets.  The raw formulation above is stronger; this corollary
+only has to exclude the `toReal ⊤ = 0` exceptional value. -/
+theorem dyadic_ball_maximal_toReal_weak_one
+    {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
+    {s : ℝ} (hs : 0 < s) :
+    ENNReal.ofReal s * volume {x | s < dyadicBallMaximal d g x} ≤
+      (ENNReal.ofReal (4 : ℝ)) ^ d *
+        ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
+  have hsubset : {x | s < dyadicBallMaximal d g x} ⊆
+      {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} := by
+    intro x hx
+    change s < (dyadicBallMaximalRaw d g x).toReal at hx
+    have htop : dyadicBallMaximalRaw d g x ≠ ⊤ := by
+      intro htop
+      have hzero : s < 0 := by simpa [htop] using hx
+      exact (not_lt_of_ge hs.le) hzero
+    exact (ENNReal.ofReal_lt_iff_lt_toReal hs.le htop).2 hx
+  calc
+    ENNReal.ofReal s * volume {x | s < dyadicBallMaximal d g x} ≤
+        ENNReal.ofReal s * volume
+          {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} :=
+      mul_le_mul_right (measure_mono hsubset) _
+    _ ≤ (ENNReal.ofReal (4 : ℝ)) ^ d *
+        ∫⁻ x, ENNReal.ofReal ‖g x‖ :=
+      dyadic_ball_maximal_raw_weak_one hd g hs
+
+/-- The centered dyadic Hardy--Littlewood maximal operator is of weak type
+`(1,1)`.  The statement is deliberately valid for every input function; an
+`L¹` hypothesis makes its right-hand side finite. -/
+theorem dyadic_hardy_littlewood_weak_one
+    {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
+    {s : ℝ} (hs : 0 < s) :
+    ENNReal.ofReal s * volume {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} ≤
+      (ENNReal.ofReal (4 : ℝ)) ^ d *
+        ∫⁻ x, ENNReal.ofReal ‖g x‖ :=
+  dyadic_ball_maximal_raw_weak_one hd g hs
+
+/-- The weak `(1,1)` endpoint specialized to `L¹` input. -/
+theorem dyadic_hardy_littlewood_weak_one_memLp
+    {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
+    (hf : MemLp g 1 volume) {s : ℝ} (hs : 0 < s) :
+    ENNReal.ofReal s * volume {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} ≤
+      (ENNReal.ofReal (4 : ℝ)) ^ d * eLpNorm g 1 volume := by
+  simpa only [eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
+    dyadic_hardy_littlewood_weak_one hd g hs
+
 /-- The centered dyadic-ball maximal function satisfies the literal weak
 `(1,1)` estimate obtained by Vitali disjoint-ball selection. -/
 theorem dyadic_ball_maximal_weak_one
@@ -321,14 +378,8 @@ theorem dyadic_ball_maximal_weak_one
           ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖g y‖)).toReal} ≤
       (ENNReal.ofReal (4 : ℝ)) ^ d *
         ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
-  letI : NeZero d := ⟨Nat.ne_of_gt hd⟩
-  change ENNReal.ofReal s * volume
-      {x | s < (⨆ n : ℤ, dyadicBallAverage g x n).toReal} ≤
-    (ENNReal.ofReal (4 : ℝ)) ^ d * ∫⁻ x, ENNReal.ofReal ‖g x‖
-  rw [dyadic_ball_level_set_eq_iUnion g hga hs]
-  rw [(dyadic_ball_level_set_monotone g s).measure_iUnion]
-  rw [ENNReal.mul_iSup _ _]
-  exact iSup_le (dyadic_ball_level_set_weak_one g s)
+  simpa only [dyadicBallMaximal, dyadicBallMaximalRaw] using
+    (dyadic_ball_maximal_toReal_weak_one hd g hs)
 
 /-- The literal relative-frequency spherical maximal piece has the weak
 `(1,1)` endpoint supplied by its physical-space shell bound. -/
@@ -738,7 +789,7 @@ private theorem relative_lowpass_fixed_radius_majorant
         (dyadicBallMaximal d (f : Euclidean d → ℂ) x *
           (volume (Metric.ball (0 : Euclidean d) 1)).toReal) *
         (2 : ℝ) ^ (2 * d)) := by
-          simpa only [dyadicBallMaximal] using hconv
+          simpa only [dyadicBallMaximal, dyadicBallMaximalRaw] using hconv
     _ = lowpassKernelConstant χ * dyadicBallMaximal d (f : Euclidean d → ℂ) x := by
       dsimp only [lowpassKernelConstant, kernel]
       ring
@@ -827,7 +878,7 @@ private theorem dyadic_ball_maximal_lintegral_bound
       ENNReal.ofReal s * volume {x | s < dyadicBallMaximal d g x} ≤
         D * ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
     intro g hg ⟨a, ha, hga⟩ s hs
-    simpa only [D, dyadicBallMaximal] using
+    simpa only [D, dyadicBallMaximal, dyadicBallMaximalRaw] using
       dyadic_ball_maximal_weak_one hd g hg ha hga hs
   have htop : ∀ (g : Euclidean d → ℂ) (a : ℝ), 0 ≤ a →
       (∀ x, ‖g x‖ ≤ a) → ∀ x, dyadicBallMaximal d g x ≤ a := by
@@ -940,22 +991,14 @@ private theorem dyadic_ball_maximal_real_bound_of_lintegral
       · linarith [ENNReal.toReal_nonneg (a := E)]
       · exact integral_nonneg fun _ => Real.rpow_nonneg (norm_nonneg _) p
 
-/-- The dyadic ball maximal operator is of strong type `(p,p)` above one. -/
-private theorem dyadic_ball_maximal_strong_type
-    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
-    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+/-- On Schwartz functions, the dyadic Hardy--Littlewood maximal operator is
+of strong type `(p,p)` for every positive dimension and every `p > 1`. -/
+theorem dyadic_hardy_littlewood_maximal_strong_type_schwartz
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p) :
     ∃ B : ℝ, 0 < B ∧ ∀ f : SchwartzMap (Euclidean d) ℂ,
       MemLp (dyadicBallMaximal d (f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ∧
       (∫ x : Euclidean d, (dyadicBallMaximal d (f : Euclidean d → ℂ) x) ^ p) ≤
         B * ∫ x : Euclidean d, ‖f x‖ ^ p := by
-  have hd0 : 0 < d := by omega
-  have hdreal : (2 : ℝ) < d := by
-    exact_mod_cast (show 2 < d by omega)
-  have hdenom : 0 < (d : ℝ) - 1 := by linarith
-  have hcritical : 1 < (d : ℝ) / ((d : ℝ) - 1) := by
-    rw [lt_div_iff₀ hdenom]
-    nlinarith
-  have hpone : 1 < p := hcritical.trans hp
   let E : ENNReal := ENNReal.ofReal p *
     (2 * (ENNReal.ofReal (4 : ℝ)) ^ d * (ENNReal.ofReal (p - 1))⁻¹ *
       (ENNReal.ofReal (2 : ℝ)) ^ (p - 1))
@@ -984,9 +1027,275 @@ private theorem dyadic_ball_maximal_strong_type
       ENNReal.ofReal (dyadicBallMaximal d (f : Euclidean d → ℂ) x ^ p)) ≤
         E * ∫⁻ x : Euclidean d, (ENNReal.ofReal ‖(f : Euclidean d → ℂ) x‖) ^ p := by
     simpa only [E, mul_assoc] using
-      dyadic_ball_maximal_lintegral_bound hd0 hpone f
+      dyadic_ball_maximal_lintegral_bound hd hp f
   simpa only [B] using
-    dyadic_ball_maximal_real_bound_of_lintegral hd0 (by linarith) E hEtop f hlin
+    dyadic_ball_maximal_real_bound_of_lintegral hd (by linarith) E hEtop f hlin
+
+/- Compatibility wrapper for the spherical proof's stronger exponent range. -/
+private theorem dyadic_ball_maximal_strong_type
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) :
+    ∃ B : ℝ, 0 < B ∧ ∀ f : SchwartzMap (Euclidean d) ℂ,
+      MemLp (dyadicBallMaximal d (f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ∧
+      (∫ x : Euclidean d, (dyadicBallMaximal d (f : Euclidean d → ℂ) x) ^ p) ≤
+        B * ∫ x : Euclidean d, ‖f x‖ ^ p := by
+  have hd0 : 0 < d := by omega
+  have hdreal : (2 : ℝ) < d := by
+    exact_mod_cast (show 2 < d by omega)
+  have hdenom : 0 < (d : ℝ) - 1 := by linarith
+  have hcritical : 1 < (d : ℝ) / ((d : ℝ) - 1) := by
+    rw [lt_div_iff₀ hdenom]
+    nlinarith
+  exact dyadic_hardy_littlewood_maximal_strong_type_schwartz hd0 (hcritical.trans hp)
+
+/- The following `Lp`-valued core is the input to the nonlinear density
+extension.  Keeping the chosen strong-type constant explicit makes the
+resulting extension canonical. -/
+private noncomputable def dyadicHardyLittlewoodStrongConstant
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p) : ℝ :=
+  (dyadic_hardy_littlewood_maximal_strong_type_schwartz hd hp).choose
+
+private theorem dyadicHardyLittlewoodStrongConstant_pos
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p) :
+    0 < dyadicHardyLittlewoodStrongConstant hd hp :=
+  (dyadic_hardy_littlewood_maximal_strong_type_schwartz hd hp).choose_spec.1
+
+private theorem dyadicHardyLittlewoodStrongConstant_bound
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    MemLp (dyadicBallMaximal d (f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ∧
+      (∫ x : Euclidean d, (dyadicBallMaximal d (f : Euclidean d → ℂ) x) ^ p) ≤
+        dyadicHardyLittlewoodStrongConstant hd hp * ∫ x : Euclidean d, ‖f x‖ ^ p :=
+  (dyadic_hardy_littlewood_maximal_strong_type_schwartz hd hp).choose_spec.2 f
+
+private noncomputable def dyadicHardyLittlewoodMaximalSchwartzLp
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    Lp ℝ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) :=
+  (dyadicHardyLittlewoodStrongConstant_bound hd hp f).1.toLp
+    (dyadicBallMaximal d (f : Euclidean d → ℂ))
+
+private theorem dyadicHardyLittlewoodMaximalSchwartzLp_coeFn
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    dyadicHardyLittlewoodMaximalSchwartzLp hd hp f =ᵐ[volume]
+      dyadicBallMaximal d (f : Euclidean d → ℂ) := by
+  exact (dyadicHardyLittlewoodStrongConstant_bound hd hp f).1.coeFn_toLp
+
+private theorem dyadic_ball_maximal_zero (d : ℕ) :
+    dyadicBallMaximal d (0 : Euclidean d → ℂ) = 0 := by
+  funext x
+  simp [dyadicBallMaximal, dyadicBallMaximalRaw]
+
+private theorem dyadic_ball_maximal_neg (d : ℕ) (g : Euclidean d → ℂ) :
+    dyadicBallMaximal d (-g) = dyadicBallMaximal d g := by
+  funext x
+  simp [dyadicBallMaximal, dyadicBallMaximalRaw]
+
+private theorem dyadic_ball_maximal_schwartz_add_le
+    {d : ℕ} (f g : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    dyadicBallMaximal d ((f + g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x ≤
+      dyadicBallMaximal d (f : Euclidean d → ℂ) x +
+        dyadicBallMaximal d (g : Euclidean d → ℂ) x := by
+  apply dyadic_ball_maximal_subadditive
+    (f : Euclidean d → ℂ) (g : Euclidean d → ℂ)
+    f.continuous.measurable g.continuous.measurable
+  · refine ⟨‖f.toBoundedContinuousFunction‖, norm_nonneg _, ?_⟩
+    intro y
+    change ‖f.toBoundedContinuousFunction y‖ ≤ ‖f.toBoundedContinuousFunction‖
+    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+  · refine ⟨‖g.toBoundedContinuousFunction‖, norm_nonneg _, ?_⟩
+    intro y
+    change ‖g.toBoundedContinuousFunction y‖ ≤ ‖g.toBoundedContinuousFunction‖
+    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+
+private theorem dyadic_ball_maximal_schwartz_sub_le
+    {d : ℕ} (f g : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    |dyadicBallMaximal d (f : Euclidean d → ℂ) x -
+        dyadicBallMaximal d (g : Euclidean d → ℂ) x| ≤
+      dyadicBallMaximal d ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+  have hfg := dyadic_ball_maximal_schwartz_add_le g (f - g) x
+  have hgf := dyadic_ball_maximal_schwartz_add_le f (g - f) x
+  have hfirst :
+      dyadicBallMaximal d (f : Euclidean d → ℂ) x ≤
+        dyadicBallMaximal d (g : Euclidean d → ℂ) x +
+          dyadicBallMaximal d ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+    simpa using hfg
+  have hneg :
+      dyadicBallMaximal d ((g - f : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x =
+        dyadicBallMaximal d ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+    rw [show ((g - f : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) =
+      -((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) by
+        ext y
+        simp]
+    exact congrFun (dyadic_ball_maximal_neg d
+      ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ)) x
+  have hsecond :
+      dyadicBallMaximal d (g : Euclidean d → ℂ) x ≤
+        dyadicBallMaximal d (f : Euclidean d → ℂ) x +
+          dyadicBallMaximal d ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x := by
+    rw [← hneg]
+    simpa using hgf
+  rw [abs_sub_le_iff]
+  constructor <;> linarith
+
+private theorem dyadicHardyLittlewoodMaximalSchwartzLp_norm_le
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    ‖dyadicHardyLittlewoodMaximalSchwartzLp hd hp f‖ ≤
+      (dyadicHardyLittlewoodStrongConstant hd hp) ^ p⁻¹ *
+        ‖f.toLp (ENNReal.ofReal p) volume‖ := by
+  have hstrong := dyadicHardyLittlewoodStrongConstant_bound hd hp f
+  simpa only [dyadicHardyLittlewoodMaximalSchwartzLp, SchwartzMap.toLp] using
+    (norm_toLp_real_nonneg_le_of_rpow_bound (show 0 < p by linarith)
+      (dyadicHardyLittlewoodStrongConstant_pos hd hp).le
+      (dyadicBallMaximal d (f : Euclidean d → ℂ))
+      (f : Euclidean d → ℂ) hstrong.1
+      (f.memLp (ENNReal.ofReal p) volume)
+      (fun _ => ENNReal.toReal_nonneg) hstrong.2)
+
+private theorem dyadicHardyLittlewoodMaximalSchwartzLp_zero
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p) :
+    dyadicHardyLittlewoodMaximalSchwartzLp hd hp 0 = 0 := by
+  apply Lp.ext
+  filter_upwards [dyadicHardyLittlewoodMaximalSchwartzLp_coeFn hd hp
+    (0 : SchwartzMap (Euclidean d) ℂ)] with x hx
+  rw [hx]
+  have hzero : ((0 : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) = 0 := by
+    ext y
+    simp
+  rw [hzero]
+  simpa using congrFun (dyadic_ball_maximal_zero d) x
+
+private theorem dyadicHardyLittlewoodMaximalSchwartzLp_difference
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p)
+    (f g : SchwartzMap (Euclidean d) ℂ) :
+    dist (dyadicHardyLittlewoodMaximalSchwartzLp hd hp f)
+        (dyadicHardyLittlewoodMaximalSchwartzLp hd hp g) ≤
+      ‖dyadicHardyLittlewoodMaximalSchwartzLp hd hp (f - g)‖ := by
+  rw [Lp.dist_eq_norm]
+  have hnegsub :
+      -dyadicHardyLittlewoodMaximalSchwartzLp hd hp f +
+          dyadicHardyLittlewoodMaximalSchwartzLp hd hp g =
+        -(dyadicHardyLittlewoodMaximalSchwartzLp hd hp f -
+          dyadicHardyLittlewoodMaximalSchwartzLp hd hp g) := by
+    abel
+  rw [hnegsub, Lp.norm_neg]
+  apply Lp.norm_le_norm_of_ae_le
+  filter_upwards [Lp.coeFn_sub
+    (dyadicHardyLittlewoodMaximalSchwartzLp hd hp f)
+    (dyadicHardyLittlewoodMaximalSchwartzLp hd hp g),
+    dyadicHardyLittlewoodMaximalSchwartzLp_coeFn hd hp f,
+    dyadicHardyLittlewoodMaximalSchwartzLp_coeFn hd hp g,
+    dyadicHardyLittlewoodMaximalSchwartzLp_coeFn hd hp (f - g)] with x hsub hf hg hfg
+  rw [hsub]
+  simp only [Pi.sub_apply]
+  rw [hf, hg, hfg, Real.norm_eq_abs, Real.norm_eq_abs,
+    abs_of_nonneg
+      (show 0 ≤ dyadicBallMaximal d
+        ((f - g : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x from
+          ENNReal.toReal_nonneg)]
+  simpa [sub_eq_add_neg, add_comm] using
+    dyadic_ball_maximal_schwartz_sub_le f g x
+
+/-- The chosen operator norm bound for the dyadic Hardy--Littlewood maximal
+operator on `L^p`. -/
+noncomputable def dyadicHardyLittlewoodMaximalLpBound
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p) : ℝ :=
+  (dyadicHardyLittlewoodStrongConstant hd hp) ^ p⁻¹
+
+private theorem dyadicHardyLittlewoodMaximalLpBound_pos
+    {d : ℕ} {p : ℝ} (hd : 0 < d) (hp : 1 < p) :
+    0 < dyadicHardyLittlewoodMaximalLpBound hd hp :=
+  Real.rpow_pos_of_pos (dyadicHardyLittlewoodStrongConstant_pos hd hp) _
+
+/-- The dense `L^p` extension of the dyadic Hardy--Littlewood maximal
+operator.  It agrees with the pointwise maximal function on Schwartz
+functions, while arbitrary inputs are handled as `Lp` classes. -/
+private theorem exists_dyadicHardyLittlewoodMaximalLp
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p) :
+    ∃ Tbar : Lp ℂ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) →
+      Lp ℝ (ENNReal.ofReal p) (volume : Measure (Euclidean d)),
+      (∀ f, Tbar (f.toLp (ENNReal.ofReal p)
+        (volume : Measure (Euclidean d))) =
+        dyadicHardyLittlewoodMaximalSchwartzLp hd hp f) ∧
+        ∀ F, ‖Tbar F‖ ≤ dyadicHardyLittlewoodMaximalLpBound hd hp * ‖F‖ := by
+  letI : Fact (1 ≤ ENNReal.ofReal p) := ⟨by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal hp.le⟩
+  obtain ⟨Tbar, hagree, _, hbound⟩ :=
+    exists_schwartzLp_extension_of_a_priori_bound ENNReal.ofReal_ne_top
+    (dyadicHardyLittlewoodMaximalSchwartzLp hd hp)
+    (dyadicHardyLittlewoodMaximalLpBound hd hp)
+    (dyadicHardyLittlewoodMaximalLpBound_pos hd hp).le
+    (dyadicHardyLittlewoodMaximalSchwartzLp_zero hd hp)
+    (dyadicHardyLittlewoodMaximalSchwartzLp_difference hd hp)
+    (by
+      simpa only [dyadicHardyLittlewoodMaximalLpBound] using
+        dyadicHardyLittlewoodMaximalSchwartzLp_norm_le hd hp)
+  refine ⟨Tbar, ?_, hbound⟩
+  intro f
+  simpa only [SchwartzMap.toLpCLM_apply] using hagree f
+
+/-- The `L^p`-valued dyadic Hardy--Littlewood maximal operator obtained by
+dense extension from Schwartz functions. -/
+noncomputable def dyadicHardyLittlewoodMaximalLp
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p) :
+    Lp ℂ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) →
+      Lp ℝ (ENNReal.ofReal p) (volume : Measure (Euclidean d)) :=
+  (exists_dyadicHardyLittlewoodMaximalLp hd hp).choose
+
+/-- On Schwartz inputs, the dense extension agrees almost everywhere with
+the concrete dyadic-ball maximal function. -/
+theorem dyadicHardyLittlewoodMaximalLp_agrees_schwartz_ae
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    (dyadicHardyLittlewoodMaximalLp hd hp
+      (f.toLp (ENNReal.ofReal p) volume) : Euclidean d → ℝ) =ᵐ[volume]
+      dyadicBallMaximal d (f : Euclidean d → ℂ) := by
+  have hagree : dyadicHardyLittlewoodMaximalLp hd hp
+      (f.toLp (ENNReal.ofReal p) volume) =
+      dyadicHardyLittlewoodMaximalSchwartzLp hd hp f := by
+    simpa only [dyadicHardyLittlewoodMaximalLp] using
+      (exists_dyadicHardyLittlewoodMaximalLp hd hp).choose_spec.1 f
+  rw [hagree]
+  exact dyadicHardyLittlewoodMaximalSchwartzLp_coeFn hd hp f
+
+/-- Norm form of the strong dyadic Hardy--Littlewood maximal estimate on all
+`L^p` classes. -/
+theorem dyadicHardyLittlewoodMaximalLp_norm_le
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p)
+    (F : Lp ℂ (ENNReal.ofReal p) (volume : Measure (Euclidean d))) :
+    ‖dyadicHardyLittlewoodMaximalLp hd hp F‖ ≤
+      dyadicHardyLittlewoodMaximalLpBound hd hp * ‖F‖ := by
+  simpa only [dyadicHardyLittlewoodMaximalLp] using
+    (exists_dyadicHardyLittlewoodMaximalLp hd hp).choose_spec.2 F
+
+/-- Honest strong `L^p` form of the dyadic Hardy--Littlewood maximal
+theorem.  The input is first passed to its `Lp` class, so the result does not
+depend on a choice of values on a null set. -/
+theorem dyadic_hardy_littlewood_maximal_Lp
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (f : Euclidean d → ℂ)
+      (hf : MemLp f (ENNReal.ofReal p) volume),
+      MemLp (dyadicHardyLittlewoodMaximalLp hd hp (hf.toLp f) : Euclidean d → ℝ)
+        (ENNReal.ofReal p) volume ∧
+        ‖dyadicHardyLittlewoodMaximalLp hd hp (hf.toLp f)‖ ≤ C * ‖hf.toLp f‖ := by
+  refine ⟨dyadicHardyLittlewoodMaximalLpBound hd hp,
+    dyadicHardyLittlewoodMaximalLpBound_pos hd hp, ?_⟩
+  intro f hf
+  exact ⟨Lp.memLp _, dyadicHardyLittlewoodMaximalLp_norm_le hd hp (hf.toLp f)⟩
+
+/-- A fixed-constant version of the strong dyadic Hardy--Littlewood maximal
+estimate for a given `MemLp` representative. -/
+theorem dyadic_hardy_littlewood_maximal_Lp_bound
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p)
+    (f : Euclidean d → ℂ) (hf : MemLp f (ENNReal.ofReal p) volume) :
+    MemLp (dyadicHardyLittlewoodMaximalLp hd hp (hf.toLp f) : Euclidean d → ℝ)
+      (ENNReal.ofReal p) volume ∧
+      ‖dyadicHardyLittlewoodMaximalLp hd hp (hf.toLp f)‖ ≤
+        dyadicHardyLittlewoodMaximalLpBound hd hp * ‖hf.toLp f‖ :=
+  ⟨Lp.memLp _, dyadicHardyLittlewoodMaximalLp_norm_le hd hp (hf.toLp f)⟩
 
 set_option maxHeartbeats 1000000 in
 /- Compact frequency support makes the lowpass supremum a lower-semicontinuous
