@@ -1,0 +1,1303 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4AbsoluteBandpassBridge
+import LeanSpherical.HarmonicAnalysis.FractalDilations.ActiveDyadicRadiusBounds
+
+/-!
+# Sampling a continuous radius family on active dyadic cells
+
+The `TT*` argument for the `Q4` region is carried out at the left endpoints
+of the dyadic cells meeting the radius set.  Those left endpoints are not,
+in general, elements of the radius set.  This file records the honest
+replacement for the false endpoint-sampling identity: the supremum over a
+cell is its left-endpoint value plus the integral of the radius derivative
+over that cell.
+
+The last theorem specializes this statement to the literal absolute dyadic
+bandpass spherical averages.  In particular, its derivative is the actual
+physical radius derivative of that spherical average, not an abstract error
+term.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Metric Set
+open scoped BoundedContinuousFunction FourierTransform
+
+noncomputable section
+
+/-- The finite maximum of a radius family at the left endpoints of a chosen
+finite dyadic family. -/
+def dyadicEndpointSup
+    {V : Type*} [Norm V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (F : Real -> V) : Real :=
+  s.sup' hs fun k => ‖F (dyadicLeft j k)‖
+
+/-- At a local radius offset `u`, the finite maximum of the derivative over
+the left-endpoint translates of a chosen dyadic family. -/
+def dyadicDerivativeSup
+    {V : Type*} [Norm V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (D : Real -> V) (u : Real) : Real :=
+  s.sup' hs fun k => ‖D (dyadicLeft j k + u)‖
+
+/-- The active-cell endpoint maximum for a radius set `E`. -/
+def activeDyadicEndpointSup
+    {V : Type*} [Norm V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (F : Real -> V) : Real :=
+  dyadicEndpointSup j (activeDyadicIndices E j) hs F
+
+/-- The active-cell derivative maximum for a radius set `E`. -/
+def activeDyadicDerivativeSup
+    {V : Type*} [Norm V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (D : Real -> V) (u : Real) : Real :=
+  dyadicDerivativeSup j (activeDyadicIndices E j) hs D u
+
+/-- A concrete index at which a finite endpoint maximum is attained.  This
+is only a pointwise selector; no measurability is asserted or needed for its
+elementary extremal property. -/
+noncomputable def dyadicEndpointSelector
+    {V : Type*} [Norm V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (F : Real -> V) : Int :=
+  Classical.choose (s.exists_mem_eq_sup' hs (fun k => ‖F (dyadicLeft j k)‖))
+
+/-- The endpoint selector takes values in the prescribed finite index set. -/
+theorem dyadicEndpointSelector_mem
+    {V : Type*} [Norm V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (F : Real -> V) :
+    dyadicEndpointSelector j s hs F ∈ s := by
+  exact (Classical.choose_spec
+    (s.exists_mem_eq_sup' hs (fun k => ‖F (dyadicLeft j k)‖))).1
+
+/-- The endpoint selector realizes the finite endpoint maximum exactly. -/
+theorem norm_dyadicEndpointSelector_eq_dyadicEndpointSup
+    {V : Type*} [Norm V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (F : Real -> V) :
+    ‖F (dyadicLeft j (dyadicEndpointSelector j s hs F))‖ =
+      dyadicEndpointSup j s hs F := by
+  exact (Classical.choose_spec
+    (s.exists_mem_eq_sup' hs (fun k => ‖F (dyadicLeft j k)‖))).2.symm
+
+/-- The endpoint selector specialized to the active dyadic cells of `E`. -/
+noncomputable def activeDyadicEndpointSelector
+    {V : Type*} [Norm V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (F : Real -> V) : Int :=
+  dyadicEndpointSelector j (activeDyadicIndices E j) hs F
+
+/-- The active endpoint selector is an active dyadic index. -/
+theorem activeDyadicEndpointSelector_mem
+    {V : Type*} [Norm V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (F : Real -> V) :
+    activeDyadicEndpointSelector E j hs F ∈ activeDyadicIndices E j :=
+  dyadicEndpointSelector_mem j (activeDyadicIndices E j) hs F
+
+/-- The active endpoint selector realizes the active finite maximum. -/
+theorem norm_activeDyadicEndpointSelector_eq_activeDyadicEndpointSup
+    {V : Type*} [Norm V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (F : Real -> V) :
+    ‖F (dyadicLeft j (activeDyadicEndpointSelector E j hs F))‖ =
+      activeDyadicEndpointSup E j hs F :=
+  norm_dyadicEndpointSelector_eq_dyadicEndpointSup
+    j (activeDyadicIndices E j) hs F
+
+/-- The finite set of indices on which a real-valued finite family attains
+its maximum at a given point. -/
+def finsetRealArgmaxCandidates
+    {X : Type*} (s : Finset Int) (hs : s.Nonempty)
+    (u : Int -> X -> Real) (x : X) : Finset Int :=
+  s.filter (fun i => u i x = s.sup' hs (fun k => u k x))
+
+/-- A finite real-valued family always has a maximizing candidate. -/
+theorem finsetRealArgmaxCandidates_nonempty
+    {X : Type*} (s : Finset Int) (hs : s.Nonempty)
+    (u : Int -> X -> Real) (x : X) :
+    (finsetRealArgmaxCandidates s hs u x).Nonempty := by
+  rcases s.exists_mem_eq_sup' hs (fun k => u k x) with ⟨i, hi, himax⟩
+  refine ⟨i, Finset.mem_filter.mpr ⟨hi, ?_⟩⟩
+  exact himax.symm
+
+/-- A deterministic finite argmax: among the maximizing indices, choose the
+least integer.  Unlike an arbitrary classical choice, this selector has a
+direct measurable-selection proof below. -/
+noncomputable def finsetRealArgmax
+    {X : Type*} (s : Finset Int) (hs : s.Nonempty)
+    (u : Int -> X -> Real) (x : X) : Int :=
+  (finsetRealArgmaxCandidates s hs u x).min'
+    (finsetRealArgmaxCandidates_nonempty s hs u x)
+
+/-- The deterministic argmax belongs to the finite family. -/
+theorem finsetRealArgmax_mem
+    {X : Type*} (s : Finset Int) (hs : s.Nonempty)
+    (u : Int -> X -> Real) (x : X) :
+    finsetRealArgmax s hs u x ∈ s := by
+  exact (Finset.mem_filter.mp
+    (Finset.min'_mem _ (finsetRealArgmaxCandidates_nonempty s hs u x))).1
+
+/-- The deterministic argmax attains the finite real maximum exactly. -/
+theorem finsetRealArgmax_apply_eq_sup
+    {X : Type*} (s : Finset Int) (hs : s.Nonempty)
+    (u : Int -> X -> Real) (x : X) :
+    u (finsetRealArgmax s hs u x) x = s.sup' hs (fun k => u k x) := by
+  exact (Finset.mem_filter.mp
+    (Finset.min'_mem _ (finsetRealArgmaxCandidates_nonempty s hs u x))).2
+
+/-- A finite argmax of measurable real families is measurable.  The least
+maximizer convention is essential here: its fibre over `i` says that `i`
+attains the finite maximum and no smaller active index does. -/
+theorem measurable_finsetRealArgmax
+    {X : Type*} [MeasurableSpace X] (s : Finset Int) (hs : s.Nonempty)
+    (u : Int -> X -> Real) (hu : ∀ i ∈ s, Measurable (u i)) :
+    Measurable (finsetRealArgmax s hs u) := by
+  let M : X -> Real := fun x => s.sup' hs (fun k => u k x)
+  have hM : Measurable M := by
+    dsimp only [M]
+    simpa only [← Finset.sup'_apply] using (Finset.measurable_sup' hs hu)
+  have hvalue (l : Int) (hl : l ∈ s) :
+      MeasurableSet {x | u l x = M x} :=
+    ((hu l hl).eq hM).setOf
+  apply measurable_to_countable'
+  intro i
+  by_cases hi : i ∈ s
+  · have hleast :
+        MeasurableSet {x | ∀ l ∈ s, u l x = M x -> i ≤ l} := by
+      have hinter :
+          MeasurableSet (⋂ l ∈ s, {x | u l x = M x -> i ≤ l}) := by
+        refine s.measurableSet_biInter ?_
+        intro l hl
+        by_cases hil : i ≤ l
+        · simpa only [hil, implies_true, setOf_true] using
+            (MeasurableSet.univ : MeasurableSet (Set.univ : Set X))
+        · convert (hvalue l hl).compl using 1
+          ext x
+          simp [hil]
+      convert hinter using 1
+      ext x
+      simp
+    have hpreimage :
+        finsetRealArgmax s hs u ⁻¹' {i} =
+          {x | u i x = M x ∧ ∀ l ∈ s, u l x = M x -> i ≤ l} := by
+      ext x
+      change finsetRealArgmax s hs u x = i ↔ _
+      simp only [finsetRealArgmax, Finset.min'_eq_iff,
+        finsetRealArgmaxCandidates, Finset.mem_filter, hi, true_and]
+      constructor
+      · rintro ⟨hvaluei, hmin⟩
+        refine ⟨hvaluei, ?_⟩
+        intro l hl hlvalue
+        exact hmin l ⟨hl, hlvalue⟩
+      · rintro ⟨hvaluei, hmin⟩
+        refine ⟨hvaluei, ?_⟩
+        intro l hl
+        exact hmin l hl.1 hl.2
+    rw [hpreimage]
+    exact (hvalue i hi).inter hleast
+  · have hempty : finsetRealArgmax s hs u ⁻¹' {i} = ∅ := by
+      apply Set.eq_empty_iff_forall_notMem.mpr
+      intro x hx
+      change finsetRealArgmax s hs u x = i at hx
+      apply hi
+      simpa only [hx] using finsetRealArgmax_mem s hs u x
+    rw [hempty]
+    exact MeasurableSet.empty
+
+/-- At each spatial point, choose an active dyadic left endpoint where the
+literal finite family of `Q4` surface pieces has maximal norm. -/
+noncomputable def activeDyadicQ4EndpointSelector
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) : Int :=
+  activeDyadicEndpointSelector E j hs
+    (fun t => q4DyadicSurfacePiece psi f t x)
+
+/-- The `Q4` endpoint selector always chooses one of the active cells. -/
+theorem activeDyadicQ4EndpointSelector_mem
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    activeDyadicQ4EndpointSelector E j hs psi f x ∈ activeDyadicIndices E j :=
+  activeDyadicEndpointSelector_mem E j hs
+    (fun t => q4DyadicSurfacePiece psi f t x)
+
+/-- The selected literal `Q4` surface piece is exactly the active endpoint
+maximum.  This is the finite-radius linearization used before taking `TT*`. -/
+theorem norm_q4DyadicSurfacePiece_at_activeDyadicQ4EndpointSelector_eq
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4DyadicSurfacePiece psi f
+        (dyadicLeft j (activeDyadicQ4EndpointSelector E j hs psi f x)) x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece psi f t x) :=
+  norm_activeDyadicEndpointSelector_eq_activeDyadicEndpointSup E j hs
+    (fun t => q4DyadicSurfacePiece psi f t x)
+
+/-- A fixed literal `Q4` surface piece is continuous in the spatial
+variable.  This uses its proved equality with the spherical average of the
+actual dyadic bandpass projection. -/
+theorem continuous_q4DyadicSurfacePiece
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex) (r : Real) :
+    Continuous (fun x : Euclidean d => q4DyadicSurfacePiece psi f r x) := by
+  have hcont := (continuous_sphericalAverage
+    (dyadicBandpassProjection psi f : Euclidean d -> Complex)
+    (dyadicBandpassProjection psi f).continuous).comp
+      ((continuous_const : Continuous fun _ : Euclidean d => r).prodMk continuous_id)
+  simpa [Function.comp_def,
+    sphericalAverage_dyadicBandpassProjection_eq_q4DyadicSurfacePiece] using hcont
+
+/-- A deterministic measurable selector for the actual finite family of
+active `Q4` endpoint values.  It chooses the least active index attaining
+the maximum, so measurability follows from finite endpoint comparisons. -/
+noncomputable def measurableActiveDyadicQ4EndpointSelector
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) : Int :=
+  finsetRealArgmax (activeDyadicIndices E j) hs
+    (fun i x => ‖q4DyadicSurfacePiece psi f (dyadicLeft j i) x‖) x
+
+/-- The deterministic `Q4` selector is a genuinely measurable map into the
+discrete index type. -/
+theorem measurable_measurableActiveDyadicQ4EndpointSelector
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) :
+    Measurable (measurableActiveDyadicQ4EndpointSelector E j hs psi f) := by
+  exact measurable_finsetRealArgmax (activeDyadicIndices E j) hs
+    (fun i x => ‖q4DyadicSurfacePiece psi f (dyadicLeft j i) x‖)
+    (fun i _ => (continuous_q4DyadicSurfacePiece psi f (dyadicLeft j i)).norm.measurable)
+
+/-- The measurable `Q4` selector takes values in the active dyadic family. -/
+theorem measurableActiveDyadicQ4EndpointSelector_mem
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    measurableActiveDyadicQ4EndpointSelector E j hs psi f x ∈ activeDyadicIndices E j :=
+  finsetRealArgmax_mem (activeDyadicIndices E j) hs
+    (fun i x => ‖q4DyadicSurfacePiece psi f (dyadicLeft j i) x‖) x
+
+/-- The selected literal `Q4` piece realizes the active finite endpoint
+maximum exactly. -/
+theorem norm_q4DyadicSurfacePiece_at_measurableActiveDyadicQ4EndpointSelector_eq
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4DyadicSurfacePiece psi f
+        (dyadicLeft j (measurableActiveDyadicQ4EndpointSelector E j hs psi f x)) x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece psi f t x) := by
+  simpa only [measurableActiveDyadicQ4EndpointSelector,
+    activeDyadicEndpointSup, dyadicEndpointSup] using
+    (finsetRealArgmax_apply_eq_sup (activeDyadicIndices E j) hs
+      (fun i x => ‖q4DyadicSurfacePiece psi f (dyadicLeft j i) x‖) x)
+
+/-- The actual first-order endpoint linearization: at each spatial point it
+uses the deterministic measurable active index at which the literal `Q4`
+surface piece is largest. -/
+def q4MeasurableActiveDyadicEndpointPiece
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) : Complex :=
+  q4DyadicSurfacePiece psi f
+    (dyadicLeft j (measurableActiveDyadicQ4EndpointSelector E j hs psi f x)) x
+
+/-- The measurable first-order endpoint linearization has exactly the
+finite active maximum as its pointwise norm. -/
+theorem norm_q4MeasurableActiveDyadicEndpointPiece_eq_activeDyadicEndpointSup
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4MeasurableActiveDyadicEndpointPiece E j hs psi f x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece psi f t x) :=
+  norm_q4DyadicSurfacePiece_at_measurableActiveDyadicQ4EndpointSelector_eq E j hs psi f x
+
+/-- The actual selected `TT*` pair shell associated with the measurable
+endpoint linearization of `f`.  The separate input `g` is the argument of
+the `TT*` shell. -/
+def q4MeasurableActiveDyadicEndpointPairShell
+    {d : Nat} (E : Set Real) (j : Nat) (u L : Real)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex)
+    (g : Euclidean d -> Complex) : Euclidean d -> Complex :=
+  q4ActiveDyadicSelectedPairShell E j u L psi
+    (measurableActiveDyadicQ4EndpointSelector E j hs psi f) g
+
+/-- Unfolding the endpoint-selected pair shell exhibits exactly the literal
+active kernel shell consumed by the crossed `TT*` assembly. -/
+theorem q4MeasurableActiveDyadicEndpointPairShell_eq_selectedPairShell
+    {d : Nat} (E : Set Real) (j : Nat) (u L : Real)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex)
+    (g : Euclidean d -> Complex) :
+    q4MeasurableActiveDyadicEndpointPairShell E j u L hs psi f g =
+      q4ActiveDyadicSelectedPairShell E j u L psi
+        (measurableActiveDyadicQ4EndpointSelector E j hs psi f) g := rfl
+
+/-- Normalizing the actual dyadic spherical average simply multiplies the
+literal `Q4` surface piece by the inverse surface mass. -/
+theorem normalizedSphericalAverage_dyadicBandpassProjection_eq_inverseSurfaceMass_mul_q4
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) :
+    normalizedSphericalAverage d
+      (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x =
+      (surfaceMass d : Complex)⁻¹ * q4DyadicSurfacePiece psi f t x := by
+  unfold normalizedSphericalAverage
+  rw [sphericalAverage_dyadicBandpassProjection_eq_q4DyadicSurfacePiece]
+
+/-- The normalized active endpoint maximum is the norm of the fixed
+normalizing scalar times the literal `Q4` piece chosen by the measurable
+active endpoint selector. -/
+theorem activeDyadicEndpointSup_normalizedSphericalAverage_eq_measurableQ4Endpoint
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    activeDyadicEndpointSup E j hs
+      (fun t => normalizedSphericalAverage d
+        (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x) =
+      ‖(surfaceMass d : Complex)⁻¹‖ *
+        ‖q4DyadicSurfacePiece psi f
+          (dyadicLeft j (measurableActiveDyadicQ4EndpointSelector E j hs psi f x)) x‖ := by
+  let rho : Int := measurableActiveDyadicQ4EndpointSelector E j hs psi f x
+  let c : Complex := (surfaceMass d : Complex)⁻¹
+  have hnorm (k : Int) :
+      ‖normalizedSphericalAverage d
+          (dyadicBandpassProjection psi f : Euclidean d -> Complex)
+          (dyadicLeft j k) x‖ =
+        ‖c‖ * ‖q4DyadicSurfacePiece psi f (dyadicLeft j k) x‖ := by
+    dsimp only [c]
+    rw [normalizedSphericalAverage_dyadicBandpassProjection_eq_inverseSurfaceMass_mul_q4,
+      norm_mul]
+  have hrho_mem : rho ∈ activeDyadicIndices E j := by
+    dsimp only [rho]
+    exact measurableActiveDyadicQ4EndpointSelector_mem E j hs psi f x
+  have hraw_le (k : Int) (hk : k ∈ activeDyadicIndices E j) :
+      ‖q4DyadicSurfacePiece psi f (dyadicLeft j k) x‖ ≤
+        ‖q4DyadicSurfacePiece psi f (dyadicLeft j rho) x‖ := by
+    calc
+      ‖q4DyadicSurfacePiece psi f (dyadicLeft j k) x‖ ≤
+          activeDyadicEndpointSup E j hs
+            (fun t => q4DyadicSurfacePiece psi f t x) :=
+        Finset.le_sup' (fun l => ‖q4DyadicSurfacePiece psi f (dyadicLeft j l) x‖) hk
+      _ = ‖q4DyadicSurfacePiece psi f (dyadicLeft j rho) x‖ := by
+        symm
+        dsimp only [rho]
+        exact norm_q4DyadicSurfacePiece_at_measurableActiveDyadicQ4EndpointSelector_eq
+          E j hs psi f x
+  unfold activeDyadicEndpointSup dyadicEndpointSup
+  apply le_antisymm
+  · apply Finset.sup'_le
+    intro k hk
+    rw [hnorm k]
+    exact mul_le_mul_of_nonneg_left (hraw_le k hk) (norm_nonneg _)
+  · calc
+      ‖c‖ * ‖q4DyadicSurfacePiece psi f (dyadicLeft j rho) x‖ =
+          ‖normalizedSphericalAverage d
+            (dyadicBandpassProjection psi f : Euclidean d -> Complex)
+            (dyadicLeft j rho) x‖ := (hnorm rho).symm
+      _ ≤ (activeDyadicIndices E j).sup' hs (fun k =>
+          ‖normalizedSphericalAverage d
+            (dyadicBandpassProjection psi f : Euclidean d -> Complex)
+            (dyadicLeft j k) x‖) :=
+        Finset.le_sup' (fun k =>
+          ‖normalizedSphericalAverage d
+            (dyadicBandpassProjection psi f : Euclidean d -> Complex)
+            (dyadicLeft j k) x‖) hrho_mem
+
+/-- The first-order finite-radius linearization of the actual `Q4` surface
+piece, using the endpoint selector at each spatial point. -/
+def q4ActiveDyadicEndpointPiece
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) : Complex :=
+  q4DyadicSurfacePiece psi f
+    (dyadicLeft j (activeDyadicQ4EndpointSelector E j hs psi f x)) x
+
+/-- The norm of the selected first-order `Q4` operator is exactly the
+finite active endpoint maximum. -/
+theorem norm_q4ActiveDyadicEndpointPiece_eq_activeDyadicEndpointSup
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4ActiveDyadicEndpointPiece E j hs psi f x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece psi f t x) :=
+  norm_q4DyadicSurfacePiece_at_activeDyadicQ4EndpointSelector_eq E j hs psi f x
+
+/-- The endpoint selector for the literal absolute dyadic bandpass used in
+the reassembly of the maximal operator. -/
+noncomputable def activeDyadicAbsoluteQ4EndpointSelector
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) : Int :=
+  activeDyadicQ4EndpointSelector E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f x
+
+/-- The absolute-bandpass endpoint selector takes values in the actual
+active finite family. -/
+theorem activeDyadicAbsoluteQ4EndpointSelector_mem
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f x ∈
+      activeDyadicIndices E j :=
+  activeDyadicQ4EndpointSelector_mem E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f x
+
+/-- The literal absolute dyadic surface piece at its selected endpoint is
+the active finite endpoint maximum. -/
+theorem norm_q4AbsoluteDyadicSurfacePiece_at_activeDyadicEndpointSelector_eq
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4DyadicSurfacePiece (absoluteDyadicBandpass phi hphiOne hphiZero j) f
+        (dyadicLeft j
+          (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f x)) x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f t x) :=
+  norm_q4DyadicSurfacePiece_at_activeDyadicQ4EndpointSelector_eq E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f x
+
+/-- The measurable least-maximizer version of the absolute dyadic endpoint
+selector.  This is the selector used by the actual `TT*` linearization. -/
+noncomputable def measurableActiveDyadicAbsoluteQ4EndpointSelector
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) : Euclidean d -> Int :=
+  measurableActiveDyadicQ4EndpointSelector E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f
+
+/-- The absolute-bandpass maximizing selector is measurable. -/
+theorem measurable_measurableActiveDyadicAbsoluteQ4EndpointSelector
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    Measurable (measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs
+      phi hphiOne hphiZero f) :=
+  measurable_measurableActiveDyadicQ4EndpointSelector E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f
+
+/-- The measurable absolute-bandpass selector has active range. -/
+theorem measurableActiveDyadicAbsoluteQ4EndpointSelector_mem
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f x ∈
+      activeDyadicIndices E j :=
+  measurableActiveDyadicQ4EndpointSelector_mem E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f x
+
+/-- The literal absolute dyadic piece at the measurable selected endpoint
+is the finite active endpoint maximum. -/
+theorem norm_q4AbsoluteDyadicSurfacePiece_at_measurableActiveDyadicEndpointSelector_eq
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4DyadicSurfacePiece (absoluteDyadicBandpass phi hphiOne hphiZero j) f
+        (dyadicLeft j
+          (measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs
+            phi hphiOne hphiZero f x)) x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f t x) :=
+  norm_q4DyadicSurfacePiece_at_measurableActiveDyadicQ4EndpointSelector_eq E j hs
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f x
+
+/-- The actual first-order selected endpoint operator for the canonical
+absolute dyadic bandpass. -/
+def q4MeasurableActiveDyadicAbsoluteEndpointPiece
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) : Complex :=
+  q4DyadicSurfacePiece (absoluteDyadicBandpass phi hphiOne hphiZero j) f
+    (dyadicLeft j
+      (measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs
+        phi hphiOne hphiZero f x)) x
+
+/-- Its pointwise norm is exactly the finite active absolute-bandpass
+endpoint maximum. -/
+theorem norm_q4MeasurableActiveDyadicAbsoluteEndpointPiece_eq_activeDyadicEndpointSup
+    {d : Nat} (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4MeasurableActiveDyadicAbsoluteEndpointPiece E j hs phi hphiOne hphiZero f x‖ =
+      activeDyadicEndpointSup E j hs
+        (fun t => q4DyadicSurfacePiece
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f t x) :=
+  norm_q4AbsoluteDyadicSurfacePiece_at_measurableActiveDyadicEndpointSelector_eq E j hs
+    phi hphiOne hphiZero f x
+
+/-- The literal selected `TT*` pair shell for the measurable absolute
+endpoint linearization.  This is the concrete operator supplied to the
+crossed-shell assembly. -/
+def q4MeasurableActiveDyadicAbsoluteEndpointPairShell
+    {d : Nat} (E : Set Real) (j : Nat) (u L : Real)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex)
+    (g : Euclidean d -> Complex) : Euclidean d -> Complex :=
+  q4ActiveDyadicSelectedPairShell E j u L
+    (absoluteDyadicBandpass phi hphiOne hphiZero j)
+    (measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs
+      phi hphiOne hphiZero f) g
+
+/-- Unfolding the selected absolute endpoint pair shell gives the literal
+active dyadic selected shell whose kernel is used by the `TT*` estimates. -/
+theorem q4MeasurableActiveDyadicAbsoluteEndpointPairShell_eq_selectedPairShell
+    {d : Nat} (E : Set Real) (j : Nat) (u L : Real)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex)
+    (g : Euclidean d -> Complex) :
+    q4MeasurableActiveDyadicAbsoluteEndpointPairShell E j u L hs phi hphiOne hphiZero f g =
+      q4ActiveDyadicSelectedPairShell E j u L
+        (absoluteDyadicBandpass phi hphiOne hphiZero j)
+        (measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs
+          phi hphiOne hphiZero f) g := rfl
+
+/-- The selected endpoint pair shell is definitionally the generic selected
+kernel shell with the active dyadic gap relation and the literal inverse
+Fourier pair kernel.  This is the exact application bridge for
+`Q4SelectedCrossedAssembly`. -/
+local instance activeDyadicRadiusGapDecidableRel
+    (j : Nat) (u L : Real) :
+    DecidableRel (fun i l : Int =>
+      radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l)) :=
+  Classical.decRel _
+
+theorem q4MeasurableActiveDyadicAbsoluteEndpointPairShell_eq_q4SelectedKernelTTStarShell
+    {d : Nat} (E : Set Real) (j : Nat) (u L : Real)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex)
+    (g : Euclidean d -> Complex) (x : Euclidean d) :
+    q4MeasurableActiveDyadicAbsoluteEndpointPairShell E j u L hs phi hphiOne hphiZero f g x =
+      q4SelectedKernelTTStarShell volume (activeDyadicIndices E j)
+        (fun i l => radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l))
+        (q4ActiveDyadicPairKernel (absoluteDyadicBandpass phi hphiOne hphiZero j) j)
+        (measurableActiveDyadicAbsoluteQ4EndpointSelector E j hs
+          phi hphiOne hphiZero f) g x := by
+  classical
+  unfold q4MeasurableActiveDyadicAbsoluteEndpointPairShell
+    q4ActiveDyadicSelectedPairShell q4ActiveDyadicSelectedKernelTTStarShell
+  rfl
+
+/-- The finite endpoint maximum is nonnegative. -/
+theorem dyadicEndpointSup_nonneg
+    {V : Type*} [SeminormedAddCommGroup V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (F : Real -> V) :
+    0 ≤ dyadicEndpointSup j s hs F := by
+  unfold dyadicEndpointSup
+  rcases hs with ⟨k, hk⟩
+  have hpoint : 0 ≤ ‖F (dyadicLeft j k)‖ := norm_nonneg _
+  exact hpoint.trans (Finset.le_sup' (fun l => ‖F (dyadicLeft j l)‖) hk)
+
+/-- The finite derivative maximum is nonnegative at every offset. -/
+theorem dyadicDerivativeSup_nonneg
+    {V : Type*} [SeminormedAddCommGroup V] (j : Nat) (s : Finset Int)
+    (hs : s.Nonempty) (D : Real -> V) (u : Real) :
+    0 ≤ dyadicDerivativeSup j s hs D u := by
+  unfold dyadicDerivativeSup
+  rcases hs with ⟨k, hk⟩
+  have hpoint : 0 ≤ ‖D (dyadicLeft j k + u)‖ := norm_nonneg _
+  exact hpoint.trans
+    (Finset.le_sup' (fun l => ‖D (dyadicLeft j l + u)‖) hk)
+
+/-- Nonnegativity of the active endpoint maximum. -/
+theorem activeDyadicEndpointSup_nonneg
+    {V : Type*} [SeminormedAddCommGroup V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (F : Real -> V) :
+    0 ≤ activeDyadicEndpointSup E j hs F :=
+  dyadicEndpointSup_nonneg j (activeDyadicIndices E j) hs F
+
+/-- Nonnegativity of the active derivative maximum. -/
+theorem activeDyadicDerivativeSup_nonneg
+    {V : Type*} [SeminormedAddCommGroup V] (E : Set Real) (j : Nat)
+    (hs : (activeDyadicIndices E j).Nonempty) (D : Real -> V) (u : Real) :
+    0 ≤ activeDyadicDerivativeSup E j hs D u :=
+  dyadicDerivativeSup_nonneg j (activeDyadicIndices E j) hs D u
+
+/-- If `E` is nonempty and lies in `[1,2]`, then its active dyadic index
+family is nonempty. -/
+theorem activeDyadicIndices_nonempty_of_nonempty
+    {E : Set Real} {j : Nat} (hE : E ⊆ Icc (1 : Real) 2)
+    (hEne : E.Nonempty) :
+    (activeDyadicIndices E j).Nonempty := by
+  rcases hEne with ⟨r, hr⟩
+  rcases Set.mem_iUnion.mp (subset_dyadicActiveCover hE hr) with ⟨k, hk⟩
+  rcases Set.mem_iUnion.mp hk with ⟨hkactive, _⟩
+  exact ⟨k, hkactive⟩
+
+/-- Every translated radius which occurs in the active-cell variation term
+stays in a fixed positive compact interval at positive dyadic levels.  This
+is the range needed when the derivative term is subsequently estimated by a
+compact-radius multiplier bound. -/
+theorem activeDyadicDerivativeSample_mem_Icc_half_five_halves
+    {E : Set Real} {j : Nat} {k : Int} {u : Real}
+    (hj : 1 ≤ j) (hE : E ⊆ Icc (1 : Real) 2)
+    (hk : k ∈ activeDyadicIndices E j)
+    (hu : u ∈ Icc (0 : Real) (dyadicScale j)) :
+    dyadicLeft j k + u ∈ Icc (1 / 2 : Real) (5 / 2 : Real) :=
+  dyadicLeft_add_mem_Icc_half_five_halves_of_mem_activeDyadicIndices hj hE hk hu
+
+/-- A continuous radius family can be sampled at the left endpoints of a
+finite collection of dyadic cells, with an explicit fundamental-theorem-of-
+calculus error.  The cover hypothesis is deliberately stated separately: it
+is what makes this lemma applicable both to active cells and to refinements
+used later in the proof. -/
+theorem norm_le_dyadicEndpointSup_add_integral_dyadicDerivativeSup
+    {V : Type*} [NormedAddCommGroup V] [NormedSpace Real V] [CompleteSpace V]
+    {E : Set Real} {j : Nat} {s : Finset Int}
+    (hs : s.Nonempty) (hcover : E ⊆ ⋃ k ∈ s, dyadicInterval j k)
+    (F D : Real -> V) (hDcont : Continuous D)
+    (hderiv : ∀ t, HasDerivAt F (D t) t)
+    {r : Real} (hr : r ∈ E) :
+    ‖F r‖ ≤ dyadicEndpointSup j s hs F +
+      ∫ u in (0 : Real)..dyadicScale j, dyadicDerivativeSup j s hs D u := by
+  rcases Set.mem_iUnion.mp (hcover hr) with ⟨k, hk⟩
+  rcases Set.mem_iUnion.mp hk with ⟨hks, hrk⟩
+  have hftc :
+      ‖F r‖ ≤ ‖F (dyadicLeft j k)‖ +
+        ∫ t in dyadicLeft j k..dyadicRight j k, ‖D t‖ :=
+    norm_le_norm_add_intervalIntegral_norm_of_hasDerivAt hrk hDcont hderiv
+  have hendpoint :
+      ‖F (dyadicLeft j k)‖ ≤ dyadicEndpointSup j s hs F := by
+    exact Finset.le_sup' (fun l => ‖F (dyadicLeft j l)‖) hks
+  have hderivcont (l : Int) :
+      Continuous (fun u : Real => ‖D (dyadicLeft j l + u)‖) :=
+    (hDcont.comp (continuous_const.add continuous_id)).norm
+  have hsupcont :
+      Continuous (fun u : Real => dyadicDerivativeSup j s hs D u) := by
+    unfold dyadicDerivativeSup
+    exact Continuous.finset_sup'_apply hs (fun l _ => hderivcont l)
+  have hderivpoint (u : Real) :
+      ‖D (dyadicLeft j k + u)‖ ≤ dyadicDerivativeSup j s hs D u := by
+    exact Finset.le_sup' (fun l => ‖D (dyadicLeft j l + u)‖) hks
+  have htranslate :
+      (∫ t in dyadicLeft j k..dyadicRight j k, ‖D t‖) =
+        ∫ u in (0 : Real)..dyadicScale j, ‖D (dyadicLeft j k + u)‖ := by
+    have hright : dyadicRight j k = dyadicLeft j k + dyadicScale j := by
+      linarith [dyadicRight_sub_dyadicLeft j k]
+    calc
+      (∫ t in dyadicLeft j k..dyadicRight j k, ‖D t‖) =
+          ∫ t in dyadicLeft j k..dyadicLeft j k + dyadicScale j, ‖D t‖ := by
+        rw [hright]
+      _ = ∫ u in (0 : Real)..dyadicScale j, ‖D (dyadicLeft j k + u)‖ := by
+        symm
+        simpa only [add_zero] using
+          (intervalIntegral.integral_comp_add_left
+            (f := fun t : Real => ‖D t‖) (a := (0 : Real))
+            (b := dyadicScale j) (dyadicLeft j k))
+  have hderivint :
+      (∫ u in (0 : Real)..dyadicScale j, ‖D (dyadicLeft j k + u)‖) ≤
+        ∫ u in (0 : Real)..dyadicScale j, dyadicDerivativeSup j s hs D u := by
+    apply intervalIntegral.integral_mono_on (dyadicScale_pos j).le
+    · exact (hderivcont k).intervalIntegrable (μ := volume) _ _
+    · exact hsupcont.intervalIntegrable (μ := volume) _ _
+    · intro u hu
+      exact hderivpoint u
+  calc
+    ‖F r‖ ≤ ‖F (dyadicLeft j k)‖ +
+        ∫ t in dyadicLeft j k..dyadicRight j k, ‖D t‖ := hftc
+    _ ≤ dyadicEndpointSup j s hs F +
+        ∫ t in dyadicLeft j k..dyadicRight j k, ‖D t‖ :=
+      add_le_add hendpoint le_rfl
+    _ = dyadicEndpointSup j s hs F +
+        ∫ u in (0 : Real)..dyadicScale j, ‖D (dyadicLeft j k + u)‖ := by
+      rw [htranslate]
+    _ ≤ dyadicEndpointSup j s hs F +
+        ∫ u in (0 : Real)..dyadicScale j, dyadicDerivativeSup j s hs D u :=
+      add_le_add le_rfl hderivint
+
+/-- The preceding fundamental-theorem-of-calculus estimate specialized to
+the actual active dyadic cover of `E`. -/
+theorem norm_le_activeDyadicEndpointSup_add_integral_activeDyadicDerivativeSup
+    {V : Type*} [NormedAddCommGroup V] [NormedSpace Real V] [CompleteSpace V]
+    {E : Set Real} {j : Nat} (hE : E ⊆ Icc (1 : Real) 2)
+    (hEne : E.Nonempty) (F D : Real -> V) (hDcont : Continuous D)
+    (hderiv : ∀ t, HasDerivAt F (D t) t)
+    {r : Real} (hr : r ∈ E) :
+    ‖F r‖ ≤
+      activeDyadicEndpointSup E j (activeDyadicIndices_nonempty_of_nonempty hE hEne) F +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne) D u := by
+  exact norm_le_dyadicEndpointSup_add_integral_dyadicDerivativeSup
+    (s := activeDyadicIndices E j)
+    (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+    (subset_dyadicActiveCover hE) F D hDcont hderiv hr
+
+/-- The unnormalised radius supremum of a continuous family is controlled by
+the active left-endpoint maximum and the literal local-radius derivative
+error.  This is the exact `sup_{t ∈ E}` form used before taking spatial
+norms. -/
+theorem iSup_ennreal_norm_le_activeDyadicEndpointSup_add_integral_activeDyadicDerivativeSup
+    {V : Type*} [NormedAddCommGroup V] [NormedSpace Real V] [CompleteSpace V]
+    {E : Set Real} {j : Nat} (hE : E ⊆ Icc (1 : Real) 2)
+    (hEne : E.Nonempty) (F D : Real -> V) (hDcont : Continuous D)
+    (hderiv : ∀ t, HasDerivAt F (D t) t) :
+    (⨆ r : E, ENNReal.ofReal ‖F r.1‖) ≤
+      ENNReal.ofReal
+        (activeDyadicEndpointSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne) F +
+          ∫ u in (0 : Real)..dyadicScale j,
+            activeDyadicDerivativeSup E j
+              (activeDyadicIndices_nonempty_of_nonempty hE hEne) D u) := by
+  apply iSup_le
+  intro r
+  exact ENNReal.ofReal_le_ofReal
+    (norm_le_activeDyadicEndpointSup_add_integral_activeDyadicDerivativeSup
+      hE hEne F D hDcont hderiv r.2)
+
+/-- The literal radius derivative of the unnormalised spherical average of
+Schwartz data. -/
+def sphericalAverageRadiusDerivative
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) : Complex :=
+  ∫ ω : sphere (0 : Euclidean d) 1,
+    fderiv Real (f : Euclidean d -> Complex)
+      (x + t • (ω : Euclidean d)) (ω : Euclidean d)
+      ∂unitSurfaceMeasure d
+
+/-- The physical radius derivative is jointly continuous in the radius and
+spatial variables for Schwartz data. -/
+theorem continuous_uncurry_sphericalAverageRadiusDerivative
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex) :
+    Continuous (Function.uncurry (sphericalAverageRadiusDerivative f)) := by
+  have hf : ContDiff Real 1 (f : Euclidean d -> Complex) := by
+    exact (f.smooth (1 : ℕ∞)).of_le (by norm_num)
+  have hfderiv : Continuous (fderiv Real (f : Euclidean d -> Complex)) :=
+    hf.continuous_fderiv (by norm_num)
+  change Continuous (fun p : Real × Euclidean d =>
+    ∫ ω : sphere (0 : Euclidean d) 1,
+      fderiv Real (f : Euclidean d -> Complex)
+        (p.2 + p.1 • (ω : Euclidean d)) (ω : Euclidean d)
+        ∂unitSurfaceMeasure d)
+  simpa only [Measure.restrict_univ] using
+    (continuous_parametric_integral_of_continuous
+      (μ := unitSurfaceMeasure d)
+      ((hfderiv.comp
+        ((continuous_snd.comp continuous_fst).add
+          ((continuous_fst.comp continuous_fst).smul
+            (continuous_subtype_val.comp continuous_snd)))).clm_apply
+          (continuous_subtype_val.comp continuous_snd))
+      isCompact_univ)
+
+/-- The displayed physical derivative is the derivative in the radius of
+the literal spherical average of Schwartz data. -/
+theorem hasDerivAt_sphericalAverage_sphericalAverageRadiusDerivative
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) :
+    HasDerivAt
+      (fun s : Real => sphericalAverage d (f : Euclidean d -> Complex) s x)
+      (sphericalAverageRadiusDerivative f t x) t := by
+  let dp : SchwartzMap (Euclidean d) (Euclidean d →L[Real] Complex) :=
+    (SchwartzMap.fderivCLM Complex (Euclidean d) Complex) f
+  have hbound (y : Euclidean d) :
+      ‖fderiv Real (f : Euclidean d -> Complex) y‖ ≤
+        ‖dp.toBoundedContinuousFunction‖ := by
+    calc
+      ‖fderiv Real (f : Euclidean d -> Complex) y‖ = ‖dp y‖ := by
+        rw [← SchwartzMap.fderivCLM_apply Complex f y]
+      _ = ‖dp.toBoundedContinuousFunction y‖ := rfl
+      _ ≤ ‖dp.toBoundedContinuousFunction‖ :=
+        BoundedContinuousFunction.norm_coe_le_norm
+          (dp.toBoundedContinuousFunction :
+            Euclidean d →ᵇ (Euclidean d →L[Real] Complex)) y
+  simpa only [sphericalAverageRadiusDerivative] using
+    hasDerivAt_sphericalAverage (f : Euclidean d -> Complex)
+      ((f.smooth (1 : ℕ∞)).of_le (by norm_num)) hbound x t
+
+/-- The physical radius derivative after normalizing the surface measure. -/
+def normalizedSphericalAverageRadiusDerivative
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) : Complex :=
+  (surfaceMass d : Complex)⁻¹ * sphericalAverageRadiusDerivative f t x
+
+/-- Joint continuity of the normalized physical radius derivative. -/
+theorem continuous_uncurry_normalizedSphericalAverageRadiusDerivative
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex) :
+    Continuous (Function.uncurry (normalizedSphericalAverageRadiusDerivative f)) := by
+  unfold normalizedSphericalAverageRadiusDerivative
+  exact continuous_const.mul (continuous_uncurry_sphericalAverageRadiusDerivative f)
+
+/-- The displayed normalized derivative is genuinely the radius derivative
+of `normalizedSphericalAverage`. -/
+theorem hasDerivAt_normalizedSphericalAverage_normalizedSphericalAverageRadiusDerivative
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) :
+    HasDerivAt
+      (fun s : Real => normalizedSphericalAverage d (f : Euclidean d -> Complex) s x)
+      (normalizedSphericalAverageRadiusDerivative f t x) t := by
+  unfold normalizedSphericalAverage normalizedSphericalAverageRadiusDerivative
+  simpa only using
+    (hasDerivAt_sphericalAverage_sphericalAverageRadiusDerivative f t x).const_mul
+      ((surfaceMass d : Complex)⁻¹)
+
+/-- On a dyadic bandpass projection, the physical derivative in the
+variation term is exactly the Fourier multiplier obtained by differentiating
+the surface transform in the radius. -/
+theorem sphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_fourierInv
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) :
+    sphericalAverageRadiusDerivative (dyadicBandpassProjection psi f) t x =
+      𝓕⁻ (fun xi : Euclidean d =>
+        deriv (fun s : Real => surfaceFourier d (s • (-xi))) t *
+          (psi xi * 𝓕 (f : Euclidean d -> Complex) xi)) x := by
+  let h : SchwartzMap (Euclidean d) Complex :=
+    SchwartzMap.smulLeftCLM Complex (psi : Euclidean d -> Complex) (𝓕 f)
+  simpa only [sphericalAverageRadiusDerivative, dyadicBandpassProjection, h,
+    SchwartzMap.smulLeftCLM_apply psi.hasTemperateGrowth,
+    SchwartzMap.fourier_coe, smul_eq_mul] using
+    (sphericalAverage_radiusDerivative_fourierInv_schwartz h t x)
+
+/-- The literal Fourier-side `Q4` radius derivative of one dyadic surface
+piece.  Unlike an abstract variation error, this is the multiplier obtained
+by differentiating the exact surface multiplier in the radius variable. -/
+def q4DyadicSurfaceRadiusDerivative
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) : Complex :=
+  𝓕⁻ (fun xi : Euclidean d =>
+    deriv (fun s : Real => surfaceFourier d (s • (-xi))) t *
+      (psi xi * 𝓕 (f : Euclidean d -> Complex) xi)) x
+
+/-- The normalized literal `Q4` radius derivative. -/
+def q4NormalizedDyadicSurfaceRadiusDerivative
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) : Complex :=
+  (surfaceMass d : Complex)⁻¹ * q4DyadicSurfaceRadiusDerivative psi f t x
+
+/-- The physical derivative in the sampling term is exactly the literal
+Fourier-side `Q4` derivative. -/
+theorem sphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_q4DyadicSurfaceRadiusDerivative
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) :
+    sphericalAverageRadiusDerivative (dyadicBandpassProjection psi f) t x =
+      q4DyadicSurfaceRadiusDerivative psi f t x :=
+  sphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_fourierInv psi f t x
+
+/-- The normalized physical radius derivative agrees with the normalized
+literal `Q4` derivative. -/
+theorem normalizedSphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_q4NormalizedDyadicSurfaceRadiusDerivative
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (x : Euclidean d) :
+    normalizedSphericalAverageRadiusDerivative (dyadicBandpassProjection psi f) t x =
+      q4NormalizedDyadicSurfaceRadiusDerivative psi f t x := by
+  unfold normalizedSphericalAverageRadiusDerivative
+    q4NormalizedDyadicSurfaceRadiusDerivative
+  rw [sphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_q4DyadicSurfaceRadiusDerivative]
+
+/-- The literal absolute dyadic bandpass spherical supremum is bounded by
+the finite maximum at active left endpoints plus the integral of the finite
+supremum of its actual radius derivative.  No left endpoint is asserted to
+belong to `E`; the integral term is exactly the correction for that fact. -/
+theorem iSup_ennreal_norm_sphericalAverage_dyadicBandpassProjection_le_activeDyadic
+    {d : Nat} {E : Set Real} {j : Nat}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    (⨆ r : E,
+      ENNReal.ofReal ‖sphericalAverage d
+        (dyadicBandpassProjection psi f : Euclidean d -> Complex) r.1 x‖) ≤
+      ENNReal.ofReal
+        (activeDyadicEndpointSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => sphericalAverage d
+              (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x) +
+          ∫ u in (0 : Real)..dyadicScale j,
+            activeDyadicDerivativeSup E j
+              (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+              (fun t => sphericalAverageRadiusDerivative
+                (dyadicBandpassProjection psi f) t x) u) := by
+  apply
+    iSup_ennreal_norm_le_activeDyadicEndpointSup_add_integral_activeDyadicDerivativeSup
+      hE hEne
+      (fun t => sphericalAverage d
+        (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x)
+      (fun t => sphericalAverageRadiusDerivative
+        (dyadicBandpassProjection psi f) t x)
+  · exact (continuous_uncurry_sphericalAverageRadiusDerivative
+      (dyadicBandpassProjection psi f)).comp
+        (continuous_id.prodMk (continuous_const : Continuous fun _ : Real => x))
+  · intro t
+    exact hasDerivAt_sphericalAverage_sphericalAverageRadiusDerivative
+      (dyadicBandpassProjection psi f) t x
+
+/-- Pointwise, the actual normalized dyadic fractal maximal operator is
+controlled by the finite active left-endpoint maximum plus the integral of
+the finite maximum of its normalized physical radius derivative.  This is
+the norm-ready form of the active-cell sampling step. -/
+theorem fractalDyadicBandpassMaximal_le_activeDyadicEndpointSup_add_integral
+    {d : Nat} {E : Set Real} {j : Nat} (hd : 0 < d)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E psi f x ≤
+      activeDyadicEndpointSup E j
+          (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+          (fun t => normalizedSphericalAverage d
+            (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x) +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => normalizedSphericalAverageRadiusDerivative
+              (dyadicBandpassProjection psi f) t x) u := by
+  let p : SchwartzMap (Euclidean d) Complex := dyadicBandpassProjection psi f
+  let hs : (activeDyadicIndices E j).Nonempty :=
+    activeDyadicIndices_nonempty_of_nonempty hE hEne
+  let R : Real :=
+    activeDyadicEndpointSup E j hs
+      (fun t => normalizedSphericalAverage d (p : Euclidean d -> Complex) t x) +
+      ∫ u in (0 : Real)..dyadicScale j,
+        activeDyadicDerivativeSup E j hs
+          (fun t => normalizedSphericalAverageRadiusDerivative p t x) u
+  have hEpos : E ⊆ Ioi (0 : Real) := by
+    intro r hr
+    exact lt_of_lt_of_le zero_lt_one (hE hr).1
+  have hRnonneg : 0 ≤ R := by
+    dsimp only [R]
+    apply add_nonneg
+    · exact activeDyadicEndpointSup_nonneg E j hs _
+    · exact intervalIntegral.integral_nonneg (dyadicScale_pos j).le
+        (fun u _ => activeDyadicDerivativeSup_nonneg E j hs _ u)
+  have hraw : fractalSphericalMaximal d E (p : Euclidean d -> Complex) x ≤
+      ENNReal.ofReal R := by
+    change (⨆ r : E,
+      ENNReal.ofReal ‖normalizedSphericalAverage d
+        (p : Euclidean d -> Complex) r.1 x‖) ≤ ENNReal.ofReal R
+    simpa only [R] using
+      (iSup_ennreal_norm_le_activeDyadicEndpointSup_add_integral_activeDyadicDerivativeSup
+        hE hEne
+        (fun t => normalizedSphericalAverage d (p : Euclidean d -> Complex) t x)
+        (fun t => normalizedSphericalAverageRadiusDerivative p t x)
+        ((continuous_uncurry_normalizedSphericalAverageRadiusDerivative p).comp
+          (continuous_id.prodMk (continuous_const : Continuous fun _ : Real => x)))
+        (fun t =>
+          hasDerivAt_normalizedSphericalAverage_normalizedSphericalAverageRadiusDerivative
+            p t x))
+  have hfinite : fractalSphericalMaximal d E (p : Euclidean d -> Complex) x ≠ ⊤ :=
+    fractalSphericalMaximal_ne_top hd E hEpos p x
+  have hreal := (ENNReal.toReal_le_toReal hfinite ENNReal.ofReal_ne_top).mpr hraw
+  change (fractalSphericalMaximal d E (p : Euclidean d -> Complex) x).toReal ≤ R
+  simpa only [ENNReal.toReal_ofReal hRnonneg] using hreal
+
+/-- The concrete linearization bridge for the actual normalized dyadic
+fractal maximal operator.  Its endpoint is one literal `Q4` surface piece,
+chosen by a measurable active-cell selector; the only remaining term is the
+explicit integral of the true normalized radius derivative. -/
+theorem fractalDyadicBandpassMaximal_le_measurableActiveQ4Endpoint_add_variation
+    {d : Nat} {E : Set Real} {j : Nat} (hd : 0 < d)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (psi f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E psi f x ≤
+      ‖(surfaceMass d : Complex)⁻¹‖ *
+        ‖q4DyadicSurfacePiece psi f
+          (dyadicLeft j
+            (measurableActiveDyadicQ4EndpointSelector E j
+              (activeDyadicIndices_nonempty_of_nonempty hE hEne) psi f x)) x‖ +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => normalizedSphericalAverageRadiusDerivative
+              (dyadicBandpassProjection psi f) t x) u := by
+  let hs : (activeDyadicIndices E j).Nonempty :=
+    activeDyadicIndices_nonempty_of_nonempty hE hEne
+  have hbase : fractalDyadicBandpassMaximal d E psi f x ≤
+      activeDyadicEndpointSup E j hs
+          (fun t => normalizedSphericalAverage d
+            (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x) +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j hs
+            (fun t => normalizedSphericalAverageRadiusDerivative
+              (dyadicBandpassProjection psi f) t x) u := by
+    simpa only [hs] using
+      (fractalDyadicBandpassMaximal_le_activeDyadicEndpointSup_add_integral
+        hd hE hEne psi f x)
+  calc
+    fractalDyadicBandpassMaximal d E psi f x ≤
+        activeDyadicEndpointSup E j hs
+            (fun t => normalizedSphericalAverage d
+              (dyadicBandpassProjection psi f : Euclidean d -> Complex) t x) +
+          ∫ u in (0 : Real)..dyadicScale j,
+            activeDyadicDerivativeSup E j hs
+              (fun t => normalizedSphericalAverageRadiusDerivative
+                (dyadicBandpassProjection psi f) t x) u := hbase
+    _ = ‖(surfaceMass d : Complex)⁻¹‖ *
+          ‖q4DyadicSurfacePiece psi f
+            (dyadicLeft j (measurableActiveDyadicQ4EndpointSelector E j hs psi f x)) x‖ +
+          ∫ u in (0 : Real)..dyadicScale j,
+            activeDyadicDerivativeSup E j hs
+              (fun t => normalizedSphericalAverageRadiusDerivative
+                (dyadicBandpassProjection psi f) t x) u := by
+      rw [activeDyadicEndpointSup_normalizedSphericalAverage_eq_measurableQ4Endpoint]
+    _ = _ := by rfl
+
+/-- The preceding measurable-linearization bridge in the canonical absolute
+dyadic bandpass notation used for the `Q4` reassembly. -/
+theorem fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_measurableActiveQ4Endpoint_add_variation
+    {d : Nat} {E : Set Real} {j : Nat} (hd : 0 < d)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f x ≤
+      ‖(surfaceMass d : Complex)⁻¹‖ *
+        ‖q4DyadicSurfacePiece (absoluteDyadicBandpass phi hphiOne hphiZero j) f
+          (dyadicLeft j
+            (measurableActiveDyadicAbsoluteQ4EndpointSelector E j
+              (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+              phi hphiOne hphiZero f x)) x‖ +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => normalizedSphericalAverageRadiusDerivative
+              (dyadicBandpassProjection
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f) t x) u := by
+  simpa only [measurableActiveDyadicAbsoluteQ4EndpointSelector] using
+    (fractalDyadicBandpassMaximal_le_measurableActiveQ4Endpoint_add_variation
+      hd hE hEne (absoluteDyadicBandpass phi hphiOne hphiZero j) f x)
+
+/-- The preceding dyadic maximal-function sampling bound written with the
+named measurable endpoint operator.  This is the direct bridge from the
+actual maximal function to the same endpoint linearization which is used in
+the literal selected `TT*` shell. -/
+theorem fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_measurableActiveEndpointPiece_add_variation
+    {d : Nat} {E : Set Real} {j : Nat} (hd : 0 < d)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f x ≤
+      ‖(surfaceMass d : Complex)⁻¹‖ *
+        ‖q4MeasurableActiveDyadicAbsoluteEndpointPiece E j
+          (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+          phi hphiOne hphiZero f x‖ +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => normalizedSphericalAverageRadiusDerivative
+              (dyadicBandpassProjection
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f) t x) u := by
+  simpa only [q4MeasurableActiveDyadicAbsoluteEndpointPiece] using
+    (fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_measurableActiveQ4Endpoint_add_variation
+      hd hE hEne phi hphiOne hphiZero f x)
+
+/-- The dyadic maximal function is controlled by literal Q4 operators only:
+the measurable endpoint piece and the finite active supremum of the
+normalized radius-differentiated Q4 piece.  This is the form to which the
+Q4 shell and variation estimates are applied. -/
+theorem fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_measurableActiveEndpointPiece_add_q4Variation
+    {d : Nat} {E : Set Real} {j : Nat} (hd : 0 < d)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f x ≤
+      ‖(surfaceMass d : Complex)⁻¹‖ *
+        ‖q4MeasurableActiveDyadicAbsoluteEndpointPiece E j
+          (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+          phi hphiOne hphiZero f x‖ +
+        ∫ u in (0 : Real)..dyadicScale j,
+          activeDyadicDerivativeSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => q4NormalizedDyadicSurfaceRadiusDerivative
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f t x) u := by
+  simpa only
+    [normalizedSphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_q4NormalizedDyadicSurfaceRadiusDerivative]
+    using
+      (fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_measurableActiveEndpointPiece_add_variation
+        hd hE hEne phi hphiOne hphiZero f x)
+
+/-- The preceding sampling estimate in the canonical absolute-bandpass
+notation used by the reassembly of the main theorem. -/
+theorem iSup_ennreal_norm_sphericalAverage_absoluteDyadicBandpassProjection_le_activeDyadic
+    {d : Nat} {E : Set Real} {j : Nat}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    (⨆ r : E,
+      ENNReal.ofReal ‖sphericalAverage d
+        (dyadicBandpassProjection (absoluteDyadicBandpass phi hphiOne hphiZero j) f :
+          Euclidean d -> Complex) r.1 x‖) ≤
+      ENNReal.ofReal
+        (activeDyadicEndpointSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => sphericalAverage d
+              (dyadicBandpassProjection (absoluteDyadicBandpass phi hphiOne hphiZero j) f :
+                Euclidean d -> Complex) t x) +
+          ∫ u in (0 : Real)..dyadicScale j,
+            activeDyadicDerivativeSup E j
+              (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+              (fun t => sphericalAverageRadiusDerivative
+                (dyadicBandpassProjection (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+                t x) u) :=
+  iSup_ennreal_norm_sphericalAverage_dyadicBandpassProjection_le_activeDyadic
+    hE hEne (absoluteDyadicBandpass phi hphiOne hphiZero j) f x
+
+/-- Rewriting the sampled endpoint values as the literal `Q4` surface
+pieces gives the exact form consumed by the active-cell `TT*` calculation. -/
+theorem iSup_ennreal_norm_q4DyadicSurfacePiece_absoluteDyadicBandpass_le_activeDyadic
+    {d : Nat} {E : Set Real} {j : Nat}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    (⨆ r : E,
+      ENNReal.ofReal ‖q4DyadicSurfacePiece
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f r.1 x‖) ≤
+      ENNReal.ofReal
+        (activeDyadicEndpointSup E j
+            (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+            (fun t => q4DyadicSurfacePiece
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f t x) +
+          ∫ u in (0 : Real)..dyadicScale j,
+            activeDyadicDerivativeSup E j
+              (activeDyadicIndices_nonempty_of_nonempty hE hEne)
+              (fun t => sphericalAverageRadiusDerivative
+                (dyadicBandpassProjection (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+                t x) u) := by
+  simpa only [sphericalAverage_dyadicBandpassProjection_eq_q4DyadicSurfacePiece] using
+    (iSup_ennreal_norm_sphericalAverage_absoluteDyadicBandpassProjection_le_activeDyadic
+      hE hEne phi hphiOne hphiZero f x)
+
+/-- The `L¹ -> L∞` bound for the finite `TT*` shell associated to the
+literal maximizing endpoint selector.  The selected kernel is the actual
+absolute dyadic pair kernel; measurability remains an explicit hypothesis,
+as a pointwise argmax alone does not imply it. -/
+theorem norm_q4AbsoluteDyadicSelectedPairShell_le_of_activeEndpointSelector_pairKernel_bound
+    {d : Nat} {E : Set Real} {j : Nat} {u L A : Real}
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (g : Euclidean d -> Complex)
+    (hA : 0 ≤ A)
+    (hg : ∀ i ∈ activeDyadicIndices E j,
+      Integrable (q4SelectedFibre
+        (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g i) volume)
+    (hmeas : ∀ i l x, AEStronglyMeasurable
+      (fun y => q4ActiveDyadicPairKernel
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) j i l (x - y) *
+          q4SelectedFibre
+            (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g l y)
+        volume)
+    (hkernel : ∀ i l z, ‖q4ActiveDyadicPairKernel
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) j i l z‖ ≤ A)
+    (x : Euclidean d) :
+    ‖q4ActiveDyadicSelectedPairShell E j u L
+      (absoluteDyadicBandpass phi hphiOne hphiZero j)
+      (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g x‖ ≤
+      A * ∫ y, ‖g y‖ := by
+  exact norm_q4AbsoluteDyadicSelectedPairShell_le_of_pairKernel_bound
+    phi hphiOne hphiZero
+    (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f)
+    (fun x =>
+      activeDyadicAbsoluteQ4EndpointSelector_mem E j hs phi hphiOne hphiZero f x)
+    g hA hg hmeas hkernel x
+
+/-- The `L²` `TT*` shell estimate for the literal maximizing endpoint
+selector.  This is the precise finite-shell operator statement needed by the
+quasi-Assouad part of the proof: after proving the displayed pairwise bounds
+for the true kernels, the active-cell count is already built into the right
+hand side. -/
+theorem q4AbsoluteDyadicSelectedPairShell_energy_le_of_activeEndpointSelector_pairwise_bound
+    {d : Nat} {E : Set Real} {gamma eta C u L : Real} {j : Nat}
+    (hE : E ⊆ Set.Icc (1 : Real) 2)
+    (hcover : HasSubpowerAssouadCoverBound E gamma eta C)
+    (hC : 0 ≤ C) (hgamma : 0 ≤ gamma)
+    (hdeltaone : dyadicScale j < 1) (hL : 0 ≤ L)
+    (hs : (activeDyadicIndices E j).Nonempty)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 -> phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ -> phi xi = 0)
+    (f : SchwartzMap (Euclidean d) Complex) (g : Euclidean d -> Complex)
+    {B : Real} (hB : 0 ≤ B)
+    (hselected : Integrable (fun x =>
+      ‖q4ActiveDyadicSelectedPairShell E j u L
+        (absoluteDyadicBandpass phi hphiOne hphiZero j)
+        (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g x‖ ^
+          (2 : Nat)) volume)
+    (hfibre : ∀ i ∈ activeDyadicIndices E j, Integrable (fun x =>
+      ‖q4ActiveDyadicKernelTTStarShell E j u L volume
+        (q4ActiveDyadicPairKernel (absoluteDyadicBandpass phi hphiOne hphiZero j) j)
+        (q4SelectedFibre
+          (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g) i x‖ ^
+          (2 : Nat)) volume)
+    (hg : ∀ i ∈ activeDyadicIndices E j, MemLp
+      (q4SelectedFibre
+        (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g i) 2 volume)
+    (hgSq : ∀ i ∈ activeDyadicIndices E j, Integrable (fun x =>
+      ‖q4SelectedFibre
+        (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g i x‖ ^
+          (2 : Nat)) volume)
+    (hpairMem : ∀ i l, MemLp
+      (q4PairwiseKernelApply volume
+        (q4ActiveDyadicPairKernel (absoluteDyadicBandpass phi hphiOne hphiZero j) j)
+        i l (q4SelectedFibre
+          (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g l)) 2 volume)
+    (hpair : ∀ i l, lpNorm
+      (q4PairwiseKernelApply volume
+        (q4ActiveDyadicPairKernel (absoluteDyadicBandpass phi hphiOne hphiZero j) j)
+        i l (q4SelectedFibre
+          (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g l)) 2 volume ≤
+        B * lpNorm (q4SelectedFibre
+          (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g l) 2 volume) :
+    ∫ x, ‖q4ActiveDyadicSelectedPairShell E j u L
+      (absoluteDyadicBandpass phi hphiOne hphiZero j)
+      (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f) g x‖ ^
+        (2 : Nat) ≤
+      (B * (6 * C * (dyadicScale j) ^ (-eta) *
+        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ gamma)) ^ (2 : Nat) *
+        ∫ x, ‖g x‖ ^ (2 : Nat) := by
+  exact q4AbsoluteDyadicSelectedPairShell_energy_le_of_pairwise_bound
+    hE hcover hC hgamma hdeltaone hL phi hphiOne hphiZero
+    (activeDyadicAbsoluteQ4EndpointSelector E j hs phi hphiOne hphiZero f)
+    (fun x =>
+      activeDyadicAbsoluteQ4EndpointSelector_mem E j hs phi hphiOne hphiZero f x)
+    g hB hselected hfibre hg hgSq hpairMem hpair
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

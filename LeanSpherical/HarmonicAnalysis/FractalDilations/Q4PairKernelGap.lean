@@ -1,0 +1,176 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4ActivePairKernel
+import LeanSpherical.HarmonicAnalysis.FractalDilations.ActiveDyadicGapRange
+
+/-!
+# The literal `Q4` pair-kernel gap endpoint
+
+This file fixes the public, normalization-sensitive statement used by the
+`Q4` `L¹ → L∞` endpoint.  The kernel is the literal
+`q4DyadicPairKernel`, hence it is the kernel for `A_j A_j*`, not the
+renormalized `T_j T_j*` kernel in the paper.  Its leading size is therefore
+`2^j`; restoring the paper's `T_j` normalization multiplies it by
+`2^(j * (d - 1))`.
+
+The definition records the all-dimensional stationary estimate.  The two
+proved consequences below are the exact positive-shell and diagonal forms
+consumed by the finite product `TT*` argument.  Keeping the lower edge in the
+positive shell is essential: a shell with lower edge zero has no gap decay.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Metric Set
+
+noncomputable section
+
+/-- The radius-gap weight in the literal `A_j A_j*` kernel bound. -/
+def q4PairKernelGapWeight (d j : Nat) (r r' : Real) : Real :=
+  (1 + |r - r'| / dyadicScale j) ^ (-(((d : Real) - 1) / 2))
+
+/-- A uniform all-dimensional stationary estimate for a family of literal
+dyadic pair kernels on a specified compact radius interval.  The enlarged
+form is the one used by the active dyadic grid: its left endpoints can lie
+slightly outside the physical interval `[1,2]`. -/
+def HasQ4DyadicPairKernelGapDecayOn
+    (d : Nat) (psi : Nat -> SchwartzMap (Euclidean d) Complex)
+    (a b C : Real) : Prop :=
+  ∀ (j : Nat) (r r' : Real) (x : Euclidean d),
+    r ∈ Icc a b -> r' ∈ Icc a b ->
+      ‖q4DyadicPairKernel (psi j) r r' x‖ ≤
+        C * (2 : Real) ^ j * q4PairKernelGapWeight d j r r'
+
+/-- The physical-radius specialization of the enlarged stationary estimate. -/
+def HasQ4DyadicPairKernelGapDecay
+    (d : Nat) (psi : Nat -> SchwartzMap (Euclidean d) Complex) (C : Real) : Prop :=
+  HasQ4DyadicPairKernelGapDecayOn d psi (1 : Real) 2 C
+
+/-- Restricting the radius interval preserves a literal pair-kernel estimate. -/
+theorem HasQ4DyadicPairKernelGapDecayOn.restrict
+    {d : Nat} {psi : Nat -> SchwartzMap (Euclidean d) Complex}
+    {a b a' b' C : Real}
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psi a b C)
+    (hinterval : Icc a' b' ⊆ Icc a b) :
+    HasQ4DyadicPairKernelGapDecayOn d psi a' b' C := by
+  intro j r r' x hr hr'
+  exact hdecay j r r' x (hinterval hr) (hinterval hr')
+
+/-- In particular, an enlarged estimate on `[1/2,5/2]` supplies the usual
+physical-radius statement. -/
+theorem HasQ4DyadicPairKernelGapDecayOn.to_physical
+    {d : Nat} {psi : Nat -> SchwartzMap (Euclidean d) Complex} {C : Real}
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psi (1 / 2 : Real) (5 / 2) C) :
+    HasQ4DyadicPairKernelGapDecay d psi C := by
+  exact hdecay.restrict (by
+    intro r hr
+    constructor <;> linarith [hr.1, hr.2])
+
+/-- The diagonal (`n = 0`) consequence of the literal stationary endpoint.
+There is no radius-gap gain on the diagonal. -/
+theorem norm_q4DyadicPairKernel_diagonal_le_of_gapDecayOn
+    {d : Nat} (psi : Nat -> SchwartzMap (Euclidean d) Complex)
+    {a b C : Real} (hdecay : HasQ4DyadicPairKernelGapDecayOn d psi a b C)
+    (j : Nat) {r : Real} (hr : r ∈ Icc a b) (x : Euclidean d) :
+    ‖q4DyadicPairKernel (psi j) r r x‖ ≤ C * (2 : Real) ^ j := by
+  have h := hdecay j r r x hr hr
+  simpa [q4PairKernelGapWeight] using h
+
+/-- Physical-radius specialization of the preceding diagonal estimate. -/
+theorem norm_q4DyadicPairKernel_diagonal_le_of_gapDecay
+    {d : Nat} (psi : Nat -> SchwartzMap (Euclidean d) Complex) {C : Real}
+    (hdecay : HasQ4DyadicPairKernelGapDecay d psi C)
+    (j : Nat) {r : Real} (hr : r ∈ Icc (1 : Real) 2) (x : Euclidean d) :
+    ‖q4DyadicPairKernel (psi j) r r x‖ ≤ C * (2 : Real) ^ j := by
+  have h := hdecay j r r x hr hr
+  simpa [q4PairKernelGapWeight] using h
+
+/-- On a positive dyadic radius-gap shell, the literal `A_j A_j*` kernel
+has the expected stationary gain.  The displayed final factor is
+`2^(-(n-1)(d-1)/2)`, equivalent to the customary
+`2^(-n(d-1)/2)` up to a dimension-only constant. -/
+theorem norm_q4DyadicPairKernel_positiveGapShell_le_of_gapDecayOn
+    {d : Nat} (hd : 1 ≤ d) (psi : Nat -> SchwartzMap (Euclidean d) Complex)
+    {a b C : Real} (hC : 0 ≤ C)
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psi a b C)
+    {j n : Nat} {r r' : Real} (hn : 0 < n)
+    (hr : r ∈ Icc a b) (hr' : r' ∈ Icc a b)
+    (hshell : radiusGapShellNeighbors
+      ((2 : Real) ^ (n - 1) * dyadicScale j)
+      ((2 : Real) ^ n * dyadicScale j) r r')
+    (x : Euclidean d) :
+    ‖q4DyadicPairKernel (psi j) r r' x‖ ≤
+      C * (2 : Real) ^ j *
+        ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
+  have hdelta : 0 < dyadicScale j := dyadicScale_pos j
+  have hpow_pos : 0 < (2 : Real) ^ (n - 1 : Nat) := by positivity
+  have hratio : (2 : Real) ^ (n - 1 : Nat) ≤ |r - r'| / dyadicScale j := by
+    apply (le_div_iff₀ hdelta).2
+    simpa only [mul_comm] using hshell.1
+  have hone : (2 : Real) ^ (n - 1 : Nat) ≤ 1 + |r - r'| / dyadicScale j := by
+    calc
+      (2 : Real) ^ (n - 1 : Nat) ≤ 0 + |r - r'| / dyadicScale j := by
+        simpa using hratio
+      _ ≤ 1 + |r - r'| / dyadicScale j := by linarith
+  have hexponent : -(((d : Real) - 1) / 2) ≤ 0 := by
+    have hdreal : (1 : Real) ≤ d := by exact_mod_cast hd
+    linarith
+  have hweight : q4PairKernelGapWeight d j r r' ≤
+      ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
+    unfold q4PairKernelGapWeight
+    exact Real.rpow_le_rpow_of_nonpos hpow_pos hone hexponent
+  have hkernel := hdecay j r r' x hr hr'
+  calc
+    ‖q4DyadicPairKernel (psi j) r r' x‖ ≤
+        C * (2 : Real) ^ j * q4PairKernelGapWeight d j r r' := hkernel
+    _ ≤ C * (2 : Real) ^ j *
+        ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
+          exact mul_le_mul_of_nonneg_left hweight
+            (mul_nonneg hC (pow_nonneg (by norm_num) _))
+
+/-- Physical-radius specialization of the positive-shell estimate. -/
+theorem norm_q4DyadicPairKernel_positiveGapShell_le_of_gapDecay
+    {d : Nat} (hd : 1 ≤ d) (psi : Nat -> SchwartzMap (Euclidean d) Complex)
+    {C : Real} (hC : 0 ≤ C) (hdecay : HasQ4DyadicPairKernelGapDecay d psi C)
+    {j n : Nat} {r r' : Real} (hn : 0 < n)
+    (hr : r ∈ Icc (1 : Real) 2) (hr' : r' ∈ Icc (1 : Real) 2)
+    (hshell : radiusGapShellNeighbors
+      ((2 : Real) ^ (n - 1) * dyadicScale j)
+      ((2 : Real) ^ n * dyadicScale j) r r')
+    (x : Euclidean d) :
+    ‖q4DyadicPairKernel (psi j) r r' x‖ ≤
+      C * (2 : Real) ^ j *
+        ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
+  have hdelta : 0 < dyadicScale j := dyadicScale_pos j
+  have hpow_pos : 0 < (2 : Real) ^ (n - 1 : Nat) := by positivity
+  have hratio : (2 : Real) ^ (n - 1 : Nat) ≤ |r - r'| / dyadicScale j := by
+    apply (le_div_iff₀ hdelta).2
+    simpa only [mul_comm] using hshell.1
+  have hone : (2 : Real) ^ (n - 1 : Nat) ≤ 1 + |r - r'| / dyadicScale j := by
+    calc
+      (2 : Real) ^ (n - 1 : Nat) ≤ 0 + |r - r'| / dyadicScale j := by
+        simpa using hratio
+      _ ≤ 1 + |r - r'| / dyadicScale j := by linarith
+  have hexponent : -(((d : Real) - 1) / 2) ≤ 0 := by
+    have hdreal : (1 : Real) ≤ d := by exact_mod_cast hd
+    linarith
+  have hweight : q4PairKernelGapWeight d j r r' ≤
+      ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
+    unfold q4PairKernelGapWeight
+    exact Real.rpow_le_rpow_of_nonpos hpow_pos hone hexponent
+  have hkernel := hdecay j r r' x hr hr'
+  calc
+    ‖q4DyadicPairKernel (psi j) r r' x‖ ≤
+        C * (2 : Real) ^ j * q4PairKernelGapWeight d j r r' := hkernel
+    _ ≤ C * (2 : Real) ^ j *
+        ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
+          exact mul_le_mul_of_nonneg_left hweight
+            (mul_nonneg hC (pow_nonneg (by norm_num) _))
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

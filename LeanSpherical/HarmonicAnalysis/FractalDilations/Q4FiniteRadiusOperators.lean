@@ -1,0 +1,1151 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4AbsoluteBandpassBridge
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4FiniteProductTTStar
+import Mathlib.Analysis.Distribution.FourierMultiplier
+import Mathlib.MeasureTheory.Function.Holder
+
+/-!
+# The actual finite-radius operators in the `Q4` argument
+
+The `TT*` argument in Section 3 of Anderson--Hughes--Roos--Seeger uses the
+individual localized spherical multipliers and their formal adjoints, rather
+than an abstract family of operators.  This file supplies those maps on the
+Schwartz core.  The core is the natural literal domain: multiplication by a
+surface Fourier multiplier and Fourier inversion are continuous linear maps
+there, and the resulting pair composition is the actual convolution kernel
+used by the active-dyadic shell.
+
+The later `L²`-extension step is deliberately separate.  In particular, we
+do not pretend that the Bochner-integral convolution is a linear map on all
+pointwise functions; it is linear on this Schwartz core and extends to `L²`
+only after the proved multiplier estimate.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory FourierTransform
+open scoped FourierTransform BigOperators
+
+noncomputable section
+
+/-- A compactly localized one-radius surface multiplier is a Schwartz map.
+This is the one-factor analogue of
+`exists_schwartz_q4DyadicPairMultiplier`. -/
+theorem exists_compactSchwartz_q4DyadicSurfaceMultiplier
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex)) (r : Real) :
+    ∃ m : SchwartzMap (Euclidean d) Complex,
+      HasCompactSupport (m : Euclidean d -> Complex) ∧
+      ∀ xi : Euclidean d, m xi = q4DyadicSurfaceMultiplier psi r xi := by
+  let g : Euclidean d -> Complex := fun xi => psi xi * surfaceFourier d (-r • xi)
+  have hcompact : HasCompactSupport g := hpsiCompact.mul_right
+  have hsurface : ContDiff Real (⊤ : ℕ∞)
+      (fun xi : Euclidean d => surfaceFourier d (-r • xi)) := by
+    exact (contDiff_surfaceFourier d).comp
+      (ContinuousLinearMap.contDiff (ContinuousLinearMap.lsmul Real Real (-r)))
+  have hsmooth : ContDiff Real (⊤ : ℕ∞) g := by
+    exact (psi.smooth (⊤ : ℕ∞)).mul hsurface
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_⟩
+  · change HasCompactSupport g
+    exact hcompact
+  · intro xi
+    change psi xi * surfaceFourier d (-r • xi) = q4DyadicSurfaceMultiplier psi r xi
+    unfold q4DyadicSurfaceMultiplier
+    ring
+
+/-- A chosen compact Schwartz realization of the actual one-radius
+multiplier. -/
+noncomputable def q4DyadicSurfaceSchwartzMultiplier
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) : SchwartzMap (Euclidean d) Complex :=
+  Classical.choose (exists_compactSchwartz_q4DyadicSurfaceMultiplier psi hpsiCompact r)
+
+/-- The chosen one-radius multiplier has compact support. -/
+theorem q4DyadicSurfaceSchwartzMultiplier_compact
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) :
+    HasCompactSupport
+      (q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r : Euclidean d -> Complex) :=
+  (Classical.choose_spec
+    (exists_compactSchwartz_q4DyadicSurfaceMultiplier psi hpsiCompact r)).1
+
+/-- The chosen one-radius multiplier is pointwise the literal spherical
+multiplier. -/
+theorem q4DyadicSurfaceSchwartzMultiplier_spec
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (xi : Euclidean d) :
+    q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r xi =
+      q4DyadicSurfaceMultiplier psi r xi :=
+  (Classical.choose_spec
+    (exists_compactSchwartz_q4DyadicSurfaceMultiplier psi hpsiCompact r)).2 xi
+
+/-- Complex conjugation of the compact one-radius multiplier is again a
+compact Schwartz multiplier.  We retain a chosen realization because
+conjugation is real-linear, not complex-linear. -/
+theorem exists_compactSchwartz_star_q4DyadicSurfaceMultiplier
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex)) (r : Real) :
+    ∃ mstar : SchwartzMap (Euclidean d) Complex,
+      HasCompactSupport (mstar : Euclidean d -> Complex) ∧
+      ∀ xi : Euclidean d, mstar xi =
+        starRingEnd Complex (q4DyadicSurfaceMultiplier psi r xi) := by
+  let m := q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r
+  let g : Euclidean d -> Complex := fun xi => starRingEnd Complex (m xi)
+  have hmcompact : HasCompactSupport (m : Euclidean d -> Complex) :=
+    q4DyadicSurfaceSchwartzMultiplier_compact psi hpsiCompact r
+  have hcompact : HasCompactSupport g := by
+    change HasCompactSupport ((starRingEnd Complex) ∘ (m : Euclidean d -> Complex))
+    exact hmcompact.comp_left (g := starRingEnd Complex) (by simp)
+  have hsmooth : ContDiff Real (⊤ : ℕ∞) g := by
+    have hg : g = (Complex.conjCLE : Complex -> Complex) ∘
+        (m : Euclidean d -> Complex) := by
+      funext xi
+      simpa only [g, Function.comp_apply] using (Complex.conjCLE_apply (m xi)).symm
+    rw [hg]
+    exact Complex.conjCLE.contDiff.comp (m.smooth (⊤ : ℕ∞))
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_⟩
+  · change HasCompactSupport g
+    exact hcompact
+  · intro xi
+    change starRingEnd Complex (m xi) =
+      starRingEnd Complex (q4DyadicSurfaceMultiplier psi r xi)
+    rw [q4DyadicSurfaceSchwartzMultiplier_spec]
+
+/-- A chosen Schwartz realization of the formal adjoint multiplier. -/
+noncomputable def q4DyadicSurfaceSchwartzAdjointMultiplier
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) : SchwartzMap (Euclidean d) Complex :=
+  Classical.choose
+    (exists_compactSchwartz_star_q4DyadicSurfaceMultiplier psi hpsiCompact r)
+
+/-- The adjoint multiplier has compact support. -/
+theorem q4DyadicSurfaceSchwartzAdjointMultiplier_compact
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) :
+    HasCompactSupport
+      (q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r :
+        Euclidean d -> Complex) :=
+  (Classical.choose_spec
+    (exists_compactSchwartz_star_q4DyadicSurfaceMultiplier psi hpsiCompact r)).1
+
+/-- The adjoint multiplier is literally the complex conjugate of the
+one-radius multiplier. -/
+theorem q4DyadicSurfaceSchwartzAdjointMultiplier_spec
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (xi : Euclidean d) :
+    q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r xi =
+      starRingEnd Complex (q4DyadicSurfaceMultiplier psi r xi) :=
+  (Classical.choose_spec
+    (exists_compactSchwartz_star_q4DyadicSurfaceMultiplier psi hpsiCompact r)).2 xi
+
+/-- The actual compactly localized single-radius spherical piece, as a
+linear map on Schwartz functions.  Its construction is continuous, but the
+finite-product API only needs the underlying linear map. -/
+noncomputable def q4DyadicSurfaceSchwartzPiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) :
+    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex :=
+  (SchwartzMap.fourierMultiplierCLM Complex
+    (q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r :
+      Euclidean d -> Complex)).toLinearMap
+
+/-- The actual formal adjoint of the compactly localized single-radius
+piece, again on the Schwartz core. -/
+noncomputable def q4DyadicSurfaceSchwartzAdjointPiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) :
+    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex :=
+  (SchwartzMap.fourierMultiplierCLM Complex
+    (q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r :
+      Euclidean d -> Complex)).toLinearMap
+
+/-- Fourier-side formula for the actual single-radius Schwartz operator. -/
+theorem fourier_q4DyadicSurfaceSchwartzPiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f : SchwartzMap (Euclidean d) Complex) (xi : Euclidean d) :
+    FourierTransform.fourier
+      ((q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f :
+        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) xi =
+      q4DyadicSurfaceMultiplier psi r xi *
+        FourierTransform.fourier (f : Euclidean d -> Complex) xi := by
+  let m := q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r
+  have hm : (m : Euclidean d -> Complex).HasTemperateGrowth := m.hasTemperateGrowth
+  change FourierTransform.fourier
+      ((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
+        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) xi = _
+  rw [SchwartzMap.fourierMultiplierCLM_apply]
+  have hfourier : FourierTransform.fourier
+      ((FourierTransform.fourierInv
+        (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex)
+          (FourierTransform.fourier f)) : SchwartzMap (Euclidean d) Complex) :
+        Euclidean d -> Complex) =
+      (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex)
+        (FourierTransform.fourier f) : Euclidean d -> Complex) := by
+    rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  rw [hfourier]
+  simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+  rw [q4DyadicSurfaceSchwartzMultiplier_spec]
+
+/-- Fourier-side formula for the literal formal adjoint. -/
+theorem fourier_q4DyadicSurfaceSchwartzAdjointPiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f : SchwartzMap (Euclidean d) Complex) (xi : Euclidean d) :
+    FourierTransform.fourier
+      ((q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r f :
+        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) xi =
+      starRingEnd Complex (q4DyadicSurfaceMultiplier psi r xi) *
+        FourierTransform.fourier (f : Euclidean d -> Complex) xi := by
+  let m := q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r
+  have hm : (m : Euclidean d -> Complex).HasTemperateGrowth := m.hasTemperateGrowth
+  change FourierTransform.fourier
+      ((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
+        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) xi = _
+  rw [SchwartzMap.fourierMultiplierCLM_apply]
+  have hfourier : FourierTransform.fourier
+      ((FourierTransform.fourierInv
+        (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex)
+          (FourierTransform.fourier f)) : SchwartzMap (Euclidean d) Complex) :
+        Euclidean d -> Complex) =
+      (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex)
+        (FourierTransform.fourier f) : Euclidean d -> Complex) := by
+    rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  rw [hfourier]
+  simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+  rw [q4DyadicSurfaceSchwartzAdjointMultiplier_spec]
+
+/-- On Schwartz data, the actual one-radius map is the literal Q4 Fourier
+piece used throughout the endpoint selection. -/
+theorem q4DyadicSurfaceSchwartzPiece_apply_eq_q4DyadicSurfacePiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f x =
+      q4DyadicSurfacePiece psi f r x := by
+  let m := q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r
+  have hm : (m : Euclidean d -> Complex).HasTemperateGrowth := m.hasTemperateGrowth
+  change
+    ((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
+      SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) x = _
+  rw [SchwartzMap.fourierMultiplierCLM_apply, SchwartzMap.fourierInv_coe]
+  have hsymbol :
+      (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex)
+        (FourierTransform.fourier f) : Euclidean d -> Complex) =
+        fun xi : Euclidean d => q4DyadicSurfaceMultiplier psi r xi *
+          FourierTransform.fourier (f : Euclidean d -> Complex) xi := by
+    funext xi
+    simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+    rw [q4DyadicSurfaceSchwartzMultiplier_spec]
+  unfold q4DyadicSurfacePiece
+  rw [hsymbol]
+
+/-- The compact Schwartz multiplier for an actual active-dyadic pair. -/
+noncomputable def q4ActiveDyadicPairSchwartzPiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) :
+    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex :=
+  (SchwartzMap.fourierMultiplierCLM Complex
+    (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l :
+      Euclidean d -> Complex)).toLinearMap
+
+/-- The actual pair Schwartz operator is the literal pair Fourier piece. -/
+theorem q4ActiveDyadicPairSchwartzPiece_apply_eq_q4DyadicPairPiece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (f : SchwartzMap (Euclidean d) Complex)
+    (x : Euclidean d) :
+    q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f x =
+      q4DyadicPairPiece psi f (dyadicLeft j i) (dyadicLeft j l) x := by
+  let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hm : (m : Euclidean d -> Complex).HasTemperateGrowth := m.hasTemperateGrowth
+  change
+    ((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
+      SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) x = _
+  rw [SchwartzMap.fourierMultiplierCLM_apply, SchwartzMap.fourierInv_coe]
+  have hsymbol :
+      (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex)
+        (FourierTransform.fourier f) : Euclidean d -> Complex) =
+        fun xi : Euclidean d => q4DyadicPairMultiplier psi
+          (dyadicLeft j i) (dyadicLeft j l) xi *
+            FourierTransform.fourier (f : Euclidean d -> Complex) xi := by
+    funext xi
+    simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+    rw [q4ActiveDyadicPairMultiplier_spec]
+  unfold q4DyadicPairPiece
+  rw [hsymbol]
+
+/-- The finite-radius `TT*` composition on the Schwartz core.  This is the
+literal identity `T_{t_i} T_{t_l}^*` before any kernel estimate is applied. -/
+theorem q4ActiveDyadicSurfaceSchwartzPiece_comp_adjoint_eq_pair
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (f : SchwartzMap (Euclidean d) Complex) :
+    q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j i)
+      (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact (dyadicLeft j l) f) =
+      q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f := by
+  let mi := q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact (dyadicLeft j i)
+  let ml := q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact (dyadicLeft j l)
+  let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hmi : (mi : Euclidean d -> Complex).HasTemperateGrowth := mi.hasTemperateGrowth
+  have hml : (ml : Euclidean d -> Complex).HasTemperateGrowth := ml.hasTemperateGrowth
+  change SchwartzMap.fourierMultiplierCLM Complex (mi : Euclidean d -> Complex)
+      (SchwartzMap.fourierMultiplierCLM Complex (ml : Euclidean d -> Complex) f) =
+      SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f
+  rw [SchwartzMap.fourierMultiplierCLM_fourierMultiplierCLM_apply hmi hml]
+  apply congrArg (fun n : Euclidean d -> Complex =>
+    SchwartzMap.fourierMultiplierCLM Complex n f)
+  funext xi
+  simp only [Pi.mul_apply]
+  rw [q4DyadicSurfaceSchwartzMultiplier_spec,
+    q4DyadicSurfaceSchwartzAdjointMultiplier_spec,
+    q4ActiveDyadicPairMultiplier_spec]
+  rfl
+
+/-- The preceding composition is the actual active-dyadic pair kernel from
+the `TT*` shell. -/
+theorem q4ActiveDyadicSurfaceSchwartzPiece_comp_adjoint_apply_eq_pairKernel
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (f : SchwartzMap (Euclidean d) Complex)
+    (x : Euclidean d) :
+    q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j i)
+      (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact (dyadicLeft j l) f) x =
+      q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+        (f : Euclidean d -> Complex) x := by
+  rw [q4ActiveDyadicSurfaceSchwartzPiece_comp_adjoint_eq_pair]
+  rw [q4ActiveDyadicPairSchwartzPiece_apply_eq_q4DyadicPairPiece]
+  exact q4DyadicPairPiece_eq_q4ActiveDyadicPairKernelApply
+    psi f hpsiCompact j i l x
+
+/-- The literal single-radius multiplier and its displayed formal adjoint
+satisfy the expected `L²` pairing identity on Schwartz functions. -/
+theorem integral_q4DyadicSurfaceSchwartzPiece_mul_star_eq
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f g : SchwartzMap (Euclidean d) Complex) :
+    (∫ x : Euclidean d,
+      q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f x *
+        starRingEnd Complex (g x)) =
+      ∫ x : Euclidean d, f x * starRingEnd Complex
+        (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r g x) := by
+  have hinner : (∫ x : Euclidean d, inner Complex (g x)
+      (q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f x)) =
+      ∫ x : Euclidean d, inner Complex
+        (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r g x) (f x) := by
+    rw [← SchwartzMap.integral_inner_fourier_fourier g
+      (q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f)]
+    rw [← SchwartzMap.integral_inner_fourier_fourier
+      (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r g) f]
+    apply integral_congr_ae
+    filter_upwards with xi
+    rw [fourier_q4DyadicSurfaceSchwartzPiece,
+      fourier_q4DyadicSurfaceSchwartzAdjointPiece]
+    simp only [RCLike.inner_apply, starRingEnd_apply, map_mul, star_star]
+    ring
+  simpa only [RCLike.inner_apply, starRingEnd_apply] using hinner
+
+/-- The genuine pairwise `L²` multiplier estimate on the Schwartz core.
+This is the analytic input used in the degree-counting half of the Q4
+finite-product `TT*` argument. -/
+theorem integral_norm_sq_q4ActiveDyadicPairSchwartzPiece_le_of_bound
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (f : SchwartzMap (Euclidean d) Complex)
+    {B : Real} (hB : 0 <= B)
+    (hbound : ∀ xi : Euclidean d,
+      ‖q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi‖ <= B) :
+    (∫ x : Euclidean d,
+      ‖q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f x‖ ^ (2 : Nat)) <=
+      B ^ (2 : Nat) * ∫ x : Euclidean d, ‖f x‖ ^ (2 : Nat) := by
+  let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hbase := integral_norm_sq_fourierInv_schwartz_multiplier_le
+    m (FourierTransform.fourier f) hB (by
+      intro xi
+      exact hbound xi)
+  change (∫ x : Euclidean d,
+      ‖((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
+        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) x‖ ^ (2 : Nat)) <= _
+  rw [SchwartzMap.fourierMultiplierCLM_apply, SchwartzMap.fourierInv_coe]
+  simpa only [SchwartzMap.fourier_coe] using hbase
+
+/-- A Schwartz-core version of the pair-composition predicate in
+`Q4FiniteProductTTStar`.  It is intentionally separate from the all-function
+predicate there: the latter belongs only after the `L²` extension has been
+constructed. -/
+def IsQ4SchwartzFiniteProductPairComposition
+    {I : Type*} {d : Nat}
+    (K : I -> I -> Euclidean d -> Complex)
+    (T Tstar : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex) : Prop :=
+  ∀ i l (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d),
+    T i (Tstar l f) x = q4PairwiseKernelApply volume K i l
+      (f : Euclidean d -> Complex) x
+
+/-- The actual active-dyadic radius family has the exact Schwartz-core
+pair-composition required by the finite-product `TT*` calculation. -/
+theorem isQ4SchwartzFiniteProductPairComposition_activeDyadic
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) :
+    IsQ4SchwartzFiniteProductPairComposition
+      (q4ActiveDyadicPairKernel psi j)
+      (fun i => q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j i))
+      (fun i => q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact (dyadicLeft j i)) := by
+  intro i l f x
+  exact q4ActiveDyadicSurfaceSchwartzPiece_comp_adjoint_apply_eq_pairKernel
+    psi hpsiCompact j i l f x
+
+/-! ## The genuine `L²` carrier
+
+The maps in this subsection are the completed `L²` versions of the Schwartz
+operators above.  They are defined through the `L²` Fourier isometry, not by
+declaring a pointwise convolution to be linear on arbitrary functions. -/
+
+/-- The Fourier multiplier with an `L∞` multiplier represented in `Lp`.
+The heterogeneous `Lp` multiplication has exponents `∞, 2, 2`. -/
+def q4L2FourierMultiplierLinear
+    {d : Nat} (m : Lp Complex ⊤ (volume : Measure (Euclidean d))) :
+    Lp Complex 2 (volume : Measure (Euclidean d)) ->ₗ[Complex]
+      Lp Complex 2 (volume : Measure (Euclidean d)) where
+  toFun f := FourierTransform.fourierInv
+    (m • (FourierTransform.fourier f :
+      Lp Complex 2 (volume : Measure (Euclidean d))) :
+      Lp Complex 2 (volume : Measure (Euclidean d)))
+  map_add' f g := by
+    rw [FourierTransform.fourier_add, Lp.add_smul,
+      FourierTransform.fourierInv_add]
+  map_smul' c f := by
+    rw [FourierTransform.fourier_smul]
+    rw [← Lp.smul_comm c m (FourierTransform.fourier f)]
+    rw [Lp.smul_assoc]
+    rw [FourierTransform.fourierInv_smul]
+
+/-- The `L²` Fourier multiplier is continuous, with norm bounded by the
+`L∞` norm of its multiplier. -/
+def q4L2FourierMultiplier
+    {d : Nat} (m : Lp Complex ⊤ (volume : Measure (Euclidean d))) :
+    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+      Lp Complex 2 (volume : Measure (Euclidean d)) :=
+  LinearMap.mkContinuous (q4L2FourierMultiplierLinear m) ‖m‖ (by
+    intro f
+    change ‖FourierTransform.fourierInv
+      (m • (FourierTransform.fourier f :
+        Lp Complex 2 (volume : Measure (Euclidean d))) :
+        Lp Complex 2 (volume : Measure (Euclidean d)))‖ <= ‖m‖ * ‖f‖
+    calc
+      ‖FourierTransform.fourierInv
+          (m • (FourierTransform.fourier f :
+            Lp Complex 2 (volume : Measure (Euclidean d))) :
+            Lp Complex 2 (volume : Measure (Euclidean d)))‖ =
+          ‖FourierTransform.fourier
+            (FourierTransform.fourierInv
+              (m • (FourierTransform.fourier f :
+                Lp Complex 2 (volume : Measure (Euclidean d))) :
+                Lp Complex 2 (volume : Measure (Euclidean d))))‖ :=
+        (Lp.norm_fourier_eq _).symm
+      _ = ‖m • (FourierTransform.fourier f :
+            Lp Complex 2 (volume : Measure (Euclidean d)))‖ := by
+        rw [FourierTransform.fourier_fourierInv_eq]
+      _ <= ‖m‖ * ‖FourierTransform.fourier f‖ := Lp.norm_smul_le _ _
+      _ = ‖m‖ * ‖f‖ := by rw [Lp.norm_fourier_eq])
+
+/-- Unfolding the bundled `L²` map gives the expected Fourier-side formula. -/
+theorem q4L2FourierMultiplier_apply
+    {d : Nat} (m : Lp Complex ⊤ (volume : Measure (Euclidean d)))
+    (f : Lp Complex 2 (volume : Measure (Euclidean d))) :
+    q4L2FourierMultiplier m f = FourierTransform.fourierInv
+      (m • (FourierTransform.fourier f :
+        Lp Complex 2 (volume : Measure (Euclidean d))) :
+        Lp Complex 2 (volume : Measure (Euclidean d))) := rfl
+
+/-- The sharp norm estimate for the bundled `L²` multiplier. -/
+theorem norm_q4L2FourierMultiplier_apply_le
+    {d : Nat} (m : Lp Complex ⊤ (volume : Measure (Euclidean d)))
+    (f : Lp Complex 2 (volume : Measure (Euclidean d))) :
+    ‖q4L2FourierMultiplier m f‖ <= ‖m‖ * ‖f‖ := by
+  change ‖FourierTransform.fourierInv
+      (m • (FourierTransform.fourier f :
+        Lp Complex 2 (volume : Measure (Euclidean d))) :
+        Lp Complex 2 (volume : Measure (Euclidean d)))‖ <= ‖m‖ * ‖f‖
+  calc
+    ‖FourierTransform.fourierInv
+        (m • (FourierTransform.fourier f :
+          Lp Complex 2 (volume : Measure (Euclidean d))) :
+          Lp Complex 2 (volume : Measure (Euclidean d)))‖ =
+        ‖FourierTransform.fourier
+          (FourierTransform.fourierInv
+            (m • (FourierTransform.fourier f :
+              Lp Complex 2 (volume : Measure (Euclidean d))) :
+              Lp Complex 2 (volume : Measure (Euclidean d))))‖ :=
+      (Lp.norm_fourier_eq _).symm
+    _ = ‖m • (FourierTransform.fourier f :
+          Lp Complex 2 (volume : Measure (Euclidean d)))‖ := by
+      rw [FourierTransform.fourier_fourierInv_eq]
+    _ <= ‖m‖ * ‖FourierTransform.fourier f‖ := Lp.norm_smul_le _ _
+    _ = ‖m‖ * ‖f‖ := by rw [Lp.norm_fourier_eq]
+
+/-- Multiplication of a Schwartz `L²` field by a Schwartz `L∞` field agrees
+with the heterogeneous `Lp` multiplication. -/
+theorem q4LpTop_smul_schwartz_toLp_eq
+    {d : Nat} (m f : SchwartzMap (Euclidean d) Complex) :
+    (m.toLp ⊤ volume • f.toLp 2 volume :
+      Lp Complex 2 (volume : Measure (Euclidean d))) =
+      (SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex) f).toLp 2 volume := by
+  let h : SchwartzMap (Euclidean d) Complex :=
+    SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex) f
+  apply Lp.ext
+  filter_upwards [Lp.coeFn_lpSMul (m.toLp ⊤ volume) (f.toLp 2 volume),
+    SchwartzMap.coeFn_toLp m ⊤ volume, SchwartzMap.coeFn_toLp f 2 volume,
+    SchwartzMap.coeFn_toLp h 2 volume] with x hmul hm hf hh
+  rw [hmul, hm, hf, hh]
+  simp only [Pi.smul_apply, smul_eq_mul, h,
+    SchwartzMap.smulLeftCLM_apply m.hasTemperateGrowth]
+
+/-- The completed `L²` multiplier agrees with the original Schwartz Fourier
+multiplier on the dense Schwartz core. -/
+theorem q4L2FourierMultiplier_toLp_eq_schwartz
+    {d : Nat} (m f : SchwartzMap (Euclidean d) Complex) :
+    q4L2FourierMultiplier (m.toLp ⊤ volume) (f.toLp 2 volume) =
+      (SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f).toLp 2 volume := by
+  apply (Lp.fourierTransformₗᵢ (Euclidean d) Complex).injective
+  rw [q4L2FourierMultiplier_apply, FourierTransform.fourier_fourierInv_eq]
+  simp only [SchwartzMap.toLp_fourier_eq]
+  rw [SchwartzMap.fourierMultiplierCLM_apply]
+  rw [FourierTransform.fourier_fourierInv_eq]
+  exact q4LpTop_smul_schwartz_toLp_eq m (FourierTransform.fourier f)
+
+/-- The actual one-radius localized spherical operator on `L²`. -/
+noncomputable def q4DyadicSurfaceL2Piece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) :
+    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+      Lp Complex 2 (volume : Measure (Euclidean d)) :=
+  q4L2FourierMultiplier
+    ((q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r).toLp ⊤ volume)
+
+/-- The actual formal-adjoint radius operator on `L²`. -/
+noncomputable def q4DyadicSurfaceAdjointL2Piece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) :
+    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+      Lp Complex 2 (volume : Measure (Euclidean d)) :=
+  q4L2FourierMultiplier
+    ((q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r).toLp ⊤ volume)
+
+/-- The actual active-dyadic pair multiplier on `L²`. -/
+noncomputable def q4ActiveDyadicPairL2Piece
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) :
+    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+      Lp Complex 2 (volume : Measure (Euclidean d)) :=
+  q4L2FourierMultiplier
+    ((q4ActiveDyadicPairMultiplier psi hpsiCompact j i l).toLp ⊤ volume)
+
+/-- The one-radius `L²` operator extends its literal Schwartz counterpart. -/
+theorem q4DyadicSurfaceL2Piece_toLp_eq_schwartz
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f : SchwartzMap (Euclidean d) Complex) :
+    q4DyadicSurfaceL2Piece psi hpsiCompact r (f.toLp 2 volume) =
+      (q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f).toLp 2 volume := by
+  simpa only [q4DyadicSurfaceL2Piece, q4DyadicSurfaceSchwartzPiece] using
+    (q4L2FourierMultiplier_toLp_eq_schwartz
+      (q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r) f)
+
+/-- The adjoint one-radius `L²` operator extends its literal Schwartz
+counterpart. -/
+theorem q4DyadicSurfaceAdjointL2Piece_toLp_eq_schwartz
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f : SchwartzMap (Euclidean d) Complex) :
+    q4DyadicSurfaceAdjointL2Piece psi hpsiCompact r (f.toLp 2 volume) =
+      (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r f).toLp 2 volume := by
+  simpa only [q4DyadicSurfaceAdjointL2Piece,
+    q4DyadicSurfaceSchwartzAdjointPiece] using
+    (q4L2FourierMultiplier_toLp_eq_schwartz
+      (q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r) f)
+
+/-- The active pair `L²` multiplier extends the actual Schwartz pair piece. -/
+theorem q4ActiveDyadicPairL2Piece_toLp_eq_schwartz
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (f : SchwartzMap (Euclidean d) Complex) :
+    q4ActiveDyadicPairL2Piece psi hpsiCompact j i l (f.toLp 2 volume) =
+      (q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f).toLp 2 volume := by
+  simpa only [q4ActiveDyadicPairL2Piece, q4ActiveDyadicPairSchwartzPiece] using
+    (q4L2FourierMultiplier_toLp_eq_schwartz
+      (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l) f)
+
+/-- On the Schwartz core, the completed radius multiplier and its displayed
+formal adjoint satisfy the Hilbert-space pairing identity.  The order of the
+arguments is chosen so that `RCLike.inner_apply` is literally the integral
+`T f * conj g` used in the paper. -/
+theorem inner_q4DyadicSurfaceL2Piece_toLp_adjoint
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real) (f g : SchwartzMap (Euclidean d) Complex) :
+    inner Complex (g.toLp 2 volume)
+      (q4DyadicSurfaceL2Piece psi hpsiCompact r (f.toLp 2 volume)) =
+      inner Complex
+        (q4DyadicSurfaceAdjointL2Piece psi hpsiCompact r (g.toLp 2 volume))
+        (f.toLp 2 volume) := by
+  rw [q4DyadicSurfaceL2Piece_toLp_eq_schwartz,
+    q4DyadicSurfaceAdjointL2Piece_toLp_eq_schwartz]
+  rw [SchwartzMap.inner_toL2_toL2_eq, SchwartzMap.inner_toL2_toL2_eq]
+  simpa only [RCLike.inner_apply, starRingEnd_apply] using
+    (integral_q4DyadicSurfaceSchwartzPiece_mul_star_eq
+      psi hpsiCompact r f g)
+
+/-- The formal-adjoint identity extends from Schwartz data to all of `L²`.
+This is a genuine density argument: both sides are continuous functions of
+the two `L²` arguments, so no pointwise representative of an arbitrary
+`L²` class is chosen. -/
+theorem inner_q4DyadicSurfaceL2Piece_adjoint
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (r : Real)
+    (f g : Lp Complex 2 (volume : Measure (Euclidean d))) :
+    inner Complex g (q4DyadicSurfaceL2Piece psi hpsiCompact r f) =
+      inner Complex (q4DyadicSurfaceAdjointL2Piece psi hpsiCompact r g) f := by
+  refine DenseRange.induction_on₂
+    (SchwartzMap.denseRange_toLpCLM (E := Euclidean d) (F := Complex)
+      (p := 2) ENNReal.ofNat_ne_top) ?_ ?_ f g
+  · exact isClosed_eq (by fun_prop) (by fun_prop)
+  · intro f0 g0
+    exact inner_q4DyadicSurfaceL2Piece_toLp_adjoint
+      psi hpsiCompact r f0 g0
+
+/-- The literal finite-radius `TT*` factorization holds on the completed
+`L²` carrier.  It follows from the Schwartz-core identity by density and the
+continuity of the three Fourier multiplier maps. -/
+theorem q4DyadicSurfaceL2Piece_comp_adjoint_eq_pair
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) :
+    q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i) ∘L
+      q4DyadicSurfaceAdjointL2Piece psi hpsiCompact (dyadicLeft j l) =
+      q4ActiveDyadicPairL2Piece psi hpsiCompact j i l := by
+  apply ContinuousLinearMap.ext
+  intro u
+  have hfun :
+      (fun v : Lp Complex 2 (volume : Measure (Euclidean d)) =>
+        q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i)
+          (q4DyadicSurfaceAdjointL2Piece psi hpsiCompact (dyadicLeft j l) v)) =
+      fun v : Lp Complex 2 (volume : Measure (Euclidean d)) =>
+        q4ActiveDyadicPairL2Piece psi hpsiCompact j i l v := by
+    apply Continuous.ext_on
+      (SchwartzMap.denseRange_toLpCLM (E := Euclidean d) (F := Complex)
+        (p := 2) ENNReal.ofNat_ne_top)
+    · exact (q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i)).continuous.comp
+        (q4DyadicSurfaceAdjointL2Piece psi hpsiCompact (dyadicLeft j l)).continuous
+    · exact (q4ActiveDyadicPairL2Piece psi hpsiCompact j i l).continuous
+    · rintro v ⟨f, rfl⟩
+      simp only [SchwartzMap.toLpCLM_apply]
+      rw [q4DyadicSurfaceAdjointL2Piece_toLp_eq_schwartz,
+        q4DyadicSurfaceL2Piece_toLp_eq_schwartz,
+        q4ActiveDyadicPairL2Piece_toLp_eq_schwartz]
+      rw [q4ActiveDyadicSurfaceSchwartzPiece_comp_adjoint_eq_pair]
+  simpa only [ContinuousLinearMap.comp_apply] using congrFun hfun u
+
+/-- A literal pointwise multiplier bound transfers to the actual active
+pair `L²` operator.  This is the completed-space version of the
+Schwartz-core Plancherel estimate above. -/
+theorem norm_q4ActiveDyadicPairL2Piece_apply_le_of_bound
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int)
+    {B : Real} (hB : 0 <= B)
+    (hbound : ∀ xi : Euclidean d,
+      ‖q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi‖ <= B)
+    (f : Lp Complex 2 (volume : Measure (Euclidean d))) :
+    ‖q4ActiveDyadicPairL2Piece psi hpsiCompact j i l f‖ <= B * ‖f‖ := by
+  let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hm : AEStronglyMeasurable (m : Euclidean d -> Complex) volume :=
+    m.continuous.aestronglyMeasurable
+  have hbase := norm_fourierInv_bounded_multiplier_fourier_le
+    (m : Euclidean d -> Complex) hm B hB hbound f
+  change ‖q4L2FourierMultiplier (m.toLp ⊤ volume) f‖ <= B * ‖f‖
+  rw [q4L2FourierMultiplier_apply]
+  simpa only [m] using hbase
+
+/-! ### Finite products on the completed Hilbert carrier
+
+The raw-function finite-product API records the eventual physical kernel
+estimate.  The following small API is deliberately typed on the completed
+Hilbert carrier itself.  It is the honest place where the operator identity
+`T T*` and its nonnegative diagonal energy are valid for arbitrary `L²`
+classes. -/
+
+/-- Synthesis of a finite family of vectors in a complex Hilbert carrier. -/
+def q4L2FiniteFibreSynthesis
+    {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
+    (s : Finset I) (Tstar : I -> H ->L[Complex] H) (g : I -> H) : H :=
+  ∑ i ∈ s, Tstar i (g i)
+
+/-- Analysis of a vector by a finite family of bounded radius operators. -/
+def q4L2FiniteProductAnalysis
+    {I H : Type*} [NormedAddCommGroup H] [NormedSpace Complex H]
+    (T : I -> H ->L[Complex] H) (f : H) : I -> H :=
+  fun i => T i f
+
+/-- The unrestricted pair shell on the completed Hilbert carrier.  This is
+the `L²`-multiplier form of the full kernel shell, before choosing pointwise
+representatives. -/
+def q4L2FiniteProductPairShell
+    {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
+    (s : Finset I) (P : I -> I -> H ->L[Complex] H) (g : I -> H) : I -> H :=
+  fun i => ∑ l ∈ s, P i l (g l)
+
+/-- The exact completed-space pair-composition condition. -/
+def IsQ4L2FiniteProductPairComposition
+    {I H : Type*} [NormedAddCommGroup H] [NormedSpace Complex H]
+    (T Tstar : I -> H ->L[Complex] H) (P : I -> I -> H ->L[Complex] H) : Prop :=
+  ∀ i l, T i ∘L Tstar l = P i l
+
+/-- The formal-adjoint identity on a complex Hilbert carrier.  We write it
+with `g` in the first inner-product slot, matching the complex integral
+pairing used by the physical-space shell. -/
+def IsQ4L2FiniteProductFormalAdjoint
+    {I H : Type*} [NormedAddCommGroup H] [NormedSpace Complex H]
+    [InnerProductSpace Complex H]
+    (T Tstar : I -> H ->L[Complex] H) : Prop :=
+  ∀ i f g, inner Complex g (T i f) = inner Complex (Tstar i g) f
+
+/-- Exact full `TT*` factorization on a finite Hilbert product. -/
+theorem q4L2FiniteProduct_analysis_synthesis_eq_pairShell
+    {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
+    (s : Finset I) (T Tstar : I -> H ->L[Complex] H)
+    (P : I -> I -> H ->L[Complex] H)
+    (hcomp : IsQ4L2FiniteProductPairComposition T Tstar P)
+    (g : I -> H) :
+    q4L2FiniteProductAnalysis T (q4L2FiniteFibreSynthesis s Tstar g) =
+      q4L2FiniteProductPairShell s P g := by
+  funext i
+  unfold q4L2FiniteProductAnalysis q4L2FiniteFibreSynthesis
+    q4L2FiniteProductPairShell
+  rw [map_sum]
+  apply Finset.sum_congr rfl
+  intro l hl
+  simpa only [ContinuousLinearMap.comp_apply] using
+    congrArg (fun A : H ->L[Complex] H => A (g l)) (hcomp i l)
+
+/-- Finite synthesis is the formal adjoint of finite analysis on the
+completed Hilbert carrier. -/
+theorem q4L2FiniteProduct_formalAdjoint
+    {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
+    [InnerProductSpace Complex H]
+    (s : Finset I) (T Tstar : I -> H ->L[Complex] H)
+    (hadj : IsQ4L2FiniteProductFormalAdjoint T Tstar)
+    (f : H) (g : I -> H) :
+    (∑ i ∈ s, inner Complex (g i) (T i f)) =
+      inner Complex (q4L2FiniteFibreSynthesis s Tstar g) f := by
+  rw [q4L2FiniteFibreSynthesis, sum_inner]
+  apply Finset.sum_congr rfl
+  intro i hi
+  exact hadj i f (g i)
+
+/-- The full pair-shell diagonal is exactly the square energy of synthesis.
+This is the literal finite-dimensional Hilbert-space `TT*` calculation used
+in the paper after the gap shells have been reassembled. -/
+theorem q4L2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal
+    {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
+    [InnerProductSpace Complex H]
+    (s : Finset I) (T Tstar : I -> H ->L[Complex] H)
+    (P : I -> I -> H ->L[Complex] H)
+    (hcomp : IsQ4L2FiniteProductPairComposition T Tstar P)
+    (hadj : IsQ4L2FiniteProductFormalAdjoint T Tstar)
+    (g : I -> H) :
+    inner Complex (q4L2FiniteFibreSynthesis s Tstar g)
+      (q4L2FiniteFibreSynthesis s Tstar g) =
+      ∑ i ∈ s, inner Complex (g i) (q4L2FiniteProductPairShell s P g i) := by
+  have hpair := q4L2FiniteProduct_analysis_synthesis_eq_pairShell
+    s T Tstar P hcomp g
+  calc
+    inner Complex (q4L2FiniteFibreSynthesis s Tstar g)
+        (q4L2FiniteFibreSynthesis s Tstar g) =
+        ∑ i ∈ s, inner Complex (g i)
+          (T i (q4L2FiniteFibreSynthesis s Tstar g)) :=
+      (q4L2FiniteProduct_formalAdjoint s T Tstar hadj
+        (q4L2FiniteFibreSynthesis s Tstar g) g).symm
+    _ = ∑ i ∈ s, inner Complex (g i) (q4L2FiniteProductPairShell s P g i) := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      have hi' := congrFun hpair i
+      change T i (q4L2FiniteFibreSynthesis s Tstar g) =
+        q4L2FiniteProductPairShell s P g i at hi'
+      rw [hi']
+
+/-- The active dyadic radius pieces satisfy the completed-space formal
+adjoint condition. -/
+theorem isQ4L2FiniteProductFormalAdjoint_activeDyadic
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) :
+    IsQ4L2FiniteProductFormalAdjoint
+      (fun i : Int => q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i))
+      (fun i : Int => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+        (dyadicLeft j i)) := by
+  intro i f g
+  exact inner_q4DyadicSurfaceL2Piece_adjoint
+    psi hpsiCompact (dyadicLeft j i) f g
+
+/-- The active dyadic radius pieces have the actual completed-space
+`T_i T_l^*` pair composition. -/
+theorem isQ4L2FiniteProductPairComposition_activeDyadic
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) :
+    IsQ4L2FiniteProductPairComposition
+      (fun i : Int => q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i))
+      (fun i : Int => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+        (dyadicLeft j i))
+      (fun i l => q4ActiveDyadicPairL2Piece psi hpsiCompact j i l) := by
+  intro i l
+  exact q4DyadicSurfaceL2Piece_comp_adjoint_eq_pair psi hpsiCompact j i l
+
+/-- Exact finite-product `TT*` factorization for the literal active-dyadic
+radius multipliers, on arbitrary `L²` inputs. -/
+theorem q4ActiveDyadicL2FiniteProduct_analysis_synthesis_eq_pairShell
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (s : Finset Int)
+    (g : Int -> Lp Complex 2 (volume : Measure (Euclidean d))) :
+    q4L2FiniteProductAnalysis
+      (fun i => q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i))
+      (q4L2FiniteFibreSynthesis s
+        (fun i => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+          (dyadicLeft j i)) g) =
+      q4L2FiniteProductPairShell s
+        (fun i l => q4ActiveDyadicPairL2Piece psi hpsiCompact j i l) g := by
+  apply q4L2FiniteProduct_analysis_synthesis_eq_pairShell
+  exact isQ4L2FiniteProductPairComposition_activeDyadic psi hpsiCompact j
+
+/-- The full active-dyadic `TT*` diagonal is the nonnegative `L²` synthesis
+energy.  This is the typed counterpart of the physical kernel diagonal; for
+Schwartz fibres the earlier core identity identifies every pair term with
+the literal convolution kernel. -/
+theorem q4ActiveDyadicL2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (s : Finset Int)
+    (g : Int -> Lp Complex 2 (volume : Measure (Euclidean d))) :
+    inner Complex
+      (q4L2FiniteFibreSynthesis s
+        (fun i => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+          (dyadicLeft j i)) g)
+      (q4L2FiniteFibreSynthesis s
+        (fun i => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+          (dyadicLeft j i)) g) =
+      ∑ i ∈ s, inner Complex (g i)
+        (q4L2FiniteProductPairShell s
+          (fun i l => q4ActiveDyadicPairL2Piece psi hpsiCompact j i l) g i) := by
+  apply q4L2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal
+  · exact isQ4L2FiniteProductPairComposition_activeDyadic psi hpsiCompact j
+  · exact isQ4L2FiniteProductFormalAdjoint_activeDyadic psi hpsiCompact j
+
+/-! ### The power-dual test on the Schwartz carrier
+
+The power-dual field is not a Schwartz function at arbitrary real exponent,
+so it must not be silently fed back into the Schwartz multiplier maps.  It
+is, however, an `L²` function for a Schwartz analysis output in the Q4 range
+`q ≥ 2`.  The definitions below package precisely that legitimate completed
+carrier. -/
+
+/-- The pointwise power-dual of one Schwartz field.  This is the one-fibre
+form of `q4PowerDualField`. -/
+def q4SchwartzPowerDualFunction
+    {d : Nat} (q : Real) (f : SchwartzMap (Euclidean d) Complex) :
+    Euclidean d -> Complex :=
+  fun x => ((‖f x‖ ^ (q - 2) : Real) : Complex) * f x
+
+/-- Pointwise norm of the one-fibre power-dual field. -/
+theorem norm_q4SchwartzPowerDualFunction
+    {d : Nat} (q : Real) (hq : 1 < q)
+    (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    ‖q4SchwartzPowerDualFunction q f x‖ = ‖f x‖ ^ (q - 1) := by
+  unfold q4SchwartzPowerDualFunction
+  rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
+  by_cases hz : ‖f x‖ = 0
+  · simp [hz, Real.zero_rpow (by linarith : q - 1 ≠ 0)]
+  · have hpos : 0 < ‖f x‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hz)
+    rw [← Real.rpow_add hpos]
+    congr 1
+    ring
+
+/-- A Schwartz field has an `L²` power-dual whenever `q ≥ 2`.  The proof is
+only decay plus the elementary power identity; it does not presume the
+target strong estimate that this test is used to prove. -/
+theorem memLp_q4SchwartzPowerDualFunction
+    {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    MemLp (q4SchwartzPowerDualFunction q f) 2 volume := by
+  have hq1 : 1 < q := lt_of_lt_of_le one_lt_two hq
+  have hqminus : 0 ≤ q - 2 := sub_nonneg.mpr hq
+  have hpowCont : Continuous (fun x : Euclidean d => ‖f x‖ ^ (q - 2)) :=
+    (f.continuous.norm).rpow_const fun x => Or.inr hqminus
+  have hdualCont : Continuous (q4SchwartzPowerDualFunction q f) := by
+    unfold q4SchwartzPowerDualFunction
+    exact (Complex.continuous_ofReal.comp hpowCont).mul f.continuous
+  have hpowerPos : 0 < 2 * (q - 1) := by nlinarith
+  have hsource : Integrable (fun x : Euclidean d =>
+      ‖f x‖ ^ (2 * (q - 1))) volume := by
+    have hmem : MemLp (f : Euclidean d -> Complex)
+        (ENNReal.ofReal (2 * (q - 1))) volume :=
+      f.memLp (ENNReal.ofReal (2 * (q - 1))) volume
+    have hint := hmem.integrable_norm_rpow
+      (ENNReal.ofReal_ne_zero_iff.mpr hpowerPos) ENNReal.ofReal_ne_top
+    simpa only [ENNReal.toReal_ofReal hpowerPos.le] using hint
+  rw [memLp_two_iff_integrable_sq_norm hdualCont.aestronglyMeasurable]
+  apply hsource.congr
+  filter_upwards with x
+  rw [norm_q4SchwartzPowerDualFunction q hq1 f x]
+  rw [← Real.rpow_natCast, ← Real.rpow_mul (norm_nonneg (f x))]
+  congr 1
+  ring
+
+/-- The same power-dual field is also integrable.  This is the other half of
+the natural `L¹ ∩ L²` carrier for the physical convolution formula.  It is
+important here that the source is Schwartz: no finite-measure-space shortcut
+is being used on Euclidean space. -/
+theorem integrable_q4SchwartzPowerDualFunction
+    {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    Integrable (q4SchwartzPowerDualFunction q f) volume := by
+  have hq1 : 1 < q := lt_of_lt_of_le one_lt_two hq
+  have hpowerPos : 0 < q - 1 := by linarith
+  have hsource : Integrable (fun x : Euclidean d =>
+      ‖f x‖ ^ (q - 1)) volume := by
+    have hmem : MemLp (f : Euclidean d -> Complex)
+        (ENNReal.ofReal (q - 1)) volume :=
+      f.memLp (ENNReal.ofReal (q - 1)) volume
+    have hint := hmem.integrable_norm_rpow
+      (ENNReal.ofReal_ne_zero_iff.mpr hpowerPos) ENNReal.ofReal_ne_top
+    simpa only [ENNReal.toReal_ofReal hpowerPos.le] using hint
+  have hqminus : 0 ≤ q - 2 := sub_nonneg.mpr hq
+  have hpowCont : Continuous (fun x : Euclidean d => ‖f x‖ ^ (q - 2)) :=
+    (f.continuous.norm).rpow_const fun x => Or.inr hqminus
+  have hdualCont : Continuous (q4SchwartzPowerDualFunction q f) := by
+    unfold q4SchwartzPowerDualFunction
+    exact (Complex.continuous_ofReal.comp hpowCont).mul f.continuous
+  refine hsource.mono' hdualCont.aestronglyMeasurable ?_
+  filter_upwards with x
+  rw [norm_q4SchwartzPowerDualFunction q hq1 f x]
+
+/-- The raw power-dual field has a continuous representative. -/
+theorem continuous_q4SchwartzPowerDualFunction
+    {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    Continuous (q4SchwartzPowerDualFunction q f) := by
+  have hqminus : 0 ≤ q - 2 := sub_nonneg.mpr hq
+  have hpowCont : Continuous (fun x : Euclidean d => ‖f x‖ ^ (q - 2)) :=
+    (f.continuous.norm).rpow_const fun x => Or.inr hqminus
+  unfold q4SchwartzPowerDualFunction
+  exact (Complex.continuous_ofReal.comp hpowCont).mul f.continuous
+
+/-- Rapid decay gives the power-dual field a global pointwise bound.  This
+is used to make every literal convolution with an integrable Schwartz kernel
+an everywhere-defined continuous function. -/
+theorem bddAbove_range_norm_q4SchwartzPowerDualFunction
+    {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    BddAbove (Set.range fun x : Euclidean d =>
+      ‖q4SchwartzPowerDualFunction q f x‖) := by
+  have hq1 : 1 < q := lt_of_lt_of_le one_lt_two hq
+  have hpow : 0 ≤ q - 1 := by linarith
+  refine ⟨SchwartzMap.seminorm Real 0 0 f ^ (q - 1), ?_⟩
+  rintro _ ⟨x, rfl⟩
+  rw [norm_q4SchwartzPowerDualFunction q hq1 f x]
+  exact Real.rpow_le_rpow (norm_nonneg _) (norm_le_seminorm Real f x) hpow
+
+/-- An explicit physical carrier for the Q4 dual test.  Each fibre is an
+honest `L¹ ∩ L²` function with a continuous bounded representative; these
+are exactly the hypotheses under which the compact Schwartz pair kernels can
+be interpreted pointwise before comparing with the completed Fourier
+multiplier. -/
+def Q4PhysicalDualCarrier
+    {I : Type*} {d : Nat} (g : I -> Euclidean d -> Complex) : Prop :=
+  ∀ i,
+    Integrable (g i) volume ∧ MemLp (g i) 2 volume ∧
+      Continuous (g i) ∧ BddAbove (Set.range fun x => ‖g i x‖)
+
+/-- The canonical power-dual of any finite Schwartz analysis family lies in
+the literal physical carrier. -/
+theorem q4PowerDualField_mem_Q4PhysicalDualCarrier
+    {I : Type*} {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : I -> SchwartzMap (Euclidean d) Complex) :
+    Q4PhysicalDualCarrier
+      (q4PowerDualField q (fun i => (f i : Euclidean d -> Complex))) := by
+  intro i
+  refine ⟨integrable_q4SchwartzPowerDualFunction q hq (f i),
+    memLp_q4SchwartzPowerDualFunction q hq (f i),
+    continuous_q4SchwartzPowerDualFunction q hq (f i), ?_⟩
+  simpa only [q4PowerDualField, q4SchwartzPowerDualFunction] using
+    bddAbove_range_norm_q4SchwartzPowerDualFunction q hq (f i)
+
+/-- The completed `L²` representative of a Schwartz power-dual field. -/
+noncomputable def q4SchwartzPowerDualL2
+    {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    Lp Complex 2 (volume : Measure (Euclidean d)) :=
+  (memLp_q4SchwartzPowerDualFunction q hq f).toLp
+    (q4SchwartzPowerDualFunction q f)
+
+/-- The completed power-dual has the expected pointwise representative
+almost everywhere. -/
+theorem q4SchwartzPowerDualL2_coeFn_ae_eq
+    {d : Nat} (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    ((q4SchwartzPowerDualL2 q hq f :
+      Lp Complex 2 (volume : Measure (Euclidean d))) : Euclidean d -> Complex) =ᵐ[volume]
+      q4SchwartzPowerDualFunction q f := by
+  exact (memLp_q4SchwartzPowerDualFunction q hq f).coeFn_toLp
+
+/-- The completed power-dual fibres associated with an active-dyadic
+Schwartz analysis output. -/
+noncomputable def q4ActiveDyadicSchwartzAnalysisPowerDualL2
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    Int -> Lp Complex 2 (volume : Measure (Euclidean d)) :=
+  fun i => q4SchwartzPowerDualL2 q hq
+    (q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j i) f)
+
+/-- Each completed active power-dual fibre represents exactly the raw
+finite-product power-dual field almost everywhere. -/
+theorem q4ActiveDyadicSchwartzAnalysisPowerDualL2_coeFn_ae_eq
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) (i : Int) :
+    ((q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f i :
+      Lp Complex 2 (volume : Measure (Euclidean d))) : Euclidean d -> Complex) =ᵐ[volume]
+      q4PowerDualField q
+        (fun k => (q4DyadicSurfaceSchwartzPiece psi hpsiCompact
+          (dyadicLeft j k) f : Euclidean d -> Complex)) i := by
+  have hcore := q4SchwartzPowerDualL2_coeFn_ae_eq q hq
+    (q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j i) f)
+  filter_upwards [hcore] with x hx
+  simpa only [q4ActiveDyadicSchwartzAnalysisPowerDualL2,
+    q4SchwartzPowerDualFunction, q4PowerDualField] using hx
+
+/-- The exact Hilbert-space `TT*` energy may in particular be tested on the
+power-dual of every Schwartz analysis output. -/
+theorem q4ActiveDyadicL2_powerDual_energy
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (s : Finset Int) (q : Real) (hq : 2 ≤ q)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    inner Complex
+      (q4L2FiniteFibreSynthesis s
+        (fun i => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+          (dyadicLeft j i))
+        (q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f))
+      (q4L2FiniteFibreSynthesis s
+        (fun i => q4DyadicSurfaceAdjointL2Piece psi hpsiCompact
+          (dyadicLeft j i))
+        (q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f)) =
+      ∑ i ∈ s, inner Complex
+        (q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f i)
+        (q4L2FiniteProductPairShell s
+          (fun i l => q4ActiveDyadicPairL2Piece psi hpsiCompact j i l)
+          (q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f) i) := by
+  exact q4ActiveDyadicL2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal
+    psi hpsiCompact j s
+    (q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f)
+
+/-- Synthesis of a finite family of Schwartz fields.  Unlike the measurable
+selector synthesis, this remains in the Schwartz core, so the literal
+finite-product `TT*` identity may be stated without any extension choice. -/
+def q4SchwartzFiniteFibreSynthesis
+    {I : Type*} {d : Nat} [DecidableEq I]
+    (s : Finset I)
+    (Tstar : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex)
+    (g : I -> SchwartzMap (Euclidean d) Complex) :
+    SchwartzMap (Euclidean d) Complex :=
+  ∑ i ∈ s, Tstar i (g i)
+
+/-- Analysis of a Schwartz input by a finite family of radius pieces. -/
+def q4SchwartzFiniteProductAnalysis
+    {I : Type*} {d : Nat}
+    (T : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    I -> SchwartzMap (Euclidean d) Complex :=
+  fun i => T i f
+
+/-- The literal unrestricted finite-product kernel shell on a finite family
+of Schwartz fields. -/
+def q4SchwartzFiniteProductKernelShell
+    {I : Type*} {d : Nat} [DecidableEq I]
+    (s : Finset I) (K : I -> I -> Euclidean d -> Complex)
+    (g : I -> SchwartzMap (Euclidean d) Complex) :
+    I -> Euclidean d -> Complex :=
+  fun i x => ∑ l ∈ s, q4PairwiseKernelApply volume K i l
+    (g l : Euclidean d -> Complex) x
+
+/-- On the Schwartz core, the actual active-dyadic finite product is exactly
+the full (unrestricted) pair-kernel shell.  This is the literal `TT*`
+factorization from Section 3; gap shells are only introduced after this
+identity and are not themselves asserted to factor. -/
+theorem q4SchwartzFiniteProduct_analysis_synthesis_eq_fullTTStar
+    {I : Type*} {d : Nat} [DecidableEq I]
+    (s : Finset I) (K : I -> I -> Euclidean d -> Complex)
+    (T Tstar : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+      SchwartzMap (Euclidean d) Complex)
+    (hcomp : IsQ4SchwartzFiniteProductPairComposition K T Tstar)
+    (g : I -> SchwartzMap (Euclidean d) Complex) :
+    (fun i x => q4SchwartzFiniteProductAnalysis T
+      (q4SchwartzFiniteFibreSynthesis s Tstar g) i x) =
+      q4SchwartzFiniteProductKernelShell s K g := by
+  funext i x
+  unfold q4SchwartzFiniteProductAnalysis q4SchwartzFiniteFibreSynthesis
+    q4SchwartzFiniteProductKernelShell
+  rw [map_sum]
+  simp only [Finset.sum_apply]
+  apply Finset.sum_congr rfl
+  intro l hl
+  exact hcomp i l (g l) x
+
+/-- The preceding core finite-product factorization specialized to the
+actual active-dyadic spherical pieces. -/
+theorem q4ActiveDyadicSchwartzFiniteProduct_analysis_synthesis_eq_fullTTStar
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (s : Finset Int)
+    (g : Int -> SchwartzMap (Euclidean d) Complex) :
+    (fun i x => q4SchwartzFiniteProductAnalysis
+      (fun k => q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j k))
+      (q4SchwartzFiniteFibreSynthesis s
+        (fun k => q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact
+          (dyadicLeft j k)) g) i x) =
+      q4SchwartzFiniteProductKernelShell s (q4ActiveDyadicPairKernel psi j) g := by
+  apply q4SchwartzFiniteProduct_analysis_synthesis_eq_fullTTStar
+  exact isQ4SchwartzFiniteProductPairComposition_activeDyadic psi hpsiCompact j
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

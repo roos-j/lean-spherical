@@ -1,0 +1,446 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.OffDiagonalMarcinkiewicz
+
+/-!
+# Same-output interpolation for the Minkowski triangle
+
+The `Q₁Q₂Q₃` part of the fractal-dilation argument is most conveniently
+organized at a common output exponent.  A strict `Q₃` estimate has input
+exponent `q / (q - 1)` and output exponent `q`, while the strict diagonal
+Minkowski estimate at the same height has input and output exponent `q`.
+
+This file develops the elementary smooth amplitude split needed to interpolate
+between those two estimates.  It is intentionally independent of the `Q₄`
+argument: the only analytic ingredients are subadditivity, scalar homogeneity,
+and the literal smooth Schwartz truncations.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter MeasureTheory Set ENNReal
+
+noncomputable section
+
+/-- Besides its half-height bound, the smooth low truncation is bounded by the
+original input pointwise. -/
+theorem smooth_low_norm_le
+    {d : Nat} (f low : SchwartzMap (Euclidean d) Complex) {t : Real}
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : Real) • f x) : Real) : Complex) • f x)
+    (x : Euclidean d) :
+    ‖low x‖ ≤ ‖f x‖ := by
+  let eta : ContDiffBump (0 : Complex) := smooth_half_height_bump
+  let y : Complex := (t⁻¹ : Real) • f x
+  have heta : eta y = smooth_half_height_bump ((t⁻¹ : Real) • f x) := by
+    rfl
+  rw [hlow x, ← heta, norm_smul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_nonneg eta.nonneg]
+  calc
+    eta y * ‖f x‖ ≤ 1 * ‖f x‖ :=
+      mul_le_mul_of_nonneg_right eta.le_one (norm_nonneg _)
+    _ = ‖f x‖ := one_mul _
+
+/-- A pointwise high-amplitude estimate at arbitrary input exponents.  The
+high piece vanishes below the quarter-height threshold, which is exactly what
+makes the negative residual power harmless. -/
+theorem smooth_high_rpow_le_of_lt
+    {d : Nat} (f low high : SchwartzMap (Euclidean d) Complex)
+    {t p r : Real} (ht : 0 < t) (hp : 0 < p) (hr : 0 < r) (hpr : r < p)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : Real) • f x) : Real) : Complex) • f x)
+    (hhigh : high = f - low) (x : Euclidean d) :
+    ‖high x‖ ^ r ≤ (t / 4) ^ (r - p) * ‖f x‖ ^ p := by
+  by_cases hsmall : ‖f x‖ ≤ t / 4
+  · rw [smooth_high_eq_zero_of_norm_le_quarter f low high ht hlow hhigh x hsmall]
+    have hrne : r ≠ 0 := ne_of_gt hr
+    simp only [norm_zero, Real.zero_rpow hrne]
+    exact mul_nonneg
+      (Real.rpow_nonneg (by positivity) _)
+      (Real.rpow_nonneg (norm_nonneg _) _)
+  · have hlarge : t / 4 < ‖f x‖ := lt_of_not_ge hsmall
+    have htquarter : 0 < t / 4 := by positivity
+    have hfpos : 0 < ‖f x‖ := lt_trans htquarter hlarge
+    have hhigh_nonneg : 0 ≤ ‖high x‖ := norm_nonneg _
+    have hpower : ‖f x‖ ^ (r - p) ≤ (t / 4) ^ (r - p) :=
+      Real.rpow_le_rpow_of_nonpos htquarter hlarge.le (by linarith)
+    have hfpow : 0 ≤ ‖f x‖ ^ p :=
+      Real.rpow_nonneg (norm_nonneg _) _
+    calc
+      ‖high x‖ ^ r ≤ ‖f x‖ ^ r :=
+        Real.rpow_le_rpow hhigh_nonneg
+          (smooth_high_norm_le f low high hlow hhigh x) (by linarith)
+      _ = ‖f x‖ ^ p * ‖f x‖ ^ (r - p) := by
+        rw [← Real.rpow_add hfpos]
+        congr 1
+        ring
+      _ ≤ ‖f x‖ ^ p * (t / 4) ^ (r - p) :=
+        mul_le_mul_of_nonneg_left hpower hfpow
+      _ = (t / 4) ^ (r - p) * ‖f x‖ ^ p := by ring
+
+/-- A pointwise low-amplitude estimate at arbitrary input exponents. -/
+theorem smooth_low_rpow_le_of_lt
+    {d : Nat} (f low : SchwartzMap (Euclidean d) Complex)
+    {t p r : Real} (ht : 0 < t) (hp : 0 < p) (hpr : p < r)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : Real) • f x) : Real) : Complex) • f x)
+    (x : Euclidean d) :
+    ‖low x‖ ^ r ≤ (t / 2) ^ (r - p) * ‖f x‖ ^ p := by
+  let a : Real := ‖low x‖
+  let b : Real := ‖f x‖
+  let c : Real := t / 2
+  have ha0 : 0 ≤ a := norm_nonneg _
+  have hb0 : 0 ≤ b := norm_nonneg _
+  have hc : 0 < c := by
+    dsimp only [c]
+    positivity
+  have hab : a ≤ b := by
+    dsimp only [a, b]
+    exact smooth_low_norm_le f low hlow x
+  have hac : a ≤ c := by
+    dsimp only [a, c]
+    exact smooth_low_norm_le_half_height f low ht hlow x
+  by_cases hzero : a = 0
+  · have hrne : r ≠ 0 := by linarith
+    rw [hzero, Real.zero_rpow hrne]
+    exact mul_nonneg
+      (Real.rpow_nonneg hc.le _)
+      (Real.rpow_nonneg hb0 _)
+  · have ha : 0 < a := lt_of_le_of_ne ha0 (Ne.symm hzero)
+    have hapow : a ^ p ≤ b ^ p :=
+      Real.rpow_le_rpow ha0 hab hp.le
+    have hcpow : a ^ (r - p) ≤ c ^ (r - p) :=
+      Real.rpow_le_rpow ha0 hac (by linarith)
+    calc
+      a ^ r = a ^ p * a ^ (r - p) := by
+        rw [← Real.rpow_add ha]
+        congr 1
+        ring
+      _ ≤ b ^ p * c ^ (r - p) := by
+        exact mul_le_mul hapow hcpow
+          (Real.rpow_nonneg ha0 _) (Real.rpow_nonneg hb0 _)
+      _ = c ^ (r - p) * b ^ p := by ring
+
+/-- Integrating the arbitrary-exponent high-amplitude estimate. -/
+theorem smooth_high_integral_rpow_le_of_lt
+    {d : Nat} (f low high : SchwartzMap (Euclidean d) Complex)
+    {t p r : Real} (ht : 0 < t) (hp : 0 < p) (hr : 0 < r) (hpr : r < p)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : Real) • f x) : Real) : Complex) • f x)
+    (hhigh : high = f - low) :
+    (∫ x, ‖high x‖ ^ r) ≤
+      (t / 4) ^ (r - p) * ∫ x, ‖f x‖ ^ p := by
+  have hleft : Integrable (fun x : Euclidean d => ‖high x‖ ^ r) volume :=
+    q4_schwartz_integrable_norm_rpow high (by linarith)
+  have hright : Integrable (fun x : Euclidean d =>
+      (t / 4) ^ (r - p) * ‖f x‖ ^ p) volume :=
+    (q4_schwartz_integrable_norm_rpow f hp).const_mul _
+  rw [← integral_const_mul]
+  apply integral_mono hleft hright
+  intro x
+  exact smooth_high_rpow_le_of_lt f low high ht hp hr hpr hlow hhigh x
+
+/-- Integrating the arbitrary-exponent low-amplitude estimate. -/
+theorem smooth_low_integral_rpow_le_of_lt
+    {d : Nat} (f low : SchwartzMap (Euclidean d) Complex)
+    {t p r : Real} (ht : 0 < t) (hp : 0 < p) (hpr : p < r)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : Real) • f x) : Real) : Complex) • f x) :
+    (∫ x, ‖low x‖ ^ r) ≤
+      (t / 2) ^ (r - p) * ∫ x, ‖f x‖ ^ p := by
+  have hleft : Integrable (fun x : Euclidean d => ‖low x‖ ^ r) volume :=
+    q4_schwartz_integrable_norm_rpow low (by linarith)
+  have hright : Integrable (fun x : Euclidean d =>
+      (t / 2) ^ (r - p) * ‖f x‖ ^ p) volume :=
+    (q4_schwartz_integrable_norm_rpow f hp).const_mul _
+  rw [← integral_const_mul]
+  apply integral_mono hleft hright
+  intro x
+  exact smooth_low_rpow_le_of_lt f low ht hp hpr hlow x
+
+/-! ## Fixed-output strong interpolation
+
+The preceding pointwise estimates are enough for the ordinary strong
+interpolation used in Corollary 2.5(ii) of the paper.  Unlike the Bourgain
+restricted weak-type device, this is just a single smooth amplitude split:
+the small part is estimated at the larger input exponent and the large part
+at the smaller one.  We keep the elementary root calculation explicit below
+so the resulting statement can be applied level-by-level to the literal
+absolute dyadic maximal operator.
+-/
+
+/-- The homogeneous input scale associated to a finite Schwartz `L^p`
+moment.  It is deliberately local to the same-output interpolation layer;
+the Q4 files use a different name for the same elementary quantity. -/
+def sameOutputInputScale (I p : Real) : Real := I ^ p⁻¹
+
+theorem sameOutputInputScale_pos
+    {I p : Real} (hI : 0 < I) : 0 < sameOutputInputScale I p := by
+  unfold sameOutputInputScale
+  exact Real.rpow_pos_of_pos hI _
+
+/-- On Schwartz data the scale above is exactly the extended-real input
+norm. -/
+theorem eLpNorm_schwartz_eq_sameOutputInputScale
+    {d : Nat} {p I : Real} (hp : 0 < p)
+    (f : SchwartzMap (Euclidean d) Complex)
+    (hI : I = ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p) :
+    eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume =
+      ENNReal.ofReal (sameOutputInputScale I p) := by
+  have hfmem : MemLp (f : Euclidean d → Complex) (ENNReal.ofReal p) volume :=
+    f.memLp (ENNReal.ofReal p) volume
+  have hpE0 : ENNReal.ofReal p ≠ 0 :=
+    ENNReal.ofReal_ne_zero_iff.mpr hp
+  have hpET : ENNReal.ofReal p ≠ ∞ := ENNReal.ofReal_ne_top
+  unfold sameOutputInputScale
+  rw [hfmem.eLpNorm_eq_integral_rpow_norm hpE0 hpET,
+    ENNReal.toReal_ofReal hp.le, ← hI]
+
+/-- Converting a finite real moment estimate on a Schwartz input into its
+`eLpNorm` estimate.  This tiny helper avoids any hidden use of an
+interpolation theorem in the proof below. -/
+theorem eLpNorm_schwartz_le_of_integral_rpow_le
+    {d : Nat} {r B : Real} (hr : 0 < r)
+    (g : SchwartzMap (Euclidean d) Complex) (hB : 0 ≤ B)
+    (hbound : (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ r) ≤ B) :
+    eLpNorm (g : Euclidean d → Complex) (ENNReal.ofReal r) volume ≤
+      ENNReal.ofReal (B ^ r⁻¹) := by
+  have hgmem : MemLp (g : Euclidean d → Complex) (ENNReal.ofReal r) volume :=
+    g.memLp (ENNReal.ofReal r) volume
+  have hrE0 : ENNReal.ofReal r ≠ 0 :=
+    ENNReal.ofReal_ne_zero_iff.mpr hr
+  have hrET : ENNReal.ofReal r ≠ ∞ := ENNReal.ofReal_ne_top
+  rw [hgmem.eLpNorm_eq_integral_rpow_norm hrE0 hrET,
+    ENNReal.toReal_ofReal hr.le,
+    ENNReal.ofReal_le_ofReal_iff (Real.rpow_nonneg hB _)]
+  exact Real.rpow_le_rpow
+    (integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) r)
+    hbound (inv_nonneg.mpr hr.le)
+
+/-- The scalar root left by the large-amplitude cutoff. -/
+theorem sameOutputInput_high_root
+    {t p r : Real} (ht : 0 < t) (hr : 0 < r) :
+    (((t / 4) ^ (r - p) * t ^ p) ^ r⁻¹) =
+      (4 : Real) ^ ((p - r) / r) * t := by
+  have ht0 : 0 ≤ t := ht.le
+  have hfour : 0 ≤ (4 : Real) := by norm_num
+  have hbase : 0 ≤ (t / 4) ^ (r - p) :=
+    Real.rpow_nonneg (by positivity) _
+  have htpower : 0 ≤ t ^ p := Real.rpow_nonneg ht0 _
+  rw [Real.mul_rpow hbase htpower]
+  rw [← Real.rpow_mul (by positivity : 0 ≤ t / 4)]
+  rw [← Real.rpow_mul ht0]
+  rw [Real.div_rpow ht0 hfour]
+  rw [div_eq_mul_inv, ← Real.rpow_neg hfour]
+  rw [show -((r - p) * r⁻¹) = (p - r) / r by
+    field_simp [hr.ne']
+    ring]
+  rw [← Real.rpow_add ht]
+  rw [show (r - p) * r⁻¹ + p * r⁻¹ = 1 by
+    field_simp [hr.ne']
+    ring, Real.rpow_one]
+  ring
+
+/-- The scalar root left by the small-amplitude cutoff. -/
+theorem sameOutputInput_low_root
+    {t p r : Real} (ht : 0 < t) (hr : 0 < r) :
+    (((t / 2) ^ (r - p) * t ^ p) ^ r⁻¹) =
+      (2 : Real) ^ ((p - r) / r) * t := by
+  have ht0 : 0 ≤ t := ht.le
+  have htwo : 0 ≤ (2 : Real) := by norm_num
+  have hbase : 0 ≤ (t / 2) ^ (r - p) :=
+    Real.rpow_nonneg (by positivity) _
+  have htpower : 0 ≤ t ^ p := Real.rpow_nonneg ht0 _
+  rw [Real.mul_rpow hbase htpower]
+  rw [← Real.rpow_mul (by positivity : 0 ≤ t / 2)]
+  rw [← Real.rpow_mul ht0]
+  rw [Real.div_rpow ht0 htwo]
+  rw [div_eq_mul_inv, ← Real.rpow_neg htwo]
+  rw [show -((r - p) * r⁻¹) = (p - r) / r by
+    field_simp [hr.ne']
+    ring]
+  rw [← Real.rpow_add ht]
+  rw [show (r - p) * r⁻¹ + p * r⁻¹ = 1 by
+    field_simp [hr.ne']
+    ring, Real.rpow_one]
+  ring
+
+/-- The literal constant in ordinary strong interpolation between two
+estimates with a common output exponent.  The first summand belongs to the
+large input-amplitude piece and the second to the small piece. -/
+def sameOutputInputInterpolationConstant
+    (r0 p r1 : Real) (A0 A1 : ENNReal) : ENNReal :=
+  A0 * ENNReal.ofReal ((4 : Real) ^ ((p - r0) / r0)) +
+    A1 * ENNReal.ofReal ((2 : Real) ^ ((p - r1) / r1))
+
+/-- Ordinary strong interpolation at a fixed output exponent.
+
+This is the exact interpolation step used for the open `Q₁Q₂Q₃` triangle:
+`r0` is the conjugate input exponent on the `Q₃` side, `r1` is the diagonal
+input exponent on the `Q₂` side, and `p` lies strictly between them.  The
+proof is a direct smooth amplitude split on Schwartz functions. -/
+theorem memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
+    {d : Nat}
+    (T : SchwartzMap (Euclidean d) Complex → Euclidean d → Real)
+    (hTmeas : ∀ f : SchwartzMap (Euclidean d) Complex,
+      AEStronglyMeasurable (T f) volume)
+    (hTnonneg : ∀ f x, 0 ≤ T f x)
+    (hTsub : ∀ f g : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (f + g) x ≤ T f x + T g x)
+    (hTzero : T (0 : SchwartzMap (Euclidean d) Complex) = 0)
+    {r0 p r1 q : Real} (hr0 : 0 < r0) (hr0p : r0 < p) (hpr1 : p < r1)
+    (hq : 1 ≤ q)
+    (A0 A1 : ENNReal)
+    (h0 : ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (T f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (T f) (ENNReal.ofReal q) volume ≤
+        A0 * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal r0) volume)
+    (h1 : ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (T f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (T f) (ENNReal.ofReal q) volume ≤
+        A1 * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal r1) volume)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    MemLp (T f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (T f) (ENNReal.ofReal q) volume ≤
+        sameOutputInputInterpolationConstant r0 p r1 A0 A1 *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  have hp : 0 < p := lt_trans hr0 hr0p
+  have hr1 : 0 < r1 := lt_trans hp hpr1
+  have hqENN : (1 : ENNReal) ≤ ENNReal.ofReal q := by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal hq
+  by_cases hfzero : f = 0
+  · subst f
+    rw [hTzero]
+    simp [sameOutputInputInterpolationConstant]
+  let I : Real := ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p
+  have hInonneg : 0 ≤ I := by
+    dsimp only [I]
+    exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p
+  have hIpos : 0 < I := by
+    by_contra hnot
+    have hIzero : I = 0 := le_antisymm (le_of_not_gt hnot) hInonneg
+    have hpnz : p ≠ 0 := ne_of_gt hp
+    have hfnorm :
+        eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume = 0 := by
+      have hscale := eLpNorm_schwartz_eq_sameOutputInputScale
+        (d := d) (p := p) (I := I) hp f rfl
+      rw [hIzero, sameOutputInputScale,
+        Real.zero_rpow (inv_ne_zero hpnz)] at hscale
+      simpa using hscale
+    have hfzeroAE : (f : Euclidean d → Complex) =ᵐ[volume] 0 :=
+      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+        (ENNReal.ofReal_ne_zero_iff.mpr hp)).mp hfnorm
+    have hfzeroFun : (f : Euclidean d → Complex) = 0 :=
+      (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzeroAE
+    apply hfzero
+    ext x
+    exact congrFun hfzeroFun x
+  let t : Real := sameOutputInputScale I p
+  have ht : 0 < t := sameOutputInputScale_pos hIpos
+  have htpow : t ^ p = I := by
+    dsimp only [t, sameOutputInputScale]
+    exact Real.rpow_inv_rpow hInonneg (ne_of_gt hp)
+  have hinputNorm :
+      eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume =
+        ENNReal.ofReal t := by
+    dsimp only [t]
+    exact eLpNorm_schwartz_eq_sameOutputInputScale hp f rfl
+  obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
+    exists_schwartz_smooth_low_high_family f
+  have hhighIntegral :
+      (∫ x, ‖(high t : Euclidean d → Complex) x‖ ^ r0) ≤
+        (t / 4) ^ (r0 - p) * I := by
+    exact smooth_high_integral_rpow_le_of_lt f (low t) (high t)
+      ht hp hr0 hr0p (hlow t) (hhigh t)
+  have hhighIntegral' :
+      (∫ x, ‖(high t : Euclidean d → Complex) x‖ ^ r0) ≤
+        (t / 4) ^ (r0 - p) * t ^ p := by
+    rw [htpow]
+    exact hhighIntegral
+  have hhighB : 0 ≤ (t / 4) ^ (r0 - p) * t ^ p := by
+    exact mul_nonneg (Real.rpow_nonneg (by positivity) _)
+      (Real.rpow_nonneg ht.le _)
+  have hhighNorm0 := eLpNorm_schwartz_le_of_integral_rpow_le
+    (d := d) hr0 (high t) hhighB hhighIntegral'
+  have hhighNorm :
+      eLpNorm (high t : Euclidean d → Complex) (ENNReal.ofReal r0) volume ≤
+        ENNReal.ofReal ((4 : Real) ^ ((p - r0) / r0)) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+    rw [sameOutputInput_high_root ht hr0,
+      ENNReal.ofReal_mul (Real.rpow_nonneg (by norm_num) _), ← hinputNorm] at hhighNorm0
+    exact hhighNorm0
+  have hlowIntegral :
+      (∫ x, ‖(low t : Euclidean d → Complex) x‖ ^ r1) ≤
+        (t / 2) ^ (r1 - p) * I := by
+    exact smooth_low_integral_rpow_le_of_lt f (low t)
+      ht hp hpr1 (hlow t)
+  have hlowIntegral' :
+      (∫ x, ‖(low t : Euclidean d → Complex) x‖ ^ r1) ≤
+        (t / 2) ^ (r1 - p) * t ^ p := by
+    rw [htpow]
+    exact hlowIntegral
+  have hlowB : 0 ≤ (t / 2) ^ (r1 - p) * t ^ p := by
+    exact mul_nonneg (Real.rpow_nonneg (by positivity) _)
+      (Real.rpow_nonneg ht.le _)
+  have hlowNorm0 := eLpNorm_schwartz_le_of_integral_rpow_le
+    (d := d) hr1 (low t) hlowB hlowIntegral'
+  have hlowNorm :
+      eLpNorm (low t : Euclidean d → Complex) (ENNReal.ofReal r1) volume ≤
+        ENNReal.ofReal ((2 : Real) ^ ((p - r1) / r1)) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+    rw [sameOutputInput_low_root ht hr1,
+      ENNReal.ofReal_mul (Real.rpow_nonneg (by norm_num) _), ← hinputNorm] at hlowNorm0
+    exact hlowNorm0
+  have hTlow := h1 (low t)
+  have hThigh := h0 (high t)
+  have hsumMem : MemLp (T (low t) + T (high t)) (ENNReal.ofReal q) volume :=
+    hTlow.1.add hThigh.1
+  have hTmem : MemLp (T f) (ENNReal.ofReal q) volume := by
+    apply hsumMem.mono (hTmeas f)
+    filter_upwards with x
+    change ‖T f x‖ ≤ ‖T (low t) x + T (high t) x‖
+    rw [Real.norm_eq_abs, abs_of_nonneg (hTnonneg f x),
+      Real.norm_eq_abs,
+      abs_of_nonneg (add_nonneg (hTnonneg (low t) x) (hTnonneg (high t) x))]
+    rw [show f = low t + high t by
+      ext x
+      exact hsplit t x]
+    exact hTsub (low t) (high t) x
+  refine ⟨hTmem, ?_⟩
+  calc
+    eLpNorm (T f) (ENNReal.ofReal q) volume ≤
+        eLpNorm (T (low t) + T (high t)) (ENNReal.ofReal q) volume := by
+      apply eLpNorm_mono
+      intro x
+      change ‖T f x‖ ≤ ‖T (low t) x + T (high t) x‖
+      rw [Real.norm_eq_abs, abs_of_nonneg (hTnonneg f x),
+        Real.norm_eq_abs,
+        abs_of_nonneg (add_nonneg (hTnonneg (low t) x) (hTnonneg (high t) x))]
+      rw [show f = low t + high t by
+        ext x
+        exact hsplit t x]
+      exact hTsub (low t) (high t) x
+    _ ≤ eLpNorm (T (low t)) (ENNReal.ofReal q) volume +
+          eLpNorm (T (high t)) (ENNReal.ofReal q) volume :=
+      eLpNorm_add_le hTlow.1 hThigh.1 hqENN
+    _ ≤ A1 * eLpNorm (low t : Euclidean d → Complex) (ENNReal.ofReal r1) volume +
+          A0 * eLpNorm (high t : Euclidean d → Complex) (ENNReal.ofReal r0) volume :=
+      add_le_add hTlow.2 hThigh.2
+    _ ≤ A1 * (ENNReal.ofReal ((2 : Real) ^ ((p - r1) / r1)) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) +
+        A0 * (ENNReal.ofReal ((4 : Real) ^ ((p - r0) / r0)) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) :=
+      add_le_add (mul_le_mul_right hlowNorm _) (mul_le_mul_right hhighNorm _)
+    _ = sameOutputInputInterpolationConstant r0 p r1 A0 A1 *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+      unfold sameOutputInputInterpolationConstant
+      ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

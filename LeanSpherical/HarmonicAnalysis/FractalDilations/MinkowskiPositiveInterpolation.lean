@@ -1,0 +1,244 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.AbsoluteMinkowski
+
+/-!
+# Positive-dimension Minkowski interpolation
+
+The interpolation calculation itself only needs a positive ambient dimension.
+The original absolute-annuli module states the version needed for its
+higher-dimensional stationary-phase input.  These variants make the same
+calculation available when the `L²` endpoint is supplied separately, in
+particular for the circle.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter MeasureTheory FourierTransform Metric Set
+open scoped FourierTransform Topology
+
+noncomputable section
+
+/-- The abstract Minkowski interpolation calculation, with only the positive
+dimension needed by the underlying sublinear interpolation lemma. -/
+theorem unnormalized_absolute_minkowski_lintegral_of_endpoints_of_pos
+    {n : ℕ} {E : Set ℝ} {R α c₁ c₂ p : ℝ}
+    (hn : 0 < n) (hR : 0 < R) (hα : 0 ≤ α)
+    (hc₁ : 0 ≤ c₁) (hc₂ : 0 ≤ c₂)
+    (hp1 : 1 < p) (hp2 : p < 2)
+    (psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hEpos : E ⊆ Ioi (0 : ℝ))
+    (hone : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 1 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖) ≤
+        (c₁ * R ^ α) * ∫ x : Euclidean (n + 1), ‖g x‖)
+    (htwo : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 2 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖ ^ (2 : ℕ)) ≤
+        (c₂ * R ^ (α - n)) *
+          ∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ))
+    (f : SchwartzMap (Euclidean (n + 1)) ℂ) :
+    let a₁ : ℝ := (p - 1)⁻¹ + (3 - p)⁻¹
+    let a₂ : ℝ := ((1 : ℝ) / 4) * p⁻¹ + (2 - p)⁻¹
+    (∫⁻ x : Euclidean (n + 1), ENNReal.ofReal
+      ((unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi f x) ^ p)) ≤
+      ENNReal.ofReal (p * (4 * c₂ * a₂ + 2 * c₁ * a₁)) *
+        (ENNReal.ofReal R) ^ (α + n - n * p) *
+          ∫⁻ x : Euclidean (n + 1),
+            (ENNReal.ofReal ‖(f : Euclidean (n + 1) → ℂ) x‖) ^ p := by
+  dsimp only
+  let a₁ : ℝ := (p - 1)⁻¹ + (3 - p)⁻¹
+  let a₂ : ℝ := ((1 : ℝ) / 4) * p⁻¹ + (2 - p)⁻¹
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hpminus : 0 < p - 1 := by linarith
+  have htwo_pos : 0 < 2 - p := by linarith
+  have hthree : 0 < 3 - p := by linarith
+  have ha₁ : 0 ≤ a₁ := by
+    dsimp only [a₁]
+    positivity
+  have ha₂ : 0 ≤ a₂ := by
+    dsimp only [a₂]
+    positivity
+  have htail₁ : ENNReal.ofReal a₁ =
+      (ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹ := by
+    dsimp only [a₁]
+    rw [ENNReal.ofReal_add (inv_nonneg.mpr hpminus.le)
+      (inv_nonneg.mpr hthree.le), ENNReal.ofReal_inv_of_pos hpminus,
+      ENNReal.ofReal_inv_of_pos hthree]
+  have htail₂ : ENNReal.ofReal a₂ =
+      ENNReal.ofReal ((1 : ℝ) / 4) * (ENNReal.ofReal p)⁻¹ +
+        (ENNReal.ofReal (2 - p))⁻¹ := by
+    dsimp only [a₂]
+    rw [ENNReal.ofReal_add
+      (mul_nonneg (by norm_num) (inv_nonneg.mpr hp0.le))
+      (inv_nonneg.mpr htwo_pos.le)]
+    rw [ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 1 / 4),
+      ENNReal.ofReal_inv_of_pos hp0, ENNReal.ofReal_inv_of_pos htwo_pos]
+  have hinterp := unnormalizedFractalDyadicBandpass_lintegral_of_one_two
+    (d := n + 1) (E := E) (by omega) hEpos psi
+    (c₁ := c₁ * R ^ α) (c₂ := c₂ * R ^ (α - n))
+    (mul_nonneg hc₁ (Real.rpow_nonneg hR.le _))
+    (mul_nonneg hc₂ (Real.rpow_nonneg hR.le _))
+    hone htwo hp1 hp2 f (R ^ (n : ℝ))
+    (Real.rpow_pos_of_pos hR _)
+  rw [← htail₂, ← htail₁] at hinterp
+  calc
+    _ ≤ _ := hinterp
+    _ = _ := minkowski_balance_one_two hR hp0 hc₁ hc₂ ha₁ ha₂ _
+
+/-- Normalize the preceding unnormalized interpolation estimate in every
+positive sphere dimension. -/
+theorem normalized_absolute_minkowski_moment_of_endpoints_of_pos
+    {n : ℕ} {E : Set ℝ} {R α c₁ c₂ p : ℝ}
+    (hn : 0 < n) (hR : 0 < R) (hα : 0 ≤ α)
+    (hc₁ : 0 ≤ c₁) (hc₂ : 0 ≤ c₂)
+    (hp1 : 1 < p) (hp2 : p < 2)
+    (psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hEpos : E ⊆ Ioi (0 : ℝ))
+    (hone : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 1 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖) ≤
+        (c₁ * R ^ α) * ∫ x : Euclidean (n + 1), ‖g x‖)
+    (htwo : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 2 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖ ^ (2 : ℕ)) ≤
+        (c₂ * R ^ (α - n)) *
+          ∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ))
+    (f : SchwartzMap (Euclidean (n + 1)) ℂ) :
+    let a₁ : ℝ := (p - 1)⁻¹ + (3 - p)⁻¹
+    let a₂ : ℝ := ((1 : ℝ) / 4) * p⁻¹ + (2 - p)⁻¹
+    MemLp (fractalDyadicBandpassMaximal (n + 1) E psi f) (ENNReal.ofReal p) volume ∧
+      (∫ x : Euclidean (n + 1),
+        (fractalDyadicBandpassMaximal (n + 1) E psi f x) ^ p) ≤
+        ((surfaceMass (n + 1))⁻¹) ^ p *
+          (p * (4 * c₂ * a₂ + 2 * c₁ * a₁)) *
+            R ^ (α + n - n * p) *
+              ∫ x : Euclidean (n + 1), ‖f x‖ ^ p := by
+  dsimp only
+  let a₁ : ℝ := (p - 1)⁻¹ + (3 - p)⁻¹
+  let a₂ : ℝ := ((1 : ℝ) / 4) * p⁻¹ + (2 - p)⁻¹
+  let K : ℝ := p * (4 * c₂ * a₂ + 2 * c₁ * a₁)
+  let e : ℝ := α + n - n * p
+  let I : ℝ := ∫ x : Euclidean (n + 1), ‖f x‖ ^ p
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hpminus : 0 < p - 1 := by linarith
+  have htwo_pos : 0 < 2 - p := by linarith
+  have hthree : 0 < 3 - p := by linarith
+  have ha₁ : 0 ≤ a₁ := by
+    dsimp only [a₁]
+    exact add_nonneg (inv_nonneg.mpr hpminus.le) (inv_nonneg.mpr hthree.le)
+  have ha₂ : 0 ≤ a₂ := by
+    dsimp only [a₂]
+    exact add_nonneg
+      (mul_nonneg (by norm_num) (inv_nonneg.mpr hp0.le))
+      (inv_nonneg.mpr htwo_pos.le)
+  have hK : 0 ≤ K := by
+    dsimp only [K]
+    apply mul_nonneg hp0.le
+    apply add_nonneg
+    · exact mul_nonneg (mul_nonneg (by norm_num) hc₂) ha₂
+    · exact mul_nonneg (mul_nonneg (by norm_num) hc₁) ha₁
+  have hRe : 0 ≤ R ^ e := Real.rpow_nonneg hR.le _
+  have hI : 0 ≤ I := by
+    dsimp only [I]
+    exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) _
+  have hKI : 0 ≤ (K * R ^ e) * I :=
+    mul_nonneg (mul_nonneg hK hRe) hI
+  have hlin := unnormalized_absolute_minkowski_lintegral_of_endpoints_of_pos
+    (n := n) (E := E) (R := R) (α := α) (c₁ := c₁) (c₂ := c₂) (p := p)
+    hn hR hα hc₁ hc₂ hp1 hp2 psi hEpos hone htwo f
+  have hinput :
+      (∫⁻ x : Euclidean (n + 1),
+        (ENNReal.ofReal ‖(f : Euclidean (n + 1) → ℂ) x‖) ^ p) =
+        ENNReal.ofReal I := by
+    simpa only [I] using
+      absolute_schwartz_lintegral_rpow_eq_ofReal_integral f hp0
+  have hlin' :
+      (∫⁻ x : Euclidean (n + 1), ENNReal.ofReal
+        ((unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi f x) ^ p)) ≤
+        ENNReal.ofReal ((K * R ^ e) * I) := by
+    calc
+      _ ≤ ENNReal.ofReal K * (ENNReal.ofReal R) ^ e *
+          ∫⁻ x : Euclidean (n + 1),
+            (ENNReal.ofReal ‖(f : Euclidean (n + 1) → ℂ) x‖) ^ p := by
+          simpa only [K, e] using hlin
+      _ = ENNReal.ofReal ((K * R ^ e) * I) := by
+          rw [hinput, ENNReal.ofReal_rpow_of_pos hR,
+            ← ENNReal.ofReal_mul hK,
+            ← ENNReal.ofReal_mul (mul_nonneg hK hRe)]
+  have hnormal := normalized_absolute_bandpass_moment_of_unnormalized_bound
+    (d := n + 1) (E := E) (ψ := psi) (f := f) (p := p)
+    (K := K * R ^ e) (I := I) (by omega) hp0 hKI hlin'
+  simpa only [K, e, I, mul_assoc] using hnormal
+
+/-- Turn finite-cover endpoints into the normalized Minkowski dyadic estimate
+without assuming the higher-dimensional stationary-phase range. -/
+theorem normalized_absolute_minkowski_moment_of_cover_endpoints_of_pos
+    {n : ℕ} {E : Set ℝ} {R δ α C D B₁ B₂ p : ℝ}
+    (hn : 0 < n) (hR : 0 < R) (hα : 0 ≤ α)
+    (hD : 0 ≤ D) (hB₁ : 0 ≤ B₁) (hB₂ : 0 ≤ B₂)
+    (hp1 : 1 < p) (hp2 : p < 2)
+    (hδscale : C * δ ^ (-α) = D * R ^ α)
+    (psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hEpos : E ⊆ Ioi (0 : ℝ))
+    (hendpoints : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 1 volume ∧
+        (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖) ≤
+        (C * δ ^ (-α)) * B₁ * ∫ x : Euclidean (n + 1), ‖g x‖ ∧
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 2 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖ ^ (2 : ℕ)) ≤
+        (C * δ ^ (-α)) * (B₂ * R ^ (-(n : ℝ))) *
+          ∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ))
+    (f : SchwartzMap (Euclidean (n + 1)) ℂ) :
+    let a₁ : ℝ := (p - 1)⁻¹ + (3 - p)⁻¹
+    let a₂ : ℝ := ((1 : ℝ) / 4) * p⁻¹ + (2 - p)⁻¹
+    MemLp (fractalDyadicBandpassMaximal (n + 1) E psi f) (ENNReal.ofReal p) volume ∧
+      (∫ x : Euclidean (n + 1),
+        (fractalDyadicBandpassMaximal (n + 1) E psi f x) ^ p) ≤
+        ((surfaceMass (n + 1))⁻¹) ^ p *
+          (p * (4 * (D * B₂) * a₂ + 2 * (D * B₁) * a₁)) *
+            R ^ (α + n - n * p) *
+              ∫ x : Euclidean (n + 1), ‖f x‖ ^ p := by
+  dsimp only
+  have hc₁ : 0 ≤ D * B₁ := mul_nonneg hD hB₁
+  have hc₂ : 0 ≤ D * B₂ := mul_nonneg hD hB₂
+  have hpower : R ^ α * R ^ (-(n : ℝ)) = R ^ (α - n) := by
+    rw [← Real.rpow_add hR]
+    congr 1
+  have hone : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 1 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖) ≤
+        ((D * B₁) * R ^ α) * ∫ x : Euclidean (n + 1), ‖g x‖ := by
+    intro g
+    rcases hendpoints g with ⟨hmem, hbound, -, -⟩
+    refine ⟨hmem, hbound.trans ?_⟩
+    rw [hδscale]
+    exact le_of_eq (by ring)
+  have htwo : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g) 2 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E psi g x‖ ^ (2 : ℕ)) ≤
+        ((D * B₂) * R ^ (α - n)) *
+          ∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ) := by
+    intro g
+    rcases hendpoints g with ⟨-, -, hmem, hbound⟩
+    refine ⟨hmem, hbound.trans ?_⟩
+    rw [hδscale, ← hpower]
+    exact le_of_eq (by ring)
+  exact normalized_absolute_minkowski_moment_of_endpoints_of_pos
+    hn hR hα hc₁ hc₂ hp1 hp2 psi hEpos hone htwo f
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

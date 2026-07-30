@@ -1,0 +1,170 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.SharpnessTests
+
+/-!
+# Smooth thickened-sphere test functions
+
+The spherical-cap obstruction uses smooth radial cutoffs supported in a thin
+neighbourhood of a sphere.  Squared radius is smooth at the origin, so a
+one-dimensional `ContDiffBump` composed with `x ↦ ‖x‖²` gives a Schwartz
+function without making any radial-smoothness assertion about `‖x‖` itself.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Metric Set
+
+noncomputable section
+
+/-- A smooth cutoff which is one on a squared-radius shell of thickness
+`δ`, vanishes outside thickness `2δ`, and is bounded by one. -/
+theorem exists_schwartz_squared_shell_test
+    {d : ℕ} {r δ : ℝ}
+    (hr : 0 < r) (hrtwo : r ≤ 2) (hδ : 0 < δ) (hδone : δ ≤ 1) :
+    ∃ f : SchwartzMap (Euclidean d) ℂ,
+      (∀ y : Euclidean d, |‖y‖ ^ 2 - r ^ 2| ≤ δ → f y = 1) ∧
+      (∀ y : Euclidean d, 2 * δ ≤ |‖y‖ ^ 2 - r ^ 2| → f y = 0) ∧
+      (∀ y : Euclidean d, ‖f y‖ ≤ 1) := by
+  let b : ContDiffBump (r ^ 2) := ⟨δ, 2 * δ, hδ, by linarith⟩
+  let sq : Euclidean d → ℝ := fun y => inner ℝ y y
+  let g : Euclidean d → ℂ := Complex.ofRealCLM ∘ b ∘ sq
+  have hsq : ContDiff ℝ (⊤ : ℕ∞) sq := by
+    exact contDiff_id.inner ℝ contDiff_id
+  have hsq_eq (y : Euclidean d) : sq y = ‖y‖ ^ 2 := by
+    dsimp only [sq]
+    exact real_inner_self_eq_norm_sq y
+  have hsmooth : ContDiff ℝ (⊤ : ℕ∞) g := by
+    exact Complex.ofRealCLM.contDiff.comp (b.contDiff.comp hsq)
+  have hcompact : HasCompactSupport g := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean d) 3)
+    intro y hy
+    have hynorm : 3 < ‖y‖ := by
+      rw [mem_closedBall, dist_zero_right] at hy
+      exact lt_of_not_ge hy
+    have hsqy : 9 < ‖y‖ ^ 2 := by nlinarith [norm_nonneg y]
+    have hrSq : r ^ 2 ≤ 4 := by nlinarith
+    have hdiff : 2 * δ ≤ ‖y‖ ^ 2 - r ^ 2 := by nlinarith
+    have hdiffnonneg : 0 ≤ ‖y‖ ^ 2 - r ^ 2 := le_trans (by positivity) hdiff
+    have hdist : b.rOut ≤ dist (sq y) (r ^ 2) := by
+      rw [hsq_eq y, dist_eq_norm, Real.norm_eq_abs]
+      simpa only [abs_of_nonneg hdiffnonneg] using hdiff
+    change (b (sq y) : ℂ) = 0
+    rw [b.zero_of_le_dist hdist]
+    norm_num
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_, ?_⟩
+  · intro y hy
+    have hdist : dist (sq y) (r ^ 2) ≤ b.rIn := by
+      rw [hsq_eq y, dist_eq_norm, Real.norm_eq_abs]
+      exact hy
+    change (b (sq y) : ℂ) = 1
+    rw [b.one_of_mem_closedBall hdist]
+    norm_num
+  · intro y hy
+    have hdist : b.rOut ≤ dist (sq y) (r ^ 2) := by
+      rw [hsq_eq y, dist_eq_norm, Real.norm_eq_abs]
+      exact hy
+    change (b (sq y) : ℂ) = 0
+    rw [b.zero_of_le_dist hdist]
+    norm_num
+  · intro y
+    change ‖(b (sq y) : ℂ)‖ ≤ 1
+    rw [Complex.norm_real, Real.norm_of_nonneg (ContDiffBump.nonneg' b _)]
+    exact ContDiffBump.le_one b
+
+/-- A point in the ball of radius `δ / 8` sees the radius-`r` sampling sphere
+inside the squared-radius shell of thickness `δ`. -/
+theorem abs_norm_sq_sub_sq_le_of_norm_le_eighth
+    {d : ℕ} {r δ : ℝ} (hr : 0 ≤ r) (hrtwo : r ≤ 2)
+    (hδ : 0 ≤ δ) (hδone : δ ≤ 1)
+    (x : Euclidean d) (hx : ‖x‖ ≤ δ / 8)
+    (ω : sphere (0 : Euclidean d) 1) :
+    |‖x + r • (ω : Euclidean d)‖ ^ 2 - r ^ 2| ≤ δ := by
+  have hω : ‖(ω : Euclidean d)‖ = 1 := by
+    simpa only [mem_sphere_zero_iff_norm] using ω.property
+  have hrω : ‖r • (ω : Euclidean d)‖ = r := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg hr, hω, mul_one]
+  have hdiff : |‖x + r • (ω : Euclidean d)‖ - r| ≤ ‖x‖ := by
+    calc
+      |‖x + r • (ω : Euclidean d)‖ - r| =
+          |‖x + r • (ω : Euclidean d)‖ - ‖r • (ω : Euclidean d)‖| := by rw [hrω]
+      _ ≤ ‖(x + r • (ω : Euclidean d)) - r • (ω : Euclidean d)‖ :=
+        abs_norm_sub_norm_le _ _
+      _ = ‖x‖ := by congr 1 <;> abel
+  have hdiff' : |‖x + r • (ω : Euclidean d)‖ - r| ≤ δ / 8 :=
+    hdiff.trans hx
+  have hsum : ‖x + r • (ω : Euclidean d)‖ + r ≤ 8 := by
+    calc
+      ‖x + r • (ω : Euclidean d)‖ + r ≤ ‖x‖ + ‖r • (ω : Euclidean d)‖ + r := by
+        gcongr
+        exact norm_add_le _ _
+      _ = ‖x‖ + r + r := by rw [hrω]
+      _ ≤ δ / 8 + 2 + 2 := by linarith
+      _ ≤ 8 := by linarith
+  have hsumabs : |‖x + r • (ω : Euclidean d)‖ + r| ≤ 8 := by
+    rw [abs_of_nonneg (add_nonneg (norm_nonneg _) hr)]
+    exact hsum
+  calc
+    |‖x + r • (ω : Euclidean d)‖ ^ 2 - r ^ 2| =
+        |(‖x + r • (ω : Euclidean d)‖ - r) *
+          (‖x + r • (ω : Euclidean d)‖ + r)| := by ring
+    _ = |‖x + r • (ω : Euclidean d)‖ - r| *
+          |‖x + r • (ω : Euclidean d)‖ + r| := abs_mul _ _
+    _ ≤ (δ / 8) * 8 :=
+      mul_le_mul hdiff' hsumabs (abs_nonneg _) (by positivity)
+    _ = δ := by ring
+
+/-- A squared-radius shell test has maximal function at least one on the
+small ball `B(0, δ / 8)`. -/
+theorem one_le_fractalSphericalMaximalReal_of_squared_shell
+    {d : ℕ} (hd : 0 < d) (E : Set ℝ) (hE : E ⊆ Ioi (0 : ℝ))
+    (f : SchwartzMap (Euclidean d) ℂ) {r δ : ℝ} (hrE : r ∈ E)
+    (hrnonneg : 0 ≤ r) (hrtwo : r ≤ 2) (hδ : 0 ≤ δ) (hδone : δ ≤ 1)
+    (hf : ∀ y : Euclidean d, |‖y‖ ^ 2 - r ^ 2| ≤ δ → f y = 1)
+    (x : Euclidean d) (hx : ‖x‖ ≤ δ / 8) :
+    1 ≤ fractalSphericalMaximalReal d E f x := by
+  unfold fractalSphericalMaximalReal
+  apply (ENNReal.toReal_le_toReal ENNReal.one_ne_top
+    (fractalSphericalMaximal_ne_top hd E hE f x)).mpr
+  calc
+    (1 : ENNReal) = ENNReal.ofReal ‖normalizedSphericalAverage d (f : Euclidean d → ℂ) r x‖ := by
+      rw [normalizedSphericalAverage_eq_of_eq_on_sphere hd (f : Euclidean d → ℂ) 1 r x]
+      · norm_num
+      · intro ω
+        exact hf _ (abs_norm_sq_sub_sq_le_of_norm_le_eighth hrnonneg hrtwo hδ hδone x hx ω)
+    _ ≤ fractalSphericalMaximal d E (f : Euclidean d → ℂ) x :=
+      normalizedSphericalAverage_le_fractalSphericalMaximal E (f : Euclidean d → ℂ) hrE x
+
+/-- The preceding pointwise shell test yields its explicit `L^q` lower bound. -/
+theorem volume_ball_rpow_le_eLpNorm_fractalSphericalMaximalReal_of_squared_shell
+    {d : ℕ} (hd : 0 < d) (E : Set ℝ) (hE : E ⊆ Ioi (0 : ℝ))
+    (f : SchwartzMap (Euclidean d) ℂ) {r δ q : ℝ} (hrE : r ∈ E)
+    (hrnonneg : 0 ≤ r) (hrtwo : r ≤ 2) (hδ : 0 ≤ δ) (hδone : δ ≤ 1)
+    (hf : ∀ y : Euclidean d, |‖y‖ ^ 2 - r ^ 2| ≤ δ → f y = 1)
+    (hq : 0 < q) :
+    volume (ball (0 : Euclidean d) (δ / 8)) ^ q⁻¹ ≤
+      eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume := by
+  rw [← eLpNorm_ball_indicator_one (δ / 8) q hq]
+  apply eLpNorm_mono
+  intro x
+  by_cases hx : x ∈ ball (0 : Euclidean d) (δ / 8)
+  · rw [Set.indicator_of_mem hx, norm_one]
+    have hxnorm : ‖x‖ < δ / 8 := by
+      simpa only [mem_ball, dist_zero_right] using hx
+    change 1 ≤ ‖fractalSphericalMaximalReal d E f x‖
+    have hnonneg : 0 ≤ fractalSphericalMaximalReal d E f x := by
+      unfold fractalSphericalMaximalReal
+      exact ENNReal.toReal_nonneg
+    rw [Real.norm_of_nonneg hnonneg]
+    exact one_le_fractalSphericalMaximalReal_of_squared_shell
+      hd E hE f hrE hrnonneg hrtwo hδ hδone hf x hxnorm.le
+  · rw [Set.indicator_of_notMem hx]
+    simp
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

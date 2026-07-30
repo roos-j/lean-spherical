@@ -1,0 +1,55 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Definitions
+import LeanSpherical.HarmonicAnalysis.FractalDilations.ExponentGeometry
+
+/-!
+# Geometric assembly for fractal-dilation sharpness
+
+The four lower-bound constructions in the paper have distinct analytic
+content.  This module contains the entirely geometric final step: the exact
+halfspace description of `Q` selects one applicable construction whenever an
+exponent point lies outside `Q`.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Set
+
+noncomputable section
+
+/-- Assemble the four sharpness tests into unboundedness outside the closed
+exponent region.  Each premise is deliberately just the implication supplied
+by one analytic lower-bound construction, so the remaining analytic work is
+fully isolated from the planar geometry. -/
+theorem fractalSphericalUnbounded_of_not_mem_Q_of_tests
+    {d : ℕ} {E : Set ℝ} {β γ p q : ℝ}
+    (hd : 2 ≤ d) (hβ : 0 ≤ β) (hβone : β ≤ 1) (hβγ : β ≤ γ)
+    (htranslation : p⁻¹ < q⁻¹ → FractalSphericalUnbounded d E p q)
+    (hcap : (d : ℝ) * q⁻¹ < p⁻¹ → FractalSphericalUnbounded d E p q)
+    (hannulus : (1 - β) * q⁻¹ + ((d : ℝ) - 1) < (d : ℝ) * p⁻¹ →
+      FractalSphericalUnbounded d E p q)
+    (hcluster : clusterEdgeFunctional d (β / γ) β (reciprocalExponentPoint p q) < 0 →
+      FractalSphericalUnbounded d E p q)
+    (houtside : reciprocalExponentPoint p q ∉ Q d β γ) :
+    FractalSphericalUnbounded d E p q := by
+  have hbad : SharpnessViolation d β γ (reciprocalExponentPoint p q) := by
+    by_contra hnot
+    apply houtside
+    exact (mem_Q_iff_not_sharpnessViolation hd hβ hβone hβγ).2 hnot
+  rcases hbad with hbad | hbad | hbad | hbad
+  · change p⁻¹ < q⁻¹ at hbad
+    exact htranslation hbad
+  · change (d : ℝ) * q⁻¹ < p⁻¹ at hbad
+    exact hcap hbad
+  · change (1 - β) * q⁻¹ + ((d : ℝ) - 1) < (d : ℝ) * p⁻¹ at hbad
+    exact hannulus hbad
+  · exact hcluster hbad
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

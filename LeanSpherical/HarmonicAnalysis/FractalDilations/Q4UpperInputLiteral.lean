@@ -1,0 +1,441 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4UpperInputInterpolation
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4LtwoLiteralRate
+
+/-!
+# Literal upper-input Q4 interpolation at an absolute dyadic frequency
+
+The Q4 `TT*` theorem is naturally an `L^2 -> L^r` estimate.  For input
+exponents above two, Section 3 of the paper combines it with the literal
+scale-uniform `L^infinity` endpoint of an absolute dyadic multiplier.  This
+file makes that connection for one *fixed shared radial cutoff*.  In
+particular, the two neighbouring `L^2` estimates below are hypotheses about
+the very same dyadic maximal operator; no selected operator or abstract
+maximal estimate is introduced here.
+
+The final geometric reassembly is kept in a later file.  Separating the
+fixed-level calculation from that scalar summation is useful both for the
+ordinary strict-gap range and for the planar critical finite-gap range.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter MeasureTheory Set ENNReal
+
+noncomputable section
+
+/-- The literal absolute dyadic top endpoint, enlarged by one so it is
+strictly positive for the smooth upper-input split. -/
+def q4UpperAbsoluteDyadicTopConstant
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0) : Real :=
+  absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero + 1
+
+theorem q4UpperAbsoluteDyadicTopConstant_pos
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0) :
+    0 < q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero := by
+  unfold q4UpperAbsoluteDyadicTopConstant
+  linarith [absoluteDyadicBandpassLInfinityConstant_nonneg phi hphiOne hphiZero]
+
+/-- The layer-cake coefficient at one fixed dyadic frequency after the two
+neighbouring upper-input weak estimates have been combined. Keeping this
+scalar separate from the operator is important: the literal Q4 source
+controls its two real coefficients by geometric sequences in the dyadic
+frequency. -/
+def q4UpperStrongCoefficient
+    (A B0 B1 p r0 r1 q : Real) : ENNReal :=
+  ENNReal.ofReal q *
+    (ENNReal.ofReal (q4UpperWeakRealConstant A B0 p r0) *
+        (∫⁻ t in Ioc (0 : Real) 1,
+          (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r0 - 1)) +
+      ENNReal.ofReal (q4UpperWeakRealConstant A B1 p r1) *
+        ∫⁻ t in Ioi (1 : Real),
+          (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1)) ^ q⁻¹
+
+/-- On a Schwartz input, the homogeneous scale used by the upper-input
+split is exactly its extended-real Lp norm. -/
+theorem eLpNorm_schwartz_eq_q4LowerInputScale
+    {d : Nat} {p I : Real} (hp : 0 < p)
+    (f : SchwartzMap (Euclidean d) Complex)
+    (hI : I = ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p) :
+    eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume =
+      ENNReal.ofReal (q4LowerInputScale I p) := by
+  have hfmem : MemLp (f : Euclidean d → Complex) (ENNReal.ofReal p) volume :=
+    f.memLp (ENNReal.ofReal p) volume
+  have hpE0 : ENNReal.ofReal p ≠ 0 :=
+    ENNReal.ofReal_ne_zero_iff.mpr hp
+  have hpET : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
+  unfold q4LowerInputScale
+  rw [hfmem.eLpNorm_eq_integral_rpow_norm hpE0 hpET,
+    ENNReal.toReal_ofReal hp.le, ← hI]
+
+/-- The literal top endpoint in the exact form consumed by the smooth
+upper-input interpolation. -/
+theorem q4_upper_absoluteDyadic_top_endpoint
+    {d : Nat} (hd : 0 < d) (E : Set Real) (hE : E ⊆ Icc (1 : Real) 2)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (j : Nat) :
+    ∀ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 ≤ a →
+      (∀ x, ‖g x‖ ≤ a) → ∀ x,
+        fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) g x ≤
+          q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero * a := by
+  intro g a ha hga x
+  have hK : 0 ≤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero :=
+    absoluteDyadicBandpassLInfinityConstant_nonneg phi hphiOne hphiZero
+  calc
+    fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g x ≤
+        absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero * a :=
+      fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_uniform_norm
+        hd E hE phi hphiOne hphiZero j g hga x
+    _ ≤ q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero * a := by
+      unfold q4UpperAbsoluteDyadicTopConstant
+      nlinarith
+
+/-- The actual upper-input interpolation for one absolute dyadic piece.
+The two `L^2 -> L^r` inputs are explicit, but the `L^infinity` input is
+constructed above from the physical absolute-bandpass kernel. -/
+theorem q4_upper_activeDyadic_strong_of_ltwo_bounds
+    {d : Nat} {E : Set Real} {j : Nat}
+    (hd : 0 < d) (hE : E ⊆ Icc (1 : Real) 2)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    {p r0 r1 q B0 B1 : Real}
+    (hp : 2 < p) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hB0 : 0 ≤ B0) (hB1 : 0 ≤ B1)
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1)
+    (htwo0 : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g)
+        (ENNReal.ofReal r0) volume ≤
+        ENNReal.ofReal
+          (B0 * Real.sqrt (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (htwo1 : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g)
+        (ENNReal.ofReal r1) volume ≤
+        ENNReal.ofReal
+          (B1 * Real.sqrt (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (f : SchwartzMap (Euclidean d) Complex)
+    {I : Real} (hI : I = ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p)
+    (hIpos : 0 < I) :
+    eLpNorm (fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+      (ENNReal.ofReal q) volume ≤
+      (ENNReal.ofReal q *
+        (ENNReal.ofReal
+            (q4UpperWeakRealConstant
+              (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero) B0 p r0) *
+            (∫⁻ t in Ioc (0 : Real) 1,
+              (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r0 - 1)) +
+          ENNReal.ofReal
+            (q4UpperWeakRealConstant
+              (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero) B1 p r1) *
+            ∫⁻ t in Ioi (1 : Real),
+              (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1))) ^ q⁻¹ *
+        ENNReal.ofReal (q4LowerInputScale I p) := by
+  let T : SchwartzMap (Euclidean d) Complex → Euclidean d → Real :=
+    fun g => fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g
+  have hTnonneg : ∀ g x, 0 ≤ T g x := by
+    intro g x
+    exact fractalDyadicBandpassMaximal_nonneg E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g x
+  have hTsub : ∀ g h : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (g + h) x ≤ T g x + T h x := by
+    intro g h x
+    have hEpos : E ⊆ Ioi (0 : Real) := by
+      intro t ht
+      exact lt_of_lt_of_le zero_lt_one (hE ht).1
+    exact fractalDyadicBandpassMaximal_add_le hd hEpos
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g h x
+  have hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
+      AEStronglyMeasurable (T g) volume := by
+    intro g
+    exact (measurable_fractalDyadicBandpassMaximal E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable
+  have hA : 0 < q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero :=
+    q4UpperAbsoluteDyadicTopConstant_pos phi hphiOne hphiZero
+  have htop := q4_upper_absoluteDyadic_top_endpoint
+    hd E hE phi hphiOne hphiZero j
+  simpa only [T] using
+    (q4_upper_strong_eLpNorm_of_two_nearby_ltwo_linf
+      T hTnonneg hTsub hTmeas hA htop hp hr0 hr1 hB0 hB1 hq0q hqq1
+      htwo0 htwo1 f hI hIpos)
+
+/-- Insert two fixed-cutoff Q4 `L^2` dyadic rates into the literal
+upper-input interpolation.  This is the source bridge used by the Q4 cone:
+the coefficients retain their exact dyadic dependence here, and the later
+scalar lemma extracts a common geometric gain. -/
+theorem q4_upper_activeDyadic_strong_of_fixed_ltwo_rates
+    {d : Nat} {E : Set Real} {p r0 r1 q : Real}
+    (hd : 0 < d) (hE : E ⊆ Icc (1 : Real) 2)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hp : 2 < p) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1)
+    {CT0 rho0 CT1 rho1 : ENNReal}
+    (hCT0 : CT0 < ⊤) (hCT1 : CT1 < ⊤)
+    (hrho0 : rho0 < 1) (hrho1 : rho1 < 1)
+    (hrate0 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r0) volume ≤
+        CT0 * rho0 ^ j * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (hrate1 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r1) volume ≤
+        CT1 * rho1 ^ j * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat)))) :
+    ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      ∀ I : Real, I = ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p → 0 < I →
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal q) volume ≤
+        (ENNReal.ofReal q *
+          (ENNReal.ofReal
+              (q4UpperWeakRealConstant
+                (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero)
+                ((CT0 * rho0 ^ j).toReal) p r0) *
+              (∫⁻ t in Ioc (0 : Real) 1,
+                (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r0 - 1)) +
+            ENNReal.ofReal
+              (q4UpperWeakRealConstant
+                (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero)
+                ((CT1 * rho1 ^ j).toReal) p r1) *
+              ∫⁻ t in Ioi (1 : Real),
+                (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1))) ^ q⁻¹ *
+          ENNReal.ofReal (q4LowerInputScale I p) := by
+  intro j hj f I hI hIpos
+  apply q4_upper_activeDyadic_strong_of_ltwo_bounds
+    hd hE phi hphiOne hphiZero hp hr0 hr1
+  · exact ENNReal.toReal_nonneg
+  · exact ENNReal.toReal_nonneg
+  · exact hq0q
+  · exact hqq1
+  · intro g
+    have hrate := hrate0 j hj g
+    have htop : CT0 * rho0 ^ j < ⊤ :=
+      ENNReal.mul_lt_top hCT0
+        (ENNReal.pow_lt_top (lt_trans hrho0 (by simp)))
+    rw [← ENNReal.ofReal_toReal htop.ne] at hrate
+    exact hrate
+  · intro g
+    have hrate := hrate1 j hj g
+    have htop : CT1 * rho1 ^ j < ⊤ :=
+      ENNReal.mul_lt_top hCT1
+        (ENNReal.pow_lt_top (lt_trans hrho1 (by simp)))
+    rw [← ENNReal.ofReal_toReal htop.ne] at hrate
+    exact hrate
+  · exact hI
+  · exact hIpos
+
+/-- Reassemble the fixed-frequency upper-input calculation once its purely
+scalar coefficient has been bounded by a geometric sequence.  The analytic
+content is the two literal fixed-cutoff L2 estimates above; this lemma only
+adds the finite-norm bookkeeping needed by the off-diagonal reassembly.
+
+The scalar hypothesis is deliberately explicit. In the ordinary Q4 cone it
+is proved from the two strict shell ratios, while in the planar critical
+case it is proved from the finite-gap ratio. This keeps those genuinely
+different arguments visible rather than treating either as an application of
+the spherical maximal theorem. -/
+theorem q4_upper_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
+    {d : Nat} {E : Set Real} {p r0 r1 q : Real}
+    (hd : 0 < d) (hE : E ⊆ Icc (1 : Real) 2)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hp : 2 < p) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1)
+    {CT0 rho0 CT1 rho1 : ENNReal}
+    (hCT0 : CT0 < ⊤) (hCT1 : CT1 < ⊤)
+    (hrho0 : rho0 < 1) (hrho1 : rho1 < 1)
+    (hrate0 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r0) volume ≤
+        CT0 * rho0 ^ j * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (hrate1 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r1) volume ≤
+        CT1 * rho1 ^ j * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    {C rho : ENNReal} (hCtop : C < ⊤) (hrho : rho < 1)
+    (hcoefficient : ∀ j : Nat, 1 ≤ j →
+      q4UpperStrongCoefficient
+        (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero)
+        ((CT0 * rho0 ^ j).toReal) ((CT1 * rho1 ^ j).toReal)
+        p r0 r1 q ≤ C * rho ^ j) :
+    ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal q) volume ∧
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal q) volume ≤
+        (C * rho ^ j) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  intro j hj f
+  let I : Real := ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p
+  have hI : I = ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p := rfl
+  have hInonneg : 0 ≤ I := by
+    dsimp only [I]
+    exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p
+  by_cases hIpos : 0 < I
+  · have hraw :=
+      q4_upper_activeDyadic_strong_of_fixed_ltwo_rates
+        hd hE phi hphiOne hphiZero hp hr0 hr1 hq0q hqq1
+        hCT0 hCT1 hrho0 hrho1 hrate0 hrate1 j hj f I hI hIpos
+    have hraw' :
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          q4UpperStrongCoefficient
+            (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero)
+            ((CT0 * rho0 ^ j).toReal) ((CT1 * rho1 ^ j).toReal)
+            p r0 r1 q *
+            ENNReal.ofReal (q4LowerInputScale I p) := by
+      simpa only [q4UpperStrongCoefficient] using hraw
+    have hboundScale :
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) * ENNReal.ofReal (q4LowerInputScale I p) := by
+      exact hraw'.trans (mul_le_mul_left (hcoefficient j hj) _)
+    have hrhotop : rho < ⊤ := lt_trans hrho (by simp)
+    have hfactorTop : C * rho ^ j < ⊤ :=
+      ENNReal.mul_lt_top hCtop (ENNReal.pow_lt_top hrhotop)
+    have hboundTop :
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume < ⊤ :=
+      lt_of_le_of_lt hboundScale
+        (ENNReal.mul_lt_top hfactorTop ENNReal.ofReal_lt_top)
+    have hmem : MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal q) volume :=
+      ⟨(measurable_fractalDyadicBandpassMaximal E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable,
+        hboundTop⟩
+    refine ⟨hmem, ?_⟩
+    rw [eLpNorm_schwartz_eq_q4LowerInputScale (by linarith) f hI]
+    exact hboundScale
+  · have hIzero : I = 0 := le_antisymm (le_of_not_gt hIpos) hInonneg
+    have hpnz : p ≠ 0 := ne_of_gt (by linarith)
+    have hfnorm :
+        eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume = 0 := by
+      have hscale := eLpNorm_schwartz_eq_q4LowerInputScale
+        (d := d) (p := p) (I := I) (by linarith) f hI
+      rw [hIzero, q4LowerInputScale,
+        Real.zero_rpow (inv_ne_zero hpnz)] at hscale
+      simpa using hscale
+    have hfzero : (f : Euclidean d → Complex) =ᵐ[volume] 0 :=
+      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+        (ENNReal.ofReal_ne_zero_iff.mpr (by linarith))).mp hfnorm
+    have hf_eq_fun : (f : Euclidean d → Complex) = 0 :=
+      (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzero
+    have hf_eq : f = 0 := by
+      ext x
+      exact congrFun hf_eq_fun x
+    subst f
+    have hprojection :
+        dyadicBandpassProjection
+          (absoluteDyadicBandpass phi hphiOne hphiZero j)
+          (0 : SchwartzMap (Euclidean d) Complex) = 0 := by
+      simp [dyadicBandpassProjection]
+    have hTzero :
+        fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j)
+          (0 : SchwartzMap (Euclidean d) Complex) = 0 := by
+      funext x
+      unfold fractalDyadicBandpassMaximal
+      rw [hprojection]
+      exact fractalSphericalMaximalReal_zero E x
+    constructor
+    · rw [hTzero]
+      exact MemLp.zero
+    · rw [hTzero]
+      simp
+
+/-- A summable upper-input `Q4` rate for one fixed cutoff.  It combines the
+literal scale-uniform `L∞` estimate with two strict `L² → Lʳ` estimates; the
+remaining scalar premise is exactly the decay of the displayed coefficient. -/
+theorem exists_q4_upper_activeDyadic_strict_dyadic_rate
+    {d : Nat} {E : Set Real} {p r0 r1 q : Real}
+    (hd : 0 < d) (hE : E ⊆ Icc (1 : Real) 2)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hp : 2 < p) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1)
+    {CT0 rho0 CT1 rho1 : ENNReal}
+    (hCT0 : CT0 < ⊤) (hCT1 : CT1 < ⊤)
+    (hrho0 : rho0 < 1) (hrho1 : rho1 < 1)
+    (hrate0 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r0) volume ∧
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r0) volume ≤
+        CT0 * rho0 ^ j * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (hrate1 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r1) volume ∧
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+        (ENNReal.ofReal r1) volume ≤
+        CT1 * rho1 ^ j * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (hcoefficient : ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j →
+        q4UpperStrongCoefficient
+          (q4UpperAbsoluteDyadicTopConstant phi hphiOne hphiZero)
+          ((CT0 * rho0 ^ j).toReal) ((CT1 * rho1 ^ j).toReal)
+          p r0 r1 q ≤ C * rho ^ j) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  obtain ⟨C, rho, hCtop, hrho, hcoefficient⟩ := hcoefficient
+  refine ⟨C, rho, hCtop, hrho, ?_⟩
+  exact q4_upper_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
+    (C := C) (rho := rho) hd hE phi hphiOne hphiZero hp hr0 hr1 hq0q hqq1
+    hCT0 hCT1 hrho0 hrho1
+    (fun j hj f => (hrate0 j hj f).2)
+    (fun j hj f => (hrate1 j hj f).2)
+    hCtop hrho (fun j hj => hcoefficient j hj)
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

@@ -1,0 +1,233 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4SelectedActiveDyadic
+
+/-!
+# Active dyadic realization of the literal `Q4` pair kernel
+
+For every two active dyadic left endpoints, this file chooses the compact
+Schwartz multiplier supplied by `Q4PairComposition`.  It proves that the
+chosen physical-space convolution kernel is *equal* to the literal inverse
+Fourier kernel in `Q4TTStar`, and hence that the actual dyadic pair piece is
+the corresponding `q4PairwiseKernelApply` term.  This is the missing exact
+bridge from the Fourier-side pair pieces to the selected active-dyadic shell;
+no positivity or factorization is used.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory FourierTransform
+open scoped Convolution FourierTransform
+
+noncomputable section
+
+/-- The literal `Q4` inverse-Fourier pair kernel at the active dyadic left
+endpoints. -/
+def q4ActiveDyadicPairKernel
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex) (j : Nat)
+    (i l : Int) : Euclidean d -> Complex :=
+  q4DyadicPairKernel psi (dyadicLeft j i) (dyadicLeft j l)
+
+/-- A compact Schwartz realization of the literal pair multiplier at the
+active dyadic left endpoints.  Compact support of the original cutoff is the
+only analytic hypothesis needed for this exact realization. -/
+noncomputable def q4ActiveDyadicPairMultiplier
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) : SchwartzMap (Euclidean d) Complex :=
+  Classical.choose <|
+    exists_schwartz_q4DyadicPairMultiplier psi hpsiCompact
+      (dyadicLeft j i) (dyadicLeft j l)
+
+/-- The selected multiplier is pointwise the literal `Q4` pair multiplier. -/
+theorem q4ActiveDyadicPairMultiplier_spec
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (xi : Euclidean d) :
+    q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi =
+      q4DyadicPairMultiplier psi (dyadicLeft j i) (dyadicLeft j l) xi :=
+  Classical.choose_spec
+    (exists_schwartz_q4DyadicPairMultiplier psi hpsiCompact
+      (dyadicLeft j i) (dyadicLeft j l)) xi
+
+/-- The physical-space kernel of the chosen Schwartz multiplier. -/
+def q4ActiveDyadicSchwartzKernel
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) : Euclidean d -> Complex :=
+  ((𝓕⁻ (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l) :
+      SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex)
+
+/-- The chosen Schwartz kernel is exactly the literal inverse-Fourier pair
+kernel.  This makes stationary-phase estimates proved for the literal kernel
+available to the convolution realization below. -/
+theorem q4ActiveDyadicSchwartzKernel_eq_pairKernel
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (x : Euclidean d) :
+    q4ActiveDyadicSchwartzKernel psi hpsiCompact j i l x =
+      q4ActiveDyadicPairKernel psi j i l x := by
+  let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hm : ∀ xi : Euclidean d,
+      m xi = q4DyadicPairMultiplier psi (dyadicLeft j i) (dyadicLeft j l) xi := by
+    intro xi
+    exact q4ActiveDyadicPairMultiplier_spec psi hpsiCompact j i l xi
+  change ((𝓕⁻ m : SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) x =
+    q4DyadicPairKernel psi (dyadicLeft j i) (dyadicLeft j l) x
+  symm
+  unfold q4DyadicPairKernel
+  have hcoe := congrFun (SchwartzMap.fourierInv_coe m) x
+  rw [hcoe]
+  have hfun : q4DyadicPairMultiplier psi (dyadicLeft j i) (dyadicLeft j l) =
+      (m : Euclidean d -> Complex) := by
+    funext xi
+    exact (hm xi).symm
+  rw [hfun]
+
+/-- The compact Schwartz realization of a literal pair piece is its
+physical-space convolution. -/
+private theorem q4DyadicPairPiece_eq_convolution_of_multiplier
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (r r' : Real) (m : SchwartzMap (Euclidean d) Complex)
+    (hm : ∀ xi : Euclidean d, m xi = q4DyadicPairMultiplier psi r r' xi)
+    (x : Euclidean d) :
+    q4DyadicPairPiece psi f r r' x =
+      (((𝓕⁻ m : SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex)
+        ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+          (f : Euclidean d -> Complex)) x := by
+  unfold q4DyadicPairPiece
+  have hrewrite :
+      (fun xi : Euclidean d => q4DyadicPairMultiplier psi r r' xi *
+        𝓕 (f : Euclidean d -> Complex) xi) =
+        fun xi : Euclidean d => m xi * 𝓕 (f : Euclidean d -> Complex) xi := by
+    funext xi
+    rw [hm xi]
+  rw [hrewrite, fourierInv_schwartz_multiplier_eq_convolution]
+
+/-- Each actual Fourier-side dyadic pair piece is the pairwise convolution
+term for the literal active-index kernel. -/
+theorem q4DyadicPairPiece_eq_q4ActiveDyadicPairKernelApply
+    {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) (i l : Int) (x : Euclidean d) :
+    q4DyadicPairPiece psi f (dyadicLeft j i) (dyadicLeft j l) x =
+      q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+        (f : Euclidean d -> Complex) x := by
+  let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hm : ∀ xi : Euclidean d,
+      m xi = q4DyadicPairMultiplier psi (dyadicLeft j i) (dyadicLeft j l) xi := by
+    intro xi
+    exact q4ActiveDyadicPairMultiplier_spec psi hpsiCompact j i l xi
+  have hconv := q4DyadicPairPiece_eq_convolution_of_multiplier psi f
+    (dyadicLeft j i) (dyadicLeft j l) m hm x
+  have hpair := q4PairwiseKernelApply_eq_convolution
+    (q4ActiveDyadicSchwartzKernel psi hpsiCompact j) i l
+    (f : Euclidean d -> Complex) x
+  have hK : q4ActiveDyadicSchwartzKernel psi hpsiCompact j =
+      q4ActiveDyadicPairKernel psi j := by
+    funext k n z
+    exact q4ActiveDyadicSchwartzKernel_eq_pairKernel psi hpsiCompact j k n z
+  have hpair' :
+      (((𝓕⁻ m : SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex)
+        ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+          (f : Euclidean d -> Complex)) x =
+        q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+          (f : Euclidean d -> Complex) x := by
+    calc
+      (((𝓕⁻ m : SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex)
+          ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+            (f : Euclidean d -> Complex)) x =
+          q4PairwiseKernelApply volume (q4ActiveDyadicSchwartzKernel psi hpsiCompact j) i l
+            (f : Euclidean d -> Complex) x := by
+              simpa only [m, q4ActiveDyadicSchwartzKernel] using hpair.symm
+      _ = q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+            (f : Euclidean d -> Complex) x := by rw [hK]
+  exact hconv.trans hpair'
+
+/-- Any pointwise bound on the literal pair kernel transfers to the chosen
+Schwartz convolution kernel. -/
+theorem norm_q4ActiveDyadicSchwartzKernel_le_of_pairKernel
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (j : Nat) {A : Real}
+    (hbound : ∀ i l x, norm (q4ActiveDyadicPairKernel psi j i l x) <= A) :
+    ∀ i l x, norm (q4ActiveDyadicSchwartzKernel psi hpsiCompact j i l x) <= A := by
+  intro i l x
+  rw [q4ActiveDyadicSchwartzKernel_eq_pairKernel psi hpsiCompact j i l x]
+  exact hbound i l x
+
+/-- The selected active-dyadic shell whose pairwise kernels are the literal
+inverse Fourier kernels of the dyadic spherical pieces. -/
+def q4ActiveDyadicSelectedPairShell
+    {d : Nat} (E : Set Real) (j : Nat) (u L : Real)
+    (psi : SchwartzMap (Euclidean d) Complex) (rho : Euclidean d -> Int)
+    (g : Euclidean d -> Complex) : Euclidean d -> Complex :=
+  q4ActiveDyadicSelectedKernelTTStarShell E j u L volume
+    (q4ActiveDyadicPairKernel psi j) rho g
+
+/-- The finite selected-radius `L1 -> Linfinity` endpoint for the literal
+active dyadic pair shell.  The kernel bound is deliberately stated for the
+actual inverse-Fourier kernel, rather than for an abstract replacement. -/
+theorem norm_q4ActiveDyadicSelectedPairShell_le_of_pairKernel_bound
+    {d : Nat} {E : Set Real} {j : Nat} {u L A : Real}
+    (psi : SchwartzMap (Euclidean d) Complex) (rho : Euclidean d -> Int)
+    (hrho : ∀ x, rho x ∈ activeDyadicIndices E j) (g : Euclidean d -> Complex)
+    (hA : 0 <= A)
+    (hg : ∀ i ∈ activeDyadicIndices E j,
+      Integrable (q4SelectedFibre rho g i) volume)
+    (hmeas : ∀ i l x, AEStronglyMeasurable
+      (fun y => q4ActiveDyadicPairKernel psi j i l (x - y) *
+        q4SelectedFibre rho g l y) volume)
+    (hkernel : ∀ i l z, norm (q4ActiveDyadicPairKernel psi j i l z) <= A)
+    (x : Euclidean d) :
+    norm (q4ActiveDyadicSelectedPairShell E j u L psi rho g x) <=
+      A * integral volume (fun y => norm (g y)) := by
+  unfold q4ActiveDyadicSelectedPairShell
+  exact norm_q4ActiveDyadicSelectedKernelTTStarShell_le_of_bound
+    volume (q4ActiveDyadicPairKernel psi j) rho hrho g hA hg hmeas hkernel x
+
+/-- The finite selected-radius `L2` `TT*` endpoint for the literal active
+dyadic pair shell.  The only analytic input is the displayed pairwise L2
+bound; the quasi-Assouad count and the selected-fibre reassembly are supplied
+by the proved active-cell and selected-linearization lemmas. -/
+theorem q4ActiveDyadicSelectedPairShell_energy_le_of_pairwise_bound
+    {d : Nat} {E : Set Real} {gamma eta C u L : Real} {j : Nat}
+    (hE : E ⊆ Set.Icc (1 : Real) 2)
+    (hcover : HasSubpowerAssouadCoverBound E gamma eta C)
+    (hC : 0 <= C) (hgamma : 0 <= gamma)
+    (hdeltaone : dyadicScale j < 1) (hL : 0 <= L)
+    (psi : SchwartzMap (Euclidean d) Complex) (rho : Euclidean d -> Int)
+    (hrho : ∀ x, rho x ∈ activeDyadicIndices E j) (g : Euclidean d -> Complex)
+    {B : Real} (hB : 0 <= B)
+    (hselected : Integrable (fun x =>
+      norm (q4ActiveDyadicSelectedPairShell E j u L psi rho g x) ^ (2 : Nat)) volume)
+    (hfibre : ∀ i ∈ activeDyadicIndices E j, Integrable (fun x =>
+      norm (q4ActiveDyadicKernelTTStarShell E j u L volume
+        (q4ActiveDyadicPairKernel psi j) (q4SelectedFibre rho g) i x) ^ (2 : Nat)) volume)
+    (hg : ∀ i ∈ activeDyadicIndices E j, MemLp (q4SelectedFibre rho g i) 2 volume)
+    (hgSq : ∀ i ∈ activeDyadicIndices E j, Integrable (fun x =>
+      norm (q4SelectedFibre rho g i x) ^ (2 : Nat)) volume)
+    (hpairMem : ∀ i l, MemLp
+      (q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+        (q4SelectedFibre rho g l)) 2 volume)
+    (hpair : ∀ i l, lpNorm
+      (q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+        (q4SelectedFibre rho g l)) 2 volume <=
+        B * lpNorm (q4SelectedFibre rho g l) 2 volume) :
+    integral volume (fun x =>
+      norm (q4ActiveDyadicSelectedPairShell E j u L psi rho g x) ^ (2 : Nat)) <=
+      (B * (6 * C * (dyadicScale j) ^ (-eta) *
+        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ gamma)) ^ (2 : Nat) *
+        integral volume (fun x => norm (g x) ^ (2 : Nat)) := by
+  unfold q4ActiveDyadicSelectedPairShell
+  exact q4ActiveDyadicSelectedKernelTTStarShell_energy_le_of_pairwise_bound
+    hE hcover hC hgamma hdeltaone hL volume (q4ActiveDyadicPairKernel psi j)
+      rho hrho g hB hselected hfibre hg hgSq hpairMem hpair
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

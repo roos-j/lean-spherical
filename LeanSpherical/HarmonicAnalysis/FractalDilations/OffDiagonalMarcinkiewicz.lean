@@ -1,0 +1,1137 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.InterpolationCore
+import LeanSpherical.HarmonicAnalysis.InterpolationTail
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4FactorInterpolation
+
+/-!
+# Strict off-diagonal interpolation for fractal dyadic pieces
+
+The fixed-frequency estimates in Sections 2 and 3 of
+Anderson--Hughes--Roos--Seeger have a crossed shape.  A literal `L¹ → L∞`
+bound is combined with a family of `L² → Lʳ` estimates.  At one value of
+`r` the hard-cutoff argument gives only the weak point on the interpolating
+line.  Since Theorem 1 only concerns strict interiors, two nearby values of
+`r` give weak output exponents on the two sides of the requested output
+exponent; splitting the layer-cake integral at height one then gives a
+strong bound.
+
+This file contains that last, genuinely off-diagonal layer-cake step.  It is
+formulated for an arbitrary nonnegative measurable subadditive output so it
+can be used for the raw dyadic convolution realization (whose domain is
+closed under the hard amplitude cutoffs), and then transferred to the
+Schwartz realization of the spherical maximal operator.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter MeasureTheory Set ENNReal
+
+noncomputable section
+
+/-- Split the positive height axis at one.  This elementary identity is kept
+separate because it is the point at which the two nearby weak exponents are
+used in the strict-interior argument. -/
+theorem lintegral_Ioi_eq_lintegral_Ioc_add_lintegral_Ioi_one
+    (F : ℝ → ℝ≥0∞) :
+    (∫⁻ t in Ioi (0 : ℝ), F t) =
+      (∫⁻ t in Ioc (0 : ℝ) 1, F t) + ∫⁻ t in Ioi (1 : ℝ), F t := by
+  have hdisj : Disjoint (Ioc (0 : ℝ) 1) (Ioi (1 : ℝ)) := by
+    rw [Set.disjoint_left]
+    intro t ht hgt
+    exact (not_lt_of_ge ht.2) hgt
+  have hunion : Ioc (0 : ℝ) 1 ∪ Ioi (1 : ℝ) = Ioi (0 : ℝ) := by
+    ext t
+    constructor
+    · intro ht
+      rcases ht with ht | ht
+      · exact ht.1
+      · change 1 < t at ht
+        exact lt_trans zero_lt_one ht
+    · intro ht
+      by_cases hle : t ≤ 1
+      · exact Or.inl ⟨ht, hle⟩
+      · exact Or.inr (lt_of_not_ge hle)
+  rw [← hunion]
+  exact lintegral_union measurableSet_Ioi hdisj
+
+/-- A small-height weak distribution estimate integrates whenever its weak
+exponent lies strictly below the desired strong exponent. -/
+theorem lintegral_small_of_weak_distribution
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → ℝ) (f : F)
+    {q₀ q : ℝ} (hq₀q : q₀ < q) (A : ℝ≥0∞)
+    (hweak : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₀ ≤ A) :
+    (∫⁻ t in Ioc (0 : ℝ) 1,
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1))) ≤
+      A * (∫⁻ t in Ioc (0 : ℝ) 1,
+        (ENNReal.ofReal t) ^ (q - q₀ - 1)) := by
+  have hweight_meas : Measurable (fun t : ℝ =>
+      (ENNReal.ofReal t) ^ (q - q₀ - 1)) :=
+    ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal
+  have hpoint (t : ℝ) (ht : 0 < t) :
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1)) ≤
+        A * (ENNReal.ofReal t) ^ (q - q₀ - 1) := by
+    have ht0 : ENNReal.ofReal t ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr ht
+    have httop : ENNReal.ofReal t ≠ ∞ := ENNReal.ofReal_ne_top
+    have hpow : ENNReal.ofReal (t ^ (q - 1)) =
+        (ENNReal.ofReal t) ^ q₀ * (ENNReal.ofReal t) ^ (q - q₀ - 1) := by
+      calc
+        ENNReal.ofReal (t ^ (q - 1)) = (ENNReal.ofReal t) ^ (q - 1) :=
+          (ENNReal.ofReal_rpow_of_pos ht).symm
+        _ = (ENNReal.ofReal t) ^ (q₀ + (q - q₀ - 1)) := by congr 1 <;> ring
+        _ = (ENNReal.ofReal t) ^ q₀ * (ENNReal.ofReal t) ^ (q - q₀ - 1) :=
+          ENNReal.rpow_add _ _ ht0 httop
+    calc
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1)) =
+          (μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₀) *
+            (ENNReal.ofReal t) ^ (q - q₀ - 1) := by rw [hpow]; ring
+      _ ≤ A * (ENNReal.ofReal t) ^ (q - q₀ - 1) :=
+        mul_le_mul_left (hweak ht) _
+  calc
+    (∫⁻ t in Ioc (0 : ℝ) 1,
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1))) ≤
+        ∫⁻ t in Ioc (0 : ℝ) 1,
+          A * (ENNReal.ofReal t) ^ (q - q₀ - 1) := by
+          apply lintegral_mono_ae
+          filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+          exact hpoint t ht.1
+    _ = A * (∫⁻ t in Ioc (0 : ℝ) 1,
+        (ENNReal.ofReal t) ^ (q - q₀ - 1)) := by
+      exact lintegral_const_mul A hweight_meas
+
+/-- A large-height weak distribution estimate integrates whenever its weak
+exponent lies strictly above the desired strong exponent. -/
+theorem lintegral_large_of_weak_distribution
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → ℝ) (f : F)
+    {q q₁ : ℝ} (hqq₁ : q < q₁) (A : ℝ≥0∞)
+    (hweak : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₁ ≤ A) :
+    (∫⁻ t in Ioi (1 : ℝ),
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1))) ≤
+      A * (∫⁻ t in Ioi (1 : ℝ),
+        (ENNReal.ofReal t) ^ (q - q₁ - 1)) := by
+  have hweight_meas : Measurable (fun t : ℝ =>
+      (ENNReal.ofReal t) ^ (q - q₁ - 1)) :=
+    ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal
+  have hpoint (t : ℝ) (ht : 0 < t) :
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1)) ≤
+        A * (ENNReal.ofReal t) ^ (q - q₁ - 1) := by
+    have ht0 : ENNReal.ofReal t ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr ht
+    have httop : ENNReal.ofReal t ≠ ∞ := ENNReal.ofReal_ne_top
+    have hpow : ENNReal.ofReal (t ^ (q - 1)) =
+        (ENNReal.ofReal t) ^ q₁ * (ENNReal.ofReal t) ^ (q - q₁ - 1) := by
+      calc
+        ENNReal.ofReal (t ^ (q - 1)) = (ENNReal.ofReal t) ^ (q - 1) :=
+          (ENNReal.ofReal_rpow_of_pos ht).symm
+        _ = (ENNReal.ofReal t) ^ (q₁ + (q - q₁ - 1)) := by congr 1 <;> ring
+        _ = (ENNReal.ofReal t) ^ q₁ * (ENNReal.ofReal t) ^ (q - q₁ - 1) :=
+          ENNReal.rpow_add _ _ ht0 httop
+    calc
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1)) =
+          (μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₁) *
+            (ENNReal.ofReal t) ^ (q - q₁ - 1) := by rw [hpow]; ring
+      _ ≤ A * (ENNReal.ofReal t) ^ (q - q₁ - 1) :=
+        mul_le_mul_left (hweak ht) _
+  calc
+    (∫⁻ t in Ioi (1 : ℝ),
+      μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1))) ≤
+        ∫⁻ t in Ioi (1 : ℝ),
+          A * (ENNReal.ofReal t) ^ (q - q₁ - 1) := by
+          apply lintegral_mono_ae
+          filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+          exact hpoint t (lt_trans zero_lt_one ht)
+    _ = A * (∫⁻ t in Ioi (1 : ℝ),
+        (ENNReal.ofReal t) ^ (q - q₁ - 1)) := by
+      exact lintegral_const_mul A hweight_meas
+
+/-- The strict two-neighbourhood Marcinkiewicz conclusion in moment form.
+
+The hypotheses are exactly the two weak estimates produced by the hard
+amplitude cutoff at two nearby `L² → Lʳ` outputs.  No endpoint statement is
+used: `q₀ < q < q₁` makes the two height integrals finite. -/
+theorem strong_moment_of_two_nearby_weak_distributions
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → ℝ) (f : F)
+    (hT_nonneg : ∀ x, 0 ≤ T f x)
+    (hTf : AEMeasurable (T f) μ)
+    {q₀ q q₁ : ℝ} (hq₀ : 0 ≤ q₀) (hq₀q : q₀ < q) (hqq₁ : q < q₁)
+    (A₀ A₁ : ℝ≥0∞)
+    (hweak₀ : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₀ ≤ A₀)
+    (hweak₁ : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₁ ≤ A₁) :
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤
+      ENNReal.ofReal q *
+        (A₀ * (∫⁻ t in Ioc (0 : ℝ) 1,
+          (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
+        A₁ * (∫⁻ t in Ioi (1 : ℝ),
+          (ENNReal.ofReal t) ^ (q - q₁ - 1))) := by
+  have hq : 0 < q := lt_of_le_of_lt hq₀ hq₀q
+  let Fdist : ℝ → ℝ≥0∞ := fun t =>
+    μ {x | t < T f x} * ENNReal.ofReal (t ^ (q - 1))
+  have hsmall := lintegral_small_of_weak_distribution T f hq₀q A₀ hweak₀
+  have hlarge := lintegral_large_of_weak_distribution T f hqq₁ A₁ hweak₁
+  have hsplit : (∫⁻ t in Ioi (0 : ℝ), Fdist t) =
+      (∫⁻ t in Ioc (0 : ℝ) 1, Fdist t) +
+        ∫⁻ t in Ioi (1 : ℝ), Fdist t :=
+    lintegral_Ioi_eq_lintegral_Ioc_add_lintegral_Ioi_one Fdist
+  calc
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) =
+        ENNReal.ofReal q * (∫⁻ t in Ioi (0 : ℝ), Fdist t) := by
+          simpa only [Fdist] using
+            (lintegral_rpow_eq_lintegral_meas_lt_mul μ
+              (Filter.Eventually.of_forall hT_nonneg) hTf hq)
+    _ = ENNReal.ofReal q *
+        ((∫⁻ t in Ioc (0 : ℝ) 1, Fdist t) +
+          ∫⁻ t in Ioi (1 : ℝ), Fdist t) := by rw [hsplit]
+    _ ≤ ENNReal.ofReal q *
+        (A₀ * (∫⁻ t in Ioc (0 : ℝ) 1,
+          (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
+        A₁ * (∫⁻ t in Ioi (1 : ℝ),
+          (ENNReal.ofReal t) ^ (q - q₁ - 1))) := by
+      apply mul_le_mul_right
+      exact add_le_add
+        (by simpa only [Fdist] using hsmall)
+        (by simpa only [Fdist] using hlarge)
+
+/-- Evaluate the two elementary height integrals in the preceding theorem.
+Keeping this algebraic form is convenient for dyadic-rate bookkeeping. -/
+theorem two_nearby_weak_height_integrals
+    {q₀ q q₁ : ℝ} (hq₀q : q₀ < q) (hqq₁ : q < q₁) :
+    (∫⁻ t in Ioc (0 : ℝ) 1,
+      (ENNReal.ofReal t) ^ (q - q₀ - 1)) =
+        ENNReal.ofReal (1 ^ (q - q₀) / (q - q₀)) ∧
+    (∫⁻ t in Ioi (1 : ℝ),
+      (ENNReal.ofReal t) ^ (q - q₁ - 1)) =
+        ENNReal.ofReal (1 ^ (q - q₁) / (q₁ - q)) := by
+  constructor
+  · have h := lintegral_rpow_Ioc_eq (p := q - q₀ + 1) (by linarith)
+      (by norm_num : (0 : ℝ) ≤ 1)
+    convert h using 1 <;> ring
+  · have h := lintegral_rpow_Ioi_eq (p := q - q₁ + 2) (by linarith)
+      (by norm_num : (0 : ℝ) < 1)
+    convert h using 1 <;> ring
+
+/-- Convert a nonnegative `q`-moment bound into the corresponding extended
+`L^q` norm bound.  This deliberately has no linearity hypothesis. -/
+theorem eLpNorm_le_of_nonnegative_moment
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → ℝ) (f : F) {q : ℝ} (hq : 0 < q)
+    (hT_nonneg : ∀ x, 0 ≤ T f x) (C : ℝ≥0∞)
+    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤ C) :
+    eLpNorm (T f) (ENNReal.ofReal q) μ ≤ C ^ q⁻¹ := by
+  have hqE0 : ENNReal.ofReal q ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hq
+  have hqET : ENNReal.ofReal q ≠ ∞ := ENNReal.ofReal_ne_top
+  have hqinv : (1 : ℝ) / q = q⁻¹ := by field_simp
+  have hmoment' : (∫⁻ x, ‖T f x‖ₑ ^ q ∂μ) ≤ C := by
+    calc
+      (∫⁻ x, ‖T f x‖ₑ ^ q ∂μ) =
+          ∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ := by
+            apply lintegral_congr
+            intro x
+            rw [Real.enorm_eq_ofReal (hT_nonneg x),
+              ENNReal.ofReal_rpow_of_nonneg (hT_nonneg x) hq.le]
+      _ ≤ C := hmoment
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET,
+    ENNReal.toReal_ofReal hq.le, hqinv]
+  exact ENNReal.rpow_le_rpow hmoment' (by positivity)
+
+/-- The usable strict-interior conclusion: two nearby weak output exponents
+give a literal strong `eLpNorm` bound for the same dyadic maximal output. -/
+theorem strong_eLpNorm_of_two_nearby_weak_distributions
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → ℝ) (f : F)
+    (hT_nonneg : ∀ x, 0 ≤ T f x)
+    (hTf : AEMeasurable (T f) μ)
+    {q₀ q q₁ : ℝ} (hq₀ : 0 ≤ q₀) (hq₀q : q₀ < q) (hqq₁ : q < q₁)
+    (A₀ A₁ : ℝ≥0∞)
+    (hweak₀ : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₀ ≤ A₀)
+    (hweak₁ : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < T f x} * (ENNReal.ofReal t) ^ q₁ ≤ A₁) :
+    eLpNorm (T f) (ENNReal.ofReal q) μ ≤
+      (ENNReal.ofReal q *
+        (A₀ * (∫⁻ t in Ioc (0 : ℝ) 1,
+          (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
+        A₁ * (∫⁻ t in Ioi (1 : ℝ),
+          (ENNReal.ofReal t) ^ (q - q₁ - 1)))) ^ q⁻¹ := by
+  apply eLpNorm_le_of_nonnegative_moment T f
+    (lt_of_le_of_lt hq₀ hq₀q) hT_nonneg
+  exact strong_moment_of_two_nearby_weak_distributions T f hT_nonneg hTf
+    hq₀ hq₀q hqq₁ A₀ A₁ hweak₀ hweak₁
+
+/-- Homogeneous form of the strict two-neighbourhood argument.  The weak
+bounds are supplied for the output divided by a positive scale `s`.  In the
+application `s` is the product of the input `L^p` size and the strict
+dyadic gain.  This normalization is essential: the two nearby weak outputs
+have different powers of `s`, but after rescaling both have unit size. -/
+theorem strong_eLpNorm_of_two_nearby_weak_distributions_rescaled
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → ℝ) (f : F) {s : ℝ} (hs : 0 < s)
+    (hT_nonneg : ∀ x, 0 ≤ T f x)
+    (hTf : AEMeasurable (T f) μ)
+    {q₀ q q₁ : ℝ} (hq₀ : 0 ≤ q₀) (hq₀q : q₀ < q) (hqq₁ : q < q₁)
+    (A₀ A₁ : ℝ≥0∞)
+    (hweak₀ : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q₀ ≤ A₀)
+    (hweak₁ : ∀ ⦃t : ℝ⦄, 0 < t →
+      μ {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q₁ ≤ A₁) :
+    eLpNorm (T f) (ENNReal.ofReal q) μ ≤
+      (ENNReal.ofReal q *
+        (A₀ * (∫⁻ t in Ioc (0 : ℝ) 1,
+          (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
+        A₁ * (∫⁻ t in Ioi (1 : ℝ),
+          (ENNReal.ofReal t) ^ (q - q₁ - 1)))) ^ q⁻¹ * ENNReal.ofReal s := by
+  let U : F → α → ℝ := fun g x => s⁻¹ * T g x
+  have hUnonneg : ∀ x, 0 ≤ U f x := by
+    intro x
+    exact mul_nonneg (inv_nonneg.mpr hs.le) (hT_nonneg x)
+  have hUmeas : AEMeasurable (U f) μ := by
+    exact (aemeasurable_const.mul hTf)
+  have hbase := strong_eLpNorm_of_two_nearby_weak_distributions U f
+    hUnonneg hUmeas hq₀ hq₀q hqq₁ A₀ A₁ hweak₀ hweak₁
+  have hrewrite : T f = s • U f := by
+    funext x
+    change T f x = s * (s⁻¹ * T f x)
+    field_simp [hs.ne']
+  rw [hrewrite, eLpNorm_const_smul]
+  have hs_enorm : (‖s‖ₑ : ℝ≥0∞) = ENNReal.ofReal s :=
+    Real.enorm_eq_ofReal hs.le
+  rw [hs_enorm]
+  calc
+    ENNReal.ofReal s * eLpNorm (U f) (ENNReal.ofReal q) μ ≤
+        ENNReal.ofReal s *
+          (ENNReal.ofReal q *
+            (A₀ * (∫⁻ t in Ioc (0 : ℝ) 1,
+              (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
+            A₁ * (∫⁻ t in Ioi (1 : ℝ),
+              (ENNReal.ofReal t) ^ (q - q₁ - 1)))) ^ q⁻¹ :=
+      mul_le_mul_right hbase _
+    _ = (ENNReal.ofReal q *
+        (A₀ * (∫⁻ t in Ioc (0 : ℝ) 1,
+          (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
+        A₁ * (∫⁻ t in Ioi (1 : ℝ),
+          (ENNReal.ofReal t) ^ (q - q₁ - 1)))) ^ q⁻¹ * ENNReal.ofReal s := by
+      ring
+
+/-! ## The literal hard-cutoff producer
+
+The preceding theorem is the final (purely scalar) layer-cake step.  This
+section proves the weak estimates to which it is applied.  It is deliberately
+written for the actual Schwartz carrier of a dyadic maximal operator: the
+rational low/high decomposition stays in that carrier, so no extension of a
+frequency-localized maximal operator to arbitrary hard cutoffs is smuggled
+into the argument.
+
+At a height `t`, the `L¹ → L∞` estimate kills the high part.  Subadditivity
+then reduces the distribution function to the low part, and Chebyshev applied
+to the literal `L² → Lʳ` estimate gives the desired weak `Lᵖ → Lˢ` bound.
+-/
+
+/-- Chebyshev in the form used by the hard-cutoff proof.  The output is real
+and need only be a.e.-strongly measurable; no linearity is involved. -/
+theorem weak_distribution_of_eLpNorm
+    {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    (u : α → ℝ) (hu : AEStronglyMeasurable u μ)
+    {r t : ℝ} (hr : 0 < r) (ht : 0 < t) (L : ℝ≥0∞)
+    (hL : eLpNorm u (ENNReal.ofReal r) μ ≤ L) :
+    μ {x | t < u x} * (ENNReal.ofReal t) ^ r ≤ L ^ r := by
+  have hrE0 : ENNReal.ofReal r ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hr
+  have hrET : ENNReal.ofReal r ≠ ∞ := ENNReal.ofReal_ne_top
+  have hsub : {x | t < u x} ⊆ {x | ENNReal.ofReal t ≤ ‖u x‖ₑ} := by
+    intro x hx
+    have hux : 0 ≤ u x := le_trans ht.le hx.le
+    change ENNReal.ofReal t ≤ ‖u x‖ₑ
+    rw [Real.enorm_eq_ofReal hux]
+    exact ENNReal.ofReal_le_ofReal hx.le
+  have hcheb := mul_meas_ge_le_pow_eLpNorm' μ hrE0 hrET hu
+    (ENNReal.ofReal t)
+  have hcheb' :
+      (ENNReal.ofReal t) ^ r * μ {x | ENNReal.ofReal t ≤ ‖u x‖ₑ} ≤
+        eLpNorm u (ENNReal.ofReal r) μ ^ r := by
+    simpa only [ENNReal.toReal_ofReal hr.le] using hcheb
+  calc
+    μ {x | t < u x} * (ENNReal.ofReal t) ^ r =
+        (ENNReal.ofReal t) ^ r * μ {x | t < u x} := by ring
+    _ ≤ (ENNReal.ofReal t) ^ r * μ {x | ENNReal.ofReal t ≤ ‖u x‖ₑ} :=
+      mul_le_mul_right (measure_mono hsub) _
+    _ ≤ eLpNorm u (ENNReal.ofReal r) μ ^ r := hcheb'
+    _ ≤ L ^ r := ENNReal.rpow_le_rpow hL hr.le
+
+/-- If a subadditive output kills the high member of an additive split at
+half the height, its distribution is bounded by the Chebyshev distribution of
+the low member.  This is the exact `L¹ → L∞`/`L² → Lʳ` step in Section 3 of
+the paper, before choosing the amplitude scale. -/
+theorem weak_distribution_of_killed_schwartz_split
+    {d : Nat} (T : SchwartzMap (Euclidean d) ℂ → Euclidean d → ℝ)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) ℂ, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      AEStronglyMeasurable (T g) volume)
+    {r : ℝ} (hr : 0 < r)
+    (L : SchwartzMap (Euclidean d) ℂ → ℝ≥0∞)
+    (hstrong : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤ L g)
+    (f : SchwartzMap (Euclidean d) ℂ)
+    (low high : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hsplit : ∀ t, f = low t + high t)
+    {t : ℝ} (ht : 0 < t)
+    (hkill : ∀ x, T (high t) x ≤ t / 2) :
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+      (ENNReal.ofReal (2 : ℝ)) ^ r * (L (low t)) ^ r := by
+  have hdist : volume {x | t < T f x} ≤ volume {x | t / 2 < T (low t) x} := by
+    apply measure_mono
+    intro x hx
+    by_contra hlow
+    have hlow' : T (low t) x ≤ t / 2 := le_of_not_gt hlow
+    have hbound : T f x ≤ t := by
+      rw [hsplit t]
+      calc
+        T (low t + high t) x ≤ T (low t) x + T (high t) x := hTsub _ _ x
+        _ ≤ t / 2 + t / 2 := add_le_add hlow' (hkill x)
+        _ = t := by ring
+    exact (not_lt_of_ge hbound) hx
+  have hhalf : 0 < t / 2 := by positivity
+  have hcheb := weak_distribution_of_eLpNorm (T (low t)) (hTmeas (low t))
+    hr hhalf (L (low t)) (hstrong (low t))
+  have hscale : (ENNReal.ofReal t) ^ r =
+      (ENNReal.ofReal (2 : ℝ)) ^ r * (ENNReal.ofReal (t / 2)) ^ r := by
+    have hbase : ENNReal.ofReal t =
+        ENNReal.ofReal (2 : ℝ) * ENNReal.ofReal (t / 2) := by
+      rw [← ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 2)]
+      congr 1
+      ring
+    rw [hbase, ENNReal.mul_rpow_of_nonneg _ _ hr.le]
+  calc
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+        volume {x | t / 2 < T (low t) x} * (ENNReal.ofReal t) ^ r :=
+      mul_le_mul_left hdist _
+    _ = (ENNReal.ofReal (2 : ℝ)) ^ r *
+        (volume {x | t / 2 < T (low t) x} * (ENNReal.ofReal (t / 2)) ^ r) := by
+      rw [hscale]
+      ring
+    _ ≤ (ENNReal.ofReal (2 : ℝ)) ^ r * (L (low t)) ^ r :=
+      mul_le_mul_right (by simpa only [mul_comm] using hcheb) _
+
+/-- The actual rational-amplitude cutoff used in the Q4 argument produces a
+weak distribution estimate from literal `L¹ → L∞` and `L² → Lʳ` inputs.
+
+`a t` is the amplitude scale at output height `t`.  The balancing hypothesis
+is precisely what makes the high part smaller than `t / 2`; the `hLow`
+hypothesis is where the displayed fixed-frequency `L² → Lʳ` estimate is
+inserted.  Keeping that coefficient explicit is important for the subsequent
+dyadic-rate calculation. -/
+theorem weak_distribution_of_rational_schwartz_split
+    {d : Nat} (T : SchwartzMap (Euclidean d) ℂ → Euclidean d → ℝ)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) ℂ, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      AEStronglyMeasurable (T g) volume)
+    {A : ℝ} (hA : 0 ≤ A)
+    (hLone : ∀ g : SchwartzMap (Euclidean d) ℂ, ∀ x,
+      T g x ≤ A * ∫ y, ‖(g : Euclidean d → ℂ) y‖)
+    {r : ℝ} (hr : 0 < r)
+    (L : SchwartzMap (Euclidean d) ℂ → ℝ≥0∞)
+    (hstrong : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤ L g)
+    (f : SchwartzMap (Euclidean d) ℂ)
+    {p I : ℝ} (hp1 : 1 < p) (hp2 : p < 2)
+    (hI : I = ∫ x, ‖(f : Euclidean d → ℂ) x‖ ^ p)
+    (a : ℝ → ℝ) (ha : ∀ t, 0 < t → 0 < a t)
+    (hbalance : ∀ t, 0 < t → A * ((a t) ^ (1 - p) * I) ≤ t / 2)
+    (W : ℝ → ℝ≥0∞)
+    (hLow : ∀ (t : ℝ) (ht : 0 < t)
+      (low high : SchwartzMap (Euclidean d) ℂ),
+      (∀ x : Euclidean d,
+        low x = ((1 + ‖((a t)⁻¹ : ℝ) • f x‖ ^ 2) ^ (-1 : ℝ)) • f x) →
+      high = f - low → L low ≤ W t)
+    {t : ℝ} (ht : 0 < t) :
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+      (ENNReal.ofReal (2 : ℝ)) ^ r * (W t) ^ r := by
+  obtain ⟨low, high, hlow, hhigh, hsplit_pointwise⟩ :=
+    exists_schwartz_rational_low_high f (a t)
+  have hat : 0 < a t := ha t ht
+  have hsplit : f = low + high := by
+    ext x
+    exact hsplit_pointwise x
+  have hhigh_integral := q4_rational_high_integral_le
+    f low high hat hp1 hp2 hlow hhigh
+  have hkill : ∀ x, T high x ≤ t / 2 := by
+    intro x
+    calc
+      T high x ≤ A * ∫ y, ‖(high : Euclidean d → ℂ) y‖ := hLone high x
+      _ ≤ A * ((a t) ^ (1 - p) * I) := by
+        apply mul_le_mul_of_nonneg_left _ hA
+        simpa only [hI] using hhigh_integral
+      _ ≤ t / 2 := hbalance t ht
+  have hweak := weak_distribution_of_killed_schwartz_split T hTsub hTmeas
+    hr L hstrong f (fun _ => low) (fun _ => high) (fun _ => hsplit) ht hkill
+  have hlowW : L low ≤ W t := hLow t ht low high hlow hhigh
+  calc
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+        (ENNReal.ofReal (2 : ℝ)) ^ r * (L low) ^ r := hweak
+    _ ≤ (ENNReal.ofReal (2 : ℝ)) ^ r * (W t) ^ r :=
+      mul_le_mul_right (ENNReal.rpow_le_rpow hlowW hr.le) _
+
+/-- A scalarized form of
+`weak_distribution_of_rational_schwartz_split`.  It is the form directly
+matched by the `TT*` estimates: an `L² → Lʳ` bound is measured against the
+ordinary square integral of its Schwartz input. -/
+theorem weak_distribution_of_rational_schwartz_split_of_lone_ltwo
+    {d : Nat} (T : SchwartzMap (Euclidean d) ℂ → Euclidean d → ℝ)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) ℂ, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      AEStronglyMeasurable (T g) volume)
+    {A : ℝ} (hA : 0 ≤ A)
+    (hLone : ∀ g : SchwartzMap (Euclidean d) ℂ, ∀ x,
+      T g x ≤ A * ∫ y, ‖(g : Euclidean d → ℂ) y‖)
+    {r : ℝ} (hr : 0 < r) (B : ℝ≥0∞)
+    (htwo : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        B * ENNReal.ofReal (√(∫ x, ‖(g : Euclidean d → ℂ) x‖ ^ (2 : ℕ))))
+    (f : SchwartzMap (Euclidean d) ℂ)
+    {p I : ℝ} (hp1 : 1 < p) (hp2 : p < 2)
+    (hI : I = ∫ x, ‖(f : Euclidean d → ℂ) x‖ ^ p)
+    (a : ℝ → ℝ) (ha : ∀ t, 0 < t → 0 < a t)
+    (hbalance : ∀ t, 0 < t → A * ((a t) ^ (1 - p) * I) ≤ t / 2)
+    {t : ℝ} (ht : 0 < t) :
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+      (ENNReal.ofReal (2 : ℝ)) ^ r *
+        (B * ENNReal.ofReal
+          ((a t) ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2))) ^ r := by
+  apply weak_distribution_of_rational_schwartz_split T hTsub hTmeas hA hLone
+    hr (fun g => B * ENNReal.ofReal
+      (√(∫ x, ‖(g : Euclidean d → ℂ) x‖ ^ (2 : ℕ)))) htwo
+    f hp1 hp2 hI a ha hbalance
+    (fun s => B * ENNReal.ofReal
+      ((a s) ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2))) ?_ ht
+  intro s hs low high hlow hhigh
+  apply mul_le_mul_right
+  apply ENNReal.ofReal_le_ofReal
+  calc
+    √(∫ x, ‖(low : Euclidean d → ℂ) x‖ ^ (2 : ℕ)) ≤
+        (a s) ^ ((2 - p) / 2) *
+          (∫ x, ‖(f : Euclidean d → ℂ) x‖ ^ p) ^ ((1 : ℝ) / 2) :=
+      q4_sqrt_rational_low_integral_sq_le f low high (ha s hs) hp1 hp2 hlow hhigh
+    _ = (a s) ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2) := by rw [← hI]
+
+/-! ## The upper-input branch
+
+For the part of the exponent polygon above the `L²` input line, the
+fixed-frequency `Q3`/`Q4` estimate is combined with the literal uniform
+`L∞` endpoint.  The amplitude split is reversed from the preceding
+`L¹`--`L²` calculation: the bounded low part is killed by the top endpoint,
+and Chebyshev is applied to the high part at the available `L² → Lʳ`
+estimate.  The following lemma is the common distributional core.  The
+smooth high cutoff used below remains a Schwartz function and has the
+required all-exponent `L²` tail.
+-/
+
+/-- The distributional reduction for the upper-input interpolation branch.
+The low part is harmless once the top endpoint places it below half the
+output height; the remaining term is exactly the `L² → Lʳ` Chebyshev
+bound.  This is deliberately stated with the literal square integral rather
+than an abstract `L²` norm, matching the fixed-frequency `TT*` estimates. -/
+theorem weak_distribution_of_killed_schwartz_split_ltwo
+    {d : Nat} (T : SchwartzMap (Euclidean d) ℂ → Euclidean d → ℝ)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) ℂ, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      AEStronglyMeasurable (T g) volume)
+    {r : ℝ} (hr : 0 < r) (B : ℝ≥0∞)
+    (htwo : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        B * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(g : Euclidean d → ℂ) x‖ ^ (2 : ℕ))))
+    (f : SchwartzMap (Euclidean d) ℂ)
+    (low high : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hsplit : ∀ t, f = low t + high t)
+    {t : ℝ} (ht : 0 < t)
+    (hkill : ∀ x, T (low t) x ≤ t / 2) :
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+      (ENNReal.ofReal (2 : ℝ)) ^ r *
+        (B * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(high t : Euclidean d → ℂ) x‖ ^ (2 : ℕ)))) ^ r := by
+  /- The generic killed-split lemma labels the surviving term `low` and the
+  killed term `high`.  In the present lower-input application these roles are
+  respectively the amplitude-high and amplitude-low parts. -/
+  refine weak_distribution_of_killed_schwartz_split T hTsub hTmeas hr
+    (fun g => B * ENNReal.ofReal
+      (Real.sqrt (∫ x, ‖(g : Euclidean d → ℂ) x‖ ^ (2 : ℕ)))) htwo
+    f high low ?_ ht hkill
+  intro s
+  rw [hsplit s]
+  ac_rfl
+
+/-- Pointwise square-energy tail of the smooth Schwartz high cutoff above
+the `L²` input line.  The cutoff vanishes below `t / 4`, while elsewhere it
+is bounded by the original input.  The negative exponent `2 - p` is exactly
+what is needed to trade that support condition for an `Lᵖ` moment. -/
+theorem smooth_high_sq_le_of_two_lt
+    {d : Nat} (f low high : SchwartzMap (Euclidean d) ℂ)
+    {t p : ℝ} (ht : 0 < t) (hp : 2 < p)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    (hhigh : high = f - low) (x : Euclidean d) :
+    ‖high x‖ ^ (2 : ℕ) ≤
+      (t / 4) ^ (2 - p) * ‖f x‖ ^ p := by
+  by_cases hsmall : ‖f x‖ ≤ t / 4
+  · rw [smooth_high_eq_zero_of_norm_le_quarter f low high ht hlow hhigh x hsmall]
+    simp only [norm_zero, zero_pow (by norm_num : (2 : ℕ) ≠ 0)]
+    exact mul_nonneg
+      (Real.rpow_nonneg (by positivity) _)
+      (Real.rpow_nonneg (norm_nonneg _) _)
+  · have hlarge : t / 4 < ‖f x‖ := lt_of_not_ge hsmall
+    have htquarter : 0 < t / 4 := by positivity
+    have hfpos : 0 < ‖f x‖ := lt_trans htquarter hlarge
+    have htail : ‖f x‖ ^ (2 - p) ≤ (t / 4) ^ (2 - p) :=
+      Real.rpow_le_rpow_of_nonpos htquarter hlarge.le (by linarith)
+    have hfpow : 0 ≤ ‖f x‖ ^ p :=
+      Real.rpow_nonneg (norm_nonneg _) _
+    calc
+      ‖high x‖ ^ (2 : ℕ) ≤ ‖f x‖ ^ (2 : ℕ) :=
+        pow_le_pow_left₀ (norm_nonneg _)
+          (smooth_high_norm_le f low high hlow hhigh x) 2
+      _ = ‖f x‖ ^ (2 : ℝ) := (Real.rpow_natCast _ 2).symm
+      _ = ‖f x‖ ^ (p + (2 - p)) := by congr 1 <;> ring
+      _ = ‖f x‖ ^ p * ‖f x‖ ^ (2 - p) :=
+        Real.rpow_add hfpos p (2 - p)
+      _ ≤ ‖f x‖ ^ p * (t / 4) ^ (2 - p) :=
+        mul_le_mul_of_nonneg_left htail hfpow
+      _ = (t / 4) ^ (2 - p) * ‖f x‖ ^ p := by ring
+
+/-- Fixed-scale `L²` tail estimate for the smooth Schwartz high cutoff.
+This is the literal truncation estimate used to combine an `L² → Lʳ`
+dyadic estimate with the scale-uniform `L∞` endpoint when the input exponent
+is strictly larger than two. -/
+theorem smooth_high_integral_sq_le_of_two_lt
+    {d : Nat} (f low high : SchwartzMap (Euclidean d) ℂ)
+    {t p : ℝ} (ht : 0 < t) (hp : 2 < p)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    (hhigh : high = f - low) :
+    (∫ x, ‖high x‖ ^ (2 : ℕ)) ≤
+      (t / 4) ^ (2 - p) * ∫ x, ‖f x‖ ^ p := by
+  have hleft : Integrable (fun x : Euclidean d => ‖high x‖ ^ (2 : ℕ)) volume := by
+    have hmem : MemLp (high : Euclidean d → ℂ) (ENNReal.ofReal (2 : ℝ)) volume :=
+      high.memLp (ENNReal.ofReal (2 : ℝ)) volume
+    have h := hmem.integrable_norm_rpow
+      (by norm_num : ENNReal.ofReal (2 : ℝ) ≠ 0) ENNReal.ofReal_ne_top
+    convert h using 1 <;> norm_num
+  have hfpow : Integrable (fun x : Euclidean d => ‖f x‖ ^ p) volume :=
+    q4_schwartz_integrable_norm_rpow f (by linarith)
+  have hright : Integrable (fun x : Euclidean d =>
+      (t / 4) ^ (2 - p) * ‖f x‖ ^ p) volume := hfpow.const_mul _
+  rw [← integral_const_mul]
+  apply integral_mono hleft hright
+  intro x
+  exact smooth_high_sq_le_of_two_lt f low high ht hp hlow hhigh x
+
+/-- Square-root form of the preceding high-tail estimate.  This is the
+precise input norm which occurs in a fixed-frequency `L² → Lʳ` estimate. -/
+theorem sqrt_smooth_high_integral_sq_le_of_two_lt
+    {d : Nat} (f low high : SchwartzMap (Euclidean d) ℂ)
+    {t p : ℝ} (ht : 0 < t) (hp : 2 < p)
+    (hlow : ∀ x : Euclidean d,
+      low x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    (hhigh : high = f - low) :
+    Real.sqrt (∫ x, ‖high x‖ ^ (2 : ℕ)) ≤
+      (t / 4) ^ ((2 - p) / 2) *
+        (∫ x, ‖f x‖ ^ p) ^ ((1 : ℝ) / 2) := by
+  have hI : 0 ≤ ∫ x : Euclidean d, ‖f x‖ ^ p :=
+    integral_nonneg fun _ => Real.rpow_nonneg (norm_nonneg _) p
+  have htail := smooth_high_integral_sq_le_of_two_lt
+    f low high ht hp hlow hhigh
+  calc
+    Real.sqrt (∫ x, ‖high x‖ ^ (2 : ℕ)) ≤
+        Real.sqrt ((t / 4) ^ (2 - p) * ∫ x : Euclidean d, ‖f x‖ ^ p) :=
+      Real.sqrt_le_sqrt htail
+    _ = Real.sqrt ((t / 4) ^ (2 - p)) *
+        Real.sqrt (∫ x : Euclidean d, ‖f x‖ ^ p) :=
+      Real.sqrt_mul (Real.rpow_nonneg (by positivity) _) _
+    _ = (t / 4) ^ ((2 - p) / 2) *
+        (∫ x : Euclidean d, ‖f x‖ ^ p) ^ ((1 : ℝ) / 2) := by
+      rw [Real.sqrt_eq_rpow, Real.sqrt_eq_rpow,
+        ← Real.rpow_mul (by positivity : 0 ≤ t / 4)]
+      congr 1
+      ring
+
+/-- The literal weak estimate on the upper-input side of the Q4 argument.
+
+At a height `t`, split the Schwartz input at amplitude `t / A`, where `A`
+is the uniform `L^∞` coefficient.  The smooth low part is then killed by
+the top endpoint, and Chebyshev for the actual `L² → Lʳ` estimate is applied
+to the high part.  The conclusion deliberately keeps the elementary powers
+visible: after multiplying by `t ^ (r * p / 2 - r)`, their `t`-dependence
+cancels.  This is the weak input used at two neighbouring values of `r` in
+the strict Q4 interpolation.
+
+No hard cutoff or auxiliary extension of the maximal operator occurs here:
+all three pieces of every split remain Schwartz maps. -/
+theorem weak_distribution_of_smooth_ltwo_linf
+    {d : Nat} (T : SchwartzMap (Euclidean d) Complex → Euclidean d → Real)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
+      AEStronglyMeasurable (T g) volume)
+    {A : Real} (hA : 0 < A)
+    (htop : ∀ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 ≤ a →
+      (∀ x, ‖g x‖ ≤ a) → ∀ x, T g x ≤ A * a)
+    {r B : Real} (hr : 0 < r) (hB : 0 ≤ B)
+    (htwo : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        ENNReal.ofReal
+          (B * Real.sqrt (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ (2 : Nat))))
+    (f : SchwartzMap (Euclidean d) Complex)
+    {p I : Real} (hp : 2 < p)
+    (hI : I = ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p)
+    {t : Real} (ht : 0 < t) :
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+      (ENNReal.ofReal (2 : Real)) ^ r *
+        (ENNReal.ofReal
+          (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2)))) ^ r := by
+  obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
+    exists_schwartz_smooth_low_high_family f
+  let u : Real := t / A
+  have hu : 0 < u := by
+    dsimp only [u]
+    exact div_pos ht hA
+  have hsplit' : f = low u + high u := by
+    ext x
+    exact hsplit u x
+  have hkill : ∀ x, T (low u) x ≤ t / 2 := by
+    intro x
+    calc
+      T (low u) x ≤ A * (u / 2) :=
+        htop (low u) (u / 2) (by positivity)
+          (fun y => smooth_low_norm_le_half_height f (low u) hu (hlow u) y) x
+      _ = t / 2 := by
+        dsimp only [u]
+        field_simp [hA.ne']
+  have htwo' : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        ENNReal.ofReal B * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ (2 : Nat))) := by
+    intro g
+    calc
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+          ENNReal.ofReal
+            (B * Real.sqrt (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ (2 : Nat))) :=
+        htwo g
+      _ = ENNReal.ofReal B * ENNReal.ofReal
+          (Real.sqrt (∫ x, ‖(g : Euclidean d → Complex) x‖ ^ (2 : Nat))) := by
+        rw [ENNReal.ofReal_mul hB]
+  have hweak := weak_distribution_of_killed_schwartz_split_ltwo
+    T hTsub hTmeas hr (ENNReal.ofReal B) htwo' f
+    (fun _ => low u) (fun _ => high u) (fun _ => hsplit') ht hkill
+  have htail :
+      Real.sqrt (∫ x, ‖(high u : Euclidean d → Complex) x‖ ^ (2 : Nat)) ≤
+        (u / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2) := by
+    calc
+      Real.sqrt (∫ x, ‖(high u : Euclidean d → Complex) x‖ ^ (2 : Nat)) ≤
+          (u / 4) ^ ((2 - p) / 2) *
+            (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ p) ^ ((1 : Real) / 2) :=
+        sqrt_smooth_high_integral_sq_le_of_two_lt f (low u) (high u) hu hp
+          (hlow u) (hhigh u)
+      _ = (u / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2) := by
+        rw [← hI]
+  have htailE : ENNReal.ofReal
+      (Real.sqrt (∫ x, ‖(high u : Euclidean d → Complex) x‖ ^ (2 : Nat))) ≤
+      ENNReal.ofReal ((u / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2)) :=
+    ENNReal.ofReal_le_ofReal htail
+  have hmul : ENNReal.ofReal B * ENNReal.ofReal
+      (Real.sqrt (∫ x, ‖(high u : Euclidean d → Complex) x‖ ^ (2 : Nat))) ≤
+      ENNReal.ofReal B * ENNReal.ofReal
+        ((u / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2)) :=
+    mul_le_mul_right htailE _
+  have hpow := ENNReal.rpow_le_rpow hmul hr.le
+  calc
+    volume {x | t < T f x} * (ENNReal.ofReal t) ^ r ≤
+        (ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal B * ENNReal.ofReal
+            (Real.sqrt (∫ x, ‖(high u : Euclidean d → Complex) x‖ ^ (2 : Nat)))) ^ r :=
+      hweak
+    _ ≤ (ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal B * ENNReal.ofReal
+            ((u / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r :=
+      mul_le_mul_right hpow _
+    _ = (ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal
+            (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2)))) ^ r := by
+      congr 2
+      rw [← ENNReal.ofReal_mul hB]
+
+/-! ## General two-pair Marcinkiewicz interpolation
+
+The `Q₁Q₃Q₄` part of Theorem 1 has two genuinely different endpoint
+pairs.  The standard proof keeps both pieces of the amplitude split inside
+the layer-cake integral; it does not replace their sum by two weak estimates
+for the full operator.  The core below is stated for an arbitrary additive
+input carrier, so the Schwartz cutoffs used later are an application rather
+than an extra analytic assumption. -/
+
+/-- Repackage a weak `L^r` estimate with the layer-cake weight for a target
+`L^q` moment. -/
+theorem twoPair_ofReal_rpow_weight
+    {r q t : Real} (ht : 0 < t) :
+    ENNReal.ofReal (t ^ (q - 1)) =
+      (ENNReal.ofReal (2 : Real)) ^ r *
+        (ENNReal.ofReal ((t / 2) ^ r) *
+          (ENNReal.ofReal t) ^ (q - r - 1)) := by
+  have hhalf : 0 < t / 2 := by positivity
+  have htwo : 0 < (2 : Real) := by norm_num
+  have hreal :
+      t ^ (q - 1) = (2 : Real) ^ r *
+        ((t / 2) ^ r * t ^ (q - r - 1)) := by
+    calc
+      t ^ (q - 1) = t ^ (r + (q - r - 1)) := by congr 1 <;> ring
+      _ = t ^ r * t ^ (q - r - 1) := Real.rpow_add ht _ _
+      _ = ((2 : Real) ^ r * (t / 2) ^ r) * t ^ (q - r - 1) := by
+        rw [← Real.mul_rpow htwo.le hhalf.le]
+        congr 1
+        ring
+      _ = _ := by ring
+  rw [hreal]
+  rw [ENNReal.ofReal_mul (Real.rpow_nonneg htwo.le _)]
+  rw [ENNReal.ofReal_mul (Real.rpow_nonneg hhalf.le _)]
+  rw [ENNReal.ofReal_rpow_of_pos htwo,
+    ENNReal.ofReal_rpow_of_pos hhalf,
+    ENNReal.ofReal_rpow_of_pos ht]
+
+/-- Multiply a weak `L^r` distribution bound by the target `L^q`
+layer-cake weight. -/
+theorem twoPair_direct_weak_weighted
+    {r q t : Real} {m C I : ENNReal} (ht : 0 < t)
+    (h : ENNReal.ofReal ((t / 2) ^ r) * m ≤ C * I) :
+    m * ENNReal.ofReal (t ^ (q - 1)) ≤
+      (ENNReal.ofReal (2 : Real)) ^ r * C * I *
+        (ENNReal.ofReal t) ^ (q - r - 1) := by
+  rw [twoPair_ofReal_rpow_weight ht]
+  calc
+    m * ((ENNReal.ofReal (2 : Real)) ^ r *
+        (ENNReal.ofReal ((t / 2) ^ r) *
+          (ENNReal.ofReal t) ^ (q - r - 1))) =
+        (ENNReal.ofReal ((t / 2) ^ r) * m) *
+          ((ENNReal.ofReal (2 : Real)) ^ r *
+            (ENNReal.ofReal t) ^ (q - r - 1)) := by ac_rfl
+    _ ≤ (C * I) * ((ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal t) ^ (q - r - 1)) :=
+      mul_le_mul_of_nonneg_right h (by positivity)
+    _ = (ENNReal.ofReal (2 : Real)) ^ r * C * I *
+          (ENNReal.ofReal t) ^ (q - r - 1) := by ac_rfl
+
+/-- The moment coefficient produced by the two-pair Marcinkiewicz argument.
+`C₀,A₀` belong to the high-amplitude/lower endpoint and `C₁,A₁` to the
+low-amplitude/higher endpoint. -/
+def twoPairMarcinkiewiczMomentCoefficient
+    (q q₀ q₁ : Real) (C₀ C₁ A₀ A₁ : ENNReal) : ENNReal :=
+  ENNReal.ofReal q *
+    ((ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * A₀ +
+      (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * A₁)
+
+/-- The genuine two-pair distribution-function calculation.
+
+At each output height the distribution of `T f` is split into its low and
+high input pieces.  The two terms remain under the layer-cake integral and
+are controlled by their own weighted Hardy tails.  Thus no linearity of `T`
+is used. -/
+theorem two_pair_marcinkiewicz_moment_of_split_weak_endpoints
+    {α F : Type*} [MeasurableSpace α] [Add F]
+    {μ : Measure α} [SFinite μ]
+    (D : Set F) (T : F → α → Real)
+    (hTnonneg : ∀ g x, 0 ≤ T g x)
+    (hTsub : ∀ ⦃g h : F⦄, g ∈ D → h ∈ D →
+      ∀ x, T (g + h) x ≤ T g x + T h x)
+    {q₀ q q₁ : Real} (hq : 0 < q)
+    (C₀ C₁ : ENNReal) (I₀ I₁ : F → ENNReal)
+    (hweak₀ : ∀ g, g ∈ D → ∀ ⦃s : Real⦄, 0 < s →
+      ENNReal.ofReal (s ^ q₀) * μ {x | s < T g x} ≤ C₀ * I₀ g)
+    (hweak₁ : ∀ g, g ∈ D → ∀ ⦃s : Real⦄, 0 < s →
+      ENNReal.ofReal (s ^ q₁) * μ {x | s < T g x} ≤ C₁ * I₁ g)
+    (f : F) (hTf : AEMeasurable (T f) μ)
+    (low high : Real → F)
+    (hlow_mem : ∀ t, low t ∈ D) (hhigh_mem : ∀ t, high t ∈ D)
+    (hsplit : ∀ t, f = low t + high t)
+    (hlowI_meas : Measurable (fun t => I₁ (low t)))
+    (hhighI_meas : Measurable (fun t => I₀ (high t)))
+    (A₀ A₁ : ENNReal)
+    (hhigh_tail :
+      (∫⁻ t in Ioi (0 : Real), I₀ (high t) *
+        (ENNReal.ofReal t) ^ (q - q₀ - 1)) ≤ A₀)
+    (hlow_tail :
+      (∫⁻ t in Ioi (0 : Real), I₁ (low t) *
+        (ENNReal.ofReal t) ^ (q - q₁ - 1)) ≤ A₁) :
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤
+      twoPairMarcinkiewiczMomentCoefficient q q₀ q₁ C₀ C₁ A₀ A₁ := by
+  let lowI : Real → ENNReal := fun t => I₁ (low t)
+  let highI : Real → ENNReal := fun t => I₀ (high t)
+  let w : Real → ENNReal := fun t => ENNReal.ofReal (t ^ (q - 1))
+  let whigh : Real → ENNReal := fun t =>
+    (ENNReal.ofReal t) ^ (q - q₀ - 1)
+  let wlow : Real → ENNReal := fun t =>
+    (ENNReal.ofReal t) ^ (q - q₁ - 1)
+  have hlowI_meas' : Measurable lowI := by
+    simpa only [lowI] using hlowI_meas
+  have hhighI_meas' : Measurable highI := by
+    simpa only [highI] using hhighI_meas
+  have hwhigh : Measurable whigh :=
+    ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal
+  have hwlow : Measurable wlow :=
+    ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal
+  have hhigh_prod_meas : Measurable (fun t => highI t * whigh t) :=
+    hhighI_meas'.mul hwhigh
+  have hlow_prod_meas : Measurable (fun t => lowI t * wlow t) :=
+    hlowI_meas'.mul hwlow
+  have hhigh_meas : Measurable (fun t =>
+      (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t) := by
+    rw [show (fun t => (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ *
+        highI t * whigh t) = fun t =>
+        ((ENNReal.ofReal (2 : Real)) ^ q₀ * C₀) *
+          (highI t * whigh t) by
+      funext t
+      ac_rfl]
+    exact measurable_const.mul hhigh_prod_meas
+  have hlow_meas : Measurable (fun t =>
+      (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t) := by
+    rw [show (fun t => (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ *
+        lowI t * wlow t) = fun t =>
+        ((ENNReal.ofReal (2 : Real)) ^ q₁ * C₁) *
+          (lowI t * wlow t) by
+      funext t
+      ac_rfl]
+    exact measurable_const.mul hlow_prod_meas
+  have hhigh_endpoint (t : Real) (ht : 0 < t) :
+      ENNReal.ofReal ((t / 2) ^ q₀) *
+          μ {x | t / 2 < T (high t) x} ≤ C₀ * highI t := by
+    simpa only [highI] using
+      hweak₀ (high t) (hhigh_mem t) (by positivity)
+  have hlow_endpoint (t : Real) (ht : 0 < t) :
+      ENNReal.ofReal ((t / 2) ^ q₁) *
+          μ {x | t / 2 < T (low t) x} ≤ C₁ * lowI t := by
+    simpa only [lowI] using
+      hweak₁ (low t) (hlow_mem t) (by positivity)
+  have hhigh_weight (t : Real) (ht : 0 < t) :
+      μ {x | t / 2 < T (high t) x} * w t ≤
+        (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t := by
+    dsimp only [w, whigh]
+    simpa only [ENNReal.ofReal_rpow_of_pos ht] using
+      twoPair_direct_weak_weighted (q := q) ht (hhigh_endpoint t ht)
+  have hlow_weight (t : Real) (ht : 0 < t) :
+      μ {x | t / 2 < T (low t) x} * w t ≤
+        (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t := by
+    dsimp only [w, wlow]
+    simpa only [ENNReal.ofReal_rpow_of_pos ht] using
+      twoPair_direct_weak_weighted (q := q) ht (hlow_endpoint t ht)
+  have hdistribution (t : Real) (ht : 0 < t) :
+      μ {x | t < T f x} * w t ≤
+        (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t +
+          (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t := by
+    have hsplit' : μ {x | t < T f x} ≤
+        μ {x | t / 2 < T (low t) x} +
+          μ {x | t / 2 < T (high t) x} :=
+      measure_distribution_split_additive μ T f (low t) (high t) t (hsplit t)
+        (hTsub (hlow_mem t) (hhigh_mem t))
+    calc
+      μ {x | t < T f x} * w t ≤
+          (μ {x | t / 2 < T (low t) x} +
+            μ {x | t / 2 < T (high t) x}) * w t :=
+        mul_le_mul_left hsplit' _
+      _ = μ {x | t / 2 < T (high t) x} * w t +
+          μ {x | t / 2 < T (low t) x} * w t := by
+        rw [add_mul]
+        ac_rfl
+      _ ≤ (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t +
+          (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t :=
+        add_le_add (hhigh_weight t ht) (hlow_weight t ht)
+  have hdistribution_integral :
+      (∫⁻ t in Ioi (0 : Real), μ {x | t < T f x} * w t) ≤
+        (∫⁻ t in Ioi (0 : Real),
+          (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t) +
+          ∫⁻ t in Ioi (0 : Real),
+            (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t := by
+    calc
+      (∫⁻ t in Ioi (0 : Real), μ {x | t < T f x} * w t) ≤
+          ∫⁻ t in Ioi (0 : Real),
+            (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t +
+              (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t := by
+        apply lintegral_mono_ae
+        filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+        exact hdistribution t ht
+      _ = (∫⁻ t in Ioi (0 : Real),
+          (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t) +
+          ∫⁻ t in Ioi (0 : Real),
+            (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t :=
+        lintegral_add_left hhigh_meas _
+  have hhigh_integral :
+      (∫⁻ t in Ioi (0 : Real),
+        (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t) =
+          (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ *
+            (∫⁻ t in Ioi (0 : Real), highI t * whigh t) := by
+    have hconst := lintegral_const_mul
+      (μ := volume.restrict (Ioi (0 : Real)))
+      ((ENNReal.ofReal (2 : Real)) ^ q₀ * C₀) hhigh_prod_meas
+    calc
+      (∫⁻ t in Ioi (0 : Real),
+          (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t) =
+          ∫⁻ t in Ioi (0 : Real),
+            ((ENNReal.ofReal (2 : Real)) ^ q₀ * C₀) *
+              (highI t * whigh t) := by
+            apply lintegral_congr
+            intro t
+            ac_rfl
+      _ = _ := hconst
+  have hlow_integral :
+      (∫⁻ t in Ioi (0 : Real),
+        (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t) =
+          (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ *
+            (∫⁻ t in Ioi (0 : Real), lowI t * wlow t) := by
+    have hconst := lintegral_const_mul
+      (μ := volume.restrict (Ioi (0 : Real)))
+      ((ENNReal.ofReal (2 : Real)) ^ q₁ * C₁) hlow_prod_meas
+    calc
+      (∫⁻ t in Ioi (0 : Real),
+          (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t) =
+          ∫⁻ t in Ioi (0 : Real),
+            ((ENNReal.ofReal (2 : Real)) ^ q₁ * C₁) *
+              (lowI t * wlow t) := by
+            apply lintegral_congr
+            intro t
+            ac_rfl
+      _ = _ := hconst
+  calc
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) =
+        ENNReal.ofReal q *
+          (∫⁻ t in Ioi (0 : Real), μ {x | t < T f x} * w t) := by
+      simpa only [w] using
+        (lintegral_rpow_eq_lintegral_meas_lt_mul μ
+          (Filter.Eventually.of_forall (hTnonneg f)) hTf hq)
+    _ ≤ ENNReal.ofReal q *
+        ((∫⁻ t in Ioi (0 : Real),
+          (ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * highI t * whigh t) +
+          ∫⁻ t in Ioi (0 : Real),
+            (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * lowI t * wlow t) :=
+      mul_le_mul_right hdistribution_integral _
+    _ = ENNReal.ofReal q *
+        ((ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ *
+            (∫⁻ t in Ioi (0 : Real), highI t * whigh t) +
+          (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ *
+            (∫⁻ t in Ioi (0 : Real), lowI t * wlow t)) := by
+      rw [hhigh_integral, hlow_integral]
+    _ ≤ ENNReal.ofReal q *
+        ((ENNReal.ofReal (2 : Real)) ^ q₀ * C₀ * A₀ +
+          (ENNReal.ofReal (2 : Real)) ^ q₁ * C₁ * A₁) := by
+      apply mul_le_mul_of_nonneg_left
+      exact add_le_add
+        (mul_le_mul_of_nonneg_left hhigh_tail (by positivity))
+        (mul_le_mul_of_nonneg_left hlow_tail (by positivity))
+      positivity
+    _ = twoPairMarcinkiewiczMomentCoefficient q q₀ q₁ C₀ C₁ A₀ A₁ := by
+      rfl
+
+/-- The preceding two-pair calculation specialized to strong endpoint
+estimates.  The endpoint powers are kept in the size functions because that
+is the form in which the two Hardy tail bounds are used. -/
+theorem two_pair_marcinkiewicz_moment_of_strong_endpoints_and_split_tails
+    {α E F : Type*} [MeasurableSpace α] [NormedAddCommGroup E] [Add F]
+    {μ : Measure α} [SFinite μ]
+    (D : Set F) (eval : F → α → E) (T : F → α → Real)
+    (hTnonneg : ∀ g x, 0 ≤ T g x)
+    (hTsub : ∀ ⦃g h : F⦄, g ∈ D → h ∈ D →
+      ∀ x, T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g, g ∈ D → AEStronglyMeasurable (T g) μ)
+    {p₀ p₁ q₀ q q₁ : Real}
+    (hq₀ : 0 < q₀) (hq₁ : 0 < q₁) (hq : 0 < q)
+    (B₀ B₁ : ENNReal)
+    (hstrong₀ : ∀ g, g ∈ D →
+      eLpNorm (T g) (ENNReal.ofReal q₀) μ ≤
+        B₀ * eLpNorm (eval g) (ENNReal.ofReal p₀) μ)
+    (hstrong₁ : ∀ g, g ∈ D →
+      eLpNorm (T g) (ENNReal.ofReal q₁) μ ≤
+        B₁ * eLpNorm (eval g) (ENNReal.ofReal p₁) μ)
+    (f : F) (hTf : AEMeasurable (T f) μ)
+    (low high : Real → F)
+    (hlow_mem : ∀ t, low t ∈ D) (hhigh_mem : ∀ t, high t ∈ D)
+    (hsplit : ∀ t, f = low t + high t)
+    (hlowI_meas : Measurable (fun t =>
+      (eLpNorm (eval (low t)) (ENNReal.ofReal p₁) μ) ^ q₁))
+    (hhighI_meas : Measurable (fun t =>
+      (eLpNorm (eval (high t)) (ENNReal.ofReal p₀) μ) ^ q₀))
+    (A₀ A₁ : ENNReal)
+    (hhigh_tail :
+      (∫⁻ t in Ioi (0 : Real),
+        (eLpNorm (eval (high t)) (ENNReal.ofReal p₀) μ) ^ q₀ *
+          (ENNReal.ofReal t) ^ (q - q₀ - 1)) ≤ A₀)
+    (hlow_tail :
+      (∫⁻ t in Ioi (0 : Real),
+        (eLpNorm (eval (low t)) (ENNReal.ofReal p₁) μ) ^ q₁ *
+          (ENNReal.ofReal t) ^ (q - q₁ - 1)) ≤ A₁) :
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤
+      twoPairMarcinkiewiczMomentCoefficient q q₀ q₁
+        (B₀ ^ q₀) (B₁ ^ q₁) A₀ A₁ := by
+  have hweak₀ : ∀ g, g ∈ D → ∀ ⦃s : Real⦄, 0 < s →
+      ENNReal.ofReal (s ^ q₀) * μ {x | s < T g x} ≤
+        B₀ ^ q₀ *
+          (eLpNorm (eval g) (ENNReal.ofReal p₀) μ) ^ q₀ := by
+    intro g hg s hs
+    have hcheb := weak_distribution_of_eLpNorm (T g) (hTmeas g hg)
+      hq₀ hs (B₀ * eLpNorm (eval g) (ENNReal.ofReal p₀) μ)
+      (hstrong₀ g hg)
+    calc
+      ENNReal.ofReal (s ^ q₀) * μ {x | s < T g x} =
+          μ {x | s < T g x} * (ENNReal.ofReal s) ^ q₀ := by
+            rw [ENNReal.ofReal_rpow_of_pos hs]
+            ac_rfl
+      _ ≤ (B₀ * eLpNorm (eval g) (ENNReal.ofReal p₀) μ) ^ q₀ := hcheb
+      _ = B₀ ^ q₀ *
+          (eLpNorm (eval g) (ENNReal.ofReal p₀) μ) ^ q₀ := by
+            rw [ENNReal.mul_rpow_of_nonneg _ _ hq₀.le]
+  have hweak₁ : ∀ g, g ∈ D → ∀ ⦃s : Real⦄, 0 < s →
+      ENNReal.ofReal (s ^ q₁) * μ {x | s < T g x} ≤
+        B₁ ^ q₁ *
+          (eLpNorm (eval g) (ENNReal.ofReal p₁) μ) ^ q₁ := by
+    intro g hg s hs
+    have hcheb := weak_distribution_of_eLpNorm (T g) (hTmeas g hg)
+      hq₁ hs (B₁ * eLpNorm (eval g) (ENNReal.ofReal p₁) μ)
+      (hstrong₁ g hg)
+    calc
+      ENNReal.ofReal (s ^ q₁) * μ {x | s < T g x} =
+          μ {x | s < T g x} * (ENNReal.ofReal s) ^ q₁ := by
+            rw [ENNReal.ofReal_rpow_of_pos hs]
+            ac_rfl
+      _ ≤ (B₁ * eLpNorm (eval g) (ENNReal.ofReal p₁) μ) ^ q₁ := hcheb
+      _ = B₁ ^ q₁ *
+          (eLpNorm (eval g) (ENNReal.ofReal p₁) μ) ^ q₁ := by
+            rw [ENNReal.mul_rpow_of_nonneg _ _ hq₁.le]
+  exact two_pair_marcinkiewicz_moment_of_split_weak_endpoints
+    D T hTnonneg hTsub hq (B₀ ^ q₀) (B₁ ^ q₁)
+    (fun g => (eLpNorm (eval g) (ENNReal.ofReal p₀) μ) ^ q₀)
+    (fun g => (eLpNorm (eval g) (ENNReal.ofReal p₁) μ) ^ q₁)
+    hweak₀ hweak₁ f hTf low high hlow_mem hhigh_mem hsplit
+    hlowI_meas hhighI_meas A₀ A₁ hhigh_tail hlow_tail
+
+/-- A finite nonnegative moment bound gives the literal strong conclusion
+used by dyadic reassembly. -/
+theorem memLp_and_eLpNorm_of_twoPair_moment_le
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → Real) (f : F) {q : Real} (hq : 0 < q)
+    (hTnonneg : ∀ x, 0 ≤ T f x) (hTf : AEMeasurable (T f) μ)
+    (M : ENNReal) (hMtop : M < ⊤)
+    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤ M) :
+    MemLp (T f) (ENNReal.ofReal q) μ ∧
+      eLpNorm (T f) (ENNReal.ofReal q) μ ≤ M ^ q⁻¹ := by
+  constructor
+  · exact memLp_of_lintegral_ofReal_rpow_lt_top (T f) hTf hTnonneg hq
+      (lt_of_le_of_lt hmoment hMtop)
+  · exact eLpNorm_le_of_nonnegative_moment T f hq hTnonneg M hmoment
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

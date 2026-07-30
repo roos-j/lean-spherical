@@ -1038,7 +1038,7 @@ private theorem exists_height_power_decay_and_moment (k : Nat) :
                 _ = _ := by
                   field_simp [hDpos.ne']
 
-private theorem surfaceFourier_succ_height_intervalIntegral
+theorem surfaceFourier_succ_height_intervalIntegral
     {d : Nat} (hd : 2 ≤ d) (ξ : Euclidean (d + 1)) :
     surfaceFourier (d + 1) ξ =
       (surfaceMass d : ℂ) *

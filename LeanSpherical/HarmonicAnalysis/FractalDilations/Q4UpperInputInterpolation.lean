@@ -1,0 +1,406 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4LowerInputInterpolation
+
+/-!
+# The upper-input interpolation in the `Q4` argument
+
+This is the companion to `Q4LowerInputInterpolation`.  When the desired
+input exponent is above two, a smooth amplitude split is made at the output
+height divided by the literal scale-uniform `L^infinity` coefficient.  The
+low part is killed by that endpoint and the high part is estimated by the
+actual `L^2 -> L^r` bound supplied by the finite active-cell `TT*`
+calculation.
+
+The resulting weak exponent is `r * p / 2`.  Two neighbouring values of
+`r` give a strong estimate at every strict intervening output exponent.  The
+calculation is kept separate from the fixed-dyadic Q4 source so that the
+same literal interpolation may be used on every ray from `Q1` through the
+lower Q4 region.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter MeasureTheory Set ENNReal
+
+noncomputable section
+
+/-- The weak output exponent obtained by combining an `L^2 -> L^r` estimate
+with the literal top endpoint at an input exponent above two. -/
+def q4UpperWeakOutputExponent (p r : Real) : Real :=
+  r * p / 2
+
+/-- The positive height power left after the smooth high-cutoff estimate. -/
+def q4UpperWeakTailExponent (p r : Real) : Real :=
+  r * (p - 2) / 2
+
+/-- The scale-free coefficient in the upper-input weak estimate. -/
+def q4UpperWeakRealConstant (A B p r : Real) : Real :=
+  (2 : Real) ^ r * B ^ r *
+    (4 * A) ^ q4UpperWeakTailExponent p r
+
+/-- The output exponent differs from the `L^2 -> L^r` output by exactly the
+height power of the high tail. -/
+theorem q4UpperWeakOutputExponent_sub_eq_tail
+    {p r : Real} :
+    q4UpperWeakOutputExponent p r - r = q4UpperWeakTailExponent p r := by
+  unfold q4UpperWeakOutputExponent q4UpperWeakTailExponent
+  ring
+
+/-- The input-moment power in the upper-input weak estimate is homogeneous
+of degree `q / p`. -/
+theorem q4UpperWeakTail_add_half_eq_output_div
+    {p r : Real} (hp : 2 < p) :
+    q4UpperWeakTailExponent p r + r / 2 =
+      q4UpperWeakOutputExponent p r / p := by
+  have hp0 : p ≠ 0 := by linarith
+  unfold q4UpperWeakOutputExponent q4UpperWeakTailExponent
+  field_simp [hp0]
+  ring
+
+/-- The upper-input tail exponent is strictly positive in the range in
+which the smooth split is used. -/
+theorem q4UpperWeakTailExponent_pos
+    {p r : Real} (hp : 2 < p) (hr : 0 < r) :
+    0 < q4UpperWeakTailExponent p r := by
+  unfold q4UpperWeakTailExponent
+  exact div_pos (mul_pos hr (sub_pos.mpr hp)) (by norm_num)
+
+/-- Positivity of the upper weak output exponent. -/
+theorem q4UpperWeakOutputExponent_pos
+    {p r : Real} (hp : 2 < p) (hr : 0 < r) :
+    0 < q4UpperWeakOutputExponent p r := by
+  unfold q4UpperWeakOutputExponent
+  exact div_pos (mul_pos hr (by linarith)) (by norm_num)
+
+/-- The explicit upper-input weak coefficient is nonnegative under the
+literal endpoint sign hypotheses. -/
+theorem q4UpperWeakRealConstant_nonneg
+    {A B p r : Real} (hA : 0 < A) (hB : 0 ≤ B) :
+    0 ≤ q4UpperWeakRealConstant A B p r := by
+  unfold q4UpperWeakRealConstant
+  exact mul_nonneg
+    (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
+      (Real.rpow_nonneg hB _))
+    (Real.rpow_nonneg (mul_nonneg (by norm_num) hA.le) _)
+
+/-- The real scalar cancellation behind the upper-input weak estimate.
+The negative high-tail power of the height is exactly cancelled by the
+additional weak-distribution power. -/
+theorem q4UpperSmoothScale_weak_scalar
+    {A B I p r t : Real} (hp : 2 < p) (hA : 0 < A) (hB : 0 ≤ B)
+    (hI : 0 < I) (ht : 0 < t) :
+    (2 : Real) ^ r *
+        (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+          t ^ q4UpperWeakTailExponent p r =
+      q4UpperWeakRealConstant A B p r *
+        I ^ (q4UpperWeakOutputExponent p r / p) := by
+  let K : Real := 4 * A
+  let a : Real := q4UpperWeakTailExponent p r
+  have hK : 0 < K := by
+    dsimp only [K]
+    positivity
+  have hquot : (t / A) / 4 = t / K := by
+    dsimp only [K]
+    field_simp [hA.ne']
+    ring
+  have hpower : ((2 - p) / 2) * r = -a := by
+    dsimp only [a, q4UpperWeakTailExponent]
+    ring
+  have hbase : 0 ≤ t / K := (div_pos ht hK).le
+  have htpow : 0 < t ^ a := Real.rpow_pos_of_pos ht _
+  have hKpow : 0 < K ^ a := Real.rpow_pos_of_pos hK _
+  have htail :
+      (((t / A) / 4) ^ ((2 - p) / 2)) ^ r * t ^ a = K ^ a := by
+    rw [hquot, ← Real.rpow_mul hbase, hpower]
+    rw [Real.div_rpow ht.le hK.le, Real.rpow_neg ht.le,
+      Real.rpow_neg hK.le]
+    field_simp [htpow.ne', hKpow.ne']
+  have hIhalf : 0 ≤ I ^ ((1 : Real) / 2) :=
+    Real.rpow_nonneg hI.le _
+  have htailbase : 0 ≤ ((t / A) / 4) ^ ((2 - p) / 2) :=
+    Real.rpow_nonneg (div_nonneg (div_nonneg ht.le hA.le) (by norm_num)) _
+  calc
+    (2 : Real) ^ r *
+        (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+          t ^ q4UpperWeakTailExponent p r =
+        (2 : Real) ^ r * B ^ r *
+          ((((t / A) / 4) ^ ((2 - p) / 2)) ^ r * t ^ a) *
+            (I ^ ((1 : Real) / 2)) ^ r := by
+          change (2 : Real) ^ r *
+              (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+                t ^ a = _
+          rw [Real.mul_rpow hB (mul_nonneg htailbase hIhalf),
+            Real.mul_rpow htailbase hIhalf]
+          ring
+    _ = (2 : Real) ^ r * B ^ r * K ^ a *
+          (I ^ ((1 : Real) / 2)) ^ r := by rw [htail]
+    _ = q4UpperWeakRealConstant A B p r *
+          (I ^ a * (I ^ ((1 : Real) / 2)) ^ r) := by
+          unfold q4UpperWeakRealConstant
+          dsimp only [a, K]
+          ring
+    _ = q4UpperWeakRealConstant A B p r *
+          I ^ (a + r / 2) := by
+          rw [← Real.rpow_mul hI.le]
+          have hhalf : ((1 : Real) / 2) * r = r / 2 := by ring
+          rw [hhalf, ← Real.rpow_add hI]
+    _ = q4UpperWeakRealConstant A B p r *
+          I ^ (q4UpperWeakOutputExponent p r / p) := by
+          dsimp only [a]
+          rw [q4UpperWeakTail_add_half_eq_output_div hp]
+
+/-- The homogeneous weak distribution estimate obtained from the literal
+smooth `L^2 -> L^r`/`L^infinity` split. -/
+theorem q4_upper_weak_distribution_power_of_ltwo_linf
+    {d : Nat} (T : SchwartzMap (Euclidean d) Complex -> Euclidean d -> Real)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
+      AEStronglyMeasurable (T g) volume)
+    {A : Real} (hA : 0 < A)
+    (htop : ∀ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 ≤ a ->
+      (∀ x, ‖g x‖ ≤ a) -> ∀ x, T g x ≤ A * a)
+    {r B : Real} (hr : 0 < r) (hB : 0 ≤ B)
+    (htwo : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        ENNReal.ofReal
+          (B * Real.sqrt (∫ x, ‖(g : Euclidean d -> Complex) x‖ ^ (2 : Nat))))
+    (f : SchwartzMap (Euclidean d) Complex)
+    {p I : Real} (hp : 2 < p)
+    (hI : I = ∫ x, ‖(f : Euclidean d -> Complex) x‖ ^ p)
+    (hIpos : 0 < I)
+    {t : Real} (ht : 0 < t) :
+    volume {x | t < T f x} *
+        (ENNReal.ofReal t) ^ q4UpperWeakOutputExponent p r ≤
+      ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
+        (ENNReal.ofReal I) ^ (q4UpperWeakOutputExponent p r / p) := by
+  have htailpos : 0 < q4UpperWeakTailExponent p r :=
+    q4UpperWeakTailExponent_pos hp hr
+  have hqpos : 0 < q4UpperWeakOutputExponent p r :=
+    q4UpperWeakOutputExponent_pos hp hr
+  have htermnonneg : 0 ≤
+      ((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2) :=
+    mul_nonneg
+      (Real.rpow_nonneg (div_nonneg (div_nonneg ht.le hA.le) (by norm_num)) _)
+      (Real.rpow_nonneg hIpos.le _)
+  have hconstnonneg : 0 ≤ q4UpperWeakRealConstant A B p r :=
+    q4UpperWeakRealConstant_nonneg hA hB
+  have hraw := weak_distribution_of_smooth_ltwo_linf
+    T hTsub hTmeas hA htop hr hB htwo f hp hI ht
+  have hqsplit : q4UpperWeakOutputExponent p r =
+      r + q4UpperWeakTailExponent p r := by
+    linarith [q4UpperWeakOutputExponent_sub_eq_tail (p := p) (r := r)]
+  have htE0 : ENNReal.ofReal t ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr ht
+  have htET : ENNReal.ofReal t ≠ ⊤ := ENNReal.ofReal_ne_top
+  have hleft :
+      volume {x | t < T f x} *
+          (ENNReal.ofReal t) ^ q4UpperWeakOutputExponent p r =
+        (volume {x | t < T f x} * (ENNReal.ofReal t) ^ r) *
+          (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r := by
+    rw [hqsplit, ENNReal.rpow_add _ _ htE0 htET]
+    ring
+  have hscalarE :
+      (ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal B * ENNReal.ofReal
+            (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+          (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r =
+        ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
+          (ENNReal.ofReal I) ^ (q4UpperWeakOutputExponent p r / p) := by
+    calc
+      (ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal B * ENNReal.ofReal
+            (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+          (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r =
+          ENNReal.ofReal ((2 : Real) ^ r) *
+            ENNReal.ofReal
+              (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+            ENNReal.ofReal (t ^ q4UpperWeakTailExponent p r) := by
+              rw [← ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : Real) < 2)]
+              rw [← ENNReal.ofReal_mul hB]
+              rw [← ENNReal.ofReal_rpow_of_nonneg
+                (mul_nonneg hB htermnonneg) hr.le]
+              rw [← ENNReal.ofReal_rpow_of_pos ht]
+      _ = ENNReal.ofReal
+            ((2 : Real) ^ r *
+              (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r) *
+              ENNReal.ofReal (t ^ q4UpperWeakTailExponent p r) := by
+              rw [← ENNReal.ofReal_mul
+                (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
+                  (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))]
+      _ = ENNReal.ofReal
+            ((2 : Real) ^ r *
+              (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+                t ^ q4UpperWeakTailExponent p r) := by
+              rw [← ENNReal.ofReal_mul (mul_nonneg
+                (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
+                  (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))
+                (Real.rpow_nonneg ht.le _))]
+      _ = ENNReal.ofReal
+            (q4UpperWeakRealConstant A B p r *
+              I ^ (q4UpperWeakOutputExponent p r / p)) := by
+              rw [q4UpperSmoothScale_weak_scalar hp hA hB hIpos ht]
+      _ = ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
+            (ENNReal.ofReal I) ^ (q4UpperWeakOutputExponent p r / p) := by
+              rw [ENNReal.ofReal_mul hconstnonneg]
+              rw [ENNReal.ofReal_rpow_of_pos hIpos]
+  calc
+    volume {x | t < T f x} *
+        (ENNReal.ofReal t) ^ q4UpperWeakOutputExponent p r =
+      (volume {x | t < T f x} * (ENNReal.ofReal t) ^ r) *
+        (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r := hleft
+    _ ≤ ((ENNReal.ofReal (2 : Real)) ^ r *
+          (ENNReal.ofReal B * ENNReal.ofReal
+            (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r) *
+          (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r :=
+      mul_le_mul_right hraw _
+    _ = ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
+          (ENNReal.ofReal I) ^ (q4UpperWeakOutputExponent p r / p) := hscalarE
+
+/-- Normalize the upper-input weak estimate by the input `L^p` scale. -/
+theorem q4_upper_normalized_weak_distribution_of_ltwo_linf
+    {d : Nat} (T : SchwartzMap (Euclidean d) Complex -> Euclidean d -> Real)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
+      AEStronglyMeasurable (T g) volume)
+    {A : Real} (hA : 0 < A)
+    (htop : ∀ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 ≤ a ->
+      (∀ x, ‖g x‖ ≤ a) -> ∀ x, T g x ≤ A * a)
+    {r B : Real} (hr : 0 < r) (hB : 0 ≤ B)
+    (htwo : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        ENNReal.ofReal
+          (B * Real.sqrt (∫ x, ‖(g : Euclidean d -> Complex) x‖ ^ (2 : Nat))))
+    (f : SchwartzMap (Euclidean d) Complex)
+    {p I : Real} (hp : 2 < p)
+    (hI : I = ∫ x, ‖(f : Euclidean d -> Complex) x‖ ^ p)
+    (hIpos : 0 < I)
+    {t : Real} (ht : 0 < t) :
+    volume {x | t < (q4LowerInputScale I p)⁻¹ * T f x} *
+        (ENNReal.ofReal t) ^ q4UpperWeakOutputExponent p r ≤
+      ENNReal.ofReal (q4UpperWeakRealConstant A B p r) := by
+  let s : Real := q4LowerInputScale I p
+  let q : Real := q4UpperWeakOutputExponent p r
+  have hs : 0 < s := q4LowerInputScale_pos hIpos
+  have hq : 0 < q := q4UpperWeakOutputExponent_pos hp hr
+  have hs_power : s ^ q = I ^ (q / p) := by
+    dsimp only [s, q]
+    exact q4LowerInputScale_rpow_output hIpos (by linarith)
+  have hsE_power : (ENNReal.ofReal s) ^ q =
+      (ENNReal.ofReal I) ^ (q / p) := by
+    calc
+      (ENNReal.ofReal s) ^ q = ENNReal.ofReal (s ^ q) :=
+        (ENNReal.ofReal_rpow_of_pos hs).symm
+      _ = ENNReal.ofReal (I ^ (q / p)) := by rw [hs_power]
+      _ = (ENNReal.ofReal I) ^ (q / p) :=
+        ENNReal.ofReal_rpow_of_pos hIpos
+  have hsE_power_ne_zero : (ENNReal.ofReal s) ^ q ≠ 0 := by
+    rw [← ENNReal.ofReal_rpow_of_pos hs]
+    exact ENNReal.ofReal_ne_zero_iff.mpr (Real.rpow_pos_of_pos hs _)
+  have hsE_power_ne_top : (ENNReal.ofReal s) ^ q ≠ ⊤ := by
+    rw [← ENNReal.ofReal_rpow_of_pos hs]
+    exact ENNReal.ofReal_ne_top
+  have hprod : (ENNReal.ofReal (s * t)) ^ q =
+      (ENNReal.ofReal s) ^ q * (ENNReal.ofReal t) ^ q := by
+    calc
+      (ENNReal.ofReal (s * t)) ^ q = ENNReal.ofReal ((s * t) ^ q) :=
+        (ENNReal.ofReal_rpow_of_pos (mul_pos hs ht)).symm
+      _ = ENNReal.ofReal (s ^ q * t ^ q) := by
+        rw [Real.mul_rpow hs.le ht.le]
+      _ = ENNReal.ofReal (s ^ q) * ENNReal.ofReal (t ^ q) :=
+        ENNReal.ofReal_mul (Real.rpow_nonneg hs.le _)
+      _ = (ENNReal.ofReal s) ^ q * (ENNReal.ofReal t) ^ q := by
+        rw [ENNReal.ofReal_rpow_of_pos hs, ENNReal.ofReal_rpow_of_pos ht]
+  have hset : {x | t < s⁻¹ * T f x} = {x | s * t < T f x} := by
+    ext x
+    constructor
+    · intro hx
+      exact (lt_inv_mul_iff₀ hs).mp hx
+    · intro hx
+      exact (lt_inv_mul_iff₀ hs).mpr hx
+  have hraw := q4_upper_weak_distribution_power_of_ltwo_linf
+    T hTsub hTmeas hA htop hr hB htwo f hp hI hIpos
+    (t := s * t) (mul_pos hs ht)
+  have hmul : (ENNReal.ofReal s) ^ q *
+      (volume {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q) ≤
+        (ENNReal.ofReal s) ^ q *
+          ENNReal.ofReal (q4UpperWeakRealConstant A B p r) := by
+    calc
+      (ENNReal.ofReal s) ^ q *
+          (volume {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q) =
+          volume {x | s * t < T f x} *
+            (ENNReal.ofReal (s * t)) ^ q := by
+              rw [hset, hprod]
+              ring
+      _ ≤ ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
+            (ENNReal.ofReal I) ^ (q / p) := by
+              simpa only [s, q] using hraw
+      _ = (ENNReal.ofReal s) ^ q *
+            ENNReal.ofReal (q4UpperWeakRealConstant A B p r) := by
+              rw [← hsE_power]
+              ring
+  change volume {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q ≤
+    ENNReal.ofReal (q4UpperWeakRealConstant A B p r)
+  exact (ENNReal.mul_le_mul_iff_right hsE_power_ne_zero hsE_power_ne_top).mp hmul
+
+/-- The strict upper-input strong estimate from two neighbouring literal
+`L^2 -> L^r` estimates and the literal top endpoint. -/
+theorem q4_upper_strong_eLpNorm_of_two_nearby_ltwo_linf
+    {d : Nat} (T : SchwartzMap (Euclidean d) Complex -> Euclidean d -> Real)
+    (hTnonneg : ∀ g x, 0 ≤ T g x)
+    (hTsub : ∀ g h : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (g + h) x ≤ T g x + T h x)
+    (hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
+      AEStronglyMeasurable (T g) volume)
+    {A : Real} (hA : 0 < A)
+    (htop : ∀ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 ≤ a ->
+      (∀ x, ‖g x‖ ≤ a) -> ∀ x, T g x ≤ A * a)
+    {p r0 r1 q B0 B1 : Real}
+    (hp : 2 < p) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hB0 : 0 ≤ B0) (hB1 : 0 ≤ B1)
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1)
+    (htwo0 : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T g) (ENNReal.ofReal r0) volume ≤
+        ENNReal.ofReal
+          (B0 * Real.sqrt (∫ x, ‖(g : Euclidean d -> Complex) x‖ ^ (2 : Nat))))
+    (htwo1 : ∀ g : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T g) (ENNReal.ofReal r1) volume ≤
+        ENNReal.ofReal
+          (B1 * Real.sqrt (∫ x, ‖(g : Euclidean d -> Complex) x‖ ^ (2 : Nat))))
+    (f : SchwartzMap (Euclidean d) Complex)
+    {I : Real} (hI : I = ∫ x, ‖(f : Euclidean d -> Complex) x‖ ^ p)
+    (hIpos : 0 < I) :
+    eLpNorm (T f) (ENNReal.ofReal q) volume ≤
+      (ENNReal.ofReal q *
+        (ENNReal.ofReal (q4UpperWeakRealConstant A B0 p r0) *
+            (∫⁻ t in Ioc (0 : Real) 1,
+              (ENNReal.ofReal t) ^
+                (q - q4UpperWeakOutputExponent p r0 - 1)) +
+          ENNReal.ofReal (q4UpperWeakRealConstant A B1 p r1) *
+            ∫⁻ t in Ioi (1 : Real),
+              (ENNReal.ofReal t) ^
+                (q - q4UpperWeakOutputExponent p r1 - 1))) ^ q⁻¹ *
+        ENNReal.ofReal (q4LowerInputScale I p) := by
+  have hq0 : 0 ≤ q4UpperWeakOutputExponent p r0 :=
+    (q4UpperWeakOutputExponent_pos hp hr0).le
+  have hs : 0 < q4LowerInputScale I p := q4LowerInputScale_pos hIpos
+  apply strong_eLpNorm_of_two_nearby_weak_distributions_rescaled
+    T f hs (hTnonneg f) (hTmeas f).aemeasurable hq0 hq0q hqq1
+    (ENNReal.ofReal (q4UpperWeakRealConstant A B0 p r0))
+    (ENNReal.ofReal (q4UpperWeakRealConstant A B1 p r1))
+  · intro t ht
+    exact q4_upper_normalized_weak_distribution_of_ltwo_linf
+      T hTsub hTmeas hA htop hr0 hB0 htwo0 f hp hI hIpos ht
+  · intro t ht
+    exact q4_upper_normalized_weak_distribution_of_ltwo_linf
+      T hTsub hTmeas hA htop hr1 hB1 htwo1 f hp hI hIpos ht
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

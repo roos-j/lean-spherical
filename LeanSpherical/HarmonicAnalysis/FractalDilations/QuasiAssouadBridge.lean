@@ -1,0 +1,160 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.AssouadSpectrum
+
+/-!
+# The quasi-Assouad large/small interval bridge
+
+The upper Assouad spectrum only controls intervals whose length is at least
+`δ ^ θ`.  For the maximal-operator argument one also needs a bound for every
+interval of length at least `δ`.  The elementary device used in
+Roos--Seeger is to split at `δ ^ (1 - ε)`: use the spectrum estimate above
+that scale and a crude interval-cover estimate below it.  This file records
+that bookkeeping independently of the oscillatory-analysis part of the proof.
+
+The small-scale estimate is deliberately a hypothesis here.  It is supplied
+later by the elementary fact that an interval of length at most
+`δ ^ (1 - ε)` is coverable by `O (δ ^ (-ε))` intervals of length `δ`.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Set
+
+noncomputable section
+
+/-- A cover estimate for the short-interval side of the quasi-Assouad split.
+The interval is a subinterval of `[1, 2]`, has length at least `δ`, and has
+length at most `δ ^ (1 - ε)`. -/
+def HasSmallScaleCoverBound (E : Set ℝ) (ε C : ℝ) : Prop :=
+  ∀ δ a b : ℝ, 0 < δ → δ < 1 → 1 ≤ a → a ≤ b → b ≤ 2 →
+    δ ≤ b - a → b - a ≤ δ ^ (1 - ε) →
+    ∃ ι : Finset ℝ, IsIntervalCover (E ∩ Icc a b) δ ι ∧
+      (ι.card : ℝ) ≤ C * δ ^ (-ε)
+
+/-- A full local cover estimate with a subpower loss.  This is the form of
+the Assouad characteristic which is sufficient away from endpoint estimates. -/
+def HasSubpowerAssouadCoverBound (E : Set ℝ) (γ η C : ℝ) : Prop :=
+  ∀ δ a b : ℝ, 0 < δ → δ < 1 → 1 ≤ a → a ≤ b → b ≤ 2 →
+    δ ≤ b - a →
+    ∃ ι : Finset ℝ, IsIntervalCover (E ∩ Icc a b) δ ι ∧
+      (ι.card : ℝ) ≤ C * δ ^ (-η) * ((b - a) / δ) ^ γ
+
+/-- For `0 < δ` and `0 < L ≤ 1`, replacing the ratio `L / δ` by its
+largest possible value `δ⁻¹` costs exactly a factor `δ ^ (-ε)`. -/
+theorem ratio_rpow_le_scale_loss {δ L ε : ℝ}
+    (hδ : 0 < δ) (hL : 0 < L) (hLone : L ≤ 1) (hε : 0 ≤ ε) :
+    (L / δ) ^ ε ≤ δ ^ (-ε) := by
+  calc
+    (L / δ) ^ ε ≤ (1 / δ) ^ ε := by
+      apply Real.rpow_le_rpow
+      · exact div_nonneg hL.le hδ.le
+      · exact (div_le_div_iff_of_pos_right hδ).2 hLone
+      · exact hε
+    _ = δ ^ (-ε) := by
+      rw [one_div, ← Real.rpow_neg_eq_inv_rpow]
+
+/-- The large-interval spectrum loss can be moved from the ratio to a
+subpower loss in `δ`. -/
+theorem ratio_rpow_add_le_subpower {δ L γ ε : ℝ}
+    (hδ : 0 < δ) (hL : 0 < L) (hLone : L ≤ 1) (hε : 0 ≤ ε) :
+    (L / δ) ^ (γ + ε) ≤ δ ^ (-ε) * (L / δ) ^ γ := by
+  have hratio : 0 < L / δ := div_pos hL hδ
+  calc
+    (L / δ) ^ (γ + ε) = (L / δ) ^ γ * (L / δ) ^ ε :=
+      Real.rpow_add hratio γ ε
+    _ ≤ (L / δ) ^ γ * δ ^ (-ε) :=
+      mul_le_mul_of_nonneg_left
+        (ratio_rpow_le_scale_loss hδ hL hLone hε)
+        (Real.rpow_nonneg hratio.le _)
+    _ = δ ^ (-ε) * (L / δ) ^ γ := mul_comm _ _
+
+/-- A smaller power loss is absorbed by a larger one when `0 < δ < 1`. -/
+theorem subpower_loss_mono {δ ε η : ℝ}
+    (hδ : 0 < δ) (hδone : δ ≤ 1) (hεη : ε ≤ η) :
+    δ ^ (-ε) ≤ δ ^ (-η) := by
+  apply Real.rpow_le_rpow_of_exponent_ge hδ hδone
+  linarith
+
+/-- The elementary large/small interval split.  An upper-spectrum estimate at
+`θ = 1 - ε`, together with a short-interval cover estimate, yields a full
+Assouad cover estimate with any loss `η` dominating `ε` and `ε₁`.
+
+This is the precise covering-number bookkeeping behind the passage from the
+quasi-Assouad dimension to non-endpoint maximal estimates. -/
+theorem hasSubpowerAssouadCoverBound_of_upperSpectrum_of_smallScale
+    {E : Set ℝ} {γ ε ε₁ η Csmall : ℝ}
+    (hlarge : HasUpperAssouadSpectrumExponent E (1 - ε) (γ + ε₁))
+    (hsmall : HasSmallScaleCoverBound E ε Csmall)
+    (hγ : 0 ≤ γ) (_hε : 0 ≤ ε) (hε₁ : 0 ≤ ε₁)
+    (hεη : ε ≤ η) (hε₁η : ε₁ ≤ η)
+    (hCsmall : 0 ≤ Csmall) :
+    ∃ C : ℝ, 0 < C ∧ HasSubpowerAssouadCoverBound E γ η C := by
+  obtain ⟨Clarge, hClarge, hlarge⟩ := hlarge
+  refine ⟨Clarge + Csmall, add_pos_of_pos_of_nonneg hClarge hCsmall, ?_⟩
+  intro δ a b hδ hδone ha hab hb hδlength
+  let L : ℝ := b - a
+  have hδL : δ ≤ L := by
+    simpa only [L] using hδlength
+  have hLpos : 0 < L := lt_of_lt_of_le hδ hδlength
+  have hLone : L ≤ 1 := by
+    dsimp only [L]
+    linarith
+  rcases le_total (δ ^ (1 - ε)) L with hlargecase | hsmallcase
+  · obtain ⟨ι, hcover, hcard⟩ := hlarge δ a b hδ hδone ha hab hb (by
+      simpa only [L] using hlargecase)
+    refine ⟨ι, hcover, ?_⟩
+    have hcard' : (ι.card : ℝ) ≤ Clarge * (L / δ) ^ (γ + ε₁) := by
+      simpa only [L] using hcard
+    have hlarge_loss :
+        (L / δ) ^ (γ + ε₁) ≤ δ ^ (-η) * (L / δ) ^ γ := by
+      calc
+        (L / δ) ^ (γ + ε₁) ≤ δ ^ (-ε₁) * (L / δ) ^ γ :=
+          ratio_rpow_add_le_subpower hδ hLpos hLone hε₁
+        _ ≤ δ ^ (-η) * (L / δ) ^ γ :=
+          mul_le_mul_of_nonneg_right
+            (subpower_loss_mono hδ hδone.le hε₁η)
+            (Real.rpow_nonneg (div_nonneg hLpos.le hδ.le) _)
+    have hfactor_nonneg : 0 ≤ δ ^ (-η) * (L / δ) ^ γ :=
+      mul_nonneg (Real.rpow_nonneg hδ.le _)
+        (Real.rpow_nonneg (div_nonneg hLpos.le hδ.le) _)
+    calc
+      (ι.card : ℝ) ≤ Clarge * (L / δ) ^ (γ + ε₁) := hcard'
+      _ ≤ Clarge * (δ ^ (-η) * (L / δ) ^ γ) :=
+        mul_le_mul_of_nonneg_left hlarge_loss hClarge.le
+      _ ≤ (Clarge + Csmall) * (δ ^ (-η) * (L / δ) ^ γ) :=
+        mul_le_mul_of_nonneg_right (le_add_of_nonneg_right hCsmall) hfactor_nonneg
+      _ = (Clarge + Csmall) * δ ^ (-η) * ((b - a) / δ) ^ γ := by
+        simp only [L, mul_assoc]
+  · obtain ⟨ι, hcover, hcard⟩ := hsmall δ a b hδ hδone ha hab hb hδlength (by
+      simpa only [L] using hsmallcase)
+    refine ⟨ι, hcover, ?_⟩
+    have hratio_one : 1 ≤ L / δ := by
+      exact (le_div_iff₀ hδ).2 (by simpa using hδL)
+    have hratio_pow_one : 1 ≤ (L / δ) ^ γ :=
+      Real.one_le_rpow hratio_one hγ
+    have hsmall_loss : δ ^ (-ε) ≤ δ ^ (-η) * (L / δ) ^ γ := by
+      calc
+        δ ^ (-ε) ≤ δ ^ (-η) := subpower_loss_mono hδ hδone.le hεη
+        _ = δ ^ (-η) * 1 := (mul_one _).symm
+        _ ≤ δ ^ (-η) * (L / δ) ^ γ :=
+          mul_le_mul_of_nonneg_left hratio_pow_one (Real.rpow_nonneg hδ.le _)
+    have hfactor_nonneg : 0 ≤ δ ^ (-η) * (L / δ) ^ γ :=
+      mul_nonneg (Real.rpow_nonneg hδ.le _)
+        (Real.rpow_nonneg (div_nonneg hLpos.le hδ.le) _)
+    calc
+      (ι.card : ℝ) ≤ Csmall * δ ^ (-ε) := hcard
+      _ ≤ Csmall * (δ ^ (-η) * (L / δ) ^ γ) :=
+        mul_le_mul_of_nonneg_left hsmall_loss hCsmall
+      _ ≤ (Clarge + Csmall) * (δ ^ (-η) * (L / δ) ^ γ) :=
+        mul_le_mul_of_nonneg_right (le_add_of_nonneg_left hClarge.le) hfactor_nonneg
+      _ = (Clarge + Csmall) * δ ^ (-η) * ((b - a) / δ) ^ γ := by
+        simp only [L, mul_assoc]
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

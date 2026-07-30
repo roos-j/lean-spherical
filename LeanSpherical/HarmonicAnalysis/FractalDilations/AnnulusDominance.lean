@@ -1,0 +1,147 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.AnnulusMass
+
+/-!
+# Pointwise domination of a disjoint annular sum
+
+At a point of space, separated-radius averages of a small ball bump have at
+most one nonzero summand.  For nonnegative real data their finite sum is
+therefore pointwise dominated by the restricted spherical maximal function.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Metric Set ENNReal
+
+noncomputable section
+
+/-- A nonnegative finite sum with pairwise disjoint supports is bounded by
+any common pointwise upper bound for its summands. -/
+theorem Finset.sum_le_of_nonneg_of_pairwiseDisjoint_support
+    {ι X : Type*} (s : Finset ι) (g : ι → X → ℝ)
+    (x : X) (M : ℝ) (hM : 0 ≤ M)
+    (hdisjoint : (↑s : Set ι).PairwiseDisjoint (fun i => Function.support (g i)))
+    (hupper : ∀ i ∈ s, g i x ≤ M) :
+    (∑ i ∈ s, g i x) ≤ M := by
+  classical
+  by_cases hsome : ∃ i, i ∈ s ∧ g i x ≠ 0
+  · obtain ⟨i, hi, hix⟩ := hsome
+    have hzero : ∀ j ∈ s, j ≠ i → g j x = 0 := by
+      intro j hj hji
+      by_contra hjx
+      have hdj : Disjoint (Function.support (g i)) (Function.support (g j)) :=
+        hdisjoint hi hj (Ne.symm hji)
+      have hxi : x ∈ Function.support (g i) := Function.mem_support.mpr hix
+      have hxj : x ∈ Function.support (g j) := Function.mem_support.mpr hjx
+      exact (Set.disjoint_left.mp hdj hxi) hxj
+    rw [Finset.sum_eq_single i hzero (fun hni => False.elim (hni hi))]
+    exact hupper i hi
+  · have hzero : ∀ i ∈ s, g i x = 0 := by
+      intro i hi
+      by_contra hix
+      exact hsome ⟨i, hi, hix⟩
+    rw [Finset.sum_eq_zero hzero]
+    exact hM
+
+/-- Strictly separated radii give pairwise disjoint supports for the real
+parts of averages of a bump supported in the ball of radius `2R`. -/
+theorem strictlySeparated_pairwiseDisjoint_support_re_normalizedSphericalAverage
+    {d : ℕ} (hd : 0 < d) (f : Euclidean d → ℂ) {R δ : ℝ} (s : Finset ℝ)
+    (hzero : ∀ y : Euclidean d, 2 * R ≤ ‖y‖ → f y = 0)
+    (hsep : StrictlySeparated s δ) (hRδ : 4 * R ≤ δ)
+    (hsnonneg : ∀ r ∈ s, 0 ≤ r) :
+    (↑s : Set ℝ).PairwiseDisjoint (fun r =>
+      Function.support (fun x : Euclidean d =>
+        (normalizedSphericalAverage d f r x).re)) := by
+  intro r hr t ht hrt
+  have hradial : Disjoint (radialAnnulus d r (2 * R)) (radialAnnulus d t (2 * R)) := by
+    apply disjoint_radialAnnulus_of_two_mul_le_abs_sub
+    calc
+      2 * (2 * R) = 4 * R := by ring
+      _ ≤ δ := hRδ
+      _ ≤ |r - t| := (hsep hr ht hrt).le
+  have hsup_r : Function.support (fun x : Euclidean d =>
+      (normalizedSphericalAverage d f r x).re) ⊆ radialAnnulus d r (2 * R) := by
+    have hbase := support_normalizedSphericalAverage_subset_radialAnnulus
+      (r := r) hd f hzero
+    rw [abs_of_nonneg (hsnonneg r hr)] at hbase
+    intro x hx
+    apply hbase
+    change normalizedSphericalAverage d f r x ≠ 0
+    intro hzero_avg
+    apply hx
+    change (normalizedSphericalAverage d f r x).re = 0
+    rw [hzero_avg]
+    rfl
+  have hsup_t : Function.support (fun x : Euclidean d =>
+      (normalizedSphericalAverage d f t x).re) ⊆ radialAnnulus d t (2 * R) := by
+    have hbase := support_normalizedSphericalAverage_subset_radialAnnulus
+      (r := t) hd f hzero
+    rw [abs_of_nonneg (hsnonneg t ht)] at hbase
+    intro x hx
+    apply hbase
+    change normalizedSphericalAverage d f t x ≠ 0
+    intro hzero_avg
+    apply hx
+    change (normalizedSphericalAverage d f t x).re = 0
+    rw [hzero_avg]
+    rfl
+  exact hradial.mono hsup_r hsup_t
+
+/-- A fixed radius in the dilation set dominates the real coordinate of its
+normalized average through the real-valued restricted maximal function. -/
+theorem re_normalizedSphericalAverage_le_fractalSphericalMaximalReal
+    {d : ℕ} (hd : 0 < d) (E : Set ℝ) (hEpos : E ⊆ Ioi (0 : ℝ))
+    (f : SchwartzMap (Euclidean d) ℂ) {r : ℝ} (hr : r ∈ E)
+    (x : Euclidean d) :
+    (normalizedSphericalAverage d (f : Euclidean d → ℂ) r x).re ≤
+      fractalSphericalMaximalReal d E f x := by
+  have hraw := normalizedSphericalAverage_le_fractalSphericalMaximal E
+    (f : Euclidean d → ℂ) hr x
+  have htop := fractalSphericalMaximal_ne_top hd E hEpos f x
+  have hnorm : ‖normalizedSphericalAverage d (f : Euclidean d → ℂ) r x‖ ≤
+      fractalSphericalMaximalReal d E f x := by
+    unfold fractalSphericalMaximalReal
+    have hto := (ENNReal.toReal_le_toReal ENNReal.ofReal_ne_top htop).mpr hraw
+    simpa only [ENNReal.toReal_ofReal (norm_nonneg _)] using hto
+  exact (Complex.re_le_norm _).trans hnorm
+
+/-- The disjoint annular sum of averages of a real nonnegative bump is
+pointwise dominated by the maximal function over every set containing the
+chosen finite family of radii. -/
+theorem annulusAverageSum_le_fractalSphericalMaximalReal
+    {d : ℕ} (hd : 0 < d) (E : Set ℝ) (hEpos : E ⊆ Ioi (0 : ℝ))
+    (f : SchwartzMap (Euclidean d) ℂ) {R δ : ℝ} (s : Finset ℝ)
+    (hsE : (↑s : Set ℝ) ⊆ E)
+    (hzero : ∀ y : Euclidean d, 2 * R ≤ ‖y‖ → f y = 0)
+    (hsep : StrictlySeparated s δ) (hRδ : 4 * R ≤ δ) :
+    ∀ x : Euclidean d, annulusAverageSum d (f : Euclidean d → ℂ) s x ≤
+      fractalSphericalMaximalReal d E f x := by
+  intro x
+  let g : ℝ → Euclidean d → ℝ := fun r y =>
+    (normalizedSphericalAverage d (f : Euclidean d → ℂ) r y).re
+  have hsnonneg : ∀ r ∈ s, 0 ≤ r := by
+    intro r hr
+    exact (hEpos (hsE hr)).le
+  have hdisjoint : (↑s : Set ℝ).PairwiseDisjoint (fun r => Function.support (g r)) := by
+    exact strictlySeparated_pairwiseDisjoint_support_re_normalizedSphericalAverage
+      hd (f : Euclidean d → ℂ) s hzero hsep hRδ hsnonneg
+  have hterm_upper : ∀ r ∈ s, g r x ≤ fractalSphericalMaximalReal d E f x := by
+    intro r hr
+    exact re_normalizedSphericalAverage_le_fractalSphericalMaximalReal hd E hEpos f
+      (hsE hr) x
+  have hmax_nonneg : 0 ≤ fractalSphericalMaximalReal d E f x := by
+    unfold fractalSphericalMaximalReal
+    exact ENNReal.toReal_nonneg
+  change (∑ r ∈ s, g r x) ≤ fractalSphericalMaximalReal d E f x
+  exact Finset.sum_le_of_nonneg_of_pairwiseDisjoint_support s g x
+    (fractalSphericalMaximalReal d E f x) hmax_nonneg hdisjoint hterm_upper
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

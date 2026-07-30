@@ -1,0 +1,104 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.AllDimensionalTripleWaveNormalForm
+
+/-!
+# Phase separation in the inner cone
+
+After the three literal spherical factors have been put in coordinate-wave
+normal form, an endpoint triple has radial phase
+
+`±‖x‖ ± r ∓ r'`.
+
+On the inner cone `‖x‖ ≤ |r-r'| / 4`, every such phase is separated from zero
+by a fixed multiple of the radius gap.  This elementary geometry is the
+denominator estimate for the repeated radial integrations by parts in the
+all-dimensional proof of the Q4 kernel bound.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Metric Set
+
+noncomputable section
+
+private theorem sub_abs_le_abs_add (a b : Real) :
+    |a| - |b| <= |a + b| := by
+  apply (sub_le_iff_le_add).2
+  calc
+    |a| = |(a + b) - b| := by congr 1 <;> ring
+    _ <= |a + b| + |b| := abs_sub _ _
+
+/-- A perturbation smaller than one quarter of the radius gap cannot destroy
+the difference-phase separation. -/
+theorem abs_radiusDifference_add_ge_quarter_gap
+    {r r' z : Real} (hz : |z| <= |r - r'| / 4) :
+    |r - r'| / 4 <= |r - r' + z| := by
+  calc
+    |r - r'| / 4 <= |r - r'| - |z| := by linarith
+    _ <= |r - r' + z| := sub_abs_le_abs_add _ _
+
+/-- On the fixed enlarged radius interval, the sum phases remain separated
+from zero under the same inner-cone perturbation. -/
+theorem abs_radiusSum_add_ge_quarter_gap
+    {r r' z : Real}
+    (hr : r ∈ Icc (1 / 2 : Real) (5 / 2))
+    (hr' : r' ∈ Icc (1 / 2 : Real) (5 / 2))
+    (hz : |z| <= |r - r'| / 4) :
+    |r - r'| / 4 <= |r + r' + z| := by
+  have hgap : |r - r'| <= 2 := by
+    rw [abs_sub_le_iff]
+    constructor <;> linarith [hr.1, hr.2, hr'.1, hr'.2]
+  have hsum : 1 <= r + r' := by linarith [hr.1, hr'.1]
+  have hsum_nonneg : 0 <= r + r' := (by norm_num : (0 : Real) <= 1).trans hsum
+  calc
+    |r - r'| / 4 <= 1 / 2 := by linarith
+    _ <= r + r' - |z| := by linarith
+    _ = |r + r'| - |z| := by rw [abs_of_nonneg hsum_nonneg]
+    _ <= |r + r' + z| := sub_abs_le_abs_add _ _
+
+/-- The signed endpoint phase of any triple of coordinate waves is bounded
+below by one quarter of the radius gap in the inner cone.  The three sign
+hypotheses are deliberately stated as `±1` alternatives so this lemma can be
+used for each explicit outgoing/incoming term without an abstraction layer. -/
+theorem abs_signed_triple_phase_ge_quarter_gap
+    {r r' u ex er er' : Real}
+    (hr : r ∈ Icc (1 / 2 : Real) (5 / 2))
+    (hr' : r' ∈ Icc (1 / 2 : Real) (5 / 2))
+    (hu : 0 <= u) (hucone : u <= |r - r'| / 4)
+    (hex : ex = 1 ∨ ex = -1)
+    (her : er = 1 ∨ er = -1)
+    (her' : er' = 1 ∨ er' = -1) :
+    |r - r'| / 4 <= |ex * u + er * r - er' * r'| := by
+  have hplus : |r - r'| / 4 <= |r - r' + u| :=
+    abs_radiusDifference_add_ge_quarter_gap (by simpa [abs_of_nonneg hu] using hucone)
+  have hminus : |r - r'| / 4 <= |r - r' - u| := by
+    have h := abs_radiusDifference_add_ge_quarter_gap
+      (r := r) (r' := r') (z := -u) (by simpa [abs_of_nonneg hu] using hucone)
+    simpa using h
+  have hsumplus : |r - r'| / 4 <= |r + r' + u| :=
+    abs_radiusSum_add_ge_quarter_gap hr hr'
+      (by simpa [abs_of_nonneg hu] using hucone)
+  have hsumminus : |r - r'| / 4 <= |r + r' - u| := by
+    have h := abs_radiusSum_add_ge_quarter_gap
+      (r := r) (r' := r') (z := -u) hr hr'
+        (by simpa [abs_of_nonneg hu] using hucone)
+    simpa using h
+  rcases hex with rfl | rfl <;> rcases her with rfl | rfl <;>
+    rcases her' with rfl | rfl
+  · convert hplus using 1 <;> ring
+  · convert hsumplus using 1 <;> ring
+  · convert hsumminus using 1 <;> ring
+  · convert hminus using 1 <;> ring
+  · convert hminus using 1 <;> ring
+  · convert hsumminus using 1 <;> ring
+  · convert hsumplus using 1 <;> ring
+  · convert hplus using 1 <;> ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

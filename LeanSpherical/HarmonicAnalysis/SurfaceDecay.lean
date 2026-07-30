@@ -877,7 +877,7 @@ private theorem quadratic_phase_weighted_tail_norm_le
         N / (2 * c * a) + M / (2 * c * a) := by gcongr
     _ = (3 * M + N) / (2 * c * a) := by ring
 
-private theorem quadratic_phase_weighted_unit_norm_le
+theorem quadratic_phase_weighted_unit_norm_le
     {a c M N : ℝ} (ha : 0 < a) (ha_one : a ≤ 1) (hc : 0 < c)
     (hscale : c * a ^ 2 = 1) (hM : 0 ≤ M) (hN : 0 ≤ N)
     (g g' : ℝ → ℂ) (hgcont : ContinuousOn g (Set.Icc 0 1))

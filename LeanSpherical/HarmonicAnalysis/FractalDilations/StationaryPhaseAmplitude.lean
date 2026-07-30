@@ -1,0 +1,553 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.SurfaceHeight
+import LeanSpherical.HarmonicAnalysis.SphericalAverages
+
+/-!
+# Exact endpoint stationary-phase amplitudes
+
+The proof of surface Fourier decay already changes the height coordinate to a
+meridian coordinate.  This file keeps the two endpoint phases instead of
+taking absolute values.  The endpoint substitution changes each meridian
+half into a quadratic phase with a smooth amplitude.  This is the exact
+stationary-phase starting point used in the wave decomposition in Section 2
+of Anderson--Hughes--Roos--Seeger.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Set
+
+noncomputable section
+
+/-- The endpoint coordinate used to turn `sin theta` into `1 - u^2`. -/
+def endpointCoordinate (u : ℝ) : ℝ :=
+  Real.pi / 2 - 2 * Real.arcsin (u / Real.sqrt 2)
+
+/-- The smooth amplitude produced at one endpoint of a meridian integral. -/
+def endpointQuadraticAmplitude (m : ℕ) (u : ℝ) : ℂ :=
+  ((2 * u ^ m * (Real.sqrt (2 - u ^ 2)) ^ (m - 1) : ℝ) : ℂ)
+
+/-- The real-valued form of the endpoint amplitude. -/
+def endpointQuadraticAmplitudeReal (m : ℕ) (u : ℝ) : ℝ :=
+  2 * u ^ m * (Real.sqrt (2 - u ^ 2)) ^ (m - 1)
+
+/-- The literal derivative obtained by the product and chain rules.  Keeping
+the unsimplified product-rule expression avoids any parity split in `m`. -/
+def endpointQuadraticAmplitudeRealDeriv (m : ℕ) (u : ℝ) : ℝ :=
+  2 * ((m : ℝ) * u ^ (m - 1)) * (Real.sqrt (2 - u ^ 2)) ^ (m - 1) +
+    2 * u ^ m * (((m - 1 : ℕ) : ℝ) *
+      (Real.sqrt (2 - u ^ 2)) ^ ((m - 1) - 1) *
+        (-(2 * u) / (2 * Real.sqrt (2 - u ^ 2))))
+
+/-- Complex form of the literal endpoint-amplitude derivative. -/
+def endpointQuadraticAmplitudeDeriv (m : ℕ) (u : ℝ) : ℂ :=
+  (endpointQuadraticAmplitudeRealDeriv m u : ℂ)
+
+private theorem endpointQuadraticAmplitude_eq_real (m : ℕ) (u : ℝ) :
+    endpointQuadraticAmplitude m u = (endpointQuadraticAmplitudeReal m u : ℂ) := by
+  rfl
+
+/-- The quadratic oscillatory integral at the outgoing endpoint. -/
+def endpointQuadraticIntegral (m : ℕ) (l : ℝ) : ℂ :=
+  ∫ u in (0 : ℝ)..1,
+    endpointQuadraticAmplitude m u *
+      Complex.exp (((l * u ^ 2 : ℝ) : ℂ) * Complex.I)
+
+private theorem arcsin_one_div_sqrt_two :
+    Real.arcsin (1 / Real.sqrt 2) = Real.pi / 4 := by
+  apply Real.arcsin_eq_of_sin_eq
+  · rw [Real.sin_pi_div_four]
+    have hspos : 0 < Real.sqrt 2 := by positivity
+    field_simp [hspos.ne']
+    nlinarith [Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
+  · constructor <;> nlinarith [Real.pi_pos]
+
+theorem endpointCoordinate_zero : endpointCoordinate 0 = Real.pi / 2 := by
+  simp [endpointCoordinate]
+
+theorem endpointCoordinate_one : endpointCoordinate 1 = 0 := by
+  unfold endpointCoordinate
+  rw [arcsin_one_div_sqrt_two]
+  ring
+
+theorem endpointCoordinate_hasDerivAt
+    {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    HasDerivAt endpointCoordinate (-2 / Real.sqrt (2 - u ^ 2)) u := by
+  change HasDerivAt
+    (fun v : ℝ => Real.pi / 2 - 2 * Real.arcsin (v / Real.sqrt 2))
+    (-2 / Real.sqrt (2 - u ^ 2)) u
+  exact hasDerivAt_pi_div_two_sub_two_arcsin_div_sqrt_two hu0 hu1
+
+theorem endpointCoordinate_deriv_continuousOn :
+    ContinuousOn (fun u : ℝ => -2 / Real.sqrt (2 - u ^ 2)) (Icc (0 : ℝ) 1) := by
+  refine ContinuousOn.div₀ (by fun_prop) (by fun_prop) ?_
+  intro u hu
+  have husq : u ^ 2 ≤ 1 := by
+    nlinarith [mul_nonneg hu.1 (sub_nonneg.mpr hu.2)]
+  have hinside : 0 < 2 - u ^ 2 := by
+    nlinarith
+  exact ne_of_gt (Real.sqrt_pos.2 hinside)
+
+theorem endpointCoordinate_cos
+    {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    Real.cos (endpointCoordinate u) = u * Real.sqrt (2 - u ^ 2) := by
+  have hsqrt_pos : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hsqrt_sq : Real.sqrt (2 : ℝ) ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+  have hquot_nonneg : 0 ≤ u / Real.sqrt 2 := div_nonneg hu0 hsqrt_pos.le
+  have hquot_le : u / Real.sqrt 2 ≤ 1 := by
+    rw [div_le_iff₀ hsqrt_pos]
+    nlinarith
+  have hroot :
+      Real.sqrt (1 - (u / Real.sqrt 2) ^ 2) * Real.sqrt 2 =
+        Real.sqrt (2 - u ^ 2) := by
+    have hleft_nonneg : 0 ≤ 1 - (u / Real.sqrt 2) ^ 2 := by
+      rw [show (u / Real.sqrt 2) ^ 2 = u ^ 2 / 2 by
+        field_simp [hsqrt_pos.ne']
+        nlinarith]
+      nlinarith [sq_nonneg (u - 1)]
+    rw [← Real.sqrt_mul hleft_nonneg]
+    congr 1
+    field_simp [hsqrt_pos.ne']
+    nlinarith
+  unfold endpointCoordinate
+  rw [Real.cos_pi_div_two_sub, Real.sin_two_mul,
+    Real.sin_arcsin (by linarith) hquot_le, Real.cos_arcsin]
+  rw [← hroot]
+  field_simp [hsqrt_pos.ne']
+  rw [hsqrt_sq]
+  ring
+
+private theorem hasDerivAt_endpointQuadraticAmplitudeReal
+    (m : ℕ) {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    HasDerivAt (endpointQuadraticAmplitudeReal m)
+      (endpointQuadraticAmplitudeRealDeriv m u) u := by
+  have husq : u ^ 2 ≤ 1 := by
+    nlinarith [mul_nonneg hu0 (sub_nonneg.mpr hu1)]
+  have hargpos : 0 < 2 - u ^ 2 := by nlinarith
+  have hspos : 0 < Real.sqrt (2 - u ^ 2) := Real.sqrt_pos.2 hargpos
+  have hpow : HasDerivAt (fun x : ℝ => x ^ m)
+      ((m : ℝ) * u ^ (m - 1)) u := by
+    simpa [mul_comm] using hasDerivAt_pow m u
+  have harg : HasDerivAt (fun x : ℝ => 2 - x ^ 2) (-2 * u) u := by
+    convert! (hasDerivAt_pow 2 u).neg.const_add (2 : ℝ) using 1 <;> ring
+  have hsqrt : HasDerivAt (fun x : ℝ => Real.sqrt (2 - x ^ 2))
+      ((-2 * u) / (2 * Real.sqrt (2 - u ^ 2))) u := by
+    exact harg.sqrt (ne_of_gt hargpos)
+  have hsqrtpow := hsqrt.pow (m - 1)
+  have h := ((hasDerivAt_const u (2 : ℝ)).mul hpow).mul hsqrtpow
+  change HasDerivAt
+    (((fun _ : ℝ => (2 : ℝ)) * fun x : ℝ => x ^ m) *
+      (fun x : ℝ => Real.sqrt (2 - x ^ 2)) ^ (m - 1))
+    (endpointQuadraticAmplitudeRealDeriv m u) u
+  simpa [endpointQuadraticAmplitudeRealDeriv] using h
+
+private theorem hasDerivAt_endpointQuadraticAmplitude
+    (m : ℕ) {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u ≤ 1) :
+    HasDerivAt (endpointQuadraticAmplitude m)
+      (endpointQuadraticAmplitudeDeriv m u) u := by
+  change HasDerivAt
+    (fun x : ℝ => (endpointQuadraticAmplitudeReal m x : ℂ))
+      (endpointQuadraticAmplitudeRealDeriv m u : ℂ) u
+  exact (hasDerivAt_endpointQuadraticAmplitudeReal m hu0 hu1).ofReal_comp
+
+private theorem continuousOn_endpointQuadraticAmplitude (m : ℕ) :
+    ContinuousOn (endpointQuadraticAmplitude m) (Icc (0 : ℝ) 1) := by
+  unfold endpointQuadraticAmplitude
+  fun_prop
+
+private theorem continuousOn_endpointQuadraticAmplitudeDeriv (m : ℕ) :
+    ContinuousOn (endpointQuadraticAmplitudeDeriv m) (Icc (0 : ℝ) 1) := by
+  unfold endpointQuadraticAmplitudeDeriv endpointQuadraticAmplitudeRealDeriv
+  refine Complex.continuous_ofReal.comp_continuousOn ?_
+  refine ContinuousOn.add ?_ ?_
+  · fun_prop
+  · have hbase : ContinuousOn (fun u : ℝ => 2 * u ^ m) (Icc (0 : ℝ) 1) := by
+      fun_prop
+    have hcoef : ContinuousOn (fun u : ℝ => ((m - 1 : ℕ) : ℝ) *
+        (Real.sqrt (2 - u ^ 2)) ^ ((m - 1) - 1)) (Icc (0 : ℝ) 1) := by
+      fun_prop
+    have hquot : ContinuousOn (fun u : ℝ =>
+        (-(2 * u) / (2 * Real.sqrt (2 - u ^ 2)))) (Icc (0 : ℝ) 1) := by
+      refine ContinuousOn.div₀ (by fun_prop) (by fun_prop) ?_
+      intro u hu
+      have husq : u ^ 2 ≤ 1 := by
+        nlinarith [mul_nonneg hu.1 (sub_nonneg.mpr hu.2)]
+      exact mul_ne_zero (by norm_num)
+        (ne_of_gt (Real.sqrt_pos.2 (by nlinarith)))
+    exact hbase.mul (hcoef.mul hquot)
+
+/-- The explicitly constructed endpoint amplitude has the uniform quadratic
+stationary-phase bound.  The constant depends only on the fixed dimension
+parameter `m`, and is obtained from the proved compact-interval bounds of
+the literal amplitude and its literal derivative. -/
+theorem exists_endpointQuadraticIntegral_decay
+    (m : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ l : ℝ, 1 ≤ l →
+      ‖endpointQuadraticIntegral m l‖ ≤ C / Real.sqrt l := by
+  have hgcont := continuousOn_endpointQuadraticAmplitude m
+  have hg'cont := continuousOn_endpointQuadraticAmplitudeDeriv m
+  rcases (isCompact_Icc.image_of_continuousOn hgcont).isBounded.exists_pos_norm_le
+    with ⟨M, hMpos, hM⟩
+  rcases (isCompact_Icc.image_of_continuousOn hg'cont).isBounded.exists_pos_norm_le
+    with ⟨N, hNpos, hN⟩
+  refine ⟨(5 * M + N) / 2, by positivity, ?_⟩
+  intro l hl
+  have hlpos : 0 < l := lt_of_lt_of_le (by norm_num) hl
+  have hsqrtpos : 0 < Real.sqrt l := Real.sqrt_pos.2 hlpos
+  let a : ℝ := 1 / Real.sqrt l
+  have ha : 0 < a := one_div_pos.mpr hsqrtpos
+  have ha_one : a ≤ 1 := by
+    dsimp [a]
+    rw [div_le_iff₀ hsqrtpos]
+    simpa using Real.one_le_sqrt.mpr hl
+  have hscale : l * a ^ 2 = 1 := by
+    dsimp [a]
+    have hsq : Real.sqrt l ^ 2 = l := Real.sq_sqrt hlpos.le
+    field_simp [hsqrtpos.ne']
+    nlinarith
+  have hderiv : ∀ u ∈ uIcc a 1,
+      HasDerivAt (endpointQuadraticAmplitude m)
+        (endpointQuadraticAmplitudeDeriv m u) u := by
+    intro u hu
+    have hu' : u ∈ Icc a 1 := by
+      simpa [uIcc_of_le ha_one] using hu
+    exact hasDerivAt_endpointQuadraticAmplitude m
+      (le_trans ha.le hu'.1) hu'.2
+  have hderivcont : ContinuousOn (endpointQuadraticAmplitudeDeriv m) (uIcc a 1) := by
+    rw [uIcc_of_le ha_one]
+    exact hg'cont.mono (Icc_subset_Icc (le_of_lt ha) le_rfl)
+  have hgbound : ∀ u ∈ Icc (0 : ℝ) 1, ‖endpointQuadraticAmplitude m u‖ ≤ M := by
+    intro u hu
+    exact hM _ (mem_image_of_mem _ hu)
+  have hg'bound : ∀ u ∈ uIcc a 1, ‖endpointQuadraticAmplitudeDeriv m u‖ ≤ N := by
+    intro u hu
+    have hu' : u ∈ Icc (0 : ℝ) 1 := by
+      have hu'' : u ∈ Icc a 1 := by
+        simpa [uIcc_of_le ha_one] using hu
+      exact ⟨le_trans ha.le hu''.1, hu''.2⟩
+    exact hN _ (mem_image_of_mem _ hu')
+  have hmodel := quadratic_phase_weighted_unit_norm_le
+    (a := a) (c := l) (M := M) (N := N)
+    ha ha_one hlpos hscale hMpos.le hNpos.le
+    (endpointQuadraticAmplitude m) (endpointQuadraticAmplitudeDeriv m)
+    hgcont hderiv hderivcont hgbound hg'bound
+  simpa [endpointQuadraticIntegral, a, div_eq_mul_inv] using hmodel
+
+/-- Reversing the quadratic frequency conjugates the integral, since the
+endpoint amplitude is real-valued. -/
+theorem endpointQuadraticIntegral_neg_eq_conj
+    (m : ℕ) (l : ℝ) :
+    endpointQuadraticIntegral m (-l) =
+      starRingEnd ℂ (endpointQuadraticIntegral m l) := by
+  unfold endpointQuadraticIntegral
+  rw [← intervalIntegral.intervalIntegral_conj]
+  apply intervalIntegral.integral_congr
+  intro u hu
+  unfold endpointQuadraticAmplitude
+  change ((2 * u ^ m * (Real.sqrt (2 - u ^ 2)) ^ (m - 1) : ℝ) : ℂ) *
+      Complex.exp (((-l * u ^ 2 : ℝ) : ℂ) * Complex.I) =
+    starRingEnd ℂ
+      (((2 * u ^ m * (Real.sqrt (2 - u ^ 2)) ^ (m - 1) : ℝ) : ℂ) *
+        Complex.exp (((l * u ^ 2 : ℝ) : ℂ) * Complex.I))
+  rw [map_mul, Complex.conj_ofReal, ← Complex.exp_conj]
+  simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
+  congr 1
+  push_cast
+  ring
+
+theorem norm_endpointQuadraticIntegral_neg (m : ℕ) (l : ℝ) :
+    ‖endpointQuadraticIntegral m (-l)‖ = ‖endpointQuadraticIntegral m l‖ := by
+  rw [endpointQuadraticIntegral_neg_eq_conj, RCLike.norm_conj]
+
+/-- Uniform endpoint stationary-phase decay at both signs of the frequency. -/
+theorem exists_endpointQuadraticIntegral_abs_decay
+    (m : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ l : ℝ, 1 ≤ |l| →
+      ‖endpointQuadraticIntegral m l‖ ≤ C / Real.sqrt |l| := by
+  rcases exists_endpointQuadraticIntegral_decay m with ⟨C, hC, hdecay⟩
+  refine ⟨C, hC, ?_⟩
+  intro l hl
+  by_cases hl0 : 0 ≤ l
+  · rw [abs_of_nonneg hl0] at hl ⊢
+    exact hdecay l hl
+  · have hlneg : l < 0 := lt_of_not_ge hl0
+    have hminus : 1 ≤ -l := by
+      rw [← abs_of_neg hlneg]
+      exact hl
+    have hdecay' := hdecay (-l) hminus
+    have hnorm : ‖endpointQuadraticIntegral m l‖ =
+        ‖endpointQuadraticIntegral m (-l)‖ := by
+      convert norm_endpointQuadraticIntegral_neg m (-l) using 1 <;> ring
+    calc
+      ‖endpointQuadraticIntegral m l‖ = ‖endpointQuadraticIntegral m (-l)‖ := hnorm
+      _ ≤ C / Real.sqrt (-l) := hdecay'
+      _ = C / Real.sqrt |l| := by rw [abs_of_neg hlneg]
+
+/-- An upper meridian endpoint is exactly an outgoing plane wave times a
+quadratic-phase integral.  The amplitude is explicit and smooth on `[0,1]`
+when `m ≥ 1`. -/
+theorem intervalIntegral_upperMeridian_power_eq_endpointQuadratic
+    (m : ℕ) (hm : 1 ≤ m) (l : ℝ) :
+    (∫ theta in (0 : ℝ)..(Real.pi / 2),
+      ((Real.cos theta ^ m : ℝ) : ℂ) *
+        Complex.exp (((-l * Real.sin theta : ℝ) : ℂ) * Complex.I)) =
+      Complex.exp (((-l : ℝ) : ℂ) * Complex.I) *
+        endpointQuadraticIntegral m l := by
+  let phi : ℝ → ℝ := endpointCoordinate
+  let F : ℝ → ℂ := fun theta =>
+    ((Real.cos theta ^ m : ℝ) : ℂ) *
+      Complex.exp (((-l * Real.sin theta : ℝ) : ℂ) * Complex.I)
+  have hphi0 : phi 0 = Real.pi / 2 := by
+    exact endpointCoordinate_zero
+  have hphi1 : phi 1 = 0 := by
+    exact endpointCoordinate_one
+  have hphi_deriv : ∀ u ∈ uIcc (0 : ℝ) 1,
+      HasDerivAt phi (-2 / Real.sqrt (2 - u ^ 2)) u := by
+    intro u hu
+    have hu' : u ∈ Icc (0 : ℝ) 1 := by
+      simpa [uIcc_of_le] using hu
+    exact endpointCoordinate_hasDerivAt hu'.1 hu'.2
+  have hphi_deriv_cont : ContinuousOn
+      (fun u : ℝ => -2 / Real.sqrt (2 - u ^ 2)) (uIcc (0 : ℝ) 1) := by
+    simpa [uIcc_of_le] using endpointCoordinate_deriv_continuousOn
+  have hF : Continuous F := by
+    dsimp [F]
+    fun_prop
+  have hsubst := intervalIntegral.integral_deriv_smul_comp
+    (a := (0 : ℝ)) (b := (1 : ℝ)) (f := phi)
+    (f' := fun u => -2 / Real.sqrt (2 - u ^ 2)) (g := F)
+    hphi_deriv hphi_deriv_cont hF
+  rw [hphi0, hphi1, intervalIntegral.integral_symm] at hsubst
+  rw [intervalIntegral.integral_symm] at hsubst
+  have hsubst' :
+      (∫ theta in (Real.pi / 2)..(0 : ℝ), F theta) =
+        ∫ u in (0 : ℝ)..1,
+          (-2 / Real.sqrt (2 - u ^ 2)) • (F ∘ phi) u := by
+    calc
+      (∫ theta in (Real.pi / 2)..(0 : ℝ), F theta) =
+          - -(∫ u in (0 : ℝ)..1,
+            (-2 / Real.sqrt (2 - u ^ 2)) • (F ∘ phi) u) := hsubst.symm
+      _ = ∫ u in (0 : ℝ)..1,
+          (-2 / Real.sqrt (2 - u ^ 2)) • (F ∘ phi) u := by ring
+  change (∫ theta in (0 : ℝ)..(Real.pi / 2), F theta) = _
+  calc
+    (∫ theta in (0 : ℝ)..(Real.pi / 2), F theta) =
+        -(∫ theta in (Real.pi / 2)..(0 : ℝ), F theta) := by
+      rw [intervalIntegral.integral_symm]
+    _ = -(∫ u in (0 : ℝ)..1,
+        (-2 / Real.sqrt (2 - u ^ 2)) • (F ∘ phi) u) := by
+      rw [hsubst']
+    _ = Complex.exp (((-l : ℝ) : ℂ) * Complex.I) *
+        endpointQuadraticIntegral m l := by
+      rw [endpointQuadraticIntegral]
+      rw [← intervalIntegral.integral_neg, ← intervalIntegral.integral_const_mul]
+      apply intervalIntegral.integral_congr
+      intro u hu
+      have hu' : u ∈ Icc (0 : ℝ) 1 := by
+        simpa [uIcc_of_le] using hu
+      have hsin : Real.sin (phi u) = 1 - u ^ 2 := by
+        exact sin_pi_div_two_sub_two_arcsin_div_sqrt_two hu'.1 hu'.2
+      have hcos : Real.cos (phi u) = u * Real.sqrt (2 - u ^ 2) :=
+        endpointCoordinate_cos hu'.1 hu'.2
+      have hspos : 0 < Real.sqrt (2 - u ^ 2) := by
+        have husq : u ^ 2 ≤ 1 := by
+          nlinarith [mul_nonneg hu'.1 (sub_nonneg.mpr hu'.2)]
+        exact Real.sqrt_pos.2 (by nlinarith)
+      have hm' : m = (m - 1) + 1 := (Nat.sub_add_cancel hm).symm
+      have hexp :
+          Complex.exp (((-l * (1 - u ^ 2) : ℝ) : ℂ) * Complex.I) =
+            Complex.exp (((-l : ℝ) : ℂ) * Complex.I) *
+              Complex.exp (((l * u ^ 2 : ℝ) : ℂ) * Complex.I) := by
+        rw [← Complex.exp_add]
+        congr 1
+        push_cast
+        ring
+      dsimp [F, phi, Function.comp_apply, endpointQuadraticAmplitude]
+      rw [hsin, hcos, hexp, hm']
+      push_cast
+      simp only [pow_succ, mul_pow]
+      field_simp [ne_of_gt hspos]
+
+/-- Reflection at the other meridian endpoint gives the incoming quadratic
+phase with the conjugate plane wave. -/
+theorem intervalIntegral_lowerMeridian_power_eq_endpointQuadratic
+    (m : ℕ) (hm : 1 ≤ m) (l : ℝ) :
+    (∫ theta in (-(Real.pi / 2) : ℝ)..0,
+      ((Real.cos theta ^ m : ℝ) : ℂ) *
+        Complex.exp (((-l * Real.sin theta : ℝ) : ℂ) * Complex.I)) =
+      Complex.exp (((l : ℝ) : ℂ) * Complex.I) *
+        endpointQuadraticIntegral m (-l) := by
+  let F : ℝ → ℂ := fun theta =>
+    ((Real.cos theta ^ m : ℝ) : ℂ) *
+      Complex.exp (((-l * Real.sin theta : ℝ) : ℂ) * Complex.I)
+  have hcomp := intervalIntegral.integral_comp_neg
+    (a := (0 : ℝ)) (b := Real.pi / 2) (f := F)
+  rw [neg_zero] at hcomp
+  calc
+    (∫ theta in (-(Real.pi / 2) : ℝ)..0, F theta) =
+        ∫ theta in (0 : ℝ)..(Real.pi / 2),
+          ((Real.cos theta ^ m : ℝ) : ℂ) *
+            Complex.exp (((-(-l) * Real.sin theta : ℝ) : ℂ) * Complex.I) := by
+      rw [← hcomp]
+      apply intervalIntegral.integral_congr
+      intro theta htheta
+      dsimp [F]
+      rw [Real.cos_neg, Real.sin_neg]
+      push_cast
+      ring_nf
+    _ = Complex.exp (((-(-l) : ℝ) : ℂ) * Complex.I) *
+          endpointQuadraticIntegral m (-l) :=
+      intervalIntegral_upperMeridian_power_eq_endpointQuadratic m hm (-l)
+    _ = Complex.exp (((l : ℝ) : ℂ) * Complex.I) *
+          endpointQuadraticIntegral m (-l) := by
+      congr 2
+      congr 1
+      push_cast
+      ring
+
+/-- Keeping both halves of the meridian integral gives the exact outgoing and
+incoming wave decomposition before any estimate is taken. -/
+theorem intervalIntegral_meridian_power_eq_signed_endpointQuadratic
+    (m : ℕ) (hm : 1 ≤ m) (l : ℝ) :
+    (∫ theta in (-(Real.pi / 2) : ℝ)..(Real.pi / 2),
+      ((Real.cos theta ^ m : ℝ) : ℂ) *
+        Complex.exp (((-l * Real.sin theta : ℝ) : ℂ) * Complex.I)) =
+      Complex.exp (((-l : ℝ) : ℂ) * Complex.I) *
+        endpointQuadraticIntegral m l +
+          Complex.exp (((l : ℝ) : ℂ) * Complex.I) *
+            endpointQuadraticIntegral m (-l) := by
+  let F : ℝ → ℂ := fun theta =>
+    ((Real.cos theta ^ m : ℝ) : ℂ) *
+      Complex.exp (((-l * Real.sin theta : ℝ) : ℂ) * Complex.I)
+  have hF : Continuous F := by
+    dsimp [F]
+    fun_prop
+  have hsplit := intervalIntegral.integral_add_adjacent_intervals (μ := volume)
+    (hF.intervalIntegrable (-(Real.pi / 2) : ℝ) 0)
+    (hF.intervalIntegrable 0 (Real.pi / 2))
+  change (∫ theta in (-(Real.pi / 2) : ℝ)..(Real.pi / 2), F theta) = _
+  rw [← hsplit]
+  rw [intervalIntegral_lowerMeridian_power_eq_endpointQuadratic m hm l,
+    intervalIntegral_upperMeridian_power_eq_endpointQuadratic m hm l]
+  ring
+
+/-- The all-dimensional height integral has an exact two-wave endpoint
+decomposition.  Here `d + 1` is the ambient dimension, so `d - 1` is the
+meridian power. -/
+theorem intervalIntegral_height_power_eq_signed_endpointQuadratic
+    (d : ℕ) (hd : 2 ≤ d) (l : ℝ) :
+    (∫ t in (-1 : ℝ)..1,
+      ((Real.sqrt (1 - t ^ 2) ^ (d - 2) : ℝ) : ℂ) *
+        Complex.exp (((-l * t : ℝ) : ℂ) * Complex.I)) =
+      Complex.exp (((-l : ℝ) : ℂ) * Complex.I) *
+        endpointQuadraticIntegral (d - 1) l +
+          Complex.exp (((l : ℝ) : ℂ) * Complex.I) *
+            endpointQuadraticIntegral (d - 1) (-l) := by
+  rw [intervalIntegral_height_power_eq_meridian d hd l]
+  exact intervalIntegral_meridian_power_eq_signed_endpointQuadratic (d - 1)
+    (by omega) l
+
+/-- Exact outgoing/incoming decomposition of the Fourier transform of surface
+measure in every ambient dimension at least three.  This is the concrete
+stationary-phase input used below; no maximal-theorem estimate is invoked. -/
+theorem surfaceFourier_succ_eq_signed_endpointQuadratic
+    {d : ℕ} (hd : 2 ≤ d) (ξ : Euclidean (d + 1)) :
+    surfaceFourier (d + 1) ξ =
+      (surfaceMass d : ℂ) *
+        (Complex.exp (((-(2 * Real.pi * ‖ξ‖) : ℝ) : ℂ) * Complex.I) *
+            endpointQuadraticIntegral (d - 1) (2 * Real.pi * ‖ξ‖) +
+          Complex.exp (((2 * Real.pi * ‖ξ‖ : ℝ) : ℂ) * Complex.I) *
+            endpointQuadraticIntegral (d - 1) (-(2 * Real.pi * ‖ξ‖))) := by
+  rw [surfaceFourier_succ_height_intervalIntegral hd ξ]
+  congr 1
+  have hphase : ∀ t : ℝ,
+      -2 * Real.pi * ‖ξ‖ * t = -(2 * Real.pi * ‖ξ‖) * t := by
+    intro t
+    ring
+  simp_rw [hphase]
+  exact intervalIntegral_height_power_eq_signed_endpointQuadratic d hd
+    (2 * Real.pi * ‖ξ‖)
+
+/-- A scale-invariant first radial derivative bound for the actual Fourier
+transform of surface measure.  At large frequency this is the sharp
+stationary-phase derivative estimate; at small frequency it follows directly
+from differentiation under the sphere integral.  This is the estimate needed
+when a radial nonstationary integration by parts also contains the angular
+surface factor. -/
+theorem exists_uniform_surfaceFourier_succ_radial_deriv_le_inv
+    {d : ℕ} (hd : 2 ≤ d) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (ξ : Euclidean (d + 1)) (ρ : ℝ), 0 < ρ →
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ C / ρ := by
+  obtain ⟨C₀, C₁, hC₀, hC₁, _hdecay, hsharp⟩ :=
+    exists_sharp_surfaceFourier_succ_decay_and_deriv hd
+  let M : ℝ := (2 * Real.pi) * (unitSurfaceMeasure (d + 1)).real univ
+  let C : ℝ := C₁ + M + 1
+  have hM : 0 ≤ M := by
+    dsimp [M]
+    positivity
+  have hC : 0 < C := by
+    dsimp [C]
+    linarith
+  refine ⟨C, hC, ?_⟩
+  intro ξ ρ hρ
+  have hC₁le : C₁ ≤ C := by
+    dsimp [C]
+    linarith
+  have hMle : M ≤ C := by
+    dsimp [C]
+    linarith
+  by_cases hlarge : 1 ≤ ‖ρ • ξ‖
+  · have hsharp' := hsharp (ρ • ξ) 1 hlarge (by norm_num)
+    rw [deriv_surfaceFourier_radial_rescale] at hsharp'
+    have hexp : 0 ≤ (d : ℝ) / 2 - 1 := by
+      have hdR : (2 : ℝ) ≤ d := by exact_mod_cast hd
+      linarith
+    have hpow : 1 ≤ ‖ρ • ξ‖ ^ ((d : ℝ) / 2 - 1) :=
+      Real.one_le_rpow hlarge hexp
+    have hdenpos : 0 < ‖ρ • ξ‖ ^ ((d : ℝ) / 2 - 1) := by
+      exact Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hlarge) _
+    have hscaled : ‖ρ • deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ C₁ := by
+      calc
+        ‖ρ • deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤
+            C₁ / ‖ρ • ξ‖ ^ ((d : ℝ) / 2 - 1) := hsharp'
+        _ ≤ C₁ := by
+          apply (div_le_iff₀ hdenpos).2
+          exact le_mul_of_one_le_right hC₁.le hpow
+    have hscaled' : ρ * ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ C₁ := by
+      simpa [norm_smul, Real.norm_of_nonneg hρ.le] using hscaled
+    have hbase : ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ C₁ / ρ := by
+      apply (le_div_iff₀ hρ).2
+      nlinarith
+    calc
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ C₁ / ρ := hbase
+      _ ≤ C / ρ := by
+        exact div_le_div_of_nonneg_right hC₁le hρ.le
+  · have hsmall : ρ * ‖ξ‖ ≤ 1 := by
+      have hlt : ‖ρ • ξ‖ < 1 := lt_of_not_ge hlarge
+      rw [norm_smul, Real.norm_of_nonneg hρ.le] at hlt
+      exact hlt.le
+    have hprimitive := norm_deriv_surfaceFourier_radial_le (d + 1) ξ ρ
+    have hnorm : ‖ξ‖ ≤ 1 / ρ := by
+      exact (le_div_iff₀ hρ).2 (by simpa [mul_comm] using hsmall)
+    have hbase : ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ M / ρ := by
+      calc
+        ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤
+            (2 * Real.pi * ‖ξ‖) * (unitSurfaceMeasure (d + 1)).real univ := hprimitive
+        _ = M * ‖ξ‖ := by
+          dsimp [M]
+          ring
+        _ ≤ M * (1 / ρ) := mul_le_mul_of_nonneg_left hnorm hM
+        _ = M / ρ := by ring
+    calc
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) ρ‖ ≤ M / ρ := hbase
+      _ ≤ C / ρ := by
+        exact div_le_div_of_nonneg_right hMle hρ.le
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

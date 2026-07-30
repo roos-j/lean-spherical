@@ -1,0 +1,171 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.RadialCutoff
+import LeanSpherical.HarmonicAnalysis.FractalDilations.CompactOscillatoryIBP
+import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
+
+/-!
+# A fixed radial profile for the literal dyadic bandpass
+
+After writing `rho = 2^j u`, the project's absolute dyadic bandpass becomes
+a single smooth profile of `u`, supported away from the endpoints of the
+fixed interval `[1/2,8]`.  This small normalization is what permits repeated
+radial integration by parts without suppressing boundary terms.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter Metric Set
+open scoped ContDiff
+
+noncomputable section
+
+/-- The dimensionless radial profile of the actual absolute dyadic
+bandpass, restricted to a unit ray. -/
+noncomputable def normalizedDyadicRadialBandpass
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (v : Euclidean d) (u : Real) : Complex :=
+  phi ((1 / 2 : Real) • (u • v)) - phi (u • v)
+
+/-- The normalized profile is globally smooth; this is inherited from the
+literal Schwartz low-pass cutoff, not imposed as a symbol hypothesis. -/
+theorem contDiff_normalizedDyadicRadialBandpass
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (v : Euclidean d) :
+    ContDiff Real (⊤ : ℕ∞) (normalizedDyadicRadialBandpass phi v) := by
+  unfold normalizedDyadicRadialBandpass
+  have hleft : ContDiff Real (⊤ : ℕ∞)
+      (fun u : Real => (1 / 2 : Real) • (u • v)) := by
+    fun_prop
+  have hright : ContDiff Real (⊤ : ℕ∞) (fun u : Real => u • v) := by
+    fun_prop
+  exact ((phi.smooth (⊤ : ℕ∞)).comp hleft).sub
+    ((phi.smooth (⊤ : ℕ∞)).comp hright)
+
+/-- Below the normalized inner radius, the two low-pass terms agree. -/
+theorem normalizedDyadicRadialBandpass_eq_zero_of_mem_Icc_zero_one
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (v : Euclidean d) (hv : ‖v‖ = 1) {u : Real}
+    (hu : u ∈ Icc (0 : Real) 1) :
+    normalizedDyadicRadialBandpass phi v u = 0 := by
+  unfold normalizedDyadicRadialBandpass
+  have huabs : |u| = u := abs_of_nonneg hu.1
+  have hsmall : ‖u • v‖ ≤ 1 := by
+    rw [norm_smul, Real.norm_eq_abs, huabs, hv, mul_one]
+    exact hu.2
+  have hsmallhalf : ‖(1 / 2 : Real) • (u • v)‖ ≤ 1 := by
+    rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs,
+      abs_of_nonneg (by norm_num : (0 : Real) ≤ 1 / 2), huabs, hv]
+    nlinarith [hu.1, hu.2]
+  rw [hphiOne ((1 / 2 : Real) • (u • v)) hsmallhalf,
+    hphiOne (u • v) hsmall]
+  ring
+
+/-- Above the normalized outer radius, both low-pass terms vanish. -/
+theorem normalizedDyadicRadialBandpass_eq_zero_of_four_le
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (v : Euclidean d) (hv : ‖v‖ = 1) {u : Real}
+    (hu : 4 ≤ u) :
+    normalizedDyadicRadialBandpass phi v u = 0 := by
+  unfold normalizedDyadicRadialBandpass
+  have hu0 : 0 ≤ u := by linarith
+  have huabs : |u| = u := abs_of_nonneg hu0
+  have hlarge : 2 ≤ ‖u • v‖ := by
+    rw [norm_smul, Real.norm_eq_abs, huabs, hv, mul_one]
+    linarith
+  have hlargehalf : 2 ≤ ‖(1 / 2 : Real) • (u • v)‖ := by
+    rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs,
+      abs_of_nonneg (by norm_num : (0 : Real) ≤ 1 / 2), huabs, hv]
+    nlinarith
+  rw [hphiZero ((1 / 2 : Real) • (u • v)) hlargehalf,
+    hphiZero (u • v) hlarge]
+  ring
+
+/-- The normalized cutoff vanishes in genuine neighbourhoods of the two
+larger integration endpoints. -/
+theorem normalizedDyadicRadialBandpass_eventuallyEq_zero_left
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (v : Euclidean d) (hv : ‖v‖ = 1) :
+    normalizedDyadicRadialBandpass phi v =ᶠ[𝓝 (1 / 2 : Real)] 0 := by
+  filter_upwards [Metric.ball_mem_nhds (1 / 2 : Real)
+      (by norm_num : (0 : Real) < 1 / 4)] with u hu
+  rw [mem_ball, Real.dist_eq] at hu
+  have huabs : |u - 1 / 2| < 1 / 4 := hu
+  have hu0 : 0 ≤ u := by
+    have := (abs_lt.mp huabs).1
+    linarith
+  have hu1 : u ≤ 1 := by
+    have := (abs_lt.mp huabs).2
+    linarith
+  exact normalizedDyadicRadialBandpass_eq_zero_of_mem_Icc_zero_one
+    phi hphiOne v hv ⟨hu0, hu1⟩
+
+theorem normalizedDyadicRadialBandpass_eventuallyEq_zero_right
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (v : Euclidean d) (hv : ‖v‖ = 1) :
+    normalizedDyadicRadialBandpass phi v =ᶠ[𝓝 (8 : Real)] 0 := by
+  filter_upwards [Metric.ball_mem_nhds (8 : Real)
+      (by norm_num : (0 : Real) < 1)] with u hu
+  rw [mem_ball, Real.dist_eq] at hu
+  have hu8 : |u - 8| < 1 := hu
+  have hu4 : 4 ≤ u := by
+    have := (abs_lt.mp hu8).1
+    linarith
+  exact normalizedDyadicRadialBandpass_eq_zero_of_four_le phi hphiZero v hv hu4
+
+/-- At the actual dyadic scale, the absolute bandpass is exactly the fixed
+normalized profile. -/
+theorem absoluteDyadicBandpass_smul_dyadicScale_eq_normalizedDyadicRadialBandpass
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (j : Nat) (v : Euclidean d) (u : Real) :
+    absoluteDyadicBandpass phi hphiOne hphiZero j
+        (((2 : Real) ^ j * u) • v) =
+      normalizedDyadicRadialBandpass phi v u := by
+  rw [absoluteDyadicBandpass_spec]
+  unfold normalizedDyadicRadialBandpass
+  have hj : (2 : Real) ^ j ≠ 0 := pow_ne_zero _ (by norm_num)
+  have hfirst : ((2 : Real) ^ (j + 1))⁻¹ * ((2 : Real) ^ j * u) =
+      (1 / 2 : Real) * u := by
+    rw [pow_succ]
+    field_simp [hj]
+    ring
+  have hsecond : ((2 : Real) ^ j)⁻¹ * ((2 : Real) ^ j * u) = u := by
+    field_simp [hj]
+  simp only [smul_smul]
+  rw [hfirst, hsecond]
+
+/-- Multiplying by any smooth radial factor preserves the genuine endpoint
+vanishing supplied by the literal normalized bandpass.  This is the exact
+input to the repeated integration-by-parts lemma used in the inner conic
+calculation. -/
+theorem hasOscillatoryIBPChain_normalizedDyadicRadialBandpass_mul
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (v : Euclidean d) (hv : ‖v‖ = 1)
+    (G : Real → Complex) (hG : ContDiff Real (⊤ : ℕ∞) G) (N : Nat) :
+    HasOscillatoryIBPChain (1 / 2 : Real) 8
+      (fun k => iteratedDeriv k
+        (fun u => normalizedDyadicRadialBandpass phi v u * G u)) N := by
+  apply hasOscillatoryIBPChain_iteratedDeriv_of_contDiff
+  · exact (contDiff_normalizedDyadicRadialBandpass phi v).mul hG
+  · filter_upwards [normalizedDyadicRadialBandpass_eventuallyEq_zero_left
+        phi hphiOne v hv] with u hu
+    simp [hu]
+  · filter_upwards [normalizedDyadicRadialBandpass_eventuallyEq_zero_right
+        phi hphiZero v hv] with u hu
+    simp [hu]
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

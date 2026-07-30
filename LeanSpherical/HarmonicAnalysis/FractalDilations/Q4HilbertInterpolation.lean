@@ -1,0 +1,202 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4Assembly
+
+/-!
+# Same-target amplitude interpolation for the `Q4` `TT*` argument
+
+The two shell estimates in the `Q4` argument have crossed exponents:
+`L¹ → L∞` and `L² → L²`.  They must not be fed to the ordinary
+Marcinkiewicz machinery in `InterpolationCore`, whose hypotheses have
+aligned endpoint exponents.
+
+There is, however, a useful intermediate step which only has a common
+Hilbert target.  If `S = T T*`, the two estimates for `S` give estimates for
+the factor `T*` of the form
+
+* `L¹ → L²`, and
+* `L² → L²`.
+
+The elementary amplitude split below is the real-interpolation part of that
+argument.  It is deliberately stated for arbitrary seminormed targets and
+abstract size functionals.  Thus a later analytic realization of `T*` need
+only prove its two endpoint estimates and the two standard amplitude bounds;
+no crossed-endpoint interpolation is hidden in this file.
+
+The final passage from a bound for `T*` to a bound for `T T*` still requires
+an actual `Lᵖ` duality/factorization theorem.  This file does not assert that
+passage without such a theorem.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+noncomputable section
+
+/-- An energy estimate controls the norm of a factor.  This is the elementary
+square-root step used when a `TT*` `L1 -> Linfinity` bound is converted into an
+`L1 -> L2` bound for `T*`. -/
+theorem factor_norm_le_of_energy_bound
+    {F H : Type*} [SeminormedAddCommGroup H]
+    (U : F → H) (A : ℝ) (size : F → ℝ)
+    (hA : 0 ≤ A) (hsize : ∀ g, 0 ≤ size g)
+    (henergy : ∀ g, ‖U g‖ ^ 2 ≤ (A * size g) ^ 2) (g : F) :
+    ‖U g‖ ≤ A * size g := by
+  exact (sq_le_sq₀ (norm_nonneg _) (mul_nonneg hA (hsize g))).mp (henergy g)
+
+/-- The `TT*` energy extraction underlying the first endpoint for the factor
+`T*`.  A diagonal factorization of a bilinear form together with its
+`L1 × L1` bound gives the square-root `L1 -> L2` estimate.  No duality theorem
+is used here. -/
+theorem factor_norm_le_of_ttstar_lone_linf
+    {F H : Type*} [SeminormedAddCommGroup H]
+    (Tstar : F → H) (form : F → F → ℝ) (A : ℝ) (size : F → ℝ)
+    (hA : 0 ≤ A) (hsize : ∀ g, 0 ≤ size g)
+    (hfactor : ∀ g, form g g = ‖Tstar g‖ ^ 2)
+    (hendpoint : ∀ g h, |form g h| ≤ A * size g * size h) (g : F) :
+    ‖Tstar g‖ ≤ Real.sqrt A * size g := by
+  apply factor_norm_le_of_energy_bound Tstar (Real.sqrt A) size
+  · exact Real.sqrt_nonneg _
+  · exact hsize
+  · intro h
+    calc
+      ‖Tstar h‖ ^ 2 = form h h := (hfactor h).symm
+      _ ≤ |form h h| := le_abs_self _
+      _ ≤ A * size h * size h := hendpoint h h
+      _ = (Real.sqrt A * size h) ^ 2 := by
+        rw [mul_pow, Real.sq_sqrt hA]
+        ring
+
+/-- One amplitude split, with the `L²` endpoint used on the low-amplitude
+piece and the `L¹` endpoint used on the high-amplitude piece.  This is the
+basic estimate behind the same-Hilbert-target real interpolation step for a
+`TT*` factor. -/
+theorem norm_le_of_one_two_amplitude_split
+    {F H : Type*} [Add F] [SeminormedAddCommGroup H]
+    (U : F → H) (sizeOne sizeTwo : F → ℝ)
+    (A B I p t : ℝ) (low high : ℝ → F) (f : F)
+    (hsub : ∀ g h : F, ‖U (g + h)‖ ≤ ‖U g‖ + ‖U h‖)
+    (hone : ∀ g : F, ‖U g‖ ≤ A * sizeOne g)
+    (htwo : ∀ g : F, ‖U g‖ ≤ B * sizeTwo g)
+    (hA : 0 ≤ A) (hB : 0 ≤ B)
+    (hsplit : f = low t + high t)
+    (hlow : sizeTwo (low t) ≤ t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2))
+    (hhigh : sizeOne (high t) ≤ t ^ (1 - p) * I) :
+    ‖U f‖ ≤
+      B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) +
+        A * (t ^ (1 - p) * I) := by
+  rw [hsplit]
+  calc
+    ‖U (low t + high t)‖ ≤ ‖U (low t)‖ + ‖U (high t)‖ := hsub _ _
+    _ ≤ B * sizeTwo (low t) + A * sizeOne (high t) :=
+      add_le_add (htwo _) (hone _)
+    _ ≤ B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) +
+          A * (t ^ (1 - p) * I) :=
+      add_le_add
+        (mul_le_mul_of_nonneg_left hlow hB)
+        (mul_le_mul_of_nonneg_left hhigh hA)
+
+/-- At a scale which balances the two endpoint contributions, the preceding
+amplitude-split estimate has the expected factor of two.  Keeping the
+balancing equality as a hypothesis avoids baking a particular power
+normalization into the abstract `TT*` layer. -/
+theorem norm_le_of_one_two_amplitude_split_balanced
+    {F H : Type*} [Add F] [SeminormedAddCommGroup H]
+    (U : F → H) (sizeOne sizeTwo : F → ℝ)
+    (A B I p t : ℝ) (low high : ℝ → F) (f : F)
+    (hsub : ∀ g h : F, ‖U (g + h)‖ ≤ ‖U g‖ + ‖U h‖)
+    (hone : ∀ g : F, ‖U g‖ ≤ A * sizeOne g)
+    (htwo : ∀ g : F, ‖U g‖ ≤ B * sizeTwo g)
+    (hA : 0 ≤ A) (hB : 0 ≤ B)
+    (hsplit : f = low t + high t)
+    (hlow : sizeTwo (low t) ≤ t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2))
+    (hhigh : sizeOne (high t) ≤ t ^ (1 - p) * I)
+    (hbalance : B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) =
+      A * (t ^ (1 - p) * I)) :
+    ‖U f‖ ≤ 2 * (B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2))) := by
+  have hsplit_bound := norm_le_of_one_two_amplitude_split
+    U sizeOne sizeTwo A B I p t low high f hsub hone htwo hA hB hsplit hlow hhigh
+  calc
+    ‖U f‖ ≤ B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) +
+          A * (t ^ (1 - p) * I) := hsplit_bound
+    _ = 2 * (B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2))) := by
+      rw [← hbalance]
+      ring
+
+/-- The elementary power identity which balances the low-`L²` and high-`L¹`
+terms in the same-target interpolation argument.  In an application `I` is
+the `p`-moment of the input, and the displayed hypothesis chooses the
+amplitude scale. -/
+theorem one_two_amplitude_balance_of_rpow
+    {A B I p t : ℝ} (hI : 0 < I) (ht : 0 < t) (hB : 0 < B)
+    (hpower : t ^ (p / 2) = A * I ^ ((1 : ℝ) / 2) / B) :
+    B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) =
+      A * (t ^ (1 - p) * I) := by
+  have ht_split : t ^ ((2 - p) / 2) = t ^ (1 - p) * t ^ (p / 2) := by
+    rw [← Real.rpow_add ht]
+    congr 1
+    ring
+  have hI_square : I ^ ((1 : ℝ) / 2) * I ^ ((1 : ℝ) / 2) = I := by
+    rw [← Real.rpow_add hI]
+    norm_num
+  calc
+    B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) =
+        B * (t ^ (1 - p) * t ^ (p / 2) * I ^ ((1 : ℝ) / 2)) := by
+          rw [ht_split]
+    _ = B * (t ^ (1 - p) * (A * I ^ ((1 : ℝ) / 2) / B) *
+          I ^ ((1 : ℝ) / 2)) := by rw [hpower]
+    _ = A * (t ^ (1 - p) *
+          (I ^ ((1 : ℝ) / 2) * I ^ ((1 : ℝ) / 2))) := by
+          field_simp [hB.ne']
+    _ = A * (t ^ (1 - p) * I) := by rw [hI_square]
+
+/-- The canonical positive scale satisfies the balancing relation used in
+`one_two_amplitude_balance_of_rpow`.  This is kept separate from the norm
+estimate so that a concrete `TT*` application may choose its amplitude split
+at exactly this scale. -/
+theorem canonical_one_two_amplitude_scale
+    {A B I p : ℝ} (hA : 0 < A) (hB : 0 < B) (hI : 0 < I) (hp : p ≠ 0) :
+    let t := (A * I ^ ((1 : ℝ) / 2) / B) ^ (2 / p)
+    t ^ (p / 2) = A * I ^ ((1 : ℝ) / 2) / B := by
+  dsimp
+  let X : ℝ := A * I ^ ((1 : ℝ) / 2) / B
+  have hX : 0 < X := by
+    dsimp [X]
+    exact div_pos (mul_pos hA (Real.rpow_pos_of_pos hI _)) hB
+  calc
+    (X ^ (2 / p)) ^ (p / 2) = X ^ ((2 / p) * (p / 2)) := by
+      rw [Real.rpow_mul hX.le]
+    _ = X ^ (1 : ℝ) := by
+      congr 1
+      field_simp
+    _ = X := by rw [Real.rpow_one]
+
+/-- A factor satisfying `L¹ → H` and `L² → H` estimates can use the previous
+lemma once an amplitude decomposition supplies the displayed size bounds.
+This spelling is convenient for the `T*` factor in a `TT*` argument: `H` is
+the Hilbert space in which the energy is measured. -/
+theorem norm_le_of_factor_one_two_amplitude_data
+    {F H : Type*} [Add F] [SeminormedAddCommGroup H]
+    (U : F → H) (sizeOne sizeTwo : F → ℝ)
+    (A B I p t : ℝ) (low high : ℝ → F) (f : F)
+    (hsub : ∀ g h : F, ‖U (g + h)‖ ≤ ‖U g‖ + ‖U h‖)
+    (hfactor_one : ∀ g : F, ‖U g‖ ≤ A * sizeOne g)
+    (hfactor_two : ∀ g : F, ‖U g‖ ≤ B * sizeTwo g)
+    (hconstants : 0 ≤ A ∧ 0 ≤ B)
+    (hamplitude :
+      f = low t + high t ∧
+        sizeTwo (low t) ≤ t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2) ∧
+          sizeOne (high t) ≤ t ^ (1 - p) * I) :
+    ‖U f‖ ≤
+      B * (t ^ ((2 - p) / 2) * I ^ ((1 : ℝ) / 2)) +
+        A * (t ^ (1 - p) * I) := by
+  exact norm_le_of_one_two_amplitude_split U sizeOne sizeTwo A B I p t low high f
+    hsub hfactor_one hfactor_two hconstants.1 hconstants.2
+    hamplitude.1 hamplitude.2.1 hamplitude.2.2
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

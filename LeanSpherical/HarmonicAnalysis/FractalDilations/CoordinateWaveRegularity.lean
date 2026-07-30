@@ -1,0 +1,84 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.PlanarTripleWaveNormalForm
+import LeanSpherical.HarmonicAnalysis.FractalDilations.CoordinateMiddleParameterDerivatives
+
+/-!
+# Smoothness of the literal coordinate radial waves
+
+This file records the regularity needed by the conic radial integration by
+parts.  The statements concern the actual coordinate endpoint and middle
+integrals defined in the normal forms; in particular the middle branch uses
+the derivative-under-the-integral proof from
+`CoordinateMiddleParameterDerivatives`.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open scoped ContDiff
+
+noncomputable section
+
+/-- Each higher-dimensional coordinate radial amplitude is globally smooth
+in the radial frequency. -/
+theorem contDiff_coordinateWaveRadialAmplitude
+    (d : Nat) (part : CoordinateWavePart) (a : Real) :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun rho => coordinateWaveRadialAmplitude d part a rho) := by
+  cases part with
+  | outgoing =>
+      unfold coordinateWaveRadialAmplitude
+      exact contDiff_const.mul
+        (contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop)
+  | incoming =>
+      unfold coordinateWaveRadialAmplitude
+      exact contDiff_const.mul
+        (contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop)
+  | middle =>
+      unfold coordinateWaveRadialAmplitude
+      exact contDiff_const.mul
+        (contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)).comp
+          (by fun_prop)
+
+/-- The extracted oscillation does not affect smoothness of a coordinate
+radial wave. -/
+theorem contDiff_coordinateWaveRadialTerm
+    (d : Nat) (part : CoordinateWavePart) (a : Real) :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun rho => coordinateWaveRadialTerm d part a rho) := by
+  unfold coordinateWaveRadialTerm
+  exact (contDiff_coordinateWaveRadialAmplitude d part a).mul (by fun_prop)
+
+/-- The planar versions have the same global radial regularity. -/
+theorem contDiff_planarCoordinateWaveRadialAmplitude
+    (part : CoordinateWavePart) (a : Real) :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun rho => planarCoordinateWaveRadialAmplitude part a rho) := by
+  cases part with
+  | outgoing =>
+      unfold planarCoordinateWaveRadialAmplitude
+      exact contDiff_const.mul
+        contDiff_planarEndpointQuadraticIntegral.comp (by fun_prop)
+  | incoming =>
+      unfold planarCoordinateWaveRadialAmplitude
+      exact contDiff_const.mul
+        contDiff_planarEndpointQuadraticIntegral.comp (by fun_prop)
+  | middle =>
+      unfold planarCoordinateWaveRadialAmplitude
+      exact contDiff_const.mul
+        (contDiff_coordinateMiddleMeridianLocalizedIntegral 0).comp (by fun_prop)
+
+theorem contDiff_planarCoordinateWaveRadialTerm
+    (part : CoordinateWavePart) (a : Real) :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun rho => planarCoordinateWaveRadialTerm part a rho) := by
+  unfold planarCoordinateWaveRadialTerm
+  exact (contDiff_planarCoordinateWaveRadialAmplitude part a).mul (by fun_prop)
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

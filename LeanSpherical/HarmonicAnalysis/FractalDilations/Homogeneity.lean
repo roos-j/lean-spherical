@@ -1,0 +1,61 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Definitions
+
+/-!
+# Homogeneity of the restricted spherical maximal operator
+
+The lower-bound examples are normalized after their geometric construction.
+This file records the exact scalar homogeneity needed for that normalization.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Set
+
+noncomputable section
+
+/-- A normalized spherical average is complex-linear in its input. -/
+theorem normalizedSphericalAverage_const_smul
+    {d : ℕ} (c : ℂ) (f : Euclidean d → ℂ) (r : ℝ) (x : Euclidean d) :
+    normalizedSphericalAverage d (c • f) r x =
+      c * normalizedSphericalAverage d f r x := by
+  unfold normalizedSphericalAverage sphericalAverage
+  simp only [Pi.smul_apply]
+  rw [integral_smul]
+  simp only [smul_eq_mul]
+  ring
+
+/-- The raw restricted maximal operator is positively homogeneous with the
+absolute value of a complex scalar. -/
+theorem fractalSphericalMaximal_const_smul
+    {d : ℕ} (E : Set ℝ) (c : ℂ) (f : Euclidean d → ℂ) (x : Euclidean d) :
+    fractalSphericalMaximal d E (c • f) x =
+      ENNReal.ofReal ‖c‖ * fractalSphericalMaximal d E f x := by
+  unfold fractalSphericalMaximal
+  rw [ENNReal.mul_iSup]
+  apply iSup_congr
+  intro r
+  rw [normalizedSphericalAverage_const_smul, norm_mul,
+    ENNReal.ofReal_mul (norm_nonneg _)]
+
+/-- On Schwartz inputs and positive radii, the real-valued maximal operator
+has the corresponding exact homogeneity formula. -/
+theorem fractalSphericalMaximalReal_const_smul
+    {d : ℕ} (E : Set ℝ) (c : ℂ)
+    (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    fractalSphericalMaximalReal d E (c • f) x =
+      ‖c‖ * fractalSphericalMaximalReal d E f x := by
+  unfold fractalSphericalMaximalReal
+  change (fractalSphericalMaximal d E
+      (c • (f : Euclidean d → ℂ)) x).toReal = _
+  rw [fractalSphericalMaximal_const_smul]
+  simp only [ENNReal.toReal_mul, ENNReal.toReal_ofReal (norm_nonneg _)]
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

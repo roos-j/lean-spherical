@@ -1,0 +1,98 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.SurfaceHeight
+
+/-!
+# One integration by parts for a compact oscillatory integral
+
+This is the elementary `N = 1` nonstationary ingredient used in a
+cone/off-cone stationary-phase proof.  It is deliberately stated on a finite
+interval: compact annular symbols reduce to this form after choosing their
+support interval.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Set
+
+noncomputable section
+
+/-- The complex exponential with real linear phase. -/
+def oscillatoryExp (freq t : ℝ) : ℂ :=
+  Complex.exp (((freq * t : ℝ) : ℂ) * Complex.I)
+
+/-- One exact integration by parts.  Vanishing at the two endpoints removes
+the boundary term and exposes the reciprocal phase frequency. -/
+theorem intervalIntegral_mul_oscillatoryExp_eq_neg_inv_mul
+    {a b freq : ℝ} {F G : ℝ → ℂ} (hfreq : freq ≠ 0)
+    (hF : ∀ t ∈ uIcc a b, HasDerivAt F (G t) t)
+    (hG : Continuous G) (hFa : F a = 0) (hFb : F b = 0) :
+    (∫ t in a..b, F t * oscillatoryExp freq t) =
+      -(((freq : ℂ) * Complex.I)⁻¹) *
+        ∫ t in a..b, G t * oscillatoryExp freq t := by
+  let z : ℂ := (freq : ℂ) * Complex.I
+  let s : ℂ := z⁻¹
+  let E : ℝ → ℂ := oscillatoryExp freq
+  have hz : z ≠ 0 := by
+    dsimp [z]
+    exact mul_ne_zero (Complex.ofReal_ne_zero.mpr hfreq) Complex.I_ne_zero
+  have hsz : s * z = 1 := by
+    dsimp [s]
+    exact inv_mul_cancel₀ hz
+  have hE (t : ℝ) : HasDerivAt E (E t * z) t := by
+    dsimp [E, oscillatoryExp, z]
+    have hreal : HasDerivAt (fun u : ℝ => freq * u) freq t := by
+      simpa [mul_comm] using (hasDerivAt_id t).mul_const freq
+    have harg : HasDerivAt
+        (fun u : ℝ => ((freq * u : ℝ) : ℂ) * Complex.I)
+        ((freq : ℂ) * Complex.I) t := by
+      simpa only [Complex.real_smul] using hreal.smul_const Complex.I
+    change HasDerivAt
+      (fun u : ℝ => Complex.exp (((freq * u : ℝ) : ℂ) * Complex.I))
+      (Complex.exp (((freq * t : ℝ) : ℂ) * Complex.I) *
+        ((freq : ℂ) * Complex.I)) t
+    simpa [mul_assoc, mul_left_comm, mul_comm] using harg.cexp
+  have hEcont : Continuous E := by
+    dsimp [E]
+    unfold oscillatoryExp
+    exact Complex.continuous_exp.comp
+      ((Complex.continuous_ofReal.comp (continuous_const.mul continuous_id)).mul
+        continuous_const)
+  have hV (t : ℝ) : HasDerivAt (fun u : ℝ => s * E u) (E t) t := by
+    have h := (hE t).const_mul s
+    have hcancel : s * (E t * z) = E t := by
+      calc
+        s * (E t * z) = (s * z) * E t := by ring
+        _ = E t := by rw [hsz, one_mul]
+    simpa only [hcancel] using h
+  have hparts := intervalIntegral.integral_mul_deriv_eq_deriv_mul
+    (u := F) (u' := G) (v := fun u : ℝ => s * E u) (v' := E)
+    hF (fun t _ => hV t) (hG.intervalIntegrable a b) (hEcont.intervalIntegrable a b)
+  have hboundary : F b * (s * E b) - F a * (s * E a) = 0 := by
+    rw [hFb, hFa]
+    ring
+  have hfactor :
+      (∫ t in a..b, G t * (s * E t)) =
+        s * ∫ t in a..b, G t * E t := by
+    rw [← intervalIntegral.integral_const_mul]
+    apply intervalIntegral.integral_congr
+    intro t ht
+    ring
+  calc
+    (∫ t in a..b, F t * oscillatoryExp freq t) =
+        ∫ t in a..b, F t * E t := rfl
+    _ = F b * (s * E b) - F a * (s * E a) -
+          ∫ t in a..b, G t * (s * E t) := hparts
+    _ = - (∫ t in a..b, G t * (s * E t)) := by rw [hboundary]; ring
+    _ = -s * ∫ t in a..b, G t * E t := by rw [hfactor]; ring
+    _ = -(((freq : ℂ) * Complex.I)⁻¹) *
+          ∫ t in a..b, G t * oscillatoryExp freq t := by
+      rfl
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

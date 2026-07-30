@@ -1,0 +1,66 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4ContinuousTTStar
+
+/-!
+# Basic finite-fibre size functionals for `Q4`
+
+These are neutral definitions used by both the literal selected-shell route
+and optional interpolation experiments.  In particular, this file has no
+factorization or positivity hypothesis.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory
+open scoped BigOperators
+
+noncomputable section
+
+/-- The `L¹` size of a finite family of measurable fields, with counting
+measure in the radius variable. -/
+def q4FibreL1Size
+    {I X : Type*} [MeasurableSpace X]
+    (mu : Measure X) (s : Finset I) (f : I -> X -> Complex) : Real :=
+  Finset.sum s (fun i => integral mu (fun x => norm (f i x)))
+
+/-- The `L²` size of a finite family of measurable fields. -/
+def q4FibreL2Size
+    {I X : Type*} [MeasurableSpace X]
+    (mu : Measure X) (s : Finset I) (f : I -> X -> Complex) : Real :=
+  Real.sqrt (q4FibreL2Energy mu s f)
+
+/-- The `p`-moment of a finite family of fields. -/
+def q4FibreLpMoment
+    {I X : Type*} [MeasurableSpace X]
+    (mu : Measure X) (s : Finset I) (p : Real) (f : I -> X -> Complex) : Real :=
+  Finset.sum s (fun i => integral mu (fun x => norm (f i x) ^ p))
+
+theorem q4FibreL1Size_nonneg
+    {I X : Type*} [MeasurableSpace X]
+    (mu : Measure X) (s : Finset I) (f : I -> X -> Complex) :
+    0 <= q4FibreL1Size mu s f := by
+  unfold q4FibreL1Size
+  exact Finset.sum_nonneg fun i hi => integral_nonneg fun x => norm_nonneg _
+
+theorem q4FibreL2Size_nonneg
+    {I X : Type*} [MeasurableSpace X]
+    (mu : Measure X) (s : Finset I) (f : I -> X -> Complex) :
+    0 <= q4FibreL2Size mu s f :=
+  Real.sqrt_nonneg _
+
+theorem q4FibreLpMoment_nonneg
+    {I X : Type*} [MeasurableSpace X]
+    (mu : Measure X) (s : Finset I) (p : Real) (f : I -> X -> Complex) :
+    0 <= q4FibreLpMoment mu s p f := by
+  unfold q4FibreLpMoment
+  exact Finset.sum_nonneg fun i hi =>
+    integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) _
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

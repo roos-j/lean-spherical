@@ -1,0 +1,164 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4RadialReduction
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4PairComposition
+import LeanSpherical.HarmonicAnalysis.FractalDilations.RadialWaveKernel
+import LeanSpherical.HarmonicAnalysis.FractalDilations.RadialPowerMeasure
+
+/-!
+# The literal radial-polar Q4 pair kernel in every dimension
+
+The stationary calculation for the fractal-dilation argument starts from the
+actual `A_j A_j*` multiplier.  When the bandpass is norm-radial, polar
+coordinates make this multiplier one-dimensional and leave a third literal
+sphere Fourier factor in physical space.  This file discharges the Fubini
+condition from compact Schwartz localization, so the resulting formula has
+no unproved analytic hypothesis.
+
+The next stationary layer splits according to the size of this physical
+factor relative to the radius gap.  Keeping the formula general in `d` is
+important: the d=2 calculation and the d>=3 coordinate stationary phase use
+the same literal starting point.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory FourierTransform Metric Set
+open scoped FourierTransform
+
+noncomputable section
+
+/-- The canonical absolute dyadic bandpass has pointwise norm at most two in
+every ambient dimension.  This elementary estimate is kept here (rather than
+specialized to the three-dimensional calculation) because the all-dimensional
+stationary argument uses it for the literal radial profile. -/
+theorem norm_absoluteDyadicBandpass_le_two_allDimensions
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (j : Nat) (xi : Euclidean d) :
+    ‖absoluteDyadicBandpass phi hphiOne hphiZero j xi‖ ≤ 2 := by
+  rw [absoluteDyadicBandpass_spec]
+  calc
+    ‖phi (((2 : Real) ^ (j + 1))⁻¹ • xi) -
+        phi (((2 : Real) ^ j)⁻¹ • xi)‖ ≤
+        ‖phi (((2 : Real) ^ (j + 1))⁻¹ • xi)‖ +
+          ‖phi (((2 : Real) ^ j)⁻¹ • xi)‖ := norm_sub_le _ _
+    _ ≤ 1 + 1 := add_le_add
+      (hphiNorm _) (hphiNorm _)
+    _ = 2 := by norm_num
+
+/-- Compact localization makes the polar Fubini integrand for the literal
+Q4 pair profile integrable in every positive ambient dimension. -/
+theorem integrable_polar_q4RadialPairProfile
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (hpsiRadial : IsNormRadial psi) (r r' : Real)
+    (v : Euclidean d) (hv : ‖v‖ = 1) (x : Euclidean d) :
+    Integrable (fun p : sphere (0 : Euclidean d) 1 × Ioi (0 : Real) =>
+      Real.fourierChar (inner Real (p.2.1 • (p.1 : Euclidean d)) x) •
+        q4RadialPairProfile psi r r' v p.2.1)
+      ((unitSurfaceMeasure d).prod (Measure.volumeIoiPow (d - 1))) := by
+  obtain ⟨m, hm⟩ := exists_schwartz_q4DyadicPairMultiplier psi hpsiCompact r r'
+  apply integrable_polar_fourierChar_mul_of_schwartz_radial m
+    (q4RadialPairProfile psi r r' v)
+  intro xi
+  rw [hm xi]
+  exact q4DyadicPairMultiplier_eq_radialProfile psi hpsiRadial r r' v hv xi
+
+/-- The literal Q4 pair kernel is a radial integral with the physical
+sphere Fourier factor retained exactly.  This is the all-dimensional
+counterpart of the preliminary three-dimensional signed-radial formula; it
+contains neither an abstract symbol nor a conditional integrability premise. -/
+theorem q4DyadicPairKernel_eq_surfaceFourier_integral
+    {d : Nat} (hd : 0 < d) (psi : SchwartzMap (Euclidean d) Complex)
+    (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
+    (hpsiRadial : IsNormRadial psi) (r r' : Real)
+    (v x : Euclidean d) (hv : ‖v‖ = 1) :
+    q4DyadicPairKernel psi r r' x =
+      ∫ rho : Ioi (0 : Real),
+        surfaceFourier d (-rho.1 • x) * q4RadialPairProfile psi r r' v rho.1
+          ∂Measure.volumeIoiPow (d - 1) := by
+  unfold q4DyadicPairKernel
+  rw [show q4DyadicPairMultiplier psi r r' =
+      fun xi : Euclidean d => q4RadialPairProfile psi r r' v ‖xi‖ by
+    funext xi
+    exact q4DyadicPairMultiplier_eq_radialProfile psi hpsiRadial r r' v hv xi]
+  exact fourierInv_radial_eq_surfaceFourier_integral hd
+    (q4RadialPairProfile psi r r' v) x
+    (integrable_polar_q4RadialPairProfile psi hpsiCompact hpsiRadial r r' v hv x)
+
+/-- For the canonical absolute dyadic bandpass, the preceding polar formula
+is an honest compact interval integral.  The integrand is the literal pair
+profile multiplied by the polar density `rho^(d-1)` and the physical sphere
+Fourier factor.  In particular, the later radial integration by parts is on
+the actual annulus `[2^j,2^(j+2)]`, not on a formal support condition. -/
+theorem q4DyadicPairKernel_eq_annular_surfaceFourier_intervalIntegral
+    {d : Nat} (hd : 0 < d)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiRadial : IsNormRadial phi) (j : Nat) (r r' : Real)
+    (v x : Euclidean d) (hv : ‖v‖ = 1) :
+    q4DyadicPairKernel (absoluteDyadicBandpass phi hphiOne hphiZero j) r r' x =
+      ∫ rho in (2 : Real) ^ j..(2 : Real) ^ (j + 2),
+        ((rho ^ (d - 1) : Real) : Complex) *
+          surfaceFourier d (-rho • x) *
+            q4RadialPairProfile
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) r r' v rho := by
+  let psi : SchwartzMap (Euclidean d) Complex :=
+    absoluteDyadicBandpass phi hphiOne hphiZero j
+  have hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex) :=
+    absoluteDyadicBandpass_compact phi hphiOne hphiZero j
+  have hpsiRadial : IsNormRadial psi :=
+    isNormRadial_absoluteDyadicBandpass phi hphiOne hphiZero hphiRadial j
+  rw [q4DyadicPairKernel_eq_surfaceFourier_integral hd psi hpsiCompact
+    hpsiRadial r r' v x hv]
+  rw [integral_volumeIoiPow_eq_setIntegral]
+  let F : Real -> Complex := fun rho =>
+    ((rho ^ (d - 1) : Real) : Complex) *
+      surfaceFourier d (-rho • x) * q4RadialPairProfile psi r r' v rho
+  have ha : 0 < (2 : Real) ^ j := by positivity
+  have hab : (2 : Real) ^ j ≤ (2 : Real) ^ (j + 2) := by
+    calc
+      (2 : Real) ^ j ≤ (2 : Real) ^ j * 4 := by nlinarith
+      _ = (2 : Real) ^ j * (2 : Real) ^ 2 := by norm_num
+      _ = (2 : Real) ^ (j + 2) := by rw [← pow_add]
+  have hzero : ∀ rho, rho ∈ Ioi (0 : Real) →
+      rho ∉ Icc ((2 : Real) ^ j) ((2 : Real) ^ (j + 2)) → F rho = 0 := by
+    intro rho hrho hnot
+    have hpsiZero : psi (rho • v) = 0 := by
+      rw [show psi = absoluteDyadicBandpass phi hphiOne hphiZero j by rfl,
+        absoluteDyadicBandpass_spec]
+      have hnorm : ‖rho • v‖ = rho := by
+        rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrho, hv, mul_one]
+      by_cases hlow : rho < (2 : Real) ^ j
+      · apply smooth_dyadic_bandpass_eq_zero_of_norm_le hphiOne
+        rw [hnorm]
+        exact hlow.le
+      · have hleft : (2 : Real) ^ j ≤ rho := le_of_not_gt hlow
+        have hright : (2 : Real) ^ (j + 2) < rho := by
+          apply lt_of_not_ge
+          intro hupper
+          exact hnot ⟨hleft, hupper⟩
+        apply smooth_dyadic_bandpass_eq_zero_of_le_norm hphiZero
+        rw [hnorm]
+        exact hright.le
+    dsimp [F, q4RadialPairProfile]
+    unfold q4DyadicPairMultiplier q4DyadicSurfaceMultiplier
+    rw [hpsiZero]
+    simp
+  rw [setIntegral_Ioi_eq_intervalIntegral_of_eq_zero_outside_general ha hab F hzero]
+  apply intervalIntegral.integral_congr
+  intro rho _
+  dsimp only [F, psi]
+  ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

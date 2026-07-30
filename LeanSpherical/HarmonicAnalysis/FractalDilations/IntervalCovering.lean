@@ -1,0 +1,149 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Minkowski
+import Mathlib.Algebra.Order.ToIntervalMod
+import Mathlib.Data.Int.Interval
+
+/-!
+# Explicit finite covers of a real interval
+
+This module gives a finite grid of closed intervals of a prescribed length.
+It is deliberately independent of any fractal hypothesis: the resulting
+cardinality estimate is the elementary covering bound used to show that the
+dimension spectra have nonempty admissible classes.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Set
+
+noncomputable section
+
+/-- The left endpoint of the `k`th interval in the length-`δ` grid based at
+`a`. -/
+def intervalGridLeft (a δ : ℝ) (k : ℤ) : ℝ := a + (k : ℝ) * δ
+
+/-- The right endpoint of the `k`th interval in the length-`δ` grid. -/
+def intervalGridRight (a δ : ℝ) (k : ℤ) : ℝ := a + ((k + 1 : ℤ) : ℝ) * δ
+
+/-- The `k`th closed grid cell of length `δ`. -/
+def intervalGridCell (a δ : ℝ) (k : ℤ) : Set ℝ :=
+  Icc (intervalGridLeft a δ k) (intervalGridRight a δ k)
+
+/-- A finite set of integer grid indices sufficient to cover `[a,b]`. -/
+def intervalGridIndexRange (a b δ : ℝ) : Finset ℤ :=
+  Finset.Icc (-1) (Nat.ceil ((b - a) / δ) : ℤ)
+
+theorem intervalGridRight_sub_left (a δ : ℝ) (k : ℤ) :
+    intervalGridRight a δ k - intervalGridLeft a δ k = δ := by
+  simp only [intervalGridRight, intervalGridLeft, Int.cast_add, Int.cast_one]
+  ring
+
+/-- The full integer grid covers the real line when its mesh is positive. -/
+theorem iUnion_intervalGridCell (a δ : ℝ) (hδ : 0 < δ) :
+    (⋃ k : ℤ, intervalGridCell a δ k) = Set.univ := by
+  simpa only [intervalGridCell, intervalGridLeft, intervalGridRight, zsmul_eq_mul] using
+    (iUnion_Icc_add_zsmul (α := ℝ) hδ a)
+
+/-- A cell of the full grid which meets `[a,b]` belongs to the finite range
+selected above. -/
+theorem mem_intervalGridIndexRange_of_mem_cell
+    {a b δ x : ℝ} (hδ : 0 < δ)
+    (k : ℤ) (hx : x ∈ Icc a b) (hk : x ∈ intervalGridCell a δ k) :
+    k ∈ intervalGridIndexRange a b δ := by
+  rw [intervalGridIndexRange, Finset.mem_Icc]
+  have hlowerMul : 0 ≤ ((k + 1 : ℤ) : ℝ) * δ := by
+    have h : a ≤ a + ((k + 1 : ℤ) : ℝ) * δ :=
+      hx.1.trans (by simpa only [intervalGridCell, intervalGridRight] using hk.2)
+    linarith
+  have hlowerReal : 0 ≤ ((k + 1 : ℤ) : ℝ) :=
+    nonneg_of_mul_nonneg_left hlowerMul hδ
+  have hlowerInt : (0 : ℤ) ≤ k + 1 := by
+    exact_mod_cast hlowerReal
+  have hlower : (-1 : ℤ) ≤ k := by omega
+  have hupperMul : (k : ℝ) * δ ≤ b - a := by
+    have hkleft : a + (k : ℝ) * δ ≤ x := by
+      simpa only [intervalGridCell, intervalGridLeft] using hk.1
+    linarith [hkleft, hx.2]
+  have hupperDiv : (k : ℝ) ≤ (b - a) / δ := by
+    rw [le_div_iff₀ hδ]
+    simpa only [mul_comm] using hupperMul
+  have hceil : (b - a) / δ ≤ (Nat.ceil ((b - a) / δ) : ℝ) := Nat.le_ceil _
+  have hupperReal : (k : ℝ) ≤ (Nat.ceil ((b - a) / δ) : ℝ) :=
+    hupperDiv.trans hceil
+  have hupper : k ≤ (Nat.ceil ((b - a) / δ) : ℤ) := by
+    exact_mod_cast hupperReal
+  exact ⟨hlower, hupper⟩
+
+/-- The finite grid covers the entire interval `[a,b]`. -/
+theorem intervalGridIndexRange_covers_Icc
+    {a b δ : ℝ} (hδ : 0 < δ) :
+    Icc a b ⊆ ⋃ k ∈ intervalGridIndexRange a b δ, intervalGridCell a δ k := by
+  intro x hx
+  have hxgrid : x ∈ ⋃ k : ℤ, intervalGridCell a δ k := by
+    rw [iUnion_intervalGridCell a δ hδ]
+    simp
+  rcases Set.mem_iUnion.mp hxgrid with ⟨k, hk⟩
+  have hkRange : k ∈ intervalGridIndexRange a b δ :=
+    mem_intervalGridIndexRange_of_mem_cell hδ k hx hk
+  exact Set.mem_iUnion.mpr ⟨k, Set.mem_iUnion.mpr ⟨hkRange, hk⟩⟩
+
+theorem card_intervalGridIndexRange (a b δ : ℝ) :
+    (intervalGridIndexRange a b δ).card = Nat.ceil ((b - a) / δ) + 2 := by
+  simp only [intervalGridIndexRange, Int.card_Icc, Int.reduceNeg]
+  omega
+
+/-- The center of the grid cell indexed by `k`. -/
+def intervalGridCenter (a δ : ℝ) (k : ℤ) : ℝ :=
+  a + ((k : ℝ) + 1 / 2) * δ
+
+/-- The centers of the finite length-`δ` grid. -/
+noncomputable def intervalGridCenters (a b δ : ℝ) : Finset ℝ := by
+  classical
+  exact (intervalGridIndexRange a b δ).image (intervalGridCenter a δ)
+
+theorem intervalGridCell_eq_centered (a δ : ℝ) (k : ℤ) :
+    intervalGridCell a δ k =
+      Icc (intervalGridCenter a δ k - δ / 2)
+        (intervalGridCenter a δ k + δ / 2) := by
+  ext <;> simp only [intervalGridCell, intervalGridLeft, intervalGridRight,
+    intervalGridCenter, Int.cast_add, Int.cast_one] <;> ring_nf
+
+theorem card_intervalGridCenters_le (a b δ : ℝ) :
+    (intervalGridCenters a b δ).card ≤ Nat.ceil ((b - a) / δ) + 2 := by
+  calc
+    (intervalGridCenters a b δ).card ≤ (intervalGridIndexRange a b δ).card := by
+      classical
+      simpa only [intervalGridCenters] using
+        Finset.card_image_le (f := intervalGridCenter a δ) (s := intervalGridIndexRange a b δ)
+    _ = Nat.ceil ((b - a) / δ) + 2 := card_intervalGridIndexRange a b δ
+
+/-- Every set contained in `[a,b]` admits a finite cover by length-`δ`
+closed intervals, with the stated elementary cardinality bound. -/
+theorem exists_intervalCover_of_subset_Icc
+    {F : Set ℝ} {a b δ : ℝ} (hδ : 0 < δ) (_hab : a ≤ b)
+    (hF : F ⊆ Icc a b) :
+    ∃ ι : Finset ℝ, IsIntervalCover F δ ι ∧
+      (ι.card : ℝ) ≤ Nat.ceil ((b - a) / δ) + 2 := by
+  refine ⟨intervalGridCenters a b δ, ?_, ?_⟩
+  · intro x hx
+    have hxcover := intervalGridIndexRange_covers_Icc hδ (hF hx)
+    rcases Set.mem_iUnion.mp hxcover with ⟨k, hxcover⟩
+    rcases Set.mem_iUnion.mp hxcover with ⟨hkRange, hxcell⟩
+    have hkCenter : intervalGridCenter a δ k ∈ intervalGridCenters a b δ := by
+      classical
+      simp only [intervalGridCenters, Finset.mem_image]
+      exact ⟨k, hkRange, rfl⟩
+    refine Set.mem_iUnion.mpr ⟨intervalGridCenter a δ k,
+      Set.mem_iUnion.mpr ⟨hkCenter, ?_⟩⟩
+    rw [← intervalGridCell_eq_centered]
+    exact hxcell
+  · exact_mod_cast card_intervalGridCenters_le a b δ
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

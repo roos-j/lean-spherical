@@ -1,0 +1,168 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4RadialReduction
+import LeanSpherical.HarmonicAnalysis.FractalDilations.AbsoluteReassembly
+import LeanSpherical.HarmonicAnalysis.SchwartzData
+
+/-!
+# Radial smooth dyadic cutoffs
+
+The standard dyadic construction only records support and smoothness of its
+cutoff.  For the polar-coordinate calculation of the literal pair kernel it
+is useful to choose that cutoff norm-radially.  This file makes that choice
+explicit using a one-dimensional bump composed with squared Euclidean norm.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Metric Set
+open scoped ContDiff
+
+noncomputable section
+
+/-- There is a compact Schwartz low-pass cutoff which is norm-radial, equals
+one on the unit ball, vanishes outside the radius-two ball, and has norm at
+most one. -/
+theorem exists_normRadial_schwartz_frequency_cutoff_norm_le_one (d : ℕ) :
+    ∃ phi : SchwartzMap (Euclidean d) ℂ,
+      (∀ xi, ‖xi‖ ≤ 1 → phi xi = 1) ∧
+      (∀ xi, 2 ≤ ‖xi‖ → phi xi = 0) ∧
+      (∀ xi, ‖phi xi‖ ≤ 1) ∧ IsNormRadial phi := by
+  let b : ContDiffBump (0 : ℝ) := ⟨1, 4, zero_lt_one, by norm_num⟩
+  let sq : Euclidean d → ℝ := fun xi => inner ℝ xi xi
+  let g : Euclidean d → ℂ := Complex.ofRealCLM ∘ b ∘ sq
+  have hsq : ContDiff ℝ (⊤ : ℕ∞) sq := by
+    exact contDiff_id.inner ℝ contDiff_id
+  have hsq_eq (xi : Euclidean d) : sq xi = ‖xi‖ ^ 2 := by
+    dsimp only [sq]
+    exact real_inner_self_eq_norm_sq xi
+  have hsmooth : ContDiff ℝ (⊤ : ℕ∞) g := by
+    exact Complex.ofRealCLM.contDiff.comp (b.contDiff.comp hsq)
+  have hcompact : HasCompactSupport g := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean d) 3)
+    intro xi hxi
+    have hnorm : 3 < ‖xi‖ := by
+      rw [mem_closedBall, dist_zero_right] at hxi
+      exact lt_of_not_ge hxi
+    have hsq_large : 4 ≤ ‖xi‖ ^ 2 := by nlinarith [norm_nonneg xi]
+    have hdist : b.rOut ≤ dist (sq xi) (0 : ℝ) := by
+      rw [hsq_eq xi, dist_zero_right, Real.norm_eq_abs,
+        abs_of_nonneg (sq_nonneg _)]
+      simpa only [b] using hsq_large
+    change (b (sq xi) : ℂ) = 0
+    rw [b.zero_of_le_dist hdist]
+    norm_num
+  refine ⟨hcompact.toSchwartzMap hsmooth, ?_, ?_, ?_, ?_⟩
+  · intro xi hxi
+    have hsq_small : ‖xi‖ ^ 2 ≤ 1 := by nlinarith [norm_nonneg xi]
+    have hmem : sq xi ∈ closedBall (0 : ℝ) b.rIn := by
+      rw [hsq_eq xi, mem_closedBall, dist_zero_right, Real.norm_eq_abs,
+        abs_of_nonneg (sq_nonneg _)]
+      simpa only [b] using hsq_small
+    change (b (sq xi) : ℂ) = 1
+    rw [b.one_of_mem_closedBall hmem]
+    norm_num
+  · intro xi hxi
+    have hsq_large : 4 ≤ ‖xi‖ ^ 2 := by nlinarith [norm_nonneg xi]
+    have hdist : b.rOut ≤ dist (sq xi) (0 : ℝ) := by
+      rw [hsq_eq xi, dist_zero_right, Real.norm_eq_abs,
+        abs_of_nonneg (sq_nonneg _)]
+      simpa only [b] using hsq_large
+    change (b (sq xi) : ℂ) = 0
+    rw [b.zero_of_le_dist hdist]
+    norm_num
+  · intro xi
+    change ‖(b (sq xi) : ℂ)‖ ≤ 1
+    rw [Complex.norm_real, Real.norm_of_nonneg (ContDiffBump.nonneg' b _)]
+    exact ContDiffBump.le_one b
+  · intro xi eta hxi_eta
+    change (b (sq xi) : ℂ) = b (sq eta)
+    congr 1
+    rw [hsq_eq xi, hsq_eq eta, hxi_eta]
+
+/-- A single norm-radial low-pass cutoff can be used simultaneously by the
+absolute Minkowski (`Q₂`/`Q₃`) and clustered (`Q₄`) arguments.  Besides the
+radiality needed by the latter, this records the scale-zero annulus required
+by the former, so all high-frequency estimates below concern the literal
+same family `absoluteDyadicBandpass phi ... j`. -/
+theorem exists_normRadial_smooth_absolute_dyadic_bandpass_family
+    (d : ℕ) :
+    ∃ (phi psi : SchwartzMap (Euclidean d) ℂ),
+      (∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1) ∧
+      (∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0) ∧
+      (∀ ξ, ‖phi ξ‖ ≤ 1) ∧ IsNormRadial phi ∧
+      (∀ η : Euclidean d,
+        psi η = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • η) -
+          phi (((2 : ℝ) ^ 0)⁻¹ • η)) ∧
+      ∀ j : ℕ, ∃ ψj : SchwartzMap (Euclidean d) ℂ,
+        (∀ ξ : Euclidean d,
+          ψj ξ = phi (((2 : ℝ) ^ (j + 1))⁻¹ • ξ) -
+            phi (((2 : ℝ) ^ j)⁻¹ • ξ)) ∧
+        HasCompactSupport (ψj : Euclidean d → ℂ) ∧
+        (∀ ξ : Euclidean d,
+          ψj ξ = psi ((LeanSpherical.HarmonicAnalysis.dyadicScale j)⁻¹ • ξ)) := by
+  obtain ⟨phi, hphiOne, hphiZero, hphiNorm, hphiRadial⟩ :=
+    exists_normRadial_schwartz_frequency_cutoff_norm_le_one d
+  obtain ⟨psi, hpsi⟩ := exists_schwartzMap_smooth_dyadic_bandpass phi 0
+  refine ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, ?_⟩
+  intro j
+  obtain ⟨ψj, hψj, hψjCompact, _⟩ :=
+    exists_compactlySupported_schwartzMap_smooth_dyadic_bandpass
+      phi hphiOne hphiZero j
+  refine ⟨ψj, hψj, hψjCompact, ?_⟩
+  intro ξ
+  simpa only [LeanSpherical.HarmonicAnalysis.dyadicScale] using
+    smooth_dyadic_bandpass_eq_scaled_base phi psi ψj hpsi j hψj ξ
+
+/-- The difference of two dyadic dilates of a norm-radial cutoff is still
+norm-radial.  This produces a literal compact radial bandpass for the polar
+`Q4` pair-kernel reduction. -/
+theorem exists_normRadial_compact_smooth_dyadic_bandpass
+    {d : ℕ} (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_radial : IsNormRadial phi) (j : ℕ) :
+    ∃ psi : SchwartzMap (Euclidean d) ℂ,
+      (∀ xi : Euclidean d,
+        psi xi = phi (((2 : ℝ) ^ (j + 1))⁻¹ • xi) -
+          phi (((2 : ℝ) ^ j)⁻¹ • xi)) ∧
+      HasCompactSupport (psi : Euclidean d → ℂ) ∧ IsNormRadial psi := by
+  obtain ⟨psi, hpsi, hcompact, _hsmall⟩ :=
+    exists_compactlySupported_schwartzMap_smooth_dyadic_bandpass
+      phi hphi_one hphi_zero j
+  refine ⟨psi, hpsi, hcompact, ?_⟩
+  intro xi eta hxi_eta
+  rw [hpsi xi, hpsi eta]
+  have hscale (n : ℕ) : ‖((2 : ℝ) ^ n)⁻¹ • xi‖ =
+      ‖((2 : ℝ) ^ n)⁻¹ • eta‖ := by
+    rw [norm_smul, norm_smul]
+    exact congrArg (fun u : ℝ => |((2 : ℝ) ^ n)⁻¹| * u) hxi_eta
+  rw [hphi_radial (hscale (j + 1)), hphi_radial (hscale j)]
+
+/-- The canonical compact representative used by absolute-frequency
+reassembly is norm-radial whenever its low-pass cutoff is norm-radial.  Thus
+the polar kernel calculation concerns the literal bandpass that appears in
+the final maximal-function decomposition, rather than an auxiliary annulus.
+-/
+theorem isNormRadial_absoluteDyadicBandpass
+    {d : ℕ} (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiRadial : IsNormRadial phi) (j : ℕ) :
+    IsNormRadial (absoluteDyadicBandpass phi hphiOne hphiZero j) := by
+  intro xi eta hxi_eta
+  rw [absoluteDyadicBandpass_spec phi hphiOne hphiZero j xi,
+    absoluteDyadicBandpass_spec phi hphiOne hphiZero j eta]
+  have hscale (n : ℕ) :
+      ‖((2 : ℝ) ^ n)⁻¹ • xi‖ = ‖((2 : ℝ) ^ n)⁻¹ • eta‖ := by
+    rw [norm_smul, norm_smul]
+    exact congrArg (fun u : ℝ => |((2 : ℝ) ^ n)⁻¹| * u) hxi_eta
+  rw [hphiRadial (hscale (j + 1)), hphiRadial (hscale j)]
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

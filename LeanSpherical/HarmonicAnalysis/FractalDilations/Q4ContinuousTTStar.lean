@@ -1,0 +1,591 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4Assembly
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4BilinearInterpolation
+import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4PairComposition
+import LeanSpherical.HarmonicAnalysis.FractalDilations.ActiveDyadicCellCovering
+
+/-!
+# Continuous bilinear endpoints for the `Q4` shell operator
+
+This file turns the literal finite sampled-radius convolution shell from
+`Q4TTStar` into a genuine bilinear form on measurable functions.  It is the
+continuous version of the `L¹ -> L∞` half of the `TT*` calculation in
+Section 3 of Anderson--Hughes--Roos--Seeger.  In particular, it does not
+replace the shell by an abstract finite matrix: the operator occurring below
+is exactly `q4KernelTTStarShell`.
+
+The stationary-phase estimate for the concrete spherical pair kernel is a
+separate analytic input.  Once supplied, `norm_q4KernelTTStarBilinear_le_of_bound`
+packages it as the required `L¹ × L¹` estimate.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory FourierTransform
+open scoped BigOperators Convolution FourierTransform
+
+noncomputable section
+
+/-- The bilinear pairing of a finite sampled-radius kernel shell with a
+second finite family of test functions.  Complex conjugation is implemented
+by `starRingEnd`; only its norm preservation is used by the endpoint below. -/
+def q4KernelTTStarBilinear
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (K : ι → ι → X → ℂ) (g h : ι → X → ℂ) : ℂ :=
+  ∑ i ∈ s, ∫ x, q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x) ∂μ
+
+/-- The pairwise kernel operator agrees with the usual convolution when the
+underlying space is Euclidean and the measure is Lebesgue volume.  This is
+the exact bridge between `q4PairwiseKernelApply` and the convolution formula
+for `q4DyadicPairPiece` proved in `Q4PairComposition`. -/
+theorem q4PairwiseKernelApply_eq_convolution
+    {d : ℕ} {ι : Type*} (K : ι → ι → Euclidean d → ℂ)
+    (i j : ι) (f : Euclidean d → ℂ) (x : Euclidean d) :
+    q4PairwiseKernelApply volume K i j f x =
+      ((K i j) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] f) x := by
+  unfold q4PairwiseKernelApply
+  rw [convolution_mul_swap]
+
+/-- Any convolution realization of a dyadic pair piece is equivalently a
+`q4PairwiseKernelApply` realization.  The preceding
+`exists_q4DyadicPairPiece_eq_convolution` supplies the premise for the
+compact Schwartz multiplier associated to every pair of sampled radii. -/
+theorem q4DyadicPairPiece_eq_q4PairwiseKernelApply_of_convolution
+    {d : ℕ} (ψ f : SchwartzMap (Euclidean d) ℂ) (r r' : ℝ)
+    (k : Euclidean d → ℂ)
+    (hconv : ∀ x : Euclidean d,
+      q4DyadicPairPiece ψ f r r' x =
+        (k ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+          (f : Euclidean d → ℂ)) x) (x : Euclidean d) :
+    q4DyadicPairPiece ψ f r r' x =
+      q4PairwiseKernelApply volume (fun (_ _ : Unit) => k) () ()
+        (f : Euclidean d → ℂ) x := by
+  rw [hconv x, q4PairwiseKernelApply_eq_convolution]
+
+/-- The compactly localized dyadic pair piece has a literal pairwise-kernel
+realization.  This combines the Fourier/convolution construction already
+available for Schwartz multipliers with the preceding change-of-variables
+identity.  The only estimate still needed for the `Q4` argument is the
+stationary-phase bound on this displayed kernel. -/
+theorem exists_q4DyadicPairPiece_eq_q4PairwiseKernelApply
+    {d : ℕ} (ψ f : SchwartzMap (Euclidean d) ℂ)
+    (hψcompact : HasCompactSupport (ψ : Euclidean d → ℂ)) (r r' : ℝ) :
+    ∃ m : SchwartzMap (Euclidean d) ℂ,
+      (∀ ξ : Euclidean d, m ξ = q4DyadicPairMultiplier ψ r r' ξ) ∧
+      ∀ x : Euclidean d,
+        q4DyadicPairPiece ψ f r r' x =
+          q4PairwiseKernelApply volume
+            (fun (_ _ : Unit) => ((𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) :
+              Euclidean d → ℂ)) () () (f : Euclidean d → ℂ) x := by
+  rcases exists_q4DyadicPairPiece_eq_convolution ψ f hψcompact r r' with
+    ⟨m, hm, hconv⟩
+  refine ⟨m, hm, ?_⟩
+  intro x
+  exact q4DyadicPairPiece_eq_q4PairwiseKernelApply_of_convolution ψ f r r'
+    ((𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) hconv x
+
+/-- The pointwise kernel estimate for a continuous shell implies its genuine
+bilinear `L¹ × L¹` estimate.  The explicit integrability hypothesis on the
+pairing keeps this lemma usable for arbitrary measurable kernels; it is
+automatic for the compact smooth kernels arising from the dyadic spherical
+pieces.
+
+The conclusion is the continuous `L¹ -> L∞` endpoint used before the
+radius-gap counting estimate in the `TT*` argument. -/
+theorem norm_q4KernelTTStarBilinear_le_of_bound
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (K : ι → ι → X → ℂ) (g h : ι → X → ℂ) {A : ℝ} (hA : 0 ≤ A)
+    (hg : ∀ j ∈ s, Integrable (g j) μ)
+    (hh : ∀ i ∈ s, Integrable (h i) μ)
+    (hmeas : ∀ i j x, AEStronglyMeasurable
+      (fun y => K i j (x - y) * g j y) μ)
+    (hkernel : ∀ i j z, ‖K i j z‖ ≤ A)
+    (hpair : ∀ i ∈ s, Integrable (fun x =>
+      q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x)) μ) :
+    ‖q4KernelTTStarBilinear μ s R K g h‖ ≤
+      A * (∑ j ∈ s, ∫ y, ‖g j y‖ ∂μ) *
+        (∑ i ∈ s, ∫ x, ‖h i x‖ ∂μ) := by
+  let G : ℝ := ∑ j ∈ s, ∫ y, ‖g j y‖ ∂μ
+  have hGpoint (i : ι) (x : X) :
+      ‖q4KernelTTStarShell μ s R K g i x‖ ≤ A * G := by
+    simpa only [G] using
+      norm_q4KernelTTStarShell_le_of_bound μ s R K g hA hg hmeas hkernel i x
+  have hmajor (i : ι) (hi : i ∈ s) :
+      Integrable (fun x => (A * G) * ‖h i x‖) μ :=
+    (hh i hi).norm.const_mul (A * G)
+  unfold q4KernelTTStarBilinear
+  calc
+    ‖∑ i ∈ s, ∫ x,
+        q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x) ∂μ‖ ≤
+        ∑ i ∈ s, ‖∫ x,
+          q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x) ∂μ‖ :=
+      norm_sum_le _ _
+    _ ≤ ∑ i ∈ s, ∫ x,
+        ‖q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x)‖ ∂μ := by
+      apply Finset.sum_le_sum
+      intro i hi
+      exact norm_integral_le_integral_norm _
+    _ ≤ ∑ i ∈ s, ∫ x, (A * G) * ‖h i x‖ ∂μ := by
+      apply Finset.sum_le_sum
+      intro i hi
+      apply integral_mono (hpair i hi).norm (hmajor i hi)
+      intro x
+      change ‖q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x)‖ ≤
+        (A * G) * ‖h i x‖
+      rw [norm_mul, starRingEnd_apply, norm_star]
+      exact mul_le_mul_of_nonneg_right (hGpoint i x) (norm_nonneg _)
+    _ = A * G * (∑ i ∈ s, ∫ x, ‖h i x‖ ∂μ) := by
+      rw [show (∑ i ∈ s, ∫ x, (A * G) * ‖h i x‖ ∂μ) =
+          ∑ i ∈ s, (A * G) * ∫ x, ‖h i x‖ ∂μ by
+        apply Finset.sum_congr rfl
+        intro i hi
+        rw [integral_const_mul]]
+      rw [← Finset.mul_sum s (fun i => ∫ x, ‖h i x‖ ∂μ) (A * G)]
+    _ = A * (∑ j ∈ s, ∫ y, ‖g j y‖ ∂μ) *
+          (∑ i ∈ s, ∫ x, ‖h i x‖ ∂μ) := by
+      rfl
+
+/-- The squared `L²` energy of a finite family of complex-valued functions.
+The counting measure in the sampled-radius variable is represented by the
+finite sum. -/
+def q4FibreL2Energy
+    {ι X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (f : ι → X → ℂ) : ℝ :=
+  ∑ i ∈ s, ∫ x, ‖f i x‖ ^ 2 ∂μ
+
+/-- At exponent two, the real-valued `lpNorm` is the square root of the
+integral of the squared pointwise norm.  Keeping this conversion explicit is
+useful when the finite sampled-radius combinatorics is formulated using the
+triangle inequality for `lpNorm`. -/
+theorem lpNorm_two_eq_sqrt_integral_norm_sq
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (f : X → ℂ)
+    (hf : AEStronglyMeasurable f μ) :
+    lpNorm f 2 μ = √(∫ x, ‖f x‖ ^ 2 ∂μ) := by
+  rw [lpNorm_eq_integral_norm_rpow_toReal (by norm_num) (by simp) hf]
+  norm_num [Real.sqrt_eq_rpow]
+
+/-- The square of the fibrewise `L²` norm, summed over a finite sampled set
+of radii.  This is equivalent to `q4FibreL2Energy` when every fibre belongs
+to `L²`; it is convenient because Minkowski's inequality is already exposed
+by Mathlib for `lpNorm`. -/
+def q4FibreLpNormSq
+    {ι X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (f : ι → X → ℂ) : ℝ :=
+  ∑ i ∈ s, (lpNorm (f i) 2 μ) ^ 2
+
+/-- On an `L²` family the two finite-fibre energy presentations agree. -/
+theorem q4FibreLpNormSq_eq_q4FibreL2Energy
+    {ι X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (f : ι → X → ℂ)
+    (hmem : ∀ i ∈ s, MemLp (f i) 2 μ) :
+    q4FibreLpNormSq μ s f = q4FibreL2Energy μ s f := by
+  unfold q4FibreLpNormSq q4FibreL2Energy
+  apply Finset.sum_congr rfl
+  intro i hi
+  rw [lpNorm_two_eq_sqrt_integral_norm_sq μ (f i)
+    (hmem i hi).aestronglyMeasurable]
+  exact Real.sq_sqrt (integral_nonneg fun x => sq_nonneg _)
+
+/-- The finite radius-neighbour `TT*` counting argument for the literal
+continuous kernel shell, expressed in fibrewise `L²` norms.  The hypotheses
+are precisely a uniform pairwise `L² -> L²` estimate and the symmetric
+degree estimate for the radius-gap relation.  Thus this lemma connects the
+abstract finite `TT*` combinatorics to a real measurable operator, rather
+than merely to a formal matrix.
+
+The kernel is arbitrary here; in the spherical application the pairwise
+estimate comes from Plancherel for the compact dyadic pair multiplier. -/
+theorem q4FibreLpNormSq_kernelShell_le_of_pairwise_bound
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (hR : Std.Symm R) (D : ℝ) (hD : 0 ≤ D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : ℝ) ≤ D)
+    (K : ι → ι → X → ℂ) (g : ι → X → ℂ) {B : ℝ} (hB : 0 ≤ B)
+    (hpairmem : ∀ i j,
+      MemLp (q4PairwiseKernelApply μ K i j (g j)) 2 μ)
+    (hpair : ∀ i j,
+      lpNorm (q4PairwiseKernelApply μ K i j (g j)) 2 μ ≤
+        B * lpNorm (g j) 2 μ) :
+    q4FibreLpNormSq μ s (q4KernelTTStarShell μ s R K g) ≤
+      (B * D) ^ 2 * q4FibreLpNormSq μ s g := by
+  have hpoint (i : ι) (hi : i ∈ s) :
+      (lpNorm (q4KernelTTStarShell μ s R K g i) 2 μ) ^ 2 ≤
+        (∑ j ∈ s.filter (R i), B * lpNorm (g j) 2 μ) ^ 2 := by
+    apply (sq_le_sq₀ (lpNorm_nonneg) (Finset.sum_nonneg fun j hj =>
+      mul_nonneg hB lpNorm_nonneg)).mpr
+    unfold q4KernelTTStarShell
+    have hsumfun :
+        (fun x => ∑ j ∈ s.filter (R i),
+          q4PairwiseKernelApply μ K i j (g j) x) =
+          ∑ j ∈ s.filter (R i), q4PairwiseKernelApply μ K i j (g j) := by
+      rw [Finset.sum_fn]
+    rw [hsumfun]
+    calc
+      lpNorm (∑ j ∈ s.filter (R i),
+          q4PairwiseKernelApply μ K i j (g j)) 2 μ ≤
+          ∑ j ∈ s.filter (R i),
+            lpNorm (q4PairwiseKernelApply μ K i j (g j)) 2 μ := by
+        apply lpNorm_sum_le
+        · intro j hj
+          exact hpairmem i j
+        · norm_num
+      _ ≤ ∑ j ∈ s.filter (R i), B * lpNorm (g j) 2 μ := by
+        exact Finset.sum_le_sum fun j hj => hpair i j
+  calc
+    q4FibreLpNormSq μ s (q4KernelTTStarShell μ s R K g) =
+        ∑ i ∈ s, (lpNorm (q4KernelTTStarShell μ s R K g i) 2 μ) ^ 2 := rfl
+    _ ≤ ∑ i ∈ s,
+        (∑ j ∈ s.filter (R i), B * lpNorm (g j) 2 μ) ^ 2 := by
+      exact Finset.sum_le_sum fun i hi => hpoint i hi
+    _ ≤ D ^ 2 * ∑ i ∈ s, (B * lpNorm (g i) 2 μ) ^ 2 :=
+      sum_sq_neighbor_sum_le_of_real_degree s R hR D hD hdegree
+        (fun i => B * lpNorm (g i) 2 μ)
+    _ = (B * D) ^ 2 * q4FibreLpNormSq μ s g := by
+      unfold q4FibreLpNormSq
+      rw [show (∑ i ∈ s, (B * lpNorm (g i) 2 μ) ^ 2) =
+          B ^ 2 * ∑ i ∈ s, (lpNorm (g i) 2 μ) ^ 2 by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro i hi
+        ring]
+      ring
+
+/-- Relation-restricted form of the finite-fibre `L²` shell estimate.  A
+gap-shell argument only controls pair operators on pairs belonging to its
+relation, and the finite sum never invokes any other pair.  Keeping that
+locality in the hypotheses is essential for the dyadic gap decomposition. -/
+theorem q4FibreLpNormSq_kernelShell_le_of_pairwise_bound_on_relation
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (hR : Std.Symm R) (D : ℝ) (hD : 0 ≤ D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : ℝ) ≤ D)
+    (K : ι → ι → X → ℂ) (g : ι → X → ℂ) {B : ℝ} (hB : 0 ≤ B)
+    (hpairmem : ∀ i j, R i j →
+      MemLp (q4PairwiseKernelApply μ K i j (g j)) 2 μ)
+    (hpair : ∀ i j, R i j →
+      lpNorm (q4PairwiseKernelApply μ K i j (g j)) 2 μ ≤
+        B * lpNorm (g j) 2 μ) :
+    q4FibreLpNormSq μ s (q4KernelTTStarShell μ s R K g) ≤
+      (B * D) ^ 2 * q4FibreLpNormSq μ s g := by
+  have hpoint (i : ι) (hi : i ∈ s) :
+      (lpNorm (q4KernelTTStarShell μ s R K g i) 2 μ) ^ 2 ≤
+        (∑ j ∈ s.filter (R i), B * lpNorm (g j) 2 μ) ^ 2 := by
+    apply (sq_le_sq₀ (lpNorm_nonneg) (Finset.sum_nonneg fun j hj =>
+      mul_nonneg hB lpNorm_nonneg)).mpr
+    unfold q4KernelTTStarShell
+    have hsumfun :
+        (fun x => ∑ j ∈ s.filter (R i),
+          q4PairwiseKernelApply μ K i j (g j) x) =
+          ∑ j ∈ s.filter (R i), q4PairwiseKernelApply μ K i j (g j) := by
+      rw [Finset.sum_fn]
+    rw [hsumfun]
+    calc
+      lpNorm (∑ j ∈ s.filter (R i),
+          q4PairwiseKernelApply μ K i j (g j)) 2 μ ≤
+          ∑ j ∈ s.filter (R i),
+            lpNorm (q4PairwiseKernelApply μ K i j (g j)) 2 μ := by
+        apply lpNorm_sum_le
+        · intro j hj
+          exact hpairmem i j (Finset.mem_filter.mp hj).2
+        · norm_num
+      _ ≤ ∑ j ∈ s.filter (R i), B * lpNorm (g j) 2 μ := by
+        exact Finset.sum_le_sum fun j hj =>
+          hpair i j (Finset.mem_filter.mp hj).2
+  calc
+    q4FibreLpNormSq μ s (q4KernelTTStarShell μ s R K g) =
+        ∑ i ∈ s, (lpNorm (q4KernelTTStarShell μ s R K g i) 2 μ) ^ 2 := rfl
+    _ ≤ ∑ i ∈ s,
+        (∑ j ∈ s.filter (R i), B * lpNorm (g j) 2 μ) ^ 2 := by
+      exact Finset.sum_le_sum fun i hi => hpoint i hi
+    _ ≤ D ^ 2 * ∑ i ∈ s, (B * lpNorm (g i) 2 μ) ^ 2 :=
+      sum_sq_neighbor_sum_le_of_real_degree s R hR D hD hdegree
+        (fun i => B * lpNorm (g i) 2 μ)
+    _ = (B * D) ^ 2 * q4FibreLpNormSq μ s g := by
+      unfold q4FibreLpNormSq
+      rw [show (∑ i ∈ s, (B * lpNorm (g i) 2 μ) ^ 2) =
+          B ^ 2 * ∑ i ∈ s, (lpNorm (g i) 2 μ) ^ 2 by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro i hi
+        ring]
+      ring
+
+/-- The preceding continuous shell estimate in the integral-energy form used
+by `norm_q4KernelTTStarBilinear_le_of_l2_energy`. -/
+theorem q4FibreL2Energy_kernelShell_le_of_pairwise_bound
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (hR : Std.Symm R) (D : ℝ) (hD : 0 ≤ D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : ℝ) ≤ D)
+    (K : ι → ι → X → ℂ) (g : ι → X → ℂ) {B : ℝ} (hB : 0 ≤ B)
+    (hg : ∀ i ∈ s, MemLp (g i) 2 μ)
+    (hpairmem : ∀ i j,
+      MemLp (q4PairwiseKernelApply μ K i j (g j)) 2 μ)
+    (hpair : ∀ i j,
+      lpNorm (q4PairwiseKernelApply μ K i j (g j)) 2 μ ≤
+        B * lpNorm (g j) 2 μ) :
+    q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g) ≤
+      (B * D) ^ 2 * q4FibreL2Energy μ s g := by
+  have hshellmem (i : ι) (hi : i ∈ s) :
+      MemLp (q4KernelTTStarShell μ s R K g i) 2 μ := by
+    unfold q4KernelTTStarShell
+    exact
+      (memLp_finsetSum (μ := μ) (p := 2) (s.filter (R i))
+        (f := fun j => q4PairwiseKernelApply μ K i j (g j))
+        (fun j hj => hpairmem i j))
+  rw [← q4FibreLpNormSq_eq_q4FibreL2Energy μ s
+    (q4KernelTTStarShell μ s R K g) hshellmem,
+    ← q4FibreLpNormSq_eq_q4FibreL2Energy μ s g hg]
+  exact q4FibreLpNormSq_kernelShell_le_of_pairwise_bound μ s R hR D hD
+    hdegree K g hB hpairmem hpair
+
+/-- Relation-restricted integral-energy form of the continuous finite-shell
+estimate.  A dyadic gap shell controls its pair operators only on its
+relation, and this theorem preserves that locality through the energy bound. -/
+theorem q4FibreL2Energy_kernelShell_le_of_pairwise_bound_on_relation
+    {I X : Type*} [Sub X] [MeasurableSpace X]
+    (m : Measure X) (s : Finset I) (R : I -> I -> Prop) [DecidableRel R]
+    (hR : Std.Symm R) (D : ℝ) (hD : 0 ≤ D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : ℝ) ≤ D)
+    (K : I -> I -> X -> ℂ) (g : I -> X -> ℂ) {B : ℝ} (hB : 0 ≤ B)
+    (hg : ∀ i ∈ s, MemLp (g i) 2 m)
+    (hpairmem : ∀ i l, R i l ->
+      MemLp (q4PairwiseKernelApply m K i l (g l)) 2 m)
+    (hpair : ∀ i l, R i l ->
+      lpNorm (q4PairwiseKernelApply m K i l (g l)) 2 m ≤
+        B * lpNorm (g l) 2 m) :
+    q4FibreL2Energy m s (q4KernelTTStarShell m s R K g) ≤
+      (B * D) ^ 2 * q4FibreL2Energy m s g := by
+  have hshellmem (i : I) (hi : i ∈ s) :
+      MemLp (q4KernelTTStarShell m s R K g i) 2 m := by
+    unfold q4KernelTTStarShell
+    exact
+      (memLp_finsetSum (μ := m) (p := 2) (s.filter (R i))
+        (f := fun l => q4PairwiseKernelApply m K i l (g l))
+        (fun l hl => hpairmem i l (Finset.mem_filter.mp hl).2))
+  rw [← q4FibreLpNormSq_eq_q4FibreL2Energy m s
+    (q4KernelTTStarShell m s R K g) hshellmem,
+    ← q4FibreLpNormSq_eq_q4FibreL2Energy m s g hg]
+  exact q4FibreLpNormSq_kernelShell_le_of_pairwise_bound_on_relation
+    m s R hR D hD hdegree K g hB hpairmem hpair
+
+/-- The literal continuous kernel shell on active dyadic cells.  The
+decidability of the radius-gap relation is kept internal, as it is for the
+finite-vector shell in `ActiveDyadicCellCovering`. -/
+noncomputable def q4ActiveDyadicKernelTTStarShell
+    (E : Set ℝ) (j : ℕ) (u L : ℝ)
+    {X : Type*} [Sub X] [MeasurableSpace X] (μ : Measure X)
+    (K : ℤ → ℤ → X → ℂ) (g : ℤ → X → ℂ) : ℤ → X → ℂ := by
+  classical
+  exact q4KernelTTStarShell μ (activeDyadicIndices E j)
+    (fun i l => radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l)) K g
+
+/-- The continuous kernel-shell `L²` estimate specialized to the active
+dyadic cells of a radius set.  This is the measurable-operator version of
+the paper's radius-gap counting step: unlike a separated-sample formulation,
+it uses the actual left endpoints of cells meeting `E` and does not pretend
+that those endpoints lie in `E`. -/
+theorem q4FibreL2Energy_activeDyadicKernelShell_le_of_pairwise_bound
+    {E : Set ℝ} {γ η C u L : ℝ} {j : ℕ}
+    (hE : E ⊆ Set.Icc (1 : ℝ) 2)
+    (hcover : HasSubpowerAssouadCoverBound E γ η C)
+    (hC : 0 ≤ C) (hγ : 0 ≤ γ)
+    (hδone : dyadicScale j < 1) (hL : 0 ≤ L)
+    {X : Type*} [Sub X] [MeasurableSpace X] (μ : Measure X)
+    (K : ℤ → ℤ → X → ℂ) (g : ℤ → X → ℂ) {B : ℝ} (hB : 0 ≤ B)
+    (hg : ∀ i ∈ activeDyadicIndices E j, MemLp (g i) 2 μ)
+    (hpairmem : ∀ i l,
+      MemLp (q4PairwiseKernelApply μ K i l (g l)) 2 μ)
+    (hpair : ∀ i l,
+      lpNorm (q4PairwiseKernelApply μ K i l (g l)) 2 μ ≤
+        B * lpNorm (g l) 2 μ) :
+    q4FibreL2Energy μ (activeDyadicIndices E j)
+      (q4ActiveDyadicKernelTTStarShell E j u L μ K g) ≤
+      (B * (6 * C * (dyadicScale j) ^ (-η) *
+        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ)) ^ 2 *
+        q4FibreL2Energy μ (activeDyadicIndices E j) g := by
+  classical
+  let D : ℝ := 6 * C * (dyadicScale j) ^ (-η) *
+    ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ
+  have hδ : 0 < dyadicScale j := dyadicScale_pos j
+  have hratio : 0 ≤ (2 * (L + dyadicScale j)) / dyadicScale j := by
+    apply div_nonneg
+    · exact mul_nonneg (by norm_num) (add_nonneg hL hδ.le)
+    · exact hδ.le
+  have hD : 0 ≤ D := by
+    dsimp [D]
+    exact mul_nonneg
+      (mul_nonneg (mul_nonneg (by norm_num) hC)
+        (Real.rpow_nonneg hδ.le _))
+      (Real.rpow_nonneg hratio _)
+  have hR : Std.Symm (fun i l : ℤ =>
+      radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l)) := by
+    constructor
+    intro i l hil
+    exact (radiusGapShellNeighbors_symm u L).symm _ _ hil
+  have hdegree (i : ℤ) (hi : i ∈ activeDyadicIndices E j) :
+      (((activeDyadicIndices E j).filter
+        (fun l => radiusGapShellNeighbors u L
+          (dyadicLeft j i) (dyadicLeft j l))).card : ℝ) ≤ D := by
+    change ((activeDyadicRadiusGapNeighbors E j u L i).card : ℝ) ≤ D
+    simpa only [D] using
+      activeDyadicRadiusGapNeighbors_card_le_of_hasSubpowerAssouadCoverBound
+        hE hcover hC hγ hδone hL hi
+  change q4FibreL2Energy μ (activeDyadicIndices E j)
+      (q4KernelTTStarShell μ (activeDyadicIndices E j)
+        (fun i l => radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l)) K g) ≤
+      (B * D) ^ 2 * q4FibreL2Energy μ (activeDyadicIndices E j) g
+  exact q4FibreL2Energy_kernelShell_le_of_pairwise_bound
+    μ (activeDyadicIndices E j)
+    (fun i l => radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l))
+    hR D hD hdegree K g hB hg hpairmem hpair
+
+/-- A finite-fibre `L²` energy estimate for the literal kernel shell gives a
+bilinear `L² × L²` estimate.  This is the continuous Cauchy--Schwarz step
+which follows the radius-neighbour counting bound in (3.10).  It is stated
+separately from the combinatorial estimate so that an analytic realization of
+the pair operators can supply `henergy` directly.
+
+Unlike the `L¹ × L¹` endpoint, no pointwise kernel estimate is used here. -/
+theorem norm_q4KernelTTStarBilinear_le_of_l2_energy
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (K : ι → ι → X → ℂ) (g h : ι → X → ℂ) {C : ℝ} (hC : 0 ≤ C)
+    (houtput : ∀ i ∈ s,
+      MemLp (q4KernelTTStarShell μ s R K g i) 2 μ)
+    (hh : ∀ i ∈ s, MemLp (h i) 2 μ)
+    (henergy :
+      q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g) ≤
+        C ^ 2 * q4FibreL2Energy μ s g) :
+    ‖q4KernelTTStarBilinear μ s R K g h‖ ≤
+      C * √(q4FibreL2Energy μ s g) * √(q4FibreL2Energy μ s h) := by
+  have henergy_nonneg (f : ι → X → ℂ) : 0 ≤ q4FibreL2Energy μ s f := by
+    unfold q4FibreL2Energy
+    exact Finset.sum_nonneg fun i hi => integral_nonneg fun x => sq_nonneg _
+  have hholder (i : ι) (hi : i ∈ s) :
+      (∫ x, ‖q4KernelTTStarShell μ s R K g i x‖ * ‖h i x‖ ∂μ) ≤
+        √(∫ x, ‖q4KernelTTStarShell μ s R K g i x‖ ^ 2 ∂μ) *
+          √(∫ x, ‖h i x‖ ^ 2 ∂μ) := by
+    simpa [Real.sqrt_eq_rpow] using
+      (integral_mul_norm_le_Lp_mul_Lq
+        (μ := μ) (f := q4KernelTTStarShell μ s R K g i) (g := h i)
+        (p := 2) (q := 2)
+        (by norm_num [Real.holderConjugate_iff])
+        (by simpa using houtput i hi) (by simpa using hh i hi))
+  have hfibre_cauchy :
+      (∑ i ∈ s,
+        √(∫ x, ‖q4KernelTTStarShell μ s R K g i x‖ ^ 2 ∂μ) *
+          √(∫ x, ‖h i x‖ ^ 2 ∂μ)) ≤
+        √(q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g)) *
+          √(q4FibreL2Energy μ s h) := by
+    simpa only [q4FibreL2Energy] using
+      (Real.sum_sqrt_mul_sqrt_le
+        (f := fun i => ∫ x, ‖q4KernelTTStarShell μ s R K g i x‖ ^ 2 ∂μ)
+        (g := fun i => ∫ x, ‖h i x‖ ^ 2 ∂μ) s
+        (fun i => integral_nonneg fun x => sq_nonneg _)
+        (fun i => integral_nonneg fun x => sq_nonneg _))
+  have henergy_sqrt :
+      √(q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g)) ≤
+        C * √(q4FibreL2Energy μ s g) := by
+    calc
+      √(q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g)) ≤
+          √(C ^ 2 * q4FibreL2Energy μ s g) :=
+        Real.sqrt_le_sqrt henergy
+      _ = C * √(q4FibreL2Energy μ s g) := by
+        rw [Real.sqrt_mul (sq_nonneg C), Real.sqrt_sq_eq_abs,
+          abs_of_nonneg hC]
+  unfold q4KernelTTStarBilinear
+  calc
+    ‖∑ i ∈ s, ∫ x,
+        q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x) ∂μ‖ ≤
+        ∑ i ∈ s, ‖∫ x,
+          q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x) ∂μ‖ :=
+      norm_sum_le _ _
+    _ ≤ ∑ i ∈ s, ∫ x,
+        ‖q4KernelTTStarShell μ s R K g i x‖ * ‖h i x‖ ∂μ := by
+      apply Finset.sum_le_sum
+      intro i hi
+      calc
+        ‖∫ x,
+            q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x) ∂μ‖ ≤
+            ∫ x, ‖q4KernelTTStarShell μ s R K g i x *
+              starRingEnd ℂ (h i x)‖ ∂μ :=
+          norm_integral_le_integral_norm _
+        _ = ∫ x, ‖q4KernelTTStarShell μ s R K g i x‖ * ‖h i x‖ ∂μ := by
+          apply integral_congr_ae
+          filter_upwards with x
+          rw [norm_mul, starRingEnd_apply, norm_star]
+    _ ≤ ∑ i ∈ s,
+        √(∫ x, ‖q4KernelTTStarShell μ s R K g i x‖ ^ 2 ∂μ) *
+          √(∫ x, ‖h i x‖ ^ 2 ∂μ) := by
+      exact Finset.sum_le_sum fun i hi => hholder i hi
+    _ ≤ √(q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g)) *
+          √(q4FibreL2Energy μ s h) := hfibre_cauchy
+    _ ≤ (C * √(q4FibreL2Energy μ s g) *
+          √(q4FibreL2Energy μ s h)) := by
+      exact mul_le_mul_of_nonneg_right henergy_sqrt
+        (Real.sqrt_nonneg _)
+
+/-- Interpolate the two *continuous* `TT*` endpoints for a fixed shell.
+The conclusion is a real-function bilinear estimate with the two endpoint
+size functionals mixed by the usual geometric mean.  It is the faithful
+restricted interpolation calculation before one performs the additional
+simple-function/Lorentz summation needed to state a global off-diagonal
+strong-type theorem.
+
+This result deliberately does not invoke an aligned Marcinkiewicz theorem:
+the endpoints are the crossed `L¹ -> L∞` and `L² -> L²` estimates occurring
+in the paper. -/
+theorem norm_q4KernelTTStarBilinear_le_interpolate_endpoints
+    {ι X : Type*} [Sub X] [MeasurableSpace X]
+    (μ : Measure X) (s : Finset ι) (R : ι → ι → Prop) [DecidableRel R]
+    (K : ι → ι → X → ℂ) (g h : ι → X → ℂ)
+    {A C θ : ℝ} (hA : 0 ≤ A) (hC : 0 ≤ C)
+    (hg_one : ∀ j ∈ s, Integrable (g j) μ)
+    (hh_one : ∀ i ∈ s, Integrable (h i) μ)
+    (hmeas : ∀ i j x, AEStronglyMeasurable
+      (fun y => K i j (x - y) * g j y) μ)
+    (hkernel : ∀ i j z, ‖K i j z‖ ≤ A)
+    (hpair_one : ∀ i ∈ s, Integrable (fun x =>
+      q4KernelTTStarShell μ s R K g i x * starRingEnd ℂ (h i x)) μ)
+    (houtput_two : ∀ i ∈ s,
+      MemLp (q4KernelTTStarShell μ s R K g i) 2 μ)
+    (hh_two : ∀ i ∈ s, MemLp (h i) 2 μ)
+    (henergy :
+      q4FibreL2Energy μ s (q4KernelTTStarShell μ s R K g) ≤
+        C ^ 2 * q4FibreL2Energy μ s g)
+    (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1) :
+    ‖q4KernelTTStarBilinear μ s R K g h‖ ≤
+      (A * (∑ j ∈ s, ∫ y, ‖g j y‖ ∂μ) *
+          (∑ i ∈ s, ∫ x, ‖h i x‖ ∂μ)) ^ (1 - θ) *
+        (C * √(q4FibreL2Energy μ s g) *
+          √(q4FibreL2Energy μ s h)) ^ θ := by
+  have hfirst := norm_q4KernelTTStarBilinear_le_of_bound
+    μ s R K g h hA hg_one hh_one hmeas hkernel hpair_one
+  have hsecond := norm_q4KernelTTStarBilinear_le_of_l2_energy
+    μ s R K g h hC houtput_two hh_two henergy
+  have hG_one : 0 ≤ ∑ j ∈ s, ∫ y, ‖g j y‖ ∂μ :=
+    Finset.sum_nonneg fun j hj => integral_nonneg fun y => norm_nonneg _
+  have hH_one : 0 ≤ ∑ i ∈ s, ∫ x, ‖h i x‖ ∂μ :=
+    Finset.sum_nonneg fun i hi => integral_nonneg fun x => norm_nonneg _
+  have hfirst_nonneg : 0 ≤
+      A * (∑ j ∈ s, ∫ y, ‖g j y‖ ∂μ) *
+        (∑ i ∈ s, ∫ x, ‖h i x‖ ∂μ) :=
+    mul_nonneg (mul_nonneg hA hG_one) hH_one
+  have hsecond_nonneg : 0 ≤
+      C * √(q4FibreL2Energy μ s g) *
+        √(q4FibreL2Energy μ s h) :=
+    mul_nonneg (mul_nonneg hC (Real.sqrt_nonneg _)) (Real.sqrt_nonneg _)
+  exact le_weighted_geometric_mean_of_le (norm_nonneg _) hfirst_nonneg
+    hsecond_nonneg hfirst hsecond hθ0 hθ1
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

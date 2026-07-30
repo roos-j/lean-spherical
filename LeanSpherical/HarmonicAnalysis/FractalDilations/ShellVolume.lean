@@ -1,0 +1,126 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.SharpnessVolume
+
+/-!
+# Volume bounds for thin spherical shells
+
+This module records the elementary `O(δ)` volume bound for a shell around a
+radius in `[1,2]`.  It is the input-side estimate in the spherical-cap
+sharpness example.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory Metric Set ENNReal Filter Topology
+
+noncomputable section
+
+/-- The difference of the `d`th powers of two radii separated by `4δ` is
+bounded linearly in `δ` when both radii remain in a fixed compact interval. -/
+theorem shell_power_difference_le_linear
+    (d : ℕ) {r δ : ℝ}
+    (hrone : 1 ≤ r) (hrtwo : r ≤ 2)
+    (hδ : 0 ≤ δ) (hδquarter : δ ≤ 1 / 4) :
+    (r + 2 * δ) ^ d - (r - 2 * δ) ^ d ≤
+      (4 * (d : ℝ) * 3 ^ (d - 1)) * δ := by
+  have ha0 : 0 ≤ r + 2 * δ := by linarith
+  have hb0 : 0 ≤ r - 2 * δ := by linarith
+  have hab : r - 2 * δ ≤ r + 2 * δ := by linarith
+  have ha3 : r + 2 * δ ≤ 3 := by linarith
+  have hb3 : r - 2 * δ ≤ 3 := by linarith
+  have hpow : (r - 2 * δ) ^ d ≤ (r + 2 * δ) ^ d :=
+    pow_le_pow_left₀ hb0 hab d
+  have hmax : max |r + 2 * δ| |r - 2 * δ| ≤ 3 := by
+    apply max_le
+    · simpa only [abs_of_nonneg ha0] using ha3
+    · simpa only [abs_of_nonneg hb0] using hb3
+  have hmaxnonneg : 0 ≤ max |r + 2 * δ| |r - 2 * δ| :=
+    (abs_nonneg _).trans (le_max_left _ _)
+  have hmaxpow : max |r + 2 * δ| |r - 2 * δ| ^ (d - 1) ≤ 3 ^ (d - 1) :=
+    pow_le_pow_left₀ hmaxnonneg hmax _
+  calc
+    (r + 2 * δ) ^ d - (r - 2 * δ) ^ d =
+        |(r + 2 * δ) ^ d - (r - 2 * δ) ^ d| := by
+      rw [abs_of_nonneg (sub_nonneg.mpr hpow)]
+    _ ≤ |(r + 2 * δ) - (r - 2 * δ)| * (d : ℝ) *
+          max |r + 2 * δ| |r - 2 * δ| ^ (d - 1) :=
+      abs_pow_sub_pow_le (r + 2 * δ) (r - 2 * δ) d
+    _ ≤ (4 * δ) * (d : ℝ) * 3 ^ (d - 1) := by
+      have hsep : |(r + 2 * δ) - (r - 2 * δ)| = 4 * δ := by
+        rw [abs_of_nonneg (by linarith)]
+        ring
+      rw [hsep]
+      gcongr
+    _ = (4 * (d : ℝ) * 3 ^ (d - 1)) * δ := by ring
+
+/-- The volume of the annulus containing a squared-radius shell is at most a
+fixed multiple of its thickness.  The constant is deliberately coarse: its
+only role in the cap test is that it is independent of `δ`. -/
+theorem volume_thin_annulus_le
+    (d : ℕ) {r δ : ℝ}
+    (hrone : 1 ≤ r) (hrtwo : r ≤ 2)
+    (hδ : 0 < δ) (hδquarter : δ ≤ 1 / 4) :
+    volume (ball (0 : Euclidean d) (r + 2 * δ) \ closedBall (0 : Euclidean d) (r - 2 * δ)) ≤
+      ENNReal.ofReal ((4 * (d : ℝ) * 3 ^ (d - 1)) * δ) *
+        volume (ball (0 : Euclidean d) 1) := by
+  have ha : 0 < r + 2 * δ := by linarith
+  have hb : 0 < r - 2 * δ := by linarith
+  have hab : r - 2 * δ < r + 2 * δ := by linarith
+  have hsubset : closedBall (0 : Euclidean d) (r - 2 * δ) ⊆
+      ball (0 : Euclidean d) (r + 2 * δ) := by
+    intro x hx
+    rw [mem_closedBall, dist_zero_right] at hx
+    rw [mem_ball, dist_zero_right]
+    exact hx.trans_lt hab
+  have hunit_top : volume (ball (0 : Euclidean d) 1) ≠ (⊤ : ENNReal) :=
+    (measure_ball_lt_top (μ := volume) (x := (0 : Euclidean d)) (r := (1 : ℝ))).ne
+  have hclosed_top : volume (closedBall (0 : Euclidean d) (r - 2 * δ)) ≠ (⊤ : ENNReal) := by
+    rw [Measure.addHaar_closedBall volume (0 : Euclidean d) hb.le]
+    simp only [finrank_euclideanSpace_fin]
+    exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top hunit_top
+  have hdiff := shell_power_difference_le_linear d hrone hrtwo hδ.le hδquarter
+  rw [measure_sdiff hsubset measurableSet_closedBall.nullMeasurableSet hclosed_top,
+    Measure.addHaar_ball_of_pos volume (0 : Euclidean d) ha,
+    Measure.addHaar_closedBall volume (0 : Euclidean d) hb.le]
+  simp only [finrank_euclideanSpace_fin]
+  rw [← ENNReal.sub_mul (fun _ _ => hunit_top)]
+  rw [← ENNReal.ofReal_sub ((r + 2 * δ) ^ d) (pow_nonneg hb.le _)]
+  gcongr
+
+/-- If `a < b`, then at sufficiently small positive scales the power
+`δ ^ b` is dominated by `δ ^ a`, with arbitrary fixed coefficients. -/
+theorem exists_small_rpow_separation
+    {a b A B C : ℝ} (hB : 0 < B) (hab : a < b) :
+    ∃ δ : ℝ, 0 < δ ∧ δ < 1 / 4 ∧ C * A * δ ^ b < B * δ ^ a := by
+  have hba : 0 < b - a := sub_pos.mpr hab
+  have htend : Tendsto (fun δ : ℝ => δ ^ (b - a)) (𝓝[>] 0) (𝓝 0) := by
+    have h := (Real.continuousAt_rpow_const 0 (b - a) (Or.inr hba.le)).tendsto
+    rw [Real.zero_rpow hba.ne'] at h
+    exact h.mono_left nhdsWithin_le_nhds
+  have hmulTend : Tendsto (fun δ : ℝ => C * A * δ ^ (b - a)) (𝓝[>] 0) (𝓝 0) := by
+    convert tendsto_const_nhds.mul htend using 1 <;> simp
+  have hsmall : ∀ᶠ δ : ℝ in 𝓝[>] 0, C * A * δ ^ (b - a) < B := by
+    exact hmulTend.eventually (Iio_mem_nhds hB)
+  have hscale : ∀ᶠ δ : ℝ in 𝓝[>] 0, δ ∈ Ioo (0 : ℝ) (1 / 4) :=
+    Ioo_mem_nhdsGT (by norm_num)
+  obtain ⟨δ, hδsmall, hδscale⟩ := (hsmall.and hscale).exists
+  refine ⟨δ, hδscale.1, hδscale.2, ?_⟩
+  have hδpow : 0 < δ ^ a := Real.rpow_pos_of_pos hδscale.1 _
+  have hmul : (C * A * δ ^ (b - a)) * δ ^ a < B * δ ^ a :=
+    mul_lt_mul_of_pos_right hδsmall hδpow
+  calc
+    C * A * δ ^ b = C * A * (δ ^ (b - a) * δ ^ a) := by
+      rw [← Real.rpow_add hδscale.1]
+      congr 2
+      ring
+    _ = (C * A * δ ^ (b - a)) * δ ^ a := by ring
+    _ < B * δ ^ a := hmul
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations

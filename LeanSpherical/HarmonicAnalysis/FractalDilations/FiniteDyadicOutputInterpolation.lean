@@ -1,0 +1,174 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.FractalDilations.OffDiagonalMarcinkiewicz
+
+/-!
+# Same-input interpolation for literal finite dyadic maximal pieces
+
+The Q3 and Q4 fixed-frequency arguments give strong estimates for the same
+finite dyadic maximal function.  On a horizontal slice of the reciprocal
+exponent diagram their input exponent agrees, while their two output
+exponents bracket the desired output exponent.  This file records the
+resulting strong interpolation step.
+
+It is deliberately a real layer-cake argument, not an invocation of
+Riesz--Thorin.  The only analytic input is the two literal strong estimates
+for the same output.  Consequently it applies directly to a finite
+linearization or to the finite maximal function once its measurability is
+known.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open Filter MeasureTheory Set ENNReal
+
+noncomputable section
+
+/-- The scale-free constant produced by interpolation between two strong
+output estimates with a common input exponent. -/
+def twoNearbyStrongOutputInterpolationConstant
+    (q0 q q1 : Real) (A0 A1 : ENNReal) : ENNReal :=
+  (ENNReal.ofReal q *
+    (A0 ^ q0 *
+        (∫⁻ t in Ioc (0 : Real) 1,
+          (ENNReal.ofReal t) ^ (q - q0 - 1)) +
+      A1 ^ q1 *
+        (∫⁻ t in Ioi (1 : Real),
+          (ENNReal.ofReal t) ^ (q - q1 - 1)))) ^ q⁻¹
+
+/-- Two literal strong output bounds at a common positive scale interpolate
+to every strictly intermediate output exponent.  The proof normalizes the
+output by that scale, uses Chebyshev at both endpoints, and applies the
+two-neighbourhood layer-cake lemma. -/
+theorem eLpNorm_of_two_nearby_strong_outputs_at_scale
+    {α F : Type*} [MeasurableSpace α] {μ : Measure α}
+    (T : F → α → Real) (f : F) {s : Real} (hs : 0 < s)
+    (hTnonneg : ∀ x, 0 ≤ T f x)
+    (hTf : AEStronglyMeasurable (T f) μ)
+    {q0 q q1 : Real} (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    (A0 A1 : ENNReal)
+    (h0 : eLpNorm (T f) (ENNReal.ofReal q0) μ ≤ A0 * ENNReal.ofReal s)
+    (h1 : eLpNorm (T f) (ENNReal.ofReal q1) μ ≤ A1 * ENNReal.ofReal s) :
+    eLpNorm (T f) (ENNReal.ofReal q) μ ≤
+      twoNearbyStrongOutputInterpolationConstant q0 q q1 A0 A1 *
+        ENNReal.ofReal s := by
+  let U : F → α → Real := fun g x => s⁻¹ * T g x
+  have hsInv : 0 ≤ s⁻¹ := inv_nonneg.mpr hs.le
+  have hUmeas : AEStronglyMeasurable (U f) μ := by
+    dsimp [U]
+    exact hTf.const_mul s⁻¹
+  have hU0 : eLpNorm (U f) (ENNReal.ofReal q0) μ ≤ A0 := by
+    change eLpNorm (s⁻¹ • T f) (ENNReal.ofReal q0) μ ≤ A0
+    rw [eLpNorm_const_smul, Real.enorm_eq_ofReal hsInv]
+    calc
+      ENNReal.ofReal s⁻¹ * eLpNorm (T f) (ENNReal.ofReal q0) μ ≤
+          ENNReal.ofReal s⁻¹ * (A0 * ENNReal.ofReal s) :=
+        mul_le_mul_right h0 _
+      _ = A0 := by
+        calc
+          ENNReal.ofReal s⁻¹ * (A0 * ENNReal.ofReal s) =
+              A0 * (ENNReal.ofReal s⁻¹ * ENNReal.ofReal s) := by ring
+          _ = A0 * ENNReal.ofReal (s⁻¹ * s) := by
+            rw [ENNReal.ofReal_mul hsInv]
+          _ = A0 := by
+            rw [inv_mul_cancel₀ hs.ne']
+            norm_num
+  have hU1 : eLpNorm (U f) (ENNReal.ofReal q1) μ ≤ A1 := by
+    change eLpNorm (s⁻¹ • T f) (ENNReal.ofReal q1) μ ≤ A1
+    rw [eLpNorm_const_smul, Real.enorm_eq_ofReal hsInv]
+    calc
+      ENNReal.ofReal s⁻¹ * eLpNorm (T f) (ENNReal.ofReal q1) μ ≤
+          ENNReal.ofReal s⁻¹ * (A1 * ENNReal.ofReal s) :=
+        mul_le_mul_right h1 _
+      _ = A1 := by
+        calc
+          ENNReal.ofReal s⁻¹ * (A1 * ENNReal.ofReal s) =
+              A1 * (ENNReal.ofReal s⁻¹ * ENNReal.ofReal s) := by ring
+          _ = A1 * ENNReal.ofReal (s⁻¹ * s) := by
+            rw [ENNReal.ofReal_mul hsInv]
+          _ = A1 := by
+            rw [inv_mul_cancel₀ hs.ne']
+            norm_num
+  have hweak0 : ∀ ⦃t : Real⦄, 0 < t →
+      μ {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q0 ≤ A0 ^ q0 := by
+    intro t ht
+    simpa only [U] using
+      (weak_distribution_of_eLpNorm (U f) hUmeas hq0 ht A0 hU0)
+  have hq1 : 0 < q1 :=
+    lt_trans (lt_of_le_of_lt hq0.le hq0q) hqq1
+  have hweak1 : ∀ ⦃t : Real⦄, 0 < t →
+      μ {x | t < s⁻¹ * T f x} * (ENNReal.ofReal t) ^ q1 ≤ A1 ^ q1 := by
+    intro t ht
+    simpa only [U] using
+      (weak_distribution_of_eLpNorm (U f) hUmeas hq1 ht A1 hU1)
+  simpa only [twoNearbyStrongOutputInterpolationConstant] using
+    (strong_eLpNorm_of_two_nearby_weak_distributions_rescaled
+      T f hs hTnonneg hTf.aemeasurable hq0.le hq0q hqq1
+      (A0 ^ q0) (A1 ^ q1) hweak0 hweak1)
+
+/-- Schwartz-carrier version of same-input output interpolation.  The zero
+input case is discharged from either endpoint estimate; for nonzero input we
+normalize by its finite Schwartz Lp norm and apply the scale-level theorem. -/
+theorem eLpNorm_schwartz_of_two_nearby_strong_outputs
+    {d : Nat}
+    (T : SchwartzMap (Euclidean d) Complex → Euclidean d → Real)
+    (hTnonneg : ∀ f x, 0 ≤ T f x)
+    (hTmeas : ∀ f, AEStronglyMeasurable (T f) volume)
+    {p q0 q q1 : Real} (hp : 0 < p)
+    (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    (A0 A1 : ENNReal)
+    (h0 : ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T f) (ENNReal.ofReal q0) volume ≤
+        A0 * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume)
+    (h1 : ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T f) (ENNReal.ofReal q1) volume ≤
+        A1 * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume)
+    (f : SchwartzMap (Euclidean d) Complex) :
+    eLpNorm (T f) (ENNReal.ofReal q) volume ≤
+      twoNearbyStrongOutputInterpolationConstant q0 q q1 A0 A1 *
+        eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  let inputNorm : ENNReal :=
+    eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume
+  have hinputTop : inputNorm < ∞ := by
+    dsimp [inputNorm]
+    exact (f.memLp (ENNReal.ofReal p) volume).2
+  by_cases hinputZero : inputNorm = 0
+  · have houtputZero : eLpNorm (T f) (ENNReal.ofReal q0) volume = 0 := by
+      apply le_antisymm
+      · calc
+          eLpNorm (T f) (ENNReal.ofReal q0) volume ≤ A0 * inputNorm := by
+            simpa only [inputNorm] using h0 f
+          _ = 0 := by rw [hinputZero, mul_zero]
+      · exact bot_le
+    have hTfZero : T f =ᵐ[volume] 0 :=
+      (eLpNorm_eq_zero_iff (hTmeas f)
+        (ENNReal.ofReal_ne_zero_iff.mpr hq0)).mp houtputZero
+    rw [eLpNorm_eq_zero_of_ae_zero hTfZero, hinputZero, mul_zero]
+  · let s : Real := inputNorm.toReal
+    have hs : 0 < s := by
+      dsimp [s]
+      exact ENNReal.toReal_pos hinputZero hinputTop.ne
+    have hinput : ENNReal.ofReal s = inputNorm := by
+      dsimp [s]
+      exact ENNReal.ofReal_toReal hinputTop.ne
+    have h0scale :
+        eLpNorm (T f) (ENNReal.ofReal q0) volume ≤ A0 * ENNReal.ofReal s := by
+      rw [hinput]
+      simpa only [inputNorm] using h0 f
+    have h1scale :
+        eLpNorm (T f) (ENNReal.ofReal q1) volume ≤ A1 * ENNReal.ofReal s := by
+      rw [hinput]
+      simpa only [inputNorm] using h1 f
+    have hscale := eLpNorm_of_two_nearby_strong_outputs_at_scale
+      T f hs (hTnonneg f) (hTmeas f) hq0 hq0q hqq1 A0 A1
+      h0scale h1scale
+    rw [hinput] at hscale
+    simpa only [inputNorm] using hscale
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations
