@@ -1,0 +1,60 @@
+import LeanSpherical.Codex.Spherical.CoordinateIntegration
+import LeanSpherical.Codex.Spherical.FourierRadius
+
+/-!
+# Polar formulae for radial Fourier kernels
+
+This file is limited to the exact polar-coordinate reduction for radial
+Fourier kernels and its angular `surfaceFourier` identification.  It does not
+assert the stationary-phase radius-gap estimate needed for the small-physical-
+space part of the off-diagonal `Q₄` argument.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+
+open MeasureTheory FourierTransform Metric Set
+open scoped FourierTransform
+
+noncomputable section
+
+variable {d : ℕ}
+
+/-- The angular integral appearing after polar coordinates is the Fourier
+transform of unit-sphere measure. -/
+theorem polar_angular_fourierChar_eq_surfaceFourier (s : ℝ) (x : Euclidean d) :
+    (∫ ω : sphere (0 : Euclidean d) 1,
+        (Real.fourierChar (inner ℝ (s • (ω : Euclidean d)) x) : ℂ)
+          ∂unitSurfaceMeasure d) =
+      surfaceFourier d (-s • x) := by
+  symm
+  unfold surfaceFourier
+  apply integral_congr_ae
+  filter_upwards with ω
+  rw [surfacePhase, Real.fourierChar_apply]
+  simp only [inner_smul_right, inner_smul_left]
+  push_cast
+  simp only [starRingEnd_apply, star_trivial]
+  congr 1
+  ring
+
+/-- The inverse Fourier transform of a radial function, written in polar
+coordinates.  This is an exact identity; no integrability hypothesis is needed
+because both sides use the same (possibly non-absolutely convergent) integral.
+-/
+theorem fourierInv_radial_eq_polar
+    (hd : 0 < d) (F : ℝ → ℂ) (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d => F ‖ξ‖) x =
+      ∫ p : sphere (0 : Euclidean d) 1 × Ioi (0 : ℝ),
+        Real.fourierChar (inner ℝ (p.2.1 • (p.1 : Euclidean d)) x) • F p.2.1
+          ∂ ((unitSurfaceMeasure d).prod (Measure.volumeIoiPow (d - 1))) := by
+  rw [Real.fourierInv_eq, integral_polar_unitSurfaceMeasure hd]
+  apply integral_congr_ae
+  filter_upwards with p
+  have hp : ‖(p.1 : Euclidean d)‖ = 1 := by
+    simpa only [mem_sphere_zero_iff_norm] using p.1.property
+  have hpos : 0 < (p.2 : ℝ) := p.2.property
+  simp only [norm_smul, Real.norm_eq_abs, abs_of_pos hpos, hp, mul_one]
+
+end
+
+end LeanSpherical.HarmonicAnalysis.FractalDilations
