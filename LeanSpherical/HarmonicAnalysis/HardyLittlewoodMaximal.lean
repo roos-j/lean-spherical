@@ -38,13 +38,18 @@ is the appropriate formulation at the weak endpoint. -/
 def dyadicBallMaximal (d : ℕ) (g : Euclidean d → ℂ) (x : Euclidean d) : ℝ :=
   (dyadicBallMaximalRaw d g x).toReal
 
-/-- The regular, low relative-frequency component of the spherical maximal
-operator. -/
+/-- The regular, low relative-frequency component before passing from its
+natural `ENNReal` supremum to a real-valued maximal function. -/
+def relativeLowpassMaximalRaw (d : ℕ) (φ : SchwartzMap (Euclidean d) ℂ)
+    (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) : ENNReal :=
+  ⨆ r : Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
+    surfaceFourier d (-r.1 • ξ) * φ (r.1 • ξ) *
+      𝓕 (f : Euclidean d → ℂ) ξ) x‖
+
+/-- The real-valued regular low relative-frequency component. -/
 def relativeLowpassMaximal (d : ℕ) (φ : SchwartzMap (Euclidean d) ℂ)
     (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) : ℝ :=
-  (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean d =>
-    surfaceFourier d (-r.1 • ξ) * φ (r.1 • ξ) *
-      𝓕 (f : Euclidean d → ℂ) ξ) x‖).toReal
+  (relativeLowpassMaximalRaw d φ f x).toReal
 
 /-- The `j`th oscillatory relative-frequency annulus. -/
 def relativeBandpassMaximal (d : ℕ) (φ : SchwartzMap (Euclidean d) ℂ) (j : ℕ)
@@ -801,13 +806,17 @@ private theorem relative_lowpass_fixed_radius_majorant
       · exact hH
 
 /- A compact relative-frequency multiplier has a Schwartz kernel.  The
-standard dilate estimate controls all of its radii by dyadic ball averages. -/
-private theorem relative_lowpass_kernel_majorant
+standard dilate estimate controls all of its radii by dyadic ball averages.
+
+This raw form is public because localized weighted arguments need the
+finite `ENNReal` supremum before applying a weighted estimate for the dyadic
+ball maximal function. -/
+theorem exists_relative_lowpass_kernel_raw_majorant
     {d : ℕ} (φ : SchwartzMap (Euclidean d) ℂ)
     (hφzero : ∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) :
     ∃ K : ℝ, 0 < K ∧ ∀ (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d),
-      relativeLowpassMaximal d φ f x ≤
-        K * dyadicBallMaximal d (f : Euclidean d → ℂ) x := by
+      relativeLowpassMaximalRaw d φ f x ≤
+        ENNReal.ofReal (K * dyadicBallMaximal d (f : Euclidean d → ℂ) x) := by
   have hφcompact : HasCompactSupport (φ : Euclidean d → ℂ) := by
     apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean d) 2)
     intro ξ hξ
@@ -844,12 +853,26 @@ private theorem relative_lowpass_kernel_majorant
     apply iSup_le
     intro r
     exact ENNReal.ofReal_le_ofReal (hpoint r)
+  simpa only [relativeLowpassMaximalRaw] using hsup
+
+/-- The real-valued form of the relative lowpass kernel majorant. -/
+theorem exists_relative_lowpass_kernel_majorant
+    {d : ℕ} (φ : SchwartzMap (Euclidean d) ℂ)
+    (hφzero : ∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d),
+      relativeLowpassMaximal d φ f x ≤
+        K * dyadicBallMaximal d (f : Euclidean d → ℂ) x := by
+  obtain ⟨K, hK, hraw⟩ := exists_relative_lowpass_kernel_raw_majorant φ hφzero
+  refine ⟨K, hK, ?_⟩
+  intro f x
+  have h := hraw f x
   calc
-    relativeLowpassMaximal d φ f x ≤
-        (ENNReal.ofReal (K * dyadicBallMaximal d (f : Euclidean d → ℂ) x)).toReal :=
+    relativeLowpassMaximal d φ f x =
+        (relativeLowpassMaximalRaw d φ f x).toReal := rfl
+    _ ≤ (ENNReal.ofReal (K * dyadicBallMaximal d (f : Euclidean d → ℂ) x)).toReal :=
       (ENNReal.toReal_le_toReal
-        (ne_top_of_le_ne_top ENNReal.ofReal_ne_top hsup)
-        ENNReal.ofReal_ne_top).2 hsup
+        (ne_top_of_le_ne_top ENNReal.ofReal_ne_top h)
+        ENNReal.ofReal_ne_top).2 h
     _ = K * dyadicBallMaximal d (f : Euclidean d → ℂ) x :=
       ENNReal.toReal_ofReal (mul_nonneg hK.le ENNReal.toReal_nonneg)
 
@@ -1300,9 +1323,11 @@ theorem dyadic_hardy_littlewood_maximal_Lp_bound
         dyadicHardyLittlewoodMaximalLpBound hd hp * ‖hf.toLp f‖ :=
   ⟨Lp.memLp _, dyadicHardyLittlewoodMaximalLp_norm_le hd hp (hf.toLp f)⟩
 
-/- Compact frequency support makes the lowpass supremum a lower-semicontinuous
-supremum of continuous scaled Schwartz multipliers. -/
-private theorem relative_lowpass_aestrongly_measurable
+/-- Compact frequency support makes the lowpass supremum a lower-semicontinuous
+supremum of continuous scaled Schwartz multipliers.  This public
+measurability fact is used when a localized weighted estimate transfers a
+pointwise lowpass majorant from Lebesgue measure to a power measure. -/
+theorem relativeLowpassMaximal_aestronglyMeasurable
     {d : ℕ} (φ : SchwartzMap (Euclidean d) ℂ)
     (hφzero : ∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0)
     (f : SchwartzMap (Euclidean d) ℂ) :
@@ -1378,7 +1403,8 @@ private theorem relative_lowpass_strong_type_of_majorant
   have hHnonneg (x : Euclidean d) :
       0 ≤ dyadicBallMaximal d (f : Euclidean d → ℂ) x := ENNReal.toReal_nonneg
   have hRmem : MemLp (relativeLowpassMaximal d φ f) (ENNReal.ofReal p) volume :=
-    (hballf.1.const_mul K).mono (relative_lowpass_aestrongly_measurable φ hφzero f)
+    (hballf.1.const_mul K).mono
+      (relativeLowpassMaximal_aestronglyMeasurable φ hφzero f)
       (Filter.Eventually.of_forall fun x => by
         rw [Real.norm_eq_abs, abs_of_nonneg (hRnonneg x), Real.norm_eq_abs,
           abs_of_nonneg (mul_nonneg hK.le (hHnonneg x))]
@@ -1433,7 +1459,7 @@ theorem relative_lowpass_strong_type
       exact_mod_cast (show 1 < d by omega)
     linarith
   have hp0 : 0 < p := (div_pos hdreal hdenom).trans hp
-  obtain ⟨K, hK, hmajor⟩ := relative_lowpass_kernel_majorant φ hφzero
+  obtain ⟨K, hK, hmajor⟩ := exists_relative_lowpass_kernel_majorant φ hφzero
   obtain ⟨B, hB, hball⟩ := dyadic_ball_maximal_strong_type hd hp
   exact relative_lowpass_strong_type_of_majorant
     hp0 φ hφzero B K hB hK hball hmajor

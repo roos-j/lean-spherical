@@ -424,9 +424,11 @@ theorem measurable_raw_relative_dyadic_maxima
     intro r
     exact (ENNReal.continuous_ofReal.comp (hcont r).norm).lowerSemicontinuous
 
-/-- The literal positive-radius relative-dyadic maximal multiplier has the
-global strong `L²` bound obtained from its finite dyadic radius exhaustion. -/
-theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
+/-- The finite dyadic radius exhaustion controls the literal raw square
+envelope of the positive-radius relative-dyadic multiplier.  In particular,
+this is an all-radius estimate: no sum over the dyadic radius blocks occurs
+in the conclusion. -/
+theorem raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
     {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
@@ -438,15 +440,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
     (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
     (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
     (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat) :
-    let M : Euclidean (d + 1) → ℝ := fun x =>
-      (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal
-        ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
-          surfaceFourier (d + 1) (-r.1 • xi) *
-            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
-              phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
-            𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖).toReal
-    MemLp M 2 volume ∧
-      (∫ x : Euclidean (d + 1), ‖M x‖ ^ 2) ≤
+    0 ≤
         24 *
           (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
@@ -455,9 +449,24 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((d : ℝ) / 2)))) *
-          (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := by
+          (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) ∧
+      (∫⁻ x : Euclidean (d + 1), ⨆ r : Ioi (0 : ℝ), ENNReal.ofReal
+        (‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+          surfaceFourier (d + 1) (-r.1 • xi) *
+            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+              phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+            𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2)) ≤
+        ENNReal.ofReal
+          (24 *
+            (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
+              2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
+                (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                  (12 * C0 *
+                      ‖((SchwartzMap.fderivCLM ℂ
+                        (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                    (dyadicScale j) ^ ((d : ℝ) / 2)))) *
+            (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2)) := by
   classical
-  intro M
   let F : Ioi (0 : ℝ) → Euclidean (d + 1) → ℂ := fun r x =>
     𝓕⁻ (fun xi : Euclidean (d + 1) =>
       surfaceFourier (d + 1) (-r.1 • xi) *
@@ -544,14 +553,138 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
         lintegral_mono hcover
       _ ≤ ENNReal.ofReal B := by
         simpa only using htrunc
+  constructor
+  · simpa only [B, L, J] using hB
+  · simpa only [Q, F, B, L, J] using hQlin
+
+/-- The raw all-radius relative-dyadic envelope is finite almost everywhere.
+This is the bridge from the square-function estimate to comparisons of raw
+`ENNReal` maximal operators. -/
+theorem ae_lt_top_iSup_relative_dyadic_moving_bandpass_global_of_sharp
+    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
+      r ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • xi)) r‖ ≤
+        C1 / ‖xi‖ ^ ((d : ℝ) / 2 - 1))
+    (phi f : SchwartzMap (Euclidean (d + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat) :
+    ∀ᵐ x : Euclidean (d + 1) ∂volume,
+      (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal
+        ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+          surfaceFourier (d + 1) (-r.1 • xi) *
+            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+              phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+            𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖) < ⊤ := by
+  classical
+  let F : Ioi (0 : ℝ) → Euclidean (d + 1) → ℂ := fun r x =>
+    𝓕⁻ (fun xi : Euclidean (d + 1) =>
+      surfaceFourier (d + 1) (-r.1 • xi) *
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+          phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+        𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
+  let Q : Euclidean (d + 1) → ENNReal := fun x =>
+    ⨆ r : Ioi (0 : ℝ), ENNReal.ofReal (‖F r x‖ ^ 2)
+  obtain ⟨_, hQlin⟩ :=
+    raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
+      hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
+  have hQlin' : (∫⁻ x, Q x) ≠ ⊤ := by
+    apply ne_top_of_le_ne_top ENNReal.ofReal_ne_top
+    simpa only [Q, F] using hQlin
+  have hmeas := measurable_raw_relative_dyadic_maxima phi f hphi_one hphi_zero j
+  have hQmeas : Measurable Q := by
+    simpa only [Q, F] using hmeas.1
+  have hQae : ∀ᵐ x : Euclidean (d + 1) ∂volume, Q x < ⊤ :=
+    ae_lt_top hQmeas hQlin'
+  filter_upwards [hQae] with x hx
+  have hQfinite : Q x ≠ ⊤ := ne_of_lt hx
+  have hnorm (r : Ioi (0 : ℝ)) : ‖F r x‖ ≤ (Q x).toReal.sqrt := by
+    apply (Real.le_sqrt (norm_nonneg _) ENNReal.toReal_nonneg).2
+    calc
+      ‖F r x‖ ^ 2 = (ENNReal.ofReal (‖F r x‖ ^ 2)).toReal := by
+        rw [ENNReal.toReal_ofReal (sq_nonneg _)]
+      _ ≤ (Q x).toReal :=
+        (ENNReal.toReal_le_toReal ENNReal.ofReal_ne_top hQfinite).2
+          (le_iSup (fun r : Ioi (0 : ℝ) => ENNReal.ofReal (‖F r x‖ ^ 2)) r)
+  have hraw : (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal ‖F r x‖) ≤
+      ENNReal.ofReal ((Q x).toReal.sqrt) := by
+    apply iSup_le
+    intro r
+    exact ENNReal.ofReal_le_ofReal (hnorm r)
+  have hrawfinite : (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal ‖F r x‖) ≠ ⊤ :=
+    ne_top_of_le_ne_top ENNReal.ofReal_ne_top hraw
+  simpa only [F] using (lt_top_iff_ne_top.mpr hrawfinite)
+
+/-- The literal positive-radius relative-dyadic maximal multiplier has the
+global strong `L²` bound obtained from the raw square estimate above. -/
+theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
+    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
+      r ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • xi)) r‖ ≤
+        C1 / ‖xi‖ ^ ((d : ℝ) / 2 - 1))
+    (phi f : SchwartzMap (Euclidean (d + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat) :
+    let M : Euclidean (d + 1) → ℝ := fun x =>
+      (⨆ r : Ioi (0 : ℝ), ENNReal.ofReal
+        ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+          surfaceFourier (d + 1) (-r.1 • xi) *
+            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+              phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+            𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖).toReal
+    MemLp M 2 volume ∧
+      (∫ x : Euclidean (d + 1), ‖M x‖ ^ 2) ≤
+        24 *
+          (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
+            2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
+              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                (12 * C0 *
+                    ‖((SchwartzMap.fderivCLM ℂ
+                      (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                  (dyadicScale j) ^ ((d : ℝ) / 2)))) *
+          (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := by
+  classical
+  intro M
+  let F : Ioi (0 : ℝ) → Euclidean (d + 1) → ℂ := fun r x =>
+    𝓕⁻ (fun xi : Euclidean (d + 1) =>
+      surfaceFourier (d + 1) (-r.1 • xi) *
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+          phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+        𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
+  let Q : Euclidean (d + 1) → ENNReal := fun x =>
+    ⨆ r : Ioi (0 : ℝ), ENNReal.ofReal (‖F r x‖ ^ 2)
+  let B : ℝ :=
+    24 *
+      (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
+        2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
+          (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (12 * C0 *
+                ‖((SchwartzMap.fderivCLM ℂ
+                  (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+              (dyadicScale j) ^ ((d : ℝ) / 2)))) *
+      (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2)
+  obtain ⟨hB, hQlin⟩ :=
+    raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
+      hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
+  have hB' : 0 ≤ B := by
+    simpa only [B] using hB
+  have hQlin' : (∫⁻ x, Q x) ≤ ENNReal.ofReal B := by
+    simpa only [Q, F, B] using hQlin
   have hmeas := measurable_raw_relative_dyadic_maxima phi f hphi_one hphi_zero j
   have hQmeas : Measurable Q := by
     simpa only [Q, F] using hmeas.1
   have hMmeas : AEMeasurable M volume := by
     simpa only [M, F] using hmeas.2.aemeasurable
   have hglobal := memLp_two_toReal_iSup_ennreal_norm_of_sq_lintegral
-    F hQmeas hMmeas hB hQlin
-  simpa only [M, F, B, L, J] using hglobal
+    F hQmeas hMmeas hB' hQlin'
+  simpa only [M, F, B] using hglobal
 
 /-- The coefficient in the global relative-dyadic `L²` estimate has the
 expected frequency decay. -/

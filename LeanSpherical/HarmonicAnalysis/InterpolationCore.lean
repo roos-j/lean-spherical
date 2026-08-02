@@ -1281,6 +1281,44 @@ theorem measure_distribution_split_additive
           μ {x | threshold / 2 < T high x} :=
       measure_union_le _ _
 
+/-- The distributional split only needs subadditivity away from a null set.
+This is the natural form for maximal functions obtained as all-scale
+exhaustions of finite truncations. -/
+theorem measure_distribution_split_additive_ae
+    {α F : Type*} [MeasurableSpace α] [Add F]
+    (μ : Measure α) (T : F → α → ℝ)
+    (f low high : F) (threshold : ℝ)
+    (hsplit : f = low + high)
+    (hsub : ∀ᵐ x ∂μ, T (low + high) x ≤ T low x + T high x) :
+    μ {x | threshold < T f x} ≤
+      μ {x | threshold / 2 < T low x} +
+        μ {x | threshold / 2 < T high x} := by
+  calc
+    μ {x | threshold < T f x} ≤
+        μ ({x | threshold / 2 < T low x} ∪
+          {x | threshold / 2 < T high x}) := by
+      apply measure_mono_ae
+      filter_upwards [hsub] with x hx
+      intro hxf
+      rw [hsplit] at hxf
+      change threshold / 2 < T low x ∨ threshold / 2 < T high x
+      by_cases hlow : threshold / 2 < T low x
+      · exact Or.inl hlow
+      · right
+        by_cases hhigh : threshold / 2 < T high x
+        · exact hhigh
+        · have hlow' : T low x ≤ threshold / 2 := le_of_not_gt hlow
+          have hhigh' : T high x ≤ threshold / 2 := le_of_not_gt hhigh
+          have hbound : T (low + high) x ≤ threshold := by
+            calc
+              T (low + high) x ≤ T low x + T high x := hx
+              _ ≤ threshold / 2 + threshold / 2 := add_le_add hlow' hhigh'
+              _ = threshold := by ring
+          exact False.elim ((not_lt_of_ge hbound) hxf)
+    _ ≤ μ {x | threshold / 2 < T low x} +
+          μ {x | threshold / 2 < T high x} :=
+      measure_union_le _ _
+
 /-- The supplied-split Marcinkiewicz argument for an arbitrary additive input
 type, evaluated pointwise by `eval`.  It is the form applicable directly to
 Schwartz maps; its tail assumptions are the two displayed weighted lower
@@ -1293,7 +1331,7 @@ theorem marcinkiewicz_weak_one_two_on_additive_split
     (T : F → α → ℝ)
     (hT_nonneg : ∀ g x, 0 ≤ T g x)
     (hT_subadd : ∀ ⦃g h : F⦄, g ∈ D → h ∈ D →
-      ∀ x, T (g + h) x ≤ T g x + T h x)
+      ∀ᵐ x ∂μ, T (g + h) x ≤ T g x + T h x)
     (C₁ C₂ : ℝ≥0∞)
     (hweak_one : ∀ (g : F), g ∈ D → ∀ {s : ℝ}, 0 < s →
       ENNReal.ofReal s * μ {x | s < T g x} ≤
@@ -1375,7 +1413,7 @@ theorem marcinkiewicz_weak_one_two_on_additive_split
     have hsplit' : μ {x | t < T f x} ≤
         μ {x | t / 2 < T (low t) x} +
           μ {x | t / 2 < T (high t) x} :=
-      measure_distribution_split_additive μ T f (low t) (high t) t (hsplit t)
+      measure_distribution_split_additive_ae μ T f (low t) (high t) t (hsplit t)
         (hT_subadd (hlow_mem t) (hhigh_mem t))
     calc
       μ {x | t < T f x} * w t ≤
@@ -1492,7 +1530,11 @@ theorem marcinkiewicz_one_two_on_additive_split
           (ENNReal.ofReal t) ^ (p - 2)) ≤ A₁) :
     (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
       ENNReal.ofReal p * (4 * C₂ * A₂ + 2 * C₁ * A₁) := by
-  apply marcinkiewicz_weak_one_two_on_additive_split D eval T hT_nonneg hT_subadd C₁ C₂
+  apply marcinkiewicz_weak_one_two_on_additive_split D eval T hT_nonneg
+    (by
+      intro g h hg hh
+      filter_upwards with x
+      exact hT_subadd hg hh x) C₁ C₂
     ?_ ?_ hp1 hp2 f hTf low high hlow_mem hhigh_mem hsplit hlowI_meas hhighI_meas A₂ A₁
     hlow_tail hhigh_tail
   · intro g hg s hs

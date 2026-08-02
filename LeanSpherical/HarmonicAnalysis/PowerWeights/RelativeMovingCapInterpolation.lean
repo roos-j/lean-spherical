@@ -1,0 +1,961 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.RelativeMovingCapReassembly
+import LeanSpherical.HarmonicAnalysis.PowerWeights.RelativeMovingInterpolation
+import LeanSpherical.HarmonicAnalysis.PowerWeights.GlobalEntropyL2
+
+/-!
+# Cap-aware interpolation for moving relative bands
+
+The cap endpoint is genuinely off diagonal: the input is supported outside a
+small ball and the output is measured on a spatial shell inside that ball.
+This file keeps that geometry visible.  For the Marcinkiewicz step we use the
+sum of the input and output shell measures, rather than inserting an abstract
+two-measure interpolation layer.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory FourierTransform Metric Set intervalIntegral
+open scoped BigOperators BoundedContinuousFunction ENNReal FourierTransform NNReal
+
+noncomputable section
+
+/- The next two private facts only keep track of the sum measure used below:
+   an integrand supported in one shell has the same lower integral for the
+   original measure and for the sum of the two restricted shell measures. -/
+private theorem lintegral_add_restrict_eq_lintegral_of_support_left
+    {X : Type*} [MeasurableSpace X] {ν : Measure X} {A B : Set X}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hdisj : Disjoint A B)
+    (G : X → ENNReal) (hGsupport : ∀ x, x ∉ A → G x = 0) :
+    (∫⁻ x, G x ∂(ν.restrict A + ν.restrict B)) = ∫⁻ x, G x ∂ν := by
+  have hBzero : (∫⁻ x, G x ∂ν.restrict B) = 0 := by
+    calc
+      (∫⁻ x, G x ∂ν.restrict B) = ∫⁻ x, B.indicator G x ∂ν :=
+        (lintegral_indicator hB G).symm
+      _ = ∫⁻ x : X, 0 ∂ν := by
+        congr with x
+        by_cases hx : x ∈ B
+        · rw [Set.indicator_of_mem hx]
+          have hxnot : x ∉ A := fun hxA => (Set.disjoint_left.mp hdisj) hxA hx
+          simp [hGsupport x hxnot]
+        · rw [Set.indicator_of_notMem hx]
+      _ = 0 := lintegral_zero
+  have hAeq : (∫⁻ x, G x ∂ν.restrict A) = ∫⁻ x, G x ∂ν :=
+    (lintegral_eq_lintegral_restrict_of_support A hA G hGsupport).symm
+  calc
+    (∫⁻ x, G x ∂(ν.restrict A + ν.restrict B)) =
+        (∫⁻ x, G x ∂ν.restrict A) + ∫⁻ x, G x ∂ν.restrict B :=
+      lintegral_add_measure G _ _
+    _ = (∫⁻ x, G x ∂ν.restrict A) + 0 := by rw [hBzero]
+    _ = ∫⁻ x, G x ∂ν := by rw [add_zero, hAeq]
+
+private theorem lintegral_add_restrict_eq_lintegral_of_support_right
+    {X : Type*} [MeasurableSpace X] {ν : Measure X} {A B : Set X}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hdisj : Disjoint A B)
+    (G : X → ENNReal) (hGsupport : ∀ x, x ∉ B → G x = 0) :
+    (∫⁻ x, G x ∂(ν.restrict A + ν.restrict B)) = ∫⁻ x, G x ∂ν := by
+  simpa only [add_comm] using
+    (lintegral_add_restrict_eq_lintegral_of_support_left hB hA hdisj.symm G hGsupport)
+
+/-- For a finite nonempty radius set, the literal restricted moving-band
+maximal output is finite pointwise.  This elementary fact is useful because
+the cap endpoint is naturally ENNReal-valued while interpolation uses its
+real-valued representative. -/
+private theorem restrictedRelativeBandpassSphericalMaximal_finset_ne_top
+    (n j : Nat) (phi f : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (R : Finset ℝ) (x : Euclidean (n + 1)) :
+    restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f x ≠ ⊤ := by
+  let H : ℝ → Euclidean (n + 1) → ENNReal := fun r y =>
+    ENNReal.ofReal ‖𝓕⁻ (fun ξ : Euclidean (n + 1) =>
+      surfaceFourier (n + 1) (-r • ξ) *
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • ξ)) -
+          phi (((2 : ℝ) ^ j)⁻¹ • (r • ξ))) *
+            𝓕 (f : Euclidean (n + 1) → ℂ) ξ) y‖
+  have hpoint :
+      restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f x ≤
+        ∑ r ∈ R, H r x := by
+    unfold restrictedRelativeBandpassSphericalMaximal
+    apply iSup_le
+    intro r
+    refine Finset.single_le_sum (s := R) (f := fun q => H q x) (fun _ _ => bot_le) ?_
+    simpa only [Finset.mem_coe] using r.2.1
+  have hsum : (∑ r ∈ R, H r x) ≠ ⊤ := by
+    apply ENNReal.sum_ne_top.mpr
+    intro r hr
+    exact ENNReal.ofReal_ne_top
+  exact ne_top_of_le_ne_top hsum hpoint
+
+/-- The ENNReal finite-radius restricted moving-band maximal function is
+measurable.  The existing theory gives measurability of its `toReal`; the
+finite-set bound above upgrades this without any compactness wrapper. -/
+private theorem measurable_restrictedRelativeBandpassSphericalMaximal_finset
+    (n j : Nat) (phi f : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    (R : Finset ℝ) (hR : ∀ r ∈ R, r ∈ Icc (1 : ℝ) 2)
+    (hRne : R.Nonempty) :
+    Measurable (restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f) := by
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f
+  have hE : (R : Set ℝ) ⊆ Icc (1 : ℝ) 2 := by
+    intro r hr
+    exact hR r (by simpa only [Finset.mem_coe] using hr)
+  have hEne : (R : Set ℝ).Nonempty := by
+    rcases hRne with ⟨r, hr⟩
+    exact ⟨r, by simpa only [Finset.mem_coe] using hr⟩
+  have hMtoReal : Measurable (fun x : Euclidean (n + 1) => (M x).toReal) := by
+    dsimp only [M]
+    exact measurable_toReal_restrictedRelativeBandpassSphericalMaximal
+      phi f hphi_one hphi_zero hphi_norm j (R : Set ℝ) hE hEne
+  have hM_eq : M = fun x => ENNReal.ofReal (M x).toReal := by
+    funext x
+    exact (ENNReal.ofReal_toReal
+      (restrictedRelativeBandpassSphericalMaximal_finset_ne_top n j phi f R x)).symm
+  rw [show restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f = M by rfl,
+    hM_eq]
+  exact hMtoReal.ennreal_ofReal
+
+/-- The cap endpoint converted to one weighted output shell.  The output
+shell has radii `[s/4,s/2]`, while the input is supported in an annulus
+strictly outside the cap ball.  Consequently the `s ^ n` gain remains in the
+displayed `relativeMovingBandCapTail` rather than being absorbed into a
+generic physical-endpoint constant. -/
+theorem exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_one_le
+    (n : Nat) (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean (n + 1)) ℂ)
+      (R : Finset ℝ) {s a b α : ℝ}, 3 ≤ j → 0 < s →
+      (∀ q ∈ R, q ∈ Icc (1 : ℝ) 2) → R.Nonempty →
+      (∀ q ∈ R, 4 * s ≤ q) → α ≤ 0 → 0 < a → a ≤ b → s < a →
+      (∀ y, y ∉ euclideanAnnulus (n + 1) a b → f y = 0) →
+      (∫⁻ x in euclideanAnnulus (n + 1) (s / 4) (s / 2),
+        restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f x
+          ∂powerWeightedVolume (n + 1) α) ≤
+        (ENNReal.ofReal (s / 4)) ^ α *
+          (∑ q ∈ R, relativeMovingBandCapTail n j C q s) *
+            ((ENNReal.ofReal b) ^ α)⁻¹ *
+              ∫⁻ y, ENNReal.ofReal ‖f y‖ ∂powerWeightedVolume (n + 1) α := by
+  obtain ⟨C, hC, hcap⟩ :=
+    exists_restrictedRelativeBandpass_finset_cap_lintegral_one_le n phi hphi_one hphi_zero
+  refine ⟨C, hC, ?_⟩
+  intro j f R s a b α hj hs hR hRne hsmall hα ha hab hsa hfsupport
+  let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+  let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+  let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f
+  let K : ENNReal := ∑ q ∈ R, relativeMovingBandCapTail n j C q s
+  let I : ENNReal := ∫⁻ y : Euclidean (n + 1), ENNReal.ofReal ‖f y‖ ∂volume
+  let J : ENNReal := ∫⁻ y : Euclidean (n + 1), ENNReal.ofReal ‖f y‖ ∂ν
+  have hs4 : 0 < s / 4 := by positivity
+  have hMmeas : Measurable M := by
+    dsimp only [M]
+    exact measurable_restrictedRelativeBandpassSphericalMaximal_finset
+      n j phi f hphi_one hphi_zero hphi_norm R hR hRne
+  have hA_subset : A ⊆ ball (0 : Euclidean (n + 1)) s := by
+    intro x hx
+    have hxnorm : ‖x‖ ≤ s / 2 := by
+      have hxclosed := hx.1
+      rw [Metric.mem_closedBall, dist_zero_right] at hxclosed
+      exact hxclosed
+    rw [Metric.mem_ball, dist_zero_right]
+    exact lt_of_le_of_lt hxnorm (by linarith)
+  have hcap_support : ∀ y : Euclidean (n + 1), ¬ s < ‖y‖ → f y = 0 := by
+    intro y hy
+    apply hfsupport y
+    intro hyB
+    have hnorm : a ≤ ‖y‖ := by
+      have hynotball := hyB.2
+      rw [Metric.mem_ball, dist_zero_right] at hynotball
+      exact le_of_not_gt hynotball
+    exact hy (lt_of_lt_of_le hsa hnorm)
+  have hcap_bound :
+      (∫⁻ x in ball (0 : Euclidean (n + 1)) s, M x) ≤ K * I := by
+    simpa only [M, K, I] using hcap j f R hj hs hR hsmall hcap_support
+  have hunweighted : (∫⁻ x in A, M x ∂volume) ≤ K * I := by
+    calc
+      (∫⁻ x in A, M x ∂volume) =
+          ∫⁻ x : Euclidean (n + 1), A.indicator M x ∂volume :=
+        (lintegral_indicator (measurableSet_closedBall.diff measurableSet_ball) M).symm
+      _ ≤ ∫⁻ x : Euclidean (n + 1),
+          (ball (0 : Euclidean (n + 1)) s).indicator M x ∂volume :=
+        lintegral_mono (indicator_le_indicator_of_subset hA_subset (fun _ => bot_le))
+      _ = ∫⁻ x in ball (0 : Euclidean (n + 1)) s, M x :=
+        lintegral_indicator measurableSet_ball M
+      _ ≤ K * I := hcap_bound
+  have hGmeas : Measurable (fun y : Euclidean (n + 1) => ENNReal.ofReal ‖f y‖) :=
+    f.continuous.norm.measurable.ennreal_ofReal
+  have hGsupport : ∀ y : Euclidean (n + 1), y ∉ B → ENNReal.ofReal ‖f y‖ = 0 := by
+    intro y hy
+    simp [hfsupport y hy]
+  have hinput : I ≤ ((ENNReal.ofReal b) ^ α)⁻¹ * J := by
+    dsimp only [I, J, ν, B]
+    exact lintegral_volume_le_outerPower_inv_mul_powerWeightedVolume_of_annular_support
+      hα ha hab _ hGmeas hGsupport
+  calc
+    (∫⁻ x in euclideanAnnulus (n + 1) (s / 4) (s / 2),
+        restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f x
+          ∂powerWeightedVolume (n + 1) α) =
+        ∫⁻ x in A, M x ∂ν := by rfl
+    _ ≤ (ENNReal.ofReal (s / 4)) ^ α * (∫⁻ x in A, M x ∂volume) := by
+      exact setLIntegral_powerWeightedVolume_euclideanAnnulus_le hα hs4 M hMmeas
+    _ ≤ (ENNReal.ofReal (s / 4)) ^ α * (K * I) :=
+      mul_le_mul_right hunweighted _
+    _ ≤ (ENNReal.ofReal (s / 4)) ^ α *
+        (K * (((ENNReal.ofReal b) ^ α)⁻¹ * J)) := by
+      exact mul_le_mul_right (mul_le_mul_right hinput K) _
+    _ = (ENNReal.ofReal (s / 4)) ^ α * K * ((ENNReal.ofReal b) ^ α)⁻¹ * J := by
+      ring
+    _ = (ENNReal.ofReal (s / 4)) ^ α *
+          (∑ q ∈ R, relativeMovingBandCapTail n j C q s) *
+            ((ENNReal.ofReal b) ^ α)⁻¹ *
+              ∫⁻ y, ENNReal.ofReal ‖f y‖ ∂powerWeightedVolume (n + 1) α := by
+      rfl
+
+/-- Transfer any global unweighted square estimate for a finite moving-radius
+band to the cap output shell and a weighted exterior input annulus.  This is
+the square-endpoint half of the cap interpolation argument; the theorem is
+deliberately stated with the global square coefficient exposed. -/
+theorem restrictedRelativeBandpass_finset_cap_shell_lintegral_two_le_of_global
+    (n j : Nat) (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    (R : Finset ℝ) (hR : ∀ q ∈ R, q ∈ Icc (1 : ℝ) 2)
+    (hRne : R.Nonempty) (L : ENNReal)
+    (hglobal : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      (∫⁻ x : Euclidean (n + 1), ENNReal.ofReal
+        ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal ^
+          (2 : ℕ)) ∂volume) ≤
+        L * ∫⁻ x : Euclidean (n + 1), ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂volume)
+    {s a b α : ℝ} (hs : 0 < s) (hα : α ≤ 0) (ha : 0 < a) (hab : a ≤ b)
+    (f : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hfsupport : ∀ y, y ∉ euclideanAnnulus (n + 1) a b → f y = 0) :
+    (∫⁻ x in euclideanAnnulus (n + 1) (s / 4) (s / 2), ENNReal.ofReal
+      ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f x).toReal ^
+        (2 : ℕ)) ∂powerWeightedVolume (n + 1) α) ≤
+      (ENNReal.ofReal (s / 4)) ^ α * L * ((ENNReal.ofReal b) ^ α)⁻¹ *
+        ∫⁻ y, ENNReal.ofReal (‖f y‖ ^ (2 : ℕ)) ∂powerWeightedVolume (n + 1) α := by
+  let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+  let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+  let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f
+  let G : Euclidean (n + 1) → ENNReal := fun x => ENNReal.ofReal ((M x).toReal ^ (2 : ℕ))
+  let I : ENNReal := ∫⁻ y : Euclidean (n + 1), ENNReal.ofReal (‖f y‖ ^ (2 : ℕ)) ∂volume
+  let J : ENNReal := ∫⁻ y : Euclidean (n + 1), ENNReal.ofReal (‖f y‖ ^ (2 : ℕ)) ∂ν
+  have hs4 : 0 < s / 4 := by positivity
+  have hMreal : Measurable (fun x : Euclidean (n + 1) => (M x).toReal) := by
+    dsimp only [M]
+    have hE : (R : Set ℝ) ⊆ Icc (1 : ℝ) 2 := by
+      intro q hq
+      exact hR q (by simpa only [Finset.mem_coe] using hq)
+    have hEne : (R : Set ℝ).Nonempty := by
+      rcases hRne with ⟨q, hq⟩
+      exact ⟨q, by simpa only [Finset.mem_coe] using hq⟩
+    exact measurable_toReal_restrictedRelativeBandpassSphericalMaximal
+      phi f hphi_one hphi_zero hphi_norm j (R : Set ℝ) hE hEne
+  have hGmeas : Measurable G := by
+    exact (hMreal.pow_const 2).ennreal_ofReal
+  have hunweighted : (∫⁻ x in A, G x ∂volume) ≤ L * I := by
+    calc
+      (∫⁻ x in A, G x ∂volume) ≤ ∫⁻ x : Euclidean (n + 1), G x ∂volume :=
+        lintegral_mono' Measure.restrict_le_self le_rfl
+      _ ≤ L * I := by
+        simpa only [G, M, I] using hglobal f
+  have hGinput_meas : Measurable (fun y : Euclidean (n + 1) =>
+      ENNReal.ofReal (‖f y‖ ^ (2 : ℕ))) :=
+    (f.continuous.norm.pow 2).measurable.ennreal_ofReal
+  have hGinput_support : ∀ y : Euclidean (n + 1), y ∉ B →
+      ENNReal.ofReal (‖f y‖ ^ (2 : ℕ)) = 0 := by
+    intro y hy
+    simp [hfsupport y hy]
+  have hinput : I ≤ ((ENNReal.ofReal b) ^ α)⁻¹ * J := by
+    dsimp only [I, J, ν, B]
+    exact lintegral_volume_le_outerPower_inv_mul_powerWeightedVolume_of_annular_support
+      hα ha hab _ hGinput_meas hGinput_support
+  calc
+    (∫⁻ x in euclideanAnnulus (n + 1) (s / 4) (s / 2), ENNReal.ofReal
+        ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j f x).toReal ^
+          (2 : ℕ)) ∂powerWeightedVolume (n + 1) α) =
+        ∫⁻ x in A, G x ∂ν := by rfl
+    _ ≤ (ENNReal.ofReal (s / 4)) ^ α * (∫⁻ x in A, G x ∂volume) := by
+      exact setLIntegral_powerWeightedVolume_euclideanAnnulus_le hα hs4 G hGmeas
+    _ ≤ (ENNReal.ofReal (s / 4)) ^ α * (L * I) :=
+      mul_le_mul_right hunweighted _
+    _ ≤ (ENNReal.ofReal (s / 4)) ^ α *
+        (L * (((ENNReal.ofReal b) ^ α)⁻¹ * J)) := by
+      exact mul_le_mul_right (mul_le_mul_right hinput L) _
+    _ = (ENNReal.ofReal (s / 4)) ^ α * L * ((ENNReal.ofReal b) ^ α)⁻¹ * J := by
+      ring
+    _ = (ENNReal.ofReal (s / 4)) ^ α * L * ((ENNReal.ofReal b) ^ α)⁻¹ *
+        ∫⁻ y, ENNReal.ofReal (‖f y‖ ^ (2 : ℕ)) ∂powerWeightedVolume (n + 1) α := by
+      rfl
+
+/-- Cap-aware one--two interpolation on a small output shell.
+
+The measure in the Marcinkiewicz argument is the sum of the weighted output
+shell measure and the weighted exterior input-annulus measure.  Thus the
+standard one-measure interpolation theorem applies verbatim while the cap
+tail remains in `c1`.  The free splitting scale `τ` is retained for the
+subsequent dyadic shell summation. -/
+theorem exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_rpow_le_of_global
+    (n : Nat) (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean (n + 1)) ℂ)
+      (R : Finset ℝ) (L : ENNReal) {s a b α p τ : ℝ},
+      3 ≤ j → 0 < s → (∀ q ∈ R, q ∈ Icc (1 : ℝ) 2) → R.Nonempty →
+      (∀ q ∈ R, 4 * s ≤ q) → α ≤ 0 → 0 < a → a ≤ b → s < a →
+      1 < p → p < 2 → 0 < τ →
+      (∀ y, y ∉ euclideanAnnulus (n + 1) a b → f y = 0) →
+      (∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+        (∫⁻ x : Euclidean (n + 1), ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal ^
+            (2 : ℕ)) ∂volume) ≤
+          L * ∫⁻ x : Euclidean (n + 1), ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂volume) →
+      let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+      let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+      let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+      let μ : Measure (Euclidean (n + 1)) := ν.restrict A + ν.restrict B
+      let T : SchwartzMap (Euclidean (n + 1)) ℂ → Euclidean (n + 1) → ℝ :=
+        fun g => A.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal)
+      let c1 : ENNReal := (ENNReal.ofReal (s / 4)) ^ α *
+        (∑ q ∈ R, relativeMovingBandCapTail n j C q s) * ((ENNReal.ofReal b) ^ α)⁻¹
+      let c2 : ENNReal := (ENNReal.ofReal (s / 4)) ^ α * L * ((ENNReal.ofReal b) ^ α)⁻¹
+      let a2 : ENNReal :=
+        (ENNReal.ofReal ((1 : ℝ) / 4) * (ENNReal.ofReal p)⁻¹ +
+          (ENNReal.ofReal (2 - p))⁻¹) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+      let a1 : ENNReal :=
+        ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+      (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
+        ENNReal.ofReal p *
+          (4 * c2 * ((ENNReal.ofReal τ) ^ (2 - p) * a2) +
+            2 * c1 * ((ENNReal.ofReal τ) ^ (1 - p) * a1)) := by
+  classical
+  obtain ⟨C, hC, hcap⟩ :=
+    exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_one_le
+      n phi hphi_one hphi_zero hphi_norm
+  refine ⟨C, hC, ?_⟩
+  intro j f R L s a b α p τ hj hs hR hRne hsmall hα ha hab hsa hp1 hp2 hτ
+    hfsupport hglobal
+  dsimp only
+  let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+  let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+  let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let μ : Measure (Euclidean (n + 1)) := ν.restrict A + ν.restrict B
+  let T : SchwartzMap (Euclidean (n + 1)) ℂ → Euclidean (n + 1) → ℝ :=
+    fun g => A.indicator (fun x =>
+      (restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal)
+  let c1 : ENNReal := (ENNReal.ofReal (s / 4)) ^ α *
+    (∑ q ∈ R, relativeMovingBandCapTail n j C q s) * ((ENNReal.ofReal b) ^ α)⁻¹
+  let c2 : ENNReal := (ENNReal.ofReal (s / 4)) ^ α * L * ((ENNReal.ofReal b) ^ α)⁻¹
+  let a2 : ENNReal :=
+    (ENNReal.ofReal ((1 : ℝ) / 4) * (ENNReal.ofReal p)⁻¹ +
+      (ENNReal.ofReal (2 - p))⁻¹) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  let a1 : ENNReal :=
+    ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  let 𝒟 : Set (SchwartzMap (Euclidean (n + 1)) ℂ) :=
+    {g | ∀ x, x ∉ B → g x = 0}
+  have hs4 : 0 < s / 4 := by positivity
+  have hA : MeasurableSet A := measurableSet_closedBall.diff measurableSet_ball
+  have hB : MeasurableSet B := measurableSet_closedBall.diff measurableSet_ball
+  have hAB : Disjoint A B := by
+    rw [Set.disjoint_left]
+    intro x hxA hxB
+    have hxAouter : ‖x‖ ≤ s / 2 := by
+      have hxclosed := hxA.1
+      rw [Metric.mem_closedBall, dist_zero_right] at hxclosed
+      exact hxclosed
+    have hxBinner : a ≤ ‖x‖ := by
+      have hxnotball := hxB.2
+      rw [Metric.mem_ball, dist_zero_right] at hxnotball
+      exact le_of_not_gt hxnotball
+    linarith
+  letI : IsFiniteMeasure μ :=
+    ⟨by
+      dsimp only [μ]
+      rw [Measure.add_apply, Measure.restrict_apply_univ, Measure.restrict_apply_univ]
+      exact ENNReal.add_lt_top.mpr ⟨
+        powerWeightedVolume_euclideanAnnulus_lt_top_any (d := n + 1) (α := α) hs4,
+        powerWeightedVolume_euclideanAnnulus_lt_top_any (d := n + 1) (α := α) ha⟩⟩
+  have hE : (R : Set ℝ) ⊆ Icc (1 : ℝ) 2 := by
+    intro q hq
+    exact hR q (by simpa only [Finset.mem_coe] using hq)
+  have hEne : (R : Set ℝ).Nonempty := by
+    rcases hRne with ⟨q, hq⟩
+    exact ⟨q, by simpa only [Finset.mem_coe] using hq⟩
+  have hT_nonneg : ∀ g x, 0 ≤ T g x := by
+    intro g x
+    by_cases hx : x ∈ A
+    · simp [T, hx, ENNReal.toReal_nonneg]
+    · simp [T, hx]
+  have hT_subadd : ∀ ⦃g h : SchwartzMap (Euclidean (n + 1)) ℂ⦄,
+      g ∈ 𝒟 → h ∈ 𝒟 → ∀ x, T (g + h) x ≤ T g x + T h x := by
+    intro g h _ _ x
+    by_cases hx : x ∈ A
+    · simp only [T, Set.indicator_of_mem hx]
+      exact toReal_restrictedRelativeBandpassSphericalMaximal_add_le
+        (Nat.succ_pos n) (R : Set ℝ) hE phi g h j x
+    · simp [T, hx]
+  have hTmeas : ∀ (g : SchwartzMap (Euclidean (n + 1)) ℂ), g ∈ 𝒟 →
+      AEMeasurable (T g) μ := by
+    intro g _
+    exact ((measurable_toReal_restrictedRelativeBandpassSphericalMaximal
+      phi g hphi_one hphi_zero hphi_norm j (R : Set ℝ) hE hEne).indicator hA).aemeasurable
+  have hstrong_one : ∀ (g : SchwartzMap (Euclidean (n + 1)) ℂ), g ∈ 𝒟 →
+      (∫⁻ x, ENNReal.ofReal (T g x) ∂μ) ≤
+        c1 * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean (n + 1) → ℂ) x‖ ∂μ := by
+    intro g hg
+    have hTout : ∀ x : Euclidean (n + 1), x ∉ A → ENNReal.ofReal (T g x) = 0 := by
+      intro x hx
+      simp [T, hx]
+    have hTin : ∀ x : Euclidean (n + 1), x ∉ B →
+        ENNReal.ofReal ‖(g : Euclidean (n + 1) → ℂ) x‖ = 0 := by
+      intro x hx
+      simp [hg x hx]
+    have hout_eq := lintegral_add_restrict_eq_lintegral_of_support_left
+      hA hB hAB (fun x : Euclidean (n + 1) => ENNReal.ofReal (T g x)) hTout (ν := ν)
+    have hin_eq := lintegral_add_restrict_eq_lintegral_of_support_right
+      hA hB hAB (fun x : Euclidean (n + 1) =>
+        ENNReal.ofReal ‖(g : Euclidean (n + 1) → ℂ) x‖) hTin (ν := ν)
+    have hcapg := hcap j g R hj hs hR hRne hsmall hα ha hab hsa hg
+    calc
+      (∫⁻ x, ENNReal.ofReal (T g x) ∂μ) =
+          ∫⁻ x, ENNReal.ofReal (T g x) ∂ν := hout_eq
+      _ = ∫⁻ x in A, ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal)
+            ∂ν := by
+        rw [show (fun x : Euclidean (n + 1) => ENNReal.ofReal (T g x)) =
+          A.indicator (fun x => ENNReal.ofReal
+            ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal)) by
+          funext x
+          by_cases hx : x ∈ A <;> simp [T, hx],
+          lintegral_indicator hA]
+      _ ≤ ∫⁻ x in A,
+          restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x ∂ν := by
+        apply lintegral_mono
+        intro x
+        exact ENNReal.ofReal_toReal_le
+      _ ≤ c1 * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean (n + 1) → ℂ) x‖ ∂ν := by
+        simpa only [A, ν, c1] using hcapg
+      _ = c1 * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean (n + 1) → ℂ) x‖ ∂μ := by
+        rw [hin_eq]
+  have hstrong_two : ∀ (g : SchwartzMap (Euclidean (n + 1)) ℂ), g ∈ 𝒟 →
+      (∫⁻ x, ENNReal.ofReal ((T g x) ^ (2 : ℕ)) ∂μ) ≤
+        c2 * ∫⁻ x, ENNReal.ofReal (‖(g : Euclidean (n + 1) → ℂ) x‖ ^ (2 : ℕ)) ∂μ := by
+    intro g hg
+    have hTout : ∀ x : Euclidean (n + 1), x ∉ A →
+        ENNReal.ofReal ((T g x) ^ (2 : ℕ)) = 0 := by
+      intro x hx
+      simp [T, hx]
+    have hTin : ∀ x : Euclidean (n + 1), x ∉ B →
+        ENNReal.ofReal (‖(g : Euclidean (n + 1) → ℂ) x‖ ^ (2 : ℕ)) = 0 := by
+      intro x hx
+      simp [hg x hx]
+    have hout_eq := lintegral_add_restrict_eq_lintegral_of_support_left
+      hA hB hAB (fun x : Euclidean (n + 1) => ENNReal.ofReal ((T g x) ^ (2 : ℕ)))
+        hTout (ν := ν)
+    have hin_eq := lintegral_add_restrict_eq_lintegral_of_support_right
+      hA hB hAB (fun x : Euclidean (n + 1) =>
+        ENNReal.ofReal (‖(g : Euclidean (n + 1) → ℂ) x‖ ^ (2 : ℕ))) hTin (ν := ν)
+    have hL2g := restrictedRelativeBandpass_finset_cap_shell_lintegral_two_le_of_global
+      n j phi hphi_one hphi_zero hphi_norm R hR hRne L hglobal hs hα ha hab g hg
+    calc
+      (∫⁻ x, ENNReal.ofReal ((T g x) ^ (2 : ℕ)) ∂μ) =
+          ∫⁻ x, ENNReal.ofReal ((T g x) ^ (2 : ℕ)) ∂ν := hout_eq
+      _ = ∫⁻ x in A, ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal ^
+            (2 : ℕ)) ∂ν := by
+        rw [show (fun x : Euclidean (n + 1) => ENNReal.ofReal ((T g x) ^ (2 : ℕ))) =
+          A.indicator (fun x => ENNReal.ofReal
+            ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal ^
+              (2 : ℕ))) by
+          funext x
+          by_cases hx : x ∈ A <;> simp [T, hx],
+          lintegral_indicator hA]
+      _ ≤ c2 * ∫⁻ x, ENNReal.ofReal
+          (‖(g : Euclidean (n + 1) → ℂ) x‖ ^ (2 : ℕ)) ∂ν := by
+        simpa only [A, ν, c2] using hL2g
+      _ = c2 * ∫⁻ x, ENNReal.ofReal
+          (‖(g : Euclidean (n + 1) → ℂ) x‖ ^ (2 : ℕ)) ∂μ := by
+        rw [hin_eq]
+  have hf_mem : f ∈ 𝒟 := hfsupport
+  have hTf : AEMeasurable (T f) μ := hTmeas f hf_mem
+  obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
+    exists_schwartz_rational_low_high_family f
+  have hlow_zero (t : ℝ) (x : Euclidean (n + 1)) (hx : x ∉ B) : low t x = 0 := by
+    rw [hlow t x, hfsupport x hx]
+    simp
+  have hlow_mem : ∀ t, low t ∈ 𝒟 := by
+    intro t x hx
+    exact hlow_zero t x hx
+  have hhigh_mem : ∀ t, high t ∈ 𝒟 := by
+    intro t x hx
+    rw [hhigh t]
+    simp only [sub_apply, hfsupport x hx, hlow_zero t x hx, sub_zero]
+  have hsplit' : ∀ t, f = low t + high t := by
+    intro t
+    ext x
+    exact hsplit t x
+  have hprofiles := measurable_rational_low_high_profile_lintegrals
+    f low high hlow hhigh (μ := μ)
+  have hlow_tail :
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, ENNReal.ofReal (‖low t x‖ ^ (2 : ℕ)) ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 3)) ≤ a2 := by
+    dsimp only [a2]
+    apply weighted_low_tail_le_of_two_region_bounds
+      (u := fun x : Euclidean (n + 1) => ‖f x‖)
+      (low := fun t x => low t x)
+    · exact f.continuous.norm.measurable
+    · intro x
+      exact norm_nonneg _
+    · intro t x ht htx
+      apply ENNReal.ofReal_le_ofReal
+      have h := (rational_low_high_pointwise_tail_bounds f (low t) (high t)
+        ht (hlow t) (hhigh t) x).1
+      simpa [htx] using h
+    · intro t x ht htx
+      apply ENNReal.ofReal_le_ofReal
+      have h := (rational_low_high_pointwise_tail_bounds f (low t) (high t)
+        ht (hlow t) (hhigh t) x).1
+      have hnot : ¬ t ≤ ‖f x‖ := not_le_of_gt htx
+      simpa [hnot] using h
+    · exact hp1
+    · exact hp2
+  have hhigh_tail :
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, ENNReal.ofReal ‖high t x‖ ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 2)) ≤ a1 := by
+    dsimp only [a1]
+    apply rational_high_weighted_tail_le
+      (u := fun x : Euclidean (n + 1) => ‖f x‖)
+      (high := fun t x => high t x)
+    · exact f.continuous.norm.measurable
+    · intro x
+      exact norm_nonneg _
+    · have heq : (fun q : ℝ × Euclidean (n + 1) => ENNReal.ofReal ‖high q.1 q.2‖) =
+          (fun q : ℝ × Euclidean (n + 1) => ENNReal.ofReal
+            ‖f q.2 - ((1 + ‖(q.1⁻¹ : ℝ) • f q.2‖ ^ 2) ^ (-1 : ℝ)) • f q.2‖) := by
+        funext q
+        rw [hhigh q.1]
+        simp only [sub_apply]
+        rw [hlow q.1 q.2]
+      rw [heq]
+      exact (measurable_rational_high_family f).norm.ennreal_ofReal
+    · intro t x ht htx
+      apply ENNReal.ofReal_le_ofReal
+      have h := (rational_low_high_pointwise_tail_bounds f (low t) (high t)
+        ht (hlow t) (hhigh t) x).2
+      simpa [htx] using h
+    · intro t x ht htx
+      apply ENNReal.ofReal_le_ofReal
+      have h := (rational_low_high_pointwise_tail_bounds f (low t) (high t)
+        ht (hlow t) (hhigh t) x).2
+      have hnot : ¬ t ≤ ‖f x‖ := not_le_of_gt htx
+      simpa [hnot] using h
+    · exact hp1
+    · exact hp2
+  have hlowI_meas : Measurable (fun t : ℝ =>
+      ∫⁻ x, ENNReal.ofReal (‖low (τ * t) x‖ ^ (2 : ℕ)) ∂μ) :=
+    hprofiles.1.comp (measurable_const_mul τ)
+  have hhighI_meas : Measurable (fun t : ℝ =>
+      ∫⁻ x, ENNReal.ofReal ‖high (τ * t) x‖ ∂μ) :=
+    hprofiles.2.comp (measurable_const_mul τ)
+  have hlow_tail_scaled :
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, ENNReal.ofReal (‖low (τ * t) x‖ ^ (2 : ℕ)) ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 3)) ≤
+        (ENNReal.ofReal τ) ^ (2 - p) * a2 := by
+    calc
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, ENNReal.ofReal (‖low (τ * t) x‖ ^ (2 : ℕ)) ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 3)) =
+          (ENNReal.ofReal τ) ^ (2 - p) *
+            (∫⁻ u in Ioi (0 : ℝ),
+              (∫⁻ x, ENNReal.ofReal (‖low u x‖ ^ (2 : ℕ)) ∂μ) *
+                (ENNReal.ofReal u) ^ (p - 3)) :=
+        lintegral_Ioi_comp_mul_low_weight
+          (fun u => ∫⁻ x, ENNReal.ofReal (‖low u x‖ ^ (2 : ℕ)) ∂μ)
+          hprofiles.1 τ hτ p
+      _ ≤ (ENNReal.ofReal τ) ^ (2 - p) * a2 :=
+        mul_le_mul_right hlow_tail _
+  have hhigh_tail_scaled :
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, ENNReal.ofReal ‖high (τ * t) x‖ ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 2)) ≤
+        (ENNReal.ofReal τ) ^ (1 - p) * a1 := by
+    calc
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, ENNReal.ofReal ‖high (τ * t) x‖ ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 2)) =
+          (ENNReal.ofReal τ) ^ (1 - p) *
+            (∫⁻ u in Ioi (0 : ℝ),
+              (∫⁻ x, ENNReal.ofReal ‖high u x‖ ∂μ) *
+                (ENNReal.ofReal u) ^ (p - 2)) :=
+        lintegral_Ioi_comp_mul_high_weight
+          (fun u => ∫⁻ x, ENNReal.ofReal ‖high u x‖ ∂μ)
+          hprofiles.2 τ hτ p
+      _ ≤ (ENNReal.ofReal τ) ^ (1 - p) * a1 :=
+        mul_le_mul_right hhigh_tail _
+  exact marcinkiewicz_one_two_on_additive_split
+    (α := Euclidean (n + 1)) (E := ℂ)
+    (F := SchwartzMap (Euclidean (n + 1)) ℂ) (μ := μ)
+    𝒟 (fun g => (g : Euclidean (n + 1) → ℂ)) T hT_nonneg hT_subadd hTmeas
+    c1 c2 hstrong_one hstrong_two hp1 hp2 f hTf
+    (fun t => low (τ * t)) (fun t => high (τ * t))
+    (fun t => hlow_mem (τ * t)) (fun t => hhigh_mem (τ * t))
+    (fun t => hsplit' (τ * t)) hlowI_meas hhighI_meas
+    ((ENNReal.ofReal τ) ^ (2 - p) * a2)
+    ((ENNReal.ofReal τ) ^ (1 - p) * a1)
+    hlow_tail_scaled hhigh_tail_scaled
+
+/-- The entropy cover gives the global square estimate required by the cap
+interpolation argument.  We keep this in the finite-radius form used by the
+literal cutoff, so no passage through a separately packaged maximal operator
+is needed. -/
+theorem restrictedRelativeBandpass_finset_lintegral_two_le_of_entropy
+    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
+      u ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun z : ℝ => surfaceFourier (n + 1) (z • xi)) u‖ ≤
+        C1 / ‖xi‖ ^ ((n : ℝ) / 2 - 1))
+    (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat)
+    (R : Finset ℝ) (hR : ∀ q ∈ R, q ∈ Icc (1 : ℝ) 2) (hRne : R.Nonempty)
+    (δ : ℝ≥0) (N : ℕ) (hN : multiplicativeEntropy (R : Set ℝ) δ ≤ N)
+    (hδ : Real.log 2 * (δ : ℝ) ≤ 1)
+    (g : SchwartzMap (Euclidean (n + 1)) ℂ) :
+    (∫⁻ x : Euclidean (n + 1), ENNReal.ofReal
+      ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal ^
+        (2 : ℕ)) ∂volume) ≤
+      (N : ENNReal) * ENNReal.ofReal
+        (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
+          2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
+            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (12 * C0 *
+                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)) *
+        ∫⁻ x : Euclidean (n + 1), ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂volume := by
+  classical
+  let E : Set ℝ := (R : Set ℝ)
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g
+  let Q : Euclidean (n + 1) → ENNReal := fun x =>
+    ⨆ r : ↥(E ∩ Ioi (0 : ℝ)), ENNReal.ofReal
+      (‖𝓕⁻ (fun xi : Euclidean (n + 1) =>
+        surfaceFourier (n + 1) (-r.1 • xi) *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+          𝓕 (g : Euclidean (n + 1) → ℂ) xi) x‖ ^ (2 : ℕ))
+  let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)
+  let C : ℝ := 2 *
+    ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+      (12 * C0 *
+        ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+        (dyadicScale j) ^ ((n : ℝ) / 2))
+  let L : ℝ := 8 * Real.log 2 * (δ : ℝ)
+  let I : ENNReal := ∫⁻ x : Euclidean (n + 1),
+    ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂volume
+  have hE : E ⊆ Icc (1 : ℝ) 2 := by
+    intro q hq
+    exact hR q (by simpa only [E, Finset.mem_coe] using hq)
+  have hEne : E.Nonempty := by
+    rcases hRne with ⟨q, hq⟩
+    exact ⟨q, by simpa only [E, Finset.mem_coe] using hq⟩
+  have hEne_for_instance := hEne
+  obtain ⟨q0, hq0⟩ := hEne_for_instance
+  have hq0pos : 0 < q0 := lt_of_lt_of_le zero_lt_one (hE hq0).1
+  letI : Nonempty ↥(E ∩ Ioi (0 : ℝ)) := ⟨⟨q0, hq0, hq0pos⟩⟩
+  have hQeq (x : Euclidean (n + 1)) : Q x = (M x) ^ (2 : ℕ) := by
+    dsimp only [Q, M, E, restrictedRelativeBandpassSphericalMaximal]
+    exact iSup_ennreal_norm_sq_eq_sq_iSup_ennreal_norm
+      (fun r : ↥((R : Set ℝ) ∩ Ioi (0 : ℝ)) =>
+        𝓕⁻ (fun xi : Euclidean (n + 1) =>
+          surfaceFourier (n + 1) (-r.1 • xi) *
+            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r.1 • xi)) -
+              phi (((2 : ℝ) ^ j)⁻¹ • (r.1 • xi))) *
+            𝓕 (g : Euclidean (n + 1) → ℂ) xi) x)
+  obtain ⟨T, _hcard, _hordered, _hends, _hlength, hraw⟩ :=
+    exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_bandpass_le_of_sharp
+      hn C0 C1 hC0 hC1 hdecay hderiv phi g hphi_one hphi_zero hphi_norm j
+      E hE hEne δ N (by simpa only [E] using hN) hδ
+  have hraw' : (∫⁻ x : Euclidean (n + 1), Q x ∂volume) ≤
+      (N : ENNReal) * ENNReal.ofReal (2 * B ^ (2 : ℕ) + 2 * L ^ (2 : ℕ) * C ^ (2 : ℕ)) *
+        ENNReal.ofReal (∫ xi : Euclidean (n + 1), ‖𝓕 (g : Euclidean (n + 1) → ℂ) xi‖ ^
+          (2 : ℕ)) := by
+    simpa only [Q, E, B, C, L] using hraw
+  have hgintegrable : Integrable (fun x : Euclidean (n + 1) => ‖g x‖ ^ (2 : ℕ)) volume :=
+    (memLp_two_iff_integrable_sq_norm g.continuous.aestronglyMeasurable).mp
+      (g.memLp 2 volume)
+  have hI : I = ENNReal.ofReal (∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ)) := by
+    dsimp only [I]
+    exact (ofReal_integral_eq_lintegral_ofReal hgintegrable
+      (Filter.Eventually.of_forall fun x => sq_nonneg (‖g x‖))).symm
+  have hfourier : ENNReal.ofReal (∫ xi : Euclidean (n + 1),
+      ‖𝓕 (g : Euclidean (n + 1) → ℂ) xi‖ ^ (2 : ℕ)) = I := by
+    rw [integral_norm_sq_fourier_schwartz_eq g, ← hI]
+  have hglobal : (∫⁻ x : Euclidean (n + 1), Q x ∂volume) ≤
+      (N : ENNReal) * ENNReal.ofReal (2 * B ^ (2 : ℕ) + 2 * L ^ (2 : ℕ) * C ^ (2 : ℕ)) * I := by
+    rw [← hfourier]
+    exact hraw'
+  have hpoint (x : Euclidean (n + 1)) :
+      ENNReal.ofReal ((M x).toReal ^ (2 : ℕ)) ≤ Q x := by
+    rw [hQeq x, ENNReal.ofReal_pow ENNReal.toReal_nonneg]
+    exact pow_le_pow_left' ENNReal.ofReal_toReal_le (2 : ℕ)
+  calc
+    (∫⁻ x : Euclidean (n + 1), ENNReal.ofReal
+        ((restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal ^
+          (2 : ℕ)) ∂volume) =
+        ∫⁻ x : Euclidean (n + 1), ENNReal.ofReal ((M x).toReal ^ (2 : ℕ)) ∂volume := by
+          rfl
+    _ ≤ ∫⁻ x : Euclidean (n + 1), Q x ∂volume := lintegral_mono hpoint
+    _ ≤ (N : ENNReal) * ENNReal.ofReal (2 * B ^ (2 : ℕ) + 2 * L ^ (2 : ℕ) * C ^ (2 : ℕ)) * I :=
+      hglobal
+    _ = (N : ENNReal) * ENNReal.ofReal
+        (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
+          2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
+            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (12 * C0 *
+                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)) *
+        ∫⁻ x : Euclidean (n + 1), ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂volume := by
+          rfl
+
+/-- The cap-shell interpolation estimate with its square endpoint supplied by
+the entropy cover.  The cap tail is intentionally left as a finite sum: its
+decay is combined with the spatial shell decomposition only afterwards. -/
+theorem exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_rpow_le_of_entropy
+    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
+      u ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun z : ℝ => surfaceFourier (n + 1) (z • xi)) u‖ ≤
+        C1 / ‖xi‖ ^ ((n : ℝ) / 2 - 1))
+    (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean (n + 1)) ℂ)
+      (R : Finset ℝ) (δ : ℝ≥0) (N : ℕ) {s a b α p τ : ℝ},
+      3 ≤ j → 0 < s → (∀ q ∈ R, q ∈ Icc (1 : ℝ) 2) → R.Nonempty →
+      (∀ q ∈ R, 4 * s ≤ q) → multiplicativeEntropy (R : Set ℝ) δ ≤ N →
+      Real.log 2 * (δ : ℝ) ≤ 1 → α ≤ 0 → 0 < a → a ≤ b → s < a →
+      1 < p → p < 2 → 0 < τ →
+      (∀ y, y ∉ euclideanAnnulus (n + 1) a b → f y = 0) →
+      let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
+        (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
+          2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
+            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (12 * C0 *
+                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
+      let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+      let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+      let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+      let μ : Measure (Euclidean (n + 1)) := ν.restrict A + ν.restrict B
+      let T : SchwartzMap (Euclidean (n + 1)) ℂ → Euclidean (n + 1) → ℝ :=
+        fun g => A.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) (R : Set ℝ) phi j g x).toReal)
+      let c1 : ENNReal := (ENNReal.ofReal (s / 4)) ^ α *
+        (∑ q ∈ R, relativeMovingBandCapTail n j C q s) * ((ENNReal.ofReal b) ^ α)⁻¹
+      let c2 : ENNReal := (ENNReal.ofReal (s / 4)) ^ α * L * ((ENNReal.ofReal b) ^ α)⁻¹
+      let a2 : ENNReal :=
+        (ENNReal.ofReal ((1 : ℝ) / 4) * (ENNReal.ofReal p)⁻¹ +
+          (ENNReal.ofReal (2 - p))⁻¹) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+      let a1 : ENNReal :=
+        ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+      (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
+        ENNReal.ofReal p *
+          (4 * c2 * ((ENNReal.ofReal τ) ^ (2 - p) * a2) +
+            2 * c1 * ((ENNReal.ofReal τ) ^ (1 - p) * a1)) := by
+  obtain ⟨C, hC, hinterp⟩ :=
+    exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_rpow_le_of_global
+      n phi hphi_one hphi_zero hphi_norm
+  refine ⟨C, hC, ?_⟩
+  intro j f R δ N s a b α p τ hj hs hR hRne hsmall hN hδ hα ha hab hsa hp1 hp2 hτ
+    hfsupport
+  let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
+    (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
+      2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
+        (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (12 * C0 *
+            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+            (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
+  simpa only [L] using
+    (hinterp j f R L hj hs hR hRne hsmall hα ha hab hsa hp1 hp2 hτ hfsupport
+      (fun g => restrictedRelativeBandpass_finset_lintegral_two_le_of_entropy
+        hn C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm j
+        R hR hRne δ N hN hδ g))
+
+/-- Finite frequency reassembly on one cap output shell.  The displayed
+coefficient is still the literal entropy/cap coefficient for each dyadic
+frequency; the strict parameter inequality is used only when these finite
+sums are made uniform. -/
+theorem exists_eLpNorm_finset_restrictedRelativeBandpass_cap_shell_sum_le_of_entropy
+    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
+      u ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun z : ℝ => surfaceFourier (n + 1) (z • xi)) u‖ ≤
+        C1 / ‖xi‖ ^ ((n : ℝ) / 2 - 1))
+    (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (J : Finset ℕ) (R : ℕ → Finset ℝ) (δ : ℕ → ℝ≥0) (N : ℕ → ℕ)
+    {s a b α p : ℝ} (hp1 : 1 < p) (hp2 : p < 2) (hα : α ≤ 0)
+    (hs : 0 < s) (ha : 0 < a) (hab : a ≤ b) (hsa : s < a)
+    (hj : ∀ j ∈ J, 3 ≤ j)
+    (hR : ∀ j ∈ J, ∀ q ∈ R j, q ∈ Icc (1 : ℝ) 2)
+    (hRne : ∀ j ∈ J, (R j).Nonempty)
+    (hsmall : ∀ j ∈ J, ∀ q ∈ R j, 4 * s ≤ q)
+    (hN : ∀ j ∈ J, multiplicativeEntropy (R j : Set ℝ) (δ j) ≤ N j)
+    (hδ : ∀ j ∈ J, Real.log 2 * (δ j : ℝ) ≤ 1)
+    (τ : ℕ → ℝ) (hτ : ∀ j ∈ J, 0 < τ j)
+    (f : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hfsupport : ∀ y, y ∉ euclideanAnnulus (n + 1) a b → f y = 0) :
+    ∃ C : ℝ, 0 < C ∧
+      let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+      let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+      let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+      let μ : Measure (Euclidean (n + 1)) := ν.restrict A + ν.restrict B
+      let T : ℕ → SchwartzMap (Euclidean (n + 1)) ℂ → Euclidean (n + 1) → ℝ :=
+        fun j g => A.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) (R j : Set ℝ) phi j g x).toReal)
+      let L : ℕ → ENNReal := fun j => (N j : ENNReal) * ENNReal.ofReal
+        (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
+          2 * (8 * Real.log 2 * (δ j : ℝ)) ^ (2 : ℕ) *
+            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (12 * C0 *
+                ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+                (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
+      let c1 : ℕ → ENNReal := fun j => (ENNReal.ofReal (s / 4)) ^ α *
+        (∑ q ∈ R j, relativeMovingBandCapTail n j C q s) * ((ENNReal.ofReal b) ^ α)⁻¹
+      let c2 : ℕ → ENNReal := fun j =>
+        (ENNReal.ofReal (s / 4)) ^ α * L j * ((ENNReal.ofReal b) ^ α)⁻¹
+      let a2 : ENNReal :=
+        (ENNReal.ofReal ((1 : ℝ) / 4) * (ENNReal.ofReal p)⁻¹ +
+          (ENNReal.ofReal (2 - p))⁻¹) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+      let a1 : ENNReal :=
+        ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+      let Q : ℕ → ENNReal := fun j =>
+        ENNReal.ofReal p *
+          (4 * c2 j * ((ENNReal.ofReal (τ j)) ^ (2 - p) * a2) +
+            2 * c1 j * ((ENNReal.ofReal (τ j)) ^ (1 - p) * a1))
+      eLpNorm (fun x => ∑ j ∈ J, T j f x) (ENNReal.ofReal p) μ ≤
+        ∑ j ∈ J, (Q j) ^ p⁻¹ := by
+  obtain ⟨C, hC, hband⟩ :=
+    exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_rpow_le_of_entropy
+      hn C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm
+  refine ⟨C, hC, ?_⟩
+  dsimp only
+  let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) (s / 4) (s / 2)
+  let B : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+  let ν : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let μ : Measure (Euclidean (n + 1)) := ν.restrict A + ν.restrict B
+  let T : ℕ → SchwartzMap (Euclidean (n + 1)) ℂ → Euclidean (n + 1) → ℝ :=
+    fun j g => A.indicator (fun x =>
+      (restrictedRelativeBandpassSphericalMaximal (n + 1) (R j : Set ℝ) phi j g x).toReal)
+  let L : ℕ → ENNReal := fun j => (N j : ENNReal) * ENNReal.ofReal
+    (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
+      2 * (8 * Real.log 2 * (δ j : ℝ)) ^ (2 : ℕ) *
+        (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (12 * C0 *
+            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
+            (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
+  let c1 : ℕ → ENNReal := fun j => (ENNReal.ofReal (s / 4)) ^ α *
+    (∑ q ∈ R j, relativeMovingBandCapTail n j C q s) * ((ENNReal.ofReal b) ^ α)⁻¹
+  let c2 : ℕ → ENNReal := fun j =>
+    (ENNReal.ofReal (s / 4)) ^ α * L j * ((ENNReal.ofReal b) ^ α)⁻¹
+  let a2 : ENNReal :=
+    (ENNReal.ofReal ((1 : ℝ) / 4) * (ENNReal.ofReal p)⁻¹ +
+      (ENNReal.ofReal (2 - p))⁻¹) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  let a1 : ENNReal :=
+    ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  let Q : ℕ → ENNReal := fun j =>
+    ENNReal.ofReal p *
+      (4 * c2 j * ((ENNReal.ofReal (τ j)) ^ (2 - p) * a2) +
+        2 * c1 j * ((ENNReal.ofReal (τ j)) ^ (1 - p) * a1))
+  have hA : MeasurableSet A := measurableSet_closedBall.diff measurableSet_ball
+  have hTmeas (j : ℕ) (hjmem : j ∈ J) : AEStronglyMeasurable (T j f) μ := by
+    have hEj : (R j : Set ℝ) ⊆ Icc (1 : ℝ) 2 := by
+      intro q hq
+      exact hR j hjmem q (by simpa only [Finset.mem_coe] using hq)
+    have hEnej : (R j : Set ℝ).Nonempty := by
+      rcases hRne j hjmem with ⟨q, hq⟩
+      exact ⟨q, by simpa only [Finset.mem_coe] using hq⟩
+    exact ((measurable_toReal_restrictedRelativeBandpassSphericalMaximal
+      phi f hphi_one hphi_zero hphi_norm j (R j : Set ℝ) hEj hEnej).indicator hA).aestronglyMeasurable
+  have hTnonneg (j : ℕ) (x : Euclidean (n + 1)) : 0 ≤ T j f x := by
+    by_cases hx : x ∈ A
+    · simp [T, hx, ENNReal.toReal_nonneg]
+    · simp [T, hx]
+  have hmoment (j : ℕ) (hjmem : j ∈ J) :
+      (∫⁻ x, ENNReal.ofReal ((T j f x) ^ p) ∂μ) ≤ Q j := by
+    simpa only [A, B, ν, μ, T, L, c1, c2, a2, a1, Q] using
+      (hband j f (R j) (δ j) (N j) (hj j hjmem) hs (hR j hjmem) (hRne j hjmem)
+        (hsmall j hjmem) (hN j hjmem) (hδ j hjmem) hα ha hab hsa hp1 hp2
+        (hτ j hjmem) hfsupport)
+  exact eLpNorm_finset_sum_real_nonneg_le_of_lintegral_bounds_on
+    μ hp1.le (fun j => T j f) J hTmeas (fun j _ => hTnonneg j) Q hmoment
+
+/-- The cap-tail coefficient is monotone in the radius parameter.  This is
+used only to replace a finite radius cover by its cardinality; all spatial
+and frequency decay remains visible in the tail itself. -/
+theorem relativeMovingBandCapTail_mono_radius
+    (n j : Nat) (C s r r' : ℝ) (hrr' : r ≤ r') :
+    relativeMovingBandCapTail n j C r s ≤ relativeMovingBandCapTail n j C r' s := by
+  unfold relativeMovingBandCapTail
+  apply add_le_add
+  · apply Finset.sum_le_sum
+    intro m hm
+    gcongr
+  · exact le_rfl
+
+/-- A finite unit-radius family contributes at most its cardinality times
+the cap tail at radius two. -/
+theorem sum_relativeMovingBandCapTail_le_card_mul
+    (n j : Nat) (C s : ℝ) (R : Finset ℝ)
+    (hR : ∀ r ∈ R, r ∈ Icc (1 : ℝ) 2) :
+    (∑ r ∈ R, relativeMovingBandCapTail n j C r s) ≤
+      (R.card : ENNReal) * relativeMovingBandCapTail n j C 2 s := by
+  calc
+    (∑ r ∈ R, relativeMovingBandCapTail n j C r s) ≤
+        ∑ r ∈ R, relativeMovingBandCapTail n j C 2 s := by
+      apply Finset.sum_le_sum
+      intro r hr
+      exact relativeMovingBandCapTail_mono_radius n j C s r 2 (hR r hr).2
+    _ = (R.card : ENNReal) * relativeMovingBandCapTail n j C 2 s := by
+      rw [Finset.sum_const, nsmul_eq_mul]
+
+end
+
+end LeanSpherical.HarmonicAnalysis

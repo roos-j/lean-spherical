@@ -1,0 +1,72 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.RestrictedMaximal
+
+/-!
+# Dilation covariance for restricted radius sets
+
+The pointwise covariance is the elementary part of the global-to-local
+reduction in the power-weight argument.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Set
+
+noncomputable section
+
+/-- Multiply every radius in a set by a scalar. -/
+def dilateRadiusSet (a : ℝ) (E : Set ℝ) : Set ℝ :=
+  (fun r : ℝ => a * r) '' E
+
+/-- A positive simultaneous dilation of the input and radius set commutes
+with the restricted normalized spherical maximal function. -/
+theorem restrictedNormalizedSphericalMaximal_dilate
+    {d : ℕ} (E : Set ℝ) (f : Euclidean d → ℂ) {a : ℝ} (ha : 0 < a)
+    (x : Euclidean d) :
+    restrictedNormalizedSphericalMaximal d E (fun y => f (a • y)) x =
+      restrictedNormalizedSphericalMaximal d (dilateRadiusSet a E) f (a • x) := by
+  unfold restrictedNormalizedSphericalMaximal
+  apply le_antisymm
+  · apply iSup_le
+    intro r
+    let s : ↥(dilateRadiusSet a E ∩ Ioi (0 : ℝ)) :=
+      ⟨a * r.1, ⟨r.1, r.2.1, rfl⟩, mul_pos ha r.2.2⟩
+    rw [normalizedSphericalAverage_dilate]
+    exact le_iSup
+      (fun s : ↥(dilateRadiusSet a E ∩ Ioi (0 : ℝ)) =>
+        ENNReal.ofReal ‖normalizedSphericalAverage d f s.1 (a • x)‖) s
+  · apply iSup_le
+    intro s
+    rcases s.2.1 with ⟨r, hrE, hrs⟩
+    have hrpos : 0 < r := by
+      have hrs' : a * r = s.1 := hrs
+      have haspos : 0 < a * r := by
+        rw [hrs']
+        exact s.2.2
+      rcases (mul_pos_iff.mp haspos) with h | h
+      · exact h.2
+      · exact False.elim (not_lt_of_ge ha.le h.1)
+    let r' : ↥(E ∩ Ioi (0 : ℝ)) := ⟨r, hrE, hrpos⟩
+    have hmul : a * r'.1 = s.1 := by
+      dsimp only [r']
+      exact hrs
+    calc
+      ENNReal.ofReal ‖normalizedSphericalAverage d f s.1 (a • x)‖ =
+          ENNReal.ofReal ‖normalizedSphericalAverage d
+            (fun y => f (a • y)) r'.1 x‖ := by
+          rw [normalizedSphericalAverage_dilate d f a r'.1 x, hmul]
+      _ ≤ ⨆ r : ↥(E ∩ Ioi (0 : ℝ)),
+          ENNReal.ofReal ‖normalizedSphericalAverage d
+            (fun y => f (a • y)) r.1 x‖ :=
+          le_iSup (fun r : ↥(E ∩ Ioi (0 : ℝ)) =>
+            ENNReal.ofReal ‖normalizedSphericalAverage d
+              (fun y => f (a • y)) r.1 x‖) r'
+
+end
+
+end LeanSpherical.HarmonicAnalysis

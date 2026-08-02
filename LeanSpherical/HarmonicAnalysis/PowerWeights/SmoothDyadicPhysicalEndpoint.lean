@@ -1,0 +1,94 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.AbsolutePhysicalEndpoint
+import LeanSpherical.HarmonicAnalysis.SchwartzData
+
+/-!
+# The physical endpoint for literal smooth dyadic pieces
+
+This puts the fixed-scale kernel estimate in the exact bandpass convention
+used by the entropy square estimate.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory FourierTransform Set
+open scoped BigOperators Convolution FourierTransform Pointwise
+
+noncomputable section
+
+theorem exists_iSup_ennreal_norm_smooth_dyadic_sphericalAverage_le_integral
+    {d : Nat} (hd : 0 < d) (phi : SchwartzMap (Euclidean d) ℂ) :
+    ∃ D : ℝ, 0 < D ∧ ∀ (j : Nat) (psi : SchwartzMap (Euclidean d) ℂ),
+      (∀ ξ : Euclidean d,
+        psi ξ = phi (((2 : ℝ) ^ (j + 1))⁻¹ • ξ) -
+          phi (((2 : ℝ) ^ j)⁻¹ • ξ)) →
+      ∀ (E : Set ℝ), E ⊆ Icc (1 : ℝ) 2 →
+      ∀ (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d),
+        (⨆ r : ↥(E ∩ Ioi (0 : ℝ)), ENNReal.ofReal
+          ‖sphericalAverage d
+            ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
+              (psi : Euclidean d → ℂ) (𝓕 f)) : SchwartzMap (Euclidean d) ℂ) :
+              Euclidean d → ℂ) r.1 x‖) ≤
+          ENNReal.ofReal (D * (2 : ℝ) ^ j * ∫ y : Euclidean d, ‖f y‖) := by
+  obtain ⟨psi0, hpsi0⟩ := exists_schwartzMap_smooth_dyadic_bandpass phi 0
+  obtain ⟨D, hD, hendpoint⟩ :=
+    exists_sphericalAverage_fourierInv_scaled_schwartz_multiplier_le_integral hd psi0
+  refine ⟨D, hD, ?_⟩
+  intro j psi hpsi E hE f x
+  let R : ℝ := (2 : ℝ) ^ j
+  have hR : 1 ≤ R := by
+    dsimp [R]
+    exact one_le_pow₀ (by norm_num)
+  have hpow : ((2 : ℝ) ^ (0 + 1))⁻¹ * ((2 : ℝ) ^ j)⁻¹ =
+      ((2 : ℝ) ^ (j + 1))⁻¹ := by
+    rw [show 0 + 1 = 1 by omega, pow_one, ← mul_inv, pow_succ]
+    congr 1
+    ring
+  have hpow' : (2 : ℝ)⁻¹ * ((2 : ℝ) ^ j)⁻¹ =
+      ((2 : ℝ) ^ (j + 1))⁻¹ := by
+    simpa using hpow
+  have hscale (ξ : Euclidean d) : psi ξ = psi0 (R⁻¹ • ξ) := by
+    rw [hpsi ξ, hpsi0]
+    dsimp [R]
+    simp only [smul_smul, pow_one, pow_zero, inv_one]
+    rw [hpow']
+    simp only [one_mul]
+  have hmult : (fun ξ : Euclidean d => psi ξ * 𝓕 (f : Euclidean d → ℂ) ξ) =
+      fun ξ : Euclidean d => psi0 (R⁻¹ • ξ) * 𝓕 (f : Euclidean d → ℂ) ξ := by
+    funext ξ
+    rw [hscale]
+  apply iSup_le
+  intro r
+  have hr : r.1 ∈ Icc (1 : ℝ) 2 := hE r.2.1
+  have hpoint := hendpoint R hR f hr x
+  have hinput (z : Euclidean d) :
+      ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
+          (psi : Euclidean d → ℂ) (𝓕 f)) : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) z =
+        𝓕⁻ (fun ξ : Euclidean d => psi0 (R⁻¹ • ξ) *
+          𝓕 (f : Euclidean d → ℂ) ξ) z := by
+    rw [SchwartzMap.fourierInv_coe]
+    simp only [SchwartzMap.smulLeftCLM_apply psi.hasTemperateGrowth,
+      SchwartzMap.fourier_coe, smul_eq_mul]
+    rw [hmult]
+  apply ENNReal.ofReal_le_ofReal
+  rw [show sphericalAverage d
+      ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
+        (psi : Euclidean d → ℂ) (𝓕 f)) : SchwartzMap (Euclidean d) ℂ) :
+        Euclidean d → ℂ) r.1 x =
+      sphericalAverage d (fun z : Euclidean d =>
+        𝓕⁻ (fun ξ : Euclidean d => psi0 (R⁻¹ • ξ) *
+          𝓕 (f : Euclidean d → ℂ) ξ) z) r.1 x by
+        congr 2
+        funext z
+        exact hinput z]
+  simpa only [R] using hpoint
+
+end
+
+end LeanSpherical.HarmonicAnalysis

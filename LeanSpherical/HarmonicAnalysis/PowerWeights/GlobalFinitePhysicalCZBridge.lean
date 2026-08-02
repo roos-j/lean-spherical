@@ -1,0 +1,152 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.GlobalBandExhaustion
+import LeanSpherical.HarmonicAnalysis.PowerWeights.GlobalUnweightedStrong
+
+/-!
+# From finite physical C--Z estimates to the global continuum weak bound
+
+The Calderón--Zygmund argument is naturally carried out on a finite family
+of physical dyadic radius blocks.  The all-scale endpoint, on the other
+hand, asks for the literal continuum maximum over the original radius set.
+This file is the small join between those two statements.  It contains no
+analytic estimate: uniformity in the finite block family is kept as an
+explicit hypothesis and is passed through the symmetric block exhaustion.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory FourierTransform Metric Set
+open scoped BigOperators ENNReal NNReal
+
+noncomputable section
+
+/-- A finite physical-block weak estimate with a constant independent of the
+finite block set gives the literal all-scale continuum weak estimate.  The
+finite premise is ENNReal-valued because this is the form delivered by the
+physical cell comparison; the conclusion is in the `toReal` form consumed by
+the global unweighted endpoint. -/
+theorem continuum_weak_one_restrictedRelativeBandpassSphericalMaximal_of_uniform_finite_physical_blocks
+    {n : Nat} (E : Set Real) (hEpos : E ⊆ Ioi (0 : Real))
+    (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (N : Nat → Nat) (W : ENNReal)
+    (hfinite : ∀ (j : Nat) (g : SchwartzMap (Euclidean (n + 1)) Complex)
+      (K : Finset Int) {s : Real}, 0 < s →
+      ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+        ENNReal.ofReal s < restrictedRelativeBandpassSphericalMaximal (n + 1)
+          (dyadicRadiusBlockUnion E K) phi j g x} ≤
+        W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+          ∫⁻ x, ENNReal.ofReal ‖g x‖) :
+    ∀ (j : Nat) (g : SchwartzMap (Euclidean (n + 1)) Complex)
+      {s : Real}, 0 < s →
+      ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+        s < (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal} ≤
+        W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+          ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
+  intro j g s hs
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g
+  let B : ENNReal :=
+    W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+      ∫⁻ x, ENNReal.ofReal ‖g x‖
+  have hexhaust :
+      ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+        ENNReal.ofReal s < M x} ≤ B := by
+    simpa only [M, B] using
+      (weak_one_restrictedRelativeBandpassSphericalMaximal_of_dyadicRadiusBlockExhaustion
+        phi g j E hEpos (B := B)
+        (fun m {t} ht => by
+          simpa only [B, dyadicRadiusBlockExhaustion] using
+            hfinite j g (Finset.Icc (-((m : Int))) (m : Int)) ht)) hs
+  have hsub : {x : Euclidean (n + 1) | s < (M x).toReal} ⊆
+      {x : Euclidean (n + 1) | ENNReal.ofReal s < M x} := by
+    intro x hx
+    have hlt : ENNReal.ofReal s < ENNReal.ofReal (M x).toReal :=
+      (ENNReal.ofReal_lt_ofReal_iff_of_nonneg hs.le).mpr hx
+    exact hlt.trans_le ENNReal.ofReal_toReal_le
+  calc
+    ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+        s < (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal} ≤
+        ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+          ENNReal.ofReal s < M x} := by
+          simpa only [M] using
+            mul_le_mul_right (measure_mono hsub) (ENNReal.ofReal s)
+    _ ≤ B := hexhaust
+    _ = W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+          ∫⁻ x, ENNReal.ofReal ‖g x‖ := by rfl
+
+/-- Package the finite physical-block C--Z estimate in precisely the
+continuum weak-one format used by the global unweighted endpoint.  The
+entropy condition is not transformed here: it is passed to the finite
+estimate, where the selector construction uses it. -/
+theorem global_continuum_weak_one_of_uniform_finite_physical_blocks
+    {n : Nat} (E : Set Real) (hEpos : E ⊆ Ioi (0 : Real))
+    (phi : SchwartzMap (Euclidean (n + 1)) Complex) (W : ENNReal)
+    (hfinite : ∀ (N : Nat → Nat),
+      (∀ j : Nat,
+        unitMultiplicativeEntropy E (dyadicMultiplicativeScale (j + 4)) ≤ N j) →
+      ∀ (j : Nat) (g : SchwartzMap (Euclidean (n + 1)) Complex)
+        (K : Finset Int) {s : Real}, 0 < s →
+        ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+          ENNReal.ofReal s < restrictedRelativeBandpassSphericalMaximal (n + 1)
+            (dyadicRadiusBlockUnion E K) phi j g x} ≤
+          W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+            ∫⁻ x, ENNReal.ofReal ‖g x‖) :
+    ∀ (N : Nat → Nat),
+      (∀ j : Nat,
+        unitMultiplicativeEntropy E (dyadicMultiplicativeScale (j + 4)) ≤ N j) →
+      ∀ (j : Nat) (g : SchwartzMap (Euclidean (n + 1)) Complex)
+        {s : Real}, 0 < s →
+        ENNReal.ofReal s * volume {x : Euclidean (n + 1) |
+          s < (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal} ≤
+          W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+            ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
+  intro N hN
+  exact
+    continuum_weak_one_restrictedRelativeBandpassSphericalMaximal_of_uniform_finite_physical_blocks
+      E hEpos phi N W (hfinite N hN)
+
+/-- In dimensions at least three, the uniform finite physical-block C--Z
+weak estimate is sufficient for the global unweighted restricted-dilation
+strong estimate below the quadratic exponent.  This is the direct endpoint
+adapter for a shifted finite physical C--Z theorem. -/
+theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_finite_physical_CZ_weak_one_dim
+    {d : Nat} (hd : 3 ≤ d) (E : Set Real) (hEne : E.Nonempty)
+    (hEpos : E ⊆ Ioi (0 : Real))
+    {p beta : Real} (hp1 : 1 < p) (hp2 : p < 2)
+    (hM : multiplicativeMinkowskiExponent E < (beta : EReal))
+    (hcritical : beta < ((d - 1 : Nat) : Real) * (p - 1))
+    (hfinite_weak_one : ∀ (phi : SchwartzMap (Euclidean d) Complex),
+      (∀ xi, ‖xi‖ ≤ 1 → phi xi = 1) →
+      (∀ xi, 2 ≤ ‖xi‖ → phi xi = 0) →
+      (∀ xi, ‖phi xi‖ ≤ 1) →
+      ∃ W : ENNReal, 0 < W ∧ W ≠ ∞ ∧
+        ∀ (N : Nat → Nat),
+          (∀ j : Nat,
+            unitMultiplicativeEntropy E (dyadicMultiplicativeScale (j + 4)) ≤ N j) →
+          ∀ (j : Nat) (g : SchwartzMap (Euclidean d) Complex)
+            (K : Finset Int) {s : Real}, 0 < s →
+            ENNReal.ofReal s * volume {x : Euclidean d |
+              ENNReal.ofReal s < restrictedRelativeBandpassSphericalMaximal d
+                (dyadicRadiusBlockUnion E K) phi j g x} ≤
+              W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
+                ∫⁻ x, ENNReal.ofReal ‖g x‖) :
+    HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p 0 := by
+  apply
+    hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_continuum_weak_one_dim
+      hd E hEne hEpos hp1 hp2 hM hcritical
+  intro phi hphi_one hphi_zero hphi_norm
+  obtain ⟨W, hWpos, hWtop, hfinite⟩ :=
+    hfinite_weak_one phi hphi_one hphi_zero hphi_norm
+  refine ⟨W, hWpos, hWtop, ?_⟩
+  obtain ⟨n, rfl⟩ : ∃ n, d = n + 1 := ⟨d - 1, by omega⟩
+  exact global_continuum_weak_one_of_uniform_finite_physical_blocks
+    E hEpos phi W hfinite
+
+end
+
+end LeanSpherical.HarmonicAnalysis

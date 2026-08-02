@@ -66,12 +66,25 @@ theorem q4FiniteProductCountingMeasure_lintegral_eq_fibre_lintegrals
       rw [tsum_fintype]
     _ = ∑ i ∈ s, ∫⁻ x,
         ENNReal.ofReal (‖q4FiniteProductToFibres s g i x‖ ^ q) ∂μ := by
-      rw [← Finset.sum_subtype]
-      apply Finset.sum_congr rfl
-      intro i hi
-      apply lintegral_congr
-      intro x
-      simp [F, q4FiniteProductToFibres, hi]
+      let H : I → ENNReal := fun i =>
+        if hi : i ∈ s then ∫⁻ x, F (x, ⟨i, hi⟩) ∂μ else 0
+      calc
+        (∑ i : {i // i ∈ s}, ∫⁻ x, F (x, i) ∂μ) =
+            ∑ i : {i // i ∈ s}, H i := by
+              apply Finset.sum_congr rfl
+              intro i hi
+              simp only [H, dif_pos i.property]
+        _ = ∑ i ∈ s, H i :=
+          (Finset.sum_subtype s (by intro i; rfl) H).symm
+        _ = ∑ i ∈ s, ∫⁻ x,
+            ENNReal.ofReal (‖q4FiniteProductToFibres s g i x‖ ^ q) ∂μ := by
+              apply Finset.sum_congr rfl
+              intro i hi
+              rw [show H i = ∫⁻ x, F (x, ⟨i, hi⟩) ∂μ by
+                simp only [H, dif_pos hi]]
+              apply lintegral_congr
+              intro x
+              simp [F, q4FiniteProductToFibres, hi]
 
 /-- The finite-fibre integrability assumptions turn the preceding
 nonnegative Tonelli identity into the real-valued `q4FibreLpMoment` used by
@@ -163,10 +176,10 @@ theorem q4FiniteProductCountingMeasure_integral_norm_eq_fibreL1
       ofReal_integral_norm_eq_lintegral_enorm hg
     _ = ∫⁻ z, ENNReal.ofReal (‖g z‖ ^ (1 : ℝ))
           ∂q4FiniteProductCountingMeasure μ s := by
-      apply lintegral_congr
-      intro z
-      rw [Real.rpow_one]
-      exact ofReal_norm _
+       apply lintegral_congr
+       intro z
+       rw [Real.rpow_one]
+       exact (ofReal_norm (g z)).symm
     _ = ENNReal.ofReal
         (q4FibreLpMoment μ s (1 : ℝ) (q4FiniteProductToFibres s g)) :=
       q4FiniteProductCountingMeasure_lintegral_eq_fibreLpMoment
@@ -181,7 +194,7 @@ theorem q4FiniteProductCountingMeasure_integral_norm_eq_fibreL1
       unfold q4FibreLpMoment
       apply Finset.sum_congr rfl
       intro i hi
-      rw [Real.rpow_one]
+      simp only [Real.rpow_one]
 
 /-- The square integral on the concrete counting product is exactly the
 finite-fibre `L²` energy.  This is the bridge which lets a relation-restricted
@@ -201,7 +214,8 @@ theorem q4FiniteProductCountingMeasure_integral_norm_sq_eq_fibreL2Energy
       q4FibreL2Energy μ s (q4FiniteProductToFibres s g) := by
   have hmeas : Measurable
       (fun z => ENNReal.ofReal (‖g z‖ ^ (2 : ℝ))) := by
-    simpa only [Real.rpow_two] using (hgmeas.norm.pow 2).ennreal_ofReal
+    simpa only [Real.rpow_two] using
+      (hgmeas.norm.pow_const (2 : ℝ)).ennreal_ofReal
   have hfib_rpow : ∀ i ∈ s,
       Integrable (fun x => ‖q4FiniteProductToFibres s g i x‖ ^ (2 : ℝ)) μ := by
     intro i hi

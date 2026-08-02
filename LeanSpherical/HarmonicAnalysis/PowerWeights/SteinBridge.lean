@@ -1,0 +1,100 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.RestrictedMaximal
+import LeanSpherical.HarmonicAnalysis.SphericalMaximal
+
+/-!
+# The full-radius Stein estimate as a restricted-radius estimate
+
+The full normalized spherical maximal function pointwise dominates every
+restricted-radius version.  Consequently, the already formalized Stein
+theorem supplies the unweighted (`α = 0`) Schwartz-core estimate in dimensions
+at least three.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory
+open scoped ENNReal
+
+noncomputable section
+
+/-- Stein's full-radius estimate implies the corresponding unweighted strong
+`L^p` estimate for spherical averages restricted to an arbitrary set of
+radii. -/
+theorem restricted_stein_spherical_maximal
+    {d : ℕ} (hd : 3 ≤ d) {p : ℝ}
+    (hp : (d : ℝ) / ((d : ℝ) - 1) < p) (E : Set ℝ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f : SchwartzMap (Euclidean d) ℂ,
+      MemLp
+        (fun x : Euclidean d =>
+          (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) x).toReal)
+        (ENNReal.ofReal p) volume ∧
+      (∫ x : Euclidean d,
+        ((restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) x).toReal) ^ p) ≤
+        C * ∫ x : Euclidean d, ‖f x‖ ^ p := by
+  obtain ⟨C, hC, hfull⟩ := stein_spherical_maximal hd hp
+  refine ⟨C, hC, ?_⟩
+  intro f
+  obtain ⟨hfullMem, hfullBound⟩ := hfull f
+  let R : Euclidean d → ℝ := fun x =>
+    (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) x).toReal
+  let F : Euclidean d → ℝ := fun x =>
+    (normalizedSphericalMaximal d (f : Euclidean d → ℂ) x).toReal
+  have hd0 : 0 < d := by omega
+  have hdreal : 0 < (d : ℝ) := by exact_mod_cast hd0
+  have hdenom : 0 < (d : ℝ) - 1 := by
+    have hdone : (1 : ℝ) < d := by
+      exact_mod_cast (show 1 < d by omega)
+    linarith
+  have hp_pos : 0 < p := (div_pos hdreal hdenom).trans hp
+  have hF_ne_top (x : Euclidean d) :
+      normalizedSphericalMaximal d (f : Euclidean d → ℂ) x ≠ ⊤ := by
+    refine ne_top_of_le_ne_top
+      (ENNReal.ofReal_ne_top : ENNReal.ofReal ‖f.toBoundedContinuousFunction‖ ≠ ⊤) ?_
+    apply normalizedSphericalMaximal_le_of_norm_le hd0
+    intro y
+    change ‖f.toBoundedContinuousFunction y‖ ≤ ‖f.toBoundedContinuousFunction‖
+    exact BoundedContinuousFunction.norm_coe_le_norm _ _
+  have hR_nonneg (x : Euclidean d) : 0 ≤ R x := by
+    exact ENNReal.toReal_nonneg
+  have hF_nonneg (x : Euclidean d) : 0 ≤ F x := by
+    exact ENNReal.toReal_nonneg
+  have hRF (x : Euclidean d) : R x ≤ F x := by
+    dsimp only [R, F]
+    exact ENNReal.toReal_mono (hF_ne_top x)
+      (restrictedNormalizedSphericalMaximal_le_normalizedSphericalMaximal d E
+        (f : Euclidean d → ℂ) x)
+  have hRmeas : Measurable R := by
+    exact (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).ennreal_toReal
+  have hRMem : MemLp R (ENNReal.ofReal p) volume := by
+    apply hfullMem.mono hRmeas.aestronglyMeasurable
+    filter_upwards with x
+    simpa [F, Real.norm_eq_abs, abs_of_nonneg (hR_nonneg x),
+      abs_of_nonneg ENNReal.toReal_nonneg] using hRF x
+  have hpENN_ne_zero : ENNReal.ofReal p ≠ 0 :=
+    ENNReal.ofReal_ne_zero_iff.mpr hp_pos
+  have hRint : Integrable (fun x : Euclidean d => R x ^ p) volume := by
+    simpa only [ENNReal.toReal_ofReal hp_pos.le, Real.norm_eq_abs,
+      abs_of_nonneg (hR_nonneg _)] using
+      hRMem.integrable_norm_rpow hpENN_ne_zero ENNReal.ofReal_ne_top
+  have hFint : Integrable (fun x : Euclidean d => F x ^ p) volume := by
+    simpa [F, ENNReal.toReal_ofReal hp_pos.le, Real.norm_eq_abs,
+      abs_of_nonneg ENNReal.toReal_nonneg] using
+      hfullMem.integrable_norm_rpow hpENN_ne_zero ENNReal.ofReal_ne_top
+  have hmoment : (∫ x : Euclidean d, R x ^ p) ≤ ∫ x : Euclidean d, F x ^ p := by
+    apply integral_mono hRint hFint
+    intro x
+    exact Real.rpow_le_rpow (hR_nonneg x) (hRF x) hp_pos.le
+  refine ⟨?_, ?_⟩
+  · exact hRMem
+  · change (∫ x : Euclidean d, R x ^ p) ≤ C * ∫ x : Euclidean d, ‖f x‖ ^ p
+    exact hmoment.trans (by simpa only [F] using hfullBound)
+
+end
+
+end LeanSpherical.HarmonicAnalysis

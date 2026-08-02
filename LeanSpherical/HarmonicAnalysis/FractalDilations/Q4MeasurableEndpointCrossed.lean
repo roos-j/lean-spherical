@@ -26,7 +26,7 @@ noncomputable section
 
 /- The radius-gap predicate has no computational content in this argument;
 the finite shell uses the standard classical decidability instance. -/
-local instance activeDyadicRadiusGapDecidableRel
+local instance activeDyadicRadiusGapDecidableRelCrossed
     (j : Nat) (u L : Real) :
     DecidableRel (fun i l : Int =>
       radiusGapShellNeighbors u L (dyadicLeft j i) (dyadicLeft j l)) :=
@@ -232,6 +232,8 @@ theorem integrable_q4ActiveDyadicPairKernel_mul_q4SelectedFibre_of_compact
       exact BoundedContinuousFunction.norm_coe_le_norm _ _
   have hprod := (hg l).bdd_mul hkmeas hkbound
   refine hprod.congr (Filter.Eventually.of_forall fun y => ?_)
+  change k (x - y) * q4SelectedFibre rho g l y =
+    q4ActiveDyadicPairKernel psi j i l (x - y) * q4SelectedFibre rho g l y
   rw [hk (x - y)]
 
 /-- Every integrable input belongs to the literal actual endpoint-shell

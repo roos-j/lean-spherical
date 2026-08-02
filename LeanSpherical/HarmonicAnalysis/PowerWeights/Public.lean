@@ -1,0 +1,131 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.Main
+
+/-!
+# Public statement of the power-weight theorem
+
+This file gives a self-contained formulation of the `d ≥ 3` case of
+Theorem 1.1.  The definitions used in its statement are deliberately given
+here in terms of Mathlib objects, rather than referring to the implementation
+definitions used to prove it.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis.PowerWeightPublic
+
+open Filter MeasureTheory Set Topology
+open scoped ENNReal NNReal Topology
+
+noncomputable section
+
+/-- Surface measure on the Euclidean unit sphere. -/
+def unitSphereMeasure (d : ℕ) :
+    Measure (Metric.sphere (0 : EuclideanSpace ℝ (Fin d)) 1) :=
+  volume.toSphere
+
+/-- The logarithmic image of a radius set. -/
+def logRadiusSet (E : Set ℝ) : Set ℝ :=
+  {u | ∃ r : Ioi 0, r.1 ∈ E ∧
+    Real.log r.1 / Real.log 2 = u}
+
+/-- A closed interval in logarithmic radius coordinates. -/
+def multiplicativeInterval (c : Ioi (0 : ℝ)) (diam : NNReal) : Set ℝ :=
+  {r | 0 < r ∧
+    |(Real.log r / Real.log 2) - (Real.log c.1 / Real.log 2)| ≤ ↑diam / 2}
+
+/-- The covering entropy of a set of radii at a fixed multiplicative scale. -/
+def multiplicativeEntropy (E : Set ℝ) (δ : NNReal) : ENat :=
+  Metric.externalCoveringNumber (δ / 2) (logRadiusSet E)
+
+/-- The upper Minkowski exponent of a radius set in logarithmic coordinates. -/
+def minkowskiExponent (E : Set ℝ) : EReal :=
+  Filter.limsup
+    (fun δ : NNReal =>
+      ENNReal.log ↑(⨆ c : Ioi 0,
+        multiplicativeEntropy (E ∩ multiplicativeInterval c 1) δ) /
+        ↑(Real.log ((δ : ℝ)⁻¹)))
+    (𝓝[>] 0)
+
+/-- The Legendre--Assouad exponent of a radius set in logarithmic coordinates. -/
+def legendreAssouadExponent (E : Set ℝ) (ρ : ℝ) : EReal :=
+  Filter.limsup
+    (fun δ : NNReal =>
+      ENNReal.log (⨆ c : Ioi 0, ⨆ diam : Set.Icc δ 1,
+        (diam.1 : ENNReal) ^ (-ρ) *
+          multiplicativeEntropy (E ∩ multiplicativeInterval c diam.1) δ) /
+        ↑(Real.log ((δ : ℝ)⁻¹)))
+    (𝓝[>] 0)
+
+/-- The mass-normalized spherical maximal function restricted to `E`. -/
+def restrictedSphericalMaximal (d : ℕ) (E : Set ℝ)
+    (f : EuclideanSpace ℝ (Fin d) → ℂ) (x : EuclideanSpace ℝ (Fin d)) : ENNReal :=
+  ⨆ r : ↥(E ∩ Ioi 0),
+    ENNReal.ofReal ‖(((unitSphereMeasure d).real univ)⁻¹ : ℂ) *
+      ∫ ω : Metric.sphere (0 : EuclideanSpace ℝ (Fin d)) 1,
+        f (x + r.1 • ω.1) ∂unitSphereMeasure d‖
+
+/-- Lebesgue measure weighted by the radial power `|x|^α`. -/
+def powerWeightedVolume (d : ℕ) (α : ℝ) : Measure (EuclideanSpace ℝ (Fin d)) :=
+  volume.withDensity fun x => (ENNReal.ofReal ‖x‖) ^ α
+
+/-- The finite-exponent weighted strong-type region, in coordinates `(1 / p, α / p)`. -/
+def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
+  {q | ∃ p α : ℝ, 1 ≤ p ∧ q.1 = p⁻¹ ∧ q.2 = α / p ∧
+    ∃ C : ℝ, 0 < C ∧ ∀ f : SchwartzMap (EuclideanSpace ℝ (Fin d)) ℂ,
+      eLpNorm (restrictedSphericalMaximal d E f) (ENNReal.ofReal p)
+          (powerWeightedVolume d α) ≤
+        ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α)}
+
+/-- The implicit admissible region in the power-weight theorem. -/
+def admissibleRegion (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
+  {q | q.1 = 0 ∧ q.2 ∈ Icc 0 ((d : ℝ) - 1)} ∪
+    {q | ∃ p α : ℝ, 1 ≤ p ∧ q.1 = p⁻¹ ∧ q.2 = α / p ∧
+      max (↑α + minkowskiExponent E)
+          (legendreAssouadExponent E (((d : ℝ) - 1) * (p - 2) - α)) ≤
+        ↑(((d : ℝ) - 1) * (p - 1))}
+
+/-- The `d ≥ 3` case of Theorem 1.1, stated only with the definitions in this file
+and Mathlib definitions. -/
+theorem power_weight_spherical_maximal
+    {d : ℕ} (hd : 3 ≤ d) (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
+    closure (typeSet d E) = admissibleRegion d E := by
+  have htype :
+      typeSet d E =
+        LeanSpherical.HarmonicAnalysis.restrictedNormalizedSphericalMaximalPowerWeightTypeSet
+          d E := by
+    ext q
+    constructor
+    · rintro ⟨p, α, hp, hq1, hq2, C, hC, hbound⟩
+      refine ⟨p, α, hp, hq1, hq2, C, hC, ?_⟩
+      intro f hf
+      refine ⟨?_, hbound f⟩
+      have hmeas :=
+        LeanSpherical.HarmonicAnalysis.measurable_restrictedNormalizedSphericalMaximal_schwartz
+          E f
+      refine ⟨hmeas.aestronglyMeasurable, ?_⟩
+      exact (hbound f).trans_lt
+        (ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr ENNReal.ofReal_ne_top) hf.eLpNorm_lt_top)
+    · rintro ⟨p, α, hp, hq1, hq2, C, hC, hstrong⟩
+      refine ⟨p, α, hp, hq1, hq2, C, hC, ?_⟩
+      intro f
+      by_cases hf : MemLp f (ENNReal.ofReal p) (powerWeightedVolume d α)
+      · exact (hstrong f hf).2
+      · have hfmeas : AEStronglyMeasurable f (powerWeightedVolume d α) :=
+          f.continuous.aestronglyMeasurable
+        have hftop : eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α) = ∞ :=
+          not_lt_top_iff.mp fun hfin => hf ⟨hfmeas, hfin⟩
+        rw [hftop, ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr hC)]
+        exact le_top
+  rw [htype]
+  change closure
+      (LeanSpherical.HarmonicAnalysis.restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) =
+    LeanSpherical.HarmonicAnalysis.powerWeightAdmissibleRegion d E
+  exact LeanSpherical.HarmonicAnalysis.power_weight_spherical_maximal_main hd E hE hEpos
+
+end
+
+end LeanSpherical.HarmonicAnalysis.PowerWeightPublic

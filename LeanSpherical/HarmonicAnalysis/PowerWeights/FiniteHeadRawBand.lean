@@ -1,0 +1,95 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.AnnularInterpolation
+import LeanSpherical.HarmonicAnalysis.PowerWeights.LocalizedUpper
+
+/-!
+# Finite-head raw relative-band moments
+
+The finitely many relative-frequency bands below the strict-entropy scale
+need only a crude central estimate.  The literal physical `L¹ → L∞` bound
+for one relative band, combined with annular `L¹` interpolation, gives such
+an estimate with its explicit `(2^j)^p` coefficient.  Later bookkeeping can
+absorb this coefficient over a fixed finite range of `j`.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Metric Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- On the fixed central ball, every relative band of a buffered annular
+input has the crude raw moment bound supplied by the physical kernel.  The
+only frequency dependence is the displayed `(2^j)^p` factor. -/
+theorem exists_restrictedRelativeBandpass_buffered_raw_central_moment
+    {d : Nat} (hd : 0 < d) (phi : SchwartzMap (Euclidean d) Complex)
+    {p alpha : Real} (hp : 1 < p) (halpha : alpha ≤ 0) :
+    ∃ D : Real, 0 < D ∧ ∀ (j : Nat) (E : Set Real), E ⊆ Icc (1 : Real) 2 →
+      ∀ (f : SchwartzMap (Euclidean d) Complex),
+        (∀ x : Euclidean d,
+          x ∉ euclideanAnnulus d (1 / 4 : Real) 8 → f x = 0) →
+        (∫⁻ x in closedBall (0 : Euclidean d) (1 / 32 : Real),
+          (restrictedRelativeBandpassSphericalMaximal d E phi j f x) ^ p ∂
+            powerWeightedVolume d alpha) ≤
+          (ENNReal.ofReal (D * (2 : Real) ^ j)) ^ p *
+            powerWeightedVolume d alpha
+              (closedBall (0 : Euclidean d) (1 / 32 : Real)) *
+            (volume (euclideanAnnulus d (1 / 4 : Real) 8)) ^ (p - 1) *
+            ((ENNReal.ofReal (8 : Real)) ^ alpha)⁻¹ *
+            ∫⁻ x : Euclidean d, (ENNReal.ofReal ‖f x‖) ^ p ∂
+              powerWeightedVolume d alpha := by
+  obtain ⟨D, hD, hpointwise⟩ :=
+    exists_restrictedRelativeBandpass_pointwise_le_integral hd phi
+  refine ⟨D, hD, ?_⟩
+  intro j E hE f hfsupport
+  let mu : Measure (Euclidean d) := powerWeightedVolume d alpha
+  let B : Set (Euclidean d) := closedBall 0 (1 / 32 : Real)
+  let M : Euclidean d → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal d E phi j f
+  let I : ENNReal := ∫⁻ x : Euclidean d, ENNReal.ofReal ‖f x‖
+  let K : ENNReal := ∫⁻ x : Euclidean d, (ENNReal.ofReal ‖f x‖) ^ p ∂mu
+  let V : ENNReal := volume (euclideanAnnulus d (1 / 4 : Real) 8)
+  let w : ENNReal := (ENNReal.ofReal (8 : Real)) ^ alpha
+  let c : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j)
+  have hp0 : 0 ≤ p := (lt_trans zero_lt_one hp).le
+  have hDpow : 0 ≤ D * (2 : Real) ^ j := by positivity
+  have hI : I = ENNReal.ofReal (∫ x : Euclidean d, ‖f x‖) := by
+    dsimp only [I]
+    symm
+    simpa only [ofReal_norm] using
+      (ofReal_integral_norm_eq_lintegral_enorm (μ := volume) f.integrable)
+  have hMpoint (x : Euclidean d) : M x ≤ c * I := by
+    calc
+      M x ≤ ENNReal.ofReal (D * (2 : Real) ^ j *
+          ∫ y : Euclidean d, ‖f y‖) := hpointwise j E hE f x
+      _ = c * I := by
+        rw [ENNReal.ofReal_mul hDpow, ← hI]
+  have hinput : I ^ p ≤ V ^ (p - 1) * w⁻¹ * K := by
+    simpa only [I, K, V, w, ofReal_norm] using
+      (lintegral_enorm_rpow_le_annulus_volume_mul_powerWeighted_of_annular_support
+        (d := d) (p := p) (α := alpha) hp halpha
+        (by norm_num : 0 < (1 / 4 : Real)) (by norm_num : (1 / 4 : Real) ≤ 8)
+        f hfsupport)
+  change (∫⁻ x in B, M x ^ p ∂mu) ≤
+    c ^ p * mu B * V ^ (p - 1) * w⁻¹ * K
+  calc
+    (∫⁻ x in B, M x ^ p ∂mu) ≤
+        ∫⁻ x in B, (c * I) ^ p ∂mu :=
+      lintegral_mono fun x => ENNReal.rpow_le_rpow (hMpoint x) hp0
+    _ = (c * I) ^ p * mu B := setLIntegral_const _ _
+    _ = c ^ p * I ^ p * mu B := by
+      rw [ENNReal.mul_rpow_of_nonneg c I hp0]
+    _ = (c ^ p * mu B) * I ^ p := by ring
+    _ ≤ (c ^ p * mu B) * (V ^ (p - 1) * w⁻¹ * K) :=
+      by simpa only [mul_comm] using mul_le_mul_left hinput (c ^ p * mu B)
+    _ = c ^ p * mu B * V ^ (p - 1) * w⁻¹ * K := by ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis

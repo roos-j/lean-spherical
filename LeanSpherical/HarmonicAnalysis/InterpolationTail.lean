@@ -726,10 +726,10 @@ private theorem direct_weak_q_weighted
     _ = (ENNReal.ofReal (2 : ℝ)) ^ q * C * I *
           ENNReal.ofReal (t ^ (p - q - 1)) := by ac_rfl
 
-/-- The weak `(q,q)`--`L∞` Marcinkiewicz step with a supplied additive
-amplitude split.  This form applies directly to operators whose domain is a
-stable test-function class, such as Schwartz maps. -/
-private theorem marcinkiewicz_weak_q_top_on_additive_split
+/-- The supplied-split weak `(q,q)`--`L∞` Marcinkiewicz step with an
+`ENNReal` weak-endpoint coefficient.  Keeping that coefficient in `ENNReal`
+is useful for localized estimates whose natural constants contain measures. -/
+theorem marcinkiewicz_weak_q_top_on_additive_split
     {α E F : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
     [Add F] {μ : Measure α} [SFinite μ]
     (D : Set F) (eval : F → α → E) (T : F → α → ℝ)
@@ -1056,6 +1056,148 @@ theorem marcinkiewicz_weak_q_top_on_additive_split_real_top_scaled
         ← ENNReal.ofReal_mul (Real.rpow_nonneg hCtop.le _)]
       exact congrArg ENNReal.ofReal hreal
 
+/-- The `ENNReal`-coefficient version of the supplied-split weak
+`(q,q)`--`L∞` interpolation estimate.  Localized cap estimates naturally
+produce their weak coefficient as an `ENNReal`, so this avoids an artificial
+passage through `toReal`. -/
+theorem marcinkiewicz_weak_q_top_on_additive_split_ennreal_top_scaled
+    {α E F : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    [Add F] {μ : Measure α} [SFinite μ]
+    (D : Set F) (eval : F → α → E) (T : F → α → ℝ)
+    (hT_nonneg : ∀ g x, 0 ≤ T g x)
+    (hT_subadd : ∀ ⦃g h : F⦄, g ∈ D → h ∈ D →
+      ∀ x, T (g + h) x ≤ T g x + T h x)
+    (q : ℝ) (hq : 0 < q) (Cq : ENNReal) (Ctop : ℝ)
+    (hCtop : 0 < Ctop)
+    (hweak_q : ∀ (g : F), g ∈ D → ∀ {s : ℝ}, 0 < s →
+      (ENNReal.ofReal s) ^ q * μ {x | s < T g x} ≤
+        Cq * (∫⁻ x, (ENNReal.ofReal ‖eval g x‖) ^ q ∂μ))
+    (hT_top : ∀ (g : F), g ∈ D → ∀ (a : ℝ), 0 ≤ a →
+      (∀ x, ‖eval g x‖ ≤ a) → ∀ x, T g x ≤ Ctop * a)
+    {p : ℝ} (hqp : q < p)
+    (f : F) (hTf : AEMeasurable (T f) μ)
+    (low high : ℝ → F)
+    (hlow_mem : ∀ t, low t ∈ D) (hhigh_mem : ∀ t, high t ∈ D)
+    (hsplit : ∀ t, f = low t + high t)
+    (hlow_norm : ∀ t, 0 < t → ∀ x, ‖eval (low t) x‖ ≤ t / 2)
+    (hhighI_meas : Measurable (fun t : ℝ =>
+      ∫⁻ x, (ENNReal.ofReal ‖eval (high t) x‖) ^ q ∂μ))
+    (Aq : ENNReal)
+    (hhigh_tail :
+      (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x, (ENNReal.ofReal ‖eval (high t) x‖) ^ q ∂μ) *
+          (ENNReal.ofReal t) ^ (p - q - 1)) ≤ Aq) :
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
+      ENNReal.ofReal p * ((ENNReal.ofReal (2 : ℝ)) ^ q * Cq * Aq *
+        (ENNReal.ofReal Ctop) ^ (p - q)) := by
+  let S : F → α → ℝ := fun g x => T g x / Ctop
+  have hS_nonneg : ∀ g x, 0 ≤ S g x := by
+    intro g x
+    exact div_nonneg (hT_nonneg g x) hCtop.le
+  have hS_subadd : ∀ ⦃g h : F⦄, g ∈ D → h ∈ D →
+      ∀ x, S (g + h) x ≤ S g x + S h x := by
+    intro g h hg hh x
+    change T (g + h) x / Ctop ≤ T g x / Ctop + T h x / Ctop
+    rw [← add_div]
+    exact div_le_div_of_nonneg_right (hT_subadd hg hh x) hCtop.le
+  have hlevel (g : F) (s : ℝ) :
+      {x | s < S g x} = {x | Ctop * s < T g x} := by
+    ext x
+    change s < T g x / Ctop ↔ Ctop * s < T g x
+    constructor
+    · intro hx
+      have hx' := (lt_div_iff₀ hCtop).mp hx
+      simpa [mul_comm] using hx'
+    · intro hx
+      apply (lt_div_iff₀ hCtop).mpr
+      simpa [mul_comm] using hx
+  have hS_weak : ∀ (g : F), g ∈ D → ∀ {s : ℝ}, 0 < s →
+      (ENNReal.ofReal s) ^ q * μ {x | s < S g x} ≤
+        ((ENNReal.ofReal Ctop) ^ q)⁻¹ * Cq *
+          (∫⁻ x, (ENNReal.ofReal ‖eval g x‖) ^ q ∂μ) := by
+    intro g hg s hs
+    have hbase := hweak_q g hg (mul_pos hCtop hs)
+    rw [← hlevel g s] at hbase
+    let b : ENNReal := ENNReal.ofReal Ctop
+    let v : ENNReal := (ENNReal.ofReal s) ^ q
+    let m : ENNReal := μ {x | s < S g x}
+    let I : ENNReal := ∫⁻ x, (ENNReal.ofReal ‖eval g x‖) ^ q ∂μ
+    have hb0 : b ^ q ≠ 0 := (ENNReal.rpow_pos (ENNReal.ofReal_pos.mpr hCtop)
+      ENNReal.ofReal_ne_top).ne'
+    have hbtop : b ^ q ≠ ⊤ := by
+      rw [ENNReal.ofReal_rpow_of_pos hCtop]
+      exact ENNReal.ofReal_ne_top
+    have hbase' : (b ^ q * v) * m ≤ Cq * I := by
+      rw [ENNReal.ofReal_mul hCtop.le,
+        ENNReal.mul_rpow_of_nonneg _ _ hq.le] at hbase
+      simpa only [b, v, m, I] using hbase
+    have hmain : v * m ≤ (b ^ q)⁻¹ * Cq * I := by
+      calc
+        v * m = ((b ^ q)⁻¹ * b ^ q) * (v * m) := by
+          rw [ENNReal.inv_mul_cancel hb0 hbtop, one_mul]
+        _ = (b ^ q)⁻¹ * ((b ^ q * v) * m) := by ac_rfl
+        _ ≤ (b ^ q)⁻¹ * (Cq * I) :=
+          mul_le_mul_of_nonneg_left hbase' (by positivity)
+        _ = (b ^ q)⁻¹ * Cq * I := by ac_rfl
+    simpa only [b, v, m, I] using hmain
+  have hS_top : ∀ (g : F), g ∈ D → ∀ (a : ℝ), 0 ≤ a →
+      (∀ x, ‖eval g x‖ ≤ a) → ∀ x, S g x ≤ a := by
+    intro g hg a ha hnorm x
+    change T g x / Ctop ≤ a
+    rw [div_le_iff₀ hCtop]
+    simpa [mul_comm] using hT_top g hg a ha hnorm x
+  have hS_meas : AEMeasurable (S f) μ := by
+    change AEMeasurable (fun x => T f x / Ctop) μ
+    exact hTf.div_const Ctop
+  have hSbound := marcinkiewicz_weak_q_top_on_additive_split D eval S
+    hS_nonneg hS_subadd q hq (((ENNReal.ofReal Ctop) ^ q)⁻¹ * Cq) hS_weak hS_top
+    hqp f hS_meas low high hlow_mem hhigh_mem hsplit hlow_norm hhighI_meas Aq hhigh_tail
+  have hSbound' :
+      (∫⁻ x, ENNReal.ofReal ((S f x) ^ p) ∂μ) ≤
+        ENNReal.ofReal p * ((ENNReal.ofReal (2 : ℝ)) ^ q *
+          ((ENNReal.ofReal Ctop) ^ q)⁻¹ * Cq * Aq) := by
+    simpa only [mul_assoc] using hSbound
+  have hp : 0 < p := hq.trans hqp
+  have hTS (x : α) : T f x = Ctop * S f x := by
+    change T f x = Ctop * (T f x / Ctop)
+    field_simp
+  have hpoint (x : α) :
+      ENNReal.ofReal ((T f x) ^ p) =
+        (ENNReal.ofReal Ctop) ^ p * ENNReal.ofReal ((S f x) ^ p) := by
+    rw [hTS x, Real.mul_rpow hCtop.le (hS_nonneg f x),
+      ENNReal.ofReal_mul (Real.rpow_nonneg hCtop.le _),
+      ← ENNReal.ofReal_rpow_of_pos hCtop]
+  have hscale :
+      (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) =
+        (ENNReal.ofReal Ctop) ^ p *
+          (∫⁻ x, ENNReal.ofReal ((S f x) ^ p) ∂μ) := by
+    calc
+      (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) =
+          ∫⁻ x, (ENNReal.ofReal Ctop) ^ p * ENNReal.ofReal ((S f x) ^ p) ∂μ := by
+            apply lintegral_congr
+            intro x
+            exact hpoint x
+      _ = (ENNReal.ofReal Ctop) ^ p *
+          (∫⁻ x, ENNReal.ofReal ((S f x) ^ p) ∂μ) :=
+            lintegral_const_mul' _ _
+              (ENNReal.rpow_ne_top_of_nonneg hp.le ENNReal.ofReal_ne_top)
+  have hb0 : ENNReal.ofReal Ctop ≠ 0 := ENNReal.ofReal_pos.mpr hCtop |>.ne'
+  have hbtop : ENNReal.ofReal Ctop ≠ ⊤ := ENNReal.ofReal_ne_top
+  calc
+    (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) =
+        (ENNReal.ofReal Ctop) ^ p *
+          (∫⁻ x, ENNReal.ofReal ((S f x) ^ p) ∂μ) := hscale
+    _ ≤ (ENNReal.ofReal Ctop) ^ p *
+        (ENNReal.ofReal p * ((ENNReal.ofReal (2 : ℝ)) ^ q *
+          ((ENNReal.ofReal Ctop) ^ q)⁻¹ * Cq * Aq)) :=
+      by
+        simpa only [mul_assoc] using
+          (mul_le_mul_of_nonneg_left hSbound' (by positivity))
+    _ = ENNReal.ofReal p * ((ENNReal.ofReal (2 : ℝ)) ^ q * Cq * Aq *
+        (ENNReal.ofReal Ctop) ^ (p - q)) := by
+      rw [ENNReal.rpow_sub p q hb0 hbtop, div_eq_mul_inv]
+      ac_rfl
+
 /-! The following scaled form is the version used when the threshold in a
 Calderón--Zygmund decomposition is chosen independently of the distribution
 parameter.  It simply applies the preceding weak-endpoint interpolation
@@ -1068,7 +1210,7 @@ theorem marcinkiewicz_weak_one_two_on_additive_split_scaled
     (D : Set F) (eval : F → α → E) (T : F → α → ℝ)
     (hT_nonneg : ∀ g x, 0 ≤ T g x)
     (hT_subadd : ∀ ⦃g h : F⦄, g ∈ D → h ∈ D →
-      ∀ x, T (g + h) x ≤ T g x + T h x)
+      ∀ᵐ x ∂μ, T (g + h) x ≤ T g x + T h x)
     (C₁ C₂ : ENNReal)
     (hweak_one : ∀ (g : F), g ∈ D → ∀ {s : ℝ}, 0 < s →
       ENNReal.ofReal s * μ {x | s < T g x} ≤

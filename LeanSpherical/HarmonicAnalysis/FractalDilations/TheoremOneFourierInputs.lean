@@ -29,25 +29,18 @@ open Metric Set
 
 noncomputable section
 
-/-- The sharp surface-Fourier data used in the nonendpoint proof.  The
-natural-number predecessor in the exponent is intentional: it lets the
-already-formalized `d = n + 1` Stein estimate and the `d = 2` circle estimate
-fit the same literal statement without a cast-level change of ambient
-dimension. -/
+/-- The sharp surface-Fourier data used in the nonendpoint proof. -/
 def HasTheoremOneSharpSurfaceFourierInput (d : Nat) : Prop :=
   exists C0 C1 : Real, 0 < C0 /\ 0 < C1 /\
     (forall xi : Euclidean d, 1 <= norm xi ->
       norm (surfaceFourier d xi) <=
         C0 / norm xi ^ (((d - 1 : Nat) : Real) / 2)) /\
-    (forall xi : Euclidean d, forall r : Real, 1 <= norm xi -> r \in Icc (1 : Real) 2 ->
+    (forall xi : Euclidean d, forall r : Real, 1 <= norm xi -> r ∈ Icc (1 : Real) 2 ->
       norm (deriv (fun s : Real => surfaceFourier d (s • xi)) r) <=
         C1 / norm xi ^ (((d - 1 : Nat) : Real) / 2 - 1))
 
 /-- In exactly the dimensional range of Theorem 1, the sharp Fourier decay
-and radial-derivative estimates are available as proved input.  The planar
-restriction on `gamma` is not needed by this Fourier fact itself, but keeping
-the full theorem hypothesis here makes the later analytic assembly branch on
-the same dimension case only once. -/
+and radial-derivative estimates are available as proved input. -/
 theorem exists_theoremOneSharpSurfaceFourierInput
     {d : Nat} {gamma : Real}
     (hd : 3 <= d \/ d = 2 /\ gamma <= 1 / 2) :
@@ -81,7 +74,7 @@ theorem HasTheoremOneSharpSurfaceFourierInput.decay
 theorem HasTheoremOneSharpSurfaceFourierInput.deriv
     {d : Nat} (h : HasTheoremOneSharpSurfaceFourierInput d) :
     exists C : Real, 0 < C /\ forall xi : Euclidean d, forall r : Real,
-      1 <= norm xi -> r \in Icc (1 : Real) 2 ->
+      1 <= norm xi -> r ∈ Icc (1 : Real) 2 ->
         norm (deriv (fun s : Real => surfaceFourier d (s • xi)) r) <=
           C / norm xi ^ (((d - 1 : Nat) : Real) / 2 - 1) := by
   rcases h with ⟨C0, C1, hC0, hC1, hdecay, hderiv⟩

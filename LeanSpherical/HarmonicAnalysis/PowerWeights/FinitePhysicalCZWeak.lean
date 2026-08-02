@@ -1,0 +1,371 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.ContinuumCZShiftedCellWeak
+import LeanSpherical.HarmonicAnalysis.PowerWeights.PhysicalEntropyCellCore
+import LeanSpherical.HarmonicAnalysis.PowerWeights.GlobalUnweightedEndpoint
+
+/-!
+# The finite physical C--Z weak estimate
+
+This file joins the literal entropy-cell square core to the shifted
+Calderón--Zygmund argument.  The selector palette is handled by the existing
+three-way lacunary endpoint; the only new bookkeeping is that the cell square
+constant is used before its square root is discarded, so the resulting weak
+bound remains linear in the entropy count.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory FourierTransform Metric Set intervalIntegral
+open scoped BigOperators Convolution FourierTransform ENNReal ComplexConjugate
+
+noncomputable section
+
+/-- The physical-cell square coefficient is bounded by the full relative-band
+square coefficient.  The latter has one additional nonnegative term. -/
+theorem lacunaryRelativeBandpassPhysicalCellSquareCoefficient_le_globalRelativeBandSquareCoefficient
+    {n N : Nat} (C0 C1 : ℝ) (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (j : Nat) (δ : NNReal) :
+    ENNReal.ofReal
+        (lacunaryRelativeBandpassPhysicalCellSquareCoefficient C0 C1 phi j δ N) ≤
+      ENNReal.ofReal (globalRelativeBandSquareCoefficient n C0 C1 phi j δ N) := by
+  apply ENNReal.ofReal_le_ofReal
+  let a : ℝ := 24 * (N : ℝ)
+  let u : ℝ := 2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ 2
+  let v : ℝ :=
+    2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
+      (2 *
+        ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (12 * C0 *
+            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ)
+              phi).toBoundedContinuousFunction‖) /
+            (dyadicScale j) ^ ((n : ℝ) / 2))) ^ 2
+  have ha : 0 ≤ a := by
+    dsimp only [a]
+    positivity
+  have hu : 0 ≤ u := by
+    dsimp only [u]
+    positivity
+  change a * v ≤ a * (u + v)
+  exact mul_le_mul_of_nonneg_left (le_add_of_nonneg_left hu) ha
+
+/-- The lacunary palette majorant is monotone in its square-function
+coefficient. -/
+theorem lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant_mono
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) {C D : ℝ} (hCD : C ≤ D) :
+    lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant psi C ≤
+      lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant psi D := by
+  unfold lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant
+  apply add_le_add
+  · apply add_le_add
+    · exact le_rfl
+    · exact mul_le_mul_right
+        (pow_le_pow_left' (ENNReal.ofReal_le_ofReal hCD) 2) _
+  · exact le_rfl
+
+/-- The one-shot finite-block input required by the global physical-block
+bridge.  All entropy dependence is exactly linear. -/
+theorem hfinite_weak_one_restrictedRelativeBandpassSphericalMaximal_of_shifted_physical_CZ
+    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ) (hEne : E.Nonempty)
+    (hEpos : E ⊆ Ioi (0 : ℝ)) :
+    ∀ (phi : SchwartzMap (Euclidean d) ℂ),
+      (∀ xi, ‖xi‖ ≤ 1 → phi xi = 1) →
+      (∀ xi, 2 ≤ ‖xi‖ → phi xi = 0) →
+      (∀ xi, ‖phi xi‖ ≤ 1) →
+      ∃ W : ENNReal, 0 < W ∧ W ≠ ∞ ∧
+        ∀ (N : Nat → Nat),
+          (∀ j : Nat,
+            unitMultiplicativeEntropy E (dyadicMultiplicativeScale (j + 4)) ≤ N j) →
+          ∀ (j : Nat) (g : SchwartzMap (Euclidean d) ℂ)
+            (K : Finset ℤ) {s : ℝ}, 0 < s →
+            ENNReal.ofReal s * volume {x : Euclidean d |
+              ENNReal.ofReal s < restrictedRelativeBandpassSphericalMaximal d
+                (dyadicRadiusBlockUnion E K) phi j g x} ≤
+              W * (N j : ENNReal) * ENNReal.ofReal ((j : ℝ) + 1) *
+                ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
+  intro phi hphi_one hphi_zero hphi_norm
+  generalize hn' : d - 1 = n
+  have hnd : n + 1 = d := by omega
+  subst d
+  let d : Nat := n + 1
+  simp only [d, Nat.add_sub_cancel] at *
+  have hn : 2 ≤ n := by omega
+  obtain ⟨C0, C1, hC0, hC1, hdecay, hderiv⟩ :=
+    exists_sharp_surfaceFourier_succ_decay_and_deriv (d := n) hn
+  obtain ⟨psi, hpsi_zero, hpsiCompact, _⟩ :=
+    exists_compactlySupported_schwartzMap_smooth_dyadic_bandpass
+      phi hphi_one hphi_zero 0
+  have hpsi : ∀ xi : Euclidean d,
+      psi xi = phi ((2 : ℝ)⁻¹ • xi) - phi xi := by
+    intro xi
+    simpa using hpsi_zero xi
+  let Cpalette : ℝ := 12 * (4 * C0)
+  let P : ENNReal :=
+    lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant psi Cpalette
+  let Q : ENNReal := globalRelativeBandSquareEnvelope n C0 C1 phi
+  let X : ENNReal := 2 * ENNReal.ofReal
+    ((volume (Metric.ball (0 : Euclidean d) 1)).toReal *
+      (3 : ℝ) ^ d * (d : ℝ) ^ d)
+  let R : ENNReal := 32 * ENNReal.ofReal (3 * (2 : ℝ) ^ d)
+  let Y : ENNReal := R * Q
+  let L : ℝ := lacunaryRelativeBandpassPhysicalCellShiftedCZTailLinearMajorant psi
+  let Z : ENNReal := 16 * ENNReal.ofReal L
+  let W : ENNReal := 1 + (2 * P + (X + Y + Z))
+  have hPtop : P ≠ ∞ := by
+    dsimp only [P]
+    unfold lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant
+    apply ENNReal.add_ne_top.mpr
+    constructor
+    · apply ENNReal.add_ne_top.mpr
+      constructor
+      · exact ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top
+      · exact ENNReal.mul_ne_top
+          (ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top)
+          (ENNReal.pow_ne_top ENNReal.ofReal_ne_top)
+    · exact ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top
+  have hQtop : Q ≠ ∞ := by
+    dsimp only [Q]
+    exact globalRelativeBandSquareEnvelope_ne_top n C0 C1 phi
+  have hXtop : X ≠ ∞ := by
+    dsimp only [X]
+    exact ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top
+  have hRtop : R ≠ ∞ := by
+    dsimp only [R]
+    exact ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top
+  have hYtop : Y ≠ ∞ := by
+    dsimp only [Y]
+    exact ENNReal.mul_ne_top hRtop hQtop
+  have hZtop : Z ≠ ∞ := by
+    dsimp only [Z]
+    exact ENNReal.mul_ne_top (by norm_num) ENNReal.ofReal_ne_top
+  refine ⟨W, ?_, ?_, ?_⟩
+  · have hWone : (0 : ENNReal) < 1 := by norm_num
+    exact hWone.trans_le (le_add_of_nonneg_right bot_le)
+  · dsimp only [W]
+    apply ENNReal.add_ne_top.mpr
+    constructor
+    · norm_num
+    · apply ENNReal.add_ne_top.mpr
+      constructor
+      · exact ENNReal.mul_ne_top (by norm_num) hPtop
+      · apply ENNReal.add_ne_top.mpr
+        constructor
+        · apply ENNReal.add_ne_top.mpr
+          exact ⟨hXtop, hYtop⟩
+        · exact hZtop
+  intro N hentropy j g K s hs
+  let δ : NNReal := dyadicMultiplicativeScale (j + 4)
+  let J : ENNReal := ENNReal.ofReal ((j : ℝ) + 1)
+  let q : ENNReal := (N j : ENNReal) * J
+  have hNnat : 1 ≤ N j := by
+    have hunit := one_le_unitMultiplicativeEntropy_of_nonempty_of_subset_Ioi
+      hEne hEpos δ
+    dsimp only [δ] at hunit
+    exact_mod_cast hunit.trans (hentropy j)
+  have hN : (1 : ENNReal) ≤ (N j : ENNReal) := by
+    exact_mod_cast hNnat
+  have hJ : (1 : ENNReal) ≤ J := by
+    dsimp only [J]
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal (by
+      have hj0 : (0 : ℝ) ≤ j := Nat.cast_nonneg j
+      linarith)
+  have hq : (1 : ENNReal) ≤ q := by
+    dsimp only [q]
+    exact one_le_mul_of_one_le_of_one_le hN hJ
+  have hδ : Real.log 2 * (δ : ℝ) ≤ 1 := by
+    simpa only [δ] using dyadicMultiplicativeScale_shift_four_log_two_le_one j
+  have hsmall : 8 * Real.log 2 * (δ : ℝ) ≤ ((2 : ℝ) ^ j)⁻¹ := by
+    simpa only [δ, dyadicScale] using dyadicMultiplicativeScale_shift_four_short j
+  obtain ⟨r, hr, hcover_all⟩ :=
+    exists_dyadic_lacunary_selectors_covering_all_blocks_of_unitEntropy
+      E δ (N j) (by simpa only [δ] using hentropy j)
+  have hcover : ∀ k ∈ K, ∀ radius : PositiveRadius,
+      (radius : ℝ) ∈ E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) →
+        ∃ i : Fin (N j),
+          |logRadius radius - logRadius (r i k)| ≤ (δ : ℝ) := by
+    intro k hk radius hradius
+    obtain ⟨i, _, hi⟩ := hcover_all k radius hradius
+    exact ⟨i, hi⟩
+  obtain ⟨G, hG⟩ :=
+    exists_schwartz_lacunaryRelativeBandpassPhysicalKernelRadiusGenerator psi hpsiCompact j
+  obtain ⟨C, hC, hCsquare, hCcore⟩ :=
+    exists_lacunaryRelativeBandpassPhysicalCellSquareVariation_schwartz_core_of_sharp
+      (d := n) (N := N j) hn C0 C1 hC0 hC1 hdecay hderiv phi psi hpsi
+        hphi_one hphi_zero hphi_norm j δ hδ K r hr
+  have hcore : ∀ u : SchwartzMap (Euclidean d) ℂ,
+      (∫⁻ x, lacunaryRelativeBandpassPhysicalCellSquareVariation psi j
+        (K.product Finset.univ) (dyadicPhysicalEntropyCellLeft δ r)
+        (dyadicPhysicalEntropyCellRight δ r) (u : Euclidean d → ℂ) x) ≤
+          (ENNReal.ofReal C) ^ 2 *
+            ∫⁻ x, ENNReal.ofReal (‖(u : Euclidean d → ℂ) x‖ ^ 2) := by
+    intro u
+    exact hCcore u
+  have hcell_square : (ENNReal.ofReal C) ^ 2 ≤ Q * (N j : ENNReal) := by
+    have hglobal : ENNReal.ofReal
+        (globalRelativeBandSquareCoefficient n C0 C1 phi j δ (N j)) ≤
+        Q * (N j : ENNReal) *
+          (dyadicMultiplicativeScale j : ENNReal) ^ n := by
+      simpa only [δ, Q] using
+        globalRelativeBandSquareCoefficient_le_dyadicEnvelope C0 C1 phi hC0 hC1 j (N j)
+    have hscale : (dyadicMultiplicativeScale j : ENNReal) ≤ 1 := by
+      exact_mod_cast dyadicMultiplicativeScale_le_one j
+    have hpow : (dyadicMultiplicativeScale j : ENNReal) ^ n ≤ 1 :=
+      pow_le_one₀ bot_le hscale
+    calc
+      (ENNReal.ofReal C) ^ 2 ≤ ENNReal.ofReal
+          (lacunaryRelativeBandpassPhysicalCellSquareCoefficient C0 C1 phi j δ (N j)) :=
+        hCsquare
+      _ ≤ ENNReal.ofReal
+          (globalRelativeBandSquareCoefficient n C0 C1 phi j δ (N j)) :=
+        lacunaryRelativeBandpassPhysicalCellSquareCoefficient_le_globalRelativeBandSquareCoefficient
+          C0 C1 phi j δ
+      _ ≤ Q * (N j : ENNReal) *
+          (dyadicMultiplicativeScale j : ENNReal) ^ n := hglobal
+      _ ≤ Q * (N j : ENNReal) := by
+        calc
+          Q * (N j : ENNReal) *
+              (dyadicMultiplicativeScale j : ENNReal) ^ n ≤
+          Q * (N j : ENNReal) * 1 :=
+            mul_le_mul_right hpow (Q * (N j : ENNReal))
+          _ = Q * (N j : ENNReal) := by ring
+  let cJ : ℝ := 12 * ((4 * C0) /
+    (dyadicScale j) ^ ((n : ℝ) / 2))
+  let PJ : ENNReal :=
+    lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant psi cJ
+  have hscale : 1 ≤ dyadicScale j := by
+    unfold dyadicScale
+    exact one_le_pow₀ (by norm_num)
+  have hden : 1 ≤ (dyadicScale j) ^ ((n : ℝ) / 2) :=
+    Real.one_le_rpow hscale (by positivity)
+  have hcJ : cJ ≤ Cpalette := by
+    dsimp only [cJ, Cpalette]
+    exact mul_le_mul_of_nonneg_left
+      (div_le_self (mul_nonneg (by norm_num) hC0.le) hden) (by norm_num)
+  have hPJ : PJ ≤ P := by
+    dsimp only [PJ, P]
+    exact lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant_mono psi hcJ
+  let Qpalette : ENNReal := q * P
+  have hpalette : ∀ {t : ℝ}, 0 < t →
+      ENNReal.ofReal t * volume {x : Euclidean d |
+        ENNReal.ofReal t < lacunaryRelativeBandpassPhysicalPaletteMaximalAll psi j r
+          (g : Euclidean d → ℂ) x} ≤
+        Qpalette * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖ := by
+    intro t ht
+    have hraw :=
+      weak_one_lacunaryRelativeBandpassPhysicalPaletteMaximalAll_of_sharp_threeWay_linear
+        (n := n) (N := N j) hn C0 C1 hC0 hC1 hdecay hderiv phi psi
+          hphi_one hphi_zero hphi_norm hpsi j r hr g ht
+    dsimp only at hraw
+    calc
+      ENNReal.ofReal t * volume {x : Euclidean d |
+          ENNReal.ofReal t < lacunaryRelativeBandpassPhysicalPaletteMaximalAll psi j r
+            (g : Euclidean d → ℂ) x} ≤
+          (N j : ENNReal) * J * PJ *
+            ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖ := by
+              simpa only [J, PJ, cJ] using hraw
+      _ ≤ (N j : ENNReal) * J * P *
+            ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖ := by
+              simpa only [mul_assoc] using
+                mul_le_mul_left
+                  (mul_le_mul_right hPJ ((N j : ENNReal) * J))
+                  (∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖)
+      _ = Qpalette * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖ := by
+              rfl
+  let T : ℝ := lacunaryRelativeBandpassPhysicalCellShiftedCZTailConstant
+    (N j) psi j δ G
+  have htail : T ≤ (N j : ℝ) * ((j : ℝ) + 1) * L := by
+    simpa only [T, L] using
+      lacunaryRelativeBandpassPhysicalCellShiftedCZTailConstant_le_linear
+        (show 0 < d by omega) psi hpsiCompact j δ G hG hsmall
+  have htailENN : ENNReal.ofReal T ≤ q * ENNReal.ofReal L := by
+    calc
+      ENNReal.ofReal T ≤ ENNReal.ofReal
+          ((N j : ℝ) * ((j : ℝ) + 1) * L) := ENNReal.ofReal_le_ofReal htail
+      _ = q * ENNReal.ofReal L := by
+        rw [ENNReal.ofReal_mul
+          (mul_nonneg (Nat.cast_nonneg (N j)) (by positivity : 0 ≤ (j : ℝ) + 1)),
+          ENNReal.ofReal_mul (Nat.cast_nonneg (N j))]
+        simp only [ENNReal.ofReal_natCast]
+        ring
+  have hbase : X ≤ q * X := by
+    simpa only [one_mul, mul_comm] using mul_le_mul_left hq X
+  have hNle : (N j : ENNReal) ≤ (N j : ENNReal) * J := by
+    calc
+      (N j : ENNReal) = (N j : ENNReal) * 1 := by ring
+      _ ≤ (N j : ENNReal) * J := mul_le_mul_right hJ (N j : ENNReal)
+  have hmiddle : R * (ENNReal.ofReal C) ^ 2 ≤ q * Y := by
+    calc
+      R * (ENNReal.ofReal C) ^ 2 ≤ R * (Q * (N j : ENNReal)) :=
+        by simpa only [mul_comm] using mul_le_mul_left hcell_square R
+      _ = (N j : ENNReal) * Y := by
+        dsimp only [Y]
+        ring
+      _ ≤ ((N j : ENNReal) * J) * Y := mul_le_mul_left hNle Y
+      _ = q * Y := by rfl
+  have htail_part : 16 * ENNReal.ofReal T ≤ q * Z := by
+    calc
+      16 * ENNReal.ofReal T ≤ 16 * (q * ENNReal.ofReal L) :=
+        by simpa only [mul_comm] using mul_le_mul_left htailENN 16
+      _ = q * Z := by
+        dsimp only [Z]
+        ring
+  have hcell :
+      lacunaryRelativeBandpassPhysicalCellShiftedWeakOneConstant (N := N j)
+        psi j δ G C ≤ q * (X + Y + Z) := by
+    have hform :
+        lacunaryRelativeBandpassPhysicalCellShiftedWeakOneConstant (N := N j)
+          psi j δ G C = X + R * (ENNReal.ofReal C) ^ 2 +
+            16 * ENNReal.ofReal T := by
+      rfl
+    rw [hform]
+    calc
+      X + R * (ENNReal.ofReal C) ^ 2 + 16 * ENNReal.ofReal T ≤
+          q * X + q * Y + q * Z :=
+        add_le_add (add_le_add hbase hmiddle) htail_part
+      _ = q * (X + Y + Z) := by ring
+  have hfinite :=
+    weak_one_restrictedRelativeBandpassSphericalMaximal_dyadicRadiusBlockUnion_of_shifted_CZ_core
+      (N := N j) hd K δ hδ phi psi hpsi hpsiCompact j G hG r hr E hcover C hcore
+        Qpalette g hpalette hs
+  have hcoefficient :
+      2 * Qpalette +
+          lacunaryRelativeBandpassPhysicalCellShiftedWeakOneConstant (N := N j)
+            psi j δ G C ≤ q * W := by
+    calc
+      2 * Qpalette +
+          lacunaryRelativeBandpassPhysicalCellShiftedWeakOneConstant (N := N j)
+            psi j δ G C =
+          q * (2 * P) +
+            lacunaryRelativeBandpassPhysicalCellShiftedWeakOneConstant (N := N j)
+              psi j δ G C := by
+              dsimp only [Qpalette]
+              ring
+      _ ≤ q * (2 * P) + q * (X + Y + Z) := add_le_add le_rfl hcell
+      _ = q * (2 * P + (X + Y + Z)) := by ring
+      _ ≤ q * W := by
+        exact mul_le_mul_right (by
+          dsimp only [W]
+          exact le_add_of_nonneg_left bot_le) q
+  calc
+    ENNReal.ofReal s * volume {x : Euclidean d |
+        ENNReal.ofReal s < restrictedRelativeBandpassSphericalMaximal d
+          (dyadicRadiusBlockUnion E K) phi j g x} ≤
+        (2 * Qpalette +
+          lacunaryRelativeBandpassPhysicalCellShiftedWeakOneConstant (N := N j)
+            psi j δ G C) *
+          ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖ := hfinite
+    _ ≤ (q * W) * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean d → ℂ) x‖ :=
+      mul_le_mul_left hcoefficient _
+    _ = W * (N j : ENNReal) * ENNReal.ofReal ((j : ℝ) + 1) *
+          ∫⁻ x, ENNReal.ofReal ‖g x‖ := by
+      dsimp only [q, J]
+      ring
+
+end
+
+end LeanSpherical.HarmonicAnalysis

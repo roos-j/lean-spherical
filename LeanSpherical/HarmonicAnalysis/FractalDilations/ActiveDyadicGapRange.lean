@@ -10,14 +10,9 @@ import LeanSpherical.HarmonicAnalysis.FractalDilations.TTStarCovering
 /-!
 # The finite gap range for active dyadic radii
 
-The Section 3 radius-gap partition is not an infinite sum at a fixed
-frequency.  When the sampled left endpoints come from active cells meeting
-`[1,2]`, their mutual distance is at most `3 / 2`.  Consequently the shell
-whose lower radius is `2^(n-1) 2^(-j)` is empty for `j + 3 <= n`.
-
-This elementary fact is particularly important in the planar critical case:
-there the gap exponent need not be negative, so it must be combined with the
-frequency exponent before the finite shell sum is taken.
+At a fixed frequency, the Section 3 radius-gap partition is finite: active
+dyadic left endpoints lie in an interval of diameter `3 / 2`, whereas the
+`n`-th shell starts at `2^(n - 1) 2^(-j)`.
 -/
 
 namespace LeanSpherical.HarmonicAnalysis.FractalDilations
@@ -35,6 +30,8 @@ theorem abs_sub_dyadicLeft_le_three_halves_of_mem_activeDyadicIndices
     |dyadicLeft j k - dyadicLeft j l| <= 3 / 2 := by
   have hk' := dyadicLeft_mem_Icc_half_two_of_mem_activeDyadicIndices hj hE hk
   have hl' := dyadicLeft_mem_Icc_half_two_of_mem_activeDyadicIndices hj hE hl
+  rcases hk' with ⟨hklo, hkhi⟩
+  rcases hl' with ⟨hllo, hlhi⟩
   rw [abs_sub_le_iff]
   constructor <;> linarith
 
@@ -66,8 +63,7 @@ theorem four_le_dyadicGapLower_of_add_three_le
       mul_le_mul_of_nonneg_right hpow (dyadicScale_pos j).le
 
 /-- The high radius-gap shells in the literal active-dyadic relation are
-empty.  This is stated directly for the shell relation used by the `TT*`
-counting lemmas, so it can be fed into the exact finite reassembly theorem. -/
+empty. -/
 theorem not_radiusGapShellNeighbors_dyadic_of_activeDyadic_of_add_three_le
     {E : Set Real} {j n : Nat} {k l : Int}
     (hj : 1 <= j) (hE : E ⊆ Icc (1 : Real) 2)
@@ -101,10 +97,7 @@ theorem dyadicGapLevel_lt_add_three_of_activeDyadic
   exact not_radiusGapShellNeighbors_dyadic_of_activeDyadic_of_add_three_le
     hj hE hk hl hjn hshell
 
-/-- The canonical dyadic level of a pair of grid indices.  Equal indices
-form the diagonal level zero; otherwise the level is the binary logarithm of
-the integer separation plus one.  This convention gives the half-open
-shells `2^(n-1) delta <= |t-s| < 2^n delta` for every positive level. -/
+/-- The canonical dyadic level of a pair of grid indices. -/
 def activeDyadicGapLevel (k l : Int) : Nat :=
   if k = l then 0 else Nat.log 2 (Int.natAbs (k - l)) + 1
 
@@ -118,7 +111,12 @@ theorem abs_sub_dyadicLeft_eq_natAbs_mul_dyadicScale
       ((k - l : Int) : Real) * dyadicScale j := by
     simp only [dyadicLeft, Int.cast_sub]
     ring
-  rw [hdiff, abs_mul, abs_of_pos (dyadicScale_pos j), ← Nat.cast_natAbs]
+  rw [hdiff, abs_mul, abs_of_pos (dyadicScale_pos j)]
+  congr 1
+  calc
+    |((k - l : Int) : Real)| = ((|k - l| : Int) : Real) := by norm_cast
+    _ = (Int.natAbs (k - l) : Real) := by
+      simp only [Int.abs_eq_natAbs, Int.cast_natCast]
 
 /-- A nonzero canonical gap level belongs to its literal radius-gap shell. -/
 theorem radiusGapShellNeighbors_of_activeDyadicGapLevel_eq
@@ -139,7 +137,7 @@ theorem radiusGapShellNeighbors_of_activeDyadicGapLevel_eq
     dsimp only [m]
     exact Int.natAbs_ne_zero.mpr (sub_ne_zero.mpr hkl)
   subst n
-  rw [activeDyadicGapLevel, dif_neg hkl]
+  rw [activeDyadicGapLevel, if_neg hkl]
   simp only [Nat.add_sub_cancel]
   unfold radiusGapShellNeighbors
   rw [abs_sub_dyadicLeft_eq_natAbs_mul_dyadicScale]
@@ -164,10 +162,9 @@ theorem activeDyadicGapLevel_lt_add_three
     activeDyadicGapLevel k l < j + 3 := by
   by_cases hkl : k = l
   · subst l
-    simp [activeDyadicGapLevel] <;> omega
+    simp [activeDyadicGapLevel]
   · have hn : 0 < activeDyadicGapLevel k l := by
-      rw [activeDyadicGapLevel, dif_neg hkl]
-      omega
+      simp [activeDyadicGapLevel, hkl]
     have hshell := radiusGapShellNeighbors_of_activeDyadicGapLevel_eq
       (j := j) (k := k) (l := l) rfl hn
     exact dyadicGapLevel_lt_add_three_of_activeDyadic hj hE hk hl hshell

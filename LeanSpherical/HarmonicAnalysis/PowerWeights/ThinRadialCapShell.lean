@@ -1,0 +1,114 @@
+import LeanSpherical.HarmonicAnalysis.PowerWeights.NormalizedNegativeLocal
+import LeanSpherical.HarmonicAnalysis.PowerWeights.ThinRadialPartitionGeometry
+
+/-!
+# Cap-shell estimate for one smooth thin radial piece
+
+This is the literal specialization of the entropy cap-shell estimate to the
+Schwartz product supplied by the thin radial partition.  The input and
+parameter window remain visible, so finite reassembly can use the cap
+coefficient without an intervening operator abstraction.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open MeasureTheory Metric Set
+open scoped BigOperators ENNReal NNReal
+
+noncomputable section
+
+/-- One smooth thin radial piece satisfies the global cap-shell estimate on
+its associated three-width parameter window. -/
+theorem exists_thinRadialPartition_entropyCap_shell_global_lintegral_rpow_le
+    {n : Nat} (hn : 2 <= n) (C0 C1 : Real) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (n + 1), 1 <= ‖xi‖ ->
+      ‖surfaceFourier (n + 1) xi‖ <= C0 / ‖xi‖ ^ ((n : Real) / 2))
+    (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : Real, 1 <= ‖xi‖ ->
+      u ∈ Icc (1 : Real) 2 ->
+      ‖deriv (fun z : Real => surfaceFourier (n + 1) (z • xi)) u‖ <=
+        C1 / ‖xi‖ ^ ((n : Real) / 2 - 1))
+    (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ xi, ‖xi‖ <= 1 -> phi xi = 1)
+    (hphi_zero : ∀ xi, 2 <= ‖xi‖ -> phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ <= 1) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (f : SchwartzMap (Euclidean (n + 1)) Complex)
+      (E : Set Real) (delta : NNReal) (N : Nat) {s alpha p tau : Real}
+      (m : Nat) (mu : Int),
+      4 <= j -> (E ∩ thinRadiusWindow s mu).Nonempty ->
+      E ⊆ Icc (1 : Real) 2 ->
+      multiplicativeEntropy (E ∩ thinRadiusWindow s mu) delta <= N ->
+      Real.log 2 * (delta : Real) <= 1 ->
+      8 * Real.log 2 * (delta : Real) <= ((2 : Real) ^ j)⁻¹ ->
+      (hs : 0 < s) -> 4 * s <= 1 -> alpha <= 0 ->
+      0 < s * ((m : Real) - 1 / 4) ->
+      s < s * ((m : Real) - 1 / 4) ->
+      1 < p -> p < 2 -> 0 < tau ->
+      let b : Real := s * ((m : Real) + 5 / 4)
+      let g : SchwartzMap (Euclidean (n + 1)) Complex :=
+        SchwartzMap.pairing (ContinuousLinearMap.mul Complex Complex) f
+          (thinRadialPartition (n + 1) s hs m)
+      ∃ R : Finset (Real × Real), R.card <= N ∧
+        (∀ q ∈ R, q.1 <= q.2) ∧
+        (∀ q ∈ R, q.1 ∈ Icc (1 : Real) 2 ∧ q.2 ∈ Icc (1 : Real) 2) ∧
+        (∀ q ∈ R, q.2 - q.1 <= ((2 : Real) ^ j)⁻¹) ∧
+        E ∩ thinRadiusWindow s mu ⊆ ⋃ q ∈ R, Icc q.1 q.2 ∧
+        let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
+          (2 * ((4 * C0) / (dyadicScale j) ^ ((n : Real) / 2)) ^ (2 : Nat) +
+            2 * (8 * Real.log 2 * (delta : Real)) ^ (2 : Nat) *
+              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+                (12 * C0 *
+                  ‖((SchwartzMap.fderivCLM Complex (Euclidean (n + 1)) Complex) phi).toBoundedContinuousFunction‖) /
+                  (dyadicScale j) ^ ((n : Real) / 2))) ^ (2 : Nat))
+        let c1 : ENNReal := (ENNReal.ofReal (s / 4)) ^ alpha *
+          (∑ q ∈ R, relativeIntervalBandCapTail n j C q.1 q.2 s) *
+            ((ENNReal.ofReal b) ^ alpha)⁻¹
+        let c2 : ENNReal := (ENNReal.ofReal (s / 4)) ^ alpha * L *
+          ((ENNReal.ofReal b) ^ alpha)⁻¹
+        let a2 : ENNReal :=
+          (ENNReal.ofReal ((1 : Real) / 4) * (ENNReal.ofReal p)⁻¹ +
+            (ENNReal.ofReal (2 - p))⁻¹) *
+            ∫⁻ x, (ENNReal.ofReal ‖g x‖) ^ p ∂powerWeightedVolume (n + 1) alpha
+        let a1 : ENNReal :=
+          ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+            ∫⁻ x, (ENNReal.ofReal ‖g x‖) ^ p ∂powerWeightedVolume (n + 1) alpha
+        (∫⁻ x in euclideanAnnulus (n + 1) (s / 4) (s / 2),
+          ENNReal.ofReal
+            ((restrictedRelativeBandpassSphericalMaximal (n + 1)
+              (E ∩ thinRadiusWindow s mu) phi j g x).toReal ^ p)
+            ∂powerWeightedVolume (n + 1) alpha) <=
+          ENNReal.ofReal p *
+            (4 * c2 * ((ENNReal.ofReal tau) ^ (2 - p) * a2) +
+              2 * c1 * ((ENNReal.ofReal tau) ^ (1 - p) * a1)) := by
+  obtain ⟨C, hC, hcap⟩ :=
+    exists_restrictedRelativeBandpass_entropyCap_shell_global_lintegral_rpow_le
+      hn C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm
+  refine ⟨C, hC, ?_⟩
+  intro j f E delta N s alpha p tau m mu hj hEne hE hN hdelta hshort hs hsone
+    halpha hmpos hsep hp hp2 ht
+  let a : Real := s * ((m : Real) - 1 / 4)
+  let b : Real := s * ((m : Real) + 5 / 4)
+  let g : SchwartzMap (Euclidean (n + 1)) Complex :=
+    SchwartzMap.pairing (ContinuousLinearMap.mul Complex Complex) f
+      (thinRadialPartition (n + 1) s hs m)
+  have hEwindow : E ∩ thinRadiusWindow s mu ⊆ Icc (1 : Real) 2 := by
+    intro r hr
+    exact hE hr.1
+  have hab : a <= b := by
+    dsimp only [a, b]
+    nlinarith
+  have hgsupport : ∀ y, y ∉ euclideanAnnulus (n + 1) a b -> g y = 0 := by
+    intro y hy
+    dsimp only [g]
+    simpa only [a, b] using
+      (thinRadialPartition_piece_support_annulus (d := n + 1) hs f m hmpos y hy)
+  obtain ⟨R, hRcard, hRordered, hRends, hRlength, hRcover, hbound⟩ :=
+    hcap j g (E ∩ thinRadiusWindow s mu) delta N
+      (s := s) (a := a) (b := b) (α := alpha) (p := p) (τ := tau)
+      hj hEne hEwindow hN hdelta hshort hs hsone halpha hmpos hab
+        (by simpa only [a] using hsep) hp hp2 ht hgsupport
+  refine ⟨R, hRcard, hRordered, hRends, hRlength, hRcover, ?_⟩
+  simpa only [a, b, g] using hbound
+
+end
+
+end LeanSpherical.HarmonicAnalysis

@@ -230,9 +230,14 @@ theorem norm_q4PowerDualField
   by_cases hz : ‖f i x‖ = 0
   · simp [hz, Real.zero_rpow (by linarith : q - 1 ≠ 0)]
   · have hpos : 0 < ‖f i x‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hz)
-    rw [← Real.rpow_add hpos]
-    congr 1
-    ring
+    calc
+      ‖f i x‖ ^ (q - 2) * ‖f i x‖ =
+          ‖f i x‖ ^ (q - 2) * ‖f i x‖ ^ (1 : Real) := by
+            rw [Real.rpow_one]
+      _ = ‖f i x‖ ^ ((q - 2) + 1) := (Real.rpow_add hpos _ _).symm
+      _ = ‖f i x‖ ^ (q - 1) := by
+        congr 1
+        ring
 
 /-- The canonical norming field realizes the pointwise `Lᵠ` pairing.  This
 is the elementary identity behind the usual dual test; it is valid at zero
@@ -242,21 +247,23 @@ theorem q4PowerDualField_pairing_pointwise
     f i x * starRingEnd ℂ (q4PowerDualField q f i x) =
       ((‖f i x‖ ^ q : ℝ) : ℂ) := by
   unfold q4PowerDualField
-  rw [starRingEnd_apply, star_mul, Complex.conj_ofReal]
+  rw [starRingEnd_apply, star_mul, Complex.star_def, Complex.conj_ofReal]
   calc
-    f i x * (((‖f i x‖ ^ (q - 2) : ℝ) : ℂ) * star (f i x)) =
+    f i x * (star (f i x) * ((‖f i x‖ ^ (q - 2) : ℝ) : ℂ)) =
         ((‖f i x‖ ^ (q - 2) : ℝ) : ℂ) *
           (f i x * star (f i x)) := by ring
     _ = ((‖f i x‖ ^ (q - 2) : ℝ) : ℂ) *
           ((‖f i x‖ ^ 2 : ℝ) : ℂ) := by
-      rw [Complex.mul_conj']
+      simpa only [starRingEnd_apply, ← Complex.ofReal_pow] using
+        congrArg (fun z : Complex => ((‖f i x‖ ^ (q - 2) : ℝ) : Complex) * z)
+          (Complex.mul_conj' (f i x))
     _ = ((‖f i x‖ ^ q : ℝ) : ℂ) := by
       rw [← Complex.ofReal_mul]
       rw [← Real.rpow_two]
       rw [← Real.rpow_add' (norm_nonneg _) (by linarith :
         (q - 2) + (2 : ℝ) ≠ 0)]
       congr 1
-      ring
+      ring_nf
 
 /-- Summing the pointwise norming identity gives the exact finite-product
 pairing identity.  It does not require an integrability side condition:
@@ -354,7 +361,7 @@ interpolation. -/
 theorem q4FibreLpMoment_rpow_one_div_le_of_dual_test_at_test
     {I X : Type*} [MeasurableSpace X]
     (μ : Measure X) (s : Finset I) {q qdual C F : ℝ}
-    (hq : 0 < q) (hqdual : 0 < qdual)
+    (hq : 0 < q) (_hqdual : 0 < qdual)
     (hconj : 1 / q + 1 / qdual = 1) (hCF : 0 ≤ C * F)
     (f : I → X → ℂ) (test : Q4FiniteProductDualTest μ s q qdual f)
     (hbilinear : ‖q4FiniteProductPairing μ s f test.dual‖ ≤
@@ -376,12 +383,10 @@ theorem q4FibreLpMoment_rpow_one_div_le_of_dual_test_at_test
       rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hM0]
     rw [hnorm] at htest
     have hsplit : M ^ (1 / q) * M ^ (1 / qdual) = M := by
-      rw [← Real.rpow_add hMpos]
-      congr 1
-      linarith
+      rw [← Real.rpow_add hMpos, hconj, Real.rpow_one]
     have hdualpos : 0 < M ^ (1 / qdual) :=
       Real.rpow_pos_of_pos hMpos _
-    apply (mul_le_mul_right hdualpos).mp
+    apply le_of_mul_le_mul_right ?_ hdualpos
     calc
       (M ^ (1 / q)) * M ^ (1 / qdual) = M := hsplit
       _ ≤ C * F * M ^ (1 / qdual) := htest
@@ -836,7 +841,8 @@ theorem q4FiniteFibreSynthesis_energy_eq_fullKernelDiagonal_of_adjoint_eq
       apply integral_congr_ae
       filter_upwards with x
       rw [starRingEnd_apply]
-      exact Complex.mul_conj' _
+      simpa only [starRingEnd_apply, ← Complex.ofReal_pow] using
+        Complex.mul_conj' (q4FiniteFibreSynthesis s Tstar g x)
     _ = ((∫ x, ‖q4FiniteFibreSynthesis s Tstar g x‖ ^ 2 ∂μ : ℝ) : ℂ) :=
       integral_ofReal
 

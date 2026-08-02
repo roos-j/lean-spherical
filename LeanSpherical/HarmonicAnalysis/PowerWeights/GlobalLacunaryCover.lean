@@ -1,0 +1,394 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.EntropyCenters
+import LeanSpherical.HarmonicAnalysis.PowerWeights.EntropyDilation
+
+/-!
+# Colouring finite entropy covers across physical scales
+
+The global restricted-dilation argument first replaces the radii in each
+physical dyadic block by at most `N` entropy representatives.  This file
+contains the finite colouring fact needed to arrange those representatives
+into `N` lacunary families: a colour occurs at most once in every physical
+block.
+
+It is deliberately only the combinatorial reduction.  The analytic
+Calderón estimate for one resulting lacunary family belongs in the next
+step, rather than being hidden behind an abstract operator wrapper here.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Set
+open scoped NNReal
+
+noncomputable section
+
+/-- A set contained in one normalized dyadic radius block is controlled by
+the corresponding unit-window entropy.  This elementary logarithmic
+normalization is kept here because the finite block cover below needs it
+before any analytic input enters. -/
+private theorem multiplicativeEntropy_le_unitEntropy_on_unit_block
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (η : ℝ≥0) :
+    multiplicativeEntropy E η ≤ unitMultiplicativeEntropy E η := by
+  let c : PositiveRadius := ⟨(2 : ℝ) ^ (1 / 2 : ℝ),
+    Real.rpow_pos_of_pos (by norm_num) _⟩
+  have hclog : logRadius c = 1 / 2 := by
+    change Real.log ((2 : ℝ) ^ (1 / 2 : ℝ)) / Real.log 2 = 1 / 2
+    rw [Real.log_rpow (by norm_num : (0 : ℝ) < 2)]
+    field_simp [ne_of_gt (Real.log_pos (by norm_num : (1 : ℝ) < 2))]
+  have hc : E ⊆ multiplicativeInterval c 1 := by
+    intro r hr
+    let rpos : PositiveRadius := ⟨r,
+      lt_of_lt_of_le zero_lt_one (hE hr).1⟩
+    have hmono :=
+      Real.strictMono_rpow_of_base_gt_one (by norm_num : (1 : ℝ) < 2)
+    have hlowpow : (2 : ℝ) ^ (0 : ℝ) ≤ (2 : ℝ) ^ logRadius rpos := by
+      calc
+        (2 : ℝ) ^ (0 : ℝ) = 1 := Real.rpow_zero _
+        _ ≤ r := (hE hr).1
+        _ = (2 : ℝ) ^ logRadius rpos := (two_rpow_logRadius rpos).symm
+    have hhighpow : (2 : ℝ) ^ logRadius rpos ≤ (2 : ℝ) ^ (1 : ℝ) := by
+      calc
+        (2 : ℝ) ^ logRadius rpos = r := two_rpow_logRadius rpos
+        _ ≤ 2 := (hE hr).2
+        _ = (2 : ℝ) ^ (1 : ℝ) := (Real.rpow_one _).symm
+    have hlow : 0 ≤ logRadius rpos := hmono.le_iff_le.mp hlowpow
+    have hhigh : logRadius rpos ≤ 1 := hmono.le_iff_le.mp hhighpow
+    refine ⟨rpos.2, ?_⟩
+    change |Real.log r / Real.log 2 - logRadius c| ≤ (1 : ℝ) / 2
+    change |logRadius rpos - logRadius c| ≤ (1 : ℝ) / 2
+    rw [hclog]
+    exact abs_le.mpr ⟨by linarith, by linarith⟩
+  have hsub : E ⊆ E ∩ multiplicativeInterval c 1 := by
+    intro r hr
+    exact ⟨hr, hc hr⟩
+  calc
+    multiplicativeEntropy E η ≤
+        multiplicativeEntropy (E ∩ multiplicativeInterval c 1) η :=
+      multiplicativeEntropy_mono hsub η
+    _ = localMultiplicativeEntropy E c 1 η := rfl
+    _ ≤ unitMultiplicativeEntropy E η := le_iSup (fun c =>
+      localMultiplicativeEntropy E c 1 η) c
+
+/-- A selector has one positive radius for every dyadic physical scale.  The
+two inequalities are the usual bounded-ratio lacunarity normalization. -/
+def IsDyadicLacunaryRadiusSelector (r : ℤ → PositiveRadius) : Prop :=
+  ∀ k : ℤ, (2 : ℝ) ^ k ≤ r k ∧ (r k : ℝ) ≤ 2 * (2 : ℝ) ^ k
+
+/-- Finite sets of cardinality at most `N` can be injectively coloured by
+`Fin N`, simultaneously for any finite family.  The assertion also covers
+`N = 0`, when every member set is necessarily empty. -/
+theorem exists_injective_coloring_fintype_family
+    {ι α : Type*} [Fintype ι] [DecidableEq α] (S : ι → Finset α)
+    (N : ℕ) (hcard : ∀ k, (S k).card ≤ N) :
+    ∃ color : ∀ k, {a // a ∈ S k} → Fin N,
+      ∀ k, Function.Injective (color k) := by
+  classical
+  let color : ∀ k, {a // a ∈ S k} → Fin N := fun k a =>
+    Fin.castLE (by simpa using hcard k) (Fintype.equivFin _ a)
+  refine ⟨color, ?_⟩
+  intro k a b hab
+  apply (Fintype.equivFin _).injective
+  apply Fin.castLE_injective (by simpa using hcard k)
+  exact hab
+
+/-- Entropy representatives in a finite family of positive radius sets may
+be assigned a common palette of `N` colours, with no repeated colour inside
+one member set.  Thus, after one representative has been selected from each
+colour in each physical block, each fixed colour is a lacunary radius
+family. -/
+theorem exists_colored_actual_radius_covers_of_multiplicativeEntropy
+    {ι : Type*} [DecidableEq ι] (K : Finset ι) (F : ι → Set ℝ)
+    (hFpos : ∀ k ∈ K, F k ⊆ Ioi (0 : ℝ))
+    (hFne : ∀ k ∈ K, (F k).Nonempty)
+    (δ : ℝ≥0) (N : ℕ)
+    (hN : ∀ k ∈ K, multiplicativeEntropy (F k) δ ≤ N) :
+    ∃ S : ({k // k ∈ K} → Finset PositiveRadius),
+      (∀ k, (S k).card ≤ N) ∧
+      (∀ k s, s ∈ S k → (s : ℝ) ∈ F k.1) ∧
+      (∀ (k : {k // k ∈ K}) (r : PositiveRadius), (r : ℝ) ∈ F k.1 → ∃ s ∈ S k,
+        |logRadius r - logRadius s| ≤ (δ : ℝ)) ∧
+      ∃ color : ∀ k, {s // s ∈ S k} → Fin N,
+        ∀ k, Function.Injective (color k) := by
+  classical
+  choose S hScard hSactual hScover using fun k : {k // k ∈ K} =>
+    exists_finset_actual_radius_cover_of_multiplicativeEntropy_le
+      (F k.1) (hFpos k.1 k.2) (hFne k.1 k.2) δ N (hN k.1 k.2)
+  obtain ⟨color, hcolor⟩ :=
+    exists_injective_coloring_fintype_family S N hScard
+  exact ⟨S, hScard, hSactual, hScover, color, hcolor⟩
+
+/-- Colour classes of representatives from dyadic physical blocks extend to
+literal lacunary selector sequences.  Empty colour/block pairs are padded by
+the left endpoint of their dyadic block. -/
+theorem exists_dyadic_lacunary_selectors_of_colored_representatives
+    (K : Finset ℤ) (S : ({k // k ∈ K} → Finset PositiveRadius)) (N : ℕ)
+    (color : ∀ k, {s // s ∈ S k} → Fin N)
+    (hcolor : ∀ k, Function.Injective (color k))
+    (hblock : ∀ (k : {k // k ∈ K}) (s : PositiveRadius), s ∈ S k →
+      (s : ℝ) ∈ Icc ((2 : ℝ) ^ k.1) (2 * (2 : ℝ) ^ k.1)) :
+    ∃ r : Fin N → ℤ → PositiveRadius,
+      (∀ i, IsDyadicLacunaryRadiusSelector (r i)) ∧
+      ∀ (k : {k // k ∈ K}) (s : PositiveRadius) (hs : s ∈ S k),
+        r (color k ⟨s, hs⟩) k.1 = s := by
+  classical
+  let base : ℤ → PositiveRadius := fun k =>
+    ⟨(2 : ℝ) ^ k, zpow_pos (by norm_num : (0 : ℝ) < 2) k⟩
+  let select : ∀ k : {k // k ∈ K}, Fin N → PositiveRadius := fun k i =>
+    if h : ∃ s : {s // s ∈ S k}, color k s = i then h.choose else base k.1
+  let r : Fin N → ℤ → PositiveRadius := fun i k =>
+    if hk : k ∈ K then select ⟨k, hk⟩ i else base k
+  have hbase (k : ℤ) : (base k : ℝ) = (2 : ℝ) ^ k := rfl
+  have hbase_mem (k : ℤ) : (base k : ℝ) ∈ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) := by
+    rw [hbase]
+    constructor
+    · exact le_rfl
+    · have hpos : 0 < (2 : ℝ) ^ k :=
+        zpow_pos (by norm_num : (0 : ℝ) < 2) k
+      nlinarith
+  have hselect_mem (k : {k // k ∈ K}) (i : Fin N) :
+      (select k i : ℝ) ∈ Icc ((2 : ℝ) ^ k.1) (2 * (2 : ℝ) ^ k.1) := by
+    dsimp only [select]
+    split_ifs with h
+    · exact hblock k h.choose h.choose.property
+    · exact hbase_mem k.1
+  have hselect_eq (k : {k // k ∈ K}) (s : PositiveRadius) (hs : s ∈ S k) :
+      select k (color k ⟨s, hs⟩) = s := by
+    let a : {t // t ∈ S k} := ⟨s, hs⟩
+    have hex : ∃ t : {t // t ∈ S k}, color k t = color k a := ⟨a, rfl⟩
+    have heq : hex.choose = a := hcolor k hex.choose_spec
+    have hval : (hex.choose : PositiveRadius) = s := by
+      exact congrArg Subtype.val heq
+    dsimp only [select]
+    rw [dif_pos hex]
+    simpa only [a] using hval
+  refine ⟨r, ?_, ?_⟩
+  · intro i
+    intro k
+    dsimp only [r]
+    split_ifs with hk
+    · exact hselect_mem ⟨k, hk⟩ i
+    · exact hbase_mem k
+  · intro k s hs
+    dsimp only [r]
+    rw [dif_pos k.2]
+    have hk : (⟨k.1, k.2⟩ : {k // k ∈ K}) = k := by
+      rfl
+    simpa only [hk] using hselect_eq k s hs
+
+/-- Entropy on a physical dyadic radius block is bounded by the global
+unit-window entropy. -/
+private theorem multiplicativeEntropy_dyadic_physical_block_le_unit
+    (E : Set ℝ) (k : ℤ) (δ : ℝ≥0) :
+    multiplicativeEntropy
+        (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)) δ ≤
+      unitMultiplicativeEntropy E δ := by
+  have hkpos : 0 < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+  have hnormalize :
+      multiplicativeEntropy (normalizedRadiusBlock E ((2 : ℝ) ^ k)) δ =
+        multiplicativeEntropy
+          (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)) δ := by
+    change multiplicativeEntropy
+        (dilateRadiusSet ((2 : ℝ) ^ k)⁻¹
+          (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k))) δ = _
+    exact multiplicativeEntropy_dilateRadiusSet
+      (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)) δ (inv_pos.mpr hkpos)
+  calc
+    multiplicativeEntropy
+        (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)) δ =
+        multiplicativeEntropy (normalizedRadiusBlock E ((2 : ℝ) ^ k)) δ :=
+      hnormalize.symm
+    _ ≤ unitMultiplicativeEntropy (normalizedRadiusBlock E ((2 : ℝ) ^ k)) δ :=
+      multiplicativeEntropy_le_unitEntropy_on_unit_block
+        (normalizedRadiusBlock_subset_Icc_one_two hkpos) δ
+    _ ≤ unitMultiplicativeEntropy E δ :=
+      unitMultiplicativeEntropy_normalizedRadiusBlock_le E hkpos δ
+
+/-- On any finite collection of nonempty physical dyadic blocks, a unit-window
+entropy bound produces literal lacunary selectors which approximate every
+radius in those blocks.  This is the exact finite-scale reduction used before
+the analytic lacunary estimate: the approximation centres are actual radii of
+`E`, not auxiliary endpoints of a cover. -/
+theorem exists_dyadic_lacunary_selectors_covering_finite_blocks_of_unitEntropy
+    (E : Set ℝ) (hEpos : E ⊆ Ioi (0 : ℝ)) (K : Finset ℤ)
+    (hKne : ∀ k ∈ K,
+      (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)).Nonempty)
+    (δ : ℝ≥0) (N : ℕ) (hN : unitMultiplicativeEntropy E δ ≤ N) :
+    ∃ r : Fin N → ℤ → PositiveRadius,
+      (∀ i, IsDyadicLacunaryRadiusSelector (r i)) ∧
+      ∀ k ∈ K, ∀ s : PositiveRadius,
+        (s : ℝ) ∈ E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) →
+          ∃ i : Fin N,
+            (r i k : ℝ) ∈ E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) ∧
+              |logRadius s - logRadius (r i k)| ≤ (δ : ℝ) := by
+  classical
+  let F : ℤ → Set ℝ := fun k =>
+    E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)
+  have hFpos : ∀ k ∈ K, F k ⊆ Ioi (0 : ℝ) := by
+    intro k hk s hs
+    exact hEpos hs.1
+  have hFne : ∀ k ∈ K, (F k).Nonempty := by
+    intro k hk
+    exact hKne k hk
+  have hFentropy : ∀ k ∈ K, multiplicativeEntropy (F k) δ ≤ N := by
+    intro k hk
+    have hkpos : 0 < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+    have hnormalize :
+        multiplicativeEntropy (normalizedRadiusBlock E ((2 : ℝ) ^ k)) δ =
+          multiplicativeEntropy (F k) δ := by
+      change multiplicativeEntropy
+          (dilateRadiusSet ((2 : ℝ) ^ k)⁻¹
+            (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k))) δ = _
+      simpa only [F] using
+        multiplicativeEntropy_dilateRadiusSet
+          (E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)) δ (inv_pos.mpr hkpos)
+    calc
+      multiplicativeEntropy (F k) δ =
+          multiplicativeEntropy (normalizedRadiusBlock E ((2 : ℝ) ^ k)) δ :=
+        hnormalize.symm
+      _ ≤ unitMultiplicativeEntropy (normalizedRadiusBlock E ((2 : ℝ) ^ k)) δ := by
+        exact multiplicativeEntropy_le_unitEntropy_on_unit_block
+          (normalizedRadiusBlock_subset_Icc_one_two hkpos) δ
+      _ ≤ unitMultiplicativeEntropy E δ :=
+        unitMultiplicativeEntropy_normalizedRadiusBlock_le E hkpos δ
+      _ ≤ N := hN
+  obtain ⟨S, hScard, hSactual, hScover, color, hcolor⟩ :=
+    exists_colored_actual_radius_covers_of_multiplicativeEntropy
+      K F hFpos hFne δ N hFentropy
+  obtain ⟨r, hr, hrecovery⟩ :=
+    exists_dyadic_lacunary_selectors_of_colored_representatives K S N color hcolor
+      (by
+        intro k s hs
+        exact (hSactual k s hs).2)
+  refine ⟨r, hr, ?_⟩
+  intro k hk s hs
+  let k' : {k // k ∈ K} := ⟨k, hk⟩
+  obtain ⟨t, ht, hst⟩ := hScover k' s hs
+  let i : Fin N := color k' ⟨t, ht⟩
+  refine ⟨i, ?_, ?_⟩
+  · have hrt : r i k = t := by
+      change r (color k' ⟨t, ht⟩) k = t
+      simpa only [k'] using hrecovery k' t ht
+    rw [hrt]
+    exact hSactual k' t ht
+  · have hrt : r i k = t := by
+      change r (color k' ⟨t, ht⟩) k = t
+      simpa only [k'] using hrecovery k' t ht
+    rw [hrt]
+    exact hst
+
+/-- A single palette of `N` dyadic lacunary selectors covers every physical
+dyadic block of a radius set with unit-window entropy at most `N`.  Empty
+blocks are padded by their left endpoints; in nonempty blocks every selected
+representative remains an actual radius of `E`. -/
+theorem exists_dyadic_lacunary_selectors_covering_all_blocks_of_unitEntropy
+    (E : Set ℝ) (δ : ℝ≥0) (N : ℕ)
+    (hN : unitMultiplicativeEntropy E δ ≤ N) :
+    ∃ r : Fin N → ℤ → PositiveRadius,
+      (∀ i, IsDyadicLacunaryRadiusSelector (r i)) ∧
+      ∀ k : ℤ, ∀ s : PositiveRadius,
+        (s : ℝ) ∈ E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) →
+          ∃ i : Fin N,
+            (r i k : ℝ) ∈ E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) ∧
+              |logRadius s - logRadius (r i k)| ≤ (δ : ℝ) := by
+  classical
+  let F : ℤ → Set ℝ := fun k =>
+    E ∩ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k)
+  have hFpos (k : ℤ) : F k ⊆ Ioi (0 : ℝ) := by
+    intro s hs
+    exact lt_of_lt_of_le (zpow_pos (by norm_num) k) hs.2.1
+  have hFentropy (k : ℤ) : multiplicativeEntropy (F k) δ ≤ N := by
+    simpa only [F] using
+      (multiplicativeEntropy_dyadic_physical_block_le_unit E k δ).trans hN
+  have hcenters : ∀ k : ℤ, (F k).Nonempty →
+      ∃ S : Finset PositiveRadius,
+        S.card ≤ N ∧
+        (∀ s, s ∈ S → (s : ℝ) ∈ F k) ∧
+        ∀ r : PositiveRadius, (r : ℝ) ∈ F k →
+          ∃ s ∈ S, |logRadius r - logRadius s| ≤ (δ : ℝ) := by
+    intro k hk
+    exact exists_finset_actual_radius_cover_of_multiplicativeEntropy_le
+      (F k) (hFpos k) hk δ N (hFentropy k)
+  choose S hScard hSactual hScover using hcenters
+  let T : ℤ → Finset PositiveRadius := fun k =>
+    if hk : (F k).Nonempty then S k hk else ∅
+  have hTcard (k : ℤ) : (T k).card ≤ N := by
+    by_cases hk : (F k).Nonempty
+    · simpa only [T, dif_pos hk] using hScard k hk
+    · simpa only [T, dif_neg hk, Finset.card_empty] using Nat.zero_le N
+  have hTactual (k : ℤ) (s : PositiveRadius) (hs : s ∈ T k) :
+      (s : ℝ) ∈ F k := by
+    by_cases hk : (F k).Nonempty
+    · apply hSactual k hk s
+      simpa only [T, dif_pos hk] using hs
+    · simp [T, hk] at hs
+  have hTcover (k : ℤ) (r : PositiveRadius) (hr : (r : ℝ) ∈ F k) :
+      ∃ s ∈ T k, |logRadius r - logRadius s| ≤ (δ : ℝ) := by
+    have hk : (F k).Nonempty := ⟨r, hr⟩
+    obtain ⟨s, hs, happrox⟩ := hScover k hk r hr
+    refine ⟨s, ?_, happrox⟩
+    simpa only [T, dif_pos hk] using hs
+  let color : ∀ k : ℤ, {s // s ∈ T k} → Fin N := fun k s =>
+    Fin.castLE (by simpa using hTcard k) (Fintype.equivFin _ s)
+  have hcolor (k : ℤ) : Function.Injective (color k) := by
+    intro a b hab
+    apply (Fintype.equivFin _).injective
+    apply Fin.castLE_injective (by simpa using hTcard k)
+    exact hab
+  let base : ℤ → PositiveRadius := fun k =>
+    ⟨(2 : ℝ) ^ k, zpow_pos (by norm_num : (0 : ℝ) < 2) k⟩
+  let select : ℤ → Fin N → PositiveRadius := fun k i =>
+    if h : ∃ s : {s // s ∈ T k}, color k s = i then h.choose else base k
+  let r : Fin N → ℤ → PositiveRadius := fun i k => select k i
+  have hbase (k : ℤ) : (base k : ℝ) = (2 : ℝ) ^ k := rfl
+  have hbase_mem (k : ℤ) :
+      (base k : ℝ) ∈ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) := by
+    rw [hbase]
+    constructor
+    · exact le_rfl
+    · have hpos : 0 < (2 : ℝ) ^ k :=
+        zpow_pos (by norm_num : (0 : ℝ) < 2) k
+      nlinarith
+  have hselect_mem (k : ℤ) (i : Fin N) :
+      (select k i : ℝ) ∈ Icc ((2 : ℝ) ^ k) (2 * (2 : ℝ) ^ k) := by
+    dsimp only [select]
+    split_ifs with h
+    · exact (hTactual k h.choose h.choose.property).2
+    · exact hbase_mem k
+  have hselect_eq (k : ℤ) (s : PositiveRadius) (hs : s ∈ T k) :
+      select k (color k ⟨s, hs⟩) = s := by
+    let a : {t // t ∈ T k} := ⟨s, hs⟩
+    have hex : ∃ t : {t // t ∈ T k}, color k t = color k a := ⟨a, rfl⟩
+    have heq : hex.choose = a := hcolor k hex.choose_spec
+    have hval : (hex.choose : PositiveRadius) = s := by
+      exact congrArg Subtype.val heq
+    dsimp only [select]
+    rw [dif_pos hex]
+    simpa only [a] using hval
+  refine ⟨r, ?_, ?_⟩
+  · intro i k
+    dsimp only [r]
+    exact hselect_mem k i
+  · intro k s hs
+    obtain ⟨t, ht, hst⟩ := hTcover k s hs
+    let i : Fin N := color k ⟨t, ht⟩
+    refine ⟨i, ?_, ?_⟩
+    · have hrt : r i k = t := by
+        change select k (color k ⟨t, ht⟩) = t
+        exact hselect_eq k t ht
+      rw [hrt]
+      exact hTactual k t ht
+    · have hrt : r i k = t := by
+        change select k (color k ⟨t, ht⟩) = t
+        exact hselect_eq k t ht
+      rw [hrt]
+      exact hst
+
+end
+
+end LeanSpherical.HarmonicAnalysis

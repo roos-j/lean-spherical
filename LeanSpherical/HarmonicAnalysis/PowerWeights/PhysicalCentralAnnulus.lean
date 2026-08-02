@@ -1,0 +1,633 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.LocalizedUpper
+import LeanSpherical.HarmonicAnalysis.PowerWeights.AnnularInterpolation
+import LeanSpherical.HarmonicAnalysis.PowerWeights.PowerWeightBallScale
+import LeanSpherical.HarmonicAnalysis.PowerWeights.RelativeMovingOperator
+import LeanSpherical.HarmonicAnalysis.InterpolationTail
+import LeanSpherical.HarmonicAnalysis.RationalTails
+
+/-!
+# Physical central-annulus estimates
+
+This is the physical part of the negative-weight argument.  A relative
+bandpass applied to an input in the fixed annulus is controlled on its
+central ball by the literal kernel `L¹ → L∞` estimate.  The size of that
+ball provides the full codimension-one frequency gain.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory FourierTransform Metric Set
+open scoped BigOperators ENNReal FourierTransform
+
+noncomputable section
+
+/-- The physical kernel bound, integrated over the central ball.  The input
+is kept on the fixed annulus `[1,2]`; hence the unweighted `L¹` norm is
+converted to the weighted norm with its literal outer-annulus factor. -/
+theorem exists_restrictedRelativeBandpass_centralBall_lintegral_one_le_annular
+    (n : Nat) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    {a b : Real} (ha : 0 < a) (hab : a ≤ b) :
+    ∃ D : Real, 0 < D ∧ ∀ (j : Nat) (E : Set Real), E ⊆ Icc (1 : Real) 2 →
+      ∀ {α : Real}, α ≤ 0 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+        (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
+        let B : Set (Euclidean (n + 1)) :=
+          closedBall 0 (((2 : Real) ^ j)⁻¹)
+        let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+        let T : Euclidean (n + 1) → Real := B.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal)
+        let c : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j)
+        let w : ENNReal := (ENNReal.ofReal b) ^ α
+        (∫⁻ x, ENNReal.ofReal (T x) ∂μ) ≤
+          c * μ B * w⁻¹ * ∫⁻ x, ENNReal.ofReal ‖f x‖ ∂μ := by
+  obtain ⟨D, hD, hphysical⟩ :=
+    exists_restrictedRelativeBandpass_pointwise_le_integral (Nat.succ_pos n) phi
+  refine ⟨D, hD, ?_⟩
+  intro j E hE α hα f hfsupport
+  dsimp only
+  let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+  let B : Set (Euclidean (n + 1)) := closedBall 0 (((2 : Real) ^ j)⁻¹)
+  let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f
+  let T : Euclidean (n + 1) → Real := B.indicator (fun x => (M x).toReal)
+  let c : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j)
+  let w : ENNReal := (ENNReal.ofReal b) ^ α
+  let I : ENNReal := ∫⁻ x, ENNReal.ofReal ‖f x‖ ∂volume
+  let J : ENNReal := ∫⁻ x, ENNReal.ofReal ‖f x‖ ∂μ
+  have hB : MeasurableSet B := measurableSet_closedBall
+  have hDpow : 0 ≤ D * (2 : Real) ^ j := by positivity
+  have hI : I = ENNReal.ofReal (∫ x : Euclidean (n + 1), ‖f x‖) := by
+    dsimp only [I]
+    symm
+    simpa only [ofReal_norm] using
+      ofReal_integral_norm_eq_lintegral_enorm (μ := volume) f.integrable
+  have hMpoint (x : Euclidean (n + 1)) : M x ≤ c * I := by
+    calc
+      M x ≤ ENNReal.ofReal (D * (2 : Real) ^ j * ∫ y : Euclidean (n + 1), ‖f y‖) := by
+        exact hphysical j E hE f x
+      _ = c * I := by
+        rw [ENNReal.ofReal_mul hDpow, ← hI]
+  have hMfin (x : Euclidean (n + 1)) : M x ≠ ⊤ :=
+    ne_top_of_le_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      (by rw [hI]; exact ENNReal.ofReal_ne_top)) (hMpoint x)
+  have hTpoint (x : Euclidean (n + 1)) :
+      ENNReal.ofReal (T x) ≤ B.indicator (fun _ : Euclidean (n + 1) => c * I) x := by
+    by_cases hx : x ∈ B
+    · simp only [T, Set.indicator_of_mem hx]
+      rw [ENNReal.ofReal_toReal (hMfin x)]
+      exact hMpoint x
+    · simp only [T, Set.indicator_of_notMem hx]
+      simp
+  have hGmeas : Measurable (fun x : Euclidean (n + 1) => ENNReal.ofReal ‖f x‖) :=
+    f.continuous.norm.measurable.ennreal_ofReal
+  have hGsupport : ∀ x, x ∉ A → ENNReal.ofReal ‖f x‖ = 0 := by
+    intro x hx
+    simp [hfsupport x hx]
+  have hinput : I ≤ w⁻¹ * J := by
+    dsimp only [I, J, w, μ, A]
+    exact lintegral_volume_le_outerPower_inv_mul_powerWeightedVolume_of_annular_support
+      hα ha hab _ hGmeas hGsupport
+  calc
+    (∫⁻ x, ENNReal.ofReal (T x) ∂μ) ≤
+        ∫⁻ x, B.indicator (fun _ : Euclidean (n + 1) => c * I) x ∂μ :=
+      lintegral_mono hTpoint
+    _ = c * I * μ B := by
+      rw [lintegral_indicator hB, setLIntegral_const]
+    _ = c * μ B * I := by ring
+    _ ≤ c * μ B * (w⁻¹ * J) := mul_le_mul_right hinput _
+    _ = c * μ B * w⁻¹ * J := by ring
+
+/-- The unit-annulus instance of the physical kernel bound. -/
+theorem exists_restrictedRelativeBandpass_centralBall_lintegral_one_le
+    (n : Nat) (phi : SchwartzMap (Euclidean (n + 1)) Complex) :
+    ∃ D : Real, 0 < D ∧ ∀ (j : Nat) (E : Set Real), E ⊆ Icc (1 : Real) 2 →
+      ∀ {α : Real}, α ≤ 0 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+        (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
+        let B : Set (Euclidean (n + 1)) :=
+          closedBall 0 (((2 : Real) ^ j)⁻¹)
+        let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+        let T : Euclidean (n + 1) → Real := B.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal)
+        let c : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j)
+        let w : ENNReal := (ENNReal.ofReal (2 : Real)) ^ α
+        (∫⁻ x, ENNReal.ofReal (T x) ∂μ) ≤
+          c * μ B * w⁻¹ * ∫⁻ x, ENNReal.ofReal ‖f x‖ ∂μ := by
+  simpa using
+    (exists_restrictedRelativeBandpass_centralBall_lintegral_one_le_annular
+      n phi (a := (1 : Real)) (b := (2 : Real)) (by norm_num) (by norm_num))
+
+private theorem rational_low_norm_le_half_height_central
+    (z : Complex) {t : Real} (ht : 0 < t) :
+    ‖((1 + ‖(t⁻¹ : Real) • z‖ ^ 2) ^ (-1 : Real)) • z‖ ≤ t / 2 := by
+  rw [norm_rational_low_amplitude z ht]
+  have hden : 0 < 1 + (‖z‖ / t) ^ 2 := by positivity
+  apply (div_le_iff₀ hden).2
+  have hsq : 0 ≤ (‖z‖ - t) ^ 2 := sq_nonneg (‖z‖ - t)
+  field_simp [ht.ne']
+  nlinarith
+
+/-- Interpolating the physical central-ball weak `(1,1)` estimate with the
+literal top endpoint gives a finite `p`-moment.  At this stage the central
+ball measure is deliberately left visible; the next theorem rewrites it as
+the dyadic codimension-one gain. -/
+theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_annular
+    (n : Nat) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    {a b : Real} (ha : 0 < a) (hab : a ≤ b) :
+    ∃ D Ctop : Real, 0 < D ∧ 0 < Ctop ∧
+      ∀ (j : Nat) (E : Set Real), E.Nonempty → E ⊆ Icc (1 : Real) 2 →
+      ∀ {α p : Real}, 1 - ((n + 1 : Nat) : Real) ≤ α → α ≤ 0 →
+        1 < p → p < 2 →
+      ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+        (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
+        let B : Set (Euclidean (n + 1)) :=
+          closedBall 0 (((2 : Real) ^ j)⁻¹)
+        let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+        let T : SchwartzMap (Euclidean (n + 1)) Complex →
+            Euclidean (n + 1) → Real := fun g => B.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal)
+        let c₁ : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j) * μ B *
+          ((ENNReal.ofReal b) ^ α)⁻¹
+        let a₁ : ENNReal :=
+          ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+            ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+        (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
+          ENNReal.ofReal p * ((ENNReal.ofReal (2 : Real)) ^ (1 : Real) * c₁ * a₁ *
+            (ENNReal.ofReal Ctop) ^ (p - 1)) := by
+  obtain ⟨D, hD, hcentral⟩ :=
+    exists_restrictedRelativeBandpass_centralBall_lintegral_one_le_annular
+      n phi ha hab
+  obtain ⟨Ctop, hCtop, htop⟩ := exists_restrictedRelativeBandpass_top_bound phi
+  refine ⟨D, Ctop, hD, hCtop, ?_⟩
+  intro j E hEne hE α p hαlower hα hp1 hp2 f hfsupport
+  dsimp only
+  let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
+  let B : Set (Euclidean (n + 1)) := closedBall 0 (((2 : Real) ^ j)⁻¹)
+  let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let Op : SchwartzMap (Euclidean (n + 1)) Complex → Euclidean (n + 1) → Real :=
+    fun g => B.indicator (fun x =>
+      (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal)
+  let c₁ : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j) * μ B *
+    ((ENNReal.ofReal b) ^ α)⁻¹
+  let a₁ : ENNReal :=
+    ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  let Sset : Set (SchwartzMap (Euclidean (n + 1)) Complex) :=
+    {g | ∀ x, x ∉ A → g x = 0}
+  have hαint : -((n + 1 : Nat) : Real) < α := by
+    nlinarith
+  letI : IsFiniteMeasureOnCompacts μ := by
+    dsimp only [μ]
+    exact powerWeightedVolume_isFiniteMeasureOnCompacts (by omega) hαint
+  letI : SFinite μ := inferInstance
+  have hB : MeasurableSet B := measurableSet_closedBall
+  have hOp_nonneg : ∀ g x, 0 ≤ Op g x := by
+    intro g x
+    by_cases hx : x ∈ B
+    · simp [Op, hx, ENNReal.toReal_nonneg]
+    · simp [Op, hx]
+  have hOp_subadd : ∀ ⦃g h : SchwartzMap (Euclidean (n + 1)) Complex⦄,
+      g ∈ Sset → h ∈ Sset → ∀ x, Op (g + h) x ≤ Op g x + Op h x := by
+    intro g h _ _ x
+    by_cases hx : x ∈ B
+    · simp only [Op, Set.indicator_of_mem hx]
+      exact toReal_restrictedRelativeBandpassSphericalMaximal_add_le
+        (Nat.succ_pos n) E hE phi g h j x
+    · simp [Op, hx]
+  have hOpmeas : ∀ (g : SchwartzMap (Euclidean (n + 1)) Complex), g ∈ Sset →
+      AEMeasurable (Op g) μ := by
+    intro g _
+    exact ((measurable_toReal_restrictedRelativeBandpassSphericalMaximal
+      phi g hphi_one hphi_zero hphi_norm j E hE hEne).indicator hB).aemeasurable
+  have hstrong_one : ∀ (g : SchwartzMap (Euclidean (n + 1)) Complex), g ∈ Sset →
+      (∫⁻ x, ENNReal.ofReal (Op g x) ∂μ) ≤
+        c₁ * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean (n + 1) → Complex) x‖ ∂μ := by
+    intro g hg
+    simpa only [A, B, μ, Op, c₁] using hcentral j E hE hα g hg
+  have hweak_one : ∀ (g : SchwartzMap (Euclidean (n + 1)) Complex), g ∈ Sset →
+      ∀ {t : Real}, 0 < t →
+      (ENNReal.ofReal t) ^ (1 : Real) * μ {x | t < Op g x} ≤
+        c₁ * ∫⁻ x, (ENNReal.ofReal ‖(g : Euclidean (n + 1) → Complex) x‖) ^
+          (1 : Real) ∂μ := by
+    intro g hg t ht
+    calc
+      (ENNReal.ofReal t) ^ (1 : Real) * μ {x | t < Op g x} =
+          ENNReal.ofReal t * μ {x | t < Op g x} := by rw [ENNReal.rpow_one]
+      _ ≤ ENNReal.ofReal t * μ {x | ENNReal.ofReal t ≤ ENNReal.ofReal (Op g x)} := by
+        apply mul_le_mul_right
+        apply measure_mono
+        intro x hx
+        exact ENNReal.ofReal_le_ofReal hx.le
+      _ ≤ ∫⁻ x, ENNReal.ofReal (Op g x) ∂μ :=
+        mul_meas_ge_le_lintegral₀ (hOpmeas g hg).ennreal_ofReal (ENNReal.ofReal t)
+      _ ≤ c₁ * ∫⁻ x, ENNReal.ofReal ‖(g : Euclidean (n + 1) → Complex) x‖ ∂μ :=
+        hstrong_one g hg
+      _ = c₁ * ∫⁻ x, (ENNReal.ofReal ‖(g : Euclidean (n + 1) → Complex) x‖) ^
+          (1 : Real) ∂μ := by
+        congr 3
+        funext x
+        rw [ENNReal.rpow_one]
+  have hOp_top : ∀ (g : SchwartzMap (Euclidean (n + 1)) Complex), g ∈ Sset →
+      ∀ (u : Real), 0 ≤ u →
+      (∀ x, ‖(g : Euclidean (n + 1) → Complex) x‖ ≤ u) →
+        ∀ x, Op g x ≤ Ctop * u := by
+    intro g _ u hu hgu x
+    by_cases hx : x ∈ B
+    · simp only [Op, Set.indicator_of_mem hx]
+      exact htop j E g u hu hgu x
+    · simp [Op, hx, mul_nonneg hCtop.le hu]
+  have hf_mem : f ∈ Sset := hfsupport
+  have hOpf : AEMeasurable (Op f) μ := hOpmeas f hf_mem
+  obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
+    exists_schwartz_rational_low_high_family f
+  have hlow_zero (t : Real) (x : Euclidean (n + 1)) (hx : x ∉ A) : low t x = 0 := by
+    rw [hlow t x, hfsupport x hx]
+    simp
+  have hlow_mem : ∀ t, low t ∈ Sset := by
+    intro t x hx
+    exact hlow_zero t x hx
+  have hhigh_mem : ∀ t, high t ∈ Sset := by
+    intro t x hx
+    rw [hhigh t]
+    simp only [sub_apply, hfsupport x hx, hlow_zero t x hx, sub_zero]
+  have hsplit' : ∀ t, f = low t + high t := by
+    intro t
+    ext x
+    exact hsplit t x
+  have hprofiles := measurable_rational_low_high_profile_lintegrals
+    f low high hlow hhigh (μ := μ)
+  have hhigh_tail_raw :
+      (∫⁻ t in Ioi (0 : Real),
+        (∫⁻ x, ENNReal.ofReal ‖(high t : Euclidean (n + 1) → Complex) x‖ ∂μ) *
+          (ENNReal.ofReal t) ^ (p - 2)) ≤ a₁ := by
+    dsimp only [a₁]
+    apply rational_high_weighted_tail_le
+      (u := fun x : Euclidean (n + 1) => ‖f x‖)
+      (high := fun t x => high t x)
+    · exact f.continuous.norm.measurable
+    · intro x
+      exact norm_nonneg _
+    · have heq : (fun q : Real × Euclidean (n + 1) => ENNReal.ofReal ‖high q.1 q.2‖) =
+          (fun q : Real × Euclidean (n + 1) => ENNReal.ofReal
+            ‖f q.2 - ((1 + ‖(q.1⁻¹ : Real) • f q.2‖ ^ 2) ^ (-1 : Real)) • f q.2‖) := by
+        funext q
+        rw [hhigh q.1]
+        simp only [sub_apply]
+        rw [hlow q.1 q.2]
+      rw [heq]
+      exact (measurable_rational_high_family f).norm.ennreal_ofReal
+    · intro t x ht htx
+      apply ENNReal.ofReal_le_ofReal
+      have h := (rational_low_high_pointwise_tail_bounds f (low t) (high t)
+        ht (hlow t) (hhigh t) x).2
+      simpa [htx] using h
+    · intro t x ht htx
+      apply ENNReal.ofReal_le_ofReal
+      have h := (rational_low_high_pointwise_tail_bounds f (low t) (high t)
+        ht (hlow t) (hhigh t) x).2
+      have hnot : ¬ t ≤ ‖f x‖ := not_le_of_gt htx
+      simpa [hnot] using h
+    · exact hp1
+    · exact hp2
+  have hhigh_tail :
+      (∫⁻ t in Ioi (0 : Real),
+        (∫⁻ x, (ENNReal.ofReal ‖(high t : Euclidean (n + 1) → Complex) x‖) ^
+          (1 : Real) ∂μ) *
+          (ENNReal.ofReal t) ^ (p - (1 : Real) - 1)) ≤ a₁ := by
+    rw [show p - (1 : Real) - 1 = p - 2 by ring]
+    simp only [ENNReal.rpow_one]
+    exact hhigh_tail_raw
+  have hhighI_meas : Measurable (fun t : Real =>
+      ∫⁻ x, (ENNReal.ofReal ‖(high t : Euclidean (n + 1) → Complex) x‖) ^
+        (1 : Real) ∂μ) := by
+    convert hprofiles.2 using 1
+    funext t
+    apply lintegral_congr
+    intro x
+    rw [ENNReal.rpow_one]
+  have hlow_norm : ∀ t, 0 < t → ∀ x,
+      ‖(low t : Euclidean (n + 1) → Complex) x‖ ≤ t / 2 := by
+    intro t ht x
+    rw [hlow t x]
+    exact rational_low_norm_le_half_height_central (f x) ht
+  exact marcinkiewicz_weak_q_top_on_additive_split_ennreal_top_scaled
+    Sset (fun g : SchwartzMap (Euclidean (n + 1)) Complex =>
+      (g : Euclidean (n + 1) → Complex)) Op hOp_nonneg hOp_subadd
+    (1 : Real) (by norm_num) c₁ Ctop hCtop hweak_one hOp_top hp1 f hOpf low high
+    hlow_mem hhigh_mem hsplit' hlow_norm hhighI_meas a₁ hhigh_tail
+
+/-- The unit-annulus instance of the interpolated physical estimate. -/
+theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le
+    (n : Nat) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1) :
+    ∃ D Ctop : Real, 0 < D ∧ 0 < Ctop ∧
+      ∀ (j : Nat) (E : Set Real), E.Nonempty → E ⊆ Icc (1 : Real) 2 →
+      ∀ {α p : Real}, 1 - ((n + 1 : Nat) : Real) ≤ α → α ≤ 0 →
+        1 < p → p < 2 →
+      ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+        (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
+        let B : Set (Euclidean (n + 1)) :=
+          closedBall 0 (((2 : Real) ^ j)⁻¹)
+        let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+        let T : SchwartzMap (Euclidean (n + 1)) Complex →
+            Euclidean (n + 1) → Real := fun g => B.indicator (fun x =>
+          (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal)
+        let c₁ : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j) * μ B *
+          ((ENNReal.ofReal (2 : Real)) ^ α)⁻¹
+        let a₁ : ENNReal :=
+          ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+            ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+        (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
+          ENNReal.ofReal p * ((ENNReal.ofReal (2 : Real)) ^ (1 : Real) * c₁ * a₁ *
+            (ENNReal.ofReal Ctop) ^ (p - 1)) := by
+  simpa using
+    (exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_annular
+      n phi hphi_one hphi_zero hphi_norm
+      (a := (1 : Real)) (b := (2 : Real)) (by norm_num) (by norm_num))
+
+private theorem centralBall_physical_coefficient_eq_dyadic
+    (n j : Nat) {α D b : Real} (hD : 0 < D)
+    (hα : -((n + 1 : Nat) : Real) < α) :
+    ENNReal.ofReal (D * (2 : Real) ^ j) *
+        powerWeightedVolume (n + 1) α
+          (closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹)) *
+          ((ENNReal.ofReal b) ^ α)⁻¹ =
+      (ENNReal.ofReal D *
+        powerWeightedVolume (n + 1) α (closedBall (0 : Euclidean (n + 1)) 1) *
+          ((ENNReal.ofReal b) ^ α)⁻¹) *
+        (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) := by
+  let q : ENNReal := ENNReal.ofReal ((2 : Real) ^ j)
+  have htwoj : 0 < (2 : Real) ^ j := pow_pos (by norm_num) _
+  have hq0 : q ≠ 0 := by
+    dsimp only [q]
+    exact ENNReal.ofReal_ne_zero_iff.mpr htwoj
+  have hqtop : q ≠ ⊤ := by
+    dsimp only [q]
+    exact ENNReal.ofReal_ne_top
+  rw [ENNReal.ofReal_mul hD.le,
+    powerWeightedVolume_closedBall_inv_dyadic_scale (d := n + 1) (by omega) hα j]
+  change (ENNReal.ofReal D * q) *
+      (q ^ (-(((n + 1 : Nat) : Real) + α)) *
+        powerWeightedVolume (n + 1) α (closedBall (0 : Euclidean (n + 1)) 1)) *
+        ((ENNReal.ofReal b) ^ α)⁻¹ = _
+  have hqprod : q * q ^ (-(((n + 1 : Nat) : Real) + α)) =
+      q ^ (1 + (-(((n + 1 : Nat) : Real) + α))) := by
+    calc
+      q * q ^ (-(((n + 1 : Nat) : Real) + α)) =
+          q ^ (1 : Real) * q ^ (-(((n + 1 : Nat) : Real) + α)) := by
+            rw [ENNReal.rpow_one]
+      _ = q ^ (1 + (-(((n + 1 : Nat) : Real) + α))) :=
+        (ENNReal.rpow_add 1 (-(((n + 1 : Nat) : Real) + α)) hq0 hqtop).symm
+  calc
+    (ENNReal.ofReal D * q) *
+        (q ^ (-(((n + 1 : Nat) : Real) + α)) *
+          powerWeightedVolume (n + 1) α (closedBall (0 : Euclidean (n + 1)) 1)) *
+          ((ENNReal.ofReal b) ^ α)⁻¹ =
+        (ENNReal.ofReal D *
+          powerWeightedVolume (n + 1) α (closedBall (0 : Euclidean (n + 1)) 1) *
+          ((ENNReal.ofReal b) ^ α)⁻¹) *
+          (q * q ^ (-(((n + 1 : Nat) : Real) + α))) := by ac_rfl
+    _ = (ENNReal.ofReal D *
+          powerWeightedVolume (n + 1) α (closedBall (0 : Euclidean (n + 1)) 1) *
+            ((ENNReal.ofReal b) ^ α)⁻¹) *
+          q ^ (1 + (-(((n + 1 : Nat) : Real) + α)) ) := by
+      rw [hqprod]
+    _ = (ENNReal.ofReal D *
+          powerWeightedVolume (n + 1) α (closedBall (0 : Euclidean (n + 1)) 1) *
+            ((ENNReal.ofReal b) ^ α)⁻¹) *
+          q ^ (-((n : Real) + α)) := by
+      congr 2
+      push_cast
+      ring
+    _ = _ := by rfl
+
+/-- The physical central-annulus estimate with its frequency decay made
+explicit.  The ambient dimension is `n + 1`, so the exponent
+`n + α = (n + 1) - 1 + α` is precisely the codimension-one gain. -/
+theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic_annular
+    (n : Nat) (_hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    {a b : Real} (ha : 0 < a) (hab : a ≤ b)
+    {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
+    (hp1 : 1 < p) (hp2 : p < 2) :
+    ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
+      E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+      (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
+      (∫⁻ x in closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹),
+        ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal ^ p) ∂
+          powerWeightedVolume (n + 1) α) ≤
+        K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α := by
+  obtain ⟨D, Ctop, hD, hCtop, hinterp⟩ :=
+    exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_annular
+      n phi hphi_one hphi_zero hphi_norm ha hab
+  let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let U : Set (Euclidean (n + 1)) := closedBall 0 1
+  have hαint : -((n + 1 : Nat) : Real) < α := by
+    nlinarith
+  letI : IsFiniteMeasureOnCompacts μ := by
+    dsimp only [μ]
+    exact powerWeightedVolume_isFiniteMeasureOnCompacts (by omega) hαint
+  have hUtop : μ U < ⊤ := by
+    exact measure_closedBall_lt_top
+  have hb : 0 < b := lt_of_lt_of_le ha hab
+  let w : ENNReal := (ENNReal.ofReal b) ^ α
+  have hwpos : 0 < w := by
+    dsimp only [w]
+    exact ENNReal.rpow_pos (ENNReal.ofReal_pos.mpr hb) ENNReal.ofReal_ne_top
+  have hwInvTop : w⁻¹ < ⊤ := ENNReal.inv_lt_top.mpr hwpos
+  have hpminus : 0 < p - 1 := by linarith
+  have hthreeMinus : 0 < 3 - p := by linarith
+  have hpmInvTop : (ENNReal.ofReal (p - 1))⁻¹ < ⊤ :=
+    ENNReal.inv_lt_top.mpr (ENNReal.ofReal_pos.mpr hpminus)
+  have hthreeInvTop : (ENNReal.ofReal (3 - p))⁻¹ < ⊤ :=
+    ENNReal.inv_lt_top.mpr (ENNReal.ofReal_pos.mpr hthreeMinus)
+  have htailTop :
+      (ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹ < ⊤ :=
+    ENNReal.add_lt_top.mpr ⟨hpmInvTop, hthreeInvTop⟩
+  have hCtopPowTop : (ENNReal.ofReal Ctop) ^ (p - 1) < ⊤ := by
+    exact lt_top_iff_ne_top.mpr
+      (ENNReal.rpow_ne_top_of_nonneg (by linarith) ENNReal.ofReal_ne_top)
+  let K : ENNReal := ENNReal.ofReal p *
+    ((ENNReal.ofReal (2 : Real)) ^ (1 : Real) *
+      (ENNReal.ofReal D * μ U * w⁻¹) *
+        ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+          (ENNReal.ofReal Ctop) ^ (p - 1))
+  have hKtop : K < ⊤ := by
+    dsimp only [K]
+    apply ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+    apply ENNReal.mul_lt_top
+    · apply ENNReal.mul_lt_top
+      · apply ENNReal.mul_lt_top
+        · exact ENNReal.rpow_lt_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
+        · apply ENNReal.mul_lt_top
+          · exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hUtop
+          · exact hwInvTop
+      · exact htailTop
+    · exact hCtopPowTop
+  refine ⟨K, hKtop, ?_⟩
+  intro j E hEne hE f hfsupport
+  let B : Set (Euclidean (n + 1)) := closedBall 0 (((2 : Real) ^ j)⁻¹)
+  let M : Euclidean (n + 1) → ENNReal :=
+    restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f
+  let T : SchwartzMap (Euclidean (n + 1)) Complex → Euclidean (n + 1) → Real :=
+    fun g => B.indicator (fun x =>
+      (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j g x).toReal)
+  let c₁ : ENNReal := ENNReal.ofReal (D * (2 : Real) ^ j) * μ B * w⁻¹
+  let a₁ : ENNReal :=
+    ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  have hB : MeasurableSet B := measurableSet_closedBall
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hTpows : (fun x : Euclidean (n + 1) => ENNReal.ofReal ((T f x) ^ p)) =
+      B.indicator (fun x => ENNReal.ofReal ((M x).toReal ^ p)) := by
+    funext x
+    by_cases hx : x ∈ B
+    · simp [T, M, hx]
+    · simp [T, M, hx, Real.zero_rpow hp0.ne']
+  have hTset :
+      (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) =
+        ∫⁻ x in B, ENNReal.ofReal ((M x).toReal ^ p) ∂μ := by
+    rw [hTpows, lintegral_indicator hB]
+  have hinterp' := hinterp j E hEne hE hαlower hα hp1 hp2 f hfsupport
+  have hinterp'' :
+      (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
+        ENNReal.ofReal p * ((ENNReal.ofReal (2 : Real)) ^ (1 : Real) * c₁ * a₁ *
+          (ENNReal.ofReal Ctop) ^ (p - 1)) := by
+    simpa only [B, μ, T, c₁, a₁, w] using hinterp'
+  have hc₁ : c₁ =
+      (ENNReal.ofReal D * μ U * w⁻¹) *
+        (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) := by
+    dsimp only [c₁, B]
+    simpa only [μ, U, w] using
+      centralBall_physical_coefficient_eq_dyadic (b := b) n j hD hαint
+  change (∫⁻ x in B, ENNReal.ofReal ((M x).toReal ^ p) ∂μ) ≤
+    K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+      ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  calc
+    (∫⁻ x in B, ENNReal.ofReal ((M x).toReal ^ p) ∂μ) =
+        ∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ := hTset.symm
+    _ ≤
+        ENNReal.ofReal p * ((ENNReal.ofReal (2 : Real)) ^ (1 : Real) * c₁ * a₁ *
+          (ENNReal.ofReal Ctop) ^ (p - 1)) := hinterp''
+    _ = K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+        ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ := by
+      rw [hc₁]
+      dsimp only [K, a₁]
+      ac_rfl
+    _ = K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+        ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α := by
+      rfl
+
+/-- The unit-annulus version of the dyadic physical estimate. -/
+theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic
+    (n : Nat) (hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
+    (hp1 : 1 < p) (hp2 : p < 2) :
+    ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
+      E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+      (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
+      (∫⁻ x in closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹),
+        ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal ^ p) ∂
+          powerWeightedVolume (n + 1) α) ≤
+        K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α := by
+  simpa using
+    (exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic_annular
+      n hn phi hphi_one hphi_zero hphi_norm
+      (a := (1 : Real)) (b := (2 : Real)) (by norm_num) (by norm_num)
+      hαlower hα hp1 hp2)
+
+/-- The same central physical estimate in the raw `ENNReal` maximal-function
+form consumed by cutoff reassembly. -/
+theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_annular
+    (n : Nat) (hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    {a b : Real} (ha : 0 < a) (hab : a ≤ b)
+    {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
+    (hp1 : 1 < p) (hp2 : p < 2) :
+    ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
+      E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+      (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
+      (∫⁻ x in closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹),
+        (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x) ^ p ∂
+          powerWeightedVolume (n + 1) α) ≤
+        K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α := by
+  obtain ⟨K, hKtop, hbound⟩ :=
+    exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic_annular
+      n hn phi hphi_one hphi_zero hphi_norm ha hab hαlower hα hp1 hp2
+  obtain ⟨D, hD, hphysical⟩ :=
+    exists_restrictedRelativeBandpass_pointwise_le_integral (Nat.succ_pos n) phi
+  refine ⟨K, hKtop, ?_⟩
+  intro j E hEne hE f hfsupport
+  have hp0 : 0 ≤ p := (lt_trans zero_lt_one hp1).le
+  have hpoint (x : Euclidean (n + 1)) :
+      (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x) ^ p =
+        ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal ^ p) := by
+    have hfinite :
+        restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x ≠ ⊤ := by
+      apply ne_top_of_le_ne_top ENNReal.ofReal_ne_top
+      exact hphysical j E hE f x
+    rw [← ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg hp0,
+      ENNReal.ofReal_toReal hfinite]
+  calc
+    (∫⁻ x in closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹),
+      (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x) ^ p ∂
+        powerWeightedVolume (n + 1) α) =
+      ∫⁻ x in closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹),
+        ENNReal.ofReal
+          ((restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal ^ p) ∂
+          powerWeightedVolume (n + 1) α := by
+            apply lintegral_congr
+            intro x
+            exact hpoint x
+    _ ≤ K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+        ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α :=
+      hbound j E hEne hE f hfsupport
+
+/-- The unit-annulus version in the raw maximal-function form. -/
+theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic
+    (n : Nat) (hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
+    (hp1 : 1 < p) (hp2 : p < 2) :
+    ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
+      E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
+      (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
+      (∫⁻ x in closedBall (0 : Euclidean (n + 1)) (((2 : Real) ^ j)⁻¹),
+        (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x) ^ p ∂
+          powerWeightedVolume (n + 1) α) ≤
+        K * (ENNReal.ofReal ((2 : Real) ^ j)) ^ (-((n : Real) + α)) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α := by
+  simpa using
+    (exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_annular
+      n hn phi hphi_one hphi_zero hphi_norm
+      (a := (1 : Real)) (b := (2 : Real)) (by norm_num) (by norm_num)
+      hαlower hα hp1 hp2)
+
+end
+
+end LeanSpherical.HarmonicAnalysis

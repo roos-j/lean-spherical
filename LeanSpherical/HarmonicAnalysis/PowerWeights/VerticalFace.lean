@@ -1,0 +1,182 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.EntropyAmbientUpper
+import LeanSpherical.HarmonicAnalysis.PowerWeights.InfinityPoint
+
+/-!
+# The vertical limiting face
+
+The elementary ambient entropy estimate lets the strict finite-parameter
+upper bound generate every interior point of the limiting `p = infinity`
+face directly.  This is parameter bookkeeping only; no new maximal estimate
+is introduced here.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter Set Topology
+
+noncomputable section
+
+theorem verticalInterior_mem_closure_of_strict_upper
+    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ)
+    (hstrict : ∀ {p α : ℝ}, 1 < p →
+      max ((α : EReal) + multiplicativeMinkowskiExponent E)
+        (multiplicativeLegendreAssouadExponent E
+          (((d : ℝ) - 1) * (p - 2) - α)) <
+        (↑(((d : ℝ) - 1) * (p - 1)) : EReal) →
+      HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α)
+    {a : ℝ} (ha0 : 0 < a) (ha : a < (d : ℝ) - 1) :
+    (0, a) ∈ closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
+  let n : ℝ := (d : ℝ) - 1
+  have hn : 0 < n := by
+    dsimp only [n]
+    have : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
+    linarith
+  let C : ℝ := n + 3
+  let M : ℝ := max 1 (max (5 / a) (n / (n - a)))
+  have hnsub : 0 < n - a := sub_pos.mpr ha
+  have hMone : 1 ≤ M := le_max_left _ _
+  have hMfive : 5 / a ≤ M := le_trans (le_max_left _ _) (le_max_right _ _)
+  have hMn : n / (n - a) ≤ M := le_trans (le_max_right _ _) (le_max_right _ _)
+  have hβ : multiplicativeMinkowskiExponent E ≤ (2 : EReal) :=
+    multiplicativeMinkowskiExponent_le_two E
+  have hseq_tendsto :
+      Tendsto (fun t : ℝ => (t⁻¹, (t * a - C) / t)) atTop (𝓝 (0, a)) := by
+    have hfirst : Tendsto (fun t : ℝ => t⁻¹) atTop (𝓝 0) :=
+      tendsto_inv_atTop_zero
+    have hsecond0 : Tendsto (fun t : ℝ => a - C * t⁻¹) atTop (𝓝 a) := by
+      have ha_const : Tendsto (fun _ : ℝ => a) atTop (𝓝 a) := tendsto_const_nhds
+      have hC_const : Tendsto (fun _ : ℝ => C) atTop (𝓝 C) := tendsto_const_nhds
+      simpa using ha_const.sub (hC_const.mul hfirst)
+    have hnonzero : ∀ᶠ t : ℝ in atTop, t ≠ 0 :=
+      (eventually_gt_atTop (0 : ℝ)).mono fun _ ht => ht.ne'
+    have hsecond : Tendsto (fun t : ℝ => (t * a - C) / t) atTop (𝓝 a) := by
+      apply hsecond0.congr'
+      filter_upwards [hnonzero] with t ht
+      field_simp
+    exact hfirst.prodMk_nhds hsecond
+  have hseq_mem : ∀ᶠ t : ℝ in atTop,
+      (t⁻¹, (t * a - C) / t) ∈
+        restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E := by
+    filter_upwards [eventually_gt_atTop M] with t ht
+    have htpos : 0 < t := lt_of_le_of_lt (zero_le_one.trans hMone) ht
+    have hp : 1 < t := lt_of_le_of_lt hMone ht
+    have hprod : 0 ≤ t * (n - a) :=
+      mul_nonneg htpos.le hnsub.le
+    have ht_a : 5 < t * a := by
+      have hmul : 5 / a * a < t * a :=
+        mul_lt_mul_of_pos_right (lt_of_le_of_lt hMfive ht) ha0
+      simpa [div_mul_cancel₀ _ ha0.ne'] using hmul
+    have ht_n : n < t * (n - a) := by
+      have hmul : n / (n - a) * (n - a) < t * (n - a) :=
+        mul_lt_mul_of_pos_right (lt_of_le_of_lt hMn ht) hnsub
+      simpa [div_mul_cancel₀ _ hnsub.ne'] using hmul
+    let α : ℝ := t * a - C
+    let ρ : ℝ := n * (t - 2) - α
+    have hρeq : ρ = t * (n - a) - n + 3 := by
+      dsimp only [ρ, α, C]
+      ring
+    have hρ : 0 ≤ ρ := by
+      rw [hρeq]
+      linarith
+    have hleftReal : α + 2 < n * (t - 1) := by
+      dsimp only [α, C]
+      nlinarith [hprod]
+    have hrightReal : ρ + 2 < n * (t - 1) := by
+      rw [hρeq]
+      nlinarith [ht_a]
+    have hleft : (α : EReal) + multiplicativeMinkowskiExponent E <
+        (n * (t - 1) : EReal) := by
+      calc
+        (α : EReal) + multiplicativeMinkowskiExponent E ≤
+            (α : EReal) + (2 : EReal) := add_le_add_right hβ _
+        _ < (n * (t - 1) : EReal) := by
+          change ((α + 2 : ℝ) : EReal) < ((n * (t - 1) : ℝ) : EReal)
+          exact EReal.coe_lt_coe hleftReal
+    have hright : multiplicativeLegendreAssouadExponent E ρ <
+        (n * (t - 1) : EReal) := by
+      exact (multiplicativeLegendreAssouadExponent_le_add_two_of_nonneg E hρ).trans_lt
+        (by
+          change ((ρ + 2 : ℝ) : EReal) < ((n * (t - 1) : ℝ) : EReal)
+          exact EReal.coe_lt_coe hrightReal)
+    have hstrict' :
+        max ((α : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E
+            (((d : ℝ) - 1) * (t - 2) - α)) <
+          (↑(((d : ℝ) - 1) * (t - 1)) : EReal) := by
+      change max ((α : EReal) + multiplicativeMinkowskiExponent E)
+        (multiplicativeLegendreAssouadExponent E ρ) <
+        (n * (t - 1) : EReal)
+      exact max_lt hleft hright
+    exact mem_restrictedNormalizedSphericalMaximalPowerWeightTypeSet_iff.mpr
+      ⟨t, α, hp.le, rfl, by simp [α], hstrict hp hstrict'⟩
+  exact mem_closure_of_tendsto hseq_tendsto hseq_mem
+
+/-- The top endpoint of the vertical face follows by approaching it through
+the already established interior points. -/
+theorem verticalTop_mem_closure_of_strict_upper
+    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ)
+    (hstrict : ∀ {p α : ℝ}, 1 < p →
+      max ((α : EReal) + multiplicativeMinkowskiExponent E)
+        (multiplicativeLegendreAssouadExponent E
+          (((d : ℝ) - 1) * (p - 2) - α)) <
+        (↑(((d : ℝ) - 1) * (p - 1)) : EReal) →
+      HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α) :
+    (0, (d : ℝ) - 1) ∈
+      closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
+  let n : ℝ := (d : ℝ) - 1
+  have hn : 0 < n := by
+    dsimp only [n]
+    have : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
+    linarith
+  have hseq_tendsto : Tendsto (fun t : ℝ => ((0 : ℝ), n - t⁻¹)) atTop (𝓝 (0, n)) := by
+    have hsecond : Tendsto (fun t : ℝ => n - t⁻¹) atTop (𝓝 n) := by
+      have hn_const : Tendsto (fun _ : ℝ => n) atTop (𝓝 n) := tendsto_const_nhds
+      simpa using hn_const.sub tendsto_inv_atTop_zero
+    exact (tendsto_const_nhds : Tendsto (fun _ : ℝ => (0 : ℝ)) atTop (𝓝 0)).prodMk_nhds hsecond
+  have hseq_mem : ∀ᶠ t : ℝ in atTop,
+      ((0 : ℝ), n - t⁻¹) ∈ closure
+        (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
+    let M : ℝ := max 1 (1 / n)
+    have hMone : 1 ≤ M := le_max_left _ _
+    have hMinv : 1 / n ≤ M := le_max_right _ _
+    filter_upwards [eventually_gt_atTop M] with t ht
+    have htpos : 0 < t := lt_of_le_of_lt (zero_le_one.trans hMone) ht
+    have hinvlt : t⁻¹ < n := by
+      apply (inv_lt_iff_one_lt_mul₀' htpos).mpr
+      exact (div_lt_iff₀ hn).mp (lt_of_le_of_lt hMinv ht)
+    have ha0 : 0 < n - t⁻¹ := sub_pos.mpr hinvlt
+    have ha : n - t⁻¹ < n := sub_lt_self _ (inv_pos.mpr htpos)
+    simpa only [n] using
+      verticalInterior_mem_closure_of_strict_upper hd E hstrict ha0 ha
+  simpa only [n] using isClosed_closure.mem_of_tendsto hseq_tendsto hseq_mem
+
+/-- The strict finite-parameter upper estimate fills the full vertical
+limiting face after closure. -/
+theorem verticalFace_subset_closure_of_strict_upper
+    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ)
+    (hstrict : ∀ {p α : ℝ}, 1 < p →
+      max ((α : EReal) + multiplicativeMinkowskiExponent E)
+        (multiplicativeLegendreAssouadExponent E
+          (((d : ℝ) - 1) * (p - 2) - α)) <
+        (↑(((d : ℝ) - 1) * (p - 1)) : EReal) →
+      HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α) :
+    {q : ℝ × ℝ | q.1 = 0 ∧ q.2 ∈ Icc (0 : ℝ) ((d : ℝ) - 1)} ⊆
+      closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
+  rintro ⟨x, a⟩ ⟨hx, ha⟩
+  change x = 0 at hx
+  subst x
+  rcases eq_or_lt_of_le ha.2 with rfl | ha_lt
+  · exact verticalTop_mem_closure_of_strict_upper hd E hstrict
+  · rcases ha.1.eq_or_lt with rfl | ha0
+    · exact zero_zero_mem_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet hd E
+    · exact verticalInterior_mem_closure_of_strict_upper hd E hstrict ha0 ha_lt
+
+end
+
+end LeanSpherical.HarmonicAnalysis

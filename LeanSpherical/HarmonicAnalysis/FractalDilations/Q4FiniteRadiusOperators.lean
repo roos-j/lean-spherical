@@ -156,7 +156,7 @@ noncomputable def q4DyadicSurfaceSchwartzPiece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (r : Real) :
-    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex :=
   (SchwartzMap.fourierMultiplierCLM Complex
     (q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r :
@@ -168,7 +168,7 @@ noncomputable def q4DyadicSurfaceSchwartzAdjointPiece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (r : Real) :
-    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex :=
   (SchwartzMap.fourierMultiplierCLM Complex
     (q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r :
@@ -201,6 +201,7 @@ theorem fourier_q4DyadicSurfaceSchwartzPiece
   rw [hfourier]
   simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
   rw [q4DyadicSurfaceSchwartzMultiplier_spec]
+  rw [SchwartzMap.fourier_coe]
 
 /-- Fourier-side formula for the literal formal adjoint. -/
 theorem fourier_q4DyadicSurfaceSchwartzAdjointPiece
@@ -229,6 +230,7 @@ theorem fourier_q4DyadicSurfaceSchwartzAdjointPiece
   rw [hfourier]
   simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
   rw [q4DyadicSurfaceSchwartzAdjointMultiplier_spec]
+  rw [SchwartzMap.fourier_coe]
 
 /-- On Schwartz data, the actual one-radius map is the literal Q4 Fourier
 piece used throughout the endpoint selection. -/
@@ -252,6 +254,7 @@ theorem q4DyadicSurfaceSchwartzPiece_apply_eq_q4DyadicSurfacePiece
     funext xi
     simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
     rw [q4DyadicSurfaceSchwartzMultiplier_spec]
+    rw [SchwartzMap.fourier_coe]
   unfold q4DyadicSurfacePiece
   rw [hsymbol]
 
@@ -260,7 +263,7 @@ noncomputable def q4ActiveDyadicPairSchwartzPiece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (i l : Int) :
-    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex :=
   (SchwartzMap.fourierMultiplierCLM Complex
     (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l :
@@ -289,6 +292,7 @@ theorem q4ActiveDyadicPairSchwartzPiece_apply_eq_q4DyadicPairPiece
     funext xi
     simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
     rw [q4ActiveDyadicPairMultiplier_spec]
+    rw [SchwartzMap.fourier_coe]
   unfold q4DyadicPairPiece
   rw [hsymbol]
 
@@ -393,7 +397,7 @@ constructed. -/
 def IsQ4SchwartzFiniteProductPairComposition
     {I : Type*} {d : Nat}
     (K : I -> I -> Euclidean d -> Complex)
-    (T Tstar : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    (T Tstar : I -> SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex) : Prop :=
   ∀ i l (f : SchwartzMap (Euclidean d) Complex) (x : Euclidean d),
     T i (Tstar l f) x = q4PairwiseKernelApply volume K i l
@@ -423,7 +427,7 @@ declaring a pointwise convolution to be linear on arbitrary functions. -/
 The heterogeneous `Lp` multiplication has exponents `∞, 2, 2`. -/
 def q4L2FourierMultiplierLinear
     {d : Nat} (m : Lp Complex ⊤ (volume : Measure (Euclidean d))) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->ₗ[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →ₗ[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) where
   toFun f := FourierTransform.fourierInv
     (m • (FourierTransform.fourier f :
@@ -442,7 +446,7 @@ def q4L2FourierMultiplierLinear
 `L∞` norm of its multiplier. -/
 def q4L2FourierMultiplier
     {d : Nat} (m : Lp Complex ⊤ (volume : Measure (Euclidean d))) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) :=
   LinearMap.mkContinuous (q4L2FourierMultiplierLinear m) ‖m‖ (by
     intro f
@@ -537,7 +541,7 @@ noncomputable def q4DyadicSurfaceL2Piece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (r : Real) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) :=
   q4L2FourierMultiplier
     ((q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r).toLp ⊤ volume)
@@ -547,7 +551,7 @@ noncomputable def q4DyadicSurfaceAdjointL2Piece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (r : Real) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) :=
   q4L2FourierMultiplier
     ((q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r).toLp ⊤ volume)
@@ -557,7 +561,7 @@ noncomputable def q4ActiveDyadicPairL2Piece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (i l : Int) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) :=
   q4L2FourierMultiplier
     ((q4ActiveDyadicPairMultiplier psi hpsiCompact j i l).toLp ⊤ volume)
@@ -700,13 +704,13 @@ classes. -/
 /-- Synthesis of a finite family of vectors in a complex Hilbert carrier. -/
 def q4L2FiniteFibreSynthesis
     {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
-    (s : Finset I) (Tstar : I -> H ->L[Complex] H) (g : I -> H) : H :=
+    (s : Finset I) (Tstar : I -> H →L[Complex] H) (g : I -> H) : H :=
   ∑ i ∈ s, Tstar i (g i)
 
 /-- Analysis of a vector by a finite family of bounded radius operators. -/
 def q4L2FiniteProductAnalysis
     {I H : Type*} [NormedAddCommGroup H] [NormedSpace Complex H]
-    (T : I -> H ->L[Complex] H) (f : H) : I -> H :=
+    (T : I -> H →L[Complex] H) (f : H) : I -> H :=
   fun i => T i f
 
 /-- The unrestricted pair shell on the completed Hilbert carrier.  This is
@@ -714,13 +718,13 @@ the `L²`-multiplier form of the full kernel shell, before choosing pointwise
 representatives. -/
 def q4L2FiniteProductPairShell
     {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
-    (s : Finset I) (P : I -> I -> H ->L[Complex] H) (g : I -> H) : I -> H :=
+    (s : Finset I) (P : I -> I -> H →L[Complex] H) (g : I -> H) : I -> H :=
   fun i => ∑ l ∈ s, P i l (g l)
 
 /-- The exact completed-space pair-composition condition. -/
 def IsQ4L2FiniteProductPairComposition
     {I H : Type*} [NormedAddCommGroup H] [NormedSpace Complex H]
-    (T Tstar : I -> H ->L[Complex] H) (P : I -> I -> H ->L[Complex] H) : Prop :=
+    (T Tstar : I -> H →L[Complex] H) (P : I -> I -> H →L[Complex] H) : Prop :=
   ∀ i l, T i ∘L Tstar l = P i l
 
 /-- The formal-adjoint identity on a complex Hilbert carrier.  We write it
@@ -729,14 +733,14 @@ pairing used by the physical-space shell. -/
 def IsQ4L2FiniteProductFormalAdjoint
     {I H : Type*} [NormedAddCommGroup H] [NormedSpace Complex H]
     [InnerProductSpace Complex H]
-    (T Tstar : I -> H ->L[Complex] H) : Prop :=
+    (T Tstar : I -> H →L[Complex] H) : Prop :=
   ∀ i f g, inner Complex g (T i f) = inner Complex (Tstar i g) f
 
 /-- Exact full `TT*` factorization on a finite Hilbert product. -/
 theorem q4L2FiniteProduct_analysis_synthesis_eq_pairShell
     {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
-    (s : Finset I) (T Tstar : I -> H ->L[Complex] H)
-    (P : I -> I -> H ->L[Complex] H)
+    (s : Finset I) (T Tstar : I -> H →L[Complex] H)
+    (P : I -> I -> H →L[Complex] H)
     (hcomp : IsQ4L2FiniteProductPairComposition T Tstar P)
     (g : I -> H) :
     q4L2FiniteProductAnalysis T (q4L2FiniteFibreSynthesis s Tstar g) =
@@ -748,14 +752,14 @@ theorem q4L2FiniteProduct_analysis_synthesis_eq_pairShell
   apply Finset.sum_congr rfl
   intro l hl
   simpa only [ContinuousLinearMap.comp_apply] using
-    congrArg (fun A : H ->L[Complex] H => A (g l)) (hcomp i l)
+    congrArg (fun A : H →L[Complex] H => A (g l)) (hcomp i l)
 
 /-- Finite synthesis is the formal adjoint of finite analysis on the
 completed Hilbert carrier. -/
 theorem q4L2FiniteProduct_formalAdjoint
     {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
     [InnerProductSpace Complex H]
-    (s : Finset I) (T Tstar : I -> H ->L[Complex] H)
+    (s : Finset I) (T Tstar : I -> H →L[Complex] H)
     (hadj : IsQ4L2FiniteProductFormalAdjoint T Tstar)
     (f : H) (g : I -> H) :
     (∑ i ∈ s, inner Complex (g i) (T i f)) =
@@ -771,8 +775,8 @@ in the paper after the gap shells have been reassembled. -/
 theorem q4L2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal
     {I H : Type*} [DecidableEq I] [NormedAddCommGroup H] [NormedSpace Complex H]
     [InnerProductSpace Complex H]
-    (s : Finset I) (T Tstar : I -> H ->L[Complex] H)
-    (P : I -> I -> H ->L[Complex] H)
+    (s : Finset I) (T Tstar : I -> H →L[Complex] H)
+    (P : I -> I -> H →L[Complex] H)
     (hcomp : IsQ4L2FiniteProductPairComposition T Tstar P)
     (hadj : IsQ4L2FiniteProductFormalAdjoint T Tstar)
     (g : I -> H) :
@@ -1082,7 +1086,7 @@ finite-product `TT*` identity may be stated without any extension choice. -/
 def q4SchwartzFiniteFibreSynthesis
     {I : Type*} {d : Nat} [DecidableEq I]
     (s : Finset I)
-    (Tstar : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    (Tstar : I -> SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex)
     (g : I -> SchwartzMap (Euclidean d) Complex) :
     SchwartzMap (Euclidean d) Complex :=
@@ -1091,7 +1095,7 @@ def q4SchwartzFiniteFibreSynthesis
 /-- Analysis of a Schwartz input by a finite family of radius pieces. -/
 def q4SchwartzFiniteProductAnalysis
     {I : Type*} {d : Nat}
-    (T : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    (T : I -> SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex)
     (f : SchwartzMap (Euclidean d) Complex) :
     I -> SchwartzMap (Euclidean d) Complex :=
@@ -1114,7 +1118,7 @@ identity and are not themselves asserted to factor. -/
 theorem q4SchwartzFiniteProduct_analysis_synthesis_eq_fullTTStar
     {I : Type*} {d : Nat} [DecidableEq I]
     (s : Finset I) (K : I -> I -> Euclidean d -> Complex)
-    (T Tstar : I -> SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    (T Tstar : I -> SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex)
     (hcomp : IsQ4SchwartzFiniteProductPairComposition K T Tstar)
     (g : I -> SchwartzMap (Euclidean d) Complex) :

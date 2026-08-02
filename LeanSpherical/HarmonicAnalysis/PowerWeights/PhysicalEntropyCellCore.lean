@@ -1,0 +1,818 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.ContinuumCZWeak
+import LeanSpherical.HarmonicAnalysis.PowerWeights.GlobalEntropyAssembly
+
+/-!
+# Finite physical entropy-cell square estimates
+
+The sharp short-interval theorem is normalized to one dyadic radius block.
+This file transports that estimate to literal physical cells and reassembles
+the finitely many active blocks through the fat relative Littlewood--Paley
+cutoffs.  The resulting Schwartz-core estimate is the `L²` input for the
+continuum Calderón--Zygmund cell argument.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory FourierTransform Metric Set intervalIntegral
+open scoped BigOperators BoundedContinuousFunction ENNReal FourierTransform NNReal
+
+noncomputable section
+
+private theorem scaled_cell_square_variation_pointwise
+    {X : Type*} [NormedAddCommGroup X] [NormedSpace ℝ X]
+    {ι : Type*} (I : Finset ι) (a b : ι → ℝ)
+    (F G : ℝ → X → ℂ) (R q : ℝ) (hq : 0 ≤ q)
+    (hscale : ∀ t x, G (R * t) x = q • F t (R⁻¹ • x)) (x : X) :
+    (∑ i ∈ I, ⨆ t : Icc (a i) (b i),
+      ENNReal.ofReal (‖G (R * t.1) x - G (R * a i) x‖ ^ 2)) =
+      ENNReal.ofReal (q ^ 2) *
+        (∑ i ∈ I, ⨆ t : Icc (a i) (b i),
+          ENNReal.ofReal (‖F t.1 (R⁻¹ • x) - F (a i) (R⁻¹ • x)‖ ^ 2)) := by
+  classical
+  have hterm (i : ι) (t : Icc (a i) (b i)) :
+      ENNReal.ofReal (‖G (R * t.1) x - G (R * a i) x‖ ^ 2) =
+        ENNReal.ofReal (q ^ 2) *
+          ENNReal.ofReal (‖F t.1 (R⁻¹ • x) - F (a i) (R⁻¹ • x)‖ ^ 2) := by
+    rw [hscale t.1 x, hscale (a i) x]
+    rw [← smul_sub]
+    rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg hq]
+    rw [show (q * ‖F t.1 (R⁻¹ • x) - F (a i) (R⁻¹ • x)‖) ^ 2 =
+        q ^ 2 * ‖F t.1 (R⁻¹ • x) - F (a i) (R⁻¹ • x)‖ ^ 2 by ring]
+    rw [ENNReal.ofReal_mul (sq_nonneg q)]
+  calc
+    (∑ i ∈ I, ⨆ t : Icc (a i) (b i),
+      ENNReal.ofReal (‖G (R * t.1) x - G (R * a i) x‖ ^ 2)) =
+        ∑ i ∈ I, ENNReal.ofReal (q ^ 2) *
+          (⨆ t : Icc (a i) (b i),
+            ENNReal.ofReal (‖F t.1 (R⁻¹ • x) - F (a i) (R⁻¹ • x)‖ ^ 2)) := by
+          apply Finset.sum_congr rfl
+          intro i hi
+          rw [show (fun t : Icc (a i) (b i) =>
+              ENNReal.ofReal (‖G (R * t.1) x - G (R * a i) x‖ ^ 2)) =
+              fun t => ENNReal.ofReal (q ^ 2) *
+                ENNReal.ofReal (‖F t.1 (R⁻¹ • x) - F (a i) (R⁻¹ • x)‖ ^ 2) by
+                  funext t
+                  exact hterm i t]
+          rw [ENNReal.mul_iSup]
+    _ = _ := by rw [← Finset.mul_sum]
+
+private theorem lintegral_scaled_comp_smul
+    {m : Nat} (V : Euclidean m → ENNReal) (hV : Measurable V)
+    (hVfinite : (∫⁻ x, V x) ≠ ∞) {R q : ℝ}
+    (hR : 0 < R) (hq : q = R ^ m) :
+    (∫⁻ x : Euclidean m, ENNReal.ofReal (q ^ 2) * V (R • x)) =
+      ENNReal.ofReal q * ∫⁻ x : Euclidean m, V x := by
+  have hqnonneg : 0 ≤ q := by
+    rw [hq]
+    positivity
+  have hVae : ∀ᵐ x : Euclidean m ∂volume, V x ≠ ∞ := by
+    filter_upwards [ae_lt_top hV hVfinite] with x hx
+    exact hx.ne
+  have hVint : Integrable (fun x : Euclidean m => (V x).toReal) volume :=
+    integrable_toReal_of_lintegral_ne_top hV.aemeasurable hVfinite
+  have hVnonneg : ∀ᵐ x : Euclidean m ∂volume, 0 ≤ (V x).toReal :=
+    Filter.Eventually.of_forall fun _ => ENNReal.toReal_nonneg
+  have hVlin : (∫⁻ x : Euclidean m, V x) =
+      ENNReal.ofReal (∫ x : Euclidean m, (V x).toReal) := by
+    calc
+      (∫⁻ x : Euclidean m, V x) =
+          ∫⁻ x : Euclidean m, ENNReal.ofReal (V x).toReal := by
+            apply lintegral_congr_ae
+            filter_upwards [hVae] with x hx
+            exact (ENNReal.ofReal_toReal hx).symm
+      _ = ENNReal.ofReal (∫ x : Euclidean m, (V x).toReal) :=
+        (ofReal_integral_eq_lintegral_ofReal hVint hVnonneg).symm
+  have hcompint : Integrable (fun x : Euclidean m => (V (R • x)).toReal) volume :=
+    hVint.comp_smul hR.ne'
+  have hcompnonneg : ∀ᵐ x : Euclidean m ∂volume, 0 ≤ (V (R • x)).toReal :=
+    Filter.Eventually.of_forall fun _ => ENNReal.toReal_nonneg
+  have hVcompae : ∀ᵐ x : Euclidean m ∂volume, V (R • x) ≠ ∞ :=
+    (Measure.quasiMeasurePreserving_smul volume hR.ne').ae hVae
+  have hcomplin : (∫⁻ x : Euclidean m, V (R • x)) =
+      ENNReal.ofReal (∫ x : Euclidean m, (V (R • x)).toReal) := by
+    calc
+      (∫⁻ x : Euclidean m, V (R • x)) =
+          ∫⁻ x : Euclidean m, ENNReal.ofReal (V (R • x)).toReal := by
+            apply lintegral_congr_ae
+            filter_upwards [hVcompae] with x hx
+            exact (ENNReal.ofReal_toReal hx).symm
+      _ = ENNReal.ofReal (∫ x : Euclidean m, (V (R • x)).toReal) :=
+        (ofReal_integral_eq_lintegral_ofReal hcompint hcompnonneg).symm
+  have hcompint_eq : (∫ x : Euclidean m, (V (R • x)).toReal) =
+      (R ^ m)⁻¹ * ∫ x : Euclidean m, (V x).toReal := by
+    simpa only [finrank_euclideanSpace_fin, smul_eq_mul] using
+      (Measure.integral_comp_smul_of_nonneg volume (fun x : Euclidean m =>
+        (V x).toReal) R (hR := hR.le))
+  calc
+    (∫⁻ x : Euclidean m, ENNReal.ofReal (q ^ 2) * V (R • x)) =
+        ENNReal.ofReal (q ^ 2) * ∫⁻ x : Euclidean m, V (R • x) :=
+          lintegral_const_mul _ (hV.comp
+            ((continuous_const : Continuous fun _ : Euclidean m => R).smul
+              continuous_id).measurable)
+    _ = ENNReal.ofReal (q ^ 2) *
+        ENNReal.ofReal ((R ^ m)⁻¹ * ∫ x : Euclidean m, (V x).toReal) := by
+          rw [hcomplin, hcompint_eq]
+    _ = ENNReal.ofReal q *
+        ENNReal.ofReal (∫ x : Euclidean m, (V x).toReal) := by
+          rw [← ENNReal.ofReal_mul (sq_nonneg q)]
+          rw [show q ^ 2 * ((R ^ m)⁻¹ * ∫ x : Euclidean m, (V x).toReal) =
+              (q ^ 2 * (R ^ m)⁻¹) * ∫ x : Euclidean m, (V x).toReal by ring]
+          rw [ENNReal.ofReal_mul]
+          · rw [show q ^ 2 * (R ^ m)⁻¹ = q by
+              rw [hq]
+              field_simp [pow_ne_zero _ hR.ne']]
+          · positivity
+    _ = ENNReal.ofReal q * ∫⁻ x : Euclidean m, V x := by rw [hVlin]
+
+private theorem lintegral_scaled_palette_entropy_cell_variation_of_sharp
+    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (d + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
+      s ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun t : ℝ => surfaceFourier (d + 1) (t • xi)) s‖ ≤
+        C1 / ‖xi‖ ^ ((d : ℝ) / 2 - 1))
+    (phi g : SchwartzMap (Euclidean (d + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat)
+    (R : ℝ) (hR : 0 < R) (δ : ℝ≥0) (N : ℕ)
+    (c : Fin N → PositiveRadius) (hc : ∀ i, (c i : ℝ) ∈ Icc (1 : ℝ) 2) :
+    let q : ℝ := R⁻¹ ^ (d + 1)
+    let ga : SchwartzMap (Euclidean (d + 1)) ℂ :=
+      SchwartzMap.compCLMOfContinuousLinearEquiv ℂ
+        (ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))) g
+    let F : ℝ → Euclidean (d + 1) → ℂ := fun s x =>
+      𝓕⁻ (fun eta : Euclidean (d + 1) =>
+        surfaceFourier (d + 1) (-s • eta) *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • eta)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (s • eta))) * ga eta) x
+    let G : ℝ → Euclidean (d + 1) → ℂ := fun r x =>
+      𝓕⁻ (fun xi : Euclidean (d + 1) =>
+        surfaceFourier (d + 1) (-r • xi) *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (r • xi))) * g xi) x
+    Measurable (fun x : Euclidean (d + 1) => ∑ i : Fin N,
+      ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+          (unitScaleEntropyCell δ (c i)).2,
+        ENNReal.ofReal (‖G (R * t.1) x -
+          G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) ∧
+    (∫⁻ x : Euclidean (d + 1), ∑ i : Fin N,
+      ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+          (unitScaleEntropyCell δ (c i)).2,
+        ENNReal.ofReal (‖G (R * t.1) x -
+          G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) ≤
+      ∑ i : Fin N, ENNReal.ofReal
+        (2 * ((unitScaleEntropyCell δ (c i)).2 -
+          (unitScaleEntropyCell δ (c i)).1) ^ 2 *
+          (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (12 * C0 *
+              ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
+                phi).toBoundedContinuousFunction‖) /
+              (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2 *
+          ∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2) := by
+  dsimp only
+  let q : ℝ := R⁻¹ ^ (d + 1)
+  let A : Euclidean (d + 1) ≃L[ℝ] Euclidean (d + 1) :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 R⁻¹ (inv_ne_zero hR.ne'))
+  let ga : SchwartzMap (Euclidean (d + 1)) ℂ :=
+    SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A g
+  have hga (xi : Euclidean (d + 1)) : ga xi = g (R⁻¹ • xi) := by
+    change g (A xi) = _
+    simp [A]
+  let F : ℝ → Euclidean (d + 1) → ℂ := fun s x =>
+    𝓕⁻ (fun eta : Euclidean (d + 1) =>
+      surfaceFourier (d + 1) (-s • eta) *
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • eta)) -
+          phi (((2 : ℝ) ^ j)⁻¹ • (s • eta))) * ga eta) x
+  let G : ℝ → Euclidean (d + 1) → ℂ := fun r x =>
+    𝓕⁻ (fun xi : Euclidean (d + 1) =>
+      surfaceFourier (d + 1) (-r • xi) *
+        (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+          phi (((2 : ℝ) ^ j)⁻¹ • (r • xi))) * g xi) x
+  let C : ℝ := 2 *
+    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      (12 * C0 *
+        ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
+          phi).toBoundedContinuousFunction‖) /
+        (dyadicScale j) ^ ((d : ℝ) / 2))
+  have hq : 0 ≤ q := by
+    dsimp only [q]
+    positivity
+  have hdilate (s : ℝ) (x : Euclidean (d + 1)) :
+      G (R * s) x = q • F s (R⁻¹ • x) := by
+    have hfun : (fun xi : Euclidean (d + 1) =>
+        surfaceFourier (d + 1) (-(R * s) • xi) *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • ((R * s) • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • ((R * s) • xi))) * g xi) =
+        fun xi : Euclidean (d + 1) =>
+          surfaceFourier (d + 1) (-(R * s) • xi) *
+            ((phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • (R • xi))) -
+              phi (((2 : ℝ) ^ j)⁻¹ • (s • (R • xi)))) * ga (R • xi)) := by
+      funext xi
+      rw [hga]
+      have hscale : R⁻¹ • (R • xi) = xi := by
+        rw [smul_smul, inv_mul_cancel₀ hR.ne', one_smul]
+      rw [hscale]
+      simp only [smul_smul]
+      ring_nf
+    rw [show G (R * s) x =
+      𝓕⁻ (fun xi : Euclidean (d + 1) =>
+        surfaceFourier (d + 1) (-(R * s) • xi) *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • ((R * s) • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • ((R * s) • xi))) * g xi) x by rfl]
+    rw [hfun]
+    simpa only [q, F, finrank_euclideanSpace_fin, mul_assoc] using
+      fourierInv_relative_surface_multiplier_dilate R hR s
+        (fun eta : Euclidean (d + 1) =>
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • eta)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (s • eta))) * ga eta) x
+  let V : Euclidean (d + 1) → ENNReal := fun x => ∑ i : Fin N,
+    ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+        (unitScaleEntropyCell δ (c i)).2,
+      ENNReal.ofReal (‖F t.1 x - F (unitScaleEntropyCell δ (c i)).1 x‖ ^ 2)
+  have hVmeas : Measurable V := by
+    dsimp only [V]
+    apply Finset.measurable_sum
+    intro i _
+    have hcenter := mem_unitScaleEntropyCell_center δ (c i) (hc i)
+    have hends := unitScaleEntropyCell_endpoints_mem δ (c i) (hc i)
+    have hlocal :=
+      measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_interval_sub_left_of_sharp
+        hd C0 C1 hC0 hC1 hdecay hderiv phi (𝓕⁻ ga)
+          hphi_one hphi_zero hphi_norm j
+          (hcenter.1.trans hcenter.2) hends.1.1 hends.2.2
+    have hfourier (xi : Euclidean (d + 1)) :
+        𝓕 ((𝓕⁻ ga : SchwartzMap (Euclidean (d + 1)) ℂ) :
+          Euclidean (d + 1) → ℂ) xi = ga xi := by
+      rw [← SchwartzMap.fourier_coe, fourier_fourierInv_eq]
+    simpa only [F, hfourier] using hlocal.1
+  have hVbound :=
+    lintegral_palette_entropy_cell_variation_of_sharp
+      hd C0 C1 hC0 hC1 hdecay hderiv phi (𝓕⁻ ga)
+        hphi_one hphi_zero hphi_norm j δ N c hc
+  have hfourier (xi : Euclidean (d + 1)) :
+      𝓕 ((𝓕⁻ ga : SchwartzMap (Euclidean (d + 1)) ℂ) :
+        Euclidean (d + 1) → ℂ) xi = ga xi := by
+    rw [← SchwartzMap.fourier_coe, fourier_fourierInv_eq]
+  have hVbound' : (∫⁻ x : Euclidean (d + 1), V x) ≤
+      ∑ i : Fin N, ENNReal.ofReal
+        (2 * ((unitScaleEntropyCell δ (c i)).2 -
+          (unitScaleEntropyCell δ (c i)).1) ^ 2 * C ^ 2 *
+          ∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2) := by
+    simpa only [V, F, C, hfourier] using hVbound
+  let Acoef : Fin N → ℝ := fun i =>
+    2 * ((unitScaleEntropyCell δ (c i)).2 -
+      (unitScaleEntropyCell δ (c i)).1) ^ 2 * C ^ 2
+  let J : ℝ := ∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2
+  have hVbound'' : (∫⁻ x : Euclidean (d + 1), V x) ≤
+      ∑ i : Fin N, ENNReal.ofReal
+        (Acoef i * ∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2) := by
+    simpa only [Acoef] using hVbound'
+  have hVfinite : (∫⁻ x : Euclidean (d + 1), V x) ≠ ∞ :=
+    ne_top_of_le_ne_top (by simp) hVbound''
+  have hqpos : 0 < q := by
+    dsimp only [q]
+    positivity
+  have hgaint : (∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2) = q⁻¹ * J := by
+    calc
+      (∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2) =
+          ∫ eta : Euclidean (d + 1), ‖g (R⁻¹ • eta)‖ ^ 2 := by
+            apply MeasureTheory.integral_congr_ae
+            filter_upwards with eta
+            rw [hga]
+      _ = q⁻¹ * ∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2 := by
+        simpa only [q] using
+          integral_norm_sq_comp_smul_eq (d + 1) g (inv_pos.mpr hR)
+      _ = q⁻¹ * J := by rfl
+  have hpoint (x : Euclidean (d + 1)) :
+      (∑ i : Fin N,
+        ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+            (unitScaleEntropyCell δ (c i)).2,
+          ENNReal.ofReal (‖G (R * t.1) x -
+            G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) =
+        ENNReal.ofReal (q ^ 2) * V (R⁻¹ • x) := by
+    simpa only [V] using
+      (scaled_cell_square_variation_pointwise
+        (I := Finset.univ) (a := fun i : Fin N =>
+          (unitScaleEntropyCell δ (c i)).1)
+        (b := fun i : Fin N => (unitScaleEntropyCell δ (c i)).2)
+        F G R q hq hdilate x)
+  have hPmeas : Measurable (fun x : Euclidean (d + 1) => ∑ i : Fin N,
+      ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+          (unitScaleEntropyCell δ (c i)).2,
+        ENNReal.ofReal (‖G (R * t.1) x -
+          G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) := by
+    rw [show (fun x : Euclidean (d + 1) => ∑ i : Fin N,
+        ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+            (unitScaleEntropyCell δ (c i)).2,
+          ENNReal.ofReal (‖G (R * t.1) x -
+            G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) =
+        fun x => ENNReal.ofReal (q ^ 2) * V (R⁻¹ • x) by
+          funext x
+          exact hpoint x]
+    exact measurable_const.mul (hVmeas.comp
+      ((continuous_const : Continuous fun _ : Euclidean (d + 1) => R⁻¹).smul
+        continuous_id).measurable)
+  have hphysical :
+      (∫⁻ x : Euclidean (d + 1), ∑ i : Fin N,
+        ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+            (unitScaleEntropyCell δ (c i)).2,
+          ENNReal.ofReal (‖G (R * t.1) x -
+            G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) =
+        ENNReal.ofReal (q ^ 2) * ∫⁻ x : Euclidean (d + 1), V (R⁻¹ • x) := by
+    calc
+      (∫⁻ x : Euclidean (d + 1), ∑ i : Fin N,
+        ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+            (unitScaleEntropyCell δ (c i)).2,
+          ENNReal.ofReal (‖G (R * t.1) x -
+            G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) =
+          ∫⁻ x : Euclidean (d + 1),
+            ENNReal.ofReal (q ^ 2) * V (R⁻¹ • x) := by
+              apply lintegral_congr
+              intro x
+              exact hpoint x
+      _ = _ := lintegral_const_mul _
+        (hVmeas.comp ((continuous_const : Continuous fun _ : Euclidean (d + 1) =>
+          R⁻¹).smul continuous_id).measurable)
+  have htransport := lintegral_scaled_comp_smul V hVmeas hVfinite
+    (R := R⁻¹) (q := q) (inv_pos.mpr hR) (by rfl)
+  have hright : ENNReal.ofReal q *
+      (∑ i : Fin N, ENNReal.ofReal
+        (Acoef i * ∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2)) =
+      ∑ i : Fin N, ENNReal.ofReal (Acoef i * J) := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro i hi
+    rw [← ENNReal.ofReal_mul hq]
+    rw [hgaint]
+    congr 1
+    field_simp [hqpos.ne']
+  constructor
+  · exact hPmeas
+  ·
+    calc
+      (∫⁻ x : Euclidean (d + 1), ∑ i : Fin N,
+        ⨆ t : Icc (unitScaleEntropyCell δ (c i)).1
+            (unitScaleEntropyCell δ (c i)).2,
+          ENNReal.ofReal (‖G (R * t.1) x -
+            G (R * (unitScaleEntropyCell δ (c i)).1) x‖ ^ 2)) =
+          ENNReal.ofReal (q ^ 2) * ∫⁻ x : Euclidean (d + 1), V (R⁻¹ • x) := hphysical
+      _ = ∫⁻ x : Euclidean (d + 1),
+          ENNReal.ofReal (q ^ 2) * V (R⁻¹ • x) :=
+        (lintegral_const_mul _
+          (hVmeas.comp ((continuous_const : Continuous fun _ : Euclidean (d + 1) =>
+            R⁻¹).smul continuous_id).measurable)).symm
+      _ = ENNReal.ofReal q * ∫⁻ x : Euclidean (d + 1), V x := htransport
+      _ ≤ ENNReal.ofReal q *
+          (∑ i : Fin N, ENNReal.ofReal
+            (Acoef i * ∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2)) := by
+        calc
+          ENNReal.ofReal q * ∫⁻ x : Euclidean (d + 1), V x =
+              (∫⁻ x : Euclidean (d + 1), V x) * ENNReal.ofReal q := mul_comm _ _
+          _ ≤ (∑ i : Fin N, ENNReal.ofReal
+              (Acoef i * ∫ eta : Euclidean (d + 1), ‖ga eta‖ ^ 2)) *
+              ENNReal.ofReal q := mul_le_mul_left hVbound'' _
+          _ = _ := mul_comm _ _
+      _ = ∑ i : Fin N, ENNReal.ofReal (Acoef i * J) := hright
+      _ = _ := by rfl
+
+private theorem measurable_and_lintegral_physical_entropy_cell_block_of_sharp
+    {d N : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (d + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
+      s ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun t : ℝ => surfaceFourier (d + 1) (t • xi)) s‖ ≤
+        C1 / ‖xi‖ ^ ((d : ℝ) / 2 - 1))
+    (phi g : SchwartzMap (Euclidean (d + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat)
+    (δ : ℝ≥0) (r : Fin N → ℤ → PositiveRadius)
+    (hr : ∀ i, IsDyadicLacunaryRadiusSelector (r i)) (k : ℤ) :
+    let G : ℝ → Euclidean (d + 1) → ℂ := fun s x =>
+      𝓕⁻ (fun xi : Euclidean (d + 1) =>
+        surfaceFourier (d + 1) (-s • xi) *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) * g xi) x
+    Measurable (fun x : Euclidean (d + 1) => ∑ i : Fin N,
+      ⨆ t : Icc (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1
+          (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).2,
+        ENNReal.ofReal (‖G ((2 : ℝ) ^ k * t.1) x -
+          G ((2 : ℝ) ^ k * (unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).1) x‖ ^ 2)) ∧
+    (∫⁻ x : Euclidean (d + 1), ∑ i : Fin N,
+      ⨆ t : Icc (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1
+          (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).2,
+        ENNReal.ofReal (‖G ((2 : ℝ) ^ k * t.1) x -
+          G ((2 : ℝ) ^ k * (unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).1) x‖ ^ 2)) ≤
+      ∑ i : Fin N, ENNReal.ofReal
+        (2 * ((unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).2 -
+          (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1) ^ 2 *
+          (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (12 * C0 *
+              ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
+                phi).toBoundedContinuousFunction‖) /
+              (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2 *
+          ∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2) := by
+  dsimp only
+  let c : Fin N → PositiveRadius := fun i =>
+    dyadicPhysicalEntropyCellCenter r (k, i)
+  have hc (i : Fin N) : (c i : ℝ) ∈ Icc (1 : ℝ) 2 := by
+    exact dyadicPhysicalEntropyCellCenter_mem_Icc r hr (k, i)
+  have hR : 0 < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
+  simpa only [c] using
+    (lintegral_scaled_palette_entropy_cell_variation_of_sharp
+      hd C0 C1 hC0 hC1 hdecay hderiv phi g hphi_one hphi_zero hphi_norm j
+      ((2 : ℝ) ^ k) hR δ N c hc)
+
+/-! The finite physical-cell `L²` core.  The deliberately coarse constant
+below is independent of the finite set of dyadic blocks; this is the point
+needed by the later monotone block exhaustion. -/
+/-- The square coefficient contributed by the literal entropy cells.  The
+separate nonnegative low-frequency term in the global relative-band square
+coefficient is not needed for the C--Z cell core. -/
+def lacunaryRelativeBandpassPhysicalCellSquareCoefficient
+    {d : Nat} (C0 C1 : ℝ) (phi : SchwartzMap (Euclidean (d + 1)) ℂ)
+    (j : Nat) (δ : ℝ≥0) (N : ℕ) : ℝ :=
+  24 * (N : ℝ) *
+    (2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
+      (2 *
+        ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+          (12 * C0 *
+            ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
+              phi).toBoundedContinuousFunction‖) /
+            (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2)
+
+theorem exists_lacunaryRelativeBandpassPhysicalCellSquareVariation_schwartz_core_of_sharp
+    {d N : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
+      ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
+    (hderiv : ∀ xi : Euclidean (d + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
+      s ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun t : ℝ => surfaceFourier (d + 1) (t • xi)) s‖ ≤
+        C1 / ‖xi‖ ^ ((d : ℝ) / 2 - 1))
+    (phi psi : SchwartzMap (Euclidean (d + 1)) ℂ)
+    (hpsi : ∀ xi : Euclidean (d + 1),
+      psi xi = phi ((2 : ℝ)⁻¹ • xi) - phi xi)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat) (δ : ℝ≥0)
+    (hδ : Real.log 2 * (δ : ℝ) ≤ 1) (K : Finset ℤ)
+    (r : Fin N → ℤ → PositiveRadius)
+    (hr : ∀ i, IsDyadicLacunaryRadiusSelector (r i)) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      (ENNReal.ofReal C) ^ 2 ≤
+        ENNReal.ofReal
+          (lacunaryRelativeBandpassPhysicalCellSquareCoefficient C0 C1 phi j δ N) ∧
+      ∀ f : SchwartzMap (Euclidean (d + 1)) ℂ,
+      (∫⁻ x, lacunaryRelativeBandpassPhysicalCellSquareVariation psi j
+        (K.product Finset.univ) (dyadicPhysicalEntropyCellLeft δ r)
+        (dyadicPhysicalEntropyCellRight δ r)
+        (f : Euclidean (d + 1) → ℂ) x) ≤
+        (ENNReal.ofReal C) ^ 2 *
+          ∫⁻ x, ENNReal.ofReal (‖(f : Euclidean (d + 1) → ℂ) x‖ ^ 2) := by
+  classical
+  let D : ℝ := 2 *
+    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      (12 * C0 *
+        ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
+          phi).toBoundedContinuousFunction‖) /
+        (dyadicScale j) ^ ((d : ℝ) / 2))
+  let L : ℝ := 8 * Real.log 2 * (δ : ℝ)
+  let A : ℝ := 2 * L ^ 2 * D ^ 2
+  let B : ℝ := 24 * (N : ℝ) * A
+  have hscale : 0 < dyadicScale j := by
+    unfold dyadicScale
+    positivity
+  have hden_one : 0 < (dyadicScale j) ^ ((d : ℝ) / 2 - 1) :=
+    Real.rpow_pos_of_pos hscale _
+  have hden_zero : 0 < (dyadicScale j) ^ ((d : ℝ) / 2) :=
+    Real.rpow_pos_of_pos hscale _
+  have hD : 0 ≤ D := by
+    dsimp only [D]
+    refine mul_nonneg (by norm_num) (add_nonneg ?_ ?_)
+    · exact div_nonneg (mul_nonneg (by norm_num) hC1.le) hden_one.le
+    · exact div_nonneg
+        (mul_nonneg (mul_nonneg (by norm_num) hC0.le) (norm_nonneg _)) hden_zero.le
+  have hL : 0 ≤ L := by
+    dsimp only [L]
+    exact mul_nonneg (mul_nonneg (by norm_num) (Real.log_nonneg (by norm_num))) δ.2
+  have hA : 0 ≤ A := by
+    dsimp only [A]
+    exact mul_nonneg (mul_nonneg (by norm_num) (sq_nonneg L)) (sq_nonneg D)
+  have hB : 0 ≤ B := by
+    dsimp only [B]
+    exact mul_nonneg (mul_nonneg (by norm_num) (Nat.cast_nonneg N)) hA
+  refine ⟨Real.sqrt B, Real.sqrt_nonneg _, ?_, ?_⟩
+  · rw [← ENNReal.ofReal_pow (Real.sqrt_nonneg B), Real.sq_sqrt hB]
+    rfl
+  intro f
+  choose theta htheta htheta_compact using fun k : ℤ =>
+    exists_compactlySupported_schwartzMap_scaled_sub phi hphi_zero
+      ((2 : ℝ) ^ ((j : ℤ) + 3 - k))
+      ((2 : ℝ) ^ ((j : ℤ) - 2 - k))
+      (zpow_pos (by norm_num) _)
+      (zpow_pos (by norm_num) _)
+      ((zpow_right_strictMono₀ (by norm_num : (1 : ℝ) < 2)).monotone (by omega))
+  let g : ℤ → SchwartzMap (Euclidean (d + 1)) ℂ := fun k =>
+    SchwartzMap.smulLeftCLM ℂ (theta k : Euclidean (d + 1) → ℂ) (𝓕 f)
+  have hg (k : ℤ) (xi : Euclidean (d + 1)) :
+      g k xi =
+        (phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+          phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)) *
+          𝓕 (f : Euclidean (d + 1) → ℂ) xi := by
+    simp only [g, SchwartzMap.smulLeftCLM_apply_apply (theta k).hasTemperateGrowth,
+      smul_eq_mul, SchwartzMap.fourier_coe]
+    rw [htheta k xi]
+  let P : ℤ → Euclidean (d + 1) → ENNReal := fun k x =>
+    ∑ i : Fin N,
+      ⨆ t : Icc (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1
+          (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).2,
+        ENNReal.ofReal
+          (‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+            surfaceFourier (d + 1) (-((2 : ℝ) ^ k * t.1) • xi) *
+              (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (((2 : ℝ) ^ k * t.1) • xi)) -
+                phi (((2 : ℝ) ^ j)⁻¹ • (((2 : ℝ) ^ k * t.1) • xi))) *
+              g k xi) x -
+            𝓕⁻ (fun xi : Euclidean (d + 1) =>
+              surfaceFourier (d + 1) (-((2 : ℝ) ^ k *
+                (unitScaleEntropyCell δ
+                  (dyadicPhysicalEntropyCellCenter r (k, i))).1) • xi) *
+                (phi (((2 : ℝ) ^ (j + 1))⁻¹ •
+                  (((2 : ℝ) ^ k * (unitScaleEntropyCell δ
+                    (dyadicPhysicalEntropyCellCenter r (k, i))).1) • xi)) -
+                  phi (((2 : ℝ) ^ j)⁻¹ •
+                    (((2 : ℝ) ^ k * (unitScaleEntropyCell δ
+                      (dyadicPhysicalEntropyCellCenter r (k, i))).1) • xi))) *
+                g k xi) x‖ ^ 2)
+  have hP (k : ℤ) : Measurable (P k) ∧
+      (∫⁻ x : Euclidean (d + 1), P k x) ≤
+        ∑ i : Fin N, ENNReal.ofReal
+          (2 * ((unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).2 -
+            (unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).1) ^ 2 * D ^ 2 *
+            ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) := by
+    simpa only [P, D] using
+      (measurable_and_lintegral_physical_entropy_cell_block_of_sharp
+        hd C0 C1 hC0 hC1 hdecay hderiv phi (g k)
+          hphi_one hphi_zero hphi_norm j δ r hr k)
+  have hvariation (x : Euclidean (d + 1)) :
+      lacunaryRelativeBandpassPhysicalCellSquareVariation psi j
+          (K.product Finset.univ) (dyadicPhysicalEntropyCellLeft δ r)
+          (dyadicPhysicalEntropyCellRight δ r)
+          (f : Euclidean (d + 1) → ℂ) x =
+        ∑ k ∈ K, P k x := by
+    rw [lacunaryRelativeBandpassPhysicalCellSquareVariation_dyadic_entropy_cells]
+    apply Finset.sum_congr rfl
+    intro k hk
+    dsimp only [P]
+    apply Finset.sum_congr rfl
+    intro i hi
+    apply iSup_congr
+    intro t
+    have hR : 0 ≤ (2 : ℝ) ^ k := (zpow_pos (by norm_num) k).le
+    have ht : (2 : ℝ) ^ k * t.1 ∈
+        Icc (dyadicPhysicalEntropyCellLeft δ r (k, i))
+          (dyadicPhysicalEntropyCellRight δ r (k, i)) := by
+      change (2 : ℝ) ^ k *
+          (unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).1 ≤
+          (2 : ℝ) ^ k * t.1 ∧
+        (2 : ℝ) ^ k * t.1 ≤ (2 : ℝ) ^ k *
+          (unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).2
+      exact ⟨mul_le_mul_of_nonneg_left t.2.1 hR,
+        mul_le_mul_of_nonneg_left t.2.2 hR⟩
+    have hleft : (2 : ℝ) ^ k *
+        (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1 ∈
+        Icc (dyadicPhysicalEntropyCellLeft δ r (k, i))
+          (dyadicPhysicalEntropyCellRight δ r (k, i)) := by
+      change (2 : ℝ) ^ k *
+          (unitScaleEntropyCell δ
+            (dyadicPhysicalEntropyCellCenter r (k, i))).1 ≤
+          (2 : ℝ) ^ k *
+            (unitScaleEntropyCell δ
+              (dyadicPhysicalEntropyCellCenter r (k, i))).1 ∧
+        (2 : ℝ) ^ k *
+            (unitScaleEntropyCell δ
+              (dyadicPhysicalEntropyCellCenter r (k, i))).1 ≤
+          (2 : ℝ) ^ k *
+            (unitScaleEntropyCell δ
+              (dyadicPhysicalEntropyCellCenter r (k, i))).2
+      have hcell := mem_unitScaleEntropyCell_center δ
+        (dyadicPhysicalEntropyCellCenter r (k, i))
+        (dyadicPhysicalEntropyCellCenter_mem_Icc r hr (k, i))
+      exact ⟨le_rfl, mul_le_mul_of_nonneg_left (hcell.1.trans hcell.2) hR⟩
+    have hraw (s : ℝ)
+        (hs : s ∈ Icc (dyadicPhysicalEntropyCellLeft δ r (k, i))
+          (dyadicPhysicalEntropyCellRight δ r (k, i))) :
+        lacunaryRelativeBandpassPhysicalTerm psi j s
+            (f : Euclidean (d + 1) → ℂ) x =
+          𝓕⁻ (fun xi : Euclidean (d + 1) =>
+            surfaceFourier (d + 1) (-s • xi) *
+              (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • xi)) -
+                phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) * g k xi) x := by
+      rw [lacunaryRelativeBandpassPhysicalTerm_eq_fourierInv_fat_cutoff_of_mem_dyadicPhysicalEntropyCell
+        phi psi f hpsi hphi_one hphi_zero j δ r hr (k, i) hs x]
+      apply congrArg (fun h : Euclidean (d + 1) → ℂ => 𝓕⁻ h x)
+      funext xi
+      rw [hg k xi]
+      ring
+    rw [hraw ((2 : ℝ) ^ k * t.1) ht,
+      hraw ((2 : ℝ) ^ k * (unitScaleEntropyCell δ
+        (dyadicPhysicalEntropyCellCenter r (k, i))).1) hleft]
+  have hPsummeas : Measurable (fun x : Euclidean (d + 1) => ∑ k ∈ K, P k x) :=
+    Finset.measurable_sum K fun k hk => (hP k).1
+  have hcoeff (k : ℤ) :
+      (∑ i : Fin N, ENNReal.ofReal
+        (2 * ((unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).2 -
+          (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1) ^ 2 * D ^ 2 *
+          ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2)) ≤
+        (N : ENNReal) * ENNReal.ofReal
+          (A * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) := by
+    calc
+      (∑ i : Fin N, ENNReal.ofReal
+        (2 * ((unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).2 -
+          (unitScaleEntropyCell δ
+          (dyadicPhysicalEntropyCellCenter r (k, i))).1) ^ 2 * D ^ 2 *
+          ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2)) ≤
+          ∑ _i : Fin N, ENNReal.ofReal
+            (A * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) := by
+              apply Finset.sum_le_sum
+              intro i hi
+              apply ENNReal.ofReal_le_ofReal
+              let w : ℝ := (unitScaleEntropyCell δ
+                (dyadicPhysicalEntropyCellCenter r (k, i))).2 -
+                (unitScaleEntropyCell δ
+                (dyadicPhysicalEntropyCellCenter r (k, i))).1
+              have hw0 : 0 ≤ w := by
+                dsimp only [w]
+                have hcell := mem_unitScaleEntropyCell_center δ
+                  (dyadicPhysicalEntropyCellCenter r (k, i))
+                  (dyadicPhysicalEntropyCellCenter_mem_Icc r hr (k, i))
+                exact sub_nonneg.mpr (hcell.1.trans hcell.2)
+              have hw : w ≤ L := by
+                dsimp only [w, L]
+                exact unitScaleEntropyCell_length_le_linear δ
+                  (dyadicPhysicalEntropyCellCenter r (k, i))
+                  (dyadicPhysicalEntropyCellCenter_mem_Icc r hr (k, i)) hδ
+              have hwsq : w ^ 2 ≤ L ^ 2 :=
+                (sq_le_sq₀ hw0 hL).mpr hw
+              have hJ : 0 ≤ ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2 :=
+                integral_nonneg fun _ => sq_nonneg _
+              change 2 * w ^ 2 * D ^ 2 *
+                  ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2 ≤
+                A * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2
+              rw [show A = 2 * L ^ 2 * D ^ 2 by rfl]
+              calc
+                2 * w ^ 2 * D ^ 2 * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2 =
+                    (2 * D ^ 2 * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) * w ^ 2 := by ring
+                _ ≤ (2 * D ^ 2 * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) * L ^ 2 :=
+                  mul_le_mul_of_nonneg_left hwsq (by positivity)
+                _ = 2 * L ^ 2 * D ^ 2 *
+                    ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2 := by ring
+      _ = (N : ENNReal) * ENNReal.ofReal
+          (A * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) := by
+            simp [nsmul_eq_mul]
+  have henergy (k : ℤ) : (∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) =
+      ∫ x : Euclidean (d + 1),
+        ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+          (phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+            phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)) *
+          𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2 := by
+    let fhat : SchwartzMap (Euclidean (d + 1)) ℂ := 𝓕 f
+    have hfhat (xi : Euclidean (d + 1)) :
+        fhat xi = 𝓕 (f : Euclidean (d + 1) → ℂ) xi := by
+      simp only [fhat, SchwartzMap.fourier_coe]
+    have hgtheta (xi : Euclidean (d + 1)) :
+        g k xi = theta k xi * fhat xi := by
+      rw [show g k xi = theta k xi * (𝓕 f) xi by
+        simp only [g,
+          SchwartzMap.smulLeftCLM_apply_apply (theta k).hasTemperateGrowth,
+          smul_eq_mul]]
+    have hproduct : (fun xi : Euclidean (d + 1) => theta k xi * fhat xi) =
+        fun xi =>
+          (phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+            phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)) *
+            𝓕 (f : Euclidean (d + 1) → ℂ) xi := by
+      funext xi
+      rw [htheta k xi, hfhat]
+    calc
+      (∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) =
+          ∫ xi : Euclidean (d + 1), ‖theta k xi * fhat xi‖ ^ 2 := by
+            apply MeasureTheory.integral_congr_ae
+            filter_upwards with xi
+            rw [hgtheta]
+      _ = ∫ x : Euclidean (d + 1),
+          ‖𝓕⁻ (fun xi : Euclidean (d + 1) => theta k xi * fhat xi) x‖ ^ 2 :=
+        (integral_norm_sq_fourierInv_schwartz_multiplier_eq
+          (E := Euclidean (d + 1)) (theta k) fhat).symm
+      _ = _ := by rw [hproduct]
+  have hsumenergy : (∑ k ∈ K, ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) ≤
+      24 * ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2 := by
+    calc
+      (∑ k ∈ K, ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) =
+          ∑ k ∈ K, ∫ x : Euclidean (d + 1),
+            ‖𝓕⁻ (fun xi : Euclidean (d + 1) =>
+              (phi (((2 : ℝ) ^ ((j : ℤ) + 3 - k))⁻¹ • xi) -
+                phi (((2 : ℝ) ^ ((j : ℤ) - 2 - k))⁻¹ • xi)) *
+              𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2 := by
+            apply Finset.sum_congr rfl
+            intro k hk
+            rw [henergy k]
+      _ ≤ 24 * ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2 :=
+        finite_fat_relative_dyadic_cutoff_square_function_le
+          phi hphi_one hphi_zero hphi_norm j K f
+  have htotal : (∫⁻ x : Euclidean (d + 1), ∑ k ∈ K, P k x) ≤
+      ENNReal.ofReal (B * ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := by
+    calc
+      (∫⁻ x : Euclidean (d + 1), ∑ k ∈ K, P k x) =
+          ∑ k ∈ K, ∫⁻ x : Euclidean (d + 1), P k x :=
+        lintegral_finsetSum K fun k hk => (hP k).1
+      _ ≤ ∑ k ∈ K, (N : ENNReal) * ENNReal.ofReal
+          (A * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) := by
+            apply Finset.sum_le_sum
+            intro k hk
+            exact (hP k).2.trans (hcoeff k)
+      _ = (N : ENNReal) * (∑ k ∈ K, ENNReal.ofReal
+          (A * ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2)) := by
+            rw [← Finset.mul_sum]
+      _ = (N : ENNReal) * (∑ k ∈ K,
+          ENNReal.ofReal A * ENNReal.ofReal
+            (∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2)) := by
+            apply congrArg (fun z : ENNReal => (N : ENNReal) * z)
+            apply Finset.sum_congr rfl
+            intro k hk
+            rw [ENNReal.ofReal_mul hA]
+      _ = (N : ENNReal) * (ENNReal.ofReal A *
+          ∑ k ∈ K, ENNReal.ofReal
+            (∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2)) := by
+            rw [← Finset.mul_sum]
+      _ = (N : ENNReal) * (ENNReal.ofReal A * ENNReal.ofReal
+          (∑ k ∈ K, ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2)) := by
+            have hsum : ENNReal.ofReal
+                (∑ k ∈ K, ∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) =
+                ∑ k ∈ K, ENNReal.ofReal
+                  (∫ xi : Euclidean (d + 1), ‖g k xi‖ ^ 2) :=
+              ENNReal.ofReal_sum_of_nonneg fun k hk =>
+                integral_nonneg fun _ => sq_nonneg _
+            rw [hsum]
+      _ ≤ (N : ENNReal) * (ENNReal.ofReal A * ENNReal.ofReal
+          (24 * ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2)) := by
+            apply mul_le_mul_right
+            apply mul_le_mul_right
+            exact ENNReal.ofReal_le_ofReal hsumenergy
+      _ = ENNReal.ofReal (B * ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := by
+            rw [show B = 24 * (N : ℝ) * A by rfl]
+            rw [← ENNReal.ofReal_natCast N]
+            rw [← ENNReal.ofReal_mul hA]
+            rw [← ENNReal.ofReal_mul (by positivity : 0 ≤ (N : ℝ))]
+            congr 1
+            ring
+  have hfint : Integrable (fun x : Euclidean (d + 1) => ‖f x‖ ^ 2) volume :=
+    (memLp_two_iff_integrable_sq_norm f.continuous.aestronglyMeasurable).mp
+      (f.memLp 2 volume)
+  have hJlin : ENNReal.ofReal (∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) =
+      ∫⁻ x, ENNReal.ofReal (‖f x‖ ^ 2) :=
+    ofReal_integral_eq_lintegral_ofReal hfint
+      (Filter.Eventually.of_forall fun _ => sq_nonneg _)
+  calc
+    (∫⁻ x, lacunaryRelativeBandpassPhysicalCellSquareVariation psi j
+      (K.product Finset.univ) (dyadicPhysicalEntropyCellLeft δ r)
+      (dyadicPhysicalEntropyCellRight δ r)
+      (f : Euclidean (d + 1) → ℂ) x) =
+        ∫⁻ x : Euclidean (d + 1), ∑ k ∈ K, P k x := by
+          apply lintegral_congr
+          intro x
+          exact hvariation x
+    _ ≤ ENNReal.ofReal (B * ∫ x : Euclidean (d + 1), ‖f x‖ ^ 2) := htotal
+    _ = (ENNReal.ofReal (Real.sqrt B)) ^ 2 *
+        ∫⁻ x, ENNReal.ofReal (‖(f : Euclidean (d + 1) → ℂ) x‖ ^ 2) := by
+          rw [ENNReal.ofReal_mul hB, hJlin,
+            ← ENNReal.ofReal_pow (Real.sqrt_nonneg B), Real.sq_sqrt hB]
+
+end
+
+end LeanSpherical.HarmonicAnalysis

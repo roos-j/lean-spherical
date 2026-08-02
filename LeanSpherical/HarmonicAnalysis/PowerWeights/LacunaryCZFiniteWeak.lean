@@ -1,0 +1,1385 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.LacunaryCZFiniteL2
+import LeanSpherical.HarmonicAnalysis.PowerWeights.LacunaryCZOperatorBridge
+import LeanSpherical.HarmonicAnalysis.PowerWeights.LacunaryCZWeakTail
+import LeanSpherical.HarmonicAnalysis.InterpolationTail
+
+/-!
+# Finite weak-one tails for physical lacunary maxima
+
+This file assembles the bad part of the finite Calderón--Zygmund argument
+for the literal physical lacunary maximum.  The square-function estimate for
+the good part deliberately remains elsewhere.  What is recorded here is the
+finite physical splitting, the exceptional triple-ball estimate, and the
+integrable exterior tail of the bad atoms.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory FourierTransform Metric Set
+open scoped BigOperators Convolution FourierTransform ENNReal ComplexConjugate
+
+noncomputable section
+
+/-- The union of the triple enclosing balls of a finite dyadic-cube stopping
+family.  This is the exceptional set used for the bad-atom tail. -/
+def lacunaryCZDyadicCubeExceptionalTriple
+    {d : Nat} (U : Finset (LacunaryCZDyadicCubeIndex d)) : Set (Euclidean d) :=
+  ⋃ q ∈ U, Metric.closedBall (lacunaryCZDyadicCubeCenter q)
+    (3 * lacunaryCZDyadicCubeRadius q)
+
+/-- The indices of a finite truncation lying at or below a cube scale. -/
+def lacunaryCZDyadicCubePastIndices
+    {d : Nat} (S : Finset ℤ) (q : LacunaryCZDyadicCubeIndex d) : Finset ℕ :=
+  (S.filter fun k => k ≤ q.scale).image fun k => (q.scale - k).toNat
+
+/-- The indices of a finite truncation lying strictly above a cube scale. -/
+def lacunaryCZDyadicCubeFutureIndices
+    {d : Nat} (S : Finset ℤ) (q : LacunaryCZDyadicCubeIndex d) : Finset ℕ :=
+  (S.filter fun k => q.scale < k).image fun k => (k - q.scale).toNat
+
+/-- The canonical past/future index families cover every member of a finite
+radius truncation. -/
+theorem lacunaryCZDyadicCube_canonical_indices_cover
+    {d : Nat} (S : Finset ℤ) (q : LacunaryCZDyadicCubeIndex d) {k : ℤ}
+    (hk : k ∈ S) :
+    (∃ n ∈ lacunaryCZDyadicCubePastIndices S q, k = q.scale - (n : ℤ)) ∨
+      ∃ n ∈ lacunaryCZDyadicCubeFutureIndices S q, k = q.scale + (n : ℤ) := by
+  by_cases hle : k ≤ q.scale
+  · left
+    refine ⟨(q.scale - k).toNat, ?_, ?_⟩
+    · exact Finset.mem_image.mpr ⟨k, Finset.mem_filter.mpr ⟨hk, hle⟩, rfl⟩
+    · rw [Int.toNat_sub_of_le hle]
+      ring
+  · right
+    have hlt : q.scale < k := lt_of_not_ge hle
+    refine ⟨(k - q.scale).toNat, ?_, ?_⟩
+    · exact Finset.mem_image.mpr ⟨k, Finset.mem_filter.mpr ⟨hk, hlt⟩, rfl⟩
+    · rw [Int.toNat_sub_of_le hlt.le]
+      ring
+
+/-- Linearity of one literal physical convolution on Schwartz data. -/
+theorem lacunaryRelativeBandpassPhysicalTerm_add_schwartz
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat) {r : ℝ}
+    (hr : 0 < r) (g h : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    lacunaryRelativeBandpassPhysicalTerm psi j r (g + h) x =
+      lacunaryRelativeBandpassPhysicalTerm psi j r g x +
+        lacunaryRelativeBandpassPhysicalTerm psi j r h x := by
+  unfold lacunaryRelativeBandpassPhysicalTerm
+  change (∫ y : Euclidean d, (g y + h y) *
+    lacunaryRelativeBandpassPhysicalKernel psi j r (x - y)) = _
+  have hfun : (fun y : Euclidean d => (g y + h y) *
+      lacunaryRelativeBandpassPhysicalKernel psi j r (x - y)) =
+      (fun y => g y * lacunaryRelativeBandpassPhysicalKernel psi j r (x - y)) +
+        fun y => h y * lacunaryRelativeBandpassPhysicalKernel psi j r (x - y) := by
+    ext y
+    simp only [Pi.add_apply]
+    ring
+  have hgint := integrable_convolution_integrand_of_norm_le
+      (lacunaryRelativeBandpassPhysicalKernel psi j r) (g : Euclidean d → ℂ)
+      (integrable_lacunaryRelativeBandpassPhysicalKernel psi j hr) g.integrable
+      ‖g.toBoundedContinuousFunction‖
+      (fun y => BoundedContinuousFunction.norm_coe_le_norm g.toBoundedContinuousFunction y) x
+  have hhint := integrable_convolution_integrand_of_norm_le
+      (lacunaryRelativeBandpassPhysicalKernel psi j r) (h : Euclidean d → ℂ)
+      (integrable_lacunaryRelativeBandpassPhysicalKernel psi j hr) h.integrable
+      ‖h.toBoundedContinuousFunction‖
+      (fun y => BoundedContinuousFunction.norm_coe_le_norm h.toBoundedContinuousFunction y) x
+  rw [hfun]
+  change (∫ y : Euclidean d, g y *
+      lacunaryRelativeBandpassPhysicalKernel psi j r (x - y) +
+      h y * lacunaryRelativeBandpassPhysicalKernel psi j r (x - y)) = _
+  exact integral_add hgint hhint
+
+theorem lacunaryRelativeBandpassFinitePhysicalMaximal_nonneg
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (g : Euclidean d → ℂ) (x : Euclidean d) :
+    0 ≤ lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x := by
+  unfold lacunaryRelativeBandpassFinitePhysicalMaximal
+  obtain ⟨k, hk⟩ := hS
+  exact (norm_nonneg _).trans
+    (Finset.le_sup' (fun k => ‖lacunaryRelativeBandpassPhysicalTerm psi j
+      (r k : ℝ) g x‖) hk)
+
+/-- The literal finite physical maximum is subadditive on Schwartz inputs. -/
+theorem lacunaryRelativeBandpassFinitePhysicalMaximal_add_schwartz_le
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (g h : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        ((g + h : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x ≤
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (g : Euclidean d → ℂ) x +
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (h : Euclidean d → ℂ) x := by
+  unfold lacunaryRelativeBandpassFinitePhysicalMaximal
+  apply Finset.sup'_le hS
+  intro k hk
+  calc
+    ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+        ((g + h : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ) x‖ ≤
+        ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          (g : Euclidean d → ℂ) x‖ +
+          ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+            (h : Euclidean d → ℂ) x‖ := by
+      change ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          ((g : Euclidean d → ℂ) + h) x‖ ≤ _
+      rw [lacunaryRelativeBandpassPhysicalTerm_add_schwartz psi j (r k).2 g h x]
+      exact norm_add_le _ _
+    _ ≤ _ := add_le_add
+      (Finset.le_sup' (fun k => ‖lacunaryRelativeBandpassPhysicalTerm psi j
+        (r k : ℝ) (g : Euclidean d → ℂ) x‖) hk)
+      (Finset.le_sup' (fun k => ‖lacunaryRelativeBandpassPhysicalTerm psi j
+        (r k : ℝ) (h : Euclidean d → ℂ) x‖) hk)
+
+theorem aemeasurable_lacunaryRelativeBandpassFinitePhysicalMaximal_schwartz
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (g : SchwartzMap (Euclidean d) ℂ) :
+    AEMeasurable (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+      (g : Euclidean d → ℂ)) volume := by
+  unfold lacunaryRelativeBandpassFinitePhysicalMaximal
+  have hsup_apply :
+      (S.sup' hS (fun k => fun x : Euclidean d =>
+        ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          (g : Euclidean d → ℂ) x‖)) =
+        fun x => S.sup' hS (fun k =>
+          ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+            (g : Euclidean d → ℂ) x‖) := by
+    funext x
+    exact Finset.sup'_apply hS _ x
+  rw [← hsup_apply]
+  exact Finset.sup'_induction hS
+    (fun k => fun x : Euclidean d =>
+      ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+        (g : Euclidean d → ℂ) x‖)
+    (p := fun u => AEMeasurable u volume)
+    (fun _ hf _ hg => AEMeasurable.sup hf hg)
+    (fun k _ => (integrable_lacunaryRelativeBandpassPhysicalTerm psi j (r k).2
+      (g : Euclidean d → ℂ) g.integrable).aemeasurable.norm)
+
+theorem norm_toLp_two_eq_sqrt_integral_norm_sq_general
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    (μ : Measure α) (g : α → E) (hg : MemLp g 2 μ) :
+    ‖hg.toLp g‖ = √(∫ x, ‖g x‖ ^ 2 ∂μ) := by
+  have hI : 0 ≤ ∫ x, ‖g x‖ ^ 2 ∂μ :=
+    integral_nonneg fun _ => sq_nonneg _
+  rw [Lp.norm_toLp, hg.eLpNorm_eq_integral_rpow_norm (by norm_num) (by norm_num)]
+  norm_num
+  rw [ENNReal.toReal_ofReal (Real.rpow_nonneg hI _)]
+  simp [Real.sqrt_eq_rpow]
+
+/-- A square-norm `L²` bound implies the weak-square distribution estimate
+used by the finite lacunary interpolation endpoint. -/
+theorem weak_two_of_memLp_toLp_bound
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    (μ : Measure α) (T : (α → E) → α → ℝ)
+    (hTnonneg : ∀ g x, 0 ≤ T g x) (C : ℝ) (hC : 0 ≤ C)
+    (g : α → E) (hg : MemLp g 2 μ) (hTg : MemLp (T g) 2 μ)
+    (hbound : ‖hTg.toLp (T g)‖ ≤ C * ‖hg.toLp g‖)
+    {s : ℝ} (hs : 0 < s) :
+    ENNReal.ofReal (s ^ (2 : ℕ)) * μ {x | s < T g x} ≤
+      ENNReal.ofReal (C ^ (2 : ℕ)) *
+        ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂μ := by
+  have hTgint : Integrable (fun x => (T g x) ^ (2 : ℕ)) μ :=
+    integrable_sq_of_memLp_two_nonneg (T g) hTg (hTnonneg g)
+  have hgint : Integrable (fun x => ‖g x‖ ^ (2 : ℕ)) μ :=
+    (memLp_two_iff_integrable_sq_norm hg.1).1 hg
+  have hTg_nonneg : 0 ≤ ∫ x, (T g x) ^ (2 : ℕ) ∂μ :=
+    integral_nonneg fun _ => sq_nonneg _
+  have hg_nonneg : 0 ≤ ∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ :=
+    integral_nonneg fun _ => sq_nonneg _
+  have hroot : √(∫ x, (T g x) ^ (2 : ℕ) ∂μ) ≤
+      C * √(∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ) := by
+    rw [norm_toLp_two_eq_sqrt_integral_norm_sq_general,
+      norm_toLp_two_eq_sqrt_integral_norm_sq_general] at hbound
+    have hpow : (fun x => ‖T g x‖ ^ (2 : ℕ)) =
+        fun x => (T g x) ^ (2 : ℕ) := by
+      funext x
+      rw [Real.norm_eq_abs, abs_of_nonneg (hTnonneg g x)]
+    rw [hpow] at hbound
+    exact hbound
+  have hsquare : (√(∫ x, (T g x) ^ (2 : ℕ) ∂μ)) ^ (2 : ℕ) ≤
+      (C * √(∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ)) ^ (2 : ℕ) :=
+    (sq_le_sq₀ (Real.sqrt_nonneg _) (mul_nonneg hC (Real.sqrt_nonneg _))).mpr hroot
+  have hreal : (∫ x, (T g x) ^ (2 : ℕ) ∂μ) ≤
+      C ^ (2 : ℕ) * ∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ := by
+    calc
+      (∫ x, (T g x) ^ (2 : ℕ) ∂μ) =
+          (√(∫ x, (T g x) ^ (2 : ℕ) ∂μ)) ^ (2 : ℕ) :=
+        (Real.sq_sqrt hTg_nonneg).symm
+      _ ≤ (C * √(∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ)) ^ (2 : ℕ) := hsquare
+      _ = C ^ (2 : ℕ) * (√(∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ)) ^ (2 : ℕ) := by ring
+      _ = C ^ (2 : ℕ) * ∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ := by
+        rw [Real.sq_sqrt hg_nonneg]
+  have hlin : (∫⁻ x, ENNReal.ofReal ((T g x) ^ (2 : ℕ)) ∂μ) ≤
+      ENNReal.ofReal (C ^ (2 : ℕ)) *
+        ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) ∂μ :=
+    lintegral_ofReal_sq_le_of_integral_sq_le (fun g => g) T g
+      (C ^ (2 : ℕ)) (sq_nonneg C) hTgint hgint hreal
+  have hsub : {x | s < T g x} ⊆
+      {x | ENNReal.ofReal (s ^ (2 : ℕ)) ≤ ENNReal.ofReal ((T g x) ^ (2 : ℕ))} := by
+    intro x hx
+    apply ENNReal.ofReal_le_ofReal
+    exact (sq_le_sq₀ hs.le (hTnonneg g x)).mpr hx.le
+  calc
+    ENNReal.ofReal (s ^ (2 : ℕ)) * μ {x | s < T g x} ≤
+        ENNReal.ofReal (s ^ (2 : ℕ)) *
+          μ {x | ENNReal.ofReal (s ^ (2 : ℕ)) ≤
+            ENNReal.ofReal ((T g x) ^ (2 : ℕ))} :=
+      mul_le_mul_of_nonneg_left (measure_mono hsub) (by positivity)
+    _ ≤ ∫⁻ x, ENNReal.ofReal ((T g x) ^ (2 : ℕ)) ∂μ :=
+      mul_meas_ge_le_lintegral₀
+        (hTg.1.aemeasurable.pow_const 2).ennreal_ofReal
+        (ENNReal.ofReal (s ^ (2 : ℕ)))
+    _ ≤ _ := hlin
+
+/-- The literal finite physical maximal operator has the weak-square endpoint
+provided by its Schwartz-core `L²` estimate. -/
+theorem weak_two_lacunaryRelativeBandpassFinitePhysicalMaximal_of_core_bound
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (C : ℝ) (hC : 0 ≤ C)
+    (hcoreMem : ∀ f : SchwartzMap (Euclidean d) ℂ,
+      MemLp (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (f : Euclidean d → ℂ)) 2 volume)
+    (hcoreBound : ∀ f : SchwartzMap (Euclidean d) ℂ,
+      ‖(hcoreMem f).toLp
+        (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (f : Euclidean d → ℂ))‖ ≤ C * ‖f.toLp 2 volume‖)
+    (g : SchwartzMap (Euclidean d) ℂ) {s : ℝ} (hs : 0 < s) :
+    ENNReal.ofReal (s ^ (2 : ℕ)) * volume {x |
+      s < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (g : Euclidean d → ℂ) x} ≤
+      ENNReal.ofReal (C ^ (2 : ℕ)) *
+        ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) := by
+  exact weak_two_of_memLp_toLp_bound volume
+    (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS)
+    (fun g x => lacunaryRelativeBandpassFinitePhysicalMaximal_nonneg
+      psi j r S hS g x)
+    C hC (g : Euclidean d → ℂ) (g.memLp 2 volume) (hcoreMem g)
+    (hcoreBound g) hs
+
+/-- A literal physical convolution against a selected band kernel is
+continuous on integrable input.  This is only used to make the finite bad
+tail's level sets measurable in the weak-one assembly. -/
+theorem continuous_lacunaryRelativeBandpassPhysicalTerm
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat) {r : ℝ}
+    (hr : 0 < r) (g : Euclidean d → ℂ) (hg : Integrable g volume) :
+    Continuous (lacunaryRelativeBandpassPhysicalTerm psi j r g) := by
+  unfold lacunaryRelativeBandpassPhysicalTerm
+  change Continuous (g ⋆[ContinuousLinearMap.mul ℂ ℂ, volume]
+    lacunaryRelativeBandpassPhysicalKernel psi j r)
+  apply BddAbove.continuous_convolution_right_of_integrable
+  · refine ⟨(((2 : ℝ) ^ j)⁻¹ * r)⁻¹ ^ d *
+        ‖(𝓕⁻ psi).toBoundedContinuousFunction‖ * surfaceMass d, ?_⟩
+    rintro _ ⟨x, rfl⟩
+    exact norm_lacunaryRelativeBandpassPhysicalKernel_le psi j hr x
+  · exact hg
+  · exact continuous_lacunaryRelativeBandpassPhysicalKernel psi j hr
+
+/-- The two one-sided finite tails associated with one atom, written using
+the literal physical convolution terms. -/
+def lacunaryRelativeBandpassPhysicalTwoSidedTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (K : ℤ) (Sminus Splus : Finset ℕ)
+    (b : Euclidean d → ℂ) : Euclidean d → ℝ :=
+  fun x =>
+    (∑ n ∈ Sminus, ‖lacunaryRelativeBandpassPhysicalTerm psi j
+      (r (K - (n : ℤ)) : ℝ) b x‖) +
+    ∑ n ∈ Splus, ‖lacunaryRelativeBandpassPhysicalTerm psi j
+      (r (K + (n : ℤ)) : ℝ) b x‖
+
+/-- The finite sum of the two-sided bad-atom tails, with every atom anchored
+at its dyadic cube scale. -/
+def lacunaryCZDyadicCubeFiniteBadTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius)
+    (f : Euclidean d → ℂ) (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ) :
+    Euclidean d → ℝ :=
+  fun x => ∑ q ∈ U,
+    lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+      (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x
+
+/-- The explicit scale-independent coefficient obtained from the two-sided
+atom tail when the anchor scale is the dyadic cube scale. -/
+def lacunaryCZDyadicCubeTailConstant
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat) : ℝ :=
+  ((((2 : ℝ) ^ j)⁻¹ ^ 2 *
+      SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) * (16 / 3 : ℝ) *
+        surfaceMass d) *
+      (surfaceMass d * (3 : ℝ) ^ d / (2 * (d : ℝ) ^ 2))) +
+    (surfaceMass d * (d : ℝ) * (2 * (2 : ℝ) ^ j) *
+      ∫ x : Euclidean d,
+        ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) x‖)
+
+theorem integrable_lacunaryRelativeBandpassPhysicalTwoSidedTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (K : ℤ) (Sminus Splus : Finset ℕ)
+    (b : Euclidean d → ℂ) (hb : Integrable b volume) :
+    Integrable
+      (lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r K Sminus Splus b)
+      volume := by
+  apply Integrable.add
+  · exact integrable_finsetSum Sminus fun n _ =>
+      (integrable_lacunaryRelativeBandpassPhysicalTerm psi j
+        (r (K - (n : ℤ))).2 b hb).norm
+  · exact integrable_finsetSum Splus fun n _ =>
+      (integrable_lacunaryRelativeBandpassPhysicalTerm psi j
+        (r (K + (n : ℤ))).2 b hb).norm
+
+theorem integrable_lacunaryCZDyadicCubeFiniteBadTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (f : Euclidean d → ℂ)
+    (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hf : Integrable f volume) :
+    Integrable (lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus)
+      volume := by
+  apply integrable_finsetSum U
+  intro q _
+  exact integrable_lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+    (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q)
+    (integrable_lacunaryCZDyadicCubeBadAtom f q hf)
+
+theorem continuous_lacunaryRelativeBandpassPhysicalTwoSidedTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (K : ℤ) (Sminus Splus : Finset ℕ)
+    (b : Euclidean d → ℂ) (hb : Integrable b volume) :
+    Continuous (lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r K Sminus Splus b) := by
+  unfold lacunaryRelativeBandpassPhysicalTwoSidedTail
+  apply Continuous.add
+  · refine continuous_finsetSum Sminus ?_
+    intro n hn
+    exact (continuous_lacunaryRelativeBandpassPhysicalTerm psi j
+      (r (K - (n : ℤ))).2 b hb).norm
+  · refine continuous_finsetSum Splus ?_
+    intro n hn
+    exact (continuous_lacunaryRelativeBandpassPhysicalTerm psi j
+      (r (K + (n : ℤ))).2 b hb).norm
+
+theorem continuous_lacunaryCZDyadicCubeFiniteBadTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (f : Euclidean d → ℂ)
+    (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hf : Integrable f volume) :
+    Continuous (lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus) := by
+  unfold lacunaryCZDyadicCubeFiniteBadTail
+  refine continuous_finsetSum U ?_
+  intro q hq
+  exact continuous_lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+    (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q)
+    (integrable_lacunaryCZDyadicCubeBadAtom f q hf)
+
+theorem lacunaryRelativeBandpassPhysicalTwoSidedTail_nonneg
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (K : ℤ) (Sminus Splus : Finset ℕ)
+    (b : Euclidean d → ℂ) (x : Euclidean d) :
+    0 ≤ lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r K Sminus Splus b x := by
+  unfold lacunaryRelativeBandpassPhysicalTwoSidedTail
+  exact add_nonneg
+    (Finset.sum_nonneg fun _ _ => norm_nonneg _)
+    (Finset.sum_nonneg fun _ _ => norm_nonneg _)
+
+theorem lacunaryCZDyadicCubeFiniteBadTail_nonneg
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (f : Euclidean d → ℂ)
+    (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (x : Euclidean d) :
+    0 ≤ lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x := by
+  unfold lacunaryCZDyadicCubeFiniteBadTail
+  exact Finset.sum_nonneg fun q _ =>
+    lacunaryRelativeBandpassPhysicalTwoSidedTail_nonneg psi j r q.scale
+      (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x
+
+/-- The existing analytic two-sided atom-tail estimate in the notation of
+the literal physical convolution terms. -/
+theorem setIntegral_lacunaryRelativeBandpassPhysicalTwoSidedTail_le
+    {d : Nat} (hd : 0 < d) (psi : SchwartzMap (Euclidean d) ℂ)
+    (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (j : ℕ) (K : ℤ) (Sminus Splus : Finset ℕ)
+    {rho : ℝ} (hrho : 0 < rho)
+    (hsmall : ∀ n ∈ Sminus, (r (K - (n : ℤ)) : ℝ) ≤ rho)
+    (c : Euclidean d) (b : Euclidean d → ℂ) (hb : Integrable b)
+    (hzero : (∫ y : Euclidean d, b y) = 0)
+    (hbsupp : ∀ y, b y ≠ 0 → ‖y - c‖ ≤ rho) :
+    (∫ x : Euclidean d in (Metric.closedBall c (3 * rho))ᶜ,
+      lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r K Sminus Splus b x) ≤
+      ((((2 : ℝ) ^ j)⁻¹ ^ 2 *
+          SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) *
+          ((16 / 3 : ℝ) * ((2 : ℝ) ^ K) ^ 2) *
+          surfaceMass d * (∫ y : Euclidean d, ‖b y‖)) *
+        (surfaceMass d * (3 : ℝ) ^ d / (2 * rho ^ 2))) +
+      (surfaceMass d * rho *
+        (2 * (2 : ℝ) ^ j * ((2 : ℝ) ^ K)⁻¹) *
+          (∫ x : Euclidean d,
+            ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) :
+              Euclidean d → ℂ) x‖) *
+          (∫ y : Euclidean d, ‖b y‖)) := by
+  have hminus : Integrable (fun x : Euclidean d =>
+      ∑ n ∈ Sminus, ‖lacunaryRelativeBandpassPhysicalTerm psi j
+        (r (K - (n : ℤ)) : ℝ) b x‖) volume :=
+    integrable_finsetSum Sminus fun n _ =>
+      (integrable_lacunaryRelativeBandpassPhysicalTerm psi j
+        (r (K - (n : ℤ))).2 b hb).norm
+  have hplus : Integrable (fun x : Euclidean d =>
+      ∑ n ∈ Splus, ‖lacunaryRelativeBandpassPhysicalTerm psi j
+        (r (K + (n : ℤ)) : ℝ) b x‖) volume :=
+    integrable_finsetSum Splus fun n _ =>
+      (integrable_lacunaryRelativeBandpassPhysicalTerm psi j
+        (r (K + (n : ℤ))).2 b hb).norm
+  unfold lacunaryRelativeBandpassPhysicalTwoSidedTail
+  rw [integral_add hminus.integrableOn hplus.integrableOn]
+  simpa only [
+    lacunaryRelativeBandpassPhysicalTerm,
+    lacunaryRelativeBandpassPhysicalKernel] using
+    setIntegral_dyadic_lacunary_two_sided_atom_tail_le
+      hd psi r hr j K Sminus Splus hrho hsmall c b hb hzero hbsupp
+
+/-- At the cube scale, every past selector radius is inside the enclosing
+cube ball once the ambient dimension is at least two. -/
+theorem dyadic_lacunary_past_radius_le_lacunaryCZDyadicCubeRadius
+    {d : Nat} (hd : 2 ≤ d) (r : ℤ → PositiveRadius)
+    (hr : IsDyadicLacunaryRadiusSelector r)
+    (q : LacunaryCZDyadicCubeIndex d) (n : ℕ) :
+    (r (q.scale - (n : ℤ)) : ℝ) ≤ lacunaryCZDyadicCubeRadius q := by
+  have hpow : (2 : ℝ) ^ (q.scale - (n : ℤ)) ≤ (2 : ℝ) ^ q.scale := by
+    apply zpow_le_zpow_right₀ (by norm_num)
+    exact Int.sub_le_self _ (Int.natCast_nonneg n)
+  have htwo : (2 : ℝ) ≤ d := by
+    exact_mod_cast (show 2 ≤ d from hd)
+  calc
+    (r (q.scale - (n : ℤ)) : ℝ) ≤
+        2 * (2 : ℝ) ^ (q.scale - (n : ℤ)) :=
+      (hr (q.scale - (n : ℤ))).2
+    _ ≤ 2 * (2 : ℝ) ^ q.scale :=
+      mul_le_mul_of_nonneg_left hpow (by norm_num)
+    _ ≤ (d : ℝ) * (2 : ℝ) ^ q.scale :=
+      mul_le_mul_of_nonneg_right htwo (zpow_nonneg (by norm_num) _)
+    _ = lacunaryCZDyadicCubeRadius q := by
+      rfl
+
+theorem lacunaryCZDyadicCube_twoSidedTail_rhs_eq
+    {d : Nat} (hd : 0 < d) (psi : SchwartzMap (Euclidean d) ℂ) (j : ℕ)
+    (q : LacunaryCZDyadicCubeIndex d) (b : Euclidean d → ℂ) :
+    ((2 : ℝ) ^ j)⁻¹ ^ 2 *
+        SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) *
+        ((16 / 3 : ℝ) * ((2 : ℝ) ^ q.scale) ^ 2) *
+        surfaceMass d * (∫ y : Euclidean d, ‖b y‖) *
+      (surfaceMass d * (3 : ℝ) ^ d /
+        (2 * (lacunaryCZDyadicCubeRadius q) ^ 2)) +
+    (surfaceMass d * lacunaryCZDyadicCubeRadius q *
+      (2 * (2 : ℝ) ^ j * ((2 : ℝ) ^ q.scale)⁻¹) *
+        (∫ x : Euclidean d,
+          ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) x‖) *
+        (∫ y : Euclidean d, ‖b y‖)) =
+      lacunaryCZDyadicCubeTailConstant psi j *
+        (∫ y : Euclidean d, ‖b y‖) := by
+  unfold lacunaryCZDyadicCubeRadius lacunaryCZDyadicCubeTailConstant
+  have hd0 : (d : ℝ) ≠ 0 := by
+    exact_mod_cast (Nat.ne_of_gt hd)
+  have hq0 : (2 : ℝ) ^ q.scale ≠ 0 := zpow_ne_zero _ (by norm_num)
+  field_simp
+
+theorem lacunaryCZDyadicCubeTailConstant_nonneg
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : ℕ) :
+    0 ≤ lacunaryCZDyadicCubeTailConstant psi j := by
+  have hsemi : 0 ≤ SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) := by
+    calc
+      0 ≤ ‖(0 : Euclidean d)‖ ^ (d + 2) *
+          ‖(𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) 0‖ := by positivity
+      _ ≤ SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) :=
+        SchwartzMap.norm_pow_mul_le_seminorm ℂ
+          (𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) (d + 2) 0
+  have hinv : 0 ≤ ((2 : ℝ) ^ j)⁻¹ ^ 2 := sq_nonneg _
+  have hsphere : 0 ≤ surfaceMass d := measureReal_nonneg
+  have hthree : 0 ≤ (3 : ℝ) ^ d := pow_nonneg (by norm_num) _
+  have hden : 0 ≤ 2 * (d : ℝ) ^ 2 :=
+    mul_nonneg (by norm_num) (sq_nonneg _)
+  have hderiv : 0 ≤ ∫ x : Euclidean d,
+      ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) :
+        Euclidean d → ℂ) x‖ :=
+    integral_nonneg fun _ => norm_nonneg _
+  have hpastLeft : 0 ≤ ((2 : ℝ) ^ j)⁻¹ ^ 2 *
+      SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) *
+      (16 / 3 : ℝ) * surfaceMass d := by
+    exact mul_nonneg (mul_nonneg (mul_nonneg hinv hsemi) (by norm_num)) hsphere
+  have hpastRight : 0 ≤ surfaceMass d * (3 : ℝ) ^ d /
+      (2 * (d : ℝ) ^ 2) :=
+    div_nonneg (mul_nonneg hsphere hthree) hden
+  have hpast : 0 ≤ (((2 : ℝ) ^ j)⁻¹ ^ 2 *
+      SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) *
+      (16 / 3 : ℝ) * surfaceMass d) *
+      (surfaceMass d * (3 : ℝ) ^ d / (2 * (d : ℝ) ^ 2)) :=
+    mul_nonneg hpastLeft hpastRight
+  have hfuture : 0 ≤ surfaceMass d * (d : ℝ) * (2 * (2 : ℝ) ^ j) *
+      ∫ x : Euclidean d,
+        ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) :
+          Euclidean d → ℂ) x‖ := by
+    exact mul_nonneg
+      (mul_nonneg (mul_nonneg hsphere (Nat.cast_nonneg d))
+        (mul_nonneg (by norm_num) (pow_nonneg (by norm_num) _))) hderiv
+  unfold lacunaryCZDyadicCubeTailConstant
+  exact add_nonneg hpast hfuture
+
+/-- A finite physical lacunary maximum splits pointwise into its good part
+and the explicitly indexed two-sided bad-atom tail. -/
+theorem lacunaryRelativeBandpassFinitePhysicalMaximal_le_good_add_finiteBadTail
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (f : Euclidean d → ℂ) (hf : Integrable f volume)
+    (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hcover : ∀ q ∈ U, ∀ k ∈ S,
+      (∃ n ∈ Sminus q, k = q.scale - (n : ℤ)) ∨
+        ∃ n ∈ Splus q, k = q.scale + (n : ℤ))
+    (x : Euclidean d) :
+    lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS f x ≤
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (lacunaryCZDyadicCubeGoodPart f U) x +
+      lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x := by
+  classical
+  unfold lacunaryRelativeBandpassFinitePhysicalMaximal
+  apply Finset.sup'_le hS
+  intro k hk
+  have hdecomp := lacunaryCZDyadicCube_kernel_integral_decomposition
+    (lacunaryRelativeBandpassPhysicalKernel psi j (r k : ℝ))
+    (continuous_lacunaryRelativeBandpassPhysicalKernel psi j (r k).2)
+    (norm_lacunaryRelativeBandpassPhysicalKernel_le psi j (r k).2)
+    f hf U x
+  have hdecomp' :
+      lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ) f x =
+        lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          (lacunaryCZDyadicCubeGoodPart f U) x +
+          ∑ q ∈ U, lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+            (lacunaryCZDyadicCubeBadAtom f q) x := by
+    simpa only [lacunaryRelativeBandpassPhysicalTerm] using hdecomp
+  rw [hdecomp']
+  calc
+    ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+        (lacunaryCZDyadicCubeGoodPart f U) x +
+        ∑ q ∈ U, lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          (lacunaryCZDyadicCubeBadAtom f q) x‖ ≤
+        ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          (lacunaryCZDyadicCubeGoodPart f U) x‖ +
+        ∑ q ∈ U, ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+          (lacunaryCZDyadicCubeBadAtom f q) x‖ := by
+      exact (norm_add_le _ _).trans
+        (add_le_add_right (norm_sum_le U fun q =>
+          lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+            (lacunaryCZDyadicCubeBadAtom f q) x) _)
+    _ ≤ S.sup' hS (fun k =>
+          ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+            (lacunaryCZDyadicCubeGoodPart f U) x‖) +
+        lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x := by
+      apply add_le_add
+      · exact Finset.le_sup' (fun k =>
+          ‖lacunaryRelativeBandpassPhysicalTerm psi j (r k : ℝ)
+            (lacunaryCZDyadicCubeGoodPart f U) x‖) hk
+      · unfold lacunaryCZDyadicCubeFiniteBadTail
+        apply Finset.sum_le_sum
+        intro q hq
+        rcases hcover q hq k hk with hminus | hplus
+        · rcases hminus with ⟨n, hn, hkn⟩
+          rw [hkn]
+          unfold lacunaryRelativeBandpassPhysicalTwoSidedTail
+          have hsingle :
+              ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale - (n : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x‖ ≤
+                ∑ m ∈ Sminus q,
+                  ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                    (r (q.scale - (m : ℤ)) : ℝ)
+                    (lacunaryCZDyadicCubeBadAtom f q) x‖ :=
+            Finset.single_le_sum
+              (s := Sminus q)
+              (f := fun m : ℕ => ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale - (m : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x‖)
+              (fun m _ => norm_nonneg
+                (lacunaryRelativeBandpassPhysicalTerm psi j
+                  (r (q.scale - (m : ℤ)) : ℝ)
+                  (lacunaryCZDyadicCubeBadAtom f q) x)) hn
+          have hplusnonneg : 0 ≤ ∑ m ∈ Splus q,
+              ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale + (m : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x‖ :=
+            Finset.sum_nonneg fun m _ => norm_nonneg
+              (lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale + (m : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x)
+          linarith
+        · rcases hplus with ⟨n, hn, hkn⟩
+          rw [hkn]
+          unfold lacunaryRelativeBandpassPhysicalTwoSidedTail
+          have hsingle :
+              ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale + (n : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x‖ ≤
+                ∑ m ∈ Splus q,
+                  ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                    (r (q.scale + (m : ℤ)) : ℝ)
+                    (lacunaryCZDyadicCubeBadAtom f q) x‖ :=
+            Finset.single_le_sum
+              (s := Splus q)
+              (f := fun m : ℕ => ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale + (m : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x‖)
+              (fun m _ => norm_nonneg
+                (lacunaryRelativeBandpassPhysicalTerm psi j
+                  (r (q.scale + (m : ℤ)) : ℝ)
+                  (lacunaryCZDyadicCubeBadAtom f q) x)) hn
+          have hminusnonneg : 0 ≤ ∑ m ∈ Sminus q,
+              ‖lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale - (m : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x‖ :=
+            Finset.sum_nonneg fun m _ => norm_nonneg
+              (lacunaryRelativeBandpassPhysicalTerm psi j
+                (r (q.scale - (m : ℤ)) : ℝ)
+                (lacunaryCZDyadicCubeBadAtom f q) x)
+          linarith
+
+/-- The two-sided analytic atom estimates sum over a finite cube family on
+the complement of its exceptional triple balls. -/
+theorem setIntegral_lacunaryCZDyadicCubeFiniteBadTail_le
+    {d : Nat} [NeZero d] (hd : 2 ≤ d) (psi : SchwartzMap (Euclidean d) ℂ)
+    (j : Nat) (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (f : Euclidean d → ℂ) (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hf : Integrable f volume) :
+    (∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+      lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x) ≤
+      lacunaryCZDyadicCubeTailConstant psi j *
+        ∑ q ∈ U, ∫ x : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q x‖ := by
+  have hdpos : 0 < d := by omega
+  have hterm (q : LacunaryCZDyadicCubeIndex d) (hq : q ∈ U) :
+      Integrable
+        (lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+          (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q)) volume :=
+    integrable_lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+      (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q)
+      (integrable_lacunaryCZDyadicCubeBadAtom f q hf)
+  unfold lacunaryCZDyadicCubeFiniteBadTail
+  rw [integral_finsetSum U fun q hq => (hterm q hq).integrableOn]
+  calc
+    (∑ q ∈ U,
+      ∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+        lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+          (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x) ≤
+        ∑ q ∈ U, lacunaryCZDyadicCubeTailConstant psi j *
+          ∫ x : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q x‖ := by
+      apply Finset.sum_le_sum
+      intro q hq
+      have hsubset : (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ ⊆
+          (Metric.closedBall (lacunaryCZDyadicCubeCenter q)
+            (3 * lacunaryCZDyadicCubeRadius q))ᶜ := by
+        intro x hx hball
+        apply hx
+        exact Set.mem_iUnion₂.mpr ⟨q, hq, hball⟩
+      have hmono :
+          (∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+            lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+              (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x) ≤
+          ∫ x : Euclidean d in
+            (Metric.closedBall (lacunaryCZDyadicCubeCenter q)
+              (3 * lacunaryCZDyadicCubeRadius q))ᶜ,
+            lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+              (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x := by
+        exact integral_mono_measure (Measure.restrict_mono hsubset le_rfl)
+          (Filter.Eventually.of_forall fun x =>
+            lacunaryRelativeBandpassPhysicalTwoSidedTail_nonneg psi j r q.scale
+              (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x)
+          ((hterm q hq).mono_measure Measure.restrict_le_self)
+      have htail := setIntegral_lacunaryRelativeBandpassPhysicalTwoSidedTail_le
+        hdpos psi r hr j q.scale (Sminus q) (Splus q)
+        (lacunaryCZDyadicCubeRadius_pos q)
+        (fun n hn =>
+          dyadic_lacunary_past_radius_le_lacunaryCZDyadicCubeRadius hd r hr q n)
+        (lacunaryCZDyadicCubeCenter q) (lacunaryCZDyadicCubeBadAtom f q)
+        (integrable_lacunaryCZDyadicCubeBadAtom f q hf)
+        (integral_lacunaryCZDyadicCubeBadAtom_eq_zero f q hf)
+        (fun y hy => lacunaryCZDyadicCubeBadAtom_dist_center_le_radius f q hy)
+      calc
+        (∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+          lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+            (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x) ≤
+          ∫ x : Euclidean d in
+            (Metric.closedBall (lacunaryCZDyadicCubeCenter q)
+              (3 * lacunaryCZDyadicCubeRadius q))ᶜ,
+            lacunaryRelativeBandpassPhysicalTwoSidedTail psi j r q.scale
+              (Sminus q) (Splus q) (lacunaryCZDyadicCubeBadAtom f q) x := hmono
+        _ ≤ ((2 : ℝ) ^ j)⁻¹ ^ 2 *
+            SchwartzMap.seminorm ℂ (d + 2) 0 (𝓕⁻ psi) *
+            ((16 / 3 : ℝ) * ((2 : ℝ) ^ q.scale) ^ 2) * surfaceMass d *
+              (∫ y : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q y‖) *
+            (surfaceMass d * (3 : ℝ) ^ d /
+              (2 * (lacunaryCZDyadicCubeRadius q) ^ 2)) +
+          surfaceMass d * lacunaryCZDyadicCubeRadius q *
+            (2 * (2 : ℝ) ^ j * ((2 : ℝ) ^ q.scale)⁻¹) *
+            (∫ x : Euclidean d,
+              ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean d) ℂ) :
+                Euclidean d → ℂ) x‖) *
+            (∫ y : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q y‖) := by
+          simpa only [mul_assoc] using htail
+        _ = lacunaryCZDyadicCubeTailConstant psi j *
+            ∫ y : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q y‖ :=
+          lacunaryCZDyadicCube_twoSidedTail_rhs_eq hdpos psi j q
+            (lacunaryCZDyadicCubeBadAtom f q)
+    _ = lacunaryCZDyadicCubeTailConstant psi j *
+        ∑ q ∈ U, ∫ x : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q x‖ := by
+      rw [Finset.mul_sum]
+
+/-- With the disjoint stopping cubes supplied by the Calderón--Zygmund
+selection, the exterior bad tail has linear `L¹` mass. -/
+theorem setIntegral_lacunaryCZDyadicCubeFiniteBadTail_le_two_mul
+    {d : Nat} [NeZero d] (hd : 2 ≤ d) (psi : SchwartzMap (Euclidean d) ℂ)
+    (j : Nat) (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (f : Euclidean d → ℂ) (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hf : Integrable f volume)
+    (hdisj : (↑U : Set (LacunaryCZDyadicCubeIndex d)).PairwiseDisjoint
+      lacunaryCZDyadicCube) :
+    (∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+      lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x) ≤
+      2 * lacunaryCZDyadicCubeTailConstant psi j * ∫ x : Euclidean d, ‖f x‖ := by
+  have htail := setIntegral_lacunaryCZDyadicCubeFiniteBadTail_le
+    hd psi j r hr f U Sminus Splus hf
+  have hbad := sum_integral_norm_lacunaryCZDyadicCubeBadAtom_le_two_mul_integral_norm
+    f U hdisj hf
+  have hC := lacunaryCZDyadicCubeTailConstant_nonneg psi j
+  calc
+    (∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+      lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x) ≤
+        lacunaryCZDyadicCubeTailConstant psi j *
+          ∑ q ∈ U, ∫ x : Euclidean d, ‖lacunaryCZDyadicCubeBadAtom f q x‖ := htail
+    _ ≤ lacunaryCZDyadicCubeTailConstant psi j *
+        (2 * ∫ x : Euclidean d, ‖f x‖) :=
+      mul_le_mul_of_nonneg_left hbad hC
+    _ = 2 * lacunaryCZDyadicCubeTailConstant psi j * ∫ x : Euclidean d, ‖f x‖ := by
+      ring
+
+/-- Chebyshev turns the exterior `L¹` tail into the weak-one bad-part
+distribution estimate, with the measure explicitly restricted away from the
+exceptional triple balls. -/
+theorem mul_measureReal_lacunaryCZDyadicCubeFiniteBadTail_level_le
+    {d : Nat} [NeZero d] (hd : 2 ≤ d) (psi : SchwartzMap (Euclidean d) ℂ)
+    (j : Nat) (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (f : Euclidean d → ℂ) (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hf : Integrable f volume)
+    (hdisj : (↑U : Set (LacunaryCZDyadicCubeIndex d)).PairwiseDisjoint
+      lacunaryCZDyadicCube)
+    {lambda : ℝ} (hlambda : 0 < lambda) :
+    (lambda / 2) *
+      (volume.restrict (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ).real
+        {x | lambda / 2 ≤
+          lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x} ≤
+      2 * lacunaryCZDyadicCubeTailConstant psi j * ∫ x : Euclidean d, ‖f x‖ := by
+  have htailint := integrable_lacunaryCZDyadicCubeFiniteBadTail
+    psi j r f U Sminus Splus hf
+  have hmarkov := mul_meas_ge_le_integral_of_nonneg
+    (μ := volume.restrict (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ)
+    (Filter.Eventually.of_forall fun x =>
+      lacunaryCZDyadicCubeFiniteBadTail_nonneg psi j r f U Sminus Splus x)
+    (htailint.mono_measure Measure.restrict_le_self) (lambda / 2)
+  calc
+    (lambda / 2) *
+        (volume.restrict (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ).real
+          {x | lambda / 2 ≤
+            lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x} ≤
+        ∫ x : Euclidean d in (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ,
+          lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x := hmarkov
+    _ ≤ 2 * lacunaryCZDyadicCubeTailConstant psi j *
+        ∫ x : Euclidean d, ‖f x‖ :=
+      setIntegral_lacunaryCZDyadicCubeFiniteBadTail_le_two_mul
+        hd psi j r hr f U Sminus Splus hf hdisj
+
+theorem volume_real_closedBall_eq_unitBall_mul_radius_pow
+    {d : Nat} (c : Euclidean d) {rho : ℝ} (hrho : 0 ≤ rho) :
+    volume.real (Metric.closedBall c rho) =
+      rho ^ d * (volume (Metric.ball (0 : Euclidean d) 1)).toReal := by
+  rw [Measure.real, Measure.addHaar_closedBall volume c hrho]
+  simp only [finrank_euclideanSpace_fin]
+  rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal (pow_nonneg hrho _)]
+
+/-- The finite exceptional triple-ball union is controlled by the sum of the
+dyadic cube radius powers. -/
+theorem volume_real_lacunaryCZDyadicCubeExceptionalTriple_le
+    {d : Nat} [NeZero d] (U : Finset (LacunaryCZDyadicCubeIndex d)) :
+    volume.real (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+      (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d *
+        ∑ q ∈ U, (lacunaryCZDyadicCubeRadius q) ^ d := by
+  let B : LacunaryCZDyadicCubeIndex d → Set (Euclidean d) := fun q =>
+    Metric.closedBall (lacunaryCZDyadicCubeCenter q)
+      (3 * lacunaryCZDyadicCubeRadius q)
+  have hmeasure : volume (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+      ∑ q ∈ U, volume (B q) := by
+    simpa only [lacunaryCZDyadicCubeExceptionalTriple, B] using
+      (measure_biUnion_finset_le (μ := volume) U B)
+  have hsumlt : (∑ q ∈ U, volume (B q)) < ⊤ :=
+    ENNReal.sum_lt_top.mpr fun q hq => measure_closedBall_lt_top
+  have hsumtop : (∑ q ∈ U, volume (B q)) ≠ ⊤ := hsumlt.ne
+  have hEtop : volume (lacunaryCZDyadicCubeExceptionalTriple U) ≠ ⊤ :=
+    (lt_of_le_of_lt hmeasure hsumlt).ne
+  have hreal : volume.real (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+      (∑ q ∈ U, volume (B q)).toReal := by
+    rw [Measure.real]
+    exact (ENNReal.toReal_le_toReal hEtop hsumtop).mpr hmeasure
+  rw [ENNReal.toReal_sum (fun q hq => (measure_closedBall_lt_top :
+    volume (B q) < ⊤).ne)] at hreal
+  calc
+    volume.real (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+        ∑ q ∈ U, volume.real (B q) := hreal
+    _ = ∑ q ∈ U,
+        ((3 : ℝ) * lacunaryCZDyadicCubeRadius q) ^ d *
+          (volume (Metric.ball (0 : Euclidean d) 1)).toReal := by
+      apply Finset.sum_congr rfl
+      intro q hq
+      exact volume_real_closedBall_eq_unitBall_mul_radius_pow _
+        (mul_nonneg (by norm_num) (lacunaryCZDyadicCubeRadius_pos q).le)
+    _ = ∑ q ∈ U,
+        ((volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d) *
+          (lacunaryCZDyadicCubeRadius q) ^ d := by
+      apply Finset.sum_congr rfl
+      intro q hq
+      rw [mul_pow]
+      ring
+    _ = (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d *
+        ∑ q ∈ U, (lacunaryCZDyadicCubeRadius q) ^ d := by
+      rw [Finset.mul_sum]
+
+theorem volume_real_lacunaryCZDyadicCubeExceptionalTriple_le_of_radius_sum
+    {d : Nat} [NeZero d] (U : Finset (LacunaryCZDyadicCubeIndex d))
+    {A : ℝ} (hA : ∑ q ∈ U, (lacunaryCZDyadicCubeRadius q) ^ d ≤ A) :
+    volume.real (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+      (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d * A := by
+  have hcoef : 0 ≤
+      (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d :=
+    mul_nonneg ENNReal.toReal_nonneg (pow_nonneg (by norm_num) _)
+  calc
+    volume.real (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+        (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d *
+          ∑ q ∈ U, (lacunaryCZDyadicCubeRadius q) ^ d :=
+      volume_real_lacunaryCZDyadicCubeExceptionalTriple_le U
+    _ ≤ (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d * A :=
+      mul_le_mul_of_nonneg_left hA hcoef
+
+/-- Outside the exceptional triple balls, the level set of the literal
+finite maximum is contained in the union of the corresponding good and bad
+level sets. -/
+theorem lacunaryRelativeBandpassFinitePhysicalMaximal_level_subset
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (f : Euclidean d → ℂ) (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    {lambda : ℝ}
+    (hsplit : ∀ x : Euclidean d,
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS f x ≤
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (lacunaryCZDyadicCubeGoodPart f U) x +
+        lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x) :
+    ({x | lambda <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS f x} ∩
+        (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ) ⊆
+      {x | lambda / 2 <
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (lacunaryCZDyadicCubeGoodPart f U) x} ∪
+      ({x | lambda / 2 <
+        lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x} ∩
+        (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ) := by
+  intro x hx
+  rcases hx with ⟨hlevel, hxoutside⟩
+  change lambda <
+    lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS f x at hlevel
+  by_cases hgood : lambda / 2 <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (lacunaryCZDyadicCubeGoodPart f U) x
+  · exact Or.inl hgood
+  · right
+    have hgood' :
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (lacunaryCZDyadicCubeGoodPart f U) x ≤ lambda / 2 :=
+      le_of_not_gt hgood
+    have hbad : lambda / 2 <
+        lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x := by
+      by_contra hbad
+      have hbad' : lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x ≤
+          lambda / 2 := le_of_not_gt hbad
+      have hupper := hsplit x
+      linarith
+    exact ⟨hbad, hxoutside⟩
+
+/-- The finite weak-one tail package for a compactly supported Schwartz input.
+It constructs the cube stopping family and returns exactly the data needed to
+combine the literal finite physical maximum with a separate `L²` estimate on
+the good part. -/
+theorem exists_lacunaryCZDyadicCube_schwartz_finite_weak_tail
+    {d : Nat} [NeZero d] (hd : 3 ≤ d)
+    (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (S : Finset ℤ) (hS : S.Nonempty)
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hcover : ∀ q, ∀ k ∈ S,
+      (∃ n ∈ Sminus q, k = q.scale - (n : ℤ)) ∨
+        ∃ n ∈ Splus q, k = q.scale + (n : ℤ))
+    (f : SchwartzMap (Euclidean d) ℂ) (lambda : ℝ) (hlambda : 0 < lambda) :
+    ∃ U : Finset (LacunaryCZDyadicCubeIndex d),
+      (↑U : Set (LacunaryCZDyadicCubeIndex d)).PairwiseDisjoint
+          lacunaryCZDyadicCube ∧
+      (∀ x : Euclidean d,
+        ‖lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U x‖ ≤
+          (2 : ℝ) ^ d * (lambda / 2)) ∧
+      Integrable (lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U) volume ∧
+      (∫ x : Euclidean d,
+        ‖lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U x‖ ^ 2) ≤
+          (3 * ((2 : ℝ) ^ d * (lambda / 2))) *
+            ∫ x : Euclidean d, ‖f x‖ ∧
+      (∀ x : Euclidean d,
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+            (f : Euclidean d → ℂ) x ≤
+          lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+              (lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U) x +
+            lacunaryCZDyadicCubeFiniteBadTail psi j r (f : Euclidean d → ℂ)
+              U Sminus Splus x) ∧
+      ({x | lambda <
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (f : Euclidean d → ℂ) x} ∩
+          (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ) ⊆
+        {x | lambda / 2 <
+          lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+            (lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U) x} ∪
+        ({x | lambda / 2 <
+          lacunaryCZDyadicCubeFiniteBadTail psi j r (f : Euclidean d → ℂ)
+            U Sminus Splus x} ∩
+          (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ) ∧
+      (lambda / 2) *
+        (volume.restrict (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ).real
+          {x | lambda / 2 ≤
+            lacunaryCZDyadicCubeFiniteBadTail psi j r (f : Euclidean d → ℂ)
+              U Sminus Splus x} ≤
+          2 * lacunaryCZDyadicCubeTailConstant psi j *
+            ∫ x : Euclidean d, ‖f x‖ ∧
+      volume.real (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+        (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d *
+          ((d : ℝ) ^ d *
+            ((lambda / 2)⁻¹ * ∫ x : Euclidean d, ‖f x‖)) := by
+  have hd2 : 2 ≤ d := by omega
+  have hf : Integrable (f : Euclidean d → ℂ) volume := f.integrable
+  obtain ⟨U, hdisj, hbad, houtside, havg, hgoodbound, hatomint, hzero, hsupp,
+    hsum, hgoodint, hL2, hL1, hside, hradius⟩ :=
+    exists_lacunaryCZDyadicCube_continuous_decay_decomposition
+      (f : Euclidean d → ℂ) lambda hlambda f.continuous hf
+      f.tendsto_cocompact
+  have hsplit : ∀ x : Euclidean d,
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (f : Euclidean d → ℂ) x ≤
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+            (lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U) x +
+          lacunaryCZDyadicCubeFiniteBadTail psi j r (f : Euclidean d → ℂ)
+            U Sminus Splus x := by
+    intro x
+    exact lacunaryRelativeBandpassFinitePhysicalMaximal_le_good_add_finiteBadTail
+      psi j r S hS (f : Euclidean d → ℂ) hf U Sminus Splus
+        (fun q _ k hk => hcover q k hk) x
+  have hlevel := lacunaryRelativeBandpassFinitePhysicalMaximal_level_subset
+    psi j r S hS (f : Euclidean d → ℂ) U Sminus Splus hsplit (lambda := lambda)
+  have hbadTail := mul_measureReal_lacunaryCZDyadicCubeFiniteBadTail_level_le
+    hd2 psi j r hr (f : Euclidean d → ℂ) U Sminus Splus hf hdisj hlambda
+  have hExceptional :=
+    volume_real_lacunaryCZDyadicCubeExceptionalTriple_le_of_radius_sum U hradius
+  exact ⟨U, hdisj, hgoodbound, hgoodint, hL2, hsplit, hlevel, hbadTail,
+    hExceptional⟩
+
+private theorem weak_two_scaled_to_weak_one
+    {a A C G F : ENNReal} (ha : a ≠ 0) (hatop : a ≠ ∞)
+    (h : a ^ (2 : ℕ) * G ≤ C ^ (2 : ℕ) * (A * a * F)) :
+    (2 * a) * G ≤ (2 * A * C ^ (2 : ℕ)) * F := by
+  rw [← ENNReal.mul_le_mul_iff_right ha hatop]
+  calc
+    a * ((2 * a) * G) = 2 * (a ^ (2 : ℕ) * G) := by ring
+    _ ≤ 2 * (C ^ (2 : ℕ) * (A * a * F)) :=
+      mul_le_mul_right h _
+    _ = a * ((2 * A * C ^ (2 : ℕ)) * F) := by ring
+
+private theorem weak_one_scaled_double
+    {a B K F : ENNReal} (h : a * B ≤ K * F) :
+    (2 * a) * B ≤ (2 * K) * F := by
+  calc
+    (2 * a) * B = 2 * (a * B) := by ring
+    _ ≤ 2 * (K * F) := mul_le_mul_right h _
+    _ = (2 * K) * F := by ring
+
+private theorem exceptional_scaled_double
+    {a D E F : ENNReal} (ha : a ≠ 0) (hatop : a ≠ ∞)
+    (h : E ≤ D * a⁻¹ * F) :
+    (2 * a) * E ≤ (2 * D) * F := by
+  calc
+    (2 * a) * E ≤ (2 * a) * (D * a⁻¹ * F) :=
+      mul_le_mul_right h _
+    _ = (2 * D) * F := by
+      rw [show 2 * a * (D * a⁻¹ * F) = (2 * D) * (a * a⁻¹) * F by ring]
+      rw [ENNReal.mul_inv_cancel ha hatop, mul_one]
+
+private theorem finite_bad_tail_ennreal
+    {d : Nat} [NeZero d] (hd : 2 ≤ d) (psi : SchwartzMap (Euclidean d) ℂ)
+    (j : Nat) (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (f : Euclidean d → ℂ) (U : Finset (LacunaryCZDyadicCubeIndex d))
+    (Sminus Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ)
+    (hf : Integrable f volume) (hdisj : (↑U : Set (LacunaryCZDyadicCubeIndex d)).PairwiseDisjoint
+      lacunaryCZDyadicCube)
+    {lambda : ℝ} (_hlambda : 0 < lambda) :
+    ENNReal.ofReal (lambda / 2) * volume
+        ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus x} ∩
+          (lacunaryCZDyadicCubeExceptionalTriple U)ᶜ) ≤
+      ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j) *
+        ∫⁻ x, ENNReal.ofReal ‖f x‖ := by
+  let E : Set (Euclidean d) := lacunaryCZDyadicCubeExceptionalTriple U
+  let T : Euclidean d → ℝ := lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus
+  have hTint : Integrable T volume := by
+    simpa only [T] using integrable_lacunaryCZDyadicCubeFiniteBadTail psi j r f U Sminus Splus hf
+  have hTintE : Integrable T (volume.restrict Eᶜ) :=
+    hTint.mono_measure Measure.restrict_le_self
+  have hmarkov := mul_meas_ge_le_lintegral₀ hTintE.1.aemeasurable.ennreal_ofReal
+    (ENNReal.ofReal (lambda / 2))
+  have htail := setIntegral_lacunaryCZDyadicCubeFiniteBadTail_le_two_mul
+    hd psi j r hr f U Sminus Splus hf hdisj
+  have hCtail : 0 ≤ lacunaryCZDyadicCubeTailConstant psi j :=
+    lacunaryCZDyadicCubeTailConstant_nonneg psi j
+  have hTnon : 0 ≤ᵐ[volume.restrict Eᶜ] T :=
+    Filter.Eventually.of_forall fun x => lacunaryCZDyadicCubeFiniteBadTail_nonneg
+      psi j r f U Sminus Splus x
+  have htailE : (∫⁻ x in Eᶜ, ENNReal.ofReal (T x)) ≤
+      ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j) *
+        ∫⁻ x, ENNReal.ofReal ‖f x‖ := by
+    calc
+      (∫⁻ x in Eᶜ, ENNReal.ofReal (T x)) =
+          ENNReal.ofReal (∫ x in Eᶜ, T x) :=
+        (ofReal_integral_eq_lintegral_ofReal hTintE hTnon).symm
+      _ ≤ ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j *
+          ∫ x, ‖f x‖) := ENNReal.ofReal_le_ofReal (by simpa only [E, T] using htail)
+      _ = ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j) *
+          ∫⁻ x, ENNReal.ofReal ‖f x‖ := by
+        rw [ENNReal.ofReal_mul]
+        · rw [ofReal_integral_eq_lintegral_ofReal hf.norm
+            (Filter.Eventually.of_forall fun x => norm_nonneg _)]
+        · exact mul_nonneg (by norm_num) hCtail
+  have hsub :
+      ({x | lambda / 2 < T x} ∩ Eᶜ) ⊆
+        {x | ENNReal.ofReal (lambda / 2) ≤ ENNReal.ofReal (T x)} ∩ Eᶜ := by
+    intro x hx
+    exact ⟨ENNReal.ofReal_le_ofReal hx.1.le, hx.2⟩
+  calc
+    ENNReal.ofReal (lambda / 2) * volume ({x | lambda / 2 < T x} ∩ Eᶜ) ≤
+        ENNReal.ofReal (lambda / 2) *
+          (volume.restrict Eᶜ) {x | ENNReal.ofReal (lambda / 2) ≤ ENNReal.ofReal (T x)} := by
+      apply mul_le_mul_right
+      exact (measure_mono hsub).trans (Measure.le_restrict_apply Eᶜ _)
+    _ ≤ ∫⁻ x, ENNReal.ofReal (T x) ∂(volume.restrict Eᶜ) := hmarkov
+    _ = ∫⁻ x in Eᶜ, ENNReal.ofReal (T x) := rfl
+    _ ≤ _ := htailE
+
+private theorem good_level_ennreal
+    {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (S : Finset ℤ) (hS : S.Nonempty)
+    (C : ℝ) (hC : 0 ≤ C)
+    (hcoreMem : ∀ f : SchwartzMap (Euclidean d) ℂ,
+      MemLp (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (f : Euclidean d → ℂ)) 2 volume)
+    (hcoreBound : ∀ f : SchwartzMap (Euclidean d) ℂ,
+      ‖(hcoreMem f).toLp
+        (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (f : Euclidean d → ℂ))‖ ≤ C * ‖f.toLp 2 volume‖)
+    (g : Euclidean d → ℂ) (hg : Integrable g volume) (hg2 : MemLp g 2 volume)
+    (B : ℝ) (hB : 0 ≤ B) (hgB : ∀ x, ‖g x‖ ≤ B)
+    (a A : ENNReal) (ha : a ≠ 0) (hatop : a ≠ ∞) (F : ENNReal)
+    (hlin : (∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ))) ≤ A * a * F) :
+    (2 * a) * volume {x | a.toReal <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} ≤
+      (2 * A * (ENNReal.ofReal C) ^ (2 : ℕ)) * F := by
+  obtain ⟨hMg, hMgbound⟩ :=
+    memLp_two_lacunaryRelativeBandpassFinitePhysicalMaximal_of_core_bound
+      psi j r S hS C hC hcoreMem hcoreBound g hg hg2 B hB hgB
+  have hweak := weak_two_of_memLp_toLp_bound volume
+    (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS)
+    (fun u x => lacunaryRelativeBandpassFinitePhysicalMaximal_nonneg
+      psi j r S hS u x)
+    C hC g hg2 hMg hMgbound (show 0 < a.toReal by
+      exact ENNReal.toReal_pos ha hatop)
+  have haPow : a ^ (2 : ℕ) = ENNReal.ofReal ((a.toReal) ^ (2 : ℕ)) := by
+    rw [ENNReal.ofReal_pow ENNReal.toReal_nonneg, ENNReal.ofReal_toReal hatop]
+  have hCPow : (ENNReal.ofReal C) ^ (2 : ℕ) = ENNReal.ofReal (C ^ (2 : ℕ)) := by
+    rw [ENNReal.ofReal_pow hC]
+  have hmain : a ^ (2 : ℕ) * volume {x | a.toReal <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} ≤
+      (ENNReal.ofReal C) ^ (2 : ℕ) * (A * a * F) := by
+    calc
+      a ^ (2 : ℕ) * volume {x | a.toReal <
+          lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} =
+          ENNReal.ofReal ((a.toReal) ^ (2 : ℕ)) * volume {x | a.toReal <
+          lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} := by
+            rw [haPow]
+      _ ≤ (ENNReal.ofReal C) ^ (2 : ℕ) *
+          ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ)) := by
+            rw [hCPow]
+            exact hweak
+      _ ≤ (ENNReal.ofReal C) ^ (2 : ℕ) * (A * a * F) :=
+        mul_le_mul_right hlin _
+  exact weak_two_scaled_to_weak_one (A := A) (C := ENNReal.ofReal C)
+    ha hatop hmain
+
+private theorem memLp_two_of_integrable_of_norm_le
+    {d : Nat} (g : Euclidean d → ℂ) (hg : Integrable g volume)
+    (B : ℝ) (hB : 0 ≤ B) (hgB : ∀ x, ‖g x‖ ≤ B) : MemLp g 2 volume := by
+  apply (memLp_two_iff_integrable_sq_norm hg.aestronglyMeasurable).2
+  refine (hg.norm.const_mul B).mono' ?_ (Filter.Eventually.of_forall fun x => ?_)
+  · exact hg.aestronglyMeasurable.norm.pow 2
+  · have hpoint : ‖g x‖ ^ (2 : ℕ) ≤ B * ‖g x‖ := by
+      calc
+        ‖g x‖ ^ (2 : ℕ) = ‖g x‖ * ‖g x‖ := by ring
+        _ ≤ B * ‖g x‖ := mul_le_mul_of_nonneg_right (hgB x) (norm_nonneg _)
+    simpa [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg hB (norm_nonneg _))] using hpoint
+
+private theorem measure_le_of_real_bound
+    {α : Type*} [MeasurableSpace α] (μ : Measure α) (E : Set α)
+    {K : ℝ} (hEtop : μ E ≠ ∞) (hK : 0 ≤ K)
+    (h : μ.real E ≤ K) : μ E ≤ ENNReal.ofReal K := by
+  apply (ENNReal.toReal_le_toReal hEtop ENNReal.ofReal_ne_top).mp
+  simpa only [Measure.real, ENNReal.toReal_ofReal hK] using h
+
+private theorem exceptional_lt_top
+    {d : Nat} [NeZero d] (U : Finset (LacunaryCZDyadicCubeIndex d)) :
+    volume (lacunaryCZDyadicCubeExceptionalTriple U) < ∞ := by
+  let B : LacunaryCZDyadicCubeIndex d → Set (Euclidean d) := fun q =>
+    Metric.closedBall (lacunaryCZDyadicCubeCenter q)
+      (3 * lacunaryCZDyadicCubeRadius q)
+  have hmeasure : volume (lacunaryCZDyadicCubeExceptionalTriple U) ≤
+      ∑ q ∈ U, volume (B q) := by
+    simpa only [lacunaryCZDyadicCubeExceptionalTriple, B] using
+      (measure_biUnion_finset_le (μ := volume) U B)
+  have hsumlt : (∑ q ∈ U, volume (B q)) < ∞ :=
+    ENNReal.sum_lt_top.mpr fun q hq => measure_closedBall_lt_top
+  exact lt_of_le_of_lt hmeasure hsumlt
+
+/-- An explicit finite weak-one constant for the literal physical lacunary
+maximum.  Its three summands are the exceptional cubes, the good `L²` part,
+and the exterior bad tail. -/
+def lacunaryRelativeBandpassFinitePhysicalWeakOneConstant {d : Nat}
+    (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat) (C : ℝ) : ENNReal :=
+  2 * ENNReal.ofReal
+      ((volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d * (d : ℝ) ^ d) +
+    (2 * ENNReal.ofReal (3 * (2 : ℝ) ^ d) * (ENNReal.ofReal C) ^ (2 : ℕ)) +
+      2 * ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j)
+
+/-- The finite physical lacunary maximal operator is of weak type `(1,1)`
+whenever its Schwartz core has the indicated `L²` bound.  The proof is the
+literal dyadic-cube Calderón--Zygmund decomposition, with canonical
+past/future partitions of the finite radius set. -/
+theorem weak_one_lacunaryRelativeBandpassFinitePhysicalMaximal_of_core_bound
+    {d : Nat} [NeZero d] (hd : 3 ≤ d)
+    (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
+    (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
+    (S : Finset ℤ) (hS : S.Nonempty) (C : ℝ) (hC : 0 ≤ C)
+    (hcoreMem : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      MemLp (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (g : Euclidean d → ℂ)) 2 volume)
+    (hcoreBound : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      ‖(hcoreMem g).toLp
+        (lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (g : Euclidean d → ℂ))‖ ≤ C * ‖g.toLp 2 volume‖)
+    (f : SchwartzMap (Euclidean d) ℂ) {lambda : ℝ} (hlambda : 0 < lambda) :
+    ENNReal.ofReal lambda * volume {x |
+      lambda < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (f : Euclidean d → ℂ) x} ≤
+      lacunaryRelativeBandpassFinitePhysicalWeakOneConstant psi j C *
+        ∫⁻ x, ENNReal.ofReal ‖f x‖ := by
+  let Sminus : LacunaryCZDyadicCubeIndex d → Finset ℕ :=
+    lacunaryCZDyadicCubePastIndices S
+  let Splus : LacunaryCZDyadicCubeIndex d → Finset ℕ :=
+    lacunaryCZDyadicCubeFutureIndices S
+  have hcover : ∀ q, ∀ k ∈ S,
+      (∃ n ∈ Sminus q, k = q.scale - (n : ℤ)) ∨
+        ∃ n ∈ Splus q, k = q.scale + (n : ℤ) := by
+    intro q k hk
+    exact lacunaryCZDyadicCube_canonical_indices_cover S q hk
+  obtain ⟨U, hdisj, hgoodBound, hgoodInt, hgoodL2, hsplit, hlevel,
+    hbadTail, hExceptional⟩ :=
+    exists_lacunaryCZDyadicCube_schwartz_finite_weak_tail
+      hd psi j r hr S hS Sminus Splus hcover f lambda hlambda
+  let E : Set (Euclidean d) := lacunaryCZDyadicCubeExceptionalTriple U
+  let g : Euclidean d → ℂ := lacunaryCZDyadicCubeGoodPart (f : Euclidean d → ℂ) U
+  let aR : ℝ := lambda / 2
+  let a : ENNReal := ENNReal.ofReal aR
+  let A : ENNReal := ENNReal.ofReal (3 * (2 : ℝ) ^ d)
+  let F : ENNReal := ∫⁻ x, ENNReal.ofReal ‖f x‖
+  let B : ℝ := (2 : ℝ) ^ d * aR
+  have haRpos : 0 < aR := by dsimp [aR]; linarith
+  have haRnonneg : 0 ≤ aR := haRpos.le
+  have haPos : 0 < a := by
+    dsimp [a]
+    exact ENNReal.ofReal_pos.mpr haRpos
+  have ha : a ≠ 0 := haPos.ne'
+  have haTop : a ≠ ∞ := by dsimp [a]; exact ENNReal.ofReal_ne_top
+  have hB : 0 ≤ B := by
+    dsimp [B]
+    exact mul_nonneg (pow_nonneg (by norm_num) _) haRnonneg
+  have hgB : ∀ x, ‖g x‖ ≤ B := by
+    intro x
+    simpa only [g, B, aR] using hgoodBound x
+  have hg2 : MemLp g 2 volume :=
+    memLp_two_of_integrable_of_norm_le g (by simpa only [g] using hgoodInt) B hB hgB
+  have hgSq : Integrable (fun x => ‖g x‖ ^ (2 : ℕ)) volume := by
+    simpa using hg2.integrable_norm_rpow (by norm_num) ENNReal.ofNat_ne_top
+  have hFreal : ENNReal.ofReal (∫ x, ‖f x‖) = F := by
+    dsimp [F]
+    exact ofReal_integral_eq_lintegral_ofReal f.integrable.norm
+      (Filter.Eventually.of_forall fun x => norm_nonneg _)
+  have hgoodLin : (∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ))) ≤ A * a * F := by
+    calc
+      (∫⁻ x, ENNReal.ofReal (‖g x‖ ^ (2 : ℕ))) =
+          ENNReal.ofReal (∫ x, ‖g x‖ ^ (2 : ℕ)) :=
+        (ofReal_integral_eq_lintegral_ofReal hgSq
+          (Filter.Eventually.of_forall fun x => sq_nonneg _)).symm
+      _ ≤ ENNReal.ofReal ((3 * B) * ∫ x, ‖f x‖) :=
+        ENNReal.ofReal_le_ofReal (by simpa only [g, B, aR, mul_assoc] using hgoodL2)
+      _ = A * a * F := by
+        have hAreal : 0 ≤ 3 * (2 : ℝ) ^ d :=
+          mul_nonneg (by norm_num) (pow_nonneg (by norm_num) _)
+        rw [show 3 * B = (3 * (2 : ℝ) ^ d) * aR by
+          dsimp [B]
+          ring, ENNReal.ofReal_mul (mul_nonneg hAreal haRnonneg),
+          ENNReal.ofReal_mul hAreal, hFreal]
+  have hgood := good_level_ennreal psi j r S hS C hC hcoreMem hcoreBound
+    g (by simpa only [g] using hgoodInt) hg2 B hB hgB a A ha haTop F hgoodLin
+  have hgood' : ENNReal.ofReal lambda * volume {x | lambda / 2 <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} ≤
+      (2 * A * (ENNReal.ofReal C) ^ (2 : ℕ)) * F := by
+    have hlambdaE : ENNReal.ofReal lambda = 2 * a := by
+      rw [show lambda = 2 * aR by dsimp [aR]; ring,
+        ENNReal.ofReal_mul (by norm_num)]
+      norm_num [a]
+    rw [hlambdaE]
+    simpa only [a, ENNReal.toReal_ofReal haRnonneg] using hgood
+  have hbad := finite_bad_tail_ennreal (show 2 ≤ d by omega) psi j r hr
+    (f : Euclidean d → ℂ) U Sminus Splus f.integrable hdisj hlambda
+  have hbad' : ENNReal.ofReal lambda * volume
+      ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+        (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ) ≤
+      (2 * ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j)) * F := by
+    have hlambdaE : ENNReal.ofReal lambda = 2 * a := by
+      rw [show lambda = 2 * aR by dsimp [aR]; ring,
+        ENNReal.ofReal_mul (by norm_num)]
+      norm_num [a]
+    rw [hlambdaE]
+    simpa only [a, E, F] using weak_one_scaled_double hbad
+  let D : ℝ :=
+    (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d * (d : ℝ) ^ d
+  have hD : 0 ≤ D := by
+    dsimp [D]
+    positivity
+  have hEreal : volume.real E ≤ D * aR⁻¹ * ∫ x, ‖f x‖ := by
+    calc
+      volume.real E ≤
+          (volume (Metric.ball (0 : Euclidean d) 1)).toReal * (3 : ℝ) ^ d *
+            ((d : ℝ) ^ d * (aR⁻¹ * ∫ x, ‖f x‖)) := by
+        simpa only [E, aR] using hExceptional
+      _ = D * aR⁻¹ * ∫ x, ‖f x‖ := by
+        dsimp [D]
+        ring
+  have hK : 0 ≤ D * aR⁻¹ * ∫ x, ‖f x‖ :=
+    mul_nonneg (mul_nonneg hD (inv_nonneg.mpr haRnonneg))
+      (integral_nonneg fun _ => norm_nonneg _)
+  have hEraw : volume E ≤ ENNReal.ofReal (D * aR⁻¹ * ∫ x, ‖f x‖) :=
+    measure_le_of_real_bound volume E (exceptional_lt_top U).ne hK hEreal
+  have hE : volume E ≤ ENNReal.ofReal D * a⁻¹ * F := by
+    calc
+      volume E ≤ ENNReal.ofReal (D * aR⁻¹ * ∫ x, ‖f x‖) := hEraw
+      _ = ENNReal.ofReal D * a⁻¹ * F := by
+        rw [ENNReal.ofReal_mul (mul_nonneg hD (inv_nonneg.mpr haRnonneg)),
+          ENNReal.ofReal_mul hD,
+          ENNReal.ofReal_inv_of_pos haRpos, hFreal]
+  have hE' := exceptional_scaled_double ha haTop hE
+  have hE'' : ENNReal.ofReal lambda * volume E ≤
+      (2 * ENNReal.ofReal D) * F := by
+    have hlambdaE : ENNReal.ofReal lambda = 2 * a := by
+      rw [show lambda = 2 * aR by dsimp [aR]; ring,
+        ENNReal.ofReal_mul (by norm_num)]
+      norm_num [a]
+    rw [hlambdaE]
+    exact hE'
+  have hlevel' : {x | lambda <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (f : Euclidean d → ℂ) x} ⊆ E ∪
+      ({x | lambda / 2 <
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} ∪
+        ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+          (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ)) := by
+    intro x hx
+    by_cases hxE : x ∈ E
+    · exact Or.inl hxE
+    · exact Or.inr (hlevel ⟨hx, by simpa only [Set.mem_compl_iff] using hxE⟩)
+  have hunion : volume {x | lambda <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (f : Euclidean d → ℂ) x} ≤ volume E +
+      (volume {x | lambda / 2 <
+        lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} +
+      volume ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+        (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ)) := by
+    calc
+      volume {x | lambda < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+          (f : Euclidean d → ℂ) x} ≤ volume (E ∪
+          ({x | lambda / 2 < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} ∪
+          ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+            (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ))) := measure_mono hlevel'
+      _ ≤ volume E + volume
+          ({x | lambda / 2 < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} ∪
+          ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+            (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ)) := measure_union_le _ _
+      _ ≤ volume E +
+          (volume {x | lambda / 2 < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} +
+          volume ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+            (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ)) :=
+        add_le_add le_rfl (measure_union_le _ _)
+  have hsum : ENNReal.ofReal lambda * volume {x | lambda <
+      lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+        (f : Euclidean d → ℂ) x} ≤
+      ((2 * ENNReal.ofReal D) +
+        (2 * A * (ENNReal.ofReal C) ^ (2 : ℕ)) +
+        (2 * ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j))) * F := by
+    calc
+      ENNReal.ofReal lambda * volume {x | lambda <
+          lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS
+            (f : Euclidean d → ℂ) x} ≤
+          ENNReal.ofReal lambda * (volume E +
+            (volume {x | lambda / 2 < lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} +
+            volume ({x | lambda / 2 < lacunaryCZDyadicCubeFiniteBadTail psi j r
+              (f : Euclidean d → ℂ) U Sminus Splus x} ∩ Eᶜ))) :=
+        mul_le_mul_right hunion _
+      _ = ENNReal.ofReal lambda * volume E +
+          (ENNReal.ofReal lambda * volume {x | lambda / 2 <
+            lacunaryRelativeBandpassFinitePhysicalMaximal psi j r S hS g x} +
+          ENNReal.ofReal lambda * volume ({x | lambda / 2 <
+            lacunaryCZDyadicCubeFiniteBadTail psi j r (f : Euclidean d → ℂ)
+              U Sminus Splus x} ∩ Eᶜ)) := by ring
+      _ ≤ (2 * ENNReal.ofReal D) * F +
+          ((2 * A * (ENNReal.ofReal C) ^ (2 : ℕ)) * F +
+          (2 * ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j)) * F) :=
+        add_le_add hE'' (add_le_add hgood' hbad')
+      _ = ((2 * ENNReal.ofReal D) +
+        (2 * A * (ENNReal.ofReal C) ^ (2 : ℕ)) +
+        (2 * ENNReal.ofReal (2 * lacunaryCZDyadicCubeTailConstant psi j))) * F := by ring
+  simpa only [lacunaryRelativeBandpassFinitePhysicalWeakOneConstant, D, A, F] using hsum
+
+end
+
+end LeanSpherical.HarmonicAnalysis

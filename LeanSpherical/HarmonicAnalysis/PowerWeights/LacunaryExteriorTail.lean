@@ -1,0 +1,305 @@
+import LeanSpherical.HarmonicAnalysis.CoordinateIntegration
+import LeanSpherical.HarmonicAnalysis.InterpolationCore
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory Metric Set
+open scoped ENNReal
+
+noncomputable section
+
+private theorem lintegral_norm_rpow_compl_closedBall_eq
+    {d : Nat} (hd : 0 < d) {rho : Real} (hrho : 0 < rho) :
+    (∫⁻ x : Euclidean d in (Metric.closedBall 0 (3 * rho))ᶜ,
+      (ENNReal.ofReal ‖x‖) ^ (-((d + 2 : Nat) : Real))) =
+      ENNReal.ofReal (surfaceMass d) *
+        ENNReal.ofReal ((3 * rho) ^ (-2 : Real) / 2) := by
+  let R : Real := 3 * rho
+  let a : Real := -((d + 2 : Nat) : Real)
+  have hR : 0 < R := by dsimp [R]; positivity
+  have ha : a < -1 := by
+    dsimp [a]
+    have hd' : (1 : Real) < (d + 2 : Nat) := by
+      exact_mod_cast (by omega : 1 < d + 2)
+    linarith
+  let F : Real → ENNReal :=
+    (Ioi R).indicator (fun r => (ENNReal.ofReal r) ^ a)
+  have hF : Measurable F := by
+    apply Measurable.indicator
+    · exact ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+    · exact measurableSet_Ioi
+  have hpoint (x : Euclidean d) :
+      ((Metric.closedBall (0 : Euclidean d) R)ᶜ).indicator
+        (fun y : Euclidean d => (ENNReal.ofReal ‖y‖) ^ a) x = F ‖x‖ := by
+    dsimp [F]
+    by_cases hx : R < ‖x‖
+    · have hxA : x ∈ (Metric.closedBall (0 : Euclidean d) R)ᶜ := by
+        rw [mem_compl_iff, Metric.mem_closedBall, dist_zero_right]
+        exact not_le.mpr hx
+      have hxI : ‖x‖ ∈ Ioi R := hx
+      rw [Set.indicator_of_mem hxA, Set.indicator_of_mem hxI]
+    · have hxA : x ∉ (Metric.closedBall (0 : Euclidean d) R)ᶜ := by
+        intro h
+        rw [mem_compl_iff, Metric.mem_closedBall, dist_zero_right] at h
+        exact hx (lt_of_not_ge h)
+      have hxI : ‖x‖ ∉ Ioi R := hx
+      rw [Set.indicator_of_notMem hxA, Set.indicator_of_notMem hxI]
+  have hradial :
+      (∫⁻ x : Euclidean d in (Metric.closedBall (0 : Euclidean d) R)ᶜ,
+        (ENNReal.ofReal ‖x‖) ^ a) =
+        ENNReal.ofReal (surfaceMass d) *
+          ∫⁻ r in Ioi (0 : Real), ENNReal.ofReal r ^ (d - 1) * F r := by
+    rw [← lintegral_indicator (Metric.isClosed_closedBall.measurableSet.compl)]
+    calc
+      _ = ∫⁻ x : Euclidean d, F ‖x‖ := by
+        apply lintegral_congr
+        intro x
+        exact hpoint x
+      _ = _ := lintegral_euclidean_radial hd F hF
+  have hinterior :
+      (∫⁻ r in Ioi (0 : Real), ENNReal.ofReal r ^ (d - 1) * F r) =
+        ∫⁻ r in Ioi R, (ENNReal.ofReal r) ^ (-3 : Real) := by
+    calc
+      _ = ∫⁻ r in Ioi (0 : Real),
+          (Ioi R).indicator
+            (fun r => ENNReal.ofReal r ^ (d - 1) * (ENNReal.ofReal r) ^ a) r := by
+        apply lintegral_congr
+        intro r
+        dsimp [F]
+        by_cases hr : r ∈ Ioi R <;> simp [Set.indicator, hr, mul_zero]
+      _ = ∫⁻ r in Ioi R,
+          ENNReal.ofReal r ^ (d - 1) * (ENNReal.ofReal r) ^ a := by
+        rw [lintegral_indicator measurableSet_Ioi]
+        rw [Measure.restrict_restrict measurableSet_Ioi]
+        rw [inter_eq_left.mpr (Ioi_subset_Ioi hR.le)]
+      _ = ∫⁻ r in Ioi R, (ENNReal.ofReal r) ^ (-3 : Real) := by
+        apply lintegral_congr_ae
+        filter_upwards [ae_restrict_mem measurableSet_Ioi] with r hr
+        have hr0 : 0 < r := hR.trans hr
+        rw [← ENNReal.rpow_natCast]
+        rw [← ENNReal.rpow_add ((d - 1 : Nat) : Real) a
+          (ENNReal.ofReal_pos.mpr hr0).ne' ENNReal.ofReal_ne_top]
+        congr 1
+        dsimp [a]
+        have hd1 : 1 ≤ d := by omega
+        norm_num [Nat.cast_sub hd1]
+        ring
+  calc
+    _ = ENNReal.ofReal (surfaceMass d) *
+        ∫⁻ r in Ioi (0 : Real), ENNReal.ofReal r ^ (d - 1) * F r := by
+      simpa only [R, a] using hradial
+    _ = ENNReal.ofReal (surfaceMass d) *
+        ∫⁻ r in Ioi R, (ENNReal.ofReal r) ^ (-3 : Real) := by rw [hinterior]
+    _ = ENNReal.ofReal (surfaceMass d) *
+        ENNReal.ofReal (R ^ (-2 : Real) / 2) := by
+      congr 1
+      convert lintegral_rpow_Ioi_eq (p := (0 : Real)) (by norm_num) hR using 1 <;> norm_num
+    _ = _ := by rfl
+
+private theorem integral_norm_rpow_compl_closedBall_eq
+    {d : Nat} (hd : 0 < d) {rho : Real} (hrho : 0 < rho) :
+    (∫ x : Euclidean d in (Metric.closedBall 0 (3 * rho))ᶜ,
+      ‖x‖ ^ (-((d + 2 : Nat) : Real))) =
+      surfaceMass d * ((3 * rho) ^ (-2 : Real) / 2) := by
+  let a : Real := -((d + 2 : Nat) : Real)
+  let A : Set (Euclidean d) := (Metric.closedBall 0 (3 * rho))ᶜ
+  have hmeas : Measurable (fun x : Euclidean d => ‖x‖ ^ a) := by
+    let G : Euclidean d → ENNReal := fun x => (ENNReal.ofReal ‖x‖) ^ a
+    have hG : Measurable G :=
+      ENNReal.continuous_rpow_const.measurable.comp
+        (ENNReal.measurable_ofReal.comp continuous_norm.measurable)
+    convert hG.ennreal_toReal using 1
+    funext x
+    rw [← ENNReal.toReal_rpow]
+    simp
+  have hnonneg : 0 ≤ᵐ[volume.restrict A] (fun x : Euclidean d => ‖x‖ ^ a) := by
+    filter_upwards with x
+    exact Real.rpow_nonneg (norm_nonneg x) _
+  rw [show (∫ x : Euclidean d in A, ‖x‖ ^ a) =
+      ENNReal.toReal (∫⁻ x : Euclidean d in A, ENNReal.ofReal (‖x‖ ^ a)) by
+    exact integral_eq_lintegral_of_nonneg_ae hnonneg hmeas.aestronglyMeasurable]
+  have hconvert :
+      (∫⁻ x : Euclidean d in A, ENNReal.ofReal (‖x‖ ^ a)) =
+        ∫⁻ x : Euclidean d in A, (ENNReal.ofReal ‖x‖) ^ a := by
+    apply lintegral_congr_ae
+    filter_upwards [ae_restrict_mem (Metric.isClosed_closedBall.measurableSet.compl)] with x hx
+    have hxnorm : 0 < ‖x‖ := by
+      have hgt : 3 * rho < ‖x‖ := by
+        rw [mem_compl_iff, Metric.mem_closedBall, dist_zero_right] at hx
+        exact lt_of_not_ge hx
+      exact lt_trans (mul_pos (by norm_num) hrho) hgt
+    exact (ENNReal.ofReal_rpow_of_pos hxnorm).symm
+  rw [hconvert]
+  rw [show A = (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ by rfl]
+  rw [lintegral_norm_rpow_compl_closedBall_eq hd hrho]
+  rw [ENNReal.toReal_mul]
+  have hsurface : 0 ≤ surfaceMass d := measureReal_nonneg
+  have hfactor : 0 ≤ ((3 * rho) ^ (-2 : Real) / 2 : Real) := by
+    exact div_nonneg (Real.rpow_nonneg (by positivity) _) (by norm_num)
+  rw [ENNReal.toReal_ofReal hsurface, ENNReal.toReal_ofReal hfactor]
+
+private theorem integral_lacunary_exterior_kernel_tail_zero
+    {d : Nat} (hd : 0 < d) {rho : Real} (hrho : 0 < rho) :
+    (∫ x : Euclidean d in (Metric.closedBall 0 (3 * rho))ᶜ,
+      1 / (‖x‖ / 3) ^ (d + 2)) =
+      surfaceMass d * (3 : Real) ^ d / (2 * rho ^ 2) := by
+  let A : Set (Euclidean d) := (Metric.closedBall 0 (3 * rho))ᶜ
+  let a : Real := -((d + 2 : Nat) : Real)
+  have hpoint (x : Euclidean d) (hx : x ∈ A) :
+      1 / (‖x‖ / 3) ^ (d + 2) =
+        (3 : Real) ^ (d + 2) * ‖x‖ ^ a := by
+    have hxnorm : 0 < ‖x‖ := by
+      have hgt : 3 * rho < ‖x‖ := by
+        rw [mem_compl_iff, Metric.mem_closedBall, dist_zero_right] at hx
+        exact lt_of_not_ge hx
+      exact lt_trans (mul_pos (by norm_num) hrho) hgt
+    rw [show a = -((d + 2 : Nat) : Real) by rfl]
+    rw [Real.rpow_neg (norm_nonneg x), Real.rpow_natCast]
+    rw [div_pow]
+    field_simp [hxnorm.ne']
+  calc
+    (∫ x : Euclidean d in A, 1 / (‖x‖ / 3) ^ (d + 2)) =
+        ∫ x : Euclidean d in A, (3 : Real) ^ (d + 2) * ‖x‖ ^ a := by
+          apply setIntegral_congr_fun (Metric.isClosed_closedBall.measurableSet.compl)
+          intro x hx
+          exact hpoint x hx
+    _ = (3 : Real) ^ (d + 2) * ∫ x : Euclidean d in A, ‖x‖ ^ a := by
+          rw [← integral_const_mul]
+    _ = (3 : Real) ^ (d + 2) *
+        (surfaceMass d * ((3 * rho) ^ (-2 : Real) / 2)) := by
+          rw [show a = -((d + 2 : Nat) : Real) by rfl]
+          rw [show A = (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ by rfl]
+          rw [integral_norm_rpow_compl_closedBall_eq hd hrho]
+    _ = surfaceMass d * (3 : Real) ^ d / (2 * rho ^ 2) := by
+          rw [Real.rpow_neg (by positivity)]
+          rw [pow_add]
+          field_simp [hrho.ne']
+          rw [Real.mul_rpow (by norm_num) hrho.le]
+          norm_num
+          ring
+
+/-- The literal radial tail occurring in the small-radius lacunary
+Calderón--Zygmund estimate. -/
+theorem integral_lacunary_exterior_kernel_tail
+    {d : Nat} (hd : 0 < d) {rho : Real} (hrho : 0 < rho)
+    (c : Euclidean d) :
+    (∫ x : Euclidean d in (Metric.closedBall c (3 * rho))ᶜ,
+      1 / (‖x - c‖ / 3) ^ (d + 2)) =
+      surfaceMass d * (3 : Real) ^ d / (2 * rho ^ 2) := by
+  let A0 : Set (Euclidean d) := (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ
+  let Ac : Set (Euclidean d) := (Metric.closedBall c (3 * rho))ᶜ
+  let G : Euclidean d → Real := fun z => 1 / (‖z‖ / 3) ^ (d + 2)
+  let H : Euclidean d → Real := A0.indicator G
+  have hAc : MeasurableSet Ac := Metric.isClosed_closedBall.measurableSet.compl
+  have hA0 : MeasurableSet A0 := Metric.isClosed_closedBall.measurableSet.compl
+  have hmem (x : Euclidean d) : x ∈ Ac ↔ x - c ∈ A0 := by
+    change x ∈ (Metric.closedBall c (3 * rho))ᶜ ↔
+      x - c ∈ (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ
+    rw [mem_compl_iff, mem_compl_iff, Metric.mem_closedBall,
+      Metric.mem_closedBall, dist_zero_right]
+    rfl
+  have hpoint (x : Euclidean d) :
+      Ac.indicator (fun x => 1 / (‖x - c‖ / 3) ^ (d + 2)) x = H (x - c) := by
+    dsimp [H, G]
+    by_cases hx : x ∈ Ac
+    · have hx' : x - c ∈ A0 := (hmem x).mp hx
+      rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx']
+    · have hx' : x - c ∉ A0 := fun h => hx ((hmem x).mpr h)
+      rw [Set.indicator_of_notMem hx, Set.indicator_of_notMem hx']
+  calc
+    (∫ x : Euclidean d in Ac, 1 / (‖x - c‖ / 3) ^ (d + 2)) =
+        ∫ x : Euclidean d, H (x - c) := by
+          rw [← integral_indicator hAc]
+          apply integral_congr_ae
+          filter_upwards with x
+          exact hpoint x
+    _ = ∫ x : Euclidean d, H x := integral_sub_right_eq_self H c
+    _ = ∫ x : Euclidean d in A0, G x := by
+          rw [integral_indicator hA0]
+    _ = surfaceMass d * (3 : Real) ^ d / (2 * rho ^ 2) := by
+          exact integral_lacunary_exterior_kernel_tail_zero hd hrho
+
+private theorem integrableOn_lacunary_exterior_kernel_tail_zero
+    {d : Nat} (hd : 0 < d) {rho : Real} (hrho : 0 < rho) :
+    IntegrableOn (fun x : Euclidean d => 1 / (‖x‖ / 3) ^ (d + 2))
+      (Metric.closedBall 0 (3 * rho))ᶜ volume := by
+  let A : Set (Euclidean d) := (Metric.closedBall 0 (3 * rho))ᶜ
+  let a : Real := -((d + 2 : Nat) : Real)
+  let F : Euclidean d → ENNReal := fun x => (ENNReal.ofReal ‖x‖) ^ a
+  let C : Real := (3 : Real) ^ (d + 2)
+  have hA : MeasurableSet A := Metric.isClosed_closedBall.measurableSet.compl
+  have hFmeas : Measurable F :=
+    ENNReal.continuous_rpow_const.measurable.comp
+      (ENNReal.measurable_ofReal.comp continuous_norm.measurable)
+  have hFfinite : (∫⁻ x : Euclidean d in A, F x) ≠ ∞ := by
+    rw [show A = (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ by rfl]
+    rw [show F = fun x : Euclidean d =>
+        (ENNReal.ofReal ‖x‖) ^ (-((d + 2 : Nat) : Real)) by rfl]
+    rw [lintegral_norm_rpow_compl_closedBall_eq hd hrho]
+    finiteness
+  have hFint : Integrable (fun x : Euclidean d => (F x).toReal)
+      (volume.restrict A) := by
+    refine ⟨hFmeas.ennreal_toReal.aestronglyMeasurable,
+      hasFiniteIntegral_toReal_of_lintegral_ne_top hFfinite⟩
+  have hpoint (x : Euclidean d) (hx : x ∈ A) :
+      1 / (‖x‖ / 3) ^ (d + 2) = C * (F x).toReal := by
+    have hxnorm : 0 < ‖x‖ := by
+      have hgt : 3 * rho < ‖x‖ := by
+        rw [mem_compl_iff, Metric.mem_closedBall, dist_zero_right] at hx
+        exact lt_of_not_ge hx
+      exact lt_trans (mul_pos (by norm_num) hrho) hgt
+    have hscale : 1 / (‖x‖ / 3) ^ (d + 2) = C * ‖x‖ ^ a := by
+      dsimp [C, a]
+      rw [Real.rpow_neg (norm_nonneg x), Real.rpow_natCast]
+      rw [div_pow]
+      field_simp [hxnorm.ne']
+    rw [hscale]
+    congr 1
+    dsimp [F]
+    rw [← ENNReal.toReal_rpow]
+    simp
+  have hscaled : Integrable (fun x : Euclidean d => C * (F x).toReal)
+      (volume.restrict A) := hFint.const_mul C
+  exact hscaled.congr (by
+    filter_upwards [ae_restrict_mem hA] with x hx
+    exact (hpoint x hx).symm)
+
+/-- The radial majorant in `integral_lacunary_exterior_kernel_tail` is
+integrable on the exterior triple ball. -/
+theorem integrableOn_lacunary_exterior_kernel_tail
+    {d : Nat} (hd : 0 < d) {rho : Real} (hrho : 0 < rho)
+    (c : Euclidean d) :
+    IntegrableOn (fun x : Euclidean d => 1 / (‖x - c‖ / 3) ^ (d + 2))
+      (Metric.closedBall c (3 * rho))ᶜ volume := by
+  let A0 : Set (Euclidean d) := (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ
+  let Ac : Set (Euclidean d) := (Metric.closedBall c (3 * rho))ᶜ
+  let G : Euclidean d → Real := fun z => 1 / (‖z‖ / 3) ^ (d + 2)
+  let H : Euclidean d → Real := A0.indicator G
+  have hAc : MeasurableSet Ac := Metric.isClosed_closedBall.measurableSet.compl
+  have hA0 : MeasurableSet A0 := Metric.isClosed_closedBall.measurableSet.compl
+  have hmem (x : Euclidean d) : x ∈ Ac ↔ x - c ∈ A0 := by
+    change x ∈ (Metric.closedBall c (3 * rho))ᶜ ↔
+      x - c ∈ (Metric.closedBall (0 : Euclidean d) (3 * rho))ᶜ
+    rw [mem_compl_iff, mem_compl_iff, Metric.mem_closedBall,
+      Metric.mem_closedBall, dist_zero_right]
+    rfl
+  have hH : Integrable H volume := by
+    exact (integrableOn_lacunary_exterior_kernel_tail_zero hd hrho).integrable_indicator hA0
+  have htrans : Integrable (fun x : Euclidean d => H (x - c)) volume :=
+    hH.comp_sub_right c
+  have hpoint (x : Euclidean d) :
+      Ac.indicator (fun x => 1 / (‖x - c‖ / 3) ^ (d + 2)) x = H (x - c) := by
+    dsimp [H, G]
+    by_cases hx : x ∈ Ac
+    · have hx' : x - c ∈ A0 := (hmem x).mp hx
+      rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx']
+    · have hx' : x - c ∉ A0 := fun h => hx ((hmem x).mpr h)
+      rw [Set.indicator_of_notMem hx, Set.indicator_of_notMem hx']
+  apply (integrable_indicator_iff hAc).mp
+  refine htrans.congr ?_
+  filter_upwards with x
+  exact (hpoint x).symm
+
+end
+
+end LeanSpherical.HarmonicAnalysis

@@ -74,8 +74,9 @@ theorem q4FrequencyExponent_nonpos_balancingParameter
         dsimp only [D]
         exact_mod_cast hd3
       linarith
-    · dsimp only [D]
-      omega
+    · rcases hd2 with ⟨hd2, _⟩
+      subst d
+      norm_num [D]
   have hA : 0 < A := by
     dsimp only [A]
     linarith
@@ -85,20 +86,18 @@ theorem q4FrequencyExponent_nonpos_balancingParameter
     · have hD3 : (3 : Real) <= D := by
         dsimp only [D]
         exact_mod_cast hd3
-      have hquad : 0 <= (D - 3) * (D + 1) := by
-        apply mul_nonneg <;> linarith
-      nlinarith
+      have hbound : 1 <= A * (D - 1) := by
+        dsimp only [A]
+        nlinarith [sq_nonneg (D - 3)]
+      exact hgammaOne.trans hbound
     · rcases hd2 with ⟨hd2, hgammaHalf⟩
-      have hDtwo : D = 2 := by
-        dsimp only [D]
-        exact_mod_cast hd2
-      change gamma <= ((D - 1) / 2) * (D - 1)
-      rw [hDtwo]
-      norm_num
+      subst d
+      norm_num [A, D]
       exact hgammaHalf
   have hmul : A + gamma <= D * A := by
     calc
-      A + gamma <= A + A * (D - 1) := add_le_add_left hcritical A
+      A + gamma <= A + A * (D - 1) := by
+        simpa only [add_comm] using add_le_add_left hcritical A
       _ = D * A := by ring
   have hratio : 1 <= D * (A / (A + gamma)) := by
     rw [show D * (A / (A + gamma)) = (D * A) / (A + gamma) by ring]
@@ -157,8 +156,8 @@ theorem exists_q4_strict_shell_parameter
     · dsimp [D]
       exact_mod_cast (show 0 < d by omega)
     · rcases hd with ⟨hd, _⟩
-      dsimp [D]
-      omega
+      subst d
+      norm_num [D]
   have hApos : 0 < A := by
     rcases hd with hd | hd
     · have hD : (3 : Real) ≤ D := by
@@ -167,23 +166,20 @@ theorem exists_q4_strict_shell_parameter
       dsimp [A]
       linarith
     · rcases hd with ⟨hd, _⟩
-      dsimp [A, D]
-      omega
+      subst d
+      norm_num [A, D]
   have hcritical : gamma < A * (D - 1) := by
     rcases hd with hd | hd
     · have hD : (3 : Real) ≤ D := by
         dsimp [D]
         exact_mod_cast hd
-      have hprod : 0 ≤ (D - 3) * (D + 1) := by
-        apply mul_nonneg <;> linarith
-      nlinarith [hgamma.2]
+      have hbound : 1 < A * (D - 1) := by
+        dsimp only [A]
+        nlinarith [sq_nonneg (D - 3)]
+      exact lt_of_le_of_lt hgamma.2 hbound
     · rcases hd with ⟨hd, hgamma_lt⟩
-      have hD : D = 2 := by
-        dsimp [D]
-        exact_mod_cast hd
-      rw [hD]
-      dsimp [A]
-      norm_num
+      subst d
+      norm_num [A, D]
       exact hgamma_lt
   have hdenpos : 0 < A + gamma :=
     add_pos_of_pos_of_nonneg hApos hgamma.1

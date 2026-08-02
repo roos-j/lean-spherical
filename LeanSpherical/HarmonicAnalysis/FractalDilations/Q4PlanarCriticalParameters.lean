@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: LeanSpherical contributors
 -/
 
+import Mathlib.Algebra.Order.Field.GeomSum
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import LeanSpherical.HarmonicAnalysis.FractalDilations.Q4StrictParameters
 
 /-!
@@ -32,8 +34,9 @@ planar critical case is compensated by the finite range `n < j + O(1)`. -/
 theorem q4_finset_sum_pow_le_last_scale_of_one_lt
     {r : ℝ} (hr : 1 < r) (N : ℕ) :
     (∑ n ∈ Finset.range N, r ^ n) ≤ r ^ N / (r - 1) := by
-  rw [geom_sum_of_one_lt hr N]
-  apply (div_le_div_iff_of_pos_right (sub_pos.mpr hr)).mpr
+  rw [geom_sum_eq (by linarith : r ≠ 1) N]
+  apply (div_le_div_iff₀ (sub_pos.mpr hr) (sub_pos.mpr hr)).mpr
+  have hpow : 0 ≤ r ^ N := pow_nonneg (by linarith) N
   linarith
 
 /-- A convenient strict interpolation parameter at the planar critical
@@ -66,7 +69,9 @@ theorem q4_planar_critical_shell_exponent_le
     (1 - 2 * theta) * (j : Real) + (theta - 1 / 2) * (n : Real) ≤
         (1 - 2 * theta) * (j : Real) +
           (theta - 1 / 2) * ((j : Real) + 3) :=
-      add_le_add_left hmul _
+      by
+        simpa only [add_comm] using
+          add_le_add_left hmul ((1 - 2 * theta) * (j : Real))
     _ = (1 / 2 - theta) * (j : Real) + 3 * (theta - 1 / 2) := by ring
 
 /-- The combined frequency exponent above is strictly negative. -/
@@ -96,12 +101,9 @@ theorem q4_planar_critical_finite_level_sum_le
   let b : ℝ := q4GapExponent 2 (1 / 2) theta
   let r : ℝ := (2 : ℝ) ^ (theta - 1 / 2)
   have ha : a = 1 - 2 * theta := by
-    dsimp [a, q4FrequencyExponent]
-    norm_num
+    norm_num [a, q4FrequencyExponent]
   have hb : b = theta - 1 / 2 := by
-    dsimp [b, q4GapExponent]
-    norm_num
-    ring
+    norm_num [b, q4GapExponent]; ring
   have hbpos : 0 < theta - 1 / 2 := by linarith
   have hr : 1 < r := by
     dsimp [r]
@@ -138,10 +140,22 @@ theorem q4_planar_critical_finite_level_sum_le
         (theta - 1 / 2) j,
         ← Real.rpow_mul_natCast (by norm_num : (0 : ℝ) ≤ 2)
           (1 / 2 - theta) j]
-      rw [← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
-      rw [ha, hb]
-      congr 2
-      ring
+      rw [show
+        (2 : ℝ) ^ (a * (j : ℝ)) *
+            ((2 : ℝ) ^ ((theta - 1 / 2) * (j : ℝ)) *
+                ((2 : ℝ) ^ (theta - 1 / 2)) ^ 3 /
+                  ((2 : ℝ) ^ (theta - 1 / 2) - 1)) =
+          (((2 : ℝ) ^ (theta - 1 / 2)) ^ 3 /
+              ((2 : ℝ) ^ (theta - 1 / 2) - 1)) *
+            ((2 : ℝ) ^ (a * (j : ℝ)) *
+              (2 : ℝ) ^ ((theta - 1 / 2) * (j : ℝ))) by ring]
+      rw [← Real.rpow_add (by norm_num : (0 : ℝ) < 2), ha]
+      have hexp :
+          (1 - 2 * theta) * (j : ℝ) +
+              (theta - 1 / 2) * (j : ℝ) =
+            (1 / 2 - theta) * (j : ℝ) := by
+        ring
+      rw [hexp]
 
 /-- The dyadic base produced by the finite planar summation is strictly
 smaller than one. -/

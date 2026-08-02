@@ -519,7 +519,8 @@ private theorem relative_dyadic_one_two_interpolation_bound
     (fun g : SchwartzMap (Euclidean d) ℂ => (g : Euclidean d → ℂ))
     (T j) (fun g x => hTnonneg j g x)
     (by
-      intro g h _ _ x
+      intro g h _ _
+      filter_upwards with x
       exact hT_subadd j g h x)
     (ENNReal.ofReal (c1 * (2 : ℝ) ^ (j : ℝ)))
     (ENNReal.ofReal (c2 * (2 : ℝ) ^ (-((d : ℝ) - 2) * (j : ℝ))))

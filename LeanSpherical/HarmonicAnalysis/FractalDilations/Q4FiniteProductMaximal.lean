@@ -41,8 +41,8 @@ theorem q4FiniteProductMaximal_rpow_le_fibreSum
   rcases s.exists_mem_eq_sup' hs (fun i => ‖f i x‖) with ⟨i, hi, himax⟩
   unfold q4FiniteProductMaximal
   rw [himax]
-  exact Finset.single_le_sum
-    (fun k hk => Real.rpow_nonneg (norm_nonneg _) _) hi
+  exact Finset.single_le_sum (f := fun k => ‖f k x‖ ^ q)
+    (fun k hk => Real.rpow_nonneg (norm_nonneg (f k x)) q) hi
 
 /-- Integrating the finite-max estimate gives the precise product-to-maximal
 comparison used after the product-space `TT*` bound. -/

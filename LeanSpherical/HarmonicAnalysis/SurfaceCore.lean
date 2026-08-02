@@ -644,9 +644,9 @@ open scoped Pointwise
 
 noncomputable section
 
-/-- Restricting a linear isometry to the unit sphere preserves the concrete
+/-- Orthogonal changes of coordinates preserve the concrete unit-sphere
 surface measure. -/
-private theorem map_unitSurfaceMeasure_linearIsometry (d : Nat)
+theorem map_unitSurfaceMeasure_linearIsometry (d : Nat)
     (u : Euclidean d ≃ₗᵢ[ℝ] Euclidean d) :
     let uSphere : sphere (0 : Euclidean d) 1 ≃ₜ sphere (0 : Euclidean d) 1 :=
       u.toHomeomorph.subtype (fun x => by

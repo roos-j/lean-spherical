@@ -1,0 +1,400 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.CentralLowpass
+import LeanSpherical.HarmonicAnalysis.PowerWeights.AnnularWeight
+import LeanSpherical.HarmonicAnalysis.PowerWeights.GlobalUnweighted
+
+/-!
+# Buffered central lowpass estimate
+
+Only the ball of radius `1 / 8` is used by the negative-weight proof.  The
+input buffer `[1 / 4, 8]` leaves a fixed gap from that ball, so the low pass
+is controlled directly by the dyadic ball maximal function and a global
+`L¹` input norm.  Keeping this localized avoids a duplicate all-space
+lowpass theory for the buffered input.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Filter MeasureTheory Metric Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- The relative lowpass has a uniform weighted `Lᵖ` bound on the central
+ball for input supported in the fixed buffer used by the global-to-local
+reduction. -/
+theorem exists_relativeLowpassMaximal_buffered_centralBall_power_weighted_bound
+    {d : Nat} (hd : 1 ≤ d) {p α : Real} (hp : 1 < p)
+    (hαlower : 1 - (d : Real) < α) (hα : α ≤ 0)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphi_zero : ∀ ξ : Euclidean d, 2 ≤ ‖ξ‖ → phi ξ = 0) :
+    ∃ C : Real, 0 < C ∧ ∀ f : SchwartzMap (Euclidean d) Complex,
+      (∀ x : Euclidean d, x ∉ euclideanAnnulus d (1 / 4 : Real) 8 → f x = 0) →
+      MemLp (relativeLowpassMaximal d phi f) (ENNReal.ofReal p)
+        ((powerWeightedVolume d α).restrict
+          (Metric.closedBall (0 : Euclidean d) (1 / 8))) ∧
+      eLpNorm (relativeLowpassMaximal d phi f) (ENNReal.ofReal p)
+        ((powerWeightedVolume d α).restrict
+          (Metric.closedBall (0 : Euclidean d) (1 / 8))) ≤
+        ENNReal.ofReal C * eLpNorm (f : Euclidean d → Complex)
+          (ENNReal.ofReal p) (powerWeightedVolume d α) := by
+  have hd0 : 0 < d := by omega
+  have hp0 : 0 < p := lt_trans zero_lt_one hp
+  have hαint : -(d : Real) < α := by linarith
+  have hpInvLe : p⁻¹ ≤ 1 := (inv_le_one₀ hp0).mpr hp.le
+  have hpInvNN : 0 ≤ p⁻¹ := inv_nonneg.mpr hp0.le
+  have hOneSubInvNN : 0 ≤ 1 - p⁻¹ := sub_nonneg.mpr hpInvLe
+  let μ : Measure (Euclidean d) := powerWeightedVolume d α
+  let B : Set (Euclidean d) := Metric.closedBall 0 (1 / 8 : Real)
+  let A : ENNReal := (volume (Metric.ball (0 : Euclidean d) (1 / 8 : Real)))⁻¹
+  let cIn : ENNReal := ((ENNReal.ofReal (8 : Real)) ^ α) ^ p⁻¹
+  let V₁ : ENNReal := μ B
+  let V₂ : ENNReal := volume (Metric.closedBall (0 : Euclidean d) (8 : Real))
+  let D₁ : ENNReal := cIn⁻¹ * V₂ ^ (1 - p⁻¹)
+  obtain ⟨K, hK, hmajor⟩ := exists_relative_lowpass_kernel_majorant phi hphi_zero
+  let Kball : ENNReal := A * D₁ * V₁ ^ p⁻¹
+  let Knear : ENNReal := ENNReal.ofReal K * Kball
+  have hBmeas : MeasurableSet B := by
+    dsimp only [B]
+    exact measurableSet_closedBall
+  letI : IsFiniteMeasureOnCompacts μ := by
+    dsimp only [μ]
+    exact powerWeightedVolume_isFiniteMeasureOnCompacts hd hαint
+  have hV₁top : V₁ < ∞ := by
+    dsimp only [V₁, B]
+    exact measure_closedBall_lt_top
+  have hV₂top : V₂ < ∞ := by
+    dsimp only [V₂]
+    exact measure_closedBall_lt_top
+  have hballpos : 0 < volume (Metric.ball (0 : Euclidean d) (1 / 8 : Real)) :=
+    Metric.measure_ball_pos volume 0 (by norm_num)
+  have hAtop : A < ∞ := by
+    dsimp only [A]
+    exact ENNReal.inv_lt_top.mpr hballpos
+  have hcInBasePos : 0 < (ENNReal.ofReal (8 : Real)) ^ α :=
+    ENNReal.rpow_pos (by norm_num) ENNReal.ofReal_ne_top
+  have hcInBaseTop : (ENNReal.ofReal (8 : Real)) ^ α ≠ ∞ :=
+    ENNReal.rpow_ne_top_of_ne_zero (by norm_num) ENNReal.ofReal_ne_top
+  have hcInPos : 0 < cIn := by
+    dsimp only [cIn]
+    exact ENNReal.rpow_pos hcInBasePos hcInBaseTop
+  have hcInTop : cIn ≠ ∞ := by
+    dsimp only [cIn]
+    exact ENNReal.rpow_ne_top_of_ne_zero hcInBasePos.ne' hcInBaseTop
+  have hV₁powtop : V₁ ^ p⁻¹ ≠ ∞ :=
+    ENNReal.rpow_ne_top_of_nonneg hpInvNN hV₁top.ne
+  have hV₂powtop : V₂ ^ (1 - p⁻¹) ≠ ∞ :=
+    ENNReal.rpow_ne_top_of_nonneg hOneSubInvNN hV₂top.ne
+  have hD₁top : D₁ < ∞ := by
+    dsimp only [D₁]
+    exact ENNReal.mul_lt_top (ENNReal.inv_lt_top.mpr hcInPos)
+      (lt_top_iff_ne_top.mpr hV₂powtop)
+  have hKnearTop : Knear < ∞ := by
+    dsimp only [Knear, Kball]
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (ENNReal.mul_lt_top (ENNReal.mul_lt_top hAtop hD₁top)
+        (lt_top_iff_ne_top.mpr hV₁powtop))
+  let C : Real := Knear.toReal + 1
+  have hC : 0 < C := by
+    dsimp only [C]
+    positivity
+  refine ⟨C, hC, ?_⟩
+  intro f hfsupport
+  let M : Euclidean d → Real := dyadicBallMaximal d (f : Euclidean d → Complex)
+  let Mr : Euclidean d → ENNReal := dyadicBallMaximalRaw d (f : Euclidean d → Complex)
+  let L₁ : ENNReal := eLpNorm (f : Euclidean d → Complex) 1 volume
+  let W : ENNReal := eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) μ
+  letI : NeZero d := ⟨by omega⟩
+  have hfsupp : ∀ x : Euclidean d, x ∉ Metric.closedBall (0 : Euclidean d) 8 → f x = 0 := by
+    intro x hx
+    apply hfsupport x
+    intro hxann
+    have hxouter : ‖x‖ ≤ 8 := by
+      simpa only [euclideanAnnulus, Metric.mem_closedBall, dist_zero_right] using hxann.1
+    rw [Metric.mem_closedBall, dist_zero_right] at hx
+    exact (not_le_of_gt (lt_of_not_ge hx)) hxouter
+  have hL₁ : cIn * L₁ ≤ W * V₂ ^ (1 - p⁻¹) := by
+    dsimp only [cIn, L₁, W, V₂, μ]
+    simpa only [mul_assoc] using
+      outerPower_rpow_mul_eLpNorm_one_volume_le_weighted hp hα (by norm_num : (0 : Real) < 8)
+        f hfsupp
+  have hL₁' : L₁ ≤ D₁ * W := by
+    calc
+      L₁ = cIn⁻¹ * (cIn * L₁) := by
+        rw [← mul_assoc, ENNReal.inv_mul_cancel hcInPos.ne' hcInTop]
+        simp
+      _ ≤ cIn⁻¹ * (W * V₂ ^ (1 - p⁻¹)) := mul_le_mul_right hL₁ _
+      _ = D₁ * W := by
+        dsimp only [D₁]
+        ring
+  have hrawnear (x : Euclidean d) (hx : x ∈ B) : Mr x ≤ A * L₁ := by
+    have hzero : ∀ y : Euclidean d, y ∈ Metric.ball (0 : Euclidean d) (1 / 4 : Real) →
+        f y = 0 := by
+      intro y hy
+      apply hfsupport y
+      intro hyann
+      have hylower : (1 / 4 : Real) ≤ ‖y‖ := by
+        exact le_of_not_gt (by
+          simpa only [euclideanAnnulus, Metric.mem_ball, dist_zero_right] using hyann.2)
+      have hyball : ‖y‖ < 1 / 4 := by
+        simpa only [Metric.mem_ball, dist_zero_right] using hy
+      exact (not_le_of_gt hyball) hylower
+    simpa only [Mr, A, L₁, eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
+      dyadicBallMaximalRaw_le_global_lintegral_of_support_away
+        (a := (1 / 8 : Real)) (b := (1 / 8 : Real)) (by norm_num) (by norm_num)
+        (f : Euclidean d → Complex) (by
+          convert hzero using 1 <;> norm_num) hx
+  have hnear : eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤
+      A * L₁ * V₁ ^ p⁻¹ := by
+    calc
+      eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤
+          eLpNorm (B.indicator Mr) (ENNReal.ofReal p) μ := by
+        apply eLpNorm_mono_enorm
+        intro x
+        by_cases hx : x ∈ B
+        · rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx]
+          change ‖(dyadicBallMaximalRaw d (f : Euclidean d → Complex) x).toReal‖ₑ ≤
+            ‖dyadicBallMaximalRaw d (f : Euclidean d → Complex) x‖ₑ
+          rw [Real.enorm_eq_ofReal ENNReal.toReal_nonneg, enorm_eq_self]
+          exact ENNReal.ofReal_toReal_le
+        · simp [hx]
+      _ ≤ eLpNorm (B.indicator (fun _ : Euclidean d => A * L₁))
+          (ENNReal.ofReal p) μ := by
+        apply eLpNorm_mono_enorm
+        intro x
+        by_cases hx : x ∈ B
+        · simp only [Set.indicator_of_mem hx, enorm_eq_self]
+          exact hrawnear x hx
+        · simp [hx]
+      _ = A * L₁ * V₁ ^ p⁻¹ := by
+        rw [eLpNorm_indicator_const hBmeas
+          (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+        dsimp only [V₁]
+        simp only [ENNReal.toReal_ofReal hp0.le, enorm_eq_self, one_div]
+  have hnearW : eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤ Kball * W := by
+    calc
+      eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤ A * L₁ * V₁ ^ p⁻¹ := hnear
+      _ ≤ (A * (D₁ * W)) * V₁ ^ p⁻¹ :=
+        mul_le_mul_left (mul_le_mul_right hL₁' A) _
+      _ = Kball * W := by
+        dsimp only [Kball]
+        ring
+  have hMvol : MemLp M (ENNReal.ofReal p) volume := by
+    dsimp only [M]
+    exact (dyadic_hardy_littlewood_maximal_strong_type_schwartz hd0 hp).choose_spec.2 f |>.1
+  have hμac : μ ≪ volume := by
+    dsimp only [μ, powerWeightedVolume]
+    exact withDensity_absolutelyContinuous volume (radialPowerWeight d α)
+  have hMmeas : AEStronglyMeasurable M μ :=
+    hMvol.aestronglyMeasurable.mono_ac hμac
+  letI : IsFiniteMeasure (μ.restrict B) := ⟨by
+    rw [Measure.restrict_apply_univ]
+    exact hV₁top⟩
+  have hrawtop (x : Euclidean d) (hx : x ∈ B) : Mr x < ∞ := by
+    have hL₁top : L₁ < ∞ := by
+      dsimp only [L₁]
+      exact (f.memLp 1 volume).eLpNorm_lt_top
+    exact (hrawnear x hx).trans_lt (ENNReal.mul_lt_top hAtop hL₁top)
+  have hbound (x : Euclidean d) (hx : x ∈ B) :
+      ‖M x‖ ≤ (A * L₁).toReal := by
+    have hrighttop : A * L₁ < ∞ := by
+      dsimp only [L₁]
+      exact ENNReal.mul_lt_top hAtop (f.memLp 1 volume).eLpNorm_lt_top
+    calc
+      ‖M x‖ = (Mr x).toReal := by
+        dsimp only [M, Mr, dyadicBallMaximal]
+        rw [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+      _ ≤ (A * L₁).toReal :=
+        (ENNReal.toReal_le_toReal (hrawtop x hx).ne hrighttop.ne).mpr (hrawnear x hx)
+  have hboundae : ∀ᵐ x ∂μ.restrict B, ‖M x‖ ≤ (A * L₁).toReal :=
+    (ae_restrict_iff' hBmeas).mpr (Filter.Eventually.of_forall fun x hx => hbound x hx)
+  have hBmemRest : MemLp M (ENNReal.ofReal p) (μ.restrict B) :=
+    MemLp.of_bound hMmeas.restrict (A * L₁).toReal hboundae
+  have hBmem : MemLp (B.indicator M) (ENNReal.ofReal p) μ :=
+    (memLp_indicator_iff_restrict hBmeas).mpr hBmemRest
+  let R : Euclidean d → Real := relativeLowpassMaximal d phi f
+  have hRmeas : AEStronglyMeasurable R μ := by
+    dsimp only [R]
+    exact (relativeLowpassMaximal_aestronglyMeasurable phi hphi_zero f).mono_ac hμac
+  have hRnonneg (x : Euclidean d) : 0 ≤ R x := by
+    dsimp only [R, relativeLowpassMaximal]
+    exact ENNReal.toReal_nonneg
+  have hMnonneg (x : Euclidean d) : 0 ≤ M x := by
+    dsimp only [M, dyadicBallMaximal]
+    exact ENNReal.toReal_nonneg
+  have hpoint (x : Euclidean d) : ‖R x‖ ≤ K * ‖M x‖ := by
+    calc
+      ‖R x‖ = R x := by
+        rw [Real.norm_eq_abs, abs_of_nonneg (hRnonneg x)]
+      _ ≤ K * M x := hmajor f x
+      _ = K * ‖M x‖ := by
+        rw [Real.norm_eq_abs, abs_of_nonneg (hMnonneg x)]
+  have hpointProd (x : Euclidean d) : ‖R x‖ ≤ ‖K * M x‖ := by
+    rw [Real.norm_eq_abs, abs_of_nonneg (hRnonneg x), Real.norm_eq_abs,
+      abs_of_nonneg (mul_nonneg hK.le (hMnonneg x))]
+    exact hmajor f x
+  have hRmemB : MemLp (B.indicator R) (ENNReal.ofReal p) μ :=
+    (hBmem.const_mul K).mono
+      (hRmeas.indicator hBmeas)
+      (Filter.Eventually.of_forall fun x => by
+        by_cases hx : x ∈ B
+        · simp only [Set.indicator_of_mem hx]
+          exact hpointProd x
+        · simp [hx])
+  have hRnorm : eLpNorm (B.indicator R) (ENNReal.ofReal p) μ ≤
+      ENNReal.ofReal K * eLpNorm (B.indicator M) (ENNReal.ofReal p) μ := by
+    apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul
+    filter_upwards with x
+    by_cases hx : x ∈ B
+    · simp only [Set.indicator_of_mem hx]
+      exact hpoint x
+    · simp [hx]
+  have hRnormW : eLpNorm (B.indicator R) (ENNReal.ofReal p) μ ≤ Knear * W := by
+    calc
+      eLpNorm (B.indicator R) (ENNReal.ofReal p) μ ≤
+          ENNReal.ofReal K * eLpNorm (B.indicator M) (ENNReal.ofReal p) μ := hRnorm
+      _ ≤ ENNReal.ofReal K * (Kball * W) := mul_le_mul_right hnearW _
+      _ = Knear * W := by
+        dsimp only [Knear]
+        ring
+  have hKnearleC : Knear ≤ ENNReal.ofReal C := by
+    calc
+      Knear = ENNReal.ofReal Knear.toReal := (ENNReal.ofReal_toReal hKnearTop.ne).symm
+      _ ≤ ENNReal.ofReal C := ENNReal.ofReal_le_ofReal (by
+        dsimp only [C]
+        linarith [ENNReal.toReal_nonneg (a := Knear)])
+  have hRnormC : eLpNorm (B.indicator R) (ENNReal.ofReal p) μ ≤
+      ENNReal.ofReal C * W :=
+    hRnormW.trans (by
+      simpa only [mul_comm] using mul_le_mul_right hKnearleC W)
+  refine ⟨?_, ?_⟩
+  · simpa only [R, μ, B] using
+      (memLp_indicator_iff_restrict hBmeas).mp hRmemB
+  · change eLpNorm R (ENNReal.ofReal p) (μ.restrict B) ≤ ENNReal.ofReal C * W
+    rw [← eLpNorm_indicator_eq_eLpNorm_restrict hBmeas]
+    exact hRnormC
+
+/-- The buffered lowpass estimate restricted to the smaller central ball used
+by the thin radial shell argument. -/
+theorem exists_relativeLowpassMaximal_buffered_centralBall_one_thirty_second_power_weighted_bound
+    {d : Nat} (hd : 1 ≤ d) {p α : Real} (hp : 1 < p)
+    (hαlower : 1 - (d : Real) < α) (hα : α ≤ 0)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphi_zero : ∀ ξ : Euclidean d, 2 ≤ ‖ξ‖ → phi ξ = 0) :
+    ∃ C : Real, 0 < C ∧ ∀ f : SchwartzMap (Euclidean d) Complex,
+      (∀ x : Euclidean d, x ∉ euclideanAnnulus d (1 / 4 : Real) 8 → f x = 0) →
+      MemLp (relativeLowpassMaximal d phi f) (ENNReal.ofReal p)
+        ((powerWeightedVolume d α).restrict
+          (Metric.closedBall (0 : Euclidean d) (1 / 32))) ∧
+      eLpNorm (relativeLowpassMaximal d phi f) (ENNReal.ofReal p)
+        ((powerWeightedVolume d α).restrict
+          (Metric.closedBall (0 : Euclidean d) (1 / 32))) ≤
+        ENNReal.ofReal C * eLpNorm (f : Euclidean d → Complex)
+          (ENNReal.ofReal p) (powerWeightedVolume d α) := by
+  obtain ⟨C, hC, hlow⟩ :=
+    exists_relativeLowpassMaximal_buffered_centralBall_power_weighted_bound
+      hd hp hαlower hα phi hphi_zero
+  refine ⟨C, hC, ?_⟩
+  intro f hfsupport
+  obtain ⟨hmem, hnorm⟩ := hlow f hfsupport
+  let μ : Measure (Euclidean d) := powerWeightedVolume d α
+  let Bsmall : Set (Euclidean d) := Metric.closedBall 0 (1 / 32 : Real)
+  let Blarge : Set (Euclidean d) := Metric.closedBall 0 (1 / 8 : Real)
+  have hsubset : Bsmall ⊆ Blarge := by
+    dsimp only [Bsmall, Blarge]
+    exact Metric.closedBall_subset_closedBall (by norm_num)
+  have hmeasure : μ.restrict Bsmall ≤ μ.restrict Blarge :=
+    Measure.restrict_mono hsubset le_rfl
+  constructor
+  · exact hmem.mono_measure hmeasure
+  · exact (eLpNorm_mono_measure _ hmeasure).trans hnorm
+
+/-- The buffered lowpass estimate passes to the literal restricted-radius
+operator.  The unrestricted envelope is used only as a finite pointwise
+majorant. -/
+theorem exists_restrictedRelativeLowpass_buffered_centralBall_one_thirty_second_power_weighted_bound
+    {d : Nat} (hd : 1 ≤ d) {p α : Real} (hp : 1 < p)
+    (hαlower : 1 - (d : Real) < α) (hα : α ≤ 0)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphi_zero : ∀ ξ : Euclidean d, 2 ≤ ‖ξ‖ → phi ξ = 0) :
+    ∃ C : Real, 0 < C ∧ ∀ (E : Set Real) (f : SchwartzMap (Euclidean d) Complex),
+      (∀ x : Euclidean d, x ∉ euclideanAnnulus d (1 / 4 : Real) 8 → f x = 0) →
+      MemLp (restrictedRelativeLowpassSphericalMaximal d E phi f) (ENNReal.ofReal p)
+        ((powerWeightedVolume d α).restrict
+          (Metric.closedBall (0 : Euclidean d) (1 / 32))) ∧
+      eLpNorm (restrictedRelativeLowpassSphericalMaximal d E phi f) (ENNReal.ofReal p)
+        ((powerWeightedVolume d α).restrict
+          (Metric.closedBall (0 : Euclidean d) (1 / 32))) ≤
+        ENNReal.ofReal C * eLpNorm (f : Euclidean d → Complex)
+          (ENNReal.ofReal p) (powerWeightedVolume d α) := by
+  obtain ⟨C, hC, hlow⟩ :=
+    exists_relativeLowpassMaximal_buffered_centralBall_one_thirty_second_power_weighted_bound
+      hd hp hαlower hα phi hphi_zero
+  obtain ⟨K, hK, hraw⟩ := exists_relative_lowpass_kernel_raw_majorant phi hphi_zero
+  refine ⟨C, hC, ?_⟩
+  intro E f hfsupport
+  obtain ⟨hMmem, hMnorm⟩ := hlow f hfsupport
+  let μ : Measure (Euclidean d) :=
+    (powerWeightedVolume d α).restrict (Metric.closedBall (0 : Euclidean d) (1 / 32))
+  let L : Euclidean d → ENNReal := restrictedRelativeLowpassSphericalMaximal d E phi f
+  let M : Euclidean d → Real := relativeLowpassMaximal d phi f
+  have hphi_compact : HasCompactSupport (phi : Euclidean d → Complex) := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean d) 2)
+    intro ξ hξ
+    apply hphi_zero ξ
+    have hlt : 2 < ‖ξ‖ := by
+      rw [Metric.mem_closedBall, dist_zero_right] at hξ
+      exact lt_of_not_ge hξ
+    exact hlt.le
+  have hLmeas : AEStronglyMeasurable L μ := by
+    have hEq : L = restrictedRelativeCutoffSphericalMaximal d E phi 0 f := by
+      funext x
+      unfold L restrictedRelativeLowpassSphericalMaximal
+        restrictedRelativeCutoffSphericalMaximal
+      simp only [pow_zero, inv_one, one_smul]
+    rw [hEq]
+    exact (measurable_restrictedRelativeCutoffSphericalMaximal E phi hphi_compact 0 f).aestronglyMeasurable.restrict
+  have hrawtop (x : Euclidean d) : relativeLowpassMaximalRaw d phi f x ≠ ∞ :=
+    ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hraw f x)
+  have hpoint (x : Euclidean d) : L x ≤ ENNReal.ofReal (M x) := by
+    calc
+      L x ≤ relativeLowpassMaximalRaw d phi f x :=
+        restrictedRelativeLowpassSphericalMaximal_le_relativeLowpassMaximalRaw E phi f x
+      _ = ENNReal.ofReal (relativeLowpassMaximalRaw d phi f x).toReal :=
+        (ENNReal.ofReal_toReal (hrawtop x)).symm
+      _ = ENNReal.ofReal (M x) := by rfl
+  have hMnonneg (x : Euclidean d) : 0 ≤ M x := by
+    dsimp only [M, relativeLowpassMaximal]
+    exact ENNReal.toReal_nonneg
+  have hpoint_enorm (x : Euclidean d) :
+      ‖L x‖ₑ ≤ ((1 : NNReal) : ENNReal) * ‖M x‖ₑ := by
+    rw [enorm_eq_self, Real.enorm_of_nonneg (hMnonneg x)]
+    simpa using hpoint x
+  have hLmem : MemLp L (ENNReal.ofReal p) μ := by
+    refine MemLp.of_enorm_le_mul (c := (1 : NNReal)) hMmem hLmeas ?_
+    exact Filter.Eventually.of_forall hpoint_enorm
+  have hLnorm : eLpNorm L (ENNReal.ofReal p) μ ≤
+      ((1 : NNReal) : ENNReal) * eLpNorm M (ENNReal.ofReal p) μ :=
+    eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' (p := ENNReal.ofReal p)
+      hMmem.1 (Filter.Eventually.of_forall hpoint_enorm)
+  constructor
+  · simpa only [L, μ] using hLmem
+  · change eLpNorm L (ENNReal.ofReal p) μ ≤
+        ENNReal.ofReal C * eLpNorm (f : Euclidean d → Complex)
+          (ENNReal.ofReal p) (powerWeightedVolume d α)
+    calc
+      eLpNorm L (ENNReal.ofReal p) μ ≤
+          ((1 : NNReal) : ENNReal) * eLpNorm M (ENNReal.ofReal p) μ := hLnorm
+      _ = eLpNorm M (ENNReal.ofReal p) μ := by simp
+      _ ≤ ENNReal.ofReal C * eLpNorm (f : Euclidean d → Complex)
+          (ENNReal.ofReal p) (powerWeightedVolume d α) := by
+            simpa only [M, μ] using hMnorm
+
+end
+
+end LeanSpherical.HarmonicAnalysis

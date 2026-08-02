@@ -1,0 +1,77 @@
+/-
+Copyright (c) 2026 LeanSpherical contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: LeanSpherical contributors
+-/
+
+import LeanSpherical.HarmonicAnalysis.PowerWeights.EntropyAsymptotics
+
+/-!
+# Local entropy bounds from the Legendre--Assouad profile
+
+This is the algebraic extraction step between the profile in the theorem
+statement and the interval-by-interval entropy inequality used in the local
+maximal estimate.
+-/
+
+namespace LeanSpherical.HarmonicAnalysis
+
+open Set
+open scoped ENNReal NNReal Topology
+
+noncomputable section
+
+/-- A bound for the Legendre--Assouad profile controls each individual local
+entropy number after restoring the diameter factor. -/
+theorem localMultiplicativeEntropy_le_diam_rpow_mul_of_profile_le
+    {E : Set ℝ} {rho : ℝ} {δ : ℝ≥0} (hδ : 0 < δ)
+    {B : ℝ≥0∞} (hB : multiplicativeLegendreAssouadProfile E rho δ ≤ B)
+    (c : PositiveRadius) (diam : Icc δ 1) :
+    localMultiplicativeEntropy E c diam.1 δ ≤
+      ((diam.1 : ℝ≥0∞) ^ rho) * B := by
+  let D : ℝ≥0∞ := (diam.1 : ℝ≥0∞)
+  let N : ℝ≥0∞ := localMultiplicativeEntropy E c diam.1 δ
+  have hDpos : 0 < D := by
+    dsimp [D]
+    exact ENNReal.coe_pos.mpr (lt_of_lt_of_le hδ diam.2.1)
+  have hDzero : D ≠ 0 := hDpos.ne'
+  have hDtop : D ≠ ⊤ := ENNReal.coe_ne_top
+  have hterm : D ^ (-rho) * N ≤ B := by
+    calc
+      D ^ (-rho) * N ≤ multiplicativeLegendreAssouadProfile E rho δ := by
+        dsimp [multiplicativeLegendreAssouadProfile, D, N]
+        exact le_iSup_of_le c (le_iSup (fun diam : Icc δ 1 =>
+          ((diam.1 : ℝ≥0∞) ^ (-rho)) *
+            localMultiplicativeEntropy E c diam.1 δ) diam)
+      _ ≤ B := hB
+  have hcancel : D ^ rho * D ^ (-rho) = 1 := by
+    rw [← ENNReal.rpow_add _ _ hDzero hDtop]
+    norm_num
+  change N ≤ D ^ rho * B
+  calc
+    N = 1 * N := (one_mul _).symm
+    _ = (D ^ rho * D ^ (-rho)) * N := by rw [hcancel]
+    _ = D ^ rho * (D ^ (-rho) * N) := by ring
+    _ ≤ D ^ rho * B := by gcongr
+
+/-- In the strict interior above `ν♯(rho)`, every local interval has the
+power entropy bound required by the local estimate, uniformly for all
+sufficiently small scales. -/
+theorem eventually_localMultiplicativeEntropy_le_diam_rpow_mul_inv_rpow
+    {E : Set ℝ} {rho s : ℝ}
+    (h : multiplicativeLegendreAssouadExponent E rho < (s : EReal)) :
+    ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
+      ∀ (c : PositiveRadius) (diam : Icc δ 1),
+        localMultiplicativeEntropy E c diam.1 δ ≤
+          ((diam.1 : ℝ≥0∞) ^ rho) * ((δ : ℝ≥0∞)⁻¹) ^ s := by
+  have hsmall : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0), δ ∈ Ioo (0 : ℝ≥0) 1 :=
+    nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
+  filter_upwards [
+    eventually_multiplicativeLegendreAssouadProfile_le_inv_rpow_of_exponent_lt h,
+    hsmall] with δ hδ hδsmall
+  intro c diam
+  exact localMultiplicativeEntropy_le_diam_rpow_mul_of_profile_le hδsmall.1 hδ c diam
+
+end
+
+end LeanSpherical.HarmonicAnalysis
