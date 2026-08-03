@@ -31,8 +31,7 @@ section SphericalMaximal
 
 /-- Normalized surface measure on the Euclidean unit sphere. -/
 def unitSphereMeasure (d : ℕ) : Measure (Metric.sphere (0 : ℝ^d) 1) := by
-  let μ : Measure (Metric.sphere (0 : ℝ^d) 1) :=
-    (volume : Measure (ℝ^d)).toSphere
+  let μ : Measure (Metric.sphere (0 : ℝ^d) 1) := volume.toSphere
   exact (μ univ)⁻¹ • μ
 
 /-- Spherical average of `f` centered at `x` with radius `t`. -/
@@ -44,8 +43,7 @@ def restrictedSphericalMaximal {d : ℕ} (E : Set ℝ) (f : ℝ^d → ℂ) (x : 
   ⨆ t ∈ E ∩ Ioi 0, ENNReal.ofReal ‖sphericalAverage t f x‖
 
 @[inherit_doc restrictedSphericalMaximal]
-abbrev M {d : ℕ} (E : Set ℝ) (f : ℝ^d → ℂ) (x : ℝ^d) : ENNReal :=
-  restrictedSphericalMaximal E f x
+abbrev M {d : ℕ} (E : Set ℝ) (f : ℝ^d → ℂ) (x : ℝ^d) : ENNReal := restrictedSphericalMaximal E f x
 
 end SphericalMaximal
 
@@ -64,13 +62,11 @@ def entropyNumber (E : Set ℝ) (δ : ℝ≥0) : ENat :=
   Metric.externalCoveringNumber δ (logDilationSet E)
 
 @[inherit_doc entropyNumber]
-abbrev N (E : Set ℝ) (δ : ℝ≥0) : ENat :=
-  entropyNumber E δ
+abbrev N (E : Set ℝ) (δ : ℝ≥0) : ENat := entropyNumber E δ
 
 /-- The upper Minkowski dimension of a dilation set. -/
 def upperMinkowskiExponent (E : Set ℝ) : ℝ :=
-  Filter.limsup
-    (fun r : NNReal ↦ ENNReal.log (⨆ c : Ioi (0 : ℝ),
+  limsup (fun r : NNReal ↦ ENNReal.log (⨆ c : Ioi (0 : ℝ),
       N (E ∩ (logBall c 1)) r) / (Real.log ((r : ℝ)⁻¹) : EReal))
     (𝓝[>] 0) |>.toReal
 
@@ -82,7 +78,6 @@ def legendreAssouadFunction (E : Set ℝ) (ρ : ℝ) : ℝ :=
   limsup (fun r : NNReal ↦ ENNReal.log (⨆ c : Ioi 0, ⨆ R : Icc r 1,
       (R.1 : ℝ≥0∞) ^ (-ρ) * N (E ∩ (logBall c R)) r) / (Real.log (r⁻¹) : EReal))
     (𝓝[>] 0) |>.toReal
-
 
 @[inherit_doc legendreAssouadFunction]
 scoped notation "ν♯" => legendreAssouadFunction
@@ -100,7 +95,6 @@ namespace RestrictedDilations
 /-- The critical exponent `p_β = 1 + β / (d - 1)`. -/
 def criticalExponent (d : ℕ) (E : Set ℝ) : ℝ := 1 + β E / ((d : ℝ) - 1)
 
-
 end RestrictedDilations
 
 namespace PowerWeights
@@ -109,7 +103,7 @@ open RestrictedDilations
 
 /-- Lebesgue measure weighted by the radial power `|x|^α`. -/
 def powerWeight (d : ℕ) (α : ℝ) : Measure (ℝ^d) :=
-  volume.withDensity fun x => (ENNReal.ofReal ‖x‖) ^ α
+  volume.withDensity fun x ↦ (ENNReal.ofReal ‖x‖) ^ α
 
 /-- The weighted strong-type region, in coordinates `(1 / p, α / p)`. -/
 def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
@@ -120,7 +114,7 @@ def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
 
 /-- The lower endpoint function in Thm. 1.1, arXiv:2602.17613 -/
 def lowerEndpoint (d : ℕ) (E : Set ℝ) (p : ℝ) : ℝ :=
-  ((d : ℝ) - 1) * (p - 2) - generalizedInverse (ν♯ E) (((d : ℝ) - 1) * (p - 1))
+  ((d : ℝ) - 1) * (p - 2) - ((ν♯ E)†) (((d : ℝ) - 1) * (p - 1))
 
 /-- The upper endpoint function in Thm. 1.1, arXiv:2602.17613 -/
 def upperEndpoint (d : ℕ) (E : Set ℝ) (p : ℝ) : ℝ :=
@@ -131,7 +125,6 @@ def admissibleRegion (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
   {q | q.1 = 0 ∧ q.2 ∈ Icc 0 ((d : ℝ) - 1)} ∪
   {q | ∃ p α : ℝ, 1 ≤ p ∧ q = (p⁻¹, α / p) ∧
     criticalExponent d E ≤ p ∧ lowerEndpoint d E p ≤ α ∧ α ≤ upperEndpoint d E p}
-
 
 end PowerWeights
 
