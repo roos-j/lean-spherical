@@ -10,7 +10,7 @@ for compact subsets of the radius interval.  We deliberately use covers by
 closed intervals: this is the convention in Anderson--Hughes--Roos--Seeger.
 -/
 
-namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+namespace Codex.Spherical.FractalDilations.Minkowski
 
 open Set
 
@@ -91,4 +91,4 @@ theorem finite_hasUpperMinkowskiExponent (F : Set ℝ) (hF : F.Finite)
       _ ≤ ((ι.card : ℝ) + 1) * δ ^ (-(β + ε)) := by
         exact le_mul_of_one_le_right (by positivity) hpow
 
-end LeanSpherical.HarmonicAnalysis.FractalDilations
+end Codex.Spherical.FractalDilations.Minkowski

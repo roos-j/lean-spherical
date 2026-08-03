@@ -15,7 +15,7 @@ open Filter MeasureTheory Set ENNReal
 
 noncomputable section
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.InterpolationCore
 
 /-- Multiplication by a positive scale transports Lebesgue measure on the
 positive half-line by the reciprocal scale. -/
@@ -1674,4 +1674,4 @@ theorem marcinkiewicz_one_two_on_additive_split_real
       (integrable_sq_of_memLp_two_nonneg (T g) (hmem_two g hg) (hT_nonneg g))
       (hinput_two g hg) (hbound_two g hg)
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.InterpolationCore

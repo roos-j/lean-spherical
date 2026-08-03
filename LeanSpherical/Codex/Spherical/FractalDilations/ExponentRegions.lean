@@ -14,7 +14,7 @@ Anderson--Hughes--Roos--Seeger.  An exponent point `(u, v)` stands for
 segment which is relevant to the strong-type theorem.
 -/
 
-namespace LeanSpherical.HarmonicAnalysis.FractalDilations
+namespace Codex.Spherical.FractalDilations.ExponentRegions
 
 open Set
 
@@ -150,4 +150,4 @@ theorem R_subset_Q_closure (d : ℕ) (beta gamma : ℝ) :
 
 end
 
-end LeanSpherical.HarmonicAnalysis.FractalDilations
+end Codex.Spherical.FractalDilations.ExponentRegions

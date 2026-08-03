@@ -22,7 +22,7 @@ geometry and continuity properties, and the Euclidean analytic lemmas used
 throughout the spherical maximal development.
 -/
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory Metric Set
 
@@ -134,9 +134,9 @@ theorem normalizedSphericalAverage_le_normalizedSphericalMaximal
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory Metric Set
 
@@ -475,9 +475,9 @@ theorem normalizedSphericalMaximal_le_of_norm_le {d : ℕ} (hd : 0 < d)
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory Metric Set
 
@@ -631,9 +631,9 @@ theorem exists_schwartz_compactSupport_mul_surfaceFourier_radius_deriv
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory Metric Set
 open scoped Pointwise
@@ -763,9 +763,9 @@ theorem surfaceFourier_eq_norm_smul_unit (d : Nat) (ξ v : Euclidean d)
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory
 
@@ -869,9 +869,9 @@ theorem norm_euclideanSucc_coordinates (d : Nat) (x : Euclidean (d + 1)) :
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory
 
@@ -977,9 +977,9 @@ theorem integral_norm_fderiv_dilate_eq
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open Set
 
@@ -1026,9 +1026,9 @@ theorem dyadicAnnulus_disjoint {d i j : Nat} (hij : i ≠ j) :
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open MeasureTheory Set
 
@@ -1090,9 +1090,9 @@ theorem measurable_iSup_ennreal_norm_sq_of_continuous
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 open Filter MeasureTheory Metric
 open scoped BoundedContinuousFunction Convolution
@@ -1319,14 +1319,14 @@ theorem integral_norm_fderiv_convolution_right_le_schwartz
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore
 
 open MeasureTheory
 open scoped Convolution
 
 noncomputable section
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceCore
 
 /-- The `L¹` norm of the convolution of two complex integrable functions on
 finite-dimensional Euclidean space is bounded by the product of their `L¹`
@@ -1466,4 +1466,4 @@ theorem norm_convolution_mul_le_integral_norm_mul_bound
     _ = (∫ y : EuclideanSpace ℝ (Fin d), ‖k y‖) * C := by
       rw [integral_mul_const]
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceCore

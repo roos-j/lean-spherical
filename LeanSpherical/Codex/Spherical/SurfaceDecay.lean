@@ -12,7 +12,7 @@ This module consolidates the stationary-phase, endpoint, semicircle, and
 elementary oscillatory-integral estimates used in Fourier surface decay.
 -/
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceDecay
 
 open MeasureTheory intervalIntegral
 
@@ -213,9 +213,9 @@ theorem quadratic_phase_tail_norm_le_inv {a b c : ℝ} (ha : 0 < a) (hab : a ≤
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceDecay
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceDecay
 
 noncomputable section
 
@@ -302,9 +302,9 @@ theorem hasDerivAt_pi_div_two_sub_two_arcsin_div_sqrt_two
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceDecay
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceDecay
 
 open MeasureTheory intervalIntegral
 open scoped ComplexConjugate
@@ -1829,9 +1829,9 @@ theorem norm_intervalIntegral_t_mul_semicircle_le (l : ℝ) (hl : 1 ≤ l) :
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceDecay
 
-namespace LeanSpherical.HarmonicAnalysis
+namespace Codex.Spherical.SurfaceDecay
 
 open MeasureTheory intervalIntegral
 
@@ -1884,4 +1884,4 @@ theorem norm_intervalIntegral_exp_surfacePhase_le (a : ℝ) (ha : a ≠ 0) :
 
 end
 
-end LeanSpherical.HarmonicAnalysis
+end Codex.Spherical.SurfaceDecay
