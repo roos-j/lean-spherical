@@ -1,19 +1,15 @@
-import LeanSpherical.Codex.Spherical.SphericalMaximal
-import LeanSpherical.Codex.Spherical.FractalDilations.MinkowskiDiagonal
-import LeanSpherical.Codex.Spherical.PowerWeights.Public
-import LeanSpherical.Codex.Spherical.HardyLittlewoodMaximal
+import LeanSpherical.Theorems
 
-#check LeanSpherical.HarmonicAnalysis.dyadic_hardy_littlewood_weak_one
-#print axioms LeanSpherical.HarmonicAnalysis.dyadic_hardy_littlewood_weak_one
+open Spherical
 
-#check LeanSpherical.HarmonicAnalysis.dyadic_hardy_littlewood_maximal_Lp
-#print axioms LeanSpherical.HarmonicAnalysis.dyadic_hardy_littlewood_maximal_Lp
+#check PowerWeights.closure_typeSet_eq
+#print axioms PowerWeights.closure_typeSet_eq
 
-#check LeanSpherical.HarmonicAnalysis.stein_spherical_maximal_Lp
-#print axioms LeanSpherical.HarmonicAnalysis.stein_spherical_maximal_Lp
+#check RestrictedDilations.eLpNorm_restrictedSphericalMaximal_le
+#print axioms RestrictedDilations.eLpNorm_restrictedSphericalMaximal_le
 
-#check LeanSpherical.HarmonicAnalysis.FractalDilations.minkowski_segment_strong_type_d_ge_three
-#print axioms LeanSpherical.HarmonicAnalysis.FractalDilations.minkowski_segment_strong_type_d_ge_three
+#check eLpNorm_sphericalMaximal_le
+#print axioms eLpNorm_sphericalMaximal_le
 
-#check LeanSpherical.HarmonicAnalysis.PowerWeightPublic.power_weight_spherical_maximal
-#print axioms LeanSpherical.HarmonicAnalysis.PowerWeightPublic.power_weight_spherical_maximal
+#check RestrictedDilations.eLpNorm_lacunarySphericalMaximal_le
+#print axioms RestrictedDilations.eLpNorm_lacunarySphericalMaximal_le

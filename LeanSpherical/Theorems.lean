@@ -17,8 +17,8 @@ open scoped Spherical ENNReal NNReal Topology
 theorem eLpNorm_sphericalMaximal_le {d : ℕ} {p : ENNReal} (hd : 3 ≤ d)
     (hp : (d : ENNReal) / (d - 1) < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
-      eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume := by sorry
-  -- Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le hd hp
+      eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
+  Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le hd hp
 
 namespace RestrictedDilations
 
@@ -28,17 +28,17 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
     (hp : ENNReal.ofReal (criticalExponent d E) <
       p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
-      eLpNorm (M E f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume := by sorry
-  -- Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le
-  --   hd hE hp
+      eLpNorm (M E f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
+  Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le
+    hd hE hp
 
 /-- C.P. Calderon's theorem -/
 theorem eLpNorm_lacunarySphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 3 ≤ d)
     (hp : 1 < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
-      eLpNorm (M {2 ^ k | k : ℤ} f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume := by sorry
-  -- Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_lacunarySphericalMaximal_le
-  --   hd hp
+      eLpNorm (M {2 ^ k | k : ℤ} f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
+  Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_lacunarySphericalMaximal_le
+    hd hp
 
 end RestrictedDilations
 
