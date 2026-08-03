@@ -2,6 +2,10 @@
 
 import LeanSpherical.Basic
 import LeanSpherical.Codex.Spherical.PowerWeights.Main
+import LeanSpherical.Codex.Spherical.PowerWeights.RawLpLift
+import LeanSpherical.Codex.Spherical.PowerWeights.InfinityPoint
+import LeanSpherical.Codex.Spherical.PowerWeights.NecessaryConditions
+import LeanSpherical.Codex.Spherical.PowerWeights.MeasureRegularity
 
 open _root_.Spherical _root_.Spherical.PowerWeights
 open Filter MeasureTheory Set Topology ENNReal
@@ -18,6 +22,9 @@ open Codex.Spherical.PowerWeights.EntropyLowerBounds
 open Codex.Spherical.PowerWeights.EntropyUpperBounds
 open Codex.Spherical.PowerWeights.ParameterClosure
 open Codex.Spherical.PowerWeights.PowerMeasure
+open Codex.Spherical.PowerWeights.Density
+open Codex.Spherical.PowerWeights.MeasureRegularity
+open Codex.Spherical.PowerWeights.NecessaryConditions
 open Codex.Spherical.PowerWeights.RestrictedMaximal
 open Codex.Spherical.PowerWeights.TypeSet
 
@@ -53,43 +60,133 @@ theorem restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal
   rw [iSup_subtype]
   simp_rw [sphericalAverage_eq_normalizedSphericalAverage (d := d)]
 
-theorem typeSet_eq_restrictedNormalizedSphericalMaximalPowerWeightTypeSet
-    (d : ℕ) (E : Set ℝ) :
-    _root_.Spherical.PowerWeights.typeSet d E =
-      restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E := by
-  ext q
-  constructor
-  · rintro ⟨p, α, hp, hq, C, hC, hbound⟩
-    refine ⟨p, α, hp, congrArg Prod.fst hq, congrArg Prod.snd hq, C, hC, ?_⟩
+private theorem exists_raw_power_bound_of_restrictedStrongType
+    {d : ℕ} {E : Set ℝ} {p α : ℝ} (hd : 3 ≤ d)
+    (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) (hp : 1 ≤ p)
+    (hcore : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f : Euclidean d → ℂ,
+      MemLp f (ENNReal.ofReal p) (powerWeightedVolume d α) →
+        eLpNorm (_root_.Spherical.M E f) (ENNReal.ofReal p)
+          (powerWeightedVolume d α) ≤
+          ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p)
+            (powerWeightedVolume d α) := by
+  rcases hcore with ⟨C, hC, hcore⟩
+  have hd1 : 1 ≤ d := by omega
+  have hd0 : 0 < d := by omega
+  have hE' : ∃ r : ℝ, r ∈ E ∧ 0 < r := by
+    rcases hE with ⟨r, hr⟩
+    exact ⟨r, hr, hEpos hr⟩
+  have hα : -(d : ℝ) < α :=
+    neg_dim_lt_alpha_of_restrictedStrongType hd0 hE' hp ⟨C, hC, hcore⟩
+  letI : (powerWeightedVolume d α).HasTemperateGrowth :=
+    powerWeightedVolume_hasTemperateGrowth hd1 hα
+  letI : IsFiniteMeasureOnCompacts (powerWeightedVolume d α) :=
+    powerWeightedVolume_isFiniteMeasureOnCompacts hd1 hα
+  letI : (powerWeightedVolume d α).WeaklyRegular := inferInstance
+  letI : SigmaFinite (powerWeightedVolume d α) := inferInstance
+  refine ⟨C, hC, ?_⟩
+  intro f hf
+  have hp0real : 0 < p := lt_of_lt_of_le zero_lt_one hp
+  have hp0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0real
+  have hrawcore (φ : SchwartzMap (Euclidean d) ℂ) :
+      eLpNorm (_root_.Spherical.M E (φ : Euclidean d → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume d α) ≤
+        ENNReal.ofReal C * eLpNorm (φ : Euclidean d → ℂ) (ENNReal.ofReal p)
+          (powerWeightedVolume d α) := by
+    have hφ := hcore φ (φ.memLp (ENNReal.ofReal p) (powerWeightedVolume d α))
+    rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal] at hφ
+    exact hφ.2
+  obtain ⟨J, hJmeas, hdom, hJbound⟩ :=
+    RawLpLift.exists_measurable_raw_envelope_of_memLp
+      hp0 ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top hrawcore hf
+  exact (eLpNorm_mono_enorm hdom).trans hJbound
+
+private theorem finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeightTypeSet
+    {d : ℕ} {E : Set ℝ} {q : ℝ × ℝ} {α : ℝ} {p : ENNReal}
+    (hp : 1 ≤ p) (hptop : p ≠ ∞)
+    (hq : q = (ENNReal.toReal p⁻¹, α * ENNReal.toReal p⁻¹))
+    {C : ℝ} (hC : 0 < C)
+    (hbound : ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      eLpNorm (M E f) p (_root_.Spherical.PowerWeights.powerWeight d α) ≤
+        ENNReal.ofReal C * eLpNorm f p (_root_.Spherical.PowerWeights.powerWeight d α)) :
+    q ∈ restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E := by
+  have hp_eq : ENNReal.ofReal p.toReal = p := ENNReal.ofReal_toReal hptop
+  have hmeasure : _root_.Spherical.PowerWeights.powerWeight d α = powerWeightedVolume d α := rfl
+  refine mem_restrictedNormalizedSphericalMaximalPowerWeightTypeSet_iff.mpr
+    ⟨p.toReal, α, ?_, ?_, ?_, ?_⟩
+  · rw [← ENNReal.toReal_one]
+    exact ENNReal.toReal_mono hptop hp
+  · calc
+      q.1 = (ENNReal.toReal p⁻¹, α * ENNReal.toReal p⁻¹).1 := congrArg Prod.fst hq
+      _ = p.toReal⁻¹ := ENNReal.toReal_inv p
+  · calc
+      q.2 = (ENNReal.toReal p⁻¹, α * ENNReal.toReal p⁻¹).2 := congrArg Prod.snd hq
+      _ = α / p.toReal := by rw [ENNReal.toReal_inv, div_eq_mul_inv]
+  · refine ⟨C, hC, ?_⟩
     intro f hf
-    refine ⟨?_, ?_⟩
+    have hfvol : MemLp (f : (ℝ^d) → ℂ) p volume := by
+      rw [← hp_eq]
+      exact f.memLp _ _
+    have hfweight : MemLp (f : (ℝ^d) → ℂ) p (powerWeightedVolume d α) := by
+      rw [← hp_eq]
+      exact hf
+    have hnorm := hbound (f : (ℝ^d) → ℂ) hfvol
+    have hnorm' : eLpNorm (restrictedNormalizedSphericalMaximal d E (f : (ℝ^d) → ℂ)) p
+        (powerWeightedVolume d α) ≤ ENNReal.ofReal C *
+          eLpNorm (f : (ℝ^d) → ℂ) p (powerWeightedVolume d α) := by
+      rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal, ← hmeasure]
+      exact hnorm
+    have hMfin : eLpNorm (restrictedNormalizedSphericalMaximal d E (f : (ℝ^d) → ℂ)) p
+        (powerWeightedVolume d α) < ∞ :=
+      hnorm'.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfweight.eLpNorm_lt_top)
+    constructor
     · refine ⟨?_, ?_⟩
-      · rw [← powerWeight_eq_powerWeightedVolume]
-        exact (measurable_restrictedNormalizedSphericalMaximal E f f.continuous).aestronglyMeasurable
-      · rw [← powerWeight_eq_powerWeightedVolume]
-        rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
-        exact (hbound f).trans_lt <|
-          ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr ENNReal.ofReal_ne_top) hf.eLpNorm_lt_top
-    · rw [← powerWeight_eq_powerWeightedVolume]
-      rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
-      exact hbound f
-  · rintro ⟨p, α, hp, hq1, hq2, C, hC, hstrong⟩
-    refine ⟨p, α, hp, Prod.ext hq1 hq2, C, hC, ?_⟩
-    intro f
-    change eLpNorm (_root_.Spherical.restrictedSphericalMaximal E f)
-        (ENNReal.ofReal p) (_root_.Spherical.PowerWeights.powerWeight d α) ≤
-      ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p)
-        (_root_.Spherical.PowerWeights.powerWeight d α)
-    rw [powerWeight_eq_powerWeightedVolume,
-      restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
-    by_cases hf : MemLp f (ENNReal.ofReal p) (powerWeightedVolume d α)
-    · exact (hstrong f hf).2
-    · have hfmeas : AEStronglyMeasurable f (powerWeightedVolume d α) :=
-        f.continuous.aestronglyMeasurable
-      have hftop : eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α) = ∞ :=
-        not_lt_top_iff.mp fun hfin => hf ⟨hfmeas, hfin⟩
-      rw [hftop, ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr hC)]
+      · exact (measurable_restrictedNormalizedSphericalMaximal E (f : (ℝ^d) → ℂ)
+          f.continuous).aestronglyMeasurable
+      · simpa only [hp_eq] using hMfin
+    · simpa only [hp_eq] using hnorm'
+
+private theorem typeSet_subset_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet
+    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (_hE : E.Nonempty) (_hEpos : E ⊆ Ioi (0 : ℝ)) :
+    _root_.Spherical.PowerWeights.typeSet d E ⊆
+      closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
+  intro q hq
+  rcases hq with ⟨α, p, hp, hq, C, hC, hbound⟩
+  by_cases hptop : p = ∞
+  · subst p
+    norm_num at hq
+    rw [hq]
+    exact InfinityPoint.zero_zero_mem_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet hd E
+  · exact subset_closure
+      (finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeightTypeSet hp hptop hq hC hbound)
+
+private theorem restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_typeSet
+    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) :
+    restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E ⊆
+      _root_.Spherical.PowerWeights.typeSet d E := by
+  intro q hq
+  rcases hq with ⟨p, α, hp, hq1, hq2, hcore⟩
+  rcases exists_raw_power_bound_of_restrictedStrongType hd hE hEpos hp hcore with
+    ⟨C, hC, hraw⟩
+  have hp0 : 0 < p := lt_of_lt_of_le zero_lt_one hp
+  have hqeq : q = (p⁻¹, α / p) := Prod.ext hq1 hq2
+  rw [hqeq]
+  refine ⟨α, ENNReal.ofReal p, ?_, ?_, C, hC, ?_⟩
+  · rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal hp
+  · simp only [ENNReal.toReal_inv, ENNReal.toReal_ofReal hp0.le]
+    ext <;> field_simp
+  · intro f hfvol
+    change eLpNorm (_root_.Spherical.M E f) (ENNReal.ofReal p)
+        (powerWeightedVolume d α) ≤
+      ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α)
+    by_cases hftop : eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α) = ∞
+    · rw [hftop, ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr hC)]
       exact le_top
+    · apply hraw f
+      refine ⟨?_, lt_top_iff_ne_top.mpr hftop⟩
+      change AEStronglyMeasurable f (volume.withDensity (radialPowerWeight d α))
+      exact hfvol.1.mono_ac (withDensity_absolutelyContinuous volume (radialPowerWeight d α))
 
 theorem le_generalizedInverse_iff
     {f : ℝ → ℝ} (hmono : Monotone f) (hcont : Continuous f)
@@ -1197,7 +1294,12 @@ theorem closure_typeSet_eq
   calc
     closure (typeSet d E) =
         closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
-      rw [typeSet_eq_restrictedNormalizedSphericalMaximalPowerWeightTypeSet]
+      apply Subset.antisymm
+      · exact closure_minimal
+          (typeSet_subset_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet
+            hd hE hEpos) isClosed_closure
+      · exact closure_mono
+          (restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_typeSet hd hE hEpos)
     _ = powerWeightAdmissibleRegion d E :=
       Codex.Spherical.PowerWeights.Main.power_weight_spherical_maximal_main hd E hE hEpos
     _ = admissibleRegion d E :=
