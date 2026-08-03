@@ -25,8 +25,7 @@ namespace RestrictedDilations
 /-- Seeger-Wainger-Wright theorem -/
 theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
     (hd : 3 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
-    (hp : ENNReal.ofReal (criticalExponent d E) <
-      p) :
+    (hp : ENNReal.ofReal (criticalExponent d E) < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
       eLpNorm (M E f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le
