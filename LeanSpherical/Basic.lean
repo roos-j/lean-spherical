@@ -111,12 +111,12 @@ open RestrictedDilations
 def powerWeight (d : ℕ) (α : ℝ) : Measure (ℝ^d) :=
   volume.withDensity fun x => (ENNReal.ofReal ‖x‖) ^ α
 
-/-- The finite-exponent weighted strong-type region, in coordinates `(1 / p, α / p)`. -/
+/-- The weighted strong-type region, in coordinates `(1 / p, α / p)`. -/
 def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
-  {q | ∃ p α : ℝ, 1 ≤ p ∧ q = (p⁻¹, α / p) ∧
-    ∃ C : ℝ, 0 < C ∧ ∀ f : SchwartzMap (ℝ^d) ℂ,
-      eLpNorm (M E f) (ENNReal.ofReal p) (powerWeight d α) ≤
-        ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) (powerWeight d α)}
+  {q | ∃ α : ℝ, ∃ p : ENNReal, 1 ≤ p ∧ q = (ENNReal.toReal p⁻¹, α * (ENNReal.toReal p⁻¹)) ∧
+    ∃ C : ℝ, 0 < C ∧ ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      eLpNorm (M E f) p (powerWeight d α) ≤
+        ENNReal.ofReal C * eLpNorm f p (powerWeight d α)}
 
 /-- The lower endpoint function in Thm. 1.1, arXiv:2602.17613 -/
 def lowerEndpoint (d : ℕ) (E : Set ℝ) (p : ℝ) : ℝ :=
