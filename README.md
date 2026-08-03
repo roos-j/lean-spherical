@@ -7,7 +7,7 @@ Completed:
 * Stein's spherical maximal theorem: [`Spherical.eLpNorm_sphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/df0dced2aec417d3ee3719f6379ac23bd5c5fe34/LeanSpherical/Theorems.lean#L17-L20)
 * Lacunary spherical maximal theorem: [`Spherical.RestrictedDilations.eLpNorm_lacunarySphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/a24004b2daeab233b804360ea88111afd5ad2d7f/LeanSpherical/Theorems.lean#L36-L39)
 * $`L^p \to L^p`$ bounds for restricted dilation sets, for $`d \ge 3`$: [Seeger-Wainger-Wright '08](https://doi.org/10.1017/S0305004100073503): [`Spherical.RestrictedDilations.eLpNorm_restrictedSphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/df0dced2aec417d3ee3719f6379ac23bd5c5fe34/LeanSpherical/Theorems.lean#L26-L30)
-* Power weights, Thm. 1.1 of [Fraccaroli-Roos-Seeger '26](arXiv:2602.17613), for $`d \ge 3`$: [`Spherical.PowerWeights.closure_typeSet_eq`](https://github.com/roos-j/lean-spherical/blob/a24004b2daeab233b804360ea88111afd5ad2d7f/LeanSpherical/Theorems.lean#L49-L51)
+* Power weights, Thm. 1.1 of [Fraccaroli-Roos-Seeger '26](https://arxiv.org/abs/2602.17613), for $`d \ge 3`$: [`Spherical.PowerWeights.closure_typeSet_eq`](https://github.com/roos-j/lean-spherical/blob/a24004b2daeab233b804360ea88111afd5ad2d7f/LeanSpherical/Theorems.lean#L49-L51)
 * Thm. 2 of [arXiv:1909.05389](https://arxiv.org/abs/1909.05389) (Sharpness examples for $`L^p`$ improving)
 
 ToDo:
