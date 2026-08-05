@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Joris Roos
 -/
 
-import LeanSpherical.Basic
+import LeanSpherical.Definitions
 import LeanSpherical.Codex.Spherical.FractalDilations.DiagonalTheorem
 import LeanSpherical.Codex.Spherical.PowerWeights.PowerWeightTheorem
 
@@ -16,7 +16,7 @@ open scoped Spherical ENNReal NNReal Topology
 /-- Stein's spherical maximal theorem -/
 theorem eLpNorm_sphericalMaximal_le {d : ℕ} {p : ENNReal} (hd : 3 ≤ d)
     (hp : (d : ENNReal) / (d - 1) < p) :
-    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume → MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
       eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le hd hp
 
@@ -26,15 +26,24 @@ namespace RestrictedDilations
 theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
     (hd : 3 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
     (hp : ENNReal.ofReal (criticalExponent d E) < p) :
-    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume → MemLp (M E f) p volume ∧
       eLpNorm (M E f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le
     hd hE hp
 
+/-- Sharpness up to endpoints of Seeger-Wainger-Wright theorem -/
+theorem eLpNorm_restrictedSphericalMaximal_ge_of_lt_criticalExponent {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) {E : Set ℝ} (hEne : E.Nonempty) (hE : E ⊆ Ioi 0)
+    (hp0 : 0 < p) (hp : p < ENNReal.ofReal (criticalExponent d E)) :
+    ∀ C : ℝ, ∃ f : (ℝ^d) → ℂ, MemLp f p volume ∧ 0 <  eLpNorm f p volume ∧
+      eLpNorm (M E f) p volume ≥ (ENNReal.ofReal C) * eLpNorm f p volume :=
+  Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_ge_of_lt_criticalExponent
+    hd hEne hE hp0 hp
+
 /-- C.P. Calderon's theorem -/
 theorem eLpNorm_lacunarySphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 3 ≤ d)
     (hp : 1 < p) :
-    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume → MemLp (M {2 ^ k | k : ℤ} f) p volume ∧
       eLpNorm (M {2 ^ k | k : ℤ} f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_lacunarySphericalMaximal_le
     hd hp

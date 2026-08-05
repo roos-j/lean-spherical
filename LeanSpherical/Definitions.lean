@@ -108,9 +108,9 @@ def powerWeight (d : ℕ) (α : ℝ) : Measure (ℝ^d) :=
 /-- The weighted strong-type region, in coordinates `(1 / p, α / p)`. -/
 def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
   {q | ∃ α : ℝ, ∃ p : ENNReal, 1 ≤ p ∧ q = (ENNReal.toReal p⁻¹, α * (ENNReal.toReal p⁻¹)) ∧
-    ∃ C : ℝ, 0 < C ∧ ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
-      eLpNorm (M E f) p (powerWeight d α) ≤
-        ENNReal.ofReal C * eLpNorm f p (powerWeight d α)}
+    ∃ C : ℝ, 0 < C ∧ ∀ f : (ℝ^d) → ℂ, MemLp f p (powerWeight d α) →
+      MemLp (M E f) p (powerWeight d α) ∧ eLpNorm (M E f) p (powerWeight d α)
+        ≤ ENNReal.ofReal C * eLpNorm f p (powerWeight d α)}
 
 /-- The lower endpoint function in Thm. 1.1, arXiv:2602.17613 -/
 def lowerEndpoint (d : ℕ) (E : Set ℝ) (p : ℝ) : ℝ :=
