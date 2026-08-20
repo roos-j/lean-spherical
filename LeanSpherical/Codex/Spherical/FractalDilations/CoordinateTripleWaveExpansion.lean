@@ -3,8 +3,10 @@
 
 import LeanSpherical.Codex.Spherical.FractalDilations.PlanarTripleWaveNormalForm
 import LeanSpherical.Codex.Spherical.FractalDilations.TripleWaveConeGeometry
+import LeanSpherical.Codex.Spherical.FractalDilations.OscillatoryIBP
 open Codex.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
 open Codex.Spherical.FractalDilations.PlanarTripleWaveNormalForm
+open Codex.Spherical.FractalDilations.OscillatoryIBP
 open Codex.Spherical.FractalDilations.SeparatedPacking
 open Codex.Spherical.FractalDilations.TripleWaveConeGeometry
 open Codex.Spherical.SurfaceCore
@@ -44,8 +46,8 @@ def coordinateWaveParts : Finset CoordinateWavePart :=
   {.outgoing, .incoming, .middle}
 
 @[simp] theorem mem_coordinateWaveParts (p : CoordinateWavePart) :
-    p \in coordinateWaveParts \leftrightarrow
-      p = .outgoing \/ p = .incoming \/ p = .middle := by
+    p ∈ coordinateWaveParts ↔
+      p = .outgoing ∨ p = .incoming ∨ p = .middle := by
   cases p <;> simp [coordinateWaveParts]
 
 /-- The triangle inequality after an explicit finite oscillatory expansion.
@@ -80,11 +82,9 @@ theorem exists_coordinateWaveRadialPhase_sign
   | outgoing =>
       refine ⟨-1, Or.inr rfl, ?_⟩
       simp [coordinateWaveRadialPhase]
-      ring
   | incoming =>
       refine ⟨1, Or.inl rfl, ?_⟩
       simp [coordinateWaveRadialPhase]
-      ring
   | middle => exact False.elim (hp rfl)
 
 /-- The exact phase of every endpoint triple is separated from zero in the
@@ -136,6 +136,7 @@ theorem abs_coordinateTripleWavePhase_ge_quarter_gap_of_physical_middle
     nlinarith [Real.pi_gt_three]
   have htwopipos : 0 < 2 * Real.pi := by positivity
   rw [coordinateTripleWavePhase, coordinateWaveRadialPhase, hqphase, htphase]
+  simp only [zero_add]
   have hrewrite :
       (2 * Real.pi) * (eq * r) - (2 * Real.pi) * (et * r') =
         (2 * Real.pi) * ((1 : Real) * 0 + eq * r - et * r') := by ring
@@ -174,7 +175,7 @@ theorem coordinateTripleWaveTerm_eq_coefficient_mul_oscillatoryExp
         oscillatoryExp (coordinateTripleWavePhase p q t ‖x‖ r r') rho := by
   unfold coordinateWaveRadialTerm coordinateTripleWaveCoefficient
     coordinateTripleWavePhase
-  rw [map_mul, star_oscillatoryExp]
+  simp only [map_mul, star_oscillatoryExp]
   have hphase :
       (oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho *
           oscillatoryExp (coordinateWaveRadialPhase q r) rho) *
@@ -183,29 +184,13 @@ theorem coordinateTripleWaveTerm_eq_coefficient_mul_oscillatoryExp
           (coordinateWaveRadialPhase p ‖x‖ +
             coordinateWaveRadialPhase q r -
               coordinateWaveRadialPhase t r') rho := by
-    rw [oscillatoryExp_mul, oscillatoryExp_mul]
-    congr 1
-    ring
-  rw [show
-      ((rho ^ (d - 1) : Real) : Complex) *
-          (coordinateWaveRadialAmplitude d p ‖x‖ rho *
-            oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho) *
-            ((coordinateWaveRadialAmplitude d q r rho *
-              oscillatoryExp (coordinateWaveRadialPhase q r) rho) * psi (rho • v)) *
-              (starRingEnd Complex (coordinateWaveRadialAmplitude d t r' rho) *
-                oscillatoryExp (-coordinateWaveRadialPhase t r') rho *
-                  starRingEnd Complex (psi (rho • v))) =
-        (((rho ^ (d - 1) : Real) : Complex) *
-          coordinateWaveRadialAmplitude d p ‖x‖ rho *
-            (coordinateWaveRadialAmplitude d q r rho * psi (rho • v)) *
-              starRingEnd Complex
-                (coordinateWaveRadialAmplitude d t r' rho * psi (rho • v))) *
-          ((oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho *
-            oscillatoryExp (coordinateWaveRadialPhase q r) rho) *
-              oscillatoryExp (-coordinateWaveRadialPhase t r') rho) by
-        rw [map_mul]
-        ring]
-  rw [hphase]
+    rw [oscillatoryExp_mul]
+    simpa [sub_eq_add_neg] using
+      (oscillatoryExp_mul
+        (coordinateWaveRadialPhase p ‖x‖ + coordinateWaveRadialPhase q r)
+        (-coordinateWaveRadialPhase t r') rho)
+  rw [← hphase]
+  ring
 
 /-- The literal higher-dimensional triple-wave integrand is a finite sum of
 the 27 coefficient-phase products. -/
@@ -237,8 +222,7 @@ theorem q4CoordinateTripleWaveRadialIntegrand_eq_finset_sum
                 (coordinateWaveRadialTerm d q r rho * psi (rho • v)) *
                   starRingEnd Complex
                     (coordinateWaveRadialTerm d t r' rho * psi (rho • v)) := by
-    simp only [coordinateWaveParts, Finset.sum_insert, Finset.sum_singleton]
-    simp only [map_add, map_mul]
+    simp [coordinateWaveParts]
     ring
   rw [hsum]
   apply Finset.sum_congr rfl
@@ -273,7 +257,7 @@ theorem planarCoordinateTripleWaveTerm_eq_coefficient_mul_oscillatoryExp
         oscillatoryExp (coordinateTripleWavePhase p q t ‖x‖ r r') rho := by
   unfold planarCoordinateWaveRadialTerm planarCoordinateTripleWaveCoefficient
     coordinateTripleWavePhase
-  rw [map_mul, star_oscillatoryExp]
+  simp only [map_mul, star_oscillatoryExp]
   have hphase :
       (oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho *
           oscillatoryExp (coordinateWaveRadialPhase q r) rho) *
@@ -282,28 +266,13 @@ theorem planarCoordinateTripleWaveTerm_eq_coefficient_mul_oscillatoryExp
           (coordinateWaveRadialPhase p ‖x‖ +
             coordinateWaveRadialPhase q r -
               coordinateWaveRadialPhase t r') rho := by
-    rw [oscillatoryExp_mul, oscillatoryExp_mul]
-    congr 1
-    ring
-  rw [show
-      (rho : Complex) *
-          (planarCoordinateWaveRadialAmplitude p ‖x‖ rho *
-            oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho) *
-            ((planarCoordinateWaveRadialAmplitude q r rho *
-              oscillatoryExp (coordinateWaveRadialPhase q r) rho) * psi (rho • v)) *
-              (starRingEnd Complex (planarCoordinateWaveRadialAmplitude t r' rho) *
-                oscillatoryExp (-coordinateWaveRadialPhase t r') rho *
-                  starRingEnd Complex (psi (rho • v))) =
-        ((rho : Complex) * planarCoordinateWaveRadialAmplitude p ‖x‖ rho *
-          (planarCoordinateWaveRadialAmplitude q r rho * psi (rho • v)) *
-            starRingEnd Complex
-              (planarCoordinateWaveRadialAmplitude t r' rho * psi (rho • v))) *
-          ((oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho *
-            oscillatoryExp (coordinateWaveRadialPhase q r) rho) *
-              oscillatoryExp (-coordinateWaveRadialPhase t r') rho) by
-        rw [map_mul]
-        ring]
-  rw [hphase]
+    rw [oscillatoryExp_mul]
+    simpa [sub_eq_add_neg] using
+      (oscillatoryExp_mul
+        (coordinateWaveRadialPhase p ‖x‖ + coordinateWaveRadialPhase q r)
+        (-coordinateWaveRadialPhase t r') rho)
+  rw [← hphase]
+  ring
 
 /-- The actual planar triple-wave integrand is again the explicit finite
 sum over all three coordinate parts. -/
@@ -334,8 +303,7 @@ theorem q4PlanarCoordinateTripleWaveRadialIntegrand_eq_finset_sum
               (planarCoordinateWaveRadialTerm q r rho * psi (rho • v)) *
                 starRingEnd Complex
                   (planarCoordinateWaveRadialTerm t r' rho * psi (rho • v)) := by
-    simp only [coordinateWaveParts, Finset.sum_insert, Finset.sum_singleton]
-    simp only [map_add, map_mul]
+    simp [coordinateWaveParts]
     ring
   rw [hsum]
   apply Finset.sum_congr rfl

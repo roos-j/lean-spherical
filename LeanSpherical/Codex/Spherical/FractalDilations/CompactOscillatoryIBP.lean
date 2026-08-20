@@ -40,16 +40,20 @@ finite repeated integration-by-parts chain. -/
 theorem hasOscillatoryIBPChain_iteratedDeriv_of_contDiff
     {a b : Real} (F : Real -> Complex)
     (hF : ContDiff Real (⊤ : ℕ∞) F)
-    (hFa : F =ᶠ[𝓝 a] 0) (hFb : F =ᶠ[𝓝 b] 0) (N : Nat) :
+    (hFa : F =ᶠ[nhds a] 0) (hFb : F =ᶠ[nhds b] 0) (N : Nat) :
     HasOscillatoryIBPChain a b (fun k => iteratedDeriv k F) N := by
   intro k hk
   constructor
   · intro t ht
     have hdiff : Differentiable Real (iteratedDeriv k F) :=
-      hF.differentiable_iteratedDeriv k (by simp)
+      hF.differentiable_iteratedDeriv k (by
+        change ((k : ℕ∞) : WithTop ℕ∞) < ((⊤ : ℕ∞) : WithTop ℕ∞)
+        exact WithTop.coe_lt_coe.mpr (ENat.coe_lt_top k))
     simpa only [iteratedDeriv_succ] using (hdiff t).hasDerivAt
   constructor
-  · exact hF.continuous_iteratedDeriv (k + 1) (by simp)
+  · exact hF.continuous_iteratedDeriv (k + 1) (by
+      change (((k + 1 : Nat) : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      exact WithTop.coe_le_coe.mpr le_top)
   constructor
   · have h := Filter.EventuallyEq.iteratedDeriv_eq k hFa
     simpa using h
@@ -63,9 +67,11 @@ theorem exists_pos_norm_iteratedDeriv_le_on_Icc_of_contDiff
     (hF : ContDiff Real (⊤ : ℕ∞) F) (N : Nat) :
     ∃ M : Real, 0 < M ∧ ∀ t ∈ Icc a b, ‖iteratedDeriv N F t‖ ≤ M := by
   have hcont : Continuous (iteratedDeriv N F) :=
-    hF.continuous_iteratedDeriv N (by simp)
-  rcases (isCompact_Icc.image_of_continuousOn hcont.continuousOn).isBounded
-      .exists_pos_norm_le with ⟨M, hM, hbound⟩
+    hF.continuous_iteratedDeriv N (by
+      change ((N : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      exact WithTop.coe_le_coe.mpr le_top)
+  rcases (isCompact_Icc.image_of_continuousOn hcont.continuousOn).isBounded.exists_pos_norm_le
+      with ⟨M, hM, hbound⟩
   exact ⟨M, hM, fun t ht => hbound _ (mem_image_of_mem _ ht)⟩
 
 /-- A fully discharged arbitrary-order nonstationary estimate.  This is the
@@ -75,7 +81,7 @@ theorem exists_norm_intervalIntegral_mul_oscillatoryExp_le_iterated_of_contDiff
     {a b freq : Real} (F : Real -> Complex)
     (hab : a ≤ b) (hfreq : freq ≠ 0)
     (hF : ContDiff Real (⊤ : ℕ∞) F)
-    (hFa : F =ᶠ[𝓝 a] 0) (hFb : F =ᶠ[𝓝 b] 0) (N : Nat) :
+    (hFa : F =ᶠ[nhds a] 0) (hFb : F =ᶠ[nhds b] 0) (N : Nat) :
     ∃ M : Real, 0 < M ∧
       ‖∫ t in a..b, F t * oscillatoryExp freq t‖ ≤
         (1 / |freq|) ^ N * ((b - a) * M) := by

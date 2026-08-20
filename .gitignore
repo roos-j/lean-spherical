@@ -1,1 +1,10 @@
 /.lake
+*.aux
+Scratch*
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.log
+*.pdf

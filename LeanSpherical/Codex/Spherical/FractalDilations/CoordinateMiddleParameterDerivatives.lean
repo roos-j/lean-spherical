@@ -58,6 +58,33 @@ theorem coordinateMiddleSineMomentIntegral_zero_eq
   intro theta _
   simp
 
+private theorem continuous_complex_coordinateMiddleMeridianCutoff :
+    Continuous (fun theta : Real => (coordinateMiddleMeridianCutoff theta : Complex)) := by
+  exact Complex.continuous_ofReal.comp
+    contDiff_coordinateMiddleMeridianCutoff.continuous
+
+private theorem continuous_complex_cos_pow (m : Nat) :
+    Continuous (fun theta : Real => ((Real.cos theta ^ m : Real) : Complex)) := by
+  exact Complex.continuous_ofReal.comp (by fun_prop)
+
+private theorem continuous_complex_sin_pow (n : Nat) :
+    Continuous (fun theta : Real => ((Real.sin theta ^ n : Real) : Complex)) := by
+  exact Complex.continuous_ofReal.comp (by fun_prop)
+
+private theorem contDiff_complex_cos_pow (m : Nat) :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun theta : Real => ((Real.cos theta ^ m : Real) : Complex)) := by
+  change ContDiff Real (⊤ : ℕ∞)
+    (Complex.ofRealCLM ∘ fun theta : Real => Real.cos theta ^ m)
+  exact Complex.ofRealCLM.contDiff.comp (by fun_prop)
+
+private theorem contDiff_complex_sin_pow (n : Nat) :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun theta : Real => ((Real.sin theta ^ n : Real) : Complex)) := by
+  change ContDiff Real (⊤ : ℕ∞)
+    (Complex.ofRealCLM ∘ fun theta : Real => Real.sin theta ^ n)
+  exact Complex.ofRealCLM.contDiff.comp (by fun_prop)
+
 private theorem continuous_coordinateMiddleSineMoment_integrand
     (m n : Nat) (l : Real) :
     Continuous (fun theta : Real =>
@@ -65,7 +92,8 @@ private theorem continuous_coordinateMiddleSineMoment_integrand
         ((Real.cos theta ^ m : Real) : Complex) *
           ((Real.sin theta ^ n : Real) : Complex) *
             Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)) := by
-  fun_prop
+  exact ((continuous_complex_coordinateMiddleMeridianCutoff.mul
+    (continuous_complex_cos_pow m)).mul (continuous_complex_sin_pow n)).mul (by fun_prop)
 
 private theorem exists_pos_norm_coordinateMiddleSineMomentAmplitude_le
     (m n : Nat) :
@@ -79,9 +107,12 @@ private theorem exists_pos_norm_coordinateMiddleSineMomentAmplitude_le
         ((Real.sin theta ^ n : Real) : Complex)
   have hA : Continuous A := by
     dsimp [A]
-    fun_prop
-  rcases (isCompact_Icc.image_of_continuousOn hA.continuousOn).isBounded
-      .exists_pos_norm_le with ⟨M, hM, hbound⟩
+    exact (continuous_complex_coordinateMiddleMeridianCutoff.mul
+      (continuous_complex_cos_pow m)).mul (continuous_complex_sin_pow n)
+  have hAbounded : Bornology.IsBounded
+      (A '' Icc (-(Real.pi / 2) : Real) (Real.pi / 2)) :=
+    (isCompact_Icc.image_of_continuousOn hA.continuousOn).isBounded
+  rcases hAbounded.exists_pos_norm_le with ⟨M, hM, hbound⟩
   exact ⟨M, hM, fun theta htheta => hbound _ (mem_image_of_mem _ htheta)⟩
 
 /-- Differentiating the literal middle integral inserts one sine moment.
@@ -113,7 +144,8 @@ theorem hasDerivAt_coordinateMiddleSineMomentIntegral
     exact continuous_coordinateMiddleSineMoment_integrand m n u
   have hF'cont (u : Real) : Continuous (F' u) := by
     dsimp [F']
-    fun_prop
+    exact continuous_const.mul
+      (continuous_coordinateMiddleSineMoment_integrand m (n + 1) u)
   change HasDerivAt (fun u : Real => ∫ theta in a..b, F u theta)
     (-Complex.I * coordinateMiddleSineMomentIntegral m (n + 1) l) l
   have hparam := intervalIntegral.hasDerivAt_integral_of_dominated_loc_of_deriv_le
@@ -128,10 +160,12 @@ theorem hasDerivAt_coordinateMiddleSineMomentIntegral
       filter_upwards with theta
       intro htheta u hu
       have htheta' : theta ∈ Icc (-(Real.pi / 2) : Real) (Real.pi / 2) := by
-        simpa only [a, b, uIoc_of_le hab] using htheta
+        rw [uIoc_of_le hab] at htheta
+        exact ⟨htheta.1.le, htheta.2⟩
       have hbase := hMbound theta htheta'
       dsimp [F']
-      rw [norm_mul, Complex.norm_I, one_mul]
+      rw [norm_mul, norm_neg, Complex.norm_I, one_mul,
+        norm_mul, Complex.norm_exp_ofReal_mul_I, mul_one]
       exact hbase)
     ((by fun_prop : Continuous (fun _ : Real => M)).intervalIntegrable a b)
     (by
@@ -145,23 +179,38 @@ theorem hasDerivAt_coordinateMiddleSineMomentIntegral
           (((-Real.sin theta : Real) : Complex) * Complex.I) u := by
         simpa only [Complex.real_smul] using hreal.smul_const Complex.I
       dsimp [F, F']
-      convert (harg.cexp).const_mul
+      have hcexp := harg.cexp
+      have hfull := hcexp.const_mul
         ((coordinateMiddleMeridianCutoff theta : Complex) *
           ((Real.cos theta ^ m : Real) : Complex) *
-            ((Real.sin theta ^ n : Real) : Complex)) using 1
-      push_cast
-      rw [show Real.sin theta ^ (n + 1) = Real.sin theta ^ n * Real.sin theta by
-        rw [pow_succ]]
-      ring)
+            ((Real.sin theta ^ n : Real) : Complex))
+      change HasDerivAt
+        (fun v : Real =>
+          (coordinateMiddleMeridianCutoff theta : Complex) *
+            ((Real.cos theta ^ m : Real) : Complex) *
+              ((Real.sin theta ^ n : Real) : Complex) *
+                Complex.exp (((-v * Real.sin theta : Real) : Complex) * Complex.I)) _ u
+      have hvalue :
+          (coordinateMiddleMeridianCutoff theta : Complex) *
+              ((Real.cos theta ^ m : Real) : Complex) *
+                ((Real.sin theta ^ n : Real) : Complex) *
+                  (Complex.exp (((-u * Real.sin theta : Real) : Complex) * Complex.I) *
+                    (((-Real.sin theta : Real) : Complex) * Complex.I)) =
+          -Complex.I *
+            ((coordinateMiddleMeridianCutoff theta : Complex) *
+              ((Real.cos theta ^ m : Real) : Complex) *
+                ((Real.sin theta ^ (n + 1) : Real) : Complex) *
+                  Complex.exp (((-u * Real.sin theta : Real) : Complex) * Complex.I)) := by
+        push_cast
+        rw [pow_succ]
+        ring
+      rw [← hvalue]
+      exact hfull)
   have hF'int :
       (∫ theta in a..b, F' l theta) =
         -Complex.I * coordinateMiddleSineMomentIntegral m (n + 1) l := by
     unfold coordinateMiddleSineMomentIntegral
     rw [← intervalIntegral.integral_const_mul]
-    apply intervalIntegral.integral_congr
-    intro theta _
-    dsimp [F']
-    ring
   rw [hF'int] at hparam
   exact hparam.2
 
@@ -209,9 +258,9 @@ theorem contDiff_coordinateMiddleSineMomentIntegral
   apply contDiff_of_differentiable_iteratedDeriv
   intro k _
   rw [iteratedDeriv_coordinateMiddleSineMomentIntegral]
-  exact (fun l =>
-    (hasDerivAt_coordinateMiddleSineMomentIntegral m (n + k) l).differentiableAt)
-    .const_mul ((-Complex.I) ^ k)
+  intro l
+  exact ((hasDerivAt_coordinateMiddleSineMomentIntegral m (n + k) l).differentiableAt).const_mul
+    ((-Complex.I) ^ k)
 
 /-- Every middle-symbol parameter derivative has a global uniform bound.
 This is the precise estimate needed for the physical factor in the inner
@@ -245,7 +294,7 @@ theorem exists_norm_iteratedDeriv_coordinateMiddleSineMomentIntegral_le
     _ = Real.pi * M := by
       rw [abs_of_nonneg]
       · ring
-      · positivity
+      · nlinarith [Real.pi_pos]
 
 /-- Every literal sine moment inherits arbitrary nonstationary decay.  The
 proof feeds its actual compact meridian density to the reusable guarded
@@ -261,8 +310,11 @@ theorem exists_coordinateMiddleSineMomentIntegral_abs_decay
         ((Real.sin theta ^ n : Real) : Complex)
   have hH : ContDiff Real (⊤ : ℕ∞) H := by
     dsimp [H]
-    exact ((contDiff_coordinateMiddleIBPCompactAmplitude m 0).mul (by fun_prop)).mul
-      (by fun_prop)
+    exact ContDiff.mul (𝕜 := Real) (E := Real) (𝔸 := Complex)
+      (ContDiff.mul (𝕜 := Real) (E := Real) (𝔸 := Complex)
+        (contDiff_coordinateMiddleIBPCompactAmplitude m 0) (by
+          simpa using contDiff_complex_cos_pow 1))
+      (contDiff_complex_sin_pow n)
   have hHsupport : ∀ theta : Real,
       15 * Real.pi / 32 < |theta| → H theta = 0 := by
     intro theta htheta
@@ -278,10 +330,9 @@ theorem exists_coordinateMiddleSineMomentIntegral_abs_decay
     intro theta htheta
     have htheta' : theta ∈ Icc (-(Real.pi / 2) : Real) (Real.pi / 2) := by
       rw [uIcc_of_le (by linarith [Real.pi_pos])] at htheta
-      exact ⟨htheta.1.le, htheta.2⟩
+      exact ⟨htheta.1, htheta.2⟩
     dsimp [H]
     rw [coordinateMiddleIBPCompactAmplitude_zero_mul_cos_eq_middle m htheta']
-    ring
   obtain ⟨C, hC, hbound⟩ :=
     exists_centralMeridianIBPIntegral_abs_decay H hH hHsupport N
   refine ⟨C, hC, ?_⟩

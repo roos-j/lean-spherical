@@ -186,16 +186,18 @@ theorem contDiff_smoothEndpointAmplitude (m : Nat) :
     ContDiff Real (⊤ : ℕ∞) (smoothEndpointAmplitude m) := by
   change ContDiff Real (⊤ : ℕ∞)
     (fun u : Real => Complex.ofReal (smoothEndpointAmplitudeReal m u))
-  simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-    (Complex.ofRealCLM.contDiff.comp (contDiff_smoothEndpointAmplitudeReal m))
+  change ContDiff Real (⊤ : ℕ∞)
+    ((Complex.ofRealCLM : ℝ → ℂ) ∘ smoothEndpointAmplitudeReal m)
+  exact Complex.ofRealCLM.contDiff.comp (contDiff_smoothEndpointAmplitudeReal m)
 
 /-- Complexification preserves smoothness of the separated endpoint profile. -/
 theorem contDiff_smoothEndpointProfile (m : Nat) :
     ContDiff Real (⊤ : ℕ∞) (smoothEndpointProfile m) := by
   change ContDiff Real (⊤ : ℕ∞)
     (fun u : Real => Complex.ofReal (smoothEndpointProfileReal m u))
-  simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-    (Complex.ofRealCLM.contDiff.comp (contDiff_smoothEndpointProfileReal m))
+  change ContDiff Real (⊤ : ℕ∞)
+    ((Complex.ofRealCLM : ℝ → ℂ) ∘ smoothEndpointProfileReal m)
+  exact Complex.ofRealCLM.contDiff.comp (contDiff_smoothEndpointProfileReal m)
 
 /-- The endpoint amplitude is exactly its explicit vanishing factor times
 the smooth profile. -/
@@ -227,7 +229,7 @@ theorem smoothEndpointAmplitude_eq_cutoff_mul_endpointQuadraticAmplitude
 /-- The inner cutoff, hence the smooth endpoint amplitude, is zero in a
 neighbourhood of the artificial endpoint `u = 1`. -/
 theorem smoothEndpointAmplitude_eventuallyEq_zero_at_one (m : Nat) :
-    smoothEndpointAmplitude m =ᶠ[𝓝 (1 : Real)] 0 := by
+    smoothEndpointAmplitude m =ᶠ[nhds (1 : Real)] 0 := by
   filter_upwards [Metric.ball_mem_nhds (1 : Real) (by norm_num : (0 : Real) < 1 / 2)]
     with u hu
   rw [mem_ball, Real.dist_eq] at hu
@@ -242,7 +244,7 @@ theorem smoothEndpointAmplitude_eventuallyEq_zero_at_one (m : Nat) :
 
 /-- The separated profile vanishes near the artificial endpoint too. -/
 theorem smoothEndpointProfile_eventuallyEq_zero_at_one (m : Nat) :
-    smoothEndpointProfile m =ᶠ[𝓝 (1 : Real)] 0 := by
+    smoothEndpointProfile m =ᶠ[nhds (1 : Real)] 0 := by
   filter_upwards [Metric.ball_mem_nhds (1 : Real) (by norm_num : (0 : Real) < 1 / 2)]
     with u hu
   rw [mem_ball, Real.dist_eq] at hu
@@ -260,8 +262,10 @@ the artificial endpoint.  This is the endpoint condition needed when radial
 symbol estimates are integrated by parts later on. -/
 theorem iteratedDeriv_smoothEndpointAmplitude_at_one (m k : Nat) :
     iteratedDeriv k (smoothEndpointAmplitude m) 1 = 0 := by
-  have h := Filter.EventuallyEq.iteratedDeriv_eq k
-    (smoothEndpointAmplitude_eventuallyEq_zero_at_one m)
+  have h : iteratedDeriv k (smoothEndpointAmplitude m) 1 =
+      iteratedDeriv k (0 : Real → Complex) 1 :=
+    Filter.EventuallyEq.iteratedDeriv_eq k
+      (smoothEndpointAmplitude_eventuallyEq_zero_at_one m)
   simpa using h
 
 end

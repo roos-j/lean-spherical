@@ -86,7 +86,6 @@ theorem sqrt_one_sub_sin_eq_coordinateUpperArgument
       ring
     _ = (Real.sqrt 2 * Real.sin a) ^ 2 := by
       rw [mul_pow, Real.sq_sqrt (by norm_num : (0 : Real) ≤ 2)]
-      ring
 
 /-- The reflected half-angle identity at the south pole. -/
 theorem sqrt_one_add_sin_eq_coordinateLowerArgument
@@ -97,7 +96,7 @@ theorem sqrt_one_add_sin_eq_coordinateLowerArgument
     constructor <;> linarith [htheta.1, htheta.2]
   have h := sqrt_one_sub_sin_eq_coordinateUpperArgument hneg
   rw [Real.sin_neg] at h
-  simpa [sub_eq_add_neg] using h
+  convert h using 1 <;> ring
 
 /-- On the upper half-meridian the smooth representative agrees exactly with
 the cutoff used in `coordinateUpperMeridianLocalizedIntegral`. -/
@@ -174,6 +173,7 @@ theorem coordinateUpperMeridianCutoff_eq_zero_of_le_pi_div_four
     calc
       (1 / 4 : Real) = (2 / Real.pi) * (Real.pi / 8) := by
         field_simp [Real.pi_ne_zero]
+        ring
       _ ≤ (2 / Real.pi) * a := by
         apply mul_le_mul_of_nonneg_left ha_eighth
         positivity
@@ -190,7 +190,7 @@ theorem coordinateUpperMeridianCutoff_eq_zero_of_le_pi_div_four
   unfold coordinateUpperMeridianCutoff endpointCoreCutoff
   apply endpointCoreBump.zero_of_le_dist
   change (1 / 4 : Real) ≤ dist (Real.sqrt 2 * Real.sin a) 0
-  rw [Real.dist_eq, abs_of_nonneg harg_nonneg]
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg harg_nonneg]
   exact harg
 
 /-- Close enough to its stationary pole, the north coordinate cutoff is
@@ -228,7 +228,7 @@ theorem coordinateUpperMeridianCutoff_eq_one_of_fifteen_pi_div_thirty_two_le
   unfold coordinateUpperMeridianCutoff endpointCoreCutoff
   apply endpointCoreBump.one_of_mem_closedBall
   change dist (Real.sqrt 2 * Real.sin a) 0 ≤ (1 / 8 : Real)
-  rw [Real.dist_eq, abs_of_nonneg harg_nonneg]
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg harg_nonneg]
   exact harg_small
 
 /-- Reflection gives the corresponding south-pole support statement. -/
@@ -301,37 +301,47 @@ theorem coordinateUpperMeridianLocalizedIntegral_eq_full_cutoff
         Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)
   have hF : Continuous F := by
     dsimp [F]
-    fun_prop
+    exact ((Complex.continuous_ofReal.comp
+      contDiff_coordinateUpperMeridianCutoff.continuous).mul
+        (Complex.continuous_ofReal.comp (Real.continuous_cos.pow m))).mul
+      (Complex.continuous_exp.comp
+        ((Complex.continuous_ofReal.comp
+          (continuous_const.mul Real.continuous_sin)).mul continuous_const))
   have hneg : (∫ theta in a..0, F theta) = 0 := by
     calc
       (∫ theta in a..0, F theta) = ∫ theta in a..0, (0 : Complex) := by
         apply intervalIntegral.integral_congr
         intro theta htheta
         have htheta' : theta ∈ Icc (-(Real.pi / 2) : Real) 0 := by
-          simpa only [a, uIcc_of_le (by linarith [Real.pi_pos])] using htheta
+          rw [show a = -(Real.pi / 2) by rfl,
+            uIcc_of_le (by linarith [Real.pi_pos])] at htheta
+          exact htheta
         have hcut := coordinateUpperMeridianCutoff_eq_zero_of_le_pi_div_four
           (show theta ∈ Icc (-(Real.pi / 2) : Real) (Real.pi / 2) by
             constructor
             · exact htheta'.1
-            · linarith [Real.pi_pos])
+            · exact le_trans htheta'.2 (by positivity))
           (by linarith [htheta'.2, Real.pi_pos])
         dsimp [F]
         rw [hcut]
         simp
-      _ = 0 := by simp
-  have hsplit := intervalIntegral.integral_add_adjacent_intervals
-    (hF.intervalIntegrable a 0) (hF.intervalIntegrable 0 b)
+      _ = 0 := intervalIntegral.integral_zero
+  have hsplit : (∫ theta in a..0, F theta) + ∫ theta in 0..b, F theta =
+      (∫ theta in a..b, F theta) :=
+    intervalIntegral.integral_add_adjacent_intervals
+      (hF.intervalIntegrable a 0) (hF.intervalIntegrable 0 b)
   unfold coordinateUpperMeridianLocalizedIntegral
   change (∫ theta in (0 : Real)..b,
       (endpointCoreCutoff (Real.sqrt (1 - Real.sin theta)) : Complex) *
         ((Real.cos theta ^ m : Real) : Complex) *
           Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) =
-      ∫ theta in a..b, F theta
+      ∫ theta in a..b, F theta)
   rw [← hsplit, hneg, zero_add]
   apply intervalIntegral.integral_congr
   intro theta htheta
   have htheta' : theta ∈ Icc (0 : Real) (Real.pi / 2) := by
-    simpa only [b, uIcc_of_le (by norm_num : (0 : Real) ≤ Real.pi / 2)] using htheta
+    rw [uIcc_of_le (by positivity)] at htheta
+    exact htheta
   have hcut := coordinateUpperMeridianCutoff_eq_coordinate htheta'
   dsimp [F]
   rw [hcut]
@@ -352,37 +362,49 @@ theorem coordinateLowerMeridianLocalizedIntegral_eq_full_cutoff
         Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)
   have hF : Continuous F := by
     dsimp [F]
-    fun_prop
+    exact ((Complex.continuous_ofReal.comp
+      contDiff_coordinateLowerMeridianCutoff.continuous).mul
+        (Complex.continuous_ofReal.comp (Real.continuous_cos.pow m))).mul
+      (Complex.continuous_exp.comp
+        ((Complex.continuous_ofReal.comp
+          (continuous_const.mul Real.continuous_sin)).mul continuous_const))
   have hpos : (∫ theta in (0 : Real)..b, F theta) = 0 := by
     calc
       (∫ theta in (0 : Real)..b, F theta) = ∫ theta in (0 : Real)..b, (0 : Complex) := by
         apply intervalIntegral.integral_congr
         intro theta htheta
         have htheta' : theta ∈ Icc (0 : Real) (Real.pi / 2) := by
-          simpa only [b, uIcc_of_le (by norm_num : (0 : Real) ≤ Real.pi / 2)] using htheta
+          rw [show b = Real.pi / 2 by rfl,
+            uIcc_of_le (by positivity)] at htheta
+          exact htheta
         have hcut := coordinateLowerMeridianCutoff_eq_zero_of_neg_pi_div_four_le
           (show theta ∈ Icc (-(Real.pi / 2) : Real) (Real.pi / 2) by
             constructor
-            · linarith [Real.pi_pos]
+            · exact le_trans
+                (by linarith [Real.pi_pos] : -(Real.pi / 2) ≤ 0) htheta'.1
             · exact htheta'.2)
           (by linarith [htheta'.1, Real.pi_pos])
         dsimp [F]
         rw [hcut]
         simp
-      _ = 0 := by simp
-  have hsplit := intervalIntegral.integral_add_adjacent_intervals
-    (hF.intervalIntegrable a 0) (hF.intervalIntegrable 0 b)
+      _ = 0 := intervalIntegral.integral_zero
+  have hsplit : (∫ theta in a..0, F theta) + ∫ theta in 0..b, F theta =
+      (∫ theta in a..b, F theta) :=
+    intervalIntegral.integral_add_adjacent_intervals
+      (hF.intervalIntegrable a 0) (hF.intervalIntegrable 0 b)
   unfold coordinateLowerMeridianLocalizedIntegral
   change (∫ theta in a..(0 : Real),
       (endpointCoreCutoff (Real.sqrt (1 + Real.sin theta)) : Complex) *
         ((Real.cos theta ^ m : Real) : Complex) *
           Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) =
-      ∫ theta in a..b, F theta
+      ∫ theta in a..b, F theta)
   rw [← hsplit, hpos, add_zero]
   apply intervalIntegral.integral_congr
   intro theta htheta
   have htheta' : theta ∈ Icc (-(Real.pi / 2) : Real) 0 := by
-    simpa only [a, uIcc_of_le (by linarith [Real.pi_pos])] using htheta
+    rw [show a = -(Real.pi / 2) by rfl,
+      uIcc_of_le (by linarith [Real.pi_pos])] at htheta
+    exact htheta
   have hcut := coordinateLowerMeridianCutoff_eq_coordinate htheta'
   dsimp [F]
   rw [hcut]
@@ -455,8 +477,36 @@ theorem coordinateMiddleMeridianLocalizedIntegral_eq_middle_cutoff
   unfold coordinateMiddleMeridianLocalizedIntegral
   rw [coordinateUpperMeridianLocalizedIntegral_eq_full_cutoff,
     coordinateLowerMeridianLocalizedIntegral_eq_full_cutoff]
-  change (∫ theta in a..b, G theta) - (∫ theta in a..b, U theta) -
-      (∫ theta in a..b, L theta) = ∫ theta in a..b, M theta
+  have hGfull : (∫ theta in a..b, G theta) =
+      ∫ theta in (-(Real.pi / 2) : Real)..(Real.pi / 2),
+        ((Real.cos theta ^ m : Real) : Complex) *
+          Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) := by
+    rfl
+  have hUfull : (∫ theta in a..b, U theta) =
+      ∫ theta in (-(Real.pi / 2) : Real)..(Real.pi / 2),
+        (coordinateUpperMeridianCutoff theta : Complex) *
+          ((Real.cos theta ^ m : Real) : Complex) *
+            Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) := by
+    refine intervalIntegral.integral_congr (fun theta _ => ?_)
+    dsimp [U, G]
+    ring
+  have hLfull : (∫ theta in a..b, L theta) =
+      ∫ theta in (-(Real.pi / 2) : Real)..(Real.pi / 2),
+        (coordinateLowerMeridianCutoff theta : Complex) *
+          ((Real.cos theta ^ m : Real) : Complex) *
+            Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) := by
+    refine intervalIntegral.integral_congr (fun theta _ => ?_)
+    dsimp [L, G]
+    ring
+  have hMfull : (∫ theta in a..b, M theta) =
+      ∫ theta in (-(Real.pi / 2) : Real)..(Real.pi / 2),
+        (coordinateMiddleMeridianCutoff theta : Complex) *
+          ((Real.cos theta ^ m : Real) : Complex) *
+            Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) := by
+    refine intervalIntegral.integral_congr (fun theta _ => ?_)
+    dsimp [M, G]
+    ring
+  rw [← hGfull, ← hUfull, ← hLfull, ← hMfull]
   rw [hpartition]
   ring
 
@@ -480,7 +530,7 @@ noncomputable def coordinateMiddleCosineGuard (theta : Real) : Real :=
 parts.  For `m = 0` this is the planar quotient; for positive `m` it includes
 the remaining power of cosine. -/
 noncomputable def coordinateMiddleIBPAmplitudeReal (m : Nat) (theta : Real) : Real :=
-  (coordinateMiddleMeridianCutoff theta * Real.cos theta ^ (m - 1)) /
+  (coordinateMiddleMeridianCutoff theta * Real.cos theta ^ m) /
     coordinateMiddleCosineGuard theta
 
 noncomputable def coordinateMiddleIBPAmplitude (m : Nat) (theta : Real) : Complex :=
@@ -542,15 +592,14 @@ theorem contDiff_coordinateMiddleIBPAmplitudeReal (m : Nat) :
     ContDiff Real (⊤ : ℕ∞) (coordinateMiddleIBPAmplitudeReal m) := by
   unfold coordinateMiddleIBPAmplitudeReal
   exact ((contDiff_coordinateMiddleMeridianCutoff.mul
-    (Real.contDiff_cos.pow (m - 1))).div contDiff_coordinateMiddleCosineGuard
+    (Real.contDiff_cos.pow m)).div contDiff_coordinateMiddleCosineGuard
       (fun theta => (coordinateMiddleCosineGuard_pos theta).ne'))
 
 theorem contDiff_coordinateMiddleIBPAmplitude (m : Nat) :
     ContDiff Real (⊤ : ℕ∞) (coordinateMiddleIBPAmplitude m) := by
   change ContDiff Real (⊤ : ℕ∞)
-    (fun theta : Real => Complex.ofReal (coordinateMiddleIBPAmplitudeReal m theta))
-  simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-    (Complex.ofRealCLM.contDiff.comp (contDiff_coordinateMiddleIBPAmplitudeReal m))
+    (Complex.ofRealCLM ∘ coordinateMiddleIBPAmplitudeReal m)
+  exact Complex.ofRealCLM.contDiff.comp (contDiff_coordinateMiddleIBPAmplitudeReal m)
 
 /-- The guarded quotient recovers the exact coordinate middle density after
 multiplication by the phase derivative `cos theta`. -/
@@ -564,19 +613,23 @@ theorem coordinateMiddleIBPAmplitude_mul_cos_eq_middle
   · simp [coordinateMiddleIBPAmplitude, coordinateMiddleIBPAmplitudeReal, hmiddle]
   · have habs : |theta| ≤ 15 * Real.pi / 32 := by
       by_contra hnot
+      have hlarge : 15 * Real.pi / 32 ≤ |theta| :=
+        le_of_lt (lt_of_not_ge hnot)
       exact hmiddle (coordinateMiddleMeridianCutoff_eq_zero_of_large_abs htheta
-        (le_of_not_gt hnot))
+        hlarge)
     have hguardcut : coordinateMiddleGuardCutoff theta = 1 :=
       coordinateMiddleGuardCutoff_eq_one_of_abs_le habs
     have hthetaIoo : theta ∈ Ioo (-(Real.pi / 2)) (Real.pi / 2) := by
-      rw [abs_lt]
       have hstrict : |theta| < Real.pi / 2 := by
         calc
           |theta| ≤ 15 * Real.pi / 32 := habs
           _ < Real.pi / 2 := by nlinarith [Real.pi_pos]
-      exact hstrict
+      exact abs_lt.mp hstrict
     have hcos : Real.cos theta ≠ 0 :=
       (Real.cos_pos_of_mem_Ioo hthetaIoo).ne'
+    have hcosC : Complex.cos (theta : Complex) ≠ 0 := by
+      rw [← Complex.ofReal_cos]
+      exact Complex.ofReal_ne_zero.mpr hcos
     have hguard : coordinateMiddleCosineGuard theta = Real.cos theta := by
       unfold coordinateMiddleCosineGuard
       rw [hguardcut]
@@ -584,12 +637,7 @@ theorem coordinateMiddleIBPAmplitude_mul_cos_eq_middle
     unfold coordinateMiddleIBPAmplitude coordinateMiddleIBPAmplitudeReal
     rw [hguard]
     push_cast
-    rcases Nat.eq_zero_or_pos m with rfl | hm
-    · simp
-    · have hm' : m = (m - 1) + 1 := (Nat.sub_add_cancel hm).symm
-      rw [hm', pow_succ]
-      field_simp [hcos]
-      ring
+    field_simp [hcosC]
 
 /-- The angular quotient has zero boundary values at both meridian poles. -/
 theorem coordinateMiddleIBPAmplitude_eq_zero_at_meridian_endpoints (m : Nat) :
@@ -681,10 +729,13 @@ theorem coordinateMiddleMeridianLocalizedIntegral_eq_neg_inv_mul_deriv_integral
       (∫ theta in a..b, A theta * (E theta * (Real.cos theta : Complex))) =
         coordinateMiddleMeridianLocalizedIntegral m l := by
     rw [coordinateMiddleMeridianLocalizedIntegral_eq_middle_cutoff]
-    apply intervalIntegral.integral_congr
-    intro theta htheta
+    refine intervalIntegral.integral_congr (fun theta htheta => ?_)
     have htheta' : theta ∈ Icc (-(Real.pi / 2) : Real) (Real.pi / 2) := by
-      simpa only [a, b, uIcc_of_le (by linarith [Real.pi_pos])] using htheta
+      have hab : a ≤ b := by
+        dsimp [a, b]
+        linarith [Real.pi_pos]
+      rw [uIcc_of_le hab] at htheta
+      exact htheta
     have hmiddle := coordinateMiddleIBPAmplitude_mul_cos_eq_middle m htheta'
     dsimp [A, E]
     rw [show (Real.cos theta : Complex) = ((Real.cos theta : Real) : Complex) by rfl]
@@ -699,8 +750,7 @@ theorem coordinateMiddleMeridianLocalizedIntegral_eq_neg_inv_mul_deriv_integral
       (∫ theta in a..b, A' theta * (s * E theta)) =
         s * ∫ theta in a..b, A' theta * E theta := by
     rw [← intervalIntegral.integral_const_mul]
-    apply intervalIntegral.integral_congr
-    intro theta _
+    refine intervalIntegral.integral_congr (fun theta _ => ?_)
     ring
   calc
     coordinateMiddleMeridianLocalizedIntegral m l =
@@ -728,8 +778,10 @@ theorem exists_coordinateMiddleMeridianLocalizedIntegral_decay_one
   have hAcont : Continuous (deriv A) := by
     dsimp [A]
     exact (contDiff_coordinateMiddleIBPAmplitude m).continuous_deriv (by simp)
-  rcases (isCompact_Icc.image_of_continuousOn hAcont.continuousOn).isBounded
-      .exists_pos_norm_le with ⟨M, hM, hMbound⟩
+  have hcompact : IsCompact
+      (deriv A '' Icc (-(Real.pi / 2) : Real) (Real.pi / 2)) :=
+    isCompact_Icc.image_of_continuousOn hAcont.continuousOn
+  rcases hcompact.isBounded.exists_pos_norm_le with ⟨M, hM, hMbound⟩
   refine ⟨Real.pi * M, mul_pos Real.pi_pos hM, ?_⟩
   intro l hl
   have hlne : l ≠ 0 := by
@@ -743,7 +795,7 @@ theorem exists_coordinateMiddleMeridianLocalizedIntegral_decay_one
   have hlength : |(Real.pi / 2 : Real) - -(Real.pi / 2)| = Real.pi := by
     rw [abs_of_nonneg]
     · ring
-    · positivity
+    · nlinarith [Real.pi_pos]
   have hint :
       ‖∫ theta in (-(Real.pi / 2) : Real)..(Real.pi / 2),
           deriv A theta *

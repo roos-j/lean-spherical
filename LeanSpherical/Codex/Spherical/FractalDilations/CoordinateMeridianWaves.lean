@@ -67,7 +67,21 @@ private theorem continuous_coordinateUpper_integrand (m : Nat) (l : Real) :
       (endpointCoreCutoff (Real.sqrt (1 - Real.sin theta)) : Complex) *
         ((Real.cos theta ^ m : Real) : Complex) *
           Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)) := by
-  fun_prop
+  have hcut : Continuous (fun u : Real => (endpointCoreCutoff u : Complex)) := by
+    change Continuous (fun u : Real => (endpointCoreBump u : Complex))
+    have hcore : ContDiff Real (⊤ : ℕ∞) (endpointCoreBump : Real → Real) :=
+      endpointCoreBump.contDiff
+    exact Complex.continuous_ofReal.comp hcore.continuous
+  have hsqrt : Continuous (fun theta : Real => Real.sqrt (1 - Real.sin theta)) := by
+    exact Real.continuous_sqrt.comp (continuous_const.sub Real.continuous_sin)
+  have hcos : Continuous (fun theta : Real => ((Real.cos theta ^ m : Real) : Complex)) := by
+    exact Complex.continuous_ofReal.comp (Real.continuous_cos.pow m)
+  have hexp : Continuous (fun theta : Real =>
+      Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)) := by
+    apply Complex.continuous_exp.comp
+    exact (Complex.continuous_ofReal.comp
+      (continuous_const.mul Real.continuous_sin)).mul continuous_const
+  exact ((hcut.comp hsqrt).mul hcos).mul hexp
 
 /-- Exact north-pole stationary-coordinate formula.  The cutoff turns into
 the literal smooth endpoint amplitude, so the quadratic stationary estimate
@@ -150,9 +164,10 @@ theorem coordinateUpperMeridianLocalizedIntegral_eq_smoothEndpointQuadratic
             congr 1
             push_cast
             ring
-          rw [smoothEndpointAmplitude_eq_cutoff_mul_endpointQuadraticAmplitude]
           dsimp [F, phi, Function.comp_apply, endpointQuadraticAmplitude]
-          rw [hsin, hcos, hcut, hexp, hm']
+          rw [hcut, hsin, hcos, hexp, hm',
+            smoothEndpointAmplitude_eq_cutoff_mul_endpointQuadraticAmplitude]
+          unfold endpointQuadraticAmplitude
           push_cast
           simp only [pow_succ, mul_pow]
           field_simp [ne_of_gt hspos]

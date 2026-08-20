@@ -39,6 +39,7 @@ the difference-phase separation. -/
 theorem abs_radiusDifference_add_ge_quarter_gap
     {r r' z : Real} (hz : |z| <= |r - r'| / 4) :
     |r - r'| / 4 <= |r - r' + z| := by
+  have hgap_nonneg : 0 <= |r - r'| := abs_nonneg _
   calc
     |r - r'| / 4 <= |r - r'| - |z| := by linarith
     _ <= |r - r' + z| := sub_abs_le_abs_add _ _
@@ -80,7 +81,7 @@ theorem abs_signed_triple_phase_ge_quarter_gap
   have hminus : |r - r'| / 4 <= |r - r' - u| := by
     have h := abs_radiusDifference_add_ge_quarter_gap
       (r := r) (r' := r') (z := -u) (by simpa [abs_of_nonneg hu] using hucone)
-    simpa using h
+    convert h using 1 <;> ring
   have hsumplus : |r - r'| / 4 <= |r + r' + u| :=
     abs_radiusSum_add_ge_quarter_gap hr hr'
       (by simpa [abs_of_nonneg hu] using hucone)
@@ -88,17 +89,29 @@ theorem abs_signed_triple_phase_ge_quarter_gap
     have h := abs_radiusSum_add_ge_quarter_gap
       (r := r) (r' := r') (z := -u) hr hr'
         (by simpa [abs_of_nonneg hu] using hucone)
-    simpa using h
+    convert h using 1 <;> ring
   rcases hex with rfl | rfl <;> rcases her with rfl | rfl <;>
     rcases her' with rfl | rfl
   · convert hplus using 1 <;> ring
   · convert hsumplus using 1 <;> ring
-  · convert hsumminus using 1 <;> ring
+  · calc
+      |r - r'| / 4 <= |r + r' - u| := hsumminus
+      _ = |-(1 * u + -1 * r - 1 * r')| := by congr 1 <;> ring
+      _ = |1 * u + -1 * r - 1 * r'| := abs_neg _
+  · calc
+      |r - r'| / 4 <= |r - r' - u| := hminus
+      _ = |-(1 * u + -1 * r - -1 * r')| := by congr 1 <;> ring
+      _ = |1 * u + -1 * r - -1 * r'| := abs_neg _
   · convert hminus using 1 <;> ring
-  · convert hminus using 1 <;> ring
   · convert hsumminus using 1 <;> ring
-  · convert hsumplus using 1 <;> ring
-  · convert hplus using 1 <;> ring
+  · calc
+      |r - r'| / 4 <= |r + r' + u| := hsumplus
+      _ = |-(-1 * u + -1 * r - 1 * r')| := by congr 1 <;> ring
+      _ = |-1 * u + -1 * r - 1 * r'| := abs_neg _
+  · calc
+      |r - r'| / 4 <= |r - r' + u| := hplus
+      _ = |-(-1 * u + -1 * r - -1 * r')| := by congr 1 <;> ring
+      _ = |-1 * u + -1 * r - -1 * r'| := abs_neg _
 
 end
 

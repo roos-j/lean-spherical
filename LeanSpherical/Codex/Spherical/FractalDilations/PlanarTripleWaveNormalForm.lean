@@ -3,9 +3,13 @@
 
 import LeanSpherical.Codex.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
 import LeanSpherical.Codex.Spherical.FractalDilations.PlanarCoordinateMeridianWaves
+import LeanSpherical.Codex.Spherical.FractalDilations.AbsoluteReassembly
+import LeanSpherical.Codex.Spherical.FractalDilations.OscillatoryIBP
 open Codex.Spherical.FractalDilations.AllDimensionalRadialPairKernel
 open Codex.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
+open Codex.Spherical.FractalDilations.AbsoluteReassembly
 open Codex.Spherical.FractalDilations.CoordinateMeridianWaves
+open Codex.Spherical.FractalDilations.OscillatoryIBP
 open Codex.Spherical.FractalDilations.PlanarCoordinateMeridianWaves
 open Codex.Spherical.FractalDilations.PlanarEndpointAmplitude
 open Codex.Spherical.FractalDilations.Q4RadialReduction
@@ -78,7 +82,7 @@ theorem planarCoordinateSurfaceWaveSum_eq_three_radialTerms
       (-(2 * Real.pi * a)) * rho := by ring
   have hphaseIn : 2 * Real.pi * (a * rho) =
       (2 * Real.pi * a) * rho := by ring
-  simp only [Complex.exp_zero, mul_one]
+  simp
   rw [hphaseOut, hphaseIn]
   ring
 
@@ -188,7 +192,8 @@ theorem q4DyadicPairKernel_two_eq_annular_planarCoordinateTripleWaveIntegral
     (d := 2) (by omega) phi hphiOne hphiZero hphiRadial j r r' v x hv]
   have hab : (2 : Real) ^ j ≤ (2 : Real) ^ (j + 2) := by
     calc
-      (2 : Real) ^ j ≤ (2 : Real) ^ j * 4 := by nlinarith
+      (2 : Real) ^ j ≤ (2 : Real) ^ j * 4 := by
+        nlinarith [pow_pos (by norm_num : (0 : Real) < 2) j]
       _ = (2 : Real) ^ j * (2 : Real) ^ 2 := by norm_num
       _ = (2 : Real) ^ (j + 2) := by rw [← pow_add]
   apply intervalIntegral.integral_congr
@@ -197,12 +202,15 @@ theorem q4DyadicPairKernel_two_eq_annular_planarCoordinateTripleWaveIntegral
     rw [uIcc_of_le hab] at hrho
     exact ⟨hrho.1, hrho.2⟩
   have hrhopos : 0 < rho := lt_of_lt_of_le (by positivity) hrho'.1
+  change ((rho ^ (2 - 1) : Real) : Complex) *
+      surfaceFourier 2 (-rho • x) *
+        q4RadialPairProfile (absoluteDyadicBandpass phi hphiOne hphiZero j)
+          r r' v rho = _
   rw [surfaceFourier_two_neg_smul_eq_planarCoordinateSurfaceWaveSum hrhopos,
     q4RadialPairProfile_eq_planarCoordinateWaveProducts
       (absoluteDyadicBandpass phi hphiOne hphiZero j) hr hr' hrhopos v hv]
   unfold q4PlanarCoordinateTripleWaveRadialIntegrand
   norm_num
-  ring
 
 end
 

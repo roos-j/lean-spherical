@@ -5,11 +5,15 @@ import LeanSpherical.Codex.Spherical.FractalDilations.Q4RadialReduction
 import LeanSpherical.Codex.Spherical.FractalDilations.Q4PairComposition
 import LeanSpherical.Codex.Spherical.FractalDilations.RadialWaveKernel
 import LeanSpherical.Codex.Spherical.FractalDilations.RadialPowerMeasure
+import LeanSpherical.Codex.Spherical.FractalDilations.AbsoluteReassembly
+import LeanSpherical.Codex.Spherical.FractalDilations.RadialCutoff
 open Codex.Spherical.FractalDilations.Q4PairComposition
 open Codex.Spherical.FractalDilations.Q4RadialReduction
 open Codex.Spherical.FractalDilations.Q4TTStar
 open Codex.Spherical.FractalDilations.RadialPowerMeasure
 open Codex.Spherical.FractalDilations.RadialWaveKernel
+open Codex.Spherical.FractalDilations.AbsoluteReassembly
+open Codex.Spherical.FractalDilations.RadialCutoff
 open Codex.Spherical.SmoothDyadicPhysicalCore
 open Codex.Spherical.SurfaceCore
 
@@ -129,10 +133,12 @@ theorem q4DyadicPairKernel_eq_annular_surfaceFourier_intervalIntegral
     isNormRadial_absoluteDyadicBandpass phi hphiOne hphiZero hphiRadial j
   rw [q4DyadicPairKernel_eq_surfaceFourier_integral hd psi hpsiCompact
     hpsiRadial r r' v x hv]
-  rw [integral_volumeIoiPow_eq_setIntegral]
+  rw [integral_volumeIoiPow_eq_setIntegral (d - 1)
+    (fun rho : Real =>
+      surfaceFourier d (-rho • x) * q4RadialPairProfile psi r r' v rho)]
   let F : Real -> Complex := fun rho =>
     ((rho ^ (d - 1) : Real) : Complex) *
-      surfaceFourier d (-rho • x) * q4RadialPairProfile psi r r' v rho
+      (surfaceFourier d (-rho • x) * q4RadialPairProfile psi r r' v rho)
   have ha : 0 < (2 : Real) ^ j := by positivity
   have hab : (2 : Real) ^ j ≤ (2 : Real) ^ (j + 2) := by
     calc

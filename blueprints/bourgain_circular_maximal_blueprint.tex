@@ -1,0 +1,1479 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
+
+\allowdisplaybreaks
+\numberwithin{equation}{section}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{claim}[theorem]{Claim}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\Sph}{\mathbb S}
+\newcommand{\Sch}{\mathcal S}
+\newcommand{\Fourier}{\mathcal F}
+\newcommand{\MHL}{\mathcal M_{\mathrm{HL}}}
+\newcommand{\Mcirc}{\mathcal M_{\mathrm{circ}}}
+\newcommand{\epsMSS}{\varepsilon_{\mathrm{MSS}}}
+\newcommand{\supp}{\operatorname{supp}}
+\newcommand{\dist}{\operatorname{dist}}
+\newcommand{\vol}{\operatorname{vol}}
+\newcommand{\dd}{\,\mathrm d}
+\newcommand{\lesssimc}{\lesssim}
+
+\title{A Blueprint for Bourgain's Circular Maximal Theorem\\via Local Smoothing for the Wave Equation}
+\author{}
+\date{August 2026}
+
+\hypersetup{
+  pdftitle={A Blueprint for Bourgain's Circular Maximal Theorem via Local Smoothing for the Wave Equation},
+  pdfsubject={A formalization-oriented proof blueprint},
+  pdfkeywords={circular maximal theorem, local smoothing, wave equation, Mockenhaupt-Seeger-Sogge}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This blueprint proves the $L^p(\R^2)$ boundedness of the circular maximal operator for $p>2$ by reducing it to a positive local-smoothing gain for the two-dimensional half-wave propagator and then proving the gain of Mockenhaupt--Seeger--Sogge.  The organization is designed for later formalization: after the introductory section, every result is used only after it has been proved or after an exact cited version has been stated, and every proof immediately follows its statement.  The difficult harmonic-analysis inputs from the original Mockenhaupt--Seeger--Sogge argument are isolated as explicitly stated cited theorems.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction and overview}
+
+The statements in this section are an overview and are exempt from the strict forward-dependency rule imposed from Section~\ref{sec:conditional} onward.
+
+\begin{definition}[Fourier transform convention]\label{def:fourier-convention}
+For $f\in\Sch(\R^2)$, define
+\[
+\widehat f(\xi)=\int_{\R^2}f(x)e^{-ix\cdot\xi}\dd x.
+\]
+The inverse transform is
+\[
+f(x)=(2\pi)^{-2}\int_{\R^2}\widehat f(\xi)e^{ix\cdot\xi}\dd\xi.
+\]
+\end{definition}
+
+\begin{definition}[Circular averages and the circular maximal operator]\label{def:circular-average}
+Let $\sigma$ be normalized arclength measure on $\Sph^1$.  For $t>0$ and $f\in\Sch(\R^2)$, define
+\[
+A_tf(x)=\int_{\Sph^1}f(x-t\omega)\dd\sigma(\omega).
+\]
+Define
+\[
+\Mcirc f(x)=\sup_{t>0}|A_tf(x)|.
+\]
+\end{definition}
+
+\begin{theorem}[Bourgain's circular maximal theorem]\label{thm:intro-bourgain}
+Let $2<p<\infty$.  There is a constant $C_p<\infty$ such that
+\[
+\|\Mcirc f\|_{L^p(\R^2)}\le C_p\|f\|_{L^p(\R^2)}
+\]
+for every $f\in\Sch(\R^2)$.  Consequently, $\Mcirc$ has a unique bounded sublinear extension from $L^p(\R^2)$ to $L^p(\R^2)$.
+\end{theorem}
+
+The theorem was first proved by Bourgain in \cite{Bourgain1986}.  The proof developed here is the local-smoothing proof of Mockenhaupt, Seeger, and Sogge \cite{MSS1992,MSS1993}.
+
+\begin{definition}[Littlewood--Paley cutoffs]\label{def:intro-lp-cutoffs}
+Fix a radial function $\chi\in C_c^\infty(\R^2)$ with $0\le\chi\le1$, with $\chi(\xi)=1$ when $|\xi|\le1$, and with $\chi(\xi)=0$ when $|\xi|\ge2$.  Put
+\[
+\varphi(\xi)=\chi(\xi)-\chi(2\xi).
+\]
+For $j\in\Z$, define
+\[
+P_jf=\varphi(2^{-j}D)f.
+\]
+The cutoffs satisfy
+\[
+1=\chi(\zeta)+\sum_{j=1}^{\infty}\varphi(2^{-j}\zeta)
+\]
+for every $\zeta\in\R^2$.
+\end{definition}
+
+\begin{definition}[Half-wave propagators]\label{def:intro-half-wave}
+For $t\in\R$ and $f\in\Sch(\R^2)$, define
+\[
+U_\pm(t)f=e^{\pm it|D|}f.
+\]
+Equivalently,
+\[
+U_\pm(t)f(x)=(2\pi)^{-2}\int_{\R^2}e^{ix\cdot\xi\pm it|\xi|}\widehat f(\xi)\dd\xi.
+\]
+\end{definition}
+
+\begin{definition}[Mockenhaupt--Seeger--Sogge gain]\label{def:intro-mss-gain}
+For $2<p\le4$, define
+\[
+\epsMSS(p)=\frac12\left(\frac12-\frac1p\right).
+\]
+For $4\le p<\infty$, define
+\[
+\epsMSS(p)=\frac1{2p}.
+\]
+The two definitions agree when $p=4$.
+\end{definition}
+
+\begin{theorem}[Mockenhaupt--Seeger--Sogge local smoothing]\label{thm:intro-mss-local-smoothing}
+Let $2<p<\infty$ and $\eta>0$.  There is a constant $C_{p,\eta}$ such that, for every integer $j\ge1$, every $f\in\Sch(\R^2)$, and either sign,
+\[
+\|U_\pm(t)P_jf\|_{L^p(\R^2\times[1,2])}
+\le C_{p,\eta}2^{j(\frac12-\frac1p-\epsMSS(p)+\eta)}\|f\|_{L^p(\R^2)}.
+\]
+\end{theorem}
+
+\begin{definition}[Full-time discretization]\label{def:intro-time-discretization}
+For $j\ge1$, a set $E_j\subset[1,2]$ is a maximal $2^{-j}$-separated set if distinct elements of $E_j$ have distance at least $2^{-j}$ and no proper superset of $E_j$ in $[1,2]$ has that property.
+\end{definition}
+
+\begin{theorem}[Discretized full-time local smoothing]\label{thm:intro-discrete-local-smoothing}
+Let $2<p<\infty$ and $\eta>0$.  There is a constant $C_{p,\eta}$ such that, for every integer $j\ge1$, every maximal $2^{-j}$-separated set $E_j\subset[1,2]$, and every $f\in\Sch(\R^2)$,
+\[
+\left(\sum_{t\in E_j}\|U_+(t)P_jf\|_{L^p(\R^2)}^p\right)^{1/p}
+\le C_{p,\eta}2^{j(\frac12-\epsMSS(p)+\eta)}\|f\|_{L^p(\R^2)}.
+\]
+The same statement holds for $U_-(t)$.
+\end{theorem}
+
+The formulation in Theorem~\ref{thm:intro-discrete-local-smoothing} is the specialization to the full time set $E=[1,2]$ of the discretized framework used by Beltran, Roos, Rutar, and Seeger \cite{BRRS2025}.  The exponent differs from the continuous exponent in Theorem~\ref{thm:intro-mss-local-smoothing} by $1/p$, which is the cost of sampling a function whose time frequency is comparable to $2^j$ at spacing $2^{-j}$.
+
+\subsection*{Proof architecture}
+
+Section~\ref{sec:conditional} proves the following conditional implication: any estimate of the form
+\[
+\|U_\pm(t)P_jf\|_{L^p(\R^2\times[1,2])}
+\lesssim 2^{j(\frac12-\frac1p-\rho)}\|f\|_p
+\]
+with $\rho>0$ implies Theorem~\ref{thm:intro-bourgain}.  The proof uses the stationary-phase expansion of $\widehat\sigma$, a one-dimensional Sobolev estimate in the time variable, scaling, and the Littlewood--Paley square-function theorem.
+
+Section~\ref{sec:mss} proves Theorem~\ref{thm:intro-mss-local-smoothing}.  Its $p=4$ core follows the order of the original proof in \cite[Section~1]{MSS1992}: radial localization matched to a vertical space--time frequency decomposition, the vertical recombination inequality, angular wave-front localization, the geometric overlap estimate for conic plates, reduction to a square function, kernel localization near light rays, and the two-dimensional Nikodym--Kakeya maximal estimate.  The translation-invariant half-wave phase makes the wave-front calculations more explicit than in the general Fourier-integral-operator treatment.  Interpolation with $p=2$ and $p=\infty$ gives the stated gain for every $p>2$.
+
+% STRICT-FORWARD-REASONING-START
+\section{From a positive local-smoothing gain to the circular maximal theorem}\label{sec:conditional}
+
+From this point onward, every result is used only after its proof or cited proof has appeared.
+
+\subsection{Standard analytic inputs}
+
+\begin{theorem}[Basic integration and approximation tools]\label{thm:basic-analysis}
+The following facts hold.
+
+For $1\le p<\infty$, the triangle inequality, H\"older's inequality, the Cauchy--Schwarz inequality, Minkowski's integral inequality, Young's convolution inequality, Tonelli's theorem, Fubini's theorem, Fatou's lemma, the dominated convergence theorem, and $L^2$ duality hold in their standard forms on the Euclidean measure spaces used below.
+
+If $I\subset\R$ is a bounded interval and $F\in W^{1,1}(I)$, then $F$ has an absolutely continuous representative and
+\[
+F(t)-F(s)=\int_s^tF'(u)\dd u
+\]
+for all $s,t\in I$.
+
+If $1\le p<\infty$, then $\Sch(\R^2)$ is dense in $L^p(\R^2)$.  For every positive integer $d$, the Euclidean Fourier transform maps $\Sch(\R^d)$ bijectively onto itself.
+\end{theorem}
+
+\begin{proof}
+These are the standard integration, Sobolev, and density theorems.  See \cite[Chapters~2, 3, and 8]{Folland1999}.  The displayed form of the fundamental theorem of calculus is the one-dimensional characterization of $W^{1,1}$ functions.
+\end{proof}
+
+\begin{theorem}[Plancherel theorem]\label{thm:plancherel}
+Let $d$ be a positive integer and use the Fourier-transform convention of Definition~\ref{def:fourier-convention} in $\R^d$.  For every $f\in L^2(\R^d)$,
+\[
+\|f\|_{L^2(\R^d)}=(2\pi)^{-d/2}\|\widehat f\|_{L^2(\R^d)}.
+\]
+In particular, $U_\pm(t)$ is unitary on $L^2(\R^2)$ for every $t\in\R$.
+\end{theorem}
+
+\begin{proof}
+This is the Plancherel theorem with the Fourier-transform normalization in Definition~\ref{def:fourier-convention}; see \cite[Section~8.3]{Folland1999}.  Since the multiplier $e^{\pm it|\xi|}$ has modulus one, the unitarity statement follows directly.
+\end{proof}
+
+\begin{theorem}[Parameter-uniform Mikhlin theorem in dimension two]\label{thm:mikhlin}
+Let $1<p<\infty$.  Let $\{m_u:u\in\mathcal U\}$ be a family of $C^3$ functions on $\R^2\setminus\{0\}$ such that
+\[
+\sup_{u\in\mathcal U}\sup_{\xi\ne0}|\xi|^{|\alpha|}|\partial_\xi^\alpha m_u(\xi)|\le C_\alpha
+\]
+for every multi-index $\alpha$ with $|\alpha|\le3$.  Then
+\[
+\|m_u(D)f\|_{L^p(\R^2)}\le C_p\|f\|_{L^p(\R^2)}
+\]
+for every $u\in\mathcal U$ and every $f\in\Sch(\R^2)$, where $C_p$ depends only on $p$ and the displayed seminorms.
+\end{theorem}
+
+\begin{proof}
+This is the Mikhlin multiplier theorem, with uniformity because its operator norm depends on finitely many of the displayed seminorms.  See \cite[Chapter~IV, Section~3]{Stein1970} or \cite[Chapter~5]{Grafakos2014}.
+\end{proof}
+
+\begin{theorem}[Littlewood--Paley square function]\label{thm:littlewood-paley}
+Let $1<p<\infty$, and let $P_j$ be as in Definition~\ref{def:intro-lp-cutoffs}.  There is a constant $C_p$ such that
+\[
+\left\|\left(\sum_{j\in\Z}|P_jf|^2\right)^{1/2}\right\|_{L^p(\R^2)}
+\le C_p\|f\|_{L^p(\R^2)}
+\]
+for every $f\in\Sch(\R^2)$.
+\end{theorem}
+
+\begin{proof}
+This is the standard Littlewood--Paley square-function theorem for a smooth dyadic partition; see \cite[Chapter~6]{Grafakos2014}.
+\end{proof}
+
+\begin{lemma}[Homogeneous dyadic resolution]\label{lem:homogeneous-dyadic-resolution}
+For every $\xi\in\R^2\setminus\{0\}$,
+\[
+\sum_{k\in\Z}\varphi(2^{-k}\xi)=1.
+\]
+If $j\in\Z$ and $g\in\Sch(\R^2)$ satisfies
+\[
+\supp\widehat g\subset\{\xi:2^{j-3}\le|\xi|\le2^{j+3}\},
+\]
+then
+\[
+g=\sum_{|k-j|\le4}P_kg.
+\]
+\end{lemma}
+
+\begin{proof}
+For $M\ge1$, Definition~\ref{def:intro-lp-cutoffs} gives the telescoping identity
+\[
+\sum_{k=-M}^{M}\varphi(2^{-k}\xi)
+=\chi(2^{-M}\xi)-\chi(2^{M+1}\xi).
+\]
+For fixed $\xi\ne0$, the first term tends to one and the second tends to zero as $M$ tends to infinity.  This proves the first assertion.
+
+The support properties of $\chi$ imply
+\[
+\supp\varphi\subset\{\zeta:1/2\le|\zeta|\le2\}.
+\]
+Consequently, if $\varphi(2^{-k}\xi)\widehat g(\xi)$ is nonzero, then
+\[
+2^{k-1}\le|\xi|\le2^{k+1}
+\]
+and
+\[
+2^{j-3}\le|\xi|\le2^{j+3}.
+\]
+These inequalities imply $|k-j|\le4$.  Multiply the first assertion by $\widehat g(\xi)$ and apply Fourier inversion to obtain the second assertion.
+\end{proof}
+
+\begin{theorem}[Hardy--Littlewood maximal theorem]\label{thm:hardy-littlewood}
+For $1<p\le\infty$, the centered Hardy--Littlewood maximal operator
+\[
+\MHL f(x)=\sup_{r>0}\frac1{|B(x,r)|}\int_{B(x,r)}|f(y)|\dd y
+\]
+is bounded on $L^p(\R^2)$.
+\end{theorem}
+
+\begin{proof}
+This is the Hardy--Littlewood maximal theorem; see \cite[Chapter~I, Section~1]{Stein1970}.
+\end{proof}
+
+\begin{lemma}[Convolution with a scaled radial majorant]\label{lem:radial-majorant}
+Let $N>2$.  Suppose that a measurable kernel $K_r$ satisfies
+\[
+|K_r(x)|\le C r^{-2}(1+r^{-1}|x|)^{-N}
+\]
+for some $r>0$.  Then
+\[
+|f*K_r(x)|\le C_N\MHL f(x)
+\]
+for every locally integrable $f$ and almost every $x$.
+\end{lemma}
+
+\begin{proof}
+Split $\R^2$ into $B(0,r)$ and the annuli
+\[
+2^kr<|y|\le2^{k+1}r
+\]
+for $k\ge0$.  On the ball, the convolution is at most a constant times the average of $|f|$ over $B(x,r)$.  On the $k$th annulus, the kernel is bounded by $C r^{-2}2^{-kN}$, while the annulus is contained in $B(0,2^{k+1}r)$.  The contribution is therefore bounded by
+\[
+C2^{-k(N-2)}\MHL f(x).
+\]
+The geometric series converges because $N>2$.  The use of Tonelli's theorem is justified by Theorem~\ref{thm:basic-analysis}.
+\end{proof}
+
+\subsection{One-dimensional control in the time variable}
+
+\begin{lemma}[Time supremum and separated sampling]\label{lem:time-sobolev}
+Let $1\le p<\infty$, let $0<\delta\le1$, and let $F\in C^1([1,2])$.
+
+If $\mathcal I$ is a partition of $[1,2]$ into intervals whose lengths lie between $\delta/2$ and $\delta$, then
+\[
+\sup_{1\le t\le2}|F(t)|^p
+\le C_p\delta^{-1}\int_1^2|F(t)|^p\dd t
++C_p\delta^{p-1}\int_1^2|F'(t)|^p\dd t.
+\]
+
+If $E\subset[1,2]$ is $\delta$-separated, then
+\[
+\sum_{t\in E}|F(t)|^p
+\le C_p\delta^{-1}\int_1^2|F(t)|^p\dd t
++C_p\delta^{p-1}\int_1^2|F'(t)|^p\dd t.
+\]
+\end{lemma}
+
+\begin{proof}
+Let $I\in\mathcal I$.  For $t,u\in I$, the fundamental theorem of calculus from Theorem~\ref{thm:basic-analysis} gives
+\[
+|F(t)|\le |F(u)|+\int_I|F'(s)|\dd s.
+\]
+Average in $u\in I$.  H\"older's inequality from Theorem~\ref{thm:basic-analysis} gives
+\[
+\sup_{t\in I}|F(t)|^p
+\le C_p|I|^{-1}\int_I|F(u)|^p\dd u
++C_p|I|^{p-1}\int_I|F'(u)|^p\dd u.
+\]
+Sum over $I\in\mathcal I$ and use $\delta/2\le|I|\le\delta$.  This proves the first inequality.
+
+For the second inequality, assign to each $t\in E$ an interval $I_t\subset[1,2]$ of length comparable to $\delta$ that contains $t$.  Because $E$ is $\delta$-separated, the family $\{I_t:t\in E\}$ has overlap bounded by an absolute constant.  Apply the preceding single-interval estimate to each $I_t$ and sum.  The bounded overlap and Tonelli's theorem from Theorem~\ref{thm:basic-analysis} give the result.
+\end{proof}
+
+\begin{corollary}[Space-time form of the time estimate]\label{cor:time-sobolev-spacetime}
+Let $1\le p<\infty$, let $0<\delta\le1$, and let $F\in C^1([1,2];\Sch(\R^2))$.  Then
+\[
+\left\|\sup_{1\le t\le2}|F(\cdot,t)|\right\|_{L^p(\R^2)}
+\le C_p\delta^{-1/p}\|F\|_{L^p(\R^2\times[1,2])}
++C_p\delta^{1-1/p}\|\partial_tF\|_{L^p(\R^2\times[1,2])}.
+\]
+If $E\subset[1,2]$ is $\delta$-separated, then
+\[
+\left(\sum_{t\in E}\|F(\cdot,t)\|_{L^p(\R^2)}^p\right)^{1/p}
+\le C_p\delta^{-1/p}\|F\|_{L^p(\R^2\times[1,2])}
++C_p\delta^{1-1/p}\|\partial_tF\|_{L^p(\R^2\times[1,2])}.
+\]
+\end{corollary}
+
+\begin{proof}
+Apply Lemma~\ref{lem:time-sobolev} for each fixed $x$, integrate in $x$, and use Tonelli's theorem and the elementary inequality $(a+b)^{1/p}\le a^{1/p}+b^{1/p}$.  These operations are justified by Theorem~\ref{thm:basic-analysis}.
+\end{proof}
+
+\subsection{Stationary phase and the wave decomposition of circular means}
+
+\begin{theorem}[One-dimensional stationary phase in the required form]\label{thm:stationary-phase}
+Let $I\subset\R$ be compact.  Let $\phi\in C^\infty(I)$ have exactly one critical point $s_0$ in the interior of $I$, with $\phi''(s_0)\ne0$, and let $a\in C_c^\infty(I)$.  Then, for $r\ge1$,
+\[
+\int_Ie^{ir\phi(s)}a(s)\dd s=e^{ir\phi(s_0)}r^{-1/2}b(r)+R_N(r),
+\]
+where $b$ is a classical symbol of order zero and
+\[
+|\partial_r^kR_N(r)|\le C_{N,k}r^{-N}
+\]
+for all $N,k\ge0$.  If $\phi$ has no critical point on $\supp a$, the integral and all its $r$-derivatives are $O_N(r^{-N})$.
+\end{theorem}
+
+\begin{proof}
+This is the one-dimensional stationary-phase theorem with parameters specialized to a compact interval; see \cite[Theorem~7.7.5]{Hormander1983}.  The nonstationary assertion follows from repeated integration by parts with the operator $(ir\phi')^{-1}\partial_s$.
+\end{proof}
+
+\begin{lemma}[Oscillatory expansion of the Fourier transform of arclength]\label{lem:circle-stationary-phase}
+There are smooth functions $a_+,a_-:[1,\infty)\to\mathbb C$ such that
+\[
+\widehat\sigma(\xi)=e^{i|\xi|}a_+(|\xi|)+e^{-i|\xi|}a_-(|\xi|)
+\]
+whenever $|\xi|\ge1$.  For every integer $k\ge0$,
+\[
+|a_\pm^{(k)}(r)|\le C_kr^{-1/2-k}
+\]
+for $r\ge1$.
+\end{lemma}
+
+\begin{proof}
+Rotation invariance gives
+\[
+\widehat\sigma(\xi)=\frac1{2\pi}\int_0^{2\pi}e^{-i|\xi|\cos\theta}\dd\theta.
+\]
+Choose a smooth partition of unity on the circle with one function supported near $\theta=0$, one supported near $\theta=\pi$, and the remaining functions supported away from the critical points of $-\cos\theta$.  Apply Theorem~\ref{thm:stationary-phase} to the first two pieces.  Their critical values are $-1$ and $1$, and their second derivatives are nonzero.  Apply the nonstationary part of Theorem~\ref{thm:stationary-phase} to the remaining pieces.  Differentiating the resulting symbol expansions in $r$ gives the displayed estimates.
+\end{proof}
+
+\begin{proposition}[Frequency-localized circle-wave decomposition]\label{prop:circle-wave-decomposition}
+For every integer $j\ge1$, there are multipliers $b_{j,+}(t,D)$ and $b_{j,-}(t,D)$, defined for $1\le t\le2$, such that
+\[
+A_tP_jf=2^{-j/2}\sum_{\pm}b_{j,\pm}(t,D)U_\pm(t)P_jf.
+\]
+For $r\in\{0,1\}$ and every multi-index $\alpha$ with $|\alpha|\le3$,
+\[
+|\partial_\xi^\alpha\partial_t^rb_{j,\pm}(t,\xi)|\le C_\alpha2^{-j|\alpha|}
+\]
+when $1\le t\le2$.  The families $b_{j,\pm}(t,D)$ and $2^{-j}b_{j,\pm}(t,D)|D|$ are uniformly bounded on $L^p(\R^2)$ for every $1<p<\infty$.
+\end{proposition}
+
+\begin{proof}
+The Fourier multiplier of $A_t$ is $\widehat\sigma(t\xi)$.  On the support of $\varphi(2^{-j}\xi)$, one has $t|\xi|\ge1$ after harmlessly modifying finitely many low values of $j$.  Lemma~\ref{lem:circle-stationary-phase} gives
+\[
+\widehat\sigma(t\xi)=\sum_{\pm}e^{\pm it|\xi|}a_\pm(t|\xi|).
+\]
+Choose a smooth cutoff $\widetilde\varphi$ that equals one on $\supp\varphi$ and define
+\[
+b_{j,\pm}(t,\xi)=2^{j/2}a_\pm(t|\xi|)\widetilde\varphi(2^{-j}\xi).
+\]
+This gives the decomposition.  The symbol estimates in Lemma~\ref{lem:circle-stationary-phase}, the chain rule, and $|\xi|\simeq2^j$ give the displayed derivative estimates.  They also give the same estimates for $2^{-j}|\xi|b_{j,\pm}(t,\xi)$.  The uniform multiplier bounds follow from Theorem~\ref{thm:mikhlin}.
+\end{proof}
+
+\subsection{The conditional local maximal estimate}
+
+\begin{definition}[A positive local-smoothing gain at $p$]\label{def:positive-gain}
+Let $2<p<\infty$.  We say that the half-wave propagator has a local-smoothing gain $\rho>0$ at $p$ if there is a constant $C_{p,\rho}$ such that
+\[
+\|U_\pm(t)P_jf\|_{L^p(\R^2\times[1,2])}
+\le C_{p,\rho}2^{j(\frac12-\frac1p-\rho)}\|f\|_{L^p(\R^2)}
+\]
+for every integer $j\ge1$, every $f\in\Sch(\R^2)$, and either sign.
+\end{definition}
+
+\begin{lemma}[Stability of local smoothing under annular cutoffs]\label{lem:annular-stability}
+Assume the gain in Definition~\ref{def:positive-gain}.  Let $g\in\Sch(\R^2)$ have Fourier support in
+\[
+2^{j-3}\le|\xi|\le2^{j+3}.
+\]
+Then
+\[
+\|U_\pm(t)g\|_{L^p(\R^2\times[1,2])}
+\le C_{p,\rho}2^{j(\frac12-\frac1p-\rho)}\|g\|_p.
+\]
+\end{lemma}
+
+\begin{proof}
+Lemma~\ref{lem:homogeneous-dyadic-resolution} gives
+\[
+g=\sum_{|k-j|\le4}P_kg.
+\]  Apply Definition~\ref{def:positive-gain} to each $P_kg$, use $2^k\simeq2^j$, and use Theorem~\ref{thm:mikhlin} to bound $\|P_kg\|_p$ by $C\|g\|_p$.  The triangle inequality from Theorem~\ref{thm:basic-analysis} proves the result.
+\end{proof}
+
+\begin{proposition}[Annular circular maximal estimate]\label{prop:annular-maximal}
+Let $2<p<\infty$.  Assume the gain in Definition~\ref{def:positive-gain} holds for some $\rho>0$.  If $g\in\Sch(\R^2)$ has Fourier support in
+\[
+2^{j-3}\le|\xi|\le2^{j+3},
+\]
+then
+\[
+\left\|\sup_{1\le t\le2}|A_tg|\right\|_{L^p(\R^2)}
+\le C_{p,\rho}2^{-j\rho}\|g\|_{L^p(\R^2)}.
+\]
+\end{proposition}
+
+\begin{proof}
+Put $F(x,t)=A_tg(x)$.  The proof of Proposition~\ref{prop:circle-wave-decomposition}, with a cutoff equal to one on the Fourier support of $g$, gives the same circle-wave decomposition for $A_tg$.  Lemma~\ref{lem:annular-stability} and the uniform multiplier bounds from Theorem~\ref{thm:mikhlin} give
+\[
+\|F\|_{L^p(\R^2\times[1,2])}
+\le C2^{-j/2}2^{j(\frac12-\frac1p-\rho)}\|g\|_p.
+\]
+Thus
+\[
+\|F\|_{L^p(\R^2\times[1,2])}
+\le C2^{-j(\frac1p+\rho)}\|g\|_p.
+\]
+Differentiate the decomposition in Proposition~\ref{prop:circle-wave-decomposition}.  The derivative may fall on $b_{j,\pm}$ or on $U_\pm(t)$.  The first term is bounded by the same expression as $F$.  In the second term, $\partial_tU_\pm(t)=\pm i|D|U_\pm(t)$.  Apply Lemma~\ref{lem:annular-stability} to $|D|g$ and use Theorem~\ref{thm:mikhlin} to obtain
+\[
+\||D|g\|_p\le C2^j\|g\|_p.
+\]
+Consequently,
+\[
+\|\partial_tF\|_{L^p(\R^2\times[1,2])}
+\le C2^{j(1-\frac1p-\rho)}\|g\|_p.
+\]
+Apply Corollary~\ref{cor:time-sobolev-spacetime} with $\delta=2^{-j}$.  The first term is
+\[
+C2^{j/p}2^{-j(\frac1p+\rho)}\|g\|_p=C2^{-j\rho}\|g\|_p.
+\]
+The second term is
+\[
+C2^{-j(1-\frac1p)}2^{j(1-\frac1p-\rho)}\|g\|_p=C2^{-j\rho}\|g\|_p.
+\]
+This proves the proposition.
+\end{proof}
+
+\subsection{Scaling and summation over all radii}
+
+\begin{definition}[Relative-frequency decomposition at radius $2^m$]\label{def:relative-frequency}
+For $m\in\Z$, define
+\[
+L_mf=\chi(2^mD)f.
+\]
+For $j\ge1$, define
+\[
+Q_{m,j}f=\varphi(2^{m-j}D)f.
+\]
+Definition~\ref{def:intro-lp-cutoffs} gives
+\[
+f=L_mf+\sum_{j=1}^{\infty}Q_{m,j}f
+\]
+for every $f\in\Sch(\R^2)$.
+\end{definition}
+
+\begin{lemma}[Low relative frequencies]\label{lem:low-relative-frequency}
+There is an absolute constant $C$ such that
+\[
+\sup_{m\in\Z}\sup_{1\le s\le2}|A_{2^ms}L_mf(x)|\le C\MHL f(x)
+\]
+for every $f\in\Sch(\R^2)$ and every $x\in\R^2$.
+\end{lemma}
+
+\begin{proof}
+The kernel of $L_m$ is
+\[
+K_m(x)=2^{-2m}\check\chi(2^{-m}x).
+\]
+Since $\check\chi$ is Schwartz, for every $N$,
+\[
+|K_m(x)|\le C_N2^{-2m}(1+2^{-m}|x|)^{-N}.
+\]
+The kernel of $A_{2^ms}L_m$ is $K_m*\sigma_{2^ms}$.  If $1\le s\le2$, then $|2^ms\omega|\le2^{m+1}$.  The triangle inequality gives
+\[
+|(K_m*\sigma_{2^ms})(x)|\le C_N2^{-2m}(1+2^{-m}|x|)^{-N}
+\]
+after changing $C_N$.  Apply Lemma~\ref{lem:radial-majorant} with $r=2^m$ and then take the two suprema.
+\end{proof}
+
+\begin{lemma}[Scaling of the high relative-frequency pieces]\label{lem:high-frequency-scaling}
+Assume the conclusion of Proposition~\ref{prop:annular-maximal}.  For $m\in\Z$ and $j\ge1$, put
+\[
+G_{m,j}f(x)=\sup_{1\le s\le2}|A_{2^ms}Q_{m,j}f(x)|.
+\]
+Then
+\[
+\|G_{m,j}f\|_{L^p(\R^2)}
+\le C_{p,\rho}2^{-j\rho}\|Q_{m,j}f\|_{L^p(\R^2)}.
+\]
+\end{lemma}
+
+\begin{proof}
+Define $g(y)=Q_{m,j}f(2^my)$.  A direct change of variables gives
+\[
+A_{2^ms}Q_{m,j}f(2^my)=A_sg(y).
+\]
+The Fourier support of $g$ lies in a fixed enlargement of the annulus $|\xi|\simeq2^j$.  Proposition~\ref{prop:annular-maximal} gives
+\[
+\left\|\sup_{1\le s\le2}|A_sg|\right\|_{L^p_y}
+\le C2^{-j\rho}\|g\|_{L^p_y}.
+\]
+The change of variables $x=2^my$ multiplies both sides by $2^{2m/p}$, and the scaling factors cancel.  This gives the stated inequality.
+\end{proof}
+
+\begin{theorem}[Conditional circular maximal theorem]\label{thm:conditional-bourgain}
+Let $2<p<\infty$.  If the half-wave propagator has a local-smoothing gain $\rho>0$ at $p$ in the sense of Definition~\ref{def:positive-gain}, then
+\[
+\|\Mcirc f\|_{L^p(\R^2)}\le C_{p,\rho}\|f\|_{L^p(\R^2)}
+\]
+for every $f\in\Sch(\R^2)$.
+\end{theorem}
+
+\begin{proof}
+For each $t>0$, choose the unique $m\in\Z$ with $2^m\le t<2^{m+1}$ and write $t=2^ms$ with $1\le s<2$.  Use Definition~\ref{def:relative-frequency} and the triangle inequality to obtain
+\[
+\Mcirc f
+\le \sup_m\sup_{1\le s\le2}|A_{2^ms}L_mf|
++\sum_{j=1}^{\infty}\sup_mG_{m,j}f.
+\]
+Lemma~\ref{lem:low-relative-frequency} and Theorem~\ref{thm:hardy-littlewood} bound the first term in $L^p$ by $C_p\|f\|_p$.
+
+Fix $j\ge1$.  Pointwise,
+\[
+\sup_mG_{m,j}f\le\left(\sum_m|G_{m,j}f|^p\right)^{1/p}.
+\]
+Tonelli's theorem from Theorem~\ref{thm:basic-analysis} and Lemma~\ref{lem:high-frequency-scaling} give
+\[
+\left\|\sup_mG_{m,j}f\right\|_p^p
+\le C2^{-j\rho p}\sum_m\|Q_{m,j}f\|_p^p.
+\]
+Since $p>2$, the pointwise inequality between sequence norms gives
+\[
+\left(\sum_m|Q_{m,j}f(x)|^p\right)^{1/p}
+\le\left(\sum_m|Q_{m,j}f(x)|^2\right)^{1/2}.
+\]
+As $m$ varies, the operators $Q_{m,j}$ are exactly a shifted dyadic Littlewood--Paley family.  Theorem~\ref{thm:littlewood-paley} therefore gives
+\[
+\left(\sum_m\|Q_{m,j}f\|_p^p\right)^{1/p}\le C_p\|f\|_p.
+\]
+Consequently,
+\[
+\left\|\sup_mG_{m,j}f\right\|_p\le C_{p,\rho}2^{-j\rho}\|f\|_p.
+\]
+Use Minkowski's inequality from Theorem~\ref{thm:basic-analysis} to sum in $j$.  The geometric series $\sum_{j\ge1}2^{-j\rho}$ converges because $\rho>0$.  This proves the theorem.
+\end{proof}
+
+\begin{corollary}[Extension to $L^p$]\label{cor:conditional-extension}
+Under the hypotheses of Theorem~\ref{thm:conditional-bourgain}, the map $f\mapsto\Mcirc f$, initially defined on $\Sch(\R^2)$, has a unique bounded sublinear extension to $L^p(\R^2)$.
+\end{corollary}
+
+\begin{proof}
+For $f,g\in\Sch(\R^2)$, sublinearity gives
+\[
+|\Mcirc f-\Mcirc g|\le\Mcirc(f-g).
+\]
+Theorem~\ref{thm:conditional-bourgain} therefore shows that $\Mcirc$ is Lipschitz from $\Sch(\R^2)$, equipped with the $L^p$ norm, into $L^p(\R^2)$.  Use the density statement in Theorem~\ref{thm:basic-analysis} to extend it uniquely by completion.
+\end{proof}
+
+\section{The Mockenhaupt--Seeger--Sogge local-smoothing estimate}\label{sec:mss}
+
+\subsection{Endpoint estimates}
+
+\begin{theorem}[Riesz--Thorin interpolation in the required forms]\label{thm:riesz-thorin}
+Let $(X,\mu)$ and $(Y,\nu)$ be measure spaces.  Suppose a linear operator $T$ satisfies
+\[
+\|Tf\|_{L^{p_0}(Y)}\le M_0\|f\|_{L^{p_0}(X)}
+\]
+and
+\[
+\|Tf\|_{L^{p_1}(Y)}\le M_1\|f\|_{L^{p_1}(X)}.
+\]
+Let $0<\theta<1$ and define $p$ by
+\[
+\frac1p=\frac{1-\theta}{p_0}+\frac\theta{p_1}.
+\]
+Then
+\[
+\|Tf\|_{L^p(Y)}\le M_0^{1-\theta}M_1^\theta\|f\|_{L^p(X)}.
+\]
+The statement remains valid when $p_1=\infty$.
+
+The same conclusion holds for a linear operator whose domain norms are $L^{p_i}(X;\ell^2)$ and whose range norms are $L^{p_i}(Y)$.
+\end{theorem}
+
+\begin{proof}
+The scalar statement is the Riesz--Thorin interpolation theorem.  The vector-valued statement follows from the same theorem and the complex interpolation identity
+\[
+[L^{p_0}(X;\ell^2),L^{p_1}(X;\ell^2)]_\theta=L^p(X;\ell^2).
+\]
+See \cite[Chapters~4 and~5]{BerghLofstrom1976}.
+\end{proof}
+
+\begin{proposition}[$L^2$ endpoint]\label{prop:mss-l2-endpoint}
+For every integer $j$ and either sign,
+\[
+\|U_\pm(t)P_jf\|_{L^2(\R^2\times[1,2])}\le\|f\|_{L^2(\R^2)}.
+\]
+\end{proposition}
+
+\begin{proof}
+By Theorem~\ref{thm:plancherel}, $U_\pm(t)$ is unitary on $L^2$ for every $t$.  Hence
+\[
+\int_1^2\|U_\pm(t)P_jf\|_2^2\dd t=\|P_jf\|_2^2\le\|f\|_2^2.
+\]
+\end{proof}
+
+\begin{lemma}[Frequency-localized half-wave kernel bound]\label{lem:wave-kernel-l1}
+Let $K_{j,t}$ be the convolution kernel of $U_+(t)P_j$, where $1\le t\le2$ and $j\ge1$.  Then
+\[
+\|K_{j,t}\|_{L^1(\R^2)}\le C2^{j/2}.
+\]
+The same estimate holds for $U_-(t)P_j$.
+\end{lemma}
+
+\begin{proof}
+Put $\lambda=2^j$.  In polar coordinates,
+\[
+K_{j,t}(x)=(2\pi)^{-2}\int_0^\infty\int_{\Sph^1}e^{ir(x\cdot\omega+t)}\varphi(r/\lambda)r\dd\sigma(\omega)\dd r.
+\]
+Apply Lemma~\ref{lem:circle-stationary-phase} to the angular integral when $|x|$ is comparable to $t$ and use the nonstationary part of Theorem~\ref{thm:stationary-phase} otherwise.  Repeated integration by parts in $r$ gives, for every $N$,
+\[
+|K_{j,t}(x)|\le C_N\lambda^2(1+\lambda||x|-t|)^{-N}(1+\lambda|x|)^{-1/2}.
+\]
+On the annulus where $|x|$ is comparable to $t$, the factor $(1+\lambda|x|)^{-1/2}$ is $O(\lambda^{-1/2})$.  Integrating in polar coordinates, the radial factor $(1+\lambda||x|-t|)^{-N}$ has integral $O(\lambda^{-1})$, while the circumference is $O(1)$.  This region contributes $O(\lambda^{1/2})$.  On the ball $|x|\lesssim\lambda^{-1}$, the trivial bound $|K_{j,t}(x)|\lesssim\lambda^2$ contributes $O(1)$.  On the remaining regions, the displayed estimate or repeated integration by parts gives a smaller contribution.  Hence the full $L^1$ norm is $O(\lambda^{1/2})$.  The negative sign is identical.
+\end{proof}
+
+\begin{proposition}[$L^\infty$ endpoint]\label{prop:mss-linfty-endpoint}
+For every integer $j\ge1$ and either sign,
+\[
+\|U_\pm(t)P_jf\|_{L^\infty(\R^2\times[1,2])}\le C2^{j/2}\|f\|_{L^\infty(\R^2)}.
+\]
+\end{proposition}
+
+\begin{proof}
+For every fixed $t$, Young's convolution inequality, which is part of Theorem~\ref{thm:basic-analysis}, gives
+\[
+\|U_\pm(t)P_jf\|_\infty\le\|K_{j,t}\|_1\|f\|_\infty.
+\]
+Apply Lemma~\ref{lem:wave-kernel-l1} and take the supremum over $1\le t\le2$.
+\end{proof}
+
+\subsection{Radial localization and vertical recombination}
+
+\begin{definition}[Space--time Fourier transform]\label{def:spacetime-fourier}
+For $G\in\Sch(\R^2\times\R)$, define
+\[
+\widehat G(\eta,\tau)=\int_{\R^2}\int_\R G(x,t)e^{-i(x\cdot\eta+t\tau)}\dd t\dd x.
+\]
+The inverse transform has the factor $(2\pi)^{-3}$.
+\end{definition}
+
+\begin{definition}[Conically localized half-wave operator]\label{def:conic-operator}
+Let $\lambda\ge2$.  Let $a\in C_c^\infty(\R^2\setminus\{0\})$ be supported where $1/2\le|\xi|\le2$ and in a fixed sufficiently narrow angular sector.  Let $\vartheta\in C_c^\infty((1/2,5/2))$ equal one on $[1,2]$.  Define
+\[
+T_\lambda f(x,t)=\vartheta(t)(2\pi)^{-2}\int_{\R^2}e^{i(x\cdot\xi+t|\xi|)}a(\xi/\lambda)\widehat f(\xi)\dd\xi.
+\]
+\end{definition}
+
+\begin{definition}[Vertical projections and matched radial pieces]\label{def:mss-radial-vertical}
+Fix $\beta\in C_c^\infty((-1,1))$ such that
+\[
+\sum_{n\in\Z}\beta(s-n)^2=1
+\]
+for every $s\in\R$.  Fix $\widetilde\beta\in C_c^\infty((-3,3))$ that equals one on $[-2,2]$.
+
+For $n\in\Z$, define the space--time multiplier $V_n^\lambda$ by
+\[
+\widehat{V_n^\lambda G}(\eta,\tau)
+=\beta(\lambda^{-1/2}\tau-n)\widehat G(\eta,\tau).
+\]
+Define $f_n$ by
+\[
+\widehat{f_n}(\xi)=\widetilde\beta(\lambda^{-1/2}|\xi|-n)\widehat f(\xi).
+\]
+Finally, define
+\[
+\mathcal N_\lambda
+=\left\{n\in\Z:\dist\!\left(n,[\lambda^{1/2}/2,2\lambda^{1/2}]\right)<3\right\}.
+\]
+\end{definition}
+
+\begin{lemma}[Number of relevant radial indices]\label{lem:mss-relevant-indices}
+If $a(\xi/\lambda)\widehat{f_n}(\xi)$ is nonzero, then $n\in\mathcal N_\lambda$.  Moreover,
+\[
+\#\mathcal N_\lambda\le C\lambda^{1/2}.
+\]
+\end{lemma}
+
+\begin{proof}
+The support of $a(\xi/\lambda)$ gives $\lambda/2\le|\xi|\le2\lambda$.  The support of $\widetilde\beta(\lambda^{-1/2}|\xi|-n)$ gives
+\[
+|n-\lambda^{-1/2}|\xi||<3.
+\]
+This is exactly the condition $n\in\mathcal N_\lambda$.  The set $\mathcal N_\lambda$ is contained in an interval of length at most $2\lambda^{1/2}+6$, which is bounded by $C\lambda^{1/2}$ for $\lambda\ge2$.
+\end{proof}
+
+\begin{proposition}[Radial--time localization]\label{prop:mss-radial-time-localization}
+Let $1\le p\le\infty$ and $N\ge1$.  There is a constant $C_{p,N}$ such that
+\[
+\left\|T_\lambda f-
+\sum_{n\in\mathcal N_\lambda}(V_n^\lambda)^2T_\lambda f_n
+\right\|_{L^p(\R^2\times\R)}
+\le C_{p,N}\lambda^{-N}\|f\|_{L^p(\R^2)}.
+\]
+\end{proposition}
+
+\begin{proof}
+Definition~\ref{def:mss-radial-vertical} gives the exact identity
+\[
+T_\lambda f=\sum_{n\in\Z}(V_n^\lambda)^2T_\lambda f.
+\]
+By Lemma~\ref{lem:mss-relevant-indices}, $T_\lambda f_n=0$ when $n\notin\mathcal N_\lambda$.  Hence the difference in the proposition equals
+\[
+\sum_{n\in\Z}(V_n^\lambda)^2T_\lambda(f-f_n).
+\]
+Using Definition~\ref{def:spacetime-fourier}, a direct Fourier-transform calculation gives
+\[
+\widehat{T_\lambda f}(\eta,\tau)
+=a(\eta/\lambda)\widehat f(\eta)
+\widehat\vartheta(\tau-|\eta|).
+\]
+The multiplier of the error, before multiplication by $\widehat f(\eta)$, is therefore
+\[
+M_\lambda(\eta,\tau)
+=a(\eta/\lambda)\widehat\vartheta(\tau-|\eta|)
+\sum_{n\in\Z}\beta(\lambda^{-1/2}\tau-n)^2
+\left[1-\widetilde\beta(\lambda^{-1/2}|\eta|-n)\right].
+\]
+At each $(\eta,\tau)$ only a bounded number of summands are nonzero.  On the support of each nonzero summand, the support conditions on $\beta$ and the region where $\widetilde\beta$ equals one imply
+\[
+|\tau-|\eta||\ge\lambda^{1/2}.
+\]
+The Fourier transform $\widehat\vartheta$ is a Schwartz function by Theorem~\ref{thm:basic-analysis}.  Consequently, for every $A$ and every multi-index $\alpha$ in $(\eta,\tau)$, the derivatives of $M_\lambda$ are bounded by $C_{A,\alpha}\lambda^{-A}$ after multiplication by any fixed polynomial in $(\eta/\lambda,\tau/\lambda)$.  The losses caused by differentiating the cutoffs are powers of $\lambda$ of fixed order and are absorbed by choosing a higher Schwartz seminorm of $\widehat\vartheta$.
+
+Let $K_\lambda(z,t)$ be the inverse Fourier transform of $M_\lambda$ in $(\eta,\tau)$.  Repeated integration by parts with $1-\Delta_{\eta,\tau}$ gives, for every $A$ and $B$,
+\[
+|K_\lambda(z,t)|
+\le C_{A,B}\lambda^{-A}(1+|z|+|t|)^{-B}.
+\]
+For each fixed $t$, the error is convolution in the $x$ variable with $K_\lambda(\cdot,t)$.  Young's inequality from Theorem~\ref{thm:basic-analysis} gives
+\[
+\|K_\lambda(\cdot,t)*f\|_{L^p_x}
+\le\|K_\lambda(\cdot,t)\|_{L^1_z}\|f\|_{L^p_x}.
+\]
+Choose $A>N$ and $B$ large, integrate this estimate in $t$, and use the same argument with a supremum when $p=\infty$.  This proves the proposition.
+\end{proof}
+
+\begin{theorem}[Vertical recombination inequality]\label{thm:mss-vertical-recombination}
+Let $2\le p\le\infty$.  Let $\mathcal N\subset\Z$ be finite and satisfy
+\[
+\#\mathcal N\le C_0\lambda^{1/2}.
+\]
+For every family $\{H_n:n\in\mathcal N\}\subset\Sch(\R^2\times\R)$,
+\[
+\left\|\sum_{n\in\mathcal N}V_n^\lambda H_n\right\|_{L^p(\R^2\times\R)}
+\le C_{p,C_0}\lambda^{\frac14-\frac1{2p}}
+\left\|\left(\sum_{n\in\mathcal N}|H_n|^2\right)^{1/2}\right\|_{L^p(\R^2\times\R)}.
+\]
+\end{theorem}
+
+\begin{proof}
+For $p=2$, the multipliers $\beta(\lambda^{-1/2}\tau-n)$ have bounded overlap in $\tau$.  Theorem~\ref{thm:plancherel} in dimension three gives
+\[
+\left\|\sum_nV_n^\lambda H_n\right\|_2^2
+\le C\sum_n\|H_n\|_2^2.
+\]
+
+For $p=\infty$, the convolution kernel of $V_n^\lambda$ in the time variable is a modulation of a common kernel whose absolute value is bounded by
+\[
+k_\lambda(s)=C\lambda^{1/2}|\check\beta(\lambda^{1/2}s)|.
+\]
+The $L^1$ norm of $k_\lambda$ is independent of $\lambda$.  The Cauchy--Schwarz inequality from Theorem~\ref{thm:basic-analysis} and the cardinality hypothesis give
+\[
+\left|\sum_nV_n^\lambda H_n(x,t)\right|
+\le C\lambda^{1/4}
+\int_\R k_\lambda(s)
+\left(\sum_n|H_n(x,t-s)|^2\right)^{1/2}\dd s.
+\]
+Taking the supremum in $(x,t)$ gives the asserted estimate at $p=\infty$.
+
+Apply the vector-valued form of Theorem~\ref{thm:riesz-thorin} to the linear map
+\[
+\{H_n\}_n\longmapsto\sum_nV_n^\lambda H_n.
+\]
+If $1/p=(1-\theta)/2$, then $\theta=1-2/p$, and interpolation contributes the power
+\[
+\lambda^{\theta/4}=\lambda^{\frac14-\frac1{2p}}.
+\]
+This proves the theorem.
+\end{proof}
+
+\subsection{Angular wave-front localization and plate overlap}
+
+\begin{definition}[Angular pieces]\label{def:mss-angular-pieces}
+Choose a smooth partition of unity $\{\chi_\nu\}_\nu$ on the angular support of $a$ such that each $\chi_\nu$ is homogeneous of degree zero, is supported in a sector of aperture at most $C\lambda^{-1/2}$, and has a central direction $\omega_\nu\in\Sph^1$.  Index the functions by consecutive integers in increasing angular order.  The family has bounded overlap and contains at most $C_a\lambda^{1/2}$ functions, where $C_a$ depends only on the fixed angular support of $a$.  Define
+\[
+T_\lambda^\nu f(x,t)
+=\vartheta(t)(2\pi)^{-2}\int e^{i(x\cdot\xi+t|\xi|)}
+\chi_\nu(\xi)a(\xi/\lambda)\widehat f(\xi)\dd\xi.
+\]
+Then
+\[
+T_\lambda f=\sum_\nu T_\lambda^\nu f.
+\]
+\end{definition}
+
+\begin{definition}[Wave-front projections and conic plates]\label{def:mss-wavefront-plates}
+Fix $0<\gamma<1/10$.  For each $\nu$, choose a homogeneous cutoff $\widetilde\chi_\nu$ that equals one on $\supp\chi_\nu$ and is supported in a sector of aperture at most $C\lambda^{-1/2}$ about $\omega_\nu$.  Fix $\zeta\in C_c^\infty((-2,2))$ that equals one on $[-1,1]$.  Define the space--time multiplier $Q_\nu^{\lambda,\gamma}$ by
+\[
+\widehat{Q_\nu^{\lambda,\gamma}G}(\eta,\tau)
+=\widetilde\chi_\nu(\eta)
+\zeta(\lambda^{-\gamma}(\tau-|\eta|))\widehat G(\eta,\tau).
+\]
+For $n\in\mathcal N_\lambda$, define
+\[
+\mathcal U_{n,\nu}^{\lambda,\gamma}
+=\left\{(\eta,\tau):
+\lambda/4\le|\eta|\le4\lambda,
+\ \angle(\eta,\omega_\nu)\le C\lambda^{-1/2},
+\ |\lambda^{-1/2}\tau-n|\le1,
+\ |\tau-|\eta||\le2\lambda^\gamma
+\right\}.
+\]
+\end{definition}
+
+\begin{lemma}[Wave-front localization]\label{lem:mss-wavefront-localization}
+Let $N\ge1$.  There is a constant $C_{N,\gamma}$ such that
+\[
+\left\|
+\left(\sum_{n\in\mathcal N_\lambda}\sum_\nu
+\left|
+V_n^\lambda T_\lambda^\nu f_n
+-Q_\nu^{\lambda,\gamma}V_n^\lambda T_\lambda^\nu f_n
+\right|^2\right)^{1/2}
+\right\|_{L^4(\R^2\times\R)}
+\le C_{N,\gamma}\lambda^{-N}\|f\|_{L^4(\R^2)}.
+\]
+Moreover,
+\[
+\supp\widehat{Q_\nu^{\lambda,\gamma}V_n^\lambda T_\lambda^\nu f_n}
+\subset\mathcal U_{n,\nu}^{\lambda,\gamma}.
+\]
+\end{lemma}
+
+\begin{proof}
+The space--time Fourier transform of $V_n^\lambda T_\lambda^\nu f_n$ is
+\[
+\beta(\lambda^{-1/2}\tau-n)
+\chi_\nu(\eta)a(\eta/\lambda)
+\widetilde\beta(\lambda^{-1/2}|\eta|-n)
+\widehat f(\eta)\widehat\vartheta(\tau-|\eta|).
+\]
+The angular factor $\widetilde\chi_\nu$ in Definition~\ref{def:mss-wavefront-plates} equals one on the support of $\chi_\nu$.  Thus the difference in the first display of the lemma is supported where
+\[
+|\tau-|\eta||\ge\lambda^\gamma.
+\]
+Since $\widehat\vartheta$ is Schwartz by Theorem~\ref{thm:basic-analysis}, the same integration-by-parts argument used in Proposition~\ref{prop:mss-radial-time-localization} gives an operator norm $O(\lambda^{-A})$ from $L^4(\R^2)$ to $L^4(\R^2\times\R)$ for each pair $(n,\nu)$, for every prescribed $A$.  There are at most $C\lambda$ pairs by Lemma~\ref{lem:mss-relevant-indices} and Definition~\ref{def:mss-angular-pieces}.  Minkowski's inequality in $L^4(\ell^2)$ and a choice of $A>N+1$ prove the first assertion.
+
+The second assertion follows directly from the supports of $a$, $\widetilde\chi_\nu$, $\beta$, and $\zeta$ in Definitions~\ref{def:mss-radial-vertical} and \ref{def:mss-wavefront-plates}.
+\end{proof}
+
+\begin{definition}[Dyadic angular-separation classes]\label{def:mss-angular-separation}
+Let
+\[
+K_\lambda=\left\lceil\log_2(2+C_a\lambda^{1/2})\right\rceil.
+\]
+For angular indices $\nu,\nu'$, define
+\[
+\mathcal P_0=\{(\nu,\nu'):|\nu-\nu'|\le1\}.
+\]
+For $1\le k\le K_\lambda$, define
+\[
+\mathcal P_k
+=\{(\nu,\nu'):2^{k-1}<|\nu-\nu'|\le2^k\}.
+\]
+Every ordered pair of angular indices belongs to exactly one of the sets
+$\mathcal P_k$, after empty terminal classes are discarded.
+\end{definition}
+
+\begin{theorem}[Geometric overlap at fixed angular separation]\label{thm:mss-plate-overlap}
+There is an absolute constant $C$ such that, for every $0<\gamma<1/10$, every $\lambda\ge2$, every $n,n'\in\mathcal N_\lambda$, every $0\le k\le K_\lambda$, and every $Z\in\R^3$,
+\[
+\sum_{(\nu,\nu')\in\mathcal P_k}
+\mathbf 1_{\mathcal U_{n,\nu}^{\lambda,\gamma}
++\mathcal U_{n',\nu'}^{\lambda,\gamma}}(Z)
+\le C_\gamma\lambda^{C\gamma}.
+\]
+Here $A+B=\{a+b:a\in A,\ b\in B\}$.
+\end{theorem}
+
+\begin{proof}
+For normal thickness comparable to one, this is precisely the rescaled constant-coefficient overlap estimate in \cite[Lemma~1.3 and Appendix]{MSS1992}.  In the notation of that paper, the radial indices are fixed, the angular pairs satisfy $|\nu-\nu'|\simeq2^k$, and the conclusion is a uniform pointwise overlap bound for the Minkowski sums of the corresponding cone plates.  Dilation by $\lambda$ changes their frequency scale $2^j$ to $\lambda$, their radial and angular widths $2^{-j/2}$ to $\lambda^{-1/2}$, and their normal thickness $2^{-j}$ to one.
+
+The sets in Definition~\ref{def:mss-wavefront-plates} have normal thickness $O(\lambda^\gamma)$.  Each such set is covered by at most $C\lambda^{C\gamma}$ translates of plates with unit normal thickness and otherwise the same radial and angular dimensions.  Apply the cited overlap estimate to each pair of translated unit-thickness plates and sum over the covering indices.  Enlarging the absolute value of $C$ if necessary gives the displayed estimate.  The classes in Definition~\ref{def:mss-angular-separation} differ from the convention $|\nu-\nu'|\simeq2^k$ only at their endpoints, which changes the bound by an absolute factor.
+\end{proof}
+
+\begin{proposition}[Square-function consequence of plate overlap]\label{prop:mss-overlap-square-function}
+For every $\eta>0$, there is a constant $C_\eta$ such that, whenever
+\[
+\supp\widehat G_{n,\nu}
+\subset\mathcal U_{n,\nu}^{\lambda,\gamma},
+\]
+with $\gamma>0$ chosen sufficiently small in terms of $\eta$, one has
+\[
+\left\|\left(\sum_n\left|\sum_\nu G_{n,\nu}\right|^2\right)^{1/2}\right\|_4
+\le C_\eta\lambda^\eta
+\left\|\left(\sum_{n,\nu}|G_{n,\nu}|^2\right)^{1/2}\right\|_4.
+\]
+\end{proposition}
+
+\begin{proof}
+Put $H_n=\sum_\nu G_{n,\nu}$.  Expanding the fourth power gives
+\[
+\left\|\left(\sum_n|H_n|^2\right)^{1/2}\right\|_4^4
+=\sum_{n,n'}\|H_nH_{n'}\|_2^2.
+\]
+For fixed $n,n'$ and $0\le k\le K_\lambda$, put
+\[
+F_{n,n',k}
+=\sum_{(\nu,\nu')\in\mathcal P_k}
+G_{n,\nu}G_{n',\nu'}.
+\]
+Definition~\ref{def:mss-angular-separation} gives
+\[
+H_nH_{n'}=\sum_{k=0}^{K_\lambda}F_{n,n',k}.
+\]
+The Cauchy--Schwarz inequality in the $k$ variable, which is part of Theorem~\ref{thm:basic-analysis}, gives
+\[
+\|H_nH_{n'}\|_2^2
+\le (K_\lambda+1)\sum_{k=0}^{K_\lambda}
+\|F_{n,n',k}\|_2^2.
+\]
+
+The Fourier support of the summand indexed by $(\nu,\nu')$ in $F_{n,n',k}$ is contained in
+\[
+\mathcal U_{n,\nu}^{\lambda,\gamma}
++\mathcal U_{n',\nu'}^{\lambda,\gamma}.
+\]
+Theorem~\ref{thm:mss-plate-overlap}, the Cauchy--Schwarz inequality in Fourier space, and Theorem~\ref{thm:plancherel} in dimension three therefore give
+\[
+\|F_{n,n',k}\|_2^2
+\le C_\gamma\lambda^{C\gamma}
+\sum_{(\nu,\nu')\in\mathcal P_k}
+\|G_{n,\nu}G_{n',\nu'}\|_2^2.
+\]
+Sum first in $k$, then in $n,n'$.  Since the classes $\mathcal P_k$ partition all ordered angular pairs, the resulting sum is
+\[
+\sum_{n,n',\nu,\nu'}
+\|G_{n,\nu}G_{n',\nu'}\|_2^2
+=
+\left\|\left(\sum_{n,\nu}|G_{n,\nu}|^2\right)^{1/2}\right\|_4^4.
+\]
+It follows that the fourth power of the left-hand side in the proposition is at most
+\[
+C_\gamma(K_\lambda+1)\lambda^{C\gamma}
+\left\|\left(\sum_{n,\nu}|G_{n,\nu}|^2\right)^{1/2}\right\|_4^4.
+\]
+Take fourth roots.  Since $K_\lambda+1\le C\log(2+\lambda)$, choose $\gamma$ so small that $\lambda^{C\gamma/4}\le\lambda^{\eta/2}$ and absorb the logarithmic factor into $C_\eta\lambda^{\eta/2}$.  This proves the proposition.
+\end{proof}
+
+\begin{lemma}[Removing the vertical projections]\label{lem:mss-remove-vertical}
+For every family $\{H_{n,\nu}\}$,
+\[
+\left\|\left(\sum_{n,\nu}|V_n^\lambda H_{n,\nu}|^2\right)^{1/2}\right\|_{L^4(\R^2\times\R)}
+\le C
+\left\|\left(\sum_{n,\nu}|H_{n,\nu}|^2\right)^{1/2}\right\|_{L^4(\R^2\times\R)}.
+\]
+\end{lemma}
+
+\begin{proof}
+Use the common positive kernel $k_\lambda$ from the proof of Theorem~\ref{thm:mss-vertical-recombination}.  Pointwise,
+\[
+\left(\sum_{n,\nu}|V_n^\lambda H_{n,\nu}(x,t)|^2\right)^{1/2}
+\le\int_\R k_\lambda(s)
+\left(\sum_{n,\nu}|H_{n,\nu}(x,t-s)|^2\right)^{1/2}\dd s.
+\]
+Apply Minkowski's integral inequality from Theorem~\ref{thm:basic-analysis} and use $\|k_\lambda\|_1\le C$.
+\end{proof}
+
+\subsection{The fine square function and the light-ray maximal estimate}
+
+\begin{definition}[Fourier-cube projections]\label{def:fourier-cubes}
+Fix $\psi\in C_c^\infty((-2,2))$ such that
+\[
+\sum_{k\in\Z}\psi(u-k)=1
+\]
+for every $u\in\R$.  For $\kappa=(\kappa_1,\kappa_2)\in\Z^2$, define $P_\lambda^\kappa$ by
+\[
+\widehat{P_\lambda^\kappa f}(\xi)=
+\psi(\lambda^{-1/2}\xi_1-\kappa_1)
+\psi(\lambda^{-1/2}\xi_2-\kappa_2)\widehat f(\xi).
+\]
+Then
+\[
+f=\sum_{\kappa\in\Z^2}P_\lambda^\kappa f
+\]
+for every Schwartz function, with convergence in the Schwartz topology.
+\end{definition}
+
+\begin{theorem}[Fourier-cube square function]\label{thm:fourier-cube-square-function}
+There is a constant $C$ independent of $\lambda\ge2$ such that
+\[
+\left\|\left(\sum_{\kappa\in\Z^2}|P_\lambda^\kappa f|^2\right)^{1/2}\right\|_{L^4(\R^2)}
+\le C\|f\|_{L^4(\R^2)}.
+\]
+\end{theorem}
+
+\begin{proof}
+This is the smooth equal-cube case of the Rubio de Francia square-function theorem; see \cite[Chapter~IV]{GarciaRubio1985}.  It is also the form used in \cite[Equation~(1.10)]{MSS1992}.  Dilation by $\lambda^{1/2}$ reduces the displayed inequality to the unit-cube statement, so the constant is independent of $\lambda$.
+\end{proof}
+
+\begin{definition}[Light-ray maximal operator]\label{def:light-ray-maximal}
+Let $N>3$ and $0<\delta<1/2$.  For a function $g$ on $\R^2\times\R$, define
+\[
+\mathcal K_{\delta,N}g(y)
+=\sup_{\omega\in\Sph^1}
+\delta^{-2}\int_{1/2}^{5/2}\int_{\R^2}
+(1+\delta^{-1}|x+t\omega-y|)^{-N}|g(x,t)|\dd x\dd t.
+\]
+\end{definition}
+
+\begin{theorem}[Two-dimensional light-ray maximal estimate]\label{thm:mss-kakeya}
+For every $N>3$, there is a constant $C_N$ such that
+\[
+\|\mathcal K_{\delta,N}g\|_{L^2(\R^2)}
+\le C_N\bigl(1+|\log\delta|\bigr)^{3/2}
+\|g\|_{L^2(\R^2\times\R)}
+\]
+for every $0<\delta<1/2$.
+\end{theorem}
+
+\begin{proof}
+This is the smooth-kernel form of the Nikodym maximal estimate in \cite[Lemma~1.4]{MSS1992}.  Their operator averages over unit light-ray tubes of transverse width $\delta$.  Lemma~1.4 of the cited paper gives a polylogarithmic $L^2$ bound; the exponent $3/2$ displayed here is a convenient non-sharp form.  The kernel in Definition~\ref{def:light-ray-maximal} is dominated by a convergent sum of normalized characteristic functions of tubes with widths $2^k\delta$, with coefficients decreasing faster than any power of $2^{-k}$.  Applying the cited estimate at each width and summing gives the displayed smooth-kernel form.  The underlying planar Kakeya estimate is due to C\'ordoba \cite{Cordoba1982}.
+\end{proof}
+
+\begin{definition}[Fine square function]\label{def:mss-fine-square-function}
+With Definitions~\ref{def:mss-radial-vertical} and \ref{def:mss-angular-pieces}, define
+\[
+S_\lambda f(x,t)
+=\left(\sum_{n\in\mathcal N_\lambda}\sum_\nu
+|T_\lambda^\nu f_n(x,t)|^2\right)^{1/2}.
+\]
+\end{definition}
+
+\begin{lemma}[Cube decomposition and kernel localization]\label{lem:mss-fine-kernel}
+For each pair $(n,\nu)$ there is a set $J_{n,\nu}\subset\Z^2$ and operators $T_\lambda^{n,\nu,\kappa}$, $\kappa\in J_{n,\nu}$, such that
+\[
+T_\lambda^\nu f_n
+=\sum_{\kappa\in J_{n,\nu}}T_\lambda^{n,\nu,\kappa}P_\lambda^\kappa f.
+\]
+The following uniform properties hold.
+
+First,
+\[
+\#J_{n,\nu}\le C.
+\]
+Second, each $\kappa$ belongs to $J_{n,\nu}$ for at most $C$ pairs $(n,\nu)$.  Third, if $K_\lambda^{n,\nu,\kappa}(x,t;y)$ is the kernel of $T_\lambda^{n,\nu,\kappa}$, then for every $N\ge1$,
+\[
+|K_\lambda^{n,\nu,\kappa}(x,t;y)|
+\le C_N\lambda
+(1+\lambda^{1/2}|x+t\omega_\nu-y|)^{-N}.
+\]
+In particular,
+\[
+\sup_{x,t}\int_{\R^2}|K_\lambda^{n,\nu,\kappa}(x,t;y)|\dd y\le C.
+\]
+\end{lemma}
+
+\begin{proof}
+The multiplier defining $T_\lambda^\nu f_n$ is supported in a radial interval of length $O(\lambda^{1/2})$ and an angular sector of aperture $O(\lambda^{-1/2})$.  At radius comparable to $\lambda$, the tangential width is therefore $O(\lambda^{1/2})$.  The support is contained in a square of sidelength $C\lambda^{1/2}$.  It meets only boundedly many cube supports from Definition~\ref{def:fourier-cubes}, which proves the first cardinality assertion.  Conversely, a cube of that sidelength determines the radial index and angular index up to bounded ambiguity, which proves the second assertion.
+
+Choose a cutoff that equals one on each relevant cube support and insert the identity from Definition~\ref{def:fourier-cubes}.  This gives the stated operators and the exact decomposition.  Their amplitudes are supported in sets of area $O(\lambda)$ and, after the change of variables
+\[
+\xi=\xi_0+\lambda^{1/2}u,
+\]
+have uniformly bounded derivatives on a fixed bounded set in $u$.
+
+The phase is
+\[
+\Phi(\xi)=(x-y)\cdot\xi+t|\xi|.
+\]
+On the support of the amplitude,
+\[
+\left|\frac\xi{|\xi|}-\omega_\nu\right|\le C\lambda^{-1/2}.
+\]
+After the preceding change of variables, the gradient of the phase in $u$ is
+\[
+\lambda^{1/2}\left(x-y+t\frac\xi{|\xi|}\right).
+\]
+If $\lambda^{1/2}|x+t\omega_\nu-y|$ is larger than a fixed constant, this gradient is comparable to that quantity.  All higher $u$-derivatives of the phase are uniformly bounded because $|\xi|\simeq\lambda$ and $t$ remains in a fixed compact interval.  Repeated nonstationary integration by parts in $u$ therefore gives
+\[
+|K_\lambda^{n,\nu,\kappa}(x,t;y)|
+\le C_N\lambda(1+\lambda^{1/2}|x+t\omega_\nu-y|)^{-N}.
+\]
+The prefactor $\lambda$ is the Jacobian of the change of variables.  Integrating the bound in $y$ gives the final assertion.
+\end{proof}
+
+\begin{proposition}[Fine square-function estimate]\label{prop:mss-fine-square-function}
+For every $\eta>0$ and every $\lambda\ge2$,
+\[
+\|S_\lambda f\|_{L^4(\R^2\times\R)}
+\le C_\eta\lambda^\eta\|f\|_{L^4(\R^2)}.
+\]
+\end{proposition}
+
+\begin{proof}
+Definition~\ref{def:mss-fine-square-function} gives
+\[
+\|S_\lambda f\|_4^2=\|(S_\lambda f)^2\|_2.
+\]
+By the $L^2$ duality in Theorem~\ref{thm:basic-analysis}, it suffices to estimate
+\[
+\int_{\R^2\times\R}(S_\lambda f(x,t))^2g(x,t)\dd x\dd t
+\]
+for nonnegative $g$ with $\|g\|_2=1$.
+
+Use Lemma~\ref{lem:mss-fine-kernel}.  The bounded cardinalities there and the Cauchy--Schwarz inequality from Theorem~\ref{thm:basic-analysis} give
+\[
+(S_\lambda f(x,t))^2
+\le C\sum_{n,\nu}\sum_{\kappa\in J_{n,\nu}}
+|T_\lambda^{n,\nu,\kappa}P_\lambda^\kappa f(x,t)|^2.
+\]
+For each term, Cauchy--Schwarz with respect to the measure
+\[
+|K_\lambda^{n,\nu,\kappa}(x,t;y)|\dd y
+\]
+and the last assertion of Lemma~\ref{lem:mss-fine-kernel} give
+\[
+|T_\lambda^{n,\nu,\kappa}P_\lambda^\kappa f(x,t)|^2
+\le C\int_{\R^2}
+\lambda(1+\lambda^{1/2}|x+t\omega_\nu-y|)^{-N}
+|P_\lambda^\kappa f(y)|^2\dd y.
+\]
+Integrate against $g$, use Tonelli's theorem from Theorem~\ref{thm:basic-analysis}, and use the reverse bounded-overlap assertion in Lemma~\ref{lem:mss-fine-kernel}.  Definition~\ref{def:light-ray-maximal}, with $\delta=\lambda^{-1/2}$, gives
+\[
+\int (S_\lambda f)^2g
+\le C\int_{\R^2}
+\sum_\kappa|P_\lambda^\kappa f(y)|^2
+\mathcal K_{\lambda^{-1/2},N}g(y)\dd y.
+\]
+H\"older's inequality from Theorem~\ref{thm:basic-analysis} gives
+\[
+\int (S_\lambda f)^2g
+\le C
+\left\|\sum_\kappa|P_\lambda^\kappa f|^2\right\|_2
+\|\mathcal K_{\lambda^{-1/2},N}g\|_2.
+\]
+Theorem~\ref{thm:fourier-cube-square-function} bounds the first factor by $C\|f\|_4^2$.  Theorem~\ref{thm:mss-kakeya} bounds the second factor by $C(1+\log\lambda)^{3/2}$.  Hence
+\[
+\|S_\lambda f\|_4^2
+\le C(1+\log\lambda)^{3/2}\|f\|_4^2.
+\]
+Take square roots and use $(1+\log\lambda)^{3/4}\le C_\eta\lambda^\eta$.
+\end{proof}
+
+\subsection{Completion of the endpoint estimate at p=4}
+
+\begin{proposition}[MSS recombination in the half-wave case]\label{prop:mss-recombination}
+For every $\eta>0$ and $N\ge1$, there is a constant $C_{\eta,N}$ such that
+\[
+\|T_\lambda f\|_{L^4(\R^2\times\R)}
+\le C_{\eta,N}\lambda^{1/8+\eta}\|S_\lambda f\|_{L^4(\R^2\times\R)}
++C_{\eta,N}\lambda^{-N}\|f\|_{L^4(\R^2)}.
+\]
+\end{proposition}
+
+\begin{proof}
+Proposition~\ref{prop:mss-radial-time-localization} gives
+\[
+\|T_\lambda f\|_4
+\le\left\|\sum_{n\in\mathcal N_\lambda}(V_n^\lambda)^2T_\lambda f_n\right\|_4
++C_N\lambda^{-N}\|f\|_4.
+\]
+Apply Theorem~\ref{thm:mss-vertical-recombination} with $p=4$ and
+\[
+H_n=V_n^\lambda T_\lambda f_n.
+\]
+Using Lemma~\ref{lem:mss-relevant-indices}, obtain
+\[
+\left\|\sum_n(V_n^\lambda)^2T_\lambda f_n\right\|_4
+\le C\lambda^{1/8}
+\left\|\left(\sum_n|V_n^\lambda T_\lambda f_n|^2\right)^{1/2}\right\|_4.
+\]
+
+Definition~\ref{def:mss-angular-pieces} gives
+\[
+V_n^\lambda T_\lambda f_n
+=\sum_\nu V_n^\lambda T_\lambda^\nu f_n.
+\]
+Use Lemma~\ref{lem:mss-wavefront-localization} to replace each summand by
+\[
+G_{n,\nu}=Q_\nu^{\lambda,\gamma}V_n^\lambda T_\lambda^\nu f_n.
+\]
+The error remains $O(\lambda^{-N}\|f\|_4)$ after Cauchy--Schwarz in the $O(\lambda^{1/2})$ angular indices, because the lemma permits an arbitrarily large decay exponent.
+
+The Fourier supports of $G_{n,\nu}$ satisfy the hypothesis of Proposition~\ref{prop:mss-overlap-square-function}.  Hence
+\[
+\left\|\left(\sum_n\left|\sum_\nu G_{n,\nu}\right|^2\right)^{1/2}\right\|_4
+\le C_\eta\lambda^\eta
+\left\|\left(\sum_{n,\nu}|G_{n,\nu}|^2\right)^{1/2}\right\|_4.
+\]
+Use Lemma~\ref{lem:mss-wavefront-localization} once more to replace $G_{n,\nu}$ by $V_n^\lambda T_\lambda^\nu f_n$, again with a rapidly decreasing error.  Then Lemma~\ref{lem:mss-remove-vertical} gives
+\[
+\left\|\left(\sum_{n,\nu}|V_n^\lambda T_\lambda^\nu f_n|^2\right)^{1/2}\right\|_4
+\le C\|S_\lambda f\|_4.
+\]
+Combining the displayed inequalities proves the proposition.
+\end{proof}
+
+\begin{theorem}[$p=4$ Mockenhaupt--Seeger--Sogge estimate]\label{thm:mss-p4}
+For every $\eta>0$, there is a constant $C_\eta$ such that
+\[
+\|U_+(t)P_jf\|_{L^4(\R^2\times[1,2])}
+\le C_\eta2^{j(1/8+\eta)}\|f\|_{L^4(\R^2)}
+\]
+for every integer $j\ge1$.  The same estimate holds for $U_-(t)$.
+\end{theorem}
+
+\begin{proof}
+Set $\lambda=2^j$.  Partition the annulus supporting $P_j$ into a fixed finite number of sufficiently narrow angular sectors.  After a rotation and a change of the fixed smooth amplitude, each term is an operator of the form in Definition~\ref{def:conic-operator}.  The number of terms is independent of $j$.
+
+For one conic term, Proposition~\ref{prop:mss-recombination} and Proposition~\ref{prop:mss-fine-square-function} give
+\[
+\|T_\lambda f\|_4
+\le C_\eta\lambda^{1/8+2\eta}\|f\|_4+C_{\eta,N}\lambda^{-N}\|f\|_4.
+\]
+Rename $2\eta$ as $\eta$, sum the finitely many conic terms, and restrict $t$ to $[1,2]$.  This proves the positive half-wave estimate.  The proof for the negative half-wave is identical after replacing the phase $t|\xi|$ by $-t|\xi|$ and the cone relation $\tau=|\eta|$ by $\tau=-|\eta|$.
+\end{proof}
+
+\subsection{Interpolation, the MSS gain, and the discretized form}
+
+\begin{theorem}[Mockenhaupt--Seeger--Sogge local smoothing in dimension two]\label{thm:mss-local-smoothing}
+Let $2<p<\infty$ and $\eta>0$.  There is a constant $C_{p,\eta}$ such that
+\[
+\|U_\pm(t)P_jf\|_{L^p(\R^2\times[1,2])}
+\le C_{p,\eta}2^{j(\frac12-\frac1p-\epsMSS(p)+\eta)}\|f\|_{L^p(\R^2)}
+\]
+for every integer $j\ge1$ and every $f\in\Sch(\R^2)$.
+\end{theorem}
+
+\begin{proof}
+First suppose $2<p\le4$.  Interpolate Proposition~\ref{prop:mss-l2-endpoint} with Theorem~\ref{thm:mss-p4} by Theorem~\ref{thm:riesz-thorin}.  Let $\theta$ satisfy
+\[
+\frac1p=\frac{1-\theta}{2}+\frac\theta4.
+\]
+Then $\theta=2-4/p$.  Ignoring an arbitrarily small loss inherited from Theorem~\ref{thm:mss-p4}, the interpolated exponent is
+\[
+\frac\theta8=\frac14-\frac1{2p}.
+\]
+Definition~\ref{def:intro-mss-gain} gives
+\[
+\frac12-\frac1p-\epsMSS(p)=\frac14-\frac1{2p}.
+\]
+Choose the loss in Theorem~\ref{thm:mss-p4} small enough that the interpolated loss is at most the prescribed $\eta$.
+
+Now suppose $4\le p<\infty$.  Interpolate Theorem~\ref{thm:mss-p4} with Proposition~\ref{prop:mss-linfty-endpoint}.  Let $\theta$ satisfy
+\[
+\frac1p=\frac{1-\theta}{4}.
+\]
+Then $1-\theta=4/p$.  The interpolated exponent without the arbitrarily small loss is
+\[
+\frac{1-\theta}{8}+\frac\theta2=\frac12-\frac3{2p}.
+\]
+Definition~\ref{def:intro-mss-gain} gives
+\[
+\frac12-\frac1p-\epsMSS(p)=\frac12-\frac3{2p}.
+\]
+Again choose the loss at $p=4$ so that the final loss is at most $\eta$.  The proof is identical for both signs.
+\end{proof}
+
+\begin{corollary}[Discretized MSS local smoothing]\label{cor:mss-discrete}
+Let $2<p<\infty$ and $\eta>0$.  Let $E_j\subset[1,2]$ be $2^{-j}$-separated.  Then
+\[
+\left(\sum_{t\in E_j}\|U_\pm(t)P_jf\|_p^p\right)^{1/p}
+\le C_{p,\eta}2^{j(\frac12-\epsMSS(p)+\eta)}\|f\|_p.
+\]
+\end{corollary}
+
+\begin{proof}
+Apply the sampling estimate in Corollary~\ref{cor:time-sobolev-spacetime} to
+\[
+F(x,t)=U_\pm(t)P_jf(x)
+\]
+with $\delta=2^{-j}$.  Theorem~\ref{thm:mss-local-smoothing} bounds the first space-time norm.  Since
+\[
+\partial_tF=\pm iU_\pm(t)|D|P_jf,
+\]
+The function $|D|P_jf$ has Fourier support in a fixed enlargement of the $j$th annulus.  By Lemma~\ref{lem:homogeneous-dyadic-resolution},
+\[
+|D|P_jf=\sum_{|k-j|\le4}P_k(|D|P_jf).
+\]
+Apply Theorem~\ref{thm:mss-local-smoothing} to every term, use $2^k\simeq2^j$, and use Theorem~\ref{thm:mikhlin} to obtain
+\[
+\|\partial_tF\|_{L^p_{x,t}}
+\le C2^j2^{j(\frac12-\frac1p-\epsMSS(p)+\eta)}\|f\|_p.
+\]
+The first sampling term has exponent
+\[
+\frac1p+\frac12-\frac1p-\epsMSS(p)+\eta
+=\frac12-\epsMSS(p)+\eta.
+\]
+The second sampling term has the same exponent.  This proves the corollary.
+\end{proof}
+
+\begin{corollary}[Bourgain's circular maximal theorem]\label{cor:bourgain-final}
+Let $2<p<\infty$.  Then
+\[
+\|\Mcirc f\|_{L^p(\R^2)}\le C_p\|f\|_{L^p(\R^2)}
+\]
+for every $f\in\Sch(\R^2)$, and $\Mcirc$ extends uniquely to a bounded sublinear operator on $L^p(\R^2)$.
+\end{corollary}
+
+\begin{proof}
+Definition~\ref{def:intro-mss-gain} gives $\epsMSS(p)>0$.  Choose $\eta$ with
+\[
+0<\eta<\epsMSS(p).
+\]
+Theorem~\ref{thm:mss-local-smoothing} then gives Definition~\ref{def:positive-gain} with
+\[
+\rho=\epsMSS(p)-\eta>0.
+\]
+Apply Theorem~\ref{thm:conditional-bourgain}.  The extension statement follows from Corollary~\ref{cor:conditional-extension}.
+\end{proof}
+
+\appendix
+\section{Dependency ledger for formalization}\label{sec:dependency-ledger}
+
+This appendix contains no new mathematical input.  It records the dependency order of the proof.
+
+\begin{enumerate}[label=\arabic*.]
+\item The standard analytic tools are Theorems~\ref{thm:basic-analysis}--\ref{thm:hardy-littlewood}, together with Lemma~\ref{lem:homogeneous-dyadic-resolution}.
+\item Time regularity is isolated in Lemma~\ref{lem:time-sobolev} and Corollary~\ref{cor:time-sobolev-spacetime}.
+\item The Fourier transform of circular measure is handled by Theorem~\ref{thm:stationary-phase}, Lemma~\ref{lem:circle-stationary-phase}, and Proposition~\ref{prop:circle-wave-decomposition}.
+\item The local-smoothing-to-local-maximal implication is Proposition~\ref{prop:annular-maximal}.  Scaling and dyadic summation are Lemmas~\ref{lem:low-relative-frequency} and \ref{lem:high-frequency-scaling}, followed by Theorem~\ref{thm:conditional-bourgain}.
+\item The $p=4$ proof begins with radial--time localization in Proposition~\ref{prop:mss-radial-time-localization} and vertical recombination in Theorem~\ref{thm:mss-vertical-recombination}.
+\item Angular wave-front localization is Lemma~\ref{lem:mss-wavefront-localization}.  The cited geometric input is Theorem~\ref{thm:mss-plate-overlap}, and its analytic consequence is Proposition~\ref{prop:mss-overlap-square-function}.
+\item The fine square function uses Theorem~\ref{thm:fourier-cube-square-function}, Theorem~\ref{thm:mss-kakeya}, Lemma~\ref{lem:mss-fine-kernel}, and Proposition~\ref{prop:mss-fine-square-function} in that order.
+\item Proposition~\ref{prop:mss-recombination} assembles the preceding results.  Theorem~\ref{thm:mss-p4} then follows, and Theorem~\ref{thm:mss-local-smoothing} follows by interpolation.
+\item The final application is Corollary~\ref{cor:bourgain-final}.
+\end{enumerate}
+
+\section{Correspondence with the original MSS proof}\label{sec:mss-correspondence}
+
+The proof in Section~\ref{sec:mss} specializes the first section of \cite{MSS1992} to the translation-invariant phase $x\cdot\xi+t|\xi|$.
+
+\begin{enumerate}[label=\arabic*.]
+\item Proposition~\ref{prop:mss-radial-time-localization} and Lemma~\ref{lem:mss-wavefront-localization} are the two constant-coefficient forms of the localization statements in \cite[Lemma~1.1]{MSS1992}.  In the present setting they follow directly from the identity
+\[
+\widehat{T_\lambda f}(\eta,\tau)
+=a(\eta/\lambda)\widehat f(\eta)\widehat\vartheta(\tau-|\eta|).
+\]
+\item Theorem~\ref{thm:mss-vertical-recombination} is \cite[Lemma~1.2]{MSS1992}.  The proof here includes the $L^2$ and $L^\infty$ endpoints and their interpolation, so the factor $\lambda^{1/8}$ at $p=4$ is explicit.
+\item Theorem~\ref{thm:mss-plate-overlap} is the fixed-angular-separation geometric estimate in \cite[Lemma~1.3 and Appendix]{MSS1992}.  Definition~\ref{def:mss-angular-separation} and Proposition~\ref{prop:mss-overlap-square-function} spell out the dyadic angular decomposition and the Plancherel argument that convert the overlap count into the fourth-power square-function estimate.
+\item Theorem~\ref{thm:mss-kakeya} is the smooth-kernel form of \cite[Lemma~1.4]{MSS1992}.  Lemma~\ref{lem:mss-fine-kernel} and Proposition~\ref{prop:mss-fine-square-function} reproduce the duality reduction immediately preceding and following that lemma.
+\item The expanded variable-coefficient counterparts of these steps appear in \cite{MSS1993}, especially its wave-front, square-function, and Nikodym maximal estimates.
+\end{enumerate}
+
+\section{Imported interfaces}\label{sec:imported-interfaces}
+
+The two non-elementary geometric inputs retained as cited interfaces are Theorem~\ref{thm:mss-plate-overlap} and Theorem~\ref{thm:mss-kakeya}.  Their hypotheses and conclusions are stated exactly in the forms used later.  Every other reduction in the proof, including the localization errors, the power $\lambda^{1/8}$, the fourth-power almost-orthogonality calculation, the kernel estimate, the duality argument, interpolation, sampling, scaling, and dyadic summation, is proved in the main text.
+
+\begin{thebibliography}{99}
+
+\bibitem{BerghLofstrom1976}
+J.~Bergh and J.~Lofstrom,
+\emph{Interpolation Spaces: An Introduction},
+Springer, 1976.
+
+\bibitem{BRRS2025}
+D.~Beltran, J.~Roos, A.~Rutar, and A.~Seeger,
+A fractal local smoothing problem for the wave equation,
+\emph{Bull. Lond. Math. Soc.} \textbf{57} (2025), 3667--3690.
+
+\bibitem{Bourgain1986}
+J.~Bourgain,
+Averages in the plane over convex curves and maximal operators,
+\emph{J. Analyse Math.} \textbf{47} (1986), 69--85.
+
+\bibitem{Cordoba1982}
+A.~Cordoba,
+Geometric Fourier analysis,
+\emph{Ann. Inst. Fourier (Grenoble)} \textbf{32} (1982), 215--226.
+
+\bibitem{Folland1999}
+G.~B. Folland,
+\emph{Real Analysis: Modern Techniques and Their Applications}, second edition,
+Wiley, 1999.
+
+\bibitem{GarciaRubio1985}
+J.~Garcia-Cuerva and J.~L. Rubio de Francia,
+\emph{Weighted Norm Inequalities and Related Topics},
+North-Holland, 1985.
+
+\bibitem{Grafakos2014}
+L.~Grafakos,
+\emph{Classical Fourier Analysis}, third edition,
+Springer, 2014.
+
+\bibitem{Hormander1983}
+L.~Hormander,
+\emph{The Analysis of Linear Partial Differential Operators I},
+Springer, 1983.
+
+\bibitem{MSS1992}
+G.~Mockenhaupt, A.~Seeger, and C.~D. Sogge,
+Wave front sets, local smoothing and Bourgain's circular maximal theorem,
+\emph{Ann. of Math. (2)} \textbf{136} (1992), 207--218.
+
+\bibitem{MSS1993}
+G.~Mockenhaupt, A.~Seeger, and C.~D. Sogge,
+Local smoothing of Fourier integral operators and Carleson--Sjolin estimates,
+\emph{J. Amer. Math. Soc.} \textbf{6} (1993), 65--130.
+
+\bibitem{Stein1970}
+E.~M. Stein,
+\emph{Singular Integrals and Differentiability Properties of Functions},
+Princeton University Press, 1970.
+
+\end{thebibliography}
+
+\end{document}

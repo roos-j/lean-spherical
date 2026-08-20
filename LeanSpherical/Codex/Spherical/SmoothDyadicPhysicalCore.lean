@@ -9,6 +9,7 @@ import LeanSpherical.Codex.Spherical.SphericalAverages
 import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
 import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
 import Mathlib.Analysis.Fourier.Convolution
+import Mathlib.MeasureTheory.Measure.Haar.NormedSpace
 open Codex.Spherical.FourierRadius
 open Codex.Spherical.SphericalAverages
 open Codex.Spherical.SurfaceCore
@@ -150,6 +151,128 @@ theorem exists_even_schwartz_frequency_cutoff (d : Nat) :
       (2 : ℂ)⁻¹ * (φ ξ + φ (-ξ))
     rw [neg_neg]
     ring
+
+end
+
+end Codex.Spherical.SmoothDyadicPhysicalCore
+
+namespace Codex.Spherical.SmoothDyadicPhysicalCore
+
+open MeasureTheory
+
+noncomputable section
+
+/-- The literal translation and isotropic dilation of a Schwartz prototype.
+For positive `radius`, its value at `xi` is the fixed prototype evaluated at
+`radius⁻¹ • (xi - center)`.  This is the concrete cutoff construction used
+for scaled frequency cubes; no localization predicate is built into the
+definition. -/
+def translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center : Euclidean d) (radius : Real) (hradius : radius ≠ 0) :
+    SchwartzMap (Euclidean d) Complex :=
+  let A : Euclidean d ≃L[Real] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft
+      (Units.mk0 radius⁻¹ (inv_ne_zero hradius))
+  ((SchwartzMap.compCLMOfContinuousLinearEquiv Complex A) prototype).compSubConstCLM
+    Complex center
+
+/-- Pointwise normal form of `translatedDilatedSchwartzCutoff`. -/
+theorem translatedDilatedSchwartzCutoff_apply {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center xi : Euclidean d) (radius : Real) (hradius : radius ≠ 0) :
+    translatedDilatedSchwartzCutoff prototype center radius hradius xi =
+      prototype (radius⁻¹ • (xi - center)) := by
+  simp [translatedDilatedSchwartzCutoff]
+
+/-- Every iterated derivative of the translated/dilated cutoff has its exact
+chain-rule scaling.  The translation costs no derivative factor, while the
+order-`n` derivative contributes `radius⁻¹ ^ n`. -/
+theorem iteratedFDeriv_translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center xi : Euclidean d) (radius : Real) (hradius : radius ≠ 0) (n : Nat) :
+    iteratedFDeriv Real n
+      (translatedDilatedSchwartzCutoff prototype center radius hradius) xi =
+        (radius⁻¹) ^ n •
+          iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center)) := by
+  change iteratedFDeriv Real n
+      (fun z : Euclidean d => prototype (radius⁻¹ • (z - center))) xi = _
+  rw [iteratedFDeriv_comp_sub
+    (f := fun y : Euclidean d => prototype (radius⁻¹ • y)) n center xi]
+  have hscale := congrFun
+    (iteratedFDeriv_comp_const_smul
+      (f := (prototype : Euclidean d → Complex)) radius⁻¹
+      (prototype.smooth (n : ℕ∞)))
+    (xi - center)
+  exact hscale
+
+/-- Pointwise norm form of the derivative scaling for a positive radius. -/
+theorem norm_iteratedFDeriv_translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center xi : Euclidean d) {radius : Real} (hradius : 0 < radius) (n : Nat) :
+    ‖iteratedFDeriv Real n
+      (translatedDilatedSchwartzCutoff prototype center radius hradius.ne') xi‖ =
+      (radius⁻¹) ^ n *
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ := by
+  rw [iteratedFDeriv_translatedDilatedSchwartzCutoff]
+  rw [norm_smul]
+  rw [Real.norm_eq_abs,
+    abs_of_nonneg (pow_nonneg (inv_nonneg.mpr hradius.le) _)]
+
+/-- Exact all-order `L¹` scaling for derivatives of the concrete cutoff.
+The factor is `radius ^ d * radius⁻¹ ^ n`, i.e. the usual
+`radius^(d-n)` when interpreted with real exponents. -/
+theorem integral_norm_iteratedFDeriv_translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex) (center : Euclidean d)
+    {radius : Real} (hradius : 0 < radius) (n : Nat) :
+    ∫ xi : Euclidean d,
+      ‖iteratedFDeriv Real n
+        (translatedDilatedSchwartzCutoff prototype center radius hradius.ne') xi‖ =
+      radius ^ Module.finrank Real (Euclidean d) * (radius⁻¹) ^ n *
+        ∫ eta : Euclidean d, ‖iteratedFDeriv Real n prototype eta‖ := by
+  have htranslate :
+      ∫ xi : Euclidean d,
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ =
+      ∫ eta : Euclidean d,
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖ := by
+    simpa [sub_eq_add_neg] using
+      (MeasureTheory.integral_add_right_eq_self
+        (μ := volume)
+        (fun eta : Euclidean d =>
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖)
+        (-center))
+  have hscale :
+      ∫ eta : Euclidean d,
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖ =
+      radius ^ Module.finrank Real (Euclidean d) •
+        ∫ eta : Euclidean d, ‖iteratedFDeriv Real n prototype eta‖ :=
+    Measure.integral_comp_inv_smul_of_nonneg volume
+      (fun eta : Euclidean d => ‖iteratedFDeriv Real n prototype eta‖)
+      hradius.le
+  calc
+    ∫ xi : Euclidean d,
+        ‖iteratedFDeriv Real n
+          (translatedDilatedSchwartzCutoff prototype center radius hradius.ne') xi‖ =
+      ∫ xi : Euclidean d,
+        (radius⁻¹) ^ n *
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ := by
+      apply integral_congr_ae
+      filter_upwards with xi
+      exact norm_iteratedFDeriv_translatedDilatedSchwartzCutoff
+        prototype center xi hradius n
+    _ = (radius⁻¹) ^ n *
+        ∫ xi : Euclidean d,
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ := by
+      rw [integral_const_mul]
+    _ = (radius⁻¹) ^ n *
+        ∫ eta : Euclidean d,
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖ := by
+      rw [htranslate]
+    _ = radius ^ Module.finrank Real (Euclidean d) * (radius⁻¹) ^ n *
+        ∫ eta : Euclidean d, ‖iteratedFDeriv Real n prototype eta‖ := by
+      rw [hscale]
+      simp only [smul_eq_mul]
+      ring
 
 end
 
@@ -529,7 +652,7 @@ end Codex.Spherical.SmoothDyadicPhysicalCore
 namespace Codex.Spherical.SmoothDyadicPhysicalCore
 
 open MeasureTheory FourierTransform
-open scoped Convolution FourierTransform
+open scoped Convolution FourierTransform ContDiff
 
 noncomputable section
 
@@ -559,6 +682,231 @@ theorem fourierInv_schwartz_multiplier_eq_convolution
     SchwartzMap.smulLeftCLM_apply φ.hasTemperateGrowth, smul_eq_mul,
     SchwartzMap.convolution_apply] using
     congrArg (fun g : SchwartzMap (Euclidean d) ℂ => g x) h
+
+/-- A compactly supported Schwartz symbol can be modulated by a literal plane
+wave while remaining Schwartz.  Compact support is what avoids requiring a
+global temperate-growth theorem for the plane wave. -/
+noncomputable def planeWaveModulatedCompactSchwartz {d : Nat}
+    (c : Euclidean d) (q : Euclidean d → Complex)
+    (hqcompact : HasCompactSupport q)
+    (hqsmooth : ContDiff Real ∞ q) :
+    SchwartzMap (Euclidean d) Complex := by
+  let phase : Euclidean d → Complex := fun ξ =>
+    ((Real.fourierChar (inner Real c ξ) : Circle) : Complex)
+  have hphase : ContDiff Real ∞ phase := by
+    have hinner : ContDiff Real ∞ (fun ξ : Euclidean d => inner Real c ξ) :=
+      (innerSL Real c).contDiff
+    have hreal : ContDiff Real ∞ (fun ξ : Euclidean d =>
+        (2 * Real.pi) * inner Real c ξ) := contDiff_const.mul hinner
+    have hcomplex : ContDiff Real ∞ (fun ξ : Euclidean d =>
+        (((2 * Real.pi) * inner Real c ξ : Real) : Complex)) :=
+      Complex.ofRealCLM.contDiff.comp hreal
+    have harg : ContDiff Real ∞ (fun ξ : Euclidean d =>
+        (((2 * Real.pi) * inner Real c ξ : Real) : Complex) * Complex.I) :=
+      hcomplex.mul contDiff_const
+    simpa only [phase, Real.fourierChar_apply] using harg.cexp
+  have hcompact : HasCompactSupport (fun ξ : Euclidean d => phase ξ * q ξ) :=
+    HasCompactSupport.mul_left hqcompact
+  exact hcompact.toSchwartzMap (hphase.mul hqsmooth)
+
+theorem planeWaveModulatedCompactSchwartz_apply {d : Nat}
+    (c : Euclidean d) (q : Euclidean d → Complex)
+    (hqcompact : HasCompactSupport q)
+    (hqsmooth : ContDiff Real ∞ q) (ξ : Euclidean d) :
+    planeWaveModulatedCompactSchwartz c q hqcompact hqsmooth ξ =
+      ((Real.fourierChar (inner Real c ξ) : Circle) : Complex) * q ξ := by
+  simp [planeWaveModulatedCompactSchwartz]
+
+/-- Literal Fourier modulation by the plane wave with frequency `c` translates
+the inverse Fourier transform by `c`. -/
+theorem fourierInv_planeWaveModulatedCompactSchwartz_eq_translate {d : Nat}
+    (c x : Euclidean d) (q : Euclidean d → Complex)
+    (hqcompact : HasCompactSupport q)
+    (hqsmooth : ContDiff Real ∞ q) :
+    𝓕⁻ (planeWaveModulatedCompactSchwartz c q hqcompact hqsmooth :
+      Euclidean d → Complex) x =
+      𝓕⁻ q (x + c) := by
+  rw [Real.fourierInv_eq, Real.fourierInv_eq]
+  apply integral_congr_ae
+  filter_upwards with ξ
+  rw [planeWaveModulatedCompactSchwartz_apply]
+  simp only [Circle.smul_def, smul_eq_mul]
+  rw [← mul_assoc]
+  congr 1
+  simp only [Real.fourierChar_apply]
+  rw [← Complex.exp_add]
+  congr 1
+  push_cast
+  have hcx : inner Real c ξ = inner Real ξ c := by
+    exact (real_inner_comm _ _).symm
+  rw [hcx, inner_add_right]
+  push_cast
+  ring
+
+/-- The literal physical kernel of a smooth Fourier-cube cutoff.  The
+definition is dimension-generic: the cube geometry enters only through the
+choice of the Schwartz multiplier. -/
+noncomputable def fourierCubeKernel {d : Nat}
+    (m : SchwartzMap (Euclidean d) ℂ) : Euclidean d → ℂ :=
+  (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ)
+
+/-- The physical kernel with an explicit output and source variable. -/
+noncomputable def fourierCubeSourceKernel {d : Nat}
+    (m : SchwartzMap (Euclidean d) ℂ) (x y : Euclidean d) : ℂ :=
+  fourierCubeKernel m (x - y)
+
+/-- A smooth Fourier-cube projection is exactly integration against its
+inverse-Fourier source kernel. -/
+theorem fourierCubeProjection_eq_sourceKernel
+    {d : Nat} (m f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    𝓕⁻ (fun ξ : Euclidean d => m ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x =
+      ∫ y : Euclidean d, fourierCubeSourceKernel m x y * f y := by
+  rw [fourierInv_schwartz_multiplier_eq_convolution, convolution_mul_swap]
+  rfl
+
+/-- The Schwartz representative of a smooth Fourier-cube projection.  Keeping
+this carrier explicit permits subsequent Fourier multipliers to act without a
+density or representative argument. -/
+noncomputable def fourierCubeProjectedSchwartz {d : Nat}
+    (m f : SchwartzMap (Euclidean d) ℂ) : SchwartzMap (Euclidean d) ℂ :=
+  𝓕⁻ (SchwartzMap.smulLeftCLM ℂ (m : Euclidean d → ℂ) (𝓕 f))
+
+theorem fourierCubeProjectedSchwartz_apply
+    {d : Nat} (m f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    fourierCubeProjectedSchwartz m f x =
+      𝓕⁻ (fun ξ : Euclidean d => m ξ * 𝓕 (f : Euclidean d → ℂ) ξ) x := by
+  simp only [fourierCubeProjectedSchwartz, SchwartzMap.fourierInv_coe,
+    SchwartzMap.smulLeftCLM_apply m.hasTemperateGrowth, smul_eq_mul,
+    SchwartzMap.fourier_coe]
+
+theorem fourier_fourierCubeProjectedSchwartz_apply
+    {d : Nat} (m f : SchwartzMap (Euclidean d) ℂ) (ξ : Euclidean d) :
+    𝓕 (fourierCubeProjectedSchwartz m f : Euclidean d → ℂ) ξ =
+      m ξ * 𝓕 (f : Euclidean d → ℂ) ξ := by
+  rw [← SchwartzMap.fourier_coe]
+  unfold fourierCubeProjectedSchwartz
+  rw [FourierTransform.fourier_fourierInv_eq]
+  simp only [SchwartzMap.smulLeftCLM_apply_apply m.hasTemperateGrowth,
+    smul_eq_mul, SchwartzMap.fourier_coe]
+
+/-- For each output point, the source kernel of a smooth Fourier-cube
+projection is integrable. -/
+theorem integrable_fourierCubeSourceKernel
+    {d : Nat} (m : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    Integrable (fun y : Euclidean d => fourierCubeSourceKernel m x y) volume := by
+  exact (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ).integrable.comp_sub_left x
+
+/-- Translation invariance makes the source mass of a Fourier-cube kernel
+independent of the output point. -/
+theorem integral_norm_fourierCubeSourceKernel_eq
+    {d : Nat} (m : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    (∫ y : Euclidean d, ‖fourierCubeSourceKernel m x y‖) =
+      ∫ y : Euclidean d, ‖fourierCubeKernel m y‖ := by
+  unfold fourierCubeSourceKernel
+  rw [integral_sub_left_eq_self (fun y : Euclidean d => ‖fourierCubeKernel m y‖)
+    volume x]
+
+/-- The physical Fourier-cube kernel has the polynomial tail bounds supplied
+by every Schwartz seminorm. -/
+theorem norm_pow_mul_norm_fourierCubeKernel_le_seminorm
+    {d k : Nat} (m : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    ‖x‖ ^ k * ‖fourierCubeKernel m x‖ ≤
+      SchwartzMap.seminorm ℂ k 0
+        (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) := by
+  exact SchwartzMap.norm_pow_mul_le_seminorm ℂ
+    (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) k x
+
+/-- Two explicit inverse-Fourier Schwartz seminorm bounds imply scaled
+polynomial physical decay.  This is dimension-generic: it is the reusable
+analytic step behind ray localization once the phase calculation supplies
+the two stated seminorm estimates. -/
+theorem norm_fourierCubeKernel_le_scaled_seminorm_decay
+    {d : Nat} (m : SchwartzMap (Euclidean d) ℂ) (δ B : Real) (N : Nat)
+    (hδ : 0 < δ)
+    (h0 : SchwartzMap.seminorm ℂ 0 0
+      (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) ≤ B)
+    (hN : SchwartzMap.seminorm ℂ N 0
+      (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) ≤ B * δ ^ N)
+    (x : Euclidean d) :
+    ‖fourierCubeKernel m x‖ ≤
+      (2 : Real) ^ N * B * (1 + δ⁻¹ * ‖x‖)⁻¹ ^ N := by
+  have hK0raw := norm_pow_mul_norm_fourierCubeKernel_le_seminorm (k := 0) m x
+  have hseminorm0 : 0 ≤ SchwartzMap.seminorm ℂ 0 0
+      (𝓕⁻ m : SchwartzMap (Euclidean d) ℂ) := by
+    have hleft : 0 ≤ ‖x‖ ^ 0 * ‖fourierCubeKernel m x‖ :=
+      mul_nonneg (pow_nonneg (norm_nonneg _) _) (norm_nonneg _)
+    exact hleft.trans hK0raw
+  have hB : 0 ≤ B := hseminorm0.trans h0
+  have hK0 : ‖fourierCubeKernel m x‖ ≤ B := by
+    simpa only [pow_zero, one_mul] using hK0raw.trans h0
+  have hKN : ‖x‖ ^ N * ‖fourierCubeKernel m x‖ ≤ B * δ ^ N :=
+    (norm_pow_mul_norm_fourierCubeKernel_le_seminorm (k := N) m x).trans hN
+  let a : Real := δ⁻¹ * ‖x‖
+  have ha0 : 0 ≤ a := mul_nonneg (inv_nonneg.mpr hδ.le) (norm_nonneg _)
+  have honea : 0 < 1 + a := by linarith
+  have hweighted : (1 + a) ^ N * ‖fourierCubeKernel m x‖ ≤ (2 : Real) ^ N * B := by
+    by_cases ha : a ≤ 1
+    · have hbase : 1 + a ≤ (2 : Real) := by linarith
+      calc
+        (1 + a) ^ N * ‖fourierCubeKernel m x‖ ≤
+            (2 : Real) ^ N * ‖fourierCubeKernel m x‖ :=
+          mul_le_mul_of_nonneg_right
+            (pow_le_pow_left₀ (by linarith) hbase N) (norm_nonneg _)
+        _ ≤ (2 : Real) ^ N * B :=
+          mul_le_mul_of_nonneg_left hK0 (pow_nonneg (by norm_num) _)
+    · have ha1 : 1 ≤ a := le_of_not_ge ha
+      have hbase : 1 + a ≤ 2 * a := by linarith
+      calc
+        (1 + a) ^ N * ‖fourierCubeKernel m x‖ ≤
+            (2 * a) ^ N * ‖fourierCubeKernel m x‖ :=
+          mul_le_mul_of_nonneg_right
+            (pow_le_pow_left₀ (by linarith) hbase N) (norm_nonneg _)
+        _ = (2 : Real) ^ N * (δ⁻¹) ^ N *
+            (‖x‖ ^ N * ‖fourierCubeKernel m x‖) := by
+          dsimp [a]
+          rw [mul_pow, mul_pow]
+          ring
+        _ ≤ (2 : Real) ^ N * (δ⁻¹) ^ N * (B * δ ^ N) := by
+          exact mul_le_mul_of_nonneg_left hKN
+            (mul_nonneg (pow_nonneg (by norm_num) _)
+              (pow_nonneg (inv_nonneg.mpr hδ.le) _))
+        _ = (2 : Real) ^ N * B * ((δ⁻¹) ^ N * δ ^ N) := by ring
+        _ = (2 : Real) ^ N * B := by
+          rw [← mul_pow, inv_mul_cancel₀ hδ.ne', one_pow, mul_one]
+  change ‖fourierCubeKernel m x‖ ≤
+    (2 : Real) ^ N * B * (1 + a)⁻¹ ^ N
+  rw [inv_pow, ← div_eq_mul_inv]
+  apply (le_div_iff₀ (pow_pos honea _)).mpr
+  simpa only [mul_comm] using hweighted
+
+/-- The explicit uniform source-mass constant for a finite family of smooth
+Fourier-cube cutoffs. -/
+noncomputable def finiteFourierCubeKernelMass
+    {d : Nat} {ι : Type*} (cubes : Finset ι)
+    (m : ι → SchwartzMap (Euclidean d) ℂ) : Real :=
+  ∑ cube ∈ cubes, ∫ y : Euclidean d, ‖fourierCubeKernel (m cube) y‖
+
+theorem finiteFourierCubeKernelMass_nonneg
+    {d : Nat} {ι : Type*} (cubes : Finset ι)
+    (m : ι → SchwartzMap (Euclidean d) ℂ) :
+    0 ≤ finiteFourierCubeKernelMass cubes m := by
+  unfold finiteFourierCubeKernelMass
+  exact Finset.sum_nonneg fun cube hcube =>
+    integral_nonneg fun y => norm_nonneg _
+
+/-- Each member of a finite Fourier-cube family has source mass bounded by
+the explicit family mass. -/
+theorem integral_norm_fourierCubeSourceKernel_le_finiteMass
+    {d : Nat} {ι : Type*} (cubes : Finset ι)
+    (m : ι → SchwartzMap (Euclidean d) ℂ) {cube : ι}
+    (hcube : cube ∈ cubes) (x : Euclidean d) :
+    (∫ y : Euclidean d, ‖fourierCubeSourceKernel (m cube) x y‖) ≤
+      finiteFourierCubeKernelMass cubes m := by
+  rw [integral_norm_fourierCubeSourceKernel_eq]
+  unfold finiteFourierCubeKernelMass
+  exact Finset.single_le_sum
+    (f := fun other => ∫ y : Euclidean d, ‖fourierCubeKernel (m other) y‖)
+    (fun other hother => integral_nonneg fun y => norm_nonneg _) hcube
 
 /-- The physical realization of a smooth Fourier multiplier has the concrete
 `L∞` estimate supplied by the `L¹` norm of its inverse-Fourier kernel. -/

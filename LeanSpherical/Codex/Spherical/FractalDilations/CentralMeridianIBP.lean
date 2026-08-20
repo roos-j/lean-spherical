@@ -52,7 +52,7 @@ private theorem deriv_eq_zero_of_centralMeridian_large_abs
     {theta : Real} (htheta : 15 * Real.pi / 32 < |theta|) :
     deriv F theta = 0 := by
   have habs_cont : ContinuousAt (fun x : Real => |x|) theta := by fun_prop
-  have hlocal : F =ᶠ[𝓝 theta] (fun _ : Real => (0 : Complex)) := by
+  have hlocal : F =ᶠ[nhds theta] (fun _ : Real => (0 : Complex)) := by
     filter_upwards [habs_cont.tendsto.eventually (eventually_gt_nhds htheta)]
       with y hy
     exact hF y hy
@@ -74,6 +74,22 @@ theorem centralMeridianIBPAmplitude_eq_zero_of_large_abs
           (fun y hy => ih hy) htheta
       simp [centralMeridianIBPAmplitude, hderiv]
 
+/-- The complex reciprocal of the positive real cosine guard is smooth in
+the real meridian parameter. -/
+private theorem contDiff_centralMeridianCosineGuardInv :
+    ContDiff Real (⊤ : ℕ∞)
+      (fun theta : Real => (coordinateMiddleCosineGuard theta : Complex)⁻¹) := by
+  have hreal : ContDiff Real (⊤ : ℕ∞)
+      (fun theta : Real => (coordinateMiddleCosineGuard theta)⁻¹) :=
+    contDiff_coordinateMiddleCosineGuard.inv fun theta =>
+      ne_of_gt (coordinateMiddleCosineGuard_pos theta)
+  have hcomplex : ContDiff Real (⊤ : ℕ∞)
+      (fun theta : Real => (((coordinateMiddleCosineGuard theta)⁻¹ : Real) : Complex)) := by
+    change ContDiff Real (⊤ : ℕ∞)
+      (Complex.ofRealCLM ∘ fun theta : Real => (coordinateMiddleCosineGuard theta)⁻¹)
+    exact Complex.ofRealCLM.contDiff.comp hreal
+  simpa using hcomplex
+
 /-- Smoothness is preserved by the guarded division at every integration by
 parts stage. -/
 theorem contDiff_centralMeridianIBPAmplitude
@@ -81,25 +97,16 @@ theorem contDiff_centralMeridianIBPAmplitude
     ContDiff Real (⊤ : ℕ∞) (centralMeridianIBPAmplitude H k) := by
   induction k with
   | zero =>
-      exact hH.div
-        (by
-          simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-            (Complex.ofRealCLM.contDiff.comp contDiff_coordinateMiddleCosineGuard))
-        (fun theta =>
-          Complex.ofReal_ne_zero.mpr
-            (ne_of_gt (coordinateMiddleCosineGuard_pos theta)))
+      simpa only [centralMeridianIBPAmplitude, div_eq_mul_inv] using
+        (ContDiff.mul (𝕜 := Real) (E := Real) (𝔸 := Complex)
+          hH contDiff_centralMeridianCosineGuardInv)
   | succ k ih =>
-      have hguard : ContDiff Real (⊤ : ℕ∞)
-          (fun theta : Real => (coordinateMiddleCosineGuard theta : Complex)) := by
-        simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-          (Complex.ofRealCLM.contDiff.comp contDiff_coordinateMiddleCosineGuard)
       have hderiv : ContDiff Real (⊤ : ℕ∞)
           (deriv (centralMeridianIBPAmplitude H k)) :=
         (contDiff_infty_iff_deriv.mp ih).2
-      simpa only [centralMeridianIBPAmplitude] using
-        hderiv.div hguard (fun theta =>
-          Complex.ofReal_ne_zero.mpr
-            (ne_of_gt (coordinateMiddleCosineGuard_pos theta)))
+      simpa only [centralMeridianIBPAmplitude, div_eq_mul_inv] using
+        (ContDiff.mul (𝕜 := Real) (E := Real) (𝔸 := Complex)
+          hderiv contDiff_centralMeridianCosineGuardInv)
 
 /-- At the initial stage the guarded quotient recovers the supplied central
 amplitude after multiplication by the derivative of `sin`. -/
@@ -117,8 +124,7 @@ theorem centralMeridianIBPAmplitude_zero_mul_cos_eq
         |theta| ≤ 15 * Real.pi / 32 := hcentral
         _ < Real.pi / 2 := by nlinarith [Real.pi_pos]
     have htheta : theta ∈ Ioo (-(Real.pi / 2)) (Real.pi / 2) := by
-      rw [abs_lt]
-      exact hstrict
+      simpa only [mem_Ioo] using (abs_lt.mp hstrict)
     have hcos : (Real.cos theta : Complex) ≠ 0 := by
       exact Complex.ofReal_ne_zero.mpr
         (ne_of_gt (Real.cos_pos_of_mem_Ioo htheta))
@@ -130,8 +136,12 @@ theorem centralMeridianIBPAmplitude_zero_mul_cos_eq
         H theta / (coordinateMiddleCosineGuard theta : Complex) by rfl, hguard]
     field_simp [hcos]
   · have hlarge : 15 * Real.pi / 32 < |theta| := lt_of_not_ge hcentral
-    rw [hH theta hlarge]
-    simp [centralMeridianIBPAmplitude]
+    have hamp : centralMeridianIBPAmplitude H 0 theta = 0 := by
+      rw [show centralMeridianIBPAmplitude H 0 theta = H theta /
+          (coordinateMiddleCosineGuard theta : Complex) by rfl, hH theta hlarge]
+      exact zero_div _
+    rw [hamp, hH theta hlarge]
+    simp
 
 /-- One recursive guarded amplitude recovers the preceding derivative after
 multiplication by the phase derivative. -/
@@ -181,8 +191,12 @@ theorem centralMeridianIBPIntegral_zero_eq
   unfold centralMeridianIBPIntegral
   apply intervalIntegral.integral_congr
   intro theta _
-  rw [centralMeridianIBPAmplitude_zero_mul_cos_eq H hH]
-  ring
+  change centralMeridianIBPAmplitude H 0 theta * ((Real.cos theta : Real) : Complex) *
+      Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) =
+    H theta * Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)
+  rw [show centralMeridianIBPAmplitude H 0 theta *
+      ((Real.cos theta : Real) : Complex) = H theta by
+    exact centralMeridianIBPAmplitude_zero_mul_cos_eq H hH]
 
 /-- One genuine variable-phase integration by parts for a compact central
 meridian amplitude. -/
@@ -303,7 +317,7 @@ theorem centralMeridianIBPIntegral_eq_iterated
     (hHsupport : ∀ theta : Real, 15 * Real.pi / 32 < |theta| -> H theta = 0)
     (N : Nat) {l : Real} (hl : l ≠ 0) :
     centralMeridianIBPIntegral H 0 l =
-      (-((((-l : Real) : Complex) * Complex.I)⁻¹) ^ N) *
+      (-((((-l : Real) : Complex) * Complex.I)⁻¹)) ^ N *
         centralMeridianIBPIntegral H N l := by
   induction N with
   | zero => simp
@@ -324,8 +338,10 @@ theorem exists_centralMeridianIBPIntegral_abs_decay
   let A : Real -> Complex := centralMeridianIBPAmplitude H N
   have hAcont : Continuous A :=
     (contDiff_centralMeridianIBPAmplitude H hH N).continuous
-  rcases (isCompact_Icc.image_of_continuousOn hAcont.continuousOn).isBounded
-      .exists_pos_norm_le with ⟨M, hM, hMbound⟩
+  have hAbounded : Bornology.IsBounded
+      (A '' Icc (-(Real.pi / 2) : Real) (Real.pi / 2)) :=
+    (isCompact_Icc.image_of_continuousOn hAcont.continuousOn).isBounded
+  rcases hAbounded.exists_pos_norm_le with ⟨M, hM, hMbound⟩
   refine ⟨Real.pi * M, mul_pos Real.pi_pos hM, ?_⟩
   intro l hl
   have hlne : l ≠ 0 := by
@@ -335,7 +351,7 @@ theorem exists_centralMeridianIBPIntegral_abs_decay
   have hlength : |(Real.pi / 2 : Real) - -(Real.pi / 2)| = Real.pi := by
     rw [abs_of_nonneg]
     · ring
-    · positivity
+    · nlinarith [Real.pi_pos]
   have hint :
       ‖centralMeridianIBPIntegral H N l‖ ≤ M * Real.pi := by
     unfold centralMeridianIBPIntegral
@@ -359,7 +375,7 @@ theorem exists_centralMeridianIBPIntegral_abs_decay
                 mul_le_mul hbound (Real.abs_cos_le_one theta) (abs_nonneg _) hM.le
               _ = M := by ring
       _ = M * Real.pi := by rw [hlength]
-  have hinv : ‖-((((-l : Real) : Complex) * Complex.I)⁻¹‖ = 1 / |l| := by
+  have hinv : ‖-((((-l : Real) : Complex) * Complex.I)⁻¹)‖ = 1 / |l| := by
     rw [norm_neg, norm_inv, norm_mul, Complex.norm_real, Complex.norm_I,
       mul_one, Real.norm_eq_abs, abs_neg]
     exact inv_eq_one_div _

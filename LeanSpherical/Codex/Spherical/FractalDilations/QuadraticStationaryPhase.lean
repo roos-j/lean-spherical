@@ -50,7 +50,7 @@ def quadraticMomentScale (m : Nat) (lambda : Real) : Real :=
 /-- The endpoint-amplitude condition which removes artificial boundary terms
 at `u = 1`. -/
 def VanishesNearOne (h : Real -> Complex) : Prop :=
-  h =ᶠ[𝓝 (1 : Real)] 0
+  h =ᶠ[nhds (1 : Real)] 0
 
 theorem VanishesNearOne.value (h : Real -> Complex) (hh : VanishesNearOne h) :
     h 1 = 0 :=
@@ -59,7 +59,8 @@ theorem VanishesNearOne.value (h : Real -> Complex) (hh : VanishesNearOne h) :
 /-- Vanishing in a neighbourhood persists after taking a derivative. -/
 theorem VanishesNearOne.deriv (h : Real -> Complex) (hh : VanishesNearOne h) :
     VanishesNearOne (deriv h) := by
-  exact hh.deriv.trans (Filter.Eventually.of_forall fun x => by simp)
+  exact (Filter.EventuallyEq.deriv hh).trans
+    (Filter.Eventually.of_forall fun x => by simp)
 
 /-- A globally smooth amplitude has a positive uniform bound on the unit
 interval.  The harmless strict positivity makes it convenient to use as the
@@ -67,8 +68,8 @@ constant in the elementary quadratic estimate. -/
 theorem exists_pos_norm_le_on_unit_of_contDiff
     (h : Real -> Complex) (hh : ContDiff Real (⊤ : ℕ∞) h) :
     ∃ M : Real, 0 < M ∧ ∀ u ∈ Icc (0 : Real) 1, ‖h u‖ ≤ M := by
-  rcases (isCompact_Icc.image_of_continuousOn hh.continuous.continuousOn).isBounded
-      .exists_pos_norm_le with ⟨M, hM, hbound⟩
+  rcases (isCompact_Icc.image_of_continuousOn hh.continuous.continuousOn).isBounded.exists_pos_norm_le
+      with ⟨M, hM, hbound⟩
   exact ⟨M, hM, fun u hu => hbound _ (mem_image_of_mem _ hu)⟩
 
 /-- The elementary `lambda^(-1/2)` stationary bound for an arbitrary smooth
@@ -117,7 +118,7 @@ theorem exists_quadraticMoment_zero_decay
   change ‖∫ u in (0 : Real)..1,
       ((u ^ 0 : Real) : Complex) * h u *
         Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)‖ ≤ _
-  simp only [pow_zero, Nat.cast_one, one_mul] 
+  simp only [pow_zero, Complex.ofReal_one, one_mul]
   calc
     ‖∫ u in (0 : Real)..1,
         h u * Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)‖ ≤
@@ -159,9 +160,16 @@ theorem quadraticMomentIntegral_succ_two_recurrence
       exact (hasDerivAt_pow (m + 1) u).ofReal_comp
     have hhderiv : HasDerivAt h (deriv h u) u :=
       ((hh.differentiable (by simp)) u).hasDerivAt
-    change HasDerivAt U (U' u) u
-    dsimp only [U, U']
-    convert hpow.mul hhderiv using 1 <;> push_cast <;> ring
+    have hcoeff : ((((m + 1 : Nat) : Real) * u ^ m : Real) : Complex) =
+        ((m + 1 : Nat) : Complex) * ((u ^ m : Real) : Complex) := by
+      push_cast
+      ring
+    rw [hcoeff] at hpow
+    change HasDerivAt
+      ((fun z : Real => ((z ^ (m + 1) : Real) : Complex)) * h)
+      (((m + 1 : Nat) : Complex) * ((u ^ m : Real) : Complex) * h u +
+        ((u ^ (m + 1) : Real) : Complex) * deriv h u) u
+    simpa only using hpow.mul hhderiv
   have hEderiv (u : Real) : HasDerivAt E (E u * (q * (u : Complex))) u := by
     have hpoly : HasDerivAt (fun z : Real => lambda * z ^ 2)
         (lambda * (2 * u)) u := by
@@ -183,19 +191,25 @@ theorem quadraticMomentIntegral_succ_two_recurrence
         _ = (u : Complex) * E u := by rw [hsq, one_mul]
     simpa only [hcancel] using htemp
   have hUprime_cont : Continuous U' := by
+    have hpowm : Continuous (fun z : Real => ((z ^ m : Real) : Complex)) := by
+      fun_prop
+    have hpowsucc : Continuous (fun z : Real => ((z ^ (m + 1) : Real) : Complex)) := by
+      fun_prop
     dsimp only [U']
-    apply Continuous.add
-    · exact ((continuous_const.mul (by fun_prop)).mul hh.continuous)
-    · exact ((by fun_prop).mul (hh.continuous_deriv (by simp)))
+    exact ((continuous_const.mul hpowm).mul hh.continuous).add
+      (hpowsucc.mul (hh.continuous_deriv (by simp)))
   have hV_cont : Continuous (fun z : Real => s * E z) := by
     dsimp only [E]
     fun_prop
+  have hVprime_cont : Continuous (fun z : Real => (z : Complex) * E z) := by
+    dsimp only [E]
+    fun_prop
   have hparts := intervalIntegral.integral_mul_deriv_eq_deriv_mul
-    (u := U) (u' := U') (v := fun z : Real => s * E z)
+    (a := (0 : Real)) (b := 1) (u := U) (u' := U') (v := fun z : Real => s * E z)
     (v' := fun z : Real => (z : Complex) * E z)
     (fun z hz => hUderiv z) (fun z hz => hVderiv z)
     hUprime_cont.continuousOn.intervalIntegrable
-    hV_cont.continuousOn.intervalIntegrable
+    hVprime_cont.continuousOn.intervalIntegrable
   have hUone : U 1 = 0 := by
     dsimp only [U]
     rw [hvanish.value]
@@ -221,13 +235,37 @@ theorem quadraticMomentIntegral_succ_two_recurrence
   let B : Real -> Complex := fun z =>
     ((z ^ (m + 1) : Real) : Complex) * deriv h z * E z
   have hA_cont : Continuous A := by
+    have hpowm : Continuous (fun z : Real => ((z ^ m : Real) : Complex)) := by
+      fun_prop
+    have hEcont : Continuous E := by
+      dsimp only [E]
+      fun_prop
     dsimp only [A]
-    exact (((continuous_const.mul (by fun_prop)).mul hh.continuous).mul
-      (by dsimp only [E]; fun_prop))
+    exact ((continuous_const.mul hpowm).mul hh.continuous).mul hEcont
   have hB_cont : Continuous B := by
+    have hpowsucc : Continuous (fun z : Real => ((z ^ (m + 1) : Real) : Complex)) := by
+      fun_prop
+    have hEcont : Continuous E := by
+      dsimp only [E]
+      fun_prop
     dsimp only [B]
-    exact (((by fun_prop).mul (hh.continuous_deriv (by simp))).mul
-      (by dsimp only [E]; fun_prop))
+    exact (hpowsucc.mul (hh.continuous_deriv (by simp))).mul hEcont
+  have hA_integral :
+      (∫ z in (0 : Real)..1, A z) =
+        ((m + 1 : Nat) : Complex) * quadraticMomentIntegral m h lambda := by
+    unfold quadraticMomentIntegral
+    rw [← intervalIntegral.integral_const_mul]
+    apply intervalIntegral.integral_congr
+    intro z hz
+    dsimp only [A, E]
+    ring
+  have hB_integral :
+      (∫ z in (0 : Real)..1, B z) =
+        quadraticMomentIntegral (m + 1) (deriv h) lambda := by
+    unfold quadraticMomentIntegral
+    apply intervalIntegral.integral_congr
+    intro z hz
+    dsimp only [B, E]
   have hright :
       (∫ z in (0 : Real)..1, U' z * (s * E z)) =
         s * (((m + 1 : Nat) : Complex) * quadraticMomentIntegral m h lambda +
@@ -242,22 +280,11 @@ theorem quadraticMomentIntegral_succ_two_recurrence
             ring
       _ = s * ((∫ z in (0 : Real)..1, A z) + ∫ z in (0 : Real)..1, B z) := by
             rw [intervalIntegral.integral_add
-              hA_cont.intervalIntegrable hB_cont.intervalIntegrable]
+              (hA_cont.intervalIntegrable 0 1)
+              (hB_cont.intervalIntegrable 0 1)]
       _ = s * (((m + 1 : Nat) : Complex) * quadraticMomentIntegral m h lambda +
           quadraticMomentIntegral (m + 1) (deriv h) lambda) := by
-            congr 1
-            congr 1
-            · unfold quadraticMomentIntegral
-              rw [← intervalIntegral.integral_const_mul]
-              apply intervalIntegral.integral_congr
-              intro z hz
-              dsimp only [A, E]
-              ring
-            · unfold quadraticMomentIntegral
-              apply intervalIntegral.integral_congr
-              intro z hz
-              dsimp only [B, E]
-              ring
+            rw [hA_integral, hB_integral]
   calc
     quadraticMomentIntegral (m + 2) h lambda =
         ∫ z in (0 : Real)..1, U z * ((z : Complex) * E z) := hleft.symm
@@ -319,12 +346,15 @@ theorem quadraticMomentIntegral_one_recurrence
   have hV_cont : Continuous (fun z : Real => s * E z) := by
     dsimp only [E]
     fun_prop
+  have hVprime_cont : Continuous (fun z : Real => (z : Complex) * E z) := by
+    dsimp only [E]
+    fun_prop
   have hparts := intervalIntegral.integral_mul_deriv_eq_deriv_mul
-    (u := h) (u' := deriv h) (v := fun z : Real => s * E z)
+    (a := (0 : Real)) (b := 1) (u := h) (u' := deriv h) (v := fun z : Real => s * E z)
     (v' := fun z : Real => (z : Complex) * E z)
     (fun z hz => hhderiv z) (fun z hz => hVderiv z)
     hderiv_cont.continuousOn.intervalIntegrable
-    hV_cont.continuousOn.intervalIntegrable
+    hVprime_cont.continuousOn.intervalIntegrable
   have hleft :
       (∫ z in (0 : Real)..1, h z * ((z : Complex) * E z)) =
         quadraticMomentIntegral 1 h lambda := by
@@ -343,7 +373,7 @@ theorem quadraticMomentIntegral_one_recurrence
     apply intervalIntegral.integral_congr
     intro z hz
     dsimp only [E]
-    simp only [pow_zero, Nat.cast_one, one_mul]
+    simp only [pow_zero, Complex.ofReal_one, one_mul]
     ring
   calc
     quadraticMomentIntegral 1 h lambda =
@@ -383,7 +413,7 @@ theorem exists_quadraticMoment_one_decay
     ring
   have hrest : ‖quadraticMomentIntegral 0 (deriv h) lambda‖ ≤ N := by
     unfold quadraticMomentIntegral
-    simp only [pow_zero, Nat.cast_one, one_mul]
+    simp only [pow_zero, Complex.ofReal_one, one_mul]
     calc
       ‖∫ z in (0 : Real)..1,
           deriv h z * Complex.exp (((lambda * z ^ 2 : Real) : Complex) * Complex.I)‖ ≤
@@ -391,7 +421,7 @@ theorem exists_quadraticMoment_one_decay
             apply intervalIntegral.norm_integral_le_of_norm_le_const
             intro z hz
             rw [norm_mul, Complex.norm_exp_ofReal_mul_I, mul_one]
-            exact hNbound z (by simpa using hz)
+            exact hNbound z ⟨le_of_lt (by simpa using hz.1), by simpa using hz.2⟩
       _ = N := by norm_num
   have hzero : ‖h 0‖ ≤ M := hMbound 0 (by norm_num)
   rw [hformula, norm_mul, norm_neg, hs_norm]
@@ -488,8 +518,7 @@ theorem exists_quadraticMoment_decay
               norm_add_le _ _
             _ = ((n + 1 : Nat) : Real) * ‖quadraticMomentIntegral n h lambda‖ +
                   ‖quadraticMomentIntegral (n + 1) (deriv h) lambda‖ := by
-                rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
-                  abs_of_nonneg (by positivity : 0 ≤ ((n + 1 : Nat) : Real))]
+                rw [norm_mul, Complex.norm_natCast]
             _ ≤ ((n + 1 : Nat) : Real) * (C₀ / s ^ (n + 1)) +
                   C₁ / s ^ (n + 2) := by
                 apply add_le_add
@@ -508,7 +537,7 @@ theorem exists_quadraticMoment_decay
               (1 / (2 * lambda)) *
                 (((n + 1 : Nat) : Real) * (C₀ / s ^ (n + 1)) +
                   C₁ / s ^ (n + 2)) := by
-          rw [hrec, norm_neg, norm_mul, hqnorm]
+          rw [hrec, norm_mul, norm_neg, hqnorm]
           exact mul_le_mul_of_nonneg_left hsum (by positivity)
         have hreplace :
             (1 / (2 * lambda)) *
@@ -532,7 +561,8 @@ theorem exists_quadraticMoment_decay
             s ^ (n + 3) ≤ s ^ (n + 3) * s :=
               le_mul_of_one_le_right (pow_nonneg hs_pos.le _) hs_one
             _ = s ^ (n + 4) := by
-              rw [show n + 4 = (n + 3) + 1 by omega, pow_succ]
+              simpa [show n + 4 = (n + 3) + 1 by omega] using
+                (pow_succ s (n + 3)).symm
         have htail : C₁ / s ^ (n + 4) ≤ C₁ / s ^ (n + 3) := by
           exact div_le_div_of_nonneg_left hC₁.le hden_target_pos hpow_le
         have hcombine :
@@ -542,7 +572,11 @@ theorem exists_quadraticMoment_decay
             (((n + 1 : Nat) : Real) * C₀) / s ^ (n + 3) +
                 C₁ / s ^ (n + 4) ≤
                 (((n + 1 : Nat) : Real) * C₀) / s ^ (n + 3) +
-                  C₁ / s ^ (n + 3) := add_le_add_left htail _
+                  C₁ / s ^ (n + 3) :=
+                    by
+                      simpa [add_comm] using
+                        (add_le_add_left htail
+                          (((n + 1 : Nat) : Real) * C₀ / s ^ (n + 3)))
             _ = C / s ^ (n + 3) := by
               dsimp [C]
               ring
@@ -558,8 +592,11 @@ theorem smoothEndpointQuadraticIntegral_eq_quadraticMomentIntegral
   unfold smoothEndpointQuadraticIntegral quadraticMomentIntegral
   apply intervalIntegral.integral_congr
   intro u hu
+  change smoothEndpointAmplitude m u *
+      Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I) =
+    ((u ^ m : Real) : Complex) * smoothEndpointProfile m u *
+      Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)
   rw [smoothEndpointAmplitude_eq_monomial_mul_profile]
-  ring
 
 /-- Sharp compact stationary phase for the actual smooth endpoint amplitude.
 This is the all-dimensional `|lambda|^(-(m+1)/2)` input which is later used
@@ -590,6 +627,10 @@ theorem smoothEndpointQuadraticIntegral_neg_eq_conj
   apply intervalIntegral.integral_congr
   intro u hu
   unfold smoothEndpointAmplitude
+  change (smoothEndpointAmplitudeReal m u : Complex) *
+      Complex.exp ((((-lambda) * u ^ 2 : Real) : Complex) * Complex.I) =
+    starRingEnd Complex ((smoothEndpointAmplitudeReal m u : Complex) *
+      Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I))
   rw [map_mul, Complex.conj_ofReal, ← Complex.exp_conj]
   simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
   congr 1
@@ -617,7 +658,7 @@ theorem exists_smoothEndpointQuadraticIntegral_abs_decay
   intro lambda hlambda
   by_cases hlambda_nonneg : 0 ≤ lambda
   · rw [abs_of_nonneg hlambda_nonneg]
-    exact hbound lambda hlambda
+    exact hbound lambda (by simpa [abs_of_nonneg hlambda_nonneg] using hlambda)
   · have hlambda_neg : lambda < 0 := lt_of_not_ge hlambda_nonneg
     have hminus : 1 ≤ -lambda := by
       rw [← abs_of_neg hlambda_neg]

@@ -41,6 +41,9 @@ private theorem continuous_planar_coordinateUpper_integrand (l : Real) :
       (endpointCoreCutoff (Real.sqrt (1 - Real.sin theta)) : Complex) *
         ((Real.cos theta ^ 0 : Real) : Complex) *
           Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)) := by
+  have hcut : Continuous (fun u : Real => endpointCoreCutoff u) := by
+    unfold endpointCoreCutoff
+    exact endpointCoreBump.continuous
   fun_prop
 
 /-- Exact north-pole formula for the circle endpoint. -/
@@ -125,9 +128,8 @@ theorem coordinateUpperMeridianLocalizedIntegral_zero_eq_planarEndpointQuadratic
             push_cast
             ring
           dsimp [F, phi, Function.comp_apply]
-          rw [hsin, hcut, hexp, hprofile]
-          simp only [pow_zero, Nat.cast_one, one_mul]
-          rw [Complex.real_smul]
+          rw [hcut, hsin, hexp, hprofile]
+          simp only [pow_zero, Complex.ofReal_one, one_mul]
           push_cast
           field_simp [ne_of_gt hspos]
 
@@ -178,7 +180,7 @@ theorem circleMeridian_eq_coordinatePlanarSmoothWaves (l : Real) :
         coordinateMiddleMeridianLocalizedIntegral 0 l := by
   rw [← coordinateUpperMeridianLocalizedIntegral_zero_eq_planarEndpointQuadratic,
     ← coordinateLowerMeridianLocalizedIntegral_zero_eq_planarEndpointQuadratic]
-  simpa only [circleMeridianPhase, pow_zero, Nat.cast_one, one_mul] using
+  simpa only [circleMeridianPhase, pow_zero, Complex.ofReal_one, one_mul] using
     (intervalIntegral_meridian_eq_coordinateLocalizedPartition 0 l)
 
 /-- Literal circle surface Fourier factor in coordinate-localized wave form. -/

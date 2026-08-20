@@ -69,7 +69,6 @@ theorem planarEndpointGuardedSqrt_ne_zero (u : Real) :
 theorem contDiff_planarEndpointProfileReal :
     ContDiff Real (⊤ : ℕ∞) planarEndpointProfileReal := by
   unfold planarEndpointProfileReal endpointCoreCutoff
-  rw [div_eq_mul_inv]
   exact ((contDiff_const.mul
     (contDiff_endpointGuardedSqrt.inv planarEndpointGuardedSqrt_ne_zero)).mul
       endpointCoreBump.contDiff)
@@ -79,13 +78,14 @@ theorem contDiff_planarEndpointProfile :
     ContDiff Real (⊤ : ℕ∞) planarEndpointProfile := by
   change ContDiff Real (⊤ : ℕ∞)
     (fun u : Real => Complex.ofReal (planarEndpointProfileReal u))
-  simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-    (Complex.ofRealCLM.contDiff.comp contDiff_planarEndpointProfileReal)
+  change ContDiff Real (⊤ : ℕ∞)
+    ((Complex.ofRealCLM : ℝ → ℂ) ∘ planarEndpointProfileReal)
+  exact Complex.ofRealCLM.contDiff.comp contDiff_planarEndpointProfileReal
 
 /-- The planar profile is compact at the artificial endpoint just as the
 higher-dimensional endpoint profiles are. -/
 theorem planarEndpointProfile_eventuallyEq_zero_at_one :
-    planarEndpointProfile =ᶠ[𝓝 (1 : Real)] 0 := by
+    planarEndpointProfile =ᶠ[nhds (1 : Real)] 0 := by
   filter_upwards [Metric.ball_mem_nhds (1 : Real) (by norm_num : (0 : Real) < 1 / 2)]
     with u hu
   rw [mem_ball, Real.dist_eq] at hu
@@ -115,7 +115,9 @@ theorem exists_iteratedDeriv_planarEndpointQuadraticIntegral_decay (k : Nat) :
     ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
       ‖iteratedDeriv k (planarEndpointQuadraticIntegral) lambda‖ ≤
         C / quadraticMomentScale (2 * k) lambda := by
-  simpa [planarEndpointQuadraticIntegral] using
+  rw [show planarEndpointQuadraticIntegral =
+      quadraticMomentIntegral 0 planarEndpointProfile by rfl]
+  simpa only [zero_add] using
     (exists_iteratedDeriv_quadraticMomentIntegral_decay
       0 k planarEndpointProfile contDiff_planarEndpointProfile
       planarEndpointProfile_eventuallyEq_zero_at_one)
@@ -127,7 +129,9 @@ theorem iteratedDeriv_planarEndpointQuadraticIntegral (k : Nat) :
     iteratedDeriv k planarEndpointQuadraticIntegral =
       fun lambda => Complex.I ^ k *
         quadraticMomentIntegral (2 * k) planarEndpointProfile lambda := by
-  simpa [planarEndpointQuadraticIntegral] using
+  rw [show planarEndpointQuadraticIntegral =
+      quadraticMomentIntegral 0 planarEndpointProfile by rfl]
+  simpa only [zero_add] using
     (iteratedDeriv_quadraticMomentIntegral 0 k planarEndpointProfile
       contDiff_planarEndpointProfile)
 
@@ -149,7 +153,8 @@ theorem planarEndpointQuadraticIntegral_neg_eq_conj (lambda : Real) :
   intro u hu
   unfold planarEndpointProfile
   simp only [pow_zero, Nat.cast_one, one_mul]
-  rw [map_mul, Complex.conj_ofReal, ← Complex.exp_conj]
+  simp only [map_mul, Complex.conj_ofReal]
+  rw [← Complex.exp_conj]
   simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
   congr 1
   push_cast
@@ -175,7 +180,9 @@ theorem exists_iteratedDeriv_planarEndpointQuadraticIntegral_abs_decay
   intro lambda hlambda
   by_cases hlambda_nonneg : 0 ≤ lambda
   · rw [abs_of_nonneg hlambda_nonneg]
-    exact hbound lambda hlambda
+    have hlambda' : 1 ≤ lambda := by
+      simpa [abs_of_nonneg hlambda_nonneg] using hlambda
+    exact hbound lambda hlambda'
   · have hlambda_neg : lambda < 0 := lt_of_not_ge hlambda_nonneg
     have hminus : 1 ≤ -lambda := by
       rw [← abs_of_neg hlambda_neg]
@@ -183,10 +190,8 @@ theorem exists_iteratedDeriv_planarEndpointQuadraticIntegral_abs_decay
     have hdecay := hbound (-lambda) hminus
     have hnorm : ‖iteratedDeriv k planarEndpointQuadraticIntegral lambda‖ =
         ‖iteratedDeriv k planarEndpointQuadraticIntegral (-lambda)‖ := by
-      rw [iteratedDeriv_planarEndpointQuadraticIntegral]
-      rw [iteratedDeriv_planarEndpointQuadraticIntegral]
+      simp_rw [iteratedDeriv_planarEndpointQuadraticIntegral]
       rw [norm_mul, norm_pow, Complex.norm_I, one_pow, one_mul]
-      congr 1
       have hqconj : quadraticMomentIntegral (2 * k) planarEndpointProfile (-lambda) =
           starRingEnd Complex
             (quadraticMomentIntegral (2 * k) planarEndpointProfile lambda) := by
@@ -195,12 +200,15 @@ theorem exists_iteratedDeriv_planarEndpointQuadraticIntegral_abs_decay
         apply intervalIntegral.integral_congr
         intro u hu
         unfold planarEndpointProfile
-        rw [map_mul, Complex.conj_ofReal, ← Complex.exp_conj]
+        dsimp
+        simp only [map_mul, Complex.conj_ofReal]
+        rw [← Complex.exp_conj]
         simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
         congr 1
         push_cast
         ring
-      rw [hqconj, RCLike.norm_conj]
+      rw [hqconj]
+      simp [norm_mul, norm_pow, Complex.norm_I]
     calc
       ‖iteratedDeriv k planarEndpointQuadraticIntegral lambda‖ =
           ‖iteratedDeriv k planarEndpointQuadraticIntegral (-lambda)‖ := hnorm

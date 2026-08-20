@@ -100,7 +100,7 @@ theorem normalizedDyadicRadialBandpass_eventuallyEq_zero_left
     {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
     (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
     (v : Euclidean d) (hv : ‖v‖ = 1) :
-    normalizedDyadicRadialBandpass phi v =ᶠ[𝓝 (1 / 2 : Real)] 0 := by
+    normalizedDyadicRadialBandpass phi v =ᶠ[nhds (1 / 2 : Real)] 0 := by
   filter_upwards [Metric.ball_mem_nhds (1 / 2 : Real)
       (by norm_num : (0 : Real) < 1 / 4)] with u hu
   rw [mem_ball, Real.dist_eq] at hu
@@ -118,7 +118,7 @@ theorem normalizedDyadicRadialBandpass_eventuallyEq_zero_right
     {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
     (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
     (v : Euclidean d) (hv : ‖v‖ = 1) :
-    normalizedDyadicRadialBandpass phi v =ᶠ[𝓝 (8 : Real)] 0 := by
+    normalizedDyadicRadialBandpass phi v =ᶠ[nhds (8 : Real)] 0 := by
   filter_upwards [Metric.ball_mem_nhds (8 : Real)
       (by norm_num : (0 : Real) < 1)] with u hu
   rw [mem_ball, Real.dist_eq] at hu
@@ -145,7 +145,6 @@ theorem absoluteDyadicBandpass_smul_dyadicScale_eq_normalizedDyadicRadialBandpas
       (1 / 2 : Real) * u := by
     rw [pow_succ]
     field_simp [hj]
-    ring
   have hsecond : ((2 : Real) ^ j)⁻¹ * ((2 : Real) ^ j * u) = u := by
     field_simp [hj]
   simp only [smul_smul]

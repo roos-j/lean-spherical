@@ -26,6 +26,32 @@ noncomputable section
 def oscillatoryExp (freq t : ℝ) : ℂ :=
   Complex.exp (((freq * t : ℝ) : ℂ) * Complex.I)
 
+/-- Conjugating a real linear wave reverses its frequency. -/
+theorem star_oscillatoryExp (freq t : ℝ) :
+    starRingEnd ℂ (oscillatoryExp freq t) = oscillatoryExp (-freq) t := by
+  unfold oscillatoryExp
+  rw [← Complex.exp_conj]
+  simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
+  congr 1
+  push_cast
+  ring
+
+/-- A real linear wave has unit complex norm. -/
+theorem norm_oscillatoryExp (freq t : ℝ) :
+    ‖oscillatoryExp freq t‖ = 1 := by
+  unfold oscillatoryExp
+  exact Complex.norm_exp_ofReal_mul_I _
+
+/-- Linear waves multiply by adding their frequencies. -/
+theorem oscillatoryExp_mul (freq₁ freq₂ t : ℝ) :
+    oscillatoryExp freq₁ t * oscillatoryExp freq₂ t =
+      oscillatoryExp (freq₁ + freq₂) t := by
+  unfold oscillatoryExp
+  rw [← Complex.exp_add]
+  congr 1
+  push_cast
+  ring
+
 /-- One exact integration by parts.  Vanishing at the two endpoints removes
 the boundary term and exposes the reciprocal phase frequency. -/
 theorem intervalIntegral_mul_oscillatoryExp_eq_neg_inv_mul

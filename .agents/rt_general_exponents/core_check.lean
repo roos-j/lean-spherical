@@ -1,0 +1,16 @@
+import LeanSpherical.Codex.Spherical.RieszThorin
+import Mathlib.MeasureTheory.Function.Holder
+import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
+
+open MeasureTheory ENNReal
+open scoped ENNReal
+open Codex.Spherical.RieszThorin
+
+#check finiteSimpleRieszThorin_diagonal_unit_pairing_conjugate
+#check finiteSimpleRieszThorin_diagonal_unit_pairing
+#check finiteSimpleRieszThorin_diagonal_eLpNorm
+#check finiteSimple_memLp_of_memLp_any_exponent
+#check memLp_of_power_interpolation
+#check memLp_of_aestronglyMeasurable_of_eLpNorm_le
+#check ENNReal.ofReal_rpow_of_nonneg
+#check Real.enorm_eq_ofReal

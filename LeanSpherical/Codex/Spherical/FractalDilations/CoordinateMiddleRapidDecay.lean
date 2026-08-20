@@ -31,7 +31,7 @@ there is no symbol-class hypothesis or formal error term in the result.
 namespace Codex.Spherical.FractalDilations.CoordinateMiddleRapidDecay
 
 open Filter MeasureTheory Metric Set
-open scoped ContDiff
+open scoped ContDiff Topology
 
 noncomputable section
 
@@ -122,22 +122,35 @@ theorem contDiff_coordinateMiddleIBPCompactAmplitude (m k : Nat) :
         exact coordinateMiddleGuardBump.contDiff
       have hcut : ContDiff Real (⊤ : ℕ∞)
           (fun theta : Real => (coordinateMiddleGuardCutoff theta : Complex)) := by
-        simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-          (Complex.ofRealCLM.contDiff.comp hcutReal)
+        change ContDiff Real (⊤ : ℕ∞)
+          (Complex.ofRealCLM ∘ coordinateMiddleGuardCutoff)
+        exact Complex.ofRealCLM.contDiff.comp hcutReal
       simpa only [coordinateMiddleIBPCompactAmplitude] using
         hcut.mul (contDiff_coordinateMiddleIBPAmplitude m)
   | succ k ih =>
-      have hguard : ContDiff Real (⊤ : ℕ∞)
-          (fun theta : Real => (coordinateMiddleCosineGuard theta : Complex)) := by
-        simpa only [Function.comp_apply, Complex.ofRealCLM_apply] using
-          (Complex.ofRealCLM.contDiff.comp contDiff_coordinateMiddleCosineGuard)
+      have hguard : ContDiff Real (⊤ : ℕ∞) coordinateMiddleCosineGuard :=
+        contDiff_coordinateMiddleCosineGuard
       have hderiv : ContDiff Real (⊤ : ℕ∞)
           (deriv (coordinateMiddleIBPCompactAmplitude m k)) :=
         (contDiff_infty_iff_deriv.mp ih).2
-      simpa only [coordinateMiddleIBPCompactAmplitude] using
-        hderiv.div hguard (fun theta =>
-          Complex.ofReal_ne_zero.mpr
-            (ne_of_gt (coordinateMiddleCosineGuard_pos theta)))
+      have hinv : ContDiff Real (⊤ : ℕ∞)
+          (fun theta : Real => (coordinateMiddleCosineGuard theta)⁻¹) :=
+        hguard.inv (fun theta =>
+          ne_of_gt (coordinateMiddleCosineGuard_pos theta))
+      have hsmul := hinv.smul hderiv
+      change ContDiff Real (⊤ : ℕ∞) (fun theta : Real =>
+        (coordinateMiddleCosineGuard theta)⁻¹ •
+          deriv (coordinateMiddleIBPCompactAmplitude m k) theta) at hsmul
+      convert hsmul using 1
+      ext theta
+      simp only [coordinateMiddleIBPCompactAmplitude, Algebra.smul_def,
+        div_eq_mul_inv]
+      rw [map_inv₀]
+      change deriv (coordinateMiddleIBPCompactAmplitude m k) theta *
+          (↑(coordinateMiddleCosineGuard theta) : Complex)⁻¹ =
+        (↑(coordinateMiddleCosineGuard theta) : Complex)⁻¹ *
+          deriv (coordinateMiddleIBPCompactAmplitude m k) theta
+      exact mul_comm _ _
 
 /-- At the zeroth stage the compact guarded amplitude recovers exactly the
 literal middle density on the meridian. -/
@@ -154,7 +167,7 @@ theorem coordinateMiddleIBPCompactAmplitude_zero_mul_cos_eq_middle
   · have habs : |theta| ≤ 15 * Real.pi / 32 := by
       by_contra hnot
       exact hmiddle (coordinateMiddleMeridianCutoff_eq_zero_of_large_abs htheta
-        (le_of_not_gt hnot))
+        (lt_of_not_ge hnot).le)
     have hguard : coordinateMiddleGuardCutoff theta = 1 :=
       coordinateMiddleGuardCutoff_eq_one_of_abs_le habs
     rw [show coordinateMiddleIBPCompactAmplitude m 0 theta =
@@ -209,8 +222,13 @@ theorem coordinateMiddleMeridianLocalizedIntegral_eq_coordinateMiddleIBPCompactI
   have htheta' : theta ∈ Icc (-(Real.pi / 2) : Real) (Real.pi / 2) := by
     rw [uIcc_of_le (by linarith [Real.pi_pos])] at htheta
     exact ⟨htheta.1, htheta.2⟩
-  rw [← coordinateMiddleIBPCompactAmplitude_zero_mul_cos_eq_middle m htheta']
-  ring
+  change (coordinateMiddleMeridianCutoff theta : Complex) *
+      ((Real.cos theta ^ m : Real) : Complex) *
+      Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I) =
+    coordinateMiddleIBPCompactAmplitude m 0 theta *
+      ((Real.cos theta : Real) : Complex) *
+      Complex.exp (((-l * Real.sin theta : Real) : Complex) * Complex.I)
+  rw [coordinateMiddleIBPCompactAmplitude_zero_mul_cos_eq_middle m htheta']
 
 /-- One literal variable-phase integration by parts in the recursive compact
 middle-meridian family. -/
@@ -325,7 +343,7 @@ middle meridian. -/
 theorem coordinateMiddleMeridianLocalizedIntegral_eq_iteratedIBPCompactIntegral
     (m N : Nat) {l : Real} (hl : l ≠ 0) :
     coordinateMiddleMeridianLocalizedIntegral m l =
-      (-((((-l : Real) : Complex) * Complex.I)⁻¹) ^ N) *
+      (- (((-l : Real) : Complex) * Complex.I)⁻¹) ^ N *
         coordinateMiddleIBPCompactIntegral m N l := by
   induction N with
   | zero =>
@@ -346,8 +364,10 @@ theorem exists_coordinateMiddleMeridianLocalizedIntegral_abs_decay
   let A : Real → Complex := coordinateMiddleIBPCompactAmplitude m N
   have hAcont : Continuous A :=
     (contDiff_coordinateMiddleIBPCompactAmplitude m N).continuous
-  rcases (isCompact_Icc.image_of_continuousOn hAcont.continuousOn).isBounded
-      .exists_pos_norm_le with ⟨M, hM, hMbound⟩
+  have hAbounded : Bornology.IsBounded (A '' Icc (-(Real.pi / 2) : Real)
+      (Real.pi / 2)) :=
+    (isCompact_Icc.image_of_continuousOn hAcont.continuousOn).isBounded
+  rcases hAbounded.exists_pos_norm_le with ⟨M, hM, hMbound⟩
   refine ⟨Real.pi * M, mul_pos Real.pi_pos hM, ?_⟩
   intro l hl
   have hlne : l ≠ 0 := by
@@ -357,7 +377,7 @@ theorem exists_coordinateMiddleMeridianLocalizedIntegral_abs_decay
   have hlength : |(Real.pi / 2 : Real) - -(Real.pi / 2)| = Real.pi := by
     rw [abs_of_nonneg]
     · ring
-    · positivity
+    · nlinarith [Real.pi_pos]
   have hint :
       ‖coordinateMiddleIBPCompactIntegral m N l‖ ≤ M * Real.pi := by
     unfold coordinateMiddleIBPCompactIntegral
@@ -386,7 +406,7 @@ theorem exists_coordinateMiddleMeridianLocalizedIntegral_abs_decay
     rw [norm_neg, norm_inv, norm_mul, Complex.norm_real, Complex.norm_I,
       mul_one, Real.norm_eq_abs, abs_neg]
     exact inv_eq_one_div _
-  rw [coordinateMiddleMeridianLocalizedIntegral_eq_iteratedIBPCompactIntegral m N hl,
+  rw [coordinateMiddleMeridianLocalizedIntegral_eq_iteratedIBPCompactIntegral m N hlne,
     norm_mul, norm_pow, hinv]
   calc
     (1 / |l|) ^ N * ‖coordinateMiddleIBPCompactIntegral m N l‖ ≤

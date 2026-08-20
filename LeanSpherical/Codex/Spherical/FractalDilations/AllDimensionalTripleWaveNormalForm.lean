@@ -3,8 +3,12 @@
 
 import LeanSpherical.Codex.Spherical.FractalDilations.AllDimensionalRadialPairKernel
 import LeanSpherical.Codex.Spherical.FractalDilations.CoordinateMeridianWaves
+import LeanSpherical.Codex.Spherical.FractalDilations.AbsoluteReassembly
+import LeanSpherical.Codex.Spherical.FractalDilations.OscillatoryIBP
 open Codex.Spherical.FractalDilations.AllDimensionalRadialPairKernel
 open Codex.Spherical.FractalDilations.CoordinateMeridianWaves
+open Codex.Spherical.FractalDilations.AbsoluteReassembly
+open Codex.Spherical.FractalDilations.OscillatoryIBP
 open Codex.Spherical.FractalDilations.Q4RadialReduction
 open Codex.Spherical.FractalDilations.Q4TTStar
 open Codex.Spherical.FractalDilations.SmoothEndpointAmplitude
@@ -99,7 +103,7 @@ theorem coordinateSurfaceWaveSum_eq_three_radialTerms
       (-(2 * Real.pi * a)) * rho := by ring
   have hphaseIn : 2 * Real.pi * (a * rho) =
       (2 * Real.pi * a) * rho := by ring
-  simp only [Complex.exp_zero, mul_one]
+  simp
   rw [hphaseOut, hphaseIn]
   ring
 
@@ -120,11 +124,11 @@ theorem surfaceFourier_eq_coordinateSurfaceWaveSum
     surfaceFourier d xi = coordinateSurfaceWaveSum d ‖xi‖ := by
   have hd' : 2 <= d - 1 := by omega
   have hdim : d - 1 + 1 = d := Nat.sub_add_cancel (by omega)
-  have hsurface := surfaceFourier_succ_eq_coordinateSmoothWaves
-    (d := d - 1) hd' xi
+  have hsurface :=
+    surfaceFourier_succ_eq_coordinateSmoothWaves (d := d - 1) hd'
   rw [hdim] at hsurface
-  simp only [Nat.sub_sub, Nat.reduceAdd] at hsurface
-  simpa only [coordinateSurfaceWaveSum] using hsurface
+  simpa only [Nat.sub_sub, Nat.reduceAdd, coordinateSurfaceWaveSum] using
+    hsurface xi
 
 /-- On a positive ray, the norm entering the physical spherical factor is
 exactly the scalar radial frequency. -/
@@ -230,7 +234,8 @@ theorem q4DyadicPairKernel_eq_annular_coordinateTripleWaveIntegral
     (by omega) phi hphiOne hphiZero hphiRadial j r r' v x hv]
   have hab : (2 : Real) ^ j <= (2 : Real) ^ (j + 2) := by
     calc
-      (2 : Real) ^ j <= (2 : Real) ^ j * 4 := by nlinarith
+      (2 : Real) ^ j <= (2 : Real) ^ j * 4 := by
+        nlinarith [pow_pos (by norm_num : (0 : Real) < 2) j]
       _ = (2 : Real) ^ j * (2 : Real) ^ 2 := by norm_num
       _ = (2 : Real) ^ (j + 2) := by rw [← pow_add]
   apply intervalIntegral.integral_congr
@@ -239,6 +244,10 @@ theorem q4DyadicPairKernel_eq_annular_coordinateTripleWaveIntegral
     rw [uIcc_of_le hab] at hrho
     exact ⟨hrho.1, hrho.2⟩
   have hrhopos : 0 < rho := lt_of_lt_of_le (by positivity) hrho'.1
+  change ((rho ^ (d - 1) : Real) : Complex) *
+      surfaceFourier d (-rho • x) *
+        q4RadialPairProfile (absoluteDyadicBandpass phi hphiOne hphiZero j)
+          r r' v rho = _
   rw [surfaceFourier_neg_smul_eq_coordinateSurfaceWaveSum hd hrhopos,
     q4RadialPairProfile_eq_coordinateWaveProducts hd
       (absoluteDyadicBandpass phi hphiOne hphiZero j) hr hr' hrhopos v hv]

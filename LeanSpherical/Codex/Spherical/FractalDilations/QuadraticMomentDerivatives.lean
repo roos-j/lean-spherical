@@ -128,7 +128,8 @@ theorem hasDerivAt_quadraticMomentIntegral
     have hpow : u ^ (m + 2) = u ^ m * u ^ 2 := by
       rw [pow_add]
     dsimp only [F, F']
-    convert (harg.cexp).const_mul (((u ^ m : Real) : Complex) * h u) using 1
+    have hderiv := (harg.cexp).const_mul (((u ^ m : Real) : Complex) * h u)
+    apply hderiv.congr_deriv
     rw [hpow]
     push_cast
     ring
@@ -154,9 +155,12 @@ theorem iteratedDeriv_quadraticMomentIntegral
   | succ k ih =>
       rw [iteratedDeriv_succ, ih]
       funext lambda
-      simp only [Nat.succ_eq_add_one]
       have hindex : m + 2 * k + 2 = m + 2 * (k + 1) := by omega
-      rw [deriv_const_mul_field, deriv_quadraticMomentIntegral, hindex, pow_succ]
+      have hderiv : deriv (quadraticMomentIntegral (m + 2 * k) h) =
+          fun lambda => Complex.I * quadraticMomentIntegral (m + 2 * k + 2) h lambda := by
+        funext z
+        exact deriv_quadraticMomentIntegral (m + 2 * k) h hh z
+      rw [deriv_const_mul_field, hderiv, hindex, pow_succ]
       ring
 
 /-- The compact quadratic moment is smooth in its frequency parameter.  This
@@ -167,10 +171,10 @@ theorem contDiff_quadraticMomentIntegral
     ContDiff Real (⊤ : ℕ∞) (quadraticMomentIntegral m h) := by
   apply contDiff_of_differentiable_iteratedDeriv
   intro k _
-  rw [iteratedDeriv_quadraticMomentIntegral]
-  exact (fun lambda =>
-    (hasDerivAt_quadraticMomentIntegral (m + 2 * k) h hh lambda)
-      .differentiableAt).const_mul (Complex.I ^ k)
+  rw [iteratedDeriv_quadraticMomentIntegral m k h hh]
+  intro lambda
+  exact ((hasDerivAt_quadraticMomentIntegral (m + 2 * k) h hh lambda).differentiableAt).const_mul
+    (Complex.I ^ k)
 
 /-- A compact quadratic moment has a uniform nonoscillatory bound.  This is
 the low-frequency half of the stationary-symbol estimates and is stated for
@@ -217,7 +221,7 @@ theorem exists_iteratedDeriv_quadraticMomentIntegral_decay
     exists_quadraticMoment_decay (m + 2 * k) h hh hvanish
   refine ⟨C, hC, ?_⟩
   intro lambda hlambda
-  rw [iteratedDeriv_quadraticMomentIntegral]
+  rw [iteratedDeriv_quadraticMomentIntegral m k h hh]
   simpa only [norm_mul, norm_pow, Complex.norm_I, one_pow, one_mul] using
     hbound lambda hlambda
 
@@ -250,14 +254,13 @@ theorem iteratedDeriv_smoothEndpointQuadraticIntegral
     (m k : Nat) :
     iteratedDeriv k (smoothEndpointQuadraticIntegral m) =
       fun lambda => Complex.I ^ k *
-        smoothEndpointQuadraticIntegral (m + 2 * k) lambda := by
+        quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m) lambda := by
   have heq : smoothEndpointQuadraticIntegral m =
       quadraticMomentIntegral m (smoothEndpointProfile m) := by
     funext lambda
     exact smoothEndpointQuadraticIntegral_eq_quadraticMomentIntegral m lambda
-  rw [heq, iteratedDeriv_quadraticMomentIntegral]
-  funext lambda
-  rw [← smoothEndpointQuadraticIntegral_eq_quadraticMomentIntegral]
+  rw [heq, iteratedDeriv_quadraticMomentIntegral m k (smoothEndpointProfile m)
+    (contDiff_smoothEndpointProfile m)]
 
 /-- The literal smooth endpoint symbol is `C^∞` in its frequency parameter.
 This is the concrete regularity needed to compose it with the radial
@@ -281,10 +284,13 @@ theorem iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul
       smoothEndpointQuadraticIntegral m (a * rho)) =
       fun rho => a ^ k •
         (Complex.I ^ k *
-          smoothEndpointQuadraticIntegral (m + 2 * k) (a * rho)) := by
+          quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m) (a * rho)) := by
+  have hk : (k : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    change ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞)
+    exact WithTop.coe_le_coe.mpr le_top
   rw [iteratedDeriv_comp_const_smul
-    (contDiff_smoothEndpointQuadraticIntegral m) a]
-  simp_rw [iteratedDeriv_smoothEndpointQuadraticIntegral]
+    ((contDiff_smoothEndpointQuadraticIntegral m).of_le hk) a]
+  rw [iteratedDeriv_smoothEndpointQuadraticIntegral m k]
 
 /-- The all-order stationary symbol estimate is invariant under reversal of
 the endpoint frequency.  This is the form needed after the incoming and
@@ -296,12 +302,46 @@ theorem exists_iteratedDeriv_smoothEndpointQuadraticIntegral_abs_decay
       ‖iteratedDeriv k (smoothEndpointQuadraticIntegral m) lambda‖ ≤
         C / quadraticMomentScale (m + 2 * k) |lambda| := by
   obtain ⟨C, hC, hbound⟩ :=
-    exists_smoothEndpointQuadraticIntegral_abs_decay (m + 2 * k)
+    exists_iteratedDeriv_smoothEndpointQuadraticIntegral_decay m k
   refine ⟨C, hC, ?_⟩
   intro lambda hlambda
-  rw [iteratedDeriv_smoothEndpointQuadraticIntegral]
-  simpa only [norm_mul, norm_pow, Complex.norm_I, one_pow, one_mul] using
-    hbound lambda hlambda
+  by_cases hlambda_nonneg : 0 <= lambda
+  · rw [abs_of_nonneg hlambda_nonneg]
+    have hlambda' : 1 <= lambda := by
+      simpa [abs_of_nonneg hlambda_nonneg] using hlambda
+    exact hbound lambda hlambda'
+  · have hlambda_neg : lambda < 0 := lt_of_not_ge hlambda_nonneg
+    have hminus : 1 <= -lambda := by
+      rw [← abs_of_neg hlambda_neg]
+      exact hlambda
+    have hdecay := hbound (-lambda) hminus
+    have hnorm : norm (iteratedDeriv k (smoothEndpointQuadraticIntegral m) lambda) =
+        norm (iteratedDeriv k (smoothEndpointQuadraticIntegral m) (-lambda)) := by
+      rw [iteratedDeriv_smoothEndpointQuadraticIntegral]
+      rw [norm_mul, norm_pow, Complex.norm_I, one_pow, one_mul,
+        norm_mul, norm_pow, Complex.norm_I, one_pow, one_mul]
+      have hqconj : quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m)
+          (-lambda) = starRingEnd Complex
+            (quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m) lambda) := by
+        unfold quadraticMomentIntegral
+        rw [← intervalIntegral.intervalIntegral_conj]
+        apply intervalIntegral.integral_congr
+        intro u hu
+        unfold smoothEndpointProfile
+        dsimp
+        simp only [map_mul, Complex.conj_ofReal]
+        rw [← Complex.exp_conj]
+        simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
+        congr 1
+        push_cast
+        ring
+      rw [hqconj, RCLike.norm_conj]
+    calc
+      norm (iteratedDeriv k (smoothEndpointQuadraticIntegral m) lambda) =
+          norm (iteratedDeriv k (smoothEndpointQuadraticIntegral m) (-lambda)) := hnorm
+      _ <= C / quadraticMomentScale (m + 2 * k) (-lambda) := hdecay
+      _ = C / quadraticMomentScale (m + 2 * k) |lambda| := by
+        rw [abs_of_neg hlambda_neg]
 
 /-- A uniform (nonoscillatory) bound for a literal endpoint integral.  It is
 the compact-interval estimate used when the rescaled endpoint frequency is
@@ -338,14 +378,15 @@ theorem exists_iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul_le
       ‖iteratedDeriv k (fun t : Real =>
         smoothEndpointQuadraticIntegral m (a * t)) rho‖ ≤ C * |a| ^ k := by
   obtain ⟨C, hC, hbound⟩ :=
-    exists_norm_smoothEndpointQuadraticIntegral_le (m + 2 * k)
+    exists_norm_quadraticMomentIntegral_le (m + 2 * k) (smoothEndpointProfile m)
+      (contDiff_smoothEndpointProfile m)
   refine ⟨C, hC, ?_⟩
   intro a rho
   rw [iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul]
   rw [norm_smul, Real.norm_eq_abs, abs_pow, norm_mul, norm_pow,
     Complex.norm_I, one_pow, one_mul]
   calc
-    |a| ^ k * ‖smoothEndpointQuadraticIntegral (m + 2 * k) (a * rho)‖ ≤
+    |a| ^ k * ‖quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m) (a * rho)‖ ≤
         |a| ^ k * C :=
           mul_le_mul_of_nonneg_left (hbound (a * rho))
             (pow_nonneg (abs_nonneg a) k)
@@ -369,8 +410,18 @@ theorem exists_iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul_abs_decay
   rw [iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul]
   rw [norm_smul, Real.norm_eq_abs, abs_pow, norm_mul, norm_pow,
     Complex.norm_I, one_pow, one_mul]
-  exact mul_le_mul_of_nonneg_left (hbound (a * rho) harho)
-    (pow_nonneg (abs_nonneg a) k)
+  have hpoint := hbound (a * rho) harho
+  rw [iteratedDeriv_smoothEndpointQuadraticIntegral m k] at hpoint
+  have hpoint' : ‖quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m)
+      (a * rho)‖ ≤ C / quadraticMomentScale (m + 2 * k) |a * rho| := by
+    simpa only [norm_mul, norm_pow, Complex.norm_I, one_pow, one_mul] using hpoint
+  calc
+    |a| ^ k * ‖quadraticMomentIntegral (m + 2 * k) (smoothEndpointProfile m) (a * rho)‖ ≤
+        |a| ^ k * (C / quadraticMomentScale (m + 2 * k) |a * rho|) :=
+      mul_le_mul_of_nonneg_left hpoint'
+        (pow_nonneg (abs_nonneg a) k)
+    _ = C * |a| ^ k / quadraticMomentScale (m + 2 * k) |a * rho| := by
+      ring
 
 end
 
