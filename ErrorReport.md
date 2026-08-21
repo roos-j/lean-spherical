@@ -634,3 +634,495 @@ They do not give the required vector-valued comparison
 scale gain).  Proving that finite vector-valued `L⁴` endpoint, and only then
 handling its density/continuum passage, remains the next real recombination
 theorem.  No source theorem was added from the scratch audit.
+
+## 2026-08-20 13:06:49 -04:00
+
+The source now has the literal finite-model transfer
+`overlapSquareFunction_spectralCubeRadialNormalPackets_to_fineSquareFunction_of_model`.
+It consumes `overlapSquareFunction_spectralCubeRadialNormalPackets` and an
+explicit equality, for every selected radial/angular index, between the
+spectral Schwartz packet and the corresponding actual angular/radial piece.
+It therefore transfers the auxiliary recombined square-function `L4` bound to
+the angular/radial square function (the later `fineSquareFunction` definition
+unfolded) with the same `C * scale^eta` loss.
+
+This is deliberately conditional on the supplied finite realization equality;
+it does not construct that equality, claim exact conic-plate support for a
+compact physical-time cutoff, or turn the analytic `overlapSquareFunction`
+hypothesis into a proof.  In particular it supplies no bound from the fine
+square function to the original input, so `fineSquareFunctionEstimate`, the
+continuum realization/reverse-overlap step, and the remaining recombination
+work are still open.
+
+## 2026-08-20 13:19:33 -04:00
+
+The raw product type `WaveSpaceTime = Euclidean 2 × Real` does not carry the
+joint inner-product structure required by Mathlib's `SchwartzMap`.  The new
+Fourier-conversion layer therefore works on the explicitly corrected Hilbert
+coordinate model `JointWaveSpaceTime = WithLp 2 WaveSpaceTime`, with
+`jointSchwartzRaw` returning to the physical product coordinates.  Its
+volume transport is proved through Borel measurability because the
+`WithLp.measurableSpace` instance and the Haar/Borel structure selected by
+the canonical joint Fourier transform are not definitionally identical.
+
+For an explicitly supplied joint Schwartz cutoff `q`, the literal premise
+`wavefrontMultiplier … * FourierTransform.fourier G = q *
+FourierTransform.fourier G` yields both a raw `wavefrontProjection` identity
+and the exact `conicPlate` support statement consumed by
+`overlapSquareFunction`.  This is a spectral realization theorem, not a
+producer for the premise.  It deliberately does not apply to
+`angularRadialWave`, `wavefrontAngularRadialWave`, or another compact
+physical-time cutoff: compact temporal localization generally broadens the
+normal Fourier variable and cannot justify exact conic support.  The remaining
+analytic task is to construct suitable local joint-Schwartz spectral cutoffs
+and a quantitative approximation/off-plate-error bridge from the actual
+compact-time half-wave packets.
+
+## 2026-08-20 13:30:02 -04:00
+
+The finite Schwartz vertical layer now has a genuinely additive bundle core:
+`verticalTemporalSchwartzMultiplier`,
+`verticalTemporalSchwartzCoreRecombined`, and
+`verticalSchwartzCoreRecombined`.  Under an explicit finite profile equality,
+the temporal and space--time cores identify exactly with the literal sums of
+`verticalTemporalProjection` and `verticalRecombined` on separable Schwartz
+packets.  Their finite-overlap raw `L²` bounds are exposed as source theorems.
+The finite vertical square function is also identified exactly with the norm
+of its natural finite `PiLp 2` bundle (and hence has the corresponding all-p
+`eLpNorm` equality).
+
+This is deliberately only a finite Schwartz additive core.  It does not
+construct a common time kernel, establish an `L∞` endpoint for the bundle
+operator, interpolate an `L⁴` recombination bound, or extend the construction
+to arbitrary measurable inputs or a continuum limit.  Those remain the
+missing analytic recombination work.
+
+## 2026-08-20 13:42:18 -04:00
+
+The finite temporal Schwartz multiplier now has an exact convolution
+identity and a scalar `L1`-kernel-to-`L∞` estimate. This removes the prior
+ambiguity about the physical kernel of one temporal block, but it does not
+yet give the needed vector-valued endpoint. The next honest step is a common
+pointwise kernel-envelope theorem for the finite temporal core, yielding the
+sharp `sqrt indices.card` top bound against the `PiLp 2` input norm. Turning
+that finite Schwartz result into the all-input, measurable additive operator
+required by `rieszThorin_two_top_four_of_additive` still needs an
+extension/density construction. Do not derive an L4 recombination estimate
+merely from the existing profile-specific L2 and L∞ energy bounds; that
+would have the wrong source norm.
+
+## 2026-08-20 13:49:36 -04:00
+
+`norm_verticalTemporalSchwartzCoreRecombined_le_of_common_kernel` now proves
+the sharp finite `sqrt indices.card` top estimate from a supplied nonnegative,
+integrable common pointwise envelope for the inverse-Fourier temporal kernels.
+It is the correct finite-core L∞ endpoint and uses the input temporal square
+function, rather than separately bounding every input component.
+
+The remaining obstacle is exactly the advertised one: its domain is still a
+finite family of Schwartz profiles. A subsequent all-input operator must
+extend this core to measurable `PiLp 2`-valued functions, retain the finite
+L2 overlap estimate, and prove AEMeasurability before the existing
+Riesz--Thorin theorem can be applied. No such extension, continuum passage,
+or `verticalRecombination` theorem has been claimed here.
+
+## 2026-08-20 13:56:24 -04:00
+
+`jointSchwartzExternalProduct` now rigorously packages a planar Schwartz
+profile `B(ξ)` and a temporal Schwartz profile `h(τ)` as genuinely joint
+Schwartz data on `JointWaveSpaceTime = WithLp 2 (Euclidean 2 × Real)`, with
+the exact raw-coordinate formula at `WithLp.toLp 2 (ξ, τ)`.  Its proof uses
+coordinate derivative contractions, the finite Leibniz rule, and Schwartz
+seminorm decay; it does not add any unsupported regularity assumption.
+
+This is only the first tensor-product foundation for the compact-time
+spectral-tail route.  It does not construct a smooth annular radial extension
+equal to `‖ξ‖`, a Schwartz shear by that extension, the profile
+`B(ξ) * FourierTransform.fourier ϑ (τ - ‖ξ‖)`, a physical half-wave equality,
+or exact conic support for a compact physical-time cutoff.  The latter is
+generally false without a quantitative off-plate tail formulation.
+
+## 2026-08-20 13:59:53 -04:00
+
+The finite temporal input square function now has an exact pointwise and
+all-exponent `eLpNorm` identification with the natural finite `PiLp 2`
+bundle. This aligns the existing common-kernel top estimate with the eventual
+Riesz--Thorin source geometry. It does not itself define an operator on
+measurable bundle-valued data, provide the required L2 extension, or remove
+the density/AEMeasurability gap.
+
+## 2026-08-20 14:09:33 -04:00
+
+`smoothAnnularNormExtension` now proves the small smooth spectral foundation
+needed for the radial-shear route. Given a real planar Schwartz cutoff `u`, a
+compact-support witness, `epsilon > 0`, and literal vanishing of `u` on the
+open `epsilon`-ball around the origin, it constructs the Schwartz map
+`x |-> u x * ||x||`. The public evaluation and equality-on-one/support
+corollaries make the radial-norm identification available exactly on the
+chosen profile support.
+
+This is purely a smooth spectral construction. It supplies neither a
+physical half-wave identity nor compact physical-time/conic-plate support;
+those still require the planned shear and a separate Fourier-modulation or
+quantitative off-plate-tail argument.
+
+## 2026-08-20 14:22:01 -04:00
+
+`jointSchwartzPrecompRadialShear` now implements that planned shear on the
+genuine joint Schwartz space.  For any real planar Schwartz profile `rho` and
+joint Schwartz profile `Q`, it returns a joint Schwartz profile whose raw
+formula is exactly
+`Q (WithLp.toLp 2 (xi, tau - rho xi))`.  Its `SchwartzMap.compCLM` proof is
+honest: the shear has temperate growth because it is the identity minus a
+continuous-linear vertical embedding of `rho` after the first-coordinate
+projection; its properness bound uses `rho.decay 0 0` and has degree one.
+
+Together with `smoothAnnularNormExtension`, this supports a future profile
+formula with a smooth extension that agrees with `||xi||` on a chosen
+annular spatial support.  It does not identify that profile with a compact
+physical-time half-wave, prove a Fourier modulation theorem, or establish
+exact conic-plate support.  Those require a separate physical-to-spectral or
+quantitative off-plate-tail argument.
+
+## 2026-08-20 14:27:06 -04:00
+
+`jointSchwartzModulatedAnnularProfile` now makes that spectral profile
+literal: it applies the public radial shear to the joint external product of
+`B` and `FourierTransform.fourier vartheta`, giving exactly
+`B xi * FourierTransform.fourier vartheta (tau - rho xi)` in raw product
+coordinates. Its support corollary replaces `rho xi` by `||xi||` under the
+literal hypothesis that `rho` agrees with the norm on the support of `B`.
+
+This remains a joint-Schwartz spectral identity only. It does not prove an
+inverse space-time Fourier formula, a physical compact-time half-wave
+identity, or exact conic-plate support. The next bridge needs the separate
+Fourier-translation/Fubini calculation (or a quantitative off-plate-tail
+version) before any such statement can be made.
+
+## 2026-08-20 14:47:41 -04:00
+
+The required Fourier-translation/Fubini bridge is now source-verified for
+supplied Schwartz data only.  The public theorem
+`spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile` identifies the
+literal joint inverse profile with
+`vartheta t * FourierTransform.fourierInv (fun xi => B xi *
+Real.fourierChar (rho xi * t)) x`.  Under the literal hypothesis that `rho`
+equals `||xi||` on the support of `B`, its public corollary identifies that
+phase with `halfWaveMultiplier WaveSign.plus t xi`.
+
+This is an exact temporal-Schwartz identity; it does not assert that an
+arbitrary Schwartz `vartheta` has compact physical-time support.  It makes no
+claim about legacy `angularPiece`, conic-plate support, off-plate tails,
+approximation, recombination, fine square functions, or `p4LocalSmoothing`.
+
+## 2026-08-20 14:56:59 -04:00
+
+The generic joint-Schwartz inversion conversion is now source-verified:
+`spaceTimeFourier_spaceTimeFourierInv_jointSchwartzRaw` derives directly from
+the existing forward and inverse raw-coordinate conversions together with
+`FourierTransform.fourier_fourierInv_eq`. Its supplied-data corollary
+`spaceTimeFourier_temporalSchwartzHalfWave_eq_jointSchwartzModulatedAnnularProfile`
+identifies the iterated Fourier transform of the temporal-Schwartz positive
+annular half-wave with the already-defined joint modulated annular profile.
+
+This adds no compact conic-support statement: `vartheta` remains an arbitrary
+supplied Schwartz map, and the conclusion is only an exact spectral profile
+identity. It does not establish a plate condition, off-plate decay,
+approximation, legacy `angularPiece` realization, recombination, fine square
+function estimate, or local smoothing bound.
+
+## 2026-08-20 15:12:42 -04:00
+
+The first honest projected spatial/normal model is now source-verified.
+`jointSchwartzSpatialNormalCutoff u beta rho` has literal raw value
+`u xi * beta (tau - rho xi)`, and
+`temporalSchwartzAnnularNormalProjection` applies that joint Schwartz cutoff
+to the Fourier profile of the supplied temporal-Schwartz annular half-wave.
+Its public Fourier identity is exact.
+
+The public conic-plate theorem applies only to this projected output and
+requires all of the following literal hypotheses: spatial radial/angular
+containment of `support B`; a vertical-label bound for each `xi` in
+`support B` and normal value `s` in `support beta`; and a normal-width bound
+on `support beta`, in addition to `rho = ||.||` and `u = 1` on `support B`.
+No compactness follows from the Schwartz cutoff data alone. In particular,
+there is still no Fourier-support claim for the unprojected temporal cutoff
+half-wave, no legacy `angularPiece` realization, approximation or quantitative
+tail theorem, recombination, fine square-function estimate, or local smoothing
+result.
+
+## 2026-08-20 15:42:44 -04:00
+
+The verified normal-tail split for the temporal-Schwartz annular model is an
+exact spectral identity, not a quantitative tail bound. Its Fourier factor is
+`1 - u xi * beta (tau - rho xi)`. Consequently the honest support exclusion
+is the region where `beta (tau - rho xi) != 1` (assuming `u = 1` on
+`support B`), not merely the complement of `support beta`: a nonzero cutoff
+value different from one still contributes to the tail.
+
+The reassembly theorem requires the supplied agreement `rho = ||.||` on
+`support B` to identify the joint-Schwartz inverse profile with the literal
+positive half-wave. It does not assert plate support for that unprojected
+half-wave, compact physical-time support, approximation, off-plate decay, a
+quantitative tail estimate, recombination, a fine square function, or local
+smoothing.
+
+## 2026-08-20 16:50:51 -04:00
+
+The earlier finite-vector density/AEMeasurability obstruction is resolved for
+the concrete restricted domain only. `MSS.lean` now proves
+`memLp_four_and_eLpNorm_finiteTemporalCommonKernelOutput_of_overlap` for a
+literally measurable, bounded, coordinatewise-integrable finite `PiLp 2`
+temporal bundle under the stated profile and finite-overlap hypotheses.
+The result controls the literal finite common-kernel convolution output and
+has an explicit fourth-moment coefficient.
+
+This is not an all-input vector-valued multiplier theorem. The proof does
+not extend the operator to arbitrary measurable `Lp` data, and it does not
+produce `verticalRecombination`, a continuum limit, a spacetime packet
+estimate, a fine square-function bound, or local smoothing. Those remain
+separate consumers/problems; do not use this finite restricted-domain result
+to bypass their hypotheses.
+
+## 2026-08-20 17:05:10 -04:00
+
+The finite Schwartz-profile consumer is now source-verified.  The public
+theorem
+`memLp_four_and_eLpNorm_verticalTemporalSchwartzCoreRecombined_of_overlap`
+packages a supplied finite family `Int → SchwartzMap Real Complex` into the
+concrete finite `PiLp 2` measurable domain, invokes the existing literal
+common-kernel endpoint, and rewrites its output to
+`verticalTemporalSchwartzCoreRecombined`.  Its fourth-moment right-hand side
+is exactly the existing `finiteTemporalCoreFourthMomentBound` evaluated on
+that concrete bundle.
+
+This remains a finite temporal Schwartz-core corollary.  It does not extend
+the endpoint to arbitrary vector-valued `Lp` inputs, and it does not prove a
+spatial, continuum, half-wave, spacetime packet, recombination, fine
+square-function, or local-smoothing statement.
+
+## 2026-08-20 17:12:35 -04:00
+
+The product-measure concern for the common-spatial finite core is resolved in
+the literal finite setting. The proof of
+`memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_commonSpatial_of_overlap`
+uses `Measure.volume_eq_prod`, `lintegral_prod_mul`, and
+`ENNReal.mul_rpow_of_nonneg` to obtain the exact fourth-`eLpNorm` tensor
+factorization. The temporal output's `AEStronglyMeasurable.comp_snd` and the
+Schwartz profile's `comp_fst` give the required product measurability.
+
+This is not a way around the remaining scope boundaries: the theorem requires
+one common spatial Schwartz profile, finite temporal Schwartz data, and the
+existing finite-overlap temporal hypotheses. It gives no estimate for varying
+spatial profiles, arbitrary measurable bundles, `verticalRecombined`,
+continuum reassembly, spacetime packets, fine square functions, or local
+smoothing.
+
+## 2026-08-20 17:30:56 -04:00
+
+The finite varying-spatial Schwartz-core consumer is now source-verified:
+`memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_of_overlap`. It applies
+the common-spatial finite theorem to the singleton temporal family supported
+at each `n ∈ indices`, identifies their finite sum with
+`verticalSchwartzCoreRecombined indices m F g`, and uses finite Minkowski.
+The public RHS is the explicit finite sum of each spatial fourth `eLpNorm`
+times the existing fourth-moment bound for that singleton bundle.
+
+This is a finite, supplied-Schwartz, deliberately non-square-function bound.
+It does not yield a single spatial square-envelope estimate from the temporal
+endpoint, an arbitrary measurable/vector-valued extension,
+`verticalRecombined`, a continuum limit, a spacetime-packet estimate, a fine
+square function, or local smoothing.
+
+## 2026-08-20 17:39:18 -04:00
+
+The finite supplied-Schwartz normal-projection overlap bridge is now
+source-verified.  Its only transplant issue was declaration order: the first
+placement was before the later `overlapSquareFunction` and square-function
+definitions, so the source compiler could not resolve those names.  Moving
+the same wrapper below the generic overlap declaration resolved the issue.
+
+`spaceTimeFourier_temporalSchwartzAnnularNormalProjection_eq_jointAmplitude`
+records the actual sheared joint profile.  The finite wrapper
+`overlapSquareFunction_temporalSchwartzAnnularNormalProjections` applies the
+base overlap hypothesis directly after the existing projected-model conic
+support theorem.  It intentionally supplies no equality to a raw
+`angularPiece` or a separable spectral packet; therefore it does not close a
+fine-square, tail, `p4`, or local-smoothing gap.
+
+## 2026-08-20 17:59:26 -04:00
+
+The raw angular/radial compatibility gap is resolved only in its legitimate
+regular supplied-data form.  `fourier_radialPiece_eq_schwartzProfile_mul_fourier`
+requires an explicit Schwartz representative `R` for the radial multiplier,
+and the two angular-piece theorems require the explicit Schwartz amplitude
+identity for `B`.  No theorem attempts to manufacture either datum from an
+arbitrary raw cutoff.
+
+The normal-tail branch now has arbitrary rapid pointwise decay in
+`tau - rho xi`, plus a cutoff-radius refinement when the supplied normal
+cutoff equals one on the stated normal ball.  Both are strictly Fourier-side
+pointwise estimates.  They do not supply physical-space `L²`/`L⁴` tail
+control, raw compact-time plate support, a fine-square estimate, `p4`, or
+local smoothing.
+
+## 2026-08-20 18:19:32 -04:00
+
+The regular-model L² transport gap is resolved.  The generic theorem
+`eLpNorm_spaceTimeFourier_jointSchwartzRaw_two_eq` moves canonical Plancherel
+through the public `WithLp.toLp` measure-preserving equivalence, and the
+normal-tail specialization applies it definitionally.  This is an exact
+product-coordinate identity for supplied joint-Schwartz data, not an L²
+estimate for raw compact-time packets.
+
+The fixed-packet bridge constructor
+`exists_regularAngularRadialBridgeData_of_normRadialSchwartzCutoffs` likewise
+has deliberately narrow scope: its scalar radial cutoff is chosen from a
+single supplied norm-radial Schwartz `R`, positive scale, integer packet, and
+unit direction.  It does not derive a shared cutoff family or fill any raw
+`p4`/fine-square/local-smoothing hypothesis.
+
+## 2026-08-20 19:14:40 -04:00
+
+The new normal-tail radius estimates are deliberately restricted to the
+supplied joint-Schwartz model. Their constants are uniform only after fixing
+the spatial amplitude B, temporal Schwartz factor vartheta, power N, and a
+global defect envelope M, then quantifying over u, beta, rho, and the
+normal-ball radius R. The hypotheses require u = 1 on the support of B,
+beta = 1 on the stated normal ball, and norm(1 - beta) <= M globally.
+
+The L4 result is a squared eLpNorm estimate assembled from the L2 theorem at
+twice the requested power and a separate Fourier-L1 defect envelope. It does
+not produce a raw compact-time packet estimate, a plate-support statement, a
+finite-family recombination, a fine square function, p4 local smoothing, or
+a local-smoothing theorem.
+
+## 2026-08-20 19:35:41 -04:00
+
+The new angular-minus-projection estimate is only a supplied regular
+one-packet transfer. It requires the explicit Schwartz radial profile and
+amplitude identities, and its norm-agreement condition for rho must be
+quantified with the chosen rho. It therefore does not construct regular data
+from arbitrary angular or radial cutoffs.
+
+The accompanying finite-sum theorem is only finite Minkowski: its conclusion
+uses a sum of already-supplied L4 tail envelopes. It is not a square-function
+estimate, a continuum reassembly theorem, a packet-family approximation, p4
+local smoothing, or local smoothing.
+
+## 2026-08-20 20:02:41 -04:00
+
+The new finite square-function perturbation bridge closes only the finite,
+supplied regular-model error step. In particular, its regular angular/radial
+consumer still assumes the analytic `overlapSquareFunction` hypothesis,
+explicit Schwartz profiles `R` and `B`, and an explicit finite sum of
+normal-tail `L4` norms. It does not provide a uniform packet-family tail
+budget, manufacture regular profiles from raw compact-time cutoffs, or
+discharge `fineSquareFunctionEstimate`, `p4LocalSmoothing`, or a continuum
+reassembly hypothesis. Those remain genuine separate gaps.
+
+## 2026-08-20 20:23:02 -04:00
+
+The raw angular/radial square-function perturbation is now available only as
+the intended finite elementary estimate: componentwise `full = main + tail`
+and measurable finite tails give an `L4` bound by the sum of supplied tail
+envelopes. Its implementation uses a private arbitrary finite-index `PiLp`
+argument, without changing the existing `Int`-indexed vertical API.
+
+The regular consumer replaces only the projected square function on the
+right-hand side of the existing overlap-plus-tail bridge by the literal raw
+angular/radial square function, at the cost of the explicit `(q + 1)` tail
+coefficient. It still requires the analytic `overlapSquareFunction` premise,
+finite indices, and all supplied Schwartz `R`, `B`, `rho`, and support data.
+It does not construct raw compact-time data, furnish a uniform family tail
+budget, prove a fine-square estimate or `p4LocalSmoothing`, or take a
+continuum limit.
+
+## 2026-08-20 20:45:24 -04:00
+
+The finite supplied regular family now has a uniform normal-radius rate in
+weighted form. The positive overlap coefficient and a single finite tail
+constant are chosen before all supplied spatial cutoffs, normal cutoffs,
+normal shears, and the common normal radius. The internal tail constant is a
+finite sum of one-packet squared-`L4` witnesses; no square-root or inverse
+ENNReal estimate is hidden in the theorem.
+
+The result remains conditional on the analytic `overlapSquareFunction`, uses
+only supplied finite Schwartz profiles and explicit support identities, and
+retains the raw two-index square function on its right-hand side. It does not
+construct a raw cutoff model, establish a fine-square or `p4` estimate, bound
+an infinite family, or perform a continuum/recombination argument.
+
+## 2026-08-20 21:10:33 -04:00
+
+The finite angular partition layer is now formalized at the literal raw
+Fourier level. The partition is required only on the support of the spatial
+Fourier multiplier, while every angularized multiplier carries an explicit
+integrability hypothesis. This is necessary because raw `fourierInv` has no
+unconditional finite-additivity instance.
+
+The reconstruction theorem rewrites only the finite radial-time term as a
+`verticalRecombined` family of angular pieces. It supplies no vertical
+recombination estimate, angular/radial square-function bound, partition
+construction, fine-square estimate, `p4LocalSmoothing`, or continuum result.
+The private regular-profile helper discharges the integrability hypothesis
+only from explicitly supplied Schwartz radial and angular amplitudes; it does
+not infer those data from arbitrary raw cutoffs.
+
+## 2026-08-20 21:16:34 -04:00
+
+The angularized reconstruction is now connected to the original conic
+half-wave by the exact identity `conicOperator = verticalRecombined +
+radialTimeResidual`. It consumes the same finite support-local partition and
+raw Fourier-integrability hypotheses as the preceding reconstruction theorem.
+
+This is only the algebraic outer decomposition. It does not estimate the
+residual, prove a vertical recombination bound, construct the angular
+partition, establish a square-function/fine-square estimate,
+`p4LocalSmoothing`, or make any continuum claim.
+
+## 2026-08-20 21:31:58 -04:00
+
+The finite supplied-Schwartz temporal core now exposes the literal raw
+fourth-moment form required for a later spatial Fubini/Tonelli lift.  Its
+input-independent interpolation coefficient is public and the existing
+fourth-moment bound factors exactly as that coefficient times the fourth
+moment of the finite `PiLp 2` input bundle.  The spatial core also has an
+exact fixed-fiber identity after scaling each temporal Schwartz profile by
+the corresponding spatial value.
+
+These APIs remain finite, supplied-Schwartz statements.  They do not create
+an endpoint for arbitrary measurable vector inputs, prove a space-time
+Fubini lift, identify `verticalRecombined`, establish a square-function or
+fine-square bound, or imply `p4LocalSmoothing`.
+
+## 2026-08-20 21:50:09 -04:00
+
+The finite supplied-Schwartz space-time Fubini lift is now formalized.  It
+uses the temporal fourth-moment coefficient on each spatial fiber and
+Tonelli to bound the literal `verticalSchwartzCoreRecombined` by the fourth
+moment of the corresponding finite `verticalSquareFunction`.  A companion
+gives `MemLp 4` and the resulting `eLpNorm` bound, and a rewrite-only
+corollary identifies the same estimate with the literal finite
+`verticalRecombined` separable-packet family.
+
+The scope remains deliberately narrow: finite indices and supplied Schwartz
+temporal/spatial profiles under the displayed profile and overlap
+hypotheses.  It does not prove an endpoint for arbitrary measurable inputs,
+`verticalRecombination`, a continuum limit, a square-function or
+fine-square estimate, `p4LocalSmoothing`, or local smoothing.
+
+## 2026-08-20 22:32:52 -04:00
+
+The varying-spatial Fubini layer now also accepts a finite rank expansion
+inside each original vertical label.  The original `m` profile and overlap
+hypothesis remain indexed by the vertical label; the finite rank sum is
+collected before applying the temporal fourth-moment theorem.  The right
+hand side is consequently the vertical square function of the rank-summed
+packet family, not a flattened two-index square function.
+
+The exact supplied-Schwartz Fourier calculation additionally identifies this
+finite-rank core with a literal `verticalRecombined` family.  This remains a
+finite algebraic/Schwartz result: it does not establish arbitrary-input
+density, a scale-normalized endpoint, `verticalRecombination`, a continuum
+limit, fine-square control, `p4LocalSmoothing`, or local smoothing.

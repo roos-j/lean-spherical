@@ -12,6 +12,7 @@ import Mathlib.Analysis.InnerProductSpace.TwoDim
 import Mathlib.Geometry.Euclidean.Sphere.Basic
 import Mathlib.MeasureTheory.Constructions.HaarToSphere
 import Mathlib.MeasureTheory.Integral.IntegralEqImproper
+import Mathlib.MeasureTheory.SpecificCodomains.WithLp
 
 /-!
 # Mockenhaupt--Seeger--Sogge local smoothing: basic objects
@@ -2184,6 +2185,1013 @@ noncomputable def spaceTimeFourierInv (G : WaveSpaceTime → Complex) :
     WaveSpaceTime → Complex :=
   fun z => 𝓕⁻ (fun τ : Real => 𝓕⁻ (fun η : Euclidean 2 => G (η, τ)) z.1) z.2
 
+/-- The Hilbert coordinate model for genuinely joint Schwartz space--time
+data.  The raw product `WaveSpaceTime` does not itself carry the joint inner
+product structure needed by `SchwartzMap`; `WithLp 2` supplies that structure
+without changing the underlying product coordinates. -/
+abbrev JointWaveSpaceTime := WithLp 2 WaveSpaceTime
+
+private theorem aux_joint_norm_le_coordinate_sum (z : JointWaveSpaceTime) :
+    ‖z‖ ≤ ‖z.fst‖ + ‖z.snd‖ := by
+  have hz : z = WithLp.idemFst z + WithLp.idemSnd z := by
+    have hz' := DFunLike.congr_fun
+      (WithLp.idemFst_add_idemSnd (p := 2) (α := Euclidean 2) (β := Real)) z
+    change WithLp.idemFst z + WithLp.idemSnd z = z at hz'
+    exact hz'.symm
+  calc
+    ‖z‖ = ‖WithLp.idemFst z + WithLp.idemSnd z‖ := congrArg norm hz
+    _ ≤ ‖WithLp.idemFst z‖ + ‖WithLp.idemSnd z‖ :=
+      norm_add_le _ _
+    _ = ‖z.fst‖ + ‖z.snd‖ := by
+      simp only [WithLp.idemFst_apply, WithLp.idemSnd_apply,
+        WithLp.norm_toLp_fst, WithLp.norm_toLp_snd]
+
+private theorem aux_joint_one_add_norm_pow_le
+    (k : Nat) (z : JointWaveSpaceTime) :
+    (1 + ‖z‖) ^ k ≤ (1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k := by
+  have hbase : 1 + ‖z‖ ≤ (1 + ‖z.fst‖) * (1 + ‖z.snd‖) := by
+    calc
+      1 + ‖z‖ ≤ 1 + (‖z.fst‖ + ‖z.snd‖) := by
+        gcongr
+        exact aux_joint_norm_le_coordinate_sum z
+      _ ≤ (1 + ‖z.fst‖) * (1 + ‖z.snd‖) := by
+        nlinarith [mul_nonneg (norm_nonneg z.fst) (norm_nonneg z.snd)]
+  calc
+    (1 + ‖z‖) ^ k ≤ ((1 + ‖z.fst‖) * (1 + ‖z.snd‖)) ^ k := by
+      gcongr
+    _ = (1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k := mul_pow _ _ _
+
+private theorem aux_joint_norm_pow_le_coordinate_weights
+    (k : Nat) (z : JointWaveSpaceTime) :
+    ‖z‖ ^ k ≤ (1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k := by
+  calc
+    ‖z‖ ^ k ≤ (1 + ‖z‖) ^ k :=
+      pow_le_pow_left₀ (norm_nonneg _) (by linarith [norm_nonneg z]) _
+    _ ≤ (1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k :=
+      aux_joint_one_add_norm_pow_le k z
+
+private theorem aux_joint_fstL_norm_le_one :
+    ‖WithLp.fstL 2 Real (Euclidean 2) Real‖ ≤ 1 := by
+  refine ContinuousLinearMap.opNorm_le_bound _ zero_le_one ?_
+  intro z
+  simpa using WithLp.norm_fst_le (p := 2) (Euclidean 2) z
+
+private theorem aux_joint_sndL_norm_le_one :
+    ‖WithLp.sndL 2 Real (Euclidean 2) Real‖ ≤ 1 := by
+  refine ContinuousLinearMap.opNorm_le_bound _ zero_le_one ?_
+  intro z
+  simpa using WithLp.norm_snd_le (p := 2) (Euclidean 2) z
+
+private theorem aux_iteratedFDeriv_joint_fst_le
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (n : Nat) (z : JointWaveSpaceTime) :
+    ‖iteratedFDeriv Real n
+        (fun w : JointWaveSpaceTime => B (WithLp.fstL 2 Real (Euclidean 2) Real w)) z‖ ≤
+      ‖iteratedFDeriv Real n B z.fst‖ := by
+  let L : JointWaveSpaceTime →L[Real] Euclidean 2 :=
+    WithLp.fstL 2 Real (Euclidean 2) Real
+  change ‖iteratedFDeriv Real n (B ∘ L) z‖ ≤
+    ‖iteratedFDeriv Real n B (L z)‖
+  rw [L.iteratedFDeriv_comp_right (B.smooth (⊤ : ℕ∞)) z (by exact_mod_cast le_top)]
+  calc
+    ‖(iteratedFDeriv Real n B (L z)).compContinuousLinearMap (fun _ => L)‖ ≤
+        ‖iteratedFDeriv Real n B (L z)‖ * ∏ _ : Fin n, ‖L‖ :=
+      ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _
+    _ ≤ ‖iteratedFDeriv Real n B (L z)‖ * ∏ _ : Fin n, (1 : Real) := by
+      gcongr
+      exact aux_joint_fstL_norm_le_one
+    _ = ‖iteratedFDeriv Real n B (L z)‖ := by simp
+
+private theorem aux_iteratedFDeriv_joint_snd_le
+    (h : SchwartzMap Real Complex)
+    (n : Nat) (z : JointWaveSpaceTime) :
+    ‖iteratedFDeriv Real n
+        (fun w : JointWaveSpaceTime => h (WithLp.sndL 2 Real (Euclidean 2) Real w)) z‖ ≤
+      ‖iteratedFDeriv Real n h z.snd‖ := by
+  let L : JointWaveSpaceTime →L[Real] Real :=
+    WithLp.sndL 2 Real (Euclidean 2) Real
+  change ‖iteratedFDeriv Real n (h ∘ L) z‖ ≤
+    ‖iteratedFDeriv Real n h (L z)‖
+  rw [L.iteratedFDeriv_comp_right (h.smooth (⊤ : ℕ∞)) z (by exact_mod_cast le_top)]
+  calc
+    ‖(iteratedFDeriv Real n h (L z)).compContinuousLinearMap (fun _ => L)‖ ≤
+        ‖iteratedFDeriv Real n h (L z)‖ * ∏ _ : Fin n, ‖L‖ :=
+      ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _
+    _ ≤ ‖iteratedFDeriv Real n h (L z)‖ * ∏ _ : Fin n, (1 : Real) := by
+      gcongr
+      exact aux_joint_sndL_norm_le_one
+    _ = ‖iteratedFDeriv Real n h (L z)‖ := by simp
+
+private theorem aux_weighted_iteratedFDeriv_joint_fst_le
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (k n : Nat) (z : JointWaveSpaceTime) :
+    (1 + ‖z.fst‖) ^ k *
+        ‖iteratedFDeriv Real n
+          (fun w : JointWaveSpaceTime => B (WithLp.fstL 2 Real (Euclidean 2) Real w)) z‖ ≤
+      2 ^ k * ((Finset.Iic (k, n)).sup fun m =>
+        SchwartzMap.seminorm Complex m.1 m.2) B := by
+  calc
+    (1 + ‖z.fst‖) ^ k *
+        ‖iteratedFDeriv Real n
+          (fun w : JointWaveSpaceTime => B (WithLp.fstL 2 Real (Euclidean 2) Real w)) z‖ ≤
+        (1 + ‖z.fst‖) ^ k * ‖iteratedFDeriv Real n B z.fst‖ := by
+      gcongr
+      exact aux_iteratedFDeriv_joint_fst_le B n z
+    _ ≤ 2 ^ k * ((Finset.Iic (k, n)).sup fun m =>
+        SchwartzMap.seminorm Complex m.1 m.2) B :=
+      SchwartzMap.one_add_le_sup_seminorm_apply (m := (k, n)) (k := k) (n := n)
+        (le_refl _) (le_refl _) B z.fst
+
+private theorem aux_weighted_iteratedFDeriv_joint_snd_le
+    (h : SchwartzMap Real Complex)
+    (k n : Nat) (z : JointWaveSpaceTime) :
+    (1 + ‖z.snd‖) ^ k *
+        ‖iteratedFDeriv Real n
+          (fun w : JointWaveSpaceTime => h (WithLp.sndL 2 Real (Euclidean 2) Real w)) z‖ ≤
+      2 ^ k * ((Finset.Iic (k, n)).sup fun m =>
+        SchwartzMap.seminorm Complex m.1 m.2) h := by
+  calc
+    (1 + ‖z.snd‖) ^ k *
+        ‖iteratedFDeriv Real n
+          (fun w : JointWaveSpaceTime => h (WithLp.sndL 2 Real (Euclidean 2) Real w)) z‖ ≤
+        (1 + ‖z.snd‖) ^ k * ‖iteratedFDeriv Real n h z.snd‖ := by
+      gcongr
+      exact aux_iteratedFDeriv_joint_snd_le h n z
+    _ ≤ 2 ^ k * ((Finset.Iic (k, n)).sup fun m =>
+        SchwartzMap.seminorm Complex m.1 m.2) h :=
+      SchwartzMap.one_add_le_sup_seminorm_apply (m := (k, n)) (k := k) (n := n)
+        (le_refl _) (le_refl _) h z.snd
+
+/-- The joint Schwartz external product of a planar spectral profile and a temporal profile.
+Its raw `WaveSpaceTime` representative is the literal product of the two coordinate functions. -/
+noncomputable def jointSchwartzExternalProduct
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (h : SchwartzMap Real Complex) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  { toFun := fun z =>
+      B (WithLp.fstL 2 Real (Euclidean 2) Real z) *
+        h (WithLp.sndL 2 Real (Euclidean 2) Real z)
+    smooth' := by
+      fun_prop
+    decay' := by
+      intro k n
+      let b : JointWaveSpaceTime → Complex := fun w =>
+        B (WithLp.fstL 2 Real (Euclidean 2) Real w)
+      let c : JointWaveSpaceTime → Complex := fun w =>
+        h (WithLp.sndL 2 Real (Euclidean 2) Real w)
+      have hb := by
+        simpa only [b] using
+          (B.smooth ⊤).comp_continuousLinearMap
+            (g := WithLp.fstL 2 Real (Euclidean 2) Real)
+      have hc := by
+        simpa only [c] using
+          (h.smooth ⊤).comp_continuousLinearMap
+            (g := WithLp.sndL 2 Real (Euclidean 2) Real)
+      let C : Real := ∑ i ∈ Finset.range (n + 1),
+        (n.choose i : Real) *
+          (2 ^ k * ((Finset.Iic (k, i)).sup fun m =>
+            SchwartzMap.seminorm Complex m.1 m.2) B) *
+          (2 ^ k * ((Finset.Iic (k, n - i)).sup fun m =>
+            SchwartzMap.seminorm Complex m.1 m.2) h)
+      refine ⟨C, fun z => ?_⟩
+      change ‖z‖ ^ k * ‖iteratedFDeriv Real n (fun w : JointWaveSpaceTime => b w * c w) z‖ ≤ C
+      calc
+        ‖z‖ ^ k * ‖iteratedFDeriv Real n (fun w : JointWaveSpaceTime => b w * c w) z‖ ≤
+            ‖z‖ ^ k * ∑ i ∈ Finset.range (n + 1),
+              (n.choose i : Real) * ‖iteratedFDeriv Real i b z‖ *
+                ‖iteratedFDeriv Real (n - i) c z‖ := by
+          gcongr
+          exact norm_iteratedFDeriv_mul_le hb hc z (by exact_mod_cast le_top)
+        _ = ∑ i ∈ Finset.range (n + 1),
+            ‖z‖ ^ k * ((n.choose i : Real) * ‖iteratedFDeriv Real i b z‖ *
+              ‖iteratedFDeriv Real (n - i) c z‖) := by
+          rw [Finset.mul_sum]
+        _ ≤ C := by
+          dsimp only [C]
+          apply Finset.sum_le_sum
+          intro i hi
+          have hprod :
+              ‖z‖ ^ k * ‖iteratedFDeriv Real i b z‖ *
+                  ‖iteratedFDeriv Real (n - i) c z‖ ≤
+                (2 ^ k * ((Finset.Iic (k, i)).sup fun m =>
+                  SchwartzMap.seminorm Complex m.1 m.2) B) *
+                (2 ^ k * ((Finset.Iic (k, n - i)).sup fun m =>
+                  SchwartzMap.seminorm Complex m.1 m.2) h) := by
+            calc
+              ‖z‖ ^ k * ‖iteratedFDeriv Real i b z‖ *
+                    ‖iteratedFDeriv Real (n - i) c z‖ ≤
+                  ((1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k) *
+                    ‖iteratedFDeriv Real i b z‖ *
+                    ‖iteratedFDeriv Real (n - i) c z‖ := by
+                gcongr
+                exact aux_joint_norm_pow_le_coordinate_weights k z
+              _ = ((1 + ‖z.fst‖) ^ k * ‖iteratedFDeriv Real i b z‖) *
+                  ((1 + ‖z.snd‖) ^ k * ‖iteratedFDeriv Real (n - i) c z‖) := by
+                ring
+              _ ≤ _ := by
+                apply mul_le_mul
+                · simpa only [b] using aux_weighted_iteratedFDeriv_joint_fst_le B k i z
+                · simpa only [c] using aux_weighted_iteratedFDeriv_joint_snd_le h k (n - i) z
+                · positivity
+                · positivity
+          calc
+            ‖z‖ ^ k * ((n.choose i : Real) * ‖iteratedFDeriv Real i b z‖ *
+                ‖iteratedFDeriv Real (n - i) c z‖) =
+                (n.choose i : Real) *
+                  (‖z‖ ^ k * ‖iteratedFDeriv Real i b z‖ *
+                    ‖iteratedFDeriv Real (n - i) c z‖) := by
+              ring
+            _ ≤ (n.choose i : Real) *
+                ((2 ^ k * ((Finset.Iic (k, i)).sup fun m =>
+                  SchwartzMap.seminorm Complex m.1 m.2) B) *
+                (2 ^ k * ((Finset.Iic (k, n - i)).sup fun m =>
+                  SchwartzMap.seminorm Complex m.1 m.2) h)) := by
+              gcongr
+            _ = _ := by ring }
+
+/-- The raw-coordinate formula for `jointSchwartzExternalProduct`. -/
+theorem jointSchwartzExternalProduct_apply
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (h : SchwartzMap Real Complex)
+    (z : WaveSpaceTime) :
+    jointSchwartzExternalProduct B h (WithLp.toLp 2 z) = B z.1 * h z.2 := by
+  change B ((WithLp.toLp 2 z).fst) * h ((WithLp.toLp 2 z).snd) = B z.1 * h z.2
+  simp
+
+private theorem aux_smoothAnnularNormExtension_eventuallyEq_zero_at_zero
+    (u : SchwartzMap (Euclidean 2) Real)
+    (ε : Real) (hε : 0 < ε)
+    (hzero : ∀ x : Euclidean 2, ‖x‖ < ε → u x = 0) :
+    (fun x : Euclidean 2 => u x * ‖x‖) =ᶠ[𝓝 0] fun _ => 0 := by
+  filter_upwards [Metric.ball_mem_nhds (0 : Euclidean 2) hε] with x hx
+  change dist x 0 < ε at hx
+  rw [dist_zero_right] at hx
+  simp [hzero x hx]
+
+private theorem aux_contDiff_smoothAnnularNormExtension
+    (u : SchwartzMap (Euclidean 2) Real)
+    (ε : Real) (hε : 0 < ε)
+    (hzero : ∀ x : Euclidean 2, ‖x‖ < ε → u x = 0) :
+    ContDiff Real (⊤ : ℕ∞) (fun x : Euclidean 2 => u x * ‖x‖) := by
+  rw [contDiff_iff_contDiffAt]
+  intro x
+  by_cases hx : x = 0
+  · subst x
+    exact (contDiffAt_const (c := (0 : Real))).congr_of_eventuallyEq
+      (aux_smoothAnnularNormExtension_eventuallyEq_zero_at_zero u ε hε hzero)
+  · exact ((u.smooth (⊤ : ℕ∞)).contDiffAt).mul (contDiffAt_norm Real hx)
+
+/-- A compactly supported Schwartz cutoff that vanishes near the origin can be
+multiplied by the radial norm while remaining Schwartz. -/
+noncomputable def smoothAnnularNormExtension
+    (u : SchwartzMap (Euclidean 2) Real)
+    (hucompact : HasCompactSupport (u : Euclidean 2 → Real))
+    (ε : Real) (hε : 0 < ε)
+    (hzero : ∀ x : Euclidean 2, ‖x‖ < ε → u x = 0) :
+    SchwartzMap (Euclidean 2) Real :=
+  (hucompact.mul_right).toSchwartzMap
+    (aux_contDiff_smoothAnnularNormExtension u ε hε hzero)
+
+/-- The literal evaluation formula for `smoothAnnularNormExtension`. -/
+theorem smoothAnnularNormExtension_apply
+    (u : SchwartzMap (Euclidean 2) Real)
+    (hucompact : HasCompactSupport (u : Euclidean 2 → Real))
+    (ε : Real) (hε : 0 < ε)
+    (hzero : ∀ x : Euclidean 2, ‖x‖ < ε → u x = 0)
+    (x : Euclidean 2) :
+    smoothAnnularNormExtension u hucompact ε hε hzero x = u x * ‖x‖ := by
+  rfl
+
+/-- On a point where the cutoff is one, the annular extension is the radial norm. -/
+theorem smoothAnnularNormExtension_eq_norm_of_eq_one
+    (u : SchwartzMap (Euclidean 2) Real)
+    (hucompact : HasCompactSupport (u : Euclidean 2 → Real))
+    (ε : Real) (hε : 0 < ε)
+    (hzero : ∀ x : Euclidean 2, ‖x‖ < ε → u x = 0)
+    (x : Euclidean 2) (hx : u x = 1) :
+    smoothAnnularNormExtension u hucompact ε hε hzero x = ‖x‖ := by
+  rw [smoothAnnularNormExtension_apply, hx, one_mul]
+
+/-- If an annular cutoff equals one on a planar Schwartz profile's frequency support,
+its norm extension agrees there with the radial norm. -/
+theorem smoothAnnularNormExtension_eq_norm_on_support
+    (u : SchwartzMap (Euclidean 2) Real)
+    (hucompact : HasCompactSupport (u : Euclidean 2 → Real))
+    (ε : Real) (hε : 0 < ε)
+    (hzero : ∀ x : Euclidean 2, ‖x‖ < ε → u x = 0)
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (hone : ∀ x ∈ Function.support (B : Euclidean 2 → Complex), u x = 1) :
+    ∀ x ∈ Function.support (B : Euclidean 2 → Complex),
+      smoothAnnularNormExtension u hucompact ε hε hzero x = ‖x‖ := by
+  intro x hx
+  exact smoothAnnularNormExtension_eq_norm_of_eq_one u hucompact ε hε hzero x (hone x hx)
+
+private noncomputable def jointSchwartzSndEmbedding :
+    Real →L[Real] JointWaveSpaceTime :=
+  (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.toContinuousLinearMap.comp
+    (ContinuousLinearMap.inr Real (Euclidean 2) Real)
+
+/-- The spectral shear which translates the temporal frequency by a smooth radial profile. -/
+private noncomputable def jointRadialShear
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    JointWaveSpaceTime → JointWaveSpaceTime :=
+  fun z => z - jointSchwartzSndEmbedding (rho z.fst)
+
+private theorem jointRadialShear_apply
+    (rho : SchwartzMap (Euclidean 2) Real) (z : JointWaveSpaceTime) :
+    jointRadialShear rho z =
+      WithLp.toLp 2 (z.fst, z.snd - rho z.fst) := by
+  apply (WithLp.ext_iff 2).2
+  change WithLp.ofLp z - (0, rho z.fst) =
+    (z.fst, z.snd - rho z.fst)
+  apply Prod.ext <;> simp
+
+private theorem jointRadialShear_hasTemperateGrowth
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    (jointRadialShear rho).HasTemperateGrowth := by
+  let L : JointWaveSpaceTime →L[Real] Euclidean 2 :=
+    WithLp.fstL 2 Real (Euclidean 2) Real
+  let e : Real →L[Real] JointWaveSpaceTime := jointSchwartzSndEmbedding
+  have hρ : (rho ∘ L).HasTemperateGrowth :=
+    rho.hasTemperateGrowth.comp L.hasTemperateGrowth
+  have hρ' : (fun z : JointWaveSpaceTime => rho z.fst).HasTemperateGrowth := by
+    change (fun z : JointWaveSpaceTime => rho (L z)).HasTemperateGrowth at hρ
+    change (fun z : JointWaveSpaceTime => rho (L z)).HasTemperateGrowth
+    exact hρ
+  have he : (e : Real → JointWaveSpaceTime).HasTemperateGrowth :=
+    e.hasTemperateGrowth
+  have heρ : (fun z : JointWaveSpaceTime => e (rho z.fst)).HasTemperateGrowth := by
+    change (e ∘ fun z : JointWaveSpaceTime => rho z.fst).HasTemperateGrowth
+    exact he.comp hρ'
+  have hid : (fun z : JointWaveSpaceTime => z).HasTemperateGrowth :=
+    Function.HasTemperateGrowth.id'
+  change (fun z : JointWaveSpaceTime =>
+    z - jointSchwartzSndEmbedding (rho z.fst)).HasTemperateGrowth
+  have hfun :
+      (fun z : JointWaveSpaceTime => z) -
+          (fun z : JointWaveSpaceTime => jointSchwartzSndEmbedding (rho z.fst)) =
+        fun z : JointWaveSpaceTime => z - jointSchwartzSndEmbedding (rho z.fst) := by
+    ext z
+    rfl
+  rw [← hfun]
+  simpa only [e] using hid.sub heρ
+
+private theorem jointRadialShear_proper
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    ∃ (k : Nat) (C : Real), ∀ z : JointWaveSpaceTime,
+      ‖z‖ ≤ C * (1 + ‖jointRadialShear rho z‖) ^ k := by
+  rcases rho.decay 0 0 with ⟨C, hCpos, hC⟩
+  refine ⟨1, 2 + C, fun z => ?_⟩
+  have hρ : ‖rho z.fst‖ ≤ C := by
+    simpa using hC z.fst
+  have hfst : (jointRadialShear rho z).fst = z.fst := by
+    rw [jointRadialShear_apply]
+    simp
+  have hsnd : (jointRadialShear rho z).snd = z.snd - rho z.fst := by
+    rw [jointRadialShear_apply]
+    simp
+  have hsnd' : z.snd = (jointRadialShear rho z).snd + rho z.fst := by
+    rw [hsnd]
+    ring
+  calc
+    ‖z‖ ≤ ‖z.fst‖ + ‖z.snd‖ := aux_joint_norm_le_coordinate_sum z
+    _ = ‖(jointRadialShear rho z).fst‖ +
+          ‖(jointRadialShear rho z).snd + rho z.fst‖ := by rw [hfst, hsnd']
+    _ ≤ ‖(jointRadialShear rho z).fst‖ +
+          (‖(jointRadialShear rho z).snd‖ + ‖rho z.fst‖) := by
+      gcongr
+      exact norm_add_le _ _
+    _ ≤ ‖jointRadialShear rho z‖ + (‖jointRadialShear rho z‖ + C) := by
+      exact add_le_add
+        (WithLp.norm_fst_le (p := 2) (Euclidean 2) _)
+        (add_le_add (WithLp.norm_snd_le (p := 2) (Euclidean 2) _) hρ)
+    _ ≤ (2 + C) * (1 + ‖jointRadialShear rho z‖) ^ 1 := by
+      rw [pow_one]
+      nlinarith [norm_nonneg (jointRadialShear rho z)]
+
+/-- Precompose a joint Schwartz spectral profile with the smooth radial shear
+`(ξ, τ) ↦ (ξ, τ - rho ξ)`.  This is a spectral Schwartz construction only. -/
+noncomputable def jointSchwartzPrecompRadialShear
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (Q : SchwartzMap JointWaveSpaceTime Complex) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  SchwartzMap.compCLM Complex (jointRadialShear_hasTemperateGrowth rho)
+    (jointRadialShear_proper rho) Q
+
+/-- The raw product-coordinate formula for `jointSchwartzPrecompRadialShear`. -/
+theorem jointSchwartzPrecompRadialShear_apply
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (Q : SchwartzMap JointWaveSpaceTime Complex)
+    (z : WaveSpaceTime) :
+    jointSchwartzPrecompRadialShear rho Q (WithLp.toLp 2 z) =
+      Q (WithLp.toLp 2 (z.1, z.2 - rho z.1)) := by
+  change (Q ∘ jointRadialShear rho) (WithLp.toLp 2 z) =
+    Q (WithLp.toLp 2 (z.1, z.2 - rho z.1))
+  rw [Function.comp_apply, jointRadialShear_apply]
+  simp
+
+/-- The joint spectral profile obtained by applying the smooth radial shear
+to a planar-frequency and temporal-Schwartz external product. -/
+noncomputable def jointSchwartzModulatedAnnularProfile
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  jointSchwartzPrecompRadialShear rho
+    (jointSchwartzExternalProduct B (FourierTransform.fourier vartheta))
+
+/-- The raw product-coordinate formula for the modulated annular profile. -/
+theorem jointSchwartzModulatedAnnularProfile_apply
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (z : WaveSpaceTime) :
+    jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 z) =
+      B z.1 * FourierTransform.fourier (vartheta : Real → Complex) (z.2 - rho z.1) := by
+  unfold jointSchwartzModulatedAnnularProfile
+  rw [jointSchwartzPrecompRadialShear_apply, jointSchwartzExternalProduct_apply]
+  simp only [SchwartzMap.fourier_coe]
+
+/-- If the radial profile agrees with the norm on the planar profile support,
+the modulated annular profile has the literal norm phase there. -/
+theorem jointSchwartzModulatedAnnularProfile_eq_norm_on_support
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (z : WaveSpaceTime) (hz : z.1 ∈ Function.support (B : Euclidean 2 → Complex)) :
+    jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 z) =
+      B z.1 * FourierTransform.fourier (vartheta : Real → Complex) (z.2 - ‖z.1‖) := by
+  rw [jointSchwartzModulatedAnnularProfile_apply, hrho z.1 hz]
+
+/-- The physical-coordinate representative of a joint Schwartz function.
+This is deliberately a spectral/Schwartz construction, rather than an
+assertion about a compact physical-time cutoff. -/
+noncomputable def jointSchwartzRaw
+    (G : SchwartzMap JointWaveSpaceTime Complex) : WaveSpaceTime → Complex :=
+  fun z => G (WithLp.toLp 2 z)
+
+/-- The `WithLp` product coordinate map is volume preserving for the global
+Haar/Borel measure selected by the joint Fourier transform.  The explicit
+argument through Borel measurability avoids identifying that measure structure
+definitionally with `WithLp.measurableSpace`. -/
+private theorem aux_jointWaveSpaceTime_volumePreserving_toLp :
+    MeasurePreserving
+      (WithLp.toLp 2 : Euclidean 2 × Real → JointWaveSpaceTime)
+      (volume.prod volume) volume := by
+  let μ : Measure JointWaveSpaceTime := volume
+  have hmeas : Measurable
+      (WithLp.toLp 2 : Euclidean 2 × Real → JointWaveSpaceTime) :=
+    WithLp.measurable_toLp 2 (Euclidean 2 × Real)
+  refine ⟨hmeas, ?_⟩
+  ext s hs
+  rw [Measure.map_apply hmeas hs]
+  have hsBorel : @MeasurableSet JointWaveSpaceTime
+      (borel JointWaveSpaceTime) s := by
+    rwa [← BorelSpace.measurable_eq (α := JointWaveSpaceTime)]
+  have hmeasure :
+      (volume.prod volume)
+          ((WithLp.toLp 2 : Euclidean 2 × Real → JointWaveSpaceTime) ⁻¹' s) =
+        μ s := by
+    letI : MeasurableSpace JointWaveSpaceTime :=
+      WithLp.measurableSpace 2 (Euclidean 2 × Real)
+    letI : BorelSpace JointWaveSpaceTime :=
+      WithLp.borelSpace 2 (Euclidean 2) Real
+    letI : MeasureSpace JointWaveSpaceTime := { volume := μ }
+    have hs' : MeasurableSet s := by
+      rwa [BorelSpace.measurable_eq (α := JointWaveSpaceTime)]
+    have hpres := WithLp.volume_preserving_toLp (Euclidean 2) Real
+    calc
+      (volume.prod volume)
+          ((WithLp.toLp 2 : Euclidean 2 × Real → JointWaveSpaceTime) ⁻¹' s) =
+          Measure.map (WithLp.toLp 2 : Euclidean 2 × Real → JointWaveSpaceTime)
+            (volume.prod volume) s :=
+        (Measure.map_apply (WithLp.measurable_toLp 2 (Euclidean 2 × Real)) hs').symm
+      _ = μ s := by
+        simpa only [Measure.volume_eq_prod] using
+          congrArg (fun ν : Measure JointWaveSpaceTime => ν s) hpres.map_eq
+  exact hmeasure
+
+/-- Rewrite the joint Fourier integral in the product coordinates used by
+`spaceTimeFourier`. -/
+private theorem aux_integral_jointSchwartz_to_product
+    (G : SchwartzMap JointWaveSpaceTime Complex) (ζ : WaveSpaceTime) :
+    (integral volume (fun v : JointWaveSpaceTime =>
+      Real.fourierChar (-inner Real v (WithLp.toLp 2 ζ)) • G v)) =
+    (integral volume (fun p : WaveSpaceTime =>
+      Real.fourierChar (-inner Real (WithLp.toLp 2 p) (WithLp.toLp 2 ζ)) •
+        G (WithLp.toLp 2 p))) := by
+  have hpres : MeasurePreserving
+      (MeasurableEquiv.toLp 2 WaveSpaceTime) volume volume :=
+    WithLp.volume_preserving_toLp (Euclidean 2) Real
+  let φ : JointWaveSpaceTime → Complex := fun v =>
+    Real.fourierChar (-inner Real v (WithLp.toLp 2 ζ)) • G v
+  have htransport :
+      integral volume (fun p : WaveSpaceTime =>
+        φ (MeasurableEquiv.toLp 2 WaveSpaceTime p)) =
+      integral volume φ :=
+    hpres.integral_comp' φ
+  simpa only [φ, MeasurableEquiv.coe_toLp] using htransport.symm
+
+/-- The joint `WithLp` Fourier character splits into its spatial and temporal
+product factors. -/
+private theorem aux_fourierChar_jointWaveSpaceTime_toLp_prod
+    (x ξ : Euclidean 2) (t τ : Real) (c : Complex) :
+    Real.fourierChar
+        (-inner Real (WithLp.toLp 2 (x, t)) (WithLp.toLp 2 (ξ, τ))) • c =
+      Real.fourierChar (-inner Real t τ) •
+        (Real.fourierChar (-inner Real x ξ) • c) := by
+  simp only [WithLp.prod_inner_apply]
+  rw [neg_add, Real.fourierChar.map_add_eq_mul, mul_smul]
+  rw [← mul_smul, ← mul_smul, mul_comm]
+
+/-- The literal iterated space--time Fourier transform of a joint Schwartz
+representative agrees with the canonical Fourier transform on the Hilbert
+`WithLp` model. -/
+theorem spaceTimeFourier_jointSchwartzRaw
+    (G : SchwartzMap JointWaveSpaceTime Complex) (ζ : WaveSpaceTime) :
+    spaceTimeFourier (jointSchwartzRaw G) ζ =
+      FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+        (WithLp.toLp 2 ζ) := by
+  let K : Euclidean 2 → Real → Complex := fun x t =>
+    Real.fourierChar (-inner Real t ζ.2) •
+      (Real.fourierChar (-inner Real x ζ.1) •
+        jointSchwartzRaw G (x, t))
+  have hK : Integrable (Function.uncurry K) (volume.prod volume) := by
+    have hpres := aux_jointWaveSpaceTime_volumePreserving_toLp
+    have hraw : Integrable (fun p : Euclidean 2 × Real =>
+        G (WithLp.toLp 2 p)) (volume.prod volume) :=
+      (hpres.integrable_comp_emb
+        (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)).measurableEmbedding).mpr G.integrable
+    refine hraw.congr' ?_ ?_
+    · exact
+        ((Real.continuous_fourierChar.comp (by fun_prop)).aestronglyMeasurable.smul
+          ((Real.continuous_fourierChar.comp (by fun_prop)).aestronglyMeasurable.smul
+            hraw.aestronglyMeasurable))
+    filter_upwards with p
+    simp only [K, Function.uncurry, jointSchwartzRaw, Circle.norm_smul]
+  have hleft :
+      spaceTimeFourier (jointSchwartzRaw G) ζ =
+        ∫ t : Real, ∫ x : Euclidean 2, K x t := by
+    unfold spaceTimeFourier
+    rw [Real.fourier_eq]
+    apply integral_congr_ae
+    filter_upwards with t
+    rw [Real.fourier_eq]
+    change
+      (↑(Real.fourierChar (-inner Real t ζ.2)) : Complex) •
+          ∫ v : Euclidean 2,
+            (↑(Real.fourierChar (-inner Real v ζ.1)) : Complex) •
+              G (WithLp.toLp 2 (v, t)) =
+        ∫ x : Euclidean 2,
+          (↑(Real.fourierChar (-inner Real t ζ.2)) : Complex) •
+            ((↑(Real.fourierChar (-inner Real x ζ.1)) : Complex) •
+              G (WithLp.toLp 2 (x, t)))
+    rw [← integral_smul]
+  have hswap :
+      (∫ t : Real, ∫ x : Euclidean 2, K x t) =
+        ∫ x : Euclidean 2, ∫ t : Real, K x t :=
+    integral_integral_swap hK.swap
+  have hprod :
+      (∫ x : Euclidean 2, ∫ t : Real, K x t) =
+        ∫ p : WaveSpaceTime, K p.1 p.2 := by
+    rw [Measure.volume_eq_prod]
+    exact (integral_prod (Function.uncurry K) hK).symm
+  have hfactor :
+      (∫ p : WaveSpaceTime, K p.1 p.2) =
+        ∫ p : WaveSpaceTime,
+          Real.fourierChar
+              (-inner Real (WithLp.toLp 2 p) (WithLp.toLp 2 ζ)) •
+            G (WithLp.toLp 2 p) := by
+    apply integral_congr_ae
+    filter_upwards with p
+    simpa only [K, jointSchwartzRaw] using
+      (aux_fourierChar_jointWaveSpaceTime_toLp_prod p.1 ζ.1 p.2 ζ.2
+        (G (WithLp.toLp 2 p))).symm
+  calc
+    spaceTimeFourier (jointSchwartzRaw G) ζ =
+        ∫ t : Real, ∫ x : Euclidean 2, K x t := hleft
+    _ = ∫ x : Euclidean 2, ∫ t : Real, K x t := hswap
+    _ = ∫ p : WaveSpaceTime, K p.1 p.2 := hprod
+    _ = ∫ p : WaveSpaceTime,
+          Real.fourierChar
+              (-inner Real (WithLp.toLp 2 p) (WithLp.toLp 2 ζ)) •
+            G (WithLp.toLp 2 p) := hfactor
+    _ = ∫ v : JointWaveSpaceTime,
+          Real.fourierChar (-inner Real v (WithLp.toLp 2 ζ)) • G v :=
+      (aux_integral_jointSchwartz_to_product G ζ).symm
+    _ = FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+          (WithLp.toLp 2 ζ) :=
+      (Real.fourier_eq _ _).symm
+
+private theorem aux_eLpNorm_two_fourier_jointSchwartz
+    (G : SchwartzMap JointWaveSpaceTime Complex) :
+    eLpNorm (FourierTransform.fourier (G : JointWaveSpaceTime → Complex)) 2 volume =
+      eLpNorm (G : JointWaveSpaceTime → Complex) 2 volume := by
+  calc
+    eLpNorm (FourierTransform.fourier (G : JointWaveSpaceTime → Complex)) 2 volume =
+        ‖(FourierTransform.fourier G).toLp 2 volume‖ₑ :=
+      (Lp.enorm_toLp ((FourierTransform.fourier G).memLp 2 volume)).symm
+    _ = ‖FourierTransform.fourier (G.toLp 2 volume)‖ₑ := by
+      rw [SchwartzMap.toLp_fourier_eq]
+    _ = ‖G.toLp 2 volume‖ₑ := by
+      rw [enorm_eq_iff_norm_eq]
+      exact Lp.norm_fourier_eq _
+    _ = eLpNorm (G : JointWaveSpaceTime → Complex) 2 volume :=
+      Lp.enorm_toLp (G.memLp 2 volume)
+
+/-- The literal iterated Fourier transform preserves the `L²` seminorm of a
+joint-Schwartz representative in product space--time coordinates. -/
+theorem eLpNorm_spaceTimeFourier_jointSchwartzRaw_two_eq
+    (G : SchwartzMap JointWaveSpaceTime Complex) :
+    eLpNorm (spaceTimeFourier (jointSchwartzRaw G)) 2 volume =
+      eLpNorm (jointSchwartzRaw G) 2 volume := by
+  let e : WaveSpaceTime → JointWaveSpaceTime := WithLp.toLp 2
+  have hpres : MeasurePreserving e volume volume := by
+    simpa only [e] using
+      (WithLp.volume_preserving_toLp (Euclidean 2) Real)
+  calc
+    eLpNorm (spaceTimeFourier (jointSchwartzRaw G)) 2 volume =
+        eLpNorm ((FourierTransform.fourier (G : JointWaveSpaceTime → Complex)) ∘ e)
+          2 volume := by
+      apply eLpNorm_congr_ae
+      filter_upwards with zeta
+      simpa only [Function.comp_apply] using
+        (spaceTimeFourier_jointSchwartzRaw G zeta)
+    _ = eLpNorm (FourierTransform.fourier (G : JointWaveSpaceTime → Complex)) 2 volume :=
+      eLpNorm_comp_measurePreserving
+        ((FourierTransform.fourier G).memLp 2 volume).aestronglyMeasurable hpres
+    _ = eLpNorm (G : JointWaveSpaceTime → Complex) 2 volume :=
+      aux_eLpNorm_two_fourier_jointSchwartz G
+    _ = eLpNorm (jointSchwartzRaw G) 2 volume := by
+      symm
+      exact eLpNorm_comp_measurePreserving (G.memLp 2 volume).aestronglyMeasurable hpres
+
+/-- The iterated inverse transform is the iterated forward transform at the
+negated frequency. -/
+private theorem aux_spaceTimeFourierInv_eq_spaceTimeFourier_neg
+    (H : WaveSpaceTime → Complex) (z : WaveSpaceTime) :
+    spaceTimeFourierInv H z = spaceTimeFourier H (-z) := by
+  simp only [spaceTimeFourierInv, spaceTimeFourier,
+    Real.fourierInv_eq_fourier_neg, Prod.fst_neg, Prod.snd_neg]
+
+/-- The literal iterated inverse space--time Fourier transform of a joint
+Schwartz representative agrees with canonical inverse Fourier transform on
+the Hilbert `WithLp` model. -/
+theorem spaceTimeFourierInv_jointSchwartzRaw
+    (P : SchwartzMap JointWaveSpaceTime Complex) (z : WaveSpaceTime) :
+    spaceTimeFourierInv (jointSchwartzRaw P) z =
+      FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+        (WithLp.toLp 2 z) := by
+  calc
+    spaceTimeFourierInv (jointSchwartzRaw P) z =
+        spaceTimeFourier (jointSchwartzRaw P) (-z) :=
+      aux_spaceTimeFourierInv_eq_spaceTimeFourier_neg _ _
+    _ = FourierTransform.fourier (P : JointWaveSpaceTime → Complex)
+          (WithLp.toLp 2 (-z)) :=
+      spaceTimeFourier_jointSchwartzRaw P (-z)
+    _ = FourierTransform.fourier (P : JointWaveSpaceTime → Complex)
+          (-(WithLp.toLp 2 z)) := by simp
+    _ = FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+          (WithLp.toLp 2 z) :=
+      (Real.fourierInv_eq_fourier_neg _ _).symm
+
+/-- Applying the iterated space--time Fourier transform after the iterated
+inverse transform recovers a joint Schwartz profile in raw product
+coordinates. -/
+theorem spaceTimeFourier_spaceTimeFourierInv_jointSchwartzRaw
+    (P : SchwartzMap JointWaveSpaceTime Complex) (zeta : WaveSpaceTime) :
+    spaceTimeFourier (spaceTimeFourierInv (jointSchwartzRaw P)) zeta =
+      P (WithLp.toLp 2 zeta) := by
+  have hraw :
+      spaceTimeFourierInv (jointSchwartzRaw P) =
+        jointSchwartzRaw (FourierTransform.fourierInv P) := by
+    funext z
+    rw [spaceTimeFourierInv_jointSchwartzRaw]
+    change FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+        (WithLp.toLp 2 z) =
+      (FourierTransform.fourierInv P : SchwartzMap JointWaveSpaceTime Complex)
+        (WithLp.toLp 2 z)
+    exact (congrFun (SchwartzMap.fourierInv_coe P) (WithLp.toLp 2 z)).symm
+  rw [hraw, spaceTimeFourier_jointSchwartzRaw]
+  have hpair :
+      FourierTransform.fourier
+          ((FourierTransform.fourierInv P : SchwartzMap JointWaveSpaceTime Complex) :
+            JointWaveSpaceTime → Complex) =
+        (P : JointWaveSpaceTime → Complex) := by
+    rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  exact congrFun hpair (WithLp.toLp 2 zeta)
+
+private theorem aux_fourierInv_fourier_sub_schwartz
+    (vartheta : SchwartzMap Real Complex) (a t : Real) :
+    FourierTransform.fourierInv
+        (fun tau : Real => FourierTransform.fourier (vartheta : Real → Complex) (tau - a)) t =
+      Real.fourierChar (a * t) • vartheta t := by
+  rw [Real.fourierInv_eq_fourier_neg]
+  have hshift := VectorFourier.fourierIntegral_comp_add_right
+    (V := Real) (W := Real) (E := Complex)
+    Real.fourierChar volume (innerₗ Real)
+    (FourierTransform.fourier (vartheta : Real → Complex)) (-a)
+  change VectorFourier.fourierIntegral Real.fourierChar volume (innerₗ Real)
+      (fun tau : Real => FourierTransform.fourier (vartheta : Real → Complex) (tau - a)) (-t) = _
+  have htranslate :
+      (fun tau : Real => FourierTransform.fourier (vartheta : Real → Complex) (tau - a)) =
+        Function.comp (FourierTransform.fourier (vartheta : Real → Complex))
+          (fun tau : Real => tau + (-a)) := by
+    funext tau
+    congr 1
+  rw [htranslate, hshift]
+  have hdouble :
+      FourierTransform.fourier
+          (FourierTransform.fourier (vartheta : Real → Complex)) (-t) = vartheta t := by
+    calc
+      FourierTransform.fourier
+          (FourierTransform.fourier (vartheta : Real → Complex)) (-t) =
+          FourierTransform.fourierInv
+            (FourierTransform.fourier (vartheta : Real → Complex)) t :=
+        (Real.fourierInv_eq_fourier_neg _ t).symm
+      _ = (FourierTransform.fourierInv
+            (FourierTransform.fourier vartheta) : SchwartzMap Real Complex) t := by
+        simpa only [SchwartzMap.fourier_coe] using
+          (congrFun (SchwartzMap.fourierInv_coe
+            (FourierTransform.fourier vartheta)) t).symm
+      _ = vartheta t := congrArg (fun q : SchwartzMap Real Complex => q t)
+        (FourierTransform.fourierInv_fourier_eq vartheta)
+  have hdoubleVec :
+      VectorFourier.fourierIntegral Real.fourierChar volume (innerₗ Real)
+          (FourierTransform.fourier (vartheta : Real → Complex)) (-t) = vartheta t := by
+    change FourierTransform.fourier
+      (FourierTransform.fourier (vartheta : Real → Complex)) (-t) = vartheta t
+    exact hdouble
+  change Real.fourierChar ((innerₗ Real (-a)) (-t)) •
+      VectorFourier.fourierIntegral Real.fourierChar volume (innerₗ Real)
+        (FourierTransform.fourier (vartheta : Real → Complex)) (-t) =
+      Real.fourierChar (a * t) • vartheta t
+  rw [hdoubleVec]
+  congr 1
+  simp only [innerₗ_apply_apply, Real.inner_apply]
+  congr 1
+  ring
+
+private theorem aux_temporal_shift_integral
+    (vartheta : SchwartzMap Real Complex) (a t : Real) :
+    (∫ tau : Real,
+      (Real.fourierChar (inner Real tau t) : Complex) *
+        FourierTransform.fourier (vartheta : Real → Complex) (tau - a)) =
+      (Real.fourierChar (a * t) : Complex) * vartheta t := by
+  calc
+    (∫ tau : Real,
+      (Real.fourierChar (inner Real tau t) : Complex) *
+        FourierTransform.fourier (vartheta : Real → Complex) (tau - a)) =
+        FourierTransform.fourierInv
+          (fun tau : Real => FourierTransform.fourier (vartheta : Real → Complex) (tau - a)) t := by
+      rw [Real.fourierInv_eq]
+      apply integral_congr_ae
+      filter_upwards with tau
+      rfl
+    _ = Real.fourierChar (a * t) • vartheta t :=
+      aux_fourierInv_fourier_sub_schwartz vartheta a t
+    _ = (Real.fourierChar (a * t) : Complex) * vartheta t := by
+      rfl
+
+private theorem aux_integrable_jointSchwartzModulatedAnnularProfile_raw
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    Integrable (fun p : WaveSpaceTime =>
+      jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 p))
+      (volume.prod volume) := by
+  let G : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzModulatedAnnularProfile B vartheta rho
+  have hpres : MeasurePreserving
+      (MeasurableEquiv.toLp 2 WaveSpaceTime) volume volume :=
+    WithLp.volume_preserving_toLp (Euclidean 2) Real
+  have hraw : Integrable (fun p : WaveSpaceTime => G (WithLp.toLp 2 p))
+      (volume.prod volume) :=
+    (hpres.integrable_comp_emb
+      (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)).measurableEmbedding).mpr G.integrable
+  simpa only [G] using hraw
+
+private theorem aux_integrable_inverse_jointSchwartzModulatedAnnularProfile_kernel
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (z : WaveSpaceTime) :
+    Integrable (Function.uncurry (fun xi : Euclidean 2 => fun tau : Real =>
+      Real.fourierChar (inner Real tau z.2) •
+        (Real.fourierChar (inner Real xi z.1) •
+          jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 (xi, tau)))))
+      (volume.prod volume) := by
+  let K : Euclidean 2 → Real → Complex := fun xi tau =>
+    Real.fourierChar (inner Real tau z.2) •
+      (Real.fourierChar (inner Real xi z.1) •
+        jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 (xi, tau)))
+  change Integrable (Function.uncurry K) (volume.prod volume)
+  have hraw := aux_integrable_jointSchwartzModulatedAnnularProfile_raw B vartheta rho
+  refine hraw.congr' ?_ ?_
+  · exact
+      ((Real.continuous_fourierChar.comp (by fun_prop)).aestronglyMeasurable.smul
+        ((Real.continuous_fourierChar.comp (by fun_prop)).aestronglyMeasurable.smul
+          hraw.aestronglyMeasurable))
+  · filter_upwards with p
+    simp only [K, Function.uncurry, Circle.norm_smul]
+
+/-- Inverting the joint modulated annular Schwartz profile factors into its
+temporal Schwartz factor and the corresponding spatial oscillatory inverse
+transform. -/
+theorem spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (z : WaveSpaceTime) :
+    spaceTimeFourierInv
+        (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+      vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * (Real.fourierChar (rho xi * z.2) : Complex)) z.1 := by
+  let K : Euclidean 2 → Real → Complex := fun xi tau =>
+    Real.fourierChar (inner Real tau z.2) •
+      (Real.fourierChar (inner Real xi z.1) •
+        jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 (xi, tau)))
+  have hK : Integrable (Function.uncurry K) (volume.prod volume) := by
+    simpa only [K] using
+      aux_integrable_inverse_jointSchwartzModulatedAnnularProfile_kernel B vartheta rho z
+  have hleft :
+      spaceTimeFourierInv
+          (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+        ∫ tau : Real, ∫ xi : Euclidean 2, K xi tau := by
+    unfold spaceTimeFourierInv
+    rw [Real.fourierInv_eq]
+    apply integral_congr_ae
+    filter_upwards with tau
+    rw [Real.fourierInv_eq]
+    change
+      (Real.fourierChar (inner Real tau z.2) : Complex) *
+          ∫ xi : Euclidean 2,
+            (Real.fourierChar (inner Real xi z.1) : Complex) *
+              jointSchwartzModulatedAnnularProfile B vartheta rho
+                (WithLp.toLp 2 (xi, tau)) =
+        ∫ xi : Euclidean 2, K xi tau
+    rw [← integral_const_mul]
+    apply integral_congr_ae
+    filter_upwards with xi
+    simp only [K, Circle.smul_def, smul_eq_mul]
+  have hKswap : Integrable
+      (Function.uncurry (fun tau : Real => fun xi : Euclidean 2 => K xi tau))
+      (volume.prod volume) := by
+    convert hK.swap using 1
+    ext w
+    rcases w with ⟨tau, xi⟩
+    rfl
+  have hswap :
+      (∫ tau : Real, ∫ xi : Euclidean 2, K xi tau) =
+        ∫ xi : Euclidean 2, ∫ tau : Real, K xi tau :=
+    integral_integral_swap hKswap
+  have hinner (xi : Euclidean 2) :
+      (∫ tau : Real, K xi tau) =
+        ((Real.fourierChar (inner Real xi z.1) : Complex) * B xi) *
+          ((Real.fourierChar (rho xi * z.2) : Complex) * vartheta z.2) := by
+    have htemporal :
+        (∫ tau : Real,
+          (Real.fourierChar (inner Real tau z.2) : Complex) *
+            FourierTransform.fourier (vartheta : Real → Complex) (tau - rho xi)) =
+          (Real.fourierChar (rho xi * z.2) : Complex) * vartheta z.2 :=
+      aux_temporal_shift_integral vartheta (rho xi) z.2
+    calc
+      (∫ tau : Real, K xi tau) =
+          ((Real.fourierChar (inner Real xi z.1) : Complex) * B xi) *
+            ∫ tau : Real,
+              (Real.fourierChar (inner Real tau z.2) : Complex) *
+                FourierTransform.fourier (vartheta : Real → Complex) (tau - rho xi) := by
+          rw [← integral_const_mul]
+          apply integral_congr_ae
+          filter_upwards with tau
+          simp only [K, Circle.smul_def, smul_eq_mul]
+          rw [jointSchwartzModulatedAnnularProfile_apply]
+          ring
+      _ = ((Real.fourierChar (inner Real xi z.1) : Complex) * B xi) *
+          ((Real.fourierChar (rho xi * z.2) : Complex) * vartheta z.2) := by
+        rw [htemporal]
+  calc
+    spaceTimeFourierInv
+        (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+        ∫ tau : Real, ∫ xi : Euclidean 2, K xi tau := hleft
+    _ = ∫ xi : Euclidean 2, ∫ tau : Real, K xi tau := hswap
+    _ = ∫ xi : Euclidean 2,
+        ((Real.fourierChar (inner Real xi z.1) : Complex) * B xi) *
+          ((Real.fourierChar (rho xi * z.2) : Complex) * vartheta z.2) := by
+      apply integral_congr_ae
+      filter_upwards with xi
+      exact hinner xi
+    _ = vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * (Real.fourierChar (rho xi * z.2) : Complex)) z.1 := by
+      rw [Real.fourierInv_eq]
+      change
+        (∫ xi : Euclidean 2,
+          ((Real.fourierChar (inner Real xi z.1) : Complex) * B xi) *
+            ((Real.fourierChar (rho xi * z.2) : Complex) * vartheta z.2)) =
+          vartheta z.2 * ∫ xi : Euclidean 2,
+            (Real.fourierChar (inner Real xi z.1) : Complex) *
+              (B xi * (Real.fourierChar (rho xi * z.2) : Complex))
+      rw [← integral_const_mul]
+      apply integral_congr_ae
+      filter_upwards with xi
+      ring
+
+private theorem aux_spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile_eq_norm_on_support
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (z : WaveSpaceTime) :
+    spaceTimeFourierInv
+        (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+      vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * (Real.fourierChar (‖xi‖ * z.2) : Complex)) z.1 := by
+  have hprofile :
+      (fun xi : Euclidean 2 =>
+        B xi * (Real.fourierChar (rho xi * z.2) : Complex)) =
+      fun xi : Euclidean 2 =>
+        B xi * (Real.fourierChar (‖xi‖ * z.2) : Complex) := by
+    funext xi
+    by_cases hB : B xi = 0
+    · simp [hB]
+    · rw [hrho xi hB]
+  calc
+    spaceTimeFourierInv
+        (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+        vartheta z.2 * FourierTransform.fourierInv
+          (fun xi : Euclidean 2 =>
+            B xi * (Real.fourierChar (rho xi * z.2) : Complex)) z.1 :=
+      spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile B vartheta rho z
+    _ = vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * (Real.fourierChar (‖xi‖ * z.2) : Complex)) z.1 := by
+      rw [hprofile]
+
+private theorem aux_fourierChar_norm_eq_halfWaveMultiplier_plus
+    (t : Real) (xi : Euclidean 2) :
+    (Real.fourierChar (‖xi‖ * t) : Complex) =
+      halfWaveMultiplier WaveSign.plus t xi := by
+  rw [Real.fourierChar_apply]
+  simp only [halfWaveMultiplier, WaveSign.toReal]
+  congr 2
+  push_cast
+  ring
+
+/-- If the radial extension equals the norm on the planar Schwartz profile
+support, the joint inverse profile is the positive half-wave weighted by its
+temporal Schwartz factor. -/
+theorem spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile_eq_halfWave_of_eq_norm_on_support
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (z : WaveSpaceTime) :
+    spaceTimeFourierInv
+        (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+      vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1 := by
+  rw [aux_spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile_eq_norm_on_support
+    B vartheta rho hrho z]
+  congr 2
+  apply congrArg (fun f : Euclidean 2 → Complex =>
+    FourierTransform.fourierInv f z.1)
+  funext xi
+  rw [aux_fourierChar_norm_eq_halfWaveMultiplier_plus]
+
+/-- The iterated space--time Fourier transform of the supplied
+temporal-Schwartz positive annular half-wave is its joint modulated annular
+profile.  This is a spectral identity, with no conic-support assertion. -/
+theorem spaceTimeFourier_temporalSchwartzHalfWave_eq_jointSchwartzModulatedAnnularProfile
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (zeta : WaveSpaceTime) :
+    spaceTimeFourier
+        (fun z : WaveSpaceTime =>
+          vartheta z.2 * FourierTransform.fourierInv
+            (fun xi : Euclidean 2 =>
+              B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1) zeta =
+      jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 zeta) := by
+  have hphysical :
+      (fun z : WaveSpaceTime =>
+        vartheta z.2 * FourierTransform.fourierInv
+          (fun xi : Euclidean 2 =>
+            B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1) =
+        spaceTimeFourierInv
+          (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) := by
+    funext z
+    exact (spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile_eq_halfWave_of_eq_norm_on_support
+      B vartheta rho hrho z).symm
+  rw [hphysical]
+  exact spaceTimeFourier_spaceTimeFourierInv_jointSchwartzRaw
+    (jointSchwartzModulatedAnnularProfile B vartheta rho) zeta
+
 /-- The vertical Fourier multiplier used in the MSS radial decomposition.
 The frequency scale is `sqrt scale`, matching the radial width
 `scale^(1/2)`. -/
@@ -2423,6 +3431,95 @@ noncomputable def radialPiece (β : Real → Complex) (scale : Real) (n : Int)
     (f : Euclidean 2 → Complex) : Euclidean 2 → Complex :=
   𝓕⁻ (fun ξ => β ((Real.sqrt scale)⁻¹ * ‖ξ‖ - n) * 𝓕 f ξ)
 
+/-- A supplied Schwartz representative of the radial multiplier gives the
+exact Fourier transform of the literal raw radial piece.  The representative
+is an explicit hypothesis; no Schwartz regularity is inferred from a raw
+cutoff. -/
+theorem fourier_radialPiece_eq_schwartzProfile_mul_fourier
+    (radialCutoff : Real → Complex) (scale : Real) (n : Int)
+    (R f : SchwartzMap (Euclidean 2) Complex)
+    (hR : ∀ xi : Euclidean 2,
+      R xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (xi : Euclidean 2) :
+    FourierTransform.fourier
+        (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) xi =
+      R xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi := by
+  let P : SchwartzMap (Euclidean 2) Complex :=
+    SchwartzMap.smulLeftCLM Complex (R : Euclidean 2 → Complex)
+      (FourierTransform.fourier f)
+  have hpiece : radialPiece radialCutoff scale n (f : Euclidean 2 → Complex) =
+      (FourierTransform.fourierInv P : Euclidean 2 → Complex) := by
+    unfold radialPiece
+    rw [SchwartzMap.fourierInv_coe]
+    apply congrArg FourierTransform.fourierInv
+    funext eta
+    dsimp only [P]
+    rw [SchwartzMap.smulLeftCLM_apply_apply R.hasTemperateGrowth,
+      SchwartzMap.fourier_coe, hR eta]
+    rfl
+  rw [hpiece]
+  change FourierTransform.fourier
+      ((FourierTransform.fourierInv P : SchwartzMap (Euclidean 2) Complex) :
+        Euclidean 2 → Complex) xi = _
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  dsimp only [P]
+  rw [SchwartzMap.smulLeftCLM_apply_apply R.hasTemperateGrowth,
+    SchwartzMap.fourier_coe]
+  rfl
+
+/-- A fixed angular/radial packet with a supplied norm-radial Schwartz cutoff
+admits the regular data required by the angular/radial bridge.  The scalar
+cutoff is chosen from this individual packet; this does not construct a
+uniform cutoff family or instantiate raw local-smoothing data. -/
+theorem exists_regularAngularRadialBridgeData_of_normRadialSchwartzCutoffs
+    (R f a chi : SchwartzMap (Euclidean 2) Complex)
+    (hRradial : ∀ ⦃xi eta : Euclidean 2⦄, ‖xi‖ = ‖eta‖ → R xi = R eta)
+    (e : Euclidean 2) (he : ‖e‖ = 1)
+    (scale : Real) (hscale : 0 < scale) (n : Int) :
+    ∃ (radialCutoff : Real → Complex) (B : SchwartzMap (Euclidean 2) Complex),
+      (∀ xi : Euclidean 2,
+        R xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n)) ∧
+      (∀ xi : Euclidean 2, B xi =
+        (chi : Euclidean 2 → Complex) xi * a (scale⁻¹ • xi) *
+          (R xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi)) := by
+  let radialCutoff : Real → Complex :=
+    fun s => R ((Real.sqrt scale * (s + n)) • e)
+  let P : SchwartzMap (Euclidean 2) Complex :=
+    SchwartzMap.smulLeftCLM Complex (R : Euclidean 2 → Complex)
+      (FourierTransform.fourier f)
+  let B : SchwartzMap (Euclidean 2) Complex :=
+    SchwartzMap.smulLeftCLM Complex
+      (fun xi : Euclidean 2 => (chi : Euclidean 2 → Complex) xi * a (scale⁻¹ • xi)) P
+  have hangular : (fun xi : Euclidean 2 =>
+      (chi : Euclidean 2 → Complex) xi * a (scale⁻¹ • xi)).HasTemperateGrowth := by
+    fun_prop
+  refine ⟨radialCutoff, B, ?_, ?_⟩
+  · intro xi
+    have hsqrtpos : 0 < Real.sqrt scale := Real.sqrt_pos.2 hscale
+    have hscalar : Real.sqrt scale *
+        ((Real.sqrt scale)⁻¹ * ‖xi‖ - (n : Real) + (n : Real)) = ‖xi‖ := by
+      rw [sub_add_cancel]
+      calc
+        Real.sqrt scale * ((Real.sqrt scale)⁻¹ * ‖xi‖) =
+            (Real.sqrt scale * (Real.sqrt scale)⁻¹) * ‖xi‖ := by ring
+        _ = ‖xi‖ := by rw [mul_inv_cancel₀ hsqrtpos.ne', one_mul]
+    have hscalar_nonneg : 0 ≤ Real.sqrt scale *
+        ((Real.sqrt scale)⁻¹ * ‖xi‖ - (n : Real) + (n : Real)) := by
+      rw [hscalar]
+      exact norm_nonneg _
+    change R xi = R
+      ((Real.sqrt scale *
+        ((Real.sqrt scale)⁻¹ * ‖xi‖ - (n : Real) + (n : Real))) • e)
+    apply hRradial
+    rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg hscalar_nonneg, he, hscalar]
+    simp
+  · intro xi
+    dsimp only [B, P]
+    rw [SchwartzMap.smulLeftCLM_apply_apply hangular,
+      SchwartzMap.smulLeftCLM_apply_apply R.hasTemperateGrowth,
+      SchwartzMap.fourier_coe]
+    simp only [smul_eq_mul]
+
 /-- The conically localized constant-coefficient half-wave operator.  The
 amplitude and time cutoff are parameters; their smooth support hypotheses
 are kept separate from this exact Fourier formula. -/
@@ -2431,6 +3528,33 @@ noncomputable def conicOperator (scale : Real) (a : Euclidean 2 → Complex)
     WaveSpaceTime → Complex :=
   fun z => ϑ z.2 * 𝓕⁻ (fun ξ =>
     a (scale⁻¹ • ξ) * halfWaveMultiplier WaveSign.plus z.2 ξ * 𝓕 f ξ) z.1
+
+/-- The raw inverse Fourier transform distributes over a finite sum when
+each summand is integrable.  This is kept local because the raw-function
+Fourier API has no unconditional additive instance. -/
+private theorem aux_fourierInv_finset_sum_of_integrable
+    {ι : Type*} (s : Finset ι) (q : ι → Euclidean 2 → Complex)
+    (hq : ∀ i ∈ s, Integrable (q i) volume) (x : Euclidean 2) :
+    𝓕⁻ (fun ξ => ∑ i ∈ s, q i ξ) x =
+      ∑ i ∈ s, 𝓕⁻ (q i) x := by
+  have hqchar : ∀ i ∈ s, Integrable
+      (fun ξ : Euclidean 2 => Real.fourierChar (inner Real ξ x) • q i ξ) volume := by
+    intro i hi
+    refine Integrable.mono' (hq i hi).norm ?_ ?_
+    · exact (Real.continuous_fourierChar.comp (by fun_prop)).aestronglyMeasurable.smul
+        (hq i hi).aestronglyMeasurable
+    · filter_upwards with ξ
+      simp
+  rw [Real.fourierInv_eq]
+  change (∫ ξ : Euclidean 2,
+      Real.fourierChar (inner Real ξ x) • (∑ i ∈ s, q i ξ)) = _
+  rw [show (fun ξ : Euclidean 2 =>
+      Real.fourierChar (inner Real ξ x) • (∑ i ∈ s, q i ξ)) =
+        fun ξ => ∑ i ∈ s, Real.fourierChar (inner Real ξ x) • q i ξ by
+      funext ξ
+      rw [Finset.smul_sum],
+    MeasureTheory.integral_finsetSum s hqchar]
+  simp only [Real.fourierInv_eq]
 
 /-- At dyadic scale `2^j`, the level-zero annular amplitude in the conic
 normal form is exactly the level-`j` Littlewood--Paley multiplier.  On the
@@ -2452,6 +3576,55 @@ theorem conicOperator_eq_dyadicHalfWaveSpaceTime_plus
       𝓕 (f : Euclidean 2 → Complex) ξ
   rw [← dyadicBandpassMultiplier_eq_levelZero_scaled C j ξ]
   ring
+
+/-- At a dyadic scale, the complete conic normal form is exactly its time
+cutoff times the corresponding positive dyadic half-wave. -/
+private theorem conicOperator_eq_timeCutoff_mul_dyadicHalfWaveSpaceTime
+    (C : lpCutoffs 2) (vartheta : Real → Complex) (j : Nat)
+    (f : SchwartzMap (Euclidean 2) Complex) :
+    conicOperator ((2 : Real) ^ j) (dyadicBandpassMultiplier C.cutoff 0) vartheta
+        (f : Euclidean 2 → Complex) =
+      fun z => vartheta z.2 * dyadicHalfWaveSpaceTime C.cutoff WaveSign.plus j f z := by
+  funext z
+  rw [conicOperator, dyadicHalfWaveSpaceTime, dyadicHalfWave]
+  apply congrArg (fun g : Euclidean 2 → Complex => vartheta z.2 * 𝓕⁻ g z.1)
+  funext xi
+  rw [← dyadicBandpassMultiplier_eq_levelZero_scaled C j xi]
+  ring
+
+/-- The matched dyadic conic normal form is jointly continuous for a
+continuous time cutoff. -/
+theorem continuous_conicOperator_dyadicBandpass
+    (C : lpCutoffs 2) (vartheta : Real → Complex) (hvartheta : Continuous vartheta)
+    (j : Nat) (f : SchwartzMap (Euclidean 2) Complex) :
+    Continuous
+      (conicOperator ((2 : Real) ^ j) (dyadicBandpassMultiplier C.cutoff 0) vartheta
+        (f : Euclidean 2 → Complex)) := by
+  rw [conicOperator_eq_timeCutoff_mul_dyadicHalfWaveSpaceTime C vartheta j f]
+  exact (hvartheta.comp continuous_snd).mul
+    (continuous_dyadicHalfWaveSpaceTime C WaveSign.plus j f)
+
+/-- A measurable time cutoff makes the matched dyadic conic normal form
+measurable on the full space--time ambient space. -/
+theorem measurable_conicOperator_dyadicBandpass
+    (C : lpCutoffs 2) (vartheta : Real → Complex) (hvartheta : Measurable vartheta)
+    (j : Nat) (f : SchwartzMap (Euclidean 2) Complex) :
+    Measurable
+      (conicOperator ((2 : Real) ^ j) (dyadicBandpassMultiplier C.cutoff 0) vartheta
+        (f : Euclidean 2 → Complex)) := by
+  rw [conicOperator_eq_timeCutoff_mul_dyadicHalfWaveSpaceTime C vartheta j f]
+  exact (hvartheta.comp measurable_snd).mul
+    (continuous_dyadicHalfWaveSpaceTime C WaveSign.plus j f).measurable
+
+/-- The exact global measurability input required by the two-sided conic
+local-smoothing bridge. -/
+theorem aestronglyMeasurable_conicOperator_dyadicBandpass
+    (C : lpCutoffs 2) (vartheta : Real → Complex) (hvartheta : Measurable vartheta)
+    (j : Nat) (f : SchwartzMap (Euclidean 2) Complex) :
+    AEStronglyMeasurable
+      (conicOperator ((2 : Real) ^ j) (dyadicBandpassMultiplier C.cutoff 0) vartheta
+        (f : Euclidean 2 → Complex)) volume :=
+  (measurable_conicOperator_dyadicBandpass C vartheta hvartheta j f).aestronglyMeasurable
 
 /-- The local `[1,2]` space--time measure is dominated by full Lebesgue
 measure, allowing a global conic estimate to control its local restriction. -/
@@ -2879,11 +4052,128 @@ noncomputable def verticalSquareFunction (indices : Finset Int)
     (H : Int → WaveSpaceTime → Complex) : WaveSpaceTime → Real :=
   fun z => Real.sqrt (∑ n ∈ indices, ‖H n z‖ ^ 2)
 
+/-- The finite vertical square function is exactly the `ℓ²` norm of its
+finite-indexed input bundle.  This is only a norm identification: it does not
+provide a vector-valued operator bound for `verticalRecombined`, whose missing
+common-kernel endpoint requires additional analytic hypotheses. -/
+theorem verticalSquareFunction_eq_norm_piLp
+    (indices : Finset Int) (H : Int → WaveSpaceTime → Complex)
+    (z : WaveSpaceTime) :
+    verticalSquareFunction indices H z =
+      ‖(WithLp.toLp 2 (fun n : (↥indices) => H n z) :
+        PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖ := by
+  rw [PiLp.norm_eq_of_L2]
+  change verticalSquareFunction indices H z =
+    Real.sqrt (∑ i : (↥indices), ‖H (i : Int) z‖ ^ (2 : Nat))
+  rw [Finset.sum_coe_sort indices (fun i => ‖H i z‖ ^ (2 : Nat))]
+  rfl
+
 /-- The finite vertical square function is pointwise nonnegative. -/
 theorem verticalSquareFunction_nonneg (indices : Finset Int)
     (H : Int → WaveSpaceTime → Complex) (z : WaveSpaceTime) :
     0 ≤ verticalSquareFunction indices H z :=
   Real.sqrt_nonneg _
+
+/-- The all-`p` norm form of `verticalSquareFunction_eq_norm_piLp`.  It is a
+finite-dimensional input norm identity, not an `Lᵖ` estimate for vertical
+recombination. -/
+theorem eLpNorm_verticalSquareFunction_eq_eLpNorm_piLp
+    (indices : Finset Int) (H : Int → WaveSpaceTime → Complex)
+    (p : ENNReal) :
+    eLpNorm (verticalSquareFunction indices H) p volume =
+      eLpNorm
+        (fun z : WaveSpaceTime =>
+          (WithLp.toLp 2 (fun n : (↥indices) => H n z) :
+            PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)))
+        p volume := by
+  apply eLpNorm_congr_norm_ae
+  filter_upwards with z
+  rw [Real.norm_of_nonneg (verticalSquareFunction_nonneg indices H z),
+    verticalSquareFunction_eq_norm_piLp]
+
+private theorem aux_verticalSquareFunction_sub_le_sum_norm_tail
+    (indices : Finset Int)
+    (full main tail : Int → WaveSpaceTime → Complex)
+    (hdecomp : ∀ i ∈ indices, ∀ z, full i z = main i z + tail i z)
+    (z : WaveSpaceTime) :
+    ‖verticalSquareFunction indices full z - verticalSquareFunction indices main z‖ ≤
+      ∑ i ∈ indices, ‖tail i z‖ := by
+  let F : PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    WithLp.toLp 2 (fun i : (↥indices) => full (i : Int) z)
+  let M : PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    WithLp.toLp 2 (fun i : (↥indices) => main (i : Int) z)
+  let T : PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    WithLp.toLp 2 (fun i : (↥indices) => tail (i : Int) z)
+  let e : (↥indices) → PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    fun i => PiLp.single 2 i (tail (i : Int) z)
+  have hFM : F = M + T := by
+    dsimp [F, M, T]
+    rw [← WithLp.toLp_add]
+    congr 1
+    funext i
+    exact hdecomp i i.property z
+  have hTsum : T = ∑ i : (↥indices), e i := by
+    dsimp [T]
+    rw [← WithLp.toLp_sum]
+    congr 1
+    ext i
+    simp
+  calc
+    ‖verticalSquareFunction indices full z - verticalSquareFunction indices main z‖ =
+        ‖‖F‖ - ‖M‖‖ := by
+      rw [verticalSquareFunction_eq_norm_piLp, verticalSquareFunction_eq_norm_piLp]
+    _ ≤ ‖F - M‖ := abs_norm_sub_norm_le _ _
+    _ = ‖T‖ := by rw [hFM, add_sub_cancel_left]
+    _ = ‖∑ i : (↥indices), e i‖ := by rw [hTsum]
+    _ ≤ ∑ i : (↥indices), ‖e i‖ := by
+      exact norm_sum_le (Finset.univ : Finset (↥indices)) e
+    _ = ∑ i ∈ indices, ‖tail i z‖ := by
+      simp only [e, PiLp.norm_single]
+      exact Finset.sum_coe_sort indices (fun i => ‖tail i z‖)
+
+/-- A finite square function is stable in `L⁴` under componentwise additive
+tails.  This is only finite `ℓ²` stability and finite Minkowski; it makes no
+recombination, continuum, square-function, or local-smoothing claim. -/
+theorem eLpNorm_four_verticalSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    (indices : Finset Int)
+    (full main tail : Int → WaveSpaceTime → Complex)
+    (hdecomp : ∀ i ∈ indices, ∀ z, full i z = main i z + tail i z)
+    (htailMeas : ∀ i ∈ indices, AEStronglyMeasurable (tail i) volume)
+    (E : Int → ENNReal)
+    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i) :
+    eLpNorm (verticalSquareFunction indices full - verticalSquareFunction indices main)
+        4 volume ≤ ∑ i ∈ indices, E i := by
+  let G : WaveSpaceTime → Real := fun z => ∑ i ∈ indices, ‖tail i z‖
+  have hGnonneg (z : WaveSpaceTime) : 0 ≤ G z := by
+    exact Finset.sum_nonneg fun i hi => norm_nonneg _
+  have hmono (z : WaveSpaceTime) :
+      ‖(verticalSquareFunction indices full - verticalSquareFunction indices main) z‖ ≤
+        ‖G z‖ := by
+    change |(verticalSquareFunction indices full - verticalSquareFunction indices main) z| ≤
+      |G z|
+    rw [abs_of_nonneg (hGnonneg z)]
+    exact aux_verticalSquareFunction_sub_le_sum_norm_tail indices full main tail hdecomp z
+  calc
+    eLpNorm (verticalSquareFunction indices full - verticalSquareFunction indices main)
+        4 volume ≤ eLpNorm G 4 volume := eLpNorm_mono hmono
+    _ = eLpNorm (fun z => ∑ i ∈ indices, ‖tail i z‖) 4 volume := rfl
+    _ = eLpNorm (∑ i ∈ indices, fun z => ‖tail i z‖) 4 volume := by
+      congr 1
+      funext z
+      simp only [Finset.sum_apply]
+    _ ≤ ∑ i ∈ indices, eLpNorm (fun z => ‖tail i z‖) 4 volume := by
+      apply eLpNorm_sum_le
+      · intro i hi
+        exact (htailMeas i hi).norm
+      · norm_num
+    _ = ∑ i ∈ indices, eLpNorm (tail i) 4 volume := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      exact eLpNorm_norm (tail i)
+    _ ≤ ∑ i ∈ indices, E i := by
+      apply Finset.sum_le_sum
+      intro i hi
+      exact hE i hi
 
 /-- Each summand is pointwise dominated by its finite vertical square
 function. -/
@@ -2930,6 +4220,368 @@ theorem verticalRecombined_verticalSeparablePackets
   apply Finset.sum_congr rfl
   intro n hn
   exact verticalProjection_verticalSeparablePacket β scale n (F n) (g n) z
+
+/-- The literal Schwartz realization of one fixed temporal multiplier.  This
+is an additive finite-Schwartz-core building block; it does not define a
+projection on arbitrary measurable inputs. -/
+noncomputable def verticalTemporalSchwartzMultiplier
+    (m g : SchwartzMap Real Complex) : SchwartzMap Real Complex :=
+  𝓕⁻ (SchwartzMap.smulLeftCLM Complex (m : Real → Complex) (𝓕 g))
+
+theorem verticalTemporalSchwartzMultiplier_add
+    (m g h : SchwartzMap Real Complex) :
+    verticalTemporalSchwartzMultiplier m (g + h) =
+      verticalTemporalSchwartzMultiplier m g + verticalTemporalSchwartzMultiplier m h := by
+  unfold verticalTemporalSchwartzMultiplier
+  rw [FourierTransform.fourier_add]
+  rw [(SchwartzMap.smulLeftCLM Complex (m : Real → Complex)).map_add]
+  rw [FourierTransform.fourierInv_add]
+
+/-- The finite temporal Schwartz multiplier commutes with scalar multiplication.
+This is an algebraic identity on supplied Schwartz data only. -/
+theorem verticalTemporalSchwartzMultiplier_smul
+    (m g : SchwartzMap Real Complex) (c : Complex) :
+    verticalTemporalSchwartzMultiplier m (c • g) =
+      c • verticalTemporalSchwartzMultiplier m g := by
+  unfold verticalTemporalSchwartzMultiplier
+  rw [FourierTransform.fourier_smul]
+  rw [(SchwartzMap.smulLeftCLM Complex (m : Real → Complex)).map_smul]
+  rw [FourierTransform.fourierInv_smul]
+
+theorem verticalTemporalSchwartzMultiplier_zero
+    (m : SchwartzMap Real Complex) :
+    verticalTemporalSchwartzMultiplier m 0 = 0 := by
+  unfold verticalTemporalSchwartzMultiplier
+  rw [FourierTransform.fourier_zero]
+  rw [(SchwartzMap.smulLeftCLM Complex (m : Real → Complex)).map_zero]
+  rw [FourierTransform.fourierInv_zero]
+
+/-- The finite-Schwartz temporal multiplier is literally convolution by its
+inverse-Fourier kernel.  This is a core identity only; extending it to a
+vector-valued measurable input space requires separate work. -/
+theorem verticalTemporalSchwartzMultiplier_eq_convolution
+    (m g : SchwartzMap Real Complex) (t : Real) :
+    verticalTemporalSchwartzMultiplier m g t =
+      (((𝓕⁻ m : SchwartzMap Real Complex) : Real → Complex)
+        ⋆[ContinuousLinearMap.mul Complex Complex, volume] (g : Real → Complex)) t := by
+  have h :
+      (𝓕⁻ (SchwartzMap.smulLeftCLM Complex (m : Real → Complex) (𝓕 g)) :
+        SchwartzMap Real Complex) =
+      SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex) (𝓕⁻ m) g := by
+    have hinv :
+        (𝓕⁻ (𝓕 (SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex)
+          (𝓕⁻ m) g)) : SchwartzMap Real Complex) =
+        SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex) (𝓕⁻ m) g := by
+      exact fourierInv_fourier_eq _
+    rw [← hinv]
+    congr 1
+    ext y
+    simp [SchwartzMap.fourier_convolution, SchwartzMap.smulLeftCLM_apply_apply,
+      m.hasTemperateGrowth]
+  change (𝓕⁻ (SchwartzMap.smulLeftCLM Complex (m : Real → Complex) (𝓕 g)) :
+      SchwartzMap Real Complex) t = _
+  rw [h]
+  exact SchwartzMap.convolution_apply (ContinuousLinearMap.mul Complex Complex) (𝓕⁻ m) g t
+
+/-- The literal temporal Schwartz multiplier obeys the elementary `L∞`
+bound supplied by the `L¹` norm of its inverse-Fourier kernel. -/
+theorem norm_verticalTemporalSchwartzMultiplier_le
+    (m g : SchwartzMap Real Complex) {C : Real}
+    (hg : ∀ y, ‖g y‖ ≤ C) (t : Real) :
+    ‖verticalTemporalSchwartzMultiplier m g t‖ ≤
+      C * ∫ y : Real, ‖(𝓕⁻ m : SchwartzMap Real Complex) y‖ := by
+  rw [verticalTemporalSchwartzMultiplier_eq_convolution]
+  let k : Real → Complex := (𝓕⁻ m : SchwartzMap Real Complex)
+  have hk : Integrable k volume := (𝓕⁻ m : SchwartzMap Real Complex).integrable
+  have hshift : Continuous (fun y : Real => (g : Real → Complex) (t - y)) :=
+    g.continuous.comp ((continuous_const : Continuous fun _ : Real => t).sub continuous_id)
+  have hmajor : Integrable (fun y : Real => ‖k y‖ * C) volume :=
+    hk.norm.mul_const C
+  have hmeas : AEStronglyMeasurable
+      (fun y : Real => k y * (g : Real → Complex) (t - y)) volume :=
+    hk.aestronglyMeasurable.mul hshift.aestronglyMeasurable
+  have hprod : Integrable (fun y : Real => k y * (g : Real → Complex) (t - y)) volume := by
+    refine hmajor.mono' hmeas (Filter.Eventually.of_forall ?_)
+    intro y
+    rw [norm_mul]
+    exact mul_le_mul_of_nonneg_left (hg _) (norm_nonneg _)
+  change ‖∫ y : Real, k y * (g : Real → Complex) (t - y)‖ ≤ _
+  calc
+    ‖∫ y : Real, k y * (g : Real → Complex) (t - y)‖ ≤
+        ∫ y : Real, ‖k y * (g : Real → Complex) (t - y)‖ :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ y : Real, ‖k y‖ * C := by
+      apply integral_mono hprod.norm hmajor
+      intro y
+      change ‖k y * (g : Real → Complex) (t - y)‖ ≤ ‖k y‖ * C
+      rw [norm_mul]
+      exact mul_le_mul_of_nonneg_left (hg _) (norm_nonneg _)
+    _ = C * ∫ y : Real, ‖k y‖ := by
+      rw [integral_mul_const]
+      ring
+
+/-- The literal finite vertical recombination operator on temporal Schwartz
+tuples with fixed multiplier and spatial-profile families.  It is additive on
+this finite Schwartz core only; no measurable, kernel, or density extension
+is asserted here. -/
+noncomputable def verticalSchwartzCoreRecombined
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : Int → SchwartzMap (Euclidean 2) Complex) :
+    (Int → SchwartzMap Real Complex) →+ (WaveSpaceTime → Complex) where
+  toFun g := fun z => ∑ n ∈ indices,
+    verticalTemporalSchwartzMultiplier (m n) (g n) z.2 * F n z.1
+  map_zero' := by
+    funext z
+    simp [verticalTemporalSchwartzMultiplier_zero]
+  map_add' := by
+    intro g h
+    funext z
+    simp only [Pi.add_apply, verticalTemporalSchwartzMultiplier_add, add_apply, add_mul]
+    rw [Finset.sum_add_distrib]
+
+/-- On supplied Schwartz multiplier profiles, the additive core realizes the
+literal finite `verticalRecombined` operator on separable Schwartz packets. -/
+theorem verticalSchwartzCoreRecombined_eq_verticalRecombined_of_schwartzProfiles
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    verticalSchwartzCoreRecombined indices m F g =
+      verticalRecombined β scale indices
+        (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)) := by
+  funext z
+  unfold verticalSchwartzCoreRecombined
+  rw [verticalRecombined_verticalSeparablePackets]
+  apply Finset.sum_congr rfl
+  intro n hn
+  unfold verticalTemporalSchwartzMultiplier
+  rw [SchwartzMap.fourierInv_coe]
+  unfold verticalTemporalProjection
+  apply congrArg (fun q : Real → Complex => 𝓕⁻ q z.2 * F n z.1)
+  funext τ
+  simp only [SchwartzMap.smulLeftCLM_apply (m n).hasTemperateGrowth,
+    smul_eq_mul, SchwartzMap.fourier_coe]
+  rw [hprofile n hn τ]
+
+/-- The temporal part of finite vertical recombination, as an additive map on
+finite tuples of temporal Schwartz profiles.  It is deliberately only the
+Schwartz core required for the finite overlap calculation. -/
+noncomputable def verticalTemporalSchwartzCoreRecombined
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) :
+    (Int → SchwartzMap Real Complex) →+ (Real → Complex) where
+  toFun g := fun t => ∑ n ∈ indices,
+    verticalTemporalSchwartzMultiplier (m n) (g n) t
+  map_zero' := by
+    funext t
+    simp [verticalTemporalSchwartzMultiplier_zero]
+  map_add' := by
+    intro g h
+    funext t
+    simp only [Pi.add_apply, verticalTemporalSchwartzMultiplier_add, add_apply]
+    rw [Finset.sum_add_distrib]
+
+/-- At a fixed spatial point, the finite Schwartz space--time core is the
+temporal core applied to the spatially scaled temporal profiles.  This is a
+finite supplied-Schwartz fiber identity, not a statement about measurable
+profiles or `verticalRecombined`. -/
+theorem verticalSchwartzCoreRecombined_fiber
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex)
+    (x : Euclidean 2) (t : Real) :
+    verticalSchwartzCoreRecombined indices m F g (x, t) =
+      verticalTemporalSchwartzCoreRecombined indices m
+        (fun n => F n x • g n) t := by
+  unfold verticalSchwartzCoreRecombined verticalTemporalSchwartzCoreRecombined
+  apply Finset.sum_congr rfl
+  intro n hn
+  rw [verticalTemporalSchwartzMultiplier_smul]
+  change verticalTemporalSchwartzMultiplier (m n) (g n) t * F n x =
+    F n x * verticalTemporalSchwartzMultiplier (m n) (g n) t
+  ring
+
+/-- The temporal square function of a finite complex-valued profile family. -/
+noncomputable def verticalTemporalSquareFunction
+    (indices : Finset Int) (g : Int → Real → Complex) : Real → Real :=
+  fun t => Real.sqrt (∑ n ∈ indices, ‖g n t‖ ^ (2 : Nat))
+
+/-- The finite temporal square function is exactly the pointwise norm of its
+natural `PiLp 2` profile bundle. -/
+theorem verticalTemporalSquareFunction_eq_norm_piLp
+    (indices : Finset Int) (g : Int → Real → Complex) (t : Real) :
+    verticalTemporalSquareFunction indices g t =
+      ‖(WithLp.toLp 2 (fun n : (↥indices) => g n t) :
+        PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖ := by
+  rw [PiLp.norm_eq_of_L2]
+  change verticalTemporalSquareFunction indices g t =
+    Real.sqrt (∑ i : (↥indices), ‖g (i : Int) t‖ ^ (2 : Nat))
+  rw [Finset.sum_coe_sort indices (fun i => ‖g i t‖ ^ (2 : Nat))]
+  rfl
+
+/-- The temporal square function and its finite `PiLp 2` bundle have equal
+`eLpNorm` at every exponent. -/
+theorem eLpNorm_verticalTemporalSquareFunction_eq_eLpNorm_piLp
+    (indices : Finset Int) (g : Int → Real → Complex)
+    (p : ENNReal) :
+    eLpNorm (verticalTemporalSquareFunction indices g) p volume =
+      eLpNorm
+        (fun t : Real =>
+          (WithLp.toLp 2 (fun n : (↥indices) => g n t) :
+            PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)))
+        p volume := by
+  apply eLpNorm_congr_norm_ae
+  filter_upwards with t
+  change ‖Real.sqrt (∑ n ∈ indices, ‖g n t‖ ^ (2 : Nat))‖ = _
+  rw [Real.norm_of_nonneg (Real.sqrt_nonneg _)]
+  simpa [verticalTemporalSquareFunction] using
+    verticalTemporalSquareFunction_eq_norm_piLp indices g t
+
+private theorem aux_norm_le_temporal_square
+    (indices : Finset Int) (g : Int → SchwartzMap Real Complex)
+    {n : Int} (hn : n ∈ indices) (t : Real) :
+    ‖g n t‖ ≤ Real.sqrt (∑ m ∈ indices, ‖g m t‖ ^ (2 : Nat)) := by
+  apply (Real.le_sqrt (norm_nonneg _) (by positivity)).2
+  exact Finset.single_le_sum (fun m hm => sq_nonneg (‖g m t‖)) hn
+
+private theorem aux_sqrt_sum_sq_kernel_le
+    (indices : Finset Int) (K : Int → Real → Complex)
+    (κ : Real → Real) (hκ : ∀ y, 0 ≤ κ y)
+    (hK : ∀ n ∈ indices, ∀ y, ‖K n y‖ ≤ κ y) (y : Real) :
+    Real.sqrt (∑ n ∈ indices, ‖K n y‖ ^ (2 : Nat)) ≤
+      Real.sqrt (indices.card : Real) * κ y := by
+  have hsum : (∑ n ∈ indices, ‖K n y‖ ^ (2 : Nat)) ≤
+      (indices.card : Real) * (κ y) ^ (2 : Nat) := by
+    calc
+      (∑ n ∈ indices, ‖K n y‖ ^ (2 : Nat)) ≤
+          ∑ n ∈ indices, (κ y) ^ (2 : Nat) := by
+        apply Finset.sum_le_sum
+        intro n hn
+        exact pow_le_pow_left₀ (norm_nonneg _) (hK n hn y) 2
+      _ = (indices.card : Real) * (κ y) ^ (2 : Nat) := by
+        simp [nsmul_eq_mul]
+  calc
+    Real.sqrt (∑ n ∈ indices, ‖K n y‖ ^ (2 : Nat)) ≤
+        Real.sqrt ((indices.card : Real) * (κ y) ^ (2 : Nat)) :=
+      Real.sqrt_le_sqrt hsum
+    _ = Real.sqrt (indices.card : Real) * Real.sqrt ((κ y) ^ (2 : Nat)) := by
+      rw [Real.sqrt_mul (by positivity)]
+    _ = Real.sqrt (indices.card : Real) * κ y := by
+      rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (hκ y)]
+
+/-- A common pointwise inverse-Fourier kernel envelope gives the sharp finite
+`sqrt(card)` top bound on the additive temporal Schwartz core.  This remains
+a finite Schwartz result; it is not the measurable vector-valued extension
+needed for the later interpolation step. -/
+theorem norm_verticalTemporalSchwartzCoreRecombined_le_of_common_kernel
+    (indices : Finset Int) (m g : Int → SchwartzMap Real Complex)
+    (κ : Real → Real) (hκ : ∀ y, 0 ≤ κ y) (hκint : Integrable κ volume)
+    (hkernel : ∀ n ∈ indices, ∀ y,
+      ‖(𝓕⁻ (m n) : SchwartzMap Real Complex) y‖ ≤ κ y)
+    {A : Real}
+    (hinput : ∀ t, Real.sqrt (∑ n ∈ indices, ‖g n t‖ ^ (2 : Nat)) ≤ A)
+    (t : Real) :
+    ‖verticalTemporalSchwartzCoreRecombined indices m g t‖ ≤
+      Real.sqrt (indices.card : Real) * (∫ y : Real, κ y) * A := by
+  let K : Int → Real → Complex := fun n => (𝓕⁻ (m n) : SchwartzMap Real Complex)
+  have hA : 0 ≤ A := le_trans (Real.sqrt_nonneg _) (hinput 0)
+  have hg : ∀ n ∈ indices, ∀ u, ‖g n u‖ ≤ A := by
+    intro n hn u
+    exact (aux_norm_le_temporal_square indices g hn u).trans (hinput u)
+  have hprod : ∀ n ∈ indices, Integrable
+      (fun y : Real => K n y * g n (t - y)) volume := by
+    intro n hn
+    have hshift : Continuous (fun y : Real => (g n : Real → Complex) (t - y)) :=
+      (g n).continuous.comp ((continuous_const : Continuous fun _ : Real => t).sub continuous_id)
+    have hmajor : Integrable (fun y : Real => κ y * A) volume := by
+      simpa [mul_comm] using hκint.mul_const A
+    have hmeas : AEStronglyMeasurable
+        (fun y : Real => K n y * g n (t - y)) volume :=
+      (𝓕⁻ (m n) : SchwartzMap Real Complex).continuous.aestronglyMeasurable.mul
+        hshift.aestronglyMeasurable
+    refine hmajor.mono' hmeas (Filter.Eventually.of_forall ?_)
+    intro y
+    change ‖K n y * g n (t - y)‖ ≤ κ y * A
+    rw [norm_mul]
+    exact mul_le_mul (hkernel n hn y) (hg n hn (t - y)) (norm_nonneg _) (hκ y)
+  have hsumint : Integrable
+      (fun y : Real => ∑ n ∈ indices, K n y * g n (t - y)) volume := by
+    exact integrable_finsetSum indices (fun n hn => hprod n hn)
+  have henvelope : Integrable
+      (fun y : Real => Real.sqrt (indices.card : Real) * κ y * A) volume := by
+    have := hκint.const_mul (Real.sqrt (indices.card : Real) * A)
+    simpa [mul_assoc, mul_left_comm, mul_comm] using this
+  have hpoint (y : Real) :
+      ‖∑ n ∈ indices, K n y * g n (t - y)‖ ≤
+        Real.sqrt (indices.card : Real) * κ y * A := by
+    calc
+      ‖∑ n ∈ indices, K n y * g n (t - y)‖ ≤
+          ∑ n ∈ indices, ‖K n y‖ * ‖g n (t - y)‖ := by
+        calc
+          ‖∑ n ∈ indices, K n y * g n (t - y)‖ ≤
+              ∑ n ∈ indices, ‖K n y * g n (t - y)‖ := norm_sum_le _ _
+          _ = ∑ n ∈ indices, ‖K n y‖ * ‖g n (t - y)‖ := by
+            apply Finset.sum_congr rfl
+            intro n hn
+            rw [norm_mul]
+      _ ≤ Real.sqrt (∑ n ∈ indices, ‖K n y‖ ^ (2 : Nat)) *
+          Real.sqrt (∑ n ∈ indices, ‖g n (t - y)‖ ^ (2 : Nat)) :=
+        Real.sum_mul_le_sqrt_mul_sqrt _ _ _
+      _ ≤ (Real.sqrt (indices.card : Real) * κ y) * A := by
+        exact mul_le_mul
+          (aux_sqrt_sum_sq_kernel_le indices K κ hκ hkernel y)
+          (hinput (t - y))
+          (Real.sqrt_nonneg _)
+          (mul_nonneg (Real.sqrt_nonneg _) (hκ y))
+      _ = Real.sqrt (indices.card : Real) * κ y * A := by ring
+  unfold verticalTemporalSchwartzCoreRecombined
+  calc
+    ‖∑ n ∈ indices, verticalTemporalSchwartzMultiplier (m n) (g n) t‖ =
+        ‖∫ y : Real, ∑ n ∈ indices, K n y * g n (t - y)‖ := by
+      congr 2
+      rw [integral_finsetSum indices (fun n hn => hprod n hn)]
+      apply Finset.sum_congr rfl
+      intro n hn
+      rw [verticalTemporalSchwartzMultiplier_eq_convolution]
+      rfl
+    _ ≤ ∫ y : Real, ‖∑ n ∈ indices, K n y * g n (t - y)‖ :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ y : Real, Real.sqrt (indices.card : Real) * κ y * A :=
+      integral_mono hsumint.norm henvelope hpoint
+    _ = Real.sqrt (indices.card : Real) * (∫ y : Real, κ y) * A := by
+      calc
+        (∫ y : Real, Real.sqrt (indices.card : Real) * κ y * A) =
+            ∫ y : Real, (Real.sqrt (indices.card : Real) * A) * κ y := by
+          apply integral_congr_ae
+          filter_upwards with y
+          ring
+        _ = (Real.sqrt (indices.card : Real) * A) * ∫ y : Real, κ y := by
+          rw [integral_const_mul]
+        _ = Real.sqrt (indices.card : Real) * (∫ y : Real, κ y) * A := by
+          ring
+
+/-- Supplied Schwartz profiles identify the temporal additive core with the
+finite sum of literal vertical temporal projections. -/
+theorem verticalTemporalSchwartzCoreRecombined_eq_sum_verticalTemporalProjection_of_schwartzProfiles
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    (g : Int → SchwartzMap Real Complex) :
+    verticalTemporalSchwartzCoreRecombined indices m g =
+      fun t => ∑ n ∈ indices, verticalTemporalProjection β scale n (g n) t := by
+  funext t
+  unfold verticalTemporalSchwartzCoreRecombined
+  apply Finset.sum_congr rfl
+  intro n hn
+  unfold verticalTemporalSchwartzMultiplier verticalTemporalProjection
+  rw [SchwartzMap.fourierInv_coe]
+  apply congrArg (fun q : Real → Complex => 𝓕⁻ q t)
+  funext τ
+  simp only [SchwartzMap.smulLeftCLM_apply (m n).hasTemperateGrowth,
+    smul_eq_mul, SchwartzMap.fourier_coe]
+  rw [hprofile n hn τ]
 
 private theorem aux_sum_schwartzReal_apply {ι : Type*}
     (indices : Finset ι) (h : ι → SchwartzMap Real Complex) (t : Real) :
@@ -3273,6 +4925,24 @@ theorem integral_norm_sq_sum_verticalTemporalProjection_le_of_schwartz_profiles
       intro n hn
       exact FourierRadius.integral_norm_sq_fourier_schwartz_eq (g n)
 
+/-- The finite-overlap raw `L²` endpoint for the additive temporal Schwartz
+core.  It is not an all-measurable vector-valued multiplier theorem. -/
+theorem integral_norm_sq_verticalTemporalSchwartzCoreRecombined_le_of_schwartzProfiles
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (g : Int → SchwartzMap Real Complex) :
+    (∫ t : Real,
+      ‖verticalTemporalSchwartzCoreRecombined indices m g t‖ ^ (2 : Nat)) ≤
+      C * ∑ n ∈ indices, ∫ t : Real, ‖g n t‖ ^ (2 : Nat) := by
+  rw [verticalTemporalSchwartzCoreRecombined_eq_sum_verticalTemporalProjection_of_schwartzProfiles
+    β scale indices m hprofile g]
+  exact integral_norm_sq_sum_verticalTemporalProjection_le_of_schwartz_profiles
+    β scale indices m g hprofile hoverlap
+
 private theorem aux_verticalTemporalProjection_const_mul
     (β : Real → Complex) (scale : Real) (n : Int)
     (c : Complex) (g : Real → Complex) (t : Real) :
@@ -3598,6 +5268,27 @@ theorem integral_norm_sq_verticalRecombined_verticalSeparablePackets_le_sum_inpu
       apply Finset.sum_congr rfl
       intro n hn
       exact (aux_integral_norm_sq_verticalSeparablePacket_eq_product (F n) (g n)).symm
+
+/-- The finite-overlap raw `L²` endpoint for the additive Schwartz
+space--time core.  This is a finite Schwartz theorem only; it does not
+provide an `L²` extension to arbitrary functions. -/
+theorem integral_norm_sq_verticalSchwartzCoreRecombined_le_of_schwartzProfiles
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    (∫ z : WaveSpaceTime,
+      ‖verticalSchwartzCoreRecombined indices m F g z‖ ^ (2 : Nat)) ≤
+      C * ∑ n ∈ indices, ∫ z : WaveSpaceTime,
+        ‖verticalSeparablePacket (F n) (g n : Real → Complex) z‖ ^ (2 : Nat) := by
+  rw [verticalSchwartzCoreRecombined_eq_verticalRecombined_of_schwartzProfiles
+    β scale indices m hprofile F g]
+  exact integral_norm_sq_verticalRecombined_verticalSeparablePackets_le_sum_inputEnergy_of_schwartz_profiles
+    β scale indices m g hprofile hoverlap F
 
 /-- Pointwise Cauchy--Schwarz for a finite literal separable vertical
 recombination.  This is the common physical-space core of the `L²` and
@@ -4151,6 +5842,171 @@ noncomputable def angularPiece (scale : Real) (a χ : Euclidean 2 → Complex)
   fun z => ϑ z.2 * 𝓕⁻ (fun ξ =>
     χ ξ * a (scale⁻¹ • ξ) * halfWaveMultiplier WaveSign.plus z.2 ξ * 𝓕 f ξ) z.1
 
+/-- A finite angular partition on the actual spatial Fourier support
+reconstructs the unangularized conic half-wave. The integrability hypothesis
+is explicit because this uses the raw inverse Fourier transform; no
+vertical-recombination, square-function, or local-smoothing estimate is
+asserted here. -/
+theorem sum_angularPiece_eq_conicOperator_of_sum_eq_one_on_support
+    (angularIndices : Finset Int) (chi : Int → Euclidean 2 → Complex)
+    (scale : Real) (a : Euclidean 2 → Complex) (vartheta : Real → Complex)
+    (g : Euclidean 2 → Complex)
+    (hchi : ∀ xi ∈ Function.support
+      (fun xi : Euclidean 2 => a (scale⁻¹ • xi) * 𝓕 g xi),
+      ∑ nu ∈ angularIndices, chi nu xi = 1)
+    (hintegrable : ∀ (t : Real) (nu : Int), nu ∈ angularIndices →
+      Integrable (fun xi : Euclidean 2 =>
+        chi nu xi * a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus t xi * 𝓕 g xi) volume) :
+    (fun z => ∑ nu ∈ angularIndices,
+      angularPiece scale a (chi nu) vartheta g z) =
+      conicOperator scale a vartheta g := by
+  classical
+  funext z
+  simp only [angularPiece, conicOperator]
+  rw [← Finset.mul_sum]
+  rw [← aux_fourierInv_finset_sum_of_integrable
+    angularIndices
+    (fun nu xi => chi nu xi * a (scale⁻¹ • xi) *
+      halfWaveMultiplier WaveSign.plus z.2 xi * 𝓕 g xi)
+    (fun nu hnu => hintegrable z.2 nu hnu) z.1]
+  congr 2
+  apply congrArg (fun q : Euclidean 2 → Complex => 𝓕⁻ q z.1)
+  funext xi
+  calc
+    (∑ nu ∈ angularIndices,
+        chi nu xi * a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus z.2 xi * 𝓕 g xi) =
+        (∑ nu ∈ angularIndices, chi nu xi) *
+          (a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus z.2 xi * 𝓕 g xi) := by
+          rw [Finset.sum_mul]
+          apply Finset.sum_congr rfl
+          intro nu hnu
+          ring
+    _ = _ := by
+      by_cases hxi : xi ∈ Function.support
+          (fun xi : Euclidean 2 => a (scale⁻¹ • xi) * 𝓕 g xi)
+      · rw [hchi xi hxi]
+        simp
+      · have hzero : a (scale⁻¹ • xi) * 𝓕 g xi = 0 := by
+          by_contra hne
+          exact hxi hne
+        have hbase :
+            a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus z.2 xi * 𝓕 g xi = 0 := by
+          calc
+            a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus z.2 xi * 𝓕 g xi =
+                halfWaveMultiplier WaveSign.plus z.2 xi * (a (scale⁻¹ • xi) * 𝓕 g xi) := by
+                  ring
+            _ = 0 := by rw [hzero]; simp
+        rw [hbase]
+        simp
+
+/-- Supplied Schwartz angular amplitudes discharge the integrability
+side-condition of finite angular synthesis. This does not infer regularity
+from raw cutoffs. -/
+private theorem aux_integrable_angularPiece_multiplier_of_schwartz_profiles
+    (angularIndices : Finset Int) (chi : Int → Euclidean 2 → Complex)
+    (scale : Real) (a : Euclidean 2 → Complex)
+    (radialCutoff : Real → Complex) (n : Int)
+    (R f : SchwartzMap (Euclidean 2) Complex)
+    (B : Int → SchwartzMap (Euclidean 2) Complex)
+    (hR : ∀ xi : Euclidean 2,
+      R xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ (nu : Int) (xi : Euclidean 2), B nu xi =
+      chi nu xi * a (scale⁻¹ • xi) *
+        (R xi * 𝓕 (f : Euclidean 2 → Complex) xi)) :
+    ∀ (t : Real) (nu : Int), nu ∈ angularIndices →
+      Integrable (fun xi : Euclidean 2 =>
+        chi nu xi * a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus t xi *
+          𝓕 (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) xi) volume := by
+  intro t nu hnu
+  rw [show (fun xi : Euclidean 2 =>
+      chi nu xi * a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus t xi *
+        𝓕 (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) xi) =
+      fun xi => B nu xi * halfWaveMultiplier WaveSign.plus t xi by
+        funext xi
+        rw [fourier_radialPiece_eq_schwartzProfile_mul_fourier
+          radialCutoff scale n R f hR xi, hB nu xi]
+        ring]
+  refine Integrable.mono' (B nu).integrable.norm ?_ ?_
+  · have hhalf : Continuous (halfWaveMultiplier WaveSign.plus t) := by
+      unfold halfWaveMultiplier
+      fun_prop
+    exact ((B nu).continuous.mul hhalf).aestronglyMeasurable
+  · filter_upwards with xi
+    rw [norm_mul, norm_halfWaveMultiplier, mul_one]
+
+/-- A finite support-local angular partition rewrites the literal radial-time
+reconstruction as a vertical recombination of angular pieces. The partition
+and raw Fourier-integrability assumptions remain explicit at every radial
+label; this is an exact finite algebraic identity, not a vertical endpoint,
+square-function, or local-smoothing estimate. -/
+theorem radialTimeReconstruction_eq_verticalRecombined_angularPiece_of_sum_eq_one_on_support
+    (verticalCutoff radialCutoff : Real → Complex) (indices : Real → Finset Int)
+    (angularIndices : Finset Int) (chi : Int → Euclidean 2 → Complex)
+    (scale : Real) (a : Euclidean 2 → Complex) (vartheta : Real → Complex)
+    (f : Euclidean 2 → Complex)
+    (hchi : ∀ n ∈ indices scale, ∀ xi ∈ Function.support
+      (fun xi : Euclidean 2 =>
+        a (scale⁻¹ • xi) * 𝓕 (radialPiece radialCutoff scale n f) xi),
+      ∑ nu ∈ angularIndices, chi nu xi = 1)
+    (hintegrable : ∀ n ∈ indices scale, ∀ (t : Real) (nu : Int), nu ∈ angularIndices →
+      Integrable (fun xi : Euclidean 2 =>
+        chi nu xi * a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus t xi *
+          𝓕 (radialPiece radialCutoff scale n f) xi) volume) :
+    radialTimeReconstruction verticalCutoff radialCutoff indices scale a vartheta f =
+      verticalRecombined verticalCutoff scale (indices scale)
+        (fun n z => ∑ nu ∈ angularIndices,
+          angularPiece scale a (chi nu) vartheta (radialPiece radialCutoff scale n f) z) := by
+  change radialTimeReconstruction verticalCutoff radialCutoff indices scale a vartheta f =
+    (fun z => ∑ n ∈ indices scale,
+      verticalProjection verticalCutoff scale n
+        (fun z => ∑ nu ∈ angularIndices,
+          angularPiece scale a (chi nu) vartheta (radialPiece radialCutoff scale n f) z) z)
+  funext z
+  unfold radialTimeReconstruction
+  apply Finset.sum_congr rfl
+  intro n hn
+  rw [← sum_angularPiece_eq_conicOperator_of_sum_eq_one_on_support
+    angularIndices chi scale a vartheta
+    (radialPiece radialCutoff scale n f) (hchi n hn) (hintegrable n hn)]
+
+/-- Under the same finite support-local angular partition, the conic
+half-wave is its angularized finite radial reconstruction plus the literal
+radial-time residual. This is an exact algebraic identity only: it makes no
+vertical-recombination, square-function, or local-smoothing assertion. -/
+theorem conicOperator_eq_verticalRecombined_angularPiece_add_radialTimeResidual_of_sum_eq_one_on_support
+    (verticalCutoff radialCutoff : Real → Complex) (indices : Real → Finset Int)
+    (angularIndices : Finset Int) (chi : Int → Euclidean 2 → Complex)
+    (scale : Real) (a : Euclidean 2 → Complex) (vartheta : Real → Complex)
+    (f : Euclidean 2 → Complex)
+    (hchi : ∀ n ∈ indices scale, ∀ xi ∈ Function.support
+      (fun xi : Euclidean 2 =>
+        a (scale⁻¹ • xi) * 𝓕 (radialPiece radialCutoff scale n f) xi),
+      ∑ nu ∈ angularIndices, chi nu xi = 1)
+    (hintegrable : ∀ n ∈ indices scale, ∀ (t : Real) (nu : Int), nu ∈ angularIndices →
+      Integrable (fun xi : Euclidean 2 =>
+        chi nu xi * a (scale⁻¹ • xi) * halfWaveMultiplier WaveSign.plus t xi *
+          𝓕 (radialPiece radialCutoff scale n f) xi) volume) :
+    conicOperator scale a vartheta f =
+      verticalRecombined verticalCutoff scale (indices scale)
+        (fun n z => ∑ nu ∈ angularIndices,
+          angularPiece scale a (chi nu) vartheta (radialPiece radialCutoff scale n f) z) +
+      radialTimeResidual verticalCutoff radialCutoff indices scale a vartheta f := by
+  have hrec :=
+    radialTimeReconstruction_eq_verticalRecombined_angularPiece_of_sum_eq_one_on_support
+      verticalCutoff radialCutoff indices angularIndices chi scale a vartheta f hchi hintegrable
+  calc
+    conicOperator scale a vartheta f =
+        radialTimeReconstruction verticalCutoff radialCutoff indices scale a vartheta f +
+          radialTimeResidual verticalCutoff radialCutoff indices scale a vartheta f := by
+      unfold radialTimeResidual
+      funext z
+      change conicOperator scale a vartheta f z =
+        radialTimeReconstruction verticalCutoff radialCutoff indices scale a vartheta f z +
+          (conicOperator scale a vartheta f z -
+            radialTimeReconstruction verticalCutoff radialCutoff indices scale a vartheta f z)
+      ring
+    _ = _ := by rw [hrec]
+
 /-- A metric encoding of an angular sector around a unit direction.  This
 avoids choosing polar coordinates while expressing the aperture used in the
 conic-plate definitions. -/
@@ -4228,6 +6084,1374 @@ def conicPlate (scale gamma angularConstant : Real) (n : Int)
       (angularConstant * scale ^ (-(1 / 2 : Real))) ∧
     |(Real.sqrt scale)⁻¹ * ζ.2 - n| ≤ 1 ∧
     |ζ.2 - ‖ζ.1‖| ≤ 2 * scale ^ gamma}
+
+/-- A genuinely joint-Schwartz spectral cutoff of joint-Schwartz data.  The
+coefficient is Schwartz in all space--time variables; a separate realization
+hypothesis records when it agrees with a wave-front multiplier on the relevant
+Fourier support. -/
+noncomputable def jointSchwartzSpectralCutoffProduct
+    (q G : SchwartzMap JointWaveSpaceTime Complex) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  SchwartzMap.smulLeftCLM Complex (q : JointWaveSpaceTime → Complex)
+    (FourierTransform.fourier G)
+
+/-- The physical-coordinate output of a joint-Schwartz spectral cutoff. -/
+noncomputable def jointSchwartzSpectralCutoffOutput
+    (q G : SchwartzMap JointWaveSpaceTime Complex) :
+    WaveSpaceTime → Complex :=
+  jointSchwartzRaw
+    (FourierTransform.fourierInv (jointSchwartzSpectralCutoffProduct q G))
+
+/-- A literal spectral realization identifies a raw wave-front projection
+with a joint-Schwartz cutoff output.  The equality is required only after
+multiplication by the supplied Fourier transform; no global regularity is
+claimed for the raw wave-front multiplier. -/
+theorem wavefrontProjection_eq_jointSchwartzSpectralCutoffOutput_of_realization
+    (angularCutoff : Euclidean 2 → Complex) (normalCutoff : Real → Complex)
+    (scale gamma : Real)
+    (q G : SchwartzMap JointWaveSpaceTime Complex)
+    (hrealize : ∀ ζ : WaveSpaceTime,
+      wavefrontMultiplier angularCutoff normalCutoff scale gamma ζ *
+          FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+            (WithLp.toLp 2 ζ) =
+        q (WithLp.toLp 2 ζ) *
+          FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+            (WithLp.toLp 2 ζ)) :
+    wavefrontProjection angularCutoff normalCutoff scale gamma
+        (jointSchwartzRaw G) =
+      jointSchwartzSpectralCutoffOutput q G := by
+  let P : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzSpectralCutoffProduct q G
+  have hmult :
+      (fun ζ : WaveSpaceTime =>
+        wavefrontMultiplier angularCutoff normalCutoff scale gamma ζ *
+          spaceTimeFourier (jointSchwartzRaw G) ζ) =
+        jointSchwartzRaw P := by
+    funext ζ
+    rw [spaceTimeFourier_jointSchwartzRaw G ζ]
+    change
+      wavefrontMultiplier angularCutoff normalCutoff scale gamma ζ *
+          FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+            (WithLp.toLp 2 ζ) =
+        P (WithLp.toLp 2 ζ)
+    dsimp only [P, jointSchwartzSpectralCutoffProduct]
+    rw [SchwartzMap.smulLeftCLM_apply_apply q.hasTemperateGrowth]
+    rw [SchwartzMap.fourier_coe]
+    simpa only [smul_eq_mul] using hrealize ζ
+  funext z
+  unfold wavefrontProjection jointSchwartzSpectralCutoffOutput
+  rw [hmult]
+  simpa only [P, jointSchwartzRaw, SchwartzMap.fourierInv_coe] using
+    spaceTimeFourierInv_jointSchwartzRaw P z
+
+/-- The literal iterated transform of a joint-Schwartz spectral cutoff output
+is its joint Schwartz spectral product. -/
+theorem spaceTimeFourier_jointSchwartzSpectralCutoffOutput
+    (q G : SchwartzMap JointWaveSpaceTime Complex) (ζ : WaveSpaceTime) :
+    spaceTimeFourier (jointSchwartzSpectralCutoffOutput q G) ζ =
+      jointSchwartzSpectralCutoffProduct q G (WithLp.toLp 2 ζ) := by
+  unfold jointSchwartzSpectralCutoffOutput
+  rw [spaceTimeFourier_jointSchwartzRaw
+    (FourierTransform.fourierInv (jointSchwartzSpectralCutoffProduct q G)) ζ]
+  change
+    FourierTransform.fourier
+        (FourierTransform.fourierInv (jointSchwartzSpectralCutoffProduct q G) :
+          JointWaveSpaceTime → Complex)
+        (WithLp.toLp 2 ζ) =
+      jointSchwartzSpectralCutoffProduct q G (WithLp.toLp 2 ζ)
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+
+/-- A joint Schwartz spectral cutoff in planar frequency and the normal
+coordinate `tau - rho xi`.  Compactness is not inferred from the Schwartz
+data; it must be supplied through support hypotheses when needed. -/
+noncomputable def jointSchwartzSpatialNormalCutoff
+    (u : SchwartzMap (Euclidean 2) Complex)
+    (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  jointSchwartzPrecompRadialShear rho
+    (jointSchwartzExternalProduct u beta)
+
+/-- The raw-coordinate formula for the joint spatial/normal cutoff. -/
+theorem jointSchwartzSpatialNormalCutoff_apply
+    (u : SchwartzMap (Euclidean 2) Complex)
+    (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (zeta : WaveSpaceTime) :
+    jointSchwartzSpatialNormalCutoff u beta rho (WithLp.toLp 2 zeta) =
+      u zeta.1 * beta (zeta.2 - rho zeta.1) := by
+  unfold jointSchwartzSpatialNormalCutoff
+  rw [jointSchwartzPrecompRadialShear_apply, jointSchwartzExternalProduct_apply]
+
+/-- The genuine spectral projection of the supplied temporal-Schwartz
+annular profile by a joint spatial/normal cutoff. -/
+noncomputable def temporalSchwartzAnnularNormalProjection
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    WaveSpaceTime → Complex :=
+  jointSchwartzSpectralCutoffOutput
+    (jointSchwartzSpatialNormalCutoff u beta rho)
+    (FourierTransform.fourierInv
+      (jointSchwartzModulatedAnnularProfile B vartheta rho))
+
+/-- The exact Schwartz spectral complement of
+`temporalSchwartzAnnularNormalProjection`.  This is a literal normal-tail
+model for the supplied Schwartz data; it is neither a plate projection nor a
+compact physical-time expression. -/
+noncomputable def temporalSchwartzAnnularNormalTail
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    WaveSpaceTime → Complex :=
+  jointSchwartzRaw
+    (FourierTransform.fourierInv
+      (jointSchwartzModulatedAnnularProfile B vartheta rho -
+        jointSchwartzSpectralCutoffProduct
+          (jointSchwartzSpatialNormalCutoff u beta rho)
+          (FourierTransform.fourierInv
+            (jointSchwartzModulatedAnnularProfile B vartheta rho))))
+
+/-- The supplied temporal-Schwartz normal tail satisfies the literal
+space--time `L²` Plancherel identity.  This concerns only the regular model,
+not raw compact-time packets. -/
+theorem eLpNorm_spaceTimeFourier_temporalSchwartzAnnularNormalTail_two_eq
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 2 volume =
+      eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume := by
+  apply eLpNorm_spaceTimeFourier_jointSchwartzRaw_two_eq
+
+private theorem aux_temporalSchwartzAnnularNormalUnprojected_eq_halfWave
+    (B : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖) :
+    jointSchwartzRaw
+        (FourierTransform.fourierInv
+          (jointSchwartzModulatedAnnularProfile B vartheta rho)) =
+      fun z : WaveSpaceTime =>
+        vartheta z.2 * FourierTransform.fourierInv
+          (fun xi : Euclidean 2 =>
+            B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1 := by
+  funext z
+  calc
+    jointSchwartzRaw
+        (FourierTransform.fourierInv
+          (jointSchwartzModulatedAnnularProfile B vartheta rho)) z =
+        spaceTimeFourierInv
+          (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) z := by
+          simpa only [jointSchwartzRaw, SchwartzMap.fourierInv_coe] using
+            (spaceTimeFourierInv_jointSchwartzRaw
+              (jointSchwartzModulatedAnnularProfile B vartheta rho) z).symm
+    _ = _ :=
+      spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile_eq_halfWave_of_eq_norm_on_support
+        B vartheta rho hrho z
+
+/-- Under the supplied norm agreement, the temporal-Schwartz positive
+half-wave is exactly its spatial/normal projection plus the literal normal
+tail.  No plate support is asserted for the unprojected summand. -/
+theorem temporalSchwartzHalfWave_eq_projection_add_normalTail
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖) :
+    (fun z : WaveSpaceTime =>
+      vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1) =
+      temporalSchwartzAnnularNormalProjection B u vartheta beta rho +
+        temporalSchwartzAnnularNormalTail B u vartheta beta rho := by
+  let F : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzModulatedAnnularProfile B vartheta rho
+  let q : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzSpatialNormalCutoff u beta rho
+  let P : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzSpectralCutoffProduct q (FourierTransform.fourierInv F)
+  have hsplit : FourierTransform.fourierInv F =
+      FourierTransform.fourierInv P + FourierTransform.fourierInv (F - P) := by
+    rw [← FourierTransform.fourierInv_add]
+    congr 1
+    dsimp [P]
+    abel
+  rw [← aux_temporalSchwartzAnnularNormalUnprojected_eq_halfWave B vartheta rho hrho]
+  funext z
+  change (FourierTransform.fourierInv F : SchwartzMap JointWaveSpaceTime Complex)
+      (WithLp.toLp 2 z) =
+    (FourierTransform.fourierInv P : SchwartzMap JointWaveSpaceTime Complex)
+      (WithLp.toLp 2 z) +
+      (FourierTransform.fourierInv (F - P) : SchwartzMap JointWaveSpaceTime Complex)
+        (WithLp.toLp 2 z)
+  rw [hsplit]
+  rfl
+
+/-- A supplied Schwartz radial Fourier profile turns a regular compact-time
+half-wave amplitude into the literal raw `angularPiece`/`radialPiece` model.
+All regularity is displayed in the supplied `R` and `B` equalities. -/
+theorem temporalSchwartzHalfWave_eq_angularPiece_of_schwartzRadialProfile
+    (B R f : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (scale : Real) (a chi : Euclidean 2 → Complex) (radialCutoff : Real → Complex)
+    (n : Int)
+    (hR : ∀ xi : Euclidean 2,
+      R xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ xi : Euclidean 2, B xi =
+      chi xi * a (scale⁻¹ • xi) *
+        (R xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi)) :
+    (fun z : WaveSpaceTime =>
+      vartheta z.2 * FourierTransform.fourierInv
+        (fun xi : Euclidean 2 =>
+          B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1) =
+      angularPiece scale a chi (vartheta : Real → Complex)
+        (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) := by
+  funext z
+  unfold angularPiece
+  apply congrArg (fun q : Euclidean 2 → Complex =>
+    vartheta z.2 * FourierTransform.fourierInv q z.1)
+  funext xi
+  rw [fourier_radialPiece_eq_schwartzProfile_mul_fourier
+    radialCutoff scale n R f hR xi]
+  rw [hB xi]
+  ring
+
+/-- With norm agreement on the supplied amplitude support, the same regular
+angular/radial model has the literal normal-projection-plus-tail
+decomposition. -/
+theorem angularPiece_eq_projection_add_normalTail_of_schwartzRadialProfile
+    (B R f u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (scale : Real) (a chi : Euclidean 2 → Complex) (radialCutoff : Real → Complex)
+    (n : Int)
+    (hR : ∀ xi : Euclidean 2,
+      R xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ xi : Euclidean 2, B xi =
+      chi xi * a (scale⁻¹ • xi) *
+        (R xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi))
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖) :
+    angularPiece scale a chi (vartheta : Real → Complex)
+        (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) =
+      temporalSchwartzAnnularNormalProjection B u vartheta beta rho +
+        temporalSchwartzAnnularNormalTail B u vartheta beta rho := by
+  rw [← temporalSchwartzHalfWave_eq_angularPiece_of_schwartzRadialProfile
+    B R f vartheta scale a chi radialCutoff n hR hB]
+  exact temporalSchwartzHalfWave_eq_projection_add_normalTail
+    B u vartheta beta rho hrho
+
+/-- Exact Fourier formula for the normal tail.  The leading factor records
+precisely the part discarded by the supplied spatial/normal Schwartz cutoff. -/
+theorem spaceTimeFourier_temporalSchwartzAnnularNormalTail
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (zeta : WaveSpaceTime) :
+    spaceTimeFourier
+        (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta =
+      (1 - u zeta.1 * beta (zeta.2 - rho zeta.1)) *
+        (B zeta.1 * FourierTransform.fourier
+          (vartheta : Real → Complex) (zeta.2 - rho zeta.1)) := by
+  unfold temporalSchwartzAnnularNormalTail
+  rw [spaceTimeFourier_jointSchwartzRaw]
+  change FourierTransform.fourier
+      (FourierTransform.fourierInv
+        (jointSchwartzModulatedAnnularProfile B vartheta rho -
+          jointSchwartzSpectralCutoffProduct
+            (jointSchwartzSpatialNormalCutoff u beta rho)
+            (FourierTransform.fourierInv
+              (jointSchwartzModulatedAnnularProfile B vartheta rho))) :
+          JointWaveSpaceTime → Complex)
+      (WithLp.toLp 2 zeta) = _
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  rw [sub_apply]
+  rw [jointSchwartzSpectralCutoffProduct,
+    SchwartzMap.smulLeftCLM_apply_apply
+      (jointSchwartzSpatialNormalCutoff u beta rho).hasTemperateGrowth]
+  rw [FourierTransform.fourier_fourierInv_eq,
+    jointSchwartzSpatialNormalCutoff_apply,
+    jointSchwartzModulatedAnnularProfile_apply]
+  ring
+
+private theorem aux_spaceTimeFourier_temporalSchwartzAnnularNormalTail_eq_zero
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1)
+    (zeta : WaveSpaceTime)
+    (hbeta : beta (zeta.2 - rho zeta.1) = 1) :
+    spaceTimeFourier
+        (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta = 0 := by
+  rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+  by_cases hB : B zeta.1 = 0
+  · simp [hB]
+  · rw [hu zeta.1 hB, hbeta]
+    ring
+
+/-- The tail spectrum can occur only on the supplied annular profile support
+and where the supplied normal cutoff is not one.  This is not a plate-support
+claim for the unprojected temporal-Schwartz half-wave. -/
+theorem support_spaceTimeFourier_temporalSchwartzAnnularNormalTail
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1) :
+    Function.support
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) ⊆
+      {zeta | zeta.1 ∈ Function.support (B : Euclidean 2 → Complex) ∧
+        beta (zeta.2 - rho zeta.1) ≠ 1} := by
+  intro zeta hzeta
+  change spaceTimeFourier
+      (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta ≠ 0 at hzeta
+  constructor
+  · intro hB
+    apply hzeta
+    rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+    simp [hB]
+  · intro hbeta
+    exact hzeta
+      (aux_spaceTimeFourier_temporalSchwartzAnnularNormalTail_eq_zero
+        B u vartheta beta rho hu zeta hbeta)
+
+private theorem aux_exists_fourier_vartheta_rapid
+    (vartheta : SchwartzMap Real Complex) (N : Nat) :
+    ∃ D : Real, 0 ≤ D ∧ ∀ s : Real,
+      (1 + |s|) ^ N * ‖FourierTransform.fourier (vartheta : Real → Complex) s‖ ≤ D := by
+  let h : SchwartzMap Real Complex := 𝓕 vartheta
+  let A : Real := 2 ^ N * ((Finset.Iic (N, 0)).sup fun q =>
+    SchwartzMap.seminorm Complex q.1 q.2) h
+  let D : Real := |A|
+  refine ⟨D, ?_, ?_⟩
+  · exact abs_nonneg _
+  · intro s
+    have hs := SchwartzMap.one_add_le_sup_seminorm_apply (𝕜 := Complex)
+      (m := (N, 0)) (k := N) (n := 0) (le_refl N) (le_refl 0) h s
+    change (1 + |s|) ^ N * ‖FourierTransform.fourier (vartheta : Real → Complex) s‖ ≤ D
+    simpa only [D, A, h, Real.norm_eq_abs, norm_iteratedFDeriv_zero,
+      SchwartzMap.fourier_coe] using hs.trans (le_abs_self _)
+
+/-- The literal temporal-Schwartz normal tail has arbitrary pointwise rapid
+Fourier decay in its normal coordinate whenever the spatial cutoff is one on
+the supplied amplitude support.  This is a Fourier-side estimate only. -/
+theorem exists_nonneg_one_add_normal_pow_mul_norm_spaceTimeFourier_temporalSchwartzAnnularNormalTail_le_of_eq_one_on_support
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1)
+    (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ zeta : WaveSpaceTime,
+      (1 + |zeta.2 - rho zeta.1|) ^ N *
+        ‖spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤ C := by
+  obtain ⟨D, hDnonneg, hD⟩ := aux_exists_fourier_vartheta_rapid vartheta N
+  let B0 : Real := SchwartzMap.seminorm Complex 0 0 B
+  let beta0 : Real := SchwartzMap.seminorm Complex 0 0 beta
+  have hB0nonneg : 0 ≤ B0 := by
+    exact (norm_nonneg (B 0)).trans
+      (SchwartzMap.norm_le_seminorm Complex B 0)
+  have hbeta0nonneg : 0 ≤ beta0 := by
+    exact (norm_nonneg (beta 0)).trans
+      (SchwartzMap.norm_le_seminorm Complex beta 0)
+  refine ⟨B0 * (1 + beta0) * D, ?_, ?_⟩
+  · exact mul_nonneg (mul_nonneg hB0nonneg (add_nonneg zero_le_one hbeta0nonneg)) hDnonneg
+  · intro zeta
+    let s : Real := zeta.2 - rho zeta.1
+    have hB : ‖B zeta.1‖ ≤ B0 := by
+      exact SchwartzMap.norm_le_seminorm Complex B zeta.1
+    have hbeta : ‖beta s‖ ≤ beta0 := by
+      exact SchwartzMap.norm_le_seminorm Complex beta s
+    have hcut : ‖(1 : Complex) - beta s‖ ≤ 1 + beta0 := by
+      calc
+        ‖(1 : Complex) - beta s‖ ≤ ‖(1 : Complex)‖ + ‖beta s‖ := norm_sub_le _ _
+        _ = 1 + ‖beta s‖ := by rw [norm_one]
+        _ ≤ 1 + beta0 := by gcongr
+    have hnormal : (1 + |s|) ^ N *
+        ‖FourierTransform.fourier (vartheta : Real → Complex) s‖ ≤ D := hD s
+    rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+    by_cases hBzero : B zeta.1 = 0
+    · simpa [hBzero] using
+        (mul_nonneg (mul_nonneg hB0nonneg (add_nonneg zero_le_one hbeta0nonneg)) hDnonneg)
+    · rw [hu zeta.1 hBzero]
+      have hmain : (1 + |s|) ^ N *
+          ‖((1 : Complex) - beta s) *
+            (B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s)‖ ≤
+          B0 * (1 + beta0) * D := by
+        calc
+        (1 + |s|) ^ N * ‖((1 : Complex) - beta s) *
+            (B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s)‖ =
+            ‖B zeta.1‖ * ‖(1 : Complex) - beta s‖ *
+              ((1 + |s|) ^ N *
+                ‖FourierTransform.fourier (vartheta : Real → Complex) s‖) := by
+              rw [norm_mul, norm_mul]
+              ring
+        _ ≤ B0 * (1 + beta0) * D := by
+          gcongr
+      simpa only [s, one_mul] using hmain
+
+/-- If the supplied normal cutoff is one on the normal ball of radius `R`,
+the same literal tail has arbitrary pointwise Fourier decay in `R`.  This is
+still only a pointwise spectral statement. -/
+theorem exists_nonneg_one_add_normal_pow_mul_norm_spaceTimeFourier_temporalSchwartzAnnularNormalTail_le_of_eq_one_on_support_of_eq_one_on_normal_ball
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1)
+    {R : Real} (hR : 0 ≤ R)
+    (hbeta : ∀ s : Real, |s| ≤ R → beta s = 1)
+    (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ zeta : WaveSpaceTime,
+      (1 + R) ^ N *
+        ‖spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤ C := by
+  obtain ⟨C, hCnonneg, hC⟩ :=
+    exists_nonneg_one_add_normal_pow_mul_norm_spaceTimeFourier_temporalSchwartzAnnularNormalTail_le_of_eq_one_on_support
+      B u vartheta beta rho hu N
+  refine ⟨C, hCnonneg, ?_⟩
+  intro zeta
+  by_cases hs : |zeta.2 - rho zeta.1| ≤ R
+  · have htailzero :
+        spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta = 0 := by
+      rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+      by_cases hBzero : B zeta.1 = 0
+      · simp [hBzero]
+      · rw [hu zeta.1 hBzero, hbeta _ hs]
+        ring
+    simpa [htailzero] using hCnonneg
+  · have hRle : R ≤ |zeta.2 - rho zeta.1| := by
+      exact le_of_not_ge hs
+    have hweight : (1 + R) ^ N ≤
+        (1 + |zeta.2 - rho zeta.1|) ^ N := by
+      gcongr
+    calc
+      (1 + R) ^ N *
+          ‖spaceTimeFourier
+            (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+          (1 + |zeta.2 - rho zeta.1|) ^ N *
+            ‖spaceTimeFourier
+              (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ :=
+        mul_le_mul_of_nonneg_right hweight (norm_nonneg _)
+      _ ≤ C := hC zeta
+
+private theorem aux_normalShear_measurePreserving
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real) :
+    MeasurePreserving
+      (fun z : WaveSpaceTime => (z.1, z.2 - rho z.1)) volume volume := by
+  rw [Measure.volume_eq_prod]
+  refine (MeasurePreserving.id (volume : Measure (SurfaceCore.Euclidean 2))).skew_product
+    (g := fun xi (t : Real) => t - rho xi) ?_ ?_
+  · exact measurable_snd.sub (rho.continuous.measurable.comp measurable_fst)
+  · filter_upwards with xi
+    simpa only [sub_eq_add_neg] using
+      (measurePreserving_add_right (volume : Measure Real) (-rho xi)).map_eq
+
+private theorem aux_jointSchwartzRaw_precompRadialShear_eq_comp_normalShear
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (Q : SchwartzMap JointWaveSpaceTime Complex) :
+    jointSchwartzRaw (jointSchwartzPrecompRadialShear rho Q) =
+      (jointSchwartzRaw Q) ∘
+        (fun z : WaveSpaceTime => (z.1, z.2 - rho z.1)) := by
+  funext z
+  change (jointSchwartzPrecompRadialShear rho Q) (WithLp.toLp 2 z) =
+    Q (WithLp.toLp 2 (z.1, z.2 - rho z.1))
+  exact jointSchwartzPrecompRadialShear_apply rho Q z
+
+private noncomputable def aux_normalTailWeightedTemporalProfile
+    (vartheta : SchwartzMap Real Complex) (N : Nat) :
+    SchwartzMap Real Complex :=
+  SchwartzMap.smulLeftCLM Complex
+    (fun s : Real => (1 + s ^ 2) ^ N)
+    (FourierTransform.fourier vartheta)
+
+private theorem aux_normalTailWeightedTemporalProfile_apply
+    (vartheta : SchwartzMap Real Complex) (N : Nat) (s : Real) :
+    aux_normalTailWeightedTemporalProfile vartheta N s =
+      ((1 + s ^ 2) ^ N : Real) •
+        FourierTransform.fourier (vartheta : Real → Complex) s := by
+  unfold aux_normalTailWeightedTemporalProfile
+  rw [SchwartzMap.smulLeftCLM_apply
+    (show (fun s : Real => (1 + s ^ 2) ^ N).HasTemperateGrowth by fun_prop)]
+  simp only [SchwartzMap.fourier_coe]
+
+private theorem aux_one_add_abs_pow_le_two_pow_mul_one_add_sq_pow
+    (s : Real) (N : Nat) :
+    (1 + |s|) ^ N ≤ (2 : Real) ^ N * (1 + s ^ 2) ^ N := by
+  have habs : |s| ≤ 1 + s ^ 2 := by
+    apply abs_le.2
+    constructor
+    · nlinarith [sq_nonneg (s + 1 / 2)]
+    · nlinarith [sq_nonneg (s - 1 / 2)]
+  have hbase : 1 + |s| ≤ 2 * (1 + s ^ 2) := by
+    nlinarith
+  calc
+    (1 + |s|) ^ N ≤ (2 * (1 + s ^ 2)) ^ N := by
+      exact pow_le_pow_left₀ (by positivity) hbase N
+    _ = (2 : Real) ^ N * (1 + s ^ 2) ^ N := by
+      rw [mul_pow]
+
+private theorem aux_normalTail_weighted_fourier_le_sheared_envelope
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (N : Nat) {M R : Real}
+    (hu : ∀ xi ∈ Function.support (B : SurfaceCore.Euclidean 2 → Complex), u xi = 1)
+    (hM : 0 ≤ M) (hR : 0 ≤ R)
+    (hbeta : ∀ s : Real, |s| ≤ R → beta s = 1)
+    (hdefect : ∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M)
+    (zeta : WaveSpaceTime) :
+    (1 + R) ^ N *
+        ‖spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+      (M * (2 : Real) ^ N) *
+        ‖jointSchwartzRaw
+          (jointSchwartzPrecompRadialShear rho
+            (jointSchwartzExternalProduct B
+              (aux_normalTailWeightedTemporalProfile vartheta N))) zeta‖ := by
+  let s : Real := zeta.2 - rho zeta.1
+  let Q : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzExternalProduct B (aux_normalTailWeightedTemporalProfile vartheta N)
+  let G : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzPrecompRadialShear rho Q
+  have hGnorm : ‖jointSchwartzRaw G zeta‖ =
+      (1 + s ^ 2) ^ N *
+        ‖B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s‖ := by
+    change ‖G (WithLp.toLp 2 zeta)‖ = _
+    dsimp only [G]
+    rw [jointSchwartzPrecompRadialShear_apply]
+    dsimp only [Q]
+    rw [jointSchwartzExternalProduct_apply]
+    rw [aux_normalTailWeightedTemporalProfile_apply]
+    rw [norm_mul, norm_smul, Real.norm_eq_abs,
+      abs_of_nonneg (pow_nonneg (by positivity) _), norm_mul]
+    ring
+  change (1 + R) ^ N *
+      ‖spaceTimeFourier
+        (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+    (M * (2 : Real) ^ N) * ‖jointSchwartzRaw G zeta‖
+  by_cases hs : |s| ≤ R
+  · have htailzero :
+        spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta = 0 := by
+      rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+      by_cases hBzero : B zeta.1 = 0
+      · simp [hBzero]
+      · rw [hu zeta.1 hBzero, hbeta s hs]
+        simp
+    rw [htailzero]
+    have hright : 0 ≤ (M * (2 : Real) ^ N) * ‖jointSchwartzRaw G zeta‖ :=
+      mul_nonneg (mul_nonneg hM (pow_nonneg (by norm_num) _)) (norm_nonneg _)
+    simpa using hright
+  · have hslt : R < |s| := lt_of_not_ge hs
+    have hweight : (1 + R) ^ N ≤ (2 : Real) ^ N * (1 + s ^ 2) ^ N := by
+      calc
+        (1 + R) ^ N ≤ (1 + |s|) ^ N := by
+          apply pow_le_pow_left₀
+          · linarith
+          · linarith
+        _ ≤ (2 : Real) ^ N * (1 + s ^ 2) ^ N :=
+          aux_one_add_abs_pow_le_two_pow_mul_one_add_sq_pow s N
+    have htail :
+        ‖spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+          M * ‖B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s‖ := by
+      rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+      by_cases hBzero : B zeta.1 = 0
+      · simp [hBzero]
+      · rw [hu zeta.1 hBzero]
+        simp only [one_mul]
+        rw [norm_mul]
+        exact mul_le_mul_of_nonneg_right (hdefect s) (norm_nonneg _)
+    calc
+      (1 + R) ^ N *
+          ‖spaceTimeFourier
+            (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+          (1 + R) ^ N *
+            (M * ‖B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s‖) :=
+        mul_le_mul_of_nonneg_left htail (pow_nonneg (by linarith) _)
+      _ = M * ((1 + R) ^ N *
+            ‖B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s‖) := by
+        ring
+      _ ≤ M * (((2 : Real) ^ N * (1 + s ^ 2) ^ N) *
+            ‖B zeta.1 * FourierTransform.fourier (vartheta : Real → Complex) s‖) := by
+        exact mul_le_mul_of_nonneg_left
+          (mul_le_mul_of_nonneg_right hweight (norm_nonneg _)) hM
+      _ = (M * (2 : Real) ^ N) * ‖jointSchwartzRaw G zeta‖ := by
+        rw [hGnorm]
+        ring
+
+private theorem aux_eLpNorm_jointSchwartzRaw_precompRadialShear_eq
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (Q : SchwartzMap JointWaveSpaceTime Complex) (p : ENNReal) :
+    eLpNorm (jointSchwartzRaw (jointSchwartzPrecompRadialShear rho Q)) p volume =
+      eLpNorm (jointSchwartzRaw Q) p volume := by
+  rw [aux_jointSchwartzRaw_precompRadialShear_eq_comp_normalShear]
+  apply eLpNorm_comp_measurePreserving
+  · apply Measurable.aestronglyMeasurable
+    change Measurable (fun z : WaveSpaceTime => Q (WithLp.toLp 2 z))
+    exact Q.continuous.measurable.comp (WithLp.measurable_toLp 2 WaveSpaceTime)
+  · exact aux_normalShear_measurePreserving rho
+
+private theorem aux_eLpNorm_jointSchwartzRaw_eq
+    (Q : SchwartzMap JointWaveSpaceTime Complex) (p : ENNReal) :
+    eLpNorm (jointSchwartzRaw Q) p volume =
+      eLpNorm (Q : JointWaveSpaceTime → Complex) p volume := by
+  let e : WaveSpaceTime → JointWaveSpaceTime := WithLp.toLp 2
+  have hpres : MeasurePreserving e volume volume := by
+    simpa only [e] using
+      (WithLp.volume_preserving_toLp (SurfaceCore.Euclidean 2) Real)
+  change eLpNorm ((Q : JointWaveSpaceTime → Complex) ∘ e) p volume =
+    eLpNorm (Q : JointWaveSpaceTime → Complex) p volume
+  exact eLpNorm_comp_measurePreserving (Q.memLp p volume).aestronglyMeasurable hpres
+
+private theorem aux_eLpNorm_weighted_normalTail_le_sheared_envelope
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (N : Nat) {M R : Real}
+    (hu : ∀ xi ∈ Function.support (B : SurfaceCore.Euclidean 2 → Complex), u xi = 1)
+    (hM : 0 ≤ M) (hR : 0 ≤ R)
+    (hbeta : ∀ s : Real, |s| ≤ R → beta s = 1)
+    (hdefect : ∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M) :
+    ENNReal.ofReal ((1 + R) ^ N) *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume ≤
+      ENNReal.ofReal (M * (2 : Real) ^ N) *
+        eLpNorm (jointSchwartzRaw
+          (jointSchwartzPrecompRadialShear rho
+            (jointSchwartzExternalProduct B
+              (aux_normalTailWeightedTemporalProfile vartheta N)))) 2 volume := by
+  let Q : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzExternalProduct B (aux_normalTailWeightedTemporalProfile vartheta N)
+  let G : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzPrecompRadialShear rho Q
+  let T : Real := (1 + R) ^ N
+  let D : Real := M * (2 : Real) ^ N
+  have hT : 0 ≤ T := pow_nonneg (by linarith) _
+  have hD : 0 ≤ D := mul_nonneg hM (pow_nonneg (by norm_num) _)
+  have hpoint (zeta : WaveSpaceTime) :
+      T * ‖spaceTimeFourier
+        (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+        D * ‖jointSchwartzRaw G zeta‖ := by
+    dsimp only [T, D, G, Q]
+    exact aux_normalTail_weighted_fourier_le_sheared_envelope
+      B u vartheta beta rho N hu hM hR hbeta hdefect zeta
+  have hnorm (zeta : WaveSpaceTime) :
+      ‖T • spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+        ‖D • jointSchwartzRaw G zeta‖ := by
+    rw [norm_smul, norm_smul, Real.norm_eq_abs, abs_of_nonneg hT,
+      Real.norm_eq_abs, abs_of_nonneg hD]
+    exact hpoint zeta
+  have hEL :
+      eLpNorm (T • spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 2 volume ≤
+        eLpNorm (D • jointSchwartzRaw G) 2 volume :=
+    eLpNorm_mono hnorm
+  calc
+    ENNReal.ofReal ((1 + R) ^ N) *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume =
+        eLpNorm (T • spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 2 volume := by
+      dsimp only [T]
+      rw [eLpNorm_const_smul, Real.enorm_eq_ofReal hT,
+        eLpNorm_spaceTimeFourier_temporalSchwartzAnnularNormalTail_two_eq]
+    _ ≤ eLpNorm (D • jointSchwartzRaw G) 2 volume := hEL
+    _ = ENNReal.ofReal (M * (2 : Real) ^ N) *
+        eLpNorm (jointSchwartzRaw G) 2 volume := by
+      dsimp only [D]
+      rw [eLpNorm_const_smul, Real.enorm_eq_ofReal hD]
+
+/-- A uniform bounded normal-cutoff defect and normal-ball agreement give an
+arbitrarily rapid global L2 normal-tail bound for the supplied regular
+Schwartz model. The constant is chosen before the cutoff, shear, and radius;
+this is not a statement about raw compact-time packets or plate support. -/
+theorem exists_finite_uniform_one_add_normal_radius_pow_mul_eLpNorm_two_temporalSchwartzAnnularNormalTail
+    (B : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (N : Nat) (M : Real) (hM : 0 ≤ M) :
+    ∃ C : ENNReal, C < ∞ ∧ ∀
+      (u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+      (beta : SchwartzMap Real Complex)
+      (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real) {R : Real},
+      (∀ xi ∈ Function.support (B : SurfaceCore.Euclidean 2 → Complex), u xi = 1) →
+      0 ≤ R →
+      (∀ s : Real, |s| ≤ R → beta s = 1) →
+      (∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M) →
+      ENNReal.ofReal ((1 + R) ^ N) *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume ≤ C := by
+  let Q : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzExternalProduct B (aux_normalTailWeightedTemporalProfile vartheta N)
+  let C : ENNReal := ENNReal.ofReal (M * (2 : Real) ^ N) *
+    eLpNorm (jointSchwartzRaw Q) 2 volume
+  have hQtop : eLpNorm (jointSchwartzRaw Q) 2 volume < ∞ := by
+    rw [aux_eLpNorm_jointSchwartzRaw_eq Q 2]
+    exact lt_top_iff_ne_top.mpr (Q.memLp 2 volume).eLpNorm_ne_top
+  refine ⟨C, ?_, ?_⟩
+  · dsimp only [C]
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hQtop
+  · intro u beta rho R hu hR hbeta hdefect
+    have hbound := aux_eLpNorm_weighted_normalTail_le_sheared_envelope
+      B u vartheta beta rho N hu hM hR hbeta hdefect
+    rw [aux_eLpNorm_jointSchwartzRaw_precompRadialShear_eq rho Q 2] at hbound
+    exact hbound
+
+private theorem aux_norm_fourierInv_apply_le_toLp_one
+    (P : SchwartzMap JointWaveSpaceTime Complex) (w : JointWaveSpaceTime) :
+    ‖FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex) w‖ ≤
+      ‖P.toLp 1 volume‖ := by
+  rw [← SchwartzMap.fourierInv_coe]
+  rw [SchwartzMap.fourierInv_apply_eq]
+  change ‖(FourierTransform.fourier P) (-w)‖ ≤ ‖P.toLp 1 volume‖
+  exact SchwartzMap.norm_fourier_apply_le_toLp_one P (-w)
+
+private theorem aux_aestronglyMeasurable_jointSchwartzRaw
+    (P : SchwartzMap JointWaveSpaceTime Complex) :
+    AEStronglyMeasurable (jointSchwartzRaw P) volume := by
+  have htoLp : Continuous (WithLp.toLp 2 : WaveSpaceTime → JointWaveSpaceTime) :=
+    WithLp.prod_continuous_toLp 2 _ _
+  change AEStronglyMeasurable (fun z : WaveSpaceTime => P (WithLp.toLp 2 z)) volume
+  exact (P.continuous.comp htoLp).aestronglyMeasurable
+
+private theorem aux_eLpNorm_top_jointSchwartzRaw_fourierInv_le
+    (P : SchwartzMap JointWaveSpaceTime Complex) :
+    eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) ⊤ volume ≤
+      ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+  rw [eLpNorm_exponent_top]
+  apply eLpNormEssSup_le_of_ae_bound
+  filter_upwards with z
+  change ‖(FourierTransform.fourierInv P : SchwartzMap JointWaveSpaceTime Complex)
+    (WithLp.toLp 2 z)‖ ≤ ‖P.toLp 1 volume‖
+  rw [SchwartzMap.fourierInv_coe]
+  exact aux_norm_fourierInv_apply_le_toLp_one P _
+
+private theorem aux_eLpNorm_four_rpow_two_jointSchwartzRaw_fourierInv_le
+    (P : SchwartzMap JointWaveSpaceTime Complex) :
+    (eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 4 volume) ^ (2 : Real) ≤
+      eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 2 volume *
+        ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+  calc
+    (eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 4 volume) ^ (2 : Real) ≤
+        eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 2 volume *
+          eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) ⊤ volume :=
+      Codex.Spherical.LpSpaceFacts.eLpNorm_four_rpow_two_le_two_mul_top _
+        (aux_aestronglyMeasurable_jointSchwartzRaw _)
+    _ ≤ eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 2 volume *
+          ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+        simpa only [mul_comm] using
+          mul_le_mul_left (aux_eLpNorm_top_jointSchwartzRaw_fourierInv_le P)
+            (eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 2 volume)
+
+private theorem aux_weighted_eLpNorm_four_sq_jointSchwartzRaw_fourierInv_le
+    (P : SchwartzMap JointWaveSpaceTime Complex)
+    (R : Real) (N : Nat) (A : ENNReal)
+    (hA : (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+        eLpNorm (spaceTimeFourier
+          (jointSchwartzRaw (FourierTransform.fourierInv P))) 2 volume ≤ A) :
+    ((ENNReal.ofReal (1 + R)) ^ N *
+        eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 4 volume) ^ 2 ≤
+      A * ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+  have hplain := aux_eLpNorm_four_rpow_two_jointSchwartzRaw_fourierInv_le P
+  have hfour :
+      (eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 4 volume) ^ 2 ≤
+        eLpNorm (spaceTimeFourier
+          (jointSchwartzRaw (FourierTransform.fourierInv P))) 2 volume *
+          ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+    rw [← eLpNorm_spaceTimeFourier_jointSchwartzRaw_two_eq
+      (FourierTransform.fourierInv P)] at hplain
+    simpa only [ENNReal.rpow_two] using hplain
+  calc
+    ((ENNReal.ofReal (1 + R)) ^ N *
+        eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 4 volume) ^ 2 =
+        (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+          (eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) 4 volume) ^ 2 := by
+      rw [mul_pow]
+      congr 1
+      simpa only [pow_mul, Nat.mul_comm]
+    _ ≤ (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+          (eLpNorm (spaceTimeFourier
+            (jointSchwartzRaw (FourierTransform.fourierInv P))) 2 volume *
+            ENNReal.ofReal ‖P.toLp 1 volume‖) := by
+      gcongr
+    _ = ((ENNReal.ofReal (1 + R)) ^ (2 * N) *
+          eLpNorm (spaceTimeFourier
+            (jointSchwartzRaw (FourierTransform.fourierInv P))) 2 volume) *
+          ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+      ring
+    _ ≤ A * ENNReal.ofReal ‖P.toLp 1 volume‖ := by
+      exact mul_le_mul_left hA _
+
+private noncomputable def aux_temporalSchwartzAnnularNormalTailSpectrum
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  jointSchwartzModulatedAnnularProfile B vartheta rho -
+    jointSchwartzSpectralCutoffProduct
+      (jointSchwartzSpatialNormalCutoff u beta rho)
+      (FourierTransform.fourierInv
+        (jointSchwartzModulatedAnnularProfile B vartheta rho))
+
+private theorem aux_temporalSchwartzAnnularNormalTailSpectrum_apply_toLp_eq
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (z : WaveSpaceTime) :
+    aux_temporalSchwartzAnnularNormalTailSpectrum B u vartheta beta rho
+        (WithLp.toLp 2 z) =
+      spaceTimeFourier
+        (temporalSchwartzAnnularNormalTail B u vartheta beta rho) z := by
+  rw [temporalSchwartzAnnularNormalTail,
+    spaceTimeFourier_jointSchwartzRaw]
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  rfl
+
+private theorem aux_weighted_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail_le
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (R : Real) (N : Nat) (A : ENNReal)
+    (hA : (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+        eLpNorm (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 2 volume ≤ A) :
+    ((ENNReal.ofReal (1 + R)) ^ N *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 4 volume) ^ 2 ≤
+      A * ENNReal.ofReal
+        ‖(aux_temporalSchwartzAnnularNormalTailSpectrum B u vartheta beta rho).toLp
+          1 volume‖ := by
+  simpa only [temporalSchwartzAnnularNormalTail,
+    aux_temporalSchwartzAnnularNormalTailSpectrum] using
+    aux_weighted_eLpNorm_four_sq_jointSchwartzRaw_fourierInv_le
+      (aux_temporalSchwartzAnnularNormalTailSpectrum B u vartheta beta rho) R N A hA
+
+private theorem aux_enorm_toLp_one_tailSpectrum_eq_fourierTail
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real) :
+    ENNReal.ofReal
+        ‖(aux_temporalSchwartzAnnularNormalTailSpectrum B u vartheta beta rho).toLp
+            1 volume‖ =
+      eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 1 volume := by
+  let P := aux_temporalSchwartzAnnularNormalTailSpectrum B u vartheta beta rho
+  calc
+    ENNReal.ofReal ‖P.toLp 1 volume‖ = ‖P.toLp 1 volume‖ₑ := by
+      rw [ofReal_norm]
+    _ = eLpNorm (P : JointWaveSpaceTime → Complex) 1 volume :=
+      Lp.enorm_toLp (P.memLp 1 volume)
+    _ = eLpNorm (jointSchwartzRaw P) 1 volume :=
+      (aux_eLpNorm_jointSchwartzRaw_eq P 1).symm
+    _ = eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 1 volume := by
+      apply eLpNorm_congr_ae
+      filter_upwards with z
+      change P (WithLp.toLp 2 z) = _
+      exact aux_temporalSchwartzAnnularNormalTailSpectrum_apply_toLp_eq
+        B u vartheta beta rho z
+
+private theorem aux_tailFourier_norm_le_smul_profile
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (M : Real)
+    (hM : 0 ≤ M)
+    (hu : ∀ xi ∈ Function.support (B : SurfaceCore.Euclidean 2 → Complex), u xi = 1)
+    (hbeta : ∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M)
+    (zeta : WaveSpaceTime) :
+    ‖spaceTimeFourier
+        (temporalSchwartzAnnularNormalTail B u vartheta beta rho) zeta‖ ≤
+      ‖(M : Complex) •
+        jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho) zeta‖ := by
+  rw [spaceTimeFourier_temporalSchwartzAnnularNormalTail]
+  change ‖(1 - u zeta.1 * beta (zeta.2 - rho zeta.1)) *
+      (B zeta.1 * FourierTransform.fourier
+        (vartheta : Real → Complex) (zeta.2 - rho zeta.1))‖ ≤
+    ‖(M : Complex) •
+      jointSchwartzModulatedAnnularProfile B vartheta rho (WithLp.toLp 2 zeta)‖
+  rw [jointSchwartzModulatedAnnularProfile_apply]
+  rw [norm_smul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hM]
+  by_cases hB : B zeta.1 = 0
+  · simp [hB]
+  · rw [hu zeta.1 hB]
+    simp only [one_mul]
+    rw [norm_mul]
+    exact mul_le_mul_of_nonneg_right (hbeta _) (norm_nonneg _)
+
+private theorem aux_eLpNorm_one_spaceTimeFourier_temporalSchwartzAnnularNormalTail_le_external
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (M : Real)
+    (hM : 0 ≤ M)
+    (hu : ∀ xi ∈ Function.support (B : SurfaceCore.Euclidean 2 → Complex), u xi = 1)
+    (hbeta : ∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M) :
+    eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 1 volume ≤
+      ENNReal.ofReal M *
+        eLpNorm
+          (jointSchwartzRaw
+            (jointSchwartzExternalProduct B (FourierTransform.fourier vartheta)))
+          1 volume := by
+  have htransport :
+      eLpNorm (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho))
+          1 volume =
+        eLpNorm
+          (jointSchwartzRaw
+            (jointSchwartzExternalProduct B (FourierTransform.fourier vartheta)))
+          1 volume := by
+    change eLpNorm
+        (jointSchwartzRaw
+          (jointSchwartzPrecompRadialShear rho
+            (jointSchwartzExternalProduct B (FourierTransform.fourier vartheta))))
+          1 volume = _
+    exact aux_eLpNorm_jointSchwartzRaw_precompRadialShear_eq rho
+      (jointSchwartzExternalProduct B (FourierTransform.fourier vartheta)) 1
+  calc
+    eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 1 volume ≤
+        eLpNorm
+          ((M : Complex) •
+            jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho))
+          1 volume :=
+      eLpNorm_mono
+        (aux_tailFourier_norm_le_smul_profile B u vartheta beta rho M hM hu hbeta)
+    _ = ‖(M : Complex)‖ₑ *
+          eLpNorm (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho))
+            1 volume :=
+      eLpNorm_const_smul (M : Complex)
+        (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho)) 1 volume
+    _ = ENNReal.ofReal M *
+          eLpNorm (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho))
+            1 volume := by
+      congr 1
+      simp [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hM]
+    _ = ENNReal.ofReal M *
+          eLpNorm
+            (jointSchwartzRaw
+              (jointSchwartzExternalProduct B (FourierTransform.fourier vartheta)))
+            1 volume := by
+      rw [htransport]
+
+private theorem aux_weighted_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail_le_of_L2_L1
+    (B u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real)
+    (R : Real) (N : Nat) (A L : ENNReal)
+    (hA : (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume ≤ A)
+    (hL : eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 1 volume ≤ L) :
+    ((ENNReal.ofReal (1 + R)) ^ N *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 4 volume) ^ 2 ≤
+      A * L := by
+  have hA' : (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+      eLpNorm
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 2 volume ≤ A := by
+    rw [eLpNorm_spaceTimeFourier_temporalSchwartzAnnularNormalTail_two_eq]
+    exact hA
+  have hinterp :=
+    aux_weighted_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail_le
+      B u vartheta beta rho R N A hA'
+  rw [aux_enorm_toLp_one_tailSpectrum_eq_fourierTail B u vartheta beta rho] at hinterp
+  exact hinterp.trans (by simpa only [mul_comm] using mul_le_mul_left hL A)
+
+/-- A bounded normal-cutoff defect and normal-ball agreement give an
+arbitrarily rapid uniform squared L4 envelope for the supplied regular
+joint-Schwartz normal-tail model. This has no raw-packet or local-smoothing
+content. -/
+theorem exists_finite_uniform_one_add_normal_radius_pow_mul_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail
+    (B : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (N : Nat) (M : Real) (hM : 0 ≤ M) :
+    ∃ C : ENNReal, C < ∞ ∧ ∀
+      (u : SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+      (beta : SchwartzMap Real Complex)
+      (rho : SchwartzMap (SurfaceCore.Euclidean 2) Real) {R : Real},
+      (∀ xi ∈ Function.support (B : SurfaceCore.Euclidean 2 → Complex), u xi = 1) →
+      0 ≤ R →
+      (∀ s : Real, |s| ≤ R → beta s = 1) →
+      (∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M) →
+      ((ENNReal.ofReal (1 + R)) ^ N *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 4 volume) ^ 2 ≤ C := by
+  obtain ⟨C₂, hC₂top, hC₂⟩ :=
+    exists_finite_uniform_one_add_normal_radius_pow_mul_eLpNorm_two_temporalSchwartzAnnularNormalTail
+      B vartheta (2 * N) M hM
+  let Q : SchwartzMap JointWaveSpaceTime Complex :=
+    jointSchwartzExternalProduct B (FourierTransform.fourier vartheta)
+  let C : ENNReal := C₂ *
+    (ENNReal.ofReal M * eLpNorm (jointSchwartzRaw Q) 1 volume)
+  have hQtop : eLpNorm (jointSchwartzRaw Q) 1 volume < ∞ := by
+    rw [aux_eLpNorm_jointSchwartzRaw_eq Q 1]
+    exact lt_top_iff_ne_top.mpr (Q.memLp 1 volume).eLpNorm_ne_top
+  refine ⟨C, ?_, ?_⟩
+  · dsimp only [C]
+    exact ENNReal.mul_lt_top hC₂top
+      (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hQtop)
+  · intro u beta rho R hu hR hball hdefect
+    have hOne : 0 ≤ 1 + R := by linarith
+    have hA : (ENNReal.ofReal (1 + R)) ^ (2 * N) *
+        eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume ≤ C₂ := by
+      rw [← ENNReal.ofReal_pow hOne]
+      exact hC₂ u beta rho hu hR hball hdefect
+    have hL :
+        eLpNorm
+            (spaceTimeFourier
+              (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 1 volume ≤
+          ENNReal.ofReal M * eLpNorm (jointSchwartzRaw Q) 1 volume := by
+      dsimp only [Q]
+      exact aux_eLpNorm_one_spaceTimeFourier_temporalSchwartzAnnularNormalTail_le_external
+        B u vartheta beta rho M hM hu hdefect
+    simpa only [C] using
+      aux_weighted_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail_le_of_L2_L1
+        B u vartheta beta rho R N C₂
+          (ENNReal.ofReal M * eLpNorm (jointSchwartzRaw Q) 1 volume) hA hL
+
+private theorem aux_ennreal_le_one_add_of_sq_le
+    {x C : ENNReal} (h : x ^ 2 ≤ C) : x ≤ 1 + C := by
+  rcases le_total x 1 with hx | hx
+  · exact hx.trans (by simp)
+  · calc
+      x = x * 1 := (mul_one x).symm
+      _ ≤ x * x := by simpa [mul_comm] using mul_le_mul_left hx x
+      _ = x ^ 2 := (pow_two x).symm
+      _ ≤ C := h
+      _ ≤ 1 + C := by simp
+
+private theorem aux_exists_finite_uniform_weighted_normalTail_finset
+    (radialIndices angularIndices : Finset Int)
+    (B : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (vartheta : Int → Int → SchwartzMap Real Complex)
+    (N : Nat) (M : Real) (hM : 0 ≤ M) :
+    ∃ D : ENNReal, D < ∞ ∧ ∀
+      (u : Int → Int → SchwartzMap (Euclidean 2) Complex)
+      (beta : Int → Int → SchwartzMap Real Complex)
+      (rho : Int → Int → SchwartzMap (Euclidean 2) Real) {normalRadius : Real},
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex), u n nu xi = 1) →
+      0 ≤ normalRadius →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ s : Real, |s| ≤ normalRadius → beta n nu s = 1) →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ s : Real, ‖(1 : Complex) - beta n nu s‖ ≤ M) →
+      (ENNReal.ofReal (1 + normalRadius)) ^ N *
+        (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+          eLpNorm
+            (temporalSchwartzAnnularNormalTail
+              (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)) 4 volume) ≤ D := by
+  choose C hCtop hC using fun n nu =>
+    exists_finite_uniform_one_add_normal_radius_pow_mul_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail
+      (B n nu) (vartheta n nu) N M hM
+  let D : ENNReal := ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, (1 + C n nu)
+  refine ⟨D, ?_, ?_⟩
+  · dsimp only [D]
+    rw [ENNReal.sum_lt_top]
+    intro n hn
+    rw [ENNReal.sum_lt_top]
+    intro nu hnu
+    exact ENNReal.add_lt_top.mpr ⟨by simp, hCtop n nu⟩
+  · intro u beta rho normalRadius hu hnormalRadius hball hdefect
+    dsimp only [D]
+    calc
+      (ENNReal.ofReal (1 + normalRadius)) ^ N *
+          (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+            eLpNorm
+              (temporalSchwartzAnnularNormalTail
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)) 4 volume) =
+          ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+            (ENNReal.ofReal (1 + normalRadius)) ^ N *
+              eLpNorm
+                (temporalSchwartzAnnularNormalTail
+                  (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)) 4 volume := by
+            simp only [Finset.mul_sum]
+      _ ≤ ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, (1 + C n nu) := by
+        apply Finset.sum_le_sum
+        intro n hn
+        apply Finset.sum_le_sum
+        intro nu hnu
+        apply aux_ennreal_le_one_add_of_sq_le
+        exact hC n nu (u n nu) (beta n nu) (rho n nu)
+          (hu n hn nu hnu) hnormalRadius (hball n hn nu hnu)
+          (hdefect n hn nu hnu)
+
+/-- A supplied regular angular/radial model is uniformly approximated by its
+temporal-Schwartz normal projection, with the squared L4 error controlled by
+the literal normal tail. This is a one-packet regular-model statement only. -/
+theorem exists_finite_uniform_one_add_normal_radius_pow_mul_eLpNorm_four_sq_angularPiece_sub_projection_of_schwartzRadialProfile
+    (B R f : SchwartzMap (Euclidean 2) Complex)
+    (vartheta : SchwartzMap Real Complex)
+    (scale : Real) (a chi : Euclidean 2 → Complex) (radialCutoff : Real → Complex)
+    (n : Int) (N : Nat) (M : Real) (hM : 0 ≤ M)
+    (hR : ∀ xi : Euclidean 2,
+      R xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ xi : Euclidean 2, B xi =
+      chi xi * a (scale⁻¹ • xi) *
+        (R xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi)) :
+    ∃ C : ENNReal, C < ∞ ∧ ∀
+      (u : SchwartzMap (Euclidean 2) Complex)
+      (beta : SchwartzMap Real Complex)
+      (rho : SchwartzMap (Euclidean 2) Real) {normalRadius : Real},
+      (∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1) →
+      (∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖) →
+      0 ≤ normalRadius →
+      (∀ s : Real, |s| ≤ normalRadius → beta s = 1) →
+      (∀ s : Real, ‖(1 : Complex) - beta s‖ ≤ M) →
+      ((ENNReal.ofReal (1 + normalRadius)) ^ N *
+        eLpNorm
+          (angularPiece scale a chi (vartheta : Real → Complex)
+            (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) -
+            temporalSchwartzAnnularNormalProjection B u vartheta beta rho)
+          4 volume) ^ 2 ≤ C := by
+  obtain ⟨C, hCtop, hC⟩ :=
+    exists_finite_uniform_one_add_normal_radius_pow_mul_eLpNorm_four_sq_temporalSchwartzAnnularNormalTail
+      B vartheta N M hM
+  refine ⟨C, hCtop, ?_⟩
+  intro u beta rho normalRadius hu hrho hnormalRadius hball hdefect
+  have hsplit :=
+    angularPiece_eq_projection_add_normalTail_of_schwartzRadialProfile
+      B R f u vartheta beta rho scale a chi radialCutoff n hR hB hrho
+  have htail :
+      angularPiece scale a chi (vartheta : Real → Complex)
+          (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex)) -
+          temporalSchwartzAnnularNormalProjection B u vartheta beta rho =
+        temporalSchwartzAnnularNormalTail B u vartheta beta rho := by
+    rw [hsplit]
+    abel
+  rw [htail]
+  exact hC u beta rho hu hnormalRadius hball hdefect
+
+/-- A finite exactly decomposed family is approximated in L4 by its main
+terms with the sum of supplied tail bounds. This is finite Minkowski only:
+it has no square-function, continuum, or local-smoothing content. -/
+theorem eLpNorm_four_finset_sum_sub_le_sum_of_eq_add_of_tail_bounds
+    {ι : Type*} (indices : Finset ι)
+    (main tail full : ι → WaveSpaceTime → Complex)
+    (hdecomp : ∀ i ∈ indices, full i = main i + tail i)
+    (htailMeas : ∀ i ∈ indices, AEStronglyMeasurable (tail i) volume)
+    (E : ι → ENNReal)
+    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i) :
+    eLpNorm ((∑ i ∈ indices, full i) - ∑ i ∈ indices, main i) 4 volume ≤
+      ∑ i ∈ indices, E i := by
+  have hsum : (∑ i ∈ indices, full i) - ∑ i ∈ indices, main i =
+      ∑ i ∈ indices, tail i := by
+    rw [← Finset.sum_sub_distrib]
+    apply Finset.sum_congr rfl
+    intro i hi
+    rw [hdecomp i hi]
+    simp
+  rw [hsum]
+  calc
+    eLpNorm (∑ i ∈ indices, tail i) 4 volume ≤
+        ∑ i ∈ indices, eLpNorm (tail i) 4 volume := by
+      apply eLpNorm_sum_le
+      · intro i hi
+        exact htailMeas i hi
+      · norm_num
+    _ ≤ ∑ i ∈ indices, E i := by
+      apply Finset.sum_le_sum
+      intro i hi
+      exact hE i hi
+
+/-- The Fourier transform of the projected temporal-Schwartz annular
+positive half-wave is exactly its joint spatial/normal cutoff times the
+unprojected profile. -/
+theorem spaceTimeFourier_temporalSchwartzAnnularNormalProjection
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (zeta : WaveSpaceTime) :
+    spaceTimeFourier
+        (temporalSchwartzAnnularNormalProjection B u vartheta beta rho) zeta =
+      jointSchwartzSpatialNormalCutoff u beta rho (WithLp.toLp 2 zeta) *
+        spaceTimeFourier
+          (fun z : WaveSpaceTime =>
+            vartheta z.2 * FourierTransform.fourierInv
+              (fun xi : Euclidean 2 =>
+                B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1) zeta := by
+  unfold temporalSchwartzAnnularNormalProjection
+  rw [spaceTimeFourier_jointSchwartzSpectralCutoffOutput]
+  change jointSchwartzSpectralCutoffProduct
+      (jointSchwartzSpatialNormalCutoff u beta rho)
+      (FourierTransform.fourierInv
+        (jointSchwartzModulatedAnnularProfile B vartheta rho))
+      (WithLp.toLp 2 zeta) = _
+  rw [jointSchwartzSpectralCutoffProduct,
+    SchwartzMap.smulLeftCLM_apply_apply
+      (jointSchwartzSpatialNormalCutoff u beta rho).hasTemperateGrowth]
+  rw [FourierTransform.fourier_fourierInv_eq]
+  simp only [smul_eq_mul]
+  rw [spaceTimeFourier_temporalSchwartzHalfWave_eq_jointSchwartzModulatedAnnularProfile
+    B vartheta rho hrho zeta]
+
+/-- The supplied temporal-Schwartz normal projection has the literal joint
+Fourier amplitude determined by its spatial and normal profiles.  This remains
+joint in `(ξ, τ)` and is not identified with a separable spectral packet. -/
+theorem spaceTimeFourier_temporalSchwartzAnnularNormalProjection_eq_jointAmplitude
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1)
+    (xi : Euclidean 2) (tau : Real) :
+    spaceTimeFourier
+        (temporalSchwartzAnnularNormalProjection B u vartheta beta rho) (xi, tau) =
+      B xi *
+        (beta (tau - rho xi) *
+          FourierTransform.fourier (vartheta : Real → Complex) (tau - rho xi)) := by
+  unfold temporalSchwartzAnnularNormalProjection
+  rw [spaceTimeFourier_jointSchwartzSpectralCutoffOutput]
+  change jointSchwartzSpectralCutoffProduct
+      (jointSchwartzSpatialNormalCutoff u beta rho)
+      (FourierTransform.fourierInv
+        (jointSchwartzModulatedAnnularProfile B vartheta rho))
+      (WithLp.toLp 2 (xi, tau)) = _
+  rw [jointSchwartzSpectralCutoffProduct,
+    SchwartzMap.smulLeftCLM_apply_apply
+      (jointSchwartzSpatialNormalCutoff u beta rho).hasTemperateGrowth]
+  rw [FourierTransform.fourier_fourierInv_eq]
+  rw [jointSchwartzSpatialNormalCutoff_apply,
+    jointSchwartzModulatedAnnularProfile_apply]
+  by_cases hB : B xi = 0
+  · simp [hB]
+  · have hxi : xi ∈ Function.support (B : Euclidean 2 → Complex) := hB
+    rw [hu xi hxi]
+    ring
+
+private def aux_spatialNormalStrip
+    (B : Euclidean 2 → Complex) (beta : Real → Complex)
+    (rho : Euclidean 2 → Real) : Set WaveSpaceTime :=
+  {zeta | zeta.1 ∈ Function.support B ∧
+    zeta.2 - rho zeta.1 ∈ Function.support beta}
+
+private theorem aux_jointSchwartzSpatialNormalCutoff_mul_spaceTimeFourier_temporalSchwartzHalfWave
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1)
+    (zeta : WaveSpaceTime) :
+    jointSchwartzSpatialNormalCutoff u beta rho (WithLp.toLp 2 zeta) *
+        spaceTimeFourier
+          (fun z : WaveSpaceTime =>
+            vartheta z.2 * FourierTransform.fourierInv
+              (fun xi : Euclidean 2 =>
+                B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1) zeta =
+      B zeta.1 *
+        (beta (zeta.2 - rho zeta.1) *
+          FourierTransform.fourier (vartheta : Real → Complex)
+            (zeta.2 - rho zeta.1)) := by
+  rw [spaceTimeFourier_temporalSchwartzHalfWave_eq_jointSchwartzModulatedAnnularProfile
+    B vartheta rho hrho zeta,
+    jointSchwartzModulatedAnnularProfile_apply,
+    jointSchwartzSpatialNormalCutoff_apply]
+  by_cases hB : B zeta.1 = 0
+  · simp [hB]
+  · rw [hu zeta.1 hB]
+    ring
+
+private theorem aux_support_spaceTimeFourier_temporalSchwartzAnnularNormalProjection_subset_spatialNormalStrip
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1) :
+    Function.support
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalProjection B u vartheta beta rho)) ⊆
+      aux_spatialNormalStrip (B : Euclidean 2 → Complex) (beta : Real → Complex)
+        (rho : Euclidean 2 → Real) := by
+  intro zeta hzeta
+  change spaceTimeFourier
+      (temporalSchwartzAnnularNormalProjection B u vartheta beta rho) zeta ≠ 0 at hzeta
+  rw [spaceTimeFourier_temporalSchwartzAnnularNormalProjection
+    B u vartheta beta rho hrho zeta] at hzeta
+  rw [aux_jointSchwartzSpatialNormalCutoff_mul_spaceTimeFourier_temporalSchwartzHalfWave
+    B u vartheta beta rho hrho hu zeta] at hzeta
+  change B zeta.1 *
+      (beta (zeta.2 - rho zeta.1) *
+        FourierTransform.fourier (vartheta : Real → Complex)
+          (zeta.2 - rho zeta.1)) ≠ 0 at hzeta
+  rcases mul_ne_zero_iff.mp hzeta with ⟨hB, htail⟩
+  rcases mul_ne_zero_iff.mp htail with ⟨hbeta, _⟩
+  exact ⟨hB, hbeta⟩
+
+/-- Explicit spatial, vertical-label, and normal-width hypotheses put the
+Fourier support of the projected temporal-Schwartz annular half-wave in a
+conic plate.  This is a statement about the projected model only. -/
+theorem support_spaceTimeFourier_temporalSchwartzAnnularNormalProjection_subset_conicPlate
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (scale gamma angularConstant : Real) (n : Int) (direction : Euclidean 2)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (hu : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), u xi = 1)
+    (hspatial : Function.support (B : Euclidean 2 → Complex) ⊆
+      {xi | scale / 4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4 * scale ∧
+        xi ∈ angularSector direction
+          (angularConstant * scale ^ (-(1 / 2 : Real)))})
+    (hvertical : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex),
+      ∀ s ∈ Function.support (beta : Real → Complex),
+        |(Real.sqrt scale)⁻¹ * (rho xi + s) - n| ≤ 1)
+    (hnormal : ∀ s ∈ Function.support (beta : Real → Complex),
+      |s| ≤ 2 * scale ^ gamma) :
+    Function.support
+        (spaceTimeFourier
+          (temporalSchwartzAnnularNormalProjection B u vartheta beta rho)) ⊆
+      conicPlate scale gamma angularConstant n direction := by
+  intro zeta hzeta
+  have hstrip :=
+    aux_support_spaceTimeFourier_temporalSchwartzAnnularNormalProjection_subset_spatialNormalStrip
+      B u vartheta beta rho hrho hu hzeta
+  rcases hstrip with ⟨hB, hbeta⟩
+  rcases hspatial hB with ⟨hlow, hhigh, hangular⟩
+  refine ⟨hlow, hhigh, hangular, ?_, ?_⟩
+  · have hvertical' := hvertical zeta.1 hB (zeta.2 - rho zeta.1) hbeta
+    have hsum : rho zeta.1 + (zeta.2 - rho zeta.1) = zeta.2 := by
+      ring
+    rw [hsum] at hvertical'
+    exact hvertical'
+  · rw [← hrho zeta.1 hB]
+    exact hnormal (zeta.2 - rho zeta.1) hbeta
+
+/-- A joint-Schwartz spectral realization with a conically supported cutoff
+gives exactly the plate-support premise consumed by `overlapSquareFunction`.
+This statement intentionally does not apply to raw compact physical-time
+half-waves. -/
+theorem support_spaceTimeFourier_wavefrontProjection_subset_conicPlate_of_jointSchwartzRealization
+    (angularCutoff : Euclidean 2 → Complex) (normalCutoff : Real → Complex)
+    (scale gamma angularConstant : Real) (n : Int) (direction : Euclidean 2)
+    (q G : SchwartzMap JointWaveSpaceTime Complex)
+    (hrealize : ∀ ζ : WaveSpaceTime,
+      wavefrontMultiplier angularCutoff normalCutoff scale gamma ζ *
+          FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+            (WithLp.toLp 2 ζ) =
+        q (WithLp.toLp 2 ζ) *
+          FourierTransform.fourier (G : JointWaveSpaceTime → Complex)
+            (WithLp.toLp 2 ζ))
+    (hq : Function.support (fun ζ : WaveSpaceTime => q (WithLp.toLp 2 ζ)) ⊆
+      conicPlate scale gamma angularConstant n direction) :
+    Function.support
+        (spaceTimeFourier
+          (wavefrontProjection angularCutoff normalCutoff scale gamma
+            (jointSchwartzRaw G))) ⊆
+      conicPlate scale gamma angularConstant n direction := by
+  rw [wavefrontProjection_eq_jointSchwartzSpectralCutoffOutput_of_realization
+    angularCutoff normalCutoff scale gamma q G hrealize]
+  intro ζ hζ
+  change spaceTimeFourier (jointSchwartzSpectralCutoffOutput q G) ζ ≠ 0 at hζ
+  rw [spaceTimeFourier_jointSchwartzSpectralCutoffOutput q G ζ] at hζ
+  apply hq
+  intro hqzero
+  apply hζ
+  change q (WithLp.toLp 2 ζ) = 0 at hqzero
+  rw [jointSchwartzSpectralCutoffProduct,
+    SchwartzMap.smulLeftCLM_apply_apply q.hasTemperateGrowth, hqzero]
+  simp
 
 /-- A spectral tensor packet, localized in the radial label by the literal
 vertical multiplier.  Its temporal factor is Schwartz; in particular this is
@@ -4388,6 +7612,201 @@ noncomputable def angularRadialSquareFunction (radialIndices angularIndices : Fi
     (H : Int → Int → WaveSpaceTime → Complex) : WaveSpaceTime → Real :=
   fun z => Real.sqrt (∑ n ∈ radialIndices, ∑ ν ∈ angularIndices, ‖H n ν z‖ ^ 2)
 
+/- The next finite-index helpers are deliberately private.  They formulate the
+underlying `ℓ²` calculation on an arbitrary finite index type, rather than
+changing the existing `Int`-indexed vertical-square API. -/
+private noncomputable def aux_finiteSquareFunction {ι : Type*} [DecidableEq ι]
+    (indices : Finset ι) (H : ι → WaveSpaceTime → Complex) : WaveSpaceTime → Real :=
+  fun z => Real.sqrt (∑ i ∈ indices, ‖H i z‖ ^ 2)
+
+private theorem aux_finiteSquareFunction_eq_norm_piLp
+    {ι : Type*} [DecidableEq ι]
+    (indices : Finset ι) (H : ι → WaveSpaceTime → Complex)
+    (z : WaveSpaceTime) :
+    aux_finiteSquareFunction indices H z =
+      ‖(WithLp.toLp 2 (fun i : (↥indices) => H i z) :
+        PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖ := by
+  rw [PiLp.norm_eq_of_L2]
+  change aux_finiteSquareFunction indices H z =
+    Real.sqrt (∑ i : (↥indices), ‖H i z‖ ^ (2 : Nat))
+  rw [Finset.sum_coe_sort indices (fun i => ‖H i z‖ ^ (2 : Nat))]
+  rfl
+
+private theorem aux_finiteSquareFunction_sub_le_sum_norm_tail
+    {ι : Type*} [DecidableEq ι]
+    (indices : Finset ι)
+    (full main tail : ι → WaveSpaceTime → Complex)
+    (hdecomp : ∀ i ∈ indices, ∀ z, full i z = main i z + tail i z)
+    (z : WaveSpaceTime) :
+    ‖aux_finiteSquareFunction indices full z -
+        aux_finiteSquareFunction indices main z‖ ≤
+      ∑ i ∈ indices, ‖tail i z‖ := by
+  let F : PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    WithLp.toLp 2 (fun i : (↥indices) => full i z)
+  let M : PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    WithLp.toLp 2 (fun i : (↥indices) => main i z)
+  let T : PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    WithLp.toLp 2 (fun i : (↥indices) => tail i z)
+  let e : (↥indices) → PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) :=
+    fun i => PiLp.single 2 i (tail i z)
+  have hFM : F = M + T := by
+    dsimp [F, M, T]
+    rw [← WithLp.toLp_add]
+    congr 1
+    funext i
+    exact hdecomp i i.property z
+  have hTsum : T = ∑ i : (↥indices), e i := by
+    dsimp [T]
+    rw [← WithLp.toLp_sum]
+    congr 1
+    ext i
+    simp
+  calc
+    ‖aux_finiteSquareFunction indices full z -
+        aux_finiteSquareFunction indices main z‖ = ‖‖F‖ - ‖M‖‖ := by
+      rw [aux_finiteSquareFunction_eq_norm_piLp,
+        aux_finiteSquareFunction_eq_norm_piLp]
+    _ ≤ ‖F - M‖ := abs_norm_sub_norm_le _ _
+    _ = ‖T‖ := by rw [hFM, add_sub_cancel_left]
+    _ = ‖∑ i : (↥indices), e i‖ := by rw [hTsum]
+    _ ≤ ∑ i : (↥indices), ‖e i‖ := by
+      exact norm_sum_le (Finset.univ : Finset (↥indices)) e
+    _ = ∑ i ∈ indices, ‖tail i z‖ := by
+      simp only [e, PiLp.norm_single]
+      exact Finset.sum_coe_sort indices (fun i => ‖tail i z‖)
+
+private theorem aux_eLpNorm_four_finiteSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    {ι : Type*} [DecidableEq ι]
+    (indices : Finset ι)
+    (full main tail : ι → WaveSpaceTime → Complex)
+    (hdecomp : ∀ i ∈ indices, ∀ z, full i z = main i z + tail i z)
+    (htailMeas : ∀ i ∈ indices, AEStronglyMeasurable (tail i) volume)
+    (E : ι → ENNReal)
+    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i) :
+    eLpNorm (aux_finiteSquareFunction indices full -
+      aux_finiteSquareFunction indices main) 4 volume ≤
+        ∑ i ∈ indices, E i := by
+  let G : WaveSpaceTime → Real := fun z => ∑ i ∈ indices, ‖tail i z‖
+  have hGnonneg (z : WaveSpaceTime) : 0 ≤ G z := by
+    exact Finset.sum_nonneg fun _ _ => norm_nonneg _
+  have hmono (z : WaveSpaceTime) :
+      ‖(aux_finiteSquareFunction indices full -
+          aux_finiteSquareFunction indices main) z‖ ≤ ‖G z‖ := by
+    change |(aux_finiteSquareFunction indices full -
+      aux_finiteSquareFunction indices main) z| ≤ |G z|
+    rw [abs_of_nonneg (hGnonneg z)]
+    exact aux_finiteSquareFunction_sub_le_sum_norm_tail
+      indices full main tail hdecomp z
+  calc
+    eLpNorm (aux_finiteSquareFunction indices full -
+        aux_finiteSquareFunction indices main) 4 volume ≤ eLpNorm G 4 volume :=
+      eLpNorm_mono hmono
+    _ = eLpNorm (fun z => ∑ i ∈ indices, ‖tail i z‖) 4 volume := rfl
+    _ = eLpNorm (∑ i ∈ indices, fun z => ‖tail i z‖) 4 volume := by
+      congr 1
+      funext z
+      simp only [Finset.sum_apply]
+    _ ≤ ∑ i ∈ indices, eLpNorm (fun z => ‖tail i z‖) 4 volume := by
+      apply eLpNorm_sum_le
+      · intro i hi
+        exact (htailMeas i hi).norm
+      · norm_num
+    _ = ∑ i ∈ indices, eLpNorm (tail i) 4 volume := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      exact eLpNorm_norm (tail i)
+    _ ≤ ∑ i ∈ indices, E i := by
+      apply Finset.sum_le_sum
+      intro i hi
+      exact hE i hi
+
+private theorem aux_angularRadialSquareFunction_eq_finiteSquareFunction_product
+    (radialIndices angularIndices : Finset Int)
+    (H : Int → Int → WaveSpaceTime → Complex) :
+    angularRadialSquareFunction radialIndices angularIndices H =
+      aux_finiteSquareFunction (radialIndices.product angularIndices)
+        (fun i z => H i.1 i.2 z) := by
+  funext z
+  unfold angularRadialSquareFunction aux_finiteSquareFunction
+  apply congrArg Real.sqrt
+  exact (Finset.sum_product radialIndices angularIndices
+    (fun i : Int × Int => ‖H i.1 i.2 z‖ ^ (2 : Nat))).symm
+
+/-- A two-index finite square function is stable in `L⁴` under componentwise
+additive tails.  This is an elementary finite `ℓ²`/Minkowski estimate, with no
+square-function, continuum, or local-smoothing assertion. -/
+theorem eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    (radialIndices angularIndices : Finset Int)
+    (full main tail : Int → Int → WaveSpaceTime → Complex)
+    (hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
+      full n nu z = main n nu z + tail n nu z)
+    (htailMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (tail n nu) volume)
+    (E : Int → Int → ENNReal)
+    (hE : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      eLpNorm (tail n nu) 4 volume ≤ E n nu) :
+    eLpNorm
+        (angularRadialSquareFunction radialIndices angularIndices full -
+          angularRadialSquareFunction radialIndices angularIndices main)
+        4 volume ≤
+      ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E n nu := by
+  let full' : Int × Int → WaveSpaceTime → Complex := fun i z => full i.1 i.2 z
+  let main' : Int × Int → WaveSpaceTime → Complex := fun i z => main i.1 i.2 z
+  let tail' : Int × Int → WaveSpaceTime → Complex := fun i z => tail i.1 i.2 z
+  let E' : Int × Int → ENNReal := fun i => E i.1 i.2
+  have hdecomp' : ∀ i ∈ radialIndices.product angularIndices, ∀ z,
+      full' i z = main' i z + tail' i z := by
+    intro i hi z
+    obtain ⟨hn, hnu⟩ := Finset.mem_product.mp hi
+    exact hdecomp i.1 hn i.2 hnu z
+  have htailMeas' : ∀ i ∈ radialIndices.product angularIndices,
+      AEStronglyMeasurable (tail' i) volume := by
+    intro i hi
+    obtain ⟨hn, hnu⟩ := Finset.mem_product.mp hi
+    exact htailMeas i.1 hn i.2 hnu
+  have hE' : ∀ i ∈ radialIndices.product angularIndices,
+      eLpNorm (tail' i) 4 volume ≤ E' i := by
+    intro i hi
+    obtain ⟨hn, hnu⟩ := Finset.mem_product.mp hi
+    exact hE i.1 hn i.2 hnu
+  have hfinite := aux_eLpNorm_four_finiteSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    (radialIndices.product angularIndices) full' main' tail' hdecomp' htailMeas' E' hE'
+  have hfull : angularRadialSquareFunction radialIndices angularIndices full =
+      aux_finiteSquareFunction (radialIndices.product angularIndices) full' := by
+    dsimp only [full']
+    exact aux_angularRadialSquareFunction_eq_finiteSquareFunction_product
+      radialIndices angularIndices full
+  have hmain : angularRadialSquareFunction radialIndices angularIndices main =
+      aux_finiteSquareFunction (radialIndices.product angularIndices) main' := by
+    dsimp only [main']
+    exact aux_angularRadialSquareFunction_eq_finiteSquareFunction_product
+      radialIndices angularIndices main
+  rw [hfull, hmain]
+  calc
+    eLpNorm
+        (aux_finiteSquareFunction (radialIndices.product angularIndices) full' -
+          aux_finiteSquareFunction (radialIndices.product angularIndices) main')
+        4 volume ≤
+      ∑ i ∈ radialIndices.product angularIndices, E' i := hfinite
+    _ = ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E n nu := by
+      dsimp only [E']
+      exact Finset.sum_product radialIndices angularIndices (fun i : Int × Int => E i.1 i.2)
+
+private theorem aux_aestronglyMeasurable_angularRadialSquareFunction
+    (radialIndices angularIndices : Finset Int)
+    (H : Int → Int → WaveSpaceTime → Complex)
+    (hH : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (H n nu) volume) :
+    AEStronglyMeasurable
+      (angularRadialSquareFunction radialIndices angularIndices H) volume := by
+  unfold angularRadialSquareFunction
+  apply Real.continuous_sqrt.comp_aestronglyMeasurable
+  apply Finset.aestronglyMeasurable_fun_sum radialIndices
+  intro n hn
+  apply Finset.aestronglyMeasurable_fun_sum angularIndices
+  intro nu hnu
+  exact (hH n hn nu hnu).norm.pow 2
+
 /-- The square function after recombining the angular pieces for each fixed
 radial label.  It is the left-hand square function in the plate-overlap
 consequence from the MSS blueprint. -/
@@ -4395,6 +7814,162 @@ noncomputable def aux_angularRadialRecombinedSquareFunction
     (radialIndices angularIndices : Finset Int)
     (H : Int → Int → WaveSpaceTime → Complex) : WaveSpaceTime → Real :=
   fun z => Real.sqrt (∑ n ∈ radialIndices, ‖∑ ν ∈ angularIndices, H n ν z‖ ^ 2)
+
+/-- The finite recombined angular/radial square function is stable in `L⁴`
+under componentwise additive tails.  This is a finite `ℓ²`/Minkowski estimate;
+it does not assert a square-function estimate, a continuum limit, or local
+smoothing. -/
+theorem eLpNorm_four_aux_angularRadialRecombinedSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    (radialIndices angularIndices : Finset Int)
+    (full main tail : Int → Int → WaveSpaceTime → Complex)
+    (hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
+      full n nu z = main n nu z + tail n nu z)
+    (htailMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (tail n nu) volume)
+    (E : Int → Int → ENNReal)
+    (hE : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      eLpNorm (tail n nu) 4 volume ≤ E n nu) :
+    eLpNorm
+        (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
+          aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+        4 volume ≤ ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E n nu := by
+  let full' : Int → WaveSpaceTime → Complex :=
+    fun n z => ∑ nu ∈ angularIndices, full n nu z
+  let main' : Int → WaveSpaceTime → Complex :=
+    fun n z => ∑ nu ∈ angularIndices, main n nu z
+  let tail' : Int → WaveSpaceTime → Complex :=
+    fun n z => ∑ nu ∈ angularIndices, tail n nu z
+  let E' : Int → ENNReal := fun n => ∑ nu ∈ angularIndices, E n nu
+  have hdecomp' : ∀ n ∈ radialIndices, ∀ z, full' n z = main' n z + tail' n z := by
+    intro n hn z
+    dsimp [full', main', tail']
+    rw [← Finset.sum_add_distrib]
+    apply Finset.sum_congr rfl
+    intro nu hnu
+    exact hdecomp n hn nu hnu z
+  have htailMeas' : ∀ n ∈ radialIndices, AEStronglyMeasurable (tail' n) volume := by
+    intro n hn
+    dsimp [tail']
+    apply Finset.aestronglyMeasurable_fun_sum angularIndices
+    intro nu hnu
+    exact htailMeas n hn nu hnu
+  have hE' : ∀ n ∈ radialIndices, eLpNorm (tail' n) 4 volume ≤ E' n := by
+    intro n hn
+    have htail'_eq : tail' n = ∑ nu ∈ angularIndices, tail n nu := by
+      funext z
+      simp only [tail', Finset.sum_apply]
+    rw [htail'_eq]
+    dsimp only [E']
+    calc
+      eLpNorm (∑ nu ∈ angularIndices, tail n nu) 4 volume ≤
+          ∑ nu ∈ angularIndices, eLpNorm (tail n nu) 4 volume := by
+        apply eLpNorm_sum_le
+        · intro nu hnu
+          exact htailMeas n hn nu hnu
+        · norm_num
+      _ ≤ ∑ nu ∈ angularIndices, E n nu := by
+        apply Finset.sum_le_sum
+        intro nu hnu
+        exact hE n hn nu hnu
+  have hvertical := eLpNorm_four_verticalSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    radialIndices full' main' tail' hdecomp' htailMeas' E' hE'
+  have hfull : aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full =
+      verticalSquareFunction radialIndices full' := by
+    rfl
+  have hmain : aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main =
+      verticalSquareFunction radialIndices main' := by
+    rfl
+  rw [hfull, hmain]
+  simpa only [E'] using hvertical
+
+private theorem aux_aestronglyMeasurable_aux_angularRadialRecombinedSquareFunction
+    (radialIndices angularIndices : Finset Int)
+    (H : Int → Int → WaveSpaceTime → Complex)
+    (hH : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (H n nu) volume) :
+    AEStronglyMeasurable
+      (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices H) volume := by
+  unfold aux_angularRadialRecombinedSquareFunction
+  apply Real.continuous_sqrt.comp_aestronglyMeasurable
+  apply Finset.aestronglyMeasurable_fun_sum radialIndices
+  intro n hn
+  apply AEStronglyMeasurable.pow
+  apply AEStronglyMeasurable.norm
+  apply Finset.aestronglyMeasurable_fun_sum angularIndices
+  intro nu hnu
+  exact hH n hn nu hnu
+
+private theorem aux_eLpNorm_aux_angularRadialRecombinedSquareFunction_full_le_main_add_sum_tails
+    (radialIndices angularIndices : Finset Int)
+    (full main tail : Int → Int → WaveSpaceTime → Complex)
+    (hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
+      full n nu z = main n nu z + tail n nu z)
+    (hmainMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (main n nu) volume)
+    (htailMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (tail n nu) volume)
+    (E : Int → Int → ENNReal)
+    (hE : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      eLpNorm (tail n nu) 4 volume ≤ E n nu) :
+    eLpNorm
+        (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full)
+        4 volume ≤
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+          4 volume + ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E n nu := by
+  have hfullMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (full n nu) volume := by
+    intro n hn nu hnu
+    exact ((hmainMeas n hn nu hnu).add (htailMeas n hn nu hnu)).congr
+      (Filter.Eventually.of_forall fun z => (hdecomp n hn nu hnu z).symm)
+  have hfullRec := aux_aestronglyMeasurable_aux_angularRadialRecombinedSquareFunction
+    radialIndices angularIndices full hfullMeas
+  have hmainRec := aux_aestronglyMeasurable_aux_angularRadialRecombinedSquareFunction
+    radialIndices angularIndices main hmainMeas
+  have htriangle :
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full)
+          4 volume ≤
+        eLpNorm
+            (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
+              aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+            4 volume +
+          eLpNorm
+            (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+            4 volume := by
+    calc
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full)
+          4 volume =
+          eLpNorm
+            ((aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
+              aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main) +
+              aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+            4 volume := by
+          congr 1
+          funext z
+          simp only [Pi.sub_apply, Pi.add_apply]
+          abel
+      _ ≤ _ := eLpNorm_add_le (hfullRec.sub hmainRec) hmainRec (by norm_num)
+  calc
+    eLpNorm
+        (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full)
+        4 volume ≤
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
+            aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+          4 volume +
+        eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+          4 volume := htriangle
+    _ ≤ (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E n nu) +
+        eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
+          4 volume := by
+      gcongr
+      exact eLpNorm_four_aux_angularRadialRecombinedSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+        radialIndices angularIndices full main tail hdecomp htailMeas E hE
+    _ = _ := add_comm _ _
 
 /-- The vector-valued estimate removing the vertical projections from the
 radial/angular square function.  This is the common-positive-kernel
@@ -8876,6 +12451,659 @@ def overlapSquareFunction (maxLevel : Real → Nat)
                     eLpNorm (angularRadialSquareFunction radialIndices angularIndices G)
                       (4 : ENNReal) volume
 
+/-- A finite family of supplied temporal-Schwartz normal projections directly
+consumes the analytic plate-overlap square-function hypothesis once each joint
+Fourier profile satisfies the displayed conic-plate criterion.  The conclusion
+is solely for this literal projected model: it neither identifies it with a
+raw `angularPiece` nor asserts a separable spectral-packet representation. -/
+theorem overlapSquareFunction_temporalSchwartzAnnularNormalProjections
+    (maxLevel : Real → Nat)
+    (angularConstant sectorRadius spacingLower spacingUpper : Real)
+    (hoverlap : overlapSquareFunction maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper)
+    (hangular : 0 < angularConstant)
+    (eta : Real) (heta : 0 < eta)
+    (gamma : Real) (hgamma : 0 < gamma) (hgammaUpper : gamma < 1 / 10)
+    (scale : Real) (hscale : 2 ≤ scale)
+    (radialIndices angularIndices : Finset Int) (directions : Int → Euclidean 2)
+    (hgeometry : angularSectorGeometry scale angularIndices directions
+      sectorRadius spacingLower spacingUpper)
+    (B u : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : Int → Int → SchwartzMap Real Complex)
+    (rho : Int → Int → SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        rho n nu xi = ‖xi‖)
+    (hu : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex), u n nu xi = 1)
+    (hspatial : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      Function.support (B n nu : Euclidean 2 → Complex) ⊆
+        {xi | scale / 4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4 * scale ∧
+          xi ∈ angularSector (directions nu)
+            (angularConstant * scale ^ (-(1 / 2 : Real)))})
+    (hvertical : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+      ∀ s ∈ Function.support (beta n nu : Real → Complex),
+        |(Real.sqrt scale)⁻¹ * (rho n nu xi + s) - n| ≤ 1)
+    (hnormal : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ s ∈ Function.support (beta n nu : Real → Complex),
+        |s| ≤ 2 * scale ^ gamma) :
+    ∃ C : Real, 0 < C ∧
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => temporalSchwartzAnnularNormalProjection
+              (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+          (4 : ENNReal) volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => temporalSchwartzAnnularNormalProjection
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+            (4 : ENNReal) volume := by
+  have hplate : plateOverlap maxLevel angularConstant sectorRadius spacingLower spacingUpper :=
+    plateOverlap_of_angularSectorGeometry maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper hangular
+  rcases hoverlap hplate eta heta with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  apply hbound gamma hgamma hgammaUpper scale hscale radialIndices angularIndices directions
+    hgeometry
+  intro n hn nu hnu
+  exact support_spaceTimeFourier_temporalSchwartzAnnularNormalProjection_subset_conicPlate
+    (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+    scale gamma angularConstant n (directions nu)
+    (hrho n hn nu hnu) (hu n hn nu hnu) (hspatial n hn nu hnu)
+    (hvertical n hn nu hnu) (hnormal n hn nu hnu)
+
+private theorem aux_aestronglyMeasurable_temporalSchwartzAnnularNormalProjection
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    AEStronglyMeasurable
+      (temporalSchwartzAnnularNormalProjection B u vartheta beta rho) volume := by
+  unfold temporalSchwartzAnnularNormalProjection jointSchwartzSpectralCutoffOutput
+    jointSchwartzRaw
+  exact
+    ((FourierTransform.fourierInv
+      (jointSchwartzSpectralCutoffProduct
+        (jointSchwartzSpatialNormalCutoff u beta rho)
+        (FourierTransform.fourierInv
+          (jointSchwartzModulatedAnnularProfile B vartheta rho)))).continuous.comp
+        (WithLp.prod_continuous_toLp 2 _ _)).aestronglyMeasurable
+
+private theorem aux_aestronglyMeasurable_temporalSchwartzAnnularNormalTail
+    (B u : SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) :
+    AEStronglyMeasurable
+      (temporalSchwartzAnnularNormalTail B u vartheta beta rho) volume := by
+  unfold temporalSchwartzAnnularNormalTail jointSchwartzRaw
+  exact
+    ((FourierTransform.fourierInv
+      (jointSchwartzModulatedAnnularProfile B vartheta rho -
+        jointSchwartzSpectralCutoffProduct
+          (jointSchwartzSpatialNormalCutoff u beta rho)
+          (FourierTransform.fourierInv
+            (jointSchwartzModulatedAnnularProfile B vartheta rho)))).continuous.comp
+        (WithLp.prod_continuous_toLp 2 _ _)).aestronglyMeasurable
+
+/-- A finite supplied regular angular/radial model is controlled by the
+literal normal-projection overlap estimate plus its finite normal-tail error.
+All radial profiles and spatial amplitudes are supplied explicitly.  This is
+not an assertion about raw compact-time packets, fine square functions,
+continuum limits, or `p4LocalSmoothing`. -/
+theorem exists_regularAngularPiece_recombined_square_bound_of_overlap_plus_normalTails
+    (maxLevel : Real → Nat)
+    (angularConstant sectorRadius spacingLower spacingUpper : Real)
+    (hoverlap : overlapSquareFunction maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper)
+    (hangular : 0 < angularConstant)
+    (eta : Real) (heta : 0 < eta)
+    (gamma : Real) (hgamma : 0 < gamma) (hgammaUpper : gamma < 1 / 10)
+    (scale : Real) (hscale : 2 ≤ scale)
+    (radialIndices angularIndices : Finset Int) (directions : Int → Euclidean 2)
+    (hgeometry : angularSectorGeometry scale angularIndices directions
+      sectorRadius spacingLower spacingUpper)
+    (B R u : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : Int → Int → SchwartzMap Real Complex)
+    (rho : Int → Int → SchwartzMap (Euclidean 2) Real)
+    (f : SchwartzMap (Euclidean 2) Complex)
+    (a : Euclidean 2 → Complex)
+    (chi : Int → Euclidean 2 → Complex)
+    (radialCutoff : Real → Complex)
+    (hR : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2,
+        R n nu xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2, B n nu xi =
+        chi nu xi * a (scale⁻¹ • xi) *
+          (R n nu xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi))
+    (hrho : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        rho n nu xi = ‖xi‖)
+    (hu : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        u n nu xi = 1)
+    (hspatial : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      Function.support (B n nu : Euclidean 2 → Complex) ⊆
+        {xi | scale / 4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4 * scale ∧
+          xi ∈ angularSector (directions nu)
+            (angularConstant * scale ^ (-(1 / 2 : Real)))})
+    (hvertical : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+      ∀ s ∈ Function.support (beta n nu : Real → Complex),
+        |(Real.sqrt scale)⁻¹ * (rho n nu xi + s) - n| ≤ 1)
+    (hnormal : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ s ∈ Function.support (beta n nu : Real → Complex),
+        |s| ≤ 2 * scale ^ gamma) :
+    ∃ C : Real, 0 < C ∧
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          4 volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => temporalSchwartzAnnularNormalProjection
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+            4 volume +
+          ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+            eLpNorm
+              (temporalSchwartzAnnularNormalTail
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu))
+              4 volume := by
+  let A : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+      (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))
+  let P : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => temporalSchwartzAnnularNormalProjection
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  let T : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => temporalSchwartzAnnularNormalTail
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
+      A n nu z = P n nu z + T n nu z := by
+    intro n hn nu hnu z
+    exact congrFun
+      (angularPiece_eq_projection_add_normalTail_of_schwartzRadialProfile
+        (B n nu) (R n nu) f (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+        scale a (chi nu) radialCutoff n (hR n hn nu hnu) (hB n hn nu hnu)
+        (hrho n hn nu hnu)) z
+  have hPmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (P n nu) volume := by
+    intro n hn nu hnu
+    exact aux_aestronglyMeasurable_temporalSchwartzAnnularNormalProjection
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hTmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (T n nu) volume := by
+    intro n hn nu hnu
+    exact aux_aestronglyMeasurable_temporalSchwartzAnnularNormalTail
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have htransfer :=
+    aux_eLpNorm_aux_angularRadialRecombinedSquareFunction_full_le_main_add_sum_tails
+      radialIndices angularIndices A P T hdecomp hPmeas hTmeas
+      (fun n nu => eLpNorm (T n nu) 4 volume)
+      (by intro n hn nu hnu; rfl)
+  obtain ⟨C, hC, hP⟩ :=
+    overlapSquareFunction_temporalSchwartzAnnularNormalProjections
+      maxLevel angularConstant sectorRadius spacingLower spacingUpper hoverlap hangular
+      eta heta gamma hgamma hgammaUpper scale hscale radialIndices angularIndices directions
+      hgeometry B u vartheta beta rho hrho hu hspatial hvertical hnormal
+  refine ⟨C, hC, ?_⟩
+  calc
+    eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
+        4 volume ≤
+      eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices P)
+          4 volume +
+        ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume := htransfer
+    _ ≤ ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm (angularRadialSquareFunction radialIndices angularIndices P) 4 volume +
+        ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume := by
+      exact add_le_add hP le_rfl
+    _ = _ := by rfl
+
+private theorem aux_eLpNorm_four_recombined_le_rawSquare_add_scaled_tail
+    (recombined raw fullProjected : WaveSpaceTime → Real)
+    (coefficient tailBudget : ENNReal)
+    (hrawMeas : AEStronglyMeasurable raw volume)
+    (hprojectedMeas : AEStronglyMeasurable fullProjected volume)
+    (hrecombined :
+      eLpNorm recombined 4 volume ≤
+        coefficient * eLpNorm fullProjected 4 volume + tailBudget)
+    (hrawDifference :
+      eLpNorm (raw - fullProjected) 4 volume ≤ tailBudget) :
+    eLpNorm recombined 4 volume ≤
+      coefficient * eLpNorm raw 4 volume + (coefficient + 1) * tailBudget := by
+  have hdifferenceMeas : AEStronglyMeasurable (raw - fullProjected) volume :=
+    hrawMeas.sub hprojectedMeas
+  have hprojected :
+      eLpNorm fullProjected 4 volume ≤ eLpNorm raw 4 volume + tailBudget := by
+    calc
+      eLpNorm fullProjected 4 volume =
+          eLpNorm (raw - (raw - fullProjected)) 4 volume := by
+        congr 1
+        funext z
+        simp only [Pi.sub_apply]
+        abel
+      _ ≤ eLpNorm raw 4 volume + eLpNorm (raw - fullProjected) 4 volume :=
+        eLpNorm_sub_le hrawMeas hdifferenceMeas (by norm_num)
+      _ ≤ eLpNorm raw 4 volume + tailBudget :=
+        add_le_add_right hrawDifference _
+  calc
+    eLpNorm recombined 4 volume ≤
+        coefficient * eLpNorm fullProjected 4 volume + tailBudget := hrecombined
+    _ ≤ coefficient * (eLpNorm raw 4 volume + tailBudget) + tailBudget := by
+      gcongr
+    _ = coefficient * eLpNorm raw 4 volume + (coefficient + 1) * tailBudget := by
+      rw [mul_add, add_mul]
+      ac_rfl
+
+/-- A finite supplied regular angular/radial model is controlled by the
+normal-projection overlap estimate with its raw two-index square function on
+the right, plus the explicit finite normal-tail budget.  All regularity data
+are supplied.  This is not a fine-square-function, continuum, or local-
+smoothing assertion. -/
+theorem exists_regularAngularPiece_recombined_square_bound_of_overlap_plus_normalTails_on_rawSquare
+    (maxLevel : Real → Nat)
+    (angularConstant sectorRadius spacingLower spacingUpper : Real)
+    (hoverlap : overlapSquareFunction maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper)
+    (hangular : 0 < angularConstant)
+    (eta : Real) (heta : 0 < eta)
+    (gamma : Real) (hgamma : 0 < gamma) (hgammaUpper : gamma < 1 / 10)
+    (scale : Real) (hscale : 2 ≤ scale)
+    (radialIndices angularIndices : Finset Int) (directions : Int → Euclidean 2)
+    (hgeometry : angularSectorGeometry scale angularIndices directions
+      sectorRadius spacingLower spacingUpper)
+    (B R u : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : Int → Int → SchwartzMap Real Complex)
+    (rho : Int → Int → SchwartzMap (Euclidean 2) Real)
+    (f : SchwartzMap (Euclidean 2) Complex)
+    (a : Euclidean 2 → Complex)
+    (chi : Int → Euclidean 2 → Complex)
+    (radialCutoff : Real → Complex)
+    (hR : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2,
+        R n nu xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2, B n nu xi =
+        chi nu xi * a (scale⁻¹ • xi) *
+          (R n nu xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi))
+    (hrho : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        rho n nu xi = ‖xi‖)
+    (hu : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        u n nu xi = 1)
+    (hspatial : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      Function.support (B n nu : Euclidean 2 → Complex) ⊆
+        {xi | scale / 4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4 * scale ∧
+          xi ∈ angularSector (directions nu)
+            (angularConstant * scale ^ (-(1 / 2 : Real)))})
+    (hvertical : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+      ∀ s ∈ Function.support (beta n nu : Real → Complex),
+        |(Real.sqrt scale)⁻¹ * (rho n nu xi + s) - n| ≤ 1)
+    (hnormal : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ s ∈ Function.support (beta n nu : Real → Complex),
+        |s| ≤ 2 * scale ^ gamma) :
+    ∃ C : Real, 0 < C ∧
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          4 volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+                (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+            4 volume +
+          (ENNReal.ofReal (C * scale ^ eta) + 1) *
+            (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+              eLpNorm
+                (temporalSchwartzAnnularNormalTail
+                  (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu))
+                4 volume) := by
+  let A : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+      (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))
+  let P : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => temporalSchwartzAnnularNormalProjection
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  let T : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => temporalSchwartzAnnularNormalTail
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
+      A n nu z = P n nu z + T n nu z := by
+    intro n hn nu hnu z
+    exact congrFun
+      (angularPiece_eq_projection_add_normalTail_of_schwartzRadialProfile
+        (B n nu) (R n nu) f (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+        scale a (chi nu) radialCutoff n (hR n hn nu hnu) (hB n hn nu hnu)
+        (hrho n hn nu hnu)) z
+  have hPmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (P n nu) volume := by
+    intro n hn nu hnu
+    exact aux_aestronglyMeasurable_temporalSchwartzAnnularNormalProjection
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hTmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (T n nu) volume := by
+    intro n hn nu hnu
+    exact aux_aestronglyMeasurable_temporalSchwartzAnnularNormalTail
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hAmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (A n nu) volume := by
+    intro n hn nu hnu
+    exact ((hPmeas n hn nu hnu).add (hTmeas n hn nu hnu)).congr
+      (Filter.Eventually.of_forall fun z => (hdecomp n hn nu hnu z).symm)
+  have hrawMeas := aux_aestronglyMeasurable_angularRadialSquareFunction
+    radialIndices angularIndices A hAmeas
+  have hprojectedMeas := aux_aestronglyMeasurable_angularRadialSquareFunction
+    radialIndices angularIndices P hPmeas
+  have hraw := eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    radialIndices angularIndices A P T hdecomp hTmeas
+    (fun n nu => eLpNorm (T n nu) 4 volume)
+    (by intro n hn nu hnu; rfl)
+  obtain ⟨C, hC, hrec₀⟩ :=
+    exists_regularAngularPiece_recombined_square_bound_of_overlap_plus_normalTails
+      maxLevel angularConstant sectorRadius spacingLower spacingUpper hoverlap hangular
+      eta heta gamma hgamma hgammaUpper scale hscale radialIndices angularIndices directions
+      hgeometry B R u vartheta beta rho f a chi radialCutoff
+      hR hB hrho hu hspatial hvertical hnormal
+  have hrec :
+      eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
+          4 volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm (angularRadialSquareFunction radialIndices angularIndices P) 4 volume +
+        ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume := by
+    simpa only [A, P, T] using hrec₀
+  refine ⟨C, hC, ?_⟩
+  exact aux_eLpNorm_four_recombined_le_rawSquare_add_scaled_tail
+    (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
+    (angularRadialSquareFunction radialIndices angularIndices A)
+    (angularRadialSquareFunction radialIndices angularIndices P)
+    (ENNReal.ofReal (C * scale ^ eta))
+    (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume)
+    hrawMeas hprojectedMeas hrec hraw
+
+private theorem aux_regularAngularPiece_recombined_square_bound_of_projection_bound_on_rawSquare
+    (radialIndices angularIndices : Finset Int)
+    (B R u : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (vartheta beta : Int → Int → SchwartzMap Real Complex)
+    (rho : Int → Int → SchwartzMap (Euclidean 2) Real)
+    (f : SchwartzMap (Euclidean 2) Complex)
+    (scale : Real) (a : Euclidean 2 → Complex)
+    (chi : Int → Euclidean 2 → Complex) (radialCutoff : Real → Complex)
+    (hR : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2,
+        R n nu xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2, B n nu xi =
+        chi nu xi * a (scale⁻¹ • xi) *
+          (R n nu xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi))
+    (hrho : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        rho n nu xi = ‖xi‖)
+    (coefficient : ENNReal)
+    (hprojection :
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => temporalSchwartzAnnularNormalProjection
+              (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+          4 volume ≤
+        coefficient *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => temporalSchwartzAnnularNormalProjection
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+            4 volume) :
+    eLpNorm
+        (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+          (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+            (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+        4 volume ≤
+      coefficient *
+        eLpNorm
+          (angularRadialSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          4 volume +
+        (coefficient + 1) *
+          (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+            eLpNorm
+              (temporalSchwartzAnnularNormalTail
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu))
+              4 volume) := by
+  let A : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+      (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))
+  let P : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => temporalSchwartzAnnularNormalProjection
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  let T : Int → Int → WaveSpaceTime → Complex :=
+    fun n nu => temporalSchwartzAnnularNormalTail
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
+      A n nu z = P n nu z + T n nu z := by
+    intro n hn nu hnu z
+    exact congrFun
+      (angularPiece_eq_projection_add_normalTail_of_schwartzRadialProfile
+        (B n nu) (R n nu) f (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+        scale a (chi nu) radialCutoff n (hR n hn nu hnu) (hB n hn nu hnu)
+        (hrho n hn nu hnu)) z
+  have hPmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (P n nu) volume := by
+    intro n hn nu hnu
+    exact aux_aestronglyMeasurable_temporalSchwartzAnnularNormalProjection
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hTmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (T n nu) volume := by
+    intro n hn nu hnu
+    exact aux_aestronglyMeasurable_temporalSchwartzAnnularNormalTail
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+  have hAmeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (A n nu) volume := by
+    intro n hn nu hnu
+    exact ((hPmeas n hn nu hnu).add (hTmeas n hn nu hnu)).congr
+      (Filter.Eventually.of_forall fun z => (hdecomp n hn nu hnu z).symm)
+  have hrawMeas := aux_aestronglyMeasurable_angularRadialSquareFunction
+    radialIndices angularIndices A hAmeas
+  have hprojectedMeas := aux_aestronglyMeasurable_angularRadialSquareFunction
+    radialIndices angularIndices P hPmeas
+  have htransfer :=
+    aux_eLpNorm_aux_angularRadialRecombinedSquareFunction_full_le_main_add_sum_tails
+      radialIndices angularIndices A P T hdecomp hPmeas hTmeas
+      (fun n nu => eLpNorm (T n nu) 4 volume)
+      (by intro n hn nu hnu; rfl)
+  have hrec :
+      eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
+          4 volume ≤
+        coefficient *
+          eLpNorm (angularRadialSquareFunction radialIndices angularIndices P) 4 volume +
+        ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume := by
+    calc
+      eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
+          4 volume ≤
+        eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices P)
+            4 volume +
+          ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume := htransfer
+      _ ≤ coefficient *
+            eLpNorm (angularRadialSquareFunction radialIndices angularIndices P) 4 volume +
+          ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume := by
+          simpa only [A, P, T] using add_le_add hprojection le_rfl
+  have hraw := eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
+    radialIndices angularIndices A P T hdecomp hTmeas
+    (fun n nu => eLpNorm (T n nu) 4 volume)
+    (by intro n hn nu hnu; rfl)
+  exact aux_eLpNorm_four_recombined_le_rawSquare_add_scaled_tail
+    (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
+    (angularRadialSquareFunction radialIndices angularIndices A)
+    (angularRadialSquareFunction radialIndices angularIndices P)
+    coefficient
+    (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, eLpNorm (T n nu) 4 volume)
+    hrawMeas hprojectedMeas hrec hraw
+
+/-- A finite supplied regular angular/radial family has a uniform weighted
+normal-radius error bound after its normal projections are consumed by the
+analytic plate-overlap hypothesis.  Both constants precede all supplied
+spatial/normal cutoffs and the common normal radius.  This is not a statement
+about raw compact-time cutoffs, fine square functions, continuum limits, or
+local smoothing. -/
+theorem exists_finite_uniform_regularAngularPiece_recombined_square_bound_of_overlap_on_rawSquare_with_normalRadiusRate
+    (maxLevel : Real → Nat)
+    (angularConstant sectorRadius spacingLower spacingUpper : Real)
+    (hoverlap : overlapSquareFunction maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper)
+    (hangular : 0 < angularConstant)
+    (eta : Real) (heta : 0 < eta)
+    (gamma : Real) (hgamma : 0 < gamma) (hgammaUpper : gamma < 1 / 10)
+    (scale : Real) (hscale : 2 ≤ scale)
+    (radialIndices angularIndices : Finset Int) (directions : Int → Euclidean 2)
+    (hgeometry : angularSectorGeometry scale angularIndices directions
+      sectorRadius spacingLower spacingUpper)
+    (B R : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (vartheta : Int → Int → SchwartzMap Real Complex)
+    (f : SchwartzMap (Euclidean 2) Complex)
+    (a : Euclidean 2 → Complex)
+    (chi : Int → Euclidean 2 → Complex)
+    (radialCutoff : Real → Complex)
+    (hR : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2,
+        R n nu xi = radialCutoff ((Real.sqrt scale)⁻¹ * ‖xi‖ - n))
+    (hB : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2, B n nu xi =
+        chi nu xi * a (scale⁻¹ • xi) *
+          (R n nu xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi))
+    (hspatial : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      Function.support (B n nu : Euclidean 2 → Complex) ⊆
+        {xi | scale / 4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4 * scale ∧
+          xi ∈ angularSector (directions nu)
+            (angularConstant * scale ^ (-(1 / 2 : Real)))})
+    (N : Nat) (M : Real) (hM : 0 ≤ M) :
+    ∃ C : Real, 0 < C ∧ ∃ D : ENNReal, D < ∞ ∧ ∀
+      (u : Int → Int → SchwartzMap (Euclidean 2) Complex)
+      (beta : Int → Int → SchwartzMap Real Complex)
+      (rho : Int → Int → SchwartzMap (Euclidean 2) Real)
+      {normalRadius : Real},
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+          rho n nu xi = ‖xi‖) →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+          u n nu xi = 1) →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ xi ∈ Function.support (B n nu : Euclidean 2 → Complex),
+        ∀ s ∈ Function.support (beta n nu : Real → Complex),
+          |(Real.sqrt scale)⁻¹ * (rho n nu xi + s) - n| ≤ 1) →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ s ∈ Function.support (beta n nu : Real → Complex),
+          |s| ≤ 2 * scale ^ gamma) →
+      0 ≤ normalRadius →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ s : Real, |s| ≤ normalRadius → beta n nu s = 1) →
+      (∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+        ∀ s : Real, ‖(1 : Complex) - beta n nu s‖ ≤ M) →
+      (ENNReal.ofReal (1 + normalRadius)) ^ N *
+        eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          4 volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          ((ENNReal.ofReal (1 + normalRadius)) ^ N *
+            eLpNorm
+              (angularRadialSquareFunction radialIndices angularIndices
+                (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+                  (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+              4 volume) +
+          (ENNReal.ofReal (C * scale ^ eta) + 1) * D := by
+  obtain ⟨D, hDtop, hD⟩ :=
+    aux_exists_finite_uniform_weighted_normalTail_finset
+      radialIndices angularIndices B vartheta N M hM
+  have hplate : plateOverlap maxLevel angularConstant sectorRadius spacingLower spacingUpper :=
+    plateOverlap_of_angularSectorGeometry maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper hangular
+  obtain ⟨C, hC, hbound⟩ := hoverlap hplate eta heta
+  refine ⟨C, hC, D, hDtop, ?_⟩
+  intro u beta rho normalRadius hrho hu hvertical hnormal hnormalRadius hball hdefect
+  have hprojection :
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => temporalSchwartzAnnularNormalProjection
+              (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+          4 volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => temporalSchwartzAnnularNormalProjection
+                (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)))
+            4 volume := by
+    apply hbound gamma hgamma hgammaUpper scale hscale radialIndices angularIndices directions
+      hgeometry
+    intro n hn nu hnu
+    exact support_spaceTimeFourier_temporalSchwartzAnnularNormalProjection_subset_conicPlate
+      (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu)
+      scale gamma angularConstant n (directions nu)
+      (hrho n hn nu hnu) (hu n hn nu hnu) (hspatial n hn nu hnu)
+      (hvertical n hn nu hnu) (hnormal n hn nu hnu)
+  have hbase :=
+    aux_regularAngularPiece_recombined_square_bound_of_projection_bound_on_rawSquare
+      radialIndices angularIndices B R u vartheta beta rho f scale a chi radialCutoff
+      hR hB hrho (ENNReal.ofReal (C * scale ^ eta)) hprojection
+  have htail := hD u beta rho hu hnormalRadius hball hdefect
+  calc
+    (ENNReal.ofReal (1 + normalRadius)) ^ N *
+        eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          4 volume =
+        eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          4 volume * (ENNReal.ofReal (1 + normalRadius)) ^ N := by
+            rw [mul_comm]
+    _ ≤
+        (ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+                (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+            4 volume +
+          (ENNReal.ofReal (C * scale ^ eta) + 1) *
+            (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+              eLpNorm
+                (temporalSchwartzAnnularNormalTail
+                  (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu))
+                4 volume)) * (ENNReal.ofReal (1 + normalRadius)) ^ N :=
+          mul_le_mul_left hbase _
+    _ = ENNReal.ofReal (C * scale ^ eta) *
+          ((ENNReal.ofReal (1 + normalRadius)) ^ N *
+            eLpNorm
+              (angularRadialSquareFunction radialIndices angularIndices
+                (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+                  (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+              4 volume) +
+        (ENNReal.ofReal (C * scale ^ eta) + 1) *
+          ((ENNReal.ofReal (1 + normalRadius)) ^ N *
+            (∑ n ∈ radialIndices, ∑ nu ∈ angularIndices,
+              eLpNorm
+                (temporalSchwartzAnnularNormalTail
+                  (B n nu) (u n nu) (vartheta n nu) (beta n nu) (rho n nu))
+                4 volume)) := by
+          ring
+    _ ≤ ENNReal.ofReal (C * scale ^ eta) *
+          ((ENNReal.ofReal (1 + normalRadius)) ^ N *
+            eLpNorm
+              (angularRadialSquareFunction radialIndices angularIndices
+                (fun n nu => angularPiece scale a (chi nu) (vartheta n nu : Real → Complex)
+                  (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+              4 volume) +
+        (ENNReal.ofReal (C * scale ^ eta) + 1) * D := by
+          gcongr
+
 /-- A closed coordinate cube in the planar frequency space.  The radius is
 the half side-length; keeping this definition coordinatewise is useful for
 the Fourier-cube decompositions in the MSS square-function step. -/
@@ -8982,6 +13210,121 @@ theorem overlapSquareFunction_spectralCubeRadialNormalPackets
   exact spectralCubeRadialNormalPackets_satisfy_conicPlateSupport beta scale gamma angularConstant
     radialIndices angularIndices directions temporalProfiles g cubeProfiles
     hprofile hspatial hvertical hnormal
+
+private theorem angularRadialSquareFunction_congr_on_finset
+    (radialIndices angularIndices : Finset Int)
+    (H K : Int → Int → WaveSpaceTime → Complex)
+    (h : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, H n nu = K n nu) :
+    angularRadialSquareFunction radialIndices angularIndices H =
+      angularRadialSquareFunction radialIndices angularIndices K := by
+  funext z
+  unfold angularRadialSquareFunction
+  apply congrArg Real.sqrt
+  apply Finset.sum_congr rfl
+  intro n hn
+  apply Finset.sum_congr rfl
+  intro nu hnu
+  rw [h n hn nu hnu]
+
+private theorem auxAngularRadialRecombinedSquareFunction_congr_on_finset
+    (radialIndices angularIndices : Finset Int)
+    (H K : Int → Int → WaveSpaceTime → Complex)
+    (h : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, H n nu = K n nu) :
+    aux_angularRadialRecombinedSquareFunction radialIndices angularIndices H =
+      aux_angularRadialRecombinedSquareFunction radialIndices angularIndices K := by
+  funext z
+  unfold aux_angularRadialRecombinedSquareFunction
+  apply congrArg Real.sqrt
+  apply Finset.sum_congr rfl
+  intro n hn
+  apply congrArg (fun x : Complex => ‖x‖ ^ 2)
+  apply Finset.sum_congr rfl
+  intro nu hnu
+  rw [h n hn nu hnu]
+
+/-- Transfers the literal spectral-packet overlap estimate to a finite model
+of angular/radial pieces.  The realization equality is an explicit hypothesis,
+so this theorem does not assert compact physical-time cutoffs have exact
+spectral plate support.  Its right-hand square function is the later
+`fineSquareFunction` definition unfolded. -/
+theorem overlapSquareFunction_spectralCubeRadialNormalPackets_to_fineSquareFunction_of_model
+    (maxLevel : Real → Nat)
+    (angularConstant sectorRadius spacingLower spacingUpper : Real)
+    (hoverlap : overlapSquareFunction maxLevel angularConstant sectorRadius
+      spacingLower spacingUpper)
+    (hangular : 0 < angularConstant)
+    (eta : Real) (heta : 0 < eta)
+    (gamma : Real) (hgamma : 0 < gamma) (hgammaUpper : gamma < 1 / 10)
+    (scale : Real) (hscale : 2 ≤ scale)
+    (radialIndices angularIndices : Finset Int) (directions : Int → Euclidean 2)
+    (hgeometry : angularSectorGeometry scale angularIndices directions
+      sectorRadius spacingLower spacingUpper)
+    (beta : Real → Complex)
+    (temporalProfiles g : Int → Int → SchwartzMap Real Complex)
+    (cubeProfiles : Int → Int → SchwartzMap (Euclidean 2) Complex)
+    (hprofile : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ tau : Real,
+      temporalProfiles n nu tau = beta ((Real.sqrt scale)⁻¹ * tau - n))
+    (hspatial : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      Function.support (cubeProfiles n nu : Euclidean 2 → Complex) ⊆
+        {xi | scale / 4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4 * scale ∧
+          xi ∈ angularSector (directions nu)
+            (angularConstant * scale ^ (-(1 / 2 : Real)))})
+    (hvertical : ∀ n ∈ radialIndices, ∀ tau : Real,
+      beta ((Real.sqrt scale)⁻¹ * tau - n) ≠ 0 →
+        |(Real.sqrt scale)⁻¹ * tau - n| ≤ 1)
+    (hnormal : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      ∀ xi : Euclidean 2,
+      xi ∈ Function.support (cubeProfiles n nu : Euclidean 2 → Complex) →
+      ∀ tau : Real, tau ∈ Function.support (𝓕 (g n nu : Real → Complex)) →
+      beta ((Real.sqrt scale)⁻¹ * tau - n) ≠ 0 →
+        |tau - ‖xi‖| ≤ 2 * scale ^ gamma)
+    (radialCutoff : Real → Complex)
+    (angularCutoff : Int → Euclidean 2 → Complex)
+    (a : Euclidean 2 → Complex) (vartheta : Real → Complex)
+    (f : SchwartzMap (Euclidean 2) Complex)
+    (hmodel : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      spectralCubeRadialNormalPacket beta scale n (cubeProfiles n nu) (g n nu) =
+        angularPiece scale a (angularCutoff nu) vartheta
+          (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))) :
+    ∃ C : Real, 0 < C ∧
+      eLpNorm
+          (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices
+            (fun n nu => angularPiece scale a (angularCutoff nu) vartheta
+              (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+          (4 : ENNReal) volume ≤
+        ENNReal.ofReal (C * scale ^ eta) *
+          eLpNorm
+            (angularRadialSquareFunction radialIndices angularIndices
+              (fun n nu => angularPiece scale a (angularCutoff nu) vartheta
+                (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))))
+            (4 : ENNReal) volume := by
+  rcases overlapSquareFunction_spectralCubeRadialNormalPackets
+    maxLevel angularConstant sectorRadius spacingLower spacingUpper hoverlap hangular
+    eta heta gamma hgamma hgammaUpper scale hscale radialIndices angularIndices directions
+    hgeometry beta temporalProfiles g cubeProfiles hprofile hspatial hvertical hnormal with
+    ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  let Hspec : Int → Int → WaveSpaceTime → Complex := fun n nu =>
+    spectralCubeRadialNormalPacket beta scale n (cubeProfiles n nu) (g n nu)
+  let Hfine : Int → Int → WaveSpaceTime → Complex := fun n nu =>
+    angularPiece scale a (angularCutoff nu) vartheta
+      (radialPiece radialCutoff scale n (f : Euclidean 2 → Complex))
+  have hsq : angularRadialSquareFunction radialIndices angularIndices Hspec =
+      angularRadialSquareFunction radialIndices angularIndices Hfine := by
+    exact angularRadialSquareFunction_congr_on_finset radialIndices angularIndices Hspec Hfine
+      (by intro n hn nu hnu; exact hmodel n hn nu hnu)
+  have haux : aux_angularRadialRecombinedSquareFunction radialIndices angularIndices Hspec =
+      aux_angularRadialRecombinedSquareFunction radialIndices angularIndices Hfine := by
+    exact auxAngularRadialRecombinedSquareFunction_congr_on_finset
+      radialIndices angularIndices Hspec Hfine
+      (by intro n hn nu hnu; exact hmodel n hn nu hnu)
+  change eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices Hfine)
+      (4 : ENNReal) volume ≤
+    ENNReal.ofReal (C * scale ^ eta) *
+      eLpNorm (angularRadialSquareFunction radialIndices angularIndices Hfine)
+        (4 : ENNReal) volume
+  rw [← haux, ← hsq]
+  exact hbound
 
 /-- The finite thick-plate output energy can be populated by literal spectral
 cube/radial-normal packets.  The two support conclusions ensure that the
@@ -16021,6 +20364,26 @@ theorem p4LocalSmoothing_of_twoSidedConicData
   rw [hfour]
   exact hbound j hj f σ
 
+/-- A measurable conic time cutoff discharges the global measurability input
+in the literal two-sided conic-data route to conditional `p = 4` local
+smoothing.  The conic reconstruction and fine-square hypotheses remain
+explicit. -/
+theorem p4LocalSmoothing_of_twoSidedConicData_of_measurable
+    (C : lpCutoffs 2) (ϑ radialCutoff : Real → Complex)
+    (radialIndices angularIndices : Real → Finset Int)
+    (angularCutoff : Int → Euclidean 2 → Complex)
+    (hϑ : ∀ t ∈ Icc (1 : Real) 2, ϑ t = 1 ∧ ϑ (-t) = 1)
+    (hϑmeas : Measurable ϑ)
+    (hrec : recombination radialCutoff radialIndices angularIndices angularCutoff
+      (dyadicBandpassMultiplier C.cutoff 0) ϑ)
+    (hfine : fineSquareFunctionEstimate radialIndices angularIndices radialCutoff
+      angularCutoff (dyadicBandpassMultiplier C.cutoff 0) ϑ) :
+    p4LocalSmoothing C.cutoff := by
+  exact p4LocalSmoothing_of_twoSidedConicData C ϑ radialCutoff radialIndices
+    angularIndices angularCutoff hϑ
+    (fun j f => aestronglyMeasurable_conicOperator_dyadicBandpass C ϑ hϑmeas j f)
+    hrec hfine
+
 /-! ## Source--output Marcinkiewicz engines
 
 The MSS operator maps spatial inputs to a space--time output, so the source
@@ -17092,6 +21455,3299 @@ theorem sourceOutput_marcinkiewicz_weak_q_top_on_additive_split
     _ ≤ ENNReal.ofReal p * ((ENNReal.ofReal (2 : Real)) ^ q * Cq * Aq) :=
       mul_le_mul_of_nonneg_left hhigh_integral (by positivity)
 
+/-! ## Finite temporal common-kernel interpolation -/
+
+/-- A finite temporal vector bundle with the fibre norm needed for the
+common-kernel square-function argument. -/
+abbrev finiteTemporalCommonKernelBundle (ι : Type*) :=
+  Real → PiLp (2 : ENNReal) (fun _ : ι => Complex)
+
+private noncomputable def aux_finiteTemporalCommonKernelCoord
+    {ι : Type*} (i : ι) (g : finiteTemporalCommonKernelBundle ι) : Real → Complex :=
+  fun s => (PiLp.proj (2 : ENNReal) (𝕜 := Complex)
+    (fun _ : ι => Complex) i) (g s)
+
+private theorem aux_norm_finiteTemporalCommonKernelCoord_le_norm_bundle
+    {ι : Type*} [Fintype ι]
+    (u : PiLp (2 : ENNReal) (fun _ : ι => Complex)) (i : ι) :
+    ‖(PiLp.proj (2 : ENNReal) (𝕜 := Complex)
+      (fun _ : ι => Complex) i) u‖ ≤ ‖u‖ := by
+  rw [PiLp.norm_eq_of_L2]
+  change ‖u.ofLp i‖ ≤ Real.sqrt (∑ j : ι, ‖u.ofLp j‖ ^ (2 : Nat))
+  apply (sq_le_sq₀ (norm_nonneg _) (Real.sqrt_nonneg _)).mp
+  rw [Real.sq_sqrt]
+  · exact Finset.single_le_sum (fun j _ => sq_nonneg ‖u.ofLp j‖) (Finset.mem_univ i)
+  · exact Finset.sum_nonneg fun j _ => sq_nonneg ‖u.ofLp j‖
+
+private theorem aux_norm_finiteTemporalCommonKernelBundle_eq_square
+    {ι : Type*} [Fintype ι]
+    (u : PiLp (2 : ENNReal) (fun _ : ι => Complex)) :
+    ‖u‖ = Real.sqrt (∑ i : ι, ‖u.ofLp i‖ ^ (2 : Nat)) := by
+  exact PiLp.norm_eq_of_L2 u
+
+/-- The literal finite temporal convolution of a `PiLp 2` bundle. -/
+noncomputable def finiteTemporalCommonKernelOutput
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (g : finiteTemporalCommonKernelBundle ι) :
+    Real → Complex :=
+  fun t => ∑ i : ι,
+    (K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+      aux_finiteTemporalCommonKernelCoord i g) t
+
+private def aux_finiteTemporalCommonKernelDomain
+    (ι : Type*) [Fintype ι] : Set (finiteTemporalCommonKernelBundle ι) :=
+  {g | MemLp g 2 volume ∧
+    ∃ A : Real, 0 ≤ A ∧ (∀ t, ‖g t‖ ≤ A) ∧
+      ∀ i : ι, Integrable (aux_finiteTemporalCommonKernelCoord i g) volume}
+
+/-- The concrete finite-bundle domain for the common-kernel operator: measurable
+vector-valued `L²`, a pointwise bundle bound, and coordinatewise `L¹`. -/
+def finiteTemporalCommonKernelMeasurableDomain
+    (ι : Type*) [Fintype ι] : Set (finiteTemporalCommonKernelBundle ι) :=
+  {g | Measurable g ∧ MemLp g 2 volume ∧
+    ∃ A : Real, 0 ≤ A ∧ (∀ t, ‖g t‖ ≤ A) ∧
+      ∀ i : ι, Integrable (fun s =>
+        (PiLp.proj (2 : ENNReal) (𝕜 := Complex)
+          (fun _ : ι => Complex) i) (g s)) volume}
+
+private theorem aux_finiteTemporalCommonKernelCoord_aestronglyMeasurable_of_mem
+    {ι : Type*} [Fintype ι]
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι) (i : ι) :
+    AEStronglyMeasurable (aux_finiteTemporalCommonKernelCoord i g) volume := by
+  exact (PiLp.proj (2 : ENNReal) (𝕜 := Complex)
+    (fun _ : ι => Complex) i).continuous.comp_aestronglyMeasurable
+      hg.1.aestronglyMeasurable
+
+private theorem aux_finiteTemporalCommonKernelCoord_integrable_of_mem
+    {ι : Type*} [Fintype ι]
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι) (i : ι) :
+    Integrable (aux_finiteTemporalCommonKernelCoord i g) volume :=
+  hg.2.choose_spec.2.2 i
+
+private theorem aux_finiteTemporalCommonKernelCoord_norm_le_of_mem
+    {ι : Type*} [Fintype ι]
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι) (i : ι) :
+    ∀ t, ‖aux_finiteTemporalCommonKernelCoord i g t‖ ≤ hg.2.choose := by
+  intro t
+  calc
+    ‖aux_finiteTemporalCommonKernelCoord i g t‖ ≤ ‖g t‖ :=
+      aux_norm_finiteTemporalCommonKernelCoord_le_norm_bundle (g t) i
+    _ ≤ hg.2.choose := hg.2.choose_spec.2.1 t
+
+private theorem aux_convolutionExists_of_integrable_of_bound
+    (K g : Real → Complex)
+    (hK : Integrable K volume)
+    (hg : AEStronglyMeasurable g volume)
+    {A : Real} (hbound : ∀ x, ‖g x‖ ≤ A) :
+    ConvolutionExists K g (ContinuousLinearMap.mul Complex Complex) volume := by
+  intro x
+  apply BddAbove.convolutionExistsAt
+  · refine ⟨A, ?_⟩
+    rintro y ⟨z, -, rfl⟩
+    exact hbound z
+  · exact MeasurableSet.univ
+  · exact Set.subset_univ _
+  · simpa only [MeasureTheory.integrableOn_univ] using hK
+  · exact hg
+
+private theorem aux_finiteTemporalCommonKernelOutput_aestronglyMeasurable_of_mem
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (hK : ∀ i, Integrable (K i) volume)
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι) :
+    AEStronglyMeasurable (finiteTemporalCommonKernelOutput K g) volume := by
+  unfold finiteTemporalCommonKernelOutput
+  apply Finset.aestronglyMeasurable_fun_sum Finset.univ
+  intro i _
+  exact ((hK i).integrable_convolution (ContinuousLinearMap.mul Complex Complex)
+    (aux_finiteTemporalCommonKernelCoord_integrable_of_mem hg i)).aestronglyMeasurable
+
+private theorem aux_finiteTemporalCommonKernelOutput_add_of_mem
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (hK : ∀ i, Integrable (K i) volume)
+    {g h : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι)
+    (hh : h ∈ aux_finiteTemporalCommonKernelDomain ι) :
+    finiteTemporalCommonKernelOutput K (g + h) =
+      finiteTemporalCommonKernelOutput K g +
+        finiteTemporalCommonKernelOutput K h := by
+  funext t
+  unfold finiteTemporalCommonKernelOutput
+  calc
+    (∑ i : ι,
+      (K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+        aux_finiteTemporalCommonKernelCoord i (g + h)) t) =
+        ∑ i : ι,
+          ((K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+            aux_finiteTemporalCommonKernelCoord i g) t +
+           (K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+            aux_finiteTemporalCommonKernelCoord i h) t) := by
+          apply Finset.sum_congr rfl
+          intro i _
+          have hcoord : aux_finiteTemporalCommonKernelCoord i (g + h) =
+              aux_finiteTemporalCommonKernelCoord i g + aux_finiteTemporalCommonKernelCoord i h := by
+            funext s
+            simp [aux_finiteTemporalCommonKernelCoord]
+          rw [hcoord]
+          exact congrFun
+            ((aux_convolutionExists_of_integrable_of_bound
+              (K i) (aux_finiteTemporalCommonKernelCoord i g) (hK i)
+              (aux_finiteTemporalCommonKernelCoord_aestronglyMeasurable_of_mem hg i)
+              (aux_finiteTemporalCommonKernelCoord_norm_le_of_mem hg i)).distrib_add
+             (aux_convolutionExists_of_integrable_of_bound
+              (K i) (aux_finiteTemporalCommonKernelCoord i h) (hK i)
+              (aux_finiteTemporalCommonKernelCoord_aestronglyMeasurable_of_mem hh i)
+              (aux_finiteTemporalCommonKernelCoord_norm_le_of_mem hh i))) t
+    _ = _ := by
+      rw [Finset.sum_add_distrib]
+      rfl
+
+private theorem aux_norm_finiteTemporalCommonKernelOutput_add_le_of_mem
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (hK : ∀ i, Integrable (K i) volume)
+    {g h : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι)
+    (hh : h ∈ aux_finiteTemporalCommonKernelDomain ι) (t : Real) :
+    ‖finiteTemporalCommonKernelOutput K (g + h) t‖ ≤
+      ‖finiteTemporalCommonKernelOutput K g t‖ +
+        ‖finiteTemporalCommonKernelOutput K h t‖ := by
+  rw [aux_finiteTemporalCommonKernelOutput_add_of_mem K hK hg hh]
+  exact norm_add_le _ _
+
+private noncomputable def aux_temporalPhysicalConvolution
+    (K g : Real → Complex) : Real → Complex :=
+  fun x => ∫ y : Real, g y * K (x - y)
+
+private theorem aux_integrable_temporal_convolution_integrand_of_norm_le
+    (K g : Real → Complex) (hK : Integrable K volume)
+    (_hg : Integrable g volume) (B : Real)
+    (hgB : ∀ x, ‖g x‖ ≤ B) (x : Real) :
+    Integrable (fun y : Real => g y * K (x - y)) volume := by
+  have hmajor : Integrable (fun y : Real => B * ‖K (x - y)‖) volume :=
+    (hK.comp_sub_left x).norm.const_mul B
+  refine hmajor.mono' ?_ (Filter.Eventually.of_forall fun y => ?_)
+  · exact _hg.aestronglyMeasurable.mul
+      (hK.comp_sub_left x).aestronglyMeasurable
+  · rw [norm_mul]
+    exact mul_le_mul_of_nonneg_right (hgB y) (norm_nonneg _)
+
+private theorem aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+    (K g : Real → Complex) (hK : Integrable K volume)
+    (hg : Integrable g volume) (B : Real) (hB : 0 ≤ B)
+    (hgB : ∀ x, ‖g x‖ ≤ B) :
+    MemLp (aux_temporalPhysicalConvolution K g) 2 volume := by
+  let P : Real → Complex := aux_temporalPhysicalConvolution K g
+  have hP : Integrable P volume := by
+    change Integrable (g ⋆[ContinuousLinearMap.mul Complex Complex, volume] K) volume
+    exact hg.integrable_convolution (ContinuousLinearMap.mul Complex Complex) hK
+  have hC : 0 ≤ B * ∫ y : Real, ‖K y‖ :=
+    mul_nonneg hB (integral_nonneg fun _ => norm_nonneg _)
+  have hPbound (x : Real) : ‖P x‖ ≤ B * ∫ y : Real, ‖K y‖ := by
+    have hmajor : Integrable (fun y : Real => B * ‖K (x - y)‖) volume :=
+      (hK.comp_sub_left x).norm.const_mul B
+    have hint : Integrable (fun y : Real => g y * K (x - y)) volume :=
+      aux_integrable_temporal_convolution_integrand_of_norm_le K g hK hg B hgB x
+    have hintnorm : Integrable (fun y : Real => ‖g y‖ * ‖K (x - y)‖) volume := by
+      convert hint.norm using 1
+      funext y
+      rw [norm_mul]
+    calc
+      ‖P x‖ ≤ ∫ y : Real, ‖g y * K (x - y)‖ :=
+        norm_integral_le_integral_norm _
+      _ = ∫ y : Real, ‖g y‖ * ‖K (x - y)‖ := by
+        apply integral_congr_ae
+        filter_upwards with y
+        rw [norm_mul]
+      _ ≤ ∫ y : Real, B * ‖K (x - y)‖ :=
+        integral_mono hintnorm hmajor (fun y =>
+          mul_le_mul_of_nonneg_right (hgB y) (norm_nonneg _))
+      _ = B * ∫ y : Real, ‖K y‖ := by
+        rw [integral_const_mul,
+          integral_sub_left_eq_self (fun y : Real => ‖K y‖) volume x]
+  have hsq : Integrable (fun x : Real => ‖P x‖ ^ 2) volume := by
+    refine (hP.norm.const_mul (B * ∫ y : Real, ‖K y‖)).mono' ?_
+      (Filter.Eventually.of_forall fun x => ?_)
+    · exact (hP.aestronglyMeasurable.norm.pow 2)
+    · have hpoint : ‖P x‖ ^ 2 ≤
+          (B * ∫ y : Real, ‖K y‖) * ‖P x‖ := by
+        calc
+          ‖P x‖ ^ 2 = ‖P x‖ * ‖P x‖ := by ring
+          _ ≤ (B * ∫ y : Real, ‖K y‖) * ‖P x‖ :=
+            mul_le_mul_of_nonneg_right (hPbound x) (norm_nonneg _)
+      simpa [Real.norm_eq_abs, abs_of_nonneg] using hpoint
+  exact (memLp_two_iff_integrable_sq_norm hP.aestronglyMeasurable).2 hsq
+
+private theorem aux_memLp_top_temporal_schwartz_comp_fst
+    (h : SchwartzMap Real Complex) :
+    MemLp (fun p : Real × Real => h p.1) ∞ (volume.prod volume) := by
+  refine memLp_top_of_bound ?_ ‖h.toBoundedContinuousFunction‖
+    (Filter.Eventually.of_forall fun p => ?_)
+  · exact h.continuous.aestronglyMeasurable.comp_fst
+  · exact BoundedContinuousFunction.norm_coe_le_norm h.toBoundedContinuousFunction p.1
+
+private theorem aux_integrable_temporal_schwartz_convolution_pairing_integrand
+    (K g : Real → Complex) (h : SchwartzMap Real Complex)
+    (hK : Integrable K volume) (hg : Integrable g volume) :
+    Integrable (fun p : Real × Real =>
+      h p.1 * starRingEnd Complex (g p.2 * K (p.1 - p.2))) (volume.prod volume) := by
+  have hbase : Integrable (fun p : Real × Real =>
+      g p.2 * K (p.1 - p.2)) (volume.prod volume) := by
+    simpa only [ContinuousLinearMap.mul_apply'] using
+      hg.convolution_integrand (ContinuousLinearMap.mul Complex Complex) hK
+  have hstar : Integrable (fun p : Real × Real =>
+      starRingEnd Complex (g p.2 * K (p.1 - p.2))) (volume.prod volume) := by
+    change Integrable (fun p : Real × Real =>
+      (Complex.conjCLE : Complex →L[Real] Complex) (g p.2 * K (p.1 - p.2)))
+        (volume.prod volume)
+    exact (Complex.conjCLE : Complex →L[Real] Complex).integrable_comp hbase
+  convert hstar.mul_of_top_right (aux_memLp_top_temporal_schwartz_comp_fst h)
+    using 1 <;> rfl
+
+private theorem aux_integral_schwartz_mul_star_temporal_convolution_eq
+    (K g : Real → Complex) (h : SchwartzMap Real Complex)
+    (hK : Integrable K volume) (hg : Integrable g volume) :
+    (∫ x : Real, h x * starRingEnd Complex (aux_temporalPhysicalConvolution K g x)) =
+      ∫ y : Real,
+        (∫ x : Real, h x * starRingEnd Complex (K (x - y))) *
+          starRingEnd Complex (g y) := by
+  have hF := aux_integrable_temporal_schwartz_convolution_pairing_integrand K g h hK hg
+  calc
+    (∫ x : Real, h x * starRingEnd Complex (aux_temporalPhysicalConvolution K g x)) =
+        ∫ x : Real, ∫ y : Real,
+          h x * starRingEnd Complex (g y * K (x - y)) := by
+      apply integral_congr_ae
+      filter_upwards with x
+      change h x * starRingEnd Complex (∫ y : Real, g y * K (x - y)) = _
+      rw [← integral_conj, ← integral_const_mul]
+    _ = ∫ y : Real, ∫ x : Real,
+          h x * starRingEnd Complex (g y * K (x - y)) := by
+      simpa only [Function.uncurry] using integral_integral_swap hF
+    _ = ∫ y : Real,
+        (∫ x : Real, h x * starRingEnd Complex (K (x - y))) *
+          starRingEnd Complex (g y) := by
+      apply integral_congr_ae
+      filter_upwards with y
+      rw [← integral_mul_const]
+      apply integral_congr_ae
+      filter_upwards with x
+      rw [(starRingEnd Complex).map_mul]
+      ring
+
+private noncomputable def aux_temporalConvolutionPhysicalAdjoint
+    (K h : Real → Complex) : Real → Complex :=
+  fun y => ∫ x : Real, h x * starRingEnd Complex (K (x - y))
+
+private theorem aux_memLp_two_temporalConvolutionPhysicalAdjoint_schwartz
+    (K : Real → Complex) (h : SchwartzMap Real Complex)
+    (hK : Integrable K volume) :
+    MemLp (aux_temporalConvolutionPhysicalAdjoint K h) 2 volume := by
+  let Kstar : Real → Complex := fun z => starRingEnd Complex (K (-z))
+  have hKneg : Integrable (fun z : Real => K (-z)) volume := by
+    simpa using hK.comp_neg
+  have hKstar : Integrable Kstar volume := by
+    change Integrable (fun z : Real =>
+      (Complex.conjCLE : Complex →L[Real] Complex) (K (-z))) volume
+    exact (Complex.conjCLE : Complex →L[Real] Complex).integrable_comp hKneg
+  have hconv := aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+    Kstar (h : Real → Complex) hKstar h.integrable
+    ‖h.toBoundedContinuousFunction‖ (norm_nonneg _)
+    (fun x => BoundedContinuousFunction.norm_coe_le_norm h.toBoundedContinuousFunction x)
+  have heq : aux_temporalConvolutionPhysicalAdjoint K h = fun y : Real =>
+      aux_temporalPhysicalConvolution Kstar (h : Real → Complex) y := by
+    funext y
+    unfold aux_temporalConvolutionPhysicalAdjoint aux_temporalPhysicalConvolution Kstar
+    apply integral_congr_ae
+    filter_upwards with x
+    congr 2
+    congr 1
+    ring
+  rw [heq]
+  exact hconv
+
+private theorem aux_inner_temporal_convolution_eq_physicalAdjoint
+    (K g : Real → Complex) (h : SchwartzMap Real Complex)
+    (hK : Integrable K volume) (hg : Integrable g volume)
+    (hg₂ : MemLp g 2 volume)
+    (hP : MemLp (aux_temporalPhysicalConvolution K g) 2 volume)
+    (hA : MemLp (aux_temporalConvolutionPhysicalAdjoint K h) 2 volume) :
+    inner Complex (hP.toLp (aux_temporalPhysicalConvolution K g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+      inner Complex (hg₂.toLp g)
+        (hA.toLp (aux_temporalConvolutionPhysicalAdjoint K h)) := by
+  rw [L2.inner_def, L2.inner_def]
+  have hleft :
+      (∫ x : Real,
+        inner Complex (hP.toLp (aux_temporalPhysicalConvolution K g) x)
+          ((h.memLp 2 volume).toLp (h : Real → Complex) x)) =
+        ∫ x : Real,
+          h x * starRingEnd Complex (aux_temporalPhysicalConvolution K g x) := by
+    apply integral_congr_ae
+    filter_upwards [hP.coeFn_toLp, (h.memLp 2 volume).coeFn_toLp] with x hPx hhx
+    rw [hPx, hhx, RCLike.inner_apply]
+  have hright :
+      (∫ y : Real,
+        inner Complex (hg₂.toLp g y)
+          (hA.toLp (aux_temporalConvolutionPhysicalAdjoint K h) y)) =
+        ∫ y : Real,
+          aux_temporalConvolutionPhysicalAdjoint K h y *
+            starRingEnd Complex (g y) := by
+    apply integral_congr_ae
+    filter_upwards [hg₂.coeFn_toLp, hA.coeFn_toLp] with y hgy hAy
+    rw [hgy, hAy, RCLike.inner_apply]
+  rw [hleft, hright]
+  exact aux_integral_schwartz_mul_star_temporal_convolution_eq K g h hK hg
+
+private theorem aux_lipschitz_extension_eq_temporal_physical_convolution
+    (K : Real → Complex)
+    (Tbar : Lp Complex 2 (volume : Measure Real) → Lp Complex 2 volume)
+    (hTbarCont : Continuous Tbar) (hK : Integrable K volume)
+    (hTbarCore : ∀ f : SchwartzMap Real Complex,
+      Tbar (f.toLp 2 volume) =
+        (aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+          K (f : Real → Complex) hK f.integrable
+          ‖f.toBoundedContinuousFunction‖ (norm_nonneg _)
+          (fun x => BoundedContinuousFunction.norm_coe_le_norm
+            f.toBoundedContinuousFunction x)).toLp
+          (aux_temporalPhysicalConvolution K (f : Real → Complex)))
+    (g : Real → Complex) (hg : Integrable g volume) (hg₂ : MemLp g 2 volume)
+    (B : Real) (hB : 0 ≤ B) (hgB : ∀ x, ‖g x‖ ≤ B) :
+    Tbar (hg₂.toLp g) =
+      (aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+        K g hK hg B hB hgB).toLp (aux_temporalPhysicalConvolution K g) := by
+  letI : Fact (1 ≤ (2 : ENNReal)) := ⟨by norm_num⟩
+  let hP : MemLp (aux_temporalPhysicalConvolution K g) 2 volume :=
+    aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+      K g hK hg B hB hgB
+  let hA : ∀ h : SchwartzMap Real Complex,
+      MemLp (aux_temporalConvolutionPhysicalAdjoint K h) 2 volume := fun h =>
+    aux_memLp_two_temporalConvolutionPhysicalAdjoint_schwartz K h hK
+  apply (SchwartzMap.denseRange_toLpCLM (E := Real) (F := Complex)
+    (p := (2 : ENNReal)) ENNReal.ofNat_ne_top).eq_of_inner_left Complex
+  intro h
+  have hcorePair (f : SchwartzMap Real Complex) :
+      inner Complex (Tbar (f.toLp 2 volume))
+          ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+        inner Complex (f.toLp 2 volume)
+          ((hA h).toLp (aux_temporalConvolutionPhysicalAdjoint K h)) := by
+    rw [hTbarCore f]
+    exact aux_inner_temporal_convolution_eq_physicalAdjoint K
+      (f : Real → Complex) h hK f.integrable (f.memLp 2 volume)
+      (aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+        K (f : Real → Complex) hK f.integrable
+        ‖f.toBoundedContinuousFunction‖ (norm_nonneg _)
+        (fun x => BoundedContinuousFunction.norm_coe_le_norm
+          f.toBoundedContinuousFunction x))
+      (hA h)
+  have hpairs (G : Lp Complex 2 (volume : Measure Real)) :
+      inner Complex (Tbar G) ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+        inner Complex G ((hA h).toLp (aux_temporalConvolutionPhysicalAdjoint K h)) := by
+    let left : Lp Complex 2 (volume : Measure Real) → Complex := fun G =>
+      inner Complex (Tbar G) ((h.memLp 2 volume).toLp (h : Real → Complex))
+    let right : Lp Complex 2 (volume : Measure Real) → Complex := fun G =>
+      inner Complex G ((hA h).toLp (aux_temporalConvolutionPhysicalAdjoint K h))
+    have hleftCont : Continuous left := by
+      change Continuous (fun G : Lp Complex 2 (volume : Measure Real) =>
+        inner Complex (Tbar G) ((h.memLp 2 volume).toLp (h : Real → Complex)))
+      exact continuous_inner.comp (hTbarCont.prodMk continuous_const)
+    have hrightCont : Continuous right := by
+      change Continuous (fun G : Lp Complex 2 (volume : Measure Real) =>
+        inner Complex G ((hA h).toLp (aux_temporalConvolutionPhysicalAdjoint K h)))
+      exact continuous_inner.comp (continuous_id.prodMk continuous_const)
+    have heq : left ∘ (fun f : SchwartzMap Real Complex => f.toLp 2 volume) =
+        right ∘ (fun f : SchwartzMap Real Complex => f.toLp 2 volume) := by
+      funext f
+      exact hcorePair f
+    change left G = right G
+    exact congrFun
+      ((SchwartzMap.denseRange_toLpCLM (E := Real) (F := Complex)
+        (p := (2 : ENNReal)) ENNReal.ofNat_ne_top).equalizer hleftCont hrightCont heq) G
+  calc
+    inner Complex (Tbar (hg₂.toLp g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+      inner Complex (hg₂.toLp g)
+        ((hA h).toLp (aux_temporalConvolutionPhysicalAdjoint K h)) :=
+      hpairs (hg₂.toLp g)
+    _ = inner Complex (hP.toLp (aux_temporalPhysicalConvolution K g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) :=
+      (aux_inner_temporal_convolution_eq_physicalAdjoint K g h hK hg hg₂ hP
+        (hA h)).symm
+
+private noncomputable def aux_finiteTemporalSchwartzCoord
+    {ι : Type*} [Fintype ι] (i : ι) :
+    SchwartzMap Real (PiLp (2 : ENNReal) (fun _ : ι => Complex)) →L[Complex]
+      SchwartzMap Real Complex :=
+  SchwartzMap.postcompCLM
+    (PiLp.proj (2 : ENNReal) (𝕜 := Complex) (fun _ : ι => Complex) i)
+
+@[simp] private theorem aux_finiteTemporalSchwartzCoord_apply
+    {ι : Type*} [Fintype ι] (i : ι)
+    (G : SchwartzMap Real (PiLp (2 : ENNReal) (fun _ : ι => Complex))) (t : Real) :
+    aux_finiteTemporalSchwartzCoord i G t =
+      aux_finiteTemporalCommonKernelCoord i (fun s => G s) t := rfl
+
+private theorem aux_integral_norm_sq_finiteTemporalSchwartzCoords_eq
+    {ι : Type*} [Fintype ι]
+    (G : SchwartzMap Real (PiLp (2 : ENNReal) (fun _ : ι => Complex))) :
+    (∑ i : ι, ∫ t : Real, ‖aux_finiteTemporalSchwartzCoord i G t‖ ^ (2 : Nat)) =
+      ∫ t : Real, ‖G t‖ ^ (2 : Nat) := by
+  rw [← integral_finsetSum]
+  · congr 1
+    funext t
+    change ∑ i : ι, ‖(G t).ofLp i‖ ^ (2 : Nat) = ‖G t‖ ^ (2 : Nat)
+    exact (PiLp.norm_sq_eq_of_L2 _ (G t)).symm
+  · intro i _
+    have h := (aux_finiteTemporalSchwartzCoord i G).memLp (2 : ENNReal) volume
+    simpa using h.integrable_norm_rpow (by norm_num : (2 : ENNReal) ≠ 0)
+      ENNReal.ofNat_ne_top
+
+private noncomputable def aux_finiteTemporalSchwartzCoordLift
+    (indices : Finset Int)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    Int → SchwartzMap Real Complex :=
+  fun n => if hn : n ∈ indices then
+    aux_finiteTemporalSchwartzCoord ⟨n, hn⟩ G else 0
+
+private noncomputable def aux_finiteTemporalCoreSchwartz
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    SchwartzMap Real Complex :=
+  ∑ i : (↥indices),
+    verticalTemporalSchwartzMultiplier (m (i : Int))
+      (aux_finiteTemporalSchwartzCoord i G)
+
+private theorem aux_schwartz_finsetSum_apply
+    {ι : Type*} [DecidableEq ι]
+    (s : Finset ι) (F : ι → SchwartzMap Real Complex) (t : Real) :
+    (∑ i ∈ s, F i) t = ∑ i ∈ s, F i t := by
+  induction s using Finset.induction_on with
+  | empty => rfl
+  | insert a s ha ih =>
+      rw [Finset.sum_insert ha, Finset.sum_insert ha]
+      change (F a + ∑ i ∈ s, F i) t = F a t + ∑ i ∈ s, F i t
+      change F a t + (∑ i ∈ s, F i) t = F a t + ∑ i ∈ s, F i t
+      rw [ih]
+
+private theorem aux_finiteTemporalCoreSchwartz_apply
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) (t : Real) :
+    aux_finiteTemporalCoreSchwartz indices m G t =
+      verticalTemporalSchwartzCoreRecombined indices m
+        (aux_finiteTemporalSchwartzCoordLift indices G) t := by
+  have hsum :
+      (∑ i : (↥indices),
+        verticalTemporalSchwartzMultiplier (m (i : Int))
+          (aux_finiteTemporalSchwartzCoord i G) t) =
+        ∑ n ∈ indices,
+          verticalTemporalSchwartzMultiplier (m n)
+            (aux_finiteTemporalSchwartzCoordLift indices G n) t := by
+    rw [← Finset.sum_coe_sort indices (fun n =>
+      verticalTemporalSchwartzMultiplier (m n)
+        (aux_finiteTemporalSchwartzCoordLift indices G n) t)]
+    apply Finset.sum_congr rfl
+    intro i _
+    simp only [aux_finiteTemporalSchwartzCoordLift, dif_pos i.2]
+  have hcore :
+      verticalTemporalSchwartzCoreRecombined indices m
+        (aux_finiteTemporalSchwartzCoordLift indices G) t =
+        ∑ n ∈ indices,
+          verticalTemporalSchwartzMultiplier (m n)
+            (aux_finiteTemporalSchwartzCoordLift indices G n) t := rfl
+  rw [hcore]
+  unfold aux_finiteTemporalCoreSchwartz
+  change (Finset.sum (Finset.univ : Finset (↥indices)) (fun i =>
+    verticalTemporalSchwartzMultiplier (m (i : Int))
+      (aux_finiteTemporalSchwartzCoord i G))) t = _
+  rw [aux_schwartz_finsetSum_apply]
+  exact hsum
+
+private theorem aux_integral_norm_sq_finiteTemporalSchwartzCoordLift_eq
+    (indices : Finset Int)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    (∑ n ∈ indices,
+      ∫ t : Real,
+        ‖aux_finiteTemporalSchwartzCoordLift indices G n t‖ ^ (2 : Nat)) =
+      ∫ t : Real, ‖G t‖ ^ (2 : Nat) := by
+  have hsum :
+      (∑ i : (↥indices),
+        ∫ t : Real, ‖aux_finiteTemporalSchwartzCoord i G t‖ ^ (2 : Nat)) =
+        ∑ n ∈ indices,
+          ∫ t : Real,
+            ‖aux_finiteTemporalSchwartzCoordLift indices G n t‖ ^ (2 : Nat) := by
+    rw [← Finset.sum_coe_sort indices (fun n =>
+      ∫ t : Real, ‖aux_finiteTemporalSchwartzCoordLift indices G n t‖ ^ (2 : Nat))]
+    apply Finset.sum_congr rfl
+    intro i _
+    simp only [aux_finiteTemporalSchwartzCoordLift, dif_pos i.2]
+  rw [← aux_integral_norm_sq_finiteTemporalSchwartzCoords_eq G]
+  exact hsum.symm
+
+private theorem aux_integral_norm_sq_finiteTemporalCoreSchwartz_le
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    (∫ t : Real, ‖aux_finiteTemporalCoreSchwartz indices m G t‖ ^ (2 : Nat)) ≤
+      C * ∫ t : Real, ‖G t‖ ^ (2 : Nat) := by
+  calc
+    (∫ t : Real, ‖aux_finiteTemporalCoreSchwartz indices m G t‖ ^ (2 : Nat)) =
+        ∫ t : Real, ‖verticalTemporalSchwartzCoreRecombined indices m
+          (aux_finiteTemporalSchwartzCoordLift indices G) t‖ ^ (2 : Nat) := by
+            apply integral_congr_ae
+            filter_upwards with t
+            rw [aux_finiteTemporalCoreSchwartz_apply]
+    _ ≤ C * ∑ n ∈ indices,
+        ∫ t : Real, ‖aux_finiteTemporalSchwartzCoordLift indices G n t‖ ^ (2 : Nat) :=
+      integral_norm_sq_verticalTemporalSchwartzCoreRecombined_le_of_schwartzProfiles
+        β scale indices m hprofile hoverlap
+          (aux_finiteTemporalSchwartzCoordLift indices G)
+    _ = C * ∫ t : Real, ‖G t‖ ^ (2 : Nat) := by
+      rw [aux_integral_norm_sq_finiteTemporalSchwartzCoordLift_eq]
+
+private noncomputable def aux_verticalTemporalSchwartzMultiplierCLM
+    (m : SchwartzMap Real Complex) :
+    SchwartzMap Real Complex →L[Complex] SchwartzMap Real Complex :=
+  ((SchwartzMap.compCLMOfContinuousLinearEquiv Complex
+      (LinearIsometryEquiv.neg Real (E := Real)).toContinuousLinearEquiv).comp
+    (SchwartzMap.fourierTransformCLM Complex)).comp
+      ((SchwartzMap.smulLeftCLM Complex (m : Real → Complex)).comp
+        (SchwartzMap.fourierTransformCLM Complex))
+
+private theorem aux_verticalTemporalSchwartzMultiplierCLM_apply
+    (m g : SchwartzMap Real Complex) :
+    aux_verticalTemporalSchwartzMultiplierCLM m g =
+      verticalTemporalSchwartzMultiplier m g := rfl
+
+private noncomputable def aux_finiteTemporalCoreCLM
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) :
+    SchwartzMap Real
+        (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) →L[Complex]
+      SchwartzMap Real Complex :=
+  ∑ i : (↥indices),
+    (aux_verticalTemporalSchwartzMultiplierCLM (m (i : Int))).comp
+      (aux_finiteTemporalSchwartzCoord i)
+
+private theorem aux_finiteTemporalCoreCLM_apply
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    aux_finiteTemporalCoreCLM indices m G =
+      aux_finiteTemporalCoreSchwartz indices m G := by
+  unfold aux_finiteTemporalCoreCLM aux_finiteTemporalCoreSchwartz
+  change (Finset.sum (Finset.univ : Finset (↥indices)) (fun i =>
+    (aux_verticalTemporalSchwartzMultiplierCLM (m (i : Int))).comp
+      (aux_finiteTemporalSchwartzCoord i)) G) = _
+  rw [sum_apply]
+  apply Finset.sum_congr rfl
+  intro i _
+  change aux_verticalTemporalSchwartzMultiplierCLM (m (i : Int))
+    (aux_finiteTemporalSchwartzCoord i G) = _
+  rw [aux_verticalTemporalSchwartzMultiplierCLM_apply]
+
+private theorem aux_norm_toLp_two_eq_sqrt_integral_norm_sq
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    (μ : Measure α) (g : α → E) (hg : MemLp g 2 μ) :
+    ‖hg.toLp g‖ = Real.sqrt (∫ x, ‖g x‖ ^ (2 : Nat) ∂μ) := by
+  have hI : 0 ≤ ∫ x, ‖g x‖ ^ (2 : Nat) ∂μ :=
+    integral_nonneg fun _ => sq_nonneg _
+  rw [Lp.norm_toLp, hg.eLpNorm_eq_integral_rpow_norm (by norm_num) (by norm_num)]
+  norm_num
+  rw [ENNReal.toReal_ofReal (Real.rpow_nonneg hI _)]
+  simp [Real.sqrt_eq_rpow]
+
+private noncomputable def aux_finiteTemporalCoreLpCLM
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) :
+    SchwartzMap Real
+        (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) →L[Real]
+      Lp Complex 2 (volume : Measure Real) :=
+  (SchwartzMap.toLpCLM Real Complex 2 (volume : Measure Real)).comp
+    (ContinuousLinearMap.restrictScalars (A := Complex) Real
+      (aux_finiteTemporalCoreCLM indices m))
+
+private theorem aux_finiteTemporalCoreLpCLM_apply
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    aux_finiteTemporalCoreLpCLM indices m G =
+      (aux_finiteTemporalCoreSchwartz indices m G).toLp 2 volume := by
+  unfold aux_finiteTemporalCoreLpCLM
+  change (SchwartzMap.toLpCLM Real Complex 2 (volume : Measure Real))
+    (aux_finiteTemporalCoreCLM indices m G) = _
+  rw [SchwartzMap.toLpCLM_apply, aux_finiteTemporalCoreCLM_apply]
+
+private theorem aux_norm_finiteTemporalCoreLpCLM_le
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    ‖aux_finiteTemporalCoreLpCLM indices m G‖ ≤
+      Real.sqrt C * ‖(SchwartzMap.toLpCLM Real
+        (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2 volume) G‖ := by
+  have hC : 0 ≤ C := by
+    exact (Finset.sum_nonneg fun _ _ => sq_nonneg _).trans (hoverlap 0)
+  have henergy := aux_integral_norm_sq_finiteTemporalCoreSchwartz_le
+    β scale indices m hprofile hoverlap G
+  rw [aux_finiteTemporalCoreLpCLM_apply, SchwartzMap.toLpCLM_apply]
+  change ‖((aux_finiteTemporalCoreSchwartz indices m G).memLp 2 volume).toLp
+      (aux_finiteTemporalCoreSchwartz indices m G)‖ ≤
+    Real.sqrt C * ‖(G.memLp 2 volume).toLp G‖
+  rw [aux_norm_toLp_two_eq_sqrt_integral_norm_sq volume
+      (aux_finiteTemporalCoreSchwartz indices m G)
+      ((aux_finiteTemporalCoreSchwartz indices m G).memLp 2 volume),
+    aux_norm_toLp_two_eq_sqrt_integral_norm_sq volume G (G.memLp 2 volume)]
+  calc
+    Real.sqrt (∫ t : Real,
+      ‖aux_finiteTemporalCoreSchwartz indices m G t‖ ^ (2 : Nat)) ≤
+        Real.sqrt (C * ∫ t : Real, ‖G t‖ ^ (2 : Nat)) :=
+      Real.sqrt_le_sqrt henergy
+    _ = Real.sqrt C * Real.sqrt (∫ t : Real, ‖G t‖ ^ (2 : Nat)) := by
+      rw [Real.sqrt_mul hC]
+
+private noncomputable def aux_finiteTemporalCoreLpExtension
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) :
+    Lp (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real) →L[Real]
+      Lp Complex 2 (volume : Measure Real) :=
+  (aux_finiteTemporalCoreLpCLM indices m).toLinearMap.extendOfNorm
+    (SchwartzMap.toLpCLM Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real)).toLinearMap
+
+private theorem aux_finiteTemporalCoreLpExtension_agrees
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) :
+    aux_finiteTemporalCoreLpExtension indices m
+      ((SchwartzMap.toLpCLM Real
+        (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+          (volume : Measure Real)) G) =
+      aux_finiteTemporalCoreLpCLM indices m G := by
+  apply LinearMap.extendOfNorm_eq
+  · change DenseRange (SchwartzMap.toLpCLM Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real))
+    exact SchwartzMap.denseRange_toLpCLM
+        (E := Real)
+        (F := PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))
+        (p := (2 : ENNReal)) ENNReal.ofNat_ne_top
+  · refine ⟨Real.sqrt C, ?_⟩
+    intro H
+    exact aux_norm_finiteTemporalCoreLpCLM_le
+      β scale indices m hprofile hoverlap H
+
+private theorem aux_norm_finiteTemporalCoreLpExtension_le
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (u : Lp (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+      (volume : Measure Real)) :
+    ‖aux_finiteTemporalCoreLpExtension indices m u‖ ≤ Real.sqrt C * ‖u‖ := by
+  apply LinearMap.norm_extendOfNorm_apply_le
+  · change DenseRange (SchwartzMap.toLpCLM Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real))
+    exact SchwartzMap.denseRange_toLpCLM
+        (E := Real)
+        (F := PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))
+        (p := (2 : ENNReal)) ENNReal.ofNat_ne_top
+  · intro H
+    exact aux_norm_finiteTemporalCoreLpCLM_le
+      β scale indices m hprofile hoverlap H
+
+/-- The inverse-Fourier temporal kernels of the finite multiplier family. -/
+noncomputable def finiteTemporalCoreKernel
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) :
+    (↥indices) → Real → Complex :=
+  fun i => (𝓕⁻ (m (i : Int)) : SchwartzMap Real Complex)
+
+private theorem aux_finiteTemporalCoreKernel_integrable
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) (i : (↥indices)) :
+    Integrable (finiteTemporalCoreKernel indices m i) volume := by
+  exact (𝓕⁻ (m (i : Int)) : SchwartzMap Real Complex).integrable
+
+private theorem aux_finiteTemporalCoreSchwartz_eq_commonKernelOutput
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (G : SchwartzMap Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) (t : Real) :
+    aux_finiteTemporalCoreSchwartz indices m G t =
+      finiteTemporalCommonKernelOutput (finiteTemporalCoreKernel indices m)
+        (fun s => G s) t := by
+  unfold aux_finiteTemporalCoreSchwartz finiteTemporalCommonKernelOutput
+    finiteTemporalCoreKernel
+  change (Finset.sum (Finset.univ : Finset (↥indices)) (fun i =>
+    verticalTemporalSchwartzMultiplier (m (i : Int))
+      (aux_finiteTemporalSchwartzCoord i G))) t = _
+  rw [aux_schwartz_finsetSum_apply]
+  apply Finset.sum_congr rfl
+  intro i _
+  rw [verticalTemporalSchwartzMultiplier_eq_convolution]
+  rfl
+
+private theorem aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (hK : ∀ i, Integrable (K i) volume)
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι) :
+    MemLp (finiteTemporalCommonKernelOutput K g) 2 volume := by
+  unfold finiteTemporalCommonKernelOutput
+  refine memLp_finsetSum Finset.univ ?_
+  intro i _
+  have hconv :
+      (K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+        aux_finiteTemporalCommonKernelCoord i g) =
+        aux_temporalPhysicalConvolution (K i) (aux_finiteTemporalCommonKernelCoord i g) := by
+    funext t
+    rw [convolution_mul_swap]
+    unfold aux_temporalPhysicalConvolution
+    apply integral_congr_ae
+    filter_upwards with y
+    rw [mul_comm]
+  rw [hconv]
+  exact aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+    (K i) (aux_finiteTemporalCommonKernelCoord i g) (hK i)
+    (aux_finiteTemporalCommonKernelCoord_integrable_of_mem hg i)
+    hg.2.choose hg.2.choose_spec.1
+    (aux_finiteTemporalCommonKernelCoord_norm_le_of_mem hg i)
+
+private noncomputable def aux_finiteTemporalCommonKernelPhysicalAdjoint
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (h : SchwartzMap Real Complex) :
+    Real → PiLp (2 : ENNReal) (fun _ : ι => Complex) :=
+  fun y => WithLp.toLp 2 (fun i =>
+    aux_temporalConvolutionPhysicalAdjoint (K i) h y)
+
+@[simp] private theorem aux_finiteTemporalCommonKernelPhysicalAdjoint_apply
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (h : SchwartzMap Real Complex)
+    (i : ι) (y : Real) :
+    aux_finiteTemporalCommonKernelPhysicalAdjoint K h y i =
+      aux_temporalConvolutionPhysicalAdjoint (K i) h y := rfl
+
+private theorem aux_memLp_two_finiteTemporalCommonKernelPhysicalAdjoint
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (h : SchwartzMap Real Complex)
+    (hK : ∀ i, Integrable (K i) volume) :
+    MemLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h) 2 volume := by
+  apply MemLp.of_eval_piLp
+  intro i
+  change MemLp (aux_temporalConvolutionPhysicalAdjoint (K i) h) 2 volume
+  exact aux_memLp_two_temporalConvolutionPhysicalAdjoint_schwartz (K i) h (hK i)
+
+private theorem aux_inner_finiteTemporalCommonKernelOutput_eq_physicalAdjoint
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (g : finiteTemporalCommonKernelBundle ι)
+    (h : SchwartzMap Real Complex)
+    (hK : ∀ i, Integrable (K i) volume)
+    (hg : ∀ i, Integrable (aux_finiteTemporalCommonKernelCoord i g) volume)
+    (hg₂ : MemLp g 2 volume)
+    (hPcoord : ∀ i, MemLp
+      (aux_temporalPhysicalConvolution (K i) (aux_finiteTemporalCommonKernelCoord i g))
+        2 volume)
+    (hP : MemLp (finiteTemporalCommonKernelOutput K g) 2 volume)
+    (hA : MemLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h) 2 volume) :
+    inner Complex (hP.toLp (finiteTemporalCommonKernelOutput K g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+      inner Complex (hg₂.toLp g)
+        (hA.toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h)) := by
+  have hgcoord₂ : ∀ i, MemLp (aux_finiteTemporalCommonKernelCoord i g) 2 volume := by
+    intro i
+    change MemLp (fun x => (g x).ofLp i) 2 volume
+    exact hg₂.eval_piLp i
+  have hAcoord : ∀ i, MemLp
+      (aux_temporalConvolutionPhysicalAdjoint (K i) h) 2 volume := by
+    intro i
+    simpa only [aux_finiteTemporalCommonKernelPhysicalAdjoint_apply] using hA.eval_piLp i
+  have hconv : ∀ i,
+      (K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+        aux_finiteTemporalCommonKernelCoord i g) =
+        aux_temporalPhysicalConvolution (K i) (aux_finiteTemporalCommonKernelCoord i g) := by
+    intro i
+    funext t
+    rw [convolution_mul_swap]
+    unfold aux_temporalPhysicalConvolution
+    apply integral_congr_ae
+    filter_upwards with y
+    rw [mul_comm]
+  have hleft :
+      inner Complex (hP.toLp (finiteTemporalCommonKernelOutput K g))
+          ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+        ∑ i : ι, ∫ x : Real,
+          h x * starRingEnd Complex
+            (aux_temporalPhysicalConvolution (K i)
+              (aux_finiteTemporalCommonKernelCoord i g) x) := by
+    rw [L2.inner_def]
+    calc
+      (∫ x : Real,
+          inner Complex (hP.toLp (finiteTemporalCommonKernelOutput K g) x)
+            ((h.memLp 2 volume).toLp (h : Real → Complex) x)) =
+          ∫ x : Real, h x * starRingEnd Complex
+            (finiteTemporalCommonKernelOutput K g x) := by
+              apply integral_congr_ae
+              filter_upwards [hP.coeFn_toLp, (h.memLp 2 volume).coeFn_toLp]
+                with x hx hh
+              rw [hx, hh, RCLike.inner_apply]
+      _ = ∫ x : Real, ∑ i : ι,
+          h x * starRingEnd Complex
+            (aux_temporalPhysicalConvolution (K i)
+              (aux_finiteTemporalCommonKernelCoord i g) x) := by
+              apply integral_congr_ae
+              filter_upwards with x
+              unfold finiteTemporalCommonKernelOutput
+              rw [starRingEnd_apply, star_sum, Finset.mul_sum]
+              apply Finset.sum_congr rfl
+              intro i _
+              rw [hconv i]
+              rw [starRingEnd_apply]
+      _ = ∑ i : ι, ∫ x : Real,
+          h x * starRingEnd Complex
+            (aux_temporalPhysicalConvolution (K i)
+              (aux_finiteTemporalCommonKernelCoord i g) x) := by
+              apply MeasureTheory.integral_finsetSum
+              intro i _
+              change Integrable ((h : Real → Complex) * star
+                (aux_temporalPhysicalConvolution (K i)
+                  (aux_finiteTemporalCommonKernelCoord i g))) volume
+              exact (h.memLp 2 volume).integrable_mul (hPcoord i).star
+  have hright :
+      inner Complex (hg₂.toLp g)
+          (hA.toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h)) =
+        ∑ i : ι, ∫ y : Real,
+          aux_temporalConvolutionPhysicalAdjoint (K i) h y *
+            starRingEnd Complex (aux_finiteTemporalCommonKernelCoord i g y) := by
+    rw [L2.inner_def]
+    calc
+      (∫ y : Real, inner Complex (hg₂.toLp g y)
+          (hA.toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h) y)) =
+          ∫ y : Real, ∑ i : ι,
+            aux_temporalConvolutionPhysicalAdjoint (K i) h y *
+              starRingEnd Complex (aux_finiteTemporalCommonKernelCoord i g y) := by
+              apply integral_congr_ae
+              filter_upwards [hg₂.coeFn_toLp, hA.coeFn_toLp] with y hgy hAy
+              rw [hgy, hAy, PiLp.inner_apply]
+              apply Finset.sum_congr rfl
+              intro i _
+              rw [RCLike.inner_apply]
+              rfl
+      _ = ∑ i : ι, ∫ y : Real,
+          aux_temporalConvolutionPhysicalAdjoint (K i) h y *
+            starRingEnd Complex (aux_finiteTemporalCommonKernelCoord i g y) := by
+              apply MeasureTheory.integral_finsetSum
+              intro i _
+              change Integrable (aux_temporalConvolutionPhysicalAdjoint (K i) h *
+                star (aux_finiteTemporalCommonKernelCoord i g)) volume
+              exact (hAcoord i).integrable_mul (hgcoord₂ i).star
+  have hscalar : ∀ i : ι,
+      (∫ x : Real, h x * starRingEnd Complex
+          (aux_temporalPhysicalConvolution (K i)
+            (aux_finiteTemporalCommonKernelCoord i g) x)) =
+        ∫ y : Real,
+          aux_temporalConvolutionPhysicalAdjoint (K i) h y *
+            starRingEnd Complex (aux_finiteTemporalCommonKernelCoord i g y) := by
+    intro i
+    have hs := aux_inner_temporal_convolution_eq_physicalAdjoint
+      (K i) (aux_finiteTemporalCommonKernelCoord i g) h (hK i) (hg i)
+        (hgcoord₂ i) (hPcoord i) (hAcoord i)
+    rw [L2.inner_def, L2.inner_def] at hs
+    calc
+      (∫ x : Real, h x * starRingEnd Complex
+          (aux_temporalPhysicalConvolution (K i)
+            (aux_finiteTemporalCommonKernelCoord i g) x)) =
+          ∫ x : Real,
+            inner Complex
+              ((hPcoord i).toLp
+                (aux_temporalPhysicalConvolution (K i)
+                  (aux_finiteTemporalCommonKernelCoord i g)) x)
+              ((h.memLp 2 volume).toLp (h : Real → Complex) x) := by
+                apply integral_congr_ae
+                filter_upwards [(hPcoord i).coeFn_toLp,
+                  (h.memLp 2 volume).coeFn_toLp] with x hPx hhx
+                rw [hPx, hhx, RCLike.inner_apply]
+      _ = ∫ y : Real,
+          inner Complex ((hgcoord₂ i).toLp (aux_finiteTemporalCommonKernelCoord i g) y)
+            ((hAcoord i).toLp
+              (aux_temporalConvolutionPhysicalAdjoint (K i) h) y) := hs
+      _ = ∫ y : Real,
+          aux_temporalConvolutionPhysicalAdjoint (K i) h y *
+            starRingEnd Complex (aux_finiteTemporalCommonKernelCoord i g y) := by
+              apply integral_congr_ae
+              filter_upwards [(hgcoord₂ i).coeFn_toLp,
+                (hAcoord i).coeFn_toLp] with y hgy hAy
+              rw [hgy, hAy, RCLike.inner_apply]
+  calc
+    inner Complex (hP.toLp (finiteTemporalCommonKernelOutput K g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+        ∑ i : ι, ∫ x : Real,
+          h x * starRingEnd Complex
+            (aux_temporalPhysicalConvolution (K i)
+              (aux_finiteTemporalCommonKernelCoord i g) x) := hleft
+    _ = ∑ i : ι, ∫ y : Real,
+          aux_temporalConvolutionPhysicalAdjoint (K i) h y *
+            starRingEnd Complex (aux_finiteTemporalCommonKernelCoord i g y) := by
+          apply Finset.sum_congr rfl
+          intro i _
+          exact hscalar i
+    _ = inner Complex (hg₂.toLp g)
+        (hA.toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h)) := hright.symm
+
+private theorem aux_finiteTemporalCoreLpExtension_eq_commonKernelOutput_of_mem
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain (↥indices)) :
+    aux_finiteTemporalCoreLpExtension indices m (hg.1.toLp g) =
+      (aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem
+        (finiteTemporalCoreKernel indices m)
+        (aux_finiteTemporalCoreKernel_integrable indices m) hg).toLp
+          (finiteTemporalCommonKernelOutput
+            (finiteTemporalCoreKernel indices m) g) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hPcoord : ∀ i, MemLp
+      (aux_temporalPhysicalConvolution (K i)
+        (aux_finiteTemporalCommonKernelCoord i g)) 2 volume := by
+    intro i
+    exact aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+      (K i) (aux_finiteTemporalCommonKernelCoord i g) (hK i)
+      (aux_finiteTemporalCommonKernelCoord_integrable_of_mem hg i)
+      hg.2.choose hg.2.choose_spec.1
+      (aux_finiteTemporalCommonKernelCoord_norm_le_of_mem hg i)
+  have hP : MemLp (finiteTemporalCommonKernelOutput K g) 2 volume :=
+    aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem K hK hg
+  have hA : ∀ h : SchwartzMap Real Complex,
+      MemLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h) 2 volume := by
+    intro h
+    exact aux_memLp_two_finiteTemporalCommonKernelPhysicalAdjoint K h hK
+  have hDense : DenseRange (SchwartzMap.toLpCLM Real
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real)) :=
+    SchwartzMap.denseRange_toLpCLM
+      (E := Real)
+      (F := PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))
+      (p := (2 : ENNReal)) ENNReal.ofNat_ne_top
+  refine DenseRange.eq_of_inner_left Complex
+    (SchwartzMap.denseRange_toLpCLM
+      (E := Real) (F := Complex) (p := (2 : ENNReal)) ENNReal.ofNat_ne_top) ?_
+  intro h
+  have hleft_cont : Continuous (fun u : Lp
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real) =>
+      inner Complex (aux_finiteTemporalCoreLpExtension indices m u)
+        ((h.memLp 2 volume).toLp (h : Real → Complex))) :=
+    continuous_inner.comp
+      ((aux_finiteTemporalCoreLpExtension indices m).continuous.prodMk continuous_const)
+  have hright_cont : Continuous (fun u : Lp
+      (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+        (volume : Measure Real) =>
+      inner Complex u
+        ((hA h).toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h))) :=
+    continuous_inner.comp (continuous_id.prodMk continuous_const)
+  have hcore_pair :
+      (fun u : Lp (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+          (volume : Measure Real) =>
+        inner Complex (aux_finiteTemporalCoreLpExtension indices m u)
+          ((h.memLp 2 volume).toLp (h : Real → Complex))) =
+      (fun u : Lp (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2
+          (volume : Measure Real) =>
+        inner Complex u
+          ((hA h).toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h))) := by
+    apply hDense.equalizer hleft_cont hright_cont
+    funext G
+    have hcoord_eq : ∀ i,
+        aux_finiteTemporalCommonKernelCoord i (fun s => G s) =
+          (aux_finiteTemporalSchwartzCoord i G : Real → Complex) := by
+      intro i
+      funext s
+      symm
+      exact aux_finiteTemporalSchwartzCoord_apply i G s
+    have hGcoord : ∀ i, Integrable
+        (aux_finiteTemporalCommonKernelCoord i (fun s => G s)) volume := by
+      intro i
+      rw [hcoord_eq i]
+      exact (aux_finiteTemporalSchwartzCoord i G).integrable
+    have hGcoord₂ : MemLp (fun s => G s) 2 volume := G.memLp 2 volume
+    have hPcoordG : ∀ i, MemLp
+          (aux_temporalPhysicalConvolution (K i)
+          (aux_finiteTemporalCommonKernelCoord i (fun s => G s))) 2 volume := by
+      intro i
+      rw [hcoord_eq i]
+      exact aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
+        (K i) (aux_finiteTemporalSchwartzCoord i G) (hK i)
+        (aux_finiteTemporalSchwartzCoord i G).integrable
+        ‖(aux_finiteTemporalSchwartzCoord i G).toBoundedContinuousFunction‖
+        (norm_nonneg _)
+        (fun x => BoundedContinuousFunction.norm_coe_le_norm
+          (aux_finiteTemporalSchwartzCoord i G).toBoundedContinuousFunction x)
+    have hcorefun : aux_finiteTemporalCoreSchwartz indices m G =
+        finiteTemporalCommonKernelOutput K (fun s => G s) := by
+      funext t
+      exact aux_finiteTemporalCoreSchwartz_eq_commonKernelOutput indices m G t
+    have hPG : MemLp (finiteTemporalCommonKernelOutput K (fun s => G s)) 2 volume := by
+      rw [← hcorefun]
+      exact (aux_finiteTemporalCoreSchwartz indices m G).memLp 2 volume
+    have hpairG := aux_inner_finiteTemporalCommonKernelOutput_eq_physicalAdjoint
+      K (fun s => G s) h hK hGcoord hGcoord₂ hPcoordG hPG (hA h)
+    change inner Complex (aux_finiteTemporalCoreLpExtension indices m
+        ((SchwartzMap.toLpCLM Real
+          (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2 volume) G))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+      inner Complex ((SchwartzMap.toLpCLM Real
+        (PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)) 2 volume) G)
+        ((hA h).toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h))
+    rw [aux_finiteTemporalCoreLpExtension_agrees
+      β scale indices m hprofile hoverlap G,
+      aux_finiteTemporalCoreLpCLM_apply,
+      SchwartzMap.toLpCLM_apply]
+    have hPG_toLp : hPG.toLp
+        (finiteTemporalCommonKernelOutput K (fun s => G s)) =
+        ((aux_finiteTemporalCoreSchwartz indices m G).memLp 2 volume).toLp
+          (aux_finiteTemporalCoreSchwartz indices m G) := by
+      apply MemLp.toLp_congr
+      filter_upwards with t
+      exact (congrFun hcorefun t).symm
+    have hcore_toLp :
+        ((aux_finiteTemporalCoreSchwartz indices m G).memLp 2 volume).toLp
+          (aux_finiteTemporalCoreSchwartz indices m G) =
+        (aux_finiteTemporalCoreSchwartz indices m G).toLp 2 volume := rfl
+    have hG_toLp : hGcoord₂.toLp (fun s => G s) = G.toLp 2 volume := by
+      apply MemLp.toLp_congr
+      filter_upwards with s
+      rfl
+    rw [hPG_toLp, hcore_toLp, hG_toLp] at hpairG
+    exact hpairG
+  have hpair := congrFun hcore_pair (hg.1.toLp g)
+  have hraw_pair := aux_inner_finiteTemporalCommonKernelOutput_eq_physicalAdjoint
+    K g h hK
+      (fun i => aux_finiteTemporalCommonKernelCoord_integrable_of_mem hg i)
+      hg.1 hPcoord hP (hA h)
+  change inner Complex (aux_finiteTemporalCoreLpExtension indices m (hg.1.toLp g))
+      ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+    inner Complex (hP.toLp (finiteTemporalCommonKernelOutput K g))
+      ((h.memLp 2 volume).toLp (h : Real → Complex))
+  calc
+    inner Complex (aux_finiteTemporalCoreLpExtension indices m (hg.1.toLp g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) =
+        inner Complex (hg.1.toLp g)
+          ((hA h).toLp (aux_finiteTemporalCommonKernelPhysicalAdjoint K h)) := hpair
+    _ = inner Complex (hP.toLp (finiteTemporalCommonKernelOutput K g))
+        ((h.memLp 2 volume).toLp (h : Real → Complex)) := hraw_pair.symm
+
+private theorem aux_norm_finiteTemporalCommonKernelOutput_le_of_mem
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain (↥indices)) :
+    ‖(aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem
+      (finiteTemporalCoreKernel indices m)
+      (aux_finiteTemporalCoreKernel_integrable indices m) hg).toLp
+        (finiteTemporalCommonKernelOutput
+          (finiteTemporalCoreKernel indices m) g)‖ ≤
+      Real.sqrt C * ‖hg.1.toLp g‖ := by
+  rw [← aux_finiteTemporalCoreLpExtension_eq_commonKernelOutput_of_mem
+    β scale indices m hprofile hoverlap hg]
+  exact aux_norm_finiteTemporalCoreLpExtension_le
+    β scale indices m hprofile hoverlap (hg.1.toLp g)
+
+private theorem aux_integral_norm_sq_finiteTemporalCommonKernelOutput_le_of_mem
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain (↥indices)) :
+    (∫ t : Real, ‖finiteTemporalCommonKernelOutput
+      (finiteTemporalCoreKernel indices m) g t‖ ^ (2 : Nat)) ≤
+      C * ∫ t : Real, ‖g t‖ ^ (2 : Nat) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hP : MemLp (finiteTemporalCommonKernelOutput K g) 2 volume :=
+    aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem K hK hg
+  have hnorm := aux_norm_finiteTemporalCommonKernelOutput_le_of_mem
+    β scale indices m hprofile hoverlap hg
+  change (∫ t : Real, ‖finiteTemporalCommonKernelOutput K g t‖ ^ (2 : Nat)) ≤
+    C * ∫ t : Real, ‖g t‖ ^ (2 : Nat)
+  rw [aux_norm_toLp_two_eq_sqrt_integral_norm_sq volume
+      (finiteTemporalCommonKernelOutput K g) hP,
+    aux_norm_toLp_two_eq_sqrt_integral_norm_sq volume g hg.1] at hnorm
+  have hC : 0 ≤ C :=
+    (Finset.sum_nonneg fun _ _ => sq_nonneg _).trans (hoverlap 0)
+  have hI : 0 ≤ ∫ t : Real, ‖finiteTemporalCommonKernelOutput K g t‖ ^ (2 : Nat) :=
+    integral_nonneg fun _ => sq_nonneg _
+  have hJ : 0 ≤ ∫ t : Real, ‖g t‖ ^ (2 : Nat) :=
+    integral_nonneg fun _ => sq_nonneg _
+  calc
+    (∫ t : Real, ‖finiteTemporalCommonKernelOutput K g t‖ ^ (2 : Nat)) =
+        (Real.sqrt (∫ t : Real,
+          ‖finiteTemporalCommonKernelOutput K g t‖ ^ (2 : Nat))) ^ (2 : Nat) :=
+      (Real.sq_sqrt hI).symm
+    _ ≤ (Real.sqrt C * Real.sqrt (∫ t : Real, ‖g t‖ ^ (2 : Nat))) ^ (2 : Nat) :=
+      (sq_le_sq₀ (Real.sqrt_nonneg _) (mul_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _))).mpr
+        hnorm
+    _ = C * ∫ t : Real, ‖g t‖ ^ (2 : Nat) := by
+      calc
+        (Real.sqrt C * Real.sqrt (∫ t : Real, ‖g t‖ ^ (2 : Nat))) ^ (2 : Nat) =
+            (Real.sqrt C) ^ (2 : Nat) *
+              (Real.sqrt (∫ t : Real, ‖g t‖ ^ (2 : Nat))) ^ (2 : Nat) := by ring
+        _ = C * ∫ t : Real, ‖g t‖ ^ (2 : Nat) := by
+          rw [Real.sq_sqrt hC, Real.sq_sqrt hJ]
+
+private theorem aux_lintegral_ofReal_norm_rpow_two_eq
+    {E : Type*} [NormedAddCommGroup E]
+    (f : Real → E) (hf : MemLp f 2 volume) :
+    (∫⁻ x : Real, (ENNReal.ofReal ‖f x‖) ^ (2 : Real)) =
+      ENNReal.ofReal (∫ x : Real, ‖f x‖ ^ (2 : Nat)) := by
+  have hInt : Integrable (fun x : Real => ‖f x‖ ^ (2 : Nat)) volume := by
+    simpa using hf.integrable_norm_rpow (by norm_num : (2 : ENNReal) ≠ 0)
+      ENNReal.ofNat_ne_top
+  symm
+  rw [ofReal_integral_eq_lintegral_ofReal hInt]
+  · apply lintegral_congr
+    intro x
+    rw [ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) (by norm_num : (0 : Real) ≤ 2)]
+    rw [Real.rpow_two]
+  · filter_upwards with x
+    exact sq_nonneg _
+
+private theorem aux_lintegral_norm_rpow_two_finiteTemporalCommonKernelOutput_le_of_mem
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain (↥indices)) :
+    (∫⁻ t : Real, (ENNReal.ofReal
+      ‖finiteTemporalCommonKernelOutput
+        (finiteTemporalCoreKernel indices m) g t‖) ^ (2 : Real)) ≤
+      ENNReal.ofReal C * ∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (2 : Real) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hP : MemLp (finiteTemporalCommonKernelOutput K g) 2 volume :=
+    aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem K hK hg
+  have hreal := aux_integral_norm_sq_finiteTemporalCommonKernelOutput_le_of_mem
+    β scale indices m hprofile hoverlap hg
+  have hC : 0 ≤ C :=
+    (Finset.sum_nonneg fun _ _ => sq_nonneg _).trans (hoverlap 0)
+  change (∫⁻ t : Real,
+      (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖) ^ (2 : Real)) ≤
+      ENNReal.ofReal C * ∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (2 : Real)
+  rw [aux_lintegral_ofReal_norm_rpow_two_eq
+      (finiteTemporalCommonKernelOutput K g) hP,
+    aux_lintegral_ofReal_norm_rpow_two_eq g hg.1,
+    ← ENNReal.ofReal_mul hC]
+  exact ENNReal.ofReal_le_ofReal hreal
+
+private theorem aux_weak_two_finiteTemporalCommonKernelOutput_of_mem
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain (↥indices))
+    {s : Real} (_hs : 0 < s) :
+    (ENNReal.ofReal s) ^ (2 : Real) *
+        volume {t | s < ‖finiteTemporalCommonKernelOutput
+          (finiteTemporalCoreKernel indices m) g t‖} ≤
+      ENNReal.ofReal C * ∫⁻ t : Real,
+        (ENNReal.ofReal ‖g t‖) ^ (2 : Real) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hP : MemLp (finiteTemporalCommonKernelOutput K g) 2 volume :=
+    aux_memLp_two_finiteTemporalCommonKernelOutput_of_mem K hK hg
+  have hstrong := aux_lintegral_norm_rpow_two_finiteTemporalCommonKernelOutput_le_of_mem
+    β scale indices m hprofile hoverlap hg
+  change (ENNReal.ofReal s) ^ (2 : Real) *
+      volume {t | s < ‖finiteTemporalCommonKernelOutput K g t‖} ≤
+    ENNReal.ofReal C * ∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (2 : Real)
+  calc
+    (ENNReal.ofReal s) ^ (2 : Real) *
+        volume {t | s < ‖finiteTemporalCommonKernelOutput K g t‖} ≤
+        (ENNReal.ofReal s) ^ (2 : Real) *
+          volume {t | (ENNReal.ofReal s) ^ (2 : Real) ≤
+            (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖) ^ (2 : Real)} := by
+          apply mul_le_mul_right
+          apply measure_mono
+          intro t ht
+          change ENNReal.ofReal s ^ (2 : Real) ≤
+            ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖ ^ (2 : Real)
+          exact ENNReal.rpow_le_rpow
+            (ENNReal.ofReal_le_ofReal (le_of_lt ht)) (by norm_num)
+    _ ≤ ∫⁻ t : Real,
+        (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖) ^ (2 : Real) :=
+      mul_meas_ge_le_lintegral₀
+        (ENNReal.continuous_rpow_const.measurable.comp_aemeasurable
+          hP.aestronglyMeasurable.norm.aemeasurable.ennreal_ofReal)
+        ((ENNReal.ofReal s) ^ (2 : Real))
+    _ ≤ ENNReal.ofReal C * ∫⁻ t : Real,
+        (ENNReal.ofReal ‖g t‖) ^ (2 : Real) := hstrong
+
+private theorem aux_finiteTemporal_indicator_mem_measurableDomain
+    {ι : Type*} [Fintype ι] (S : Set Real) (hS : MeasurableSet S)
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain ι) :
+    S.indicator g ∈ finiteTemporalCommonKernelMeasurableDomain ι := by
+  refine ⟨hg.1.indicator hS, ?_⟩
+  rcases hg.2 with ⟨hg₂, A, hA, hbound, hcoord⟩
+  refine ⟨hg₂.indicator hS, A, hA, ?_, ?_⟩
+  · intro t
+    by_cases ht : t ∈ S
+    · rw [Set.indicator_of_mem ht]
+      exact hbound t
+    · rw [Set.indicator_of_notMem ht, norm_zero]
+      exact hA
+  · intro i
+    change Integrable (aux_finiteTemporalCommonKernelCoord i (S.indicator g)) volume
+    have hcoord_eq : aux_finiteTemporalCommonKernelCoord i (S.indicator g) =
+        S.indicator (aux_finiteTemporalCommonKernelCoord i g) := by
+      funext t
+      by_cases ht : t ∈ S
+      · unfold aux_finiteTemporalCommonKernelCoord
+        rw [Set.indicator_of_mem ht, Set.indicator_of_mem ht]
+      · unfold aux_finiteTemporalCommonKernelCoord
+        rw [Set.indicator_of_notMem ht, Set.indicator_of_notMem ht]
+        simp
+    rw [hcoord_eq]
+    exact (by
+      change ∀ i : ι, Integrable (aux_finiteTemporalCommonKernelCoord i g) volume at hcoord
+      exact (hcoord i).indicator hS)
+
+private noncomputable def aux_finiteTemporalHardLow
+    {ι : Type*} [Fintype ι]
+    (g : finiteTemporalCommonKernelBundle ι) (t : Real) : finiteTemporalCommonKernelBundle ι :=
+  {x | ‖g x‖ < t / 2}.indicator g
+
+private noncomputable def aux_finiteTemporalHardHigh
+    {ι : Type*} [Fintype ι]
+    (g : finiteTemporalCommonKernelBundle ι) (t : Real) : finiteTemporalCommonKernelBundle ι :=
+  {x | t / 2 ≤ ‖g x‖}.indicator g
+
+private theorem aux_finiteTemporalHardLow_mem_measurableDomain
+    {ι : Type*} [Fintype ι]
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain ι) (t : Real) :
+    aux_finiteTemporalHardLow g t ∈ finiteTemporalCommonKernelMeasurableDomain ι := by
+  apply aux_finiteTemporal_indicator_mem_measurableDomain
+    {x | ‖g x‖ < t / 2}
+  · exact measurableSet_lt hg.1.norm measurable_const
+  · exact hg
+
+private theorem aux_finiteTemporalHardHigh_mem_measurableDomain
+    {ι : Type*} [Fintype ι]
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain ι) (t : Real) :
+    aux_finiteTemporalHardHigh g t ∈ finiteTemporalCommonKernelMeasurableDomain ι := by
+  apply aux_finiteTemporal_indicator_mem_measurableDomain
+    {x | t / 2 ≤ ‖g x‖}
+  · exact measurableSet_le measurable_const hg.1.norm
+  · exact hg
+
+private theorem aux_finiteTemporalHardLow_add_high
+    {ι : Type*} [Fintype ι]
+    (g : finiteTemporalCommonKernelBundle ι) (t : Real) :
+    g = aux_finiteTemporalHardLow g t + aux_finiteTemporalHardHigh g t := by
+  funext x
+  by_cases hx : ‖g x‖ < t / 2
+  · simp [aux_finiteTemporalHardLow, aux_finiteTemporalHardHigh, hx]
+  · have hx' : t / 2 ≤ ‖g x‖ := le_of_not_gt hx
+    simp [aux_finiteTemporalHardLow, aux_finiteTemporalHardHigh, hx, hx']
+
+private theorem aux_finiteTemporalHardLow_norm_le_half_height
+    {ι : Type*} [Fintype ι]
+    (g : finiteTemporalCommonKernelBundle ι) {t : Real} (ht : 0 < t) (x : Real) :
+    ‖aux_finiteTemporalHardLow g t x‖ ≤ t / 2 := by
+  by_cases hx : ‖g x‖ < t / 2
+  · simpa [aux_finiteTemporalHardLow, hx] using hx.le
+  · have hx' : x ∉ {x | ‖g x‖ < t / 2} := by
+      simpa only [Set.mem_setOf_eq] using hx
+    rw [aux_finiteTemporalHardLow, Set.indicator_of_notMem hx', norm_zero]
+    positivity
+
+private theorem aux_memLp_four_of_finiteTemporalCommonKernelMeasurableDomain
+    {ι : Type*} [Fintype ι] {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain ι) :
+    MemLp g (4 : ENNReal) volume := by
+  apply Codex.Spherical.LpSpaceFacts.memLp_four_of_two_and_top g hg.2.1
+  apply memLp_top_of_bound hg.1.aestronglyMeasurable hg.2.2.choose
+  exact Filter.Eventually.of_forall hg.2.2.choose_spec.2.1
+
+private theorem aux_norm_finiteTemporalCommonKernelOutput_le_sqrt_card_of_mem_of_bound
+    {ι : Type*} [Fintype ι]
+    (K : ι → Real → Complex) (κ : Real → Real)
+    (hK : ∀ i, Integrable (K i) volume)
+    (hκ : ∀ y, 0 ≤ κ y) (hκint : Integrable κ volume)
+    (hkernel : ∀ i y, ‖K i y‖ ≤ κ y)
+    {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain ι)
+    {A : Real} (hinput : ∀ t, ‖g t‖ ≤ A) (t : Real) :
+    ‖finiteTemporalCommonKernelOutput K g t‖ ≤
+      Real.sqrt (Fintype.card ι : Real) * (∫ y : Real, κ y) * A := by
+  have hA : 0 ≤ A := (norm_nonneg (g 0)).trans (hinput 0)
+  have hcoord_bound : ∀ i u, ‖aux_finiteTemporalCommonKernelCoord i g u‖ ≤ A := by
+    intro i u
+    exact (aux_norm_finiteTemporalCommonKernelCoord_le_norm_bundle (g u) i).trans (hinput u)
+  have hprod : ∀ i : ι, Integrable
+      (fun y : Real => K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)) volume := by
+    intro i
+    exact (aux_convolutionExists_of_integrable_of_bound
+      (K i) (aux_finiteTemporalCommonKernelCoord i g) (hK i)
+      (aux_finiteTemporalCommonKernelCoord_aestronglyMeasurable_of_mem hg i)
+      (hcoord_bound i)) t
+  have hsumint : Integrable (fun y : Real => ∑ i : ι,
+      K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)) volume := by
+    exact integrable_finsetSum Finset.univ (fun i _ => hprod i)
+  have henvelope : Integrable (fun y : Real =>
+      Real.sqrt (Fintype.card ι : Real) * κ y * A) volume := by
+    have h := hκint.const_mul (Real.sqrt (Fintype.card ι : Real) * A)
+    simpa [mul_assoc, mul_left_comm, mul_comm] using h
+  have hsqr_kernel (y : Real) :
+      Real.sqrt (∑ i : ι, ‖K i y‖ ^ (2 : Nat)) ≤
+        Real.sqrt (Fintype.card ι : Real) * κ y := by
+    have hsum : (∑ i : ι, ‖K i y‖ ^ (2 : Nat)) ≤
+        (Fintype.card ι : Real) * (κ y) ^ (2 : Nat) := by
+      calc
+        (∑ i : ι, ‖K i y‖ ^ (2 : Nat)) ≤ ∑ i : ι, (κ y) ^ (2 : Nat) := by
+          apply Finset.sum_le_sum
+          intro i _
+          exact sq_le_sq₀ (norm_nonneg _) (hκ y) |>.mpr (hkernel i y)
+        _ = (Fintype.card ι : Real) * (κ y) ^ (2 : Nat) := by
+          rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
+    calc
+      Real.sqrt (∑ i : ι, ‖K i y‖ ^ (2 : Nat)) ≤
+          Real.sqrt ((Fintype.card ι : Real) * (κ y) ^ (2 : Nat)) :=
+        Real.sqrt_le_sqrt hsum
+      _ = Real.sqrt (Fintype.card ι : Real) * κ y := by
+        rw [Real.sqrt_mul (Nat.cast_nonneg _), Real.sqrt_sq_eq_abs,
+          abs_of_nonneg (hκ y)]
+  have hinput_square : ∀ u : Real,
+      Real.sqrt (∑ i : ι, ‖aux_finiteTemporalCommonKernelCoord i g u‖ ^ (2 : Nat)) ≤ A := by
+    intro u
+    change Real.sqrt (∑ i : ι, ‖(g u).ofLp i‖ ^ (2 : Nat)) ≤ A
+    rw [← PiLp.norm_eq_of_L2]
+    exact hinput u
+  have hpoint (y : Real) :
+      ‖∑ i : ι, K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)‖ ≤
+        Real.sqrt (Fintype.card ι : Real) * κ y * A := by
+    calc
+      ‖∑ i : ι, K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)‖ ≤
+          ∑ i : ι, ‖K i y‖ * ‖aux_finiteTemporalCommonKernelCoord i g (t - y)‖ := by
+        calc
+          ‖∑ i : ι, K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)‖ ≤
+              ∑ i : ι, ‖K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)‖ :=
+            norm_sum_le _ _
+          _ = ∑ i : ι, ‖K i y‖ * ‖aux_finiteTemporalCommonKernelCoord i g (t - y)‖ := by
+            apply Finset.sum_congr rfl
+            intro i _
+            rw [norm_mul]
+      _ ≤ Real.sqrt (∑ i : ι, ‖K i y‖ ^ (2 : Nat)) *
+          Real.sqrt (∑ i : ι,
+            ‖aux_finiteTemporalCommonKernelCoord i g (t - y)‖ ^ (2 : Nat)) :=
+        Real.sum_mul_le_sqrt_mul_sqrt Finset.univ _ _
+      _ ≤ (Real.sqrt (Fintype.card ι : Real) * κ y) * A := by
+        exact mul_le_mul (hsqr_kernel y) (hinput_square (t - y))
+          (Real.sqrt_nonneg _) (mul_nonneg (Real.sqrt_nonneg _) (hκ y))
+      _ = Real.sqrt (Fintype.card ι : Real) * κ y * A := by ring
+  unfold finiteTemporalCommonKernelOutput
+  calc
+    ‖∑ i : ι,
+        (K i ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+          aux_finiteTemporalCommonKernelCoord i g) t‖ =
+        ‖∫ y : Real, ∑ i : ι,
+          K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)‖ := by
+          congr 2
+          rw [integral_finsetSum Finset.univ (fun i _ => hprod i)]
+          apply Finset.sum_congr rfl
+          intro i _
+          rfl
+    _ ≤ ∫ y : Real, ‖∑ i : ι,
+        K i y * aux_finiteTemporalCommonKernelCoord i g (t - y)‖ :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ y : Real, Real.sqrt (Fintype.card ι : Real) * κ y * A :=
+      integral_mono hsumint.norm henvelope hpoint
+    _ = Real.sqrt (Fintype.card ι : Real) * (∫ y : Real, κ y) * A := by
+      calc
+        (∫ y : Real, Real.sqrt (Fintype.card ι : Real) * κ y * A) =
+            ∫ y : Real, (Real.sqrt (Fintype.card ι : Real) * A) * κ y := by
+              apply integral_congr_ae
+              filter_upwards with y
+              ring
+        _ = (Real.sqrt (Fintype.card ι : Real) * A) * ∫ y : Real, κ y := by
+              rw [integral_const_mul]
+        _ = Real.sqrt (Fintype.card ι : Real) * (∫ y : Real, κ y) * A := by ring
+
+private theorem aux_lintegral_norm_rpow_two_finiteTemporalHardHigh_eq
+    {ι : Type*} [Fintype ι] (g : finiteTemporalCommonKernelBundle ι)
+    (hg : Measurable g) (t : Real) :
+    (∫⁻ x : Real,
+      (ENNReal.ofReal ‖aux_finiteTemporalHardHigh g t x‖) ^ (2 : Real)) =
+      ∫⁻ x in {x | t / 2 ≤ ‖g x‖},
+        (ENNReal.ofReal ‖g x‖) ^ (2 : Real) := by
+  rw [← lintegral_indicator]
+  · apply lintegral_congr
+    intro x
+    by_cases hx : t / 2 ≤ ‖g x‖ <;>
+      simp [aux_finiteTemporalHardHigh, hx]
+  · exact measurableSet_le measurable_const hg.norm
+
+private theorem aux_measurable_lintegral_norm_rpow_two_finiteTemporalHardHigh
+    {ι : Type*} [Fintype ι] {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain ι) :
+    Measurable (fun t : Real => ∫⁻ x : Real,
+      (ENNReal.ofReal ‖aux_finiteTemporalHardHigh g t x‖) ^ (2 : Real)) := by
+  let u : Real → Real := fun x => ‖g x‖
+  let baseI : Real → ENNReal := fun s =>
+    ∫⁻ x in {x | s ≤ u x}, (ENNReal.ofReal (u x)) ^ (2 : Real)
+  have hu : Measurable u := hg.1.norm
+  have hv : Measurable (fun x => (ENNReal.ofReal (u x)) ^ (2 : Real)) :=
+    ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal
+  have hbaseI : Measurable baseI := by
+    exact Codex.Spherical.InterpolationCore.measurable_lintegral_indicator_le u hu _ hv
+  have heq : (fun t : Real => ∫⁻ x : Real,
+      (ENNReal.ofReal ‖aux_finiteTemporalHardHigh g t x‖) ^ (2 : Real)) =
+      fun t : Real => baseI (t / 2) := by
+    funext t
+    exact aux_lintegral_norm_rpow_two_finiteTemporalHardHigh_eq g hg.1 t
+  rw [heq]
+  exact hbaseI.comp (measurable_id.div_const 2)
+
+private theorem aux_lintegral_finiteTemporalHardHigh_tail_two_four_eq
+    {ι : Type*} [Fintype ι] {g : finiteTemporalCommonKernelBundle ι}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain ι) :
+    (∫⁻ t in Set.Ioi (0 : Real),
+      (∫⁻ x : Real,
+        (ENNReal.ofReal ‖aux_finiteTemporalHardHigh g t x‖) ^ (2 : Real)) *
+        (ENNReal.ofReal t) ^ ((4 : Real) - 2 - 1)) =
+      (ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+        (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) *
+          ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real) := by
+  calc
+    (∫⁻ t in Set.Ioi (0 : Real),
+      (∫⁻ x : Real,
+        (ENNReal.ofReal ‖aux_finiteTemporalHardHigh g t x‖) ^ (2 : Real)) *
+        (ENNReal.ofReal t) ^ ((4 : Real) - 2 - 1)) =
+        ∫⁻ t in Set.Ioi (0 : Real),
+          (∫⁻ x in {x | t / 2 ≤ ‖g x‖},
+            (ENNReal.ofReal ‖g x‖) ^ (2 : Real)) *
+            (ENNReal.ofReal t) ^ ((4 : Real) - 2 - 1) := by
+          apply lintegral_congr
+          intro t
+          rw [aux_lintegral_norm_rpow_two_finiteTemporalHardHigh_eq g hg.1]
+    _ = _ := by
+      simpa only using
+        (Codex.Spherical.InterpolationTail.lintegral_high_tail_rpow_eq
+          (fun x : Real => ‖g x‖) hg.1.norm (fun x => norm_nonneg _)
+          (by norm_num : 0 < (2 : Real)) (by norm_num : (2 : Real) < 4))
+
+private theorem aux_weak_two_normalized_finiteTemporalCommonKernelOutput_sharp_of_mem
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {Btop : Real} (hBtop : 0 < Btop)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ aux_finiteTemporalCommonKernelDomain (↥indices))
+    {s : Real} (hs : 0 < s) :
+    (ENNReal.ofReal s) ^ (2 : Real) *
+        volume {t | s < ‖finiteTemporalCommonKernelOutput
+          (finiteTemporalCoreKernel indices m) g t‖ / Btop} ≤
+      ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C *
+        ∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (2 : Real) := by
+  let b : ENNReal := (ENNReal.ofReal Btop) ^ (2 : Real)
+  have hbpos : 0 < b := by
+    exact ENNReal.rpow_pos (ENNReal.ofReal_pos.mpr hBtop) ENNReal.ofReal_ne_top
+  have hbtop : b ≠ ∞ := by
+    exact ENNReal.rpow_ne_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
+  have hset : {t | s < ‖finiteTemporalCommonKernelOutput
+      (finiteTemporalCoreKernel indices m) g t‖ / Btop} =
+      {t | s * Btop < ‖finiteTemporalCommonKernelOutput
+        (finiteTemporalCoreKernel indices m) g t‖} := by
+    ext t
+    exact lt_div_iff₀ hBtop
+  have hfactor : (ENNReal.ofReal (s * Btop)) ^ (2 : Real) =
+      b * (ENNReal.ofReal s) ^ (2 : Real) := by
+    dsimp [b]
+    rw [ENNReal.ofReal_mul hs.le,
+      ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : 0 ≤ (2 : Real))]
+    ac_rfl
+  apply (ENNReal.mul_le_mul_iff_right hbpos.ne' hbtop).mp
+  change b * ((ENNReal.ofReal s) ^ (2 : Real) *
+      volume {t | s < ‖finiteTemporalCommonKernelOutput
+        (finiteTemporalCoreKernel indices m) g t‖ / Btop}) ≤
+    b * (b⁻¹ * ENNReal.ofReal C * ∫⁻ t : Real,
+      (ENNReal.ofReal ‖g t‖) ^ (2 : Real))
+  calc
+    b * ((ENNReal.ofReal s) ^ (2 : Real) *
+        volume {t | s < ‖finiteTemporalCommonKernelOutput
+          (finiteTemporalCoreKernel indices m) g t‖ / Btop}) =
+        (ENNReal.ofReal (s * Btop)) ^ (2 : Real) *
+          volume {t | s * Btop < ‖finiteTemporalCommonKernelOutput
+            (finiteTemporalCoreKernel indices m) g t‖} := by
+          rw [hset, hfactor]
+          ac_rfl
+    _ ≤ ENNReal.ofReal C * ∫⁻ t : Real,
+        (ENNReal.ofReal ‖g t‖) ^ (2 : Real) :=
+      aux_weak_two_finiteTemporalCommonKernelOutput_of_mem
+        β scale indices m hprofile hoverlap hg (mul_pos hs hBtop)
+    _ = b * (b⁻¹ * ENNReal.ofReal C * ∫⁻ t : Real,
+        (ENNReal.ofReal ‖g t‖) ^ (2 : Real)) := by
+      rw [show b * (b⁻¹ * ENNReal.ofReal C *
+          (∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (2 : Real))) =
+          (b * b⁻¹) * (ENNReal.ofReal C *
+            ∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (2 : Real)) by ac_rfl,
+        ENNReal.mul_inv_cancel hbpos.ne' hbtop, one_mul]
+
+private noncomputable def aux_finiteTemporalCoreKernelMajorant
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) : Real → Real :=
+  fun y => ∑ i : (↥indices), ‖finiteTemporalCoreKernel indices m i y‖
+
+private theorem aux_finiteTemporalCoreKernelMajorant_nonneg
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) (y : Real) :
+    0 ≤ aux_finiteTemporalCoreKernelMajorant indices m y := by
+  unfold aux_finiteTemporalCoreKernelMajorant
+  exact Finset.sum_nonneg fun _ _ => norm_nonneg _
+
+private theorem aux_finiteTemporalCoreKernelMajorant_integrable
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) :
+    Integrable (aux_finiteTemporalCoreKernelMajorant indices m) volume := by
+  unfold aux_finiteTemporalCoreKernelMajorant
+  exact integrable_finsetSum Finset.univ (fun i _ =>
+    (aux_finiteTemporalCoreKernel_integrable indices m i).norm)
+
+private theorem aux_finiteTemporalCoreKernel_le_majorant
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (i : (↥indices)) (y : Real) :
+    ‖finiteTemporalCoreKernel indices m i y‖ ≤
+      aux_finiteTemporalCoreKernelMajorant indices m y := by
+  unfold aux_finiteTemporalCoreKernelMajorant
+  exact Finset.single_le_sum
+    (fun (j : ↥indices) _ =>
+      norm_nonneg (finiteTemporalCoreKernel indices m j y))
+    (Finset.mem_univ i)
+
+private theorem aux_lintegral_normalized_finiteTemporalCommonKernelOutput_rpow_four_le
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)) :
+    (∫⁻ t : Real,
+      ENNReal.ofReal
+        ((‖finiteTemporalCommonKernelOutput
+          (finiteTemporalCoreKernel indices m) g t‖ /
+          (1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+            ∫ y : Real, aux_finiteTemporalCoreKernelMajorant indices m y)) ^
+          (4 : Real))) ≤
+      ENNReal.ofReal (4 : Real) *
+        ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+          ((ENNReal.ofReal
+            (1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+              ∫ y : Real, aux_finiteTemporalCoreKernelMajorant indices m y)) ^
+            (2 : Real))⁻¹ * ENNReal.ofReal C *
+          ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+            (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) *
+              ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real))) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  let κ : Real → Real := aux_finiteTemporalCoreKernelMajorant indices m
+  let B0 : Real := Real.sqrt (Fintype.card (↥indices) : Real) * ∫ y : Real, κ y
+  let Btop : Real := 1 + B0
+  let D : Set (finiteTemporalCommonKernelBundle (↥indices)) :=
+    finiteTemporalCommonKernelMeasurableDomain (↥indices)
+  let eval : finiteTemporalCommonKernelBundle (↥indices) → Real →
+      PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex) := fun h => h
+  let T : finiteTemporalCommonKernelBundle (↥indices) → Real → Real := fun h t =>
+    ‖finiteTemporalCommonKernelOutput K h t‖ / Btop
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hκ : ∀ y, 0 ≤ κ y := by
+    intro y
+    exact aux_finiteTemporalCoreKernelMajorant_nonneg indices m y
+  have hκint : Integrable κ volume :=
+    aux_finiteTemporalCoreKernelMajorant_integrable indices m
+  have hkernel : ∀ i y, ‖K i y‖ ≤ κ y := by
+    intro i y
+    exact aux_finiteTemporalCoreKernel_le_majorant indices m i y
+  have hI : 0 ≤ ∫ y : Real, κ y := integral_nonneg hκ
+  have hB0 : 0 ≤ B0 := by
+    dsimp [B0]
+    exact mul_nonneg (Real.sqrt_nonneg _) hI
+  have hBtop : 1 ≤ Btop := by
+    dsimp [Btop]
+    linarith
+  have hBtop_pos : 0 < Btop := lt_of_lt_of_le zero_lt_one hBtop
+  have hB0_le : B0 ≤ Btop := by
+    dsimp [Btop]
+    linarith
+  have hT_nonneg : ∀ h t, 0 ≤ T h t := by
+    intro h t
+    exact div_nonneg (norm_nonneg _) hBtop_pos.le
+  have hT_subadd : ∀ ⦃h₁ h₂ : finiteTemporalCommonKernelBundle (↥indices)⦄,
+      h₁ ∈ D → h₂ ∈ D → ∀ t, T (h₁ + h₂) t ≤ T h₁ t + T h₂ t := by
+    intro h₁ h₂ hh₁ hh₂ t
+    change ‖finiteTemporalCommonKernelOutput K (h₁ + h₂) t‖ / Btop ≤
+      ‖finiteTemporalCommonKernelOutput K h₁ t‖ / Btop +
+        ‖finiteTemporalCommonKernelOutput K h₂ t‖ / Btop
+    rw [← add_div]
+    apply div_le_div_of_nonneg_right
+      (aux_norm_finiteTemporalCommonKernelOutput_add_le_of_mem K hK hh₁.2 hh₂.2 t)
+      hBtop_pos.le
+  have hweak : ∀ h : finiteTemporalCommonKernelBundle (↥indices), h ∈ D →
+      ∀ {s : Real}, 0 < s →
+      (ENNReal.ofReal s) ^ (2 : Real) * volume {t | s < T h t} ≤
+        ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C * ∫⁻ x : Real,
+          (ENNReal.ofReal ‖eval h x‖) ^ (2 : Real) := by
+    intro h hh s hs
+    change (ENNReal.ofReal s) ^ (2 : Real) *
+        volume {t | s < ‖finiteTemporalCommonKernelOutput K h t‖ / Btop} ≤
+      ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C *
+        ∫⁻ x : Real, (ENNReal.ofReal ‖h x‖) ^ (2 : Real)
+    exact aux_weak_two_normalized_finiteTemporalCommonKernelOutput_sharp_of_mem
+      β scale indices m hprofile hoverlap hBtop_pos hh.2 hs
+  have hT_top : ∀ h : finiteTemporalCommonKernelBundle (↥indices), h ∈ D →
+      ∀ a : Real, 0 ≤ a → (∀ x, ‖eval h x‖ ≤ a) → ∀ t, T h t ≤ a := by
+    intro h hh a ha hbound t
+    change ‖finiteTemporalCommonKernelOutput K h t‖ / Btop ≤ a
+    apply (div_le_iff₀ hBtop_pos).2
+    calc
+      ‖finiteTemporalCommonKernelOutput K h t‖ ≤ B0 * a := by
+        exact aux_norm_finiteTemporalCommonKernelOutput_le_sqrt_card_of_mem_of_bound
+          K κ hK hκ hκint hkernel hh.2 hbound t
+      _ ≤ Btop * a := mul_le_mul_of_nonneg_right hB0_le ha
+      _ = a * Btop := by ring
+  let low : Real → finiteTemporalCommonKernelBundle (↥indices) :=
+    aux_finiteTemporalHardLow g
+  let high : Real → finiteTemporalCommonKernelBundle (↥indices) :=
+    aux_finiteTemporalHardHigh g
+  have hTf : AEMeasurable (T g) volume := by
+    exact ((aux_finiteTemporalCommonKernelOutput_aestronglyMeasurable_of_mem K hK hg.2).norm.aemeasurable.div_const Btop)
+  have hlow_mem : ∀ t, low t ∈ D := by
+    intro t
+    exact aux_finiteTemporalHardLow_mem_measurableDomain hg t
+  have hhigh_mem : ∀ t, high t ∈ D := by
+    intro t
+    exact aux_finiteTemporalHardHigh_mem_measurableDomain hg t
+  have hsplit : ∀ t, g = low t + high t := by
+    intro t
+    exact aux_finiteTemporalHardLow_add_high g t
+  have hlow_norm : ∀ t, 0 < t → ∀ x, ‖eval (low t) x‖ ≤ t / 2 := by
+    intro t ht x
+    exact aux_finiteTemporalHardLow_norm_le_half_height g ht x
+  have hhighI_meas : Measurable (fun t : Real =>
+      ∫⁻ x : Real, (ENNReal.ofReal ‖eval (high t) x‖) ^ (2 : Real)) := by
+    exact aux_measurable_lintegral_norm_rpow_two_finiteTemporalHardHigh hg
+  let Aq : ENNReal := (ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+    (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) *
+      ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real)
+  have hhigh_tail :
+      (∫⁻ t in Set.Ioi (0 : Real),
+        (∫⁻ x : Real, (ENNReal.ofReal ‖eval (high t) x‖) ^ (2 : Real)) *
+          (ENNReal.ofReal t) ^ ((4 : Real) - 2 - 1)) ≤ Aq := by
+    exact le_of_eq (aux_lintegral_finiteTemporalHardHigh_tail_two_four_eq hg)
+  have hmoment := sourceOutput_marcinkiewicz_weak_q_top_on_additive_split
+    D eval T hT_nonneg hT_subadd (2 : Real) (by norm_num)
+    (((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C)
+    hweak hT_top (by norm_num : (2 : Real) < 4) g hTf low high hlow_mem hhigh_mem
+    hsplit hlow_norm hhighI_meas Aq hhigh_tail
+  simpa only [K, κ, B0, Btop, D, eval, T, Aq, mul_assoc] using hmoment
+
+private theorem aux_lintegral_finiteTemporalCommonKernelOutput_rpow_four_le
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)) :
+    (∫⁻ t : Real,
+      (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput
+        (finiteTemporalCoreKernel indices m) g t‖) ^ (4 : Real)) ≤
+      (ENNReal.ofReal
+        (1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+          ∫ y : Real, aux_finiteTemporalCoreKernelMajorant indices m y)) ^
+        (4 : Real) *
+      (ENNReal.ofReal (4 : Real) *
+        ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+          ((ENNReal.ofReal
+            (1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+              ∫ y : Real, aux_finiteTemporalCoreKernelMajorant indices m y)) ^
+            (2 : Real))⁻¹ * ENNReal.ofReal C *
+          ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+            (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) *
+              ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real)))) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  let κ : Real → Real := aux_finiteTemporalCoreKernelMajorant indices m
+  let Btop : Real := 1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+    ∫ y : Real, κ y
+  let T : finiteTemporalCommonKernelBundle (↥indices) → Real → Real := fun h t =>
+    ‖finiteTemporalCommonKernelOutput K h t‖ / Btop
+  have hκ : ∀ y, 0 ≤ κ y := by
+    intro y
+    exact aux_finiteTemporalCoreKernelMajorant_nonneg indices m y
+  have hI : 0 ≤ ∫ y : Real, κ y := integral_nonneg hκ
+  have hBtop : 0 < Btop := by
+    dsimp [Btop]
+    have hnonneg : 0 ≤ Real.sqrt (Fintype.card (↥indices) : Real) * ∫ y : Real, κ y :=
+      mul_nonneg (Real.sqrt_nonneg _) hI
+    linarith
+  have hTnonneg : ∀ t, 0 ≤ T g t := by
+    intro t
+    exact div_nonneg (norm_nonneg _) hBtop.le
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hTmeas : AEMeasurable (T g) volume := by
+    exact ((aux_finiteTemporalCommonKernelOutput_aestronglyMeasurable_of_mem K hK hg.2).norm.aemeasurable.div_const Btop)
+  have hraw_eq (t : Real) :
+      ‖finiteTemporalCommonKernelOutput K g t‖ = Btop * T g t := by
+    change ‖finiteTemporalCommonKernelOutput K g t‖ =
+      Btop * (‖finiteTemporalCommonKernelOutput K g t‖ / Btop)
+    field_simp [hBtop.ne']
+  have hscaled := Codex.Spherical.InterpolationCore.marcinkiewicz_lintegral_ofReal_scale_rpow
+    (T g) Btop (4 : Real) hBtop (by norm_num : 0 ≤ (4 : Real)) hTnonneg hTmeas
+  have hmoment := aux_lintegral_normalized_finiteTemporalCommonKernelOutput_rpow_four_le
+    β scale indices m hprofile hoverlap hg
+  let R : ENNReal := ENNReal.ofReal (4 : Real) *
+    ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+      ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C *
+      ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+        (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) *
+          ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real)))
+  calc
+    (∫⁻ t : Real,
+      (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖) ^ (4 : Real)) =
+        ∫⁻ t : Real, ENNReal.ofReal ((Btop * T g t) ^ (4 : Real)) := by
+          apply lintegral_congr
+          intro t
+          rw [hraw_eq t]
+          exact (ENNReal.ofReal_rpow_of_nonneg
+            (mul_nonneg hBtop.le (hTnonneg t))
+            (by norm_num : 0 ≤ (4 : Real)))
+    _ = (ENNReal.ofReal Btop) ^ (4 : Real) *
+        ∫⁻ t : Real, ENNReal.ofReal ((T g t) ^ (4 : Real)) := hscaled
+    _ ≤ (ENNReal.ofReal Btop) ^ (4 : Real) * R := by
+          apply mul_le_mul_of_nonneg_left
+          simpa only [R, K, κ, Btop, T, mul_assoc] using hmoment
+          positivity
+    _ = _ := by
+      simp only [R, κ, Btop]
+
+/-- The explicit common-kernel top coefficient used to normalize the finite
+vector output. -/
+noncomputable def finiteTemporalCoreTopCoefficient
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex) : Real :=
+  1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+    ∫ y : Real, aux_finiteTemporalCoreKernelMajorant indices m y
+
+/-- The literal fourth-moment upper bound produced by finite-vector weak-`L²`
+and top interpolation. -/
+noncomputable def finiteTemporalCoreFourthMomentBound
+    (C : Real) (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (g : finiteTemporalCommonKernelBundle (↥indices)) : ENNReal :=
+  (ENNReal.ofReal (finiteTemporalCoreTopCoefficient indices m)) ^ (4 : Real) *
+    (ENNReal.ofReal (4 : Real) *
+      ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+        ((ENNReal.ofReal (finiteTemporalCoreTopCoefficient indices m)) ^
+          (2 : Real))⁻¹ * ENNReal.ofReal C *
+        ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+          (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) *
+            ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real))))
+
+/-- The input-independent factor in the finite temporal fourth-moment bound.
+It is defined only from a finite family of supplied Schwartz multipliers and
+the overlap parameter; it contains no measurable-input extension claim. -/
+noncomputable def finiteTemporalCoreFourthMomentCoefficient
+    (C : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex) : ENNReal :=
+  (ENNReal.ofReal (finiteTemporalCoreTopCoefficient indices m)) ^ (4 : Real) *
+    (ENNReal.ofReal (4 : Real) *
+      ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+        ((ENNReal.ofReal (finiteTemporalCoreTopCoefficient indices m)) ^
+          (2 : Real))⁻¹ * ENNReal.ofReal C *
+        (ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+        (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2)))
+
+/-- The finite temporal fourth-moment bound is the explicit coefficient times
+the fourth moment of its finite `PiLp 2` input bundle.  This algebraic
+factorization lets later finite Schwartz Fubini arguments use the bound
+without unfolding interpolation constants. -/
+theorem finiteTemporalCoreFourthMomentBound_eq_coefficient_mul_lintegral
+    (C : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (g : finiteTemporalCommonKernelBundle (↥indices)) :
+    finiteTemporalCoreFourthMomentBound C indices m g =
+      finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ t : Real, (ENNReal.ofReal ‖g t‖) ^ (4 : Real) := by
+  simp only [finiteTemporalCoreFourthMomentBound,
+    finiteTemporalCoreFourthMomentCoefficient, mul_assoc]
+
+private theorem aux_eLpNorm_finiteTemporalCommonKernelOutput_four_le
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)) :
+    eLpNorm (finiteTemporalCommonKernelOutput
+      (finiteTemporalCoreKernel indices m) g) (ENNReal.ofReal (4 : Real)) volume ≤
+      (finiteTemporalCoreFourthMomentBound C indices m g) ^ ((4 : Real)⁻¹) := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  let κ : Real → Real := aux_finiteTemporalCoreKernelMajorant indices m
+  let Btop : Real := finiteTemporalCoreTopCoefficient indices m
+  let T : finiteTemporalCommonKernelBundle (↥indices) → Real → Real := fun h t =>
+    ‖finiteTemporalCommonKernelOutput K h t‖
+  let M : ENNReal := finiteTemporalCoreFourthMomentBound C indices m g
+  have hTnonneg : ∀ t, 0 ≤ T g t := by
+    intro t
+    exact norm_nonneg _
+  have hraw := aux_lintegral_finiteTemporalCommonKernelOutput_rpow_four_le
+    β scale indices m hprofile hoverlap hg
+  have hmoment : (∫⁻ t : Real, ENNReal.ofReal ((T g t) ^ (4 : Real))) ≤ M := by
+    calc
+      (∫⁻ t : Real, ENNReal.ofReal ((T g t) ^ (4 : Real))) =
+          ∫⁻ t : Real,
+            (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖) ^ (4 : Real) := by
+            apply lintegral_congr
+            intro t
+            exact (ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _)
+              (by norm_num : 0 ≤ (4 : Real))).symm
+      _ ≤ M := by
+        simpa only [K, κ, Btop, M, finiteTemporalCoreTopCoefficient,
+          finiteTemporalCoreFourthMomentBound] using hraw
+  have hbound := sourceOutput_eLpNorm_le_of_nonnegative_moment
+    T g (by norm_num : 0 < (4 : Real)) hTnonneg M hmoment
+  rw [← eLpNorm_norm]
+  simpa only [K, T, M] using hbound
+
+private theorem aux_finiteTemporalCoreFourthMomentBound_lt_top
+    (C : Real) (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)) :
+    finiteTemporalCoreFourthMomentBound C indices m g < ∞ := by
+  let κ : Real → Real := aux_finiteTemporalCoreKernelMajorant indices m
+  let Btop : Real := 1 + Real.sqrt (Fintype.card (↥indices) : Real) *
+    ∫ y : Real, κ y
+  let I : ENNReal := ∫⁻ x : Real, (ENNReal.ofReal ‖g x‖) ^ (4 : Real)
+  have hκ : ∀ y, 0 ≤ κ y := by
+    intro y
+    exact aux_finiteTemporalCoreKernelMajorant_nonneg indices m y
+  have hIreal : 0 ≤ ∫ y : Real, κ y := integral_nonneg hκ
+  have hBtop : 0 < Btop := by
+    dsimp [Btop]
+    have hnonneg : 0 ≤ Real.sqrt (Fintype.card (↥indices) : Real) * ∫ y : Real, κ y :=
+      mul_nonneg (Real.sqrt_nonneg _) hIreal
+    linarith
+  have hgfour := aux_memLp_four_of_finiteTemporalCommonKernelMeasurableDomain hg
+  have hgfour_top : eLpNorm g (ENNReal.ofReal (4 : Real)) volume ≠ ∞ := by
+    simpa using hgfour.eLpNorm_ne_top
+  have hI : I < ∞ := by
+    dsimp [I]
+    rw [Codex.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+      (by norm_num : (0 : Real) < 4) g]
+    exact ENNReal.rpow_lt_top_of_nonneg (by norm_num) hgfour_top
+  have hBfour : (ENNReal.ofReal Btop) ^ (4 : Real) < ∞ :=
+    ENNReal.rpow_lt_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
+  have hBtwoinv : ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ < ∞ := by
+    apply ENNReal.inv_lt_top.mpr
+    exact ENNReal.rpow_pos (ENNReal.ofReal_pos.mpr hBtop)
+      ENNReal.ofReal_ne_top
+  have htwoSq : (ENNReal.ofReal (2 : Real)) ^ (2 : Real) < ∞ :=
+    ENNReal.rpow_lt_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
+  have hfourMinusTwoInv : (ENNReal.ofReal ((4 : Real) - 2))⁻¹ < ∞ := by
+    apply ENNReal.inv_lt_top.mpr
+    exact ENNReal.ofReal_pos.mpr (by norm_num)
+  have htwoPow : (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) < ∞ :=
+    ENNReal.rpow_lt_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
+  have htail :
+      ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+        (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) * I) < ∞ :=
+    ENNReal.mul_lt_top (ENNReal.mul_lt_top hfourMinusTwoInv htwoPow) hI
+  have hmid :
+      ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+        ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C *
+        ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+          (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) * I)) < ∞ :=
+    ENNReal.mul_lt_top
+      (ENNReal.mul_lt_top
+        (ENNReal.mul_lt_top htwoSq hBtwoinv)
+        ENNReal.ofReal_lt_top)
+      htail
+  change (ENNReal.ofReal Btop) ^ (4 : Real) *
+    (ENNReal.ofReal (4 : Real) *
+      ((ENNReal.ofReal (2 : Real)) ^ (2 : Real) *
+        ((ENNReal.ofReal Btop) ^ (2 : Real))⁻¹ * ENNReal.ofReal C *
+        ((ENNReal.ofReal ((4 : Real) - 2))⁻¹ *
+          (ENNReal.ofReal (2 : Real)) ^ ((4 : Real) - 2) * I))) < ∞
+  exact ENNReal.mul_lt_top hBfour (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmid)
+
+private theorem aux_memLp_four_finiteTemporalCommonKernelOutput_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)) :
+    MemLp (finiteTemporalCommonKernelOutput
+      (finiteTemporalCoreKernel indices m) g) (4 : ENNReal) volume := by
+  let K : (↥indices) → Real → Complex := finiteTemporalCoreKernel indices m
+  let U : Real → Real := fun t => ‖finiteTemporalCommonKernelOutput K g t‖
+  have hK : ∀ i, Integrable (K i) volume := by
+    intro i
+    exact aux_finiteTemporalCoreKernel_integrable indices m i
+  have hUmeas : AEMeasurable U volume := by
+    exact (aux_finiteTemporalCommonKernelOutput_aestronglyMeasurable_of_mem K hK hg.2).norm.aemeasurable
+  have hraw := aux_lintegral_finiteTemporalCommonKernelOutput_rpow_four_le
+    β scale indices m hprofile hoverlap hg
+  have hMtop := aux_finiteTemporalCoreFourthMomentBound_lt_top C indices m hg
+  have hmoment : (∫⁻ t : Real, ENNReal.ofReal ((U t) ^ (4 : Real))) < ∞ := by
+    calc
+      (∫⁻ t : Real, ENNReal.ofReal ((U t) ^ (4 : Real))) =
+          ∫⁻ t : Real,
+            (ENNReal.ofReal ‖finiteTemporalCommonKernelOutput K g t‖) ^ (4 : Real) := by
+            apply lintegral_congr
+            intro t
+            exact (ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _)
+              (by norm_num : 0 ≤ (4 : Real))).symm
+      _ ≤ finiteTemporalCoreFourthMomentBound C indices m g := by
+        simpa only [K, finiteTemporalCoreFourthMomentBound,
+          finiteTemporalCoreTopCoefficient] using hraw
+      _ < ∞ := hMtop
+  have hUnorm : MemLp U (ENNReal.ofReal (4 : Real)) volume :=
+    Codex.Spherical.InterpolationTail.memLp_of_lintegral_ofReal_rpow_lt_top
+      U hUmeas (fun t => norm_nonneg _) (by norm_num : 0 < (4 : Real)) hmoment
+  have hUnormfour : MemLp U (4 : ENNReal) volume := by
+    simpa using hUnorm
+  apply (memLp_norm_iff
+    (aux_finiteTemporalCommonKernelOutput_aestronglyMeasurable_of_mem K hK hg.2)).mp
+  simpa only [K, U] using hUnormfour
+
+/-- Finite common-kernel `L⁴` endpoint for a literal measurable bundle.  It
+controls the exact finite temporal convolution sum and makes no continuum or
+vertical-recombination claim. -/
+theorem memLp_four_and_eLpNorm_finiteTemporalCommonKernelOutput_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    {g : finiteTemporalCommonKernelBundle (↥indices)}
+    (hg : g ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)) :
+    MemLp (finiteTemporalCommonKernelOutput
+      (finiteTemporalCoreKernel indices m) g) (4 : ENNReal) volume ∧
+    eLpNorm (finiteTemporalCommonKernelOutput
+      (finiteTemporalCoreKernel indices m) g) (ENNReal.ofReal (4 : Real)) volume ≤
+      (finiteTemporalCoreFourthMomentBound C indices m g) ^ ((4 : Real)⁻¹) := by
+  exact ⟨aux_memLp_four_finiteTemporalCommonKernelOutput_of_overlap
+      β scale indices m hprofile hoverlap hg,
+    aux_eLpNorm_finiteTemporalCommonKernelOutput_four_le
+      β scale indices m hprofile hoverlap hg⟩
+
+private noncomputable def aux_finiteTemporalSchwartzProfileBundle
+    (indices : Finset Int) (g : Int → SchwartzMap Real Complex) :
+    finiteTemporalCommonKernelBundle (↥indices) :=
+  fun t => WithLp.toLp 2 (fun i : (↥indices) => g (i : Int) t)
+
+private theorem aux_finiteTemporalSchwartzProfileBundle_mem_measurableDomain
+    (indices : Finset Int) (g : Int → SchwartzMap Real Complex) :
+    aux_finiteTemporalSchwartzProfileBundle indices g ∈
+      finiteTemporalCommonKernelMeasurableDomain (↥indices) := by
+  let G : finiteTemporalCommonKernelBundle (↥indices) :=
+    aux_finiteTemporalSchwartzProfileBundle indices g
+  change G ∈ finiteTemporalCommonKernelMeasurableDomain (↥indices)
+  have hGmeas : Measurable G := by
+    dsimp [G, aux_finiteTemporalSchwartzProfileBundle]
+    exact ((PiLp.continuous_toLp 2 (fun _ : (↥indices) => Complex)).comp
+      (continuous_pi fun i => (g (i : Int)).continuous)).measurable
+  have hGtwo : MemLp G 2 volume := by
+    apply MemLp.of_eval_piLp
+    intro i
+    change MemLp (g (i : Int) : Real → Complex) 2 volume
+    exact (g (i : Int)).memLp 2 volume
+  let A : Real := Real.sqrt (∑ i : (↥indices),
+    ‖(g (i : Int)).toBoundedContinuousFunction‖ ^ (2 : Nat))
+  have hA : 0 ≤ A := Real.sqrt_nonneg _
+  have hGbound : ∀ t : Real, ‖G t‖ ≤ A := by
+    intro t
+    dsimp [G, A, aux_finiteTemporalSchwartzProfileBundle]
+    rw [PiLp.norm_eq_of_L2]
+    apply Real.sqrt_le_sqrt
+    apply Finset.sum_le_sum
+    intro i hi
+    exact pow_le_pow_left₀ (norm_nonneg _)
+      (BoundedContinuousFunction.norm_coe_le_norm
+        (g (i : Int)).toBoundedContinuousFunction t) 2
+  refine ⟨hGmeas, hGtwo, A, hA, hGbound, ?_⟩
+  intro i
+  change Integrable (g (i : Int) : Real → Complex) volume
+  exact (g (i : Int)).integrable
+
+private theorem aux_finiteTemporalCommonKernelOutput_eq_verticalTemporalSchwartzCoreRecombined
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    finiteTemporalCommonKernelOutput (finiteTemporalCoreKernel indices m)
+      (aux_finiteTemporalSchwartzProfileBundle indices g) =
+      verticalTemporalSchwartzCoreRecombined indices m g := by
+  funext t
+  unfold aux_finiteTemporalSchwartzProfileBundle finiteTemporalCommonKernelOutput
+    finiteTemporalCoreKernel
+  change (∑ i : (↥indices),
+    (((𝓕⁻ (m (i : Int)) : SchwartzMap Real Complex)
+      ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+      (g (i : Int) : Real → Complex)) t)) =
+    ∑ n ∈ indices, verticalTemporalSchwartzMultiplier (m n) (g n) t
+  calc
+    ∑ i : (↥indices),
+        (((𝓕⁻ (m (i : Int)) : SchwartzMap Real Complex)
+          ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+          (g (i : Int) : Real → Complex)) t) =
+        ∑ n ∈ indices,
+          (((𝓕⁻ (m n) : SchwartzMap Real Complex)
+            ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+            (g n : Real → Complex)) t) := by
+          exact Finset.sum_coe_sort indices (fun n =>
+            (((𝓕⁻ (m n) : SchwartzMap Real Complex)
+              ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+              (g n : Real → Complex)) t))
+    _ = ∑ n ∈ indices, verticalTemporalSchwartzMultiplier (m n) (g n) t := by
+      apply Finset.sum_congr rfl
+      intro n hn
+      rw [verticalTemporalSchwartzMultiplier_eq_convolution]
+
+/-- The finite supplied-Schwartz temporal core has the raw fourth-moment
+bound required for a later finite spatial Fubini lift.  Its right-hand side
+is the explicit temporal coefficient times the fourth moment of the literal
+finite `PiLp 2` input bundle.  No measurable vector-valued extension or
+space--time recombination assertion is made here. -/
+theorem lintegral_norm_rpow_four_verticalTemporalSchwartzCoreRecombined_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (g : Int → SchwartzMap Real Complex) :
+    ∫⁻ t : Real,
+      (ENNReal.ofReal ‖verticalTemporalSchwartzCoreRecombined indices m g t‖) ^
+        (4 : Real) ≤
+      finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ t : Real,
+          (ENNReal.ofReal ‖(WithLp.toLp 2
+            (fun i : (↥indices) => g (i : Int) t) :
+            PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖) ^ (4 : Real) := by
+  have hdomain := aux_finiteTemporalSchwartzProfileBundle_mem_measurableDomain
+    indices g
+  have hraw := aux_lintegral_finiteTemporalCommonKernelOutput_rpow_four_le
+    β scale indices m hprofile hoverlap hdomain
+  rw [aux_finiteTemporalCommonKernelOutput_eq_verticalTemporalSchwartzCoreRecombined
+    indices m g] at hraw
+  have hbound :
+      ∫⁻ t : Real,
+        (ENNReal.ofReal ‖verticalTemporalSchwartzCoreRecombined indices m g t‖) ^
+          (4 : Real) ≤
+        finiteTemporalCoreFourthMomentBound C indices m
+          (aux_finiteTemporalSchwartzProfileBundle indices g) := by
+    simpa only [finiteTemporalCoreFourthMomentBound,
+      finiteTemporalCoreTopCoefficient] using hraw
+  calc
+    ∫⁻ t : Real,
+      (ENNReal.ofReal ‖verticalTemporalSchwartzCoreRecombined indices m g t‖) ^
+        (4 : Real) ≤
+        finiteTemporalCoreFourthMomentBound C indices m
+          (aux_finiteTemporalSchwartzProfileBundle indices g) := hbound
+    _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ t : Real,
+          (ENNReal.ofReal ‖aux_finiteTemporalSchwartzProfileBundle indices g t‖) ^
+            (4 : Real) :=
+      finiteTemporalCoreFourthMomentBound_eq_coefficient_mul_lintegral
+        C indices m (aux_finiteTemporalSchwartzProfileBundle indices g)
+    _ = _ := by
+      rfl
+
+/-- Finite temporal `L⁴` control for supplied Schwartz profiles.  This packages
+the profiles into the finite common-kernel domain and identifies the output
+with the finite vertical Schwartz core; it makes no spatial or continuum claim. -/
+theorem memLp_four_and_eLpNorm_verticalTemporalSchwartzCoreRecombined_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (g : Int → SchwartzMap Real Complex) :
+    MemLp (verticalTemporalSchwartzCoreRecombined indices m g) (4 : ENNReal) volume ∧
+    eLpNorm (verticalTemporalSchwartzCoreRecombined indices m g)
+      (ENNReal.ofReal (4 : Real)) volume ≤
+      (finiteTemporalCoreFourthMomentBound C indices m
+        (fun t => WithLp.toLp 2 (fun i : (↥indices) => g (i : Int) t))) ^
+          ((4 : Real)⁻¹) := by
+  have hdomain := aux_finiteTemporalSchwartzProfileBundle_mem_measurableDomain
+    indices g
+  have houtput := aux_finiteTemporalCommonKernelOutput_eq_verticalTemporalSchwartzCoreRecombined
+    indices m g
+  have hendpoint := memLp_four_and_eLpNorm_finiteTemporalCommonKernelOutput_of_overlap
+    β scale indices m hprofile hoverlap hdomain
+  have hbundle : aux_finiteTemporalSchwartzProfileBundle indices g =
+      (fun t => WithLp.toLp 2 (fun i : (↥indices) => g (i : Int) t)) := rfl
+  rw [houtput] at hendpoint
+  rw [hbundle] at hendpoint
+  exact hendpoint
+
+/-! ## Common-spatial finite vertical core -/
+
+/-- With one fixed spatial Schwartz profile, the finite space--time core is
+exactly the product of that profile and its finite temporal core. -/
+private theorem aux_verticalSchwartzCoreRecombined_eq_commonSpatialTensor
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) (z : WaveSpaceTime) :
+    verticalSchwartzCoreRecombined indices m (fun _ => F) g z =
+      verticalTemporalSchwartzCoreRecombined indices m g z.2 * F z.1 := by
+  unfold verticalSchwartzCoreRecombined verticalTemporalSchwartzCoreRecombined
+  change (∑ n ∈ indices,
+      verticalTemporalSchwartzMultiplier (m n) (g n) z.2 * F z.1) =
+    (∑ n ∈ indices, verticalTemporalSchwartzMultiplier (m n) (g n) z.2) * F z.1
+  rw [Finset.sum_mul]
+
+/-- The fourth `eLpNorm` of a literal spatial--temporal tensor factors over
+the product Lebesgue measure. -/
+private theorem aux_eLpNorm_four_commonSpatialTensor
+    (F : Euclidean 2 → Complex) (H : Real → Complex)
+    (hF : AEMeasurable F volume) (hH : AEMeasurable H volume) :
+    eLpNorm (fun z : WaveSpaceTime => H z.2 * F z.1) (4 : ENNReal) volume =
+      eLpNorm F (4 : ENNReal) volume * eLpNorm H (4 : ENNReal) volume := by
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  norm_num
+  rw [Measure.volume_eq_prod]
+  have hFfour : AEMeasurable (fun x : Euclidean 2 => ‖F x‖ₑ ^ (4 : Nat)) volume :=
+    hF.enorm.pow measurable_const.aemeasurable
+  have hHfour : AEMeasurable (fun t : Real => ‖H t‖ₑ ^ (4 : Nat)) volume :=
+    hH.enorm.pow measurable_const.aemeasurable
+  have hprod :
+      (∫⁻ z : Euclidean 2 × Real,
+        (‖H z.2‖ₑ * ‖F z.1‖ₑ) ^ (4 : Nat) ∂
+          ((volume : Measure (Euclidean 2)).prod volume)) =
+        (∫⁻ x : Euclidean 2, ‖F x‖ₑ ^ (4 : Nat)) *
+          ∫⁻ t : Real, ‖H t‖ₑ ^ (4 : Nat) := by
+    calc
+      (∫⁻ z : Euclidean 2 × Real,
+          (‖H z.2‖ₑ * ‖F z.1‖ₑ) ^ (4 : Nat)) =
+          ∫⁻ z : Euclidean 2 × Real,
+            (‖F z.1‖ₑ ^ (4 : Nat)) * (‖H z.2‖ₑ ^ (4 : Nat)) := by
+              apply lintegral_congr
+              intro z
+              rw [mul_pow]
+              rw [mul_comm]
+      _ = _ := by
+        exact lintegral_prod_mul hFfour hHfour
+  change
+    (∫⁻ z : Euclidean 2 × Real,
+      (‖H z.2‖ₑ * ‖F z.1‖ₑ) ^ (4 : Nat) ∂
+        ((volume : Measure (Euclidean 2)).prod volume)) ^ ((1 / 4 : Real)) =
+      (∫⁻ x : Euclidean 2, ‖F x‖ₑ ^ (4 : Nat)) ^ ((1 / 4 : Real)) *
+        (∫⁻ t : Real, ‖H t‖ₑ ^ (4 : Nat)) ^ ((1 / 4 : Real))
+  rw [hprod]
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
+
+/-- Tensoring a finite temporal fourth-norm estimate by one Schwartz spatial
+profile preserves `MemLp 4` and multiplies its explicit coefficient by the
+spatial fourth `eLpNorm`. -/
+private theorem aux_memLp_four_and_eLpNorm_commonSpatialTensor_of_temporal
+    (F : SchwartzMap (Euclidean 2) Complex) (H : Real → Complex)
+    (hH : MemLp H (4 : ENNReal) volume) {B : ENNReal}
+    (hbound : eLpNorm H (4 : ENNReal) volume ≤ B) :
+    MemLp (fun z : WaveSpaceTime => H z.2 * F z.1) (4 : ENNReal) volume ∧
+      eLpNorm (fun z : WaveSpaceTime => H z.2 * F z.1) (4 : ENNReal) volume ≤
+        eLpNorm (F : Euclidean 2 → Complex) (4 : ENNReal) volume * B := by
+  have hF : MemLp (F : Euclidean 2 → Complex) (4 : ENNReal) volume :=
+    F.memLp 4 volume
+  have hmeas : AEStronglyMeasurable
+      (fun z : Euclidean 2 × Real => H z.2 * F z.1)
+        ((volume : Measure (Euclidean 2)).prod volume) :=
+    hH.1.comp_snd.mul (F.continuous.aestronglyMeasurable.comp_fst)
+  have heq := aux_eLpNorm_four_commonSpatialTensor (F : Euclidean 2 → Complex) H
+    F.continuous.aestronglyMeasurable.aemeasurable hH.1.aemeasurable
+  have htop : eLpNorm (fun z : WaveSpaceTime => H z.2 * F z.1)
+      (4 : ENNReal) volume < ∞ := by
+    rw [heq]
+    exact ENNReal.mul_lt_top hF.eLpNorm_lt_top hH.eLpNorm_lt_top
+  refine ⟨?_, ?_⟩
+  · rw [Measure.volume_eq_prod]
+    exact ⟨hmeas, htop⟩
+  · rw [heq]
+    exact mul_le_mul_of_nonneg_left hbound bot_le
+
+/-- Finite space--time `L⁴` control for the literal vertical Schwartz core
+when every finite packet has the same spatial Schwartz profile.  The bound is
+exactly the finite temporal common-kernel coefficient times the spatial fourth
+`eLpNorm`; no varying-profile, continuum, or `verticalRecombination` assertion
+is made. -/
+theorem memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_commonSpatial_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    MemLp (verticalSchwartzCoreRecombined indices m (fun _ => F) g)
+      (4 : ENNReal) volume ∧
+      eLpNorm (verticalSchwartzCoreRecombined indices m (fun _ => F) g)
+        (ENNReal.ofReal (4 : Real)) volume ≤
+        eLpNorm (F : Euclidean 2 → Complex) (ENNReal.ofReal (4 : Real)) volume *
+          (finiteTemporalCoreFourthMomentBound C indices m
+            (fun t => WithLp.toLp 2 (fun i : (↥indices) => g (i : Int) t))) ^
+              ((4 : Real)⁻¹) := by
+  let H : Real → Complex := verticalTemporalSchwartzCoreRecombined indices m g
+  have htemporal :=
+    memLp_four_and_eLpNorm_verticalTemporalSchwartzCoreRecombined_of_overlap
+      β scale indices m hprofile hoverlap g
+  have htemporalBound : eLpNorm H (4 : ENNReal) volume ≤
+      (finiteTemporalCoreFourthMomentBound C indices m
+        (fun t => WithLp.toLp 2 (fun i : (↥indices) => g (i : Int) t))) ^
+          ((4 : Real)⁻¹) := by
+    simpa only [H, ENNReal.ofReal_ofNat] using htemporal.2
+  have hproduct := aux_memLp_four_and_eLpNorm_commonSpatialTensor_of_temporal
+    F H (by simpa only [H] using htemporal.1) htemporalBound
+  have hfactor : verticalSchwartzCoreRecombined indices m (fun _ => F) g =
+      fun z : WaveSpaceTime => H z.2 * F z.1 := by
+    funext z
+    exact aux_verticalSchwartzCoreRecombined_eq_commonSpatialTensor indices m F g z
+  rw [hfactor]
+  simpa only [ENNReal.ofReal_ofNat] using hproduct
+
+private def aux_singletonTemporalSchwartzProfile
+    (n : Int) (g : Int → SchwartzMap Real Complex) :
+    Int → SchwartzMap Real Complex :=
+  fun k => if k = n then g n else 0
+
+private theorem aux_verticalSchwartzCoreRecombined_singletonCommonSpatial_apply
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) (n : Int) (hn : n ∈ indices)
+    (z : WaveSpaceTime) :
+    verticalSchwartzCoreRecombined indices m (fun _ => F n)
+      (aux_singletonTemporalSchwartzProfile n g) z =
+      verticalTemporalSchwartzMultiplier (m n) (g n) z.2 * F n z.1 := by
+  unfold verticalSchwartzCoreRecombined aux_singletonTemporalSchwartzProfile
+  change (∑ k ∈ indices,
+    verticalTemporalSchwartzMultiplier (m k) (if k = n then g n else 0) z.2 *
+      F n z.1) =
+    verticalTemporalSchwartzMultiplier (m n) (g n) z.2 * F n z.1
+  rw [Finset.sum_eq_single n]
+  · simp
+  · intro k hk hkn
+    rw [if_neg hkn, verticalTemporalSchwartzMultiplier_zero]
+    change (0 : Complex) * F n z.1 = 0
+    exact zero_mul _
+  · intro hnot
+    exact (hnot hn).elim
+
+private theorem aux_verticalSchwartzCoreRecombined_eq_finsetSum_singletonCommonSpatial
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) (z : WaveSpaceTime) :
+    verticalSchwartzCoreRecombined indices m F g z =
+      ∑ n ∈ indices,
+        verticalSchwartzCoreRecombined indices m (fun _ => F n)
+          (aux_singletonTemporalSchwartzProfile n g) z := by
+  change (∑ n ∈ indices,
+    verticalTemporalSchwartzMultiplier (m n) (g n) z.2 * F n z.1) = _
+  apply Finset.sum_congr rfl
+  intro n hn
+  rw [aux_verticalSchwartzCoreRecombined_singletonCommonSpatial_apply
+    indices m F g n hn z]
+
+/-- Finite space--time `L⁴` control for supplied varying spatial Schwartz
+profiles.  It applies the common-spatial corollary to singleton temporal
+families and reassembles by finite Minkowski; no `verticalRecombined`,
+continuum, square-function, or local-smoothing assertion is made. -/
+theorem memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    MemLp (verticalSchwartzCoreRecombined indices m F g) (4 : ENNReal) volume ∧
+    eLpNorm (verticalSchwartzCoreRecombined indices m F g)
+      (ENNReal.ofReal (4 : Real)) volume ≤
+      ∑ n ∈ indices,
+        eLpNorm (F n : Euclidean 2 → Complex) (ENNReal.ofReal (4 : Real)) volume *
+          (finiteTemporalCoreFourthMomentBound C indices m
+            (fun t => WithLp.toLp 2 (fun i : (↥indices) =>
+              (if (i : Int) = n then g n else 0) t))) ^ ((4 : Real)⁻¹) := by
+  let T : Int → WaveSpaceTime → Complex := fun n =>
+    verticalSchwartzCoreRecombined indices m (fun _ => F n)
+      (aux_singletonTemporalSchwartzProfile n g)
+  have hpiece : ∀ n ∈ indices, MemLp (T n) (4 : ENNReal) volume ∧
+      eLpNorm (T n) (4 : ENNReal) volume ≤
+        eLpNorm (F n : Euclidean 2 → Complex) (4 : ENNReal) volume *
+          (finiteTemporalCoreFourthMomentBound C indices m
+            (fun t => WithLp.toLp 2 (fun i : (↥indices) =>
+              (if (i : Int) = n then g n else 0) t))) ^ ((4 : Real)⁻¹) := by
+    intro n hn
+    have h := memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_commonSpatial_of_overlap
+      β scale indices m hprofile hoverlap (F n)
+        (aux_singletonTemporalSchwartzProfile n g)
+    have hbundle :
+        (fun t => WithLp.toLp 2 (fun i : (↥indices) =>
+          aux_singletonTemporalSchwartzProfile n g (i : Int) t)) =
+        (fun t => WithLp.toLp 2 (fun i : (↥indices) =>
+          (if (i : Int) = n then g n else 0) t)) := rfl
+    rw [hbundle] at h
+    simpa only [T, ENNReal.ofReal_ofNat] using h
+  have hdecomp : verticalSchwartzCoreRecombined indices m F g =
+      fun z => ∑ n ∈ indices, T n z := by
+    funext z
+    simpa only [T] using
+      aux_verticalSchwartzCoreRecombined_eq_finsetSum_singletonCommonSpatial
+        indices m F g z
+  have hsumMem : MemLp (fun z => ∑ n ∈ indices, T n z) (4 : ENNReal) volume :=
+    memLp_finsetSum indices (fun n hn => (hpiece n hn).1)
+  have hsumBound : eLpNorm (fun z => ∑ n ∈ indices, T n z)
+      (4 : ENNReal) volume ≤
+      ∑ n ∈ indices,
+        eLpNorm (F n : Euclidean 2 → Complex) (4 : ENNReal) volume *
+          (finiteTemporalCoreFourthMomentBound C indices m
+            (fun t => WithLp.toLp 2 (fun i : (↥indices) =>
+              (if (i : Int) = n then g n else 0) t))) ^ ((4 : Real)⁻¹) := by
+    calc
+      eLpNorm (fun z => ∑ n ∈ indices, T n z) (4 : ENNReal) volume =
+          eLpNorm (∑ n ∈ indices, T n) (4 : ENNReal) volume := by
+        congr 1
+        funext z
+        simp only [Finset.sum_apply]
+      _ ≤ ∑ n ∈ indices, eLpNorm (T n) (4 : ENNReal) volume :=
+        eLpNorm_sum_le (p := (4 : ENNReal)) (f := T) (s := indices)
+          (fun n hn => (hpiece n hn).1.aestronglyMeasurable) (by norm_num)
+      _ ≤ _ := Finset.sum_le_sum fun n hn => (hpiece n hn).2
+  rw [hdecomp]
+  simpa only [ENNReal.ofReal_ofNat] using ⟨hsumMem, hsumBound⟩
+
+/-! ## Finite varying-spatial Schwartz core by Fubini -/
+
+private theorem aux_continuous_verticalSchwartzCoreRecombined
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    Continuous (verticalSchwartzCoreRecombined indices m F g) := by
+  unfold verticalSchwartzCoreRecombined
+  simp only [AddMonoidHom.coe_mk, ZeroHom.coe_mk]
+  apply continuous_finsetSum
+  intro n hn
+  exact
+    ((verticalTemporalSchwartzMultiplier (m n) (g n)).continuous.comp continuous_snd).mul
+      ((F n).continuous.comp continuous_fst)
+
+private theorem aux_continuous_verticalSquareFunction_verticalSeparablePackets
+    (indices : Finset Int) (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    Continuous (verticalSquareFunction indices
+      (fun n => verticalSeparablePacket (F n) (g n : Real → Complex))) := by
+  unfold verticalSquareFunction
+  apply Real.continuous_sqrt.comp
+  apply continuous_finsetSum
+  intro n hn
+  have hpacket : Continuous (verticalSeparablePacket (F n) (g n : Real → Complex)) := by
+    unfold verticalSeparablePacket
+    exact ((g n).continuous.comp continuous_snd).mul ((F n).continuous.comp continuous_fst)
+  exact hpacket.norm.pow 2
+
+private theorem aux_verticalSquareFunction_verticalSeparablePackets_eq_scaledBundleNorm
+    (indices : Finset Int) (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) (x : Euclidean 2) (t : Real) :
+    verticalSquareFunction indices
+      (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)) (x, t) =
+      ‖(WithLp.toLp 2 (fun i : (↥indices) =>
+          ((F (i : Int) x) • g (i : Int) : SchwartzMap Real Complex) t) :
+        PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖ := by
+  rw [verticalSquareFunction_eq_norm_piLp]
+  rw [PiLp.norm_eq_of_L2, PiLp.norm_eq_of_L2]
+  apply congrArg Real.sqrt
+  apply Finset.sum_congr rfl
+  intro i hi
+  simp only [verticalSeparablePacket, smul_apply, smul_eq_mul]
+  rw [mul_comm]
+
+private theorem aux_memLp_four_verticalSeparablePacket
+    (F : SchwartzMap (Euclidean 2) Complex) (h : SchwartzMap Real Complex) :
+    MemLp (verticalSeparablePacket F (h : Real → Complex)) (4 : ENNReal) volume := by
+  let Q : SchwartzMap JointWaveSpaceTime Complex := jointSchwartzExternalProduct F h
+  have hpres : MeasurePreserving
+      (WithLp.toLp 2 : WaveSpaceTime → JointWaveSpaceTime) volume volume := by
+    simpa only using (WithLp.volume_preserving_toLp (Euclidean 2) Real)
+  have hraw : MemLp (jointSchwartzRaw Q) (4 : ENNReal) volume := by
+    change MemLp (fun z : WaveSpaceTime => Q (WithLp.toLp 2 z)) (4 : ENNReal) volume
+    exact (Q.memLp 4 volume).comp_measurePreserving hpres
+  have hpacket : verticalSeparablePacket F (h : Real → Complex) = jointSchwartzRaw Q := by
+    funext z
+    dsimp [Q, jointSchwartzRaw]
+    rw [jointSchwartzExternalProduct_apply]
+    unfold verticalSeparablePacket
+    ring
+  rw [hpacket]
+  exact hraw
+
+private theorem aux_memLp_four_verticalSchwartzCoreRecombined
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    MemLp (verticalSchwartzCoreRecombined indices m F g) (4 : ENNReal) volume := by
+  let h : Int → SchwartzMap Real Complex := fun n =>
+    verticalTemporalSchwartzMultiplier (m n) (g n)
+  have hterm (n : Int) :
+      MemLp (fun z : WaveSpaceTime => h n z.2 * F n z.1) (4 : ENNReal) volume := by
+    change MemLp (verticalSeparablePacket (F n) (h n : Real → Complex)) (4 : ENNReal) volume
+    exact aux_memLp_four_verticalSeparablePacket (F n) (h n)
+  have hsum : MemLp (fun z : WaveSpaceTime =>
+      ∑ n ∈ indices, h n z.2 * F n z.1) (4 : ENNReal) volume :=
+    memLp_finsetSum indices (fun n hn => hterm n)
+  change MemLp (fun z : WaveSpaceTime =>
+    ∑ n ∈ indices,
+      verticalTemporalSchwartzMultiplier (m n) (g n) z.2 * F n z.1)
+      (4 : ENNReal) volume
+  simpa only [h] using hsum
+
+/-- Finite supplied-Schwartz Fubini lift of the temporal common-kernel
+fourth-moment bound.  The input is the literal space--time vertical square
+function of the finite separable packet family; no arbitrary measurable
+family, continuum limit, vertical recombination, or local-smoothing claim is
+made. -/
+theorem lintegral_norm_rpow_four_verticalSchwartzCoreRecombined_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    (∫⁻ z : WaveSpaceTime,
+      (ENNReal.ofReal ‖verticalSchwartzCoreRecombined indices m F g z‖) ^
+        (4 : Real)) ≤
+      finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ z : WaveSpaceTime,
+          (ENNReal.ofReal (verticalSquareFunction indices
+            (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)) z)) ^
+              (4 : Real) := by
+  let P : WaveSpaceTime → Complex := verticalSchwartzCoreRecombined indices m F g
+  let S : WaveSpaceTime → Real := verticalSquareFunction indices
+    (fun n => verticalSeparablePacket (F n) (g n : Real → Complex))
+  have hPcont : Continuous P := by
+    dsimp [P]
+    exact aux_continuous_verticalSchwartzCoreRecombined indices m F g
+  have hScont : Continuous S := by
+    dsimp [S]
+    exact aux_continuous_verticalSquareFunction_verticalSeparablePackets indices F g
+  have hPmeas : Measurable (fun z : WaveSpaceTime =>
+      (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) :=
+    ENNReal.continuous_rpow_const.measurable.comp hPcont.norm.measurable.ennreal_ofReal
+  have hSmeas : Measurable (fun z : WaveSpaceTime =>
+      (ENNReal.ofReal (S z)) ^ (4 : Real)) :=
+    ENNReal.continuous_rpow_const.measurable.comp hScont.measurable.ennreal_ofReal
+  have hSinnerMeas : Measurable (fun x : Euclidean 2 => ∫⁻ t : Real,
+      (ENNReal.ofReal (S (x, t))) ^ (4 : Real)) := by
+    exact Measurable.lintegral_prod_right hSmeas
+  have hfiber (x : Euclidean 2) :
+      (∫⁻ t : Real, (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real)) ≤
+        finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ t : Real, (ENNReal.ofReal (S (x, t))) ^ (4 : Real) := by
+    calc
+      (∫⁻ t : Real, (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real)) =
+          ∫⁻ t : Real,
+            (ENNReal.ofReal ‖verticalTemporalSchwartzCoreRecombined indices m
+              (fun n => F n x • g n) t‖) ^ (4 : Real) := by
+            apply lintegral_congr
+            intro t
+            dsimp [P]
+            rw [verticalSchwartzCoreRecombined_fiber]
+      _ ≤ finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ t : Real,
+            (ENNReal.ofReal ‖(WithLp.toLp 2 (fun i : (↥indices) =>
+              ((F (i : Int) x) • g (i : Int) : SchwartzMap Real Complex) t) :
+              PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖) ^
+                (4 : Real) :=
+          lintegral_norm_rpow_four_verticalTemporalSchwartzCoreRecombined_le_of_overlap
+            β scale indices m hprofile hoverlap (fun n => F n x • g n)
+      _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ t : Real, (ENNReal.ofReal (S (x, t))) ^ (4 : Real) := by
+            congr 1
+            apply lintegral_congr
+            intro t
+            rw [← aux_verticalSquareFunction_verticalSeparablePackets_eq_scaledBundleNorm
+              indices F g x t]
+  have hPprod :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) =
+        ∫⁻ x : Euclidean 2, ∫⁻ t : Real,
+          (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real) := by
+    rw [Measure.volume_eq_prod]
+    exact lintegral_prod _ hPmeas.aemeasurable
+  have hSprod :
+      (∫⁻ x : Euclidean 2, ∫⁻ t : Real,
+        (ENNReal.ofReal (S (x, t))) ^ (4 : Real)) =
+      ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real) := by
+    rw [Measure.volume_eq_prod]
+    exact (lintegral_prod _ hSmeas.aemeasurable).symm
+  change (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) ≤
+    finiteTemporalCoreFourthMomentCoefficient C indices m *
+      ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)
+  rw [hPprod]
+  calc
+    (∫⁻ x : Euclidean 2, ∫⁻ t : Real,
+      (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real)) ≤
+        ∫⁻ x : Euclidean 2,
+          finiteTemporalCoreFourthMomentCoefficient C indices m *
+            ∫⁻ t : Real, (ENNReal.ofReal (S (x, t))) ^ (4 : Real) :=
+      lintegral_mono hfiber
+    _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ x : Euclidean 2, ∫⁻ t : Real,
+          (ENNReal.ofReal (S (x, t))) ^ (4 : Real) :=
+      lintegral_const_mul _ hSinnerMeas
+    _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real) := by
+      rw [hSprod]
+
+private theorem aux_eLpNorm_four_verticalSchwartzCoreRecombined_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    eLpNorm (verticalSchwartzCoreRecombined indices m F g) (4 : ENNReal) volume ≤
+      (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+        eLpNorm (verticalSquareFunction indices
+          (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)))
+          (4 : ENNReal) volume := by
+  let P : WaveSpaceTime → Complex := verticalSchwartzCoreRecombined indices m F g
+  let S : WaveSpaceTime → Real := verticalSquareFunction indices
+    (fun n => verticalSeparablePacket (F n) (g n : Real → Complex))
+  have hraw :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) ≤
+        finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real) := by
+    simpa only [P, S] using
+      lintegral_norm_rpow_four_verticalSchwartzCoreRecombined_le_of_overlap
+        β scale indices m hprofile hoverlap F g
+  have hSnonneg (z : WaveSpaceTime) : 0 ≤ S z := by
+    dsimp [S]
+    exact verticalSquareFunction_nonneg indices
+      (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)) z
+  have hPmoment :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) =
+        (eLpNorm P (4 : ENNReal) volume) ^ (4 : Real) := by
+    simpa only [ENNReal.ofReal_ofNat] using
+      (Codex.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+        (by norm_num : (0 : Real) < 4) P)
+  have hSmoment :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)) =
+        (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
+    calc
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)) =
+          ∫⁻ z : WaveSpaceTime, ENNReal.ofReal ((S z) ^ (4 : Real)) := by
+            apply lintegral_congr
+            intro z
+            exact ENNReal.ofReal_rpow_of_nonneg (hSnonneg z)
+              (by norm_num : (0 : Real) ≤ 4)
+      _ = (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
+        simpa only [ENNReal.ofReal_ofNat] using
+          (Codex.Spherical.LpSpaceFacts.lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
+            (by norm_num : (0 : Real) < 4) S hSnonneg)
+  change eLpNorm P (4 : ENNReal) volume ≤
+    (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+      eLpNorm S (4 : ENNReal) volume
+  rw [← ENNReal.rpow_le_rpow_iff (by norm_num : (0 : Real) < 4)]
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : Real) ≤ 4)]
+  rw [← ENNReal.rpow_mul]
+  have hfour : (4 : Real)⁻¹ * (4 : Real) = 1 := by norm_num
+  rw [hfour, ENNReal.rpow_one, ← hPmoment, ← hSmoment]
+  exact hraw
+
+/-- Finite supplied-Schwartz vector-valued `L⁴` control for the varying
+spatial core.  It is the norm form of the preceding raw Fubini estimate and
+uses the literal finite vertical square function as input.  It makes no
+arbitrary-function, continuum, vertical-recombination, or local-smoothing
+assertion. -/
+theorem memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    MemLp (verticalSchwartzCoreRecombined indices m F g) (4 : ENNReal) volume ∧
+      eLpNorm (verticalSchwartzCoreRecombined indices m F g) (4 : ENNReal) volume ≤
+        (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+          eLpNorm (verticalSquareFunction indices
+            (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)))
+            (4 : ENNReal) volume := by
+  exact ⟨aux_memLp_four_verticalSchwartzCoreRecombined indices m F g,
+    aux_eLpNorm_four_verticalSchwartzCoreRecombined_le_of_overlap
+      β scale indices m hprofile hoverlap F g⟩
+
+/-- Literal finite-packet rewrite of the varying-spatial Schwartz-core
+fourth-norm bound.  This is only the supplied-profile identification with
+`verticalRecombined`; it does not extend the estimate to arbitrary packet
+families or assert a continuum, square-function, or local-smoothing result. -/
+theorem eLpNorm_four_verticalRecombined_verticalSeparablePackets_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (F : Int → SchwartzMap (Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex) :
+    eLpNorm (verticalRecombined β scale indices
+      (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)))
+      (4 : ENNReal) volume ≤
+      (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+        eLpNorm (verticalSquareFunction indices
+          (fun n => verticalSeparablePacket (F n) (g n : Real → Complex)))
+          (4 : ENNReal) volume := by
+  rw [← verticalSchwartzCoreRecombined_eq_verticalRecombined_of_schwartzProfiles
+    β scale indices m hprofile F g]
+  exact aux_eLpNorm_four_verticalSchwartzCoreRecombined_le_of_overlap
+    β scale indices m hprofile hoverlap F g
+
+/-! ## Finite-rank supplied-Schwartz vertical cores -/
+
+/-- At a fixed spatial point, collect the finite spatial-rank expansion
+inside each original vertical label.  This auxiliary profile deliberately
+does not flatten the vertical labels. -/
+private noncomputable def aux_finiteRankTemporalBundle
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex)
+    (x : SurfaceCore.Euclidean 2) : Int → SchwartzMap Real Complex :=
+  fun n => ∑ r ∈ ranks n, F n r x • g n r
+
+/-- The supplied-Schwartz space-time core with finitely many spatial ranks
+inside each original vertical label.  It is finite data only and makes no
+claim about arbitrary packet families. -/
+noncomputable def finiteRankVerticalSchwartzCore
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) : WaveSpaceTime → Complex :=
+  fun z => ∑ n ∈ indices, ∑ r ∈ ranks n,
+    verticalTemporalSchwartzMultiplier (m n) (g n r) z.2 * F n r z.1
+
+/-- The literal finite spatial-rank packet family, retaining the original
+vertical indexing. -/
+noncomputable def finiteRankVerticalPackets
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    Int → WaveSpaceTime → Complex :=
+  fun n z => ∑ r ∈ ranks n,
+    verticalSeparablePacket (F n r) (g n r : Real → Complex) z
+
+private theorem aux_verticalTemporalSchwartzMultiplier_finset_sum_smul
+    (m : SchwartzMap Real Complex) (s : Finset Int)
+    (c : Int → Complex) (g : Int → SchwartzMap Real Complex) :
+    verticalTemporalSchwartzMultiplier m (∑ r ∈ s, c r • g r) =
+      ∑ r ∈ s, c r • verticalTemporalSchwartzMultiplier m (g r) := by
+  classical
+  induction s using Finset.induction_on with
+  | empty => simp [verticalTemporalSchwartzMultiplier_zero]
+  | insert r s hrs ih =>
+      rw [Finset.sum_insert hrs, Finset.sum_insert hrs,
+        verticalTemporalSchwartzMultiplier_add,
+        verticalTemporalSchwartzMultiplier_smul, ih]
+
+private theorem aux_finiteRankVerticalSchwartzCore_fiber
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex)
+    (x : SurfaceCore.Euclidean 2) (t : Real) :
+    finiteRankVerticalSchwartzCore indices m ranks F g (x, t) =
+      verticalTemporalSchwartzCoreRecombined indices m
+        (aux_finiteRankTemporalBundle ranks F g x) t := by
+  classical
+  unfold finiteRankVerticalSchwartzCore
+    verticalTemporalSchwartzCoreRecombined aux_finiteRankTemporalBundle
+  simp only [AddMonoidHom.coe_mk, ZeroHom.coe_mk]
+  apply Finset.sum_congr rfl
+  intro n hn
+  rw [aux_verticalTemporalSchwartzMultiplier_finset_sum_smul]
+  rw [sum_apply]
+  apply Finset.sum_congr rfl
+  intro r hr
+  simp only [smul_apply]
+  ring
+
+private theorem aux_finiteRankVerticalPackets_apply
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex)
+    (n : Int) (x : SurfaceCore.Euclidean 2) (t : Real) :
+    finiteRankVerticalPackets ranks F g n (x, t) =
+      aux_finiteRankTemporalBundle ranks F g x n t := by
+  classical
+  unfold finiteRankVerticalPackets aux_finiteRankTemporalBundle
+  rw [sum_apply]
+  apply Finset.sum_congr rfl
+  intro r hr
+  simp only [verticalSeparablePacket, smul_apply, smul_eq_mul]
+  ring
+
+private theorem aux_verticalSquareFunction_finiteRankPackets_eq_bundleNorm
+    (indices : Finset Int) (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex)
+    (x : SurfaceCore.Euclidean 2) (t : Real) :
+    verticalSquareFunction indices (finiteRankVerticalPackets ranks F g) (x, t) =
+      ‖(WithLp.toLp 2 (fun i : (↑indices) =>
+          aux_finiteRankTemporalBundle ranks F g x (i : Int) t) :
+        PiLp (2 : ENNReal) (fun _ : (↑indices) => Complex))‖ := by
+  rw [verticalSquareFunction_eq_norm_piLp]
+  congr 1
+  apply congrArg (WithLp.toLp 2)
+  funext i
+  exact aux_finiteRankVerticalPackets_apply ranks F g (i : Int) x t
+
+private theorem aux_continuous_finiteRankVerticalSchwartzCore
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    Continuous (finiteRankVerticalSchwartzCore indices m ranks F g) := by
+  unfold finiteRankVerticalSchwartzCore
+  apply continuous_finsetSum
+  intro n hn
+  apply continuous_finsetSum
+  intro r hr
+  exact
+    ((verticalTemporalSchwartzMultiplier (m n) (g n r)).continuous.comp continuous_snd).mul
+      ((F n r).continuous.comp continuous_fst)
+
+private theorem aux_continuous_finiteRankVerticalSquareFunction
+    (indices : Finset Int) (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    Continuous (verticalSquareFunction indices
+      (finiteRankVerticalPackets ranks F g)) := by
+  unfold verticalSquareFunction
+  apply Real.continuous_sqrt.comp
+  apply continuous_finsetSum
+  intro n hn
+  have hpacket : Continuous (finiteRankVerticalPackets ranks F g n) := by
+    unfold finiteRankVerticalPackets
+    apply continuous_finsetSum
+    intro r hr
+    unfold verticalSeparablePacket
+    exact ((g n r).continuous.comp continuous_snd).mul ((F n r).continuous.comp continuous_fst)
+  exact hpacket.norm.pow 2
+
+/-- Raw fourth-moment Fubini lift for a finite-rank supplied-Schwartz core.
+The overlap and multiplier profile remain indexed only by the original finite
+vertical labels; the rank sums stay inside those labels. -/
+theorem lintegral_norm_rpow_four_finiteRankVerticalSchwartzCore_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    (∫⁻ z : WaveSpaceTime,
+      (ENNReal.ofReal ‖finiteRankVerticalSchwartzCore indices m ranks F g z‖) ^
+        (4 : Real)) ≤
+      finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ z : WaveSpaceTime,
+          (ENNReal.ofReal (verticalSquareFunction indices
+            (finiteRankVerticalPackets ranks F g) z)) ^ (4 : Real) := by
+  let P : WaveSpaceTime → Complex :=
+    finiteRankVerticalSchwartzCore indices m ranks F g
+  let S : WaveSpaceTime → Real := verticalSquareFunction indices
+    (finiteRankVerticalPackets ranks F g)
+  have hPcont : Continuous P := by
+    dsimp [P]
+    exact aux_continuous_finiteRankVerticalSchwartzCore indices m ranks F g
+  have hScont : Continuous S := by
+    dsimp [S]
+    exact aux_continuous_finiteRankVerticalSquareFunction indices ranks F g
+  have hPmeas : Measurable (fun z : WaveSpaceTime =>
+      (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) :=
+    ENNReal.continuous_rpow_const.measurable.comp hPcont.norm.measurable.ennreal_ofReal
+  have hSmeas : Measurable (fun z : WaveSpaceTime =>
+      (ENNReal.ofReal (S z)) ^ (4 : Real)) :=
+    ENNReal.continuous_rpow_const.measurable.comp hScont.measurable.ennreal_ofReal
+  have hSinnerMeas : Measurable (fun x : SurfaceCore.Euclidean 2 => ∫⁻ t : Real,
+      (ENNReal.ofReal (S (x, t))) ^ (4 : Real)) := by
+    exact Measurable.lintegral_prod_right hSmeas
+  have hfiber (x : SurfaceCore.Euclidean 2) :
+      (∫⁻ t : Real, (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real)) ≤
+        finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ t : Real, (ENNReal.ofReal (S (x, t))) ^ (4 : Real) := by
+    calc
+      (∫⁻ t : Real, (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real)) =
+          ∫⁻ t : Real,
+            (ENNReal.ofReal ‖verticalTemporalSchwartzCoreRecombined indices m
+              (aux_finiteRankTemporalBundle ranks F g x) t‖) ^ (4 : Real) := by
+            apply lintegral_congr
+            intro t
+            dsimp [P]
+            rw [aux_finiteRankVerticalSchwartzCore_fiber]
+      _ ≤ finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ t : Real,
+            (ENNReal.ofReal ‖(WithLp.toLp 2 (fun i : (↑indices) =>
+              aux_finiteRankTemporalBundle ranks F g x (i : Int) t) :
+              PiLp (2 : ENNReal) (fun _ : (↑indices) => Complex))‖) ^
+                (4 : Real) :=
+          lintegral_norm_rpow_four_verticalTemporalSchwartzCoreRecombined_le_of_overlap
+            β scale indices m hprofile hoverlap
+              (aux_finiteRankTemporalBundle ranks F g x)
+      _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ t : Real, (ENNReal.ofReal (S (x, t))) ^ (4 : Real) := by
+            congr 1
+            apply lintegral_congr
+            intro t
+            rw [← aux_verticalSquareFunction_finiteRankPackets_eq_bundleNorm
+              indices ranks F g x t]
+  have hPprod :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) =
+        ∫⁻ x : SurfaceCore.Euclidean 2, ∫⁻ t : Real,
+          (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real) := by
+    rw [Measure.volume_eq_prod]
+    exact lintegral_prod _ hPmeas.aemeasurable
+  have hSprod :
+      (∫⁻ x : SurfaceCore.Euclidean 2, ∫⁻ t : Real,
+        (ENNReal.ofReal (S (x, t))) ^ (4 : Real)) =
+      ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real) := by
+    rw [Measure.volume_eq_prod]
+    exact (lintegral_prod _ hSmeas.aemeasurable).symm
+  change (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) ≤
+    finiteTemporalCoreFourthMomentCoefficient C indices m *
+      ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)
+  rw [hPprod]
+  calc
+    (∫⁻ x : SurfaceCore.Euclidean 2, ∫⁻ t : Real,
+      (ENNReal.ofReal ‖P (x, t)‖) ^ (4 : Real)) ≤
+        ∫⁻ x : SurfaceCore.Euclidean 2,
+          finiteTemporalCoreFourthMomentCoefficient C indices m *
+            ∫⁻ t : Real, (ENNReal.ofReal (S (x, t))) ^ (4 : Real) :=
+      lintegral_mono hfiber
+    _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ x : SurfaceCore.Euclidean 2, ∫⁻ t : Real,
+          (ENNReal.ofReal (S (x, t))) ^ (4 : Real) :=
+      lintegral_const_mul _ hSinnerMeas
+    _ = finiteTemporalCoreFourthMomentCoefficient C indices m *
+        ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real) := by
+      rw [hSprod]
+
+private theorem aux_eLpNorm_four_finiteRankVerticalSchwartzCore_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    eLpNorm (finiteRankVerticalSchwartzCore indices m ranks F g)
+      (4 : ENNReal) volume ≤
+      (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+        eLpNorm (verticalSquareFunction indices
+          (finiteRankVerticalPackets ranks F g)) (4 : ENNReal) volume := by
+  let P : WaveSpaceTime → Complex :=
+    finiteRankVerticalSchwartzCore indices m ranks F g
+  let S : WaveSpaceTime → Real := verticalSquareFunction indices
+    (finiteRankVerticalPackets ranks F g)
+  have hraw :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) ≤
+        finiteTemporalCoreFourthMomentCoefficient C indices m *
+          ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real) := by
+    simpa only [P, S] using
+      lintegral_norm_rpow_four_finiteRankVerticalSchwartzCore_le_of_overlap
+        β scale indices m hprofile hoverlap ranks F g
+  have hSnonneg (z : WaveSpaceTime) : 0 ≤ S z := by
+    dsimp [S]
+    exact verticalSquareFunction_nonneg indices
+      (finiteRankVerticalPackets ranks F g) z
+  have hPmoment :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖P z‖) ^ (4 : Real)) =
+        (eLpNorm P (4 : ENNReal) volume) ^ (4 : Real) := by
+    simpa only [ENNReal.ofReal_ofNat] using
+      (Codex.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+        (by norm_num : (0 : Real) < 4) P)
+  have hSmoment :
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)) =
+        (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
+    calc
+      (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)) =
+          ∫⁻ z : WaveSpaceTime, ENNReal.ofReal ((S z) ^ (4 : Real)) := by
+            apply lintegral_congr
+            intro z
+            exact ENNReal.ofReal_rpow_of_nonneg (hSnonneg z)
+              (by norm_num : (0 : Real) ≤ 4)
+      _ = (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
+        simpa only [ENNReal.ofReal_ofNat] using
+          (Codex.Spherical.LpSpaceFacts.lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
+            (by norm_num : (0 : Real) < 4) S hSnonneg)
+  change eLpNorm P (4 : ENNReal) volume ≤
+    (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+      eLpNorm S (4 : ENNReal) volume
+  rw [← ENNReal.rpow_le_rpow_iff (by norm_num : (0 : Real) < 4)]
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : Real) ≤ 4)]
+  rw [← ENNReal.rpow_mul]
+  have hfour : (4 : Real)⁻¹ * (4 : Real) = 1 := by norm_num
+  rw [hfour, ENNReal.rpow_one, ← hPmoment, ← hSmoment]
+  exact hraw
+
+private theorem aux_memLp_four_finiteRankVerticalSchwartzCore
+    (indices : Finset Int) (m : Int → SchwartzMap Real Complex)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    MemLp (finiteRankVerticalSchwartzCore indices m ranks F g)
+      (4 : ENNReal) volume := by
+  let h : Int → Int → SchwartzMap Real Complex := fun n r =>
+    verticalTemporalSchwartzMultiplier (m n) (g n r)
+  have hterm (n r : Int) :
+      MemLp (fun z : WaveSpaceTime => h n r z.2 * F n r z.1)
+        (4 : ENNReal) volume := by
+    change MemLp (verticalSeparablePacket (F n r) (h n r : Real → Complex))
+      (4 : ENNReal) volume
+    exact aux_memLp_four_verticalSeparablePacket (F n r) (h n r)
+  have hinner (n : Int) :
+      MemLp (fun z : WaveSpaceTime => ∑ r ∈ ranks n,
+        h n r z.2 * F n r z.1) (4 : ENNReal) volume := by
+    exact memLp_finsetSum (ranks n) (fun r hr => hterm n r)
+  have hsum :
+      MemLp (fun z : WaveSpaceTime => ∑ n ∈ indices, ∑ r ∈ ranks n,
+        h n r z.2 * F n r z.1) (4 : ENNReal) volume := by
+    exact memLp_finsetSum indices (fun n hn => hinner n)
+  change MemLp (fun z : WaveSpaceTime => ∑ n ∈ indices, ∑ r ∈ ranks n,
+    verticalTemporalSchwartzMultiplier (m n) (g n r) z.2 * F n r z.1)
+      (4 : ENNReal) volume
+  simpa only [h] using hsum
+
+/-- Finite-rank supplied-Schwartz `L4` control for the vertical core.  The
+right-hand side is the square function of the rank-summed packets, not a
+flattened two-index square function. -/
+theorem memLp_four_and_eLpNorm_finiteRankVerticalSchwartzCore_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    MemLp (finiteRankVerticalSchwartzCore indices m ranks F g)
+      (4 : ENNReal) volume ∧
+      eLpNorm (finiteRankVerticalSchwartzCore indices m ranks F g)
+        (4 : ENNReal) volume ≤
+        (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+          eLpNorm (verticalSquareFunction indices
+            (finiteRankVerticalPackets ranks F g)) (4 : ENNReal) volume := by
+  exact ⟨aux_memLp_four_finiteRankVerticalSchwartzCore indices m ranks F g,
+    aux_eLpNorm_four_finiteRankVerticalSchwartzCore_le_of_overlap
+      β scale indices m hprofile hoverlap ranks F g⟩
+
+private theorem aux_finiteRank_spaceTimeFourier_finset_sum_verticalSeparablePackets
+    (s : Finset Int)
+    (F : Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex)
+    (ξ : SurfaceCore.Euclidean 2) (τ : Real) :
+    spaceTimeFourier
+        (fun z => ∑ r ∈ s,
+          verticalSeparablePacket (F r) (g r : Real → Complex) z) (ξ, τ) =
+      ∑ r ∈ s,
+        spaceTimeFourier (verticalSeparablePacket (F r) (g r : Real → Complex)) (ξ, τ) := by
+  have hspace (t : Real) :
+      𝓕 (fun x : SurfaceCore.Euclidean 2 => ∑ r ∈ s, g r t * F r x) ξ =
+        ∑ r ∈ s, g r t * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ := by
+    let H : SchwartzMap (SurfaceCore.Euclidean 2) Complex :=
+      ∑ r ∈ s, (g r t) • F r
+    have hH (x : SurfaceCore.Euclidean 2) : H x = ∑ r ∈ s, g r t * F r x := by
+      dsimp only [H]
+      rw [sum_apply]
+      simp only [smul_apply, smul_eq_mul]
+    rw [show (fun x : SurfaceCore.Euclidean 2 => ∑ r ∈ s, g r t * F r x) = H by
+      funext x
+      exact (hH x).symm]
+    change (𝓕 H : SchwartzMap (SurfaceCore.Euclidean 2) Complex) ξ = _
+    rw [show H = ∑ r ∈ s, (g r t) • F r by rfl]
+    rw [FourierTransform.fourier_sum, sum_apply]
+    apply Finset.sum_congr rfl
+    intro r hr
+    rw [FourierTransform.fourier_smul]
+    simp only [smul_apply, smul_eq_mul, SchwartzMap.fourier_coe]
+  have hright :
+      (∑ r ∈ s,
+        spaceTimeFourier (verticalSeparablePacket (F r) (g r : Real → Complex)) (ξ, τ)) =
+        ∑ r ∈ s,
+          𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ * 𝓕 (g r : Real → Complex) τ := by
+    apply Finset.sum_congr rfl
+    intro r hr
+    exact spaceTimeFourier_verticalSeparablePacket (F r) (g r : Real → Complex) ξ τ
+  rw [hright]
+  unfold spaceTimeFourier
+  change 𝓕 (fun t : Real =>
+    𝓕 (fun x : SurfaceCore.Euclidean 2 => ∑ r ∈ s, g r t * F r x) ξ) τ = _
+  rw [show (fun t : Real =>
+    𝓕 (fun x : SurfaceCore.Euclidean 2 => ∑ r ∈ s, g r t * F r x) ξ) =
+      fun t : Real => ∑ r ∈ s, g r t * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ by
+        funext t
+        exact hspace t]
+  let K : SchwartzMap Real Complex :=
+    ∑ r ∈ s, (𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ) • g r
+  have hK (t : Real) : K t =
+      ∑ r ∈ s, g r t * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ := by
+    dsimp only [K]
+    rw [sum_apply]
+    simp only [smul_apply, smul_eq_mul]
+    apply Finset.sum_congr rfl
+    intro r hr
+    ring
+  rw [show (fun t : Real => ∑ r ∈ s,
+    g r t * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ) = K by
+      funext t
+      exact (hK t).symm]
+  change (𝓕 K : SchwartzMap Real Complex) τ = _
+  rw [show K = ∑ r ∈ s,
+    (𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ) • g r by rfl]
+  rw [FourierTransform.fourier_sum, sum_apply]
+  apply Finset.sum_congr rfl
+  intro r hr
+  rw [FourierTransform.fourier_smul]
+  simp only [smul_apply, smul_eq_mul, SchwartzMap.fourier_coe]
+
+private theorem aux_fourierInv_finset_sum_smul_fourier_spatial
+    (s : Finset Int) (c : Int → Complex)
+    (F : Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (x : SurfaceCore.Euclidean 2) :
+    𝓕⁻ (fun ξ : SurfaceCore.Euclidean 2 => ∑ r ∈ s,
+      c r * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ) x =
+      ∑ r ∈ s, c r * F r x := by
+  classical
+  let H : SchwartzMap (SurfaceCore.Euclidean 2) Complex :=
+    ∑ r ∈ s, c r • FourierTransform.fourier (F r)
+  have hH (ξ : SurfaceCore.Euclidean 2) : H ξ =
+      ∑ r ∈ s, c r * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ := by
+    dsimp only [H]
+    rw [sum_apply]
+    simp only [smul_apply, smul_eq_mul, SchwartzMap.fourier_coe]
+  rw [show (fun ξ : SurfaceCore.Euclidean 2 => ∑ r ∈ s,
+    c r * 𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) ξ) = H by
+      funext ξ
+      exact (hH ξ).symm]
+  rw [← SchwartzMap.fourierInv_coe]
+  rw [show H = ∑ r ∈ s, c r • FourierTransform.fourier (F r) by rfl]
+  rw [FourierTransform.fourierInv_sum, sum_apply]
+  apply Finset.sum_congr rfl
+  intro r hr
+  rw [FourierTransform.fourierInv_smul, FourierTransform.fourierInv_fourier_eq]
+  simp only [smul_apply, smul_eq_mul]
+
+private theorem aux_fourierInv_finset_sum_temporalMultiplier_smul
+    (s : Finset Int) (m : SchwartzMap Real Complex)
+    (c : Int → Complex) (g : Int → SchwartzMap Real Complex)
+    (t : Real) :
+    𝓕⁻ (fun τ : Real => ∑ r ∈ s,
+      (m τ * 𝓕 (g r : Real → Complex) τ) * c r) t =
+      ∑ r ∈ s, verticalTemporalSchwartzMultiplier m (g r) t * c r := by
+  classical
+  let K : SchwartzMap Real Complex := ∑ r ∈ s, c r •
+    SchwartzMap.smulLeftCLM Complex (m : Real → Complex)
+      (FourierTransform.fourier (g r))
+  have hK (τ : Real) : K τ = ∑ r ∈ s,
+      (m τ * 𝓕 (g r : Real → Complex) τ) * c r := by
+    dsimp only [K]
+    rw [sum_apply]
+    simp only [smul_apply, smul_eq_mul,
+      SchwartzMap.smulLeftCLM_apply (m.hasTemperateGrowth), SchwartzMap.fourier_coe]
+    apply Finset.sum_congr rfl
+    intro r hr
+    ring
+  rw [show (fun τ : Real => ∑ r ∈ s,
+    (m τ * 𝓕 (g r : Real → Complex) τ) * c r) = K by
+      funext τ
+      exact (hK τ).symm]
+  rw [← SchwartzMap.fourierInv_coe]
+  rw [show K = ∑ r ∈ s, c r •
+    SchwartzMap.smulLeftCLM Complex (m : Real → Complex)
+      (FourierTransform.fourier (g r)) by rfl]
+  rw [FourierTransform.fourierInv_sum, sum_apply]
+  apply Finset.sum_congr rfl
+  intro r hr
+  rw [FourierTransform.fourierInv_smul]
+  change c r * verticalTemporalSchwartzMultiplier m (g r) t =
+    verticalTemporalSchwartzMultiplier m (g r) t * c r
+  ring
+
+private theorem aux_verticalProjection_finset_verticalSeparablePackets_of_schwartzProfile
+    (β : Real → Complex) (scale : Real) (n : Int)
+    (m : SchwartzMap Real Complex)
+    (hprofile : ∀ τ : Real, m τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    (s : Finset Int)
+    (F : Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → SchwartzMap Real Complex)
+    (z : WaveSpaceTime) :
+    verticalProjection β scale n
+      (fun w => ∑ r ∈ s,
+        verticalSeparablePacket (F r) (g r : Real → Complex) w) z =
+      ∑ r ∈ s, verticalTemporalSchwartzMultiplier m (g r) z.2 * F r z.1 := by
+  classical
+  have hmult (η : SurfaceCore.Euclidean 2) (τ : Real) :
+      verticalMultiplier β scale n (η, τ) *
+          spaceTimeFourier
+            (fun w => ∑ r ∈ s,
+              verticalSeparablePacket (F r) (g r : Real → Complex) w) (η, τ) =
+        ∑ r ∈ s,
+          (m τ * 𝓕 (g r : Real → Complex) τ) *
+            𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) η := by
+    rw [aux_finiteRank_spaceTimeFourier_finset_sum_verticalSeparablePackets s F g η τ]
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro r hr
+    rw [verticalMultiplier, spaceTimeFourier_verticalSeparablePacket, ← hprofile τ]
+    ring
+  have hinvspace (τ : Real) :
+      𝓕⁻ (fun η : SurfaceCore.Euclidean 2 =>
+        verticalMultiplier β scale n (η, τ) *
+          spaceTimeFourier
+            (fun w => ∑ r ∈ s,
+              verticalSeparablePacket (F r) (g r : Real → Complex) w) (η, τ)) z.1 =
+        ∑ r ∈ s, (m τ * 𝓕 (g r : Real → Complex) τ) * F r z.1 := by
+    rw [show (fun η : SurfaceCore.Euclidean 2 =>
+      verticalMultiplier β scale n (η, τ) *
+        spaceTimeFourier
+          (fun w => ∑ r ∈ s,
+            verticalSeparablePacket (F r) (g r : Real → Complex) w) (η, τ)) =
+        fun η : SurfaceCore.Euclidean 2 => ∑ r ∈ s,
+          (m τ * 𝓕 (g r : Real → Complex) τ) *
+            𝓕 (F r : SurfaceCore.Euclidean 2 → Complex) η by
+        funext η
+        exact hmult η τ]
+    exact aux_fourierInv_finset_sum_smul_fourier_spatial s
+      (fun r => m τ * 𝓕 (g r : Real → Complex) τ) F z.1
+  unfold verticalProjection spaceTimeFourierInv
+  rw [show (fun τ : Real =>
+    𝓕⁻ (fun η : SurfaceCore.Euclidean 2 =>
+      verticalMultiplier β scale n (η, τ) *
+        spaceTimeFourier
+          (fun w => ∑ r ∈ s,
+            verticalSeparablePacket (F r) (g r : Real → Complex) w) (η, τ)) z.1) =
+      fun τ : Real => ∑ r ∈ s,
+        (m τ * 𝓕 (g r : Real → Complex) τ) * F r z.1 by
+      funext τ
+      exact hinvspace τ]
+  exact aux_fourierInv_finset_sum_temporalMultiplier_smul s m
+    (fun r => F r z.1) g z.2
+
+/-- Exact finite-rank supplied-Schwartz rewrite of the literal vertical
+recombination.  The rank sum is kept inside each original vertical label. -/
+theorem finiteRankVerticalSchwartzCore_eq_verticalRecombined_of_schwartzProfiles
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    finiteRankVerticalSchwartzCore indices m ranks F g =
+      verticalRecombined β scale indices (finiteRankVerticalPackets ranks F g) := by
+  funext z
+  unfold finiteRankVerticalSchwartzCore verticalRecombined
+    finiteRankVerticalPackets
+  apply Finset.sum_congr rfl
+  intro n hn
+  exact (aux_verticalProjection_finset_verticalSeparablePackets_of_schwartzProfile
+    β scale n (m n) (hprofile n hn) (ranks n) (F n) (g n) z).symm
+
+/-- Literal finite-rank `verticalRecombined` consequence of the finite
+supplied-Schwartz core estimate.  This does not assert a bound for arbitrary
+packet families or a vertical-recombination principle. -/
+theorem eLpNorm_four_verticalRecombined_finiteRankPackets_le_of_overlap
+    (β : Real → Complex) (scale : Real) (indices : Finset Int)
+    (m : Int → SchwartzMap Real Complex)
+    (hprofile : ∀ n ∈ indices, ∀ τ : Real,
+      m n τ = β ((Real.sqrt scale)⁻¹ * τ - n))
+    {C : Real}
+    (hoverlap : ∀ τ : Real, ∑ n ∈ indices, ‖m n τ‖ ^ (2 : Nat) ≤ C)
+    (ranks : Int → Finset Int)
+    (F : Int → Int → SchwartzMap (SurfaceCore.Euclidean 2) Complex)
+    (g : Int → Int → SchwartzMap Real Complex) :
+    eLpNorm (verticalRecombined β scale indices
+      (finiteRankVerticalPackets ranks F g)) (4 : ENNReal) volume ≤
+      (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
+        eLpNorm (verticalSquareFunction indices
+          (finiteRankVerticalPackets ranks F g)) (4 : ENNReal) volume := by
+  rw [← finiteRankVerticalSchwartzCore_eq_verticalRecombined_of_schwartzProfiles
+    β scale indices m hprofile ranks F g]
+  exact aux_eLpNorm_four_finiteRankVerticalSchwartzCore_le_of_overlap
+    β scale indices m hprofile hoverlap ranks F g
+
+/-! ## Literal Schwartz half-wave additivity -/
 /-! ## Literal Schwartz half-wave additivity -/
 
 private noncomputable def mssHalfWaveOutputSchwartz
