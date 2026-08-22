@@ -96,26 +96,26 @@ results, and convenience wrappers are not status items here.
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
 | `lem:mss-relevant-indices` | `Codex.Spherical.MSS.relevantRadialIndexEnumeration` | Proof completed | 2026-08-20 22:32:52 -04:00 |
-| `prop:mss-radial-time-localization` | `Codex.Spherical.MSS.radialTimeLocalization` | Statement completed | 2026-08-20 22:32:52 -04:00 |
-| `thm:mss-vertical-recombination` | `Codex.Spherical.MSS.verticalRecombination` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `prop:mss-radial-time-localization` | `Codex.Spherical.MSS.radialTimeLocalization` | Proof completed | 2026-08-21 11:59:52 -04:00 |
+| `thm:mss-vertical-recombination` | `Codex.Spherical.MSS.verticalRecombination_of_MSSVerticalCutoff` | Proof completed | 2026-08-21 14:54:33 -04:00 |
 
 #### 3.3 Angular wave-front localization and plate overlap
 
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| `lem:mss-wavefront-localization` | `Codex.Spherical.MSS.wavefrontLocalization` | Statement completed | 2026-08-20 22:32:52 -04:00 |
-| `thm:mss-plate-overlap` | `Codex.Spherical.MSS.plateOverlap` | Statement completed | 2026-08-20 22:32:52 -04:00 |
-| `prop:mss-overlap-square-function` | `Codex.Spherical.MSS.overlapSquareFunction` | Statement completed | 2026-08-20 22:32:52 -04:00 |
-| `lem:mss-remove-vertical` | `Codex.Spherical.MSS.removeVerticalProjections` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `lem:mss-wavefront-localization` | `Codex.Spherical.MSS.wavefrontLocalization_of_MSSWavefrontKernelData` | Proof completed | 2026-08-21 17:29:49 -04:00 |
+| `thm:mss-plate-overlap` | `Codex.Spherical.MSS.plateOverlap_of_angularSectorGeometry` | Proof completed | 2026-08-21 17:40:37 -04:00 |
+| `prop:mss-overlap-square-function` | `Codex.Spherical.MSS.overlapSquareFunction_of_levelData` | Proof completed | 2026-08-21 18:58:10 -04:00 |
+| `lem:mss-remove-vertical` | `Codex.Spherical.MSS.removeVerticalProjections_of_schwartz` | Proof completed | 2026-08-21 19:52:22 -04:00 |
 
 #### 3.4 The fine square function and the light-ray maximal estimate
 
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
 | `thm:fourier-cube-square-function` | `Codex.Spherical.MSS.fourierCubeSquareFunction` | Proof completed | 2026-08-20 22:32:52 -04:00 |
-| `thm:mss-kakeya` | `Codex.Spherical.MSS.HasLightRayMaximalEstimate` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `thm:mss-kakeya` | `Codex.Spherical.MSS.hasLightRayMaximalEstimate` | Proof completed | 2026-08-22 11:36:49 -04:00 |
 | `lem:mss-fine-kernel` | `Codex.Spherical.MSS.sq_norm_continuumFineKernelTerm_le_lightRayEnergy` | Proof completed | 2026-08-20 22:32:52 -04:00 |
-| `prop:mss-fine-square-function` | `Codex.Spherical.MSS.fineSquareFunctionEstimate` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `prop:mss-fine-square-function` | `Codex.Spherical.MSS.mssFineSquareFunctionEstimate` | Statement completed | 2026-08-22 12:39:02 -04:00 |
 
 #### 3.5 Completion of the endpoint estimate at p=4
 

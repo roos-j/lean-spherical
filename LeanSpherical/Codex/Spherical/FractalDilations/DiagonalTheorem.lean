@@ -1868,6 +1868,20 @@ theorem eLpNorm_sphericalMaximal_le_of_bourgain
   · have hd3 : 3 ≤ d := by omega
     exact eLpNorm_sphericalMaximal_le hd3 hp
 
+/-- The all-radii diagonal estimate in every dimension at least two under the
+concrete planar `p = 4` local-smoothing hypothesis. -/
+theorem eLpNorm_sphericalMaximal_le_of_p4LocalSmoothing
+    {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
+    (hp : (d : ENNReal) / (d - 1) < p)
+    (C : _root_.Codex.Spherical.LittlewoodPaley.lpCutoffs 2)
+    (h4 : _root_.Codex.Spherical.MSS.p4LocalSmoothing C.cutoff) :
+    ∃ K : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
+        eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤
+          (ENNReal.ofReal K) * eLpNorm f p volume := by
+  exact eLpNorm_sphericalMaximal_le_of_bourgain hd hp
+    (_root_.Codex.Spherical.Bourgain.hasCircularMaximalSchwartzBound_of_p4LocalSmoothing C h4)
+
 /-- The dyadic lacunary set has zero upper Minkowski exponent. -/
 private theorem lacunary_log_subset (c : Ioi (0 : ℝ)) :
     logDilationSet (({2 ^ k | k : ℤ} : Set ℝ) ∩ logBall c 1) ⊆

@@ -1,5 +1,34 @@
 # Bourgain circular maximal formalization — error report
 
+## 2026-08-22 12:51:53 -04:00
+
+The tempting replacement of the missing fine Fourier-cube `L⁴` square-function
+estimate by a bound uniform over *every deterministic Rademacher signing* is
+false for an expanding separated lattice of translated cubes.  Already in one
+dimension, take a nonzero compact prototype, choose signs matching the Fourier
+coefficients of an input packet, and the multiplier maps a random-sign input
+to an all-positive Dirichlet packet.  Its `L⁴` operator norm grows like a
+positive power of the number of cubes.
+
+The valid Khintchine formulation averages the fourth moment over sign choices;
+that averaged statement is essentially the desired cube square-function
+estimate, not a consequence of lattice separation or the existing Mikhlin
+development.  The source APIs therefore retain the every-sign statement only
+as a clearly marked stronger conditional lemma and use a sign-average target
+for the actual missing analytic step.
+
+## 2026-08-21 20:02:43 -04:00
+
+The former internal route through
+`aux_HasLightRayTTStarIntersectionSchurEstimate` is not a valid formulation
+of the planar Kakeya input.  Besides omitting measurability of a chosen
+direction field, its pointwise row-Schur conclusion is false even for smooth
+unit-valued fields: a tube bush can make one row of the literal smooth TT*
+intersection kernel of order `delta^-1`, rather than polylogarithmic.
+The desired light-ray maximal theorem itself remains the faithful MSS
+statement, but its proof must use Córdoba's quadratic/angular-overlap
+argument rather than a uniform TT* row estimate.
+
 ## 2026-08-13 10:26:15 -04:00
 
 In `prop:mss-fine-square-function`, the blueprint invokes the Kakeya estimate with
@@ -1126,3 +1155,79 @@ finite-rank core with a literal `verticalRecombined` family.  This remains a
 finite algebraic/Schwartz result: it does not establish arbitrary-input
 density, a scale-normalized endpoint, `verticalRecombination`, a continuum
 limit, fine-square control, `p4LocalSmoothing`, or local smoothing.
+
+## 2026-08-21 14:54:33 -04:00
+
+The former `verticalRecombination` predicate was not blueprint-faithful: it
+took an arbitrary raw cutoff and quantified arbitrary functions
+`Int → WaveSpaceTime → Complex`, without the smooth compact-support or
+measurability/integrability data needed by the physical convolution,
+Plancherel, and interpolation proof.  It has been corrected to use
+`MSSVerticalCutoff`, which records a Schwartz cutoff with
+`tsupport ⊆ Ioo (-1) 1` and the pointwise support condition used in spectral
+overlap, and to quantify finite joint-Schwartz families through
+`jointSchwartzRaw`.  The proved public theorem is
+`verticalRecombination_of_MSSVerticalCutoff`; it is intentionally not an
+arbitrary measurable-input or continuum-extension assertion.
+
+## 2026-08-21 17:29:49 -04:00
+
+The earlier positional wave-front-localization predicate lacked the
+scale-indexed cutoff geometry, raw Schwartz realization, and polynomial
+spatial-profile regularity from which its two literal conclusions must be
+derived.  In particular, supplying a rapid residual or output estimate there
+would have restated the desired normal-tail conclusion rather than proved it.
+The active blueprint item is now expressed through
+`MSSWavefrontCutoffData`, `MSSWavefrontKernelData`,
+`MSSWavefrontRawProfileRealization`, and
+`MSSWavefrontSpatialProfilePolynomialRegularity`; the proved theorem
+`wavefrontLocalization_of_MSSWavefrontKernelData` establishes the exact raw
+`L⁴` square-function error and active conic-plate Fourier support.  Its
+normal-tail multiplier bound is derived privately from the stated cutoff and
+profile data, not assumed as residual, kernel, or output data.
+
+## 2026-08-21 17:40:37 -04:00
+
+The fixed-separation plate-overlap theorem is already proved as
+`plateOverlap_of_angularSectorGeometry`: its `angularSectorGeometry`
+hypothesis is the Lean-level form of the blueprint's ordered, uniformly
+spaced angular partition, and it yields the stated thick-plate multiplicity
+bound with exponent `2 * gamma`. The newly introduced wave-front cutoff data
+records localization supports and cardinality, but deliberately does not
+imply this stronger spacing/order geometry. Consequently a later composition
+must supply an explicit angular-geometry bridge; wave-front localization
+alone must not be treated as a plate-overlap hypothesis.
+
+## 2026-08-21 18:58:10 -04:00
+
+The former overlap-square-function predicate quantified arbitrary raw
+space-time functions and required a constant uniform in `gamma` after
+choosing `eta`.  That has the wrong quantifier order for the blueprint:
+plate-overlap loss depends on `gamma`, which must be chosen sufficiently
+small after `eta`.  It also lacked the finite separation-level coverage and
+logarithmic bound needed to partition all angular pairs exactly.
+
+The proved statement `overlapSquareFunction_of_levelData` therefore uses
+finite joint-Schwartz spectral packets, chooses `gamma` after `eta`, and
+requires the explicit `angularSeparationLevelData` that supplies the pair
+partition and logarithmic level count.  The older raw formulation is retained
+only as the explicitly named conditional
+`overlapSquareFunctionRawHypothesis` for pre-existing regular-model transfer
+lemmas; it is not claimed as this proved blueprint proposition.
+
+## 2026-08-21 19:52:22 -04:00
+
+The former `removeVerticalProjections` predicate quantified an arbitrary raw
+vertical cutoff and arbitrary raw space-time packets.  The literal
+`verticalProjection` is defined through iterated Fourier integrals, so that
+formulation had no justified common-kernel realization on all `L⁴` inputs.
+
+The proved `removeVerticalProjections_of_schwartz` now has the blueprint's
+supplied-Schwartz packet model: `beta : SchwartzMap Real Complex` and a finite
+joint-Schwartz family, evaluated through `jointSchwartzRaw`.  Its proof uses
+the exact affine inverse-Fourier temporal kernel, finite `PiLp 2` Minkowski,
+and time-only `L⁴` Young.  The constant is
+`1 + ∫ y, ‖fourierInv beta y‖`, independent of the radial and angular packet
+counts.  Extending the raw Fourier definition to arbitrary measurable `L⁴`
+families would require a separately proved operator extension and agreement
+theorem; it is not asserted here.
