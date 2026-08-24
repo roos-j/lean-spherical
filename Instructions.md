@@ -1269,3 +1269,57 @@ endpoint with its beta modulation/dilation bridge, or a direct
 vertical/fine-square advance.  No arbitrary-input, density,
 `verticalRecombination`, scale, continuum, fine-square, p4, or local
 smoothing conclusion follows here.
+
+## Codex source management
+
+- Do not create new source files under `LeanSpherical/Codex`.
+- Consolidate finished MSS work into `LeanSpherical/Codex/Spherical/MSS.lean` before handoff.
+- Scratch files may be used for temporary experiments, but delete them as soon as they are no longer needed. Do not leave obsolete scratch artifacts in the repository.
+
+## Live verification checkpoint - 2026-08-24 13:41:49 -04:00
+
+`MSS.lean` now proves the unconditional planar endpoint theorem
+`p4LocalSmoothing_of_lpCutoffs : ∀ C : lpCutoffs 2, p4LocalSmoothing C.cutoff`.
+It is source-compiled and module-built; its axiom audit reports only
+`propext`, `Classical.choice`, and `Quot.sound`.  The proof reconstructs the
+positive sign from a finite coarse conic atlas and obtains the negative sign
+by reflected-conjugate Fourier transport.
+
+Accordingly, earlier checkpoint text describing unconditional p=4 local
+smoothing as the missing frontier is historical and superseded.  Do not infer
+from this endpoint alone that the separately labeled all-exponent
+`thm:mss-local-smoothing`, `cor:mss-discrete`, Bourgain, or diagonal results
+are complete; validate each downstream adapter before updating its ledger row.
+
+## Live verification checkpoint - 2026-08-24 13:48:00 -04:00
+
+The required downstream all-exponent adapter has now been verified in
+`MSS.lean`: `localSmoothing_of_lpCutoffs` applies
+`p4LocalSmoothing_to_localSmoothing_all_p` to the proved endpoint, so it
+establishes `localSmoothing C.cutoff p eta` for every `C : lpCutoffs 2`,
+`2 < p`, and `0 < eta`.  Its source compile, the top-level
+`LeanSpherical.Theorems` build, and its axiom audit (only `propext`,
+`Classical.choice`, and `Quot.sound`) all pass.
+
+This supersedes the preceding checkpoint only for
+`thm:mss-local-smoothing`.  The discrete, Bourgain, and diagonal ledger rows
+remain unchanged until their own unconditional public declarations are
+verified.
+
+## Live verification checkpoint - 2026-08-24 13:57:41 -04:00
+
+The continuous MSS route is now closed through the requested final
+integration.  `Bourgain.lean` provides `bourgainCircularMaximal` by choosing
+an `lpCutoffs 2` witness and applying `p4LocalSmoothing_of_lpCutoffs`; the
+diagonal module provides `eLpNorm_sphericalMaximal_le_of_mss` for every
+dimension at least two; and `LeanSpherical.Theorems` exports the matching
+`Spherical.eLpNorm_sphericalMaximal_le_of_mss` facade while retaining its
+older dimension-at-least-three theorem unchanged.
+
+Each edited source direct-compiles, the `LeanSpherical.Theorems` module build
+passes, and declaration-level audits report only `propext`,
+`Classical.choice`, and `Quot.sound`.  This supersedes the preceding
+checkpoint for Bourgain and diagonal integration.  The only still-unproved
+listed MSS result is the separately formulated `cor:mss-discrete`, which
+requires a source-level time-sampling/derivative bridge rather than a further
+consequence of continuous local smoothing.

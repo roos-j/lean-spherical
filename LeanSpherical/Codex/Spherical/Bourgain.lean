@@ -24139,4 +24139,12 @@ theorem hasCircularMaximalSchwartzBound_of_p4LocalSmoothing
     (_root_.Codex.Spherical.MSS.p4LocalSmoothing_to_hasPositiveLocalSmoothingGain
       h4 (ρ := (1 / 16 : Real)) (by norm_num) (by norm_num)) hq
 
+/-- Bourgain's planar circular maximal theorem, obtained by choosing any
+smooth Littlewood--Paley cutoff and applying the unconditional MSS endpoint. -/
+theorem bourgainCircularMaximal :
+    ∀ q : Real, 2 < q → HasCircularMaximalSchwartzBound q := by
+  obtain ⟨C⟩ := _root_.Codex.Spherical.LittlewoodPaley.exists_lpCutoffs 2
+  exact hasCircularMaximalSchwartzBound_of_p4LocalSmoothing C
+    (_root_.Codex.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs C)
+
 end Codex.Spherical.Bourgain

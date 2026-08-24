@@ -1,6 +1,6 @@
 # Bourgain circular maximal formalization status
 
-Last updated: 2026-08-20 15:42:44 -04:00
+Last updated: 2026-08-24 13:57:41 -04:00
 
 Status values: `Proof completed`, `Statement completed`, `ToDo`.
 
@@ -15,10 +15,10 @@ Status values: `Proof completed`, `Statement completed`, `ToDo`.
 | `LpSpaceFacts.lean` | Reusable Lp-space facts | `Codex.Spherical.LpSpaceFacts.eLpNorm_power_interpolation_of_holder` | Proof completed | 2026-08-13 22:17:11 -04:00 |
 | `MSSPhaseCalculus.lean` | Reusable radial phase calculus | `Codex.Spherical.MSSPhaseCalculus.laplacian_radial_phase_eq` | Proof completed | 2026-08-14 04:37:17 -04:00 |
 | `SmoothDyadicPhysicalCore.lean` | Dimension-generic Fourier-cube physical kernel | `Codex.Spherical.SmoothDyadicPhysicalCore.fourierCubeProjection_eq_sourceKernel` | Proof completed | 2026-08-14 05:08:23 -04:00 |
-| `MSS.lean` | `thm:intro-mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing` | Statement completed | 2026-08-13 13:24:00 -04:00 |
+| `MSS.lean` | `thm:intro-mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing_of_lpCutoffs` | Proof completed | 2026-08-24 13:48:00 -04:00 |
 | `MSS.lean` | `thm:intro-discrete-local-smoothing` | `Codex.Spherical.MSS.discreteLocalSmoothing` | Statement completed | 2026-08-13 13:24:00 -04:00 |
-| `Bourgain.lean` | `thm:intro-bourgain` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | ToDo | 2026-08-13 13:24:00 -04:00 |
-| `FractalDilations/DiagonalTheorem.lean` | Final requested integration | `Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le` | ToDo | 2026-08-13 13:24:00 -04:00 |
+| `Bourgain.lean` | `thm:intro-bourgain` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | Proof completed | 2026-08-24 13:57:41 -04:00 |
+| `FractalDilations/DiagonalTheorem.lean` | Final requested integration | `Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le_of_mss` | Proof completed | 2026-08-24 13:57:41 -04:00 |
 
 ## Blueprint ledger
 
@@ -31,8 +31,8 @@ results, and convenience wrappers are not status items here.
 
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| `thm:intro-bourgain` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | ToDo | 2026-08-20 22:32:52 -04:00 |
-| `thm:intro-mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `thm:intro-bourgain` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | Proof completed | 2026-08-24 13:57:41 -04:00 |
+| `thm:intro-mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing_of_lpCutoffs` | Proof completed | 2026-08-24 13:48:00 -04:00 |
 | `thm:intro-discrete-local-smoothing` | `Codex.Spherical.MSS.discreteLocalSmoothing` | Statement completed | 2026-08-20 22:32:52 -04:00 |
 
 ### 2. From a positive local-smoothing gain to the circular maximal theorem
@@ -112,22 +112,22 @@ results, and convenience wrappers are not status items here.
 
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| `thm:fourier-cube-square-function` | `Codex.Spherical.MSS.fourierCubeSquareFunction` | Proof completed | 2026-08-20 22:32:52 -04:00 |
-| `thm:mss-kakeya` | `Codex.Spherical.MSS.hasLightRayMaximalEstimate` | Proof completed | 2026-08-22 11:36:49 -04:00 |
+| `thm:fourier-cube-square-function` | `Codex.Spherical.MSS.latticeFourierCubeSquareFunction_lintegral_four` | Proof completed | 2026-08-24 04:18:42 -04:00 |
+| `thm:mss-kakeya` | `Codex.Spherical.MSS.hasLightRayMaximalEstimate` | Proof completed | 2026-08-22 14:52:07 -04:00 |
 | `lem:mss-fine-kernel` | `Codex.Spherical.MSS.sq_norm_continuumFineKernelTerm_le_lightRayEnergy` | Proof completed | 2026-08-20 22:32:52 -04:00 |
-| `prop:mss-fine-square-function` | `Codex.Spherical.MSS.mssFineSquareFunctionEstimate` | Statement completed | 2026-08-22 12:39:02 -04:00 |
+| `prop:mss-fine-square-function` | `Codex.Spherical.MSS.mssFineSquareFunctionEstimate` | Proof completed | 2026-08-24 05:25:06 -04:00 |
 
 #### 3.5 Completion of the endpoint estimate at p=4
 
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| `prop:mss-recombination` | `Codex.Spherical.MSS.recombination` | Statement completed | 2026-08-20 22:32:52 -04:00 |
-| `thm:mss-p4` | `Codex.Spherical.MSS.p4LocalSmoothing` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `prop:mss-recombination` | `Codex.Spherical.MSS.mssRecombination_of_structuredData` | Proof completed | 2026-08-24 06:40:01 -04:00 |
+| `thm:mss-p4` | `Codex.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs` | Proof completed | 2026-08-24 13:41:49 -04:00 |
 
 #### 3.6 Interpolation, the MSS gain, and the discretized form
 
 | Blueprint label | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| `thm:mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing` | Statement completed | 2026-08-20 22:32:52 -04:00 |
+| `thm:mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing_of_lpCutoffs` | Proof completed | 2026-08-24 13:48:00 -04:00 |
 | `cor:mss-discrete` | `Codex.Spherical.MSS.discreteLocalSmoothing` | Statement completed | 2026-08-20 22:32:52 -04:00 |
-| `cor:bourgain-final` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | ToDo | 2026-08-20 22:32:52 -04:00 |
+| `cor:bourgain-final` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | Proof completed | 2026-08-24 13:57:41 -04:00 |

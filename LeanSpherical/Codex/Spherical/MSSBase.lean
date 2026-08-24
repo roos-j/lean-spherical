@@ -4251,6 +4251,23 @@ private theorem scratchRadialSchwartzProfile_apply
     scratchRadialSchwartzProfile D scale hscale n xi =
       D.radial ((Real.sqrt scale)⁻¹ * ‖xi‖ - n) := rfl
 
+/-- A positive-scale raw radial packet profile is globally Schwartz.  This
+is the reusable form of the origin-smoothing construction above: the slack
+in the radial cutoff makes the literal norm expression smooth at the origin.
+The positivity hypothesis is essential, since the normalized radial variable
+is only meaningful at positive scale. -/
+noncomputable def mssRawRadialSchwartzProfile
+    (D : MSSRadialTimeCutoffs) (scale : Real) (hscale : 0 < scale) (n : Int) :
+    SchwartzMap (Euclidean 2) Complex :=
+  scratchRadialSchwartzProfile D scale hscale n
+
+theorem mssRawRadialSchwartzProfile_apply
+    (D : MSSRadialTimeCutoffs) (scale : Real) (hscale : 0 < scale) (n : Int)
+    (xi : Euclidean 2) :
+    mssRawRadialSchwartzProfile D scale hscale n xi =
+      D.radial ((Real.sqrt scale)⁻¹ * ‖xi‖ - n) :=
+  scratchRadialSchwartzProfile_apply D scale hscale n xi
+
 /-- Scale the supplied normal extension so that it agrees with `‖xi‖` on
 the scaled amplitude annulus. -/
 private noncomputable def scratchScaledNormalExtension
@@ -10805,12 +10822,18 @@ def verticalRecombinationGain (p : ENNReal) : Real :=
   if p = ⊤ then 1 / 4 else 1 / 4 - 1 / (2 * p.toReal)
 
 /-- A compactly supported smooth vertical cutoff in the literal blueprint
-form.  The `tsupport` field records `C_c^∞((-1,1))`; the pointwise support
-field is retained for the spectral-overlap argument. -/
+form.  The pointwise support condition is exactly what the finite-overlap and
+vertical-recombination arguments consume. -/
 structure MSSVerticalCutoff where
   cutoff : SchwartzMap Real Complex
-  tsupport_subset : tsupport (cutoff : Real → Complex) ⊆ Set.Ioo (-1) 1
   support : ∀ s : Real, cutoff s ≠ 0 → |s| < 1
+
+/-- The vertical member of the radial--time cutoff data has exactly the
+support required for vertical recombination. -/
+def MSSRadialTimeCutoffs.toMSSVerticalCutoff
+    (D : MSSRadialTimeCutoffs) : MSSVerticalCutoff where
+  cutoff := D.vertical
+  support := D.vertical_support
 
 /-- The vertical recombination target on finite joint-Schwartz families,
 including both the finite and `L∞` exponents. -/
@@ -13211,11 +13234,14 @@ structure MSSWavefrontKernelData extends MSSWavefrontCutoffData where
         FourierTransform.fourier (radialTime.time : Real → Complex) u
 
 /-- Global Schwartz realizations of the raw radial and enlarged angular
-profiles.  They are the exact raw-to-joint bridge needed for the literal
-Fourier calculations; no localization conclusion is included in this data. -/
+profiles.  The radial identity is required only at positive scale, which is
+the natural domain of the radial normalization and of every localization
+consumer.  These realizations are the exact raw-to-joint bridge needed for
+the literal Fourier calculations; no localization conclusion is included in
+this data. -/
 structure MSSWavefrontRawProfileRealization (D : MSSWavefrontKernelData) where
   radialProfile : Real → Int → SchwartzMap (Euclidean 2) Complex
-  radialProfile_apply : ∀ scale n xi,
+  radialProfile_apply : ∀ scale n, 0 < scale → ∀ xi,
     radialProfile scale n xi =
       D.radialTime.radial ((Real.sqrt scale)⁻¹ * ‖xi‖ - n)
   wavefrontAngularProfile : Real → Int → SchwartzMap (Euclidean 2) Complex
@@ -13989,11 +14015,11 @@ private noncomputable def scratchWavefrontRawProfiles
   spatial := scratchWavefrontInputSpatialProfile D scale n nu f
   normalExtension := D.normalCoordinate scale
   wavefrontAngular := R.wavefrontAngularProfile scale nu
-  radial_eq := R.radialProfile_apply scale n
+  radial_eq := R.radialProfile_apply scale n hscale
   spatial_eq := by
     intro xi
     rw [scratchWavefrontInputSpatialProfile_apply, D.spatialProfile_apply,
-      R.radialProfile_apply]
+      R.radialProfile_apply scale n hscale]
     ring
   normal_eq_norm := by
     intro xi hxi
@@ -27746,6 +27772,68 @@ theorem integral_fourth_fourierCubeSquareFunction_le_of_uniform_signed
                   rw [Real.sq_sqrt hnonneg]
     _ ≤ B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat) := henergy
 
+/-- An averaged finite Rademacher fourth-moment estimate for a family of
+Fourier-cube projections implies its fourth-moment square-function estimate.
+
+The premise is deliberately the *average* over all signings.  This is a
+Khintchine reduction, not an analytic proof that an arbitrary family of cube
+multipliers has such an average bound. -/
+theorem integral_fourth_fourierCubeSquareFunction_le_of_average
+    {ι : Type*} [DecidableEq ι] (cubes : Finset ι)
+    (m : ι → SchwartzMap (Euclidean 2) Complex)
+    (f : SchwartzMap (Euclidean 2) Complex) {B : Real}
+    (haverage :
+      (∀ signs ∈ cubes.powerset,
+        Integrable (fun x : Euclidean 2 =>
+          ‖finiteRademacherFourierCubeSum cubes signs m f x‖ ^ (4 : Nat)) volume) ∧
+      (∑ signs ∈ cubes.powerset,
+        ∫ x : Euclidean 2,
+          ‖finiteRademacherFourierCubeSum cubes signs m f x‖ ^ (4 : Nat)) ≤
+        (cubes.powerset.card : Real) *
+          (B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat))) :
+    (∫ x : Euclidean 2, fourierCubeSquareFunction cubes m f x ^ (4 : Nat)) ≤
+      B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat) := by
+  classical
+  let g : ι → Euclidean 2 → Complex := fun cube x =>
+    fourierCubeProjection (m cube) f x
+  have hsign : ∀ signs ∈ cubes.powerset,
+      Integrable (fun x : Euclidean 2 =>
+        ‖rademacherSignedSum cubes signs (fun cube => g cube x)‖ ^ (4 : Nat)) volume := by
+    intro signs hsigns
+    simpa only [g, finiteRademacherFourierCubeSum] using (haverage.1 signs hsigns)
+  have hmoment := integral_rademacherFourthMomentLower volume cubes g hsign
+  have hsumBound :
+      (∑ signs ∈ cubes.powerset,
+        ∫ x : Euclidean 2,
+          ‖rademacherSignedSum cubes signs (fun cube => g cube x)‖ ^ (4 : Nat)) ≤
+        (cubes.powerset.card : Real) *
+          (B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat)) := by
+    simpa only [g, finiteRademacherFourierCubeSum] using haverage.2
+  have hcard : 0 < (cubes.powerset.card : Real) := by positivity
+  have henergy :
+      (∫ x : Euclidean 2, finiteSquareEnergy cubes g x ^ (2 : Nat)) ≤
+        B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat) := by
+    apply le_of_mul_le_mul_left _ hcard
+    exact hmoment.trans hsumBound
+  calc
+    (∫ x : Euclidean 2, fourierCubeSquareFunction cubes m f x ^ (4 : Nat)) =
+        ∫ x : Euclidean 2, finiteSquareEnergy cubes g x ^ (2 : Nat) := by
+          apply integral_congr_ae
+          filter_upwards with x
+          unfold fourierCubeSquareFunction finiteSquareEnergy
+          have hnonneg : 0 ≤ ∑ cube ∈ cubes,
+              ‖fourierCubeProjection (m cube) f x‖ ^ 2 :=
+            Finset.sum_nonneg fun cube hcube => sq_nonneg _
+          calc
+            (Real.sqrt (∑ cube ∈ cubes,
+                ‖fourierCubeProjection (m cube) f x‖ ^ 2)) ^ (4 : Nat) =
+                (Real.sqrt (∑ cube ∈ cubes,
+                  ‖fourierCubeProjection (m cube) f x‖ ^ 2) ^ 2) ^ 2 := by ring
+            _ = (∑ cube ∈ cubes,
+                ‖fourierCubeProjection (m cube) f x‖ ^ 2) ^ 2 := by
+                  rw [Real.sq_sqrt hnonneg]
+    _ ≤ B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat) := henergy
+
 /-- Uniform signed `L⁴` Fourier-cube estimates imply the corresponding
 uniform finite-family `L⁴` square-function estimate. -/
 theorem uniformFiniteFourierCubeSquareFunctionL4_of_signed {ι : Type*}
@@ -27758,6 +27846,20 @@ theorem uniformFiniteFourierCubeSquareFunctionL4_of_signed {ι : Type*}
   apply integral_fourth_fourierCubeSquareFunction_le_of_uniform_signed cubes m f
   intro signs hsigns
   exact hsigned cubes signs f hsigns
+
+/-- Uniform averaged Rademacher `L⁴` estimates imply the corresponding
+uniform finite-family fourth-moment Fourier-cube square-function estimate.
+This records only the finite Khintchine reduction; it does not establish the
+averaged hypothesis for the cube family. -/
+theorem uniformFiniteFourierCubeSquareFunctionL4_of_average {ι : Type*}
+    [DecidableEq ι] (m : ι → SchwartzMap (Euclidean 2) Complex)
+    (haverage : HasAverageFiniteRademacherFourierCubeL4 m) :
+    uniformFiniteFourierCubeSquareFunctionL4 m := by
+  rcases haverage with ⟨B, hB, haverage⟩
+  refine ⟨B, hB, ?_⟩
+  intro cubes f
+  exact integral_fourth_fourierCubeSquareFunction_le_of_average cubes m f
+    (haverage cubes f)
 
 /-- The unit directions relevant to planar light rays.  The separate
 definition keeps the geometric restriction visible in the light-ray maximal
@@ -27874,6 +27976,35 @@ def lightRayTimeInterval : Set Real := Icc (1 / 2 : Real) (5 / 2 : Real)
 endpoint inequalities. -/
 theorem mem_lightRayTimeInterval_iff (t : Real) :
     t ∈ lightRayTimeInterval ↔ (1 / 2 : Real) ≤ t ∧ t ≤ 5 / 2 := Iff.rfl
+
+/-- The physical time cutoff of this wavefront package is supported on the
+fixed light-ray time slab.  This is an extra support condition for the
+light-ray route; it is not built into general wavefront cutoff data and it
+does not assert a packet, kernel, or square-function estimate. -/
+def MSSWavefrontKernelData.HasLightRayTimeSlabSupport
+    (D : MSSWavefrontKernelData) : Prop :=
+  Function.support (D.radialTime.time : Real → Complex) ⊆ lightRayTimeInterval
+
+/-- Slab support forces the literal physical time cutoff to vanish away from
+the light-ray time interval. -/
+theorem MSSWavefrontKernelData.time_eq_zero_of_not_mem_lightRayTimeInterval
+    (D : MSSWavefrontKernelData) (hslab : D.HasLightRayTimeSlabSupport)
+    {t : Real} (ht : t ∉ lightRayTimeInterval) :
+    D.radialTime.time t = 0 := by
+  classical
+  by_contra htime
+  exact ht (hslab htime)
+
+/-- The more precise slab condition supplies compact support for the physical
+time cutoff.  It is a direct support fact only; the existing general cutoff
+data already carry a separate compact-support field. -/
+theorem MSSWavefrontKernelData.time_compact_of_hasLightRayTimeSlabSupport
+    (D : MSSWavefrontKernelData) (hslab : D.HasLightRayTimeSlabSupport) :
+    HasCompactSupport (D.radialTime.time : Real → Complex) := by
+  apply HasCompactSupport.of_support_subset_isCompact
+    (isCompact_Icc : IsCompact (Icc (1 / 2 : Real) (5 / 2 : Real)))
+  simpa only [MSSWavefrontKernelData.HasLightRayTimeSlabSupport,
+    lightRayTimeInterval] using hslab
 
 /-- The space-time tube following the backwards light ray ending at `y`.
 Its equation is equivalent to the `x + t ω - y` kernel in the MSS
@@ -28038,6 +28169,34 @@ theorem integral_lightRayKernel_spatial_eq_decayProfile {δ : Real} (hδ : 0 < �
       simp only [smul_eq_mul, mul_assoc]
     _ = ∫ u : Euclidean 2, lightRayDecayProfile N u := by
       rw [mul_inv_cancel₀ hsqne, one_mul]
+
+/-- The explicit, nonnegative spatial mass constant for the literal
+light-ray kernel, together with the exact `hmass` data used by the continuum
+fine-kernel transposition lemma.  The first component is the constant to use
+for `A`; the second is its uniform-in-space-time mass bound. -/
+theorem lightRayKernel_spatial_mass_bound {δ : Real} (hδ : 0 < δ)
+    (N : Nat) (hN : 2 < N) (ω : Euclidean 2) :
+    0 ≤ ∫ u : Euclidean 2, lightRayDecayProfile N u ∧
+      ∀ z : WaveSpaceTime, Integrable (fun y : Euclidean 2 =>
+        lightRayKernel δ N ω y z) volume ∧
+        (∫ y : Euclidean 2, lightRayKernel δ N ω y z) ≤
+          ∫ u : Euclidean 2, lightRayDecayProfile N u := by
+  constructor
+  · exact integral_nonneg fun u => by
+      unfold lightRayDecayProfile
+      positivity
+  · intro z
+    have hterminal : (fun y : Euclidean 2 => lightRayKernel δ N ω y z) =
+        fun y : Euclidean 2 =>
+          lightRayKernel δ N 0 (z.1 + z.2 • ω) (y, 0) := by
+      funext y
+      unfold lightRayKernel
+      simp only [smul_zero, add_zero]
+      rw [norm_sub_rev]
+    rw [hterminal]
+    refine ⟨integrable_lightRayKernel_spatial hδ N hN 0 (z.1 + z.2 • ω) 0, ?_⟩
+    rw [integral_lightRayKernel_spatial_eq_decayProfile hδ N 0
+      (z.1 + z.2 • ω) 0]
 
 /-- Squaring the light-ray kernel only doubles its decay exponent and leaves
 one scale prefactor.  This supplies the elementary `L²` kernel input for the
@@ -29465,6 +29624,32 @@ def HasLightRayMaximalEstimate : Prop :=
           ENNReal.ofReal (C * (1 + |Real.log δ|) ^ (3 / 2 : Real)) *
             eLpNorm g 2 volume
 
+/-- The exact boundary-width condition that puts the reciprocal fine-cube
+spatial scale in the range of `HasLightRayMaximalEstimate`, uniformly for
+every `scale ≥ 2`.  At the endpoint `scale = 2` this condition is also
+necessary. -/
+theorem cubeWidth_inv_mul_sqrt_pos_lt_half
+    {cubeWidth scale : Real} (hwidth : 2 < cubeWidth * Real.sqrt 2)
+    (hscale : 2 ≤ scale) :
+    0 < (cubeWidth * Real.sqrt scale)⁻¹ ∧
+      (cubeWidth * Real.sqrt scale)⁻¹ < 1 / 2 := by
+  have hwidthPos : 0 < cubeWidth := by
+    have hprod : 0 < cubeWidth * Real.sqrt 2 := by linarith
+    rcases (mul_pos_iff.mp hprod) with hpositive | hnegative
+    · exact hpositive.1
+    · exact False.elim ((not_lt_of_ge (Real.sqrt_nonneg _)) hnegative.2)
+  have hsqrtMono : Real.sqrt (2 : Real) ≤ Real.sqrt scale :=
+    Real.sqrt_le_sqrt hscale
+  have hproductMono : cubeWidth * Real.sqrt 2 ≤ cubeWidth * Real.sqrt scale :=
+    mul_le_mul_of_nonneg_left hsqrtMono hwidthPos.le
+  have hlarge : 2 < cubeWidth * Real.sqrt scale := hwidth.trans_le hproductMono
+  have hproductPos : 0 < cubeWidth * Real.sqrt scale := by linarith
+  constructor
+  · exact inv_pos.mpr hproductPos
+  · have hinv : (cubeWidth * Real.sqrt scale)⁻¹ < (2 : Real)⁻¹ :=
+      (inv_lt_inv₀ hproductPos (by norm_num)).mpr hlarge
+    simpa only [one_div] using hinv
+
 /-!
 The first elementary component of the angular Córdoba argument is a critical
 one-dimensional Fourier-synthesis estimate.  It is deliberately stated only
@@ -30484,6 +30669,281 @@ theorem continuumFineKernelWeightedPairing_le_lightRayMaximal
           ‖input y‖ ^ 2 * lightRayMaximal δ N g y :=
       mul_le_mul_of_nonneg_left hweightedMono hA
 
+/-- The finite set of piece--cube assignments.  Counting its fibers under
+the second-coordinate map is the exact discrete form of reverse cube
+overlap. -/
+noncomputable def fineCubeAssignments {ι κ : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ) :
+    Finset (Sigma fun _ : ι => κ) :=
+  pieces.sigma cubeSets
+
+/-- The assignments using a given cube.  Its cardinality counts the number
+of radial/angular pieces to which that cube was assigned. -/
+noncomputable def fineCubeAssignmentFiber {ι κ : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ) (cube : κ) :
+    Finset (Sigma fun _ : ι => κ) :=
+  (fineCubeAssignments pieces cubeSets).filter (fun assignment => assignment.2 = cube)
+
+/-- Reverse bounded overlap in a finite Fourier-cube decomposition.  This
+is the literal combinatorial content of the second cardinality assertion in
+the MSS cube-localization lemma. -/
+def HasFiniteFineCubeReverseOverlap {ι κ : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ) (B : Nat) : Prop :=
+  ∀ cube ∈ pieces.biUnion cubeSets,
+    (fineCubeAssignmentFiber pieces cubeSets cube).card ≤ B
+
+/-- The finite-family form of
+`continuumFineKernelWeightedPairing_le_lightRayMaximal`.
+
+Each packet may have its own light-ray direction and kernel, while the
+light-ray maximal function is shared.  The conclusion is obtained by applying
+the one-packet transposition bound to every member of the finite family and
+then exchanging the finite sums with the two integrals.  In particular, this
+does not use a discretization of the light-ray maximal estimate. -/
+theorem continuumFineKernelFiniteSumWeightedPairing_le_lightRayMaximal
+    {ι : Type*} (s : Finset ι)
+    {δ A : Real} (hδ : 0 < δ) (hA : 0 ≤ A) (N : Nat)
+    (ω : ι → Euclidean 2)
+    (hω : ∀ i ∈ s, ω i ∈ unitLightRayDirections)
+    (kernel : ι → WaveSpaceTime → Euclidean 2 → Complex)
+    (input : ι → Euclidean 2 → Complex) (g : WaveSpaceTime → Complex)
+    (hkernel : ∀ i ∈ s, ∀ z y,
+      ‖kernel i z y‖ ≤ lightRayKernel δ N (ω i) y z)
+    (hmass : ∀ i ∈ s, ∀ z, Integrable (fun y : Euclidean 2 =>
+      lightRayKernel δ N (ω i) y z) volume ∧
+      (∫ y : Euclidean 2, lightRayKernel δ N (ω i) y z) ≤ A)
+    (hmeas : ∀ i ∈ s, ∀ z, AEStronglyMeasurable (fun y : Euclidean 2 =>
+      (lightRayKernel δ N (ω i) y z)⁻¹ * ‖kernel i z y * input i y‖ ^ 2)
+      volume)
+    (henergy : ∀ i ∈ s, ∀ z, Integrable (fun y : Euclidean 2 =>
+      lightRayKernel δ N (ω i) y z * ‖input i y‖ ^ 2) volume)
+    (htermWeighted : ∀ i ∈ s, Integrable (fun z : WaveSpaceTime =>
+      ‖∫ y : Euclidean 2, kernel i z y * input i y‖ ^ 2 * ‖g z‖)
+      continuumLightRayMeasure)
+    (henergyWeighted : ∀ i ∈ s, Integrable (fun z : WaveSpaceTime =>
+      (∫ y : Euclidean 2,
+        lightRayKernel δ N (ω i) y z * ‖input i y‖ ^ 2) * ‖g z‖)
+      continuumLightRayMeasure)
+    (hprod : ∀ i ∈ s, Integrable (fun p : WaveSpaceTime × Euclidean 2 =>
+      lightRayKernel δ N (ω i) p.2 p.1 * ‖input i p.2‖ ^ 2 * ‖g p.1‖)
+      (continuumLightRayMeasure.prod volume))
+    (hRayInt : ∀ i ∈ s, ∀ y : Euclidean 2, Integrable
+      (fun z : WaveSpaceTime => lightRayKernel δ N (ω i) y z * ‖g z‖)
+      continuumLightRayMeasure)
+    (hbounded : ∀ i ∈ s, ∀ y : Euclidean 2,
+      BddAbove ((fun ω : Euclidean 2 => lightRayAverage δ N ω y g) ''
+        unitLightRayDirections))
+    (hmaxWeighted : ∀ i ∈ s, Integrable (fun y : Euclidean 2 =>
+      ‖input i y‖ ^ 2 * lightRayMaximal δ N g y) volume) :
+    (∫ z : WaveSpaceTime,
+      (∑ i ∈ s, ‖∫ y : Euclidean 2, kernel i z y * input i y‖ ^ 2) * ‖g z‖
+      ∂continuumLightRayMeasure) ≤
+      A * ∫ y : Euclidean 2,
+        (∑ i ∈ s, ‖input i y‖ ^ 2) * lightRayMaximal δ N g y := by
+  letI : SFinite continuumLightRayMeasure := by
+    unfold continuumLightRayMeasure
+    infer_instance
+  have hpacket : ∀ i ∈ s,
+      (∫ z : WaveSpaceTime,
+        ‖∫ y : Euclidean 2, kernel i z y * input i y‖ ^ 2 * ‖g z‖
+        ∂continuumLightRayMeasure) ≤
+        A * ∫ y : Euclidean 2,
+          ‖input i y‖ ^ 2 * lightRayMaximal δ N g y := by
+    intro i hi
+    exact continuumFineKernelWeightedPairing_le_lightRayMaximal
+      hδ hA N (ω i) (hω i hi) (kernel i) (input i) g
+      (hkernel i hi) (hmass i hi) (hmeas i hi) (henergy i hi)
+      (htermWeighted i hi) (henergyWeighted i hi) (hprod i hi)
+      (hRayInt i hi) (hbounded i hi) (hmaxWeighted i hi)
+  calc
+    (∫ z : WaveSpaceTime,
+      (∑ i ∈ s, ‖∫ y : Euclidean 2, kernel i z y * input i y‖ ^ 2) * ‖g z‖
+      ∂continuumLightRayMeasure) =
+        ∫ z : WaveSpaceTime,
+          ∑ i ∈ s, ‖∫ y : Euclidean 2, kernel i z y * input i y‖ ^ 2 * ‖g z‖
+          ∂continuumLightRayMeasure := by
+      apply integral_congr_ae
+      filter_upwards with z
+      rw [Finset.sum_mul]
+    _ = ∑ i ∈ s, ∫ z : WaveSpaceTime,
+        ‖∫ y : Euclidean 2, kernel i z y * input i y‖ ^ 2 * ‖g z‖
+        ∂continuumLightRayMeasure := by
+      rw [integral_finset_sum s (fun i hi => htermWeighted i hi)]
+    _ ≤ ∑ i ∈ s, A * ∫ y : Euclidean 2,
+        ‖input i y‖ ^ 2 * lightRayMaximal δ N g y := by
+      exact Finset.sum_le_sum fun i hi => hpacket i hi
+    _ = A * (∑ i ∈ s, ∫ y : Euclidean 2,
+        ‖input i y‖ ^ 2 * lightRayMaximal δ N g y) := by
+      rw [Finset.mul_sum]
+    _ = A * ∫ y : Euclidean 2,
+        ∑ i ∈ s, ‖input i y‖ ^ 2 * lightRayMaximal δ N g y := by
+      congr 1
+      rw [integral_finset_sum s (fun i hi => hmaxWeighted i hi)]
+    _ = A * ∫ y : Euclidean 2,
+        (∑ i ∈ s, ‖input i y‖ ^ 2) * lightRayMaximal δ N g y := by
+      congr 1
+      apply integral_congr_ae
+      filter_upwards with y
+      rw [Finset.sum_mul]
+
+/-- The pointwise square energy of a finite family of cube assignments.
+The input is indexed only by the cube, not by the packet which uses it. -/
+def continuumFineAssignedCubeSquareEnergy {ι κ X : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ)
+    (input : κ → X → Complex) (x : X) : Real :=
+  ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece, ‖input cube x‖ ^ 2
+
+/-- The global pointwise square energy of the cubes used by a finite packet
+family. -/
+def continuumFineCubeSquareEnergy {ι κ X : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ)
+    (input : κ → X → Complex) (x : X) : Real :=
+  ∑ cube ∈ pieces.biUnion cubeSets, ‖input cube x‖ ^ 2
+
+/-- The assigned cube square energy against a common real-valued weight. -/
+def continuumFineAssignedCubeWeightedEnergy {ι κ X : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ)
+    (input : κ → X → Complex) (weight : X → Real) : X → Real :=
+  fun x => continuumFineAssignedCubeSquareEnergy pieces cubeSets input x * weight x
+
+/-- The global cube square energy against a common real-valued weight. -/
+def continuumFineCubeWeightedEnergy {ι κ X : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ)
+    (input : κ → X → Complex) (weight : X → Real) : X → Real :=
+  fun x => continuumFineCubeSquareEnergy pieces cubeSets input x * weight x
+
+/-- Reverse bounded overlap collapses the pointwise assigned cube energy to
+the global cube energy.  This is purely finite combinatorics and is
+independent of packet kernels or the choice of spatial domain. -/
+theorem continuumFineAssignedCubeSquareEnergy_le_reverseOverlap_mul
+    {ι κ X : Type*} [DecidableEq κ] (pieces : Finset ι)
+    (cubeSets : ι → Finset κ) (input : κ → X → Complex) (R : Nat)
+    (hoverlap : HasFiniteFineCubeReverseOverlap pieces cubeSets R) (x : X) :
+    continuumFineAssignedCubeSquareEnergy pieces cubeSets input x ≤
+      (R : Real) * continuumFineCubeSquareEnergy pieces cubeSets input x := by
+  classical
+  let E : κ → Real := fun cube => ‖input cube x‖ ^ 2
+  have hmaps : ∀ assignment ∈ fineCubeAssignments pieces cubeSets,
+      assignment.2 ∈ pieces.biUnion cubeSets := by
+    rintro ⟨piece, cube⟩ hassignment
+    have hassignment' : piece ∈ pieces ∧ cube ∈ cubeSets piece := by
+      simpa [fineCubeAssignments] using hassignment
+    exact Finset.mem_biUnion.mpr ⟨piece, hassignment'.1, hassignment'.2⟩
+  have hfiber := Finset.sum_fiberwise_of_maps_to'
+    (s := fineCubeAssignments pieces cubeSets) (t := pieces.biUnion cubeSets)
+    (g := fun assignment : Sigma fun _ : ι => κ => assignment.2) hmaps E
+  have hfiberEq : ∀ cube : κ,
+      (∑ assignment ∈ fineCubeAssignmentFiber pieces cubeSets cube, E cube) =
+        ((fineCubeAssignmentFiber pieces cubeSets cube).card : Real) * E cube := by
+    intro cube
+    simp [E]
+  change (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece, E cube) ≤
+    (R : Real) * ∑ cube ∈ pieces.biUnion cubeSets, E cube
+  calc
+    (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece, E cube) =
+        ∑ assignment ∈ fineCubeAssignments pieces cubeSets, E assignment.2 := by
+      simpa [fineCubeAssignments] using
+        (Finset.sum_sigma' pieces cubeSets (fun _ cube => E cube))
+    _ = ∑ cube ∈ pieces.biUnion cubeSets,
+        ∑ assignment ∈ fineCubeAssignments pieces cubeSets with assignment.2 = cube,
+          E cube := hfiber.symm
+    _ = ∑ cube ∈ pieces.biUnion cubeSets,
+        ∑ assignment ∈ fineCubeAssignmentFiber pieces cubeSets cube, E cube := by
+      apply Finset.sum_congr rfl
+      intro cube hcube
+      simp only [fineCubeAssignmentFiber]
+    _ = ∑ cube ∈ pieces.biUnion cubeSets,
+        ((fineCubeAssignmentFiber pieces cubeSets cube).card : Real) * E cube := by
+      apply Finset.sum_congr rfl
+      intro cube hcube
+      exact hfiberEq cube
+    _ ≤ ∑ cube ∈ pieces.biUnion cubeSets, (R : Real) * E cube := by
+      apply Finset.sum_le_sum
+      intro cube hcube
+      have hmult : ((fineCubeAssignmentFiber pieces cubeSets cube).card : Real) ≤ R := by
+        exact_mod_cast hoverlap cube hcube
+      exact mul_le_mul_of_nonneg_right hmult (sq_nonneg _)
+    _ = (R : Real) * ∑ cube ∈ pieces.biUnion cubeSets, E cube := by
+      rw [Finset.mul_sum]
+
+/-- The weighted pointwise form of the generic reverse-overlap collapse. -/
+theorem continuumFineAssignedCubeWeightedEnergy_le_reverseOverlap_mul
+    {ι κ X : Type*} [DecidableEq κ] (pieces : Finset ι)
+    (cubeSets : ι → Finset κ) (input : κ → X → Complex)
+    (weight : X → Real) (hweight : ∀ x, 0 ≤ weight x) (R : Nat)
+    (hoverlap : HasFiniteFineCubeReverseOverlap pieces cubeSets R) (x : X) :
+    continuumFineAssignedCubeWeightedEnergy pieces cubeSets input weight x ≤
+      (R : Real) * continuumFineCubeWeightedEnergy pieces cubeSets input weight x := by
+  unfold continuumFineAssignedCubeWeightedEnergy continuumFineCubeWeightedEnergy
+  calc
+    continuumFineAssignedCubeSquareEnergy pieces cubeSets input x * weight x ≤
+        ((R : Real) * continuumFineCubeSquareEnergy pieces cubeSets input x) * weight x :=
+      mul_le_mul_of_nonneg_right
+        (continuumFineAssignedCubeSquareEnergy_le_reverseOverlap_mul
+          pieces cubeSets input R hoverlap x)
+        (hweight x)
+    _ = (R : Real) *
+        (continuumFineCubeSquareEnergy pieces cubeSets input x * weight x) := by ring
+
+/-- The continuum reverse-overlap energy collapse.  Per-cube weighted
+integrability is the only analytic hypothesis; the inequality itself is the
+pointwise reverse-overlap bound integrated against the common nonnegative
+weight. -/
+theorem integral_continuumFineAssignedCubeWeightedEnergy_le_reverseOverlap_mul
+    {ι κ X : Type*} [DecidableEq κ] [MeasurableSpace X] (μ : Measure X)
+    (pieces : Finset ι) (cubeSets : ι → Finset κ)
+    (input : κ → X → Complex) (weight : X → Real)
+    (hweight : ∀ x, 0 ≤ weight x) (R : Nat)
+    (hoverlap : HasFiniteFineCubeReverseOverlap pieces cubeSets R)
+    (hcubeWeighted : ∀ cube ∈ pieces.biUnion cubeSets,
+      Integrable (fun x => ‖input cube x‖ ^ 2 * weight x) μ) :
+    (∫ x, continuumFineAssignedCubeWeightedEnergy pieces cubeSets input weight x ∂μ) ≤
+      (R : Real) *
+        ∫ x, continuumFineCubeWeightedEnergy pieces cubeSets input weight x ∂μ := by
+  have hassignedTerms : Integrable (fun x =>
+      ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece, ‖input cube x‖ ^ 2 * weight x) μ := by
+    refine integrable_finsetSum pieces ?_
+    intro piece hpiece
+    refine integrable_finsetSum (cubeSets piece) ?_
+    intro cube hcube
+    exact hcubeWeighted cube (Finset.mem_biUnion.mpr ⟨piece, hpiece, hcube⟩)
+  have hassigned : Integrable
+      (continuumFineAssignedCubeWeightedEnergy pieces cubeSets input weight) μ := by
+    refine hassignedTerms.congr ?_
+    filter_upwards with x
+    change (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+      ‖input cube x‖ ^ 2 * weight x) =
+        (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖input cube x‖ ^ 2) * weight x
+    rw [Finset.sum_mul]
+    apply Finset.sum_congr rfl
+    intro piece hpiece
+    rw [Finset.sum_mul]
+  have hglobalTerms : Integrable (fun x =>
+      ∑ cube ∈ pieces.biUnion cubeSets, ‖input cube x‖ ^ 2 * weight x) μ := by
+    exact integrable_finsetSum (pieces.biUnion cubeSets) hcubeWeighted
+  have hglobal : Integrable
+      (continuumFineCubeWeightedEnergy pieces cubeSets input weight) μ := by
+    refine hglobalTerms.congr ?_
+    filter_upwards with x
+    change (∑ cube ∈ pieces.biUnion cubeSets,
+      ‖input cube x‖ ^ 2 * weight x) =
+        (∑ cube ∈ pieces.biUnion cubeSets, ‖input cube x‖ ^ 2) * weight x
+    rw [Finset.sum_mul]
+  have hright : Integrable (fun x =>
+      (R : Real) * continuumFineCubeWeightedEnergy pieces cubeSets input weight x) μ :=
+    hglobal.const_mul R
+  calc
+    (∫ x, continuumFineAssignedCubeWeightedEnergy pieces cubeSets input weight x ∂μ) ≤
+        ∫ x, (R : Real) *
+          continuumFineCubeWeightedEnergy pieces cubeSets input weight x ∂μ :=
+      integral_mono hassigned hright fun x =>
+        continuumFineAssignedCubeWeightedEnergy_le_reverseOverlap_mul
+          pieces cubeSets input weight hweight R hoverlap x
+    _ = (R : Real) *
+        ∫ x, continuumFineCubeWeightedEnergy pieces cubeSets input weight x ∂μ :=
+      integral_const_mul _ _
+
 /-- The preceding continuum kernel transposition combined with an explicit
 raw L2 light-ray maximal-energy estimate. -/
 theorem continuumFineKernelWeightedPairing_le_of_lightRayL2Energy
@@ -31229,6 +31689,283 @@ theorem sq_finiteFineCubeSquareFunction {ι κ : Type*}
   exact Finset.sum_nonneg fun piece hpiece =>
     Finset.sum_nonneg fun cube hcube => sq_nonneg _
 
+/-- Finite Cauchy--Schwarz for a complex cube sum.  This form applies before
+any choice of a source kernel or a particular packet model. -/
+theorem sq_norm_finset_sum_le_card_mul_sum_sq {κ : Type*}
+    (cubes : Finset κ) (T : κ → Complex) :
+    ‖∑ cube ∈ cubes, T cube‖ ^ 2 ≤
+      (cubes.card : Real) * ∑ cube ∈ cubes, ‖T cube‖ ^ 2 := by
+  have hsum_nonneg : 0 ≤ ∑ cube ∈ cubes, ‖T cube‖ :=
+    Finset.sum_nonneg fun cube hcube => norm_nonneg _
+  calc
+    ‖∑ cube ∈ cubes, T cube‖ ^ 2 ≤
+        (∑ cube ∈ cubes, ‖T cube‖) ^ 2 :=
+      (sq_le_sq₀ (norm_nonneg _) hsum_nonneg).mpr (norm_sum_le _ _)
+    _ ≤ (cubes.card : Real) * ∑ cube ∈ cubes, ‖T cube‖ ^ 2 := by
+      exact sq_sum_le_card_mul_sum_sq
+
+/-- The continuum fine-square transposition step before reverse cube overlap.
+
+The cube sum in each packet is first controlled by finite Cauchy--Schwarz.
+All resulting individual cube packets are then sent through the *single*
+finite-family continuum transposition theorem.  Thus the light-ray maximal
+operator is applied only after summing every cube assignment, never once per
+cube.  The displayed integrability assumptions are exactly those needed for
+the literal continuum Fubini/transposition argument. -/
+theorem continuumFineSquarePairing_le_cubeMultiplicity_mul_lightRayMaximal
+    {ι κ : Type*} [DecidableEq κ]
+    (pieces : Finset ι) (cubeSets : ι → Finset κ)
+    {δ A B : Real} (hδ : 0 < δ) (hA : 0 ≤ A) (hB : 0 ≤ B) (N : Nat)
+    (direction : ι → Euclidean 2)
+    (kernel : ι → κ → WaveSpaceTime → Euclidean 2 → Complex)
+    (input : κ → Euclidean 2 → Complex)
+    (packet : ι → κ → WaveSpaceTime → Complex)
+    (g : WaveSpaceTime → Complex)
+    (hpacket : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ z,
+      packet piece cube z =
+        ∫ y : Euclidean 2, kernel piece cube z y * input cube y)
+    (hcard : ∀ piece ∈ pieces, ((cubeSets piece).card : Real) ≤ B)
+    (hdirection : ∀ piece ∈ pieces, direction piece ∈ unitLightRayDirections)
+    (hkernel : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ z y,
+      ‖kernel piece cube z y‖ ≤ lightRayKernel δ N (direction piece) y z)
+    (hmass : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ z,
+      Integrable (fun y : Euclidean 2 =>
+        lightRayKernel δ N (direction piece) y z) volume ∧
+      (∫ y : Euclidean 2, lightRayKernel δ N (direction piece) y z) ≤ A)
+    (hmeas : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ z,
+      AEStronglyMeasurable (fun y : Euclidean 2 =>
+        (lightRayKernel δ N (direction piece) y z)⁻¹ *
+          ‖kernel piece cube z y * input cube y‖ ^ 2) volume)
+    (henergy : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ z,
+      Integrable (fun y : Euclidean 2 =>
+        lightRayKernel δ N (direction piece) y z * ‖input cube y‖ ^ 2) volume)
+    (htermWeighted : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece,
+      Integrable (fun z : WaveSpaceTime =>
+        ‖∫ y : Euclidean 2, kernel piece cube z y * input cube y‖ ^ 2 * ‖g z‖)
+        continuumLightRayMeasure)
+    (henergyWeighted : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece,
+      Integrable (fun z : WaveSpaceTime =>
+        (∫ y : Euclidean 2,
+          lightRayKernel δ N (direction piece) y z * ‖input cube y‖ ^ 2) * ‖g z‖)
+        continuumLightRayMeasure)
+    (hprod : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece,
+      Integrable (fun p : WaveSpaceTime × Euclidean 2 =>
+        lightRayKernel δ N (direction piece) p.2 p.1 * ‖input cube p.2‖ ^ 2 *
+          ‖g p.1‖) (continuumLightRayMeasure.prod volume))
+    (hRayInt : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ y : Euclidean 2,
+      Integrable (fun z : WaveSpaceTime =>
+        lightRayKernel δ N (direction piece) y z * ‖g z‖)
+        continuumLightRayMeasure)
+    (hbounded : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece, ∀ y : Euclidean 2,
+      BddAbove ((fun ω : Euclidean 2 => lightRayAverage δ N ω y g) ''
+        unitLightRayDirections))
+    (hmaxWeighted : ∀ piece ∈ pieces, ∀ cube ∈ cubeSets piece,
+      Integrable (fun y : Euclidean 2 =>
+        ‖input cube y‖ ^ 2 * lightRayMaximal δ N g y) volume)
+    (hsquareWeighted : Integrable (fun z : WaveSpaceTime =>
+      (∑ piece ∈ pieces, ‖∑ cube ∈ cubeSets piece, packet piece cube z‖ ^ 2) *
+        ‖g z‖) continuumLightRayMeasure) :
+    (∫ z : WaveSpaceTime,
+      (∑ piece ∈ pieces, ‖∑ cube ∈ cubeSets piece, packet piece cube z‖ ^ 2) *
+        ‖g z‖ ∂continuumLightRayMeasure) ≤
+      (B * A) * ∫ y : Euclidean 2,
+        continuumFineAssignedCubeWeightedEnergy pieces cubeSets input
+          (lightRayMaximal δ N g) y := by
+  classical
+  have hassignment : ∀ assignment ∈ fineCubeAssignments pieces cubeSets,
+      assignment.1 ∈ pieces ∧ assignment.2 ∈ cubeSets assignment.1 := by
+    rintro ⟨piece, cube⟩ hassignment
+    simpa [fineCubeAssignments] using hassignment
+  have hcubeTermsWeighted : Integrable (fun z : WaveSpaceTime =>
+      ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+        ‖packet piece cube z‖ ^ 2 * ‖g z‖) continuumLightRayMeasure := by
+    refine integrable_finsetSum pieces ?_
+    intro piece hpiece
+    refine integrable_finsetSum (cubeSets piece) ?_
+    intro cube hcube
+    refine (htermWeighted piece hpiece cube hcube).congr ?_
+    filter_upwards with z
+    rw [hpacket piece hpiece cube hcube z]
+  have hcubeWeighted : Integrable (fun z : WaveSpaceTime =>
+      (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+        ‖packet piece cube z‖ ^ 2) * ‖g z‖) continuumLightRayMeasure := by
+    refine hcubeTermsWeighted.congr ?_
+    filter_upwards with z
+    calc
+      ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2 * ‖g z‖ =
+          ∑ piece ∈ pieces, (∑ cube ∈ cubeSets piece,
+            ‖packet piece cube z‖ ^ 2) * ‖g z‖ := by
+        apply Finset.sum_congr rfl
+        intro piece hpiece
+        rw [Finset.sum_mul]
+      _ = (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2) * ‖g z‖ := by
+        rw [Finset.sum_mul]
+  have hpointEnergy : ∀ z : WaveSpaceTime,
+      (∑ piece ∈ pieces, ‖∑ cube ∈ cubeSets piece, packet piece cube z‖ ^ 2) ≤
+        B * ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2 := by
+    intro z
+    calc
+      (∑ piece ∈ pieces, ‖∑ cube ∈ cubeSets piece, packet piece cube z‖ ^ 2) ≤
+          ∑ piece ∈ pieces, ((cubeSets piece).card : Real) *
+            ∑ cube ∈ cubeSets piece, ‖packet piece cube z‖ ^ 2 := by
+        apply Finset.sum_le_sum
+        intro piece hpiece
+        exact sq_norm_finset_sum_le_card_mul_sum_sq (cubeSets piece)
+          (fun cube => packet piece cube z)
+      _ ≤ ∑ piece ∈ pieces, B * ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2 := by
+        apply Finset.sum_le_sum
+        intro piece hpiece
+        exact mul_le_mul_of_nonneg_right (hcard piece hpiece)
+          (Finset.sum_nonneg fun cube hcube => sq_nonneg _)
+      _ = B * ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2 := by
+        rw [Finset.mul_sum]
+  have hrightWeighted : Integrable (fun z : WaveSpaceTime =>
+      (B * (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+        ‖packet piece cube z‖ ^ 2)) * ‖g z‖) continuumLightRayMeasure := by
+    refine (hcubeWeighted.const_mul B).congr ?_
+    filter_upwards with z
+    ring
+  have hfinite := continuumFineKernelFiniteSumWeightedPairing_le_lightRayMaximal
+    (fineCubeAssignments pieces cubeSets) hδ hA N
+    (fun assignment : Sigma fun _ : ι => κ => direction assignment.1)
+    (by
+      intro assignment hmem
+      exact hdirection assignment.1 (hassignment assignment hmem).1)
+    (fun assignment z y => kernel assignment.1 assignment.2 z y)
+    (fun assignment y => input assignment.2 y) g
+    (by
+      intro assignment hmem z y
+      exact hkernel assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2 z y)
+    (by
+      intro assignment hmem z
+      exact hmass assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2 z)
+    (by
+      intro assignment hmem z
+      exact hmeas assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2 z)
+    (by
+      intro assignment hmem z
+      exact henergy assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2 z)
+    (by
+      intro assignment hmem
+      exact htermWeighted assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2)
+    (by
+      intro assignment hmem
+      exact henergyWeighted assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2)
+    (by
+      intro assignment hmem
+      exact hprod assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2)
+    (by
+      intro assignment hmem y
+      exact hRayInt assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2 y)
+    (by
+      intro assignment hmem y
+      exact hbounded assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2 y)
+    (by
+      intro assignment hmem
+      exact hmaxWeighted assignment.1 (hassignment assignment hmem).1 assignment.2
+        (hassignment assignment hmem).2)
+  have hfiniteEnergy :
+      (∫ z : WaveSpaceTime,
+        (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2) * ‖g z‖ ∂continuumLightRayMeasure) ≤
+        A * ∫ y : Euclidean 2,
+          continuumFineAssignedCubeWeightedEnergy pieces cubeSets input
+            (lightRayMaximal δ N g) y := by
+    calc
+      (∫ z : WaveSpaceTime,
+        (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2) * ‖g z‖ ∂continuumLightRayMeasure) =
+          ∫ z : WaveSpaceTime,
+            (∑ assignment ∈ fineCubeAssignments pieces cubeSets,
+              ‖∫ y : Euclidean 2,
+                kernel assignment.1 assignment.2 z y * input assignment.2 y‖ ^ 2) *
+              ‖g z‖ ∂continuumLightRayMeasure := by
+        apply integral_congr_ae
+        filter_upwards with z
+        congr 1
+        calc
+          (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+            ‖packet piece cube z‖ ^ 2) =
+              ∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+                ‖∫ y : Euclidean 2,
+                  kernel piece cube z y * input cube y‖ ^ 2 := by
+            apply Finset.sum_congr rfl
+            intro piece hpiece
+            apply Finset.sum_congr rfl
+            intro cube hcube
+            rw [hpacket piece hpiece cube hcube z]
+          _ = ∑ assignment ∈ fineCubeAssignments pieces cubeSets,
+              ‖∫ y : Euclidean 2,
+                kernel assignment.1 assignment.2 z y * input assignment.2 y‖ ^ 2 := by
+            simpa [fineCubeAssignments] using
+              (Finset.sum_sigma' pieces cubeSets (fun piece cube =>
+                ‖∫ y : Euclidean 2,
+                  kernel piece cube z y * input cube y‖ ^ 2))
+      _ ≤ A * ∫ y : Euclidean 2,
+          (∑ assignment ∈ fineCubeAssignments pieces cubeSets,
+            ‖input assignment.2 y‖ ^ 2) * lightRayMaximal δ N g y := hfinite
+      _ = A * ∫ y : Euclidean 2,
+          continuumFineAssignedCubeWeightedEnergy pieces cubeSets input
+            (lightRayMaximal δ N g) y := by
+        congr 1
+        apply integral_congr_ae
+        filter_upwards with y
+        unfold continuumFineAssignedCubeWeightedEnergy
+          continuumFineAssignedCubeSquareEnergy
+        congr 1
+        symm
+        simpa [fineCubeAssignments] using
+          (Finset.sum_sigma' pieces cubeSets (fun _ cube => ‖input cube y‖ ^ 2))
+  calc
+    (∫ z : WaveSpaceTime,
+      (∑ piece ∈ pieces, ‖∑ cube ∈ cubeSets piece, packet piece cube z‖ ^ 2) *
+        ‖g z‖ ∂continuumLightRayMeasure) ≤
+        ∫ z : WaveSpaceTime,
+          (B * (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+            ‖packet piece cube z‖ ^ 2)) * ‖g z‖ ∂continuumLightRayMeasure :=
+      integral_mono hsquareWeighted hrightWeighted (fun z =>
+        mul_le_mul_of_nonneg_right (hpointEnergy z) (norm_nonneg _))
+    _ = B * ∫ z : WaveSpaceTime,
+        (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+          ‖packet piece cube z‖ ^ 2) * ‖g z‖ ∂continuumLightRayMeasure := by
+      calc
+        (∫ z : WaveSpaceTime,
+          (B * (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+            ‖packet piece cube z‖ ^ 2)) * ‖g z‖ ∂continuumLightRayMeasure) =
+            ∫ z : WaveSpaceTime, B *
+              ((∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+                ‖packet piece cube z‖ ^ 2) * ‖g z‖)
+              ∂continuumLightRayMeasure := by
+          apply integral_congr_ae
+          filter_upwards with z
+          ring
+        _ = B * ∫ z : WaveSpaceTime,
+            (∑ piece ∈ pieces, ∑ cube ∈ cubeSets piece,
+              ‖packet piece cube z‖ ^ 2) * ‖g z‖
+              ∂continuumLightRayMeasure := integral_const_mul _ _
+    _ ≤ B * (A * ∫ y : Euclidean 2,
+        continuumFineAssignedCubeWeightedEnergy pieces cubeSets input
+          (lightRayMaximal δ N g) y) :=
+      mul_le_mul_of_nonneg_left hfiniteEnergy hB
+    _ = (B * A) * ∫ y : Euclidean 2,
+        continuumFineAssignedCubeWeightedEnergy pieces cubeSets input
+          (lightRayMaximal δ N g) y := by
+      ring
+
 /-- The first finite Cauchy--Schwarz step in the fine square-function proof:
 the cube sum within one radial/angular piece costs its number of cubes. -/
 theorem sq_norm_finiteFinePiece_le_card_mul_sum_sq {ι κ : Type*}
@@ -31431,29 +32168,6 @@ theorem finiteFineAssignedCubeEnergy_le_card_mul_finiteFineCubeEnergy
         ∑ cube ∈ pieces.biUnion cubeSets, ∑ y ∈ sources,
           ‖input cube y‖ ^ 2 * M y := by
       simp
-
-/-- The finite set of piece--cube assignments.  Counting its fibers under
-the second-coordinate map is the exact discrete form of reverse cube
-overlap. -/
-noncomputable def fineCubeAssignments {ι κ : Type*} [DecidableEq κ]
-    (pieces : Finset ι) (cubeSets : ι → Finset κ) :
-    Finset (Sigma fun _ : ι => κ) :=
-  pieces.sigma cubeSets
-
-/-- The assignments using a given cube.  Its cardinality counts the number
-of radial/angular pieces to which that cube was assigned. -/
-noncomputable def fineCubeAssignmentFiber {ι κ : Type*} [DecidableEq κ]
-    (pieces : Finset ι) (cubeSets : ι → Finset κ) (cube : κ) :
-    Finset (Sigma fun _ : ι => κ) :=
-  (fineCubeAssignments pieces cubeSets).filter (fun assignment => assignment.2 = cube)
-
-/-- Reverse bounded overlap in a finite Fourier-cube decomposition.  This
-is the literal combinatorial content of the second cardinality assertion in
-the MSS cube-localization lemma. -/
-def HasFiniteFineCubeReverseOverlap {ι κ : Type*} [DecidableEq κ]
-    (pieces : Finset ι) (cubeSets : ι → Finset κ) (B : Nat) : Prop :=
-  ∀ cube ∈ pieces.biUnion cubeSets,
-    (fineCubeAssignmentFiber pieces cubeSets cube).card ≤ B
 
 /-- The finite cube fiber assigned to a specified packet owner.  This is an
 explicit finite model: it does not assert that the angular sector geometry
@@ -32226,6 +32940,17 @@ structure MSSCubeDecomposition (D : MSSWavefrontKernelData) where
   /-- The smooth input Fourier cutoff attached to each cube. -/
   cutoff : ∀ scale : Real,
     Fin (cubeCount scale) → SchwartzMap (Euclidean 2) Complex
+  /-- An enlarged smooth cutoff used to form a Schwartz representative of a
+  cube-localized input.  It equals one on the synthesis cutoff in the exact
+  multiplicative sense recorded below. -/
+  analysisCutoff : ∀ scale : Real,
+    Fin (cubeCount scale) → SchwartzMap (Euclidean 2) Complex
+  /-- The synthesis cutoff is unchanged after first analyzing with its
+  enlarged cutoff.  This is the exact compatibility needed to feed a
+  Schwartz cube projection into the literal fine packet. -/
+  cutoff_mul_analysisCutoff : ∀ scale : Real, ∀ k : Fin (cubeCount scale),
+    ∀ xi : Euclidean 2,
+      cutoff scale k xi * analysisCutoff scale k xi = cutoff scale k xi
   /-- The cubes used by one radial--angular packet. -/
   cubeSets : ∀ scale : Real, Int → Int → Finset (Fin (cubeCount scale))
   /-- Each cutoff is supported in a coordinate cube of side comparable to
@@ -32269,6 +32994,46 @@ structure MSSCubeDecomposition (D : MSSWavefrontKernelData) where
         A * (cubeWidth * Real.sqrt scale) ^ 2 *
           ((cubeWidth * Real.sqrt scale)⁻¹) ^ r
 
+/-- Regularity data for the enlarged analysis cutoffs of an MSS cube
+decomposition.
+
+The analysis cutoffs are deliberately kept separate from the synthesis
+cutoffs: the latter need only be absorbed by the former to obtain the exact
+packet identity.  In contrast, a Fourier-cube square-function theorem needs
+quantitative support, overlap, and symbol bounds for the analysis family
+itself.  This structure records those necessary data at a fixed enlarged
+cube width.  It does **not** prove a Rubio de Francia estimate, an `L⁴`
+bound, or any other square-function theorem. -/
+structure MSSAnalysisCubeRegularity (D : MSSWavefrontKernelData)
+    (Q : MSSCubeDecomposition D) where
+  /-- The scale-independent half-width coefficient for the enlarged
+  analysis cubes. -/
+  analysisCubeWidth : Real
+  analysisCubeWidth_pos : 0 < analysisCubeWidth
+  /-- The analysis cubes are genuinely enlarged relative to the synthesis
+  cubes. -/
+  cubeWidth_le_analysisCubeWidth : Q.cubeWidth ≤ analysisCubeWidth
+  /-- Each analysis cutoff is supported in its enlarged coordinate cube. -/
+  analysis_cube_support : ∀ scale : Real, 2 ≤ scale →
+    ∀ k : Fin (Q.cubeCount scale),
+      isFourierCubeCutoff (Q.center scale k)
+        (analysisCubeWidth * Real.sqrt scale) (Q.analysisCutoff scale k)
+  /-- The uniform Fourier-side square-overlap constant of the analysis
+  family. -/
+  analysisSquareOverlap : Real
+  analysisSquareOverlap_nonneg : 0 ≤ analysisSquareOverlap
+  analysis_square_overlap : ∀ scale : Real, 2 ≤ scale → ∀ xi : Euclidean 2,
+    ∑ k : Fin (Q.cubeCount scale), ‖Q.analysisCutoff scale k xi‖ ^ 2 ≤
+      analysisSquareOverlap
+  /-- Uniform normalized L1 derivative bounds for the analysis cutoffs.
+  These are symbol data only, not multiplier estimates. -/
+  analysis_cutoff_derivative_l1 : ∀ r : Nat, ∃ A : Real, 0 ≤ A ∧
+    ∀ scale : Real, 2 ≤ scale → ∀ k : Fin (Q.cubeCount scale),
+      (∫ xi : Euclidean 2,
+        ‖iteratedFDeriv Real r (Q.analysisCutoff scale k) xi‖) ≤
+        A * (analysisCubeWidth * Real.sqrt scale) ^ 2 *
+          ((analysisCubeWidth * Real.sqrt scale)⁻¹) ^ r
+
 /-- The scale-uniform signed `L⁴` multiplier hypothesis for the actual cube
 cutoffs of an MSS cube decomposition.  Its one constant is uniform in every
 `scale ≥ 2`, every finite selected cube family, and every Rademacher signing.
@@ -32286,6 +33051,26 @@ def HasScaleUniformMSSCubeRademacherL4
         (∫ x : Euclidean 2,
           ‖finiteRademacherFourierCubeSum cubes signs (Q.cutoff scale) f x‖ ^ (4 : Nat)) ≤
             B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat)
+
+/-- The scale-uniform averaged Rademacher fourth-moment input for the actual
+cube cutoffs of an MSS cube decomposition.  The finite sum is the total over
+all signings, bounded by its cardinality times the proposed scalar `L⁴`
+bound.  It is only a conditional form of the cube square-function issue; no
+such analytic estimate is asserted here. -/
+def HasScaleAverageMSSCubeRademacherL4
+    (D : MSSWavefrontKernelData) (Q : MSSCubeDecomposition D) : Prop :=
+  ∃ B : Real, 0 < B ∧ ∀ scale : Real, 2 ≤ scale →
+    ∀ (cubes : Finset (Fin (Q.cubeCount scale)))
+      (f : SchwartzMap (Euclidean 2) Complex),
+      (∀ signs ∈ cubes.powerset,
+        Integrable (fun x : Euclidean 2 =>
+          ‖finiteRademacherFourierCubeSum cubes signs (Q.cutoff scale) f x‖ ^ (4 : Nat))
+            volume) ∧
+      (∑ signs ∈ cubes.powerset,
+        ∫ x : Euclidean 2,
+          ‖finiteRademacherFourierCubeSum cubes signs (Q.cutoff scale) f x‖ ^ (4 : Nat)) ≤
+        (cubes.powerset.card : Real) *
+          (B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat))
 
 /-- The scale-uniform finite-family fourth-moment square-function assertion
 for the cube cutoffs of an MSS cube decomposition. -/
@@ -32313,6 +33098,65 @@ theorem uniformScaleMSSCubeSquareFunctionL4_of_signed
   intro signs hsigns
   exact hsigned scale hscale cubes signs f hsigns
 
+/-- The generic averaged Rademacher reduction turns the scale-uniform
+average-sign MSS cube hypothesis into the corresponding scale-uniform
+fourth-moment cube square-function bound.  This is not a proof that the
+MSS cubes satisfy the supplied average-sign hypothesis. -/
+theorem uniformScaleMSSCubeSquareFunctionL4_of_average
+    (D : MSSWavefrontKernelData) (Q : MSSCubeDecomposition D)
+    (haverage : HasScaleAverageMSSCubeRademacherL4 D Q) :
+    uniformScaleMSSCubeSquareFunctionL4 D Q := by
+  rcases haverage with ⟨B, hB, haverage⟩
+  refine ⟨B, hB, ?_⟩
+  intro scale hscale cubes f
+  exact integral_fourth_fourierCubeSquareFunction_le_of_average
+    cubes (Q.cutoff scale) f (haverage scale hscale cubes f)
+
+/-- The scale-uniform averaged Rademacher fourth-moment input for the
+enlarged analysis cutoffs of an MSS cube decomposition.  This is a
+conditional scalar estimate only; it does not follow from the geometric
+cube-decomposition data. -/
+def HasScaleAverageMSSAnalysisCubeRademacherL4
+    (D : MSSWavefrontKernelData) (Q : MSSCubeDecomposition D) : Prop :=
+  ∃ B : Real, 0 < B ∧ ∀ scale : Real, 2 ≤ scale →
+    ∀ (cubes : Finset (Fin (Q.cubeCount scale)))
+      (f : SchwartzMap (Euclidean 2) Complex),
+      (∀ signs ∈ cubes.powerset,
+        Integrable (fun x : Euclidean 2 =>
+          ‖finiteRademacherFourierCubeSum cubes signs (Q.analysisCutoff scale) f x‖ ^
+            (4 : Nat)) volume) ∧
+      (∑ signs ∈ cubes.powerset,
+        ∫ x : Euclidean 2,
+          ‖finiteRademacherFourierCubeSum cubes signs (Q.analysisCutoff scale) f x‖ ^
+            (4 : Nat)) ≤
+        (cubes.powerset.card : Real) *
+          (B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat))
+
+/-- The scale-uniform fourth-moment square-function assertion for the
+enlarged analysis cutoffs of an MSS cube decomposition. -/
+def uniformScaleMSSAnalysisCubeSquareFunctionL4
+    (D : MSSWavefrontKernelData) (Q : MSSCubeDecomposition D) : Prop :=
+  ∃ B : Real, 0 < B ∧ ∀ scale : Real, 2 ≤ scale →
+    ∀ (cubes : Finset (Fin (Q.cubeCount scale)))
+      (f : SchwartzMap (Euclidean 2) Complex),
+        (∫ x : Euclidean 2,
+          fourierCubeSquareFunction cubes (Q.analysisCutoff scale) f x ^ (4 : Nat)) ≤
+            B * ∫ x : Euclidean 2, ‖f x‖ ^ (4 : Nat)
+
+/-- The finite averaged Khintchine reduction turns the scale-uniform
+analysis-cutoff Rademacher hypothesis into the corresponding scale-uniform
+fourth-moment square-function bound.  It does not establish that hypothesis
+for the analysis family. -/
+theorem uniformScaleMSSAnalysisCubeSquareFunctionL4_of_average
+    (D : MSSWavefrontKernelData) (Q : MSSCubeDecomposition D)
+    (haverage : HasScaleAverageMSSAnalysisCubeRademacherL4 D Q) :
+    uniformScaleMSSAnalysisCubeSquareFunctionL4 D Q := by
+  rcases haverage with ⟨B, hB, haverage⟩
+  refine ⟨B, hB, ?_⟩
+  intro scale hscale cubes f
+  exact integral_fourth_fourierCubeSquareFunction_le_of_average
+    cubes (Q.analysisCutoff scale) f (haverage scale hscale cubes f)
+
 /-- The literal source kernel for one cube in one active MSS fine packet.
 It is the inverse Fourier transform of the actual product of the cube cutoff,
 the radial--angular packet multiplier, and the plus half-wave multiplier.
@@ -32339,6 +33183,66 @@ noncomputable def mssFineCubePacket (D : MSSWavefrontKernelData)
       cubes.cutoff scale cube xi * D.spatialProfile scale n nu xi *
         FourierTransform.fourier (f : Euclidean 2 → Complex) xi *
           halfWaveMultiplier WaveSign.plus z.2 xi) z.1
+
+/-- Under the explicit light-ray slab support condition, a literal fine cube
+packet vanishes at every time outside the slab.  This uses only its displayed
+outer physical time factor; it makes no spatial support or ray-decay claim. -/
+theorem mssFineCubePacket_eq_zero_of_time_not_mem_lightRayTimeInterval
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (hslab : D.HasLightRayTimeSlabSupport)
+    (scale : Real) (n nu : Int) (cube : Fin (cubes.cubeCount scale))
+    (f : SchwartzMap (Euclidean 2) Complex) (z : WaveSpaceTime)
+    (hz : z.2 ∉ lightRayTimeInterval) :
+    mssFineCubePacket D cubes scale n nu cube f z = 0 := by
+  unfold mssFineCubePacket
+  rw [D.time_eq_zero_of_not_mem_lightRayTimeInterval hslab hz]
+  simp
+
+/-- The physical support of one literal fine cube packet is contained in the
+fixed time slab under the corresponding cutoff support condition.  The result
+does not claim compact support in the spatial variables. -/
+theorem support_mssFineCubePacket_subset_lightRayTimeSlab
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (hslab : D.HasLightRayTimeSlabSupport)
+    (scale : Real) (n nu : Int) (cube : Fin (cubes.cubeCount scale))
+    (f : SchwartzMap (Euclidean 2) Complex) :
+    Function.support (mssFineCubePacket D cubes scale n nu cube f) ⊆
+      {z : WaveSpaceTime | z.2 ∈ lightRayTimeInterval} := by
+  intro z hz
+  by_contra htime
+  exact hz (mssFineCubePacket_eq_zero_of_time_not_mem_lightRayTimeInterval
+    D cubes hslab scale n nu cube f z htime)
+
+/-- Feeding the literal fine cube packet the Schwartz representative
+obtained from its enlarged analysis cutoff leaves the packet unchanged.
+The equality is exact and uses only the cutoff-absorption identity in
+`MSSCubeDecomposition`; it is not an analytic square-function estimate. -/
+theorem mssFineCubePacket_fourierCubeProjectedSchwartz_analysisCutoff
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (scale : Real) (n nu : Int) (cube : Fin (cubes.cubeCount scale))
+    (f : SchwartzMap (Euclidean 2) Complex) :
+    mssFineCubePacket D cubes scale n nu cube
+      (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) =
+        mssFineCubePacket D cubes scale n nu cube f := by
+  funext z
+  unfold mssFineCubePacket
+  apply congrArg (fun h : Euclidean 2 → Complex =>
+    D.radialTime.time z.2 * FourierTransform.fourierInv h z.1)
+  funext xi
+  rw [fourier_fourierCubeProjectedSchwartz_apply]
+  calc
+    cubes.cutoff scale cube xi * D.spatialProfile scale n nu xi *
+        (cubes.analysisCutoff scale cube xi *
+          FourierTransform.fourier (f : Euclidean 2 → Complex) xi) *
+          halfWaveMultiplier WaveSign.plus z.2 xi =
+      (cubes.cutoff scale cube xi * cubes.analysisCutoff scale cube xi) *
+        D.spatialProfile scale n nu xi *
+          FourierTransform.fourier (f : Euclidean 2 → Complex) xi *
+            halfWaveMultiplier WaveSign.plus z.2 xi := by ring
+    _ = cubes.cutoff scale cube xi * D.spatialProfile scale n nu xi *
+        FourierTransform.fourier (f : Euclidean 2 → Complex) xi *
+          halfWaveMultiplier WaveSign.plus z.2 xi := by
+      rw [cubes.cutoff_mul_analysisCutoff scale cube xi]
 
 /-- The selected cubes synthesize the actual unprojected MSS fine summand
 exactly.  The proof uses only the supplied finite reconstruction of the
@@ -32477,6 +33381,39 @@ theorem sum_mssFineCubePacket_eq_mssFineAngularPiece
           funext xi
           exact hactual xi
 
+/-- The selected cube packets still synthesize the actual MSS fine summand
+when each cube is fed its own enlarged-analysis Schwartz projection.  This is
+the finite packetwise consequence of cutoff absorption and the exact
+unprojected synthesis identity. -/
+theorem sum_mssFineCubePacket_analysisProjected_eq_mssFineAngularPiece
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (scale : Real) (hscale : 2 ≤ scale) (n nu : Int)
+    (hn : n ∈ relevantRadialIndexEnumeration scale)
+    (hnu : nu ∈ D.angularIndices scale)
+    (f : SchwartzMap (Euclidean 2) Complex) :
+    (fun z => ∑ cube ∈ cubes.cubeSets scale n nu,
+      mssFineCubePacket D cubes scale n nu cube
+        (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z) =
+      angularPiece scale (D.radialTime.amplitude : Euclidean 2 → Complex)
+        (D.chi scale nu) (D.radialTime.time : Real → Complex)
+        (radialPiece (D.radialTime.radial : Real → Complex) scale n
+          (f : Euclidean 2 → Complex)) := by
+  classical
+  calc
+    (fun z => ∑ cube ∈ cubes.cubeSets scale n nu,
+      mssFineCubePacket D cubes scale n nu cube
+        (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z) =
+        (fun z => ∑ cube ∈ cubes.cubeSets scale n nu,
+          mssFineCubePacket D cubes scale n nu cube f z) := by
+      funext z
+      apply Finset.sum_congr rfl
+      intro cube hcube
+      exact congrFun
+        (mssFineCubePacket_fourierCubeProjectedSchwartz_analysisCutoff
+          D cubes scale n nu cube f) z
+    _ = _ := sum_mssFineCubePacket_eq_mssFineAngularPiece
+      D cubes scale hscale n nu hn hnu f
+
 /-- Conditional literal kernel localization for the cube decomposition.
 
 The constants `kernelConstant` and `massConstant` are independent of the MSS
@@ -32515,6 +33452,87 @@ structure MSSFineCubeKernelLocalization (D : MSSWavefrontKernelData)
         (∫ y : Euclidean 2,
           ‖mssFineCubeHalfWaveKernel D cubes scale n nu cube z y‖) ≤ massConstant
 
+/-- The normalized kernel used to feed a localized MSS cube packet to the
+continuum light-ray transposition theorem.  Multiplying the associated input
+by the same positive constant below leaves the packet unchanged, while this
+kernel has unit light-ray domination. -/
+noncomputable def mssFineNormalizedCubeKernel (D : MSSWavefrontKernelData)
+    (cubes : MSSCubeDecomposition D) (kernelConstant : Real)
+    (scale : Real) (n nu : Int) (cube : Fin (cubes.cubeCount scale))
+    (z : WaveSpaceTime) (y : Euclidean 2) : Complex :=
+  (kernelConstant : Complex)⁻¹ *
+    mssFineCubeHalfWaveKernel D cubes scale n nu cube z y
+
+/-- The input paired with `mssFineNormalizedCubeKernel`.  It is the literal
+Schwartz analysis projection of `f`, scaled so that the normalized kernel
+still represents the original cube packet exactly. -/
+noncomputable def mssFineNormalizedCubeInput (D : MSSWavefrontKernelData)
+    (cubes : MSSCubeDecomposition D) (kernelConstant : Real)
+    (scale : Real) (cube : Fin (cubes.cubeCount scale))
+    (f : SchwartzMap (Euclidean 2) Complex) : Euclidean 2 → Complex :=
+  fun y => (kernelConstant : Complex) *
+    fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f y
+
+/-- Kernel normalization preserves the literal source representation of a
+fine cube packet.  This is only scalar algebra applied to the source
+representation supplied by `MSSFineCubeKernelLocalization`. -/
+theorem mssFineCubePacket_eq_integral_normalizedCubeKernel
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (N : Nat) (kernelConstant massConstant : Real)
+    (localization : MSSFineCubeKernelLocalization D cubes N kernelConstant massConstant)
+    (scale : Real) (hscale : 2 ≤ scale) (n nu : Int)
+    (hn : n ∈ relevantRadialIndexEnumeration scale)
+    (hnu : nu ∈ D.angularIndices scale) (cube : Fin (cubes.cubeCount scale))
+    (hcube : cube ∈ cubes.cubeSets scale n nu)
+    (f : SchwartzMap (Euclidean 2) Complex) (z : WaveSpaceTime) :
+    mssFineCubePacket D cubes scale n nu cube
+      (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z =
+        ∫ y : Euclidean 2,
+          mssFineNormalizedCubeKernel D cubes kernelConstant scale n nu cube z y *
+            mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y := by
+  have hkernelConstant_ne : (kernelConstant : Complex) ≠ 0 := by
+    intro hzero
+    apply (ne_of_gt localization.kernelConstant_pos)
+    have hreal := congrArg Complex.re hzero
+    simpa using hreal
+  rw [localization.source_representation scale hscale n hn nu hnu cube hcube
+    (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z]
+  apply integral_congr_ae
+  filter_upwards with y
+  unfold mssFineNormalizedCubeKernel mssFineNormalizedCubeInput
+  field_simp [hkernelConstant_ne]
+
+/-- After the preceding scalar normalization, the light-ray domination in a
+fine cube localization has coefficient one. -/
+theorem norm_mssFineNormalizedCubeKernel_le_lightRayKernel
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (N : Nat) (kernelConstant massConstant : Real)
+    (localization : MSSFineCubeKernelLocalization D cubes N kernelConstant massConstant)
+    (scale : Real) (hscale : 2 ≤ scale) (n nu : Int)
+    (hn : n ∈ relevantRadialIndexEnumeration scale)
+    (hnu : nu ∈ D.angularIndices scale) (cube : Fin (cubes.cubeCount scale))
+    (hcube : cube ∈ cubes.cubeSets scale n nu) (z : WaveSpaceTime)
+    (y : Euclidean 2) :
+    ‖mssFineNormalizedCubeKernel D cubes kernelConstant scale n nu cube z y‖ ≤
+      lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+        (D.directions scale nu) y z := by
+  have hκpos : 0 < kernelConstant := localization.kernelConstant_pos
+  have hκnonneg : 0 ≤ kernelConstant := hκpos.le
+  unfold mssFineNormalizedCubeKernel
+  rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos hκpos]
+  calc
+    kernelConstant⁻¹ * ‖mssFineCubeHalfWaveKernel D cubes scale n nu cube z y‖ ≤
+        kernelConstant⁻¹ *
+          (kernelConstant * lightRayKernel
+            (cubes.cubeWidth * Real.sqrt scale)⁻¹ N (D.directions scale nu) y z) :=
+      mul_le_mul_of_nonneg_left
+        (localization.light_ray_dominance scale hscale n hn nu hnu cube hcube z y)
+        (inv_nonneg.mpr hκnonneg)
+    _ = lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+          (D.directions scale nu) y z := by
+      field_simp [ne_of_gt hκpos]
+
 /-- The canonical MSS fine square function, attached to the actual
 scale-indexed radial-time and angular cutoff data.  The vertical projection
 is deliberately absent: this is the fine square function before vertical
@@ -32525,6 +33543,387 @@ noncomputable def mssFineSquareFunction (D : MSSWavefrontCutoffData)
     (D.angularIndices scale) (D.radialTime.radial : Real → Complex)
     (D.chi scale) scale (D.radialTime.amplitude : Euclidean 2 → Complex)
     (D.radialTime.time : Real → Complex) f
+
+/-- The literal fine square function obtained by first feeding every assigned
+cube its enlarged-analysis Schwartz projection and then summing its actual
+fine cube packets.  This is an exact finite expression, not an estimate. -/
+noncomputable def mssFineCubePacketSquareFunction
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (scale : Real) (f : SchwartzMap (Euclidean 2) Complex) : WaveSpaceTime → Real :=
+  fun z => Real.sqrt (∑ n ∈ relevantRadialIndexEnumeration scale,
+    ∑ nu ∈ D.angularIndices scale,
+      ‖∑ cube ∈ cubes.cubeSets scale n nu,
+        mssFineCubePacket D cubes scale n nu cube
+          (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z‖ ^ 2)
+
+/-- The literal regularity/Fubini hypotheses needed to use continuum
+transposition for the normalized MSS cube packets at one scale and against
+one test function.  This is deliberately a test-function interface: it does
+not claim that these hypotheses follow automatically from the geometric
+cube data or from a formal source representation. -/
+structure MSSFineCubeContinuumRegularity (D : MSSWavefrontKernelData)
+    (cubes : MSSCubeDecomposition D) (N : Nat)
+    (kernelConstant massConstant scale : Real)
+    (f : SchwartzMap (Euclidean 2) Complex) (g : WaveSpaceTime → Complex) : Prop where
+  meas : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      ∀ z : WaveSpaceTime,
+        AEStronglyMeasurable (fun y : Euclidean 2 =>
+          (lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+            (D.directions scale nu) y z)⁻¹ *
+            ‖mssFineNormalizedCubeKernel D cubes kernelConstant scale n nu cube z y *
+              mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y‖ ^ 2) volume
+  energy : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      ∀ z : WaveSpaceTime,
+        Integrable (fun y : Euclidean 2 =>
+          lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+            (D.directions scale nu) y z *
+            ‖mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y‖ ^ 2) volume
+  termWeighted : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      Integrable (fun z : WaveSpaceTime =>
+        ‖∫ y : Euclidean 2,
+          mssFineNormalizedCubeKernel D cubes kernelConstant scale n nu cube z y *
+            mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y‖ ^ 2 * ‖g z‖)
+          continuumLightRayMeasure
+  energyWeighted : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      Integrable (fun z : WaveSpaceTime =>
+        (∫ y : Euclidean 2,
+          lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+            (D.directions scale nu) y z *
+            ‖mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y‖ ^ 2) * ‖g z‖)
+          continuumLightRayMeasure
+  prod : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      Integrable (fun p : WaveSpaceTime × Euclidean 2 =>
+        lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+          (D.directions scale nu) p.2 p.1 *
+          ‖mssFineNormalizedCubeInput D cubes kernelConstant scale cube f p.2‖ ^ 2 *
+            ‖g p.1‖) (continuumLightRayMeasure.prod volume)
+  ray_integrable : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      ∀ y : Euclidean 2,
+        Integrable (fun z : WaveSpaceTime =>
+          lightRayKernel (cubes.cubeWidth * Real.sqrt scale)⁻¹ N
+            (D.directions scale nu) y z * ‖g z‖) continuumLightRayMeasure
+  bounded : ∀ y : Euclidean 2,
+    BddAbove ((fun ω : Euclidean 2 =>
+      lightRayAverage (cubes.cubeWidth * Real.sqrt scale)⁻¹ N ω y g) ''
+        unitLightRayDirections)
+  maxWeighted : ∀ (hscale : 2 ≤ scale), ∀ n ∈ relevantRadialIndexEnumeration scale,
+    ∀ nu ∈ D.angularIndices scale, ∀ cube ∈ cubes.cubeSets scale n nu,
+      Integrable (fun y : Euclidean 2 =>
+        ‖mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y‖ ^ 2 *
+          lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g y) volume
+  squareWeighted : Integrable (fun z : WaveSpaceTime =>
+    mssFineCubePacketSquareFunction D cubes scale f z ^ 2 * ‖g z‖)
+      continuumLightRayMeasure
+
+/-- Squaring the literal fine cube-packet square function removes its outer
+square root and exposes the finite radial--angular/cube sum. -/
+theorem sq_mssFineCubePacketSquareFunction
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (scale : Real) (f : SchwartzMap (Euclidean 2) Complex)
+    (z : WaveSpaceTime) :
+    mssFineCubePacketSquareFunction D cubes scale f z ^ 2 =
+      ∑ n ∈ relevantRadialIndexEnumeration scale,
+        ∑ nu ∈ D.angularIndices scale,
+          ‖∑ cube ∈ cubes.cubeSets scale n nu,
+            mssFineCubePacket D cubes scale n nu cube
+              (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z‖ ^ 2 := by
+  unfold mssFineCubePacketSquareFunction
+  rw [Real.sq_sqrt]
+  exact Finset.sum_nonneg fun n hn =>
+    Finset.sum_nonneg fun nu hnu => sq_nonneg _
+
+/-- The square of the literal fine cube-packet square function written using
+the single product index `mssFinePieceIndices`. -/
+theorem sq_mssFineCubePacketSquareFunction_eq_pieceSum
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (scale : Real) (f : SchwartzMap (Euclidean 2) Complex)
+    (z : WaveSpaceTime) :
+    mssFineCubePacketSquareFunction D cubes scale f z ^ 2 =
+      ∑ piece ∈ mssFinePieceIndices D scale,
+        ‖∑ cube ∈ cubes.cubeSets scale piece.1 piece.2,
+          mssFineCubePacket D cubes scale piece.1 piece.2 cube
+            (fourierCubeProjectedSchwartz
+              (cubes.analysisCutoff scale cube) f) z‖ ^ 2 := by
+  rw [sq_mssFineCubePacketSquareFunction]
+  unfold mssFinePieceIndices
+  exact (Finset.sum_product (relevantRadialIndexEnumeration scale)
+    (D.angularIndices scale) (fun piece : Int × Int =>
+      ‖∑ cube ∈ cubes.cubeSets scale piece.1 piece.2,
+        mssFineCubePacket D cubes scale piece.1 piece.2 cube
+          (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z‖ ^ 2)).symm
+
+/-- The literal MSS specialization of the continuum fine-square
+transposition step.  Its right side is still the assigned cube energy;
+reverse overlap is deliberately a separate subsequent step.
+
+The threshold on `cubeWidth` is exactly what puts the physical width
+`(cubeWidth * sqrt scale)⁻¹` into the range of the light-ray maximal
+estimate at every `scale ≥ 2`. -/
+theorem mssFineCubePacketSquarePairing_le_lightRayMaximal
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (N : Nat) (kernelConstant massConstant : Real)
+    (localization : MSSFineCubeKernelLocalization D cubes N kernelConstant massConstant)
+    {scale : Real} (hscale : 2 ≤ scale)
+    (hwidth : 2 < cubes.cubeWidth * Real.sqrt 2) (hN : 2 < N)
+    (f : SchwartzMap (Euclidean 2) Complex) (g : WaveSpaceTime → Complex)
+    (regularity : MSSFineCubeContinuumRegularity D cubes N
+      kernelConstant massConstant scale f g) :
+    ∃ B : Nat,
+      (∫ z : WaveSpaceTime,
+        mssFineCubePacketSquareFunction D cubes scale f z ^ 2 * ‖g z‖
+        ∂continuumLightRayMeasure) ≤
+        ((B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u) *
+          ∫ y : Euclidean 2,
+            continuumFineAssignedCubeWeightedEnergy
+              (mssFinePieceIndices D scale)
+              (fun piece => cubes.cubeSets scale piece.1 piece.2)
+              (fun cube =>
+                mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+              (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g) y := by
+  classical
+  rcases cubes.cubes_per_packet with ⟨B, hB⟩
+  refine ⟨B, ?_⟩
+  have hδ : 0 < (cubes.cubeWidth * Real.sqrt scale)⁻¹ :=
+    (cubeWidth_inv_mul_sqrt_pos_lt_half hwidth hscale).1
+  have hA : 0 ≤ ∫ u : Euclidean 2, lightRayDecayProfile N u :=
+    (lightRayKernel_spatial_mass_bound hδ N hN (0 : Euclidean 2)).1
+  have hpieceMem : ∀ piece ∈ mssFinePieceIndices D scale,
+      piece.1 ∈ relevantRadialIndexEnumeration scale ∧
+        piece.2 ∈ D.angularIndices scale := by
+    intro piece hpiece
+    simpa [mssFinePieceIndices] using hpiece
+  have hsquareWeighted : Integrable (fun z : WaveSpaceTime =>
+      (∑ piece ∈ mssFinePieceIndices D scale,
+        ‖∑ cube ∈ cubes.cubeSets scale piece.1 piece.2,
+          mssFineCubePacket D cubes scale piece.1 piece.2 cube
+            (fourierCubeProjectedSchwartz
+              (cubes.analysisCutoff scale cube) f) z‖ ^ 2) * ‖g z‖)
+        continuumLightRayMeasure := by
+    refine regularity.squareWeighted.congr ?_
+    filter_upwards with z
+    rw [sq_mssFineCubePacketSquareFunction_eq_pieceSum]
+  have hgeneric := continuumFineSquarePairing_le_cubeMultiplicity_mul_lightRayMaximal
+    (pieces := mssFinePieceIndices D scale)
+    (cubeSets := fun piece => cubes.cubeSets scale piece.1 piece.2)
+    (δ := (cubes.cubeWidth * Real.sqrt scale)⁻¹)
+    (A := ∫ u : Euclidean 2, lightRayDecayProfile N u)
+    (B := (B : Real)) hδ hA (Nat.cast_nonneg B) N
+    (fun piece => D.directions scale piece.2)
+    (fun piece cube z y =>
+      mssFineNormalizedCubeKernel D cubes kernelConstant scale piece.1 piece.2 cube z y)
+    (fun cube y =>
+      mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y)
+    (fun piece cube z =>
+      mssFineCubePacket D cubes scale piece.1 piece.2 cube
+        (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z)
+    g
+    (by
+      intro piece hpiece cube hcube z
+      have hmem := hpieceMem piece hpiece
+      exact mssFineCubePacket_eq_integral_normalizedCubeKernel
+        D cubes N kernelConstant massConstant localization scale hscale piece.1 piece.2
+        hmem.1 hmem.2 cube hcube f z)
+    (by
+      intro piece hpiece
+      have hmem := hpieceMem piece hpiece
+      exact_mod_cast hB scale hscale piece.1 hmem.1 piece.2 hmem.2)
+    (by
+      intro piece hpiece
+      have hmem := hpieceMem piece hpiece
+      exact D.direction_unit scale piece.2 hmem.2)
+    (by
+      intro piece hpiece cube hcube z y
+      have hmem := hpieceMem piece hpiece
+      exact norm_mssFineNormalizedCubeKernel_le_lightRayKernel
+        D cubes N kernelConstant massConstant localization scale hscale piece.1 piece.2
+        hmem.1 hmem.2 cube hcube z y)
+    (by
+      intro piece hpiece cube hcube z
+      have hmem := hpieceMem piece hpiece
+      exact (lightRayKernel_spatial_mass_bound hδ N hN
+        (D.directions scale piece.2)).2 z)
+    (by
+      intro piece hpiece cube hcube z
+      have hmem := hpieceMem piece hpiece
+      exact regularity.meas hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube z)
+    (by
+      intro piece hpiece cube hcube z
+      have hmem := hpieceMem piece hpiece
+      exact regularity.energy hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube z)
+    (by
+      intro piece hpiece cube hcube
+      have hmem := hpieceMem piece hpiece
+      exact regularity.termWeighted hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube)
+    (by
+      intro piece hpiece cube hcube
+      have hmem := hpieceMem piece hpiece
+      exact regularity.energyWeighted hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube)
+    (by
+      intro piece hpiece cube hcube
+      have hmem := hpieceMem piece hpiece
+      exact regularity.prod hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube)
+    (by
+      intro piece hpiece cube hcube y
+      have hmem := hpieceMem piece hpiece
+      exact regularity.ray_integrable hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube y)
+    (by
+      intro piece hpiece cube hcube y
+      exact regularity.bounded y)
+    (by
+      intro piece hpiece cube hcube
+      have hmem := hpieceMem piece hpiece
+      exact regularity.maxWeighted hscale piece.1 hmem.1 piece.2 hmem.2 cube hcube)
+    hsquareWeighted
+  calc
+    (∫ z : WaveSpaceTime,
+      mssFineCubePacketSquareFunction D cubes scale f z ^ 2 * ‖g z‖
+      ∂continuumLightRayMeasure) =
+        ∫ z : WaveSpaceTime,
+          (∑ piece ∈ mssFinePieceIndices D scale,
+            ‖∑ cube ∈ cubes.cubeSets scale piece.1 piece.2,
+              mssFineCubePacket D cubes scale piece.1 piece.2 cube
+                (fourierCubeProjectedSchwartz
+                  (cubes.analysisCutoff scale cube) f) z‖ ^ 2) * ‖g z‖
+          ∂continuumLightRayMeasure := by
+      apply integral_congr_ae
+      filter_upwards with z
+      rw [sq_mssFineCubePacketSquareFunction_eq_pieceSum]
+    _ ≤ ((B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u) *
+        ∫ y : Euclidean 2,
+          continuumFineAssignedCubeWeightedEnergy
+            (mssFinePieceIndices D scale)
+            (fun piece => cubes.cubeSets scale piece.1 piece.2)
+            (fun cube =>
+              mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+            (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g) y := hgeneric
+
+/-- Reverse cube overlap turns the assigned energy in the preceding literal
+MSS transposition estimate into the global analysis-cube energy.  The
+light-ray maximal operator is still invoked only once, before this purely
+finite incidence collapse. -/
+theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (N : Nat) (kernelConstant massConstant : Real)
+    (localization : MSSFineCubeKernelLocalization D cubes N kernelConstant massConstant)
+    {scale : Real} (hscale : 2 ≤ scale)
+    (hwidth : 2 < cubes.cubeWidth * Real.sqrt 2) (hN : 2 < N)
+    (f : SchwartzMap (Euclidean 2) Complex) (g : WaveSpaceTime → Complex)
+    (regularity : MSSFineCubeContinuumRegularity D cubes N
+      kernelConstant massConstant scale f g) :
+    ∃ B R : Nat,
+      (∫ z : WaveSpaceTime,
+        mssFineCubePacketSquareFunction D cubes scale f z ^ 2 * ‖g z‖
+        ∂continuumLightRayMeasure) ≤
+        ((B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u) * (R : Real) *
+          ∫ y : Euclidean 2,
+            continuumFineCubeWeightedEnergy
+              (mssFinePieceIndices D scale)
+              (fun piece => cubes.cubeSets scale piece.1 piece.2)
+              (fun cube =>
+                mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+              (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g) y := by
+  classical
+  obtain ⟨B, hraw⟩ := mssFineCubePacketSquarePairing_le_lightRayMaximal
+    D cubes N kernelConstant massConstant localization hscale hwidth hN f g regularity
+  obtain ⟨R, hR⟩ := cubes.reverse_overlap
+  refine ⟨B, R, ?_⟩
+  have hδ : 0 < (cubes.cubeWidth * Real.sqrt scale)⁻¹ :=
+    (cubeWidth_inv_mul_sqrt_pos_lt_half hwidth hscale).1
+  have hA : 0 ≤ ∫ u : Euclidean 2, lightRayDecayProfile N u :=
+    (lightRayKernel_spatial_mass_bound hδ N hN (0 : Euclidean 2)).1
+  have hpieceMem : ∀ piece ∈ mssFinePieceIndices D scale,
+      piece.1 ∈ relevantRadialIndexEnumeration scale ∧
+        piece.2 ∈ D.angularIndices scale := by
+    intro piece hpiece
+    simpa [mssFinePieceIndices] using hpiece
+  have hweight : ∀ y : Euclidean 2,
+      0 ≤ lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g y := by
+    intro y
+    exact aux_lightRayMaximal_nonneg hδ N g regularity.bounded y
+  have hcubeWeighted : ∀ cube ∈
+      (mssFinePieceIndices D scale).biUnion
+        (fun piece => cubes.cubeSets scale piece.1 piece.2),
+      Integrable (fun y : Euclidean 2 =>
+        ‖mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y‖ ^ 2 *
+          lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g y) volume := by
+    intro cube hcube
+    obtain ⟨piece, hpiece, hcubePiece⟩ := Finset.mem_biUnion.mp hcube
+    have hmem := hpieceMem piece hpiece
+    exact regularity.maxWeighted hscale piece.1 hmem.1 piece.2 hmem.2 cube hcubePiece
+  have hcollapse := integral_continuumFineAssignedCubeWeightedEnergy_le_reverseOverlap_mul
+    (μ := volume) (mssFinePieceIndices D scale)
+    (fun piece => cubes.cubeSets scale piece.1 piece.2)
+    (fun cube => mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+    (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g)
+    hweight R (hR scale hscale) hcubeWeighted
+  have hfactor : 0 ≤ (B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u :=
+    mul_nonneg (Nat.cast_nonneg B) hA
+  calc
+    (∫ z : WaveSpaceTime,
+      mssFineCubePacketSquareFunction D cubes scale f z ^ 2 * ‖g z‖
+      ∂continuumLightRayMeasure) ≤
+        ((B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u) *
+          ∫ y : Euclidean 2,
+            continuumFineAssignedCubeWeightedEnergy
+              (mssFinePieceIndices D scale)
+              (fun piece => cubes.cubeSets scale piece.1 piece.2)
+              (fun cube =>
+                mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+              (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g) y := hraw
+    _ ≤ ((B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u) *
+        ((R : Real) * ∫ y : Euclidean 2,
+          continuumFineCubeWeightedEnergy
+            (mssFinePieceIndices D scale)
+            (fun piece => cubes.cubeSets scale piece.1 piece.2)
+            (fun cube =>
+              mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+            (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g) y) :=
+      mul_le_mul_of_nonneg_left hcollapse hfactor
+    _ = ((B : Real) * ∫ u : Euclidean 2, lightRayDecayProfile N u) * (R : Real) *
+        ∫ y : Euclidean 2,
+          continuumFineCubeWeightedEnergy
+            (mssFinePieceIndices D scale)
+            (fun piece => cubes.cubeSets scale piece.1 piece.2)
+            (fun cube =>
+              mssFineNormalizedCubeInput D cubes kernelConstant scale cube f)
+            (lightRayMaximal (cubes.cubeWidth * Real.sqrt scale)⁻¹ N g) y := by
+      ring
+
+/-- The literal analysis-projected cube packet square function is exactly the
+canonical MSS fine square function.  The only non-definitional input is the
+finite packetwise synthesis identity for each active radial--angular label. -/
+theorem mssFineCubePacketSquareFunction_eq_mssFineSquareFunction
+    (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
+    (scale : Real) (hscale : 2 ≤ scale)
+    (f : SchwartzMap (Euclidean 2) Complex) :
+    mssFineCubePacketSquareFunction D cubes scale f =
+      mssFineSquareFunction D.toMSSWavefrontCutoffData scale
+        (f : Euclidean 2 → Complex) := by
+  funext z
+  unfold mssFineCubePacketSquareFunction mssFineSquareFunction
+    fineSquareFunction angularRadialSquareFunction
+  apply congrArg Real.sqrt
+  apply Finset.sum_congr rfl
+  intro n hn
+  apply Finset.sum_congr rfl
+  intro nu hnu
+  rw [show
+    (∑ cube ∈ cubes.cubeSets scale n nu,
+      mssFineCubePacket D cubes scale n nu cube
+        (fourierCubeProjectedSchwartz (cubes.analysisCutoff scale cube) f) z) =
+      angularPiece scale (D.radialTime.amplitude : Euclidean 2 → Complex)
+        (D.chi scale nu) (D.radialTime.time : Real → Complex)
+        (radialPiece (D.radialTime.radial : Real → Complex) scale n
+          (f : Euclidean 2 → Complex)) z by
+      exact congrFun
+        (sum_mssFineCubePacket_analysisProjected_eq_mssFineAngularPiece
+          D cubes scale hscale n nu hn hnu f) z]
 
 /-- The synthesis clause of `MSSFineAngularData` reconstructs one actual
 unprojected radial fine summand.  This is only the exact finite Fourier
@@ -32557,22 +33956,6 @@ theorem sum_mssFineAngularPiece_eq_conicOperator
     exact hxi (by simp [hzero])
   · exact hintegrable
 
-/-- The structured fine square-function target in the MSS blueprint.  Unlike
-the older raw helper below, it is bound to the smooth scale-indexed packet
-profiles and a scale-uniform cube decomposition.  This excludes arbitrary
-bounded angular functions, which need not define uniformly bounded `L⁴`
-Fourier multipliers. -/
-def mssFineSquareFunctionEstimate (D : MSSWavefrontKernelData)
-    (_A : MSSFineAngularData D.toMSSWavefrontCutoffData)
-    (_cubes : MSSCubeDecomposition D) : Prop :=
-  ∀ η : Real, 0 < η → ∃ C : Real, 0 < C ∧
-    ∀ scale : Real, 2 ≤ scale → ∀ f : SchwartzMap (Euclidean 2) Complex,
-      eLpNorm (mssFineSquareFunction D.toMSSWavefrontCutoffData scale
-          (f : Euclidean 2 → Complex))
-          (4 : ENNReal) volume ≤
-        ENNReal.ofReal (C * scale ^ η) *
-          eLpNorm (f : Euclidean 2 → Complex) (4 : ENNReal) volume
-
 /-- A legacy raw recombination hypothesis for independently supplied cutoff
 families.  It remains useful for the conditional assembly lemmas below, but
 is not the structured MSS endpoint route: use `MSSWavefrontKernelData`,
@@ -32596,7 +33979,7 @@ def recombination (radialCutoff : Real → Complex)
 /-- A legacy raw fine-square hypothesis for independently supplied cutoff
 families.  It is intentionally only a `Prop`: without scale-indexed angular
 geometry and synthesis data it is not an MSS theorem.  The active structured
-target is `mssFineSquareFunctionEstimate` above. -/
+target is `mssFineSquareFunctionEstimate` in `MSS.lean`. -/
 def fineSquareFunctionEstimate
     (radialIndices angularIndices : Real → Finset Int)
     (radialCutoff : Real → Complex)
