@@ -54,9 +54,9 @@ end RestrictedDilations
 
 namespace PowerWeights
 
-/-- Thm. 1.1 of arXiv:2602.17613 for `d ≥ 2`. -/
+/-- Thm. 1.1 of arXiv:2602.17613 for `d ≥ 3`. -/
 theorem closure_typeSet_eq
-    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
+    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
     closure (typeSet d E) = admissibleRegion d E :=
   Codex.Spherical.PowerWeights.PowerWeightTheorem.closure_typeSet_eq hd hE hEpos
 
