@@ -1,5 +1,16 @@
 # Bourgain circular maximal formalization — error report
 
+## 2026-08-24 07:39:55 -04:00
+
+`MSSWavefrontRawProfileRealization.radialProfile_apply` was quantified over
+all real scales, although every consumer works at a positive (indeed at least
+two) scale. At `scale = 0` and `n = 0`, its displayed identity forces a
+Schwartz map on `Euclidean 2` to be the constant function `radial 0 = 1`
+(the radial cutoff is one at zero). Such a map cannot be Schwartz. The
+raw-realization interface must therefore require `0 < scale` for this
+identity; its existing source consumers already carry that fact. This is a
+formal interface inconsistency, not a discrepancy in the MSS argument.
+
 ## 2026-08-22 12:51:53 -04:00
 
 The tempting replacement of the missing fine Fourier-cube `L⁴` square-function
@@ -1231,3 +1242,424 @@ and time-only `L⁴` Young.  The constant is
 counts.  Extending the raw Fourier definition to arbitrary measurable `L⁴`
 families would require a separately proved operator extension and agreement
 theorem; it is not asserted here.
+
+## 2026-08-22 15:01:36 -04:00
+
+The existing scaled-ray localization results do not instantiate the literal
+MSS fine-cube kernel. They concern `angularDyadicCubeSpaceTimeKernel` with a
+dyadic-bandpass factor and require a cube centered exactly at
+`scale • direction`, together with explicit uniform high-order residual
+seminorm (or derivative-integral) bounds. In contrast,
+`mssFineCubeHalfWaveKernel` uses
+`cube.cutoff * D.spatialProfile * halfWaveMultiplier`; its cubes are only
+known to lie within `O(sqrt scale)` of the packet ray, and no theorem equates
+that literal symbol with the angular-dyadic one. The decomposition's cutoff
+derivative bounds also do not control derivatives of the product with the
+scale-indexed spatial profile.
+
+This is a genuine mathematical gap, not only an API gap: the current
+wavefront data impose no scale-uniform derivative/size budget on the angular
+cutoffs beyond support, so their spatial profiles and literal fine kernels
+can be rescaled with the MSS scale while preserving the structural fields.
+Thus a scale-independent `kernelConstant` or `massConstant` cannot follow
+from `MSSWavefrontKernelData` and `MSSCubeDecomposition` alone.
+
+A valid next bridge must supply an exact literal-kernel/source representation,
+ray-centered cutoff geometry (or a controlled enlargement), and uniform
+high/zero residual bounds with a scale-independent coefficient. Once such
+domination is available at decay order `N > 2`, source integrability and a
+mass bound follow from the existing light-ray-kernel mass theorem.  A later
+audit established that the literal source representation and individual
+source integrability themselves are automatic from the current compact
+annular data; the remaining nonautomatic localization clauses are precisely
+uniform ray domination and its uniform source mass.
+
+## 2026-08-22 15:23:00 -04:00
+
+The available analysis-cube regularity does not prove the missing averaged
+Rademacher `L4` estimate.  It supplies support, square overlap, and normalized
+derivative `L1` bounds, whereas the existing Mikhlin API needs uniform
+pointwise weighted derivative bounds.  For fine cubes of width
+`sqrt scale` at frequency `scale`, the ordinary first Mikhlin quantity is
+typically of size `sqrt scale`, so that route is not scale-uniform.  Existing
+Littlewood--Paley/Rademacher results are restricted to the repository's
+integer-dyadic cutoff family and provide no bridge to arbitrary translated
+fine cubes.
+
+Accordingly the next analytic input must be a genuine finite smooth
+Rubio/random-sign `L4` theorem (or precisely the existing
+`HasScaleAverageMSSAnalysisCubeRademacherL4` hypothesis).  It must be an
+averaged result: the deterministic-sign substitute is already known to be
+false.  No current structural cube regularity field supplies this theorem.
+
+## 2026-08-22 15:23:00 -04:00
+
+The literal HLE duality closure uses tests supported on
+`lightRayTimeInterval`.  General `MSSRadialTimeCutoffs` records only compact
+support for the physical time cutoff, not support in that fixed slab.  The
+new source-compiled closure therefore takes the honest additional condition
+`D.HasLightRayTimeSlabSupport`.  Removing it from the final MSS route will
+require a proved finite temporal partition/translation reduction from an
+arbitrary compact time cutoff to the fixed HLE slab; such a reduction is not
+currently present and must not be silently inferred from compactness.
+
+## 2026-08-23 21:35:07 -04:00
+
+The current structured target `mssFineSquareFunctionEstimate` is still too
+weakly specified to be a true unconditional proposition.  In particular,
+`MSSFineAngularData` gives only sector support, a complex-valued partition,
+and `‖chi‖ ≤ 1`; it supplies no uniform rescaled derivative or fixed-template
+control.  At a sequence of scales one can insert arbitrarily rapid smooth
+chirps into two overlapping angular cutoffs, keeping their sum equal to one
+and each norm at most one.  The resulting `spatialProfile` remains Schwartz
+at each individual scale and all present cube-geometry fields remain valid,
+but the corresponding packet multiplier has an unbounded `L4` norm relative
+to every fixed subpower scale loss.
+
+This differs from the blueprint's fixed smooth cube partition and its
+uniformly rescaled packet amplitudes.  A genuine final theorem therefore
+needs those quantitative cutoff/profile assumptions (and a structured
+equal-cube Rubio input), not merely the current support and zero-order
+fields.  The existing conditional localization and averaged-cube hypotheses
+remain honest until that interface and analytic proof are supplied.
+
+## 2026-08-23 22:00:54 -04:00
+
+The structured fine-square target was moved to `MSS.lean` and corrected to
+take two necessary structural hypotheses: the scale-uniform natural-packet
+`L1` derivative bounds in `MSSFineSpatialProfileUniformRegularity`, and
+`D.HasLightRayTimeSlabSupport`.  The former prevents the scale-dependent
+angular chirps identified above and implies the existing polynomial profile
+regularity interface; the latter is exactly the fixed time-slab premise used
+by the existing light-ray-maximal closure.  Neither is a disguised
+square-function or kernel-localization conclusion.
+
+This makes the proposition's statement honest, but it remains `ToDo`.
+What is still required is a proved smooth equal-cube/Rubio `L4` input and
+literal fine-kernel light-ray domination (or a fully formalized replacement);
+arbitrary `MSSCubeDecomposition` data alone establish neither one.
+
+## 2026-08-23 22:06:28 -04:00
+
+`Status.md` previously marked `thm:fourier-cube-square-function` as proved,
+but the cited declaration `fourierCubeSquareFunction` is only a definition.
+The current unconditional API proves the corresponding `L2` estimate from
+square overlap; the `L4` routes are explicitly conditional on all-sign or
+averaged Rademacher hypotheses.  In particular, the existing Mikhlin and
+integer-dyadic Littlewood--Paley results do not establish the translated
+natural-scale equal-cube estimate needed by MSS.  The status entry has been
+corrected to `ToDo` so the remaining analytic input is not obscured.
+
+## 2026-08-23 22:20:14 -04:00
+
+The literal fine-kernel route is now reduced to one honest analytic premise.
+`MSS.lean` proves that every actual fine-cube multiplier is compact smooth,
+that its packet has the displayed source-kernel representation, and that a
+literal light-ray pointwise bound automatically supplies all fields of
+`MSSFineCubeKernelLocalization`, including source mass.  It also proves the
+exact residual-symbol translation and derives that light-ray pointwise bound
+from uniform order-zero and order-`N` inverse-Fourier residual seminorms.
+
+The latter seminorm bounds have not been proved from the present data.  Their
+proof needs generic natural-scale product/Leibniz and residual-phase estimates
+for the actual `cube.cutoff * spatialProfile` symbol.  Thus the new bridge is
+not a replacement for nonstationary phase; it precisely identifies the
+remaining argument.  The updated `MSS` source and the full
+`LeanSpherical.Codex.Spherical.MSS` module build both compile without
+`sorry`, `admit`, or added axioms.
+
+## 2026-08-23 22:29:39 -04:00
+
+The first residual-decay bridge was too strong at one point: it requested
+inverse-Fourier residual seminorms for every space--time point.  That cannot
+be derived from the literal residual symbol, because differentiating its
+plane-wave phase grows with unbounded physical time, while the outer physical
+time cutoff only makes the *actual kernel* vanish outside its support.
+
+The source-compiled bridge now requests residual seminorm or derivative-
+integral bounds only for `z.2 ∈ lightRayTimeInterval`, under the explicit
+`HasLightRayTimeSlabSupport` hypothesis.  It splits the conclusion into the
+slab case, where Fourier integration by parts applies, and the complementary
+case, where the outer time factor is exactly zero.  A nonnegative residual
+constant is now explicit because it is needed to compare that zero value with
+the nonnegative light-ray envelope.  This corrects the scope of the remaining
+phase/product estimate; it does not prove that estimate or the separate
+smooth equal-cube `L4` input.
+
+## 2026-08-23 22:51:07 -04:00
+
+The original Fourier-integration-by-parts residual wrapper was mathematically
+valid but not natural-scale: its right side used an unweighted sum of all
+frequency derivatives.  Natural packet estimates give the order-`j` integral
+at size `R^(2-j)` for the cube radius `R`, so the unweighted sum is dominated
+by its zeroth-order `R^2` term and cannot yield the desired order-`N`
+physical decay.
+
+`MSS.lean` now proves `fourierInv_seminorm_le_scaled_derivativeIntegrals`,
+which first rescales frequency by `R` and gives
+`2^N * R^(-N) * sum_{j <= N} R^j * integral ||D^j q||`.  Its new literal
+residual wrapper consumes exactly the corresponding weighted bound
+`2^N * sum R^j * integral ||D^j q|| <= A * R^2`, on the fixed time slab,
+and derives the light-ray kernel estimate.  This corrects the scale of the
+endpoint.  It still leaves the genuinely analytic product/phase derivative
+bound and the independent smooth equal-cube `L4` theorem to prove.
+
+## 2026-08-23 23:04:01 -04:00
+
+The blueprint's Fourier-cube theorem is specifically a fixed smooth lattice
+partition, whereas `MSSAnalysisCubeRegularity` currently records only support
+in equal-size coordinate cubes, a pointwise square-overlap bound, and scaled
+`L1` derivative integrals.  Those fields do not encode lattice indexing,
+geometric finite overlap, a nondegenerate core, or a common translated/dilated
+prototype.  For example, arbitrarily many scaled copies of one bump at the
+same center satisfy the present square-overlap and derivative requirements
+after reducing their amplitudes; therefore the usual finite-colouring and
+fixed-prototype Rubio argument cannot even be stated from this record.
+
+This is not a counterexample to every conceivable abstract `L4` conclusion,
+but it is a genuine interface discrepancy: deriving such a conclusion from
+the present fields would require a new generalized vector-valued Rubio theorem.
+The appropriate repair is a fixed-lattice/prototype atlas (or an equivalent
+disjoint-core, bounded-enlargement, uniform-symbol formulation), followed by
+an actual proof of the smooth equal-cube Rubio estimate.  Mathlib and this
+repository currently contain neither that theorem nor the BMO/vector-valued
+Calderon--Zygmund infrastructure of its standard proof.  The status of
+`thm:fourier-cube-square-function` must therefore remain `ToDo`.
+
+## 2026-08-24 02:22:05 -04:00
+
+The exact fixed-lattice part of the Fourier-cube argument is now
+source-proved in `MSS.lean`.  The public theorem
+`latticeFourierCubeSquareFunction_lintegral_four` gives the uniform fourth
+moment estimate for every finite selected family of translated/dilated copies
+of one Schwartz prototype on the common `R Z^2` lattice.  The accompanying
+`MSSAnalysisCubeLatticeData` interface and
+`uniformScaleMSSAnalysisCubeSquareFunctionL4_of_lattice` theorem transfer
+that estimate to an MSS analysis-cube family when its cutoffs are exactly that
+lattice model.
+
+This does not remove the discrepancy recorded above: no current constructor
+derives `MSSAnalysisCubeLatticeData` from `MSSCubeDecomposition` and
+`MSSAnalysisCubeRegularity`.  Completing the blueprint item still requires a
+canonical finite smooth lattice partition of the active annulus (or a proved
+generalized equal-cube Rubio theorem for the weaker abstract record).  The
+ledger therefore remains `ToDo`, but no longer describes the fixed-lattice
+case as merely conditional.
+
+## 2026-08-24 02:47:09 -04:00
+
+The first missing construction layer is now source-verified in `MSS.lean`:
+`mssUnitLatticeTransitionPiece(t) = smoothTransition(t + 1) -
+smoothTransition(t)` supplies a compact smooth one-dimensional integer
+partition, and its tensor product supplies a planar synthesis prototype.
+The file proves its coordinate-cube support, compact Schwartz realization,
+finite product-indexed lattice partition identity, and unit square-overlap.
+A radius-three `ContDiffBump` gives a fixed Schwartz analysis prototype which
+equals one on the synthesis support, so the exact cutoff absorption identity
+is also proved.
+
+This is only the common fixed-prototype layer.  It does not yet construct the
+scale-dependent finite global grid, per-packet cube sets, bounded packet
+fibers, reverse overlap, ray alignment, or derivative fields required by
+`MSSCubeDecomposition`; the Fourier-cube blueprint row must remain `ToDo`.
+
+## 2026-08-24 02:59:52 -04:00
+
+The spatial geometric prerequisite for the canonical cube construction is now
+source-proved.  `mss_spatialProfile_center_ne_packet_ray` shows directly from
+the literal `spatialProfile` formula, annular amplitude support, radial
+window, angular-sector support, and unit direction that every nonzero packet
+frequency lies within
+`(2 * angularConstant + 11 / 4) * sqrt scale` of its radial--angular ray
+center.  This removes the previously missing support-to-ray-ball step.
+
+The remaining construction is genuinely combinatorial/geometric: choose a
+finite global lattice at each scale, select the bounded local cube set for
+each packet, and prove its uniform reverse-overlap bound from the separated
+angular geometry.  No such `MSSCubeDecomposition` constructor has yet been
+verified, so the ledger remains `ToDo`.
+
+## 2026-08-24 03:19:04 -04:00
+
+The finite combinatorial grid layer is now source-verified in `MSS.lean`.
+The construction enumerates `[-M,M]^2` by an injective finite label map,
+proves the coordinatewise inverse for every bounded integer label, and embeds
+each packet's fixed local offset grid around
+`floor (n * direction)` injectively into the scale-dependent global grid.
+The embedding uses the proved radial-index and unit-direction bounds, so its
+target is genuinely finite at every active scale.
+
+This is meaningful progress toward the required canonical cube family, but
+it is not yet an `MSSCubeDecomposition`: the finite-grid sum still needs to
+be reindexed into the synthesis identity, and the record's global overlap,
+derivative, ray-alignment, and reverse-incidence fields must be proved. In
+particular, the uniform reverse-incidence proof must use separated angular
+geometry, rather than the weaker cardinality data in `MSSWavefrontKernelData`
+alone. The Fourier-cube row therefore remains `ToDo`.
+
+## 2026-08-24 03:48:30 -04:00
+
+The canonical finite lattice construction is now almost completely
+source-verified in `MSS.lean`. Its cube cutoffs have unit global square
+overlap, exact synthesis/analysis absorption, all-order normalized derivative
+bounds, and exact packet reconstruction via the embedded local lattice grid.
+The selected cube sets have uniformly bounded cardinality, and every selected
+center lies within
+`2 * (localLatticeRadius + 1) * sqrt scale` of its packet ray. The enlarged
+analysis family is also proved to be the exact one-prototype lattice model
+needed by `uniformScaleMSSAnalysisCubeSquareFunctionL4_of_lattice`.
+
+All `MSSCubeDecomposition` fields except reverse incidence now assemble in
+the verified constructor
+`mssCanonicalCubeDecomposition_of_reverseOverlap`; its explicit premise is
+precisely the remaining uniform reverse-overlap count. This premise cannot
+follow from `MSSWavefrontKernelData` alone, since that interface has only an
+angular cardinality bound. It must be derived from the separated geometry in
+`MSSFineAngularData`. The ledger remains `ToDo` until that final geometric
+count is source-proved.
+
+## 2026-08-24 04:18:42 -04:00
+
+The final reverse-incidence condition has now been source-proved from
+`MSSFineAngularData`.  For two packets sharing a canonical lattice cube,
+their normalized ray points are uniformly close.  At scales with
+`sqrt scale >= 12`, radial relevance makes both labels positive and comparable
+to `sqrt scale`; radial distance and the separated angular geometry then put
+both labels in a fixed integer box.  At the bounded remaining scales, direct
+radial relevance and the sector-radius label bound give the same conclusion.
+Injecting each fixed-cube fiber into that box proves a scale-independent
+reverse-overlap constant.
+
+Consequently `mssCanonicalCubeDecomposition` is now a complete finite
+`MSSCubeDecomposition`, its enlarged cutoffs have
+`mssCanonicalCubeAnalysisLatticeData`, and
+`mssCanonicalCube_uniformAnalysisL4` applies the proved fixed-lattice
+fourth-moment theorem.  This resolves the canonical-lattice interface gap in
+the Fourier-cube blueprint item.  It does not by itself prove the separate
+literal fine-kernel residual product/phase estimate needed for the subsequent
+fine-square-function proposition.
+
+## 2026-08-24 05:25:06 -04:00
+
+The remaining fine-square-function assembly is now source-proved in
+`MSS.lean`.  The canonical cubes satisfy the literal residual-phase kernel
+localization, their enlarged analysis cutoffs satisfy the direct lattice
+fourth-moment estimate, and the light-ray maximal estimate supplies the
+continuum fourth-moment bound.  The final conversion rewrites the literal
+packet fourth moment into the `eLpNorm` formulation and absorbs the
+three-halves logarithmic factor into an arbitrary scale power.  The new
+theorem `mssFineSquareFunctionEstimate_of_canonicalData` has been compiled as
+source and module output and audited to use only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+## 2026-08-24 05:27:10 -04:00
+
+The legacy `recombination` predicate in `MSSBase.lean` is not a valid
+unconditional formulation of blueprint Proposition `prop:mss-recombination`.
+It quantifies arbitrary radial-index, angular-index, and angular-cutoff
+families but assumes no radial--angular reconstruction relation. In
+particular, choosing the radial index family to be empty makes its fine
+square function identically zero while leaving a nonzero conic operator on
+the left; the asserted arbitrarily rapidly decaying error cannot then hold
+at large scales. The predicate must be replaced or bridged by a structured
+recombination theorem whose data include the actual radial-time localization,
+vertical cutoff, angular partition, and finite reconstruction identities.
+
+This is a defect in the current formal interface, not in the MSS argument.
+The mathematical recombination proof remains the standard sequence of
+radial-time localization, vertical recombination, wave-front localization,
+plate-overlap square-function control, removal of vertical projections, and
+the now-proved fine square-function estimate.
+
+## 2026-08-24 06:40:01 -04:00
+
+The corrected structured interface is now proved by
+`Codex.Spherical.MSS.mssRecombination_of_structuredData`.  It proves
+`mssRecombination` from the fixed cutoff core, the scale-indexed angular
+partition, the admissible gamma-family of wave-front realizations, and the
+declared uniform/slab data.  The proof uses the exact angularized
+radial-time reconstruction, the outer vertical `1/8` estimate, the
+wave-front/plate-overlap auxiliary estimate at decay order `N + 1`, and the
+literal radial-time residual at order `N`; the extra inverse scale power
+absorbs the outer vertical loss.
+
+The theorem was source-compiled and module-built, and its axiom audit reports
+only `propext`, `Classical.choice`, and `Quot.sound`.  It deliberately does
+not claim the legacy unstructured `recombination` predicate from the prior
+entry, which remains false for the stated reason.  This resolves blueprint
+`prop:mss-recombination` through the repaired, mathematically faithful
+interface; the separate `thm:mss-p4` statement remains unfinished.
+
+## 2026-08-24 13:41:49 -04:00
+
+`Codex.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs` is now source-compiled
+and module-built.  For every `C : lpCutoffs 2`, it proves the existing target
+predicate `p4LocalSmoothing C.cutoff`: the positive half-wave is reconstructed
+from the finite coarse conic atlas, and the negative half-wave is transported
+by reflected-conjugate Fourier symmetry.  Its declaration-level axiom audit
+reports only `propext`, `Classical.choice`, and `Quot.sound`.
+
+This supersedes the final sentence of the preceding checkpoint: blueprint
+`thm:mss-p4` is complete.  This checkpoint does not promote the separately
+listed all-exponent local-smoothing, discretization, Bourgain, or diagonal
+theorems; those labels require their own verified downstream declarations.
+
+## 2026-08-24 13:48:00 -04:00
+
+The verified endpoint now has the public all-exponent consumer
+`Codex.Spherical.MSS.localSmoothing_of_lpCutoffs`.  For every
+`C : lpCutoffs 2`, `2 < p`, and `0 < eta`, it applies the existing proved
+endpoint interpolation theorem to `p4LocalSmoothing_of_lpCutoffs C` and
+concludes `localSmoothing C.cutoff p eta`.
+
+The new declaration source-compiles, the top-level
+`LeanSpherical.Theorems` build succeeds through the Bourgain and diagonal
+imports, and its axiom audit reports only `propext`, `Classical.choice`, and
+`Quot.sound`.  This supersedes the immediately preceding caution for the
+all-exponent row: blueprint `thm:mss-local-smoothing` is complete.  No claim
+about the separately formulated discrete theorem is made here.
+
+## 2026-08-24 13:57:41 -04:00
+
+The remaining continuous chain is now closed unconditionally.  The new
+`Codex.Spherical.Bourgain.bourgainCircularMaximal` chooses a dimension-two
+`lpCutoffs` witness from `exists_lpCutoffs` and applies
+`p4LocalSmoothing_of_lpCutoffs`; it proves the circular maximal
+Schwartz-core bound for every finite exponent greater than two.  The new
+`Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le_of_mss`
+uses that closure to supply the all-radii diagonal estimate for every
+dimension at least two, and the public facade
+`Spherical.eLpNorm_sphericalMaximal_le_of_mss` exposes it without changing
+the pre-existing dimension-at-least-three theorem.
+
+Direct source compiles of `Bourgain.lean`, `DiagonalTheorem.lean`, and
+`Theorems.lean`, followed by the `LeanSpherical.Theorems` module build, all
+pass.  Declaration-level audits of the Bourgain, diagonal, and public facade
+theorems report only `propext`, `Classical.choice`, and `Quot.sound`.  This
+resolves `thm:intro-bourgain`, `cor:bourgain-final`, and the final requested
+integration.  The separately formulated sampled-time
+`cor:mss-discrete` remains a distinct open transaction.
+
+## 2026-08-24 16:00:45 -04:00
+
+The user updated the remaining public wrappers in `LeanSpherical/Theorems.lean`
+from `3 ≤ d` to `2 ≤ d`. The all-radii wrapper is now genuinely supported:
+`DiagonalTheorem.eLpNorm_sphericalMaximal_le` has a planar branch using the
+proved unconditional Bourgain/MSS theorem and retains the prior `d ≥ 3`
+branch.
+
+The other three updated wrappers are not consequences of that result and
+must not be weakened by an unproved Codex adapter. The planar restricted
+strong theorem requires the global `1 < p < 2` fractal-radius estimate; the
+existing finite physical-CZ/selector route explicitly requires codimension
+at least two (ambient `d ≥ 3`). The lacunary theorem has the same missing
+planar moving-band `L²` selector core for `1 < p ≤ 2`. Finally,
+`PowerWeightTheorem.closure_typeSet_eq` is the full weighted Theorem 1.1,
+whose negative-weight subquadratic branch depends on those missing planar
+global estimates, not merely on Bourgain's unweighted full-radius `p > 2`
+bound.
+
+Direct compilation of the updated facade therefore passes the all-radii
+line but still fails exactly at the restricted, lacunary, and power-weight
+wrappers. Completing the requested `d ≥ 2` façade requires a separate
+formalization of those planar global/weighted results.

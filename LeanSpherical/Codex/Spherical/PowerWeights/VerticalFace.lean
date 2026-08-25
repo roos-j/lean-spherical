@@ -30,7 +30,7 @@ open Filter Set Topology
 noncomputable section
 
 theorem verticalInterior_mem_closure_of_strict_upper
-    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ)
+    {d : Nat} (hd : 2 ≤ d) (E : Set ℝ)
     (hstrict : ∀ {p α : ℝ}, 1 < p →
       max ((α : EReal) + multiplicativeMinkowskiExponent E)
         (multiplicativeLegendreAssouadExponent E
@@ -127,7 +127,7 @@ theorem verticalInterior_mem_closure_of_strict_upper
 /-- The top endpoint of the vertical face follows by approaching it through
 the already established interior points. -/
 theorem verticalTop_mem_closure_of_strict_upper
-    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ)
+    {d : Nat} (hd : 2 ≤ d) (E : Set ℝ)
     (hstrict : ∀ {p α : ℝ}, 1 < p →
       max ((α : EReal) + multiplicativeMinkowskiExponent E)
         (multiplicativeLegendreAssouadExponent E
@@ -166,7 +166,7 @@ theorem verticalTop_mem_closure_of_strict_upper
 /-- The strict finite-parameter upper estimate fills the full vertical
 limiting face after closure. -/
 theorem verticalFace_subset_closure_of_strict_upper
-    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ)
+    {d : Nat} (hd : 2 ≤ d) (E : Set ℝ)
     (hstrict : ∀ {p α : ℝ}, 1 < p →
       max ((α : EReal) + multiplicativeMinkowskiExponent E)
         (multiplicativeLegendreAssouadExponent E

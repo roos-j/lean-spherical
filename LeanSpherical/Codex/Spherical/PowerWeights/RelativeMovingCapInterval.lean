@@ -1767,7 +1767,7 @@ theorem exists_restrictedRelativeBandpass_intervalCover_cap_shell_lintegral_rpow
 /-- The entropy-cover square estimate in the exact continuum restricted
 operator convention. -/
 theorem restrictedRelativeBandpass_lintegral_two_le_of_entropy
-    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n : Nat} (hn : 1 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
@@ -1788,7 +1788,7 @@ theorem restrictedRelativeBandpass_lintegral_two_le_of_entropy
       (N : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
           2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)) *
@@ -1805,7 +1805,7 @@ theorem restrictedRelativeBandpass_lintegral_two_le_of_entropy
               𝓕 (g : Euclidean (n + 1) → ℂ) xi) x‖ ^ (2 : ℕ))
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)
   let D : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((n : ℝ) / 2))
@@ -1863,7 +1863,7 @@ theorem restrictedRelativeBandpass_lintegral_two_le_of_entropy
     _ = (N : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
           2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)) *
@@ -1872,7 +1872,7 @@ theorem restrictedRelativeBandpass_lintegral_two_le_of_entropy
 
 /-- The entropy square estimate transferred to one weighted cap shell. -/
 theorem restrictedRelativeBandpass_cap_shell_lintegral_two_le_of_entropy
-    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n : Nat} (hn : 1 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
@@ -1896,7 +1896,7 @@ theorem restrictedRelativeBandpass_cap_shell_lintegral_two_le_of_entropy
         ((N : ENNReal) * ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))) *
@@ -1908,7 +1908,7 @@ theorem restrictedRelativeBandpass_cap_shell_lintegral_two_le_of_entropy
     ((N : ENNReal) * ENNReal.ofReal
       (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
         2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
               (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)))
@@ -1922,7 +1922,7 @@ set_option maxHeartbeats 800000 in
 output keeps the finite cover visible, so later annular summation can use the
 sharp cap tail rather than a cardinality-only estimate. -/
 theorem exists_restrictedRelativeBandpass_entropyCap_shell_lintegral_rpow_le
-    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n : Nat} (hn : 1 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
@@ -1950,7 +1950,7 @@ theorem exists_restrictedRelativeBandpass_entropyCap_shell_lintegral_rpow_le
         let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
@@ -1999,7 +1999,7 @@ theorem exists_restrictedRelativeBandpass_entropyCap_shell_lintegral_rpow_le
     ((N : ENNReal) * ENNReal.ofReal
       (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
         2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
               (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)))
@@ -2481,7 +2481,7 @@ theorem restrictedRelativeBandpass_cap_shell_lintegral_two_le_of_entropy_nonneg
         ((N : ENNReal) * ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))) *
@@ -2493,12 +2493,12 @@ theorem restrictedRelativeBandpass_cap_shell_lintegral_two_le_of_entropy_nonneg
     ((N : ENNReal) * ENNReal.ofReal
       (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
         2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
               (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)))
     (fun g => restrictedRelativeBandpass_lintegral_two_le_of_entropy
-      hn C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm
+      (by omega : 1 ≤ n) C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm
       j E hE hEne δ N hN hδ g)
     hs hα ha f hfsupport
 
@@ -2849,7 +2849,7 @@ theorem exists_restrictedRelativeBandpass_entropyCap_shell_lintegral_rpow_le_non
         let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
@@ -2898,14 +2898,14 @@ theorem exists_restrictedRelativeBandpass_entropyCap_shell_lintegral_rpow_le_non
     ((N : ENNReal) * ENNReal.ofReal
       (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
         2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
               (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)))
     hj hEne hE hRordered hRends hRlength hRcover hs hRsmall hα ha hab hsa
     hp1 hp2 hτ hfsupport
     (fun g => restrictedRelativeBandpass_lintegral_two_le_of_entropy
-      hn C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm
+      (by omega : 1 ≤ n) C0 C1 hC0 hC1 hdecay hderiv phi hphi_one hphi_zero hphi_norm
       j E hE hEne δ N hN hδ g)
 
 end

@@ -122,12 +122,12 @@ theorem global_continuum_weak_one_of_uniform_finite_physical_blocks
     continuum_weak_one_restrictedRelativeBandpassSphericalMaximal_of_uniform_finite_physical_blocks
       E hEpos phi N W (hfinite N hN)
 
-/-- In dimensions at least three, the uniform finite physical-block C--Z
+/-- In dimensions at least two, the uniform finite physical-block C--Z
 weak estimate is sufficient for the global unweighted restricted-dilation
 strong estimate below the quadratic exponent.  This is the direct endpoint
 adapter for a shifted finite physical C--Z theorem. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_finite_physical_CZ_weak_one_dim
-    {d : Nat} (hd : 3 ≤ d) (E : Set Real) (hEne : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set Real) (hEne : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : Real))
     {p beta : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hM : multiplicativeMinkowskiExponent E < (beta : EReal))

@@ -7,6 +7,8 @@ import LeanSpherical.Codex.Spherical.PowerWeights.GlobalFinitePhysicalCZBridge
 import LeanSpherical.Codex.Spherical.PowerWeights.GlobalUnweightedParameters
 import LeanSpherical.Codex.Spherical.PowerWeights.StrictNegativeEndpoint
 import LeanSpherical.Codex.Spherical.PowerWeights.StrictUnweightedParameters
+import LeanSpherical.Codex.Spherical.PowerWeights.InfinityPoint
+import LeanSpherical.Codex.Spherical.Bourgain
 open Codex.Spherical.PowerWeights.Admissibility
 open Codex.Spherical.PowerWeights.CentralLowpass
 open Codex.Spherical.PowerWeights.DilationStrongType
@@ -21,6 +23,9 @@ open Codex.Spherical.PowerWeights.StrictNegativeEndpoint
 open Codex.Spherical.PowerWeights.StrictUnweightedParameters
 open Codex.Spherical.PowerWeights.ThinRadialPartition
 open Codex.Spherical.PowerWeights.TypeSet
+open Codex.Spherical.SurfaceCore
+open Codex.Spherical.PowerWeights.RestrictedMaximal
+open MeasureTheory
 
 
 
@@ -43,6 +48,13 @@ open Set Topology
 
 noncomputable section
 
+/-- Bourgain's planar full-radius bound gives the unweighted restricted
+strong type estimate above the circular threshold. -/
+theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_bourgain
+    (E : Set ℝ) (_hEpos : E ⊆ Ioi (0 : ℝ)) {p : ℝ} (hp : 2 < p) :
+    HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p 0 := by
+  exact _root_.Codex.Spherical.PowerWeights.InfinityPoint.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_bourgain E hp
+
 /-- The `d ≥ 3` form of the main theorem.  Its proof is built
 from the sharp lower tests, the localized weighted upper estimate, and the
 global-to-local reassembly developed in the companion files. -/
@@ -61,11 +73,11 @@ theorem power_weight_spherical_maximal_main
           hE hEpos hcritical
       exact
         hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_finite_physical_CZ_weak_one_dim
-          hd E hE hEpos hq hq2 hM
+          (by omega : 2 ≤ d) E hE hEpos hq hq2 hM
           (by simpa only [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
             using hbetacritical)
           (hfinite_weak_one_restrictedRelativeBandpassSphericalMaximal_of_shifted_physical_CZ
-            hd E hE hEpos)
+            (by omega : 2 ≤ d) E hE hEpos)
     · exact
         hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_two_le
           hd E (le_of_not_gt hq2)
@@ -73,7 +85,7 @@ theorem power_weight_spherical_maximal_main
     hd E hE hEpos hunweighted
   intro q alpha hq hq2 halpha hstrict
   exact hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_negative_subtwo
-    hd E hE hEpos hq hq2 halpha hstrict
+    (by omega : 2 ≤ d) E hE hEpos hq hq2 halpha hstrict
       (hunweighted hq
         (multiplicativeMinkowskiExponent_lt_critical_of_strict_implicit hstrict))
 

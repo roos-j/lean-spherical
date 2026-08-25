@@ -30,7 +30,7 @@ noncomputable section
 unweighted exponent strictly above the Minkowski threshold and a Bessel
 conjugation exponent below the codimension-one endpoint. -/
 theorem exists_positive_weight_interpolation_parameters
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p α : ℝ} (_hp : 1 < p) (hα : 0 ≤ α)
     (hstrict :
       max ((α : EReal) + multiplicativeMinkowskiExponent E)
@@ -45,7 +45,7 @@ theorem exists_positive_weight_interpolation_parameters
   let T : ℝ := m * (p - 1)
   have hm : 0 < m := by
     dsimp only [m]
-    have hdreal : (3 : ℝ) ≤ d := by exact_mod_cast hd
+    have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
     linarith
   have hM_nonneg : (0 : EReal) ≤ multiplicativeMinkowskiExponent E :=
     multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi hE hEpos

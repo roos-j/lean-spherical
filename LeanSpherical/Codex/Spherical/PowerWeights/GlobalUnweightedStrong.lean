@@ -32,11 +32,11 @@ open scoped ENNReal
 
 noncomputable section
 
-/-- In every dimension at least three, a literal continuum weak-one bound
+/-- In every dimension at least two, a literal continuum weak-one bound
 for every shifted entropy cover count gives the global unweighted restricted
 spherical maximal estimate below the quadratic exponent. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_continuum_weak_one_dim
-    {d : Nat} (hd : 3 ≤ d) (E : Set Real) (hEne : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set Real) (hEne : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : Real))
     {p beta : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hM : multiplicativeMinkowskiExponent E < (beta : EReal))
@@ -56,10 +56,10 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_mul
               W * (N j : ENNReal) * ENNReal.ofReal ((j : Real) + 1) *
                 ∫⁻ x, ENNReal.ofReal ‖g x‖) :
     HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p 0 := by
-  obtain ⟨k, rfl⟩ : ∃ k, d = k + 3 := Nat.exists_eq_add_of_le' hd
+  obtain ⟨k, rfl⟩ : ∃ k, d = k + 2 := Nat.exists_eq_add_of_le' hd
   obtain ⟨phi, C₀, C₁, hphi_compact, hphi_one, hphi_zero, hphi_norm,
     hC₀, hC₁, hdecay, hderiv⟩ := exists_global_unweighted_endpoint_data hd
-  have hn : 2 ≤ k + 3 - 1 := by omega
+  have hn : 1 ≤ k + 2 - 1 := by omega
   obtain ⟨W, hWpos, hWtop, hweak⟩ :=
     hweak_one phi hphi_one hphi_zero hphi_norm
   exact
@@ -72,7 +72,7 @@ constant is uniform in the radius set.  This is the form delivered by the
 Calderón--Zygmund cell argument, whose analytic constant is fixed before an
 entropy cover (and hence before its underlying radius set) is chosen. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_continuum_weak_one_dim
-    {d : Nat} (hd : 3 ≤ d) (E : Set Real) (hEne : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set Real) (hEne : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : Real))
     {p beta : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hM : multiplicativeMinkowskiExponent E < (beta : EReal))

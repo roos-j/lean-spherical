@@ -247,8 +247,8 @@ theorem ofReal_sq_mul_lintegral_rpow_Ioi_eq
 
 /-- The cubic high-amplitude power tail used by the rational splitting
 argument. -/
-theorem ofReal_cube_mul_rpow_div_eq
-    {u p : ℝ} (hu : 0 < u) (hp1 : 1 < p) (hp : p < 2) :
+theorem ofReal_cube_mul_rpow_div_eq_of_lt_three
+    {u p : ℝ} (hu : 0 < u) (hp1 : 1 < p) (hp3 : p < 3) :
     ENNReal.ofReal (u ^ (3 : ℕ)) * ENNReal.ofReal (u ^ (p - 3) / (3 - p)) =
       (ENNReal.ofReal (3 - p))⁻¹ * (ENNReal.ofReal u) ^ p := by
   have hp0 : 0 ≤ p := by linarith
@@ -266,8 +266,15 @@ theorem ofReal_cube_mul_rpow_div_eq
   rw [← ENNReal.ofReal_rpow_of_nonneg hu.le hp0]
   simp [div_eq_mul_inv, mul_comm]
 
-theorem ofReal_cube_mul_lintegral_rpow_Ioi_eq
-    {u p : ℝ} (hu : 0 ≤ u) (hp1 : 1 < p) (hp : p < 2) :
+theorem ofReal_cube_mul_rpow_div_eq
+    {u p : ℝ} (hu : 0 < u) (hp1 : 1 < p) (hp2 : p < 2) :
+    ENNReal.ofReal (u ^ (3 : ℕ)) * ENNReal.ofReal (u ^ (p - 3) / (3 - p)) =
+      (ENNReal.ofReal (3 - p))⁻¹ * (ENNReal.ofReal u) ^ p := by
+  exact ofReal_cube_mul_rpow_div_eq_of_lt_three hu hp1
+    (lt_trans hp2 (by norm_num))
+
+theorem ofReal_cube_mul_lintegral_rpow_Ioi_eq_of_lt_three
+    {u p : ℝ} (hu : 0 ≤ u) (hp1 : 1 < p) (hp3 : p < 3) :
     ENNReal.ofReal (u ^ (3 : ℕ)) *
       (∫⁻ t in Ioi u, (ENNReal.ofReal t) ^ (p - 4)) =
       (ENNReal.ofReal (3 - p))⁻¹ * (ENNReal.ofReal u) ^ p := by
@@ -281,8 +288,16 @@ theorem ofReal_cube_mul_lintegral_rpow_Ioi_eq
         congr 1
         ring_nf]
     rw [lintegral_rpow_Ioi_eq (p := p - 1) (by linarith) hu]
-    convert ofReal_cube_mul_rpow_div_eq hu hp1 hp using 1
+    convert ofReal_cube_mul_rpow_div_eq_of_lt_three hu hp1 hp3 using 1
     all_goals ring_nf
+
+theorem ofReal_cube_mul_lintegral_rpow_Ioi_eq
+    {u p : ℝ} (hu : 0 ≤ u) (hp1 : 1 < p) (hp2 : p < 2) :
+    ENNReal.ofReal (u ^ (3 : ℕ)) *
+      (∫⁻ t in Ioi u, (ENNReal.ofReal t) ^ (p - 4)) =
+      (ENNReal.ofReal (3 - p))⁻¹ * (ENNReal.ofReal u) ^ p := by
+  exact ofReal_cube_mul_lintegral_rpow_Ioi_eq_of_lt_three hu hp1
+    (lt_trans hp2 (by norm_num))
 
 theorem lintegral_ofReal_mul_lintegral_rpow_Ioc_eq
     {α : Type*} [MeasurableSpace α] {μ : Measure α}

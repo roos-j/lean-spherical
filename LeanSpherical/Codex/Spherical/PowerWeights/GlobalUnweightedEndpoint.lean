@@ -11,6 +11,7 @@ import LeanSpherical.Codex.Spherical.PowerWeights.EntropyAmbientLine
 import LeanSpherical.Codex.Spherical.PowerWeights.EntropyComparison
 import LeanSpherical.Codex.Spherical.PowerWeights.ThinRadialNumerics
 import LeanSpherical.Codex.Spherical.PowerWeights.ThinRadialProduct
+import LeanSpherical.Codex.Spherical.FractalDilations.CircleSurface
 open Codex.Spherical.InterpolationCore
 open Codex.Spherical.InterpolationTail
 open Codex.Spherical.PowerWeights.CentralLowpass
@@ -335,7 +336,7 @@ def globalRelativeBandSquareCoefficient
     (2 * ((4 * C₀) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ 2 +
       2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
         (2 *
-          ((4 * C₁) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+          ((8 * C₁) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
             (12 * C₀ *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
               (dyadicScale j) ^ ((n : ℝ) / 2))) ^ 2)
@@ -487,7 +488,7 @@ theorem measurable_restrictedRelativeBandpassSphericalMaximal_global
 /-- The all-scale entropy theorem, converted to the lower-integral square
 form used by the interpolation bridge. -/
 theorem global_relative_band_square_lintegral_of_unitEntropy
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : ℝ, 1 ≤ ‖ξ‖ →
@@ -724,7 +725,7 @@ def globalRelativeBandSquareEnvelope
     ENNReal :=
   ENNReal.ofReal 24 * ENNReal.ofReal
     (2 * (4 * C₀) ^ 2 +
-      2 * (2 * (4 * C₁ +
+      2 * (2 * (8 * C₁ +
         12 * C₀ *
           ‖((SchwartzMap.fderivCLM Complex (Euclidean (n + 1)) Complex) phi).toBoundedContinuousFunction‖)) ^ 2)
 
@@ -756,21 +757,23 @@ theorem globalRelativeBandSquareCoefficient_le_dyadicEnvelope
   let D : Real :=
     12 * C₀ *
       ‖((SchwartzMap.fderivCLM Complex (Euclidean (n + 1)) Complex) phi).toBoundedContinuousFunction‖
-  let K : Real := 2 * (4 * C₀) ^ 2 + 2 * (2 * (4 * C₁ + D)) ^ 2
+  let K : Real := 2 * (4 * C₀) ^ 2 + 2 * (2 * (8 * C₁ + D)) ^ 2
   have hD : 0 ≤ D := by
     dsimp only [D]
     positivity
   have hinner := ofReal_thinRadialCapEntropySquare_le_dyadicDecay
-    (n := n) j C₀ C₁ D (dyadicMultiplicativeScale (j + 4) : Real)
-    hC₀.le hC₁.le hD (by positivity)
+    (n := n) j C₀ (2 * C₁) D (dyadicMultiplicativeScale (j + 4) : Real)
+    hC₀.le (by positivity) hD (by positivity)
     (dyadicMultiplicativeScale_shift_four_short j)
+  have hfour : (4 : Real) * (2 * C₁) = 8 * C₁ := by ring
+  rw [hfour] at hinner
   have hN : 0 ≤ (N : Real) := Nat.cast_nonneg N
   have htwentyfour : 0 ≤ (24 : Real) := by norm_num
   dsimp only [globalRelativeBandSquareCoefficient, globalRelativeBandSquareEnvelope]
   change ENNReal.ofReal (24 * (N : Real) *
       (2 * ((4 * C₀) / (dyadicScale j) ^ ((n : Real) / 2)) ^ 2 +
         2 * (8 * Real.log 2 * (dyadicMultiplicativeScale (j + 4) : Real)) ^ 2 *
-          (2 * ((4 * C₁) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+          (2 * ((8 * C₁) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
             D / (dyadicScale j) ^ ((n : Real) / 2))) ^ 2)) ≤
       globalRelativeBandSquareEnvelope n C₀ C₁ phi * (N : ENNReal) *
         (dyadicMultiplicativeScale j : ENNReal) ^ n
@@ -781,7 +784,7 @@ theorem globalRelativeBandSquareCoefficient_le_dyadicEnvelope
   change ENNReal.ofReal 24 * (N : ENNReal) * ENNReal.ofReal
       (2 * ((4 * C₀) / (dyadicScale j) ^ ((n : Real) / 2)) ^ 2 +
         2 * (8 * Real.log 2 * (dyadicMultiplicativeScale (j + 4) : Real)) ^ 2 *
-          (2 * ((4 * C₁) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+          (2 * ((8 * C₁) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
             D / (dyadicScale j) ^ ((n : Real) / 2))) ^ 2) ≤
       ENNReal.ofReal 24 * ENNReal.ofReal K * (N : ENNReal) *
         (dyadicMultiplicativeScale j : ENNReal) ^ n
@@ -789,7 +792,7 @@ theorem globalRelativeBandSquareCoefficient_le_dyadicEnvelope
     ENNReal.ofReal 24 * (N : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C₀) / (dyadicScale j) ^ ((n : Real) / 2)) ^ 2 +
           2 * (8 * Real.log 2 * (dyadicMultiplicativeScale (j + 4) : Real)) ^ 2 *
-            (2 * ((4 * C₁) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+            (2 * ((8 * C₁) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
               D / (dyadicScale j) ^ ((n : Real) / 2))) ^ 2) ≤
         ENNReal.ofReal 24 * (N : ENNReal) *
           (ENNReal.ofReal K * (dyadicMultiplicativeScale j : ENNReal) ^ n) := by
@@ -824,7 +827,7 @@ theorem toReal_restrictedRelativeBandpassSphericalMaximal_add_le_of_ne_top
 subadditive almost everywhere.  This is the exact regularity needed by the
 distribution-function interpolation argument. -/
 theorem ae_toReal_restrictedRelativeBandpassSphericalMaximal_add_le_of_sharp
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : Real) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : Real, 1 ≤ ‖ξ‖ →
@@ -870,7 +873,7 @@ measurability and subadditivity inputs, its sole harmonic-analysis premise
 is the continuum weak-`L¹` inequality `hweak_one`; its square input is
 discharged by `GlobalEntropyAllScale`. -/
 theorem global_relative_band_lintegral_rpow_of_continuum_weak_one
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : ℝ, 1 ≤ ‖ξ‖ →
@@ -925,7 +928,7 @@ theorem global_relative_band_lintegral_rpow_of_continuum_weak_one
 is the only quantity whose geometric decay has to be checked before the
 relative-frequency reassembly theorem applies. -/
 theorem global_relative_band_lintegral_rpow_of_continuum_weak_one_factorized
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : ℝ, 1 ≤ ‖ξ‖ →
@@ -975,7 +978,7 @@ square estimate, gives a raw `ENNReal` strong bound for one relative band.
 The existing all-positive-radius square theorem supplies the a.e. finiteness
 needed to pass safely back from `toReal`. -/
 theorem global_relative_band_memLp_eLpNorm_of_continuum_weak_one
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : ℝ) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : ℝ, 1 ≤ ‖ξ‖ →
@@ -1034,7 +1037,7 @@ theorem global_relative_band_memLp_eLpNorm_of_continuum_weak_one
 global endpoint.  Its inputs are the literal weak-one and square constants,
 together with explicit finite envelopes for those constants. -/
 private theorem global_relative_band_memLp_eLpNorm_of_continuum_weak_one_of_envelopes
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : Real) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : Real, 1 ≤ ‖ξ‖ →
@@ -1161,7 +1164,7 @@ linear-in-`j` continuum weak-one estimate and a global unit-entropy bound.
 The displayed coefficient is arranged so that the sole remaining global
 step is summability of a polynomial times a strict dyadic gain. -/
 theorem global_relative_band_memLp_eLpNorm_of_unitEntropy_and_continuum_weak_one
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : Real) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : Real, 1 ≤ ‖ξ‖ →
@@ -1302,10 +1305,10 @@ theorem global_relative_band_memLp_eLpNorm_of_unitEntropy_and_continuum_weak_one
 
 /-- The standard cutoff and sharp Fourier estimates needed by the global
 endpoint are simultaneously available in every spatial dimension at least
-three.  The cutoff's compact support follows from its displayed support
+two.  The cutoff's compact support follows from its displayed support
 condition, so no auxiliary construction is needed later. -/
 theorem exists_global_unweighted_endpoint_data
-    {d : Nat} (hd : 3 ≤ d) :
+    {d : Nat} (hd : 2 ≤ d) :
     ∃ (phi : SchwartzMap (Euclidean d) ℂ) (C₀ C₁ : ℝ),
       HasCompactSupport (phi : Euclidean d → ℂ) ∧
       (∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1) ∧
@@ -1317,35 +1320,53 @@ theorem exists_global_unweighted_endpoint_data
       (∀ ξ : Euclidean d, ∀ r : ℝ, 1 ≤ ‖ξ‖ → r ∈ Icc (1 : ℝ) 2 →
         ‖deriv (fun s : ℝ => surfaceFourier d (s • ξ)) r‖ ≤
           C₁ / ‖ξ‖ ^ (((d - 1 : Nat) : ℝ) / 2 - 1)) := by
-  have hd' : 2 ≤ d - 1 := by omega
-  have hdim : d - 1 + 1 = d := by omega
-  obtain ⟨phi, hphi_one, hphi_zero, hphi_norm⟩ :=
-    exists_schwartz_frequency_cutoff_norm_le_one d
-  obtain ⟨C₀, C₁, hC₀, hC₁, hdecay, hderiv⟩ :=
-    exists_sharp_surfaceFourier_succ_decay_and_deriv (d := d - 1) hd'
-  rw [hdim] at hdecay hderiv
-  have hphi_compact : HasCompactSupport (phi : Euclidean d → ℂ) := by
-    apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean d) 2)
-    intro ξ hξ
-    apply hphi_zero ξ
-    have hlt : 2 < ‖ξ‖ := by
-      rw [Metric.mem_closedBall, dist_zero_right] at hξ
-      exact lt_of_not_ge hξ
-    exact hlt.le
-  refine ⟨phi, C₀, C₁, hphi_compact, hphi_one, hphi_zero, hphi_norm,
-    hC₀, hC₁, ?_, ?_⟩
-  · exact hdecay
-  · exact hderiv
+  by_cases htwo : d = 2
+  · subst d
+    obtain ⟨phi, hphi_one, hphi_zero, hphi_norm⟩ :=
+      exists_schwartz_frequency_cutoff_norm_le_one 2
+    obtain ⟨C₀, C₁, hC₀, hC₁, hdecay, hderiv⟩ :=
+      Codex.Spherical.FractalDilations.CircleSurface.exists_sharp_surfaceFourier_two_decay_and_deriv
+    have hphi_compact : HasCompactSupport (phi : Euclidean 2 → ℂ) := by
+      apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean 2) 2)
+      intro ξ hξ
+      apply hphi_zero ξ
+      have hlt : 2 < ‖ξ‖ := by
+        rw [Metric.mem_closedBall, dist_zero_right] at hξ
+        exact lt_of_not_ge hξ
+      exact hlt.le
+    refine ⟨phi, C₀, C₁, hphi_compact, hphi_one, hphi_zero, hphi_norm,
+      hC₀, hC₁, ?_, ?_⟩
+    · simpa using hdecay
+    · simpa using hderiv
+  · have hd' : 2 ≤ d - 1 := by omega
+    have hdim : d - 1 + 1 = d := by omega
+    obtain ⟨phi, hphi_one, hphi_zero, hphi_norm⟩ :=
+      exists_schwartz_frequency_cutoff_norm_le_one d
+    obtain ⟨C₀, C₁, hC₀, hC₁, hdecay, hderiv⟩ :=
+      exists_sharp_surfaceFourier_succ_decay_and_deriv (d := d - 1) hd'
+    rw [hdim] at hdecay hderiv
+    have hphi_compact : HasCompactSupport (phi : Euclidean d → ℂ) := by
+      apply HasCompactSupport.intro (isCompact_closedBall (0 : Euclidean d) 2)
+      intro ξ hξ
+      apply hphi_zero ξ
+      have hlt : 2 < ‖ξ‖ := by
+        rw [Metric.mem_closedBall, dist_zero_right] at hξ
+        exact lt_of_not_ge hξ
+      exact hlt.le
+    refine ⟨phi, C₀, C₁, hphi_compact, hphi_one, hphi_zero, hphi_norm,
+      hC₀, hC₁, ?_, ?_⟩
+    · exact hdecay
+    · exact hderiv
 
 /-- The global entropy and literal continuum weak-one inputs give the
-unweighted restricted maximal estimate in every dimension `n + 1 ≥ 3`.
+unweighted restricted maximal estimate in every dimension `n + 1 ≥ 2`.
 
 This is the all-scale endpoint assembly itself.  The entropy witness is
 written at the shifted scales used by the relative band square estimate;
 the weak-one input is deliberately literal, with no replacement by a finite
 radius or finite-frequency maximum. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_global_unitEntropy_and_continuum_weak_one
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : Real) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : Real, 1 ≤ ‖ξ‖ →
@@ -1454,7 +1475,7 @@ required by the all-scale endpoint.  Thus it remains only to establish the
 literal continuum weak-one estimate, uniformly for every finite entropy
 cover count. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_continuum_weak_one
-    {n : Nat} (hn : 2 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
+    {n : Nat} (hn : 1 ≤ n) (C₀ C₁ : Real) (hC₀ : 0 < C₀) (hC₁ : 0 < C₁)
     (hdecay : ∀ ξ : Euclidean (n + 1), 1 ≤ ‖ξ‖ →
       ‖surfaceFourier (n + 1) ξ‖ ≤ C₀ / ‖ξ‖ ^ ((n : Real) / 2))
     (hderiv : ∀ ξ : Euclidean (n + 1), ∀ r : Real, 1 ≤ ‖ξ‖ →

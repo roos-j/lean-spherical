@@ -668,7 +668,7 @@ theorem restrictedRelativeBandpass_finset_lintegral_two_le_of_entropy
       (N : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
           2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)) *
@@ -686,7 +686,7 @@ theorem restrictedRelativeBandpass_finset_lintegral_two_le_of_entropy
           𝓕 (g : Euclidean (n + 1) → ℂ) xi) x‖ ^ (2 : ℕ))
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((n : ℝ) / 2))
@@ -714,7 +714,7 @@ theorem restrictedRelativeBandpass_finset_lintegral_two_le_of_entropy
             𝓕 (g : Euclidean (n + 1) → ℂ) xi) x)
   obtain ⟨T, _hcard, _hordered, _hends, _hlength, hraw⟩ :=
     exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_bandpass_le_of_sharp
-      hn C0 C1 hC0 hC1 hdecay hderiv phi g hphi_one hphi_zero hphi_norm j
+      (by omega : 1 ≤ n) C0 C1 hC0 hC1 hdecay hderiv phi g hphi_one hphi_zero hphi_norm j
       E hE hEne δ N (by simpa only [E] using hN) hδ
   have hraw' : (∫⁻ x : Euclidean (n + 1), Q x ∂volume) ≤
       (N : ENNReal) * ENNReal.ofReal (2 * B ^ (2 : ℕ) + 2 * L ^ (2 : ℕ) * C ^ (2 : ℕ)) *
@@ -751,7 +751,7 @@ theorem restrictedRelativeBandpass_finset_lintegral_two_le_of_entropy
     _ = (N : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
           2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ)) *
@@ -783,7 +783,7 @@ theorem exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_rpow_le_of_
       let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
           2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
@@ -817,7 +817,7 @@ theorem exists_restrictedRelativeBandpass_finset_cap_shell_lintegral_rpow_le_of_
   let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
     (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
       2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-        (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+        (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
@@ -866,7 +866,7 @@ theorem exists_eLpNorm_finset_restrictedRelativeBandpass_cap_shell_sum_le_of_ent
       let L : ℕ → ENNReal := fun j => (N j : ENNReal) * ENNReal.ofReal
         (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
           2 * (8 * Real.log 2 * (δ j : ℝ)) ^ (2 : ℕ) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
@@ -902,7 +902,7 @@ theorem exists_eLpNorm_finset_restrictedRelativeBandpass_cap_shell_sum_le_of_ent
   let L : ℕ → ENNReal := fun j => (N j : ENNReal) * ENNReal.ofReal
     (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
       2 * (8 * Real.log 2 * (δ j : ℝ)) ^ (2 : ℕ) *
-        (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+        (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))

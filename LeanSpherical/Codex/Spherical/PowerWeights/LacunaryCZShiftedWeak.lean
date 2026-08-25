@@ -858,7 +858,7 @@ def lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneConstant {d : Nat}
 /-- The literal finite relative-band physical maximum has weak type `(1,1)`
 with a constant growing only linearly in the relative-frequency index. -/
 theorem weak_one_lacunaryRelativeBandpassFinitePhysicalMaximal_of_core_bound_threeWay
-    {d : Nat} [NeZero d] (hd : 3 ≤ d)
+    {d : Nat} [NeZero d] (hd : 2 ≤ d)
     (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
     (S : Finset ℤ) (hS : S.Nonempty) (C : ℝ) (hC : 0 ≤ C)

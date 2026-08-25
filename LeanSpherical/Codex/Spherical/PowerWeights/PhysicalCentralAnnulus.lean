@@ -159,7 +159,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_a
     ∃ D Ctop : Real, 0 < D ∧ 0 < Ctop ∧
       ∀ (j : Nat) (E : Set Real), E.Nonempty → E ⊆ Icc (1 : Real) 2 →
       ∀ {α p : Real}, 1 - ((n + 1 : Nat) : Real) ≤ α → α ≤ 0 →
-        1 < p → p < 2 →
+        1 < p → p < 3 →
       ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
         (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
         let B : Set (Euclidean (n + 1)) :=
@@ -181,7 +181,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_a
       n phi ha hab
   obtain ⟨Ctop, hCtop, htop⟩ := exists_restrictedRelativeBandpass_top_bound phi
   refine ⟨D, Ctop, hD, hCtop, ?_⟩
-  intro j E hEne hE α p hαlower hα hp1 hp2 f hfsupport
+  intro j E hEne hE α p hαlower hα hp1 hp3 f hfsupport
   dsimp only
   let A : Set (Euclidean (n + 1)) := euclideanAnnulus (n + 1) a b
   let B : Set (Euclidean (n + 1)) := closedBall 0 (((2 : Real) ^ j)⁻¹)
@@ -283,7 +283,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_a
         (∫⁻ x, ENNReal.ofReal ‖(high t : Euclidean (n + 1) → Complex) x‖ ∂μ) *
           (ENNReal.ofReal t) ^ (p - 2)) ≤ a₁ := by
     dsimp only [a₁]
-    apply rational_high_weighted_tail_le
+    apply rational_high_weighted_tail_le_of_lt_three
       (u := fun x : Euclidean (n + 1) => ‖f x‖)
       (high := fun t x => high t x)
     · exact f.continuous.norm.measurable
@@ -310,7 +310,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_a
       have hnot : ¬ t ≤ ‖f x‖ := not_le_of_gt htx
       simpa [hnot] using h
     · exact hp1
-    · exact hp2
+    · exact hp3
   have hhigh_tail :
       (∫⁻ t in Ioi (0 : Real),
         (∫⁻ x, (ENNReal.ofReal ‖(high t : Euclidean (n + 1) → Complex) x‖) ^
@@ -347,7 +347,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le
     ∃ D Ctop : Real, 0 < D ∧ 0 < Ctop ∧
       ∀ (j : Nat) (E : Set Real), E.Nonempty → E ⊆ Icc (1 : Real) 2 →
       ∀ {α p : Real}, 1 - ((n + 1 : Nat) : Real) ≤ α → α ≤ 0 →
-        1 < p → p < 2 →
+        1 < p → p < 3 →
       ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
         (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
         let B : Set (Euclidean (n + 1)) :=
@@ -429,13 +429,13 @@ private theorem centralBall_physical_coefficient_eq_dyadic
 explicit.  The ambient dimension is `n + 1`, so the exponent
 `n + α = (n + 1) - 1 + α` is precisely the codimension-one gain. -/
 theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic_annular
-    (n : Nat) (_hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (n : Nat) (_hn : 1 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
     (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
     (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
     (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
     {a b : Real} (ha : 0 < a) (hab : a ≤ b)
     {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
-    (hp1 : 1 < p) (hp2 : p < 2) :
+    (hp1 : 1 < p) (hp3 : p < 3) :
     ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
       E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
       (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
@@ -516,7 +516,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_d
       (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) =
         ∫⁻ x in B, ENNReal.ofReal ((M x).toReal ^ p) ∂μ := by
     rw [hTpows, lintegral_indicator hB]
-  have hinterp' := hinterp j E hEne hE hαlower hα hp1 hp2 f hfsupport
+  have hinterp' := hinterp j E hEne hE hαlower hα hp1 hp3 f hfsupport
   have hinterp'' :
       (∫⁻ x, ENNReal.ofReal ((T f x) ^ p) ∂μ) ≤
         ENNReal.ofReal p * ((ENNReal.ofReal (2 : Real)) ^ (1 : Real) * c₁ * a₁ *
@@ -548,12 +548,12 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_d
 
 /-- The unit-annulus version of the dyadic physical estimate. -/
 theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic
-    (n : Nat) (hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (n : Nat) (hn : 1 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
     (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
     (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
     (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
     {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
-    (hp1 : 1 < p) (hp2 : p < 2) :
+    (hp1 : 1 < p) (hp3 : p < 3) :
     ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
       E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
       (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
@@ -567,18 +567,18 @@ theorem exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_d
     (exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic_annular
       n hn phi hphi_one hphi_zero hphi_norm
       (a := (1 : Real)) (b := (2 : Real)) (by norm_num) (by norm_num)
-      hαlower hα hp1 hp2)
+      hαlower hα hp1 hp3)
 
 /-- The same central physical estimate in the raw `ENNReal` maximal-function
 form consumed by cutoff reassembly. -/
 theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_annular
-    (n : Nat) (hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (n : Nat) (hn : 1 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
     (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
     (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
     (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
     {a b : Real} (ha : 0 < a) (hab : a ≤ b)
     {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
-    (hp1 : 1 < p) (hp2 : p < 2) :
+    (hp1 : 1 < p) (hp3 : p < 3) :
     ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
       E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
       (∀ x, x ∉ euclideanAnnulus (n + 1) a b → f x = 0) →
@@ -589,7 +589,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_a
           ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α := by
   obtain ⟨K, hKtop, hbound⟩ :=
     exists_restrictedRelativeBandpass_centralBall_toReal_lintegral_rpow_le_dyadic_annular
-      n hn phi hphi_one hphi_zero hphi_norm ha hab hαlower hα hp1 hp2
+      n hn phi hphi_one hphi_zero hphi_norm ha hab hαlower hα hp1 hp3
   obtain ⟨D, hD, hphysical⟩ :=
     exists_restrictedRelativeBandpass_pointwise_le_integral (Nat.succ_pos n) phi
   refine ⟨K, hKtop, ?_⟩
@@ -622,12 +622,12 @@ theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_a
 
 /-- The unit-annulus version in the raw maximal-function form. -/
 theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic
-    (n : Nat) (hn : 2 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
+    (n : Nat) (hn : 1 ≤ n) (phi : SchwartzMap (Euclidean (n + 1)) Complex)
     (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
     (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
     (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
     {α p : Real} (hαlower : 1 - ((n + 1 : Nat) : Real) ≤ α) (hα : α ≤ 0)
-    (hp1 : 1 < p) (hp2 : p < 2) :
+    (hp1 : 1 < p) (hp3 : p < 3) :
     ∃ K : ENNReal, K < ⊤ ∧ ∀ (j : Nat) (E : Set Real), E.Nonempty →
       E ⊆ Icc (1 : Real) 2 → ∀ (f : SchwartzMap (Euclidean (n + 1)) Complex),
       (∀ x, x ∉ euclideanAnnulus (n + 1) 1 2 → f x = 0) →
@@ -640,7 +640,7 @@ theorem exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic
     (exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_annular
       n hn phi hphi_one hphi_zero hphi_norm
       (a := (1 : Real)) (b := (2 : Real)) (by norm_num) (by norm_num)
-      hαlower hα hp1 hp2)
+      hαlower hα hp1 hp3)
 
 end
 

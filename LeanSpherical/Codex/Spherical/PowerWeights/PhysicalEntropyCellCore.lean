@@ -148,7 +148,7 @@ private theorem lintegral_scaled_comp_smul
     _ = ENNReal.ofReal q * ∫⁻ x : Euclidean m, V x := by rw [hVlin]
 
 private theorem lintegral_scaled_palette_entropy_cell_variation_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
@@ -188,7 +188,7 @@ private theorem lintegral_scaled_palette_entropy_cell_variation_of_sharp
       ∑ i : Fin N, ENNReal.ofReal
         (2 * ((unitScaleEntropyCell δ (c i)).2 -
           (unitScaleEntropyCell δ (c i)).1) ^ 2 *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
                 phi).toBoundedContinuousFunction‖) /
@@ -214,7 +214,7 @@ private theorem lintegral_scaled_palette_entropy_cell_variation_of_sharp
         (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
           phi (((2 : ℝ) ^ j)⁻¹ • (r • xi))) * g xi) x
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
           phi).toBoundedContinuousFunction‖) /
@@ -401,7 +401,7 @@ private theorem lintegral_scaled_palette_entropy_cell_variation_of_sharp
       _ = _ := by rfl
 
 private theorem measurable_and_lintegral_physical_entropy_cell_block_of_sharp
-    {d N : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d N : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
@@ -440,7 +440,7 @@ private theorem measurable_and_lintegral_physical_entropy_cell_block_of_sharp
           (dyadicPhysicalEntropyCellCenter r (k, i))).2 -
           (unitScaleEntropyCell δ
           (dyadicPhysicalEntropyCellCenter r (k, i))).1) ^ 2 *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
                 phi).toBoundedContinuousFunction‖) /
@@ -469,14 +469,14 @@ def lacunaryRelativeBandpassPhysicalCellSquareCoefficient
   24 * (N : ℝ) *
     (2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
       (2 *
-        ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+        ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
               phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2)
 
 theorem exists_lacunaryRelativeBandpassPhysicalCellSquareVariation_schwartz_core_of_sharp
-    {d N : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d N : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
@@ -505,7 +505,7 @@ theorem exists_lacunaryRelativeBandpassPhysicalCellSquareVariation_schwartz_core
           ∫⁻ x, ENNReal.ofReal (‖(f : Euclidean (d + 1) → ℂ) x‖ ^ 2) := by
   classical
   let D : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
           phi).toBoundedContinuousFunction‖) /

@@ -391,7 +391,7 @@ Schwartz-core `L²` bound required by the finite physical C--Z endpoint.
 The comparison is made before taking `toReal`, and the all-radius square
 estimate supplies the necessary almost-everywhere finiteness. -/
 theorem exists_lacunaryRelativeBandpassFinitePhysical_core_bound_of_isDyadicLacunaryRadiusSelector
-    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n : Nat} (hn : 1 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →
@@ -572,7 +572,7 @@ theorem lacunaryRelativeBandpassFinitePhysical_lintegral_rpow_of_isDyadicLacunar
       (Real.rpow_pos_of_pos (dyadicScale_pos j) _))
   obtain ⟨hcoreMem, hcoreBound⟩ :=
     exists_lacunaryRelativeBandpassFinitePhysical_core_bound_of_isDyadicLacunaryRadiusSelector
-      hn C0 C1 hC0 hC1 hdecay hderiv phi psi hphi_one hphi_zero hphi_norm hpsi
+      (by omega) C0 C1 hC0 hC1 hdecay hderiv phi psi hphi_one hphi_zero hphi_norm hpsi
       j r hr S hS
   apply lacunaryRelativeBandpassFinitePhysical_lintegral_rpow_of_weak_one_two
     psi j r S hS
@@ -639,7 +639,7 @@ theorem lacunaryRelativeBandpassFinitePhysical_lintegral_rpow_of_isDyadicLacunar
       (Real.rpow_pos_of_pos (dyadicScale_pos j) _))
   obtain ⟨hcoreMem, hcoreBound⟩ :=
     exists_lacunaryRelativeBandpassFinitePhysical_core_bound_of_isDyadicLacunaryRadiusSelector
-      hn C0 C1 hC0 hC1 hdecay hderiv phi psi hphi_one hphi_zero hphi_norm hpsi
+      (by omega) C0 C1 hC0 hC1 hdecay hderiv phi psi hphi_one hphi_zero hphi_norm hpsi
       j r hr S hS
   apply lacunaryRelativeBandpassFinitePhysical_lintegral_rpow_of_weak_one_two
     psi j r S hS W (ENNReal.ofReal (C ^ (2 : ℕ)))
@@ -700,7 +700,7 @@ theorem lacunaryRelativeBandpassFinitePhysical_lintegral_rpow_of_isDyadicLacunar
       (Real.rpow_pos_of_pos (dyadicScale_pos j) _))
   obtain ⟨hcoreMem, hcoreBound⟩ :=
     exists_lacunaryRelativeBandpassFinitePhysical_core_bound_of_isDyadicLacunaryRadiusSelector
-      hn C0 C1 hC0 hC1 hdecay hderiv phi psi hphi_one hphi_zero hphi_norm hpsi
+      (by omega) C0 C1 hC0 hC1 hdecay hderiv phi psi hphi_one hphi_zero hphi_norm hpsi
       j r hr S hS
   apply lacunaryRelativeBandpassFinitePhysical_lintegral_rpow_of_weak_one_two_scaled
     psi j r S hS W (ENNReal.ofReal (C ^ (2 : ℕ)))

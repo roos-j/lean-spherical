@@ -937,7 +937,7 @@ It constructs the cube stopping family and returns exactly the data needed to
 combine the literal finite physical maximum with a separate `L²` estimate on
 the good part. -/
 theorem exists_lacunaryCZDyadicCube_schwartz_finite_weak_tail
-    {d : Nat} [NeZero d] (hd : 3 ≤ d)
+    {d : Nat} [NeZero d] (hd : 2 ≤ d)
     (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
     (S : Finset ℤ) (hS : S.Nonempty)
@@ -1198,7 +1198,7 @@ whenever its Schwartz core has the indicated `L²` bound.  The proof is the
 literal dyadic-cube Calderón--Zygmund decomposition, with canonical
 past/future partitions of the finite radius set. -/
 theorem weak_one_lacunaryRelativeBandpassFinitePhysicalMaximal_of_core_bound
-    {d : Nat} [NeZero d] (hd : 3 ≤ d)
+    {d : Nat} [NeZero d] (hd : 2 ≤ d)
     (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : ℤ → PositiveRadius) (hr : IsDyadicLacunaryRadiusSelector r)
     (S : Finset ℤ) (hS : S.Nonempty) (C : ℝ) (hC : 0 ≤ C)

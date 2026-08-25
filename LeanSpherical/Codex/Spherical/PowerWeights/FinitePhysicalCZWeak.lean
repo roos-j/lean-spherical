@@ -60,7 +60,7 @@ theorem lacunaryRelativeBandpassPhysicalCellSquareCoefficient_le_globalRelativeB
   let v : ℝ :=
     2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
       (2 *
-        ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+        ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ)
               phi).toBoundedContinuousFunction‖) /
@@ -91,7 +91,7 @@ theorem lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneLinearMajorant_mono
 /-- The one-shot finite-block input required by the global physical-block
 bridge.  All entropy dependence is exactly linear. -/
 theorem hfinite_weak_one_restrictedRelativeBandpassSphericalMaximal_of_shifted_physical_CZ
-    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ) (hEne : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set ℝ) (hEne : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) :
     ∀ (phi : SchwartzMap (Euclidean d) ℂ),
       (∀ xi, ‖xi‖ ≤ 1 → phi xi = 1) →
@@ -113,10 +113,18 @@ theorem hfinite_weak_one_restrictedRelativeBandpassSphericalMaximal_of_shifted_p
   have hnd : n + 1 = d := by omega
   subst d
   let d : Nat := n + 1
-  simp only [d, Nat.add_sub_cancel] at *
-  have hn : 2 ≤ n := by omega
-  obtain ⟨C0, C1, hC0, hC1, hdecay, hderiv⟩ :=
-    exists_sharp_surfaceFourier_succ_decay_and_deriv (d := n) hn
+  simp only [Nat.add_sub_cancel] at *
+  have hn : 1 ≤ n := by omega
+  obtain ⟨_, C0, C1, _, _, _, _, hC0, hC1, hdecay0, hderiv0⟩ :=
+    exists_global_unweighted_endpoint_data (show 2 ≤ d by omega)
+  have hdecay : ∀ xi : Euclidean d, 1 ≤ ‖xi‖ →
+      ‖surfaceFourier d xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2) := by
+    simpa only [d, Nat.add_sub_cancel] using hdecay0
+  have hderiv : ∀ xi : Euclidean d, ∀ r : ℝ, 1 ≤ ‖xi‖ →
+      r ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun s : ℝ => surfaceFourier d (s • xi)) r‖ ≤
+        C1 / ‖xi‖ ^ ((n : ℝ) / 2 - 1) := by
+    simpa only [d, Nat.add_sub_cancel] using hderiv0
   obtain ⟨psi, hpsi_zero, hpsiCompact, _⟩ :=
     exists_compactlySupported_schwartzMap_smooth_dyadic_bandpass
       phi hphi_one hphi_zero 0

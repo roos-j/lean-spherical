@@ -297,7 +297,7 @@ entropy and square-coefficient constants made uniform before the physical
 shell is chosen.  The entropy exponent may be shrunk; this only enlarges
 the right side of the entropy estimate. -/
 private theorem exists_strictNegative_cap_piece_raw_rate
-    {n : Nat} (hn : 2 ≤ n) (E : Set Real) {p alpha epsilon epsilon0 : Real}
+    {n : Nat} (hn : 1 ≤ n) (E : Set Real) {p alpha epsilon epsilon0 : Real}
     (hp : 1 < p) (hp2 : p < 2) (halpha : alpha < 0)
     (hepsilon : 0 < epsilon) (hepsilon_le : epsilon ≤ epsilon0)
     (j0 : Nat)
@@ -352,7 +352,7 @@ private theorem exists_strictNegative_cap_piece_raw_rate
     12 * C0 *
       ‖((SchwartzMap.fderivCLM Complex (Euclidean (n + 1)) Complex) phi).toBoundedContinuousFunction‖
   let K0 : ENNReal := ENNReal.ofReal
-    (2 * (4 * C0) ^ (2 : Nat) + 2 * (2 * (4 * C1 + D)) ^ (2 : Nat))
+    (2 * (4 * C0) ^ (2 : Nat) + 2 * (2 * (8 * C1 + D)) ^ (2 : Nat))
   let Kraw : ENNReal := K0 * (16 : ENNReal) ^ n
   let Kent : ENNReal := (ENNReal.ofReal (16 : Real)) ^ rho
   let kappa2 : ENNReal :=
@@ -497,22 +497,23 @@ private theorem exists_strictNegative_cap_piece_raw_rate
     dsimp only [D]
     positivity
   have hraw0 := ofReal_thinRadialCapEntropySquare_le_dyadicDecay
-    (n := n) j C0 C1 D (delta : Real) hC0.le hC1.le hD (by positivity)
+    (n := n) j C0 (2 * C1) D (delta : Real) hC0.le (by positivity) hD (by positivity)
       (by simpa only [delta] using dyadicMultiplicativeScale_shift_four_short j)
   have hraw : ENNReal.ofReal
       (2 * ((4 * C0) / (dyadicScale j) ^ ((n : Real) / 2)) ^ (2 : Nat) +
         2 * (8 * Real.log 2 * (delta : Real)) ^ (2 : Nat) *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
             D / (dyadicScale j) ^ ((n : Real) / 2))) ^ (2 : Nat)) ≤
         Kraw * (delta : ENNReal) ^ n := by
     calc
       ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : Real) / 2)) ^ (2 : Nat) +
             2 * (8 * Real.log 2 * (delta : Real)) ^ (2 : Nat) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
                 D / (dyadicScale j) ^ ((n : Real) / 2))) ^ (2 : Nat)) ≤
           K0 * (dyadicMultiplicativeScale j : ENNReal) ^ n := by
-            simpa only [K0] using hraw0
+            dsimp only [K0]
+            convert hraw0 using 1 <;> ring
       _ = Kraw * (delta : ENNReal) ^ n := by
             dsimp only [Kraw, delta]
             rw [dyadicMultiplicativeScale_shift_four_nat_factor]
@@ -574,7 +575,7 @@ set_option maxHeartbeats 800000 in
 endpoint.  The constant is uniform in the normalized radius block and the
 frequency band. -/
 theorem exists_strictNegative_raw_band_rate
-    {d : Nat} (hd : 3 ≤ d) (E : Set Real) (hE : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set Real) (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : Real)) {p alpha : Real}
     (hp : 1 < p) (hp2 : p < 2) (halphaLower : 1 - (d : Real) < alpha)
     (halpha : alpha < 0)
@@ -610,7 +611,7 @@ theorem exists_strictNegative_raw_band_rate
   cases d with
   | zero => omega
   | succ n =>
-    have hn : 2 ≤ n := by omega
+    have hn : 1 ≤ n := by omega
     have hdim : ((Nat.succ n : Nat) : Real) - 1 = (n : Real) := by
       rw [Nat.cast_succ]
       ring
@@ -663,12 +664,12 @@ theorem exists_strictNegative_raw_band_rate
       linarith
     obtain ⟨CLower, CUpper, hCLower, hCUpper, V, hVtop, hshell⟩ :=
       exists_bufferedThinRadialShell_raw_reassembly_from_two_short_of_central
-        n hn phi hp hp2 halphaShell halpha.le hphiOne hphiZero
+        n hn phi hp halphaShell halpha.le hphiOne hphiZero
     obtain ⟨Kdeep, hKdeepTop, hdeep⟩ :=
       exists_restrictedRelativeBandpass_centralBall_lintegral_rpow_le_dyadic_annular
         n hn phi hphiOne hphiZero hphiNorm
         (a := (1 / 4 : Real)) (b := 8) (by norm_num) (by norm_num)
-        halphaLower.le halpha.le hp hp2
+        halphaLower.le halpha.le hp (lt_trans hp2 (by norm_num))
     obtain ⟨Dhead, hDhead, hhead⟩ :=
       exists_restrictedRelativeBandpass_buffered_raw_central_moment
         (d := n + 1) (by omega) phi hp halpha.le

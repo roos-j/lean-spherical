@@ -1,6 +1,6 @@
 # Bourgain circular maximal formalization status
 
-Last updated: 2026-08-24 13:57:41 -04:00
+Last updated: 2026-08-24 16:00:45 -04:00
 
 Status values: `Proof completed`, `Statement completed`, `ToDo`.
 
@@ -18,7 +18,7 @@ Status values: `Proof completed`, `Statement completed`, `ToDo`.
 | `MSS.lean` | `thm:intro-mss-local-smoothing` | `Codex.Spherical.MSS.localSmoothing_of_lpCutoffs` | Proof completed | 2026-08-24 13:48:00 -04:00 |
 | `MSS.lean` | `thm:intro-discrete-local-smoothing` | `Codex.Spherical.MSS.discreteLocalSmoothing` | Statement completed | 2026-08-13 13:24:00 -04:00 |
 | `Bourgain.lean` | `thm:intro-bourgain` | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | Proof completed | 2026-08-24 13:57:41 -04:00 |
-| `FractalDilations/DiagonalTheorem.lean` | Final requested integration | `Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le_of_mss` | Proof completed | 2026-08-24 13:57:41 -04:00 |
+| `FractalDilations/DiagonalTheorem.lean` | Final requested integration | `Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le` | Proof completed | 2026-08-24 16:00:45 -04:00 |
 
 ## Blueprint ledger
 

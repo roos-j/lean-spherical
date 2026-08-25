@@ -8,13 +8,16 @@ import LeanSpherical.Codex.Spherical.PowerWeights.EntropyLowerBounds
 import LeanSpherical.Codex.Spherical.PowerWeights.EntropyLimit
 import LeanSpherical.Codex.Spherical.PowerWeights.NecessaryConditions
 import LeanSpherical.Codex.Spherical.PowerWeights.SharpLowerTests
+import LeanSpherical.Codex.Spherical.PowerWeights.DilationStrongType
 open Codex.Spherical.PowerWeights.AnisotropicTubeLower
 open Codex.Spherical.PowerWeights.AnnularWeight
 open Codex.Spherical.PowerWeights.CapAverageLower
 open Codex.Spherical.PowerWeights.Definitions
+open Codex.Spherical.PowerWeights.DilationStrongType
 open Codex.Spherical.PowerWeights.Entropy
 open Codex.Spherical.PowerWeights.EntropyComparison
 open Codex.Spherical.PowerWeights.EntropyCover
+open Codex.Spherical.PowerWeights.EntropyDilation
 open Codex.Spherical.PowerWeights.EntropyLimit
 open Codex.Spherical.PowerWeights.EntropyLowerBounds
 open Codex.Spherical.PowerWeights.LowerTests
@@ -1847,6 +1850,544 @@ theorem alpha_add_multiplicativeMinkowskiExponent_le_of_restrictedStrongType_of_
         (α : EReal) + (((n : ℝ) * (p - 1) - α : ℝ) : EReal) :=
       by simpa only [add_comm] using add_le_add_right hβ (α : EReal)
     _ = ((n : ℝ) * (p - 1) : EReal) := by
+      norm_cast
+      ring
+
+/-- The planar cap factor has the sharp linear scale supplied by the circle
+surface-measure estimate. -/
+private def planarBallOriginCapFactor (κ : ℝ≥0∞) (δ : ℝ≥0) : ℝ≥0∞ :=
+  κ * ENNReal.ofReal ((δ : ℝ) / 8) / ENNReal.ofReal (surfaceMass 2)
+
+/-- The scale-free part of the planar cap factor. -/
+private def planarBallOriginCapConstant (κ : ℝ≥0∞) : ℝ≥0∞ :=
+  κ * ENNReal.ofReal ((1 : ℝ) / 8) / ENNReal.ofReal (surfaceMass 2)
+
+private theorem planarBallOriginCapFactor_pos {κ : ℝ≥0∞} (hκ : 0 < κ)
+    {δ : ℝ≥0} (hδ : 0 < δ) :
+    0 < planarBallOriginCapFactor κ δ := by
+  have hδreal : 0 < (δ : ℝ) := by exact_mod_cast hδ
+  have hfrac : 0 < (δ : ℝ) / 8 := div_pos hδreal (by norm_num)
+  unfold planarBallOriginCapFactor
+  apply ENNReal.div_pos
+  · exact (ENNReal.mul_pos (ne_of_gt hκ)
+      (ENNReal.ofReal_pos.mpr hfrac).ne').ne'
+  · exact ENNReal.ofReal_ne_top
+
+private theorem planarBallOriginCapFactor_ne_top {κ : ℝ≥0∞} (hκtop : κ ≠ (∞ : ℝ≥0∞))
+    (δ : ℝ≥0) :
+    planarBallOriginCapFactor κ δ ≠ (∞ : ℝ≥0∞) := by
+  unfold planarBallOriginCapFactor
+  apply ENNReal.div_ne_top
+  · exact ENNReal.mul_ne_top hκtop ENNReal.ofReal_ne_top
+  · exact (ENNReal.ofReal_pos.mpr (surfaceMass_pos (by norm_num))).ne'
+
+private theorem planarBallOriginCapConstant_pos {κ : ℝ≥0∞} (hκ : 0 < κ) :
+    0 < planarBallOriginCapConstant κ := by
+  have hfrac : 0 < (1 : ℝ) / 8 := by norm_num
+  unfold planarBallOriginCapConstant
+  apply ENNReal.div_pos
+  · exact (ENNReal.mul_pos (ne_of_gt hκ)
+      (ENNReal.ofReal_pos.mpr hfrac).ne').ne'
+  · exact ENNReal.ofReal_ne_top
+
+private theorem planarBallOriginCapConstant_ne_top {κ : ℝ≥0∞}
+    (hκtop : κ ≠ (∞ : ℝ≥0∞)) :
+    planarBallOriginCapConstant κ ≠ (∞ : ℝ≥0∞) := by
+  unfold planarBallOriginCapConstant
+  apply ENNReal.div_ne_top
+  · exact ENNReal.mul_ne_top hκtop ENNReal.ofReal_ne_top
+  · exact (ENNReal.ofReal_pos.mpr (surfaceMass_pos (by norm_num))).ne'
+
+private theorem planarBallOriginCapFactor_scale (κ : ℝ≥0∞) {δ : ℝ≥0} (hδ : 0 < δ) :
+    planarBallOriginCapFactor κ δ = planarBallOriginCapConstant κ * (δ : ℝ≥0∞) := by
+  have hδreal : 0 < (δ : ℝ) := by exact_mod_cast hδ
+  unfold planarBallOriginCapFactor planarBallOriginCapConstant
+  rw [show (δ : ℝ) / 8 = (δ : ℝ) * ((1 : ℝ) / 8) by ring,
+    ENNReal.ofReal_mul hδreal.le]
+  rw [ENNReal.ofReal_coe_nnreal]
+  change κ * ((δ : ℝ≥0∞) * ENNReal.ofReal ((1 : ℝ) / 8)) /
+      ENNReal.ofReal (surfaceMass 2) =
+    (κ * ENNReal.ofReal ((1 : ℝ) / 8) /
+      ENNReal.ofReal (surfaceMass 2)) * (δ : ℝ≥0∞)
+  simp only [ENNReal.div_eq_inv_mul]
+  ac_rfl
+
+/-- The circle version of the moving-cap lower bound.  The geometric
+inclusion is dimension-free; the new ingredient is the linear circle-cap
+measure lower bound. -/
+private theorem planar_radialShell_cap_average_lower
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {r b h R : ℝ} (hr : 0 < r) (hinner : b < r)
+    (hmargin : b + r * h ≤ R) (hh : 0 < h) (hhalf : h ≤ 1 / 2)
+    (g : Euclidean 2 → ℝ) (hgContinuous : Continuous g)
+    (hgnonneg : ∀ y, 0 ≤ g y)
+    (hg_one : ∀ y, ‖y‖ ≤ R → g y = 1)
+    {x : Euclidean 2} (hx : x ∈ radialShell 2 r b) :
+    κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+      ENNReal.ofReal ‖normalizedSphericalAverage 2
+        (fun y => (g y : ℂ)) r x‖ := by
+  have hxshell : |‖x‖ - r| < b := hx
+  have hxnorm : 0 < ‖x‖ := by
+    have : r - b < ‖x‖ := by
+      rcases abs_lt.mp hxshell with ⟨hlow, _⟩
+      linarith
+    linarith
+  have hdir : ‖inwardRadialDirection x‖ = 1 := norm_inwardRadialDirection hxnorm
+  have hgi : Integrable (fun w : sphere (0 : Euclidean 2) 1 =>
+      g (x + r • (w : Euclidean 2))) (unitSurfaceMeasure 2) := by
+    have hcont : Continuous (fun w : sphere (0 : Euclidean 2) 1 =>
+        g (x + r • (w : Euclidean 2))) := by
+      apply hgContinuous.comp
+      fun_prop
+    exact hcont.integrable_of_hasCompactSupport
+      (HasCompactSupport.of_compactSpace _)
+  apply planar_sphericalCap_lower_le_ennreal_norm_normalizedSphericalAverage
+    hκ g r x (v := inwardRadialDirection x) hdir (h := h) hh hhalf hgi
+  · intro w
+    exact hgnonneg _
+  · intro w hw
+    apply hg_one
+    have hmem := inwardRadial_cap_translate_subset_ball (n := 1)
+      hr hinner hmargin hx hw
+    rw [Metric.mem_ball, dist_zero_right] at hmem
+    exact hmem.le
+
+/-- The finite circle origin-ball test with an arbitrary nonnegative power
+weight. -/
+private theorem planar_ballOrigin_finite_lower_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p) (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (T : Finset PositiveRadius) {b h R : ℝ} {m : ℝ≥0∞}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E)
+    (hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s → 2 * b ≤ |(r : ℝ) - (s : ℝ)|)
+    (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α (radialShell 2 (r : ℝ) b))
+    (hppos : 0 < p) (hRpos : 0 < R) (hh : 0 < h) (hhalf : h ≤ 1 / 2)
+    (hinner : ∀ r ∈ T, b < (r : ℝ))
+    (hmargin : ∀ r ∈ T, b + (r : ℝ) * h ≤ R)
+    (hDfinite : powerWeightedVolume 2 α
+      (closedBall (0 : Euclidean 2) (2 * R)) ≠ (∞ : ℝ≥0∞)) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C *
+        (powerWeightedVolume 2 α (closedBall (0 : Euclidean 2) (2 * R))) ^
+          (1 / (ENNReal.ofReal p).toReal) := by
+  classical
+  let D : Set (Euclidean 2) := closedBall 0 (2 * R)
+  let U : PositiveRadius → Set (Euclidean 2) :=
+    fun r => radialShell 2 (r : ℝ) b
+  let V : Set (Euclidean 2) := ⋃ r ∈ (↑T : Set PositiveRadius), U r
+  rcases exists_schwartz_nonnegative_ball_test 2 hRpos with
+    ⟨g, f, hfg, hgcont, hgnonneg, hgleone, hgone, hzero⟩
+  have hp0 : ENNReal.ofReal p ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hppos)
+  have hinput : eLpNorm (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) ≤
+      (powerWeightedVolume 2 α D) ^ (1 / (ENNReal.ofReal p).toReal) := by
+    dsimp only [D]
+    exact eLpNorm_nonnegative_ball_cutoff_le 2 hp0 g f hfg
+      hgnonneg hgleone hzero
+  have hq : 0 ≤ 1 / (ENNReal.ofReal p).toReal := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    positivity
+  have hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) := by
+    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
+    refine lt_of_le_of_lt hinput ?_
+    exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
+  have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
+    intro r hr
+    exact measurableSet_radialShell 2 (r : ℝ) b
+  have hUdisjoint : (↑T : Set PositiveRadius).PairwiseDisjoint U := by
+    intro r hr s hs hrs
+    change Disjoint (U r) (U s)
+    exact disjoint_radialShell_of_radius_separated 2
+      (hsep r (by simpa using hr) s (by simpa using hs) hrs)
+  have hVmeas : MeasurableSet V := by
+    dsimp only [V]
+    exact T.measurableSet_biUnion hUmeas
+  have hpoint : ∀ x ∈ V,
+      κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+        restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ) x := by
+    intro x hx
+    rcases Set.mem_iUnion.mp hx with ⟨r, hx⟩
+    rcases Set.mem_iUnion.mp hx with ⟨hrT, hxr⟩
+    calc
+      κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+          ENNReal.ofReal ‖normalizedSphericalAverage 2
+            (fun y => (g y : ℂ)) (r : ℝ) x‖ :=
+        planar_radialShell_cap_average_lower κ hκ r.2 (hinner r hrT)
+          (hmargin r hrT) hh hhalf g hgcont hgnonneg hgone hxr
+      _ = ENNReal.ofReal ‖normalizedSphericalAverage 2
+          (f : Euclidean 2 → ℂ) (r : ℝ) x‖ := by
+        have hfun : (fun y : Euclidean 2 => (g y : ℂ)) = (f : Euclidean 2 → ℂ) := by
+          funext y
+          exact (hfg y).symm
+        rw [hfun]
+      _ ≤ restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ) x :=
+        ennreal_norm_normalizedSphericalAverage_le_restrictedNormalizedSphericalMaximal
+          f (hT r hrT) r.2 x
+  have hvolume : (T.card : ℝ≥0∞) * m ≤ powerWeightedVolume 2 α V := by
+    calc
+      (T.card : ℝ≥0∞) * m = ∑ r ∈ T, m := by simp [mul_comm]
+      _ ≤ ∑ r ∈ T, powerWeightedVolume 2 α (U r) := by
+        gcongr with r hr
+        exact hm r hr
+      _ = powerWeightedVolume 2 α V := by
+        dsimp only [V]
+        exact (measure_biUnion_finset hUdisjoint hUmeas).symm
+  have hbound := restrictedStrongType_knapp_entropy_test_bound_of_bound
+    hstrong (f := f) hf hVmeas hpoint hinput hvolume hppos
+  simpa only [D] using hbound
+
+/-- The planar origin-ball test in a fixed unit multiplicative window. -/
+private theorem planar_ballOrigin_unit_localEntropy_lower_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p) (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (δ : ℝ≥0) (hδ : 0 < δ) (hδone : δ ≤ 1) (hppos : 0 < p) (hα : 0 ≤ α) :
+    planarBallOriginCapFactor κ δ *
+        ((localMultiplicativeEntropy E ⟨1, by norm_num⟩ 1 δ).toENNReal *
+          ballOriginTubeMass 1 α δ) ^ (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C *
+        (ballOriginInputMass 1 α δ) ^ (1 / (ENNReal.ofReal p).toReal) := by
+  classical
+  let c : PositiveRadius := ⟨1, by norm_num⟩
+  let b : ℝ := Real.log 2 * (δ : ℝ) / 16
+  let h : ℝ := (δ : ℝ) / 8
+  let R : ℝ := (δ : ℝ)
+  let ρ : ℝ := (1 : ℝ) / 4
+  let m : ℝ≥0∞ := ballOriginTubeMass 1 α δ
+  let F : Set ℝ := E ∩ multiplicativeInterval c 1
+  obtain ⟨T, hT, hnet, _hlogsep, hphyssep⟩ :=
+    exists_finset_unitMultiplicative_packing F c δ hδ (by
+      intro r hr
+      exact hr.2)
+  have hδreal : 0 < (δ : ℝ) := by exact_mod_cast hδ
+  have hlogtwo : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  have hlogtwole : Real.log 2 ≤ 1 := by
+    nlinarith [Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)]
+  have hbpos : 0 < b := by
+    dsimp only [b]
+    positivity
+  have hhpos : 0 < h := by
+    dsimp only [h]
+    positivity
+  have hRpos : 0 < R := by
+    dsimp only [R]
+    exact hδreal
+  have hhalf : h ≤ 1 / 2 := by
+    dsimp only [h]
+    have hδrealone : (δ : ℝ) ≤ 1 := by exact_mod_cast hδone
+    linarith
+  have hb_le_δ_sixteen : b ≤ (δ : ℝ) / 16 := by
+    calc
+      b = ((δ : ℝ) / 16) * Real.log 2 := by
+        dsimp only [b]
+        ring
+      _ ≤ ((δ : ℝ) / 16) * 1 := by
+        apply mul_le_mul_of_nonneg_left hlogtwole
+        positivity
+      _ = (δ : ℝ) / 16 := by ring
+  have hb_le_sixteen : b ≤ (1 : ℝ) / 16 := by
+    have hδrealone : (δ : ℝ) ≤ 1 := by exact_mod_cast hδone
+    calc
+      b ≤ (δ : ℝ) / 16 := hb_le_δ_sixteen
+      _ ≤ (1 : ℝ) / 16 := by gcongr
+  have hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s →
+      2 * b ≤ |(r : ℝ) - (s : ℝ)| := by
+    intro r hr s hs hrs
+    have hstrict := hphyssep r hr s hs hrs
+    dsimp only [c] at hstrict
+    have hscale : 2 * b ≤ Real.log 2 * (δ : ℝ) / 4 := by
+      dsimp only [b]
+      nlinarith [mul_nonneg (le_of_lt hlogtwo) (le_of_lt hδreal)]
+    exact hscale.trans (by simpa using hstrict.le)
+  have hinner : ∀ r ∈ T, b < (r : ℝ) := by
+    intro r hr
+    have hrhalf := half_center_le_radius_of_mem_unitMultiplicativeInterval c
+      (hT r hr).2
+    change (1 : ℝ) / 2 ≤ (r : ℝ) at hrhalf
+    linarith
+  have hmargin : ∀ r ∈ T, b + (r : ℝ) * h ≤ R := by
+    intro r hr
+    have hrupper := radius_le_two_center_of_mem_unitMultiplicativeInterval c
+      (hT r hr).2
+    dsimp only [c] at hrupper
+    have hrupper' : (r : ℝ) ≤ 2 := by simpa using hrupper
+    dsimp only [h, R]
+    calc
+      b + (r : ℝ) * ((δ : ℝ) / 8) ≤
+          (δ : ℝ) / 16 + 2 * ((δ : ℝ) / 8) := by gcongr
+      _ ≤ (δ : ℝ) := by linarith
+  have hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (radialShell 2 (r : ℝ) b) := by
+    intro r hr
+    have hrhalf := half_center_le_radius_of_mem_unitMultiplicativeInterval c
+      (hT r hr).2
+    change (1 : ℝ) / 2 ≤ (r : ℝ) at hrhalf
+    have hρr : ρ ≤ (r : ℝ) := by
+      dsimp only [ρ]
+      linarith
+    have hrlower : (1 : ℝ) / 4 ≤ (r : ℝ) - b := by
+      linarith
+    have hpowlower : (ENNReal.ofReal ((1 : ℝ) / 4)) ^ α ≤
+        (ENNReal.ofReal ((r : ℝ) - b)) ^ α :=
+      ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal hrlower) hα
+    calc
+      m = (ENNReal.ofReal ((1 : ℝ) / 4)) ^ α *
+          (volume (ball (0 : Euclidean 1) ρ) * ENNReal.ofReal (2 * b)) := by
+        dsimp only [m, ρ, b, ballOriginTubeMass]
+        rw [show 2 * (Real.log 2 * (δ : ℝ) / 16) =
+          Real.log 2 * (δ : ℝ) / 8 by ring]
+      _ ≤ (ENNReal.ofReal ((r : ℝ) - b)) ^ α *
+          (volume (ball (0 : Euclidean 1) ρ) * ENNReal.ofReal (2 * b)) := by
+        gcongr
+      _ ≤ powerWeightedVolume 2 α (graphTube 1 (r : ℝ) 0 ρ b) :=
+        powerWeightedVolume_graphTube_lower_of_nonneg 1 hα r.2.le hρr
+      _ ≤ powerWeightedVolume 2 α (radialShell 2 (r : ℝ) b) := by
+        apply measure_mono
+        exact graphTube_subset_radialShell 1 r.2.le hρr
+  have hDfinite : powerWeightedVolume 2 α
+      (closedBall (0 : Euclidean 2) (2 * R)) ≠ (∞ : ℝ≥0∞) :=
+    ne_of_lt (powerWeightedVolume_closedBall_lt_top hα)
+  have hbound := planar_ballOrigin_finite_lower_of_bound κ hκ hstrong T
+    (by
+      intro r hr
+      exact (hT r hr).1)
+    hsep hm hppos hRpos hhpos hhalf hinner hmargin hDfinite
+  let centers : Set ℝ := logRadius '' (↑T : Set PositiveRadius)
+  have hcover : Metric.IsCover (δ / 2) (logRadiusSet F) centers := by
+    rintro u ⟨r, hrF, rfl⟩
+    obtain ⟨t, htT, hrt⟩ := hnet r (by simpa only [F] using hrF)
+    refine ⟨logRadius t, ⟨t, htT, rfl⟩, ?_⟩
+    change edist (logRadius r) (logRadius t) ≤ ((δ / 2 : ℝ≥0) : ℝ≥0∞)
+    rw [edist_dist]
+    apply ENNReal.ofReal_le_coe.mpr
+    simpa only [Real.dist_eq, NNReal.coe_div, NNReal.coe_ofNat] using hrt
+  have hCcard : centers.encard = T.card := by
+    have hC : centers = (↑(T.image logRadius) : Set ℝ) := by
+      ext u
+      simp [centers]
+    rw [hC, Set.encard_coe_eq_coe_finsetCard,
+      Finset.card_image_of_injective T logRadius_injective]
+  have hentropyENat : localMultiplicativeEntropy E c 1 δ ≤ T.card := by
+    change Metric.externalCoveringNumber (δ / 2) (logRadiusSet F) ≤ T.card
+    rw [← hCcard]
+    exact hcover.externalCoveringNumber_le_encard
+  have hentropy : (localMultiplicativeEntropy E c 1 δ).toENNReal ≤
+      (T.card : ℝ≥0∞) := by
+    exact_mod_cast ENat.toENNReal_mono hentropyENat
+  have hinput : powerWeightedVolume 2 α
+      (closedBall (0 : Euclidean 2) (2 * R)) ≤ ballOriginInputMass 1 α δ := by
+    dsimp only [R]
+    simpa only [ballOriginInputMass] using
+      (powerWeightedVolume_closedBall_le (d := 2) (α := α)
+        (R := 2 * (δ : ℝ)) hα)
+  have hq : 0 ≤ 1 / (ENNReal.ofReal p).toReal := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    positivity
+  calc
+    planarBallOriginCapFactor κ δ *
+        ((localMultiplicativeEntropy E ⟨1, by norm_num⟩ 1 δ).toENNReal *
+          ballOriginTubeMass 1 α δ) ^ (1 / (ENNReal.ofReal p).toReal) ≤
+        (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+          ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) := by
+      simp only [planarBallOriginCapFactor]
+      dsimp only [c, h, m] at hentropy ⊢
+      gcongr
+    _ ≤ ENNReal.ofReal C *
+        (powerWeightedVolume 2 α
+          (closedBall (0 : Euclidean 2) (2 * R))) ^
+            (1 / (ENNReal.ofReal p).toReal) := hbound
+    _ ≤ ENNReal.ofReal C *
+        (ballOriginInputMass 1 α δ) ^ (1 / (ENNReal.ofReal p).toReal) :=
+      by
+        simpa only [mul_comm] using
+          mul_le_mul_left (ENNReal.rpow_le_rpow hinput hq) (ENNReal.ofReal C)
+
+private theorem planar_unitMultiplicativeEntropy_bound_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    (hκpos : 0 < κ) (hκtop : κ ≠ (∞ : ℝ≥0∞))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p) (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (δ : ℝ≥0) (hδ : 0 < δ) (hδone : δ ≤ 1) (hppos : 0 < p) (hα : 0 ≤ α) :
+    (unitMultiplicativeEntropy E δ).toENNReal ≤
+      ((ENNReal.ofReal C * (ballOriginInputMass 1 α δ) ^ (1 / p)) /
+        planarBallOriginCapFactor κ δ) ^ p /
+        ballOriginTubeMass 1 α δ := by
+  classical
+  unfold unitMultiplicativeEntropy
+  rw [ENat.toENNReal_iSup]
+  apply iSup_le
+  intro c
+  let a : ℝ := (c : ℝ)⁻¹
+  have hcpos : 0 < (c : ℝ) := c.2
+  have ha : 0 < a := by
+    dsimp only [a]
+    exact inv_pos.mpr hcpos
+  have hdil := restrictedNormalizedSphericalMaximal_dilateRadiusSet_bound
+    (d := 2) (by omega) hppos ha hstrong
+  have htest := planar_ballOrigin_unit_localEntropy_lower_of_bound κ hκ hdil
+    δ hδ hδone hppos hα
+  have hcentre :
+      (⟨a * (c : ℝ), mul_pos ha c.2⟩ : PositiveRadius) = ⟨1, by norm_num⟩ := by
+    apply Subtype.ext
+    dsimp only [a]
+    exact inv_mul_cancel₀ hcpos.ne'
+  have hlocal := localMultiplicativeEntropy_dilateRadiusSet E c 1 δ ha
+  rw [hcentre] at hlocal
+  rw [hlocal] at htest
+  have htest' :
+      planarBallOriginCapFactor κ δ *
+          ((localMultiplicativeEntropy E c 1 δ).toENNReal *
+            ballOriginTubeMass 1 α δ) ^ (1 / p) ≤
+        ENNReal.ofReal C * (ballOriginInputMass 1 α δ) ^ (1 / p) := by
+    simpa only [ENNReal.toReal_ofReal hppos.le] using htest
+  exact entropy_le_of_knapp_bound hppos
+    (planarBallOriginCapFactor_pos hκpos hδ).ne'
+    (planarBallOriginCapFactor_ne_top hκtop δ)
+    (ballOriginTubeMass_pos 1 α hδ).ne'
+    (ballOriginTubeMass_ne_top 1 α δ) htest'
+
+/-- The sharp planar cap supplies the inverse entropy power with exponent
+`p - 1 - α`. -/
+private theorem planar_unitMultiplicativeEntropy_power_bound_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    (hκpos : 0 < κ) (hκtop : κ ≠ (∞ : ℝ≥0∞))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p) (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ))
+          (ENNReal.ofReal p) (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (hC : 0 < C) (hppos : 0 < p) (hα : 0 ≤ α) :
+    ∃ A : ℝ≥0∞, A ≠ (∞ : ℝ≥0∞) ∧ ∀ δ : ℝ≥0, 0 < δ → δ ≤ 1 →
+      (unitMultiplicativeEntropy E δ).toENNReal ≤
+        A * (δ : ℝ≥0∞) ^ (-(p - 1 - α)) := by
+  let A : ℝ≥0∞ :=
+    ((ENNReal.ofReal C * (ballOriginInputConstant 1 α) ^ (1 / p) /
+      planarBallOriginCapConstant κ) ^ p / ballOriginTubeConstant 1 α)
+  have hinnerpos : 0 < ENNReal.ofReal C *
+      (ballOriginInputConstant 1 α) ^ (1 / p) /
+        planarBallOriginCapConstant κ := by
+    apply ENNReal.div_pos
+    · apply ne_of_gt
+      apply ENNReal.mul_pos
+      · exact (ENNReal.ofReal_pos.mpr hC).ne'
+      · exact (ENNReal.rpow_pos (ballOriginInputConstant_pos 1 α)
+          (ballOriginInputConstant_ne_top 1 α)).ne'
+    · exact planarBallOriginCapConstant_ne_top hκtop
+  have hinnertop : ENNReal.ofReal C *
+      (ballOriginInputConstant 1 α) ^ (1 / p) /
+        planarBallOriginCapConstant κ ≠ (∞ : ℝ≥0∞) := by
+    apply ENNReal.div_ne_top
+    · apply ENNReal.mul_ne_top
+      · exact ENNReal.ofReal_ne_top
+      · exact ENNReal.rpow_ne_top_of_ne_zero
+          (ballOriginInputConstant_pos 1 α).ne'
+          (ballOriginInputConstant_ne_top 1 α)
+    · exact (planarBallOriginCapConstant_pos hκpos).ne'
+  have hAtop : A ≠ (∞ : ℝ≥0∞) := by
+    dsimp only [A]
+    apply ENNReal.div_ne_top
+    · exact ENNReal.rpow_ne_top_of_ne_zero hinnerpos.ne' hinnertop
+    · exact (ballOriginTubeConstant_pos 1 α).ne'
+  refine ⟨A, hAtop, ?_⟩
+  intro δ hδ hδone
+  have hbound := planar_unitMultiplicativeEntropy_bound_of_bound κ hκ hκpos hκtop
+    hstrong δ hδ hδone hppos hα
+  have hinputscale := ballOriginInputMass_scale 1 α hδ
+  have hcapscale := planarBallOriginCapFactor_scale κ hδ
+  have htubescale := ballOriginTubeMass_scale 1 α hδ
+  calc
+    (unitMultiplicativeEntropy E δ).toENNReal ≤
+        ((ENNReal.ofReal C * (ballOriginInputMass 1 α δ) ^ (1 / p)) /
+          planarBallOriginCapFactor κ δ) ^ p /
+          ballOriginTubeMass 1 α δ := hbound
+    _ = ((ENNReal.ofReal C *
+          (ballOriginInputConstant 1 α *
+            (δ : ℝ≥0∞) ^ (α + (2 : ℝ))) ^ (1 / p) /
+          (planarBallOriginCapConstant κ * (δ : ℝ≥0∞))) ^ p /
+          (ballOriginTubeConstant 1 α * (δ : ℝ≥0∞))) := by
+      rw [hinputscale, hcapscale, htubescale]
+      norm_num
+    _ = A * (δ : ℝ≥0∞) ^
+          ((α + (2 : ℝ)) - (1 : ℝ) * p - 1) := by
+      dsimp only [A]
+      simpa only [ENNReal.rpow_one] using scaled_knapp_entropy_rhs
+        (C := ENNReal.ofReal C) (I := ballOriginInputConstant 1 α)
+        (cap := planarBallOriginCapConstant κ) (tube := ballOriginTubeConstant 1 α)
+        (t := (δ : ℝ≥0∞)) (p := p) (u := α + (2 : ℝ)) (v := (1 : ℝ)) hppos
+        (ne_of_gt (by exact_mod_cast hδ)) ENNReal.coe_ne_top
+        (planarBallOriginCapConstant_pos hκpos).ne'
+        (planarBallOriginCapConstant_ne_top hκtop)
+        (ballOriginTubeConstant_pos 1 α).ne'
+        (ballOriginTubeConstant_ne_top 1 α)
+    _ = A * (δ : ℝ≥0∞) ^ (-(p - 1 - α)) := by
+      congr 2
+      push_cast
+      ring
+
+/-- The origin-ball Knapp test gives the planar nonnegative power-weight
+face.  The circle-cap lower bound replaces the higher-dimensional
+height-slice estimate. -/
+theorem alpha_add_multiplicativeMinkowskiExponent_le_of_restrictedStrongType_of_nonneg_planar
+    {E : Set ℝ} {p α : ℝ} (hppos : 0 < p) (hα : 0 ≤ α)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p α) :
+    (α : EReal) + multiplicativeMinkowskiExponent E ≤ ((p - 1 : ℝ) : EReal) := by
+  rcases hstrong with ⟨C, hC, hstrong⟩
+  rcases exists_unitSurfaceMeasure_sphericalCap_lower_planar with
+    ⟨κ, hκpos, hκtop, hκ⟩
+  rcases planar_unitMultiplicativeEntropy_power_bound_of_bound κ hκ hκpos hκtop
+    hstrong hC hppos hα with ⟨A, hAtop, hbound⟩
+  have hsmall : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0), δ ∈ Ioo 0 1 :=
+    nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
+  have hpower : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
+      (unitMultiplicativeEntropy E δ).toENNReal ≤
+        A * (δ : ℝ≥0∞) ^ (-(p - 1 - α)) := by
+    filter_upwards [hsmall] with δ hδ
+    exact hbound δ hδ.1 hδ.2.le
+  have hβ : multiplicativeMinkowskiExponent E ≤ ((p - 1 - α : ℝ) : EReal) :=
+    multiplicativeMinkowskiExponent_le_of_unitEntropy_power_bound hAtop hpower
+  calc
+    (α : EReal) + multiplicativeMinkowskiExponent E ≤
+        (α : EReal) + ((p - 1 - α : ℝ) : EReal) :=
+      by simpa only [add_comm] using add_le_add_right hβ (α : EReal)
+    _ = ((p - 1 : ℝ) : EReal) := by
       norm_cast
       ring
 

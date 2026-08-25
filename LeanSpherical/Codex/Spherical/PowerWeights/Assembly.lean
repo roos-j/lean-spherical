@@ -63,7 +63,7 @@ theorem powerWeightAdmissibleRegion_eq_closure_of_strict_upper_necessary_vertica
 estimate, so the final theorem needs only the sharp necessity and strict
 upper inputs. -/
 theorem powerWeightAdmissibleRegion_eq_closure_of_strict_upper_necessary
-    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ))
+    {d : Nat} (hd : 2 ≤ d) (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ))
     (hnecessary : ∀ ⦃p α : ℝ⦄, 1 ≤ p →
       HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α →
         powerWeightEntropyImplicitCondition d E p α)

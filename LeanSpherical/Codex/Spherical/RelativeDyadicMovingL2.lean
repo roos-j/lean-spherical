@@ -439,7 +439,7 @@ envelope of the positive-radius relative-dyadic multiplier.  In particular,
 this is an all-radius estimate: no sum over the dyadic radius blocks occurs
 in the conclusion. -/
 theorem raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -454,7 +454,7 @@ theorem raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
         24 *
           (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -470,7 +470,7 @@ theorem raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
           (24 *
             (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
               2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-                (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                       ‖((SchwartzMap.fderivCLM ℂ
                         (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -497,7 +497,7 @@ theorem raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
   let L : ℝ :=
     ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
       2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-        (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+        (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ
               (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -571,7 +571,7 @@ theorem raw_square_iSup_relative_dyadic_moving_bandpass_global_of_sharp
 This is the bridge from the square-function estimate to comparisons of raw
 `ENNReal` maximal operators. -/
 theorem ae_lt_top_iSup_relative_dyadic_moving_bandpass_global_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -631,7 +631,7 @@ theorem ae_lt_top_iSup_relative_dyadic_moving_bandpass_global_of_sharp
 /-- The literal positive-radius relative-dyadic maximal multiplier has the
 global strong `L²` bound obtained from the raw square estimate above. -/
 theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -654,7 +654,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
         24 *
           (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -674,7 +674,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
     24 *
       (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
         2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-          (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
             (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ
                   (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -705,11 +705,11 @@ theorem relative_dyadic_global_coefficient_le_exponential
       24 *
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 * Dphi) / (dyadicScale j) ^ ((d : ℝ) / 2)))) ≤
         C * (2 : ℝ) ^ (-((d : ℝ) - 1) * (j : ℝ)) := by
   let K : ℝ :=
-    (4 * C0) ^ 2 + 4 * (4 * C0) * (4 * C1) +
+    (4 * C0) ^ 2 + 4 * (4 * C0) * (8 * C1) +
       4 * (4 * C0) * (12 * C0 * Dphi)
   refine ⟨24 * K + 1, ?_, ?_⟩
   · have hK : 0 ≤ K := by
@@ -740,16 +740,16 @@ theorem relative_dyadic_global_coefficient_le_exponential
     ring
   have hAB :
       ((4 * C0) / x ^ ((d : ℝ) / 2)) *
-        ((4 * C1) / x ^ ((d : ℝ) / 2 - 1)) =
-          (4 * C0) * (4 * C1) * x ^ (-((d : ℝ) - 1)) := by
+        ((8 * C1) / x ^ ((d : ℝ) / 2 - 1)) =
+          (4 * C0) * (8 * C1) * x ^ (-((d : ℝ) - 1)) := by
     calc
       ((4 * C0) / x ^ ((d : ℝ) / 2)) *
-          ((4 * C1) / x ^ ((d : ℝ) / 2 - 1)) =
-          (4 * C0) * (4 * C1) *
+          ((8 * C1) / x ^ ((d : ℝ) / 2 - 1)) =
+          (4 * C0) * (8 * C1) *
             (x ^ (-((d : ℝ) / 2)) * x ^ (-((d : ℝ) / 2 - 1))) := by
         simp only [div_eq_mul_inv, ← Real.rpow_neg hx.le]
         ring_nf
-      _ = (4 * C0) * (4 * C1) * x ^ (-((d : ℝ) - 1)) := by
+      _ = (4 * C0) * (8 * C1) * x ^ (-((d : ℝ) - 1)) := by
         rw [← Real.rpow_add hx]
         congr 1
         ring_nf
@@ -782,7 +782,7 @@ theorem relative_dyadic_global_coefficient_le_exponential
   have hL :
       (((4 * C0) / x ^ ((d : ℝ) / 2)) ^ 2 +
         2 * ((4 * C0) / x ^ ((d : ℝ) / 2)) *
-          (2 * ((4 * C1) / x ^ ((d : ℝ) / 2 - 1) +
+          (2 * ((8 * C1) / x ^ ((d : ℝ) / 2 - 1) +
             (12 * C0 * Dphi) / x ^ ((d : ℝ) / 2)))) ≤
         K * x ^ (-((d : ℝ) - 1)) := by
     rw [hsplit]
@@ -794,7 +794,7 @@ theorem relative_dyadic_global_coefficient_le_exponential
       24 *
         (((4 * C0) / x ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / x ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / x ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / x ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 * Dphi) / x ^ ((d : ℝ) / 2)))) ≤
         (24 * K + 1) * x ^ (-((d : ℝ) - 1)) := by
     nlinarith
@@ -840,7 +840,7 @@ theorem exists_memLp_two_iSup_relative_dyadic_moving_bandpass_global_exponential
   refine ⟨C, hC, ?_⟩
   intro j f
   have hglobal := memLp_two_iSup_relative_dyadic_moving_bandpass_global_of_sharp
-    hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
+    (by omega) C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
   refine ⟨hglobal.1, hglobal.2.trans ?_⟩
   apply mul_le_mul_of_nonneg_right (hcoeff j)
   exact integral_nonneg fun _ => sq_nonneg _

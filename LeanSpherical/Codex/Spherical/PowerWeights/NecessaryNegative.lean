@@ -4,6 +4,7 @@
 import LeanSpherical.Codex.Spherical.PowerWeights.DilationStrongType
 import LeanSpherical.Codex.Spherical.PowerWeights.Admissibility
 import LeanSpherical.Codex.Spherical.PowerWeights.EntropyProfilePower
+import LeanSpherical.Codex.Spherical.PowerWeights.EntropyAmbientSharp
 import LeanSpherical.Codex.Spherical.PowerWeights.NormalizedWindowGeometry
 import LeanSpherical.Codex.Spherical.PowerWeights.BallOriginLower
 import LeanSpherical.Codex.Spherical.PowerWeights.AnisotropicTubeLower
@@ -17,11 +18,14 @@ open Codex.Spherical.PowerWeights.Dilation
 open Codex.Spherical.PowerWeights.DilationStrongType
 open Codex.Spherical.PowerWeights.Entropy
 open Codex.Spherical.PowerWeights.EntropyComparison
+open Codex.Spherical.PowerWeights.EntropyAmbientLine
+open Codex.Spherical.PowerWeights.EntropyAmbientSharp
 open Codex.Spherical.PowerWeights.EntropyDilation
 open Codex.Spherical.PowerWeights.EntropyProfilePower
 open Codex.Spherical.PowerWeights.FiniteUnions
 open Codex.Spherical.PowerWeights.GlobalToLocal
 open Codex.Spherical.PowerWeights.NormalizedWindowGeometry
+open Codex.Spherical.PowerWeights.PoleCapLower
 open Codex.Spherical.PowerWeights.PowerMeasure
 open Codex.Spherical.PowerWeights.RestrictedMaximal
 open Codex.Spherical.PowerWeights.SharpLowerTests
@@ -258,6 +262,11 @@ private def negativeCapConstant (n : ℕ) : ℝ≥0∞ :=
         ENNReal.ofReal ((1 : ℝ) / 65536))) /
     ENNReal.ofReal (surfaceMass (n + 1))
 
+/-- The scale-free planar cap coefficient at the lower-test radius
+`h = t / 128`. -/
+private def planarNegativeCapConstant (κ : ℝ≥0∞) : ℝ≥0∞ :=
+  κ * ENNReal.ofReal ((1 : ℝ) / 128) / ENNReal.ofReal (surfaceMass 2)
+
 /-- The common output slab mass after extracting its `t` and `D` powers. -/
 private def negativeOutputConstant (n : ℕ) (α : ℝ) : ℝ≥0∞ :=
   (ENNReal.ofReal (2 : ℝ)) ^ α *
@@ -310,6 +319,16 @@ private theorem negative_cap_factor_scale
     hpow]
   simp only [div_eq_mul_inv]
   ring
+
+private theorem planar_negative_cap_factor_scale
+    (κ : ℝ≥0∞) {t : ℝ} (ht : 0 < t) :
+    κ * ENNReal.ofReal (t / 128) / ENNReal.ofReal (surfaceMass 2) =
+      planarNegativeCapConstant κ * ENNReal.ofReal t := by
+  unfold planarNegativeCapConstant
+  rw [show t / 128 = t * ((1 : ℝ) / 128) by ring,
+    ENNReal.ofReal_mul ht.le]
+  simp only [ENNReal.div_eq_inv_mul]
+  ac_rfl
 
 private theorem negative_output_mass_scale
     (n : ℕ) (hn : 0 < n) {α t D : ℝ}
@@ -512,6 +531,22 @@ private theorem negativeCapConstant_ne_top (n : ℕ) :
       · exact ENNReal.ofReal_ne_top
   · exact (ENNReal.ofReal_pos.mpr
       (surfaceMass_pos (show 0 < n + 1 by omega))).ne'
+
+private theorem planarNegativeCapConstant_pos {κ : ℝ≥0∞} (hκ : 0 < κ) :
+    0 < planarNegativeCapConstant κ := by
+  unfold planarNegativeCapConstant
+  apply ENNReal.div_pos
+  · exact (ENNReal.mul_pos (ne_of_gt hκ)
+      (ENNReal.ofReal_pos.mpr (by norm_num : 0 < (1 : ℝ) / 128)).ne').ne'
+  · exact ENNReal.ofReal_ne_top
+
+private theorem planarNegativeCapConstant_ne_top {κ : ℝ≥0∞}
+    (hκtop : κ ≠ (∞ : ℝ≥0∞)) :
+    planarNegativeCapConstant κ ≠ (∞ : ℝ≥0∞) := by
+  unfold planarNegativeCapConstant
+  apply ENNReal.div_ne_top
+  · exact ENNReal.mul_ne_top hκtop ENNReal.ofReal_ne_top
+  · exact (ENNReal.ofReal_pos.mpr (surfaceMass_pos (by norm_num))).ne'
 
 private theorem negativeOutputConstant_pos (n : ℕ) (hn : 0 < n) (α : ℝ) :
     0 < negativeOutputConstant n α := by
@@ -1138,6 +1173,619 @@ private theorem normalized_large_local_entropy_bound
     (negativeOutputConstant_pos n (by omega) α).ne'
     (negativeOutputConstant_ne_top n α) hknapp
   simpa only [t, D] using hresult
+
+/-- The normalized small-diameter entropy bound in the planar negative-weight
+case.  It is the `n = 1` counterpart of the preceding cap calculation, with
+the sharp circle-cap factor substituted before the scale algebra. -/
+private theorem normalized_small_local_entropy_bound_planar
+    (κ : ℝ≥0∞) (hκpos : 0 < κ) (hκtop : κ ≠ (∞ : ℝ≥0∞))
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (hp : 0 < p) (hα : α < 0) {diam δ : ℝ≥0}
+    (hδ : 0 < δ) (hδdiam : δ ≤ diam) (hdiamone : diam ≤ 1)
+    (hparabolic : (diam : ℝ) ^ 2 ≤ (δ : ℝ) / 128) :
+    (localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal ≤
+      ((ENNReal.ofReal C) ^ p * negativeSmallInputConstant 1 α /
+        (planarNegativeCapConstant κ ^ p * negativeOutputConstant 1 α)) *
+        (ENNReal.ofReal ((δ : ℝ) / (diam : ℝ))) ^ (-(p - 1)) *
+        (ENNReal.ofReal (diam : ℝ)) ^ (-α - 1) := by
+  classical
+  let t : ℝ := (δ : ℝ) / (diam : ℝ)
+  let D : ℝ := (diam : ℝ)
+  have hδr : 0 < (δ : ℝ) := by exact_mod_cast hδ
+  have hdiamr : 0 < (diam : ℝ) :=
+    lt_of_lt_of_le hδr (by exact_mod_cast hδdiam)
+  have hDr : 0 < D := by
+    dsimp only [D]
+    exact hdiamr
+  have hδD : (δ : ℝ) ≤ D := by exact_mod_cast hδdiam
+  have hDone : D ≤ 1 := by
+    dsimp only [D]
+    exact_mod_cast hdiamone
+  have ht : 0 < t := by
+    dsimp only [t]
+    positivity
+  have htone : t ≤ 1 := by
+    dsimp only [t]
+    exact (div_le_one₀ hDr).mpr hδD
+  have htD : t * D = (δ : ℝ) := by
+    dsimp only [t, D]
+    field_simp [hdiamr.ne']
+  have hparabolic' : D ^ 2 ≤ (δ : ℝ) / 128 := by
+    simpa only [D] using hparabolic
+  have hDsmall : D ≤ (1 : ℝ) / 128 := by
+    nlinarith [hparabolic']
+  have hδsmall : (δ : ℝ) ≤ (1 : ℝ) / 128 := hδD.trans hDsmall
+  have hinner : 0 < 1 - 2 * (δ : ℝ) := by nlinarith
+  have hs : 0 < t / 32 := by positivity
+  have hsbound : t / 32 ≤ (1 : ℝ) / 4 := by nlinarith
+  have hδbound : (δ : ℝ) ≤ (1 : ℝ) / 8 := by nlinarith
+  have hδle_s : (δ : ℝ) ≤ t / 32 := by
+    have hsrewrite : t / 32 = (δ : ℝ) / (32 * D) := by
+      dsimp only [t, D]
+      field_simp [hdiamr.ne']
+    rw [hsrewrite]
+    apply (le_div_iff₀ (by positivity : 0 < 32 * (diam : ℝ))).mpr
+    nlinarith [hDsmall]
+  have hsouter : 24 * (t / 32) ≤ 1 := by nlinarith
+  rcases exists_schwartz_northRadialCap_cutoff 1 (a := 1) (s := t / 32)
+      (δ := (δ : ℝ)) (by norm_num) hs hδr hinner hsbound hδbound with
+    ⟨g, f, hfg, hgcont, hgnonneg, hgleone, hgone, hzeroH, hzeroR, hzeroV⟩
+  let W : ℝ≥0∞ := powerWeightedVolume 2 α
+    (northRadialCapOuter 1 1 (t / 32) (δ : ℝ))
+  have hWupper : W ≤ negativeSmallInputConstant 1 α *
+      (ENNReal.ofReal t) ^ (1 + 1) * ENNReal.ofReal D := by
+    dsimp only [W]
+    calc
+      powerWeightedVolume 2 α
+          (northRadialCapOuter 1 1 (t / 32) (δ : ℝ)) ≤
+          (ENNReal.ofReal (1 - 2 * (δ : ℝ))) ^ α *
+            volume (northRadialCapOuter 1 1 (t / 32) (δ : ℝ)) :=
+        powerWeightedVolume_northRadialCapOuter_le_of_nonpos 1 hα.le hinner
+      _ ≤ (ENNReal.ofReal (1 - 2 * (δ : ℝ))) ^ α *
+          (volume (ball (0 : Euclidean 1) (6 * (t / 32))) *
+            ENNReal.ofReal (12 * (δ : ℝ))) := by
+              gcongr
+              exact volume_northRadialCapOuter_le 1 (by norm_num) hs hδr hδle_s hsouter
+      _ = (ENNReal.ofReal (1 - 2 * (t * D))) ^ α *
+          (volume (ball (0 : Euclidean 1) (6 * (t / 32))) *
+            ENNReal.ofReal (12 * (t * D))) := by
+              rw [htD]
+      _ ≤ negativeSmallInputConstant 1 α *
+          (ENNReal.ofReal t) ^ (1 + 1) * ENNReal.ofReal D := by
+            simpa only [Nat.reduceAdd] using
+              negative_small_input_mass_upper 1 (by omega) hα ht hDr (by
+                rw [htD]
+                nlinarith [hδsmall])
+  have hinputTop : negativeSmallInputConstant 1 α *
+      (ENNReal.ofReal t) ^ (1 + 1) * ENNReal.ofReal D ≠ (∞ : ℝ≥0∞) := by
+    apply ENNReal.mul_ne_top
+    · apply ENNReal.mul_ne_top
+      · exact negativeSmallInputConstant_ne_top 1 α
+      · exact ENNReal.pow_ne_top ENNReal.ofReal_ne_top
+    · exact ENNReal.ofReal_ne_top
+  have hWfinite : W < (∞ : ℝ≥0∞) :=
+    lt_of_le_of_lt hWupper (lt_top_iff_ne_top.mpr hinputTop)
+  have hsupport : ∀ y ∉ northRadialCapOuter 1 1 (t / 32) (δ : ℝ), g y = 0 := by
+    intro y hy
+    exact eq_zero_of_not_mem_northRadialCapOuter 1 hzeroH hzeroR hzeroV hy
+  have hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) :=
+    schwartz_memLp_of_northRadialCapOuter_support 1 g f hfg hgnonneg hgleone
+      hsupport hWfinite
+  have hnorm : eLpNorm (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) ≤ W ^ (1 / (ENNReal.ofReal p).toReal) := by
+    dsimp only [W]
+    exact eLpNorm_northRadialCap_cutoff_le 1 (ENNReal.ofReal_pos.mpr hp).ne'
+      g f hfg hgnonneg hgleone hsupport
+  let b : ℝ := Real.log 2 * (δ : ℝ) / 1024
+  obtain ⟨T, hT, hnet, hlogsep, hphyssep⟩ :=
+    exists_finset_multiplicative_packing
+      (E ∩ multiplicativeInterval ⟨1, by simp⟩ diam) ⟨1, by simp⟩ diam δ hδ hdiamone
+      (by intro r hr; exact hr.2)
+  have hsep : ∀ r ∈ T, ∀ q ∈ T, r ≠ q →
+      2 * b ≤ |(r : ℝ) - (q : ℝ)| := by
+    intro r hr q hq hrq
+    have hphysical := hphyssep r hr q hq hrq
+    have hphysical' : Real.log 2 * (δ : ℝ) / 4 < |(r : ℝ) - (q : ℝ)| := by
+      simpa using hphysical
+    have hlog : 0 < Real.log 2 := Real.log_pos one_lt_two
+    have hscale : 2 * b ≤ Real.log 2 * (δ : ℝ) / 4 := by
+      dsimp only [b]
+      nlinarith
+    exact hscale.trans hphysical'.le
+  have hhEq : t / 128 = (δ : ℝ) / (128 * D) := by
+    dsimp only [t, D]
+    field_simp [hdiamr.ne']
+  have hsEq : t / 32 = (δ : ℝ) / (32 * D) := by
+    dsimp only [t, D]
+    field_simp [hdiamr.ne']
+  have hcapHorizontal : ∀ r ∈ T, D / 128 + (r : ℝ) * (t / 128) ≤ t / 32 := by
+    intro r hr
+    rw [hhEq, hsEq]
+    exact (small_normalized_cap_conditions hδr hDr hδD hparabolic' r.2.le
+      (le_two_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2)
+      (abs_sub_one_le_diam_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2)).1
+  have hcapError : ∀ r ∈ T,
+      (D / 128) ^ 2 + 2 * (r : ℝ) * (D / 128) * (t / 128) +
+          8 * (r : ℝ) * (|1 - (r : ℝ)| + b) * (t / 128) ^ 2 +
+          2 * b + b ^ 2 < (δ : ℝ) := by
+    intro r hr
+    rw [hhEq]
+    have hgeometry := (small_normalized_cap_conditions hδr hDr hδD hparabolic' r.2.le
+      (le_two_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2)
+      (abs_sub_one_le_diam_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2)).2.1
+    dsimp only [b]
+    convert hgeometry using 1 <;> ring
+  have hcapVertical : ∀ r ∈ T, 0 < 1 - b - 4 * (r : ℝ) * (t / 128) ^ 2 := by
+    intro r hr
+    rw [hhEq]
+    simpa only [b] using (small_normalized_cap_conditions hδr hDr hδD hparabolic' r.2.le
+      (le_two_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2)
+      (abs_sub_one_le_diam_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2)).2.2
+  let m : ℝ≥0∞ := (ENNReal.ofReal (2 * D)) ^ α *
+    (volume (ball (0 : Euclidean 1) (D / 128)) * ENNReal.ofReal (2 * b))
+  have hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (horizontalSlab 1 (D / 128) (1 - (r : ℝ) - b) (1 - (r : ℝ) + b)) := by
+    intro r hr
+    dsimp only [m]
+    apply powerWeightedVolume_horizontalSlab_lower_of_near_origin 1 hα
+    · positivity
+    · have hdist := abs_sub_one_le_diam_of_mem_multiplicativeInterval_one hdiamone
+        (hT r hr).2
+      have hlogle : Real.log 2 ≤ 1 := by
+        nlinarith [Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)]
+      have hlogdelta : Real.log 2 * (δ : ℝ) ≤ (δ : ℝ) := by
+        simpa using mul_le_mul_of_nonneg_right hlogle hδr.le
+      have hb : b ≤ D / 1024 := by
+        dsimp only [b]
+        calc
+          Real.log 2 * (δ : ℝ) / 1024 ≤ (δ : ℝ) / 1024 := by
+            exact div_le_div_of_nonneg_right hlogdelta (by norm_num)
+          _ ≤ D / 1024 := by
+            exact div_le_div_of_nonneg_right hδD (by norm_num)
+      have hdistD : |1 - (r : ℝ)| ≤ D := by
+        rw [abs_sub_comm]
+        simpa only [D] using hdist
+      nlinarith
+  have htest := restrictedStrongType_smallDiameter_localEntropy_power_lower_planar_of_bound
+    κ hκ hstrong ⟨1, by simp⟩ diam δ T hT hlogsep hnet hsep hm hp (by norm_num)
+      (by positivity : 0 ≤ D / 128) (by positivity : 0 ≤ b) (by positivity : 0 < t / 128)
+      (by nlinarith [htone] : t / 128 ≤ 1 / 4) hcapHorizontal (by simpa using hcapError)
+      hcapVertical g f hfg hgcont hgnonneg hgone hf hnorm
+  have htest' :
+      (κ * ENNReal.ofReal (t / 128) / ENNReal.ofReal (surfaceMass 2)) ^ p *
+        ((localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal * m) ≤
+      (ENNReal.ofReal C) ^ p * W := by
+    calc
+      (κ * ENNReal.ofReal (t / 128) / ENNReal.ofReal (surfaceMass 2)) ^ p *
+          ((localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal * m) ≤
+        (ENNReal.ofReal C * W ^ (1 / (ENNReal.ofReal p).toReal)) ^ p := htest
+      _ = (ENNReal.ofReal C) ^ p * W := by
+        have hq : 1 / (ENNReal.ofReal p).toReal = p⁻¹ := by
+          rw [ENNReal.toReal_ofReal hp.le]
+          simp only [one_div]
+        rw [hq, ENNReal.mul_rpow_of_nonneg _ _ hp.le,
+          ENNReal.rpow_inv_rpow hp.ne']
+  have hknapp :
+      ((planarNegativeCapConstant κ * (ENNReal.ofReal t) ^ 1) ^ p) *
+        ((localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal *
+          (negativeOutputConstant 1 α * ENNReal.ofReal t *
+            (ENNReal.ofReal D) ^ (α + (1 + 1 : ℕ)))) ≤
+      (ENNReal.ofReal C) ^ p *
+        (negativeSmallInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+          ENNReal.ofReal D) := by
+    have hright : (ENNReal.ofReal C) ^ p * W ≤ (ENNReal.ofReal C) ^ p *
+        (negativeSmallInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+          ENNReal.ofReal D) := by gcongr
+    have hraw := htest'.trans hright
+    have hcap := planar_negative_cap_factor_scale κ ht
+    have hmScale : m = negativeOutputConstant 1 α * ENNReal.ofReal t *
+        (ENNReal.ofReal D) ^ (α + (1 + 1 : ℕ)) := by
+      dsimp only [m, b]
+      rw [show 2 * (Real.log 2 * (δ : ℝ) / 1024) =
+          Real.log 2 * (t * D) / 512 by rw [htD]; ring]
+      simpa only [Nat.cast_one] using
+        negative_output_mass_scale 1 (by omega) ht hDr
+    rw [hcap, hmScale] at hraw
+    simpa only [pow_one] using hraw
+  have hresult := two_scale_entropy_algebra (n := 1) hp
+    (ENNReal.ofReal_pos.mpr ht).ne' ENNReal.ofReal_ne_top
+    (ENNReal.ofReal_pos.mpr hDr).ne' ENNReal.ofReal_ne_top
+    (planarNegativeCapConstant_pos hκpos).ne'
+    (planarNegativeCapConstant_ne_top hκtop)
+    (negativeOutputConstant_pos 1 (by omega) α).ne'
+    (negativeOutputConstant_ne_top 1 α) hknapp
+  simpa only [t, D, Nat.cast_one, one_mul] using hresult
+
+/-- The normalized nonparabolic graph-tube entropy bound in the planar
+negative-weight case. -/
+private theorem normalized_large_local_entropy_bound_planar
+    (κ : ℝ≥0∞) (hκpos : 0 < κ) (hκtop : κ ≠ (∞ : ℝ≥0∞))
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (hp : 0 < p) (hα : α < 0) {diam δ : ℝ≥0}
+    (hδ : 0 < δ) (hδdiam : δ ≤ diam) (hdiamone : diam ≤ 1)
+    (hnonparabolic : (δ : ℝ) / 128 < (diam : ℝ) ^ 2) :
+    (localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal ≤
+      ((ENNReal.ofReal C) ^ p * negativeLargeInputConstant 1 α /
+        (planarNegativeCapConstant κ ^ p * negativeOutputConstant 1 α)) *
+        (ENNReal.ofReal ((δ : ℝ) / (diam : ℝ))) ^ (-(p - 1)) *
+        (ENNReal.ofReal (diam : ℝ)) ^ (-α - 1) := by
+  classical
+  let t : ℝ := (δ : ℝ) / (diam : ℝ)
+  let D : ℝ := (diam : ℝ)
+  have hδr : 0 < (δ : ℝ) := by exact_mod_cast hδ
+  have hdiamr : 0 < (diam : ℝ) :=
+    lt_of_lt_of_le hδr (by exact_mod_cast hδdiam)
+  have hDr : 0 < D := by
+    dsimp only [D]
+    exact hdiamr
+  have hδD : (δ : ℝ) ≤ D := by exact_mod_cast hδdiam
+  have hDone : D ≤ 1 := by
+    dsimp only [D]
+    exact_mod_cast hdiamone
+  have ht : 0 < t := by
+    dsimp only [t]
+    positivity
+  have htone : t ≤ 1 := by
+    dsimp only [t]
+    exact (div_le_one₀ hDr).mpr hδD
+  have htD : t * D = (δ : ℝ) := by
+    dsimp only [t, D]
+    field_simp [hdiamr.ne']
+  have hnonparabolic' : (δ : ℝ) / 128 < D ^ 2 := by
+    simpa only [D] using hnonparabolic
+  have htlarge : t < 128 * D := by
+    apply lt_of_mul_lt_mul_right (a := D) _ hDr.le
+    rw [htD]
+    nlinarith [hnonparabolic']
+  have hδsmall : (δ : ℝ) ≤ 1 := hδD.trans hDone
+  let b : ℝ := Real.log 2 * (δ : ℝ) / 1024
+  obtain ⟨T, hT, hnet, hlogsep, hphyssep⟩ :=
+    exists_finset_multiplicative_packing
+      (E ∩ multiplicativeInterval ⟨1, by simp⟩ diam) ⟨1, by simp⟩ diam δ hδ hdiamone
+      (by intro r hr; exact hr.2)
+  have hsep : ∀ r ∈ T, ∀ q ∈ T, r ≠ q →
+      2 * b ≤ |(r : ℝ) - (q : ℝ)| := by
+    intro r hr q hq hrq
+    have hphysical := hphyssep r hr q hq hrq
+    have hphysical' : Real.log 2 * (δ : ℝ) / 4 < |(r : ℝ) - (q : ℝ)| := by
+      simpa using hphysical
+    have hlog : 0 < Real.log 2 := Real.log_pos one_lt_two
+    have hscale : 2 * b ≤ Real.log 2 * (δ : ℝ) / 4 := by
+      dsimp only [b]
+      nlinarith
+    exact hscale.trans hphysical'.le
+  have hrunit : ∀ r ∈ T, (r : ℝ) ∈ multiplicativeInterval ⟨1, by simp⟩ 1 := by
+    intro r hr
+    refine ⟨(hT r hr).2.1, ?_⟩
+    calc
+      |Real.log (r : ℝ) / Real.log 2 - logRadius ⟨1, by simp⟩| ≤
+          (diam : ℝ) / 2 := (hT r hr).2.2
+      _ ≤ (1 : ℝ) / 2 := by
+        exact_mod_cast (div_le_div_of_nonneg_right hdiamone (by norm_num))
+  have hrhalf : ∀ r ∈ T, (1 : ℝ) / 2 ≤ (r : ℝ) := by
+    intro r hr
+    simpa using half_center_le_radius_of_mem_unitMultiplicativeInterval ⟨1, by simp⟩
+      (hrunit r hr)
+  have hrle : ∀ r ∈ T, (r : ℝ) ≤ 2 := by
+    intro r hr
+    exact le_two_of_mem_multiplicativeInterval_one hdiamone (hT r hr).2
+  have hρ : ∀ r ∈ T, D / 128 ≤ (r : ℝ) := by
+    intro r hr
+    nlinarith [hrhalf r hr, hDone]
+  have hhemisphere : ∀ r ∈ T, 2 * (D / 128) ≤ (r : ℝ) := by
+    intro r hr
+    nlinarith [hrhalf r hr, hDone]
+  have hcapHorizontal : ∀ r ∈ T, (r : ℝ) * (t / 128) < t / 32 := by
+    intro r hr
+    nlinarith [hrle r hr, ht]
+  have hlogle : Real.log 2 ≤ 1 := by
+    nlinarith [Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)]
+  have hbδ : b ≤ (δ : ℝ) / 1024 := by
+    dsimp only [b]
+    have hlogδ : Real.log 2 * (δ : ℝ) ≤ (δ : ℝ) := by
+      simpa using mul_le_mul_of_nonneg_right hlogle hδr.le
+    exact div_le_div_of_nonneg_right hlogδ (by norm_num)
+  have htsq : t ^ 2 ≤ 128 * (t * D) := by
+    have hnonneg : 0 ≤ t * (128 * D - t) :=
+      mul_nonneg ht.le (sub_nonneg.mpr htlarge.le)
+    nlinarith
+  have hcapVertical : ∀ r ∈ T,
+      b + 4 * (D / 128 * (t / 128) + (r : ℝ) * (t / 128) ^ 2) ≤ (δ : ℝ) / 4 := by
+    intro r hr
+    have hrh : (r : ℝ) * (t / 128) ^ 2 ≤ t ^ 2 / 8192 := by
+      calc
+        (r : ℝ) * (t / 128) ^ 2 ≤ 2 * (t / 128) ^ 2 :=
+          mul_le_mul_of_nonneg_right (hrle r hr) (sq_nonneg _)
+        _ = t ^ 2 / 8192 := by ring
+    have htsq' : t ^ 2 / 8192 ≤ (δ : ℝ) / 64 := by
+      have htsq'' : t ^ 2 ≤ 128 * (δ : ℝ) := by
+        simpa only [htD] using htsq
+      nlinarith
+    have hρh : D / 128 * (t / 128) = (δ : ℝ) / 16384 := by
+      rw [← htD]
+      ring
+    rw [hρh]
+    nlinarith [hrh.trans htsq']
+  have hinputAway : 0 < 1 - 2 * ((δ : ℝ) / 4) := by
+    nlinarith
+  have hnear : ∀ r ∈ T, |1 - (r : ℝ)| + 2 * (D / 128) + b ≤ 2 * D := by
+    intro r hr
+    have hdist := abs_sub_one_le_diam_of_mem_multiplicativeInterval_one hdiamone
+      (hT r hr).2
+    have hdistD : |1 - (r : ℝ)| ≤ D := by
+      rw [abs_sub_comm]
+      simpa only [D] using hdist
+    have hbD : b ≤ D / 1024 := hbδ.trans
+      (div_le_div_of_nonneg_right hδD (by norm_num))
+    nlinarith
+  have htest := restrictedStrongType_graphTube_localEntropy_nearOrigin_power_lower_planar_of_bound
+    κ hκ hstrong ⟨1, by simp⟩ diam δ T hT hlogsep hnet hsep hρ hhemisphere hp hα
+      (by positivity : 0 < t / 32) (by positivity : 0 < (δ : ℝ) / 4)
+      (by positivity : 0 < t / 128) (by nlinarith [htone] : t / 128 ≤ 1 / 4)
+      hcapHorizontal (by simpa only [b] using hcapVertical) (by simpa using hinputAway)
+      (by positivity : 0 < 2 * D) (by simpa using hnear)
+  have hinput :
+      (ENNReal.ofReal (1 - 2 * ((δ : ℝ) / 4))) ^ α *
+          (volume (ball (0 : Euclidean 1) (2 * (t / 32))) *
+            ENNReal.ofReal (2 * (2 * ((δ : ℝ) / 4)))) ≤
+        negativeLargeInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+          ENNReal.ofReal D := by
+    calc
+      (ENNReal.ofReal (1 - 2 * ((δ : ℝ) / 4))) ^ α *
+          (volume (ball (0 : Euclidean 1) (2 * (t / 32))) *
+            ENNReal.ofReal (2 * (2 * ((δ : ℝ) / 4)))) =
+          (ENNReal.ofReal (1 - t * D / 2)) ^ α *
+            (volume (ball (0 : Euclidean 1) (t / 16)) * ENNReal.ofReal (t * D)) := by
+              rw [htD]
+              congr 3 <;> ring
+      _ ≤ negativeLargeInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+          ENNReal.ofReal D := by
+            simpa only [Nat.reduceAdd] using
+              negative_large_input_mass_upper 1 (by omega) hα ht hDr (by
+                rw [htD]
+                exact hδsmall)
+  have hknapp :
+      ((planarNegativeCapConstant κ * (ENNReal.ofReal t) ^ 1) ^ p) *
+        ((localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal *
+          (negativeOutputConstant 1 α * ENNReal.ofReal t *
+            (ENNReal.ofReal D) ^ (α + (1 + 1 : ℕ)))) ≤
+      (ENNReal.ofReal C) ^ p *
+        (negativeLargeInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+          ENNReal.ofReal D) := by
+    have hraw :
+        (κ * ENNReal.ofReal (t / 128) / ENNReal.ofReal (surfaceMass 2)) ^ p *
+          ((localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal *
+            ((ENNReal.ofReal (2 * D)) ^ α *
+              (volume (ball (0 : Euclidean 1) (D / 128)) * ENNReal.ofReal (2 * b)))) ≤
+        (ENNReal.ofReal C) ^ p *
+          (negativeLargeInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+            ENNReal.ofReal D) := by
+      calc
+        (κ * ENNReal.ofReal (t / 128) / ENNReal.ofReal (surfaceMass 2)) ^ p *
+            ((localMultiplicativeEntropy E ⟨1, by simp⟩ diam δ).toENNReal *
+              ((ENNReal.ofReal (2 * D)) ^ α *
+                (volume (ball (0 : Euclidean 1) (D / 128)) * ENNReal.ofReal (2 * b)))) ≤
+          (ENNReal.ofReal C) ^ p *
+            ((ENNReal.ofReal (1 - 2 * ((δ : ℝ) / 4))) ^ α *
+              (volume (ball (0 : Euclidean 1) (2 * (t / 32))) *
+                ENNReal.ofReal (2 * (2 * ((δ : ℝ) / 4))))) := by
+              simpa only [one_mul] using htest
+        _ ≤ (ENNReal.ofReal C) ^ p *
+            (negativeLargeInputConstant 1 α * (ENNReal.ofReal t) ^ (1 + 1) *
+              ENNReal.ofReal D) := by gcongr
+    have hcap := planar_negative_cap_factor_scale κ ht
+    have hmScale : (ENNReal.ofReal (2 * D)) ^ α *
+        (volume (ball (0 : Euclidean 1) (D / 128)) * ENNReal.ofReal (2 * b)) =
+        negativeOutputConstant 1 α * ENNReal.ofReal t *
+          (ENNReal.ofReal D) ^ (α + (1 + 1 : ℕ)) := by
+      dsimp only [b]
+      rw [show 2 * (Real.log 2 * (δ : ℝ) / 1024) =
+          Real.log 2 * (t * D) / 512 by rw [htD]; ring]
+      simpa only [Nat.cast_one] using
+        negative_output_mass_scale 1 (by omega) ht hDr
+    rw [hcap, hmScale] at hraw
+    simpa only [pow_one] using hraw
+  have hresult := two_scale_entropy_algebra (n := 1) hp
+    (ENNReal.ofReal_pos.mpr ht).ne' ENNReal.ofReal_ne_top
+    (ENNReal.ofReal_pos.mpr hDr).ne' ENNReal.ofReal_ne_top
+    (planarNegativeCapConstant_pos hκpos).ne'
+    (planarNegativeCapConstant_ne_top hκtop)
+    (negativeOutputConstant_pos 1 (by omega) α).ne'
+    (negativeOutputConstant_ne_top 1 α) hknapp
+  simpa only [t, D, Nat.cast_one, one_mul] using hresult
+
+/-- In the planar high-exponent negative-weight range, the elementary
+ambient entropy estimates and the radial lower obstruction already imply the
+full implicit necessary condition.  This avoids the higher-dimensional
+graph-tube cap calculation. -/
+theorem powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType_of_neg_of_two_le
+    {E : Set ℝ} {p α : ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0)
+    (hp : 2 ≤ p) (hα : α < 0)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p α) :
+    powerWeightEntropyImplicitCondition 2 E p α := by
+  have hαlower : -1 ≤ α := by
+    have h := one_sub_dim_le_alpha_of_restrictedStrongType_of_nonempty
+      (d := 2) (by norm_num) hE hEpos (by linarith : 1 ≤ p) hstrong
+    norm_num at h ⊢
+    exact h
+  have hleft : (α : EReal) + multiplicativeMinkowskiExponent E ≤
+      ((p - 1 : ℝ) : EReal) := by
+    calc
+      (α : EReal) + multiplicativeMinkowskiExponent E ≤
+          (α : EReal) + (1 : EReal) :=
+        by
+          simpa only [add_comm] using
+            add_le_add_right (multiplicativeMinkowskiExponent_le_one E) (α : EReal)
+      _ ≤ ((p - 1 : ℝ) : EReal) := by
+        change (α : EReal) + ((1 : ℝ) : EReal) ≤ ((p - 1 : ℝ) : EReal)
+        rw [← EReal.coe_add]
+        exact EReal.coe_le_coe (by linarith : α + 1 ≤ p - 1)
+  have hρ : 0 ≤ p - 2 - α := by linarith
+  have hmax : max 1 (p - 2 - α) ≤ p - 1 := by
+    apply max_le
+    · linarith
+    · linarith
+  have hright : multiplicativeLegendreAssouadExponent E (p - 2 - α) ≤
+      ((p - 1 : ℝ) : EReal) := by
+    calc
+      multiplicativeLegendreAssouadExponent E (p - 2 - α) ≤
+          ((max 1 (p - 2 - α) : ℝ) : EReal) :=
+        multiplicativeLegendreAssouadExponent_le_max_one E hρ
+      _ ≤ ((p - 1 : ℝ) : EReal) := EReal.coe_le_coe hmax
+  have hresult := max_le hleft hright
+  unfold powerWeightEntropyImplicitCondition
+  norm_num at hresult ⊢
+  exact hresult
+
+/-- The sharp entropy necessary condition for negative planar weights below
+the quadratic exponent.  The two cap constructions respectively cover the
+subparabolic and nonparabolic diameter regimes. -/
+theorem powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType_of_neg_of_one_le_of_lt_two
+    {E : Set ℝ} {p α : ℝ} (_hE : E.Nonempty) (_hEpos : E ⊆ Ioi 0)
+    (hp : 1 ≤ p) (_hpTwo : p < 2) (hα : α < 0)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p α) :
+    powerWeightEntropyImplicitCondition 2 E p α := by
+  rcases exists_unitSurfaceMeasure_sphericalCap_lower_planar with
+    ⟨κ, hκpos, hκtop, hκ⟩
+  rcases hstrong with ⟨C, hC, hbound⟩
+  let ρ : ℝ := p - 2 - α
+  let T : ℝ := p - 1
+  let Ksmall : ℝ≥0∞ :=
+    (ENNReal.ofReal C) ^ p * negativeSmallInputConstant 1 α /
+      (planarNegativeCapConstant κ ^ p * negativeOutputConstant 1 α)
+  let Klarge : ℝ≥0∞ :=
+    (ENNReal.ofReal C) ^ p * negativeLargeInputConstant 1 α /
+      (planarNegativeCapConstant κ ^ p * negativeOutputConstant 1 α)
+  let A : ℝ≥0∞ := max Ksmall Klarge
+  have hp0 : 0 < p := lt_of_lt_of_le zero_lt_one hp
+  have hden0 : planarNegativeCapConstant κ ^ p * negativeOutputConstant 1 α ≠ 0 := by
+    apply mul_ne_zero
+    · exact (ENNReal.rpow_pos (planarNegativeCapConstant_pos hκpos)
+        (planarNegativeCapConstant_ne_top hκtop)).ne'
+    · exact (negativeOutputConstant_pos 1 (by omega) α).ne'
+  have hKsmallTop : Ksmall ≠ (∞ : ℝ≥0∞) := by
+    dsimp only [Ksmall]
+    apply ENNReal.div_ne_top
+    · apply ENNReal.mul_ne_top
+      · exact ENNReal.rpow_ne_top_of_nonneg hp0.le ENNReal.ofReal_ne_top
+      · exact negativeSmallInputConstant_ne_top 1 α
+    · exact hden0
+  have hKlargeTop : Klarge ≠ (∞ : ℝ≥0∞) := by
+    dsimp only [Klarge]
+    apply ENNReal.div_ne_top
+    · apply ENNReal.mul_ne_top
+      · exact ENNReal.rpow_ne_top_of_nonneg hp0.le ENNReal.ofReal_ne_top
+      · exact negativeLargeInputConstant_ne_top 1 α
+    · exact hden0
+  have hAtop : A ≠ (∞ : ℝ≥0∞) := by
+    apply lt_top_iff_ne_top.mp
+    dsimp only [A]
+    exact max_lt (lt_top_iff_ne_top.mpr hKsmallTop) (lt_top_iff_ne_top.mpr hKlargeTop)
+  have hprofile : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
+      multiplicativeLegendreAssouadProfile E ρ δ ≤
+        A * (δ : ℝ≥0∞) ^ (-T) := by
+    have hsmall : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0), δ ∈ Ioo 0 1 :=
+      nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
+    filter_upwards [hsmall] with δ hδ
+    unfold multiplicativeLegendreAssouadProfile
+    apply iSup_le
+    intro c
+    apply iSup_le
+    intro diam
+    let E' : Set ℝ := dilateRadiusSet (c : ℝ)⁻¹ E
+    have hcpos : 0 < (c : ℝ)⁻¹ := inv_pos.mpr c.2
+    have hbound' := restrictedNormalizedSphericalMaximal_dilateRadiusSet_bound
+      (d := 2) (by norm_num) hp0 hcpos hbound
+    have hδr : 0 < (δ : ℝ) := by exact_mod_cast hδ.1
+    have hdiamr : 0 < (diam.1 : ℝ) :=
+      lt_of_lt_of_le hδr (by exact_mod_cast diam.2.1)
+    have hlocal' :
+        (localMultiplicativeEntropy E' ⟨1, by simp⟩ diam.1 δ).toENNReal ≤
+          (if (diam.1 : ℝ) ^ 2 ≤ (δ : ℝ) / 128 then Ksmall else Klarge) *
+            (ENNReal.ofReal ((δ : ℝ) / (diam.1 : ℝ))) ^ (-T) *
+            (ENNReal.ofReal (diam.1 : ℝ)) ^ (-α - 1) := by
+      by_cases hparabolic : (diam.1 : ℝ) ^ 2 ≤ (δ : ℝ) / 128
+      · simpa only [if_pos hparabolic, Ksmall, T] using
+          normalized_small_local_entropy_bound_planar κ hκpos hκtop hκ hbound' hp0 hα
+            hδ.1 diam.2.1 diam.2.2 hparabolic
+      · simpa only [if_neg hparabolic, Klarge, T] using
+          normalized_large_local_entropy_bound_planar κ hκpos hκtop hκ hbound' hp0 hα
+            hδ.1 diam.2.1 diam.2.2 (lt_of_not_ge hparabolic)
+    have hlocalEq : localMultiplicativeEntropy E' ⟨1, by simp⟩ diam.1 δ =
+        localMultiplicativeEntropy E c diam.1 δ := by
+      let c' : PositiveRadius := ⟨(c : ℝ)⁻¹ * (c : ℝ),
+        mul_pos hcpos c.2⟩
+      have hc' : c' = ⟨1, by simp⟩ := by
+        apply Subtype.ext
+        dsimp only [c']
+        exact inv_mul_cancel₀ (ne_of_gt c.2)
+      have hdilate := localMultiplicativeEntropy_dilateRadiusSet E c diam.1 δ hcpos
+      change localMultiplicativeEntropy E' c' diam.1 δ =
+        localMultiplicativeEntropy E c diam.1 δ at hdilate
+      rw [hc'] at hdilate
+      exact hdilate
+    rw [hlocalEq] at hlocal'
+    have hK : (if (diam.1 : ℝ) ^ 2 ≤ (δ : ℝ) / 128 then Ksmall else Klarge) ≤ A := by
+      dsimp only [A]
+      split
+      · exact le_max_left _ _
+      · exact le_max_right _ _
+    have hlocal : (localMultiplicativeEntropy E c diam.1 δ).toENNReal ≤
+        A * (ENNReal.ofReal ((δ : ℝ) / (diam.1 : ℝ))) ^ (-T) *
+          (ENNReal.ofReal (diam.1 : ℝ)) ^ (-α - 1) := by
+      calc
+        (localMultiplicativeEntropy E c diam.1 δ).toENNReal ≤
+            (if (diam.1 : ℝ) ^ 2 ≤ (δ : ℝ) / 128 then Ksmall else Klarge) *
+              (ENNReal.ofReal ((δ : ℝ) / (diam.1 : ℝ))) ^ (-T) *
+              (ENNReal.ofReal (diam.1 : ℝ)) ^ (-α - 1) := hlocal'
+        _ ≤ A * (ENNReal.ofReal ((δ : ℝ) / (diam.1 : ℝ))) ^ (-T) *
+              (ENNReal.ofReal (diam.1 : ℝ)) ^ (-α - 1) := by gcongr
+    have hprofileLocal := profile_bound_of_local_bound (n := 1) hδr hdiamr
+      (by simpa [T] using hlocal)
+    simpa [ρ, T] using hprofileLocal
+  have hright : multiplicativeLegendreAssouadExponent E ρ ≤ (T : EReal) :=
+    multiplicativeLegendreAssouadExponent_le_of_profile_power_bound hAtop hprofile
+  have hleft : (α : EReal) + multiplicativeMinkowskiExponent E ≤ (T : EReal) := by
+    calc
+      (α : EReal) + multiplicativeMinkowskiExponent E ≤
+          (0 : EReal) + multiplicativeMinkowskiExponent E := by
+            gcongr
+            exact_mod_cast hα.le
+      _ = multiplicativeMinkowskiExponent E := zero_add _
+      _ ≤ multiplicativeLegendreAssouadExponent E ρ :=
+        multiplicativeMinkowskiExponent_le_multiplicativeLegendreAssouadExponent E ρ
+      _ ≤ (T : EReal) := hright
+  have hresult := max_le hleft hright
+  unfold powerWeightEntropyImplicitCondition
+  norm_num at hresult ⊢
+  simpa [ρ, T] using hresult
 
 theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_neg
     (n : ℕ) (hn : 2 ≤ n) {E : Set ℝ} {p α : ℝ}

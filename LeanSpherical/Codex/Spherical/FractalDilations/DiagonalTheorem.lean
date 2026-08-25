@@ -32,8 +32,27 @@ namespace Codex.Spherical.FractalDilations.DiagonalTheorem
 
 noncomputable section
 
+private theorem core_of_multiplicative_critical_subtwo
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
+    (hEpos : E ⊆ Ioi (0 : ℝ)) {p : ℝ}
+    (hp1 : 1 < p) (hp2 : p < 2)
+    (hcritical : multiplicativeMinkowskiExponent E <
+      (↑(((d : ℝ) - 1) * (p - 1)) : EReal)) :
+    _root_.Codex.Spherical.PowerWeights.TypeSet.HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
+      d E p 0 := by
+  obtain ⟨beta, _hbeta, hM, hbetacritical⟩ :=
+    _root_.Codex.Spherical.PowerWeights.GlobalUnweightedParameters.exists_nonneg_real_between_multiplicativeMinkowskiExponent_and
+      hE hEpos hcritical
+  exact
+    _root_.Codex.Spherical.PowerWeights.GlobalFinitePhysicalCZBridge.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_finite_physical_CZ_weak_one_dim
+      hd E hE hEpos hp1 hp2 hM
+      (by simpa only [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one] using
+        hbetacritical)
+      (_root_.Codex.Spherical.PowerWeights.FinitePhysicalCZWeak.hfinite_weak_one_restrictedRelativeBandpassSphericalMaximal_of_shifted_physical_CZ
+        hd E hE hEpos)
+
 private theorem core_of_root_critical
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p : ℝ}
     (hp : criticalExponent d E < p) :
     _root_.Codex.Spherical.PowerWeights.TypeSet.HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
@@ -70,22 +89,47 @@ private theorem core_of_root_critical
     exact_mod_cast hTpos
   have hp1 : 1 < p := by nlinarith
   by_cases hp2 : p < 2
-  · obtain ⟨beta, _hbeta, hM, hbetacritical⟩ :=
-      _root_.Codex.Spherical.PowerWeights.GlobalUnweightedParameters.exists_nonneg_real_between_multiplicativeMinkowskiExponent_and
-        hE hEpos hcritical
-    exact
-      _root_.Codex.Spherical.PowerWeights.GlobalFinitePhysicalCZBridge.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_finite_physical_CZ_weak_one_dim
-        hd E hE hEpos hp1 hp2 hM
-        (by simpa only [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one] using
-          hbetacritical)
-        (_root_.Codex.Spherical.PowerWeights.FinitePhysicalCZWeak.hfinite_weak_one_restrictedRelativeBandpassSphericalMaximal_of_shifted_physical_CZ
-          hd E hE hEpos)
-  · exact
-      _root_.Codex.Spherical.PowerWeights.GlobalUnweightedParameters.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_two_le
-        hd E (le_of_not_gt hp2)
+  · exact core_of_multiplicative_critical_subtwo hd hE hEpos hp1 hp2 hcritical
+  · by_cases hd2 : d = 2
+    · subst d
+      rcases eq_or_lt_of_le (le_of_not_gt hp2) with rfl | hpgt
+      · let q : ℝ := (3 + (multiplicativeMinkowskiExponent E).toReal) / 2
+        have hMnonneg_real : 0 ≤ (multiplicativeMinkowskiExponent E).toReal :=
+          EReal.toReal_nonneg hMnonneg
+        have hMltone : (multiplicativeMinkowskiExponent E).toReal < 1 := by
+          norm_num at hreal ⊢
+          exact hreal
+        have hqone : 1 < q := by
+          dsimp only [q]
+          linarith
+        have hqtwo : q < 2 := by
+          dsimp only [q]
+          linarith
+        have hcriticalq_real : (multiplicativeMinkowskiExponent E).toReal <
+            ((2 : ℝ) - 1) * (q - 1) := by
+          dsimp only [q]
+          norm_num
+          linarith
+        have hcriticalq : multiplicativeMinkowskiExponent E <
+            (↑(((2 : ℝ) - 1) * (q - 1)) : EReal) := by
+          rw [← EReal.coe_toReal hMtop hMbot]
+          exact EReal.coe_lt_coe hcriticalq_real
+        have hqstrong :=
+          core_of_multiplicative_critical_subtwo (d := 2) (by norm_num) hE hEpos
+            hqone hqtwo hcriticalq
+        exact
+          _root_.Codex.Spherical.PowerWeights.HigherP.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_type_lt
+            (by norm_num) (by norm_num) hqone hqtwo hqstrong
+      · exact
+          _root_.Codex.Spherical.PowerWeights.InfinityPoint.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_bourgain
+            E hpgt
+    · have hd3 : 3 ≤ d := by omega
+      exact
+        _root_.Codex.Spherical.PowerWeights.GlobalUnweightedParameters.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_two_le
+          hd3 E (le_of_not_gt hp2)
 
 private theorem core_of_root_critical_ennreal
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p : ℝ≥0∞} (hp_top : p ≠ ∞)
     (hp : ENNReal.ofReal (criticalExponent d E) < p) :
     _root_.Codex.Spherical.PowerWeights.TypeSet.HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
@@ -149,6 +193,25 @@ private theorem criticalExponent_lt_two_of_nonempty
         div_le_div_of_nonneg_right hbeta_le hden.le
       _ < 1 := (div_lt_one₀ hden).2 hdim
   unfold criticalExponent
+  linarith
+
+/-- In the planar case, the ambient one-dimensional entropy bound still
+places every nonempty positive radius set strictly below the Bourgain
+exponent `3`. -/
+private theorem criticalExponent_lt_three_of_nonempty_of_two
+    {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) :
+    criticalExponent 2 E < 3 := by
+  have hMbot := multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have hMreal : (multiplicativeMinkowskiExponent E).toReal ≤ (1 : ℝ) := by
+    exact EReal.toReal_le_toReal (multiplicativeMinkowskiExponent_le_one E) hMbot
+      (EReal.coe_ne_top 1)
+  have hbeta : upperMinkowskiExponent E =
+      (multiplicativeMinkowskiExponent E).toReal :=
+    upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+  rw [criticalExponent]
+  change 1 + upperMinkowskiExponent E / ((2 : ℝ) - 1) < 3
+  rw [hbeta]
+  norm_num
   linarith
 
 private theorem integrable_sphere_comp_of_continuous
@@ -1521,6 +1584,24 @@ theorem aux_bourgain_full_top_eLpNorm
     ?_⟩, htop f hf⟩
   exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
 
+/-- The completed planar Bourgain theorem supplies the all-radii diagonal
+estimate in dimension two, including the raw finite- and top-exponent lifts. -/
+private theorem eLpNorm_sphericalMaximal_le_two_of_bourgain
+    {p : ENNReal} (hp : (2 : ENNReal) < p) :
+    ∃ C : ℝ, ∀ f : (ℝ^2) → ℂ, MemLp f p volume →
+      MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
+        eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤
+          ENNReal.ofReal C * eLpNorm f p volume := by
+  by_cases hptop : p = ∞
+  · subst p
+    exact aux_bourgain_full_top_eLpNorm
+      (Codex.Spherical.Bourgain.bourgainCircularMaximal 3 (by norm_num))
+  · have hp2real : 2 < p.toReal := by
+      apply (ENNReal.ofReal_lt_iff_lt_toReal (by norm_num) hptop).mp
+      simpa using hp
+    exact aux_bourgain_full_finite_eLpNorm hp hptop
+      (Codex.Spherical.Bourgain.bourgainCircularMaximal p.toReal hp2real)
+
 private theorem full_log_mem (u : ℝ) (hu : |u| ≤ 1) :
     u ∈ logDilationSet
       ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1) := by
@@ -1744,7 +1825,7 @@ private theorem criticalExponent_full (d : ℕ) (hd : 2 ≤ d) :
 
 /-- Seeger--Wainger--Wright theorem. -/
 theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
-    (hd : 3 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
+    (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
     (hp : ENNReal.ofReal (criticalExponent d E) <
       p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
@@ -1756,30 +1837,57 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
   have hEnonempty : E.Nonempty := Set.nonempty_iff_ne_empty.mpr hEempty
   by_cases hptop : p = ∞
   · subst p
-    obtain ⟨C, _hC, hbound⟩ :=
-      (hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_iff d E 2).mp
-        (core_of_root_critical hd hEnonempty hE
-          (criticalExponent_lt_two_of_nonempty hd hEnonempty hE))
-    have hschwartz : ∀ φ : SchwartzMap (ℝ^d) ℂ,
-        eLpNorm (M E (φ : (ℝ^d) → ℂ)) (2 : ℝ≥0∞) volume ≤
-          ENNReal.ofReal C * eLpNorm (φ : (ℝ^d) → ℂ) (2 : ℝ≥0∞) volume := by
-      intro φ
-      have h := (hbound φ (by
-        simpa using (φ.memLp (ENNReal.ofReal (2 : ℝ)) volume))).2
-      rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal] at h
-      norm_num at h ⊢
-      exact h
-    obtain ⟨Ctop, htop⟩ := top_strong_of_finite_envelope (q := (2 : ℝ≥0∞))
-      (by omega : 0 < d) (by norm_num)
-      ⟨ENNReal.ofReal C, fun f hf =>
-        exists_measurable_raw_envelope_of_memLp (p := (2 : ℝ≥0∞))
-          (by norm_num) (by norm_num) ENNReal.ofReal_ne_top hschwartz hf⟩
-    refine ⟨Ctop, ?_⟩
-    intro f hf
-    refine ⟨⟨(aemeasurable_restrictedSphericalMaximal_of_memLp_top
-      (q := (2 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz hf).aestronglyMeasurable,
-      ?_⟩, htop f hf⟩
-    exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
+    by_cases hd2 : d = 2
+    · subst d
+      obtain ⟨C, _hC, hbound⟩ :=
+        (hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_iff 2 E 3).mp
+          (core_of_root_critical (d := 2) (by norm_num) hEnonempty hE
+            (criticalExponent_lt_three_of_nonempty_of_two hEnonempty hE))
+      have hschwartz : ∀ φ : SchwartzMap (ℝ^2) ℂ,
+          eLpNorm (M E (φ : (ℝ^2) → ℂ)) (3 : ℝ≥0∞) volume ≤
+            ENNReal.ofReal C * eLpNorm (φ : (ℝ^2) → ℂ) (3 : ℝ≥0∞) volume := by
+        intro φ
+        have h := (hbound φ (by
+          simpa using (φ.memLp (ENNReal.ofReal (3 : ℝ)) volume))).2
+        rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal] at h
+        norm_num at h ⊢
+        exact h
+      obtain ⟨Ctop, htop⟩ := top_strong_of_finite_envelope (q := (3 : ℝ≥0∞))
+        (by norm_num) (by norm_num)
+        ⟨ENNReal.ofReal C, fun f hf =>
+          exists_measurable_raw_envelope_of_memLp (p := (3 : ℝ≥0∞))
+            (by norm_num) (by norm_num) ENNReal.ofReal_ne_top hschwartz hf⟩
+      refine ⟨Ctop, ?_⟩
+      intro f hf
+      refine ⟨⟨(aemeasurable_restrictedSphericalMaximal_of_memLp_top
+        (q := (3 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz hf).aestronglyMeasurable,
+        ?_⟩, htop f hf⟩
+      exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
+    · have hd3 : 3 ≤ d := by omega
+      obtain ⟨C, _hC, hbound⟩ :=
+        (hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_iff d E 2).mp
+          (core_of_root_critical (by omega : 2 ≤ d) hEnonempty hE
+            (criticalExponent_lt_two_of_nonempty hd3 hEnonempty hE))
+      have hschwartz : ∀ φ : SchwartzMap (ℝ^d) ℂ,
+          eLpNorm (M E (φ : (ℝ^d) → ℂ)) (2 : ℝ≥0∞) volume ≤
+            ENNReal.ofReal C * eLpNorm (φ : (ℝ^d) → ℂ) (2 : ℝ≥0∞) volume := by
+        intro φ
+        have h := (hbound φ (by
+          simpa using (φ.memLp (ENNReal.ofReal (2 : ℝ)) volume))).2
+        rw [← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal] at h
+        norm_num at h ⊢
+        exact h
+      obtain ⟨Ctop, htop⟩ := top_strong_of_finite_envelope (q := (2 : ℝ≥0∞))
+        (by omega : 0 < d) (by norm_num)
+        ⟨ENNReal.ofReal C, fun f hf =>
+          exists_measurable_raw_envelope_of_memLp (p := (2 : ℝ≥0∞))
+            (by norm_num) (by norm_num) ENNReal.ofReal_ne_top hschwartz hf⟩
+      refine ⟨Ctop, ?_⟩
+      intro f hf
+      refine ⟨⟨(aemeasurable_restrictedSphericalMaximal_of_memLp_top
+        (q := (2 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz hf).aestronglyMeasurable,
+        ?_⟩, htop f hf⟩
+      exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
   · have hp0 : p ≠ 0 := by
       apply ne_of_gt
       exact lt_of_le_of_lt bot_le hp
@@ -1815,25 +1923,36 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
     exact _root_.Codex.Spherical.PowerWeights.RawLpLift.memLp_restrictedSphericalMaximal_of_memLp_of_schwartz_bound
       (μ := volume) hpone hp0 hptop hschwartz hf
 
-/-- Stein's spherical maximal theorem, obtained from the restricted theorem
-on the full set of positive radii. -/
-theorem eLpNorm_sphericalMaximal_le {d : ℕ} {p : ENNReal} (hd : 3 ≤ d)
+/-- Stein's spherical maximal theorem.  The planar branch uses the completed
+Bourgain/MSS route, while dimensions at least three use the existing
+restricted-dilation argument. -/
+theorem eLpNorm_sphericalMaximal_le {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
     (hp : (d : ENNReal) / (d - 1) < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
       MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
         eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤
           (ENNReal.ofReal C) * eLpNorm f p volume := by
-  apply eLpNorm_restrictedSphericalMaximal_le hd
-    (by exact fun x hx => hx)
-  have hdreal : (2 : ℝ) ≤ d := by
-    exact_mod_cast (by omega : 2 ≤ d)
-  have hden : (0 : ℝ) < (d : ℝ) - 1 := by linarith
-  have hsub : ENNReal.ofReal ((d : ℝ) - 1) = (d : ENNReal) - 1 := by
-    rw [ENNReal.ofReal_sub _ (by norm_num : (0 : ℝ) ≤ 1)]
-    norm_num
-  rw [criticalExponent_full d (by omega),
-    ENNReal.ofReal_div_of_pos hden, hsub]
-  simpa using hp
+  by_cases hd2 : d = 2
+  · subst d
+    have hp2 : (2 : ENNReal) < p := by
+      have hden : ((2 : Nat) : ENNReal) - 1 = (1 : ENNReal) := by
+        apply ENNReal.sub_eq_of_eq_add ENNReal.one_ne_top
+        exact_mod_cast (show (2 : Nat) = 1 + 1 by norm_num)
+      rw [hden, div_one] at hp
+      exact hp
+    exact eLpNorm_sphericalMaximal_le_two_of_bourgain hp2
+  · have hd3 : 3 ≤ d := by omega
+    apply eLpNorm_restrictedSphericalMaximal_le (by omega : 2 ≤ d)
+      (by exact fun x hx => hx)
+    have hdreal : (2 : ℝ) ≤ d := by
+      exact_mod_cast (by omega : 2 ≤ d)
+    have hden : (0 : ℝ) < (d : ℝ) - 1 := by linarith
+    have hsub : ENNReal.ofReal ((d : ℝ) - 1) = (d : ENNReal) - 1 := by
+      rw [ENNReal.ofReal_sub _ (by norm_num : (0 : ℝ) ≤ 1)]
+      norm_num
+    rw [criticalExponent_full d (by omega),
+      ENNReal.ofReal_div_of_pos hden, hsub]
+    simpa using hp
 
 /-- The all-radii diagonal estimate in every dimension at least two, once the
 planar Bourgain Schwartz-core theorem is supplied.  The non-planar branch is
@@ -1865,8 +1984,7 @@ theorem eLpNorm_sphericalMaximal_le_of_bourgain
         simpa using hp2
       exact aux_bourgain_full_finite_eLpNorm hp2 hptop
         (hbourgain p.toReal hp2real)
-  · have hd3 : 3 ≤ d := by omega
-    exact eLpNorm_sphericalMaximal_le hd3 hp
+  · exact eLpNorm_sphericalMaximal_le (by omega) hp
 
 /-- The all-radii diagonal estimate in every dimension at least two under the
 concrete planar `p = 4` local-smoothing hypothesis. -/
@@ -2063,7 +2181,7 @@ theorem criticalExponent_lacunary (d : ℕ) :
   simp [criticalExponent, beta_lacunary]
 
 /-- C.P. Calderon's lacunary spherical maximal theorem. -/
-theorem eLpNorm_lacunarySphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 3 ≤ d)
+theorem eLpNorm_lacunarySphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 2 ≤ d)
     (hp : 1 < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
       MemLp (M {2 ^ k | k : ℤ} f) p volume ∧

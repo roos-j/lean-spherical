@@ -1107,6 +1107,44 @@ theorem graphTube_sharpCap_average_lower (n : ℕ) (hn : 2 ≤ n)
     exact graphTube_sharpCap_translate_subset_horizontalSlab n hr hρr hhemisphere
       hh.le hquarter hA hB hx hw
 
+/-- The sharp planar graph-tube cap contribution.  This is the `n = 1`
+counterpart of `graphTube_sharpCap_average_lower`, using the linear
+moving-cap estimate instead of the higher-dimensional height-slice formula. -/
+theorem graphTube_sharpCap_average_lower_planar
+    {κ : ℝ≥0∞}
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {r a ρ b h A B : ℝ} (hr : 0 < r) (hρr : ρ ≤ r)
+    (hhemisphere : 2 * ρ ≤ r) (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hA : r * h < A) (hB : b + 4 * (ρ * h + r * h ^ 2) ≤ B)
+    (g : Euclidean 2 → ℝ) (hgContinuous : Continuous g)
+    (hgnonneg : ∀ y, 0 ≤ g y)
+    (hg_one : ∀ y ∈ horizontalSlab 1 A (a - B) (a + B), g y = 1)
+    {x : Euclidean 2} (hx : x ∈ graphTube 1 r a ρ b) :
+    κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+      ENNReal.ofReal ‖normalizedSphericalAverage 2
+        (fun y => (g y : ℂ)) r x‖ := by
+  rcases (mem_graphTube_iff 1 r a ρ b x).1 hx with ⟨hhor, _⟩
+  have hdir : ‖graphDirection 1 r x‖ = 1 := by
+    apply norm_graphDirection 1 x hr
+    exact le_trans (le_of_lt hhor) hρr
+  have hgi : Integrable (fun w : sphere (0 : Euclidean 2) 1 =>
+      g (x + r • (w : Euclidean 2))) (unitSurfaceMeasure 2) := by
+    have hcont : Continuous (fun w : sphere (0 : Euclidean 2) 1 =>
+        g (x + r • (w : Euclidean 2))) := by
+      apply hgContinuous.comp
+      fun_prop
+    exact hcont.integrable_of_hasCompactSupport
+      (HasCompactSupport.of_compactSpace _)
+  apply planar_sphericalCap_lower_le_ennreal_norm_normalizedSphericalAverage
+    hκ g r x hdir hh (hquarter.trans (by norm_num)) hgi
+  · intro w
+    exact hgnonneg _
+  · intro w hw
+    apply hg_one
+    exact graphTube_sharpCap_translate_subset_horizontalSlab 1 hr hρr hhemisphere
+      hh.le hquarter hA hB hx hw
+
 /-- The concrete cap incidence yields the quantitative cap contribution to a
 normalized spherical average of a slab cutoff. -/
 theorem graphTube_cap_average_lower (n : ℕ) (hn : 2 ≤ n)
@@ -1824,6 +1862,381 @@ theorem restrictedStrongType_graphTube_localEntropy_nearOrigin_power_lower
   exact restrictedStrongType_graphTube_localEntropy_nearOrigin_power_lower_of_bound
     n hn hbound c diam δ T hT hlogsep hnet hsep hρ hhemisphere hppos hα
     hApos hBpos hh hquarter hcapHorizontal hcapVertical hinputAway hRpos hnear
+
+/-- The finite sharp graph-tube test on the circle.  The tube and cutoff
+geometry is unchanged; the coefficient is the linear moving-cap mass. -/
+theorem restrictedStrongType_graphTube_finite_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (T : Finset PositiveRadius) {a ρ b h A B : ℝ} {m : ℝ≥0∞}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E)
+    (hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s → 2 * b ≤ |(r : ℝ) - (s : ℝ)|)
+    (hρ : ∀ r ∈ T, ρ ≤ (r : ℝ))
+    (hhemisphere : ∀ r ∈ T, 2 * ρ ≤ (r : ℝ))
+    (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (graphTube 1 (r : ℝ) a ρ b))
+    (hppos : 0 < p) (hApos : 0 < A) (hBpos : 0 < B)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, (r : ℝ) * h < A)
+    (hcapVertical : ∀ r ∈ T,
+      b + 4 * (ρ * h + (r : ℝ) * h ^ 2) ≤ B)
+    (hDfinite : powerWeightedVolume 2 α
+      (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B)) ≠ (∞ : ℝ≥0∞)) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C *
+        (powerWeightedVolume 2 α
+          (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B))) ^
+            (1 / (ENNReal.ofReal p).toReal) := by
+  classical
+  let D : Set (Euclidean 2) :=
+    horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B)
+  let U : PositiveRadius → Set (Euclidean 2) :=
+    fun r => graphTube 1 (r : ℝ) a ρ b
+  let V : Set (Euclidean 2) := ⋃ r ∈ (↑T : Set PositiveRadius), U r
+  rcases exists_schwartz_horizontalSlab_cutoff 1 hApos hBpos with
+    ⟨g, f, hfg, hgcont, hgnonneg, hgleone, hgone, hzeroH, hzeroV, hsupport⟩
+  have hp0 : ENNReal.ofReal p ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hppos)
+  have hinput : eLpNorm (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) ≤
+      (powerWeightedVolume 2 α D) ^ (1 / (ENNReal.ofReal p).toReal) := by
+    dsimp only [D]
+    exact eLpNorm_horizontalSlab_cutoff_le 1 hp0 g f hfg hgnonneg hgleone hsupport
+  have hq : 0 ≤ 1 / (ENNReal.ofReal p).toReal := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    positivity
+  have hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) := by
+    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
+    refine lt_of_le_of_lt hinput ?_
+    exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
+  have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
+    intro r hr
+    exact measurableSet_graphTube 1 (r : ℝ) a ρ b
+  have hUdisjoint : (↑T : Set PositiveRadius).PairwiseDisjoint U := by
+    intro r hr s hs hrs
+    change Disjoint (U r) (U s)
+    rcases le_total (r : ℝ) (s : ℝ) with hrsle | hsrle
+    · apply disjoint_graphTube_of_radius_separated 1 r.2.le hrsle
+        (hρ r (by simpa using hr))
+      have hsep' := hsep r (by simpa using hr) s (by simpa using hs) hrs
+      simpa [abs_of_nonpos (sub_nonpos.mpr hrsle), neg_sub] using hsep'
+    · rw [disjoint_comm]
+      apply disjoint_graphTube_of_radius_separated 1 s.2.le hsrle
+        (hρ s (by simpa using hs))
+      have hneq : s ≠ r := Ne.symm hrs
+      have hsep' := hsep s (by simpa using hs) r (by simpa using hr) hneq
+      simpa [abs_of_nonpos (sub_nonpos.mpr hsrle), neg_sub] using hsep'
+  have hVmeas : MeasurableSet V := by
+    dsimp only [V]
+    exact T.measurableSet_biUnion hUmeas
+  have hpoint : ∀ x ∈ V,
+      κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+        restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ) x := by
+    intro x hx
+    rcases Set.mem_iUnion.mp hx with ⟨r, hx⟩
+    rcases Set.mem_iUnion.mp hx with ⟨hrT, hxr⟩
+    calc
+      κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+          ENNReal.ofReal ‖normalizedSphericalAverage 2
+            (fun y => (g y : ℂ)) (r : ℝ) x‖ :=
+        graphTube_sharpCap_average_lower_planar hκ r.2 (hρ r hrT)
+          (hhemisphere r hrT) hh hquarter
+          (hcapHorizontal r hrT) (hcapVertical r hrT) g hgcont hgnonneg hgone hxr
+      _ = ENNReal.ofReal ‖normalizedSphericalAverage 2
+          (f : Euclidean 2 → ℂ) (r : ℝ) x‖ := by
+        have hfun : (fun y : Euclidean 2 => (g y : ℂ)) =
+            (f : Euclidean 2 → ℂ) := by
+          funext y
+          exact (hfg y).symm
+        rw [hfun]
+      _ ≤ restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ) x :=
+        ennreal_norm_normalizedSphericalAverage_le_restrictedNormalizedSphericalMaximal
+          f (hT r hrT) r.2 x
+  have hvolume : (T.card : ℝ≥0∞) * m ≤ powerWeightedVolume 2 α V := by
+    calc
+      (T.card : ℝ≥0∞) * m = ∑ r ∈ T, m := by simp [mul_comm]
+      _ ≤ ∑ r ∈ T, powerWeightedVolume 2 α (U r) := by
+        gcongr with r hr
+        exact hm r hr
+      _ = powerWeightedVolume 2 α V := by
+        dsimp only [V]
+        exact (measure_biUnion_finset hUdisjoint hUmeas).symm
+  calc
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) ≤
+      (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        (powerWeightedVolume 2 α V) ^ (1 / (ENNReal.ofReal p).toReal) := by
+          gcongr
+    _ = eLpNorm (V.indicator (fun _ : Euclidean 2 =>
+        κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)))
+        (ENNReal.ofReal p) (powerWeightedVolume 2 α) := by
+      rw [eLpNorm_indicator_const hVmeas hp0 ENNReal.ofReal_ne_top]
+      simp
+    _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+        (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p) (powerWeightedVolume 2 α) := by
+      apply eLpNorm_mono_enorm
+      intro x
+      by_cases hx : x ∈ V
+      · rw [Set.indicator_of_mem hx]
+        exact hpoint x hx
+      · rw [Set.indicator_of_notMem hx]
+        exact bot_le
+    _ ≤ ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+        (ENNReal.ofReal p) (powerWeightedVolume 2 α) := (hstrong f hf).2
+    _ ≤ ENNReal.ofReal C *
+        (powerWeightedVolume 2 α D) ^ (1 / (ENNReal.ofReal p).toReal) := by
+      simpa only [mul_comm] using mul_le_mul_left hinput (ENNReal.ofReal C)
+    _ = ENNReal.ofReal C *
+        (powerWeightedVolume 2 α
+          (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B))) ^
+            (1 / (ENNReal.ofReal p).toReal) := by rfl
+
+/-- Entropy-ready planar graph-tube test. -/
+theorem restrictedStrongType_graphTube_localEntropy_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (c : PositiveRadius) (diam δ : ℝ≥0) (T : Finset PositiveRadius)
+    {a ρ b h A B : ℝ} {m : ℝ≥0∞}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam)
+    (_hlogsep : Metric.IsSeparated (((δ / 2 : ℝ≥0) : ℝ≥0∞))
+      (logRadius '' (↑T : Set PositiveRadius)))
+    (hnet : ∀ r : PositiveRadius, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam →
+      ∃ t ∈ T, |logRadius r - logRadius t| ≤ ((δ : ℝ≥0) : ℝ) / 2)
+    (hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s → 2 * b ≤ |(r : ℝ) - (s : ℝ)|)
+    (hρ : ∀ r ∈ T, ρ ≤ (r : ℝ))
+    (hhemisphere : ∀ r ∈ T, 2 * ρ ≤ (r : ℝ))
+    (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (graphTube 1 (r : ℝ) a ρ b))
+    (hppos : 0 < p) (hApos : 0 < A) (hBpos : 0 < B)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, (r : ℝ) * h < A)
+    (hcapVertical : ∀ r ∈ T,
+      b + 4 * (ρ * h + (r : ℝ) * h ^ 2) ≤ B)
+    (hDfinite : powerWeightedVolume 2 α
+      (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B)) ≠ (∞ : ℝ≥0∞)) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+      ((localMultiplicativeEntropy E c diam δ).toENNReal * m) ^
+        (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C *
+        (powerWeightedVolume 2 α
+          (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B))) ^
+            (1 / (ENNReal.ofReal p).toReal) := by
+  classical
+  let F : Set ℝ := E ∩ multiplicativeInterval c diam
+  let centers : Set ℝ := logRadius '' (↑T : Set PositiveRadius)
+  have hcover : Metric.IsCover (δ / 2) (logRadiusSet F) centers := by
+    rintro u ⟨r, hrF, rfl⟩
+    obtain ⟨t, htT, hrt⟩ := hnet r (by simpa only [F] using hrF)
+    refine ⟨logRadius t, ⟨t, htT, rfl⟩, ?_⟩
+    change edist (logRadius r) (logRadius t) ≤ ((δ / 2 : ℝ≥0) : ℝ≥0∞)
+    rw [edist_dist]
+    apply ENNReal.ofReal_le_coe.mpr
+    simpa only [Real.dist_eq, NNReal.coe_div, NNReal.coe_ofNat] using hrt
+  have hCcard : centers.encard = T.card := by
+    have hC : centers = (↑(T.image logRadius) : Set ℝ) := by
+      ext u
+      simp [centers]
+    rw [hC, Set.encard_coe_eq_coe_finsetCard,
+      Finset.card_image_of_injective T logRadius_injective]
+  have hentropyENat : localMultiplicativeEntropy E c diam δ ≤ T.card := by
+    change Metric.externalCoveringNumber (δ / 2) (logRadiusSet F) ≤ T.card
+    rw [← hCcard]
+    exact hcover.externalCoveringNumber_le_encard
+  have hentropy : (localMultiplicativeEntropy E c diam δ).toENNReal ≤
+      (T.card : ℝ≥0∞) := by
+    exact_mod_cast ENat.toENNReal_mono hentropyENat
+  have hq : 0 ≤ 1 / (ENNReal.ofReal p).toReal := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    positivity
+  have hbound := restrictedStrongType_graphTube_finite_lower_planar_of_bound
+    κ hκ hstrong T (fun r hr => (hT r hr).1) hsep hρ hhemisphere hm
+      hppos hApos hBpos hh hquarter hcapHorizontal hcapVertical hDfinite
+  calc
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((localMultiplicativeEntropy E c diam δ).toENNReal * m) ^
+          (1 / (ENNReal.ofReal p).toReal) ≤
+      (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) := by
+          gcongr
+    _ ≤ ENNReal.ofReal C *
+        (powerWeightedVolume 2 α
+          (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B))) ^
+            (1 / (ENNReal.ofReal p).toReal) := hbound
+
+/-- The fully measured planar graph-tube entropy test near the origin. -/
+theorem restrictedStrongType_graphTube_localEntropy_nearOrigin_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (c : PositiveRadius) (diam δ : ℝ≥0) (T : Finset PositiveRadius)
+    {a ρ b h A B R : ℝ}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam)
+    (_hlogsep : Metric.IsSeparated (((δ / 2 : ℝ≥0) : ℝ≥0∞))
+      (logRadius '' (↑T : Set PositiveRadius)))
+    (hnet : ∀ r : PositiveRadius, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam →
+      ∃ t ∈ T, |logRadius r - logRadius t| ≤ ((δ : ℝ≥0) : ℝ) / 2)
+    (hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s → 2 * b ≤ |(r : ℝ) - (s : ℝ)|)
+    (hρ : ∀ r ∈ T, ρ ≤ (r : ℝ))
+    (hhemisphere : ∀ r ∈ T, 2 * ρ ≤ (r : ℝ))
+    (hppos : 0 < p) (hα : α < 0)
+    (hApos : 0 < A) (hBpos : 0 < B)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, (r : ℝ) * h < A)
+    (hcapVertical : ∀ r ∈ T,
+      b + 4 * (ρ * h + (r : ℝ) * h ^ 2) ≤ B)
+    (hinputAway : 0 < a - 2 * B)
+    (hRpos : 0 < R)
+    (hnear : ∀ r ∈ T, |a - (r : ℝ)| + 2 * ρ + b ≤ R) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+      ((localMultiplicativeEntropy E c diam δ).toENNReal *
+        ((ENNReal.ofReal R) ^ α *
+          (volume (ball (0 : Euclidean 1) ρ) * ENNReal.ofReal (2 * b)))) ^
+        (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C *
+        ((ENNReal.ofReal (a - 2 * B)) ^ α *
+          (volume (ball (0 : Euclidean 1) (2 * A)) *
+            ENNReal.ofReal (2 * (2 * B)))) ^
+          (1 / (ENNReal.ofReal p).toReal) := by
+  let m : ℝ≥0∞ := (ENNReal.ofReal R) ^ α *
+    (volume (ball (0 : Euclidean 1) ρ) * ENNReal.ofReal (2 * b))
+  have hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (graphTube 1 (r : ℝ) a ρ b) := by
+    intro r hr
+    exact powerWeightedVolume_graphTube_lower_of_near_origin 1 hα r.2.le
+      (hρ r hr) hRpos (hnear r hr)
+  have hDfinite : powerWeightedVolume 2 α
+      (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B)) ≠ (∞ : ℝ≥0∞) := by
+    exact ne_of_lt
+      (powerWeightedVolume_horizontalSlab_lt_top_of_nonpos
+        (A := 2 * A) (B := 2 * B) (a := a) 1 hα.le hinputAway)
+  have hDupper : powerWeightedVolume 2 α
+      (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B)) ≤
+      (ENNReal.ofReal (a - 2 * B)) ^ α *
+        (volume (ball (0 : Euclidean 1) (2 * A)) *
+          ENNReal.ofReal (2 * (2 * B))) := by
+    exact powerWeightedVolume_horizontalSlab_le_of_nonpos
+      (A := 2 * A) (B := 2 * B) (a := a) 1 hα.le hinputAway
+  have hbound := restrictedStrongType_graphTube_localEntropy_lower_planar_of_bound
+    κ hκ hstrong c diam δ T hT _hlogsep hnet hsep hρ hhemisphere hm
+      hppos hApos hBpos hh hquarter hcapHorizontal hcapVertical hDfinite
+  have hq : 0 ≤ 1 / (ENNReal.ofReal p).toReal := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    positivity
+  calc
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((localMultiplicativeEntropy E c diam δ).toENNReal *
+          ((ENNReal.ofReal R) ^ α *
+            (volume (ball (0 : Euclidean 1) ρ) * ENNReal.ofReal (2 * b)))) ^
+          (1 / (ENNReal.ofReal p).toReal) =
+      (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((localMultiplicativeEntropy E c diam δ).toENNReal * m) ^
+          (1 / (ENNReal.ofReal p).toReal) := by rfl
+    _ ≤ ENNReal.ofReal C *
+        (powerWeightedVolume 2 α
+          (horizontalSlab 1 (2 * A) (a - 2 * B) (a + 2 * B))) ^
+            (1 / (ENNReal.ofReal p).toReal) := hbound
+    _ ≤ ENNReal.ofReal C *
+        ((ENNReal.ofReal (a - 2 * B)) ^ α *
+          (volume (ball (0 : Euclidean 1) (2 * A)) *
+            ENNReal.ofReal (2 * (2 * B)))) ^
+            (1 / (ENNReal.ofReal p).toReal) := by
+      simpa only [mul_comm] using
+        mul_le_mul_left (ENNReal.rpow_le_rpow hDupper hq) (ENNReal.ofReal C)
+
+/-- Powered planar graph-tube entropy inequality. -/
+theorem restrictedStrongType_graphTube_localEntropy_nearOrigin_power_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (c : PositiveRadius) (diam δ : ℝ≥0) (T : Finset PositiveRadius)
+    {a ρ b h A B R : ℝ}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam)
+    (hlogsep : Metric.IsSeparated (((δ / 2 : ℝ≥0) : ℝ≥0∞))
+      (logRadius '' (↑T : Set PositiveRadius)))
+    (hnet : ∀ r : PositiveRadius, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam →
+      ∃ t ∈ T, |logRadius r - logRadius t| ≤ ((δ : ℝ≥0) : ℝ) / 2)
+    (hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s → 2 * b ≤ |(r : ℝ) - (s : ℝ)|)
+    (hρ : ∀ r ∈ T, ρ ≤ (r : ℝ))
+    (hhemisphere : ∀ r ∈ T, 2 * ρ ≤ (r : ℝ))
+    (hppos : 0 < p) (hα : α < 0)
+    (hApos : 0 < A) (hBpos : 0 < B)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, (r : ℝ) * h < A)
+    (hcapVertical : ∀ r ∈ T,
+      b + 4 * (ρ * h + (r : ℝ) * h ^ 2) ≤ B)
+    (hinputAway : 0 < a - 2 * B)
+    (hRpos : 0 < R)
+    (hnear : ∀ r ∈ T, |a - (r : ℝ)| + 2 * ρ + b ≤ R) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) ^ p *
+      ((localMultiplicativeEntropy E c diam δ).toENNReal *
+        ((ENNReal.ofReal R) ^ α *
+          (volume (ball (0 : Euclidean 1) ρ) * ENNReal.ofReal (2 * b)))) ≤
+      (ENNReal.ofReal C) ^ p *
+        ((ENNReal.ofReal (a - 2 * B)) ^ α *
+          (volume (ball (0 : Euclidean 1) (2 * A)) *
+            ENNReal.ofReal (2 * (2 * B)))) := by
+  have hbound := restrictedStrongType_graphTube_localEntropy_nearOrigin_lower_planar_of_bound
+    κ hκ hstrong c diam δ T hT hlogsep hnet hsep hρ hhemisphere hppos hα
+      hApos hBpos hh hquarter hcapHorizontal hcapVertical hinputAway hRpos hnear
+  have hq : 1 / (ENNReal.ofReal p).toReal = p⁻¹ := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    simp only [one_div]
+  rw [hq] at hbound
+  have hpow := ENNReal.rpow_le_rpow hbound hppos.le
+  simpa only [ENNReal.mul_rpow_of_nonneg _ _ hppos.le,
+    ENNReal.rpow_inv_rpow hppos.ne'] using hpow
 
 end
 

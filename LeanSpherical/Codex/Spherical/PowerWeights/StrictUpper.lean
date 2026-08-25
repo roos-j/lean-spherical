@@ -61,6 +61,30 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_i
           (fun hq hq₂ ha hqstrict => hnegative hq hq₂ ha hqstrict)
   · exact hnonnegative hp (le_of_not_gt hα) hstrict
 
+/-- The planar strict negative estimate at the quadratic exponent follows
+from the subquadratic negative input.  This is intentionally a separate
+dispatch: the corresponding planar branch above exponent two requires the
+additional full-circle weighted theorem and is not asserted here. -/
+theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_at_two_of_strict_implicit
+    (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ))
+    {α : ℝ} (hα : α < 0)
+    (hstrict :
+      max ((α : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E
+            (((2 : ℝ) - 1) * ((2 : ℝ) - 2) - α)) <
+        (↑(((2 : ℝ) - 1) * ((2 : ℝ) - 1)) : EReal))
+    (hnegative : ∀ ⦃q a : ℝ⦄, 1 < q → q < 2 → a < 0 →
+      max ((a : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E
+            (((2 : ℝ) - 1) * (q - 2) - a)) <
+        (↑(((2 : ℝ) - 1) * (q - 1)) : EReal) →
+      HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E q a) :
+    HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E 2 α := by
+  exact
+    hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_of_strict_negative_two_of_subquadratic
+      hE hEpos hα hstrict
+      (fun hq hq2 ha hqstrict => hnegative hq hq2 ha hqstrict)
+
 end
 
 end Codex.Spherical.PowerWeights.StrictUpper

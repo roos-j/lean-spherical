@@ -88,7 +88,7 @@ theorem measurable_and_lintegral_iSup_ennreal_norm_sq_sub_left_le_radiusSobolev_
 short radius interval when it is measured relative to that interval's left
 endpoint. -/
 theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_sub_left_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -108,7 +108,7 @@ theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_s
           (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • xi)) -
             phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) * theta xi *
           𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
-    let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+    let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
     let U : ℝ := (12 * C0 *
       ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -136,7 +136,7 @@ theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_s
             phi (((2 : ℝ) ^ (j + 1))⁻¹ • (u • xi)) -
               phi (((2 : ℝ) ^ j)⁻¹ • (u • xi))) s) * theta xi *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
-  let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+  let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
   let U : ℝ := (12 * C0 *
     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
       (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -261,7 +261,7 @@ theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_s
 estimate.  Thus the displayed difference is the literal relative band that
 appears in the entropy selector comparison. -/
 theorem measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_interval_sub_left_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -279,7 +279,7 @@ theorem measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_in
           (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (s • xi)) -
             phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) *
           𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
-    let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+    let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
     let U : ℝ := (12 * C0 *
       ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -336,7 +336,7 @@ theorem measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_in
           ⨆ r : Icc a b, ENNReal.ofReal (‖Ftheta r.1 x - Ftheta a x‖ ^ 2)) ≤
           ENNReal.ofReal
             (2 * (b - a) ^ 2 *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2 *

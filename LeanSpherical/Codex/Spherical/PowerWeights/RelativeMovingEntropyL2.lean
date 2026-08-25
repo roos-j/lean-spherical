@@ -36,7 +36,7 @@ dyadic band.  The conclusion deliberately retains the interval-by-interval
 coefficient; the annular interpolation step chooses the entropy scale and
 then bounds this finite sum. -/
 theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_bandpass_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -64,7 +64,7 @@ theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_ba
         ∑ q ∈ T, ENNReal.ofReal
           ((2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (q.2 - q.1) ^ 2 *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2) *
@@ -126,7 +126,7 @@ theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_ba
     _ ≤ ∑ q ∈ T, ENNReal.ofReal
         ((2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * (q.2 - q.1) ^ 2 *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                 ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                 (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2) *
@@ -143,7 +143,7 @@ theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_ba
 cardinality and common interval-length bounds.  This is the exact `L²`
 constant used at a fixed spatial shell. -/
 theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_bandpass_le_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -159,7 +159,7 @@ theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_ba
     (hδ : Real.log 2 * (δ : ℝ) ≤ 1) :
     let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
     let C : ℝ := 2 *
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
         (12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -181,7 +181,7 @@ theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_ba
   dsimp only
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -226,7 +226,7 @@ theorem exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_ba
         ∑ q ∈ T, ENNReal.ofReal
           ((2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (q.2 - q.1) ^ 2 *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2) *

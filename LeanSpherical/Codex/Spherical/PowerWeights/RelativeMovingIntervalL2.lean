@@ -36,7 +36,7 @@ the input, obeys the sharp short-radius square estimate.  The cutoff is kept
 inside the displayed multiplier because later it is chosen to be one on the
 active relative band. -/
 theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -57,7 +57,7 @@ theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_o
             phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) * theta xi *
           𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
     let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
-    let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+    let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
     let U : ℝ := (12 * C0 *
       ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -86,7 +86,7 @@ theorem measurable_and_lintegral_iSup_relative_dyadic_moving_bandpass_interval_o
               phi (((2 : ℝ) ^ j)⁻¹ • (u • xi))) s) * theta xi *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
-  let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+  let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
   let U : ℝ := (12 * C0 *
     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
       (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -404,7 +404,7 @@ theorem exists_compact_cutoff_one_on_relative_dyadic_bandpass
 removed.  This is the literal moving multiplier used by the relative
 frequency cutoff reassembly. -/
 theorem measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_interval_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -423,7 +423,7 @@ theorem measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_in
             phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) *
           𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
     let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
-    let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+    let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
     let U : ℝ := (12 * C0 *
       ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -481,7 +481,7 @@ theorem measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_in
           ENNReal.ofReal
             ((2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
               2 * (b - a) ^ 2 *
-                (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                     (dyadicScale j) ^ ((d : ℝ) / 2))) ^ 2) *

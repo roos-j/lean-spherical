@@ -1256,7 +1256,7 @@ private theorem lacunaryRelativeBandpassPhysicalCellShiftedCZ_future_rhs_eq
 /-- One dyadic C--Z atom has an exterior majorant after the physical-cell
 split is shifted upward by the relative frequency index. -/
 theorem exists_integrable_lacunaryRelativeBandpassPhysicalCellShiftedCZ_atom_majorant
-    {d N : Nat} (hd : 3 ≤ d) (K : Finset ℤ) (δ : NNReal)
+    {d N : Nat} (hd : 2 ≤ d) (K : Finset ℤ) (δ : NNReal)
     (hδ : Real.log 2 * (δ : ℝ) ≤ 1)
     (r : Fin N → ℤ → PositiveRadius)
     (hr : ∀ i, IsDyadicLacunaryRadiusSelector (r i))
@@ -1492,7 +1492,7 @@ theorem exists_integrable_lacunaryRelativeBandpassPhysicalCellShiftedCZ_atom_maj
 /-- Summing the shifted per-atom majorants gives the bad-part package used
 by the finite physical-cell weak estimate. -/
 theorem exists_integrable_lacunaryRelativeBandpassPhysicalCellShiftedCZ_bad_majorant
-    {d N : Nat} (hd : 3 ≤ d) (K : Finset ℤ) (δ : NNReal)
+    {d N : Nat} (hd : 2 ≤ d) (K : Finset ℤ) (δ : NNReal)
     (hδ : Real.log 2 * (δ : ℝ) ≤ 1)
     (r : Fin N → ℤ → PositiveRadius)
     (hr : ∀ i, IsDyadicLacunaryRadiusSelector (r i))
@@ -1615,7 +1615,7 @@ theorem exists_integrable_lacunaryRelativeBandpassPhysicalCellShiftedCZ_bad_majo
 /-- The literal finite physical-cell C--Z weak estimate with the shifted
 three-way atom tail. -/
 theorem weak_one_lacunaryRelativeBandpassPhysicalCellSquareVariation_of_schwartz_core_shifted
-    {d N : Nat} (hd : 3 ≤ d) (K : Finset ℤ) (δ : NNReal)
+    {d N : Nat} (hd : 2 ≤ d) (K : Finset ℤ) (δ : NNReal)
     (hδ : Real.log 2 * (δ : ℝ) ≤ 1)
     (r : Fin N → ℤ → PositiveRadius)
     (hr : ∀ i, IsDyadicLacunaryRadiusSelector (r i))
@@ -1915,7 +1915,7 @@ shifted literal finite-cell Schwartz core and the lacunary palette endpoint
 have been supplied.  This is the finite estimate fed to the dyadic
 exhaustion. -/
 theorem weak_one_restrictedRelativeBandpassSphericalMaximal_dyadicRadiusBlockUnion_of_shifted_CZ_core
-    {d N : Nat} (hd : 3 ≤ d) (K : Finset ℤ) (δ : NNReal)
+    {d N : Nat} (hd : 2 ≤ d) (K : Finset ℤ) (δ : NNReal)
     (hδ : Real.log 2 * (δ : ℝ) ≤ 1)
     (phi ψ : SchwartzMap (Euclidean d) ℂ)
     (hψ : ∀ ξ : Euclidean d,

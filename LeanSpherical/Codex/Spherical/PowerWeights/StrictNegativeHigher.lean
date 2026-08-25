@@ -60,6 +60,45 @@ theorem
     (show 1 <= d by omega) halpha_lower hq_one hq_p
     (hsubquadratic hq_one hq_two halpha hq_strict)
 
+/-- At the planar quadratic point, a strict negative parameter can be moved
+slightly into the subquadratic range and then lifted back by the elementary
+higher-exponent argument. -/
+theorem
+    hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_of_strict_negative_two_of_subquadratic
+    {E : Set Real} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : Real))
+    {alpha : Real} (halpha : alpha < 0)
+    (hstrict :
+      max ((alpha : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E
+            (((2 : Real) - 1) * ((2 : Real) - 2) - alpha)) <
+        ((((2 : Real) - 1) * ((2 : Real) - 1) : Real) : EReal))
+    (hsubquadratic : forall {q a : Real}, 1 < q -> q < 2 -> a < 0 ->
+      max ((a : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E
+            (((2 : Real) - 1) * (q - 2) - a)) <
+        ((((2 : Real) - 1) * (q - 1) : Real) : EReal) ->
+      HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E q a) :
+    HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E 2 alpha := by
+  have hstrict_simple :
+      max ((alpha : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E (-alpha)) < (1 : EReal) := by
+    convert hstrict using 1 <;> norm_num
+  obtain ⟨q, hq_one, hq_two, hq_strict⟩ :=
+    exists_strict_powerWeightEntropyImplicitCondition_subtwo_planar_of_strict_negative_two
+      halpha hstrict_simple
+  have hq_strict_canonical :
+      max ((alpha : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E
+            (((2 : Real) - 1) * (q - 2) - alpha)) <
+        ((((2 : Real) - 1) * (q - 1) : Real) : EReal) := by
+    convert hq_strict using 1 <;> norm_num
+  have halpha_lower : 1 - (2 : Real) < alpha :=
+    one_sub_dim_lt_alpha_of_strict_powerWeightEntropyImplicitCondition
+      (by norm_num) hE hEpos hstrict
+  exact hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_type_lt
+    (by norm_num) halpha_lower hq_one hq_two
+    (hsubquadratic hq_one hq_two halpha hq_strict_canonical)
+
 end
 
 end Codex.Spherical.PowerWeights.StrictNegativeHigher

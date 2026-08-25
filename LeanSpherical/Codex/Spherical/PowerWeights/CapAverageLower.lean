@@ -126,6 +126,38 @@ theorem poleCap_lower_le_ennreal_norm_normalizedSphericalAverage
     _ ≤ ENNReal.ofReal ‖normalizedSphericalAverage (n + 1)
         (fun y => (g y : ℂ)) r x‖ := havg
 
+/-- The planar moving-cap form of the normalized-average lower bound.  The
+coefficient can be supplied by
+`exists_unitSurfaceMeasure_sphericalCap_lower_planar`, so it remains uniform
+over the cap centre and radius. -/
+theorem planar_sphericalCap_lower_le_ennreal_norm_normalizedSphericalAverage
+    {κ : ℝ≥0∞}
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    (g : Euclidean 2 → ℝ) (r : ℝ) (x : Euclidean 2)
+    {v : Euclidean 2} (hv : ‖v‖ = 1) {h : ℝ} (hh : 0 < h) (hhalf : h ≤ 1 / 2)
+    (hgi : Integrable (fun ω : sphere (0 : Euclidean 2) 1 =>
+      g (x + r • (ω : Euclidean 2))) (unitSurfaceMeasure 2))
+    (hgnonneg : ∀ ω : sphere (0 : Euclidean 2) 1,
+      0 ≤ g (x + r • (ω : Euclidean 2)))
+    (hg_one : ∀ ω ∈ sphericalCap 1 v h,
+      g (x + r • (ω : Euclidean 2)) = 1) :
+    κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+      ENNReal.ofReal ‖normalizedSphericalAverage 2
+        (fun y => (g y : ℂ)) r x‖ := by
+  let A : Set (sphere (0 : Euclidean 2) 1) := sphericalCap 1 v h
+  have hA : MeasurableSet A := measurableSet_sphericalCap 1 v h
+  have hcap : κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 A :=
+    hκ hv hh hhalf
+  have havg := cap_fraction_le_ennreal_norm_normalizedSphericalAverage
+    (d := 2) (by norm_num) g r x A hA hgi hgnonneg hg_one
+  calc
+    κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+        unitSurfaceMeasure 2 A / ENNReal.ofReal (surfaceMass 2) :=
+      ENNReal.div_le_div_right hcap _
+    _ ≤ ENNReal.ofReal ‖normalizedSphericalAverage 2
+        (fun y => (g y : ℂ)) r x‖ := havg
+
 end
 
 end Codex.Spherical.PowerWeights.CapAverageLower

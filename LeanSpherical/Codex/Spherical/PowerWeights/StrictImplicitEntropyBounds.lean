@@ -33,7 +33,7 @@ particular, at all sufficiently small scales every multiplicative interval
 has the local entropy power bound with exponent strictly below
 `(d - 1) (p - 1)`. -/
 theorem exists_eventually_localMultiplicativeEntropy_power_bound_of_strict_implicit
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} {p α : ℝ}
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} {p α : ℝ}
     (hp : 1 < p)
     (hstrict :
       max ((α : EReal) + multiplicativeMinkowskiExponent E)

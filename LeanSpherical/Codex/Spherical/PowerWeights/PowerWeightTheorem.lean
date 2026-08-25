@@ -61,7 +61,7 @@ theorem restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal
   simp_rw [sphericalAverage_eq_normalizedSphericalAverage (d := d)]
 
 private theorem exists_raw_power_bound_of_restrictedStrongType
-    {d : ℕ} {E : Set ℝ} {p α : ℝ} (hd : 3 ≤ d)
+    {d : ℕ} {E : Set ℝ} {p α : ℝ} (hd : 2 ≤ d)
     (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) (hp : 1 ≤ p)
     (hcore : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α) :
     ∃ C : ℝ, 0 < C ∧ ∀ f : Euclidean d → ℂ,
@@ -142,7 +142,7 @@ private theorem finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeight
         ← hmeasure] using hnorm
 
 private theorem typeSet_subset_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (_hE : E.Nonempty) (_hEpos : E ⊆ Ioi (0 : ℝ)) :
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (_hE : E.Nonempty) (_hEpos : E ⊆ Ioi (0 : ℝ)) :
     _root_.Spherical.PowerWeights.typeSet d E ⊆
       closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
   intro q hq
@@ -156,7 +156,7 @@ private theorem typeSet_subset_closure_restrictedNormalizedSphericalMaximalPower
       (finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeightTypeSet hp hptop hq hC hbound)
 
 private theorem restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_typeSet
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) :
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) :
     restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E ⊆
       _root_.Spherical.PowerWeights.typeSet d E := by
   intro q hq
@@ -1228,13 +1228,13 @@ theorem powerWeightEntropyImplicitCondition_iff_real
       (by simpa only [rho, T] using hrightE)
 
 theorem powerWeightEntropyImplicitCondition_iff_legacyEndpoints
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p α : ℝ} :
     powerWeightEntropyImplicitCondition d E p α ↔
       _root_.Spherical.RestrictedDilations.criticalExponent d E ≤ p ∧
         _root_.Spherical.PowerWeights.lowerEndpoint d E p ≤ α ∧
           α ≤ _root_.Spherical.PowerWeights.upperEndpoint d E p := by
-  have hdreal : (3 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have hdreal : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
   have hn : 0 < (d : ℝ) - 1 := by linarith
   have hnu : _root_.Spherical.legendreAssouadFunction E = internalLegendre E := by
     funext rho
@@ -1256,7 +1256,7 @@ theorem powerWeightEntropyImplicitCondition_iff_legacyEndpoints
       (fun x hx => internalLegendre_nonpos_eq_beta E hx))
 
 theorem legacyAdmissibleRegion_eq_powerWeightAdmissibleRegion
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) :
     _root_.Spherical.PowerWeights.admissibleRegion d E =
       powerWeightAdmissibleRegion d E := by
@@ -1288,13 +1288,14 @@ theorem closure_typeSet_eq
       apply Subset.antisymm
       · exact closure_minimal
           (typeSet_subset_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet
-            hd hE hEpos) isClosed_closure
+            (by omega : 2 ≤ d) hE hEpos) isClosed_closure
       · exact closure_mono
-          (restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_typeSet hd hE hEpos)
+          (restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_typeSet
+            (by omega) hE hEpos)
     _ = powerWeightAdmissibleRegion d E :=
       Codex.Spherical.PowerWeights.Main.power_weight_spherical_maximal_main hd E hE hEpos
     _ = admissibleRegion d E :=
-      (legacyAdmissibleRegion_eq_powerWeightAdmissibleRegion hd hE hEpos).symm
+      (legacyAdmissibleRegion_eq_powerWeightAdmissibleRegion (by omega) hE hEpos).symm
 
 end
 

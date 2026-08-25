@@ -55,7 +55,7 @@ theorem literal_relative_dyadic_moving_bandpass_annular_lintegral_two_le_of_shar
     let μ : Measure (Euclidean (d + 1)) := powerWeightedVolume (d + 1) α
     let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
     let C : ℝ := 2 *
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
         (12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -77,7 +77,7 @@ theorem literal_relative_dyadic_moving_bandpass_annular_lintegral_two_le_of_shar
   let μ : Measure (Euclidean (d + 1)) := powerWeightedVolume (d + 1) α
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -101,7 +101,7 @@ theorem literal_relative_dyadic_moving_bandpass_annular_lintegral_two_le_of_shar
         phi f hphi_one hphi_zero hphi_norm j E hE
   obtain ⟨T, hTcard, hTorder, hTends, hTlength, hglobal⟩ :=
     exists_entropy_interval_lintegral_iSup_literal_relative_dyadic_moving_bandpass_le_of_sharp
-      hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
+      (by omega : 1 ≤ d) C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
       E hE hEne δ N hN hδ
   have hglobal' :
       (∫⁻ x : Euclidean (d + 1), M x) ≤

@@ -1323,3 +1323,18 @@ checkpoint for Bourgain and diagonal integration.  The only still-unproved
 listed MSS result is the separately formulated `cor:mss-discrete`, which
 requires a source-level time-sampling/derivative bridge rather than a further
 consequence of continuous local smoothing.
+
+## Live verification checkpoint - 2026-08-24 16:00:45 -04:00
+
+`DiagonalTheorem.eLpNorm_sphericalMaximal_le` itself now has the requested
+`2 <= d` signature. Its `d = 2` branch invokes the completed unconditional
+Bourgain/MSS bound through the existing finite- and top-exponent raw lifts;
+the `d >= 3` branch is the prior restricted-dilation proof. The edited source
+compiles directly.
+
+Do not infer that the separately updated `Theorems.lean` restricted,
+lacunary, or power-weight wrappers are complete in dimension two. Their
+`1 < p < 2` planar cases require the missing global moving-band/selector
+estimate, and the power-weight result additionally requires its planar
+negative-weight branch. Preserve those signatures as an explicit open
+integration issue unless those independent results are genuinely proved.

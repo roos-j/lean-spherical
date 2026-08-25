@@ -50,9 +50,9 @@ the central pieces have been supplied.  The finite thin partition is an
 explicit input, so this lemma can be used with the cap-compatible buffered
 block as well as with a tail-trimmed block. -/
 theorem exists_bufferedThinRadialShell_raw_reassembly_of_central
-    (n : Nat) (hn : 2 <= n)
+    (n : Nat) (hn : 1 <= n)
     (phi : SchwartzMap (Euclidean (n + 1)) Complex)
-    {p alpha : Real} (hp : 1 < p) (hp2 : p < 2)
+    {p alpha : Real} (hp : 1 < p)
     (halphaLower : -((n + 1 : Nat) : Real) < alpha) (halpha : alpha <= 0)
     (hphiOne : ∀ xi, ‖xi‖ <= 1 → phi xi = 1)
     (hphiZero : ∀ xi, 2 <= ‖xi‖ → phi xi = 0) :
@@ -107,7 +107,7 @@ theorem exists_bufferedThinRadialShell_raw_reassembly_of_central
   obtain ⟨CUpper, hCUpper, hUpper⟩ :=
     exists_upperDistanceBlock_tail_lintegral_rpow_sum_le n phi
   obtain ⟨V, hVtop, hV⟩ :=
-    exists_thinRadialTail_annulus_volume_prefactor_le n hn hp hp2 halphaLower
+    exists_thinRadialTail_annulus_volume_prefactor_le n hn hp halphaLower
   refine ⟨CLower, CUpper, hCLower, hCUpper, V, hVtop, ?_⟩
   intro j k f E s M U hj hk hjk hs hscale hE hU hMupper hreconstruct hfsupport
     hMpositive Qcentral hcentral
@@ -317,9 +317,9 @@ theorem exists_bufferedThinRadialShell_raw_reassembly_of_central
 premises in the shell reassembly.  This is the form used by the strict cap
 argument: only its central piece moments remain to be supplied. -/
 theorem exists_bufferedThinRadialShell_raw_reassembly_from_two_short_of_central
-    (n : Nat) (hn : 2 <= n)
+    (n : Nat) (hn : 1 <= n)
     (phi : SchwartzMap (Euclidean (n + 1)) Complex)
-    {p alpha : Real} (hp : 1 < p) (hp2 : p < 2)
+    {p alpha : Real} (hp : 1 < p)
     (halphaLower : -((n + 1 : Nat) : Real) < alpha) (halpha : alpha <= 0)
     (hphiOne : ∀ xi, ‖xi‖ <= 1 → phi xi = 1)
     (hphiZero : ∀ xi, 2 <= ‖xi‖ → phi xi = 0) :
@@ -367,7 +367,7 @@ theorem exists_bufferedThinRadialShell_raw_reassembly_from_two_short_of_central
                             powerWeightedVolume (n + 1) alpha)) := by
   classical
   obtain ⟨CLower, CUpper, hCLower, hCUpper, V, hVtop, hshell⟩ :=
-    exists_bufferedThinRadialShell_raw_reassembly_of_central n hn phi hp hp2
+    exists_bufferedThinRadialShell_raw_reassembly_of_central n hn phi hp
       halphaLower halpha hphiOne hphiZero
   refine ⟨CLower, CUpper, hCLower, hCUpper, V, hVtop, ?_⟩
   intro j k f E s U hj hk hjk hs hscale hE hU hfsupport Qcentral hcentral

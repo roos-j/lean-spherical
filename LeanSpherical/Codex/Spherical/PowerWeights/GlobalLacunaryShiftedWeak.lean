@@ -38,7 +38,7 @@ selectors has weak type `(1,1)` with the shifted Calderón--Zygmund constant.
 The output is written with `toReal`, matching the literal continuum maximum
 which the selector palette will later approximate. -/
 theorem weak_one_lacunaryRelativeBandpassFinitePhysicalPaletteMaximal_of_core_bound_threeWay
-    {d N : Nat} [NeZero d] (hd : 3 ≤ d)
+    {d N : Nat} [NeZero d] (hd : 2 ≤ d)
     (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : Fin N → ℤ → PositiveRadius)
     (hr : ∀ i : Fin N, IsDyadicLacunaryRadiusSelector (r i))
@@ -163,7 +163,7 @@ theorem lacunaryRelativeBandpassFinitePhysicalThreeWayWeakOneConstant_le_linear
 
 /-- The finite palette endpoint in its explicit `O(j + 1)` form. -/
 theorem weak_one_lacunaryRelativeBandpassFinitePhysicalPaletteMaximal_of_core_bound_threeWay_linear
-    {d N : Nat} [NeZero d] (hd : 3 ≤ d)
+    {d N : Nat} [NeZero d] (hd : 2 ≤ d)
     (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : Fin N → ℤ → PositiveRadius)
     (hr : ∀ i : Fin N, IsDyadicLacunaryRadiusSelector (r i))
@@ -206,7 +206,7 @@ the physical dyadic selector scales.  This is the literal all-scale palette
 term used by the entropy-cell comparison; its only input is the finite core
 estimate supplied by the moving-radius square bound. -/
 theorem weak_one_lacunaryRelativeBandpassPhysicalPaletteMaximalAll_of_core_bound_threeWay_linear
-    {d N : Nat} [NeZero d] (hd : 3 ≤ d)
+    {d N : Nat} [NeZero d] (hd : 2 ≤ d)
     (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : Fin N → ℤ → PositiveRadius)
     (hr : ∀ i : Fin N, IsDyadicLacunaryRadiusSelector (r i))
@@ -267,7 +267,7 @@ theorem weak_one_lacunaryRelativeBandpassPhysicalPaletteMaximalAll_of_core_bound
 moving-radius square estimate.  This is the directly usable selector term
 for the global entropy argument. -/
 theorem weak_one_lacunaryRelativeBandpassPhysicalPaletteMaximalAll_of_sharp_threeWay_linear
-    {n N : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n N : Nat} (hn : 1 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ s : ℝ, 1 ≤ ‖xi‖ →

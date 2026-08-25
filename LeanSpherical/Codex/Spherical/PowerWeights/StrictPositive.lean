@@ -36,7 +36,7 @@ noncomputable section
 /-- The unweighted restricted-dilation theorem implies every strictly
 admissible nonnegative power-weight estimate. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_implicit_nonnegative
-    {d : Nat} (hd : 3 ≤ d) (E : Set ℝ) (hE : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set ℝ) (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p α : ℝ} (hp : 1 < p) (hα : 0 ≤ α)
     (hstrict :
       max ((α : EReal) + multiplicativeMinkowskiExponent E)
@@ -52,7 +52,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_i
     exists_positive_weight_interpolation_parameters hd hE hEpos hp hα hstrict
   obtain ⟨C, hC, hscaled⟩ :=
     exists_uniform_scaledBesselRestrictedNormalizedSphericalMaximal_bound_of_unweighted
-      (show 2 ≤ d by omega) E ha ha_lt (lt_trans zero_lt_one hq) hqp
+      hd E ha ha_lt (lt_trans zero_lt_one hq) hqp
       (hunweighted hq hcritical)
   rw [hαeq]
   apply hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_scaledBessel

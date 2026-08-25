@@ -53,11 +53,12 @@ theorem power_weight_spherical_maximal_main_of_unweighted_and_negative
       HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E q a) :
     closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) =
       powerWeightAdmissibleRegion d E := by
+  have hd2 : 2 ≤ d := by omega
   apply powerWeightAdmissibleRegion_eq_closure_of_strict_upper_necessary
-    hd E hE hEpos
+    hd2 E hE hEpos
   · intro p α hp hstrong
     exact powerWeightEntropyImplicitCondition_of_restrictedStrongType
-      hd hE hEpos hp hstrong
+      hd2 hE hEpos hp hstrong
   · intro p α hp hstrict
     apply hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_implicit
       hd E hE hEpos hp hstrict
@@ -66,7 +67,7 @@ theorem power_weight_spherical_maximal_main_of_unweighted_and_negative
     · intro q a hq ha hqstrict
       exact
         hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_implicit_nonnegative
-          hd E hE hEpos hq ha hqstrict hunweighted
+          hd2 E hE hEpos hq ha hqstrict hunweighted
 
 end
 

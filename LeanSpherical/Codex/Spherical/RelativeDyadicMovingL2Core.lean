@@ -3,7 +3,9 @@
 
 import LeanSpherical.Codex.Spherical.SphericalMaximalL2
 import LeanSpherical.Codex.Spherical.FourierRadius
+import LeanSpherical.Codex.Spherical.FractalDilations.CircleFourierBridge
 open Codex.Spherical.FourierRadius
+open Codex.Spherical.FractalDilations.CircleFourierBridge
 open Codex.Spherical.SchwartzData
 open Codex.Spherical.SphericalAverages
 open Codex.Spherical.SphericalMaximalL2
@@ -92,6 +94,83 @@ theorem norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_
       have hrone : 1 ≤ r := hr.1
       nlinarith
     _ ≤ (2 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := hfixed
+
+/-- The moving-band derivative estimate in every positive surface dimension.
+In the planar-circle case the sharp cutoff estimate has twice the constant of
+the higher-dimensional argument, so this deliberately uses the common (and
+still scale-sharp) `4 C₁` bound. -/
+theorem norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_of_one_le
+    {d : Nat} (hd : 1 ≤ d) (C1 : ℝ) (hC1 : 0 < C1)
+    (hderiv : ∀ ξ : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖ξ‖ →
+      r ∈ Icc (1 : ℝ) 2 →
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) r‖ ≤
+        C1 / ‖ξ‖ ^ ((d : ℝ) / 2 - 1))
+    {phi : SchwartzMap (Euclidean (d + 1)) ℂ}
+    (hphi_one : ∀ ξ, ‖ξ‖ ≤ 1 → phi ξ = 1)
+    (hphi_zero : ∀ ξ, 2 ≤ ‖ξ‖ → phi ξ = 0)
+    (hphi_norm : ∀ ξ, ‖phi ξ‖ ≤ 1)
+    (j : Nat) (r : ℝ) (hr : r ∈ Icc (1 : ℝ) 2)
+    (xi : Euclidean (d + 1)) :
+    ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (-s • xi)) r *
+      (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+        phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ ≤
+      (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
+  by_cases hplanar : d = 1
+  · subst d
+    have hderiv' : ∀ ξ : Euclidean 2, ∀ r : ℝ, 1 ≤ ‖ξ‖ →
+        r ∈ Icc (1 : ℝ) 2 →
+        ‖deriv (fun s : ℝ => surfaceFourier 2 (s • ξ)) r‖ ≤
+          C1 / ‖ξ‖ ^ ((1 : ℝ) / 2 - 1) := by
+      simpa using hderiv
+    have hfixed :=
+      norm_deriv_circle_surfaceFourier_smul_mul_smooth_dyadic_bandpass_le_of_sharp
+        C1 hC1 hderiv' hphi_one hphi_zero hphi_norm j (1 : ℝ) (by norm_num)
+          (r • xi)
+    have hrescale := deriv_surfaceFourier_radial_rescale 2 xi r
+    have hfun : (fun s : ℝ => surfaceFourier 2 (-s • xi)) =
+        fun s : ℝ => surfaceFourier 2 (s • xi) := by
+      funext s
+      rw [show (-s : ℝ) • xi = -(s • xi) by rw [neg_smul], surfaceFourier_neg]
+    rw [hrescale] at hfixed
+    rw [hfun]
+    have hscale : 0 < dyadicScale j := dyadicScale_pos j
+    have hpow : (dyadicScale j) ^ ((1 : ℝ) / 2 - 1) =
+        ((dyadicScale j) ^ ((1 : ℝ) / 2))⁻¹ := by
+      rw [show (1 : ℝ) / 2 - 1 = -((1 : ℝ) / 2) by ring,
+        Real.rpow_neg hscale.le]
+    calc
+      ‖deriv (fun s : ℝ => surfaceFourier 2 (s • xi)) r *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ ≤
+          ‖r • deriv (fun s : ℝ => surfaceFourier 2 (s • xi)) r *
+            (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+              phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ := by
+            rw [smul_mul_assoc, norm_smul, Real.norm_eq_abs,
+              abs_of_nonneg (zero_le_one.trans hr.1)]
+            have hN : 0 ≤ ‖deriv (fun s : ℝ => surfaceFourier 2 (s • xi)) r *
+                (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+                  phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ := norm_nonneg _
+            have hrone : 1 ≤ r := hr.1
+            nlinarith [mul_nonneg (sub_nonneg.mpr hrone) hN]
+      _ ≤ 4 * C1 * dyadicScale j ^ ((1 : ℝ) / 2) := hfixed
+      _ = (4 * C1) * (dyadicScale j ^ ((1 : ℝ) / 2)) := by ring
+      _ = (4 * C1) / (dyadicScale j) ^ ((1 : ℝ) / 2 - 1) := by
+        rw [hpow, div_eq_mul_inv]
+        field_simp [hscale.ne']
+      _ = (4 * C1) / (dyadicScale j) ^ ((↑(1 : Nat) : ℝ) / 2 - 1) := by norm_num
+  · have hd2 : 2 ≤ d := by omega
+    have hfixed :=
+      norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_of_sharp
+        hd2 C1 hC1 hderiv hphi_one hphi_zero hphi_norm j r hr xi
+    calc
+      ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (-s • xi)) r *
+          (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
+            phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ ≤
+          (2 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := hfixed
+      _ ≤ (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
+        apply div_le_div_of_nonneg_right
+        · nlinarith [hC1.le]
+        · exact Real.rpow_nonneg (dyadicScale_pos j).le _
 
 /-- The term in which the radius derivative hits the moving bandpass has one
 additional cutoff-derivative constant but the full surface-decay gain. -/
@@ -325,7 +404,7 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_surface_multiplier_le_of_sha
 /-- Plancherel controls the term where the radius derivative hits the surface
 multiplier, with the compact relative cutoff still moving in the radius. -/
 theorem integral_norm_sq_fourierInv_relative_dyadic_surface_deriv_multiplier_le_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C1 : ℝ) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C1 : ℝ) (hC1 : 0 < C1)
     (hderiv : ∀ ξ : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖ξ‖ →
       r ∈ Icc (1 : ℝ) 2 →
       ‖deriv (fun s : ℝ => surfaceFourier (d + 1) (s • ξ)) r‖ ≤
@@ -342,14 +421,14 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_surface_deriv_multiplier_le_
         (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
           phi (((2 : ℝ) ^ j)⁻¹ • (r • xi))) * theta xi *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2) ≤
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2 *
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2 *
         ∫ xi : Euclidean (d + 1), ‖𝓕 (f : Euclidean (d + 1) → ℂ) xi‖ ^ 2 := by
   have hrpos : 0 < r := lt_of_lt_of_le zero_lt_one hr.1
   rcases exists_compactlySupported_schwartzMap_relative_dyadic_bandpass_mul
       phi theta htheta j r hrpos.ne' with ⟨psi, hpsi, hpsi_compact⟩
   rcases exists_schwartz_compactSupport_mul_surfaceFourier_radius_deriv
       psi hpsi_compact r with ⟨m, hm⟩
-  have hCnonneg : 0 ≤ (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
+  have hCnonneg : 0 ≤ (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
     exact div_nonneg (mul_nonneg (by norm_num) hC1.le)
       (Real.rpow_nonneg (dyadicScale_pos j).le _)
   have hfun (xi : Euclidean (d + 1)) :
@@ -358,9 +437,9 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_surface_deriv_multiplier_le_
     funext s
     rw [smul_neg, neg_smul]
   have hmbound (xi : Euclidean (d + 1)) : ‖m xi‖ ≤
-      (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
+      (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
     rw [hm xi, hpsi xi, hfun xi]
-    have hpoint := norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_of_sharp
+    have hpoint := norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_of_one_le
       hd C1 hC1 hderiv hphi_one hphi_zero hphi_norm j r hr xi
     calc
       ‖(phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
@@ -375,11 +454,11 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_surface_deriv_multiplier_le_
             (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
               phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ * ‖theta xi‖ := by
         rw [norm_mul]
-      _ ≤ ((2 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) * 2 :=
+      _ ≤ ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) * 2 :=
         mul_le_mul hpoint (htheta_norm xi) (norm_nonneg _)
           (div_nonneg (mul_nonneg (by norm_num) hC1.le)
             (Real.rpow_nonneg (dyadicScale_pos j).le _))
-      _ = (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by ring
+      _ = (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by ring
   have hmult := integral_norm_sq_fourierInv_schwartz_multiplier_le
     m (𝓕 f) hCnonneg hmbound
   have hsymbol : (fun xi : Euclidean (d + 1) =>
@@ -611,7 +690,7 @@ theorem integrable_norm_sq_fourierInv_relative_dyadic_deriv_multiplier
 /-- Combining the two literal product-rule terms gives a fixed-radius
 square estimate for the full moving-bandpass derivative. -/
 theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -634,13 +713,13 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
             phi (((2 : ℝ) ^ (j + 1))⁻¹ • (t • xi)) -
               phi (((2 : ℝ) ^ j)⁻¹ • (t • xi))) r) *
           theta xi * 𝓕 (f : Euclidean (d + 1) → ℂ) xi) x‖ ^ 2) ≤
-      (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2 +
+      (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) ^ 2 +
         2 * ((12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ
             (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2) *
         ∫ xi : Euclidean (d + 1), ‖𝓕 (f : Euclidean (d + 1) → ℂ) xi‖ ^ 2 := by
-  let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+  let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
   let T : ℝ :=
     (12 * C0 *
       ‖((SchwartzMap.fderivCLM ℂ
@@ -673,7 +752,7 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
     rw [smul_neg, neg_smul]
   have hm₁bound (xi : Euclidean (d + 1)) : ‖m₁ xi‖ ≤ S := by
     rw [hm₁ xi, hpsi₁ xi, hfun xi]
-    have hpoint := norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_of_sharp
+    have hpoint := norm_deriv_surfaceFourier_succ_neg_smul_mul_relative_dyadic_bandpass_le_of_one_le
       hd C1 hC1 hderiv hphi_one hphi_zero hphi_norm j r hr xi
     calc
       ‖(phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
@@ -688,7 +767,7 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
             (phi (((2 : ℝ) ^ (j + 1))⁻¹ • (r • xi)) -
               phi (((2 : ℝ) ^ j)⁻¹ • (r • xi)))‖ * ‖theta xi‖ := by
         rw [norm_mul]
-      _ ≤ ((2 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) * 2 :=
+      _ ≤ ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)) * 2 :=
         mul_le_mul hpoint (htheta_norm xi) (norm_nonneg _)
           (div_nonneg (mul_nonneg (by norm_num) hC1.le)
             (Real.rpow_nonneg (dyadicScale_pos j).le _))
@@ -776,7 +855,7 @@ theorem integral_norm_sq_fourierInv_relative_dyadic_deriv_multiplier_le_of_sharp
 /-- On the unit radius interval, the literal moving relative-bandpass family
 obeys the product Sobolev `L²` maximal estimate. -/
 theorem memLp_two_iSup_relative_dyadic_moving_bandpass_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -801,7 +880,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_of_sharp
         ‖(⨆ r : Icc (1 : ℝ) 2, ENNReal.ofReal ‖F r.1 x‖).toReal‖ ^ 2) ≤
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -824,7 +903,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_of_sharp
               phi (((2 : ℝ) ^ j)⁻¹ • (u • xi))) s) * theta xi *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
-  let S : ℝ := (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
+  let S : ℝ := (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1)
   let T : ℝ := (12 * C0 *
     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
     (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -1072,7 +1151,7 @@ theorem compact_schwartz_cutoff {n : Nat} (phi g : SchwartzMap (Euclidean n) ℂ
       rw [hchi, hphi_one _ hscaled, one_mul]
 
 theorem memLp_two_iSup_relative_dyadic_moving_bandpass_compact_data
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -1095,7 +1174,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_compact_data
         ‖(⨆ r : Icc (1 : ℝ) 2, ENNReal.ofReal ‖F r.1 x‖).toReal‖ ^ 2) ≤
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1148,7 +1227,7 @@ theorem memLp_two_iSup_relative_dyadic_moving_bandpass_compact_data
   simpa only [hfourier, hsymbol'] using hlocal
 
 theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -1170,7 +1249,7 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
       (∫ x : Euclidean (d + 1), ‖B x‖ ^ 2) ≤
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1199,7 +1278,7 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
       (∫ y : Euclidean (d + 1), ‖M y‖ ^ 2) ≤
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1430,7 +1509,7 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
     _ ≤ q *
         ((((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1440,7 +1519,7 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
     _ =
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1450,7 +1529,7 @@ theorem memLp_two_iSup_relative_dyadic_radius_block_compact_data
       field_simp [hqpos.ne']
 
 theorem finite_relative_dyadic_radius_blocks_l2
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -1477,7 +1556,7 @@ theorem finite_relative_dyadic_radius_blocks_l2
         24 *
           (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                 (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1518,7 +1597,7 @@ theorem finite_relative_dyadic_radius_blocks_l2
   let L : ℝ :=
     (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
       2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-        (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+        (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ
               (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -1528,7 +1607,7 @@ theorem finite_relative_dyadic_radius_blocks_l2
     have hA : 0 ≤ (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2) := by
       exact div_nonneg (by positivity)
         (Real.rpow_pos_of_pos (dyadicScale_pos j) _).le
-    have hB : 0 ≤ (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
+    have hB : 0 ≤ (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) := by
       exact div_nonneg (by positivity)
         (Real.rpow_pos_of_pos (dyadicScale_pos j) _).le
     have hC : 0 ≤

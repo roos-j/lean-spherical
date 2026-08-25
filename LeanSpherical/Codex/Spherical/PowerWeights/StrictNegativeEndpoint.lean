@@ -234,7 +234,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_
 /-- The strict negative subquadratic conclusion, in the form consumed by
 the final strict-upper assembly. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_negative_subtwo
-    {d : Nat} (hd : 3 ≤ d) (E : Set Real) (hE : E.Nonempty)
+    {d : Nat} (hd : 2 ≤ d) (E : Set Real) (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : Real)) {p α : Real}
     (hp : 1 < p) (hp2 : p < 2) (hα : α < 0)
     (hstrict :
@@ -249,7 +249,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strict_n
       (show 2 ≤ d by omega) hE hEpos hstrict
   obtain ⟨phi, C0, C1, hphiCompact, hphiOne, hphiZero, hphiNorm,
     hC0, hC1, hdecay, hderiv⟩ :=
-    exists_global_unweighted_endpoint_data hd
+    exists_global_unweighted_endpoint_data (show 2 ≤ d by omega)
   obtain ⟨epsilon, K, hepsilon, hKtop, hrawBand⟩ :=
     exists_strictNegative_raw_band_rate
       hd E hE hEpos hp hp2 hαLower hα hstrict

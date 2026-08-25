@@ -165,7 +165,7 @@ measure removed.  Both the input and output moments are now literal moments
 for `powerWeightedVolume`; this is the exact form consumed by finite spatial
 and frequency reassembly. -/
 theorem exists_restrictedRelativeBandpass_entropyCap_shell_global_lintegral_rpow_le
-    {n : Nat} (hn : 2 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n : Nat} (hn : 1 ≤ n) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (n + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((n : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : ℝ, 1 ≤ ‖xi‖ →
@@ -193,7 +193,7 @@ theorem exists_restrictedRelativeBandpass_entropyCap_shell_global_lintegral_rpow
         let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : ℝ) / 2)) ^ (2 : ℕ) +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ (2 : ℕ) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : ℝ) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ (Euclidean (n + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((n : ℝ) / 2))) ^ (2 : ℕ))
@@ -693,7 +693,7 @@ theorem exists_tail_global_entropy_nat_bound_of_strict_implicit
             (((d : ℝ) - 1) * (p - 1) - ε) := by
   obtain ⟨ε, hε, hεlt, hMinkowski, hLegendre, hlocal⟩ :=
     exists_eventually_localMultiplicativeEntropy_power_bound_of_strict_implicit
-      hd hp hstrict
+      (by omega : 2 ≤ d) hp hstrict
   have htail : ∀ᶠ j : ℕ in Filter.atTop,
       ∀ (c : PositiveRadius) (diam : Icc (dyadicMultiplicativeScale j) 1),
         localMultiplicativeEntropy E c diam.1 (dyadicMultiplicativeScale j) ≤

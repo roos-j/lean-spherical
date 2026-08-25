@@ -487,7 +487,7 @@ theorem restrictedRelativeBandpass_annular_lintegral_two_le_of_sharp_restrict
       (restrictedRelativeBandpassSphericalMaximal (d + 1) E phi j g x).toReal)
     let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
     let C : ℝ := 2 *
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
         (12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -506,7 +506,7 @@ theorem restrictedRelativeBandpass_annular_lintegral_two_le_of_sharp_restrict
     (restrictedRelativeBandpassSphericalMaximal (d + 1) E phi j g x).toReal)
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2))

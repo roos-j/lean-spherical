@@ -3,12 +3,12 @@
 
 import LeanSpherical.Codex.Spherical.PowerWeights.Admissibility
 import LeanSpherical.Codex.Spherical.PowerWeights.BallOriginLower
-import LeanSpherical.Codex.Spherical.PowerWeights.EntropyAmbientUpper
+import LeanSpherical.Codex.Spherical.PowerWeights.EntropyAmbientLine
 import LeanSpherical.Codex.Spherical.PowerWeights.EntropyUpperBounds
 open Codex.Spherical.PowerWeights.Admissibility
 open Codex.Spherical.PowerWeights.BallOriginLower
 open Codex.Spherical.PowerWeights.Entropy
-open Codex.Spherical.PowerWeights.EntropyAmbientUpper
+open Codex.Spherical.PowerWeights.EntropyAmbientLine
 open Codex.Spherical.PowerWeights.EntropyUpperBounds
 open Codex.Spherical.PowerWeights.TypeSet
 
@@ -33,7 +33,7 @@ open Set
 noncomputable section
 
 theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
-    (n : ℕ) (hn : 2 ≤ n) {E : Set ℝ} {p α : ℝ}
+    (n : ℕ) (hn : 1 ≤ n) {E : Set ℝ} {p α : ℝ}
     (hp : 1 ≤ p) (hα : 0 ≤ α)
     (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
       (n + 1) E p α) :
@@ -41,9 +41,15 @@ theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
   let ρ : ℝ := (n : ℝ) * (p - 2) - α
   let T : ℝ := (n : ℝ) * (p - 1)
   have hleft : (α : EReal) + multiplicativeMinkowskiExponent E ≤ (T : EReal) := by
-    simpa [T] using
-      alpha_add_multiplicativeMinkowskiExponent_le_of_restrictedStrongType_of_nonneg
-        n hn (lt_of_lt_of_le zero_lt_one hp) hα hstrong
+    by_cases hnplanar : n = 1
+    · subst n
+      simpa [T] using
+        alpha_add_multiplicativeMinkowskiExponent_le_of_restrictedStrongType_of_nonneg_planar
+          (E := E) (p := p) (α := α) (lt_of_lt_of_le zero_lt_one hp) hα hstrong
+    · have hn2 : 2 ≤ n := by omega
+      simpa [T] using
+        alpha_add_multiplicativeMinkowskiExponent_le_of_restrictedStrongType_of_nonneg
+          n hn2 (lt_of_lt_of_le zero_lt_one hp) hα hstrong
   unfold powerWeightEntropyImplicitCondition
   simp only [Nat.cast_add, Nat.cast_one, add_sub_cancel_right]
   change max ((α : EReal) + multiplicativeMinkowskiExponent E)
@@ -59,11 +65,11 @@ theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
         add_le_add_left (by exact_mod_cast hα) _
       _ ≤ (T : EReal) := hleft
   · have hρ0 : 0 ≤ ρ := (lt_of_not_ge hρ).le
-    have hrightReal : ρ + 2 ≤ T := by
+    have hrightReal : 1 + ρ ≤ T := by
       dsimp only [ρ, T]
-      have hnreal : (2 : ℝ) ≤ n := by exact_mod_cast hn
+      have hnreal : (1 : ℝ) ≤ n := by exact_mod_cast hn
       nlinarith
-    exact (multiplicativeLegendreAssouadExponent_le_add_two_of_nonneg E hρ0).trans
+    exact (multiplicativeLegendreAssouadExponent_le_one_add_of_nonneg E hρ0).trans
       (EReal.coe_le_coe hrightReal)
 
 end

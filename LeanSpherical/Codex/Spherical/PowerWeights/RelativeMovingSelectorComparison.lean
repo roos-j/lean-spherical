@@ -186,7 +186,7 @@ theorem lintegral_finite_entropy_cell_variation_of_sharp
             phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) *
           𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
     let C : ℝ := 2 *
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
         (12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -204,7 +204,7 @@ theorem lintegral_finite_entropy_cell_variation_of_sharp
           phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -219,7 +219,7 @@ theorem lintegral_finite_entropy_cell_variation_of_sharp
     have hends := unitScaleEntropyCell_endpoints_mem δ s hsunit
     have hlocal :=
       measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_interval_sub_left_of_sharp
-        hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
+        (by omega : 1 ≤ d) C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
         (hcenter.1.trans hcenter.2) hends.1.1 hends.2.2
     simpa only [F] using hlocal.1
   have hbound (s : PositiveRadius) (hsS : s ∈ S) :
@@ -233,7 +233,7 @@ theorem lintegral_finite_entropy_cell_variation_of_sharp
     have hends := unitScaleEntropyCell_endpoints_mem δ s hsunit
     have hlocal :=
       measurable_and_lintegral_iSup_literal_relative_dyadic_moving_bandpass_interval_sub_left_of_sharp
-        hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
+        (by omega : 1 ≤ d) C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
         (hcenter.1.trans hcenter.2) hends.1.1 hends.2.2
     simpa only [F, C, J] using hlocal.2
   calc

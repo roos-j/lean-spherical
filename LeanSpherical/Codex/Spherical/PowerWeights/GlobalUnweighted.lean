@@ -79,7 +79,7 @@ theorem restrictedRelativeBandpassSphericalMaximal_le_iSup_relative_dyadic_movin
 restricted `ENNReal` band maximal function.  The separate almost-everywhere
 finiteness bridge is essential here, since `ENNReal.toReal ⊤ = 0`. -/
 theorem restrictedRelativeBandpassSphericalMaximal_memLp_two_global_of_sharp
-    {m : ℕ} (hm : 2 ≤ m) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {m : ℕ} (hm : 1 ≤ m) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (m + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (m + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((m : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (m + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -98,7 +98,7 @@ theorem restrictedRelativeBandpassSphericalMaximal_memLp_two_global_of_sharp
         24 *
           (((4 * C0) / (dyadicScale j) ^ ((m : ℝ) / 2)) ^ 2 +
             2 * ((4 * C0) / (dyadicScale j) ^ ((m : ℝ) / 2)) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((m : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((m : ℝ) / 2 - 1) +
                 (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (m + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -151,7 +151,7 @@ theorem restrictedRelativeBandpassSphericalMaximal_memLp_two_global_of_sharp
         24 *
           (((4 * C0) / (dyadicScale j) ^ ((m : ℝ) / 2)) ^ 2 +
             2 * ((4 * C0) / (dyadicScale j) ^ ((m : ℝ) / 2)) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((m : ℝ) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((m : ℝ) / 2 - 1) +
                 (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (m + 1)) ℂ) phi).toBoundedContinuousFunction‖) /

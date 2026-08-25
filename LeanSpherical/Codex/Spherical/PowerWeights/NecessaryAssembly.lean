@@ -31,15 +31,16 @@ open Set
 
 noncomputable section
 
-/-- Every finite weighted strong-type point satisfies the implicit entropy
-condition. -/
-theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType
-    {d : Nat} (hd : 3 <= d) {E : Set Real} (hE : E.Nonempty)
-    (hEpos : E ⊆ Ioi (0 : Real)) {p alpha : Real} (hp : 1 <= p)
+/-- The nonnegative-weight necessity argument is already valid in the
+planar case.  The negative branch is intentionally kept separate, since its
+current lower test still starts in dimension three. -/
+theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
+    {d : Nat} (hd : 2 ≤ d) {E : Set Real} {p alpha : Real} (hp : 1 ≤ p)
+    (halpha : 0 ≤ alpha)
     (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p alpha) :
     powerWeightEntropyImplicitCondition d E p alpha := by
   let n : Nat := d - 1
-  have hn : 2 <= n := by
+  have hn : 1 ≤ n := by
     dsimp only [n]
     omega
   have hdim : n + 1 = d := by
@@ -48,13 +49,70 @@ theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType
   have hstrong' :
       HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType (n + 1) E p alpha := by
     simpa only [hdim] using hstrong
+  have h :=
+    _root_.Codex.Spherical.PowerWeights.NecessaryNonnegative.powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
+      n hn hp halpha hstrong'
+  simpa only [hdim] using h
+
+/-- In the plane, the available radial lower obstruction completes the
+negative branch at and above the quadratic exponent; together with the
+planar nonnegative argument this gives the full necessary condition in that
+range. -/
+theorem powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType_of_two_le
+    {E : Set Real} {p alpha : Real} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : Real))
+    (hp : 2 ≤ p)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p alpha) :
+    powerWeightEntropyImplicitCondition 2 E p alpha := by
   by_cases halpha : alpha < 0
-  · have h := powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_neg
-      n hn hE hEpos hp halpha hstrong'
-    simpa only [hdim] using h
-  · have h := powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
-      n hn hp (le_of_not_gt halpha) hstrong'
-    simpa only [hdim] using h
+  · exact powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType_of_neg_of_two_le
+      hE hEpos hp halpha hstrong
+  · exact powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
+      (d := 2) (by norm_num) (by linarith) (le_of_not_gt halpha) hstrong
+
+/-- Every planar finite weighted strong-type point satisfies the implicit
+entropy condition.  The negative branch uses the cap lower test below the
+quadratic exponent and the radial obstruction at and above it. -/
+theorem powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType
+    {E : Set Real} {p alpha : Real} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : Real))
+    (hp : 1 ≤ p)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p alpha) :
+    powerWeightEntropyImplicitCondition 2 E p alpha := by
+  by_cases halpha : alpha < 0
+  · by_cases hpTwo : p < 2
+    · exact powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType_of_neg_of_one_le_of_lt_two
+        hE hEpos hp hpTwo halpha hstrong
+    · exact powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType_of_neg_of_two_le
+        hE hEpos (le_of_not_gt hpTwo) halpha hstrong
+  · exact powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
+      (d := 2) (by norm_num) hp (le_of_not_gt halpha) hstrong
+
+/-- Every finite weighted strong-type point satisfies the implicit entropy
+condition. -/
+theorem powerWeightEntropyImplicitCondition_of_restrictedStrongType
+    {d : Nat} (hd : 2 <= d) {E : Set Real} (hE : E.Nonempty)
+    (hEpos : E ⊆ Ioi (0 : Real)) {p alpha : Real} (hp : 1 <= p)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p alpha) :
+    powerWeightEntropyImplicitCondition d E p alpha := by
+  by_cases hdTwo : d = 2
+  · subst d
+    exact powerWeightEntropyImplicitCondition_planar_of_restrictedStrongType hE hEpos hp hstrong
+  · have hdThree : 3 <= d := by omega
+    let n : Nat := d - 1
+    have hn : 2 <= n := by
+      dsimp only [n]
+      omega
+    have hdim : n + 1 = d := by
+      dsimp only [n]
+      omega
+    have hstrong' :
+        HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType (n + 1) E p alpha := by
+      simpa only [hdim] using hstrong
+    by_cases halpha : alpha < 0
+    · have h := powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_neg
+        n hn hE hEpos hp halpha hstrong'
+      simpa only [hdim] using h
+    · exact powerWeightEntropyImplicitCondition_of_restrictedStrongType_of_nonneg
+        (by omega) hp (le_of_not_gt halpha) hstrong
 
 end
 

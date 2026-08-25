@@ -51,6 +51,59 @@ theorem exists_strict_powerWeightEntropyImplicitCondition_subtwo_of_strict_negat
       hd halpha_lower halpha
   exact ⟨q, hq_one, hq_two, lt_of_lt_of_le hq_two hp, hq_strict⟩
 
+/-- At the planar quadratic point, strict admissibility already leaves room
+to decrease the exponent below two without changing a negative weight.  The
+Legendre--Assouad argument only decreases, while a real point strictly between
+the two sides of the original inequality supplies the common exponent slack. -/
+theorem exists_strict_powerWeightEntropyImplicitCondition_subtwo_planar_of_strict_negative_two
+    {E : Set Real} {alpha : Real} (_halpha : alpha < 0)
+    (hstrict :
+      max ((alpha : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E (-alpha)) < (1 : EReal)) :
+    exists q : Real, 1 < q /\ q < 2 /\
+      max ((alpha : EReal) + multiplicativeMinkowskiExponent E)
+          (multiplicativeLegendreAssouadExponent E (q - 2 - alpha)) <
+        ((q - 1 : Real) : EReal) := by
+  have hmax :
+      max (max ((alpha : EReal) + multiplicativeMinkowskiExponent E)
+        (multiplicativeLegendreAssouadExponent E (-alpha))) (0 : EReal) <
+      (1 : EReal) := by
+    exact max_lt hstrict (by norm_num)
+  obtain ⟨s, hs, hsone⟩ := EReal.lt_iff_exists_real_btwn.mp hmax
+  have hsposE : (0 : EReal) < (s : EReal) :=
+    (le_max_right _ _).trans_lt hs
+  have hspos : 0 < s := by exact_mod_cast hsposE
+  have hsone' : s < 1 := by exact_mod_cast hsone
+  let q : Real := 1 + (s + 1) / 2
+  have hqone : 1 < q := by
+    dsimp only [q]
+    linarith
+  have hqtwo : q < 2 := by
+    dsimp only [q]
+    linarith
+  have hslt : s < q - 1 := by
+    dsimp only [q]
+    linarith
+  have harg : q - 2 - alpha ≤ -alpha := by
+    dsimp only [q]
+    linarith
+  have hfirst : (alpha : EReal) + multiplicativeMinkowskiExponent E <
+      ((q - 1 : Real) : EReal) := by
+    calc
+      (alpha : EReal) + multiplicativeMinkowskiExponent E < (s : EReal) :=
+        (le_max_left _ _).trans_lt ((le_max_left _ _).trans_lt hs)
+      _ < ((q - 1 : Real) : EReal) := by exact_mod_cast hslt
+  have hsecond : multiplicativeLegendreAssouadExponent E (q - 2 - alpha) <
+      ((q - 1 : Real) : EReal) := by
+    calc
+      multiplicativeLegendreAssouadExponent E (q - 2 - alpha) ≤
+          multiplicativeLegendreAssouadExponent E (-alpha) :=
+        EntropyComparison.multiplicativeLegendreAssouadExponent_mono E harg
+      _ < (s : EReal) :=
+        (le_max_right _ _).trans_lt ((le_max_left _ _).trans_lt hs)
+      _ < ((q - 1 : Real) : EReal) := by exact_mod_cast hslt
+  exact ⟨q, hqone, hqtwo, max_lt hfirst hsecond⟩
+
 end
 
 end Codex.Spherical.PowerWeights.SubquadraticReduction

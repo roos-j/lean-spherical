@@ -43,7 +43,7 @@ noncomputable section
 data.  This is the form used after the radial Littlewood--Paley localization
 in the all-radius argument. -/
 theorem measurable_memLp_two_entropy_iSup_relative_dyadic_moving_bandpass_compact_data
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -69,7 +69,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_moving_bandpass_compac
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                     (dyadicScale j) ^ ((d : ℝ) / 2)))) ^ 2) *
@@ -104,7 +104,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_moving_bandpass_compac
       hd C0 C1 hC0 hC1 hdecay hderiv phi f hphi_one hphi_zero hphi_norm j
       E hE hEne δ N hN hδ
   let D : ℝ :=
-    (4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    (8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2)
@@ -143,7 +143,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_moving_bandpass_compac
 block to one physical multiplicative radius block.  The coefficient is
 unchanged by the exact Fourier scaling. -/
 theorem measurable_memLp_two_entropy_iSup_relative_dyadic_radius_block_compact_data
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -171,7 +171,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_radius_block_compact_d
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                     (dyadicScale j) ^ ((d : ℝ) / 2)))) ^ 2) *
@@ -208,7 +208,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_radius_block_compact_d
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                     (dyadicScale j) ^ ((d : ℝ) / 2)))) ^ 2) *
@@ -408,7 +408,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_radius_block_compact_d
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                     (dyadicScale j) ^ ((d : ℝ) / 2)))) ^ 2) *
@@ -419,7 +419,7 @@ theorem measurable_memLp_two_entropy_iSup_relative_dyadic_radius_block_compact_d
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
                     (dyadicScale j) ^ ((d : ℝ) / 2)))) ^ 2) *

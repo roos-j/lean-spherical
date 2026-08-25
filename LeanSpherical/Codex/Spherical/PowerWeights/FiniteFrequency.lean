@@ -118,7 +118,7 @@ theorem exists_eventually_local_entropy_nat_bound_of_strict_implicit
                 ((δ : ENNReal)⁻¹) ^ (((d : ℝ) - 1) * (p - 1) - ε) := by
   obtain ⟨ε, hε, hεlt, hMinkowski, hLegendre, hlocal⟩ :=
     exists_eventually_localMultiplicativeEntropy_power_bound_of_strict_implicit
-      hd hp hstrict
+      (by omega : 2 ≤ d) hp hstrict
   refine ⟨ε, hε, hεlt, hMinkowski, hLegendre, ?_⟩
   have hpos : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0), 0 < δ :=
     self_mem_nhdsWithin

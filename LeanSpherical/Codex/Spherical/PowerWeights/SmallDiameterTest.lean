@@ -7,6 +7,7 @@ open Codex.Spherical.PowerWeights.AnisotropicTubeLower
 open Codex.Spherical.PowerWeights.Definitions
 open Codex.Spherical.PowerWeights.LowerTests
 open Codex.Spherical.PowerWeights.NecessaryConditions
+open Codex.Spherical.PowerWeights.PoleCapLower
 open Codex.Spherical.PowerWeights.PowerMeasure
 open Codex.Spherical.PowerWeights.RestrictedMaximal
 open Codex.Spherical.PowerWeights.SmallDiameterLower
@@ -274,6 +275,246 @@ theorem restrictedStrongType_smallDiameter_localEntropy_power_lower_of_bound
       (ENNReal.ofReal C * B) ^ p := by
   have hbound := restrictedStrongType_smallDiameter_localEntropy_lower_of_bound
     n hn hstrong c diam δ T hT hlogsep hnet hsep hm hppos ha hρ hb hh hquarter
+    hcapHorizontal hcapError hcapVertical g f hfg hgcont hgnonneg hg_one hf hinput
+  have hq : 1 / (ENNReal.ofReal p).toReal = p⁻¹ := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    simp only [one_div]
+  rw [hq] at hbound
+  have hpow := ENNReal.rpow_le_rpow hbound hppos.le
+  simpa only [ENNReal.mul_rpow_of_nonneg _ _ hppos.le,
+    ENNReal.rpow_inv_rpow hppos.ne'] using hpow
+
+/-- The finite small-diameter Knapp test on the circle.  Its geometric
+parameters are the same as in the higher-dimensional test; only the sharp
+linear cap factor differs. -/
+theorem restrictedStrongType_smallDiameter_finite_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (T : Finset PositiveRadius) {a ρ b h s δ : ℝ} {B m : ℝ≥0∞}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E)
+    (hsep : ∀ r ∈ T, ∀ q ∈ T, r ≠ q → 2 * b ≤ |(r : ℝ) - (q : ℝ)|)
+    (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (horizontalSlab 1 ρ (a - (r : ℝ) - b) (a - (r : ℝ) + b)))
+    (hppos : 0 < p) (ha : 0 < a) (hρ : 0 ≤ ρ) (hb : 0 ≤ b)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, ρ + (r : ℝ) * h ≤ s)
+    (hcapError : ∀ r ∈ T,
+      ρ ^ 2 + 2 * (r : ℝ) * ρ * h + 8 * (r : ℝ) * (|a - (r : ℝ)| + b) * h ^ 2 +
+        2 * a * b + b ^ 2 < a * δ)
+    (hcapVertical : ∀ r ∈ T, 0 < a - b - 4 * (r : ℝ) * h ^ 2)
+    (g : Euclidean 2 → ℝ) (f : SchwartzMap (Euclidean 2) ℂ)
+    (hfg : ∀ y, f y = (g y : ℂ)) (hgcont : Continuous g)
+    (hgnonneg : ∀ y, 0 ≤ g y)
+    (hg_one : ∀ y ∈ northRadialCap 1 a s δ, g y = 1)
+    (hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α))
+    (hinput : eLpNorm (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) ≤ B) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+      ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C * B := by
+  classical
+  let U : PositiveRadius → Set (Euclidean 2) :=
+    fun r => horizontalSlab 1 ρ (a - (r : ℝ) - b) (a - (r : ℝ) + b)
+  let V : Set (Euclidean 2) := ⋃ r ∈ (↑T : Set PositiveRadius), U r
+  have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
+    intro r hr
+    exact measurableSet_horizontalSlab 1 ρ (a - (r : ℝ) - b) (a - (r : ℝ) + b)
+  have hUdisjoint : (↑T : Set PositiveRadius).PairwiseDisjoint U := by
+    intro r hr q hq hrq
+    change Disjoint (U r) (U q)
+    apply disjoint_horizontalSlab_of_center_separated 1
+    have h := hsep r (by simpa using hr) q (by simpa using hq) hrq
+    calc
+      2 * b ≤ |(r : ℝ) - (q : ℝ)| := h
+      _ = |(a - (q : ℝ)) - (a - (r : ℝ))| := by
+        congr 1
+        ring
+      _ = |(a - (r : ℝ)) - (a - (q : ℝ))| := abs_sub_comm _ _
+  have hVmeas : MeasurableSet V := by
+    dsimp only [V]
+    exact T.measurableSet_biUnion hUmeas
+  have hpoint : ∀ x ∈ V,
+      κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+        restrictedNormalizedSphericalMaximal 2 E (f : Euclidean 2 → ℂ) x := by
+    intro x hx
+    rcases Set.mem_iUnion.mp hx with ⟨r, hx⟩
+    rcases Set.mem_iUnion.mp hx with ⟨hrT, hxr⟩
+    calc
+      κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+          ENNReal.ofReal ‖normalizedSphericalAverage 2
+            (fun y => (g y : ℂ)) (r : ℝ) x‖ :=
+        horizontalSlab_northPoleCap_average_lower_planar hκ ha r.2.le hρ hb hh hquarter
+          (hcapHorizontal r hrT) (hcapError r hrT) (hcapVertical r hrT)
+          g hgcont hgnonneg hg_one hxr
+      _ = ENNReal.ofReal ‖normalizedSphericalAverage 2
+          (f : Euclidean 2 → ℂ) (r : ℝ) x‖ := by
+        have hfun : (fun y : Euclidean 2 => (g y : ℂ)) =
+            (f : Euclidean 2 → ℂ) := by
+          funext y
+          exact (hfg y).symm
+        rw [hfun]
+      _ ≤ restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ) x :=
+        ennreal_norm_normalizedSphericalAverage_le_restrictedNormalizedSphericalMaximal
+          f (hT r hrT) r.2 x
+  have hvolume : (T.card : ℝ≥0∞) * m ≤ powerWeightedVolume 2 α V := by
+    calc
+      (T.card : ℝ≥0∞) * m = ∑ r ∈ T, m := by simp [mul_comm]
+      _ ≤ ∑ r ∈ T, powerWeightedVolume 2 α (U r) := by
+        gcongr with r hr
+        exact hm r hr
+      _ = powerWeightedVolume 2 α V := by
+        dsimp only [V]
+        exact (measure_biUnion_finset hUdisjoint hUmeas).symm
+  exact restrictedStrongType_knapp_entropy_test_bound_of_bound hstrong hf hVmeas
+    hpoint hinput hvolume hppos
+
+/-- Entropy-ready planar form of the small-diameter cap test. -/
+theorem restrictedStrongType_smallDiameter_localEntropy_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (c : PositiveRadius) (diam δ : ℝ≥0) (T : Finset PositiveRadius)
+    {a ρ b h s : ℝ} {B m : ℝ≥0∞}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam)
+    (_hlogsep : Metric.IsSeparated (((δ / 2 : ℝ≥0) : ℝ≥0∞))
+      (logRadius '' (↑T : Set PositiveRadius)))
+    (hnet : ∀ r : PositiveRadius, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam →
+      ∃ t ∈ T, |logRadius r - logRadius t| ≤ ((δ : ℝ≥0) : ℝ) / 2)
+    (hsep : ∀ r ∈ T, ∀ q ∈ T, r ≠ q → 2 * b ≤ |(r : ℝ) - (q : ℝ)|)
+    (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (horizontalSlab 1 ρ (a - (r : ℝ) - b) (a - (r : ℝ) + b)))
+    (hppos : 0 < p) (ha : 0 < a) (hρ : 0 ≤ ρ) (hb : 0 ≤ b)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, ρ + (r : ℝ) * h ≤ s)
+    (hcapError : ∀ r ∈ T,
+      ρ ^ 2 + 2 * (r : ℝ) * ρ * h + 8 * (r : ℝ) * (|a - (r : ℝ)| + b) * h ^ 2 +
+        2 * a * b + b ^ 2 < a * δ)
+    (hcapVertical : ∀ r ∈ T, 0 < a - b - 4 * (r : ℝ) * h ^ 2)
+    (g : Euclidean 2 → ℝ) (f : SchwartzMap (Euclidean 2) ℂ)
+    (hfg : ∀ y, f y = (g y : ℂ)) (hgcont : Continuous g)
+    (hgnonneg : ∀ y, 0 ≤ g y)
+    (hg_one : ∀ y ∈ northRadialCap 1 a s δ, g y = 1)
+    (hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α))
+    (hinput : eLpNorm (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) ≤ B) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+      ((localMultiplicativeEntropy E c diam δ).toENNReal * m) ^
+        (1 / (ENNReal.ofReal p).toReal) ≤
+      ENNReal.ofReal C * B := by
+  classical
+  let F : Set ℝ := E ∩ multiplicativeInterval c diam
+  let centers : Set ℝ := logRadius '' (↑T : Set PositiveRadius)
+  have hcover : Metric.IsCover (δ / 2) (logRadiusSet F) centers := by
+    rintro u ⟨r, hrF, rfl⟩
+    obtain ⟨t, htT, hrt⟩ := hnet r (by simpa only [F] using hrF)
+    refine ⟨logRadius t, ⟨t, htT, rfl⟩, ?_⟩
+    change edist (logRadius r) (logRadius t) ≤ ((δ / 2 : ℝ≥0) : ℝ≥0∞)
+    rw [edist_dist]
+    apply ENNReal.ofReal_le_coe.mpr
+    simpa only [Real.dist_eq, NNReal.coe_div, NNReal.coe_ofNat] using hrt
+  have hCcard : centers.encard = T.card := by
+    have hC : centers = (↑(T.image logRadius) : Set ℝ) := by
+      ext u
+      simp [centers]
+    rw [hC, Set.encard_coe_eq_coe_finsetCard,
+      Finset.card_image_of_injective T logRadius_injective]
+  have hentropyENat : localMultiplicativeEntropy E c diam δ ≤ T.card := by
+    change Metric.externalCoveringNumber (δ / 2) (logRadiusSet F) ≤ T.card
+    rw [← hCcard]
+    exact hcover.externalCoveringNumber_le_encard
+  have hentropy : (localMultiplicativeEntropy E c diam δ).toENNReal ≤
+      (T.card : ℝ≥0∞) := by
+    exact_mod_cast ENat.toENNReal_mono hentropyENat
+  have hq : 0 ≤ 1 / (ENNReal.ofReal p).toReal := by
+    rw [ENNReal.toReal_ofReal hppos.le]
+    positivity
+  have hbound := restrictedStrongType_smallDiameter_finite_lower_planar_of_bound
+    κ hκ hstrong T (fun r hr => (hT r hr).1) hsep hm hppos ha hρ hb hh hquarter
+    hcapHorizontal hcapError hcapVertical g f hfg hgcont hgnonneg hg_one hf hinput
+  calc
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((localMultiplicativeEntropy E c diam δ).toENNReal * m) ^
+          (1 / (ENNReal.ofReal p).toReal) ≤
+      (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) *
+        ((T.card : ℝ≥0∞) * m) ^ (1 / (ENNReal.ofReal p).toReal) := by
+          gcongr
+    _ ≤ ENNReal.ofReal C * B := hbound
+
+/-- Powered planar small-diameter entropy inequality. -/
+theorem restrictedStrongType_smallDiameter_localEntropy_power_lower_planar_of_bound
+    (κ : ℝ≥0∞)
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {E : Set ℝ} {p α C : ℝ}
+    (hstrong : ∀ f : SchwartzMap (Euclidean 2) ℂ,
+      MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+        (powerWeightedVolume 2 α) →
+        MemLp (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ∧
+        eLpNorm (restrictedNormalizedSphericalMaximal 2 E
+          (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p)
+          (powerWeightedVolume 2 α) ≤
+          ENNReal.ofReal C * eLpNorm (f : Euclidean 2 → ℂ)
+            (ENNReal.ofReal p) (powerWeightedVolume 2 α))
+    (c : PositiveRadius) (diam δ : ℝ≥0) (T : Finset PositiveRadius)
+    {a ρ b h s : ℝ} {B m : ℝ≥0∞}
+    (hT : ∀ r ∈ T, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam)
+    (hlogsep : Metric.IsSeparated (((δ / 2 : ℝ≥0) : ℝ≥0∞))
+      (logRadius '' (↑T : Set PositiveRadius)))
+    (hnet : ∀ r : PositiveRadius, (r : ℝ) ∈ E ∩ multiplicativeInterval c diam →
+      ∃ t ∈ T, |logRadius r - logRadius t| ≤ ((δ : ℝ≥0) : ℝ) / 2)
+    (hsep : ∀ r ∈ T, ∀ q ∈ T, r ≠ q → 2 * b ≤ |(r : ℝ) - (q : ℝ)|)
+    (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 α
+      (horizontalSlab 1 ρ (a - (r : ℝ) - b) (a - (r : ℝ) + b)))
+    (hppos : 0 < p) (ha : 0 < a) (hρ : 0 ≤ ρ) (hb : 0 ≤ b)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hcapHorizontal : ∀ r ∈ T, ρ + (r : ℝ) * h ≤ s)
+    (hcapError : ∀ r ∈ T,
+      ρ ^ 2 + 2 * (r : ℝ) * ρ * h + 8 * (r : ℝ) * (|a - (r : ℝ)| + b) * h ^ 2 +
+        2 * a * b + b ^ 2 < a * δ)
+    (hcapVertical : ∀ r ∈ T, 0 < a - b - 4 * (r : ℝ) * h ^ 2)
+    (g : Euclidean 2 → ℝ) (f : SchwartzMap (Euclidean 2) ℂ)
+    (hfg : ∀ y, f y = (g y : ℂ)) (hgcont : Continuous g)
+    (hgnonneg : ∀ y, 0 ≤ g y)
+    (hg_one : ∀ y ∈ northRadialCap 1 a s δ, g y = 1)
+    (hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α))
+    (hinput : eLpNorm (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume 2 α) ≤ B) :
+    (κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)) ^ p *
+      ((localMultiplicativeEntropy E c diam δ).toENNReal * m) ≤
+      (ENNReal.ofReal C * B) ^ p := by
+  have hbound := restrictedStrongType_smallDiameter_localEntropy_lower_planar_of_bound
+    κ hκ hstrong c diam δ T hT hlogsep hnet hsep hm hppos ha hρ hb hh hquarter
     hcapHorizontal hcapError hcapVertical g f hfg hgcont hgnonneg hg_one hf hinput
   have hq : 1 / (ENNReal.ofReal p).toReal = p⁻¹ := by
     rw [ENNReal.toReal_ofReal hppos.le]

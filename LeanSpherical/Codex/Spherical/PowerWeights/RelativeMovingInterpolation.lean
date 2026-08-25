@@ -72,7 +72,7 @@ theorem literal_relative_dyadic_moving_bandpass_annular_lintegral_rpow_le_of_poi
         (restrictedRelativeBandpassSphericalMaximal (d + 1) E phi j g x).toReal)
     let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
     let C : ℝ := 2 *
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
         (12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
           (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -102,7 +102,7 @@ theorem literal_relative_dyadic_moving_bandpass_annular_lintegral_rpow_le_of_poi
       (restrictedRelativeBandpassSphericalMaximal (d + 1) E phi j g x).toReal)
   let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -323,7 +323,7 @@ theorem exists_literal_relative_dyadic_moving_bandpass_annular_lintegral_rpow_le
           (restrictedRelativeBandpassSphericalMaximal (d + 1) E phi j g x).toReal)
       let B : ℝ := (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
       let C : ℝ := 2 *
-        ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+        ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -392,7 +392,7 @@ theorem exists_eLpNorm_finset_literal_relative_dyadic_moving_annular_local_inter
           (restrictedRelativeBandpassSphericalMaximal (d + 1) (F j) phi j g x).toReal)
       let B : ℕ → ℝ := fun j => (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
       let C : ℕ → ℝ := fun j => 2 *
-        ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+        ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
           (12 * C0 *
             ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
             (dyadicScale j) ^ ((d : ℝ) / 2))
@@ -430,7 +430,7 @@ theorem exists_eLpNorm_finset_literal_relative_dyadic_moving_annular_local_inter
       (restrictedRelativeBandpassSphericalMaximal (d + 1) (F j) phi j g x).toReal)
   let B : ℕ → ℝ := fun j => (4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)
   let C : ℕ → ℝ := fun j => 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
         (dyadicScale j) ^ ((d : ℝ) / 2))

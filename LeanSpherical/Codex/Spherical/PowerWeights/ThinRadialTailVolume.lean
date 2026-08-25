@@ -33,8 +33,8 @@ noncomputable section
 /-- The weighted annular factor occurring in the thin-radial tail has its
 expected homogeneous scale. -/
 theorem exists_thinRadialTail_annulus_volume_prefactor_le
-    (n : Nat) (hn : 2 ≤ n) {p α : Real}
-    (hp_one : 1 < p) (hp_two : p < 2)
+    (n : Nat) (hn : 1 ≤ n) {p α : Real}
+    (hp_one : 1 < p)
     (hα : -((n + 1 : Nat) : Real) < α) :
     ∃ C : ENNReal, C ≠ ∞ ∧ ∀ {s : Real}, 0 < s →
       powerWeightedVolume (n + 1) α

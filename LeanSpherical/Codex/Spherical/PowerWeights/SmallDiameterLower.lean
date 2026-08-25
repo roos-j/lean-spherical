@@ -386,6 +386,43 @@ theorem horizontalSlab_northPoleCap_average_lower
     exact horizontalSlab_northPoleCap_translate_subset_northRadialCap n ha hr hρ hb
       hh.le hquarter hhor herror hvertical hx hw
 
+/-- The sharp planar version of the small-diameter cap contribution.  The
+linear cap mass is supplied explicitly, since the generic height-slice bound
+above is deliberately restricted to horizontal dimension at least two. -/
+theorem horizontalSlab_northPoleCap_average_lower_planar
+    {κ : ℝ≥0∞}
+    (hκ : ∀ {v : Euclidean 2}, ‖v‖ = 1 → ∀ {h : ℝ}, 0 < h → h ≤ 1 / 2 →
+      κ * ENNReal.ofReal h ≤ unitSurfaceMeasure 2 (sphericalCap 1 v h))
+    {a r ρ b h s δ : ℝ}
+    (ha : 0 < a) (hr : 0 ≤ r) (hρ : 0 ≤ ρ) (hb : 0 ≤ b)
+    (hh : 0 < h) (hquarter : h ≤ 1 / 4)
+    (hhor : ρ + r * h ≤ s)
+    (herror : ρ ^ 2 + 2 * r * ρ * h + 8 * r * (|a - r| + b) * h ^ 2 +
+        2 * a * b + b ^ 2 < a * δ)
+    (hvertical : 0 < a - b - 4 * r * h ^ 2)
+    (g : Euclidean 2 → ℝ) (hgContinuous : Continuous g)
+    (hgnonneg : ∀ y, 0 ≤ g y)
+    (hg_one : ∀ y ∈ northRadialCap 1 a s δ, g y = 1)
+    {x : Euclidean 2} (hx : x ∈ horizontalSlab 1 ρ (a - r - b) (a - r + b)) :
+    κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2) ≤
+      ENNReal.ofReal ‖normalizedSphericalAverage 2
+        (fun y => (g y : ℂ)) r x‖ := by
+  have hgi : Integrable (fun w : sphere (0 : Euclidean 2) 1 =>
+      g (x + r • (w : Euclidean 2))) (unitSurfaceMeasure 2) := by
+    have hcont : Continuous (fun w : sphere (0 : Euclidean 2) 1 =>
+        g (x + r • (w : Euclidean 2))) := by
+      apply hgContinuous.comp
+      fun_prop
+    exact hcont.integrable_of_hasCompactSupport (HasCompactSupport.of_compactSpace _)
+  apply planar_sphericalCap_lower_le_ennreal_norm_normalizedSphericalAverage
+    hκ g r x (norm_northPole 1) hh (hquarter.trans (by norm_num)) hgi
+  · intro w
+    exact hgnonneg _
+  · intro w hw
+    apply hg_one
+    exact horizontalSlab_northPoleCap_translate_subset_northRadialCap 1 ha hr hρ hb
+      hh.le hquarter hhor herror hvertical hx hw
+
 /-- Output slabs are disjoint once their axial centres are separated by twice
 their common thickness. -/
 theorem disjoint_horizontalSlab_of_center_separated

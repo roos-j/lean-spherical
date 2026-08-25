@@ -162,7 +162,7 @@ theorem iSup_ennreal_norm_sq_le_palette_selector_add_cell_variation
 /-- The variation portion of the palette comparison has the same sharp
 short-cell square bound, summed over palette colours. -/
 theorem lintegral_palette_entropy_cell_variation_of_sharp
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -182,7 +182,7 @@ theorem lintegral_palette_entropy_cell_variation_of_sharp
             phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) *
           𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
     let C : ℝ := 2 *
-      ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+      ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
         (12 * C0 *
           ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
             phi).toBoundedContinuousFunction‖) /
@@ -204,7 +204,7 @@ theorem lintegral_palette_entropy_cell_variation_of_sharp
           phi (((2 : ℝ) ^ j)⁻¹ • (s • xi))) *
         𝓕 (f : Euclidean (d + 1) → ℂ) xi) x
   let C : ℝ := 2 *
-    ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+    ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
       (12 * C0 *
         ‖((SchwartzMap.fderivCLM ℂ (Euclidean (d + 1)) ℂ)
           phi).toBoundedContinuousFunction‖) /

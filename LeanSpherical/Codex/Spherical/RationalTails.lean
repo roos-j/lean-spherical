@@ -313,10 +313,10 @@ theorem rational_high_low_region_tail
       exact lintegral_swap_indicator_le u hu _ huv _ hw
     _ = _ := lintegral_ofReal_mul_lintegral_rpow_Ioc_eq u hu hu_nonneg hp1
 
-theorem rational_high_high_region_tail
+theorem rational_high_high_region_tail_of_lt_three
     {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
     (u : α → ℝ) (hu : Measurable u) (hu_nonneg : ∀ x, 0 ≤ u x)
-    {p : ℝ} (hp1 : 1 < p) (hp2 : p < 2) :
+    {p : ℝ} (hp1 : 1 < p) (hp3 : p < 3) :
     (∫⁻ t in Ioi (0 : ℝ),
       (∫⁻ x in {x | u x < t}, ENNReal.ofReal (u x ^ (3 : ℕ)) ∂μ) *
         (ENNReal.ofReal t) ^ (p - 4)) =
@@ -343,14 +343,14 @@ theorem rational_high_high_region_tail
         (ENNReal.ofReal (u x)) ^ p ∂μ := by
       apply lintegral_congr
       intro x
-      exact ofReal_cube_mul_lintegral_rpow_Ioi_eq (hu_nonneg x) hp1 hp2
+      exact ofReal_cube_mul_lintegral_rpow_Ioi_eq_of_lt_three (hu_nonneg x) hp1 hp3
     _ = _ := lintegral_const_mul _
       (ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal)
 
 /-- The weighted high-amplitude tail obtained from the two rational bounds
 `‖highₜ(x)‖ ≤ u(x)` for `t ≤ u(x)` and
 `‖highₜ(x)‖ ≤ u(x)³ / t²` for `u(x) < t`. -/
-theorem rational_high_weighted_tail_le
+theorem rational_high_weighted_tail_le_of_lt_three
     {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
     {μ : Measure α} [SFinite μ]
     (u : α → ℝ) (hu : Measurable u) (hu_nonneg : ∀ x, 0 ≤ u x)
@@ -360,7 +360,7 @@ theorem rational_high_weighted_tail_le
       ENNReal.ofReal ‖high t x‖ ≤ ENNReal.ofReal (u x))
     (habove : ∀ t x, 0 < t → u x < t →
       ENNReal.ofReal ‖high t x‖ ≤ ENNReal.ofReal (u x ^ (3 : ℕ) / t ^ (2 : ℕ)))
-    {p : ℝ} (hp1 : 1 < p) (hp2 : p < 2) :
+    {p : ℝ} (hp1 : 1 < p) (hp3 : p < 3) :
     (∫⁻ t in Ioi (0 : ℝ),
       (∫⁻ x, ENNReal.ofReal ‖high t x‖ ∂μ) *
         (ENNReal.ofReal t) ^ (p - 2)) ≤
@@ -477,7 +477,8 @@ theorem rational_high_weighted_tail_le
       (∫⁻ t in Ioi (0 : ℝ), B t * whigh t) =
         (ENNReal.ofReal (3 - p))⁻¹ *
           (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) := by
-    simpa only [B, V, whigh] using rational_high_high_region_tail u hu hu_nonneg hp1 hp2
+    simpa only [B, V, whigh] using
+      rational_high_high_region_tail_of_lt_three u hu hu_nonneg hp1 hp3
   calc
     (∫⁻ t in Ioi (0 : ℝ),
       (∫⁻ x, ENNReal.ofReal ‖high t x‖ ∂μ) *
@@ -489,6 +490,37 @@ theorem rational_high_weighted_tail_le
         (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) := by
       rw [hAtail, hBtail]
       ring
+
+theorem rational_high_high_region_tail
+    {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hu_nonneg : ∀ x, 0 ≤ u x)
+    {p : ℝ} (hp1 : 1 < p) (hp2 : p < 2) :
+    (∫⁻ t in Ioi (0 : ℝ),
+      (∫⁻ x in {x | u x < t}, ENNReal.ofReal (u x ^ (3 : ℕ)) ∂μ) *
+        (ENNReal.ofReal t) ^ (p - 4)) =
+      (ENNReal.ofReal (3 - p))⁻¹ *
+        (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) := by
+  exact rational_high_high_region_tail_of_lt_three u hu hu_nonneg hp1
+    (lt_trans hp2 (by norm_num))
+
+theorem rational_high_weighted_tail_le
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hu_nonneg : ∀ x, 0 ≤ u x)
+    (high : ℝ → α → E)
+    (hhigh_meas : Measurable (fun q : ℝ × α => ENNReal.ofReal ‖high q.1 q.2‖))
+    (hbelow : ∀ t x, 0 < t → t ≤ u x →
+      ENNReal.ofReal ‖high t x‖ ≤ ENNReal.ofReal (u x))
+    (habove : ∀ t x, 0 < t → u x < t →
+      ENNReal.ofReal ‖high t x‖ ≤ ENNReal.ofReal (u x ^ (3 : ℕ) / t ^ (2 : ℕ)))
+    {p : ℝ} (hp1 : 1 < p) (hp2 : p < 2) :
+    (∫⁻ t in Ioi (0 : ℝ),
+      (∫⁻ x, ENNReal.ofReal ‖high t x‖ ∂μ) *
+        (ENNReal.ofReal t) ^ (p - 2)) ≤
+      ((ENNReal.ofReal (p - 1))⁻¹ + (ENNReal.ofReal (3 - p))⁻¹) *
+        (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) := by
+  exact rational_high_weighted_tail_le_of_lt_three u hu hu_nonneg high hhigh_meas hbelow habove hp1
+    (lt_trans hp2 (by norm_num))
 
 end
 

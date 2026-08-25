@@ -39,7 +39,7 @@ noncomputable section
 /-- One smooth thin radial piece satisfies the global cap-shell estimate on
 its associated three-width parameter window. -/
 theorem exists_thinRadialPartition_entropyCap_shell_global_lintegral_rpow_le
-    {n : Nat} (hn : 2 <= n) (C0 C1 : Real) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {n : Nat} (hn : 1 <= n) (C0 C1 : Real) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (n + 1), 1 <= ‖xi‖ ->
       ‖surfaceFourier (n + 1) xi‖ <= C0 / ‖xi‖ ^ ((n : Real) / 2))
     (hderiv : ∀ xi : Euclidean (n + 1), ∀ u : Real, 1 <= ‖xi‖ ->
@@ -74,7 +74,7 @@ theorem exists_thinRadialPartition_entropyCap_shell_global_lintegral_rpow_le
         let L : ENNReal := (N : ENNReal) * ENNReal.ofReal
           (2 * ((4 * C0) / (dyadicScale j) ^ ((n : Real) / 2)) ^ (2 : Nat) +
             2 * (8 * Real.log 2 * (delta : Real)) ^ (2 : Nat) *
-              (2 * ((4 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
+              (2 * ((8 * C1) / (dyadicScale j) ^ ((n : Real) / 2 - 1) +
                 (12 * C0 *
                   ‖((SchwartzMap.fderivCLM Complex (Euclidean (n + 1)) Complex) phi).toBoundedContinuousFunction‖) /
                   (dyadicScale j) ^ ((n : Real) / 2))) ^ (2 : Nat))

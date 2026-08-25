@@ -38,7 +38,7 @@ noncomputable section
 window in every normalized radius block has the same strict local entropy
 power bound. -/
 theorem exists_tail_small_scale_normalized_thinRadiusWindow_entropy_nat_bound_of_strict_implicit
-    {d : Nat} (hd : 3 ≤ d) {E : Set Real} {p alpha : Real}
+    {d : Nat} (hd : 2 ≤ d) {E : Set Real} {p alpha : Real}
     (hp : 1 < p)
     (hstrict :
       max ((alpha : EReal) + multiplicativeMinkowskiExponent E)

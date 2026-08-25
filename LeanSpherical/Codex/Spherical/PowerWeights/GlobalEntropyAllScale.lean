@@ -111,7 +111,7 @@ theorem measurable_restricted_raw_relative_dyadic_maxima
 restricted relative dyadic envelope after exhaustion by physical radius
 blocks. -/
 theorem raw_square_iSup_restricted_relative_dyadic_moving_bandpass_global_of_unitEntropy
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -130,7 +130,7 @@ theorem raw_square_iSup_restricted_relative_dyadic_moving_bandpass_global_of_uni
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -148,7 +148,7 @@ theorem raw_square_iSup_restricted_relative_dyadic_moving_bandpass_global_of_uni
             (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
               2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
                 (2 * (
-                  ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                  ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                     (12 * C0 *
                       ‖((SchwartzMap.fderivCLM ℂ
                         (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -178,7 +178,7 @@ theorem raw_square_iSup_restricted_relative_dyadic_moving_bandpass_global_of_uni
     2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
       2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
         (2 * (
-          ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+          ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
             (12 * C0 *
               ‖((SchwartzMap.fderivCLM ℂ
                 (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -450,7 +450,7 @@ theorem raw_square_iSup_restricted_relative_dyadic_moving_bandpass_global_of_uni
 the literal restricted relative band.  Its constant is uniform over all
 physical dyadic radius blocks of `E`. -/
 theorem memLp_two_restrictedRelativeBandpassSphericalMaximal_global_of_unitEntropy
-    {d : Nat} (hd : 2 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
+    {d : Nat} (hd : 1 ≤ d) (C0 C1 : ℝ) (hC0 : 0 < C0) (hC1 : 0 < C1)
     (hdecay : ∀ xi : Euclidean (d + 1), 1 ≤ ‖xi‖ →
       ‖surfaceFourier (d + 1) xi‖ ≤ C0 / ‖xi‖ ^ ((d : ℝ) / 2))
     (hderiv : ∀ xi : Euclidean (d + 1), ∀ r : ℝ, 1 ≤ ‖xi‖ →
@@ -472,7 +472,7 @@ theorem memLp_two_restrictedRelativeBandpassSphericalMaximal_global_of_unitEntro
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -498,7 +498,7 @@ theorem memLp_two_restrictedRelativeBandpassSphericalMaximal_global_of_unitEntro
           (2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
             2 * (8 * Real.log 2 * (δ : ℝ)) ^ 2 *
               (2 * (
-                ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+                ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
                   (12 * C0 *
                     ‖((SchwartzMap.fderivCLM ℂ
                       (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
