@@ -22,15 +22,27 @@ Formalize the planar negative-power circular maximal theorem following
 * `Spherical.PowerWeights.closure_typeSet_eq` holds under `2 <= d` with no
   placeholder in its dependency graph.
 
-Both public statements are already in place in `LeanSpherical/Theorems.lean`
-and the entire reduction is proved.  Exactly one declaration is unproved:
+**Both objectives are met as of 2026-08-25 16:56:40 -0400.**  Both public
+statements are in place in `LeanSpherical/Theorems.lean`, the whole chain is
+proved, and `#print axioms` reports only `[propext, Classical.choice,
+Quot.sound]` for
 
 ```
-Codex.PowerWeights.DuoandikoetxeaVega.exists_planarNegativeRawBandRate
+Spherical.PowerWeights.eLpNorm_circularMaximal_powerWeight_le_of_neg
+Spherical.PowerWeights.closure_typeSet_eq
 ```
 
-Closing that declaration finishes the project.  Nothing else has to be added
-to the public API.
+There is no placeholder left in this project: the former
+`Codex.PowerWeights.DuoandikoetxeaVega.hasCriticalWeightBandBound` gap
+(the blueprint's `prop:critical-loss` composed with Phase E) is now an
+unconditional theorem, proved through `dvCriticalWeightBandBound`.
+
+A follow-up agent should treat the project as **finished** and in maintenance
+mode: keep it compiling against Mathlib updates, keep `Status.md` accurate,
+and do not add public API.  The only genuinely unformalized item left in the
+blueprint ledger is the full source range `-1 < a < p - 2` of
+`thm:dv-general`, which the two public targets do not need; formalize it only
+if the user asks.
 
 ## Required files and namespaces
 
@@ -87,22 +99,85 @@ for the proof plan.  Work through its items in their written order.
    It must not track assistant-invented helper theorems or scratch work.
 
 At the start of a work session, identify the earliest unfinished item in
-`Status.md`; do not bypass it.  A row listed as `Statement completed` or
-`Reduction completed` is still unfinished until an actual unconditional proof
-of the stated result is in place.
+`Status.md`; do not bypass it.  A row listed as `Statement completed` is still
+unfinished until an actual unconditional proof of the stated result is in
+place.  As of the completion date above no ledger row is unfinished for the two
+public targets, so these rules only apply to future extensions.
 
 ## Mathematical requirements
 
-* The one open item is the blueprint's Phase D--F chain, packaged in source as
-  the predicate `HasPlanarNegativeRawBandRate`.  Its content is:
-  1. `prop:critical-loss`: the critical-weight dyadic estimate
-     `norm(M_j f, L^2(|x|^-1)) <= C_eps * 2^(eps*j) * norm(f, L^2(|x|^-1))`
-     for every `eps > 0`, uniformly in the radius grid;
-  2. Phase E: interpolation with the trivial `L^inf` bound over the fixed
-     measure `|x|^-1 dx`, moving that estimate from `p = 2` to every `p > 2`;
-  3. Phase F: Stein--Weiss interpolation with change of measure against the
-     unweighted frequency gain, which yields the required power gain
-     `2^(-eta*j)` at the weight `|x|^a`.
+* The blueprint's Phase D--E chain, packaged in source as the predicate
+  `HasCriticalWeightBandBound`, is proved (see the final-state section below).
+  Phase F needs no interpolation theorem: `hasPlanarNegativeRawBandRate_of_criticalWeight`
+  combines the critical-weight bound with the unweighted Bourgain gain by a
+  single Hoelder inequality with exponents `1/θ` and `1/(1-θ)`, where
+  `θ = -a`.  Because that step absorbs any polynomial-in-`j` loss, the open
+  predicate is allowed a factor `(j+1)^N` and needs no `2^(eps*j)`
+  bookkeeping.
+* The route that was used for that predicate, sharper than the blueprint's
+  sketch, is recorded in the doc-string of `hasCriticalWeightBandBound` and was
+  followed as written:
+  1. Sobolev in `r` on an interval of length `2^{-j}` (so no geometric-mean
+     Sobolev inequality is needed) reduces the maximal function to the two
+     space-time integrals with weights `2^{j}` and `2^{-j}`;
+  2. the `r`-integral of `m_j(r,xi) * conj (m_j(r,eta))` against a polynomial
+     weight vanishing at the endpoints of `[1/4, 5]` is estimated by ONE
+     integration by parts, using the exact planar outgoing/incoming/middle
+     normal form `PlanarTripleWaveNormalForm.planarCoordinateSurfaceWaveSum_eq_three_radialTerms`
+     and the all-order amplitude bounds in
+     `CoordinateWaveSymbolBounds`; the resulting kernel bound is
+     `C (s^-1 + t^-1) / (1 + |s - t|)` for comparable `s, t >= 1`;
+  3. Schur's test (symmetric form, elementary) turns that into the space-time
+     `L^2` bounds, with the output localized at each dyadic distance `2^{-k}`
+     from the origin by a bump whose Fourier transform is compactly supported;
+     the geometric input is the elementary estimate
+     `vol(annulus(a,h) cap ball(xi,R)) <= C R h` for `R <= a/2`, proved by
+     Fubini in the frame adapted to `xi`;
+  4. summing the shells produces the logarithmic loss, exactly as in the
+     source;
+  5. Phase E is real interpolation between the resulting `L^2(|x|^{-1})` bound
+     and the trivial `L^inf` bound.  Use `Codex.riesz_thorin` from
+     `LeanSpherical/Codex/SteinInterpolation.lean` on the operator linearized
+     by a measurable radius selector (its endpoints may be `infinity`), or
+     Marcinkiewicz for the sublinear operator; in the latter case the operator
+     must first be presented as convolution with the Schwartz kernel of the
+     multiplier, via
+     `SmoothDyadicPhysicalCore.fourierInv_schwartz_multiplier_eq_convolution`
+     and
+     `GlobalUnweightedEndpoint.exists_schwartz_compactSupport_mul_surfaceFourier`.
+     Stein--Weiss interpolation with change of measure is NOT needed anywhere;
+     see `ErrorReport.md` entry 13.
+
+### Final state of the Phase D--E chain (2026-08-25 16:56:40 -0400)
+
+Phase D (the weighted `L^2` core) is packaged as `dvWeightedL2Core`:
+
+```
+int_{B(0,1/32)} |x|^{-1} (M_{E,j} f)^2 dx <= C (j+1)^2 int |f|^2 dx
+```
+
+for every `E` contained in `[1,2]`, every `j >= 3`, and every Schwartz `f`.
+Its proof follows the route above: radial Sobolev at scale `2^{-j}` against the
+doubly vanishing weight `dvWeight`, `TT*` and Plancherel to a frequency
+quadratic form, Schur's test with the polar row estimate (`exists_dvRow_bound`),
+the dyadic spatial shells `dvGk` built from the compactly-Fourier-supported
+profile `dvGb`, and an `L^2 -> L^inf` bound (`dvSupBound`) for the remaining
+small ball.  The three small indices `j <= 2` are covered separately by the
+crude bound `dvCrudeL2Core`, whose constant grows like `2^j`.
+
+Phase E is Riesz--Thorin interpolation, `dvCriticalWeightBandBound`.  The
+operator is linearized as `dvT` -- a finite sum of indicator-localized band
+averages `dvOp` -- with the tie-broken maximizing selection sets `dvSel`, and
+`Codex.riesz_thorin` is applied with Lebesgue measure on the input side and
+`dvNu = (|x|^{-1} dx)|_{B(0,1/32)}` on the output side, `p_0 = q_0 = 2`,
+`p_1 = q_1 = infinity`.  The `L^inf` endpoint is elementary
+(`dvT_eLpNorm_top`, from the uniform kernel `L^1` size `dvPsiL1`); the `L^2`
+endpoint is Phase D, transported from the Schwartz core to integrable simple
+functions by density (`dvT_l2_general`) and back again after interpolation
+(`dvT_lp_schwartz`).  An arbitrary radius set is reduced to the dyadic finite
+sets `dvR n` by continuity in the radius (`continuousAt_dvSlice`) plus monotone
+convergence (`dvMaximal_set_lp`).
+
 * The unweighted endpoint of that interpolation (blueprint
   `bp:bourgain-piece`) is already available and is exposed in source as
   `exists_relativeCircularBandGeometricDecay`.  It is the radius-relative
@@ -137,14 +212,12 @@ blueprint item.  Each row records the exact Lean target when one exists, its
 status, and a review timestamp.  Use exactly one of:
 
 * `Proof completed` -- an unconditional Lean proof exists;
-* `Reduction completed` -- the Lean proof is complete except that it invokes
-  the single unproved placeholder `exists_planarNegativeRawBandRate`;
 * `Statement completed` -- the target is correctly formulated but unproved;
 * `ToDo` -- not formalized.
 
-Update the relevant rows whenever the implementation changes.  When the
-placeholder is finally discharged, every `Reduction completed` row becomes
-`Proof completed` and that status value must be removed from the legend.
+The `Reduction completed` value has been retired: the placeholder it referred
+to is proved, so every row that used it is now `Proof completed`.  Update the
+relevant rows whenever the implementation changes.
 
 Every discrepancy found in the blueprint or while adapting it to Lean must be
 recorded in `ErrorReport.md` as a concise but thorough timestamped entry.
@@ -164,13 +237,11 @@ lake build LeanSpherical
 ```
 
 The last command also prints the axiom audit for the public theorems through
-`LeanSpherical.lean`.  While the placeholder is open,
-`Spherical.PowerWeights.closure_typeSet_eq` legitimately reports `sorryAx`;
-every other public theorem must report only `propext`, `Classical.choice` and
-`Quot.sound`.  Also run `git diff --check` and scan the target source file for
-`sorry`, `admit` and `axiom`: the expected count of `sorry` in the repository
-outside `ProofSkeleton.lean` is exactly one, at
-`exists_planarNegativeRawBandRate`.
+`LeanSpherical.lean`.  Every public theorem, `closure_typeSet_eq` included,
+must now report only `propext`, `Classical.choice` and `Quot.sound`; a
+`sorryAx` anywhere is a regression.  Also run `git diff --check` and scan the
+repository for `sorry`, `admit` and `axiom`: the expected count outside
+`ProofSkeleton.lean` is zero.
 
 ## Formalization discipline
 
@@ -206,12 +277,13 @@ module build passes.  It contains, in blueprint order:
   the Phase F exponent choice `exists_pos_interpolated_gain`;
 * Phase C: `exists_relativeCircularBandGeometricDecay`, the unconditional
   unweighted relative-band gain inherited from `Codex.Spherical.Bourgain`;
-* the packaged Phase D--F predicate `HasPlanarNegativeRawBandRate` and the one
-  unproved placeholder `exists_planarNegativeRawBandRate`;
+* the packaged Phase D--F predicate `HasPlanarNegativeRawBandRate`, now proved
+  through `hasPlanarNegativeRawBandRate_of_criticalWeight`;
 * the Schwartz-core estimate
   `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_negative_of_gt_two`
-  for an arbitrary radius set, obtained from the placeholder, the unweighted
-  planar Bourgain bound and the repository's buffered raw-band reassembly;
+  for an arbitrary radius set, obtained from the critical-weight band bound,
+  the unweighted planar Bourgain bound and the repository's buffered raw-band
+  reassembly;
 * Phase H: `exists_powerWeight_bound_of_strongType`, the lift of a
   Schwartz-core weighted bound to every `MemLp` input;
 * the public planar theorems
@@ -290,32 +362,36 @@ module build passes.  It contains, in blueprint order:
   on the admissible boundary it is recovered by the closure argument.  Do not
   attempt Lee's endpoint theory.
 
-## Immediate remaining proof route
+## Completed proof route (for the record)
 
-1. Prove the blueprint's Phase D annular decomposition and
-   `prop:critical-loss` in the form of a weighted `L^2` estimate for
-   `restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j`
-   against `powerWeightedVolume 2 (-1)`, uniformly in `R`, with an arbitrarily
-   small `2^(eps*j)` loss.  Use the blueprint's one-dimensional Sobolev
-   estimate in `t` on `[1,2]`, keeping the averaging estimate and the
-   `t`-derivative estimate as separate lemmas: that is where the powers of
-   `2^j` are generated.
-2. Prove the fixed-measure `2 -> p` interpolation of Phase E for the finite
-   grid operators, then pass to the supremum by monotone convergence.
-3. Prove the Stein--Weiss change-of-measure theorem of Phase F and combine
-   with `exists_relativeCircularBandGeometricDecay`, choosing `eps` by
-   `exists_pos_interpolated_gain`.
-4. Convert the resulting `2^(-eta*j)` weighted bound into the localized form
-   of `HasPlanarNegativeRawBandRate` -- the output ball is
-   `closedBall 0 (1/32)` and the input support is `euclideanAnnulus 2 (1/4) 8`
-   -- and discharge `exists_planarNegativeRawBandRate`.
-5. Re-run the source compile, the module build, `git diff --check`, the
-   placeholder scan and the axiom audit.  At that point
-   `Spherical.PowerWeights.closure_typeSet_eq` becomes unconditional under
-   `2 <= d` and the project is finished.
+The route actually taken, in the order it was landed:
 
-Optional, only after step 5: the blueprint's `thm:dv-general` in its full
-planar weight range `-1 < a < p - 2` requires, in addition, the nonnegative
-branch for the full radius set, i.e. the computation of the Minkowski exponent
-of `(0, inf)` together with the corresponding Legendre--Assouad values.  That
-is not needed for the closure theorem and must not be started before step 5.
+1. Phase D, the blueprint's annular decomposition and `prop:critical-loss` in
+   the form of the weighted `L^2` estimate `dvWeightedL2Core`, uniformly in the
+   radius set and with a polynomial loss `(j+1)^2` rather than `2^(eps j)`:
+   radial Sobolev at scale `2^{-j}` against the doubly vanishing weight,
+   `TT*` and Plancherel, the oscillatory kernel bound
+   `C (s^-1 + t^-1)/(1 + |s - t|)`, Schur's test with the polar row estimate,
+   dyadic spatial shells, and the small-ball `L^2 -> L^inf` term.
+2. Phase E, the fixed-exponent interpolation `dvCriticalWeightBandBound`:
+   linearize by a measurable radius selection (`dvT`, `dvSel`), present the
+   band average as a convolution (`dvOp`, `dvKerS`), interpolate with
+   `Codex.riesz_thorin` between `L^2(dx) -> L^2(|x|^{-1} dx|_{B(0,1/32)})` and
+   `L^inf -> L^inf`, transport across the two density steps, and pass from the
+   dyadic finite radius sets to an arbitrary radius set by monotone
+   convergence.  The small indices `j <= 2` use `dvCrudeL2Core`.
+3. Phase F was already available: `hasPlanarNegativeRawBandRate_of_criticalWeight`
+   combines the critical-weight bound with the unweighted Bourgain gain by one
+   Hoelder inequality, and absorbs the polynomial loss.
+4. Phases G--I are the repository's buffered raw-band reassembly, consumed
+   through
+   `StrictNegativeEndpoint.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_buffered_raw_band_rate_and_unweighted`.
+5. Final verification (2026-08-25 16:56:40 -0400): full `lake build`,
+   `git diff --check`, a repository-wide `sorry`/`admit`/`axiom` scan, and the
+   axiom audit of both public theorems.
+
+Optional future work, only if the user asks: the blueprint's `thm:dv-general`
+in its full planar weight range `-1 < a < p - 2` requires, in addition, the
+nonnegative branch for the full radius set, i.e. the computation of the
+Minkowski exponent of `(0, inf)` together with the corresponding
+Legendre--Assouad values.  It is not needed for either public target.

@@ -8,6 +8,7 @@ open Codex.Spherical.FractalDilations.CoordinateMiddleParameterDerivatives
 open Codex.Spherical.FractalDilations.PlanarEndpointAmplitude
 open Codex.Spherical.FractalDilations.PlanarTripleWaveNormalForm
 open Codex.Spherical.FractalDilations.QuadraticMomentDerivatives
+open Codex.Spherical.FractalDilations.OscillatoryIBP
 
 
 
@@ -41,16 +42,16 @@ theorem contDiff_coordinateWaveRadialAmplitude
   | outgoing =>
       unfold coordinateWaveRadialAmplitude
       exact contDiff_const.mul
-        (contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop)
+        ((contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop))
   | incoming =>
       unfold coordinateWaveRadialAmplitude
       exact contDiff_const.mul
-        (contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop)
+        ((contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop))
   | middle =>
       unfold coordinateWaveRadialAmplitude
       exact contDiff_const.mul
-        (contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)).comp
-          (by fun_prop)
+        ((contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)).comp
+          (by fun_prop))
 
 /-- The extracted oscillation does not affect smoothness of a coordinate
 radial wave. -/
@@ -59,7 +60,15 @@ theorem contDiff_coordinateWaveRadialTerm
     ContDiff Real (⊤ : ℕ∞)
       (fun rho => coordinateWaveRadialTerm d part a rho) := by
   unfold coordinateWaveRadialTerm
-  exact (contDiff_coordinateWaveRadialAmplitude d part a).mul (by fun_prop)
+  have hosc : ContDiff Real (⊤ : ℕ∞)
+      (fun rho : Real => oscillatoryExp (coordinateWaveRadialPhase part a) rho) := by
+    unfold oscillatoryExp
+    have h1 : ContDiff Real (⊤ : ℕ∞) (fun rho : Real =>
+        ((coordinateWaveRadialPhase part a * rho : Real) : Complex) * Complex.I) := by
+      refine ContDiff.mul ?_ contDiff_const
+      exact Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)
+    exact (Complex.contDiff_exp (n := (⊤ : ℕ∞)) (𝕜 := Complex)).restrict_scalars Real |>.comp h1
+  exact (contDiff_coordinateWaveRadialAmplitude d part a).mul hosc
 
 /-- The planar versions have the same global radial regularity. -/
 theorem contDiff_planarCoordinateWaveRadialAmplitude
@@ -70,22 +79,30 @@ theorem contDiff_planarCoordinateWaveRadialAmplitude
   | outgoing =>
       unfold planarCoordinateWaveRadialAmplitude
       exact contDiff_const.mul
-        contDiff_planarEndpointQuadraticIntegral.comp (by fun_prop)
+        (contDiff_planarEndpointQuadraticIntegral.comp (by fun_prop))
   | incoming =>
       unfold planarCoordinateWaveRadialAmplitude
       exact contDiff_const.mul
-        contDiff_planarEndpointQuadraticIntegral.comp (by fun_prop)
+        (contDiff_planarEndpointQuadraticIntegral.comp (by fun_prop))
   | middle =>
       unfold planarCoordinateWaveRadialAmplitude
       exact contDiff_const.mul
-        (contDiff_coordinateMiddleMeridianLocalizedIntegral 0).comp (by fun_prop)
+        ((contDiff_coordinateMiddleMeridianLocalizedIntegral 0).comp (by fun_prop))
 
 theorem contDiff_planarCoordinateWaveRadialTerm
     (part : CoordinateWavePart) (a : Real) :
     ContDiff Real (⊤ : ℕ∞)
       (fun rho => planarCoordinateWaveRadialTerm part a rho) := by
   unfold planarCoordinateWaveRadialTerm
-  exact (contDiff_planarCoordinateWaveRadialAmplitude part a).mul (by fun_prop)
+  have hosc : ContDiff Real (⊤ : ℕ∞)
+      (fun rho : Real => oscillatoryExp (coordinateWaveRadialPhase part a) rho) := by
+    unfold oscillatoryExp
+    have h1 : ContDiff Real (⊤ : ℕ∞) (fun rho : Real =>
+        ((coordinateWaveRadialPhase part a * rho : Real) : Complex) * Complex.I) := by
+      refine ContDiff.mul ?_ contDiff_const
+      exact Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)
+    exact (Complex.contDiff_exp (n := (⊤ : ℕ∞)) (𝕜 := Complex)).restrict_scalars Real |>.comp h1
+  exact (contDiff_planarCoordinateWaveRadialAmplitude part a).mul hosc
 
 end
 

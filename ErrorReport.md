@@ -1798,3 +1798,263 @@ printed by `LeanSpherical.lean`.  All other public theorems still report only
 `propext`, `Classical.choice` and `Quot.sound`.  The previously verified
 `d >= 3` proof remains available and placeholder-free as
 `Codex.Spherical.PowerWeights.PowerWeightTheorem.closure_typeSet_eq`.
+
+## 2026-08-25 07:56:33 -0400 -- Phase F does not need Stein--Weiss, and a sharper route for Phase D
+
+### 10. Phase F is a single Hoelder inequality, not Stein--Weiss interpolation
+
+The blueprint's Phase F asks for Stein--Weiss interpolation with change of
+measure between `dx` and `|x|^-1 dx`.  That theorem is not needed.  Both
+endpoint estimates are at the *same* exponent `p`, so the identity
+`|x|^-θ = (|x|^-1)^θ` together with Hoelder at the conjugate pair
+`(1/θ, 1/(1-θ))` gives
+
+  int_B M^p |x|^-θ <= (int_B M^p |x|^-1)^θ * (int M^p)^(1-θ).
+
+This is formalized as `radialPowerWeight_mul_eq_holder_split`,
+`lintegral_radialPowerWeight_le_holder` and
+`hasPlanarNegativeRawBandRate_of_criticalWeight`.  The blueprint's
+"Required interpolation theorems" section item 2 is therefore vacuous, and no
+change-of-measure interpolation theorem has to be added to the repository.
+
+A consequence worth recording: because the second factor carries the genuine
+geometric gain `rho^(j p (1-θ))` with `rho < 1`, the first factor is allowed
+*any* polynomial-in-`j` loss.  The open predicate
+`HasCriticalWeightBandBound` is therefore stated with a factor `(j+1)^N`
+rather than the blueprint's `2^(eps j)`, which removes all `eps` bookkeeping
+from Phases D and E.  The absorption is
+`exists_bound_pow_mul_geometric`.
+
+### 11. Weaker forms of `prop:critical-loss` do not suffice
+
+Several cheaper substitutes were checked and rejected; they should not be
+retried.
+
+* Interpolating the unweighted Bourgain gain `delta_p` against the trivial
+  `L^inf` bound `norm(M_j f, L^inf) <= C 2^(j/p) norm(f, L^p)` on dyadic
+  spatial shells covers only `|a| < 2 p delta_p / (1 + p delta_p)`.  The
+  radial focusing example (input a `2^-j`-thin annulus at radius one)
+  shows `delta_p <= 1/p`, so this route can never reach `|a| < 1`; and
+  bootstrapping the resulting weighted bound reproduces exactly the same
+  threshold, because the induction integrates to the same ODE.
+* Replacing the critical weight by Hoelder against an unweighted `L^q` bound
+  requires `q > 2p/(2+a)`, hence `q` arbitrarily close to `2p` as `a` tends
+  to `-1`.  The same focusing example shows `q <= 2p` is sharp, and for `p`
+  near `2` the needed exponent lies outside Schlag's local circular
+  `L^p`-improving region.  So no `L^p`-improving estimate can replace the
+  critical-weight estimate.
+* The truncation-free interpolation (layer cake with only the `L^2` and
+  `L^inf` bounds, no splitting of `f`) yields
+  `norm(f,L^2)^2 norm(f,L^inf)^(p-2)` on the right, which is not controlled
+  by `norm(f,L^p)^p`.  Phase E genuinely needs Marcinkiewicz truncations.
+
+### 12. Sharpened route for `prop:critical-loss`
+
+The blueprint's Phase D items are correct but leave the `r`-integral
+unspecified.  The following reconstruction is elementary given the
+repository's planar wave normal form, and is what the open declaration should
+be proved by.
+
+* Use a *polynomial* `r`-weight `w(r) = ((r - 1/4)(5 - r))^2` on `[1/4, 5]`.
+  It vanishes at both endpoints, so `OscillatoryIBP.intervalIntegral_mul_oscillatoryExp_eq_neg_inv_mul`
+  applies with no boundary term, and `w >= 1` on `[1/2, 3]`, which contains
+  every interval `[r - 2^-(j+1), r + 2^-(j+1)]` with `r` in `[1, 2]`.  No
+  smooth cutoff has to be constructed.
+* Apply `Bourgain.timeSobolevL2` on the interval of length `2^-j` centred at
+  the radius.  This is the blueprint's "Maximal parameter" item, but at scale
+  `2^-j` rather than on all of `[1,2]`; the scaled form produces the two
+  space-time integrals with the weights `2^j` and `2^-j` and avoids any
+  geometric-mean Sobolev inequality.
+* Expand the `r`-kernel by
+  `PlanarTripleWaveNormalForm.planarCoordinateSurfaceWaveSum_eq_three_radialTerms`
+  into nine terms.  One integration by parts, with the amplitude bounds of
+  `CoordinateWaveSymbolBounds` at derivative orders `0` and `1`, gives
+  `|K(s,t)| <= C (s^-1 + t^-1) / (1 + |s - t|)` whenever `s, t >= 1` are
+  comparable.  Comparability is available because the band forces both
+  `|xi|` and `|eta|` into `[2^j / 5, 2^(j+4)]`.  Without comparability the
+  mixed endpoint/middle terms need two integrations by parts instead of one.
+* The quadratic form is then handled by the symmetric Schur test, which is
+  elementary (`|u(xi)||u(eta)| <= (|u(xi)|^2 + |u(eta)|^2)/2`).  The output
+  localization at distance `2^-k` from the origin should use a bump whose
+  Fourier transform has compact support, so that the Schur integral is over a
+  ball; the only geometric input is
+  `vol(annulus(a,h) cap ball(xi,R)) <= C R h` for `h <= R <= a/2`, which
+  follows by Fubini in the frame adapted to `xi` after the exact identity
+  `|xi + zeta| - a = (2 a zeta_1 + |zeta|^2)/(|xi + zeta| + a)`.
+  Mathlib's `EuclideanSpace` ball volumes make the annulus volumes explicit,
+  so no polar-coordinate machinery is needed.
+* The shells `k <= j` use the localized bound and the shells `k > j` the
+  unlocalized one; each family contributes `(1 + j) 2^-j`, and their sum is
+  the logarithmic loss of the source.
+
+## 2026-08-25 10:34:00 -0400 -- Phase D kernel bound proved; interpolation inventory
+
+### 13. Which interpolation theorem is actually needed
+
+Two different theorems travel under similar names, and the blueprint's Phase F
+asks for the wrong one.
+
+* *Stein--Weiss interpolation with change of measure* (Trans. AMS 1958)
+  interpolates between `L^p0(mu0) -> L^q0(nu0)` and `L^p1(mu1) -> L^q1(nu1)`
+  with the measures interpolated multiplicatively.  This is what the blueprint
+  Phase F asks for, and it is **not needed**: see entry 10.  When both
+  endpoints sit at the *same* exponent `p`, no operator interpolation is
+  required at all, because the two endpoint bounds are estimates for the same
+  function `T f` with the same input norm, so a single Hoelder inequality on
+  the output integral suffices.
+* *Stein analytic interpolation* (Trans. AMS 1956) interpolates an analytic
+  family `T_z`.  It is also not needed here.
+* What **is** needed is real interpolation for Phase E, between
+  `L^2(|x|^-1) -> L^2(|x|^-1)` and `L^inf -> L^inf`, at *different*
+  exponents.  There the input must be split, so a genuine interpolation
+  theorem is unavoidable.  Two admissible routes:
+  1. Marcinkiewicz for the sublinear maximal operator.  Its truncations
+     `f 1_{|f| > lambda}` leave the Schwartz class, so the operator has to be
+     presented as convolution with the Schwartz kernel of the multiplier
+     first (`SmoothDyadicPhysicalCore.fourierInv_schwartz_multiplier_eq_convolution`).
+  2. Riesz--Thorin on the operator linearized by a measurable radius
+     selector.  `Codex.riesz_thorin` in `LeanSpherical/Codex/SteinInterpolation.lean`
+     (supplied by the user, repaired on 2026-08-25) proves exactly this for
+     operators on integrable simple functions, and it admits the endpoints
+     `p1 = q1 = infinity`.  For a *fixed* measurable selector the operator is
+     linear, the `L^2` and `L^inf` endpoint bounds follow from the
+     corresponding maximal-function bounds, and the argmax selector for a
+     given input recovers the finite maximum.  A density step from integrable
+     simple functions to Schwartz inputs is then needed; since the multiplier
+     is compactly supported, `L^1` convergence of the inputs gives uniform
+     convergence of the outputs, so the step is elementary.
+
+### 14. Repairs to bit-rotted files needed by the wave normal form
+
+Three files outside the `LeanSpherical.Theorems` import closure had decayed
+and were repaired, because the planar outgoing/incoming/middle normal form
+depends on them.
+
+* `LeanSpherical/Codex/SteinInterpolation.lean`: one occurrence of the
+  removed lemma `mul_le_mul_left'`, replaced by `mul_le_mul'`.  The file
+  otherwise compiles unchanged on Lean 4.33.0-rc1, including its module-system
+  header.
+* `FractalDilations/CoordinateWaveRegularity.lean`: missing parentheses in
+  three `ContDiff.mul _ (_.comp _)` applications, and `fun_prop` could not see
+  through `OscillatoryIBP.oscillatoryExp`; the exponential regularity is now
+  proved explicitly through `Complex.contDiff_exp.restrict_scalars`.
+* `FractalDilations/CoordinateWaveDerivatives.lean`: `unfold` no longer
+  iota-reduces the `match` on the wave part, so `dsimp only` was inserted
+  before each rewrite.  Its `iteratedDeriv_*` statements are still
+  inconsistent with the corrected profile-versus-moment indexing, so the
+  project deliberately does **not** depend on that file or on
+  `CoordinateWaveSymbolBounds.lean`.  The planar amplitude bounds are instead
+  derived directly from `PlanarEndpointAmplitude` and
+  `CoordinateMiddleParameterDerivatives`, which are correct and build.
+
+### 15. The relative band factor must be carried inside the radial kernel
+
+`restrictedRelativeBandpassSphericalMaximal` uses the *radius-relative* band
+`phi (2^-(j+1) (r xi)) - phi (2^-j (r xi))`, which depends on `r`.  The Phase D
+radial kernel is therefore
+
+  `K(xi,eta) = int w(r) sigma(r|xi|) b_j(r,xi) conj (sigma(r|eta|) b_j(r,eta)) dr`,
+
+and the band factors do **not** factor out of the `r`-integral.  The proved
+bound `exists_dvKernel_bound` is for the kernel without those factors.  The
+generalization is mechanical, because the band factor is a `C^1` function of
+`r` with `|b_j| <= 2` and `|d/dr b_j| <= C` uniformly on the band (the
+derivative is `2^-j <xi, grad phi>`, of size `2^-j |xi| = O(1)` there): set
+`A p u r := amp p u r * b_j(r, .)` and
+`Ad p u r := dvAmpDeriv p u r * b_j + amp p u r * d/dr b_j`, so that the
+uniform bound `C / sqrt u` is preserved with a new constant.  Every one of the
+nine cases and the whole combination step then go through verbatim, since they
+use the amplitudes only through that uniform bound and through the sharp
+middle bound.  This parameterization was carried out: the band-carrying
+kernel bound is `exists_dvBandKernel_bound` (and
+`exists_dvBandDerivKernel_bound` for the `r`-derivative slice), built from
+`dvBandAmp`, `dvBandAmpDeriv` and the two-sided bounds
+`exists_dvBandAmp_bounds` / `exists_dvBandAmp_middle_bounds`.
+
+### 16. Phase E cannot be done by Hoelder or by pointwise interpolation (2026-08-25 16:56:40 -0400)
+
+The blueprint calls Phase E "real interpolation between the `L^2(|x|^{-1})`
+bound and the trivial `L^inf` bound".  Three cheaper substitutes were tried and
+all of them fail; the entry records why, because each looks plausible.
+
+1. *Pointwise Hoelder in the exponent.*  Writing
+   `(M f)^p = (M f)^2 (M f)^{p-2}` and using `M f <= C ||f||_inf` needs
+   `||f||_inf`, which is not controlled by `||f||_p`.  The same objection kills
+   every three-factor Hoelder split that keeps `L^inf` on one factor.
+2. *Bernstein instead of `L^inf`.*  Replacing the `L^inf -> L^inf` bound by the
+   true `L^p -> L^inf` bound `M_j f <= C 2^{2j/p} ||f||_p` does give a
+   Hoelder-only proof, but with a loss `2^{2j(p-2)/p}` instead of a polynomial
+   one.  The Phase F Hoelder step then needs
+   `2 theta (p-2)/p < p (1-theta) delta`, which fails as `theta -> 1`, i.e.
+   exactly in the range `a` near `-1` that the theorem is about.
+3. *Marcinkiewicz with smooth truncation.*  Splitting `f` by a smooth cut-off in
+   `|f|` keeps the pieces Schwartz only if
+   `x -> rho(|f x|^2/lambda^2)` has temperate growth, which needs a bound on
+   every iterated derivative -- an induction with the chain rule that is more
+   work than the interpolation itself.
+
+The route that works is Riesz--Thorin (`Codex.riesz_thorin`) on the linearized
+operator, with **different measures on the two sides**: Lebesgue measure on the
+input and `|x|^{-1} dx` restricted to the output ball `B(0,1/32)` on the output.
+That is what makes the interpolated constant a polynomial in `j`: the two
+endpoints are `L^2(dx) -> L^2(nu)` with norm `O(j+1)` and `L^inf -> L^inf` with
+norm `O(1)`, so the `L^p` norm is `O((j+1)^{2/p})`.  Blueprint item "Phase E"
+should be read as *two-measure Riesz--Thorin*, not as a change-of-measure
+Stein--Weiss theorem (compare entry 13).
+
+Two further deviations from the blueprint were forced by the same step.
+
+* `Codex.riesz_thorin` acts on `SimpleFunc` inputs, while Phase D is proved for
+  Schwartz inputs, so two density arguments are unavoidable.  Both are done by
+  hand: `dvT_l2_general` (Schwartz -> `L^2` inputs, via
+  `MemLp.exist_eLpNorm_sub_le`, Cauchy--Schwarz for the convolution and Fatou)
+  and `dvT_lp_schwartz` (simple -> Schwartz, via
+  `SimpleFunc.tendsto_approxOn_Lp_eLpNorm` and Fatou).
+* The linearization needs a *measurable* choice of the maximizing radius.  Over
+  a finite radius set this is elementary (`dvSel`: the smallest maximizer,
+  cut out by finitely many inequalities), and an arbitrary radius set is reached
+  from the dyadic finite sets `dvR n` by continuity of the band slice in the
+  radius (`continuousAt_dvSlice`) plus monotone convergence.  The continuity
+  input is the repository's
+  `SphericalMaximalL2.continuous_and_hasDerivAt_fourierInv_relative_dyadic_bandpass`,
+  which carries a compactly supported frequency cut-off; the cut-off is removed
+  on `r > 1/4` by `dvSig_mul_dvFreqCut`.
+
+### 17. `IsNormRadial` is needed on the Littlewood--Paley cut-off (2026-08-25 16:56:40 -0400)
+
+Phase D's radial reduction (`dvSig_eq_multiplier`) needs the frequency cut-off
+`phi` to be norm-radial, so `hasCriticalWeightBandBound` carries the extra
+hypothesis `IsNormRadial phi`.  The blueprint does not mention this.  It costs
+nothing: `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_negative_of_gt_two`
+now builds its `LPCutoffs 2` datum from
+`FractalDilations.RadialCutoff.exists_normRadial_schwartz_frequency_cutoff_norm_le_one`
+instead of `LittlewoodPaley.exists_lpCutoffs`, and every downstream consumer is
+indifferent to which cut-off is used.
+
+### 18. Small frequency indices need a separate crude estimate (2026-08-25 16:56:40 -0400)
+
+`dvWeightedL2Core` assumes `3 <= j`, because the stationary-phase amplitude
+bounds require `r |xi| >= 1` on the band support (`||xi|| >= 2^j/5`).  The
+blueprint does not isolate this.  The three remaining indices are handled by
+`dvCrudeL2Core`, which bounds the band average by
+`surfaceMass * ||kernel||_2 ||f||_2` (Cauchy--Schwarz in the convolution) and
+then uses the finite mass of `|x|^{-1}` on the ball.  Its constant grows like
+`2^j`, which is harmless for `j <= 2` and is why it cannot replace Phase D.
+
+### 19. Pathological `whnf` timeouts around heavy definitions (2026-08-25 16:56:40 -0400)
+
+Elaboration repeatedly timed out at `whnf` when a tactic had to unfold one of
+the large definitions of this file (`dvSig`, `dvFreqCut`, `dvMulA`, and the
+`let`-bound families of the repository's continuity lemma).  Three workarounds
+are used throughout and are worth knowing before editing:
+
+* parameterize the lemma over the offending function and pass the defining
+  equation as a hypothesis (`dvSobolevPointwise`, `continuousAt_dvSlice_aux`),
+  so unification only ever sees a variable;
+* prove a `rfl` equation for the goal's function and `rw` it before applying a
+  `Continuous.comp`-style lemma;
+* replace `exact h` by `have h' := h; simpa [Function.comp_def] using h'`.
+
+Also: `Summable.sum_add_tsum_nat_add` for `ENNReal` times out while merely
+elaborating its statement in this context, so the shell summation is a finite
+`Finset.range (j+1)` sum plus a separately estimated small-ball term.

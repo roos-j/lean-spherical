@@ -44,6 +44,7 @@ theorem iteratedDeriv_coordinateWaveRadialAmplitude_outgoing
             smoothEndpointQuadraticIntegral (d - 2 + 2 * k)
               ((2 * Real.pi * a) * rho))) := by
   unfold coordinateWaveRadialAmplitude
+  dsimp only
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul]
 
@@ -59,6 +60,7 @@ theorem iteratedDeriv_coordinateWaveRadialAmplitude_incoming
             smoothEndpointQuadraticIntegral (d - 2 + 2 * k)
               ((-(2 * Real.pi * a)) * rho))) := by
   unfold coordinateWaveRadialAmplitude
+  dsimp only
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul]
 
@@ -74,6 +76,7 @@ theorem iteratedDeriv_coordinateWaveRadialAmplitude_middle
             coordinateMiddleSineMomentIntegral (d - 2) k
               ((2 * Real.pi * a) * rho))) := by
   unfold coordinateWaveRadialAmplitude
+  dsimp only
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul
       (contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2))]
@@ -90,6 +93,7 @@ theorem iteratedDeriv_planarCoordinateWaveRadialAmplitude_outgoing
           (Complex.I ^ k * quadraticMomentIntegral (2 * k)
             planarEndpointProfile ((2 * Real.pi * a) * rho))) := by
   unfold planarCoordinateWaveRadialAmplitude
+  dsimp only
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul contDiff_planarEndpointQuadraticIntegral]
   simp_rw [iteratedDeriv_planarEndpointQuadraticIntegral]
@@ -104,6 +108,7 @@ theorem iteratedDeriv_planarCoordinateWaveRadialAmplitude_incoming
           (Complex.I ^ k * quadraticMomentIntegral (2 * k)
             planarEndpointProfile ((-(2 * Real.pi * a)) * rho))) := by
   unfold planarCoordinateWaveRadialAmplitude
+  dsimp only
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul contDiff_planarEndpointQuadraticIntegral]
   simp_rw [iteratedDeriv_planarEndpointQuadraticIntegral]
@@ -120,6 +125,7 @@ theorem iteratedDeriv_planarCoordinateWaveRadialAmplitude_middle
             coordinateMiddleSineMomentIntegral 0 k
               ((2 * Real.pi * a) * rho))) := by
   unfold planarCoordinateWaveRadialAmplitude
+  dsimp only
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul
       (contDiff_coordinateMiddleMeridianLocalizedIntegral 0)]
