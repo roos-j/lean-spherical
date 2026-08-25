@@ -1,0 +1,1422 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,margin=27mm,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,longtable,array,tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{upquote}
+\usepackage{parskip}
+
+\definecolor{leanblue}{RGB}{20,62,116}
+\definecolor{darkgray}{RGB}{70,70,70}
+\definecolor{lightgray}{RGB}{246,247,249}
+\definecolor{darkred}{RGB}{128,20,20}
+\definecolor{darkgreen}{RGB}{15,95,55}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=leanblue,
+  citecolor=darkgreen,
+  urlcolor=leanblue,
+  pdftitle={Planar negative-power circular maximal theorem: formalization blueprint},
+  pdfauthor={Prepared for LeanSpherical}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Duoandikoetxea--Vega planar blueprint}
+\rhead{LeanSpherical}
+\cfoot{\thepage}
+
+\lstdefinelanguage{Lean}{
+  morekeywords={theorem,lemma,def,abbrev,namespace,end,open,scoped,notation,section,variable,include,by,exact,apply,refine,have,show,from,let,in,if,then,else,match,with,where,fun,forall,exists,import,noncomputable,instance,structure,class,extends},
+  sensitive=true,
+  morecomment=[l]{--},
+  morecomment=[s]{/-}{-/},
+  morestring=[b]"
+}
+
+\lstset{
+  language=Lean,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{leanblue}\bfseries,
+  commentstyle=\color{darkgreen},
+  stringstyle=\color{darkred},
+  backgroundcolor=\color{lightgray},
+  frame=single,
+  rulecolor=\color{gray!35},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=3mm,
+  xrightmargin=3mm
+}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{claim}[theorem]{Claim}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{blueprint}[theorem]{Blueprint item}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{warning}[theorem]{Formalization warning}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\E}{\mathcal{E}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\Mc}{\mathcal{M}_{\mathrm{c}}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\Lp}{L^{p}}
+\newcommand{\walpha}{w_{\alpha}}
+\newcommand{\norm}[1]{\left\lVert #1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert #1\right\rvert}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\esssup}{\mathop{\mathrm{ess\,sup}}}
+\newcommand{\into}{\longrightarrow}
+\newcommand{\lean}{\texttt}
+
+\title{\textbf{The planar negative-power circular maximal theorem}\\[4pt]
+\large A Duoandikoetxea--Vega blueprint and the exact completion of\\
+\lean{PowerWeights.closure\_typeSet\_eq} in dimension two}
+\author{Prepared for the \texttt{LeanSpherical} formalization}
+\date{25 August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The public theorem in \texttt{LeanSpherical.Theorems} currently assumes
+$d\geq 3$.  The only additional analytic input needed for $d=2$ is a
+negative-power weighted circular maximal estimate.  The direct drop-in form is
+boundedness of the full circular maximal operator on
+$L^p(\R^2,\abs{x}^{\alpha}\,dx)$ for $p>2$ and $-1<\alpha<0$.  This is a
+strict subrange of Theorem~10 of Duoandikoetxea and Vega, whose planar range is
+$-1<\alpha<p-2$.
+
+This document gives: the exact theorem statements; a complete reduction of the
+$d=2$ Fraccaroli--Roos--Seeger result to that input; a source audit; a
+formalization-oriented decomposition of the Duoandikoetxea--Vega proof; proposed
+Lean declarations; and a dependency and risk checklist.  It distinguishes the
+minimal local theorem needed by the existing FRS globalization lemma from the
+more convenient global theorem that can be exposed as the public API.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Executive conclusion}
+
+\subsection{The exact missing result}
+
+Let $\sigma$ be normalized arclength measure on the unit circle $S^1$, and put
+
+\[
+\A_t f(x)=\int_{S^1} f(x+t\omega)\,d\sigma(\omega).
+\]
+
+For a set of positive radii $E\subset(0,\infty)$, put
+
+\[
+\M_E f(x)=\sup_{t\in E}\abs{\A_t f(x)}.
+\]
+
+The full circular maximal operator is
+
+\[
+\M f=\M_{(0,\infty)}f.
+\]
+
+The direct theorem needed by the public $d=2$ argument is the following.
+
+\begin{theorem}[Planar negative-power circular maximal theorem]\label{thm:direct-missing}
+Let $p$ and $\alpha$ be real numbers satisfying
+
+\[
+p>2
+\]
+
+and
+
+\[
+-1<\alpha<0.
+\]
+
+There is a constant $C_{p,\alpha}>0$ such that every measurable
+$f:\R^2\to\C$ in $L^p(\R^2,\abs{x}^{\alpha}\,dx)$ satisfies
+
+\[
+\norm{\M f}_{L^p(\abs{x}^{\alpha})}
+\leq C_{p,\alpha}\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+\end{theorem}
+
+This is the cleanest theorem to import into the final branch of the FRS proof.
+It immediately implies the same estimate for every restricted set of radii,
+because
+
+\[
+\M_E f(x)\leq \M f(x).
+\]
+
+There is, however, a strictly smaller analytic target if the already formalized
+FRS globalization lemma is used.
+
+\begin{theorem}[Minimal local analytic input]\label{thm:minimal-local}
+Let $p>2$ and $-1<\alpha<0$.  There is a constant $C_{p,\alpha}>0$ such that
+
+\[
+\norm{\M_{[1,2]} f}_{L^p(\abs{x}^{\alpha})}
+\leq C_{p,\alpha}\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+\end{theorem}
+
+Theorem~\ref{thm:minimal-local}, Bourgain's unweighted circular maximal theorem,
+and FRS Lemma~2.1 imply Theorem~\ref{thm:direct-missing} and, more generally,
+the required bound for every $E\subset(0,\infty)$.  Thus:
+
+\begin{itemize}[leftmargin=7mm]
+\item Theorem~\ref{thm:minimal-local} is the minimal new analytic theorem.
+\item Theorem~\ref{thm:direct-missing} is the best direct Lean interface.
+\item The full Duoandikoetxea--Vega theorem is stronger and is the natural
+      source theorem to formalize.
+\end{itemize}
+
+\subsection{The source theorem}
+
+Duoandikoetxea and Vega prove the following result in arbitrary dimension.
+
+\begin{theorem}[Duoandikoetxea--Vega, Theorem 10]\label{thm:dv-general}
+Let $d\geq2$.  If
+
+\[
+p>\frac{d}{d-1}
+\]
+
+and
+
+\[
+1-d<\alpha<(d-1)(p-1)-1,
+\]
+
+then the full spherical maximal operator is bounded on
+$L^p(\R^d,\abs{x}^{\alpha}\,dx)$.
+\end{theorem}
+
+For $d=2$, the range becomes
+
+\[
+p>2
+\]
+
+and
+
+\[
+-1<\alpha<p-2.
+\]
+
+Consequently Theorem~\ref{thm:direct-missing} is an immediate planar subcase:
+if $p>2$ and $\alpha<0$, then
+
+\[
+\alpha<0<p-2.
+\]
+
+\subsection{Verdict on the rest of the $d=2$ proof}
+
+After Theorem~\ref{thm:direct-missing} or
+Theorem~\ref{thm:minimal-local} is available, no additional planar harmonic
+analysis is needed for the closure theorem.  The existing proof divides into
+three exhaustive finite-$p$ branches:
+
+\begin{enumerate}[leftmargin=8mm]
+\item $\alpha\geq0$: the already formalized nonnegative-weight argument;
+\item $\alpha<0$ and $p\leq2$: the already formalized FRS argument;
+\item $\alpha<0$ and $p>2$: the new Duoandikoetxea--Vega branch.
+\end{enumerate}
+
+The necessity argument, convexity of the type set, the passage from strict
+inequalities to the closed admissible region, and the vertical $1/p=0$ segment
+are unchanged.  The endpoint $\alpha=-1$ is not needed as an analytic theorem:
+when it belongs to the admissible boundary it is recovered by closure.
+
+\section{Conventions and comparison with the Lean definitions}
+
+\subsection{Averages and signs}
+
+The project uses
+
+\[
+\operatorname{sphericalAverage}(t,f,x)
+=
+\int_{S^{d-1}} f(x+t\omega)\,d\sigma(\omega).
+\]
+
+Some sources write $f(x-t\omega)$.  The two conventions agree because the map
+$\omega\mapsto-\omega$ preserves spherical measure.  This should be made a
+named lemma rather than hidden in a change of variables.
+
+The project normalizes surface measure.  Multiplying surface measure by a fixed
+positive scalar only changes the operator norm, so source results stated with
+unnormalized surface measure transfer immediately after one scalar calculation.
+
+\subsection{Power weights}
+
+The project defines
+
+\[
+\operatorname{powerWeight}(d,\alpha)
+=
+\abs{x}^{\alpha}\,dx
+\]
+
+through \lean{volume.withDensity}.  For $\alpha<0$, the density is infinite at
+$x=0$ in the \lean{ENNReal} model.  This is harmless because $\{0\}$ is
+Lebesgue-null, but identities involving the density must be stated almost
+everywhere.  Pointwise rewrites at the origin are the wrong interface.
+
+\subsection{Maximal-function codomain}
+
+The project maximal function is \lean{ENNReal}-valued:
+
+\[
+M(E,f,x)=\sup_{t\in E\cap(0,\infty)}
+\operatorname{ofReal}\bigl(\norm{\A_t f(x)}\bigr).
+\]
+
+The analytic literature usually uses a real-valued nonnegative function.  A
+small adapter layer should establish the almost-everywhere equality between the
+project expression and \lean{ENNReal.ofReal} of the classical supremum.  Once
+that layer exists, all norm inequalities should be proved at one codomain and
+transported once, rather than repeatedly unfolding \lean{M}.
+
+\section{The complete $d=2$ reduction}
+
+This section proves that the new planar theorem is exactly sufficient for the
+public closure theorem.  No analytic estimate from Duoandikoetxea--Vega is used
+until the final line of Proposition~\ref{prop:high-p-branch}.
+
+\subsection{The strict FRS inequalities}
+
+For the sufficiency part of the FRS theorem, one proves boundedness at points
+satisfying strict versions of the defining inequalities.  In dimension two the
+lower strict inequality can be written in the form
+
+\[
+\nu_E^\sharp(p-2-\alpha)<p-1.
+\]
+
+The FRS theory also gives the elementary lower bound
+
+\[
+\nu_E^\sharp(\rho)\geq\rho
+\]
+
+for every real $\rho$.  These two facts force the lower Duoandikoetxea--Vega
+weight condition.
+
+\begin{lemma}[The planar strict region lies above $\alpha=-1$]
+Assume
+
+\[
+\nu_E^\sharp(p-2-\alpha)<p-1.
+\]
+
+Then
+
+\[
+\alpha>-1.
+\]
+\end{lemma}
+
+\begin{proof}
+The general inequality for the Legendre--Assouad function gives
+
+\[
+p-2-\alpha\leq\nu_E^\sharp(p-2-\alpha).
+\]
+
+Combining it with the hypothesis gives
+
+\[
+p-2-\alpha<p-1.
+\]
+
+Subtracting $p-2$ from both sides gives
+
+\[
+-\alpha<1.
+\]
+
+Multiplying by $-1$ reverses the inequality and gives
+
+\[
+\alpha>-1.
+\]
+\end{proof}
+
+\begin{lemma}[The high-$p$ negative branch lies below $p-2$]
+If $p>2$ and $\alpha<0$, then
+
+\[
+\alpha<p-2.
+\]
+\end{lemma}
+
+\begin{proof}
+The first hypothesis gives
+
+\[
+0<p-2.
+\]
+
+The second gives
+
+\[
+\alpha<0.
+\]
+
+Transitivity yields
+
+\[
+\alpha<p-2.
+\]
+\end{proof}
+
+\subsection{The only new branch}
+
+\begin{proposition}[Completion of the finite-$p$ sufficiency proof]\label{prop:high-p-branch}
+Assume the strict FRS hypotheses in dimension two.  Assume also that
+$p>2$ and $\alpha<0$.  Then $\M_E$ is bounded on
+$L^p(\R^2,\abs{x}^{\alpha}\,dx)$.
+\end{proposition}
+
+\begin{proof}
+The strict lower FRS inequality and the preceding lemma imply
+
+\[
+-1<\alpha.
+\]
+
+The hypotheses $p>2$ and $\alpha<0$ imply
+
+\[
+\alpha<p-2.
+\]
+
+Therefore the planar case of Duoandikoetxea--Vega Theorem~10 applies and gives
+
+\[
+\norm{\M f}_{L^p(\abs{x}^{\alpha})}
+\leq C_{p,\alpha}\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+
+Since $E\subset(0,\infty)$, one has pointwise
+
+\[
+\M_E f\leq\M f.
+\]
+
+Monotonicity of the $L^p$ norm gives
+
+\[
+\norm{\M_E f}_{L^p(\abs{x}^{\alpha})}
+\leq C_{p,\alpha}\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+\end{proof}
+
+\subsection{A proof using only the minimal local theorem}
+
+Suppose only Theorem~\ref{thm:minimal-local} has been formalized.  For $R>0$,
+define the normalized slice
+
+\[
+E_R=R^{-1}\bigl(E\cap[R,2R]\bigr).
+\]
+
+Then
+
+\[
+E_R\subset[1,2].
+\]
+
+Consequently
+
+\[
+\M_{E_R}f\leq\M_{[1,2]}f.
+\]
+
+The local theorem bounds the second term in the FRS globalization estimate,
+uniformly in $R$.  Bourgain's circular maximal theorem and
+$\M_E\leq\M$ bound the unweighted term.  FRS Lemma~2.1 then gives the desired
+global weighted estimate.  This route proves the restricted theorem directly
+and avoids first constructing a standalone full-radii weighted theorem.
+
+\subsection{Passage to the closure}
+
+The analytic estimates prove membership in \lean{typeSet} only under strict
+inequalities.  The existing FRS argument then proceeds as follows.
+
+\begin{enumerate}[leftmargin=8mm]
+\item Approximate every finite-$p$ boundary point of the admissible region by
+      strict interior points.
+\item Use the definition of topological closure to place the boundary point in
+      \lean{closure (typeSet 2 E)}.
+\item Approximate the vertical segment with first coordinate zero by points
+      with $p\to\infty$.
+\item Combine with the already proved necessary inclusion
+
+\[
+\operatorname{closure}(\operatorname{typeSet}(2,E))
+\subseteq
+\operatorname{admissibleRegion}(2,E).
+\]
+\end{enumerate}
+
+The new theorem affects only item 1 for strict points with $p>2$ and
+$\alpha<0$.  It does not alter any closure or convexity argument.
+
+\section{Source audit: what Duoandikoetxea--Vega actually prove}
+
+\subsection{Bibliographic identification}
+
+The relevant source is:
+
+\begin{quote}
+Javier Duoandikoetxea and Luis Vega, ``Spherical means and weighted
+inequalities,'' \emph{Journal of the London Mathematical Society} (2),
+53(2):343--353, 1996.  DOI: 10.1112/jlms/53.2.343.
+\end{quote}
+
+The required result is Theorem~10.  The source statement is precisely
+Theorem~\ref{thm:dv-general}.  In the proof, the authors dispatch the case
+$\alpha\geq0$ by their Proposition~8.  For $\alpha<0$, they reduce to a
+unit-scale estimate, displayed as their equation (2), and use a
+frequency-localized estimate displayed as equation (3).  A later endpoint
+paper by Juyoung Lee explicitly identifies equation (3) in the proof of
+Theorem~10 and records that it carries a $2^{j\varepsilon}$ loss; Lee also says
+that one of the two spatial-frequency regimes is essentially the argument of
+Duoandikoetxea--Vega.
+
+\subsection{Access and reconstruction note}
+
+The publisher page exposes the exact theorem statement and the beginning of the
+proof through indexed full text, but the publisher PDF was not downloadable in
+the research environment used for this blueprint.  The source-level structure
+above was therefore checked in three ways:
+
+\begin{enumerate}[leftmargin=8mm]
+\item the indexed text of Theorem~10 and its first proof reduction;
+\item the bibliographic and range statement in the FRS paper;
+\item Lee's page-level discussion of equation (3), the $2^{j\varepsilon}$
+      loss, and the annular argument inherited from the 1996 paper.
+\end{enumerate}
+
+The blueprint below is a formalization-oriented reconstruction of that proof
+architecture.  It is not presented as a line-by-line transcription of the
+publisher typesetting.  Every theorem used in the reconstruction is stated
+explicitly, so the formal development does not depend on unrecorded source
+notation.
+
+\subsection{What should and should not be formalized}
+
+The 1996 paper contains more than the missing planar branch.  For the present
+project it is unnecessary to formalize:
+
+\begin{itemize}[leftmargin=7mm]
+\item the entire dyadic-radii theory developed earlier in the paper;
+\item the nonnegative-weight branch, already available in the project;
+\item the arbitrary-dimensional theorem before completing the planar branch;
+\item the endpoint $\alpha=-1$.
+\end{itemize}
+
+The right initial target is the local planar theorem for $p>2$ and
+$-1<\alpha<0$, followed by the global and restricted corollaries.
+
+\section{Analytic proof blueprint}
+
+\subsection{Overview}
+
+The proof is organized around a Littlewood--Paley decomposition.  The
+unweighted local circular maximal estimate has a decaying frequency norm for
+$p>2$.  At the critical weight $\abs{x}^{-1}$ one has a frequency estimate
+with an arbitrarily small exponential loss.  Interpolation with change of
+measure produces exponential decay at every intermediate weight
+$\abs{x}^{\alpha}$ with $-1<\alpha<0$.  The decay makes the frequency sum
+converge.
+
+The following items are stated for $d=2$, because that is the only new case.
+They are deliberately split at interfaces that can be tested independently in
+Lean.
+
+\subsection{Phase A: the local operator and a countable supremum}
+
+\begin{blueprint}[Local operator]
+Define
+
+\[
+\Mc f(x)=\sup_{1\leq t\leq2}\abs{\A_t f(x)}.
+\]
+
+For Schwartz $f$, prove that $t\mapsto\A_t f(x)$ is continuous for every $x$.
+If $D=\mathbb{Q}\cap[1,2]$, deduce
+
+\[
+\Mc f(x)=\sup_{t\in D}\abs{\A_t f(x)}.
+\]
+
+This converts the continuum supremum to a countable supremum and gives
+measurability without a separate measurable-maximum theorem.
+\end{blueprint}
+
+\begin{blueprint}[Finite-grid approximants]
+Choose increasing finite sets $D_N\subset D$ whose union is dense in $[1,2]$,
+and define
+
+\[
+\mathcal{M}_{\mathrm{c},N} f(x)=\max_{t\in D_N}\abs{\A_t f(x)}.
+\]
+
+Then
+
+\[
+\mathcal{M}_{\mathrm{c},N} f(x)\uparrow\Mc f(x).
+\]
+
+All interpolation arguments should first be carried out uniformly in $N$ and
+then passed to the limit by monotone convergence or Fatou's lemma.  This avoids
+formalizing complex interpolation for a nonlinear uncountable supremum.
+\end{blueprint}
+
+\subsection{Phase B: Littlewood--Paley pieces}
+
+Choose a smooth radial cutoff $\chi$ supported in an annulus and satisfying a
+partition of unity away from the origin.  Let $P_j$ be the Fourier multiplier
+with symbol $\chi(2^{-j}\abs{\xi})$.  Define
+
+\[
+T_j f(x,t)=\A_t(P_jf)(x)
+\]
+
+and
+
+\[
+M_j f(x)=\sup_{1\leq t\leq2}\abs{T_jf(x,t)}.
+\]
+
+Use a separate smooth low-frequency projection $P_{\mathrm{lo}}$.
+
+\begin{blueprint}[Reconstruction inequality]
+For Schwartz $f$, prove the pointwise estimate
+
+\[
+\Mc f(x)
+\leq
+\Mc(P_{\mathrm{lo}}f)(x)
++
+\sum_{j\geq1}M_jf(x).
+\]
+
+It is enough to use the triangle inequality after reconstructing $f$ from the
+frequency partition.  The formal statement should be first proved for finite
+partial sums and then passed to the limit.
+\end{blueprint}
+
+\begin{blueprint}[Low frequencies]
+Prove
+
+\[
+\Mc(P_{\mathrm{lo}}f)(x)
+\leq C\,M_{\mathrm{HL}}f(x),
+\]
+
+where $M_{\mathrm{HL}}$ is the Hardy--Littlewood maximal function.  Hence the
+low-frequency term is bounded on $L^p(\abs{x}^{\alpha})$ whenever
+$\abs{x}^{\alpha}$ is an $A_p$ weight.
+\end{blueprint}
+
+For $d=2$, the power-weight criterion is
+
+\[
+\abs{x}^{\alpha}\in A_p
+\quad\Longleftrightarrow\quad
+-2<\alpha<2(p-1).
+\]
+
+The desired range $p>2$ and $-1<\alpha<0$ lies strictly inside this interval.
+If a general $A_p$ library is not available, only the special power-weight
+case and the convolution kernels arising here need to be proved.
+
+\subsection{Phase C: unweighted frequency gain}
+
+\begin{blueprint}[Bourgain frequency-localized estimate]\label{bp:bourgain-piece}
+For every real $p>2$, prove that there are constants $C_p>0$ and
+$\delta_p>0$ such that, for $j\geq1$,
+
+\[
+\norm{M_jf}_{L^p(\R^2)}
+\leq C_p2^{-\delta_pj}\norm{f}_{L^p(\R^2)}.
+\]
+\end{blueprint}
+
+This is the frequency-localized form of the local circular maximal estimate.
+It is stronger data than the final statement ``$\Mc$ is bounded on $L^p$.''
+A completed proof of Bourgain's theorem normally contains this estimate, but it
+cannot be recovered abstractly from the final boundedness theorem.  The Lean
+port should therefore check that this frequency-gain lemma is exposed by the
+existing Bourgain formalization.
+
+For finite grids $D_N$, use the linear map
+
+\[
+f\longmapsto \bigl(T_jf(\,\boldsymbol{\cdot}\,,t)\bigr)_{t\in D_N}
+\]
+
+with target $L^p(\R^2;\ell^\infty(D_N))$.  The estimate must be uniform in $N$.
+
+\subsection{Phase D: the critical-weight estimate with loss}
+
+The hard source estimate is at the critical weight $\abs{x}^{-1}$.  The form
+best suited to interpolation is the following packaged proposition.
+
+\begin{proposition}[Critical-weight dyadic estimate]\label{prop:critical-loss}
+For every $\varepsilon>0$, there is $C_\varepsilon>0$ such that, for $j\geq1$,
+
+\[
+\norm{M_jf}_{L^2(\abs{x}^{-1})}
+\leq C_\varepsilon 2^{\varepsilon j}
+\norm{f}_{L^2(\abs{x}^{-1})}.
+\]
+
+The same estimate holds for finite-grid maximal operators with a constant
+independent of the grid.
+\end{proposition}
+
+Proposition~\ref{prop:critical-loss} is the formalization package obtained from
+the annular estimate in equation (3) of the proof of Duoandikoetxea--Vega
+Theorem~10 and the subsequent annular summation.  The $2^{\varepsilon j}$ loss
+is essential to the source interpolation argument; it is harmless away from
+$\alpha=-1$.
+
+A source-faithful proof should be divided as follows.
+
+\begin{blueprint}[Spatial annuli]
+Let
+
+\[
+\mathcal{R}_k=
+\left\{x\in\R^2:2^{-k-1}<\abs{x}\leq2^{-k}\right\}.
+\]
+
+Decompose both the input and output into dyadic annuli.  On $\mathcal{R}_k$ the
+weight is comparable to the constant $2^k$:
+
+\[
+\abs{x}^{-1}\asymp2^k.
+\]
+
+Record the comparison as two explicit inequalities, because Lean will not use
+asymptotic notation.
+\end{blueprint}
+
+\begin{blueprint}[Near and far interactions]
+For fixed frequency $2^j$, split the annular interactions according to the
+relative sizes of $j$ and $k$.  The geometric regime in which the spatial
+annulus is smaller than the oscillation scale is estimated by the source
+annular argument.  Off-diagonal interactions are controlled by rapid decay of
+the Schwartz kernels.  State each regime with a numerical decay factor and a
+summable majorant before performing any double sum.
+\end{blueprint}
+
+\begin{blueprint}[Maximal parameter]
+Use a one-dimensional Sobolev estimate in $t$ on $[1,2]$:
+
+\[
+\sup_{1\leq t\leq2}\abs{F(t)}
+\leq
+C\norm{F}_{L^2([1,2])}^{1/2}
+\norm{F'}_{L^2([1,2])}^{1/2}
++
+C\norm{F}_{L^2([1,2])}.
+\]
+
+Apply this with $F(t)=\A_t(P_jf)(x)$.  Frequency localization controls the
+$t$-derivative.  Keep the averaging estimate and the derivative estimate as
+separate lemmas; this is the point at which powers of $2^j$ are generated.
+\end{blueprint}
+
+\begin{blueprint}[Annular summation]
+After proving the localized bounds, sum first in the off-diagonal annulus
+index, then in the main index.  Introduce a small parameter $\varepsilon>0$ to
+majorize logarithmic or borderline summation by $2^{\varepsilon j}$.  The final
+result is Proposition~\ref{prop:critical-loss}.
+\end{blueprint}
+
+\begin{remark}
+Juyoung Lee's later endpoint paper proves sharper annular estimates and removes
+the loss in the global endpoint theorem for the admissible values of $p$.  That
+stronger endpoint theory is not needed here.  The lossy source estimate is
+exactly what interpolation for $-1<\alpha<0$ requires.
+\end{remark}
+
+\subsection{Phase E: move the critical estimate from $p=2$ to $p>2$}
+
+For every $j$ one has the trivial bound
+
+\[
+\norm{M_jf}_{L^\infty}
+\leq C\norm{f}_{L^\infty}.
+\]
+
+The same statement is valid when both spaces are regarded over the fixed
+measure $\abs{x}^{-1}\,dx$, because $L^\infty$ does not depend on multiplication
+of the measure by a positive density up to null sets.
+
+Interpolate Proposition~\ref{prop:critical-loss} with this $L^\infty$ bound on
+the fixed measure space $(\R^2,\abs{x}^{-1}\,dx)$.  If $p>2$, the interpolation
+parameter satisfies
+
+\[
+\frac{1}{p}=\frac{1-\vartheta}{2}.
+\]
+
+Thus
+
+\[
+1-\vartheta=\frac{2}{p}.
+\]
+
+For every $\varepsilon>0$, after renaming the loss parameter, obtain
+
+\[
+\norm{M_jf}_{L^p(\abs{x}^{-1})}
+\leq C_{p,\varepsilon}2^{\varepsilon j}
+\norm{f}_{L^p(\abs{x}^{-1})}.
+\]
+
+This interpolation must again be carried out for finite-grid vector-valued
+linear operators and then passed to the supremum.
+
+\subsection{Phase F: Stein--Weiss interpolation in the weight}
+
+Fix $p>2$ and $-1<\alpha<0$.  Put
+
+\[
+\theta=-\alpha.
+\]
+
+Then
+
+\[
+0<\theta<1.
+\]
+
+The two endpoint measures are
+
+\[
+d\mu_0=dx
+\]
+
+and
+
+\[
+d\mu_1=\abs{x}^{-1}\,dx.
+\]
+
+Stein--Weiss interpolation with change of measure gives
+
+\[
+\bigl[L^p(d\mu_0),L^p(d\mu_1)\bigr]_\theta
+=
+L^p(\abs{x}^{-\theta}\,dx).
+\]
+
+Since $-\theta=\alpha$, the interpolated measure is exactly
+$\abs{x}^{\alpha}\,dx$.
+
+Interpolate the unweighted estimate
+
+\[
+\norm{M_jf}_{L^p}
+\leq C_p2^{-\delta_pj}\norm{f}_{L^p}
+\]
+
+with the critical-weight estimate
+
+\[
+\norm{M_jf}_{L^p(\abs{x}^{-1})}
+\leq C_{p,\varepsilon}2^{\varepsilon j}
+\norm{f}_{L^p(\abs{x}^{-1})}.
+\]
+
+The resulting frequency exponent is
+
+\[
+-(1-\theta)\delta_p+\theta\varepsilon.
+\]
+
+Choose $\varepsilon$ so that
+
+\[
+0<\varepsilon<\frac{1-\theta}{\theta}\delta_p.
+\]
+
+Define
+
+\[
+\eta=(1-\theta)\delta_p-\theta\varepsilon.
+\]
+
+Then
+
+\[
+\eta>0.
+\]
+
+The interpolated estimate is
+
+\[
+\norm{M_jf}_{L^p(\abs{x}^{\alpha})}
+\leq C_{p,\alpha}2^{-\eta j}
+\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+
+\subsection{Phase G: sum the frequencies}
+
+The low-frequency term is bounded.  For the high-frequency terms, Minkowski's
+inequality and the geometric series give
+
+\[
+\norm{\Mc f}_{L^p(\abs{x}^{\alpha})}
+\leq
+C\norm{f}_{L^p(\abs{x}^{\alpha})}
++
+\sum_{j\geq1}
+\norm{M_jf}_{L^p(\abs{x}^{\alpha})}.
+\]
+
+Therefore
+
+\[
+\norm{\Mc f}_{L^p(\abs{x}^{\alpha})}
+\leq
+C\left(1+\sum_{j\geq1}2^{-\eta j}\right)
+\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+
+The series converges because $\eta>0$, so
+
+\[
+\norm{\Mc f}_{L^p(\abs{x}^{\alpha})}
+\leq C_{p,\alpha}\norm{f}_{L^p(\abs{x}^{\alpha})}.
+\]
+
+This proves Theorem~\ref{thm:minimal-local} first for Schwartz functions.
+
+\subsection{Phase H: extension to all $L^p$ functions}
+
+Choose Schwartz functions $f_n$ converging to $f$ in
+$L^p(\abs{x}^{\alpha})$.  The formal extension can be implemented by either of
+two standard routes.
+
+\begin{enumerate}[leftmargin=8mm]
+\item Construct the bounded operator on the completion and identify it almost
+      everywhere with the maximal function by a subsequence and Fatou's lemma.
+\item Use sublinearity and a maximal-principle extension lemma already present
+      in the project.
+\end{enumerate}
+
+The conclusion must include both \lean{MemLp} of the output and the norm
+inequality, because \lean{typeSet} requires the conjunction.
+
+\subsection{Phase I: globalization}
+
+For the minimal implementation, apply the already formalized FRS local-to-global
+lemma.  The inputs are:
+
+\begin{itemize}[leftmargin=7mm]
+\item the unweighted $L^p$ bound for $\M_E$, inherited from Bourgain by
+      $\M_E\leq\M$;
+\item the uniform weighted local bound for every $E_R\subset[1,2]$, inherited
+      from Theorem~\ref{thm:minimal-local} by monotonicity.
+\end{itemize}
+
+The output is the weighted global bound for $\M_E$.  Taking
+$E=(0,\infty)$ gives Theorem~\ref{thm:direct-missing}.
+
+\section{Interpolation interface for Lean}
+
+\subsection{Why the maximal operator must be linearized}
+
+Complex interpolation theorems apply to linear or suitably analytic operator
+families.  The map $f\mapsto M_jf$ is sublinear.  The FRS paper resolves the
+same issue using measurable selectors and linearization.  For formalization,
+finite rational grids are usually simpler.
+
+Let $F\subset\mathbb{Q}\cap[1,2]$ be finite.  Define
+
+\[
+\mathcal{T}_{j,F}f(x)=\bigl(\A_tP_jf(x)\bigr)_{t\in F}.
+\]
+
+Give $\C^F$ the supremum norm.  Then
+
+\[
+\norm{\mathcal{T}_{j,F}f(x)}_{\ell^\infty(F)}
+=
+\max_{t\in F}\abs{\A_tP_jf(x)}.
+\]
+
+The map $\mathcal{T}_{j,F}$ is linear.  Prove all endpoint estimates uniformly
+in $F$, interpolate the linear maps, and pass through an increasing sequence
+of finite sets.  This avoids measurable selector construction and is compatible
+with existing vector-valued interpolation machinery if finite products are
+already supported.
+
+\subsection{Required interpolation theorems}
+
+The formal development needs two forms of interpolation.
+
+\begin{enumerate}[leftmargin=8mm]
+\item Fixed-measure interpolation between $L^2(\abs{x}^{-1})$ and
+      $L^\infty(\abs{x}^{-1})$.
+\item Stein--Weiss interpolation with change of measure at the same exponent
+      $p$ between $dx$ and $\abs{x}^{-1}dx$.
+\end{enumerate}
+
+If only scalar Riesz--Thorin is available, use a finite-dimensional target and
+its normed-space instance.  The change-of-measure theorem should be exposed as
+a separate reusable result rather than reproved inside the circular maximal
+file.
+
+\section{Proposed Lean API}
+
+\subsection{The minimal local theorem}
+
+A declaration close to the current project conventions is:
+
+\begin{lstlisting}
+namespace Spherical.PowerWeights
+
+/-- Local planar Duoandikoetxea--Vega estimate in the negative-weight range. -/
+theorem eLpNorm_localCircularMaximal_powerWeight_le_of_neg
+    {p : ENNReal} {alpha : Real}
+    (hp_top : p != top) (hp : (2 : ENNReal) < p)
+    (halpha_lo : -1 < alpha) (halpha_hi : alpha < 0) :
+    exists C : Real, 0 < C and forall f : (Real^2) -> Complex,
+      MemLp f p (powerWeight 2 alpha) ->
+      MemLp (M (Icc (1 : Real) 2) f) p (powerWeight 2 alpha) and
+      eLpNorm (M (Icc (1 : Real) 2) f) p (powerWeight 2 alpha)
+        <= ENNReal.ofReal C * eLpNorm f p (powerWeight 2 alpha) := by
+  -- Duoandikoetxea--Vega local proof
+  sorry
+
+end Spherical.PowerWeights
+\end{lstlisting}
+
+The ASCII spellings in the listing are schematic.  The actual source should use
+the project's Unicode notation and exact imported namespace names.
+
+\subsection{The global direct corollary}
+
+\begin{lstlisting}
+/-- Full planar circular maximal theorem in the exact missing range. -/
+theorem eLpNorm_circularMaximal_powerWeight_le_of_neg
+    {p : ENNReal} {alpha : Real}
+    (hp_top : p != top) (hp : (2 : ENNReal) < p)
+    (halpha_lo : -1 < alpha) (halpha_hi : alpha < 0) :
+    exists C : Real, 0 < C and forall f : (Real^2) -> Complex,
+      MemLp f p (powerWeight 2 alpha) ->
+      MemLp (M (Ioi (0 : Real)) f) p (powerWeight 2 alpha) and
+      eLpNorm (M (Ioi (0 : Real)) f) p (powerWeight 2 alpha)
+        <= ENNReal.ofReal C * eLpNorm f p (powerWeight 2 alpha) := by
+  -- Apply the local theorem, Bourgain, and the FRS globalization lemma.
+  sorry
+\end{lstlisting}
+
+\subsection{The full planar source range}
+
+Once the proof is in place, expose the full planar theorem at negligible extra
+cost.
+
+\begin{lstlisting}
+/-- Planar case of Duoandikoetxea--Vega Theorem 10. -/
+theorem eLpNorm_circularMaximal_powerWeight_le
+    {p : ENNReal} {alpha : Real}
+    (hp_top : p != top) (hp : (2 : ENNReal) < p)
+    (halpha_lo : -1 < alpha)
+    (halpha_hi : alpha < ENNReal.toReal p - 2) :
+    exists C : Real, 0 < C and forall f : (Real^2) -> Complex,
+      MemLp f p (powerWeight 2 alpha) ->
+      MemLp (M (Ioi (0 : Real)) f) p (powerWeight 2 alpha) and
+      eLpNorm (M (Ioi (0 : Real)) f) p (powerWeight 2 alpha)
+        <= ENNReal.ofReal C * eLpNorm f p (powerWeight 2 alpha) := by
+  sorry
+\end{lstlisting}
+
+For the current public theorem, the narrower \lean{alpha < 0} corollary has
+simpler arithmetic and avoids carrying \lean{ENNReal.toReal p - 2} through the
+FRS case split.
+
+\subsection{Set-monotonicity helpers}
+
+These should be proved once near the definition of \lean{M}.
+
+\begin{lstlisting}
+theorem restrictedSphericalMaximal_mono
+    {d : Nat} {E F : Set Real} (hEF : E subset F)
+    (f : (Real^d) -> Complex) (x : Real^d) :
+    M E f x <= M F f x := by
+  sorry
+
+lemma memLp_restrictedSphericalMaximal_of_le
+    {d : Nat} {E F : Set Real} {p : ENNReal} {mu : Measure (Real^d)}
+    (hEF : E subset F) {f : (Real^d) -> Complex}
+    (hmem : MemLp (M F f) p mu) :
+    MemLp (M E f) p mu := by
+  sorry
+
+lemma eLpNorm_restrictedSphericalMaximal_mono
+    {d : Nat} {E F : Set Real} {p : ENNReal} {mu : Measure (Real^d)}
+    (hEF : E subset F) (f : (Real^d) -> Complex) :
+    eLpNorm (M E f) p mu <= eLpNorm (M F f) p mu := by
+  sorry
+\end{lstlisting}
+
+The last two lemmas may follow from existing Mathlib monotonicity theorems once
+measurability is supplied.
+
+\subsection{The arithmetic bridge into the FRS branch}
+
+The integration file should expose a small lemma whose statement mirrors the
+actual branch assumptions.
+
+\begin{lstlisting}
+lemma neg_one_lt_alpha_of_planar_strict_lower
+    {E : Set Real} {p alpha : Real}
+    (hstrict : legendreAssouadFunction E (p - 2 - alpha) < p - 1) :
+    -1 < alpha := by
+  have hrho : p - 2 - alpha <=
+      legendreAssouadFunction E (p - 2 - alpha) :=
+    legendreAssouadFunction_ge_self E (p - 2 - alpha)
+  linarith
+\end{lstlisting}
+
+The exact theorem name for \lean{legendreAssouadFunction\_ge\_self} should be
+matched to the existing FRS formalization.
+
+\subsection{Final $d=2$ branch, schematic Lean proof}
+
+\begin{lstlisting}
+by_cases halpha : 0 <= alpha
+
+case pos =>
+  exact existing_nonnegative_weight_branch ...
+
+case neg =>
+  have halpha_neg : alpha < 0 := lt_of_not_ge halpha
+  by_cases hp2 : pReal <= 2
+
+  case pos =>
+    exact existing_frs_p_le_two_branch ...
+
+  case neg =>
+    have hp2' : 2 < pReal := lt_of_not_ge hp2
+    have halpha_lo : -1 < alpha := by
+      exact neg_one_lt_alpha_of_planar_strict_lower hstrictLower
+    have hbound :=
+      eLpNorm_circularMaximal_powerWeight_le_of_neg
+        hp_top hp2_ennreal halpha_lo halpha_neg
+    exact transfer_full_bound_to_restricted hEpos hbound
+\end{lstlisting}
+
+The existing proof already has conversions between the real parameter used in
+the admissible-region coordinates and the \lean{ENNReal} exponent used by
+\lean{MemLp}.  Reuse those conversions rather than creating a second parameter
+bridge inside the new theorem.
+
+\section{Recommended file structure}
+
+All paths in the first six rows are relative to
+\lean{LeanSpherical/Codex/Spherical/PowerWeights/}.
+
+\begin{longtable}{>{\raggedright\arraybackslash\ttfamily}p{0.41\textwidth}p{0.52\textwidth}}
+\toprule
+\normalfont File & Purpose \\
+\midrule
+\endhead
+DuoVega/Basic.lean &
+Sign convention, local maximal operator, rational-radius reduction, finite-grid
+operators, and set monotonicity. \\
+\addlinespace
+DuoVega/LittlewoodPaley.lean &
+Frequency projections, reconstruction, low-frequency estimate, kernel bounds,
+and weighted projection bounds. \\
+\addlinespace
+DuoVega/Unweighted.lean &
+Adapter from the formalized Bourgain theorem to the frequency-localized decay
+estimate. \\
+\addlinespace
+DuoVega/CriticalWeight.lean &
+Dyadic spatial annuli, source equation-(3) estimate, off-diagonal kernel decay,
+and the $2^{j\varepsilon}$ critical-weight bound. \\
+\addlinespace
+DuoVega/Interpolation.lean &
+Finite-grid vector-valued interpolation, fixed-measure $2$-to-$p$ step, and
+Stein--Weiss change-of-measure step. \\
+\addlinespace
+DuoVega/Theorem.lean &
+Local theorem, extension from Schwartz functions, globalization, full source
+range, and negative-weight corollary. \\
+\addlinespace
+PowerWeightTheorem.lean &
+One new $d=2$, $p>2$, $\alpha<0$ case; no changes to the other branches. \\
+\bottomrule
+\end{longtable}
+
+A smaller file split is possible, but the critical-weight proof should not be
+mixed with the short FRS integration argument.  Keeping that boundary clear
+makes it possible to test the new analytic theorem independently.
+
+\section{Formalization risks and their resolutions}
+
+\begin{longtable}{p{0.28\textwidth}p{0.31\textwidth}p{0.34\textwidth}}
+\toprule
+Issue & Failure mode & Recommended resolution \\
+\midrule
+\endhead
+Uncountable supremum & Measurability and interpolation do not apply directly. &
+Reduce to rational radii for Schwartz functions; interpolate finite grids;
+pass monotonically to the countable supremum. \\
+\addlinespace
+Sublinearity & Riesz--Thorin expects a linear map. &
+Use the finite-dimensional vector-valued map
+$f\mapsto(\A_tP_jf)_{t\in F}$. \\
+\addlinespace
+Only final Bourgain theorem exposed & Global boundedness does not imply a
+frequency-decaying norm. & Expose the frequency-localized local estimate from
+the Bourgain proof as a separate theorem. \\
+\addlinespace
+Weight singularity at zero & Pointwise density identities fail at $x=0$. &
+State density comparisons almost everywhere and remove the singleton using
+its nullity. \\
+\addlinespace
+Negative real powers in \lean{ENNReal} & Simplification rules may create
+\lean{top} at zero. & Isolate all power-weight a.e. lemmas in one file. \\
+\addlinespace
+\lean{p : ENNReal} may equal \lean{top} & The hypothesis \lean{2 < p} alone
+does not imply finiteness. & Include \lean{p != top} explicitly or state the
+analytic theorem with a real exponent and convert. \\
+\addlinespace
+Normalization of surface measure & Source constant does not syntactically
+match project average. & Prove a scalar relation once and absorb the scalar in
+$C$. \\
+\addlinespace
+Sign $x-t\omega$ versus $x+t\omega$ & Source operator does not unfold to the
+project operator. & Prove reflection invariance of normalized sphere measure. \\
+\addlinespace
+Positive constant in \lean{typeSet} & An operator norm may be returned merely
+as a nonnegative real. & Replace $C$ by $\max\{C,1\}$ at the API boundary. \\
+\addlinespace
+Extension from Schwartz functions & The pointwise supremum is not a continuous
+linear operator. & Use sublinearity, density, a Cauchy subsequence, and Fatou,
+or reuse an existing maximal-extension lemma. \\
+\bottomrule
+\end{longtable}
+
+\section{Dependency checklist}
+
+The following table separates assumptions stated in the question from genuinely
+new work.
+
+\begin{longtable}{p{0.49\textwidth}p{0.18\textwidth}p{0.25\textwidth}}
+\toprule
+Component & Status under the question & Action \\
+\midrule
+\endhead
+Bourgain full circular maximal theorem for $p>2$ & Assumed formalized & Reuse. \\
+Bourgain frequency-localized decay & Must be checked in the existing API &
+Expose if hidden in the proof. \\
+FRS Legendre--Assouad inequalities & Assumed formalized & Reuse. \\
+FRS strict-region equivalence & Assumed formalized & Reuse. \\
+FRS $p\leq2$, $\alpha<0$ upper bound & Assumed formalized & Reuse. \\
+FRS nonnegative-weight branch & Assumed formalized & Reuse. \\
+FRS local-to-global Lemma 2.1 & Assumed formalized & Reuse. \\
+Power-weight and maximal-function set monotonicity & Elementary & Add helper lemmas. \\
+Local DV theorem for $p>2$, $-1<\alpha<0$ & Missing & Main new proof. \\
+Global planar DV corollary & Missing & Short corollary. \\
+$d=2$ case split in the public theorem & Missing & Short integration patch. \\
+Necessity, closure, endpoint approximation & Already formalized & No change. \\
+\bottomrule
+\end{longtable}
+
+\section{Acceptance criteria}
+
+The planar extension should be considered complete only when all of the
+following hold.
+
+\begin{enumerate}[leftmargin=8mm]
+\item The local negative-weight theorem has no \lean{sorry} and is stated for
+      the project's actual \lean{M} and \lean{powerWeight}.
+\item The theorem handles every finite exponent $p>2$, not merely a compact
+      subrange or integer exponents.
+\item The constants are uniform over normalized slices $E_R\subset[1,2]$.
+\item The output \lean{MemLp} assertion is proved, not inferred informally from
+      a finite norm.
+\item The global full-radii theorem is derived through a checked globalization
+      lemma.
+\item The restricted-radii transfer is pointwise and does not use an equality
+      of supremum sets that fails at nonpositive radii.
+\item The $d=2$ closure theorem compiles with hypothesis \lean{2 <= d}.
+\item No endpoint theorem at $\alpha=-1$ is silently assumed.
+\item The final source tree contains no axioms or declarations that merely
+      restate the target estimate without proof.
+\end{enumerate}
+
+\section{Answer to the central question}
+
+The prior agent's diagnosis is mathematically correct, with one refinement.
+The exact direct missing claim is
+
+\[
+p>2,
+\qquad
+-1<\alpha<0,
+\qquad
+\M:L^p(\R^2,\abs{x}^{\alpha}\,dx)	o
+L^p(\R^2,\abs{x}^{\alpha}\,dx).
+\]
+
+The strictly minimal analytic claim is the corresponding unit-scale estimate
+for $\M_{[1,2]}$, because the FRS globalization lemma is already assumed
+formalized.  Both are contained in the planar specialization of
+Duoandikoetxea--Vega Theorem~10, whose full weight range is
+
+\[
+-1<\alpha<p-2.
+\]
+
+For a strict admissible point in the only uncovered branch, the FRS lower
+condition forces $\alpha>-1$, while $p>2$ and $\alpha<0$ force
+$\alpha<p-2$.  Therefore the new theorem applies exactly where needed.  All
+other arguments in the $d\geq3$ proof carry over without analytic changes.
+
+\appendix
+
+\section{Real-exponent variant of the Lean theorem}
+
+It may be easier to formalize the analytic theorem with $p:\R$ and convert to
+\lean{ENNReal.ofReal p} only at the API boundary.
+
+\begin{lstlisting}
+theorem eLpNorm_localCircularMaximal_powerWeight_le_ofReal
+    {p alpha : Real}
+    (hp : 2 < p) (halpha_lo : -1 < alpha) (halpha_hi : alpha < 0) :
+    exists C : Real, 0 < C and forall f : (Real^2) -> Complex,
+      MemLp f (ENNReal.ofReal p) (powerWeight 2 alpha) ->
+      MemLp (M (Icc (1 : Real) 2) f) (ENNReal.ofReal p)
+        (powerWeight 2 alpha) and
+      eLpNorm (M (Icc (1 : Real) 2) f) (ENNReal.ofReal p)
+          (powerWeight 2 alpha)
+        <= ENNReal.ofReal C *
+          eLpNorm f (ENNReal.ofReal p) (powerWeight 2 alpha) := by
+  sorry
+\end{lstlisting}
+
+Advantages are ordinary real arithmetic in the interpolation parameters and no
+separate \lean{p != top} hypothesis.  The disadvantage is one conversion step
+when the theorem is inserted into \lean{typeSet}, whose exponent is already
+\lean{ENNReal}.  Either interface is sound; the choice should follow the
+existing interpolation API.
+
+\section{Direct proof of the restricted transfer}
+
+Suppose the full theorem gives a constant $C>0$ and let
+$E\subset(0,\infty)$.  For every $x$,
+
+\[
+\sup_{t\in E}\abs{\A_t f(x)}
+\leq
+\sup_{t>0}\abs{\A_t f(x)}.
+\]
+
+After applying \lean{ENNReal.ofReal}, monotonicity remains valid.  Hence
+
+\[
+M(E,f,x)\leq M((0,\infty),f,x).
+\]
+
+If the right-hand side is in weighted $L^p$, the lattice property of $L^p$
+gives \lean{MemLp} for the left-hand side.  Norm monotonicity gives
+
+\[
+\operatorname{eLpNorm}(M(E,f))
+\leq
+\operatorname{eLpNorm}(M((0,\infty),f)).
+\]
+
+Combining with the full estimate proves the restricted estimate with exactly
+the same constant.  No property of the fractal set $E$ is used in this transfer.
+
+\section{Bibliography}
+
+{\small
+\setlength{\parskip}{0pt}
+\begin{thebibliography}{99}
+
+\bibitem{Bourgain1986}
+J. Bourgain,
+\emph{Averages in the plane over convex curves and maximal operators},
+J. Analyse Math. 47 (1986), 69--85.
+
+\bibitem{DV1996}
+J. Duoandikoetxea and L. Vega,
+\emph{Spherical means and weighted inequalities},
+J. London Math. Soc. (2) 53 (1996), no. 2, 343--353.
+DOI: 10.1112/jlms/53.2.343.
+
+\bibitem{DS2002}
+J. Duoandikoetxea and E. Seijo,
+\emph{Weighted inequalities for some spherical maximal operators},
+Illinois J. Math. 46 (2002), no. 4, 1299--1312.
+
+\bibitem{FRS2026}
+M. Fraccaroli, J. Roos, and A. Seeger,
+\emph{Power weight inequalities for spherical maximal functions},
+arXiv:2602.17613, 2026; published online in Math. Z.,
+DOI: 10.1007/s00209-026-04106-4.
+
+\bibitem{Lee2025}
+J. Lee,
+\emph{The critical weighted inequalities of the spherical maximal function},
+arXiv:2309.00068; J. Geom. Anal. 35 (2025), Paper No. 220.
+
+\bibitem{MSS1992}
+G. Mockenhaupt, A. Seeger, and C. Sogge,
+\emph{Wave front sets, local smoothing and Bourgain's circular maximal theorem},
+Ann. of Math. (2) 136 (1992), no. 1, 207--218.
+
+\bibitem{SteinWeiss1975}
+E. M. Stein and G. Weiss,
+\emph{Introduction to Fourier Analysis on Euclidean Spaces},
+Princeton University Press, 1975.
+
+\end{thebibliography}
+}
+
+\end{document}

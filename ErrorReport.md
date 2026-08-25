@@ -1663,3 +1663,138 @@ Direct compilation of the updated facade therefore passes the all-radii
 line but still fails exactly at the restricted, lacunary, and power-weight
 wrappers. Completing the requested `d ≥ 2` façade requires a separate
 formalization of those planar global/weighted results.
+
+---
+
+# Duoandikoetxea--Vega planar formalization
+
+Entries below belong to the new project specified by
+`blueprints/duoandikoetxea_vega_planar_blueprint.tex` and
+`Instructions.md`.  Entries above belong to the finished Bourgain/MSS project
+and are retained for reference.
+
+## 2026-08-25 01:43:42 -0400 -- initial blueprint adaptation audit
+
+### 1. Recommended file structure superseded
+
+The blueprint's "Recommended file structure" section proposes six files under
+`LeanSpherical/Codex/Spherical/PowerWeights/DuoVega/` plus a patch to
+`PowerWeightTheorem.lean`.  The user requires the whole project to live in the
+single file `LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean`, and
+requires `PowerWeightTheorem.lean` to be left untouched.  The blueprint's file
+split is therefore not followed.  The `d = 2` closure theorem is re-derived
+inside the project file instead of patching the existing `d >= 3` proof, which
+also keeps the previously verified `d >= 3` theorem free of the new
+placeholder.
+
+### 2. `M_j` is radius-relative, not absolute-frequency
+
+The blueprint's Phase B defines `P_j` by the absolute symbol
+`chi(2^-j * |xi|)` and works only on the unit radius interval `[1,2]`.  The
+repository's all-radius machinery is built on the *radius-relative* band
+`Codex.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal`,
+whose band index is measured against `r * xi`.  On the normalized slice
+`normalizedRadiusBlock E R`, which is contained in `[1,2]`, the two agree up to
+a bounded index shift, but only the relative form composes with the proved
+global reassembly.  The formalization therefore reads the blueprint's `M_j`
+as the relative band throughout.  This is a change of object, not of
+mathematics, and it is the reason Phase C is available for free.
+
+### 3. Phases G, H and I are consumed as a single proved package
+
+The blueprint separates the frequency summation (Phase G), the extension from
+Schwartz functions (Phase H), the globalization by "FRS Lemma 2.1" (Phase I),
+and, in section 3, an alternative route "using only the minimal local
+theorem".  In the repository these are already available as one theorem,
+`StrictNegativeEndpoint.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_buffered_raw_band_rate_and_unweighted`,
+which takes a localized weighted band rate on the ball of radius `1/32` with
+input supported in the annulus `1/4 <= |x| <= 8`, together with the unweighted
+global estimate, and returns the global weighted strong type.  Consequently
+the blueprint's Phases D, E and F are the only remaining work, and they are
+packaged in source as the single predicate `HasPlanarNegativeRawBandRate`.
+The blueprint's minimal-local route is not needed.
+
+### 4. Blueprint API signatures are incomplete
+
+* `memLp_restrictedSphericalMaximal_of_le` as displayed in the blueprint's
+  "Set-monotonicity helpers" has no measurability hypothesis.  The maximal
+  function of an arbitrary `f` is not known to be measurable, so the actual
+  Lean statement carries `Continuous f`.  The blueprint's own remark that the
+  lemmas "may follow from existing Mathlib monotonicity theorems once
+  measurability is supplied" is correct but the displayed signature omits it.
+* `neg_one_lt_alpha_of_planar_strict` as displayed uses
+  `legendreAssouadFunction E` and `legendreAssouadFunction_ge_self`.  The
+  repository states the strict admissibility condition with the multiplicative
+  `EReal` entropies and proves the required consequence in
+  `StrictParameterBounds.one_sub_dim_lt_alpha_of_strict_powerWeightEntropyImplicitCondition`,
+  which additionally needs `E.Nonempty` and `E` contained in the positive
+  radii.  Those hypotheses are missing from the blueprint's version.
+* The blueprint's listings write `p != top`; the Lean source uses `p != infty`
+  spelled as the `ENNReal` top element.  Its ASCII spellings are schematic, as
+  the blueprint itself notes.
+
+### 5. Phase A measurability motivation is redundant
+
+The blueprint states that the reduction to rational radii "gives measurability
+without a separate measurable-maximum theorem".  The repository already proves
+`RestrictedMaximal.measurable_restrictedNormalizedSphericalMaximal` for every
+continuous input, so measurability is not a reason for the reduction.  The
+reduction is still needed, for the linearization of the sublinear maximal
+operator by finite grids, and it is formalized for that purpose.
+
+### 6. The critical-weight estimate cannot be replaced by an improving estimate
+
+While adapting Phase D, the following was checked and should be recorded so
+that the route is not attempted again.  Applying Hoelder on dyadic spatial
+annuli inside the output ball reduces the weighted band estimate at
+`(p, a)` to an unweighted `L^p -> L^q` bound with `q > 2p / (2 + a)`, so with
+`q` arbitrarily close to `2p` as `a` approaches `-1`.  The radial focusing
+example -- input a thin annulus of width `rho` centred at the origin,
+normalized in `L^p` -- gives output norm of order `rho^(2/q - 1/p)`, so
+`q <= 2p` is sharp even in the separated configuration of the raw band rate.
+For `p` near `2` the required exponent lies outside Schlag's local circular
+`L^p`-improving region, and the Bernstein bound
+`norm(M_j f, L^inf) <= C * 2^(2j/p) * norm(f, L^p)` is too lossy to recover it
+by interpolation with the unweighted gain except for `a` close to `0`.  The
+blueprint's critical-weight estimate with an `eps` loss is therefore genuinely
+necessary.
+
+### 7. `d = 2` needs a new analytic input, confirming the blueprint
+
+The blueprint asserts that the negative planar branch with `p > 2` is the only
+missing case.  This was verified against the source.  The higher-dimensional
+route reduces a strictly admissible negative parameter with `p >= 2` to a
+subquadratic one through
+`HigherPParameters.exists_strict_powerWeightEntropyImplicitCondition_subtwo_of_neg`,
+whose proof uses `d - 1 >= 2` and fails for `d = 2`.  Moreover, for a radius
+set of full Minkowski exponent the planar critical exponent equals `2`, so
+there are no admissible subquadratic parameters at all and no interpolation
+between the existing unweighted and nonnegative-weight results reaches the
+missing region.  Only the exact point `p = 2` was previously reachable, via
+`StrictNegativeHigher.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_of_strict_negative_two_of_subquadratic`.
+
+### 8. The planar unweighted input is Seeger--Wainger--Wright, not Stein
+
+`Main.lean` obtains the unweighted input at exponents at least two from
+`GlobalUnweightedParameters.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_two_le`,
+which requires `3 <= d` because it applies the Stein bound at
+`d / (d - 1) < 2`.  In dimension two that inequality fails.  The project file
+replaces it by
+`hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_sww`,
+which derives the unweighted input at every exponent above the critical one
+from the repository's Seeger--Wainger--Wright theorem
+`FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le`, valid
+for `2 <= d`.  This also covers the planar exponent `2` itself, where the
+strict critical inequality forces the Minkowski exponent to be less than one.
+The blueprint does not mention this substitution; it is required.
+
+### 9. Recorded placeholder
+
+`Codex.PowerWeights.DuoandikoetxeaVega.exists_planarNegativeRawBandRate` is the
+only unproved declaration of the project.  Because
+`Spherical.PowerWeights.closure_typeSet_eq` was generalized to `2 <= d` as
+requested, that public theorem currently reports `sorryAx` in the axiom audit
+printed by `LeanSpherical.lean`.  All other public theorems still report only
+`propext`, `Classical.choice` and `Quot.sound`.  The previously verified
+`d >= 3` proof remains available and placeholder-free as
+`Codex.Spherical.PowerWeights.PowerWeightTheorem.closure_typeSet_eq`.
