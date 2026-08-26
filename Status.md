@@ -1,6 +1,6 @@
 # Duoandikoetxea--Vega planar formalization status
 
-Last updated: 2026-08-25 16:56:40 -0400
+Last updated: 2026-08-25 17:40:00 -0400
 
 **The formalization is complete.**  Both public targets in
 `LeanSpherical/Theorems.lean` are unconditional: `#print axioms` reports only
@@ -20,7 +20,11 @@ Status values:
 All declarations below live in
 `LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean`, namespace
 `Codex.PowerWeights.DuoandikoetxeaVega`, unless a fully qualified name is
-given.  Lean names are abbreviated to their final component.
+given.  The single exception is the closure theorem itself, which lives with
+the rest of the Fraccaroli--Roos--Seeger parameter theory in
+`LeanSpherical/Codex/Spherical/PowerWeights/PlanarClosure.lean`, namespace
+`Codex.Spherical.PowerWeights.PlanarClosure`.  Lean names are abbreviated to
+their final component.
 
 ## Public API
 
@@ -60,7 +64,7 @@ wrappers are not status items here.
 | The high-`p` negative branch lies below `p - 2` | `alpha_lt_p_sub_two` | Proof completed | 2026-08-25 01:43:42 -0400 |
 | `prop:high-p-branch` | `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_high_p_branch` | Proof completed | 2026-08-25 01:43:42 -0400 |
 | Proof using only the minimal local theorem | superseded: the all-radius reassembly of the repository is used instead | Proof completed | 2026-08-25 01:43:42 -0400 |
-| Passage to the closure | `power_weight_spherical_maximal_main_planar`, `closure_typeSet_eq` | Proof completed | 2026-08-25 01:43:42 -0400 |
+| Passage to the closure | `power_weight_spherical_maximal_main_planar`; `Codex.Spherical.PowerWeights.PlanarClosure.closure_typeSet_eq` | Proof completed | 2026-08-25 17:40:00 -0400 |
 
 ### 4. Source audit
 

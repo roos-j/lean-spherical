@@ -46,15 +46,30 @@ if the user asks.
 
 ## Required files and namespaces
 
-The whole formalization lives in **one** source file:
+The analytic formalization lives in **one** source file:
 
 * `LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean`, in namespace
   `Codex.PowerWeights.DuoandikoetxeaVega`.
 
-Do not create companion files for this project.  The blueprint's suggested
-`DuoVega/*.lean` split in its "Recommended file structure" section is
-explicitly superseded by this single-file requirement; record that deviation
-in `ErrorReport.md` rather than acting on it.
+Do not create further companion files for this project.  The blueprint's
+suggested `DuoVega/*.lean` split in its "Recommended file structure" section is
+explicitly superseded by this single-file requirement; record that deviation in
+`ErrorReport.md` rather than acting on it.
+
+One declaration is deliberately outside that file, at the user's request
+(2026-08-25 17:40:00 -0400): the closure theorem `closure_typeSet_eq` for
+`2 <= d`, which belongs with the rest of the Fraccaroli--Roos--Seeger parameter
+theory rather than with the planar analysis, and now lives in
+
+* `LeanSpherical/Codex/Spherical/PowerWeights/PlanarClosure.lean`, in namespace
+  `Codex.Spherical.PowerWeights.PlanarClosure`,
+
+together with the three private lemmas that transfer between the public type
+set and the internal normalized one.  That file imports the analytic file, so
+the dependency direction is analysis -> parameter theory -> public API; it
+cannot be merged back into
+`Codex/Spherical/PowerWeights/PowerWeightTheorem.lean` (which holds the `d >= 3`
+version) without creating an import cycle.
 
 `LeanSpherical/Theorems.lean` may contain only the two statement-level entries
 already present:
@@ -298,8 +313,9 @@ module build passes.  It contains, in blueprint order:
   critical one;
 * `prop:high-p-branch` and the planar strict-upper case split
   `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_of_strict_implicit`;
-* the planar main theorem `power_weight_spherical_maximal_main_planar` and the
-  `2 <= d` closure theorem `closure_typeSet_eq`.
+* the planar main theorem `power_weight_spherical_maximal_main_planar`; the
+  `2 <= d` closure theorem `closure_typeSet_eq` sits one level up, in
+  `Codex.Spherical.PowerWeights.PlanarClosure`.
 
 ## Key reusable interfaces
 
