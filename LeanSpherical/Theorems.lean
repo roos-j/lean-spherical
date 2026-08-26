@@ -8,6 +8,7 @@ import LeanSpherical.Definitions
 import LeanSpherical.Codex.Spherical.FractalDilations.DiagonalTheorem
 import LeanSpherical.Codex.Spherical.MSS
 import LeanSpherical.Codex.Spherical.PowerWeights.PowerWeightTheorem
+import LeanSpherical.Codex.PowerWeights.DuoandikoetxeaVega
 
 namespace Spherical
 
@@ -54,11 +55,23 @@ end RestrictedDilations
 
 namespace PowerWeights
 
-/-- Thm. 1.1 of arXiv:2602.17613 for `d ≥ 3`. -/
+/-- The planar negative-power circular maximal theorem: the negative-weight
+planar case of Thm. 10 of Duoandikoetxea-Vega, J. London Math. Soc. (2) 53
+(1996), 343-353. -/
+theorem eLpNorm_circularMaximal_powerWeight_le_of_neg {p : ENNReal} {α : ℝ}
+    (hp_top : p ≠ ∞) (hp : (2 : ENNReal) < p) (hα_lower : -1 < α) (hα_upper : α < 0) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f : (ℝ^2) → ℂ, MemLp f p (powerWeight 2 α) →
+      MemLp (M (Ioi (0 : ℝ)) f) p (powerWeight 2 α) ∧
+        eLpNorm (M (Ioi (0 : ℝ)) f) p (powerWeight 2 α) ≤
+          (ENNReal.ofReal C) * eLpNorm f p (powerWeight 2 α) :=
+  Codex.PowerWeights.DuoandikoetxeaVega.eLpNorm_circularMaximal_powerWeight_le_of_neg
+    hp_top hp hα_lower hα_upper
+
+/-- Thm. 1.1 of arXiv:2602.17613 for `d ≥ 2`. -/
 theorem closure_typeSet_eq
-    {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
     closure (typeSet d E) = admissibleRegion d E :=
-  Codex.Spherical.PowerWeights.PowerWeightTheorem.closure_typeSet_eq hd hE hEpos
+  Codex.PowerWeights.DuoandikoetxeaVega.closure_typeSet_eq hd hE hEpos
 
 end PowerWeights
 
