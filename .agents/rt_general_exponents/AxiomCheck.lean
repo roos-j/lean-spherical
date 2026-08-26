@@ -1,3 +1,3 @@
-import LeanSpherical.Codex.Spherical.RieszThorin
+import LeanSpherical.Auto.Spherical.RieszThorin
 
-#print axioms Codex.Spherical.RieszThorin.rieszThorin
+#print axioms Auto.Spherical.RieszThorin.rieszThorin

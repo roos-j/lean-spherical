@@ -8,7 +8,7 @@ The previous project (Bourgain's circular maximal theorem via
 Mockenhaupt--Seeger--Sogge) is finished.  Its public results
 `Spherical.eLpNorm_sphericalMaximal_le`,
 `Spherical.RestrictedDilations.eLpNorm_restrictedSphericalMaximal_le` and
-`Codex.Spherical.Bourgain.bourgainCircularMaximal` are proved and depend only
+`Auto.Spherical.Bourgain.bourgainCircularMaximal` are proved and depend only
 on the standard axioms.  Do not reopen it.
 
 ## Primary objective
@@ -33,7 +33,7 @@ Spherical.PowerWeights.closure_typeSet_eq
 ```
 
 There is no placeholder left in this project: the former
-`Codex.PowerWeights.DuoandikoetxeaVega.hasCriticalWeightBandBound` gap
+`Auto.PowerWeights.DuoandikoetxeaVega.hasCriticalWeightBandBound` gap
 (the blueprint's `prop:critical-loss` composed with Phase E) is now an
 unconditional theorem, proved through `dvCriticalWeightBandBound`.
 
@@ -48,8 +48,8 @@ if the user asks.
 
 The analytic formalization lives in **one** source file:
 
-* `LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean`, in namespace
-  `Codex.PowerWeights.DuoandikoetxeaVega`.
+* `LeanSpherical/Auto/PowerWeights/DuoandikoetxeaVega.lean`, in namespace
+  `Auto.PowerWeights.DuoandikoetxeaVega`.
 
 Do not create further companion files for this project.  The blueprint's
 suggested `DuoVega/*.lean` split in its "Recommended file structure" section is
@@ -61,14 +61,14 @@ One declaration is deliberately outside that file, at the user's request
 `2 <= d`, which belongs with the rest of the Fraccaroli--Roos--Seeger parameter
 theory rather than with the planar analysis, and now lives in
 
-* `LeanSpherical/Codex/Spherical/PowerWeights/PlanarClosure.lean`, in namespace
-  `Codex.Spherical.PowerWeights.PlanarClosure`,
+* `LeanSpherical/Auto/Spherical/PowerWeights/PlanarClosure.lean`, in namespace
+  `Auto.Spherical.PowerWeights.PlanarClosure`,
 
 together with the three private lemmas that transfer between the public type
 set and the internal normalized one.  That file imports the analytic file, so
 the dependency direction is analysis -> parameter theory -> public API; it
 cannot be merged back into
-`Codex/Spherical/PowerWeights/PowerWeightTheorem.lean` (which holds the `d >= 3`
+`Auto/Spherical/PowerWeights/PowerWeightTheorem.lean` (which holds the `d >= 3`
 version) without creating an import cycle.
 
 `LeanSpherical/Theorems.lean` may contain only the two statement-level entries
@@ -77,7 +77,7 @@ already present:
 * `Spherical.PowerWeights.eLpNorm_circularMaximal_powerWeight_le_of_neg`
 * `Spherical.PowerWeights.closure_typeSet_eq` under `2 <= d`
 
-Both must remain one-line references to declarations in the `Codex` tree.  No
+Both must remain one-line references to declarations in the `Auto` tree.  No
 proof text belongs in `Theorems.lean`, and no other change to that file is
 authorized.
 
@@ -87,7 +87,7 @@ Documentation files are also required and permitted:
 * `ErrorReport.md`
 * this handoff file, `Instructions.md`.
 
-All new Lean declarations must live under a `Codex` namespace matching their
+All new Lean declarations must live under an `Auto` namespace matching their
 file path.  Auxiliary declarations that are not blueprint items should use the
 `aux_` prefix; the elementary reusable facts (set monotonicity, the dense
 radius reduction, the `MemLp` lift) need not.
@@ -151,8 +151,8 @@ public targets, so these rules only apply to future extensions.
   4. summing the shells produces the logarithmic loss, exactly as in the
      source;
   5. Phase E is real interpolation between the resulting `L^2(|x|^{-1})` bound
-     and the trivial `L^inf` bound.  Use `Codex.riesz_thorin` from
-     `LeanSpherical/Codex/SteinInterpolation.lean` on the operator linearized
+     and the trivial `L^inf` bound.  Use `Auto.riesz_thorin` from
+     `LeanSpherical/Auto/SteinInterpolation.lean` on the operator linearized
      by a measurable radius selector (its endpoints may be `infinity`), or
      Marcinkiewicz for the sublinear operator; in the latter case the operator
      must first be presented as convolution with the Schwartz kernel of the
@@ -183,7 +183,7 @@ crude bound `dvCrudeL2Core`, whose constant grows like `2^j`.
 Phase E is Riesz--Thorin interpolation, `dvCriticalWeightBandBound`.  The
 operator is linearized as `dvT` -- a finite sum of indicator-localized band
 averages `dvOp` -- with the tie-broken maximizing selection sets `dvSel`, and
-`Codex.riesz_thorin` is applied with Lebesgue measure on the input side and
+`Auto.riesz_thorin` is applied with Lebesgue measure on the input side and
 `dvNu = (|x|^{-1} dx)|_{B(0,1/32)}` on the output side, `p_0 = q_0 = 2`,
 `p_1 = q_1 = infinity`.  The `L^inf` endpoint is elementary
 (`dvT_eLpNorm_top`, from the uniform kernel `L^1` size `dvPsiL1`); the `L^2`
@@ -216,7 +216,7 @@ convergence (`dvMaximal_set_lp`).
 * The final theorem must use only standard Lean/Mathlib axioms.  Never add a
   new `sorry`, `admit` or `axiom`, and never introduce a second placeholder.
   Do not use
-  `LeanSpherical/Codex/Spherical/FractalDilations/ProofSkeleton.lean`, which
+  `LeanSpherical/Auto/Spherical/FractalDilations/ProofSkeleton.lean`, which
   contains an admitted theorem and is not imported by `LeanSpherical.Theorems`.
 * Do not merely state a desired theorem as a `Prop` and mark it proved.
 
@@ -246,7 +246,7 @@ Always compile source files, rather than relying on old `.olean` artifacts.
 On this Windows workspace the normal commands are:
 
 ```powershell
-lake env lean -o .lake\build\lib\lean\LeanSpherical\Codex\PowerWeights\DuoandikoetxeaVega.olean LeanSpherical\Codex\PowerWeights\DuoandikoetxeaVega.lean
+lake env lean -o .lake\build\lib\lean\LeanSpherical\Auto\PowerWeights\DuoandikoetxeaVega.olean LeanSpherical\Auto\PowerWeights\DuoandikoetxeaVega.lean
 lake env lean LeanSpherical\Theorems.lean
 lake build LeanSpherical
 ```
@@ -275,7 +275,7 @@ repository for `sorry`, `admit` and `axiom`: the expected count outside
 
 ## Current verified state
 
-`LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean` compiles and its
+`LeanSpherical/Auto/PowerWeights/DuoandikoetxeaVega.lean` compiles and its
 module build passes.  It contains, in blueprint order:
 
 * the radius-set monotonicity layer for the public `ENNReal`-valued maximal
@@ -291,7 +291,7 @@ module build passes.  It contains, in blueprint order:
   `neg_one_lt_alpha_of_planar_strict` and `alpha_lt_p_sub_two`, together with
   the Phase F exponent choice `exists_pos_interpolated_gain`;
 * Phase C: `exists_relativeCircularBandGeometricDecay`, the unconditional
-  unweighted relative-band gain inherited from `Codex.Spherical.Bourgain`;
+  unweighted relative-band gain inherited from `Auto.Spherical.Bourgain`;
 * the packaged Phase D--F predicate `HasPlanarNegativeRawBandRate`, now proved
   through `hasPlanarNegativeRawBandRate_of_criticalWeight`;
 * the Schwartz-core estimate
@@ -315,29 +315,29 @@ module build passes.  It contains, in blueprint order:
   `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_of_strict_implicit`;
 * the planar main theorem `power_weight_spherical_maximal_main_planar`; the
   `2 <= d` closure theorem `closure_typeSet_eq` sits one level up, in
-  `Codex.Spherical.PowerWeights.PlanarClosure`.
+  `Auto.Spherical.PowerWeights.PlanarClosure`.
 
 ## Key reusable interfaces
 
 * `Spherical.sphericalAverage`, `Spherical.M`,
   `Spherical.PowerWeights.powerWeight` and `Spherical.PowerWeights.typeSet`
   are the public objects.
-* `Codex.Spherical.PowerWeights.PowerWeightTheorem.restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal`
+* `Auto.Spherical.PowerWeights.PowerWeightTheorem.restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal`
   bridges the public and internal maximal functions.
-* `Codex.Spherical.PowerWeights.RawLpLift.memLp_restrictedSphericalMaximal_of_memLp_of_schwartz_bound`
+* `Auto.Spherical.PowerWeights.RawLpLift.memLp_restrictedSphericalMaximal_of_memLp_of_schwartz_bound`
   lifts a finite-exponent Schwartz core to arbitrary `MemLp` input.
-* `Codex.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal`
+* `Auto.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal`
   is the literal radius-relative Littlewood--Paley band of the circular means;
   the blueprint's `M_j` should always be read as this operator.
-* `Codex.Spherical.PowerWeights.LocalBlocks.normalizedRadiusBlock E R` is the
+* `Auto.Spherical.PowerWeights.LocalBlocks.normalizedRadiusBlock E R` is the
   blueprint's normalized slice contained in `[1,2]`.
-* `Codex.Spherical.PowerWeights.AnnularWeight.euclideanAnnulus` and
-  `Codex.Spherical.PowerWeights.Entropy.dyadicMultiplicativeScale` supply the
+* `Auto.Spherical.PowerWeights.AnnularWeight.euclideanAnnulus` and
+  `Auto.Spherical.PowerWeights.Entropy.dyadicMultiplicativeScale` supply the
   spatial annuli and the factor `2^-j` of the raw band rate.
-* `Codex.Spherical.Bourgain.HasRelativeCircularBandGeometricDecay` is the
-  frequency-localized unweighted gain; `Codex.Spherical.MSS` supplies the
+* `Auto.Spherical.Bourgain.HasRelativeCircularBandGeometricDecay` is the
+  frequency-localized unweighted gain; `Auto.Spherical.MSS` supplies the
   underlying `p = 4` local smoothing.
-* `Codex.Spherical.RieszThorin` and `Codex.Spherical.InterpolationCore` are
+* `Auto.Spherical.RieszThorin` and `Auto.Spherical.InterpolationCore` are
   the available interpolation machinery.  There is **no** Stein--Weiss
   change-of-measure theorem in the repository yet; it must be proved as part
   of Phase F, and it should be stated as a reusable result rather than inlined.
@@ -392,7 +392,7 @@ The route actually taken, in the order it was landed:
 2. Phase E, the fixed-exponent interpolation `dvCriticalWeightBandBound`:
    linearize by a measurable radius selection (`dvT`, `dvSel`), present the
    band average as a convolution (`dvOp`, `dvKerS`), interpolate with
-   `Codex.riesz_thorin` between `L^2(dx) -> L^2(|x|^{-1} dx|_{B(0,1/32)})` and
+   `Auto.riesz_thorin` between `L^2(dx) -> L^2(|x|^{-1} dx|_{B(0,1/32)})` and
    `L^inf -> L^inf`, transport across the two density steps, and pass from the
    dyadic finite radius sets to an arbitrary radius set by monotone
    convergence.  The small indices `j <= 2` use `dvCrudeL2Core`.

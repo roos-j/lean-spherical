@@ -1,4 +1,4 @@
-import LeanSpherical.Codex.Spherical.RieszThorin
+import LeanSpherical.Auto.Spherical.RieszThorin
 import Mathlib.MeasureTheory.Function.Holder
 import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
 

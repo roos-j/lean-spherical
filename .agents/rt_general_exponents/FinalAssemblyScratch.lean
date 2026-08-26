@@ -1,11 +1,11 @@
-import LeanSpherical.Codex.Spherical.RieszThorin
+import LeanSpherical.Auto.Spherical.RieszThorin
 
 noncomputable section
 
 open scoped ENNReal MeasureTheory
 open MeasureTheory
 
-namespace Codex.Spherical.RieszThorin.Scratch
+namespace Auto.Spherical.RieszThorin.Scratch
 
 /-- Direct endpoint-only diagonal Riesz--Thorin assembly: the homogeneous
 finite-simple core is completed through the finite-exponent `Lp` density
@@ -45,4 +45,4 @@ theorem diagonal_rieszThorin_extension
       (P₀ := P₀) (P₁ := P₁) (P₀star := P₀star) (P₁star := P₁star)
       T hA₀ hA₁ hTmeas hT₀ hT₁ hp hθ hmidInput f hf
 
-end Codex.Spherical.RieszThorin.Scratch
+end Auto.Spherical.RieszThorin.Scratch

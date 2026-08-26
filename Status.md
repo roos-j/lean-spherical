@@ -8,7 +8,7 @@ Last updated: 2026-08-25 17:40:00 -0400
 `Spherical.PowerWeights.eLpNorm_circularMaximal_powerWeight_le_of_neg` and for
 `Spherical.PowerWeights.closure_typeSet_eq`, and the project contains no
 `sorry` outside the unrelated orphan module
-`Codex/Spherical/FractalDilations/ProofSkeleton.lean` (which is not in the
+`Auto/Spherical/FractalDilations/ProofSkeleton.lean` (which is not in the
 import closure of `LeanSpherical.lean`).
 
 Status values:
@@ -18,12 +18,12 @@ Status values:
 * `ToDo` -- not formalized (not needed for the two public targets).
 
 All declarations below live in
-`LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean`, namespace
-`Codex.PowerWeights.DuoandikoetxeaVega`, unless a fully qualified name is
+`LeanSpherical/Auto/PowerWeights/DuoandikoetxeaVega.lean`, namespace
+`Auto.PowerWeights.DuoandikoetxeaVega`, unless a fully qualified name is
 given.  The single exception is the closure theorem itself, which lives with
 the rest of the Fraccaroli--Roos--Seeger parameter theory in
-`LeanSpherical/Codex/Spherical/PowerWeights/PlanarClosure.lean`, namespace
-`Codex.Spherical.PowerWeights.PlanarClosure`.  Lean names are abbreviated to
+`LeanSpherical/Auto/Spherical/PowerWeights/PlanarClosure.lean`, namespace
+`Auto.Spherical.PowerWeights.PlanarClosure`.  Lean names are abbreviated to
 their final component.
 
 ## Public API
@@ -54,7 +54,7 @@ wrappers are not status items here.
 | Blueprint item | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
 | Reflection invariance of normalized sphere measure | not needed: the project convention is already `x + t * omega` | Proof completed | 2026-08-25 01:43:42 -0400 |
-| `ENNReal`-valued maximal-function adapter | `Codex.Spherical.PowerWeights.PowerWeightTheorem.restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal` | Proof completed | 2026-08-25 01:43:42 -0400 |
+| `ENNReal`-valued maximal-function adapter | `Auto.Spherical.PowerWeights.PowerWeightTheorem.restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal` | Proof completed | 2026-08-25 01:43:42 -0400 |
 
 ### 3. The complete `d = 2` reduction
 
@@ -64,7 +64,7 @@ wrappers are not status items here.
 | The high-`p` negative branch lies below `p - 2` | `alpha_lt_p_sub_two` | Proof completed | 2026-08-25 01:43:42 -0400 |
 | `prop:high-p-branch` | `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_high_p_branch` | Proof completed | 2026-08-25 01:43:42 -0400 |
 | Proof using only the minimal local theorem | superseded: the all-radius reassembly of the repository is used instead | Proof completed | 2026-08-25 01:43:42 -0400 |
-| Passage to the closure | `power_weight_spherical_maximal_main_planar`; `Codex.Spherical.PowerWeights.PlanarClosure.closure_typeSet_eq` | Proof completed | 2026-08-25 17:40:00 -0400 |
+| Passage to the closure | `power_weight_spherical_maximal_main_planar`; `Auto.Spherical.PowerWeights.PlanarClosure.closure_typeSet_eq` | Proof completed | 2026-08-25 17:40:00 -0400 |
 
 ### 4. Source audit
 
@@ -84,9 +84,9 @@ reconstruction note require no formalization.
 
 | Blueprint item | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| Frequency projections `P_j`, `T_j`, `M_j` | `Codex.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal` | Proof completed | 2026-08-25 01:43:42 -0400 |
-| Reconstruction inequality | `Codex.Spherical.PowerWeights.GlobalRelativeReassembly` and the buffered raw-band assembly | Proof completed | 2026-08-25 01:43:42 -0400 |
-| Low frequencies | `Codex.Spherical.PowerWeights.CentralLowpass` / `BufferedCentralLowpass` | Proof completed | 2026-08-25 01:43:42 -0400 |
+| Frequency projections `P_j`, `T_j`, `M_j` | `Auto.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal` | Proof completed | 2026-08-25 01:43:42 -0400 |
+| Reconstruction inequality | `Auto.Spherical.PowerWeights.GlobalRelativeReassembly` and the buffered raw-band assembly | Proof completed | 2026-08-25 01:43:42 -0400 |
+| Low frequencies | `Auto.Spherical.PowerWeights.CentralLowpass` / `BufferedCentralLowpass` | Proof completed | 2026-08-25 01:43:42 -0400 |
 
 #### 5.3 Phase C: unweighted frequency gain
 
@@ -134,7 +134,7 @@ the interpolated bound is exactly `prop:critical-loss` with loss `(j+1)^2`.
 | The `L^inf` endpoint | `norm_sphericalAverage_le`, `norm_convolution_le_of_ae_bound`, `dvOp_sup_bound`, `dvT_eLpNorm_top` | Proof completed | 2026-08-25 16:56:40 -0400 |
 | The `L^2` endpoint on the Schwartz core | `dvNu`, `dvNu_lintegral`, `dvT_l2_schwartz` | Proof completed | 2026-08-25 16:56:40 -0400 |
 | Density: `L^2` endpoint for all `L^2` inputs | `enorm_convolution_le_l2`, `dvT_sub_bound`, `dvT_l2_general` | Proof completed | 2026-08-25 16:56:40 -0400 |
-| Fixed-exponent interpolation with the `L^inf` bound | `dvT_lp_simple` (via `Codex.riesz_thorin`) | Proof completed | 2026-08-25 16:56:40 -0400 |
+| Fixed-exponent interpolation with the `L^inf` bound | `dvT_lp_simple` (via `Auto.riesz_thorin`) | Proof completed | 2026-08-25 16:56:40 -0400 |
 | Density: back from simple functions to Schwartz data | `dvT_lp_schwartz` | Proof completed | 2026-08-25 16:56:40 -0400 |
 | Finite-radius weighted `L^p` band estimate | `dvMaximal_finset_lp` | Proof completed | 2026-08-25 16:56:40 -0400 |
 | Reduction of an arbitrary radius set to finite ones | `dvR`, `dvApprox`, `continuousAt_dvSlice`, `dvMaximal_Icc_le_iSup`, `dvMaximal_set_lp` | Proof completed | 2026-08-25 16:56:40 -0400 |
@@ -155,7 +155,7 @@ the interpolated bound is exactly `prop:critical-loss` with loss `(j+1)^2`.
 
 | Blueprint item | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
-| Geometric frequency summation | `Codex.Spherical.PowerWeights.StrictNegativeEndpoint.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_buffered_raw_band_rate_and_unweighted` | Proof completed | 2026-08-25 07:56:33 -0400 |
+| Geometric frequency summation | `Auto.Spherical.PowerWeights.StrictNegativeEndpoint.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_buffered_raw_band_rate_and_unweighted` | Proof completed | 2026-08-25 07:56:33 -0400 |
 | Unweighted endpoint in `lintegral` form | `lintegral_rpow_band_le_of_geometricDecay` | Proof completed | 2026-08-25 07:56:33 -0400 |
 | Input-side weight comparison on the annulus | `lintegral_rpow_norm_le_powerWeighted_of_annulus_support` | Proof completed | 2026-08-25 07:56:33 -0400 |
 | Radius-set monotonicity of the literal band | `restrictedRelativeBandpassSphericalMaximal_mono` | Proof completed | 2026-08-25 07:56:33 -0400 |
@@ -177,7 +177,7 @@ the interpolated bound is exactly `prop:critical-loss` with loss `(j+1)^2`.
 | Blueprint item | Lean declaration / interface | Status | Last reviewed |
 | --- | --- | --- | --- |
 | Linearization by finite rational grids | `restrictedSphericalMaximal_eq_of_subset_closure`, `restrictedSphericalMaximal_iUnion` | Proof completed | 2026-08-25 01:43:42 -0400 |
-| Fixed-measure interpolation `L^2 -> L^p` at the weight `|x|^-1` | `dvT_lp_simple`, `dvMaximal_finset_lp` (Riesz--Thorin with two measures, from `LeanSpherical/Codex/SteinInterpolation.lean`) | Proof completed | 2026-08-25 16:56:40 -0400 |
+| Fixed-measure interpolation `L^2 -> L^p` at the weight `|x|^-1` | `dvT_lp_simple`, `dvMaximal_finset_lp` (Riesz--Thorin with two measures, from `LeanSpherical/Auto/SteinInterpolation.lean`) | Proof completed | 2026-08-25 16:56:40 -0400 |
 | Stein--Weiss interpolation with change of measure | not needed: the two-measure Riesz--Thorin theorem plus one Hoelder step replaces it | Proof completed | 2026-08-25 16:56:40 -0400 |
 
 ### 7. Proposed Lean API
@@ -210,10 +210,10 @@ assumed, and the reduction relies on them.
 
 | Input | Lean declaration | Status |
 | --- | --- | --- |
-| Bourgain's planar circular maximal theorem | `Codex.Spherical.Bourgain.bourgainCircularMaximal` | Proof completed |
+| Bourgain's planar circular maximal theorem | `Auto.Spherical.Bourgain.bourgainCircularMaximal` | Proof completed |
 | Seeger--Wainger--Wright restricted theorem | `Spherical.RestrictedDilations.eLpNorm_restrictedSphericalMaximal_le` | Proof completed |
 | Planar unweighted input above the critical exponent | `hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_sww` | Proof completed |
-| FRS necessity, convexity and closure theory | `Codex.Spherical.PowerWeights.Assembly`, `NecessaryAssembly`, `ParameterClosure` | Proof completed |
-| FRS nonnegative-weight branch | `Codex.Spherical.PowerWeights.StrictPositive` | Proof completed |
-| FRS negative subquadratic branch | `Codex.Spherical.PowerWeights.StrictNegativeEndpoint` | Proof completed |
-| Planar negative branch at `p = 2` | `Codex.Spherical.PowerWeights.StrictNegativeHigher` | Proof completed |
+| FRS necessity, convexity and closure theory | `Auto.Spherical.PowerWeights.Assembly`, `NecessaryAssembly`, `ParameterClosure` | Proof completed |
+| FRS nonnegative-weight branch | `Auto.Spherical.PowerWeights.StrictPositive` | Proof completed |
+| FRS negative subquadratic branch | `Auto.Spherical.PowerWeights.StrictNegativeEndpoint` | Proof completed |
+| Planar negative branch at `p = 2` | `Auto.Spherical.PowerWeights.StrictNegativeHigher` | Proof completed |

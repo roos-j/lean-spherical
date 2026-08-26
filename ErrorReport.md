@@ -1365,7 +1365,7 @@ proof needs generic natural-scale product/Leibniz and residual-phase estimates
 for the actual `cube.cutoff * spatialProfile` symbol.  Thus the new bridge is
 not a replacement for nonstationary phase; it precisely identifies the
 remaining argument.  The updated `MSS` source and the full
-`LeanSpherical.Codex.Spherical.MSS` module build both compile without
+`LeanSpherical.Auto.Spherical.MSS` module build both compile without
 `sorry`, `admit`, or added axioms.
 
 ## 2026-08-23 22:29:39 -04:00
@@ -1574,7 +1574,7 @@ the now-proved fine square-function estimate.
 ## 2026-08-24 06:40:01 -04:00
 
 The corrected structured interface is now proved by
-`Codex.Spherical.MSS.mssRecombination_of_structuredData`.  It proves
+`Auto.Spherical.MSS.mssRecombination_of_structuredData`.  It proves
 `mssRecombination` from the fixed cutoff core, the scale-indexed angular
 partition, the admissible gamma-family of wave-front realizations, and the
 declared uniform/slab data.  The proof uses the exact angularized
@@ -1592,7 +1592,7 @@ interface; the separate `thm:mss-p4` statement remains unfinished.
 
 ## 2026-08-24 13:41:49 -04:00
 
-`Codex.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs` is now source-compiled
+`Auto.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs` is now source-compiled
 and module-built.  For every `C : lpCutoffs 2`, it proves the existing target
 predicate `p4LocalSmoothing C.cutoff`: the positive half-wave is reconstructed
 from the finite coarse conic atlas, and the negative half-wave is transported
@@ -1607,7 +1607,7 @@ theorems; those labels require their own verified downstream declarations.
 ## 2026-08-24 13:48:00 -04:00
 
 The verified endpoint now has the public all-exponent consumer
-`Codex.Spherical.MSS.localSmoothing_of_lpCutoffs`.  For every
+`Auto.Spherical.MSS.localSmoothing_of_lpCutoffs`.  For every
 `C : lpCutoffs 2`, `2 < p`, and `0 < eta`, it applies the existing proved
 endpoint interpolation theorem to `p4LocalSmoothing_of_lpCutoffs C` and
 concludes `localSmoothing C.cutoff p eta`.
@@ -1622,11 +1622,11 @@ about the separately formulated discrete theorem is made here.
 ## 2026-08-24 13:57:41 -04:00
 
 The remaining continuous chain is now closed unconditionally.  The new
-`Codex.Spherical.Bourgain.bourgainCircularMaximal` chooses a dimension-two
+`Auto.Spherical.Bourgain.bourgainCircularMaximal` chooses a dimension-two
 `lpCutoffs` witness from `exists_lpCutoffs` and applies
 `p4LocalSmoothing_of_lpCutoffs`; it proves the circular maximal
 Schwartz-core bound for every finite exponent greater than two.  The new
-`Codex.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le_of_mss`
+`Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le_of_mss`
 uses that closure to supply the all-radii diagonal estimate for every
 dimension at least two, and the public facade
 `Spherical.eLpNorm_sphericalMaximal_le_of_mss` exposes it without changing
@@ -1678,9 +1678,9 @@ and are retained for reference.
 ### 1. Recommended file structure superseded
 
 The blueprint's "Recommended file structure" section proposes six files under
-`LeanSpherical/Codex/Spherical/PowerWeights/DuoVega/` plus a patch to
+`LeanSpherical/Auto/Spherical/PowerWeights/DuoVega/` plus a patch to
 `PowerWeightTheorem.lean`.  The user requires the whole project to live in the
-single file `LeanSpherical/Codex/PowerWeights/DuoandikoetxeaVega.lean`, and
+single file `LeanSpherical/Auto/PowerWeights/DuoandikoetxeaVega.lean`, and
 requires `PowerWeightTheorem.lean` to be left untouched.  The blueprint's file
 split is therefore not followed.  The `d = 2` closure theorem is re-derived
 inside the project file instead of patching the existing `d >= 3` proof, which
@@ -1692,7 +1692,7 @@ placeholder.
 The blueprint's Phase B defines `P_j` by the absolute symbol
 `chi(2^-j * |xi|)` and works only on the unit radius interval `[1,2]`.  The
 repository's all-radius machinery is built on the *radius-relative* band
-`Codex.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal`,
+`Auto.Spherical.PowerWeights.LocalizedUpper.restrictedRelativeBandpassSphericalMaximal`,
 whose band index is measured against `r * xi`.  On the normalized slice
 `normalizedRadiusBlock E R`, which is contained in `[1,2]`, the two agree up to
 a bounded index shift, but only the relative form composes with the proved
@@ -1790,14 +1790,14 @@ The blueprint does not mention this substitution; it is required.
 
 ### 9. Recorded placeholder
 
-`Codex.PowerWeights.DuoandikoetxeaVega.exists_planarNegativeRawBandRate` is the
+`Auto.PowerWeights.DuoandikoetxeaVega.exists_planarNegativeRawBandRate` is the
 only unproved declaration of the project.  Because
 `Spherical.PowerWeights.closure_typeSet_eq` was generalized to `2 <= d` as
 requested, that public theorem currently reports `sorryAx` in the axiom audit
 printed by `LeanSpherical.lean`.  All other public theorems still report only
 `propext`, `Classical.choice` and `Quot.sound`.  The previously verified
 `d >= 3` proof remains available and placeholder-free as
-`Codex.Spherical.PowerWeights.PowerWeightTheorem.closure_typeSet_eq`.
+`Auto.Spherical.PowerWeights.PowerWeightTheorem.closure_typeSet_eq`.
 
 ## 2026-08-25 07:56:33 -0400 -- Phase F does not need Stein--Weiss, and a sharper route for Phase D
 
@@ -1913,7 +1913,7 @@ asks for the wrong one.
      presented as convolution with the Schwartz kernel of the multiplier
      first (`SmoothDyadicPhysicalCore.fourierInv_schwartz_multiplier_eq_convolution`).
   2. Riesz--Thorin on the operator linearized by a measurable radius
-     selector.  `Codex.riesz_thorin` in `LeanSpherical/Codex/SteinInterpolation.lean`
+     selector.  `Auto.riesz_thorin` in `LeanSpherical/Auto/SteinInterpolation.lean`
      (supplied by the user, repaired on 2026-08-25) proves exactly this for
      operators on integrable simple functions, and it admits the endpoints
      `p1 = q1 = infinity`.  For a *fixed* measurable selector the operator is
@@ -1930,7 +1930,7 @@ Three files outside the `LeanSpherical.Theorems` import closure had decayed
 and were repaired, because the planar outgoing/incoming/middle normal form
 depends on them.
 
-* `LeanSpherical/Codex/SteinInterpolation.lean`: one occurrence of the
+* `LeanSpherical/Auto/SteinInterpolation.lean`: one occurrence of the
   removed lemma `mul_le_mul_left'`, replaced by `mul_le_mul'`.  The file
   otherwise compiles unchanged on Lean 4.33.0-rc1, including its module-system
   header.
@@ -1993,7 +1993,7 @@ all of them fail; the entry records why, because each looks plausible.
    every iterated derivative -- an induction with the chain rule that is more
    work than the interpolation itself.
 
-The route that works is Riesz--Thorin (`Codex.riesz_thorin`) on the linearized
+The route that works is Riesz--Thorin (`Auto.riesz_thorin`) on the linearized
 operator, with **different measures on the two sides**: Lebesgue measure on the
 input and `|x|^{-1} dx` restricted to the output ball `B(0,1/32)` on the output.
 That is what makes the interpolated constant a polynomial in `j`: the two
@@ -2004,7 +2004,7 @@ Stein--Weiss theorem (compare entry 13).
 
 Two further deviations from the blueprint were forced by the same step.
 
-* `Codex.riesz_thorin` acts on `SimpleFunc` inputs, while Phase D is proved for
+* `Auto.riesz_thorin` acts on `SimpleFunc` inputs, while Phase D is proved for
   Schwartz inputs, so two density arguments are unavoidable.  Both are done by
   hand: `dvT_l2_general` (Schwartz -> `L^2` inputs, via
   `MemLp.exist_eLpNorm_sub_le`, Cauchy--Schwarz for the convolution and Fatou)
@@ -2058,3 +2058,62 @@ are used throughout and are worth knowing before editing:
 Also: `Summable.sum_add_tsum_nat_add` for `ENNReal` times out while merely
 elaborating its statement in this context, so the shell summation is a finite
 `Finset.range (j+1)` sum plus a separately estimated small-ball term.
+
+### 20. Two Riesz--Thorin developments; the unused one removed (2026-08-25 18:20:00 -0400)
+
+The repository contained two independent Riesz--Thorin developments:
+
+* `Auto/SteinInterpolation.lean`, whose `Auto.riesz_thorin` is the general
+  two-measure statement on integrable simple functions (obtained from Stein
+  interpolation with a constant analytic family), and
+* `Auto/Spherical/RieszThorin.lean` (5895 lines), a self-contained
+  Hadamard three-lines development with its own analytic-family datum
+  (`RieszThorinAnalyticDatum`, `rieszThorin_of_analyticDatum`,
+  `rieszThorin_q_top`, `rieszThorin_two_top_four`, ...).
+
+The second development is the one described in the dated entries of
+2026-08-13 above; those entries are kept as the historical record of why it was
+built, but the file itself is gone.
+
+An audit showed that **no interpolation statement of the second file was used
+anywhere**: the only cross-file consumers referenced 9 auxiliary `Lp` lemmas,
+whose transitive closure inside the file is 27 declarations (~430 lines).
+Those are elementary duality/pairing facts, not interpolation: the
+`p`-conjugate raw dual test function `pRawDualTest` and its norm, membership
+and pairing identities, `enorm_integral_mul_le_eLpNorm_p_pconj_mul`,
+`lpNorm_le_of_simple_test_pairing_bound`, `memLp_of_power_interpolation` (the
+`MemLp` interpolation of exponents, a Hölder argument), and two `L^4` operator
+log-convexity corollaries.
+
+They were moved verbatim into `Auto/Spherical/LpSpaceFacts.lean`, whose stated
+purpose is exactly "elementary function-space facts which do not depend on an
+operator interpolation argument", and `RieszThorin.lean` was deleted.  Only
+three import lines and four `open` lines needed adjusting
+(`MikhlinHormander`, `MSSBase`, `MSSKakeya`, `Bourgain`), plus
+`InterpolationTail` had to be imported directly where it had been arriving
+transitively through the deleted file.  Nothing in `LeanSpherical/Theorems.lean`
+changed, and no proof needed repair.
+
+The lesson for future work: `Auto.riesz_thorin` in
+`Auto/SteinInterpolation.lean` is the project's single interpolation theorem.
+It interpolates between two *different* measures, which is what the
+Duoandikoetxea--Vega Phase E needs (entry 16); do not start a third
+development.
+
+### 21. The `Codex` subtree was renamed to `Auto` (2026-08-25 18:20:00 -0400)
+
+At the user's request the machine-generated subtree
+`LeanSpherical/Codex/` became `LeanSpherical/Auto/`, and every namespace
+`Codex.*` became `Auto.*` (including the bare `namespace Codex` of
+`SteinInterpolation.lean`, so `Codex.riesz_thorin` is now `Auto.riesz_thorin`).
+478 files were rewritten mechanically.
+
+Two classes of occurrence were deliberately **not** renamed, because they name
+the coding agent rather than the namespace:
+
+* the 462 file headers `/- This file was machine-generated by Codex -/`;
+* the model names in `README.md` (`Codex/gpt-5.6-terra-ultra`) and the
+  historical phrase "an unproved Codex adapter" in entry 12 above.
+
+The rename invalidates every `.olean`, so it forces one full rebuild of the
+project; there is no way to avoid that when module names change.

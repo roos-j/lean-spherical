@@ -1,4 +1,4 @@
-import LeanSpherical.Codex.Spherical.RieszThorin
+import LeanSpherical.Auto.Spherical.RieszThorin
 import Mathlib.MeasureTheory.Function.Holder
 import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
 
@@ -6,7 +6,7 @@ namespace ScratchHomogeneous
 
 open MeasureTheory ENNReal
 open scoped ENNReal
-open Codex.Spherical.RieszThorin
+open Auto.Spherical.RieszThorin
 
 theorem finiteSimpleRieszThorin_diagonal_eLpNorm_homogeneous
     {α β E : Type*} [MeasurableSpace α] [MeasurableSpace β]

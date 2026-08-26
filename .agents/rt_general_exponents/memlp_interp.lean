@@ -1,4 +1,4 @@
-import LeanSpherical.Codex.Spherical.RieszThorin
+import LeanSpherical.Auto.Spherical.RieszThorin
 import Mathlib.MeasureTheory.Function.Holder
 import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
 
@@ -52,7 +52,7 @@ namespace ScratchInterpolation
 
 open MeasureTheory ENNReal
 open scoped ENNReal
-open Codex.Spherical.RieszThorin
+open Auto.Spherical.RieszThorin
 
 theorem reciprocal_power_interpolation_identity
     {P₀ P₁ P₀star P₁star : ENNReal}
