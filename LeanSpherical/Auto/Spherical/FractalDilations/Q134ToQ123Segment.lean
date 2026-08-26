@@ -29,6 +29,8 @@ with all three Minkowski barycentric weights positive.
 
 namespace Auto.Spherical.FractalDilations.Q134ToQ123Segment
 
+set_option maxHeartbeats 1000000
+
 noncomputable section
 
 /-- Every strict point of the `Q1`--`Q3`--`Q4` triangle lies strictly on a
@@ -73,6 +75,11 @@ theorem exists_strictTriangle123_q4_segment_of_strictTriangle134
     linarith
   have hB3 : 0 < D - beta + 1 := by
     linarith
+  have hTalt : (-1 + (d : Real) ^ 2 + gamma * 2) ≠ 0 := by
+    have hd2' : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+    have hgamma0 : 0 ≤ gamma := hgamma.le
+    intro hcontra
+    nlinarith
   have hT : 0 < T := by
     dsimp only [T]
     nlinarith [sq_nonneg (D - 2)]
@@ -81,14 +88,15 @@ theorem exists_strictTriangle123_q4_segment_of_strictTriangle134
   let r : Real := 1 - u - v
   have hu : u < 0 := by
     dsimp only [u]
-    exact div_neg_of_neg_of_pos (neg_mul_of_pos_of_pos hbeta hHbeta)
+    exact div_neg_of_neg_of_pos (by nlinarith : -(beta * (H + beta)) < 0)
       (mul_pos hT hK)
   have hv : 0 < v := by
     dsimp only [v]
     exact div_pos (mul_pos (sq_pos_of_pos hH) hB3) (mul_pos hT hK)
   have hq4 : r • Q1 + u • Q2 d beta + v • Q3 d beta = Q4 d gamma := by
     ext <;> dsimp [r, u, v, D, H, K, T, Q1, Q2, Q3, Q4]
-    all_goals field_simp [hHbeta.ne', hB3.ne', hT.ne', hK.ne']
+    all_goals field_simp [hHbeta.ne', hB3.ne', hT.ne', hK.ne', hTalt,
+      mul_ne_zero hT.ne' hK.ne', mul_ne_zero (mul_ne_zero hT.ne' hK.ne') hHbeta.ne']
     all_goals ring
   have hc_one : c < 1 := by
     nlinarith [ha, hb, habc]
@@ -183,7 +191,7 @@ theorem exists_strictTriangle123_q4_segment_of_strictTriangle134
     simp only [← hq4]
     ext <;> dsimp [z, wa, wb, wc, den, t, r, u, v, D, H, K, T,
       Q1, Q2, Q3, Q4]
-    all_goals field_simp [hHbeta.ne', hB3.ne', hT.ne', hK.ne', hden.ne']
+    all_goals field_simp [hHbeta.ne', hB3.ne', hT.ne', hK.ne', hden.ne', hTalt]
     all_goals ring
   exact ⟨z, t, ht, ht_one, hsegment, hz⟩
 

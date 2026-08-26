@@ -16,7 +16,7 @@ open Auto.Spherical.FractalDilations.Q4StrongOffDiagonal
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -93,7 +93,7 @@ theorem q4FiniteProductKernelShell_strong_offDiagonal_of_pairwise_endpoints
     {μ : Measure X} [SFinite μ]
     (s : Finset I) (R : I → I → Prop) [DecidableRel R]
     (K : I → I → X → ℂ)
-    (H : Q4FiniteProductCrossedEndpoints s R K)
+    (H : Q4FiniteProductCrossedEndpoints (μ := μ) s R K)
     {p q I₀ : ℝ} (hp1 : 1 < p) (hp2 : p < 2)
     (hq : q = p / (p - 1))
     (f : X × {i // i ∈ s} → ℂ)
@@ -139,7 +139,8 @@ fed directly into active-gap reassembly. -/
 theorem q4ActiveDyadicGapShell_strong_offDiagonal_of_pairwise_endpoints
     {d : ℕ} (E : Set ℝ) (j n : ℕ)
     (K : ℤ → ℤ → Euclidean d → ℂ)
-    (H : Q4FiniteProductCrossedEndpoints (activeDyadicIndices E j)
+    (H : Q4FiniteProductCrossedEndpoints (μ := (volume : Measure (Euclidean d)))
+      (activeDyadicIndices E j)
       (q4LevelShellRelation (q4ActiveDyadicProductRelation E j)
         activeDyadicGapLevel n) K)
     {p q I₀ : ℝ} (hp1 : 1 < p) (hp2 : p < 2)
@@ -295,7 +296,8 @@ noncomputable def Q4ActiveDyadicGapPairwiseEndpoints.toCrossedEndpoints
     (hδone : dyadicScale j < 1) (hn : 0 < n)
     {K : ℤ → ℤ → Euclidean d → ℂ}
     (H : Q4ActiveDyadicGapPairwiseEndpoints E j n K) :
-    Q4FiniteProductCrossedEndpoints (activeDyadicIndices E j)
+    Q4FiniteProductCrossedEndpoints (μ := (volume : Measure (Euclidean d)))
+      (activeDyadicIndices E j)
       (q4LevelShellRelation (q4ActiveDyadicProductRelation E j)
         activeDyadicGapLevel n) K := by
   classical

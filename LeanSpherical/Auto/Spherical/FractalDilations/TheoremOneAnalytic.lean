@@ -27,7 +27,7 @@ open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.QuasiAssouadCovers
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TheoremOneFourierInputs
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -105,8 +105,8 @@ theorem q4ActiveDyadicVariationTerm_eLpNorm_le_of_scaled_bound
   change eLpNorm (delta⁻¹ • q4ActiveDyadicScaledDerivativeVariationTerm E j hs psi f)
       (ENNReal.ofReal q) volume <= ENNReal.ofReal A
   rw [eLpNorm_const_smul]
-  have hcoeff : ‖(delta⁻¹ : Real)‖₊ = ENNReal.ofReal delta⁻¹ := by
-    exact Real.enorm_eq_ofReal hdelta_inv
+  have hcoeff : ‖(delta⁻¹ : Real)‖ₑ = ENNReal.ofReal delta⁻¹ :=
+    Real.enorm_eq_ofReal hdelta_inv
   rw [hcoeff]
   calc
     ENNReal.ofReal delta⁻¹ *
@@ -133,12 +133,14 @@ theorem q4ActiveDyadicVariationTerm_eLpNorm_le_of_active_multiplier
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hdecay : HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-      d (fun _ => psi) (1 / 2 : Real) (5 / 2) Ckernel)
+      d psiFam (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall u ∈ Icc (0 : Real) (dyadicScale j),
-      forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ u ∈ Icc (0 : Real) (dyadicScale j),
+      ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicScaledNormalizedDerivativePairMultiplier
           psi hpsiCompact j u i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
@@ -166,7 +168,7 @@ theorem q4ActiveDyadicVariationTerm_eLpNorm_le_of_active_multiplier
     exact mul_nonneg (Real.sqrt_nonneg _) (norm_nonneg _)
   have hscaled :=
     q4ActiveDyadicScaledDerivativeVariationTerm_eLpNorm_le_of_active_multiplier
-      hd hj hE hcover hCcover hgamma hdeltaone hs psi hpsiCompact hCkernel hdecay hB
+      hd hj hE hcover hCcover hgamma hdeltaone hs psi hpsiCompact hCkernel hdecay hpsiFam hB
         hmultiplier hp1 hp2 hq f
   have hnormal := q4ActiveDyadicVariationTerm_eLpNorm_le_of_scaled_bound
     E j hs psi f hqpos hA (by
@@ -189,21 +191,23 @@ theorem q4ActiveDyadicMaximal_eLpNorm_le_of_active_multipliers
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Cendpoint Bendpoint Cderivative Bderivative : Real}
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hCendpoint : 0 < Cendpoint)
-    (hendpointDecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    (hendpointDecay : HasQ4DyadicPairKernelGapDecayOn d psiFam
       (1 / 2 : Real) (5 / 2) Cendpoint)
+    (hpsiFam : psi = psiFam j)
     (hBendpoint : 0 <= Bendpoint)
-    (hendpointMultiplier : forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hendpointMultiplier : ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi‖ <= Bendpoint)
     (hCderivative : 0 < Cderivative)
     (hderivativeDecay :
       HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-        d (fun _ => psi) (1 / 2 : Real) (5 / 2) Cderivative)
+        d psiFam (1 / 2 : Real) (5 / 2) Cderivative)
     (hBderivative : 0 <= Bderivative)
-    (hderivativeMultiplier : forall u ∈ Icc (0 : Real) (dyadicScale j),
-      forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hderivativeMultiplier : ∀ u ∈ Icc (0 : Real) (dyadicScale j),
+      ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicScaledNormalizedDerivativePairMultiplier
           psi hpsiCompact j u i l xi‖ <= Bderivative)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
@@ -234,11 +238,11 @@ theorem q4ActiveDyadicMaximal_eLpNorm_le_of_active_multipliers
   have hendpoint :=
     q4MeasurableActiveDyadicEndpointPiece_rootMoment_le_of_active_multiplier
       hd hj hE hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-        hCendpoint hendpointDecay hBendpoint hendpointMultiplier hp1 hp2 hq f
+        hCendpoint hendpointDecay hpsiFam hBendpoint hendpointMultiplier hp1 hp2 hq f
   have hvariation :=
     q4ActiveDyadicVariationTerm_eLpNorm_le_of_active_multiplier
       hd hj hE hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-        hCderivative hderivativeDecay hBderivative hderivativeMultiplier hp1 hp2 hq f
+        hCderivative hderivativeDecay hpsiFam hBderivative hderivativeMultiplier hp1 hp2 hq f
   exact fractalDyadicBandpassMaximal_eLpNorm_le_of_endpointMoment
     (by omega) hE hEne hs psi hpsiCompact f hqone hendpoint hvariation
 
@@ -293,7 +297,7 @@ theorem q4ActiveDyadicVariationTerm_eLpNorm_le_of_sharp_derivative_and_gapDecay
       (j := j) (by omega) hj hE hcover hCcover hgamma hdeltaone hs
       (absoluteDyadicBandpass phi hphiOne hphiZero j)
       (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-      hCkernel hdecay hB
+      hCkernel hdecay rfl hB
       (fun u hu i hi l hl xi =>
         norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half
           C hC ha hderiv phi hphiOne hphiZero hphiNorm j hj hE u hu i l hi hl xi)
@@ -350,7 +354,7 @@ theorem q4ActiveDyadicVariationTerm_eLpNorm_le_of_planar_signed_derivative_and_g
       (j := j) (by omega) hj hE hcover hCcover hgamma hdeltaone hs
       (absoluteDyadicBandpass phi hphiOne hphiZero j)
       (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-      hCkernel hdecay hB
+      hCkernel hdecay rfl hB
       (fun u hu i hi l hl xi =>
         norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_planar_signed_on_half
           C hC hderiv phi hphiOne hphiZero hphiNorm j hj hE u hu i l hi hl xi)

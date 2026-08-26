@@ -13,7 +13,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.Q4FiniteRadiusOperators
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -111,12 +111,24 @@ theorem q4FiniteProductToFibres_activeDyadicScaledNormalizedDerivativeFullKernel
             psi hpsiCompact j u i l ((hg2 l).toLp (g l)) :
             Lp Complex 2 (volume : Measure (Euclidean d))) :
             Euclidean d -> Complex) x) := by
-    refine eventuallyEq_sum fun l hl => ?_
-    exact q4ActiveDyadicScaledNormalizedDerivativePairKernelApply_ae_eq_l2Piece
-      psi hpsiCompact j u i l (g l) (hg1 l) (hg2 l)
+    have hall : ∀ᵐ x ∂(volume : Measure (Euclidean d)), ∀ l ∈ s,
+        q4PairwiseKernelApply volume
+          (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) i l
+          (g l) x =
+          ((q4ActiveDyadicScaledNormalizedDerivativePairL2Piece
+            psi hpsiCompact j u i l ((hg2 l).toLp (g l)) :
+            Lp Complex 2 (volume : Measure (Euclidean d))) :
+            Euclidean d -> Complex) x := by
+      rw [Filter.eventually_all_finset]
+      intro l _
+      exact q4ActiveDyadicScaledNormalizedDerivativePairKernelApply_ae_eq_l2Piece
+        psi hpsiCompact j u i l (g l) (hg1 l) (hg2 l)
+    filter_upwards [hall] with x hx
+    exact Finset.sum_congr rfl fun l hl => hx l hl
   have hsum := Lp.coeFn_fun_finsetSum s
-    (fun l => q4ActiveDyadicScaledNormalizedDerivativePairL2Piece
-      psi hpsiCompact j u i l ((hg2 l).toLp (g l)))
+    (fun l => (q4ActiveDyadicScaledNormalizedDerivativePairL2Piece
+      psi hpsiCompact j u i l ((hg2 l).toLp (g l)) :
+      Lp Complex 2 (volume : Measure (Euclidean d))))
   have hphysical (x : Euclidean d) :
       q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun (_ _ : Int) => True)
@@ -130,7 +142,10 @@ theorem q4FiniteProductToFibres_activeDyadicScaledNormalizedDerivativeFullKernel
     rw [Finset.filter_true]
     apply Finset.sum_congr rfl
     intro l hl
-    simp only [q4FiniteProductToFibres, dif_pos hl, q4FibresToFiniteProduct]
+    have hround : q4FiniteProductToFibres s (q4FibresToFiniteProduct s g) l = g l := by
+      funext y
+      simp [q4FiniteProductToFibres, q4FibresToFiniteProduct, hl]
+    rw [hround]
   filter_upwards [hpairs, hsum] with x hx hsumx
   calc
     q4FiniteProductToFibres s
@@ -214,6 +229,7 @@ theorem q4ActiveDyadicScaledNormalizedDerivativeSchwartzPowerDualFullKernel_ae_e
     unfold q4L2FiniteProductPairShell
     apply Finset.sum_congr rfl
     intro l hl
+    dsimp only
     rw [hdual l]
   filter_upwards [hphysical] with x hx
   simpa only [g, F, hpairshell] using hx

@@ -17,7 +17,7 @@ open Auto.Spherical.FractalDilations.Q4SelectedCutoffDomain
 open Auto.Spherical.FractalDilations.Q4SelectedLinearization
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -196,7 +196,7 @@ theorem q4ActiveDyadicPositiveSelectedPairShell_crossed_strong
         (mul_nonneg (by norm_num) hCcover)
         (Real.rpow_nonneg hscale.le _))
       (Real.rpow_nonneg hratio _)
-  have hdegree : forall i ∈ activeDyadicIndices E j,
+  have hdegree : ∀ i ∈ activeDyadicIndices E j,
       (((activeDyadicIndices E j).filter (R i)).card : Real) <= D := by
     intro i hi
     exact q4ActiveDyadicPositiveLevel_card_le_of_hasSubpowerAssouadCoverBound
@@ -211,12 +211,13 @@ theorem q4ActiveDyadicPositiveSelectedPairShell_crossed_strong
     intro i l z hil
     exact norm_q4ActiveDyadicPairKernel_positiveLevel_le_of_gapDecayOn
       hd hj hE Psi hCkernel.le hdecay hn i l z hil
-  have H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
+  let H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
     (Psi j) hpsiCompact j hB hmultiplier
+  have hHB : H.B = B := rfl
   change (∫⁻ x, ENNReal.ofReal
       (‖q4SelectedKernelTTStarShell volume (activeDyadicIndices E j) R
         (q4ActiveDyadicPairKernel (Psi j) j) rho f x‖ ^ q)) <= _
-  simpa only [H, R, A, D, q4ActiveDyadicPositiveGapSquareConstant] using
+  simpa only [hHB, R, A, D, q4ActiveDyadicPositiveGapSquareConstant] using
     q4SelectedKernelTTStarShell_crossed_strong_of_cutoffStableDomain
       (activeDyadicIndices E j) R
       (q4ActiveDyadicProductLevel_symm E j n) D hD hdegree
@@ -277,7 +278,7 @@ theorem q4ActiveDyadicPositiveSelectedPairShell_strong_offDiagonal
       (mul_nonneg (mul_nonneg (by norm_num) hCcover)
         (Real.rpow_nonneg hscale.le _))
       (Real.rpow_nonneg hratio _)
-  have hdegree : forall i ∈ activeDyadicIndices E j,
+  have hdegree : ∀ i ∈ activeDyadicIndices E j,
       (((activeDyadicIndices E j).filter (R i)).card : Real) <= D := by
     intro i hi
     exact q4ActiveDyadicPositiveLevel_card_le_of_hasSubpowerAssouadCoverBound
@@ -292,11 +293,12 @@ theorem q4ActiveDyadicPositiveSelectedPairShell_strong_offDiagonal
     intro i l z hil
     exact norm_q4ActiveDyadicPairKernel_positiveLevel_le_of_gapDecayOn
       hd hj hE Psi hCkernel.le hdecay hn i l z hil
-  have H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
+  let H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
     (Psi j) hpsiCompact j hB hmultiplier
+  have hHB : H.B = B := rfl
   change eLpNorm (q4SelectedKernelTTStarShell volume (activeDyadicIndices E j) R
     (q4ActiveDyadicPairKernel (Psi j) j) rho f) (ENNReal.ofReal q) volume <= _
-  simpa only [H, R, A, D, q4ActiveDyadicPositiveGapStrongConstant,
+  simpa only [hHB, R, A, D, q4ActiveDyadicPositiveGapStrongConstant,
     q4ActiveDyadicPositiveGapSquareConstant] using
     q4SelectedKernelTTStarShell_strong_offDiagonal_of_cutoffStableDomain
       (activeDyadicIndices E j) R

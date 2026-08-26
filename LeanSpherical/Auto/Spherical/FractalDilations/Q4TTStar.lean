@@ -9,7 +9,7 @@ open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCombinatorics
 open Auto.Spherical.FractalDilations.TTStarCovering
 open Auto.Spherical.SphericalMaximalL2
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 

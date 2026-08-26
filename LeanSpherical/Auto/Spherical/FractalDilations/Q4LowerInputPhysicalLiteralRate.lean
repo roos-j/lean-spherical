@@ -3,7 +3,16 @@
 
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4LowerInputLiteralRate
 import LeanSpherical.Auto.Spherical.FractalDilations.AbsoluteDyadicPhysicalEndpoint
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4TriangleGeometry
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
 open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.InterpolationCore
+open Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
+open Auto.Spherical.FractalDilations.Q4RadialReduction
+open Auto.Spherical.FractalDilations.Q4StrictParameters
+open Auto.Spherical.FractalDilations.Q4SubpowerParameters
+open Auto.Spherical.FractalDilations.Q4TriangleGeometry
+open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.AbsoluteDyadicPhysicalEndpoint
 open Auto.Spherical.FractalDilations.AbsoluteReassembly
 open Auto.Spherical.FractalDilations.ExponentRegions
@@ -151,12 +160,12 @@ theorem exists_q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates_of_ph
   · exact hqq1
   · exact hCT0
   · exact hCT1
-  · exact hrho0
-  · exact hrho1
+  · exact lt_trans hrho0 ENNReal.one_lt_top
+  · exact lt_trans hrho1 ENNReal.one_lt_top
   · exact hrate0
   · exact hrate1
   · exact hCtop
-  · exact hrho
+  · exact lt_trans hrho ENNReal.one_lt_top
   · exact hcoefficient D hD
 
 /-- A summable lower-input `Q4` rate for one fixed cutoff.  The only scalar
@@ -215,6 +224,402 @@ theorem exists_q4_lower_activeDyadic_strict_dyadic_rate_of_physical
     (fun j hj f => (hrate0 j hj f).2)
     (fun j hj f => (hrate1 j hj f).2)
     hCtop hrho (fun D hD j hj => hcoefficient D hD j hj)
+
+/-- Natural powers of a dyadic `ENNReal.ofReal` factor. -/
+theorem ofReal_two_rpow_pow (a : Real) (j : Nat) :
+    (ENNReal.ofReal ((2 : Real) ^ a)) ^ j =
+      ENNReal.ofReal ((2 : Real) ^ (a * (j : Real))) := by
+  rw [← ENNReal.ofReal_pow (by positivity)]
+  congr 1
+  rw [← Real.rpow_natCast ((2 : Real) ^ a) j, ← Real.rpow_mul (by norm_num)]
+
+/-- Real powers of a dyadic `ENNReal.ofReal` factor. -/
+theorem ofReal_two_rpow_rpow (a b : Real) :
+    (ENNReal.ofReal ((2 : Real) ^ a)) ^ b =
+      ENNReal.ofReal ((2 : Real) ^ (a * b)) := by
+  rw [ENNReal.ofReal_rpow_of_pos (show (0 : Real) < (2 : Real) ^ a by positivity),
+    ← Real.rpow_mul (by norm_num)]
+
+/-- The two layer-cake height integrals of the lower-input coefficient are
+finite once the target output exponent lies strictly between the two weak
+output exponents. -/
+theorem q4Lower_height_integrals_lt_top
+    {p r0 r1 q : Real}
+    (hq0q : q4LowerWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4LowerWeakOutputExponent p r1) :
+    (∫⁻ t in Ioc (0 : Real) 1,
+        (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r0 - 1)) < ⊤ ∧
+      (∫⁻ t in Ioi (1 : Real),
+        (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r1 - 1)) < ⊤ := by
+  constructor
+  · have hrw : q - q4LowerWeakOutputExponent p r0 - 1 =
+        (q - q4LowerWeakOutputExponent p r0 + 1) - 2 := by ring
+    rw [hrw, lintegral_rpow_Ioc_eq
+      (by linarith : (1 : Real) < q - q4LowerWeakOutputExponent p r0 + 1)
+      (by norm_num : (0 : Real) ≤ 1)]
+    exact ENNReal.ofReal_lt_top
+  · have hrw : q - q4LowerWeakOutputExponent p r1 - 1 =
+        (q - q4LowerWeakOutputExponent p r1 + 2) - 3 := by ring
+    rw [hrw, lintegral_rpow_Ioi_eq
+      (by linarith : q - q4LowerWeakOutputExponent p r1 + 2 < 2)
+      (by norm_num : (0 : Real) < 1)]
+    exact ENNReal.ofReal_lt_top
+
+/-- The explicit dyadic rate of the lower-input layer-cake coefficient.  Both
+the physical `L¹ → L∞` growth `2 ^ j` and the two `L²` ratios enter, so the
+displayed exponent `S` is the actual net frequency exponent of the
+interpolated estimate. -/
+theorem exists_q4LowerStrongCoefficient_explicit_dyadic_rate
+    {D p r0 r1 q s0 s1 S : Real} (hD : 0 < D) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hq : 0 < q)
+    (hq0q : q4LowerWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4LowerWeakOutputExponent p r1)
+    {CT0 CT1 : ENNReal} (hCT0 : CT0 < ⊤) (hCT1 : CT1 < ⊤)
+    (hS0 : r0 * s0 + q4LowerWeakTailExponent p r0 ≤ q * S)
+    (hS1 : r1 * s1 + q4LowerWeakTailExponent p r1 ≤ q * S) :
+    ∃ C : ENNReal, C < ⊤ ∧
+      ∀ j : Nat, 1 ≤ j →
+        q4LowerStrongCoefficient (D * (2 : Real) ^ j)
+          ((CT0 * (ENNReal.ofReal ((2 : Real) ^ s0)) ^ j).toReal)
+          ((CT1 * (ENNReal.ofReal ((2 : Real) ^ s1)) ^ j).toReal)
+          p r0 r1 q ≤ C * (ENNReal.ofReal ((2 : Real) ^ S)) ^ j := by
+  obtain ⟨hI0, hI1⟩ := q4Lower_height_integrals_lt_top (p := p) hq0q hqq1
+  set I0 : ENNReal := ∫⁻ t in Ioc (0 : Real) 1,
+    (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r0 - 1) with hI0def
+  set I1 : ENNReal := ∫⁻ t in Ioi (1 : Real),
+    (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r1 - 1) with hI1def
+  set M0 : ENNReal := ENNReal.ofReal ((2 : Real) ^ r0) * CT0 ^ r0 *
+    ENNReal.ofReal ((2 * D) ^ q4LowerWeakTailExponent p r0) with hM0
+  set M1 : ENNReal := ENNReal.ofReal ((2 : Real) ^ r1) * CT1 ^ r1 *
+    ENNReal.ofReal ((2 * D) ^ q4LowerWeakTailExponent p r1) with hM1
+  have hMtop : M0 * I0 + M1 * I1 < ⊤ := by
+    apply ENNReal.add_lt_top.mpr
+    constructor
+    · exact ENNReal.mul_lt_top (by
+        rw [hM0]
+        exact ENNReal.mul_lt_top
+          (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+            (ENNReal.rpow_lt_top_of_nonneg hr0.le hCT0.ne))
+          ENNReal.ofReal_lt_top) hI0
+    · exact ENNReal.mul_lt_top (by
+        rw [hM1]
+        exact ENNReal.mul_lt_top
+          (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+            (ENNReal.rpow_lt_top_of_nonneg hr1.le hCT1.ne))
+          ENNReal.ofReal_lt_top) hI1
+  refine ⟨(ENNReal.ofReal q * (M0 * I0 + M1 * I1)) ^ q⁻¹, ?_, ?_⟩
+  · exact ENNReal.rpow_lt_top_of_nonneg (by positivity)
+      (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hMtop).ne
+  · intro j hj
+    have hkey : ∀ (r s : Real), 0 < r → ∀ (CT : ENNReal), CT < ⊤ →
+        ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+            ((CT * (ENNReal.ofReal ((2 : Real) ^ s)) ^ j).toReal) p r) =
+          (ENNReal.ofReal ((2 : Real) ^ r) * CT ^ r *
+            ENNReal.ofReal ((2 * D) ^ q4LowerWeakTailExponent p r)) *
+            (ENNReal.ofReal
+              ((2 : Real) ^ (r * s + q4LowerWeakTailExponent p r))) ^ j := by
+      intro r s hrpos CT hCTtop
+      have hfin : CT * (ENNReal.ofReal ((2 : Real) ^ s)) ^ j ≠ ⊤ :=
+        (ENNReal.mul_lt_top hCTtop
+          (ENNReal.pow_lt_top ENNReal.ofReal_lt_top)).ne
+      unfold q4LowerWeakRealConstant
+      have hApos : 0 < 2 * (D * (2 : Real) ^ j) := by positivity
+      rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity)]
+      have hpow : ENNReal.ofReal
+          ((CT * (ENNReal.ofReal ((2 : Real) ^ s)) ^ j).toReal ^ r) =
+          CT ^ r * (ENNReal.ofReal ((2 : Real) ^ (r * s))) ^ j := by
+        rw [← ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg hrpos.le,
+          ENNReal.ofReal_toReal hfin,
+          ENNReal.mul_rpow_of_nonneg _ _ hrpos.le]
+        congr 1
+        rw [ofReal_two_rpow_pow s j, ofReal_two_rpow_rpow (s * (j : Real)) r,
+          ofReal_two_rpow_pow (r * s) j]
+        congr 2
+        ring
+      have htail : ENNReal.ofReal
+          ((2 * (D * (2 : Real) ^ j)) ^ q4LowerWeakTailExponent p r) =
+          ENNReal.ofReal ((2 * D) ^ q4LowerWeakTailExponent p r) *
+            (ENNReal.ofReal
+              ((2 : Real) ^ q4LowerWeakTailExponent p r)) ^ j := by
+        have hsplit : 2 * (D * (2 : Real) ^ j) = (2 * D) * (2 : Real) ^ j := by
+          ring
+        rw [hsplit, Real.mul_rpow (by positivity) (by positivity),
+          ENNReal.ofReal_mul (by positivity)]
+        congr 1
+        rw [ofReal_two_rpow_pow (q4LowerWeakTailExponent p r) j]
+        congr 1
+        rw [← Real.rpow_natCast (2 : Real) j, ← Real.rpow_mul (by norm_num)]
+        congr 1
+        ring
+      rw [hpow, htail]
+      have hmerge : (ENNReal.ofReal ((2 : Real) ^ (r * s))) ^ j *
+          (ENNReal.ofReal ((2 : Real) ^ q4LowerWeakTailExponent p r)) ^ j =
+          (ENNReal.ofReal
+            ((2 : Real) ^ (r * s + q4LowerWeakTailExponent p r))) ^ j := by
+        rw [← mul_pow, ← ENNReal.ofReal_mul (by positivity),
+          ← Real.rpow_add (by norm_num)]
+      calc
+        ENNReal.ofReal ((2 : Real) ^ r) *
+            (CT ^ r * (ENNReal.ofReal ((2 : Real) ^ (r * s))) ^ j) *
+            (ENNReal.ofReal ((2 * D) ^ q4LowerWeakTailExponent p r) *
+              (ENNReal.ofReal
+                ((2 : Real) ^ q4LowerWeakTailExponent p r)) ^ j) =
+            (ENNReal.ofReal ((2 : Real) ^ r) * CT ^ r *
+              ENNReal.ofReal ((2 * D) ^ q4LowerWeakTailExponent p r)) *
+              ((ENNReal.ofReal ((2 : Real) ^ (r * s))) ^ j *
+                (ENNReal.ofReal
+                  ((2 : Real) ^ q4LowerWeakTailExponent p r)) ^ j) := by ring
+        _ = _ := by rw [hmerge]
+    have hmono : ∀ (r s : Real),
+        r * s + q4LowerWeakTailExponent p r ≤ q * S →
+        (ENNReal.ofReal
+            ((2 : Real) ^ (r * s + q4LowerWeakTailExponent p r))) ^ j ≤
+          (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j := by
+      intro r s hle
+      apply pow_le_pow_left' _ j
+      exact ENNReal.ofReal_le_ofReal
+        (Real.rpow_le_rpow_of_exponent_le (by norm_num) hle)
+    have hterm0 : ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+        ((CT0 * (ENNReal.ofReal ((2 : Real) ^ s0)) ^ j).toReal) p r0) ≤
+        M0 * (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j := by
+      rw [hkey r0 s0 hr0 CT0 hCT0, hM0]
+      exact mul_le_mul' (le_refl _) (hmono r0 s0 hS0)
+    have hterm1 : ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+        ((CT1 * (ENNReal.ofReal ((2 : Real) ^ s1)) ^ j).toReal) p r1) ≤
+        M1 * (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j := by
+      rw [hkey r1 s1 hr1 CT1 hCT1, hM1]
+      exact mul_le_mul' (le_refl _) (hmono r1 s1 hS1)
+    have hinner : ENNReal.ofReal q *
+        (ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+            ((CT0 * (ENNReal.ofReal ((2 : Real) ^ s0)) ^ j).toReal) p r0) * I0 +
+          ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+            ((CT1 * (ENNReal.ofReal ((2 : Real) ^ s1)) ^ j).toReal) p r1) * I1) ≤
+        (ENNReal.ofReal q * (M0 * I0 + M1 * I1)) *
+          (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j := by
+      calc
+        ENNReal.ofReal q *
+            (ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+                ((CT0 * (ENNReal.ofReal ((2 : Real) ^ s0)) ^ j).toReal) p r0) * I0 +
+              ENNReal.ofReal (q4LowerWeakRealConstant (D * (2 : Real) ^ j)
+                ((CT1 * (ENNReal.ofReal ((2 : Real) ^ s1)) ^ j).toReal) p r1) * I1) ≤
+            ENNReal.ofReal q *
+              ((M0 * (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j) * I0 +
+                (M1 * (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j) * I1) := by
+          gcongr
+        _ = (ENNReal.ofReal q * (M0 * I0 + M1 * I1)) *
+              (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j := by ring
+    calc
+      q4LowerStrongCoefficient (D * (2 : Real) ^ j)
+          ((CT0 * (ENNReal.ofReal ((2 : Real) ^ s0)) ^ j).toReal)
+          ((CT1 * (ENNReal.ofReal ((2 : Real) ^ s1)) ^ j).toReal) p r0 r1 q ≤
+          ((ENNReal.ofReal q * (M0 * I0 + M1 * I1)) *
+            (ENNReal.ofReal ((2 : Real) ^ (q * S))) ^ j) ^ q⁻¹ := by
+        unfold q4LowerStrongCoefficient
+        exact ENNReal.rpow_le_rpow (by
+          simpa only [hI0def, hI1def] using hinner) (by positivity)
+      _ = (ENNReal.ofReal q * (M0 * I0 + M1 * I1)) ^ q⁻¹ *
+            (ENNReal.ofReal ((2 : Real) ^ S)) ^ j := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:Real) ≤ q⁻¹)]
+        congr 1
+        rw [ofReal_two_rpow_pow (q * S) j,
+          ofReal_two_rpow_rpow (q * S * (j : Real)) q⁻¹,
+          ofReal_two_rpow_pow S j]
+        congr 2
+        field_simp
+
+/-- The literal `Q4` sector estimate below `L²`, with its exact net frequency
+exponent.  The estimate is obtained by interpolating the two shell `L²` rates
+against the physical `L¹ → L∞` endpoint, whose norm grows like `2 ^ j`; the
+exponent `S` therefore need not be negative.  This is the form used both for
+the strict interior of the sector and for the loss-gain interpolation along
+the `Q3`--`Q4` edge. -/
+theorem exists_q4_lower_sector_explicit_dyadic_rate
+    {d : Nat} {E : Set Real} {gamma eta Ccover : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hgamma : 0 ≤ gamma) (heta : 0 ≤ eta) (hCcover : 0 ≤ Ccover)
+    (hcov : HasSubpowerAssouadCoverBound E gamma eta Ccover)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {p q theta0 theta1 S : Real}
+    (hp1 : 1 < p) (hp2 : p < 2) (hq : 0 < q)
+    (h0pos : 0 < theta0) (h0one : theta0 < 1)
+    (h1pos : 0 < theta1) (h1one : theta1 < 1)
+    (hb0 : q4GapExponent d gamma theta0 < 0)
+    (hb1 : q4GapExponent d gamma theta1 < 0)
+    (hq0q : q4LowerWeakOutputExponent p (2 / theta0) < q)
+    (hqq1 : q < q4LowerWeakOutputExponent p (2 / theta1))
+    (hS0 : (2 / theta0) *
+        (q4FrequencyExponentWithSubpowerLoss d theta0 eta / 2) +
+        q4LowerWeakTailExponent p (2 / theta0) ≤ q * S)
+    (hS1 : (2 / theta1) *
+        (q4FrequencyExponentWithSubpowerLoss d theta1 eta / 2) +
+        q4LowerWeakTailExponent p (2 / theta1) ≤ q * S) :
+    ∃ C : ENNReal, C < ⊤ ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * (ENNReal.ofReal ((2 : Real) ^ S)) ^ j) *
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  have hd0 : 0 < d := by
+    rcases hd with hd3 | ⟨hd2, _⟩ <;> omega
+  have hr0pos : 0 < 2 / theta0 := by positivity
+  have hr1pos : 0 < 2 / theta1 := by positivity
+  have hinv0 : 2 / (2 / theta0) = theta0 := by field_simp
+  have hinv1 : 2 / (2 / theta1) = theta1 := by field_simp
+  obtain ⟨hu10, hu20, hrr0⟩ := q4ConjugateInputOfTheta_bounds h0pos h0one
+  obtain ⟨hu11, hu21, hrr1⟩ := q4ConjugateInputOfTheta_bounds h1pos h1one
+  obtain ⟨CT0, rho0, hCT0pos, hCT0, hrho0, hrho0eq, hrate0⟩ :=
+    q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (gamma := gamma) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hd hE hEne hcov hCcover hgamma
+      heta (u := q4ConjugateInputOfTheta theta0) (r := 2 / theta0)
+      hu10 hu20 (by simpa only [q4LtwoOutputOfTheta] using hrr0)
+      (by rw [hinv0]; exact hb0)
+  obtain ⟨CT1, rho1, hCT1pos, hCT1, hrho1, hrho1eq, hrate1⟩ :=
+    q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (gamma := gamma) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hd hE hEne hcov hCcover hgamma
+      heta (u := q4ConjugateInputOfTheta theta1) (r := 2 / theta1)
+      hu11 hu21 (by simpa only [q4LtwoOutputOfTheta] using hrr1)
+      (by rw [hinv1]; exact hb1)
+  rw [hinv0] at hrho0eq
+  rw [hinv1] at hrho1eq
+  obtain ⟨D, hD, hphysical⟩ :=
+    exists_absoluteDyadicBandpass_lone_linf_endpoint hd0 E hE phi hphiOne hphiZero
+  obtain ⟨C, hC, hcoefficient⟩ :=
+    exists_q4LowerStrongCoefficient_explicit_dyadic_rate
+      (D := D) (p := p) (r0 := 2 / theta0) (r1 := 2 / theta1) (q := q)
+      (s0 := q4FrequencyExponentWithSubpowerLoss d theta0 eta / 2)
+      (s1 := q4FrequencyExponentWithSubpowerLoss d theta1 eta / 2)
+      (S := S) hD hr0pos hr1pos hq hq0q hqq1 hCT0 hCT1 hS0 hS1
+  refine ⟨C, hC, ?_⟩
+  apply q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
+    hd0 hE phi hphiOne hphiZero (fun j => D * (2 : Real) ^ j)
+  · intro j
+    exact mul_pos hD (pow_pos (by norm_num) j)
+  · intro j _hj g x
+    exact hphysical j g x
+  · exact hp1
+  · exact hp2
+  · exact hr0pos
+  · exact hr1pos
+  · exact hq0q
+  · exact hqq1
+  · exact hCT0
+  · exact hCT1
+  · exact hrho0
+  · exact hrho1
+  · exact fun j hj f => (hrate0 j hj f).2
+  · exact fun j hj f => (hrate1 j hj f).2
+  · exact hC
+  · exact ENNReal.ofReal_lt_top
+  · intro j hj
+    rw [hrho0eq, hrho1eq]
+    exact hcoefficient j hj
+
+/-- The planar critical form of the sub-`L²` `Q4` sector estimate with its
+exact net frequency exponent. -/
+theorem exists_q4_planar_critical_lower_sector_explicit_dyadic_rate
+    {E : Set Real} {eta Ccover : Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (heta : 0 ≤ eta) (hCcover : 0 ≤ Ccover)
+    (hcov : HasSubpowerAssouadCoverBound E (1 / 2) eta Ccover)
+    (phi : SchwartzMap (Euclidean 2) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {p q theta0 theta1 S : Real}
+    (hp1 : 1 < p) (hp2 : p < 2) (hq : 0 < q)
+    (h0half : 1 / 2 < theta0) (h0one : theta0 < 1)
+    (h1half : 1 / 2 < theta1) (h1one : theta1 < 1)
+    (hc0 : q4FrequencyExponentWithSubpowerLoss 2 theta0 eta +
+      q4GapExponent 2 (1 / 2) theta0 < 0)
+    (hc1 : q4FrequencyExponentWithSubpowerLoss 2 theta1 eta +
+      q4GapExponent 2 (1 / 2) theta1 < 0)
+    (hq0q : q4LowerWeakOutputExponent p (2 / theta0) < q)
+    (hqq1 : q < q4LowerWeakOutputExponent p (2 / theta1))
+    (hS0 : (2 / theta0) *
+        ((q4FrequencyExponentWithSubpowerLoss 2 theta0 eta +
+          q4GapExponent 2 (1 / 2) theta0) / 2) +
+        q4LowerWeakTailExponent p (2 / theta0) ≤ q * S)
+    (hS1 : (2 / theta1) *
+        ((q4FrequencyExponentWithSubpowerLoss 2 theta1 eta +
+          q4GapExponent 2 (1 / 2) theta1) / 2) +
+        q4LowerWeakTailExponent p (2 / theta1) ≤ q * S) :
+    ∃ C : ENNReal, C < ⊤ ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean 2) Complex,
+        MemLp (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * (ENNReal.ofReal ((2 : Real) ^ S)) ^ j) *
+            eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume := by
+  have h0pos : 0 < theta0 := by linarith
+  have h1pos : 0 < theta1 := by linarith
+  have hr0pos : 0 < 2 / theta0 := by positivity
+  have hr1pos : 0 < 2 / theta1 := by positivity
+  obtain ⟨hu10, hu20, hrr0⟩ := q4ConjugateInputOfTheta_bounds h0pos h0one
+  obtain ⟨hu11, hu21, hrr1⟩ := q4ConjugateInputOfTheta_bounds h1pos h1one
+  obtain ⟨CT0, rho0, hCT0pos, hCT0, hrho0, hrho0eq, hrate0⟩ :=
+    q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hE hEne hcov hCcover heta
+      (u := q4ConjugateInputOfTheta theta0) (theta := theta0)
+      hu10 hu20 (by simpa only [q4LtwoOutputOfTheta] using hrr0)
+      h0half h0one hc0
+  obtain ⟨CT1, rho1, hCT1pos, hCT1, hrho1, hrho1eq, hrate1⟩ :=
+    q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hE hEne hcov hCcover heta
+      (u := q4ConjugateInputOfTheta theta1) (theta := theta1)
+      hu11 hu21 (by simpa only [q4LtwoOutputOfTheta] using hrr1)
+      h1half h1one hc1
+  obtain ⟨D, hD, hphysical⟩ :=
+    exists_absoluteDyadicBandpass_lone_linf_endpoint (by norm_num) E hE phi
+      hphiOne hphiZero
+  obtain ⟨C, hC, hcoefficient⟩ :=
+    exists_q4LowerStrongCoefficient_explicit_dyadic_rate
+      (D := D) (p := p) (r0 := 2 / theta0) (r1 := 2 / theta1) (q := q)
+      (s0 := (q4FrequencyExponentWithSubpowerLoss 2 theta0 eta +
+        q4GapExponent 2 (1 / 2) theta0) / 2)
+      (s1 := (q4FrequencyExponentWithSubpowerLoss 2 theta1 eta +
+        q4GapExponent 2 (1 / 2) theta1) / 2)
+      (S := S) hD hr0pos hr1pos hq hq0q hqq1 hCT0 hCT1 hS0 hS1
+  refine ⟨C, hC, ?_⟩
+  apply q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
+    (by norm_num) hE phi hphiOne hphiZero (fun j => D * (2 : Real) ^ j)
+  · intro j
+    exact mul_pos hD (pow_pos (by norm_num) j)
+  · intro j _hj g x
+    exact hphysical j g x
+  · exact hp1
+  · exact hp2
+  · exact hr0pos
+  · exact hr1pos
+  · exact hq0q
+  · exact hqq1
+  · exact hCT0
+  · exact hCT1
+  · exact lt_trans hrho0 ENNReal.one_lt_top
+  · exact lt_trans hrho1 ENNReal.one_lt_top
+  · exact fun j hj f => (hrate0 j hj f).2
+  · exact fun j hj f => (hrate1 j hj f).2
+  · exact hC
+  · exact ENNReal.ofReal_lt_top
+  · intro j hj
+    rw [hrho0eq, hrho1eq]
+    exact hcoefficient j hj
 
 end
 

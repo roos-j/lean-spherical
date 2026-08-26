@@ -196,7 +196,7 @@ theorem strictTriangle134_theta_gt_reciprocal_dimension
     exact this.trans_le (by exact_mod_cast hd)
   have hrecip : p⁻¹ < (d : Real) * q⁻¹ := by
     simpa [reciprocalExponentPoint] using hcap.1
-  have hmul := (mul_lt_mul_right (mul_pos hp hq)).mpr hrecip
+  have hmul := mul_lt_mul_of_pos_right hrecip (mul_pos hp hq)
   have hleft : p⁻¹ * (p * q) = q := by
     calc
       p⁻¹ * (p * q) = (p⁻¹ * p) * q := by ring
@@ -222,7 +222,7 @@ theorem strictTriangle134_theta_lt_one
   have htrans := strictTriangle134_second_lt_first hd hbeta hbeta_gamma hgamma_one h
   have hrecip : q⁻¹ < p⁻¹ := by
     simpa [reciprocalExponentPoint] using htrans
-  have hmul := (mul_lt_mul_right (mul_pos hp hq)).mpr hrecip
+  have hmul := mul_lt_mul_of_pos_right hrecip (mul_pos hp hq)
   have hleft : q⁻¹ * (p * q) = p := by
     calc
       q⁻¹ * (p * q) = p * (q⁻¹ * q) := by ring
@@ -232,7 +232,7 @@ theorem strictTriangle134_theta_lt_one
       p⁻¹ * (p * q) = (p⁻¹ * p) * q := by ring
       _ = q := by rw [inv_mul_cancel₀ hp.ne', one_mul]
   rw [hleft, hright] at hmul
-  exact (div_lt_iff₀ hq).mpr hmul
+  exact (div_lt_iff₀ hq).mpr (by linarith)
 
 /-- Conversion from a shell interpolation parameter to the conjugate input
 parameter used by the literal `TT*` estimate. -/
@@ -321,14 +321,14 @@ theorem exists_q4_two_nearby_strict_parameters
     lt_trans hLpos (lt_trans hlow hlowHigh)
   have hDlow : 1 < D * thetaLow := by
     have hL : 1 / D < thetaLow := by simpa only [L] using hlow
-    exact (div_lt_iff₀ hD).mp hL
+    have h := (div_lt_iff₀ hD).mp hL
+    linarith
   have heta : 0 < eta := by
     dsimp only [eta]
     exact div_pos (sub_pos.mpr hDlow) (mul_pos (by norm_num) hhighPos)
   have hetaScale : thetaHigh * eta = (D * thetaLow - 1) / 2 := by
     dsimp only [eta]
     field_simp [hhighPos.ne']
-    ring
   have hfrequency : ∀ z : Real, thetaLow ≤ z → z ≤ thetaHigh →
       q4FrequencyExponentWithSubpowerLoss d z eta < 0 := by
     intro z hzLow hzHigh
@@ -393,7 +393,6 @@ theorem exists_q4_planar_critical_two_nearby_parameters
   have hetaScale : thetaHigh * eta = (thetaLow - 1 / 2) / 2 := by
     dsimp only [eta]
     field_simp [hhighPos.ne']
-    ring
   have hcombined : ∀ z : Real, thetaLow ≤ z → z ≤ thetaHigh →
       q4FrequencyExponentWithSubpowerLoss 2 z eta +
         q4GapExponent 2 (1 / 2) z < 0 := by

@@ -33,7 +33,7 @@ open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.RadialCutoff
 open Auto.Spherical.FractalDilations.TheoremOneAnalytic
 open Auto.Spherical.FractalDilations.TheoremOneFourierInputs
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -73,7 +73,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
     (hphiZero : ∀ xi, 2 <= ‖xi‖ -> phi xi = 0)
     (hphiNorm : ∀ xi, ‖phi xi‖ <= 1)
     (hphiRadial : IsNormRadial phi)
-    (hd : 3 <= d ∨ d = 2 ∧ gamma < 1 / 2)
+    (hd : 3 <= d ∨ d = 2 ∧ gamma <= 1 / 2)
     (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
     (hcover : HasSubpowerAssouadCoverBound E gamma eta Ccover)
     (hCcover : 0 <= Ccover) (hgamma : 0 <= gamma) (heta : 0 <= eta)
@@ -96,7 +96,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
   have hdsource : 3 <= d ∨ d = 2 ∧ gamma <= 1 / 2 := by
     rcases hd with hd3 | htwo
     · exact Or.inl hd3
-    · exact Or.inr ⟨htwo.1, htwo.2.le⟩
+    · exact Or.inr ⟨htwo.1, htwo.2⟩
   obtain ⟨C0, hC0, hdecay0⟩ :=
     (exists_theoremOneSharpSurfaceFourierInput
       (d := d) (gamma := gamma) hdsource).decay
@@ -140,7 +140,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
     let Aderivative : Real :=
       q4DiagonalStrongFrequencyPrefactor Cderivative D0 r +
         q4PositiveGapStrongFrequencyPrefactor d gamma Ccover Cderivative D0 r
-    let Cbar : Real := ‖(surfaceMass d)⁻¹ : Complex‖ *
+    let Cbar : Real := ‖((surfaceMass d)⁻¹ : Complex)‖ *
         Real.sqrt (q4StrictShellSummationConstant Aendpoint b) +
       Real.sqrt (q4StrictShellSummationConstant Aderivative b)
     let CTreal : Real := Cbar + 1
@@ -201,7 +201,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
               (Aendpoint * (2 : Real) ^
                 (a * (k : Real) + b * (n : Real))) := by
         intro k n
-        simpa only [Aendpoint, E0, a, b] using
+        simpa only [Aendpoint, E0, a, b, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using
           (q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_ordinaryMultiplier
             (d := d) (gamma := gamma) (eta := eta) (Ccover := Ccover)
             (Ckernel := Cendpoint) (C := C0) (q := r)
@@ -214,7 +214,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
               (Aderivative * (2 : Real) ^
                 (a * (k : Real) + b * (n : Real))) := by
         intro k n
-        simpa only [Aderivative, D0, a, b] using
+        simpa only [Aderivative, D0, a, b, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using
           (q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_derivativeMultiplier
             (d := d) (gamma := gamma) (eta := eta) (Ccover := Ccover)
             (Ckernel := Cderivative) (C := C1) (q := r)
@@ -242,29 +242,28 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
               linarith
             · exact pow_nonneg hrhoReal _
       have hbase := q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multipliers
+        (Bendpoint := Bendpointj) (Bderivative := Bderivativej)
         hdpos hj hE hEne hcover hCcover hgamma hdeltaone hs
         (absoluteDyadicBandpass phi hphiOne hphiZero j)
         (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-        hCendpoint (by
-          simpa only using hendpointDecay)
+        hCendpoint hendpointDecay rfl
         (by
           dsimp only [Bendpointj, q4EnlargedPairMultiplierBound]
           exact sq_nonneg _)
         (fun i hi l hl xi => by
-          simpa only [Bendpointj] using
-            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
-              C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i hi l hl xi)
-        hCderivative (by
-          simpa only using hderivativeDecay)
+          simpa only [Bendpointj, (show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using
+            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_of_one_le
+              hdpos C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i l hi hl xi)
+        hCderivative hderivativeDecay
         (by
           dsimp only [Bderivativej,
             q4EnlargedScaledNormalizedDerivativePairMultiplierBound]
           exact sq_nonneg _)
         (fun u hu i hi l hl xi => by
           simpa only [Bderivativej] using
-            norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half
-              C1 hC1 hderivExp hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
-                u hu i hi l hl xi)
+            norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half_of_one_le
+              hdpos C1 hC1 hderivExp hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
+                u hu i l hi hl xi)
         hu1 hu2 hr f
       refine ⟨hbase.1, ?_⟩
       simpa only [CTreal, rhoReal] using
@@ -290,7 +289,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
     let Aderivative : Real :=
       q4DiagonalStrongFrequencyPrefactor Cderivative D0 r +
         q4PositiveGapStrongFrequencyPrefactor 2 gamma Ccover Cderivative D0 r
-    let Cbar : Real := ‖(surfaceMass 2)⁻¹ : Complex‖ *
+    let Cbar : Real := ‖((surfaceMass 2)⁻¹ : Complex)‖ *
         Real.sqrt (q4StrictShellSummationConstant Aendpoint b) +
       Real.sqrt (q4StrictShellSummationConstant Aderivative b)
     let CTreal : Real := Cbar + 1
@@ -342,7 +341,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
               (Aendpoint * (2 : Real) ^
                 (a * (k : Real) + b * (n : Real))) := by
         intro k n
-        simpa only [Aendpoint, E0, a, b] using
+        simpa only [Aendpoint, E0, a, b, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using
           (q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_ordinaryMultiplier
             (d := 2) (gamma := gamma) (eta := eta) (Ccover := Ccover)
             (Ckernel := Cendpoint) (C := C0) (q := r)
@@ -354,7 +353,7 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
               (Aderivative * (2 : Real) ^
                 (a * (k : Real) + b * (n : Real))) := by
         intro k n
-        simpa only [Aderivative, D0, a, b] using
+        simpa only [Aderivative, D0, a, b, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using
           (q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_planarSignedDerivativeMultiplier
             (gamma := gamma) (eta := eta) (Ccover := Ccover)
             (Ckernel := Cderivative) (C := C1) (q := r)
@@ -382,20 +381,19 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
               linarith
             · exact pow_nonneg hrhoReal _
       have hbase := q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multipliers
+        (Bendpoint := Bendpointj) (Bderivative := Bderivativej)
         (by omega) hj hE hEne hcover hCcover hgamma hdeltaone hs
         (absoluteDyadicBandpass phi hphiOne hphiZero j)
         (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-        hCendpoint (by
-          simpa only using hendpointDecay)
+        hCendpoint hendpointDecay rfl
         (by
           dsimp only [Bendpointj, q4EnlargedPairMultiplierBound]
           exact sq_nonneg _)
         (fun i hi l hl xi => by
-          simpa only [Bendpointj] using
-            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
-              C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i hi l hl xi)
-        hCderivative (by
-          simpa only using hderivativeDecay)
+          simpa only [Bendpointj, (show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using
+            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_of_one_le
+              hdpos C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i l hi hl xi)
+        hCderivative hderivativeDecay
         (by
           dsimp only [Bderivativej,
             q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound]
@@ -403,8 +401,8 @@ theorem q4_active_ltwo_dyadic_rate_of_fixed_normRadial_cutoff
         (fun u hu i hi l hl xi => by
           simpa only [Bderivativej] using
             norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_planar_signed_on_half
-              C1 hC1 hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
-                u hu i hi l hl xi)
+              C1 hC1 (by simpa only [(show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using hderiv1) phi hphiOne hphiZero hphiNorm j hj hE
+                u hu i l hi hl xi)
         hu1 hu2 hr f
       refine ⟨hbase.1, ?_⟩
       simpa only [CTreal, rhoReal] using
@@ -426,7 +424,7 @@ theorem q4_active_ltwo_strict_dyadic_rate_of_fixed_normRadial_cutoff
     (hphiZero : ∀ xi, 2 <= ‖xi‖ -> phi xi = 0)
     (hphiNorm : ∀ xi, ‖phi xi‖ <= 1)
     (hphiRadial : IsNormRadial phi)
-    (hd : 3 <= d ∨ d = 2 ∧ gamma < 1 / 2)
+    (hd : 3 <= d ∨ d = 2 ∧ gamma <= 1 / 2)
     (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
     (hcover : HasSubpowerAssouadCoverBound E gamma eta Ccover)
     (hCcover : 0 <= Ccover) (hgamma : 0 <= gamma) (heta : 0 <= eta)
@@ -454,7 +452,7 @@ theorem q4_active_ltwo_strict_dyadic_rate_of_fixed_normRadial_cutoff
   refine ⟨CT, rho, hCT, hCTtop, ?_, hrhoeq, hbound⟩
   have hrhoReal := q4_sqrt_frequency_ratio_mem_Ioo ha
   rw [hrhoeq, ← ENNReal.ofReal_one]
-  exact (ENNReal.ofReal_lt_ofReal_iff_of_nonneg hrhoReal.1).mpr hrhoReal.2
+  exact (ENNReal.ofReal_lt_ofReal_iff_of_nonneg hrhoReal.1.le).mpr hrhoReal.2
 
 /-- The literal zero-gap Q4 endpoint estimate with a prescribed dyadic
 subpower loss.  At the balancing parameter the finite range `n < j + 3`
@@ -537,7 +535,7 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
     let Aderivative : Real :=
       q4DiagonalStrongFrequencyPrefactor Cderivative D0 r +
         q4PositiveGapStrongFrequencyPrefactor d gamma Ccover Cderivative D0 r
-    let Cbar : Real := ‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Aendpoint +
+    let Cbar : Real := ‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Aendpoint +
       Real.sqrt Aderivative
     have hderivExp : 0 <= (((d - 1 : Nat) : Real) / 2) - 1 := by
       have hdsubNat : 2 <= d - 1 := by omega
@@ -581,7 +579,7 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
           (d := d) (gamma := gamma) (eta := eta) (Ccover := Ccover)
           (Ckernel := Cendpoint) (C := C0) (q := r)
           hrgtwo hCendpoint hCcover hgamma heta k n
-      simpa only [Bendpoint, Aendpoint, E0, a, b, hb, zero_mul, add_zero] using hraw
+      simpa only [Bendpoint, Aendpoint, E0, a, b, hb, zero_mul, add_zero, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using hraw
     have hlevelDerivative : ∀ k n : Nat,
         q4ActiveDyadicLevelStrongConstant d gamma eta Ccover Cderivative
           (Bderivative k) k n r <=
@@ -592,7 +590,7 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
           (d := d) (gamma := gamma) (eta := eta) (Ccover := Ccover)
           (Ckernel := Cderivative) (C := C1) (q := r)
           hrgtwo hCderivative hCcover hgamma heta k n
-      simpa only [Bderivative, Aderivative, D0, a, b, hb, zero_mul, add_zero] using hraw
+      simpa only [Bderivative, Aderivative, D0, a, b, hb, zero_mul, add_zero, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using hraw
     have hcore : ∀ j : Nat,
         q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
           Cendpoint (Bendpoint j) Cderivative (Bderivative j) j r <=
@@ -637,28 +635,29 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
             · exact pow_nonneg (Real.rpow_nonneg (by norm_num) _) _
           _ = CTreal * rhoReal ^ j := by rfl
       have hbase := q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multipliers
+        (Bendpoint := Bendpoint j) (Bderivative := Bderivative j)
         hdpos hj hE hEne hcover hCcover hgamma hdeltaone
         (activeDyadicIndices_nonempty_of_nonempty hE hEne)
         (absoluteDyadicBandpass phi hphiOne hphiZero j)
         (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-        hCendpoint (by simpa only using hendpointDecay)
+        hCendpoint hendpointDecay rfl
         (by
           dsimp only [Bendpoint, q4EnlargedPairMultiplierBound]
           exact sq_nonneg _)
         (fun i hi l hl xi => by
-          simpa only [Bendpoint] using
-            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
-              C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i hi l hl xi)
-        hCderivative (by simpa only using hderivativeDecay)
+          simpa only [Bendpoint, (show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using
+            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_of_one_le
+              hdpos C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i l hi hl xi)
+        hCderivative hderivativeDecay
         (by
           dsimp only [Bderivative,
             q4EnlargedScaledNormalizedDerivativePairMultiplierBound]
           exact sq_nonneg _)
         (fun s hs i hi l hl xi => by
           simpa only [Bderivative] using
-            norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half
-              C1 hC1 hderivExp hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
-                s hs i hi l hl xi)
+            norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half_of_one_le
+              hdpos C1 hC1 hderivExp hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
+                s hs i l hi hl xi)
         hu1 hu2 hr f
       refine ⟨hbase.1, ?_⟩
       simpa only [CTreal, rhoReal] using
@@ -689,7 +688,7 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
     let Aderivative : Real :=
       q4DiagonalStrongFrequencyPrefactor Cderivative D0 r +
         q4PositiveGapStrongFrequencyPrefactor 2 gamma Ccover Cderivative D0 r
-    let Cbar : Real := ‖(surfaceMass 2)⁻¹ : Complex‖ * Real.sqrt Aendpoint +
+    let Cbar : Real := ‖((surfaceMass 2)⁻¹ : Complex)‖ * Real.sqrt Aendpoint +
       Real.sqrt Aderivative
     have hE0 : 0 <= E0 := by
       dsimp only [E0]
@@ -727,7 +726,7 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
           (d := 2) (gamma := gamma) (eta := eta) (Ccover := Ccover)
           (Ckernel := Cendpoint) (C := C0) (q := r)
           hrgtwo hCendpoint hCcover hgamma heta k n
-      simpa only [Bendpoint, Aendpoint, E0, a, b, hb, zero_mul, add_zero] using hraw
+      simpa only [Bendpoint, Aendpoint, E0, a, b, hb, zero_mul, add_zero, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using hraw
     have hlevelDerivative : ∀ k n : Nat,
         q4ActiveDyadicLevelStrongConstant 2 gamma eta Ccover Cderivative
           (Bderivative k) k n r <=
@@ -738,7 +737,7 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
           (gamma := gamma) (eta := eta) (Ccover := Ccover)
           (Ckernel := Cderivative) (C := C1) (q := r)
           hrgtwo hCderivative hCcover hgamma heta k n
-      simpa only [Bderivative, Aderivative, D0, a, b, hb, zero_mul, add_zero] using hraw
+      simpa only [Bderivative, Aderivative, D0, a, b, hb, zero_mul, add_zero, Nat.cast_ofNat, Nat.cast_sub hdpos, Nat.cast_one, (show (2 : Real) - 1 = 1 from by norm_num)] using hraw
     have hcore : ∀ j : Nat,
         q4ActiveDyadicLtwoRealConstant 2 gamma eta Ccover
           Cendpoint (Bendpoint j) Cderivative (Bderivative j) j r <=
@@ -783,19 +782,20 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
             · exact pow_nonneg (Real.rpow_nonneg (by norm_num) _) _
           _ = CTreal * rhoReal ^ j := by rfl
       have hbase := q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multipliers
+        (Bendpoint := Bendpoint j) (Bderivative := Bderivative j)
         (by omega) hj hE hEne hcover hCcover hgamma hdeltaone
         (activeDyadicIndices_nonempty_of_nonempty hE hEne)
         (absoluteDyadicBandpass phi hphiOne hphiZero j)
         (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-        hCendpoint (by simpa only using hendpointDecay)
+        hCendpoint hendpointDecay rfl
         (by
           dsimp only [Bendpoint, q4EnlargedPairMultiplierBound]
           exact sq_nonneg _)
         (fun i hi l hl xi => by
-          simpa only [Bendpoint] using
-            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
-              C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i hi l hl xi)
-        hCderivative (by simpa only using hderivativeDecay)
+          simpa only [Bendpoint, (show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using
+            norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_of_one_le
+              hdpos C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i l hi hl xi)
+        hCderivative hderivativeDecay
         (by
           dsimp only [Bderivative,
             q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound]
@@ -803,8 +803,8 @@ theorem q4_active_ltwo_zero_gap_loss_of_fixed_normRadial_cutoff
         (fun s hs i hi l hl xi => by
           simpa only [Bderivative] using
             norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_planar_signed_on_half
-              C1 hC1 hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
-                s hs i hi l hl xi)
+              C1 hC1 (by simpa only [(show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using hderiv1) phi hphiOne hphiZero hphiNorm j hj hE
+                s hs i l hi hl xi)
         hu1 hu2 hr f
       refine ⟨hbase.1, ?_⟩
       simpa only [CTreal, rhoReal] using
@@ -892,7 +892,7 @@ theorem q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
     q4DiagonalStrongFrequencyPrefactor Cderivative D0 (2 / theta) +
       q4PositiveGapStrongFrequencyPrefactor 2 (1 / 2) Ccover Cderivative D0
         (2 / theta)
-  let Cbar : Real := ‖(surfaceMass 2)⁻¹ : Complex‖ *
+  let Cbar : Real := ‖((surfaceMass 2)⁻¹ : Complex)‖ *
       Real.sqrt (q4PlanarCriticalShellSummationConstant Aendpoint theta) +
     Real.sqrt (q4PlanarCriticalShellSummationConstant Aderivative theta)
   let CTreal : Real := Cbar + 1
@@ -928,7 +928,7 @@ theorem q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
   refine ⟨ENNReal.ofReal CTreal, ENNReal.ofReal rhoReal,
     ENNReal.ofReal_pos.mpr hCTreal, ENNReal.ofReal_lt_top, ?_, ?_, ?_⟩
   · rw [← ENNReal.ofReal_one]
-    exact (ENNReal.ofReal_lt_ofReal_iff_of_nonneg hrhoReal.1).mpr hrhoReal.2
+    exact (ENNReal.ofReal_lt_ofReal_iff_of_nonneg hrhoReal.1.le).mpr hrhoReal.2
   · rfl
   · intro j hj f
     let hs : (activeDyadicIndices E j).Nonempty :=
@@ -948,7 +948,7 @@ theorem q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
               (q4FrequencyExponentWithSubpowerLoss 2 theta eta * (k : Real) +
                 q4GapExponent 2 (1 / 2) theta * (n : Real))) := by
       intro k n
-      simpa only [Aendpoint, E0, hthetaOutput] using
+      simpa only [Aendpoint, E0, hthetaOutput, Nat.cast_ofNat, (show (2 : Real) - 1 = 1 from by norm_num)] using
         (q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_ordinaryMultiplier
           (d := 2) (gamma := (1 / 2 : Real)) (eta := eta) (Ccover := Ccover)
           (Ckernel := Cendpoint) (C := C0) (q := 2 / theta)
@@ -962,7 +962,7 @@ theorem q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
               (q4FrequencyExponentWithSubpowerLoss 2 theta eta * (k : Real) +
                 q4GapExponent 2 (1 / 2) theta * (n : Real))) := by
       intro k n
-      simpa only [Aderivative, D0, hthetaOutput] using
+      simpa only [Aderivative, D0, hthetaOutput, Nat.cast_ofNat, (show (2 : Real) - 1 = 1 from by norm_num)] using
         (q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_planarSignedDerivativeMultiplier
           (gamma := (1 / 2 : Real)) (eta := eta) (Ccover := Ccover)
           (Ckernel := Cderivative) (C := C1) (q := 2 / theta)
@@ -988,20 +988,21 @@ theorem q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
           apply mul_le_mul_of_nonneg_right
           · dsimp only [CTreal]
             linarith
-          · exact pow_nonneg hrhoReal.1 _
+          · exact pow_nonneg (by dsimp only [rhoReal]; exact hrhoReal.1.le) _
     have hbase := q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multipliers
+      (Bendpoint := Bendpointj) (Bderivative := Bderivativej)
       (by omega) hj hE hEne hcover hCcover (by norm_num) hdeltaone hs
       (absoluteDyadicBandpass phi hphiOne hphiZero j)
       (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
-      hCendpoint (by simpa only using hendpointDecay)
+      hCendpoint hendpointDecay rfl
       (by
         dsimp only [Bendpointj, q4EnlargedPairMultiplierBound]
         exact sq_nonneg _)
       (fun i hi l hl xi => by
-        simpa only [Bendpointj] using
-          norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
-            C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i hi l hl xi)
-      hCderivative (by simpa only using hderivativeDecay)
+        simpa only [Bendpointj, (show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using
+          norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_of_one_le
+            (by norm_num : (1 : Nat) <= 2) C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE i l hi hl xi)
+      hCderivative hderivativeDecay
       (by
         dsimp only [Bderivativej,
           q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound]
@@ -1009,8 +1010,8 @@ theorem q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
       (fun u hu i hi l hl xi => by
         simpa only [Bderivativej] using
           norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_planar_signed_on_half
-            C1 hC1 hderiv1 phi hphiOne hphiZero hphiNorm j hj hE
-              u hu i hi l hl xi)
+            C1 hC1 (by simpa only [(show ((2 - 1 : Nat) : Real) = 1 from by norm_num)] using hderiv1) phi hphiOne hphiZero hphiNorm j hj hE
+              u hu i l hi hl xi)
       hu1 hu2 houtput f
     refine ⟨hbase.1, ?_⟩
     simpa only [CTreal, rhoReal] using
@@ -1029,7 +1030,7 @@ two nearby output exponents should instead first choose the cutoff with
 keeps both estimates on exactly the same maximal operator. -/
 theorem exists_q4_active_ltwo_strict_dyadic_rate_of_theoremOne_inputs
     {d : Nat} {E : Set Real} {gamma eta Ccover : Real}
-    (hd : 3 <= d ∨ d = 2 ∧ gamma < 1 / 2)
+    (hd : 3 <= d ∨ d = 2 ∧ gamma <= 1 / 2)
     (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
     (hcover : HasSubpowerAssouadCoverBound E gamma eta Ccover)
     (hCcover : 0 <= Ccover) (hgamma : 0 <= gamma) (heta : 0 <= eta)

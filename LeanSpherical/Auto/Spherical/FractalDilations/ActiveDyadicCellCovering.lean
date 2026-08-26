@@ -11,7 +11,7 @@ open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCovering
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -55,8 +55,8 @@ noncomputable def dyadicCellsMeetingInterval
     (j : ℕ) (s : Finset ℤ) (a : ℝ) : Finset ℤ := by
   classical
   exact s.filter fun k =>
-    (dyadicInterval j k ∩ Icc (a - dyadicScale j / 2)
-      (a + dyadicScale j / 2)).Nonempty
+    (dyadicInterval j k ∩ Icc (a - DyadicCovering.dyadicScale j / 2)
+      (a + DyadicCovering.dyadicScale j / 2)).Nonempty
 
 /-- A length-`δ` interval can meet at most six cells of a `δ`-grid, even with
 the closed-cell convention.  The constant is intentionally non-sharp; it is
@@ -65,7 +65,7 @@ theorem card_dyadicCells_meeting_interval_le_six
     {j : ℕ} {s : Finset ℤ} {a : ℝ} :
     (dyadicCellsMeetingInterval j s a).card ≤ 6 := by
   classical
-  let δ : ℝ := dyadicScale j
+  let δ : ℝ := DyadicCovering.dyadicScale j
   let t : Finset ℤ := dyadicCellsMeetingInterval j s a
   let A : ℝ := (a - δ / 2 - 1) / δ - 1
   let B : ℝ := (a + δ / 2 - 1) / δ
@@ -152,7 +152,7 @@ bridge which lets us count active cells without selecting separated points of
 theorem card_dyadicCellIndices_le_six_mul_card_of_intervalCover
     {j : ℕ} {F : Set ℝ} {s : Finset ℤ} {ι : Finset ℝ}
     (hcell : ∀ k ∈ s, (F ∩ dyadicInterval j k).Nonempty)
-    (hcover : IsIntervalCover F (dyadicScale j) ι) :
+    (hcover : IsIntervalCover F (DyadicCovering.dyadicScale j) ι) :
     s.card ≤ 6 * ι.card := by
   classical
   let fibres : ℝ → Finset ℤ := fun a => dyadicCellsMeetingInterval j s a
@@ -211,22 +211,22 @@ theorem mem_localRadiusInterval_of_dyadicLeft_gap
     (hycell : y ∈ dyadicInterval j l)
     (hy : y ∈ Icc (1 : ℝ) 2)
     (hgap : |dyadicLeft j k - dyadicLeft j l| < L) :
-    y ∈ localRadiusInterval x (L + dyadicScale j) := by
-  have hδ : 0 < dyadicScale j := dyadicScale_pos j
+    y ∈ localRadiusInterval x (L + DyadicCovering.dyadicScale j) := by
+  have hδ : 0 < DyadicCovering.dyadicScale j := dyadicScale_pos j
   have hxleft : dyadicLeft j k ≤ x := hxcell.1
   have hxright : x ≤ dyadicRight j k := hxcell.2
   have hyleft : dyadicLeft j l ≤ y := hycell.1
   have hyright : y ≤ dyadicRight j l := hycell.2
-  have hxright' : x ≤ dyadicLeft j k + dyadicScale j := by
+  have hxright' : x ≤ dyadicLeft j k + DyadicCovering.dyadicScale j := by
     rw [← dyadicRight_sub_dyadicLeft j k]
     linarith
-  have hyright' : y ≤ dyadicLeft j l + dyadicScale j := by
+  have hyright' : y ≤ dyadicLeft j l + DyadicCovering.dyadicScale j := by
     rw [← dyadicRight_sub_dyadicLeft j l]
     linarith
   have hgap' : |dyadicLeft j l - dyadicLeft j k| < L := by
     simpa only [abs_sub_comm] using hgap
   rcases abs_lt.mp hgap' with ⟨hgaplower, hgapupper⟩
-  have hxy : |y - x| < L + dyadicScale j := by
+  have hxy : |y - x| < L + DyadicCovering.dyadicScale j := by
     rw [abs_lt]
     constructor <;> linarith
   rcases abs_lt.mp hxy with ⟨hxylower, hxyupper⟩
@@ -249,13 +249,13 @@ theorem activeDyadicRadiusGapNeighbors_card_le_of_hasSubpowerAssouadCoverBound
     (hE : E ⊆ Icc (1 : ℝ) 2)
     (hcover : HasSubpowerAssouadCoverBound E γ η C)
     (hC : 0 ≤ C) (hγ : 0 ≤ γ)
-    (hδone : dyadicScale j < 1) (hL : 0 ≤ L)
+    (hδone : DyadicCovering.dyadicScale j < 1) (hL : 0 ≤ L)
     (hk : k ∈ activeDyadicIndices E j) :
     ((activeDyadicRadiusGapNeighbors E j u L k).card : ℝ) ≤
-      6 * C * (dyadicScale j) ^ (-η) *
-        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ := by
+      6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+        ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ := by
   classical
-  let δ : ℝ := dyadicScale j
+  let δ : ℝ := DyadicCovering.dyadicScale j
   let R : ℝ := L + δ
   rcases activeDyadicIndices_nonempty_intersection hk with ⟨x, hxE, hxcell⟩
   have hxIcc : x ∈ Icc (1 : ℝ) 2 := hE hxE
@@ -332,35 +332,35 @@ theorem activeDyadicRadiusGapNeighbors_card_le_of_hasSubpowerAssouadCoverBound_o
     (hE : E ⊆ Icc (1 : ℝ) 2)
     (hcover : HasSubpowerAssouadCoverBound E γ η C)
     (hC : 0 ≤ C) (hγ : 0 ≤ γ)
-    (hδone : dyadicScale j < 1) (hδL : dyadicScale j ≤ L)
+    (hδone : DyadicCovering.dyadicScale j < 1) (hδL : DyadicCovering.dyadicScale j ≤ L)
     (hk : k ∈ activeDyadicIndices E j) :
     ((activeDyadicRadiusGapNeighbors E j u L k).card : ℝ) ≤
-      6 * C * (dyadicScale j) ^ (-η) *
-        ((4 * L) / dyadicScale j) ^ γ := by
-  have hδ : 0 < dyadicScale j := dyadicScale_pos j
+      6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+        ((4 * L) / DyadicCovering.dyadicScale j) ^ γ := by
+  have hδ : 0 < DyadicCovering.dyadicScale j := dyadicScale_pos j
   have hL : 0 ≤ L := hδ.le.trans hδL
   have hbase := activeDyadicRadiusGapNeighbors_card_le_of_hasSubpowerAssouadCoverBound
     (u := u) hE hcover hC hγ hδone hL hk
   have hratio :
-      (2 * (L + dyadicScale j)) / dyadicScale j ≤
-        (4 * L) / dyadicScale j := by
+      (2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j ≤
+        (4 * L) / DyadicCovering.dyadicScale j := by
     apply (div_le_div_iff_of_pos_right hδ).mpr
     linarith
   have hpow :
-      ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ ≤
-        ((4 * L) / dyadicScale j) ^ γ := by
+      ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ ≤
+        ((4 * L) / DyadicCovering.dyadicScale j) ^ γ := by
     apply Real.rpow_le_rpow
     · exact div_nonneg (by linarith) hδ.le
     · exact hratio
     · exact hγ
-  have hfactor : 0 ≤ 6 * C * (dyadicScale j) ^ (-η) := by
+  have hfactor : 0 ≤ 6 * C * (DyadicCovering.dyadicScale j) ^ (-η) := by
     positivity
   calc
     ((activeDyadicRadiusGapNeighbors E j u L k).card : ℝ) ≤
-        6 * C * (dyadicScale j) ^ (-η) *
-          ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ := hbase
-    _ ≤ 6 * C * (dyadicScale j) ^ (-η) *
-          ((4 * L) / dyadicScale j) ^ γ :=
+        6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+          ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ := hbase
+    _ ≤ 6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+          ((4 * L) / DyadicCovering.dyadicScale j) ^ γ :=
       mul_le_mul_of_nonneg_left hpow hfactor
 
 /-- The literal finite `Q4` shell on active dyadic-cell indices.  The
@@ -383,17 +383,17 @@ theorem sum_sq_norm_q4ActiveDyadicRadiusGapShell_le_of_hasSubpowerAssouadCoverBo
     (hE : E ⊆ Icc (1 : ℝ) 2)
     (hcover : HasSubpowerAssouadCoverBound E γ η C)
     (hC : 0 ≤ C) (hγ : 0 ≤ γ)
-    (hδone : dyadicScale j < 1) (hL : 0 ≤ L)
+    (hδone : DyadicCovering.dyadicScale j < 1) (hL : 0 ≤ L)
     {V W : Type*} [NormedAddCommGroup V] [NormedAddCommGroup W]
     (P : ℤ → ℤ → V → W) (g : ℤ → V) {B : ℝ} (hB : 0 ≤ B)
     (hpair : ∀ i l, ‖P i l (g l)‖ ≤ B * ‖g l‖) :
     (∑ i ∈ activeDyadicIndices E j,
       ‖q4ActiveDyadicRadiusGapShell E j u L P g i‖ ^ 2) ≤
-      (B * (6 * C * (dyadicScale j) ^ (-η) *
-        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ)) ^ 2 *
+      (B * (6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+        ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ)) ^ 2 *
         ∑ i ∈ activeDyadicIndices E j, ‖g i‖ ^ 2 := by
   classical
-  let δ : ℝ := dyadicScale j
+  let δ : ℝ := DyadicCovering.dyadicScale j
   let K : ℝ := 6 * C * δ ^ (-η) * ((2 * (L + δ)) / δ) ^ γ
   have hδ : 0 < δ := by
     dsimp [δ]

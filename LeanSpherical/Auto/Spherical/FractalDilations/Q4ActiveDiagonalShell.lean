@@ -17,7 +17,7 @@ open Auto.Spherical.FractalDilations.Q4PairKernelGap
 open Auto.Spherical.FractalDilations.Q4SelectedCutoffDomain
 open Auto.Spherical.FractalDilations.Q4SelectedLinearization
 open Auto.Spherical.FractalDilations.Q4TTStar
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -128,16 +128,17 @@ theorem q4ActiveDyadicDiagonalSelectedPairShell_crossed_strong
     intro i l z hil
     exact norm_q4ActiveDyadicPairKernel_diagonalLevel_le_of_gapDecayOn
       hj hE Psi hdecay i l z hil
-  have hdegree : forall i ∈ activeDyadicIndices E j,
+  have hdegree : ∀ i ∈ activeDyadicIndices E j,
       (((activeDyadicIndices E j).filter (R i)).card : Real) <= (1 : Real) := by
     intro i hi
     exact q4ActiveDyadicProductLevel_zero_card_le_one E j i
-  have H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
+  let H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
     (Psi j) hpsiCompact j hB hmultiplier
+  have hHB : H.B = B := rfl
   change (∫⁻ x, ENNReal.ofReal
       (‖q4SelectedKernelTTStarShell volume (activeDyadicIndices E j) R
         (q4ActiveDyadicPairKernel (Psi j) j) rho f x‖ ^ q)) <= _
-  simpa only [H, R, A, q4ActiveDyadicDiagonalSquareConstant, mul_one] using
+  simpa only [hHB, R, A, q4ActiveDyadicDiagonalSquareConstant, mul_one] using
     q4SelectedKernelTTStarShell_crossed_strong_of_cutoffStableDomain
       (activeDyadicIndices E j) R
       (q4ActiveDyadicProductLevel_symm E j 0) 1 (by norm_num) hdegree
@@ -188,15 +189,16 @@ theorem q4ActiveDyadicDiagonalSelectedPairShell_strong_offDiagonal
     intro i l z hil
     exact norm_q4ActiveDyadicPairKernel_diagonalLevel_le_of_gapDecayOn
       hj hE Psi hdecay i l z hil
-  have hdegree : forall i ∈ activeDyadicIndices E j,
+  have hdegree : ∀ i ∈ activeDyadicIndices E j,
       (((activeDyadicIndices E j).filter (R i)).card : Real) <= (1 : Real) := by
     intro i hi
     exact q4ActiveDyadicProductLevel_zero_card_le_one E j i
-  have H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
+  let H := q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
     (Psi j) hpsiCompact j hB hmultiplier
+  have hHB : H.B = B := rfl
   change eLpNorm (q4SelectedKernelTTStarShell volume (activeDyadicIndices E j) R
     (q4ActiveDyadicPairKernel (Psi j) j) rho f) (ENNReal.ofReal q) volume <= _
-  simpa only [H, R, A, q4ActiveDyadicDiagonalStrongConstant,
+  simpa only [hHB, R, A, q4ActiveDyadicDiagonalStrongConstant,
     q4ActiveDyadicDiagonalSquareConstant, mul_one] using
     q4SelectedKernelTTStarShell_strong_offDiagonal_of_cutoffStableDomain
       (activeDyadicIndices E j) R

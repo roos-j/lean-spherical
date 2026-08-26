@@ -10,7 +10,7 @@ open Auto.Spherical.FractalDilations.Q4SelectedLinearization
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -211,7 +211,7 @@ theorem q4ActiveDyadicSelectedPairShell_energy_le_of_pairwise_bound
     (hE : E ⊆ Set.Icc (1 : Real) 2)
     (hcover : HasSubpowerAssouadCoverBound E gamma eta C)
     (hC : 0 <= C) (hgamma : 0 <= gamma)
-    (hdeltaone : dyadicScale j < 1) (hL : 0 <= L)
+    (hdeltaone : DyadicCovering.dyadicScale j < 1) (hL : 0 <= L)
     (psi : SchwartzMap (Euclidean d) Complex) (rho : Euclidean d -> Int)
     (hrho : ∀ x, rho x ∈ activeDyadicIndices E j) (g : Euclidean d -> Complex)
     {B : Real} (hB : 0 <= B)
@@ -232,8 +232,8 @@ theorem q4ActiveDyadicSelectedPairShell_energy_le_of_pairwise_bound
         B * lpNorm (q4SelectedFibre rho g l) 2 volume) :
     integral volume (fun x =>
       norm (q4ActiveDyadicSelectedPairShell E j u L psi rho g x) ^ (2 : Nat)) <=
-      (B * (6 * C * (dyadicScale j) ^ (-eta) *
-        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ gamma)) ^ (2 : Nat) *
+      (B * (6 * C * (DyadicCovering.dyadicScale j) ^ (-eta) *
+        ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ gamma)) ^ (2 : Nat) *
         integral volume (fun x => norm (g x) ^ (2 : Nat)) := by
   unfold q4ActiveDyadicSelectedPairShell
   exact q4ActiveDyadicSelectedKernelTTStarShell_energy_le_of_pairwise_bound

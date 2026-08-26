@@ -31,7 +31,7 @@ open Auto.Spherical.FractalDilations.Q4PhysicalL2Extension
 open Auto.Spherical.FractalDilations.Q4RadialReduction
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -132,13 +132,13 @@ enlarged interval `[1/2,5/2]` is deliberate: active dyadic left endpoints
 need not themselves belong to `E`.
 -/
 theorem q4ActiveDyadicCanonicalLevelStationaryBound_of_gapDecayOn
-    {d : Nat} {E : Set Real} (psi : SchwartzMap (Euclidean d) Complex)
+    {d : Nat} {E : Set Real} (psi : Nat → SchwartzMap (Euclidean d) Complex)
     {C : Real} {j n : Nat}
     (hd : 1 ≤ d) (hj : 1 ≤ j) (hE : E ⊆ Set.Icc (1 : Real) 2)
     (hC : 0 ≤ C)
-    (hdecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psi
       (1 / 2 : Real) (5 / 2) C) :
-    Q4ActiveDyadicCanonicalLevelStationaryBound d E psi C j n := by
+    Q4ActiveDyadicCanonicalLevelStationaryBound d E (psi j) C j n := by
   intro i l x hlevel
   by_cases hn : n = 0
   · subst n
@@ -148,7 +148,9 @@ theorem q4ActiveDyadicCanonicalLevelStationaryBound_of_gapDecayOn
     subst l
     simpa only [q4ActiveDyadicPairKernel, mul_one] using
       (norm_q4DyadicPairKernel_diagonal_le_of_gapDecayOn psi hdecay j
-        (dyadicLeft_mem_Icc_half_two_of_mem_activeDyadicIndices hj hE hi) x)
+        (by
+          have h := dyadicLeft_mem_Icc_half_two_of_mem_activeDyadicIndices hj hE hi
+          exact ⟨h.1, h.2.trans (by norm_num)⟩) x)
   · rw [if_neg hn]
     have hnpos : 0 < n := Nat.pos_of_ne_zero hn
     have hi : i ∈ activeDyadicIndices E j := hlevel.1.1
@@ -210,7 +212,7 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_stationary_geometric_level_bound
   intro n
   apply hlevel n
   exact q4ActiveDyadicCanonicalLevelStationaryBound_of_gapDecayOn
-    (psi j) hd hj hE hCstationary hstationary
+    psi hd hj hE hCstationary hstationary
 
 /-- Convert a literal product-space strong estimate into the real fibre
 moment form consumed by finite-product `TT*`.  This is only the exact
@@ -253,7 +255,7 @@ theorem q4FibreLpMoment_root_le_of_product_eLpNorm
           ((q4FibreLpMoment mu s q (q4FiniteProductToFibres s out)) ^ (1 / q)) =
           (ENNReal.ofReal
             (q4FibreLpMoment mu s q (q4FiniteProductToFibres s out))) ^ (1 / q) :=
-        ENNReal.ofReal_rpow_of_nonneg houtnonneg _
+        (ENNReal.ofReal_rpow_of_nonneg houtnonneg (by positivity)).symm
       _ =
           ((eLpNorm out (ENNReal.ofReal q)
             (q4FiniteProductCountingMeasure mu s)) ^ q) ^ (1 / q) := by
@@ -271,7 +273,7 @@ theorem q4FibreLpMoment_root_le_of_product_eLpNorm
           (ENNReal.ofReal
             (q4FibreLpMoment mu s qdual (q4FiniteProductToFibres s inn))) ^
               (1 / qdual) :=
-        ENNReal.ofReal_rpow_of_nonneg hinnonneg _
+        (ENNReal.ofReal_rpow_of_nonneg hinnonneg (by positivity)).symm
       _ =
           ((eLpNorm inn (ENNReal.ofReal qdual)
             (q4FiniteProductCountingMeasure mu s)) ^ qdual) ^ (1 / qdual) := by
@@ -286,7 +288,7 @@ theorem q4FibreLpMoment_root_le_of_product_eLpNorm
           ((q4FibreLpMoment mu s qdual (q4FiniteProductToFibres s inn)) ^ (1 / qdual)) := by
     rw [hrootout, hrootin]
     exact hstrong
-  rw [← ENNReal.ofReal_mul hD (Real.rpow_nonneg hinnonneg _)] at hstrong'
+  rw [← ENNReal.ofReal_mul hD] at hstrong'
   exact (ENNReal.ofReal_le_ofReal_iff
     (mul_nonneg hD (Real.rpow_nonneg hinnonneg _))).mp hstrong'
 
@@ -348,7 +350,7 @@ theorem q4ActiveDyadicFullProduct_moment_le_of_stationary_geometric_level_bounds
   have hfull := q4ActiveDyadicFullProduct_eLpNorm_le_of_stationary_geometric_level_bounds
     hd hj hE psi hCstationary hstationary g
     (q := ENNReal.ofReal q) (p := ENNReal.ofReal qdual)
-    (ENNReal.ofReal_le_ofReal hq.le) C rho hmeas hlevel
+    (by simpa using ENNReal.ofReal_le_ofReal hq.le) C rho hmeas hlevel
   rw [hscalar] at hfull
   exact hfull
 
@@ -385,7 +387,7 @@ theorem q4FiniteProductMaximal_moment_le_of_fullKernelStrongMoment
     {I X : Type*} [Sub X] [MeasurableSpace X] [DecidableEq I]
     (mu : Measure X) (s : Finset I) (hs : s.Nonempty)
     (K : I -> I -> X -> Complex)
-    (T Tstar : I -> (X -> Complex) ->ₗ[Complex] (X -> Complex))
+    (T Tstar : I -> (X -> Complex) →ₗ[Complex] (X -> Complex))
     {q qdual A F : Real} (carrier : Set (I -> X -> Complex))
     (hcomp : IsQ4FiniteProductPairComposition mu K T Tstar)
     (hadj : ∀ (v : X -> Complex) (g : I -> X -> Complex), g ∈ carrier ->
@@ -536,9 +538,11 @@ theorem integrable_norm_q4MeasurableActiveDyadicEndpointPiece_rpow_of_schwartz
   have hmaxint : Integrable
       (fun x => q4FiniteProductMaximal (activeDyadicIndices E j) hs pieces x ^ q) volume := by
     apply Integrable.mono' hsum
-    · exact (((continuous_id.rpow_const (fun _ => Or.inr hq.le)).measurable.comp hmaxmeas)
-        .aestronglyMeasurable)
+    · exact (((Real.continuous_rpow_const hq.le).measurable.comp
+        hmaxmeas).aestronglyMeasurable)
     · filter_upwards with x
+      rw [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg
+        (q4FiniteProductMaximal_nonneg (activeDyadicIndices E j) hs pieces x) q)]
       exact q4FiniteProductMaximal_rpow_le_fibreSum
         (activeDyadicIndices E j) hs q pieces x
   refine hmaxint.congr ?_
@@ -610,7 +614,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_endpointMoment
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (f : SchwartzMap (Euclidean d) Complex)
-    {q A B : Real} (hq : 1 < q)
+    {q A : Real} {B : ENNReal} (hq : 1 < q)
     (hendpoint :
       (∫ x, ‖q4MeasurableActiveDyadicEndpointPiece E j hs psi f x‖ ^ q ∂volume) ^
         (1 / q) <= A)
@@ -641,8 +645,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_endpointMoment
   have hmajorant_mem : MemLp majorant (ENNReal.ofReal q) volume := by
     have hscaled : MemLp (fun x => c * endpoint x) (ENNReal.ofReal q) volume :=
       hendpoint_mem.const_mul c
-    simpa only [majorant] using
-      hscaled.add (by simpa only [variation] using hvariation.1)
+    exact hscaled.add (by simpa only [variation] using hvariation.1)
   have hmajorant_nonneg (x : Euclidean d) : 0 <= majorant x := by
     dsimp [majorant, c, endpoint, variation]
     exact add_nonneg
@@ -750,7 +753,7 @@ theorem q4MeasurableActiveDyadicEndpointPiece_moment_le_of_fullKernelStrongMomen
     (hs : (activeDyadicIndices E j).Nonempty)
     (psi f : SchwartzMap (Euclidean d) Complex)
     (K : Int -> Int -> Euclidean d -> Complex)
-    (T Tstar : Int -> (Euclidean d -> Complex) ->ₗ[Complex]
+    (T Tstar : Int -> (Euclidean d -> Complex) →ₗ[Complex]
       (Euclidean d -> Complex))
     {q qdual A F : Real} (carrier : Set (Int -> Euclidean d -> Complex))
     (hcomp : IsQ4FiniteProductPairComposition volume K T Tstar)
@@ -795,8 +798,9 @@ theorem q4MeasurableActiveDyadicEndpointPiece_moment_le_of_fullKernelStrongMomen
           (fun i x => q4DyadicSurfacePiece psi f (dyadicLeft j i) x) := by
     funext x
     unfold q4FiniteProductMaximal
-    apply Finset.sup'_congr rfl
+    refine Finset.sup'_congr hs rfl ?_
     intro i hi
+    dsimp only
     rw [hpieces i hi]
   have hrawmoment :
       (∫ x, q4FiniteProductMaximal (activeDyadicIndices E j) hs (fun i => T i u) x ^ q
@@ -835,9 +839,9 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_fullKernelStrongMoment
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (f : SchwartzMap (Euclidean d) Complex)
     (K : Int -> Int -> Euclidean d -> Complex)
-    (T Tstar : Int -> (Euclidean d -> Complex) ->ₗ[Complex]
+    (T Tstar : Int -> (Euclidean d -> Complex) →ₗ[Complex]
       (Euclidean d -> Complex))
-    {q qdual A F B : Real} (carrier : Set (Int -> Euclidean d -> Complex))
+    {q qdual A F : Real} {B : ENNReal} (carrier : Set (Int -> Euclidean d -> Complex))
     (hcomp : IsQ4FiniteProductPairComposition volume K T Tstar)
     (hadj : ∀ (v : Euclidean d -> Complex) (g : Int -> Euclidean d -> Complex),
       g ∈ carrier ->
@@ -944,8 +948,9 @@ theorem q4MeasurableActiveDyadicEndpointPiece_moment_le_of_actualFullProductMome
         (1 / q) ≤ A * F := by
   let g0 : Int → Euclidean d → Complex := q4PowerDualField q (fun i => T i u)
   let carrier : Set (Int → Euclidean d → Complex) := {g0}
-  apply q4MeasurableActiveDyadicEndpointPiece_moment_le_of_fullKernelStrongMoment
+  refine q4MeasurableActiveDyadicEndpointPiece_moment_le_of_fullKernelStrongMoment
     E j hs psi f (q4ActiveDyadicPairKernel psi j) T Tstar carrier hcomp
+    ?_ ?_ hA ?_ ?_ ?_ u hq hqdual hconj hAF hF hu hsource ?_ hpieces ?_ ?_
   · intro v g hg
     have hgeq : g = g0 := by
       simpa only [carrier, Set.mem_singleton_iff] using hg
@@ -956,7 +961,6 @@ theorem q4MeasurableActiveDyadicEndpointPiece_moment_le_of_actualFullProductMome
       simpa only [carrier, Set.mem_singleton_iff] using hg
     subst g
     exact hsynthesis_mem
-  · exact hA
   · intro g hg i hi
     have hgeq : g = g0 := by
       simpa only [carrier, Set.mem_singleton_iff] using hg
@@ -972,16 +976,7 @@ theorem q4MeasurableActiveDyadicEndpointPiece_moment_le_of_actualFullProductMome
       simpa only [carrier, Set.mem_singleton_iff] using hg
     subst g
     simpa only [g0] using hfullmoment
-  · exact u
-  · exact hq
-  · exact hqdual
-  · exact hconj
-  · exact hAF
-  · exact hF
-  · exact hu
-  · exact hsource
   · simpa only [carrier, g0] using Set.mem_singleton _
-  · exact hpieces
   · exact integrable_norm_q4MeasurableActiveDyadicEndpointPiece_rpow_of_schwartz
       E j hs psi hpsiCompact f (lt_trans zero_lt_one hq)
   · intro i hi
@@ -1001,7 +996,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_actualFullProductMoment
     (hpsiCompact : HasCompactSupport (psi : Euclidean d → Complex))
     (T Tstar : Int → (Euclidean d → Complex) →ₗ[Complex]
       (Euclidean d → Complex))
-    {q qdual A F B : Real}
+    {q qdual A F : Real} {B : ENNReal}
     (u : Euclidean d → Complex)
     (hcomp : IsQ4FiniteProductPairComposition volume
       (q4ActiveDyadicPairKernel psi j) T Tstar)
@@ -1075,7 +1070,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_stationary_geometric_TTStar
     (f : SchwartzMap (Euclidean d) Complex)
     (T Tstar : Int → (Euclidean d → Complex) →ₗ[Complex]
       (Euclidean d → Complex))
-    {q qdual A F B Cstationary Cderivative : Real}
+    {q qdual A F Cstationary Cderivative : Real} {B : ENNReal}
     (u : Euclidean d → Complex)
     (hCstationary : 0 ≤ Cstationary)
     (hpsiRadial : ∀ k, IsNormRadial (psi k))

@@ -32,6 +32,8 @@ dyadic radius gap.
 
 namespace Auto.Spherical.FractalDilations.CoordinateWaveSymbolBounds
 
+set_option maxHeartbeats 1000000
+
 open scoped ContDiff
 
 noncomputable section
@@ -51,7 +53,7 @@ private theorem exists_norm_const_mul_smul_unit_decay
   have hden : 0 < D |A * rho| := hD |A * rho| hlarge
   have hpow : 0 ≤ |A| ^ k := pow_nonneg (abs_nonneg A) _
   have hcbound : ‖c‖ * B ≤ ‖c‖ * B + 1 := by linarith
-  rw [norm_mul, norm_smul, Real.norm_eq_abs, abs_pow, norm_mul, hz, mul_one]
+  rw [norm_mul, norm_smul, Real.norm_eq_abs, abs_pow, norm_mul, hz, one_mul]
   calc
     ‖c‖ * (|A| ^ k * ‖g (A * rho)‖) ≤
         ‖c‖ * (|A| ^ k * (B / D |A * rho|)) := by
@@ -94,11 +96,12 @@ theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_outgoing_le
           (B * |2 * Real.pi * a| ^ k) :=
       mul_le_mul_of_nonneg_left (hbound (2 * Real.pi * a) rho) (norm_nonneg _)
     _ = (‖(surfaceMass (d - 1) : Complex)‖ * B) *
-          |2 * Real.pi * a| ^ k := by ring
+          |2 * Real.pi * a| ^ k := by
+      ring
     _ ≤ (‖(surfaceMass (d - 1) : Complex)‖ * B + 1) *
           |2 * Real.pi * a| ^ k := by
       gcongr
-      positivity
+      linarith
 
 /-- The reflected endpoint has the same low-frequency radial derivative
 bound. -/
@@ -122,11 +125,11 @@ theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_incoming_le
           (B * |-(2 * Real.pi * a)| ^ k) :=
       mul_le_mul_of_nonneg_left (hbound (-(2 * Real.pi * a)) rho) (norm_nonneg _)
     _ = (‖(surfaceMass (d - 1) : Complex)‖ * B) *
-          |2 * Real.pi * a| ^ k := by rw [abs_neg]
+          |2 * Real.pi * a| ^ k := by rw [abs_neg, ← mul_assoc]
     _ ≤ (‖(surfaceMass (d - 1) : Complex)‖ * B + 1) *
           |2 * Real.pi * a| ^ k := by
       gcongr
-      positivity
+      linarith
 
 /-- The middle coordinate amplitude is also uniformly controlled at low
 frequency, with the same explicit chain-rule power. -/
@@ -141,9 +144,11 @@ theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_middle_le
   refine ⟨‖(surfaceMass (d - 1) : Complex)‖ * B + 1, by positivity, ?_⟩
   intro a rho
   unfold coordinateWaveRadialAmplitude
+  have hk : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast le_top
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul
-      (contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)),
+      ((contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)).of_le (by exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤))),
     norm_mul, norm_smul, Real.norm_eq_abs, abs_pow]
   calc
     ‖(surfaceMass (d - 1) : Complex)‖ *
@@ -156,11 +161,12 @@ theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_middle_le
       gcongr
       exact hbound _
     _ = (‖(surfaceMass (d - 1) : Complex)‖ * B) *
-          |2 * Real.pi * a| ^ k := by ring
+          |2 * Real.pi * a| ^ k := by
+      ring
     _ ≤ (‖(surfaceMass (d - 1) : Complex)‖ * B + 1) *
           |2 * Real.pi * a| ^ k := by
       gcongr
-      positivity
+      linarith
 
 /-- A case-free low-frequency estimate for the three literal
 higher-dimensional coordinate pieces. -/
@@ -188,14 +194,17 @@ theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_outgoing_decay
         C * |2 * Real.pi * a| ^ k /
           quadraticMomentScale (d - 2 + 2 * k) |(2 * Real.pi * a) * rho| := by
   obtain ⟨B, hB, hbound⟩ :=
-    exists_smoothEndpointQuadraticIntegral_abs_decay (d - 2 + 2 * k)
+    exists_quadraticMoment_abs_decay (d - 2 + 2 * k) (smoothEndpointProfile (d - 2))
+      (contDiff_smoothEndpointProfile (d - 2))
+      (smoothEndpointProfile_eventuallyEq_zero_at_one (d - 2))
+      (fun u => by simp [smoothEndpointProfile])
   obtain ⟨C, hC, hCbound⟩ :=
     exists_norm_const_mul_smul_unit_decay
       (surfaceMass (d - 1) : Complex) (Complex.I ^ k)
       (by simp [norm_pow]) k
-      (smoothEndpointQuadraticIntegral (d - 2 + 2 * k))
+      (quadraticMomentIntegral (d - 2 + 2 * k) (smoothEndpointProfile (d - 2)))
       (quadraticMomentScale (d - 2 + 2 * k))
-      (quadraticMomentScale_pos_of_one_le (d - 2 + 2 * k))
+      (fun t ht => quadraticMomentScale_pos_of_one_le (d - 2 + 2 * k) ht)
       ⟨B, hB, hbound⟩
   refine ⟨C, hC, ?_⟩
   intro a rho hlarge
@@ -212,14 +221,17 @@ theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_incoming_decay
         C * |-(2 * Real.pi * a)| ^ k /
           quadraticMomentScale (d - 2 + 2 * k) |(-(2 * Real.pi * a)) * rho| := by
   obtain ⟨B, hB, hbound⟩ :=
-    exists_smoothEndpointQuadraticIntegral_abs_decay (d - 2 + 2 * k)
+    exists_quadraticMoment_abs_decay (d - 2 + 2 * k) (smoothEndpointProfile (d - 2))
+      (contDiff_smoothEndpointProfile (d - 2))
+      (smoothEndpointProfile_eventuallyEq_zero_at_one (d - 2))
+      (fun u => by simp [smoothEndpointProfile])
   obtain ⟨C, hC, hCbound⟩ :=
     exists_norm_const_mul_smul_unit_decay
       (surfaceMass (d - 1) : Complex) (Complex.I ^ k)
       (by simp [norm_pow]) k
-      (smoothEndpointQuadraticIntegral (d - 2 + 2 * k))
+      (quadraticMomentIntegral (d - 2 + 2 * k) (smoothEndpointProfile (d - 2)))
       (quadraticMomentScale (d - 2 + 2 * k))
-      (quadraticMomentScale_pos_of_one_le (d - 2 + 2 * k))
+      (fun t ht => quadraticMomentScale_pos_of_one_le (d - 2 + 2 * k) ht)
       ⟨B, hB, hbound⟩
   refine ⟨C, hC, ?_⟩
   intro a rho hlarge
@@ -268,13 +280,13 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_outgoing_d
       (by norm_num) k
       (fun l => iteratedDeriv k planarEndpointQuadraticIntegral l)
       (quadraticMomentScale (2 * k))
-      (quadraticMomentScale_pos_of_one_le (2 * k))
+      (fun t ht => quadraticMomentScale_pos_of_one_le (2 * k) ht)
       ⟨B, hB, hbound⟩
   refine ⟨C, hC, ?_⟩
   intro a rho hlarge
   unfold planarCoordinateWaveRadialAmplitude
   rw [iteratedDeriv_const_mul_field,
-    iteratedDeriv_comp_const_smul contDiff_planarEndpointQuadraticIntegral]
+    iteratedDeriv_comp_const_smul (contDiff_planarEndpointQuadraticIntegral.of_le (by exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤)))]
   simpa using hCbound (2 * Real.pi * a) rho hlarge
 
 /-- The incoming planar endpoint is controlled at the reflected frequency. -/
@@ -293,13 +305,13 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_incoming_d
       (by norm_num) k
       (fun l => iteratedDeriv k planarEndpointQuadraticIntegral l)
       (quadraticMomentScale (2 * k))
-      (quadraticMomentScale_pos_of_one_le (2 * k))
+      (fun t ht => quadraticMomentScale_pos_of_one_le (2 * k) ht)
       ⟨B, hB, hbound⟩
   refine ⟨C, hC, ?_⟩
   intro a rho hlarge
   unfold planarCoordinateWaveRadialAmplitude
   rw [iteratedDeriv_const_mul_field,
-    iteratedDeriv_comp_const_smul contDiff_planarEndpointQuadraticIntegral]
+    iteratedDeriv_comp_const_smul (contDiff_planarEndpointQuadraticIntegral.of_le (by exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤)))]
   simpa using hCbound (-(2 * Real.pi * a)) rho hlarge
 
 /-- The planar middle amplitude is the `m = 0` rapid-decay instance. -/
@@ -333,8 +345,15 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_outgoing_l
       ‖iteratedDeriv k (fun t : Real =>
         planarCoordinateWaveRadialAmplitude .outgoing a t) rho‖ ≤
         C * |2 * Real.pi * a| ^ k := by
-  obtain ⟨B, hB, hbound⟩ :=
+  obtain ⟨B, hB, hbound0⟩ :=
     exists_iteratedDeriv_planarEndpointQuadraticIntegral_le k
+  have hbound : ∀ lambda : Real,
+      ‖quadraticMomentIntegral (2 * k) planarEndpointProfile lambda‖ ≤ B := by
+    intro lambda
+    have h := hbound0 lambda
+    rw [iteratedDeriv_planarEndpointQuadraticIntegral, norm_mul, norm_pow,
+      Complex.norm_I, one_pow, one_mul] at h
+    exact h
   refine ⟨‖(surfaceMass 1 : Complex)‖ * B + 1, by positivity, ?_⟩
   intro a rho
   rw [iteratedDeriv_planarCoordinateWaveRadialAmplitude_outgoing]
@@ -352,7 +371,7 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_outgoing_l
     _ ≤ (‖(surfaceMass 1 : Complex)‖ * B + 1) *
           |2 * Real.pi * a| ^ k := by
       gcongr
-      positivity
+      linarith
 
 /-- Uniform low-frequency derivative estimate for the incoming planar
 coordinate amplitude. -/
@@ -362,8 +381,15 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_incoming_l
       ‖iteratedDeriv k (fun t : Real =>
         planarCoordinateWaveRadialAmplitude .incoming a t) rho‖ ≤
         C * |2 * Real.pi * a| ^ k := by
-  obtain ⟨B, hB, hbound⟩ :=
+  obtain ⟨B, hB, hbound0⟩ :=
     exists_iteratedDeriv_planarEndpointQuadraticIntegral_le k
+  have hbound : ∀ lambda : Real,
+      ‖quadraticMomentIntegral (2 * k) planarEndpointProfile lambda‖ ≤ B := by
+    intro lambda
+    have h := hbound0 lambda
+    rw [iteratedDeriv_planarEndpointQuadraticIntegral, norm_mul, norm_pow,
+      Complex.norm_I, one_pow, one_mul] at h
+    exact h
   refine ⟨‖(surfaceMass 1 : Complex)‖ * B + 1, by positivity, ?_⟩
   intro a rho
   rw [iteratedDeriv_planarCoordinateWaveRadialAmplitude_incoming]
@@ -384,7 +410,7 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_incoming_l
     _ ≤ (‖(surfaceMass 1 : Complex)‖ * B + 1) *
           |2 * Real.pi * a| ^ k := by
       gcongr
-      positivity
+      linarith
 
 /-- Uniform low-frequency derivative estimate for the planar middle
 coordinate amplitude. -/
@@ -401,7 +427,8 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_middle_le
   unfold planarCoordinateWaveRadialAmplitude
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul
-      (contDiff_coordinateMiddleMeridianLocalizedIntegral 0),
+      ((contDiff_coordinateMiddleMeridianLocalizedIntegral 0).of_le
+        (by exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤))),
     norm_mul, norm_smul, Real.norm_eq_abs, abs_pow]
   calc
     ‖(surfaceMass 1 : Complex)‖ *
@@ -416,7 +443,7 @@ theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_middle_le
     _ ≤ (‖(surfaceMass 1 : Complex)‖ * B + 1) *
           |2 * Real.pi * a| ^ k := by
       gcongr
-      positivity
+      linarith
 
 /-- Case-free low-frequency derivative estimate for all three planar
 coordinate-wave pieces. -/

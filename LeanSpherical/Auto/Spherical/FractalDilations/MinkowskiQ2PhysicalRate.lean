@@ -20,7 +20,7 @@ open Auto.Spherical.FractalDilations.MinkowskiFacts
 open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalRate
 open Auto.Spherical.FractalDilations.SameOutputInputInterpolation
 open Auto.Spherical.FractalDilations.TheoremOneFourierInputs
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 open Auto.Spherical.SurfaceHeight
 
 
@@ -438,10 +438,10 @@ theorem q2_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
     hn hE hEne halpha hM hp1 hp2 hcritical'
     phi psi hphiOne hphiZero hphiNorm hpsi
 
-+/-- The scale-independent part of the diagonal-to-top upgrade. -/
+/-- The scale-independent part of the diagonal-to-top upgrade. -/
 def q2TopDyadicRateConstant (r s c L : Real) : Real :=
   (s * (2 : Real) ^ r * c ^ r *
-      ((s - r)â»Â¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ sâ»Â¹
+      ((s - r)⁻¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ s⁻¹
 
 /-- The geometric ratio after the diagonal-to-top upgrade. -/
 def q2TopDyadicRateRatio (r s rho : Real) : Real := rho ^ (r / s)
@@ -454,7 +454,7 @@ theorem q2TopDyadicRateConstant_pos
   have hdiff : 0 < s - r := sub_pos.mpr hrs
   have htwo : 0 < (2 : Real) ^ r := Real.rpow_pos_of_pos (by norm_num) _
   have hc' : 0 < c ^ r := Real.rpow_pos_of_pos hc _
-  have htail : 0 < (s - r)â»Â¹ * (4 : Real) ^ (s - r) :=
+  have htail : 0 < (s - r)⁻¹ * (4 : Real) ^ (s - r) :=
     mul_pos (inv_pos.mpr hdiff) (Real.rpow_pos_of_pos (by norm_num) _)
   have hL' : 0 < L ^ (s - r) := Real.rpow_pos_of_pos hL _
   unfold q2TopDyadicRateConstant
@@ -464,13 +464,13 @@ theorem q2TopDyadicRateConstant_pos
 theorem q2TopDyadicRateRatio_mem_Ioo
     {r s rho : Real} (hr : 0 < r) (hrs : r < s)
     (hrho : 0 < rho) (hrhoOne : rho < 1) :
-    q2TopDyadicRateRatio r s rho âˆˆ Ioo 0 1 := by
+    q2TopDyadicRateRatio r s rho ∈ Ioo 0 1 := by
   have hs : 0 < s := lt_trans hr hrs
   have hratio : 0 < r / s := div_pos hr hs
   constructor
-  Â· unfold q2TopDyadicRateRatio
+  · unfold q2TopDyadicRateRatio
     exact Real.rpow_pos_of_pos hrho _
-  Â· unfold q2TopDyadicRateRatio
+  · unfold q2TopDyadicRateRatio
     exact Real.rpow_lt_one hrho.le hrhoOne hratio
 
 /-- The scalar identity which preserves a geometric rate through the
@@ -479,16 +479,16 @@ theorem q2TopDyadicRateCoefficient_eq
     {r s c rho L : Real} (hr : 0 < r) (hrs : r < s)
     (hc : 0 < c) (hrho : 0 < rho) (hL : 0 < L) (j : Nat) :
     (s * (2 : Real) ^ r * (c * rho ^ j) ^ r *
-        ((s - r)â»Â¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ sâ»Â¹ =
+        ((s - r)⁻¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ s⁻¹ =
       q2TopDyadicRateConstant r s c L *
         q2TopDyadicRateRatio r s rho ^ j := by
   have hs : 0 < s := lt_trans hr hrs
   have hdiff : 0 < s - r := sub_pos.mpr hrs
   let K : Real := s * (2 : Real) ^ r * c ^ r *
-    ((s - r)â»Â¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)
+    ((s - r)⁻¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)
   have htwo : 0 < (2 : Real) ^ r := Real.rpow_pos_of_pos (by norm_num) _
   have hc' : 0 < c ^ r := Real.rpow_pos_of_pos hc _
-  have htail : 0 < (s - r)â»Â¹ * (4 : Real) ^ (s - r) :=
+  have htail : 0 < (s - r)⁻¹ * (4 : Real) ^ (s - r) :=
     mul_pos (inv_pos.mpr hdiff) (Real.rpow_pos_of_pos (by norm_num) _)
   have hL' : 0 < L ^ (s - r) := Real.rpow_pos_of_pos hL _
   have hK : 0 < K := by
@@ -499,62 +499,61 @@ theorem q2TopDyadicRateCoefficient_eq
       (rho ^ j) ^ r = (rho ^ (j : Real)) ^ r := by
         rw [Real.rpow_natCast]
       _ = rho ^ ((j : Real) * r) := by
-        rw [â† Real.rpow_mul hrho.le]
+        rw [← Real.rpow_mul hrho.le]
   have hfactor :
       s * (2 : Real) ^ r * (c * rho ^ j) ^ r *
-          ((s - r)â»Â¹ * (4 : Real) ^ (s - r)) * L ^ (s - r) =
+          ((s - r)⁻¹ * (4 : Real) ^ (s - r)) * L ^ (s - r) =
         K * rho ^ ((j : Real) * r) := by
     rw [Real.mul_rpow hc.le (pow_nonneg hrho.le j), hpow]
     dsimp only [K]
     ring
-  have hexp : ((j : Real) * r) * sâ»Â¹ = (r / s) * (j : Real) := by
+  have hexp : ((j : Real) * r) * s⁻¹ = (r / s) * (j : Real) := by
     field_simp [hs.ne']
-    ring
   calc
     (s * (2 : Real) ^ r * (c * rho ^ j) ^ r *
-        ((s - r)â»Â¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ sâ»Â¹ =
-        (K * rho ^ ((j : Real) * r)) ^ sâ»Â¹ := by rw [hfactor]
-    _ = K ^ sâ»Â¹ * (rho ^ ((j : Real) * r)) ^ sâ»Â¹ := by
+        ((s - r)⁻¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ s⁻¹ =
+        (K * rho ^ ((j : Real) * r)) ^ s⁻¹ := by rw [hfactor]
+    _ = K ^ s⁻¹ * (rho ^ ((j : Real) * r)) ^ s⁻¹ := by
       rw [Real.mul_rpow hK.le (Real.rpow_nonneg hrho.le _)]
-    _ = K ^ sâ»Â¹ * rho ^ (((j : Real) * r) * sâ»Â¹) := by
-      rw [â† Real.rpow_mul hrho.le]
-    _ = K ^ sâ»Â¹ * rho ^ ((r / s) * (j : Real)) := by rw [hexp]
-    _ = K ^ sâ»Â¹ * (rho ^ (r / s)) ^ j := by
+    _ = K ^ s⁻¹ * rho ^ (((j : Real) * r) * s⁻¹) := by
+      rw [← Real.rpow_mul hrho.le]
+    _ = K ^ s⁻¹ * rho ^ ((r / s) * (j : Real)) := by rw [hexp]
+    _ = K ^ s⁻¹ * (rho ^ (r / s)) ^ j := by
       rw [Real.rpow_mul_natCast hrho.le]
     _ = q2TopDyadicRateConstant r s c L *
         q2TopDyadicRateRatio r s rho ^ j := by
       rfl
 
 /-- Upgrade a real-valued strict diagonal dyadic rate by the literal physical
-`Lâˆž` endpoint of the same absolute multiplier. -/
+`L∞` endpoint of the same absolute multiplier. -/
 theorem literal_absolute_dyadic_top_rate_of_real_diagonal_rate
-    {d : Nat} (hd : 0 < d) (E : Set Real) (hE : E âŠ† Icc (1 : Real) 2)
+    {d : Nat} (hd : 0 < d) (E : Set Real) (hE : E ⊆ Icc (1 : Real) 2)
     (phi : SchwartzMap (Euclidean d) Complex)
-    (hphiOne : âˆ€ xi, â€–xiâ€– â‰¤ 1 â†’ phi xi = 1)
-    (hphiZero : âˆ€ xi, 2 â‰¤ â€–xiâ€– â†’ phi xi = 0)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
     {r s c rho : Real} (hr : 0 < r) (hrs : r < s)
     (hc : 0 < c) (hrho : 0 < rho) (hrhoOne : rho < 1)
-    (hsource : âˆ€ j : Nat, âˆ€ f : SchwartzMap (Euclidean d) Complex,
+    (hsource : ∀ j : Nat, ∀ f : SchwartzMap (Euclidean d) Complex,
       MemLp (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-        (ENNReal.ofReal r) volume âˆ§
+        (ENNReal.ofReal r) volume ∧
       eLpNorm (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-        (ENNReal.ofReal r) volume â‰¤
+        (ENNReal.ofReal r) volume ≤
         ENNReal.ofReal (c * rho ^ j) *
-          eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal r) volume) :
-    âˆƒ C R : ENNReal, 0 < C âˆ§ C < âŠ¤ âˆ§ 0 < R âˆ§ R < 1 âˆ§
-      âˆ€ j : Nat, âˆ€ f : SchwartzMap (Euclidean d) Complex,
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal r) volume) :
+    ∃ C R : ENNReal, 0 < C ∧ C < ⊤ ∧ 0 < R ∧ R < 1 ∧
+      ∀ j : Nat, ∀ f : SchwartzMap (Euclidean d) Complex,
         MemLp (fractalDyadicBandpassMaximal d E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume âˆ§
+          (ENNReal.ofReal s) volume ∧
         eLpNorm (fractalDyadicBandpassMaximal d E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume â‰¤
+          (ENNReal.ofReal s) volume ≤
           C * R ^ j *
-            eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal s) volume := by
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal s) volume := by
   let L : Real := absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero + 1
-  have hK : 0 â‰¤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero :=
+  have hK : 0 ≤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero :=
     absoluteDyadicBandpassLInfinityConstant_nonneg phi hphiOne hphiZero
   have hL : 0 < L := by
     dsimp only [L]
@@ -565,160 +564,161 @@ theorem literal_absolute_dyadic_top_rate_of_real_diagonal_rate
     q2TopDyadicRateConstant_pos hr hrs hc hL
   have hRreal := q2TopDyadicRateRatio_mem_Ioo hr hrs hrho hrhoOne
   have hC : 0 < C := ENNReal.ofReal_pos.mpr hCreal
-  have hCtop : C < âŠ¤ := ENNReal.ofReal_lt_top
+  have hCtop : C < ⊤ := ENNReal.ofReal_lt_top
   have hR : 0 < R := ENNReal.ofReal_pos.mpr hRreal.1
   have hRone : R < 1 := ENNReal.ofReal_lt_one.mpr hRreal.2
-  refine âŸ¨C, R, hC, hCtop, hR, hRone, ?_âŸ©
+  refine ⟨C, R, hC, hCtop, hR, hRone, ?_⟩
   intro j f
-  let T : SchwartzMap (Euclidean d) Complex â†’ Euclidean d â†’ Real :=
+  let T : SchwartzMap (Euclidean d) Complex → Euclidean d → Real :=
     fun g => fractalDyadicBandpassMaximal d E
       (absoluteDyadicBandpass phi hphiOne hphiZero j) g
-  have hTmeas : âˆ€ g : SchwartzMap (Euclidean d) Complex,
+  have hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
       AEStronglyMeasurable (T g) volume := by
     intro g
     dsimp only [T]
     exact (measurable_fractalDyadicBandpassMaximal E
       (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable
-  have hTnonneg : âˆ€ g x, 0 â‰¤ T g x := by
+  have hTnonneg : ∀ g x, 0 ≤ T g x := by
     intro g x
     dsimp only [T]
     exact fractalDyadicBandpassMaximal_nonneg E
       (absoluteDyadicBandpass phi hphiOne hphiZero j) g x
-  have hEpos : E âŠ† Ioi (0 : Real) := by
+  have hEpos : E ⊆ Ioi (0 : Real) := by
     intro t ht
     exact lt_of_lt_of_le zero_lt_one (hE ht).1
-  have hTsub : âˆ€ g h : SchwartzMap (Euclidean d) Complex, âˆ€ x,
-      T (g + h) x â‰¤ T g x + T h x := by
+  have hTsub : ∀ g h : SchwartzMap (Euclidean d) Complex, ∀ x,
+      T (g + h) x ≤ T g x + T h x := by
     intro g h x
     dsimp only [T]
-    exact fractalDyadicBandpassMaximal_add_le hd hEpos
+    exact fractalDyadicBandpassMaximal_add_le hd E hEpos
       (absoluteDyadicBandpass phi hphiOne hphiZero j) g h x
-  have hstrong : âˆ€ g : SchwartzMap (Euclidean d) Complex,
-      MemLp (T g) (ENNReal.ofReal r) volume âˆ§
-      eLpNorm (T g) (ENNReal.ofReal r) volume â‰¤
+  have hstrong : ∀ g : SchwartzMap (Euclidean d) Complex,
+      MemLp (T g) (ENNReal.ofReal r) volume ∧
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
         ENNReal.ofReal (c * rho ^ j) *
-          eLpNorm (g : Euclidean d â†’ Complex) (ENNReal.ofReal r) volume := by
+          eLpNorm (g : Euclidean d → Complex) (ENNReal.ofReal r) volume := by
     intro g
     simpa only [T] using hsource j g
   have hcj : 0 < c * rho ^ j := mul_pos hc (pow_pos hrho j)
-  have htop : âˆ€ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 â‰¤ a â†’
-      (âˆ€ x, â€–g xâ€– â‰¤ a) â†’ âˆ€ x, T g x â‰¤ L * a := by
+  have htop : ∀ (g : SchwartzMap (Euclidean d) Complex) (a : Real), 0 ≤ a →
+      (∀ x, ‖g x‖ ≤ a) → ∀ x, T g x ≤ L * a := by
     intro g a ha hga x
     have hbase := fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_uniform_norm
       hd E hE phi hphiOne hphiZero j g hga x
     calc
-      T g x â‰¤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero * a := by
+      T g x ≤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero * a := by
         simpa only [T] using hbase
-      _ â‰¤ L * a := by
+      _ ≤ L * a := by
         apply mul_le_mul_of_nonneg_right
           (le_add_of_nonneg_right (by norm_num)) ha
   have hhigh := schwartz_operator_strong_above_of_diagonal_top_with_constant
     T hr hrs hcj hL hTmeas hTnonneg hTsub hstrong htop f
-  refine âŸ¨by simpa only [T] using hhigh.1, ?_âŸ©
+  refine ⟨by simpa only [T] using hhigh.1, ?_⟩
   have hcoefficient := q2TopDyadicRateCoefficient_eq hr hrs hc hrho hL j
   calc
     eLpNorm (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-        (ENNReal.ofReal s) volume â‰¤
+        (ENNReal.ofReal s) volume ≤
         ENNReal.ofReal
           ((s * (2 : Real) ^ r * (c * rho ^ j) ^ r *
-              ((s - r)â»Â¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ sâ»Â¹) *
-          eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal s) volume := by
+              ((s - r)⁻¹ * (4 : Real) ^ (s - r)) * L ^ (s - r)) ^ s⁻¹) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal s) volume := by
       simpa only [T] using hhigh.2
     _ = C * R ^ j *
-          eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal s) volume := by
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal s) volume := by
       rw [hcoefficient]
       dsimp only [C, R]
       rw [ENNReal.ofReal_mul hCreal.le,
-        ENNReal.ofReal_pow (Real.rpow_nonneg hrho.le _)]
-      ring
+        ENNReal.ofReal_pow
+          (show (0 : Real) ≤ q2TopDyadicRateRatio r s rho from
+            Real.rpow_nonneg hrho.le _)]
 
 /-- The same upgrade starting from an `ENNReal` rate.  Finiteness and
 positivity allow its two coefficients to be converted to the real rate used
 by the preceding exact calculation. -/
 theorem literal_absolute_dyadic_top_rate_of_ennreal_diagonal_rate
-    {d : Nat} (hd : 0 < d) (E : Set Real) (hE : E âŠ† Icc (1 : Real) 2)
+    {d : Nat} (hd : 0 < d) (E : Set Real) (hE : E ⊆ Icc (1 : Real) 2)
     (phi : SchwartzMap (Euclidean d) Complex)
-    (hphiOne : âˆ€ xi, â€–xiâ€– â‰¤ 1 â†’ phi xi = 1)
-    (hphiZero : âˆ€ xi, 2 â‰¤ â€–xiâ€– â†’ phi xi = 0)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
     {r s : Real} (hr : 0 < r) (hrs : r < s)
-    {C rho : ENNReal} (hC : 0 < C) (hCtop : C < âŠ¤)
+    {C rho : ENNReal} (hC : 0 < C) (hCtop : C < ⊤)
     (hrho : 0 < rho) (hrhoOne : rho < 1)
-    (hsource : âˆ€ j : Nat, âˆ€ f : SchwartzMap (Euclidean d) Complex,
+    (hsource : ∀ j : Nat, ∀ f : SchwartzMap (Euclidean d) Complex,
       MemLp (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-        (ENNReal.ofReal r) volume âˆ§
+        (ENNReal.ofReal r) volume ∧
       eLpNorm (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-        (ENNReal.ofReal r) volume â‰¤
+        (ENNReal.ofReal r) volume ≤
         C * rho ^ j *
-          eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal r) volume) :
-    âˆƒ C' R : ENNReal, 0 < C' âˆ§ C' < âŠ¤ âˆ§ 0 < R âˆ§ R < 1 âˆ§
-      âˆ€ j : Nat, âˆ€ f : SchwartzMap (Euclidean d) Complex,
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal r) volume) :
+    ∃ C' R : ENNReal, 0 < C' ∧ C' < ⊤ ∧ 0 < R ∧ R < 1 ∧
+      ∀ j : Nat, ∀ f : SchwartzMap (Euclidean d) Complex,
         MemLp (fractalDyadicBandpassMaximal d E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume âˆ§
+          (ENNReal.ofReal s) volume ∧
         eLpNorm (fractalDyadicBandpassMaximal d E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume â‰¤
+          (ENNReal.ofReal s) volume ≤
           C' * R ^ j *
-            eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal s) volume := by
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal s) volume := by
   let c : Real := C.toReal
   let rhor : Real := rho.toReal
   have hc : 0 < c := by
     dsimp only [c]
     exact ENNReal.toReal_pos hC.ne' hCtop.ne
-  have hrhotop : rho < âŠ¤ := lt_trans hrhoOne (by simp)
+  have hrhotop : rho < ⊤ := lt_trans hrhoOne (by simp)
   have hrhor : 0 < rhor := by
     dsimp only [rhor]
     exact ENNReal.toReal_pos hrho.ne' hrhotop.ne
   have hrhorOne : rhor < 1 := by
     dsimp only [rhor]
-    rw [â† ENNReal.toReal_one]
+    rw [← ENNReal.toReal_one]
     exact (ENNReal.toReal_lt_toReal hrhotop.ne ENNReal.one_ne_top).mpr hrhoOne
   apply literal_absolute_dyadic_top_rate_of_real_diagonal_rate
     hd E hE phi hphiOne hphiZero hr hrs hc hrhor hrhorOne
   intro j f
   have hrate := hsource j f
-  have hrhopowtop : rho ^ j < âŠ¤ := ENNReal.pow_lt_top hrhotop
-  have hcoefTop : C * rho ^ j < âŠ¤ := ENNReal.mul_lt_top hCtop hrhopowtop
+  have hrhopowtop : rho ^ j < ⊤ := ENNReal.pow_lt_top hrhotop
+  have hcoefTop : C * rho ^ j < ⊤ := ENNReal.mul_lt_top hCtop hrhopowtop
   have hrewrite : ENNReal.ofReal (c * rhor ^ j) = C * rho ^ j := by
     dsimp only [c, rhor]
     rw [ENNReal.ofReal_mul ENNReal.toReal_nonneg,
       ENNReal.ofReal_pow ENNReal.toReal_nonneg,
       ENNReal.ofReal_toReal hCtop.ne,
       ENNReal.ofReal_toReal hrhotop.ne]
-  rw [â† hrewrite] at hrate
+  rw [← hrewrite] at hrate
   simpa only [mul_assoc] using hrate
 
 /-- The literal higher-dimensional upper-Q2 rate.  The lower diagonal rate
 is Lemma 2.2's Minkowski-cover calculation, and the only additional input is
-the actual scale-uniform physical `Lâˆž` bound of the same bandpass. -/
+the actual scale-uniform physical `L∞` bound of the same bandpass. -/
 theorem q2_physical_upper_diagonal_dyadic_rate_of_upperMinkowskiDimension_eq
-    {n : Nat} (hn : 2 â‰¤ n)
-    {E : Set Real} (hE : E âŠ† Icc (1 : Real) 2) (hEne : E.Nonempty)
-    {beta r s : Real} (hbeta : 0 â‰¤ beta)
+    {n : Nat} (hn : 2 ≤ n)
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    {beta r s : Real} (hbeta : 0 ≤ beta)
     (hMinkowski : upperMinkowskiDimension E = beta)
     (hr1 : 1 < r) (hr2 : r < 2)
     (hcritical : beta < n * (r - 1)) (hrs : r < s)
     (phi psi : SchwartzMap (Euclidean (n + 1)) Complex)
-    (hphiOne : âˆ€ xi, â€–xiâ€– â‰¤ 1 â†’ phi xi = 1)
-    (hphiZero : âˆ€ xi, 2 â‰¤ â€–xiâ€– â†’ phi xi = 0)
-    (hphiNorm : âˆ€ xi, â€–phi xiâ€– â‰¤ 1)
-    (hpsi : âˆ€ xi : Euclidean (n + 1),
-      psi xi = phi (((2 : Real) ^ (0 + 1))â»Â¹ â€¢ xi) -
-        phi (((2 : Real) ^ 0)â»Â¹ â€¢ xi)) :
-    âˆƒ C R : ENNReal, 0 < C âˆ§ C < âŠ¤ âˆ§ 0 < R âˆ§ R < 1 âˆ§
-      âˆ€ j : Nat, âˆ€ f : SchwartzMap (Euclidean (n + 1)) Complex,
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean (n + 1),
+      psi xi = phi (((2 : Real) ^ (0 + 1))⁻¹ • xi) -
+        phi (((2 : Real) ^ 0)⁻¹ • xi)) :
+    ∃ C R : ENNReal, 0 < C ∧ C < ⊤ ∧ 0 < R ∧ R < 1 ∧
+      ∀ j : Nat, ∀ f : SchwartzMap (Euclidean (n + 1)) Complex,
         MemLp (fractalDyadicBandpassMaximal (n + 1) E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume âˆ§
+          (ENNReal.ofReal s) volume ∧
         eLpNorm (fractalDyadicBandpassMaximal (n + 1) E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume â‰¤
+          (ENNReal.ofReal s) volume ≤
           C * R ^ j *
-            eLpNorm (f : Euclidean (n + 1) â†’ Complex) (ENNReal.ofReal s) volume := by
-  obtain âŸ¨C, rho, hC, hCtop, hrho, hrhoOne, hsourceâŸ© :=
+            eLpNorm (f : Euclidean (n + 1) → Complex) (ENNReal.ofReal s) volume := by
+  obtain ⟨C, rho, hC, hCtop, hrho, hrhoOne, hsource⟩ :=
     q2_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
       hn hE hEne hbeta hMinkowski hr1 hr2 hcritical
         phi psi hphiOne hphiZero hphiNorm hpsi
@@ -729,29 +729,29 @@ theorem q2_physical_upper_diagonal_dyadic_rate_of_upperMinkowskiDimension_eq
 /-- The planar upper-Q2 counterpart.  The lower rate is the literal circle
 Minkowski calculation, not the all-radius circle maximal theorem. -/
 theorem circle_q2_physical_upper_diagonal_dyadic_rate_of_upperMinkowskiDimension_eq
-    {E : Set Real} (hE : E âŠ† Icc (1 : Real) 2) (hEne : E.Nonempty)
-    {beta r s : Real} (hbeta : 0 â‰¤ beta)
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    {beta r s : Real} (hbeta : 0 ≤ beta)
     (hMinkowski : upperMinkowskiDimension E = beta)
     (hr1 : 1 < r) (hr2 : r < 2)
     (hcritical : beta < r - 1) (hrs : r < s)
     (phi psi : SchwartzMap (Euclidean 2) Complex)
-    (hphiOne : âˆ€ xi, â€–xiâ€– â‰¤ 1 â†’ phi xi = 1)
-    (hphiZero : âˆ€ xi, 2 â‰¤ â€–xiâ€– â†’ phi xi = 0)
-    (hphiNorm : âˆ€ xi, â€–phi xiâ€– â‰¤ 1)
-    (hpsi : âˆ€ xi : Euclidean 2,
-      psi xi = phi (((2 : Real) ^ (0 + 1))â»Â¹ â€¢ xi) -
-        phi (((2 : Real) ^ 0)â»Â¹ â€¢ xi)) :
-    âˆƒ C R : ENNReal, 0 < C âˆ§ C < âŠ¤ âˆ§ 0 < R âˆ§ R < 1 âˆ§
-      âˆ€ j : Nat, âˆ€ f : SchwartzMap (Euclidean 2) Complex,
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean 2,
+      psi xi = phi (((2 : Real) ^ (0 + 1))⁻¹ • xi) -
+        phi (((2 : Real) ^ 0)⁻¹ • xi)) :
+    ∃ C R : ENNReal, 0 < C ∧ C < ⊤ ∧ 0 < R ∧ R < 1 ∧
+      ∀ j : Nat, ∀ f : SchwartzMap (Euclidean 2) Complex,
         MemLp (fractalDyadicBandpassMaximal 2 E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume âˆ§
+          (ENNReal.ofReal s) volume ∧
         eLpNorm (fractalDyadicBandpassMaximal 2 E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
-          (ENNReal.ofReal s) volume â‰¤
+          (ENNReal.ofReal s) volume ≤
           C * R ^ j *
-            eLpNorm (f : Euclidean 2 â†’ Complex) (ENNReal.ofReal s) volume := by
-  obtain âŸ¨C, rho, hC, hCtop, hrho, hrhoOne, hsourceâŸ© :=
+            eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal s) volume := by
+  obtain ⟨C, rho, hC, hCtop, hrho, hrhoOne, hsource⟩ :=
     circle_q2_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
       hE hEne hbeta hMinkowski hr1 hr2 hcritical
         phi psi hphiOne hphiZero hphiNorm hpsi

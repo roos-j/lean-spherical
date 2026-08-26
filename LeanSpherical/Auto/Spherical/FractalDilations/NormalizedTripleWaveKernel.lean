@@ -4,6 +4,8 @@
 import LeanSpherical.Auto.Spherical.FractalDilations.AbsoluteDyadicPairScaling
 import LeanSpherical.Auto.Spherical.FractalDilations.CoordinateTripleWaveExpansion
 open Auto.Spherical.FractalDilations.AbsoluteDyadicPairScaling
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.OscillatoryIBP
 open Auto.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
 open Auto.Spherical.FractalDilations.CoordinateTripleWaveExpansion
 open Auto.Spherical.FractalDilations.PlanarTripleWaveNormalForm
@@ -68,7 +70,6 @@ theorem q4DyadicPairKernel_absoluteDyadicBandpass_eq_scaled_coordinateTripleWave
     hd phi hphiOne hphiZero hphiRadial 0 hsr hsr' (v := v) (x := s • x) hv]
   simp only [pow_zero, zero_add]
   norm_num
-  apply congrArg
   apply intervalIntegral.integral_congr
   intro u hu
   exact q4CoordinateTripleWaveRadialIntegrand_eq_finset_sum
@@ -108,7 +109,6 @@ theorem q4DyadicPairKernel_absoluteDyadicBandpass_two_eq_scaled_planarCoordinate
     phi hphiOne hphiZero hphiRadial 0 hsr hsr' (v := v) (x := s • x) hv]
   simp only [pow_zero, zero_add]
   norm_num
-  apply congrArg
   apply intervalIntegral.integral_congr
   intro u hu
   exact q4PlanarCoordinateTripleWaveRadialIntegrand_eq_finset_sum

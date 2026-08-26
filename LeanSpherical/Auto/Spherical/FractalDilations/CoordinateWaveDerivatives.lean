@@ -41,10 +41,11 @@ theorem iteratedDeriv_coordinateWaveRadialAmplitude_outgoing
       fun rho => (surfaceMass (d - 1) : Complex) *
         ((2 * Real.pi * a) ^ k •
           (Complex.I ^ k *
-            smoothEndpointQuadraticIntegral (d - 2 + 2 * k)
+            quadraticMomentIntegral (d - 2 + 2 * k) (smoothEndpointProfile (d - 2))
               ((2 * Real.pi * a) * rho))) := by
   unfold coordinateWaveRadialAmplitude
   dsimp only
+  funext rho
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul]
 
@@ -57,10 +58,11 @@ theorem iteratedDeriv_coordinateWaveRadialAmplitude_incoming
       fun rho => (surfaceMass (d - 1) : Complex) *
         ((-(2 * Real.pi * a)) ^ k •
           (Complex.I ^ k *
-            smoothEndpointQuadraticIntegral (d - 2 + 2 * k)
+            quadraticMomentIntegral (d - 2 + 2 * k) (smoothEndpointProfile (d - 2))
               ((-(2 * Real.pi * a)) * rho))) := by
   unfold coordinateWaveRadialAmplitude
   dsimp only
+  funext rho
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_smoothEndpointQuadraticIntegral_comp_mul]
 
@@ -77,9 +79,12 @@ theorem iteratedDeriv_coordinateWaveRadialAmplitude_middle
               ((2 * Real.pi * a) * rho))) := by
   unfold coordinateWaveRadialAmplitude
   dsimp only
+  funext rho
+  have hk : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast le_top
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul
-      (contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2))]
+      ((contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)).of_le hk)]
   simp_rw [iteratedDeriv_coordinateMiddleMeridianLocalizedIntegral]
 
 /-- The outgoing circle amplitude has the same raised-moment derivative
@@ -94,8 +99,11 @@ theorem iteratedDeriv_planarCoordinateWaveRadialAmplitude_outgoing
             planarEndpointProfile ((2 * Real.pi * a) * rho))) := by
   unfold planarCoordinateWaveRadialAmplitude
   dsimp only
+  funext rho
+  have hk : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast le_top
   rw [iteratedDeriv_const_mul_field,
-    iteratedDeriv_comp_const_smul contDiff_planarEndpointQuadraticIntegral]
+    iteratedDeriv_comp_const_smul (contDiff_planarEndpointQuadraticIntegral.of_le hk)]
   simp_rw [iteratedDeriv_planarEndpointQuadraticIntegral]
 
 /-- The incoming circle amplitude is the reflected planar endpoint symbol. -/
@@ -109,8 +117,11 @@ theorem iteratedDeriv_planarCoordinateWaveRadialAmplitude_incoming
             planarEndpointProfile ((-(2 * Real.pi * a)) * rho))) := by
   unfold planarCoordinateWaveRadialAmplitude
   dsimp only
+  funext rho
+  have hk : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast le_top
   rw [iteratedDeriv_const_mul_field,
-    iteratedDeriv_comp_const_smul contDiff_planarEndpointQuadraticIntegral]
+    iteratedDeriv_comp_const_smul (contDiff_planarEndpointQuadraticIntegral.of_le hk)]
   simp_rw [iteratedDeriv_planarEndpointQuadraticIntegral]
 
 /-- The planar middle amplitude is the `m = 0` instance of the same literal
@@ -126,9 +137,12 @@ theorem iteratedDeriv_planarCoordinateWaveRadialAmplitude_middle
               ((2 * Real.pi * a) * rho))) := by
   unfold planarCoordinateWaveRadialAmplitude
   dsimp only
+  funext rho
+  have hk : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast le_top
   rw [iteratedDeriv_const_mul_field,
     iteratedDeriv_comp_const_smul
-      (contDiff_coordinateMiddleMeridianLocalizedIntegral 0)]
+      ((contDiff_coordinateMiddleMeridianLocalizedIntegral 0).of_le hk)]
   simp_rw [iteratedDeriv_coordinateMiddleMeridianLocalizedIntegral]
 
 end

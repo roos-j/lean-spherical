@@ -64,7 +64,7 @@ theorem q4_active_ltwo_tunable_loss_of_fixed_normRadial_cutoff
     (hphiZero : ∀ xi, 2 <= ‖xi‖ -> phi xi = 0)
     (hphiNorm : ∀ xi, ‖phi xi‖ <= 1)
     (hphiRadial : IsNormRadial phi)
-    (hd : 3 <= d ∨ d = 2 ∧ gamma < 1 / 2)
+    (hd : 3 <= d ∨ d = 2 ∧ gamma <= 1 / 2)
     (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
     (hCcover : 0 <= Ccover) (hgamma : 0 <= gamma)
     (hthetaLower : 1 / (d : Real) < theta)

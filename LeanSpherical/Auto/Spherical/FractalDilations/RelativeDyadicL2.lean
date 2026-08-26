@@ -62,7 +62,7 @@ theorem unit_radius_relative_dyadic_bandpass_l2
       (∫ x : Euclidean (d + 1), ‖B x‖ ^ 2) ≤
         (((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) ^ 2 +
           2 * ((4 * C0) / (dyadicScale j) ^ ((d : ℝ) / 2)) *
-            (2 * ((4 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
+            (2 * ((8 * C1) / (dyadicScale j) ^ ((d : ℝ) / 2 - 1) +
               (12 * C0 *
                   ‖((SchwartzMap.fderivCLM ℂ
                     (Euclidean (d + 1)) ℂ) phi).toBoundedContinuousFunction‖) /
@@ -70,7 +70,7 @@ theorem unit_radius_relative_dyadic_bandpass_l2
           (∫ xi : Euclidean (d + 1), ‖g xi‖ ^ 2) := by
   simpa using
     (memLp_two_iSup_relative_dyadic_radius_block_compact_data
-      hd C0 C1 hC0 hC1 hdecay hderiv phi g hphi_one hphi_zero hphi_norm hg j 1
+      (by omega : 1 ≤ d) C0 C1 hC0 hC1 hdecay hderiv phi g hphi_one hphi_zero hphi_norm hg j 1
       (by norm_num : (0 : ℝ) < 1))
 
 end

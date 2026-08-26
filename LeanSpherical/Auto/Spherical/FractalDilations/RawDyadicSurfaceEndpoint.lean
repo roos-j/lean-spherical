@@ -247,7 +247,12 @@ theorem rawDyadicSurfaceMaximal_add_le_of_uniform_kernel_bound
             (fun y => rawDyadicSurfaceKernel psi hpsiCompact r.1 (x - y) * g y) := by
       funext y
       simp only [Pi.add_apply, mul_add]
-    rw [hintegrand, integral_add hfi hgi]
+    rw [hintegrand]
+    rw [show ((fun y => rawDyadicSurfaceKernel psi hpsiCompact r.1 (x - y) * f y) +
+        (fun y => rawDyadicSurfaceKernel psi hpsiCompact r.1 (x - y) * g y)) =
+        (fun y => rawDyadicSurfaceKernel psi hpsiCompact r.1 (x - y) * f y +
+          rawDyadicSurfaceKernel psi hpsiCompact r.1 (x - y) * g y) from rfl]
+    rw [integral_add hfi hgi]
   have hscaled :
       ((surfaceMass d)⁻¹ : Complex) *
           rawDyadicSurfaceKernelApply psi hpsiCompact r.1 (f + g) x =
@@ -396,8 +401,11 @@ theorem norm_rawDyadicSurfaceKernel_absoluteDyadicBandpass_le_volume_of_sharp_on
   let B : Real := q4EnlargedSurfaceMultiplierBound C ((n : Real) / 2) j
   have hB : 0 ≤ B := by
     dsimp only [B, q4EnlargedSurfaceMultiplierBound]
-    exact mul_nonneg (by norm_num)
-      (div_nonneg hC.le (Real.rpow_nonneg (by positivity) _))
+    refine mul_nonneg (by norm_num)
+      (div_nonneg hC.le (Real.rpow_nonneg ?_ _))
+    have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+      _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+    linarith
   have hpoint : ∀ xi : Euclidean (n + 1), ‖m xi‖ ≤ B := by
     intro xi
     rw [show m xi = q4DyadicSurfaceMultiplier
@@ -422,7 +430,7 @@ theorem norm_rawDyadicSurfaceKernel_absoluteDyadicBandpass_le_volume_of_sharp_on
     unfold q4DyadicSurfaceMultiplier
     rw [hpsiZero]
     simp
-  simpa only [rawDyadicSurfaceKernel, m, B] using
+  simpa only [rawDyadicSurfaceKernel, m, B, SchwartzMap.fourierInv_coe] using
     (norm_fourierInv_schwartz_le_of_norm_le_of_eq_zero_outside_ball m hB
       (pow_pos (by norm_num) _) hpoint hzero x)
 
@@ -451,8 +459,11 @@ theorem rawDyadicSurfaceMaximalReal_absoluteDyadicBandpass_le_of_sharp
     (volume (ball (0 : Euclidean (n + 1)) ((2 : Real) ^ (j + 2)))).toReal
   have hB : 0 ≤ q4EnlargedSurfaceMultiplierBound C ((n : Real) / 2) j := by
     dsimp only [q4EnlargedSurfaceMultiplierBound]
-    exact mul_nonneg (by norm_num)
-      (div_nonneg hC.le (Real.rpow_nonneg (by positivity) _))
+    refine mul_nonneg (by norm_num)
+      (div_nonneg hC.le (Real.rpow_nonneg ?_ _))
+    have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+      _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+    linarith
   have hvol : 0 ≤
       (volume (ball (0 : Euclidean (n + 1)) ((2 : Real) ^ (j + 2)))).toReal :=
     ENNReal.toReal_nonneg
@@ -485,8 +496,11 @@ theorem absoluteDyadicSurfaceL1EndpointConstant_nonneg
   apply mul_nonneg (norm_nonneg _)
   apply mul_nonneg
   · unfold q4EnlargedSurfaceMultiplierBound
-    exact mul_nonneg (by norm_num)
-      (div_nonneg hC (Real.rpow_nonneg (by positivity) _))
+    refine mul_nonneg (by norm_num)
+      (div_nonneg hC (Real.rpow_nonneg ?_ _))
+    have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+      _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+    linarith
   · exact ENNReal.toReal_nonneg
 
 theorem fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp
@@ -562,6 +576,28 @@ theorem fractalDyadicBandpassMaximal_literal_l1_endpoint_facts_of_sharp
   · intro g x
     exact fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp
       C hC hdecay phi hphiOne hphiZero hphiNorm j hj hE g x
+
+/-- The `d`-indexed form of the literal `L¹` endpoint bound for the fractal
+dyadic bandpass maximal function.  This is the shape used by the Q4
+lower-input assembly, where the ambient dimension is a variable `d` with
+`1 ≤ d` rather than a literal successor. -/
+theorem fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp_of_one_le
+    {d : Nat} {E : Set Real} (hd : 1 ≤ d) (C : Real) (hC : 0 < C)
+    (hdecay : ∀ z : Euclidean d, 1 ≤ ‖z‖ →
+      ‖surfaceFourier d z‖ ≤ C / ‖z‖ ^ (((d - 1 : Nat) : Real) / 2))
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ z, ‖z‖ ≤ 1 → phi z = 1)
+    (hphiZero : ∀ z, 2 ≤ ‖z‖ → phi z = 0)
+    (hphiNorm : ∀ z, ‖phi z‖ ≤ 1)
+    (j : Nat) (hj : 1 ≤ j) (hE : E ⊆ Icc (1 : Real) 2)
+    (g : SchwartzMap (Euclidean d) Complex) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g x ≤
+      absoluteDyadicSurfaceL1EndpointConstant (d - 1) C j *
+        ∫ y, ‖(g : Euclidean d -> Complex) y‖ := by
+  obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+  simpa using fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp
+    C hC (by simpa using hdecay) phi hphiOne hphiZero hphiNorm j hj hE g x
 
 end
 

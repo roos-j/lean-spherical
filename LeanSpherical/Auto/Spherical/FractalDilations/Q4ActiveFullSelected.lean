@@ -18,7 +18,7 @@ open Auto.Spherical.FractalDilations.Q4SelectedCutoffDomain
 open Auto.Spherical.FractalDilations.Q4SelectedLinearization
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -161,7 +161,11 @@ theorem q4ActiveDyadicFullSelectedPairShell_eLpNorm_le_levelSum
     _ <= ∑ n ∈ Finset.range (j + 3),
         q4ActiveDyadicLevelStrongConstant d gamma eta Ccover Ckernel B j n q *
           eLpNorm f (ENNReal.ofReal p) volume := by
-      exact Finset.sum_le_sum fun n hn => hlevels n (Finset.mem_range.mp hn)
+      exact Finset.sum_le_sum fun n hn => hlevels n hn
+    _ = (∑ n ∈ Finset.range (j + 3),
+        q4ActiveDyadicLevelStrongConstant d gamma eta Ccover Ckernel B j n q) *
+          eLpNorm f (ENNReal.ofReal p) volume := by
+      rw [Finset.sum_mul]
 
 end
 

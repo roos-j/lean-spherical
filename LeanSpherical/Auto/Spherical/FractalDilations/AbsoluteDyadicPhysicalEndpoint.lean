@@ -176,7 +176,7 @@ theorem exists_fixed_radius_absolute_scaled_surface_multiplier_lone_linf
     positivity
   have hRone : 1 ≤ R := by
     dsimp only [R]
-    exact one_le_pow₀ (by norm_num) _
+    exact one_le_pow₀ (by norm_num)
   have hL : 1 ≤ L := by
     calc
       1 = 1 * 1 := by ring
@@ -264,7 +264,6 @@ theorem exists_fixed_radius_absolute_scaled_surface_multiplier_lone_linf
           _ = (C * R) * ‖f y‖ := by ring
     _ = C * R * ∫ y : Euclidean d, ‖f y‖ := by
       rw [integral_const_mul]
-      ring
     _ = C * (2 : Real) ^ j * ∫ y : Euclidean d, ‖f y‖ := by
       dsimp only [R]
 

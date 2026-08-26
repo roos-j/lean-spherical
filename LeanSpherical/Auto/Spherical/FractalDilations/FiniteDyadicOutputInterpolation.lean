@@ -153,7 +153,8 @@ theorem eLpNorm_schwartz_of_two_nearby_strong_outputs
     have hTfZero : T f =ᵐ[volume] 0 :=
       (eLpNorm_eq_zero_iff (hTmeas f)
         (ENNReal.ofReal_ne_zero_iff.mpr hq0)).mp houtputZero
-    rw [eLpNorm_eq_zero_of_ae_zero hTfZero, hinputZero, mul_zero]
+    rw [eLpNorm_eq_zero_of_ae_zero hTfZero]
+    exact bot_le
   · let s : Real := inputNorm.toReal
     have hs : 0 < s := by
       dsimp [s]
@@ -174,6 +175,176 @@ theorem eLpNorm_schwartz_of_two_nearby_strong_outputs
       h0scale h1scale
     rw [hinput] at hscale
     simpa only [inputNorm] using hscale
+
+/-- Weighted log-convexity of the output `L^q` norms.  This is Hölder's
+inequality applied to the factorization `‖g‖ = ‖g‖ ^ lam * ‖g‖ ^ (1 - lam)`.
+Unlike the layer-cake interpolation above it keeps the *product* of the two
+endpoint bounds, so a small loss at one exponent is compensated by a genuine
+gain at the other. -/
+theorem eLpNorm_le_rpow_mul_rpow_of_weighted_outputs
+    {α F : Type*} [MeasurableSpace α] [NormedAddCommGroup F]
+    {μ : Measure α} {g : α → F} (hg : AEStronglyMeasurable g μ)
+    {q0 q1 q lam : Real} (hq0 : 0 < q0) (hq1 : 0 < q1) (hq : 0 < q)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hexp : 1 / q = lam / q0 + (1 - lam) / q1) :
+    eLpNorm g (ENNReal.ofReal q) μ ≤
+      (eLpNorm g (ENNReal.ofReal q0) μ) ^ lam *
+        (eLpNorm g (ENNReal.ofReal q1) μ) ^ (1 - lam) := by
+  have hmu : 0 < 1 - lam := by linarith
+  have hq0lam : 0 < q0 / lam := div_pos hq0 hlam0
+  have hq1mu : 0 < q1 / (1 - lam) := div_pos hq1 hmu
+  haveI hpqr : ENNReal.HolderTriple (ENNReal.ofReal (q0 / lam))
+      (ENNReal.ofReal (q1 / (1 - lam))) (ENNReal.ofReal q) := by
+    constructor
+    rw [← ENNReal.ofReal_inv_of_pos hq0lam, ← ENNReal.ofReal_inv_of_pos hq1mu,
+      ← ENNReal.ofReal_inv_of_pos hq,
+      ← ENNReal.ofReal_add (by positivity) (by positivity)]
+    congr 1
+    have hexp' : q⁻¹ = lam / q0 + (1 - lam) / q1 := by
+      simpa only [one_div] using hexp
+    rw [hexp']
+    field_simp
+  have hnorm0 : AEStronglyMeasurable (fun x => ‖g x‖ ^ lam) μ :=
+    (hg.norm.aemeasurable.pow_const lam).aestronglyMeasurable
+  have hnorm1 : AEStronglyMeasurable (fun x => ‖g x‖ ^ (1 - lam)) μ :=
+    (hg.norm.aemeasurable.pow_const (1 - lam)).aestronglyMeasurable
+  have hholder := eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm
+    (p := ENNReal.ofReal (q0 / lam)) (q := ENNReal.ofReal (q1 / (1 - lam)))
+    (r := ENNReal.ofReal q) hnorm0 hnorm1 (fun u v : Real => u * v) 1 (by
+      filter_upwards with x
+      simp only [nnnorm_mul, one_mul]
+      exact le_rfl)
+  have hsplit : eLpNorm (fun x => ‖g x‖ ^ lam * ‖g x‖ ^ (1 - lam))
+      (ENNReal.ofReal q) μ = eLpNorm g (ENNReal.ofReal q) μ := by
+    have hfun : (fun x => ‖g x‖ ^ lam * ‖g x‖ ^ (1 - lam)) =
+        fun x => ‖g x‖ := by
+      funext x
+      by_cases hx : ‖g x‖ = 0
+      · rw [hx, Real.zero_rpow hlam0.ne', Real.zero_rpow hmu.ne', mul_zero]
+      · have hpos : 0 < ‖g x‖ :=
+          lt_of_le_of_ne (norm_nonneg _) (Ne.symm hx)
+        rw [← Real.rpow_add hpos]
+        simp
+    rw [hfun, eLpNorm_norm]
+  have hfactor0 : eLpNorm (fun x => ‖g x‖ ^ lam)
+      (ENNReal.ofReal (q0 / lam)) μ =
+      (eLpNorm g (ENNReal.ofReal q0) μ) ^ lam := by
+    rw [eLpNorm_norm_rpow g hlam0]
+    congr 2
+    rw [← ENNReal.ofReal_mul hq0lam.le]
+    congr 1
+    field_simp
+  have hfactor1 : eLpNorm (fun x => ‖g x‖ ^ (1 - lam))
+      (ENNReal.ofReal (q1 / (1 - lam))) μ =
+      (eLpNorm g (ENNReal.ofReal q1) μ) ^ (1 - lam) := by
+    rw [eLpNorm_norm_rpow g hmu]
+    congr 2
+    rw [← ENNReal.ofReal_mul hq1mu.le]
+    congr 1
+    field_simp
+  rw [hsplit, hfactor0, hfactor1] at hholder
+  simpa only [ENNReal.coe_one, one_mul] using hholder
+
+/-- Splitting an extended-real number into two complementary powers. -/
+theorem ennreal_rpow_mul_rpow_one_sub (X : ENNReal) {lam : Real}
+    (hlam0 : 0 < lam) (hlam1 : lam < 1) :
+    X ^ lam * X ^ (1 - lam) = X := by
+  have hmu : 0 < 1 - lam := by linarith
+  by_cases hzero : X = 0
+  · subst hzero
+    rw [ENNReal.zero_rpow_of_pos hlam0, ENNReal.zero_rpow_of_pos hmu, mul_zero]
+  by_cases htop : X = ⊤
+  · subst htop
+    rw [ENNReal.top_rpow_of_pos hlam0, ENNReal.top_rpow_of_pos hmu]
+    simp
+  · rw [← ENNReal.rpow_add _ _ hzero htop]
+    simpa using ENNReal.rpow_one X
+
+/-- Weighted interpolation of two dyadic-level output estimates at a common
+input exponent.  The two dyadic factors are multiplied with the interpolation
+weights, so a subpower loss on one side is beaten by a geometric gain on the
+other. -/
+theorem memLp_and_eLpNorm_schwartz_of_weighted_output_dyadic_rates
+    {d : Nat}
+    (T : Nat → SchwartzMap (Euclidean d) Complex → Euclidean d → Real)
+    (hTmeas : ∀ j f, AEStronglyMeasurable (T j f) volume)
+    {p q0 q q1 lam : Real} (hq0 : 0 < q0) (hq1 : 0 < q1) (hq : 0 < q)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hexp : 1 / q = lam / q0 + (1 - lam) / q1)
+    {C0 rho0 C1 rho1 : ENNReal}
+    (hC0 : C0 < ⊤) (hC1 : C1 < ⊤) (hrho0 : rho0 < ⊤) (hrho1 : rho1 < ⊤)
+    (h0 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T j f) (ENNReal.ofReal q0) volume ≤
+        C0 * rho0 ^ j *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume)
+    (h1 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      eLpNorm (T j f) (ENNReal.ofReal q1) volume ≤
+        C1 * rho1 ^ j *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) :
+    ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (T j f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (T j f) (ENNReal.ofReal q) volume ≤
+        ((C0 ^ lam * C1 ^ (1 - lam)) *
+          (rho0 ^ lam * rho1 ^ (1 - lam)) ^ j) *
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  have hmu : 0 < 1 - lam := by linarith
+  intro j hj f
+  set X : ENNReal :=
+    eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume with hX
+  have hXtop : X < ⊤ := by
+    rw [hX]
+    exact (f.memLp (ENNReal.ofReal p) volume).2
+  have hbase := eLpNorm_le_rpow_mul_rpow_of_weighted_outputs
+    (g := T j f) (μ := volume) (hTmeas j f) hq0 hq1 hq hlam0 hlam1 hexp
+  have hstep0 : (eLpNorm (T j f) (ENNReal.ofReal q0) volume) ^ lam ≤
+      (C0 * rho0 ^ j * X) ^ lam :=
+    ENNReal.rpow_le_rpow (h0 j hj f) hlam0.le
+  have hstep1 : (eLpNorm (T j f) (ENNReal.ofReal q1) volume) ^ (1 - lam) ≤
+      (C1 * rho1 ^ j * X) ^ (1 - lam) :=
+    ENNReal.rpow_le_rpow (h1 j hj f) hmu.le
+  have hfinal : (C0 * rho0 ^ j * X) ^ lam * (C1 * rho1 ^ j * X) ^ (1 - lam) =
+      ((C0 ^ lam * C1 ^ (1 - lam)) *
+        (rho0 ^ lam * rho1 ^ (1 - lam)) ^ j) * X := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hlam0.le,
+      ENNReal.mul_rpow_of_nonneg _ _ hlam0.le,
+      ENNReal.mul_rpow_of_nonneg _ _ hmu.le,
+      ENNReal.mul_rpow_of_nonneg _ _ hmu.le]
+    have hpow0 : (rho0 ^ j : ENNReal) ^ lam = (rho0 ^ lam) ^ j := by
+      rw [← ENNReal.rpow_natCast rho0 j, ← ENNReal.rpow_natCast (rho0 ^ lam) j,
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+      congr 1
+      ring
+    have hpow1 : (rho1 ^ j : ENNReal) ^ (1 - lam) = (rho1 ^ (1 - lam)) ^ j := by
+      rw [← ENNReal.rpow_natCast rho1 j,
+        ← ENNReal.rpow_natCast (rho1 ^ (1 - lam)) j,
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+      congr 1
+      ring
+    rw [hpow0, hpow1, mul_pow]
+    rw [show C0 ^ lam * (rho0 ^ lam) ^ j * X ^ lam *
+        (C1 ^ (1 - lam) * (rho1 ^ (1 - lam)) ^ j * X ^ (1 - lam)) =
+        C0 ^ lam * C1 ^ (1 - lam) * ((rho0 ^ lam) ^ j * (rho1 ^ (1 - lam)) ^ j) *
+          (X ^ lam * X ^ (1 - lam)) by ring]
+    rw [ennreal_rpow_mul_rpow_one_sub X hlam0 hlam1]
+  have hle : eLpNorm (T j f) (ENNReal.ofReal q) volume ≤
+      ((C0 ^ lam * C1 ^ (1 - lam)) *
+        (rho0 ^ lam * rho1 ^ (1 - lam)) ^ j) * X := by
+    calc
+      eLpNorm (T j f) (ENNReal.ofReal q) volume ≤
+          (eLpNorm (T j f) (ENNReal.ofReal q0) volume) ^ lam *
+            (eLpNorm (T j f) (ENNReal.ofReal q1) volume) ^ (1 - lam) := hbase
+      _ ≤ (C0 * rho0 ^ j * X) ^ lam * (C1 * rho1 ^ j * X) ^ (1 - lam) :=
+        mul_le_mul' hstep0 hstep1
+      _ = _ := hfinal
+  refine ⟨⟨hTmeas j f, lt_of_le_of_lt hle ?_⟩, hle⟩
+  apply ENNReal.mul_lt_top _ hXtop
+  apply ENNReal.mul_lt_top
+  · exact ENNReal.mul_lt_top
+      (ENNReal.rpow_lt_top_of_nonneg hlam0.le hC0.ne)
+      (ENNReal.rpow_lt_top_of_nonneg hmu.le hC1.ne)
+  · exact ENNReal.pow_lt_top (ENNReal.mul_lt_top
+      (ENNReal.rpow_lt_top_of_nonneg hlam0.le hrho0.ne)
+      (ENNReal.rpow_lt_top_of_nonneg hmu.le hrho1.ne))
 
 end
 

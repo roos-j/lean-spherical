@@ -28,7 +28,7 @@ open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.RadialCutoff
 open Auto.Spherical.FractalDilations.TheoremOneAnalytic
 open Auto.Spherical.FractalDilations.TheoremOneFourierInputs
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 

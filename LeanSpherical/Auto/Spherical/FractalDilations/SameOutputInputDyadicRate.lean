@@ -44,21 +44,21 @@ coefficient times the larger of the two endpoint ratios. -/
 theorem sameOutputInputInterpolationConstant_le_dyadic_rate
     {r0 p r1 : Real} {C0 rho0 C1 rho1 : ENNReal} (j : Nat) :
     sameOutputInputInterpolationConstant r0 p r1
-        (C0 * rho0 ^ j) (C1 * rho1 ^ j) â‰¤
+        (C0 * rho0 ^ j) (C1 * rho1 ^ j) ≤
       sameOutputInputDyadicRateConstant r0 p r1 C0 C1 *
         max rho0 rho1 ^ j := by
   let K0 : ENNReal := ENNReal.ofReal ((4 : Real) ^ ((p - r0) / r0))
   let K1 : ENNReal := ENNReal.ofReal ((2 : Real) ^ ((p - r1) / r1))
-  have hpow0 : rho0 ^ j â‰¤ max rho0 rho1 ^ j :=
-    pow_le_pow_left (le_max_left _ _) j
-  have hpow1 : rho1 ^ j â‰¤ max rho0 rho1 ^ j :=
-    pow_le_pow_left (le_max_right _ _) j
-  change (C0 * rho0 ^ j) * K0 + (C1 * rho1 ^ j) * K1 â‰¤
+  have hpow0 : rho0 ^ j ≤ max rho0 rho1 ^ j :=
+    pow_le_pow_left' (le_max_left _ _) j
+  have hpow1 : rho1 ^ j ≤ max rho0 rho1 ^ j :=
+    pow_le_pow_left' (le_max_right _ _) j
+  change (C0 * rho0 ^ j) * K0 + (C1 * rho1 ^ j) * K1 ≤
     (C0 * K0 + C1 * K1) * max rho0 rho1 ^ j
   calc
     (C0 * rho0 ^ j) * K0 + (C1 * rho1 ^ j) * K1 =
         (C0 * K0) * rho0 ^ j + (C1 * K1) * rho1 ^ j := by ring
-    _ â‰¤ (C0 * K0) * max rho0 rho1 ^ j +
+    _ ≤ (C0 * K0) * max rho0 rho1 ^ j +
           (C1 * K1) * max rho0 rho1 ^ j :=
       add_le_add (mul_le_mul_right hpow0 _) (mul_le_mul_right hpow1 _)
     _ = (C0 * K0 + C1 * K1) * max rho0 rho1 ^ j := by ring
@@ -66,13 +66,13 @@ theorem sameOutputInputInterpolationConstant_le_dyadic_rate
 /-- Finiteness of the common-output dyadic interpolation coefficient. -/
 theorem sameOutputInputDyadicRateConstant_lt_top
     {r0 p r1 : Real} {C0 C1 : ENNReal}
-    (hC0 : C0 < âŠ¤) (hC1 : C1 < âŠ¤) :
-    sameOutputInputDyadicRateConstant r0 p r1 C0 C1 < âŠ¤ := by
+    (hC0 : C0 < ⊤) (hC1 : C1 < ⊤) :
+    sameOutputInputDyadicRateConstant r0 p r1 C0 C1 < ⊤ := by
   unfold sameOutputInputDyadicRateConstant
   apply ENNReal.add_lt_top.mpr
   constructor
-  Â· exact ENNReal.mul_lt_top hC0 ENNReal.ofReal_lt_top
-  Â· exact ENNReal.mul_lt_top hC1 ENNReal.ofReal_lt_top
+  · exact ENNReal.mul_lt_top hC0 ENNReal.ofReal_lt_top
+  · exact ENNReal.mul_lt_top hC1 ENNReal.ofReal_lt_top
 
 /-- Literal common-output interpolation preserves a strict dyadic gain.
 
@@ -82,36 +82,36 @@ Q1--Q3--Q4 triangle: the first endpoint is supplied by the Minkowski/Q3
 argument and the second by the finite-cell Q4 `TT*` argument. -/
 theorem memLp_and_eLpNorm_schwartz_of_two_strong_input_dyadic_rates
     {d : Nat}
-    (T : Nat â†’ SchwartzMap (Euclidean d) Complex â†’ Euclidean d â†’ Real)
-    (hTmeas : âˆ€ j f, AEStronglyMeasurable (T j f) volume)
-    (hTnonneg : âˆ€ j f x, 0 â‰¤ T j f x)
-    (hTsub : âˆ€ j f g, âˆ€ x, T j (f + g) x â‰¤ T j f x + T j g x)
-    (hTzero : âˆ€ j, T j (0 : SchwartzMap (Euclidean d) Complex) = 0)
+    (T : Nat → SchwartzMap (Euclidean d) Complex → Euclidean d → Real)
+    (hTmeas : ∀ j f, AEStronglyMeasurable (T j f) volume)
+    (hTnonneg : ∀ j f x, 0 ≤ T j f x)
+    (hTsub : ∀ j f g, ∀ x, T j (f + g) x ≤ T j f x + T j g x)
+    (hTzero : ∀ j, T j (0 : SchwartzMap (Euclidean d) Complex) = 0)
     {r0 p r1 q : Real} (hr0 : 0 < r0) (hr0p : r0 < p) (hpr1 : p < r1)
-    (hq : 1 â‰¤ q)
+    (hq : 1 ≤ q)
     {C0 rho0 C1 rho1 : ENNReal}
-    (hC0 : C0 < âŠ¤) (hC1 : C1 < âŠ¤)
+    (hC0 : C0 < ⊤) (hC1 : C1 < ⊤)
     (hrho0 : rho0 < 1) (hrho1 : rho1 < 1)
-    (h0 : âˆ€ j : Nat, 1 â‰¤ j â†’ âˆ€ f : SchwartzMap (Euclidean d) Complex,
-      MemLp (T j f) (ENNReal.ofReal q) volume âˆ§
-      eLpNorm (T j f) (ENNReal.ofReal q) volume â‰¤
+    (h0 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (T j f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (T j f) (ENNReal.ofReal q) volume ≤
         C0 * rho0 ^ j *
-          eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal r0) volume)
-    (h1 : âˆ€ j : Nat, 1 â‰¤ j â†’ âˆ€ f : SchwartzMap (Euclidean d) Complex,
-      MemLp (T j f) (ENNReal.ofReal q) volume âˆ§
-      eLpNorm (T j f) (ENNReal.ofReal q) volume â‰¤
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal r0) volume)
+    (h1 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (T j f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (T j f) (ENNReal.ofReal q) volume ≤
         C1 * rho1 ^ j *
-          eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal r1) volume) :
-    sameOutputInputDyadicRateConstant r0 p r1 C0 C1 < âŠ¤ âˆ§
-      max rho0 rho1 < 1 âˆ§
-      âˆ€ j : Nat, 1 â‰¤ j â†’ âˆ€ f : SchwartzMap (Euclidean d) Complex,
-        MemLp (T j f) (ENNReal.ofReal q) volume âˆ§
-        eLpNorm (T j f) (ENNReal.ofReal q) volume â‰¤
+          eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal r1) volume) :
+    sameOutputInputDyadicRateConstant r0 p r1 C0 C1 < ⊤ ∧
+      max rho0 rho1 < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+        MemLp (T j f) (ENNReal.ofReal q) volume ∧
+        eLpNorm (T j f) (ENNReal.ofReal q) volume ≤
           (sameOutputInputDyadicRateConstant r0 p r1 C0 C1 *
             max rho0 rho1 ^ j) *
-            eLpNorm (f : Euclidean d â†’ Complex) (ENNReal.ofReal p) volume := by
-  refine âŸ¨sameOutputInputDyadicRateConstant_lt_top hC0 hC1,
-    max_lt hrho0 hrho1, ?_âŸ©
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  refine ⟨sameOutputInputDyadicRateConstant_lt_top hC0 hC1,
+    max_lt hrho0 hrho1, ?_⟩
   intro j hj f
   have hbase := memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
     (T j) (hTmeas j) (hTnonneg j) (hTsub j) (hTzero j)
@@ -122,7 +122,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_input_dyadic_rates
     (by
       intro g
       simpa only [mul_assoc] using (h1 j hj g)) f
-  refine âŸ¨hbase.1, ?_âŸ©
+  refine ⟨hbase.1, ?_⟩
   exact hbase.2.trans
     (mul_le_mul_left
       (sameOutputInputInterpolationConstant_le_dyadic_rate

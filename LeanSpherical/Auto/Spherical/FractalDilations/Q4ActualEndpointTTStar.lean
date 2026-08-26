@@ -23,7 +23,7 @@ open Auto.Spherical.FractalDilations.Q4PhysicalL2Extension
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -92,7 +92,6 @@ private theorem q4EndpointFiniteProductPairing_l2_coeFn_eq_sum_inner
   apply integral_congr_ae
   filter_upwards with x
   simp only [RCLike.inner_apply, starRingEnd_apply]
-  ring
 
 /-- The diagonal of the actual physical ordinary endpoint shell is exactly
 the square norm of the completed finite synthesis. -/
@@ -163,7 +162,7 @@ private theorem q4ActiveDyadic_fullKernelDiagonal_eq_l2Energy
             (fun i x => ((G2 i : Lp Complex 2 (volume : Measure (Euclidean d))) :
               Euclidean d -> Complex) x) := by
         apply q4EndpointFiniteProductPairing_congr_right_ae volume s
-        exact hG
+        exact fun i _ => hG i
       _ = ∑ i ∈ s, inner Complex (G2 i) (P i) :=
         q4EndpointFiniteProductPairing_l2_coeFn_eq_sum_inner volume s P G2
   have hdiag := q4ActiveDyadicL2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal
@@ -197,10 +196,10 @@ private theorem q4ActiveDyadic_analysisPairing_eq_l2
   let G : Int -> Euclidean d -> Complex := q4PowerDualField q F
   let G2 : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) :=
     q4ActiveDyadicSchwartzAnalysisPowerDualL2 psi hpsiCompact j q hq f
-  let T : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+  let T : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) := fun i =>
     q4DyadicSurfaceL2Piece psi hpsiCompact (dyadicLeft j i)
-  let Tstar : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+  let Tstar : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) := fun i =>
     q4DyadicSurfaceAdjointL2Piece psi hpsiCompact (dyadicLeft j i)
   have hF (i : Int) : F i =ᵐ[volume]
@@ -210,9 +209,8 @@ private theorem q4ActiveDyadic_analysisPairing_eq_l2
       psi hpsiCompact (dyadicLeft j i) f
     rw [hpiece]
     filter_upwards [(q4DyadicSurfaceSchwartzPiece
-      psi hpsiCompact (dyadicLeft j i) f).coeFn_toLp] with x hx
+      psi hpsiCompact (dyadicLeft j i) f).coeFn_toLp 2 volume] with x hx
     rw [hx]
-    rfl
   have hG (i : Int) : G i =ᵐ[volume]
       (fun x : Euclidean d => ((G2 i : Lp Complex 2 (volume : Measure (Euclidean d))) :
         Euclidean d -> Complex) x) := by
@@ -228,7 +226,7 @@ private theorem q4ActiveDyadic_analysisPairing_eq_l2
               Lp Complex 2 (volume : Measure (Euclidean d))) :
               Euclidean d -> Complex) x) G := by
         apply q4EndpointFiniteProductPairing_congr_left_ae volume s
-        exact hF
+        exact fun i _ => hF i
       _ = q4FiniteProductPairing volume s
             (fun i x => ((T i (f.toLp 2 volume) :
               Lp Complex 2 (volume : Measure (Euclidean d))) :
@@ -236,7 +234,7 @@ private theorem q4ActiveDyadic_analysisPairing_eq_l2
             (fun i x => ((G2 i : Lp Complex 2 (volume : Measure (Euclidean d))) :
               Euclidean d -> Complex) x) := by
         apply q4EndpointFiniteProductPairing_congr_right_ae volume s
-        exact hG
+        exact fun i _ => hG i
       _ = ∑ i ∈ s, inner Complex (G2 i) (T i (f.toLp 2 volume)) :=
         q4EndpointFiniteProductPairing_l2_coeFn_eq_sum_inner volume s
           (fun i => T i (f.toLp 2 volume)) G2
@@ -281,7 +279,7 @@ private theorem q4ActiveDyadic_synthesis_norm_le_of_fullProductRoot
             (q4FibresToFiniteProduct s
               (q4PowerDualField q (fun k =>
                 (q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j k) f :
-                  Euclidean d -> Complex)))))) ^ (1 / q) <=
+                  Euclidean d -> Complex))))))) ^ (1 / q) <=
         A * A *
           (q4FibreLpMoment volume s p
             (q4PowerDualField q (fun k =>
@@ -339,8 +337,11 @@ private theorem q4ActiveDyadic_synthesis_norm_le_of_fullProductRoot
     rw [henergy'] at hdiag
     exact hdiag
   have hsq : ‖S‖ ^ (2 : Nat) <= (A * R) ^ (2 : Nat) := by
-    simpa only [inner_self_eq_norm_sq_to_K, norm_pow, Complex.norm_real,
-      Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)] using hdiag'
+    have h1 : ‖inner Complex S S‖ = ‖S‖ ^ (2 : Nat) := by
+      rw [inner_self_eq_norm_sq_to_K]
+      simp [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg]
+    rw [h1] at hdiag'
+    exact hdiag'
   have hAR : 0 <= A * R := mul_nonneg hA hR
   nlinarith [norm_nonneg S, sq_nonneg (‖S‖ + A * R)]
 
@@ -420,7 +421,7 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_canonical_fullProduct
       (q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun _ _ => True)
           (q4ActiveDyadicPairKernel psi j)
-          (q4FibresToFiniteProduct s G))) i)
+          (q4FibresToFiniteProduct s G)) i)
       (ENNReal.ofReal q) volume := by
     intro i hi
     have hmem := memLp_q4FiniteProductToFibres_of_product_eLpNorm_aestronglyMeasurable
@@ -449,7 +450,7 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_canonical_fullProduct
           (q4FiniteProductKernelShell volume s (fun _ _ => True)
             (q4ActiveDyadicPairKernel psi j) (q4FibresToFiniteProduct s G)))) ^ (1 / q) <=
         A * A * (q4FibreLpMoment volume s p G) ^ (1 / p) := by
-    simpa only [s, G, A] using
+    simpa only [s, G, A, q4ActiveDyadicPowerDualProductField] using
       q4ActiveDyadicCanonicalFullProduct_rootMoment_le_of_eLpStrongENNReal_sq
         E j psi hpsiCompact q p hqone hqtwo hp hmul C hC f hstrong
   have hS := q4ActiveDyadic_synthesis_norm_le_of_fullProductRoot
@@ -483,7 +484,7 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_canonical_fullProduct
   have hmoment := q4FibreLpMoment_rpow_one_div_le_of_dual_test_at_test
     volume s hqpos hp hconj hCF F
     (q4PowerDualTest volume s q p F hqone hmul) (by
-      simpa only [G, F, R] using hbilinear)
+      simpa only [G, F, R, q4PowerDualTest] using hbilinear)
   have hphysical : q4FibreLpMoment volume s q
       (fun i x => q4DyadicSurfacePiece psi f (dyadicLeft j i) x) =
       q4FibreLpMoment volume s q F := by
@@ -512,11 +513,13 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_active_multiplier
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
-    (hdecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psiFam
       (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hq : q = p / (p - 1))
@@ -589,7 +592,7 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_active_multiplier
         (q4FiniteProductCountingMeasure volume s) := by
     simpa only [s, Gproduct, L] using
       q4ActiveDyadicFullProductPairShell_eLpNorm_le_levelSum_of_active_multiplier_homogeneous
-        hd hj hE hcover hCcover hgamma hdeltaone psi hpsiCompact hCkernel hdecay hB
+        hd hj hE hcover hCcover hgamma hdeltaone psi hpsiCompact hCkernel hdecay hpsiFam hB
           hmultiplier hp1 hp2 hq Gproduct hGmeas hGint hGsq hGfib hGpower rfl
   have houtmeas : AEStronglyMeasurable
       (q4FiniteProductKernelShell volume s (fun _ _ => True)
@@ -601,7 +604,7 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_active_multiplier
   have hout : ∀ i ∈ s, MemLp
       (q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun _ _ => True)
-          (q4ActiveDyadicPairKernel psi j) (q4FibresToFiniteProduct s G))) i)
+          (q4ActiveDyadicPairKernel psi j) (q4FibresToFiniteProduct s G)) i)
       (ENNReal.ofReal q) volume := by
     intro i hi
     have hmem := memLp_q4FiniteProductToFibres_of_product_eLpNorm_aestronglyMeasurable
@@ -630,12 +633,13 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_active_multiplier
           (q4FiniteProductKernelShell volume s (fun _ _ => True)
             (q4ActiveDyadicPairKernel psi j) (q4FibresToFiniteProduct s G)))) ^ (1 / q) <=
         A * A * (q4FibreLpMoment volume s p G) ^ (1 / p) := by
-    simpa only [s, G, L, A] using
+    simpa only [s, G, L, A, q4ActiveDyadicPowerDualProductField] using
       q4ActiveDyadicCanonicalFullProduct_rootMoment_le_of_eLpStrongENNReal_sq
         E j psi hpsiCompact q p (lt_trans one_lt_two hqgtwo) hqtwo hp hmul L hL f
           (by simpa only [Gproduct] using hfull)
   have hS := q4ActiveDyadic_synthesis_norm_le_of_fullProductRoot
-    psi hpsiCompact j s hq hqtwo hp hconj hA f hout hinput hroot
+    psi hpsiCompact j s (lt_trans one_lt_two hqgtwo) hqtwo hp hconj hA f hout hinput
+    hroot
   have hpair := q4ActiveDyadic_analysisPairing_eq_l2 psi hpsiCompact j s q hqtwo f
   let F : Int -> Euclidean d -> Complex := fun i =>
     (q4DyadicSurfaceSchwartzPiece psi hpsiCompact (dyadicLeft j i) f :
@@ -665,7 +669,7 @@ theorem q4ActiveDyadic_analysis_rootMoment_le_of_active_multiplier
   have hmoment := q4FibreLpMoment_rpow_one_div_le_of_dual_test_at_test
     volume s hqpos hp hconj hCF F
     (q4PowerDualTest volume s q p F (lt_trans one_lt_two hqgtwo) hmul) (by
-      simpa only [G, F, R] using hbilinear)
+      simpa only [G, F, R, q4PowerDualTest] using hbilinear)
   have hphysical : q4FibreLpMoment volume s q
       (fun i x => q4DyadicSurfacePiece psi f (dyadicLeft j i) x) =
       q4FibreLpMoment volume s q F := by
@@ -697,11 +701,13 @@ theorem q4MeasurableActiveDyadicEndpointPiece_rootMoment_le_of_active_multiplier
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
-    (hdecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psiFam
       (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hq : q = p / (p - 1))
@@ -718,7 +724,7 @@ theorem q4MeasurableActiveDyadicEndpointPiece_rootMoment_le_of_active_multiplier
     apply (lt_div_iff₀ hpminus).mpr
     nlinarith
   have hanalysis := q4ActiveDyadic_analysis_rootMoment_le_of_active_multiplier
-    hd hj hE hcover hCcover hgamma hdeltaone psi hpsiCompact hCkernel hdecay hB
+    hd hj hE hcover hCcover hgamma hdeltaone psi hpsiCompact hCkernel hdecay hpsiFam hB
       hmultiplier hp1 hp2 hq f
   apply q4MeasurableActiveDyadicEndpointPiece_moment_le_of_fibreLpMoment
     E j hs psi f (lt_trans zero_lt_two hqgtwo) hanalysis
@@ -742,11 +748,13 @@ theorem q4MeasurableActiveDyadicEndpointPiece_eLpNorm_le_of_active_multiplier
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
-    (hdecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
+    (hdecay : HasQ4DyadicPairKernelGapDecayOn d psiFam
       (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicPairMultiplier psi hpsiCompact j i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hq : q = p / (p - 1))
@@ -765,13 +773,13 @@ theorem q4MeasurableActiveDyadicEndpointPiece_eLpNorm_le_of_active_multiplier
     nlinarith
   have hqpos : 0 < q := lt_trans zero_lt_two hqgtwo
   have hroot := q4MeasurableActiveDyadicEndpointPiece_rootMoment_le_of_active_multiplier
-    hd hj hE hcover hCcover hgamma hdeltaone hs psi hpsiCompact hCkernel hdecay hB
+    hd hj hE hcover hCcover hgamma hdeltaone hs psi hpsiCompact hCkernel hdecay hpsiFam hB
       hmultiplier hp1 hp2 hq f
   have hmem := memLp_norm_q4MeasurableActiveDyadicEndpointPiece_of_schwartz
     E j hs psi hpsiCompact f hqpos
   have hnorm := eLpNorm_le_of_rpow_root_moment volume
     (fun x => ‖q4MeasurableActiveDyadicEndpointPiece E j hs psi f x‖)
-    hqpos hmem hroot
+    hqpos hmem (by simpa only [norm_norm] using hroot)
   simpa only [eLpNorm_norm] using hnorm
 
 end

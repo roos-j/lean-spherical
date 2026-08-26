@@ -8,7 +8,7 @@ open Auto.Spherical.FractalDilations.Q4CrossedMarcinkiewicz
 open Auto.Spherical.FractalDilations.Q4DerivativePairKernel
 open Auto.Spherical.FractalDilations.Q4DerivativePhysicalL2
 open Auto.Spherical.FractalDilations.Q4FiniteRadiusOperators
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -80,7 +80,7 @@ noncomputable def q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (r : Real) :
-    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex :=
   (SchwartzMap.fourierMultiplierCLM Complex
     (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzMultiplier
@@ -92,7 +92,7 @@ noncomputable def q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjoint
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (r : Real) :
-    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex :=
   (SchwartzMap.fourierMultiplierCLM Complex
     (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointMultiplier
@@ -103,7 +103,7 @@ noncomputable def q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairSchwartzPie
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (r r' : Real) :
-    SchwartzMap (Euclidean d) Complex ->ₗ[Complex]
+    SchwartzMap (Euclidean d) Complex →ₗ[Complex]
       SchwartzMap (Euclidean d) Complex :=
   (SchwartzMap.fourierMultiplierCLM Complex
     (q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairSchwartzMultiplier
@@ -136,7 +136,8 @@ theorem fourier_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece
         (FourierTransform.fourier f) : Euclidean d -> Complex) := by
     rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
   rw [hfourier]
-  simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+  simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul,
+    SchwartzMap.fourier_coe]
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzMultiplier_spec]
 
 /-- Fourier-side formula for the literal formal adjoint. -/
@@ -167,7 +168,8 @@ theorem fourier_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointPi
         (FourierTransform.fourier f) : Euclidean d -> Complex) := by
     rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
   rw [hfourier]
-  simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+  simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul,
+    SchwartzMap.fourier_coe]
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointMultiplier_spec]
 
 /-- On Schwartz data, the core operator is precisely the literal scaled
@@ -193,7 +195,8 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece_apply_eq
           q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier psi j r xi *
             FourierTransform.fourier (f : Euclidean d -> Complex) xi := by
     funext xi
-    simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul]
+    simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul,
+      SchwartzMap.fourier_coe]
     rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzMultiplier_spec]
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_fourierInv, hsymbol]
 
@@ -255,6 +258,7 @@ theorem integral_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece_mu
         psi hpsiCompact j r g) f]
     apply integral_congr_ae
     filter_upwards with xi
+    simp only [SchwartzMap.fourier_coe]
     rw [fourier_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece,
       fourier_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointPiece]
     simp only [RCLike.inner_apply, starRingEnd_apply, map_mul, star_star]
@@ -266,7 +270,7 @@ noncomputable def q4ScaledNormalizedDyadicSurfaceRadiusDerivativeL2Piece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (r : Real) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) :=
   q4L2FourierMultiplier
     ((q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzMultiplier
@@ -277,7 +281,7 @@ noncomputable def q4ScaledNormalizedDyadicSurfaceRadiusDerivativeAdjointL2Piece
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     (j : Nat) (r : Real) :
-    Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+    Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) :=
   q4L2FourierMultiplier
     ((q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointMultiplier
@@ -293,7 +297,8 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeL2Piece_toLp_eq_schwartz
       (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece
         psi hpsiCompact j r f).toLp 2 volume := by
   simpa only [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeL2Piece,
-    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece] using
+    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece,
+    ContinuousLinearMap.coe_coe] using
     (q4L2FourierMultiplier_toLp_eq_schwartz
       (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzMultiplier
         psi hpsiCompact j r) f)
@@ -308,7 +313,7 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeAdjointL2Piece_toLp_eq_sc
       (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointPiece
         psi hpsiCompact j r f).toLp 2 volume := by
   simpa only [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeAdjointL2Piece,
-    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointPiece] using
+    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointPiece, ContinuousLinearMap.coe_coe] using
     (q4L2FourierMultiplier_toLp_eq_schwartz
       (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzAdjointMultiplier
         psi hpsiCompact j r) f)
@@ -325,7 +330,7 @@ theorem q4ActiveDyadicScaledNormalizedDerivativePairL2Piece_toLp_eq_schwartz
         psi hpsiCompact j (dyadicLeft j i + u) (dyadicLeft j l + u) f).toLp 2 volume := by
   simpa only [q4ActiveDyadicScaledNormalizedDerivativePairL2Piece,
     q4ActiveDyadicScaledNormalizedDerivativePairMultiplier,
-    q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairSchwartzPiece] using
+    q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairSchwartzPiece, ContinuousLinearMap.coe_coe] using
     (q4L2FourierMultiplier_toLp_eq_schwartz
       (q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairSchwartzMultiplier
         psi hpsiCompact j (dyadicLeft j i + u) (dyadicLeft j l + u)) f)
@@ -345,7 +350,8 @@ theorem inner_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeL2Piece_toLp_adjoin
         (f.toLp 2 volume) := by
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeL2Piece_toLp_eq_schwartz,
     q4ScaledNormalizedDyadicSurfaceRadiusDerivativeAdjointL2Piece_toLp_eq_schwartz]
-  rw [SchwartzMap.inner_toL2_toL2_eq, SchwartzMap.inner_toL2_toL2_eq]
+  rw [SchwartzMap.inner_toL2_toL2_eq (μ := volume),
+    SchwartzMap.inner_toL2_toL2_eq (μ := volume)]
   simpa only [RCLike.inner_apply, starRingEnd_apply] using
     (integral_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece_mul_star_eq
       psi hpsiCompact j r f g)

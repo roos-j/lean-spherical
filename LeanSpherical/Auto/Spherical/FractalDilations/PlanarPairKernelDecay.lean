@@ -22,7 +22,8 @@ open Auto.Spherical.FractalDilations.Q4RadialReduction
 open Auto.Spherical.FractalDilations.QuadraticStationaryPhase
 open Auto.Spherical.FractalDilations.RepeatedOscillatoryIBP
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
+open Topology
 
 
 
@@ -124,7 +125,7 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWave_incoming_scaled
     ‖iteratedDeriv k (fun z : Real =>
         planarCoordinateWaveRadialAmplitude .incoming (s * r) z) u‖ ≤
         C * |-(2 * Real.pi * (s * r))| ^ k /
-          quadraticMomentScale (2 * k) |(-(2 * Real.pi * (s * r)) * u| :=
+          quadraticMomentScale (2 * k) |(-(2 * Real.pi * (s * r))) * u| :=
       hbound (s * r) u (by simpa [hsign] using hfreq)
     _ = C * |2 * Real.pi * (s * r)| ^ k /
           quadraticMomentScale (2 * k) |(2 * Real.pi * (s * r)) * u| := by
@@ -159,7 +160,7 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWave_middle_scaled
         (d := 2) (k := k) (by omega) hs hC.le (by positivity)
         hamp hscale
 
-private theorem exists_norm_iteratedDeriv_planarCoordinateWave_scaled
+theorem exists_norm_iteratedDeriv_planarCoordinateWave_scaled
     (k : Nat) (part : CoordinateWavePart) :
     ∃ C : Real, 0 < C ∧ ∀ s r u : Real, 1 ≤ s →
       r ∈ Icc (1 / 2 : Real) (5 / 2) → u ∈ Icc (1 / 2 : Real) 8 →
@@ -171,8 +172,6 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWave_scaled
   | incoming => exact exists_norm_iteratedDeriv_planarCoordinateWave_incoming_scaled k
   | middle => exact exists_norm_iteratedDeriv_planarCoordinateWave_middle_scaled k
 
-/-- A finite family of planar symbol derivatives has one uniform normalized
-bound. -/
 /-- A finite family of literal planar coordinate-symbol derivatives has a
 uniform stationary bound after dyadic rescaling.  This is also used by the
 radius-differentiated circle normal form: differentiating in the radius
@@ -202,7 +201,7 @@ theorem exists_uniform_planarCoordinateWave_scaled
   have hsqrtpos : 0 < Real.sqrt s :=
     Real.sqrt_pos.2 (lt_of_lt_of_le zero_lt_one hs)
   exact (hCbound k s r u hs hr hu).trans
-    (div_le_div_of_nonneg_right hle hsqrtpos)
+    (div_le_div_of_nonneg_right hle hsqrtpos.le)
 
 /-- The literal planar multiplier pair has the expected `s⁻¹` stationary
 size through any finite radial derivative order. -/
@@ -276,13 +275,13 @@ private theorem exists_uniform_planarCoordinateWaveMultiplierPair_scaled
         have hmem : k ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
         exact Finset.single_le_sum
           (fun l hl => tripleWaveLeibnizConstant_nonneg l hA.le hB.le) hmem
-      · exact sq_pos_of_pos hQpos
+      · positivity
     _ ≤ (C + 1) / s := by
       dsimp [Q]
       rw [Real.sq_sqrt (zero_le_one.trans hs)]
       apply div_le_div_of_nonneg_right
       · linarith
-      · exact hspos
+      · exact hspos.le
 
 /-- Physical outgoing planar waves are uniformly bounded, including the
 low-frequency range where the stationary estimate is not invoked. -/
@@ -428,9 +427,6 @@ private theorem exists_uniform_planarCoordinateWave_physical
 
 /-! ## Literal planar triple coefficients -/
 
-/-- The part of a planar triple coefficient which is independent of the two
-multiplier-side waves.  The factor `u` is the literal polar density in
-dimension two. -/
 /-- The physical/cutoff factor common to the ordinary and radius-differentiated
 planar triple-wave coefficients. -/
 def planarCoordinateTripleWaveFixedAmplitude
@@ -445,7 +441,7 @@ theorem contDiff_planarCoordinateTripleWaveFixedAmplitude
     ContDiff Real (⊤ : ℕ∞)
       (planarCoordinateTripleWaveFixedAmplitude phi v x p) := by
   unfold planarCoordinateTripleWaveFixedAmplitude
-  exact (((by fun_prop : ContDiff Real (⊤ : ℕ∞)
+  exact (((Complex.ofRealCLM.contDiff : ContDiff Real (⊤ : ℕ∞)
       (fun u : Real => (u : Complex))).mul
         (contDiff_planarCoordinateWaveRadialAmplitude p ‖x‖)).mul
       (contDiff_normalizedDyadicCutoffSquare phi v))
@@ -463,8 +459,9 @@ theorem exists_uniform_planarCoordinateTripleWaveFixedAmplitude_bound
           (planarCoordinateTripleWaveFixedAmplitude phi v x p) u‖ ≤ C := by
   let density : Real → Complex := fun u : Real => (u : Complex)
   have hdensity : ContDiff Real (⊤ : ℕ∞) density := by
-    dsimp [density]
-    fun_prop
+    dsimp only [density]
+    exact (Complex.ofRealCLM.contDiff :
+      ContDiff Real (⊤ : ℕ∞) (fun u : Real => (u : Complex)))
   obtain ⟨A, hA, hAbound⟩ :=
     exists_uniform_iteratedDeriv_bound_on_fixedAnnulus density hdensity N
   obtain ⟨B, hB, hBbound⟩ :=
@@ -625,11 +622,11 @@ private theorem exists_uniform_planarCoordinateTripleWaveCoefficient_scaled
         unfold C
         exact Finset.single_le_sum
           (fun l hl => tripleWaveLeibnizConstant_nonneg l hA.le hB.le) hkmem
-      · exact hspos
+      · exact hspos.le
     _ ≤ (C + 1) / s := by
       apply div_le_div_of_nonneg_right
       · linarith
-      · exact hspos
+      · exact hspos.le
 
 /-- Endpoint vanishing of the literal planar coefficient on the enlarged
 annulus supplies the boundary conditions for compact integration by parts. -/
@@ -646,13 +643,13 @@ private theorem planarCoordinateTripleWaveCoefficient_eventuallyEq_zero_left
       (by norm_num : (0 : Real) < 1 / 4)] with u hu
   rw [mem_ball, Real.dist_eq] at hu
   have huabs : |u - 1 / 2| < 1 / 4 := hu
-  have hu0 : 1 / 2 ≤ u := by
+  have hu0 : 0 ≤ u := by
     have := (abs_lt.mp huabs).1
     linarith
   have huone : u ≤ 1 := by
     have := (abs_lt.mp huabs).2
     linarith
-  exact planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_left
+  exact planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_unit
     phi hphiOne hphiZero r r' v x hv p q t ⟨hu0, huone⟩
 
 private theorem planarCoordinateTripleWaveCoefficient_eventuallyEq_zero_right
@@ -671,8 +668,8 @@ private theorem planarCoordinateTripleWaveCoefficient_eventuallyEq_zero_right
   have hufour : 4 ≤ u := by
     have := (abs_lt.mp huabs).1
     linarith
-  exact planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_right
-    phi hphiOne hphiZero r r' v x hv p q t ⟨hufour, by linarith⟩
+  exact planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_outer
+    phi hphiOne hphiZero r r' v x hv p q t hufour
 
 private theorem hasOscillatoryIBPChain_planarCoordinateTripleWaveCoefficient
     (phi : SchwartzMap (Euclidean 2) Complex)
@@ -775,7 +772,6 @@ private theorem exists_inner_endpoint_planarCoordinateTripleWaveIntegral_bound
         div_le_div_of_nonneg_left zero_le_one (by positivity) hfreqlower
       _ = 4 / (s * |r - r'|) := by
         field_simp [hspos.ne', hgap.ne']
-        ring
   have hM : 0 ≤ C / s := div_nonneg hC.le hspos.le
   have hbound : ∀ u ∈ Icc (1 / 2 : Real) 8,
       ‖iteratedDeriv 2 (planarCoordinateTripleWaveCoefficient
@@ -785,7 +781,7 @@ private theorem exists_inner_endpoint_planarCoordinateTripleWaveIntegral_bound
     exact hCbound 2 le_rfl s r r' u hs hr hr' v y hv hu
   have hIBP := norm_intervalIntegral_planarCoordinateTripleWaveCoefficient_le_iterated
     2 phi hphiOne hphiZero (s * r) (s * r') v y hv p q t freq
-    (C / s) (ne_of_gt hfreqpos) hM hbound
+    (C / s) (abs_pos.mp hfreqpos) hM hbound
   change ‖∫ u in (1 : Real)..4,
       planarCoordinateTripleWaveCoefficient
         (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -858,7 +854,6 @@ private theorem exists_inner_physicalMiddle_planarCoordinateTripleWaveIntegral_b
         div_le_div_of_nonneg_left zero_le_one (by positivity) hfreqlower
       _ = 4 / (s * |r - r'|) := by
         field_simp [hspos.ne', hgap.ne']
-        ring
   have hM : 0 ≤ C / s := div_nonneg hC.le hspos.le
   have hbound : ∀ u ∈ Icc (1 / 2 : Real) 8,
       ‖iteratedDeriv 2 (planarCoordinateTripleWaveCoefficient
@@ -868,7 +863,7 @@ private theorem exists_inner_physicalMiddle_planarCoordinateTripleWaveIntegral_b
     exact hCbound 2 le_rfl s r r' u hs hr hr' v y hv hu
   have hIBP := norm_intervalIntegral_planarCoordinateTripleWaveCoefficient_le_iterated
     2 phi hphiOne hphiZero (s * r) (s * r') v y hv .middle q t freq
-    (C / s) (ne_of_gt hfreqpos) hM hbound
+    (C / s) (abs_pos.mp hfreqpos) hM hbound
   change ‖∫ u in (1 : Real)..4,
       planarCoordinateTripleWaveCoefficient
         (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -932,7 +927,7 @@ private theorem exists_planarCoordinateWaveMultiplierPairAmplitude_oneMiddle_sca
     have htbound := hBbound s r' u hs hr' hu
     have hQpos : 0 < Real.sqrt s := Real.sqrt_pos.2 hspos
     unfold planarCoordinateWaveMultiplierPairAmplitude
-    rw [norm_mul, norm_star]
+    rw [norm_mul, starRingEnd_apply, norm_star]
     calc
       ‖planarCoordinateWaveRadialAmplitude .middle (s * r) u‖ *
           ‖planarCoordinateWaveRadialAmplitude t (s * r') u‖ ≤
@@ -941,7 +936,6 @@ private theorem exists_planarCoordinateWaveMultiplierPairAmplitude_oneMiddle_sca
           (div_nonneg hA.le (pow_nonneg hspos.le _))
       _ = (A * B) / (s ^ L * Real.sqrt s) := by
         field_simp [hspos.ne', hQpos.ne']
-        ring
   · subst t
     obtain ⟨A, hA, hAbound⟩ :=
       exists_planarCoordinateWaveRadialAmplitude_middle_scaled_power L
@@ -954,7 +948,7 @@ private theorem exists_planarCoordinateWaveMultiplierPairAmplitude_oneMiddle_sca
     have htbound := hAbound s r' u hs hr' hu
     have hQpos : 0 < Real.sqrt s := Real.sqrt_pos.2 hspos
     unfold planarCoordinateWaveMultiplierPairAmplitude
-    rw [norm_mul, norm_star]
+    rw [norm_mul, starRingEnd_apply, norm_star]
     calc
       ‖planarCoordinateWaveRadialAmplitude q (s * r) u‖ *
           ‖planarCoordinateWaveRadialAmplitude .middle (s * r') u‖ ≤
@@ -963,7 +957,6 @@ private theorem exists_planarCoordinateWaveMultiplierPairAmplitude_oneMiddle_sca
           (div_nonneg hB.le (Real.sqrt_nonneg _))
       _ = (B * A) / (s ^ L * Real.sqrt s) := by
         field_simp [hspos.ne', hQpos.ne']
-        ring
 
 /-- A planar triple with a multiplier-side middle wave is controlled
 absolutely.  We deliberately retain the literal coefficient and its two
@@ -1006,7 +999,7 @@ private theorem exists_oneMiddle_planarCoordinateTripleWaveIntegral_bound
     have hpair := hBbound s r r' u hs hr hr' huwide
     have hfactor := planarCoordinateTripleWaveCoefficient_eq_fixed_mul_pair
       phi hphiOne hphiZero (s * r) (s * r') v x p q t u
-    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one]
+    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one, norm_mul]
     calc
       ‖planarCoordinateTripleWaveFixedAmplitude phi v x p u‖ *
           ‖planarCoordinateWaveMultiplierPairAmplitude q t (s * r) (s * r') u‖ ≤
@@ -1014,7 +1007,6 @@ private theorem exists_oneMiddle_planarCoordinateTripleWaveIntegral_bound
         exact mul_le_mul hfixed hpair (norm_nonneg _) hA.le
       _ = (A * B) / (s ^ L * Real.sqrt s) := by
         field_simp [hdenpos.ne']
-        ring
   calc
     ‖∫ u in (1 : Real)..4,
         planarCoordinateTripleWaveCoefficient
@@ -1069,9 +1061,10 @@ private theorem exists_planarCoordinateTripleWaveIntegral_crude_bound
       constructor <;> linarith [hu.1, hu.2]
     have hfixed := hAbound v x hv 0 le_rfl u huwide
     have hpair := hBbound 0 le_rfl s r r' u hs hr hr' huwide
+    simp only [iteratedDeriv_zero] at hpair
     have hfactor := planarCoordinateTripleWaveCoefficient_eq_fixed_mul_pair
       phi hphiOne hphiZero (s * r) (s * r') v x p q t u
-    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one]
+    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one, norm_mul]
     calc
       ‖planarCoordinateTripleWaveFixedAmplitude phi v x p u‖ *
           ‖planarCoordinateWaveMultiplierPairAmplitude q t (s * r) (s * r') u‖ ≤
@@ -1079,7 +1072,6 @@ private theorem exists_planarCoordinateTripleWaveIntegral_crude_bound
         exact mul_le_mul hfixed hpair (norm_nonneg _) hA.le
       _ = (A * B) / s := by
         field_simp [hspos.ne']
-        ring
   calc
     ‖∫ u in (1 : Real)..4,
         planarCoordinateTripleWaveCoefficient
@@ -1128,8 +1120,9 @@ private theorem exists_outer_planarCoordinateTripleWaveIntegral_bound
         C / (s * Real.sqrt ‖x‖) := by
   let density : Real → Complex := fun u : Real => (u : Complex)
   have hdensity : ContDiff Real (⊤ : ℕ∞) density := by
-    dsimp [density]
-    fun_prop
+    dsimp only [density]
+    exact (Complex.ofRealCLM.contDiff :
+      ContDiff Real (⊤ : ℕ∞) (fun u : Real => (u : Complex)))
   obtain ⟨A, hA, hAbound⟩ :=
     exists_uniform_iteratedDeriv_bound_on_fixedAnnulus density hdensity 0
   obtain ⟨D, hD, hDbound⟩ :=
@@ -1158,6 +1151,7 @@ private theorem exists_outer_planarCoordinateTripleWaveIntegral_bound
     have hcut := hDbound v hv 0 le_rfl u huwide
     have hphysical := hPbound ‖x‖ u hx huwide
     have hpair := hBbound 0 le_rfl s r r' u hs hr hr' huwide
+    simp only [iteratedDeriv_zero] at hden hcut hpair
     have hfactor := planarCoordinateTripleWaveCoefficient_eq_fixed_mul_pair
       phi hphiOne hphiZero (s * r) (s * r') v x p q t u
     rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one]
@@ -1171,7 +1165,6 @@ private theorem exists_outer_planarCoordinateTripleWaveIntegral_bound
         gcongr
       _ = (A * P * D * B) / (s * Real.sqrt ‖x‖) := by
         field_simp [hspos.ne', hsqrtpos.ne']
-        ring
   calc
     ‖∫ u in (1 : Real)..4,
         planarCoordinateTripleWaveCoefficient
@@ -1281,7 +1274,7 @@ theorem exists_planarCoordinateTripleWaveIntegral_stationaryGap_bound
     have hTscale : T ≤ 2 * s := by
       dsimp [T]
       calc
-        s * g ≤ s * 2 := mul_le_mul_of_nonneg_left hgupper hs.le
+        s * g ≤ s * 2 := mul_le_mul_of_nonneg_left hgupper (zero_le_one.trans hs)
         _ = 2 * s := by ring
     have hyNorm : ‖y‖ = s * ‖x‖ := by
       dsimp [y]
@@ -1304,7 +1297,9 @@ theorem exists_planarCoordinateTripleWaveIntegral_stationaryGap_bound
             (1 + T) ^ (-q4StationaryExponent 2) := by
           apply planar_q4_scaleWeight_mono hs hT
           dsimp [C]
-          positivity
+          nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) 2,
+            pow_pos (show (0 : Real) < 8 by norm_num) 2,
+            pow_pos (show (0 : Real) < 3 by norm_num) 2]
     · have hlarge : 4 < T := lt_of_not_ge hsmallGap
       have hTone : 1 ≤ T := by linarith
       by_cases hphysical : g / 4 ≤ ‖x‖
@@ -1313,7 +1308,7 @@ theorem exists_planarCoordinateTripleWaveIntegral_stationaryGap_bound
           dsimp [T]
           calc
             s * g / 4 = s * (g / 4) := by ring
-            _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical hs.le
+            _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical (zero_le_one.trans hs)
         have hyOne : 1 ≤ ‖y‖ := by
           calc
             (1 : Real) ≤ T / 4 := by linarith
@@ -1335,7 +1330,9 @@ theorem exists_planarCoordinateTripleWaveIntegral_stationaryGap_bound
               (1 + T) ^ (-q4StationaryExponent 2) := by
             apply planar_q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) 2,
+              pow_pos (show (0 : Real) < 8 by norm_num) 2,
+              pow_pos (show (0 : Real) < 3 by norm_num) 2]
 
 /-
 /-- The finite planar coordinate summands are interval integrable on the
@@ -1397,7 +1394,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
   choose C hCpos hCbound using hterm
   let parts3 : Finset (CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart)) :=
     coordinateWaveParts.product (coordinateWaveParts.product coordinateWaveParts)
-  let K : Real := ∑ z in parts3, C z.1 z.2.1 z.2.2
+  let K : Real := ∑ z ∈ parts3, C z.1 z.2.1 z.2.2
   let z0 : CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart) :=
     (.outgoing, (.outgoing, .outgoing))
   have hz0 : z0 ∈ parts3 := by
@@ -1433,7 +1430,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
             (s * r) (s * r') v (s • x) p q t u *
             oscillatoryExp
               (coordinateTripleWavePhase p q t ‖s • x‖ (s * r) (s * r')) u =
-        ∑ z in parts3,
+        ∑ z ∈ parts3,
           planarCoordinateTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
@@ -1471,7 +1468,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
               (s * r) (s * r') v (s • x) p q t u *
               oscillatoryExp
                 (coordinateTripleWavePhase p q t ‖s • x‖ (s * r) (s * r')) u) =
-        ∫ u in (1 : Real)..4, ∑ z in parts3,
+        ∫ u in (1 : Real)..4, ∑ z ∈ parts3,
           planarCoordinateTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
@@ -1482,14 +1479,14 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
       intro u hu
       exact hsum u]
     calc
-      ‖∫ u in (1 : Real)..4, ∑ z in parts3,
+      ‖∫ u in (1 : Real)..4, ∑ z ∈ parts3,
           planarCoordinateTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
             oscillatoryExp
               (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                 (s * r) (s * r')) u‖ ≤
-          ∑ z in parts3,
+          ∑ z ∈ parts3,
             ‖∫ u in (1 : Real)..4,
               planarCoordinateTripleWaveCoefficient
                 (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -1498,20 +1495,20 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
                   (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                     (s * r) (s * r')) u‖ :=
         norm_intervalIntegral_finsetSum_le parts3 _ (fun z hz => hintegrable z hz)
-      _ ≤ ∑ z in parts3,
+      _ ≤ ∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent 2) := by
         apply Finset.sum_le_sum
         intro z hz
         exact hCbound z.1 z.2.1 z.2.2 s r r' hs hr hr' v x hv
       _ = K / s * (1 + s * |r - r'|) ^ (-q4StationaryExponent 2) := by
-        change (∑ z in parts3,
+        change (∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent 2)) = _
-        rw [show (∑ z in parts3,
+        rw [show (∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent 2)) =
-          (∑ z in parts3, C z.1 z.2.1 z.2.2) *
+          (∑ z ∈ parts3, C z.1 z.2.1 z.2.2) *
             ((1 / s) * (1 + s * |r - r'|) ^ (-q4StationaryExponent 2)) by
           rw [Finset.sum_mul]
           apply Finset.sum_congr rfl
@@ -1578,7 +1575,9 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
               (1 + T) ^ (-q4StationaryExponent 2) := by
             apply planar_q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) 2,
+              pow_pos (show (0 : Real) < 8 by norm_num) 2,
+              pow_pos (show (0 : Real) < 3 by norm_num) 2]
   · have hq : q ≠ .middle := by
       intro hq
       exact hmiddle (Or.inl hq)
@@ -1638,7 +1637,9 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
             (1 + T) ^ (-q4StationaryExponent 2) := by
           apply planar_q4_scaleWeight_mono hs hT
           dsimp [C]
-          positivity
+          nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) 2,
+            pow_pos (show (0 : Real) < 8 by norm_num) 2,
+            pow_pos (show (0 : Real) < 3 by norm_num) 2]
     · have hlarge : 4 < T := lt_of_not_ge hsmallGap
       have hTone : 1 ≤ T := by linarith
       by_cases hphysical : g / 4 ≤ ‖x‖
@@ -1647,7 +1648,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
           dsimp [T]
           calc
             s * g / 4 = s * (g / 4) := by ring
-            _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical hs.le
+            _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical (zero_le_one.trans hs)
         have hyOne : 1 ≤ ‖y‖ := by
           calc
             (1 : Real) ≤ T / 4 := by linarith
@@ -1669,7 +1670,9 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
               (1 + T) ^ (-q4StationaryExponent 2) := by
             apply planar_q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) 2,
+              pow_pos (show (0 : Real) < 8 by norm_num) 2,
+              pow_pos (show (0 : Real) < 3 by norm_num) 2]
       · have hinner : ‖x‖ ≤ g / 4 := le_of_lt (lt_of_not_ge hphysical)
         have hIBP := hinnerBound s r r' hs hr hr'
           (by
@@ -1700,7 +1703,9 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_two
               (1 + T) ^ (-q4StationaryExponent 2) := by
             apply planar_q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) 2,
+              pow_pos (show (0 : Real) < 8 by norm_num) 2,
+              pow_pos (show (0 : Real) < 3 by norm_num) 2]
 
 end
 

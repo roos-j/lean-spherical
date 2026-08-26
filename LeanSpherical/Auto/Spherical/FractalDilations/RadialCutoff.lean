@@ -10,7 +10,7 @@ open Auto.Spherical.FractalDilations.DyadicCovering
 open Auto.Spherical.FractalDilations.ExponentRegions
 open Auto.Spherical.FractalDilations.Q4RadialReduction
 open Auto.Spherical.SchwartzData
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 

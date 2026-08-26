@@ -9,7 +9,7 @@ open Auto.Spherical.FractalDilations.ExponentRegions
 open Auto.Spherical.FractalDilations.Q4PairKernelGap
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCovering
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -79,10 +79,12 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_fourierInv
     q4DyadicSurfaceRadiusDerivative
     q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier
     q4NormalizedDyadicSurfaceRadiusDerivativeMultiplier
-  rw [Real.fourierInv_eq, Real.fourierInv_eq, ← integral_const_mul]
+  rw [Real.fourierInv_eq, Real.fourierInv_eq, ← integral_const_mul,
+    ← integral_const_mul]
   apply integral_congr_ae
   filter_upwards with xi
-  simp only [smul_eq_mul]
+  simp only [mul_smul_comm]
+  congr 1
   ring
 
 /-- The actual scaled derivative is exactly `2^-j` times the normalized
@@ -101,7 +103,8 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivative
     ‖q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j t x‖ =
       dyadicScale j * ‖q4NormalizedDyadicSurfaceRadiusDerivative psi f t x‖ := by
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_scale_mul,
-    norm_mul, Complex.norm_real, abs_of_pos (dyadicScale_pos j)]
+    norm_mul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos (dyadicScale_pos j)]
 
 /-- Scaling commutes exactly with the finite derivative maximum used in the
 active-cell FTOC bound. -/
@@ -117,7 +120,7 @@ theorem dyadicDerivativeSup_q4ScaledNormalizedDyadicSurfaceRadiusDerivative
   unfold dyadicDerivativeSup
   symm
   rw [Finset.mul₀_sup' (dyadicScale_pos j).le]
-  apply Finset.sup'_congr rfl
+  refine Finset.sup'_congr hs rfl ?_
   intro k hk
   exact (norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j
     (dyadicLeft j k + u) x).symm
@@ -248,7 +251,7 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_positiveG
         (psi j) j r r' x‖ ≤
         C * (2 : Real) ^ j * q4PairKernelGapWeight d j r r' := hkernel
     _ ≤ C * (2 : Real) ^ j *
-        ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2) := by
+        ((2 : Real) ^ (n - 1 : Nat)) ^ (-(((d : Real) - 1) / 2)) := by
       exact mul_le_mul_of_nonneg_left hweight
         (mul_nonneg hC (pow_nonneg (by norm_num) _))
 

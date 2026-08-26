@@ -212,9 +212,24 @@ theorem exists_absoluteDyadicBandpass_zero_unnormalized_endpoints
       exists_absoluteDyadicBandpass_zero_unnormalized_endpoints_of_local_ltwo
         (d := 2) (by norm_num) E hE phi hphiOne hphiZero hc₂ (by
           intro g
+          have hdecay' : ∀ xi : Euclidean 2, 1 ≤ ‖xi‖ →
+              ‖surfaceFourier 2 xi‖ ≤ C0 / ‖xi‖ ^ ((1 : Real) / 2) := by
+            intro xi hxi
+            have h := hdecay xi hxi
+            norm_num at h
+            exact h
+          have hderiv' : ∀ (xi : Euclidean 2) (r : Real), 1 ≤ ‖xi‖ →
+              r ∈ Set.Icc (1 : Real) 2 →
+              ‖deriv (fun s : Real => surfaceFourier 2 (s • xi)) r‖ ≤
+                C1 / ‖xi‖ ^ ((1 : Real) / 2 - 1) := by
+            intro xi r hxi hr
+            have h := hderiv xi r hxi hr
+            norm_num at h
+            rw [show (1 : Real) / 2 - 1 = -(1 / 2) by ring]
+            exact h
           simpa only [c₂] using
             (sphericalIntervalMaximalRaw_memLp_two_of_circle_sharp
-              C0 C1 hC0 hC1 hdecay hderiv phi g
+              C0 C1 hC0 hC1 hdecay' hderiv' phi g
               (absoluteDyadicBandpass phi hphiOne hphiZero 0)
               hphiOne hphiZero hphiNorm 0
               (absoluteDyadicBandpass_spec phi hphiOne hphiZero 0)

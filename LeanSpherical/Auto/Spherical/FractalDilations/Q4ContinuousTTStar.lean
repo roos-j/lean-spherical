@@ -14,7 +14,7 @@ open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCovering
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -410,7 +410,7 @@ theorem q4FibreL2Energy_activeDyadicKernelShell_le_of_pairwise_bound
     (hE : E ⊆ Set.Icc (1 : ℝ) 2)
     (hcover : HasSubpowerAssouadCoverBound E γ η C)
     (hC : 0 ≤ C) (hγ : 0 ≤ γ)
-    (hδone : dyadicScale j < 1) (hL : 0 ≤ L)
+    (hδone : DyadicCovering.dyadicScale j < 1) (hL : 0 ≤ L)
     {X : Type*} [Sub X] [MeasurableSpace X] (μ : Measure X)
     (K : ℤ → ℤ → X → ℂ) (g : ℤ → X → ℂ) {B : ℝ} (hB : 0 ≤ B)
     (hg : ∀ i ∈ activeDyadicIndices E j, MemLp (g i) 2 μ)
@@ -421,14 +421,14 @@ theorem q4FibreL2Energy_activeDyadicKernelShell_le_of_pairwise_bound
         B * lpNorm (g l) 2 μ) :
     q4FibreL2Energy μ (activeDyadicIndices E j)
       (q4ActiveDyadicKernelTTStarShell E j u L μ K g) ≤
-      (B * (6 * C * (dyadicScale j) ^ (-η) *
-        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ)) ^ 2 *
+      (B * (6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+        ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ)) ^ 2 *
         q4FibreL2Energy μ (activeDyadicIndices E j) g := by
   classical
-  let D : ℝ := 6 * C * (dyadicScale j) ^ (-η) *
-    ((2 * (L + dyadicScale j)) / dyadicScale j) ^ γ
-  have hδ : 0 < dyadicScale j := dyadicScale_pos j
-  have hratio : 0 ≤ (2 * (L + dyadicScale j)) / dyadicScale j := by
+  let D : ℝ := 6 * C * (DyadicCovering.dyadicScale j) ^ (-η) *
+    ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ
+  have hδ : 0 < DyadicCovering.dyadicScale j := dyadicScale_pos j
+  have hratio : 0 ≤ (2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j := by
     apply div_nonneg
     · exact mul_nonneg (by norm_num) (add_nonneg hL hδ.le)
     · exact hδ.le

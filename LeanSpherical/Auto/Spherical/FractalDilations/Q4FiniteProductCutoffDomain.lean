@@ -16,7 +16,7 @@ open Auto.Spherical.FractalDilations.Q4SelectedSublinearity
 open Auto.Spherical.FractalDilations.Q4StrongOffDiagonal
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -67,6 +67,14 @@ def q4FiniteProductCutoffStableDomain
     (∀ i ∈ s, Integrable (q4FiniteProductToFibres s g i) mu /\
       MemLp (q4FiniteProductToFibres s g i) 2 mu) /\
     g ∈ q4FiniteProductShellDomain mu s R K}
+
+/-- The active fibre at a subtype index is the literal slice. -/
+theorem q4FiniteProductToFibres_coe
+    {I X : Type*} [DecidableEq I] (s : Finset I)
+    (g : X × {i // i ∈ s} -> Complex) (i : {i // i ∈ s}) :
+    q4FiniteProductToFibres s g (i : I) = fun x : X => g (x, i) := by
+  funext x
+  simp [q4FiniteProductToFibres, i.property]
 
 theorem q4FiniteProductCutoffStableDomain.measurable
     {I X : Type*} [Sub X] [MeasurableSpace X] [MeasurableSpace I]
@@ -135,8 +143,12 @@ theorem q4FiniteProductCutoffStableDomain.fibre_integrable_all
     (hg : g ∈ q4FiniteProductCutoffStableDomain mu s R K) (i : I) :
     Integrable (q4FiniteProductToFibres s g i) mu := by
   by_cases hi : i ∈ s
-  · exact hg.fibre_integrable i hi
-  · simp [q4FiniteProductToFibres, hi]
+  · exact (q4FiniteProductCutoffStableDomain.fibre_integrable hg) i hi
+  · have h0 : q4FiniteProductToFibres s g i = fun _ : X => (0 : Complex) := by
+      funext x
+      simp [q4FiniteProductToFibres, hi]
+    rw [h0]
+    exact integrable_zero _ _ _
 
 theorem q4FiniteProductCutoffStableDomain.fibre_memLp_two_all
     {I X : Type*} [Sub X] [MeasurableSpace X] [MeasurableSpace I]
@@ -146,8 +158,12 @@ theorem q4FiniteProductCutoffStableDomain.fibre_memLp_two_all
     (hg : g ∈ q4FiniteProductCutoffStableDomain mu s R K) (i : I) :
     MemLp (q4FiniteProductToFibres s g i) 2 mu := by
   by_cases hi : i ∈ s
-  · exact hg.fibre_memLp_two i hi
-  · simp [q4FiniteProductToFibres, hi]
+  · exact (q4FiniteProductCutoffStableDomain.fibre_memLp_two hg) i hi
+  · have h0 : q4FiniteProductToFibres s g i = fun _ : X => (0 : Complex) := by
+      funext x
+      simp [q4FiniteProductToFibres, hi]
+    rw [h0]
+    exact MemLp.zero'
 
 /-- The low hard power cutoff preserves the actual finite-product carrier. -/
 theorem q4PowerCutoffLow_mem_q4FiniteProductCutoffStableDomain
@@ -163,33 +179,33 @@ theorem q4PowerCutoffLow_mem_q4FiniteProductCutoffStableDomain
   let P : Set (X × {i // i ∈ s}) :=
     {z | t * ‖g z‖ ^ (p - 1) ≤ cutoff}
   have hP : MeasurableSet P := by
-    simpa only [P] using measurableSet_q4PowerCutoff hp1 g hg.measurable
+    simpa only [P] using measurableSet_q4PowerCutoff hp1 g (q4FiniteProductCutoffStableDomain.measurable hg)
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · simpa only [P, q4PowerCutoffLow] using hg.measurable.indicator hP
-  · simpa only [P, q4PowerCutoffLow] using hg.integrable.indicator hP
+  · simpa only [P, q4PowerCutoffLow] using (q4FiniteProductCutoffStableDomain.measurable hg).indicator hP
+  · simpa only [P, q4PowerCutoffLow] using (q4FiniteProductCutoffStableDomain.integrable hg).indicator hP
   · have hsq : (fun z => ‖q4PowerCutoffLow p cutoff t g z‖ ^ (2 : Nat)) =
         P.indicator (fun z => ‖g z‖ ^ (2 : Nat)) := by
       funext z
       by_cases hz : z ∈ P <;> simp [P, q4PowerCutoffLow, hz]
     rw [hsq]
-    exact hg.integrable_norm_sq.indicator hP
+    exact (q4FiniteProductCutoffStableDomain.integrable_norm_sq hg).indicator hP
   · intro i hi
     let Pi : Set X := {x | t * ‖q4FiniteProductToFibres s g i x‖ ^ (p - 1) ≤ cutoff}
     have hPi : MeasurableSet Pi := by
       simpa only [Pi] using measurableSet_q4PowerCutoff hp1
         (q4FiniteProductToFibres s g i)
-        (measurable_q4FiniteProductToFibres s g hg.measurable i)
+        (measurable_q4FiniteProductToFibres s g (q4FiniteProductCutoffStableDomain.measurable hg) i)
     have hfib : q4FiniteProductToFibres s (q4PowerCutoffLow p cutoff t g) i =
         Pi.indicator (q4FiniteProductToFibres s g i) := by
       funext x
       exact q4FiniteProductToFibres_powerCutoffLow s p cutoff t g i x
     constructor
     · rw [hfib]
-      exact (hg.fibre_integrable i hi).indicator hPi
+      exact ((q4FiniteProductCutoffStableDomain.fibre_integrable hg) i hi).indicator hPi
     · rw [hfib]
-      exact (hg.fibre_memLp_two i hi).indicator hPi
+      exact ((q4FiniteProductCutoffStableDomain.fibre_memLp_two hg) i hi).indicator hPi
   · exact q4PowerCutoffLow_mem_q4FiniteProductShellDomain
-      mu s R Kern hp1 cutoff t g hg.measurable hg.pairwise
+      mu s R Kern hp1 cutoff t g (q4FiniteProductCutoffStableDomain.measurable hg) (q4FiniteProductCutoffStableDomain.pairwise hg)
 
 /-- The complementary high hard power cutoff preserves the actual
 finite-product carrier. -/
@@ -206,7 +222,7 @@ theorem q4PowerCutoffHigh_mem_q4FiniteProductCutoffStableDomain
   let P : Set (X × {i // i ∈ s}) :=
     {z | t * ‖g z‖ ^ (p - 1) ≤ cutoff}
   have hP : MeasurableSet P := by
-    simpa only [P] using measurableSet_q4PowerCutoff hp1 g hg.measurable
+    simpa only [P] using measurableSet_q4PowerCutoff hp1 g (q4FiniteProductCutoffStableDomain.measurable hg)
   have hhigh : q4PowerCutoffHigh p cutoff t g = Pᶜ.indicator g := by
     funext z
     dsimp only [P]
@@ -214,33 +230,33 @@ theorem q4PowerCutoffHigh_mem_q4FiniteProductCutoffStableDomain
       simp [q4PowerCutoffHigh, q4PowerCutoffLow, hz]
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · rw [hhigh]
-    exact hg.measurable.indicator hP.compl
+    exact (q4FiniteProductCutoffStableDomain.measurable hg).indicator hP.compl
   · rw [hhigh]
-    exact hg.integrable.indicator hP.compl
+    exact (q4FiniteProductCutoffStableDomain.integrable hg).indicator hP.compl
   · have hsq : (fun z => ‖q4PowerCutoffHigh p cutoff t g z‖ ^ (2 : Nat)) =
         Pᶜ.indicator (fun z => ‖g z‖ ^ (2 : Nat)) := by
       funext z
       rw [hhigh]
       by_cases hz : z ∈ P <;> simp [hz]
     rw [hsq]
-    exact hg.integrable_norm_sq.indicator hP.compl
+    exact (q4FiniteProductCutoffStableDomain.integrable_norm_sq hg).indicator hP.compl
   · intro i hi
     let Pi : Set X := {x | t * ‖q4FiniteProductToFibres s g i x‖ ^ (p - 1) ≤ cutoff}
     have hPi : MeasurableSet Pi := by
       simpa only [Pi] using measurableSet_q4PowerCutoff hp1
         (q4FiniteProductToFibres s g i)
-        (measurable_q4FiniteProductToFibres s g hg.measurable i)
+        (measurable_q4FiniteProductToFibres s g (q4FiniteProductCutoffStableDomain.measurable hg) i)
     have hfib : q4FiniteProductToFibres s (q4PowerCutoffHigh p cutoff t g) i =
         Piᶜ.indicator (q4FiniteProductToFibres s g i) := by
       funext x
       exact q4FiniteProductToFibres_powerCutoffHigh s p cutoff t g i x
     constructor
     · rw [hfib]
-      exact (hg.fibre_integrable i hi).indicator hPi.compl
+      exact ((q4FiniteProductCutoffStableDomain.fibre_integrable hg) i hi).indicator hPi.compl
     · rw [hfib]
-      exact (hg.fibre_memLp_two i hi).indicator hPi.compl
+      exact ((q4FiniteProductCutoffStableDomain.fibre_memLp_two hg) i hi).indicator hPi.compl
   · exact q4PowerCutoffHigh_mem_q4FiniteProductShellDomain
-      mu s R Kern hp1 cutoff t g hg.measurable hg.pairwise
+      mu s R Kern hp1 cutoff t g (q4FiniteProductCutoffStableDomain.measurable hg) (q4FiniteProductCutoffStableDomain.pairwise hg)
 
 /-- If every fibre of a finite counting product is a.e.-strongly
 measurable, then the actual product field is a.e.-strongly measurable.
@@ -266,13 +282,18 @@ theorem aestronglyMeasurable_q4FiniteProduct_of_fibres
       AEStronglyMeasurable (F i) (mu.prod Measure.count) := by
     have hbase : AEStronglyMeasurable (fun z : X × {i // i ∈ s} =>
         g (z.1, i)) (mu.prod Measure.count) := by
-      simpa only [Function.comp_apply] using
+      simpa only [Function.comp_def] using
         (hg i).comp_quasiMeasurePreserving
-          (quasiMeasurePreserving_fst (μ := mu) (ν := Measure.count))
+          (Measure.quasiMeasurePreserving_fst (μ := mu) (ν := Measure.count))
     exact hbase.indicator (measurable_snd (measurableSet_singleton i))
   have hsum : (∑ i : {i // i ∈ s}, F i) = g := by
     funext z
-    simp [F]
+    rw [Finset.sum_apply]
+    rw [Finset.sum_eq_single_of_mem z.2 (Finset.mem_univ _)
+      (fun c _ hc => by
+        have hne : z.2 ≠ c := fun h => hc h.symm
+        simp [F, Set.indicator_apply, hne])]
+    simp [F, Set.indicator_apply]
   rw [← hsum]
   exact Finset.aestronglyMeasurable_sum Finset.univ (fun i _ => hF i)
 
@@ -323,7 +344,7 @@ theorem q4FiniteProductCountingMeasure_integral_norm_sq_eq_fibreL2Energy_of_aest
     (hgmeas : AEStronglyMeasurable g (q4FiniteProductCountingMeasure mu s))
     (hg : Integrable (fun z => ‖g z‖ ^ (2 : Nat))
       (q4FiniteProductCountingMeasure mu s))
-    (hfib : forall i ∈ s,
+    (hfib : ∀ i ∈ s,
       Integrable (fun x => ‖q4FiniteProductToFibres s g i x‖ ^ (2 : Nat)) mu) :
     (∫ z, ‖g z‖ ^ (2 : Nat) ∂q4FiniteProductCountingMeasure mu s) =
       q4FibreL2Energy mu s (q4FiniteProductToFibres s g) := by
@@ -341,10 +362,10 @@ theorem q4FiniteProductCountingMeasure_integral_norm_sq_eq_fibreL2Energy_of_aest
       q4FiniteProductToFibres s g i =ᵐ[mu]
         q4FiniteProductToFibres s g' i := by
     change g =ᵐ[mu.prod Measure.count] g' at heq
-    have hcurried := ae_ae_eq_curry_of_prod heq
+    have hcurried := Measure.ae_ae_eq_curry_of_prod heq
     filter_upwards [hcurried] with x hx
     simpa [q4FiniteProductToFibres, hi] using
-      (ae_count_iff.mp hx ⟨i, hi⟩)
+      (Measure.ae_count_iff.mp hx ⟨i, hi⟩)
   have hfib' (i : I) (hi : i ∈ s) :
       Integrable (fun x => ‖q4FiniteProductToFibres s g' i x‖ ^ (2 : Nat)) mu :=
     (hfib i hi).congr
@@ -383,9 +404,13 @@ theorem memLp_two_q4FiniteProductKernelShell_fibre_of_pairwise_bound
       (f := fun l => q4PairwiseKernelApply mu K i l
         (q4FiniteProductToFibres s g l))
       (fun l hl => H.memLp i l _
-        (hg.fibre_integrable_all l) (hg.fibre_memLp_two_all l))
-  simpa only [q4FiniteProductToFibres, dif_pos hi,
-    q4FiniteProductKernelShell] using hshell
+        ((q4FiniteProductCutoffStableDomain.fibre_integrable_all hg) l) ((q4FiniteProductCutoffStableDomain.fibre_memLp_two_all hg) l))
+  have hconv : q4FiniteProductToFibres s (q4FiniteProductKernelShell mu s R K g) i =
+      q4KernelTTStarShell mu s R K (q4FiniteProductToFibres s g) i := by
+    funext x
+    simp [q4FiniteProductToFibres, hi, q4FiniteProductKernelShell]
+  rw [hconv]
+  exact hshell
 
 /-- The literal finite-product shell is a.e.-strongly measurable once its
 physical pair operators satisfy the proved pairwise `L²` estimate.  No
@@ -403,7 +428,7 @@ theorem aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound
   apply aestronglyMeasurable_q4FiniteProduct_of_fibres mu s
     (q4FiniteProductKernelShell mu s R K g)
   intro i
-  simpa only [q4FiniteProductToFibres, dif_pos i.property] using
+  simpa only [q4FiniteProductToFibres_coe] using
     (memLp_two_q4FiniteProductKernelShell_fibre_of_pairwise_bound
       s R K H g hg i.1 i.2).aestronglyMeasurable
 
@@ -424,7 +449,7 @@ theorem integrable_norm_sq_q4FiniteProductKernelShell_of_pairwise_bound
   · exact aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound
       s R K H g hg
   · intro i
-    simpa only [q4FiniteProductToFibres, dif_pos i.property] using
+    simpa only [q4FiniteProductToFibres_coe] using
       memLp_two_q4FiniteProductKernelShell_fibre_of_pairwise_bound
         s R K H g hg i.1 i.2
 
@@ -436,7 +461,7 @@ theorem q4FiniteProductKernelShell_energy_le_of_cutoffStableDomain
     [MeasurableSingletonClass I] [DecidableEq I]
     {mu : Measure X} [SFinite mu] (s : Finset I) (R : I -> I -> Prop)
     [DecidableRel R] (hR : Std.Symm R) (D : Real) (hD : 0 <= D)
-    (hdegree : forall i ∈ s, ((s.filter (R i)).card : Real) <= D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : Real) <= D)
     (K : I -> I -> X -> Complex) (H : Q4PairwiseL2OperatorBound mu K)
     (g : X × {i // i ∈ s} -> Complex)
     (hg : g ∈ q4FiniteProductCutoffStableDomain mu s R K) :
@@ -465,14 +490,14 @@ theorem q4FiniteProductKernelShell_energy_le_of_cutoffStableDomain
       s R K H g hg
   have hinFibSq (i : I) (hi : i ∈ s) :
       Integrable (fun x => ‖q4FiniteProductToFibres s g i x‖ ^ (2 : Nat)) mu :=
-    integrable_norm_sq_of_memLp_two _ (hg.fibre_memLp_two i hi)
+    integrable_norm_sq_of_memLp_two _ ((q4FiniteProductCutoffStableDomain.fibre_memLp_two hg) i hi)
   have henergy := q4FibreL2Energy_kernelShell_le_of_pairwise_bound_on_relation
     mu s R hR D hD hdegree K (q4FiniteProductToFibres s g) H.nonneg
-    (fun i hi => hg.fibre_memLp_two i hi)
+    (fun i hi => (q4FiniteProductCutoffStableDomain.fibre_memLp_two hg) i hi)
     (fun i l hil => H.memLp i l _
-      (hg.fibre_integrable_all l) (hg.fibre_memLp_two_all l))
+      ((q4FiniteProductCutoffStableDomain.fibre_integrable_all hg) l) ((q4FiniteProductCutoffStableDomain.fibre_memLp_two_all hg) l))
     (fun i l hil => H.bound i l _
-      (hg.fibre_integrable_all l) (hg.fibre_memLp_two_all l))
+      ((q4FiniteProductCutoffStableDomain.fibre_integrable_all hg) l) ((q4FiniteProductCutoffStableDomain.fibre_memLp_two_all hg) l))
   calc
     (∫ z, ‖q4FiniteProductKernelShell mu s R K g z‖ ^ (2 : Nat)
       ∂q4FiniteProductCountingMeasure mu s) =
@@ -488,7 +513,7 @@ theorem q4FiniteProductKernelShell_energy_le_of_cutoffStableDomain
     _ = (H.B * D) ^ 2 *
         ∫ z, ‖g z‖ ^ (2 : Nat) ∂q4FiniteProductCountingMeasure mu s := by
       rw [q4FiniteProductCountingMeasure_integral_norm_sq_eq_fibreL2Energy_of_aestronglyMeasurable
-        s g hg.measurable.aestronglyMeasurable hg.integrable_norm_sq hinFibSq]
+        s g (q4FiniteProductCutoffStableDomain.measurable hg).aestronglyMeasurable (q4FiniteProductCutoffStableDomain.integrable_norm_sq hg) hinFibSq]
 
 /-- A relation-local pair-kernel estimate is a literal `L¹ -> L∞` estimate
 for the finite product shell.  Off-relation entries are cut to zero before
@@ -516,9 +541,9 @@ theorem norm_q4FiniteProductKernelShell_le_of_bound_on_relation
       (fun y => Kcut i l (x - y) * q4FiniteProductToFibres s g l y) mu := by
     intro i l x
     by_cases hil : R i l
-    · simpa only [Kcut, if_pos hil] using (hg.pairwise i l x hil).aestronglyMeasurable
+    · simpa only [Kcut, if_pos hil] using ((q4FiniteProductCutoffStableDomain.pairwise hg) i l x hil).aestronglyMeasurable
     · simpa only [Kcut, if_neg hil, zero_mul] using
-        (aestronglyMeasurable_zero : AEStronglyMeasurable
+        (aestronglyMeasurable_const : AEStronglyMeasurable
           (fun _ : X => (0 : Complex)) mu)
   have hshell : q4FiniteProductKernelShell mu s R K g =
       q4FiniteProductKernelShell mu s R Kcut g := by
@@ -527,11 +552,14 @@ theorem norm_q4FiniteProductKernelShell_le_of_bound_on_relation
     apply Finset.sum_congr rfl
     intro l hl
     have hrel : R w.2.1 l := (Finset.mem_filter.mp hl).2
+    unfold q4PairwiseKernelApply
+    apply integral_congr_ae
+    filter_upwards with y
     simp only [Kcut, if_pos hrel]
   rw [hshell]
   exact norm_q4FiniteProductKernelShell_le_of_bound mu s R Kcut g hA
-    hg.measurable hg.integrable
-    (fun l hl => hg.fibre_integrable l hl) hmeasCut hKcut z
+    (q4FiniteProductCutoffStableDomain.measurable hg) (q4FiniteProductCutoffStableDomain.integrable hg)
+    (fun l hl => (q4FiniteProductCutoffStableDomain.fibre_integrable hg) l hl) hmeasCut hKcut z
 
 /-- The crossed Marcinkiewicz estimate for one literal finite-product shell.
 All endpoint facts are derived from the actual physical kernel, the actual
@@ -543,7 +571,7 @@ theorem q4FiniteProductKernelShell_crossed_strong_of_cutoffStableDomain
     [MeasurableSingletonClass I] [DecidableEq I]
     {mu : Measure X} [SFinite mu] (s : Finset I) (R : I -> I -> Prop)
     [DecidableRel R] (hR : Std.Symm R) (D : Real) (hD : 0 <= D)
-    (hdegree : forall i ∈ s, ((s.filter (R i)).card : Real) <= D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : Real) <= D)
     (K : I -> I -> X -> Complex) (A : Real) (hA : 0 < A)
     (hkernel : forall i l z, R i l -> ‖K i l z‖ <= A)
     (H : Q4PairwiseL2OperatorBound mu K)
@@ -581,7 +609,7 @@ theorem q4FiniteProductKernelShell_crossed_strong_of_cutoffStableDomain
     (hweak_two := ?_)
     (p := p) (q := q) (K := cutoff) (I := I0)
     (hp1 := hp1) (hp2 := hp2) (hq := hq)
-    (f := f) (hf_norm := hfD.measurable.norm)
+    (f := f) (hf_norm := (q4FiniteProductCutoffStableDomain.measurable hfD).norm)
     (hTf := ?_)
     (hI := hI0) (hIpos := hI0pos) (hK := hcutoff)
     (hlow_mem := ?_) (hhigh_mem := ?_)
@@ -591,7 +619,7 @@ theorem q4FiniteProductKernelShell_crossed_strong_of_cutoffStableDomain
     exact norm_nonneg _
   · intro g h hg hh z
     exact norm_q4FiniteProductKernelShell_add_le mu s R K g h
-      hg.pairwise hh.pairwise z
+      (q4FiniteProductCutoffStableDomain.pairwise hg) (q4FiniteProductCutoffStableDomain.pairwise hh) z
   · intro g hg z
     exact norm_q4FiniteProductKernelShell_le_of_bound_on_relation
       s R K A hA.le hkernel g hg z
@@ -600,7 +628,7 @@ theorem q4FiniteProductKernelShell_crossed_strong_of_cutoffStableDomain
       (q4FiniteProductKernelShell mu s R K g)
       (aemeasurable_norm_of_integrable_sq
         (q4FiniteProductKernelShell mu s R K g) (houtputSq g hg))
-      (houtputSq g hg) hg.integrable_norm_sq (sq_nonneg _)
+      (houtputSq g hg) (q4FiniteProductCutoffStableDomain.integrable_norm_sq hg) (sq_nonneg _)
       (q4FiniteProductKernelShell_energy_le_of_cutoffStableDomain
         s R hR D hD hdegree K H g hg) hr
   · exact aemeasurable_norm_of_integrable_sq
@@ -613,10 +641,10 @@ theorem q4FiniteProductKernelShell_crossed_strong_of_cutoffStableDomain
       mu s R K hp1 f hfD
   · intro t ht
     exact integrable_q4PowerCutoffHigh_of_integrable hp1 cutoff t f
-      hfD.measurable hfD.integrable
+      (q4FiniteProductCutoffStableDomain.measurable hfD) (q4FiniteProductCutoffStableDomain.integrable hfD)
   · intro t ht
     exact hfp.const_mul (t / cutoff)
-  · exact measurable_lintegral_q4PowerCutoffLow_sq hp1 cutoff f hfD.measurable
+  · exact measurable_lintegral_q4PowerCutoffLow_sq hp1 cutoff f (q4FiniteProductCutoffStableDomain.measurable hfD)
 
 /-- Homogeneous strict strong form of the preceding literal finite-product
 shell estimate.  This is the finite-product `TT*` certificate consumed by
@@ -626,7 +654,7 @@ theorem q4FiniteProductKernelShell_strong_offDiagonal_of_cutoffStableDomain
     [MeasurableSingletonClass I] [DecidableEq I]
     {mu : Measure X} [SFinite mu] (s : Finset I) (R : I -> I -> Prop)
     [DecidableRel R] (hR : Std.Symm R) (D : Real) (hD : 0 <= D)
-    (hdegree : forall i ∈ s, ((s.filter (R i)).card : Real) <= D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : Real) <= D)
     (K : I -> I -> X -> Complex) (A : Real) (hA : 0 < A)
     (hkernel : forall i l z, R i l -> ‖K i l z‖ <= A)
     (H : Q4PairwiseL2OperatorBound mu K)
@@ -653,14 +681,18 @@ theorem q4FiniteProductKernelShell_strong_offDiagonal_of_cutoffStableDomain
     (q4FiniteProductKernelShell mu s R K f) f
     (ENNReal.ofReal ((H.B * D) ^ 2)) hA hI0pos hp1 hp2 hq hinput
     (by simpa only [cutoff] using hraw)
-  exact q4_eLpNorm_le_of_crossed_power_moment
+  have hfinal := q4_eLpNorm_le_of_crossed_power_moment (p := p) (q := q)
     (q4FiniteProductCountingMeasure mu s)
     (q4FiniteProductKernelShell mu s R K f) f
     (by linarith) (by
       rw [hq]
       have hpminus : 0 < p - 1 := by linarith
       exact div_pos (by linarith) hpminus)
-    (q4CrossedStrongShellConstant q A ((H.B * D) ^ 2)) hmoment
+    (ENNReal.ofReal q *
+      (4 * ENNReal.ofReal ((H.B * D) ^ 2) *
+        ((ENNReal.ofReal (q - 2))⁻¹ * (ENNReal.ofReal (2 * A)) ^ (q - 2))))
+    hmoment
+  simpa only [q4CrossedStrongShellConstant] using hfinal
 
 /-- A compactly localized active-dyadic pair kernel maps any physical
 `L¹` fibre to an integrable displayed convolution.  This is the finite-
@@ -675,7 +707,8 @@ theorem integrable_q4ActiveDyadicPairKernel_mul_of_compact
     Integrable (fun y => q4ActiveDyadicPairKernel psi j i l (x - y) * g y)
       volume := by
   let k : SchwartzMap (Euclidean d) Complex :=
-    𝓕⁻ (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l)
+    FourierTransform.fourierInv
+      (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l)
   have hk (z : Euclidean d) : (k : Euclidean d -> Complex) z =
       q4ActiveDyadicPairKernel psi j i l z := by
     simpa only [k, q4ActiveDyadicSchwartzKernel] using
@@ -692,6 +725,7 @@ theorem integrable_q4ActiveDyadicPairKernel_mul_of_compact
       exact BoundedContinuousFunction.norm_coe_le_norm _ _
   have hprod := hg.bdd_mul hkmeas hkbound
   refine hprod.congr (Filter.Eventually.of_forall fun y => ?_)
+  show (k : Euclidean d -> Complex) (x - y) * g y = _
   rw [hk (x - y)]
 
 /-- Ordinary `L¹ ∩ L²` regularity of an actual finite active product field
@@ -708,7 +742,7 @@ theorem mem_q4FiniteProductCutoffStableDomain_activeDyadic_of_regular
     (hgint : Integrable g (q4ActiveDyadicProductCountingMeasure d E j))
     (hgsq : Integrable (fun z => ‖g z‖ ^ (2 : Nat))
       (q4ActiveDyadicProductCountingMeasure d E j))
-    (hfib : forall i ∈ activeDyadicIndices E j,
+    (hfib : ∀ i ∈ activeDyadicIndices E j,
       Integrable (q4FiniteProductToFibres (activeDyadicIndices E j) g i) volume /\
         MemLp (q4FiniteProductToFibres (activeDyadicIndices E j) g i) 2 volume) :
     g ∈ q4FiniteProductCutoffStableDomain volume (activeDyadicIndices E j) R
@@ -718,7 +752,12 @@ theorem mem_q4FiniteProductCutoffStableDomain_activeDyadic_of_regular
   apply integrable_q4ActiveDyadicPairKernel_mul_of_compact psi hpsiCompact j
   by_cases hl : l ∈ activeDyadicIndices E j
   · exact (hfib l hl).1
-  · simp [q4FiniteProductToFibres, hl]
+  · have h0 : q4FiniteProductToFibres (activeDyadicIndices E j) g l =
+        fun _ : Euclidean d => (0 : Complex) := by
+      funext y
+      simp [q4FiniteProductToFibres, hl]
+    rw [h0]
+    exact integrable_zero _ _ _
 
 end
 

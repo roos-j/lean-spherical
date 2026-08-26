@@ -71,9 +71,9 @@ theorem sameInputOutputDyadicRateConstant_lt_top
         C1 ^ q1 *
           (∫⁻ t in Ioi (1 : Real),
             (ENNReal.ofReal t) ^ (q - q1 - 1)) < ⊤ :=
-    ENNReal.add_lt_top
-      (ENNReal.mul_lt_top hC0pow hsmallTop)
-      (ENNReal.mul_lt_top hC1pow hlargeTop)
+    ENNReal.add_lt_top.mpr
+      ⟨ENNReal.mul_lt_top hC0pow hsmallTop,
+        ENNReal.mul_lt_top hC1pow hlargeTop⟩
   have hbase :
       ENNReal.ofReal q *
           (C0 ^ q0 *
@@ -159,10 +159,10 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
     refine ⟨⟨hTmeas j f, ?_⟩, ?_⟩
     · rw [htargetZero]
       exact bot_lt_top
-    · rw [htargetZero, hinputZero]
+    · rw [htargetZero]
       simp
-  · have hrhoPowPos : 0 < rho ^ j :=
-      pow_pos hrhoPos _
+  · have hrhoPowPos : 0 < rho ^ j := by
+      exact ENNReal.pow_pos hrhoPos j
     let scale : ENNReal := rho ^ j * inputNorm
     have hscaleTop : scale < ⊤ := by
       dsimp only [scale]
@@ -186,8 +186,8 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
             C0 * rho0 ^ j * inputNorm := by
               simpa only [inputNorm] using (h0 j hj f).2
         _ ≤ C0 * rho ^ j * inputNorm := by
-          apply mul_le_mul_right
-          exact mul_le_mul_left (pow_le_pow_left hrho0le j) _
+          exact mul_le_mul' (mul_le_mul' (le_refl C0)
+            (pow_le_pow_left' hrho0le j)) (le_refl inputNorm)
         _ = C0 * ENNReal.ofReal s := by
           rw [hsENN]
           dsimp only [scale]
@@ -200,14 +200,14 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
             C1 * rho1 ^ j * inputNorm := by
               simpa only [inputNorm] using (h1 j hj f).2
         _ ≤ C1 * rho ^ j * inputNorm := by
-          apply mul_le_mul_right
-          exact mul_le_mul_left (pow_le_pow_left hrho1le j) _
+          exact mul_le_mul' (mul_le_mul' (le_refl C1)
+            (pow_le_pow_left' hrho1le j)) (le_refl inputNorm)
         _ = C1 * ENNReal.ofReal s := by
           rw [hsENN]
           dsimp only [scale]
           ring
     have hinter := eLpNorm_of_two_nearby_strong_outputs_at_scale
-      T f hs (hTnonneg j f) (hTmeas j f)
+      (T := T j) (f := f) (s := s) hs (hTnonneg j f) (hTmeas j f)
       hq0 hq0q hqq1 C0 C1 h0scale h1scale
     have hbound :
         eLpNorm (T j f) (ENNReal.ofReal q) volume ≤

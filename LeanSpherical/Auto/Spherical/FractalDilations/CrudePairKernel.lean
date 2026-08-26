@@ -8,7 +8,7 @@ open Auto.Spherical.FractalDilations.DyadicCovering
 open Auto.Spherical.FractalDilations.Q4PairComposition
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 

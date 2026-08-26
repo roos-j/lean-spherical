@@ -101,12 +101,10 @@ theorem crossedLsPhysicalRealConstant_scale
     rw [← Real.rpow_mul hR.le]
     congr 1
     field_simp [hs]
-    ring
   have hpower : R ^ (q - s) * R ^ (-kappa) =
       R ^ (q - s - kappa) := by
     rw [← Real.rpow_add hR]
     congr 1
-    ring
   rw [hscaleA, hscaleB]
   calc
     q * (2 ^ s * (B ^ s * R ^ (-kappa)) *
@@ -130,7 +128,7 @@ theorem crossedLsStrongCoefficient_eq_physical_constant
         ENNReal.ofReal (I ^ p⁻¹) := by
   have hp0 : 0 < p := lt_trans zero_lt_one hp1
   have hpminus : 0 < p - 1 := by linarith
-  have hs0 : 0 < s := hps.trans hp0
+  have hs0 : 0 < s := hp0.trans hps
   have hqs : 0 < q - s := by
     rw [hq]
     rw [sub_pos, lt_div_iff₀ hpminus]
@@ -156,7 +154,7 @@ theorem crossedLsStrongCoefficient_eq_physical_constant
         (((q - s)⁻¹ + (2 : Real) ^ (-s) / (p / (p - 1))) *
           (2 * A * I) ^ (q - s)) := by
     rw [← ENNReal.ofReal_inv_of_pos hqs,
-      ← ENNReal.ofReal_rpow_of_pos hK,
+      ENNReal.ofReal_rpow_of_pos (by positivity : (0:Real) < 2 * A * I),
       ← ENNReal.ofReal_mul (inv_nonneg.mpr hqs.le),
       ← ENNReal.ofReal_add hterm1 hterm2]
     congr 1
@@ -179,11 +177,11 @@ theorem crossedLsStrongCoefficient_eq_physical_constant
             (2 * A * I) ^ (q - s))) * ENNReal.ofReal I)) =
       ENNReal.ofReal
         (crossedLsPhysicalRealConstant A B p q s * I ^ (q - s + 1)) := by
-    rw [hsum, ← ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : Real) < 2),
-      ← ENNReal.ofReal_rpow_of_pos hB]
+    rw [hsum, ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : Real) < 2)]
     rw [← ENNReal.ofReal_mul hbase,
-      ← ENNReal.ofReal_mul (Real.rpow_nonneg hB.le _),
-      ← ENNReal.ofReal_mul (Real.rpow_nonneg (by norm_num) _),
+      ← ENNReal.ofReal_mul (Real.rpow_nonneg (by norm_num : (0:Real) ≤ 2) s),
+      ← ENNReal.ofReal_mul (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
+        (Real.rpow_nonneg hB.le _)),
       ← ENNReal.ofReal_mul hq0.le]
     congr 1
     unfold crossedLsPhysicalRealConstant
@@ -192,15 +190,16 @@ theorem crossedLsStrongCoefficient_eq_physical_constant
         (2 * A) ^ (q - s) * I ^ (q - s) := by
       rw [show 2 * A * I = (2 * A) * I by ring]
       exact Real.mul_rpow h2A hI.le
-    rw [hKI, ← Real.rpow_add hI]
+    rw [hKI, show I ^ (q - s + 1) = I ^ (q - s) * I from by
+      rw [Real.rpow_add hI, Real.rpow_one]]
     ring
   have hconstant_pos : 0 < crossedLsPhysicalRealConstant A B p q s := by
     unfold crossedLsPhysicalRealConstant
-    apply mul_pos hq0
-    apply mul_pos
-    · exact mul_pos (Real.rpow_pos_of_pos (by norm_num) _)
+    apply _root_.mul_pos hq0
+    apply _root_.mul_pos
+    · exact _root_.mul_pos (Real.rpow_pos_of_pos (by norm_num) _)
         (Real.rpow_pos_of_pos hB _)
-    · exact mul_pos (add_pos_of_pos_of_nonneg (inv_pos.mpr hqs) htail)
+    · exact _root_.mul_pos (add_pos_of_pos_of_nonneg (inv_pos.mpr hqs) htail)
         (Real.rpow_pos_of_pos (by positivity) _)
   have hinput_pos : 0 <
       crossedLsPhysicalRealConstant A B p q s * I ^ (q - s + 1) :=
@@ -210,14 +209,15 @@ theorem crossedLsStrongCoefficient_eq_physical_constant
     field_simp [hpminus.ne', hp0.ne', (by linarith : s - 1 ≠ 0)]
     ring
   unfold crossedLsStrongCoefficient
-  rw [hintermediate, ← ENNReal.ofReal_rpow_of_pos hinput_pos,
+  rw [hintermediate, ENNReal.ofReal_rpow_of_pos hinput_pos,
     ← ENNReal.ofReal_mul
       (Real.rpow_nonneg hconstant_pos.le _)]
   congr 1
   rw [Real.mul_rpow hconstant_pos.le
     (Real.rpow_nonneg hI.le _), ← Real.rpow_mul hI.le]
-  congr 1
-  simpa only [div_eq_mul_inv] using hexponent
+  have hexp' : (q - s + 1) * q⁻¹ = p⁻¹ := by
+    simpa only [div_eq_mul_inv] using hexponent
+  rw [hexp']
 
 /-- Positivity of the physical crossed coefficient in the strict interior
 range. -/
@@ -238,8 +238,8 @@ theorem crossedLsPhysicalRealConstant_pos
   have htail : 0 ≤ (2 : Real) ^ (-s) / (p / (p - 1)) :=
     div_nonneg (Real.rpow_nonneg (by norm_num) _) hquot.le
   unfold crossedLsPhysicalRealConstant
-  apply mul_pos hq0
-  apply mul_pos
+  apply _root_.mul_pos hq0
+  apply _root_.mul_pos
   · exact mul_pos (Real.rpow_pos_of_pos (by norm_num) _)
       (Real.rpow_pos_of_pos hB _)
   · exact mul_pos (add_pos_of_pos_of_nonneg (inv_pos.mpr hqs) htail)
@@ -262,16 +262,12 @@ theorem ofReal_rpow_weight_s
       t ^ (q - 1) = t ^ (s + (q - s - 1)) := by congr 1 <;> ring
       _ = t ^ s * t ^ (q - s - 1) := Real.rpow_add ht _ _
       _ = ((2 : ℝ) ^ s * (t / 2) ^ s) * t ^ (q - s - 1) := by
-        rw [← Real.mul_rpow htwo.le hhalf.le]
-        congr 1
-        ring
+        rw [← Real.mul_rpow htwo.le hhalf.le, show (2 : ℝ) * (t / 2) = t by ring]
       _ = _ := by ring
   rw [hreal]
   rw [ENNReal.ofReal_mul (Real.rpow_nonneg htwo.le _)]
   rw [ENNReal.ofReal_mul (Real.rpow_nonneg hhalf.le _)]
-  rw [ENNReal.ofReal_rpow_of_pos htwo,
-    ENNReal.ofReal_rpow_of_pos hhalf,
-    ENNReal.ofReal_rpow_of_pos ht]
+  rw [← ENNReal.ofReal_rpow_of_pos htwo, ← ENNReal.ofReal_rpow_of_pos ht]
 
 /-- Multiply a weak `Lˢ` estimate by the correct layer-cake weight. -/
 theorem direct_weak_s_weighted
@@ -475,7 +471,7 @@ theorem crossed_power_cutoff_tail_pointwise_s
     have hden : (u ^ (p - 1)) ^ (q - s) =
         u ^ ((p - 1) * (q - s)) := by
       rw [← Real.rpow_mul hu.le]
-    rw [hden]
+    rw [hden, div_eq_mul_inv]
     have hinv : (u ^ ((p - 1) * (q - s)))⁻¹ =
         u ^ ((1 - p) * (q - s)) := by
       rw [← Real.rpow_neg hu.le]
@@ -492,7 +488,7 @@ theorem crossed_power_cutoff_tail_pointwise_s
         rw [hpq]
       _ = K ^ (q - s) / (q - s) * u ^ p := by ring
   rw [show q - s + 1 - 1 = q - s by ring]
-  rw [← ENNReal.ofReal_mul (Real.rpow_nonneg hu _), hreal]
+  rw [← ENNReal.ofReal_mul (Real.rpow_nonneg hu.le _), hreal]
   have hA : 0 ≤ K ^ (q - s) / (q - s) :=
     div_nonneg (Real.rpow_nonneg hK.le _) hqs.le
   rw [ENNReal.ofReal_mul hA]
@@ -720,13 +716,32 @@ theorem crossed_schwartz_moment_of_lone_weak_ls_and_rational_tail
         rw [crossedLsAmplitudeScale_rpow_one_sub hp1 hK ht]
       _ = t * (A * I / K) := by
         field_simp [hK.ne']
-        ring
       _ ≤ t * ((1 : ℝ) / 2) := mul_le_mul_of_nonneg_left hAI_div ht.le
       _ = t / 2 := by ring
   have hprofiles := measurable_rational_low_high_profile_lintegrals
     (μ := volume) f low high hlow hhigh
   have hscale_meas : Measurable (crossedLsAmplitudeScale p K) :=
     measurable_crossedLsAmplitudeScale hp1
+  have hlowProfile_s : Measurable (fun t : ℝ =>
+      ∫⁻ x, ENNReal.ofReal (‖low t x‖ ^ s)) := by
+    have hliteral : Measurable (fun z : ℝ × Euclidean d =>
+        ENNReal.ofReal
+          (‖((1 + ‖(z.1⁻¹ : ℝ) • f z.2‖ ^ 2) ^ (-1 : ℝ)) • f z.2‖ ^ s)) :=
+      ENNReal.continuous_ofReal.measurable.comp
+        ((continuous_id.rpow_const (fun _ => Or.inr hs.le)).measurable.comp
+          (measurable_rational_low_family f).norm)
+    have hchoice : (fun z : ℝ × Euclidean d =>
+        ENNReal.ofReal (‖low z.1 z.2‖ ^ s)) =
+        (fun z : ℝ × Euclidean d =>
+          ENNReal.ofReal
+            (‖((1 + ‖(z.1⁻¹ : ℝ) • f z.2‖ ^ 2) ^ (-1 : ℝ)) • f z.2‖ ^ s)) := by
+      funext z
+      rw [hlow z.1 z.2]
+    have hprod : Measurable (fun z : ℝ × Euclidean d =>
+        ENNReal.ofReal (‖low z.1 z.2‖ ^ s)) := by
+      rw [hchoice]
+      exact hliteral
+    exact hprod.lintegral_prod_right
   apply crossed_marcinkiewicz_strong_of_lone_ls_split
     Set.univ (fun (g : SchwartzMap (Euclidean d) Complex)
       (x : Euclidean d) => g x)
@@ -737,7 +752,7 @@ theorem crossed_schwartz_moment_of_lone_weak_ls_and_rational_tail
     (fun t => high (crossedLsAmplitudeScale p K t))
     (fun _ => Set.mem_univ _) (fun _ => Set.mem_univ _) hsplit'
     hhigh_lone
-    (by simpa only [Function.comp_def] using hprofiles.1.comp hscale_meas)
+    (by simpa only [Function.comp_def] using hlowProfile_s.comp hscale_meas)
     Atail
   simpa only [Function.comp_def] using hRationalTail low high hlow hhigh
 
@@ -773,10 +788,10 @@ theorem crossed_rational_residual_tail_scalar_s
       field_simp [hpminus.ne']
     rw [show (2 - p / (p - 1)) - 2 = -(p / (p - 1)) by ring]
     rw [Real.div_rpow hK.le hupow.le]
-    rw [Real.rpow_neg hK.le, Real.rpow_neg hupow.le, hpow, inv_inv]
+    rw [Real.rpow_neg hK.le, Real.rpow_neg hupow.le, hpow, div_eq_mul_inv, inv_inv]
   have hKpow : K ^ (s / (p - 1)) * K ^ (-(p / (p - 1))) =
       K ^ (q - s) := by
-    rw [← Real.rpow_add hK.le]
+    rw [← Real.rpow_add hK]
     congr 1
     rw [hq]
     field_simp [hpminus.ne']
@@ -797,8 +812,10 @@ theorem crossed_rational_residual_tail_scalar_s
         rw [hKpow]
       _ = _ := by
         rw [Real.rpow_neg (by norm_num : (0 : ℝ) ≤ 2)]
-        field_simp [ne_of_gt (Real.rpow_pos_of_pos (by norm_num) s), hpconj.ne']
-        ring
+        have h2ne : ((2 : ℝ) ^ s)⁻¹ ≠ 0 :=
+          inv_ne_zero (Real.rpow_pos_of_pos (by norm_num) s).ne'
+        have h2ne' : (2 : ℝ) ^ s ≠ 0 := (Real.rpow_pos_of_pos (by norm_num) s).ne'
+        field_simp
   rw [← ENNReal.ofReal_mul
     (div_nonneg (Real.rpow_nonneg hK.le _) (Real.rpow_nonneg (by norm_num) _))]
   rw [hreal]
@@ -808,40 +825,33 @@ scale. -/
 theorem crossed_rational_rescaled_weight_s
     {p q s K t : ℝ} (hp1 : 1 < p) (hK : 0 < K) (ht : 0 < t) :
     ENNReal.ofReal
-        (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s) *
+        ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s) *
         (ENNReal.ofReal t) ^ (q - s - 1) =
       ENNReal.ofReal (K ^ (s / (p - 1)) / (2 : ℝ) ^ s) *
         (ENNReal.ofReal t) ^ (q - s - 1 - s / (p - 1)) := by
   have hpminus : p - 1 ≠ 0 := by linarith
   have hbase : 0 < K / t := div_pos hK ht
   have hpow :
-      ((K / t) ^ ((p - 1)⁻¹) ^ s) = (K / t) ^ (s / (p - 1)) := by
+      (((K / t) ^ ((p - 1)⁻¹)) ^ s) = (K / t) ^ (s / (p - 1)) := by
     rw [← Real.rpow_mul hbase.le]
     congr 1
     field_simp [hpminus]
-    ring
   have hreal :
-      (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s) * t ^ (q - s - 1) =
+      ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s) * t ^ (q - s - 1) =
         (K ^ (s / (p - 1)) / (2 : ℝ) ^ s) *
           t ^ (q - s - 1 - s / (p - 1)) := by
+    have key : ∀ A T B C : ℝ, A / T / C * B = A / C * (B / T) := by
+      intro A T B C
+      ring
     rw [hpow, Real.div_rpow hK.le ht.le]
-    rw [div_eq_mul_inv, ← Real.rpow_neg ht.le]
-    calc
-      (K ^ (s / (p - 1)) * t ^ (-(s / (p - 1))) / (2 : ℝ) ^ s) *
-          t ^ (q - s - 1) =
-          (K ^ (s / (p - 1)) / (2 : ℝ) ^ s) *
-            (t ^ (-(s / (p - 1))) * t ^ (q - s - 1)) := by ring
-      _ = (K ^ (s / (p - 1)) / (2 : ℝ) ^ s) *
-            t ^ (-(s / (p - 1)) + (q - s - 1)) := by
-          rw [← Real.rpow_add ht.le]
-      _ = _ := by congr 2 <;> ring
-  rw [← ENNReal.ofReal_rpow_of_pos ht,
-    ← ENNReal.ofReal_rpow_of_pos ht]
-  rw [← ENNReal.ofReal_mul
-    (div_nonneg (Real.rpow_nonneg hbase.le _) (Real.rpow_nonneg (by norm_num) _))]
-  rw [hreal]
-  rw [ENNReal.ofReal_mul
-    (div_nonneg (Real.rpow_nonneg hK.le _) (Real.rpow_nonneg (by norm_num) _))]
+    conv_rhs => rw [Real.rpow_sub ht]
+    exact key _ _ _ _
+  rw [ENNReal.ofReal_rpow_of_pos ht, ENNReal.ofReal_rpow_of_pos ht,
+    ← ENNReal.ofReal_mul (div_nonneg
+      (Real.rpow_nonneg (Real.rpow_nonneg hbase.le _) _)
+      (Real.rpow_nonneg (by norm_num) _)),
+    ← ENNReal.ofReal_mul (div_nonneg (Real.rpow_nonneg hK.le _)
+      (Real.rpow_nonneg (by norm_num) _)), hreal]
 
 /-- Tonelli estimate for the non-hard residual of the rational low cutoff.
 The threshold is `K < t * u^(p-1)`; at that threshold the smooth low part
@@ -852,11 +862,11 @@ theorem crossed_rational_residual_tail_s
     {p q s K : ℝ} (hp1 : 1 < p) (hps : p < s)
     (hq : q = p * (s - 1) / (p - 1)) (hK : 0 < K) :
     (∫⁻ t in Ioi (0 : ℝ),
-      (∫⁻ x,
-        ({x | K < t * (u x) ^ (p - 1)}.indicator
+      ((∫⁻ x,
+        {x | K < t * (u x) ^ (p - 1)}.indicator
           (fun _ => ENNReal.ofReal
-            (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
-        (ENNReal.ofReal t) ^ (q - s - 1)) ≤
+            ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
+        (ENNReal.ofReal t) ^ (q - s - 1))) ≤
       ENNReal.ofReal (((2 : ℝ) ^ (-s) / (p / (p - 1))) * K ^ (q - s)) *
         ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ := by
   let a : α → ℝ := fun x => K / (u x) ^ (p - 1)
@@ -880,16 +890,16 @@ theorem crossed_rational_residual_tail_s
       (ENNReal.continuous_rpow_const.measurable.comp
         ENNReal.continuous_ofReal.measurable)
   have hcut_meas (t : ℝ) : Measurable (fun x =>
-      ({x | K < t * (u x) ^ (p - 1)}.indicator
+      {x | K < t * (u x) ^ (p - 1)}.indicator
         (fun _ => ENNReal.ofReal
-          (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x) := by
+          ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x) := by
     exact measurable_const.indicator
       (measurableSet_lt measurable_const (measurable_const.mul hpow))
   have hpoint (t : ℝ) (ht : 0 < t) (x : α) :
       (ENNReal.ofReal t) ^ (q - s - 1) *
-          ({x | K < t * (u x) ^ (p - 1)}.indicator
+          {x | K < t * (u x) ^ (p - 1)}.indicator
             (fun _ => ENNReal.ofReal
-              (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x ≤
+              ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x ≤
         w t * ({x | a x < t}.indicator v x) := by
     by_cases hzero : u x = 0
     · have hpowzero : (u x) ^ (p - 1) = 0 := by
@@ -897,7 +907,13 @@ theorem crossed_rational_residual_tail_s
       have hnotcut : ¬ K < t * (u x) ^ (p - 1) := by
         rw [hpowzero]
         linarith
-      simp [v, hzero, hnotcut]
+      have hind : ({x | K < t * (u x) ^ (p - 1)}.indicator
+          (fun _ => ENNReal.ofReal
+            ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x) = 0 := by
+        apply Set.indicator_of_notMem
+        simpa only [Set.mem_setOf_eq] using hnotcut
+      rw [hind, mul_zero]
+      exact zero_le
     · have hupos : 0 < u x := lt_of_le_of_ne (hu_nonneg x) (Ne.symm hzero)
       have hupow : 0 < (u x) ^ (p - 1) := Real.rpow_pos_of_pos hupos _
       have hcut : K < t * (u x) ^ (p - 1) ↔ a x < t := by
@@ -906,37 +922,38 @@ theorem crossed_rational_residual_tail_s
       by_cases hmem : K < t * (u x) ^ (p - 1)
       · have hvone : v x = 1 := by simp [v, hupos]
         have hscale := crossed_rational_rescaled_weight_s hp1 hK ht (q := q) (s := s)
-        rw [show ({x | K < t * (u x) ^ (p - 1)}.indicator
+        rw [show {x | K < t * (u x) ^ (p - 1)}.indicator
               (fun _ => ENNReal.ofReal
-                (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x =
-              ENNReal.ofReal (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s) by
+                ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x =
+              ENNReal.ofReal ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s) from by
               simp [hmem]]
-        rw [show ({x | a x < t}.indicator v x) = 1 by
+        rw [show ({x | a x < t}.indicator v x) = 1 from by
           simp [hcut.mp hmem, hvone]]
-        simpa only [mul_comm] using hscale
+        simp only [mul_one, w]
+        rw [mul_comm, hscale]
       · have hnot : ¬ a x < t := by simpa only [hcut] using hmem
         simp [hmem, hnot]
   have houter :
       (∫⁻ t in Ioi (0 : ℝ),
-        (∫⁻ x,
-          ({x | K < t * (u x) ^ (p - 1)}.indicator
+        ((∫⁻ x,
+          {x | K < t * (u x) ^ (p - 1)}.indicator
             (fun _ => ENNReal.ofReal
-              (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
-          (ENNReal.ofReal t) ^ (q - s - 1)) ≤
+              ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
+          (ENNReal.ofReal t) ^ (q - s - 1))) ≤
         ∫⁻ t in Ioi (0 : ℝ),
           w t * ∫⁻ x in {x | a x < t}, v x ∂μ := by
     apply lintegral_mono_ae
     filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
     have hleft :
         (∫⁻ x,
-          ({x | K < t * (u x) ^ (p - 1)}.indicator
+          {x | K < t * (u x) ^ (p - 1)}.indicator
             (fun _ => ENNReal.ofReal
-              (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
+              ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
             (ENNReal.ofReal t) ^ (q - s - 1) =
           ∫⁻ x, (ENNReal.ofReal t) ^ (q - s - 1) *
-            ({x | K < t * (u x) ^ (p - 1)}.indicator
+            {x | K < t * (u x) ^ (p - 1)}.indicator
               (fun _ => ENNReal.ofReal
-                (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x ∂μ := by
+                ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x ∂μ := by
       rw [mul_comm, ← lintegral_const_mul _ (hcut_meas t)]
     have hright :
         (∫⁻ x, w t * ({x | a x < t}.indicator v x) ∂μ) =
@@ -968,8 +985,9 @@ theorem crossed_rational_residual_tail_s
       change (∫⁻ t in Ioi (K / (u x) ^ (p - 1)),
         ENNReal.ofReal (K ^ (s / (p - 1)) / (2 : ℝ) ^ s) *
           (ENNReal.ofReal t) ^ (q - s - 1 - s / (p - 1))) ≤ _
-      rw [lintegral_const_mul _
-        (ENNReal.continuous_rpow_const.measurable.comp
+      rw [lintegral_const_mul _ (show Measurable
+        (fun t : ℝ => (ENNReal.ofReal t) ^ (q - s - 1 - s / (p - 1))) from
+        ENNReal.continuous_rpow_const.measurable.comp
           ENNReal.continuous_ofReal.measurable)]
       rw [crossed_rational_residual_tail_scalar_s hupos hp1 hps hq hK]
       have hconstant : 0 ≤ ((2 : ℝ) ^ (-s) / (p / (p - 1))) * K ^ (q - s) := by
@@ -980,11 +998,11 @@ theorem crossed_rational_residual_tail_s
       rw [ENNReal.ofReal_mul hconstant, ENNReal.ofReal_rpow_of_pos hupos]
   calc
     (∫⁻ t in Ioi (0 : ℝ),
-      (∫⁻ x,
-        ({x | K < t * (u x) ^ (p - 1)}.indicator
+      ((∫⁻ x,
+        {x | K < t * (u x) ^ (p - 1)}.indicator
           (fun _ => ENNReal.ofReal
-            (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
-        (ENNReal.ofReal t) ^ (q - s - 1)) ≤
+            ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x ∂μ) *
+        (ENNReal.ofReal t) ^ (q - s - 1))) ≤
         ∫⁻ t in Ioi (0 : ℝ),
           w t * ∫⁻ x in {x | a x < t}, v x ∂μ := houter
     _ = ∫⁻ x, v x * (∫⁻ t in Ioi (a x), w t) ∂μ := hswap
@@ -1021,7 +1039,7 @@ theorem crossed_rational_schwartz_low_tail_s
   let residual : ℝ → Euclidean d → ENNReal := fun t x =>
     ({x | K < t * (u x) ^ (p - 1)}.indicator
       (fun _ => ENNReal.ofReal
-        (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s)) x)
+        ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s)) x)
   let w : ℝ → ENNReal := fun t => (ENNReal.ofReal t) ^ (q - s - 1)
   let lowI : ℝ → ENNReal := fun t =>
     ∫⁻ x, ENNReal.ofReal (‖low (crossedLsAmplitudeScale p K t) x‖ ^ s)
@@ -1030,11 +1048,12 @@ theorem crossed_rational_schwartz_low_tail_s
   let residualI : ℝ → ENNReal := fun t => ∫⁻ x, residual t x
   have hpminus : 0 < p - 1 := by linarith
   have hp0 : 0 < p := lt_trans zero_lt_one hp1
-  have hs0 : 0 < s := hps.trans hp0
+  have hs0 : 0 < s := hp0.trans hps
   have hsnonneg : 0 ≤ s := hs0.le
   have hu : Measurable u := by
     simpa only [u] using f.continuous.norm.measurable
   have hunonneg : ∀ x, 0 ≤ u x := fun x => norm_nonneg _
+  have habs : ∀ x, |u x| = u x := fun x => abs_of_nonneg (hunonneg x)
   have hscale_meas : Measurable (crossedLsAmplitudeScale p K) :=
     measurable_crossedLsAmplitudeScale hp1
   have hlowProfile : Measurable (fun t : ℝ =>
@@ -1052,10 +1071,13 @@ theorem crossed_rational_schwartz_low_tail_s
             (‖((1 + ‖(z.1⁻¹ : ℝ) • f z.2‖ ^ 2) ^ (-1 : ℝ)) • f z.2‖ ^ s)) := by
       funext z
       rw [hlow z.1 z.2]
-    rw [hchoice]
-    exact hliteral.lintegral_prod_right
+    have hprod : Measurable (fun z : ℝ × Euclidean d =>
+        ENNReal.ofReal (‖low z.1 z.2‖ ^ s)) := by
+      rw [hchoice]
+      exact hliteral
+    exact hprod.lintegral_prod_right
   have hlowI_meas : Measurable lowI := by
-    simpa only [lowI] using hlowProfile.comp hscale_meas
+    simpa only [lowI, Function.comp_def] using hlowProfile.comp hscale_meas
   have hcutProd_meas : Measurable (fun z : ℝ × Euclidean d =>
       ENNReal.ofReal (‖cut z.1 z.2‖ ^ s)) := by
     let S : Set (ℝ × Euclidean d) :=
@@ -1075,9 +1097,14 @@ theorem crossed_rational_schwartz_low_tail_s
         S.indicator (fun z => ENNReal.ofReal ((u z.2) ^ s)) := by
       funext z
       by_cases hz : z ∈ S
-      · simp [S, cut, q4PowerCutoffLow, hz, Real.norm_eq_abs,
-          abs_of_nonneg (hunonneg z.2)]
-      · simp [S, cut, q4PowerCutoffLow, hz]
+      · have hzS : z ∈ S := hz
+        simp only [S, Set.mem_setOf_eq] at hz
+        simp [cut, q4PowerCutoffLow, Real.norm_eq_abs, habs, hz,
+          Set.indicator_of_mem hzS]
+      · have hzS : z ∉ S := hz
+        simp only [S, Set.mem_setOf_eq] at hz
+        simp [cut, q4PowerCutoffLow, Real.norm_eq_abs, habs, hz,
+          Set.indicator_of_notMem hzS, Real.zero_rpow hs0.ne']
     rw [heq]
     exact hbase.indicator hS
   have hcutI_meas : Measurable cutI := by
@@ -1098,9 +1125,9 @@ theorem crossed_rational_schwartz_low_tail_s
           (fun x => ENNReal.ofReal ((u x) ^ s)) : Euclidean d → ENNReal) := by
       funext x
       by_cases hx : t * (u x) ^ (p - 1) ≤ K
-      · simp [cut, q4PowerCutoffLow, hx, Real.norm_eq_abs,
-          abs_of_nonneg (hunonneg x)]
-      · simp [cut, q4PowerCutoffLow, hx]
+      · simp [cut, q4PowerCutoffLow, Real.norm_eq_abs, habs, hx]
+      · simp [cut, q4PowerCutoffLow, Real.norm_eq_abs, habs, hx,
+          Real.zero_rpow hs0.ne']
     rw [heq]
     exact hbase.indicator hset
   have hw : Measurable w :=
@@ -1109,9 +1136,9 @@ theorem crossed_rational_schwartz_low_tail_s
     (μ := volume) u hu hunonneg hp1 hps hq hK cut hcutI_meas (by
       intro t x ht
       by_cases hcut : t * (u x) ^ (p - 1) ≤ K
-      · simp [cut, q4PowerCutoffLow, hcut, Real.norm_eq_abs,
-          abs_of_nonneg (hunonneg x)]
-      · simp [cut, q4PowerCutoffLow, hcut])
+      · simp [cut, q4PowerCutoffLow, Real.norm_eq_abs, habs, hcut]
+      · simp [cut, q4PowerCutoffLow, Real.norm_eq_abs, habs, hcut,
+          Real.zero_rpow hs0.ne'])
   have hresidual_tail := crossed_rational_residual_tail_s
     (μ := volume) u hu hunonneg hp1 hps hq hK
   have hnorm_le_u (t : ℝ) (ht : 0 < t) (x : Euclidean d) :
@@ -1148,7 +1175,9 @@ theorem crossed_rational_schwartz_low_tail_s
     · have hpow : ‖low (crossedLsAmplitudeScale p K t) x‖ ^ s ≤ (u x) ^ s :=
         Real.rpow_le_rpow (norm_nonneg _) (hnorm_le_u t ht x) hsnonneg
       have hcut_eq : cut t x = u x := by
-        simp [cut, q4PowerCutoffLow, hcut]
+        have hmem : x ∈ {y : Euclidean d | t * ‖u y‖ ^ (p - 1) ≤ K} := by
+          simpa only [Set.mem_setOf_eq, Real.norm_eq_abs, habs] using hcut
+        simp only [cut, q4PowerCutoffLow, Set.indicator_of_mem hmem]
       have hresidual_zero : residual t x = 0 := by
         have hnot : ¬ K < t * (u x) ^ (p - 1) := not_lt_of_ge hcut
         simp [residual, hnot]
@@ -1160,15 +1189,17 @@ theorem crossed_rational_schwartz_low_tail_s
           (crossedLsAmplitudeScale p K t / 2) ^ s :=
         Real.rpow_le_rpow (norm_nonneg _) (hnorm_le_scale_half t ht x) hsnonneg
       have hcut_zero : cut t x = 0 := by
-        simp [cut, q4PowerCutoffLow, hcut]
+        have hnotmem : x ∉ {y : Euclidean d | t * ‖u y‖ ^ (p - 1) ≤ K} := by
+          simpa only [Set.mem_setOf_eq, Real.norm_eq_abs, habs] using hcut
+        simp only [cut, q4PowerCutoffLow, Set.indicator_of_notMem hnotmem]
       rw [hcut_zero]
       simp only [norm_zero, Real.zero_rpow hs0.ne', ENNReal.ofReal_zero, zero_add]
       rw [show residual t x = ENNReal.ofReal
-          (((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s) by
+          ((((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s) by
           simp [residual, hlarge]]
       have hscale_eq :
           (crossedLsAmplitudeScale p K t / 2) ^ s =
-            ((K / t) ^ ((p - 1)⁻¹) ^ s) / (2 : ℝ) ^ s := by
+            (((K / t) ^ ((p - 1)⁻¹)) ^ s) / (2 : ℝ) ^ s := by
         unfold crossedLsAmplitudeScale
         rw [Real.div_rpow (Real.rpow_nonneg (div_pos hK ht).le _) (by norm_num)]
       rw [hscale_eq] at hpow
@@ -1189,7 +1220,7 @@ theorem crossed_rational_schwartz_low_tail_s
         ∫⁻ t in Ioi (0 : ℝ), (cutI t + residualI t) * w t := by
     apply lintegral_mono_ae
     filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
-    exact mul_le_mul_right (hinterior t ht) _
+    exact mul_le_mul' (hinterior t ht) (le_refl (w t))
   have hsplit :
       (∫⁻ t in Ioi (0 : ℝ), (cutI t + residualI t) * w t) =
         (∫⁻ t in Ioi (0 : ℝ), cutI t * w t) +
@@ -1318,18 +1349,12 @@ theorem crossed_schwartz_memLp_and_eLpNorm_of_lone_weak_ls
       ((ENNReal.ofReal (q - s))⁻¹ *
           (ENNReal.ofReal K) ^ (q - s)) +
         ENNReal.ofReal (((2 : Real) ^ (-s) / (p / (p - 1))) * K ^ (q - s)) < ∞ :=
-    ENNReal.add_lt_top htail_left_top htail_right_top
+    ENNReal.add_lt_top.mpr ⟨htail_left_top, htail_right_top⟩
   have hMtop : M < ∞ := by
     dsimp only [M]
-    apply ENNReal.mul_lt_top
-    · exact ENNReal.ofReal_lt_top
-    · apply ENNReal.mul_lt_top
-      · exact htwo_top
-      · apply ENNReal.mul_lt_top
-        · exact hCs_top
-        · apply ENNReal.mul_lt_top
-          · exact htail_top
-          · exact hinput_top
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (ENNReal.mul_lt_top (ENNReal.mul_lt_top htwo_top hCs_top)
+        (ENNReal.mul_lt_top htail_top hinput_top))
   have hmoment := crossed_schwartz_moment_of_lone_weak_ls
     T hT_nonneg hT_subadd hT_meas hA.le hLone hs Cs hweak_s
     hp1 hps hs2 hq hK f hI (le_rfl : 2 * A * I ≤ K)
@@ -1374,7 +1399,13 @@ theorem crossed_schwartz_memLp_and_eLpNorm_of_lone_diagonal_ls
   exact crossed_schwartz_memLp_and_eLpNorm_of_lone_weak_ls
     T hT_nonneg hT_subadd hT_meas hA hLone hs
     (ENNReal.ofReal (B ^ s)) ENNReal.ofReal_lt_top
-    (schwartz_operator_weak_of_diagonal T hs hB hdiagonal)
+    (fun g {u} hu => by
+      have h := schwartz_operator_weak_of_diagonal T hs hB hdiagonal g hu
+      rw [← ENNReal.ofReal_rpow_of_nonneg hu.le hs.le]
+      refine h.trans (le_of_eq ?_)
+      congr 1
+      refine lintegral_congr fun x => ?_
+      rw [ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hs.le])
     hp1 hps hs2 hq f hI hIpos
 
 /-- The same estimate with the Schwartz input moment rewritten as its real

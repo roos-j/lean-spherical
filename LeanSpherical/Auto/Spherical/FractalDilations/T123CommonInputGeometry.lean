@@ -80,14 +80,18 @@ theorem exists_t123_common_input_physical_parameters
     have hfst := congrArg Prod.fst hrepr
     simpa [N, reciprocalExponentPoint, Q1, Q2, Q3,
       Prod.smul_fst, smul_eq_mul, Nat.cast_add, Nat.cast_one,
-      zero_mul, zero_add] using hfst.symm
+      zero_mul, zero_add,
+      show ((n : Real) + 1 - beta + 1) = (n : Real) + 2 - beta from by ring]
+      using hfst.symm
   have hy : q⁻¹ =
       b * (N / (N + beta)) +
         c * (1 / (N + 2 - beta)) := by
     have hsnd := congrArg Prod.snd hrepr
     simpa [N, reciprocalExponentPoint, Q1, Q2, Q3,
       Prod.smul_snd, smul_eq_mul, Nat.cast_add, Nat.cast_one,
-      zero_mul, zero_add] using hsnd.symm
+      zero_mul, zero_add,
+      show ((n : Real) + 1 - beta + 1) = (n : Real) + 2 - beta from by ring]
+      using hsnd.symm
   have hq2_le_one : N / (N + beta) <= 1 := by
     rw [div_le_one hNbeta]
     linarith
@@ -118,7 +122,7 @@ theorem exists_t123_common_input_physical_parameters
         a * N + c * ((N - beta) / (N + 2 - beta)) := by
       calc
         N * (1 - p⁻¹) - beta * q⁻¹ =
-            N * (a + b + c) - beta * q⁻¹ := by rw [habc]
+            N * ((a + b + c) - p⁻¹) - beta * q⁻¹ := by rw [habc]
         _ = a * N + c * ((N - beta) / (N + 2 - beta)) := by
             rw [hx, hy]
             field_simp [hNbeta.ne', hNthree.ne']
@@ -132,7 +136,7 @@ theorem exists_t123_common_input_physical_parameters
       calc
         N - (N + 1) * p⁻¹ + (1 - beta) * q⁻¹ =
             N * (a + b + c) - (N + 1) * p⁻¹ + (1 - beta) * q⁻¹ := by
-              rw [habc]
+              rw [habc, mul_one]
         _ = a * N := by
             rw [hx, hy]
             field_simp [hNbeta.ne', hNthree.ne']
@@ -141,12 +145,12 @@ theorem exists_t123_common_input_physical_parameters
     exact mul_pos ha hN
   have hp_one : 1 < p := by
     have hmul : p⁻¹ * p < 1 * p :=
-      (mul_lt_mul_right hp).mpr hx_lt_one
+      mul_lt_mul_of_pos_right hx_lt_one hp
     rw [inv_mul_cancel₀ hp.ne'] at hmul
     simpa using hmul
   have hpq : p < q := by
     have hmul : q⁻¹ * (p * q) < p⁻¹ * (p * q) :=
-      (mul_lt_mul_right (mul_pos hp hq)).mpr hrecip_gap
+      mul_lt_mul_of_pos_right hrecip_gap (mul_pos hp hq)
     have hleft : q⁻¹ * (p * q) = p := by
       calc
         q⁻¹ * (p * q) = p * (q⁻¹ * q) := by ring
@@ -167,7 +171,7 @@ theorem exists_t123_common_input_physical_parameters
     exact div_pos (mul_pos (by linarith) (by linarith)) hp
   have hsum_mul : p * q < p + q := by
     have hmul : 1 * (p * q) < (p⁻¹ + q⁻¹) * (p * q) :=
-      (mul_lt_mul_right (mul_pos hp hq)).mpr hsum
+      mul_lt_mul_of_pos_right hsum (mul_pos hp hq)
     calc
       p * q = 1 * (p * q) := by ring
       _ < (p⁻¹ + q⁻¹) * (p * q) := hmul
@@ -182,12 +186,11 @@ theorem exists_t123_common_input_physical_parameters
     linarith
   have hcritical : beta < N * (s - 1) := by
     have hmul : (beta * q⁻¹) * q < (N * (1 - p⁻¹)) * q :=
-      (mul_lt_mul_right hq).mpr hcritical_recip
+      mul_lt_mul_of_pos_right hcritical_recip hq
     have hbase : beta < N * (1 - p⁻¹) * q := by
       calc
         beta = (beta * q⁻¹) * q := by
-          rw [show q⁻¹ * q = 1 by exact inv_mul_cancel₀ hq.ne']
-          ring
+          field_simp
         _ < (N * (1 - p⁻¹)) * q := hmul
         _ = N * (1 - p⁻¹) * q := by ring
     have hidentity : N * (s - 1) = N * (1 - p⁻¹) * q := by

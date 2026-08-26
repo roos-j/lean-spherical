@@ -7,7 +7,7 @@ open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCovering
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -236,30 +236,30 @@ theorem sum_sq_norm_q4RadiusGapShell_le_of_hasSubpowerAssouadCoverBound
   · exact hpair
 
 /-- Dyadic form of the spectrum-to-shell `TT*` estimate.  This is the form
-used after discretizing radii at the frequency scale `dyadicScale j`. -/
+used after discretizing radii at the frequency scale `DyadicCovering.dyadicScale j`. -/
 theorem sum_sq_norm_q4DyadicRadiusGapShell_le_of_hasSubpowerAssouadCoverBound
     {E : Set ℝ} {γ η C u : ℝ} {s : Finset ℝ} {j n : ℕ}
     (hE : E ⊆ Set.Icc (1 : ℝ) 2)
     (hcover : HasSubpowerAssouadCoverBound E γ η C)
     (hC : 0 ≤ C) (hγ : 0 ≤ γ)
-    (hδone : dyadicScale j < 1)
-    (hδL : dyadicScale j ≤ (2 : ℝ) ^ n * dyadicScale j)
-    (hLone : (2 : ℝ) ^ n * dyadicScale j ≤ 1)
-    (hsE : (↑s : Set ℝ) ⊆ E) (hsep : StrictlySeparated s (dyadicScale j))
+    (hδone : DyadicCovering.dyadicScale j < 1)
+    (hδL : DyadicCovering.dyadicScale j ≤ (2 : ℝ) ^ n * DyadicCovering.dyadicScale j)
+    (hLone : (2 : ℝ) ^ n * DyadicCovering.dyadicScale j ≤ 1)
+    (hsE : (↑s : Set ℝ) ⊆ E) (hsep : StrictlySeparated s (DyadicCovering.dyadicScale j))
     [DecidableRel (fun i r : ℝ =>
-      radiusGapShellNeighbors u ((2 : ℝ) ^ n * dyadicScale j) i r)]
+      radiusGapShellNeighbors u ((2 : ℝ) ^ n * DyadicCovering.dyadicScale j) i r)]
     {V W : Type*} (P : ℝ → ℝ → V → W) (g : ℝ → V)
     [NormedAddCommGroup V] [NormedAddCommGroup W]
     {B : ℝ} (hB : 0 ≤ B)
     (hpair : ∀ i j, ‖P i j (g j)‖ ≤ B * ‖g j‖) :
     (∑ i ∈ s, ‖q4TTStarShell s
-      (fun i r => radiusGapShellNeighbors u ((2 : ℝ) ^ n * dyadicScale j) i r) P g i‖ ^ 2) ≤
-      (B * (C * (dyadicScale j) ^ (-η) *
-        ((2 * ((2 : ℝ) ^ n * dyadicScale j)) / dyadicScale j) ^ γ)) ^ 2 *
+      (fun i r => radiusGapShellNeighbors u ((2 : ℝ) ^ n * DyadicCovering.dyadicScale j) i r) P g i‖ ^ 2) ≤
+      (B * (C * (DyadicCovering.dyadicScale j) ^ (-η) *
+        ((2 * ((2 : ℝ) ^ n * DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ γ)) ^ 2 *
         ∑ i ∈ s, ‖g i‖ ^ 2 := by
   apply sum_sq_norm_q4RadiusGapShell_le_of_hasSubpowerAssouadCoverBound
     (E := E) (γ := γ) (η := η) (C := C)
-    (δ := dyadicScale j) (u := u) (L := (2 : ℝ) ^ n * dyadicScale j)
+    (δ := DyadicCovering.dyadicScale j) (u := u) (L := (2 : ℝ) ^ n * DyadicCovering.dyadicScale j)
   · exact hE
   · exact hcover
   · exact hC

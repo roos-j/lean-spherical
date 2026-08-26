@@ -11,7 +11,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.Q4GapShellSummation
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 

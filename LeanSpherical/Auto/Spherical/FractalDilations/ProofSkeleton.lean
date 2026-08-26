@@ -30,7 +30,48 @@ import LeanSpherical.Auto.Spherical.FractalDilations.AnnulusTheorem
 import LeanSpherical.Auto.Spherical.FractalDilations.ClusterSpectrumSharpness
 import LeanSpherical.Auto.Spherical.FractalDilations.MinkowskiDiagonal
 import LeanSpherical.Auto.Spherical.FractalDilations.CircleMinkowski
+import LeanSpherical.Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4UpperInputLiteral
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4LowerInputPhysicalLiteralRate
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4TriangleGeometry
+import LeanSpherical.Auto.Spherical.FractalDilations.StrictDyadicReassembly
+import LeanSpherical.Auto.Spherical.FractalDilations.StrictInteriorGeometry
+import LeanSpherical.Auto.Spherical.FractalDilations.MinkowskiT123PhysicalCrossed
+import LeanSpherical.Auto.Spherical.FractalDilations.CircleQ3PhysicalRate
+import LeanSpherical.Auto.Spherical.FractalDilations.SameInputOutputDyadicRate
 open Auto.Spherical.FractalDilations.AnnulusLowerBound
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.MinkowskiFacts
+open Auto.Spherical.FractalDilations.QuasiAssouadCovers
+open Auto.Spherical.FractalDilations.MinkowskiQ2PhysicalRate
+open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalRate
+open Auto.Spherical.FractalDilations.CircleQ2PhysicalRate
+open Auto.Spherical.FractalDilations.CircleQ3PhysicalRate
+open Auto.Spherical.FractalDilations.MinkowskiT123PhysicalCrossed
+open Auto.Spherical.FractalDilations.SameInputOutputDyadicRate
+open Auto.Spherical.FractalDilations.RadialCutoff
+open Auto.Spherical.FractalDilations.Q4RadialReduction
+open Auto.Spherical.FractalDilations.Q4StrictParameters
+open Auto.Spherical.FractalDilations.Q4SubpowerParameters
+open Auto.Spherical.FractalDilations.Q4TriangleGeometry
+open Auto.Spherical.FractalDilations.Q4UpperInputLiteral
+open Auto.Spherical.FractalDilations.Q4LowerInputInterpolation
+open Auto.Spherical.FractalDilations.Q4LowerInputLiteralRate
+open Auto.Spherical.FractalDilations.Q4LowerInputPhysicalLiteralRate
+open Auto.Spherical.FractalDilations.Q4UpperInputInterpolation
+open Auto.Spherical.FractalDilations.QuasiAssouadBridge
+open Auto.Spherical.FractalDilations.StrictDyadicReassembly
+open Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+open Auto.Spherical.FractalDilations.StrictInteriorGeometry
+open Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
+open Auto.Spherical.FractalDilations.Q4TriangleGeometry
+open Auto.Spherical.FractalDilations.StrictDyadicReassembly
+open Auto.Spherical.FractalDilations.StrictInteriorGeometry
+open Auto.Spherical.InterpolationCore
 open Auto.Spherical.FractalDilations.AnnulusTheorem
 open Auto.Spherical.FractalDilations.AssouadSpectrum
 open Auto.Spherical.FractalDilations.AssouadSpectrumContinuity
@@ -112,9 +153,1192 @@ theorem minkowski_segment_strong_type
     · exact circle_minkowski_diagonal_strong_type_of_upperMinkowskiDimension_eq_ge_two
         E hE hβγ.1 hβone hMinkowski (le_of_not_gt hp2)
 
+
+/-! ## Output interpolation for the fractal strong type
+
+At a fixed input exponent the `L^q` norms of the output are logarithmically
+convex in `q`, so two strong estimates whose output exponents bracket `q`
+give the strong estimate at `q`.  No splitting of the input is involved. -/
+
+/-- The two amplitude tails of the output interpolation constant are finite. -/
+theorem twoNearbyStrongOutputInterpolationConstant_lt_top
+    {q0 q q1 : Real} (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    {A0 A1 : ENNReal} (hA0 : A0 < ⊤) (hA1 : A1 < ⊤) :
+    twoNearbyStrongOutputInterpolationConstant q0 q q1 A0 A1 < ⊤ := by
+  have hlow : (∫⁻ t in Ioc (0 : Real) 1, (ENNReal.ofReal t) ^ (q - q0 - 1)) < ⊤ := by
+    have hrw : q - q0 - 1 = (q - q0 + 1) - 2 := by ring
+    rw [hrw, lintegral_rpow_Ioc_eq (by linarith : (1 : Real) < q - q0 + 1)
+      (by norm_num : (0 : Real) ≤ 1)]
+    exact ENNReal.ofReal_lt_top
+  have hhigh : (∫⁻ t in Ioi (1 : Real), (ENNReal.ofReal t) ^ (q - q1 - 1)) < ⊤ := by
+    have hrw : q - q1 - 1 = (q - q1 + 2) - 3 := by ring
+    rw [hrw, lintegral_rpow_Ioi_eq (by linarith : q - q1 + 2 < 2)
+      (by norm_num : (0 : Real) < 1)]
+    exact ENNReal.ofReal_lt_top
+  have hqpos : 0 < q := lt_trans hq0 hq0q
+  refine ENNReal.rpow_lt_top_of_nonneg (by positivity) ?_
+  refine (ENNReal.mul_lt_top ENNReal.ofReal_lt_top ?_).ne
+  refine ENNReal.add_lt_top.mpr ⟨?_, ?_⟩
+  · exact ENNReal.mul_lt_top (ENNReal.rpow_lt_top_of_nonneg (by linarith) hA0.ne) hlow
+  · exact ENNReal.mul_lt_top (ENNReal.rpow_lt_top_of_nonneg (by linarith) hA1.ne) hhigh
+
+/-- **Output interpolation for the fractal strong type.** -/
+theorem hasFractalSphericalStrongType_output_interpolate
+    {d : Nat} {E : Set Real} {p q0 q q1 : Real}
+    (hp : 0 < p) (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    (h0 : HasFractalSphericalStrongType d E p q0)
+    (h1 : HasFractalSphericalStrongType d E p q1) :
+    HasFractalSphericalStrongType d E p q := by
+  obtain ⟨C0, hC0, hb0⟩ := h0
+  obtain ⟨C1, hC1, hb1⟩ := h1
+  have hq : 0 < q := lt_trans hq0 hq0q
+  set K : ENNReal := twoNearbyStrongOutputInterpolationConstant q0 q q1
+    (ENNReal.ofReal C0) (ENNReal.ofReal C1) with hKdef
+  have hKtop : K < ⊤ :=
+    twoNearbyStrongOutputInterpolationConstant_lt_top hq0 hq0q hqq1
+      ENNReal.ofReal_lt_top ENNReal.ofReal_lt_top
+  refine ⟨K.toReal + 1, by positivity, fun f => ?_⟩
+  have hbound := eLpNorm_schwartz_of_two_nearby_strong_outputs
+    (d := d) (fun g => fractalSphericalMaximalReal d E g)
+    (fun g x => ENNReal.toReal_nonneg)
+    (fun g => (measurable_fractalSphericalMaximalReal E g).aestronglyMeasurable)
+    hp hq0 hq0q hqq1 (ENNReal.ofReal C0) (ENNReal.ofReal C1)
+    (fun g => (hb0 g).2) (fun g => (hb1 g).2) f
+  have hle : eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume ≤
+      ENNReal.ofReal (K.toReal + 1) *
+        eLpNorm (f : SurfaceCore.Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+    refine le_trans hbound (mul_le_mul' ?_ (le_refl _))
+    rw [← hKdef]
+    calc K = ENNReal.ofReal K.toReal := (ENNReal.ofReal_toReal hKtop.ne).symm
+      _ ≤ ENNReal.ofReal (K.toReal + 1) := ENNReal.ofReal_le_ofReal (by linarith)
+  refine ⟨?_, hle⟩
+  exact ⟨(measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable,
+    hle.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (f.memLp (ENNReal.ofReal p) volume).2)⟩
+
+/-! ### The `Q4` sector rates in the form used by the interior assembly -/
+
+/-- A subpower Assouad cover bound is monotone in the dimension parameter. -/
+theorem hasSubpowerAssouadCoverBound_mono_gamma
+    {E : Set Real} {gamma gamma' eta C : Real}
+    (hle : gamma ≤ gamma')
+    (h : HasSubpowerAssouadCoverBound E gamma eta C) :
+    HasSubpowerAssouadCoverBound E gamma' eta C := by
+  intro delta a b hdelta hdeltaone ha hab hb hcover
+  obtain ⟨iota, hiota, hcard⟩ := h delta a b hdelta hdeltaone ha hab hb hcover
+  refine ⟨iota, hiota, hcard.trans ?_⟩
+  have hratio : 1 ≤ (b - a) / delta := by
+    rw [le_div_iff₀ hdelta]
+    linarith
+  have hmono : ((b - a) / delta) ^ gamma ≤ ((b - a) / delta) ^ gamma' :=
+    Real.rpow_le_rpow_of_exponent_le hratio hle
+  have hpos : 0 ≤ C * delta ^ (-eta) := by
+    have : 0 ≤ C := by
+      by_contra hneg
+      push_neg at hneg
+      have h1 : 0 ≤ (iota.card : Real) := Nat.cast_nonneg _
+      have h2 : C * delta ^ (-eta) * ((b - a) / delta) ^ gamma < 0 := by
+        apply mul_neg_of_neg_of_pos
+        · exact mul_neg_of_neg_of_pos hneg (Real.rpow_pos_of_pos hdelta _)
+        · exact Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hratio) _
+      linarith
+    exact mul_nonneg this (Real.rpow_pos_of_pos hdelta _).le
+  exact mul_le_mul_of_nonneg_left hmono hpos
+
+/-- The `Q4` sector estimate above `L²`, in the uniform form used by the
+interior assembly.  For `d = 2` the planar critical shell calculation is used,
+which is legitimate because the cover bound at the critical dimension `1 / 2`
+follows from the hypothesis `gamma ≤ 1 / 2`. -/
+theorem exists_q4_sector_dyadic_rate
+    {d : Nat} {E : Set Real} {gamma : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hgamma : 0 ≤ gamma)
+    (hquasi : quasiAssouadDimension E = gamma)
+    (phi : SchwartzMap (SurfaceCore.Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {p q : Real} (hp : 2 < p) (hq : 0 < q)
+    (hlow : 1 / (d : Real) < p / q) (hone : p / q < 1)
+    (hmax : 3 ≤ d → p / q < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : SurfaceCore.Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  rcases hd with hd3 | ⟨hd2, hgammahalf⟩
+  · exact exists_q4_upper_sector_strict_dyadic_rate (Or.inl hd3) hE hEne hgamma
+      (fun eta heta => by
+        obtain ⟨C, hC, hcov⟩ :=
+          exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi heta
+        exact ⟨C, hC.le, hcov⟩)
+      phi hphiOne hphiZero hphiNorm hphiRadial hp hq hlow (hmax hd3)
+  · subst hd2
+    exact exists_q4_planar_critical_upper_sector_strict_dyadic_rate hE hEne
+      (fun eta heta => by
+        obtain ⟨C, hC, hcov⟩ :=
+          exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi heta
+        exact ⟨C, hC.le, hasSubpowerAssouadCoverBound_mono_gamma hgammahalf hcov⟩)
+      phi hphiOne hphiZero hphiNorm hphiRadial hp hq
+      (by simpa using hlow) hone
+
+/-- The `Q4` sector estimate exactly at the `L²` input exponent, in the same
+uniform form. -/
+theorem exists_q4_ltwo_sector_dyadic_rate
+    {d : Nat} {E : Set Real} {gamma : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hgamma : 0 ≤ gamma)
+    (hquasi : quasiAssouadDimension E = gamma)
+    (phi : SchwartzMap (SurfaceCore.Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {q : Real} (hq : 0 < q)
+    (hlow : 1 / (d : Real) < 2 / q) (hone : 2 / q < 1)
+    (hmax : 3 ≤ d → 2 / q < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : SurfaceCore.Euclidean d → Complex) (ENNReal.ofReal 2) volume := by
+  rcases hd with hd3 | ⟨hd2, hgammahalf⟩
+  · exact exists_q4_ltwo_input_strict_dyadic_rate (Or.inl hd3) hE hEne hgamma
+      (fun eta heta => by
+        obtain ⟨C, hC, hcov⟩ :=
+          exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi heta
+        exact ⟨C, hC.le, hcov⟩)
+      phi hphiOne hphiZero hphiNorm hphiRadial hq hlow (hmax hd3)
+  · subst hd2
+    exact exists_q4_planar_critical_ltwo_input_strict_dyadic_rate hE hEne
+      (fun eta heta => by
+        obtain ⟨C, hC, hcov⟩ :=
+          exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi heta
+        exact ⟨C, hC.le, hasSubpowerAssouadCoverBound_mono_gamma hgammahalf hcov⟩)
+      phi hphiOne hphiZero hphiNorm hphiRadial hq (by simpa using hlow) hone
+
+/-- The literal `Q2` diagonal rate at an arbitrary strict Minkowski exponent,
+uniformly in the dimension.  The auxiliary sub-`L²` exponent is chosen from the
+strict Minkowski inequality. -/
+theorem exists_q2_diagonal_dyadic_rate
+    {d : Nat} {E : Set Real} {beta : Real}
+    (hd : 3 ≤ d ∨ (d = 2 ∧ beta < 1))
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty) (hbeta : 0 ≤ beta)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (phi psi : SchwartzMap (SurfaceCore.Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : SurfaceCore.Euclidean d,
+      psi xi = phi (((2 : Real) ^ (0 + 1))⁻¹ • xi) -
+        phi (((2 : Real) ^ 0)⁻¹ • xi))
+    {p : Real} (hp1 : 1 < p)
+    (hcrit : beta < ((d : Real) - 1) * (p - 1)) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal p) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal p) volume ≤
+          C * rho ^ j *
+            eLpNorm (f : SurfaceCore.Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, -⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hDone : (0 : Real) < (d : Real) - 1 := by linarith
+  have hbetaone : beta ≤ 1 := by
+    have h := upperMinkowskiDimension_le_one_of_subset_Icc hE
+    simpa only [hMinkowski] using h
+  have hbetalt : beta < (d : Real) - 1 := by
+    rcases hd with h3 | ⟨h2, hb⟩
+    · have h : (3 : Real) ≤ (d : Real) := by exact_mod_cast h3
+      linarith
+    · have h : ((d : Nat) : Real) = 2 := by rw [h2]; norm_num
+      rw [h]
+      linarith
+  set m : Real := min 1 (p - 1) with hmdef
+  have hm0 : 0 < m := by
+    rw [hmdef]
+    exact lt_min zero_lt_one (by linarith)
+  have hmone : m ≤ 1 := by rw [hmdef]; exact min_le_left _ _
+  have hmp : m ≤ p - 1 := by rw [hmdef]; exact min_le_right _ _
+  have hbd1 : beta / ((d : Real) - 1) < 1 := by
+    rw [div_lt_one hDone]
+    linarith
+  have hbdm : beta / ((d : Real) - 1) < m := by
+    rw [hmdef]
+    apply lt_min hbd1
+    rw [div_lt_iff₀ hDone]
+    linarith
+  set r : Real := 1 + (beta / ((d : Real) - 1) + m) / 2 with hrdef
+  have hrone : 1 < r := by
+    rw [hrdef]
+    have : 0 ≤ beta / ((d : Real) - 1) := div_nonneg hbeta hDone.le
+    linarith
+  have hrcrit : beta / ((d : Real) - 1) < r - 1 := by
+    rw [hrdef]
+    linarith
+  have hrcrit' : beta < ((d : Real) - 1) * (r - 1) := by
+    rw [← div_lt_iff₀' hDone]
+    exact hrcrit
+  have hrm : r < 1 + m := by
+    rw [hrdef]
+    linarith
+  have hrtwo : r < 2 := by linarith
+  have hrp : r < p := by linarith
+  rcases hd with hd3 | ⟨hd2', -⟩
+  · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+    obtain ⟨C, R, hC, hCtop, hR, hRone, hbound⟩ :=
+      q2_physical_upper_diagonal_dyadic_rate_of_upperMinkowskiDimension_eq
+        (n := n) (by omega) hE hEne hbeta hMinkowski
+        hrone hrtwo (by
+          have h := hrcrit'
+          push_cast at h ⊢
+          linarith) hrp
+        phi psi hphiOne hphiZero hphiNorm hpsi
+    exact ⟨C, R, hCtop, hRone, hbound⟩
+  · subst hd2'
+    obtain ⟨C, R, hC, hCtop, hR, hRone, hbound⟩ :=
+      circle_q2_physical_upper_diagonal_dyadic_rate_of_upperMinkowskiDimension_eq
+        hE hEne hbeta hMinkowski hrone hrtwo (by
+          have h := hrcrit'
+          norm_num at h
+          linarith) hrp
+        phi psi hphiOne hphiZero hphiNorm hpsi
+    exact ⟨C, R, hCtop, hRone, hbound⟩
+
+/-- The `Q4` interior estimate at input exponents at least two.  The output
+exponent is bracketed between the diagonal `Q2` rate at the same input and a
+`Q4` sector rate strictly below it, both of which are geometric gains; the
+common-input interpolation therefore keeps a geometric gain. -/
+theorem q4_interior_strong_type_of_two_le_input
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta) (hgamma : 0 ≤ gamma) (hgamma_one : gamma ≤ 1)
+    (hbeta_gamma : beta ≤ gamma)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hquasi : quasiAssouadDimension E = gamma)
+    (hp : 2 ≤ p) (hpq : p < q)
+    (hcap : q < (d : Real) * p)
+    (hcrit : beta < ((d : Real) - 1) * (p - 1)) :
+    HasFractalSphericalStrongType d E p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hp0 : 0 < p := by linarith
+  have hp1 : 1 < p := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 ≤ q := by linarith
+  obtain ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, -⟩ :=
+    exists_normRadial_smooth_absolute_dyadic_bandpass_family d
+  -- the below exponent
+  obtain ⟨qq, hqqgt, hqqlow, hqqone, hqqmax⟩ :
+      ∃ qq : Real, q < qq ∧ 1 / (d : Real) < p / qq ∧ p / qq < 1 ∧
+        (3 ≤ d → p / qq <
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) := by
+    have hthetamax : 0 < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) := by
+      apply div_pos (by linarith)
+      nlinarith
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · have hD3 : (3 : Real) ≤ (d : Real) := by exact_mod_cast hd3
+      have hdpos : (0 : Real) < (d : Real) := by linarith
+      set A : Real := ((d : Real) - 1) / 2 with hAdef
+      set tm : Real := A / (A + gamma) with htmdef
+      have hApos : 0 < A := by rw [hAdef]; linarith
+      have hAg : 0 < A + gamma := by linarith
+      have htmpos : 0 < tm := by rw [htmdef]; exact div_pos hApos hAg
+      have htmone : tm ≤ 1 := by
+        rw [htmdef, div_le_one hAg]
+        linarith
+      have htmlow : 1 < (d : Real) * tm := by
+        have hkey : A + gamma < (d : Real) * A := by
+          rw [hAdef]
+          nlinarith
+        rw [htmdef, ← mul_div_assoc, lt_div_iff₀ hAg]
+        nlinarith
+      have hptm : p ≤ p / tm := by
+        rw [le_div_iff₀ htmpos]
+        nlinarith
+      have hptmlt : p / tm < (d : Real) * p := by
+        rw [div_lt_iff₀ htmpos]
+        nlinarith
+      set M : Real := max q (p / tm) with hMdef
+      have hMq : q ≤ M := le_max_left _ _
+      have hMpt : p / tm ≤ M := le_max_right _ _
+      have hMlt : M < (d : Real) * p := max_lt hcap hptmlt
+      refine ⟨(M + (d : Real) * p) / 2, ?_, ?_, ?_, ?_⟩
+      · linarith
+      · rw [div_lt_div_iff₀ hdpos (by linarith)]
+        linarith
+      · rw [div_lt_one (by linarith)]
+        linarith
+      · intro _
+        rw [div_lt_iff₀ (by linarith)]
+        have h1 : p / tm < (M + (d : Real) * p) / 2 := by linarith
+        have h2 : tm * (p / tm) = p := mul_div_cancel₀ p htmpos.ne'
+        have h3 := mul_lt_mul_of_pos_left h1 htmpos
+        rw [h2] at h3
+        linarith
+    · subst hd2'
+      have h2c : ((2 : Nat) : Real) = 2 := by norm_num
+      have hcap2 : q < 2 * p := by
+        have h := hcap
+        rw [h2c] at h
+        linarith
+      set M : Real := max q p with hMdef
+      have hMq : q ≤ M := le_max_left _ _
+      have hMp : p ≤ M := le_max_right _ _
+      have hMlt : M < 2 * p := max_lt hcap2 (by linarith)
+      refine ⟨(M + 2 * p) / 2, ?_, ?_, ?_, ?_⟩
+      · linarith
+      · rw [h2c, div_lt_div_iff₀ (by norm_num) (by linarith)]
+        linarith
+      · rw [div_lt_one (by linarith)]
+        linarith
+      · intro h3
+        omega
+  have hqq0 : 0 < qq := by linarith
+  -- the below rate
+  obtain ⟨C1, rho1, hC1, hrho1, hrate1⟩ :
+      ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+        ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+          MemLp (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal qq) volume ∧
+          eLpNorm (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal qq) volume ≤
+            (C * rho ^ j) *
+              eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                (ENNReal.ofReal p) volume := by
+    rcases eq_or_lt_of_le hp with hpeq | hplt
+    · subst hpeq
+      exact exists_q4_ltwo_sector_dyadic_rate hd hE hEne hgamma hquasi
+        phi hphiOne hphiZero hphiNorm hphiRadial hqq0 hqqlow hqqone hqqmax
+    · exact exists_q4_sector_dyadic_rate hd hE hEne hgamma hquasi
+        phi hphiOne hphiZero hphiNorm hphiRadial hplt hqq0 hqqlow hqqone hqqmax
+  -- the above rate
+  obtain ⟨C0, rho0, hC0, hrho0, hrate0⟩ :=
+    exists_q2_diagonal_dyadic_rate (d := d) (E := E) (beta := beta)
+      (by
+        rcases hd with h | ⟨h, hg⟩
+        · exact Or.inl h
+        · exact Or.inr ⟨h, by linarith⟩)
+      hE hEne hbeta hMinkowski phi psi hphiOne hphiZero hphiNorm hpsi hp1 hcrit
+  -- interpolate at the common input exponent
+  obtain ⟨C, rho, hCtop, hrho, hrate⟩ :=
+    memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
+      (d := d)
+      (fun j g => fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g)
+      (fun j g => (measurable_fractalDyadicBandpassMaximal E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable)
+      (fun j g x => fractalDyadicBandpassMaximal_nonneg E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g x)
+      (p := p) (q0 := p) (q := q) (q1 := qq) hp0 hp0 hpq hqqgt
+      hC0 hC1 hrho0 hrho1
+      (fun j hj f => hrate0 j f) hrate1
+  exact strong_type_of_strict_high_dyadic_rate (gamma := gamma) hd E hE phi
+    hphiOne hphiZero hphiNorm hp1 hq1 hpq hCtop hrho hrate
+
+/-- The interior estimate on the common-input side `1 / p + 1 / q > 1`.  Here
+the literal crossed argument interpolates the physical `L¹ → L∞` endpoint with
+the diagonal `Q2` rate; its gain condition is exactly the strict Minkowski
+annulus inequality. -/
+theorem q4_interior_strong_type_of_sum_gt_one
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hsum : q < p / (p - 1))
+    (hannulus : (d : Real) * (1 / p) < (1 - beta) * (1 / q) + ((d : Real) - 1))
+    (hcrit : beta < ((d : Real) - 1) * (p - 1)) :
+    HasFractalSphericalStrongType d E p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hp0 : 0 < p := by linarith
+  have hpm : 0 < p - 1 := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 ≤ q := by linarith
+  obtain ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, -⟩ :=
+    exists_normRadial_smooth_absolute_dyadic_bandpass_family d
+  set s : Real := 1 + q * (p - 1) / p with hsdef
+  have hsm : s - 1 = q * (p - 1) / p := by rw [hsdef]; ring
+  have hps : p < s := by
+    have h : p - 1 < q * (p - 1) / p := by
+      rw [lt_div_iff₀ hp0]
+      nlinarith
+    rw [hsdef]
+    linarith
+  have hs2 : s < 2 := by
+    have hqp : q * (p - 1) < p := (lt_div_iff₀ hpm).mp hsum
+    have h : q * (p - 1) / p < 1 := by
+      rw [div_lt_one hp0]
+      exact hqp
+    rw [hsdef]
+    linarith
+  have hs1 : 1 < s := lt_trans hp1 hps
+  have hqeq : q = p * (s - 1) / (p - 1) := by
+    rw [hsm]
+    field_simp
+  set c1 : Real := ((d : Real) - 1) * (s - 1) - beta with hc1def
+  set c2 : Real := (1 - beta) * (1 / q) + ((d : Real) - 1) - (d : Real) * (1 / p)
+    with hc2def
+  have hc1 : 0 < c1 := by
+    rw [hc1def]
+    have h1 : (p - 1) < s - 1 := by linarith
+    nlinarith
+  have hc2 : 0 < c2 := by rw [hc2def]; linarith
+  set m : Real := min c1 (c2 * q) / 4 with hmdef
+  have hm : 0 < m := by
+    rw [hmdef]
+    have : 0 < min c1 (c2 * q) := lt_min hc1 (by positivity)
+    linarith
+  have hmc1 : 2 * m < c1 := by
+    rw [hmdef]
+    have : min c1 (c2 * q) ≤ c1 := min_le_left _ _
+    linarith
+  have hmc2 : 2 * m < c2 * q := by
+    rw [hmdef]
+    have : min c1 (c2 * q) ≤ c2 * q := min_le_right _ _
+    linarith
+  have hM : HasUpperMinkowskiExponent E (beta + m) :=
+    hasUpperMinkowskiExponent_add_of_upperMinkowskiDimension_eq hE hMinkowski hm
+  have halpha : 0 ≤ beta + m := by linarith
+  have hcritical : beta + m + m < ((d : Real) - 1) * (s - 1) := by
+    rw [hc1def] at hmc1
+    linarith
+  have hgainReal : q < s + (((d : Real) - 1) * s - ((d : Real) - 1) -
+      (beta + m + m)) := by
+    have hkey : beta + 2 * m < 1 + ((d : Real) - 1) * q - (d : Real) * q / p := by
+      have hexp : c2 * q = (1 - beta) + ((d : Real) - 1) * q - (d : Real) * q / p := by
+        rw [hc2def]
+        field_simp
+      rw [hexp] at hmc2
+      linarith
+    have hsq : (d : Real) * s = (d : Real) + (d : Real) * q -
+        (d : Real) * q / p := by
+      rw [hsdef]
+      field_simp
+      ring
+    nlinarith
+  -- the crossed rate at (p, q)
+  obtain ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩ :
+      ∃ C rho : ENNReal, 0 < C ∧ C < ⊤ ∧ 0 < rho ∧ rho < 1 ∧
+        ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+          MemLp (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal q) volume ∧
+          eLpNorm (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal q) volume ≤
+            C * rho ^ j *
+              eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                (ENNReal.ofReal p) volume := by
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+      have hcast : ((n : Nat) : Real) = ((n + 1 : Nat) : Real) - 1 := by
+        push_cast
+        ring
+      obtain ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩ :=
+        minkowski_t123_physical_crossed_dyadic_rate_of_hasUpperMinkowskiExponent
+          (n := n) (alpha := beta + m) (eta := m) (p := p) (q := q) (s := s)
+          (by omega) hE hEne halpha hM
+          hp1 hps hs2 hm (by rw [hcast]; exact hcritical) hqeq
+          (by
+            unfold q2PhysicalMinkowskiKappaWithLoss
+            rw [hcast]
+            linarith [hgainReal])
+          phi psi hphiOne hphiZero hphiNorm hpsi
+      exact ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩
+    · subst hd2'
+      obtain ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩ :=
+        minkowski_t123_physical_crossed_planar_dyadic_rate_of_hasUpperMinkowskiExponent
+          (alpha := beta + m) (eta := m) (p := p) (q := q) (s := s)
+          hE hEne halpha hM hp1 hps hs2 hm
+          (by
+            have hone : ((2 : Nat) : Real) - 1 = 1 := by norm_num
+            nlinarith [hcritical])
+          hqeq
+          (by
+            unfold q2PhysicalMinkowskiKappaWithLoss
+            have hone : ((1 : Nat) : Real) = 1 := by norm_num
+            rw [hone]
+            have h2 : ((2 : Nat) : Real) = 2 := by norm_num
+            rw [h2] at hgainReal
+            linarith [hgainReal])
+          phi psi hphiOne hphiZero hphiNorm hpsi
+      exact ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩
+  exact strong_type_of_strict_high_dyadic_rate (gamma := gamma) hd E hE phi
+    hphiOne hphiZero hphiNorm hp1 hq1 hpq hCtop hrho
+    (by
+      intro j hj f
+      obtain ⟨hmem, hbound⟩ := hrate j hj f
+      exact ⟨hmem, by simpa only [mul_assoc] using hbound⟩)
+
+/-- The exact net frequency exponent of the sub-`L²` `Q4` interpolation at the
+shell parameter `theta`.  This is the algebraic identity behind the geometric
+form of the `Q4` gain condition. -/
+theorem q4_lower_net_exponent_eq
+    {d : Nat} {p theta eta : Real} (hp1 : 1 < p) (htheta : 0 < theta) :
+    (2 / theta) * (q4FrequencyExponentWithSubpowerLoss d theta eta / 2) +
+        q4LowerWeakTailExponent p (2 / theta) =
+      1 / (theta * (p - 1)) - (d : Real) + eta := by
+  have hpm : p - 1 ≠ 0 := by
+    have : 0 < p - 1 := by linarith
+    exact this.ne'
+  unfold q4FrequencyExponentWithSubpowerLoss q4FrequencyExponent
+    q4LowerWeakTailExponent
+  field_simp
+  ring
+
+set_option maxHeartbeats 1000000 in
+/-- The sub-`L²` `Q4` sector estimate at an exponent pair strictly inside the
+sector: the target output slope is admissible and the spherical-cap inequality
+gives a genuine geometric gain. -/
+theorem q4_interior_strong_type_of_strict_lower_sector
+    {d : Nat} {E : Set Real} {gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hgamma : 0 ≤ gamma)
+    (hquasi : quasiAssouadDimension E = gamma)
+    {beta : Real} (hbeta : 0 ≤ beta) (hbeta_gamma : beta ≤ gamma)
+    (hgamma_one : gamma ≤ 1)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hcap : q < (d : Real) * p)
+    (hslope : p / (q * (p - 1)) <
+      (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) :
+    HasFractalSphericalStrongType d E p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hDpos : (0 : Real) < (d : Real) := by linarith
+  have hp0 : 0 < p := by linarith
+  have hpm : 0 < p - 1 := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 ≤ q := by linarith
+  obtain ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, -⟩ :=
+    exists_normRadial_smooth_absolute_dyadic_bandpass_family d
+  set A : Real := ((d : Real) - 1) / 2 with hAdef
+  set tm : Real := A / (A + gamma) with htmdef
+  have hApos : 0 < A := by rw [hAdef]; linarith
+  have hAg : 0 < A + gamma := by linarith
+  have htmpos : 0 < tm := by rw [htmdef]; exact div_pos hApos hAg
+  have htmone : tm ≤ 1 := by rw [htmdef, div_le_one hAg]; linarith
+  set ts : Real := p / (q * (p - 1)) with htsdef
+  have htspos : 0 < ts := by rw [htsdef]; positivity
+  have htsmax : ts < tm := hslope
+  have htsone : ts < 1 := lt_of_lt_of_le htsmax htmone
+  set kappa : Real := (d : Real) - q / p with hkdef
+  have hkpos : 0 < kappa := by
+    rw [hkdef, sub_pos, div_lt_iff₀ hp0]
+    linarith
+  have hkle : kappa < (d : Real) := by
+    rw [hkdef]
+    have : 0 < q / p := by positivity
+    linarith
+  set delta : Real := kappa / (4 * (d : Real)) with hddef
+  set eta : Real := kappa / 4 with hedef
+  have hdpos : 0 < delta := by rw [hddef]; positivity
+  have hepos : 0 < eta := by rw [hedef]; positivity
+  have hdhalf : delta < 1 / 2 := by
+    rw [hddef, div_lt_iff₀ (by positivity)]
+    linarith
+  set t1 : Real := ts * (1 - delta) with ht1def
+  set t0 : Real := (ts + tm) / 2 with ht0def
+  have ht1pos : 0 < t1 := by rw [ht1def]; nlinarith
+  have ht1ts : t1 < ts := by rw [ht1def]; nlinarith
+  have ht1one : t1 < 1 := lt_trans ht1ts htsone
+  have ht0pos : 0 < t0 := by rw [ht0def]; linarith
+  have ht0ts : ts < t0 := by rw [ht0def]; linarith
+  have ht0tm : t0 < tm := by rw [ht0def]; linarith
+  have ht0one : t0 < 1 := lt_of_lt_of_le ht0tm htmone
+  -- gap exponents
+  have hgap : ∀ t : Real, 0 < t → t < tm → q4GapExponent d gamma t < 0 := by
+    intro t htpos httm
+    unfold q4GapExponent
+    rw [htmdef, hAdef, lt_div_iff₀ hAg] at httm
+    nlinarith
+  -- output bracketing
+  have hout : ∀ t : Real, 0 < t →
+      q4LowerWeakOutputExponent p (2 / t) = p / (t * (p - 1)) := by
+    intro t htpos
+    unfold q4LowerWeakOutputExponent
+    field_simp
+  have hq0q : q4LowerWeakOutputExponent p (2 / t0) < q := by
+    rw [hout t0 ht0pos, div_lt_iff₀ (by positivity)]
+    rw [htsdef, div_lt_iff₀ (by positivity)] at ht0ts
+    nlinarith
+  have ht1val : t1 * (p - 1) = p * (1 - delta) / q := by
+    rw [ht1def, htsdef]
+    field_simp
+  have hqq1 : q < q4LowerWeakOutputExponent p (2 / t1) := by
+    rw [hout t1 ht1pos, lt_div_iff₀ (mul_pos ht1pos hpm), ht1val]
+    have hcancel : q * (p * (1 - delta) / q) = p * (1 - delta) := by
+      field_simp
+    rw [hcancel]
+    nlinarith
+  -- the net exponent
+  set S : Real := (1 / q) * (1 / (t1 * (p - 1)) - (d : Real) + eta) with hSdef
+  have hinv1 : 1 / (t1 * (p - 1)) = (q / p) / (1 - delta) := by
+    rw [ht1def, htsdef]
+    field_simp
+  have hSneg : S < 0 := by
+    rw [hSdef, hinv1]
+    have hbound : (q / p) / (1 - delta) < (d : Real) - eta := by
+      rw [div_lt_iff₀ (by linarith)]
+      have hqp : q / p = (d : Real) - kappa := by rw [hkdef]; ring
+      rw [hqp]
+      have hexpand : ((d : Real) - eta) * (1 - delta) =
+          (d : Real) - kappa / 2 + kappa ^ 2 / (16 * (d : Real)) := by
+        rw [hedef, hddef]
+        field_simp
+        ring
+      rw [hexpand]
+      have hpos : 0 < kappa ^ 2 / (16 * (d : Real)) := by positivity
+      linarith
+    have : 1 / q > 0 := by positivity
+    nlinarith
+  have hS0 : (2 / t0) * (q4FrequencyExponentWithSubpowerLoss d t0 eta / 2) +
+      q4LowerWeakTailExponent p (2 / t0) ≤ q * S := by
+    rw [q4_lower_net_exponent_eq hp1 ht0pos, hSdef]
+    have hqS : q * ((1 / q) * (1 / (t1 * (p - 1)) - (d : Real) + eta)) =
+        1 / (t1 * (p - 1)) - (d : Real) + eta := by
+      field_simp
+    rw [hqS]
+    have hmono : 1 / (t0 * (p - 1)) ≤ 1 / (t1 * (p - 1)) := by
+      apply one_div_le_one_div_of_le (by positivity)
+      nlinarith
+    linarith
+  have hS1 : (2 / t1) * (q4FrequencyExponentWithSubpowerLoss d t1 eta / 2) +
+      q4LowerWeakTailExponent p (2 / t1) ≤ q * S := by
+    rw [q4_lower_net_exponent_eq hp1 ht1pos, hSdef]
+    have hqS : q * ((1 / q) * (1 / (t1 * (p - 1)) - (d : Real) + eta)) =
+        1 / (t1 * (p - 1)) - (d : Real) + eta := by
+      field_simp
+    rw [hqS]
+  obtain ⟨Ccover, hCcover, hcov⟩ :=
+    exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi hepos
+  obtain ⟨C, hC, hrate⟩ :=
+    exists_q4_lower_sector_explicit_dyadic_rate hd hE hEne hgamma hepos.le
+      hCcover.le hcov phi hphiOne hphiZero hphiNorm hphiRadial hp1 hp2 hq0
+      ht0pos ht0one ht1pos ht1one (hgap t0 ht0pos ht0tm) (hgap t1 ht1pos
+        (lt_trans ht1ts htsmax)) hq0q hqq1 hS0 hS1
+  refine strong_type_of_strict_high_dyadic_rate (gamma := gamma)
+    (by rcases hd with h | ⟨h, hg⟩ <;> [exact Or.inl h; exact Or.inr ⟨h, hg⟩])
+    E hE phi hphiOne hphiZero hphiNorm hp1 hq1 hpq hC ?_ hrate
+  refine ENNReal.ofReal_lt_one.mpr ?_
+  exact Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) hSneg
+
+/-- The exact identity behind the `Q3`--`Q4` loss--gain interpolation: at the
+balancing shell parameter the interpolated frequency exponent is a negative
+multiple of the clustered-edge functional. -/
+theorem q4_lower_loss_gain_identity
+    {d : Nat} {beta gamma w y : Real} (hgamma : 0 < gamma)
+    (hA : 0 < (((d : Real) - 1) / 2) + gamma) :
+    (y - (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) * w) *
+          (1 - ((d : Real) + 1 - beta) * w) +
+        (w - y) * ((1 - w) - (d : Real) *
+          ((((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) * w) =
+      -(w * gamma * clusterEdgeFunctional d (beta / gamma) beta (1 - w, y)) /
+        ((((d : Real) - 1) / 2) + gamma) := by
+  unfold clusterEdgeFunctional
+  have hg : gamma ≠ 0 := hgamma.ne'
+  have hAne : (((d : Real) - 1) / 2) + gamma ≠ 0 := hA.ne'
+  have hK : ((d : Real) - 1 + 2 * gamma) ≠ 0 := by
+    intro h
+    have h2 : (((d : Real) - 1) / 2) + gamma = 0 := by linarith
+    rw [h2] at hA
+    exact lt_irrefl 0 hA
+  field_simp
+  ring
+
+set_option maxHeartbeats 4000000 in
+/-- The `Q3`--`Q4` loss--gain interpolation.  Below the balancing shell
+parameter the `Q4` sector estimate may lose a positive power of the frequency;
+the `Q3` gain at the dual output exponent compensates it exactly when the
+clustered-edge functional is positive, which is the strict interior condition
+of the exponent polygon. -/
+theorem q4_interior_strong_type_of_loss_gain
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta) (hgamma : 0 < gamma) (hgamma_one : gamma ≤ 1)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hquasi : quasiAssouadDimension E = gamma)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hsum : p / (p - 1) < q)
+    (hQ3 : p / (p - 1) < (d : Real) + 1 - beta)
+    (hbalance : (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) *
+      (1 - 1 / p) ≤ 1 / q)
+    (hcluster : 0 < clusterEdgeFunctional d (beta / gamma) beta (1 / p, 1 / q)) :
+    HasFractalSphericalStrongType d E p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hDpos : (0 : Real) < (d : Real) := by linarith
+  have hp0 : 0 < p := by linarith
+  have hpm : 0 < p - 1 := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 < q := by linarith
+  obtain ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, -⟩ :=
+    exists_normRadial_smooth_absolute_dyadic_bandpass_family d
+  set w : Real := 1 - 1 / p with hwdef
+  set y : Real := 1 / q with hydef
+  have hwpos : 0 < w := by
+    rw [hwdef, sub_pos, div_lt_one hp0]
+    linarith
+  have hwone : w < 1 := by
+    rw [hwdef]
+    have : 0 < 1 / p := by positivity
+    linarith
+  have hypos : 0 < y := by rw [hydef]; positivity
+  have hyone : y < 1 := by
+    rw [hydef, div_lt_one hq0]
+    linarith
+  have hwy : y < w := by
+    rw [hydef, hwdef]
+    have hconj : 1 - 1 / p = (p - 1) / p := by field_simp
+    rw [hconj, div_lt_div_iff₀ hq0 hp0]
+    have := (div_lt_iff₀ hpm).mp hsum
+    linarith
+  set A : Real := ((d : Real) - 1) / 2 with hAdef
+  have hApos : 0 < A := by rw [hAdef]; linarith
+  have hAg : 0 < A + gamma := by linarith
+  set tm : Real := A / (A + gamma) with htmdef
+  have htmpos : 0 < tm := by rw [htmdef]; exact div_pos hApos hAg
+  have htmone : tm ≤ 1 := by rw [htmdef, div_le_one hAg]; linarith
+  have hbal : tm * w ≤ y := by rw [htmdef, hAdef, hwdef, hydef] at *; exact hbalance
+  set c : Real := clusterEdgeFunctional d (beta / gamma) beta (1 - w, y) with hcdef
+  have hcpos : 0 < c := by
+    rw [hcdef]
+    have hx : (1 : Real) - w = 1 / p := by rw [hwdef]; ring
+    rw [hx]
+    exact hcluster
+  set P : Real := w * gamma * c / (A + gamma) with hPdef
+  have hPpos : 0 < P := by
+    rw [hPdef]
+    exact div_pos (mul_pos (mul_pos hwpos hgamma) hcpos) hAg
+  -- the small parameters
+  set slack3 : Real := ((d : Real) + 1 - beta) * w - 1 with hs3def
+  have hslack3 : 0 < slack3 := by
+    rw [hs3def, sub_pos]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    have hQ3' : p < ((d : Real) + 1 - beta) * (p - 1) := (div_lt_iff₀ hpm).mp hQ3
+    rw [hwv, ← mul_div_assoc, lt_div_iff₀ hp0]
+    linarith
+  set eps : Real := min (P / 8) (slack3 / 2) with hepsdef
+  set eta : Real := P / 8 with hetadef
+  set rho : Real := min (tm / 6) (P * tm / (24 * (1 + (d : Real)))) with hrhodef
+  have hepspos : 0 < eps := by
+    rw [hepsdef]
+    exact lt_min (by positivity) (by positivity)
+  have hetapos : 0 < eta := by rw [hetadef]; positivity
+  have hrhopos : 0 < rho := by
+    rw [hrhodef]
+    exact lt_min (by positivity) (by positivity)
+  have hepsP : eps ≤ P / 8 := by rw [hepsdef]; exact min_le_left _ _
+  have hepsS : eps ≤ slack3 / 2 := by rw [hepsdef]; exact min_le_right _ _
+  have hrhotm : rho ≤ tm / 6 := by rw [hrhodef]; exact min_le_left _ _
+  have hrhoP : rho ≤ P * tm / (24 * (1 + (d : Real))) := by
+    rw [hrhodef]; exact min_le_right _ _
+  -- shell parameters
+  set t0 : Real := tm - rho with ht0def
+  set t1 : Real := tm - 3 * rho with ht1def
+  set u : Real := (tm - 2 * rho) * w with hudef
+  have ht1pos : 0 < t1 := by rw [ht1def]; linarith
+  have ht1t0 : t1 < t0 := by rw [ht1def, ht0def]; linarith
+  have ht0tm : t0 < tm := by rw [ht0def]; linarith
+  have ht0pos : 0 < t0 := lt_trans ht1pos ht1t0
+  have ht0one : t0 < 1 := lt_of_lt_of_le ht0tm htmone
+  have ht1one : t1 < 1 := lt_trans ht1t0 ht0one
+  have ht1tm : t1 < tm := lt_trans ht1t0 ht0tm
+  have hupos : 0 < u := by
+    rw [hudef]
+    apply mul_pos _ hwpos
+    linarith
+  have huy : u < y := by
+    rw [hudef]
+    have : (tm - 2 * rho) * w < tm * w := by nlinarith
+    linarith
+  have hut1 : t1 * w < u := by rw [hudef, ht1def]; nlinarith
+  have hut0 : u < t0 * w := by rw [hudef, ht0def]; nlinarith
+  -- gap exponents
+  have hgap : ∀ t : Real, t < tm → q4GapExponent d gamma t < 0 := by
+    intro t httm
+    unfold q4GapExponent
+    rw [htmdef, hAdef, lt_div_iff₀ hAg] at httm
+    nlinarith
+  have hout : ∀ t : Real, 0 < t →
+      q4LowerWeakOutputExponent p (2 / t) = p / (t * (p - 1)) := by
+    intro t htpos
+    unfold q4LowerWeakOutputExponent
+    field_simp
+  have hinvw : ∀ t : Real, 0 < t → 1 / (t * (p - 1)) = (1 - w) / (t * w) := by
+    intro t htpos
+    have hx : (1 : Real) - w = 1 / p := by rw [hwdef]; ring
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    rw [hx, hwv]
+    field_simp
+  -- the below rate at output 1 / u
+  set S : Real := u * (1 / (t1 * (p - 1)) - (d : Real) + eta) with hSdef
+  clear_value S u t1 t0 rho eta eps slack3 P c tm A y w
+  have hq0q : q4LowerWeakOutputExponent p (2 / t0) < 1 / u := by
+    rw [hout t0 ht0pos, div_lt_div_iff₀ (mul_pos ht0pos hpm) hupos]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    rw [hwv, ← mul_div_assoc, lt_div_iff₀ hp0] at hut0
+    linarith
+  have hqq1 : (1 : Real) / u < q4LowerWeakOutputExponent p (2 / t1) := by
+    rw [hout t1 ht1pos, div_lt_div_iff₀ hupos (mul_pos ht1pos hpm)]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    rw [hwv, ← mul_div_assoc, div_lt_iff₀ hp0] at hut1
+    linarith
+  have hSbound : ∀ t : Real, 0 < t → t1 ≤ t →
+      (2 / t) * (q4FrequencyExponentWithSubpowerLoss d t eta / 2) +
+        q4LowerWeakTailExponent p (2 / t) ≤ (1 / u) * S := by
+    intro t htpos ht1t
+    rw [q4_lower_net_exponent_eq hp1 htpos, hSdef]
+    have hqS : (1 / u) * (u * (1 / (t1 * (p - 1)) - (d : Real) + eta)) =
+        1 / (t1 * (p - 1)) - (d : Real) + eta := by
+      field_simp
+    rw [hqS]
+    have hmono : 1 / (t * (p - 1)) ≤ 1 / (t1 * (p - 1)) := by
+      apply one_div_le_one_div_of_le (mul_pos ht1pos hpm)
+      nlinarith
+    linarith
+  obtain ⟨Ccover, hCcover, hcov⟩ :=
+    exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi hetapos
+  obtain ⟨C1, hC1, hrate1⟩ :=
+    exists_q4_lower_sector_explicit_dyadic_rate hd hE hEne hgamma.le hetapos.le
+      hCcover.le hcov phi hphiOne hphiZero hphiNorm hphiRadial hp1 hp2
+      (one_div_pos.mpr hupos)
+      ht0pos ht0one ht1pos ht1one (hgap t0 ht0tm) (hgap t1 ht1tm) hq0q hqq1
+      (hSbound t0 ht0pos (le_of_lt ht1t0)) (hSbound t1 ht1pos le_rfl)
+  -- the above rate: the physical Q3 estimate at the dual output exponent
+  have hQ3strict : p / (p - 1) < ((d - 1 : Nat) : Real) + 2 - (beta + eps) := by
+    have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
+    rw [hcast]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    have hkey : 1 < ((d : Real) + 1 - beta - eps) * w := by
+      rw [hs3def] at hslack3 hepsS
+      nlinarith [hwone, hwpos, hepspos]
+    rw [hwv, ← mul_div_assoc, lt_div_iff₀ hp0] at hkey
+    rw [div_lt_iff₀ hpm]
+    linarith
+  obtain ⟨C0, rho0, hC0pos, hC0, hrho0, hrho0eq, hrate0⟩ :
+      ∃ C rho : ENNReal, 0 < C ∧ C < ⊤ ∧ rho < 1 ∧
+        rho = ENNReal.ofReal
+          (q3PhysicalMinkowskiRatio (d - 1) (beta + eps) (p / (p - 1))) ∧
+        ∀ j : Nat, 1 ≤ j →
+          ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+            MemLp (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal (p / (p - 1))) volume ∧
+            eLpNorm (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal (p / (p - 1))) volume ≤
+              C * rho ^ j *
+                eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                  (ENNReal.ofReal p) volume := by
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+      have hQ3s : p / (p - 1) < ((n : Nat) : Real) + 2 - (beta + eps) := by
+        simpa only [Nat.add_sub_cancel] using hQ3strict
+      exact q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        (n := n) (by omega) hE hEne hMinkowski hepspos hp1 hp2 rfl hQ3s
+        phi psi hphiOne hphiZero hphiNorm hpsi
+    · subst hd2'
+      have hQ3s : p / (p - 1) < 3 - (beta + eps) := by
+        have h := hQ3strict
+        norm_num at h
+        linarith
+      exact circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        hE hEne hMinkowski hepspos hp1 hp2 rfl hQ3s
+        phi psi hphiOne hphiZero hphiNorm hpsi
+  have hrate0' : ∀ j : Nat, 1 ≤ j →
+      ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal (p / (p - 1))) volume ≤
+          C0 * rho0 ^ j *
+            eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+              (ENNReal.ofReal p) volume := by
+    intro j hj f
+    exact (hrate0 j hj f).2
+  -- interpolation weight
+  set lam : Real := (y - u) / (w - u) with hlamdef
+  clear_value lam
+  have hwu : 0 < w - u := by linarith
+  have hlam0 : 0 < lam := by rw [hlamdef]; exact div_pos (by linarith) hwu
+  have hlam1 : lam < 1 := by
+    rw [hlamdef, div_lt_one hwu]
+    linarith
+  have hexp : 1 / q = lam / (p / (p - 1)) + (1 - lam) / (1 / u) := by
+    have hdual : p / (p - 1) = 1 / w := by
+      rw [hwdef]
+      field_simp
+    have hwne : w ≠ 0 := hwpos.ne'
+    have hune : u ≠ 0 := hupos.ne'
+    have hwune : w - u ≠ 0 := hwu.ne'
+    have hkey : lam / (1 / w) + (1 - lam) / (1 / u) = y := by
+      rw [hlamdef]
+      field_simp
+      ring
+    rw [hdual, hkey, hydef]
+  -- the two explicit frequency exponents
+  set e3 : Real := q3PhysicalMinkowskiExponent (d - 1) (beta + eps) (p / (p - 1))
+    with he3def
+  clear_value e3
+  have he3val : e3 = 1 - ((d : Real) + 1 - beta - eps) * w := by
+    rw [he3def]
+    unfold q3PhysicalMinkowskiExponent
+    have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
+    have hdual : ((d : Real) + 1 - beta - eps) * w =
+        (((d : Real) - 1) + 2 - (beta + eps)) / (p / (p - 1)) := by
+      have hw : w = (p - 1) / p := by rw [hwdef]; field_simp
+      rw [hw]
+      field_simp
+      ring
+    rw [hcast, hdual]
+  have he3neg : e3 < 0 := by
+    rw [he3val, hs3def] at *
+    nlinarith [hslack3, hepsS, hwone, hwpos]
+  have hrho0val : rho0 = ENNReal.ofReal ((2 : Real) ^ e3) := by
+    rw [hrho0eq, he3def]
+    unfold q3PhysicalMinkowskiRatio
+    rfl
+  -- the arithmetic core
+  have hSform : S = (1 - w) * (tm - 2 * rho) / (tm - 3 * rho) -
+      (d : Real) * ((tm - 2 * rho) * w) + eta * ((tm - 2 * rho) * w) := by
+    rw [hSdef, hinvw t1 ht1pos, hudef, ht1def]
+    have hw0 : w ≠ 0 := hwpos.ne'
+    have ht0' : tm - 3 * rho ≠ 0 := by
+      have : 0 < tm - 3 * rho := by rw [ht1def] at ht1pos; linarith
+      exact this.ne'
+    field_simp
+  have htm3 : tm / 2 ≤ tm - 3 * rho := by linarith
+  have hSle : S ≤ ((1 - w) - (d : Real) * tm * w) +
+      (2 * rho / tm + 2 * (d : Real) * rho + eta) := by
+    rw [hSform]
+    have h1 : (tm - 2 * rho) / (tm - 3 * rho) ≤ 1 + 2 * rho / tm := by
+      rw [div_le_iff₀ (by linarith)]
+      have hexp2 : (1 + 2 * rho / tm) * (tm - 3 * rho) =
+          tm - 3 * rho + 2 * rho - 6 * rho * rho / tm := by
+        field_simp
+        ring
+      rw [hexp2]
+      have : 0 ≤ 6 * rho * rho / tm :=
+        div_nonneg (by nlinarith [hrhopos]) htmpos.le
+      have h6 : 6 * rho * rho / tm ≤ rho := by
+        rw [div_le_iff₀ htmpos]
+        nlinarith
+      linarith
+    have h2 : (1 - w) * ((tm - 2 * rho) / (tm - 3 * rho)) ≤
+        (1 - w) * (1 + 2 * rho / tm) := by
+      apply mul_le_mul_of_nonneg_left h1 (by linarith)
+    have h3 : (1 - w) * (1 + 2 * rho / tm) ≤ (1 - w) + 2 * rho / tm := by
+      have hr : 0 ≤ 2 * rho / tm := div_nonneg (by linarith) htmpos.le
+      nlinarith
+    have h4 : (1 - w) * (tm - 2 * rho) / (tm - 3 * rho) =
+        (1 - w) * ((tm - 2 * rho) / (tm - 3 * rho)) := by
+      rw [mul_div_assoc]
+    have h5 : -((d : Real) * ((tm - 2 * rho) * w)) ≤
+        -((d : Real) * tm * w) + 2 * (d : Real) * rho := by
+      have hkey : 0 ≤ (d : Real) * rho * (1 - w) :=
+        mul_nonneg (mul_nonneg hDpos.le hrhopos.le) (by linarith)
+      have : (d : Real) * ((tm - 2 * rho) * w) ≥ (d : Real) * tm * w
+          - 2 * (d : Real) * rho := by
+        nlinarith [hkey]
+      linarith
+    have h6 : eta * ((tm - 2 * rho) * w) ≤ eta := by
+      have hle : (tm - 2 * rho) * w ≤ 1 := by nlinarith
+      nlinarith [hetapos]
+    rw [h4]
+    linarith
+  have hyu : y - u = (y - tm * w) + 2 * rho * w := by
+    rw [hudef]; ring
+  have hyutm : 0 ≤ y - tm * w := by linarith
+  have htmw : 0 ≤ tm * w := (mul_pos htmpos hwpos).le
+  have hstep1 : (y - u) * e3 ≤ (y - tm * w) * e3 := by
+    rw [hyu]
+    have h1 : 0 < 2 * rho * w := mul_pos (by linarith only [hrhopos]) hwpos
+    have hneg := mul_nonneg h1.le (neg_nonneg.mpr he3neg.le)
+    linarith only [hneg]
+  have hstep2 : (y - tm * w) * e3 ≤
+      (y - tm * w) * (1 - ((d : Real) + 1 - beta) * w) + eps := by
+    rw [he3val]
+    have hA2 : y - tm * w ≤ 1 := by linarith only [hyone, htmw]
+    have hA3 : (0 : Real) ≤ eps * w := (mul_pos hepspos hwpos).le
+    have hA4 : eps * w ≤ eps := by
+      have := mul_nonneg hepspos.le (by linarith only [hwone] : (0 : Real) ≤ 1 - w)
+      linarith only [this]
+    have hle : (y - tm * w) * (eps * w) ≤ eps := by
+      calc (y - tm * w) * (eps * w) ≤ 1 * (eps * w) :=
+            mul_le_mul_of_nonneg_right hA2 hA3
+        _ = eps * w := one_mul _
+        _ ≤ eps := hA4
+    linarith only [hle]
+  have hstep3 : (w - y) * S ≤
+      (w - y) * ((1 - w) - (d : Real) * tm * w) +
+        (2 * rho / tm + 2 * (d : Real) * rho + eta) := by
+    have hwy0 : 0 < w - y := by linarith only [hwy]
+    have hwy1 : w - y ≤ 1 := by linarith only [hwone, hypos]
+    have hpert : 0 ≤ 2 * rho / tm + 2 * (d : Real) * rho + eta :=
+      add_nonneg (add_nonneg (div_nonneg (by linarith only [hrhopos]) htmpos.le)
+        ((mul_nonneg (by linarith only [hDpos]) hrhopos.le))) hetapos.le
+    have hmain := mul_le_mul_of_nonneg_left hSle hwy0.le
+    have hshrink :
+        (w - y) * (2 * rho / tm + 2 * (d : Real) * rho + eta) ≤
+          2 * rho / tm + 2 * (d : Real) * rho + eta := by
+      have := mul_nonneg (by linarith only [hwy1] : (0 : Real) ≤ 1 - (w - y)) hpert
+      linarith only [this]
+    linarith only [hmain, hshrink]
+  have hidentP : (y - tm * w) * (1 - ((d : Real) + 1 - beta) * w) +
+      (w - y) * ((1 - w) - (d : Real) * tm * w) = -P := by
+    have hident := q4_lower_loss_gain_identity (d := d) (beta := beta)
+      (gamma := gamma) (w := w) (y := y) hgamma (by rw [← hAdef]; exact hAg)
+    rw [← hAdef, ← htmdef] at hident
+    rw [hident, hPdef, hcdef, neg_div]
+  have hsmall : eps + (2 * rho / tm + 2 * (d : Real) * rho + eta) < P := by
+    have hden : (0 : Real) < 24 * (1 + (d : Real)) := by positivity
+    have hbase : rho * (24 * (1 + (d : Real))) ≤ P * tm := by
+      have h := hrhoP
+      rw [le_div_iff₀ hden] at h
+      exact h
+    have h1 : 2 * rho / tm ≤ P / 12 := by
+      rw [div_le_div_iff₀ htmpos (by norm_num)]
+      have hpos : (0 : Real) ≤ 24 * rho * (d : Real) :=
+        mul_nonneg (by linarith only [hrhopos]) hDpos.le
+      linarith only [hbase, hpos]
+    have h2 : 2 * (d : Real) * rho ≤ P / 12 := by
+      rw [le_div_iff₀ (by norm_num : (0 : Real) < 12)]
+      have hPtm : P * tm ≤ P := mul_le_of_le_one_right hPpos.le htmone
+      have hr : (0 : Real) ≤ 24 * rho := by linarith only [hrhopos]
+      linarith only [hbase, hPtm, hr]
+    have h3 : eta = P / 8 := hetadef
+    linarith only [hepsP, h1, h2, h3, hPpos]
+  have hfinal : (y - u) * e3 + (w - y) * S < 0 := by
+    linarith only [hstep1, hstep2, hstep3, hidentP, hsmall]
+  -- assemble the two rates
+  obtain ⟨Cfin, hfin⟩ :
+      ∃ Cfin : ENNReal, Cfin < ⊤ ∧ True := ⟨(C0 ^ lam * C1 ^ (1 - lam)), by
+        exact ⟨ENNReal.mul_lt_top
+          (ENNReal.rpow_lt_top_of_nonneg hlam0.le hC0.ne)
+          (ENNReal.rpow_lt_top_of_nonneg (by linarith) hC1.ne), trivial⟩⟩
+  have hratio : (rho0 ^ lam * (ENNReal.ofReal ((2 : Real) ^ S)) ^ (1 - lam)) < 1 := by
+    rw [hrho0val, ofReal_two_rpow_rpow e3 lam, ofReal_two_rpow_rpow S (1 - lam),
+      ← ENNReal.ofReal_mul (by positivity), ← Real.rpow_add (by norm_num)]
+    refine ENNReal.ofReal_lt_one.mpr ?_
+    refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+    have hwu' : 0 < w - u := hwu
+    have hwune : w - u ≠ 0 := hwu.ne'
+    have hlamval : e3 * lam + S * (1 - lam) =
+        ((y - u) * e3 + (w - y) * S) / (w - u) := by
+      rw [hlamdef]
+      field_simp
+      ring
+    rw [hlamval]
+    exact div_neg_of_neg_of_pos hfinal hwu'
+  have hinterp := memLp_and_eLpNorm_schwartz_of_weighted_output_dyadic_rates
+    (d := d)
+    (fun j g => fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g)
+    (fun j g => (measurable_fractalDyadicBandpassMaximal E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable)
+    (p := p) (q0 := p / (p - 1)) (q := q) (q1 := 1 / u) (lam := lam)
+    (by positivity) (by positivity) hq0 hlam0 hlam1 hexp
+    hC0 hC1 (lt_of_lt_of_le hrho0 le_top) ENNReal.ofReal_lt_top
+    hrate0' (fun j hj f => (hrate1 j hj f).2)
+  exact strong_type_of_strict_high_dyadic_rate (gamma := gamma)
+    (by rcases hd with h | ⟨h, hg⟩ <;> [exact Or.inl h; exact Or.inr ⟨h, hg⟩])
+    E hE phi hphiOne hphiZero hphiNorm hp1 (by linarith) hpq
+    (ENNReal.mul_lt_top
+      (ENNReal.rpow_lt_top_of_nonneg hlam0.le hC0.ne)
+      (ENNReal.rpow_lt_top_of_nonneg (by linarith) hC1.ne))
+    hratio hinterp
+
+
+/-- The interior estimate exactly on the conjugate line `1 / p + 1 / q = 1`.
+There no interpolation is needed: the strict Minkowski annulus inequality at
+`y = 1 - x` is literally the strict output condition of the physical `Q3`
+estimate, so that single rate already gives the strong type. -/
+theorem q4_interior_strong_type_of_conjugate_output
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hqeq : q = p / (p - 1))
+    (hQ3 : q < (d : Real) + 1 - beta) :
+    HasFractalSphericalStrongType d E p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, -⟩ <;> omega
+  have hq1 : (1 : Real) ≤ q := by linarith
+  obtain ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, -⟩ :=
+    exists_normRadial_smooth_absolute_dyadic_bandpass_family d
+  set eps : Real := ((d : Real) + 1 - beta - q) / 2 with hepsdef
+  have hepspos : 0 < eps := by rw [hepsdef]; linarith
+  have hstrict : q < ((d - 1 : Nat) : Real) + 2 - (beta + eps) := by
+    have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
+    rw [hcast, hepsdef]
+    linarith
+  obtain ⟨C, rho, hCpos, hCtop, hrho, hrhoeq, hrate⟩ :
+      ∃ C rho : ENNReal, 0 < C ∧ C < ⊤ ∧ rho < 1 ∧
+        rho = ENNReal.ofReal
+          (q3PhysicalMinkowskiRatio (d - 1) (beta + eps) q) ∧
+        ∀ j : Nat, 1 ≤ j →
+          ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+            MemLp (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal q) volume ∧
+            eLpNorm (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal q) volume ≤
+              C * rho ^ j *
+                eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                  (ENNReal.ofReal p) volume := by
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+      have hs : q < ((n : Nat) : Real) + 2 - (beta + eps) := by
+        simpa only [Nat.add_sub_cancel] using hstrict
+      exact q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        (n := n) (by omega) hE hEne hMinkowski hepspos hp1 hp2 hqeq hs
+        phi psi hphiOne hphiZero hphiNorm hpsi
+    · subst hd2'
+      have hs : q < 3 - (beta + eps) := by
+        have h := hstrict
+        norm_num at h
+        linarith
+      exact circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        hE hEne hMinkowski hepspos hp1 hp2 hqeq hs
+        phi psi hphiOne hphiZero hphiNorm hpsi
+  exact strong_type_of_strict_high_dyadic_rate (gamma := gamma) hd E hE phi
+    hphiOne hphiZero hphiNorm hp1 hq1 hpq hCtop hrho hrate
+
+set_option maxHeartbeats 1000000 in
 /-- The `Q4` input: discretize the radii and bound the `TT*` shell sums by
 the upper Assouad-spectrum/quasi-Assouad data, then interpolate away from the
-endpoint.  This is the analytic step not present in Stein's global proof. -/
+endpoint.  This is the analytic step not present in Stein's global proof.
+
+The four supporting inequalities of `interior (Q d β γ)` -- translation,
+spherical cap, Minkowski annulus and clustered edge -- select exactly one of
+the four literal routes assembled above. -/
 theorem quasi_assouad_q4_interior_strong_type
     {d : ℕ} {β γ p q : ℝ}
     (hd : 3 ≤ d ∨ d = 2 ∧ γ ≤ 1 / 2)
@@ -125,7 +1349,109 @@ theorem quasi_assouad_q4_interior_strong_type
     (hp : 0 < p) (hq : 1 ≤ q)
     (hregion : reciprocalExponentPoint p q ∈ interior (Q d β γ)) :
     HasFractalSphericalStrongType d E p q := by
-  sorry
+  rcases Set.eq_empty_or_nonempty E with rfl | hEne
+  · exact hasFractalSphericalStrongType_empty d p q
+  obtain ⟨hbeta, hbeta_gamma, hgamma_one⟩ := hβγ
+  have hgamma : (0 : Real) ≤ γ := hbeta.trans hbeta_gamma
+  have hbeta_one : β ≤ 1 := hbeta_gamma.trans hgamma_one
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, -⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hp1 : 1 < p :=
+    one_lt_inputExponent_of_mem_interior_Q hd2 hbeta hbeta_one hbeta_gamma hp
+      hregion
+  have hpq : p < q :=
+    inputExponent_lt_outputExponent_of_mem_interior_Q hd2 hbeta_one hgamma hp hq
+      hregion
+  have hq0 : (0 : Real) < q := by linarith
+  have hpm : (0 : Real) < p - 1 := by linarith
+  have hw : (0 : Real) < 1 - 1 / p := by
+    rw [sub_pos, div_lt_one hp]
+    linarith
+  have hcrit : β < ((d : Real) - 1) * (p - 1) :=
+    minkowski_critical_of_mem_interior_Q hd2 hbeta hbeta_one hbeta_gamma
+      hgamma_one hp hregion
+  have hcap : q < (d : Real) * p := by
+    have h := strict_first_lt_natCast_mul_second_of_mem_interior_Q
+      (x := reciprocalExponentPoint p q) hd2 hbeta hbeta_one hgamma hregion
+    change p⁻¹ < (d : Real) * q⁻¹ at h
+    have hpqpos : (0 : Real) < p * q := mul_pos hp hq0
+    have h2 := mul_lt_mul_of_pos_right h hpqpos
+    rw [show p⁻¹ * (p * q) = q by field_simp,
+      show (d : Real) * q⁻¹ * (p * q) = (d : Real) * p by field_simp] at h2
+    exact h2
+  have hannulus :
+      (d : Real) * (1 / p) < (1 - β) * (1 / q) + ((d : Real) - 1) := by
+    have h := strict_annulus_of_mem_interior_Q
+      (x := reciprocalExponentPoint p q) hd2 hbeta hbeta_gamma hbeta_one hregion
+    change (d : Real) * p⁻¹ < (1 - β) * q⁻¹ + ((d : Real) - 1) at h
+    simpa only [one_div] using h
+  have hcluster : 0 < clusterEdgeFunctional d (β / γ) β (1 / p, 1 / q) := by
+    have h := strict_clusterEdgeFunctional_of_mem_interior_Q
+      (x := reciprocalExponentPoint p q) hd2 hbeta hbeta_one hbeta_gamma hregion
+    simpa only [reciprocalExponentPoint, one_div] using h
+  by_cases hp2 : 2 ≤ p
+  · exact q4_interior_strong_type_of_two_le_input hd hE hEne hbeta hgamma
+      hgamma_one hbeta_gamma hMinkowski hquasiAssouad hp2 hpq hcap hcrit
+  push_neg at hp2
+  rcases lt_trichotomy q (p / (p - 1)) with hlt | heq | hgt
+  · exact q4_interior_strong_type_of_sum_gt_one hd hE hEne hbeta hMinkowski
+      hp1 hp2 hpq hlt hannulus hcrit
+  · have hxq : 1 / q = 1 - 1 / p := by
+      rw [heq]
+      field_simp
+    have hxbound : (1 / p) * ((d : Real) + 1 - β) < (d : Real) - β := by
+      rw [hxq] at hannulus
+      nlinarith [hannulus]
+    have hQ3 : q < (d : Real) + 1 - β := by
+      have hval : q = 1 / (1 - 1 / p) := by
+        have h1 : (1 : Real) - 1 / p = (p - 1) / p := by field_simp
+        rw [h1, one_div_div, heq]
+      rw [hval, div_lt_iff₀ hw]
+      nlinarith [hxbound]
+    exact q4_interior_strong_type_of_conjugate_output (gamma := γ) hd hE hEne
+      hMinkowski hp1 hp2 hpq heq hQ3
+  · by_cases hslope :
+        p / (q * (p - 1)) <
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ)
+    · exact q4_interior_strong_type_of_strict_lower_sector hd hE hEne hgamma
+        hquasiAssouad hbeta hbeta_gamma hgamma_one hp1 hp2 hpq hcap hslope
+    · push_neg at hslope
+      have hApos : (0 : Real) < ((d : Real) - 1) / 2 := by linarith
+      have hAg : (0 : Real) < ((d : Real) - 1) / 2 + γ := by linarith
+      have hratio : p / (q * (p - 1)) = (1 / q) / (1 - 1 / p) := by
+        field_simp
+      rw [hratio] at hslope
+      have hbalance :
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ) *
+            (1 - 1 / p) ≤ 1 / q := (le_div_iff₀ hw).mp hslope
+      have hywlt : 1 / q < 1 - 1 / p := by
+        have h1 : (1 : Real) - 1 / p = (p - 1) / p := by field_simp
+        rw [h1, div_lt_div_iff₀ hq0 hp]
+        have h2 : p < q * (p - 1) := (div_lt_iff₀ hpm).mp hgt
+        linarith
+      have htmone :
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ) < 1 := by
+        have hlt :
+            (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ) *
+              (1 - 1 / p) < 1 * (1 - 1 / p) := by
+          rw [one_mul]
+          exact lt_of_le_of_lt hbalance hywlt
+        exact lt_of_mul_lt_mul_right hlt hw.le
+      have hgammapos : (0 : Real) < γ := by
+        rw [div_lt_one hAg] at htmone
+        linarith
+      have hxbound : (1 / p) * ((d : Real) + 1 - β) < (d : Real) - β := by
+        have hle : (1 - β) * (1 / q) ≤ (1 - β) * (1 - 1 / p) :=
+          mul_le_mul_of_nonneg_left hywlt.le (by linarith)
+        nlinarith [hannulus, hle]
+      have hQ3 : p / (p - 1) < (d : Real) + 1 - β := by
+        have hval : p / (p - 1) = 1 / (1 - 1 / p) := by
+          have h1 : (1 : Real) - 1 / p = (p - 1) / p := by field_simp
+          rw [h1, one_div_div]
+        rw [hval, div_lt_iff₀ hw]
+        nlinarith [hxbound]
+      exact q4_interior_strong_type_of_loss_gain hd hE hEne hbeta hgammapos
+        hgamma_one hMinkowski hquasiAssouad hp1 hp2 hpq hgt hQ3 hbalance hcluster
 
 /-- The open Minkowski triangle is a subset of the `Q` interior, so it is
 already covered by the quasi-Assouad interior estimate.  This keeps the

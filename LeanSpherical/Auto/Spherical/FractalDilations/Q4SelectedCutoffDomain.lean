@@ -232,6 +232,13 @@ theorem memLp_two_q4SelectedKernelTTStarShell_of_pairwise_bound
         (fun i => q4KernelTTStarShell mu s R K (q4SelectedFibre rho g) i x)
         (hrho x)).symm
   rw [hsum]
+  have hfun : (∑ i ∈ s, (P i).indicator
+      (q4KernelTTStarShell mu s R K (q4SelectedFibre rho g) i)) =
+      (fun a : X => ∑ i ∈ s, (P i).indicator
+        (q4KernelTTStarShell mu s R K (q4SelectedFibre rho g) i) a) := by
+    funext a
+    simp [Finset.sum_apply]
+  rw [hfun]
   exact memLp_finsetSum (μ := mu) (p := 2) s
     (f := fun i => (P i).indicator
       (q4KernelTTStarShell mu s R K (q4SelectedFibre rho g) i))
@@ -256,7 +263,7 @@ theorem norm_q4SelectedKernelTTStarShell_le_of_bound_on_relation
     (mu : Measure X) (s : Finset I) (R : I -> I -> Prop) [DecidableRel R]
     (K : I -> I -> X -> Complex) (rho : X -> I)
     (hrho : forall x, rho x ∈ s) (g : X -> Complex) {A : Real} (hA : 0 <= A)
-    (hg : forall i ∈ s, Integrable (q4SelectedFibre rho g i) mu)
+    (hg : ∀ i ∈ s, Integrable (q4SelectedFibre rho g i) mu)
     (hmeas : forall i l x, AEStronglyMeasurable
       (fun y => K i l (x - y) * q4SelectedFibre rho g l y) mu)
     (hkernel : forall i l z, R i l -> ‖K i l z‖ <= A) (x : X) :
@@ -275,7 +282,8 @@ theorem norm_q4SelectedKernelTTStarShell_le_of_bound_on_relation
     by_cases hil : R i l
     · simpa only [Kcut, if_pos hil] using hmeas i l z
     · simpa only [Kcut, if_neg hil, zero_mul] using
-        (aestronglyMeasurable_zero : AEStronglyMeasurable (fun _ : X => (0 : Complex)) mu)
+        (aestronglyMeasurable_const :
+          AEStronglyMeasurable (fun _ : X => (0 : Complex)) mu)
   have hshell : q4SelectedKernelTTStarShell mu s R K rho g =
       q4SelectedKernelTTStarShell mu s R Kcut rho g := by
     funext z
@@ -283,6 +291,9 @@ theorem norm_q4SelectedKernelTTStarShell_le_of_bound_on_relation
     apply Finset.sum_congr rfl
     intro l hl
     have hrel : R (rho z) l := (Finset.mem_filter.mp hl).2
+    unfold q4PairwiseKernelApply
+    apply integral_congr_ae
+    filter_upwards with y
     simp only [Kcut, if_pos hrel]
   rw [hshell]
   exact norm_q4SelectedKernelTTStarShell_le_of_bound mu s R Kcut rho hrho g hA
@@ -297,7 +308,7 @@ theorem q4SelectedKernelTTStarShell_energy_le_of_cutoffStableDomain
     [MeasurableSingletonClass I] [DecidableEq I]
     {mu : Measure X} (s : Finset I) (R : I -> I -> Prop) [DecidableRel R]
     (hR : Std.Symm R) (D : Real) (hD : 0 <= D)
-    (hdegree : forall i ∈ s, ((s.filter (R i)).card : Real) <= D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : Real) <= D)
     (K : I -> I -> X -> Complex) (rho : X -> I)
     (hrho : forall x, rho x ∈ s) (hrhoMeas : Measurable rho)
     (H : Q4PairwiseL2OperatorBound mu K)
@@ -357,7 +368,7 @@ theorem q4SelectedKernelTTStarShell_crossed_strong_of_cutoffStableDomain
     {mu : Measure X} [SFinite mu]
     (s : Finset I) (R : I -> I -> Prop) [DecidableRel R]
     (hR : Std.Symm R) (D : Real) (hD : 0 <= D)
-    (hdegree : forall i ∈ s, ((s.filter (R i)).card : Real) <= D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : Real) <= D)
     (K : I -> I -> X -> Complex) (rho : X -> I)
     (hrho : forall x, rho x ∈ s) (hrhoMeas : Measurable rho)
     (A : Real) (hA : 0 < A)
@@ -457,7 +468,7 @@ theorem q4SelectedKernelTTStarShell_strong_offDiagonal_of_cutoffStableDomain
     {mu : Measure X} [SFinite mu]
     (s : Finset I) (R : I -> I -> Prop) [DecidableRel R]
     (hR : Std.Symm R) (D : Real) (hD : 0 <= D)
-    (hdegree : forall i ∈ s, ((s.filter (R i)).card : Real) <= D)
+    (hdegree : ∀ i ∈ s, ((s.filter (R i)).card : Real) <= D)
     (K : I -> I -> X -> Complex) (rho : X -> I)
     (hrho : forall x, rho x ∈ s) (hrhoMeas : Measurable rho)
     (A : Real) (hA : 0 < A)
@@ -482,13 +493,17 @@ theorem q4SelectedKernelTTStarShell_strong_offDiagonal_of_cutoffStableDomain
     mu (q4SelectedKernelTTStarShell mu s R K rho f) f
     (ENNReal.ofReal ((H.B * D) ^ 2)) hA hI0pos hp1 hp2 hq hinput
     (by simpa only [cutoff] using hraw)
-  exact q4_eLpNorm_le_of_crossed_power_moment
+  have hfinal := q4_eLpNorm_le_of_crossed_power_moment (p := p) (q := q)
     mu (q4SelectedKernelTTStarShell mu s R K rho f) f
     (by linarith) (by
       rw [hq]
       have hpminus : 0 < p - 1 := by linarith
       exact div_pos (by linarith) hpminus)
-    (q4CrossedStrongShellConstant q A ((H.B * D) ^ 2)) hmoment
+    (ENNReal.ofReal q *
+      (4 * ENNReal.ofReal ((H.B * D) ^ 2) *
+        ((ENNReal.ofReal (q - 2))⁻¹ * (ENNReal.ofReal (2 * A)) ^ (q - 2))))
+    hmoment
+  simpa only [q4CrossedStrongShellConstant] using hfinal
 
 end
 

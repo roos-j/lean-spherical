@@ -10,7 +10,7 @@ open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCovering
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -76,7 +76,7 @@ theorem q4ActiveDyadicSelectedKernelTTStarShell_energy_le_of_pairwise_bound
     (hE : E ⊆ Icc (1 : Real) 2)
     (hcover : HasSubpowerAssouadCoverBound E gamma eta C)
     (hC : 0 <= C) (hgamma : 0 <= gamma)
-    (hdeltaone : dyadicScale j < 1) (hL : 0 <= L)
+    (hdeltaone : DyadicCovering.dyadicScale j < 1) (hL : 0 <= L)
     {X : Type*} [Sub X] [MeasurableSpace X] (mu : Measure X)
     (K : Int -> Int -> X -> Complex) (rho : X -> Int)
     (hrho : ∀ x, rho x ∈ activeDyadicIndices E j) (g : X -> Complex)
@@ -96,15 +96,15 @@ theorem q4ActiveDyadicSelectedKernelTTStarShell_energy_le_of_pairwise_bound
         B * lpNorm (q4SelectedFibre rho g l) 2 mu) :
     (integral mu (fun x =>
       norm (q4ActiveDyadicSelectedKernelTTStarShell E j u L mu K rho g x) ^ (2 : Nat))) <=
-      (B * (6 * C * (dyadicScale j) ^ (-eta) *
-        ((2 * (L + dyadicScale j)) / dyadicScale j) ^ gamma)) ^ (2 : Nat) *
+      (B * (6 * C * (DyadicCovering.dyadicScale j) ^ (-eta) *
+        ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ gamma)) ^ (2 : Nat) *
         integral mu (fun x => norm (g x) ^ (2 : Nat)) := by
   classical
   let s : Finset Int := activeDyadicIndices E j
   let R : Int -> Int -> Prop :=
     fun k l => radiusGapShellNeighbors u L (dyadicLeft j k) (dyadicLeft j l)
-  let D : Real := 6 * C * (dyadicScale j) ^ (-eta) *
-    ((2 * (L + dyadicScale j)) / dyadicScale j) ^ gamma
+  let D : Real := 6 * C * (DyadicCovering.dyadicScale j) ^ (-eta) *
+    ((2 * (L + DyadicCovering.dyadicScale j)) / DyadicCovering.dyadicScale j) ^ gamma
   have henergy : q4FibreL2Energy mu s
       (q4KernelTTStarShell mu s R K (q4SelectedFibre rho g)) <=
         (B * D) ^ (2 : Nat) * q4FibreL2Energy mu s (q4SelectedFibre rho g) := by

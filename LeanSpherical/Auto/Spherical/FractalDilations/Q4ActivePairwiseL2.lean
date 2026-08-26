@@ -13,7 +13,7 @@ open Auto.Spherical.FractalDilations.Q4MeasurableEndpointCrossed
 open Auto.Spherical.FractalDilations.Q4PhysicalL2Extension
 open Auto.Spherical.FractalDilations.Q4SelectedCutoffDomain
 open Auto.Spherical.FractalDilations.Q4TTStar
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -60,8 +60,9 @@ noncomputable def q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
             Lp Complex 2 (volume : Measure (Euclidean d))) :
             Euclidean d -> Complex) x) 2 volume :=
       Lp.memLp _
-    exact htarget.congr_ae
-      (q4ActiveDyadicPairKernelApply_ae_eq_l2Piece psi hpsiCompact j i l g hg1 hg2).symm
+    exact MemLp.ae_eq
+      (q4ActiveDyadicPairKernelApply_ae_eq_l2Piece psi hpsiCompact j i l g hg1
+        hg2).symm htarget
   · intro i l g hg1 hg2
     let T : Lp Complex 2 (volume : Measure (Euclidean d)) :=
       q4ActiveDyadicPairL2Piece psi hpsiCompact j i l (hg2.toLp g)
@@ -74,7 +75,7 @@ noncomputable def q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
         (q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l g) 2 volume := by
       have hTmem : MemLp (fun x : Euclidean d =>
           (T : Euclidean d -> Complex) x) 2 volume := Lp.memLp _
-      exact hTmem.congr_ae hphysical.symm
+      exact MemLp.ae_eq hphysical.symm hTmem
     have hTbound : ‖T‖ <= B * ‖hg2.toLp g‖ := by
       dsimp only [T]
       exact norm_q4ActiveDyadicPairL2Piece_apply_le_of_bound

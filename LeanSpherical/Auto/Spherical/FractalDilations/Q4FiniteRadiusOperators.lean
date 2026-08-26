@@ -15,7 +15,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.Q4PairComposition
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -373,6 +373,7 @@ theorem integral_q4DyadicSurfaceSchwartzPiece_mul_star_eq
       (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r g) f]
     apply integral_congr_ae
     filter_upwards with xi
+    simp only [SchwartzMap.fourier_coe]
     rw [fourier_q4DyadicSurfaceSchwartzPiece,
       fourier_q4DyadicSurfaceSchwartzAdjointPiece]
     simp only [RCLike.inner_apply, starRingEnd_apply, map_mul, star_star]
@@ -393,15 +394,41 @@ theorem integral_norm_sq_q4ActiveDyadicPairSchwartzPiece_le_of_bound
       ‖q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f x‖ ^ (2 : Nat)) <=
       B ^ (2 : Nat) * ∫ x : Euclidean d, ‖f x‖ ^ (2 : Nat) := by
   let m := q4ActiveDyadicPairMultiplier psi hpsiCompact j i l
+  have hm : (m : Euclidean d -> Complex).HasTemperateGrowth := m.hasTemperateGrowth
   have hbase := integral_norm_sq_fourierInv_schwartz_multiplier_le
     m (FourierTransform.fourier f) hB (by
       intro xi
       exact hbound xi)
-  change (∫ x : Euclidean d,
-      ‖((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
-        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) x‖ ^ (2 : Nat)) <= _
-  rw [SchwartzMap.fourierMultiplierCLM_apply, SchwartzMap.fourierInv_coe]
-  simpa only [SchwartzMap.fourier_coe] using hbase
+  simp only [SchwartzMap.fourier_coe] at hbase
+  have hpt : ∀ x : Euclidean d,
+      q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f x =
+        FourierTransform.fourierInv
+          (fun xi : Euclidean d => m xi *
+            FourierTransform.fourier (f : Euclidean d -> Complex) xi) x := by
+    intro x
+    change
+      ((SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f :
+        SchwartzMap (Euclidean d) Complex) : Euclidean d -> Complex) x = _
+    rw [SchwartzMap.fourierMultiplierCLM_apply, SchwartzMap.fourierInv_coe]
+    apply congrArg (fun g : Euclidean d -> Complex =>
+      FourierTransform.fourierInv g x)
+    funext xi
+    simp only [SchwartzMap.smulLeftCLM_apply hm, smul_eq_mul,
+      SchwartzMap.fourier_coe]
+  calc
+    (∫ x : Euclidean d,
+        ‖q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f x‖ ^ (2 : Nat)) =
+        ∫ x : Euclidean d, ‖FourierTransform.fourierInv
+          (fun xi : Euclidean d => m xi *
+            FourierTransform.fourier (f : Euclidean d -> Complex) xi) x‖ ^ (2 : Nat) := by
+          congr 1
+          funext x
+          rw [hpt x]
+    _ <= B ^ (2 : Nat) * ∫ xi : Euclidean d,
+          ‖FourierTransform.fourier (f : Euclidean d -> Complex) xi‖ ^ (2 : Nat) :=
+      hbase
+    _ = B ^ (2 : Nat) * ∫ x : Euclidean d, ‖f x‖ ^ (2 : Nat) := by
+          rw [integral_norm_sq_fourier_schwartz_eq]
 
 /-- A Schwartz-core version of the pair-composition predicate in
 `Q4FiniteProductTTStar`.  It is intentionally separate from the all-function
@@ -452,8 +479,8 @@ def q4L2FourierMultiplierLinear
   map_smul' c f := by
     rw [FourierTransform.fourier_smul]
     rw [← Lp.smul_comm c m (FourierTransform.fourier f)]
-    rw [Lp.smul_assoc]
     rw [FourierTransform.fourierInv_smul]
+    rfl
 
 /-- The `L²` Fourier multiplier is continuous, with norm bounded by the
 `L∞` norm of its multiplier. -/
@@ -529,12 +556,12 @@ theorem q4LpTop_smul_schwartz_toLp_eq
   let h : SchwartzMap (Euclidean d) Complex :=
     SchwartzMap.smulLeftCLM Complex (m : Euclidean d -> Complex) f
   apply Lp.ext
-  filter_upwards [Lp.coeFn_lpSMul (m.toLp ⊤ volume) (f.toLp 2 volume),
+  filter_upwards [Lp.coeFn_lpSMul (r := 2) (m.toLp ⊤ volume) (f.toLp 2 volume),
     SchwartzMap.coeFn_toLp m ⊤ volume, SchwartzMap.coeFn_toLp f 2 volume,
     SchwartzMap.coeFn_toLp h 2 volume] with x hmul hm hf hh
-  rw [hmul, hm, hf, hh]
-  simp only [Pi.smul_apply, smul_eq_mul, h,
-    SchwartzMap.smulLeftCLM_apply m.hasTemperateGrowth]
+  rw [hmul]
+  simp only [Pi.smul_apply, Pi.mul_apply, smul_eq_mul, hm, hf, hh, h,
+    SchwartzMap.smulLeftCLM_apply_apply m.hasTemperateGrowth]
 
 /-- The completed `L²` multiplier agrees with the original Schwartz Fourier
 multiplier on the dense Schwartz core. -/
@@ -542,12 +569,17 @@ theorem q4L2FourierMultiplier_toLp_eq_schwartz
     {d : Nat} (m f : SchwartzMap (Euclidean d) Complex) :
     q4L2FourierMultiplier (m.toLp ⊤ volume) (f.toLp 2 volume) =
       (SchwartzMap.fourierMultiplierCLM Complex (m : Euclidean d -> Complex) f).toLp 2 volume := by
-  apply (Lp.fourierTransformₗᵢ (Euclidean d) Complex).injective
-  rw [q4L2FourierMultiplier_apply, FourierTransform.fourier_fourierInv_eq]
-  simp only [SchwartzMap.toLp_fourier_eq]
-  rw [SchwartzMap.fourierMultiplierCLM_apply]
-  rw [FourierTransform.fourier_fourierInv_eq]
-  exact q4LpTop_smul_schwartz_toLp_eq m (FourierTransform.fourier f)
+  have key :
+      (m.toLp ⊤ volume • FourierTransform.fourier (f.toLp 2 volume) :
+        Lp Complex 2 (volume : Measure (Euclidean d))) =
+      FourierTransform.fourier
+        ((SchwartzMap.fourierMultiplierCLM Complex
+          (m : Euclidean d -> Complex) f).toLp 2 volume) := by
+    rw [SchwartzMap.toLp_fourier_eq, SchwartzMap.toLp_fourier_eq,
+      SchwartzMap.fourierMultiplierCLM_apply,
+      FourierTransform.fourier_fourierInv_eq]
+    exact q4LpTop_smul_schwartz_toLp_eq m (FourierTransform.fourier f)
+  rw [q4L2FourierMultiplier_apply, key, FourierTransform.fourierInv_fourier_eq]
 
 /-- The actual one-radius localized spherical operator on `L²`. -/
 noncomputable def q4DyadicSurfaceL2Piece
@@ -586,7 +618,8 @@ theorem q4DyadicSurfaceL2Piece_toLp_eq_schwartz
     (r : Real) (f : SchwartzMap (Euclidean d) Complex) :
     q4DyadicSurfaceL2Piece psi hpsiCompact r (f.toLp 2 volume) =
       (q4DyadicSurfaceSchwartzPiece psi hpsiCompact r f).toLp 2 volume := by
-  simpa only [q4DyadicSurfaceL2Piece, q4DyadicSurfaceSchwartzPiece] using
+  simpa only [q4DyadicSurfaceL2Piece, q4DyadicSurfaceSchwartzPiece,
+    ContinuousLinearMap.coe_coe] using
     (q4L2FourierMultiplier_toLp_eq_schwartz
       (q4DyadicSurfaceSchwartzMultiplier psi hpsiCompact r) f)
 
@@ -599,7 +632,7 @@ theorem q4DyadicSurfaceAdjointL2Piece_toLp_eq_schwartz
     q4DyadicSurfaceAdjointL2Piece psi hpsiCompact r (f.toLp 2 volume) =
       (q4DyadicSurfaceSchwartzAdjointPiece psi hpsiCompact r f).toLp 2 volume := by
   simpa only [q4DyadicSurfaceAdjointL2Piece,
-    q4DyadicSurfaceSchwartzAdjointPiece] using
+    q4DyadicSurfaceSchwartzAdjointPiece, ContinuousLinearMap.coe_coe] using
     (q4L2FourierMultiplier_toLp_eq_schwartz
       (q4DyadicSurfaceSchwartzAdjointMultiplier psi hpsiCompact r) f)
 
@@ -610,7 +643,8 @@ theorem q4ActiveDyadicPairL2Piece_toLp_eq_schwartz
     (j : Nat) (i l : Int) (f : SchwartzMap (Euclidean d) Complex) :
     q4ActiveDyadicPairL2Piece psi hpsiCompact j i l (f.toLp 2 volume) =
       (q4ActiveDyadicPairSchwartzPiece psi hpsiCompact j i l f).toLp 2 volume := by
-  simpa only [q4ActiveDyadicPairL2Piece, q4ActiveDyadicPairSchwartzPiece] using
+  simpa only [q4ActiveDyadicPairL2Piece, q4ActiveDyadicPairSchwartzPiece,
+    ContinuousLinearMap.coe_coe] using
     (q4L2FourierMultiplier_toLp_eq_schwartz
       (q4ActiveDyadicPairMultiplier psi hpsiCompact j i l) f)
 
@@ -629,7 +663,8 @@ theorem inner_q4DyadicSurfaceL2Piece_toLp_adjoint
         (f.toLp 2 volume) := by
   rw [q4DyadicSurfaceL2Piece_toLp_eq_schwartz,
     q4DyadicSurfaceAdjointL2Piece_toLp_eq_schwartz]
-  rw [SchwartzMap.inner_toL2_toL2_eq, SchwartzMap.inner_toL2_toL2_eq]
+  rw [SchwartzMap.inner_toL2_toL2_eq (μ := volume),
+    SchwartzMap.inner_toL2_toL2_eq (μ := volume)]
   simpa only [RCLike.inner_apply, starRingEnd_apply] using
     (integral_q4DyadicSurfaceSchwartzPiece_mul_star_eq
       psi hpsiCompact r f g)
@@ -704,7 +739,7 @@ theorem norm_q4ActiveDyadicPairL2Piece_apply_le_of_bound
     (m : Euclidean d -> Complex) hm B hB hbound f
   change ‖q4L2FourierMultiplier (m.toLp ⊤ volume) f‖ <= B * ‖f‖
   rw [q4L2FourierMultiplier_apply]
-  simpa only [m] using hbase
+  simpa only [m, SchwartzMap.toLp] using hbase
 
 /-! ### Finite products on the completed Hilbert carrier
 
@@ -907,7 +942,7 @@ theorem norm_q4SchwartzPowerDualFunction
   by_cases hz : ‖f x‖ = 0
   · simp [hz, Real.zero_rpow (by linarith : q - 1 ≠ 0)]
   · have hpos : 0 < ‖f x‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hz)
-    rw [← Real.rpow_add hpos]
+    rw [← Real.rpow_add_one hz]
     congr 1
     ring
 
@@ -993,8 +1028,11 @@ theorem bddAbove_range_norm_q4SchwartzPowerDualFunction
   have hpow : 0 ≤ q - 1 := by linarith
   refine ⟨SchwartzMap.seminorm Real 0 0 f ^ (q - 1), ?_⟩
   rintro _ ⟨x, rfl⟩
+  show ‖q4SchwartzPowerDualFunction q f x‖ ≤
+    SchwartzMap.seminorm Real 0 0 f ^ (q - 1)
   rw [norm_q4SchwartzPowerDualFunction q hq1 f x]
-  exact Real.rpow_le_rpow (norm_nonneg _) (norm_le_seminorm Real f x) hpow
+  exact Real.rpow_le_rpow (norm_nonneg _)
+    (SchwartzMap.norm_le_seminorm Real f x) hpow
 
 /-- An explicit physical carrier for the Q4 dual test.  Each fibre is an
 honest `L¹ ∩ L²` function with a continuous bounded representative; these
@@ -1141,8 +1179,7 @@ theorem q4SchwartzFiniteProduct_analysis_synthesis_eq_fullTTStar
   funext i x
   unfold q4SchwartzFiniteProductAnalysis q4SchwartzFiniteFibreSynthesis
     q4SchwartzFiniteProductKernelShell
-  rw [map_sum]
-  simp only [Finset.sum_apply]
+  rw [map_sum, SchwartzMap.sum_apply]
   apply Finset.sum_congr rfl
   intro l hl
   exact hcomp i l (g l) x

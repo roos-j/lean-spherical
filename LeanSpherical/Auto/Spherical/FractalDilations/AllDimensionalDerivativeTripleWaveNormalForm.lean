@@ -14,11 +14,14 @@ open Auto.Spherical.FractalDilations.Q4CrossedMarcinkiewicz
 open Auto.Spherical.FractalDilations.Q4DerivativePairKernel
 open Auto.Spherical.FractalDilations.Q4DerivativePhysicalL2
 open Auto.Spherical.FractalDilations.Q4RadialReduction
+open Auto.Spherical.FractalDilations.OscillatoryIBP
 open Auto.Spherical.FractalDilations.QuadraticStationaryPhase
+open Auto.Spherical.FractalDilations.RadialCutoff
 open Auto.Spherical.FractalDilations.RadialPowerMeasure
 open Auto.Spherical.FractalDilations.RadialWaveKernel
 open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
+open Topology
 
 
 
@@ -75,11 +78,23 @@ def coordinateWaveRadiusDerivativeAmplitude
     (((coordinateWavePhaseSlope part * rho : Real) : Complex) * Complex.I) *
       coordinateWaveRadialAmplitude d part a rho
 
+private theorem contDiff_ofReal_comp {g : Real → Real}
+    (hg : ContDiff Real (⊤ : ℕ∞) g) :
+    ContDiff Real (⊤ : ℕ∞) (fun a : Real => ((g a : Real) : Complex)) :=
+  Complex.ofRealCLM.contDiff.comp hg
+
 private theorem contDiff_coordinateWaveRadialAmplitude_radius
     (d : Nat) (part : CoordinateWavePart) (rho : Real) :
     ContDiff Real (⊤ : ℕ∞)
       (fun a : Real => coordinateWaveRadialAmplitude d part a rho) := by
-  cases part <;> unfold coordinateWaveRadialAmplitude <;> fun_prop
+  cases part <;> unfold coordinateWaveRadialAmplitude <;>
+    [ exact (contDiff_const.mul
+        ((Auto.Spherical.FractalDilations.QuadraticMomentDerivatives.contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop)));
+      exact (contDiff_const.mul
+        ((Auto.Spherical.FractalDilations.QuadraticMomentDerivatives.contDiff_smoothEndpointQuadraticIntegral (d - 2)).comp (by fun_prop)));
+      exact (contDiff_const.mul
+        ((Auto.Spherical.FractalDilations.CoordinateMiddleParameterDerivatives.contDiff_coordinateMiddleMeridianLocalizedIntegral (d - 2)).comp
+          (by fun_prop))) ]
 
 private theorem hasDerivAt_coordinateWavePhase_radius
     (part : CoordinateWavePart) (a rho : Real) :
@@ -93,8 +108,7 @@ private theorem hasDerivAt_coordinateWavePhase_radius
     rw [show (fun b : Real => coordinateWaveRadialPhase part b * rho) =
         fun b : Real => (coordinateWavePhaseSlope part * b) * rho by
       funext b
-      rw [coordinateWaveRadialPhase_eq_coordinateWavePhaseSlope_mul]
-      ring]
+      rw [coordinateWaveRadialPhase_eq_coordinateWavePhaseSlope_mul]]
     simpa [mul_assoc] using
       ((hasDerivAt_id a).const_mul (coordinateWavePhaseSlope part)).mul_const rho
   have harg : HasDerivAt
@@ -102,7 +116,7 @@ private theorem hasDerivAt_coordinateWavePhase_radius
         Complex.I))
       ((((coordinateWavePhaseSlope part * rho : Real) : Complex) * Complex.I)) a := by
     simpa only [Complex.real_smul] using hphase.smul_const Complex.I
-  simpa only [oscillatoryExp] using harg.cexp
+  simpa only [oscillatoryExp, mul_comm] using harg.cexp
 
 /-- Radius differentiation factors a literal coordinate wave into the same
 linear phase and its displayed differentiated amplitude. -/
@@ -118,7 +132,12 @@ theorem coordinateWaveRadiusDerivativeTerm_eq_amplitude_mul_oscillatoryExp
       (by simp) a).hasDerivAt
   have hphase := hasDerivAt_coordinateWavePhase_radius part a rho
   unfold coordinateWaveRadiusDerivativeTerm coordinateWaveRadiusDerivativeAmplitude
-  rw [(hamp.mul hphase).deriv]
+  have hterm : (fun b : Real => coordinateWaveRadialTerm d part b rho) =
+      (fun b : Real => coordinateWaveRadialAmplitude d part b rho) *
+        (fun b : Real => oscillatoryExp (coordinateWaveRadialPhase part b) rho) := by
+    funext b
+    rfl
+  rw [hterm, (hamp.mul hphase).deriv]
   ring
 
 /-- The coordinate amplitude depends on its two scalar parameters only via
@@ -144,14 +163,14 @@ theorem deriv_coordinateWaveRadialAmplitude_radius_eq_div_mul_iteratedDeriv
     contDiff_coordinateWaveRadialAmplitude d part 1
   have hparam : HasDerivAt (fun b : Real => G (b * rho))
       (rho • deriv G (a * rho)) a := by
-    simpa only [Function.comp_apply] using
-      ((hG.differentiable (by simp) (a * rho)).hasDerivAt.scomp_of_eq
-        ((hasDerivAt_id a).mul_const rho) (by rfl))
+    simpa only [Function.comp_def, id, one_mul] using
+      ((hG.differentiable (by simp) (a * rho)).hasDerivAt.scomp_of_eq a
+        ((hasDerivAt_id a).mul_const rho) (by simp [id]))
   have hradial : HasDerivAt (fun u : Real => G (a * u))
       (a • deriv G (a * rho)) rho := by
-    simpa only [Function.comp_apply] using
-      ((hG.differentiable (by simp) (a * rho)).hasDerivAt.scomp_of_eq
-        ((hasDerivAt_id rho).const_mul a) (by rfl))
+    simpa only [Function.comp_def, id, mul_one] using
+      ((hG.differentiable (by simp) (a * rho)).hasDerivAt.scomp_of_eq rho
+        ((hasDerivAt_id rho).const_mul a) (by simp))
   have hparam' : HasDerivAt
       (fun b : Real => coordinateWaveRadialAmplitude d part b rho)
       (rho • deriv G (a * rho)) a := by
@@ -181,9 +200,12 @@ private theorem contDiff_coordinateWaveRadialTerm_radius
     (d : Nat) (part : CoordinateWavePart) (rho : Real) :
     ContDiff Real (⊤ : ℕ∞)
       (fun a : Real => coordinateWaveRadialTerm d part a rho) := by
-  cases part <;> unfold coordinateWaveRadialTerm
-    coordinateWaveRadialAmplitude coordinateWaveRadialPhase oscillatoryExp <;>
-    fun_prop
+  exact ((contDiff_coordinateWaveRadialAmplitude_radius d part rho).mul
+    (by
+      cases part <;>
+        simp only [coordinateWaveRadialPhase, oscillatoryExp] <;>
+        exact (Complex.contDiff_exp (𝕜 := Real)).comp
+          ((contDiff_ofReal_comp (by fun_prop)).mul contDiff_const)))
 
 private theorem hasDerivAt_coordinateWaveRadialTerm_radius
     (d : Nat) (part : CoordinateWavePart) (a rho : Real) :
@@ -209,8 +231,7 @@ theorem deriv_surfaceFourier_neg_radius_smul_eq_coordinateDerivativeWaveSum
     filter_upwards [Ioi_mem_nhds hr] with a ha
     dsimp [f, g]
     rw [show a • (-(rho • v)) = -a • (rho • v) by
-      rw [smul_neg]
-      ring]
+      rw [smul_neg, neg_smul]]
     rw [surfaceFourier_neg_radius_smul_eq_coordinateSurfaceWaveSum hd ha hrho v hv,
       coordinateSurfaceWaveSum_eq_three_radialTerms]
   have hout := hasDerivAt_coordinateWaveRadialTerm_radius d .outgoing r rho
@@ -222,7 +243,7 @@ theorem deriv_surfaceFourier_neg_radius_smul_eq_coordinateDerivativeWaveSum
     exact (hout.add hin).add hmid
   have hf : HasDerivAt f
       (coordinateSurfaceRadiusDerivativeWaveSum d r rho) r :=
-    hg.congr_of_eventuallyEq hfg.symm
+    hg.congr_of_eventuallyEq hfg
   exact hf.deriv
 
 /-- At level zero one literal scaled radius-derivative multiplier is the
@@ -239,9 +260,13 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_zero_eq_coordi
   have hdyadic : dyadicScale 0 = 1 := by
     simp [dyadicScale, dyadicDenom]
   rw [hdyadic]
-  norm_num
-  rw [deriv_surfaceFourier_neg_radius_smul_eq_coordinateDerivativeWaveSum
-    hd hr hrho v hv]
+  have hderiv := deriv_surfaceFourier_neg_radius_smul_eq_coordinateDerivativeWaveSum
+    (d := d) hd hr hrho v hv
+  have hfun : (fun s : Real => surfaceFourier d (-(s • rho • v))) =
+      fun a : Real => surfaceFourier d (a • (-(rho • v))) := by
+    funext a
+    rw [smul_neg]
+  norm_num [hfun, hderiv]
 
 /-- The level-zero derivative `TT*` multiplier is the literal product of two
 differentiated all-dimensional coordinate-wave sums. -/
@@ -274,8 +299,7 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_eq_of_norm_eq_
       fun s : Real => surfaceFourier d (s • (-eta)) := by
     funext s
     apply surfaceFourier_eq_of_norm_eq
-    rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs,
-      norm_neg, norm_neg, hxi]
+    rw [norm_smul, norm_smul, Real.norm_eq_abs, norm_neg, norm_neg, hxi]
   rw [hfun, hpsi hxi]
 
 theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_eq_of_norm_eq_allDim
@@ -320,7 +344,7 @@ private theorem integrable_polar_q4ScaledNormalizedDerivativeRadialPairProfile_a
     exists_schwartz_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier
       psi hpsiCompact j r r'
   apply integrable_polar_fourierChar_mul_of_schwartz_radial m
-    (q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r')
+    (q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r' v)
   intro xi
   rw [hm xi]
   exact q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_eq_radialProfile_allDim
@@ -374,11 +398,14 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_absoluteDyadic
     isNormRadial_absoluteDyadicBandpass phi hphiOne hphiZero hphiRadial j
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_eq_surfaceFourier_integral_allDim
     hd psi hpsiCompact hpsiRadial j r r' v x hv]
-  rw [integral_volumeIoiPow_eq_setIntegral]
+  rw [integral_volumeIoiPow_eq_setIntegral (d - 1)
+    (fun t : Real => surfaceFourier d (-t • x) *
+      q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r' v t)]
+  simp only [mul_assoc]
   let F : Real → Complex := fun rho =>
     ((rho ^ (d - 1) : Real) : Complex) *
-      surfaceFourier d (-rho • x) *
-        q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r' v rho
+      (surfaceFourier d (-rho • x) *
+        q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r' v rho)
   have ha : 0 < (2 : Real) ^ j := by positivity
   have hab : (2 : Real) ^ j ≤ (2 : Real) ^ (j + 2) := by
     calc
@@ -412,10 +439,6 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_absoluteDyadic
     rw [hpsiZero]
     simp
   rw [setIntegral_Ioi_eq_intervalIntegral_of_eq_zero_outside_general ha hab F hzero]
-  apply intervalIntegral.integral_congr
-  intro rho _
-  dsimp only [F, psi]
-  ring
 
 end
 

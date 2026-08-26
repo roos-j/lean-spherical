@@ -27,7 +27,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteRadiusOperators
 open Auto.Spherical.FractalDilations.Q4FullProductMaximalBridge
 open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -95,7 +95,6 @@ private theorem q4FiniteProductPairing_l2_coeFn_eq_sum_inner
   apply integral_congr_ae
   filter_upwards with x
   simp only [RCLike.inner_apply, starRingEnd_apply]
-  ring
 
 /-- The actual physical derivative full-shell diagonal is exactly the
 completed finite `L²` synthesis energy.  This uses the literal
@@ -146,13 +145,19 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_fullKernelDiagonal_eq_l
           (q4FibresToFiniteProduct s G)) i =ᵐ[volume]
         (fun x : Euclidean d => ((P i : Lp Complex 2 volume) :
           Euclidean d -> Complex) x) := by
-    simpa only [G, G2, P] using
+    simpa only [G, G2, P,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       q4ActiveDyadicScaledNormalizedDerivativeSchwartzPowerDualFullKernel_ae_eq_l2PairShell
         psi hpsiCompact j u s q hq f i hi
   have hG (i : Int) : G i =ᵐ[volume]
       (fun x : Euclidean d => ((G2 i : Lp Complex 2 volume) :
         Euclidean d -> Complex) x) := by
-    simpa only [G, G2] using
+    simpa only [G, G2,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       (q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisPowerDualL2_coeFn_ae_eq
         psi hpsiCompact j u q hq f i).symm
   have hpair :
@@ -177,7 +182,7 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_fullKernelDiagonal_eq_l
             (fun i x => ((G2 i : Lp Complex 2 volume) :
               Euclidean d -> Complex) x) := by
         apply q4FiniteProductPairing_congr_right_ae volume s
-        exact hG
+        exact fun i _ => hG i
       _ = ∑ i ∈ s, inner Complex (G2 i) (P i) :=
         q4FiniteProductPairing_l2_coeFn_eq_sum_inner volume s P G2
   have hdiag := q4L2FiniteFibreSynthesis_inner_self_eq_pairShell_diagonal s
@@ -195,7 +200,10 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_fullKernelDiagonal_eq_l
       (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) G G =
     inner Complex S S
   rw [hpair]
-  simpa only [P, S] using hdiag.symm
+  simpa only [P, S,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hdiag.symm
 
 /-- Pairing the literal derivative analysis family against its canonical
 power dual is the completed-space adjoint pairing. -/
@@ -224,11 +232,11 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_analysisPairing_eq_l2
   let G2 : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) :=
     q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisPowerDualL2
       psi hpsiCompact j u q hq f
-  let T : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+  let T : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) := fun i =>
     q4ScaledNormalizedDyadicSurfaceRadiusDerivativeL2Piece
       psi hpsiCompact j (dyadicLeft j i + u)
-  let Tstar : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) ->L[Complex]
+  let Tstar : Int -> Lp Complex 2 (volume : Measure (Euclidean d)) →L[Complex]
       Lp Complex 2 (volume : Measure (Euclidean d)) := fun i =>
     q4ScaledNormalizedDyadicSurfaceRadiusDerivativeAdjointL2Piece
       psi hpsiCompact j (dyadicLeft j i + u)
@@ -240,13 +248,16 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_analysisPairing_eq_l2
     rw [hpiece]
     filter_upwards [
       (q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece
-        psi hpsiCompact j (dyadicLeft j i + u) f).coeFn_toLp] with x hx
+        psi hpsiCompact j (dyadicLeft j i + u) f).coeFn_toLp 2 volume] with x hx
     rw [hx]
     rfl
   have hG (i : Int) : G i =ᵐ[volume]
       (fun x : Euclidean d => ((G2 i : Lp Complex 2 volume) :
         Euclidean d -> Complex) x) := by
-    simpa only [G, F, G2] using
+    simpa only [G, F, G2,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       (q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisPowerDualL2_coeFn_ae_eq
         psi hpsiCompact j u q hq f i).symm
   have hpair : q4FiniteProductPairing volume s F G =
@@ -257,20 +268,23 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_analysisPairing_eq_l2
             (fun i x => ((T i (f.toLp 2 volume) : Lp Complex 2 volume) :
               Euclidean d -> Complex) x) G := by
         apply q4FiniteProductPairing_congr_left_ae volume s
-        exact hF
+        exact fun i _ => hF i
       _ = q4FiniteProductPairing volume s
             (fun i x => ((T i (f.toLp 2 volume) : Lp Complex 2 volume) :
               Euclidean d -> Complex) x)
             (fun i x => ((G2 i : Lp Complex 2 volume) :
               Euclidean d -> Complex) x) := by
         apply q4FiniteProductPairing_congr_right_ae volume s
-        exact hG
+        exact fun i _ => hG i
       _ = ∑ i ∈ s, inner Complex (G2 i) (T i (f.toLp 2 volume)) :=
         q4FiniteProductPairing_l2_coeFn_eq_sum_inner volume s
           (fun i => T i (f.toLp 2 volume)) G2
   have hadj := q4L2FiniteProduct_formalAdjoint s T Tstar
     (by
-      simpa only [T, Tstar] using
+      simpa only [T, Tstar,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
         isQ4L2FiniteProductFormalAdjoint_activeDyadicScaledNormalizedDerivative
           psi hpsiCompact j u)
     (f.toLp 2 volume) G2
@@ -281,7 +295,7 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_analysisPairing_eq_l2
 
 /-- The literal full-product root estimate controls the completed synthesis
 operator at a fixed offset.  This is the square-root step in the paper's
-`TT*` argument: HÃ¶lder bounds the physical diagonal, while the exact
+`TT*` argument: Hölder bounds the physical diagonal, while the exact
 physical/`L²` identity turns that diagonal into a nonnegative square. -/
 private theorem q4ActiveDyadicScaledNormalizedDerivative_synthesis_norm_le_of_fullProductRoot
     {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
@@ -349,16 +363,28 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_synthesis_norm_le_of_fu
       (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) G G‖ <=
       (q4FibreLpMoment volume s q Out) ^ (1 / q) * R := by
     unfold q4FiniteProductKernelBilinear
-    simpa only [Out, R] using
+    simpa only [Out, R,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       norm_q4FiniteProductPairing_le_fibreLpMoment volume s hq hp hconj Out G
         (by
           intro i hi
-          simpa only [Out, G] using hout i hi)
+          simpa only [Out, G,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hout i hi)
         (by
           intro i hi
-          simpa only [G] using hinput i hi)
+          simpa only [G,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hinput i hi)
   have hroot' : (q4FibreLpMoment volume s q Out) ^ (1 / q) <= A * A * R := by
-    simpa only [Out, G, R] using hroot
+    simpa only [Out, G, R,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hroot
   have hdiag : ‖q4FiniteProductKernelBilinear volume s (fun _ _ => True)
       (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) G G‖ <=
       (A * R) ^ (2 : Nat) := by
@@ -375,13 +401,19 @@ private theorem q4ActiveDyadicScaledNormalizedDerivative_synthesis_norm_le_of_fu
   have henergy' : q4FiniteProductKernelBilinear volume s (fun _ _ => True)
       (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) G G =
       inner Complex S S := by
-    simpa only [G, G2, S] using henergy
+    simpa only [G, G2, S,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using henergy
   have hdiag' : ‖inner Complex S S‖ <= (A * R) ^ (2 : Nat) := by
     rw [henergy'] at hdiag
     exact hdiag
   have hsq : ‖S‖ ^ (2 : Nat) <= (A * R) ^ (2 : Nat) := by
-    simpa only [inner_self_eq_norm_sq_to_K, norm_pow, Complex.norm_real,
-      Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)] using hdiag'
+    have h1 : ‖inner Complex S S‖ = ‖S‖ ^ (2 : Nat) := by
+      rw [inner_self_eq_norm_sq_to_K]
+      simp [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg]
+    rw [h1] at hdiag'
+    exact hdiag'
   have hAR : 0 <= A * R := mul_nonneg hA hR
   nlinarith [norm_nonneg S, sq_nonneg (‖S‖ + A * R)]
 
@@ -444,12 +476,18 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_canon
   let A : Real := Real.sqrt C.toReal
   have hA : 0 <= A := Real.sqrt_nonneg _
   have hGmeas : Measurable Gproduct := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       measurable_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
         E j psi hpsiCompact u q hqtwo f
   have hGpower : Integrable (fun z => ‖Gproduct z‖ ^ p)
       (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       integrable_norm_rpow_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
         E j psi hpsiCompact u q p hqone hqtwo hp.le hmul f
   have hstrong' : eLpNorm
@@ -458,19 +496,25 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_canon
       (ENNReal.ofReal q) (q4FiniteProductCountingMeasure volume s) <=
       C * eLpNorm Gproduct (ENNReal.ofReal p)
         (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using hstrong
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hstrong
   have houtmeas : AEStronglyMeasurable
       (q4FiniteProductKernelShell volume s (fun _ _ => True)
         (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) Gproduct)
       (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       aestronglyMeasurable_q4ActiveDyadicScaledNormalizedDerivativeFullKernelPowerDualProduct
         E j psi hpsiCompact u q hqtwo f
   have hout : ∀ i ∈ s, MemLp
       (q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun _ _ => True)
           (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u)
-          (q4FibresToFiniteProduct s G))) i)
+          (q4FibresToFiniteProduct s G)) i)
       (ENNReal.ofReal q) volume := by
     intro i hi
     have hmem :=
@@ -481,11 +525,17 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_canon
         Gproduct hqpos hp C hC houtmeas hGmeas hGpower hstrong' i hi
     simpa only [G, Gproduct,
       q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
-      q4FiniteProductToFibres_q4FibresToFiniteProduct_apply] using hmem
+      q4FiniteProductToFibres_q4FibresToFiniteProduct_apply,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hmem
   have hinput : ∀ i ∈ s, MemLp (G i) (ENNReal.ofReal p) volume := by
     intro i hi
     have hmeas : Measurable (G i) := by
-      simpa only [G] using
+      simpa only [G,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
         (q4PowerDualField_mem_Q4PhysicalDualCarrier q hqtwo
           (fun k => q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece
             psi hpsiCompact j (dyadicLeft j k + u) f) i).2.2.1.measurable
@@ -495,7 +545,10 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_canon
       volume s Gproduct hGpower i hi
     rw [q4FiniteProductToFibres_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
       E j psi hpsiCompact u q f i hi] at hpow
-    simpa only [G, ENNReal.toReal_ofReal hp.le] using hpow
+    simpa only [G, ENNReal.toReal_ofReal hp.le,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hpow
   have hroot :
       (q4FibreLpMoment volume s q
         (q4FiniteProductToFibres s
@@ -503,7 +556,10 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_canon
             (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u)
             (q4FibresToFiniteProduct s G)))) ^ (1 / q) <=
         A * A * (q4FibreLpMoment volume s p G) ^ (1 / p) := by
-    simpa only [s, G, A] using
+    simpa only [s, G, A,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       q4ActiveDyadicScaledNormalizedDerivativeCanonicalFullProduct_rootMoment_le_of_eLpStrongENNReal_sq
         E j psi hpsiCompact u q p hqone hqtwo hp hmul C hC f hstrong
   have hS := q4ActiveDyadicScaledNormalizedDerivative_synthesis_norm_le_of_fullProductRoot
@@ -536,15 +592,24 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_canon
           ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ :=
         norm_inner_le_norm _ _
       _ <= (A * R) * ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ :=
-        mul_le_mul_of_nonneg_right (by simpa only [G, R] using hS) (norm_nonneg _)
+        mul_le_mul_of_nonneg_right (by simpa only [G, R,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hS) (norm_nonneg _)
       _ = A * ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ * R := by ring
   have hCF : 0 <= A * ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ :=
     mul_nonneg hA (norm_nonneg _)
   have hmoment := q4FibreLpMoment_rpow_one_div_le_of_dual_test_at_test
     volume s hqpos hp hconj hCF F
     (q4PowerDualTest volume s q p F hqone hmul) (by
-      simpa only [G, F, R] using hbilinear)
-  simpa only [s, F, A] using hmoment
+      simpa only [G, F, R,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hbilinear)
+  simpa only [s, F, A,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hmoment
 
 /-- The literal stationary pair-kernel estimate and literal multiplier
 bound give the fixed-offset strong finite-product estimate for the actual
@@ -562,11 +627,13 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hdecay : HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-      d (fun _ => psi) (1 / 2 : Real) (5 / 2) Ckernel)
+      d psiFam (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicScaledNormalizedDerivativePairMultiplier
           psi hpsiCompact j u i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
@@ -609,32 +676,50 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
     q4ActiveDyadicLevelStrongConstant d gamma eta Ccover Ckernel B j n q
   let A : Real := Real.sqrt L.toReal
   have hL : L ≠ ⊤ := by
-    simpa only [L] using q4ActiveDyadicLevelStrongConstant_sum_ne_top hqgtwo
+    simpa only [L,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using q4ActiveDyadicLevelStrongConstant_sum_ne_top hqgtwo
   have hA : 0 <= A := by
     exact Real.sqrt_nonneg _
   have hGmeas : Measurable Gproduct := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       measurable_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
         E j psi hpsiCompact u q hqtwo f
   have hGint : Integrable Gproduct (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       integrable_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
         E j psi hpsiCompact u q hqtwo f
   have hGsq : Integrable (fun z => ‖Gproduct z‖ ^ (2 : Nat))
       (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       integrable_norm_sq_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
         E j psi hpsiCompact u q hqtwo f
   have hGfib : ∀ i ∈ s,
       Integrable (q4FiniteProductToFibres s Gproduct i) volume ∧
         MemLp (q4FiniteProductToFibres s Gproduct i) 2 volume := by
     intro i hi
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField_fibre_regular
         E j psi hpsiCompact u q hqtwo f i hi
   have hGpower : Integrable (fun z => ‖Gproduct z‖ ^ p)
       (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       integrable_norm_rpow_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
         E j psi hpsiCompact u q p (lt_trans one_lt_two hqgtwo)
           hqtwo hp.le hmul f
@@ -644,9 +729,12 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
       (ENNReal.ofReal q) (q4FiniteProductCountingMeasure volume s) <=
       L * eLpNorm Gproduct (ENNReal.ofReal p)
         (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct, L] using
+    simpa only [s, Gproduct, L,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       q4ActiveDyadicScaledNormalizedDerivativeFullProductPairShell_eLpNorm_le_levelSum_of_active_multiplier_homogeneous
-        hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hB
+        hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hpsiFam hB
         hmultiplier hp1 hp2 hq Gproduct hGmeas hGint hGsq hGfib hGpower rfl
   have hfull' : eLpNorm
       (q4FiniteProductKernelShell volume s (fun _ _ => True)
@@ -654,19 +742,25 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
       (ENNReal.ofReal q) (q4FiniteProductCountingMeasure volume s) <=
       L * eLpNorm Gproduct (ENNReal.ofReal p)
         (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [eLpNorm_norm] using hfull
+    simpa only [eLpNorm_norm,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hfull
   have houtmeas : AEStronglyMeasurable
       (q4FiniteProductKernelShell volume s (fun _ _ => True)
         (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) Gproduct)
       (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [s, Gproduct] using
+    simpa only [s, Gproduct,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       aestronglyMeasurable_q4ActiveDyadicScaledNormalizedDerivativeFullKernelPowerDualProduct
         E j psi hpsiCompact u q hqtwo f
   have hout : ∀ i ∈ s, MemLp
       (q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun _ _ => True)
           (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u)
-          (q4FibresToFiniteProduct s G)))
+          (q4FibresToFiniteProduct s G)) i)
       (ENNReal.ofReal q) volume := by
     intro i hi
     have hmem :=
@@ -677,11 +771,17 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
         Gproduct hqpos hp L hL houtmeas hGmeas hGpower hfull' i hi
     simpa only [G, Gproduct,
       q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
-      q4FiniteProductToFibres_q4FibresToFiniteProduct_apply] using hmem
+      q4FiniteProductToFibres_q4FibresToFiniteProduct_apply,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hmem
   have hinput : ∀ i ∈ s, MemLp (G i) (ENNReal.ofReal p) volume := by
     intro i hi
     have hmeas : Measurable (G i) := by
-      simpa only [G] using
+      simpa only [G,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
         (q4PowerDualField_mem_Q4PhysicalDualCarrier q hqtwo
           (fun k => q4ScaledNormalizedDyadicSurfaceRadiusDerivativeSchwartzPiece
             psi hpsiCompact j (dyadicLeft j k + u) f) i).2.2.1.measurable
@@ -691,7 +791,10 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
       volume s Gproduct hGpower i hi
     rw [q4FiniteProductToFibres_q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField
       E j psi hpsiCompact u q f i hi] at hpow
-    simpa only [G, ENNReal.toReal_ofReal hp.le] using hpow
+    simpa only [G, ENNReal.toReal_ofReal hp.le,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hpow
   have hroot :
       (q4FibreLpMoment volume s q
         (q4FiniteProductToFibres s
@@ -699,12 +802,15 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
             (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u)
             (q4FibresToFiniteProduct s G)))) ^ (1 / q) <=
         A * A * (q4FibreLpMoment volume s p G) ^ (1 / p) := by
-    simpa only [s, G, L, A] using
+    simpa only [s, G, L, A,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       q4ActiveDyadicScaledNormalizedDerivativeCanonicalFullProduct_rootMoment_le_of_active_multiplier
-        hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hB
+        hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hpsiFam hB
           hmultiplier hp1 hp2 hq f
   have hS := q4ActiveDyadicScaledNormalizedDerivative_synthesis_norm_le_of_fullProductRoot
-    psi hpsiCompact j u s hq hqtwo hp hconj hA f hout hinput hroot
+    psi hpsiCompact j u s (lt_trans one_lt_two hqgtwo) hqtwo hp hconj hA f hout hinput hroot
   have hpair := q4ActiveDyadicScaledNormalizedDerivative_analysisPairing_eq_l2
     psi hpsiCompact j u s q hqtwo f
   let F : Int -> Euclidean d -> Complex :=
@@ -733,15 +839,24 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
           ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ :=
         norm_inner_le_norm _ _
       _ <= (A * R) * ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ :=
-        mul_le_mul_of_nonneg_right (by simpa only [G, R] using hS) (norm_nonneg _)
+        mul_le_mul_of_nonneg_right (by simpa only [G, R,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hS) (norm_nonneg _)
       _ = A * ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ * R := by ring
   have hCF : 0 <= A * ‖(f.memLp 2 volume).toLp (f : Euclidean d -> Complex)‖ :=
     mul_nonneg hA (norm_nonneg _)
   have hmoment := q4FibreLpMoment_rpow_one_div_le_of_dual_test_at_test
     volume s hqpos hp hconj hCF F
     (q4PowerDualTest volume s q p F (lt_trans one_lt_two hqgtwo) hmul) (by
-      simpa only [G, F, R] using hbilinear)
-  simpa only [s, F, L, A] using hmoment
+      simpa only [G, F, R,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hbilinear)
+  simpa only [s, F, L, A,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hmoment
 
 /-- The fixed-offset `L² → L^q` estimate for the actual finite active
 maximum of scaled derivatives.  The supremum is the finite maximum itself,
@@ -759,19 +874,21 @@ theorem q4ActiveDyadicScaledDerivativeSup_rootMoment_le_of_active_multiplier
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hdecay : HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-      d (fun _ => psi) (1 / 2 : Real) (5 / 2) Ckernel)
+      d psiFam (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicScaledNormalizedDerivativePairMultiplier
           psi hpsiCompact j u i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
     (hq : q = p / (p - 1))
     (f : SchwartzMap (Euclidean d) Complex) :
-    (integral fun x : Euclidean d =>
+    (∫ x : Euclidean d,
       activeDyadicDerivativeSup E j hs
-        (fun t => q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j t x) u ^ q) ^
+        (fun t => q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j t x) u ^ q ∂volume) ^
       (1 / q) <=
       Real.sqrt
         (∑ n ∈ Finset.range (j + 3),
@@ -788,17 +905,23 @@ theorem q4ActiveDyadicScaledDerivativeSup_rootMoment_le_of_active_multiplier
   have hqpos : 0 < q := lt_trans zero_lt_two hqgtwo
   have hfibre : ∀ i ∈ s, Integrable (fun x => ‖pieces i x‖ ^ q) volume := by
     intro i hi
-    simpa only [pieces] using
+    simpa only [pieces,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       integrable_norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivative_rpow_of_schwartz
         psi hpsiCompact j (dyadicLeft j i + u) f hqpos
   have hmax : Integrable (fun x => q4FiniteProductMaximal s hs pieces x ^ q) volume := by
     simpa only [s, pieces, q4FiniteProductMaximal,
-      activeDyadicDerivativeSup, dyadicDerivativeSup] using
+      activeDyadicDerivativeSup, dyadicDerivativeSup,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
       integrable_activeDyadicScaledDerivativeSup_rpow_of_schwartz
         E j hs psi hpsiCompact f u hqpos
   have hmomentAnalysis :=
     q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_active_multiplier
-      hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hB
+      hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hpsiFam hB
         hmultiplier hp1 hp2 hq f
   have hmomentPieces :
       (q4FibreLpMoment volume s q pieces) ^ (1 / q) <=
@@ -818,14 +941,23 @@ theorem q4ActiveDyadicScaledDerivativeSup_rootMoment_le_of_active_multiplier
       rw [show pieces i x =
           q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField
             psi hpsiCompact j u f i x by
-          simpa only [pieces] using
-            (q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_apply_eq
+          simpa only [pieces,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using
+            (q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_apply
               psi hpsiCompact j u f i x).symm]]
-    simpa only [s] using hmomentAnalysis
+    simpa only [s,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hmomentAnalysis
   have hmaxroot := q4FiniteProductMaximal_moment_le_of_fibreLpMoment
     volume s hs q pieces hqpos hmomentPieces hmax hfibre
   simpa only [s, pieces, q4FiniteProductMaximal,
-    activeDyadicDerivativeSup, dyadicDerivativeSup] using hmaxroot
+    activeDyadicDerivativeSup, dyadicDerivativeSup,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hmaxroot
 
 /-- The literal FTOC derivative correction obeys the dyadic `L^q` estimate
 coming from the stationary pair-kernel and Fourier multiplier bounds.  The
@@ -844,12 +976,14 @@ theorem q4ActiveDyadicScaledDerivativeVariationTerm_eLpNorm_le_of_active_multipl
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d -> Complex))
     {Ckernel B : Real} (hCkernel : 0 < Ckernel)
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hdecay : HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-      d (fun _ => psi) (1 / 2 : Real) (5 / 2) Ckernel)
+      d psiFam (1 / 2 : Real) (5 / 2) Ckernel)
+    (hpsiFam : psi = psiFam j)
     (hB : 0 <= B)
-    (hmultiplier : forall u ∈ Icc (0 : Real) (dyadicScale j),
-      forall i ∈ activeDyadicIndices E j,
-      forall l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
+    (hmultiplier : ∀ u ∈ Icc (0 : Real) (dyadicScale j),
+      ∀ i ∈ activeDyadicIndices E j,
+      ∀ l ∈ activeDyadicIndices E j, forall xi : Euclidean d,
         ‖q4ActiveDyadicScaledNormalizedDerivativePairMultiplier
           psi hpsiCompact j u i l xi‖ <= B)
     {p q : Real} (hp1 : 1 < p) (hp2 : p < 2)
@@ -884,9 +1018,12 @@ theorem q4ActiveDyadicScaledDerivativeVariationTerm_eLpNorm_le_of_active_multipl
   · intro u hu
     have hu' : u ∈ Icc (0 : Real) (dyadicScale j) := ⟨hu.1.le, hu.2⟩
     have hroot := q4ActiveDyadicScaledDerivativeSup_rootMoment_le_of_active_multiplier
-      hd hj hE hcover hCcover hgamma hdeltaone hs u hu' psi hpsiCompact hCkernel hdecay hB
+      hd hj hE hcover hCcover hgamma hdeltaone hs u hu' psi hpsiCompact hCkernel hdecay hpsiFam hB
       (hmultiplier u hu') hp1 hp2 hq f
-    simpa only [L, A] using hroot
+    simpa only [L, A,
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hroot
 
 end
 

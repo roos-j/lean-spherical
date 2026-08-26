@@ -16,7 +16,7 @@ open Auto.Spherical.FractalDilations.Q4DerivativePairKernel
 open Auto.Spherical.FractalDilations.Q4PairKernelGap
 open Auto.Spherical.FractalDilations.Q4RadialReduction
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -101,7 +101,7 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
   choose C hCpos hCbound using hterm
   let parts3 : Finset (CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart)) :=
     coordinateWaveParts.product (coordinateWaveParts.product coordinateWaveParts)
-  let K : Real := ∑ z in parts3, C z.1 z.2.1 z.2.2
+  let K : Real := ∑ z ∈ parts3, C z.1 z.2.1 z.2.2
   let z0 : CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart) :=
     (.outgoing, (.outgoing, .outgoing))
   have hz0 : z0 ∈ parts3 := by
@@ -139,14 +139,14 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
             (s * r) (s * r') v (s • x) p q t u *
             oscillatoryExp
               (coordinateTripleWavePhase p q t ‖s • x‖ (s * r) (s * r')) u =
-        ∑ z in parts3,
+        ∑ z ∈ parts3,
           coordinateRadiusDerivativeTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
             oscillatoryExp
               (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                 (s * r) (s * r')) u := by
-    simp only [parts3, Finset.sum_product]
+    simp [parts3, Finset.sum_product]
   have hintegrable (z : CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart))
       (hz : z ∈ parts3) :
       IntervalIntegrable (fun u : Real =>
@@ -178,7 +178,7 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
               (s * r) (s * r') v (s • x) p q t u *
               oscillatoryExp
                 (coordinateTripleWavePhase p q t ‖s • x‖ (s * r) (s * r')) u) =
-        ∫ u in (1 : Real)..4, ∑ z in parts3,
+        ∫ u in (1 : Real)..4, ∑ z ∈ parts3,
           coordinateRadiusDerivativeTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
@@ -189,14 +189,14 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
       intro u hu
       exact hsum u]
     calc
-      ‖∫ u in (1 : Real)..4, ∑ z in parts3,
+      ‖∫ u in (1 : Real)..4, ∑ z ∈ parts3,
           coordinateRadiusDerivativeTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
             oscillatoryExp
               (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                 (s * r) (s * r')) u‖ ≤
-          ∑ z in parts3,
+          ∑ z ∈ parts3,
             ‖∫ u in (1 : Real)..4,
               coordinateRadiusDerivativeTripleWaveCoefficient
                 (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -205,7 +205,7 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
                   (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                     (s * r) (s * r')) u‖ :=
         norm_intervalIntegral_finsetSum_le parts3 _ (fun z hz => hintegrable z hz)
-      _ ≤ ∑ z in parts3,
+      _ ≤ ∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s ^ (d - 1) *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent d) := by
         apply Finset.sum_le_sum
@@ -213,13 +213,13 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
         exact hCbound z.1 z.2.1 z.2.2 s r r' hs hr hr' v x hv
       _ = K / s ^ (d - 1) *
           (1 + s * |r - r'|) ^ (-q4StationaryExponent d) := by
-        change (∑ z in parts3,
+        change (∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s ^ (d - 1) *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) = _
-        rw [show (∑ z in parts3,
+        rw [show (∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s ^ (d - 1) *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) =
-          (∑ z in parts3, C z.1 z.2.1 z.2.2) *
+          (∑ z ∈ parts3, C z.1 z.2.1 z.2.2) *
             ((1 / s ^ (d - 1)) *
               (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) by
           rw [Finset.sum_mul]
@@ -237,9 +237,12 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
       s ^ d * (K / s ^ (d - 1) *
         (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) =
         K * s * (1 + s * |r - r'|) ^ (-q4StationaryExponent d) := by
-    rw [show d = (d - 1) + 1 by omega, pow_add]
+    have hd1 : s ^ d = s ^ (d - 1) * s := by
+      rw [← pow_succ]
+      congr 1
+      omega
+    rw [hd1]
     field_simp [pow_ne_zero _ hspos.ne']
-    ring
   calc
     ‖s ^ d • ∫ u in (1 : Real)..4,
         ∑ p ∈ coordinateWaveParts, ∑ q ∈ coordinateWaveParts,
@@ -267,9 +270,10 @@ theorem exists_hasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDe
       have hdyadic : dyadicScale j = s⁻¹ := by
         dsimp [dyadicScale, dyadicDenom, s]
         simp
-      unfold q4PairKernelGapWeight
-      rw [hdyadic, div_inv]
-      unfold q4StationaryExponent
+      have hrw : |r - r'| / s⁻¹ = s * |r - r'| := by
+        field_simp
+      unfold q4PairKernelGapWeight q4StationaryExponent
+      rw [hdyadic, hrw]
 
 end
 

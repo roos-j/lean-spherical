@@ -51,9 +51,14 @@ theorem measurable_q4FibresToFiniteProduct_of_continuous
         g i.1 z.1) :=
       (hg i.1).measurable.comp measurable_fst
     exact hbase.indicator (measurable_snd (measurableSet_singleton i))
-  have hsum : (∑ i : {i // i ∈ s}, F i) = q4FibresToFiniteProduct s g := by
+  have hsum : (fun z : Euclidean d × {i // i ∈ s} =>
+      ∑ i : {i // i ∈ s}, F i z) = q4FibresToFiniteProduct s g := by
     funext z
-    simp [F, q4FibresToFiniteProduct]
+    rw [Finset.sum_eq_single_of_mem z.2 (Finset.mem_univ _)
+      (fun c _ hc => by
+        have hne : z.2 ≠ c := fun h => hc h.symm
+        simp [F, Set.indicator_apply, hne])]
+    simp [F, Set.indicator_apply, q4FibresToFiniteProduct]
   rw [← hsum]
   exact Finset.measurable_sum Finset.univ (fun i _ => hF i)
 
@@ -62,7 +67,7 @@ literal physical-times-counting product. -/
 theorem integrable_q4FibresToFiniteProduct_of_fibres
     {d : Nat} (s : Finset Int) (g : Int -> Euclidean d -> Complex)
     (hgmeas : Measurable (q4FibresToFiniteProduct s g))
-    (hg : forall i ∈ s, Integrable (g i) volume) :
+    (hg : ∀ i ∈ s, Integrable (g i) volume) :
     Integrable (q4FibresToFiniteProduct s g)
       (q4FiniteProductCountingMeasure volume s) := by
   apply integrable_q4FiniteProduct_of_fibres s (q4FibresToFiniteProduct s g)
@@ -75,7 +80,7 @@ on the literal finite product. -/
 theorem integrable_norm_sq_q4FibresToFiniteProduct_of_fibres
     {d : Nat} (s : Finset Int) (g : Int -> Euclidean d -> Complex)
     (hgmeas : Measurable (q4FibresToFiniteProduct s g))
-    (hg : forall i ∈ s, MemLp (g i) 2 volume) :
+    (hg : ∀ i ∈ s, MemLp (g i) 2 volume) :
     Integrable (fun z => ‖q4FibresToFiniteProduct s g z‖ ^ (2 : Nat))
       (q4FiniteProductCountingMeasure volume s) := by
   apply integrable_norm_sq_q4FiniteProduct_of_fibres s
@@ -90,7 +95,7 @@ theorem integrable_norm_rpow_q4FibresToFiniteProduct_of_fibres
     {d : Nat} (s : Finset Int) (g : Int -> Euclidean d -> Complex)
     (hgmeas : Measurable (q4FibresToFiniteProduct s g))
     {p : Real} (hp : 0 <= p)
-    (hg : forall i ∈ s, Integrable (fun x => ‖g i x‖ ^ p) volume) :
+    (hg : ∀ i ∈ s, Integrable (fun x => ‖g i x‖ ^ p) volume) :
     Integrable (fun z => ‖q4FibresToFiniteProduct s g z‖ ^ p)
       (q4FiniteProductCountingMeasure volume s) := by
   apply integrable_q4FiniteProduct_of_fibres s
@@ -123,10 +128,10 @@ theorem q4FiniteProductToFibres_ae_eq_of_ae_eq_product
     q4FiniteProductToFibres s g i =ᵐ[mu]
       q4FiniteProductToFibres s h i := by
   change g =ᵐ[mu.prod Measure.count] h at heq
-  have hcurried := ae_ae_eq_curry_of_prod heq
+  have hcurried := Measure.ae_ae_eq_curry_of_prod heq
   filter_upwards [hcurried] with x hx
   simpa [q4FiniteProductToFibres, hi] using
-    (ae_count_iff.mp hx ⟨i, hi⟩)
+    (Measure.ae_count_iff.mp hx ⟨i, hi⟩)
 
 /-- Fibre moments are invariant under almost-everywhere equality of literal
 finite product fields.  This lets a physical convolution shell be replaced
@@ -161,7 +166,7 @@ theorem integrable_norm_rpow_q4FiniteProductToFibres_of_integrable
     (i : I) (hi : i ∈ s) :
     Integrable (fun x => ‖q4FiniteProductToFibres s g i x‖ ^ p) mu := by
   change Integrable (fun z => ‖g z‖ ^ p) (mu.prod Measure.count) at hg
-  have hfib := ae_count_iff.mp hg.prod_left_ae ⟨i, hi⟩
+  have hfib := Measure.ae_count_iff.mp hg.prod_left_ae ⟨i, hi⟩
   simpa [q4FiniteProductToFibres, hi] using hfib
 
 /-- A literal finite product shell annihilates a product field whose positive
@@ -191,10 +196,10 @@ theorem q4FiniteProductKernelShell_eq_zero_of_integral_norm_rpow_eq_zero
   have hfibzero (i : I) (hi : i ∈ s) :
       q4FiniteProductToFibres s g i =ᵐ[mu] 0 := by
     change g =ᵐ[mu.prod Measure.count] 0 at hgzero
-    have hcurried := ae_ae_eq_curry_of_prod hgzero
+    have hcurried := Measure.ae_ae_eq_curry_of_prod hgzero
     filter_upwards [hcurried] with x hx
     simpa [q4FiniteProductToFibres, hi] using
-      (ae_count_iff.mp hx ⟨i, hi⟩)
+      (Measure.ae_count_iff.mp hx ⟨i, hi⟩)
   funext z
   unfold q4FiniteProductKernelShell q4KernelTTStarShell
   apply Finset.sum_eq_zero

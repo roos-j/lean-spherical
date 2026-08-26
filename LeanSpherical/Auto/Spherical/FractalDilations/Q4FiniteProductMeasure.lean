@@ -11,7 +11,7 @@ open Auto.Spherical.FractalDilations.Q4FibreSizes
 open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -43,6 +43,15 @@ def q4FiniteProductCountingMeasure
     (μ : Measure X) (s : Finset I) :
     Measure (X × {i // i ∈ s}) :=
   μ.prod Measure.count
+
+/-- The concrete finite-product measure is s-finite whenever the base is:
+the fibre index set is a finite subtype, so counting measure is finite. -/
+instance q4FiniteProductCountingMeasure_sFinite
+    {I X : Type*} [MeasurableSpace X] [MeasurableSpace I]
+    (mu : Measure X) [SFinite mu] (s : Finset I) :
+    SFinite (q4FiniteProductCountingMeasure mu s) := by
+  unfold q4FiniteProductCountingMeasure
+  infer_instance
 
 /-- Tonelli on the concrete finite product, followed by counting-measure
 summation.  The right side is written in active fibres so it matches

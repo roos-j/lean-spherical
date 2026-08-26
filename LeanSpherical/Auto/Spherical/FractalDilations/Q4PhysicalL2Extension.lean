@@ -14,7 +14,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.Q4FiniteRadiusOperators
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -64,7 +64,8 @@ theorem q4_fourier_toTemperedDistribution_eq_of_memLp_one
     MeasureTheory.Lp.toTemperedDistribution_apply]
   have hduality := VectorFourier.integral_fourierIntegral_smul_eq_flip
     (L := innerₗ (Euclidean d)) Real.continuous_fourierChar continuous_inner
-      (memLp_one_iff_integrable.mp hf) u.integrable
+      (memLp_one_iff_integrable.mp hf)
+      (u.integrable (μ := (volume : Measure (Euclidean d))))
   calc
     (∫ x : Euclidean d, FourierTransform.fourier u x •
         (hf.toLp f : Euclidean d -> Complex) x) =
@@ -75,6 +76,10 @@ theorem q4_fourier_toTemperedDistribution_eq_of_memLp_one
       simpa only [smul_eq_mul] using
         (mul_comm (FourierTransform.fourier u x) (f x))
     _ = ∫ xi : Euclidean d, FourierTransform.fourier f xi • u xi := by
+      change (∫ x : Euclidean d, f x •
+        VectorFourier.fourierIntegral 𝐞 volume (innerₗ (Euclidean d)) u x) =
+        ∫ xi : Euclidean d,
+          VectorFourier.fourierIntegral 𝐞 volume (innerₗ (Euclidean d)) f xi • u xi
       simpa using hduality.symm
     _ = ∫ xi : Euclidean d, u xi • h xi := by
       apply integral_congr_ae
@@ -134,6 +139,7 @@ theorem q4L2FourierMultiplier_toTemperedDistribution_eq
           (f : TemperedDistribution (Euclidean d) Complex) := by
       rw [TemperedDistribution.fourierMultiplierCLM_apply]
       congr 1
+      simp only [SchwartzMap.toLp]
       rw [MeasureTheory.Lp.toTemperedDistribution_smul_eq
         m.hasTemperateGrowth (m.memLp ⊤ volume)]
       rw [← MeasureTheory.Lp.fourier_toTemperedDistribution_eq f]
@@ -185,16 +191,18 @@ theorem q4_schwartzConvolution_ae_eq_l2FourierMultiplier
       (m.toLp 2 volume) (hFgTop.toLp Fg),
       SchwartzMap.coeFn_toLp m 2 volume, hFgTop.coeFn_toLp,
       hh.coeFn_toLp] with x hsmul hm hF hhx
+    simp only [Pi.smul_apply, Pi.mul_apply, smul_eq_mul] at hsmul ⊢
     rw [hsmul, hm, hF, hhx]
-    simp only [h, Pi.smul_apply, smul_eq_mul]
   have hproductTD :
       TemperedDistribution.smulLeftCLM Complex (m : Euclidean d -> Complex)
         ((hFgTop.toLp Fg : Lp Complex ⊤ (volume : Measure (Euclidean d))) :
           TemperedDistribution (Euclidean d) Complex) =
       ((hh.toLp h : Lp Complex 2 (volume : Measure (Euclidean d))) :
         TemperedDistribution (Euclidean d) Complex) := by
-    rw [← MeasureTheory.Lp.toTemperedDistribution_smul_eq
-      m.hasTemperateGrowth (m.memLp 2 volume), hproductLp]
+    rw [← hproductLp]
+    simp only [SchwartzMap.toLp]
+    rw [MeasureTheory.Lp.toTemperedDistribution_smul_eq
+      m.hasTemperateGrowth (m.memLp 2 volume)]
   have hg1' : MemLp g 1 volume := memLp_one_iff_integrable.mpr hg1
   have hFourierG :
       FourierTransform.fourier
@@ -240,11 +248,11 @@ theorem q4_schwartzConvolution_ae_eq_l2FourierMultiplier
       _ = ((hh.toLp h : Lp Complex 2 (volume : Measure (Euclidean d))) :
             TemperedDistribution (Euclidean d) Complex) := hproductTD
   have hc : Integrable
-      (((k : Euclidean d -> Complex) ⋆[ContinuousLinearMap.mul Complex Complex, volume] g)
+      ((k : Euclidean d -> Complex) ⋆[ContinuousLinearMap.mul Complex Complex, volume] g)
       volume :=
     k.integrable.integrable_convolution (ContinuousLinearMap.mul Complex Complex) hg1
   have hc1 : MemLp
-      (((k : Euclidean d -> Complex) ⋆[ContinuousLinearMap.mul Complex Complex, volume] g)
+      ((k : Euclidean d -> Complex) ⋆[ContinuousLinearMap.mul Complex Complex, volume] g)
       1 volume := memLp_one_iff_integrable.mpr hc
   have hFourierK (xi : Euclidean d) :
       FourierTransform.fourier (k : Euclidean d -> Complex) xi = m xi := by
@@ -257,7 +265,6 @@ theorem q4_schwartzConvolution_ae_eq_l2FourierMultiplier
         ((k : Euclidean d -> Complex) ⋆[ContinuousLinearMap.mul Complex Complex, volume] g) xi =
         h xi := by
     rw [Real.fourier_mul_convolution_eq k.integrable hg1, hFourierK]
-    rfl
   have hFourierPhysical :
       FourierTransform.fourier
         ((hc1.toLp ((k : Euclidean d -> Complex) ⋆[
@@ -296,7 +303,7 @@ theorem q4_schwartzConvolution_ae_eq_l2FourierMultiplier
           TemperedDistribution (Euclidean d) Complex) :=
         FourierTransform.fourierInv_fourier_eq _
   refine ae_eq_of_integral_contDiff_smul_eq hc.locallyIntegrable
-    (Lp.memLp _).locallyIntegrable ?_
+    ((Lp.memLp _).locallyIntegrable (by norm_num)) ?_
   intro phi hphiDiff hphiCompact
   let u : SchwartzMap (Euclidean d) Complex :=
     (hphiCompact.comp_left (g := Complex.ofRealCLM) rfl).toSchwartzMap
@@ -324,7 +331,8 @@ theorem q4_schwartzConvolution_ae_eq_l2FourierMultiplier
           Lp Complex 2 (volume : Measure (Euclidean d))) :
           Euclidean d -> Complex) x := by
           simpa only [MeasureTheory.Lp.toTemperedDistribution_apply] using htest
-  simpa only [u, Function.comp_apply, Complex.real_smul] using htest'
+  have huapp : ∀ x : Euclidean d, u x = ((phi x : Real) : Complex) := fun x => rfl
+  simpa only [huapp, Complex.real_smul, smul_eq_mul, k] using htest'
 
 /-- The preceding generic convolution theorem specialized to the literal
 active-dyadic pair kernel.  This is the exact bridge used by the finite
@@ -390,12 +398,23 @@ theorem q4ActiveDyadicFiniteProductKernelShell_ae_eq_l2PairShell
             ((hg2 l).toLp (q4FiniteProductToFibres s g l)) :
             Lp Complex 2 (volume : Measure (Euclidean d))) :
             Euclidean d -> Complex) x) := by
-    refine eventuallyEq_sum fun l hl => ?_
-    exact q4ActiveDyadicPairKernelApply_ae_eq_l2Piece psi hpsiCompact j i l
-      (q4FiniteProductToFibres s g l) (hg1 l) (hg2 l)
+    have hall : ∀ᵐ x ∂(volume : Measure (Euclidean d)), ∀ l ∈ s,
+        q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+          (q4FiniteProductToFibres s g l) x =
+          ((q4ActiveDyadicPairL2Piece psi hpsiCompact j i l
+            ((hg2 l).toLp (q4FiniteProductToFibres s g l)) :
+            Lp Complex 2 (volume : Measure (Euclidean d))) :
+            Euclidean d -> Complex) x := by
+      rw [Filter.eventually_all_finset]
+      intro l _
+      exact q4ActiveDyadicPairKernelApply_ae_eq_l2Piece psi hpsiCompact j i l
+        (q4FiniteProductToFibres s g l) (hg1 l) (hg2 l)
+    filter_upwards [hall] with x hx
+    exact Finset.sum_congr rfl fun l hl => hx l hl
   have hsum := Lp.coeFn_fun_finsetSum s
-    (fun l => q4ActiveDyadicPairL2Piece psi hpsiCompact j i l
-      ((hg2 l).toLp (q4FiniteProductToFibres s g l)))
+    (fun l => (q4ActiveDyadicPairL2Piece psi hpsiCompact j i l
+      ((hg2 l).toLp (q4FiniteProductToFibres s g l)) :
+      Lp Complex 2 (volume : Measure (Euclidean d))))
   simpa [q4FiniteProductKernelShell, q4KernelTTStarShell,
     q4L2FiniteProductPairShell] using hpairs.trans hsum.symm
 
@@ -431,12 +450,23 @@ theorem q4FiniteProductToFibres_activeDyadicFullKernel_ae_eq_l2PairShell
             ((hg2 l).toLp (g l)) :
             Lp Complex 2 (volume : Measure (Euclidean d))) :
             Euclidean d -> Complex) x) := by
-    refine eventuallyEq_sum fun l hl => ?_
-    exact q4ActiveDyadicPairKernelApply_ae_eq_l2Piece psi hpsiCompact j i l
-      (g l) (hg1 l) (hg2 l)
+    have hall : ∀ᵐ x ∂(volume : Measure (Euclidean d)), ∀ l ∈ s,
+        q4PairwiseKernelApply volume (q4ActiveDyadicPairKernel psi j) i l
+          (g l) x =
+          ((q4ActiveDyadicPairL2Piece psi hpsiCompact j i l
+            ((hg2 l).toLp (g l)) :
+            Lp Complex 2 (volume : Measure (Euclidean d))) :
+            Euclidean d -> Complex) x := by
+      rw [Filter.eventually_all_finset]
+      intro l _
+      exact q4ActiveDyadicPairKernelApply_ae_eq_l2Piece psi hpsiCompact j i l
+        (g l) (hg1 l) (hg2 l)
+    filter_upwards [hall] with x hx
+    exact Finset.sum_congr rfl fun l hl => hx l hl
   have hsum := Lp.coeFn_fun_finsetSum s
-    (fun l => q4ActiveDyadicPairL2Piece psi hpsiCompact j i l
-      ((hg2 l).toLp (g l)))
+    (fun l => (q4ActiveDyadicPairL2Piece psi hpsiCompact j i l
+      ((hg2 l).toLp (g l)) :
+      Lp Complex 2 (volume : Measure (Euclidean d))))
   have hphysical (x : Euclidean d) :
       q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun (_ _ : Int) => True)
@@ -448,7 +478,10 @@ theorem q4FiniteProductToFibres_activeDyadicFullKernel_ae_eq_l2PairShell
     rw [Finset.filter_true]
     apply Finset.sum_congr rfl
     intro l hl
-    simp only [q4FiniteProductToFibres, dif_pos hl, q4FibresToFiniteProduct]
+    have hround : q4FiniteProductToFibres s (q4FibresToFiniteProduct s g) l = g l := by
+      funext y
+      simp [q4FiniteProductToFibres, q4FibresToFiniteProduct, hl]
+    rw [hround]
   filter_upwards [hpairs, hsum] with x hx hsumx
   calc
     q4FiniteProductToFibres s
@@ -524,6 +557,7 @@ theorem q4ActiveDyadicSchwartzPowerDualFullKernel_ae_eq_l2PairShell
     unfold q4L2FiniteProductPairShell
     apply Finset.sum_congr rfl
     intro l hl
+    dsimp only
     rw [hdual l]
   filter_upwards [hphysical] with x hx
   simpa only [g, F, hpairshell] using hx

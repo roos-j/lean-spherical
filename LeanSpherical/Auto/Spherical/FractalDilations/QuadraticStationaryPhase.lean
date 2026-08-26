@@ -645,6 +645,64 @@ theorem norm_smoothEndpointQuadraticIntegral_neg
       ‖smoothEndpointQuadraticIntegral m lambda‖ := by
   rw [smoothEndpointQuadraticIntegral_neg_eq_conj, RCLike.norm_conj]
 
+/-- Neg-symmetry of the moment integral for a profile with real values.
+Complex conjugation reverses the sign of the quadratic phase and fixes the
+amplitude, so the two signed frequencies have equal moment norms. -/
+theorem quadraticMomentIntegral_neg_eq_conj_of_real
+    (m : Nat) (h : Real -> Complex)
+    (hreal : ∀ u : Real, starRingEnd Complex (h u) = h u) (lambda : Real) :
+    quadraticMomentIntegral m h (-lambda) =
+      starRingEnd Complex (quadraticMomentIntegral m h lambda) := by
+  unfold quadraticMomentIntegral
+  rw [← intervalIntegral.intervalIntegral_conj]
+  apply intervalIntegral.integral_congr
+  intro u hu
+  show ((u ^ m : Real) : Complex) * h u *
+      Complex.exp ((((-lambda) * u ^ 2 : Real) : Complex) * Complex.I) =
+    starRingEnd Complex (((u ^ m : Real) : Complex) * h u *
+      Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I))
+  rw [map_mul, map_mul, hreal u, ← Complex.exp_conj, Complex.conj_ofReal]
+  congr 2
+  rw [map_mul, Complex.conj_I, Complex.conj_ofReal]
+  push_cast
+  ring
+
+theorem norm_quadraticMomentIntegral_neg_of_real
+    (m : Nat) (h : Real -> Complex)
+    (hreal : ∀ u : Real, starRingEnd Complex (h u) = h u) (lambda : Real) :
+    ‖quadraticMomentIntegral m h (-lambda)‖ =
+      ‖quadraticMomentIntegral m h lambda‖ := by
+  rw [quadraticMomentIntegral_neg_eq_conj_of_real m h hreal, RCLike.norm_conj]
+
+/-- Sharp compact stationary phase for both signs of the frequency, for an
+arbitrary real-valued smooth profile vanishing near the endpoint.  This is
+the form needed when a radial derivative raises the moment index while
+leaving the profile index unchanged. -/
+theorem exists_quadraticMoment_abs_decay
+    (m : Nat) (h : Real -> Complex) (hh : ContDiff Real (⊤ : ℕ∞) h)
+    (hvanish : VanishesNearOne h)
+    (hreal : ∀ u : Real, starRingEnd Complex (h u) = h u) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ |lambda| →
+      ‖quadraticMomentIntegral m h lambda‖ ≤
+        C / quadraticMomentScale m |lambda| := by
+  obtain ⟨C, hC, hbound⟩ := exists_quadraticMoment_decay m h hh hvanish
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  by_cases hnonneg : 0 ≤ lambda
+  · rw [abs_of_nonneg hnonneg]
+    exact hbound lambda (by simpa [abs_of_nonneg hnonneg] using hlambda)
+  · have hneg : lambda < 0 := lt_of_not_ge hnonneg
+    have hminus : 1 ≤ -lambda := by
+      rw [← abs_of_neg hneg]
+      exact hlambda
+    have habs : |lambda| = -lambda := abs_of_neg hneg
+    rw [habs]
+    calc ‖quadraticMomentIntegral m h lambda‖
+        = ‖quadraticMomentIntegral m h (-(-lambda))‖ := by rw [neg_neg]
+      _ = ‖quadraticMomentIntegral m h (-lambda)‖ :=
+          norm_quadraticMomentIntegral_neg_of_real m h hreal (-lambda)
+      _ ≤ C / quadraticMomentScale m (-lambda) := hbound (-lambda) hminus
+
 /-- Sharp compact stationary phase for both signs of the concrete endpoint
 frequency.  The denominator is written with `|lambda|`, so this statement
 can be used unchanged for the two signed waves in the spherical expansion. -/

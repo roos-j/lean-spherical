@@ -55,7 +55,8 @@ theorem q4FiniteProductToFibres_powerCutoffLow
         (q4FiniteProductToFibres s f l) y) := by
   by_cases hl : l ∈ s <;>
     by_cases hcut : t * ‖q4FiniteProductToFibres s f l y‖ ^ (p - 1) ≤ K <;>
-      simp [q4FiniteProductToFibres, q4PowerCutoffLow, hl, hcut]
+      simp_all [q4FiniteProductToFibres, q4PowerCutoffLow,
+        Set.indicator_apply]
 
 /-- Passing to the active fibres commutes with the complementary high hard
 cutoff. -/
@@ -66,25 +67,10 @@ theorem q4FiniteProductToFibres_powerCutoffHigh
     q4FiniteProductToFibres s (q4PowerCutoffHigh p K t f) l y =
       ({y | ¬ t * ‖q4FiniteProductToFibres s f l y‖ ^ (p - 1) ≤ K}.indicator
         (q4FiniteProductToFibres s f l) y) := by
-  by_cases hl : l ∈ s
-  · by_cases hcut : t * ‖q4FiniteProductToFibres s f l y‖ ^ (p - 1) ≤ K
-    · simp [q4FiniteProductToFibres, q4PowerCutoffHigh, q4PowerCutoffLow,
-        hl, hcut]
-    · have hmem : y ∈
-        {y | ¬ t * ‖q4FiniteProductToFibres s f l y‖ ^ (p - 1) ≤ K} := hcut
-      rw [Set.indicator_of_mem hmem]
-      simp [q4FiniteProductToFibres, q4PowerCutoffHigh, q4PowerCutoffLow,
-        hl, hcut]
-  · have hleft :
-        q4FiniteProductToFibres s (q4PowerCutoffHigh p K t f) l y = 0 := by
-      simp [q4FiniteProductToFibres, hl]
-    have hright : q4FiniteProductToFibres s f l y = 0 := by
-      simp [q4FiniteProductToFibres, hl]
-    rw [hleft]
-    simp only [Set.indicator_apply]
-    by_cases hmem : y ∈
-      {y | ¬ t * ‖q4FiniteProductToFibres s f l y‖ ^ (p - 1) ≤ K} <;>
-      simp [hright]
+  by_cases hl : l ∈ s <;>
+    by_cases hcut : t * ‖q4FiniteProductToFibres s f l y‖ ^ (p - 1) ≤ K <;>
+      simp_all [q4FiniteProductToFibres, q4PowerCutoffHigh, q4PowerCutoffLow,
+        Set.indicator_apply]
 
 /-- Measurability of one active fibre of a measurable product field. -/
 theorem measurable_q4FiniteProductToFibres
@@ -94,9 +80,17 @@ theorem measurable_q4FiniteProductToFibres
     (hf : Measurable f) (l : I) :
     Measurable (q4FiniteProductToFibres s f l) := by
   by_cases hl : l ∈ s
-  · simpa [q4FiniteProductToFibres, hl] using
-      hf.comp (Measurable.prodMk measurable_id measurable_const)
-  · simp [q4FiniteProductToFibres, hl]
+  · have hfun : q4FiniteProductToFibres s f l
+        = fun y : X => f (y, (⟨l, hl⟩ : {i // i ∈ s})) := by
+      funext y
+      simp [q4FiniteProductToFibres, hl]
+    rw [hfun]
+    exact hf.comp (Measurable.prodMk measurable_id measurable_const)
+  · have h0 : q4FiniteProductToFibres s f l = fun _ : X => (0 : ℂ) := by
+      funext y
+      simp [q4FiniteProductToFibres, hl]
+    rw [h0]
+    exact measurable_const
 
 /-- The literal product-shell domain is closed under the low hard cutoff.
 This is the same indicator argument as for the selected shell, performed on

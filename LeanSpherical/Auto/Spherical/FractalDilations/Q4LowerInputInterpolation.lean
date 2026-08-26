@@ -70,7 +70,6 @@ theorem q4LowerRationalAmplitudeScale_balances
     A * ((q4LowerRationalAmplitudeScale A I p t) ^ (1 - p) * I) = t / 2 := by
   rw [q4LowerRationalAmplitudeScale_rpow_one_sub hp1 hA hI ht]
   field_simp [hA.ne', hI.ne', ht.ne']
-  ring
 
 /-- The output exponent obtained from a lower-input `L² → Lʳ` estimate. -/
 def q4LowerWeakOutputExponent (p r : Real) : Real :=
@@ -126,7 +125,6 @@ theorem q4LowerRationalAmplitudeScale_weak_scalar
       q4LowerWeakTailExponent p r := by
     unfold q4LowerWeakTailExponent
     field_simp [hpminus]
-    ring
   have hscale :
       ((q4LowerRationalAmplitudeScale A I p t) ^ ((2 - p) / 2)) ^ r =
         ((2 * A * I) / t) ^ q4LowerWeakTailExponent p r := by
@@ -163,7 +161,6 @@ theorem q4LowerRationalAmplitudeScale_weak_scalar
             (I ^ ((1 : Real) / 2)) ^ r := by
           rw [Real.div_rpow hbase' ht.le]
           field_simp [htKpos.ne']
-          ring
     _ = (2 : Real) ^ r * B ^ r *
           ((2 * A) ^ q4LowerWeakTailExponent p r *
             I ^ q4LowerWeakTailExponent p r) *
@@ -217,9 +214,9 @@ theorem q4_lower_weak_distribution_of_lone_ltwo
         (B * ENNReal.ofReal
           ((q4LowerRationalAmplitudeScale A I p t) ^ ((2 - p) / 2) *
             I ^ ((1 : Real) / 2))) ^ r := by
-  apply weak_distribution_of_rational_schwartz_split_of_lone_ltwo
+  refine weak_distribution_of_rational_schwartz_split_of_lone_ltwo
     T hTsub hTmeas hA.le hLone hr B htwo f hp1 hp2 hI
-    (q4LowerRationalAmplitudeScale A I p)
+    (q4LowerRationalAmplitudeScale A I p) ?_ ?_ ht
   · intro s hs
     exact q4LowerRationalAmplitudeScale_pos hp1 hA hIpos hs
   · intro s hs
@@ -331,26 +328,24 @@ theorem q4_lower_weak_distribution_power_of_lone_ltwo
               ENNReal.ofReal (t ^ q4LowerWeakTailExponent p r) := by
             rw [← ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : Real) < 2)]
             rw [← ENNReal.ofReal_mul hB]
-            rw [← ENNReal.ofReal_rpow_of_nonneg
-              (mul_nonneg hB htermnonneg) hr.le]
-            rw [← ENNReal.ofReal_rpow_of_pos ht]
+            rw [ENNReal.ofReal_rpow_of_pos ht]
       _ = ENNReal.ofReal
             ((2 : Real) ^ r *
               (B * ((q4LowerRationalAmplitudeScale A I p t) ^ ((2 - p) / 2) *
                 I ^ ((1 : Real) / 2))) ^ r) *
               ENNReal.ofReal (t ^ q4LowerWeakTailExponent p r) := by
-            rw [← ENNReal.ofReal_mul
-              (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
-                (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))]
+            rw [ENNReal.ofReal_rpow_of_nonneg
+              (mul_nonneg hB htermnonneg) hr.le,
+              ← ENNReal.ofReal_mul
+                (Real.rpow_nonneg (by norm_num : (0 : Real) ≤ 2) r)]
       _ = ENNReal.ofReal
             ((2 : Real) ^ r *
               (B * ((q4LowerRationalAmplitudeScale A I p t) ^ ((2 - p) / 2) *
                 I ^ ((1 : Real) / 2))) ^ r *
               t ^ q4LowerWeakTailExponent p r) := by
             rw [← ENNReal.ofReal_mul (mul_nonneg
-              (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
-                (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))
-              (Real.rpow_nonneg ht.le _))]
+              (Real.rpow_nonneg (by norm_num : (0 : Real) ≤ 2) r)
+              (Real.rpow_nonneg (mul_nonneg hB htermnonneg) r))]
       _ = ENNReal.ofReal
             (q4LowerWeakRealConstant A B p r *
               I ^ (q4LowerWeakOutputExponent p r / p)) := by
@@ -369,7 +364,7 @@ theorem q4_lower_weak_distribution_power_of_lone_ltwo
             ((q4LowerRationalAmplitudeScale A I p t) ^ ((2 - p) / 2) *
               I ^ ((1 : Real) / 2))) ^ r) *
           (ENNReal.ofReal t) ^ q4LowerWeakTailExponent p r :=
-      mul_le_mul_right hraw _
+      mul_le_mul' hraw le_rfl
     _ = ENNReal.ofReal (q4LowerWeakRealConstant A B p r) *
           (ENNReal.ofReal I) ^ (q4LowerWeakOutputExponent p r / p) := hscalarE
 
@@ -429,21 +424,21 @@ theorem q4_lower_normalized_weak_distribution_of_lone_ltwo
       (ENNReal.ofReal I) ^ (q / p) := by
     calc
       (ENNReal.ofReal s) ^ q = ENNReal.ofReal (s ^ q) :=
-        (ENNReal.ofReal_rpow_of_pos hs).symm
+        ENNReal.ofReal_rpow_of_pos hs
       _ = ENNReal.ofReal (I ^ (q / p)) := by rw [hs_power]
       _ = (ENNReal.ofReal I) ^ (q / p) :=
-        ENNReal.ofReal_rpow_of_pos hIpos
+        (ENNReal.ofReal_rpow_of_pos hIpos).symm
   have hsE_power_ne_zero : (ENNReal.ofReal s) ^ q ≠ 0 := by
-    rw [← ENNReal.ofReal_rpow_of_pos hs]
+    rw [ENNReal.ofReal_rpow_of_pos hs]
     exact ENNReal.ofReal_ne_zero_iff.mpr (Real.rpow_pos_of_pos hs _)
   have hsE_power_ne_top : (ENNReal.ofReal s) ^ q ≠ ∞ := by
-    rw [← ENNReal.ofReal_rpow_of_pos hs]
+    rw [ENNReal.ofReal_rpow_of_pos hs]
     exact ENNReal.ofReal_ne_top
   have hprod : (ENNReal.ofReal (s * t)) ^ q =
       (ENNReal.ofReal s) ^ q * (ENNReal.ofReal t) ^ q := by
     calc
       (ENNReal.ofReal (s * t)) ^ q = ENNReal.ofReal ((s * t) ^ q) :=
-        (ENNReal.ofReal_rpow_of_pos (mul_pos hs ht)).symm
+        ENNReal.ofReal_rpow_of_pos (mul_pos hs ht)
       _ = ENNReal.ofReal (s ^ q * t ^ q) := by
         rw [Real.mul_rpow hs.le ht.le]
       _ = ENNReal.ofReal (s ^ q) * ENNReal.ofReal (t ^ q) :=

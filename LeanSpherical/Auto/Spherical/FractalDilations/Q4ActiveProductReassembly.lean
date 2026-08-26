@@ -6,6 +6,8 @@ import LeanSpherical.Auto.Spherical.FractalDilations.ActiveDyadicCellCovering
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4FiniteProductMeasure
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4SubpowerParameters
+set_option maxHeartbeats 1000000
+attribute [local instance 0] Classical.propDecidable
 open Auto.Spherical.FractalDilations.ActiveDyadicCellCovering
 open Auto.Spherical.FractalDilations.ActiveDyadicGapRange
 open Auto.Spherical.FractalDilations.DyadicCovering
@@ -23,7 +25,7 @@ open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TTStarCovering
 open Auto.Spherical.InterpolationTail
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -88,6 +90,7 @@ theorem activeDyadicGapLevel_symm (i l : ℤ) :
 /-- The active-pair relation is symmetric. -/
 theorem q4ActiveDyadicProductRelation_symm (E : Set ℝ) (j : ℕ) :
     Std.Symm (q4ActiveDyadicProductRelation E j) := by
+  constructor
   intro i l hactive
   exact ⟨hactive.2, hactive.1⟩
 
@@ -112,6 +115,7 @@ theorem q4ActiveDyadicProductLevel_symm
     (E : Set ℝ) (j n : ℕ) :
     Std.Symm (q4LevelShellRelation (q4ActiveDyadicProductRelation E j)
       activeDyadicGapLevel n) := by
+  constructor
   intro i l hlevel
   rcases hlevel with ⟨hactive, hlevel⟩
   refine ⟨⟨hactive.2, hactive.1⟩, ?_⟩
@@ -434,8 +438,7 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_geometric_level_bounds
         eLpNorm (fun z => ∑ n ∈ Finset.range (j + 3), F n z) q ν := by
       apply eLpNorm_congr_ae
       filter_upwards with z
-      simpa only [F] using
-        q4FiniteProductKernelShell_activeDyadic_eq_sum_gapLevels
+      exact q4FiniteProductKernelShell_activeDyadic_eq_sum_gapLevels
           hj hE μ K g z
     _ ≤ C * (1 - ρ)⁻¹ :=
       eLpNorm_sum_range_le_geometric ν q hq F
@@ -545,9 +548,10 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_strict_exponential_level_bounds
           (a * (j : ℝ) + b * (n : ℝ))) =
             ENNReal.ofReal (C * (2 : ℝ) ^ (a * (j : ℝ))) *
               (ENNReal.ofReal ((2 : ℝ) ^ b)) ^ n
-        rw [← Real.rpow_mul_natCast (by norm_num : (0 : ℝ) ≤ 2) b n,
+        rw [← ENNReal.ofReal_pow hr n, ← ENNReal.ofReal_mul hCj]
+        congr 1
+        rw [← Real.rpow_mul_natCast (by norm_num : (0 : ℝ) ≤ 2) b n, mul_assoc,
           ← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
-        rw [ENNReal.ofReal_mul hCj, ENNReal.ofReal_pow hr n]
   have hsum := q4ActiveDyadicFullProduct_eLpNorm_le_of_geometric_level_bounds
     hj hE μ ν K g hq Cj rho hmeas hlevel'
   simpa only [a, b, Cj, rho] using hsum
@@ -623,18 +627,21 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_planar_critical_level_bounds
         eLpNorm (fun z => ∑ n ∈ Finset.range (j + 3), F n z) q ν := by
       apply eLpNorm_congr_ae
       filter_upwards with z
-      simpa only [F] using
-        q4FiniteProductKernelShell_activeDyadic_eq_sum_gapLevels
+      exact q4FiniteProductKernelShell_activeDyadic_eq_sum_gapLevels
           hj hE μ K g z
     _ ≤ ∑ n ∈ Finset.range (j + 3), eLpNorm (F n) q ν := by
+      have hfun : (fun z => ∑ n ∈ Finset.range (j + 3), F n z)
+          = ∑ n ∈ Finset.range (j + 3), F n := by
+        funext z
+        simp [Finset.sum_apply]
+      rw [hfun]
       exact eLpNorm_sum_le (f := F) (s := Finset.range (j + 3))
-        (fun n hn => by simpa only [F] using hmeas n) hq
+        (fun n hn => hmeas n) hq
     _ ≤ ∑ n ∈ Finset.range (j + 3), ENNReal.ofReal
         (C * (2 : ℝ) ^
           (q4FrequencyExponent 2 theta * (j : ℝ) +
             q4GapExponent 2 (1 / 2) theta * (n : ℝ))) := by
-      exact Finset.sum_le_sum fun n hn => by
-        simpa only [F] using hlevel n
+      exact Finset.sum_le_sum fun n hn => hlevel n
     _ = ENNReal.ofReal
         (C * ∑ n ∈ Finset.range (j + 3),
           (2 : ℝ) ^
@@ -661,7 +668,7 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_planar_critical_level_bounds
         _ = ENNReal.ofReal (C * D) * ENNReal.ofReal (r ^ j) :=
           ENNReal.ofReal_mul (mul_nonneg hC hD)
         _ = ENNReal.ofReal (C * D) * (ENNReal.ofReal r) ^ j := by
-      rw [ENNReal.ofReal_pow hr j]
+          rw [ENNReal.ofReal_pow hr j]
 
 /-- The planar-critical finite reassembly with the quasi-Assouad subpower
 loss retained in the frequency exponent.  This is the form used by the
@@ -695,7 +702,7 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_planar_critical_level_bounds_wit
         (fun _ _ => True) K g) q ν ≤
       ENNReal.ofReal
         (C * (((2 : ℝ) ^ (theta - 1 / 2)) ^ 3 /
-          ((2 : ℝ) ^ (theta - 1 / 2) - 1)) *
+          ((2 : ℝ) ^ (theta - 1 / 2) - 1))) *
         (ENNReal.ofReal ((2 : ℝ) ^
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
             q4GapExponent 2 (1 / 2) theta))) ^ j := by
@@ -735,18 +742,21 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_planar_critical_level_bounds_wit
         eLpNorm (fun z => ∑ n ∈ Finset.range (j + 3), F n z) q ν := by
       apply eLpNorm_congr_ae
       filter_upwards with z
-      simpa only [F] using
-        q4FiniteProductKernelShell_activeDyadic_eq_sum_gapLevels
+      exact q4FiniteProductKernelShell_activeDyadic_eq_sum_gapLevels
           hj hE μ K g z
     _ ≤ ∑ n ∈ Finset.range (j + 3), eLpNorm (F n) q ν := by
+      have hfun : (fun z => ∑ n ∈ Finset.range (j + 3), F n z)
+          = ∑ n ∈ Finset.range (j + 3), F n := by
+        funext z
+        simp [Finset.sum_apply]
+      rw [hfun]
       exact eLpNorm_sum_le (f := F) (s := Finset.range (j + 3))
-        (fun n hn => by simpa only [F] using hmeas n) hq
+        (fun n hn => hmeas n) hq
     _ ≤ ∑ n ∈ Finset.range (j + 3), ENNReal.ofReal
         (C * (2 : ℝ) ^
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta * (j : ℝ) +
             q4GapExponent 2 (1 / 2) theta * (n : ℝ))) := by
-      exact Finset.sum_le_sum fun n hn => by
-        simpa only [F] using hlevel n
+      exact Finset.sum_le_sum fun n hn => hlevel n
     _ = ENNReal.ofReal
         (C * ∑ n ∈ Finset.range (j + 3),
           (2 : ℝ) ^
@@ -761,7 +771,7 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_planar_critical_level_bounds_wit
       exact mul_le_mul_of_nonneg_left hscalar hC
     _ = ENNReal.ofReal
         (C * (((2 : ℝ) ^ (theta - 1 / 2)) ^ 3 /
-          ((2 : ℝ) ^ (theta - 1 / 2) - 1)) *
+          ((2 : ℝ) ^ (theta - 1 / 2) - 1))) *
         (ENNReal.ofReal ((2 : ℝ) ^
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
             q4GapExponent 2 (1 / 2) theta))) ^ j := by

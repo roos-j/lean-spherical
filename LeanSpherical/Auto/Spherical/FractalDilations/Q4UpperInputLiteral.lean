@@ -3,10 +3,20 @@
 
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4UpperInputInterpolation
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
+import LeanSpherical.Auto.Spherical.FractalDilations.AbsoluteDyadicLInfinity
+import LeanSpherical.Auto.Spherical.FractalDilations.Q4TriangleGeometry
 open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteDyadicLInfinity
 open Auto.Spherical.FractalDilations.AbsoluteReassembly
 open Auto.Spherical.FractalDilations.ExponentRegions
 open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.InterpolationCore
+open Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
+open Auto.Spherical.FractalDilations.Q4RadialReduction
+open Auto.Spherical.FractalDilations.Q4StrictParameters
+open Auto.Spherical.FractalDilations.Q4SubpowerParameters
+open Auto.Spherical.FractalDilations.Q4TriangleGeometry
+open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.Q4CrossedMarcinkiewicz
 open Auto.Spherical.FractalDilations.Q4FiniteProductMaximal
 open Auto.Spherical.FractalDilations.Q4HilbertInterpolation
@@ -66,13 +76,13 @@ controls its two real coefficients by geometric sequences in the dyadic
 frequency. -/
 def q4UpperStrongCoefficient
     (A B0 B1 p r0 r1 q : Real) : ENNReal :=
-  ENNReal.ofReal q *
+  (ENNReal.ofReal q *
     (ENNReal.ofReal (q4UpperWeakRealConstant A B0 p r0) *
         (∫⁻ t in Ioc (0 : Real) 1,
           (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r0 - 1)) +
       ENNReal.ofReal (q4UpperWeakRealConstant A B1 p r1) *
-        ∫⁻ t in Ioi (1 : Real),
-          (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1)) ^ q⁻¹
+        (∫⁻ t in Ioi (1 : Real),
+          (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1)))) ^ q⁻¹
 
 /-- On a Schwartz input, the homogeneous scale used by the upper-input
 split is exactly its extended-real Lp norm. -/
@@ -174,7 +184,7 @@ theorem q4_upper_activeDyadic_strong_of_ltwo_bounds
     have hEpos : E ⊆ Ioi (0 : Real) := by
       intro t ht
       exact lt_of_lt_of_le zero_lt_one (hE ht).1
-    exact fractalDyadicBandpassMaximal_add_le hd hEpos
+    exact fractalDyadicBandpassMaximal_add_le hd E hEpos
       (absoluteDyadicBandpass phi hphiOne hphiZero j) g h x
   have hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
       AEStronglyMeasurable (T g) volume := by
@@ -250,6 +260,7 @@ theorem q4_upper_activeDyadic_strong_of_fixed_ltwo_rates
       ENNReal.mul_lt_top hCT0
         (ENNReal.pow_lt_top (lt_trans hrho0 (by simp)))
     rw [← ENNReal.ofReal_toReal htop.ne] at hrate
+    rw [← ENNReal.ofReal_mul ENNReal.toReal_nonneg] at hrate
     exact hrate
   · intro g
     have hrate := hrate1 j hj g
@@ -257,6 +268,7 @@ theorem q4_upper_activeDyadic_strong_of_fixed_ltwo_rates
       ENNReal.mul_lt_top hCT1
         (ENNReal.pow_lt_top (lt_trans hrho1 (by simp)))
     rw [← ENNReal.ofReal_toReal htop.ne] at hrate
+    rw [← ENNReal.ofReal_mul ENNReal.toReal_nonneg] at hrate
     exact hrate
   · exact hI
   · exact hIpos
@@ -449,6 +461,489 @@ theorem exists_q4_upper_activeDyadic_strict_dyadic_rate
     (fun j hj f => (hrate0 j hj f).2)
     (fun j hj f => (hrate1 j hj f).2)
     hCtop hrho (fun j hj => hcoefficient j hj)
+
+/-- The two layer-cake height integrals of the upper-input coefficient are
+finite as soon as the target output exponent lies strictly between the two
+weak output exponents. -/
+theorem q4Upper_height_integrals_lt_top
+    {p r0 r1 q : Real}
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1) :
+    (∫⁻ t in Ioc (0 : Real) 1,
+        (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r0 - 1)) < ⊤ ∧
+      (∫⁻ t in Ioi (1 : Real),
+        (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1)) < ⊤ := by
+  constructor
+  · have hrw : q - q4UpperWeakOutputExponent p r0 - 1 =
+        (q - q4UpperWeakOutputExponent p r0 + 1) - 2 := by ring
+    rw [hrw, lintegral_rpow_Ioc_eq
+      (by linarith : (1 : Real) < q - q4UpperWeakOutputExponent p r0 + 1)
+      (by norm_num : (0 : Real) ≤ 1)]
+    exact ENNReal.ofReal_lt_top
+  · have hrw : q - q4UpperWeakOutputExponent p r1 - 1 =
+        (q - q4UpperWeakOutputExponent p r1 + 2) - 3 := by ring
+    rw [hrw, lintegral_rpow_Ioi_eq
+      (by linarith : q - q4UpperWeakOutputExponent p r1 + 2 < 2)
+      (by norm_num : (0 : Real) < 1)]
+    exact ENNReal.ofReal_lt_top
+
+/-- The literal upper-input layer-cake coefficient inherits a geometric decay
+from the two `L²` dyadic ratios.  The `L^infinity` endpoint constant is
+frequency independent, so no further hypothesis is needed. -/
+theorem exists_q4UpperStrongCoefficient_dyadic_rate
+    {A p r0 r1 q : Real} (hA : 0 ≤ A) (hr0 : 0 < r0) (hr1 : 0 < r1)
+    (hq : 0 < q)
+    (hq0q : q4UpperWeakOutputExponent p r0 < q)
+    (hqq1 : q < q4UpperWeakOutputExponent p r1)
+    {CT0 rho0 CT1 rho1 : ENNReal}
+    (hCT0 : CT0 < ⊤) (hCT1 : CT1 < ⊤)
+    (hrho0 : rho0 < 1) (hrho1 : rho1 < 1) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j →
+        q4UpperStrongCoefficient A ((CT0 * rho0 ^ j).toReal)
+          ((CT1 * rho1 ^ j).toReal) p r0 r1 q ≤ C * rho ^ j := by
+  obtain ⟨hI0, hI1⟩ := q4Upper_height_integrals_lt_top (p := p) hq0q hqq1
+  set I0 : ENNReal := ∫⁻ t in Ioc (0 : Real) 1,
+    (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r0 - 1) with hI0def
+  set I1 : ENNReal := ∫⁻ t in Ioi (1 : Real),
+    (ENNReal.ofReal t) ^ (q - q4UpperWeakOutputExponent p r1 - 1) with hI1def
+  set M0 : ENNReal := ENNReal.ofReal ((2 : Real) ^ r0) * CT0 ^ r0 *
+    ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r0) with hM0
+  set M1 : ENNReal := ENNReal.ofReal ((2 : Real) ^ r1) * CT1 ^ r1 *
+    ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r1) with hM1
+  set sigma : ENNReal := max (rho0 ^ r0) (rho1 ^ r1) with hsigma
+  have hsigmaOne : sigma < 1 := by
+    rw [hsigma]
+    exact max_lt (ENNReal.rpow_lt_one hrho0 hr0) (ENNReal.rpow_lt_one hrho1 hr1)
+  have hMtop : M0 * I0 + M1 * I1 < ⊤ := by
+    apply ENNReal.add_lt_top.mpr
+    constructor
+    · exact ENNReal.mul_lt_top (by
+        rw [hM0]
+        exact ENNReal.mul_lt_top
+          (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+            (ENNReal.rpow_lt_top_of_nonneg hr0.le hCT0.ne))
+          ENNReal.ofReal_lt_top) hI0
+    · exact ENNReal.mul_lt_top (by
+        rw [hM1]
+        exact ENNReal.mul_lt_top
+          (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+            (ENNReal.rpow_lt_top_of_nonneg hr1.le hCT1.ne))
+          ENNReal.ofReal_lt_top) hI1
+  refine ⟨(ENNReal.ofReal q * (M0 * I0 + M1 * I1)) ^ q⁻¹, sigma ^ q⁻¹, ?_, ?_, ?_⟩
+  · exact ENNReal.rpow_lt_top_of_nonneg (by positivity)
+      (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hMtop).ne
+  · exact ENNReal.rpow_lt_one hsigmaOne (by positivity)
+  · intro j hj
+    have hkey : ∀ (r : Real), 0 < r → ∀ (CT rho : ENNReal), CT < ⊤ → rho < ⊤ →
+        ENNReal.ofReal (q4UpperWeakRealConstant A ((CT * rho ^ j).toReal) p r) =
+          ENNReal.ofReal ((2 : Real) ^ r) * (CT ^ r * (rho ^ r) ^ j) *
+            ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r) := by
+      intro r hrpos CT rho hCTtop hrhotop
+      unfold q4UpperWeakRealConstant
+      have hnonneg : 0 ≤ (CT * rho ^ j).toReal := ENNReal.toReal_nonneg
+      rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity)]
+      congr 1
+      congr 1
+      rw [← ENNReal.ofReal_rpow_of_nonneg hnonneg hrpos.le]
+      have hfin : CT * rho ^ j ≠ ⊤ :=
+        (ENNReal.mul_lt_top hCTtop (ENNReal.pow_lt_top hrhotop)).ne
+      rw [ENNReal.ofReal_toReal hfin, ENNReal.mul_rpow_of_nonneg _ _ hrpos.le]
+      congr 1
+      rw [← ENNReal.rpow_natCast rho j, ← ENNReal.rpow_natCast (rho ^ r) j,
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+      congr 1
+      ring
+    have hterm0 :
+        ENNReal.ofReal (q4UpperWeakRealConstant A ((CT0 * rho0 ^ j).toReal) p r0) ≤
+          M0 * sigma ^ j := by
+      rw [hkey r0 hr0 CT0 rho0 hCT0 (lt_of_lt_of_le hrho0 le_top), hM0, hsigma]
+      calc
+        ENNReal.ofReal ((2 : Real) ^ r0) * (CT0 ^ r0 * (rho0 ^ r0) ^ j) *
+            ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r0) ≤
+            ENNReal.ofReal ((2 : Real) ^ r0) *
+              (CT0 ^ r0 * (max (rho0 ^ r0) (rho1 ^ r1)) ^ j) *
+              ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r0) := by
+          gcongr
+          exact le_max_left _ _
+        _ = ENNReal.ofReal ((2 : Real) ^ r0) * CT0 ^ r0 *
+              ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r0) *
+              (max (rho0 ^ r0) (rho1 ^ r1)) ^ j := by ring
+    have hterm1 :
+        ENNReal.ofReal (q4UpperWeakRealConstant A ((CT1 * rho1 ^ j).toReal) p r1) ≤
+          M1 * sigma ^ j := by
+      rw [hkey r1 hr1 CT1 rho1 hCT1 (lt_of_lt_of_le hrho1 le_top), hM1, hsigma]
+      calc
+        ENNReal.ofReal ((2 : Real) ^ r1) * (CT1 ^ r1 * (rho1 ^ r1) ^ j) *
+            ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r1) ≤
+            ENNReal.ofReal ((2 : Real) ^ r1) *
+              (CT1 ^ r1 * (max (rho0 ^ r0) (rho1 ^ r1)) ^ j) *
+              ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r1) := by
+          gcongr
+          exact le_max_right _ _
+        _ = ENNReal.ofReal ((2 : Real) ^ r1) * CT1 ^ r1 *
+              ENNReal.ofReal ((4 * A) ^ q4UpperWeakTailExponent p r1) *
+              (max (rho0 ^ r0) (rho1 ^ r1)) ^ j := by ring
+    have hinner : ENNReal.ofReal q *
+        (ENNReal.ofReal (q4UpperWeakRealConstant A ((CT0 * rho0 ^ j).toReal) p r0) * I0 +
+          ENNReal.ofReal (q4UpperWeakRealConstant A ((CT1 * rho1 ^ j).toReal) p r1) * I1) ≤
+        (ENNReal.ofReal q * (M0 * I0 + M1 * I1)) * sigma ^ j := by
+      calc
+        ENNReal.ofReal q *
+            (ENNReal.ofReal (q4UpperWeakRealConstant A ((CT0 * rho0 ^ j).toReal) p r0) * I0 +
+              ENNReal.ofReal (q4UpperWeakRealConstant A ((CT1 * rho1 ^ j).toReal) p r1) * I1) ≤
+            ENNReal.ofReal q * ((M0 * sigma ^ j) * I0 + (M1 * sigma ^ j) * I1) := by
+          gcongr
+        _ = (ENNReal.ofReal q * (M0 * I0 + M1 * I1)) * sigma ^ j := by ring
+    calc
+      q4UpperStrongCoefficient A ((CT0 * rho0 ^ j).toReal)
+          ((CT1 * rho1 ^ j).toReal) p r0 r1 q ≤
+          ((ENNReal.ofReal q * (M0 * I0 + M1 * I1)) * sigma ^ j) ^ q⁻¹ := by
+        unfold q4UpperStrongCoefficient
+        exact ENNReal.rpow_le_rpow (by
+          simpa only [hI0def, hI1def] using hinner) (by positivity)
+      _ = (ENNReal.ofReal q * (M0 * I0 + M1 * I1)) ^ q⁻¹ * (sigma ^ q⁻¹) ^ j := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:Real) ≤ q⁻¹)]
+        congr 1
+        rw [← ENNReal.rpow_natCast sigma j, ← ENNReal.rpow_natCast (sigma ^ q⁻¹) j,
+          ← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+        congr 1
+        ring
+
+/-- The literal `Q4` sector estimate above `L²`.  Every exponent pair whose
+reciprocal slope lies strictly between the spherical-cap slope `1 / d` and the
+quasi-Assouad balancing slope has a strict geometric dyadic rate.  Both `L²`
+inputs use the caller's fixed radial cutoff, so the two rates may be
+interpolated with the same maximal operator. -/
+theorem exists_q4_upper_sector_strict_dyadic_rate
+    {d : Nat} {E : Set Real} {gamma : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty) (hgamma : 0 ≤ gamma)
+    (hcover : ∀ eta : Real, 0 < eta → ∃ Ccover : Real, 0 ≤ Ccover ∧
+      HasSubpowerAssouadCoverBound E gamma eta Ccover)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {p q : Real} (hp : 2 < p) (hq : 0 < q)
+    (hlow : 1 / (d : Real) < p / q)
+    (hhigh : p / q < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
+  have hdone : 1 < d := by
+    rcases hd with hd3 | ⟨hd2, _⟩ <;> omega
+  have hd0 : 0 < d := by omega
+  have hDpos : (0 : Real) < (d : Real) := by
+    have : (1 : Real) < (d : Real) := by exact_mod_cast hdone
+    linarith
+  obtain ⟨thetaLow, thetaHigh, eta, hLow1, hLowStar, hStarHigh, hHighMax,
+    hHighOne, heta, haLow, hbLow, haHigh, hbHigh⟩ :=
+    exists_q4_two_nearby_strict_parameters (d := d) (gamma := gamma)
+      (thetaStar := p / q) hdone hgamma hlow hhigh
+  obtain ⟨Ccover, hCcover, hcov⟩ := hcover eta heta
+  have hLowPos : 0 < thetaLow := lt_trans (by positivity) hLow1
+  have hHighPos : 0 < thetaHigh := lt_trans hLowPos (lt_trans hLowStar hStarHigh)
+  have hLowOne : thetaLow < 1 := lt_trans (lt_trans hLowStar hStarHigh) hHighOne
+  have hr0pos : 0 < 2 / thetaHigh := by positivity
+  have hr1pos : 0 < 2 / thetaLow := by positivity
+  have hinvHigh : 2 / (2 / thetaHigh) = thetaHigh := by
+    field_simp
+  have hinvLow : 2 / (2 / thetaLow) = thetaLow := by
+    field_simp
+  obtain ⟨hu1High, hu2High, hrHigh⟩ :=
+    q4ConjugateInputOfTheta_bounds hHighPos hHighOne
+  obtain ⟨hu1Low, hu2Low, hrLow⟩ :=
+    q4ConjugateInputOfTheta_bounds hLowPos hLowOne
+  obtain ⟨CT0, rho0, hCT0pos, hCT0, hrho0, hrho0eq, hrate0⟩ :=
+    q4_active_ltwo_strict_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (gamma := gamma) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hd hE hEne hcov hCcover hgamma
+      heta.le (u := q4ConjugateInputOfTheta thetaHigh) (r := 2 / thetaHigh)
+      hu1High hu2High (by
+        simpa only [q4LtwoOutputOfTheta] using hrHigh)
+      (by rw [hinvHigh]; exact haHigh) (by rw [hinvHigh]; exact hbHigh)
+  obtain ⟨CT1, rho1, hCT1pos, hCT1, hrho1, hrho1eq, hrate1⟩ :=
+    q4_active_ltwo_strict_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (gamma := gamma) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hd hE hEne hcov hCcover hgamma
+      heta.le (u := q4ConjugateInputOfTheta thetaLow) (r := 2 / thetaLow)
+      hu1Low hu2Low (by
+        simpa only [q4LtwoOutputOfTheta] using hrLow)
+      (by rw [hinvLow]; exact haLow) (by rw [hinvLow]; exact hbLow)
+  have hq0q : q4UpperWeakOutputExponent p (2 / thetaHigh) < q := by
+    unfold q4UpperWeakOutputExponent
+    rw [div_mul_eq_mul_div, div_div]
+    rw [div_lt_iff₀ (by positivity)]
+    have hpq : p < q * thetaHigh := by
+      have := (div_lt_iff₀ hq).mp hStarHigh
+      linarith
+    nlinarith
+  have hqq1 : q < q4UpperWeakOutputExponent p (2 / thetaLow) := by
+    unfold q4UpperWeakOutputExponent
+    rw [div_mul_eq_mul_div, div_div, lt_div_iff₀ (by positivity)]
+    have hpq : q * thetaLow < p := by
+      have := (lt_div_iff₀ hq).mp hLowStar
+      linarith
+    nlinarith
+  refine exists_q4_upper_activeDyadic_strict_dyadic_rate hd0 hE phi hphiOne
+    hphiZero hp hr0pos hr1pos hq0q hqq1 hCT0 hCT1 hrho0 hrho1 hrate0 hrate1 ?_
+  exact exists_q4UpperStrongCoefficient_dyadic_rate
+    (q4UpperAbsoluteDyadicTopConstant_pos phi hphiOne hphiZero).le
+    hr0pos hr1pos hq hq0q hqq1 hCT0 hCT1 hrho0 hrho1
+
+/-- The planar critical form of the `Q4` sector estimate above `L²`.  At the
+critical planar quasi-Assouad dimension the radius-gap sum is only finite on
+the literal range `n < j + 3`, so the two `L²` inputs are the planar critical
+rates; the admissible slopes then fill the whole interval `(1 / 2, 1)`. -/
+theorem exists_q4_planar_critical_upper_sector_strict_dyadic_rate
+    {E : Set Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hcover : ∀ eta : Real, 0 < eta → ∃ Ccover : Real, 0 ≤ Ccover ∧
+      HasSubpowerAssouadCoverBound E (1 / 2) eta Ccover)
+    (phi : SchwartzMap (Euclidean 2) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {p q : Real} (hp : 2 < p) (hq : 0 < q)
+    (hlow : 1 / 2 < p / q) (hhigh : p / q < 1) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean 2) Complex,
+        MemLp (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume := by
+  obtain ⟨thetaLow, thetaHigh, eta, hLow1, hLowStar, hStarHigh, hHighOne,
+    heta, hcombLow, hcombHigh⟩ :=
+    exists_q4_planar_critical_two_nearby_parameters (thetaStar := p / q)
+      hlow hhigh
+  obtain ⟨Ccover, hCcover, hcov⟩ := hcover eta heta
+  have hLowPos : 0 < thetaLow := by linarith
+  have hHighPos : 0 < thetaHigh := by linarith
+  have hLowOne : thetaLow < 1 := lt_trans (lt_trans hLowStar hStarHigh) hHighOne
+  have hr0pos : 0 < 2 / thetaHigh := by positivity
+  have hr1pos : 0 < 2 / thetaLow := by positivity
+  obtain ⟨hu1High, hu2High, hrHigh⟩ :=
+    q4ConjugateInputOfTheta_bounds hHighPos hHighOne
+  obtain ⟨hu1Low, hu2Low, hrLow⟩ :=
+    q4ConjugateInputOfTheta_bounds hLowPos hLowOne
+  obtain ⟨CT0, rho0, hCT0pos, hCT0, hrho0, hrho0eq, hrate0⟩ :=
+    q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hE hEne hcov hCcover heta.le
+      (u := q4ConjugateInputOfTheta thetaHigh) (theta := thetaHigh)
+      hu1High hu2High (by simpa only [q4LtwoOutputOfTheta] using hrHigh)
+      (by linarith) hHighOne hcombHigh
+  obtain ⟨CT1, rho1, hCT1pos, hCT1, hrho1, hrho1eq, hrate1⟩ :=
+    q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hE hEne hcov hCcover heta.le
+      (u := q4ConjugateInputOfTheta thetaLow) (theta := thetaLow)
+      hu1Low hu2Low (by simpa only [q4LtwoOutputOfTheta] using hrLow)
+      hLow1 hLowOne hcombLow
+  have hq0q : q4UpperWeakOutputExponent p (2 / thetaHigh) < q := by
+    unfold q4UpperWeakOutputExponent
+    rw [div_mul_eq_mul_div, div_div, div_lt_iff₀ (by positivity)]
+    have hpq : p < q * thetaHigh := by
+      have := (div_lt_iff₀ hq).mp hStarHigh
+      linarith
+    nlinarith
+  have hqq1 : q < q4UpperWeakOutputExponent p (2 / thetaLow) := by
+    unfold q4UpperWeakOutputExponent
+    rw [div_mul_eq_mul_div, div_div, lt_div_iff₀ (by positivity)]
+    have hpq : q * thetaLow < p := by
+      have := (lt_div_iff₀ hq).mp hLowStar
+      linarith
+    nlinarith
+  refine exists_q4_upper_activeDyadic_strict_dyadic_rate (by norm_num) hE phi
+    hphiOne hphiZero hp hr0pos hr1pos hq0q hqq1 hCT0 hCT1 hrho0 hrho1 ?_ ?_ ?_
+  · exact hrate0
+  · exact hrate1
+  · exact exists_q4UpperStrongCoefficient_dyadic_rate
+      (q4UpperAbsoluteDyadicTopConstant_pos phi hphiOne hphiZero).le
+      hr0pos hr1pos hq hq0q hqq1 hCT0 hCT1 hrho0 hrho1
+
+/-- The `L²` seminorm of a Schwartz function in the homogeneous form used by
+the literal `Q4` shell estimates. -/
+theorem eLpNorm_two_eq_ofReal_sqrt_integral_norm_sq
+    {d : Nat} (f : SchwartzMap (Euclidean d) Complex) :
+    eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal 2) volume =
+      ENNReal.ofReal
+        (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))) := by
+  have hf2 : MemLp (f : Euclidean d → Complex) 2 volume := f.memLp 2 volume
+  have hofReal : ENNReal.ofReal (2 : Real) = (2 : ENNReal) := by
+    rw [show (2 : Real) = ((2 : Nat) : Real) by norm_num,
+      ENNReal.ofReal_natCast]
+    norm_num
+  have hI : 0 ≤ ∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat) :=
+    integral_nonneg fun _ => by positivity
+  rw [hofReal, hf2.eLpNorm_eq_integral_rpow_norm (by norm_num) (by norm_num)]
+  congr 1
+  rw [Real.sqrt_eq_rpow]
+  norm_num
+
+/-- The `Q4` sector estimate exactly at the `L²` input exponent.  Here the
+literal shell estimate already has the required form, so no interpolation
+with the trivial endpoints is needed. -/
+theorem exists_q4_ltwo_input_strict_dyadic_rate
+    {d : Nat} {E : Set Real} {gamma : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty) (hgamma : 0 ≤ gamma)
+    (hcover : ∀ eta : Real, 0 < eta → ∃ Ccover : Real, 0 ≤ Ccover ∧
+      HasSubpowerAssouadCoverBound E gamma eta Ccover)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {q : Real} (hq : 0 < q)
+    (hlow : 1 / (d : Real) < 2 / q)
+    (hhigh : 2 / q < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
+        MemLp (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal 2) volume := by
+  have hdone : 1 < d := by
+    rcases hd with hd3 | ⟨hd2, _⟩ <;> omega
+  have hDpos : (0 : Real) < (d : Real) := by
+    have : (1 : Real) < (d : Real) := by exact_mod_cast hdone
+    linarith
+  set theta : Real := 2 / q with hthetadef
+  have hthetaPos : 0 < theta := by
+    rw [hthetadef]; positivity
+  have hthetaOne : theta < 1 := by
+    have hupper : (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) ≤ 1 := by
+      rcases le_or_gt (((d : Real) - 1) / 2 + gamma) 0 with hle | hgt
+      · have hd1 : (2 : Real) ≤ (d : Real) := by exact_mod_cast hdone
+        nlinarith
+      · rw [div_le_one hgt]
+        linarith
+    exact lt_of_lt_of_le (by simpa only [hthetadef] using hhigh) hupper
+  have hqtheta : 2 / theta = q := by
+    rw [hthetadef]
+    field_simp
+  have hthetaLarge : 1 / (d : Real) < theta := by
+    simpa only [hthetadef] using hlow
+  have hinvtheta : 1 / theta < (d : Real) := by
+    rw [div_lt_iff₀ hthetaPos]
+    rw [div_lt_iff₀ hDpos] at hthetaLarge
+    linarith
+  set eta : Real := ((d : Real) - 1 / theta) / 2 with hetadef
+  have heta : 0 < eta := by
+    rw [hetadef]
+    linarith
+  have haStar : q4FrequencyExponentWithSubpowerLoss d theta eta < 0 := by
+    unfold q4FrequencyExponentWithSubpowerLoss q4FrequencyExponent
+    rw [hetadef]
+    have hkey : theta * (1 / theta) = 1 := by field_simp
+    nlinarith
+  have hAgamma : 0 < ((d : Real) - 1) / 2 + gamma := by
+    have hd2 : (2 : Real) ≤ (d : Real) := by exact_mod_cast hdone
+    nlinarith
+  have hbStar : q4GapExponent d gamma theta < 0 := by
+    unfold q4GapExponent
+    have hstar : theta < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) := by
+      simpa only [hthetadef] using hhigh
+    rw [lt_div_iff₀ hAgamma] at hstar
+    nlinarith
+  obtain ⟨Ccover, hCcover, hcov⟩ := hcover eta heta
+  obtain ⟨hu1, hu2, hr⟩ := q4ConjugateInputOfTheta_bounds hthetaPos hthetaOne
+  have hinv : 2 / (2 / theta) = theta := by
+    field_simp
+  obtain ⟨CT, rho, hCTpos, hCT, hrho, hrhoeq, hrate⟩ :=
+    q4_active_ltwo_strict_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (gamma := gamma) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hd hE hEne hcov hCcover hgamma
+      heta.le (u := q4ConjugateInputOfTheta theta) (r := 2 / theta)
+      hu1 hu2 (by simpa only [q4LtwoOutputOfTheta] using hr)
+      (by rw [hinv]; exact haStar)
+      (by rw [hinv]; exact hbStar)
+  refine ⟨CT, rho, hCT, hrho, ?_⟩
+  intro j hj f
+  have hbase := hrate j hj f
+  rw [hqtheta] at hbase
+  refine ⟨hbase.1, ?_⟩
+  rw [eLpNorm_two_eq_ofReal_sqrt_integral_norm_sq f]
+  exact hbase.2
+
+/-- The planar critical `Q4` estimate exactly at the `L²` input exponent. -/
+theorem exists_q4_planar_critical_ltwo_input_strict_dyadic_rate
+    {E : Set Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hcover : ∀ eta : Real, 0 < eta → ∃ Ccover : Real, 0 ≤ Ccover ∧
+      HasSubpowerAssouadCoverBound E (1 / 2) eta Ccover)
+    (phi : SchwartzMap (Euclidean 2) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial phi)
+    {q : Real} (hq : 0 < q)
+    (hlow : 1 / 2 < 2 / q) (hhigh : 2 / q < 1) :
+    ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+      ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean 2) Complex,
+        MemLp (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ∧
+        eLpNorm (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume ≤
+          (C * rho ^ j) *
+            eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal 2) volume := by
+  set theta : Real := 2 / q with hthetadef
+  have hthetaHalf : 1 / 2 < theta := by simpa only [hthetadef] using hlow
+  have hthetaOne : theta < 1 := by simpa only [hthetadef] using hhigh
+  have hthetaPos : 0 < theta := by linarith
+  have hqtheta : 2 / theta = q := by
+    rw [hthetadef]; field_simp
+  set eta : Real := (1 - 1 / (2 * theta)) / 2 with hetadef
+  have hhalfinv : 1 / (2 * theta) < 1 := by
+    rw [div_lt_one (by positivity)]
+    linarith
+  have heta : 0 < eta := by
+    rw [hetadef]; linarith
+  have hcomb : q4FrequencyExponentWithSubpowerLoss 2 theta eta +
+      q4GapExponent 2 (1 / 2) theta < 0 := by
+    unfold q4FrequencyExponentWithSubpowerLoss q4FrequencyExponent q4GapExponent
+    rw [hetadef]
+    have hkey : theta * (1 / (2 * theta)) = 1 / 2 := by
+      field_simp
+    push_cast
+    nlinarith
+  obtain ⟨Ccover, hCcover, hcov⟩ := hcover eta heta
+  obtain ⟨hu1, hu2, hr⟩ := q4ConjugateInputOfTheta_bounds hthetaPos hthetaOne
+  obtain ⟨CT, rho, hCTpos, hCT, hrho, hrhoeq, hrate⟩ :=
+    q4_active_ltwo_planar_critical_dyadic_rate_of_fixed_normRadial_cutoff
+      (E := E) (eta := eta) (Ccover := Ccover)
+      phi hphiOne hphiZero hphiNorm hphiRadial hE hEne hcov hCcover heta.le
+      (u := q4ConjugateInputOfTheta theta) (theta := theta)
+      hu1 hu2 (by simpa only [q4LtwoOutputOfTheta] using hr)
+      hthetaHalf hthetaOne hcomb
+  refine ⟨CT, rho, hCT, hrho, ?_⟩
+  intro j hj f
+  have hbase := hrate j hj f
+  rw [hqtheta] at hbase
+  refine ⟨hbase.1, ?_⟩
+  rw [eLpNorm_two_eq_ofReal_sqrt_integral_norm_sq f]
+  exact hbase.2
 
 end
 

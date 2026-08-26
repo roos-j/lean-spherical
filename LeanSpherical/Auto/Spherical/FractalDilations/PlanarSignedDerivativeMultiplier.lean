@@ -12,7 +12,7 @@ open Auto.Spherical.FractalDilations.Q4DerivativePhysicalL2
 open Auto.Spherical.FractalDilations.Q4EnlargedMultiplierBounds
 open Auto.Spherical.SmoothDyadicPhysicalCore
 open Auto.Spherical.SphericalAverages
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -94,8 +94,11 @@ theorem norm_deriv_surfaceFourier_smul_mul_absoluteDyadicBandpass_le_planar_sign
   · change ‖deriv (fun s : Real => surfaceFourier 2 (s • xi)) r * b‖ ≤ _
     rw [hb, mul_zero, norm_zero]
     dsimp only [q4PlanarEnlargedSurfaceDerivativeMultiplierBound]
-    exact mul_nonneg (mul_nonneg (by norm_num) hC.le)
-      (Real.rpow_nonneg (by positivity) _)
+    refine mul_nonneg (mul_nonneg (by norm_num) hC.le)
+      (Real.rpow_nonneg ?_ _)
+    have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+      _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+    linarith
   have hb' :
       phi (((2 : Real) ^ (j + 1))⁻¹ • xi) -
           phi (((2 : Real) ^ j)⁻¹ • xi) ≠ 0 := by
@@ -231,8 +234,11 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteD
   let B : Real := q4PlanarEnlargedSurfaceDerivativeMultiplierBound C j
   have hB : 0 ≤ B := by
     dsimp only [B, q4PlanarEnlargedSurfaceDerivativeMultiplierBound]
-    exact mul_nonneg (mul_nonneg (by norm_num) hC.le)
-      (Real.rpow_nonneg (by positivity) _)
+    refine mul_nonneg (mul_nonneg (by norm_num) hC.le)
+      (Real.rpow_nonneg ?_ _)
+    have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+      _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+    linarith
   have hderivB : ‖deriv (fun s : Real =>
       surfaceFourier 2 (s • (-xi))) r * psi xi‖ ≤ B := by
     dsimp only [psi, B]
@@ -250,8 +256,9 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteD
           deriv (fun s : Real => surfaceFourier 2 (s • (-xi))) r * psi xi)‖ =
         (dyadicScale j * ‖(surfaceMass 2 : Complex)⁻¹‖) *
           ‖deriv (fun s : Real => surfaceFourier 2 (s • (-xi))) r * psi xi‖ := by
-            rw [norm_mul, norm_mul, norm_mul, Complex.norm_real,
-              abs_of_pos (dyadicScale_pos j)]
+            rw [norm_mul, Complex.norm_real,
+              Real.norm_eq_abs, abs_of_pos (dyadicScale_pos j),
+              mul_assoc ((surfaceMass 2 : Complex)⁻¹), norm_mul]
             ring
     _ ≤ (dyadicScale j * ‖(surfaceMass 2 : Complex)⁻¹‖) * B :=
       mul_le_mul_of_nonneg_left hderivB hcoeff
@@ -282,8 +289,11 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_absol
       (mul_nonneg (dyadicScale_pos j).le (norm_nonneg _))
       (by
         dsimp only [q4PlanarEnlargedSurfaceDerivativeMultiplierBound]
-        exact mul_nonneg (mul_nonneg (by norm_num) hC.le)
-          (Real.rpow_nonneg (by positivity) _))
+        refine mul_nonneg (mul_nonneg (by norm_num) hC.le)
+          (Real.rpow_nonneg ?_ _)
+        have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+          _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+        linarith)
   have hsingle (t : Real) (ht : t ∈ Icc (1 / 2 : Real) (5 / 2)) :
       ‖q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier
           (absoluteDyadicBandpass phi hphiOne hphiZero j) j t xi‖ ≤ B := by
@@ -299,6 +309,7 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_absol
       mul_le_mul (hsingle r hr) (hsingle r' hr') (norm_nonneg _) hB
     _ = q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound C j := by
       dsimp only [B, q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound]
+      ring
 
 /-- The signed planar derivative pair estimate transferred to literal active
 cells and their common fundamental-theorem-of-calculus offset. -/

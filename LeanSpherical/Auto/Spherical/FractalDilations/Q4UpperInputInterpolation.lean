@@ -58,15 +58,13 @@ theorem q4UpperWeakOutputExponent_sub_eq_tail
   ring
 
 /-- The input-moment power in the upper-input weak estimate is homogeneous
-of degree `q / p`. -/
-theorem q4UpperWeakTail_add_half_eq_output_div
+of degree `q / p`: the `L²` half-power is exactly the interpolated ratio. -/
+theorem q4UpperWeakHalf_eq_output_div
     {p r : Real} (hp : 2 < p) :
-    q4UpperWeakTailExponent p r + r / 2 =
-      q4UpperWeakOutputExponent p r / p := by
+    r / 2 = q4UpperWeakOutputExponent p r / p := by
   have hp0 : p ≠ 0 := by linarith
-  unfold q4UpperWeakOutputExponent q4UpperWeakTailExponent
-  field_simp [hp0]
-  ring
+  unfold q4UpperWeakOutputExponent
+  field_simp
 
 /-- The upper-input tail exponent is strictly positive in the range in
 which the smooth split is used. -/
@@ -113,7 +111,6 @@ theorem q4UpperSmoothScale_weak_scalar
   have hquot : (t / A) / 4 = t / K := by
     dsimp only [K]
     field_simp [hA.ne']
-    ring
   have hpower : ((2 - p) / 2) * r = -a := by
     dsimp only [a, q4UpperWeakTailExponent]
     ring
@@ -146,19 +143,16 @@ theorem q4UpperSmoothScale_weak_scalar
     _ = (2 : Real) ^ r * B ^ r * K ^ a *
           (I ^ ((1 : Real) / 2)) ^ r := by rw [htail]
     _ = q4UpperWeakRealConstant A B p r *
-          (I ^ a * (I ^ ((1 : Real) / 2)) ^ r) := by
+          (I ^ ((1 : Real) / 2)) ^ r := by
           unfold q4UpperWeakRealConstant
           dsimp only [a, K]
-          ring
-    _ = q4UpperWeakRealConstant A B p r *
-          I ^ (a + r / 2) := by
+    _ = q4UpperWeakRealConstant A B p r * I ^ (r / 2) := by
           rw [← Real.rpow_mul hI.le]
           have hhalf : ((1 : Real) / 2) * r = r / 2 := by ring
-          rw [hhalf, ← Real.rpow_add hI]
+          rw [hhalf]
     _ = q4UpperWeakRealConstant A B p r *
           I ^ (q4UpperWeakOutputExponent p r / p) := by
-          dsimp only [a]
-          rw [q4UpperWeakTail_add_half_eq_output_div hp]
+          rw [q4UpperWeakHalf_eq_output_div hp]
 
 /-- The homogeneous weak distribution estimate obtained from the literal
 smooth `L^2 -> L^r`/`L^infinity` split. -/
@@ -212,22 +206,21 @@ theorem q4_upper_weak_distribution_power_of_ltwo_linf
     ring
   have hscalarE :
       (ENNReal.ofReal (2 : Real)) ^ r *
-          (ENNReal.ofReal B * ENNReal.ofReal
-            (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+          ENNReal.ofReal
+            (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
           (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r =
         ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
           (ENNReal.ofReal I) ^ (q4UpperWeakOutputExponent p r / p) := by
     calc
       (ENNReal.ofReal (2 : Real)) ^ r *
-          (ENNReal.ofReal B * ENNReal.ofReal
-            (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+          ENNReal.ofReal
+            (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
           (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r =
           ENNReal.ofReal ((2 : Real) ^ r) *
             ENNReal.ofReal
-              (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
+              ((B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r) *
             ENNReal.ofReal (t ^ q4UpperWeakTailExponent p r) := by
               rw [← ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : Real) < 2)]
-              rw [← ENNReal.ofReal_mul hB]
               rw [← ENNReal.ofReal_rpow_of_nonneg
                 (mul_nonneg hB htermnonneg) hr.le]
               rw [← ENNReal.ofReal_rpow_of_pos ht]
@@ -236,16 +229,14 @@ theorem q4_upper_weak_distribution_power_of_ltwo_linf
               (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r) *
               ENNReal.ofReal (t ^ q4UpperWeakTailExponent p r) := by
               rw [← ENNReal.ofReal_mul
-                (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
-                  (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))]
+                (Real.rpow_nonneg (by norm_num : (0 : Real) ≤ 2) r)]
       _ = ENNReal.ofReal
             ((2 : Real) ^ r *
               (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r *
                 t ^ q4UpperWeakTailExponent p r) := by
-              rw [← ENNReal.ofReal_mul (mul_nonneg
+              rw [← ENNReal.ofReal_mul
                 (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
-                  (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))
-                (Real.rpow_nonneg ht.le _))]
+                  (Real.rpow_nonneg (mul_nonneg hB htermnonneg) _))]
       _ = ENNReal.ofReal
             (q4UpperWeakRealConstant A B p r *
               I ^ (q4UpperWeakOutputExponent p r / p)) := by
@@ -260,10 +251,10 @@ theorem q4_upper_weak_distribution_power_of_ltwo_linf
       (volume {x | t < T f x} * (ENNReal.ofReal t) ^ r) *
         (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r := hleft
     _ ≤ ((ENNReal.ofReal (2 : Real)) ^ r *
-          (ENNReal.ofReal B * ENNReal.ofReal
-            (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r) *
+          ENNReal.ofReal
+            (B * (((t / A) / 4) ^ ((2 - p) / 2) * I ^ ((1 : Real) / 2))) ^ r) *
           (ENNReal.ofReal t) ^ q4UpperWeakTailExponent p r :=
-      mul_le_mul_right hraw _
+      mul_le_mul' hraw (le_refl _)
     _ = ENNReal.ofReal (q4UpperWeakRealConstant A B p r) *
           (ENNReal.ofReal I) ^ (q4UpperWeakOutputExponent p r / p) := hscalarE
 
@@ -295,33 +286,36 @@ theorem q4_upper_normalized_weak_distribution_of_ltwo_linf
   have hs : 0 < s := q4LowerInputScale_pos hIpos
   have hq : 0 < q := q4UpperWeakOutputExponent_pos hp hr
   have hs_power : s ^ q = I ^ (q / p) := by
-    dsimp only [s, q]
-    exact q4LowerInputScale_rpow_output hIpos (by linarith)
+    dsimp only [s]
+    unfold q4LowerInputScale
+    rw [← Real.rpow_mul hIpos.le]
+    congr 1
+    field_simp
   have hsE_power : (ENNReal.ofReal s) ^ q =
       (ENNReal.ofReal I) ^ (q / p) := by
     calc
       (ENNReal.ofReal s) ^ q = ENNReal.ofReal (s ^ q) :=
-        (ENNReal.ofReal_rpow_of_pos hs).symm
+        ENNReal.ofReal_rpow_of_pos hs
       _ = ENNReal.ofReal (I ^ (q / p)) := by rw [hs_power]
       _ = (ENNReal.ofReal I) ^ (q / p) :=
-        ENNReal.ofReal_rpow_of_pos hIpos
+        (ENNReal.ofReal_rpow_of_pos hIpos).symm
   have hsE_power_ne_zero : (ENNReal.ofReal s) ^ q ≠ 0 := by
-    rw [← ENNReal.ofReal_rpow_of_pos hs]
+    rw [ENNReal.ofReal_rpow_of_pos hs]
     exact ENNReal.ofReal_ne_zero_iff.mpr (Real.rpow_pos_of_pos hs _)
   have hsE_power_ne_top : (ENNReal.ofReal s) ^ q ≠ ⊤ := by
-    rw [← ENNReal.ofReal_rpow_of_pos hs]
+    rw [ENNReal.ofReal_rpow_of_pos hs]
     exact ENNReal.ofReal_ne_top
   have hprod : (ENNReal.ofReal (s * t)) ^ q =
       (ENNReal.ofReal s) ^ q * (ENNReal.ofReal t) ^ q := by
     calc
       (ENNReal.ofReal (s * t)) ^ q = ENNReal.ofReal ((s * t) ^ q) :=
-        (ENNReal.ofReal_rpow_of_pos (mul_pos hs ht)).symm
+        ENNReal.ofReal_rpow_of_pos (mul_pos hs ht)
       _ = ENNReal.ofReal (s ^ q * t ^ q) := by
         rw [Real.mul_rpow hs.le ht.le]
       _ = ENNReal.ofReal (s ^ q) * ENNReal.ofReal (t ^ q) :=
         ENNReal.ofReal_mul (Real.rpow_nonneg hs.le _)
       _ = (ENNReal.ofReal s) ^ q * (ENNReal.ofReal t) ^ q := by
-        rw [ENNReal.ofReal_rpow_of_pos hs, ENNReal.ofReal_rpow_of_pos ht]
+        rw [← ENNReal.ofReal_rpow_of_pos hs, ← ENNReal.ofReal_rpow_of_pos ht]
   have hset : {x | t < s⁻¹ * T f x} = {x | s * t < T f x} := by
     ext x
     constructor

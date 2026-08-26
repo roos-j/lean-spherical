@@ -811,9 +811,7 @@ theorem twoPair_ofReal_rpow_weight
   rw [hreal]
   rw [ENNReal.ofReal_mul (Real.rpow_nonneg htwo.le _)]
   rw [ENNReal.ofReal_mul (Real.rpow_nonneg hhalf.le _)]
-  rw [ENNReal.ofReal_rpow_of_pos htwo,
-    ENNReal.ofReal_rpow_of_pos hhalf,
-    ENNReal.ofReal_rpow_of_pos ht]
+  rw [ENNReal.ofReal_rpow_of_pos ht, ENNReal.ofReal_rpow_of_pos htwo]
 
 /-- Multiply a weak `L^r` distribution bound by the target `L^q`
 layer-cake weight. -/

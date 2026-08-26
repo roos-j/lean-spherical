@@ -15,7 +15,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteProductMaximal
 open Auto.Spherical.FractalDilations.Q4MinkowskiVariation
 open Auto.Spherical.FractalDilations.Q4PairKernelGap
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -46,11 +46,19 @@ theorem continuous_uncurry_q4ScaledNormalizedDyadicSurfaceRadiusDerivative
     {d : Nat} (psi f : SchwartzMap (Euclidean d) Complex) (j : Nat) :
     Continuous (fun z : Real × Euclidean d =>
       q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j z.1 z.2) := by
-  simpa only [q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_scale_mul] using
-    ((continuous_const : Continuous fun _ : Real × Euclidean d =>
-      (dyadicScale j : Complex)).mul
-      (continuous_uncurry_normalizedSphericalAverageRadiusDerivative
-        (dyadicBandpassProjection psi f)))
+  have heq : (fun z : Real × Euclidean d =>
+      q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j z.1 z.2) =
+      fun z : Real × Euclidean d => (dyadicScale j : Complex) *
+        Function.uncurry (normalizedSphericalAverageRadiusDerivative
+          (dyadicBandpassProjection psi f)) z := by
+    funext z
+    rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_scale_mul,
+      ← normalizedSphericalAverageRadiusDerivative_dyadicBandpassProjection_eq_q4NormalizedDyadicSurfaceRadiusDerivative]
+    rfl
+  rw [heq]
+  exact continuous_const.mul
+    (continuous_uncurry_normalizedSphericalAverageRadiusDerivative
+      (dyadicBandpassProjection psi f))
 
 /-- The finite active supremum in the scaled FTOC term is jointly continuous.
 This is the measurable family to which the interval Minkowski estimate is
@@ -132,8 +140,8 @@ theorem integrable_activeDyadicScaledDerivativeSup_rpow_of_schwartz
           fun x => (activeDyadicIndices E j).sup' hs (fun i => ‖pieces i x‖) := by
       funext x
       exact Finset.sup'_apply hs _ x
-    rw [← happly]
-    apply Continuous.finset_sup'_apply hs
+    refine Continuous.finset_sup'_apply (f := fun (i : Int) (x : Euclidean d) =>
+      ‖pieces i x‖) hs ?_
     intro i hi
     exact (continuous_q4ScaledNormalizedDyadicSurfaceRadiusDerivative
       psi f j (dyadicLeft j i + u)).norm
@@ -143,6 +151,9 @@ theorem integrable_activeDyadicScaledDerivativeSup_rpow_of_schwartz
     · exact ((continuous_id.rpow_const (fun _ => Or.inr hq.le)).measurable.comp
         hmaxcont.measurable).aestronglyMeasurable
     · filter_upwards with x
+      rw [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg
+        (Q4FullProductMaximalBridge.q4FiniteProductMaximal_nonneg
+          (activeDyadicIndices E j) hs pieces x) q)]
       exact q4FiniteProductMaximal_rpow_le_fibreSum
         (activeDyadicIndices E j) hs q pieces x
   refine hmaxint.congr ?_
@@ -166,8 +177,7 @@ theorem q4ActiveDyadicScaledDerivativeVariationTerm_eLpNorm_le_of_uniform_root_b
           (fun t => q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j t x) u ^ q)
         volume)
     (hroot : forall u, u ∈ Ioc (0 : Real) (dyadicScale j) ->
-      (integral fun x =>
-        activeDyadicDerivativeSup E j hs
+      (∫ x,         activeDyadicDerivativeSup E j hs
           (fun t => q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j t x) u ^ q
         ∂volume) ^ (1 / q) <= A) :
     MemLp (q4ActiveDyadicScaledDerivativeVariationTerm E j hs psi f)
@@ -178,8 +188,8 @@ theorem q4ActiveDyadicScaledDerivativeVariationTerm_eLpNorm_le_of_uniform_root_b
     activeDyadicDerivativeSup E j hs
       (fun t => q4ScaledNormalizedDyadicSurfaceRadiusDerivative psi f j t x) u
   have hHmeas : Measurable (Function.uncurry H) := by
-    simpa only [H] using
-      (continuous_uncurry_activeDyadicScaledDerivativeSup E j hs psi f).measurable
+    have := (continuous_uncurry_activeDyadicScaledDerivativeSup E j hs psi f).measurable
+    exact this
   have hHnonneg : forall u x, 0 <= H u x := by
     intro u x
     simpa only [H] using activeDyadicDerivativeSup_nonneg E j hs

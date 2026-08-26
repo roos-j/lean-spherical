@@ -52,8 +52,9 @@ theorem q4_lintegral_norm_rpow_eq_ofReal_integral
 /-- Turn a homogeneous crossed power-moment bound into the corresponding
 strong off-diagonal `eLpNorm` inequality. -/
 theorem q4_eLpNorm_le_of_crossed_power_moment
-    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
-    (μ : Measure α) (T f : α → E) {p q : ℝ} (hp : 0 < p) (hq : 0 < q)
+    {α E F : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    [NormedAddCommGroup F]
+    (μ : Measure α) (T : α → E) (f : α → F) {p q : ℝ} (hp : 0 < p) (hq : 0 < q)
     (C : ENNReal)
     (hbound :
       (∫⁻ x, ENNReal.ofReal (‖T x‖ ^ q) ∂μ) ≤
@@ -72,22 +73,27 @@ theorem q4_eLpNorm_le_of_crossed_power_moment
     eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET,
     ENNReal.toReal_ofReal hq.le, ENNReal.toReal_ofReal hp.le,
     hqinv, hpinv]
+  have hTfun : (fun x => ‖T x‖ₑ ^ q) = fun x => ENNReal.ofReal (‖T x‖ ^ q) := by
+    funext x
+    rw [← ofReal_norm (T x), ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hq.le]
+  have hffun : (fun x => ‖f x‖ₑ ^ p)
+      = fun x => (ENNReal.ofReal ‖f x‖) ^ p := by
+    funext x
+    rw [← ofReal_norm (f x)]
   have hbound' :
-      (∫⁻ x, ‖T x‖₊ ^ q ∂μ) ≤
-        C * (∫⁻ x, ‖f x‖₊ ^ p ∂μ) ^ (q / p) := by
-    simpa only [Real.enorm_eq_ofReal (norm_nonneg _),
-      ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _)] using hbound
+      (∫⁻ x, ‖T x‖ₑ ^ q ∂μ) ≤
+        C * (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (q / p) := by
+    rw [hTfun, hffun]
+    exact hbound
   calc
-    (∫⁻ x, ‖T x‖₊ ^ q ∂μ) ^ q⁻¹ ≤
-        (C * (∫⁻ x, ‖f x‖₊ ^ p ∂μ) ^ (q / p)) ^ q⁻¹ :=
+    (∫⁻ x, ‖T x‖ₑ ^ q ∂μ) ^ q⁻¹ ≤
+        (C * (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (q / p)) ^ q⁻¹ :=
       ENNReal.rpow_le_rpow hbound' (by positivity)
     _ = C ^ q⁻¹ *
-        ((∫⁻ x, ‖f x‖₊ ^ p ∂μ) ^ (q / p)) ^ q⁻¹ := by
+        ((∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (q / p)) ^ q⁻¹ := by
       rw [ENNReal.mul_rpow_of_nonneg C _ (by positivity)]
-    _ = C ^ q⁻¹ * (∫⁻ x, ‖f x‖₊ ^ p ∂μ) ^ p⁻¹ := by
-      rw [← ENNReal.rpow_mul]
-      congr 1
-      exact hpow
+    _ = C ^ q⁻¹ * (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ p⁻¹ := by
+      rw [← ENNReal.rpow_mul, hpow]
 
 /-- The scalar part of the hard-cutoff crossed estimate factors into a
 constant and the homogeneous input-moment power.  This is the calculation
@@ -116,13 +122,21 @@ theorem q4_hard_cutoff_constant_factorization
     rw [hq]
     field_simp [show p - 1 ≠ 0 by linarith]
     ring
+  have hXpow : (ENNReal.ofReal I) ^ (q - 2) * ENNReal.ofReal I
+      = (ENNReal.ofReal I) ^ (q / p) := by
+    rw [← hpower,
+      ENNReal.rpow_add_of_nonneg (q - 2) 1 (by linarith) (by norm_num),
+      ENNReal.rpow_one]
   rw [show 2 * A * I = (2 * A) * I by ring,
-    ENNReal.ofReal_mul hAI hI0,
+    ENNReal.ofReal_mul hAI,
     ENNReal.mul_rpow_of_nonneg (ENNReal.ofReal (2 * A))
       (ENNReal.ofReal I) (by linarith)]
-  rw [← ENNReal.rpow_one (ENNReal.ofReal I),
-    ← ENNReal.rpow_add_of_nonneg (q - 2) 1 (by linarith) (by norm_num)]
-  rw [hpower]
+  rw [show ((ENNReal.ofReal (q - 2))⁻¹ *
+        ((ENNReal.ofReal (2 * A)) ^ (q - 2) * (ENNReal.ofReal I) ^ (q - 2)) *
+        ENNReal.ofReal I) =
+      ((ENNReal.ofReal (q - 2))⁻¹ * (ENNReal.ofReal (2 * A)) ^ (q - 2)) *
+        ((ENNReal.ofReal I) ^ (q - 2) * ENNReal.ofReal I) by ring,
+    hXpow]
   ring
 
 /-- A raw hard-cutoff bound, together with the identified input moment,

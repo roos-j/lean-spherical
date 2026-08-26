@@ -107,7 +107,7 @@ theorem strict_triangle123_dyadic_rate_of_literal_q2_q3_rates
   have hTsub : ∀ j f g, ∀ x, T j (f + g) x ≤ T j f x + T j g x := by
     intro j f g x
     dsimp only [T]
-    exact fractalDyadicBandpassMaximal_add_le hd hEpos
+    exact fractalDyadicBandpassMaximal_add_le hd E hEpos
       (absoluteDyadicBandpass phi hphiOne hphiZero j) f g x
   have hTzero : ∀ j, T j (0 : SchwartzMap (Euclidean d) Complex) = 0 := by
     intro j
@@ -196,7 +196,7 @@ theorem strict_triangle123_strong_type_of_literal_q2_q3_rates
   let CT : ENNReal := Czero + C
   have hCTtop : CT < ⊤ := by
     dsimp only [CT]
-    exact ENNReal.add_lt_top hCzerotop hCtop
+    exact ENNReal.add_lt_top.mpr ⟨hCzerotop, hCtop⟩
   apply absolute_off_diagonal_reassembly_from_eLpNorm
     hd hp0 hq E hEpos phi hphiOne hphiZero CR CT rho
       hCRtop hCTtop hrho hregular
@@ -365,7 +365,7 @@ theorem strict_triangle123_strong_type_of_literal_q2_q3_common_input_rates
   let CT : ENNReal := Czero + C
   have hCTtop : CT < ⊤ := by
     dsimp only [CT]
-    exact ENNReal.add_lt_top hCzerotop hCtop
+    exact ENNReal.add_lt_top.mpr ⟨hCzerotop, hCtop⟩
   apply absolute_off_diagonal_reassembly_from_eLpNorm
     hd hp0 hqq E hEpos phi hphiOne hphiZero CR CT rho
       hCRtop hCTtop hrho hregular

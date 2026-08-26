@@ -18,7 +18,7 @@ open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalInterpolation
 open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalRate
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TheoremOneFourierInputs
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -80,13 +80,14 @@ theorem circle_q3_literal_minkowski_cover_ltwo_of_sharp
         (Ccover * delta ^ (-alpha)) *
           ((8 * C0 ^ 2 + 32 * C1 ^ 2) * R ^ (-(1 : Real))) *
             ∫ x : Euclidean 2, ‖g x‖ ^ (2 : Nat) := by
+  have hR2 : ((2 : Real) ^ j) = R := hRscale
   intro g
   have hlocal := absolute_dyadic_minkowski_endpoints_of_cover_of_local_l2
     (n := 1) (by norm_num) hE hEne hR hRone hdelta hdeltaone hdeltaR
     cover hcover hcard psi g (absoluteDyadicBandpass phi hphiOne hphiZero j)
     (by
       intro xi
-      simpa only [hRscale] using
+      simpa only [hR2] using
         smooth_dyadic_bandpass_eq_scaled_base phi psi
           (absoluteDyadicBandpass phi hphiOne hphiZero j) hpsi j
           (absoluteDyadicBandpass_spec phi hphiOne hphiZero j) xi)
@@ -103,12 +104,11 @@ theorem circle_q3_literal_minkowski_cover_ltwo_of_sharp
       refine ⟨hmem, hbound.trans ?_⟩
       apply mul_le_mul_of_nonneg_right
         (by
-          simpa [hRscale, Auto.Spherical.SurfaceCore.dyadicScale,
-            Nat.cast_one] using
+          simpa only [hRscale, Nat.cast_one] using
             circle_short_interval_l2_coefficient_le_frequency_decay
               C0 C1 hC0.le hC1.le hR hRone (sub_nonneg.mpr hab) hlen)
         (integral_nonneg fun _ => sq_nonneg _))
-  exact ⟨hlocal.2.2.1, hlocal.2.2.2⟩
+  exact ⟨hlocal.2.2.1, by simpa only [Nat.cast_one] using hlocal.2.2.2⟩
 
 /-- The literal strict planar `Q₃` dyadic estimate.  A Minkowski exponent
 `alpha` (used with a positive loss `eps`) supplies the square input, and the
@@ -169,7 +169,8 @@ theorem circle_q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sh
   have hrho : rho < 1 := by
     dsimp only [rho]
     exact ENNReal.ofReal_lt_one.mpr
-      (q3PhysicalMinkowskiRatio_mem_Ioo hqpos hstricta).2
+      (q3PhysicalMinkowskiRatio_mem_Ioo hqpos
+        (by simpa only [Nat.cast_one] using hstricta)).2
   have hCT : 0 < CT := by
     dsimp only [CT]
     exact zero_lt_one.trans_le (le_add_of_nonneg_right bot_le)
@@ -188,10 +189,9 @@ theorem circle_q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sh
             ENNReal.ofReal_ne_top
   have hCTtop : CT < ∞ := by
     dsimp only [CT]
-    apply ENNReal.add_lt_top
-    · norm_num
-    · exact ENNReal.rpow_lt_top_of_nonneg (inv_nonneg.mpr hqpos.le)
-        hcrossTop.ne
+    refine ENNReal.add_lt_top.mpr ⟨by norm_num, ?_⟩
+    exact ENNReal.rpow_lt_top_of_nonneg (inv_nonneg.mpr hqpos.le)
+      hcrossTop.ne
   refine ⟨CT, rho, hCT, hCTtop, hrho, rfl, ?_⟩
   intro j hj f
   let R : Real := Auto.Spherical.SurfaceCore.dyadicScale j
@@ -271,6 +271,7 @@ theorem circle_q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sh
   have hscale := q3PhysicalCrossedConstant_rpow_scale
     (n := 1) (A := A0) (B := B0) (R := R) (a := a) (q := q)
     hA0 hB0 hR hqtwo
+  simp only [Nat.cast_one] at hscale
   have hRrate :
       (ENNReal.ofReal R) ^ q3PhysicalMinkowskiExponent 1 a q = rho ^ j := by
     dsimp only [R, rho, q3PhysicalMinkowskiRatio]
@@ -279,7 +280,7 @@ theorem circle_q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sh
       (ENNReal.ofReal ((2 : Real) ^ j)) ^ q3PhysicalMinkowskiExponent 1 a q =
           ENNReal.ofReal
             (((2 : Real) ^ j) ^ q3PhysicalMinkowskiExponent 1 a q) :=
-        (ENNReal.ofReal_rpow_of_pos (pow_pos (by norm_num) j)).symm
+        ENNReal.ofReal_rpow_of_pos (pow_pos (by norm_num : (0:Real) < 2) j)
       _ = ENNReal.ofReal
           (((2 : Real) ^ q3PhysicalMinkowskiExponent 1 a q) ^ j) := by
         congr 1
@@ -317,10 +318,10 @@ theorem circle_q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sh
     _ ≤ CT * rho ^ j *
           eLpNorm (f : Euclidean 2 → Complex)
             (ENNReal.ofReal p) volume := by
-      exact mul_le_mul_left
-        (mul_le_mul_left (le_add_of_nonneg_right bot_le) (rho ^ j))
-        (eLpNorm (f : Euclidean 2 → Complex)
-          (ENNReal.ofReal p) volume)
+      exact mul_le_mul' (mul_le_mul' (le_add_of_nonneg_left bot_le)
+        (le_refl (rho ^ j)))
+        (le_refl (eLpNorm (f : Euclidean 2 → Complex)
+          (ENNReal.ofReal p) volume))
 
 /-- The planar strict rate with the upper Minkowski dimension written as an
 equality.  The split loss is needed because the covering definition itself
@@ -441,7 +442,7 @@ theorem circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimens
   have hmass : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
   have hC : 0 < C := by
     dsimp only [C]
-    exact mul_pos (ENNReal.ofReal_pos.mpr (inv_pos.mpr hmass)) hCT
+    exact ENNReal.mul_pos (ENNReal.ofReal_pos.mpr (inv_pos.mpr hmass)).ne' hCT.ne'
   have hCtop : C < ∞ := by
     dsimp only [C]
     exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hCTtop

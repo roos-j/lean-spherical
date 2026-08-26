@@ -77,7 +77,7 @@ theorem q4_real_geometric_shell_sum_le
       intro n hn
       dsimp only [r]
       rw [← Real.rpow_mul_natCast (by norm_num : (0 : Real) <= 2) b n]
-      rw [← Real.rpow_add (by norm_num : (0 : Real) < 2)]
+      rw [Real.rpow_add (by norm_num : (0 : Real) < 2)]
       ring
     _ <= (A * (2 : Real) ^ (a * (j : Real))) * (1 - r)⁻¹ :=
       mul_le_mul_of_nonneg_left hgeometric (mul_nonneg hA hfrequency)
@@ -162,6 +162,21 @@ theorem q4StrictShellSummationConstant_nonneg
   exact inv_nonneg.mpr (sub_nonneg.mpr
     (le_of_lt (Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) hb)))
 
+/-- The `ENNReal`-level form of the preceding finite shell sum bound. -/
+theorem q4_finset_sum_toReal_le_strict_normalForm'
+    {A a b : Real} (hA : 0 <= A) (hb : b < 0) (j : Nat)
+    (L : Nat -> ENNReal)
+    (hL : ∀ n : Nat, L n <= ENNReal.ofReal
+      (A * (2 : Real) ^ (a * (j : Real) + b * (n : Real)))) :
+    (∑ n ∈ Finset.range (j + 3), L n).toReal <=
+      q4StrictShellSummationConstant A b *
+        (2 : Real) ^ (a * (j : Real)) := by
+  have hfin : ∀ n ∈ Finset.range (j + 3), L n ≠ ∞ := fun n _ =>
+    ne_of_lt (lt_of_le_of_lt (hL n) ENNReal.ofReal_lt_top)
+  rw [ENNReal.toReal_sum hfin]
+  simpa only [q4StrictShellSummationConstant] using
+    q4_finset_sum_toReal_le_strict_normalForm hA hb j L hL
+
 /-- The finite active-cell shell sum has the displayed dyadic rate whenever
 the gap exponent is negative.  The frequency exponent may have either sign:
 at the Q4 endpoint the resulting rate is allowed to grow, exactly as in
@@ -188,7 +203,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap
     (j : Nat) :
     q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j r <=
-      (‖(surfaceMass d)⁻¹ : Complex‖ *
+      (‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (q4StrictShellSummationConstant Aendpoint b) +
         Real.sqrt (q4StrictShellSummationConstant Aderivative b)) *
         ((2 : Real) ^ (a / 2)) ^ j := by
@@ -206,7 +221,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap
           Cendpoint Bendpoint j n r).toReal <=
         Kendpoint * (2 : Real) ^ (a * (j : Real)) := by
     dsimp only [Kendpoint]
-    exact q4_finset_sum_toReal_le_strict_normalForm hAendpoint hb j
+    exact q4_finset_sum_toReal_le_strict_normalForm' hAendpoint hb j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cendpoint Bendpoint j n r) (hendpoint j)
   have hsumDerivative :
@@ -215,14 +230,14 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap
           Cderivative Bderivative j n r).toReal <=
         Kderivative * (2 : Real) ^ (a * (j : Real)) := by
     dsimp only [Kderivative]
-    exact q4_finset_sum_toReal_le_strict_normalForm hAderivative hb j
+    exact q4_finset_sum_toReal_le_strict_normalForm' hAderivative hb j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cderivative Bderivative j n r) (hderivative j)
   have hfrequency : 0 <= (2 : Real) ^ (a * (j : Real)) :=
     Real.rpow_nonneg (by norm_num) _
   unfold q4ActiveDyadicLtwoRealConstant
   calc
-    ‖(surfaceMass d)⁻¹ : Complex‖ *
+    ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt
             (∑ n ∈ Finset.range (j + 3),
               q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
@@ -231,18 +246,17 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap
           (∑ n ∈ Finset.range (j + 3),
             q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
               Cderivative Bderivative j n r).toReal <=
-        ‖(surfaceMass d)⁻¹ : Complex‖ *
+        ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (Kendpoint * (2 : Real) ^ (a * (j : Real))) +
         Real.sqrt (Kderivative * (2 : Real) ^ (a * (j : Real))) := by
           apply add_le_add
           · exact mul_le_mul_of_nonneg_left
               (Real.sqrt_le_sqrt hsumEndpoint) (norm_nonneg _)
           · exact Real.sqrt_le_sqrt hsumDerivative
-    _ = (‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Kendpoint +
+    _ = (‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Kendpoint +
           Real.sqrt Kderivative) * ((2 : Real) ^ (a / 2)) ^ j := by
       rw [Real.sqrt_mul hKendpoint,
         Real.sqrt_mul hKderivative,
-        q4_sqrt_two_rpow_frequency_eq,
         q4_sqrt_two_rpow_frequency_eq]
       ring
 
@@ -271,7 +285,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap_at
             (a * (j : Real) + b * (n : Real)))) :
     q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j r <=
-      (‖(surfaceMass d)⁻¹ : Complex‖ *
+      (‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (q4StrictShellSummationConstant Aendpoint b) +
         Real.sqrt (q4StrictShellSummationConstant Aderivative b)) *
         ((2 : Real) ^ (a / 2)) ^ j := by
@@ -289,7 +303,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap_at
           Cendpoint Bendpoint j n r).toReal <=
         Kendpoint * (2 : Real) ^ (a * (j : Real)) := by
     dsimp only [Kendpoint]
-    exact q4_finset_sum_toReal_le_strict_normalForm hAendpoint hb j
+    exact q4_finset_sum_toReal_le_strict_normalForm' hAendpoint hb j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cendpoint Bendpoint j n r) hendpoint
   have hsumDerivative :
@@ -298,14 +312,14 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap_at
           Cderivative Bderivative j n r).toReal <=
         Kderivative * (2 : Real) ^ (a * (j : Real)) := by
     dsimp only [Kderivative]
-    exact q4_finset_sum_toReal_le_strict_normalForm hAderivative hb j
+    exact q4_finset_sum_toReal_le_strict_normalForm' hAderivative hb j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cderivative Bderivative j n r) hderivative
   have hfrequency : 0 <= (2 : Real) ^ (a * (j : Real)) :=
     Real.rpow_nonneg (by norm_num) _
   unfold q4ActiveDyadicLtwoRealConstant
   calc
-    ‖(surfaceMass d)⁻¹ : Complex‖ *
+    ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt
             (∑ n ∈ Finset.range (j + 3),
               q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
@@ -314,18 +328,17 @@ theorem q4ActiveDyadicLtwoRealConstant_le_dyadic_rate_of_negative_gap_at
           (∑ n ∈ Finset.range (j + 3),
             q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
               Cderivative Bderivative j n r).toReal <=
-        ‖(surfaceMass d)⁻¹ : Complex‖ *
+        ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (Kendpoint * (2 : Real) ^ (a * (j : Real))) +
         Real.sqrt (Kderivative * (2 : Real) ^ (a * (j : Real))) := by
           apply add_le_add
           · exact mul_le_mul_of_nonneg_left
               (Real.sqrt_le_sqrt hsumEndpoint) (norm_nonneg _)
           · exact Real.sqrt_le_sqrt hsumDerivative
-    _ = (‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Kendpoint +
+    _ = (‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Kendpoint +
           Real.sqrt Kderivative) * ((2 : Real) ^ (a / 2)) ^ j := by
       rw [Real.sqrt_mul hKendpoint,
         Real.sqrt_mul hKderivative,
-        q4_sqrt_two_rpow_frequency_eq,
         q4_sqrt_two_rpow_frequency_eq]
       ring
 
@@ -349,12 +362,26 @@ theorem q4_finset_sum_toReal_le_zero_gap_normalForm
           A * (2 : Real) ^ (a * (j : Real)) := by
       apply Finset.sum_le_sum
       intro n hn
-      exact q4_toReal_le_normalForm (a := a) (b := 0) (j := j) (n := n) hA (by
-        simpa only [zero_mul, add_zero] using hL n)
+      simpa only [zero_mul, add_zero] using
+        q4_toReal_le_normalForm (a := a) (b := 0) (j := j) (n := n) hA (by
+          simpa only [zero_mul, add_zero] using hL n)
     _ = ((j + 3 : Nat) : Real) * A *
         (2 : Real) ^ (a * (j : Real)) := by
       rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
       ring
+
+/-- The `ENNReal`-level form of the zero-gap finite shell sum bound. -/
+theorem q4_finset_sum_toReal_le_zero_gap_normalForm'
+    {A a : Real} (hA : 0 <= A) (j : Nat) (L : Nat -> ENNReal)
+    (hL : ∀ n : Nat, L n <= ENNReal.ofReal
+      (A * (2 : Real) ^ (a * (j : Real)))) :
+    (∑ n ∈ Finset.range (j + 3), L n).toReal <=
+      ((j + 3 : Nat) : Real) * A *
+        (2 : Real) ^ (a * (j : Real)) := by
+  have hfin : ∀ n ∈ Finset.range (j + 3), L n ≠ ∞ := fun n _ =>
+    ne_of_lt (lt_of_le_of_lt (hL n) ENNReal.ofReal_lt_top)
+  rw [ENNReal.toReal_sum hfin]
+  exact q4_finset_sum_toReal_le_zero_gap_normalForm hA j L hL
 
 /-- The exact finite zero-gap shell estimate.  The square root in the
 literal `TT*` bound produces `sqrt (j + 3)` and the usual half frequency
@@ -376,7 +403,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
     (j : Nat) :
     q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j r <=
-      (‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Aendpoint +
+      (‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Aendpoint +
         Real.sqrt Aderivative) * Real.sqrt ((j + 3 : Nat) : Real) *
         ((2 : Real) ^ (a / 2)) ^ j := by
   have hsumEndpoint :
@@ -385,7 +412,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
           Cendpoint Bendpoint j n r).toReal <=
         ((j + 3 : Nat) : Real) * Aendpoint *
           (2 : Real) ^ (a * (j : Real)) :=
-    q4_finset_sum_toReal_le_zero_gap_normalForm hAendpoint j
+    q4_finset_sum_toReal_le_zero_gap_normalForm' hAendpoint j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cendpoint Bendpoint j n r) (hendpoint j)
   have hsumDerivative :
@@ -394,7 +421,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
           Cderivative Bderivative j n r).toReal <=
         ((j + 3 : Nat) : Real) * Aderivative *
           (2 : Real) ^ (a * (j : Real)) :=
-    q4_finset_sum_toReal_le_zero_gap_normalForm hAderivative j
+    q4_finset_sum_toReal_le_zero_gap_normalForm' hAderivative j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cderivative Bderivative j n r) (hderivative j)
   have hj : 0 <= ((j + 3 : Nat) : Real) := by positivity
@@ -402,7 +429,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
     Real.rpow_nonneg (by norm_num) _
   unfold q4ActiveDyadicLtwoRealConstant
   calc
-    ‖(surfaceMass d)⁻¹ : Complex‖ *
+    ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt
             (∑ n ∈ Finset.range (j + 3),
               q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
@@ -411,7 +438,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
           (∑ n ∈ Finset.range (j + 3),
             q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
               Cderivative Bderivative j n r).toReal <=
-        ‖(surfaceMass d)⁻¹ : Complex‖ *
+        ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (((j + 3 : Nat) : Real) * Aendpoint *
             (2 : Real) ^ (a * (j : Real))) +
         Real.sqrt (((j + 3 : Nat) : Real) * Aderivative *
@@ -420,7 +447,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
           · exact mul_le_mul_of_nonneg_left
               (Real.sqrt_le_sqrt hsumEndpoint) (norm_nonneg _)
           · exact Real.sqrt_le_sqrt hsumDerivative
-    _ = (‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Aendpoint +
+    _ = (‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Aendpoint +
           Real.sqrt Aderivative) * Real.sqrt ((j + 3 : Nat) : Real) *
           ((2 : Real) ^ (a / 2)) ^ j := by
       rw [show ((j + 3 : Nat) : Real) * Aendpoint *
@@ -435,7 +462,6 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate
         Real.sqrt_mul hj,
         Real.sqrt_mul hAendpoint,
         Real.sqrt_mul hAderivative,
-        q4_sqrt_two_rpow_frequency_eq,
         q4_sqrt_two_rpow_frequency_eq]
       ring
 
@@ -457,7 +483,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate_at
         ENNReal.ofReal (Aderivative * (2 : Real) ^ (a * (j : Real)))) :
     q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j r <=
-      (‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Aendpoint +
+      (‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Aendpoint +
         Real.sqrt Aderivative) * Real.sqrt ((j + 3 : Nat) : Real) *
         ((2 : Real) ^ (a / 2)) ^ j := by
   have hsumEndpoint :
@@ -466,7 +492,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate_at
           Cendpoint Bendpoint j n r).toReal <=
         ((j + 3 : Nat) : Real) * Aendpoint *
           (2 : Real) ^ (a * (j : Real)) :=
-    q4_finset_sum_toReal_le_zero_gap_normalForm hAendpoint j
+    q4_finset_sum_toReal_le_zero_gap_normalForm' hAendpoint j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cendpoint Bendpoint j n r) hendpoint
   have hsumDerivative :
@@ -475,13 +501,13 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate_at
           Cderivative Bderivative j n r).toReal <=
         ((j + 3 : Nat) : Real) * Aderivative *
           (2 : Real) ^ (a * (j : Real)) :=
-    q4_finset_sum_toReal_le_zero_gap_normalForm hAderivative j
+    q4_finset_sum_toReal_le_zero_gap_normalForm' hAderivative j
       (fun n => q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
         Cderivative Bderivative j n r) hderivative
   have hj : 0 <= ((j + 3 : Nat) : Real) := by positivity
   unfold q4ActiveDyadicLtwoRealConstant
   calc
-    ‖(surfaceMass d)⁻¹ : Complex‖ *
+    ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt
             (∑ n ∈ Finset.range (j + 3),
               q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
@@ -490,7 +516,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate_at
           (∑ n ∈ Finset.range (j + 3),
             q4ActiveDyadicLevelStrongConstant d gamma eta Ccover
               Cderivative Bderivative j n r).toReal <=
-        ‖(surfaceMass d)⁻¹ : Complex‖ *
+        ‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (((j + 3 : Nat) : Real) * Aendpoint *
             (2 : Real) ^ (a * (j : Real))) +
         Real.sqrt (((j + 3 : Nat) : Real) * Aderivative *
@@ -499,7 +525,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate_at
           · exact mul_le_mul_of_nonneg_left
               (Real.sqrt_le_sqrt hsumEndpoint) (norm_nonneg _)
           · exact Real.sqrt_le_sqrt hsumDerivative
-    _ = (‖(surfaceMass d)⁻¹ : Complex‖ * Real.sqrt Aendpoint +
+    _ = (‖((surfaceMass d)⁻¹ : Complex)‖ * Real.sqrt Aendpoint +
           Real.sqrt Aderivative) * Real.sqrt ((j + 3 : Nat) : Real) *
           ((2 : Real) ^ (a / 2)) ^ j := by
       rw [show ((j + 3 : Nat) : Real) * Aendpoint *
@@ -514,7 +540,6 @@ theorem q4ActiveDyadicLtwoRealConstant_le_zero_gap_dyadic_rate_at
         Real.sqrt_mul hj,
         Real.sqrt_mul hAendpoint,
         Real.sqrt_mul hAderivative,
-        q4_sqrt_two_rpow_frequency_eq,
         q4_sqrt_two_rpow_frequency_eq]
       ring
 
@@ -582,7 +607,9 @@ theorem exists_sqrt_nat_add_le_geometric
     norm_num [Nat.cast_add, Nat.cast_ofNat]
     nlinarith [hjle, hthree]
   have hargone : 1 <= ((j + 3 : Nat) : Real) := by
-    norm_num [Nat.cast_add, Nat.cast_ofNat]
+    have hj0 : (0 : Real) <= (j : Real) := Nat.cast_nonneg j
+    push_cast
+    linarith
   exact (Real.sqrt_le_self_iff).2 (Or.inr hargone) |>.trans hlinearAdd
 
 /-- The product of the endpoint frequency ratio with the small geometric
@@ -674,7 +701,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_strict_dyadic_rate
     (j : Nat) :
     q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j r <=
-      (‖(surfaceMass d)⁻¹ : Complex‖ *
+      (‖((surfaceMass d)⁻¹ : Complex)‖ *
           Real.sqrt (q4StrictShellSummationConstant Aendpoint b) +
         Real.sqrt (q4StrictShellSummationConstant Aderivative b)) *
         ((2 : Real) ^ (a / 2)) ^ j :=
@@ -713,7 +740,7 @@ theorem q4_planar_critical_real_shell_sum_le
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
             q4GapExponent 2 (1 / 2) theta)) ^ j := by
   have hscalar :=
-    q4_planar_critical_finite_level_sum_with_subpower_loss_le htheta j
+    q4_planar_critical_finite_level_sum_with_subpower_loss_le (eta := eta) htheta j
   calc
     (∑ n ∈ Finset.range (j + 3),
         A * (2 : Real) ^
@@ -766,6 +793,24 @@ theorem q4_finset_sum_toReal_le_planar_critical_normalForm
             q4GapExponent 2 (1 / 2) theta)) ^ j :=
       q4_planar_critical_real_shell_sum_le hA htheta j
 
+/-- The `ENNReal`-level form of the planar critical finite shell sum bound. -/
+theorem q4_finset_sum_toReal_le_planar_critical_normalForm'
+    {A theta eta : Real} (hA : 0 <= A) (htheta : 1 / 2 < theta)
+    (j : Nat) (L : Nat -> ENNReal)
+    (hL : ∀ n : Nat, L n <= ENNReal.ofReal
+      (A * (2 : Real) ^
+        (q4FrequencyExponentWithSubpowerLoss 2 theta eta * (j : Real) +
+          q4GapExponent 2 (1 / 2) theta * (n : Real)))) :
+    (∑ n ∈ Finset.range (j + 3), L n).toReal <=
+      q4PlanarCriticalShellSummationConstant A theta *
+        ((2 : Real) ^
+          (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
+            q4GapExponent 2 (1 / 2) theta)) ^ j := by
+  have hfin : ∀ n ∈ Finset.range (j + 3), L n ≠ ∞ := fun n _ =>
+    ne_of_lt (lt_of_le_of_lt (hL n) ENNReal.ofReal_lt_top)
+  rw [ENNReal.toReal_sum hfin]
+  exact q4_finset_sum_toReal_le_planar_critical_normalForm hA htheta j L hL
+
 theorem q4_sqrt_planar_critical_frequency_eq
     (a : Real) (j : Nat) :
     Real.sqrt (((2 : Real) ^ a) ^ j) = ((2 : Real) ^ (a / 2)) ^ j := by
@@ -797,7 +842,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate
     (j : Nat) :
     q4ActiveDyadicLtwoRealConstant 2 (1 / 2) eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j (2 / theta) <=
-      (‖(surfaceMass 2)⁻¹ : Complex‖ *
+      (‖((surfaceMass 2)⁻¹ : Complex)‖ *
           Real.sqrt (q4PlanarCriticalShellSummationConstant Aendpoint theta) +
         Real.sqrt (q4PlanarCriticalShellSummationConstant Aderivative theta)) *
         ((2 : Real) ^
@@ -819,7 +864,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate
           Cendpoint Bendpoint j n (2 / theta)).toReal <=
         Kendpoint * ((2 : Real) ^ combined) ^ j := by
     dsimp only [Kendpoint, combined]
-    exact q4_finset_sum_toReal_le_planar_critical_normalForm
+    exact q4_finset_sum_toReal_le_planar_critical_normalForm'
       hAendpoint htheta j
       (fun n => q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
         Cendpoint Bendpoint j n (2 / theta)) (hendpoint j)
@@ -829,13 +874,13 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate
           Cderivative Bderivative j n (2 / theta)).toReal <=
         Kderivative * ((2 : Real) ^ combined) ^ j := by
     dsimp only [Kderivative, combined]
-    exact q4_finset_sum_toReal_le_planar_critical_normalForm
+    exact q4_finset_sum_toReal_le_planar_critical_normalForm'
       hAderivative htheta j
       (fun n => q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
         Cderivative Bderivative j n (2 / theta)) (hderivative j)
   unfold q4ActiveDyadicLtwoRealConstant
   calc
-    ‖(surfaceMass 2)⁻¹ : Complex‖ *
+    ‖((surfaceMass 2)⁻¹ : Complex)‖ *
           Real.sqrt
             (∑ n ∈ Finset.range (j + 3),
               q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
@@ -844,18 +889,17 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate
           (∑ n ∈ Finset.range (j + 3),
             q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
               Cderivative Bderivative j n (2 / theta)).toReal <=
-        ‖(surfaceMass 2)⁻¹ : Complex‖ *
+        ‖((surfaceMass 2)⁻¹ : Complex)‖ *
           Real.sqrt (Kendpoint * ((2 : Real) ^ combined) ^ j) +
         Real.sqrt (Kderivative * ((2 : Real) ^ combined) ^ j) := by
           apply add_le_add
           · exact mul_le_mul_of_nonneg_left
               (Real.sqrt_le_sqrt hsumEndpoint) (norm_nonneg _)
           · exact Real.sqrt_le_sqrt hsumDerivative
-    _ = (‖(surfaceMass 2)⁻¹ : Complex‖ * Real.sqrt Kendpoint +
+    _ = (‖((surfaceMass 2)⁻¹ : Complex)‖ * Real.sqrt Kendpoint +
           Real.sqrt Kderivative) * ((2 : Real) ^ (combined / 2)) ^ j := by
       rw [Real.sqrt_mul hKendpoint,
         Real.sqrt_mul hKderivative,
-        q4_sqrt_planar_critical_frequency_eq,
         q4_sqrt_planar_critical_frequency_eq]
       ring
 
@@ -884,7 +928,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate_at
               q4GapExponent 2 (1 / 2) theta * (n : Real)))) :
     q4ActiveDyadicLtwoRealConstant 2 (1 / 2) eta Ccover
       Cendpoint Bendpoint Cderivative Bderivative j (2 / theta) <=
-      (‖(surfaceMass 2)⁻¹ : Complex‖ *
+      (‖((surfaceMass 2)⁻¹ : Complex)‖ *
           Real.sqrt (q4PlanarCriticalShellSummationConstant Aendpoint theta) +
         Real.sqrt (q4PlanarCriticalShellSummationConstant Aderivative theta)) *
         ((2 : Real) ^
@@ -906,7 +950,7 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate_at
           Cendpoint Bendpoint j n (2 / theta)).toReal <=
         Kendpoint * ((2 : Real) ^ combined) ^ j := by
     dsimp only [Kendpoint, combined]
-    exact q4_finset_sum_toReal_le_planar_critical_normalForm
+    exact q4_finset_sum_toReal_le_planar_critical_normalForm'
       hAendpoint htheta j
       (fun n => q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
         Cendpoint Bendpoint j n (2 / theta)) hendpoint
@@ -916,13 +960,13 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate_at
           Cderivative Bderivative j n (2 / theta)).toReal <=
         Kderivative * ((2 : Real) ^ combined) ^ j := by
     dsimp only [Kderivative, combined]
-    exact q4_finset_sum_toReal_le_planar_critical_normalForm
+    exact q4_finset_sum_toReal_le_planar_critical_normalForm'
       hAderivative htheta j
       (fun n => q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
         Cderivative Bderivative j n (2 / theta)) hderivative
   unfold q4ActiveDyadicLtwoRealConstant
   calc
-    ‖(surfaceMass 2)⁻¹ : Complex‖ *
+    ‖((surfaceMass 2)⁻¹ : Complex)‖ *
           Real.sqrt
             (∑ n ∈ Finset.range (j + 3),
               q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
@@ -931,18 +975,17 @@ theorem q4ActiveDyadicLtwoRealConstant_le_planar_critical_dyadic_rate_at
           (∑ n ∈ Finset.range (j + 3),
             q4ActiveDyadicLevelStrongConstant 2 (1 / 2) eta Ccover
               Cderivative Bderivative j n (2 / theta)).toReal <=
-        ‖(surfaceMass 2)⁻¹ : Complex‖ *
+        ‖((surfaceMass 2)⁻¹ : Complex)‖ *
           Real.sqrt (Kendpoint * ((2 : Real) ^ combined) ^ j) +
         Real.sqrt (Kderivative * ((2 : Real) ^ combined) ^ j) := by
           apply add_le_add
           · exact mul_le_mul_of_nonneg_left
               (Real.sqrt_le_sqrt hsumEndpoint) (norm_nonneg _)
           · exact Real.sqrt_le_sqrt hsumDerivative
-    _ = (‖(surfaceMass 2)⁻¹ : Complex‖ * Real.sqrt Kendpoint +
+    _ = (‖((surfaceMass 2)⁻¹ : Complex)‖ * Real.sqrt Kendpoint +
           Real.sqrt Kderivative) * ((2 : Real) ^ (combined / 2)) ^ j := by
       rw [Real.sqrt_mul hKendpoint,
         Real.sqrt_mul hKderivative,
-        q4_sqrt_planar_critical_frequency_eq,
         q4_sqrt_planar_critical_frequency_eq]
       ring
 
@@ -997,7 +1040,6 @@ theorem q4_active_ltwo_eLpNorm_le_of_ltwoReal_strict_rate
             (Real.sqrt (∫ x, ‖(f : Euclidean d -> Complex) x‖ ^ (2 : Nat))) := by
       rw [ENNReal.ofReal_mul hC,
         ENNReal.ofReal_pow hrho j]
-      ring
 
 end
 

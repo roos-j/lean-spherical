@@ -248,7 +248,7 @@ private theorem lowpass_eLpNorm_le_of_diagonal_moment
       rw [hfmem.eLpNorm_eq_integral_rpow_norm hpE0 hpET,
         ENNReal.toReal_ofReal hpNN]
 
-/-- A diagonal strong estimate for a subadditive operator gives the weak
+/- A diagonal strong estimate for a subadditive operator gives the weak
 estimate needed in the smooth amplitude decomposition.  The theorem is
 generic only at this internal bookkeeping layer; the application below is
 the concrete compact-frequency spherical maximal operator. -/
@@ -339,10 +339,14 @@ theorem schwartz_operator_strong_above_of_diagonal_top_with_constant
   let A : Real := p * (2 : Real) ^ r * (C ^ r) * Atail * Ctop ^ (p - r)
   have hAtail : 0 < Atail := by
     dsimp only [Atail]
-    positivity
+    have hpr : 0 < p - r := sub_pos.mpr hrp
+    exact mul_pos (inv_pos.mpr hpr) (Real.rpow_pos_of_pos (by norm_num) _)
   have hA : 0 < A := by
     dsimp only [A]
-    positivity
+    have hp0 : 0 < p := lt_trans hr hrp
+    exact mul_pos (mul_pos (mul_pos (mul_pos hp0
+      (Real.rpow_pos_of_pos (by norm_num) _))
+      (Real.rpow_pos_of_pos hC _)) hAtail) (Real.rpow_pos_of_pos hCtop _)
   intro f
   obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
     exists_schwartz_smooth_low_high_family f
@@ -458,10 +462,14 @@ private theorem schwartz_operator_strong_above_of_diagonal_top
   let A : Real := p * (2 : Real) ^ r * (C ^ r) * Atail * Ctop ^ (p - r)
   have hAtail : 0 < Atail := by
     dsimp only [Atail]
-    positivity
+    have hpr : 0 < p - r := sub_pos.mpr hrp
+    exact mul_pos (inv_pos.mpr hpr) (Real.rpow_pos_of_pos (by norm_num) _)
   have hA : 0 < A := by
     dsimp only [A]
-    positivity
+    have hp0 : 0 < p := lt_trans hr hrp
+    exact mul_pos (mul_pos (mul_pos (mul_pos hp0
+      (Real.rpow_pos_of_pos (by norm_num) _))
+      (Real.rpow_pos_of_pos hC _)) hAtail) (Real.rpow_pos_of_pos hCtop _)
   refine ⟨A, hA, ?_⟩
   intro f
   simpa only [A, Atail] using

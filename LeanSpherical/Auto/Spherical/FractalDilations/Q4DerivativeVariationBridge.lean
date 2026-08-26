@@ -7,7 +7,7 @@ open Auto.Spherical.FractalDilations.ActiveDyadicBandpassVariation
 open Auto.Spherical.FractalDilations.DyadicCovering
 open Auto.Spherical.FractalDilations.ExponentRegions
 open Auto.Spherical.FractalDilations.Q4DerivativePairKernel
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -58,8 +58,10 @@ theorem continuous_q4ScaledNormalizedDyadicSurfaceRadiusDerivative
         psi f r x
     rw [heq] at hphysical
     exact hphysical
-  simpa only [q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_scale_mul] using
-    ((continuous_const : Continuous fun _ : Euclidean d => (dyadicScale j : Complex)).mul hnormal)
+  simpa only [q4ScaledNormalizedDyadicSurfaceRadiusDerivative_eq_scale_mul,
+    Pi.mul_def] using
+    ((continuous_const : Continuous fun _ : Euclidean d =>
+      (dyadicScale j : Complex)).mul hnormal)
 
 /-- For a fixed local offset, choose the least active cell at which the
 literal scaled derivative is maximal. -/

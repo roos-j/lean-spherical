@@ -45,13 +45,13 @@ noncomputable section
 /-- The two-neighbour lower-input layer-cake coefficient at one frequency. -/
 def q4LowerStrongCoefficient
     (A B0 B1 p r0 r1 q : Real) : ENNReal :=
-  ENNReal.ofReal q *
+  (ENNReal.ofReal q *
     (ENNReal.ofReal (q4LowerWeakRealConstant A B0 p r0) *
         (∫⁻ t in Ioc (0 : Real) 1,
           (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r0 - 1)) +
       ENNReal.ofReal (q4LowerWeakRealConstant A B1 p r1) *
-        ∫⁻ t in Ioi (1 : Real),
-          (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r1 - 1)) ^ q⁻¹
+        (∫⁻ t in Ioi (1 : Real),
+          (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r1 - 1)))) ^ q⁻¹
 
 /-- Insert two fixed-cutoff literal `L² → Lʳ` rates into the lower-input
 Schwartz interpolation.  The `A j` hypothesis is the physical compact
@@ -108,7 +108,7 @@ theorem q4_lower_activeDyadic_strong_of_fixed_ltwo_finite_rates
     have hEpos : E ⊆ Ioi (0 : Real) := by
       intro t ht
       exact lt_of_lt_of_le zero_lt_one (hE ht).1
-    exact fractalDyadicBandpassMaximal_add_le hd hEpos
+    exact fractalDyadicBandpassMaximal_add_le hd E hEpos
       (absoluteDyadicBandpass phi hphiOne hphiZero j) g h x
   have hTmeas : ∀ g : SchwartzMap (Euclidean d) Complex,
       AEStronglyMeasurable (T g) volume := by
@@ -214,7 +214,7 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
     (hqq1 : q < q4LowerWeakOutputExponent p r1)
     {CT0 rho0 CT1 rho1 : ENNReal}
     (hCT0 : CT0 < ⊤) (hCT1 : CT1 < ⊤)
-    (hrho0 : rho0 < 1) (hrho1 : rho1 < 1)
+    (hrho0 : rho0 < ⊤) (hrho1 : rho1 < ⊤)
     (hrate0 : ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) Complex,
       eLpNorm (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
@@ -227,7 +227,7 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
         (ENNReal.ofReal r1) volume ≤
         CT1 * rho1 ^ j * ENNReal.ofReal
           (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))))
-    {C rho : ENNReal} (hCtop : C < ⊤) (hrho : rho < 1)
+    {C rho : ENNReal} (hCtop : C < ⊤) (hrho : rho < ⊤)
     (hcoefficient : ∀ j : Nat, 1 ≤ j →
       q4LowerStrongCoefficient (A j) ((CT0 * rho0 ^ j).toReal)
         ((CT1 * rho1 ^ j).toReal) p r0 r1 q ≤ C * rho ^ j) :
@@ -247,7 +247,7 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
     dsimp only [I]
     exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p
   by_cases hIpos : 0 < I
-  · have hraw := q4_lower_activeDyadic_strong_of_fixed_ltwo_rates
+  · have hraw := q4_lower_activeDyadic_strong_of_fixed_ltwo_finite_rates
       hd hE phi hphiOne hphiZero A hA hLone hp1 hp2 hr0 hr1 hq0q hqq1
       hCT0 hCT1 hrho0 hrho1 hrate0 hrate1 j hj f I hI hIpos
     have hboundScale :
@@ -256,7 +256,7 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
           (ENNReal.ofReal q) volume ≤
           (C * rho ^ j) * ENNReal.ofReal (q4LowerInputScale I p) :=
       hraw.trans (mul_le_mul_left (hcoefficient j hj) _)
-    have hrhotop : rho < ⊤ := lt_trans hrho (by simp)
+    have hrhotop : rho < ⊤ := hrho
     have hfactorTop : C * rho ^ j < ⊤ :=
       ENNReal.mul_lt_top hCtop (ENNReal.pow_lt_top hrhotop)
     have hboundTop :
@@ -334,11 +334,8 @@ theorem q4_lower_absoluteDyadic_lone_endpoint_enlarged
   intro j hj g x
   have hd1 : 1 ≤ d := by omega
   have hendpoint :=
-    fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp
-      (n := d - 1) C hC (by
-        intro z hz
-        simpa only [Nat.sub_add_cancel hd1] using hdecay z hz)
-      phi hphiOne hphiZero hphiNorm j hj hE g x
+    fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp_of_one_le
+      hd1 C hC hdecay phi hphiOne hphiZero hphiNorm j hj hE g x
   have hK : 0 ≤ absoluteDyadicSurfaceL1EndpointConstant (d - 1) C j :=
     absoluteDyadicSurfaceL1EndpointConstant_nonneg (d - 1) hC.le j
   have hI : 0 ≤ ∫ y, ‖(g : Euclidean d → Complex) y‖ :=
@@ -348,10 +345,11 @@ theorem q4_lower_absoluteDyadic_lone_endpoint_enlarged
         (absoluteDyadicBandpass phi hphiOne hphiZero j) g x ≤
         absoluteDyadicSurfaceL1EndpointConstant (d - 1) C j *
           ∫ y, ‖(g : Euclidean d → Complex) y‖ := by
-          simpa only [Nat.sub_add_cancel hd1] using hendpoint
+          exact hendpoint
     _ ≤ (absoluteDyadicSurfaceL1EndpointConstant (d - 1) C j + 1) *
           ∫ y, ‖(g : Euclidean d → Complex) y‖ := by
           gcongr
+          linarith
 
 /-- The literal sharp surface-Fourier endpoint supplies the `L¹ → L∞`
 input needed by `q4_lower_activeDyadic_strong_of_fixed_ltwo_rates`.  This
@@ -484,12 +482,12 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates_of_sharp
   · exact hqq1
   · exact hCT0
   · exact hCT1
-  · exact hrho0
-  · exact hrho1
+  · exact lt_trans hrho0 ENNReal.one_lt_top
+  · exact lt_trans hrho1 ENNReal.one_lt_top
   · exact hrate0
   · exact hrate1
   · exact hCtop
-  · exact hrho
+  · exact lt_trans hrho ENNReal.one_lt_top
   · exact hcoefficient
 
 end

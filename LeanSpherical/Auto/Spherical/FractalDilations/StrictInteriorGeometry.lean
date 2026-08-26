@@ -31,6 +31,10 @@ the analytic assembly by perturbing through the two adjacent open triangles.
 
 namespace Auto.Spherical.FractalDilations.StrictInteriorGeometry
 
+open Topology
+
+set_option maxHeartbeats 1000000
+
 open Set
 
 noncomputable section
@@ -99,6 +103,7 @@ theorem theoremOne_diagonal_gap_pos
   · have hD : (3 : Real) ≤ (d : Real) := by exact_mod_cast hd
     linarith
   · subst d
+    push_cast
     linarith
 
 /-- A nonzero coordinate functional maps the reciprocal-exponent plane
@@ -146,7 +151,7 @@ theorem strict_second_lt_first_of_mem_interior_Q
       (by norm_num) (by
         intro y hy
         change (-1 : Real) * y.1 + 1 * y.2 ≤ 0
-        have h := Q_subset_second_le_first hd hbeta hgamma hy
+        have h : y.2 ≤ y.1 := Q_subset_second_le_first hd hbeta hgamma hy
         linarith) hx
   change (-1 : Real) * x.1 + 1 * x.2 < 0 at hstrict
   linarith
@@ -166,19 +171,25 @@ theorem strict_first_lt_one_of_mem_interior_Q
   have hQ1 : exponentLinearMap (1 : Real) 0 Q1 <= 1 := by
     norm_num [exponentLinearMap, Q1]
   have hQ2 : exponentLinearMap (1 : Real) 0 (Q2 d beta) <= 1 := by
-    change (Q2 d beta).1 <= 1
+    have hval : exponentLinearMap (1 : Real) 0 (Q2 d beta) = (Q2 d beta).1 := by
+      simp [exponentLinearMap]
+    rw [hval]
     dsimp [Q2]
     have hden : 0 < (d : Real) - 1 + beta := by linarith
     rw [div_le_one hden]
     linarith
   have hQ3 : exponentLinearMap (1 : Real) 0 (Q3 d beta) <= 1 := by
-    change (Q3 d beta).1 <= 1
+    have hval : exponentLinearMap (1 : Real) 0 (Q3 d beta) = (Q3 d beta).1 := by
+      simp [exponentLinearMap]
+    rw [hval]
     dsimp [Q3]
     have hden : 0 < (d : Real) - beta + 1 := by linarith
     rw [div_le_one hden]
     linarith
   have hQ4 : exponentLinearMap (1 : Real) 0 (Q4 d gamma) <= 1 := by
-    change (Q4 d gamma).1 <= 1
+    have hval : exponentLinearMap (1 : Real) 0 (Q4 d gamma) = (Q4 d gamma).1 := by
+      simp [exponentLinearMap]
+    rw [hval]
     dsimp [Q4]
     have hden : 0 < (d : Real) ^ 2 + 2 * gamma - 1 := by
       nlinarith [sq_nonneg ((d : Real) - 2)]
@@ -192,6 +203,89 @@ theorem strict_first_lt_one_of_mem_interior_Q
   change (1 : Real) * x.1 + 0 * x.2 < 1 at hstrict
   linarith
 
+/-- The first reciprocal coordinate of an interior exponent is strictly below
+the first coordinate of `Q2`.  Every vertex satisfies the corresponding closed
+inequality, so the supporting-halfspace argument applies. -/
+theorem strict_first_lt_Q2_first_of_mem_interior_Q
+    {d : Nat} {beta gamma : Real} {x : ExponentPoint}
+    (hd : 2 <= d) (hbeta : 0 <= beta) (hbeta_one : beta <= 1)
+    (hbeta_gamma : beta <= gamma) (hgamma_one : gamma <= 1)
+    (hx : x ∈ interior (Q d beta gamma)) :
+    x.1 < (Q2 d beta).1 := by
+  have hD : (2 : Real) <= (d : Real) := by exact_mod_cast hd
+  have hgamma : 0 <= gamma := hbeta.trans hbeta_gamma
+  have hden2 : 0 < (d : Real) - 1 + beta := by linarith
+  have hQ2val : (Q2 d beta).1 = ((d : Real) - 1) / ((d : Real) - 1 + beta) := by
+    dsimp [Q2]
+  have hQ1 : exponentLinearMap (1 : Real) 0 Q1 <= (Q2 d beta).1 := by
+    have hnn : 0 <= ((d : Real) - 1) / ((d : Real) - 1 + beta) := by
+      apply div_nonneg <;> linarith
+    have : exponentLinearMap (1 : Real) 0 Q1 = 0 := by
+      simp [exponentLinearMap, Q1]
+    rw [this, hQ2val]
+    exact hnn
+  have hQ2 : exponentLinearMap (1 : Real) 0 (Q2 d beta) <= (Q2 d beta).1 := by
+    have hval : exponentLinearMap (1 : Real) 0 (Q2 d beta) = (Q2 d beta).1 := by
+      simp [exponentLinearMap]
+    rw [hval]
+  have hQ3 : exponentLinearMap (1 : Real) 0 (Q3 d beta) <= (Q2 d beta).1 := by
+    have hval : exponentLinearMap (1 : Real) 0 (Q3 d beta) = (Q3 d beta).1 := by
+      simp [exponentLinearMap]
+    rw [hval, hQ2val]
+    dsimp [Q3]
+    have hden3 : 0 < (d : Real) - beta + 1 := by linarith
+    rw [div_le_div_iff₀ hden3 hden2]
+    nlinarith
+  have hQ4 : exponentLinearMap (1 : Real) 0 (Q4 d gamma) <= (Q2 d beta).1 := by
+    have hval : exponentLinearMap (1 : Real) 0 (Q4 d gamma) = (Q4 d gamma).1 := by
+      simp [exponentLinearMap]
+    rw [hval, hQ2val]
+    dsimp [Q4]
+    have hden4 : 0 < (d : Real) ^ 2 + 2 * gamma - 1 := by
+      nlinarith [sq_nonneg ((d : Real) - 2)]
+    rw [div_le_div_iff₀ hden4 hden2]
+    have hinner : (d : Real) * ((d : Real) - 1 + beta) ≤
+        (d : Real) ^ 2 + 2 * gamma - 1 := by
+      have hb : beta * (d : Real) ≤ gamma * (d : Real) := by nlinarith
+      have hg : gamma * ((d : Real) - 2) ≤ (d : Real) - 2 := by nlinarith
+      nlinarith
+    calc (d : Real) * ((d : Real) - 1) * ((d : Real) - 1 + beta)
+        = ((d : Real) - 1) * ((d : Real) * ((d : Real) - 1 + beta)) := by ring
+      _ ≤ ((d : Real) - 1) * ((d : Real) ^ 2 + 2 * gamma - 1) :=
+          mul_le_mul_of_nonneg_left hinner (by linarith)
+  have hsub : Q d beta gamma ⊆ exponentHalfspace (1 : Real) 0 (Q2 d beta).1 :=
+    Q_subset_exponentHalfspace_of_vertices hQ1 hQ2 hQ3 hQ4
+  have hstrict : exponentLinearMap (1 : Real) 0 x < (Q2 d beta).1 :=
+    strict_exponentHalfspace_of_mem_interior (s := Q d beta gamma)
+      (a := (1 : Real)) (b := 0) (c := (Q2 d beta).1) (by norm_num) hsub hx
+  change (1 : Real) * x.1 + 0 * x.2 < (Q2 d beta).1 at hstrict
+  linarith
+
+/-- Reciprocal form of the preceding bound: the strict Minkowski diagonal
+condition holds at every interior exponent. -/
+theorem minkowski_critical_of_mem_interior_Q
+    {d : Nat} {beta gamma p q : Real}
+    (hd : 2 <= d) (hbeta : 0 <= beta) (hbeta_one : beta <= 1)
+    (hbeta_gamma : beta <= gamma) (hgamma_one : gamma <= 1) (hp : 0 < p)
+    (hx : reciprocalExponentPoint p q ∈ interior (Q d beta gamma)) :
+    beta < ((d : Real) - 1) * (p - 1) := by
+  have hD : (2 : Real) <= (d : Real) := by exact_mod_cast hd
+  have hden2 : 0 < (d : Real) - 1 + beta := by linarith
+  have hrecip := strict_first_lt_Q2_first_of_mem_interior_Q
+    (x := reciprocalExponentPoint p q) hd hbeta hbeta_one hbeta_gamma hgamma_one hx
+  have hval : (Q2 d beta).1 = ((d : Real) - 1) / ((d : Real) - 1 + beta) := by
+    dsimp [Q2]
+  change p⁻¹ < (Q2 d beta).1 at hrecip
+  rw [hval] at hrecip
+  have hpB : 0 < p * ((d : Real) - 1 + beta) := mul_pos hp hden2
+  have h := mul_lt_mul_of_pos_right hrecip hpB
+  rw [show p⁻¹ * (p * ((d : Real) - 1 + beta)) = (d : Real) - 1 + beta by
+      field_simp] at h
+  rw [show ((d : Real) - 1) / ((d : Real) - 1 + beta) *
+      (p * ((d : Real) - 1 + beta)) = ((d : Real) - 1) * p by
+      field_simp] at h
+  nlinarith
+
 /-- The input exponent of an interior point is strictly bigger than one. -/
 theorem one_lt_inputExponent_of_mem_interior_Q
     {d : Nat} {beta gamma p q : Real}
@@ -202,7 +296,7 @@ theorem one_lt_inputExponent_of_mem_interior_Q
   have hrecip := strict_first_lt_one_of_mem_interior_Q
     (x := reciprocalExponentPoint p q) hd hbeta hbeta_one hbeta_gamma hx
   change p⁻¹ < 1 at hrecip
-  have hmul : p⁻¹ * p < 1 * p := (mul_lt_mul_right hp).mpr hrecip
+  have hmul : p⁻¹ * p < 1 * p := mul_lt_mul_of_pos_right hrecip hp
   rw [inv_mul_cancel₀ hp.ne'] at hmul
   simpa using hmul
 
@@ -220,7 +314,7 @@ theorem inputExponent_lt_outputExponent_of_mem_interior_Q
   have hqpos : 0 < q := lt_of_lt_of_le zero_lt_one hq
   have hprod : 0 < p * q := mul_pos hp hqpos
   have hmul : q⁻¹ * (p * q) < p⁻¹ * (p * q) :=
-    (mul_lt_mul_right hprod).mpr hrecip
+    mul_lt_mul_of_pos_right hrecip hprod
   have hleft : q⁻¹ * (p * q) = p := by
     calc
       q⁻¹ * (p * q) = p * (q⁻¹ * q) := by ring
@@ -245,7 +339,8 @@ theorem strict_first_lt_natCast_mul_second_of_mem_interior_Q
       (by norm_num) (by
         intro y hy
         change 1 * y.1 + -(d : Real) * y.2 ≤ 0
-        have h := Q_subset_first_le_natCast_mul_second hd hbeta hbeta_one hgamma hy
+        have h : y.1 ≤ (d : Real) * y.2 :=
+          Q_subset_first_le_natCast_mul_second hd hbeta hbeta_one hgamma hy
         linarith) hx
   change 1 * x.1 + -(d : Real) * x.2 < 0 at hstrict
   linarith
@@ -267,7 +362,8 @@ theorem strict_annulus_of_mem_interior_Q
         (c := (d : Real) - 1) hd0 (by
           intro y hy
           change (d : Real) * y.1 + (beta - 1) * y.2 ≤ (d : Real) - 1
-          have h := Q_subset_annulus_halfspace hd hbeta hbeta_gamma hbeta_one hy
+          have h : (d : Real) * y.1 ≤ (1 - beta) * y.2 + ((d : Real) - 1) :=
+            Q_subset_annulus_halfspace hd hbeta hbeta_gamma hbeta_one hy
           linarith) hx
   change (d : Real) * x.1 + (beta - 1) * x.2 < (d : Real) - 1 at hstrict
   linarith
@@ -307,7 +403,7 @@ theorem strict_clusterEdgeFunctional_of_mem_interior_Q
 /-- Strict barycentric coordinates in the Minkowski triangle from the three
 strict supporting inequalities which bound that triangle. -/
 theorem strictTriangle123Combination_of_strict_halfspaces
-    {d : Nat} {beta gamma : Real} {x : ExponentPoint}
+    {d : Nat} {beta : Real} {x : ExponentPoint}
     (hd : 2 ≤ d) (hbeta : 0 ≤ beta) (hbeta_one : beta ≤ 1)
     (hK : 0 < (d : Real) - 1 - beta)
     (htranslation : x.2 < x.1)
@@ -623,7 +719,7 @@ theorem exists_opposite_strict_triangle_points_of_mem_interior_Q
         rw [Prod.norm_def]
         change max ‖x.1 - t - x.1‖ ‖x.2 - x.2‖ = t
         rw [show x.1 - t - x.1 = -t by ring, sub_self, norm_neg]
-        simp [norm_of_nonneg ht.le]
+        rw [Real.norm_of_nonneg ht.le, norm_zero, max_eq_left ht.le]
       _ < eps := by
         dsimp [t]
         linarith
@@ -635,7 +731,7 @@ theorem exists_opposite_strict_triangle_points_of_mem_interior_Q
         rw [Prod.norm_def]
         change max ‖x.1 + t - x.1‖ ‖x.2 - x.2‖ = t
         rw [show x.1 + t - x.1 = t by ring, sub_self]
-        simp [norm_of_nonneg ht.le]
+        rw [Real.norm_of_nonneg ht.le, norm_zero, max_eq_left ht.le]
       _ < eps := by
         dsimp [t]
         linarith

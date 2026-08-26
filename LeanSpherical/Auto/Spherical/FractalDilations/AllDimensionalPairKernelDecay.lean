@@ -23,7 +23,8 @@ open Auto.Spherical.FractalDilations.QuadraticStationaryPhase
 open Auto.Spherical.FractalDilations.RadialCutoff
 open Auto.Spherical.FractalDilations.RepeatedOscillatoryIBP
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
+open Topology
 
 
 
@@ -79,7 +80,11 @@ theorem norm_iteratedDeriv_mul_le_tripleWaveLeibnizConstant
     (hgb : ∀ k : Nat, k ≤ n → ‖iteratedDeriv k g x‖ ≤ B) :
     ‖iteratedDeriv n (fun u : Real => f u * g u) x‖ ≤
       tripleWaveLeibnizConstant n A B := by
-  rw [iteratedDeriv_mul hf.contDiffAt hg.contDiffAt]
+  have hmulfun : (fun u : Real => f u * g u) = f * g := rfl
+  have hcast : ((n : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : (n : ℕ∞) ≤ ⊤)
+  rw [hmulfun, iteratedDeriv_mul (hf.contDiffAt.of_le hcast)
+    (hg.contDiffAt.of_le hcast)]
   calc
     ‖∑ i ∈ Finset.range (n + 1),
         n.choose i * iteratedDeriv i f x * iteratedDeriv (n - i) g x‖ ≤
@@ -92,10 +97,10 @@ theorem norm_iteratedDeriv_mul_le_tripleWaveLeibnizConstant
       have hi' : i ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)
       have hleft := hfa i hi'
       have hright := hgb (n - i) (Nat.sub_le _ _)
+      have hc : (0 : Real) ≤ ((n.choose i : Nat) : Real) := Nat.cast_nonneg _
       rw [norm_mul, norm_mul, norm_natCast]
-      exact mul_le_mul_of_nonneg_left
-        (mul_le_mul hleft hright (norm_nonneg _) hA)
-        (Nat.cast_nonneg _)
+      simpa [mul_assoc] using
+        mul_le_mul_of_nonneg_left (mul_le_mul hleft hright (norm_nonneg _) hA) hc
     _ = tripleWaveLeibnizConstant n A B := rfl
 
 /-- Complex conjugation preserves a real one-dimensional derivative. -/
@@ -127,14 +132,15 @@ theorem iteratedDeriv_starRingEnd
   induction n generalizing x with
   | zero => simp
   | succ n ih =>
-      rw [iteratedDeriv_succ]
       have hfun : iteratedDeriv n (fun u : Real => starRingEnd Complex (f u)) =
           fun u : Real => starRingEnd Complex (iteratedDeriv n f u) := by
         funext u
         exact ih u
-      rw [hfun]
+      rw [iteratedDeriv_succ, iteratedDeriv_succ, hfun]
+      have hlt : ((n : ℕ∞) : WithTop ℕ∞) < ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+        exact_mod_cast (ENat.coe_lt_top n)
       have hdifferentiable : Differentiable Real (iteratedDeriv n f) :=
-        hf.differentiable_iteratedDeriv n (by simp)
+        hf.differentiable_iteratedDeriv n hlt
       exact (hasDerivAt_starRingEnd_allDim (hdifferentiable x).hasDerivAt).deriv
 
 /-- The norm version of `iteratedDeriv_starRingEnd`. -/
@@ -143,7 +149,15 @@ theorem norm_iteratedDeriv_starRingEnd
     (n : Nat) (x : Real) :
     ‖iteratedDeriv n (fun u : Real => starRingEnd Complex (f u)) x‖ =
       ‖iteratedDeriv n f x‖ := by
-  rw [iteratedDeriv_starRingEnd f hf n x, norm_star]
+  rw [iteratedDeriv_starRingEnd f hf n x]
+  simp
+
+/-- Smoothness of the real monomial density viewed as a complex-valued
+function of the radial parameter. -/
+theorem contDiff_ofReal_pow (m : Nat) :
+    ContDiff Real (⊤ : ℕ∞) (fun u : Real => ((u ^ m : Real) : Complex)) := by
+  have h : ContDiff Real (⊤ : ℕ∞) (fun u : Real => u ^ m) := contDiff_id.pow m
+  exact Complex.ofRealCLM.contDiff.comp h
 
 /-- A fixed smooth factor has a finite positive uniform bound for all
 derivatives up to a prescribed order on the enlarged compact annulus. -/
@@ -190,7 +204,8 @@ theorem scaled_coordinate_frequency_geometry
   have hfreq : 1 ≤ (2 * Real.pi * (s * r)) * u := by
     calc
       (1 : Real) = 4 * 1 * (1 / 2 : Real) * (1 / 2 : Real) := by norm_num
-      _ ≤ (2 * Real.pi) * s * r * u := by gcongr
+      _ ≤ (2 * Real.pi) * s * r * u := by
+        gcongr <;> linarith [hr.1, hu.1]
       _ = (2 * Real.pi * (s * r)) * u := by ring
   have hamppos : 0 < 2 * Real.pi * (s * r) := by positivity
   have hamp : 2 * Real.pi * (s * r) ≤ (5 * Real.pi) * s := by
@@ -207,7 +222,8 @@ theorem scaled_coordinate_frequency_geometry
         apply mul_le_mul_of_nonneg_left _ hs0
         calc
           (1 : Real) = 4 * (1 / 2 : Real) * (1 / 2 : Real) := by norm_num
-          _ ≤ (2 * Real.pi) * r * u := by gcongr
+          _ ≤ (2 * Real.pi) * r * u := by
+            gcongr <;> linarith [hr.1, hu.1]
       _ = (2 * Real.pi * (s * r)) * u := by ring
   exact ⟨by simpa [abs_of_pos hfreqpos] using hfreq,
     by simpa [abs_of_pos hamppos] using hamp,
@@ -253,7 +269,7 @@ theorem endpoint_stationary_denominator_le_dyadic_scale
     calc
       C * |a| ^ k / (Real.sqrt lambda) ^ (d - 1 + 2 * k) ≤
           C * (L * s) ^ k / (Real.sqrt lambda) ^ (d - 1 + 2 * k) :=
-        div_le_div_of_nonneg_right hnum hlambdadenpos
+        div_le_div_of_nonneg_right hnum hlambdadenpos.le
       _ ≤ C * (L * s) ^ k / (Real.sqrt s) ^ (d - 1 + 2 * k) :=
         div_le_div_of_nonneg_left (mul_nonneg hC (pow_nonneg (mul_nonneg hL hs0) _))
           hdenpos hpowden
@@ -269,7 +285,6 @@ theorem endpoint_stationary_denominator_le_dyadic_scale
     _ = (C * L ^ k) / (Real.sqrt s) ^ (d - 1) := by
       rw [mul_pow, sqrt_pow_stationary_split hs0 d k]
       field_simp [hsqrtpos.ne', hspos.ne']
-      ring
 
 /-- The rapid-decay middle meridian term is bounded by the same dyadic
 stationary scale as an endpoint term.  We deliberately use more decay than
@@ -296,7 +311,7 @@ theorem rapid_middle_denominator_le_dyadic_scale
     calc
       C * |a| ^ k / lambda ^ (d + k) ≤
           C * (L * s) ^ k / lambda ^ (d + k) :=
-        div_le_div_of_nonneg_right hnum hlambdadenpos
+        div_le_div_of_nonneg_right hnum hlambdadenpos.le
       _ ≤ C * (L * s) ^ k / s ^ (d + k) :=
         div_le_div_of_nonneg_left (mul_nonneg hC (pow_nonneg (mul_nonneg hL hs0) _))
           hsdenpos hden
@@ -309,8 +324,9 @@ theorem rapid_middle_denominator_le_dyadic_scale
       _ ≤ s ^ (d - 1) * s := by
         exact mul_le_mul_of_nonneg_left hs (pow_nonneg hs0 _)
       _ = s ^ d := by
-        rw [show d = (d - 1) + 1 by omega, pow_add]
-        ring
+        rw [← pow_succ]
+        congr 1
+        omega
   have hrootden : (Real.sqrt s) ^ (d - 1) ≤ s ^ d := hrootpow.trans hsd
   have hrootpos : 0 < (Real.sqrt s) ^ (d - 1) :=
     pow_pos (Real.sqrt_pos.2 hspos) _
@@ -319,7 +335,6 @@ theorem rapid_middle_denominator_le_dyadic_scale
     _ = (C * L ^ k) / s ^ d := by
       rw [mul_pow, show d + k = k + d by omega, pow_add]
       field_simp [hspos.ne']
-      ring
     _ ≤ (C * L ^ k) / (Real.sqrt s) ^ (d - 1) := by
       apply div_le_div_of_nonneg_left
       · exact mul_nonneg hC (pow_nonneg hL _)
@@ -417,7 +432,6 @@ private theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_middle_s
       rapid_middle_denominator_le_dyadic_scale hd hs hC.le (by positivity)
         hamp hscale
 
-/-- Case-free multiplier-side coordinate-wave derivative bound. -/
 /-- Uniform finite-order multiplier-side coordinate-wave bounds on the
 fixed annulus.  Exported for the literal radius-differentiated normal form. -/
 theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_scaled
@@ -471,14 +485,14 @@ theorem endpoint_stationary_denominator_le_uniform
   calc
     C * |a| ^ k / quadraticMomentScale (d - 2 + 2 * k) lambda ≤
         C * (2 * lambda) ^ k / quadraticMomentScale (d - 2 + 2 * k) lambda :=
-      div_le_div_of_nonneg_right hnum hdenpos
+      div_le_div_of_nonneg_right hnum hdenpos.le
     _ ≤ C * (2 * lambda) ^ k / lambda ^ k :=
-      div_le_div_of_nonneg_left (mul_nonneg hC (pow_nonneg (by norm_num) _))
+      div_le_div_of_nonneg_left (mul_nonneg hC (pow_nonneg (by linarith) _))
         hsmallpos hden
     _ = C * 2 ^ k := by
       rw [mul_pow]
       field_simp [hlambdapos.ne']
-      ring
+      all_goals linarith
 
 /-- The rapid middle meridian estimate has the same elementary uniform
 consequence on the fixed annulus. -/
@@ -495,11 +509,11 @@ theorem rapid_middle_denominator_le_uniform
     · exact hC
   calc
     C * |a| ^ k / lambda ^ k ≤ C * (2 * lambda) ^ k / lambda ^ k :=
-      div_le_div_of_nonneg_right hnum hdenpos
+      div_le_div_of_nonneg_right hnum hdenpos.le
     _ = C * 2 ^ k := by
       rw [mul_pow]
       field_simp [hlambdapos.ne']
-      ring
+      all_goals linarith
 
 /-- The frequency of a physical coordinate wave is either below one, in
 which case its chain-rule factor is bounded by two, or above one, in which
@@ -511,13 +525,11 @@ theorem physical_coordinate_frequency_le_two_of_small
   have hu0 : 0 < u := lt_of_lt_of_le (by norm_num) hu.1
   have hamp0 : 0 ≤ |2 * Real.pi * a| := abs_nonneg _
   have hprod : |2 * Real.pi * a| * u < 1 := by
-    rw [← abs_mul, abs_of_pos hu0]
+    rw [← abs_of_pos hu0, ← abs_mul]
     exact hsmall
   have htwou : 1 ≤ 2 * u := by linarith [hu.1]
-  apply (mul_le_mul_right hu0).mp
-  calc
-    |2 * Real.pi * a| * u ≤ 1 := hprod.le
-    _ ≤ 2 * u := htwou
+  have hlt : |2 * Real.pi * a| * u < 2 * u := lt_of_lt_of_le hprod htwou
+  exact le_of_lt (lt_of_mul_lt_mul_right hlt hu0.le)
 
 /-- On the fixed positive annulus, the unscaled coordinate frequency is at
 most twice the full radial frequency. -/
@@ -672,7 +684,7 @@ private theorem exists_norm_iteratedDeriv_coordinateWaveRadialAmplitude_physical
 
 /-- A single constant controls all multiplier-side coordinate-wave
 derivatives needed for a fixed finite integration-by-parts order. -/
-private theorem exists_uniform_coordinateWaveRadialAmplitude_scaled
+theorem exists_uniform_coordinateWaveRadialAmplitude_scaled
     {d N : Nat} (hd : 2 ≤ d) (part : CoordinateWavePart) :
     ∃ C : Real, 0 < C ∧ ∀ k : Nat, k ≤ N → ∀ s r u : Real, 1 ≤ s →
       r ∈ Icc (1 / 2 : Real) (5 / 2) → u ∈ Icc (1 / 2 : Real) 8 →
@@ -698,7 +710,7 @@ private theorem exists_uniform_coordinateWaveRadialAmplitude_scaled
     apply pow_pos
     exact Real.sqrt_pos.2 (lt_of_lt_of_le zero_lt_one hs)
   exact (hCbound k s r u hs hr hu).trans
-    (div_le_div_of_nonneg_right hle hdenpos)
+    (div_le_div_of_nonneg_right hle hdenpos.le)
 
 /-- A single constant controls all physical coordinate-wave derivatives
 needed for a fixed finite integration-by-parts order. -/
@@ -790,7 +802,7 @@ theorem normalizedDyadicRadialBandpass_eq_of_unit
   norm_num at hvzero hwzero
   rw [← hvzero, ← hwzero]
   apply isNormRadial_absoluteDyadicBandpass phi hphiOne hphiZero hphiRadial 0
-  rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, hv, hw]
+  rw [norm_smul, norm_smul, Real.norm_eq_abs, hv, hw]
 
 /-- The squared normalized cutoff inherits the same unit-ray invariance. -/
 theorem normalizedDyadicCutoffSquare_eq_of_unit
@@ -833,8 +845,6 @@ theorem exists_uniform_normalizedDyadicCutoffSquare_bound_on_unit
   rw [heq]
   exact hbound k hk u hu
 
-/-- The common denominator of the two multiplier-side stationary factors is
-exactly the integer dyadic power after conjugation and multiplication. -/
 /-- The product of the two stationary square-root denominators is the
 integer dyadic power.  Exported for differentiated multiplier pairs. -/
 theorem sq_sqrt_stationary_scale
@@ -854,7 +864,6 @@ theorem tripleWaveLeibnizConstant_div_div
   apply Finset.sum_congr rfl
   intro i hi
   field_simp [hq]
-  ring
 
 /-- Uniform all-order bound for the literal pair of multiplier-side
 coordinate waves.  It is the source of the crucial `s^(-(d-1))` factor. -/
@@ -931,7 +940,7 @@ private theorem exists_uniform_coordinateWaveMultiplierPairAmplitude_scaled
         have hkmem : k ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
         exact Finset.single_le_sum
           (fun l hl => tripleWaveLeibnizConstant_nonneg l hA.le hB.le) hkmem
-      · exact sq_pos_of_pos hQpos
+      · positivity
     _ ≤ (C + 1) / s ^ (d - 1) := by
       dsimp [Q]
       rw [sq_sqrt_stationary_scale (zero_le_one.trans hs) d]
@@ -939,8 +948,6 @@ private theorem exists_uniform_coordinateWaveMultiplierPairAmplitude_scaled
       · linarith
       · positivity
 
-/-- The part of a higher-dimensional triple-wave coefficient which is not
-one of the two multiplier-side stationary factors. -/
 /-- The physical/cutoff factor common to the ordinary and
 radius-differentiated all-dimensional triple coefficients. -/
 def coordinateTripleWaveFixedAmplitude
@@ -957,13 +964,10 @@ theorem contDiff_coordinateTripleWaveFixedAmplitude
     ContDiff Real (⊤ : ℕ∞)
       (coordinateTripleWaveFixedAmplitude phi v x p) := by
   unfold coordinateTripleWaveFixedAmplitude
-  exact (((by fun_prop : ContDiff Real (⊤ : ℕ∞)
-      (fun u : Real => ((u ^ (d - 1) : Real) : Complex))).mul
+  exact (((contDiff_ofReal_pow (d - 1)).mul
         (contDiff_coordinateWaveRadialAmplitude d p ‖x‖)).mul
       (contDiff_normalizedDyadicCutoffSquare phi v))
 
-/-- The fixed physical and cutoff factor in a triple coefficient has a
-uniform finite-order bound on the enlarged annulus. -/
 /-- Uniform compact-annulus derivative bounds for the common physical/cutoff
 triple factor. -/
 theorem exists_uniform_coordinateTripleWaveFixedAmplitude_bound
@@ -984,8 +988,8 @@ theorem exists_uniform_coordinateTripleWaveFixedAmplitude_bound
   let density : Real → Complex := fun u : Real => ((u ^ (d - 1) : Real) : Complex)
   let cutoff0 : Real → Complex := normalizedDyadicCutoffSquare phi v0
   have hdensity : ContDiff Real (⊤ : ℕ∞) density := by
-    dsimp [density]
-    fun_prop
+    dsimp only [density]
+    exact contDiff_ofReal_pow (d - 1)
   have hcutoff0 : ContDiff Real (⊤ : ℕ∞) cutoff0 := by
     dsimp [cutoff0]
     exact contDiff_normalizedDyadicCutoffSquare phi v0
@@ -1101,7 +1105,6 @@ theorem tripleWaveLeibnizConstant_right_div
   apply Finset.sum_congr rfl
   intro i hi
   field_simp [hq]
-  ring
 
 /-- The literal higher-dimensional coefficient has the exact pair-side
 stationary scale uniformly through any prescribed finite derivative order. -/
@@ -1174,11 +1177,11 @@ private theorem exists_uniform_coordinateTripleWaveCoefficient_scaled
         unfold C
         exact Finset.single_le_sum
           (fun l hl => tripleWaveLeibnizConstant_nonneg l hA.le hB.le) hkmem
-      · exact hsdenpos
+      · exact hsdenpos.le
     _ ≤ (C + 1) / s ^ (d - 1) := by
       apply div_le_div_of_nonneg_right
       · linarith
-      · exact hsdenpos
+      · exact hsdenpos.le
 
 /-- The extracted coordinate-wave phase is homogeneous in all three radial
 parameters. -/
@@ -1204,13 +1207,13 @@ private theorem coordinateTripleWaveCoefficient_eventuallyEq_zero_left
       (by norm_num : (0 : Real) < 1 / 4)] with u hu
   rw [mem_ball, Real.dist_eq] at hu
   have huabs : |u - 1 / 2| < 1 / 4 := hu
-  have hu0 : 1 / 2 ≤ u := by
+  have hu0 : 0 ≤ u := by
     have := (abs_lt.mp huabs).1
     linarith
   have huone : u ≤ 1 := by
     have := (abs_lt.mp huabs).2
     linarith
-  exact coordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_left
+  exact coordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_unit
     phi hphiOne hphiZero r r' v x hv p q t ⟨hu0, huone⟩
 
 /-- Right-endpoint counterpart of the preceding literal cutoff support
@@ -1349,7 +1352,6 @@ private theorem exists_inner_endpoint_coordinateTripleWaveIntegral_bound
           (by positivity) hfreqlower
       _ = 4 / (s * |r - r'|) := by
         field_simp [hspos.ne', hgap.ne']
-        ring
   have hM : 0 ≤ C / s ^ (d - 1) := by
     exact div_nonneg hC.le (pow_nonneg hspos.le _)
   have hbound : ∀ u ∈ Icc (1 / 2 : Real) 8,
@@ -1360,7 +1362,7 @@ private theorem exists_inner_endpoint_coordinateTripleWaveIntegral_bound
     exact hCbound d le_rfl s r r' u hs hr hr' v y hv hu
   have hIBP := norm_intervalIntegral_coordinateTripleWaveCoefficient_le_iterated
     (N := d) phi hphiOne hphiZero (s * r) (s * r') v y hv p q t freq
-    (C / s ^ (d - 1)) (ne_of_gt hfreqpos) hM hbound
+    (C / s ^ (d - 1)) (abs_pos.mp hfreqpos) hM hbound
   change ‖∫ u in (1 : Real)..4,
       coordinateTripleWaveCoefficient
         (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -1437,7 +1439,6 @@ private theorem exists_inner_physicalMiddle_coordinateTripleWaveIntegral_bound
           (by positivity) hfreqlower
       _ = 4 / (s * |r - r'|) := by
         field_simp [hspos.ne', hgap.ne']
-        ring
   have hM : 0 ≤ C / s ^ (d - 1) :=
     div_nonneg hC.le (pow_nonneg hspos.le _)
   have hbound : ∀ u ∈ Icc (1 / 2 : Real) 8,
@@ -1448,7 +1449,7 @@ private theorem exists_inner_physicalMiddle_coordinateTripleWaveIntegral_bound
     exact hCbound d le_rfl s r r' u hs hr hr' v y hv hu
   have hIBP := norm_intervalIntegral_coordinateTripleWaveCoefficient_le_iterated
     (N := d) phi hphiOne hphiZero (s * r) (s * r') v y hv .middle q t freq
-    (C / s ^ (d - 1)) (ne_of_gt hfreqpos) hM hbound
+    (C / s ^ (d - 1)) (abs_pos.mp hfreqpos) hM hbound
   change ‖∫ u in (1 : Real)..4,
       coordinateTripleWaveCoefficient
         (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -1516,7 +1517,9 @@ private theorem exists_coordinateWaveMultiplierPairAmplitude_oneMiddle_scaled
       apply pow_pos
       exact Real.sqrt_pos.2 hspos
     unfold coordinateWaveMultiplierPairAmplitude
-    rw [norm_mul, norm_star]
+    try simp only [iteratedDeriv_zero] at hqbound
+    try simp only [iteratedDeriv_zero] at htbound
+    rw [norm_mul, starRingEnd_apply, norm_star]
     calc
       ‖coordinateWaveRadialAmplitude d .middle (s * r) u‖ *
           ‖coordinateWaveRadialAmplitude d t (s * r') u‖ ≤
@@ -1524,7 +1527,6 @@ private theorem exists_coordinateWaveMultiplierPairAmplitude_oneMiddle_scaled
         exact mul_le_mul hqbound htbound (norm_nonneg _) (div_nonneg hA.le (pow_nonneg hspos.le _))
       _ = (A * B) / (s ^ L * (Real.sqrt s) ^ (d - 1)) := by
         field_simp [hspos.ne', hQpos.ne']
-        ring
   · subst t
     obtain ⟨A, hA, hAbound⟩ :=
       exists_coordinateWaveRadialAmplitude_middle_scaled_power (d := d) (L := L)
@@ -1540,7 +1542,9 @@ private theorem exists_coordinateWaveMultiplierPairAmplitude_oneMiddle_scaled
       apply pow_pos
       exact Real.sqrt_pos.2 hspos
     unfold coordinateWaveMultiplierPairAmplitude
-    rw [norm_mul, norm_star]
+    try simp only [iteratedDeriv_zero] at hqbound
+    try simp only [iteratedDeriv_zero] at htbound
+    rw [norm_mul, starRingEnd_apply, norm_star]
     calc
       ‖coordinateWaveRadialAmplitude d q (s * r) u‖ *
           ‖coordinateWaveRadialAmplitude d .middle (s * r') u‖ ≤
@@ -1549,7 +1553,6 @@ private theorem exists_coordinateWaveMultiplierPairAmplitude_oneMiddle_scaled
           (div_nonneg hB.le (pow_nonneg (Real.sqrt_nonneg _) _))
       _ = (B * A) / (s ^ L * (Real.sqrt s) ^ (d - 1)) := by
         field_simp [hspos.ne', hQpos.ne']
-        ring
 
 /-- A literal triple containing a multiplier-side middle wave is bounded
 absolutely; its rapid decay already dominates the desired gap gain. -/
@@ -1574,7 +1577,8 @@ private theorem exists_oneMiddle_coordinateTripleWaveIntegral_bound
     exists_uniform_coordinateTripleWaveFixedAmplitude_bound (N := 0) (by omega)
       phi hphiOne hphiZero hphiRadial p
   obtain ⟨B, hB, hBbound⟩ :=
-    exists_coordinateWaveMultiplierPairAmplitude_oneMiddle_scaled (L := L) (by omega) q t hmiddle
+    exists_coordinateWaveMultiplierPairAmplitude_oneMiddle_scaled (d := d) (L := L)
+      (by omega) q t hmiddle
   refine ⟨3 * A * B, mul_pos (mul_pos (by norm_num) hA) hB, ?_⟩
   intro s r r' hs hr hr' v x hv
   have hspos : 0 < s := lt_of_lt_of_le zero_lt_one hs
@@ -1591,7 +1595,7 @@ private theorem exists_oneMiddle_coordinateTripleWaveIntegral_bound
     have hpair := hBbound s r r' u hs hr hr' huwide
     have hfactor := coordinateTripleWaveCoefficient_eq_fixed_mul_pair
       phi hphiOne hphiZero (s * r) (s * r') v x p q t u
-    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one]
+    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one, norm_mul]
     calc
       ‖coordinateTripleWaveFixedAmplitude phi v x p u‖ *
           ‖coordinateWaveMultiplierPairAmplitude d q t (s * r) (s * r') u‖ ≤
@@ -1599,7 +1603,6 @@ private theorem exists_oneMiddle_coordinateTripleWaveIntegral_bound
         exact mul_le_mul hfixed hpair (norm_nonneg _) hA.le
       _ = (A * B) / (s ^ L * (Real.sqrt s) ^ (d - 1)) := by
         field_simp [hdenpos.ne']
-        ring
   calc
     ‖∫ u in (1 : Real)..4,
         coordinateTripleWaveCoefficient
@@ -1640,7 +1643,8 @@ private theorem exists_coordinateTripleWaveIntegral_crude_bound
     exists_uniform_coordinateTripleWaveFixedAmplitude_bound (N := 0) (by omega)
       phi hphiOne hphiZero hphiRadial p
   obtain ⟨B, hB, hBbound⟩ :=
-    exists_uniform_coordinateWaveMultiplierPairAmplitude_scaled (N := 0) (by omega) q t
+    exists_uniform_coordinateWaveMultiplierPairAmplitude_scaled (d := d) (N := 0)
+      (by omega) q t
   refine ⟨3 * A * B, mul_pos (mul_pos (by norm_num) hA) hB, ?_⟩
   intro s r r' hs hr hr' v x hv
   have hspos : 0 < s := lt_of_lt_of_le zero_lt_one hs
@@ -1657,7 +1661,7 @@ private theorem exists_coordinateTripleWaveIntegral_crude_bound
     have hpair := hBbound 0 le_rfl s r r' u hs hr hr' huwide
     have hfactor := coordinateTripleWaveCoefficient_eq_fixed_mul_pair
       phi hphiOne hphiZero (s * r) (s * r') v x p q t u
-    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one]
+    rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one, norm_mul]
     calc
       ‖coordinateTripleWaveFixedAmplitude phi v x p u‖ *
           ‖coordinateWaveMultiplierPairAmplitude d q t (s * r) (s * r') u‖ ≤
@@ -1665,7 +1669,6 @@ private theorem exists_coordinateTripleWaveIntegral_crude_bound
         exact mul_le_mul hfixed hpair (norm_nonneg _) hA.le
       _ = (A * B) / s ^ (d - 1) := by
         field_simp [hdenpos.ne']
-        ring
   calc
     ‖∫ u in (1 : Real)..4,
         coordinateTripleWaveCoefficient
@@ -1764,7 +1767,6 @@ private theorem exists_coordinateWaveRadialAmplitude_middle_physical_decay
         (by simpa using hamp) (by simpa using hscale)
     _ = C / (Real.sqrt a) ^ (d - 1) := by simp
 
-/-- Case-free physical coordinate-wave stationary decay. -/
 /-- Literal physical coordinate-wave stationary decay, shared by ordinary
 and differentiated outer-cone estimates. -/
 theorem exists_coordinateWaveRadialAmplitude_physical_decay
@@ -1798,17 +1800,18 @@ private theorem exists_outer_coordinateTripleWaveIntegral_bound
         C / (s ^ (d - 1) * (Real.sqrt ‖x‖) ^ (d - 1)) := by
   let density : Real → Complex := fun u : Real => ((u ^ (d - 1) : Real) : Complex)
   have hdensity : ContDiff Real (⊤ : ℕ∞) density := by
-    dsimp [density]
-    fun_prop
+    dsimp only [density]
+    exact contDiff_ofReal_pow (d - 1)
   obtain ⟨A, hA, hAbound⟩ :=
     exists_uniform_iteratedDeriv_bound_on_fixedAnnulus density hdensity 0
   obtain ⟨D, hD, hDbound⟩ :=
     exists_uniform_normalizedDyadicCutoffSquare_bound_on_unit (N := 0) (by omega)
       phi hphiOne hphiZero hphiRadial
   obtain ⟨P, hP, hPbound⟩ :=
-    exists_coordinateWaveRadialAmplitude_physical_decay (by omega) p
+    exists_coordinateWaveRadialAmplitude_physical_decay (d := d) (by omega) p
   obtain ⟨B, hB, hBbound⟩ :=
-    exists_uniform_coordinateWaveMultiplierPairAmplitude_scaled (N := 0) (by omega) q t
+    exists_uniform_coordinateWaveMultiplierPairAmplitude_scaled (d := d) (N := 0)
+      (by omega) q t
   refine ⟨3 * A * P * D * B,
     mul_pos (mul_pos (mul_pos (mul_pos (by norm_num) hA) hP) hD) hB, ?_⟩
   intro s r r' hs hr hr' v x hv hx
@@ -1831,6 +1834,7 @@ private theorem exists_outer_coordinateTripleWaveIntegral_bound
     have hcut := hDbound v hv 0 le_rfl u huwide
     have hphysical := hPbound ‖x‖ u hx huwide
     have hpair := hBbound 0 le_rfl s r r' u hs hr hr' huwide
+    simp only [iteratedDeriv_zero] at hden hcut hpair
     have hfactor := coordinateTripleWaveCoefficient_eq_fixed_mul_pair
       phi hphiOne hphiZero (s * r) (s * r') v x p q t u
     rw [hfactor, norm_mul, norm_oscillatoryExp, mul_one]
@@ -1846,7 +1850,6 @@ private theorem exists_outer_coordinateTripleWaveIntegral_bound
       _ = (A * P * D * B) /
           (s ^ (d - 1) * (Real.sqrt ‖x‖) ^ (d - 1)) := by
         field_simp [hsdenpos.ne', hxdenpos.ne']
-        ring
   calc
     ‖∫ u in (1 : Real)..4,
         coordinateTripleWaveCoefficient
@@ -1934,9 +1937,9 @@ theorem q4StationaryPower_le_twoPow_dimension_mul_weight
           (2 : Real) ^ (-q4StationaryExponent d) *
             T ^ (-q4StationaryExponent d) := by
         exact mul_le_mul_of_nonneg_right htwo
-          (Real.rpow_nonneg hT.le _)
+          (Real.rpow_nonneg (zero_le_one.trans hT) _)
       _ = (2 * T) ^ (-q4StationaryExponent d) := by
-        rw [Real.mul_rpow (by norm_num : (0 : Real) ≤ 2) hT.le]
+        rw [Real.mul_rpow (by norm_num : (0 : Real) ≤ 2) (zero_le_one.trans hT)]
       _ ≤ (1 + T) ^ (-q4StationaryExponent d) := hphase
   have htwoPowPos : 0 < (2 : Real) ^ d := by positivity
   have htworewrite : (2 : Real) ^ (-(d : Real)) =
@@ -1945,7 +1948,7 @@ theorem q4StationaryPower_le_twoPow_dimension_mul_weight
   have hdiv : T ^ (-q4StationaryExponent d) / (2 : Real) ^ d ≤
       (1 + T) ^ (-q4StationaryExponent d) := by
     rw [div_eq_mul_inv, ← htworewrite]
-    exact hproduct
+    simpa [mul_comm] using hproduct
   have h := (div_le_iff₀ htwoPowPos).mp hdiv
   simpa [mul_comm] using h
 
@@ -1974,7 +1977,8 @@ theorem q4_inv_sqrt_natPow_eq_rpow_neg_stationary
     1 / (Real.sqrt X) ^ (d - 1) = X ^ (-q4StationaryExponent d) := by
   have hcast : ((d : Real) - 1) = ((d - 1 : Nat) : Real) := by
     rw [Nat.cast_sub hd]
-  rw [Real.rpow_neg hX.le]
+    norm_num
+  rw [Real.rpow_neg hX.le, one_div]
   congr 1
   unfold q4StationaryExponent
   rw [hcast, Real.rpow_div_two_eq_sqrt _ hX.le, Real.rpow_natCast]
@@ -1994,14 +1998,14 @@ theorem q4_outer_stationaryPower_le_fourPow_dimension_mul
       (T / 4) ^ (-q4StationaryExponent d) := by
     exact Real.rpow_le_rpow_of_nonpos hTfourpos hX (by linarith)
   have hfour : (4 : Real) ^ q4StationaryExponent d ≤ (4 : Real) ^ d := by
-    exact Real.rpow_le_rpow_of_exponent_le (by norm_num) hdim
+    have h := Real.rpow_le_rpow_of_exponent_le (by norm_num : (1 : Real) ≤ 4) hdim
+    rwa [Real.rpow_natCast] at h
   have hrewrite : (T / 4) ^ (-q4StationaryExponent d) =
       T ^ (-q4StationaryExponent d) * (4 : Real) ^ q4StationaryExponent d := by
     rw [Real.div_rpow hT.le (by norm_num : (0 : Real) ≤ 4)]
     rw [Real.rpow_neg (x := (4 : Real)) (by norm_num) (q4StationaryExponent d)]
     field_simp [(Real.rpow_pos_of_pos (by norm_num : (0 : Real) < 4)
       (q4StationaryExponent d)).ne']
-    ring
   calc
     X ^ (-q4StationaryExponent d) ≤
         (T / 4) ^ (-q4StationaryExponent d) := hmono
@@ -2038,7 +2042,6 @@ theorem q4_crude_scale_le_stationaryWeight
     simpa [mul_comm] using h
   have hleft : 0 ≤ C / s ^ (d - 1) :=
     div_nonneg hC (pow_nonneg hspos.le _)
-  have hsqrtpos : 0 < Real.sqrt X := Real.sqrt_pos.2 hXpos
   calc
     C / s ^ (d - 1) = (C / s ^ (d - 1)) * 1 := by ring
     _ ≤ (C / s ^ (d - 1)) *
@@ -2072,7 +2075,6 @@ theorem q4_inner_ibp_scale_le_stationaryWeight
       (4 / T) ^ d = (4 : Real) ^ d * (1 / T ^ d) := by
         rw [div_pow]
         field_simp [pow_ne_zero _ hTpos.ne']
-        ring
       _ = (4 : Real) ^ d * T ^ (-(d : Real)) := by
         rw [q4_inv_natPow_eq_rpow_neg_dimension (d := d) hTpos]
       _ ≤ (4 : Real) ^ d * T ^ (-q4StationaryExponent d) := by
@@ -2081,8 +2083,8 @@ theorem q4_inner_ibp_scale_le_stationaryWeight
           ((2 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d)) := by
         exact mul_le_mul_of_nonneg_left hstationary (pow_nonneg (by norm_num) _)
       _ = (8 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d) := by
-        rw [← mul_pow]
-        ring
+        rw [← mul_assoc, ← mul_pow]
+        norm_num
   have hright : 0 ≤ (8 : Real) ^ d *
       (1 + T) ^ (-q4StationaryExponent d) := by positivity
   calc
@@ -2093,7 +2095,6 @@ theorem q4_inner_ibp_scale_le_stationaryWeight
     _ = ((8 - (1 / 2 : Real)) * C * (8 : Real) ^ d) /
           s ^ (d - 1) * (1 + T) ^ (-q4StationaryExponent d) := by
       field_simp [pow_ne_zero _ hspos.ne']
-      ring
 
 /-- The outer physical stationary denominator gives the same gap weight.
 The factor `8^d` combines the `T/4` outer-cone comparison and the harmless
@@ -2113,6 +2114,7 @@ theorem q4_outer_scale_le_stationaryWeight
   have hstationary : T ^ (-q4StationaryExponent d) ≤
       (2 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d) :=
     q4StationaryPower_le_twoPow_dimension_mul_weight hd hT
+  have hsqrtpos : 0 < Real.sqrt X := Real.sqrt_pos.2 hXpos
   have hpower : 1 / (Real.sqrt X) ^ (d - 1) ≤
       (8 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d) := by
     rw [q4_inv_sqrt_natPow_eq_rpow_neg_stationary hd hXpos]
@@ -2123,15 +2125,14 @@ theorem q4_outer_scale_le_stationaryWeight
           ((2 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d)) := by
         exact mul_le_mul_of_nonneg_left hstationary (pow_nonneg (by norm_num) _)
       _ = (8 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d) := by
-        rw [← mul_pow]
-        ring
+        rw [← mul_assoc, ← mul_pow]
+        norm_num
   have hleft : 0 ≤ C / s ^ (d - 1) :=
     div_nonneg hC (pow_nonneg hspos.le _)
   calc
     C / (s ^ (d - 1) * (Real.sqrt X) ^ (d - 1)) =
         (C / s ^ (d - 1)) * (1 / (Real.sqrt X) ^ (d - 1)) := by
       field_simp [pow_ne_zero _ hspos.ne', pow_ne_zero _ hsqrtpos.ne']
-      ring
     _ ≤ (C / s ^ (d - 1)) *
         ((8 : Real) ^ d * (1 + T) ^ (-q4StationaryExponent d)) :=
       mul_le_mul_of_nonneg_left hpower hleft
@@ -2153,7 +2154,7 @@ theorem q4_middle_scale_le_stationaryWeight
   have hsqrtpowone : 1 ≤ (Real.sqrt s) ^ (d - 1) :=
     one_le_pow₀ hsqrtone
   have hbase : 1 + T ≤ 3 * s := by linarith
-  have hthreeScale : 1 ≤ 3 * s := by positivity
+  have hthreeScale : 1 ≤ 3 * s := by linarith
   have hweight : (3 * s) ^ (-(d : Real)) ≤
       (1 + T) ^ (-q4StationaryExponent d) :=
     q4StationaryWeight_lower_of_one_add_le hd hT hthreeScale hbase
@@ -2174,8 +2175,9 @@ theorem q4_middle_scale_le_stationaryWeight
         _ ≤ s ^ (2 * d - 1) * s := by
           exact mul_le_mul_of_nonneg_left hs (pow_nonneg hspos.le _)
         _ = s ^ (2 * d) := by
-          rw [show 2 * d = (2 * d - 1) + 1 by omega, pow_add]
-          ring
+          rw [← pow_succ]
+          congr 1
+          omega
     calc
       s ^ (2 * d - 1) ≤ s ^ (2 * d) := hpow
       _ = s ^ (2 * d) * 1 := by ring
@@ -2189,7 +2191,7 @@ theorem q4_middle_scale_le_stationaryWeight
   have hfactor : 0 ≤ (C * (3 : Real) ^ d) / s ^ (d - 1) := by positivity
   have htarget : C / s ^ (2 * d - 1) ≤
       (C * (3 : Real) ^ d) / s ^ (d - 1) *
-        (1 / ((3 : Real) ^ d * s ^ d)) := by
+        (1 + T) ^ (-q4StationaryExponent d) := by
     calc
       C / s ^ (2 * d - 1) =
           (C * (3 : Real) ^ d) / s ^ (d - 1) *
@@ -2199,8 +2201,7 @@ theorem q4_middle_scale_le_stationaryWeight
           congr 1
           omega
         field_simp [pow_ne_zero _ hspos.ne']
-        rw [hpow]
-        ring
+        rw [mul_assoc, hpow]
       _ ≤ (C * (3 : Real) ^ d) / s ^ (d - 1) *
           (1 + T) ^ (-q4StationaryExponent d) :=
         mul_le_mul_of_nonneg_left hinv hfactor
@@ -2280,7 +2281,7 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
     have hTscale : T ≤ 2 * s := by
       dsimp [T]
       calc
-        s * g ≤ s * 2 := mul_le_mul_of_nonneg_left hgupper hs.le
+        s * g ≤ s * 2 := mul_le_mul_of_nonneg_left hgupper (zero_le_one.trans hs)
         _ = 2 * s := by ring
     have hyNorm : ‖y‖ = s * ‖x‖ := by
       dsimp [y]
@@ -2288,7 +2289,7 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
     by_cases hsmallGap : T ≤ 4
     · have hcrude := hsmall s r r' hs hr hr' v y hv
       have hnum := q4_crude_scale_le_stationaryWeight (d := d)
-        (C := Csmall) hd hs hCsmall.le hT hsmallGap
+        (C := Csmall) (by omega) hs hCsmall.le hT hsmallGap
       calc
         ‖∫ u in (1 : Real)..4,
             coordinateTripleWaveCoefficient
@@ -2303,7 +2304,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
             (1 + T) ^ (-q4StationaryExponent d) := by
           apply q4_scaleWeight_mono hs hT
           dsimp [C]
-          positivity
+          nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+            pow_pos (show (0 : Real) < 8 by norm_num) d,
+            pow_pos (show (0 : Real) < 3 by norm_num) d]
     · have hlarge : 4 < T := lt_of_not_ge hsmallGap
       have hTone : 1 ≤ T := by linarith
       by_cases hphysical : g / 4 ≤ ‖x‖
@@ -2312,14 +2315,14 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
           dsimp [T]
           calc
             s * g / 4 = s * (g / 4) := by ring
-            _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical hs.le
+            _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical (zero_le_one.trans hs)
         have hyOne : 1 ≤ ‖y‖ := by
           calc
             (1 : Real) ≤ T / 4 := by linarith
             _ ≤ ‖y‖ := hyOuter
         have hphysicalBound := houter s r r' hs hr hr' v y hv hyOne
         have hnum := q4_outer_scale_le_stationaryWeight (d := d)
-          (C := Couter) hd hs hCouter.le hTone hyOuter
+          (C := Couter) (by omega) hs hCouter.le hTone hyOuter
         calc
           ‖∫ u in (1 : Real)..4,
               coordinateTripleWaveCoefficient
@@ -2335,11 +2338,13 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
               (1 + T) ^ (-q4StationaryExponent d) := by
             apply q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+              pow_pos (show (0 : Real) < 8 by norm_num) d,
+              pow_pos (show (0 : Real) < 3 by norm_num) d]
       · have hinner : ‖x‖ ≤ g / 4 := le_of_lt (lt_of_not_ge hphysical)
         have hmiddleBound' := hmiddleBound s r r' hs hr hr' v y hv
         have hnum := q4_middle_scale_le_stationaryWeight (d := d)
-          (C := Cmiddle) hd hs hCmiddle.le hT hTscale
+          (C := Cmiddle) (by omega) hs hCmiddle.le hT hTscale
         calc
           ‖∫ u in (1 : Real)..4,
               coordinateTripleWaveCoefficient
@@ -2355,7 +2360,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
               (1 + T) ^ (-q4StationaryExponent d) := by
             apply q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+              pow_pos (show (0 : Real) < 8 by norm_num) d,
+              pow_pos (show (0 : Real) < 3 by norm_num) d]
   · have hq : q ≠ .middle := by
       intro hq
       exact hmiddle (Or.inl hq)
@@ -2386,7 +2393,7 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
       by_cases hsmallGap : T ≤ 4
       · have hcrude := hsmall s r r' hs hr hr' v y hv
         have hnum := q4_crude_scale_le_stationaryWeight (d := d)
-          (C := Csmall) hd hs hCsmall.le hT hsmallGap
+          (C := Csmall) (by omega) hs hCsmall.le hT hsmallGap
         calc
           ‖∫ u in (1 : Real)..4,
               coordinateTripleWaveCoefficient
@@ -2401,7 +2408,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
               (1 + T) ^ (-q4StationaryExponent d) := by
             apply q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+              pow_pos (show (0 : Real) < 8 by norm_num) d,
+              pow_pos (show (0 : Real) < 3 by norm_num) d]
       · have hlarge : 4 < T := lt_of_not_ge hsmallGap
         have hTone : 1 ≤ T := by linarith
         by_cases hphysical : g / 4 ≤ ‖x‖
@@ -2410,11 +2419,11 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
             dsimp [T]
             calc
               s * g / 4 = s * (g / 4) := by ring
-              _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical hs.le
+              _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical (zero_le_one.trans hs)
           have hyOne : 1 ≤ ‖y‖ := by linarith
           have hphysicalBound := houter s r r' hs hr hr' v y hv hyOne
           have hnum := q4_outer_scale_le_stationaryWeight (d := d)
-            (C := Couter) hd hs hCouter.le hTone hyOuter
+            (C := Couter) (by omega) hs hCouter.le hTone hyOuter
           calc
             ‖∫ u in (1 : Real)..4,
                 coordinateTripleWaveCoefficient
@@ -2430,7 +2439,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
                 (1 + T) ^ (-q4StationaryExponent d) := by
               apply q4_scaleWeight_mono hs hT
               dsimp [C]
-              positivity
+              nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+                pow_pos (show (0 : Real) < 8 by norm_num) d,
+                pow_pos (show (0 : Real) < 3 by norm_num) d]
         · have hinner : ‖x‖ ≤ g / 4 := le_of_lt (lt_of_not_ge hphysical)
           have hIBP := hinnerBound s r r' hs hr hr'
             (by
@@ -2461,7 +2472,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
                 (1 + T) ^ (-q4StationaryExponent d) := by
               apply q4_scaleWeight_mono hs hT
               dsimp [C]
-              positivity
+              nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+                pow_pos (show (0 : Real) < 8 by norm_num) d,
+                pow_pos (show (0 : Real) < 3 by norm_num) d]
     · obtain ⟨Cinner, hCinner, hinnerBound⟩ :=
         exists_inner_endpoint_coordinateTripleWaveIntegral_bound hd
           phi hphiOne hphiZero hphiRadial p q t hp hq ht
@@ -2484,7 +2497,7 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
       by_cases hsmallGap : T ≤ 4
       · have hcrude := hsmall s r r' hs hr hr' v y hv
         have hnum := q4_crude_scale_le_stationaryWeight (d := d)
-          (C := Csmall) hd hs hCsmall.le hT hsmallGap
+          (C := Csmall) (by omega) hs hCsmall.le hT hsmallGap
         calc
           ‖∫ u in (1 : Real)..4,
               coordinateTripleWaveCoefficient
@@ -2499,7 +2512,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
               (1 + T) ^ (-q4StationaryExponent d) := by
             apply q4_scaleWeight_mono hs hT
             dsimp [C]
-            positivity
+            nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+              pow_pos (show (0 : Real) < 8 by norm_num) d,
+              pow_pos (show (0 : Real) < 3 by norm_num) d]
       · have hlarge : 4 < T := lt_of_not_ge hsmallGap
         have hTone : 1 ≤ T := by linarith
         by_cases hphysical : g / 4 ≤ ‖x‖
@@ -2508,11 +2523,11 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
             dsimp [T]
             calc
               s * g / 4 = s * (g / 4) := by ring
-              _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical hs.le
+              _ ≤ s * ‖x‖ := mul_le_mul_of_nonneg_left hphysical (zero_le_one.trans hs)
           have hyOne : 1 ≤ ‖y‖ := by linarith
           have hphysicalBound := houter s r r' hs hr hr' v y hv hyOne
           have hnum := q4_outer_scale_le_stationaryWeight (d := d)
-            (C := Couter) hd hs hCouter.le hTone hyOuter
+            (C := Couter) (by omega) hs hCouter.le hTone hyOuter
           calc
             ‖∫ u in (1 : Real)..4,
                 coordinateTripleWaveCoefficient
@@ -2528,7 +2543,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
                 (1 + T) ^ (-q4StationaryExponent d) := by
               apply q4_scaleWeight_mono hs hT
               dsimp [C]
-              positivity
+              nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+                pow_pos (show (0 : Real) < 8 by norm_num) d,
+                pow_pos (show (0 : Real) < 3 by norm_num) d]
         · have hinner : ‖x‖ ≤ g / 4 := le_of_lt (lt_of_not_ge hphysical)
           have hIBP := hinnerBound s r r' hs hr hr'
             (by
@@ -2559,7 +2576,9 @@ private theorem exists_coordinateTripleWaveIntegral_stationaryGap_bound
                 (1 + T) ^ (-q4StationaryExponent d) := by
               apply q4_scaleWeight_mono hs hT
               dsimp [C]
-              positivity
+              nlinarith [pow_pos (show (0 : Real) < 5 by norm_num) d,
+                pow_pos (show (0 : Real) < 8 by norm_num) d,
+                pow_pos (show (0 : Real) < 3 by norm_num) d]
 
 /-- The finite coordinate-triple summands are interval integrable on the
 fixed annulus.  This is used only to make the 27-term triangle inequality an
@@ -2623,7 +2642,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
   choose C hCpos hCbound using hterm
   let parts3 : Finset (CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart)) :=
     coordinateWaveParts.product (coordinateWaveParts.product coordinateWaveParts)
-  let K : Real := ∑ z in parts3, C z.1 z.2.1 z.2.2
+  let K : Real := ∑ z ∈ parts3, C z.1 z.2.1 z.2.2
   have hparts0 : (.outgoing : CoordinateWavePart) ∈ coordinateWaveParts := by
     simp [coordinateWaveParts]
   let z0 : CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart) :=
@@ -2661,14 +2680,14 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
             (s * r) (s * r') v (s • x) p q t u *
             oscillatoryExp
               (coordinateTripleWavePhase p q t ‖s • x‖ (s * r) (s * r')) u =
-        ∑ z in parts3,
+        ∑ z ∈ parts3,
           coordinateTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
             oscillatoryExp
               (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                 (s * r) (s * r')) u := by
-    simp only [parts3, Finset.sum_product]
+    simp [parts3, Finset.sum_product]
   have hintegrable (z : CoordinateWavePart × (CoordinateWavePart × CoordinateWavePart))
       (hz : z ∈ parts3) :
       IntervalIntegrable (fun u : Real =>
@@ -2700,7 +2719,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
               (s * r) (s * r') v (s • x) p q t u *
               oscillatoryExp
                 (coordinateTripleWavePhase p q t ‖s • x‖ (s * r) (s * r')) u) =
-        ∫ u in (1 : Real)..4, ∑ z in parts3,
+        ∫ u in (1 : Real)..4, ∑ z ∈ parts3,
           coordinateTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
@@ -2711,14 +2730,14 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
       intro u hu
       exact hsum u]
     calc
-      ‖∫ u in (1 : Real)..4, ∑ z in parts3,
+      ‖∫ u in (1 : Real)..4, ∑ z ∈ parts3,
           coordinateTripleWaveCoefficient
             (absoluteDyadicBandpass phi hphiOne hphiZero 0)
             (s * r) (s * r') v (s • x) z.1 z.2.1 z.2.2 u *
             oscillatoryExp
               (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                 (s * r) (s * r')) u‖ ≤
-          ∑ z in parts3,
+          ∑ z ∈ parts3,
             ‖∫ u in (1 : Real)..4,
               coordinateTripleWaveCoefficient
                 (absoluteDyadicBandpass phi hphiOne hphiZero 0)
@@ -2727,7 +2746,7 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
                   (coordinateTripleWavePhase z.1 z.2.1 z.2.2 ‖s • x‖
                     (s * r) (s * r')) u‖ :=
         norm_intervalIntegral_finsetSum_le parts3 _ (fun z hz => hintegrable z hz)
-      _ ≤ ∑ z in parts3,
+      _ ≤ ∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s ^ (d - 1) *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent d) := by
         apply Finset.sum_le_sum
@@ -2735,13 +2754,13 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
         exact hCbound z.1 z.2.1 z.2.2 s r r' hs hr hr' v x hv
       _ = K / s ^ (d - 1) *
           (1 + s * |r - r'|) ^ (-q4StationaryExponent d) := by
-        change (∑ z in parts3,
+        change (∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s ^ (d - 1) *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) = _
-        rw [show (∑ z in parts3,
+        rw [show (∑ z ∈ parts3,
           C z.1 z.2.1 z.2.2 / s ^ (d - 1) *
             (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) =
-          (∑ z in parts3, C z.1 z.2.1 z.2.2) *
+          (∑ z ∈ parts3, C z.1 z.2.1 z.2.2) *
             ((1 / s ^ (d - 1)) *
               (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) by
           rw [Finset.sum_mul]
@@ -2759,9 +2778,12 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
       s ^ d * (K / s ^ (d - 1) *
         (1 + s * |r - r'|) ^ (-q4StationaryExponent d)) =
         K * s * (1 + s * |r - r'|) ^ (-q4StationaryExponent d) := by
-    rw [show d = (d - 1) + 1 by omega, pow_add]
+    have hd1 : s ^ d = s ^ (d - 1) * s := by
+      rw [← pow_succ]
+      congr 1
+      omega
+    rw [hd1]
     field_simp [pow_ne_zero _ hspos.ne']
-    ring
   calc
     ‖s ^ d • ∫ u in (1 : Real)..4,
         ∑ p ∈ coordinateWaveParts, ∑ q ∈ coordinateWaveParts,
@@ -2789,9 +2811,10 @@ theorem exists_hasQ4DyadicPairKernelGapDecayOn_absoluteDyadicBandpass_of_three_l
       have hdyadic : dyadicScale j = s⁻¹ := by
         dsimp [dyadicScale, dyadicDenom, s]
         simp
-      unfold q4PairKernelGapWeight
-      rw [hdyadic, div_inv]
-      unfold q4StationaryExponent
+      have hrw : |r - r'| / s⁻¹ = s * |r - r'| := by
+        field_simp
+      unfold q4PairKernelGapWeight q4StationaryExponent
+      rw [hdyadic, hrw]
 
 end
 

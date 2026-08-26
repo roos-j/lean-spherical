@@ -242,80 +242,80 @@ into the `MemLp` and norm form used by the final local estimate.  This keeps
 the literal band visible: the preceding shell argument supplies `hbound`
 directly, rather than through a new bundled operator. -/
 theorem memLp_and_eLpNorm_restrictedRelativeBandpass_of_global_lintegral_rpow_le
-    {n : Nat} {p Î± : â„} (hp : 0 < p) (E : Set â„)
-    (phi f : SchwartzMap (Euclidean (n + 1)) â„‚)
-    (hphi_one : âˆ€ xi, â€–xiâ€– â‰¤ 1 â†’ phi xi = 1)
-    (hphi_zero : âˆ€ xi, 2 â‰¤ â€–xiâ€– â†’ phi xi = 0)
-    (hphi_norm : âˆ€ xi, â€–phi xiâ€– â‰¤ 1) (j : Nat)
-    (hE : E âŠ† Icc (1 : â„) 2) (hEne : E.Nonempty)
-    (A : ENNReal) (hAtop : A â‰  âŠ¤)
-    (hf : MemLp (f : Euclidean (n + 1) â†’ â„‚) (ENNReal.ofReal p)
-      (powerWeightedVolume (n + 1) Î±))
+    {n : Nat} {p α : ℝ} (hp : 0 < p) (E : Set ℝ)
+    (phi f : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphi_one : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphi_zero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphi_norm : ∀ xi, ‖phi xi‖ ≤ 1) (j : Nat)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    (A : ENNReal) (hAtop : A ≠ ⊤)
+    (hf : MemLp (f : Euclidean (n + 1) → ℂ) (ENNReal.ofReal p)
+      (powerWeightedVolume (n + 1) α))
     (hbound :
-      (âˆ«â» x : Euclidean (n + 1),
+      (∫⁻ x : Euclidean (n + 1),
         ENNReal.ofReal
           ((restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal ^ p)
-          âˆ‚powerWeightedVolume (n + 1) Î±) â‰¤
-        A * âˆ«â» x : Euclidean (n + 1),
-          (ENNReal.ofReal â€–f xâ€–) ^ p âˆ‚powerWeightedVolume (n + 1) Î±) :
+          ∂powerWeightedVolume (n + 1) α) ≤
+        A * ∫⁻ x : Euclidean (n + 1),
+          (ENNReal.ofReal ‖f x‖) ^ p ∂powerWeightedVolume (n + 1) α) :
     MemLp
       (fun x : Euclidean (n + 1) =>
         (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal)
-      (ENNReal.ofReal p) (powerWeightedVolume (n + 1) Î±) âˆ§
+      (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) ∧
       eLpNorm
         (fun x : Euclidean (n + 1) =>
           (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal)
-        (ENNReal.ofReal p) (powerWeightedVolume (n + 1) Î±) â‰¤
-        A ^ pâ»Â¹ * eLpNorm (f : Euclidean (n + 1) â†’ â„‚)
-          (ENNReal.ofReal p) (powerWeightedVolume (n + 1) Î±) := by
-  let Î¼ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) Î±
-  let M : Euclidean (n + 1) â†’ â„ := fun x =>
+        (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) ≤
+        A ^ p⁻¹ * eLpNorm (f : Euclidean (n + 1) → ℂ)
+          (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) := by
+  let μ : Measure (Euclidean (n + 1)) := powerWeightedVolume (n + 1) α
+  let M : Euclidean (n + 1) → ℝ := fun x =>
     (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal
-  let I : ENNReal := âˆ«â» x : Euclidean (n + 1), (ENNReal.ofReal â€–f xâ€–) ^ p âˆ‚Î¼
-  let J : ENNReal := âˆ«â» x : Euclidean (n + 1), ENNReal.ofReal ((M x) ^ p) âˆ‚Î¼
-  have hpNN : 0 â‰¤ p := hp.le
-  have hpInvNN : 0 â‰¤ pâ»Â¹ := inv_nonneg.mpr hpNN
-  have hIlt : I < âŠ¤ := by
+  let I : ENNReal := ∫⁻ x : Euclidean (n + 1), (ENNReal.ofReal ‖f x‖) ^ p ∂μ
+  let J : ENNReal := ∫⁻ x : Euclidean (n + 1), ENNReal.ofReal ((M x) ^ p) ∂μ
+  have hpNN : 0 ≤ p := hp.le
+  have hpInvNN : 0 ≤ p⁻¹ := inv_nonneg.mpr hpNN
+  have hIlt : I < ⊤ := by
     have h := lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
-      (Î¼ := Î¼) (f := (f : Euclidean (n + 1) â†’ â„‚))
+      (μ := μ) (f := (f : Euclidean (n + 1) → ℂ))
       (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf.2
     simpa only [I, ENNReal.toReal_ofReal hpNN, ofReal_norm] using h
-  have hJle : J â‰¤ A * I := by
-    simpa only [J, I, M, Î¼] using hbound
-  have hJlt : J < âŠ¤ :=
+  have hJle : J ≤ A * I := by
+    simpa only [J, I, M, μ] using hbound
+  have hJlt : J < ⊤ :=
     hJle.trans_lt (ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr hAtop) hIlt)
   have hMmeas : Measurable M := by
     dsimp only [M]
     exact measurable_toReal_restrictedRelativeBandpassSphericalMaximal
       phi f hphi_one hphi_zero hphi_norm j E hE hEne
-  have hMnonneg : âˆ€ x, 0 â‰¤ M x := by
+  have hMnonneg : ∀ x, 0 ≤ M x := by
     intro x
     exact ENNReal.toReal_nonneg
-  have hMmem : MemLp M (ENNReal.ofReal p) Î¼ :=
+  have hMmem : MemLp M (ENNReal.ofReal p) μ :=
     memLp_of_lintegral_ofReal_rpow_lt_top M hMmeas.aemeasurable hMnonneg hp hJlt
-  have hInorm : eLpNorm (f : Euclidean (n + 1) â†’ â„‚) (ENNReal.ofReal p) Î¼ =
-      I ^ pâ»Â¹ := by
+  have hInorm : eLpNorm (f : Euclidean (n + 1) → ℂ) (ENNReal.ofReal p) μ =
+      I ^ p⁻¹ := by
     dsimp only [I]
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
       (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
     simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm]
     rw [one_div]
   constructor
-  Â· simpa only [M, Î¼] using hMmem
-  Â· calc
+  · simpa only [M, μ] using hMmem
+  · calc
       eLpNorm
           (fun x : Euclidean (n + 1) =>
             (restrictedRelativeBandpassSphericalMaximal (n + 1) E phi j f x).toReal)
-          (ENNReal.ofReal p) (powerWeightedVolume (n + 1) Î±) =
-          eLpNorm M (ENNReal.ofReal p) Î¼ := by rfl
-      _ â‰¤ J ^ pâ»Â¹ :=
-        eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le Î¼ M hp hMnonneg hJle
-      _ â‰¤ (A * I) ^ pâ»Â¹ := ENNReal.rpow_le_rpow hJle hpInvNN
-      _ = A ^ pâ»Â¹ * eLpNorm (f : Euclidean (n + 1) â†’ â„‚)
-          (ENNReal.ofReal p) Î¼ := by
-        rw [ENNReal.mul_rpow_of_nonneg _ _ hpInvNN, â† hInorm]
-      _ = A ^ pâ»Â¹ * eLpNorm (f : Euclidean (n + 1) â†’ â„‚)
-          (ENNReal.ofReal p) (powerWeightedVolume (n + 1) Î±) := by rfl
+          (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) =
+          eLpNorm M (ENNReal.ofReal p) μ := by rfl
+      _ ≤ J ^ p⁻¹ :=
+        eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le μ M hp hMnonneg hJle
+      _ ≤ (A * I) ^ p⁻¹ := ENNReal.rpow_le_rpow hJle hpInvNN
+      _ = A ^ p⁻¹ * eLpNorm (f : Euclidean (n + 1) → ℂ)
+          (ENNReal.ofReal p) μ := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ hpInvNN, ← hInorm]
+      _ = A ^ p⁻¹ * eLpNorm (f : Euclidean (n + 1) → ℂ)
+          (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) := by rfl
 
 -/
 

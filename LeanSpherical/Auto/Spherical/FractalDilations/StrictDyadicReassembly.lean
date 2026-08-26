@@ -48,7 +48,7 @@ theorem strong_type_of_strict_high_dyadic_rate
     (hphiZero : ∀ xi, 2 <= ‖xi‖ → phi xi = 0)
     (hphiNorm : ∀ xi, ‖phi xi‖ <= 1)
     (hp : 1 < p) (hq : 1 <= q) (hpq : p < q)
-    {C rho : ENNReal} (hCtop : C < top) (hrho : rho < 1)
+    {C rho : ENNReal} (hCtop : C < ⊤) (hrho : rho < 1)
     (hhigh : ∀ j : Nat, 1 <= j → ∀ f : SchwartzMap (Euclidean d) Complex,
       MemLp (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
@@ -71,9 +71,9 @@ theorem strong_type_of_strict_high_dyadic_rate
     absoluteDyadicBandpass_zero_improving_eLpNorm
       (gamma := gamma) hd E hE phi hphiOne hphiZero hphiNorm hp hpq
   let CT : ENNReal := Czero + C
-  have hCTtop : CT < top := by
+  have hCTtop : CT < ⊤ := by
     dsimp only [CT]
-    exact ENNReal.add_lt_top hCzerotop hCtop
+    exact ENNReal.add_lt_top.mpr ⟨hCzerotop, hCtop⟩
   apply absolute_off_diagonal_reassembly_from_eLpNorm
     hd0 hp0 hq E hEpos phi hphiOne hphiZero CR CT rho
       hCRtop hCTtop hrho hregular

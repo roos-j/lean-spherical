@@ -10,7 +10,7 @@ open Auto.Spherical.FractalDilations.DyadicCovering
 open Auto.Spherical.FractalDilations.ExponentRegions
 open Auto.Spherical.FractalDilations.Q4DerivativePairKernel
 open Auto.Spherical.SphericalAverages
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -50,23 +50,21 @@ theorem deriv_surfaceFourier_neg_smul_frequency_rescale
   let eta : Euclidean d := -(s⁻¹ • xi)
   have hscale : s • eta = -xi := by
     dsimp [eta]
-    rw [smul_neg, smul_smul]
-    congr 1
-    field_simp [hs.ne']
+    rw [smul_neg, smul_smul, mul_inv_cancel₀ hs.ne', one_smul]
   have houter := hasDerivAt_surfaceFourier_radial_at d eta (s * t)
   have hlinear : HasDerivAt (fun u : Real => s * u) s t := by
     simpa [mul_comm] using (hasDerivAt_id t).const_mul s
   have hcomp : HasDerivAt
       (fun u : Real => surfaceFourier d ((s * u) • eta))
       (s • deriv (fun u : Real => surfaceFourier d (u • eta)) (s * t)) t := by
+    rw [houter.deriv]
     simpa [Function.comp_def, Complex.real_smul, mul_comm, mul_left_comm,
       mul_assoc] using
       HasDerivAt.scomp_of_eq t houter hlinear (by rfl)
   have hfun : (fun u : Real => surfaceFourier d (u • (-xi))) =
       fun u : Real => surfaceFourier d ((s * u) • eta) := by
     funext u
-    rw [← smul_smul, hscale]
-    ring_nf
+    rw [mul_comm s u, ← smul_smul, hscale]
   rw [hfun]
   simpa only [eta] using hcomp.deriv
 
@@ -96,10 +94,20 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteDyadic
       ((surfaceMass d : Complex)⁻¹ *
         deriv (fun u : Real => surfaceFourier d (u • (-xi))) r *
           absoluteDyadicBandpass phi hphiOne hphiZero 0 (s⁻¹ • xi)) = _
+  have hsC : ((s : Real) : Complex) ≠ 0 := Complex.ofReal_ne_zero.mpr hs.ne'
   rw [hderiv]
-  simp only [Complex.real_smul]
-  field_simp [hs.ne']
-  ring
+  simp only [Complex.real_smul, Complex.ofReal_inv]
+  dsimp only [s] at hsC ⊢
+  field_simp
+
+/-- At level zero the cell-length normalization is trivial. -/
+theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_levelZero
+    {d : Nat} (psi : SchwartzMap (Euclidean d) Complex)
+    (t : Real) (xi : Euclidean d) :
+    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier psi 0 t xi =
+      q4NormalizedDyadicSurfaceRadiusDerivativeMultiplier psi t xi := by
+  unfold q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier
+  simp [dyadicScale, dyadicDenom]
 
 /-- The literal derivative `TT*` multiplier inherits the identical scaling
 without any leftover powers of the dyadic frequency. -/
@@ -118,7 +126,9 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_absoluteDy
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteDyadicBandpass_eq_levelZero_scaled
       phi hphiOne hphiZero j r xi,
     q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteDyadicBandpass_eq_levelZero_scaled
-      phi hphiOne hphiZero j r' xi]
+      phi hphiOne hphiZero j r' xi,
+    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_levelZero,
+    q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_levelZero]
 
 /-- Exact physical-space scaling of the pair kernel for two scaled normalized
 radius derivatives. -/

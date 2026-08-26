@@ -54,8 +54,9 @@ theorem q4_subpower_half_frequency_exponent_lt
   have hscale : theta * (epsilon / theta) = epsilon := by
     field_simp [htheta_ne]
   rw [hscale]
-  have hstrict : 1 < (d : Real) * theta :=
-    (div_lt_iff₀ hdReal).mp htheta
+  have hstrict : 1 < (d : Real) * theta := by
+    have h := (div_lt_iff₀ hdReal).mp htheta
+    linarith [h]
   nlinarith
 
 /-- Away from the planar critical line, the two strict Section 3 exponents
@@ -78,7 +79,6 @@ theorem exists_q4_strict_negative_exponents_with_subpower_loss
   have hidentity : theta * eta = -q4FrequencyExponent d theta / 2 := by
     dsimp only [eta]
     field_simp [ne_of_gt htheta0]
-    ring
   refine ⟨theta, eta, htheta0, htheta1, heta, ?_, hgap⟩
   unfold q4FrequencyExponentWithSubpowerLoss
   rw [hidentity]
@@ -120,7 +120,7 @@ theorem q4_planar_critical_shell_exponent_with_subpower_loss_le
         (theta - 1 / 2) * (n : Real) <=
       q4FrequencyExponentWithSubpowerLoss 2 theta eta * (j : Real) +
         (theta - 1 / 2) * ((j : Real) + 3) :=
-      add_le_add_left hmul _
+      by linarith
     _ = (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
         (theta - 1 / 2)) * (j : Real) + 3 * (theta - 1 / 2) := by
       ring
@@ -181,16 +181,38 @@ theorem q4_planar_critical_finite_level_sum_with_subpower_loss_le
         ((2 : Real) ^
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
             q4GapExponent 2 (1 / 2) theta)) ^ j := by
-      rw [pow_add]
-      dsimp [r]
-      rw [← Real.rpow_mul_natCast (by norm_num : (0 : Real) ≤ 2)
-        (theta - 1 / 2) j,
-        ← Real.rpow_mul_natCast (by norm_num : (0 : Real) ≤ 2)
+      have h2 : (0 : Real) < 2 := by norm_num
+      have hden : (2 : Real) ^ (theta - 1 / 2) - 1 ≠ 0 := by
+        have hone : (1 : Real) < (2 : Real) ^ (theta - 1 / 2) :=
+          Real.one_lt_rpow (by norm_num) hbpos
+        exact sub_ne_zero.mpr (ne_of_gt hone)
+      have e1 : r ^ (j + 3) =
+          (2 : Real) ^ ((theta - 1 / 2) * ((j : Real) + 3)) := by
+        dsimp only [r]
+        rw [← Real.rpow_natCast ((2 : Real) ^ (theta - 1 / 2)) (j + 3),
+          ← Real.rpow_mul h2.le]
+        push_cast
+        ring_nf
+      have e2 : ((2 : Real) ^
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta +
-            q4GapExponent 2 (1 / 2) theta) j]
-      rw [← Real.rpow_add (by norm_num : (0 : Real) < 2)]
-      rw [hb]
+            q4GapExponent 2 (1 / 2) theta)) ^ j =
+          (2 : Real) ^ ((a + b) * (j : Real)) := by
+        rw [show q4FrequencyExponentWithSubpowerLoss 2 theta eta = a from rfl,
+          show q4GapExponent 2 (1 / 2) theta = b from rfl,
+          ← Real.rpow_natCast ((2 : Real) ^ (a + b)) j, ← Real.rpow_mul h2.le]
+      have e3 : ((2 : Real) ^ (theta - 1 / 2)) ^ 3 =
+          (2 : Real) ^ ((theta - 1 / 2) * 3) := by
+        rw [← Real.rpow_natCast ((2 : Real) ^ (theta - 1 / 2)) 3,
+          ← Real.rpow_mul h2.le]
+        norm_num
+      rw [e1, e2, e3]
+      rw [div_mul_eq_mul_div, mul_comm ((2 : Real) ^ ((theta - 1 / 2) * 3)),
+        mul_div_assoc]
+      rw [← mul_div_assoc, ← Real.rpow_add h2]
+      dsimp only [r]
+      rw [mul_div_assoc', ← Real.rpow_add h2]
       congr 2
+      rw [hb]
       ring
 
 /-- The dyadic ratio supplied by the preceding finite planar sum is strictly

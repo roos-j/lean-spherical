@@ -3,12 +3,14 @@
 
 import LeanSpherical.Auto.Spherical.FractalDilations.AllDimensionalDerivativeTripleWaveNormalForm
 import LeanSpherical.Auto.Spherical.FractalDilations.CoordinateTripleWaveExpansion
+set_option maxHeartbeats 2000000
 open Auto.Spherical.FractalDilations.AbsoluteDyadicDerivativeScaling
 open Auto.Spherical.FractalDilations.AbsoluteReassembly
 open Auto.Spherical.FractalDilations.AllDimensionalDerivativeTripleWaveNormalForm
 open Auto.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
 open Auto.Spherical.FractalDilations.CoordinateTripleWaveExpansion
 open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.OscillatoryIBP
 open Auto.Spherical.FractalDilations.Q4DerivativePairKernel
 open Auto.Spherical.FractalDilations.Q4RadialReduction
 open Auto.Spherical.FractalDilations.SeparatedPacking
@@ -92,7 +94,7 @@ theorem coordinateRadiusDerivativeTripleWaveTerm_eq_coefficient_mul_oscillatoryE
     coordinateWaveRadiusDerivativeTerm_eq_amplitude_mul_oscillatoryExp]
   unfold coordinateRadiusDerivativeTripleWaveCoefficient coordinateWaveRadialTerm
     coordinateTripleWavePhase
-  rw [map_mul, star_oscillatoryExp]
+  simp only [map_mul, star_oscillatoryExp]
   have hphase :
       (oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho *
           oscillatoryExp (coordinateWaveRadialPhase q r) rho) *
@@ -103,32 +105,8 @@ theorem coordinateRadiusDerivativeTripleWaveTerm_eq_coefficient_mul_oscillatoryE
               coordinateWaveRadialPhase t r') rho := by
     rw [oscillatoryExp_mul, oscillatoryExp_mul]
     congr 1
-    ring
-  rw [show
-      ((rho ^ (d - 1) : Real) : Complex) *
-          (coordinateWaveRadialAmplitude d p ‖x‖ rho *
-            oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho) *
-            ((((surfaceMass d : Complex)⁻¹ *
-              coordinateWaveRadiusDerivativeAmplitude d q r rho) *
-              oscillatoryExp (coordinateWaveRadialPhase q r) rho) * psi (rho • v)) *
-              (starRingEnd Complex
-                ((surfaceMass d : Complex)⁻¹ *
-                  coordinateWaveRadiusDerivativeAmplitude d t r' rho) *
-                oscillatoryExp (-coordinateWaveRadialPhase t r') rho *
-                  starRingEnd Complex (psi (rho • v))) =
-        ((((rho ^ (d - 1) : Real) : Complex) *
-          coordinateWaveRadialAmplitude d p ‖x‖ rho *
-            (((surfaceMass d : Complex)⁻¹ *
-              coordinateWaveRadiusDerivativeAmplitude d q r rho) * psi (rho • v)) *
-              starRingEnd Complex
-                (((surfaceMass d : Complex)⁻¹ *
-                  coordinateWaveRadiusDerivativeAmplitude d t r' rho) * psi (rho • v))) *
-          ((oscillatoryExp (coordinateWaveRadialPhase p ‖x‖) rho *
-            oscillatoryExp (coordinateWaveRadialPhase q r) rho) *
-              oscillatoryExp (-coordinateWaveRadialPhase t r') rho) by
-        rw [map_mul]
-        ring]
-  rw [hphase]
+  rw [← hphase]
+  ring
 
 /-- The literal differentiated radial integrand is an exact finite sum of
 the twenty-seven coefficient-phase products. -/
@@ -170,10 +148,9 @@ theorem q4CoordinateRadiusDerivativeTripleWaveRadialIntegrand_eq_finset_sum
                   starRingEnd Complex
                     ((surfaceMass d : Complex)⁻¹ *
                       coordinateWaveRadiusDerivativeTerm d t r' rho * psi (rho • v))) := by
-    simp only [coordinateWaveParts, Finset.sum_insert, Finset.sum_singleton,
-      map_add, map_mul]
+    simp [coordinateWaveParts]
     ring
-  rw [hsum]
+  refine hsum.trans ?_
   apply Finset.sum_congr rfl
   intro p hp
   apply Finset.sum_congr rfl
@@ -200,19 +177,20 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_absoluteDyadic
           (absoluteDyadicBandpass phi hphiOne hphiZero 0) r r' v x rho := by
   rw [q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_absoluteDyadicBandpass_eq_annular_surfaceFourier_intervalIntegral_allDim
     (by omega) phi hphiOne hphiZero hphiRadial 0 r r' v x hv]
-  norm_num
+  rw [show ((2 : Real) ^ (0 : Nat)) = 1 by norm_num,
+    show ((2 : Real) ^ ((0 : Nat) + 2)) = 4 by norm_num]
   apply intervalIntegral.integral_congr
   intro rho hrho
   have hrho' : rho ∈ Icc (1 : Real) 4 := by
     rw [uIcc_of_le (by norm_num : (1 : Real) ≤ 4)] at hrho
     exact ⟨hrho.1, hrho.2⟩
   have hrhopos : 0 < rho := lt_of_lt_of_le (by norm_num) hrho'.1
+  unfold q4ScaledNormalizedDerivativeRadialPairProfileAllDim
+    q4CoordinateRadiusDerivativeTripleWaveRadialIntegrand
+  simp only []
   rw [surfaceFourier_neg_smul_eq_coordinateSurfaceWaveSum hd hrhopos x,
     q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_zero_eq_coordinateDerivativeWaves
       hd (absoluteDyadicBandpass phi hphiOne hphiZero 0) hr hr' hrhopos v hv]
-  unfold q4ScaledNormalizedDerivativeRadialPairProfileAllDim
-    q4CoordinateRadiusDerivativeTripleWaveRadialIntegrand
-  ring
 
 /-- Exact fixed-annulus twenty-seven-term normal form for the actual scaled
 radius-derivative pair kernel in every dimension at least three. -/

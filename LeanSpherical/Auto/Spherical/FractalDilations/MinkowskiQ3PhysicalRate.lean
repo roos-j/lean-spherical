@@ -15,7 +15,7 @@ open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalInterpolation
 open Auto.Spherical.FractalDilations.MinkowskiQ3StrictRate
 open Auto.Spherical.FractalDilations.Q4CrossedMarcinkiewicz
 open Auto.Spherical.FractalDilations.TheoremOneFourierInputs
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -108,7 +108,6 @@ theorem q3PhysicalCrossedConstant_eq_ofReal
   rw [ENNReal.ofReal_mul hinv, ENNReal.ofReal_inv_of_pos hqminus,
     ENNReal.ofReal_rpow_of_pos (mul_pos (by norm_num) hA)]
   norm_num
-  ring
 
 /-- Before taking the output `q`-th root, the crossed physical constant has
 the expected scale power `a - n + q - 2`. -/
@@ -210,8 +209,8 @@ theorem fractalDyadicBandpass_eLpNorm_le_of_unnormalized_rate
       fun x => s⁻¹ * unnormalizedFractalDyadicBandpassMaximal d E psi f x := by
     funext x
     dsimp only [s]
-    unfold unnormalizedFractalDyadicBandpassMaximal
-    field_simp [ne_of_gt hs]
+    unfold unnormalizedFractalDyadicBandpassMaximal fractalDyadicBandpassMaximal
+    rw [← mul_assoc, inv_mul_cancel₀ (ne_of_gt hs), one_mul]
   rw [hrewrite]
   change eLpNorm (s⁻¹ • unnormalizedFractalDyadicBandpassMaximal d E psi f)
       (ENNReal.ofReal q) volume ≤ _
@@ -312,10 +311,9 @@ theorem q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sharp
             ENNReal.ofReal_ne_top
   have hCTtop : CT < ∞ := by
     dsimp only [CT]
-    apply ENNReal.add_lt_top
-    · norm_num
-    · exact ENNReal.rpow_lt_top_of_nonneg (inv_nonneg.mpr hqpos.le)
-        hcrossTop.ne
+    refine ENNReal.add_lt_top.mpr ⟨by norm_num, ?_⟩
+    exact ENNReal.rpow_lt_top_of_nonneg (inv_nonneg.mpr hqpos.le)
+      hcrossTop.ne
   refine ⟨CT, rho, hCT, hCTtop, hrho, rfl, ?_⟩
   intro j hj f
   let R : Real := Auto.Spherical.SurfaceCore.dyadicScale j
@@ -403,7 +401,7 @@ theorem q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sharp
       (ENNReal.ofReal ((2 : Real) ^ j)) ^ q3PhysicalMinkowskiExponent n a q =
           ENNReal.ofReal
             (((2 : Real) ^ j) ^ q3PhysicalMinkowskiExponent n a q) :=
-        (ENNReal.ofReal_rpow_of_pos (pow_pos (by norm_num) j)).symm
+        ENNReal.ofReal_rpow_of_pos (pow_pos (by norm_num : (0:Real) < 2) j)
       _ = ENNReal.ofReal
           (((2 : Real) ^ q3PhysicalMinkowskiExponent n a q) ^ j) := by
         congr 1
@@ -441,10 +439,9 @@ theorem q3_physical_strict_dyadic_rate_of_hasUpperMinkowskiExponent_of_sharp
     _ ≤ CT * rho ^ j *
           eLpNorm (f : Euclidean (n + 1) → Complex)
             (ENNReal.ofReal p) volume := by
-      exact mul_le_mul_left
-        (mul_le_mul_left (le_add_of_nonneg_right bot_le) (rho ^ j))
-        (eLpNorm (f : Euclidean (n + 1) → Complex)
-          (ENNReal.ofReal p) volume)
+      exact mul_le_mul' (mul_le_mul' (le_add_of_nonneg_left bot_le) (le_refl (rho ^ j)))
+        (le_refl (eLpNorm (f : Euclidean (n + 1) → Complex)
+          (ENNReal.ofReal p) volume))
 
 /-- The preceding strict-rate theorem with the upper Minkowski dimension
 written as an equality.  Splitting the loss in half is necessary because
@@ -573,7 +570,7 @@ theorem q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
   have hmass : 0 < surfaceMass (n + 1) := surfaceMass_pos (by omega)
   have hC : 0 < C := by
     dsimp only [C]
-    exact mul_pos (ENNReal.ofReal_pos.mpr (inv_pos.mpr hmass)) hCT
+    exact ENNReal.mul_pos (ENNReal.ofReal_pos.mpr (inv_pos.mpr hmass)).ne' hCT.ne'
   have hCtop : C < ∞ := by
     dsimp only [C]
     exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hCTtop

@@ -53,10 +53,16 @@ theorem intervalIntegral_eq_expanded_fixedAnnulus_of_zero
     hF.intervalIntegrable _ _
   have hzeroLeft : (∫ u in (1 / 2 : Real)..1, F u) = 0 := by
     apply intervalIntegral.integral_zero_ae
-    exact Filter.Eventually.of_forall hleft
+    refine Filter.Eventually.of_forall ?_
+    intro u hu
+    rw [Set.uIoc_of_le (by norm_num : (1 / 2 : Real) ≤ 1)] at hu
+    exact hleft u ⟨le_of_lt hu.1, hu.2⟩
   have hzeroRight : (∫ u in (4 : Real)..8, F u) = 0 := by
     apply intervalIntegral.integral_zero_ae
-    exact Filter.Eventually.of_forall hright
+    refine Filter.Eventually.of_forall ?_
+    intro u hu
+    rw [Set.uIoc_of_le (by norm_num : (4 : Real) ≤ 8)] at hu
+    exact hright u ⟨le_of_lt hu.1, hu.2⟩
   calc
     (∫ u in (1 : Real)..4, F u) =
         (∫ u in (1 / 2 : Real)..1, F u) +
@@ -108,8 +114,11 @@ theorem contDiff_coordinateTripleWaveCoefficient
     rw [heq]
     exact Complex.conjCLE.contDiff.comp hrightBase
   unfold coordinateTripleWaveCoefficient
-  exact (((by fun_prop : ContDiff Real (⊤ : ℕ∞)
-      (fun rho : Real => ((rho ^ (d - 1) : Real) : Complex))).mul hleft).mul hmiddle).mul hright
+  have hpow : ContDiff Real (⊤ : ℕ∞)
+      (fun rho : Real => ((rho ^ (d - 1) : Real) : Complex)) := by
+    have h : ContDiff Real (⊤ : ℕ∞) (fun rho : Real => rho ^ (d - 1)) := by fun_prop
+    exact Complex.ofRealCLM.contDiff.comp h
+  exact ((hpow.mul hleft).mul hmiddle).mul hright
 
 /-- The planar coefficient has the same literal radial smoothness. -/
 theorem contDiff_planarCoordinateTripleWaveCoefficient
@@ -148,8 +157,9 @@ theorem contDiff_planarCoordinateTripleWaveCoefficient
     rw [heq]
     exact Complex.conjCLE.contDiff.comp hrightBase
   unfold planarCoordinateTripleWaveCoefficient
-  exact (((by fun_prop : ContDiff Real (⊤ : ℕ∞)
-      (fun rho : Real => (rho : Complex))).mul hleft).mul hmiddle).mul hright
+  have hid : ContDiff Real (⊤ : ℕ∞) (fun rho : Real => (rho : Complex)) :=
+    Complex.ofRealCLM.contDiff
+  exact ((hid.mul hleft).mul hmiddle).mul hright
 
 /-- The literal level-zero bandpass vanishes on the added left part of the
 fixed IBP annulus along every unit ray. -/
@@ -165,7 +175,7 @@ theorem absoluteDyadicBandpass_zero_on_normalized_left
   norm_num at hscale
   rw [hscale]
   exact normalizedDyadicRadialBandpass_eq_zero_of_mem_Icc_zero_one
-    phi hphiOne v hv hu
+    phi hphiOne v hv ⟨by linarith [hu.1], hu.2⟩
 
 /-- The literal level-zero bandpass vanishes on the added right part of the
 fixed IBP annulus along every unit ray. -/
@@ -182,6 +192,73 @@ theorem absoluteDyadicBandpass_zero_on_normalized_right
   rw [hscale]
   exact normalizedDyadicRadialBandpass_eq_zero_of_four_le
     phi hphiZero v hv hu.1
+
+/-- The literal level-zero bandpass vanishes on the whole unit segment along
+every unit ray.  This is the sharp form of
+`absoluteDyadicBandpass_zero_on_normalized_left`. -/
+theorem absoluteDyadicBandpass_zero_on_unit_segment
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (v : Euclidean d) (hv : ‖v‖ = 1) {u : Real}
+    (hu : u ∈ Icc (0 : Real) 1) :
+    absoluteDyadicBandpass phi hphiOne hphiZero 0 (u • v) = 0 := by
+  have hscale := absoluteDyadicBandpass_smul_dyadicScale_eq_normalizedDyadicRadialBandpass
+    phi hphiOne hphiZero 0 v u
+  norm_num at hscale
+  rw [hscale]
+  exact normalizedDyadicRadialBandpass_eq_zero_of_mem_Icc_zero_one
+    phi hphiOne v hv ⟨hu.1, hu.2⟩
+
+/-- The literal level-zero bandpass vanishes on the whole outer ray along
+every unit direction. -/
+theorem absoluteDyadicBandpass_zero_on_outer_ray
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (v : Euclidean d) (hv : ‖v‖ = 1) {u : Real}
+    (hu : (4 : Real) ≤ u) :
+    absoluteDyadicBandpass phi hphiOne hphiZero 0 (u • v) = 0 := by
+  have hscale := absoluteDyadicBandpass_smul_dyadicScale_eq_normalizedDyadicRadialBandpass
+    phi hphiOne hphiZero 0 v u
+  norm_num at hscale
+  rw [hscale]
+  exact normalizedDyadicRadialBandpass_eq_zero_of_four_le
+    phi hphiZero v hv hu
+
+/-- Sharp left-hand vanishing of the literal triple coefficient. -/
+theorem coordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_unit
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (r r' : Real) (v x : Euclidean d) (hv : ‖v‖ = 1)
+    (p q t : CoordinateWavePart) {u : Real}
+    (hu : u ∈ Icc (0 : Real) 1) :
+    coordinateTripleWaveCoefficient
+      (absoluteDyadicBandpass phi hphiOne hphiZero 0)
+      r r' v x p q t u = 0 := by
+  have hpsi := absoluteDyadicBandpass_zero_on_unit_segment
+    phi hphiOne hphiZero v hv hu
+  unfold coordinateTripleWaveCoefficient
+  rw [hpsi]
+  simp
+
+/-- Sharp right-hand vanishing of the literal triple coefficient. -/
+theorem coordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_outer
+    {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (r r' : Real) (v x : Euclidean d) (hv : ‖v‖ = 1)
+    (p q t : CoordinateWavePart) {u : Real}
+    (hu : (4 : Real) ≤ u) :
+    coordinateTripleWaveCoefficient
+      (absoluteDyadicBandpass phi hphiOne hphiZero 0)
+      r r' v x p q t u = 0 := by
+  have hpsi := absoluteDyadicBandpass_zero_on_outer_ray
+    phi hphiOne hphiZero v hv hu
+  unfold coordinateTripleWaveCoefficient
+  rw [hpsi]
+  simp
 
 /-- Every actual higher-dimensional coefficient is zero on each added part
 of the fixed annulus. -/
@@ -214,6 +291,40 @@ theorem coordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_right
   have hpsi := absoluteDyadicBandpass_zero_on_normalized_right
     phi hphiOne hphiZero v hv hu
   unfold coordinateTripleWaveCoefficient
+  rw [hpsi]
+  simp
+
+/-- Sharp left-hand vanishing of the literal planar triple coefficient. -/
+theorem planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_unit
+    (phi : SchwartzMap (Euclidean 2) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (r r' : Real) (v x : Euclidean 2) (hv : ‖v‖ = 1)
+    (p q t : CoordinateWavePart) {u : Real}
+    (hu : u ∈ Icc (0 : Real) 1) :
+    planarCoordinateTripleWaveCoefficient
+      (absoluteDyadicBandpass phi hphiOne hphiZero 0)
+      r r' v x p q t u = 0 := by
+  have hpsi := absoluteDyadicBandpass_zero_on_unit_segment
+    phi hphiOne hphiZero v hv hu
+  unfold planarCoordinateTripleWaveCoefficient
+  rw [hpsi]
+  simp
+
+/-- Sharp right-hand vanishing of the literal planar triple coefficient. -/
+theorem planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_outer
+    (phi : SchwartzMap (Euclidean 2) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (r r' : Real) (v x : Euclidean 2) (hv : ‖v‖ = 1)
+    (p q t : CoordinateWavePart) {u : Real}
+    (hu : (4 : Real) ≤ u) :
+    planarCoordinateTripleWaveCoefficient
+      (absoluteDyadicBandpass phi hphiOne hphiZero 0)
+      r r' v x p q t u = 0 := by
+  have hpsi := absoluteDyadicBandpass_zero_on_outer_ray
+    phi hphiOne hphiZero v hv hu
+  unfold planarCoordinateTripleWaveCoefficient
   rw [hpsi]
   simp
 
@@ -257,21 +368,25 @@ theorem intervalIntegral_coordinateTripleWaveCoefficient_eq_expanded
     (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
     (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
     (r r' : Real) (v x : Euclidean d) (hv : ‖v‖ = 1)
-    (p q t : CoordinateWavePart) :
+    (p q t : CoordinateWavePart) {freq : Real} :
     (∫ u in (1 : Real)..4,
       coordinateTripleWaveCoefficient
         (absoluteDyadicBandpass phi hphiOne hphiZero 0)
         r r' v x p q t u *
-        oscillatoryExp (coordinateTripleWavePhase p q t ‖x‖ r r') u) =
+        oscillatoryExp freq u) =
       ∫ u in (1 / 2 : Real)..8,
         coordinateTripleWaveCoefficient
           (absoluteDyadicBandpass phi hphiOne hphiZero 0)
           r r' v x p q t u *
-          oscillatoryExp (coordinateTripleWavePhase p q t ‖x‖ r r') u := by
+          oscillatoryExp freq u := by
   apply intervalIntegral_eq_expanded_fixedAnnulus_of_zero
   · exact (contDiff_coordinateTripleWaveCoefficient
       (absoluteDyadicBandpass phi hphiOne hphiZero 0) r r' v x p q t).continuous.mul
-        (by fun_prop)
+        (by
+          unfold oscillatoryExp
+          exact Complex.continuous_exp.comp
+            ((Complex.continuous_ofReal.comp
+              (continuous_const.mul continuous_id)).mul continuous_const))
   · intro u hu
     rw [coordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_left
       phi hphiOne hphiZero r r' v x hv p q t hu]
@@ -287,21 +402,25 @@ theorem intervalIntegral_planarCoordinateTripleWaveCoefficient_eq_expanded
     (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1)
     (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
     (r r' : Real) (v x : Euclidean 2) (hv : ‖v‖ = 1)
-    (p q t : CoordinateWavePart) :
+    (p q t : CoordinateWavePart) {freq : Real} :
     (∫ u in (1 : Real)..4,
       planarCoordinateTripleWaveCoefficient
         (absoluteDyadicBandpass phi hphiOne hphiZero 0)
         r r' v x p q t u *
-        oscillatoryExp (coordinateTripleWavePhase p q t ‖x‖ r r') u) =
+        oscillatoryExp freq u) =
       ∫ u in (1 / 2 : Real)..8,
         planarCoordinateTripleWaveCoefficient
           (absoluteDyadicBandpass phi hphiOne hphiZero 0)
           r r' v x p q t u *
-          oscillatoryExp (coordinateTripleWavePhase p q t ‖x‖ r r') u := by
+          oscillatoryExp freq u := by
   apply intervalIntegral_eq_expanded_fixedAnnulus_of_zero
   · exact (contDiff_planarCoordinateTripleWaveCoefficient
       (absoluteDyadicBandpass phi hphiOne hphiZero 0) r r' v x p q t).continuous.mul
-        (by fun_prop)
+        (by
+          unfold oscillatoryExp
+          exact Complex.continuous_exp.comp
+            ((Complex.continuous_ofReal.comp
+              (continuous_const.mul continuous_id)).mul continuous_const))
   · intro u hu
     rw [planarCoordinateTripleWaveCoefficient_absoluteDyadicBandpass_eq_zero_left
       phi hphiOne hphiZero r r' v x hv p q t hu]

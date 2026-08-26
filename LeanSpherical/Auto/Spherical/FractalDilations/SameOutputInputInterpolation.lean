@@ -114,9 +114,10 @@ theorem smooth_low_rpow_le_of_lt
     exact smooth_low_norm_le_half_height f low ht hlow x
   by_cases hzero : a = 0
   · have hrne : r ≠ 0 := by linarith
-    rw [hzero, Real.zero_rpow hrne]
+    have hnorm : ‖low x‖ = 0 := hzero
+    rw [hnorm, Real.zero_rpow hrne]
     exact mul_nonneg
-      (Real.rpow_nonneg hc.le _)
+      (Real.rpow_nonneg (by positivity) _)
       (Real.rpow_nonneg hb0 _)
   · have ha : 0 < a := lt_of_le_of_ne ha0 (Ne.symm hzero)
     have hapow : a ^ p ≤ b ^ p :=
@@ -247,11 +248,12 @@ theorem sameOutputInput_high_root
   rw [show -((r - p) * r⁻¹) = (p - r) / r by
     field_simp [hr.ne']
     ring]
+  rw [show ∀ z : Real, t ^ ((r - p) * r⁻¹) * z * t ^ (p * r⁻¹) =
+      z * (t ^ ((r - p) * r⁻¹) * t ^ (p * r⁻¹)) from fun z => by ring]
   rw [← Real.rpow_add ht]
   rw [show (r - p) * r⁻¹ + p * r⁻¹ = 1 by
     field_simp [hr.ne']
     ring, Real.rpow_one]
-  ring
 
 /-- The scalar root left by the small-amplitude cutoff. -/
 theorem sameOutputInput_low_root
@@ -271,11 +273,12 @@ theorem sameOutputInput_low_root
   rw [show -((r - p) * r⁻¹) = (p - r) / r by
     field_simp [hr.ne']
     ring]
+  rw [show ∀ z : Real, t ^ ((r - p) * r⁻¹) * z * t ^ (p * r⁻¹) =
+      z * (t ^ ((r - p) * r⁻¹) * t ^ (p * r⁻¹)) from fun z => by ring]
   rw [← Real.rpow_add ht]
   rw [show (r - p) * r⁻¹ + p * r⁻¹ = 1 by
     field_simp [hr.ne']
     ring, Real.rpow_one]
-  ring
 
 /-- The literal constant in ordinary strong interpolation between two
 estimates with a common output exponent.  The first summand belongs to the
@@ -435,7 +438,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
       exact hTsub (low t) (high t) x
     _ ≤ eLpNorm (T (low t)) (ENNReal.ofReal q) volume +
           eLpNorm (T (high t)) (ENNReal.ofReal q) volume :=
-      eLpNorm_add_le hTlow.1 hThigh.1 hqENN
+      eLpNorm_add_le hTlow.1.1 hThigh.1.1 hqENN
     _ ≤ A1 * eLpNorm (low t : Euclidean d → Complex) (ENNReal.ofReal r1) volume +
           A0 * eLpNorm (high t : Euclidean d → Complex) (ENNReal.ofReal r0) volume :=
       add_le_add hTlow.2 hThigh.2

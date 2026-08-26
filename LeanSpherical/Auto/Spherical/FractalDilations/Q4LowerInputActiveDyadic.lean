@@ -23,7 +23,7 @@ open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open Auto.Spherical.FractalDilations.RawDyadicSurfaceEndpoint
 open Auto.Spherical.FractalDilations.SeparatedPacking
 open Auto.Spherical.FractalDilations.TheoremOneAnalytic
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -88,9 +88,11 @@ theorem q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d → Complex))
     {Cendpoint Bendpoint Cderivative Bderivative : Real}
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hCendpoint : 0 < Cendpoint)
-    (hendpointDecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    (hendpointDecay : HasQ4DyadicPairKernelGapDecayOn d psiFam
       (1 / 2 : Real) (5 / 2) Cendpoint)
+    (hpsiFam : psi = psiFam j)
     (hBendpoint : 0 ≤ Bendpoint)
     (hendpointMultiplier : ∀ i ∈ activeDyadicIndices E j,
       ∀ l ∈ activeDyadicIndices E j, ∀ xi : Euclidean d,
@@ -98,7 +100,7 @@ theorem q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
     (hCderivative : 0 < Cderivative)
     (hderivativeDecay :
       HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-        d (fun _ => psi) (1 / 2 : Real) (5 / 2) Cderivative)
+        d psiFam (1 / 2 : Real) (5 / 2) Cderivative)
     (hBderivative : 0 ≤ Bderivative)
     (hderivativeMultiplier : ∀ u ∈ Icc (0 : Real) (dyadicScale j),
       ∀ i ∈ activeDyadicIndices E j,
@@ -117,7 +119,7 @@ theorem q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
           (Real.sqrt (∫ x, ‖(f : Euclidean d → Complex) x‖ ^ (2 : Nat))) := by
   have hbase := q4ActiveDyadicMaximal_eLpNorm_le_of_active_multipliers
     hd hj hE hEne hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-    hCendpoint hendpointDecay hBendpoint hendpointMultiplier
+    hCendpoint hendpointDecay hpsiFam hBendpoint hendpointMultiplier
     hCderivative hderivativeDecay hBderivative hderivativeMultiplier
     hu1 hu2 hr f
   have hf2 : MemLp (f : Euclidean d → Complex) 2 volume := f.memLp 2 volume
@@ -139,7 +141,9 @@ theorem q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
   have hN : 0 ≤ N := Real.sqrt_nonneg _
   have hmass : 0 ≤ ‖((surfaceMass d)⁻¹ : Complex)‖ := norm_nonneg _
   have hnorm' : ‖f.toLp 2 volume‖ = N := by
-    simpa only [N] using hnorm
+    rw [SchwartzMap.norm_toLp' (p := 2) (μ := volume) (by norm_num) (by norm_num)]
+    simp only [N]
+    norm_num [Real.sqrt_eq_rpow]
   have hnorm'' : ‖(f.memLp 2 volume).toLp (f : Euclidean d → Complex)‖ = N := by
     simpa only [N] using hnorm
   calc
@@ -183,9 +187,11 @@ theorem q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multiplier
     (psi : SchwartzMap (Euclidean d) Complex)
     (hpsiCompact : HasCompactSupport (psi : Euclidean d → Complex))
     {Cendpoint Bendpoint Cderivative Bderivative : Real}
+    {psiFam : Nat -> SchwartzMap (Euclidean d) Complex}
     (hCendpoint : 0 < Cendpoint)
-    (hendpointDecay : HasQ4DyadicPairKernelGapDecayOn d (fun _ => psi)
+    (hendpointDecay : HasQ4DyadicPairKernelGapDecayOn d psiFam
       (1 / 2 : Real) (5 / 2) Cendpoint)
+    (hpsiFam : psi = psiFam j)
     (hBendpoint : 0 ≤ Bendpoint)
     (hendpointMultiplier : ∀ i ∈ activeDyadicIndices E j,
       ∀ l ∈ activeDyadicIndices E j, ∀ xi : Euclidean d,
@@ -193,7 +199,7 @@ theorem q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multiplier
     (hCderivative : 0 < Cderivative)
     (hderivativeDecay :
       HasQ4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernelGapDecayOn
-        d (fun _ => psi) (1 / 2 : Real) (5 / 2) Cderivative)
+        d psiFam (1 / 2 : Real) (5 / 2) Cderivative)
     (hBderivative : 0 ≤ Bderivative)
     (hderivativeMultiplier : ∀ u ∈ Icc (0 : Real) (dyadicScale j),
       ∀ i ∈ activeDyadicIndices E j,
@@ -216,12 +222,12 @@ theorem q4ActiveDyadicMaximal_memLp_and_eLpNorm_le_ltwoReal_of_active_multiplier
   · exact
       (q4ActiveDyadicMaximal_eLpNorm_le_of_active_multipliers
         hd hj hE hEne hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-        hCendpoint hendpointDecay hBendpoint hendpointMultiplier
+        hCendpoint hendpointDecay hpsiFam hBendpoint hendpointMultiplier
         hCderivative hderivativeDecay hBderivative hderivativeMultiplier
         hu1 hu2 hr f).1
   · exact q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
       hd hj hE hEne hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-      hCendpoint hendpointDecay hBendpoint hendpointMultiplier
+      hCendpoint hendpointDecay hpsiFam hBendpoint hendpointMultiplier
       hCderivative hderivativeDecay hBderivative hderivativeMultiplier
       hu1 hu2 hr f
 
@@ -237,15 +243,15 @@ def q4LowerActiveDyadicStrongConstant
           (absoluteDyadicSurfaceL1EndpointConstant (d - 1) C0 j + 1)
           (q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
             Cendpoint Bendpoint Cderivative Bderivative j r0) p r0) *
-        ∫⁻ t in Ioc (0 : Real) 1,
-          (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r0 - 1) +
+        (∫⁻ t in Ioc (0 : Real) 1,
+          (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r0 - 1)) +
       ENNReal.ofReal
         (q4LowerWeakRealConstant
           (absoluteDyadicSurfaceL1EndpointConstant (d - 1) C0 j + 1)
           (q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
             Cendpoint Bendpoint Cderivative Bderivative j r1) p r1) *
-        ∫⁻ t in Ioi (1 : Real),
-          (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r1 - 1))) ^ q⁻¹
+        (∫⁻ t in Ioi (1 : Real),
+          (ENNReal.ofReal t) ^ (q - q4LowerWeakOutputExponent p r1 - 1)))) ^ q⁻¹
 
 /-- A literal lower-input strict Q4 estimate at one dyadic frequency.
 
@@ -319,14 +325,15 @@ theorem q4_lower_activeDyadic_strong_of_active_multipliers
   let B1 : Real := q4ActiveDyadicLtwoRealConstant d gamma eta Ccover
     Cendpoint Bendpoint Cderivative Bderivative j r1
   have hd0 : 0 < d := by omega
+  have hr0pos : 0 < r0 := by
+    rw [hr0]
+    exact div_pos (by linarith) (by linarith)
+  have hr1pos : 0 < r1 := by
+    rw [hr1]
+    exact div_pos (by linarith) (by linarith)
   have hEpos : E ⊆ Ioi (0 : Real) := by
     intro s hsE
     exact lt_of_lt_of_le zero_lt_one (hE hsE).1
-  have hliteral := fractalDyadicBandpassMaximal_literal_l1_endpoint_facts_of_sharp
-    (n := d - 1) C0 hC0 (by
-      intro z hz
-      simpa only [Nat.sub_add_cancel hd] using hdecay0 z hz)
-    phi hphiOne hphiZero hphiNorm j hj hE
   have hA : 0 < A := by
     dsimp only [A]
     linarith [absoluteDyadicSurfaceL1EndpointConstant_nonneg
@@ -341,7 +348,9 @@ theorem q4_lower_activeDyadic_strong_of_active_multipliers
       fractalDyadicBandpassMaximal d E psi g x ≤
           absoluteDyadicSurfaceL1EndpointConstant (d - 1) C0 j *
             ∫ y, ‖(g : Euclidean d → Complex) y‖ := by
-          simpa only [psi, Nat.sub_add_cancel hd] using hliteral.2.2.2 g x
+          simpa only [psi] using
+            fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_sharp_of_one_le
+              hd C0 hC0 hdecay0 phi hphiOne hphiZero hphiNorm j hj hE g x
       _ ≤ A * ∫ y, ‖(g : Euclidean d → Complex) y‖ := by
           dsimp only [A]
           gcongr
@@ -362,9 +371,9 @@ theorem q4_lower_activeDyadic_strong_of_active_multipliers
     intro g
     exact q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
       hd hj hE hEne hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-      hCendpoint (by simpa only [psi] using hendpointDecay) hBendpoint
+      hCendpoint hendpointDecay rfl hBendpoint
       (by simpa only [psi, hpsiCompact] using hendpointMultiplier)
-      hCderivative (by simpa only [psi] using hderivativeDecay) hBderivative
+      hCderivative hderivativeDecay hBderivative
       (by simpa only [psi, hpsiCompact] using hderivativeMultiplier)
       hu01 hu02 hr0 g
   have htwo1 : ∀ g : SchwartzMap (Euclidean d) Complex,
@@ -375,9 +384,9 @@ theorem q4_lower_activeDyadic_strong_of_active_multipliers
     intro g
     exact q4ActiveDyadicMaximal_eLpNorm_le_ltwoReal_of_active_multipliers
       hd hj hE hEne hcover hCcover hgamma hdeltaone hs psi hpsiCompact
-      hCendpoint (by simpa only [psi] using hendpointDecay) hBendpoint
+      hCendpoint hendpointDecay rfl hBendpoint
       (by simpa only [psi, hpsiCompact] using hendpointMultiplier)
-      hCderivative (by simpa only [psi] using hderivativeDecay) hBderivative
+      hCderivative hderivativeDecay hBderivative
       (by simpa only [psi, hpsiCompact] using hderivativeMultiplier)
       hu11 hu12 hr1 g
   have hstrong := q4_lower_strong_eLpNorm_of_two_nearby_lone_ltwo
@@ -387,11 +396,11 @@ theorem q4_lower_activeDyadic_strong_of_active_multipliers
       exact fractalDyadicBandpassMaximal_nonneg E psi g x)
     (by
       intro g h x
-      exact fractalDyadicBandpassMaximal_add_le hd0 hEpos psi g h x)
+      exact fractalDyadicBandpassMaximal_add_le hd0 E hEpos psi g h x)
     (by
       intro g
       exact (measurable_fractalDyadicBandpassMaximal E psi g).aestronglyMeasurable)
-    hA hLone hp1 hp2 hr0 hr1 hB0 hB1 hq0q hqq1 htwo0 htwo1 f hI hIpos
+    hA hLone hp1 hp2 hr0pos hr1pos hB0 hB1 hq0q hqq1 htwo0 htwo1 f hI hIpos
   simpa only [psi, A, B0, B1, q4LowerActiveDyadicStrongConstant] using hstrong
 
 end

@@ -14,7 +14,7 @@ open Auto.Spherical.FractalDilations.MinkowskiDiscretization
 open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.RawDyadicSurfaceEndpoint
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -147,7 +147,7 @@ theorem q3_literal_minkowski_cover_lone_ltwo_of_sharp
       (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
       hRscale (by
         intro xi
-        simpa only [hRscale] using
+        simpa only [← hRscale, Auto.Spherical.SurfaceCore.dyadicScale] using
           smooth_dyadic_bandpass_eq_scaled_base phi psi
             (absoluteDyadicBandpass phi hphiOne hphiZero j) hpsi j
             (absoluteDyadicBandpass_spec phi hphiOne hphiZero j) xi)
@@ -198,7 +198,7 @@ theorem q3_literal_minkowski_cover_ltwo_of_sharp
     (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
     hRscale (by
       intro xi
-      simpa only [hRscale] using
+      simpa only [← hRscale, Auto.Spherical.SurfaceCore.dyadicScale] using
         smooth_dyadic_bandpass_eq_scaled_base phi psi
           (absoluteDyadicBandpass phi hphiOne hphiZero j) hpsi j
           (absoluteDyadicBandpass_spec phi hphiOne hphiZero j) xi)

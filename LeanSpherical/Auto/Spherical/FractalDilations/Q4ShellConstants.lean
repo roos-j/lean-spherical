@@ -17,7 +17,7 @@ open Auto.Spherical.FractalDilations.Q4FiniteProductTTStar
 open Auto.Spherical.FractalDilations.Q4SelectedCutoffDomain
 open Auto.Spherical.FractalDilations.Q4StrictParameters
 open Auto.Spherical.FractalDilations.Q4SubpowerParameters
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -98,7 +98,6 @@ theorem q4CrossedStrongShellReal_normalForm
       A ^ ((q - 2) * q⁻¹) = _
   have hexponent : (q - 2) * q⁻¹ = 1 - 2 / q := by
     field_simp [hqpos.ne']
-    ring
   rw [hexponent]
 
 /-- The `ENNReal` crossed constant in its homogeneous real normal form. -/
@@ -107,7 +106,16 @@ theorem q4CrossedStrongShellConstant_eq_ofReal_homogeneous
     q4CrossedStrongShellConstant q A E =
       ENNReal.ofReal
         (q4CrossedStrongShellPrefactor q * E ^ q⁻¹ * A ^ (1 - 2 / q)) := by
+  have hinner : (0 : Real) ≤ q * (4 * E * ((q - 2)⁻¹ * (2 * A) ^ (q - 2))) := by
+    have hq0 : (0 : Real) < q := by linarith
+    have hq2 : (0 : Real) < q - 2 := by linarith
+    have hApow : (0 : Real) ≤ (2 * A) ^ (q - 2) :=
+      Real.rpow_nonneg (by linarith) _
+    have : (0 : Real) ≤ (q - 2)⁻¹ * (2 * A) ^ (q - 2) :=
+      mul_nonneg (by positivity) hApow
+    exact mul_nonneg hq0.le (by positivity)
   rw [q4CrossedStrongShellConstant_eq_ofReal_normalForm hq hA hE,
+    ENNReal.ofReal_rpow_of_nonneg hinner (by positivity),
     q4CrossedStrongShellReal_normalForm hq hA hE]
 
 /-- The literal crossed shell constant is monotone in each of its two
@@ -279,6 +287,8 @@ theorem q4EnlargedScaledNormalizedDerivativePairMultiplierBound_eq_frequency_nor
     _ = (16 * C ^ 2 * ‖(surfaceMass d : Complex)⁻¹‖ ^ 2 *
           (2 : ℝ) ^ (2 * a)) * R ^ (-2 - 2 * a) := by
       rw [hinvpow, hRpow, htwopow, ← Real.rpow_add hR]
+      congr 1
+      ring
 
 /-- At the sharp radial-derivative exponent, the cell-length-normalized
 derivative pair multiplier has the same `R^{-(d-1)}` decay as the ordinary
@@ -311,9 +321,8 @@ theorem q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound_eq_frequen
     rw [fractalDyadicScale_eq_frequencyScale_inv]
     rfl
   have hroot_sq : ((10 * R) ^ ((1 : ℝ) / 2)) ^ 2 = 10 * R := by
-    rw [← Real.rpow_natCast, ← Real.rpow_mul htenR, Real.rpow_one]
-    congr 1
-    ring
+    rw [← Real.rpow_natCast, ← Real.rpow_mul htenR]
+    norm_num
   have hinv_sq_mul : (R⁻¹) ^ 2 * R = R⁻¹ := by
     field_simp [hR.ne']
   unfold q4PlanarEnlargedScaledNormalizedDerivativePairMultiplierBound
@@ -397,6 +406,7 @@ theorem q4ActiveDyadicPositiveGapKernelConstant_eq_frequency_gap_normalForm
   have htwo : 0 < (2 : ℝ) := by norm_num
   have hncast : ((n - 1 : ℕ) : ℝ) = (n : ℝ) - 1 := by
     rw [Nat.cast_sub (Nat.succ_le_iff.mpr hn)]
+    norm_num
   have hexp : ((n : ℝ) - 1) * (-a) = a + (-a * (n : ℝ)) := by ring
   change C * R * ((2 : ℝ) ^ (n - 1 : ℕ)) ^ (-a) =
     (C * (2 : ℝ) ^ a) * R * (2 : ℝ) ^ (-a * (n : ℝ))
@@ -427,7 +437,6 @@ theorem q4ActiveDyadicPositiveGapDegree_eq_frequency_gap_normalForm
       (2 * ((2 : ℝ) ^ n * R⁻¹ + R⁻¹)) / R⁻¹ =
         2 * ((2 : ℝ) ^ n + 1) := by
     field_simp [hR.ne']
-    ring
   change 6 * C * (dyadicScale j) ^ (-eta) *
       ((2 * ((2 : ℝ) ^ n * dyadicScale j + dyadicScale j)) /
         dyadicScale j) ^ gamma = _
@@ -468,9 +477,8 @@ theorem q4ActiveDyadicPositiveGapDegree_le_frequency_gap_envelope
   have htop : ((2 : ℝ) ^ (n + 2)) ^ gamma =
       (2 : ℝ) ^ (2 * gamma) * (2 : ℝ) ^ (gamma * (n : ℝ)) := by
     rw [← Real.rpow_natCast, ← Real.rpow_mul htwo.le, hcast,
+      show ((n : Real) + 2) * gamma = 2 * gamma + gamma * (n : Real) by ring,
       Real.rpow_add htwo]
-    congr 1
-    ring
   rw [q4ActiveDyadicPositiveGapDegree_eq_frequency_gap_normalForm]
   change 6 * C * R ^ eta * (2 * ((2 : ℝ) ^ n + 1)) ^ gamma ≤
     (6 * C * (2 : ℝ) ^ (2 * gamma)) * R ^ eta *
@@ -519,12 +527,15 @@ theorem q4ActiveDyadicPositiveGap_multiplier_degree_le_frequency_gap_envelope
       (Real.rpow_nonneg hratio _)
   have hD0 : 0 ≤ D0 := by
     dsimp only [D0, q4PositiveGapDegreeFrequencyEnvelope]
-    exact mul_nonneg
-      (mul_nonneg
-        (mul_nonneg (by norm_num) hCcover)
-        (Real.rpow_nonneg (by norm_num) _))
-      (mul_nonneg (Real.rpow_nonneg hR.le _)
-        (Real.rpow_nonneg (by norm_num) _))
+    have h1 : (0 : Real) ≤ (2 : Real) ^ (2 * gamma) :=
+      Real.rpow_nonneg (by norm_num) _
+    have h2 : (0 : Real) ≤ (q4AbsoluteFrequencyScale j) ^ eta :=
+      Real.rpow_nonneg hR.le _
+    have h3 : (0 : Real) ≤ (2 : Real) ^ (gamma * (n : Real)) :=
+      Real.rpow_nonneg (by norm_num) _
+    have h4 : (0 : Real) ≤ 6 * Ccover * (2 : Real) ^ (2 * gamma) :=
+      mul_nonneg (by linarith) h1
+    exact mul_nonneg (mul_nonneg h4 h2) h3
   have hDle : D ≤ D0 := by
     dsimp only [D, D0]
     exact q4ActiveDyadicPositiveGapDegree_le_frequency_gap_envelope
@@ -690,15 +701,15 @@ theorem q4CrossedStrongShellConstant_positive_envelope_eq_frequency_gap_normalFo
           (2 : ℝ) ^ (v * (2 / q)) := by
     rw [← Real.rpow_natCast, ← Real.rpow_mul
       (mul_nonneg (mul_nonneg hH hRu) htwov)]
-    rw [← htheta]
+    rw [Nat.cast_ofNat, ← htheta]
     rw [Real.mul_rpow (mul_nonneg hH hRu) htwov,
       Real.mul_rpow hH hRu]
     rw [← Real.rpow_mul hR.le, ← Real.rpow_mul htwo.le]
   have hApower :
       (A0 * R * (2 : ℝ) ^ (-a * (n : ℝ))) ^ e =
         A0 ^ e * R ^ e * (2 : ℝ) ^ ((-a * (n : ℝ)) * e) := by
-    rw [Real.mul_rpow (mul_nonneg hA0 hR) htwogap,
-      Real.mul_rpow hA0 hR, ← Real.rpow_mul htwo.le]
+    rw [Real.mul_rpow (mul_nonneg hA0.le hR.le) htwogap.le,
+      Real.mul_rpow hA0.le hR.le, ← Real.rpow_mul htwo.le]
   have hfrequency : u * (2 / q) + e =
       q4FrequencyExponentWithSubpowerLoss d (2 / q) eta := by
     dsimp only [u, e]
@@ -751,6 +762,8 @@ theorem q4AbsoluteFrequencyScale_rpow_eq_two_rpow
       (2 : ℝ) ^ (a * (j : ℝ)) := by
   change ((2 : ℝ) ^ j) ^ a = (2 : ℝ) ^ (a * (j : ℝ))
   rw [← Real.rpow_natCast, ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2)]
+  congr 1
+  ring
 
 /-- The envelope crossed constant in the exact form required by the
 finite-level reassembly lemmas: one frequency exponent times one gap
@@ -771,8 +784,7 @@ theorem q4CrossedStrongShellConstant_positive_envelope_eq_dyadic_normalForm
   rw [q4CrossedStrongShellConstant_positive_envelope_eq_frequency_gap_normalForm
     hq hCkernel hCcover hB0 j n,
     q4AbsoluteFrequencyScale_rpow_eq_two_rpow]
-  congr 1
-  rw [← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
+  rw [mul_assoc, ← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
 
 /-- Internal scalar bridge from a pair-multiplier frequency rate to the
 literal positive active-shell dyadic rate.  The following three corollaries
@@ -1001,7 +1013,7 @@ theorem q4CrossedStrongShellConstant_diagonal_envelope_eq_frequency_normalForm
   have hEpower : ((B0 * R ^ (-D)) ^ 2) ^ q⁻¹ =
       B0 ^ (2 / q) * R ^ ((-D) * (2 / q)) := by
     rw [← Real.rpow_natCast, ← Real.rpow_mul (mul_nonneg hB0 hRneg)]
-    rw [← htheta]
+    rw [Nat.cast_ofNat, ← htheta]
     rw [Real.mul_rpow hB0 hRneg, ← Real.rpow_mul hR.le]
   have hApower : (Ckernel * R) ^ e = Ckernel ^ e * R ^ e := by
     rw [Real.mul_rpow hCkernel.le hR.le]
@@ -1269,9 +1281,10 @@ theorem q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_ordinaryMultip
         dsimp only [Pdiag, B0, a]
         exact q4ActiveDyadicDiagonalStrongConstant_le_dyadic_normalForm_of_ordinaryMultiplier
           hq hCkernel heta j
-      _ ≤ ENNReal.ofReal (P * (2 : ℝ) ^ (a * (j : ℝ) + b * (0 : ℝ))) := by
+      _ ≤ ENNReal.ofReal (P * (2 : ℝ) ^
+          (a * (j : ℝ) + b * ((0 : Nat) : ℝ))) := by
         apply ENNReal.ofReal_le_ofReal
-        rw [mul_zero, add_zero]
+        rw [Nat.cast_zero, mul_zero, add_zero]
         exact mul_le_mul_of_nonneg_right hdiag_le
           (Real.rpow_nonneg (by norm_num) _)
   · have hn : 0 < n := Nat.pos_of_ne_zero hnzero
@@ -1332,9 +1345,10 @@ theorem q4ActiveDyadicLevelStrongConstant_le_dyadic_normalForm_of_multiplierRate
         dsimp only [Pdiag, a]
         exact q4ActiveDyadicDiagonalStrongConstant_le_dyadic_normalForm_of_multiplierRate
           hq hCkernel heta hB hB0 j hBrate
-      _ ≤ ENNReal.ofReal (P * (2 : ℝ) ^ (a * (j : ℝ) + b * (0 : ℝ))) := by
+      _ ≤ ENNReal.ofReal (P * (2 : ℝ) ^
+          (a * (j : ℝ) + b * ((0 : Nat) : ℝ))) := by
         apply ENNReal.ofReal_le_ofReal
-        rw [mul_zero, add_zero]
+        rw [Nat.cast_zero, mul_zero, add_zero]
         exact mul_le_mul_of_nonneg_right hdiag_le
           (Real.rpow_nonneg (by norm_num) _)
   · have hn : 0 < n := Nat.pos_of_ne_zero hnzero

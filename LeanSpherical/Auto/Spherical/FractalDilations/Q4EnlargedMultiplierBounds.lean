@@ -15,7 +15,7 @@ open Auto.Spherical.FractalDilations.Q4DerivativePhysicalL2
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.SmoothDyadicPhysicalCore
 open Auto.Spherical.SphericalAverages
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -191,8 +191,10 @@ theorem norm_q4DyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_on_half
     dsimp only [B, q4EnlargedSurfaceMultiplierBound]
     apply mul_nonneg
     · norm_num
-    · exact div_nonneg hC.le
-        (Real.rpow_nonneg (by positivity) _)
+    · refine div_nonneg hC.le (Real.rpow_nonneg ?_ _)
+      have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+        _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+      linarith
   have hsingle (t : Real) (ht : t ∈ Icc (1 / 2 : Real) (5 / 2))
       (z : Euclidean (n + 1)) :
       ‖q4DyadicSurfaceMultiplier
@@ -208,6 +210,7 @@ theorem norm_q4DyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_on_half
         (fun z => hsingle r hr z) (fun z => hsingle r' hr' z) xi
     _ = q4EnlargedPairMultiplierBound C ((n : Real) / 2) j := by
       dsimp only [q4EnlargedPairMultiplierBound, B]
+      ring
 
 /-- The preceding literal pair-multiplier estimate transferred to active
 dyadic left endpoints.  This is the exact pointwise bound consumed by the
@@ -231,8 +234,10 @@ theorem norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
   rw [q4ActiveDyadicPairMultiplier_spec]
   apply norm_q4DyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_on_half
     C hC hdecay phi hphiOne hphiZero hphiNorm j hj
-  · exact dyadicLeft_mem_Icc_half_fiveHalves_of_mem_activeDyadicIndices hj hE hi
-  · exact dyadicLeft_mem_Icc_half_fiveHalves_of_mem_activeDyadicIndices hj hE hl
+  · have h := dyadicLeft_mem_Icc_half_two_of_mem_activeDyadicIndices hj hE hi
+    exact ⟨h.1, h.2.trans (by norm_num)⟩
+  · have h := dyadicLeft_mem_Icc_half_two_of_mem_activeDyadicIndices hj hE hl
+    exact ⟨h.1, h.2.trans (by norm_num)⟩
 
 /-- The one-radius derivative multiplier constant before the cell-length and
 surface-mass normalizations are inserted. -/
@@ -397,8 +402,10 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteD
     dsimp only [B, q4EnlargedSurfaceDerivativeMultiplierBound]
     apply mul_nonneg
     · norm_num
-    · exact div_nonneg hC.le
-        (Real.rpow_nonneg (by positivity) _)
+    · refine div_nonneg hC.le (Real.rpow_nonneg ?_ _)
+      have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+        _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+      linarith
   have hderivB : ‖deriv (fun s : Real =>
       surfaceFourier (n + 1) (s • (-xi))) r * psi xi‖ <= B := by
     dsimp only [psi, B]
@@ -416,8 +423,9 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier_absoluteD
           deriv (fun s : Real => surfaceFourier (n + 1) (s • (-xi))) r * psi xi)‖ =
         (dyadicScale j * ‖(surfaceMass (n + 1) : Complex)⁻¹‖) *
           ‖deriv (fun s : Real => surfaceFourier (n + 1) (s • (-xi))) r * psi xi‖ := by
-            rw [norm_mul, norm_mul, norm_mul, Complex.norm_real,
-              abs_of_pos (dyadicScale_pos j)]
+            rw [norm_mul, Complex.norm_real,
+              Real.norm_eq_abs, abs_of_pos (dyadicScale_pos j),
+              mul_assoc ((surfaceMass (n + 1) : Complex)⁻¹), norm_mul]
             ring
     _ <= (dyadicScale j * ‖(surfaceMass (n + 1) : Complex)⁻¹‖) * B :=
       mul_le_mul_of_nonneg_left hderivB hcoeff
@@ -454,8 +462,11 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_absol
       (mul_nonneg (dyadicScale_pos j).le (norm_nonneg _))
       (by
         dsimp only [q4EnlargedSurfaceDerivativeMultiplierBound]
-        exact mul_nonneg (by norm_num)
-          (div_nonneg hC.le (Real.rpow_nonneg (by positivity) _)))
+        refine mul_nonneg (by norm_num)
+          (div_nonneg hC.le (Real.rpow_nonneg ?_ _))
+        have h2 : (0 : Real) < q4AbsoluteFrequencyScale j :=
+          _root_.Auto.Spherical.SurfaceCore.dyadicScale_pos j
+        linarith)
   have hsingle (t : Real) (ht : t ∈ Icc (1 / 2 : Real) (5 / 2)) :
       ‖q4ScaledNormalizedDyadicSurfaceRadiusDerivativeMultiplier
           (absoluteDyadicBandpass phi hphiOne hphiZero j) j t xi‖ <= B := by
@@ -471,6 +482,7 @@ theorem norm_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_absol
       mul_le_mul (hsingle r hr) (hsingle r' hr') (norm_nonneg _) hB
     _ = q4EnlargedScaledNormalizedDerivativePairMultiplierBound (n + 1) C a j := by
       dsimp only [q4EnlargedScaledNormalizedDerivativePairMultiplierBound, B]
+      ring
 
 /-- The derivative pair bound at literal active cells and a common local
 offset.  The radius inclusion is proved from the active-cell geometry, not
@@ -500,6 +512,51 @@ theorem norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyad
       hj hE hi hu
   · exact dyadicLeft_add_mem_Icc_half_five_halves_of_mem_activeDyadicIndices
       hj hE hl hu
+
+/-- The variable-dimension form of the enlarged endpoint multiplier bound. -/
+theorem norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp_of_one_le
+    {d : Nat} {E : Set Real} (hd : 1 <= d) (C : Real) (hC : 0 < C)
+    (hdecay : forall z : Euclidean d, 1 <= ‖z‖ ->
+      ‖surfaceFourier d z‖ <= C / ‖z‖ ^ (((d - 1 : Nat) : Real) / 2))
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : forall z, ‖z‖ <= 1 -> phi z = 1)
+    (hphiZero : forall z, 2 <= ‖z‖ -> phi z = 0)
+    (hphiNorm : forall z, ‖phi z‖ <= 1)
+    (j : Nat) (hj : 1 <= j) (hE : E ⊆ Icc (1 : Real) 2)
+    (i l : Int) (hi : i ∈ activeDyadicIndices E j)
+    (hl : l ∈ activeDyadicIndices E j)
+    (xi : Euclidean d) :
+    ‖q4ActiveDyadicPairMultiplier
+        (absoluteDyadicBandpass phi hphiOne hphiZero j)
+        (absoluteDyadicBandpass_compact phi hphiOne hphiZero j) j i l xi‖ <=
+      q4EnlargedPairMultiplierBound C (((d - 1 : Nat) : Real) / 2) j := by
+  obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+  simpa using norm_q4ActiveDyadicPairMultiplier_absoluteDyadicBandpass_le_of_sharp
+    C hC (by simpa using hdecay) phi hphiOne hphiZero hphiNorm j hj hE i l hi hl xi
+
+/-- The variable-dimension form of the enlarged scaled-derivative multiplier
+bound. -/
+theorem norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half_of_one_le
+    {d : Nat} {E : Set Real} (hd : 1 <= d) (C : Real) (hC : 0 < C)
+    {a : Real} (ha : 0 <= a)
+    (hderiv : forall z : Euclidean d, 1 <= ‖z‖ ->
+      ‖deriv (fun s : Real => surfaceFourier d (s • z)) 1‖ <= C / ‖z‖ ^ a)
+    (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : forall z, ‖z‖ <= 1 -> phi z = 1)
+    (hphiZero : forall z, 2 <= ‖z‖ -> phi z = 0)
+    (hphiNorm : forall z, ‖phi z‖ <= 1)
+    (j : Nat) (hj : 1 <= j) (hE : E ⊆ Icc (1 : Real) 2)
+    (u : Real) (hu : u ∈ Icc (0 : Real) (dyadicScale j))
+    (i l : Int) (hi : i ∈ activeDyadicIndices E j)
+    (hl : l ∈ activeDyadicIndices E j)
+    (xi : Euclidean d) :
+    ‖q4ActiveDyadicScaledNormalizedDerivativePairMultiplier
+        (absoluteDyadicBandpass phi hphiOne hphiZero j)
+        (absoluteDyadicBandpass_compact phi hphiOne hphiZero j) j u i l xi‖ <=
+      q4EnlargedScaledNormalizedDerivativePairMultiplierBound d C a j := by
+  obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+  exact norm_q4ActiveDyadicScaledNormalizedDerivativePairMultiplier_absoluteDyadicBandpass_le_of_sharp_at_one_on_half
+    C hC ha hderiv phi hphiOne hphiZero hphiNorm j hj hE u hu i l hi hl xi
 
 end
 

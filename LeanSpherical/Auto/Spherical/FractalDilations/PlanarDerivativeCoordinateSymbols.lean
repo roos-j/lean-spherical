@@ -38,20 +38,25 @@ open scoped BigOperators ContDiff ComplexConjugate
 
 noncomputable section
 
+private theorem contDiff_ofReal_id :
+    ContDiff Real (⊤ : ℕ∞) (fun u : Real => (u : Complex)) :=
+  Complex.ofRealCLM.contDiff
+
 private theorem contDiff_iteratedDeriv_one_of_contDiff
     (f : Real → Complex) (hf : ContDiff Real (⊤ : ℕ∞) f) :
     ContDiff Real (⊤ : ℕ∞) (iteratedDeriv 1 f) := by
   apply contDiff_of_differentiable_iteratedDeriv
   intro m hm
   rw [iteratedDeriv_one, ← iteratedDeriv_succ']
-  exact hf.differentiable_iteratedDeriv (m + 1) (by simp)
+  refine hf.differentiable_iteratedDeriv (m + 1) ?_
+  exact_mod_cast (ENat.coe_lt_top (m + 1))
 
 private theorem iteratedDeriv_deriv_eq_succ
     (f : Real → Complex) (k : Nat) (u : Real) :
     iteratedDeriv k (deriv f) u = iteratedDeriv (k + 1) f u := by
   rw [← iteratedDeriv_succ']
 
-private theorem contDiff_planarCoordinateWaveRadiusDerivativeAmplitude
+theorem contDiff_planarCoordinateWaveRadiusDerivativeAmplitude
     (part : CoordinateWavePart) {a : Real} (ha : a ≠ 0) :
     ContDiff Real (⊤ : ℕ∞)
       (fun u : Real => planarCoordinateWaveRadiusDerivativeAmplitude part a u) := by
@@ -76,12 +81,9 @@ private theorem contDiff_planarCoordinateWaveRadiusDerivativeAmplitude
     dsimp [A]
     push_cast
     field_simp [ha]
-    ring
   rw [hformula]
-  exact
-    (((by fun_prop : ContDiff Real (⊤ : ℕ∞) (fun u : Real => (u : Complex))).mul hA').const_mul
-      _).add
-      (((by fun_prop : ContDiff Real (⊤ : ℕ∞) (fun u : Real => (u : Complex))).mul hA).const_mul _)
+  exact ((contDiff_const.mul (contDiff_ofReal_id.mul hA')).add
+    (contDiff_const.mul (contDiff_ofReal_id.mul hA)))
 
 private theorem norm_planarCoordinateWavePhaseSlope_mul_I_le :
     ∀ part : CoordinateWavePart,
@@ -91,7 +93,8 @@ private theorem norm_planarCoordinateWavePhaseSlope_mul_I_le :
   have hpi : 0 ≤ 2 * Real.pi := by positivity
   cases part <;>
     simp [planarCoordinateWavePhaseSlope, norm_mul, Complex.norm_real,
-      Complex.norm_I, abs_neg, abs_of_nonneg hpi]
+      Complex.norm_I, abs_neg, abs_of_nonneg hpi,
+      abs_of_nonneg Real.pi_pos.le, Real.pi_pos.le]
 
 private theorem inv_scaled_radius_le_two
     {s r : Real} (hs : 1 ≤ s) (hr : r ∈ Icc (1 / 2 : Real) (5 / 2)) :
@@ -119,9 +122,7 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadiusDerivativeAm
   obtain ⟨A, hA, hAbound⟩ :=
     exists_uniform_planarCoordinateWave_scaled (N := k + 1) part
   let Ufun : Real → Complex := fun u : Real => (u : Complex)
-  have hUfun : ContDiff Real (⊤ : ℕ∞) Ufun := by
-    dsimp [Ufun]
-    fun_prop
+  have hUfun : ContDiff Real (⊤ : ℕ∞) Ufun := contDiff_ofReal_id
   obtain ⟨U, hU, hUbound⟩ :=
     exists_uniform_iteratedDeriv_bound_on_fixedAnnulus Ufun hUfun k
   let Lderiv : Real := tripleWaveLeibnizConstant k U A
@@ -177,7 +178,7 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadiusDerivativeAm
           tripleWaveLeibnizConstant k U (A / Real.sqrt s) := hprodDeriv
       _ = Lderiv / Real.sqrt s := by
         dsimp [Lderiv]
-        rw [tripleWaveLeibnizConstant_right_div k U A hsqrtpos.ne']
+        rw [tripleWaveLeibnizConstant_right_div k U A _ hsqrtpos.ne']
   have hprodPlain' :
       ‖iteratedDeriv k (fun z : Real => Ufun z * B z) u‖ ≤
         Lplain / Real.sqrt s := by
@@ -186,7 +187,7 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadiusDerivativeAm
           tripleWaveLeibnizConstant k U (A / Real.sqrt s) := hprodPlain
       _ = Lplain / Real.sqrt s := by
         dsimp [Lplain]
-        rw [tripleWaveLeibnizConstant_right_div k U A hsqrtpos.ne']
+        rw [tripleWaveLeibnizConstant_right_div k U A _ hsqrtpos.ne']
   have hformula : (fun z : Real =>
       planarCoordinateWaveRadiusDerivativeAmplitude part (s * r) z) =
       fun z : Real =>
@@ -200,19 +201,30 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadiusDerivativeAm
     dsimp [Ufun, B]
     push_cast
     field_simp [hsrpos]
-    ring
   rw [hformula]
   have hleftSmooth : ContDiff Real (⊤ : ℕ∞)
       (fun z : Real => (((s * r)⁻¹ : Real) : Complex) * (Ufun z * deriv B z)) :=
-    ((hUfun.mul hB').const_mul _)
+    contDiff_const.mul (hUfun.mul hB')
   have hrightSmooth : ContDiff Real (⊤ : ℕ∞)
       (fun z : Real =>
         (((planarCoordinateWavePhaseSlope part : Real) : Complex) * Complex.I) *
           (Ufun z * B z)) :=
-    ((hUfun.mul hB).const_mul _)
-  rw [iteratedDeriv_add hleftSmooth.contDiffAt hrightSmooth.contDiffAt,
-    iteratedDeriv_const_mul_field, iteratedDeriv_const_mul_field,
-    norm_add_le, norm_mul, norm_mul]
+    contDiff_const.mul (hUfun.mul hB)
+  have haddfun : (fun z : Real =>
+      (((s * r)⁻¹ : Real) : Complex) * (Ufun z * deriv B z) +
+        (((planarCoordinateWavePhaseSlope part : Real) : Complex) * Complex.I) *
+          (Ufun z * B z)) =
+      (fun z : Real => (((s * r)⁻¹ : Real) : Complex) * (Ufun z * deriv B z)) +
+        (fun z : Real =>
+          (((planarCoordinateWavePhaseSlope part : Real) : Complex) * Complex.I) *
+            (Ufun z * B z)) := rfl
+  have hcast : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : (k : ℕ∞) ≤ ⊤)
+  rw [haddfun, iteratedDeriv_add (hleftSmooth.contDiffAt.of_le hcast)
+      (hrightSmooth.contDiffAt.of_le hcast),
+    iteratedDeriv_const_mul_field, iteratedDeriv_const_mul_field]
+  refine le_trans (norm_add_le _ _) ?_
+  rw [norm_mul, norm_mul]
   have hinv := inv_scaled_radius_le_two hs hr
   have hphase := norm_planarCoordinateWavePhaseSlope_mul_I_le part
   calc
@@ -232,9 +244,8 @@ private theorem exists_norm_iteratedDeriv_planarCoordinateWaveRadiusDerivativeAm
       rw [show 2 * (Lderiv / Real.sqrt s) +
           (2 * Real.pi) * (Lplain / Real.sqrt s) =
           (2 * Lderiv + (2 * Real.pi) * Lplain) / Real.sqrt s by
-        field_simp [hsqrtpos.ne']
-        ring]
-      exact div_le_div_of_nonneg_right hnum hsqrtpos
+        field_simp [hsqrtpos.ne']]
+      exact div_le_div_of_nonneg_right hnum hsqrtpos.le
 
 /-- A finite family of differentiated planar coordinate-symbol derivatives
 has one common stationary bound. -/
@@ -263,7 +274,7 @@ theorem exists_uniform_planarCoordinateWaveRadiusDerivativeAmplitude_scaled
   have hsqrt : 0 < Real.sqrt s :=
     Real.sqrt_pos.2 (lt_of_lt_of_le zero_lt_one hs)
   exact (hCbound k s r u hs hr hu).trans
-    (div_le_div_of_nonneg_right hle hsqrt)
+    (div_le_div_of_nonneg_right hle hsqrt.le)
 
 end
 

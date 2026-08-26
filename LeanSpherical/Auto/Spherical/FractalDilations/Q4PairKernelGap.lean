@@ -6,7 +6,7 @@ import LeanSpherical.Auto.Spherical.FractalDilations.ActiveDyadicGapRange
 open Auto.Spherical.FractalDilations.DyadicCovering
 open Auto.Spherical.FractalDilations.Q4TTStar
 open Auto.Spherical.FractalDilations.TTStarCovering
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 

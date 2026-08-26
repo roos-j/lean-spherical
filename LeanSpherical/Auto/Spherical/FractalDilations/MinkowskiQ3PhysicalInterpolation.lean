@@ -16,7 +16,7 @@ open Auto.Spherical.FractalDilations.MinkowskiQ3StrictRate
 open Auto.Spherical.FractalDilations.Q4CrossedMarcinkiewicz
 open Auto.Spherical.FractalDilations.Q4StrongOffDiagonal
 open Auto.Spherical.FractalDilations.SeparatedPacking
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceCore hiding dyadicScale dyadicScale_pos
 
 
 
@@ -136,17 +136,20 @@ theorem q3_rational_schwartz_crossed_power_moment_of_physical_lone_ltwo
     exact ENNReal.ofReal_le_ofReal hc_real
   have hresidual : ENNReal.ofReal (c * K ^ (q - 2)) ≤ Q * P := by
     rw [ENNReal.ofReal_mul hc_nonneg]
-    simpa only [P] using
-      (mul_le_mul_left hc (ENNReal.ofReal (K ^ (q - 2))))
+    have hPeq : ENNReal.ofReal (K ^ (q - 2)) = P := by
+      dsimp only [P]
+      rw [ENNReal.ofReal_rpow_of_pos hK]
+    rw [hPeq]
+    exact mul_le_mul' hc (le_refl P)
   have hsum : Q * P + ENNReal.ofReal (c * K ^ (q - 2)) ≤ 2 * (Q * P) := by
     calc
       Q * P + ENNReal.ofReal (c * K ^ (q - 2)) ≤ Q * P + Q * P :=
-        add_le_add_left hresidual _
+        add_le_add (le_refl (Q * P)) hresidual
       _ = 2 * (Q * P) := by ring
   have hweighted :
       (Q * P + ENNReal.ofReal (c * K ^ (q - 2))) * J ≤
         (2 * (Q * P)) * J :=
-    mul_le_mul_left hsum J
+    mul_le_mul' hsum (le_refl J)
   have hfactor := q4_hard_cutoff_constant_factorization
     (2 * ENNReal.ofReal B) hA hIpos hp1 hp2 hq
   calc
@@ -178,8 +181,6 @@ theorem q3_rational_schwartz_crossed_power_moment_of_physical_lone_ltwo
     _ = q3PhysicalCrossedConstant (surfaceMass (n + 1) * D * R) B q *
           J ^ (q / p) := by
       rw [← hinput]
-      rfl
-    _ = _ := by rfl
 
 /-- The preceding homogeneous moment estimate in `eLpNorm` form.  This is
 the clean fixed-dyadic crossed bound consumed by the strict `Q₁`--`Q₃`
@@ -305,7 +306,11 @@ theorem q3_rational_schwartz_crossed_eLpNorm_of_physical_lone_ltwo_homogeneous
         (∫⁻ x, ENNReal.ofReal
           ((unnormalizedFractalDyadicBandpassMaximal (n + 1) E
             (absoluteDyadicBandpass phi hphiOne hphiZero j) f x) ^ q)) ≤ 0 := by
-      exact hraw.trans (by simp [hinput])
+      refine hraw.trans ?_
+      have hz : (∫⁻ x : Euclidean (n + 1), (ENNReal.ofReal ‖f x‖) ^ p) = 0 := by
+        simpa only [J] using hinput
+      rw [hz]
+      simp
     have hnonneg (x : Euclidean (n + 1)) :
         0 ≤ unnormalizedFractalDyadicBandpassMaximal (n + 1) E
           (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
