@@ -3,6 +3,9 @@
 import LeanSpherical.Auto.CalderonVaillancourt
 import LeanSpherical.Auto.Spherical.SurfaceCore
 import Mathlib.Geometry.Euclidean.Angle.Unoriented.Basic
+import Mathlib.Analysis.Calculus.Deriv.Star
+import Mathlib.Analysis.Complex.ExponentialBounds
+import LeanSpherical.Auto.Spherical.FractalDilations.QuasiAssouadBridge
 
 /-!
 # Theorem 1.1 of Roos--Seeger
@@ -48,6 +51,8 @@ namespace Auto.Spherical.FractalDilations.RS
 
 open MeasureTheory Metric Set
 open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.QuasiAssouadBridge
 open scoped ENNReal NNReal Real FourierTransform
 
 noncomputable section
@@ -270,12 +275,23 @@ theorem measurableSet_SuppSet (j m : ℕ) (ξ : Pl) : MeasurableSet (SuppSet j m
     measurableSet_le (measurable_angle_right ξ) measurable_const
   exact h1.inter (h2.inter h3)
 
-/-- The `η`-support of a `(j,m)`-adapted symbol has measure at most `2^{2j - m + 12}`.  This is
-the source of the factor `2^{j - m/2}` in Proposition 4.1. -/
-theorem volume_SuppSet_le (j m : ℕ) (ξ : Pl) :
-    volume (SuppSet j m ξ) ≤ ENNReal.ofReal ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) := by
+/-- The slab used to bound the support is closed. -/
+theorem isClosed_slab (c K L : ℝ) :
+    IsClosed {η : Pl | |η 0 - c * η 1| ≤ K ∧ |η 1| ≤ L} := by
+  have h0 : Continuous fun η : Pl => η 0 := (EuclideanSpace.proj (0 : Fin 2)).continuous
+  have h1 : Continuous fun η : Pl => η 1 := (EuclideanSpace.proj (1 : Fin 2)).continuous
+  have hA : IsClosed {η : Pl | |η 0 - c * η 1| ≤ K} :=
+    isClosed_le ((h0.sub (continuous_const.mul h1)).abs) continuous_const
+  have hB : IsClosed {η : Pl | |η 1| ≤ L} := isClosed_le h1.abs continuous_const
+  exact hA.inter hB
+
+/-- The closure of the `η`-support of a `(j,m)`-adapted symbol has measure at most
+`2^{2j - m + 12}`.  This is the source of the factor `2^{j - m/2}` in Proposition 4.1. -/
+theorem volume_closure_SuppSet_le (j m : ℕ) (ξ : Pl) :
+    volume (closure (SuppSet j m ξ))
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) := by
   rcases Set.eq_empty_or_nonempty (SuppSet j m ξ) with hempty | ⟨η₀, hη₀⟩
-  · rw [hempty]
+  · rw [hempty, closure_empty]
     simp
   obtain ⟨hη₀T, hξη₀T, -⟩ := hη₀
   -- the second coordinate of `ξ` is at least `2 ^ (j - 1)`
@@ -352,7 +368,7 @@ theorem volume_SuppSet_le (j m : ℕ) (ξ : Pl) :
       exact mul_le_mul_of_nonneg_left hξ1 hKpos.le
     · rw [abs_of_pos hη1pos, hL]
       exact le_trans (Theta.snd_le_norm hηT) hηnorm
-  refine le_trans (measure_mono hincl) ?_
+  refine le_trans (measure_mono (closure_minimal hincl (isClosed_slab _ _ _))) ?_
   refine le_trans (volume_slab_le (ξ 0 / ξ 1) K L hKpos.le hLpos.le) ?_
   apply le_of_eq
   congr 1
@@ -362,6 +378,11 @@ theorem volume_SuppSet_le (j m : ℕ) (ξ : Pl) :
     ← zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0)]
   congr 1
   ring
+
+/-- The `η`-support of a `(j,m)`-adapted symbol has measure at most `2^{2j - m + 12}`. -/
+theorem volume_SuppSet_le (j m : ℕ) (ξ : Pl) :
+    volume (SuppSet j m ξ) ≤ ENNReal.ofReal ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) :=
+  le_trans (measure_mono subset_closure) (volume_closure_SuppSet_le j m ξ)
 
 
 /-! ## §4.1  The operator `S[F, b]` -/
@@ -1180,6 +1201,10333 @@ theorem norm_integral_radial_le (hD : 0 < R ^ 2 - a ^ 2)
   ring
 
 end Radial
+
+
+/-! ## Planar angle geometry
+
+The sine of the unoriented angle is the normalized determinant, and vectors of the narrow cone
+`{0 < ω₁ < 2^{-10} ω₂}` make a tiny angle with each other.
+-/
+
+section AngleGeometry
+
+theorem sin_angle_eq (x y : Pl) :
+    Real.sin (InnerProductGeometry.angle x y) * (‖x‖ * ‖y‖) = |det2 x y| := by
+  set θ := InnerProductGeometry.angle x y with hθ
+  have hcos : Real.cos θ * (‖x‖ * ‖y‖) = inner ℝ x y :=
+    InnerProductGeometry.cos_angle_mul_norm_mul_norm x y
+  have hsinnn : 0 ≤ Real.sin θ :=
+    Real.sin_nonneg_of_nonneg_of_le_pi (InnerProductGeometry.angle_nonneg x y)
+      (InnerProductGeometry.angle_le_pi x y)
+  have hnn : (0 : ℝ) ≤ ‖x‖ * ‖y‖ := by positivity
+  have hsq : (Real.sin θ * (‖x‖ * ‖y‖)) ^ 2 = |det2 x y| ^ 2 := by
+    rw [sq_abs, lagrange, ← hcos]
+    have h := Real.sin_sq_add_cos_sq θ
+    nlinarith [h]
+  have h1 : 0 ≤ Real.sin θ * (‖x‖ * ‖y‖) := mul_nonneg hsinnn hnn
+  nlinarith [hsq, h1, abs_nonneg (det2 x y)]
+
+theorem inner_pos_of_cone {x y : Pl} (hx0 : 0 < x 0) (hx1 : 0 < x 1)
+    (hy0 : 0 < y 0) (hy1 : 0 < y 1) : 0 < inner ℝ x y := by
+  rw [inner_two]
+  positivity
+
+/-- Two vectors of the narrow cone make an angle whose sine is at most `2^{-10}`. -/
+theorem sin_angle_le_of_cone {x y : Pl}
+    (hx0 : 0 < x 0) (hx1 : 0 < x 1) (hxc : x 0 < (2 : ℝ) ^ (-(10 : ℤ)) * x 1)
+    (hy0 : 0 < y 0) (hy1 : 0 < y 1) (hyc : y 0 < (2 : ℝ) ^ (-(10 : ℤ)) * y 1) :
+    Real.sin (InnerProductGeometry.angle x y) ≤ (2 : ℝ) ^ (-(10 : ℤ)) := by
+  have hxn : x 1 ≤ ‖x‖ := by
+    have hsq : x 1 ^ 2 ≤ ‖x‖ ^ 2 := by
+      rw [norm_sq_two]; nlinarith [sq_nonneg (x 0)]
+    nlinarith [norm_nonneg x, hx1]
+  have hyn : y 1 ≤ ‖y‖ := by
+    have hsq : y 1 ^ 2 ≤ ‖y‖ ^ 2 := by
+      rw [norm_sq_two]; nlinarith [sq_nonneg (y 0)]
+    nlinarith [norm_nonneg y, hy1]
+  have hc : (0 : ℝ) < (2 : ℝ) ^ (-(10 : ℤ)) := by positivity
+  have hdet : |det2 x y| < (2 : ℝ) ^ (-(10 : ℤ)) * (x 1 * y 1) := by
+    rw [det2, abs_lt]
+    constructor
+    · nlinarith
+    · nlinarith
+  have hkey := sin_angle_eq x y
+  have hxpos : (0 : ℝ) < ‖x‖ := lt_of_lt_of_le hx1 hxn
+  have hypos : (0 : ℝ) < ‖y‖ := lt_of_lt_of_le hy1 hyn
+  have hprod : (2 : ℝ) ^ (-(10 : ℤ)) * (x 1 * y 1) ≤ (2 : ℝ) ^ (-(10 : ℤ)) * (‖x‖ * ‖y‖) := by
+    refine mul_le_mul_of_nonneg_left ?_ hc.le
+    exact mul_le_mul hxn hyn hy1.le (le_of_lt hxpos)
+  have hle : Real.sin (InnerProductGeometry.angle x y) * (‖x‖ * ‖y‖)
+      ≤ (2 : ℝ) ^ (-(10 : ℤ)) * (‖x‖ * ‖y‖) := by
+    rw [hkey]
+    linarith
+  have hmul : (0 : ℝ) < ‖x‖ * ‖y‖ := by positivity
+  exact le_of_mul_le_mul_right hle hmul
+
+/-- Two vectors of the narrow cone make an angle of at most `2^{-9}`. -/
+theorem angle_le_of_cone {x y : Pl}
+    (hx0 : 0 < x 0) (hx1 : 0 < x 1) (hxc : x 0 < (2 : ℝ) ^ (-(10 : ℤ)) * x 1)
+    (hy0 : 0 < y 0) (hy1 : 0 < y 1) (hyc : y 0 < (2 : ℝ) ^ (-(10 : ℤ)) * y 1) :
+    InnerProductGeometry.angle x y ≤ (2 : ℝ) ^ (-(9 : ℤ)) := by
+  set α := InnerProductGeometry.angle x y with hα
+  have hα0 : 0 ≤ α := InnerProductGeometry.angle_nonneg x y
+  have hsin := sin_angle_le_of_cone hx0 hx1 hxc hy0 hy1 hyc
+  rw [← hα] at hsin
+  -- the cosine is positive, so the angle is less than `π / 2`
+  have hinner : 0 < inner ℝ x y := inner_pos_of_cone hx0 hx1 hy0 hy1
+  have hxpos : (0 : ℝ) < ‖x‖ := by
+    have : x 1 ^ 2 ≤ ‖x‖ ^ 2 := by rw [norm_sq_two]; nlinarith [sq_nonneg (x 0)]
+    nlinarith [norm_nonneg x, hx1]
+  have hypos : (0 : ℝ) < ‖y‖ := by
+    have : y 1 ^ 2 ≤ ‖y‖ ^ 2 := by rw [norm_sq_two]; nlinarith [sq_nonneg (y 0)]
+    nlinarith [norm_nonneg y, hy1]
+  have hcos : Real.cos α * (‖x‖ * ‖y‖) = inner ℝ x y :=
+    InnerProductGeometry.cos_angle_mul_norm_mul_norm x y
+  have hmul : (0 : ℝ) < ‖x‖ * ‖y‖ := by positivity
+  have hcospos : 0 < Real.cos α := by
+    have h : 0 < Real.cos α * (‖x‖ * ‖y‖) := by rw [hcos]; exact hinner
+    nlinarith [h, hmul]
+  have hlepi : α ≤ π := InnerProductGeometry.angle_le_pi x y
+  -- for `0 ≤ α < π / 2` we have `α ≤ (π / 2) * sin α`
+  have hαlt : α < π / 2 := by
+    by_contra hcon
+    push_neg at hcon
+    have := Real.cos_nonpos_of_pi_div_two_le_of_le hcon (by linarith [Real.pi_pos])
+    linarith
+  have hkey : α ≤ (π / 2) * Real.sin α := by
+    have h := Real.mul_le_sin hα0 (le_of_lt hαlt)
+    calc α = (π / 2) * (2 / π * α) := by
+          have hπ : π ≠ 0 := Real.pi_pos.ne'
+          field_simp
+      _ ≤ (π / 2) * Real.sin α := by
+          refine mul_le_mul_of_nonneg_left h ?_
+          positivity
+  have hbound : (π / 2) * Real.sin α ≤ (π / 2) * (2 : ℝ) ^ (-(10 : ℤ)) := by
+    refine mul_le_mul_of_nonneg_left hsin ?_
+    positivity
+  have hnum : (π / 2) * (2 : ℝ) ^ (-(10 : ℤ)) ≤ (2 : ℝ) ^ (-(9 : ℤ)) := by
+    have h4 : π / 2 ≤ 2 := by linarith [Real.pi_le_four]
+    have hpow : (2 : ℝ) ^ (-(9 : ℤ)) = 2 * (2 : ℝ) ^ (-(10 : ℤ)) := by
+      rw [show (-(9 : ℤ)) = 1 + (-(10 : ℤ)) by ring, zpow_add₀ (two_ne_zero), zpow_one]
+    rw [hpow]
+    have hc : (0 : ℝ) < (2 : ℝ) ^ (-(10 : ℤ)) := by positivity
+    exact mul_le_mul_of_nonneg_right h4 hc.le
+  exact le_trans hkey (le_trans hbound hnum)
+
+end AngleGeometry
+
+
+/-! ## Quantitative bounds on the elliptic phase
+
+The three facts used by the non-stationary phase estimate:
+`τ' ≥ D / (2 g²)`, and the second and third derivatives of `τ` are bounded by `(2/g) τ'` and
+`(6/g²) τ'`, where `D = R² - a²` and `g = |ξ - ρθ|`.  In the application `D ≈ R² 2^{-2m}` and
+`g ≈ 2^j`, so `τ' ≈ 2^{-2m}` and each further derivative costs a factor `2^{-j}`.
+-/
+
+section PhaseBounds
+
+variable {a R : ℝ}
+
+theorem tauf1_lower (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    (R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2) ≤ tauf1 a R ρ := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hg2 : gf a R ρ ^ 2 = (ρ - a) ^ 2 + (R ^ 2 - a ^ 2) := by
+    rw [gf_sq hD, qf_eq]
+  have hden : (0 : ℝ) < 2 * gf a R ρ ^ 2 := by positivity
+  rw [tauf1, div_le_iff₀ hden]
+  have hexp : (1 + (ρ - a) / gf a R ρ) * (2 * gf a R ρ ^ 2)
+      = 2 * gf a R ρ ^ 2 + 2 * gf a R ρ * (ρ - a) := by
+    field_simp
+  rw [hexp]
+  nlinarith [sq_nonneg ((ρ - a) + gf a R ρ), hg2]
+
+theorem tauf2_abs_le (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    |tauf2 a R ρ| ≤ 2 / gf a R ρ * tauf1 a R ρ := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have h1 := tauf1_lower hD ρ
+  have habs : |tauf2 a R ρ| = tauf2 a R ρ := by
+    refine abs_of_nonneg ?_
+    rw [tauf2]
+    positivity
+  rw [habs, tauf2]
+  have hstep : 2 / gf a R ρ * ((R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2))
+      = (R ^ 2 - a ^ 2) / gf a R ρ ^ 3 := by
+    field_simp
+  calc (R ^ 2 - a ^ 2) / gf a R ρ ^ 3
+      = 2 / gf a R ρ * ((R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2)) := hstep.symm
+    _ ≤ 2 / gf a R ρ * tauf1 a R ρ := by
+        refine mul_le_mul_of_nonneg_left h1 ?_
+        positivity
+
+theorem tauf3_abs_le (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    |tauf3 a R ρ| ≤ 6 / gf a R ρ ^ 2 * tauf1 a R ρ := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have h1 := tauf1_lower hD ρ
+  have habs : |tauf3 a R ρ| = 3 * (R ^ 2 - a ^ 2) * |ρ - a| / gf a R ρ ^ 5 := by
+    rw [tauf3, abs_div, abs_neg, abs_of_pos (show (0 : ℝ) < gf a R ρ ^ 5 by positivity)]
+    congr 1
+    rw [abs_mul, abs_of_pos (show (0 : ℝ) < 3 * (R ^ 2 - a ^ 2) by linarith)]
+  have hstep : 3 * (R ^ 2 - a ^ 2) * |ρ - a| / gf a R ρ ^ 5
+      ≤ 3 * (R ^ 2 - a ^ 2) / gf a R ρ ^ 4 := by
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]
+    have hlt : |ρ - a| ≤ gf a R ρ := (abs_sub_lt_gf hD ρ).le
+    have h4 : |ρ - a| * gf a R ρ ^ 4 ≤ gf a R ρ * gf a R ρ ^ 4 :=
+      mul_le_mul_of_nonneg_right hlt (by positivity)
+    nlinarith [h4, hD]
+  have hfinal : 3 * (R ^ 2 - a ^ 2) / gf a R ρ ^ 4
+      ≤ 6 / gf a R ρ ^ 2 * tauf1 a R ρ := by
+    have heq : 6 / gf a R ρ ^ 2 * ((R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2))
+        = 3 * (R ^ 2 - a ^ 2) / gf a R ρ ^ 4 := by
+      field_simp
+      ring
+    calc 3 * (R ^ 2 - a ^ 2) / gf a R ρ ^ 4
+        = 6 / gf a R ρ ^ 2 * ((R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2)) := heq.symm
+      _ ≤ 6 / gf a R ρ ^ 2 * tauf1 a R ρ := by
+          refine mul_le_mul_of_nonneg_left h1 ?_
+          positivity
+  rw [habs]
+  exact le_trans hstep hfinal
+
+theorem inv_tauf1_le (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    (tauf1 a R ρ)⁻¹ ≤ 2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) := by
+  have h1 := tauf1_lower hD ρ
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hnum : 0 < (R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2) := by positivity
+  have hstep : (tauf1 a R ρ)⁻¹ ≤ ((R ^ 2 - a ^ 2) / (2 * gf a R ρ ^ 2))⁻¹ :=
+    inv_anti₀ hnum h1
+  refine le_trans hstep (le_of_eq ?_)
+  rw [inv_div]
+
+end PhaseBounds
+
+
+/-! ## The Schur summation over the radii
+
+`∑_{t' ∈ ℰ} (1 + |t - t'| / δ)^{-2} ≲ sup_{|I| = δ} #(ℰ ∩ I)`.
+-/
+
+section Schur
+
+/-- `N` bounds the number of points of `Efin` in every half-open interval of length `δ`. -/
+def IsIntervalCount (Efin : Finset ℝ) (δ N : ℝ) : Prop :=
+  ∀ c : ℝ, ((Efin.filter (fun t => c ≤ t ∧ t < c + δ)).card : ℝ) ≤ N
+
+theorem schur_sum_le {Efin : Finset ℝ} {δ N : ℝ} (hδ : 0 < δ) (hNnn : 0 ≤ N)
+    (hN : IsIntervalCount Efin δ N) (t : ℝ) :
+    ∑ t' ∈ Efin, ((1 + |t - t'| / δ) ^ 2)⁻¹ ≤ 12 * N := by
+  classical
+  set kof : ℝ → ℤ := fun t' => ⌊(t' - t) / δ⌋ with hkof
+  have hmaps : ∀ t' ∈ Efin, kof t' ∈ Efin.image kof := fun t' h => Finset.mem_image_of_mem _ h
+  rw [← Finset.sum_fiberwise_of_maps_to hmaps]
+  have hfiber : ∀ k ∈ Efin.image kof,
+      (∑ t' ∈ Efin.filter (fun t' => kof t' = k), ((1 + |t - t'| / δ) ^ 2)⁻¹)
+        ≤ N * (4 * (((1 : ℝ) + |(k : ℝ)|) ^ 2)⁻¹) := by
+    intro k _
+    have hmem : ∀ t' ∈ Efin.filter (fun t' => kof t' = k),
+        (k : ℝ) * δ ≤ t' - t ∧ t' - t < ((k : ℝ) + 1) * δ := by
+      intro t' ht'
+      have hk : kof t' = k := (Finset.mem_filter.mp ht').2
+      have hfl : ((k : ℝ) ≤ (t' - t) / δ) ∧ ((t' - t) / δ < (k : ℝ) + 1) := by
+        have h := Int.floor_eq_iff.mp hk
+        exact ⟨by exact_mod_cast h.1, by exact_mod_cast h.2⟩
+      constructor
+      · rw [le_div_iff₀ hδ] at hfl
+        linarith [hfl.1]
+      · rw [div_lt_iff₀ hδ] at hfl
+        linarith [hfl.2]
+    have hterm : ∀ t' ∈ Efin.filter (fun t' => kof t' = k),
+        ((1 + |t - t'| / δ) ^ 2)⁻¹ ≤ 4 * (((1 : ℝ) + |(k : ℝ)|) ^ 2)⁻¹ := by
+      intro t' ht'
+      obtain ⟨hlo, hhi⟩ := hmem t' ht'
+      have habs : |t - t'| / δ = |t' - t| / δ := by rw [abs_sub_comm]
+      have hkey : ((1 : ℝ) + |(k : ℝ)|) / 2 ≤ 1 + |t - t'| / δ := by
+        rw [habs]
+        rcases le_or_gt 0 (k : ℝ) with hk0 | hk0
+        · have h1 : (k : ℝ) * δ ≤ |t' - t| := le_trans hlo (le_abs_self _)
+          have h2 : (k : ℝ) ≤ |t' - t| / δ := by
+            rw [le_div_iff₀ hδ]
+            linarith
+          rw [abs_of_nonneg hk0]
+          linarith
+        · have h1 : -(t' - t) > -((k : ℝ) + 1) * δ := by nlinarith
+          have h2 : |t' - t| ≥ -(t' - t) := neg_le_abs _
+          have h3 : -((k : ℝ) + 1) ≤ |t' - t| / δ := by
+            rw [le_div_iff₀ hδ]
+            nlinarith
+          rw [abs_of_neg hk0]
+          have hkle : (1 : ℝ) ≤ -(k : ℝ) := by
+            have hkz : k < 0 := by exact_mod_cast hk0
+            have hkm : k ≤ -1 := by omega
+            have hkr : ((k : ℝ)) ≤ -1 := by exact_mod_cast hkm
+            linarith
+          linarith
+      have hposk : (0 : ℝ) < ((1 : ℝ) + |(k : ℝ)|) / 2 := by positivity
+      have hsq : (((1 : ℝ) + |(k : ℝ)|) / 2) ^ 2 ≤ (1 + |t - t'| / δ) ^ 2 := by
+        refine pow_le_pow_left₀ hposk.le hkey 2
+      have hposq : (0 : ℝ) < (((1 : ℝ) + |(k : ℝ)|) / 2) ^ 2 := by positivity
+      have hstep : ((1 + |t - t'| / δ) ^ 2)⁻¹ ≤ ((((1 : ℝ) + |(k : ℝ)|) / 2) ^ 2)⁻¹ :=
+        inv_anti₀ hposq hsq
+      refine le_trans hstep (le_of_eq ?_)
+      have hne : ((1 : ℝ) + |(k : ℝ)|) ≠ 0 := by positivity
+      field_simp
+      ring
+    refine le_trans (Finset.sum_le_sum hterm) ?_
+    rw [Finset.sum_const, nsmul_eq_mul]
+    refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+    have hsub : Efin.filter (fun t' => kof t' = k)
+        ⊆ Efin.filter (fun t' => t + (k : ℝ) * δ ≤ t' ∧ t' < t + (k : ℝ) * δ + δ) := by
+      intro t' ht'
+      obtain ⟨hlo, hhi⟩ := hmem t' ht'
+      refine Finset.mem_filter.mpr ⟨(Finset.mem_filter.mp ht').1, ?_, ?_⟩
+      · linarith
+      · nlinarith
+    have hcard := Finset.card_le_card hsub
+    have h2 : ((Efin.filter (fun t' => kof t' = k)).card : ℝ)
+        ≤ ((Efin.filter (fun t' => t + (k : ℝ) * δ ≤ t' ∧
+            t' < t + (k : ℝ) * δ + δ)).card : ℝ) := by exact_mod_cast hcard
+    exact le_trans h2 (hN (t + (k : ℝ) * δ))
+  refine le_trans (Finset.sum_le_sum hfiber) ?_
+  have hpull : (∑ k ∈ Efin.image kof, N * (4 * (((1 : ℝ) + |(k : ℝ)|) ^ 2)⁻¹))
+      = 4 * N * ∑ k ∈ Efin.image kof, (((1 : ℝ) + |(k : ℝ)|) ^ 2)⁻¹ := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun k _ => ?_
+    ring
+  rw [hpull]
+  have hsum := Auto.CalderonVaillancourt.sum_finset_int_inv_sq_le (Efin.image kof)
+  have hnn : (0 : ℝ) ≤ 4 * N := by linarith
+  calc 4 * N * ∑ k ∈ Efin.image kof, (((1 : ℝ) + |(k : ℝ)|) ^ 2)⁻¹
+      ≤ 4 * N * 3 := mul_le_mul_of_nonneg_left hsum hnn
+    _ = 12 * N := by ring
+
+end Schur
+
+
+/-! ## Almost orthogonality in a Hilbert space
+
+The `TT*` step of §4.3, in the form of a Schur bound for a Gram matrix: if every row sum of the
+Gram matrix of a finite family `v` is at most `A`, then `∑ |⟪v i, x⟫|² ≤ A ‖x‖²`.
+-/
+
+section GramSchur
+
+variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℂ E]
+
+theorem sum_norm_inner_sq_le {ι : Type*} (s : Finset ι) (v : ι → E) (x : E) {A : ℝ}
+    (hAnn : 0 ≤ A)
+    (hA : ∀ i ∈ s, ∑ i' ∈ s, ‖(inner ℂ (v i) (v i') : ℂ)‖ ≤ A) :
+    ∑ i ∈ s, ‖(inner ℂ (v i) x : ℂ)‖ ^ 2 ≤ A * ‖x‖ ^ 2 := by
+  classical
+  set c : ι → ℂ := fun i => (inner ℂ (v i) x : ℂ) with hcdef
+  set w : E := ∑ i ∈ s, c i • v i with hwdef
+  set Sg : ℝ := ∑ i ∈ s, ‖c i‖ ^ 2 with hSgdef
+  have hSgnn : 0 ≤ Sg := by
+    rw [hSgdef]
+    positivity
+  -- Step 1: `⟪w, x⟫ = Sg`
+  have hinner : (inner ℂ w x : ℂ) = ((Sg : ℝ) : ℂ) := by
+    rw [hwdef, sum_inner, hSgdef]
+    push_cast
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [inner_smul_left]
+    have hci : (inner ℂ (v i) x : ℂ) = c i := rfl
+    rw [hci, RCLike.conj_mul]
+    norm_cast
+  have hcs1 : Sg ≤ ‖w‖ * ‖x‖ := by
+    have h1 : Sg = ‖(inner ℂ w x : ℂ)‖ := by
+      rw [hinner, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hSgnn]
+    rw [h1]
+    exact norm_inner_le_norm w x
+  -- Step 2: `‖w‖² ≤ A * Sg`
+  set aa : ι → ι → ℝ := fun i i' => ‖(inner ℂ (v i) (v i') : ℂ)‖ with haadef
+  have hsymm : ∀ i i', aa i i' = aa i' i := by
+    intro i i'
+    rw [haadef]
+    simp only
+    rw [← inner_conj_symm (v i) (v i'), RCLike.norm_conj]
+  have hww : (inner ℂ w w : ℂ)
+      = ∑ i ∈ s, ∑ i' ∈ s, (starRingEnd ℂ) (c i) * (c i' * (inner ℂ (v i) (v i') : ℂ)) := by
+    rw [hwdef, sum_inner]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [inner_smul_left, inner_sum, Finset.mul_sum]
+    refine Finset.sum_congr rfl fun i' _ => ?_
+    rw [inner_smul_right]
+  have hnormw : ‖w‖ ^ 2 = ‖(inner ℂ w w : ℂ)‖ := by
+    rw [inner_self_eq_norm_sq_to_K]
+    simp
+  have hbound : ‖w‖ ^ 2 ≤ ∑ i ∈ s, ∑ i' ∈ s, aa i i' * (‖c i‖ * ‖c i'‖) := by
+    rw [hnormw, hww]
+    refine le_trans (norm_sum_le _ _) ?_
+    refine Finset.sum_le_sum fun i _ => ?_
+    refine le_trans (norm_sum_le _ _) ?_
+    refine Finset.sum_le_sum fun i' _ => ?_
+    rw [norm_mul, norm_mul, RCLike.norm_conj, haadef]
+    ring_nf
+    exact le_refl _
+  -- the Schur step
+  have hschur : (∑ i ∈ s, ∑ i' ∈ s, aa i i' * (‖c i‖ * ‖c i'‖)) ≤ A * Sg := by
+    have hamgm : ∀ i ∈ s, ∀ i' ∈ s, aa i i' * (‖c i‖ * ‖c i'‖)
+        ≤ aa i i' * ((‖c i‖ ^ 2 + ‖c i'‖ ^ 2) / 2) := by
+      intro i _ i' _
+      refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg _)
+      nlinarith [sq_nonneg (‖c i‖ - ‖c i'‖)]
+    have hstep1 : (∑ i ∈ s, ∑ i' ∈ s, aa i i' * (‖c i‖ * ‖c i'‖))
+        ≤ ∑ i ∈ s, ∑ i' ∈ s, aa i i' * ((‖c i‖ ^ 2 + ‖c i'‖ ^ 2) / 2) := by
+      refine Finset.sum_le_sum fun i hi => ?_
+      exact Finset.sum_le_sum fun i' hi' => hamgm i hi i' hi'
+    have hsplit : (∑ i ∈ s, ∑ i' ∈ s, aa i i' * ((‖c i‖ ^ 2 + ‖c i'‖ ^ 2) / 2))
+        = (∑ i ∈ s, ∑ i' ∈ s, aa i i' * ‖c i‖ ^ 2) / 2
+          + (∑ i ∈ s, ∑ i' ∈ s, aa i i' * ‖c i'‖ ^ 2) / 2 := by
+      rw [Finset.sum_div, Finset.sum_div, ← Finset.sum_add_distrib]
+      refine Finset.sum_congr rfl fun i _ => ?_
+      rw [Finset.sum_div, Finset.sum_div, ← Finset.sum_add_distrib]
+      refine Finset.sum_congr rfl fun i' _ => ?_
+      ring
+    have hT1 : (∑ i ∈ s, ∑ i' ∈ s, aa i i' * ‖c i‖ ^ 2) ≤ A * Sg := by
+      have hrw : (∑ i ∈ s, ∑ i' ∈ s, aa i i' * ‖c i‖ ^ 2)
+          = ∑ i ∈ s, (∑ i' ∈ s, aa i i') * ‖c i‖ ^ 2 := by
+        refine Finset.sum_congr rfl fun i _ => ?_
+        rw [Finset.sum_mul]
+      rw [hrw, hSgdef, Finset.mul_sum]
+      refine Finset.sum_le_sum fun i hi => ?_
+      exact mul_le_mul_of_nonneg_right (hA i hi) (by positivity)
+    have hT2 : (∑ i ∈ s, ∑ i' ∈ s, aa i i' * ‖c i'‖ ^ 2) ≤ A * Sg := by
+      rw [Finset.sum_comm]
+      have hrw : (∑ i' ∈ s, ∑ i ∈ s, aa i i' * ‖c i'‖ ^ 2)
+          = ∑ i' ∈ s, (∑ i ∈ s, aa i' i) * ‖c i'‖ ^ 2 := by
+        refine Finset.sum_congr rfl fun i' _ => ?_
+        rw [Finset.sum_mul]
+        refine Finset.sum_congr rfl fun i _ => ?_
+        rw [hsymm i i']
+      rw [hrw, hSgdef, Finset.mul_sum]
+      refine Finset.sum_le_sum fun i' hi' => ?_
+      exact mul_le_mul_of_nonneg_right (hA i' hi') (by positivity)
+    linarith [hstep1, hsplit, hT1, hT2]
+  have hw2 : ‖w‖ ^ 2 ≤ A * Sg := le_trans hbound hschur
+  -- Step 3: conclude
+  rcases eq_or_lt_of_le hSgnn with hz | hpos
+  · rw [← hz]
+    exact mul_nonneg hAnn (by positivity)
+  · have hsq : Sg ^ 2 ≤ (‖w‖ * ‖x‖) ^ 2 := by
+      refine pow_le_pow_left₀ hSgnn hcs1 2
+    have hstep : Sg ^ 2 ≤ (A * Sg) * ‖x‖ ^ 2 := by
+      calc Sg ^ 2 ≤ (‖w‖ * ‖x‖) ^ 2 := hsq
+        _ = ‖w‖ ^ 2 * ‖x‖ ^ 2 := by ring
+        _ ≤ (A * Sg) * ‖x‖ ^ 2 := mul_le_mul_of_nonneg_right hw2 (by positivity)
+    have hfin : Sg ≤ A * ‖x‖ ^ 2 := by
+      have hSgpos : 0 < Sg := hpos
+      nlinarith [hstep, hSgpos]
+    exact hfin
+
+end GramSchur
+
+
+/-! ## The `TT*` reduction of §4.3
+
+For each fixed `ξ` the operators `S[·, b](ξ, t)`, `t ∈ ℰ`, are the inner products of the fixed
+function `η ↦ 𝓕F(ξ - η, η)` against the kernels `Kern t ξ`.  The Gram matrix of the kernels is
+`∫ Kern t ξ η · conj (Kern t' ξ η) dη`, so a Schur bound on it gives the `L²` estimate.
+-/
+
+section TTStar
+
+variable {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+
+/-- The kernel of `S[·, b](·, t)`. -/
+def Kern (ε : ℝ) (b : ℝ → Pl → Pl → ℂ) (t : ℝ) (ξ η : Pl) : ℂ := phase ε t ξ η * b t ξ η
+
+theorem norm_Kern (ε t : ℝ) (ξ η : Pl) : ‖Kern ε b t ξ η‖ = ‖b t ξ η‖ := by
+  rw [Kern, norm_mul, norm_phase, one_mul]
+
+theorem continuous_phase_right (ε t : ℝ) (ξ : Pl) : Continuous fun η => phase ε t ξ η := by
+  refine Complex.continuous_exp.comp ?_
+  refine Continuous.mul ?_ continuous_const
+  refine Complex.continuous_ofReal.comp ?_
+  exact continuous_const.mul ((continuous_const.sub continuous_id).norm.add continuous_norm)
+
+theorem measurable_Kern (hb : IsAdapted j m b) (ε t : ℝ) (ξ : Pl) :
+    Measurable (Kern ε b t ξ) :=
+  ((continuous_phase_right ε t ξ).measurable).mul (hb.meas t ξ)
+
+theorem Kern_eq_zero (hb : IsAdapted j m b) (ε t : ℝ) (ξ η : Pl)
+    (h : η ∉ SuppSet j m ξ) : Kern ε b t ξ η = 0 := by
+  rw [Kern, hb.supp t ξ η h, mul_zero]
+
+theorem memLp_Kern (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hB : 0 ≤ B)
+    (ε t : ℝ) (ξ : Pl) : MemLp (Kern ε b t ξ) 2 (volume : Measure Pl) := by
+  classical
+  refine ⟨(measurable_Kern hb ε t ξ).aestronglyMeasurable, ?_⟩
+  rw [Auto.CalderonVaillancourt.eLpNorm_two_eq_sqMass_rpow]
+  refine ENNReal.rpow_lt_top_of_nonneg (by norm_num) ?_
+  rw [Auto.CalderonVaillancourt.sqMass]
+  have hmono : ∀ η : Pl, ‖Kern ε b t ξ η‖ₑ ^ (2 : ℝ)
+      ≤ Set.indicator (SuppSet j m ξ) (fun _ => ENNReal.ofReal B ^ (2 : ℝ)) η := by
+    intro η
+    by_cases hη : η ∈ SuppSet j m ξ
+    · rw [Set.indicator_of_mem hη]
+      refine ENNReal.rpow_le_rpow ?_ (by norm_num)
+      rw [← ofReal_norm, norm_Kern]
+      exact ENNReal.ofReal_le_ofReal (hbB t ξ η)
+    · rw [Set.indicator_of_notMem hη, Kern_eq_zero hb ε t ξ η hη]
+      simp
+  refine ne_of_lt (lt_of_le_of_lt (lintegral_mono hmono) ?_)
+  rw [lintegral_indicator (measurableSet_SuppSet j m ξ), setLIntegral_const]
+  refine ENNReal.mul_lt_top (ENNReal.rpow_lt_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top) ?_
+  exact lt_of_le_of_lt (volume_SuppSet_le j m ξ) ENNReal.ofReal_lt_top
+
+theorem memLp_conj_Kern (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hB : 0 ≤ B)
+    (ε t : ℝ) (ξ : Pl) :
+    MemLp (fun η => (starRingEnd ℂ) (Kern ε b t ξ η)) 2 (volume : Measure Pl) := by
+  have h := memLp_Kern hb hbB hB ε t ξ
+  refine ⟨(Complex.continuous_conj.comp_aestronglyMeasurable h.1), ?_⟩
+  have heq : eLpNorm (fun η => (starRingEnd ℂ) (Kern ε b t ξ η)) 2 (volume : Measure Pl)
+      = eLpNorm (Kern ε b t ξ) 2 (volume : Measure Pl) := by
+    refine eLpNorm_congr_norm_ae (Filter.Eventually.of_forall fun η => ?_)
+    rw [RCLike.norm_conj]
+  rw [heq]
+  exact h.2
+
+/-- The inner product of the conjugate kernel against a fixed `L²` function is the operator. -/
+theorem inner_conj_Kern_toLp (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hB : 0 ≤ B)
+    (ε t : ℝ) (ξ : Pl) {H : Pl → ℂ} (hH : MemLp H 2 (volume : Measure Pl)) :
+    (inner ℂ ((memLp_conj_Kern hb hbB hB ε t ξ).toLp _) (hH.toLp H) : ℂ)
+      = ∫ η, Kern ε b t ξ η * H η := by
+  rw [MeasureTheory.L2.inner_def]
+  refine integral_congr_ae ?_
+  filter_upwards [(memLp_conj_Kern hb hbB hB ε t ξ).coeFn_toLp, hH.coeFn_toLp] with η h1 h2
+  rw [h1, h2, RCLike.inner_apply]
+  simp only [Complex.conj_conj]
+  ring
+
+/-- The Gram matrix of the conjugate kernels. -/
+theorem inner_conj_Kern_conj_Kern (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B)
+    (hB : 0 ≤ B) (ε t t' : ℝ) (ξ : Pl) :
+    (inner ℂ ((memLp_conj_Kern hb hbB hB ε t ξ).toLp _)
+        ((memLp_conj_Kern hb hbB hB ε t' ξ).toLp _) : ℂ)
+      = ∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η) := by
+  rw [MeasureTheory.L2.inner_def]
+  refine integral_congr_ae ?_
+  filter_upwards [(memLp_conj_Kern hb hbB hB ε t ξ).coeFn_toLp,
+    (memLp_conj_Kern hb hbB hB ε t' ξ).coeFn_toLp] with η h1 h2
+  rw [h1, h2, RCLike.inner_apply]
+  simp only [Complex.conj_conj]
+  ring
+
+theorem enorm_rpow_two (z : ℂ) : ‖z‖ₑ ^ (2 : ℝ) = ENNReal.ofReal (‖z‖ ^ 2) := by
+  have h1 : ENNReal.ofReal (‖z‖ ^ 2) = ENNReal.ofReal ‖z‖ ^ (2 : ℝ) := by
+    rw [ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) (by norm_num : (0 : ℝ) ≤ 2)]
+    congr 1
+    rw [← Real.rpow_natCast ‖z‖ 2]
+    norm_num
+  rw [h1, ofReal_norm]
+
+theorem enn_rpow_two_eq (x : ℝ≥0∞) (hx : x ≠ ⊤) :
+    x ^ (2 : ℝ) = ENNReal.ofReal (x.toReal ^ 2) := by
+  have h1 : ENNReal.ofReal (x.toReal ^ 2) = ENNReal.ofReal x.toReal ^ (2 : ℝ) := by
+    rw [ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg (by norm_num : (0 : ℝ) ≤ 2)]
+    congr 1
+    rw [← Real.rpow_natCast x.toReal 2]
+    norm_num
+  rw [h1, ENNReal.ofReal_toReal hx]
+
+theorem sum_lintegral_le_lintegral_sum {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    {ι : Type*} (s : Finset ι) (f : ι → α → ℝ≥0∞) :
+    (∑ i ∈ s, ∫⁻ a, f i a ∂μ) ≤ ∫⁻ a, ∑ i ∈ s, f i a ∂μ := by
+  classical
+  induction s using Finset.cons_induction with
+  | empty => simp
+  | cons i t hi ih =>
+      rw [Finset.sum_cons]
+      have hpt : ∀ a, ∑ k ∈ Finset.cons i t hi, f k a = f i a + ∑ k ∈ t, f k a := by
+        intro a
+        rw [Finset.sum_cons]
+      rw [lintegral_congr hpt]
+      calc (∫⁻ a, f i a ∂μ) + ∑ k ∈ t, ∫⁻ a, f k a ∂μ
+          ≤ (∫⁻ a, f i a ∂μ) + ∫⁻ a, ∑ k ∈ t, f k a ∂μ := add_le_add (le_refl _) ih
+        _ ≤ ∫⁻ a, (f i a + ∑ k ∈ t, f k a) ∂μ := le_lintegral_add _ _
+
+/-- The pointwise (in `ξ`) `TT*` bound, in real form. -/
+theorem sum_sq_SopK_pointwise (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B)
+    (hB : 0 ≤ B) (ε : ℝ) (Efin : Finset ℝ) {G : Pl2 → ℂ} {A : ℝ} (hAnn : 0 ≤ A) (ξ : Pl)
+    (hA : ∀ t ∈ Efin, ∑ t' ∈ Efin,
+        ‖∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)‖ ≤ A)
+    (hH : MemLp (fun η => G (pr (ξ - η) η)) 2 (volume : Measure Pl)) :
+    ∑ t ∈ Efin, ‖SopK ε b G ξ t‖ ^ 2
+      ≤ A * (eLpNorm (fun η => G (pr (ξ - η) η)) 2 (volume : Measure Pl)).toReal ^ 2 := by
+  classical
+  set v : ℝ → Lp ℂ 2 (volume : Measure Pl) :=
+    fun t => (memLp_conj_Kern hb hbB hB ε t ξ).toLp _ with hvdef
+  have hgram : ∀ t ∈ Efin, ∑ t' ∈ Efin, ‖(inner ℂ (v t) (v t') : ℂ)‖ ≤ A := by
+    intro t ht
+    refine le_trans (le_of_eq ?_) (hA t ht)
+    refine Finset.sum_congr rfl fun t' _ => ?_
+    rw [hvdef]
+    rw [inner_conj_Kern_conj_Kern hb hbB hB ε t t' ξ]
+  have hkey := sum_norm_inner_sq_le Efin v (hH.toLp _) hAnn hgram
+  have hval : ∀ t : ℝ, (inner ℂ (v t) (hH.toLp _) : ℂ) = SopK ε b G ξ t := by
+    intro t
+    rw [hvdef, inner_conj_Kern_toLp hb hbB hB ε t ξ hH]
+    rfl
+  have hlhs : (∑ t ∈ Efin, ‖(inner ℂ (v t) (hH.toLp _) : ℂ)‖ ^ 2)
+      = ∑ t ∈ Efin, ‖SopK ε b G ξ t‖ ^ 2 := by
+    refine Finset.sum_congr rfl fun t _ => ?_
+    rw [hval t]
+  rw [hlhs] at hkey
+  rw [Lp.norm_toLp] at hkey
+  exact hkey
+
+/-- The pointwise `TT*` bound in extended-real form. -/
+theorem sum_enorm_sq_SopK_pointwise (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B)
+    (hB : 0 ≤ B) (ε : ℝ) (Efin : Finset ℝ) {G : Pl2 → ℂ} (hGm : Measurable G) {A : ℝ}
+    (hApos : 0 < A) (ξ : Pl)
+    (hA : ∀ t ∈ Efin, ∑ t' ∈ Efin,
+        ‖∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)‖ ≤ A) :
+    (∑ t ∈ Efin, ‖SopK ε b G ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal A * ∫⁻ η : Pl, ‖G (pr (ξ - η) η)‖ₑ ^ (2 : ℝ) := by
+  classical
+  set H : Pl → ℂ := fun η => G (pr (ξ - η) η) with hHdef
+  have hHmeas : Measurable H := by
+    have h1 : Measurable fun η : Pl => (pr (ξ - η) η : Pl2) := by
+      have h2 : Measurable fun η : Pl => ((ξ - η : Pl), (η : Pl)) :=
+        (measurable_const.sub measurable_id).prodMk measurable_id
+      exact (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable.comp h2
+    exact hGm.comp h1
+  have hmass : Auto.CalderonVaillancourt.sqMass (volume : Measure Pl) H
+      = ∫⁻ η : Pl, ‖H η‖ₑ ^ (2 : ℝ) := rfl
+  have hA0 : ENNReal.ofReal A ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+    exact hApos
+  by_cases htop : (∫⁻ η : Pl, ‖H η‖ₑ ^ (2 : ℝ)) = ⊤
+  · rw [htop, ENNReal.mul_top hA0]
+    exact le_top
+  · have hlp : MemLp H 2 (volume : Measure Pl) := by
+      refine ⟨hHmeas.aestronglyMeasurable, ?_⟩
+      rw [Auto.CalderonVaillancourt.eLpNorm_two_eq_sqMass_rpow]
+      exact ENNReal.rpow_lt_top_of_nonneg (by norm_num) (by rw [hmass]; exact htop)
+    have hreal := sum_sq_SopK_pointwise hb hbB hB ε Efin hApos.le ξ hA hlp
+    have hfin : eLpNorm H 2 (volume : Measure Pl) ≠ ⊤ := hlp.2.ne
+    -- rewrite the left side
+    have hL : (∑ t ∈ Efin, ‖SopK ε b G ξ t‖ₑ ^ (2 : ℝ))
+        = ENNReal.ofReal (∑ t ∈ Efin, ‖SopK ε b G ξ t‖ ^ 2) := by
+      rw [ENNReal.ofReal_sum_of_nonneg (fun t _ => by positivity)]
+      refine Finset.sum_congr rfl fun t _ => ?_
+      exact enorm_rpow_two _
+    -- rewrite the right side
+    have hR : (∫⁻ η : Pl, ‖H η‖ₑ ^ (2 : ℝ))
+        = ENNReal.ofReal ((eLpNorm H 2 (volume : Measure Pl)).toReal ^ 2) := by
+      rw [← hmass, Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow]
+      exact enn_rpow_two_eq _ hfin
+    rw [hL, hR, ← ENNReal.ofReal_mul hApos.le]
+    exact ENNReal.ofReal_le_ofReal hreal
+
+/-- The `L²` bound for `S[·, b]` coming from a Schur bound on the Gram matrix of the kernels. -/
+theorem sum_lintegral_SopK_le (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B)
+    (hB : 0 ≤ B) (ε : ℝ) (Efin : Finset ℝ) {G : Pl2 → ℂ} (hGm : Measurable G) {A : ℝ}
+    (hApos : 0 < A)
+    (hA : ∀ ξ : Pl, ∀ t ∈ Efin, ∑ t' ∈ Efin,
+        ‖∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)‖ ≤ A) :
+    (∑ t ∈ Efin, ∫⁻ ξ : Pl, ‖SopK ε b G ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal A * ∫⁻ x : Pl2, ‖G x‖ₑ ^ (2 : ℝ) := by
+  have hstep1 := sum_lintegral_le_lintegral_sum Efin
+    (fun t ξ => ‖SopK ε b G ξ t‖ₑ ^ (2 : ℝ)) (μ := (volume : Measure Pl))
+  refine le_trans hstep1 ?_
+  have hstep2 : (∫⁻ ξ : Pl, ∑ t ∈ Efin, ‖SopK ε b G ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ∫⁻ ξ : Pl, ENNReal.ofReal A * ∫⁻ η : Pl, ‖G (pr (ξ - η) η)‖ₑ ^ (2 : ℝ) :=
+    lintegral_mono fun ξ =>
+      sum_enorm_sq_SopK_pointwise hb hbB hB ε Efin hGm hApos ξ (hA ξ)
+  refine le_trans hstep2 ?_
+  rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  refine mul_le_mul' (le_refl _) (le_of_eq ?_)
+  exact lintegral_pr_shift (fun x => ‖G x‖ₑ ^ (2 : ℝ)) ((hGm.enorm).pow_const _)
+
+end TTStar
+
+
+
+/-! ## Strict adaptedness and the polar frame -/
+
+section Frame
+
+/-- The `η`-support of a strictly `(j,m)`-adapted symbol: the angle is also bounded below. -/
+def SuppSetStrict (j m : ℕ) (ξ : Pl) : Set Pl :=
+  {η | η ∈ SuppSet j m ξ ∧ (2 : ℝ) ^ (-(m : ℤ) - 5) ≤ InnerProductGeometry.angle ξ η}
+
+theorem SuppSetStrict_subset (j m : ℕ) (ξ : Pl) : SuppSetStrict j m ξ ⊆ SuppSet j m ξ :=
+  fun _ h => h.1
+
+/-- A strictly `(j,m)`-adapted symbol. -/
+structure IsStrictlyAdapted (j m : ℕ) (b : ℝ → Pl → Pl → ℂ) : Prop where
+  meas : ∀ t ξ, Measurable (b t ξ)
+  supp : ∀ t ξ η, η ∉ SuppSetStrict j m ξ → b t ξ η = 0
+
+theorem IsStrictlyAdapted.toIsAdapted {j m : ℕ} {b : ℝ → Pl → Pl → ℂ}
+    (h : IsStrictlyAdapted j m b) : IsAdapted j m b :=
+  ⟨h.meas, fun t ξ η hη => h.supp t ξ η fun hs => hη (SuppSetStrict_subset j m ξ hs)⟩
+
+/-- The data on `ξ` implied by a nonempty support. -/
+structure XiData (j : ℕ) (ξ : Pl) : Prop where
+  lower : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ξ 1
+  norm_le : ‖ξ‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 2)
+  cone0 : 0 < ξ 0
+  cone : ξ 0 < (2 : ℝ) ^ (-(10 : ℤ)) * ξ 1
+
+theorem XiData.snd_pos {j : ℕ} {ξ : Pl} (h : XiData j ξ) : 0 < ξ 1 :=
+  lt_of_lt_of_le (by positivity) h.lower
+
+theorem XiData.norm_lower {j : ℕ} {ξ : Pl} (h : XiData j ξ) :
+    (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖ξ‖ := by
+  refine le_trans h.lower ?_
+  have hsq : ξ 1 ^ 2 ≤ ‖ξ‖ ^ 2 := by
+    rw [norm_sq_two]
+    nlinarith [sq_nonneg (ξ 0)]
+  nlinarith [norm_nonneg ξ, h.snd_pos]
+
+theorem xiData_of_mem {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) : XiData j ξ := by
+  obtain ⟨hηT, hξηT, -⟩ := h
+  have hsub0 : (ξ - η) 0 = ξ 0 - η 0 := by simp [PiLp.sub_apply]
+  have hsub1 : (ξ - η) 1 = ξ 1 - η 1 := by simp [PiLp.sub_apply]
+  have hstep : (2 : ℝ) ^ ((j : ℤ) - 1) = 2 * (2 : ℝ) ^ ((j : ℤ) - 2) := by
+    rw [show (j : ℤ) - 1 = 1 + ((j : ℤ) - 2) by ring, zpow_add₀ (two_ne_zero), zpow_one]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · have h1 := Theta.snd_lower hηT
+    have h2 := Theta.snd_lower hξηT
+    rw [hsub1] at h2
+    rw [hstep]
+    linarith
+  · have he : (ξ - η) + η = ξ := by abel
+    have h1 : ‖ξ‖ ≤ ‖ξ - η‖ + ‖η‖ := by
+      have h := norm_add_le (ξ - η) η
+      rw [he] at h
+      exact h
+    have h2 := Theta.norm_le hξηT
+    have h3 := Theta.norm_le hηT
+    have hstep2 : (2 : ℝ) ^ ((j : ℤ) + 2) = 2 * (2 : ℝ) ^ ((j : ℤ) + 1) := by
+      rw [show (j : ℤ) + 2 = 1 + ((j : ℤ) + 1) by ring, zpow_add₀ (two_ne_zero), zpow_one]
+    rw [hstep2]
+    linarith
+  · have h1 := hηT.1
+    have h2 := hξηT.1
+    rw [hsub0] at h2
+    linarith
+  · have h1 := hηT.2.1
+    have h2 := hξηT.2.1
+    rw [hsub0, hsub1] at h2
+    have hc : (0 : ℝ) < (2 : ℝ) ^ (-(10 : ℤ)) := by positivity
+    nlinarith
+
+/-- The discriminant of the elliptic phase in terms of the angle. -/
+theorem disc_eq (ξ θ : Pl) (hθ : ‖θ‖ = 1) :
+    ‖ξ‖ ^ 2 - inner ℝ ξ θ ^ 2
+      = ‖ξ‖ ^ 2 * Real.sin (InnerProductGeometry.angle ξ θ) ^ 2 := by
+  have hlag := lagrange ξ θ
+  have hsin := sin_angle_eq ξ θ
+  rw [hθ] at hlag hsin
+  simp only [one_pow, mul_one] at hlag hsin
+  have h2 : (Real.sin (InnerProductGeometry.angle ξ θ) * ‖ξ‖) ^ 2 = det2 ξ θ ^ 2 := by
+    rw [hsin, sq_abs]
+  rw [← hlag, ← h2]
+  ring
+
+/-- The elliptic phase computed in the polar frame. -/
+theorem gf_eq_norm (ξ θ : Pl) (hθ : ‖θ‖ = 1) (ρ : ℝ) :
+    gf (inner ℝ ξ θ) ‖ξ‖ ρ = ‖ξ - ρ • θ‖ := by
+  have hsq : ‖ξ - ρ • θ‖ ^ 2 = qf (inner ℝ ξ θ) ‖ξ‖ ρ := by
+    rw [qf, norm_sub_sq_real, real_inner_smul_right, norm_smul, hθ, mul_one,
+      Real.norm_eq_abs, sq_abs]
+    ring
+  rw [gf, ← hsq, Real.sqrt_sq (norm_nonneg _)]
+
+theorem tauf_eq_phase (ξ θ : Pl) (hθ : ‖θ‖ = 1) {ρ : ℝ} (hρ : 0 ≤ ρ) :
+    tauf (inner ℝ ξ θ) ‖ξ‖ ρ = ‖ξ - ρ • θ‖ + ‖ρ • θ‖ := by
+  rw [tauf, gf_eq_norm ξ θ hθ, norm_smul, hθ, mul_one, Real.norm_eq_abs, abs_of_nonneg hρ]
+
+end Frame
+
+
+/-! ## The amplitude after two integrations by parts
+
+All four combinations of phase derivatives that occur are bounded by powers of `g` over the
+discriminant `D`.
+-/
+
+section CfunBound
+
+variable {a R : ℝ}
+
+theorem inv_tauf1_le' (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    (tauf1 a R ρ)⁻¹ ≤ 2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) := inv_tauf1_le hD ρ
+
+theorem ratio2_le (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    |tauf2 a R ρ| / tauf1 a R ρ ^ 2 ≤ 4 * gf a R ρ / (R ^ 2 - a ^ 2) := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hT : 0 < tauf1 a R ρ := tauf1_pos hD ρ
+  have h2 := tauf2_abs_le hD ρ
+  have hP := inv_tauf1_le hD ρ
+  have hstep : |tauf2 a R ρ| / tauf1 a R ρ ^ 2 ≤ (2 / gf a R ρ) * (tauf1 a R ρ)⁻¹ := by
+    rw [div_le_iff₀ (by positivity : (0 : ℝ) < tauf1 a R ρ ^ 2)]
+    have hexp : 2 / gf a R ρ * (tauf1 a R ρ)⁻¹ * tauf1 a R ρ ^ 2
+        = 2 / gf a R ρ * tauf1 a R ρ := by
+      field_simp
+    rw [hexp]
+    exact h2
+  refine le_trans hstep ?_
+  have hmul : (2 / gf a R ρ) * (tauf1 a R ρ)⁻¹
+      ≤ (2 / gf a R ρ) * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul_of_nonneg_left hP (by positivity)
+  refine le_trans hmul (le_of_eq ?_)
+  field_simp
+  ring
+
+theorem ratio3_le (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    |tauf3 a R ρ| / tauf1 a R ρ ^ 2 ≤ 12 / (R ^ 2 - a ^ 2) := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hT : 0 < tauf1 a R ρ := tauf1_pos hD ρ
+  have h3 := tauf3_abs_le hD ρ
+  have hP := inv_tauf1_le hD ρ
+  have hstep : |tauf3 a R ρ| / tauf1 a R ρ ^ 2 ≤ (6 / gf a R ρ ^ 2) * (tauf1 a R ρ)⁻¹ := by
+    rw [div_le_iff₀ (by positivity : (0 : ℝ) < tauf1 a R ρ ^ 2)]
+    have hexp : 6 / gf a R ρ ^ 2 * (tauf1 a R ρ)⁻¹ * tauf1 a R ρ ^ 2
+        = 6 / gf a R ρ ^ 2 * tauf1 a R ρ := by
+      field_simp
+    rw [hexp]
+    exact h3
+  refine le_trans hstep ?_
+  have hmul : (6 / gf a R ρ ^ 2) * (tauf1 a R ρ)⁻¹
+      ≤ (6 / gf a R ρ ^ 2) * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul_of_nonneg_left hP (by positivity)
+  refine le_trans hmul (le_of_eq ?_)
+  field_simp
+  ring
+
+theorem ratio22_le (hD : 0 < R ^ 2 - a ^ 2) (ρ : ℝ) :
+    |tauf2 a R ρ| ^ 2 / tauf1 a R ρ ^ 3 ≤ 8 / (R ^ 2 - a ^ 2) := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hT : 0 < tauf1 a R ρ := tauf1_pos hD ρ
+  have h2 := tauf2_abs_le hD ρ
+  have hP := inv_tauf1_le hD ρ
+  have hsq : |tauf2 a R ρ| ^ 2 ≤ (2 / gf a R ρ) ^ 2 * tauf1 a R ρ ^ 2 := by
+    have hnn : (0 : ℝ) ≤ 2 / gf a R ρ * tauf1 a R ρ := by positivity
+    nlinarith [h2, abs_nonneg (tauf2 a R ρ)]
+  have hstep : |tauf2 a R ρ| ^ 2 / tauf1 a R ρ ^ 3
+      ≤ (2 / gf a R ρ) ^ 2 * (tauf1 a R ρ)⁻¹ := by
+    rw [div_le_iff₀ (by positivity : (0 : ℝ) < tauf1 a R ρ ^ 3)]
+    have hexp : (2 / gf a R ρ) ^ 2 * (tauf1 a R ρ)⁻¹ * tauf1 a R ρ ^ 3
+        = (2 / gf a R ρ) ^ 2 * tauf1 a R ρ ^ 2 := by
+      field_simp
+    rw [hexp]
+    exact hsq
+  refine le_trans hstep ?_
+  have hmul : (2 / gf a R ρ) ^ 2 * (tauf1 a R ρ)⁻¹
+      ≤ (2 / gf a R ρ) ^ 2 * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul_of_nonneg_left hP (by positivity)
+  refine le_trans hmul (le_of_eq ?_)
+  field_simp
+  ring
+
+theorem norm_bfun_le (hD : 0 < R ^ 2 - a ^ 2) {A A1 : ℝ → ℂ} (ρ : ℝ) {MA MA1 : ℝ}
+    (hA : ‖A ρ‖ ≤ MA) (hA1 : ‖A1 ρ‖ ≤ MA1) (hMA : 0 ≤ MA) (hMA1 : 0 ≤ MA1) :
+    ‖bfun a R A A1 ρ‖
+      ≤ 2 * MA1 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) + 4 * MA * gf a R ρ / (R ^ 2 - a ^ 2) := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hT : 0 < tauf1 a R ρ := tauf1_pos hD ρ
+  have hTne : (tauf1 a R ρ : ℂ) ≠ 0 := cT_ne hD ρ
+  have hn1 : ‖A1 ρ / (tauf1 a R ρ : ℂ)‖ = ‖A1 ρ‖ * (tauf1 a R ρ)⁻¹ := by
+    rw [norm_div, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hT, div_eq_mul_inv]
+  have hn2 : ‖A ρ * (tauf2 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖
+      = ‖A ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2) := by
+    rw [norm_div, norm_mul, Complex.norm_real, Real.norm_eq_abs, norm_pow, Complex.norm_real,
+      Real.norm_eq_abs, abs_of_pos hT]
+    ring
+  calc ‖bfun a R A A1 ρ‖
+      ≤ ‖A1 ρ / (tauf1 a R ρ : ℂ)‖ + ‖A ρ * (tauf2 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖ := by
+        rw [bfun]; exact norm_sub_le _ _
+    _ = ‖A1 ρ‖ * (tauf1 a R ρ)⁻¹ + ‖A ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2) := by
+        rw [hn1, hn2]
+    _ ≤ MA1 * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) + MA * (4 * gf a R ρ / (R ^ 2 - a ^ 2)) := by
+        refine add_le_add ?_ ?_
+        · exact mul_le_mul hA1 (inv_tauf1_le hD ρ) (by positivity) hMA1
+        · exact mul_le_mul hA (ratio2_le hD ρ) (by positivity) hMA
+    _ = 2 * MA1 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)
+          + 4 * MA * gf a R ρ / (R ^ 2 - a ^ 2) := by ring
+
+theorem norm_bfun1_le (hD : 0 < R ^ 2 - a ^ 2) {A A1 A2 : ℝ → ℂ} (ρ : ℝ) {MA MA1 MA2 : ℝ}
+    (hA : ‖A ρ‖ ≤ MA) (hA1 : ‖A1 ρ‖ ≤ MA1) (hA2 : ‖A2 ρ‖ ≤ MA2)
+    (hMA : 0 ≤ MA) (hMA1 : 0 ≤ MA1) (hMA2 : 0 ≤ MA2) :
+    ‖bfun1 a R A A1 A2 ρ‖
+      ≤ 2 * MA2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) + 8 * MA1 * gf a R ρ / (R ^ 2 - a ^ 2)
+        + 28 * MA / (R ^ 2 - a ^ 2) := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hT : 0 < tauf1 a R ρ := tauf1_pos hD ρ
+  have habsT : |tauf1 a R ρ| = tauf1 a R ρ := abs_of_pos hT
+  have hn1 : ‖A2 ρ / (tauf1 a R ρ : ℂ)‖ = ‖A2 ρ‖ * (tauf1 a R ρ)⁻¹ := by
+    rw [norm_div, Complex.norm_real, Real.norm_eq_abs, habsT, div_eq_mul_inv]
+  have hn2 : ‖2 * A1 ρ * (tauf2 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖
+      = 2 * ‖A1 ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2) := by
+    rw [norm_div, norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs, norm_pow,
+      Complex.norm_real, Real.norm_eq_abs, habsT]
+    norm_num
+    ring
+  have hn3 : ‖A ρ * (tauf3 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖
+      = ‖A ρ‖ * (|tauf3 a R ρ| / tauf1 a R ρ ^ 2) := by
+    rw [norm_div, norm_mul, Complex.norm_real, Real.norm_eq_abs, norm_pow, Complex.norm_real,
+      Real.norm_eq_abs, habsT]
+    ring
+  have hn4 : ‖2 * A ρ * (tauf2 a R ρ : ℂ) ^ 2 / (tauf1 a R ρ : ℂ) ^ 3‖
+      = 2 * ‖A ρ‖ * (|tauf2 a R ρ| ^ 2 / tauf1 a R ρ ^ 3) := by
+    rw [norm_div, norm_mul, norm_mul, norm_pow, Complex.norm_real, Real.norm_eq_abs, norm_pow,
+      Complex.norm_real, Real.norm_eq_abs, habsT]
+    norm_num
+    ring
+  have hsplit : ‖bfun1 a R A A1 A2 ρ‖
+      ≤ ‖A2 ρ / (tauf1 a R ρ : ℂ)‖
+        + ‖2 * A1 ρ * (tauf2 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖
+        + ‖A ρ * (tauf3 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖
+        + ‖2 * A ρ * (tauf2 a R ρ : ℂ) ^ 2 / (tauf1 a R ρ : ℂ) ^ 3‖ := by
+    rw [bfun1]
+    refine le_trans (norm_add_le _ _) ?_
+    refine add_le_add ?_ (le_refl _)
+    refine le_trans (norm_sub_le _ _) ?_
+    refine add_le_add ?_ (le_refl _)
+    exact norm_sub_le _ _
+  refine le_trans hsplit ?_
+  rw [hn1, hn2, hn3, hn4]
+  have hb1 : ‖A2 ρ‖ * (tauf1 a R ρ)⁻¹ ≤ MA2 * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul hA2 (inv_tauf1_le hD ρ) (by positivity) hMA2
+  have hb2 : 2 * ‖A1 ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2)
+      ≤ 2 * MA1 * (4 * gf a R ρ / (R ^ 2 - a ^ 2)) := by
+    refine mul_le_mul (by linarith) (ratio2_le hD ρ) (by positivity) (by linarith)
+  have hb3 : ‖A ρ‖ * (|tauf3 a R ρ| / tauf1 a R ρ ^ 2) ≤ MA * (12 / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul hA (ratio3_le hD ρ) (by positivity) hMA
+  have hb4 : 2 * ‖A ρ‖ * (|tauf2 a R ρ| ^ 2 / tauf1 a R ρ ^ 3)
+      ≤ 2 * MA * (8 / (R ^ 2 - a ^ 2)) := by
+    refine mul_le_mul (by linarith) (ratio22_le hD ρ) (by positivity) (by linarith)
+  have hgoal : MA2 * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) + 2 * MA1 * (4 * gf a R ρ / (R ^ 2 - a ^ 2))
+      + MA * (12 / (R ^ 2 - a ^ 2)) + 2 * MA * (8 / (R ^ 2 - a ^ 2))
+      = 2 * MA2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) + 8 * MA1 * gf a R ρ / (R ^ 2 - a ^ 2)
+        + 28 * MA / (R ^ 2 - a ^ 2) := by
+    field_simp
+    ring
+  linarith [hb1, hb2, hb3, hb4, hgoal]
+
+theorem norm_cfun_le (hD : 0 < R ^ 2 - a ^ 2) {A A1 A2 : ℝ → ℂ} (ρ : ℝ) {MA MA1 MA2 : ℝ}
+    (hA : ‖A ρ‖ ≤ MA) (hA1 : ‖A1 ρ‖ ≤ MA1) (hA2 : ‖A2 ρ‖ ≤ MA2)
+    (hMA : 0 ≤ MA) (hMA1 : 0 ≤ MA1) (hMA2 : 0 ≤ MA2) :
+    ‖cfun a R A A1 A2 ρ‖
+      ≤ (4 * MA2 * gf a R ρ ^ 4 + 24 * MA1 * gf a R ρ ^ 3 + 72 * MA * gf a R ρ ^ 2)
+          / (R ^ 2 - a ^ 2) ^ 2 := by
+  have hgpos : 0 < gf a R ρ := gf_pos hD ρ
+  have hT : 0 < tauf1 a R ρ := tauf1_pos hD ρ
+  have habsT : |tauf1 a R ρ| = tauf1 a R ρ := abs_of_pos hT
+  have hb := norm_bfun_le hD ρ hA hA1 hMA hMA1
+  have hb1 := norm_bfun1_le hD ρ hA hA1 hA2 hMA hMA1 hMA2
+  have hn1 : ‖bfun1 a R A A1 A2 ρ / (tauf1 a R ρ : ℂ)‖
+      = ‖bfun1 a R A A1 A2 ρ‖ * (tauf1 a R ρ)⁻¹ := by
+    rw [norm_div, Complex.norm_real, Real.norm_eq_abs, habsT, div_eq_mul_inv]
+  have hn2 : ‖bfun a R A A1 ρ * (tauf2 a R ρ : ℂ) / (tauf1 a R ρ : ℂ) ^ 2‖
+      = ‖bfun a R A A1 ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2) := by
+    rw [norm_div, norm_mul, Complex.norm_real, Real.norm_eq_abs, norm_pow, Complex.norm_real,
+      Real.norm_eq_abs, habsT]
+    ring
+  have hsplit : ‖cfun a R A A1 A2 ρ‖
+      ≤ ‖bfun1 a R A A1 A2 ρ‖ * (tauf1 a R ρ)⁻¹
+        + ‖bfun a R A A1 ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2) := by
+    rw [cfun, ← hn1, ← hn2]
+    exact norm_sub_le _ _
+  have hnn1 : (0 : ℝ) ≤ 2 * MA2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)
+      + 8 * MA1 * gf a R ρ / (R ^ 2 - a ^ 2) + 28 * MA / (R ^ 2 - a ^ 2) := by positivity
+  have hnn2 : (0 : ℝ) ≤ 2 * MA1 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)
+      + 4 * MA * gf a R ρ / (R ^ 2 - a ^ 2) := by positivity
+  have hstep1 : ‖bfun1 a R A A1 A2 ρ‖ * (tauf1 a R ρ)⁻¹
+      ≤ (2 * MA2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)
+          + 8 * MA1 * gf a R ρ / (R ^ 2 - a ^ 2) + 28 * MA / (R ^ 2 - a ^ 2))
+        * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul hb1 (inv_tauf1_le hD ρ) (by positivity) hnn1
+  have hstep2 : ‖bfun a R A A1 ρ‖ * (|tauf2 a R ρ| / tauf1 a R ρ ^ 2)
+      ≤ (2 * MA1 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) + 4 * MA * gf a R ρ / (R ^ 2 - a ^ 2))
+        * (4 * gf a R ρ / (R ^ 2 - a ^ 2)) :=
+    mul_le_mul hb (ratio2_le hD ρ) (by positivity) hnn2
+  have hid : (2 * MA2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2)
+        + 8 * MA1 * gf a R ρ / (R ^ 2 - a ^ 2) + 28 * MA / (R ^ 2 - a ^ 2))
+      * (2 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2))
+      + (2 * MA1 * gf a R ρ ^ 2 / (R ^ 2 - a ^ 2) + 4 * MA * gf a R ρ / (R ^ 2 - a ^ 2))
+        * (4 * gf a R ρ / (R ^ 2 - a ^ 2))
+      = (4 * MA2 * gf a R ρ ^ 4 + 24 * MA1 * gf a R ρ ^ 3 + 72 * MA * gf a R ρ ^ 2)
+          / (R ^ 2 - a ^ 2) ^ 2 := by
+    have hDne : (R ^ 2 - a ^ 2) ≠ 0 := hD.ne'
+    field_simp
+    ring
+  linarith [hsplit, hstep1, hstep2, hid]
+
+end CfunBound
+
+
+
+/-! ## The amplitude of the Gram integral along a ray
+
+Along the ray of direction `φ` the Gram integrand is `b(t,ξ,·) · conj b(t',ξ,·)` times the polar
+Jacobian `ρ`.  Its first two derivatives are written out explicitly.
+-/
+
+section Amplitude
+
+/-- The product of two symbols along a ray, the second one conjugated. -/
+def cprod (u v : ℝ → ℂ) (ρ : ℝ) : ℂ := u ρ * (starRingEnd ℂ) (v ρ)
+
+/-- Its first derivative. -/
+def cprod1 (u u1 v v1 : ℝ → ℂ) (ρ : ℝ) : ℂ :=
+  u1 ρ * (starRingEnd ℂ) (v ρ) + u ρ * (starRingEnd ℂ) (v1 ρ)
+
+/-- Its second derivative. -/
+def cprod2 (u u1 u2 v v1 v2 : ℝ → ℂ) (ρ : ℝ) : ℂ :=
+  u2 ρ * (starRingEnd ℂ) (v ρ) + 2 * (u1 ρ * (starRingEnd ℂ) (v1 ρ))
+    + u ρ * (starRingEnd ℂ) (v2 ρ)
+
+theorem hasDerivAt_conj {v v1 : ℝ → ℂ} (hv : ∀ ρ, HasDerivAt v (v1 ρ) ρ) (ρ : ℝ) :
+    HasDerivAt (fun y => (starRingEnd ℂ) (v y)) ((starRingEnd ℂ) (v1 ρ)) ρ := by
+  have h := HasDerivAt.star (hv ρ)
+  exact h
+
+theorem hasDerivAt_cprod {u u1 v v1 : ℝ → ℂ}
+    (hu : ∀ ρ, HasDerivAt u (u1 ρ) ρ) (hv : ∀ ρ, HasDerivAt v (v1 ρ) ρ) (ρ : ℝ) :
+    HasDerivAt (cprod u v) (cprod1 u u1 v v1 ρ) ρ :=
+  (hu ρ).mul (hasDerivAt_conj hv ρ)
+
+theorem hasDerivAt_cprod1 {u u1 u2 v v1 v2 : ℝ → ℂ}
+    (hu : ∀ ρ, HasDerivAt u (u1 ρ) ρ) (hu1 : ∀ ρ, HasDerivAt u1 (u2 ρ) ρ)
+    (hv : ∀ ρ, HasDerivAt v (v1 ρ) ρ) (hv1 : ∀ ρ, HasDerivAt v1 (v2 ρ) ρ) (ρ : ℝ) :
+    HasDerivAt (cprod1 u u1 v v1) (cprod2 u u1 u2 v v1 v2 ρ) ρ := by
+  have h1 := (hu1 ρ).mul (hasDerivAt_conj hv ρ)
+  have h2 := (hu ρ).mul (hasDerivAt_conj hv1 ρ)
+  have h := h1.add h2
+  have heq : u2 ρ * (starRingEnd ℂ) (v ρ) + u1 ρ * (starRingEnd ℂ) (v1 ρ)
+      + (u1 ρ * (starRingEnd ℂ) (v1 ρ) + u ρ * (starRingEnd ℂ) (v2 ρ))
+      = cprod2 u u1 u2 v v1 v2 ρ := by
+    rw [cprod2]
+    ring
+  rw [heq] at h
+  exact h
+
+theorem continuous_cprod2 {u u1 u2 v v1 v2 : ℝ → ℂ}
+    (hu : Continuous u) (hu1 : Continuous u1) (hu2 : Continuous u2)
+    (hv : Continuous v) (hv1 : Continuous v1) (hv2 : Continuous v2) :
+    Continuous (cprod2 u u1 u2 v v1 v2) := by
+  refine Continuous.add (Continuous.add ?_ ?_) ?_
+  · exact hu2.mul (Complex.continuous_conj.comp hv)
+  · exact continuous_const.mul (hu1.mul (Complex.continuous_conj.comp hv1))
+  · exact hu.mul (Complex.continuous_conj.comp hv2)
+
+theorem norm_cprod_le {u v : ℝ → ℂ} {Bu Bv : ℝ} (ρ : ℝ)
+    (hu : ‖u ρ‖ ≤ Bu) (hv : ‖v ρ‖ ≤ Bv) (hBu : 0 ≤ Bu) :
+    ‖cprod u v ρ‖ ≤ Bu * Bv := by
+  rw [cprod, norm_mul, RCLike.norm_conj]
+  exact mul_le_mul hu hv (norm_nonneg _) hBu
+
+theorem norm_cprod1_le {u u1 v v1 : ℝ → ℂ} {Bu Bu1 Bv Bv1 : ℝ} (ρ : ℝ)
+    (hu : ‖u ρ‖ ≤ Bu) (hu1 : ‖u1 ρ‖ ≤ Bu1) (hv : ‖v ρ‖ ≤ Bv) (hv1 : ‖v1 ρ‖ ≤ Bv1)
+    (hBu : 0 ≤ Bu) (hBu1 : 0 ≤ Bu1) :
+    ‖cprod1 u u1 v v1 ρ‖ ≤ Bu1 * Bv + Bu * Bv1 := by
+  rw [cprod1]
+  refine le_trans (norm_add_le _ _) ?_
+  refine add_le_add ?_ ?_
+  · rw [norm_mul, RCLike.norm_conj]
+    exact mul_le_mul hu1 hv (norm_nonneg _) hBu1
+  · rw [norm_mul, RCLike.norm_conj]
+    exact mul_le_mul hu hv1 (norm_nonneg _) hBu
+
+theorem norm_cprod2_le {u u1 u2 v v1 v2 : ℝ → ℂ} {Bu Bu1 Bu2 Bv Bv1 Bv2 : ℝ} (ρ : ℝ)
+    (hu : ‖u ρ‖ ≤ Bu) (hu1 : ‖u1 ρ‖ ≤ Bu1) (hu2 : ‖u2 ρ‖ ≤ Bu2)
+    (hv : ‖v ρ‖ ≤ Bv) (hv1 : ‖v1 ρ‖ ≤ Bv1) (hv2 : ‖v2 ρ‖ ≤ Bv2)
+    (hBu : 0 ≤ Bu) (hBu1 : 0 ≤ Bu1) (hBu2 : 0 ≤ Bu2) :
+    ‖cprod2 u u1 u2 v v1 v2 ρ‖ ≤ Bu2 * Bv + 2 * (Bu1 * Bv1) + Bu * Bv2 := by
+  rw [cprod2]
+  refine le_trans (norm_add_le _ _) ?_
+  refine add_le_add (le_trans (norm_add_le _ _) (add_le_add ?_ ?_)) ?_
+  · rw [norm_mul, RCLike.norm_conj]
+    exact mul_le_mul hu2 hv (norm_nonneg _) hBu2
+  · rw [norm_mul, norm_mul, RCLike.norm_conj]
+    norm_num
+    exact mul_le_mul hu1 hv1 (norm_nonneg _) hBu1
+  · rw [norm_mul, RCLike.norm_conj]
+    exact mul_le_mul hu hv2 (norm_nonneg _) hBu
+
+/-- The polar amplitude `ρ ↦ ρ · c ρ`. -/
+def ampl (c : ℝ → ℂ) (ρ : ℝ) : ℂ := (ρ : ℂ) * c ρ
+
+/-- Its first derivative. -/
+def ampl1 (c c1 : ℝ → ℂ) (ρ : ℝ) : ℂ := c ρ + (ρ : ℂ) * c1 ρ
+
+/-- Its second derivative. -/
+def ampl2 (c1 c2 : ℝ → ℂ) (ρ : ℝ) : ℂ := 2 * c1 ρ + (ρ : ℂ) * c2 ρ
+
+theorem hasDerivAt_ofReal_id (ρ : ℝ) : HasDerivAt (fun y : ℝ => ((y : ℝ) : ℂ)) 1 ρ := by
+  have h := (hasDerivAt_id ρ).ofReal_comp
+  simpa using h
+
+theorem hasDerivAt_ampl {c c1 : ℝ → ℂ} (hc : ∀ ρ, HasDerivAt c (c1 ρ) ρ) (ρ : ℝ) :
+    HasDerivAt (ampl c) (ampl1 c c1 ρ) ρ := by
+  have h := (hasDerivAt_ofReal_id ρ).mul (hc ρ)
+  have heq : (1 : ℂ) * c ρ + (ρ : ℂ) * c1 ρ = ampl1 c c1 ρ := by
+    rw [ampl1]
+    ring
+  rw [heq] at h
+  exact h
+
+theorem hasDerivAt_ampl1 {c c1 c2 : ℝ → ℂ} (hc : ∀ ρ, HasDerivAt c (c1 ρ) ρ)
+    (hc1 : ∀ ρ, HasDerivAt c1 (c2 ρ) ρ) (ρ : ℝ) :
+    HasDerivAt (ampl1 c c1) (ampl2 c1 c2 ρ) ρ := by
+  have h := (hc ρ).add ((hasDerivAt_ofReal_id ρ).mul (hc1 ρ))
+  have heq : c1 ρ + ((1 : ℂ) * c1 ρ + (ρ : ℂ) * c2 ρ) = ampl2 c1 c2 ρ := by
+    rw [ampl2]
+    ring
+  rw [heq] at h
+  exact h
+
+theorem continuous_ampl2 {c1 c2 : ℝ → ℂ} (hc1 : Continuous c1) (hc2 : Continuous c2) :
+    Continuous (ampl2 c1 c2) :=
+  (continuous_const.mul hc1).add ((Complex.continuous_ofReal).mul hc2)
+
+theorem norm_ampl_le {c : ℝ → ℂ} {Bc M : ℝ} (ρ : ℝ) (hc : ‖c ρ‖ ≤ Bc) (hρ : |ρ| ≤ M)
+    (hM : 0 ≤ M) : ‖ampl c ρ‖ ≤ M * Bc := by
+  rw [ampl, norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  exact mul_le_mul hρ hc (norm_nonneg _) hM
+
+theorem norm_ampl1_le {c c1 : ℝ → ℂ} {Bc Bc1 M : ℝ} (ρ : ℝ) (hc : ‖c ρ‖ ≤ Bc)
+    (hc1 : ‖c1 ρ‖ ≤ Bc1) (hρ : |ρ| ≤ M) (hM : 0 ≤ M) :
+    ‖ampl1 c c1 ρ‖ ≤ Bc + M * Bc1 := by
+  rw [ampl1]
+  refine le_trans (norm_add_le _ _) (add_le_add hc ?_)
+  rw [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  exact mul_le_mul hρ hc1 (norm_nonneg _) hM
+
+theorem norm_ampl2_le {c1 c2 : ℝ → ℂ} {Bc1 Bc2 M : ℝ} (ρ : ℝ) (hc1 : ‖c1 ρ‖ ≤ Bc1)
+    (hc2 : ‖c2 ρ‖ ≤ Bc2) (hρ : |ρ| ≤ M) (hM : 0 ≤ M) :
+    ‖ampl2 c1 c2 ρ‖ ≤ 2 * Bc1 + M * Bc2 := by
+  rw [ampl2]
+  refine le_trans (norm_add_le _ _) (add_le_add ?_ ?_)
+  · rw [norm_mul]
+    norm_num
+    exact hc1
+  · rw [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+    exact mul_le_mul hρ hc2 (norm_nonneg _) hM
+
+end Amplitude
+
+
+/-! ## The angular support and its measure
+
+The set of polar angles that meet the support of a `(j,m)`-adapted symbol has measure
+`≲ 2^{-m}`.  This is the second source of the factor `2^{-m/2}` in §4.3.
+-/
+
+section Angular
+
+/-- The determinant of `ξ` against the unit vector of polar angle `φ`. -/
+def wfun (ξ : Pl) (φ : ℝ) : ℝ := ξ 0 * Real.sin φ - ξ 1 * Real.cos φ
+
+theorem det2_pt_one (ξ : Pl) (φ : ℝ) : det2 ξ (pt 1 φ) = wfun ξ φ := by
+  rw [det2, wfun, pt, mk2_apply_zero, mk2_apply_one]
+  ring
+
+theorem det2_smul_right (x y : Pl) (r : ℝ) : det2 x (r • y) = r * det2 x y := by
+  rw [det2, det2, PiLp.smul_apply, PiLp.smul_apply]
+  simp only [smul_eq_mul]
+  ring
+
+theorem hasDerivAt_wfun (ξ : Pl) (φ : ℝ) :
+    HasDerivAt (wfun ξ) (ξ 0 * Real.cos φ + ξ 1 * Real.sin φ) φ := by
+  have h1 : HasDerivAt (fun x : ℝ => ξ 0 * Real.sin x) (ξ 0 * Real.cos φ) φ :=
+    (Real.hasDerivAt_sin φ).const_mul _
+  have h2 : HasDerivAt (fun x : ℝ => ξ 1 * Real.cos x) (ξ 1 * (-Real.sin φ)) φ :=
+    (Real.hasDerivAt_cos φ).const_mul _
+  have h := h1.sub h2
+  have heq : ξ 0 * Real.cos φ - ξ 1 * -Real.sin φ = ξ 0 * Real.cos φ + ξ 1 * Real.sin φ := by
+    ring
+  rw [heq] at h
+  exact h
+
+theorem continuous_wfun (ξ : Pl) : Continuous (wfun ξ) :=
+  (continuous_const.mul Real.continuous_sin).sub (continuous_const.mul Real.continuous_cos)
+
+/-- A measurable set of polar angles containing all directions that meet the support. -/
+def AngSet (m : ℕ) (ξ : Pl) : Set ℝ :=
+  {φ | |wfun ξ φ| ≤ ‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ)) ∧ 0 < Real.cos φ ∧
+    Real.cos φ < (2 : ℝ) ^ (-(10 : ℤ)) ∧ 0 < Real.sin φ}
+
+theorem measurableSet_AngSet (m : ℕ) (ξ : Pl) : MeasurableSet (AngSet m ξ) := by
+  have h1 : MeasurableSet {φ : ℝ | |wfun ξ φ| ≤ ‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ))} :=
+    measurableSet_le (continuous_wfun ξ).abs.measurable measurable_const
+  have h2 : MeasurableSet {φ : ℝ | 0 < Real.cos φ} :=
+    measurableSet_lt measurable_const Real.continuous_cos.measurable
+  have h3 : MeasurableSet {φ : ℝ | Real.cos φ < (2 : ℝ) ^ (-(10 : ℤ))} :=
+    measurableSet_lt Real.continuous_cos.measurable measurable_const
+  have h4 : MeasurableSet {φ : ℝ | 0 < Real.sin φ} :=
+    measurableSet_lt measurable_const Real.continuous_sin.measurable
+  exact h1.inter (h2.inter (h3.inter h4))
+
+theorem mem_AngSet_of_mem_SuppSet {j m : ℕ} {ξ : Pl} {ρ φ : ℝ} (hρ : 0 < ρ)
+    (h : pt ρ φ ∈ SuppSet j m ξ) : φ ∈ AngSet m ξ := by
+  obtain ⟨hηT, -, hang⟩ := h
+  have hcoord0 : (pt ρ φ) 0 = ρ * Real.cos φ := by rw [pt, mk2_apply_zero]
+  have hcoord1 : (pt ρ φ) 1 = ρ * Real.sin φ := by rw [pt, mk2_apply_one]
+  have hc0 : 0 < Real.cos φ := by
+    have h := hηT.1
+    rw [hcoord0] at h
+    nlinarith [hρ]
+  have hs0 : 0 < Real.sin φ := by
+    have h := Theta.snd_pos hηT
+    rw [hcoord1] at h
+    nlinarith
+  have hcone : Real.cos φ < (2 : ℝ) ^ (-(10 : ℤ)) := by
+    have h := hηT.2.1
+    rw [hcoord0, hcoord1] at h
+    have h2 : Real.cos φ < (2 : ℝ) ^ (-(10 : ℤ)) * Real.sin φ := by
+      have hmul : ρ * Real.cos φ < ρ * ((2 : ℝ) ^ (-(10 : ℤ)) * Real.sin φ) := by
+        calc ρ * Real.cos φ < (2 : ℝ) ^ (-(10 : ℤ)) * (ρ * Real.sin φ) := h
+          _ = ρ * ((2 : ℝ) ^ (-(10 : ℤ)) * Real.sin φ) := by ring
+      exact lt_of_mul_lt_mul_left hmul hρ.le
+    have hsle : Real.sin φ ≤ 1 := Real.sin_le_one φ
+    have hc : (0 : ℝ) < (2 : ℝ) ^ (-(10 : ℤ)) := by positivity
+    nlinarith
+  refine ⟨?_, hc0, hcone, hs0⟩
+  -- the determinant bound
+  have hnorm : ‖pt ρ φ‖ = ρ := norm_pt ρ φ hρ.le
+  have hsm : pt ρ φ = ρ • pt 1 φ := pt_eq_smul ρ φ
+  have hdet : det2 ξ (pt ρ φ) = ρ * det2 ξ (pt 1 φ) := by
+    rw [hsm, det2_smul_right]
+  have hbound : |det2 ξ (pt ρ φ)| ≤ ‖ξ‖ * ρ * (2 : ℝ) ^ (5 - (m : ℤ)) := by
+    refine le_trans (abs_det2_le ξ (pt ρ φ)) ?_
+    rw [hnorm]
+    have hnn : (0 : ℝ) ≤ ‖ξ‖ * ρ := by positivity
+    exact mul_le_mul_of_nonneg_left hang hnn
+  rw [hdet, abs_mul, abs_of_pos hρ] at hbound
+  rw [det2_pt_one] at hbound
+  have hfin : ρ * |wfun ξ φ| ≤ ρ * (‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ))) := by
+    calc ρ * |wfun ξ φ| ≤ ‖ξ‖ * ρ * (2 : ℝ) ^ (5 - (m : ℤ)) := hbound
+      _ = ρ * (‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ))) := by ring
+  exact le_of_mul_le_mul_left hfin hρ
+
+theorem sin_half_lower : (2 : ℝ) / 5 < Real.sin (1 / 2) := by
+  have h := Real.sin_gt_sub_cube (show (0 : ℝ) < 1 / 2 by norm_num)
+  nlinarith [h]
+
+/-- The angular support is contained in a short interval on which `wfun` grows quickly. -/
+theorem AngSet_subset {m : ℕ} {ξ : Pl} :
+    AngSet m ξ ∩ Set.Ioo (-π) π ⊆ Set.Icc (1 / 2 : ℝ) (π / 2) := by
+  intro φ hφ
+  obtain ⟨⟨-, hc0, hcone, hs0⟩, hIoo⟩ := hφ
+  have hsin_ge : (1 : ℝ) / 2 ≤ Real.sin φ := by
+    have hcs := Real.sin_sq_add_cos_sq φ
+    have hnum : (2 : ℝ) ^ (-(10 : ℤ)) ≤ 1 / 2 := by
+      rw [zpow_neg]
+      norm_num
+    have hchalf : Real.cos φ < 1 / 2 := lt_of_lt_of_le hcone hnum
+    have hcsq : Real.cos φ ^ 2 < 1 / 4 := by nlinarith [hc0]
+    have hssq : (3 : ℝ) / 4 < Real.sin φ ^ 2 := by linarith
+    nlinarith [hs0, hssq]
+  refine ⟨?_, ?_⟩
+  · have hle : Real.sin φ ≤ φ ∨ φ < 0 := by
+      rcases le_or_gt 0 φ with h | h
+      · exact Or.inl (Real.sin_le h)
+      · exact Or.inr h
+    rcases hle with h | h
+    · linarith
+    · exfalso
+      have hneg : Real.sin φ ≤ 0 := by
+        have h1 : 0 ≤ -φ := by linarith
+        have h2 : -φ ≤ π := by linarith [hIoo.1]
+        have h3 : 0 ≤ Real.sin (-φ) := Real.sin_nonneg_of_nonneg_of_le_pi h1 h2
+        rw [Real.sin_neg] at h3
+        linarith
+      linarith
+  · by_contra hcon
+    push_neg at hcon
+    have hneg : Real.cos φ < 0 :=
+      Real.cos_neg_of_pi_div_two_lt_of_lt hcon (by linarith [hIoo.2, Real.pi_pos])
+    linarith
+
+theorem volume_AngSet_le {j m : ℕ} {ξ : Pl} (hξ : XiData j ξ) :
+    volume (AngSet m ξ ∩ Set.Ioo (-π) π) ≤ ENNReal.ofReal ((2 : ℝ) ^ (12 - (m : ℤ))) := by
+  classical
+  set I : Set ℝ := Set.Icc (1 / 2 : ℝ) (π / 2) with hIdef
+  have hsub := AngSet_subset (m := m) (ξ := ξ)
+  rcases Set.eq_empty_or_nonempty (AngSet m ξ ∩ Set.Ioo (-π) π) with hempty | ⟨φ₀, hφ₀⟩
+  · rw [hempty]
+    simp
+  -- the derivative of `wfun` is at least `(2/5) * ξ 1` on `I`
+  have hderiv : ∀ φ ∈ I, (2 / 5) * ξ 1 ≤ ξ 0 * Real.cos φ + ξ 1 * Real.sin φ := by
+    intro φ hφ
+    have hφ1 : (1 : ℝ) / 2 ≤ φ := hφ.1
+    have hφ2 : φ ≤ π / 2 := hφ.2
+    have hcnn : 0 ≤ Real.cos φ := Real.cos_nonneg_of_mem_Icc ⟨by linarith [Real.pi_pos], hφ2⟩
+    have hsin : (2 : ℝ) / 5 ≤ Real.sin φ := by
+      have hmono := Real.strictMonoOn_sin.monotoneOn
+        (a := (1 : ℝ) / 2) (b := φ)
+        ⟨by linarith [Real.pi_pos], by linarith⟩ ⟨by linarith [Real.pi_pos], hφ2⟩ hφ1
+      linarith [sin_half_lower]
+    have h0 : 0 ≤ ξ 0 * Real.cos φ := mul_nonneg hξ.cone0.le hcnn
+    nlinarith [hξ.snd_pos]
+  -- the mean value theorem on `I`
+  have hmvt : ∀ x ∈ I, ∀ y ∈ I, x ≤ y →
+      (2 / 5) * ξ 1 * (y - x) ≤ wfun ξ y - wfun ξ x := by
+    refine (convex_Icc _ _).mul_sub_le_image_sub_of_le_deriv ?_ ?_ ?_
+    · exact (continuous_wfun ξ).continuousOn
+    · exact fun x _ => (hasDerivAt_wfun ξ x).differentiableAt.differentiableWithinAt
+    · intro x hx
+      rw [(hasDerivAt_wfun ξ x).deriv]
+      exact hderiv x (interior_subset hx)
+  -- points of the angular support are close together
+  have hdiam : ∀ φ ∈ AngSet m ξ ∩ Set.Ioo (-π) π, |φ - φ₀| ≤ (2 : ℝ) ^ (11 - (m : ℤ)) := by
+    intro φ hφ
+    have hwφ : |wfun ξ φ| ≤ ‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ)) := hφ.1.1
+    have hwφ₀ : |wfun ξ φ₀| ≤ ‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ)) := hφ₀.1.1
+    have hbig : |wfun ξ φ - wfun ξ φ₀| ≤ 2 * (‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ))) := by
+      refine le_trans (abs_sub _ _) ?_
+      linarith [abs_sub_abs_le_abs_sub (wfun ξ φ) (wfun ξ φ₀)]
+    have hkey : (2 / 5) * ξ 1 * |φ - φ₀| ≤ |wfun ξ φ - wfun ξ φ₀| := by
+      rcases le_total φ₀ φ with hle | hle
+      · have h := hmvt φ₀ (hsub hφ₀) φ (hsub hφ) hle
+        rw [abs_of_nonneg (by linarith : (0:ℝ) ≤ φ - φ₀)]
+        refine le_trans (le_of_eq (by ring)) (le_trans h (le_abs_self _))
+      · have h := hmvt φ (hsub hφ) φ₀ (hsub hφ₀) hle
+        rw [abs_of_nonpos (by linarith : φ - φ₀ ≤ (0:ℝ))]
+        have h2 : (2 / 5) * ξ 1 * (φ₀ - φ) ≤ wfun ξ φ₀ - wfun ξ φ := h
+        have h3 : wfun ξ φ₀ - wfun ξ φ ≤ |wfun ξ φ - wfun ξ φ₀| := by
+          rw [abs_sub_comm]
+          exact le_abs_self _
+        calc (2 / 5) * ξ 1 * -(φ - φ₀) = (2 / 5) * ξ 1 * (φ₀ - φ) := by ring
+          _ ≤ wfun ξ φ₀ - wfun ξ φ := h2
+          _ ≤ |wfun ξ φ - wfun ξ φ₀| := h3
+    have hpos : (0 : ℝ) < (2 / 5) * ξ 1 := by
+      have := hξ.snd_pos
+      positivity
+    rw [← le_div_iff₀' hpos] at hkey
+    refine le_trans hkey ?_
+    rw [div_le_iff₀ hpos]
+    refine le_trans hbig ?_
+    have hc5 : (0 : ℝ) < (2 : ℝ) ^ (5 - (m : ℤ)) := by positivity
+    have hnorm := hξ.norm_le
+    have hlow := hξ.lower
+    have hA : 2 * (‖ξ‖ * (2 : ℝ) ^ (5 - (m : ℤ)))
+        ≤ 2 * ((2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ (5 - (m : ℤ))) := by
+      nlinarith [norm_nonneg ξ]
+    have hidA : 2 * ((2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ (5 - (m : ℤ)))
+        = 2 * (2 : ℝ) ^ ((j : ℤ) + 7 - (m : ℤ)) := by
+      congr 1
+      rw [← zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0)]
+      congr 1
+      ring
+    have hidB : (2 : ℝ) ^ (11 - (m : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 1)
+        = (2 : ℝ) ^ ((j : ℤ) + 10 - (m : ℤ)) := by
+      rw [← zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0)]
+      congr 1
+      ring
+    have hidC : (2 : ℝ) ^ ((j : ℤ) + 10 - (m : ℤ))
+        = 8 * (2 : ℝ) ^ ((j : ℤ) + 7 - (m : ℤ)) := by
+      rw [show (j : ℤ) + 10 - (m : ℤ) = 3 + ((j : ℤ) + 7 - (m : ℤ)) by ring,
+        zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0)]
+      norm_num
+    have hB : (2 : ℝ) ^ (11 - (m : ℤ)) * (2 / 5 * (2 : ℝ) ^ ((j : ℤ) - 1))
+        ≤ (2 : ℝ) ^ (11 - (m : ℤ)) * (2 / 5 * ξ 1) := by
+      have hc : (0 : ℝ) < (2 : ℝ) ^ (11 - (m : ℤ)) := by positivity
+      nlinarith
+    have hC : (2 : ℝ) ^ (11 - (m : ℤ)) * (2 / 5 * (2 : ℝ) ^ ((j : ℤ) - 1))
+        = 2 / 5 * (8 * (2 : ℝ) ^ ((j : ℤ) + 7 - (m : ℤ))) := by
+      rw [show (2 : ℝ) ^ (11 - (m : ℤ)) * (2 / 5 * (2 : ℝ) ^ ((j : ℤ) - 1))
+          = 2 / 5 * ((2 : ℝ) ^ (11 - (m : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 1)) from by ring,
+        hidB, hidC]
+    have hpos7 : (0 : ℝ) < (2 : ℝ) ^ ((j : ℤ) + 7 - (m : ℤ)) := by positivity
+    linarith [hA, hidA, hB, hC, hpos7]
+  -- hence the angular support lies in an interval of length `2 ^ (12 - m)`
+  have hincl : AngSet m ξ ∩ Set.Ioo (-π) π
+      ⊆ Set.Icc (φ₀ - (2 : ℝ) ^ (11 - (m : ℤ))) (φ₀ + (2 : ℝ) ^ (11 - (m : ℤ))) := by
+    intro φ hφ
+    have h := hdiam φ hφ
+    rw [abs_le] at h
+    exact ⟨by linarith [h.1], by linarith [h.2]⟩
+  refine le_trans (measure_mono hincl) ?_
+  rw [Real.volume_Icc]
+  refine ENNReal.ofReal_le_ofReal ?_
+  have hid : (2 : ℝ) ^ (12 - (m : ℤ)) = 2 * (2 : ℝ) ^ (11 - (m : ℤ)) := by
+    rw [show (12 : ℤ) - (m : ℤ) = 1 + (11 - (m : ℤ)) by ring,
+      zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0), zpow_one]
+  rw [hid]
+  linarith
+
+end Angular
+
+
+/-! ## The discriminant is bounded below on the strict angular support -/
+
+section StrictAngular
+
+/-- Angles meeting the support of a *strictly* adapted symbol: the determinant is also bounded
+below, which is exactly the nondegeneracy of the elliptic phase. -/
+def AngSetStrict (m : ℕ) (ξ : Pl) : Set ℝ :=
+  {φ | φ ∈ AngSet m ξ ∧ ‖ξ‖ * (2 : ℝ) ^ (-(m : ℤ) - 6) ≤ |wfun ξ φ|}
+
+theorem mem_AngSetStrict_of_mem {j m : ℕ} {ξ : Pl} {ρ φ : ℝ} (hρ : 0 < ρ)
+    (hξ : XiData j ξ) (h : pt ρ φ ∈ SuppSetStrict j m ξ) : φ ∈ AngSetStrict m ξ := by
+  refine ⟨mem_AngSet_of_mem_SuppSet hρ h.1, ?_⟩
+  obtain ⟨⟨hηT, -, -⟩, hlow⟩ := h
+  -- the angle is small, hence its sine is comparable to it
+  have hcone := angle_le_of_cone hξ.cone0 hξ.snd_pos hξ.cone hηT.1 (Theta.snd_pos hηT) hηT.2.1
+  have hang0 : 0 ≤ InnerProductGeometry.angle ξ (pt ρ φ) :=
+    InnerProductGeometry.angle_nonneg _ _
+  have hle : (2 : ℝ) ^ (-(9 : ℤ)) ≤ π / 2 := by
+    have h1 : (1 : ℝ) ≤ π / 2 := Real.one_le_pi_div_two
+    have h2 : (2 : ℝ) ^ (-(9 : ℤ)) ≤ 1 := by
+      rw [zpow_neg]
+      norm_num
+    linarith
+  have hsin : (1 : ℝ) / 2 * InnerProductGeometry.angle ξ (pt ρ φ)
+      ≤ Real.sin (InnerProductGeometry.angle ξ (pt ρ φ)) := by
+    have h := Real.mul_le_sin hang0 (le_trans hcone hle)
+    have hπ : (2 : ℝ) / π ≥ 1 / 2 := by
+      rw [ge_iff_le, div_le_div_iff₀ (by norm_num) Real.pi_pos]
+      linarith [Real.pi_le_four]
+    nlinarith [h, hang0]
+  have hsinlow : (2 : ℝ) ^ (-(m : ℤ) - 6)
+      ≤ Real.sin (InnerProductGeometry.angle ξ (pt ρ φ)) := by
+    refine le_trans ?_ hsin
+    have hid : (2 : ℝ) ^ (-(m : ℤ) - 5) = 2 * (2 : ℝ) ^ (-(m : ℤ) - 6) := by
+      rw [show -(m : ℤ) - 5 = 1 + (-(m : ℤ) - 6) by ring,
+        zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0), zpow_one]
+    rw [hid] at hlow
+    linarith
+  -- the angle of `ξ` with the unit direction is the same
+  have hsm : pt ρ φ = ρ • pt 1 φ := pt_eq_smul ρ φ
+  have hangeq : InnerProductGeometry.angle ξ (pt ρ φ) = InnerProductGeometry.angle ξ (pt 1 φ) := by
+    rw [hsm]
+    exact InnerProductGeometry.angle_smul_right_of_pos ξ (pt 1 φ) hρ
+  rw [hangeq] at hsinlow
+  -- convert the sine into the determinant
+  have hnorm1 : ‖pt 1 φ‖ = 1 := norm_pt_one φ
+  have hkey := sin_angle_eq ξ (pt 1 φ)
+  rw [hnorm1, mul_one, det2_pt_one] at hkey
+  have hnn : (0 : ℝ) ≤ ‖ξ‖ := norm_nonneg ξ
+  calc ‖ξ‖ * (2 : ℝ) ^ (-(m : ℤ) - 6)
+      ≤ ‖ξ‖ * Real.sin (InnerProductGeometry.angle ξ (pt 1 φ)) :=
+        mul_le_mul_of_nonneg_left hsinlow hnn
+    _ = |wfun ξ φ| := by rw [← hkey]; ring
+
+/-- The discriminant of the elliptic phase is at least `2^{2j - 2m - 14}`. -/
+theorem disc_lower {j m : ℕ} {ξ : Pl} (hξ : XiData j ξ) {φ : ℝ}
+    (hφ : φ ∈ AngSetStrict m ξ) :
+    (2 : ℝ) ^ (2 * (j : ℤ) - 2 * (m : ℤ) - 14)
+      ≤ ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 := by
+  have hnorm1 : ‖pt 1 φ‖ = 1 := norm_pt_one φ
+  have hlag := lagrange ξ (pt 1 φ)
+  rw [hnorm1] at hlag
+  simp only [one_pow, mul_one] at hlag
+  -- `det² = R² - a²`
+  have hdet : |wfun ξ φ| ^ 2 = ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 := by
+    rw [sq_abs, ← det2_pt_one]
+    exact hlag
+  rw [← hdet]
+  have hlow := hφ.2
+  have hR := hξ.norm_lower
+  have hstep : (2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ (-(m : ℤ) - 6) ≤ |wfun ξ φ| := by
+    refine le_trans ?_ hlow
+    have hc : (0 : ℝ) < (2 : ℝ) ^ (-(m : ℤ) - 6) := by positivity
+    nlinarith
+  have hid : (2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ (-(m : ℤ) - 6)
+      = (2 : ℝ) ^ ((j : ℤ) - (m : ℤ) - 7) := by
+    rw [← zpow_add₀ (two_ne_zero : (2 : ℝ) ≠ 0)]
+    congr 1
+    ring
+  rw [hid] at hstep
+  have hpos : (0 : ℝ) < (2 : ℝ) ^ ((j : ℤ) - (m : ℤ) - 7) := by positivity
+  have hsq : ((2 : ℝ) ^ ((j : ℤ) - (m : ℤ) - 7)) ^ 2 ≤ |wfun ξ φ| ^ 2 := by
+    exact pow_le_pow_left₀ hpos.le hstep 2
+  refine le_trans (le_of_eq ?_) hsq
+  rw [← zpow_natCast ((2 : ℝ) ^ ((j : ℤ) - (m : ℤ) - 7)) 2, ← zpow_mul]
+  congr 1
+  push_cast
+  ring
+
+theorem disc_pos {j m : ℕ} {ξ : Pl} (hξ : XiData j ξ) {φ : ℝ}
+    (hφ : φ ∈ AngSetStrict m ξ) :
+    0 < ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 :=
+  lt_of_lt_of_le (by positivity) (disc_lower hξ hφ)
+
+end StrictAngular
+
+
+/-! ## The symbol along rays
+
+The hypotheses of Proposition 4.2 on the symbol, written along rays: `|∂_ρ^N b(t,ξ,ρθ)| ≤ B 2^{-jN}`
+for `N = 0, 1, 2`, which is the paper's `|⟨η/|η|, ∇⟩^N b| ≤ B 2^{-jN}`.
+-/
+
+section RaySymbol
+
+theorem norm_pt_abs (ρ φ : ℝ) : ‖pt ρ φ‖ = |ρ| := by
+  have hsq : ‖pt ρ φ‖ ^ 2 = ρ ^ 2 := by
+    rw [pt, norm_mk2_sq]
+    have := Real.sin_sq_add_cos_sq φ
+    nlinarith
+  rw [← Real.sqrt_sq_eq_abs, ← hsq, Real.sqrt_sq (norm_nonneg _)]
+
+/-- The radii at which the ray leaves the annulus of `Θ_j`; an open set. -/
+def OutAnn (j : ℕ) : Set ℝ :=
+  {r : ℝ | |r| < (2 : ℝ) ^ ((j : ℤ) - 1)} ∪ {r : ℝ | (2 : ℝ) ^ ((j : ℤ) + 1) < |r|}
+
+theorem isOpen_OutAnn (j : ℕ) : IsOpen (OutAnn j) := by
+  refine IsOpen.union ?_ ?_
+  · exact isOpen_lt continuous_abs continuous_const
+  · exact isOpen_lt continuous_const continuous_abs
+
+theorem symbol_ray_eq_zero {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} (hb : IsStrictlyAdapted j m b)
+    (t : ℝ) (ξ : Pl) (φ : ℝ) {ρ : ℝ} (hρ : ρ ∈ OutAnn j) : b t ξ (pt ρ φ) = 0 := by
+  refine hb.supp t ξ (pt ρ φ) ?_
+  intro hmem
+  have hT : pt ρ φ ∈ Theta j := hmem.1.1
+  have h1 : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ |ρ| := by
+    have := hT.2.2.1
+    rwa [norm_pt_abs] at this
+  have h2 : |ρ| ≤ (2 : ℝ) ^ ((j : ℤ) + 1) := by
+    have := hT.2.2.2
+    rwa [norm_pt_abs] at this
+  rcases hρ with h | h
+  · exact absurd h (not_lt.mpr h1)
+  · exact absurd h (not_lt.mpr h2)
+
+theorem deriv_eq_zero_of_eventually_zero {u u1 : ℝ → ℂ} (hu : ∀ ρ, HasDerivAt u (u1 ρ) ρ)
+    {ρ : ℝ} (h : u =ᶠ[nhds ρ] 0) : u1 ρ = 0 := by
+  have h1 : HasDerivAt u 0 ρ := (hasDerivAt_const ρ (0 : ℂ)).congr_of_eventuallyEq h
+  exact (hu ρ).unique h1
+
+/-- The radial data of a symbol: values and the first two radial derivatives, with the bounds of
+Proposition 4.2. -/
+structure RayData (j : ℕ) (b : ℝ → Pl → Pl → ℂ) (B : ℝ)
+    (b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ) : Prop where
+  cont0 : ∀ t ξ, Continuous (b t ξ)
+  d1 : ∀ t ξ φ ρ, HasDerivAt (fun r => b t ξ (pt r φ)) (b1 t ξ φ ρ) ρ
+  d2 : ∀ t ξ φ ρ, HasDerivAt (b1 t ξ φ) (b2 t ξ φ ρ) ρ
+  cont2 : ∀ t ξ φ, Continuous (b2 t ξ φ)
+  bd0 : ∀ t ξ η, ‖b t ξ η‖ ≤ B
+  bd1 : ∀ t ξ φ ρ, ‖b1 t ξ φ ρ‖ ≤ B * (2 : ℝ) ^ (-(j : ℤ))
+  bd2 : ∀ t ξ φ ρ, ‖b2 t ξ φ ρ‖ ≤ B * (2 : ℝ) ^ (-2 * (j : ℤ))
+
+theorem ray_vanish {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+    (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (t : ℝ) (ξ : Pl) (φ : ℝ) {ρ : ℝ} (hρ : ρ ∈ OutAnn j) :
+    b t ξ (pt ρ φ) = 0 ∧ b1 t ξ φ ρ = 0 ∧ b2 t ξ φ ρ = 0 := by
+  have hzero : ∀ r ∈ OutAnn j, b t ξ (pt r φ) = 0 := fun r hr =>
+    symbol_ray_eq_zero hb t ξ φ hr
+  have hmem : ∀ r ∈ OutAnn j, (fun r => b t ξ (pt r φ)) =ᶠ[nhds r] 0 := by
+    intro r hr
+    refine Filter.eventuallyEq_of_mem ((isOpen_OutAnn j).mem_nhds hr) ?_
+    intro x hx
+    exact hzero x hx
+  have h1 : ∀ r ∈ OutAnn j, b1 t ξ φ r = 0 := fun r hr =>
+    deriv_eq_zero_of_eventually_zero (hray.d1 t ξ φ) (hmem r hr)
+  have hmem1 : (b1 t ξ φ) =ᶠ[nhds ρ] 0 := by
+    refine Filter.eventuallyEq_of_mem ((isOpen_OutAnn j).mem_nhds hρ) ?_
+    intro x hx
+    exact h1 x hx
+  exact ⟨hzero ρ hρ, h1 ρ hρ, deriv_eq_zero_of_eventually_zero (hray.d2 t ξ φ) hmem1⟩
+
+end RaySymbol
+
+
+/-! ## The numerical bookkeeping of §4.3
+
+With `P = 2^j` and `Q = 2^m` the amplitude bounds are `|A| ≤ 2 P B²`, `|A'| ≤ 5 B²`,
+`|A''| ≤ 12 B² / P`, while `g ≤ 8 P` and `D ≥ P² / (2^{14} Q²)`.  The bound on the twice
+integrated-by-parts amplitude is then `2^{47} B² Q⁴ / P`.
+-/
+
+section Numeric
+
+theorem cfun_numeric_bound {MA MA1 MA2 g D P Q Bv : ℝ}
+    (hP : 0 < P) (hQ : 0 < Q) (hBv : 0 ≤ Bv)
+    (hMA : MA ≤ 2 * P * Bv) (hMA1 : MA1 ≤ 5 * Bv) (hMA2 : MA2 ≤ 12 * Bv / P)
+    (hMAnn : 0 ≤ MA) (hMA1nn : 0 ≤ MA1) (hMA2nn : 0 ≤ MA2)
+    (hg : 0 < g) (hgle : g ≤ 8 * P) (hD : 0 < D)
+    (hDlow : P ^ 2 / (2 ^ 14 * Q ^ 2) ≤ D) :
+    (4 * MA2 * g ^ 4 + 24 * MA1 * g ^ 3 + 72 * MA * g ^ 2) / D ^ 2
+      ≤ 2 ^ 47 * Bv * Q ^ 4 / P := by
+  have hD2 : (0 : ℝ) < D ^ 2 := by positivity
+  rw [div_le_iff₀ hD2]
+  have hnum : 4 * MA2 * g ^ 4 + 24 * MA1 * g ^ 3 + 72 * MA * g ^ 2
+      ≤ 4 * (12 * Bv / P) * (8 * P) ^ 4 + 24 * (5 * Bv) * (8 * P) ^ 3
+        + 72 * (2 * P * Bv) * (8 * P) ^ 2 := by
+    gcongr <;> positivity
+  have hnum2 : 4 * (12 * Bv / P) * (8 * P) ^ 4 + 24 * (5 * Bv) * (8 * P) ^ 3
+      + 72 * (2 * P * Bv) * (8 * P) ^ 2 ≤ 2 ^ 19 * Bv * P ^ 3 := by
+    have hid : 4 * (12 * Bv / P) * (8 * P) ^ 4 + 24 * (5 * Bv) * (8 * P) ^ 3
+        + 72 * (2 * P * Bv) * (8 * P) ^ 2 = 267264 * Bv * P ^ 3 := by
+      field_simp
+      ring
+    rw [hid]
+    have h2 : (267264 : ℝ) ≤ 2 ^ 19 := by norm_num
+    nlinarith [mul_nonneg hBv (pow_nonneg hP.le 3)]
+  have hDsq : P ^ 4 / (2 ^ 28 * Q ^ 4) ≤ D ^ 2 := by
+    have hpos : (0 : ℝ) < P ^ 2 / (2 ^ 14 * Q ^ 2) := by positivity
+    have hsq : (P ^ 2 / (2 ^ 14 * Q ^ 2)) ^ 2 ≤ D ^ 2 := pow_le_pow_left₀ hpos.le hDlow 2
+    refine le_trans (le_of_eq ?_) hsq
+    field_simp
+  have hlast : 2 ^ 19 * Bv * P ^ 3 ≤ 2 ^ 47 * Bv * Q ^ 4 / P * D ^ 2 := by
+    have hc : (0 : ℝ) ≤ 2 ^ 47 * Bv * Q ^ 4 / P := by positivity
+    have hstep : 2 ^ 47 * Bv * Q ^ 4 / P * (P ^ 4 / (2 ^ 28 * Q ^ 4))
+        ≤ 2 ^ 47 * Bv * Q ^ 4 / P * D ^ 2 := mul_le_mul_of_nonneg_left hDsq hc
+    refine le_trans (le_of_eq ?_) hstep
+    field_simp
+  linarith [hnum, hnum2, hlast]
+
+end Numeric
+
+
+theorem real_smul_eq (r : ℝ) (z : ℂ) : r • z = (r : ℂ) * z := by
+  rw [Complex.real_smul]
+
+/-! ## The Gram integrand in polar coordinates
+
+The product `K_t(ξ,η) conj K_{t'}(ξ,η)` is the elliptic oscillatory factor with frequency
+`2π ε (t - t')` times the product of the two symbols; along a ray the polar Jacobian turns it into
+the amplitude `ampl (cprod u v)`.
+-/
+
+section GramIntegrand
+
+theorem phase_mul_conj_phase (ε t t' : ℝ) (ξ η : Pl) :
+    phase ε t ξ η * (starRingEnd ℂ) (phase ε t' ξ η)
+      = osc (2 * Real.pi * ε * (t - t')) (‖ξ - η‖ + ‖η‖) := by
+  have hc : (starRingEnd ℂ) (phase ε t' ξ η)
+      = Complex.exp (((-(2 * Real.pi * ε * t' * (‖ξ - η‖ + ‖η‖)) : ℝ) : ℂ) * Complex.I) := by
+    rw [phase, ← Complex.exp_conj, map_mul, Complex.conj_ofReal, Complex.conj_I]
+    congr 1
+    push_cast
+    ring
+  rw [phase, hc, ← Complex.exp_add, osc]
+  congr 1
+  push_cast
+  ring
+
+variable {b : ℝ → Pl → Pl → ℂ}
+
+theorem radial_integrand_eq (ε t t' : ℝ) (ξ : Pl) (φ : ℝ) {r : ℝ} (hr : 0 ≤ r) :
+    (r : ℝ) • (Kern ε b t ξ (pt r φ) * (starRingEnd ℂ) (Kern ε b t' ξ (pt r φ)))
+      = osc (2 * Real.pi * ε * (t - t')) (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ r) *
+        ampl (cprod (fun s => b t ξ (pt s φ)) (fun s => b t' ξ (pt s φ))) r := by
+  have hsm : pt r φ = r • pt 1 φ := pt_eq_smul r φ
+  have hnorm1 : ‖pt 1 φ‖ = 1 := norm_pt_one φ
+  have hphase : ‖ξ - pt r φ‖ + ‖pt r φ‖ = tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ r := by
+    rw [hsm]
+    exact (tauf_eq_phase ξ (pt 1 φ) hnorm1 hr).symm
+  have hkern : Kern ε b t ξ (pt r φ) * (starRingEnd ℂ) (Kern ε b t' ξ (pt r φ))
+      = osc (2 * Real.pi * ε * (t - t')) (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ r) *
+        cprod (fun s => b t ξ (pt s φ)) (fun s => b t' ξ (pt s φ)) r := by
+    rw [Kern, Kern, cprod, map_mul, ← hphase]
+    rw [show phase ε t ξ (pt r φ) * b t ξ (pt r φ) *
+        ((starRingEnd ℂ) (phase ε t' ξ (pt r φ)) * (starRingEnd ℂ) (b t' ξ (pt r φ)))
+        = (phase ε t ξ (pt r φ) * (starRingEnd ℂ) (phase ε t' ξ (pt r φ))) *
+          (b t ξ (pt r φ) * (starRingEnd ℂ) (b t' ξ (pt r φ))) from by ring]
+    rw [phase_mul_conj_phase]
+  rw [hkern, ampl, real_smul_eq]
+  ring
+
+end GramIntegrand
+
+
+/-! ## Named amplitudes for the Gram integral -/
+
+section GramAmplitudes
+
+theorem continuous_cprod1 {u u1 v v1 : ℝ → ℂ} (hu : Continuous u) (hu1 : Continuous u1)
+    (hv : Continuous v) (hv1 : Continuous v1) : Continuous (cprod1 u u1 v v1) :=
+  (hu1.mul (Complex.continuous_conj.comp hv)).add (hu.mul (Complex.continuous_conj.comp hv1))
+
+theorem cprod_eq_zero {u v : ℝ → ℂ} {ρ : ℝ} (hu : u ρ = 0) : cprod u v ρ = 0 := by
+  rw [cprod, hu, zero_mul]
+
+theorem cprod1_eq_zero {u u1 v v1 : ℝ → ℂ} {ρ : ℝ} (hu : u ρ = 0) (hu1 : u1 ρ = 0) :
+    cprod1 u u1 v v1 ρ = 0 := by
+  rw [cprod1, hu, hu1, zero_mul, zero_mul, add_zero]
+
+theorem cprod2_eq_zero {u u1 u2 v v1 v2 : ℝ → ℂ} {ρ : ℝ} (hu : u ρ = 0) (hu1 : u1 ρ = 0)
+    (hu2 : u2 ρ = 0) : cprod2 u u1 u2 v v1 v2 ρ = 0 := by
+  rw [cprod2, hu, hu1, hu2]
+  ring
+
+theorem ampl_eq_zero {c : ℝ → ℂ} {ρ : ℝ} (hc : c ρ = 0) : ampl c ρ = 0 := by
+  rw [ampl, hc, mul_zero]
+
+theorem ampl1_eq_zero {c c1 : ℝ → ℂ} {ρ : ℝ} (hc : c ρ = 0) (hc1 : c1 ρ = 0) :
+    ampl1 c c1 ρ = 0 := by
+  rw [ampl1, hc, hc1, mul_zero, add_zero]
+
+theorem ampl2_eq_zero {c1 c2 : ℝ → ℂ} {ρ : ℝ} (hc1 : c1 ρ = 0) (hc2 : c2 ρ = 0) :
+    ampl2 c1 c2 ρ = 0 := by
+  rw [ampl2, hc1, hc2, mul_zero, mul_zero, add_zero]
+
+variable {a R : ℝ}
+
+theorem bfun_eq_zero {A A1 : ℝ → ℂ} {ρ : ℝ} (hA : A ρ = 0) (hA1 : A1 ρ = 0) :
+    bfun a R A A1 ρ = 0 := by
+  rw [bfun, hA, hA1]
+  simp
+
+theorem bfun1_eq_zero {A A1 A2 : ℝ → ℂ} {ρ : ℝ} (hA : A ρ = 0) (hA1 : A1 ρ = 0)
+    (hA2 : A2 ρ = 0) : bfun1 a R A A1 A2 ρ = 0 := by
+  rw [bfun1, hA, hA1, hA2]
+  simp
+
+theorem cfun_eq_zero {A A1 A2 : ℝ → ℂ} {ρ : ℝ} (hA : A ρ = 0) (hA1 : A1 ρ = 0)
+    (hA2 : A2 ρ = 0) : cfun a R A A1 A2 ρ = 0 := by
+  rw [cfun, bfun_eq_zero (a := a) (R := R) hA hA1,
+    bfun1_eq_zero (a := a) (R := R) hA hA1 hA2]
+  simp
+
+/-- The symbol restricted to the ray of direction `φ`. -/
+def rayb (b : ℝ → Pl → Pl → ℂ) (t : ℝ) (ξ : Pl) (φ : ℝ) : ℝ → ℂ := fun s => b t ξ (pt s φ)
+
+variable {b : ℝ → Pl → Pl → ℂ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+
+/-- The amplitude of the Gram integral along a ray. -/
+def gramA (b : ℝ → Pl → Pl → ℂ) (t t' : ℝ) (ξ : Pl) (φ : ℝ) : ℝ → ℂ :=
+  ampl (cprod (rayb b t ξ φ) (rayb b t' ξ φ))
+
+/-- Its first derivative. -/
+def gramA1 (b : ℝ → Pl → Pl → ℂ) (b1 : ℝ → Pl → ℝ → ℝ → ℂ) (t t' : ℝ) (ξ : Pl) (φ : ℝ) :
+    ℝ → ℂ :=
+  ampl1 (cprod (rayb b t ξ φ) (rayb b t' ξ φ))
+    (cprod1 (rayb b t ξ φ) (b1 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ))
+
+/-- Its second derivative. -/
+def gramA2 (b : ℝ → Pl → Pl → ℂ) (b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ) (t t' : ℝ) (ξ : Pl) (φ : ℝ) :
+    ℝ → ℂ :=
+  ampl2 (cprod1 (rayb b t ξ φ) (b1 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ))
+    (cprod2 (rayb b t ξ φ) (b1 t ξ φ) (b2 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ) (b2 t' ξ φ))
+
+theorem hasDerivAt_gramA {j : ℕ} {B : ℝ} (hray : RayData j b B b1 b2) (t t' : ℝ) (ξ : Pl)
+    (φ : ℝ) (ρ : ℝ) : HasDerivAt (gramA b t t' ξ φ) (gramA1 b b1 t t' ξ φ ρ) ρ :=
+  hasDerivAt_ampl (fun r => hasDerivAt_cprod (hray.d1 t ξ φ) (hray.d1 t' ξ φ) r) ρ
+
+theorem hasDerivAt_gramA1 {j : ℕ} {B : ℝ} (hray : RayData j b B b1 b2) (t t' : ℝ) (ξ : Pl)
+    (φ : ℝ) (ρ : ℝ) : HasDerivAt (gramA1 b b1 t t' ξ φ) (gramA2 b b1 b2 t t' ξ φ ρ) ρ :=
+  hasDerivAt_ampl1 (fun r => hasDerivAt_cprod (hray.d1 t ξ φ) (hray.d1 t' ξ φ) r)
+    (fun r => hasDerivAt_cprod1 (hray.d1 t ξ φ) (hray.d2 t ξ φ) (hray.d1 t' ξ φ)
+      (hray.d2 t' ξ φ) r) ρ
+
+theorem continuous_gramA2 {j : ℕ} {B : ℝ} (hray : RayData j b B b1 b2) (t t' : ℝ) (ξ : Pl)
+    (φ : ℝ) : Continuous (gramA2 b b1 b2 t t' ξ φ) := by
+  have hu : Continuous (rayb b t ξ φ) :=
+    continuous_iff_continuousAt.mpr fun r => (hray.d1 t ξ φ r).continuousAt
+  have hu1 : Continuous (b1 t ξ φ) :=
+    continuous_iff_continuousAt.mpr fun r => (hray.d2 t ξ φ r).continuousAt
+  have hv : Continuous (rayb b t' ξ φ) :=
+    continuous_iff_continuousAt.mpr fun r => (hray.d1 t' ξ φ r).continuousAt
+  have hv1 : Continuous (b1 t' ξ φ) :=
+    continuous_iff_continuousAt.mpr fun r => (hray.d2 t' ξ φ r).continuousAt
+  exact continuous_ampl2 (continuous_cprod1 hu hu1 hv hv1)
+    (continuous_cprod2 hu hu1 (hray.cont2 t ξ φ) hv hv1 (hray.cont2 t' ξ φ))
+
+theorem gram_vanish {j m : ℕ} {B : ℝ} (hb : IsStrictlyAdapted j m b)
+    (hray : RayData j b B b1 b2) (t t' : ℝ) (ξ : Pl) (φ : ℝ) {ρ : ℝ} (hρ : ρ ∈ OutAnn j) :
+    gramA b t t' ξ φ ρ = 0 ∧ gramA1 b b1 t t' ξ φ ρ = 0 ∧ gramA2 b b1 b2 t t' ξ φ ρ = 0 := by
+  obtain ⟨hu0, hu1, hu2⟩ := ray_vanish hb hray t ξ φ hρ
+  have hcc : cprod (rayb b t ξ φ) (rayb b t' ξ φ) ρ = 0 := cprod_eq_zero hu0
+  have hcc1 : cprod1 (rayb b t ξ φ) (b1 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ) ρ = 0 :=
+    cprod1_eq_zero hu0 hu1
+  have hcc2 : cprod2 (rayb b t ξ φ) (b1 t ξ φ) (b2 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ)
+      (b2 t' ξ φ) ρ = 0 := cprod2_eq_zero hu0 hu1 hu2
+  exact ⟨ampl_eq_zero hcc, ampl1_eq_zero hcc hcc1, ampl2_eq_zero hcc1 hcc2⟩
+
+end GramAmplitudes
+
+
+/-! ## The `cfun` bound for the Gram amplitude -/
+
+section RadialGram
+
+theorem two_zpow_add (e f : ℤ) : (2 : ℝ) ^ (e + f) = (2 : ℝ) ^ e * (2 : ℝ) ^ f :=
+  zpow_add₀ (two_ne_zero) e f
+
+theorem two_zpow_sq (e : ℤ) : ((2 : ℝ) ^ e) ^ 2 = (2 : ℝ) ^ (2 * e) := by
+  rw [show 2 * e = e + e by ring, two_zpow_add]
+  ring
+
+variable {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+
+theorem norm_gram_cfun_le (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (hB : 0 ≤ B) {ξ : Pl} (hξ : XiData j ξ) {φ : ℝ} (hφ : φ ∈ AngSetStrict m ξ) (t t' : ℝ)
+    {ρ : ℝ} (hρ0 : 0 ≤ ρ) :
+    ‖cfun (inner ℝ ξ (pt 1 φ)) ‖ξ‖ (gramA b t t' ξ φ) (gramA1 b b1 t t' ξ φ)
+        (gramA2 b b1 b2 t t' ξ φ) ρ‖
+      ≤ (2 : ℝ) ^ (47 : ℕ) * B ^ 2 * ((2 : ℝ) ^ (m : ℤ)) ^ 4 / (2 : ℝ) ^ (j : ℤ) := by
+  classical
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hQ : (0 : ℝ) < (2 : ℝ) ^ (m : ℤ) := by positivity
+  have hD : 0 < ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 := disc_pos hξ hφ
+  have hRHSnn : (0 : ℝ) ≤ (2 : ℝ) ^ (47 : ℕ) * B ^ 2 * ((2 : ℝ) ^ (m : ℤ)) ^ 4
+      / (2 : ℝ) ^ (j : ℤ) := by positivity
+  by_cases hout : ρ ∈ OutAnn j
+  · obtain ⟨h0, h1, h2⟩ := gram_vanish hb hray t t' ξ φ hout
+    rw [cfun_eq_zero h0 h1 h2, norm_zero]
+    exact hRHSnn
+  -- the main case: `ρ` lies in the annulus
+  have hrange : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ |ρ| ∧ |ρ| ≤ (2 : ℝ) ^ ((j : ℤ) + 1) := by
+    simp only [OutAnn, Set.mem_union, Set.mem_setOf_eq, not_or, not_lt] at hout
+    exact ⟨hout.1, hout.2⟩
+  -- numeric identities
+  have hP1 : (2 : ℝ) ^ ((j : ℤ) + 1) = 2 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]
+    norm_num
+    ring
+  have hP2 : (2 : ℝ) ^ ((j : ℤ) + 2) = 4 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]
+    norm_num
+    ring
+  have hPinv : (2 : ℝ) ^ (-(j : ℤ)) = ((2 : ℝ) ^ (j : ℤ))⁻¹ := zpow_neg 2 (j : ℤ)
+  have hPinv2 : (2 : ℝ) ^ (-2 * (j : ℤ)) = (((2 : ℝ) ^ (j : ℤ))⁻¹) ^ 2 := by
+    rw [show -2 * (j : ℤ) = -(j : ℤ) + -(j : ℤ) by ring, two_zpow_add, hPinv]
+    ring
+  have habs : |ρ| ≤ 2 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [← hP1]
+    exact hrange.2
+  have hMnn : (0 : ℝ) ≤ 2 * (2 : ℝ) ^ (j : ℤ) := by positivity
+  -- the symbol bounds along the ray
+  have hu0 : ‖rayb b t ξ φ ρ‖ ≤ B := hray.bd0 t ξ (pt ρ φ)
+  have hv0 : ‖rayb b t' ξ φ ρ‖ ≤ B := hray.bd0 t' ξ (pt ρ φ)
+  have hu1 : ‖b1 t ξ φ ρ‖ ≤ B * ((2 : ℝ) ^ (j : ℤ))⁻¹ := by
+    rw [← hPinv]
+    exact hray.bd1 t ξ φ ρ
+  have hv1 : ‖b1 t' ξ φ ρ‖ ≤ B * ((2 : ℝ) ^ (j : ℤ))⁻¹ := by
+    rw [← hPinv]
+    exact hray.bd1 t' ξ φ ρ
+  have hu2 : ‖b2 t ξ φ ρ‖ ≤ B * (((2 : ℝ) ^ (j : ℤ))⁻¹) ^ 2 := by
+    rw [← hPinv2]
+    exact hray.bd2 t ξ φ ρ
+  have hv2 : ‖b2 t' ξ φ ρ‖ ≤ B * (((2 : ℝ) ^ (j : ℤ))⁻¹) ^ 2 := by
+    rw [← hPinv2]
+    exact hray.bd2 t' ξ φ ρ
+  -- the product bounds
+  have hcc : ‖cprod (rayb b t ξ φ) (rayb b t' ξ φ) ρ‖ ≤ B ^ 2 := by
+    refine le_trans (norm_cprod_le ρ hu0 hv0 hB) (le_of_eq ?_)
+    ring
+  have hcc1 : ‖cprod1 (rayb b t ξ φ) (b1 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ) ρ‖
+      ≤ 2 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ))⁻¹ := by
+    refine le_trans (norm_cprod1_le ρ hu0 hu1 hv0 hv1 hB (by positivity)) (le_of_eq ?_)
+    ring
+  have hcc2 : ‖cprod2 (rayb b t ξ φ) (b1 t ξ φ) (b2 t ξ φ) (rayb b t' ξ φ) (b1 t' ξ φ)
+        (b2 t' ξ φ) ρ‖ ≤ 4 * B ^ 2 * (((2 : ℝ) ^ (j : ℤ))⁻¹) ^ 2 := by
+    refine le_trans (norm_cprod2_le ρ hu0 hu1 hu2 hv0 hv1 hv2 hB (by positivity)
+      (by positivity)) (le_of_eq ?_)
+    ring
+  -- the amplitude bounds
+  have hA : ‖gramA b t t' ξ φ ρ‖ ≤ 2 * (2 : ℝ) ^ (j : ℤ) * B ^ 2 := by
+    rw [gramA]
+    exact norm_ampl_le ρ hcc habs hMnn
+  have hA1 : ‖gramA1 b b1 t t' ξ φ ρ‖ ≤ 5 * B ^ 2 := by
+    rw [gramA1]
+    refine le_trans (norm_ampl1_le ρ hcc hcc1 habs hMnn) (le_of_eq ?_)
+    field_simp
+    ring
+  have hA2 : ‖gramA2 b b1 b2 t t' ξ φ ρ‖ ≤ 12 * B ^ 2 / (2 : ℝ) ^ (j : ℤ) := by
+    rw [gramA2]
+    refine le_trans (norm_ampl2_le ρ hcc1 hcc2 habs hMnn) (le_of_eq ?_)
+    field_simp
+    ring
+  -- the bound on `g`
+  have hnorm1 : ‖pt 1 φ‖ = 1 := norm_pt_one φ
+  have hg : gf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ ≤ 8 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [gf_eq_norm ξ (pt 1 φ) hnorm1]
+    have h1 : ‖ξ - ρ • pt 1 φ‖ ≤ ‖ξ‖ + ‖ρ • pt 1 φ‖ := norm_sub_le _ _
+    have h2 : ‖ρ • pt 1 φ‖ = |ρ| := by
+      rw [norm_smul, hnorm1, mul_one, Real.norm_eq_abs]
+    rw [h2] at h1
+    have h3 : ‖ξ‖ ≤ 4 * (2 : ℝ) ^ (j : ℤ) := by
+      rw [← hP2]
+      exact hξ.norm_le
+    linarith
+  have hgpos : 0 < gf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ := gf_pos hD ρ
+  -- the bound on `D`
+  have hDlow : ((2 : ℝ) ^ (j : ℤ)) ^ 2 / (2 ^ 14 * ((2 : ℝ) ^ (m : ℤ)) ^ 2)
+      ≤ ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 := by
+    refine le_trans (le_of_eq ?_) (disc_lower hξ hφ)
+    rw [two_zpow_sq, two_zpow_sq]
+    rw [show 2 * (j : ℤ) - 2 * (m : ℤ) - 14 = 2 * (j : ℤ) + (-(2 * (m : ℤ)) + -(14 : ℤ)) by ring,
+      two_zpow_add, two_zpow_add, zpow_neg, zpow_neg]
+    norm_num
+    field_simp
+  -- conclude
+  refine le_trans (norm_cfun_le hD ρ hA hA1 hA2 (by positivity) (by positivity)
+    (by positivity)) ?_
+  refine le_trans (cfun_numeric_bound (P := (2 : ℝ) ^ (j : ℤ)) (Q := (2 : ℝ) ^ (m : ℤ))
+    (Bv := B ^ 2) hP hQ (by positivity) (le_refl _) (le_refl _) (le_refl _)
+    (by positivity) (by positivity) (by positivity) hgpos hg hD hDlow) ?_
+  norm_num
+
+end RadialGram
+
+
+/-! ## The radial oscillatory bound for the Gram integral -/
+
+section RadialGramBound
+
+variable {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+
+theorem norm_gramA_le (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2) (hB : 0 ≤ B)
+    (t t' : ℝ) (ξ : Pl) (φ : ℝ) (ρ : ℝ) :
+    ‖gramA b t t' ξ φ ρ‖ ≤ 2 * (2 : ℝ) ^ (j : ℤ) * B ^ 2 := by
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  by_cases hout : ρ ∈ OutAnn j
+  · obtain ⟨h0, -, -⟩ := gram_vanish hb hray t t' ξ φ hout
+    rw [h0, norm_zero]
+    positivity
+  · have hrange : |ρ| ≤ (2 : ℝ) ^ ((j : ℤ) + 1) := by
+      simp only [OutAnn, Set.mem_union, Set.mem_setOf_eq, not_or, not_lt] at hout
+      exact hout.2
+    have hP1 : (2 : ℝ) ^ ((j : ℤ) + 1) = 2 * (2 : ℝ) ^ (j : ℤ) := by
+      rw [two_zpow_add]
+      norm_num
+      ring
+    rw [hP1] at hrange
+    have hcc : ‖cprod (rayb b t ξ φ) (rayb b t' ξ φ) ρ‖ ≤ B ^ 2 := by
+      refine le_trans (norm_cprod_le ρ (hray.bd0 t ξ (pt ρ φ)) (hray.bd0 t' ξ (pt ρ φ)) hB)
+        (le_of_eq ?_)
+      ring
+    rw [gramA]
+    exact norm_ampl_le ρ hcc hrange (by positivity)
+
+theorem continuous_gramA (hray : RayData j b B b1 b2) (t t' : ℝ) (ξ : Pl) (φ : ℝ) :
+    Continuous (gramA b t t' ξ φ) :=
+  continuous_iff_continuousAt.mpr fun ρ => (hasDerivAt_gramA hray t t' ξ φ ρ).continuousAt
+
+theorem zero_mem_OutAnn (j : ℕ) : (0 : ℝ) ∈ OutAnn j := by
+  refine Or.inl ?_
+  simp only [Set.mem_setOf_eq, abs_zero]
+  positivity
+
+theorem two_zpow_add_two_mem_OutAnn (j : ℕ) : (2 : ℝ) ^ ((j : ℤ) + 2) ∈ OutAnn j := by
+  refine Or.inr ?_
+  simp only [Set.mem_setOf_eq]
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hP1 : (2 : ℝ) ^ ((j : ℤ) + 1) = 2 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]; norm_num; ring
+  have hP2 : (2 : ℝ) ^ ((j : ℤ) + 2) = 4 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]; norm_num; ring
+  rw [abs_of_pos (by positivity : (0 : ℝ) < (2 : ℝ) ^ ((j : ℤ) + 2)), hP1, hP2]
+  linarith
+
+/-- The trivial bound for the radial Gram integral. -/
+theorem norm_radial_gram_trivial_le (hb : IsStrictlyAdapted j m b)
+    (hray : RayData j b B b1 b2) (hB : 0 ≤ B) {ξ : Pl} {φ : ℝ}
+    (hD : 0 < ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2) (t t' : ℝ) (lam : ℝ) :
+    ‖∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+        osc lam (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) * gramA b t t' ξ φ ρ‖
+      ≤ 8 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * B ^ 2 := by
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hbbnn : (0 : ℝ) ≤ (2 : ℝ) ^ ((j : ℤ) + 2) := by positivity
+  have hcont : Continuous fun ρ => osc lam (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) *
+      gramA b t t' ξ φ ρ :=
+    (continuous_osc_comp (continuous_tauf hD)).mul (continuous_gramA hray t t' ξ φ)
+  have hstep : ‖∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+      osc lam (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) * gramA b t t' ξ φ ρ‖
+      ≤ ∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+        ‖osc lam (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) * gramA b t t' ξ φ ρ‖ := by
+    refine le_trans (intervalIntegral.norm_integral_le_abs_integral_norm) (le_of_eq ?_)
+    refine abs_of_nonneg ?_
+    exact intervalIntegral.integral_nonneg hbbnn fun ρ _ => norm_nonneg _
+  refine le_trans hstep ?_
+  have hbd : ∀ ρ ∈ Set.Icc (0 : ℝ) ((2 : ℝ) ^ ((j : ℤ) + 2)),
+      ‖osc lam (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) * gramA b t t' ξ φ ρ‖
+        ≤ 2 * (2 : ℝ) ^ (j : ℤ) * B ^ 2 := by
+    intro ρ _
+    rw [norm_mul, norm_osc, one_mul]
+    exact norm_gramA_le hb hray hB t t' ξ φ ρ
+  have hconstint : IntervalIntegrable (fun _ : ℝ => 2 * (2 : ℝ) ^ (j : ℤ) * B ^ 2)
+      volume 0 ((2 : ℝ) ^ ((j : ℤ) + 2)) := intervalIntegrable_const
+  have hmono := intervalIntegral.integral_mono_on hbbnn (hcont.norm.intervalIntegrable _ _)
+    hconstint hbd
+  refine le_trans hmono (le_of_eq ?_)
+  rw [intervalIntegral.integral_const, sub_zero, smul_eq_mul]
+  have hP2 : (2 : ℝ) ^ ((j : ℤ) + 2) = 4 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]; norm_num; ring
+  rw [hP2]
+  ring
+
+/-- The oscillatory bound for the radial Gram integral. -/
+theorem norm_radial_gram_le (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (hB : 0 ≤ B) {ξ : Pl} (hξ : XiData j ξ) {φ : ℝ} (hφ : φ ∈ AngSetStrict m ξ)
+    (t t' : ℝ) {lam : ℝ} (hlam : lam ≠ 0) :
+    ‖∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+        osc lam (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) * gramA b t t' ξ φ ρ‖
+      ≤ (lam ^ 2)⁻¹ * ((2 : ℝ) ^ (49 : ℕ) * B ^ 2 * ((2 : ℝ) ^ (m : ℤ)) ^ 4) := by
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hD : 0 < ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 := disc_pos hξ hφ
+  have hbbnn : (0 : ℝ) ≤ (2 : ℝ) ^ ((j : ℤ) + 2) := by positivity
+  obtain ⟨hA0, hA10, -⟩ := gram_vanish hb hray t t' ξ φ (zero_mem_OutAnn j)
+  obtain ⟨hAb, hA1b, -⟩ := gram_vanish hb hray t t' ξ φ (two_zpow_add_two_mem_OutAnn j)
+  have hK : (0 : ℝ) ≤ (2 : ℝ) ^ (47 : ℕ) * B ^ 2 * ((2 : ℝ) ^ (m : ℤ)) ^ 4
+      / (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hmain := norm_integral_radial_le hD
+    (fun ρ => hasDerivAt_gramA hray t t' ξ φ ρ)
+    (fun ρ => hasDerivAt_gramA1 hray t t' ξ φ ρ)
+    (continuous_gramA2 hray t t' ξ φ) hlam hbbnn hA0 hAb
+    (bfun_eq_zero hA0 hA10) (bfun_eq_zero hAb hA1b)
+    hK (fun ρ hρ => norm_gram_cfun_le hb hray hB hξ hφ t t' hρ.1)
+  refine le_trans hmain (le_of_eq ?_)
+  congr 1
+  have hP2 : (2 : ℝ) ^ ((j : ℤ) + 2) = 4 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]; norm_num; ring
+  rw [hP2]
+  field_simp
+  ring
+
+end RadialGramBound
+
+
+/-! ## The Gram integral in polar coordinates -/
+
+section PolarGram
+
+variable {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+
+theorem measurableSet_AngSetStrict (m : ℕ) (ξ : Pl) : MeasurableSet (AngSetStrict m ξ) := by
+  refine (measurableSet_AngSet m ξ).inter ?_
+  exact measurableSet_le measurable_const (continuous_wfun ξ).abs.measurable
+
+theorem AngSetStrict_subset_AngSet (m : ℕ) (ξ : Pl) : AngSetStrict m ξ ⊆ AngSet m ξ :=
+  fun _ h => h.1
+
+/-- The Gram integrand `K_t(ξ,·) conj K_{t'}(ξ,·)`. -/
+def gramK (ε : ℝ) (b : ℝ → Pl → Pl → ℂ) (t t' : ℝ) (ξ : Pl) : Pl → ℂ :=
+  fun η => Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)
+
+theorem continuous_gramK (hray : RayData j b B b1 b2) (ε t t' : ℝ) (ξ : Pl) :
+    Continuous (gramK ε b t t' ξ) := by
+  have h1 : Continuous (Kern ε b t ξ) :=
+    (continuous_phase_right ε t ξ).mul (hray.cont0 t ξ)
+  have h2 : Continuous (Kern ε b t' ξ) :=
+    (continuous_phase_right ε t' ξ).mul (hray.cont0 t' ξ)
+  exact h1.mul (Complex.continuous_conj.comp h2)
+
+theorem gramK_eq_zero_of_norm (hb : IsStrictlyAdapted j m b) (ε t t' : ℝ) (ξ : Pl)
+    {η : Pl} (h : (2 : ℝ) ^ ((j : ℤ) + 1) < ‖η‖) : gramK ε b t t' ξ η = 0 := by
+  have hz : b t ξ η = 0 := by
+    refine hb.supp t ξ η ?_
+    intro hmem
+    exact absurd hmem.1.1.2.2.2 (not_le.mpr h)
+  rw [gramK, Kern, hz, mul_zero, zero_mul]
+
+theorem gramK_eq_zero_of_notMem (hb : IsStrictlyAdapted j m b) {ξ : Pl} (hξ : XiData j ξ)
+    (ε t t' : ℝ) {φ : ℝ} (hφ : φ ∉ AngSetStrict m ξ) {r : ℝ} (hr : 0 < r) :
+    gramK ε b t t' ξ (pt r φ) = 0 := by
+  have hz : b t ξ (pt r φ) = 0 := by
+    refine hb.supp t ξ (pt r φ) ?_
+    intro hmem
+    exact hφ (mem_AngSetStrict_of_mem hr hξ hmem)
+  rw [gramK, Kern, hz, mul_zero, zero_mul]
+
+/-- The radial Gram integral, rewritten as an interval integral of the oscillatory amplitude. -/
+theorem radial_gram_integral_eq (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (ε t t' : ℝ) (ξ : Pl) (φ : ℝ) :
+    (∫ r in Set.Ioi (0 : ℝ), (r : ℝ) • gramK ε b t t' ξ (pt r φ))
+      = ∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+          osc (2 * Real.pi * ε * (t - t')) (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) *
+            gramA b t t' ξ φ ρ := by
+  classical
+  set bb : ℝ := (2 : ℝ) ^ ((j : ℤ) + 2) with hbbdef
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hP1 : (2 : ℝ) ^ ((j : ℤ) + 1) = 2 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [two_zpow_add]; norm_num; ring
+  have hP2 : bb = 4 * (2 : ℝ) ^ (j : ℤ) := by
+    rw [hbbdef, two_zpow_add]; norm_num; ring
+  have hbbpos : (0 : ℝ) < bb := by rw [hP2]; positivity
+  set g : ℝ → ℂ := fun r => (r : ℝ) • gramK ε b t t' ξ (pt r φ) with hgdef
+  have hcont : Continuous g := by
+    rw [hgdef]
+    exact continuous_id.smul ((continuous_gramK hray ε t t' ξ).comp (continuous_pt_fixed φ))
+  have hzero : ∀ r, bb < r → g r = 0 := by
+    intro r hr
+    have hnorm : (2 : ℝ) ^ ((j : ℤ) + 1) < ‖pt r φ‖ := by
+      rw [norm_pt_abs, abs_of_pos (lt_trans hbbpos hr)]
+      rw [hP1, hP2] at *
+      linarith
+    rw [hgdef]
+    simp only
+    rw [gramK_eq_zero_of_norm hb ε t t' ξ hnorm, smul_zero]
+  -- split `Ioi 0`
+  have hsplit : Set.Ioi (0 : ℝ) = Set.Ioc 0 bb ∪ Set.Ioi bb :=
+    (Set.Ioc_union_Ioi_eq_Ioi hbbpos.le).symm
+  have hint1 : IntegrableOn g (Set.Ioc 0 bb) volume :=
+    (hcont.integrableOn_Icc).mono_set Set.Ioc_subset_Icc_self
+  have hint2 : IntegrableOn g (Set.Ioi bb) volume := by
+    refine (integrableOn_zero (μ := (volume : Measure ℝ)) (s := Set.Ioi bb)).congr_fun ?_
+      measurableSet_Ioi
+    intro r hr
+    exact (hzero r hr).symm
+  have hdisj : Disjoint (Set.Ioc (0 : ℝ) bb) (Set.Ioi bb) := by
+    rw [Set.disjoint_left]
+    intro r hr1 hr2
+    exact absurd hr2 (not_lt.mpr hr1.2)
+  have hstep1 : (∫ r in Set.Ioi (0 : ℝ), g r) = ∫ r in Set.Ioc 0 bb, g r := by
+    rw [hsplit, setIntegral_union hdisj measurableSet_Ioi hint1 hint2]
+    have h2 : (∫ r in Set.Ioi bb, g r) = 0 := by
+      rw [setIntegral_congr_fun measurableSet_Ioi (fun r hr => hzero r hr)]
+      simp
+    rw [h2, add_zero]
+  rw [hstep1, ← intervalIntegral.integral_of_le hbbpos.le]
+  refine intervalIntegral.integral_congr fun r hr => ?_
+  have hr0 : 0 ≤ r := by
+    rw [Set.uIcc_of_le hbbpos.le] at hr
+    exact hr.1
+  rw [hgdef]
+  simp only [gramK]
+  exact radial_integrand_eq ε t t' ξ φ hr0
+
+end PolarGram
+
+
+/-! ## The Gram matrix bound of §4.3 -/
+
+section GramBound
+
+variable {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+
+theorem enorm_gram_integral_le_of (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    {ξ : Pl} (hξ : XiData j ξ) (ε t t' : ℝ) {M : ℝ}
+    (hM : ∀ φ ∈ AngSetStrict m ξ,
+      ‖∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+        osc (2 * Real.pi * ε * (t - t')) (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) *
+          gramA b t t' ξ φ ρ‖ ≤ M) :
+    ‖∫ η : Pl, gramK ε b t t' ξ η‖ₑ
+      ≤ ENNReal.ofReal M * volume (AngSetStrict m ξ ∩ Set.Ioo (-π) π) := by
+  refine enorm_integral_polar_le (continuous_gramK hray ε t t' ξ)
+    (R := (2 : ℝ) ^ ((j : ℤ) + 1)) (by positivity)
+    (fun η h => gramK_eq_zero_of_norm hb ε t t' ξ h)
+    (measurableSet_AngSetStrict m ξ) ?_
+  intro φ
+  by_cases hφ : φ ∈ AngSetStrict m ξ
+  · rw [Set.indicator_of_mem hφ, radial_gram_integral_eq hb hray ε t t' ξ φ, ← ofReal_norm]
+    exact ENNReal.ofReal_le_ofReal (hM φ hφ)
+  · rw [Set.indicator_of_notMem hφ]
+    have h1 : (∫ r in Set.Ioi (0 : ℝ), (r : ℝ) • gramK ε b t t' ξ (pt r φ))
+        = ∫ _r in Set.Ioi (0 : ℝ), (0 : ℂ) := by
+      refine setIntegral_congr_fun measurableSet_Ioi fun r hr => ?_
+      rw [gramK_eq_zero_of_notMem hb hξ ε t t' hφ hr, smul_zero]
+    rw [h1]
+    simp
+
+theorem volume_AngSetStrict_le {ξ : Pl} (hξ : XiData j ξ) :
+    volume (AngSetStrict m ξ ∩ Set.Ioo (-π) π)
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (12 : ℕ) / (2 : ℝ) ^ (m : ℤ)) := by
+  refine le_trans (measure_mono (Set.inter_subset_inter_left _
+    (AngSetStrict_subset_AngSet m ξ))) ?_
+  refine le_trans (volume_AngSet_le hξ) (le_of_eq ?_)
+  congr 1
+  rw [show (12 : ℤ) - (m : ℤ) = 12 + -(m : ℤ) by ring, two_zpow_add, zpow_neg]
+  norm_num
+  ring
+
+theorem gram_numeric_case1 {P Q Bv w : ℝ} (hP : 0 < P) (hQ : 0 < Q) (hBv : 0 ≤ Bv)
+    (hw0 : 0 ≤ w) (hw : w ≤ 1) :
+    8 * P ^ 2 * Bv * (2 ^ 12 / Q) ≤ 2 ^ 61 * Bv * P ^ 2 / Q * ((1 + w) ^ 2)⁻¹ := by
+  have hpos : (0 : ℝ) < (1 + w) ^ 2 := by positivity
+  have h4 : (1 + w) ^ 2 ≤ 4 := by nlinarith
+  have hinv : (1 : ℝ) / 4 ≤ ((1 + w) ^ 2)⁻¹ := by
+    rw [← one_div]
+    exact one_div_le_one_div_of_le hpos h4
+  have hnn : (0 : ℝ) ≤ 2 ^ 61 * Bv * P ^ 2 / Q := by positivity
+  calc 8 * P ^ 2 * Bv * (2 ^ 12 / Q)
+      = 2 ^ 61 * Bv * P ^ 2 / Q * (2 ^ 15 / 2 ^ 61) := by
+        field_simp
+        ring
+    _ ≤ 2 ^ 61 * Bv * P ^ 2 / Q * (1 / 4) := by
+        refine mul_le_mul_of_nonneg_left ?_ hnn
+        norm_num
+    _ ≤ 2 ^ 61 * Bv * P ^ 2 / Q * ((1 + w) ^ 2)⁻¹ := mul_le_mul_of_nonneg_left hinv hnn
+
+set_option maxRecDepth 8000 in
+theorem gram_numeric_case2 {P Q Bv s w : ℝ} (hP : 0 < P) (hQ : 0 < Q) (hBv : 0 ≤ Bv)
+    (hs : s ≠ 0) (hw : 1 < w) (hwdef : w = P * |s| / Q ^ 2) :
+    (4 * Real.pi ^ 2 * s ^ 2)⁻¹ * (2 ^ 49 * Bv * Q ^ 4) * (2 ^ 12 / Q)
+      ≤ 2 ^ 61 * Bv * P ^ 2 / Q * ((1 + w) ^ 2)⁻¹ := by
+  have hspos : (0 : ℝ) < s ^ 2 := by positivity
+  have hπ : (1 : ℝ) ≤ Real.pi ^ 2 := by nlinarith [Real.two_le_pi]
+  have hw0 : (0 : ℝ) < w := lt_trans zero_lt_one hw
+  have hwsq : w ^ 2 = P ^ 2 * s ^ 2 / (Q ^ 2) ^ 2 := by
+    rw [hwdef, div_pow, mul_pow, sq_abs]
+  have hpos : (0 : ℝ) < (1 + w) ^ 2 := by positivity
+  have hle : (1 + w) ^ 2 ≤ 4 * w ^ 2 := by nlinarith
+  have hinv : (4 * w ^ 2)⁻¹ ≤ ((1 + w) ^ 2)⁻¹ := inv_anti₀ hpos hle
+  have hnn : (0 : ℝ) ≤ 2 ^ 61 * Bv * P ^ 2 / Q := by positivity
+  have hid : 2 ^ 61 * Bv * P ^ 2 / Q * (4 * w ^ 2)⁻¹
+      = 2 ^ 61 * Bv * Q ^ 3 / (4 * s ^ 2) := by
+    rw [hwsq]
+    field_simp
+  have hid2 : (4 * Real.pi ^ 2 * s ^ 2)⁻¹ * (2 ^ 49 * Bv * Q ^ 4) * (2 ^ 12 / Q)
+      = 2 ^ 61 * Bv * Q ^ 3 / (4 * Real.pi ^ 2 * s ^ 2) := by
+    field_simp
+  calc (4 * Real.pi ^ 2 * s ^ 2)⁻¹ * (2 ^ 49 * Bv * Q ^ 4) * (2 ^ 12 / Q)
+      = 2 ^ 61 * Bv * Q ^ 3 / (4 * Real.pi ^ 2 * s ^ 2) := hid2
+    _ ≤ 2 ^ 61 * Bv * Q ^ 3 / (4 * s ^ 2) := by
+        have hA : (0 : ℝ) ≤ 2 ^ 61 * Bv * Q ^ 3 := by positivity
+        have hd : 4 * s ^ 2 ≤ 4 * Real.pi ^ 2 * s ^ 2 := by nlinarith [hπ, hspos]
+        rw [div_le_div_iff₀ (by positivity) (by positivity)]
+        exact mul_le_mul_of_nonneg_left hd hA
+    _ = 2 ^ 61 * Bv * P ^ 2 / Q * (4 * w ^ 2)⁻¹ := hid.symm
+    _ ≤ 2 ^ 61 * Bv * P ^ 2 / Q * ((1 + w) ^ 2)⁻¹ := mul_le_mul_of_nonneg_left hinv hnn
+
+/-- **The Gram matrix bound.**  The `(t,t')` entry of the Gram matrix of the kernels is
+`≲ B² 2^{2j-m} (1 + 2^{j-2m}|t-t'|)^{-2}`. -/
+theorem enorm_gram_integral_le (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (hB : 0 ≤ B) {ξ : Pl} (hξ : XiData j ξ) {ε : ℝ} (hε : |ε| = 1) (t t' : ℝ) :
+    ‖∫ η : Pl, gramK ε b t t' ξ η‖ₑ
+      ≤ ENNReal.ofReal (2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 / (2 : ℝ) ^ (m : ℤ)
+          * ((1 + (2 : ℝ) ^ (j : ℤ) * |t - t'| / ((2 : ℝ) ^ (m : ℤ)) ^ 2) ^ 2)⁻¹) := by
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hQ : (0 : ℝ) < (2 : ℝ) ^ (m : ℤ) := by positivity
+  have hD : ∀ φ ∈ AngSetStrict m ξ, 0 < ‖ξ‖ ^ 2 - inner ℝ ξ (pt 1 φ) ^ 2 :=
+    fun φ hφ => disc_pos hξ hφ
+  have hvol := volume_AngSetStrict_le (j := j) (m := m) hξ
+  set w : ℝ := (2 : ℝ) ^ (j : ℤ) * |t - t'| / ((2 : ℝ) ^ (m : ℤ)) ^ 2 with hwdef
+  have hw0 : 0 ≤ w := by rw [hwdef]; positivity
+  by_cases hcase : w ≤ 1
+  · have hM : ∀ φ ∈ AngSetStrict m ξ,
+        ‖∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+          osc (2 * Real.pi * ε * (t - t')) (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) *
+            gramA b t t' ξ φ ρ‖ ≤ 8 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * B ^ 2 :=
+      fun φ hφ => norm_radial_gram_trivial_le hb hray hB (hD φ hφ) t t' _
+    refine le_trans (enorm_gram_integral_le_of hb hray hξ ε t t' hM) ?_
+    refine le_trans (mul_le_mul' (le_refl _) hvol) ?_
+    rw [← ENNReal.ofReal_mul (by positivity)]
+    refine ENNReal.ofReal_le_ofReal ?_
+    exact gram_numeric_case1 hP hQ (by positivity) hw0 hcase
+  · push_neg at hcase
+    have hs : t - t' ≠ 0 := by
+      intro h
+      rw [hwdef, h, abs_zero, mul_zero, zero_div] at hcase
+      linarith
+    have hεne : ε ≠ 0 := by
+      intro h
+      rw [h, abs_zero] at hε
+      norm_num at hε
+    have hlam : 2 * Real.pi * ε * (t - t') ≠ 0 :=
+      mul_ne_zero (mul_ne_zero (mul_ne_zero two_ne_zero Real.pi_ne_zero) hεne) hs
+    have hM : ∀ φ ∈ AngSetStrict m ξ,
+        ‖∫ ρ in (0 : ℝ)..(2 : ℝ) ^ ((j : ℤ) + 2),
+          osc (2 * Real.pi * ε * (t - t')) (tauf (inner ℝ ξ (pt 1 φ)) ‖ξ‖ ρ) *
+            gramA b t t' ξ φ ρ‖
+          ≤ ((2 * Real.pi * ε * (t - t')) ^ 2)⁻¹ *
+            (2 ^ 49 * B ^ 2 * ((2 : ℝ) ^ (m : ℤ)) ^ 4) :=
+      fun φ hφ => norm_radial_gram_le hb hray hB hξ hφ t t' hlam
+    refine le_trans (enorm_gram_integral_le_of hb hray hξ ε t t' hM) ?_
+    refine le_trans (mul_le_mul' (le_refl _) hvol) ?_
+    rw [← ENNReal.ofReal_mul (by positivity)]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have hεsq : ε ^ 2 = 1 := by
+      rcases (abs_eq (by norm_num : (0 : ℝ) ≤ 1)).mp hε with h | h <;> rw [h] <;> norm_num
+    have hlamsq : (2 * Real.pi * ε * (t - t')) ^ 2 = 4 * Real.pi ^ 2 * (t - t') ^ 2 := by
+      calc (2 * Real.pi * ε * (t - t')) ^ 2
+          = 4 * Real.pi ^ 2 * ε ^ 2 * (t - t') ^ 2 := by ring
+        _ = 4 * Real.pi ^ 2 * (t - t') ^ 2 := by rw [hεsq]; ring
+    rw [hlamsq]
+    exact gram_numeric_case2 hP hQ (by positivity) hs hcase hwdef
+
+end GramBound
+
+
+/-! ## Proposition 4.2 -/
+
+section Prop42
+
+variable {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+
+theorem norm_gram_integral_le (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (hB : 0 ≤ B) {ξ : Pl} (hξ : XiData j ξ) {ε : ℝ} (hε : |ε| = 1) (t t' : ℝ) :
+    ‖∫ η : Pl, gramK ε b t t' ξ η‖
+      ≤ 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 / (2 : ℝ) ^ (m : ℤ)
+        * ((1 + (2 : ℝ) ^ (j : ℤ) * |t - t'| / ((2 : ℝ) ^ (m : ℤ)) ^ 2) ^ 2)⁻¹ := by
+  have h := enorm_gram_integral_le hb hray hB hξ hε t t'
+  rw [← ofReal_norm] at h
+  exact (ENNReal.ofReal_le_ofReal_iff (by positivity)).mp h
+
+theorem gramK_eq_zero_of_empty (hb : IsStrictlyAdapted j m b) {ξ : Pl}
+    (hempty : SuppSet j m ξ = ∅) (ε t t' : ℝ) (η : Pl) : gramK ε b t t' ξ η = 0 := by
+  have hz : b t ξ η = 0 := by
+    refine hb.supp t ξ η ?_
+    intro hm
+    have : η ∈ SuppSet j m ξ := SuppSetStrict_subset j m ξ hm
+    rw [hempty] at this
+    exact absurd this (Set.notMem_empty η)
+  rw [gramK, Kern, hz, mul_zero, zero_mul]
+
+set_option maxRecDepth 40000 in
+/-- **Proposition 4.2** of Roos--Seeger (almost orthogonality).  If `b` is strictly
+`(j,m)`-adapted with `|⟨η/|η|,∇⟩^N b| ≤ B 2^{-jN}` for `N = 0,1,2`, and `N` bounds the number of
+points of `ℰ` in any interval of length `2^{2m-j}`, then
+`‖S[F,b]‖²_{L²(ℝ²×ℰ)} ≤ c B² 2^{2j-m} N ‖F‖²_{L²(ℝ⁴)}`. -/
+theorem prop42 (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2) (hB : 0 ≤ B)
+    {ε : ℝ} (hε : |ε| = 1) (Efin : Finset ℝ) {N : ℝ} (hNnn : 0 ≤ N)
+    (hN : IsIntervalCount Efin (((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ)) N)
+    (F : SchwartzMap Pl2 ℂ) :
+    (∑ t ∈ Efin, ∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (12 * 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * N
+          / (2 : ℝ) ^ (m : ℤ)) * ∫⁻ x : Pl2, ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) := by
+  classical
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (j : ℤ) := by positivity
+  have hQ : (0 : ℝ) < (2 : ℝ) ^ (m : ℤ) := by positivity
+  set A : ℝ := 12 * 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * N / (2 : ℝ) ^ (m : ℤ) with hAdef
+  have hAnn : (0 : ℝ) ≤ A := by rw [hAdef]; positivity
+  -- the Gram row sums are bounded by `A`
+  have hArow : ∀ ξ : Pl, ∀ t ∈ Efin, ∑ t' ∈ Efin,
+      ‖∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)‖ ≤ A := by
+    intro ξ t ht
+    rcases Set.eq_empty_or_nonempty (SuppSet j m ξ) with hempty | ⟨η₀, hη₀⟩
+    · have hz : ∀ t' : ℝ, (∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)) = 0 := by
+        intro t'
+        have hpt : ∀ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η) = 0 :=
+          fun η => gramK_eq_zero_of_empty hb hempty ε t t' η
+        rw [integral_congr_ae (Filter.Eventually.of_forall hpt)]
+        simp
+      have hsum : (∑ t' ∈ Efin,
+          ‖∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)‖) = 0 := by
+        refine Finset.sum_eq_zero fun t' _ => ?_
+        rw [hz t', norm_zero]
+      rw [hsum]
+      exact hAnn
+    · have hξ := xiData_of_mem hη₀
+      have hterm : ∀ t' ∈ Efin,
+          ‖∫ η, Kern ε b t ξ η * (starRingEnd ℂ) (Kern ε b t' ξ η)‖
+            ≤ 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 / (2 : ℝ) ^ (m : ℤ)
+              * ((1 + (2 : ℝ) ^ (j : ℤ) * |t - t'| / ((2 : ℝ) ^ (m : ℤ)) ^ 2) ^ 2)⁻¹ :=
+        fun t' _ => norm_gram_integral_le hb hray hB hξ hε t t'
+      refine le_trans (Finset.sum_le_sum hterm) ?_
+      have hrw : (∑ t' ∈ Efin, 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 / (2 : ℝ) ^ (m : ℤ)
+            * ((1 + (2 : ℝ) ^ (j : ℤ) * |t - t'| / ((2 : ℝ) ^ (m : ℤ)) ^ 2) ^ 2)⁻¹)
+          = 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 / (2 : ℝ) ^ (m : ℤ)
+            * ∑ t' ∈ Efin, ((1 + |t - t'| / (((2 : ℝ) ^ (m : ℤ)) ^ 2
+              / (2 : ℝ) ^ (j : ℤ))) ^ 2)⁻¹ := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun t' _ => ?_
+        congr 2
+        field_simp
+      rw [hrw]
+      have hδ : (0 : ℝ) < ((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ) := by positivity
+      have hschur := schur_sum_le hδ hNnn hN t
+      have hnn : (0 : ℝ) ≤ 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2
+          / (2 : ℝ) ^ (m : ℤ) := by positivity
+      refine le_trans (mul_le_mul_of_nonneg_left hschur hnn) (le_of_eq ?_)
+      rw [hAdef]
+      field_simp
+  -- split on whether `A` is positive
+  rcases eq_or_lt_of_le hAnn with hA0 | hApos
+  · -- `A = 0`: either `B = 0` or `ℰ` is empty
+    have hBN : B ^ 2 * N = 0 := by
+      have hA : (12 : ℝ) * 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * N
+          / (2 : ℝ) ^ (m : ℤ) = 0 := by rw [← hAdef]; exact hA0.symm
+      rcases div_eq_zero_iff.mp hA with h1 | h1
+      · have h2 : (12 * 2 ^ 61 * ((2 : ℝ) ^ (j : ℤ)) ^ 2) * (B ^ 2 * N) = 0 := by
+          linear_combination h1
+        have hC : (0 : ℝ) < 12 * 2 ^ 61 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 := by positivity
+        exact (mul_eq_zero.mp h2).resolve_left hC.ne'
+      · exact absurd h1 hQ.ne'
+    have hzero : ∀ t ∈ Efin, ∀ ξ : Pl, Sop ε b (F : Pl2 → ℂ) ξ t = 0 := by
+      intro t ht ξ
+      rcases mul_eq_zero.mp hBN with hB0 | hN0
+      · have hb0 : ∀ η, b t ξ η = 0 := by
+          intro η
+          have h := hray.bd0 t ξ η
+          have hBz : B = 0 := by nlinarith [sq_nonneg B]
+          rw [hBz] at h
+          exact norm_eq_zero.mp (le_antisymm h (norm_nonneg _))
+        rw [Sop, SopK]
+        have hpt : ∀ η, phase ε t ξ η * b t ξ η * 𝓕 (F : Pl2 → ℂ) (pr (ξ - η) η) = 0 := by
+          intro η
+          rw [hb0 η, mul_zero, zero_mul]
+        rw [integral_congr_ae (Filter.Eventually.of_forall hpt)]
+        simp
+      · exfalso
+        have hcount := hN t
+        have hmem : t ∈ Efin.filter (fun s => t ≤ s ∧
+            s < t + ((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ)) := by
+          refine Finset.mem_filter.mpr ⟨ht, le_refl t, ?_⟩
+          have : (0 : ℝ) < ((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ) := by positivity
+          linarith
+        have hone : (1 : ℝ) ≤ ((Efin.filter (fun s => t ≤ s ∧
+            s < t + ((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ))).card : ℝ) := by
+          have h1 : 1 ≤ (Efin.filter (fun s => t ≤ s ∧
+              s < t + ((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ))).card :=
+            Finset.card_pos.mpr ⟨t, hmem⟩
+          exact_mod_cast h1
+        rw [hN0] at hcount
+        linarith
+    have hlhs : (∑ t ∈ Efin, ∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ)) = 0 := by
+      refine Finset.sum_eq_zero fun t ht => ?_
+      have hpt : ∀ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ) = 0 := by
+        intro ξ
+        rw [hzero t ht ξ]
+        simp
+      rw [lintegral_congr hpt]
+      simp
+    rw [hlhs]
+    exact zero_le
+  · have hmain := sum_lintegral_SopK_le hb.toIsAdapted (fun t ξ η => hray.bd0 t ξ η) hB ε Efin
+      (measurable_fourier_schwartz F) hApos hArow
+    rw [lintegral_enorm_sq_fourier_schwartz F] at hmain
+    exact hmain
+
+end Prop42
+
+
+/-! ## Partial Plancherel on `ℝ⁴ = ℝ² × ℝ²`
+
+The Fourier transform in the first planar variable is an `L²` isometry.  This is what turns the
+support hypothesis of Proposition 4.3 (`F` supported far from the diagonal) into a statement about
+the auxiliary function `G_ξ(w) = ∫ e^{-2πi⟪y,ξ⟫} F(y, y-w) dy`.
+-/
+
+section PartialPlancherel
+
+theorem norm_pr_sq (a c : Pl) : ‖pr a c‖ ^ 2 = ‖a‖ ^ 2 + ‖c‖ ^ 2 := by
+  have h : (inner ℝ (pr a c) (pr a c) : ℝ) = inner ℝ a a + inner ℝ c c := inner_pr a c a c
+  rw [real_inner_self_eq_norm_sq, real_inner_self_eq_norm_sq, real_inner_self_eq_norm_sq] at h
+  exact h
+
+theorem norm_pr_right_zero (a : Pl) : ‖pr a 0‖ = ‖a‖ := by
+  have h := norm_pr_sq a 0
+  rw [norm_zero] at h
+  nlinarith [norm_nonneg (pr a 0), norm_nonneg a, h]
+
+theorem pr_eq_symm (a c : Pl) :
+    pr a c = (WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).symm (a, c) := rfl
+
+theorem pr_sub_pr (y y' c : Pl) : pr y c - pr y' c = pr (y - y') 0 := by
+  rw [pr_eq_symm, pr_eq_symm, pr_eq_symm, ← map_sub]
+  congr 1
+  simp [Prod.ext_iff]
+
+/-- `y ↦ (y, 0)` as a continuous linear map into `ℝ⁴`. -/
+def prL : Pl →L[ℝ] Pl2 :=
+  (WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).symm.toContinuousLinearMap ∘L
+    (ContinuousLinearMap.inl ℝ Pl Pl)
+
+@[simp] theorem prL_apply (y : Pl) : prL y = pr y 0 := rfl
+
+theorem pr_eq_prL_add (y c : Pl) : pr y c = prL y + pr 0 c := by
+  rw [prL_apply, pr_eq_symm, pr_eq_symm, pr_eq_symm, ← map_add]
+  congr 1
+  simp [Prod.ext_iff]
+
+theorem hasTemperateGrowth_prRight (c : Pl) :
+    Function.HasTemperateGrowth (fun y : Pl => pr y c) := by
+  have h : (fun y : Pl => pr y c) = fun y : Pl => prL y + pr 0 c := by
+    funext y
+    exact pr_eq_prL_add y c
+  rw [h]
+  exact (prL.hasTemperateGrowth).add (Function.HasTemperateGrowth.const _)
+
+theorem antilipschitz_prRight (c : Pl) :
+    AntilipschitzWith 1 (fun y : Pl => pr y c) := by
+  refine AntilipschitzWith.of_le_mul_dist fun y y' => ?_
+  have h : dist (pr y c) (pr y' c) = dist y y' := by
+    rw [dist_eq_norm, dist_eq_norm, pr_sub_pr, norm_pr_right_zero]
+  rw [h]
+  simp
+
+/-- The slice `y ↦ F (y, w)` of a Schwartz function on `ℝ⁴`, as a Schwartz function on `ℝ²`. -/
+def sliceSchwartz (F : SchwartzMap Pl2 ℂ) (c : Pl) : SchwartzMap Pl ℂ :=
+  SchwartzMap.compCLMOfAntilipschitz ℝ (hasTemperateGrowth_prRight c)
+    (antilipschitz_prRight c) F
+
+@[simp] theorem sliceSchwartz_apply (F : SchwartzMap Pl2 ℂ) (c y : Pl) :
+    sliceSchwartz F c y = F (pr y c) := rfl
+
+theorem eLpNorm_fourier_schwartz_Pl (F : SchwartzMap Pl ℂ) :
+    eLpNorm (𝓕 (F : Pl → ℂ)) 2 (volume : Measure Pl)
+      = eLpNorm ((F : Pl → ℂ)) 2 (volume : Measure Pl) := by
+  have hnorm : ‖SchwartzMap.toLp (𝓕 F) 2 (volume : Measure Pl)‖
+      = ‖SchwartzMap.toLp F 2 (volume : Measure Pl)‖ := by
+    rw [← SchwartzMap.toLp_fourier_eq F]
+    exact MeasureTheory.Lp.norm_fourier_eq _
+  rw [SchwartzMap.norm_toLp, SchwartzMap.norm_toLp] at hnorm
+  have h1 : eLpNorm ((𝓕 F : SchwartzMap Pl ℂ) : Pl → ℂ) 2 (volume : Measure Pl) ≠ ⊤ :=
+    ((𝓕 F : SchwartzMap Pl ℂ).memLp 2 (volume : Measure Pl)).2.ne
+  have h2 : eLpNorm ((F : Pl → ℂ)) 2 (volume : Measure Pl) ≠ ⊤ :=
+    (F.memLp 2 (volume : Measure Pl)).2.ne
+  have heq : eLpNorm ((𝓕 F : SchwartzMap Pl ℂ) : Pl → ℂ) 2 (volume : Measure Pl)
+      = eLpNorm ((F : Pl → ℂ)) 2 (volume : Measure Pl) :=
+    (ENNReal.toReal_eq_toReal_iff' h1 h2).mp hnorm
+  rw [← SchwartzMap.fourier_coe F]
+  exact heq
+
+theorem lintegral_enorm_sq_fourier_schwartz_Pl (F : SchwartzMap Pl ℂ) :
+    (∫⁻ x : Pl, ‖𝓕 (F : Pl → ℂ) x‖ₑ ^ (2 : ℝ))
+      = ∫⁻ x : Pl, ‖(F : Pl → ℂ) x‖ₑ ^ (2 : ℝ) := by
+  have h1 := Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow
+    (volume : Measure Pl) (𝓕 (F : Pl → ℂ))
+  have h2 := Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow
+    (volume : Measure Pl) ((F : Pl → ℂ))
+  rw [Auto.CalderonVaillancourt.sqMass] at h1 h2
+  rw [h1, h2, eLpNorm_fourier_schwartz_Pl]
+
+/-- Partial Plancherel: the Fourier transform in the first planar variable preserves the `L²`
+norm on `ℝ⁴`. -/
+theorem lintegral_partial_plancherel (F : SchwartzMap Pl2 ℂ) :
+    (∫⁻ c : Pl, ∫⁻ ξ : Pl, ‖𝓕 (fun y : Pl => (F : Pl2 → ℂ) (pr y c)) ξ‖ₑ ^ (2 : ℝ))
+      = ∫⁻ x : Pl2, ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) := by
+  have hslice : ∀ c : Pl,
+      (∫⁻ ξ : Pl, ‖𝓕 (fun y : Pl => (F : Pl2 → ℂ) (pr y c)) ξ‖ₑ ^ (2 : ℝ))
+        = ∫⁻ y : Pl, ‖(F : Pl2 → ℂ) (pr y c)‖ₑ ^ (2 : ℝ) := by
+    intro c
+    exact lintegral_enorm_sq_fourier_schwartz_Pl (sliceSchwartz F c)
+  rw [lintegral_congr hslice]
+  have hmeas : Measurable fun q : Pl × Pl => ‖(F : Pl2 → ℂ) (pr q.1 q.2)‖ₑ ^ (2 : ℝ) := by
+    have h1 : Measurable fun q : Pl × Pl => (pr q.1 q.2 : Pl2) :=
+      (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable
+    exact (((F.continuous.measurable).comp h1).enorm).pow_const _
+  have hswap : (∫⁻ c : Pl, ∫⁻ y : Pl, ‖(F : Pl2 → ℂ) (pr y c)‖ₑ ^ (2 : ℝ))
+      = ∫⁻ y : Pl, ∫⁻ c : Pl, ‖(F : Pl2 → ℂ) (pr y c)‖ₑ ^ (2 : ℝ) := by
+    refine lintegral_lintegral_swap ?_
+    have h2 : Measurable fun q : Pl × Pl => ‖(F : Pl2 → ℂ) (pr q.2 q.1)‖ₑ ^ (2 : ℝ) := by
+      have h1 : Measurable fun q : Pl × Pl => (pr q.2 q.1 : Pl2) :=
+        (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable.comp
+          (measurable_snd.prodMk measurable_fst)
+      exact (((F.continuous.measurable).comp h1).enorm).pow_const _
+    exact h2.aemeasurable
+  rw [hswap]
+  exact lintegral_pr (fun x => ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ))
+    (((F.continuous.measurable).enorm).pow_const _)
+
+end PartialPlancherel
+
+
+/-! ## The shear `(y, z) ↦ (y, y - z)`
+
+The support hypothesis of Proposition 4.3 is a condition on `|y - z|`; after the shear it becomes a
+condition on the second variable, and the corresponding Fourier variable `w` produces the
+oscillation `e^{2π i ⟪w, η⟫}` that the integration by parts in `η` exploits.
+-/
+
+section Shear
+
+/-- The shear of `ℝ² × ℝ²`, as a linear map. -/
+def sigmaLM : (Pl × Pl) →ₗ[ℝ] (Pl × Pl) :=
+  (LinearMap.fst ℝ Pl Pl).prod ((LinearMap.fst ℝ Pl Pl) - (LinearMap.snd ℝ Pl Pl))
+
+@[simp] theorem sigmaLM_apply (p : Pl × Pl) : sigmaLM p = (p.1, p.1 - p.2) := rfl
+
+theorem sigmaLM_sigmaLM (p : Pl × Pl) : sigmaLM (sigmaLM p) = p := by
+  rw [sigmaLM_apply, sigmaLM_apply]
+  have h : p.1 - (p.1 - p.2) = p.2 := by abel
+  rw [h]
+
+/-- The shear of `ℝ² × ℝ²`, as a linear equivalence. -/
+def sigmaLE : (Pl × Pl) ≃ₗ[ℝ] (Pl × Pl) :=
+  LinearEquiv.ofLinear sigmaLM sigmaLM
+    (LinearMap.ext fun p => sigmaLM_sigmaLM p)
+    (LinearMap.ext fun p => sigmaLM_sigmaLM p)
+
+@[simp] theorem sigmaLE_apply (p : Pl × Pl) : sigmaLE p = (p.1, p.1 - p.2) := rfl
+
+/-- The shear of `ℝ⁴ = ℝ² × ℝ²`. -/
+def shearCLE : Pl2 ≃L[ℝ] Pl2 :=
+  ((WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).trans sigmaLE.toContinuousLinearEquiv).trans
+    (WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).symm
+
+@[simp] theorem shearCLE_pr (y w : Pl) : shearCLE (pr y w) = pr y (y - w) := rfl
+
+theorem shearCLE_involutive (x : Pl2) : shearCLE (shearCLE x) = x := by
+  have hx : x = pr (WithLp.ofLp x).1 (WithLp.ofLp x).2 := rfl
+  rw [hx, shearCLE_pr, shearCLE_pr]
+  congr 1
+  abel
+
+/-- The shear preserves the `L²` mass. -/
+theorem lintegral_comp_shear (h : Pl2 → ℝ≥0∞) (hh : Measurable h) :
+    (∫⁻ x : Pl2, h (shearCLE x)) = ∫⁻ x : Pl2, h x := by
+  have hmeas : Measurable fun q : Pl × Pl => h (shearCLE (pr q.1 q.2)) := by
+    have h1 : Measurable fun q : Pl × Pl => (pr q.1 q.2 : Pl2) :=
+      (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable
+    exact hh.comp (shearCLE.continuous.measurable.comp h1)
+  have hstep1 : (∫⁻ x : Pl2, h (shearCLE x))
+      = ∫⁻ y : Pl, ∫⁻ w : Pl, h (shearCLE (pr y w)) :=
+    (lintegral_pr (fun x => h (shearCLE x)) (hh.comp shearCLE.continuous.measurable)).symm
+  have hinner : ∀ y : Pl, (∫⁻ w : Pl, h (shearCLE (pr y w))) = ∫⁻ z : Pl, h (pr y z) := by
+    intro y
+    have hpt : ∀ w : Pl, h (shearCLE (pr y w)) = (fun z : Pl => h (pr y z)) (y - w) := by
+      intro w
+      rw [shearCLE_pr]
+    rw [lintegral_congr hpt]
+    exact lintegral_sub_left_eq_self (fun z : Pl => h (pr y z)) y
+  rw [hstep1, lintegral_congr hinner]
+  exact lintegral_pr h hh
+
+/-- The sheared Schwartz function `H = F ∘ shear`. -/
+def shearSchwartz (F : SchwartzMap Pl2 ℂ) : SchwartzMap Pl2 ℂ :=
+  SchwartzMap.compCLMOfContinuousLinearEquiv ℝ shearCLE F
+
+@[simp] theorem shearSchwartz_apply (F : SchwartzMap Pl2 ℂ) (x : Pl2) :
+    shearSchwartz F x = F (shearCLE x) := rfl
+
+theorem lintegral_enorm_sq_shearSchwartz (F : SchwartzMap Pl2 ℂ) :
+    (∫⁻ x : Pl2, ‖(shearSchwartz F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ))
+      = ∫⁻ x : Pl2, ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) := by
+  have hmeas : Measurable fun x : Pl2 => ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) :=
+    ((F.continuous.measurable).enorm).pow_const _
+  exact lintegral_comp_shear (fun x => ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ)) hmeas
+
+theorem inner_shear_pr (y w ξ η : Pl) :
+    (inner ℝ (shearCLE (pr y w)) (pr (ξ - η) η) : ℝ) = inner ℝ (pr y w) (pr ξ (-η)) := by
+  rw [shearCLE_pr, inner_pr, inner_pr, inner_sub_right, inner_neg_right, inner_sub_left]
+  ring
+
+end Shear
+
+
+/-! ## The `w`-representation of the Fourier transform -/
+
+section WRep
+
+/-- The Fourier kernel `e^{-2π i r}`. -/
+def ee (r : ℝ) : ℂ := Complex.exp (((-2 * Real.pi * r : ℝ) : ℂ) * Complex.I)
+
+@[simp] theorem norm_ee (r : ℝ) : ‖ee r‖ = 1 := by
+  rw [ee, Complex.norm_exp_ofReal_mul_I]
+
+theorem ee_add (r s : ℝ) : ee (r + s) = ee r * ee s := by
+  rw [ee, ee, ee, ← Complex.exp_add]
+  congr 1
+  push_cast
+  ring
+
+theorem continuous_ee : Continuous ee := by
+  refine Complex.continuous_exp.comp ?_
+  exact (Complex.continuous_ofReal.comp (continuous_const.mul continuous_id)).mul
+    continuous_const
+
+theorem fourier_eq_ee_Pl (f : Pl → ℂ) (w : Pl) :
+    𝓕 f w = ∫ v : Pl, ee (inner ℝ v w) * f v := by
+  rw [Real.fourier_eq']
+  refine integral_congr_ae (Filter.Eventually.of_forall fun v => ?_)
+  simp only [ee, smul_eq_mul]
+
+theorem fourier_eq_ee_Pl2 (f : Pl2 → ℂ) (w : Pl2) :
+    𝓕 f w = ∫ v : Pl2, ee (inner ℝ v w) * f v := by
+  rw [Real.fourier_eq']
+  refine integral_congr_ae (Filter.Eventually.of_forall fun v => ?_)
+  simp only [ee, smul_eq_mul]
+
+theorem continuous_prPair : Continuous fun q : Pl × Pl => (pr q.1 q.2 : Pl2) :=
+  (WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).symm.continuous
+
+theorem measurePreserving_shear :
+    MeasurePreserving shearCLE (volume : Measure Pl2) (volume : Measure Pl2) := by
+  classical
+  refine ⟨shearCLE.continuous.measurable, ?_⟩
+  refine Measure.ext fun s hs => ?_
+  rw [Measure.map_apply shearCLE.continuous.measurable hs]
+  have hpre : MeasurableSet (shearCLE ⁻¹' s) := shearCLE.continuous.measurable hs
+  have h := lintegral_comp_shear (Set.indicator s fun _ => (1 : ℝ≥0∞))
+    (measurable_const.indicator hs)
+  have hind : ∀ x : Pl2, Set.indicator s (fun _ => (1 : ℝ≥0∞)) (shearCLE x)
+      = Set.indicator (shearCLE ⁻¹' s) (fun _ => (1 : ℝ≥0∞)) x := by
+    intro x
+    by_cases hx : shearCLE x ∈ s
+    · rw [Set.indicator_of_mem hx,
+        Set.indicator_of_mem (show x ∈ shearCLE ⁻¹' s from hx)]
+    · rw [Set.indicator_of_notMem hx,
+        Set.indicator_of_notMem (show x ∉ shearCLE ⁻¹' s from hx)]
+  rw [lintegral_congr hind, lintegral_indicator hpre, setLIntegral_one,
+    lintegral_indicator hs, setLIntegral_one] at h
+  exact h
+
+theorem integral_comp_shear (g : Pl2 → ℂ) :
+    (∫ x : Pl2, g (shearCLE x)) = ∫ x : Pl2, g x :=
+  measurePreserving_shear.integral_comp (shearCLE.toHomeomorph.measurableEmbedding) g
+
+theorem inner_shear (x : Pl2) (ξ η : Pl) :
+    (inner ℝ (shearCLE x) (pr (ξ - η) η) : ℝ) = inner ℝ x (pr ξ (-η)) := by
+  have hx : x = pr (WithLp.ofLp x).1 (WithLp.ofLp x).2 := rfl
+  rw [hx]
+  exact inner_shear_pr _ _ ξ η
+
+/-- The Fourier transform of `F` at `(ξ - η, η)` is that of the sheared function at `(ξ, -η)`. -/
+theorem fourier_shear_eq (F : SchwartzMap Pl2 ℂ) (ξ η : Pl) :
+    𝓕 (F : Pl2 → ℂ) (pr (ξ - η) η)
+      = 𝓕 ((shearSchwartz F : Pl2 → ℂ)) (pr ξ (-η)) := by
+  rw [fourier_eq_ee_Pl2, fourier_eq_ee_Pl2,
+    ← integral_comp_shear (fun x => ee (inner ℝ x (pr (ξ - η) η)) * (F : Pl2 → ℂ) x)]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+  show ee (inner ℝ (shearCLE x) (pr (ξ - η) η)) * (F : Pl2 → ℂ) (shearCLE x)
+      = ee (inner ℝ x (pr ξ (-η))) * (shearSchwartz F : Pl2 → ℂ) x
+  rw [inner_shear x ξ η]
+  rfl
+
+/-- The partial Fourier transform in the first variable. -/
+def Gf (H : Pl2 → ℂ) (ξ w : Pl) : ℂ := 𝓕 (fun y : Pl => H (pr y w)) ξ
+
+theorem measurePreserving_prPair :
+    MeasurePreserving (fun q : Pl × Pl => (pr q.1 q.2 : Pl2))
+      ((volume : Measure (Pl × Pl))) (volume : Measure Pl2) :=
+  WithLp.volume_preserving_toLp (U := Pl) (V := Pl)
+
+/-- The Fourier transform of a Schwartz function on `ℝ⁴`, as an iterated transform. -/
+theorem fourier_pr_eq (H : SchwartzMap Pl2 ℂ) (ξ ζ : Pl) :
+    𝓕 (H : Pl2 → ℂ) (pr ξ ζ) = 𝓕 (fun w : Pl => Gf (H : Pl2 → ℂ) ξ w) ζ := by
+  classical
+  have hHprod : Integrable (fun q : Pl × Pl => (H : Pl2 → ℂ) (pr q.1 q.2))
+      (volume : Measure (Pl × Pl)) :=
+    measurePreserving_prPair.integrable_comp_of_integrable H.integrable
+  have hcont : Continuous fun q : Pl × Pl =>
+      ee (inner ℝ q.1 ξ) * ee (inner ℝ q.2 ζ) * (H : Pl2 → ℂ) (pr q.1 q.2) := by
+    have h1 : Continuous fun q : Pl × Pl => ee (inner ℝ q.1 ξ) :=
+      continuous_ee.comp (continuous_fst.inner continuous_const)
+    have h2 : Continuous fun q : Pl × Pl => ee (inner ℝ q.2 ζ) :=
+      continuous_ee.comp (continuous_snd.inner continuous_const)
+    have h3 : Continuous fun q : Pl × Pl => (H : Pl2 → ℂ) (pr q.1 q.2) :=
+      H.continuous.comp continuous_prPair
+    exact (h1.mul h2).mul h3
+  have hI : Integrable (fun q : Pl × Pl =>
+      ee (inner ℝ q.1 ξ) * ee (inner ℝ q.2 ζ) * (H : Pl2 → ℂ) (pr q.1 q.2))
+      (volume : Measure (Pl × Pl)) := by
+    refine Integrable.mono' hHprod.norm hcont.aestronglyMeasurable
+      (Filter.Eventually.of_forall fun q => ?_)
+    rw [norm_mul, norm_mul, norm_ee, norm_ee, one_mul, one_mul]
+  rw [fourier_eq_ee_Pl2, fourier_eq_ee_Pl]
+  have hstep1 : (∫ v : Pl2, ee (inner ℝ v (pr ξ ζ)) * (H : Pl2 → ℂ) v)
+      = ∫ q : Pl × Pl, ee (inner ℝ q.1 ξ) * ee (inner ℝ q.2 ζ) *
+          (H : Pl2 → ℂ) (pr q.1 q.2) := by
+    rw [← measurePreserving_prPair.integral_comp
+      (WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).symm.toHomeomorph.measurableEmbedding
+      (fun v : Pl2 => ee (inner ℝ v (pr ξ ζ)) * (H : Pl2 → ℂ) v)]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun q => ?_)
+    show ee (inner ℝ (pr q.1 q.2) (pr ξ ζ)) * (H : Pl2 → ℂ) (pr q.1 q.2)
+        = ee (inner ℝ q.1 ξ) * ee (inner ℝ q.2 ζ) * (H : Pl2 → ℂ) (pr q.1 q.2)
+    rw [inner_pr, ee_add]
+  have hfub : (∫ q : Pl × Pl, ee (inner ℝ q.1 ξ) * ee (inner ℝ q.2 ζ) *
+        (H : Pl2 → ℂ) (pr q.1 q.2))
+      = ∫ w : Pl, ∫ y : Pl, ee (inner ℝ y ξ) * ee (inner ℝ w ζ) *
+        (H : Pl2 → ℂ) (pr y w) :=
+    integral_prod_symm _ hI
+  rw [hstep1, hfub]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun w => ?_)
+  show (∫ y : Pl, ee (inner ℝ y ξ) * ee (inner ℝ w ζ) * (H : Pl2 → ℂ) (pr y w))
+      = ee (inner ℝ w ζ) * Gf (H : Pl2 → ℂ) ξ w
+  rw [Gf, fourier_eq_ee_Pl, ← integral_const_mul]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+  ring
+
+end WRep
+
+
+/-! ## Integration by parts on the plane
+
+For a compactly supported `C¹` function the integral of a directional derivative vanishes.  This
+is the two-dimensional integration by parts used in §4.4.
+-/
+
+section PlanarIBP
+
+/-- One dimension: the integral of the derivative of a compactly supported `C¹` function is `0`. -/
+theorem integral_deriv_eq_zero {g g' : ℝ → ℂ} (hg : ∀ x, HasDerivAt g (g' x) x)
+    (hg'c : Continuous g') (hgs : HasCompactSupport g) :
+    (∫ x : ℝ, g' x) = 0 := by
+  have hderiv : ∀ x, deriv g x = g' x := fun x => (hg x).deriv
+  have hg's : HasCompactSupport g' := by
+    have h := hgs.deriv
+    refine HasCompactSupport.intro h.isCompact fun x hx => ?_
+    rw [← hderiv x]
+    exact image_eq_zero_of_notMem_tsupport hx
+  obtain ⟨R, hR⟩ : ∃ R : ℝ, 0 < R ∧ ∀ x, R < |x| → g x = 0 ∧ g' x = 0 := by
+    obtain ⟨R1, hR1⟩ := (hgs.isCompact.union hg's.isCompact).isBounded.subset_closedBall 0
+    refine ⟨max R1 1 + 1, by positivity, fun x hx => ?_⟩
+    have hnot : x ∉ tsupport g ∪ tsupport g' := by
+      intro hmem
+      have := hR1 hmem
+      rw [Metric.mem_closedBall, Real.dist_eq, sub_zero] at this
+      have h2 : R1 ≤ max R1 1 := le_max_left _ _
+      linarith
+    refine ⟨image_eq_zero_of_notMem_tsupport (fun h => hnot (Or.inl h)),
+      image_eq_zero_of_notMem_tsupport (fun h => hnot (Or.inr h))⟩
+  obtain ⟨hRpos, hRz⟩ := hR
+  have hzero : ∀ x, x ∉ Set.Icc (-(R + 1)) (R + 1) → g' x = 0 := by
+    intro x hx
+    refine (hRz x ?_).2
+    rw [Set.mem_Icc] at hx
+    push_neg at hx
+    rcases lt_or_ge x (-(R + 1)) with h | h
+    · rw [abs_of_neg (by linarith)]
+      linarith
+    · have h2 : R + 1 < x := hx h
+      rw [abs_of_pos (by linarith)]
+      linarith
+  have hint : (∫ x : ℝ, g' x) = ∫ x in Set.Icc (-(R + 1)) (R + 1), g' x :=
+    (setIntegral_eq_integral_of_forall_compl_eq_zero hzero).symm
+  rw [hint]
+  have hIcc : (∫ x in Set.Icc (-(R + 1)) (R + 1), g' x)
+      = ∫ x in (-(R + 1))..(R + 1), g' x := by
+    rw [intervalIntegral.integral_of_le (by linarith), ← MeasureTheory.integral_Icc_eq_integral_Ioc]
+  rw [hIcc, intervalIntegral.integral_eq_sub_of_hasDerivAt (fun x _ => hg x)
+    (hg'c.intervalIntegrable _ _)]
+  have h1 : g (R + 1) = 0 := (hRz (R + 1) (by rw [abs_of_pos (by linarith)]; linarith)).1
+  have h2 : g (-(R + 1)) = 0 := (hRz (-(R + 1)) (by
+    rw [abs_of_neg (by linarith)]; linarith)).1
+  rw [h1, h2, sub_zero]
+
+/-- The unit vectors of the plane. -/
+def ee0 : Pl := EuclideanSpace.single (0 : Fin 2) (1 : ℝ)
+
+/-- The unit vectors of the plane. -/
+def ee1 : Pl := EuclideanSpace.single (1 : Fin 2) (1 : ℝ)
+
+theorem mk2_eq_add (x y : ℝ) : mk2 x y = x • ee0 + y • ee1 := rfl
+
+theorem hasDerivAt_mk2_fst (y : ℝ) (x : ℝ) :
+    HasDerivAt (fun s : ℝ => mk2 s y) ee0 x := by
+  have h : (fun s : ℝ => mk2 s y) = fun s : ℝ => s • ee0 + y • ee1 := by
+    funext s
+    exact mk2_eq_add s y
+  rw [h]
+  have h1 : HasDerivAt (fun s : ℝ => s • ee0) ee0 x := by
+    simpa using (hasDerivAt_id x).smul_const ee0
+  exact h1.add_const _
+
+theorem hasDerivAt_mk2_snd (x : ℝ) (y : ℝ) :
+    HasDerivAt (fun s : ℝ => mk2 x s) ee1 y := by
+  have h : (fun s : ℝ => mk2 x s) = fun s : ℝ => x • ee0 + s • ee1 := by
+    funext s
+    exact mk2_eq_add x s
+  rw [h]
+  have h1 : HasDerivAt (fun s : ℝ => s • ee1) ee1 y := by
+    simpa using (hasDerivAt_id y).smul_const ee1
+  exact h1.const_add _
+
+theorem mk2_coords (x : Pl) : mk2 (x 0) (x 1) = x := by
+  refine PiLp.ext fun i => ?_
+  by_cases h : i = 0
+  · subst h
+    rw [mk2_apply_zero]
+  · have h1 : i = 1 := by omega
+    subst h1
+    rw [mk2_apply_one]
+
+theorem norm_mk2_ge (x y : ℝ) : ‖(x, y)‖ ≤ ‖mk2 x y‖ := by
+  have hsq : ‖mk2 x y‖ ^ 2 = x ^ 2 + y ^ 2 := norm_mk2_sq x y
+  have hx : |x| ≤ ‖mk2 x y‖ := by
+    nlinarith [abs_nonneg x, norm_nonneg (mk2 x y), sq_abs x, sq_nonneg y]
+  have hy : |y| ≤ ‖mk2 x y‖ := by
+    nlinarith [abs_nonneg y, norm_nonneg (mk2 x y), sq_abs y, sq_nonneg x]
+  rw [Prod.norm_def, Real.norm_eq_abs, Real.norm_eq_abs]
+  exact max_le hx hy
+
+theorem hasCompactSupport_comp_mk2 {D : Pl → ℂ} (hD : HasCompactSupport D) :
+    HasCompactSupport fun p : ℝ × ℝ => D (mk2 p.1 p.2) := by
+  obtain ⟨R, hR⟩ := hD.isCompact.isBounded.subset_closedBall 0
+  refine HasCompactSupport.intro (isCompact_closedBall (0 : ℝ × ℝ) R) fun p hp => ?_
+  refine image_eq_zero_of_notMem_tsupport fun hmem => ?_
+  have h1 := hR hmem
+  rw [Metric.mem_closedBall, dist_zero_right] at h1
+  rw [Metric.mem_closedBall, dist_zero_right] at hp
+  exact hp (le_trans (norm_mk2_ge p.1 p.2) h1)
+
+theorem hasCompactSupport_slice_fst {f : Pl → ℂ} (hf : HasCompactSupport f) (y : ℝ) :
+    HasCompactSupport fun x : ℝ => f (mk2 x y) := by
+  obtain ⟨R, hR⟩ := hf.isCompact.isBounded.subset_closedBall 0
+  refine HasCompactSupport.intro (isCompact_Icc (a := -R) (b := R)) fun x hx => ?_
+  refine image_eq_zero_of_notMem_tsupport fun hmem => ?_
+  have h1 := hR hmem
+  rw [Metric.mem_closedBall, dist_zero_right] at h1
+  have h2 : |x| ≤ ‖mk2 x y‖ := by
+    have hsq : ‖mk2 x y‖ ^ 2 = x ^ 2 + y ^ 2 := norm_mk2_sq x y
+    nlinarith [abs_nonneg x, norm_nonneg (mk2 x y), sq_abs x, sq_nonneg y]
+  have h3 : |x| ≤ R := le_trans h2 h1
+  rw [abs_le] at h3
+  exact hx ⟨h3.1, h3.2⟩
+
+/-- Two dimensions: the integral of the partial derivative in the first coordinate direction of a
+compactly supported `C¹` function vanishes. -/
+theorem integral_partial_fst_eq_zero {f D : Pl → ℂ}
+    (hD : ∀ x y : ℝ, HasDerivAt (fun s : ℝ => f (mk2 s y)) (D (mk2 x y)) x)
+    (hDc : Continuous D) (hDs : HasCompactSupport D) (hfs : HasCompactSupport f) :
+    (∫ η : Pl, D η) = 0 := by
+  have hDmk : Continuous fun p : ℝ × ℝ => D (mk2 p.1 p.2) := hDc.comp continuous_mk2
+  have hI : Integrable (fun p : ℝ × ℝ => D (mk2 p.1 p.2)) (volume : Measure (ℝ × ℝ)) :=
+    hDmk.integrable_of_hasCompactSupport (hasCompactSupport_comp_mk2 hDs)
+  have hstep1 : (∫ η : Pl, D η) = ∫ p : ℝ × ℝ, D (mk2 p.1 p.2) := by
+    rw [← measurePreserving_coords.integral_comp coords.measurableEmbedding
+      (fun p : ℝ × ℝ => D (mk2 p.1 p.2))]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+    show D x = D (mk2 (x 0) (x 1))
+    rw [mk2_coords]
+  have hfub : (∫ p : ℝ × ℝ, D (mk2 p.1 p.2)) = ∫ y : ℝ, ∫ x : ℝ, D (mk2 x y) :=
+    integral_prod_symm _ hI
+  rw [hstep1, hfub]
+  have hinner : ∀ y : ℝ, (∫ x : ℝ, D (mk2 x y)) = 0 := by
+    intro y
+    exact integral_deriv_eq_zero (fun x => hD x y)
+      (hDc.comp (continuous_mk2.comp (continuous_id.prodMk continuous_const)))
+      (hasCompactSupport_slice_fst hfs y)
+  rw [integral_congr_ae (Filter.Eventually.of_forall hinner)]
+  simp
+
+theorem hasCompactSupport_slice_snd {f : Pl → ℂ} (hf : HasCompactSupport f) (x : ℝ) :
+    HasCompactSupport fun y : ℝ => f (mk2 x y) := by
+  obtain ⟨R, hR⟩ := hf.isCompact.isBounded.subset_closedBall 0
+  refine HasCompactSupport.intro (isCompact_Icc (a := -R) (b := R)) fun y hy => ?_
+  refine image_eq_zero_of_notMem_tsupport fun hmem => ?_
+  have h1 := hR hmem
+  rw [Metric.mem_closedBall, dist_zero_right] at h1
+  have h2 : |y| ≤ ‖mk2 x y‖ := by
+    have hsq : ‖mk2 x y‖ ^ 2 = x ^ 2 + y ^ 2 := norm_mk2_sq x y
+    nlinarith [abs_nonneg y, norm_nonneg (mk2 x y), sq_abs y, sq_nonneg x]
+  have h3 : |y| ≤ R := le_trans h2 h1
+  rw [abs_le] at h3
+  exact hy ⟨h3.1, h3.2⟩
+
+/-- The same statement in the second coordinate direction. -/
+theorem integral_partial_snd_eq_zero {f D : Pl → ℂ}
+    (hD : ∀ x y : ℝ, HasDerivAt (fun s : ℝ => f (mk2 x s)) (D (mk2 x y)) y)
+    (hDc : Continuous D) (hDs : HasCompactSupport D) (hfs : HasCompactSupport f) :
+    (∫ η : Pl, D η) = 0 := by
+  have hDmk : Continuous fun p : ℝ × ℝ => D (mk2 p.1 p.2) := hDc.comp continuous_mk2
+  have hI : Integrable (fun p : ℝ × ℝ => D (mk2 p.1 p.2)) (volume : Measure (ℝ × ℝ)) :=
+    hDmk.integrable_of_hasCompactSupport (hasCompactSupport_comp_mk2 hDs)
+  have hstep1 : (∫ η : Pl, D η) = ∫ p : ℝ × ℝ, D (mk2 p.1 p.2) := by
+    rw [← measurePreserving_coords.integral_comp coords.measurableEmbedding
+      (fun p : ℝ × ℝ => D (mk2 p.1 p.2))]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+    show D x = D (mk2 (x 0) (x 1))
+    rw [mk2_coords]
+  have hfub : (∫ p : ℝ × ℝ, D (mk2 p.1 p.2)) = ∫ x : ℝ, ∫ y : ℝ, D (mk2 x y) :=
+    integral_prod _ hI
+  rw [hstep1, hfub]
+  have hinner : ∀ x : ℝ, (∫ y : ℝ, D (mk2 x y)) = 0 := by
+    intro x
+    exact integral_deriv_eq_zero (fun y => hD x y)
+      (hDc.comp (continuous_mk2.comp (continuous_const.prodMk continuous_id)))
+      (hasCompactSupport_slice_snd hfs x)
+  rw [integral_congr_ae (Filter.Eventually.of_forall hinner)]
+  simp
+
+end PlanarIBP
+
+
+
+
+/-! ## The phase of §4.4
+
+`ph ε t ξ w η = ⟪w, η⟫ + ε t (|ξ - η| + |η|)`; its partial derivative in a coordinate direction is
+`w_i + ε t (η_i/|η| - (ξ-η)_i/|ξ-η|)`, which is dominated by `w_i` once `|w|` is much larger than
+the angle `2^{-m}`.
+-/
+
+section Phase44
+
+/-- The derivative of `r ↦ ‖η + r • u‖` at `s`, for a unit vector `u`. -/
+theorem hasDerivAt_norm_line {u : Pl} (hu : ‖u‖ = 1) (η : Pl) {s : ℝ}
+    (hs : η + s • u ≠ 0) :
+    HasDerivAt (fun r : ℝ => ‖η + r • u‖)
+      ((inner ℝ (η + s • u) u : ℝ) / ‖η + s • u‖) s := by
+  set a : ℝ := inner ℝ η u with hadef
+  set P : ℝ → ℝ := fun r => ‖η‖ ^ 2 + 2 * r * a + r ^ 2 with hPdef
+  have hnorm : ∀ r : ℝ, ‖η + r • u‖ = Real.sqrt (P r) := by
+    intro r
+    have hsq : ‖η + r • u‖ ^ 2 = P r := by
+      rw [norm_add_sq_real, real_inner_smul_right, norm_smul, hu, mul_one, Real.norm_eq_abs,
+        sq_abs, hPdef, hadef]
+      ring
+    rw [← hsq, Real.sqrt_sq (norm_nonneg _)]
+  have hPs : 0 < P s := by
+    have h : ‖η + s • u‖ ^ 2 = P s := by
+      rw [hnorm s, Real.sq_sqrt]
+      exact le_of_lt (by
+        have h2 : ‖η + s • u‖ ^ 2 = ‖η‖ ^ 2 + 2 * s * a + s ^ 2 := by
+          rw [norm_add_sq_real, real_inner_smul_right, norm_smul, hu, mul_one, Real.norm_eq_abs,
+            sq_abs, hadef]
+          ring
+        have h3 : (0 : ℝ) < ‖η + s • u‖ := norm_pos_iff.mpr hs
+        rw [hPdef]
+        nlinarith [h2, h3])
+    have h3 : (0 : ℝ) < ‖η + s • u‖ := norm_pos_iff.mpr hs
+    nlinarith [h, h3]
+  have hPd : HasDerivAt P (2 * a + 2 * s) s := by
+    have h1 : HasDerivAt (fun r : ℝ => ‖η‖ ^ 2 + 2 * r * a) (2 * a) s := by
+      have h2 : HasDerivAt (fun r : ℝ => 2 * r * a) (2 * a) s := by
+        have h3 : HasDerivAt (fun r : ℝ => 2 * r) 2 s := by
+          simpa using (hasDerivAt_id s).const_mul (2 : ℝ)
+        simpa using h3.mul_const a
+      exact h2.const_add _
+    have h4 : HasDerivAt (fun r : ℝ => r ^ 2) (2 * s) s := by
+      simpa using hasDerivAt_pow 2 s
+    exact h1.add h4
+  have hsq := (Real.hasDerivAt_sqrt hPs.ne').comp s hPd
+  have hcongr : (fun r : ℝ => ‖η + r • u‖) = fun r : ℝ => Real.sqrt (P r) := by
+    funext r
+    exact hnorm r
+  rw [hcongr]
+  have heq : 1 / (2 * Real.sqrt (P s)) * (2 * a + 2 * s)
+      = (inner ℝ (η + s • u) u : ℝ) / ‖η + s • u‖ := by
+    have hinner : (inner ℝ (η + s • u) u : ℝ) = a + s := by
+      rw [inner_add_left, real_inner_smul_left, hadef, real_inner_self_eq_norm_sq, hu]
+      ring
+    have hne : ‖η + s • u‖ ≠ 0 := (norm_pos_iff.mpr hs).ne'
+    rw [hinner, ← hnorm s]
+    field_simp
+  rw [heq] at hsq
+  exact hsq
+
+/-- The phase of §4.4. -/
+def ph (ε t : ℝ) (ξ w η : Pl) : ℝ := inner ℝ w η + ε * t * (‖ξ - η‖ + ‖η‖)
+
+/-- Its partial derivative in the direction `u`. -/
+def phd (ε t : ℝ) (ξ w η u : Pl) : ℝ :=
+  inner ℝ w u + ε * t * (-(inner ℝ (ξ - η) u / ‖ξ - η‖) + inner ℝ η u / ‖η‖)
+
+theorem hasDerivAt_ph {u : Pl} (hu : ‖u‖ = 1) (ε t : ℝ) (ξ w η : Pl)
+    (hη : η ≠ 0) (hξη : ξ - η ≠ 0) :
+    HasDerivAt (fun r : ℝ => ph ε t ξ w (η + r • u)) (phd ε t ξ w η u) 0 := by
+  have h1 : HasDerivAt (fun r : ℝ => (inner ℝ w (η + r • u) : ℝ)) (inner ℝ w u) 0 := by
+    have h : (fun r : ℝ => (inner ℝ w (η + r • u) : ℝ))
+        = fun r : ℝ => inner ℝ w η + r * inner ℝ w u := by
+      funext r
+      rw [inner_add_right, real_inner_smul_right]
+    rw [h]
+    have h2 : HasDerivAt (fun r : ℝ => r * (inner ℝ w u : ℝ)) (inner ℝ w u) 0 := by
+      simpa using (hasDerivAt_id (0 : ℝ)).mul_const (inner ℝ w u : ℝ)
+    exact h2.const_add _
+  have h2 : HasDerivAt (fun r : ℝ => ‖η + r • u‖) ((inner ℝ η u : ℝ) / ‖η‖) 0 := by
+    have h := hasDerivAt_norm_line hu η (s := 0) (by simpa using hη)
+    simpa using h
+  have h3 : HasDerivAt (fun r : ℝ => ‖ξ - (η + r • u)‖)
+      (-((inner ℝ (ξ - η) u : ℝ) / ‖ξ - η‖)) 0 := by
+    have hline : (fun r : ℝ => ‖ξ - (η + r • u)‖)
+        = fun r : ℝ => ‖(ξ - η) + r • (-u)‖ := by
+      funext r
+      congr 1
+      rw [smul_neg]
+      abel
+    have hnu : ‖-u‖ = 1 := by rw [norm_neg]; exact hu
+    have h := hasDerivAt_norm_line hnu (ξ - η) (s := 0) (by simpa using hξη)
+    rw [hline]
+    have heq : (inner ℝ ((ξ - η) + (0 : ℝ) • (-u)) (-u) : ℝ) / ‖(ξ - η) + (0 : ℝ) • (-u)‖
+        = -((inner ℝ (ξ - η) u : ℝ) / ‖ξ - η‖) := by
+      simp only [zero_smul, add_zero, inner_neg_right]
+      ring
+    rw [← heq]
+    exact h
+  have hsum : HasDerivAt (fun r : ℝ => ‖ξ - (η + r • u)‖ + ‖η + r • u‖)
+      (-((inner ℝ (ξ - η) u : ℝ) / ‖ξ - η‖) + (inner ℝ η u : ℝ) / ‖η‖) 0 := h3.add h2
+  have hfin := h1.add (hsum.const_mul (ε * t))
+  have hcongr : (fun r : ℝ => ph ε t ξ w (η + r • u))
+      = fun r : ℝ => (inner ℝ w (η + r • u) : ℝ) +
+        ε * t * (‖ξ - (η + r • u)‖ + ‖η + r • u‖) := by
+    funext r
+    rw [ph]
+  rw [hcongr, phd]
+  exact hfin
+
+end Phase44
+
+
+/-! ## The gradient of the phase is dominated by `w`
+
+The difference of the two unit vectors `η/|η|` and `(ξ-η)/|ξ-η|` has norm at most the angle
+between them, which on the support of a `(j,m)`-adapted symbol is `≲ 2^{-m}`.
+-/
+
+section UnitDiff
+
+theorem norm_unit_diff_le {x y : Pl} (hx : x ≠ 0) (hy : y ≠ 0) :
+    ‖‖x‖⁻¹ • x - ‖y‖⁻¹ • y‖ ≤ InnerProductGeometry.angle x y := by
+  set α := InnerProductGeometry.angle x y with hα
+  have hxpos : (0 : ℝ) < ‖x‖ := norm_pos_iff.mpr hx
+  have hypos : (0 : ℝ) < ‖y‖ := norm_pos_iff.mpr hy
+  have hu : ‖‖x‖⁻¹ • x‖ = 1 := by
+    rw [norm_smul, norm_inv, norm_norm]
+    field_simp
+  have hv : ‖‖y‖⁻¹ • y‖ = 1 := by
+    rw [norm_smul, norm_inv, norm_norm]
+    field_simp
+  have hinner : (inner ℝ (‖x‖⁻¹ • x) (‖y‖⁻¹ • y) : ℝ) = Real.cos α := by
+    rw [real_inner_smul_left, real_inner_smul_right]
+    have hcos : Real.cos α * (‖x‖ * ‖y‖) = inner ℝ x y :=
+      InnerProductGeometry.cos_angle_mul_norm_mul_norm x y
+    rw [← hcos]
+    field_simp
+  have hsq : ‖‖x‖⁻¹ • x - ‖y‖⁻¹ • y‖ ^ 2 = 2 - 2 * Real.cos α := by
+    rw [norm_sub_sq_real, hu, hv, hinner]
+    ring
+  have hα0 : 0 ≤ α := InnerProductGeometry.angle_nonneg x y
+  have hαπ : α ≤ π := InnerProductGeometry.angle_le_pi x y
+  have hhalf : Real.cos α = 1 - 2 * Real.sin (α / 2) ^ 2 := by
+    have h := Real.cos_two_mul' (α / 2)
+    rw [show 2 * (α / 2) = α by ring] at h
+    have h2 := Real.sin_sq_add_cos_sq (α / 2)
+    nlinarith [h, h2]
+  have hsinnn : 0 ≤ Real.sin (α / 2) :=
+    Real.sin_nonneg_of_nonneg_of_le_pi (by linarith) (by linarith [Real.pi_pos])
+  have hsinle : Real.sin (α / 2) ≤ α / 2 := Real.sin_le (by linarith)
+  have hsq2 : ‖‖x‖⁻¹ • x - ‖y‖⁻¹ • y‖ ^ 2 = (2 * Real.sin (α / 2)) ^ 2 := by
+    rw [hsq, hhalf]
+    ring
+  have hnn : (0 : ℝ) ≤ 2 * Real.sin (α / 2) := by linarith
+  have heq : ‖‖x‖⁻¹ • x - ‖y‖⁻¹ • y‖ = 2 * Real.sin (α / 2) := by
+    nlinarith [norm_nonneg (‖x‖⁻¹ • x - ‖y‖⁻¹ • y), hsq2, hnn]
+  rw [heq]
+  linarith
+
+/-- On the support of a `(j,m)`-adapted symbol the angle between `η` and `ξ - η` is at most
+`2^{9-m}`. -/
+theorem angle_eta_le {j m : ℕ} {ξ η : Pl} (hξ : XiData j ξ) (h : η ∈ SuppSet j m ξ) :
+    InnerProductGeometry.angle η (ξ - η) ≤ (2 : ℝ) ^ (9 - (m : ℤ)) := by
+  obtain ⟨hηT, hξηT, hang⟩ := h
+  set β := InnerProductGeometry.angle η (ξ - η) with hβ
+  have hβ0 : 0 ≤ β := InnerProductGeometry.angle_nonneg _ _
+  -- the cone bound
+  have hcone := angle_le_of_cone hηT.1 (Theta.snd_pos hηT) hηT.2.1
+    hξηT.1 (Theta.snd_pos hξηT) hξηT.2.1
+  rw [← hβ] at hcone
+  -- the sine rule: `sin β = sin∠(η,ξ) ‖ξ‖ / ‖ξ - η‖`
+  have hηpos : (0 : ℝ) < ‖η‖ := lt_of_lt_of_le (by positivity) hηT.2.2.1
+  have hξηpos : (0 : ℝ) < ‖ξ - η‖ := lt_of_lt_of_le (by positivity) hξηT.2.2.1
+  have hdeteq : det2 η (ξ - η) = det2 η ξ := by
+    rw [det2, det2]
+    simp only [PiLp.sub_apply]
+    ring
+  have hsinβ := sin_angle_eq η (ξ - η)
+  rw [← hβ, hdeteq] at hsinβ
+  -- `|det2 η ξ| = ‖η‖ ‖ξ‖ sin ∠(ξ,η)`
+  have hsinξη := sin_angle_eq ξ η
+  have hdetsymm : |det2 η ξ| = |det2 ξ η| := by
+    rw [det2, det2, ← abs_neg]
+    congr 1
+    ring
+  -- combine
+  have hkey : Real.sin β * ‖ξ - η‖
+      = Real.sin (InnerProductGeometry.angle ξ η) * ‖ξ‖ := by
+    have h1 : Real.sin β * (‖η‖ * ‖ξ - η‖) = |det2 η ξ| := hsinβ
+    have h2 : Real.sin (InnerProductGeometry.angle ξ η) * (‖ξ‖ * ‖η‖) = |det2 ξ η| := hsinξη
+    rw [hdetsymm] at h1
+    have h3 : Real.sin β * (‖η‖ * ‖ξ - η‖)
+        = Real.sin (InnerProductGeometry.angle ξ η) * (‖ξ‖ * ‖η‖) := by rw [h1, h2]
+    have hne : ‖η‖ ≠ 0 := hηpos.ne'
+    field_simp at h3
+    nlinarith [h3, hηpos]
+  -- the numeric bound
+  have hsinle : Real.sin (InnerProductGeometry.angle ξ η)
+      ≤ (2 : ℝ) ^ (5 - (m : ℤ)) := by
+    refine le_trans (Real.sin_le (InnerProductGeometry.angle_nonneg ξ η)) hang
+  have hnormξ := hξ.norm_le
+  have hsinβle : Real.sin β ≤ (2 : ℝ) ^ (8 - (m : ℤ)) := by
+    have hlow := hξηT.2.2.1
+    have hstep : Real.sin β * ‖ξ - η‖ ≤ (2 : ℝ) ^ (5 - (m : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 2) := by
+      rw [hkey]
+      refine mul_le_mul hsinle hnormξ (norm_nonneg _) (by positivity)
+    have hid : (2 : ℝ) ^ (5 - (m : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 2)
+        = (2 : ℝ) ^ (8 - (m : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 1) := by
+      rw [← two_zpow_add, ← two_zpow_add]
+      congr 1
+      ring
+    rw [hid] at hstep
+    have hpos : (0 : ℝ) < (2 : ℝ) ^ ((j : ℤ) - 1) := by positivity
+    have hsinnn : 0 ≤ Real.sin β :=
+      Real.sin_nonneg_of_nonneg_of_le_pi hβ0 (InnerProductGeometry.angle_le_pi _ _)
+    nlinarith [hstep, hlow, hpos, hsinnn]
+  -- `β ≤ (π/2) sin β` since `β ≤ 2 ^ (-9) ≤ π / 2`
+  have hle : (2 : ℝ) ^ (-(9 : ℤ)) ≤ π / 2 := by
+    have h1 : (1 : ℝ) ≤ π / 2 := Real.one_le_pi_div_two
+    have h2 : (2 : ℝ) ^ (-(9 : ℤ)) ≤ 1 := by
+      rw [zpow_neg]
+      norm_num
+    linarith
+  have hkey2 : β ≤ (π / 2) * Real.sin β := by
+    have h := Real.mul_le_sin hβ0 (le_trans hcone hle)
+    calc β = (π / 2) * (2 / π * β) := by
+          have hπ : π ≠ 0 := Real.pi_pos.ne'
+          field_simp
+      _ ≤ (π / 2) * Real.sin β := by
+          refine mul_le_mul_of_nonneg_left h ?_
+          positivity
+  have hnum : (π / 2) * (2 : ℝ) ^ (8 - (m : ℤ)) ≤ (2 : ℝ) ^ (9 - (m : ℤ)) := by
+    have h4 : π / 2 ≤ 2 := by linarith [Real.pi_le_four]
+    have hpow : (2 : ℝ) ^ (9 - (m : ℤ)) = 2 * (2 : ℝ) ^ (8 - (m : ℤ)) := by
+      rw [show (9 : ℤ) - (m : ℤ) = 1 + (8 - (m : ℤ)) by ring, two_zpow_add, zpow_one]
+    rw [hpow]
+    have hc : (0 : ℝ) < (2 : ℝ) ^ (8 - (m : ℤ)) := by positivity
+    exact mul_le_mul_of_nonneg_right h4 hc.le
+  have hmono : (π / 2) * Real.sin β ≤ (π / 2) * (2 : ℝ) ^ (8 - (m : ℤ)) := by
+    refine mul_le_mul_of_nonneg_left hsinβle ?_
+    positivity
+  linarith
+
+end UnitDiff
+
+
+/-! ## The phase derivative is dominated by `w` -/
+
+section PhdBound
+
+theorem phd_eq_inner (ε t : ℝ) (ξ w η u : Pl) (hη : η ≠ 0) (hξη : ξ - η ≠ 0) :
+    phd ε t ξ w η u
+      = inner ℝ w u + ε * t * (inner ℝ (‖η‖⁻¹ • η - ‖ξ - η‖⁻¹ • (ξ - η)) u : ℝ) := by
+  have h1 : ‖η‖ ≠ 0 := norm_ne_zero_iff.mpr hη
+  have h2 : ‖ξ - η‖ ≠ 0 := norm_ne_zero_iff.mpr hξη
+  have hV : (inner ℝ (‖η‖⁻¹ • η - ‖ξ - η‖⁻¹ • (ξ - η)) u : ℝ)
+      = (inner ℝ η u : ℝ) / ‖η‖ - (inner ℝ (ξ - η) u : ℝ) / ‖ξ - η‖ := by
+    rw [inner_sub_left, real_inner_smul_left, real_inner_smul_left]
+    field_simp
+  rw [phd, hV]
+  ring
+
+/-- On the support of a `(j,m)`-adapted symbol the correction to the phase derivative is at most
+`2^{10-m}`. -/
+theorem abs_phd_sub_le {j m : ℕ} {ξ η : Pl} (hξ : XiData j ξ) (hsupp : η ∈ SuppSet j m ξ)
+    {u : Pl} (hu : ‖u‖ = 1) (w : Pl) {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) :
+    |phd ε t ξ w η u - inner ℝ w u| ≤ (2 : ℝ) ^ (10 - (m : ℤ)) := by
+  have hηpos : (0 : ℝ) < ‖η‖ := lt_of_lt_of_le (by positivity) hsupp.1.2.2.1
+  have hξηpos : (0 : ℝ) < ‖ξ - η‖ := lt_of_lt_of_le (by positivity) hsupp.2.1.2.2.1
+  have hη : η ≠ 0 := norm_pos_iff.mp hηpos
+  have hξη : ξ - η ≠ 0 := norm_pos_iff.mp hξηpos
+  set V : Pl := ‖η‖⁻¹ • η - ‖ξ - η‖⁻¹ • (ξ - η) with hVdef
+  have heq : phd ε t ξ w η u - inner ℝ w u = ε * t * (inner ℝ V u : ℝ) := by
+    rw [phd_eq_inner ε t ξ w η u hη hξη, hVdef]
+    ring
+  rw [heq]
+  have hVnorm : ‖V‖ ≤ (2 : ℝ) ^ (9 - (m : ℤ)) := by
+    refine le_trans (norm_unit_diff_le hη hξη) (angle_eta_le hξ hsupp)
+  have hinnerle : |(inner ℝ V u : ℝ)| ≤ ‖V‖ := by
+    refine le_trans (abs_real_inner_le_norm V u) ?_
+    rw [hu, mul_one]
+  have hεt : |ε * t| ≤ 2 := by
+    rw [abs_mul, hε, one_mul, abs_of_pos (by linarith)]
+    exact ht2
+  have hid : (2 : ℝ) ^ (10 - (m : ℤ)) = 2 * (2 : ℝ) ^ (9 - (m : ℤ)) := by
+    rw [show (10 : ℤ) - (m : ℤ) = 1 + (9 - (m : ℤ)) by ring, two_zpow_add, zpow_one]
+  rw [abs_mul, hid]
+  refine mul_le_mul hεt (le_trans hinnerle hVnorm) (abs_nonneg _) (by norm_num)
+
+/-- The hypotheses of Proposition 4.3 on the symbol: `|∂_η^α b| ≤ B 2^{-(j-m)|α|}` for
+`|α| ≤ 9`, as in the paper. -/
+structure CartData (j m : ℕ) (b : ℝ → Pl → Pl → ℂ) (B : ℝ) : Prop where
+  smooth : ∀ t ξ, ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)
+  bd : ∀ t ξ, ∀ n ≤ 9, ∀ η, ‖iteratedFDeriv ℝ n (b t ξ) η‖
+    ≤ B * (2 : ℝ) ^ (-(n : ℤ) * ((j : ℤ) - (m : ℤ)))
+
+theorem CartData.norm_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (h : CartData j m b B) (t : ℝ) (ξ η : Pl) : ‖b t ξ η‖ ≤ B := by
+  have hb := h.bd t ξ 0 (by norm_num) η
+  rw [norm_iteratedFDeriv_zero] at hb
+  simpa using hb
+
+theorem CartData.nonneg {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (h : CartData j m b B) : 0 ≤ B :=
+  le_trans (norm_nonneg _) (h.norm_le 0 0 0)
+
+/-- The directional derivative of the symbol is bounded by `B 2^{-(j-m)}`. -/
+theorem CartData.dir_deriv_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (h : CartData j m b B) (t : ℝ) (ξ η : Pl) {u : Pl} (hu : ‖u‖ = 1) :
+    ‖fderiv ℝ (b t ξ) η u‖ ≤ B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) := by
+  have hb := h.bd t ξ 1 (by norm_num) η
+  have hcd : ContDiff ℝ (1 : ℕ) (b t ξ) := (h.smooth t ξ).of_le (by exact_mod_cast le_top)
+  have hnorm : ‖fderiv ℝ (b t ξ) η‖ = ‖iteratedFDeriv ℝ 1 (b t ξ) η‖ := by
+    rw [norm_iteratedFDeriv_one]
+  have hle : ‖fderiv ℝ (b t ξ) η u‖ ≤ ‖fderiv ℝ (b t ξ) η‖ * ‖u‖ :=
+    (fderiv ℝ (b t ξ) η).le_opNorm u
+  rw [hu, mul_one, hnorm] at hle
+  refine le_trans hle (le_trans hb (le_of_eq ?_))
+  congr 1
+  push_cast
+  ring
+
+end PhdBound
+
+
+/-! ## Smooth cutoffs in a single coordinate
+
+The cutoffs used for the integration by parts of §4.4 depend on `w` only through a single
+coordinate, so all their `w`-derivatives are controlled by the chain rule for an affine map with no
+combinatorial input: `|∂_w^n cut| ≤ C λ^n`.
+-/
+
+section Cutoff44
+
+theorem hasCompactSupport_deriv_st : HasCompactSupport (deriv Real.smoothTransition) := by
+  refine HasCompactSupport.intro (isCompact_Icc (a := (0 : ℝ)) (b := 1)) fun s hs => ?_
+  simp only [Set.mem_Icc, not_and_or, not_le] at hs
+  rcases hs with h | h
+  · have hev : Real.smoothTransition =ᶠ[nhds s] fun _ : ℝ => (0 : ℝ) := by
+      filter_upwards [isOpen_Iio.mem_nhds (show s ∈ Set.Iio (0 : ℝ) from h)] with x hx
+      exact Real.smoothTransition.zero_of_nonpos (le_of_lt hx)
+    rw [hev.deriv_eq]
+    exact deriv_const s _
+  · have hev : Real.smoothTransition =ᶠ[nhds s] fun _ : ℝ => (1 : ℝ) := by
+      filter_upwards [isOpen_Ioi.mem_nhds (show s ∈ Set.Ioi (1 : ℝ) from h)] with x hx
+      exact Real.smoothTransition.one_of_one_le (le_of_lt hx)
+    rw [hev.deriv_eq]
+    exact deriv_const s _
+
+theorem contDiff_st : ContDiff ℝ (↑(⊤ : ℕ∞)) Real.smoothTransition :=
+  Real.smoothTransition.contDiff
+
+theorem contDiff_deriv_st : ContDiff ℝ (↑(⊤ : ℕ∞)) (deriv Real.smoothTransition) := by
+  have h : ContDiff ℝ ((↑(⊤ : ℕ∞)) + 1) Real.smoothTransition := by
+    simpa using contDiff_st
+  exact h.deriv'
+
+/-- Every derivative of `Real.smoothTransition` of order at most `N` is bounded by a single
+constant. -/
+theorem exists_st_bound (N : ℕ) :
+    ∃ C : ℝ, 1 ≤ C ∧ ∀ n ≤ N, ∀ s : ℝ, ‖iteratedFDeriv ℝ n Real.smoothTransition s‖ ≤ C := by
+  have hb : ∀ k : ℕ, ∃ C : ℝ, ∀ s : ℝ,
+      ‖iteratedFDeriv ℝ k (deriv Real.smoothTransition) s‖ ≤ C := by
+    intro k
+    exact (hasCompactSupport_deriv_st.iteratedFDeriv k).exists_bound_of_continuous
+      (contDiff_deriv_st.continuous_iteratedFDeriv (by exact_mod_cast le_top))
+  choose C hC using hb
+  have hnn : (0 : ℝ) ≤ ∑ k ∈ Finset.range (N + 1), |C k| :=
+    Finset.sum_nonneg fun k _ => abs_nonneg _
+  refine ⟨1 + ∑ k ∈ Finset.range (N + 1), |C k|, by linarith, ?_⟩
+  intro n hn s
+  match n with
+  | 0 =>
+    rw [norm_iteratedFDeriv_zero]
+    have h1 := Real.smoothTransition.le_one s
+    have h2 := Real.smoothTransition.nonneg s
+    rw [Real.norm_eq_abs, abs_of_nonneg h2]
+    linarith
+  | (k + 1) =>
+    have hstep : ‖iteratedFDeriv ℝ (k + 1) Real.smoothTransition s‖
+        = ‖iteratedFDeriv ℝ k (deriv Real.smoothTransition) s‖ := by
+      rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, norm_iteratedFDeriv_eq_norm_iteratedDeriv,
+        iteratedDeriv_succ']
+    rw [hstep]
+    refine le_trans (hC k s) ?_
+    have hmem : k ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
+    have hle : |C k| ≤ ∑ l ∈ Finset.range (N + 1), |C l| :=
+      Finset.single_le_sum (f := fun l => |C l|) (fun l _ => abs_nonneg _) hmem
+    have h2 : C k ≤ |C k| := le_abs_self _
+    linarith
+
+/-- The `i`-th coordinate functional on the plane. -/
+def prj (i : Fin 2) : Pl →L[ℝ] ℝ := EuclideanSpace.proj i
+
+@[simp] theorem prj_apply (i : Fin 2) (w : Pl) : prj i w = w i := rfl
+
+theorem norm_prj_le (i : Fin 2) : ‖prj i‖ ≤ 1 := by
+  refine ContinuousLinearMap.opNorm_le_bound _ zero_le_one fun w => ?_
+  rw [one_mul, Real.norm_eq_abs, prj_apply]
+  exact Auto.CalderonVaillancourt.abs_apply_le_norm w i
+
+/-- A smooth cutoff depending on `w` only through its `i`-th coordinate: it vanishes when
+`lam * w i ≤ c` and equals `1` when `lam * w i ≥ c + 1`. -/
+def cut (i : Fin 2) (lam c : ℝ) (w : Pl) : ℝ := Real.smoothTransition (lam * w i - c)
+
+theorem cut_nonneg (i : Fin 2) (lam c : ℝ) (w : Pl) : 0 ≤ cut i lam c w :=
+  Real.smoothTransition.nonneg _
+
+theorem cut_le_one (i : Fin 2) (lam c : ℝ) (w : Pl) : cut i lam c w ≤ 1 :=
+  Real.smoothTransition.le_one _
+
+theorem cut_eq_zero_of_le {i : Fin 2} {lam c : ℝ} {w : Pl} (h : lam * w i ≤ c) :
+    cut i lam c w = 0 :=
+  Real.smoothTransition.zero_of_nonpos (by linarith)
+
+theorem cut_eq_one_of_ge {i : Fin 2} {lam c : ℝ} {w : Pl} (h : c + 1 ≤ lam * w i) :
+    cut i lam c w = 1 :=
+  Real.smoothTransition.one_of_one_le (by linarith)
+
+/-- `cut` as the composition of `Real.smoothTransition` with an affine map of a single
+coordinate. -/
+theorem cut_eq_comp (i : Fin 2) (lam c : ℝ) :
+    cut i lam c = (fun s : ℝ => Real.smoothTransition (s - c)) ∘ (lam • prj i) := by
+  funext w
+  have hval : (lam • prj i) w = lam * w i := by
+    rw [ContinuousLinearMap.smul_apply, prj_apply, smul_eq_mul]
+  rw [Function.comp_apply, hval, cut]
+
+theorem contDiff_cut (i : Fin 2) (lam c : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (cut i lam c) := by
+  rw [cut_eq_comp]
+  exact (contDiff_st.comp (contDiff_id.sub contDiff_const)).comp
+    (lam • prj i).contDiff
+
+theorem norm_smul_prj_le (i : Fin 2) (lam : ℝ) : ‖lam • prj i‖ ≤ |lam| := by
+  refine le_trans (norm_smul_le lam (prj i)) ?_
+  rw [Real.norm_eq_abs]
+  have h := norm_prj_le i
+  nlinarith [abs_nonneg lam, norm_nonneg (prj i)]
+
+/-- All `w`-derivatives of `cut i lam c` of order at most `N` are bounded by `C |lam| ^ n`. -/
+theorem norm_iteratedFDeriv_cut_le {N : ℕ} {C : ℝ}
+    (hC : ∀ n ≤ N, ∀ s : ℝ, ‖iteratedFDeriv ℝ n Real.smoothTransition s‖ ≤ C)
+    (hCnn : 0 ≤ C) (i : Fin 2) (lam c : ℝ) {n : ℕ} (hn : n ≤ N) (w : Pl) :
+    ‖iteratedFDeriv ℝ n (cut i lam c) w‖ ≤ C * |lam| ^ n := by
+  set L : Pl →L[ℝ] ℝ := lam • prj i with hL
+  set g : ℝ → ℝ := fun s : ℝ => Real.smoothTransition (s - c) with hg
+  have hgcd : ContDiff ℝ (↑(⊤ : ℕ∞)) g := contDiff_st.comp (contDiff_id.sub contDiff_const)
+  have hcomp : iteratedFDeriv ℝ n (cut i lam c) w
+      = (iteratedFDeriv ℝ n g (L w)).compContinuousLinearMap fun _ => L := by
+    rw [cut_eq_comp]
+    exact L.iteratedFDeriv_comp_right hgcd w (by exact_mod_cast le_top)
+  have hgder : ‖iteratedFDeriv ℝ n g (L w)‖ ≤ C := by
+    have hshift : iteratedFDeriv ℝ n g (L w)
+        = iteratedFDeriv ℝ n Real.smoothTransition (L w - c) := by
+      rw [hg]
+      exact iteratedFDeriv_comp_sub n c (L w)
+    rw [hshift]
+    exact hC n hn _
+  rw [hcomp]
+  refine le_trans (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _) ?_
+  have hprod : (∏ _i : Fin n, ‖L‖) = ‖L‖ ^ n := by
+    rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+  rw [hprod]
+  have hLle : ‖L‖ ^ n ≤ |lam| ^ n := by
+    have h1 : ‖L‖ ≤ |lam| := norm_smul_prj_le i lam
+    have h2 : (0 : ℝ) ≤ ‖L‖ := norm_nonneg _
+    gcongr
+  exact mul_le_mul hgder hLle (by positivity) hCnn
+
+end Cutoff44
+
+
+/-! ## A partition of unity on `{|w| ≳ 1/lam}`
+
+Four cutoffs, each depending on `w` through a single coordinate (up to one product), add up to `1`
+whenever `lam |w| ≥ 256`.  On the support of the `i`-th pair the `i`-th coordinate satisfies
+`|lam w_i| ≥ 2`, which is what makes the phase derivative of §4.4 non-degenerate.
+-/
+
+section Partition44
+
+/-- `w_0` large and positive. -/
+def wc0p (lam : ℝ) : Pl → ℝ := cut 0 lam 2
+
+/-- `w_0` large and negative. -/
+def wc0m (lam : ℝ) : Pl → ℝ := cut 0 (-lam) 2
+
+/-- The part not covered by the first coordinate. -/
+def wrest (lam : ℝ) (w : Pl) : ℝ := 1 - wc0p lam w - wc0m lam w
+
+/-- `w_1` large and positive. -/
+def wc1p (lam : ℝ) (w : Pl) : ℝ := wrest lam w * cut 1 lam 2 w
+
+/-- `w_1` large and negative. -/
+def wc1m (lam : ℝ) (w : Pl) : ℝ := wrest lam w * cut 1 (-lam) 2 w
+
+theorem norm_sq_eq_coords (w : Pl) : ‖w‖ ^ 2 = (w 0) ^ 2 + (w 1) ^ 2 := by
+  rw [EuclideanSpace.real_norm_sq_eq, Fin.sum_univ_two]
+
+theorem wc0p_eq_zero {lam : ℝ} {w : Pl} (h : lam * w 0 ≤ 2) : wc0p lam w = 0 :=
+  cut_eq_zero_of_le h
+
+theorem wc0m_eq_zero {lam : ℝ} {w : Pl} (h : -(lam * w 0) ≤ 2) : wc0m lam w = 0 := by
+  refine cut_eq_zero_of_le ?_
+  rw [neg_mul]
+  exact h
+
+/-- `wc0p` and `wc0m` never both vanish to a positive value, so `wrest` lies in `[0,1]`. -/
+theorem wrest_mem {lam : ℝ} (hlam : 0 < lam) (w : Pl) :
+    0 ≤ wrest lam w ∧ wrest lam w ≤ 1 := by
+  rcases le_or_gt (lam * w 0) 2 with h | h
+  · have h0 : wc0p lam w = 0 := wc0p_eq_zero h
+    have h1 := cut_nonneg 0 (-lam) 2 w
+    have h2 := cut_le_one 0 (-lam) 2 w
+    rw [wrest, h0]
+    constructor
+    · simp only [sub_zero]
+      have : wc0m lam w ≤ 1 := h2
+      linarith
+    · have : 0 ≤ wc0m lam w := h1
+      linarith
+  · have h0 : wc0m lam w = 0 := by
+      refine wc0m_eq_zero ?_
+      linarith
+    have h1 := cut_nonneg 0 lam 2 w
+    have h2 := cut_le_one 0 lam 2 w
+    rw [wrest, h0]
+    constructor
+    · have : wc0p lam w ≤ 1 := h2
+      linarith
+    · have : 0 ≤ wc0p lam w := h1
+      linarith
+
+/-- The four cutoffs form a partition of unity on `{lam |w| ≥ 256}`. -/
+theorem sum_wcut {lam : ℝ} (hlam : 0 < lam) {w : Pl} (hw : 256 ≤ lam * ‖w‖) :
+    wc0p lam w + wc0m lam w + wc1p lam w + wc1m lam w = 1 := by
+  rcases le_or_gt 3 (lam * w 0) with h | h
+  · -- `w_0` large and positive
+    have h1 : wc0p lam w = 1 := cut_eq_one_of_ge (by linarith)
+    have h2 : wc0m lam w = 0 := wc0m_eq_zero (by linarith)
+    have h3 : wrest lam w = 0 := by rw [wrest, h1, h2]; ring
+    rw [wc1p, wc1m, h1, h2, h3]
+    ring
+  rcases le_or_gt (lam * w 0) (-3) with h' | h'
+  · -- `w_0` large and negative
+    have h1 : wc0m lam w = 1 := by
+      refine cut_eq_one_of_ge ?_
+      rw [neg_mul]
+      linarith
+    have h2 : wc0p lam w = 0 := wc0p_eq_zero (by linarith)
+    have h3 : wrest lam w = 0 := by rw [wrest, h1, h2]; ring
+    rw [wc1p, wc1m, h1, h2, h3]
+    ring
+  · -- `w_0` small, hence `w_1` large
+    have hsq : (lam * ‖w‖) ^ 2 = (lam * w 0) ^ 2 + (lam * w 1) ^ 2 := by
+      rw [mul_pow, mul_pow, mul_pow, norm_sq_eq_coords]
+      ring
+    have hbig : (256 : ℝ) ^ 2 ≤ (lam * ‖w‖) ^ 2 := by
+      have hnn : (0 : ℝ) ≤ 256 := by norm_num
+      nlinarith [hw, hnn]
+    have hsmall : (lam * w 0) ^ 2 < 9 := by nlinarith [h, h']
+    have h1big : (9 : ℝ) < (lam * w 1) ^ 2 := by nlinarith [hsq, hbig, hsmall]
+    have hcases : 3 ≤ lam * w 1 ∨ lam * w 1 ≤ -3 := by
+      rcases le_or_gt 0 (lam * w 1) with hs | hs
+      · left; nlinarith [h1big, hs]
+      · right; nlinarith [h1big, hs]
+    rcases hcases with hc | hc
+    · have h1 : cut 1 lam 2 w = 1 := cut_eq_one_of_ge (by linarith)
+      have h2 : cut 1 (-lam) 2 w = 0 := by
+        refine cut_eq_zero_of_le ?_
+        rw [neg_mul]
+        linarith
+      rw [wc1p, wc1m, h1, h2, wrest]
+      ring
+    · have h1 : cut 1 (-lam) 2 w = 1 := by
+        refine cut_eq_one_of_ge ?_
+        rw [neg_mul]
+        linarith
+      have h2 : cut 1 lam 2 w = 0 := cut_eq_zero_of_le (by linarith)
+      rw [wc1p, wc1m, h1, h2, wrest]
+      ring
+
+/-- On the support of `wc0p` the first coordinate is large and positive. -/
+theorem wc0p_support {lam : ℝ} {w : Pl} (h : wc0p lam w ≠ 0) : 2 < lam * w 0 := by
+  by_contra hcon
+  exact h (wc0p_eq_zero (not_lt.mp hcon))
+
+/-- On the support of `wc0m` the first coordinate is large and negative. -/
+theorem wc0m_support {lam : ℝ} {w : Pl} (h : wc0m lam w ≠ 0) : 2 < -(lam * w 0) := by
+  by_contra hcon
+  exact h (wc0m_eq_zero (not_lt.mp hcon))
+
+/-- On the support of `wc1p` the second coordinate is large and positive. -/
+theorem wc1p_support {lam : ℝ} {w : Pl} (h : wc1p lam w ≠ 0) : 2 < lam * w 1 := by
+  by_contra hcon
+  refine h ?_
+  rw [wc1p, cut_eq_zero_of_le (not_lt.mp hcon), mul_zero]
+
+/-- On the support of `wc1m` the second coordinate is large and negative. -/
+theorem wc1m_support {lam : ℝ} {w : Pl} (h : wc1m lam w ≠ 0) : 2 < -(lam * w 1) := by
+  by_contra hcon
+  refine h ?_
+  have hle : (-lam) * w 1 ≤ 2 := by
+    rw [neg_mul]
+    exact not_lt.mp hcon
+  rw [wc1m, cut_eq_zero_of_le hle, mul_zero]
+
+theorem contDiff_wc0p (lam : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (wc0p lam) := contDiff_cut 0 lam 2
+
+theorem contDiff_wc0m (lam : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (wc0m lam) := contDiff_cut 0 (-lam) 2
+
+theorem contDiff_wrest (lam : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (wrest lam) :=
+  (contDiff_const.sub (contDiff_wc0p lam)).sub (contDiff_wc0m lam)
+
+theorem contDiff_wc1p (lam : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (wc1p lam) :=
+  (contDiff_wrest lam).mul (contDiff_cut 1 lam 2)
+
+theorem contDiff_wc1m (lam : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (wc1m lam) :=
+  (contDiff_wrest lam).mul (contDiff_cut 1 (-lam) 2)
+
+end Partition44
+
+
+/-! ## Bounded derivatives
+
+Every symbol appearing in §4.4 is, after rescaling to unit scale, a fixed smooth function with
+compact support composed with an affine map, so all of its derivatives are bounded by absolute
+constants.  The following lemma is the only source of those constants; no explicit value is ever
+needed.
+-/
+
+section BoundedDerivs
+
+/-- A smooth compactly supported function has all its derivatives up to order `N` bounded by a
+single constant. -/
+theorem exists_deriv_bound {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    [FiniteDimensional ℝ E] [NormedAddCommGroup F] [NormedSpace ℝ F]
+    {f : E → F} (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) (hs : HasCompactSupport f) (N : ℕ) :
+    ∃ C : ℝ, 1 ≤ C ∧ ∀ n ≤ N, ∀ x, ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
+  have hb : ∀ n : ℕ, ∃ C : ℝ, ∀ x, ‖iteratedFDeriv ℝ n f x‖ ≤ C := by
+    intro n
+    exact (hs.iteratedFDeriv n).exists_bound_of_continuous
+      (hf.continuous_iteratedFDeriv (by exact_mod_cast le_top))
+  choose C hC using hb
+  have hnn : (0 : ℝ) ≤ ∑ n ∈ Finset.range (N + 1), |C n| :=
+    Finset.sum_nonneg fun n _ => abs_nonneg _
+  refine ⟨1 + ∑ n ∈ Finset.range (N + 1), |C n|, by linarith, ?_⟩
+  intro n hn x
+  refine le_trans (hC n x) ?_
+  have hmem : n ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
+  have hle : |C n| ≤ ∑ l ∈ Finset.range (N + 1), |C l| :=
+    Finset.single_le_sum (f := fun l => |C l|) (fun l _ => abs_nonneg _) hmem
+  have h2 : C n ≤ |C n| := le_abs_self _
+  linarith
+
+/-- Adding a constant does not change the derivatives of positive order. -/
+theorem iteratedFDeriv_const_add {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    [NormedAddCommGroup F] [NormedSpace ℝ F] {f : E → F} (c : F)
+    (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) {n : ℕ} (hn : n ≠ 0) (x : E) :
+    iteratedFDeriv ℝ n (fun y => c + f y) x = iteratedFDeriv ℝ n f x := by
+  have hfun : (fun y => c + f y) = (fun _ : E => c) + f := by
+    funext y
+    rw [Pi.add_apply]
+  rw [hfun, iteratedFDeriv_add_apply (contDiffAt_const (c := c))
+    ((hf.of_le (by exact_mod_cast le_top : (n : WithTop ℕ∞) ≤ ↑(⊤ : ℕ∞))).contDiffAt),
+    iteratedFDeriv_const_of_ne hn]
+  simp
+
+/-- Composition with an affine map multiplies the `n`-th derivative by at most `‖L‖ ^ n`. -/
+theorem norm_iteratedFDeriv_comp_affine {E F G : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedAddCommGroup G] [NormedSpace ℝ G]
+    {f : E → F} (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) (L : G →L[ℝ] E) (c : E) (n : ℕ) (x : G) :
+    ‖iteratedFDeriv ℝ n (fun y => f (L y + c)) x‖
+      ≤ ‖iteratedFDeriv ℝ n f (L x + c)‖ * ‖L‖ ^ n := by
+  have hshift : ContDiff ℝ (↑(⊤ : ℕ∞)) (fun z : E => f (z + c)) :=
+    hf.comp (contDiff_id.add contDiff_const)
+  have hcomp : iteratedFDeriv ℝ n (fun y => f (L y + c)) x
+      = (iteratedFDeriv ℝ n (fun z : E => f (z + c)) (L x)).compContinuousLinearMap fun _ => L :=
+    L.iteratedFDeriv_comp_right hshift x (by exact_mod_cast le_top)
+  have hkey : iteratedFDeriv ℝ n (fun z : E => f (z + c)) (L x)
+      = iteratedFDeriv ℝ n f (L x + c) := iteratedFDeriv_comp_add_right (f := f) n c (L x)
+  rw [hcomp]
+  refine le_trans (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _) ?_
+  have hprod : (∏ _i : Fin n, ‖L‖) = ‖L‖ ^ n := by
+    rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+  rw [hprod, hkey]
+
+end BoundedDerivs
+
+/-! ## One-dimensional smooth building blocks
+
+`annB` is a bump adapted to the annulus, `gsm s = annB s / sqrt s` is the smooth truncation of
+`s ↦ s ^ (-1/2)`, `shrinkS` truncates the identity, and `clampLow` is a smooth function that agrees
+with the identity on `[1/4, 4]` and never drops below `1/8`.
+-/
+
+section Blocks1D
+
+/-- A smooth bump equal to `1` on `[1/128, 512]` and supported in `[1/256, 1024]`. -/
+def annB (s : ℝ) : ℝ := Real.smoothTransition (256 * s - 1) * Real.smoothTransition (2 - s / 512)
+
+theorem contDiff_annB : ContDiff ℝ (↑(⊤ : ℕ∞)) annB :=
+  (contDiff_st.comp ((contDiff_const.mul contDiff_id).sub contDiff_const)).mul
+    (contDiff_st.comp (contDiff_const.sub (contDiff_id.div_const 512)))
+
+theorem annB_nonneg (s : ℝ) : 0 ≤ annB s :=
+  mul_nonneg (Real.smoothTransition.nonneg _) (Real.smoothTransition.nonneg _)
+
+theorem annB_le_one (s : ℝ) : annB s ≤ 1 := by
+  have h1 := Real.smoothTransition.le_one (256 * s - 1)
+  have h2 := Real.smoothTransition.le_one (2 - s / 512)
+  have h3 := Real.smoothTransition.nonneg (256 * s - 1)
+  have h4 := Real.smoothTransition.nonneg (2 - s / 512)
+  rw [annB]
+  nlinarith
+
+theorem annB_eq_one {s : ℝ} (h1 : 1 / 128 ≤ s) (h2 : s ≤ 512) : annB s = 1 := by
+  rw [annB, Real.smoothTransition.one_of_one_le (by linarith),
+    Real.smoothTransition.one_of_one_le (by linarith), mul_one]
+
+theorem annB_eq_zero_of_le {s : ℝ} (h : s ≤ 1 / 256) : annB s = 0 := by
+  rw [annB, Real.smoothTransition.zero_of_nonpos (by linarith), zero_mul]
+
+theorem annB_eq_zero_of_ge {s : ℝ} (h : 1024 ≤ s) : annB s = 0 := by
+  rw [annB, Real.smoothTransition.zero_of_nonpos (show 2 - s / 512 ≤ 0 by linarith), mul_zero]
+
+/-- The smooth truncation of `s ↦ s ^ (-1/2)`. -/
+def gsm (s : ℝ) : ℝ := annB s / Real.sqrt s
+
+theorem gsm_eq_zero_of_le {s : ℝ} (h : s ≤ 1 / 256) : gsm s = 0 := by
+  rw [gsm, annB_eq_zero_of_le h, zero_div]
+
+theorem gsm_eq_zero_of_ge {s : ℝ} (h : 1024 ≤ s) : gsm s = 0 := by
+  rw [gsm, annB_eq_zero_of_ge h, zero_div]
+
+theorem gsm_eq_inv_sqrt {s : ℝ} (h1 : 1 / 128 ≤ s) (h2 : s ≤ 512) :
+    gsm s = 1 / Real.sqrt s := by
+  rw [gsm, annB_eq_one h1 h2]
+
+/-- `gsm` is smooth: away from the origin it is a quotient of smooth functions, and near the origin
+it vanishes identically. -/
+theorem contDiff_gsm : ContDiff ℝ (↑(⊤ : ℕ∞)) gsm := by
+  have hcover : ∀ s : ℝ, ContDiffAt ℝ (↑(⊤ : ℕ∞)) gsm s := by
+    intro s
+    rcases lt_or_ge (1 / 512 : ℝ) s with h | h
+    · have hspos : (0 : ℝ) < s := by linarith
+      have hsqrt : ContDiffAt ℝ (↑(⊤ : ℕ∞)) Real.sqrt s :=
+        (Real.contDiffAt_sqrt (by linarith)).of_le (by exact_mod_cast le_top)
+      have hne : Real.sqrt s ≠ 0 := (Real.sqrt_pos.mpr hspos).ne'
+      exact (contDiff_annB.contDiffAt).div hsqrt hne
+    · have hev : gsm =ᶠ[nhds s] fun _ : ℝ => (0 : ℝ) := by
+        filter_upwards [isOpen_Iio.mem_nhds (show s ∈ Set.Iio (1 / 384 : ℝ) by
+          simp only [Set.mem_Iio]; linarith)] with x hx
+        exact gsm_eq_zero_of_le (by simp only [Set.mem_Iio] at hx; linarith)
+      exact (contDiffAt_const (c := (0 : ℝ))).congr_of_eventuallyEq hev
+  exact contDiff_iff_contDiffAt.mpr hcover
+
+theorem hasCompactSupport_gsm : HasCompactSupport gsm := by
+  refine HasCompactSupport.intro (isCompact_Icc (a := (1 / 256 : ℝ)) (b := 1024)) fun s hs => ?_
+  simp only [Set.mem_Icc, not_and_or, not_le] at hs
+  rcases hs with h | h
+  · exact gsm_eq_zero_of_le (le_of_lt h)
+  · exact gsm_eq_zero_of_ge (le_of_lt h)
+
+/-- The smooth truncation of the identity: `shrinkS s = s` for `s ^ 2 ≤ 1`, and `shrinkS s = 0` for
+`s ^ 2 ≥ 2`. -/
+def shrinkS (s : ℝ) : ℝ := s * (1 - Real.smoothTransition (s ^ 2 - 1))
+
+theorem contDiff_shrinkS : ContDiff ℝ (↑(⊤ : ℕ∞)) shrinkS :=
+  contDiff_id.mul (contDiff_const.sub
+    (contDiff_st.comp ((contDiff_id.pow 2).sub contDiff_const)))
+
+theorem shrinkS_eq_self {s : ℝ} (h : s ^ 2 ≤ 1) : shrinkS s = s := by
+  rw [shrinkS, Real.smoothTransition.zero_of_nonpos (by linarith), sub_zero, mul_one]
+
+theorem shrinkS_eq_zero {s : ℝ} (h : 2 ≤ s ^ 2) : shrinkS s = 0 := by
+  rw [shrinkS, Real.smoothTransition.one_of_one_le (by linarith), sub_self, mul_zero]
+
+theorem abs_shrinkS_le (s : ℝ) : |shrinkS s| ≤ 2 := by
+  rcases le_or_gt (s ^ 2) 2 with h | h
+  · have h1 : |s| ≤ 2 := by nlinarith [abs_nonneg s, sq_abs s]
+    have h2 := Real.smoothTransition.le_one (s ^ 2 - 1)
+    have h3 := Real.smoothTransition.nonneg (s ^ 2 - 1)
+    rw [shrinkS, abs_mul]
+    have h4 : |1 - Real.smoothTransition (s ^ 2 - 1)| ≤ 1 := by
+      rw [abs_le]
+      constructor <;> linarith
+    nlinarith [abs_nonneg s, abs_nonneg (1 - Real.smoothTransition (s ^ 2 - 1))]
+  · rw [shrinkS_eq_zero (le_of_lt h), abs_zero]
+    norm_num
+
+theorem hasCompactSupport_shrinkS : HasCompactSupport shrinkS := by
+  refine HasCompactSupport.intro (isCompact_Icc (a := (-2 : ℝ)) (b := 2)) fun s hs => ?_
+  simp only [Set.mem_Icc, not_and_or, not_le] at hs
+  refine shrinkS_eq_zero ?_
+  rcases hs with h | h <;> nlinarith
+
+/-- The compactly supported part of the low clamp. -/
+def clampAux (x : ℝ) : ℝ :=
+  (x - 1 / 8) * Real.smoothTransition (8 * x - 1) * (1 - Real.smoothTransition (x / 4 - 1))
+
+/-- A smooth function that agrees with the identity on `[1/4, 4]` and is never smaller
+than `1/8`. -/
+def clampLow (x : ℝ) : ℝ := 1 / 8 + clampAux x
+
+theorem contDiff_clampAux : ContDiff ℝ (↑(⊤ : ℕ∞)) clampAux :=
+  ((contDiff_id.sub contDiff_const).mul
+      (contDiff_st.comp ((contDiff_const.mul contDiff_id).sub contDiff_const))).mul
+    (contDiff_const.sub (contDiff_st.comp ((contDiff_id.div_const 4).sub contDiff_const)))
+
+theorem contDiff_clampLow : ContDiff ℝ (↑(⊤ : ℕ∞)) clampLow :=
+  contDiff_const.add contDiff_clampAux
+
+theorem clampAux_eq_zero_of_le {x : ℝ} (h : x ≤ 1 / 8) : clampAux x = 0 := by
+  rw [clampAux, Real.smoothTransition.zero_of_nonpos (by linarith), mul_zero, zero_mul]
+
+theorem clampAux_eq_zero_of_ge {x : ℝ} (h : 8 ≤ x) : clampAux x = 0 := by
+  rw [clampAux, Real.smoothTransition.one_of_one_le (show (1 : ℝ) ≤ x / 4 - 1 by linarith),
+    sub_self, mul_zero]
+
+theorem clampAux_nonneg (x : ℝ) : 0 ≤ clampAux x := by
+  rcases le_or_gt x (1 / 8) with h | h
+  · rw [clampAux_eq_zero_of_le h]
+  · have h1 : 0 ≤ x - 1 / 8 := by linarith
+    have h2 := Real.smoothTransition.nonneg (8 * x - 1)
+    have h3 := Real.smoothTransition.le_one (x / 4 - 1)
+    rw [clampAux]
+    have h4 : 0 ≤ 1 - Real.smoothTransition (x / 4 - 1) := by linarith
+    exact mul_nonneg (mul_nonneg h1 h2) h4
+
+theorem hasCompactSupport_clampAux : HasCompactSupport clampAux := by
+  refine HasCompactSupport.intro (isCompact_Icc (a := (1 / 8 : ℝ)) (b := 8)) fun x hx => ?_
+  simp only [Set.mem_Icc, not_and_or, not_le] at hx
+  rcases hx with h | h
+  · exact clampAux_eq_zero_of_le (le_of_lt h)
+  · exact clampAux_eq_zero_of_ge (le_of_lt h)
+
+theorem clampLow_ge (x : ℝ) : 1 / 8 ≤ clampLow x := by
+  rw [clampLow]
+  linarith [clampAux_nonneg x]
+
+theorem clampLow_pos (x : ℝ) : 0 < clampLow x := lt_of_lt_of_le (by norm_num) (clampLow_ge x)
+
+theorem clampLow_eq_self {x : ℝ} (h1 : 1 / 4 ≤ x) (h2 : x ≤ 4) : clampLow x = x := by
+  rw [clampLow, clampAux, Real.smoothTransition.one_of_one_le (show (1 : ℝ) ≤ 8 * x - 1 by linarith),
+    Real.smoothTransition.zero_of_nonpos (show x / 4 - 1 ≤ 0 by linarith)]
+  ring
+
+/-- All derivatives of `clampLow` of positive order are bounded by an absolute constant. -/
+theorem exists_clampLow_bound (N : ℕ) :
+    ∃ C : ℝ, 1 ≤ C ∧ ∀ n, 1 ≤ n → n ≤ N → ∀ x : ℝ,
+      ‖iteratedFDeriv ℝ n clampLow x‖ ≤ C := by
+  obtain ⟨C, hC1, hC⟩ := exists_deriv_bound contDiff_clampAux hasCompactSupport_clampAux N
+  refine ⟨C, hC1, ?_⟩
+  intro n hn1 hn x
+  have heq : iteratedFDeriv ℝ n clampLow x = iteratedFDeriv ℝ n clampAux x := by
+    have hfun : clampLow = fun y : ℝ => 1 / 8 + clampAux y := by
+      funext y
+      rw [clampLow]
+    rw [hfun]
+    exact iteratedFDeriv_const_add (1 / 8 : ℝ) contDiff_clampAux (by omega) x
+  rw [heq]
+  exact hC n hn x
+
+end Blocks1D
+
+
+/-! ## The truncated unit vector field
+
+`unitVec i` is a fixed smooth compactly supported function on the plane agreeing with
+`ζ ↦ ζ i / ‖ζ‖` on the annulus `1/2 ≤ ‖ζ‖ ≤ 4`.  Rescaling by `2 ^ (-j)` turns it into a smooth
+replacement for `η ↦ η i / ‖η‖` on the annulus of the symbol, with derivative bounds
+`≲ 2 ^ (-j n)`.
+-/
+
+section UnitVecField
+
+/-- A smooth compactly supported function agreeing with `ζ ↦ ζ i / ‖ζ‖` on the annulus
+`1/2 ≤ ‖ζ‖ ≤ 4`. -/
+def unitVec (i : Fin 2) (ζ : Pl) : ℝ := ζ i * gsm (‖ζ‖ ^ 2)
+
+theorem contDiff_unitVec (i : Fin 2) : ContDiff ℝ (↑(⊤ : ℕ∞)) (unitVec i) :=
+  (prj i).contDiff.mul (contDiff_gsm.comp (contDiff_norm_sq ℝ))
+
+theorem unitVec_eq_zero_of_le {i : Fin 2} {ζ : Pl} (h : ‖ζ‖ ≤ 1 / 32) : unitVec i ζ = 0 := by
+  refine mul_eq_zero_of_right _ (gsm_eq_zero_of_le ?_)
+  nlinarith [norm_nonneg ζ]
+
+theorem unitVec_eq_zero_of_ge {i : Fin 2} {ζ : Pl} (h : 32 ≤ ‖ζ‖) : unitVec i ζ = 0 := by
+  refine mul_eq_zero_of_right _ (gsm_eq_zero_of_ge ?_)
+  nlinarith [norm_nonneg ζ]
+
+theorem hasCompactSupport_unitVec (i : Fin 2) : HasCompactSupport (unitVec i) := by
+  refine HasCompactSupport.intro (isCompact_closedBall (0 : Pl) 32) fun ζ hζ => ?_
+  rw [Metric.mem_closedBall, dist_zero_right] at hζ
+  exact unitVec_eq_zero_of_ge (le_of_lt (not_le.mp hζ))
+
+/-- On the annulus `unitVec` is the unit vector field. -/
+theorem unitVec_eq {i : Fin 2} {ζ : Pl} (h1 : 1 / 8 ≤ ‖ζ‖) (h2 : ‖ζ‖ ≤ 16) :
+    unitVec i ζ = ζ i / ‖ζ‖ := by
+  have hpos : (0 : ℝ) < ‖ζ‖ := by linarith
+  have hlow : (1 : ℝ) / 128 ≤ ‖ζ‖ ^ 2 := by nlinarith
+  have hhigh : ‖ζ‖ ^ 2 ≤ 512 := by nlinarith
+  rw [unitVec, gsm_eq_inv_sqrt hlow hhigh, Real.sqrt_sq (norm_nonneg ζ)]
+  field_simp
+
+/-- The uniform bound on the derivatives of `unitVec`. -/
+theorem exists_unitVec_bound (N : ℕ) :
+    ∃ C : ℝ, 1 ≤ C ∧ ∀ i : Fin 2, ∀ n ≤ N, ∀ ζ : Pl,
+      ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ C := by
+  obtain ⟨C0, hC01, hC0⟩ :=
+    exists_deriv_bound (contDiff_unitVec 0) (hasCompactSupport_unitVec 0) N
+  obtain ⟨C1, hC11, hC1⟩ :=
+    exists_deriv_bound (contDiff_unitVec 1) (hasCompactSupport_unitVec 1) N
+  refine ⟨C0 + C1, by linarith, ?_⟩
+  intro i n hn ζ
+  match i with
+  | 0 => linarith [hC0 n hn ζ]
+  | 1 => linarith [hC1 n hn ζ]
+
+end UnitVecField
+
+
+/-! ## The smooth replacement for the difference of unit vectors
+
+`Vt j ξ i` is a globally smooth function of `η` that agrees with
+`η i / ‖η‖ - (ξ - η) i / ‖ξ - η‖` on the support of a `(j,m)`-adapted symbol and whose `n`-th
+derivative is `O(2 ^ (-j n))`.
+-/
+
+section VtField
+
+/-- The dilation by `r` as a continuous linear map on the plane. -/
+def dil (r : ℝ) : Pl →L[ℝ] Pl := r • ContinuousLinearMap.id ℝ Pl
+
+@[simp] theorem dil_apply (r : ℝ) (η : Pl) : dil r η = r • η := rfl
+
+theorem norm_dil_le (r : ℝ) : ‖dil r‖ ≤ |r| := by
+  refine le_trans (norm_smul_le r (ContinuousLinearMap.id ℝ Pl)) ?_
+  rw [Real.norm_eq_abs]
+  have h := ContinuousLinearMap.norm_id_le (𝕜 := ℝ) (E := Pl)
+  nlinarith [abs_nonneg r, norm_nonneg (ContinuousLinearMap.id ℝ Pl)]
+
+/-- The smooth global replacement for `η ↦ η i / ‖η‖ - (ξ - η) i / ‖ξ - η‖`. -/
+def Vt (j : ℕ) (ξ : Pl) (i : Fin 2) (η : Pl) : ℝ :=
+  unitVec i (dil ((2 : ℝ) ^ (-(j : ℤ))) η + 0) -
+    unitVec i (dil (-(2 : ℝ) ^ (-(j : ℤ))) η + (2 : ℝ) ^ (-(j : ℤ)) • ξ)
+
+theorem contDiff_Vt (j : ℕ) (ξ : Pl) (i : Fin 2) : ContDiff ℝ (↑(⊤ : ℕ∞)) (Vt j ξ i) :=
+  ((contDiff_unitVec i).comp ((dil _).contDiff.add contDiff_const)).sub
+    ((contDiff_unitVec i).comp ((dil _).contDiff.add contDiff_const))
+
+/-- On the annulus the rescaled unit vector field is the unit vector field. -/
+theorem unitVec_dil_eq {j : ℕ} {i : Fin 2} {η : Pl}
+    (h1 : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖η‖) (h2 : ‖η‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 1)) :
+    unitVec i (dil ((2 : ℝ) ^ (-(j : ℤ))) η) = η i / ‖η‖ := by
+  set r : ℝ := (2 : ℝ) ^ (-(j : ℤ)) with hr
+  have hrpos : (0 : ℝ) < r := by positivity
+  have hnorm : ‖dil r η‖ = r * ‖η‖ := by
+    rw [dil_apply, norm_smul, Real.norm_eq_abs, abs_of_pos hrpos]
+  have hlow : (1 : ℝ) / 8 ≤ ‖dil r η‖ := by
+    rw [hnorm, hr]
+    have hid : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 1) = 1 / 2 := by
+      rw [← two_zpow_add, show -(j : ℤ) + ((j : ℤ) - 1) = -1 by ring]
+      norm_num
+    calc (1 : ℝ) / 8 ≤ (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 1) := by
+          rw [hid]; norm_num
+      _ ≤ (2 : ℝ) ^ (-(j : ℤ)) * ‖η‖ := by
+          refine mul_le_mul_of_nonneg_left h1 (by positivity)
+  have hhigh : ‖dil r η‖ ≤ 16 := by
+    rw [hnorm, hr]
+    have hid : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 1) = 2 := by
+      rw [← two_zpow_add, show -(j : ℤ) + ((j : ℤ) + 1) = 1 by ring]
+      norm_num
+    calc (2 : ℝ) ^ (-(j : ℤ)) * ‖η‖ ≤ (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 1) := by
+          refine mul_le_mul_of_nonneg_left h2 (by positivity)
+      _ = 2 := hid
+      _ ≤ 16 := by norm_num
+  rw [unitVec_eq hlow hhigh, hnorm]
+  have hcoord : (dil r η) i = r * η i := by
+    rw [dil_apply, PiLp.smul_apply, smul_eq_mul]
+  rw [hcoord]
+  rw [mul_div_mul_left _ _ hrpos.ne']
+
+theorem Vt_eq {j m : ℕ} {ξ η : Pl} {i : Fin 2} (h : η ∈ SuppSet j m ξ) :
+    Vt j ξ i η = η i / ‖η‖ - (ξ - η) i / ‖ξ - η‖ := by
+  obtain ⟨hηT, hξηT, -⟩ := h
+  have hfst : unitVec i (dil ((2 : ℝ) ^ (-(j : ℤ))) η + 0) = η i / ‖η‖ := by
+    rw [add_zero]
+    exact unitVec_dil_eq hηT.2.2.1 hηT.2.2.2
+  have hsnd : unitVec i (dil (-(2 : ℝ) ^ (-(j : ℤ))) η + (2 : ℝ) ^ (-(j : ℤ)) • ξ)
+      = (ξ - η) i / ‖ξ - η‖ := by
+    have harg : dil (-(2 : ℝ) ^ (-(j : ℤ))) η + (2 : ℝ) ^ (-(j : ℤ)) • ξ
+        = dil ((2 : ℝ) ^ (-(j : ℤ))) (ξ - η) := by
+      rw [dil_apply, dil_apply, smul_sub, neg_smul]
+      abel
+    rw [harg]
+    exact unitVec_dil_eq hξηT.2.2.1 hξηT.2.2.2
+  rw [Vt, hfst, hsnd]
+
+/-- The derivative bound for `Vt`. -/
+theorem norm_iteratedFDeriv_Vt_le {N : ℕ} {C : ℝ} (hCnn : 0 ≤ C)
+    (hC : ∀ i : Fin 2, ∀ n ≤ N, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ C)
+    (j : ℕ) (ξ : Pl) (i : Fin 2) {n : ℕ} (hn : n ≤ N) (η : Pl) :
+    ‖iteratedFDeriv ℝ n (Vt j ξ i) η‖ ≤ 2 * C * ((2 : ℝ) ^ (-(j : ℤ))) ^ n := by
+  set r : ℝ := (2 : ℝ) ^ (-(j : ℤ)) with hr
+  have hrpos : (0 : ℝ) < r := by positivity
+  set f1 : Pl → ℝ := fun η => unitVec i (dil r η + 0) with hf1
+  set f2 : Pl → ℝ := fun η => unitVec i (dil (-r) η + r • ξ) with hf2
+  have hcd1 : ContDiff ℝ (↑(⊤ : ℕ∞)) f1 :=
+    (contDiff_unitVec i).comp ((dil r).contDiff.add contDiff_const)
+  have hcd2 : ContDiff ℝ (↑(⊤ : ℕ∞)) f2 :=
+    (contDiff_unitVec i).comp ((dil (-r)).contDiff.add contDiff_const)
+  have hsplit : iteratedFDeriv ℝ n (Vt j ξ i) η
+      = iteratedFDeriv ℝ n f1 η - iteratedFDeriv ℝ n f2 η := by
+    have hfun : Vt j ξ i = f1 - f2 := by
+      funext y
+      rw [Vt, hf1, hf2, Pi.sub_apply]
+    rw [hfun]
+    exact iteratedFDeriv_sub_apply
+      ((hcd1.of_le (by exact_mod_cast le_top : (n : WithTop ℕ∞) ≤ ↑(⊤ : ℕ∞))).contDiffAt)
+      ((hcd2.of_le (by exact_mod_cast le_top : (n : WithTop ℕ∞) ≤ ↑(⊤ : ℕ∞))).contDiffAt)
+  have hb1 : ‖iteratedFDeriv ℝ n f1 η‖ ≤ C * r ^ n := by
+    refine le_trans (norm_iteratedFDeriv_comp_affine (contDiff_unitVec i) (dil r) 0 n η) ?_
+    have hpow : ‖dil r‖ ^ n ≤ r ^ n := by
+      have h1 : ‖dil r‖ ≤ r := by
+        refine le_trans (norm_dil_le r) ?_
+        rw [abs_of_pos hrpos]
+      have h2 : (0 : ℝ) ≤ ‖dil r‖ := norm_nonneg _
+      gcongr
+    refine mul_le_mul (hC i n hn _) hpow (by positivity) hCnn
+  have hb2 : ‖iteratedFDeriv ℝ n f2 η‖ ≤ C * r ^ n := by
+    refine le_trans (norm_iteratedFDeriv_comp_affine (contDiff_unitVec i) (dil (-r)) (r • ξ) n η) ?_
+    have hpow : ‖dil (-r)‖ ^ n ≤ r ^ n := by
+      have h1 : ‖dil (-r)‖ ≤ r := by
+        refine le_trans (norm_dil_le (-r)) ?_
+        rw [abs_neg, abs_of_pos hrpos]
+      have h2 : (0 : ℝ) ≤ ‖dil (-r)‖ := norm_nonneg _
+      gcongr
+    refine mul_le_mul (hC i n hn _) hpow (by positivity) hCnn
+  rw [hsplit]
+  refine le_trans (norm_sub_le _ _) ?_
+  have : C * r ^ n + C * r ^ n = 2 * C * r ^ n := by ring
+  linarith [hb1, hb2]
+
+end VtField
+
+
+/-! ## The smooth replacement for the norm
+
+`nrm` is a fixed smooth compactly supported function on the plane agreeing with `ζ ↦ ‖ζ‖` on the
+annulus `1/8 ≤ ‖ζ‖ ≤ 16`.  Rescaling gives a globally smooth phase that agrees with
+`η ↦ ‖η‖` on the annulus of the symbol, so no case distinctions are needed when differentiating
+under the integral sign.
+-/
+
+section SmoothNorm
+
+/-- A smooth compactly supported function agreeing with `ζ ↦ ‖ζ‖` on the annulus
+`1/8 ≤ ‖ζ‖ ≤ 16`. -/
+def nrm (ζ : Pl) : ℝ := ‖ζ‖ ^ 2 * gsm (‖ζ‖ ^ 2)
+
+theorem contDiff_nrm : ContDiff ℝ (↑(⊤ : ℕ∞)) nrm :=
+  (contDiff_norm_sq ℝ).mul (contDiff_gsm.comp (contDiff_norm_sq ℝ))
+
+theorem nrm_eq {ζ : Pl} (h1 : 1 / 8 ≤ ‖ζ‖) (h2 : ‖ζ‖ ≤ 16) : nrm ζ = ‖ζ‖ := by
+  have hpos : (0 : ℝ) < ‖ζ‖ := by linarith
+  have hlow : (1 : ℝ) / 128 ≤ ‖ζ‖ ^ 2 := by nlinarith
+  have hhigh : ‖ζ‖ ^ 2 ≤ 512 := by nlinarith
+  rw [nrm, gsm_eq_inv_sqrt hlow hhigh, Real.sqrt_sq (norm_nonneg ζ)]
+  field_simp
+
+theorem nrm_eq_zero_of_ge {ζ : Pl} (h : 32 ≤ ‖ζ‖) : nrm ζ = 0 := by
+  refine mul_eq_zero_of_right _ (gsm_eq_zero_of_ge ?_)
+  nlinarith [norm_nonneg ζ]
+
+theorem hasCompactSupport_nrm : HasCompactSupport nrm := by
+  refine HasCompactSupport.intro (isCompact_closedBall (0 : Pl) 32) fun ζ hζ => ?_
+  rw [Metric.mem_closedBall, dist_zero_right] at hζ
+  exact nrm_eq_zero_of_ge (le_of_lt (not_le.mp hζ))
+
+/-- The line derivative of `nrm`. -/
+theorem hasDerivAt_nrm_line (ζ u : Pl) :
+    HasDerivAt (fun r : ℝ => nrm (ζ + r • u)) (fderiv ℝ nrm ζ u) 0 := by
+  have hg : HasDerivAt (fun r : ℝ => ζ + r • u) u 0 := by
+    simpa using ((hasDerivAt_id (0 : ℝ)).smul_const u).const_add ζ
+  have hf : HasFDerivAt nrm (fderiv ℝ nrm ζ) (ζ + (0 : ℝ) • u) := by
+    have h := (contDiff_nrm.differentiable (by simp) ζ).hasFDerivAt
+    simpa using h
+  exact hf.comp_hasDerivAt 0 hg
+
+/-- On the annulus the derivative of `nrm` is the derivative of the norm. -/
+theorem fderiv_nrm_apply {ζ : Pl} (h1 : 1 / 8 < ‖ζ‖) (h2 : ‖ζ‖ < 16) {u : Pl} (hu : ‖u‖ = 1) :
+    fderiv ℝ nrm ζ u = (inner ℝ ζ u : ℝ) / ‖ζ‖ := by
+  have hζ : ζ ≠ 0 := by
+    refine norm_pos_iff.mp ?_
+    linarith
+  set δ : ℝ := min (‖ζ‖ - 1 / 8) (16 - ‖ζ‖) with hδ
+  have hδpos : 0 < δ := by
+    rw [hδ]
+    exact lt_min (by linarith) (by linarith)
+  have hev : (fun r : ℝ => nrm (ζ + r • u)) =ᶠ[nhds 0] fun r : ℝ => ‖ζ + r • u‖ := by
+    filter_upwards [Metric.ball_mem_nhds (0 : ℝ) hδpos] with r hr
+    rw [Metric.mem_ball, Real.dist_eq, sub_zero] at hr
+    have hru : ‖r • u‖ = |r| := by
+      rw [norm_smul, Real.norm_eq_abs, hu, mul_one]
+    have hup : ‖ζ + r • u‖ ≤ ‖ζ‖ + |r| := by
+      refine le_trans (norm_add_le _ _) ?_
+      rw [hru]
+    have hlo : ‖ζ‖ - |r| ≤ ‖ζ + r • u‖ := by
+      have hid : ζ = (ζ + r • u) - r • u := by abel
+      have h := norm_add_le (ζ + r • u) (-(r • u))
+      rw [show (ζ + r • u) + -(r • u) = ζ by abel, norm_neg, hru] at h
+      linarith
+    have hδ1 : δ ≤ ‖ζ‖ - 1 / 8 := by rw [hδ]; exact min_le_left _ _
+    have hδ2 : δ ≤ 16 - ‖ζ‖ := by rw [hδ]; exact min_le_right _ _
+    refine nrm_eq (by linarith) (by linarith)
+  have hA := hasDerivAt_nrm_line ζ u
+  have hB : HasDerivAt (fun r : ℝ => ‖ζ + r • u‖) ((inner ℝ ζ u : ℝ) / ‖ζ‖) 0 := by
+    have h := hasDerivAt_norm_line hu ζ (s := 0) (by simpa using hζ)
+    simpa using h
+  exact (hA.congr_of_eventuallyEq hev.symm).unique hB
+
+end SmoothNorm
+
+
+/-! ## The smooth phase of §4.4
+
+Replacing `‖η‖` by the rescaled smooth truncation `Ntl j` gives a globally smooth phase agreeing
+with the true one on the support of a `(j,m)`-adapted symbol.
+-/
+
+section SmoothPhase
+
+/-- The `i`-th standard basis vector of the plane. -/
+def ev : Fin 2 → Pl
+  | 0 => mk2 1 0
+  | 1 => mk2 0 1
+
+@[simp] theorem inner_ev (x : Pl) (i : Fin 2) : (inner ℝ x (ev i) : ℝ) = x i := by
+  match i with
+  | 0 =>
+    rw [inner_two, ev]
+    simp
+  | 1 =>
+    rw [inner_two, ev]
+    simp
+
+@[simp] theorem norm_ev (i : Fin 2) : ‖ev i‖ = 1 := by
+  match i with
+  | 0 =>
+    have h : ‖ev 0‖ ^ 2 = 1 := by
+      rw [ev, norm_mk2_sq]
+      norm_num
+    nlinarith [norm_nonneg (ev 0), h]
+  | 1 =>
+    have h : ‖ev 1‖ ^ 2 = 1 := by
+      rw [ev, norm_mk2_sq]
+      norm_num
+    nlinarith [norm_nonneg (ev 1), h]
+
+/-- The rescaled smooth norm, equal to `‖η‖` on the annulus `2^{j-3} ≤ ‖η‖ ≤ 2^{j+4}`. -/
+def Ntl (j : ℕ) (η : Pl) : ℝ := (2 : ℝ) ^ (j : ℤ) * nrm ((2 : ℝ) ^ (-(j : ℤ)) • η)
+
+theorem contDiff_Ntl (j : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (Ntl j) :=
+  contDiff_const.mul (contDiff_nrm.comp (contDiff_id.const_smul _))
+
+theorem two_zpow_neg_mul (j : ℕ) : (2 : ℝ) ^ (j : ℤ) * (2 : ℝ) ^ (-(j : ℤ)) = 1 := by
+  rw [← two_zpow_add, add_neg_cancel, zpow_zero]
+
+theorem Ntl_eq {j : ℕ} {η : Pl} (h1 : (2 : ℝ) ^ ((j : ℤ) - 3) ≤ ‖η‖)
+    (h2 : ‖η‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 4)) : Ntl j η = ‖η‖ := by
+  set r : ℝ := (2 : ℝ) ^ (-(j : ℤ)) with hr
+  have hrpos : (0 : ℝ) < r := by rw [hr]; positivity
+  have hnorm : ‖r • η‖ = r * ‖η‖ := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrpos]
+  have hlow : (1 : ℝ) / 8 ≤ ‖r • η‖ := by
+    rw [hnorm, hr]
+    have hid : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 3) = 1 / 8 := by
+      rw [← two_zpow_add, show -(j : ℤ) + ((j : ℤ) - 3) = -3 by ring]
+      norm_num
+    calc (1 : ℝ) / 8 = (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 3) := hid.symm
+      _ ≤ (2 : ℝ) ^ (-(j : ℤ)) * ‖η‖ := mul_le_mul_of_nonneg_left h1 (by positivity)
+  have hhigh : ‖r • η‖ ≤ 16 := by
+    rw [hnorm, hr]
+    have hid : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 4) = 16 := by
+      rw [← two_zpow_add, show -(j : ℤ) + ((j : ℤ) + 4) = 4 by ring]
+      norm_num
+    calc (2 : ℝ) ^ (-(j : ℤ)) * ‖η‖ ≤ (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 4) :=
+          mul_le_mul_of_nonneg_left h2 (by positivity)
+      _ = 16 := hid
+  rw [Ntl, nrm_eq hlow hhigh, hnorm, ← mul_assoc, hr, two_zpow_neg_mul, one_mul]
+
+/-- The directional derivative of the rescaled smooth norm. -/
+def gnrm (j : ℕ) (x u : Pl) : ℝ := fderiv ℝ nrm ((2 : ℝ) ^ (-(j : ℤ)) • x) u
+
+theorem gnrm_neg (j : ℕ) (x u : Pl) : gnrm j x (-u) = -gnrm j x u := by
+  rw [gnrm, gnrm, ← ContinuousLinearMap.map_neg]
+
+theorem hasDerivAt_Ntl_line (j : ℕ) (x u : Pl) :
+    HasDerivAt (fun r : ℝ => Ntl j (x + r • u)) (gnrm j x u) 0 := by
+  set c : ℝ := (2 : ℝ) ^ (-(j : ℤ)) with hc
+  have h := hasDerivAt_nrm_line (c • x) (c • u)
+  have hfun : (fun r : ℝ => nrm (c • x + r • (c • u)))
+      = fun r : ℝ => nrm (c • (x + r • u)) := by
+    funext r
+    congr 1
+    rw [smul_add, smul_smul, smul_smul, mul_comm r c]
+  rw [hfun] at h
+  have hlin : fderiv ℝ nrm (c • x) (c • u) = c * fderiv ℝ nrm (c • x) u := by
+    rw [ContinuousLinearMap.map_smul, smul_eq_mul]
+  rw [hlin] at h
+  have h2 := h.const_mul ((2 : ℝ) ^ (j : ℤ))
+  have heq : (2 : ℝ) ^ (j : ℤ) * (c * fderiv ℝ nrm (c • x) u) = gnrm j x u := by
+    rw [gnrm, ← hc, ← mul_assoc, hc, two_zpow_neg_mul, one_mul]
+  rw [heq] at h2
+  have hfun2 : (fun r : ℝ => (2 : ℝ) ^ (j : ℤ) * nrm (c • (x + r • u)))
+      = fun r : ℝ => Ntl j (x + r • u) := by
+    funext r
+    rw [Ntl, hc]
+  rw [hfun2] at h2
+  exact h2
+
+theorem gnrm_eq {j : ℕ} {x : Pl} (h1 : (2 : ℝ) ^ ((j : ℤ) - 3) < ‖x‖)
+    (h2 : ‖x‖ < (2 : ℝ) ^ ((j : ℤ) + 4)) {u : Pl} (hu : ‖u‖ = 1) :
+    gnrm j x u = (inner ℝ x u : ℝ) / ‖x‖ := by
+  set c : ℝ := (2 : ℝ) ^ (-(j : ℤ)) with hc
+  have hcpos : (0 : ℝ) < c := by rw [hc]; positivity
+  have hnorm : ‖c • x‖ = c * ‖x‖ := by
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos hcpos]
+  have hlow : (1 : ℝ) / 8 < ‖c • x‖ := by
+    rw [hnorm, hc]
+    have hid : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 3) = 1 / 8 := by
+      rw [← two_zpow_add, show -(j : ℤ) + ((j : ℤ) - 3) = -3 by ring]
+      norm_num
+    calc (1 : ℝ) / 8 = (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) - 3) := hid.symm
+      _ < (2 : ℝ) ^ (-(j : ℤ)) * ‖x‖ := by
+          refine mul_lt_mul_of_pos_left h1 (by positivity)
+  have hhigh : ‖c • x‖ < 16 := by
+    rw [hnorm, hc]
+    have hid : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 4) = 16 := by
+      rw [← two_zpow_add, show -(j : ℤ) + ((j : ℤ) + 4) = 4 by ring]
+      norm_num
+    calc (2 : ℝ) ^ (-(j : ℤ)) * ‖x‖ < (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ ((j : ℤ) + 4) := by
+          refine mul_lt_mul_of_pos_left h2 (by positivity)
+      _ = 16 := hid
+  rw [gnrm, ← hc, fderiv_nrm_apply hlow hhigh hu, hnorm, real_inner_smul_left,
+    mul_div_mul_left _ _ hcpos.ne']
+
+/-- The smooth phase of §4.4. -/
+def phsm (j : ℕ) (ε t : ℝ) (ξ w η : Pl) : ℝ :=
+  inner ℝ w η + ε * t * (Ntl j (ξ - η) + Ntl j η)
+
+theorem hasDerivAt_phsm (j : ℕ) (ε t : ℝ) (ξ w η u : Pl) :
+    HasDerivAt (fun r : ℝ => phsm j ε t ξ w (η + r • u))
+      (inner ℝ w u + ε * t * (-(gnrm j (ξ - η) u) + gnrm j η u)) 0 := by
+  have h1 : HasDerivAt (fun r : ℝ => (inner ℝ w (η + r • u) : ℝ)) (inner ℝ w u) 0 := by
+    have hf : (fun r : ℝ => (inner ℝ w (η + r • u) : ℝ))
+        = fun r : ℝ => inner ℝ w η + r * inner ℝ w u := by
+      funext r
+      rw [inner_add_right, real_inner_smul_right]
+    rw [hf]
+    have h2 : HasDerivAt (fun r : ℝ => r * (inner ℝ w u : ℝ)) (inner ℝ w u) 0 := by
+      simpa using (hasDerivAt_id (0 : ℝ)).mul_const (inner ℝ w u : ℝ)
+    exact h2.const_add _
+  have h2 : HasDerivAt (fun r : ℝ => Ntl j (η + r • u)) (gnrm j η u) 0 :=
+    hasDerivAt_Ntl_line j η u
+  have h3 : HasDerivAt (fun r : ℝ => Ntl j (ξ - (η + r • u))) (-(gnrm j (ξ - η) u)) 0 := by
+    have hline : (fun r : ℝ => Ntl j (ξ - (η + r • u)))
+        = fun r : ℝ => Ntl j ((ξ - η) + r • (-u)) := by
+      funext r
+      congr 1
+      rw [smul_neg]
+      abel
+    rw [hline, ← gnrm_neg]
+    exact hasDerivAt_Ntl_line j (ξ - η) (-u)
+  have hsum := h1.add ((h3.add h2).const_mul (ε * t))
+  have hfun : (fun r : ℝ => phsm j ε t ξ w (η + r • u))
+      = fun r : ℝ => (inner ℝ w (η + r • u) : ℝ) +
+        ε * t * (Ntl j (ξ - (η + r • u)) + Ntl j (η + r • u)) := by
+    funext r
+    rw [phsm]
+  rw [hfun]
+  exact hsum
+
+/-- On the support of a `(j,m)`-adapted symbol the smooth phase is the true phase. -/
+theorem phsm_eq_ph {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) (ε t : ℝ) (w : Pl) :
+    phsm j ε t ξ w η = ph ε t ξ w η := by
+  obtain ⟨hηT, hξηT, -⟩ := h
+  have hwiden : ∀ x : Pl, (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖x‖ → ‖x‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 1) →
+      Ntl j x = ‖x‖ := by
+    intro x hx1 hx2
+    refine Ntl_eq (le_trans ?_ hx1) (le_trans hx2 ?_)
+    · exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+    · exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+  rw [phsm, ph, hwiden η hηT.2.2.1 hηT.2.2.2, hwiden (ξ - η) hξηT.2.2.1 hξηT.2.2.2]
+
+/-- On the support the smooth phase gradient is the true one. -/
+theorem gnrm_eq_of_mem {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) {u : Pl} (hu : ‖u‖ = 1) :
+    -(gnrm j (ξ - η) u) + gnrm j η u
+      = -((inner ℝ (ξ - η) u : ℝ) / ‖ξ - η‖) + (inner ℝ η u : ℝ) / ‖η‖ := by
+  obtain ⟨hηT, hξηT, -⟩ := h
+  have hwiden : ∀ x : Pl, (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖x‖ → ‖x‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 1) →
+      gnrm j x u = (inner ℝ x u : ℝ) / ‖x‖ := by
+    intro x hx1 hx2
+    refine gnrm_eq (lt_of_lt_of_le ?_ hx1) (lt_of_le_of_lt hx2 ?_) hu
+    · exact zpow_lt_zpow_right₀ (by norm_num) (by omega)
+    · exact zpow_lt_zpow_right₀ (by norm_num) (by omega)
+  rw [hwiden η hηT.2.2.1 hηT.2.2.2, hwiden (ξ - η) hξηT.2.2.1 hξηT.2.2.2]
+
+end SmoothPhase
+
+
+/-! ## The truncated phase gradient
+
+`Psi` is a globally smooth function of `η` that agrees with the `i`-th coordinate of the gradient of
+the smooth phase on the support of a `(j,m)`-adapted symbol, and satisfies
+`|Psi| ≥ |w_i| - 2^{12-m}` everywhere.  This is what allows one integration by parts with no case
+distinctions.
+-/
+
+section PsiSec
+
+/-- The truncation of `Vt` at height `2^{9-m}`. -/
+def Vhat (j m : ℕ) (ξ : Pl) (i : Fin 2) (η : Pl) : ℝ :=
+  (2 : ℝ) ^ (9 - (m : ℤ)) * shrinkS ((2 : ℝ) ^ ((m : ℤ) - 9) * Vt j ξ i η)
+
+theorem contDiff_Vhat (j m : ℕ) (ξ : Pl) (i : Fin 2) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (Vhat j m ξ i) :=
+  contDiff_const.mul (contDiff_shrinkS.comp (contDiff_const.mul (contDiff_Vt j ξ i)))
+
+theorem abs_Vhat_le (j m : ℕ) (ξ : Pl) (i : Fin 2) (η : Pl) :
+    |Vhat j m ξ i η| ≤ (2 : ℝ) ^ (10 - (m : ℤ)) := by
+  have h := abs_shrinkS_le ((2 : ℝ) ^ ((m : ℤ) - 9) * Vt j ξ i η)
+  have hc : (0 : ℝ) < (2 : ℝ) ^ (9 - (m : ℤ)) := by positivity
+  rw [Vhat, abs_mul, abs_of_pos hc]
+  have hid : (2 : ℝ) ^ (10 - (m : ℤ)) = (2 : ℝ) ^ (9 - (m : ℤ)) * 2 := by
+    rw [show (10 : ℤ) - (m : ℤ) = (9 - (m : ℤ)) + 1 by ring, two_zpow_add, zpow_one]
+  rw [hid]
+  exact mul_le_mul_of_nonneg_left h hc.le
+
+theorem Vhat_eq_Vt {j m : ℕ} {ξ : Pl} {i : Fin 2} {η : Pl}
+    (h : |Vt j ξ i η| ≤ (2 : ℝ) ^ (9 - (m : ℤ))) : Vhat j m ξ i η = Vt j ξ i η := by
+  have hcpos : (0 : ℝ) < (2 : ℝ) ^ ((m : ℤ) - 9) := by positivity
+  have hxle : |(2 : ℝ) ^ ((m : ℤ) - 9) * Vt j ξ i η| ≤ 1 := by
+    rw [abs_mul, abs_of_pos hcpos]
+    have hstep : (2 : ℝ) ^ ((m : ℤ) - 9) * |Vt j ξ i η|
+        ≤ (2 : ℝ) ^ ((m : ℤ) - 9) * (2 : ℝ) ^ (9 - (m : ℤ)) :=
+      mul_le_mul_of_nonneg_left h hcpos.le
+    refine le_trans hstep (le_of_eq ?_)
+    rw [← two_zpow_add, show ((m : ℤ) - 9) + (9 - (m : ℤ)) = 0 by ring, zpow_zero]
+  have hsq : ((2 : ℝ) ^ ((m : ℤ) - 9) * Vt j ξ i η) ^ 2 ≤ 1 := by
+    nlinarith [abs_nonneg ((2 : ℝ) ^ ((m : ℤ) - 9) * Vt j ξ i η),
+      sq_abs ((2 : ℝ) ^ ((m : ℤ) - 9) * Vt j ξ i η)]
+  rw [Vhat, shrinkS_eq_self hsq, ← mul_assoc]
+  have hid : (2 : ℝ) ^ (9 - (m : ℤ)) * (2 : ℝ) ^ ((m : ℤ) - 9) = 1 := by
+    rw [← two_zpow_add, show (9 - (m : ℤ)) + ((m : ℤ) - 9) = 0 by ring, zpow_zero]
+  rw [hid, one_mul]
+
+/-- On the support of a `(j,m)`-adapted symbol `Vt` is at most `2^{9-m}` in absolute value. -/
+theorem abs_Vt_le_of_mem {j m : ℕ} {ξ η : Pl} {i : Fin 2} (hξ : XiData j ξ)
+    (h : η ∈ SuppSet j m ξ) : |Vt j ξ i η| ≤ (2 : ℝ) ^ (9 - (m : ℤ)) := by
+  have hηpos : (0 : ℝ) < ‖η‖ := lt_of_lt_of_le (by positivity) h.1.2.2.1
+  have hξηpos : (0 : ℝ) < ‖ξ - η‖ := lt_of_lt_of_le (by positivity) h.2.1.2.2.1
+  have hη : η ≠ 0 := norm_pos_iff.mp hηpos
+  have hξη : ξ - η ≠ 0 := norm_pos_iff.mp hξηpos
+  have hVeq : Vt j ξ i η = (‖η‖⁻¹ • η - ‖ξ - η‖⁻¹ • (ξ - η)) i := by
+    rw [Vt_eq h]
+    simp only [PiLp.sub_apply, PiLp.smul_apply, smul_eq_mul]
+    field_simp
+  rw [hVeq]
+  refine le_trans (Auto.CalderonVaillancourt.abs_apply_le_norm _ i) ?_
+  exact le_trans (norm_unit_diff_le hη hξη) (angle_eta_le hξ h)
+
+theorem Vhat_eq_of_mem {j m : ℕ} {ξ η : Pl} {i : Fin 2} (hξ : XiData j ξ)
+    (h : η ∈ SuppSet j m ξ) : Vhat j m ξ i η = Vt j ξ i η :=
+  Vhat_eq_Vt (abs_Vt_le_of_mem hξ h)
+
+/-- The truncated `i`-th component of the gradient of the smooth phase. -/
+def Psi (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (w η : Pl) : ℝ :=
+  w i + ε * t * Vhat j m ξ i η
+
+theorem contDiff_Psi (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (w : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (Psi j m ε t ξ i w) :=
+  contDiff_const.add (contDiff_const.mul (contDiff_Vhat j m ξ i))
+
+/-- The lower bound for `|Psi|`: the correction is at most `2^{12-m}`. -/
+theorem abs_Psi_ge {j m : ℕ} {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (ξ : Pl) (i : Fin 2) (w η : Pl) :
+    |w i| - (2 : ℝ) ^ (12 - (m : ℤ)) ≤ |Psi j m ε t ξ i w η| := by
+  have hεt : |ε * t| ≤ 2 := by
+    rw [abs_mul, hε, one_mul, abs_of_pos (by linarith)]
+    exact ht2
+  have hcorr : |ε * t * Vhat j m ξ i η| ≤ (2 : ℝ) ^ (12 - (m : ℤ)) := by
+    rw [abs_mul]
+    have hid : (2 : ℝ) ^ (11 - (m : ℤ)) = 2 * (2 : ℝ) ^ (10 - (m : ℤ)) := by
+      rw [show (11 : ℤ) - (m : ℤ) = 1 + (10 - (m : ℤ)) by ring, two_zpow_add, zpow_one]
+    have hstep : |ε * t| * |Vhat j m ξ i η| ≤ 2 * (2 : ℝ) ^ (10 - (m : ℤ)) :=
+      mul_le_mul hεt (abs_Vhat_le j m ξ i η) (abs_nonneg _) (by norm_num)
+    refine le_trans hstep ?_
+    rw [← hid]
+    exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+  have hsplit : |w i| ≤ |Psi j m ε t ξ i w η| + |ε * t * Vhat j m ξ i η| := by
+    have hid : w i = Psi j m ε t ξ i w η - ε * t * Vhat j m ξ i η := by
+      rw [Psi]
+      ring
+    rw [hid]
+    exact abs_sub _ _
+  linarith
+
+/-- On the support the truncated gradient is the true gradient of the smooth phase. -/
+theorem Psi_eq_of_mem {j m : ℕ} {ξ η : Pl} (hξ : XiData j ξ) (h : η ∈ SuppSet j m ξ)
+    (ε t : ℝ) (i : Fin 2) (w : Pl) :
+    Psi j m ε t ξ i w η
+      = inner ℝ w (ev i) + ε * t * (-(gnrm j (ξ - η) (ev i)) + gnrm j η (ev i)) := by
+  rw [Psi, inner_ev, Vhat_eq_of_mem hξ h, Vt_eq h, gnrm_eq_of_mem h (norm_ev i),
+    inner_ev, inner_ev]
+  ring
+
+end PsiSec
+
+
+/-! ## Integration by parts in `η`
+
+One integration by parts in the coordinate direction `ev i`, with the amplitude `b / Psi`.  Since
+the phase and `Psi` are globally smooth and `Psi` does not vanish, no case distinctions are needed.
+-/
+
+section IBP44
+
+theorem osc_add (lam a c : ℝ) : osc lam (a + c) = osc lam a * osc lam c := by
+  rw [osc, osc, osc, ← Complex.exp_add]
+  congr 1
+  push_cast
+  ring
+
+/-- The line derivative of a smooth function. -/
+theorem hasDerivAt_line {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+    {f : Pl → F} (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) (η u : Pl) :
+    HasDerivAt (fun r : ℝ => f (η + r • u)) (fderiv ℝ f η u) 0 := by
+  have hg : HasDerivAt (fun r : ℝ => η + r • u) u 0 := by
+    simpa using ((hasDerivAt_id (0 : ℝ)).smul_const u).const_add η
+  have hfd : HasFDerivAt f (fderiv ℝ f η) (η + (0 : ℝ) • u) := by
+    have h := (hf.differentiable (by simp) η).hasFDerivAt
+    simpa using h
+  exact hfd.comp_hasDerivAt 0 hg
+
+theorem contDiff_inner_left (w : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (fun η : Pl => (inner ℝ w η : ℝ)) := by
+  have h : (fun η : Pl => (inner ℝ w η : ℝ)) = fun η => (innerSL ℝ w) η := rfl
+  rw [h]
+  exact (innerSL ℝ w).contDiff
+
+theorem contDiff_phsm (j : ℕ) (ε t : ℝ) (ξ w : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (phsm j ε t ξ w) :=
+  (contDiff_inner_left w).add
+    (contDiff_const.mul
+      (((contDiff_Ntl j).comp (contDiff_const.sub contDiff_id)).add (contDiff_Ntl j)))
+
+/-- The total oscillatory factor of §4.4, with the smooth phase. -/
+def oscph (j : ℕ) (ε t : ℝ) (ξ w η : Pl) : ℂ := osc (2 * Real.pi) (phsm j ε t ξ w η)
+
+@[simp] theorem norm_oscph (j : ℕ) (ε t : ℝ) (ξ w η : Pl) : ‖oscph j ε t ξ w η‖ = 1 :=
+  norm_osc _ _
+
+theorem continuous_oscph (j : ℕ) (ε t : ℝ) (ξ w : Pl) : Continuous (oscph j ε t ξ w) := by
+  refine Complex.continuous_exp.comp ?_
+  refine (Complex.continuous_ofReal.comp ?_).mul continuous_const
+  exact continuous_const.mul (contDiff_phsm j ε t ξ w).continuous
+
+/-- On the support the smooth oscillatory factor is the product of the true phase and the Fourier
+kernel. -/
+theorem oscph_eq_of_mem {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) (ε t : ℝ) (w : Pl) :
+    oscph j ε t ξ w η = ee (-(inner ℝ w η : ℝ)) * phase ε t ξ η := by
+  rw [oscph, phsm_eq_ph h, ph, osc_add]
+  congr 1
+  · rw [osc, ee]
+    congr 2
+    push_cast
+    ring
+  · rw [osc, phase]
+    congr 2
+    push_cast
+    ring
+
+/-- The derivative of the total phase in the direction `u`. -/
+def dphsf (j : ℕ) (ε t : ℝ) (ξ w u η : Pl) : ℝ :=
+  inner ℝ w u + ε * t * (-(gnrm j (ξ - η) u) + gnrm j η u)
+
+theorem hasDerivAt_oscph_line (j : ℕ) (ε t : ℝ) (ξ w η u : Pl) :
+    HasDerivAt (fun r : ℝ => oscph j ε t ξ w (η + r • u))
+      (oscph j ε t ξ w η *
+        ((((2 * Real.pi * dphsf j ε t ξ w u η : ℝ)) : ℂ) * Complex.I)) 0 := by
+  have h := hasDerivAt_osc (lam := 2 * Real.pi) (hasDerivAt_phsm j ε t ξ w η u)
+  simpa [oscph, dphsf] using h
+
+/-- The integration-by-parts amplitude `b / Psi`. -/
+def Amp (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (w η : Pl) : ℂ :=
+  b t ξ η / (((Psi j m ε t ξ i w η : ℝ)) : ℂ)
+
+/-- Its derivative in the direction `u`. -/
+def Ampd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (w u η : Pl) : ℂ :=
+  (fderiv ℝ (b t ξ) η u * (((Psi j m ε t ξ i w η : ℝ)) : ℂ)
+      - b t ξ η * (((fderiv ℝ (Psi j m ε t ξ i w) η u : ℝ)) : ℂ))
+    / (((Psi j m ε t ξ i w η : ℝ)) : ℂ) ^ 2
+
+theorem hasDerivAt_Amp_line {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) (η u : Pl) :
+    HasDerivAt (fun r : ℝ => Amp j m ε t ξ i b w (η + r • u))
+      (Ampd j m ε t ξ i b w u η) 0 := by
+  have hbline : HasDerivAt (fun r : ℝ => b t ξ (η + r • u)) (fderiv ℝ (b t ξ) η u) 0 :=
+    hasDerivAt_line hb η u
+  have hPline : HasDerivAt (fun r : ℝ => Psi j m ε t ξ i w (η + r • u))
+      (fderiv ℝ (Psi j m ε t ξ i w) η u) 0 :=
+    hasDerivAt_line (contDiff_Psi j m ε t ξ i w) η u
+  have hPC : HasDerivAt (fun r : ℝ => (((Psi j m ε t ξ i w (η + r • u) : ℝ)) : ℂ))
+      ((((fderiv ℝ (Psi j m ε t ξ i w) η u : ℝ)) : ℂ)) 0 := hPline.ofReal_comp
+  have hne : (((Psi j m ε t ξ i w (η + (0 : ℝ) • u) : ℝ)) : ℂ) ≠ 0 := by
+    simp only [zero_smul, add_zero]
+    exact Complex.ofReal_ne_zero.mpr (hPsi η)
+  have h := hbline.div hPC hne
+  simp only [zero_smul, add_zero] at h
+  rw [Ampd]
+  exact h
+
+/-- The full integrand of §4.4. -/
+def Intg (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (w η : Pl) : ℂ :=
+  oscph j ε t ξ w η * Amp j m ε t ξ i b w η
+
+/-- Its coordinate derivative. -/
+def Intgd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (w η : Pl) : ℂ :=
+  (((2 * Real.pi : ℝ)) : ℂ) * Complex.I * oscph j ε t ξ w η * b t ξ η
+    + oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η
+
+theorem hasDerivAt_Intg_line {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hξ : XiData j ξ) (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) (η : Pl) :
+    HasDerivAt (fun r : ℝ => Intg j m ε t ξ i b w (η + r • ev i))
+      (Intgd j m ε t ξ i b w η) 0 := by
+  have h1 := hasDerivAt_oscph_line j ε t ξ w η (ev i)
+  have h2 := hasDerivAt_Amp_line hb w hPsi η (ev i)
+  have h := h1.mul h2
+  simp only [zero_smul, add_zero] at h
+  -- identify the first term
+  have hkey : oscph j ε t ξ w η *
+      ((((2 * Real.pi * dphsf j ε t ξ w (ev i) η : ℝ)) : ℂ) * Complex.I) *
+        Amp j m ε t ξ i b w η
+      = (((2 * Real.pi : ℝ)) : ℂ) * Complex.I * oscph j ε t ξ w η * b t ξ η := by
+    by_cases hmem : η ∈ SuppSet j m ξ
+    · have hdp : dphsf j ε t ξ w (ev i) η = Psi j m ε t ξ i w η := by
+        rw [dphsf, Psi_eq_of_mem hξ hmem]
+      rw [hdp, Amp]
+      have hne : (((Psi j m ε t ξ i w η : ℝ)) : ℂ) ≠ 0 :=
+        Complex.ofReal_ne_zero.mpr (hPsi η)
+      push_cast
+      field_simp
+    · rw [hsupp η hmem, Amp, hsupp η hmem]
+      simp
+  have hfun : (fun r : ℝ => Intg j m ε t ξ i b w (η + r • ev i))
+      = fun r : ℝ => oscph j ε t ξ w (η + r • ev i) *
+        Amp j m ε t ξ i b w (η + r • ev i) := rfl
+  rw [hfun, Intgd, ← hkey]
+  exact h
+
+end IBP44
+
+
+/-! ### The integration by parts identity -/
+
+section IBPIdentity
+
+theorem continuous_fderiv_dir {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+    {f : Pl → F} (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) (u : Pl) :
+    Continuous fun η : Pl => fderiv ℝ f η u := by
+  have h := hf.continuous_fderiv_apply (by simp)
+  exact h.comp (continuous_id.prodMk continuous_const)
+
+theorem mk2_add_smul_ev_zero (x y s : ℝ) : mk2 x y + (s - x) • ev 0 = mk2 s y := by
+  refine PiLp.ext fun k => ?_
+  match k with
+  | 0 =>
+    rw [PiLp.add_apply, PiLp.smul_apply, smul_eq_mul, mk2_apply_zero, mk2_apply_zero, ev,
+      mk2_apply_zero]
+    ring
+  | 1 =>
+    rw [PiLp.add_apply, PiLp.smul_apply, smul_eq_mul, mk2_apply_one, mk2_apply_one, ev,
+      mk2_apply_one]
+    ring
+
+theorem mk2_add_smul_ev_one (x y s : ℝ) : mk2 x y + (s - y) • ev 1 = mk2 x s := by
+  refine PiLp.ext fun k => ?_
+  match k with
+  | 0 =>
+    rw [PiLp.add_apply, PiLp.smul_apply, smul_eq_mul, mk2_apply_zero, mk2_apply_zero, ev,
+      mk2_apply_zero]
+    ring
+  | 1 =>
+    rw [PiLp.add_apply, PiLp.smul_apply, smul_eq_mul, mk2_apply_one, mk2_apply_one, ev,
+      mk2_apply_one]
+    ring
+
+theorem hasDerivAt_coord_fst {f D : Pl → ℂ}
+    (h : ∀ η : Pl, HasDerivAt (fun r : ℝ => f (η + r • ev 0)) (D η) 0) (x y : ℝ) :
+    HasDerivAt (fun s : ℝ => f (mk2 s y)) (D (mk2 x y)) x := by
+  have houter : HasDerivAt (fun r : ℝ => f (mk2 x y + r • ev 0)) (D (mk2 x y))
+      (x - x) := by simpa using h (mk2 x y)
+  have hcomp := houter.comp_sub_const x x
+  have hfun : (fun s : ℝ => f (mk2 x y + (s - x) • ev 0)) = fun s : ℝ => f (mk2 s y) := by
+    funext s
+    rw [mk2_add_smul_ev_zero]
+  rw [hfun] at hcomp
+  exact hcomp
+
+theorem hasDerivAt_coord_snd {f D : Pl → ℂ}
+    (h : ∀ η : Pl, HasDerivAt (fun r : ℝ => f (η + r • ev 1)) (D η) 0) (x y : ℝ) :
+    HasDerivAt (fun s : ℝ => f (mk2 x s)) (D (mk2 x y)) y := by
+  have houter : HasDerivAt (fun r : ℝ => f (mk2 x y + r • ev 1)) (D (mk2 x y))
+      (y - y) := by simpa using h (mk2 x y)
+  have hcomp := houter.comp_sub_const y y
+  have hfun : (fun s : ℝ => f (mk2 x y + (s - y) • ev 1)) = fun s : ℝ => f (mk2 x s) := by
+    funext s
+    rw [mk2_add_smul_ev_one]
+  rw [hfun] at hcomp
+  exact hcomp
+
+theorem closure_SuppSet_subset_ball (j m : ℕ) (ξ : Pl) :
+    closure (SuppSet j m ξ) ⊆ Metric.closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1)) := by
+  refine closure_minimal ?_ Metric.isClosed_closedBall
+  intro η hη
+  rw [Metric.mem_closedBall, dist_zero_right]
+  exact hη.1.2.2.2
+
+theorem fderiv_b_eq_zero_of_notMem {j m : ℕ} {t : ℝ} {ξ : Pl} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0)
+    {η : Pl} (h : η ∉ closure (SuppSet j m ξ)) : fderiv ℝ (b t ξ) η = 0 := by
+  have hev : b t ξ =ᶠ[nhds η] fun _ : Pl => (0 : ℂ) := by
+    filter_upwards [isClosed_closure.isOpen_compl.mem_nhds h] with x hx
+    exact hsupp x fun hmem => hx (subset_closure hmem)
+  rw [hev.fderiv_eq]
+  simp
+
+theorem Intgd_eq_zero_of_notMem {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (w : Pl)
+    {η : Pl} (h : η ∉ closure (SuppSet j m ξ)) : Intgd j m ε t ξ i b w η = 0 := by
+  have hb0 : b t ξ η = 0 := hsupp η fun hmem => h (subset_closure hmem)
+  have hfd : fderiv ℝ (b t ξ) η = 0 := fderiv_b_eq_zero_of_notMem hsupp h
+  rw [Intgd, hb0, Ampd, hb0, hfd]
+  simp
+
+theorem hasCompactSupport_Intgd {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (w : Pl) :
+    HasCompactSupport (Intgd j m ε t ξ i b w) := by
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  exact Intgd_eq_zero_of_notMem hsupp w fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+
+theorem hasCompactSupport_Intg {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (w : Pl) :
+    HasCompactSupport (Intg j m ε t ξ i b w) := by
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  have hb0 : b t ξ η = 0 := by
+    refine hsupp η fun hmem => hη ?_
+    exact closure_SuppSet_subset_ball j m ξ (subset_closure hmem)
+  rw [Intg, Amp, hb0]
+  simp
+
+theorem continuous_Intgd {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    Continuous (Intgd j m ε t ξ i b w) := by
+  have hbc : Continuous (b t ξ) := hb.continuous
+  have hPc : Continuous (Psi j m ε t ξ i w) := (contDiff_Psi j m ε t ξ i w).continuous
+  have hPCc : Continuous fun η : Pl => (((Psi j m ε t ξ i w η : ℝ)) : ℂ) :=
+    Complex.continuous_ofReal.comp hPc
+  have hbd : Continuous fun η : Pl => fderiv ℝ (b t ξ) η (ev i) :=
+    continuous_fderiv_dir hb (ev i)
+  have hPd : Continuous fun η : Pl => fderiv ℝ (Psi j m ε t ξ i w) η (ev i) :=
+    continuous_fderiv_dir (contDiff_Psi j m ε t ξ i w) (ev i)
+  have hAmpd : Continuous (Ampd j m ε t ξ i b w (ev i)) := by
+    refine Continuous.div ?_ (hPCc.pow 2) ?_
+    · exact (hbd.mul hPCc).sub (hbc.mul (Complex.continuous_ofReal.comp hPd))
+    · intro η
+      exact pow_ne_zero 2 (Complex.ofReal_ne_zero.mpr (hPsi η))
+  exact ((continuous_const.mul (continuous_oscph j ε t ξ w)).mul hbc).add
+    ((continuous_oscph j ε t ξ w).mul hAmpd)
+
+theorem integral_Intgd_eq_zero {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hξ : XiData j ξ) (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    (∫ η : Pl, Intgd j m ε t ξ i b w η) = 0 := by
+  have hline := hasDerivAt_Intg_line hξ hb hsupp w hPsi
+  have hDc := continuous_Intgd hb w hPsi
+  have hDs := hasCompactSupport_Intgd (ε := ε) (i := i) hsupp w
+  have hfs := hasCompactSupport_Intg (ε := ε) (i := i) hsupp w
+  match i with
+  | 0 =>
+    exact integral_partial_fst_eq_zero (hasDerivAt_coord_fst hline) hDc hDs hfs
+  | 1 =>
+    exact integral_partial_snd_eq_zero (hasDerivAt_coord_snd hline) hDc hDs hfs
+
+/-- **The integration by parts identity of §4.4.** -/
+theorem ibp44 {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hξ : XiData j ξ) (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)
+      = -(1 / ((((2 * Real.pi : ℝ)) : ℂ) * Complex.I)) *
+          ∫ η : Pl, oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η := by
+  have hbc : Continuous (b t ξ) := hb.continuous
+  have h1c : Continuous fun η : Pl => oscph j ε t ξ w η * b t ξ η :=
+    (continuous_oscph j ε t ξ w).mul hbc
+  have h2c : Continuous fun η : Pl => oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η := by
+    have hDc := continuous_Intgd hb w hPsi
+    have h1 : Continuous fun η : Pl =>
+        (((2 * Real.pi : ℝ)) : ℂ) * Complex.I * oscph j ε t ξ w η * b t ξ η :=
+      (continuous_const.mul (continuous_oscph j ε t ξ w)).mul hbc
+    have hsub : (fun η : Pl => oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η)
+        = fun η : Pl => Intgd j m ε t ξ i b w η -
+          (((2 * Real.pi : ℝ)) : ℂ) * Complex.I * oscph j ε t ξ w η * b t ξ η := by
+      funext η
+      rw [Intgd]
+      ring
+    rw [hsub]
+    exact hDc.sub h1
+  have h1s : HasCompactSupport fun η : Pl => oscph j ε t ξ w η * b t ξ η := by
+    refine HasCompactSupport.intro
+      (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+    have hb0 : b t ξ η = 0 := by
+      refine hsupp η fun hmem => hη ?_
+      exact closure_SuppSet_subset_ball j m ξ (subset_closure hmem)
+    rw [hb0, mul_zero]
+  have h2s : HasCompactSupport
+      fun η : Pl => oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η := by
+    refine HasCompactSupport.intro
+      (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+    have hnot : η ∉ closure (SuppSet j m ξ) :=
+      fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+    have hb0 : b t ξ η = 0 := hsupp η fun hmem => hnot (subset_closure hmem)
+    have hfd : fderiv ℝ (b t ξ) η = 0 := fderiv_b_eq_zero_of_notMem hsupp hnot
+    rw [Ampd, hb0, hfd]
+    simp
+  have h1i : Integrable (fun η : Pl => oscph j ε t ξ w η * b t ξ η) :=
+    h1c.integrable_of_hasCompactSupport h1s
+  have h2i : Integrable
+      (fun η : Pl => oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η) :=
+    h2c.integrable_of_hasCompactSupport h2s
+  have hsplit : (∫ η : Pl, Intgd j m ε t ξ i b w η)
+      = (((2 * Real.pi : ℝ)) : ℂ) * Complex.I *
+          (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)
+        + ∫ η : Pl, oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η := by
+    have hpt : ∀ η : Pl, Intgd j m ε t ξ i b w η
+        = (((2 * Real.pi : ℝ)) : ℂ) * Complex.I * (oscph j ε t ξ w η * b t ξ η)
+          + oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η := by
+      intro η
+      rw [Intgd]
+      ring
+    rw [integral_congr_ae (Filter.Eventually.of_forall hpt),
+      integral_add (h1i.const_mul _) h2i, integral_const_mul]
+  have hzero := integral_Intgd_eq_zero hξ hb hsupp w hPsi
+  rw [hsplit] at hzero
+  have hne : ((((2 * Real.pi : ℝ)) : ℂ) * Complex.I) ≠ 0 := by
+    refine mul_ne_zero ?_ Complex.I_ne_zero
+    simp [Real.pi_ne_zero]
+  field_simp
+  linear_combination hzero
+
+end IBPIdentity
+
+
+/-! ## The Neumann expansion
+
+On the region where `|w_i|` dominates the correction, `1/Psi` is expanded into a finite geometric
+series whose terms are products of a function of `w` alone and a function of `η` alone.  This is
+what turns the symbol into a sum of `K` separated symbols, each handled by plain Plancherel.
+-/
+
+section Neumann
+
+/-- The finite Neumann expansion of `1/(a+v)` with an explicit remainder. -/
+theorem inv_add_geom {F : Type*} [Field F] (K : ℕ) {a v : F} (ha : a ≠ 0) (hav : a + v ≠ 0) :
+    1 / (a + v)
+      = (∑ k ∈ Finset.range K, (-v) ^ k / a ^ (k + 1)) + (-v) ^ K / (a ^ K * (a + v)) := by
+  induction K with
+  | zero => simp
+  | succ K ih =>
+    have hak : a ^ K ≠ 0 := pow_ne_zero K ha
+    have hak1 : a ^ (K + 1) ≠ 0 := pow_ne_zero _ ha
+    have hstep : (-v) ^ K / (a ^ K * (a + v))
+        = (-v) ^ K / a ^ (K + 1) + (-v) ^ (K + 1) / (a ^ (K + 1) * (a + v)) := by
+      rw [pow_succ, pow_succ]
+      field_simp
+      ring
+    rw [Finset.sum_range_succ, ih, hstep]
+    ring
+
+/-- The `η`-dependent factor of the smooth oscillatory kernel. -/
+def phasm (j : ℕ) (ε t : ℝ) (ξ η : Pl) : ℂ :=
+  osc (2 * Real.pi) (ε * t * (Ntl j (ξ - η) + Ntl j η))
+
+@[simp] theorem norm_phasm (j : ℕ) (ε t : ℝ) (ξ η : Pl) : ‖phasm j ε t ξ η‖ = 1 :=
+  norm_osc _ _
+
+/-- The oscillatory kernel factors globally into a Fourier kernel in `w` and a phase in `η`. -/
+theorem oscph_factor (j : ℕ) (ε t : ℝ) (ξ w η : Pl) :
+    oscph j ε t ξ w η = ee (-(inner ℝ w η : ℝ)) * phasm j ε t ξ η := by
+  rw [oscph, phsm, osc_add, phasm]
+  congr 1
+  rw [osc, ee]
+  congr 2
+  push_cast
+  ring
+
+theorem contDiff_osc_comp {τ : Pl → ℝ} (hτ : ContDiff ℝ (↑(⊤ : ℕ∞)) τ) (lam : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (fun η : Pl => osc lam (τ η)) := by
+  refine Complex.contDiff_exp.comp ?_
+  refine ContDiff.mul ?_ contDiff_const
+  exact Complex.ofRealCLM.contDiff.comp (contDiff_const.mul hτ)
+
+theorem contDiff_phasm (j : ℕ) (ε t : ℝ) (ξ : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (phasm j ε t ξ) := by
+  refine contDiff_osc_comp ?_ (2 * Real.pi)
+  exact contDiff_const.mul
+    (((contDiff_Ntl j).comp (contDiff_const.sub contDiff_id)).add (contDiff_Ntl j))
+
+/-- The `k`-th separated amplitude `b · (-ε t Vhat) ^ k`. -/
+def cAmp (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (k : ℕ) (η : Pl) : ℂ :=
+  b t ξ η * (((-(ε * t * Vhat j m ξ i η) : ℝ) : ℂ)) ^ k
+
+theorem contDiff_cAmp {j m : ℕ} {t : ℝ} {ξ : Pl} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (ε : ℝ) (i : Fin 2) (k : ℕ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (cAmp j m ε t ξ i b k) := by
+  refine hb.mul (ContDiff.pow ?_ k)
+  exact Complex.ofRealCLM.contDiff.comp
+    ((contDiff_const.mul (contDiff_Vhat j m ξ i)).neg)
+
+/-- The remainder amplitude `b · (-ε t Vhat) ^ K / (w_i ^ K · Psi)`. -/
+def rAmp (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (K : ℕ) (w η : Pl) : ℂ :=
+  cAmp j m ε t ξ i b K η /
+    (((w i : ℝ) : ℂ) ^ K * ((Psi j m ε t ξ i w η : ℝ) : ℂ))
+
+/-- The pointwise Neumann decomposition of the integration-by-parts amplitude. -/
+theorem Amp_eq_sum {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (K : ℕ) {w : Pl} (hw : w i ≠ 0) (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) (η : Pl) :
+    Amp j m ε t ξ i b w η
+      = (∑ k ∈ Finset.range K, cAmp j m ε t ξ i b k η / ((w i : ℝ) : ℂ) ^ (k + 1))
+        + rAmp j m ε t ξ i b K w η := by
+  have hwC : ((w i : ℝ) : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hw
+  have hPsiC : ((Psi j m ε t ξ i w η : ℝ) : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr (hPsi η)
+  have hsplit : ((Psi j m ε t ξ i w η : ℝ) : ℂ)
+      = ((w i : ℝ) : ℂ) + ((ε * t * Vhat j m ξ i η : ℝ) : ℂ) := by
+    rw [Psi]
+    push_cast
+    ring
+  have hexp := inv_add_geom K (a := ((w i : ℝ) : ℂ))
+    (v := ((ε * t * Vhat j m ξ i η : ℝ) : ℂ)) hwC (by rw [← hsplit]; exact hPsiC)
+  rw [Amp, div_eq_mul_one_div, hsplit, hexp, mul_add, Finset.mul_sum]
+  congr 1
+  · refine Finset.sum_congr rfl fun k _ => ?_
+    rw [cAmp]
+    push_cast
+    ring
+  · rw [rAmp, cAmp, ← hsplit]
+    push_cast
+    ring
+
+end Neumann
+
+
+/-! ### The derivative of the decomposition -/
+
+section NeumannDeriv
+
+/-- The coordinate derivative of the `k`-th separated amplitude. -/
+def cAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (k : ℕ) (η : Pl) : ℂ :=
+  fderiv ℝ (cAmp j m ε t ξ i b k) η (ev i)
+
+/-- The coordinate derivative of the remainder amplitude. -/
+def rAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (K : ℕ)
+    (w η : Pl) : ℂ :=
+  fderiv ℝ (fun z : Pl => rAmp j m ε t ξ i b K w z) η (ev i)
+
+theorem contDiff_PsiC (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (w : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) fun η : Pl => ((Psi j m ε t ξ i w η : ℝ) : ℂ) :=
+  Complex.ofRealCLM.contDiff.comp (contDiff_Psi j m ε t ξ i w)
+
+theorem contDiff_PsiInvC {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) fun η : Pl => (((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ) :=
+  Complex.ofRealCLM.contDiff.comp ((contDiff_Psi j m ε t ξ i w).inv hPsi)
+
+theorem contDiff_Amp {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (w : Pl)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (Amp j m ε t ξ i b w) := by
+  have hfun : Amp j m ε t ξ i b w
+      = fun η : Pl => b t ξ η * (((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ) := by
+    funext η
+    rw [Amp, div_eq_mul_inv, Complex.ofReal_inv]
+  rw [hfun]
+  exact hb.mul (contDiff_PsiInvC w hPsi)
+
+theorem contDiff_rAmp {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (K : ℕ) {w : Pl} (hw : w i ≠ 0)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) fun z : Pl => rAmp j m ε t ξ i b K w z := by
+  have hfun : (fun z : Pl => rAmp j m ε t ξ i b K w z)
+      = fun z : Pl => cAmp j m ε t ξ i b K z * ((((w i : ℝ) : ℂ) ^ K)⁻¹ *
+        (((Psi j m ε t ξ i w z)⁻¹ : ℝ) : ℂ)) := by
+    funext z
+    rw [rAmp, div_eq_mul_inv, mul_inv, Complex.ofReal_inv]
+  rw [hfun]
+  exact (contDiff_cAmp hb ε i K).mul (contDiff_const.mul (contDiff_PsiInvC w hPsi))
+
+/-- The Neumann decomposition of the coordinate derivative of the amplitude. -/
+theorem Ampd_decomp {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (K : ℕ) {w : Pl} (hw : w i ≠ 0)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) (η : Pl) :
+    Ampd j m ε t ξ i b w (ev i) η
+      = (∑ k ∈ Finset.range K, cAmpd j m ε t ξ i b k η / ((w i : ℝ) : ℂ) ^ (k + 1))
+        + rAmpd j m ε t ξ i b K w η := by
+  have hL : HasDerivAt (fun r : ℝ => Amp j m ε t ξ i b w (η + r • ev i))
+      (Ampd j m ε t ξ i b w (ev i) η) 0 := hasDerivAt_Amp_line hb w hPsi η (ev i)
+  have hR : HasDerivAt (fun r : ℝ => Amp j m ε t ξ i b w (η + r • ev i))
+      ((∑ k ∈ Finset.range K, cAmpd j m ε t ξ i b k η / ((w i : ℝ) : ℂ) ^ (k + 1))
+        + rAmpd j m ε t ξ i b K w η) 0 := by
+    have hfun : (fun r : ℝ => Amp j m ε t ξ i b w (η + r • ev i))
+        = fun r : ℝ => (∑ k ∈ Finset.range K,
+              cAmp j m ε t ξ i b k (η + r • ev i) / ((w i : ℝ) : ℂ) ^ (k + 1))
+            + rAmp j m ε t ξ i b K w (η + r • ev i) := by
+      funext r
+      exact Amp_eq_sum K hw hPsi (η + r • ev i)
+    have hsum : HasDerivAt (fun r : ℝ => ∑ k ∈ Finset.range K,
+          cAmp j m ε t ξ i b k (η + r • ev i) / ((w i : ℝ) : ℂ) ^ (k + 1))
+        (∑ k ∈ Finset.range K, cAmpd j m ε t ξ i b k η / ((w i : ℝ) : ℂ) ^ (k + 1)) 0 := by
+      refine HasDerivAt.fun_sum fun k _ => ?_
+      exact (hasDerivAt_line (contDiff_cAmp hb ε i k) η (ev i)).div_const _
+    have hrem : HasDerivAt (fun r : ℝ => rAmp j m ε t ξ i b K w (η + r • ev i))
+        (rAmpd j m ε t ξ i b K w η) 0 :=
+      hasDerivAt_line (contDiff_rAmp hb K hw hPsi) η (ev i)
+    rw [hfun]
+    exact hsum.add hrem
+  exact hL.unique hR
+
+end NeumannDeriv
+
+
+/-! ### Pointwise bounds for the separated amplitudes -/
+
+section AmpBounds
+
+/-- The chain rule for a scalar outer function, in the form of a directional derivative. -/
+theorem fderiv_comp_scalar_apply {g : ℝ → ℝ} {f : Pl → ℝ} (hg : ContDiff ℝ (↑(⊤ : ℕ∞)) g)
+    (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) (η u : Pl) :
+    fderiv ℝ (fun z : Pl => g (f z)) η u = deriv g (f η) * fderiv ℝ f η u := by
+  have hL : HasDerivAt (fun r : ℝ => g (f (η + r • u)))
+      (fderiv ℝ (fun z : Pl => g (f z)) η u) 0 :=
+    hasDerivAt_line (hg.comp hf) η u
+  have hinner : HasDerivAt (fun r : ℝ => f (η + r • u)) (fderiv ℝ f η u) 0 :=
+    hasDerivAt_line hf η u
+  have houter : HasDerivAt g (deriv g (f (η + (0 : ℝ) • u))) (f (η + (0 : ℝ) • u)) :=
+    ((hg.differentiable (by simp) _).hasDerivAt)
+  have hR : HasDerivAt (fun r : ℝ => g (f (η + r • u)))
+      (deriv g (f η) * fderiv ℝ f η u) 0 := by
+    have h := houter.comp 0 hinner
+    simp only [Function.comp_def, zero_smul, add_zero] at h
+    exact h
+  exact hL.unique hR
+
+/-- Every derivative of `shrinkS` is bounded; in particular its first derivative. -/
+theorem exists_shrinkS_deriv_bound : ∃ C : ℝ, 1 ≤ C ∧ ∀ x : ℝ, |deriv shrinkS x| ≤ C := by
+  obtain ⟨C, hC1, hC⟩ := exists_deriv_bound contDiff_shrinkS hasCompactSupport_shrinkS 1
+  refine ⟨C, hC1, fun x => ?_⟩
+  have h := hC 1 (le_refl 1) x
+  rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, iteratedDeriv_one, Real.norm_eq_abs] at h
+  exact h
+
+/-- The scaled truncation used to define `Vhat`. -/
+def shrScaled (m : ℕ) (x : ℝ) : ℝ :=
+  (2 : ℝ) ^ (9 - (m : ℤ)) * shrinkS ((2 : ℝ) ^ ((m : ℤ) - 9) * x)
+
+theorem contDiff_shrScaled (m : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (shrScaled m) :=
+  contDiff_const.mul (contDiff_shrinkS.comp (contDiff_const.mul contDiff_id))
+
+theorem Vhat_eq_comp (j m : ℕ) (ξ : Pl) (i : Fin 2) :
+    Vhat j m ξ i = fun η : Pl => shrScaled m (Vt j ξ i η) := by
+  funext η
+  rw [Vhat, shrScaled]
+
+theorem abs_deriv_shrScaled_le {C : ℝ} (hC : ∀ x : ℝ, |deriv shrinkS x| ≤ C) (m : ℕ) (x : ℝ) :
+    |deriv (shrScaled m) x| ≤ C := by
+  have hd : deriv (shrScaled m) x
+      = (2 : ℝ) ^ (9 - (m : ℤ)) * (deriv shrinkS ((2 : ℝ) ^ ((m : ℤ) - 9) * x)
+        * (2 : ℝ) ^ ((m : ℤ) - 9)) := by
+    have h1 : HasDerivAt (fun y : ℝ => (2 : ℝ) ^ ((m : ℤ) - 9) * y)
+        ((2 : ℝ) ^ ((m : ℤ) - 9)) x := by
+      simpa using (hasDerivAt_id x).const_mul ((2 : ℝ) ^ ((m : ℤ) - 9))
+    have h2 : HasDerivAt shrinkS (deriv shrinkS ((2 : ℝ) ^ ((m : ℤ) - 9) * x))
+        ((2 : ℝ) ^ ((m : ℤ) - 9) * x) :=
+      (contDiff_shrinkS.differentiable (by simp) _).hasDerivAt
+    have h3 := (h2.comp x h1).const_mul ((2 : ℝ) ^ (9 - (m : ℤ)))
+    simp only [Function.comp_def] at h3
+    have hfun : (fun y : ℝ => (2 : ℝ) ^ (9 - (m : ℤ)) *
+        shrinkS ((2 : ℝ) ^ ((m : ℤ) - 9) * y)) = shrScaled m := by
+      funext y
+      rw [shrScaled]
+    rw [hfun] at h3
+    exact h3.deriv
+  rw [hd, abs_mul, abs_mul, abs_of_pos (show (0 : ℝ) < (2 : ℝ) ^ (9 - (m : ℤ)) by positivity),
+    abs_of_pos (show (0 : ℝ) < (2 : ℝ) ^ ((m : ℤ) - 9) by positivity)]
+  have hid : (2 : ℝ) ^ (9 - (m : ℤ)) * (2 : ℝ) ^ ((m : ℤ) - 9) = 1 := by
+    rw [← two_zpow_add, show (9 - (m : ℤ)) + ((m : ℤ) - 9) = 0 by ring, zpow_zero]
+  have hstep : (2 : ℝ) ^ (9 - (m : ℤ)) *
+      (|deriv shrinkS ((2 : ℝ) ^ ((m : ℤ) - 9) * x)| * (2 : ℝ) ^ ((m : ℤ) - 9))
+      ≤ (2 : ℝ) ^ (9 - (m : ℤ)) * (C * (2 : ℝ) ^ ((m : ℤ) - 9)) := by
+    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+    exact mul_le_mul_of_nonneg_right (hC _) (by positivity)
+  refine le_trans hstep (le_of_eq ?_)
+  rw [← mul_assoc, mul_comm ((2 : ℝ) ^ (9 - (m : ℤ))) C, mul_assoc, hid, mul_one]
+
+/-- The derivative of `Vhat` is `O(2^{-j})`. -/
+theorem abs_fderiv_Vhat_le {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs)
+    (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    (j m : ℕ) (ξ : Pl) (i : Fin 2) (η : Pl) {u : Pl} (hu : ‖u‖ = 1) :
+    |fderiv ℝ (Vhat j m ξ i) η u| ≤ Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))) := by
+  have hVt : ‖fderiv ℝ (Vt j ξ i) η u‖ ≤ 2 * CV * (2 : ℝ) ^ (-(j : ℤ)) := by
+    have h1 : ‖fderiv ℝ (Vt j ξ i) η‖ ≤ 2 * CV * ((2 : ℝ) ^ (-(j : ℤ))) ^ 1 := by
+      have h := norm_iteratedFDeriv_Vt_le (N := 1) hCVnn hCV j ξ i (le_refl 1) η
+      rwa [norm_iteratedFDeriv_one] at h
+    have h2 : ‖fderiv ℝ (Vt j ξ i) η u‖ ≤ ‖fderiv ℝ (Vt j ξ i) η‖ * ‖u‖ :=
+      (fderiv ℝ (Vt j ξ i) η).le_opNorm u
+    rw [hu, mul_one] at h2
+    rw [pow_one] at h1
+    exact le_trans h2 h1
+  have hchain : fderiv ℝ (Vhat j m ξ i) η u
+      = deriv (shrScaled m) (Vt j ξ i η) * fderiv ℝ (Vt j ξ i) η u := by
+    rw [Vhat_eq_comp]
+    exact fderiv_comp_scalar_apply (contDiff_shrScaled m) (contDiff_Vt j ξ i) η u
+  rw [hchain, abs_mul]
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  refine mul_le_mul (abs_deriv_shrScaled_le hCs m _) ?_ (abs_nonneg _) hCsnn
+  rw [← Real.norm_eq_abs]
+  exact hVt
+
+/-- The hypotheses of the off-diagonal estimate on the symbol: the paper's hypotheses restricted to
+multi-indices of order at most one. -/
+structure SymbData (j m : ℕ) (b : ℝ → Pl → Pl → ℂ) (B : ℝ) : Prop where
+  smooth : ∀ t ξ, ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)
+  supp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0
+  bd0 : ∀ t ξ η, ‖b t ξ η‖ ≤ B
+  bd1 : ∀ t ξ η, ∀ u : Pl, ‖u‖ = 1 →
+    ‖fderiv ℝ (b t ξ) η u‖ ≤ B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))
+
+theorem SymbData.nonneg {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (h : SymbData j m b B) :
+    0 ≤ B := le_trans (norm_nonneg _) (h.bd0 0 0 0)
+
+theorem SymbData.toIsAdapted {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (h : SymbData j m b B) : IsAdapted j m b :=
+  ⟨fun t ξ => (h.smooth t ξ).continuous.measurable, h.supp⟩
+
+end AmpBounds
+
+
+/-! ### The complexified correction -/
+
+section VcSec
+
+/-- The complexified correction `-ε t Vhat`. -/
+def Vc (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (η : Pl) : ℂ :=
+  ((-(ε * t * Vhat j m ξ i η) : ℝ) : ℂ)
+
+theorem contDiff_Vc (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (Vc j m ε t ξ i) :=
+  Complex.ofRealCLM.contDiff.comp ((contDiff_const.mul (contDiff_Vhat j m ξ i)).neg)
+
+theorem cAmp_eq_Vc (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (k : ℕ) :
+    cAmp j m ε t ξ i b k = fun η : Pl => b t ξ η * Vc j m ε t ξ i η ^ k := by
+  funext η
+  rw [cAmp, Vc]
+
+theorem norm_Vc_le {j m : ℕ} {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (ξ : Pl) (i : Fin 2) (η : Pl) : ‖Vc j m ε t ξ i η‖ ≤ (2 : ℝ) ^ (11 - (m : ℤ)) := by
+  have hεt : |ε * t| ≤ 2 := by
+    rw [abs_mul, hε, one_mul, abs_of_pos (by linarith)]
+    exact ht2
+  rw [Vc, Complex.norm_real, Real.norm_eq_abs, abs_neg, abs_mul]
+  have hid : (2 : ℝ) ^ (11 - (m : ℤ)) = 2 * (2 : ℝ) ^ (10 - (m : ℤ)) := by
+    rw [show (11 : ℤ) - (m : ℤ) = 1 + (10 - (m : ℤ)) by ring, two_zpow_add, zpow_one]
+  rw [hid]
+  exact mul_le_mul hεt (abs_Vhat_le j m ξ i η) (abs_nonneg _) (by norm_num)
+
+theorem fderiv_Vc_apply (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (η u : Pl) :
+    fderiv ℝ (Vc j m ε t ξ i) η u
+      = ((-(ε * t * fderiv ℝ (Vhat j m ξ i) η u) : ℝ) : ℂ) := by
+  have hL : HasDerivAt (fun r : ℝ => Vc j m ε t ξ i (η + r • u))
+      (fderiv ℝ (Vc j m ε t ξ i) η u) 0 := hasDerivAt_line (contDiff_Vc j m ε t ξ i) η u
+  have hVhat : HasDerivAt (fun r : ℝ => Vhat j m ξ i (η + r • u))
+      (fderiv ℝ (Vhat j m ξ i) η u) 0 := hasDerivAt_line (contDiff_Vhat j m ξ i) η u
+  have hreal : HasDerivAt (fun r : ℝ => -(ε * t * Vhat j m ξ i (η + r • u)))
+      (-(ε * t * fderiv ℝ (Vhat j m ξ i) η u)) 0 := (hVhat.const_mul (ε * t)).neg
+  have hR : HasDerivAt (fun r : ℝ => Vc j m ε t ξ i (η + r • u))
+      (((-(ε * t * fderiv ℝ (Vhat j m ξ i) η u) : ℝ) : ℂ)) 0 := by
+    have h := hreal.ofReal_comp
+    have hfun : (fun r : ℝ => ((-(ε * t * Vhat j m ξ i (η + r • u)) : ℝ) : ℂ))
+        = fun r : ℝ => Vc j m ε t ξ i (η + r • u) := by
+      funext r
+      rw [Vc]
+    rw [hfun] at h
+    exact h
+  exact hL.unique hR
+
+theorem norm_fderiv_Vc_le {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs)
+    (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {j m : ℕ} {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (ξ : Pl) (i : Fin 2) (η : Pl) {u : Pl} (hu : ‖u‖ = 1) :
+    ‖fderiv ℝ (Vc j m ε t ξ i) η u‖ ≤ 2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))) := by
+  have hεt : |ε * t| ≤ 2 := by
+    rw [abs_mul, hε, one_mul, abs_of_pos (by linarith)]
+    exact ht2
+  rw [fderiv_Vc_apply, Complex.norm_real, Real.norm_eq_abs, abs_neg, abs_mul]
+  refine mul_le_mul hεt (abs_fderiv_Vhat_le hCs hCVnn hCV j m ξ i η hu) (abs_nonneg _)
+    (by norm_num)
+
+end VcSec
+
+/-! ### The bound for the separated amplitudes -/
+
+section CAmpdBound
+
+/-- The pointwise bound for the coordinate derivative of the `k`-th separated amplitude. -/
+theorem norm_cAmpd_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (k : ℕ) (η : Pl) :
+    ‖cAmpd j m ε t ξ i b k η‖
+      ≤ B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ k
+        + B * (k : ℝ) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ (k - 1) *
+          (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) := by
+  have hBnn : 0 ≤ B := hB.nonneg
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  -- the derivative formula
+  have hL : HasDerivAt (fun r : ℝ => cAmp j m ε t ξ i b k (η + r • ev i))
+      (cAmpd j m ε t ξ i b k η) 0 :=
+    hasDerivAt_line (contDiff_cAmp (hB.smooth t ξ) ε i k) η (ev i)
+  have hbl : HasDerivAt (fun r : ℝ => b t ξ (η + r • ev i))
+      (fderiv ℝ (b t ξ) η (ev i)) 0 := hasDerivAt_line (hB.smooth t ξ) η (ev i)
+  have hVl : HasDerivAt (fun r : ℝ => Vc j m ε t ξ i (η + r • ev i))
+      (fderiv ℝ (Vc j m ε t ξ i) η (ev i)) 0 :=
+    hasDerivAt_line (contDiff_Vc j m ε t ξ i) η (ev i)
+  have hpow : HasDerivAt (fun r : ℝ => Vc j m ε t ξ i (η + r • ev i) ^ k)
+      ((k : ℂ) * Vc j m ε t ξ i η ^ (k - 1) * fderiv ℝ (Vc j m ε t ξ i) η (ev i)) 0 := by
+    have h := hVl.fun_pow k
+    simpa using h
+  have hR : HasDerivAt (fun r : ℝ => cAmp j m ε t ξ i b k (η + r • ev i))
+      (fderiv ℝ (b t ξ) η (ev i) * Vc j m ε t ξ i η ^ k
+        + b t ξ η * ((k : ℂ) * Vc j m ε t ξ i η ^ (k - 1)
+          * fderiv ℝ (Vc j m ε t ξ i) η (ev i))) 0 := by
+    have h := hbl.fun_mul hpow
+    simp only [zero_smul, add_zero] at h
+    have hfun : (fun r : ℝ => b t ξ (η + r • ev i) * Vc j m ε t ξ i (η + r • ev i) ^ k)
+        = fun r : ℝ => cAmp j m ε t ξ i b k (η + r • ev i) := by
+      funext r
+      rw [cAmp_eq_Vc]
+    rw [hfun] at h
+    exact h
+  have hform := hL.unique hR
+  rw [hform]
+  -- now the bounds
+  have hVb : ‖Vc j m ε t ξ i η‖ ≤ (2 : ℝ) ^ (11 - (m : ℤ)) := norm_Vc_le hε ht1 ht2 ξ i η
+  have hVbnn : (0 : ℝ) ≤ (2 : ℝ) ^ (11 - (m : ℤ)) := by positivity
+  have hpk : ‖Vc j m ε t ξ i η ^ k‖ ≤ ((2 : ℝ) ^ (11 - (m : ℤ))) ^ k := by
+    rw [norm_pow]
+    exact pow_le_pow_left₀ (norm_nonneg _) hVb k
+  have hpk1 : ‖Vc j m ε t ξ i η ^ (k - 1)‖ ≤ ((2 : ℝ) ^ (11 - (m : ℤ))) ^ (k - 1) := by
+    rw [norm_pow]
+    exact pow_le_pow_left₀ (norm_nonneg _) hVb (k - 1)
+  have hbd1 := hB.bd1 t ξ η (ev i) (norm_ev i)
+  have hbd0 := hB.bd0 t ξ η
+  have hVd : ‖fderiv ℝ (Vc j m ε t ξ i) η (ev i)‖
+      ≤ 2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))) :=
+    norm_fderiv_Vc_le hCs hCVnn hCV hε ht1 ht2 ξ i η (norm_ev i)
+  have hVdnn : (0 : ℝ) ≤ 2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))) := by positivity
+  refine le_trans (norm_add_le _ _) ?_
+  have h1 : ‖fderiv ℝ (b t ξ) η (ev i) * Vc j m ε t ξ i η ^ k‖
+      ≤ B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ k := by
+    rw [norm_mul]
+    refine mul_le_mul hbd1 hpk (norm_nonneg _) (by positivity)
+  have h2 : ‖b t ξ η * ((k : ℂ) * Vc j m ε t ξ i η ^ (k - 1)
+        * fderiv ℝ (Vc j m ε t ξ i) η (ev i))‖
+      ≤ B * (k : ℝ) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ (k - 1) *
+        (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) := by
+    rw [norm_mul, norm_mul, norm_mul]
+    have hknorm : ‖(k : ℂ)‖ = (k : ℝ) := by
+      rw [Complex.norm_natCast]
+    rw [hknorm]
+    have hinner : (k : ℝ) * ‖Vc j m ε t ξ i η ^ (k - 1)‖
+          * ‖fderiv ℝ (Vc j m ε t ξ i) η (ev i)‖
+        ≤ (k : ℝ) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ (k - 1) *
+          (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) := by
+      refine mul_le_mul (mul_le_mul_of_nonneg_left hpk1 (Nat.cast_nonneg k)) hVd
+        (norm_nonneg _) (by positivity)
+    have houter : ‖b t ξ η‖ * ((k : ℝ) * ‖Vc j m ε t ξ i η ^ (k - 1)‖
+          * ‖fderiv ℝ (Vc j m ε t ξ i) η (ev i)‖)
+        ≤ B * ((k : ℝ) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ (k - 1) *
+          (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) :=
+      mul_le_mul hbd0 hinner (by positivity) hBnn
+    exact le_trans houter (le_of_eq (by ring))
+  linarith
+
+end CAmpdBound
+
+
+/-! ### Support and smoothness of the separated amplitudes -/
+
+section CAmpSupport
+
+theorem contDiff_fderiv_dir {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+    {f : Pl → F} (hf : ContDiff ℝ (↑(⊤ : ℕ∞)) f) (u : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) fun η : Pl => fderiv ℝ f η u := by
+  have h1 : ContDiff ℝ (↑(⊤ : ℕ∞)) fun η : Pl => fderiv ℝ f η := hf.fderiv_right (by simp)
+  exact h1.clm_apply contDiff_const
+
+theorem cAmp_eq_zero_of_notMem (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ)
+    {η : Pl} (h : η ∉ SuppSet j m ξ) : cAmp j m ε t ξ i b k η = 0 := by
+  rw [cAmp, hsupp t ξ η h, zero_mul]
+
+theorem contDiff_cAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (k : ℕ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (cAmpd j m ε t ξ i b k) :=
+  contDiff_fderiv_dir (contDiff_cAmp hb ε i k) (ev i)
+
+theorem cAmpd_eq_zero_of_notMem (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ)
+    {η : Pl} (h : η ∉ closure (SuppSet j m ξ)) : cAmpd j m ε t ξ i b k η = 0 := by
+  have hev : cAmp j m ε t ξ i b k =ᶠ[nhds η] fun _ : Pl => (0 : ℂ) := by
+    filter_upwards [isClosed_closure.isOpen_compl.mem_nhds h] with x hx
+    exact cAmp_eq_zero_of_notMem j m ε t ξ i hsupp k fun hmem => hx (subset_closure hmem)
+  rw [cAmpd, hev.fderiv_eq]
+  simp
+
+theorem hasCompactSupport_cAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) :
+    HasCompactSupport (cAmpd j m ε t ξ i b k) := by
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  exact cAmpd_eq_zero_of_notMem j m ε t ξ i hsupp k
+    fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+
+/-- The `η`-function whose Fourier transform in `w` gives the `k`-th term. -/
+def phcA (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ) (k : ℕ) (η : Pl) : ℂ :=
+  phasm j ε t ξ η * cAmpd j m ε t ξ i b k η
+
+theorem contDiff_phcA (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (k : ℕ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (phcA j m ε t ξ i b k) :=
+  (contDiff_phasm j ε t ξ).mul (contDiff_cAmpd j m ε t ξ i hb k)
+
+theorem hasCompactSupport_phcA (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) :
+    HasCompactSupport (phcA j m ε t ξ i b k) := by
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  have h := cAmpd_eq_zero_of_notMem j m ε t ξ i hsupp k
+    (η := η) fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+  rw [phcA, h, mul_zero]
+
+theorem norm_phcA (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (b : ℝ → Pl → Pl → ℂ)
+    (k : ℕ) (η : Pl) : ‖phcA j m ε t ξ i b k η‖ = ‖cAmpd j m ε t ξ i b k η‖ := by
+  rw [phcA, norm_mul, norm_phasm, one_mul]
+
+/-- The `k`-th term as a Schwartz function. -/
+def phcAS (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) : SchwartzMap Pl ℂ :=
+  (hasCompactSupport_phcA j m ε t ξ i hsupp k).toSchwartzMap (contDiff_phcA j m ε t ξ i hb k)
+
+/-- Plancherel for the `k`-th term. -/
+theorem lintegral_enorm_sq_fourier_phcA (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) :
+    (∫⁻ w : Pl, ‖𝓕 (phcA j m ε t ξ i b k) w‖ₑ ^ (2 : ℝ))
+      = ∫⁻ η : Pl, ‖cAmpd j m ε t ξ i b k η‖ₑ ^ (2 : ℝ) := by
+  have h := lintegral_enorm_sq_fourier_schwartz_Pl (phcAS j m ε t ξ i hb hsupp k)
+  have hcoe : ((phcAS j m ε t ξ i hb hsupp k : SchwartzMap Pl ℂ) : Pl → ℂ)
+      = phcA j m ε t ξ i b k := rfl
+  rw [hcoe] at h
+  rw [h]
+  refine lintegral_congr fun η => ?_
+  congr 1
+  rw [phcA, enorm_mul, ← ofReal_norm, norm_phasm, ENNReal.ofReal_one, one_mul]
+
+end CAmpSupport
+
+
+/-! ### The Fourier identification and the region in `w` -/
+
+section FourierId
+
+/-- The `η`-integral of the `k`-th separated term is a Fourier transform in `w`. -/
+theorem integral_oscph_mul_cAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    (b : ℝ → Pl → Pl → ℂ) (k : ℕ) (w : Pl) :
+    (∫ η : Pl, oscph j ε t ξ w η * cAmpd j m ε t ξ i b k η)
+      = 𝓕 (phcA j m ε t ξ i b k) (-w) := by
+  rw [fourier_eq_ee_Pl]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun η => ?_)
+  show oscph j ε t ξ w η * cAmpd j m ε t ξ i b k η
+      = ee (inner ℝ η (-w)) * phcA j m ε t ξ i b k η
+  have harg : (inner ℝ η (-w) : ℝ) = -(inner ℝ w η : ℝ) := by
+    rw [inner_neg_right, real_inner_comm]
+  rw [oscph_factor, phcA, harg]
+  ring
+
+/-- In the plane one of the two coordinates is at least half the norm. -/
+theorem exists_coord_large (w : Pl) : ∃ i : Fin 2, ‖w‖ ≤ 2 * |w i| := by
+  rcases le_or_gt (‖w‖) (2 * |w 0|) with h | h
+  · exact ⟨0, h⟩
+  · refine ⟨1, ?_⟩
+    have hsq := norm_sq_eq_coords w
+    nlinarith [abs_nonneg (w 0), abs_nonneg (w 1), sq_abs (w 0), sq_abs (w 1),
+      norm_nonneg w]
+
+theorem two_zpow_succ_sub (a : ℤ) : (2 : ℝ) ^ (a + 1) = 2 * (2 : ℝ) ^ a := by
+  rw [show a + 1 = 1 + a by ring, two_zpow_add, zpow_one]
+
+/-- On the region where `|w_i|` is large, `Psi` is at least `|w_i| / 2` in absolute value. -/
+theorem abs_Psi_lower (j m : ℕ) {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (ξ : Pl) (i : Fin 2) {w : Pl} (hw : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i|) (η : Pl) :
+    |w i| / 2 ≤ |Psi j m ε t ξ i w η| := by
+  have h := abs_Psi_ge (m := m) (j := j) hε ht1 ht2 ξ i w η
+  have hid : (2 : ℝ) ^ (13 - (m : ℤ)) = 2 * (2 : ℝ) ^ (12 - (m : ℤ)) := by
+    rw [show (13 : ℤ) - (m : ℤ) = (12 - (m : ℤ)) + 1 by ring, two_zpow_succ_sub]
+  rw [hid] at hw
+  linarith
+
+theorem Psi_ne_zero {j m : ℕ} {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (ξ : Pl) (i : Fin 2) {w : Pl} (hw : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i|) (η : Pl) :
+    Psi j m ε t ξ i w η ≠ 0 := by
+  have hlow := abs_Psi_lower j m hε ht1 ht2 ξ i hw η
+  have hpos : (0 : ℝ) < |w i| := lt_of_lt_of_le (by positivity) hw
+  intro h0
+  rw [h0, abs_zero] at hlow
+  linarith
+
+theorem w_coord_ne_zero {m : ℕ} {w : Pl} {i : Fin 2}
+    (hw : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i|) : w i ≠ 0 := by
+  have hpos : (0 : ℝ) < |w i| := lt_of_lt_of_le (by positivity) hw
+  intro h0
+  rw [h0, abs_zero] at hpos
+  linarith
+
+end FourierId
+
+
+/-! ### The smooth phase agrees with the true one on the support -/
+
+section PhasmEq
+
+theorem phasm_eq_phase {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) (ε t : ℝ) :
+    phasm j ε t ξ η = phase ε t ξ η := by
+  obtain ⟨hηT, hξηT, -⟩ := h
+  have hwiden : ∀ x : Pl, (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖x‖ → ‖x‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 1) →
+      Ntl j x = ‖x‖ := by
+    intro x hx1 hx2
+    refine Ntl_eq (le_trans ?_ hx1) (le_trans hx2 ?_)
+    · exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+    · exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+  rw [phasm, hwiden η hηT.2.2.1 hηT.2.2.2, hwiden (ξ - η) hξηT.2.2.1 hξηT.2.2.2, osc, phase]
+  congr 2
+  push_cast
+  ring
+
+/-- The product `phase · b · e^{-2πi⟪w,η⟫}` is the smooth oscillatory kernel times `b`. -/
+theorem phase_mul_b_eq {j m : ℕ} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (ε t : ℝ) (ξ w η : Pl) :
+    phase ε t ξ η * b t ξ η * ee (-(inner ℝ w η : ℝ))
+      = oscph j ε t ξ w η * b t ξ η := by
+  by_cases hmem : η ∈ SuppSet j m ξ
+  · rw [oscph_factor, phasm_eq_phase hmem ε t]
+    ring
+  · rw [hsupp t ξ η hmem]
+    ring
+
+end PhasmEq
+
+/-! ### Integrability of the partial Fourier transform -/
+
+section GfIntegrable
+
+theorem continuous_Gf_pair (H : SchwartzMap Pl2 ℂ) (ξ : Pl) :
+    Continuous fun q : Pl × Pl => ee (inner ℝ q.1 ξ) * (H : Pl2 → ℂ) (pr q.1 q.2) := by
+  have h1 : Continuous fun q : Pl × Pl => ee (inner ℝ q.1 ξ) :=
+    continuous_ee.comp (continuous_fst.inner continuous_const)
+  have h2 : Continuous fun q : Pl × Pl => (H : Pl2 → ℂ) (pr q.1 q.2) :=
+    H.continuous.comp continuous_prPair
+  exact h1.mul h2
+
+theorem integrable_Gf_pair (H : SchwartzMap Pl2 ℂ) (ξ : Pl) :
+    Integrable (fun q : Pl × Pl => ee (inner ℝ q.1 ξ) * (H : Pl2 → ℂ) (pr q.1 q.2))
+      (volume : Measure (Pl × Pl)) := by
+  have hbase : Integrable (fun q : Pl × Pl => (H : Pl2 → ℂ) (pr q.1 q.2))
+      (volume : Measure (Pl × Pl)) :=
+    measurePreserving_prPair.integrable_comp_of_integrable H.integrable
+  refine Integrable.mono' hbase.norm (continuous_Gf_pair H ξ).aestronglyMeasurable ?_
+  refine Filter.Eventually.of_forall fun q => ?_
+  rw [norm_mul, norm_ee, one_mul]
+
+theorem Gf_eq_integral (H : SchwartzMap Pl2 ℂ) (ξ w : Pl) :
+    Gf (H : Pl2 → ℂ) ξ w = ∫ y : Pl, ee (inner ℝ y ξ) * (H : Pl2 → ℂ) (pr y w) := by
+  rw [Gf, fourier_eq_ee_Pl]
+
+theorem integrable_Gf (H : SchwartzMap Pl2 ℂ) (ξ : Pl) :
+    Integrable (fun w : Pl => Gf (H : Pl2 → ℂ) ξ w) := by
+  have h := (integrable_Gf_pair H ξ).integral_prod_right
+  have hfun : (fun w : Pl => ∫ y : Pl, ee (inner ℝ y ξ) * (H : Pl2 → ℂ) (pr y w))
+      = fun w : Pl => Gf (H : Pl2 → ℂ) ξ w := by
+    funext w
+    rw [Gf_eq_integral]
+  rw [← hfun]
+  exact h
+
+end GfIntegrable
+
+
+/-! ### `L²` tools -/
+
+section L2Tools
+
+theorem lintegral_enorm_mul_le_sq {u v : Pl → ℂ}
+    (hu : AEMeasurable u (volume : Measure Pl)) (hv : AEMeasurable v (volume : Measure Pl)) :
+    (∫⁻ x : Pl, ‖u x‖ₑ * ‖v x‖ₑ)
+      ≤ (∫⁻ x : Pl, ‖u x‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+        * (∫⁻ x : Pl, ‖v x‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) := by
+  have hconj : Real.HolderConjugate 2 2 := by
+    rw [Real.holderConjugate_iff] <;> norm_num
+  have hh := ENNReal.lintegral_mul_le_Lp_mul_Lq (volume : Measure Pl) hconj hu.enorm hv.enorm
+  simpa using hh
+
+theorem enorm_integral_mul_le {u v : Pl → ℂ}
+    (hu : AEMeasurable u (volume : Measure Pl)) (hv : AEMeasurable v (volume : Measure Pl)) :
+    ‖∫ x : Pl, u x * v x‖ₑ
+      ≤ (∫⁻ x : Pl, ‖u x‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+        * (∫⁻ x : Pl, ‖v x‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) := by
+  refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+  have hpt : ∀ x : Pl, ‖u x * v x‖ₑ = ‖u x‖ₑ * ‖v x‖ₑ := fun x => enorm_mul _ _
+  rw [lintegral_congr hpt]
+  exact lintegral_enorm_mul_le_sq hu hv
+
+theorem lintegral_comp_neg (h : Pl → ℝ≥0∞) (hh : Measurable h) :
+    (∫⁻ w : Pl, h (-w)) = ∫⁻ w : Pl, h w := by
+  have hmp : MeasurePreserving (fun w : Pl => -w) (volume : Measure Pl) (volume : Measure Pl) :=
+    Measure.measurePreserving_neg (volume : Measure Pl)
+  exact hmp.lintegral_comp hh
+
+theorem lintegral_enorm_sq_le_of_bound {f : Pl → ℂ} {S : Set Pl} (hS : MeasurableSet S)
+    (hf0 : ∀ x, x ∉ S → f x = 0) {M : ℝ} (hM : 0 ≤ M) (hfM : ∀ x, ‖f x‖ ≤ M) :
+    (∫⁻ x : Pl, ‖f x‖ₑ ^ (2 : ℝ)) ≤ ENNReal.ofReal (M ^ 2) * volume S := by
+  have hpt : ∀ x : Pl, ‖f x‖ₑ ^ (2 : ℝ)
+      ≤ S.indicator (fun _ => ENNReal.ofReal (M ^ 2)) x := by
+    intro x
+    by_cases hx : x ∈ S
+    · rw [Set.indicator_of_mem hx]
+      have h1 : ‖f x‖ₑ ≤ ENNReal.ofReal M := by
+        rw [← ofReal_norm]
+        exact ENNReal.ofReal_le_ofReal (hfM x)
+      have h2 : ‖f x‖ₑ ^ (2 : ℝ) ≤ (ENNReal.ofReal M) ^ (2 : ℝ) :=
+        ENNReal.rpow_le_rpow h1 (by norm_num)
+      have hMr : M ^ (2 : ℝ) = M ^ 2 := by
+        rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+      have h3 : (ENNReal.ofReal M) ^ (2 : ℝ) = ENNReal.ofReal (M ^ 2) := by
+        rw [ENNReal.ofReal_rpow_of_nonneg hM (by norm_num : (0 : ℝ) ≤ (2 : ℝ)), hMr]
+      rw [h3] at h2
+      exact h2
+    · rw [Set.indicator_of_notMem hx, hf0 x hx]
+      simp [ENNReal.zero_rpow_of_pos]
+  refine le_trans (lintegral_mono hpt) ?_
+  rw [lintegral_indicator_const hS]
+
+end L2Tools
+
+
+/-! ### The `L²` norm of the `k`-th term -/
+
+section TermL2
+
+/-- The pointwise bound for the coordinate derivative of the `k`-th separated amplitude. -/
+def cBound (j m : ℕ) (B Cs CV : ℝ) (k : ℕ) : ℝ :=
+  B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ k
+    + B * (k : ℝ) * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ (k - 1) *
+      (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))
+
+theorem cBound_nonneg {j m : ℕ} {B Cs CV : ℝ} (hB : 0 ≤ B) (hCs : 0 ≤ Cs) (hCV : 0 ≤ CV)
+    (k : ℕ) : 0 ≤ cBound j m B Cs CV k := by
+  rw [cBound]
+  positivity
+
+theorem norm_cAmpd_le' {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (k : ℕ) (η : Pl) :
+    ‖cAmpd j m ε t ξ i b k η‖ ≤ cBound j m B Cs CV k := by
+  rw [cBound]
+  exact norm_cAmpd_le hB hCs hCVnn hCV hε ht1 ht2 ξ i k η
+
+/-- The `L²` bound for the `k`-th separated amplitude. -/
+theorem lintegral_enorm_sq_cAmpd_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (k : ℕ) :
+    (∫⁻ η : Pl, ‖cAmpd j m ε t ξ i b k η‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (cBound j m B Cs CV k ^ 2)
+        * ENNReal.ofReal ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hnn : 0 ≤ cBound j m B Cs CV k := cBound_nonneg hB.nonneg hCsnn hCVnn k
+  have hstep := lintegral_enorm_sq_le_of_bound
+    (f := cAmpd j m ε t ξ i b k) (S := closure (SuppSet j m ξ))
+    isClosed_closure.measurableSet
+    (fun x hx => cAmpd_eq_zero_of_notMem j m ε t ξ i hB.supp k hx) hnn
+    (fun x => norm_cAmpd_le' hB hCs hCVnn hCV hε ht1 ht2 ξ i k x)
+  refine le_trans hstep ?_
+  exact mul_le_mul' (le_refl _) (volume_closure_SuppSet_le j m ξ)
+
+theorem fourier_phcA_eq {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) :
+    𝓕 (phcA j m ε t ξ i b k)
+      = ((𝓕 (phcAS j m ε t ξ i hb hsupp k) : SchwartzMap Pl ℂ) : Pl → ℂ) := by
+  rw [SchwartzMap.fourier_coe]
+  rfl
+
+theorem measurable_fourier_phcA {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2}
+    {b : ℝ → Pl → Pl → ℂ} (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) :
+    Measurable (𝓕 (phcA j m ε t ξ i b k)) := by
+  rw [fourier_phcA_eq hb hsupp k]
+  exact (𝓕 (phcAS j m ε t ξ i hb hsupp k)).continuous.measurable
+
+/-- The `L²` bound in `w` for the reflected Fourier transform of the `k`-th term. -/
+theorem lintegral_enorm_sq_fourier_neg_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (k : ℕ) :
+    (∫⁻ w : Pl, ‖𝓕 (phcA j m ε t ξ i b k) (-w)‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (cBound j m B Cs CV k ^ 2)
+        * ENNReal.ofReal ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) := by
+  have hmeas : Measurable fun w : Pl => ‖𝓕 (phcA j m ε t ξ i b k) w‖ₑ ^ (2 : ℝ) :=
+    ((measurable_fourier_phcA (hB.smooth t ξ) hB.supp k).enorm).pow_const _
+  have hneg := lintegral_comp_neg
+    (fun w : Pl => ‖𝓕 (phcA j m ε t ξ i b k) w‖ₑ ^ (2 : ℝ)) hmeas
+  rw [hneg, lintegral_enorm_sq_fourier_phcA j m ε t ξ i (hB.smooth t ξ) hB.supp k]
+  exact lintegral_enorm_sq_cAmpd_le hB hCs hCVnn hCV hε ht1 ht2 ξ i k
+
+end TermL2
+
+
+/-! ### Summation of the Neumann series -/
+
+section GeomSum
+
+theorem sum_geom_le {r : ℝ} (hr0 : 0 ≤ r) (hr : r < 1) (K : ℕ) :
+    ∑ k ∈ Finset.range K, r ^ k ≤ 1 / (1 - r) := by
+  have hne : r ≠ 1 := ne_of_lt hr
+  have hpos : (0 : ℝ) < 1 - r := by linarith
+  have heq : ∑ k ∈ Finset.range K, r ^ k = (1 - r ^ K) / (1 - r) := by
+    rw [geom_sum_eq hne K]
+    field_simp
+    ring
+  rw [heq, div_le_div_iff_of_pos_right hpos]
+  have hrK : 0 ≤ r ^ K := by positivity
+  linarith
+
+theorem pow_div_pow_succ_le {Vb A : ℝ} (hVb : 0 ≤ Vb) (hA : 4 * Vb ≤ A) (hApos : 0 < A) (k : ℕ) :
+    Vb ^ k / A ^ (k + 1) ≤ (1 / 4 : ℝ) ^ k / A := by
+  have hq : Vb / A ≤ 1 / 4 := by
+    rw [div_le_div_iff₀ hApos (by norm_num : (0 : ℝ) < 4)]
+    linarith
+  have hqnn : 0 ≤ Vb / A := by positivity
+  have hpow : (Vb / A) ^ k ≤ (1 / 4 : ℝ) ^ k := pow_le_pow_left₀ hqnn hq k
+  have heq : Vb ^ k / A ^ (k + 1) = (Vb / A) ^ k / A := by
+    rw [div_pow, pow_succ]
+    field_simp
+  rw [heq]
+  exact div_le_div_of_nonneg_right hpow hApos.le
+
+theorem nat_pow_div_pow_succ_le {Vb A : ℝ} (hVb : 0 ≤ Vb) (hA : 4 * Vb ≤ A) (hApos : 0 < A)
+    (k : ℕ) : (k : ℝ) * Vb ^ (k - 1) / A ^ (k + 1) ≤ 4 * (1 / 2 : ℝ) ^ k / A ^ 2 := by
+  match k with
+  | 0 =>
+    simp only [Nat.cast_zero, zero_mul, zero_div]
+    positivity
+  | (n + 1) =>
+    have hq : Vb / A ≤ 1 / 4 := by
+      rw [div_le_div_iff₀ hApos (by norm_num : (0 : ℝ) < 4)]
+      linarith
+    have hqnn : 0 ≤ Vb / A := by positivity
+    have hpow : (Vb / A) ^ n ≤ (1 / 4 : ℝ) ^ n := pow_le_pow_left₀ hqnn hq n
+    have heq : ((n + 1 : ℕ) : ℝ) * Vb ^ (n + 1 - 1) / A ^ (n + 1 + 1)
+        = ((n + 1 : ℕ) : ℝ) * (Vb / A) ^ n / A ^ 2 := by
+      have hn : n + 1 - 1 = n := by omega
+      rw [hn, div_pow]
+      have hApow : A ^ (n + 1 + 1) = A ^ n * A ^ 2 := by ring
+      rw [hApow]
+      field_simp
+    rw [heq]
+    have hcast : ((n + 1 : ℕ) : ℝ) ≤ 2 ^ (n + 1) := by
+      have h := Nat.lt_two_pow_self (n := n + 1)
+      have h2 : ((n + 1 : ℕ) : ℝ) ≤ ((2 ^ (n + 1) : ℕ) : ℝ) := by
+        exact_mod_cast le_of_lt h
+      simpa using h2
+    have hstep : ((n + 1 : ℕ) : ℝ) * (Vb / A) ^ n ≤ 4 * (1 / 2 : ℝ) ^ (n + 1) := by
+      have h1 : ((n + 1 : ℕ) : ℝ) * (Vb / A) ^ n
+          ≤ (2 : ℝ) ^ (n + 1) * (1 / 4 : ℝ) ^ n := by
+        refine mul_le_mul hcast hpow (by positivity) (by positivity)
+      refine le_trans h1 (le_of_eq ?_)
+      rw [show (1 / 4 : ℝ) = (1 / 2 : ℝ) ^ 2 by norm_num, ← pow_mul,
+        show (1 / 2 : ℝ) ^ (n + 1) = (1 / 2 : ℝ) ^ n * (1 / 2 : ℝ) by ring]
+      have hid : (2 : ℝ) ^ (n + 1) = 2 ^ n * 2 := by ring
+      rw [hid, show 2 * n = n + n by ring, pow_add]
+      have hcancel : (2 : ℝ) ^ n * (1 / 2 : ℝ) ^ n = 1 := by
+        rw [← mul_pow]
+        norm_num
+      calc (2 : ℝ) ^ n * 2 * ((1 / 2 : ℝ) ^ n * (1 / 2 : ℝ) ^ n)
+          = ((2 : ℝ) ^ n * (1 / 2 : ℝ) ^ n) * (2 * (1 / 2 : ℝ) ^ n) := by ring
+        _ = 2 * (1 / 2 : ℝ) ^ n := by rw [hcancel, one_mul]
+        _ = 4 * ((1 / 2 : ℝ) ^ n * (1 / 2 : ℝ)) := by ring
+    exact div_le_div_of_nonneg_right hstep (by positivity)
+
+/-- The summed Neumann bound. -/
+theorem sum_cBound_div_le (j m : ℕ) {B Cs CV : ℝ} (hBnn : 0 ≤ B) (hCsnn : 0 ≤ Cs)
+    (hCVnn : 0 ≤ CV) {A : ℝ} (hA : 4 * (2 : ℝ) ^ (11 - (m : ℤ)) ≤ A) (K : ℕ) :
+    (∑ k ∈ Finset.range K, cBound j m B Cs CV k / A ^ (k + 1))
+      ≤ 2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+        + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2 := by
+  set Vb : ℝ := (2 : ℝ) ^ (11 - (m : ℤ)) with hVbdef
+  set Bd : ℝ := B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) with hBddef
+  set Vd : ℝ := 2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))) with hVddef
+  have hVbpos : (0 : ℝ) < Vb := by rw [hVbdef]; positivity
+  have hApos : (0 : ℝ) < A := by nlinarith
+  have hBdnn : 0 ≤ Bd := by rw [hBddef]; positivity
+  have hVdnn : 0 ≤ Vd := by rw [hVddef]; positivity
+  have hterm : ∀ k ∈ Finset.range K, cBound j m B Cs CV k / A ^ (k + 1)
+      ≤ Bd * ((1 / 4 : ℝ) ^ k / A) + B * Vd * (4 * (1 / 2 : ℝ) ^ k / A ^ 2) := by
+    intro k _
+    have h1 : Bd * Vb ^ k / A ^ (k + 1) ≤ Bd * ((1 / 4 : ℝ) ^ k / A) := by
+      have h := pow_div_pow_succ_le hVbpos.le hA hApos k
+      calc Bd * Vb ^ k / A ^ (k + 1) = Bd * (Vb ^ k / A ^ (k + 1)) := by ring
+        _ ≤ Bd * ((1 / 4 : ℝ) ^ k / A) := mul_le_mul_of_nonneg_left h hBdnn
+    have h2 : B * (k : ℝ) * Vb ^ (k - 1) * Vd / A ^ (k + 1)
+        ≤ B * Vd * (4 * (1 / 2 : ℝ) ^ k / A ^ 2) := by
+      have h := nat_pow_div_pow_succ_le hVbpos.le hA hApos k
+      calc B * (k : ℝ) * Vb ^ (k - 1) * Vd / A ^ (k + 1)
+          = (B * Vd) * ((k : ℝ) * Vb ^ (k - 1) / A ^ (k + 1)) := by ring
+        _ ≤ (B * Vd) * (4 * (1 / 2 : ℝ) ^ k / A ^ 2) :=
+            mul_le_mul_of_nonneg_left h (by positivity)
+    have hsplit : cBound j m B Cs CV k / A ^ (k + 1)
+        = Bd * Vb ^ k / A ^ (k + 1) + B * (k : ℝ) * Vb ^ (k - 1) * Vd / A ^ (k + 1) := by
+      rw [cBound, hVbdef, hBddef, hVddef]
+      ring
+    rw [hsplit]
+    linarith
+  refine le_trans (Finset.sum_le_sum hterm) ?_
+  have hs1 : (∑ k ∈ Finset.range K, Bd * ((1 / 4 : ℝ) ^ k / A))
+      = (Bd / A) * ∑ k ∈ Finset.range K, (1 / 4 : ℝ) ^ k := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun k _ => ?_
+    ring
+  have hs2 : (∑ k ∈ Finset.range K, B * Vd * (4 * (1 / 2 : ℝ) ^ k / A ^ 2))
+      = (4 * B * Vd / A ^ 2) * ∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ k := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun k _ => ?_
+    ring
+  rw [Finset.sum_add_distrib, hs1, hs2]
+  have hg1 : (∑ k ∈ Finset.range K, (1 / 4 : ℝ) ^ k) ≤ 4 / 3 := by
+    have h := sum_geom_le (r := (1 / 4 : ℝ)) (by norm_num) (by norm_num) K
+    calc (∑ k ∈ Finset.range K, (1 / 4 : ℝ) ^ k) ≤ 1 / (1 - 1 / 4 : ℝ) := h
+      _ = 4 / 3 := by norm_num
+  have hg2 : (∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ k) ≤ 2 := by
+    have h := sum_geom_le (r := (1 / 2 : ℝ)) (by norm_num) (by norm_num) K
+    calc (∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ k) ≤ 1 / (1 - 1 / 2 : ℝ) := h
+      _ = 2 := by norm_num
+  have hc1 : (Bd / A) * ∑ k ∈ Finset.range K, (1 / 4 : ℝ) ^ k ≤ (Bd / A) * (4 / 3) :=
+    mul_le_mul_of_nonneg_left hg1 (by positivity)
+  have hc2 : (4 * B * Vd / A ^ 2) * ∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ k
+      ≤ (4 * B * Vd / A ^ 2) * 2 :=
+    mul_le_mul_of_nonneg_left hg2 (by positivity)
+  have hfin1 : (Bd / A) * (4 / 3) ≤ 2 * Bd / A := by
+    rw [← sub_nonneg]
+    have hid : 2 * Bd / A - Bd / A * (4 / 3) = (2 / 3) * Bd / A := by
+      field_simp
+      ring
+    rw [hid]
+    positivity
+  have hfin2 : (4 * B * Vd / A ^ 2) * 2 = 8 * (B * Vd) / A ^ 2 := by ring
+  rw [hfin2] at hc2
+  linarith
+
+end GeomSum
+
+
+/-! ### The remainder amplitude -/
+
+section RemBound
+
+/-- The derivative of `Psi` in the direction `u`. -/
+theorem fderiv_Psi_apply (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2) (w η u : Pl) :
+    fderiv ℝ (Psi j m ε t ξ i w) η u = ε * t * fderiv ℝ (Vhat j m ξ i) η u := by
+  have hL : HasDerivAt (fun r : ℝ => Psi j m ε t ξ i w (η + r • u))
+      (fderiv ℝ (Psi j m ε t ξ i w) η u) 0 :=
+    hasDerivAt_line (contDiff_Psi j m ε t ξ i w) η u
+  have hVhat : HasDerivAt (fun r : ℝ => Vhat j m ξ i (η + r • u))
+      (fderiv ℝ (Vhat j m ξ i) η u) 0 := hasDerivAt_line (contDiff_Vhat j m ξ i) η u
+  have hR : HasDerivAt (fun r : ℝ => Psi j m ε t ξ i w (η + r • u))
+      (ε * t * fderiv ℝ (Vhat j m ξ i) η u) 0 := by
+    have h := (hVhat.const_mul (ε * t)).const_add (w i)
+    have hfun : (fun r : ℝ => w i + ε * t * Vhat j m ξ i (η + r • u))
+        = fun r : ℝ => Psi j m ε t ξ i w (η + r • u) := by
+      funext r
+      rw [Psi]
+    rw [hfun] at h
+    exact h
+  exact hL.unique hR
+
+theorem abs_fderiv_Psi_le {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {j m : ℕ} {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (ξ : Pl) (i : Fin 2) (w η : Pl) {u : Pl} (hu : ‖u‖ = 1) :
+    |fderiv ℝ (Psi j m ε t ξ i w) η u| ≤ 2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))) := by
+  have hεt : |ε * t| ≤ 2 := by
+    rw [abs_mul, hε, one_mul, abs_of_pos (by linarith)]
+    exact ht2
+  rw [fderiv_Psi_apply, abs_mul]
+  exact mul_le_mul hεt (abs_fderiv_Vhat_le hCs hCVnn hCV j m ξ i η hu) (abs_nonneg _)
+    (by norm_num)
+
+theorem norm_cAmp_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (k : ℕ)
+    (η : Pl) : ‖cAmp j m ε t ξ i b k η‖ ≤ B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ k := by
+  rw [cAmp_eq_Vc, norm_mul, norm_pow]
+  refine mul_le_mul (hB.bd0 t ξ η) ?_ (by positivity) hB.nonneg
+  exact pow_le_pow_left₀ (norm_nonneg _) (norm_Vc_le hε ht1 ht2 ξ i η) k
+
+/-- The derivative of the remainder amplitude. -/
+theorem rAmpd_eq {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (K : ℕ) {w : Pl} (hw : w i ≠ 0)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) (η : Pl) :
+    rAmpd j m ε t ξ i b K w η
+      = (((w i : ℝ) : ℂ) ^ K)⁻¹ *
+        (cAmpd j m ε t ξ i b K η * (((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ)
+          + cAmp j m ε t ξ i b K η *
+            ((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+              / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)) := by
+  have hL : HasDerivAt (fun r : ℝ => rAmp j m ε t ξ i b K w (η + r • ev i))
+      (rAmpd j m ε t ξ i b K w η) 0 :=
+    hasDerivAt_line (contDiff_rAmp hb K hw hPsi) η (ev i)
+  have hcA : HasDerivAt (fun r : ℝ => cAmp j m ε t ξ i b K (η + r • ev i))
+      (cAmpd j m ε t ξ i b K η) 0 := hasDerivAt_line (contDiff_cAmp hb ε i K) η (ev i)
+  have hPl : HasDerivAt (fun r : ℝ => Psi j m ε t ξ i w (η + r • ev i))
+      (fderiv ℝ (Psi j m ε t ξ i w) η (ev i)) 0 :=
+    hasDerivAt_line (contDiff_Psi j m ε t ξ i w) η (ev i)
+  have hinvR : HasDerivAt (fun r : ℝ => (Psi j m ε t ξ i w (η + r • ev i))⁻¹)
+      (-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i)) / (Psi j m ε t ξ i w η) ^ 2) 0 := by
+    have h := hPl.fun_inv (by simpa using hPsi η)
+    simpa using h
+  have hinvC : HasDerivAt (fun r : ℝ => (((Psi j m ε t ξ i w (η + r • ev i))⁻¹ : ℝ) : ℂ))
+      (((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+        / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)) 0 :=
+    hinvR.ofReal_comp
+  have hprod := (hcA.fun_mul hinvC).const_mul ((((w i : ℝ) : ℂ) ^ K)⁻¹)
+  simp only [zero_smul, add_zero] at hprod
+  have hfun : (fun r : ℝ => (((w i : ℝ) : ℂ) ^ K)⁻¹ *
+        (cAmp j m ε t ξ i b K (η + r • ev i) *
+          (((Psi j m ε t ξ i w (η + r • ev i))⁻¹ : ℝ) : ℂ)))
+      = fun r : ℝ => rAmp j m ε t ξ i b K w (η + r • ev i) := by
+    funext r
+    rw [rAmp, div_eq_mul_inv, mul_inv, Complex.ofReal_inv]
+    ring
+  rw [hfun] at hprod
+  exact hL.unique hprod
+
+end RemBound
+
+
+/-! ### The bound for the remainder amplitude -/
+
+section RemNorm
+
+/-- The pointwise bound for the coordinate derivative of the remainder amplitude. -/
+theorem norm_rAmpd_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (K : ℕ)
+    {w : Pl} (hw13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i|) (η : Pl) :
+    ‖rAmpd j m ε t ξ i b K w η‖
+      ≤ (2 * cBound j m B Cs CV K / |w i|
+          + 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+            (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2)
+        / |w i| ^ K := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hwpos : (0 : ℝ) < |w i| := lt_of_lt_of_le (by positivity) hw13
+  have hwne : w i ≠ 0 := w_coord_ne_zero hw13
+  have hPsi : ∀ z : Pl, Psi j m ε t ξ i w z ≠ 0 := Psi_ne_zero hε ht1 ht2 ξ i hw13
+  have hPlow : |w i| / 2 ≤ |Psi j m ε t ξ i w η| := abs_Psi_lower j m hε ht1 ht2 ξ i hw13 η
+  have hPpos : (0 : ℝ) < |Psi j m ε t ξ i w η| := by
+    have : (0 : ℝ) < |w i| / 2 := by linarith
+    linarith
+  rw [rAmpd_eq (hB.smooth t ξ) K hwne hPsi η, norm_mul]
+  -- the constant factor
+  have hconst : ‖(((w i : ℝ) : ℂ) ^ K)⁻¹‖ = 1 / |w i| ^ K := by
+    rw [norm_inv, norm_pow, Complex.norm_real, Real.norm_eq_abs, one_div]
+  -- the two terms
+  have hinvbd : ‖(((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ)‖ ≤ 2 / |w i| := by
+    rw [Complex.norm_real, Real.norm_eq_abs, abs_inv, inv_eq_one_div,
+      div_le_div_iff₀ hPpos hwpos]
+    linarith
+  have hPd := abs_fderiv_Psi_le hCs hCVnn hCV (j := j) (m := m) hε ht1 ht2 ξ i w η (norm_ev i)
+  have hsecbd : ‖((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+      / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)‖
+      ≤ 4 * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2 := by
+    rw [Complex.norm_real, Real.norm_eq_abs, abs_div, abs_neg, abs_pow]
+    have hsq : |w i| ^ 2 / 4 ≤ |Psi j m ε t ξ i w η| ^ 2 := by
+      nlinarith [hPlow, hPpos, hwpos]
+    have hnum : |fderiv ℝ (Psi j m ε t ξ i w) η (ev i)|
+        ≤ 2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))) := hPd
+    have hden : (0 : ℝ) < |Psi j m ε t ξ i w η| ^ 2 := by positivity
+    rw [div_le_div_iff₀ hden (by positivity : (0 : ℝ) < |w i| ^ 2)]
+    nlinarith [hsq, hnum, hden, abs_nonneg (fderiv ℝ (Psi j m ε t ξ i w) η (ev i))]
+  have hcAd : ‖cAmpd j m ε t ξ i b K η‖ ≤ cBound j m B Cs CV K :=
+    norm_cAmpd_le' hB hCs hCVnn hCV hε ht1 ht2 ξ i K η
+  have hcA : ‖cAmp j m ε t ξ i b K η‖ ≤ B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K :=
+    norm_cAmp_le hB hε ht1 ht2 ξ i K η
+  have hcBnn : 0 ≤ cBound j m B Cs CV K := cBound_nonneg hB.nonneg hCsnn hCVnn K
+  have hsum : ‖cAmpd j m ε t ξ i b K η * (((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ)
+        + cAmp j m ε t ξ i b K η * ((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+          / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)‖
+      ≤ 2 * cBound j m B Cs CV K / |w i|
+        + 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+          (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2 := by
+    refine le_trans (norm_add_le _ _) ?_
+    have h1 : ‖cAmpd j m ε t ξ i b K η * (((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ)‖
+        ≤ 2 * cBound j m B Cs CV K / |w i| := by
+      rw [norm_mul]
+      have := mul_le_mul hcAd hinvbd (norm_nonneg _) hcBnn
+      calc ‖cAmpd j m ε t ξ i b K η‖ * ‖(((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ)‖
+          ≤ cBound j m B Cs CV K * (2 / |w i|) := this
+        _ = 2 * cBound j m B Cs CV K / |w i| := by ring
+    have h2 : ‖cAmp j m ε t ξ i b K η * ((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+          / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)‖
+        ≤ 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+          (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2 := by
+      rw [norm_mul]
+      have hBVnn : (0 : ℝ) ≤ B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K := by
+        have := hB.nonneg
+        positivity
+      have := mul_le_mul hcA hsecbd (norm_nonneg _) hBVnn
+      calc ‖cAmp j m ε t ξ i b K η‖ * ‖((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+              / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)‖
+          ≤ (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+            (4 * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2) := this
+        _ = 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+            (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2 := by ring
+    linarith
+  rw [hconst]
+  have hnn : (0 : ℝ) ≤ 2 * cBound j m B Cs CV K / |w i|
+      + 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+        (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2 := by
+    have := hB.nonneg
+    positivity
+  calc (1 / |w i| ^ K) * ‖cAmpd j m ε t ξ i b K η * (((Psi j m ε t ξ i w η)⁻¹ : ℝ) : ℂ)
+        + cAmp j m ε t ξ i b K η * ((-(fderiv ℝ (Psi j m ε t ξ i w) η (ev i))
+          / (Psi j m ε t ξ i w η) ^ 2 : ℝ) : ℂ)‖
+      ≤ (1 / |w i| ^ K) * (2 * cBound j m B Cs CV K / |w i|
+          + 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+            (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2) :=
+        mul_le_mul_of_nonneg_left hsum (by positivity)
+    _ = (2 * cBound j m B Cs CV K / |w i|
+          + 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+            (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / |w i| ^ 2)
+        / |w i| ^ K := by ring
+
+end RemNorm
+
+
+/-! ### The `w`-representation of `S[F,b]` -/
+
+section WRepresentation
+
+theorem continuous_Gf_pair' (H : SchwartzMap Pl2 ℂ) (ξ : Pl) :
+    Continuous fun q : Pl × Pl => ee (inner ℝ q.2 ξ) * (H : Pl2 → ℂ) (pr q.2 q.1) := by
+  have h1 : Continuous fun q : Pl × Pl => ee (inner ℝ q.2 ξ) :=
+    continuous_ee.comp (continuous_snd.inner continuous_const)
+  have h2 : Continuous fun q : Pl × Pl => (H : Pl2 → ℂ) (pr q.2 q.1) :=
+    H.continuous.comp (continuous_prPair.comp (continuous_snd.prodMk continuous_fst))
+  exact h1.mul h2
+
+theorem stronglyMeasurable_Gf (H : SchwartzMap Pl2 ℂ) (ξ : Pl) :
+    StronglyMeasurable fun w : Pl => Gf (H : Pl2 → ℂ) ξ w := by
+  have h := (continuous_Gf_pair' H ξ).stronglyMeasurable.integral_prod_right'
+    (ν := (volume : Measure Pl))
+  have hfun : (fun w : Pl => ∫ y : Pl, ee (inner ℝ y ξ) * (H : Pl2 → ℂ) (pr y w))
+      = fun w : Pl => Gf (H : Pl2 → ℂ) ξ w := by
+    funext w
+    rw [Gf_eq_integral]
+  rw [← hfun]
+  exact h
+
+theorem measurable_Gf (H : SchwartzMap Pl2 ℂ) (ξ : Pl) :
+    Measurable fun w : Pl => Gf (H : Pl2 → ℂ) ξ w :=
+  (stronglyMeasurable_Gf H ξ).measurable
+
+/-- The Fourier transform of `F` at `(ξ-η, η)` as an integral in `w`. -/
+theorem fourier_F_eq_integral_w (F : SchwartzMap Pl2 ℂ) (ξ η : Pl) :
+    𝓕 (F : Pl2 → ℂ) (pr (ξ - η) η)
+      = ∫ w : Pl, ee (-(inner ℝ w η : ℝ)) * Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w := by
+  rw [fourier_shear_eq F ξ η, fourier_pr_eq (shearSchwartz F) ξ (-η), fourier_eq_ee_Pl]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun w => ?_)
+  show ee (inner ℝ w (-η)) * Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w
+      = ee (-(inner ℝ w η : ℝ)) * Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w
+  congr 2
+  rw [inner_neg_right]
+
+end WRepresentation
+
+
+/-! ### Fubini: the `w`-representation -/
+
+section Fubini44
+
+theorem volume_SuppSet_lt_top (j m : ℕ) (ξ : Pl) : volume (SuppSet j m ξ) < ⊤ :=
+  lt_of_le_of_lt (volume_SuppSet_le j m ξ) ENNReal.ofReal_lt_top
+
+theorem integrable_indicator_SuppSet (j m : ℕ) (ξ : Pl) (B : ℝ) :
+    Integrable (fun η : Pl => B * Set.indicator (SuppSet j m ξ) (fun _ => (1 : ℝ)) η) := by
+  refine Integrable.const_mul ?_ B
+  rw [integrable_indicator_iff (measurableSet_SuppSet j m ξ)]
+  exact integrableOn_const (C := (1 : ℝ)) (hs := (volume_SuppSet_lt_top j m ξ).ne)
+
+/-- The `w`-representation of `S[F,b]`. -/
+theorem Sop_eq_integral_w {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    (ε t : ℝ) (ξ : Pl) (F : SchwartzMap Pl2 ℂ) :
+    Sop ε b (F : Pl2 → ℂ) ξ t
+      = ∫ w : Pl, Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w *
+          (∫ η : Pl, oscph j ε t ξ w η * b t ξ η) := by
+  set H : SchwartzMap Pl2 ℂ := shearSchwartz F with hH
+  set g : Pl → ℂ := fun w => Gf ((H : Pl2 → ℂ)) ξ w with hg
+  have hgmeas : Measurable g := measurable_Gf H ξ
+  have hgint : Integrable g := integrable_Gf H ξ
+  -- the doubly indexed integrand
+  set Φ : Pl → Pl → ℂ := fun η w =>
+    phase ε t ξ η * b t ξ η * (ee (-(inner ℝ w η : ℝ)) * g w) with hΦ
+  have hbc : Continuous (b t ξ) := (hB.smooth t ξ).continuous
+  have hcont : Continuous fun p : Pl × Pl =>
+      phase ε t ξ p.1 * b t ξ p.1 * ee (-(inner ℝ p.2 p.1 : ℝ)) := by
+    have h1 : Continuous fun p : Pl × Pl => phase ε t ξ p.1 := by
+      refine Complex.continuous_exp.comp ?_
+      refine (Complex.continuous_ofReal.comp ?_).mul continuous_const
+      exact continuous_const.mul ((continuous_const.sub continuous_fst).norm.add
+        continuous_fst.norm)
+    have h2 : Continuous fun p : Pl × Pl => b t ξ p.1 := hbc.comp continuous_fst
+    have h3 : Continuous fun p : Pl × Pl => ee (-(inner ℝ p.2 p.1 : ℝ)) :=
+      continuous_ee.comp (continuous_snd.inner continuous_fst).neg
+    exact (h1.mul h2).mul h3
+  have hmeasΦ : AEStronglyMeasurable (fun p : Pl × Pl => Φ p.1 p.2)
+      (volume : Measure (Pl × Pl)) := by
+    have hsnd : StronglyMeasurable fun p : Pl × Pl => g p.2 :=
+      (hgmeas.comp measurable_snd).stronglyMeasurable
+    have hfun : (fun p : Pl × Pl => Φ p.1 p.2)
+        = fun p : Pl × Pl => (phase ε t ξ p.1 * b t ξ p.1 * ee (-(inner ℝ p.2 p.1 : ℝ)))
+          * g p.2 := by
+      funext p
+      show phase ε t ξ p.1 * b t ξ p.1 * (ee (-(inner ℝ p.2 p.1 : ℝ)) * g p.2)
+          = (phase ε t ξ p.1 * b t ξ p.1 * ee (-(inner ℝ p.2 p.1 : ℝ))) * g p.2
+      ring
+    rw [hfun]
+    exact (hcont.stronglyMeasurable.mul hsnd).aestronglyMeasurable
+  have hdom : Integrable (fun p : Pl × Pl =>
+      (B * Set.indicator (SuppSet j m ξ) (fun _ => (1 : ℝ)) p.1) * ‖g p.2‖)
+      (volume : Measure (Pl × Pl)) :=
+    (integrable_indicator_SuppSet j m ξ B).mul_prod hgint.norm
+  have hbound : ∀ p : Pl × Pl, ‖Φ p.1 p.2‖
+      ≤ (B * Set.indicator (SuppSet j m ξ) (fun _ => (1 : ℝ)) p.1) * ‖g p.2‖ := by
+    intro p
+    show ‖phase ε t ξ p.1 * b t ξ p.1 * (ee (-(inner ℝ p.2 p.1 : ℝ)) * g p.2)‖
+        ≤ (B * Set.indicator (SuppSet j m ξ) (fun _ => (1 : ℝ)) p.1) * ‖g p.2‖
+    by_cases hmem : p.1 ∈ SuppSet j m ξ
+    · rw [Set.indicator_of_mem hmem, mul_one]
+      rw [norm_mul, norm_mul, norm_mul, norm_phase, one_mul, norm_ee, one_mul]
+      exact mul_le_mul_of_nonneg_right (hB.bd0 t ξ p.1) (norm_nonneg _)
+    · rw [Set.indicator_of_notMem hmem, hB.supp t ξ p.1 hmem]
+      simp
+  have hintΦ : Integrable (fun p : Pl × Pl => Φ p.1 p.2) (volume : Measure (Pl × Pl)) :=
+    Integrable.mono' hdom hmeasΦ (Filter.Eventually.of_forall hbound)
+  -- step 1: rewrite the Fourier transform
+  have hstep1 : Sop ε b (F : Pl2 → ℂ) ξ t = ∫ η : Pl, ∫ w : Pl, Φ η w := by
+    rw [Sop, SopK]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun η => ?_)
+    show phase ε t ξ η * b t ξ η * 𝓕 (F : Pl2 → ℂ) (pr (ξ - η) η) = ∫ w : Pl, Φ η w
+    have hΦint : (∫ w : Pl, Φ η w)
+        = ∫ w : Pl, phase ε t ξ η * b t ξ η * (ee (-(inner ℝ w η : ℝ)) * g w) := rfl
+    rw [fourier_F_eq_integral_w F ξ η, hΦint, integral_const_mul]
+  -- step 2: Fubini
+  have hstep2 : (∫ η : Pl, ∫ w : Pl, Φ η w) = ∫ w : Pl, ∫ η : Pl, Φ η w :=
+    integral_integral_swap hintΦ
+  -- step 3: identify the inner integral
+  have hstep3 : ∀ w : Pl, (∫ η : Pl, Φ η w)
+      = g w * ∫ η : Pl, oscph j ε t ξ w η * b t ξ η := by
+    intro w
+    rw [← integral_const_mul]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun η => ?_)
+    show phase ε t ξ η * b t ξ η * (ee (-(inner ℝ w η : ℝ)) * g w)
+        = g w * (oscph j ε t ξ w η * b t ξ η)
+    have h := phase_mul_b_eq (j := j) hB.supp ε t ξ w η
+    calc phase ε t ξ η * b t ξ η * (ee (-(inner ℝ w η : ℝ)) * g w)
+        = (phase ε t ξ η * b t ξ η * ee (-(inner ℝ w η : ℝ))) * g w := by ring
+      _ = (oscph j ε t ξ w η * b t ξ η) * g w := by rw [h]
+      _ = g w * (oscph j ε t ξ w η * b t ξ η) := by ring
+  rw [hstep1, hstep2, integral_congr_ae (Filter.Eventually.of_forall hstep3)]
+
+end Fubini44
+
+
+/-! ### The decomposed inner integral -/
+
+section InnerDecomp
+
+theorem rAmp_eq_zero_of_notMem (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (K : ℕ)
+    (w : Pl) {η : Pl} (h : η ∉ SuppSet j m ξ) : rAmp j m ε t ξ i b K w η = 0 := by
+  rw [rAmp, cAmp_eq_zero_of_notMem j m ε t ξ i hsupp K h, zero_div]
+
+theorem rAmpd_eq_zero_of_notMem (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (K : ℕ)
+    (w : Pl) {η : Pl} (h : η ∉ closure (SuppSet j m ξ)) :
+    rAmpd j m ε t ξ i b K w η = 0 := by
+  have hev : (fun z : Pl => rAmp j m ε t ξ i b K w z) =ᶠ[nhds η] fun _ : Pl => (0 : ℂ) := by
+    filter_upwards [isClosed_closure.isOpen_compl.mem_nhds h] with x hx
+    exact rAmp_eq_zero_of_notMem j m ε t ξ i hsupp K w fun hmem => hx (subset_closure hmem)
+  rw [rAmpd, hev.fderiv_eq]
+  simp
+
+theorem continuous_rAmpd {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ)) (K : ℕ) {w : Pl} (hw : w i ≠ 0)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    Continuous fun η : Pl => rAmpd j m ε t ξ i b K w η :=
+  continuous_fderiv_dir (contDiff_rAmp hb K hw hPsi) (ev i)
+
+theorem hasCompactSupport_rAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (K : ℕ)
+    (w : Pl) : HasCompactSupport fun η : Pl => rAmpd j m ε t ξ i b K w η := by
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  exact rAmpd_eq_zero_of_notMem j m ε t ξ i hsupp K w
+    fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+
+theorem integrable_oscph_mul_cAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (k : ℕ) (w : Pl) :
+    Integrable fun η : Pl => oscph j ε t ξ w η * cAmpd j m ε t ξ i b k η := by
+  refine Continuous.integrable_of_hasCompactSupport
+    ((continuous_oscph j ε t ξ w).mul (contDiff_cAmpd j m ε t ξ i hb k).continuous) ?_
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  have h := cAmpd_eq_zero_of_notMem j m ε t ξ i hsupp k
+    (η := η) fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+  rw [h, mul_zero]
+
+theorem integrable_oscph_mul_rAmpd (j m : ℕ) (ε t : ℝ) (ξ : Pl) (i : Fin 2)
+    {b : ℝ → Pl → Pl → ℂ} (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (K : ℕ) {w : Pl} (hw : w i ≠ 0)
+    (hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0) :
+    Integrable fun η : Pl => oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η := by
+  refine Continuous.integrable_of_hasCompactSupport
+    ((continuous_oscph j ε t ξ w).mul (continuous_rAmpd hb K hw hPsi)) ?_
+  refine HasCompactSupport.intro
+    (isCompact_closedBall (0 : Pl) ((2 : ℝ) ^ ((j : ℤ) + 1))) fun η hη => ?_
+  have h := rAmpd_eq_zero_of_notMem j m ε t ξ i hsupp K w
+    (η := η) fun hmem => hη (closure_SuppSet_subset_ball j m ξ hmem)
+  rw [h, mul_zero]
+
+/-- The inner integral after one integration by parts and the Neumann expansion. -/
+theorem integral_oscph_mul_b_eq {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B) {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    {ξ : Pl} (hξ : XiData j ξ) (i : Fin 2) (K : ℕ)
+    {w : Pl} (hw : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i|) :
+    (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)
+      = -(1 / ((((2 * Real.pi : ℝ)) : ℂ) * Complex.I)) *
+        ((∑ k ∈ Finset.range K,
+            (𝓕 (phcA j m ε t ξ i b k) (-w)) / ((w i : ℝ) : ℂ) ^ (k + 1))
+          + ∫ η : Pl, oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η) := by
+  have hwne : w i ≠ 0 := w_coord_ne_zero hw
+  have hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0 := Psi_ne_zero hε ht1 ht2 ξ i hw
+  have hibp := ibp44 hξ (hB.smooth t ξ) (hB.supp t ξ) w hPsi
+  rw [hibp]
+  congr 1
+  -- decompose the integral
+  have hpt : ∀ η : Pl, oscph j ε t ξ w η * Ampd j m ε t ξ i b w (ev i) η
+      = (∑ k ∈ Finset.range K, oscph j ε t ξ w η * cAmpd j m ε t ξ i b k η
+            / ((w i : ℝ) : ℂ) ^ (k + 1))
+        + oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η := by
+    intro η
+    rw [Ampd_decomp (hB.smooth t ξ) K hwne hPsi η, mul_add, Finset.mul_sum]
+    congr 1
+    refine Finset.sum_congr rfl fun k _ => ?_
+    ring
+  have hsumint : ∀ k ∈ Finset.range K, Integrable fun η : Pl =>
+      oscph j ε t ξ w η * cAmpd j m ε t ξ i b k η / ((w i : ℝ) : ℂ) ^ (k + 1) := by
+    intro k _
+    exact (integrable_oscph_mul_cAmpd j m ε t ξ i (hB.smooth t ξ) hB.supp k w).div_const _
+  have hremint : Integrable fun η : Pl =>
+      oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η :=
+    integrable_oscph_mul_rAmpd j m ε t ξ i (hB.smooth t ξ) hB.supp K hwne hPsi
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt),
+    integral_add (integrable_finset_sum _ hsumint) hremint,
+    integral_finset_sum _ hsumint]
+  congr 1
+  refine Finset.sum_congr rfl fun k _ => ?_
+  rw [integral_div, integral_oscph_mul_cAmpd]
+
+end InnerDecomp
+
+
+/-! ### Cauchy--Schwarz for one Neumann term -/
+
+section TermCS
+
+theorem lintegral_term_le (i : Fin 2) (k : ℕ) {A : ℝ} (hApos : 0 < A)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgisupp : ∀ w : Pl, gi w ≠ 0 → A ≤ |w i|)
+    {G : Pl → ℂ} (hG : Measurable G) :
+    (∫⁻ w : Pl, ‖gi w * (G (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))‖ₑ)
+      ≤ ENNReal.ofReal (1 / A ^ (k + 1))
+        * ((∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+          * (∫⁻ w : Pl, ‖G (-w)‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)) := by
+  have hGneg : Measurable fun w : Pl => G (-w) := hG.comp measurable_neg
+  have hpt : ∀ w : Pl, ‖gi w * (G (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))‖ₑ
+      ≤ ENNReal.ofReal (1 / A ^ (k + 1)) * (‖gi w‖ₑ * ‖G (-w)‖ₑ) := by
+    intro w
+    by_cases hz : gi w = 0
+    · rw [hz]
+      simp
+    · have hA := hgisupp w hz
+      have hwpos : (0 : ℝ) < |w i| := lt_of_lt_of_le hApos hA
+      have hApow : A ^ (k + 1) ≤ |w i| ^ (k + 1) := pow_le_pow_left₀ hApos.le hA _
+      have hApowpos : (0 : ℝ) < A ^ (k + 1) := by positivity
+      have hcoef : ‖(((w i : ℝ) : ℂ) ^ (k + 1))⁻¹‖ ≤ 1 / A ^ (k + 1) := by
+        rw [norm_inv, norm_pow, Complex.norm_real, Real.norm_eq_abs]
+        rw [inv_eq_one_div, div_le_div_iff₀ (by positivity) hApowpos]
+        linarith
+      have heq : gi w * (G (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))
+          = (((w i : ℝ) : ℂ) ^ (k + 1))⁻¹ * (gi w * G (-w)) := by
+        rw [div_eq_mul_inv]
+        ring
+      rw [heq, enorm_mul, enorm_mul]
+      refine mul_le_mul' ?_ (le_refl _)
+      rw [← ofReal_norm]
+      exact ENNReal.ofReal_le_ofReal hcoef
+  refine le_trans (lintegral_mono hpt) ?_
+  rw [lintegral_const_mul' _ _ (by simp)]
+  refine mul_le_mul' (le_refl _) ?_
+  exact lintegral_enorm_mul_le_sq hgi hGneg.aemeasurable
+
+theorem enorm_integral_term_le (i : Fin 2) (k : ℕ) {A : ℝ} (hApos : 0 < A)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgisupp : ∀ w : Pl, gi w ≠ 0 → A ≤ |w i|)
+    {G : Pl → ℂ} (hG : Measurable G) :
+    ‖∫ w : Pl, gi w * (G (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))‖ₑ
+      ≤ ENNReal.ofReal (1 / A ^ (k + 1))
+        * ((∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+          * (∫⁻ w : Pl, ‖G (-w)‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)) :=
+  le_trans (enorm_integral_le_lintegral_enorm _) (lintegral_term_le i k hApos hgi hgisupp hG)
+
+/-- Cauchy--Schwarz for the remainder term. -/
+theorem lintegral_rem_le {S : Set Pl} (hS : MeasurableSet S)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgisupp : ∀ w : Pl, gi w ≠ 0 → w ∈ S)
+    {R : Pl → ℂ} {M : ℝ} (hM : 0 ≤ M)
+    (hRM : ∀ w : Pl, w ∈ S → ‖R w‖ ≤ M) :
+    (∫⁻ w : Pl, ‖gi w * R w‖ₑ)
+      ≤ ENNReal.ofReal M * ((volume S) ^ (2⁻¹ : ℝ)
+        * (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)) := by
+  have hpt : ∀ w : Pl, ‖gi w * R w‖ₑ
+      ≤ ENNReal.ofReal M * (S.indicator (fun _ => (1 : ℝ≥0∞)) w * ‖gi w‖ₑ) := by
+    intro w
+    by_cases hz : gi w = 0
+    · rw [hz]
+      simp
+    · have hmem := hgisupp w hz
+      rw [Set.indicator_of_mem hmem, one_mul, enorm_mul,
+        mul_comm (ENNReal.ofReal M) (‖gi w‖ₑ)]
+      refine mul_le_mul' (le_refl _) ?_
+      rw [← ofReal_norm]
+      exact ENNReal.ofReal_le_ofReal (hRM w hmem)
+  refine le_trans (lintegral_mono hpt) ?_
+  rw [lintegral_const_mul' _ _ (by simp)]
+  refine mul_le_mul' (le_refl _) ?_
+  exact Auto.CalderonVaillancourt.lintegral_indicator_enorm_le hS hgi
+
+theorem enorm_integral_rem_le {S : Set Pl} (hS : MeasurableSet S)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgisupp : ∀ w : Pl, gi w ≠ 0 → w ∈ S)
+    {R : Pl → ℂ} {M : ℝ} (hM : 0 ≤ M)
+    (hRM : ∀ w : Pl, w ∈ S → ‖R w‖ ≤ M) :
+    ‖∫ w : Pl, gi w * R w‖ₑ
+      ≤ ENNReal.ofReal M * ((volume S) ^ (2⁻¹ : ℝ)
+        * (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)) :=
+  le_trans (enorm_integral_le_lintegral_enorm _) (lintegral_rem_le hS hgi hgisupp hM hRM)
+
+end TermCS
+
+
+/-! ### Summing the Neumann terms -/
+
+section SumTerms
+
+theorem lintegral_sum_terms_le (i : Fin 2) (K : ℕ) {A : ℝ} (hApos : 0 < A)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgisupp : ∀ w : Pl, gi w ≠ 0 → A ≤ |w i|)
+    (G : ℕ → Pl → ℂ) (hG : ∀ k, Measurable (G k)) :
+    (∫⁻ w : Pl, ‖gi w * ∑ k ∈ Finset.range K,
+        G k (-w) / ((w i : ℝ) : ℂ) ^ (k + 1)‖ₑ)
+      ≤ ∑ k ∈ Finset.range K, ENNReal.ofReal (1 / A ^ (k + 1))
+          * ((∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+            * (∫⁻ w : Pl, ‖G k (-w)‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)) := by
+  have hpt : ∀ w : Pl, ‖gi w * ∑ k ∈ Finset.range K,
+      G k (-w) / ((w i : ℝ) : ℂ) ^ (k + 1)‖ₑ
+      ≤ ∑ k ∈ Finset.range K, ‖gi w * (G k (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))‖ₑ := by
+    intro w
+    rw [Finset.mul_sum]
+    exact enorm_sum_le _ _
+  refine le_trans (lintegral_mono hpt) ?_
+  have hmeas : ∀ k ∈ Finset.range K, AEMeasurable
+      (fun w : Pl => ‖gi w * (G k (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))‖ₑ)
+      (volume : Measure Pl) := by
+    intro k _
+    have h1 : AEMeasurable (fun w : Pl => G k (-w)) (volume : Measure Pl) :=
+      ((hG k).comp measurable_neg).aemeasurable
+    have h2 : AEMeasurable (fun w : Pl => ((w i : ℝ) : ℂ) ^ (k + 1))
+        (volume : Measure Pl) := by
+      refine AEMeasurable.pow_const ?_ _
+      exact (Complex.measurable_ofReal.comp (EuclideanSpace.proj i).continuous.measurable
+        ).aemeasurable
+    exact (hgi.mul (h1.div h2)).enorm
+  rw [lintegral_finset_sum' _ hmeas]
+  refine Finset.sum_le_sum fun k _ => ?_
+  exact lintegral_term_le i k hApos hgi hgisupp (hG k)
+
+end SumTerms
+
+
+/-! ### The main terms -/
+
+section MainTerms
+
+theorem rpow_half_eq_sqrt {y : ℝ} (hy : 0 ≤ y) : y ^ (2⁻¹ : ℝ) = Real.sqrt y := by
+  rw [Real.sqrt_eq_rpow]
+  norm_num
+
+theorem enorm_sq_root_bound {x v : ℝ} (hx : 0 ≤ x) (hv : 0 ≤ v) :
+    (ENNReal.ofReal (x ^ 2) * ENNReal.ofReal v) ^ (2⁻¹ : ℝ)
+      = ENNReal.ofReal (x * Real.sqrt v) := by
+  rw [← ENNReal.ofReal_mul (by positivity),
+    ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num)]
+  congr 1
+  rw [rpow_half_eq_sqrt (by positivity), Real.sqrt_mul (by positivity), Real.sqrt_sq hx]
+
+/-- The bound for the sum of the main Neumann terms. -/
+theorem enorm_main_terms_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (K : ℕ)
+    {A : ℝ} (hA4 : 4 * (2 : ℝ) ^ (11 - (m : ℤ)) ≤ A)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgiA : ∀ w : Pl, gi w ≠ 0 → A ≤ |w i|) :
+    (∫⁻ w : Pl, ‖gi w * ∑ k ∈ Finset.range K,
+        𝓕 (phcA j m ε t ξ i b k) (-w) / ((w i : ℝ) : ℂ) ^ (k + 1)‖ₑ)
+      ≤ ENNReal.ofReal (Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+          (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+            + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2))
+        * (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hVbpos : (0 : ℝ) < (2 : ℝ) ^ (11 - (m : ℤ)) := by positivity
+  have hApos : (0 : ℝ) < A := by nlinarith
+  set Ng : ℝ≥0∞ := (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) with hNg
+  set vol : ℝ := (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12) with hvol
+  have hvolnn : (0 : ℝ) ≤ vol := by rw [hvol]; positivity
+  -- step 1: the general summation bound
+  have hstep1 := lintegral_sum_terms_le i K hApos hgi hgiA
+    (fun k => 𝓕 (phcA j m ε t ξ i b k))
+    (fun k => measurable_fourier_phcA (hB.smooth t ξ) hB.supp k)
+  -- step 2: bound each factor
+  have hterm : ∀ k ∈ Finset.range K,
+      ENNReal.ofReal (1 / A ^ (k + 1))
+          * (Ng * (∫⁻ w : Pl, ‖𝓕 (phcA j m ε t ξ i b k) (-w)‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ))
+        ≤ ENNReal.ofReal (cBound j m B Cs CV k * Real.sqrt vol / A ^ (k + 1)) * Ng := by
+    intro k _
+    have hcnn : 0 ≤ cBound j m B Cs CV k := cBound_nonneg hB.nonneg hCsnn hCVnn k
+    have hNk : (∫⁻ w : Pl, ‖𝓕 (phcA j m ε t ξ i b k) (-w)‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+        ≤ ENNReal.ofReal (cBound j m B Cs CV k * Real.sqrt vol) := by
+      have h := lintegral_enorm_sq_fourier_neg_le hB hCs hCVnn hCV hε ht1 ht2 ξ i k
+      have h2 := ENNReal.rpow_le_rpow h (by norm_num : (0 : ℝ) ≤ (2⁻¹ : ℝ))
+      rw [enorm_sq_root_bound hcnn hvolnn] at h2
+      exact h2
+    have hmono : ENNReal.ofReal (1 / A ^ (k + 1)) * (Ng *
+          (∫⁻ w : Pl, ‖𝓕 (phcA j m ε t ξ i b k) (-w)‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ))
+        ≤ ENNReal.ofReal (1 / A ^ (k + 1)) *
+          (Ng * ENNReal.ofReal (cBound j m B Cs CV k * Real.sqrt vol)) :=
+      mul_le_mul' (le_refl _) (mul_le_mul' (le_refl _) hNk)
+    refine le_trans hmono (le_of_eq ?_)
+    have hcomm : ENNReal.ofReal (1 / A ^ (k + 1)) * (Ng *
+          ENNReal.ofReal (cBound j m B Cs CV k * Real.sqrt vol))
+        = (ENNReal.ofReal (1 / A ^ (k + 1)) *
+          ENNReal.ofReal (cBound j m B Cs CV k * Real.sqrt vol)) * Ng := by
+      ring
+    rw [hcomm, ← ENNReal.ofReal_mul (by positivity)]
+    have hid : 1 / A ^ (k + 1) * (cBound j m B Cs CV k * Real.sqrt vol)
+        = cBound j m B Cs CV k * Real.sqrt vol / A ^ (k + 1) := by
+      ring
+    rw [hid]
+  refine le_trans hstep1 (le_trans (Finset.sum_le_sum hterm) ?_)
+  -- step 3: pull out the constant and use the geometric bound
+  rw [← Finset.sum_mul]
+  refine mul_le_mul' ?_ (le_refl _)
+  have hsum : (∑ k ∈ Finset.range K,
+      ENNReal.ofReal (cBound j m B Cs CV k * Real.sqrt vol / A ^ (k + 1)))
+      = ENNReal.ofReal (∑ k ∈ Finset.range K,
+        cBound j m B Cs CV k * Real.sqrt vol / A ^ (k + 1)) := by
+    rw [ENNReal.ofReal_sum_of_nonneg]
+    intro k _
+    have hcnn : 0 ≤ cBound j m B Cs CV k := cBound_nonneg hB.nonneg hCsnn hCVnn k
+    positivity
+  rw [hsum]
+  refine ENNReal.ofReal_le_ofReal ?_
+  have hgeom := sum_cBound_div_le j m hB.nonneg hCsnn hCVnn hA4 K
+  have hrw : (∑ k ∈ Finset.range K, cBound j m B Cs CV k * Real.sqrt vol / A ^ (k + 1))
+      = Real.sqrt vol * ∑ k ∈ Finset.range K, cBound j m B Cs CV k / A ^ (k + 1) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun k _ => ?_
+    ring
+  rw [hrw]
+  refine mul_le_mul_of_nonneg_left hgeom (Real.sqrt_nonneg _)
+
+end MainTerms
+
+
+/-! ### The remainder term -/
+
+section RemTerm
+
+/-- The uniform bound for the remainder amplitude on the region `|w_i| ≥ A`. -/
+def rBound (j m : ℕ) (B Cs CV : ℝ) (K : ℕ) (A : ℝ) : ℝ :=
+  (2 * cBound j m B Cs CV K / A
+      + 4 * (B * ((2 : ℝ) ^ (11 - (m : ℤ))) ^ K) *
+        (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))) / A ^ 2) / A ^ K
+
+theorem rBound_nonneg {j m : ℕ} {B Cs CV : ℝ} (hB : 0 ≤ B) (hCs : 0 ≤ Cs) (hCV : 0 ≤ CV)
+    (K : ℕ) {A : ℝ} (hA : 0 < A) : 0 ≤ rBound j m B Cs CV K A := by
+  have hc : 0 ≤ cBound j m B Cs CV K := cBound_nonneg hB hCs hCV K
+  rw [rBound]
+  positivity
+
+theorem norm_rAmpd_le' {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (K : ℕ)
+    {A : ℝ} (hA13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ A) {w : Pl} (hA : A ≤ |w i|) (η : Pl) :
+    ‖rAmpd j m ε t ξ i b K w η‖ ≤ rBound j m B Cs CV K A := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hApos : (0 : ℝ) < A := lt_of_lt_of_le (by positivity) hA13
+  have hw13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i| := le_trans hA13 hA
+  have hcnn : 0 ≤ cBound j m B Cs CV K := cBound_nonneg hB.nonneg hCsnn hCVnn K
+  have hBnn : 0 ≤ B := hB.nonneg
+  refine le_trans (norm_rAmpd_le hB hCs hCVnn hCV hε ht1 ht2 ξ i K hw13 η) ?_
+  rw [rBound]
+  gcongr <;> positivity
+
+theorem norm_integral_oscph_rAmpd_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) (i : Fin 2) (K : ℕ)
+    {A : ℝ} (hA13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ A) {w : Pl} (hA : A ≤ |w i|) :
+    ‖∫ η : Pl, oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η‖
+      ≤ rBound j m B Cs CV K A * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hApos : (0 : ℝ) < A := lt_of_lt_of_le (by positivity) hA13
+  have hw13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i| := le_trans hA13 hA
+  have hwne : w i ≠ 0 := w_coord_ne_zero hw13
+  have hPsi : ∀ η : Pl, Psi j m ε t ξ i w η ≠ 0 := Psi_ne_zero hε ht1 ht2 ξ i hw13
+  set RB : ℝ := rBound j m B Cs CV K A with hRB
+  have hRBnn : 0 ≤ RB := by
+    rw [hRB]
+    exact rBound_nonneg hB.nonneg hCsnn hCVnn K hApos
+  set S : Set Pl := closure (SuppSet j m ξ) with hS
+  have hSmeas : MeasurableSet S := isClosed_closure.measurableSet
+  have hSfin : volume S < ⊤ :=
+    lt_of_le_of_lt (volume_closure_SuppSet_le j m ξ) ENNReal.ofReal_lt_top
+  set f : Pl → ℂ := fun η => oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η with hf
+  have hfint : Integrable f :=
+    integrable_oscph_mul_rAmpd j m ε t ξ i (hB.smooth t ξ) hB.supp K hwne hPsi
+  have hbd : ∀ η : Pl, ‖f η‖ ≤ RB * Set.indicator S (fun _ => (1 : ℝ)) η := by
+    intro η
+    by_cases hmem : η ∈ S
+    · rw [Set.indicator_of_mem hmem, mul_one, hf]
+      show ‖oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η‖ ≤ RB
+      rw [norm_mul, norm_oscph, one_mul, hRB]
+      exact norm_rAmpd_le' hB hCs hCVnn hCV hε ht1 ht2 ξ i K hA13 hA η
+    · rw [Set.indicator_of_notMem hmem, mul_zero, hf]
+      show ‖oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η‖ ≤ 0
+      have h := rAmpd_eq_zero_of_notMem j m ε t ξ i hB.supp K w (η := η) hmem
+      rw [h, mul_zero, norm_zero]
+  have hintR : Integrable (fun η : Pl => RB * Set.indicator S (fun _ => (1 : ℝ)) η) := by
+    refine Integrable.const_mul ?_ RB
+    rw [integrable_indicator_iff hSmeas]
+    exact integrableOn_const (C := (1 : ℝ)) (hs := hSfin.ne)
+  have hmono := integral_mono hfint.norm hintR hbd
+  have hRHS : (∫ η : Pl, RB * Set.indicator S (fun _ => (1 : ℝ)) η)
+      = RB * (volume S).toReal := by
+    rw [integral_const_mul]
+    congr 1
+    rw [integral_indicator_const (1 : ℝ) hSmeas, smul_eq_mul, mul_one]
+    rfl
+  rw [hRHS] at hmono
+  refine le_trans (norm_integral_le_integral_norm f) (le_trans hmono ?_)
+  refine mul_le_mul_of_nonneg_left ?_ hRBnn
+  have h1 : (volume S).toReal ≤ ((ENNReal.ofReal
+      ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))).toReal) := by
+    refine ENNReal.toReal_mono ENNReal.ofReal_ne_top ?_
+    rw [hS]
+    exact volume_closure_SuppSet_le j m ξ
+  refine le_trans h1 (le_of_eq ?_)
+  rw [ENNReal.toReal_ofReal (by positivity)]
+
+end RemTerm
+
+
+/-! ### The off-diagonal estimate on one coordinate-dominant region -/
+
+section OffdiagRegion
+
+theorem norm_ibp_const :
+    ‖-(1 / ((((2 * Real.pi : ℝ)) : ℂ) * Complex.I))‖ = 1 / (2 * Real.pi) := by
+  rw [norm_neg, norm_div, norm_one, norm_mul, Complex.norm_I, mul_one, Complex.norm_real,
+    Real.norm_eq_abs, abs_of_pos (by positivity : (0 : ℝ) < 2 * Real.pi)]
+
+theorem measurable_mainSum {j m : ℕ} {ε t : ℝ} {ξ : Pl} {i : Fin 2} {b : ℝ → Pl → Pl → ℂ}
+    (hb : ContDiff ℝ (↑(⊤ : ℕ∞)) (b t ξ))
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j m ξ → b t ξ η = 0) (K : ℕ) :
+    Measurable fun w : Pl => ∑ k ∈ Finset.range K,
+      𝓕 (phcA j m ε t ξ i b k) (-w) / ((w i : ℝ) : ℂ) ^ (k + 1) := by
+  refine Finset.measurable_sum _ fun k _ => ?_
+  have h1 : Measurable fun w : Pl => 𝓕 (phcA j m ε t ξ i b k) (-w) :=
+    (measurable_fourier_phcA hb hsupp k).comp measurable_neg
+  have h2 : Measurable fun w : Pl => ((w i : ℝ) : ℂ) ^ (k + 1) :=
+    (Complex.measurable_ofReal.comp
+      (EuclideanSpace.proj i).continuous.measurable).pow_const _
+  exact h1.div h2
+
+/-- The off-diagonal estimate on a region where the `i`-th coordinate of `w` dominates. -/
+theorem lintegral_offdiag_region {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) {ξ : Pl} (hξ : XiData j ξ)
+    (i : Fin 2) (K : ℕ) {A : ℝ}
+    (hA13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ A) (hA4 : 4 * (2 : ℝ) ^ (11 - (m : ℤ)) ≤ A)
+    {S : Set Pl} (hSmeas : MeasurableSet S) (hSA : ∀ w : Pl, w ∈ S → A ≤ |w i|)
+    {gi : Pl → ℂ} (hgi : AEMeasurable gi (volume : Measure Pl))
+    (hgiS : ∀ w : Pl, gi w ≠ 0 → w ∈ S) :
+    (∫⁻ w : Pl, ‖gi w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      ≤ ENNReal.ofReal (1 / (2 * Real.pi)) *
+          (ENNReal.ofReal (Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+              (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+                + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2))
+            * (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+          + ENNReal.ofReal (rBound j m B Cs CV K A * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+            * ((volume S) ^ (2⁻¹ : ℝ)
+              * (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ))) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hApos : (0 : ℝ) < A := lt_of_lt_of_le (by positivity) hA13
+  have hgiA : ∀ w : Pl, gi w ≠ 0 → A ≤ |w i| := fun w hz => hSA w (hgiS w hz)
+  -- the pointwise bound
+  have hpt : ∀ w : Pl, ‖gi w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ
+      ≤ ENNReal.ofReal (1 / (2 * Real.pi)) *
+        (‖gi w * ∑ k ∈ Finset.range K,
+              𝓕 (phcA j m ε t ξ i b k) (-w) / ((w i : ℝ) : ℂ) ^ (k + 1)‖ₑ
+          + ‖gi w * ∫ η : Pl, oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η‖ₑ) := by
+    intro w
+    by_cases hz : gi w = 0
+    · rw [hz, zero_mul, enorm_zero]
+      exact zero_le
+    · have hAw : A ≤ |w i| := hgiA w hz
+      have hw13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ |w i| := le_trans hA13 hAw
+      rw [integral_oscph_mul_b_eq hB hε ht1 ht2 hξ i K hw13]
+      have hrw : gi w * (-(1 / ((((2 * Real.pi : ℝ)) : ℂ) * Complex.I)) *
+            ((∑ k ∈ Finset.range K,
+                𝓕 (phcA j m ε t ξ i b k) (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))
+              + ∫ η : Pl, oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η))
+          = (-(1 / ((((2 * Real.pi : ℝ)) : ℂ) * Complex.I))) *
+            ((gi w * ∑ k ∈ Finset.range K,
+                𝓕 (phcA j m ε t ξ i b k) (-w) / ((w i : ℝ) : ℂ) ^ (k + 1))
+              + gi w * ∫ η : Pl, oscph j ε t ξ w η * rAmpd j m ε t ξ i b K w η) := by
+        ring
+      rw [hrw, enorm_mul]
+      refine mul_le_mul' (le_of_eq ?_) (enorm_add_le _ _)
+      rw [← ofReal_norm, norm_ibp_const]
+  refine le_trans (lintegral_mono hpt) ?_
+  rw [lintegral_const_mul' _ _ (by simp)]
+  refine mul_le_mul' (le_refl _) ?_
+  -- split the two pieces
+  have hMSmeas : AEMeasurable (fun w : Pl => ‖gi w * ∑ k ∈ Finset.range K,
+      𝓕 (phcA j m ε t ξ i b k) (-w) / ((w i : ℝ) : ℂ) ^ (k + 1)‖ₑ)
+      (volume : Measure Pl) :=
+    (hgi.mul (measurable_mainSum (hB.smooth t ξ) hB.supp K).aemeasurable).enorm
+  rw [lintegral_add_left' hMSmeas]
+  refine add_le_add ?_ ?_
+  · exact enorm_main_terms_le hB hCs hCVnn hCV hε ht1 ht2 ξ i K hA4 hgi hgiA
+  · refine lintegral_rem_le hSmeas hgi hgiS ?_ ?_
+    · have hc : 0 ≤ rBound j m B Cs CV K A :=
+        rBound_nonneg hB.nonneg hCsnn hCVnn K hApos
+      positivity
+    · intro w hw
+      exact norm_integral_oscph_rAmpd_le hB hCs hCVnn hCV hε ht1 ht2 ξ i K hA13 (hSA w hw)
+
+/-- In the plane, if the norm is not dominated by twice the first coordinate then it is dominated
+by twice the second. -/
+theorem norm_le_two_mul_abs_snd {w : Pl} (h : ¬ ‖w‖ ≤ 2 * |w 0|) : ‖w‖ ≤ 2 * |w 1| := by
+  have hgt : 2 * |w 0| < ‖w‖ := not_le.mp h
+  have hsq := norm_sq_eq_coords w
+  nlinarith [abs_nonneg (w 0), abs_nonneg (w 1), sq_abs (w 0), sq_abs (w 1), norm_nonneg w]
+
+end OffdiagRegion
+
+
+/-! ### Splitting into the two coordinate-dominant regions -/
+
+section TwoRegions
+
+theorem continuous_oscph_pair (j : ℕ) (ε t : ℝ) (ξ : Pl) :
+    Continuous fun q : Pl × Pl => oscph j ε t ξ q.1 q.2 := by
+  refine Complex.continuous_exp.comp ?_
+  refine (Complex.continuous_ofReal.comp ?_).mul continuous_const
+  refine continuous_const.mul ?_
+  have hinner : Continuous fun q : Pl × Pl => (inner ℝ q.1 q.2 : ℝ) :=
+    continuous_fst.inner continuous_snd
+  have hNtl : Continuous (Ntl j) := (contDiff_Ntl j).continuous
+  exact hinner.add (continuous_const.mul
+    ((hNtl.comp (continuous_const.sub continuous_snd)).add (hNtl.comp continuous_snd)))
+
+theorem measurable_inner_integral (j m : ℕ) (ε t : ℝ) (ξ : Pl) {b : ℝ → Pl → Pl → ℂ}
+    (hbc : Continuous (b t ξ)) :
+    Measurable fun w : Pl => ∫ η : Pl, oscph j ε t ξ w η * b t ξ η := by
+  have hcont : Continuous fun q : Pl × Pl => oscph j ε t ξ q.1 q.2 * b t ξ q.2 :=
+    (continuous_oscph_pair j ε t ξ).mul (hbc.comp continuous_snd)
+  exact (hcont.stronglyMeasurable.integral_prod_right'
+    (ν := (volume : Measure Pl))).measurable
+
+theorem measurableSet_domFst : MeasurableSet {w : Pl | ‖w‖ ≤ 2 * |w 0|} := by
+  have h0 : Continuous fun w : Pl => w 0 := (EuclideanSpace.proj (0 : Fin 2)).continuous
+  exact measurableSet_le continuous_norm.measurable
+    (continuous_const.mul h0.abs).measurable
+
+theorem lintegral_enorm_sq_indicator_le (T : Set Pl) (g : Pl → ℂ) :
+    (∫⁻ w : Pl, ‖Set.indicator T g w‖ₑ ^ (2 : ℝ)) ≤ ∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ) := by
+  refine lintegral_mono fun w => ?_
+  by_cases hw : w ∈ T
+  · rw [Set.indicator_of_mem hw]
+  · rw [Set.indicator_of_notMem hw]
+    simp [ENNReal.zero_rpow_of_pos]
+
+/-- The off-diagonal estimate, after splitting the `w`-integral into the two
+coordinate-dominant regions. -/
+theorem lintegral_offdiag_two_regions {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) {ξ : Pl} (hξ : XiData j ξ)
+    (K : ℕ) {A R : ℝ}
+    (hA13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ A) (hA4 : 4 * (2 : ℝ) ^ (11 - (m : ℤ)) ≤ A)
+    {g : Pl → ℂ} (hg : AEMeasurable g (volume : Measure Pl))
+    (hgA : ∀ w : Pl, g w ≠ 0 → 2 * A ≤ ‖w‖) (hgR : ∀ w : Pl, g w ≠ 0 → ‖w‖ ≤ R) :
+    (∫⁻ w : Pl, ‖g w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      ≤ 2 * (ENNReal.ofReal (1 / (2 * Real.pi)) *
+          (ENNReal.ofReal (Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+              (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+                + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2))
+            * (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+          + ENNReal.ofReal (rBound j m B Cs CV K A * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+            * ((volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ)
+              * (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)))) := by
+  classical
+  set T : Set Pl := {w : Pl | ‖w‖ ≤ 2 * |w 0|} with hT
+  have hTmeas : MeasurableSet T := measurableSet_domFst
+  set g0 : Pl → ℂ := Set.indicator T g with hg0
+  set g1 : Pl → ℂ := Set.indicator Tᶜ g with hg1
+  set h : Pl → ℂ := fun w => ∫ η : Pl, oscph j ε t ξ w η * b t ξ η with hh
+  have hhmeas : Measurable h := measurable_inner_integral j m ε t ξ (hB.smooth t ξ).continuous
+  have hg0meas : AEMeasurable g0 (volume : Measure Pl) := hg.indicator hTmeas
+  have hg1meas : AEMeasurable g1 (volume : Measure Pl) := hg.indicator hTmeas.compl
+  have hsplit : ∀ w : Pl, ‖g w * h w‖ₑ = ‖g0 w * h w‖ₑ + ‖g1 w * h w‖ₑ := by
+    intro w
+    by_cases hw : w ∈ T
+    · rw [hg0, hg1, Set.indicator_of_mem hw,
+        Set.indicator_of_notMem (by simpa using hw)]
+      simp
+    · rw [hg0, hg1, Set.indicator_of_notMem hw,
+        Set.indicator_of_mem (by simpa using hw)]
+      simp
+  have hbound : ∀ (i : Fin 2) (gi : Pl → ℂ), AEMeasurable gi (volume : Measure Pl) →
+      (∀ w : Pl, gi w ≠ 0 → A ≤ |w i| ∧ ‖w‖ ≤ R) →
+      (∀ w : Pl, ‖gi w‖ ≤ ‖g w‖) →
+      (∫⁻ w : Pl, ‖gi w * h w‖ₑ)
+        ≤ ENNReal.ofReal (1 / (2 * Real.pi)) *
+            (ENNReal.ofReal (Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+                (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+                  + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2))
+              * (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+            + ENNReal.ofReal (rBound j m B Cs CV K A *
+                (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+              * ((volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ)
+                * (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ))) := by
+    intro i gi hgim hgireg hgile
+    set S : Set Pl := {w : Pl | A ≤ |w i|} ∩ Metric.closedBall (0 : Pl) R with hS
+    have hSmeas : MeasurableSet S := by
+      refine MeasurableSet.inter ?_ Metric.isClosed_closedBall.measurableSet
+      have hi : Continuous fun w : Pl => w i := (EuclideanSpace.proj i).continuous
+      exact measurableSet_le measurable_const hi.abs.measurable
+    have hSA : ∀ w : Pl, w ∈ S → A ≤ |w i| := fun w hw => hw.1
+    have hgiS : ∀ w : Pl, gi w ≠ 0 → w ∈ S := by
+      intro w hz
+      obtain ⟨h1, h2⟩ := hgireg w hz
+      refine ⟨h1, ?_⟩
+      rw [Metric.mem_closedBall, dist_zero_right]
+      exact h2
+    have hkey := lintegral_offdiag_region hB hCs hCVnn hCV hε ht1 ht2 hξ i K hA13 hA4
+      hSmeas hSA hgim hgiS
+    have hNle : (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+        ≤ (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) := by
+      refine ENNReal.rpow_le_rpow ?_ (by norm_num)
+      refine lintegral_mono fun w => ?_
+      refine ENNReal.rpow_le_rpow ?_ (by norm_num)
+      rw [← ofReal_norm, ← ofReal_norm]
+      exact ENNReal.ofReal_le_ofReal (hgile w)
+    have hvS : (volume S) ^ (2⁻¹ : ℝ)
+        ≤ (volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ) := by
+      refine ENNReal.rpow_le_rpow (measure_mono ?_) (by norm_num)
+      exact Set.inter_subset_right
+    refine le_trans hkey ?_
+    refine mul_le_mul' (le_refl _) ?_
+    exact add_le_add (mul_le_mul' (le_refl _) hNle)
+      (mul_le_mul' (le_refl _) (mul_le_mul' hvS hNle))
+  have hreg0 : ∀ w : Pl, g0 w ≠ 0 → A ≤ |w 0| ∧ ‖w‖ ≤ R := by
+    intro w hz
+    have hmem : w ∈ T := by
+      by_contra hw
+      rw [hg0, Set.indicator_of_notMem hw] at hz
+      exact hz rfl
+    have hgw : g w ≠ 0 := by
+      intro hcon
+      rw [hg0, Set.indicator_of_mem hmem, hcon] at hz
+      exact hz rfl
+    have h2A := hgA w hgw
+    have hTw : ‖w‖ ≤ 2 * |w 0| := hmem
+    exact ⟨by linarith, hgR w hgw⟩
+  have hle0 : ∀ w : Pl, ‖g0 w‖ ≤ ‖g w‖ := by
+    intro w
+    by_cases hw : w ∈ T
+    · rw [hg0, Set.indicator_of_mem hw]
+    · rw [hg0, Set.indicator_of_notMem hw, norm_zero]
+      exact norm_nonneg _
+  have hreg1 : ∀ w : Pl, g1 w ≠ 0 → A ≤ |w 1| ∧ ‖w‖ ≤ R := by
+    intro w hz
+    have hmem : w ∈ Tᶜ := by
+      by_contra hw
+      rw [hg1, Set.indicator_of_notMem hw] at hz
+      exact hz rfl
+    have hgw : g w ≠ 0 := by
+      intro hcon
+      rw [hg1, Set.indicator_of_mem hmem, hcon] at hz
+      exact hz rfl
+    have h2A := hgA w hgw
+    have hTw : ‖w‖ ≤ 2 * |w 1| := by
+      refine norm_le_two_mul_abs_snd ?_
+      intro hcon
+      exact hmem hcon
+    exact ⟨by linarith, hgR w hgw⟩
+  have hle1 : ∀ w : Pl, ‖g1 w‖ ≤ ‖g w‖ := by
+    intro w
+    by_cases hw : w ∈ Tᶜ
+    · rw [hg1, Set.indicator_of_mem hw]
+    · rw [hg1, Set.indicator_of_notMem hw, norm_zero]
+      exact norm_nonneg _
+  have h0 := hbound 0 g0 hg0meas hreg0 hle0
+  have h1 := hbound 1 g1 hg1meas hreg1 hle1
+  have hAE : AEMeasurable (fun w : Pl => ‖g0 w * h w‖ₑ) (volume : Measure Pl) := by
+    have h1 : AEMeasurable (fun w : Pl => g0 w * h w) (volume : Measure Pl) :=
+      hg0meas.mul hhmeas.aemeasurable
+    exact h1.enorm
+  rw [lintegral_congr hsplit, lintegral_add_left' hAE]
+  exact le_trans (add_le_add h0 h1) (le_of_eq (two_mul _).symm)
+
+end TwoRegions
+
+
+/-! ### The volume of a planar ball -/
+
+section BallVolume
+
+theorem volume_closedBall_le {R : ℝ} (hR : 0 ≤ R) :
+    volume (Metric.closedBall (0 : Pl) R) ≤ ENNReal.ofReal (4 * R ^ 2) := by
+  have hsub : Metric.closedBall (0 : Pl) R
+      ⊆ {x : Pl | |x 0 - (0 : ℝ) * x 1| ≤ R ∧ |x 1| ≤ R} := by
+    intro w hw
+    rw [Metric.mem_closedBall, dist_zero_right] at hw
+    refine ⟨?_, ?_⟩
+    · rw [zero_mul, sub_zero]
+      exact le_trans (Auto.CalderonVaillancourt.abs_apply_le_norm w 0) hw
+    · exact le_trans (Auto.CalderonVaillancourt.abs_apply_le_norm w 1) hw
+  refine le_trans (measure_mono hsub) (le_trans (volume_slab_le 0 R R hR hR) ?_)
+  refine ENNReal.ofReal_le_ofReal ?_
+  nlinarith [hR]
+
+end BallVolume
+
+
+/-! ### Square roots of dyadic powers -/
+
+section SqrtDyadic
+
+theorem sqrt_two_zpow_mul (a c : ℤ) :
+    Real.sqrt ((2 : ℝ) ^ a) * Real.sqrt ((2 : ℝ) ^ c)
+      = Real.sqrt ((2 : ℝ) ^ (a + c)) := by
+  rw [two_zpow_add, Real.sqrt_mul (by positivity)]
+
+theorem sqrt_two_zpow_even (a : ℤ) : Real.sqrt ((2 : ℝ) ^ (2 * a)) = (2 : ℝ) ^ a := by
+  have hsq : ((2 : ℝ) ^ a) ^ 2 = (2 : ℝ) ^ (2 * a) := by
+    rw [sq, ← two_zpow_add]
+    congr 1
+    ring
+  rw [← hsq, Real.sqrt_sq (by positivity)]
+
+theorem sqrt_two_zpow_pos (a : ℤ) : (0 : ℝ) < Real.sqrt ((2 : ℝ) ^ a) :=
+  Real.sqrt_pos.mpr (by positivity)
+
+/-- `√(2 ^ (2j - m + 12)) = 2 ^ (j + 6) √(2 ^ (-m))`. -/
+theorem sqrt_vol_eq (j m : ℕ) :
+    Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+      = (2 : ℝ) ^ ((j : ℤ) + 6) * Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) := by
+  have hsplit : (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+      = (2 : ℝ) ^ (2 * ((j : ℤ) + 6)) * (2 : ℝ) ^ (-(m : ℤ)) := by
+    rw [← two_zpow_add]
+    congr 1
+    ring
+  rw [hsplit, Real.sqrt_mul (by positivity), sqrt_two_zpow_even]
+
+/-- `√(2 ^ (-m)) · 2 ^ (2m) = √(2 ^ (3m))`. -/
+theorem sqrt_neg_mul_sq (m : ℕ) :
+    Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) * (2 : ℝ) ^ (2 * (m : ℤ))
+      = Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) := by
+  have h4 : (2 : ℝ) ^ (2 * (m : ℤ)) = Real.sqrt ((2 : ℝ) ^ (4 * (m : ℤ))) := by
+    rw [show (4 : ℤ) * (m : ℤ) = 2 * (2 * (m : ℤ)) by ring, sqrt_two_zpow_even]
+  rw [h4, sqrt_two_zpow_mul]
+  congr 2
+  ring
+
+end SqrtDyadic
+
+
+/-! ### The closed form of the main term -/
+
+section MainClosed
+
+theorem two_zpow_ne (a : ℤ) : ((2 : ℝ) ^ a) ≠ 0 := by positivity
+
+theorem two_zpow_div (a c : ℤ) : (2 : ℝ) ^ a / (2 : ℝ) ^ c = (2 : ℝ) ^ (a - c) :=
+  (zpow_sub₀ (two_ne_zero) a c).symm
+
+theorem two_zpow_one : (2 : ℝ) = (2 : ℝ) ^ (1 : ℤ) := by norm_num
+
+theorem main_term1_eq (j m l : ℕ) (B : ℝ) :
+    Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+        (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18))
+      = B * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) * (2 : ℝ) ^ (-(l : ℤ) - 11) := by
+  have hpow : (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))))
+        / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18))
+      = B * (2 : ℝ) ^ (1 - ((j : ℤ) - (m : ℤ)) - (((l : ℤ) - (m : ℤ)) + 18)) := by
+    rw [show (2 : ℝ) * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))))
+        = B * ((2 : ℝ) ^ (1 : ℤ) * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) by
+      rw [← two_zpow_one]; ring]
+    rw [← two_zpow_add, mul_div_assoc, two_zpow_div,
+      show (1 + -((j : ℤ) - (m : ℤ))) - (((l : ℤ) - (m : ℤ)) + 18)
+        = 1 - ((j : ℤ) - (m : ℤ)) - (((l : ℤ) - (m : ℤ)) + 18) by ring]
+  rw [hpow, sqrt_vol_eq]
+  have hcollect : (2 : ℝ) ^ ((j : ℤ) + 6) *
+      (2 : ℝ) ^ (1 - ((j : ℤ) - (m : ℤ)) - (((l : ℤ) - (m : ℤ)) + 18))
+      = (2 : ℝ) ^ (2 * (m : ℤ)) * (2 : ℝ) ^ (-(l : ℤ) - 11) := by
+    rw [← two_zpow_add, ← two_zpow_add]
+    congr 1
+    ring
+  calc (2 : ℝ) ^ ((j : ℤ) + 6) * Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) *
+        (B * (2 : ℝ) ^ (1 - ((j : ℤ) - (m : ℤ)) - (((l : ℤ) - (m : ℤ)) + 18)))
+      = B * (Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) *
+        ((2 : ℝ) ^ ((j : ℤ) + 6) *
+          (2 : ℝ) ^ (1 - ((j : ℤ) - (m : ℤ)) - (((l : ℤ) - (m : ℤ)) + 18)))) := by ring
+    _ = B * (Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) *
+        ((2 : ℝ) ^ (2 * (m : ℤ)) * (2 : ℝ) ^ (-(l : ℤ) - 11))) := by rw [hcollect]
+    _ = B * (Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) * (2 : ℝ) ^ (2 * (m : ℤ))) *
+        (2 : ℝ) ^ (-(l : ℤ) - 11) := by ring
+    _ = B * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) * (2 : ℝ) ^ (-(l : ℤ) - 11) := by
+        rw [sqrt_neg_mul_sq]
+
+theorem main_term2_eq (j m l : ℕ) (B Cs CV : ℝ) :
+    Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+        (8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))))
+          / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2)
+      = 32 * Cs * CV * B * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) *
+          (2 : ℝ) ^ (-2 * (l : ℤ) - 30) := by
+  have hsq : ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+      = (2 : ℝ) ^ (2 * (((l : ℤ) - (m : ℤ)) + 18)) := by
+    rw [sq, ← two_zpow_add]
+    congr 1
+    ring
+  have hnum : (8 : ℝ) * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))))
+      = 32 * Cs * CV * B * (2 : ℝ) ^ (-(j : ℤ)) := by ring
+  rw [hsq, hnum, sqrt_vol_eq, mul_div_assoc, two_zpow_div]
+  have hcollect : (2 : ℝ) ^ ((j : ℤ) + 6) *
+      (2 : ℝ) ^ (-(j : ℤ) - 2 * (((l : ℤ) - (m : ℤ)) + 18))
+      = (2 : ℝ) ^ (2 * (m : ℤ)) * (2 : ℝ) ^ (-2 * (l : ℤ) - 30) := by
+    rw [← two_zpow_add, ← two_zpow_add]
+    congr 1
+    ring
+  calc (2 : ℝ) ^ ((j : ℤ) + 6) * Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) *
+        (32 * Cs * CV * B * (2 : ℝ) ^ (-(j : ℤ) - 2 * (((l : ℤ) - (m : ℤ)) + 18)))
+      = 32 * Cs * CV * B * (Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) *
+        ((2 : ℝ) ^ ((j : ℤ) + 6) *
+          (2 : ℝ) ^ (-(j : ℤ) - 2 * (((l : ℤ) - (m : ℤ)) + 18)))) := by ring
+    _ = 32 * Cs * CV * B * (Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) *
+        ((2 : ℝ) ^ (2 * (m : ℤ)) * (2 : ℝ) ^ (-2 * (l : ℤ) - 30))) := by rw [hcollect]
+    _ = 32 * Cs * CV * B * (Real.sqrt ((2 : ℝ) ^ (-(m : ℤ))) * (2 : ℝ) ^ (2 * (m : ℤ))) *
+        (2 : ℝ) ^ (-2 * (l : ℤ) - 30) := by ring
+    _ = 32 * Cs * CV * B * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) *
+        (2 : ℝ) ^ (-2 * (l : ℤ) - 30) := by rw [sqrt_neg_mul_sq]
+
+/-- The main term of the off-diagonal estimate in closed form. -/
+theorem main_bound_closed (j m l : ℕ) {B Cs CV : ℝ} (hBnn : 0 ≤ B) (hCsnn : 0 ≤ Cs)
+    (hCVnn : 0 ≤ CV) :
+    Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+        (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)
+          + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ))))))
+            / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2)
+      ≤ (1 + 32 * Cs * CV) * B * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ)))
+        * (2 : ℝ) ^ (-(l : ℤ)) := by
+  set Sq : ℝ := Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) with hSq
+  have hSqnn : 0 ≤ Sq := by rw [hSq]; exact Real.sqrt_nonneg _
+  have h1 : (2 : ℝ) ^ (-(l : ℤ) - 11) ≤ (2 : ℝ) ^ (-(l : ℤ)) :=
+    zpow_le_zpow_right₀ (by norm_num) (by omega)
+  have h2 : (2 : ℝ) ^ (-2 * (l : ℤ) - 30) ≤ (2 : ℝ) ^ (-(l : ℤ)) :=
+    zpow_le_zpow_right₀ (by norm_num) (by omega)
+  rw [mul_add, main_term1_eq, main_term2_eq, ← hSq]
+  have e1 : B * Sq * (2 : ℝ) ^ (-(l : ℤ) - 11)
+      ≤ 1 * (B * Sq * (2 : ℝ) ^ (-(l : ℤ))) := by
+    rw [one_mul, mul_assoc, mul_assoc]
+    refine mul_le_mul_of_nonneg_left ?_ hBnn
+    exact mul_le_mul_of_nonneg_left h1 hSqnn
+  have e2 : 32 * Cs * CV * B * Sq * (2 : ℝ) ^ (-2 * (l : ℤ) - 30)
+      ≤ (32 * Cs * CV) * (B * Sq * (2 : ℝ) ^ (-(l : ℤ))) := by
+    have hre : 32 * Cs * CV * B * Sq * (2 : ℝ) ^ (-2 * (l : ℤ) - 30)
+        = (32 * Cs * CV) * (B * (Sq * (2 : ℝ) ^ (-2 * (l : ℤ) - 30))) := by ring
+    have hre2 : (32 * Cs * CV) * (B * Sq * (2 : ℝ) ^ (-(l : ℤ)))
+        = (32 * Cs * CV) * (B * (Sq * (2 : ℝ) ^ (-(l : ℤ)))) := by ring
+    rw [hre, hre2]
+    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+    refine mul_le_mul_of_nonneg_left ?_ hBnn
+    exact mul_le_mul_of_nonneg_left h2 hSqnn
+  calc B * Sq * (2 : ℝ) ^ (-(l : ℤ) - 11)
+        + 32 * Cs * CV * B * Sq * (2 : ℝ) ^ (-2 * (l : ℤ) - 30)
+      ≤ 1 * (B * Sq * (2 : ℝ) ^ (-(l : ℤ)))
+        + (32 * Cs * CV) * (B * Sq * (2 : ℝ) ^ (-(l : ℤ))) := add_le_add e1 e2
+    _ = (1 + 32 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ)) := by ring
+
+end MainClosed
+
+
+/-! ### The closed form of the remainder -/
+
+section RemClosed
+
+theorem two_zpow_pow (a : ℤ) (n : ℕ) : ((2 : ℝ) ^ a) ^ n = (2 : ℝ) ^ (a * (n : ℤ)) := by
+  rw [← zpow_natCast ((2 : ℝ) ^ a) n, ← zpow_mul]
+
+/-- `j + 17 + l ≤ (l + 7)(j + 3)`, the inequality that makes the remainder negligible. -/
+theorem key_exp_ineq (j l : ℕ) :
+    (j : ℤ) + 17 + (l : ℤ) ≤ ((l : ℤ) + 7) * ((j : ℤ) + 3) := by
+  have hl : (0 : ℤ) ≤ (l : ℤ) := Int.natCast_nonneg l
+  have hj : (0 : ℤ) ≤ (j : ℤ) := Int.natCast_nonneg j
+  nlinarith [mul_nonneg hl hj]
+
+theorem key_exp_ineq' (j l : ℕ) :
+    (j : ℤ) - 2 + (l : ℤ) ≤ ((l : ℤ) + 7) * ((j : ℤ) + 3) := by
+  have h := key_exp_ineq j l
+  linarith
+
+/-- `(j + 3) ≤ 3 · 2 ^ (6j)` in the reals. -/
+theorem nat_le_three_mul_two_pow (j : ℕ) :
+    ((j : ℝ) + 3) ≤ 3 * (2 : ℝ) ^ (6 * (j : ℤ)) := by
+  have hnat : 6 * j + 1 ≤ 2 ^ (6 * j) := by
+    have h := Nat.lt_two_pow_self (n := 6 * j)
+    omega
+  have hcast : ((6 * j + 1 : ℕ) : ℝ) ≤ ((2 ^ (6 * j) : ℕ) : ℝ) := by
+    exact_mod_cast hnat
+  have hpow : ((2 ^ (6 * j) : ℕ) : ℝ) = (2 : ℝ) ^ (6 * (j : ℤ)) := by
+    rw [show (6 : ℤ) * (j : ℤ) = ((6 * j : ℕ) : ℤ) by push_cast; ring, zpow_natCast]
+    push_cast
+    ring
+  rw [hpow] at hcast
+  push_cast at hcast
+  linarith
+
+/-- The exponent identity for the first remainder term. -/
+theorem rem_exp1 (j m l : ℕ) :
+    2 * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)
+        * ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12) * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)))
+      = (2 : ℝ) ^ ((j : ℤ) + 17) := by
+  rw [show (2 : ℝ) * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))
+      = (2 : ℝ) ^ (1 : ℤ) * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) by rw [← two_zpow_one],
+    show (2 : ℝ) * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)
+      = (2 : ℝ) ^ (1 : ℤ) * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21) by rw [← two_zpow_one]]
+  rw [← two_zpow_add, ← two_zpow_add, two_zpow_div, ← two_zpow_add, ← two_zpow_add]
+  congr 1
+  ring
+
+/-- The exponent identity for the remaining two remainder terms. -/
+theorem rem_exp2 (j m l : ℕ) :
+    (2 : ℝ) ^ (-(j : ℤ)) / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+        * ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12) * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)))
+      = (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2) := by
+  have hsq : ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+      = (2 : ℝ) ^ (2 * (((l : ℤ) - (m : ℤ)) + 18)) := by
+    rw [sq, ← two_zpow_add]
+    congr 1
+    ring
+  rw [hsq, show (2 : ℝ) * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)
+      = (2 : ℝ) ^ (1 : ℤ) * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21) by rw [← two_zpow_one]]
+  rw [two_zpow_div, ← two_zpow_add, ← two_zpow_add, ← two_zpow_add]
+  congr 1
+  ring
+
+/-- The first remainder factor is at most `2 ^ (-l)`. -/
+theorem rem_factor1 (j l : ℕ) :
+    ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) * (2 : ℝ) ^ ((j : ℤ) + 17)
+      ≤ (2 : ℝ) ^ (-(l : ℤ)) := by
+  rw [two_zpow_pow, ← two_zpow_add]
+  refine zpow_le_zpow_right₀ (by norm_num) ?_
+  have h := key_exp_ineq j l
+  push_cast
+  nlinarith [h]
+
+/-- The third remainder factor is at most `2 ^ (-l)`. -/
+theorem rem_factor3 (j l : ℕ) :
+    ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2)
+      ≤ (2 : ℝ) ^ (-(l : ℤ)) := by
+  rw [two_zpow_pow, ← two_zpow_add]
+  refine zpow_le_zpow_right₀ (by norm_num) ?_
+  have h := key_exp_ineq' j l
+  push_cast
+  nlinarith [h]
+
+/-- The second remainder factor is at most `3 · 2 ^ (-l)`. -/
+theorem rem_factor2 (j l : ℕ) :
+    ((j : ℝ) + 3) * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2)
+      ≤ 3 * (2 : ℝ) ^ (-(l : ℤ)) := by
+  have hkey : (2 : ℝ) ^ (6 * (j : ℤ)) *
+      (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2) * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2))
+      ≤ (2 : ℝ) ^ (-(l : ℤ)) := by
+    rw [two_zpow_pow, ← two_zpow_add, ← two_zpow_add]
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    have hl : (0 : ℤ) ≤ (l : ℤ) := Int.natCast_nonneg l
+    have hj : (0 : ℤ) ≤ (j : ℤ) := Int.natCast_nonneg j
+    have hprod : (0 : ℤ) ≤ (l : ℤ) * (j : ℤ) := mul_nonneg hl hj
+    push_cast
+    nlinarith [hprod, hl, hj]
+  have hcast := nat_le_three_mul_two_pow j
+  have hposq : (0 : ℝ) ≤ ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+      * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2) := by positivity
+  calc ((j : ℝ) + 3) * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2)
+      = ((j : ℝ) + 3) * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2)) := by ring
+    _ ≤ (3 * (2 : ℝ) ^ (6 * (j : ℤ))) * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2)) := mul_le_mul_of_nonneg_right hcast hposq
+    _ = 3 * ((2 : ℝ) ^ (6 * (j : ℤ)) * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2))) := by ring
+    _ ≤ 3 * (2 : ℝ) ^ (-(l : ℤ)) := by
+        refine mul_le_mul_of_nonneg_left hkey (by norm_num)
+
+/-- The Neumann expansion of `rBound` with `K = j + 3`. -/
+theorem rBound_expand (j m l : ℕ) (B Cs CV : ℝ) :
+    rBound j m B Cs CV (j + 3) ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18))
+      = 2 * B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))
+          * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)
+        + 8 * Cs * CV * B * ((j : ℝ) + 3) * (2 : ℝ) ^ (-(j : ℤ))
+          * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+            / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+        + 16 * Cs * CV * B * (2 : ℝ) ^ (-(j : ℤ))
+          * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3)
+            / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2 := by
+  have hAne : ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ≠ 0 := by positivity
+  have hVbq : (2 : ℝ) ^ (11 - (m : ℤ))
+      = (2 : ℝ) ^ (-(l : ℤ) - 7) * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18) := by
+    rw [← two_zpow_add]
+    congr 1
+    ring
+  have hsub : j + 3 - 1 = j + 2 := by omega
+  rw [rBound, cBound, hsub, hVbq]
+  push_cast
+  field_simp
+  ring
+
+/-- The remainder of the off-diagonal estimate in closed form. -/
+theorem rem_bound_closed (j m l : ℕ) {B Cs CV : ℝ} (hBnn : 0 ≤ B) (hCsnn : 0 ≤ Cs)
+    (hCVnn : 0 ≤ CV) :
+    rBound j m B Cs CV (j + 3) ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18))
+        * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+        * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21))
+      ≤ (1 + 40 * Cs * CV) * B * (2 : ℝ) ^ (-(l : ℤ)) := by
+  have he1 := rem_exp1 j m l
+  have he2 := rem_exp2 j m l
+  have hcollapse : rBound j m B Cs CV (j + 3) ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18))
+        * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+        * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21))
+      = B * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) * (2 : ℝ) ^ ((j : ℤ) + 17))
+        + 8 * Cs * CV * B * (((j : ℝ) + 3) * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+            * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2))
+        + 16 * Cs * CV * B * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3)
+            * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2)) := by
+    rw [rBound_expand]
+    rw [show (2 * B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))
+            * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)
+          + 8 * Cs * CV * B * ((j : ℝ) + 3) * (2 : ℝ) ^ (-(j : ℤ))
+            * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+              / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+          + 16 * Cs * CV * B * (2 : ℝ) ^ (-(j : ℤ))
+            * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3)
+              / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2)
+          * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+          * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21))
+        = B * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) *
+            (2 * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) / (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)
+              * ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+                * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21))))
+          + 8 * Cs * CV * B * ((j : ℝ) + 3) * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2) *
+            ((2 : ℝ) ^ (-(j : ℤ)) / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+              * ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+                * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21))))
+          + 16 * Cs * CV * B * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) *
+            ((2 : ℝ) ^ (-(j : ℤ)) / ((2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18)) ^ 2
+              * ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+                * (2 * (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)))) from by ring]
+    rw [he1, he2]
+    ring
+  rw [hcollapse]
+  have h1 := rem_factor1 j l
+  have h2 := rem_factor2 j l
+  have h3 := rem_factor3 j l
+  have e1 : B * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3) * (2 : ℝ) ^ ((j : ℤ) + 17))
+      ≤ B * (2 : ℝ) ^ (-(l : ℤ)) := mul_le_mul_of_nonneg_left h1 hBnn
+  have e2 : 8 * Cs * CV * B * (((j : ℝ) + 3) * ((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 2)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2))
+      ≤ 8 * Cs * CV * B * (3 * (2 : ℝ) ^ (-(l : ℤ))) :=
+    mul_le_mul_of_nonneg_left h2 (by positivity)
+  have e3 : 16 * Cs * CV * B * (((2 : ℝ) ^ (-(l : ℤ) - 7)) ^ (j + 3)
+        * (2 : ℝ) ^ ((j : ℤ) - (l : ℤ) - 2))
+      ≤ 16 * Cs * CV * B * (2 : ℝ) ^ (-(l : ℤ)) :=
+    mul_le_mul_of_nonneg_left h3 (by positivity)
+  have hfin : B * (2 : ℝ) ^ (-(l : ℤ)) + 8 * Cs * CV * B * (3 * (2 : ℝ) ^ (-(l : ℤ)))
+      + 16 * Cs * CV * B * (2 : ℝ) ^ (-(l : ℤ))
+      = (1 + 40 * Cs * CV) * B * (2 : ℝ) ^ (-(l : ℤ)) := by ring
+  linarith [e1, e2, e3]
+
+end RemClosed
+
+
+/-! ## §4.4  The off-diagonal estimate, kernel form -/
+
+section OffdiagKernel
+
+theorem ofReal_ball_sqrt {R : ℝ} (hR : 0 ≤ R) :
+    (volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ) ≤ ENNReal.ofReal (2 * R) := by
+  have h1 : (volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ)
+      ≤ (ENNReal.ofReal (4 * R ^ 2)) ^ (2⁻¹ : ℝ) :=
+    ENNReal.rpow_le_rpow (volume_closedBall_le hR) (by norm_num)
+  refine le_trans h1 (le_of_eq ?_)
+  rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num)]
+  congr 1
+  rw [rpow_half_eq_sqrt (by positivity), show (4 : ℝ) * R ^ 2 = (2 * R) ^ 2 by ring,
+    Real.sqrt_sq (by positivity)]
+
+theorem one_le_sqrt_two_zpow_mul (m : ℕ) :
+    (1 : ℝ) ≤ Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) := by
+  have h1 : (1 : ℝ) ≤ (2 : ℝ) ^ (3 * (m : ℤ)) := by
+    have h := zpow_le_zpow_right₀ (a := (2 : ℝ)) (by norm_num : (1 : ℝ) ≤ 2)
+      (show (0 : ℤ) ≤ 3 * (m : ℤ) by positivity)
+    simpa using h
+  rw [show (1 : ℝ) = Real.sqrt 1 by rw [Real.sqrt_one]]
+  exact Real.sqrt_le_sqrt h1
+
+/-- **The off-diagonal estimate of §4.4** in kernel form.  If `g` is supported in the annulus
+`2^{l-m+19} ≤ ‖w‖ ≤ 2^{l-m+21}` then
+`∫ ‖g(w) ∫ e^{2πiΦ} b dη‖ dw ≤ c B √(2^{3m}) 2^{-l} ‖g‖₂`, the constant `c` being absolute. -/
+theorem lintegral_offdiag_kernel {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) {ξ : Pl} (hξ : XiData j ξ) (l : ℕ)
+    {g : Pl → ℂ} (hg : AEMeasurable g (volume : Measure Pl))
+    (hglow : ∀ w : Pl, g w ≠ 0 → (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 19) ≤ ‖w‖)
+    (hghigh : ∀ w : Pl, g w ≠ 0 → ‖w‖ ≤ (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)) :
+    (∫⁻ w : Pl, ‖g w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      ≤ ENNReal.ofReal ((1 / Real.pi) * (2 + 72 * Cs * CV) * B
+            * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) * (2 : ℝ) ^ (-(l : ℤ)))
+        * (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hBnn : 0 ≤ B := hB.nonneg
+  set A : ℝ := (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 18) with hAdef
+  set R : ℝ := (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21) with hRdef
+  set Sq : ℝ := Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) with hSqdef
+  set Ng : ℝ≥0∞ := (∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) with hNgdef
+  have hSq1 : (1 : ℝ) ≤ Sq := by rw [hSqdef]; exact one_le_sqrt_two_zpow_mul m
+  have hSqnn : (0 : ℝ) ≤ Sq := by linarith
+  have hRnn : (0 : ℝ) ≤ R := by rw [hRdef]; positivity
+  have hA13 : (2 : ℝ) ^ (13 - (m : ℤ)) ≤ A := by
+    rw [hAdef]
+    exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+  have hA4 : 4 * (2 : ℝ) ^ (11 - (m : ℤ)) ≤ A := by
+    have hid : (4 : ℝ) * (2 : ℝ) ^ (11 - (m : ℤ)) = (2 : ℝ) ^ (13 - (m : ℤ)) := by
+      rw [show (13 : ℤ) - (m : ℤ) = 2 + (11 - (m : ℤ)) by ring, two_zpow_add]
+      norm_num
+    rw [hid]
+    exact hA13
+  have hgA : ∀ w : Pl, g w ≠ 0 → 2 * A ≤ ‖w‖ := by
+    intro w hz
+    have hid : (2 : ℝ) * A = (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 19) := by
+      rw [hAdef, show ((l : ℤ) - (m : ℤ) + 19) = 1 + ((l : ℤ) - (m : ℤ) + 18) by ring,
+        two_zpow_add 1 ((l : ℤ) - (m : ℤ) + 18), zpow_one]
+    rw [hid]
+    exact hglow w hz
+  have hkey := lintegral_offdiag_two_regions hB hCs hCVnn hCV hε ht1 ht2 hξ (j + 3)
+    hA13 hA4 hg hgA (fun w hz => hghigh w hz)
+  refine le_trans hkey ?_
+  -- bound the main constant
+  have hmain : Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+      (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+        + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2)
+      ≤ (1 + 32 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ)) := by
+    rw [hAdef, hSqdef]
+    exact main_bound_closed j m l hBnn hCsnn hCVnn
+  have hrem : rBound j m B Cs CV (j + 3) A * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)
+      * (2 * R) ≤ (1 + 40 * Cs * CV) * B * (2 : ℝ) ^ (-(l : ℤ)) := by
+    rw [hAdef, hRdef]
+    exact rem_bound_closed j m l hBnn hCsnn hCVnn
+  -- combine in `ℝ≥0∞`
+  have hb1 : ENNReal.ofReal (Real.sqrt ((2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) *
+        (2 * (B * (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ)))) / A
+          + 8 * (B * (2 * (Cs * (2 * CV * (2 : ℝ) ^ (-(j : ℤ)))))) / A ^ 2)) * Ng
+      ≤ ENNReal.ofReal ((1 + 32 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ))) * Ng :=
+    mul_le_mul' (ENNReal.ofReal_le_ofReal hmain) (le_refl _)
+  have hb2 : ENNReal.ofReal (rBound j m B Cs CV (j + 3) A *
+        (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+      * ((volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ) * Ng)
+      ≤ ENNReal.ofReal ((1 + 40 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ))) * Ng := by
+    have hstep1 : ENNReal.ofReal (rBound j m B Cs CV (j + 3) A *
+          (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+        * ((volume (Metric.closedBall (0 : Pl) R)) ^ (2⁻¹ : ℝ) * Ng)
+        ≤ ENNReal.ofReal (rBound j m B Cs CV (j + 3) A *
+            (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+          * (ENNReal.ofReal (2 * R) * Ng) :=
+      mul_le_mul' (le_refl _) (mul_le_mul' (ofReal_ball_sqrt hRnn) (le_refl _))
+    refine le_trans hstep1 ?_
+    have hrnn : 0 ≤ rBound j m B Cs CV (j + 3) A *
+        (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12) := by
+      have hApos : (0 : ℝ) < A := by rw [hAdef]; positivity
+      have hrb : 0 ≤ rBound j m B Cs CV (j + 3) A :=
+        rBound_nonneg hBnn hCsnn hCVnn (j + 3) hApos
+      positivity
+    have hmerge : ENNReal.ofReal (rBound j m B Cs CV (j + 3) A *
+          (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12)) * (ENNReal.ofReal (2 * R) * Ng)
+        = ENNReal.ofReal (rBound j m B Cs CV (j + 3) A *
+            (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12) * (2 * R)) * Ng := by
+      rw [← mul_assoc, ← ENNReal.ofReal_mul hrnn]
+    rw [hmerge]
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) (le_refl _)
+    have hc : 0 ≤ (1 + 40 * Cs * CV) * B := by positivity
+    have hp : (0 : ℝ) ≤ (2 : ℝ) ^ (-(l : ℤ)) := by positivity
+    have hmulSq : (1 + 40 * Cs * CV) * B ≤ (1 + 40 * Cs * CV) * B * Sq := by
+      nlinarith [hSq1, hc]
+    refine le_trans hrem ?_
+    exact mul_le_mul_of_nonneg_right hmulSq hp
+  refine le_trans (mul_le_mul' (le_refl (2 : ℝ≥0∞))
+    (mul_le_mul' (le_refl _) (add_le_add hb1 hb2))) ?_
+  -- final numeric merge
+  have hsum : ENNReal.ofReal ((1 + 32 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ))) * Ng
+      + ENNReal.ofReal ((1 + 40 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ))) * Ng
+      = ENNReal.ofReal ((2 + 72 * Cs * CV) * B * Sq * (2 : ℝ) ^ (-(l : ℤ))) * Ng := by
+    rw [← add_mul, ← ENNReal.ofReal_add (by positivity) (by positivity)]
+    congr 2
+    ring
+  rw [hsum]
+  have htwo : (2 : ℝ≥0∞) = ENNReal.ofReal 2 := by simp
+  rw [htwo, ← mul_assoc, ← ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 2), ← mul_assoc,
+    ← ENNReal.ofReal_mul (by positivity)]
+  refine mul_le_mul' (ENNReal.ofReal_le_ofReal (le_of_eq ?_)) (le_refl _)
+  have hpi : Real.pi ≠ 0 := Real.pi_ne_zero
+  field_simp
+
+end OffdiagKernel
+
+
+/-! ### Localization of the partial Fourier transform -/
+
+section GfLocal
+
+/-- If `F` is supported where `ρ₁ ≤ ‖y - z‖ ≤ ρ₂` then the partial Fourier transform of the
+sheared function is supported in the annulus `ρ₁ ≤ ‖w‖ ≤ ρ₂`. -/
+theorem Gf_eq_zero_of_localized {F : SchwartzMap Pl2 ℂ} {r1 r2 : ℝ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 → r1 ≤ ‖y - z‖ ∧ ‖y - z‖ ≤ r2)
+    (ξ : Pl) {w : Pl} (hw : ¬ (r1 ≤ ‖w‖ ∧ ‖w‖ ≤ r2)) :
+    Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w = 0 := by
+  have hzero : ∀ y : Pl, (shearSchwartz F : Pl2 → ℂ) (pr y w) = 0 := by
+    intro y
+    by_contra hne
+    have hval : (shearSchwartz F : Pl2 → ℂ) (pr y w) = (F : Pl2 → ℂ) (pr y (y - w)) := by
+      rw [shearSchwartz_apply, shearCLE_pr]
+    rw [hval] at hne
+    have h := hF y (y - w) hne
+    rw [show y - (y - w) = w by abel] at h
+    exact hw h
+  rw [Gf_eq_integral]
+  have hpt : ∀ y : Pl, ee (inner ℝ y ξ) * (shearSchwartz F : Pl2 → ℂ) (pr y w) = 0 := by
+    intro y
+    rw [hzero y, mul_zero]
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_zero]
+
+theorem Gf_low {F : SchwartzMap Pl2 ℂ} {r1 r2 : ℝ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 → r1 ≤ ‖y - z‖ ∧ ‖y - z‖ ≤ r2)
+    (ξ : Pl) {w : Pl} (hz : Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w ≠ 0) : r1 ≤ ‖w‖ := by
+  by_contra hcon
+  exact hz (Gf_eq_zero_of_localized hF ξ (fun h => hcon h.1))
+
+theorem Gf_high {F : SchwartzMap Pl2 ℂ} {r1 r2 : ℝ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 → r1 ≤ ‖y - z‖ ∧ ‖y - z‖ ≤ r2)
+    (ξ : Pl) {w : Pl} (hz : Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w ≠ 0) : ‖w‖ ≤ r2 := by
+  by_contra hcon
+  exact hz (Gf_eq_zero_of_localized hF ξ (fun h => hcon h.2))
+
+/-- The partial Fourier transform is jointly measurable. -/
+theorem stronglyMeasurable_Gf_pair (H : SchwartzMap Pl2 ℂ) :
+    StronglyMeasurable fun p : Pl × Pl => Gf (H : Pl2 → ℂ) p.1 p.2 := by
+  have hcont : Continuous fun q : (Pl × Pl) × Pl =>
+      ee (inner ℝ q.2 q.1.1) * (H : Pl2 → ℂ) (pr q.2 q.1.2) := by
+    have h1 : Continuous fun q : (Pl × Pl) × Pl => ee (inner ℝ q.2 q.1.1) :=
+      continuous_ee.comp (continuous_snd.inner (continuous_fst.comp continuous_fst))
+    have h2 : Continuous fun q : (Pl × Pl) × Pl => (H : Pl2 → ℂ) (pr q.2 q.1.2) :=
+      H.continuous.comp (continuous_prPair.comp
+        (continuous_snd.prodMk (continuous_snd.comp continuous_fst)))
+    exact h1.mul h2
+  have h := hcont.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure Pl))
+  have hfun : (fun p : Pl × Pl => ∫ y : Pl, ee (inner ℝ y p.1) * (H : Pl2 → ℂ) (pr y p.2))
+      = fun p : Pl × Pl => Gf (H : Pl2 → ℂ) p.1 p.2 := by
+    funext p
+    rw [Gf_eq_integral]
+  rw [← hfun]
+  exact h
+
+end GfLocal
+
+
+/-! ## §4.4  The off-diagonal estimate for `S[F,b]` -/
+
+section OffdiagSop
+
+/-- **The off-diagonal estimate of §4.4.**  If `F` is supported where
+`2^{l-m+19} ≤ |y - z| ≤ 2^{l-m+21}` and `b` is a `(j,m)`-adapted symbol with
+`|b| ≤ B`, `|∂_η b| ≤ B 2^{-(j-m)}`, then
+`‖S[F,b](·,t)‖_{L²(ℝ²)} ≤ c B √(2^{3m}) 2^{-l} ‖F‖_{L²(ℝ⁴)}`, the constant being absolute. -/
+theorem offdiag_Sop {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (l : ℕ)
+    {F : SchwartzMap Pl2 ℂ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 →
+      (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 19) ≤ ‖y - z‖ ∧
+        ‖y - z‖ ≤ (2 : ℝ) ^ ((l : ℤ) - (m : ℤ) + 21)) :
+    (∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (((1 / Real.pi) * (2 + 72 * Cs * CV) * B
+            * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) * (2 : ℝ) ^ (-(l : ℤ))) ^ 2)
+        * ∫⁻ x : Pl2, ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hBnn : 0 ≤ B := hB.nonneg
+  set C : ℝ := (1 / Real.pi) * (2 + 72 * Cs * CV) * B
+      * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) * (2 : ℝ) ^ (-(l : ℤ)) with hCdef
+  have hCnn : 0 ≤ C := by
+    rw [hCdef]
+    have hpi : (0 : ℝ) < Real.pi := Real.pi_pos
+    have hs : (0 : ℝ) ≤ Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) := Real.sqrt_nonneg _
+    positivity
+  -- the pointwise bound in `ξ`
+  have hptwise : ∀ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ
+      ≤ ENNReal.ofReal C *
+        (∫⁻ w : Pl, ‖Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ) := by
+    intro ξ
+    rcases Set.eq_empty_or_nonempty (SuppSet j m ξ) with hempty | ⟨η₀, hη₀⟩
+    · have hb0 : ∀ η : Pl, b t ξ η = 0 := by
+        intro η
+        refine hB.supp t ξ η ?_
+        rw [hempty]
+        exact Set.notMem_empty η
+      have hS0 : Sop ε b (F : Pl2 → ℂ) ξ t = 0 := by
+        rw [Sop, SopK]
+        have hpt : ∀ η : Pl,
+            phase ε t ξ η * b t ξ η * 𝓕 (F : Pl2 → ℂ) (pr (ξ - η) η) = 0 := by
+          intro η
+          rw [hb0 η]
+          ring
+        rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_zero]
+      rw [hS0, enorm_zero]
+      exact zero_le
+    · have hξ : XiData j ξ := xiData_of_mem hη₀
+      rw [Sop_eq_integral_w hB ε t ξ F]
+      refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+      rw [hCdef]
+      exact lintegral_offdiag_kernel hB hCs hCVnn hCV hε ht1 ht2 hξ l
+        (measurable_Gf (shearSchwartz F) ξ).aemeasurable
+        (fun w hz => Gf_low hF ξ hz) (fun w hz => Gf_high hF ξ hz)
+  -- square the pointwise bound
+  have hsq : ∀ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ)
+      ≤ ENNReal.ofReal (C ^ 2) *
+        ∫⁻ w : Pl, ‖Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ) := by
+    intro ξ
+    have h := ENNReal.rpow_le_rpow (hptwise ξ) (by norm_num : (0 : ℝ) ≤ (2 : ℝ))
+    refine le_trans h (le_of_eq ?_)
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ (2 : ℝ))]
+    congr 1
+    · rw [ENNReal.ofReal_rpow_of_nonneg hCnn (by norm_num : (0 : ℝ) ≤ (2 : ℝ))]
+      congr 1
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+    · rw [← ENNReal.rpow_mul]
+      norm_num
+  refine le_trans (lintegral_mono hsq) ?_
+  rw [lintegral_const_mul' _ _ (by simp)]
+  refine mul_le_mul' (le_refl _) ?_
+  -- swap the order of integration and use partial Plancherel
+  have hmeas : AEMeasurable
+      (Function.uncurry fun ξ w : Pl =>
+        ‖Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ))
+      ((volume : Measure Pl).prod (volume : Measure Pl)) := by
+    have h := (stronglyMeasurable_Gf_pair (shearSchwartz F)).measurable.enorm
+    exact (h.pow_const _).aemeasurable
+  have hswap := lintegral_lintegral_swap hmeas
+  rw [hswap]
+  have hGfdef : ∀ w ξ : Pl, Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w
+      = 𝓕 (fun y : Pl => (shearSchwartz F : Pl2 → ℂ) (pr y w)) ξ := fun w ξ => rfl
+  have hrw : (∫⁻ w : Pl, ∫⁻ ξ : Pl, ‖Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ))
+      = ∫⁻ w : Pl, ∫⁻ ξ : Pl,
+        ‖𝓕 (fun y : Pl => (shearSchwartz F : Pl2 → ℂ) (pr y w)) ξ‖ₑ ^ (2 : ℝ) := by
+    refine lintegral_congr fun w => ?_
+    refine lintegral_congr fun ξ => ?_
+    rw [hGfdef w ξ]
+  rw [hrw, lintegral_partial_plancherel (shearSchwartz F),
+    lintegral_enorm_sq_shearSchwartz F]
+
+end OffdiagSop
+
+
+/-! ## §4.6  The summation over the dyadic separation scales
+
+The geometric series `∑_n 2^{-na}` is `≤ 3/a` for `0 < a ≤ 1`; this is the source of the factor
+`(2γ-1)^{-1}` in Proposition 3.1.
+-/
+
+section GeomRpow
+
+theorem two_rpow_neg_eq_exp (a : ℝ) : (2 : ℝ) ^ (-a) = Real.exp (-(a * Real.log 2)) := by
+  rw [Real.rpow_def_of_pos (by norm_num : (0 : ℝ) < 2)]
+  congr 1
+  ring
+
+theorem two_rpow_neg_lt_one {a : ℝ} (ha : 0 < a) : (2 : ℝ) ^ (-a) < 1 := by
+  rw [two_rpow_neg_eq_exp]
+  refine Real.exp_lt_one_iff.mpr ?_
+  have hlog : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  nlinarith [ha, hlog]
+
+theorem two_rpow_neg_pos (a : ℝ) : (0 : ℝ) < (2 : ℝ) ^ (-a) := by positivity
+
+/-- `1 - 2^{-a} ≥ a/3` for `0 < a ≤ 1`. -/
+theorem one_sub_two_rpow_neg_ge {a : ℝ} (ha : 0 < a) (ha1 : a ≤ 1) :
+    a / 3 ≤ 1 - (2 : ℝ) ^ (-a) := by
+  have hlog : (0.6931471803 : ℝ) < Real.log 2 := Real.log_two_gt_d9
+  have hlog2 : Real.log 2 < 0.6931471808 := Real.log_two_lt_d9
+  set x : ℝ := a * Real.log 2 with hx
+  have hxpos : 0 < x := by
+    rw [hx]
+    have : (0 : ℝ) < Real.log 2 := by linarith
+    positivity
+  have hxle : x ≤ 0.6931471808 := by
+    rw [hx]
+    nlinarith [ha1, hlog2, hlog, ha]
+  have hexp : 1 + x ≤ Real.exp x := by
+    have h := Real.add_one_le_exp x
+    linarith
+  have hexppos : (0 : ℝ) < Real.exp x := Real.exp_pos x
+  have hinv : Real.exp (-x) = 1 / Real.exp x := by
+    rw [Real.exp_neg, one_div]
+  have hle : Real.exp (-x) ≤ 1 / (1 + x) := by
+    rw [hinv]
+    refine one_div_le_one_div_of_le (by linarith) hexp
+  have hstep : 1 - 1 / (1 + x) = x / (1 + x) := by
+    field_simp
+    ring
+  have hfin : a / 3 ≤ x / (1 + x) := by
+    rw [div_le_div_iff₀ (by norm_num) (by linarith)]
+    rw [hx]
+    nlinarith [hlog, hxle, ha, ha1]
+  rw [two_rpow_neg_eq_exp, ← hx]
+  linarith [hle, hstep, hfin]
+
+/-- The geometric sum `∑_n (2^{-a})^n` is at most `3/a`. -/
+theorem tsum_two_rpow_neg_le {a : ℝ} (ha : 0 < a) (ha1 : a ≤ 1) :
+    ∑' n : ℕ, ((2 : ℝ) ^ (-a)) ^ n ≤ 3 / a := by
+  have hlt : (2 : ℝ) ^ (-a) < 1 := two_rpow_neg_lt_one ha
+  have hnn : (0 : ℝ) ≤ (2 : ℝ) ^ (-a) := le_of_lt (two_rpow_neg_pos a)
+  rw [tsum_geometric_of_lt_one hnn hlt]
+  have hden : a / 3 ≤ 1 - (2 : ℝ) ^ (-a) := one_sub_two_rpow_neg_ge ha ha1
+  have hpos : (0 : ℝ) < 1 - (2 : ℝ) ^ (-a) := by linarith
+  rw [inv_eq_one_div, div_le_div_iff₀ hpos ha]
+  linarith
+
+end GeomRpow
+
+
+/-! ### The dyadic annuli in the separation variable -/
+
+section DyadicAnn
+
+/-- The dyadic annulus `2^{k+20} ≤ ‖w‖ < 2^{k+21}`, matching the paper's decomposition
+`F = ∑_k F_k` with `F_k` supported where `2^k ≤ 2^{-20}|y-z| < 2^{k+1}`. -/
+def Ann (k : ℤ) : Set Pl := {w : Pl | (2 : ℝ) ^ (k + 20) ≤ ‖w‖ ∧ ‖w‖ < (2 : ℝ) ^ (k + 21)}
+
+theorem measurableSet_Ann (k : ℤ) : MeasurableSet (Ann k) := by
+  have h1 : MeasurableSet {w : Pl | (2 : ℝ) ^ (k + 20) ≤ ‖w‖} :=
+    measurableSet_le measurable_const continuous_norm.measurable
+  have h2 : MeasurableSet {w : Pl | ‖w‖ < (2 : ℝ) ^ (k + 21)} :=
+    measurableSet_lt continuous_norm.measurable measurable_const
+  exact h1.inter h2
+
+theorem Ann_disjoint : Pairwise (Function.onFun Disjoint Ann) := by
+  intro k k' hne
+  refine Set.disjoint_left.mpr ?_
+  intro w hw hw'
+  rcases lt_or_gt_of_ne hne with hlt | hlt
+  · have h1 : ‖w‖ < (2 : ℝ) ^ (k + 21) := hw.2
+    have h2 : (2 : ℝ) ^ (k' + 20) ≤ ‖w‖ := hw'.1
+    have hstep : (2 : ℝ) ^ (k + 21) ≤ (2 : ℝ) ^ (k' + 20) :=
+      zpow_le_zpow_right₀ (by norm_num) (by omega)
+    linarith
+  · have h1 : ‖w‖ < (2 : ℝ) ^ (k' + 21) := hw'.2
+    have h2 : (2 : ℝ) ^ (k + 20) ≤ ‖w‖ := hw.1
+    have hstep : (2 : ℝ) ^ (k' + 21) ≤ (2 : ℝ) ^ (k + 20) :=
+      zpow_le_zpow_right₀ (by norm_num) (by omega)
+    linarith
+
+theorem mem_iUnion_Ann {w : Pl} (hw : w ≠ 0) : w ∈ ⋃ k : ℤ, Ann k := by
+  have hpos : (0 : ℝ) < ‖w‖ := norm_pos_iff.mpr hw
+  obtain ⟨n, hn⟩ := exists_mem_Ico_zpow hpos (by norm_num : (1 : ℝ) < 2)
+  refine Set.mem_iUnion.mpr ⟨n - 20, ?_⟩
+  refine ⟨?_, ?_⟩
+  · rw [show n - 20 + 20 = n by ring]
+    exact hn.1
+  · rw [show n - 20 + 21 = n + 1 by ring]
+    exact hn.2
+
+theorem iUnion_Ann_ae : (⋃ k : ℤ, Ann k) =ᵐ[(volume : Measure Pl)] Set.univ := by
+  have hsub : (Set.univ : Set Pl) \ (⋃ k : ℤ, Ann k) ⊆ {(0 : Pl)} := by
+    intro w hw
+    by_contra hne
+    exact hw.2 (mem_iUnion_Ann (by simpa using hne))
+  have hnull : (volume : Measure Pl) ((Set.univ : Set Pl) \ (⋃ k : ℤ, Ann k)) = 0 := by
+    refine measure_mono_null hsub ?_
+    exact measure_singleton (0 : Pl)
+  refine (ae_eq_set).mpr ⟨?_, hnull⟩
+  rw [Set.diff_univ]
+  exact measure_empty (μ := (volume : Measure Pl))
+
+/-- The `lintegral` over the plane splits into the sum over the dyadic annuli. -/
+theorem lintegral_eq_tsum_Ann (f : Pl → ℝ≥0∞) :
+    (∫⁻ w : Pl, f w) = ∑' k : ℤ, ∫⁻ w in Ann k, f w := by
+  have hstep : (∫⁻ w : Pl, f w) = ∫⁻ w in ⋃ k : ℤ, Ann k, f w := by
+    rw [← setLIntegral_univ f]
+    exact (setLIntegral_congr iUnion_Ann_ae).symm
+  rw [hstep]
+  exact lintegral_iUnion measurableSet_Ann Ann_disjoint f
+
+end DyadicAnn
+
+
+/-! ### The near/far cutoff in the separation variable
+
+A single smooth cutoff in `‖y - z‖²` splits `F` into a near and a far piece, both Schwartz.
+-/
+
+section NearFar
+
+/-- The smooth cutoff `sepCut c x = smoothTransition (c ‖y - z‖² - 1)`, as a function of
+`x = (y,z) ∈ ℝ⁴`.  It vanishes when `c ‖y-z‖² ≤ 1` and equals `1` when `c ‖y-z‖² ≥ 2`. -/
+def sepCut (c : ℝ) (x : Pl2) : ℝ :=
+  Real.smoothTransition (c * ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2 - 1)
+
+theorem sepDiff_apply (y z : Pl) :
+    (WithLp.ofLp (pr y z)).1 - (WithLp.ofLp (pr y z)).2 = y - z := rfl
+
+/-- The separation map `x = (y,z) ↦ y - z` as a continuous linear map. -/
+def sepCLM : Pl2 →L[ℝ] Pl :=
+  (ContinuousLinearMap.fst ℝ Pl Pl - ContinuousLinearMap.snd ℝ Pl Pl).comp
+    (WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl : Pl2 →L[ℝ] Pl × Pl)
+
+@[simp] theorem sepCLM_apply (x : Pl2) :
+    sepCLM x = (WithLp.ofLp x).1 - (WithLp.ofLp x).2 := rfl
+
+theorem contDiff_sepDiffSq : ContDiff ℝ (↑(⊤ : ℕ∞))
+    fun x : Pl2 => ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2 := by
+  have h : (fun x : Pl2 => ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2)
+      = fun x : Pl2 => ‖sepCLM x‖ ^ 2 := rfl
+  rw [h]
+  exact (contDiff_norm_sq ℝ).comp sepCLM.contDiff
+
+theorem contDiff_sepCut (c : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (sepCut c) :=
+  contDiff_st.comp ((contDiff_const.mul contDiff_sepDiffSq).sub contDiff_const)
+
+theorem sepCut_nonneg (c : ℝ) (x : Pl2) : 0 ≤ sepCut c x :=
+  Real.smoothTransition.nonneg _
+
+theorem sepCut_le_one (c : ℝ) (x : Pl2) : sepCut c x ≤ 1 :=
+  Real.smoothTransition.le_one _
+
+theorem sepCut_eq_zero {c : ℝ} {x : Pl2}
+    (h : c * ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2 ≤ 1) : sepCut c x = 0 :=
+  Real.smoothTransition.zero_of_nonpos (by linarith)
+
+theorem sepCut_eq_one {c : ℝ} {x : Pl2}
+    (h : 2 ≤ c * ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2) : sepCut c x = 1 :=
+  Real.smoothTransition.one_of_one_le (by linarith)
+
+theorem hasTemperateGrowth_st : Function.HasTemperateGrowth Real.smoothTransition := by
+  refine ⟨contDiff_st, fun n => ?_⟩
+  obtain ⟨C, hC1, hC⟩ := exists_st_bound n
+  refine ⟨0, C, fun x => ?_⟩
+  simpa using hC n (le_refl n) x
+
+theorem hasTemperateGrowth_sepDiffSq :
+    Function.HasTemperateGrowth
+      fun x : Pl2 => ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2 := by
+  have h : (fun x : Pl2 => ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2)
+      = (fun v : Pl => ‖v‖ ^ 2) ∘ sepCLM := rfl
+  rw [h]
+  exact (Function.hasTemperateGrowth_norm_sq Pl).comp sepCLM.hasTemperateGrowth
+
+theorem hasTemperateGrowth_sepCut (c : ℝ) : Function.HasTemperateGrowth (sepCut c) := by
+  have h : sepCut c = Real.smoothTransition ∘
+      fun x : Pl2 => c * ‖(WithLp.ofLp x).1 - (WithLp.ofLp x).2‖ ^ 2 - 1 := rfl
+  rw [h]
+  refine hasTemperateGrowth_st.comp ?_
+  exact ((Function.HasTemperateGrowth.const c).mul hasTemperateGrowth_sepDiffSq).sub
+    (Function.HasTemperateGrowth.const 1)
+
+/-- The far piece `F · sepCut c`, a Schwartz function. -/
+def farPart (c : ℝ) (F : SchwartzMap Pl2 ℂ) : SchwartzMap Pl2 ℂ :=
+  SchwartzMap.smulLeftCLM ℂ (sepCut c) F
+
+/-- The near piece `F · (1 - sepCut c)`, a Schwartz function. -/
+def nearPart (c : ℝ) (F : SchwartzMap Pl2 ℂ) : SchwartzMap Pl2 ℂ := F - farPart c F
+
+theorem farPart_apply (c : ℝ) (F : SchwartzMap Pl2 ℂ) (x : Pl2) :
+    (farPart c F : Pl2 → ℂ) x = (sepCut c x : ℝ) • (F : Pl2 → ℂ) x := by
+  rw [farPart]
+  exact SchwartzMap.smulLeftCLM_apply_apply (hasTemperateGrowth_sepCut c) F x
+
+theorem nearPart_apply (c : ℝ) (F : SchwartzMap Pl2 ℂ) (x : Pl2) :
+    (nearPart c F : Pl2 → ℂ) x
+      = (1 - sepCut c x : ℝ) • (F : Pl2 → ℂ) x := by
+  rw [nearPart, sub_apply, farPart_apply, sub_smul, one_smul]
+
+theorem add_nearPart_farPart (c : ℝ) (F : SchwartzMap Pl2 ℂ) :
+    nearPart c F + farPart c F = F := by
+  rw [nearPart]
+  abel
+
+/-- The far piece is supported where the separation is large. -/
+theorem farPart_support {c : ℝ} {F : SchwartzMap Pl2 ℂ} {y z : Pl}
+    (h : (farPart c F : Pl2 → ℂ) (pr y z) ≠ 0) : 1 < c * ‖y - z‖ ^ 2 := by
+  by_contra hcon
+  refine h ?_
+  rw [farPart_apply, sepCut_eq_zero (by rw [sepDiff_apply]; exact not_lt.mp hcon), zero_smul]
+
+/-- The near piece is supported where the separation is small. -/
+theorem nearPart_support {c : ℝ} {F : SchwartzMap Pl2 ℂ} {y z : Pl}
+    (h : (nearPart c F : Pl2 → ℂ) (pr y z) ≠ 0) : c * ‖y - z‖ ^ 2 < 2 := by
+  by_contra hcon
+  refine h ?_
+  rw [nearPart_apply, sepCut_eq_one (by rw [sepDiff_apply]; exact not_lt.mp hcon)]
+  simp
+
+end NearFar
+
+
+/-! ### The weight `w_γ(y,z) = |y-z|^{-(2γ-1)}` -/
+
+section Weight
+
+/-- The weighted `L²` mass `∫ |F|² |y-z|^{-(2γ-1)}`. -/
+def wMass (gam : ℝ) (F : Pl2 → ℂ) : ℝ≥0∞ :=
+  ∫⁻ x : Pl2, ‖F x‖ₑ ^ (2 : ℝ) * ‖sepCLM x‖ₑ ^ (-(2 * gam - 1))
+
+/-- The diagonal `{y = z}` is null in `ℝ⁴`. -/
+theorem volume_sepCLM_eq_zero : (volume : Measure Pl2) {x : Pl2 | sepCLM x = 0} = 0 := by
+  have hker : {x : Pl2 | sepCLM x = 0} = (LinearMap.ker (sepCLM : Pl2 →ₗ[ℝ] Pl) : Set Pl2) := by
+    ext x
+    simp [LinearMap.mem_ker]
+  have hne : (LinearMap.ker (sepCLM : Pl2 →ₗ[ℝ] Pl)) ≠ ⊤ := by
+    intro hcon
+    have hmem : (pr (mk2 1 0) 0) ∈ LinearMap.ker (sepCLM : Pl2 →ₗ[ℝ] Pl) := by
+      rw [hcon]
+      exact Submodule.mem_top
+    rw [LinearMap.mem_ker] at hmem
+    have hval : (sepCLM : Pl2 →ₗ[ℝ] Pl) (pr (mk2 1 0) 0) = mk2 1 0 := by
+      show mk2 1 0 - 0 = mk2 1 0
+      rw [sub_zero]
+    rw [hval] at hmem
+    have h1 : (mk2 1 0 : Pl) 0 = 1 := mk2_apply_zero 1 0
+    rw [hmem] at h1
+    simp at h1
+  rw [hker]
+  exact Measure.addHaar_submodule (volume : Measure Pl2) _ hne
+
+/-- The key pointwise inequality behind both weight comparisons. -/
+theorem one_le_ofReal_mul_enorm_rpow {gam R : ℝ} (hgam : 1 / 2 < gam) (hR : 0 < R)
+    {v : Pl} (hv : ‖v‖ ≤ R) :
+    (1 : ℝ≥0∞) ≤ ENNReal.ofReal (R ^ (2 * gam - 1)) * ‖v‖ₑ ^ (-(2 * gam - 1)) := by
+  have hexp : (0 : ℝ) < 2 * gam - 1 := by linarith
+  have hRpow : (0 : ℝ) < R ^ (2 * gam - 1) := Real.rpow_pos_of_pos hR _
+  by_cases hz : v = 0
+  · rw [hz]
+    have h0 : ‖(0 : Pl)‖ₑ = 0 := by simp
+    rw [h0, ENNReal.zero_rpow_of_neg (by linarith)]
+    rw [ENNReal.mul_top (by
+      simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+      exact hRpow)]
+    exact le_top
+  · have hpos : (0 : ℝ) < ‖v‖ := norm_pos_iff.mpr hz
+    have hvpos : (0 : ℝ) < ‖v‖ ^ (2 * gam - 1) := Real.rpow_pos_of_pos hpos _
+    have hmono : ‖v‖ ^ (2 * gam - 1) ≤ R ^ (2 * gam - 1) :=
+      Real.rpow_le_rpow hpos.le hv hexp.le
+    have hkey : (1 : ℝ) ≤ R ^ (2 * gam - 1) * ‖v‖ ^ (-(2 * gam - 1)) := by
+      rw [Real.rpow_neg hpos.le, ← div_eq_mul_inv, le_div_iff₀ hvpos, one_mul]
+      exact hmono
+    have henorm : ‖v‖ₑ ^ (-(2 * gam - 1)) = ENNReal.ofReal (‖v‖ ^ (-(2 * gam - 1))) := by
+      rw [← ofReal_norm, ENNReal.ofReal_rpow_of_pos hpos]
+    rw [henorm, ← ENNReal.ofReal_mul (le_of_lt hRpow), ← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal hkey
+
+/-- On the support of a function localized where the separation is at most `R`, the unweighted
+`L²` mass is controlled by the weighted one. -/
+theorem lintegral_enorm_sq_le_wMass {gam : ℝ} (hgam : 1 / 2 < gam) {R : ℝ} (hR : 0 < R)
+    {G F : Pl2 → ℂ} (hGF : ∀ x, ‖G x‖ ≤ ‖F x‖)
+    (hsupp : ∀ x, G x ≠ 0 → ‖sepCLM x‖ ≤ R) :
+    (∫⁻ x : Pl2, ‖G x‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (R ^ (2 * gam - 1)) * wMass gam F := by
+  have hpt : ∀ x : Pl2, ‖G x‖ₑ ^ (2 : ℝ)
+      ≤ ENNReal.ofReal (R ^ (2 * gam - 1)) *
+        (‖F x‖ₑ ^ (2 : ℝ) * ‖sepCLM x‖ₑ ^ (-(2 * gam - 1))) := by
+    intro x
+    by_cases hz : G x = 0
+    · rw [hz]
+      simp [ENNReal.zero_rpow_of_pos]
+    · have hcoef := one_le_ofReal_mul_enorm_rpow hgam hR (hsupp x hz)
+      have hGle : ‖G x‖ₑ ^ (2 : ℝ) ≤ ‖F x‖ₑ ^ (2 : ℝ) := by
+        refine ENNReal.rpow_le_rpow ?_ (by norm_num)
+        rw [← ofReal_norm, ← ofReal_norm]
+        exact ENNReal.ofReal_le_ofReal (hGF x)
+      calc ‖G x‖ₑ ^ (2 : ℝ) ≤ ‖F x‖ₑ ^ (2 : ℝ) := hGle
+        _ = 1 * ‖F x‖ₑ ^ (2 : ℝ) := by rw [one_mul]
+        _ ≤ (ENNReal.ofReal (R ^ (2 * gam - 1)) * ‖sepCLM x‖ₑ ^ (-(2 * gam - 1)))
+            * ‖F x‖ₑ ^ (2 : ℝ) := mul_le_mul' hcoef (le_refl _)
+        _ = ENNReal.ofReal (R ^ (2 * gam - 1)) *
+            (‖F x‖ₑ ^ (2 : ℝ) * ‖sepCLM x‖ₑ ^ (-(2 * gam - 1))) := by ring
+  refine le_trans (lintegral_mono hpt) ?_
+  rw [lintegral_const_mul' _ _ (by simp), wMass]
+
+end Weight
+
+
+/-! ### The weight in the separation variable `w` -/
+
+section WeightW
+
+/-- The weighted `L²` mass in the `w`-variable, `∫ |g|² |w|^{-(2γ-1)}`. -/
+def wMassW (gam : ℝ) (g : Pl → ℂ) : ℝ≥0∞ :=
+  ∫⁻ w : Pl, ‖g w‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1))
+
+theorem lintegral_indicator_mul_eq {T : Set Pl} (hT : MeasurableSet T) (g h : Pl → ℂ) :
+    (∫⁻ w : Pl, ‖Set.indicator T g w * h w‖ₑ) = ∫⁻ w in T, ‖g w * h w‖ₑ := by
+  have hpt : ∀ w : Pl, ‖Set.indicator T g w * h w‖ₑ
+      = Set.indicator T (fun w => ‖g w * h w‖ₑ) w := by
+    intro w
+    by_cases hw : w ∈ T
+    · rw [Set.indicator_of_mem hw, Set.indicator_of_mem hw]
+    · rw [Set.indicator_of_notMem hw, Set.indicator_of_notMem hw, zero_mul, enorm_zero]
+  rw [lintegral_congr hpt, lintegral_indicator hT]
+
+theorem lintegral_indicator_sq_eq {T : Set Pl} (hT : MeasurableSet T) (g : Pl → ℂ) :
+    (∫⁻ w : Pl, ‖Set.indicator T g w‖ₑ ^ (2 : ℝ)) = ∫⁻ w in T, ‖g w‖ₑ ^ (2 : ℝ) := by
+  have hpt : ∀ w : Pl, ‖Set.indicator T g w‖ₑ ^ (2 : ℝ)
+      = Set.indicator T (fun w => ‖g w‖ₑ ^ (2 : ℝ)) w := by
+    intro w
+    by_cases hw : w ∈ T
+    · rw [Set.indicator_of_mem hw, Set.indicator_of_mem hw]
+    · rw [Set.indicator_of_notMem hw, Set.indicator_of_notMem hw, enorm_zero]
+      simp [ENNReal.zero_rpow_of_pos]
+  rw [lintegral_congr hpt, lintegral_indicator hT]
+
+/-- On the dyadic annulus `Ann k` the unweighted `L²` mass is controlled by the weighted one. -/
+theorem lintegral_sq_ann_le_wMassW {gam : ℝ} (hgam : 1 / 2 < gam) (k : ℤ) (g : Pl → ℂ) :
+    (∫⁻ w in Ann k, ‖g w‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (((2 : ℝ) ^ (k + 21)) ^ (2 * gam - 1)) * wMassW gam g := by
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ (k + 21) := by positivity
+  have hpt : ∀ w ∈ Ann k, ‖g w‖ₑ ^ (2 : ℝ)
+      ≤ ENNReal.ofReal (((2 : ℝ) ^ (k + 21)) ^ (2 * gam - 1)) *
+        (‖g w‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1))) := by
+    intro w hw
+    have hhigh : ‖w‖ ≤ (2 : ℝ) ^ (k + 21) := le_of_lt hw.2
+    have hcoef := one_le_ofReal_mul_enorm_rpow hgam hRpos hhigh
+    calc ‖g w‖ₑ ^ (2 : ℝ) = 1 * ‖g w‖ₑ ^ (2 : ℝ) := by rw [one_mul]
+      _ ≤ (ENNReal.ofReal (((2 : ℝ) ^ (k + 21)) ^ (2 * gam - 1)) *
+          ‖w‖ₑ ^ (-(2 * gam - 1))) * ‖g w‖ₑ ^ (2 : ℝ) := mul_le_mul' hcoef (le_refl _)
+      _ = ENNReal.ofReal (((2 : ℝ) ^ (k + 21)) ^ (2 * gam - 1)) *
+          (‖g w‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1))) := by ring
+  refine le_trans (setLIntegral_mono' (measurableSet_Ann k) hpt) ?_
+  rw [lintegral_const_mul' _ _ (by simp)]
+  refine mul_le_mul' (le_refl _) ?_
+  rw [wMassW]
+  exact setLIntegral_le_lintegral _ _
+
+end WeightW
+
+
+/-! ### The far part, annulus by annulus -/
+
+section FarAnn
+
+/-- The off-diagonal estimate on the annulus `Ann (l+1-m)`, with the weight brought in. -/
+theorem lintegral_ann_offdiag_le {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) {ξ : Pl} (hξ : XiData j ξ)
+    {gam : ℝ} (hgam : 1 / 2 < gam)
+    {g : Pl → ℂ} (hg : AEMeasurable g (volume : Measure Pl)) (l : ℕ) :
+    (∫⁻ w in Ann ((l : ℤ) + 1 - (m : ℤ)),
+        ‖g w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      ≤ ENNReal.ofReal ((1 / Real.pi) * (2 + 72 * Cs * CV) * B
+            * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) * (2 : ℝ) ^ (-((l : ℤ) + 1)))
+          * ENNReal.ofReal ((((2 : ℝ) ^ ((l : ℤ) + 1 - (m : ℤ) + 21)) ^ ((2 * gam - 1) / 2)))
+          * (wMassW gam g) ^ (2⁻¹ : ℝ) := by
+  set k : ℤ := (l : ℤ) + 1 - (m : ℤ) with hk
+  set gi : Pl → ℂ := Set.indicator (Ann k) g with hgi
+  have hgim : AEMeasurable gi (volume : Measure Pl) := hg.indicator (measurableSet_Ann k)
+  have hlow : ∀ w : Pl, gi w ≠ 0 → (2 : ℝ) ^ (((l + 1 : ℕ) : ℤ) - (m : ℤ) + 19) ≤ ‖w‖ := by
+    intro w hz
+    have hmem : w ∈ Ann k := by
+      by_contra hw
+      rw [hgi, Set.indicator_of_notMem hw] at hz
+      exact hz rfl
+    refine le_trans ?_ hmem.1
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    rw [hk]
+    push_cast
+    omega
+  have hhigh : ∀ w : Pl, gi w ≠ 0 → ‖w‖ ≤ (2 : ℝ) ^ (((l + 1 : ℕ) : ℤ) - (m : ℤ) + 21) := by
+    intro w hz
+    have hmem : w ∈ Ann k := by
+      by_contra hw
+      rw [hgi, Set.indicator_of_notMem hw] at hz
+      exact hz rfl
+    refine le_trans (le_of_lt hmem.2) ?_
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    rw [hk]
+    push_cast
+    omega
+  have hkernel := lintegral_offdiag_kernel hB hCs hCVnn hCV hε ht1 ht2 hξ (l + 1)
+    hgim hlow hhigh
+  have hrw : (∫⁻ w : Pl, ‖gi w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      = ∫⁻ w in Ann k, ‖g w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ := by
+    rw [hgi]
+    exact lintegral_indicator_mul_eq (measurableSet_Ann k) g _
+  rw [hrw] at hkernel
+  refine le_trans hkernel ?_
+  -- bring in the weight
+  have hsq : (∫⁻ w : Pl, ‖gi w‖ₑ ^ (2 : ℝ)) = ∫⁻ w in Ann k, ‖g w‖ₑ ^ (2 : ℝ) := by
+    rw [hgi]
+    exact lintegral_indicator_sq_eq (measurableSet_Ann k) g
+  rw [hsq]
+  have hwt := lintegral_sq_ann_le_wMassW hgam k g
+  have hstep : (∫⁻ w in Ann k, ‖g w‖ₑ ^ (2 : ℝ)) ^ (2⁻¹ : ℝ)
+      ≤ (ENNReal.ofReal (((2 : ℝ) ^ (k + 21)) ^ (2 * gam - 1)) * wMassW gam g) ^ (2⁻¹ : ℝ) :=
+    ENNReal.rpow_le_rpow hwt (by norm_num)
+  refine le_trans (mul_le_mul' (le_refl _) hstep) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ (2⁻¹ : ℝ))]
+  rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num : (0 : ℝ) ≤ (2⁻¹ : ℝ))]
+  rw [← mul_assoc]
+  congr 2
+  congr 1
+  rw [← Real.rpow_mul (by positivity : (0 : ℝ) ≤ (2 : ℝ) ^ (k + 21)),
+    show (2 * gam - 1) * 2⁻¹ = (2 * gam - 1) / 2 by ring]
+
+end FarAnn
+
+
+/-! ### The far part, summed over the annuli -/
+
+section FarSum
+
+/-- The coefficient of the `l`-th far annulus. -/
+def coefFar (m : ℕ) (B Cs CV gam : ℝ) (l : ℕ) : ℝ :=
+  (1 / Real.pi) * (2 + 72 * Cs * CV) * B * Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ)))
+    * (2 : ℝ) ^ (-((l : ℤ) + 1))
+    * (((2 : ℝ) ^ ((l : ℤ) + 1 - (m : ℤ) + 21)) ^ ((2 * gam - 1) / 2))
+
+theorem coefFar_nonneg {m : ℕ} {B Cs CV gam : ℝ} (hB : 0 ≤ B) (hCs : 0 ≤ Cs)
+    (hCV : 0 ≤ CV) (l : ℕ) : 0 ≤ coefFar m B Cs CV gam l := by
+  have hpi : (0 : ℝ) < Real.pi := Real.pi_pos
+  have hs : (0 : ℝ) ≤ Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) := Real.sqrt_nonneg _
+  rw [coefFar]
+  positivity
+
+/-- **The far part of §4.6.**  If `g` vanishes where `‖w‖ < 2^{21-m}`, the `w`-integral is bounded
+by the sum of the annulus contributions. -/
+theorem lintegral_offdiag_far {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) {ξ : Pl} (hξ : XiData j ξ)
+    {gam : ℝ} (hgam : 1 / 2 < gam)
+    {g : Pl → ℂ} (hg : AEMeasurable g (volume : Measure Pl))
+    (hglow : ∀ w : Pl, g w ≠ 0 → (2 : ℝ) ^ (21 - (m : ℤ)) ≤ ‖w‖) :
+    (∫⁻ w : Pl, ‖g w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      ≤ (∑' l : ℕ, ENNReal.ofReal (coefFar m B Cs CV gam l))
+        * (wMassW gam g) ^ (2⁻¹ : ℝ) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hBnn : 0 ≤ B := hB.nonneg
+  have hpi : (0 : ℝ) < Real.pi := Real.pi_pos
+  have hsq : (0 : ℝ) ≤ Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) := Real.sqrt_nonneg _
+  set h : Pl → ℂ := fun w => ∫ η : Pl, oscph j ε t ξ w η * b t ξ η with hhdef
+  set f : ℤ → ℝ≥0∞ := fun k => ∫⁻ w in Ann k, ‖g w * h w‖ₑ with hfdef
+  set i : ℕ → ℤ := fun l => (l : ℤ) + 1 - (m : ℤ) with hidef
+  have hinj : Function.Injective i := by
+    intro a c hac
+    rw [hidef] at hac
+    simp only at hac
+    have : (a : ℤ) = (c : ℤ) := by omega
+    exact_mod_cast this
+  have hzero : ∀ k : ℤ, k ∉ Set.range i → f k = 0 := by
+    intro k hk
+    have hkle : k ≤ -(m : ℤ) := by
+      by_contra hcon
+      push_neg at hcon
+      have hnn : (0 : ℤ) ≤ k + (m : ℤ) - 1 := by omega
+      refine hk ⟨(k + (m : ℤ) - 1).toNat, ?_⟩
+      rw [hidef]
+      simp only
+      rw [Int.toNat_of_nonneg hnn]
+      ring
+    have hg0 : ∀ w ∈ Ann k, g w = 0 := by
+      intro w hw
+      by_contra hne
+      have h1 := hglow w hne
+      have h2 : ‖w‖ < (2 : ℝ) ^ (k + 21) := hw.2
+      have h3 : (2 : ℝ) ^ (k + 21) ≤ (2 : ℝ) ^ (21 - (m : ℤ)) :=
+        zpow_le_zpow_right₀ (by norm_num) (by omega)
+      linarith
+    have hcongr : (∫⁻ w in Ann k, ‖g w * h w‖ₑ) = ∫⁻ _w in Ann k, (0 : ℝ≥0∞) := by
+      refine setLIntegral_congr_fun (measurableSet_Ann k) ?_
+      intro w hw
+      show ‖g w * h w‖ₑ = 0
+      rw [hg0 w hw, zero_mul, enorm_zero]
+    rw [hfdef]
+    simp only
+    rw [hcongr, lintegral_zero]
+  have hsupp : Function.support f ⊆ Set.range i := by
+    intro k hk
+    by_contra hcon
+    exact hk (hzero k hcon)
+  rw [lintegral_eq_tsum_Ann, ← hinj.tsum_eq hsupp]
+  have hterm : ∀ l : ℕ, f (i l)
+      ≤ ENNReal.ofReal (coefFar m B Cs CV gam l) * (wMassW gam g) ^ (2⁻¹ : ℝ) := by
+    intro l
+    have hbase := lintegral_ann_offdiag_le hB hCs hCVnn hCV hε ht1 ht2 hξ hgam hg l
+    have harg : i l = (l : ℤ) + 1 - (m : ℤ) := rfl
+    rw [hfdef]
+    simp only
+    rw [harg]
+    refine le_trans hbase (le_of_eq ?_)
+    rw [coefFar, ← ENNReal.ofReal_mul (by positivity)]
+  refine le_trans (ENNReal.tsum_le_tsum hterm) (le_of_eq ?_)
+  rw [ENNReal.tsum_mul_right]
+
+end FarSum
+
+
+/-! ### The closed form of the far coefficient sum -/
+
+section FarConst
+
+theorem two_zpow_rpow (K : ℤ) (a : ℝ) : ((2 : ℝ) ^ K) ^ a = (2 : ℝ) ^ ((K : ℝ) * a) := by
+  rw [← Real.rpow_intCast (2 : ℝ) K, ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2)]
+
+theorem two_zpow_eq_rpow (K : ℤ) : (2 : ℝ) ^ K = (2 : ℝ) ^ ((K : ℝ)) := by
+  rw [Real.rpow_intCast]
+
+theorem sqrt_two_zpow_eq_rpow (K : ℤ) :
+    Real.sqrt ((2 : ℝ) ^ K) = (2 : ℝ) ^ ((K : ℝ) / 2) := by
+  rw [Real.sqrt_eq_rpow, two_zpow_rpow]
+  congr 1
+  ring
+
+/-- `coefFar` written as a single dyadic power. -/
+theorem coefFar_eq (m : ℕ) (B Cs CV gam : ℝ) (l : ℕ) :
+    coefFar m B Cs CV gam l
+      = ((1 / Real.pi) * (2 + 72 * Cs * CV) * B) *
+        (2 : ℝ) ^ ((3 * (m : ℝ) / 2 + (21 - (m : ℝ)) * ((2 * gam - 1) / 2))
+          - ((l : ℝ) + 1) * (1 - (2 * gam - 1) / 2)) := by
+  have h1 : Real.sqrt ((2 : ℝ) ^ (3 * (m : ℤ))) = (2 : ℝ) ^ (3 * (m : ℝ) / 2) := by
+    rw [sqrt_two_zpow_eq_rpow]
+    congr 1
+    push_cast
+    ring
+  have h2 : (2 : ℝ) ^ (-((l : ℤ) + 1)) = (2 : ℝ) ^ (-((l : ℝ) + 1)) := by
+    rw [two_zpow_eq_rpow]
+    congr 1
+    push_cast
+    ring
+  have h3 : (((2 : ℝ) ^ ((l : ℤ) + 1 - (m : ℤ) + 21)) ^ ((2 * gam - 1) / 2))
+      = (2 : ℝ) ^ (((l : ℝ) + 1 - (m : ℝ) + 21) * ((2 * gam - 1) / 2)) := by
+    rw [two_zpow_rpow]
+    congr 1
+    push_cast
+    ring
+  rw [coefFar, h1, h2, h3]
+  rw [show ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (3 * (m : ℝ) / 2)
+        * (2 : ℝ) ^ (-((l : ℝ) + 1))
+        * (2 : ℝ) ^ (((l : ℝ) + 1 - (m : ℝ) + 21) * ((2 * gam - 1) / 2)))
+      = ((1 / Real.pi) * (2 + 72 * Cs * CV) * B) *
+        ((2 : ℝ) ^ (3 * (m : ℝ) / 2) * (2 : ℝ) ^ (-((l : ℝ) + 1))
+          * (2 : ℝ) ^ (((l : ℝ) + 1 - (m : ℝ) + 21) * ((2 * gam - 1) / 2))) from by ring]
+  congr 1
+  rw [← Real.rpow_add (by norm_num : (0 : ℝ) < 2),
+    ← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
+  congr 1
+  ring
+
+theorem tsum_coefFar_le {m : ℕ} {B Cs CV gam : ℝ} (hBnn : 0 ≤ B) (hCsnn : 0 ≤ Cs)
+    (hCVnn : 0 ≤ CV) (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) :
+    (∑' l : ℕ, ENNReal.ofReal (coefFar m B Cs CV gam l))
+      ≤ ENNReal.ofReal (6 * ((1 / Real.pi) * (2 + 72 * Cs * CV)) * (2 : ℝ) ^ ((21 : ℝ) / 2)
+          * B * (2 : ℝ) ^ ((m : ℝ) * (2 - gam))) := by
+  have hpi : (0 : ℝ) < Real.pi := Real.pi_pos
+  have hKnn : (0 : ℝ) ≤ (1 / Real.pi) * (2 + 72 * Cs * CV) * B := by positivity
+  set a : ℝ := (2 * gam - 1) / 2 with hadef
+  have ha0 : 0 < a := by rw [hadef]; linarith
+  set r : ℝ := 1 - a with hrdef
+  have hr0 : 0 < r := by rw [hrdef, hadef]; linarith
+  have hr1 : r ≤ 1 := by rw [hrdef]; linarith
+  set D : ℝ := 3 * (m : ℝ) / 2 + (21 - (m : ℝ)) * a with hDdef
+  have hDrnn : (0 : ℝ) ≤ (2 : ℝ) ^ (D - r) :=
+    le_of_lt (Real.rpow_pos_of_pos (by norm_num) _)
+  -- each term as a geometric term
+  have hcf : ∀ l : ℕ, coefFar m B Cs CV gam l
+      = ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+        * ((2 : ℝ) ^ (-r)) ^ l := by
+    intro l
+    have hpow : ((2 : ℝ) ^ (-r)) ^ l = (2 : ℝ) ^ (-r * (l : ℝ)) := by
+      rw [← Real.rpow_natCast ((2 : ℝ) ^ (-r)) l,
+        ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2)]
+    rw [coefFar_eq, hpow]
+    rw [show ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+          * (2 : ℝ) ^ (-r * (l : ℝ))
+        = ((1 / Real.pi) * (2 + 72 * Cs * CV) * B)
+          * ((2 : ℝ) ^ (D - r) * (2 : ℝ) ^ (-r * (l : ℝ))) from by ring,
+      ← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
+    congr 1
+    rw [hDdef, hrdef, hadef]
+    ring
+  -- sum the geometric series
+  have hgeo : ∑' l : ℕ, ((2 : ℝ) ^ (-r)) ^ l ≤ 3 / r := tsum_two_rpow_neg_le hr0 hr1
+  have hsummable : Summable fun l : ℕ => ((2 : ℝ) ^ (-r)) ^ l := by
+    refine summable_geometric_of_lt_one (le_of_lt (two_rpow_neg_pos r)) ?_
+    exact two_rpow_neg_lt_one hr0
+  have hnn : ∀ l : ℕ,
+      0 ≤ ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+        * ((2 : ℝ) ^ (-r)) ^ l := by
+    intro l
+    have h1 : (0 : ℝ) ≤ ((2 : ℝ) ^ (-r)) ^ l := by positivity
+    have h2 : (0 : ℝ) ≤ (1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r) := by
+      positivity
+    positivity
+  have hsummable2 : Summable fun l : ℕ =>
+      ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+        * ((2 : ℝ) ^ (-r)) ^ l := hsummable.mul_left _
+  have hstep : (∑' l : ℕ, ENNReal.ofReal (coefFar m B Cs CV gam l))
+      ≤ ENNReal.ofReal (((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+        * (3 / r)) := by
+    calc (∑' l : ℕ, ENNReal.ofReal (coefFar m B Cs CV gam l))
+        = ∑' l : ℕ, ENNReal.ofReal
+            (((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+              * ((2 : ℝ) ^ (-r)) ^ l) := by
+          refine tsum_congr fun l => ?_
+          rw [hcf l]
+      _ = ENNReal.ofReal (∑' l : ℕ,
+            ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+              * ((2 : ℝ) ^ (-r)) ^ l) := by
+          rw [ENNReal.ofReal_tsum_of_nonneg hnn hsummable2]
+      _ ≤ ENNReal.ofReal (((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+            * (3 / r)) := by
+          refine ENNReal.ofReal_le_ofReal ?_
+          rw [tsum_mul_left]
+          refine mul_le_mul_of_nonneg_left hgeo ?_
+          positivity
+  refine le_trans hstep (ENNReal.ofReal_le_ofReal ?_)
+  -- the numeric comparison
+  have h3r : 3 / r ≤ 6 := by
+    rw [div_le_iff₀ hr0, hrdef, hadef]
+    linarith
+  have hDr : (2 : ℝ) ^ (D - r)
+      ≤ (2 : ℝ) ^ ((21 : ℝ) / 2) * (2 : ℝ) ^ ((m : ℝ) * (2 - gam)) := by
+    rw [← Real.rpow_add (by norm_num : (0 : ℝ) < 2)]
+    refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+    rw [hDdef, hrdef, hadef]
+    have hm : (0 : ℝ) ≤ (m : ℝ) := Nat.cast_nonneg m
+    nlinarith [hgam1, hgam2, hm]
+  have hpos2 : (0 : ℝ) ≤ (2 : ℝ) ^ ((21 : ℝ) / 2) * (2 : ℝ) ^ ((m : ℝ) * (2 - gam)) := by
+    have h1 : (0 : ℝ) < (2 : ℝ) ^ ((21 : ℝ) / 2) := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0 : ℝ) < (2 : ℝ) ^ ((m : ℝ) * (2 - gam)) := Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  have hfin1 : ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r)) * (3 / r)
+      ≤ ((1 / Real.pi) * (2 + 72 * Cs * CV) * B *
+        ((2 : ℝ) ^ ((21 : ℝ) / 2) * (2 : ℝ) ^ ((m : ℝ) * (2 - gam)))) * 6 := by
+    have hA : ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r))
+        ≤ ((1 / Real.pi) * (2 + 72 * Cs * CV) * B *
+          ((2 : ℝ) ^ ((21 : ℝ) / 2) * (2 : ℝ) ^ ((m : ℝ) * (2 - gam)))) :=
+      mul_le_mul_of_nonneg_left hDr hKnn
+    have hAnn : (0 : ℝ) ≤ ((1 / Real.pi) * (2 + 72 * Cs * CV) * B * (2 : ℝ) ^ (D - r)) := by
+      positivity
+    nlinarith [hA, hAnn, h3r, hr0]
+  refine le_trans hfin1 (le_of_eq ?_)
+  ring
+
+/-- **The far part of §4.6 in closed form.** -/
+theorem lintegral_offdiag_far_closed {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) {ξ : Pl} (hξ : XiData j ξ)
+    {gam : ℝ} (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    {g : Pl → ℂ} (hg : AEMeasurable g (volume : Measure Pl))
+    (hglow : ∀ w : Pl, g w ≠ 0 → (2 : ℝ) ^ (21 - (m : ℤ)) ≤ ‖w‖) :
+    (∫⁻ w : Pl, ‖g w * (∫ η : Pl, oscph j ε t ξ w η * b t ξ η)‖ₑ)
+      ≤ ENNReal.ofReal (6 * ((1 / Real.pi) * (2 + 72 * Cs * CV))
+            * (2 : ℝ) ^ ((21 : ℝ) / 2) * B * (2 : ℝ) ^ ((m : ℝ) * (2 - gam)))
+        * (wMassW gam g) ^ (2⁻¹ : ℝ) := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  refine le_trans (lintegral_offdiag_far hB hCs hCVnn hCV hε ht1 ht2 hξ hgam1 hg hglow) ?_
+  exact mul_le_mul' (tsum_coefFar_le hB.nonneg hCsnn hCVnn hgam1 hgam2) (le_refl _)
+
+end FarConst
+
+
+/-! ### One-sided localization and the weighted partial Plancherel -/
+
+section WeightedPlancherel
+
+/-- The one-sided version of `Gf_eq_zero_of_localized`. -/
+theorem Gf_eq_zero_of_low {F : SchwartzMap Pl2 ℂ} {r1 : ℝ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 → r1 ≤ ‖y - z‖)
+    (ξ : Pl) {w : Pl} (hw : ¬ (r1 ≤ ‖w‖)) :
+    Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w = 0 := by
+  have hzero : ∀ y : Pl, (shearSchwartz F : Pl2 → ℂ) (pr y w) = 0 := by
+    intro y
+    by_contra hne
+    have hval : (shearSchwartz F : Pl2 → ℂ) (pr y w) = (F : Pl2 → ℂ) (pr y (y - w)) := by
+      rw [shearSchwartz_apply, shearCLE_pr]
+    rw [hval] at hne
+    have h := hF y (y - w) hne
+    rw [show y - (y - w) = w by abel] at h
+    exact hw h
+  rw [Gf_eq_integral]
+  have hpt : ∀ y : Pl, ee (inner ℝ y ξ) * (shearSchwartz F : Pl2 → ℂ) (pr y w) = 0 := by
+    intro y
+    rw [hzero y, mul_zero]
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_zero]
+
+theorem Gf_low' {F : SchwartzMap Pl2 ℂ} {r1 : ℝ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 → r1 ≤ ‖y - z‖)
+    (ξ : Pl) {w : Pl} (hz : Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w ≠ 0) : r1 ≤ ‖w‖ := by
+  by_contra hcon
+  exact hz (Gf_eq_zero_of_low hF ξ hcon)
+
+theorem sepCLM_shearCLE (x : Pl2) : ‖sepCLM (shearCLE x)‖ = ‖(WithLp.ofLp x).2‖ := by
+  have hx : x = pr (WithLp.ofLp x).1 (WithLp.ofLp x).2 := rfl
+  rw [hx, shearCLE_pr, sepCLM_apply]
+  show ‖(WithLp.ofLp x).1 - ((WithLp.ofLp x).1 - (WithLp.ofLp x).2)‖ = ‖(WithLp.ofLp x).2‖
+  congr 1
+  abel
+
+theorem enorm_sepCLM_shearCLE (x : Pl2) :
+    ‖sepCLM (shearCLE x)‖ₑ = ‖(WithLp.ofLp x).2‖ₑ := by
+  rw [← ofReal_norm, ← ofReal_norm, sepCLM_shearCLE]
+
+/-- **The weighted partial Plancherel identity.**  Integrating the `w`-weighted `L²` mass of the
+partial Fourier transform over `ξ` recovers the weighted `L²` mass of `F`. -/
+theorem lintegral_wMassW_Gf (gam : ℝ) (F : SchwartzMap Pl2 ℂ) :
+    (∫⁻ ξ : Pl, wMassW gam fun w => Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w)
+      = wMass gam F := by
+  set H : SchwartzMap Pl2 ℂ := shearSchwartz F with hH
+  have hCmeas : Measurable fun w : Pl => ‖w‖ₑ ^ (-(2 * gam - 1)) :=
+    (ENNReal.continuous_rpow_const).measurable.comp measurable_enorm
+  -- step 1: swap the order of integration
+  have hmeas : AEMeasurable
+      (Function.uncurry fun ξ w : Pl =>
+        ‖Gf ((H : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)))
+      ((volume : Measure Pl).prod (volume : Measure Pl)) := by
+    have h1 : Measurable fun p : Pl × Pl => ‖Gf ((H : Pl2 → ℂ)) p.1 p.2‖ₑ ^ (2 : ℝ) :=
+      ((stronglyMeasurable_Gf_pair H).measurable.enorm).pow_const _
+    exact (h1.mul (hCmeas.comp measurable_snd)).aemeasurable
+  have hstep1 : (∫⁻ ξ : Pl, wMassW gam fun w => Gf ((H : Pl2 → ℂ)) ξ w)
+      = ∫⁻ w : Pl, ∫⁻ ξ : Pl,
+        ‖Gf ((H : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)) := by
+    rw [← lintegral_lintegral_swap hmeas]
+    refine lintegral_congr fun ξ => ?_
+    rw [wMassW]
+  -- step 2: Plancherel in `ξ` for each fixed `w`
+  have hinner : ∀ w : Pl,
+      (∫⁻ ξ : Pl, ‖Gf ((H : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)))
+      = ∫⁻ y : Pl, ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)) := by
+    intro w
+    have hm1 : Measurable fun ξ : Pl => ‖Gf ((H : Pl2 → ℂ)) ξ w‖ₑ ^ (2 : ℝ) := by
+      have h := (stronglyMeasurable_Gf_pair H).measurable.enorm
+      exact ((h.comp (measurable_id.prodMk measurable_const)).pow_const _)
+    have hm2 : Measurable fun y : Pl => ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ) := by
+      have hp : Measurable fun y : Pl => (pr y w : Pl2) :=
+        (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable.comp
+          (measurable_id.prodMk measurable_const)
+      exact (((H.continuous.measurable).comp hp).enorm).pow_const _
+    rw [lintegral_mul_const _ hm1, lintegral_mul_const _ hm2]
+    congr 1
+    exact lintegral_enorm_sq_fourier_schwartz_Pl (sliceSchwartz H w)
+  rw [hstep1, lintegral_congr hinner]
+  -- step 3: assemble into an integral over `ℝ⁴`
+  have hmeas2 : Measurable fun x : Pl2 =>
+      ‖(H : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) * ‖(WithLp.ofLp x).2‖ₑ ^ (-(2 * gam - 1)) := by
+    have h1 : Measurable fun x : Pl2 => ‖(H : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) :=
+      ((H.continuous.measurable).enorm).pow_const _
+    have h2 : Measurable fun x : Pl2 => ‖(WithLp.ofLp x).2‖ₑ ^ (-(2 * gam - 1)) :=
+      hCmeas.comp ((WithLp.prodContinuousLinearEquiv 2 ℝ Pl Pl).continuous.snd).measurable
+    exact h1.mul h2
+  have hswap2 : (∫⁻ w : Pl, ∫⁻ y : Pl,
+        ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)))
+      = ∫⁻ y : Pl, ∫⁻ w : Pl,
+        ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)) := by
+    have hm : AEMeasurable
+        (Function.uncurry fun w y : Pl =>
+          ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)))
+        ((volume : Measure Pl).prod (volume : Measure Pl)) := by
+      have h1 : Measurable fun q : Pl × Pl => ‖(H : Pl2 → ℂ) (pr q.2 q.1)‖ₑ ^ (2 : ℝ) := by
+        have hp : Measurable fun q : Pl × Pl => (pr q.2 q.1 : Pl2) :=
+          (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable.comp
+            (measurable_snd.prodMk measurable_fst)
+        exact (((H.continuous.measurable).comp hp).enorm).pow_const _
+      exact (h1.mul (hCmeas.comp measurable_fst)).aemeasurable
+    exact lintegral_lintegral_swap hm
+  have hconv : (∫⁻ y : Pl, ∫⁻ w : Pl,
+        ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ) * ‖w‖ₑ ^ (-(2 * gam - 1)))
+      = ∫⁻ y : Pl, ∫⁻ w : Pl,
+        ‖(H : Pl2 → ℂ) (pr y w)‖ₑ ^ (2 : ℝ)
+          * ‖(WithLp.ofLp (pr y w)).2‖ₑ ^ (-(2 * gam - 1)) := rfl
+  rw [hswap2, hconv, lintegral_pr _ hmeas2]
+  -- step 4: undo the shear
+  have hpt : ∀ x : Pl2, ‖(H : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) * ‖(WithLp.ofLp x).2‖ₑ ^ (-(2 * gam - 1))
+      = (fun u : Pl2 => ‖(F : Pl2 → ℂ) u‖ₑ ^ (2 : ℝ)
+          * ‖sepCLM u‖ₑ ^ (-(2 * gam - 1))) (shearCLE x) := by
+    intro x
+    rw [hH, shearSchwartz_apply]
+    congr 2
+    exact (enorm_sepCLM_shearCLE x).symm
+  rw [lintegral_congr hpt]
+  have hmeas3 : Measurable fun u : Pl2 => ‖(F : Pl2 → ℂ) u‖ₑ ^ (2 : ℝ)
+      * ‖sepCLM u‖ₑ ^ (-(2 * gam - 1)) := by
+    have h1 : Measurable fun u : Pl2 => ‖(F : Pl2 → ℂ) u‖ₑ ^ (2 : ℝ) :=
+      ((F.continuous.measurable).enorm).pow_const _
+    exact h1.mul (hCmeas.comp sepCLM.continuous.measurable)
+  rw [lintegral_comp_shear _ hmeas3, wMass]
+
+end WeightedPlancherel
+
+
+/-! ## §4.6  The far part of `S[F,b]` -/
+
+section OffdiagSopFar
+
+/-- The constant of the far estimate. -/
+def CFar (m : ℕ) (B Cs CV gam : ℝ) : ℝ :=
+  6 * ((1 / Real.pi) * (2 + 72 * Cs * CV)) * (2 : ℝ) ^ ((21 : ℝ) / 2) * B
+    * (2 : ℝ) ^ ((m : ℝ) * (2 - gam))
+
+theorem CFar_nonneg {m : ℕ} {B Cs CV gam : ℝ} (hB : 0 ≤ B) (hCs : 0 ≤ Cs) (hCV : 0 ≤ CV) :
+    0 ≤ CFar m B Cs CV gam := by
+  have hpi : (0 : ℝ) < Real.pi := Real.pi_pos
+  have h1 : (0 : ℝ) < (2 : ℝ) ^ ((21 : ℝ) / 2) := Real.rpow_pos_of_pos (by norm_num) _
+  have h2 : (0 : ℝ) < (2 : ℝ) ^ ((m : ℝ) * (2 - gam)) := Real.rpow_pos_of_pos (by norm_num) _
+  rw [CFar]
+  positivity
+
+/-- **The far part of Proposition 3.1.**  For `F` supported where `|y-z| ≥ 2^{21-m}`,
+`‖S[F,b](·,t)‖₂ ≤ CFar · ‖F‖_{L²(w_γ)}`. -/
+theorem offdiag_Sop_far {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} (hB : SymbData j m b B)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε t : ℝ} (hε : |ε| = 1) (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    {gam : ℝ} (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    {F : SchwartzMap Pl2 ℂ}
+    (hF : ∀ y z : Pl, (F : Pl2 → ℂ) (pr y z) ≠ 0 → (2 : ℝ) ^ (21 - (m : ℤ)) ≤ ‖y - z‖) :
+    (∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (CFar m B Cs CV gam ^ 2) * wMass gam F := by
+  have hCsnn : 0 ≤ Cs := le_trans (abs_nonneg _) (hCs 0)
+  have hBnn : 0 ≤ B := hB.nonneg
+  have hCnn : 0 ≤ CFar m B Cs CV gam := CFar_nonneg hBnn hCsnn hCVnn
+  -- the pointwise bound in `ξ`
+  have hptwise : ∀ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ
+      ≤ ENNReal.ofReal (CFar m B Cs CV gam) *
+        (wMassW gam fun w => Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w) ^ (2⁻¹ : ℝ) := by
+    intro ξ
+    rcases Set.eq_empty_or_nonempty (SuppSet j m ξ) with hempty | ⟨η₀, hη₀⟩
+    · have hb0 : ∀ η : Pl, b t ξ η = 0 := by
+        intro η
+        refine hB.supp t ξ η ?_
+        rw [hempty]
+        exact Set.notMem_empty η
+      have hS0 : Sop ε b (F : Pl2 → ℂ) ξ t = 0 := by
+        rw [Sop, SopK]
+        have hpt : ∀ η : Pl,
+            phase ε t ξ η * b t ξ η * 𝓕 (F : Pl2 → ℂ) (pr (ξ - η) η) = 0 := by
+          intro η
+          rw [hb0 η]
+          ring
+        rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_zero]
+      rw [hS0, enorm_zero]
+      exact zero_le
+    · have hξ : XiData j ξ := xiData_of_mem hη₀
+      rw [Sop_eq_integral_w hB ε t ξ F]
+      refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+      rw [CFar]
+      exact lintegral_offdiag_far_closed hB hCs hCVnn hCV hε ht1 ht2 hξ hgam1 hgam2
+        (measurable_Gf (shearSchwartz F) ξ).aemeasurable
+        (fun w hz => Gf_low' hF ξ hz)
+  -- square and integrate
+  have hsq : ∀ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ)
+      ≤ ENNReal.ofReal (CFar m B Cs CV gam ^ 2) *
+        (wMassW gam fun w => Gf ((shearSchwartz F : Pl2 → ℂ)) ξ w) := by
+    intro ξ
+    have h := ENNReal.rpow_le_rpow (hptwise ξ) (by norm_num : (0 : ℝ) ≤ (2 : ℝ))
+    refine le_trans h (le_of_eq ?_)
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ (2 : ℝ))]
+    congr 1
+    · rw [ENNReal.ofReal_rpow_of_nonneg hCnn (by norm_num : (0 : ℝ) ≤ (2 : ℝ))]
+      congr 1
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+    · rw [← ENNReal.rpow_mul]
+      norm_num
+  refine le_trans (lintegral_mono hsq) ?_
+  rw [lintegral_const_mul' _ _ (by simp), lintegral_wMassW_Gf]
+
+end OffdiagSopFar
+
+
+/-! ## §4.6  The near part of `S[F,b]` -/
+
+section NearSop
+
+/-- **The near part of Proposition 3.1.**  For `F` supported where `|y-z| ≤ 2^{22-m}`, the almost
+orthogonality estimate combines with the weight to give a bound in terms of `‖·‖_{L²(w_γ)}`. -/
+theorem near_Sop {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+    (hb : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2) (hBnn : 0 ≤ B)
+    {ε : ℝ} (hε : |ε| = 1) (Efin : Finset ℝ) {N : ℝ} (hNnn : 0 ≤ N)
+    (hN : IsIntervalCount Efin (((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ)) N)
+    {gam : ℝ} (hgam : 1 / 2 < gam)
+    {F Fbig : SchwartzMap Pl2 ℂ}
+    (hdom : ∀ x, ‖(F : Pl2 → ℂ) x‖ ≤ ‖(Fbig : Pl2 → ℂ) x‖)
+    (hF : ∀ x : Pl2, (F : Pl2 → ℂ) x ≠ 0 → ‖sepCLM x‖ ≤ (2 : ℝ) ^ (22 - (m : ℤ))) :
+    (∑ t ∈ Efin, ∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t‖ₑ ^ (2 : ℝ))
+      ≤ ENNReal.ofReal (12 * 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * N
+            / (2 : ℝ) ^ (m : ℤ))
+        * (ENNReal.ofReal ((((2 : ℝ) ^ (22 - (m : ℤ)))) ^ (2 * gam - 1)) * wMass gam Fbig) := by
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ (22 - (m : ℤ)) := by positivity
+  refine le_trans (prop42 hb hray hBnn hε Efin hNnn hN F) ?_
+  refine mul_le_mul' (le_refl _) ?_
+  exact lintegral_enorm_sq_le_wMass hgam hRpos hdom hF
+
+end NearSop
+
+
+/-! ### Additivity of `S[F,b]` in `F` -/
+
+section SopAdd
+
+theorem fourier_schwartz_add (F1 F2 : SchwartzMap Pl2 ℂ) :
+    𝓕 ((F1 + F2 : SchwartzMap Pl2 ℂ) : Pl2 → ℂ)
+      = fun x => 𝓕 ((F1 : Pl2 → ℂ)) x + 𝓕 ((F2 : Pl2 → ℂ)) x := by
+  have hco : ∀ f : SchwartzMap Pl2 ℂ,
+      ((SchwartzMap.fourierTransformCLM ℂ f : SchwartzMap Pl2 ℂ) : Pl2 → ℂ)
+        = 𝓕 ((f : Pl2 → ℂ)) := by
+    intro f
+    rw [SchwartzMap.fourierTransformCLM_apply, SchwartzMap.fourier_coe]
+  rw [← hco (F1 + F2), ← hco F1, ← hco F2, map_add]
+  funext x
+  rw [add_apply]
+
+/-- A uniform bound for the Fourier transform of a Schwartz function. -/
+theorem exists_fourier_bound (F : SchwartzMap Pl2 ℂ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : Pl2, ‖𝓕 ((F : Pl2 → ℂ)) x‖ ≤ C := by
+  refine ⟨∫ v : Pl2, ‖(F : Pl2 → ℂ) v‖, integral_nonneg fun v => norm_nonneg _, fun x => ?_⟩
+  rw [fourier_eq_ee_Pl2]
+  refine le_trans (norm_integral_le_integral_norm _) ?_
+  refine le_of_eq (integral_congr_ae (Filter.Eventually.of_forall fun v => ?_))
+  show ‖ee (inner ℝ v x) * (F : Pl2 → ℂ) v‖ = ‖(F : Pl2 → ℂ) v‖
+  rw [norm_mul, norm_ee, one_mul]
+
+theorem integrable_SopK_integrand {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hBnn : 0 ≤ B)
+    (ε t : ℝ) (ξ : Pl) {G : Pl2 → ℂ} (hGm : Measurable G) {C : ℝ} (hCnn : 0 ≤ C)
+    (hGC : ∀ x, ‖G x‖ ≤ C) :
+    Integrable fun η : Pl => phase ε t ξ η * b t ξ η * G (pr (ξ - η) η) := by
+  have hmeas : AEMeasurable
+      (fun η : Pl => phase ε t ξ η * b t ξ η * G (pr (ξ - η) η))
+      (volume : Measure Pl) := by
+    have h1 : Measurable fun η : Pl => phase ε t ξ η := by
+      refine Complex.continuous_exp.measurable.comp ?_
+      refine (Complex.continuous_ofReal.comp ?_).mul continuous_const |>.measurable
+      exact continuous_const.mul ((continuous_const.sub continuous_id).norm.add
+        continuous_norm)
+    have h2 : Measurable fun η : Pl => G (pr (ξ - η) η) := by
+      have hp : Measurable fun η : Pl => (pr (ξ - η) η : Pl2) :=
+        (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable.comp
+          ((measurable_const.sub measurable_id).prodMk measurable_id)
+      exact hGm.comp hp
+    exact ((h1.mul (hb.meas t ξ)).mul h2).aemeasurable
+  refine Integrable.mono' (integrable_indicator_SuppSet j m ξ (B * C))
+    hmeas.aestronglyMeasurable ?_
+  refine Filter.Eventually.of_forall fun η => ?_
+  by_cases hmem : η ∈ SuppSet j m ξ
+  · rw [Set.indicator_of_mem hmem, mul_one, norm_mul, norm_mul, norm_phase, one_mul]
+    exact mul_le_mul (hbB t ξ η) (hGC _) (norm_nonneg _) hBnn
+  · rw [Set.indicator_of_notMem hmem, mul_zero, hb.supp t ξ η hmem]
+    simp
+
+/-- `S[F,b]` is additive in `F`. -/
+theorem Sop_add {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hBnn : 0 ≤ B)
+    (ε t : ℝ) (ξ : Pl) (F1 F2 : SchwartzMap Pl2 ℂ) :
+    Sop ε b ((F1 + F2 : SchwartzMap Pl2 ℂ) : Pl2 → ℂ) ξ t
+      = Sop ε b ((F1 : Pl2 → ℂ)) ξ t + Sop ε b ((F2 : Pl2 → ℂ)) ξ t := by
+  obtain ⟨C1, hC1nn, hC1⟩ := exists_fourier_bound F1
+  obtain ⟨C2, hC2nn, hC2⟩ := exists_fourier_bound F2
+  have hi1 := integrable_SopK_integrand hb hbB hBnn ε t ξ
+    (measurable_fourier_schwartz F1) hC1nn hC1
+  have hi2 := integrable_SopK_integrand hb hbB hBnn ε t ξ
+    (measurable_fourier_schwartz F2) hC2nn hC2
+  rw [Sop, Sop, Sop, SopK, SopK, SopK]
+  have hpt : ∀ η : Pl,
+      phase ε t ξ η * b t ξ η * 𝓕 ((F1 + F2 : SchwartzMap Pl2 ℂ) : Pl2 → ℂ) (pr (ξ - η) η)
+        = phase ε t ξ η * b t ξ η * 𝓕 ((F1 : Pl2 → ℂ)) (pr (ξ - η) η)
+          + phase ε t ξ η * b t ξ η * 𝓕 ((F2 : Pl2 → ℂ)) (pr (ξ - η) η) := by
+    intro η
+    rw [fourier_schwartz_add]
+    ring
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_add hi1 hi2]
+
+end SopAdd
+
+
+/-! ### Elementary tools for the near/far combination -/
+
+section NearFarTools
+
+theorem enorm_add_sq_le (a c : ℂ) :
+    ‖a + c‖ₑ ^ (2 : ℝ) ≤ 4 * (‖a‖ₑ ^ (2 : ℝ) + ‖c‖ₑ ^ (2 : ℝ)) := by
+  have h1 : ‖a + c‖ₑ ≤ ‖a‖ₑ + ‖c‖ₑ := enorm_add_le a c
+  have h2 : ‖a‖ₑ + ‖c‖ₑ ≤ 2 * max ‖a‖ₑ ‖c‖ₑ := by
+    rw [two_mul]
+    exact add_le_add (le_max_left _ _) (le_max_right _ _)
+  have h3 : ‖a + c‖ₑ ^ (2 : ℝ) ≤ (2 * max ‖a‖ₑ ‖c‖ₑ) ^ (2 : ℝ) :=
+    ENNReal.rpow_le_rpow (le_trans h1 h2) (by norm_num)
+  have htwo : ((2 : ℝ≥0∞)) ^ (2 : ℝ) = 4 := by
+    rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, ENNReal.rpow_natCast]
+    norm_num
+  have h4 : (2 * max ‖a‖ₑ ‖c‖ₑ) ^ (2 : ℝ) = 4 * (max ‖a‖ₑ ‖c‖ₑ) ^ (2 : ℝ) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ (2 : ℝ)), htwo]
+  have h5 : (max ‖a‖ₑ ‖c‖ₑ) ^ (2 : ℝ) ≤ ‖a‖ₑ ^ (2 : ℝ) + ‖c‖ₑ ^ (2 : ℝ) := by
+    rcases le_total ‖a‖ₑ ‖c‖ₑ with hle | hle
+    · rw [max_eq_right hle]
+      exact le_add_self
+    · rw [max_eq_left hle]
+      exact le_self_add
+  rw [h4] at h3
+  refine le_trans h3 ?_
+  exact mul_le_mul' (le_refl _) h5
+
+theorem farPart_support' {c : ℝ} {F : SchwartzMap Pl2 ℂ} {x : Pl2}
+    (h : (farPart c F : Pl2 → ℂ) x ≠ 0) : 1 < c * ‖sepCLM x‖ ^ 2 := by
+  have hx : x = pr (WithLp.ofLp x).1 (WithLp.ofLp x).2 := rfl
+  rw [hx] at h
+  have hval := farPart_support h
+  rw [sepCLM_apply]
+  exact hval
+
+theorem nearPart_support' {c : ℝ} {F : SchwartzMap Pl2 ℂ} {x : Pl2}
+    (h : (nearPart c F : Pl2 → ℂ) x ≠ 0) : c * ‖sepCLM x‖ ^ 2 < 2 := by
+  have hx : x = pr (WithLp.ofLp x).1 (WithLp.ofLp x).2 := rfl
+  rw [hx] at h
+  have hval := nearPart_support h
+  rw [sepCLM_apply]
+  exact hval
+
+theorem norm_nearPart_le (c : ℝ) (F : SchwartzMap Pl2 ℂ) (x : Pl2) :
+    ‖(nearPart c F : Pl2 → ℂ) x‖ ≤ ‖(F : Pl2 → ℂ) x‖ := by
+  rw [nearPart_apply, norm_smul, Real.norm_eq_abs]
+  have h1 := sepCut_nonneg c x
+  have h2 := sepCut_le_one c x
+  have habs : |1 - sepCut c x| ≤ 1 := by
+    rw [abs_le]
+    constructor <;> linarith
+  nlinarith [norm_nonneg ((F : Pl2 → ℂ) x), habs]
+
+theorem norm_farPart_le (c : ℝ) (F : SchwartzMap Pl2 ℂ) (x : Pl2) :
+    ‖(farPart c F : Pl2 → ℂ) x‖ ≤ ‖(F : Pl2 → ℂ) x‖ := by
+  rw [farPart_apply, norm_smul, Real.norm_eq_abs]
+  have h1 := sepCut_nonneg c x
+  have h2 := sepCut_le_one c x
+  have habs : |sepCut c x| ≤ 1 := by
+    rw [abs_le]
+    constructor <;> linarith
+  nlinarith [norm_nonneg ((F : Pl2 → ℂ) x), habs]
+
+/-- With `c = 2^{2m-42}` the near piece is supported where `|y-z| ≤ 2^{22-m}`. -/
+theorem nearPart_sep_le {m : ℕ} {F : SchwartzMap Pl2 ℂ} {x : Pl2}
+    (h : (nearPart ((2 : ℝ) ^ (2 * (m : ℤ) - 42)) F : Pl2 → ℂ) x ≠ 0) :
+    ‖sepCLM x‖ ≤ (2 : ℝ) ^ (22 - (m : ℤ)) := by
+  have hval := nearPart_support' h
+  have hcpos : (0 : ℝ) < (2 : ℝ) ^ (2 * (m : ℤ) - 42) := by positivity
+  have hsq : ‖sepCLM x‖ ^ 2 < (2 : ℝ) ^ (43 - 2 * (m : ℤ)) := by
+    by_contra hcon
+    push_neg at hcon
+    have hge : (2 : ℝ) ≤ (2 : ℝ) ^ (2 * (m : ℤ) - 42) * ‖sepCLM x‖ ^ 2 := by
+      calc (2 : ℝ)
+          = (2 : ℝ) ^ (2 * (m : ℤ) - 42) * (2 : ℝ) ^ (43 - 2 * (m : ℤ)) := by
+            rw [← two_zpow_add,
+              show (2 * (m : ℤ) - 42) + (43 - 2 * (m : ℤ)) = 1 by ring]
+            norm_num
+        _ ≤ (2 : ℝ) ^ (2 * (m : ℤ) - 42) * ‖sepCLM x‖ ^ 2 :=
+            mul_le_mul_of_nonneg_left hcon hcpos.le
+    linarith
+  have hbound : (2 : ℝ) ^ (43 - 2 * (m : ℤ)) ≤ ((2 : ℝ) ^ (22 - (m : ℤ))) ^ 2 := by
+    rw [sq, ← two_zpow_add]
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    omega
+  have hlt : ‖sepCLM x‖ ^ 2 < ((2 : ℝ) ^ (22 - (m : ℤ))) ^ 2 := lt_of_lt_of_le hsq hbound
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ (22 - (m : ℤ)) := by positivity
+  nlinarith [norm_nonneg (sepCLM x), hlt, hRpos]
+
+/-- With `c = 2^{2m-42}` the far piece is supported where `|y-z| ≥ 2^{21-m}`. -/
+theorem farPart_sep_ge {m : ℕ} {F : SchwartzMap Pl2 ℂ} {y z : Pl}
+    (h : (farPart ((2 : ℝ) ^ (2 * (m : ℤ) - 42)) F : Pl2 → ℂ) (pr y z) ≠ 0) :
+    (2 : ℝ) ^ (21 - (m : ℤ)) ≤ ‖y - z‖ := by
+  have hval := farPart_support h
+  have hcpos : (0 : ℝ) < (2 : ℝ) ^ (2 * (m : ℤ) - 42) := by positivity
+  have hsq : ((2 : ℝ) ^ (21 - (m : ℤ))) ^ 2 ≤ ‖y - z‖ ^ 2 := by
+    have hstep : (2 : ℝ) ^ (42 - 2 * (m : ℤ)) < ‖y - z‖ ^ 2 := by
+      by_contra hcon
+      push_neg at hcon
+      have hle : (2 : ℝ) ^ (2 * (m : ℤ) - 42) * ‖y - z‖ ^ 2 ≤ 1 := by
+        calc (2 : ℝ) ^ (2 * (m : ℤ) - 42) * ‖y - z‖ ^ 2
+            ≤ (2 : ℝ) ^ (2 * (m : ℤ) - 42) * (2 : ℝ) ^ (42 - 2 * (m : ℤ)) :=
+              mul_le_mul_of_nonneg_left hcon hcpos.le
+          _ = 1 := by
+              rw [← two_zpow_add,
+                show (2 * (m : ℤ) - 42) + (42 - 2 * (m : ℤ)) = 0 by ring]
+              norm_num
+      linarith
+    refine le_of_lt (lt_of_le_of_lt (le_of_eq ?_) hstep)
+    rw [sq, ← two_zpow_add]
+    congr 1
+    ring
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ (21 - (m : ℤ)) := by positivity
+  nlinarith [norm_nonneg (y - z), hsq, hRpos]
+
+end NearFarTools
+
+
+/-! ### Measurability of `ξ ↦ S[F,b](ξ,t)` -/
+
+section SopMeasurable
+
+theorem continuous_phase_pair (ε t : ℝ) :
+    Continuous fun p : Pl × Pl => phase ε t p.1 p.2 := by
+  refine Complex.continuous_exp.comp ?_
+  refine (Complex.continuous_ofReal.comp ?_).mul continuous_const
+  exact continuous_const.mul
+    (((continuous_fst.sub continuous_snd).norm).add continuous_snd.norm)
+
+theorem measurable_Sop {b : ℝ → Pl → Pl → ℂ} {t : ℝ}
+    (hbjoint : Measurable fun p : Pl × Pl => b t p.1 p.2)
+    (ε : ℝ) (F : SchwartzMap Pl2 ℂ) :
+    Measurable fun ξ : Pl => Sop ε b (F : Pl2 → ℂ) ξ t := by
+  have hpair : Measurable fun p : Pl × Pl =>
+      phase ε t p.1 p.2 * b t p.1 p.2 * 𝓕 ((F : Pl2 → ℂ)) (pr (p.1 - p.2) p.2) := by
+    have h1 : Measurable fun p : Pl × Pl => phase ε t p.1 p.2 :=
+      (continuous_phase_pair ε t).measurable
+    have h3 : Measurable fun p : Pl × Pl => 𝓕 ((F : Pl2 → ℂ)) (pr (p.1 - p.2) p.2) := by
+      have hp : Measurable fun p : Pl × Pl => (pr (p.1 - p.2) p.2 : Pl2) :=
+        (MeasurableEquiv.toLp 2 (Pl × Pl)).measurable.comp
+          ((measurable_fst.sub measurable_snd).prodMk measurable_snd)
+      exact (measurable_fourier_schwartz F).comp hp
+    exact (h1.mul hbjoint).mul h3
+  have h := hpair.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure Pl))
+  exact h.measurable
+
+end SopMeasurable
+
+/-! ## §4.6  Proposition 3.1 for a single angular scale `m` -/
+
+section Prop31Single
+
+/-- The near/far combination with the near bound left as a hypothesis. -/
+theorem prop31_combine {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hSD : SymbData j m b B)
+    (hbjoint : ∀ t' : ℝ, Measurable fun p : Pl × Pl => b t' p.1 p.2)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε : ℝ} (hε : |ε| = 1) (Efin : Finset ℝ) (hEfin : ∀ t' ∈ Efin, 1 ≤ t' ∧ t' ≤ 2)
+    {gam : ℝ} (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (F : SchwartzMap Pl2 ℂ) {NB : ℝ≥0∞}
+    (hnear : (∑ t' ∈ Efin, ∫⁻ ξ : Pl,
+        ‖Sop ε b ((nearPart ((2 : ℝ) ^ (2 * (m : ℤ) - 42)) F : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ))
+      ≤ NB) :
+    (∑ t' ∈ Efin, ∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t'‖ₑ ^ (2 : ℝ))
+      ≤ 4 * (NB + (Efin.card : ℝ≥0∞) *
+          (ENNReal.ofReal (CFar m B Cs CV gam ^ 2) * wMass gam F)) := by
+  classical
+  have hBnn : 0 ≤ B := hSD.nonneg
+  set c : ℝ := (2 : ℝ) ^ (2 * (m : ℤ) - 42) with hcdef
+  set FN : SchwartzMap Pl2 ℂ := nearPart c F with hFN
+  set FF : SchwartzMap Pl2 ℂ := farPart c F with hFF
+  have hsplit : ∀ (t' : ℝ) (ξ : Pl), ‖Sop ε b (F : Pl2 → ℂ) ξ t'‖ₑ ^ (2 : ℝ)
+      ≤ 4 * (‖Sop ε b ((FN : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ)
+        + ‖Sop ε b ((FF : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ)) := by
+    intro t' ξ
+    have hFsum : (FN + FF : SchwartzMap Pl2 ℂ) = F := by
+      rw [hFN, hFF]
+      exact add_nearPart_farPart c F
+    have hadd := Sop_add hSD.toIsAdapted (fun t'' ξ'' η'' => hSD.bd0 t'' ξ'' η'') hBnn
+      ε t' ξ FN FF
+    rw [hFsum] at hadd
+    rw [hadd]
+    exact enorm_add_sq_le _ _
+  have hstep : ∀ t' ∈ Efin, (∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t'‖ₑ ^ (2 : ℝ))
+      ≤ 4 * ((∫⁻ ξ : Pl, ‖Sop ε b ((FN : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ))
+        + ∫⁻ ξ : Pl, ‖Sop ε b ((FF : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ)) := by
+    intro t' _
+    have hmN : AEMeasurable
+        (fun ξ : Pl => ‖Sop ε b ((FN : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ))
+        (volume : Measure Pl) :=
+      (((measurable_Sop (hbjoint t') ε FN).enorm).pow_const _).aemeasurable
+    refine le_trans (lintegral_mono (hsplit t')) ?_
+    rw [lintegral_const_mul' _ _ (by simp), lintegral_add_left' hmN]
+  refine le_trans (Finset.sum_le_sum hstep) ?_
+  rw [← Finset.mul_sum, Finset.sum_add_distrib]
+  refine mul_le_mul' (le_refl _) (add_le_add ?_ ?_)
+  · rw [hFN, hcdef] at hnear
+    exact hnear
+  · have hfar : ∀ t' ∈ Efin,
+        (∫⁻ ξ : Pl, ‖Sop ε b ((FF : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ))
+          ≤ ENNReal.ofReal (CFar m B Cs CV gam ^ 2) * wMass gam FF := by
+      intro t' ht'
+      obtain ⟨h1, h2⟩ := hEfin t' ht'
+      refine offdiag_Sop_far hSD hCs hCVnn hCV hε h1 h2 hgam1 hgam2 ?_
+      intro y z hyz
+      rw [hFF, hcdef] at hyz
+      exact farPart_sep_ge hyz
+    have hwF : wMass gam FF ≤ wMass gam F := by
+      rw [wMass, wMass]
+      refine lintegral_mono fun x => ?_
+      refine mul_le_mul' ?_ (le_refl _)
+      refine ENNReal.rpow_le_rpow ?_ (by norm_num)
+      rw [← ofReal_norm, ← ofReal_norm]
+      refine ENNReal.ofReal_le_ofReal ?_
+      rw [hFF]
+      exact norm_farPart_le c F x
+    have hsum2 : (∑ t' ∈ Efin,
+        (∫⁻ ξ : Pl, ‖Sop ε b ((FF : Pl2 → ℂ)) ξ t'‖ₑ ^ (2 : ℝ)))
+        ≤ ∑ _t' ∈ Efin, ENNReal.ofReal (CFar m B Cs CV gam ^ 2) * wMass gam F := by
+      refine Finset.sum_le_sum fun t' ht' => ?_
+      refine le_trans (hfar t' ht') ?_
+      exact mul_le_mul' (le_refl _) hwF
+    refine le_trans hsum2 (le_of_eq ?_)
+    rw [Finset.sum_const, nsmul_eq_mul]
+
+/-- **Proposition 3.1 for one angular scale**, using the almost orthogonality estimate. -/
+theorem prop31_single {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+    (hstrict : IsStrictlyAdapted j m b) (hray : RayData j b B b1 b2)
+    (hSD : SymbData j m b B)
+    (hbjoint : ∀ t' : ℝ, Measurable fun p : Pl × Pl => b t' p.1 p.2)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε : ℝ} (hε : |ε| = 1) (Efin : Finset ℝ) (hEfin : ∀ t' ∈ Efin, 1 ≤ t' ∧ t' ≤ 2)
+    {N : ℝ} (hNnn : 0 ≤ N)
+    (hN : IsIntervalCount Efin (((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ)) N)
+    {gam : ℝ} (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (F : SchwartzMap Pl2 ℂ) :
+    (∑ t' ∈ Efin, ∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t'‖ₑ ^ (2 : ℝ))
+      ≤ 4 * (ENNReal.ofReal (12 * 2 ^ 61 * B ^ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ 2 * N
+              / (2 : ℝ) ^ (m : ℤ))
+            * (ENNReal.ofReal ((((2 : ℝ) ^ (22 - (m : ℤ)))) ^ (2 * gam - 1)) * wMass gam F)
+          + (Efin.card : ℝ≥0∞) *
+            (ENNReal.ofReal (CFar m B Cs CV gam ^ 2) * wMass gam F)) := by
+  refine prop31_combine hSD hbjoint hCs hCVnn hCV hε Efin hEfin hgam1 hgam2 F ?_
+  refine near_Sop hstrict hray hSD.nonneg hε Efin hNnn hN hgam1
+    (fun x => norm_nearPart_le _ F x) ?_
+  intro x hx
+  exact nearPart_sep_le hx
+
+/-- **Proposition 3.1 for one angular scale**, using only the trivial estimate.  This is the version
+used for the smallest-angle piece, which is adapted but not strictly adapted. -/
+theorem prop31_single_triv {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hSD : SymbData j m b B)
+    (hbjoint : ∀ t' : ℝ, Measurable fun p : Pl × Pl => b t' p.1 p.2)
+    {Cs CV : ℝ} (hCs : ∀ x : ℝ, |deriv shrinkS x| ≤ Cs) (hCVnn : 0 ≤ CV)
+    (hCV : ∀ i : Fin 2, ∀ n ≤ 1, ∀ ζ : Pl, ‖iteratedFDeriv ℝ n (unitVec i) ζ‖ ≤ CV)
+    {ε : ℝ} (hε : |ε| = 1) (Efin : Finset ℝ) (hEfin : ∀ t' ∈ Efin, 1 ≤ t' ∧ t' ≤ 2)
+    {gam : ℝ} (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (F : SchwartzMap Pl2 ℂ) :
+    (∑ t' ∈ Efin, ∫⁻ ξ : Pl, ‖Sop ε b (F : Pl2 → ℂ) ξ t'‖ₑ ^ (2 : ℝ))
+      ≤ 4 * ((Efin.card : ℝ≥0∞) *
+            ENNReal.ofReal (B ^ 2 * (2 : ℝ) ^ (2 * (j : ℤ) - (m : ℤ) + 12))
+            * (ENNReal.ofReal ((((2 : ℝ) ^ (22 - (m : ℤ)))) ^ (2 * gam - 1)) * wMass gam F)
+          + (Efin.card : ℝ≥0∞) *
+            (ENNReal.ofReal (CFar m B Cs CV gam ^ 2) * wMass gam F)) := by
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ (22 - (m : ℤ)) := by positivity
+  refine prop31_combine hSD hbjoint hCs hCVnn hCV hε Efin hEfin hgam1 hgam2 F ?_
+  refine le_trans (prop41 hSD.nonneg hSD.toIsAdapted
+    (fun t'' ξ'' η'' => hSD.bd0 t'' ξ'' η'') ε Efin _) ?_
+  refine mul_le_mul' (le_refl _) ?_
+  refine lintegral_enorm_sq_le_wMass hgam1 hRpos (fun x => norm_nearPart_le _ F x) ?_
+  intro x hx
+  exact nearPart_sep_le hx
+
+end Prop31Single
+
+
+/-! ## §4.6  From covering numbers to interval counts
+
+A `σ`-separated set meets any interval of length `σ` in at most two points, so an interval count for
+a separated set is controlled by a covering number.
+-/
+
+section CountFromCover
+
+/-- Three points of a `σ`-separated set cannot lie in a common interval of length `σ`. -/
+theorem not_three_in_interval {σ x y z : ℝ} (hσ : 0 < σ) {L : ℝ}
+    (hx : L ≤ x) (hx' : x ≤ L + σ) (hy : L ≤ y) (hy' : y ≤ L + σ)
+    (hz : L ≤ z) (hz' : z ≤ L + σ)
+    (hxy : σ ≤ |x - y|) (hxz : σ ≤ |x - z|) (hyz : σ ≤ |y - z|) : False := by
+  rcases abs_cases (x - y) with ⟨h1, _⟩ | ⟨h1, _⟩ <;>
+    rcases abs_cases (x - z) with ⟨h2, _⟩ | ⟨h2, _⟩ <;>
+      rcases abs_cases (y - z) with ⟨h3, _⟩ | ⟨h3, _⟩ <;>
+        rw [h1] at hxy <;> rw [h2] at hxz <;> rw [h3] at hyz <;> linarith
+
+/-- A `σ`-separated finite set meets a closed interval of length `σ` in at most two points. -/
+theorem card_le_two_of_separated {Efin : Finset ℝ} {σ : ℝ} (hσ : 0 < σ)
+    (hsep : ∀ s ∈ Efin, ∀ t ∈ Efin, s ≠ t → σ ≤ |s - t|) (a : ℝ) :
+    (Efin.filter (fun t => a - σ / 2 ≤ t ∧ t ≤ a + σ / 2)).card ≤ 2 := by
+  classical
+  by_contra hcon
+  push_neg at hcon
+  obtain ⟨x, y, z, hxm, hym, hzm, hxy, hxz, hyz⟩ :=
+    Finset.two_lt_card_iff.mp hcon
+  rw [Finset.mem_filter] at hxm hym hzm
+  refine not_three_in_interval hσ (L := a - σ / 2)
+    hxm.2.1 (by linarith [hxm.2.2]) hym.2.1 (by linarith [hym.2.2])
+    hzm.2.1 (by linarith [hzm.2.2])
+    (hsep x hxm.1 y hym.1 hxy) (hsep x hxm.1 z hzm.1 hxz) (hsep y hym.1 z hzm.1 hyz)
+
+/-- If a finite `σ`-separated set is covered by `ι.card` intervals of length `σ`, its cardinality is
+at most `2 * ι.card`. -/
+theorem card_le_two_mul_card_of_cover {Efin ι : Finset ℝ} {σ : ℝ} (hσ : 0 < σ)
+    (hsep : ∀ s ∈ Efin, ∀ t ∈ Efin, s ≠ t → σ ≤ |s - t|)
+    (hcov : ∀ t ∈ Efin, ∃ a ∈ ι, a - σ / 2 ≤ t ∧ t ≤ a + σ / 2) :
+    Efin.card ≤ 2 * ι.card := by
+  classical
+  choose! f hfmem hf1 hf2 using hcov
+  refine Finset.card_le_mul_card_image_of_maps_to (t := ι) hfmem 2 ?_
+  intro a _
+  refine le_trans (Finset.card_le_card ?_) (card_le_two_of_separated hσ hsep a)
+  intro t ht
+  rw [Finset.mem_filter] at ht
+  obtain ⟨htE, hfa⟩ := ht
+  rw [Finset.mem_filter]
+  refine ⟨htE, ?_, ?_⟩
+  · rw [← hfa]
+    exact hf1 t htE
+  · rw [← hfa]
+    exact hf2 t htE
+
+end CountFromCover
+
+
+/-! ### The interval count supplied by the quasi-Assouad cover bound -/
+
+section AssouadBridge
+
+/-- A `σ`-separated finite set has at most two points in any interval of length at most `σ`. -/
+theorem card_le_two_of_short {Efin : Finset ℝ} {σ : ℝ} (hσ : 0 < σ)
+    (hsep : ∀ s ∈ Efin, ∀ t ∈ Efin, s ≠ t → σ ≤ |s - t|) {u v : ℝ} (huv : v - u ≤ σ) :
+    (Efin.filter (fun t => u ≤ t ∧ t ≤ v)).card ≤ 2 := by
+  refine le_trans (Finset.card_le_card ?_) (card_le_two_of_separated hσ hsep (u + σ / 2))
+  intro t ht
+  rw [Finset.mem_filter] at ht ⊢
+  obtain ⟨htE, h1, h2⟩ := ht
+  refine ⟨htE, by linarith, by linarith⟩
+
+/-- **The interval count coming from the quasi-Assouad cover bound.**  If `ℰ ⊆ E ∩ [1,2]` is
+`2^{-j}`-separated then the number of its points in any interval of length `2^{2m-j}` is at most
+`2 + 2 C 2^{jη} 2^{2mγ}`. -/
+theorem intervalCount_of_assouad {E : Set ℝ} {gam eta C : ℝ}
+    (hcov : HasSubpowerAssouadCoverBound E gam eta C) (hCnn : 0 ≤ C) (hgam : 0 ≤ gam)
+    {j m : ℕ} (hjm : 2 * m ≤ j) (hj : 0 < j)
+    {Efin : Finset ℝ} (hEsub : ∀ t ∈ Efin, t ∈ E)
+    (hE1 : ∀ t ∈ Efin, 1 ≤ t) (hE2 : ∀ t ∈ Efin, t ≤ 2)
+    (hsep : ∀ s ∈ Efin, ∀ t ∈ Efin, s ≠ t → (2 : ℝ) ^ (-(j : ℤ)) ≤ |s - t|) :
+    IsIntervalCount Efin (((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ))
+      (2 + 2 * C * (2 : ℝ) ^ ((j : ℝ) * eta) * (2 : ℝ) ^ (2 * (m : ℝ) * gam)) := by
+  classical
+  intro c
+  set σ : ℝ := (2 : ℝ) ^ (-(j : ℤ)) with hσdef
+  have hσpos : (0 : ℝ) < σ := by rw [hσdef]; positivity
+  have hσlt : σ < 1 := by
+    rw [hσdef]
+    refine zpow_lt_one_of_neg₀ (by norm_num) ?_
+    omega
+  set dl : ℝ := ((2 : ℝ) ^ (m : ℤ)) ^ 2 / (2 : ℝ) ^ (j : ℤ) with hdl
+  have hdlpos : (0 : ℝ) < dl := by rw [hdl]; positivity
+  set S : Finset ℝ := Efin.filter (fun t => c ≤ t ∧ t < c + dl) with hS
+  have hCbig : (0 : ℝ) ≤ 2 * C * (2 : ℝ) ^ ((j : ℝ) * eta) * (2 : ℝ) ^ (2 * (m : ℝ) * gam) := by
+    have h1 : (0 : ℝ) < (2 : ℝ) ^ ((j : ℝ) * eta) := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0 : ℝ) < (2 : ℝ) ^ (2 * (m : ℝ) * gam) := Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  rcases Finset.eq_empty_or_nonempty S with hempty | ⟨t0, ht0⟩
+  · rw [hS] at hempty
+    rw [hS, hempty]
+    simp only [Finset.card_empty, Nat.cast_zero]
+    linarith
+  -- the interval `[a, b]` inside `[1,2]`
+  rw [hS] at ht0
+  obtain ⟨ht0E, ht0c, ht0d⟩ := Finset.mem_filter.mp ht0
+  set a : ℝ := max c 1 with ha
+  set b : ℝ := min (c + dl) 2 with hb
+  have h1a : (1 : ℝ) ≤ a := by rw [ha]; exact le_max_right _ _
+  have hb2 : b ≤ 2 := by rw [hb]; exact min_le_right _ _
+  have hat0 : a ≤ t0 := by
+    rw [ha]
+    exact max_le ht0c (hE1 t0 ht0E)
+  have ht0b : t0 ≤ b := by
+    rw [hb]
+    exact le_min (le_of_lt ht0d) (hE2 t0 ht0E)
+  have hab : a ≤ b := le_trans hat0 ht0b
+  have hsubset : ∀ t ∈ S, t ∈ E ∩ Set.Icc a b := by
+    intro t ht
+    rw [hS] at ht
+    obtain ⟨htE, htc, htd⟩ := Finset.mem_filter.mp ht
+    refine ⟨hEsub t htE, ?_, ?_⟩
+    · rw [ha]
+      exact max_le htc (hE1 t htE)
+    · rw [hb]
+      exact le_min (le_of_lt htd) (hE2 t htE)
+  rcases lt_or_ge (b - a) σ with hshort | hlong
+  · -- degenerate case: the overlap is shorter than the separation
+    have hsub2 : S ⊆ Efin.filter (fun t => a ≤ t ∧ t ≤ b) := by
+      intro t ht
+      have h := hsubset t ht
+      rw [hS] at ht
+      rw [Finset.mem_filter]
+      exact ⟨(Finset.mem_filter.mp ht).1, h.2.1, h.2.2⟩
+    have hcard := card_le_two_of_short hσpos hsep (le_of_lt hshort)
+    have hle : S.card ≤ 2 := le_trans (Finset.card_le_card hsub2) hcard
+    have : ((S.card : ℝ)) ≤ 2 := by exact_mod_cast hle
+    rw [hS] at this ⊢
+    linarith
+  · -- main case: apply the cover bound
+    obtain ⟨ι, hcovι, hcard⟩ := hcov σ a b hσpos hσlt h1a hab hb2 hlong
+    have hcov2 : ∀ t ∈ S, ∃ x ∈ ι, x - σ / 2 ≤ t ∧ t ≤ x + σ / 2 := by
+      intro t ht
+      have hmem := hcovι (hsubset t ht)
+      rw [Set.mem_iUnion₂] at hmem
+      obtain ⟨x, hxι, hx⟩ := hmem
+      exact ⟨x, hxι, hx.1, hx.2⟩
+    have hsepS : ∀ s ∈ S, ∀ t ∈ S, s ≠ t → σ ≤ |s - t| := by
+      intro s hs t ht hst
+      rw [hS] at hs ht
+      exact hsep s (Finset.mem_filter.mp hs).1 t (Finset.mem_filter.mp ht).1 hst
+    have hSle : S.card ≤ 2 * ι.card := card_le_two_mul_card_of_cover hσpos hsepS hcov2
+    have hScast : ((S.card : ℝ)) ≤ 2 * (ι.card : ℝ) := by exact_mod_cast hSle
+    -- bound the cover cardinality
+    have hratio : (b - a) / σ ≤ ((2 : ℝ) ^ (m : ℤ)) ^ 2 := by
+      rw [div_le_iff₀ hσpos]
+      have hba : b - a ≤ dl := by
+        have h1 : b ≤ c + dl := by rw [hb]; exact min_le_left _ _
+        have h2 : c ≤ a := by rw [ha]; exact le_max_left _ _
+        linarith
+      refine le_trans hba (le_of_eq ?_)
+      rw [hdl, hσdef, zpow_neg, div_eq_mul_inv]
+    have hpow : ((b - a) / σ) ^ gam ≤ ((2 : ℝ) ^ (2 * (m : ℝ) * gam)) := by
+      refine le_trans (Real.rpow_le_rpow (by positivity) hratio hgam) (le_of_eq ?_)
+      rw [two_zpow_sq, two_zpow_rpow]
+      congr 1
+      push_cast
+      ring
+    have hsigma : σ ^ (-eta) = (2 : ℝ) ^ ((j : ℝ) * eta) := by
+      rw [hσdef, two_zpow_rpow]
+      congr 1
+      push_cast
+      ring
+    have hcard2 : (ι.card : ℝ)
+        ≤ C * (2 : ℝ) ^ ((j : ℝ) * eta) * (2 : ℝ) ^ (2 * (m : ℝ) * gam) := by
+      refine le_trans hcard ?_
+      rw [hsigma]
+      have hC2 : (0 : ℝ) ≤ C * (2 : ℝ) ^ ((j : ℝ) * eta) := by
+        have h1 : (0 : ℝ) < (2 : ℝ) ^ ((j : ℝ) * eta) := Real.rpow_pos_of_pos (by norm_num) _
+        positivity
+      exact mul_le_mul_of_nonneg_left hpow hC2
+    rw [hS] at hScast ⊢
+    linarith
+
+end AssouadBridge
+
+
+/-! ## §4.6  The angular partition of unity
+
+`det(ξ,η)` is bilinear, hence linear in `η` and linear along rays through the origin.  This is what
+makes the angular cutoffs `ψ_m` have radial derivatives of size `2^{-jN}` and Cartesian
+`η`-derivatives of size `2^{-(j-m)}` — exactly the two scales required by `RayData` and `SymbData`.
+-/
+
+section AngularPartition
+
+/-- `η ↦ det(ξ,η)` as a continuous linear map. -/
+def detCLM (ξ : Pl) : Pl →L[ℝ] ℝ := (ξ 0) • prj 1 - (ξ 1) • prj 0
+
+@[simp] theorem detCLM_apply (ξ η : Pl) : detCLM ξ η = det2 ξ η := by
+  rw [detCLM, det2, ContinuousLinearMap.sub_apply, ContinuousLinearMap.smul_apply,
+    ContinuousLinearMap.smul_apply, prj_apply, prj_apply, smul_eq_mul, smul_eq_mul]
+
+theorem norm_detCLM_le (ξ : Pl) : ‖detCLM ξ‖ ≤ 2 * ‖ξ‖ := by
+  refine le_trans (norm_sub_le _ _) ?_
+  have h1 : ‖(ξ 0) • prj 1‖ ≤ ‖ξ‖ := by
+    refine le_trans (norm_smul_le (ξ 0) (prj 1)) ?_
+    have h := norm_prj_le 1
+    have habs : |ξ 0| ≤ ‖ξ‖ := Auto.CalderonVaillancourt.abs_apply_le_norm ξ 0
+    rw [Real.norm_eq_abs]
+    nlinarith [abs_nonneg (ξ 0), norm_nonneg (prj (1 : Fin 2))]
+  have h2 : ‖(ξ 1) • prj 0‖ ≤ ‖ξ‖ := by
+    refine le_trans (norm_smul_le (ξ 1) (prj 0)) ?_
+    have h := norm_prj_le 0
+    have habs : |ξ 1| ≤ ‖ξ‖ := Auto.CalderonVaillancourt.abs_apply_le_norm ξ 1
+    rw [Real.norm_eq_abs]
+    nlinarith [abs_nonneg (ξ 1), norm_nonneg (prj (0 : Fin 2))]
+  linarith
+
+/-- The normalized angular variable, `v = (2^{-2j} det(ξ,η))²`. -/
+def angV (j : ℕ) (ξ η : Pl) : ℝ := ((2 : ℝ) ^ (-2 * (j : ℤ)) * detCLM ξ η) ^ 2
+
+theorem angV_nonneg (j : ℕ) (ξ η : Pl) : 0 ≤ angV j ξ η := by
+  rw [angV]
+  positivity
+
+theorem contDiff_angV (j : ℕ) (ξ : Pl) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angV j ξ) := by
+  have h : angV j ξ = fun η => ((2 : ℝ) ^ (-2 * (j : ℤ)) * detCLM ξ η) ^ 2 := rfl
+  rw [h]
+  exact (contDiff_const.mul (detCLM ξ).contDiff).pow 2
+
+/-- The increasing family of angular cutoffs: `angA j m = 1` where `4^m v ≥ 2` and `= 0` where
+`4^m v ≤ 1`. -/
+def angA (j m : ℕ) (ξ η : Pl) : ℝ :=
+  Real.smoothTransition ((4 : ℝ) ^ m * angV j ξ η - 1)
+
+theorem contDiff_angA (j m : ℕ) (ξ : Pl) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angA j m ξ) :=
+  contDiff_st.comp ((contDiff_const.mul (contDiff_angV j ξ)).sub contDiff_const)
+
+theorem angA_nonneg (j m : ℕ) (ξ η : Pl) : 0 ≤ angA j m ξ η :=
+  Real.smoothTransition.nonneg _
+
+theorem angA_le_one (j m : ℕ) (ξ η : Pl) : angA j m ξ η ≤ 1 :=
+  Real.smoothTransition.le_one _
+
+theorem angA_eq_zero {j m : ℕ} {ξ η : Pl} (h : (4 : ℝ) ^ m * angV j ξ η ≤ 1) :
+    angA j m ξ η = 0 :=
+  Real.smoothTransition.zero_of_nonpos (by linarith)
+
+theorem angA_eq_one {j m : ℕ} {ξ η : Pl} (h : 2 ≤ (4 : ℝ) ^ m * angV j ξ η) :
+    angA j m ξ η = 1 :=
+  Real.smoothTransition.one_of_one_le (by linarith)
+
+/-- The `m`-th piece of the angular partition, for `0 ≤ m ≤ M + 1`. -/
+def angPsi (j M m : ℕ) (ξ η : Pl) : ℝ :=
+  if m = 0 then angA j 0 ξ η
+  else if m ≤ M then angA j m ξ η - angA j (m - 1) ξ η
+  else 1 - angA j M ξ η
+
+theorem contDiff_angPsi (j M m : ℕ) (ξ : Pl) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angPsi j M m ξ) := by
+  by_cases h0 : m = 0
+  · have h : angPsi j M m ξ = angA j 0 ξ := by
+      funext η
+      rw [angPsi]
+      simp [h0]
+    rw [h]
+    exact contDiff_angA j 0 ξ
+  · by_cases hM : m ≤ M
+    · have h : angPsi j M m ξ = fun η => angA j m ξ η - angA j (m - 1) ξ η := by
+        funext η
+        rw [angPsi]
+        simp [h0, hM]
+      rw [h]
+      exact (contDiff_angA j m ξ).sub (contDiff_angA j (m - 1) ξ)
+    · have h : angPsi j M m ξ = fun η => 1 - angA j M ξ η := by
+        funext η
+        rw [angPsi]
+        simp [h0, hM]
+      rw [h]
+      exact contDiff_const.sub (contDiff_angA j M ξ)
+
+/-- The angular pieces sum to `1`. -/
+theorem sum_angPsi (j M : ℕ) (ξ η : Pl) :
+    ∑ m ∈ Finset.range (M + 2), angPsi j M m ξ η = 1 := by
+  classical
+  have hmid : ∀ m ∈ Finset.range M, angPsi j M (m + 1) ξ η
+      = angA j (m + 1) ξ η - angA j m ξ η := by
+    intro m hm
+    rw [Finset.mem_range] at hm
+    rw [angPsi]
+    have h0 : ¬ (m + 1 = 0) := by omega
+    have hM : m + 1 ≤ M := by omega
+    simp only [h0, if_false, hM, if_true, Nat.add_sub_cancel]
+  have hlast : angPsi j M (M + 1) ξ η = 1 - angA j M ξ η := by
+    rw [angPsi]
+    have h0 : ¬ (M + 1 = 0) := by omega
+    have hM : ¬ (M + 1 ≤ M) := by omega
+    simp only [h0, if_false, hM, if_false]
+  have hfirst : angPsi j M 0 ξ η = angA j 0 ξ η := by
+    rw [angPsi]
+    simp
+  rw [show M + 2 = (M + 1) + 1 by ring, Finset.sum_range_succ, hlast]
+  rw [Finset.sum_range_succ' (fun m => angPsi j M m ξ η) M, hfirst]
+  rw [Finset.sum_congr rfl hmid, Finset.sum_range_sub (fun m => angA j m ξ η) M]
+  ring
+
+end AngularPartition
+
+
+/-! ### The determinant and the angle are comparable on the support -/
+
+section AngleComparison
+
+/-- The normalized modulus of the determinant, `|2^{-2j} det(ξ,η)|`. -/
+def dnorm (j : ℕ) (ξ η : Pl) : ℝ := |(2 : ℝ) ^ (-2 * (j : ℤ)) * det2 ξ η|
+
+theorem dnorm_nonneg (j : ℕ) (ξ η : Pl) : 0 ≤ dnorm j ξ η := abs_nonneg _
+
+theorem angV_eq_sq (j : ℕ) (ξ η : Pl) : angV j ξ η = dnorm j ξ η ^ 2 := by
+  rw [angV, dnorm, detCLM_apply, sq_abs]
+
+theorem dnorm_eq (j : ℕ) (ξ η : Pl) :
+    dnorm j ξ η = (2 : ℝ) ^ (-2 * (j : ℤ)) * |det2 ξ η| := by
+  rw [dnorm, abs_mul, abs_of_pos (show (0 : ℝ) < (2 : ℝ) ^ (-2 * (j : ℤ)) by positivity)]
+
+/-- The normalized determinant is at most `2^3` times the angle. -/
+theorem dnorm_le_angle {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) :
+    dnorm j ξ η ≤ (2 : ℝ) ^ (3 : ℤ) * InnerProductGeometry.angle ξ η := by
+  have hxi := xiData_of_mem h
+  obtain ⟨hηT, -, -⟩ := h
+  set θ := InnerProductGeometry.angle ξ η with hθ
+  have hθ0 : 0 ≤ θ := InnerProductGeometry.angle_nonneg ξ η
+  have hsin := sin_angle_eq ξ η
+  rw [← hθ] at hsin
+  have hxn : ‖ξ‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 2) := hxi.norm_le
+  have hyn : ‖η‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 1) := hηT.2.2.2
+  have hypos : (0 : ℝ) < ‖η‖ := lt_of_lt_of_le (by positivity) hηT.2.2.1
+  have hdet : |det2 ξ η| ≤ θ * ((2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ ((j : ℤ) + 1)) := by
+    rw [← hsin]
+    have hprod : ‖ξ‖ * ‖η‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ ((j : ℤ) + 1) :=
+      mul_le_mul hxn hyn (le_of_lt hypos) (by positivity)
+    have hsl : Real.sin θ ≤ θ := Real.sin_le hθ0
+    have hpn : (0 : ℝ) ≤ ‖ξ‖ * ‖η‖ := by positivity
+    calc Real.sin θ * (‖ξ‖ * ‖η‖) ≤ θ * (‖ξ‖ * ‖η‖) := by nlinarith
+      _ ≤ θ * ((2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ ((j : ℤ) + 1)) :=
+          mul_le_mul_of_nonneg_left hprod hθ0
+  have hkey : (2 : ℝ) ^ (-2 * (j : ℤ)) * ((2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ ((j : ℤ) + 1))
+      = (2 : ℝ) ^ (3 : ℤ) := by
+    rw [← two_zpow_add, ← two_zpow_add]
+    congr 1
+    ring
+  rw [dnorm_eq]
+  calc (2 : ℝ) ^ (-2 * (j : ℤ)) * |det2 ξ η|
+      ≤ (2 : ℝ) ^ (-2 * (j : ℤ)) * (θ * ((2 : ℝ) ^ ((j : ℤ) + 2) * (2 : ℝ) ^ ((j : ℤ) + 1))) :=
+        mul_le_mul_of_nonneg_left hdet (by positivity)
+    _ = (2 : ℝ) ^ (3 : ℤ) * θ := by rw [← hkey]; ring
+
+/-- The angle is at most `2^3` times the normalized determinant. -/
+theorem angle_le_dnorm {j m : ℕ} {ξ η : Pl} (h : η ∈ SuppSet j m ξ) :
+    InnerProductGeometry.angle ξ η ≤ (2 : ℝ) ^ (3 : ℤ) * dnorm j ξ η := by
+  have hxi := xiData_of_mem h
+  obtain ⟨hηT, -, -⟩ := h
+  set θ := InnerProductGeometry.angle ξ η with hθ
+  have hθ0 : 0 ≤ θ := InnerProductGeometry.angle_nonneg ξ η
+  have hπp : (0 : ℝ) < π := Real.pi_pos
+  have hπ4 : π ≤ 4 := Real.pi_le_four
+  have hπ3 : (2 : ℝ) ≤ π := Real.two_le_pi
+  have hsmall : θ ≤ (2 : ℝ) ^ (-(9 : ℤ)) := by
+    rw [hθ]
+    exact angle_le_of_cone hxi.cone0 hxi.snd_pos hxi.cone hηT.1
+      (Theta.snd_pos hηT) hηT.2.1
+  have hhalf : θ ≤ π / 2 := by
+    have h9 : (2 : ℝ) ^ (-(9 : ℤ)) ≤ 1 := by norm_num
+    linarith
+  have hlow : 2 / π * θ ≤ Real.sin θ := Real.mul_le_sin hθ0 hhalf
+  have hsin := sin_angle_eq ξ η
+  rw [← hθ] at hsin
+  have hxn : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖ξ‖ := hxi.norm_lower
+  have hyn : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖η‖ := hηT.2.2.1
+  have hdet : 2 / π * θ * ((2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ ((j : ℤ) - 1)) ≤ |det2 ξ η| := by
+    rw [← hsin]
+    have hprod : (2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ ((j : ℤ) - 1) ≤ ‖ξ‖ * ‖η‖ :=
+      mul_le_mul hxn hyn (by positivity) (norm_nonneg _)
+    have h2 : (0 : ℝ) ≤ 2 / π * θ := by positivity
+    have hpn : (0 : ℝ) ≤ ‖ξ‖ * ‖η‖ := by positivity
+    calc 2 / π * θ * ((2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ ((j : ℤ) - 1))
+        ≤ 2 / π * θ * (‖ξ‖ * ‖η‖) := mul_le_mul_of_nonneg_left hprod h2
+      _ ≤ Real.sin θ * (‖ξ‖ * ‖η‖) := by nlinarith
+  have hkey : (2 : ℝ) ^ (-2 * (j : ℤ)) * ((2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ ((j : ℤ) - 1))
+      = 1 / 4 := by
+    rw [← two_zpow_add, ← two_zpow_add]
+    rw [show -2 * (j : ℤ) + ((j : ℤ) - 1 + ((j : ℤ) - 1)) = -2 by ring]
+    norm_num
+  have hd : θ / (2 * π) ≤ dnorm j ξ η := by
+    rw [dnorm_eq]
+    have hstep := mul_le_mul_of_nonneg_left hdet
+      (show (0 : ℝ) ≤ (2 : ℝ) ^ (-2 * (j : ℤ)) by positivity)
+    refine le_trans (le_of_eq ?_) hstep
+    have hcalc : (2 : ℝ) ^ (-2 * (j : ℤ))
+        * (2 / π * θ * ((2 : ℝ) ^ ((j : ℤ) - 1) * (2 : ℝ) ^ ((j : ℤ) - 1)))
+        = (2 / π * θ) * (1 / 4) := by
+      rw [← hkey]; ring
+    rw [hcalc]
+    field_simp
+    ring
+  rw [div_le_iff₀ (show (0 : ℝ) < 2 * π by positivity)] at hd
+  have hdn := dnorm_nonneg j ξ η
+  have hgap : (0 : ℝ) ≤ dnorm j ξ η * (8 - 2 * π) := mul_nonneg hdn (by linarith)
+  rw [show ((2 : ℝ) ^ (3 : ℤ)) = 8 by norm_num]
+  nlinarith
+
+end AngleComparison
+
+/-! ### Derivative bounds for the smooth transition -/
+
+section StBounds
+
+theorem exists_st_deriv2_bound : ∃ C : ℝ, 1 ≤ C ∧
+    (∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C) ∧
+    (∀ x : ℝ, |deriv (deriv Real.smoothTransition) x| ≤ C) := by
+  obtain ⟨C, hC1, hC⟩ := exists_st_bound 2
+  refine ⟨C, hC1, fun x => ?_, fun x => ?_⟩
+  · have h := hC 1 (by norm_num) x
+    rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, iteratedDeriv_one, Real.norm_eq_abs] at h
+    exact h
+  · have h := hC 2 (le_refl 2) x
+    rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, Real.norm_eq_abs,
+      show (2 : ℕ) = 1 + 1 from rfl, iteratedDeriv_succ, iteratedDeriv_one] at h
+    exact h
+
+end StBounds
+
+/-! ### The support of the angular pieces -/
+
+section AngSupport
+
+theorem angV_gt_of_angPsi_ne {j M m : ℕ} {ξ η : Pl} (hm : m ≤ M)
+    (h : angPsi j M m ξ η ≠ 0) : 1 < (4 : ℝ) ^ m * angV j ξ η := by
+  by_contra hcon
+  push_neg at hcon
+  refine h ?_
+  rcases Nat.eq_zero_or_pos m with h0 | hpos
+  · subst h0
+    rw [angPsi]
+    simp only [if_pos rfl]
+    exact angA_eq_zero hcon
+  · have hne : ¬ (m = 0) := by omega
+    have hprev : (4 : ℝ) ^ (m - 1) * angV j ξ η ≤ 1 := by
+      have hstep : (4 : ℝ) ^ m = 4 * (4 : ℝ) ^ (m - 1) := by
+        have hm1 : m - 1 + 1 = m := by omega
+        conv_lhs => rw [← hm1]
+        rw [pow_succ]
+        ring
+      rw [hstep] at hcon
+      have hv := angV_nonneg j ξ η
+      nlinarith [pow_nonneg (show (0:ℝ) ≤ 4 by norm_num) (m - 1)]
+    rw [angPsi]
+    simp only [hne, if_false, hm, if_true]
+    rw [angA_eq_zero hcon, angA_eq_zero hprev, sub_zero]
+
+theorem angV_lt_of_angPsi_ne {j M m : ℕ} {ξ η : Pl} (hm : 1 ≤ m) (hmM : m ≤ M + 1)
+    (h : angPsi j M m ξ η ≠ 0) : (4 : ℝ) ^ (m - 1) * angV j ξ η < 2 := by
+  by_contra hcon
+  push_neg at hcon
+  refine h ?_
+  have hne : ¬ (m = 0) := by omega
+  rcases le_or_gt m M with hle | hgt
+  · have hcur : 2 ≤ (4 : ℝ) ^ m * angV j ξ η := by
+      have hstep : (4 : ℝ) ^ m = 4 * (4 : ℝ) ^ (m - 1) := by
+        have hm1 : m - 1 + 1 = m := by omega
+        conv_lhs => rw [← hm1]
+        rw [pow_succ]
+        ring
+      rw [hstep]
+      have hv := angV_nonneg j ξ η
+      nlinarith [pow_nonneg (show (0:ℝ) ≤ 4 by norm_num) (m - 1)]
+    rw [angPsi]
+    simp only [hne, if_false, hle, if_true]
+    rw [angA_eq_one hcur, angA_eq_one hcon, sub_self]
+  · have hmeq : m - 1 = M := by omega
+    rw [hmeq] at hcon
+    rw [angPsi]
+    simp only [hne, if_false, show ¬ (m ≤ M) by omega, if_false]
+    rw [angA_eq_one hcon, sub_self]
+
+theorem dnorm_gt_of_angPsi_ne {j M m : ℕ} {ξ η : Pl} (hm : m ≤ M)
+    (h : angPsi j M m ξ η ≠ 0) : (2 : ℝ) ^ (-(m : ℤ)) < dnorm j ξ η := by
+  have hv := angV_gt_of_angPsi_ne hm h
+  rw [angV_eq_sq] at hv
+  have h4 : (4 : ℝ) ^ m = ((2 : ℝ) ^ (m : ℤ)) ^ 2 := by
+    rw [zpow_natCast, show (4 : ℝ) = 2 ^ 2 by norm_num, ← pow_mul, ← pow_mul, mul_comm]
+  rw [h4] at hv
+  have hprod : 1 < ((2 : ℝ) ^ (m : ℤ) * dnorm j ξ η) ^ 2 := by
+    rw [mul_pow]; exact hv
+  have hnn : 0 ≤ (2 : ℝ) ^ (m : ℤ) * dnorm j ξ η := by
+    have := dnorm_nonneg j ξ η; positivity
+  have h1 : 1 < (2 : ℝ) ^ (m : ℤ) * dnorm j ξ η := by nlinarith
+  have hp : (0 : ℝ) < (2 : ℝ) ^ (m : ℤ) := by positivity
+  rw [show ((2 : ℝ) ^ (-(m : ℤ))) = 1 / (2 : ℝ) ^ (m : ℤ) by
+    rw [zpow_neg, one_div], div_lt_iff₀ hp]
+  linarith [h1]
+
+theorem dnorm_lt_of_angPsi_ne {j M m : ℕ} {ξ η : Pl} (hm : 1 ≤ m) (hmM : m ≤ M + 1)
+    (h : angPsi j M m ξ η ≠ 0) : dnorm j ξ η < (2 : ℝ) ^ (2 - (m : ℤ)) := by
+  have hv := angV_lt_of_angPsi_ne hm hmM h
+  rw [angV_eq_sq] at hv
+  have hcast : ((m - 1 : ℕ) : ℤ) = (m : ℤ) - 1 := by
+    push_cast [Nat.cast_sub hm]
+    ring
+  have h4 : (4 : ℝ) ^ (m - 1) = ((2 : ℝ) ^ ((m : ℤ) - 1)) ^ 2 := by
+    rw [← hcast, zpow_natCast, show (4 : ℝ) = 2 ^ 2 by norm_num, ← pow_mul, ← pow_mul, mul_comm]
+  rw [h4] at hv
+  have hprod : ((2 : ℝ) ^ ((m : ℤ) - 1) * dnorm j ξ η) ^ 2 < 2 := by
+    rw [mul_pow]; exact hv
+  have hnn : 0 ≤ (2 : ℝ) ^ ((m : ℤ) - 1) * dnorm j ξ η := by
+    have := dnorm_nonneg j ξ η; positivity
+  have h1 : (2 : ℝ) ^ ((m : ℤ) - 1) * dnorm j ξ η < 2 := by nlinarith
+  have hp : (0 : ℝ) < (2 : ℝ) ^ ((m : ℤ) - 1) := by positivity
+  have hgoal : (2 : ℝ) ^ (2 - (m : ℤ)) = 2 / (2 : ℝ) ^ ((m : ℤ) - 1) := by
+    rw [eq_div_iff (ne_of_gt hp), ← two_zpow_add,
+      show 2 - (m : ℤ) + ((m : ℤ) - 1) = 1 by ring]
+    norm_num
+  rw [hgoal, lt_div_iff₀ hp]
+  linarith [h1]
+
+/-- On the support of the `m`-th angular piece the angle is at most `2^{5-m}`. -/
+theorem angle_le_of_angPsi_ne {j M m : ℕ} {ξ η : Pl} (hm : 1 ≤ m) (hmM : m ≤ M + 1)
+    (hsupp : η ∈ SuppSet j 0 ξ) (h : angPsi j M m ξ η ≠ 0) :
+    InnerProductGeometry.angle ξ η ≤ (2 : ℝ) ^ (5 - (m : ℤ)) := by
+  have h1 := angle_le_dnorm hsupp
+  have h2 := dnorm_lt_of_angPsi_ne hm hmM h
+  have heq : (2 : ℝ) ^ (3 : ℤ) * (2 : ℝ) ^ (2 - (m : ℤ)) = (2 : ℝ) ^ (5 - (m : ℤ)) := by
+    rw [← two_zpow_add]
+    congr 1
+    ring
+  have h3 : (2 : ℝ) ^ (3 : ℤ) * dnorm j ξ η
+      ≤ (2 : ℝ) ^ (3 : ℤ) * (2 : ℝ) ^ (2 - (m : ℤ)) :=
+    mul_le_mul_of_nonneg_left (le_of_lt h2) (by positivity)
+  rw [heq] at h3
+  linarith
+
+/-- On the support of the `m`-th angular piece the angle is at least `2^{-m-5}`. -/
+theorem angle_ge_of_angPsi_ne {j M m : ℕ} {ξ η : Pl} (hm : m ≤ M)
+    (hsupp : η ∈ SuppSet j 0 ξ) (h : angPsi j M m ξ η ≠ 0) :
+    (2 : ℝ) ^ (-(m : ℤ) - 5) ≤ InnerProductGeometry.angle ξ η := by
+  have h1 := dnorm_le_angle hsupp
+  have h2 := dnorm_gt_of_angPsi_ne hm h
+  have heq : (2 : ℝ) ^ (-(m : ℤ) - 5) * (2 : ℝ) ^ (3 : ℤ) = (2 : ℝ) ^ (-(m : ℤ) - 2) := by
+    rw [← two_zpow_add]
+    congr 1
+    ring
+  have h3 : (2 : ℝ) ^ (-(m : ℤ) - 2) ≤ (2 : ℝ) ^ (-(m : ℤ)) := by
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    omega
+  have hp : (0 : ℝ) < (2 : ℝ) ^ (3 : ℤ) := by positivity
+  -- `2^{-m-5}·2^3 = 2^{-m-2} ≤ 2^{-m} < dnorm ≤ 2^3 θ`
+  have h4 : (2 : ℝ) ^ (-(m : ℤ) - 5) * (2 : ℝ) ^ (3 : ℤ)
+      ≤ (2 : ℝ) ^ (3 : ℤ) * InnerProductGeometry.angle ξ η := by
+    rw [heq]
+    linarith
+  nlinarith [h4, hp]
+
+end AngSupport
+
+
+/-! ### The derivatives of the smooth transition vanish off the transition zone -/
+
+section StVanish
+
+theorem deriv_st_eq_zero_of_nonpos {x : ℝ} (hx : x ≤ 0) :
+    deriv Real.smoothTransition x = 0 := by
+  have hmin : IsLocalMin Real.smoothTransition x := by
+    refine Filter.Eventually.of_forall fun y => ?_
+    rw [Real.smoothTransition.zero_of_nonpos hx]
+    exact Real.smoothTransition.nonneg y
+  exact hmin.deriv_eq_zero
+
+theorem deriv_st_eq_zero_of_one_le {x : ℝ} (hx : 1 ≤ x) :
+    deriv Real.smoothTransition x = 0 := by
+  have hmax : IsLocalMax Real.smoothTransition x := by
+    refine Filter.Eventually.of_forall fun y => ?_
+    rw [Real.smoothTransition.one_of_one_le hx]
+    exact Real.smoothTransition.le_one y
+  exact hmax.deriv_eq_zero
+
+theorem deriv_st_nonneg (x : ℝ) : 0 ≤ deriv Real.smoothTransition x :=
+  Real.smoothTransition.monotone.deriv_nonneg
+
+theorem deriv2_st_eq_zero_of_nonpos {x : ℝ} (hx : x ≤ 0) :
+    deriv (deriv Real.smoothTransition) x = 0 := by
+  have hmin : IsLocalMin (deriv Real.smoothTransition) x := by
+    refine Filter.Eventually.of_forall fun y => ?_
+    rw [deriv_st_eq_zero_of_nonpos hx]
+    exact deriv_st_nonneg y
+  exact hmin.deriv_eq_zero
+
+theorem deriv2_st_eq_zero_of_one_le {x : ℝ} (hx : 1 ≤ x) :
+    deriv (deriv Real.smoothTransition) x = 0 := by
+  have hmin : IsLocalMin (deriv Real.smoothTransition) x := by
+    refine Filter.Eventually.of_forall fun y => ?_
+    rw [deriv_st_eq_zero_of_one_le hx]
+    exact deriv_st_nonneg y
+  exact hmin.deriv_eq_zero
+
+end StVanish
+
+/-! ### The angular cutoffs as functions of the determinant -/
+
+section AngG
+
+/-- `P_{j,k} = 4^k (2^{-2j})^2`, the coefficient in the angular cutoff. -/
+def angP (j k : ℕ) : ℝ := (4 : ℝ) ^ k * ((2 : ℝ) ^ (-2 * (j : ℤ))) ^ 2
+
+theorem angP_pos (j k : ℕ) : 0 < angP j k := by rw [angP]; positivity
+
+theorem angP_eq_sq (j k : ℕ) :
+    angP j k = ((2 : ℝ) ^ (k : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) ^ 2 := by
+  rw [angP, mul_pow]
+  congr 1
+  rw [zpow_natCast, show (4 : ℝ) = 2 ^ 2 by norm_num, ← pow_mul, ← pow_mul, mul_comm]
+
+/-- The argument of the smooth transition. -/
+def angGa (j k : ℕ) (x : ℝ) : ℝ := angP j k * x ^ 2 - 1
+
+/-- The angular cutoff as a function of the determinant. -/
+def angG (j k : ℕ) (x : ℝ) : ℝ := Real.smoothTransition (angGa j k x)
+
+/-- Its first derivative. -/
+def angG1 (j k : ℕ) (x : ℝ) : ℝ :=
+  deriv Real.smoothTransition (angGa j k x) * (2 * angP j k * x)
+
+/-- Its second derivative. -/
+def angG2 (j k : ℕ) (x : ℝ) : ℝ :=
+  deriv (deriv Real.smoothTransition) (angGa j k x) * (2 * angP j k * x) * (2 * angP j k * x)
+    + deriv Real.smoothTransition (angGa j k x) * (2 * angP j k)
+
+theorem angA_eq_angG (j k : ℕ) (ξ η : Pl) : angA j k ξ η = angG j k (det2 ξ η) := by
+  rw [angA, angG, angGa, angP, angV, detCLM_apply, mul_pow]
+  congr 2
+  ring
+
+theorem hasDerivAt_angGa (j k : ℕ) (x : ℝ) :
+    HasDerivAt (angGa j k) (2 * angP j k * x) x := by
+  have h : HasDerivAt (fun y : ℝ => y ^ 2) (2 * x) x := by
+    have := hasDerivAt_pow 2 x
+    simpa using this
+  have h2 : HasDerivAt (fun y : ℝ => angP j k * y ^ 2) (angP j k * (2 * x)) x :=
+    h.const_mul (angP j k)
+  have h3 := h2.sub_const 1
+  refine h3.congr_deriv ?_
+  ring
+
+theorem contDiff_angG (j k : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angG j k) :=
+  contDiff_st.comp ((contDiff_const.mul (contDiff_id.pow 2)).sub contDiff_const)
+
+theorem hasDerivAt_angG (j k : ℕ) (x : ℝ) : HasDerivAt (angG j k) (angG1 j k x) x := by
+  have hst : HasDerivAt Real.smoothTransition
+      (deriv Real.smoothTransition (angGa j k x)) (angGa j k x) :=
+    (contDiff_st.differentiable (by simp)).differentiableAt.hasDerivAt
+  exact hst.comp x (hasDerivAt_angGa j k x)
+
+theorem hasDerivAt_angG1 (j k : ℕ) (x : ℝ) : HasDerivAt (angG1 j k) (angG2 j k x) x := by
+  have hst : HasDerivAt (deriv Real.smoothTransition)
+      (deriv (deriv Real.smoothTransition) (angGa j k x)) (angGa j k x) :=
+    (contDiff_deriv_st.differentiable (by simp)).differentiableAt.hasDerivAt
+  have h1 : HasDerivAt (fun y => deriv Real.smoothTransition (angGa j k y))
+      (deriv (deriv Real.smoothTransition) (angGa j k x) * (2 * angP j k * x)) x :=
+    hst.comp x (hasDerivAt_angGa j k x)
+  have h2 : HasDerivAt (fun y : ℝ => 2 * angP j k * y) (2 * angP j k) x := by
+    have := (hasDerivAt_id x).const_mul (2 * angP j k)
+    simpa using this
+  exact h1.mul h2
+
+/-- The key global bound: `|x| |G'(x)| ≤ 4 C`. -/
+theorem abs_mul_angG1_le {C : ℝ} (hC : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (j k : ℕ) (x : ℝ) : |x| * |angG1 j k x| ≤ 4 * C := by
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hPpos := angP_pos j k
+  rcases le_or_gt (angGa j k x) 0 with hle | hgt
+  · rw [angG1, deriv_st_eq_zero_of_nonpos hle, zero_mul, abs_zero, mul_zero]
+    linarith
+  rcases le_or_gt 1 (angGa j k x) with hge | hlt
+  · rw [angG1, deriv_st_eq_zero_of_one_le hge, zero_mul, abs_zero, mul_zero]
+    linarith
+  · -- the transition zone: `angP * x^2 < 2`
+    have hbd : angP j k * x ^ 2 < 2 := by rw [angGa] at hlt; linarith
+    have hkey : |x| * |angG1 j k x|
+        = |deriv Real.smoothTransition (angGa j k x)| * (2 * (angP j k * x ^ 2)) := by
+      rw [angG1, abs_mul, abs_mul, abs_mul]
+      rw [show |(2 : ℝ)| = 2 by rw [abs_of_pos]; norm_num]
+      rw [abs_of_pos hPpos]
+      have hx2 : |x| * |x| = x ^ 2 := by rw [← abs_mul, ← sq, abs_sq]
+      ring_nf
+      rw [← hx2]
+      ring
+    rw [hkey]
+    have h1 := hC (angGa j k x)
+    have h2 : (0 : ℝ) ≤ angP j k * x ^ 2 := by positivity
+    nlinarith [abs_nonneg (deriv Real.smoothTransition (angGa j k x))]
+
+/-- The global bound `|G'(x)| ≤ 3 C 2^k 2^{-2j}`. -/
+theorem abs_angG1_le {C : ℝ} (hC : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (j k : ℕ) (x : ℝ) :
+    |angG1 j k x| ≤ 3 * C * ((2 : ℝ) ^ (k : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) := by
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hPpos := angP_pos j k
+  set q : ℝ := (2 : ℝ) ^ (k : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ)) with hq
+  have hqpos : 0 < q := by rw [hq]; positivity
+  have hPq : angP j k = q ^ 2 := by rw [angP_eq_sq, hq]
+  rcases le_or_gt (angGa j k x) 0 with hle | hgt
+  · rw [angG1, deriv_st_eq_zero_of_nonpos hle, zero_mul, abs_zero]
+    positivity
+  rcases le_or_gt 1 (angGa j k x) with hge | hlt
+  · rw [angG1, deriv_st_eq_zero_of_one_le hge, zero_mul, abs_zero]
+    positivity
+  · have hbd : angP j k * x ^ 2 < 2 := by rw [angGa] at hlt; linarith
+    have hstep : |angG1 j k x|
+        = |deriv Real.smoothTransition (angGa j k x)| * (2 * angP j k * |x|) := by
+      rw [angG1, abs_mul, abs_mul, abs_mul]
+      rw [show |(2 : ℝ)| = 2 by rw [abs_of_pos]; norm_num, abs_of_pos hPpos]
+    -- `(2 P |x|)^2 = 4 P (P x^2) < 8 P = 8 q^2 < (3 q)^2`
+    have hbd' : q ^ 2 * x ^ 2 < 2 := by rw [← hPq]; exact hbd
+    have hx2 : |x| ^ 2 = x ^ 2 := sq_abs x
+    have hexp : (2 * angP j k * |x|) ^ 2 = 4 * angP j k * (angP j k * x ^ 2) := by
+      rw [← hx2]; ring
+    have hmul : 4 * q ^ 2 * (q ^ 2 * x ^ 2) < 4 * q ^ 2 * 2 :=
+      mul_lt_mul_of_pos_left hbd' (by positivity)
+    have hsq : (2 * angP j k * |x|) ^ 2 < (3 * q) ^ 2 := by
+      rw [hexp, hPq]
+      nlinarith [hmul, pow_pos hqpos 2]
+    have hnn : 0 ≤ 2 * angP j k * |x| := by positivity
+    have hlin : 2 * angP j k * |x| < 3 * q := by
+      by_contra hcon
+      push_neg at hcon
+      have h3 : (0 : ℝ) ≤ 3 * q := by positivity
+      have h2 : (3 * q) ^ 2 ≤ (2 * angP j k * |x|) ^ 2 := pow_le_pow_left₀ h3 hcon 2
+      linarith
+    have h1 := hC (angGa j k x)
+    rw [hstep]
+    nlinarith [abs_nonneg (deriv Real.smoothTransition (angGa j k x))]
+
+/-- The key global bound: `x² |G''(x)| ≤ 20 C`. -/
+theorem sq_mul_angG2_le {C : ℝ} (hC1 : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (hC2 : ∀ x : ℝ, |deriv (deriv Real.smoothTransition) x| ≤ C)
+    (j k : ℕ) (x : ℝ) : x ^ 2 * |angG2 j k x| ≤ 20 * C := by
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC1 0)
+  have hPpos := angP_pos j k
+  rcases le_or_gt (angGa j k x) 0 with hle | hgt
+  · rw [angG2, deriv_st_eq_zero_of_nonpos hle, deriv2_st_eq_zero_of_nonpos hle]
+    simp only [zero_mul, mul_zero, zero_add, abs_zero, mul_zero]
+    linarith
+  rcases le_or_gt 1 (angGa j k x) with hge | hlt
+  · rw [angG2, deriv_st_eq_zero_of_one_le hge, deriv2_st_eq_zero_of_one_le hge]
+    simp only [zero_mul, mul_zero, zero_add, abs_zero, mul_zero]
+    linarith
+  · have hbd : angP j k * x ^ 2 < 2 := by rw [angGa] at hlt; linarith
+    set A : ℝ := deriv (deriv Real.smoothTransition) (angGa j k x) with hA
+    set D : ℝ := deriv Real.smoothTransition (angGa j k x) with hD
+    have hAb := hC2 (angGa j k x)
+    have hDb := hC1 (angGa j k x)
+    rw [← hA] at hAb
+    rw [← hD] at hDb
+    have hexp : x ^ 2 * |angG2 j k x|
+        ≤ x ^ 2 * (|A| * (2 * angP j k * |x|) * (2 * angP j k * |x|)
+            + |D| * (2 * angP j k)) := by
+      refine mul_le_mul_of_nonneg_left ?_ (sq_nonneg x)
+      rw [angG2, ← hA, ← hD]
+      refine le_trans (abs_add_le _ _) ?_
+      rw [abs_mul, abs_mul, abs_mul, abs_mul, abs_mul,
+        show |(2 : ℝ)| = 2 by rw [abs_of_pos]; norm_num, abs_of_pos hPpos,
+        abs_of_pos (show (0 : ℝ) < 2 * angP j k by positivity)]
+    refine le_trans hexp ?_
+    have hx2 : |x| ^ 2 = x ^ 2 := sq_abs x
+    have hrw : x ^ 2 * (|A| * (2 * angP j k * |x|) * (2 * angP j k * |x|)
+          + |D| * (2 * angP j k))
+        = 4 * |A| * (angP j k * x ^ 2) * (angP j k * x ^ 2)
+          + 2 * |D| * (angP j k * x ^ 2) := by
+      rw [← hx2]
+      ring
+    rw [hrw]
+    have hP2 : (0 : ℝ) ≤ angP j k * x ^ 2 := by positivity
+    have hAnn : (0 : ℝ) ≤ |A| := abs_nonneg _
+    have hDnn : (0 : ℝ) ≤ |D| := abs_nonneg _
+    have hkey1 : |A| * (angP j k * x ^ 2) ≤ C * 2 :=
+      mul_le_mul hAb (le_of_lt hbd) hP2 hCnn
+    have hkey2 : |D| * (angP j k * x ^ 2) ≤ C * 2 :=
+      mul_le_mul hDb (le_of_lt hbd) hP2 hCnn
+    have hkey3 : |A| * (angP j k * x ^ 2) * (angP j k * x ^ 2) ≤ C * 2 * 2 :=
+      mul_le_mul hkey1 (le_of_lt hbd) hP2 (by linarith)
+    nlinarith [hkey2, hkey3]
+
+end AngG
+
+
+/-! ### The angular pieces as functions of the determinant -/
+
+section AngH
+
+/-- The `m`-th angular piece as a function of the determinant. -/
+def angH (j M m : ℕ) (x : ℝ) : ℝ :=
+  if m = 0 then angG j 0 x
+  else if m ≤ M then angG j m x - angG j (m - 1) x
+  else 1 - angG j M x
+
+/-- Its first derivative. -/
+def angH1 (j M m : ℕ) (x : ℝ) : ℝ :=
+  if m = 0 then angG1 j 0 x
+  else if m ≤ M then angG1 j m x - angG1 j (m - 1) x
+  else -angG1 j M x
+
+/-- Its second derivative. -/
+def angH2 (j M m : ℕ) (x : ℝ) : ℝ :=
+  if m = 0 then angG2 j 0 x
+  else if m ≤ M then angG2 j m x - angG2 j (m - 1) x
+  else -angG2 j M x
+
+theorem angPsi_eq_angH (j M m : ℕ) (ξ η : Pl) :
+    angPsi j M m ξ η = angH j M m (det2 ξ η) := by
+  rw [angPsi, angH]
+  split_ifs <;> rw [angA_eq_angG] <;> try rw [angA_eq_angG]
+
+theorem hasDerivAt_angH (j M m : ℕ) (x : ℝ) :
+    HasDerivAt (angH j M m) (angH1 j M m x) x := by
+  have hfun : ∀ y, angH j M m y
+      = if m = 0 then angG j 0 y
+        else if m ≤ M then angG j m y - angG j (m - 1) y
+        else 1 - angG j M y := fun y => by rw [angH]
+  by_cases h0 : m = 0
+  · have he : angH j M m = angG j 0 := by
+      funext y; rw [hfun y]; simp [h0]
+    have hd : angH1 j M m x = angG1 j 0 x := by rw [angH1]; simp [h0]
+    rw [he, hd]
+    exact hasDerivAt_angG j 0 x
+  · by_cases hM : m ≤ M
+    · have he : angH j M m = fun y => angG j m y - angG j (m - 1) y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      have hd : angH1 j M m x = angG1 j m x - angG1 j (m - 1) x := by
+        rw [angH1]; simp [h0, hM]
+      rw [he, hd]
+      exact (hasDerivAt_angG j m x).sub (hasDerivAt_angG j (m - 1) x)
+    · have he : angH j M m = fun y => 1 - angG j M y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      have hd : angH1 j M m x = -angG1 j M x := by rw [angH1]; simp [h0, hM]
+      rw [he, hd]
+      exact (hasDerivAt_angG j M x).const_sub 1
+
+theorem hasDerivAt_angH1 (j M m : ℕ) (x : ℝ) :
+    HasDerivAt (angH1 j M m) (angH2 j M m x) x := by
+  have hfun : ∀ y, angH1 j M m y
+      = if m = 0 then angG1 j 0 y
+        else if m ≤ M then angG1 j m y - angG1 j (m - 1) y
+        else -angG1 j M y := fun y => by rw [angH1]
+  by_cases h0 : m = 0
+  · have he : angH1 j M m = angG1 j 0 := by
+      funext y; rw [hfun y]; simp [h0]
+    have hd : angH2 j M m x = angG2 j 0 x := by rw [angH2]; simp [h0]
+    rw [he, hd]
+    exact hasDerivAt_angG1 j 0 x
+  · by_cases hM : m ≤ M
+    · have he : angH1 j M m = fun y => angG1 j m y - angG1 j (m - 1) y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      have hd : angH2 j M m x = angG2 j m x - angG2 j (m - 1) x := by
+        rw [angH2]; simp [h0, hM]
+      rw [he, hd]
+      exact (hasDerivAt_angG1 j m x).sub (hasDerivAt_angG1 j (m - 1) x)
+    · have he : angH1 j M m = fun y => -angG1 j M y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      have hd : angH2 j M m x = -angG2 j M x := by rw [angH2]; simp [h0, hM]
+      rw [he, hd]
+      exact (hasDerivAt_angG1 j M x).neg
+
+theorem contDiff_angH (j M m : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angH j M m) := by
+  have hfun : ∀ y, angH j M m y
+      = if m = 0 then angG j 0 y
+        else if m ≤ M then angG j m y - angG j (m - 1) y
+        else 1 - angG j M y := fun y => by rw [angH]
+  by_cases h0 : m = 0
+  · have he : angH j M m = angG j 0 := by funext y; rw [hfun y]; simp [h0]
+    rw [he]; exact contDiff_angG j 0
+  · by_cases hM : m ≤ M
+    · have he : angH j M m = fun y => angG j m y - angG j (m - 1) y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      rw [he]; exact (contDiff_angG j m).sub (contDiff_angG j (m - 1))
+    · have he : angH j M m = fun y => 1 - angG j M y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      rw [he]; exact contDiff_const.sub (contDiff_angG j M)
+
+theorem abs_mul_angH1_le {C : ℝ} (hC : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (j M m : ℕ) (x : ℝ) : |x| * |angH1 j M m x| ≤ 8 * C := by
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hbase : ∀ k : ℕ, |x| * |angG1 j k x| ≤ 4 * C := fun k =>
+    abs_mul_angG1_le hC j k x
+  rw [angH1]
+  split_ifs with h0 hM
+  · have := hbase 0; linarith
+  · refine le_trans (mul_le_mul_of_nonneg_left (abs_sub _ _) (abs_nonneg x)) ?_
+    rw [mul_add]
+    have h1 := hbase m
+    have h2 := hbase (m - 1)
+    linarith
+  · rw [abs_neg]
+    have := hbase M; linarith
+
+theorem sq_mul_angH2_le {C : ℝ} (hC1 : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (hC2 : ∀ x : ℝ, |deriv (deriv Real.smoothTransition) x| ≤ C)
+    (j M m : ℕ) (x : ℝ) : x ^ 2 * |angH2 j M m x| ≤ 40 * C := by
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC1 0)
+  have hbase : ∀ k : ℕ, x ^ 2 * |angG2 j k x| ≤ 20 * C := fun k =>
+    sq_mul_angG2_le hC1 hC2 j k x
+  rw [angH2]
+  split_ifs with h0 hM
+  · have := hbase 0; linarith
+  · refine le_trans (mul_le_mul_of_nonneg_left (abs_sub _ _) (sq_nonneg x)) ?_
+    rw [mul_add]
+    have h1 := hbase m
+    have h2 := hbase (m - 1)
+    linarith
+  · rw [abs_neg]
+    have := hbase M; linarith
+
+theorem abs_angH1_le {C : ℝ} (hC : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (j M m : ℕ) (x : ℝ) :
+    |angH1 j M m x| ≤ 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) := by
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hcpos : (0 : ℝ) < (2 : ℝ) ^ (-2 * (j : ℤ)) := by positivity
+  have hbase : ∀ k : ℕ, k ≤ m →
+      |angG1 j k x| ≤ 3 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) := by
+    intro k hk
+    refine le_trans (abs_angG1_le hC j k x) ?_
+    have hpow : (2 : ℝ) ^ (k : ℤ) ≤ (2 : ℝ) ^ (m : ℤ) := by
+      refine zpow_le_zpow_right₀ (by norm_num) ?_
+      exact_mod_cast hk
+    have h3 : (0 : ℝ) ≤ 3 * C := by linarith
+    refine mul_le_mul_of_nonneg_left ?_ h3
+    exact mul_le_mul_of_nonneg_right hpow (le_of_lt hcpos)
+  have hprod : (0 : ℝ) ≤ C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) := by positivity
+  rw [angH1]
+  split_ifs with h0 hM
+  · have := hbase 0 (by omega); linarith
+  · refine le_trans (abs_sub _ _) ?_
+    have h1 := hbase m (le_refl m)
+    have h2 := hbase (m - 1) (by omega)
+    linarith
+  · rw [abs_neg]
+    have := hbase M (by omega)
+    linarith
+
+theorem angG_nonneg (j k : ℕ) (x : ℝ) : 0 ≤ angG j k x := Real.smoothTransition.nonneg _
+
+theorem angG_le_one (j k : ℕ) (x : ℝ) : angG j k x ≤ 1 := Real.smoothTransition.le_one _
+
+theorem angG_mono {j : ℕ} {k l : ℕ} (hkl : k ≤ l) (x : ℝ) : angG j k x ≤ angG j l x := by
+  rw [angG, angG]
+  refine Real.smoothTransition.monotone ?_
+  rw [angGa, angGa]
+  have hP : angP j k ≤ angP j l := by
+    rw [angP, angP]
+    refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+    exact pow_le_pow_right₀ (by norm_num) hkl
+  nlinarith [sq_nonneg x]
+
+theorem angH_nonneg (j M m : ℕ) (x : ℝ) : 0 ≤ angH j M m x := by
+  rw [angH]
+  split_ifs with h0 hM
+  · exact angG_nonneg j 0 x
+  · have := angG_mono (j := j) (show m - 1 ≤ m by omega) x; linarith
+  · have := angG_le_one j M x; linarith
+
+theorem angH_le_one (j M m : ℕ) (x : ℝ) : angH j M m x ≤ 1 := by
+  rw [angH]
+  split_ifs with h0 hM
+  · exact angG_le_one j 0 x
+  · have h1 := angG_le_one j m x
+    have h2 := angG_nonneg j (m - 1) x
+    linarith
+  · have := angG_nonneg j M x; linarith
+
+theorem abs_angH_le_one (j M m : ℕ) (x : ℝ) : |angH j M m x| ≤ 1 :=
+  abs_le.mpr ⟨by linarith [angH_nonneg j M m x], angH_le_one j M m x⟩
+
+/-- The angular pieces sum to one. -/
+theorem sum_angH (j M : ℕ) (x : ℝ) : ∑ m ∈ Finset.range (M + 2), angH j M m x = 1 := by
+  have h : ∀ m, angH j M m x = angPsi j M m (mk2 1 0) (mk2 0 x) := by
+    intro m
+    rw [angPsi_eq_angH]
+    congr 1
+    rw [det2, mk2_apply_zero, mk2_apply_one, mk2_apply_zero, mk2_apply_one]
+    ring
+  rw [Finset.sum_congr rfl fun m _ => h m]
+  exact sum_angPsi j M _ _
+
+end AngH
+
+
+/-! ### Smoothness of the angular derivatives -/
+
+section AngSmooth
+
+theorem contDiff_deriv2_st :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (deriv (deriv Real.smoothTransition)) := by
+  have h : ContDiff ℝ ((↑(⊤ : ℕ∞)) + 1) (deriv Real.smoothTransition) := by
+    simpa using contDiff_deriv_st
+  exact h.deriv'
+
+theorem contDiff_angGa (j k : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angGa j k) := by
+  have h : angGa j k = fun x : ℝ => angP j k * x ^ 2 - 1 := rfl
+  rw [h]
+  exact (contDiff_const.mul (contDiff_id.pow 2)).sub contDiff_const
+
+theorem contDiff_angG1 (j k : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angG1 j k) := by
+  have h : angG1 j k = fun x : ℝ =>
+      deriv Real.smoothTransition (angGa j k x) * (2 * angP j k * x) := rfl
+  rw [h]
+  exact (contDiff_deriv_st.comp (contDiff_angGa j k)).mul
+    (contDiff_const.mul contDiff_id)
+
+theorem contDiff_angG2 (j k : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angG2 j k) := by
+  have h : angG2 j k = fun x : ℝ =>
+      deriv (deriv Real.smoothTransition) (angGa j k x) * (2 * angP j k * x)
+          * (2 * angP j k * x)
+        + deriv Real.smoothTransition (angGa j k x) * (2 * angP j k) := rfl
+  rw [h]
+  refine ContDiff.add ?_ ?_
+  · exact ((contDiff_deriv2_st.comp (contDiff_angGa j k)).mul
+      (contDiff_const.mul contDiff_id)).mul (contDiff_const.mul contDiff_id)
+  · exact (contDiff_deriv_st.comp (contDiff_angGa j k)).mul contDiff_const
+
+theorem contDiff_angH1 (j M m : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angH1 j M m) := by
+  have hfun : ∀ y, angH1 j M m y
+      = if m = 0 then angG1 j 0 y
+        else if m ≤ M then angG1 j m y - angG1 j (m - 1) y
+        else -angG1 j M y := fun y => by rw [angH1]
+  by_cases h0 : m = 0
+  · have he : angH1 j M m = angG1 j 0 := by funext y; rw [hfun y]; simp [h0]
+    rw [he]; exact contDiff_angG1 j 0
+  · by_cases hM : m ≤ M
+    · have he : angH1 j M m = fun y => angG1 j m y - angG1 j (m - 1) y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      rw [he]; exact (contDiff_angG1 j m).sub (contDiff_angG1 j (m - 1))
+    · have he : angH1 j M m = fun y => -angG1 j M y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      rw [he]; exact (contDiff_angG1 j M).neg
+
+theorem contDiff_angH2 (j M m : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (angH2 j M m) := by
+  have hfun : ∀ y, angH2 j M m y
+      = if m = 0 then angG2 j 0 y
+        else if m ≤ M then angG2 j m y - angG2 j (m - 1) y
+        else -angG2 j M y := fun y => by rw [angH2]
+  by_cases h0 : m = 0
+  · have he : angH2 j M m = angG2 j 0 := by funext y; rw [hfun y]; simp [h0]
+    rw [he]; exact contDiff_angG2 j 0
+  · by_cases hM : m ≤ M
+    · have he : angH2 j M m = fun y => angG2 j m y - angG2 j (m - 1) y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      rw [he]; exact (contDiff_angG2 j m).sub (contDiff_angG2 j (m - 1))
+    · have he : angH2 j M m = fun y => -angG2 j M y := by
+        funext y; rw [hfun y]; simp [h0, hM]
+      rw [he]; exact (contDiff_angG2 j M).neg
+
+theorem continuous_angH2 (j M m : ℕ) : Continuous (angH2 j M m) :=
+  (contDiff_angH2 j M m).continuous
+
+theorem contDiff_angHdet (j M m : ℕ) (ξ : Pl) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (fun y : Pl => ((angH j M m (det2 ξ y) : ℝ) : ℂ)) := by
+  have h : (fun y : Pl => ((angH j M m (det2 ξ y) : ℝ) : ℂ))
+      = fun y : Pl => ((angH j M m (detCLM ξ y) : ℝ) : ℂ) := by
+    funext y; rw [detCLM_apply]
+  rw [h]
+  exact Complex.ofRealCLM.contDiff.comp ((contDiff_angH j M m).comp (detCLM ξ).contDiff)
+
+end AngSmooth
+
+/-! ### The `η`-derivative of an angular piece -/
+
+section AngFDeriv
+
+theorem hasFDerivAt_angHdet (j M m : ℕ) (ξ η : Pl) :
+    HasFDerivAt (fun y : Pl => ((angH j M m (det2 ξ y) : ℝ) : ℂ))
+      (Complex.ofRealCLM.comp
+        ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+          (detCLM ξ))) η := by
+  have h0 : HasFDerivAt (fun y : Pl => detCLM ξ y) (detCLM ξ) η := (detCLM ξ).hasFDerivAt
+  have h1 : HasFDerivAt (angH j M m)
+      (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η)))
+      (detCLM ξ η) := by
+    rw [detCLM_apply]
+    exact (hasDerivAt_angH j M m (det2 ξ η)).hasFDerivAt
+  have h2 : HasFDerivAt (fun y : Pl => angH j M m (detCLM ξ y))
+      ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+        (detCLM ξ)) η := h1.comp η h0
+  have h3 := (Complex.ofRealCLM.hasFDerivAt
+    (x := angH j M m (detCLM ξ η))).comp η h2
+  have hfun : (fun y : Pl => ((angH j M m (det2 ξ y) : ℝ) : ℂ))
+      = Complex.ofRealCLM ∘ fun y : Pl => angH j M m (detCLM ξ y) := by
+    funext y
+    simp only [Function.comp_apply, detCLM_apply, Complex.ofRealCLM_apply]
+  rw [hfun]
+  exact h3
+
+theorem norm_angHdet_deriv_apply {C : ℝ} (hC : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (j M m : ℕ) (ξ η u : Pl) :
+    ‖(Complex.ofRealCLM.comp
+        ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+          (detCLM ξ))) u‖
+      ≤ 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) * (2 * ‖ξ‖) * ‖u‖ := by
+  have hval : (Complex.ofRealCLM.comp
+      ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+        (detCLM ξ))) u
+      = ((det2 ξ u * angH1 j M m (det2 ξ η) : ℝ) : ℂ) := by
+    rw [ContinuousLinearMap.comp_apply, ContinuousLinearMap.comp_apply,
+      ContinuousLinearMap.smulRight_apply, Complex.ofRealCLM_apply, detCLM_apply]
+    congr 1
+  rw [hval, Complex.norm_real, Real.norm_eq_abs, abs_mul]
+  have hdet : |det2 ξ u| ≤ 2 * ‖ξ‖ * ‖u‖ := by
+    have h := (detCLM ξ).le_opNorm u
+    rw [detCLM_apply, Real.norm_eq_abs] at h
+    refine le_trans h ?_
+    exact mul_le_mul_of_nonneg_right (norm_detCLM_le ξ) (norm_nonneg u)
+  have hH := abs_angH1_le hC j M m (det2 ξ η)
+  have hCnn : 0 ≤ C := le_trans (abs_nonneg _) (hC 0)
+  have hK : (0 : ℝ) ≤ 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) := by
+    positivity
+  calc |det2 ξ u| * |angH1 j M m (det2 ξ η)|
+      ≤ (2 * ‖ξ‖ * ‖u‖) * (6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ)))) :=
+        mul_le_mul hdet hH (abs_nonneg _) (by positivity)
+    _ = 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) * (2 * ‖ξ‖) * ‖u‖ := by ring
+
+end AngFDeriv
+
+
+/-! ### The angular pieces of a symbol -/
+
+section BPiece
+
+/-- The `m`-th angular piece of a symbol. -/
+def bpiece (j M m : ℕ) (b : ℝ → Pl → Pl → ℂ) : ℝ → Pl → Pl → ℂ :=
+  fun t ξ η => b t ξ η * ((angH j M m (det2 ξ η) : ℝ) : ℂ)
+
+theorem sum_bpiece (j M : ℕ) (b : ℝ → Pl → Pl → ℂ) (t : ℝ) (ξ η : Pl) :
+    ∑ m ∈ Finset.range (M + 2), bpiece j M m b t ξ η = b t ξ η := by
+  have h : ∀ m : ℕ, bpiece j M m b t ξ η
+      = b t ξ η * ((angH j M m (det2 ξ η) : ℝ) : ℂ) := fun m => rfl
+  rw [Finset.sum_congr rfl fun m _ => h m, ← Finset.mul_sum, ← Complex.ofReal_sum,
+    sum_angH]
+  norm_num
+
+/-- The angle bound on the support of the `m`-th piece, including `m = 0`. -/
+theorem angle_le_of_angPsi_ne' {j M m : ℕ} {ξ η : Pl} (hmM : m ≤ M + 1)
+    (hsupp : η ∈ SuppSet j 0 ξ) (h : angPsi j M m ξ η ≠ 0) :
+    InnerProductGeometry.angle ξ η ≤ (2 : ℝ) ^ (5 - (m : ℤ)) := by
+  rcases Nat.eq_zero_or_pos m with h0 | hpos
+  · subst h0
+    have h1 : InnerProductGeometry.angle ξ η ≤ π := InnerProductGeometry.angle_le_pi ξ η
+    have h2 : π ≤ 4 := Real.pi_le_four
+    have h3 : (2 : ℝ) ^ (5 - ((0 : ℕ) : ℤ)) = 32 := by norm_num
+    rw [h3]
+    linarith
+  · exact angle_le_of_angPsi_ne hpos hmM hsupp h
+
+theorem angH_ne_zero_of_bpiece {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {t : ℝ} {ξ η : Pl}
+    (h : bpiece j M m b t ξ η ≠ 0) : angPsi j M m ξ η ≠ 0 := by
+  rw [angPsi_eq_angH]
+  intro h0
+  refine h ?_
+  rw [bpiece, h0]
+  norm_num
+
+theorem base_ne_zero_of_bpiece {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {t : ℝ} {ξ η : Pl}
+    (h : bpiece j M m b t ξ η ≠ 0) : b t ξ η ≠ 0 := by
+  intro h0
+  refine h ?_
+  rw [bpiece, h0, zero_mul]
+
+theorem mem_suppSet_of_bpiece {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j 0 ξ → b t ξ η = 0) {t : ℝ} {ξ η : Pl}
+    (h : bpiece j M m b t ξ η ≠ 0) : η ∈ SuppSet j 0 ξ := by
+  by_contra hcon
+  exact base_ne_zero_of_bpiece h (hsupp t ξ η hcon)
+
+theorem bpiece_supp {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j 0 ξ → b t ξ η = 0) (hmM : m ≤ M + 1)
+    (t : ℝ) (ξ η : Pl) (hη : η ∉ SuppSet j m ξ) : bpiece j M m b t ξ η = 0 := by
+  by_contra hne
+  have hmem : η ∈ SuppSet j 0 ξ := mem_suppSet_of_bpiece (B := (0 : ℝ)) hsupp hne
+  refine hη ⟨hmem.1, hmem.2.1, ?_⟩
+  exact angle_le_of_angPsi_ne' hmM hmem (angH_ne_zero_of_bpiece hne)
+
+theorem bpiece_strict_supp {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ}
+    (hsupp : ∀ t ξ η, η ∉ SuppSet j 0 ξ → b t ξ η = 0) (hmM : m ≤ M)
+    (t : ℝ) (ξ η : Pl) (hη : η ∉ SuppSetStrict j m ξ) : bpiece j M m b t ξ η = 0 := by
+  by_contra hne
+  have hmem : η ∈ SuppSet j 0 ξ := mem_suppSet_of_bpiece (B := (0 : ℝ)) hsupp hne
+  have hψ := angH_ne_zero_of_bpiece hne
+  refine hη ⟨⟨hmem.1, hmem.2.1, angle_le_of_angPsi_ne' (by omega) hmem hψ⟩, ?_⟩
+  exact angle_ge_of_angPsi_ne hmM hmem hψ
+
+theorem measurable_bpiece {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {t : ℝ}
+    (hb : Measurable fun p : Pl × Pl => b t p.1 p.2) :
+    Measurable fun p : Pl × Pl => bpiece j M m b t p.1 p.2 := by
+  have hdet : Continuous fun p : Pl × Pl => det2 p.1 p.2 := by
+    have hc : ∀ i : Fin 2, Continuous fun x : Pl => x i := fun i => by
+      have h : (fun x : Pl => x i) = fun x : Pl => prj i x := by
+        funext x; rw [prj_apply]
+      rw [h]
+      exact (prj i).continuous
+    have h : (fun p : Pl × Pl => det2 p.1 p.2)
+        = fun p : Pl × Pl => p.1 0 * p.2 1 - p.1 1 * p.2 0 := rfl
+    rw [h]
+    exact (((hc 0).comp continuous_fst).mul ((hc 1).comp continuous_snd)).sub
+      (((hc 1).comp continuous_fst).mul ((hc 0).comp continuous_snd))
+  have hang : Measurable fun p : Pl × Pl => ((angH j M m (det2 p.1 p.2) : ℝ) : ℂ) :=
+    (Complex.continuous_ofReal.comp
+      ((contDiff_angH j M m).continuous.comp hdet)).measurable
+  exact hb.mul hang
+
+/-- The symbol data of an angular piece. -/
+theorem bpiece_symbData {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hb : SymbData j 0 b B) (hmM : m ≤ M + 1)
+    {C : ℝ} (hC : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C) (hC1 : 1 ≤ C) :
+    SymbData j m (bpiece j M m b) ((1 + 192 * C) * B) := by
+  have hBnn : 0 ≤ B := hb.nonneg
+  have hCnn : (0 : ℝ) ≤ C := by linarith
+  refine ⟨fun t ξ => (hb.smooth t ξ).mul (contDiff_angHdet j M m ξ),
+    bpiece_supp hb.supp hmM, ?_, ?_⟩
+  · intro t ξ η
+    have h1 : ‖bpiece j M m b t ξ η‖
+        = ‖b t ξ η‖ * |angH j M m (det2 ξ η)| := by
+      rw [bpiece, norm_mul, Complex.norm_real, Real.norm_eq_abs]
+    rw [h1]
+    have h2 := hb.bd0 t ξ η
+    have h3 := abs_angH_le_one j M m (det2 ξ η)
+    have h4 : (0 : ℝ) ≤ ‖b t ξ η‖ := norm_nonneg _
+    nlinarith [abs_nonneg (angH j M m (det2 ξ η))]
+  · intro t ξ η u hu
+    set R : ℝ := (2 : ℝ) ^ ((m : ℤ) - (j : ℤ)) with hR
+    have hRpos : (0 : ℝ) < R := by rw [hR]; positivity
+    have hgoal : (2 : ℝ) ^ (-((j : ℤ) - (m : ℤ))) = R := by
+      rw [hR]; congr 1; ring
+    rw [hgoal]
+    have hbd : HasFDerivAt (b t ξ) (fderiv ℝ (b t ξ) η) η :=
+      ((hb.smooth t ξ).differentiable (by simp)).differentiableAt.hasFDerivAt
+    have hdd := hasFDerivAt_angHdet j M m ξ η
+    have hmul : HasFDerivAt (bpiece j M m b t ξ)
+        (b t ξ η • (Complex.ofRealCLM.comp
+            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+              (detCLM ξ)))
+          + ((angH j M m (det2 ξ η) : ℝ) : ℂ) • fderiv ℝ (b t ξ) η) η := hbd.mul hdd
+    rw [hmul.fderiv, ContinuousLinearMap.add_apply, ContinuousLinearMap.smul_apply,
+      ContinuousLinearMap.smul_apply]
+    refine le_trans (norm_add_le _ _) ?_
+    rw [norm_smul, norm_smul]
+    -- the second term
+    have hterm2 : ‖((angH j M m (det2 ξ η) : ℝ) : ℂ)‖ * ‖fderiv ℝ (b t ξ) η u‖ ≤ B * R := by
+      have h1 : ‖((angH j M m (det2 ξ η) : ℝ) : ℂ)‖ ≤ 1 := by
+        rw [Complex.norm_real, Real.norm_eq_abs]
+        exact abs_angH_le_one j M m (det2 ξ η)
+      have h2 := hb.bd1 t ξ η u hu
+      have h3 : (2 : ℝ) ^ (-((j : ℤ) - ((0 : ℕ) : ℤ))) ≤ R := by
+        rw [hR]
+        refine zpow_le_zpow_right₀ (by norm_num) ?_
+        simp
+      have h4 : ‖fderiv ℝ (b t ξ) η u‖ ≤ B * R := by
+        refine le_trans h2 ?_
+        exact mul_le_mul_of_nonneg_left h3 hBnn
+      have h5 : (0 : ℝ) ≤ ‖fderiv ℝ (b t ξ) η u‖ := norm_nonneg _
+      nlinarith [norm_nonneg ((angH j M m (det2 ξ η) : ℝ) : ℂ)]
+    -- the first term
+    have hterm1 : ‖b t ξ η‖ * ‖(Complex.ofRealCLM.comp
+        ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+          (detCLM ξ))) u‖ ≤ 48 * C * B * R := by
+      rcases eq_or_ne (b t ξ η) 0 with hb0 | hb0
+      · rw [hb0, norm_zero, zero_mul]
+        positivity
+      · have hmem : η ∈ SuppSet j 0 ξ := by
+          by_contra hcon
+          exact hb0 (hb.supp t ξ η hcon)
+        have hxi := xiData_of_mem hmem
+        have hxn : ‖ξ‖ ≤ (2 : ℝ) ^ ((j : ℤ) + 2) := hxi.norm_le
+        have hnd := norm_angHdet_deriv_apply hC j M m ξ η u
+        rw [hu, mul_one] at hnd
+        have hstep : 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) * (2 * ‖ξ‖)
+            ≤ 48 * C * R := by
+          have hkey : (2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))
+              * (2 * (2 : ℝ) ^ ((j : ℤ) + 2)) = 8 * R := by
+            have e1 : (2 : ℝ) * (2 : ℝ) ^ ((j : ℤ) + 2) = (2 : ℝ) ^ ((j : ℤ) + 3) := by
+              rw [show (j : ℤ) + 3 = ((j : ℤ) + 2) + 1 by ring, two_zpow_succ_sub]
+            have eL : (2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))
+                * (2 * (2 : ℝ) ^ ((j : ℤ) + 2))
+                = (2 : ℝ) ^ ((m : ℤ) - (j : ℤ) + 3) := by
+              rw [e1, ← two_zpow_add, ← two_zpow_add]
+              congr 1
+              ring
+            have eR : (8 : ℝ) * (2 : ℝ) ^ ((m : ℤ) - (j : ℤ))
+                = (2 : ℝ) ^ ((m : ℤ) - (j : ℤ) + 3) := by
+              rw [show (8 : ℝ) = (2 : ℝ) ^ (3 : ℤ) by norm_num, ← two_zpow_add]
+              congr 1
+              ring
+            rw [hR, eL, eR]
+          have hmono : (2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ)) * (2 * ‖ξ‖)
+              ≤ (2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ)) * (2 * (2 : ℝ) ^ ((j : ℤ) + 2)) := by
+            refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+            linarith
+          have h6 : (0 : ℝ) ≤ 6 * C := by linarith
+          calc 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ))) * (2 * ‖ξ‖)
+              = 6 * C * ((2 : ℝ) ^ (m : ℤ) * (2 : ℝ) ^ (-2 * (j : ℤ)) * (2 * ‖ξ‖)) := by ring
+            _ ≤ 6 * C * (8 * R) := by
+                rw [← hkey]
+                exact mul_le_mul_of_nonneg_left hmono h6
+            _ = 48 * C * R := by ring
+        have hnrm := hb.bd0 t ξ η
+        have hnn : (0 : ℝ) ≤ ‖b t ξ η‖ := norm_nonneg _
+        have hDDnn : (0 : ℝ) ≤ ‖(Complex.ofRealCLM.comp
+            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+              (detCLM ξ))) u‖ := norm_nonneg _
+        have hDD : ‖(Complex.ofRealCLM.comp
+            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (angH1 j M m (det2 ξ η))).comp
+              (detCLM ξ))) u‖ ≤ 48 * C * R := le_trans hnd hstep
+        have h48 : (0 : ℝ) ≤ 48 * C * R := by positivity
+        calc ‖b t ξ η‖ * ‖(Complex.ofRealCLM.comp
+              ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ)
+                (angH1 j M m (det2 ξ η))).comp (detCLM ξ))) u‖
+            ≤ B * (48 * C * R) := mul_le_mul hnrm hDD hDDnn hBnn
+          _ = 48 * C * B * R := by ring
+    have hfinal : 48 * C * B * R + B * R ≤ (1 + 192 * C) * B * R := by
+      have h1 : (0 : ℝ) ≤ C * B * R := by positivity
+      nlinarith
+    linarith
+
+end BPiece
+
+
+/-! ### The radial data of an angular piece -/
+
+section BPieceRay
+
+theorem symbol_ray_eq_zero' {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} (hb : IsAdapted j m b)
+    (t : ℝ) (ξ : Pl) (φ : ℝ) {ρ : ℝ} (hρ : ρ ∈ OutAnn j) : b t ξ (pt ρ φ) = 0 := by
+  refine hb.supp t ξ (pt ρ φ) ?_
+  intro hmem
+  have hT : pt ρ φ ∈ Theta j := hmem.1
+  have h1 : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ |ρ| := by
+    have := hT.2.2.1
+    rwa [norm_pt_abs] at this
+  have h2 : |ρ| ≤ (2 : ℝ) ^ ((j : ℤ) + 1) := by
+    have := hT.2.2.2
+    rwa [norm_pt_abs] at this
+  rcases hρ with h | h
+  · exact absurd h (not_lt.mpr h1)
+  · exact absurd h (not_lt.mpr h2)
+
+theorem ray_vanish' {j m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ} {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+    (hb : IsAdapted j m b) (hray : RayData j b B b1 b2)
+    (t : ℝ) (ξ : Pl) (φ : ℝ) {ρ : ℝ} (hρ : ρ ∈ OutAnn j) :
+    b t ξ (pt ρ φ) = 0 ∧ b1 t ξ φ ρ = 0 ∧ b2 t ξ φ ρ = 0 := by
+  have hzero : ∀ r ∈ OutAnn j, b t ξ (pt r φ) = 0 := fun r hr =>
+    symbol_ray_eq_zero' hb t ξ φ hr
+  have hmem : ∀ r ∈ OutAnn j, (fun r => b t ξ (pt r φ)) =ᶠ[nhds r] 0 := by
+    intro r hr
+    refine Filter.eventuallyEq_of_mem ((isOpen_OutAnn j).mem_nhds hr) ?_
+    intro x hx
+    exact hzero x hx
+  have h1 : ∀ r ∈ OutAnn j, b1 t ξ φ r = 0 := fun r hr =>
+    deriv_eq_zero_of_eventually_zero (hray.d1 t ξ φ) (hmem r hr)
+  have hmem1 : (b1 t ξ φ) =ᶠ[nhds ρ] 0 := by
+    refine Filter.eventuallyEq_of_mem ((isOpen_OutAnn j).mem_nhds hρ) ?_
+    intro x hx
+    exact h1 x hx
+  exact ⟨hzero ρ hρ, h1 ρ hρ, deriv_eq_zero_of_eventually_zero (hray.d2 t ξ φ) hmem1⟩
+
+theorem det2_pt (ξ : Pl) (ρ φ : ℝ) : det2 ξ (pt ρ φ) = ρ * wfun ξ φ := by
+  rw [pt_eq_smul ρ φ, det2_smul_right, det2_pt_one]
+
+theorem bpiece_pt (j M m : ℕ) (b : ℝ → Pl → Pl → ℂ) (t : ℝ) (ξ : Pl) (ρ φ : ℝ) :
+    bpiece j M m b t ξ (pt ρ φ)
+      = b t ξ (pt ρ φ) * ((angH j M m (ρ * wfun ξ φ) : ℝ) : ℂ) := by
+  rw [bpiece, det2_pt]
+
+/-- The first radial derivative of an angular piece. -/
+def bp1 (j M m : ℕ) (b : ℝ → Pl → Pl → ℂ) (b1 : ℝ → Pl → ℝ → ℝ → ℂ) :
+    ℝ → Pl → ℝ → ℝ → ℂ :=
+  fun t ξ φ ρ => b1 t ξ φ ρ * ((angH j M m (ρ * wfun ξ φ) : ℝ) : ℂ)
+    + b t ξ (pt ρ φ) * ((angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ : ℝ) : ℂ)
+
+/-- The second radial derivative of an angular piece. -/
+def bp2 (j M m : ℕ) (b : ℝ → Pl → Pl → ℂ) (b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ) :
+    ℝ → Pl → ℝ → ℝ → ℂ :=
+  fun t ξ φ ρ => b2 t ξ φ ρ * ((angH j M m (ρ * wfun ξ φ) : ℝ) : ℂ)
+    + 2 * b1 t ξ φ ρ * ((angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ : ℝ) : ℂ)
+    + b t ξ (pt ρ φ) * ((angH2 j M m (ρ * wfun ξ φ) * wfun ξ φ ^ 2 : ℝ) : ℂ)
+
+theorem hasDerivAt_angHlin (j M m : ℕ) (w ρ : ℝ) :
+    HasDerivAt (fun r : ℝ => ((angH j M m (r * w) : ℝ) : ℂ))
+      (((angH1 j M m (ρ * w) * w : ℝ) : ℂ)) ρ := by
+  have hlin : HasDerivAt (fun r : ℝ => r * w) w ρ := by
+    simpa using (hasDerivAt_id ρ).mul_const w
+  exact ((hasDerivAt_angH j M m (ρ * w)).comp ρ hlin).ofReal_comp
+
+theorem hasDerivAt_angH1lin (j M m : ℕ) (w ρ : ℝ) :
+    HasDerivAt (fun r : ℝ => ((angH1 j M m (r * w) * w : ℝ) : ℂ))
+      (((angH2 j M m (ρ * w) * w * w : ℝ) : ℂ)) ρ := by
+  have hlin : HasDerivAt (fun r : ℝ => r * w) w ρ := by
+    simpa using (hasDerivAt_id ρ).mul_const w
+  have h1 := (hasDerivAt_angH1 j M m (ρ * w)).comp ρ hlin
+  have h2 : HasDerivAt (fun r : ℝ => angH1 j M m (r * w) * w)
+      (angH2 j M m (ρ * w) * w * w) ρ := h1.mul_const w
+  exact h2.ofReal_comp
+
+/-- The radial data of an angular piece. -/
+theorem bpiece_rayData {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    {b1 b2 : ℝ → Pl → ℝ → ℝ → ℂ}
+    (hAd : IsAdapted j 0 b) (hray : RayData j b B b1 b2)
+    {C : ℝ} (hCd1 : ∀ x : ℝ, |deriv Real.smoothTransition x| ≤ C)
+    (hCd2 : ∀ x : ℝ, |deriv (deriv Real.smoothTransition) x| ≤ C) (hC1 : 1 ≤ C) :
+    RayData j (bpiece j M m b) ((1 + 192 * C) * B)
+      (bp1 j M m b b1) (bp2 j M m b b1 b2) := by
+  have hCnn : (0 : ℝ) ≤ C := by linarith
+  have hBnn : 0 ≤ B := le_trans (norm_nonneg _) (hray.bd0 0 0 0)
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- cont0
+    intro t ξ
+    exact (hray.cont0 t ξ).mul (contDiff_angHdet j M m ξ).continuous
+  · -- d1
+    intro t ξ φ ρ
+    have hfun : (fun r => bpiece j M m b t ξ (pt r φ))
+        = fun r => b t ξ (pt r φ) * ((angH j M m (r * wfun ξ φ) : ℝ) : ℂ) := by
+      funext r
+      rw [bpiece_pt]
+    rw [hfun]
+    exact (hray.d1 t ξ φ ρ).mul (hasDerivAt_angHlin j M m (wfun ξ φ) ρ)
+  · -- d2
+    intro t ξ φ ρ
+    have hfun : bp1 j M m b b1 t ξ φ
+        = fun r => b1 t ξ φ r * ((angH j M m (r * wfun ξ φ) : ℝ) : ℂ)
+          + b t ξ (pt r φ) * ((angH1 j M m (r * wfun ξ φ) * wfun ξ φ : ℝ) : ℂ) := rfl
+    rw [hfun]
+    have p1 := (hray.d2 t ξ φ ρ).mul (hasDerivAt_angHlin j M m (wfun ξ φ) ρ)
+    have p2 := (hray.d1 t ξ φ ρ).mul (hasDerivAt_angH1lin j M m (wfun ξ φ) ρ)
+    refine (p1.add p2).congr_deriv ?_
+    rw [bp2]
+    push_cast
+    ring
+  · -- cont2
+    intro t ξ φ
+    have hbdiff : Differentiable ℝ (fun r : ℝ => b t ξ (pt r φ)) :=
+      fun r => (hray.d1 t ξ φ r).differentiableAt
+    have hb0 : Continuous fun r : ℝ => b t ξ (pt r φ) := hbdiff.continuous
+    have hb1diff : Differentiable ℝ (b1 t ξ φ) :=
+      fun r => (hray.d2 t ξ φ r).differentiableAt
+    have hb1c : Continuous (b1 t ξ φ) := hb1diff.continuous
+    have hb2c : Continuous (b2 t ξ φ) := hray.cont2 t ξ φ
+    have hlin : Continuous fun r : ℝ => r * wfun ξ φ := continuous_id.mul continuous_const
+    have hH : Continuous fun r : ℝ => ((angH j M m (r * wfun ξ φ) : ℝ) : ℂ) :=
+      Complex.continuous_ofReal.comp ((contDiff_angH j M m).continuous.comp hlin)
+    have hH1 : Continuous fun r : ℝ =>
+        ((angH1 j M m (r * wfun ξ φ) * wfun ξ φ : ℝ) : ℂ) :=
+      Complex.continuous_ofReal.comp
+        (((contDiff_angH1 j M m).continuous.comp hlin).mul continuous_const)
+    have hH2 : Continuous fun r : ℝ =>
+        ((angH2 j M m (r * wfun ξ φ) * wfun ξ φ ^ 2 : ℝ) : ℂ) :=
+      Complex.continuous_ofReal.comp
+        (((contDiff_angH2 j M m).continuous.comp hlin).mul continuous_const)
+    exact ((hb2c.mul hH).add ((continuous_const.mul hb1c).mul hH1)).add (hb0.mul hH2)
+  · -- bd0
+    intro t ξ η
+    have h1 : ‖bpiece j M m b t ξ η‖ = ‖b t ξ η‖ * |angH j M m (det2 ξ η)| := by
+      rw [bpiece, norm_mul, Complex.norm_real, Real.norm_eq_abs]
+    rw [h1]
+    have h2 := hray.bd0 t ξ η
+    have h3 := abs_angH_le_one j M m (det2 ξ η)
+    have h4 : ‖b t ξ η‖ * |angH j M m (det2 ξ η)| ≤ B * 1 :=
+      mul_le_mul h2 h3 (abs_nonneg _) hBnn
+    nlinarith [mul_nonneg hCnn hBnn]
+  · -- bd1
+    intro t ξ φ ρ
+    by_cases hout : ρ ∈ OutAnn j
+    · obtain ⟨hz0, hz1, -⟩ := ray_vanish' hAd hray t ξ φ hout
+      have hzero : bp1 j M m b b1 t ξ φ ρ = 0 := by
+        rw [bp1, hz0, hz1, zero_mul, zero_mul, add_zero]
+      rw [hzero, norm_zero]
+      positivity
+    · have hρ : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ |ρ| := by
+        by_contra hcon
+        push_neg at hcon
+        exact hout (Or.inl hcon)
+      have hρpos : (0 : ℝ) < |ρ| := lt_of_lt_of_le (by positivity) hρ
+      have hinv : 1 / |ρ| ≤ (2 : ℝ) ^ (1 - (j : ℤ)) := by
+        have he : (2 : ℝ) ^ (1 - (j : ℤ)) = 1 / (2 : ℝ) ^ ((j : ℤ) - 1) := by
+          rw [eq_div_iff (by positivity), ← two_zpow_add,
+            show 1 - (j : ℤ) + ((j : ℤ) - 1) = 0 by ring]
+          norm_num
+        rw [he]
+        exact one_div_le_one_div_of_le (by positivity) hρ
+      have hH1w : |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ|
+          ≤ 8 * C * (2 : ℝ) ^ (1 - (j : ℤ)) := by
+        have hkey := abs_mul_angH1_le hCd1 j M m (ρ * wfun ξ φ)
+        rw [abs_mul] at hkey
+        have h1 : |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ| * |ρ| ≤ 8 * C := by
+          rw [abs_mul]
+          calc |angH1 j M m (ρ * wfun ξ φ)| * |wfun ξ φ| * |ρ|
+              = |ρ| * |wfun ξ φ| * |angH1 j M m (ρ * wfun ξ φ)| := by ring
+            _ ≤ 8 * C := hkey
+        have h2 : |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ| ≤ 8 * C / |ρ| :=
+          (le_div_iff₀ hρpos).mpr h1
+        refine le_trans h2 ?_
+        rw [div_eq_mul_one_div]
+        exact mul_le_mul_of_nonneg_left hinv (by positivity)
+      have hbp1 : ‖bp1 j M m b b1 t ξ φ ρ‖
+          ≤ B * (2 : ℝ) ^ (-(j : ℤ)) * 1 + B * (8 * C * (2 : ℝ) ^ (1 - (j : ℤ))) := by
+        rw [bp1]
+        refine le_trans (norm_add_le _ _) ?_
+        rw [norm_mul, norm_mul, Complex.norm_real, Complex.norm_real, Real.norm_eq_abs,
+          Real.norm_eq_abs]
+        have t1 : ‖b1 t ξ φ ρ‖ * |angH j M m (ρ * wfun ξ φ)|
+            ≤ B * (2 : ℝ) ^ (-(j : ℤ)) * 1 :=
+          mul_le_mul (hray.bd1 t ξ φ ρ) (abs_angH_le_one _ _ _ _) (abs_nonneg _)
+            (by positivity)
+        have t2 : ‖b t ξ (pt ρ φ)‖ * |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ|
+            ≤ B * (8 * C * (2 : ℝ) ^ (1 - (j : ℤ))) :=
+          mul_le_mul (hray.bd0 _ _ _) hH1w (abs_nonneg _) hBnn
+        linarith
+      refine le_trans hbp1 ?_
+      have he : (2 : ℝ) ^ (1 - (j : ℤ)) = 2 * (2 : ℝ) ^ (-(j : ℤ)) := by
+        rw [show 1 - (j : ℤ) = 1 + -(j : ℤ) by ring, two_zpow_add]
+        norm_num
+      rw [he]
+      have hpp : (0 : ℝ) < (2 : ℝ) ^ (-(j : ℤ)) := by positivity
+      nlinarith [mul_nonneg (mul_nonneg hCnn hBnn) (le_of_lt hpp)]
+  · -- bd2
+    intro t ξ φ ρ
+    by_cases hout : ρ ∈ OutAnn j
+    · obtain ⟨hz0, hz1, hz2⟩ := ray_vanish' hAd hray t ξ φ hout
+      have hzero : bp2 j M m b b1 b2 t ξ φ ρ = 0 := by
+        rw [bp2, hz0, hz1, hz2, zero_mul, zero_mul, mul_zero, zero_mul, add_zero, add_zero]
+      rw [hzero, norm_zero]
+      positivity
+    · have hρ : (2 : ℝ) ^ ((j : ℤ) - 1) ≤ |ρ| := by
+        by_contra hcon
+        push_neg at hcon
+        exact hout (Or.inl hcon)
+      have hρpos : (0 : ℝ) < |ρ| := lt_of_lt_of_le (by positivity) hρ
+      have hinv : 1 / |ρ| ≤ (2 : ℝ) ^ (1 - (j : ℤ)) := by
+        have he : (2 : ℝ) ^ (1 - (j : ℤ)) = 1 / (2 : ℝ) ^ ((j : ℤ) - 1) := by
+          rw [eq_div_iff (by positivity), ← two_zpow_add,
+            show 1 - (j : ℤ) + ((j : ℤ) - 1) = 0 by ring]
+          norm_num
+        rw [he]
+        exact one_div_le_one_div_of_le (by positivity) hρ
+      have hsqinv : 1 / ρ ^ 2 ≤ (2 : ℝ) ^ (2 - 2 * (j : ℤ)) := by
+        have habs : ρ ^ 2 = |ρ| ^ 2 := (sq_abs ρ).symm
+        have hlow : ((2 : ℝ) ^ ((j : ℤ) - 1)) ^ 2 ≤ |ρ| ^ 2 :=
+          pow_le_pow_left₀ (by positivity) hρ 2
+        rw [two_zpow_sq] at hlow
+        have he : (2 : ℝ) ^ (2 - 2 * (j : ℤ)) = 1 / (2 : ℝ) ^ (2 * ((j : ℤ) - 1)) := by
+          rw [eq_div_iff (by positivity), ← two_zpow_add,
+            show 2 - 2 * (j : ℤ) + 2 * ((j : ℤ) - 1) = 0 by ring]
+          norm_num
+        rw [he, habs]
+        exact one_div_le_one_div_of_le (by positivity) hlow
+      have hH1w : |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ|
+          ≤ 8 * C * (2 : ℝ) ^ (1 - (j : ℤ)) := by
+        have hkey := abs_mul_angH1_le hCd1 j M m (ρ * wfun ξ φ)
+        rw [abs_mul] at hkey
+        have h1 : |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ| * |ρ| ≤ 8 * C := by
+          rw [abs_mul]
+          calc |angH1 j M m (ρ * wfun ξ φ)| * |wfun ξ φ| * |ρ|
+              = |ρ| * |wfun ξ φ| * |angH1 j M m (ρ * wfun ξ φ)| := by ring
+            _ ≤ 8 * C := hkey
+        have h2 : |angH1 j M m (ρ * wfun ξ φ) * wfun ξ φ| ≤ 8 * C / |ρ| :=
+          (le_div_iff₀ hρpos).mpr h1
+        refine le_trans h2 ?_
+        rw [div_eq_mul_one_div]
+        exact mul_le_mul_of_nonneg_left hinv (by positivity)
+      have hH2w : |angH2 j M m (ρ * wfun ξ φ) * wfun ξ φ ^ 2|
+          ≤ 40 * C * (2 : ℝ) ^ (2 - 2 * (j : ℤ)) := by
+        have hkey := sq_mul_angH2_le hCd1 hCd2 j M m (ρ * wfun ξ φ)
+        have hexp : (ρ * wfun ξ φ) ^ 2 = ρ ^ 2 * wfun ξ φ ^ 2 := by ring
+        rw [hexp] at hkey
+        have hρ2 : (0 : ℝ) < ρ ^ 2 := by
+          have := hρpos
+          nlinarith [sq_abs ρ]
+        have h1 : |angH2 j M m (ρ * wfun ξ φ) * wfun ξ φ ^ 2| * ρ ^ 2 ≤ 40 * C := by
+          rw [abs_mul, abs_of_nonneg (sq_nonneg (wfun ξ φ))]
+          calc |angH2 j M m (ρ * wfun ξ φ)| * wfun ξ φ ^ 2 * ρ ^ 2
+              = ρ ^ 2 * wfun ξ φ ^ 2 * |angH2 j M m (ρ * wfun ξ φ)| := by ring
+            _ ≤ 40 * C := hkey
+        have h2 : |angH2 j M m (ρ * wfun ξ φ) * wfun ξ φ ^ 2| ≤ 40 * C / ρ ^ 2 :=
+          (le_div_iff₀ hρ2).mpr h1
+        refine le_trans h2 ?_
+        rw [div_eq_mul_one_div]
+        exact mul_le_mul_of_nonneg_left hsqinv (by positivity)
+      have hbp2 : ‖bp2 j M m b b1 b2 t ξ φ ρ‖
+          ≤ B * (2 : ℝ) ^ (-2 * (j : ℤ)) * 1
+            + 2 * (B * (2 : ℝ) ^ (-(j : ℤ))) * (8 * C * (2 : ℝ) ^ (1 - (j : ℤ)))
+            + B * (40 * C * (2 : ℝ) ^ (2 - 2 * (j : ℤ))) := by
+        rw [bp2]
+        refine le_trans (norm_add_le _ _) ?_
+        refine add_le_add (le_trans (norm_add_le _ _) (add_le_add ?_ ?_)) ?_
+        · rw [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+          exact mul_le_mul (hray.bd2 t ξ φ ρ) (abs_angH_le_one _ _ _ _) (abs_nonneg _)
+            (by positivity)
+        · rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs]
+          have hn2 : ‖(2 : ℂ)‖ = 2 := by norm_num
+          rw [hn2]
+          refine mul_le_mul (mul_le_mul_of_nonneg_left (hray.bd1 t ξ φ ρ) (by norm_num))
+            hH1w (abs_nonneg _) (by positivity)
+        · rw [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+          exact mul_le_mul (hray.bd0 _ _ _) hH2w (abs_nonneg _) hBnn
+      refine le_trans hbp2 ?_
+      have e1 : (2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ (1 - (j : ℤ))
+          = 2 * (2 : ℝ) ^ (-2 * (j : ℤ)) := by
+        rw [← two_zpow_add, show -(j : ℤ) + (1 - (j : ℤ)) = 1 + -2 * (j : ℤ) by ring,
+          two_zpow_add]
+        norm_num
+      have e2 : (2 : ℝ) ^ (2 - 2 * (j : ℤ)) = 4 * (2 : ℝ) ^ (-2 * (j : ℤ)) := by
+        rw [show 2 - 2 * (j : ℤ) = 2 + -2 * (j : ℤ) by ring, two_zpow_add]
+        norm_num
+      have hpp : (0 : ℝ) < (2 : ℝ) ^ (-2 * (j : ℤ)) := by positivity
+      have hrw : 2 * (B * (2 : ℝ) ^ (-(j : ℤ))) * (8 * C * (2 : ℝ) ^ (1 - (j : ℤ)))
+          = 16 * (B * C) * ((2 : ℝ) ^ (-(j : ℤ)) * (2 : ℝ) ^ (1 - (j : ℤ))) := by ring
+      rw [hrw, e1, e2]
+      nlinarith [mul_nonneg (mul_nonneg hBnn hCnn) (le_of_lt hpp)]
+
+end BPieceRay
+
+
+/-! ### Cauchy--Schwarz over the angular pieces -/
+
+section EnnCS
+
+theorem enn_mul_le_sq_add_sq (a c : ℝ≥0∞) : a * c ≤ a ^ 2 + c ^ 2 := by
+  rcases le_total a c with h | h
+  · calc a * c ≤ c * c := mul_le_mul_right' h c
+      _ = c ^ 2 := by rw [sq]
+      _ ≤ a ^ 2 + c ^ 2 := le_add_self
+  · calc a * c ≤ a * a := mul_le_mul_left' h a
+      _ = a ^ 2 := by rw [sq]
+      _ ≤ a ^ 2 + c ^ 2 := le_self_add
+
+theorem enn_sq_sum_le {ι : Type*} (s : Finset ι) (a : ι → ℝ≥0∞) :
+    (∑ i ∈ s, a i) ^ 2 ≤ 2 * (s.card : ℝ≥0∞) * ∑ i ∈ s, a i ^ 2 := by
+  classical
+  rw [sq, Finset.sum_mul_sum]
+  calc ∑ i ∈ s, ∑ j ∈ s, a i * a j
+      ≤ ∑ i ∈ s, ∑ j ∈ s, (a i ^ 2 + a j ^ 2) := by
+        refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
+        exact enn_mul_le_sq_add_sq (a i) (a j)
+    _ = ∑ i ∈ s, ((s.card : ℝ≥0∞) * a i ^ 2 + ∑ j ∈ s, a j ^ 2) := by
+        refine Finset.sum_congr rfl fun i _ => ?_
+        rw [Finset.sum_add_distrib, Finset.sum_const, nsmul_eq_mul]
+    _ = (s.card : ℝ≥0∞) * (∑ i ∈ s, a i ^ 2) + (s.card : ℝ≥0∞) * ∑ j ∈ s, a j ^ 2 := by
+        rw [Finset.sum_add_distrib, ← Finset.mul_sum, Finset.sum_const, nsmul_eq_mul]
+    _ = 2 * (s.card : ℝ≥0∞) * ∑ i ∈ s, a i ^ 2 := by ring
+
+theorem enn_rpow_two_eq_pow (x : ℝ≥0∞) : x ^ (2 : ℝ) = x ^ (2 : ℕ) := by
+  rw [show ((2 : ℝ)) = ((2 : ℕ) : ℝ) by norm_num, ENNReal.rpow_natCast]
+
+theorem enn_sq_sum_le' {ι : Type*} (s : Finset ι) (a : ι → ℝ≥0∞) :
+    (∑ i ∈ s, a i) ^ (2 : ℝ) ≤ 2 * (s.card : ℝ≥0∞) * ∑ i ∈ s, a i ^ (2 : ℝ) := by
+  rw [enn_rpow_two_eq_pow]
+  refine le_trans (enn_sq_sum_le s a) ?_
+  refine mul_le_mul' (le_refl _) (Finset.sum_le_sum fun i _ => ?_)
+  rw [enn_rpow_two_eq_pow]
+
+/-- Cauchy--Schwarz applied to a finite decomposition of a complex number. -/
+theorem enorm_sq_sum_le {ι : Type*} (s : Finset ι) (z : ι → ℂ) :
+    ‖∑ i ∈ s, z i‖ₑ ^ (2 : ℝ)
+      ≤ 2 * (s.card : ℝ≥0∞) * ∑ i ∈ s, ‖z i‖ₑ ^ (2 : ℝ) := by
+  refine le_trans ?_ (enn_sq_sum_le' s fun i => ‖z i‖ₑ)
+  exact ENNReal.rpow_le_rpow (enorm_sum_le s z) (by norm_num)
+
+end EnnCS
+
+/-! ### Splitting the operator over the angular pieces -/
+
+section SopSplit
+
+theorem continuous_det2_right (ξ : Pl) : Continuous fun η : Pl => det2 ξ η := by
+  have h : (fun η : Pl => det2 ξ η) = fun η : Pl => detCLM ξ η := by
+    funext η; rw [detCLM_apply]
+  rw [h]
+  exact (detCLM ξ).continuous
+
+theorem bpiece_isAdapted0 {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ}
+    (hb : IsAdapted j 0 b) : IsAdapted j 0 (bpiece j M m b) := by
+  refine ⟨fun t ξ => (hb.meas t ξ).mul ?_, fun t ξ η hη => ?_⟩
+  · exact (Complex.continuous_ofReal.comp
+      ((contDiff_angH j M m).continuous.comp (continuous_det2_right ξ))).measurable
+  · by_contra hne
+    exact hη (mem_suppSet_of_bpiece (B := (0 : ℝ)) hb.supp hne)
+
+theorem bpiece_bd0 {j M m : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (t : ℝ) (ξ η : Pl) :
+    ‖bpiece j M m b t ξ η‖ ≤ B := by
+  have h1 : ‖bpiece j M m b t ξ η‖ = ‖b t ξ η‖ * |angH j M m (det2 ξ η)| := by
+    rw [bpiece, norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  rw [h1]
+  have h2 := hbB t ξ η
+  have h3 := abs_angH_le_one j M m (det2 ξ η)
+  nlinarith [norm_nonneg (b t ξ η), abs_nonneg (angH j M m (det2 ξ η))]
+
+/-- The operator splits over the angular pieces of the symbol. -/
+theorem Sop_sum_symbol {j M : ℕ} {b : ℝ → Pl → Pl → ℂ} {B : ℝ}
+    (hb : IsAdapted j 0 b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hBnn : 0 ≤ B)
+    (ε t : ℝ) (ξ : Pl) (F : SchwartzMap Pl2 ℂ) :
+    Sop ε b (F : Pl2 → ℂ) ξ t
+      = ∑ m ∈ Finset.range (M + 2), Sop ε (bpiece j M m b) (F : Pl2 → ℂ) ξ t := by
+  classical
+  obtain ⟨CF, hCFnn, hCF⟩ := exists_fourier_bound F
+  have hRHS : ∀ m : ℕ, Sop ε (bpiece j M m b) (F : Pl2 → ℂ) ξ t
+      = ∫ η, phase ε t ξ η * bpiece j M m b t ξ η
+          * 𝓕 ((F : Pl2 → ℂ)) (pr (ξ - η) η) := fun m => rfl
+  rw [Finset.sum_congr rfl fun m _ => hRHS m]
+  have hint : ∀ m ∈ Finset.range (M + 2),
+      Integrable fun η : Pl => phase ε t ξ η * bpiece j M m b t ξ η
+        * 𝓕 ((F : Pl2 → ℂ)) (pr (ξ - η) η) := by
+    intro m _
+    exact integrable_SopK_integrand (bpiece_isAdapted0 hb) (bpiece_bd0 hbB) hBnn ε t ξ
+      (measurable_fourier_schwartz F) hCFnn hCF
+  have key : (∫ η, phase ε t ξ η * b t ξ η * 𝓕 ((F : Pl2 → ℂ)) (pr (ξ - η) η))
+      = ∫ η, ∑ m ∈ Finset.range (M + 2), phase ε t ξ η * bpiece j M m b t ξ η
+          * 𝓕 ((F : Pl2 → ℂ)) (pr (ξ - η) η) := by
+    refine integral_congr_ae (Filter.Eventually.of_forall fun η => ?_)
+    have h1 : ∀ m : ℕ, phase ε t ξ η * bpiece j M m b t ξ η
+        * 𝓕 ((F : Pl2 → ℂ)) (pr (ξ - η) η)
+        = (phase ε t ξ η * b t ξ η * 𝓕 ((F : Pl2 → ℂ)) (pr (ξ - η) η))
+          * ((angH j M m (det2 ξ η) : ℝ) : ℂ) := by
+      intro m
+      rw [bpiece]
+      ring
+    rw [Finset.sum_congr rfl fun m _ => h1 m, ← Finset.mul_sum, ← Complex.ofReal_sum,
+      sum_angH]
+    norm_num
+  rw [Sop, SopK, key, integral_finset_sum _ hint]
+
+end SopSplit
 
 
 end

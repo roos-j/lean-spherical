@@ -26,6 +26,18 @@ AHRS formalization already proves exactly this inclusion under the extra hypothe
 which is the content of the paper's Theorem 2.5 (`thm:Q4`) plus the interpolation in
 Corollary 2.6 (`cor:interior`).
 
+## After Theorem 1.1: Theorem 1.2
+
+Once Theorem 1.1 is completely formalized (`sorry`-free, standard axioms only), **continue with
+Theorem 1.2 of the same paper** ([arXiv:2004.00984](https://arxiv.org/abs/2004.00984)), under the
+same rules as below (same file layout, same `Auto` namespace, same strict-forward-reasoning
+method, same reporting discipline in `Report.md`).
+
+**Do not guess the statement.** The precise statement of Theorem 1.2 has not been read off the
+source in the session that added this note, so the first step of that phase is to obtain the
+paper's Theorem 1.2 verbatim and record it at the top of the new work, exactly as the Theorem 1.1
+statement is recorded above. Only then begin formalizing.
+
 ## File layout (hard constraints)
 
 * All generated code goes in the `Auto` namespace and under `LeanSpherical/Auto/`.
@@ -42,6 +54,9 @@ Corollary 2.6 (`cor:interior`).
   recognizable name turns out to be missing from the repository and from Mathlib, one — and only
   one — additional file may be created per such occurrence. Every use of this clause must be
   recorded in `Report.md`.
+  * **Used once so far.** Mathlib has no Hardy–Littlewood–Sobolev inequality and no Riesz-potential
+    bound, and §3 needs one-dimensional fractional integration; the user authorized
+    `LeanSpherical/Auto/HardyLittlewoodSobolev.lean` for it on 2026-08-26.
 
 ## Method
 
