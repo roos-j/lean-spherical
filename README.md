@@ -11,19 +11,6 @@ Completed:
 * Thm. 2 of [arXiv:1909.05389](https://arxiv.org/abs/1909.05389) (Sharpness examples for $`L^p`$ improving)
 * Thm. 1 of [arXiv:1909.05389](https://arxiv.org/abs/1909.05389) ($`L^p \to L^q`$ bounds for fractal dilation sets, non-endpoint range): [`Spherical.FractalDilations.hasFractalSphericalStrongType_of_mem_R`](https://github.com/roos-j/lean-spherical/blob/master/LeanSpherical/Theorems.lean) and its representative-independent form [`Spherical.FractalDilations.hasFractalSphericalLpExtension_of_mem_R`](https://github.com/roos-j/lean-spherical/blob/master/LeanSpherical/Theorems.lean)
 
-ToDo:
-
-* Typeset characterization: Thm. 1.2 of [arXiv:2004.00984](https://arxiv.org/abs/2004.00984)
-
-* Many standard theorems in harmonic analysis are contained in the machine-generated code. They should be cleaned up and presented in convenient, reusable form:
-  - Mikhlin multiplier theorem
-  - Hardy-Littlewood maximal function
-  - Rademacher functions / Khinchine's inequality
-  - Littlewood-Paley theory
-  - interpolation theorems (several redundant versions currently)
-  - Stationary phase estimates, surface measure Fourier decay
-  - Mockenhaupt-Seeger-Sogge local smoothing estimate
-
 ### Verification / build instructions
 
 To build and verify the formalization locally follow these steps:
@@ -66,9 +53,7 @@ and [`Theorems.lean`](https://github.com/roos-j/lean-spherical/blob/master/LeanS
 
 The formalization proceeded in several stages. First, Stein's spherical maximal theorem and its necessary prerequisites were formalized. Many of these prerequisites are not currently in Mathlib, though some of them are contained in existing projects such as the [Carleson project](https://github.com/fpvandoorn/carleson). These include Marcinkiewicz interpolation, weak (1,1) boundedness of the Hardy-Littlewood maximal function, Fourier decay of the surface measure of the sphere, and other basic things.
 
-The next stage began an attempt to autoformalize arXiv:1909.05389 and successfully finished the lower bounds Thm. 2. The process was paused before Thm. 1 could be finished.
-
-Thm. 1 of arXiv:1909.05389 was completed in a later session with Claude/opus-5. The interior of the exponent polygon `Q(β, γ)` is covered by four literal routes, selected by the four strict supporting inequalities of the polygon: the crossed `T123` estimate on `1/p + 1/q > 1`, common-input interpolation of the diagonal `Q2` rate with the `Q4` sector rate for `p ≥ 2`, the direct sub-`L²` `Q4` sector rate below the balancing shell parameter `θ_max = A/(A+γ)`, and a quantitative loss--gain interpolation of the physical `Q3` rate against the sub-`L²` `Q4` rate above it. The gain condition of the last route is exactly positivity of the clustered-edge functional, i.e. the strict `Q3`--`Q4` edge inequality.
+The next stage began an attempt to autoformalize arXiv:1909.05389 and successfully finished the lower bounds Thm. 2. The process was paused before Thm. 1 could be finished, but Thm. 1 of arXiv:1909.05389 was completed in a later session with Claude/opus-5. 
 
 In the next stage, the main theorem of [arXiv:2602.17613](https://arxiv.org/abs/2602.17613) was formalized, with the additional assumption `d >= 3`. This took a single session with Codex/gpt-5.6-terra-ultra that ran for ~25h.
 
@@ -81,6 +66,21 @@ In a final stage, the remaining theorems in the repository were also generalized
 A drawback of autoformalization is that the generated code contains a lot of bloat in the form of unnecessary abstractions, wrappers and redundancies (for example, the repository contains several redundant versions of various interpolation theorems). It is also not written at an appropriate level of generality. 
 
 Lean certifies correctness[^2] of the human-written theorems, so the machine-generated proofs never have to be trusted or reviewed by a human[^1].
+
+
+### ToDo
+
+* Many standard theorems in harmonic analysis are contained in the machine-generated code. They should be cleaned up and presented in convenient, reusable form:
+  - Mikhlin multiplier theorem
+  - Hardy-Littlewood maximal function
+  - Rademacher functions / Khinchine's inequality
+  - Littlewood-Paley theory
+  - interpolation theorems (several redundant versions currently)
+  - Stationary phase estimates, surface measure Fourier decay
+  - Mockenhaupt-Seeger-Sogge local smoothing estimate
+  - Cotlar-Stein lemma
+  - Calderon-Vaillancourt theorem
+  - Hardy-Littlewood-Sobolev inequality
 
 [^1]: Within reason. The code still had to be reviewed sufficiently to ensure that coding agents followed instructions and did not attempt to act adverserially, for example by writing adverserial meta programs or otherwise trying to compromise the user's system. The degree to which machine-generated code has to be looked at can be further minimized by relying on a correctness judge like [Lean Comparator](https://github.com/leanprover/comparator).
 
