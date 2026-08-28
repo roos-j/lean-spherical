@@ -28874,9 +28874,9 @@ theorem C3_eq_ofReal {Cs CV Cst Na B0 B0' : ℝ} {j Mc Mk L : ℕ} {p gam : ℝ}
     rw [ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 4)]
     norm_num
   rw [C3, hfour, ← ENNReal.ofReal_pow hynn,
-    ← ENNReal.ofReal_rpow_of_nonneg (by positivity) h1p,
-    ← ENNReal.ofReal_rpow_of_nonneg (by positivity) h2p,
-    ← ENNReal.ofReal_rpow_of_nonneg hz h1p',
+    ENNReal.ofReal_rpow_of_nonneg (by positivity : (0:ℝ) ≤ 4 * x) h1p,
+    ENNReal.ofReal_rpow_of_nonneg (by positivity : (0:ℝ) ≤ y ^ 2) h2p,
+    ENNReal.ofReal_rpow_of_nonneg hz h1p',
     ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity)]
   refine congrArg ENNReal.ofReal ?_
   rw [c3R]
