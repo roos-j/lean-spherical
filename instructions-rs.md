@@ -72,6 +72,14 @@ statement is recorded above. Only then begin formalizing.
 * Do not ask the user questions. Make judgment calls and record them in `Report.md`.
 * `Report.md` is an executive summary: record judgment calls, and record each milestone **only once
   it is completely finished**. Keep it short.
+* **Reporting discipline for milestones (mandatory, set by the user on 2026-08-27).**
+  * A `Report.md` entry counts as a **milestone only if it completely proves a significant
+    step or part of the paper** — a numbered theorem, proposition, corollary, or a self-contained
+    section of the logical path.  Infrastructure, instantiations, API, refactors and partial steps
+    are *not* milestones: record them under a `Progress` heading instead.
+  * **Every milestone entry must carry a timestamp** (local date and time, e.g.
+    `2026-08-27 20:07 EDT`), obtained from the system clock, in its heading.
+  * The same applies to `Progress` entries: give them a timestamp too, so the record is ordered.
 
 ## Proof skeleton of the new case (paper §2–§4)
 
