@@ -42417,6 +42417,1735 @@ theorem eLpNorm_bandMaximal_iUnion_le {d : ℕ} (hd : 0 < d) {q : ℝ} (hq : 1 �
         exact eLpNorm_sum_le (fun n _ =>
           (measurable_fractalDyadicBandpassMaximal (Es n) psi f).aestronglyMeasurable) hqENN
 
+open MeasureTheory Set ENNReal
+
+
+
+/-! ### A double geometric sum -/
+
+/-- The partial sums of a geometric tail. -/
+theorem sum_geometric_tail_eq {rho : ℝ} (hrho1 : rho < 1) (m : ℕ) :
+    ∀ N : ℕ, m + 1 ≤ N →
+      ∑ j ∈ (Finset.range N).filter (fun j => m < j), rho ^ j
+        = (rho ^ (m + 1) - rho ^ N) / (1 - rho) := by
+  have hone : (0 : ℝ) < 1 - rho := by linarith
+  intro N hN
+  induction N, hN using Nat.le_induction with
+  | base =>
+      have hempty : (Finset.range (m + 1)).filter (fun j => m < j) = ∅ := by
+        ext j
+        simp only [Finset.mem_filter, Finset.mem_range, Finset.notMem_empty, iff_false]
+        intro h
+        omega
+      rw [hempty, Finset.sum_empty]
+      field_simp
+      ring
+  | succ N hN ih =>
+      have hfilter : (Finset.range (N + 1)).filter (fun j => m < j)
+          = insert N ((Finset.range N).filter (fun j => m < j)) := by
+        ext j
+        simp only [Finset.mem_filter, Finset.mem_range, Finset.mem_insert]
+        constructor
+        · rintro ⟨hj, hmj⟩
+          rcases Nat.lt_succ_iff_lt_or_eq.mp hj with h | h
+          · exact Or.inr ⟨h, hmj⟩
+          · exact Or.inl h
+        · rintro (rfl | ⟨hj, hmj⟩)
+          · exact ⟨Nat.lt_succ_self _, by omega⟩
+          · exact ⟨Nat.lt_succ_of_lt hj, hmj⟩
+      have hnotmem : N ∉ (Finset.range N).filter (fun j => m < j) := by
+        simp only [Finset.mem_filter, Finset.mem_range]
+        intro h
+        exact absurd h.1 (lt_irrefl N)
+      rw [hfilter, Finset.sum_insert hnotmem, ih]
+      field_simp
+      ring
+
+/-- The geometric tail bound. -/
+theorem sum_geometric_tail_le {C rho : ℝ} (hC : 0 ≤ C) (hrho : 0 ≤ rho) (hrho1 : rho < 1)
+    (m N : ℕ) :
+    ∑ j ∈ (Finset.range N).filter (fun j => m < j), C * rho ^ j
+      ≤ C * rho ^ (m + 1) / (1 - rho) := by
+  have hone : (0 : ℝ) < 1 - rho := by linarith
+  rw [← Finset.mul_sum]
+  rcases le_or_gt (m + 1) N with hN | hN
+  · rw [sum_geometric_tail_eq hrho1 m N hN]
+    rw [mul_div_assoc'] at *
+    rw [div_le_div_iff_of_pos_right hone]
+    have hpow : 0 ≤ rho ^ N := pow_nonneg hrho N
+    nlinarith [mul_nonneg hC hpow]
+  · have hempty : (Finset.range N).filter (fun j => m < j) = ∅ := by
+      ext j
+      simp only [Finset.mem_filter, Finset.mem_range, Finset.notMem_empty, iff_false]
+      intro h
+      omega
+    rw [hempty, Finset.sum_empty, mul_zero]
+    positivity
+
+/-- **Exchanging the order of summation in the double sum of §7.** -/
+theorem sum_double_geometric_le {Cs rhos : ℕ → ℝ} {L : ℕ → ℕ} (hCs : ∀ n, 0 ≤ Cs n)
+    (hrhos : ∀ n, 0 ≤ rhos n) (hrhos1 : ∀ n, rhos n < 1) {A0 : ℝ}
+    (hA0 : ∀ N, ∑ n ∈ Finset.range N, Cs n * rhos n ^ (L n + 1) / (1 - rhos n) ≤ A0)
+    (N : ℕ) :
+    ∑ j ∈ Finset.range N, ∑ n ∈ (Finset.range j).filter (fun n => L n < j),
+        Cs n * rhos n ^ j ≤ A0 := by
+  classical
+  have hle : ∀ j ∈ Finset.range N,
+      ∑ n ∈ (Finset.range j).filter (fun n => L n < j), Cs n * rhos n ^ j
+        ≤ ∑ n ∈ Finset.range N, (if L n < j then Cs n * rhos n ^ j else 0) := by
+    intro j hj
+    rw [← Finset.sum_filter]
+    refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_
+    · intro n hn
+      simp only [Finset.mem_filter, Finset.mem_range] at hn ⊢
+      exact ⟨lt_trans hn.1 (Finset.mem_range.mp hj), hn.2⟩
+    · intro n _ _
+      have := hCs n
+      have := hrhos n
+      positivity
+  calc ∑ j ∈ Finset.range N, ∑ n ∈ (Finset.range j).filter (fun n => L n < j),
+        Cs n * rhos n ^ j
+      ≤ ∑ j ∈ Finset.range N, ∑ n ∈ Finset.range N,
+          (if L n < j then Cs n * rhos n ^ j else 0) := Finset.sum_le_sum hle
+    _ = ∑ n ∈ Finset.range N, ∑ j ∈ Finset.range N,
+          (if L n < j then Cs n * rhos n ^ j else 0) := Finset.sum_comm
+    _ = ∑ n ∈ Finset.range N, ∑ j ∈ (Finset.range N).filter (fun j => L n < j),
+          Cs n * rhos n ^ j := by
+        refine Finset.sum_congr rfl fun n _ => ?_
+        rw [Finset.sum_filter]
+    _ ≤ ∑ n ∈ Finset.range N, Cs n * rhos n ^ (L n + 1) / (1 - rhos n) := by
+        refine Finset.sum_le_sum fun n _ => ?_
+        exact sum_geometric_tail_le (hCs n) (hrhos n) (hrhos1 n) (L n) N
+    _ ≤ A0 := hA0 N
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.CompactLowpassImproving
+open Auto.Spherical.FractalDilations.CompactDyadicZero
+
+
+
+set_option maxHeartbeats 1000000 in
+/-- **The union estimate of §7.**  A countable family of radius sets, the `n`-th one confined to
+`[1, 1 + 2^{-L n}]` and obeying a band rate at `(p,q)`, together with the one-cell rate at
+`(p,q)`, gives the strong type for the union as soon as the diagonal series converges. -/
+theorem hasFractalSphericalStrongType_iUnion_of_bandRates {d : ℕ} (hd : 2 ≤ d)
+    {Es : ℕ → Set ℝ} (hEs : ∀ n, Es n ⊆ Icc (1 : ℝ) 2)
+    {L : ℕ → ℕ} (hL : ∀ n, n ≤ L n)
+    (hloc : ∀ n, Es n ⊆ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ L n)⁻¹))
+    (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    {p q : ℝ} (hp : 1 < p) (hpq : p < q)
+    {Cs rhos : ℕ → ℝ} (hCs : ∀ n, 0 ≤ Cs n) (hrhos : ∀ n, 0 ≤ rhos n)
+    (hrhos1 : ∀ n, rhos n < 1)
+    (hrates : ∀ (n j : ℕ), 1 ≤ j → ∀ f : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (fractalDyadicBandpassMaximal d (Es n)
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+        ≤ ENNReal.ofReal (Cs n * rhos n ^ j)
+          * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume)
+    (hcell : HasOneCellBandRateReal phi hphiOne hphiZero p q)
+    {A0 : ℝ}
+    (hA0 : ∀ N : ℕ, ∑ n ∈ Finset.range N, Cs n * rhos n ^ (L n + 1) / (1 - rhos n) ≤ A0) :
+    HasFractalSphericalStrongType d (⋃ n, Es n) p q := by
+  classical
+  have hd0 : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  have hp0 : 0 < p := lt_trans zero_lt_one hp
+  have hq1 : 1 ≤ q := le_of_lt (lt_trans hp hpq)
+  set E : Set ℝ := ⋃ n, Es n with hEdef
+  have hE : E ⊆ Icc (1 : ℝ) 2 := by
+    intro t ht
+    obtain ⟨n, htn⟩ := Set.mem_iUnion.mp ht
+    exact hEs n htn
+  have hEpos : E ⊆ Ioi (0 : ℝ) := fun t ht => lt_of_lt_of_le zero_lt_one (hE ht).1
+  obtain ⟨Ccell, rhocell, hCcell, hrhocell, hrhocell1, hcellbound⟩ := hcell
+  -- the low-frequency and the zeroth band
+  obtain ⟨CR, hCRtop, hregular⟩ :=
+    absolute_lowpass_improving_eLpNorm hd0 E hE phi hphiZero hphiNorm hp hpq
+  have hdisj : 3 ≤ d ∨ d = 2 ∧ (0 : ℝ) ≤ 1 / 2 := by
+    rcases Nat.lt_or_ge d 3 with hd3 | hd3
+    · exact Or.inr ⟨by omega, by norm_num⟩
+    · exact Or.inl hd3
+  obtain ⟨Czero, hCzerotop, hzero⟩ := absoluteDyadicBandpass_zero_improving_eLpNorm
+    (gamma := 0) hdisj E hE phi hphiOne hphiZero hphiNorm hp hpq
+  -- the band coefficients
+  set b : ℕ → ℝ := fun j =>
+    (∑ n ∈ (Finset.range j).filter (fun n => L n < j), Cs n * rhos n ^ j)
+      + Ccell * rhocell ^ j with hbdef
+  have hb0 : ∀ j, 0 ≤ b j := by
+    intro j
+    rw [hbdef]
+    have h1 : 0 ≤ ∑ n ∈ (Finset.range j).filter (fun n => L n < j), Cs n * rhos n ^ j := by
+      refine Finset.sum_nonneg fun n _ => ?_
+      have := hCs n
+      have := hrhos n
+      positivity
+    have h2 : 0 ≤ Ccell * rhocell ^ j := by positivity
+    linarith
+  set a : ℕ → ENNReal := fun j => if j = 0 then Czero else ENNReal.ofReal (b j) with hadef
+  -- the band bounds
+  have hdyadic : ∀ (j : ℕ) (f : SchwartzMap (Euclidean d) ℂ),
+      MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+        ≤ a j * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+    intro j f
+    rcases Nat.eq_zero_or_pos j with hj0 | hj1
+    · subst hj0
+      obtain ⟨hmem, hbd⟩ := hzero f
+      refine ⟨hmem, ?_⟩
+      rw [hadef]
+      simpa using hbd
+    · -- the split
+      have hsplit := eLpNorm_bandMaximal_iUnion_le hd0 hq1 hEs hL hloc
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f j
+      rw [← hEdef] at hsplit
+      -- the resolved pieces
+      have hpieces : (∑ n ∈ (Finset.range j).filter (fun n => L n < j),
+          eLpNorm (fractalDyadicBandpassMaximal d (Es n)
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume)
+          ≤ ENNReal.ofReal (∑ n ∈ (Finset.range j).filter (fun n => L n < j),
+              Cs n * rhos n ^ j)
+            * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+        rw [ENNReal.ofReal_sum_of_nonneg (fun n _ => by
+          have := hCs n
+          have := hrhos n
+          positivity), Finset.sum_mul]
+        exact Finset.sum_le_sum fun n _ => hrates n j hj1 f
+      -- the tail cell
+      have hcelltail : eLpNorm (fractalDyadicBandpassMaximal d
+          (E ∩ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ j)⁻¹))
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+          ≤ ENNReal.ofReal (Ccell * rhocell ^ j)
+            * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+        rcases Set.eq_empty_or_nonempty (E ∩ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ j)⁻¹)) with hempty | hne
+        · rw [hempty]
+          have hzeroband : fractalDyadicBandpassMaximal d (∅ : Set ℝ)
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f = fun _ => 0 := by
+            funext x
+            rw [fractalDyadicBandpassMaximal, fractalSphericalMaximalReal,
+              fractalSphericalMaximal_empty]
+            simp
+          rw [hzeroband]
+          simp
+        · refine hcellbound j hj1 (fun t ht => hE ht.1) hne
+            (fun t ht => ht.2) ?_ f
+          have : (1 : ℝ) + ((2 : ℝ) ^ j)⁻¹ - 1 = ((2 : ℝ) ^ j)⁻¹ := by ring
+          rw [this]
+      have hjne : ¬ (j = 0) := by omega
+      have hfinal : eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+          ≤ a j * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+        refine hsplit.trans ((add_le_add hpieces hcelltail).trans ?_)
+        rw [hadef]
+        simp only [hjne, if_false]
+        rw [← add_mul, ← ENNReal.ofReal_add (by
+          refine Finset.sum_nonneg fun n _ => ?_
+          have := hCs n
+          have := hrhos n
+          positivity) (by positivity)]
+      refine ⟨⟨(measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable, ?_⟩, hfinal⟩
+      refine lt_of_le_of_lt hfinal ?_
+      refine ENNReal.mul_lt_top ?_
+        (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp0 f))
+      rw [hadef]
+      simp only [hjne, if_false]
+      exact ENNReal.ofReal_lt_top
+  -- the summability of the coefficients
+  have hgeomcell : ∀ N : ℕ, ∑ j ∈ Finset.range N, Ccell * rhocell ^ j
+      ≤ Ccell / (1 - rhocell) := by
+    intro N
+    have hone : (0 : ℝ) < 1 - rhocell := by linarith
+    rw [← Finset.mul_sum]
+    have hgeom : ∑ j ∈ Finset.range N, rhocell ^ j ≤ 1 / (1 - rhocell) := by
+      rw [geom_sum_eq (by linarith) N]
+      have hrewrite : (rhocell ^ N - 1) / (rhocell - 1) = (1 - rhocell ^ N) / (1 - rhocell) := by
+        rw [div_eq_div_iff (by linarith : rhocell - 1 ≠ 0) (ne_of_gt hone)]
+        ring
+      rw [hrewrite, div_le_div_iff_of_pos_right hone]
+      nlinarith [pow_nonneg hrhocell.le N]
+    calc Ccell * ∑ j ∈ Finset.range N, rhocell ^ j
+        ≤ Ccell * (1 / (1 - rhocell)) := mul_le_mul_of_nonneg_left hgeom hCcell.le
+      _ = Ccell / (1 - rhocell) := by ring
+  have hbsum : ∀ N : ℕ, ∑ j ∈ Finset.range N, b j ≤ A0 + Ccell / (1 - rhocell) := by
+    intro N
+    have hsplit : ∑ j ∈ Finset.range N, b j
+        = (∑ j ∈ Finset.range N, ∑ n ∈ (Finset.range j).filter (fun n => L n < j),
+            Cs n * rhos n ^ j) + ∑ j ∈ Finset.range N, Ccell * rhocell ^ j := by
+      rw [hbdef, ← Finset.sum_add_distrib]
+    rw [hsplit]
+    exact add_le_add (sum_double_geometric_le hCs hrhos hrhos1 hA0 N) (hgeomcell N)
+  have hsum : ∀ N : ℕ, ∑ j ∈ Finset.range N, a j
+      ≤ Czero + ENNReal.ofReal (A0 + Ccell / (1 - rhocell)) := by
+    intro N
+    have hstep : ∀ j ∈ Finset.range N,
+        a j ≤ (if j = 0 then Czero else 0) + ENNReal.ofReal (b j) := by
+      intro j _
+      rw [hadef]
+      by_cases hj : j = 0
+      · simp only [hj, if_true]
+        exact le_add_of_nonneg_right bot_le
+      · simp only [hj, if_false]
+        exact le_add_of_nonneg_left bot_le
+    calc ∑ j ∈ Finset.range N, a j
+        ≤ ∑ j ∈ Finset.range N, ((if j = 0 then Czero else 0) + ENNReal.ofReal (b j)) :=
+          Finset.sum_le_sum hstep
+      _ = (∑ j ∈ Finset.range N, (if j = 0 then Czero else 0))
+          + ∑ j ∈ Finset.range N, ENNReal.ofReal (b j) := Finset.sum_add_distrib
+      _ ≤ Czero + ENNReal.ofReal (A0 + Ccell / (1 - rhocell)) := by
+          refine add_le_add ?_ ?_
+          · rcases Nat.eq_zero_or_pos N with rfl | hN
+            · simp
+            · rw [Finset.sum_ite_eq' (Finset.range N) 0 (fun _ => Czero)]
+              split_ifs <;> simp
+          · rw [← ENNReal.ofReal_sum_of_nonneg (fun j _ => hb0 j)]
+            exact ENNReal.ofReal_le_ofReal (hbsum N)
+  exact absolute_off_diagonal_reassembly_of_summable hd0 hp0 hq1 E hEpos phi hphiOne hphiZero
+    CR (Czero + ENNReal.ofReal (A0 + Ccell / (1 - rhocell))) hCRtop
+    (ENNReal.add_lt_top.mpr ⟨hCzerotop, ENNReal.ofReal_lt_top⟩) a hsum hregular hdyadic
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+/-! ### Self-similarity of the Cantor construction -/
+
+/-- Every generation of the Cantor construction is affine equivariant. -/
+theorem cantorGen_image_affine (mu : ℝ) (m : ℕ) {c s : ℝ} (hs : 0 < s) :
+    ∀ v L : ℝ, (fun x => c + s * x) '' cantorGen mu m v L
+      = cantorGen mu m (c + s * v) (s * L) := by
+  induction m with
+  | zero =>
+      intro v L
+      rw [cantorGen_zero, cantorGen_zero]
+      ext x
+      simp only [Set.mem_image, Set.mem_Icc]
+      constructor
+      · rintro ⟨y, ⟨hy1, hy2⟩, rfl⟩
+        exact ⟨by nlinarith, by nlinarith⟩
+      · rintro ⟨h1, h2⟩
+        refine ⟨(x - c) / s, ⟨?_, ?_⟩, by field_simp; ring⟩
+        · rw [le_div_iff₀ hs]
+          linarith
+        · rw [div_le_iff₀ hs]
+          linarith
+  | succ m ih =>
+      intro v L
+      rw [cantorGen_succ, cantorGen_succ, Set.image_union, ih, ih]
+      congr 2 <;> ring
+
+/-- The Cantor set is affine equivariant. -/
+theorem cantorSet_image_affine (mu : ℝ) {c s : ℝ} (hs : 0 < s) (v L : ℝ) :
+    (fun x => c + s * x) '' cantorSet mu v L = cantorSet mu (c + s * v) (s * L) := by
+  have hinj : Function.Injective (fun x : ℝ => c + s * x) := by
+    intro x y hxy
+    simp only at hxy
+    have : s * x = s * y := by linarith
+    exact mul_left_cancel₀ (ne_of_gt hs) this
+  rw [cantorSet, cantorSet]
+  ext x
+  simp only [Set.mem_image, Set.mem_iInter]
+  constructor
+  · rintro ⟨y, hy, rfl⟩
+    intro m
+    have := hy m
+    rw [← cantorGen_image_affine mu m hs v L]
+    exact ⟨y, this, rfl⟩
+  · intro hx
+    -- the preimage point
+    refine ⟨(x - c) / s, ?_, by field_simp; ring⟩
+    intro m
+    have hxm := hx m
+    rw [← cantorGen_image_affine mu m hs v L] at hxm
+    obtain ⟨y, hy, hxy⟩ := hxm
+    have hyx : y = (x - c) / s := by
+      simp only at hxy
+      field_simp
+      linarith
+    rw [← hyx]
+    exact hy
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+/-! ### Adding finitely many radii changes no covering exponent -/
+
+theorem isIntervalCover_union_finset {F : Set ℝ} {δ : ℝ} (hδ : 0 < δ) {ι S : Finset ℝ}
+    (h : IsIntervalCover F δ ι) :
+    IsIntervalCover (F ∪ (↑S : Set ℝ)) δ (ι ∪ S) := by
+  intro x hx
+  rcases hx with hx | hx
+  · obtain ⟨a, ha, hax⟩ := Set.mem_iUnion₂.mp (h hx)
+    exact Set.mem_iUnion₂.mpr ⟨a, Finset.mem_union_left _ ha, hax⟩
+  · refine Set.mem_iUnion₂.mpr ⟨x, Finset.mem_union_right _ hx, ?_, ?_⟩ <;> linarith
+
+theorem hasUpperMinkowskiExponent_union_finset {F : Set ℝ} {S : Finset ℝ} {β : ℝ} (hβ : 0 ≤ β)
+    (h : HasUpperMinkowskiExponent F β) :
+    HasUpperMinkowskiExponent (F ∪ (↑S : Set ℝ)) β := by
+  intro ε hε
+  obtain ⟨C, hC, hcov⟩ := h ε hε
+  refine ⟨C + (S.card : ℝ), by positivity, ?_⟩
+  intro δ hδ hδone
+  obtain ⟨ι, hcover, hcard⟩ := hcov δ hδ hδone
+  refine ⟨ι ∪ S, isIntervalCover_union_finset hδ hcover, ?_⟩
+  have hpow : (1 : ℝ) ≤ δ ^ (-(β + ε)) :=
+    Real.one_le_rpow_of_pos_of_le_one_of_nonpos hδ hδone.le (by linarith)
+  have hcardle : (((ι ∪ S).card : ℝ)) ≤ (ι.card : ℝ) + (S.card : ℝ) := by
+    have := Finset.card_union_le ι S
+    exact_mod_cast this
+  calc (((ι ∪ S).card : ℝ)) ≤ (ι.card : ℝ) + (S.card : ℝ) := hcardle
+    _ ≤ C * δ ^ (-(β + ε)) + (S.card : ℝ) * δ ^ (-(β + ε)) := by
+        refine add_le_add hcard ?_
+        calc (S.card : ℝ) = (S.card : ℝ) * 1 := by ring
+          _ ≤ (S.card : ℝ) * δ ^ (-(β + ε)) := by
+              refine mul_le_mul_of_nonneg_left hpow (Nat.cast_nonneg _)
+    _ = (C + (S.card : ℝ)) * δ ^ (-(β + ε)) := by ring
+
+theorem hasUpperAssouadSpectrumExponent_union_finset {F : Set ℝ} {S : Finset ℝ} {θ γ : ℝ}
+    (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1) (hγ : 0 ≤ γ)
+    (h : HasUpperAssouadSpectrumExponent F θ γ) :
+    HasUpperAssouadSpectrumExponent (F ∪ (↑S : Set ℝ)) θ γ := by
+  obtain ⟨C, hC, hcov⟩ := h
+  refine ⟨C + (S.card : ℝ), by positivity, ?_⟩
+  intro δ a b hδ hδone ha hab hb hscale
+  obtain ⟨ι, hcover, hcard⟩ := hcov δ a b hδ hδone ha hab hb hscale
+  refine ⟨ι ∪ S, ?_, ?_⟩
+  · intro x hx
+    obtain ⟨hx1, hx2⟩ := hx
+    rcases hx1 with hx1 | hx1
+    · obtain ⟨c, hc, hcx⟩ := Set.mem_iUnion₂.mp (hcover ⟨hx1, hx2⟩)
+      exact Set.mem_iUnion₂.mpr ⟨c, Finset.mem_union_left _ hc, hcx⟩
+    · refine Set.mem_iUnion₂.mpr ⟨x, Finset.mem_union_right _ hx1, ?_, ?_⟩ <;> linarith
+  · have hratio : (1 : ℝ) ≤ (b - a) / δ := by
+      rw [le_div_iff₀ hδ]
+      have hδθ : δ ≤ δ ^ θ := by
+        calc δ = δ ^ (1 : ℝ) := by rw [Real.rpow_one]
+          _ ≤ δ ^ θ := Real.rpow_le_rpow_of_exponent_ge hδ hδone.le hθ1
+      linarith
+    have hpow : (1 : ℝ) ≤ ((b - a) / δ) ^ γ := Real.one_le_rpow hratio hγ
+    have hcardle : (((ι ∪ S).card : ℝ)) ≤ (ι.card : ℝ) + (S.card : ℝ) := by
+      have := Finset.card_union_le ι S
+      exact_mod_cast this
+    calc (((ι ∪ S).card : ℝ)) ≤ (ι.card : ℝ) + (S.card : ℝ) := hcardle
+      _ ≤ C * ((b - a) / δ) ^ γ + (S.card : ℝ) * ((b - a) / δ) ^ γ := by
+          refine add_le_add hcard ?_
+          calc (S.card : ℝ) = (S.card : ℝ) * 1 := by ring
+            _ ≤ (S.card : ℝ) * ((b - a) / δ) ^ γ :=
+                mul_le_mul_of_nonneg_left hpow (Nat.cast_nonneg _)
+      _ = (C + (S.card : ℝ)) * ((b - a) / δ) ^ γ := by ring
+
+/-! ### The tail of the off-diagonal example -/
+
+/-- The tail of the off-diagonal example, consisting of the pieces of index at least `J`. -/
+def offDiagTail (beta gam : ℝ) (k0 J : ℕ) : Set ℝ :=
+  ⋃ j : ℕ, (↑(offDiagPiece beta gam k0 (J + j)) : Set ℝ)
+
+theorem offDiagTail_subset (beta gam : ℝ) (k0 J : ℕ) :
+    offDiagTail beta gam k0 J ⊆ offDiagSet beta gam k0 := by
+  intro x hx
+  obtain ⟨j, hj⟩ := Set.mem_iUnion.mp hx
+  exact Set.mem_iUnion.mpr ⟨J + j, hj⟩
+
+theorem offDiagSet_eq_tail_union (beta gam : ℝ) (k0 J : ℕ) :
+    offDiagSet beta gam k0
+      = offDiagTail beta gam k0 J
+        ∪ (↑((Finset.range J).biUnion (fun j => offDiagPiece beta gam k0 j)) : Set ℝ) := by
+  ext x
+  simp only [offDiagSet, offDiagTail, Set.mem_iUnion, Set.mem_union, Finset.coe_biUnion,
+    Finset.mem_range, Finset.mem_coe]
+  constructor
+  · rintro ⟨j, hj⟩
+    rcases lt_or_ge j J with hlt | hge
+    · exact Or.inr ⟨j, hlt, hj⟩
+    · exact Or.inl ⟨j - J, by rwa [show J + (j - J) = j by omega]⟩
+  · rintro (⟨i, hi⟩ | ⟨j, hj, hxj⟩)
+    · exact ⟨J + i, hi⟩
+    · exact ⟨j, hxj⟩
+
+theorem offDiagTail_subset_Icc {beta gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    {k0 : ℕ} (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (J : ℕ) :
+    offDiagTail beta gam k0 J ⊆ Icc (1 : ℝ) (1 + 3 * offDiagLen beta gam k0 J) := by
+  intro x hx
+  obtain ⟨j, hj⟩ := Set.mem_iUnion.mp hx
+  obtain ⟨h1, h2⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 (J + j) x hj
+  have hlen := offDiagLen_pos (beta := beta) (gam := gam) k0 (J + j)
+  have hmono := offDiagLen_antitone hk0 J (J + j) (by omega)
+  exact ⟨by linarith, by linarith⟩
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+/-! ### The tail of the off-diagonal example is regular -/
+
+theorem hasUpperMinkowskiExponent_offDiagTail {beta gam : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (J : ℕ) :
+    HasUpperMinkowskiExponent (offDiagTail beta gam k0 J) beta :=
+  HasUpperMinkowskiExponent.mono (offDiagTail_subset beta gam k0 J)
+    (hasUpperMinkowskiExponent_offDiagSet hbeta hbg hgam1 hk0pos hk0)
+
+theorem not_hasUpperMinkowskiExponent_offDiagTail {beta gam beta' : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hbeta'0 : 0 ≤ beta') (hlt : beta' < beta) (J : ℕ) :
+    ¬ HasUpperMinkowskiExponent (offDiagTail beta gam k0 J) beta' := by
+  intro h
+  have hfull : HasUpperMinkowskiExponent (offDiagSet beta gam k0) beta' := by
+    rw [offDiagSet_eq_tail_union beta gam k0 J]
+    exact hasUpperMinkowskiExponent_union_finset hbeta'0 h
+  exact not_hasUpperMinkowskiExponent_offDiagSet hbeta hbg hgam1 hk0pos hbeta'0 hlt hfull
+
+theorem upperMinkowskiDimension_offDiagTail {beta gam : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (J : ℕ) :
+    upperMinkowskiDimension (offDiagTail beta gam k0 J) = beta := by
+  refine upperMinkowskiDimension_eq_of_bounds hbeta.le
+    (hasUpperMinkowskiExponent_offDiagTail hbeta hbg hgam1 hk0pos hk0 J) ?_
+  intro beta' hbeta'0 hlt
+  exact not_hasUpperMinkowskiExponent_offDiagTail hbeta hbg hgam1 hk0pos hbeta'0 hlt J
+
+theorem hasUpperAssouadSpectrumExponent_offDiagTail {beta gam : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {θ : ℝ} (hθ1 : θ ≤ 1) (J : ℕ) :
+    HasUpperAssouadSpectrumExponent (offDiagTail beta gam k0 J) θ gam :=
+  HasUpperAssouadSpectrumExponent.mono (offDiagTail_subset beta gam k0 J)
+    (hasUpperAssouadSpectrumExponent_offDiagSet hbeta hbg hgam1 hk0pos hk0 hθ1)
+
+theorem not_hasUpperAssouadSpectrumExponent_offDiagTail {beta gam gam' θ : ℝ}
+    (hbeta : 0 < beta) (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1) (hθ : 1 - beta / gam < θ) (hgam'0 : 0 ≤ gam')
+    (hlt : gam' < gam) (J : ℕ) :
+    ¬ HasUpperAssouadSpectrumExponent (offDiagTail beta gam k0 J) θ gam' := by
+  intro h
+  have hfull : HasUpperAssouadSpectrumExponent (offDiagSet beta gam k0) θ gam' := by
+    rw [offDiagSet_eq_tail_union beta gam k0 J]
+    exact hasUpperAssouadSpectrumExponent_union_finset hθ0 hθ1 hgam'0 h
+  exact not_hasUpperAssouadSpectrumExponent_offDiagSet hbeta hbg hgam1 hk0pos hθ hgam'0 hlt hfull
+
+theorem upperAssouadSpectrum_offDiagTail {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {θ : ℝ}
+    (hθ0 : 0 ≤ θ) (hθ : 1 - beta / gam < θ) (hθ1 : θ ≤ 1) (J : ℕ) :
+    upperAssouadSpectrum (offDiagTail beta gam k0 J) θ = gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  refine upperAssouadSpectrum_eq_of_bounds hgam.le
+    (hasUpperAssouadSpectrumExponent_offDiagTail hbeta hbg hgam1 hk0pos hk0 hθ1 J) ?_
+  intro gam' hgam'0 hlt
+  exact not_hasUpperAssouadSpectrumExponent_offDiagTail hbeta hbg hgam1 hk0pos hθ0 hθ1 hθ
+    hgam'0 hlt J
+
+theorem upperAssouadSpectrum_offDiagTail_le {beta gam : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {θ : ℝ} (hθ1 : θ ≤ 1) (J : ℕ) :
+    upperAssouadSpectrum (offDiagTail beta gam k0 J) θ ≤ gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  refine csInf_le ⟨0, fun g hg => hg.1⟩ ⟨hgam.le, ?_⟩
+  exact hasUpperAssouadSpectrumExponent_offDiagTail hbeta hbg hgam1 hk0pos hk0 hθ1 J
+
+theorem quasiAssouadDimension_offDiagTail {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (J : ℕ) :
+    quasiAssouadDimension (offDiagTail beta gam k0 J) = gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hcrit : 1 - beta / gam < 1 := by
+    have : 0 < beta / gam := div_pos hbeta hgam
+    linarith
+  have hcrit0 : 0 ≤ 1 - beta / gam := by
+    have hle : beta / gam ≤ 1 := by
+      rw [div_le_one hgam]
+      linarith
+    linarith
+  refine quasiAssouadDimension_eq_of_spectrum ?_ ?_
+  · intro θ hθ0 hθ1
+    exact upperAssouadSpectrum_offDiagTail_le hbeta hbg hgam1 hk0pos hk0 hθ1.le J
+  · intro ε hε
+    refine ⟨(1 - beta / gam + 1) / 2, by linarith, by linarith, ?_⟩
+    rw [upperAssouadSpectrum_offDiagTail hbeta hbg hgam1 hk0pos hk0 (by linarith)
+      (by linarith) (by linarith) J]
+    linarith
+
+/-- **The tail of the off-diagonal example is `(β,γ)`-quasi-Assouad regular.** -/
+theorem isQuasiAssouadRegular_offDiagTail {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (J : ℕ) :
+    IsQuasiAssouadRegular (offDiagTail beta gam k0 J) beta gam := by
+  refine ⟨upperMinkowskiDimension_offDiagTail hbeta hbg hgam1 hk0pos hk0 J,
+    quasiAssouadDimension_offDiagTail hbeta hbg hgam1 hk0pos hk0 J, Or.inr ?_⟩
+  intro θ hθ0 hθ1 hθcrit
+  exact upperAssouadSpectrum_offDiagTail hbeta hbg hgam1 hk0pos hk0 hθ0 hθcrit hθ1.le J
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+/-! ### The left branch of the Cantor construction -/
+
+theorem cantorSet_left_subset {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2) (u : ℝ) {L : ℝ}
+    (hL : 0 ≤ L) : cantorSet mu u (mu * L) ⊆ cantorSet mu u L := by
+  intro x hx
+  rw [cantorSet, Set.mem_iInter] at hx ⊢
+  intro m
+  have hstep : x ∈ cantorGen mu (m + 1) u L := by
+    rw [cantorGen_succ]
+    exact Or.inl (hx m)
+  exact cantorGen_succ_subset hmu hmu2 m hL hstep
+
+theorem cantorSet_pow_subset {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2) (u : ℝ) :
+    ∀ k : ℕ, cantorSet mu u (mu ^ k) ⊆ cantorSet mu u 1 := by
+  intro k
+  induction k with
+  | zero => simp
+  | succ k ih =>
+      have hstep : cantorSet mu u (mu ^ (k + 1)) ⊆ cantorSet mu u (mu ^ k) := by
+        have hpow : mu ^ (k + 1) = mu * mu ^ k := by ring
+        rw [hpow]
+        exact cantorSet_left_subset hmu hmu2 u (pow_nonneg hmu.le k)
+      exact hstep.trans ih
+
+/-! ### A regular set with a shrinking family of regular subsets -/
+
+set_option maxHeartbeats 1000000 in
+/-- For every admissible pair of dimensions there is a regular set `F ⊆ [1,2]` together with,
+for every `m`, a `(β,γ)`-regular subset of `F` contained in `[1, 1 + 2^{-m}]`.  Monotonicity of
+the maximal operator then transfers every band rate of `F` to all of these subsets. -/
+theorem exists_regular_subset_in_small_interval {beta gam : ℝ} (hbeta : 0 ≤ beta)
+    (hbg : beta ≤ gam) (hgam1 : gam ≤ 1) (hzero : beta = 0 → gam = 0) :
+    ∃ F : Set ℝ, F ⊆ Icc (1 : ℝ) 2 ∧ F.Nonempty ∧ IsQuasiAssouadRegular F beta gam ∧
+      ∀ m : ℕ, ∃ G : Set ℝ, G ⊆ F ∧ G.Nonempty ∧ IsQuasiAssouadRegular G beta gam ∧
+        G ⊆ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ m)⁻¹) := by
+  rcases eq_or_lt_of_le hbeta with hb0 | hbpos
+  · -- the degenerate pair `(0,0)`
+    have hg0 : gam = 0 := hzero hb0.symm
+    refine ⟨{1}, ?_, ⟨1, rfl⟩, ?_, ?_⟩
+    · intro x hx
+      rw [Set.mem_singleton_iff] at hx
+      subst hx
+      exact ⟨le_refl _, by norm_num⟩
+    · rw [← hb0, hg0]
+      exact isQuasiAssouadRegular_singleton 1
+    · intro m
+      refine ⟨{1}, subset_refl _, ⟨1, rfl⟩, ?_, ?_⟩
+      · rw [← hb0, hg0]
+        exact isQuasiAssouadRegular_singleton 1
+      · intro x hx
+        rw [Set.mem_singleton_iff] at hx
+        subst hx
+        refine ⟨le_refl _, ?_⟩
+        have : (0 : ℝ) < ((2 : ℝ) ^ m)⁻¹ := by positivity
+        linarith
+  rcases eq_or_lt_of_le hbg with hbeq | hblt
+  · -- the diagonal case: a Cantor set and its left branches
+    subst hbeq
+    set mu : ℝ := cantorRatio beta with hmudef
+    have hmu : 0 < mu := cantorRatio_pos beta
+    have hmu2 : mu ≤ 1 / 2 := cantorRatio_le_half hbpos hgam1
+    have hmulone : mu < 1 := lt_of_le_of_lt hmu2 (by norm_num)
+    refine ⟨cantorSet mu 1 1, cantorSet_subset_Icc_one_two 1 (le_refl _) (by norm_num),
+      cantorSet_nonempty hbpos hgam1 1,
+      isQuasiAssouadRegular_cantorSet hbpos hgam1 1 (le_refl _) (by norm_num), ?_⟩
+    intro m
+    obtain ⟨k, hk⟩ := exists_pow_lt_of_lt_one (show (0:ℝ) < ((2 : ℝ) ^ m)⁻¹ by positivity) hmulone
+    refine ⟨cantorSet mu 1 (mu ^ k), cantorSet_pow_subset hmu hmu2 1 k, ?_, ?_, ?_⟩
+    · have := cantorSet_nonempty (gam := beta) hbpos hgam1 1
+      -- the scaled copy is nonempty because it is an affine image
+      have himg : cantorSet mu 1 (mu ^ k)
+          = (fun x => (1 - mu ^ k) + mu ^ k * x) '' cantorSet mu 1 1 := by
+        have h := cantorSet_image_affine mu (c := 1 - mu ^ k) (s := mu ^ k)
+          (by positivity) 1 1
+        rw [show (1 : ℝ) - mu ^ k + mu ^ k * 1 = 1 by ring,
+          show mu ^ k * (1 : ℝ) = mu ^ k by ring] at h
+        exact h.symm
+      rw [himg]
+      exact this.image _
+    · -- regularity of the affine copy
+      have himg : cantorSet mu 1 (mu ^ k)
+          = (fun x => (1 - mu ^ k) + mu ^ k * x) '' cantorSet mu 1 1 := by
+        have h := cantorSet_image_affine mu (c := 1 - mu ^ k) (s := mu ^ k)
+          (by positivity) 1 1
+        rw [show (1 : ℝ) - mu ^ k + mu ^ k * 1 = 1 by ring,
+          show mu ^ k * (1 : ℝ) = mu ^ k by ring] at h
+        exact h.symm
+      rw [himg]
+      refine isQuasiAssouadRegular_image_affine (by positivity)
+        (cantorSet_subset_Icc_one_two 1 (le_refl _) (by norm_num)) ?_
+        (isQuasiAssouadRegular_cantorSet hbpos hgam1 1 (le_refl _) (by norm_num))
+      · -- the image stays in `[1,2]`
+        intro x hx
+        obtain ⟨y, hy, rfl⟩ := hx
+        obtain ⟨hy1, hy2⟩ := cantorSet_subset_Icc mu 1 1 hy
+        have hpow : 0 < mu ^ k := by positivity
+        have hpow1 : mu ^ k ≤ 1 := pow_le_one₀ hmu.le hmulone.le
+        exact ⟨by nlinarith, by nlinarith⟩
+    · -- the left branch sits in a small interval
+      intro x hx
+      obtain ⟨h1, h2⟩ := cantorSet_subset_Icc mu 1 (mu ^ k) hx
+      exact ⟨h1, by linarith [hk.le]⟩
+  · -- the off-diagonal case
+    have hgam : 0 < gam := lt_trans hbpos hblt
+    have hr0 : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+    have hr1 : offDiagRatio beta gam < 1 := offDiagRatio_lt_one hbpos hblt
+    obtain ⟨k0, hk0lt⟩ := exists_pow_lt_of_lt_one (by norm_num : (0:ℝ) < 1 / 3) hr1
+    have hk0pos : 1 ≤ k0 := by
+      rcases Nat.eq_zero_or_pos k0 with h0 | h
+      · rw [h0] at hk0lt
+        simp only [pow_zero] at hk0lt
+        linarith
+      · exact h
+    have hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3 := hk0lt.le
+    refine ⟨offDiagSet beta gam k0,
+      offDiagSet_subset_Icc hbpos hblt hgam hgam1 k0, offDiagSet_nonempty k0,
+      isQuasiAssouadRegular_offDiagSet hbpos hblt hgam1 hk0pos hk0, ?_⟩
+    intro m
+    -- choose the starting index so that the tail is short
+    obtain ⟨J, hJ⟩ := exists_pow_le_of_lt_one
+      (show (0:ℝ) < (offDiagRatio beta gam) ^ k0 by positivity)
+      (show (offDiagRatio beta gam) ^ k0 < 1 by
+        exact lt_of_le_of_lt hk0 (by norm_num))
+      (show (0:ℝ) < (3 / 4) * ((2 : ℝ) ^ m)⁻¹ by positivity)
+    refine ⟨offDiagTail beta gam k0 J, offDiagTail_subset beta gam k0 J, ?_,
+      isQuasiAssouadRegular_offDiagTail hbpos hblt hgam1 hk0pos hk0 J, ?_⟩
+    · obtain ⟨x, hx⟩ := cantorMid_nonempty (cantorRatio gam) (k0 * (J + 0))
+        (1 + 2 * offDiagLen beta gam k0 (J + 0)) (offDiagLen beta gam k0 (J + 0))
+      exact ⟨x, Set.mem_iUnion.mpr ⟨0, hx⟩⟩
+    · refine (offDiagTail_subset_Icc hgam hgam1 hk0 J).trans ?_
+      intro x hx
+      obtain ⟨h1, h2⟩ := hx
+      refine ⟨h1, le_trans h2 ?_⟩
+      have hlen : offDiagLen beta gam k0 J = (1 / 4) * ((offDiagRatio beta gam) ^ k0) ^ J :=
+        offDiagLen_eq_pow k0 J
+      have hbound := hJ J (le_refl J)
+      rw [hlen]
+      nlinarith [hbound]
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+/-! ### Band rates are inherited by subsets of the radius set -/
+
+theorem hasAbsoluteBandRate_mono {d : ℕ} (hd : 0 < d) {E F : Set ℝ} (hEF : E ⊆ F)
+    (hF : F ⊆ Ioi (0 : ℝ)) {phi : SchwartzMap (Euclidean d) ℂ}
+    {hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1}
+    {hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0} {p q : ℝ} (hp : 0 < p)
+    (h : HasAbsoluteBandRate F phi hphiOne hphiZero p q) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  obtain ⟨C, rho, hCtop, hrho, hbound⟩ := h
+  refine ⟨C, rho, hCtop, hrho, ?_⟩
+  intro j hj f
+  have hmono : eLpNorm (fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+      ≤ eLpNorm (fractalDyadicBandpassMaximal d F
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume := by
+    refine eLpNorm_mono ?_
+    intro x
+    have h1 : 0 ≤ fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
+      fractalDyadicBandpassMaximal_nonneg E _ f x
+    have h2 : 0 ≤ fractalDyadicBandpassMaximal d F
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
+      fractalDyadicBandpassMaximal_nonneg F _ f x
+    rw [Real.norm_eq_abs, abs_of_nonneg h1, Real.norm_eq_abs, abs_of_nonneg h2]
+    exact fractalDyadicBandpassMaximal_mono hd hEF hF _ f x
+  have hfinal := hmono.trans (hbound j hj f).2
+  refine ⟨⟨(measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable, ?_⟩, hfinal⟩
+  refine lt_of_le_of_lt hfinal ?_
+  exact ENNReal.mul_lt_top
+    (ENNReal.mul_lt_top hCtop (ENNReal.pow_lt_top (lt_of_lt_of_le hrho le_top)))
+    (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp f))
+
+/-! ### Choosing the depths of the pieces -/
+
+/-- For finitely many geometric rates one can choose a common depth making all of them small. -/
+theorem exists_common_depth {n : ℕ} (C rho : ℕ → ℝ) (hC : ∀ k, 0 < C k)
+    (hrho : ∀ k, 0 < rho k) (hrho1 : ∀ k, rho k < 1) (ε : ℝ) (hε : 0 < ε) :
+    ∃ M : ℕ, ∀ k, k ≤ n → C k * rho k ^ (M + 1) / (1 - rho k) ≤ ε := by
+  classical
+  have hone : ∀ k, 0 < 1 - rho k := fun k => by linarith [hrho1 k]
+  have hstep : ∀ k : ℕ, ∃ M : ℕ, C k * rho k ^ (M + 1) / (1 - rho k) ≤ ε := by
+    intro k
+    have htarget : 0 < ε * (1 - rho k) / C k := by
+      have := hone k
+      have := hC k
+      positivity
+    obtain ⟨M, hM⟩ := exists_pow_lt_of_lt_one htarget (hrho1 k)
+    refine ⟨M, ?_⟩
+    have hpow : rho k ^ (M + 1) ≤ rho k ^ M :=
+      pow_le_pow_of_le_one (hrho k).le (hrho1 k).le (by omega)
+    have hkey : C k * rho k ^ (M + 1) ≤ ε * (1 - rho k) := by
+      calc C k * rho k ^ (M + 1) ≤ C k * rho k ^ M :=
+            mul_le_mul_of_nonneg_left hpow (hC k).le
+        _ ≤ C k * (ε * (1 - rho k) / C k) := mul_le_mul_of_nonneg_left hM.le (hC k).le
+        _ = ε * (1 - rho k) := by
+              have hCk : C k ≠ 0 := ne_of_gt (hC k)
+              field_simp
+    rw [div_le_iff₀ (hone k)]
+    exact hkey
+  choose M hM using hstep
+  refine ⟨(Finset.range (n + 1)).sup M, ?_⟩
+  intro k hk
+  have hMk : M k ≤ (Finset.range (n + 1)).sup M :=
+    Finset.le_sup (Finset.mem_range.mpr (by omega))
+  have hpow : rho k ^ ((Finset.range (n + 1)).sup M + 1) ≤ rho k ^ (M k + 1) :=
+    pow_le_pow_of_le_one (hrho k).le (hrho1 k).le (by omega)
+  calc C k * rho k ^ ((Finset.range (n + 1)).sup M + 1) / (1 - rho k)
+      ≤ C k * rho k ^ (M k + 1) / (1 - rho k) := by
+        rw [div_le_div_iff_of_pos_right (hone k)]
+        exact mul_le_mul_of_nonneg_left hpow (hC k).le
+    _ ≤ ε := hM k
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+open Auto.Spherical.FractalDilations.StrictInteriorGeometry
+open Auto.Spherical.FractalDilations.RadialCutoff
+
+
+
+/-! ### The exponent data of an interior point -/
+
+/-- The four strict inequalities of an interior point of `Q(β,γ)`, in coordinates. -/
+theorem interior_Q_coords {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ} (hbeta : 0 ≤ beta)
+    (hbg : beta ≤ gam) (hgam1 : gam ≤ 1) {x : ExponentPoint}
+    (hx : x ∈ interior (Q d beta gam)) :
+    0 < x.2 ∧ x.2 < x.1 ∧ x.1 < (d : ℝ) * x.2 ∧ (d : ℝ) * x.1 < x.2 + ((d : ℝ) - 1) := by
+  have hbeta1 : beta ≤ 1 := le_trans hbg hgam1
+  have hgamnn : (0 : ℝ) ≤ gam := le_trans hbeta hbg
+  have hD : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have h21 : x.2 < x.1 := strict_second_lt_first_of_mem_interior_Q hd hbeta1 hgamnn hx
+  have hcap : x.1 < (d : ℝ) * x.2 :=
+    strict_first_lt_natCast_mul_second_of_mem_interior_Q hd hbeta hbeta1 hgamnn hx
+  have hann : (d : ℝ) * x.1 < (1 - beta) * x.2 + ((d : ℝ) - 1) :=
+    strict_annulus_of_mem_interior_Q hd hbeta hbg hbeta1 hx
+  have hpos : 0 < x.2 := by
+    nlinarith
+  refine ⟨hpos, h21, hcap, ?_⟩
+  nlinarith
+
+/-! ### Realizing every interior point of a countable intersection -/
+
+set_option maxHeartbeats 2000000 in
+/-- **The construction of §7.**  Given a countable family of admissible exponent pairs and a
+sequence of points in the interior of the intersection of the corresponding regions, there is a
+single radius set whose type set contains all these points and which contains a regular set for
+every member of the family. -/
+theorem exists_iUnion_type_points {d : ℕ} (hd : 2 ≤ d)
+    {bs gs : ℕ → ℝ} (hbg : ∀ n, 0 ≤ bs n ∧ bs n ≤ gs n ∧ gs n ≤ 1)
+    (hdeg : ∀ n, bs n = 0 → gs n = 0)
+    (z : ℕ → ExponentPoint)
+    (hz : ∀ k, z k ∈ interior (⋂ n, Q d (bs n) (gs n))) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
+      (∀ n, ∃ G : Set ℝ, G ⊆ E ∧ G.Nonempty ∧ IsQuasiAssouadRegular G (bs n) (gs n)) ∧
+      ∀ k, z k ∈ fractalTypeSet d E := by
+  classical
+  obtain ⟨n0, rfl⟩ : ∃ n : ℕ, d = n + 1 := ⟨d - 1, by omega⟩
+  have hn0 : 1 ≤ n0 := by omega
+  have hd0 : 0 < n0 + 1 := Nat.succ_pos n0
+  obtain ⟨phi, psi, hphiOne, hphiZero, hphiNorm, hphiRadial, hpsi, -⟩ :=
+    exists_normRadial_smooth_absolute_dyadic_bandpass_family (n0 + 1)
+  -- the regular sets and their shrinking families
+  have hfam : ∀ n : ℕ, ∃ F : Set ℝ, F ⊆ Icc (1 : ℝ) 2 ∧ F.Nonempty ∧
+      IsQuasiAssouadRegular F (bs n) (gs n) ∧
+      ∀ m : ℕ, ∃ G : Set ℝ, G ⊆ F ∧ G.Nonempty ∧ IsQuasiAssouadRegular G (bs n) (gs n) ∧
+        G ⊆ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ m)⁻¹) := fun n =>
+    exists_regular_subset_in_small_interval (hbg n).1 (hbg n).2.1 (hbg n).2.2 (hdeg n)
+  choose F hFsub hFne hFreg hFfam using hfam
+  -- the coordinates of the target points
+  have hzn : ∀ k n : ℕ, z k ∈ interior (Q (n0 + 1) (bs n) (gs n)) := by
+    intro k n
+    exact interior_mono (Set.iInter_subset _ n) (hz k)
+  have hcoord : ∀ k : ℕ, 0 < (z k).2 ∧ (z k).2 < (z k).1 ∧
+      (z k).1 < ((n0 : ℝ) + 1) * (z k).2 ∧
+      ((n0 : ℝ) + 1) * (z k).1 < (z k).2 + (n0 : ℝ) := by
+    intro k
+    obtain ⟨h1, h2, h3, h4⟩ := interior_Q_coords (by omega) (hbg 0).1 (hbg 0).2.1
+      (hbg 0).2.2 (hzn k 0)
+    have hcast : ((n0 + 1 : ℕ) : ℝ) = (n0 : ℝ) + 1 := by push_cast; ring
+    rw [hcast] at h3 h4
+    exact ⟨h1, h2, h3, by linarith⟩
+  -- the exponents
+  set p : ℕ → ℝ := fun k => ((z k).1)⁻¹ with hpdef
+  set q : ℕ → ℝ := fun k => ((z k).2)⁻¹ with hqdef
+  have hxpos : ∀ k, 0 < (z k).1 := fun k => lt_trans (hcoord k).1 (hcoord k).2.1
+  have hx1 : ∀ k, (z k).1 < 1 := by
+    intro k
+    obtain ⟨h1, h2, h3, h4⟩ := hcoord k
+    have hn1 : (1 : ℝ) ≤ (n0 : ℝ) := by exact_mod_cast hn0
+    nlinarith
+  have hy1 : ∀ k, (z k).2 < 1 := fun k => lt_trans (hcoord k).2.1 (hx1 k)
+  have hp1 : ∀ k, 1 < p k := by
+    intro k
+    rw [hpdef]
+    simp only
+    rw [one_lt_inv_iff₀]
+    exact ⟨hxpos k, hx1 k⟩
+  have hpq : ∀ k, p k < q k := by
+    intro k
+    rw [hpdef, hqdef]
+    simp only
+    exact (inv_lt_inv₀ (lt_trans (hcoord k).1 (hcoord k).2.1) (hcoord k).1).mpr
+      (hcoord k).2.1
+  have hzrecip : ∀ k, z k = reciprocalExponentPoint (p k) (q k) := by
+    intro k
+    rw [reciprocalExponentPoint, hpdef, hqdef]
+    simp only [inv_inv]
+  -- the band rates of the big sets
+  have hrate : ∀ n k : ℕ, ∃ C rho : ℝ, 0 < C ∧ 0 < rho ∧ rho < 1 ∧
+      ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap (Euclidean (n0 + 1)) ℂ,
+        eLpNorm (fractalDyadicBandpassMaximal (n0 + 1) (F n)
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal (q k)) volume
+          ≤ ENNReal.ofReal (C * rho ^ j)
+            * eLpNorm ((f : Euclidean (n0 + 1) → ℂ)) (ENNReal.ofReal (p k)) volume := by
+    intro n k
+    have hregion : reciprocalExponentPoint (p k) (q k)
+        ∈ interior (Q (n0 + 1) (bs n) (gs n)) := by
+      rw [← hzrecip k]
+      exact hzn k n
+    obtain ⟨C, rho, hCtop, hrho, hbound⟩ := bandRate_of_mem_interior_Q (by omega)
+      (hFsub n) (hbg n).1 (hbg n).2.1 (hbg n).2.2 (hFreg n).1 (hFreg n).2.1
+      (lt_trans zero_lt_one (hp1 k)) (le_of_lt (lt_trans (hp1 k) (hpq k)))
+      phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi hregion
+    obtain ⟨C', rho', hC', hrho', hrho1', hconv⟩ := exists_real_rate_of_ennreal hCtop hrho
+    refine ⟨C', rho', hC', hrho', hrho1', ?_⟩
+    intro j hj f
+    exact (hbound j hj f).2.trans (mul_le_mul' (hconv j) (le_refl _))
+  choose C rho hC hrho hrho1 hbound using hrate
+  -- the depths
+  have hdepth : ∀ n : ℕ, ∃ M : ℕ, ∀ k, k ≤ n →
+      C n k * rho n k ^ (M + 1) / (1 - rho n k) ≤ (1 / 2 : ℝ) ^ n := by
+    intro n
+    exact exists_common_depth (C n) (rho n) (hC n) (hrho n) (hrho1 n) ((1 / 2 : ℝ) ^ n)
+      (by positivity)
+  choose M hM using hdepth
+  set L : ℕ → ℕ := fun n => max n (M n) with hLdef
+  have hLn : ∀ n, n ≤ L n := fun n => le_max_left _ _
+  have hLM : ∀ n, M n ≤ L n := fun n => le_max_right _ _
+  -- the pieces
+  have hpieces : ∀ n : ℕ, ∃ G : Set ℝ, G ⊆ F n ∧ G.Nonempty ∧
+      IsQuasiAssouadRegular G (bs n) (gs n) ∧
+      G ⊆ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ (L n))⁻¹) := fun n => hFfam n (L n)
+  choose G hGF hGne hGreg hGloc using hpieces
+  have hGsub : ∀ n, G n ⊆ Icc (1 : ℝ) 2 := fun n => (hGF n).trans (hFsub n)
+  refine ⟨⋃ n, G n, ?_, ?_, ?_, ?_⟩
+  · intro t ht
+    obtain ⟨n, htn⟩ := Set.mem_iUnion.mp ht
+    exact hGsub n htn
+  · obtain ⟨t, ht⟩ := hGne 0
+    exact ⟨t, Set.mem_iUnion.mpr ⟨0, ht⟩⟩
+  · intro n
+    exact ⟨G n, Set.subset_iUnion G n, hGne n, hGreg n⟩
+  -- the type points
+  intro k
+  refine ⟨p k, q k, lt_trans zero_lt_one (hp1 k),
+    le_of_lt (lt_trans (hp1 k) (hpq k)), hzrecip k, ?_⟩
+  -- the cell rate
+  have hcell : HasOneCellBandRateReal phi hphiOne hphiZero (p k) (q k) := by
+    obtain ⟨h1, h2, h3, h4⟩ := hcoord k
+    have hrate := oneCell_bandRate_of_strict hn0 phi psi hphiOne hphiZero hphiNorm hpsi
+      h1 h2 h3 h4
+    have hp' : (1 : ℝ) / (z k).1 = p k := by
+      rw [hpdef, one_div]
+    have hq' : (1 : ℝ) / (z k).2 = q k := by
+      rw [hqdef, one_div]
+    rw [hp', hq'] at hrate
+    exact hrate
+  -- the rates of the pieces
+  have hratesG : ∀ (n j : ℕ), 1 ≤ j → ∀ f : SchwartzMap (Euclidean (n0 + 1)) ℂ,
+      eLpNorm (fractalDyadicBandpassMaximal (n0 + 1) (G n)
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal (q k)) volume
+        ≤ ENNReal.ofReal (C n k * rho n k ^ j)
+          * eLpNorm ((f : Euclidean (n0 + 1) → ℂ)) (ENNReal.ofReal (p k)) volume := by
+    intro n j hj f
+    refine le_trans ?_ (hbound n k j hj f)
+    refine eLpNorm_mono ?_
+    intro x
+    have h1 : 0 ≤ fractalDyadicBandpassMaximal (n0 + 1) (G n)
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
+      fractalDyadicBandpassMaximal_nonneg (G n) _ f x
+    have h2 : 0 ≤ fractalDyadicBandpassMaximal (n0 + 1) (F n)
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
+      fractalDyadicBandpassMaximal_nonneg (F n) _ f x
+    rw [Real.norm_eq_abs, abs_of_nonneg h1, Real.norm_eq_abs, abs_of_nonneg h2]
+    exact fractalDyadicBandpassMaximal_mono hd0 (hGF n)
+      (fun t ht => lt_of_lt_of_le zero_lt_one (hFsub n ht).1) _ f x
+  -- the summability
+  have hsummable : ∀ N : ℕ,
+      ∑ n ∈ Finset.range N, C n k * rho n k ^ (L n + 1) / (1 - rho n k)
+        ≤ (∑ n ∈ Finset.range k, C n k * rho n k ^ (L n + 1) / (1 - rho n k)) + 2 := by
+    intro N
+    have hterm : ∀ n : ℕ, k ≤ n →
+        C n k * rho n k ^ (L n + 1) / (1 - rho n k) ≤ (1 / 2 : ℝ) ^ n := by
+      intro n hkn
+      have hpow : rho n k ^ (L n + 1) ≤ rho n k ^ (M n + 1) :=
+        pow_le_pow_of_le_one (hrho n k).le (hrho1 n k).le
+          (by have := hLM n; omega)
+      have hone : 0 < 1 - rho n k := by linarith [hrho1 n k]
+      calc C n k * rho n k ^ (L n + 1) / (1 - rho n k)
+          ≤ C n k * rho n k ^ (M n + 1) / (1 - rho n k) := by
+            rw [div_le_div_iff_of_pos_right hone]
+            exact mul_le_mul_of_nonneg_left hpow (hC n k).le
+        _ ≤ (1 / 2 : ℝ) ^ n := hM n k hkn
+    have hnonneg : ∀ n : ℕ, 0 ≤ C n k * rho n k ^ (L n + 1) / (1 - rho n k) := by
+      intro n
+      have hone : 0 < 1 - rho n k := by linarith [hrho1 n k]
+      have := (hC n k).le
+      have := (hrho n k).le
+      positivity
+    rcases le_or_gt N k with hNk | hNk
+    · have hsub : Finset.range N ⊆ Finset.range k := Finset.range_subset_range.mpr hNk
+      have hmono : ∑ n ∈ Finset.range N, C n k * rho n k ^ (L n + 1) / (1 - rho n k)
+          ≤ ∑ n ∈ Finset.range k, C n k * rho n k ^ (L n + 1) / (1 - rho n k) :=
+        Finset.sum_le_sum_of_subset_of_nonneg hsub (fun n _ _ => hnonneg n)
+      linarith
+    · -- split the sum at `k`
+      have hsplit : ∑ n ∈ Finset.range N, C n k * rho n k ^ (L n + 1) / (1 - rho n k)
+          = (∑ n ∈ Finset.range k, C n k * rho n k ^ (L n + 1) / (1 - rho n k))
+            + ∑ n ∈ (Finset.range N).filter (fun n => k ≤ n),
+                C n k * rho n k ^ (L n + 1) / (1 - rho n k) := by
+        rw [← Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun n => k ≤ n)]
+        have hfilter : (Finset.range N).filter (fun n => ¬ k ≤ n) = Finset.range k := by
+          ext n
+          simp only [Finset.mem_filter, Finset.mem_range, not_le]
+          constructor
+          · rintro ⟨-, h⟩
+            exact h
+          · intro h
+            exact ⟨by omega, h⟩
+        rw [hfilter]
+        ring
+      rw [hsplit]
+      refine add_le_add_right ?_ _
+      calc ∑ n ∈ (Finset.range N).filter (fun n => k ≤ n),
+            C n k * rho n k ^ (L n + 1) / (1 - rho n k)
+          ≤ ∑ n ∈ (Finset.range N).filter (fun n => k ≤ n), (1 / 2 : ℝ) ^ n := by
+            refine Finset.sum_le_sum fun n hn => ?_
+            exact hterm n (Finset.mem_filter.mp hn).2
+        _ ≤ ∑ n ∈ Finset.range N, (1 / 2 : ℝ) ^ n := by
+            refine Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _) ?_
+            intro n _ _
+            positivity
+        _ ≤ 2 := by
+            have hgeom : ∑ n ∈ Finset.range N, (1 / 2 : ℝ) ^ n
+                = (1 - (1 / 2 : ℝ) ^ N) / (1 - 1 / 2) := by
+              rw [geom_sum_eq (by norm_num) N]
+              field_simp
+              ring
+            rw [hgeom]
+            have hpow : (0 : ℝ) ≤ (1 / 2 : ℝ) ^ N := by positivity
+            rw [div_le_iff₀ (by norm_num : (0:ℝ) < 1 - 1 / 2)]
+            linarith
+  -- assemble
+  exact hasFractalSphericalStrongType_iUnion_of_bandRates (by omega) hGsub hLn hGloc
+    phi hphiOne hphiZero hphiNorm (hp1 k) (hpq k)
+    (fun n => (hC n k).le) (fun n => (hrho n k).le) (fun n => hrho1 n k)
+    (fun n j hj f => hratesG n j hj f) hcell hsummable
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+
+
+
+/-! ### Comparing the two Assouad vertices with the Minkowski vertex -/
+
+theorem Q4_first_lt_Q3_first {d : ℕ} {beta : ℝ} (hd : 2 ≤ d) (hb : 0 < beta)
+    (hb1 : beta ≤ 1) : (Q4 d beta).1 < (Q3 d beta).1 := by
+  have hD : (2:ℝ) ≤ (d:ℝ) := by exact_mod_cast hd
+  have hM : (0:ℝ) < (d:ℝ) - beta + 1 := by linarith
+  have hNb : (0:ℝ) < (d:ℝ)^2 + 2*beta - 1 := by nlinarith
+  show (d:ℝ) * ((d:ℝ) - 1) / ((d:ℝ)^2 + 2*beta - 1)
+      < ((d:ℝ) - beta) / ((d:ℝ) - beta + 1)
+  rw [div_lt_div_iff₀ hNb hM]
+  nlinarith [hb, hb1, hD]
+
+theorem Q4_second_lt_Q3_second {d : ℕ} {beta : ℝ} (hd : 2 ≤ d) (hb : 0 < beta)
+    (hb1 : beta ≤ 1) : (Q4 d beta).2 < (Q3 d beta).2 := by
+  have hD : (2:ℝ) ≤ (d:ℝ) := by exact_mod_cast hd
+  have hM : (0:ℝ) < (d:ℝ) - beta + 1 := by linarith
+  have hNb : (0:ℝ) < (d:ℝ)^2 + 2*beta - 1 := by nlinarith
+  show ((d:ℝ) - 1) / ((d:ℝ)^2 + 2*beta - 1) < 1 / ((d:ℝ) - beta + 1)
+  rw [div_lt_div_iff₀ hNb hM]
+  nlinarith [hb, hD]
+
+/-! ### The cluster functional of a pair reconstructed from a separating line -/
+
+theorem clusterEdgeFunctional_of_line {d : ℕ} {s tau b' g' : ℝ} (hd : 2 ≤ d)
+    (htau0 : 0 < tau) (htau1 : tau < 1)
+    (hP : 0 < (d:ℝ) - s - tau * ((d:ℝ) + 1))
+    (hb' : b' = ((d:ℝ) - s - tau * ((d:ℝ) + 1)) / (1 - tau))
+    (hg' : g' = (((d:ℝ) - s - tau * ((d:ℝ) + 1)) * ((d:ℝ) - 1)) / (2 * tau))
+    (x : ExponentPoint) :
+    clusterEdgeFunctional d (b'/g') b' x = (tau - x.1 + s * x.2) / (1 - tau) := by
+  subst hb'
+  subst hg'
+  have hD : (2:ℝ) ≤ (d:ℝ) := by exact_mod_cast hd
+  have h1 : (0:ℝ) < 1 - tau := by linarith
+  have hDm : (0:ℝ) < (d:ℝ) - 1 := by linarith
+  set P : ℝ := (d:ℝ) - s - tau * ((d:ℝ) + 1) with hPdef
+  have hPne : P ≠ 0 := ne_of_gt hP
+  have hratio : (P / (1 - tau)) / ((P * ((d:ℝ) - 1)) / (2 * tau))
+      = 2 * tau / ((1 - tau) * ((d:ℝ) - 1)) := by
+    rw [div_div_eq_mul_div, div_mul_eq_mul_div, mul_comm]
+    field_simp
+  show (P / (1 - tau)) / ((P * ((d:ℝ) - 1)) / (2 * tau)) / 2 * ((d:ℝ) - 1)
+      + ((d:ℝ) - (P / (1 - tau))
+        - (P / (1 - tau)) / ((P * ((d:ℝ) - 1)) / (2 * tau)) / 2 * ((d:ℝ) - 1)) * x.2
+      - (1 + (P / (1 - tau)) / ((P * ((d:ℝ) - 1)) / (2 * tau)) / 2 * ((d:ℝ) - 1)) * x.1
+      = (tau - x.1 + s * x.2) / (1 - tau)
+  rw [hratio]
+  have hA : 2 * tau / ((1 - tau) * ((d:ℝ) - 1)) / 2 * ((d:ℝ) - 1) = tau / (1 - tau) := by
+    field_simp
+  rw [hA, hPdef]
+  field_simp
+  ring
+
+/-! ### The separating pair -/
+
+set_option maxHeartbeats 2000000 in
+/-- **The key geometric step of §7.**  If `W` is a closed convex set squeezed between
+`Q(β,γ)` and `Q(β,β)` and `z ∈ Q(β,β) \ W`, then there is an admissible pair `(β',γ')` whose
+region contains `W` but not `z`.  The pair is read off from a separating line: the line meets
+the segment `[Q₃(β),Q₃(0)]` in `Q₃(β')` and the segment `[Q₄(γ),Q₄(β)]` in `Q₄(γ')`. -/
+theorem exists_pair_separating {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hb : 0 < beta) (hbg : beta < gam) (hg1 : gam ≤ 1)
+    {W : Set ExponentPoint} (hWc : IsClosed W) (hWconv : Convex ℝ W)
+    (hQW : Q d beta gam ⊆ W) (hWQ : W ⊆ Q d beta beta)
+    {z : ExponentPoint} (hz : z ∈ Q d beta beta) (hzW : z ∉ W) :
+    ∃ b' g' : ℝ, 0 ≤ b' ∧ b' ≤ beta ∧ beta ≤ g' ∧ g' ≤ gam ∧
+      W ⊆ Q d b' g' ∧ z ∉ Q d b' g' := by
+  have hD : (2:ℝ) ≤ (d:ℝ) := by exact_mod_cast hd
+  have hb1 : beta ≤ 1 := le_trans hbg.le hg1
+  have hg0 : 0 < gam := lt_trans hb hbg
+  have hM : (0:ℝ) < (d:ℝ) - beta + 1 := by linarith
+  have hNb : (0:ℝ) < (d:ℝ)^2 + 2*beta - 1 := by nlinarith
+  have hNg : (0:ℝ) < (d:ℝ)^2 + 2*gam - 1 := by nlinarith
+  have hMm : (0:ℝ) < (d:ℝ) - 1 + beta := by linarith
+  obtain ⟨f, u, hfW, hfz⟩ := geometric_hahn_banach_closed_point hWconv hWc hzW
+  set a : ℝ := f ((1:ℝ), (0:ℝ)) with ha_def
+  set bb : ℝ := f ((0:ℝ), (1:ℝ)) with hbb_def
+  have hf : ∀ x : ExponentPoint, f x = a * x.1 + bb * x.2 := by
+    intro x
+    have hx : x = x.1 • ((1:ℝ), (0:ℝ)) + x.2 • ((0:ℝ), (1:ℝ)) := by
+      simp [Prod.ext_iff]
+    conv_lhs => rw [hx]
+    rw [map_add, map_smul, map_smul]
+    simp only [smul_eq_mul, ha_def, hbb_def]
+    ring
+  -- the values of the separating functional at the vertices
+  have hu0 : 0 < u := by
+    have h := hfW _ (hQW (Q1_mem_Q d beta gam))
+    rw [hf] at h
+    simpa [Q1] using h
+  have hu2 : a * (Q2 d beta).1 + bb * (Q2 d beta).2 < u := by
+    have h := hfW _ (hQW (Q2_mem_Q d beta gam)); rwa [hf] at h
+  have hu3 : a * (Q3 d beta).1 + bb * (Q3 d beta).2 < u := by
+    have h := hfW _ (hQW (Q3_mem_Q d beta gam)); rwa [hf] at h
+  have hu4g : a * (Q4 d gam).1 + bb * (Q4 d gam).2 < u := by
+    have h := hfW _ (hQW (Q4_mem_Q d beta gam)); rwa [hf] at h
+  have hzval : u < a * z.1 + bb * z.2 := by rwa [hf] at hfz
+  have hu4b : u < a * (Q4 d beta).1 + bb * (Q4 d beta).2 := by
+    by_contra hcon
+    push_neg at hcon
+    have hQ1' : exponentLinearMap a bb Q1 ≤ u := by
+      show a * Q1.1 + bb * Q1.2 ≤ u
+      simpa [Q1] using hu0.le
+    have hsub := Q_subset_exponentHalfspace_of_vertices (d := d) (β := beta) (γ := beta)
+      (a := a) (b := bb) (c := u) hQ1' hu2.le hu3.le hcon
+    have hzin : a * z.1 + bb * z.2 ≤ u := hsub hz
+    linarith
+  -- cleared forms of the vertex inequalities
+  have h3 : a*((d:ℝ)-beta) + bb < u * ((d:ℝ)-beta+1) := by
+    have hexp : a * (Q3 d beta).1 + bb * (Q3 d beta).2
+        = (a*((d:ℝ)-beta) + bb) / ((d:ℝ)-beta+1) := by
+      show a * (((d:ℝ)-beta)/((d:ℝ)-beta+1)) + bb * (1/((d:ℝ)-beta+1)) = _
+      field_simp
+    rw [hexp, div_lt_iff₀ hM] at hu3
+    linarith
+  have h4g : ((d:ℝ)-1)*(a*(d:ℝ)+bb) < u * ((d:ℝ)^2+2*gam-1) := by
+    have hexp : a * (Q4 d gam).1 + bb * (Q4 d gam).2
+        = (((d:ℝ)-1)*(a*(d:ℝ)+bb)) / ((d:ℝ)^2+2*gam-1) := by
+      show a * ((d:ℝ)*((d:ℝ)-1)/((d:ℝ)^2+2*gam-1))
+          + bb * (((d:ℝ)-1)/((d:ℝ)^2+2*gam-1)) = _
+      field_simp
+    rw [hexp, div_lt_iff₀ hNg] at hu4g
+    linarith
+  have h4b : u * ((d:ℝ)^2+2*beta-1) < ((d:ℝ)-1)*(a*(d:ℝ)+bb) := by
+    have hexp : a * (Q4 d beta).1 + bb * (Q4 d beta).2
+        = (((d:ℝ)-1)*(a*(d:ℝ)+bb)) / ((d:ℝ)^2+2*beta-1) := by
+      show a * ((d:ℝ)*((d:ℝ)-1)/((d:ℝ)^2+2*beta-1))
+          + bb * (((d:ℝ)-1)/((d:ℝ)^2+2*beta-1)) = _
+      field_simp
+    rw [hexp, lt_div_iff₀ hNb] at hu4b
+    linarith
+  -- the sign of the linear part
+  have hS : 0 < a*(d:ℝ) + bb := by nlinarith
+  have hapos : 0 < a := by
+    by_contra hacon
+    push_neg at hacon
+    have e2 : a*(d:ℝ)+bb ≤ a*((d:ℝ)-beta)+bb := by nlinarith
+    have e3 : ((d:ℝ)-1)*((d:ℝ)-beta+1) ≤ (d:ℝ)^2+2*beta-1 := by nlinarith
+    have e4 : (a*(d:ℝ)+bb) * ((d:ℝ)^2+2*beta-1) ≤ (a*((d:ℝ)-beta)+bb) * ((d:ℝ)^2+2*beta-1) :=
+      mul_le_mul_of_nonneg_right e2 hNb.le
+    have e5 : (a*(d:ℝ)+bb) * (((d:ℝ)-1)*((d:ℝ)-beta+1))
+        ≤ (a*(d:ℝ)+bb) * ((d:ℝ)^2+2*beta-1) := mul_le_mul_of_nonneg_left e3 hS.le
+    have e6 : (a*((d:ℝ)-beta)+bb) * ((d:ℝ)^2+2*beta-1)
+        < ((d:ℝ)-1)*(a*(d:ℝ)+bb) * ((d:ℝ)-beta+1) := by
+      have h3' : (a*((d:ℝ)-beta) + bb) * ((d:ℝ)^2+2*beta-1)
+          < (u * ((d:ℝ)-beta+1)) * ((d:ℝ)^2+2*beta-1) :=
+        mul_lt_mul_of_pos_right h3 hNb
+      have h4b' : (u * ((d:ℝ)^2+2*beta-1)) * ((d:ℝ)-beta+1)
+          < (((d:ℝ)-1)*(a*(d:ℝ)+bb)) * ((d:ℝ)-beta+1) :=
+        mul_lt_mul_of_pos_right h4b hM
+      nlinarith [h3', h4b']
+    nlinarith [e4, e5, e6]
+  have hbbneg : bb < 0 := by
+    have hd1 : (Q4 d beta).1 - (Q3 d beta).1 < 0 :=
+      sub_neg.mpr (Q4_first_lt_Q3_first hd hb hb1)
+    have hd2 : (Q4 d beta).2 - (Q3 d beta).2 < 0 :=
+      sub_neg.mpr (Q4_second_lt_Q3_second hd hb hb1)
+    have hkey : 0 < a * ((Q4 d beta).1 - (Q3 d beta).1)
+        + bb * ((Q4 d beta).2 - (Q3 d beta).2) := by nlinarith [hu3, hu4b]
+    by_contra hcon
+    push_neg at hcon
+    nlinarith [mul_neg_of_pos_of_neg hapos hd1, mul_nonneg hcon (neg_nonneg.mpr hd2.le)]
+  -- the normalized separating line `x.1 - s * x.2 = tau`
+  set s : ℝ := -bb/a with hs_def
+  set tau : ℝ := u/a with htau_def
+  have has : a * s = -bb := by rw [hs_def]; field_simp
+  have hat : a * tau = u := by rw [htau_def]; field_simp
+  have hspos : 0 < s := by
+    rw [hs_def]
+    exact div_pos (neg_pos.mpr hbbneg) hapos
+  have htau0 : 0 < tau := by rw [htau_def]; exact div_pos hu0 hapos
+  have hWline : ∀ w ∈ W, w.1 - s * w.2 < tau := by
+    intro w hw
+    have h := hfW w hw
+    rw [hf] at h
+    have h2 : a * s * w.2 = -bb * w.2 := by rw [has]
+    have hmul : a * (w.1 - s * w.2) < a * tau := by
+      rw [hat]
+      linarith [h2, h]
+    exact lt_of_mul_lt_mul_left hmul hapos.le
+  have hzline : tau < z.1 - s * z.2 := by
+    have h2 : a * s * z.2 = -bb * z.2 := by rw [has]
+    have hmul : a * tau < a * (z.1 - s * z.2) := by
+      rw [hat]
+      linarith [h2, hzval]
+    exact lt_of_mul_lt_mul_left hmul hapos.le
+  -- the point `z` lies in the region, so `s < d`
+  have hz1 : z.2 ≤ z.1 := Q_subset_second_le_first hd hb1 hb.le hz
+  have hz2 : z.1 ≤ (d:ℝ) * z.2 := Q_subset_first_le_natCast_mul_second hd hb.le hb1 hb.le hz
+  have hz2pos : 0 < z.2 := by
+    rcases le_or_gt z.2 0 with hcon | h
+    · nlinarith
+    · exact h
+  have hsd : s < (d:ℝ) := by nlinarith
+  -- the two inequalities in `(s, tau)` coordinates
+  have hii : (d:ℝ) - beta - s < tau * ((d:ℝ) - beta + 1) := by
+    have hmul : a * ((d:ℝ) - beta - s) < a * (tau * ((d:ℝ) - beta + 1)) := by
+      have hL : a * ((d:ℝ) - beta - s) = a*((d:ℝ)-beta) + bb := by nlinarith [has]
+      have hR : a * (tau * ((d:ℝ) - beta + 1)) = u * ((d:ℝ)-beta+1) := by
+        rw [← hat]; ring
+      rw [hL, hR]; exact h3
+    exact lt_of_mul_lt_mul_left hmul hapos.le
+  have hiii : ((d:ℝ)-1)*((d:ℝ)-s) < tau * ((d:ℝ)^2+2*gam-1) := by
+    have hmul : a * (((d:ℝ)-1)*((d:ℝ)-s)) < a * (tau * ((d:ℝ)^2+2*gam-1)) := by
+      have hL : a * (((d:ℝ)-1)*((d:ℝ)-s)) = ((d:ℝ)-1)*(a*(d:ℝ)+bb) := by nlinarith [has]
+      have hR : a * (tau * ((d:ℝ)^2+2*gam-1)) = u * ((d:ℝ)^2+2*gam-1) := by
+        rw [← hat]; ring
+      rw [hL, hR]; exact h4g
+    exact lt_of_mul_lt_mul_left hmul hapos.le
+  have hiv : tau * ((d:ℝ)^2+2*beta-1) < ((d:ℝ)-1)*((d:ℝ)-s) := by
+    have hmul : a * (tau * ((d:ℝ)^2+2*beta-1)) < a * (((d:ℝ)-1)*((d:ℝ)-s)) := by
+      have hR : a * (((d:ℝ)-1)*((d:ℝ)-s)) = ((d:ℝ)-1)*(a*(d:ℝ)+bb) := by nlinarith [has]
+      have hL : a * (tau * ((d:ℝ)^2+2*beta-1)) = u * ((d:ℝ)^2+2*beta-1) := by
+        rw [← hat]; ring
+      rw [hL, hR]; exact h4b
+    exact lt_of_mul_lt_mul_left hmul hapos.le
+  have htau1 : tau < 1 := by nlinarith
+  have hone : (0:ℝ) < 1 - tau := by linarith
+  -- the pair of parameters
+  have hP : 0 < (d:ℝ) - s - tau * ((d:ℝ)+1) := by nlinarith
+  set P : ℝ := (d:ℝ) - s - tau * ((d:ℝ)+1) with hPdef
+  have hb'0 : (0:ℝ) ≤ P/(1-tau) := le_of_lt (div_pos hP hone)
+  have hb'b : P/(1-tau) ≤ beta := by
+    rw [div_le_iff₀ hone, hPdef]; nlinarith
+  have hbg' : beta ≤ P*((d:ℝ)-1)/(2*tau) := by
+    rw [le_div_iff₀ (by positivity : (0:ℝ) < 2*tau), hPdef]; nlinarith
+  refine ⟨P/(1-tau), P*((d:ℝ)-1)/(2*tau), hb'0, hb'b, hbg', ?_, ?_, ?_⟩
+  · -- `γ' ≤ γ`
+    rw [div_le_iff₀ (by positivity : (0:ℝ) < 2*tau), hPdef]; nlinarith
+  · -- `W ⊆ Q d β' γ'`
+    intro w hw
+    rw [mem_Q_iff_not_sharpnessViolation hd hb'0 (le_trans hb'b hb1)
+      (le_trans hb'b hbg')]
+    have hwQ := hWQ hw
+    have hw1 : w.2 ≤ w.1 := Q_subset_second_le_first hd hb1 hb.le hwQ
+    have hw2 : w.1 ≤ (d:ℝ) * w.2 := Q_subset_first_le_natCast_mul_second hd hb.le hb1 hb.le hwQ
+    have hw3 : (d:ℝ) * w.1 ≤ (1 - beta) * w.2 + ((d:ℝ) - 1) :=
+      Q_subset_annulus_halfspace hd hb.le (le_refl beta) hb1 hwQ
+    have hw2nn : 0 ≤ w.2 := by nlinarith
+    have hwl := hWline w hw
+    have hcl : clusterEdgeFunctional d ((P/(1-tau))/(P*((d:ℝ)-1)/(2*tau))) (P/(1-tau)) w
+        = (tau - w.1 + s * w.2)/(1-tau) :=
+      clusterEdgeFunctional_of_line hd htau0 htau1 hP (by rw [hPdef]) (by rw [hPdef]) w
+    intro hbad
+    rcases hbad with hbad | hbad | hbad | hbad
+    · linarith
+    · linarith
+    · nlinarith
+    · rw [hcl] at hbad
+      have hnn : 0 ≤ (tau - w.1 + s * w.2)/(1-tau) :=
+        div_nonneg (by linarith) hone.le
+      linarith
+  · -- `z ∉ Q d β' γ'`
+    refine not_mem_Q_of_sharpnessViolation hd hb'0 (le_trans hb'b hb1)
+      (le_trans hb'b hbg') (Or.inr (Or.inr (Or.inr ?_)))
+    have hcl : clusterEdgeFunctional d ((P/(1-tau))/(P*((d:ℝ)-1)/(2*tau))) (P/(1-tau)) z
+        = (tau - z.1 + s * z.2)/(1-tau) :=
+      clusterEdgeFunctional_of_line hd htau0 htau1 hP (by rw [hPdef]) (by rw [hPdef]) z
+    rw [hcl]
+    exact div_neg_of_neg_of_pos (by linarith) hone
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+
+
+
+/-! ### `W` is a countable intersection of regions -/
+
+/-- **Equation (7.3) of the paper.**  A closed convex set squeezed between `Q(β,γ)` and
+`Q(β,β)` is a countable intersection of regions `Q(βₙ,γₙ)` with `βₙ ≤ β ≤ γₙ ≤ γ`. -/
+theorem exists_countable_family_iInter {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hb : 0 < beta) (hbg : beta < gam) (hg1 : gam ≤ 1)
+    {W : Set ExponentPoint} (hWc : IsClosed W) (hWconv : Convex ℝ W)
+    (hQW : Q d beta gam ⊆ W) (hWQ : W ⊆ Q d beta beta) :
+    ∃ bs gs : ℕ → ℝ, (∀ n, 0 ≤ bs n) ∧ (∀ n, bs n ≤ beta) ∧ (∀ n, beta ≤ gs n) ∧
+      (∀ n, gs n ≤ gam) ∧ W = ⋂ n, Q d (bs n) (gs n) := by
+  classical
+  set S : Set (ℝ × ℝ) :=
+    {p | 0 ≤ p.1 ∧ p.1 ≤ beta ∧ beta ≤ p.2 ∧ p.2 ≤ gam ∧ W ⊆ Q d p.1 p.2} with hSdef
+  have hbb : ((beta, beta) : ℝ × ℝ) ∈ S := ⟨hb.le, le_refl _, le_refl _, hbg.le, hWQ⟩
+  obtain ⟨T, hTc, hTU⟩ := TopologicalSpace.isOpen_iUnion_countable
+      (fun i : S => (Q d (i : ℝ × ℝ).1 (i : ℝ × ℝ).2)ᶜ)
+      (fun i => (isClosed_Q d _ _).isOpen_compl)
+  have hT'c : (insert (⟨(beta, beta), hbb⟩ : S) T).Countable := hTc.insert _
+  have hT'ne : (insert (⟨(beta, beta), hbb⟩ : S) T).Nonempty := ⟨_, Set.mem_insert _ _⟩
+  obtain ⟨e, he⟩ := hT'c.exists_eq_range hT'ne
+  refine ⟨fun n => (e n : ℝ × ℝ).1, fun n => (e n : ℝ × ℝ).2, fun n => (e n).2.1,
+    fun n => (e n).2.2.1, fun n => (e n).2.2.2.1, fun n => (e n).2.2.2.2.1, ?_⟩
+  refine subset_antisymm ?_ ?_
+  · intro w hw
+    refine Set.mem_iInter.mpr ?_
+    intro n
+    exact (e n).2.2.2.2.2 hw
+  · intro z hz
+    have hzmem : ∀ n, z ∈ Q d (e n : ℝ × ℝ).1 (e n : ℝ × ℝ).2 := Set.mem_iInter.mp hz
+    have hzQ : z ∈ Q d beta beta := by
+      have hmem : (⟨(beta, beta), hbb⟩ : S) ∈ insert (⟨(beta, beta), hbb⟩ : S) T :=
+        Set.mem_insert _ _
+      rw [he] at hmem
+      obtain ⟨n, hn⟩ := hmem
+      have := hzmem n
+      rw [hn] at this
+      exact this
+    by_contra hzW
+    obtain ⟨b', g', hb'0, hb'b, hbg', hg'g, hWsub, hznot⟩ :=
+      exists_pair_separating hd hb hbg hg1 hWc hWconv hQW hWQ hzQ hzW
+    have hmemS : ((b', g') : ℝ × ℝ) ∈ S := ⟨hb'0, hb'b, hbg', hg'g, hWsub⟩
+    have hzU : z ∈ ⋃ i : S, (Q d (i : ℝ × ℝ).1 (i : ℝ × ℝ).2)ᶜ :=
+      Set.mem_iUnion.mpr ⟨⟨(b', g'), hmemS⟩, hznot⟩
+    rw [← hTU] at hzU
+    obtain ⟨i, hiT, hzi⟩ := Set.mem_iUnion₂.mp hzU
+    have hiT' : i ∈ insert (⟨(beta, beta), hbb⟩ : S) T := Set.mem_insert_of_mem _ hiT
+    rw [he] at hiT'
+    obtain ⟨n, hn⟩ := hiT'
+    have := hzmem n
+    rw [hn] at this
+    exact hzi this
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+/-! ### A countable dense sequence in the interior -/
+
+theorem exists_dense_seq_interior {W : Set ExponentPoint} (h : (interior W).Nonempty) :
+    ∃ u : ℕ → ExponentPoint, (∀ k, u k ∈ interior W) ∧
+      interior W ⊆ closure (Set.range u) := by
+  have hne : Nonempty ↥(interior W) := h.to_subtype
+  obtain ⟨u, hu⟩ := TopologicalSpace.exists_dense_seq ↥(interior W)
+  refine ⟨fun k => ((u k : ExponentPoint)), fun k => (u k).2, ?_⟩
+  intro x hx
+  have h1 : Set.range (fun k => ((u k : ExponentPoint))) = Subtype.val '' (Set.range u) := by
+    rw [← Set.range_comp]
+    rfl
+  rw [h1]
+  have h3 : x ∈ Subtype.val '' (closure (Set.range u)) := by
+    rw [hu.closure_eq]
+    exact ⟨⟨x, hx⟩, Set.mem_univ _, rfl⟩
+  exact image_closure_subset_closure_image continuous_subtype_val h3
+
+/-! ### Theorem 1.2(i), the sufficiency, in the main case `0 < β < γ` -/
+
+set_option maxHeartbeats 1000000 in
+/-- **The main case of Theorem 1.2(i).**  Every closed convex set squeezed between `Q(β,γ)` and
+`Q(β,β)` with `0 < β < γ` is the closure of a type set. -/
+theorem exists_closure_fractalTypeSet_eq_of_sandwich_pos {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hb : 0 < beta) (hbg : beta < gam) (hg1 : gam ≤ 1)
+    {W : Set ExponentPoint} (hWc : IsClosed W) (hWconv : Convex ℝ W)
+    (hQW : Q d beta gam ⊆ W) (hWQ : W ⊆ Q d beta beta) :
+    ∃ E : Set ℝ, E ⊆ Icc (1:ℝ) 2 ∧ E.Nonempty ∧ closure (fractalTypeSet d E) = W := by
+  classical
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  have hb1 : beta ≤ 1 := le_trans hbg.le hg1
+  obtain ⟨bs, gs0, hbs0, hbsb, hbgs, hgsg, hWeq⟩ :=
+    exists_countable_family_iInter hd hb hbg hg1 hWc hWconv hQW hWQ
+  set gs : ℕ → ℝ := fun n => if bs n = 0 then 0 else gs0 n with hgsdef
+  have hQeq : ∀ n, Q d (bs n) (gs n) = Q d (bs n) (gs0 n) := by
+    intro n
+    by_cases h : bs n = 0
+    · have h1 : gs n = 0 := by simp only [hgsdef, h, if_pos]
+      rw [h1, h]
+      exact (Q_zero_beta_eq hd (le_trans hb.le (hbgs n))).symm
+    · simp only [hgsdef, if_neg h]
+  have hWeq' : W = ⋂ n, Q d (bs n) (gs n) := by
+    rw [hWeq]
+    exact (Set.iInter_congr hQeq).symm
+  have hbgcond : ∀ n, 0 ≤ bs n ∧ bs n ≤ gs n ∧ gs n ≤ 1 := by
+    intro n
+    by_cases h : bs n = 0
+    · have h1 : gs n = 0 := by simp only [hgsdef, h, if_pos]
+      refine ⟨hbs0 n, ?_, ?_⟩
+      · rw [h, h1]
+      · rw [h1]; norm_num
+    · have h1 : gs n = gs0 n := by simp only [hgsdef, if_neg h]
+      refine ⟨hbs0 n, ?_, ?_⟩
+      · rw [h1]; linarith [hbsb n, hbgs n]
+      · rw [h1]; linarith [hgsg n]
+  have hdeg : ∀ n, bs n = 0 → gs n = 0 := by
+    intro n h
+    simp only [hgsdef, h, if_pos]
+  have hWi : (interior W).Nonempty :=
+    Set.Nonempty.mono (interior_mono hQW) (interior_Q_nonempty hd hb.le hb1 hbg.le)
+  obtain ⟨zz, hzzmem, hzzdense⟩ := exists_dense_seq_interior hWi
+  have hzmem : ∀ k, zz k ∈ interior (⋂ n, Q d (bs n) (gs n)) := by
+    intro k
+    rw [← hWeq']
+    exact hzzmem k
+  obtain ⟨E, hE, hEne, hGfam, hztype⟩ := exists_iUnion_type_points hd hbgcond hdeg zz hzmem
+  have hEpos : E ⊆ Ioi (0:ℝ) := by
+    intro t ht
+    have := hE ht
+    exact lt_of_lt_of_le (by norm_num) this.1
+  refine ⟨E, hE, hEne, subset_antisymm ?_ ?_⟩
+  · rw [hWeq']
+    refine closure_minimal ?_ (isClosed_iInter (fun n => isClosed_Q d _ _))
+    intro x hx
+    refine Set.mem_iInter.mpr ?_
+    intro n
+    obtain ⟨G, hGE, hGne, hGreg⟩ := hGfam n
+    have hGsub : G ⊆ Icc (1:ℝ) 2 := hGE.trans hE
+    have hxG : x ∈ fractalTypeSet d G := fractalTypeSet_mono hdpos hGE hEpos hx
+    exact fractalTypeSet_subset_Q_of_regular hd hGsub hGne
+      ⟨(hbgcond n).1, (hbgcond n).2.1, (hbgcond n).2.2⟩ hGreg hxG
+  · have hWcl : closure (interior W) = W := by
+      rw [hWconv.closure_interior_eq_closure_of_nonempty_interior hWi, hWc.closure_eq]
+    intro x hxW
+    rw [← hWcl] at hxW
+    have h1 : closure (interior W) ⊆ closure (Set.range zz) :=
+      closure_minimal hzzdense isClosed_closure
+    have h2 : closure (Set.range zz) ⊆ closure (fractalTypeSet d E) := by
+      refine closure_mono ?_
+      intro y hy
+      obtain ⟨k, rfl⟩ := hy
+      exact hztype k
+    exact h2 (h1 hxW)
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.MinkowskiFacts
+open Auto.Spherical.FractalDilations.ClusterSpectrumSharpness
+
+
+
+/-! ### The Minkowski parameter is determined -/
+
+/-- If the diagonal Minkowski vertex `Q₂(β)` lies in `Q(β',γ')`, then `β' ≤ β`.  The annulus
+halfspace of `Q(β',γ')` is the only constraint that is active there. -/
+theorem le_of_Q2_mem_Q {d : ℕ} (hd : 2 ≤ d) {b b' g' : ℝ} (hb : 0 ≤ b)
+    (hb'0 : 0 ≤ b') (hb'1 : b' ≤ 1) (hb'g' : b' ≤ g') (hmem : Q2 d b ∈ Q d b' g') :
+    b' ≤ b := by
+  have hD : (2:ℝ) ≤ (d:ℝ) := by exact_mod_cast hd
+  have hden : (0:ℝ) < (d:ℝ) - 1 + b := by linarith
+  have hann := Q_subset_annulus_halfspace hd hb'0 hb'g' hb'1 hmem
+  have h1 : (Q2 d b).1 = ((d:ℝ) - 1)/((d:ℝ) - 1 + b) := rfl
+  have h2 : (Q2 d b).2 = ((d:ℝ) - 1)/((d:ℝ) - 1 + b) := rfl
+  rw [Set.mem_setOf_eq, h1, h2] at hann
+  set m : ℝ := ((d:ℝ) - 1)/((d:ℝ) - 1 + b) with hmdef
+  have hmpos : 0 < m := by
+    rw [hmdef]
+    exact div_pos (by linarith) hden
+  have hmid : m * ((d:ℝ) - 1 + b) = (d:ℝ) - 1 := by
+    rw [hmdef]
+    field_simp
+  nlinarith [hann, hmid, hmpos]
+
+/-- **Theorem 1.2(ii), the Minkowski part.**  If the closure of the type set is squeezed
+between `Q(β,γ)` and `Q(β,β)`, then `β` is the upper Minkowski dimension of `E`. -/
+theorem upperMinkowskiDimension_eq_of_sandwich {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1:ℝ) 2) (hEne : E.Nonempty) {beta gam : ℝ}
+    (hb0 : 0 ≤ beta) (hbg : beta ≤ gam) (hg1 : gam ≤ 1)
+    (hQW : Q d beta gam ⊆ closure (fractalTypeSet d E))
+    (hWQ : closure (fractalTypeSet d E) ⊆ Q d beta beta) :
+    upperMinkowskiDimension E = beta := by
+  have hb1 : beta ≤ 1 := le_trans hbg hg1
+  set bE : ℝ := upperMinkowskiDimension E with hbE
+  set gE : ℝ := quasiAssouadDimension E with hgE
+  have hbE0 : 0 ≤ bE := upperMinkowskiDimension_nonneg_of_subset_Icc hE
+  have hbEgE : bE ≤ gE := upperMinkowskiDimension_le_quasiAssouadDimension hE
+  have hgE1 : gE ≤ 1 := quasiAssouadDimension_le_one E
+  have hbE1 : bE ≤ 1 := le_trans hbEgE hgE1
+  have hQE : Q d bE gE ⊆ closure (fractalTypeSet d E) :=
+    Q_subset_closure_fractalTypeSet hd hE hbE0 hbEgE hgE1 rfl rfl
+  have hEQ : closure (fractalTypeSet d E) ⊆ Q d bE bE := by
+    refine closure_minimal ?_ (isClosed_Q d _ _)
+    exact fractalTypeSet_subset_Q_self hd hE hEne hbE0 hbE1 rfl
+  refine le_antisymm ?_ ?_
+  · exact le_of_Q2_mem_Q hd hb0 hbE0 hbE1 (le_refl bE)
+      (hEQ (hQW (Q2_mem_Q d beta gam)))
+  · exact le_of_Q2_mem_Q hd hbE0 hb0 hb1 (le_refl beta)
+      (hWQ (hQE (Q2_mem_Q d bE gE)))
+
+/-! ### The clustered-radius necessary condition on the critical ray -/
+
+/-- The closed set cut out by the clustered-radius test at the parameters `(θ,α)`. -/
+def clusterTestSet (d : ℕ) (theta al : ℝ) : Set ExponentPoint :=
+  {x : ExponentPoint | al * x.2 - ((d:ℝ)-1)/2 * (1 - x.2 - x.1) ≤ 0 ∨
+    x.1 ≤ (d:ℝ)*x.2 - (1-theta)*(al * x.2 - ((d:ℝ)-1)/2 * (1 - x.2 - x.1))}
+
+theorem isClosed_clusterTestSet (d : ℕ) (theta al : ℝ) :
+    IsClosed (clusterTestSet d theta al) := by
+  have hcont : Continuous
+      (fun x : ExponentPoint => al * x.2 - ((d:ℝ)-1)/2 * (1 - x.2 - x.1)) := by
+    fun_prop
+  refine IsClosed.union (isClosed_le hcont continuous_const) ?_
+  exact isClosed_le continuous_fst (by fun_prop)
+
+/-- **Lemma 5.1(i) of the paper, in the form of a closed necessary condition.**  Boundedness of
+the maximal operator forces the clustered-radius inequality at every admissible pair `(θ,α)`
+with `α` below the upper Assouad spectrum at `θ`. -/
+theorem closure_fractalTypeSet_subset_clusterTestSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1:ℝ) 2) {theta al : ℝ} (hθ0 : 0 ≤ theta) (hθ1 : theta < 1)
+    (hal0 : 0 ≤ al) (hal : al < upperAssouadSpectrum E theta) :
+    closure (fractalTypeSet d E) ⊆ clusterTestSet d theta al := by
+  refine closure_minimal ?_ (isClosed_clusterTestSet d theta al)
+  intro x hx
+  obtain ⟨p, q, hp, hq, hxeq, hst⟩ := hx
+  by_contra hbad
+  rw [clusterTestSet, Set.mem_setOf_eq] at hbad
+  push_neg at hbad
+  obtain ⟨hk, hpower⟩ := hbad
+  have hx1 : x.1 = p⁻¹ := by rw [hxeq]; rfl
+  have hx2 : x.2 = q⁻¹ := by rw [hxeq]; rfl
+  have hd1 : 1 ≤ d := by omega
+  have hncast : ((d - 1 : ℕ) : ℝ) + 1 = (d:ℝ) := by
+    have : ((d - 1 : ℕ) : ℝ) = (d:ℝ) - 1 := by
+      have h := Nat.cast_sub (R := ℝ) hd1
+      simpa using h
+    rw [this]; ring
+  have hncast' : ((d - 1 : ℕ) : ℝ) = (d:ℝ) - 1 := by linarith
+  have hkq : 0 < al * q⁻¹ - (((d - 1 : ℕ) : ℝ)) / 2 * (1 - q⁻¹ - p⁻¹) := by
+    rw [hncast', ← hx1, ← hx2]
+    linarith
+  have hpowerq : (((d - 1 : ℕ) : ℝ) + 1) * q⁻¹ -
+      (1 - theta) * (al * q⁻¹ - (((d - 1 : ℕ) : ℝ)) / 2 * (1 - q⁻¹ - p⁻¹)) < p⁻¹ := by
+    rw [hncast, hncast', ← hx1, ← hx2]
+    linarith
+  have hunb := fractalSphericalUnbounded_of_upper_spectrum_cluster_gap
+    (n := d - 1) (E := E) (θ := theta) (α := al)
+    (γ := upperAssouadSpectrum E theta) (p := p) (q := q)
+    (by omega) hE hθ0 hθ1 rfl hal0 hal hp hq hkq hpowerq
+  rw [Nat.sub_add_cancel hd1] at hunb
+  exact not_unbounded_of_hasFractalSphericalStrongType hst hunb
+
+/-- On the critical ray `1/p = d/q` the clustered-radius test is active for every `θ`, so the
+quasi-Assouad dimension controls the whole ray. -/
+theorem clusterTest_of_mem_closure {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1:ℝ) 2) {x : ExponentPoint} (hx : x ∈ closure (fractalTypeSet d E))
+    (hray : x.1 = (d:ℝ) * x.2) {al : ℝ} (hal0 : 0 ≤ al)
+    (hal : al < quasiAssouadDimension E) :
+    al * x.2 - ((d:ℝ)-1)/2 * (1 - x.2 - x.1) ≤ 0 := by
+  have hne : (upperAssouadSpectrum E '' Ico (0:ℝ) 1).Nonempty :=
+    ⟨upperAssouadSpectrum E 0, ⟨0, ⟨le_refl (0:ℝ), zero_lt_one⟩, rfl⟩⟩
+  rw [quasiAssouadDimension] at hal
+  obtain ⟨y, hy, haly⟩ := exists_lt_of_lt_csSup hne hal
+  obtain ⟨theta, hθ, hθeq⟩ := hy
+  have hmem := closure_fractalTypeSet_subset_clusterTestSet hd hE hθ.1 hθ.2 hal0
+    (by rw [hθeq]; exact haly) hx
+  rw [clusterTestSet, Set.mem_setOf_eq] at hmem
+  rcases hmem with h | h
+  · exact h
+  · have hpos : (0:ℝ) < 1 - theta := sub_pos.mpr hθ.2
+    rw [hray] at h ⊢
+    nlinarith [h, hpos]
+
+/-- **Theorem 1.2(ii), the quasi-Assouad part.**  If `Q(β,γ) ⊆ closure (T_E)` and `γ` is minimal
+with this property, then `γ` is the quasi-Assouad dimension of `E`. -/
+theorem quasiAssouadDimension_eq_of_sandwich_minimal {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1:ℝ) 2) (hEne : E.Nonempty) {beta gam : ℝ}
+    (hb0 : 0 ≤ beta) (hbg : beta ≤ gam) (hg1 : gam ≤ 1)
+    (hQW : Q d beta gam ⊆ closure (fractalTypeSet d E))
+    (hWQ : closure (fractalTypeSet d E) ⊆ Q d beta beta)
+    (hmin : ∀ g' : ℝ, beta ≤ g' → g' ≤ 1 →
+      Q d beta g' ⊆ closure (fractalTypeSet d E) → gam ≤ g') :
+    quasiAssouadDimension E = gam := by
+  have hD : (2:ℝ) ≤ (d:ℝ) := by exact_mod_cast hd
+  have hbeta := upperMinkowskiDimension_eq_of_sandwich hd hE hEne hb0 hbg hg1 hQW hWQ
+  set gE : ℝ := quasiAssouadDimension E with hgE
+  have hbE0 : 0 ≤ upperMinkowskiDimension E :=
+    upperMinkowskiDimension_nonneg_of_subset_Icc hE
+  have hbEgE : upperMinkowskiDimension E ≤ gE :=
+    upperMinkowskiDimension_le_quasiAssouadDimension hE
+  have hgE1 : gE ≤ 1 := quasiAssouadDimension_le_one E
+  have hQE : Q d beta gE ⊆ closure (fractalTypeSet d E) := by
+    have := Q_subset_closure_fractalTypeSet hd hE hbE0 hbEgE hgE1 rfl rfl
+    rwa [hbeta] at this
+  have hle : gam ≤ gE := hmin gE (by rw [← hbeta]; exact hbEgE) hgE1 hQE
+  refine le_antisymm ?_ hle
+  by_contra hcon
+  push_neg at hcon
+  -- the vertex `Q₄(γ)` lies in the closure of the type set
+  have hmem : Q4 d gam ∈ closure (fractalTypeSet d E) := hQW (Q4_mem_Q d beta gam)
+  have hNg : (0:ℝ) < (d:ℝ)^2 + 2*gam - 1 := by
+    have hg0 : 0 ≤ gam := le_trans hb0 hbg
+    nlinarith
+  have hray : (Q4 d gam).1 = (d:ℝ) * (Q4 d gam).2 := by
+    show (d:ℝ)*((d:ℝ)-1)/((d:ℝ)^2+2*gam-1) = (d:ℝ) * (((d:ℝ)-1)/((d:ℝ)^2+2*gam-1))
+    ring
+  set al : ℝ := (gam + gE)/2 with haldef
+  have hal0 : 0 ≤ al := by
+    have hg0 : 0 ≤ gam := le_trans hb0 hbg
+    rw [haldef]; linarith
+  have halgE : al < gE := by rw [haldef]; linarith
+  have hkey := clusterTest_of_mem_closure hd hE hmem hray hal0 (by rw [hgE] at halgE; exact halgE)
+  -- the test functional at `Q₄(γ)` equals `(d-1)(α-γ)/(d²+2γ-1)`
+  have hval : al * (Q4 d gam).2 - ((d:ℝ)-1)/2 * (1 - (Q4 d gam).2 - (Q4 d gam).1)
+      = ((d:ℝ)-1)*(al - gam)/((d:ℝ)^2+2*gam-1) := by
+    show al * (((d:ℝ)-1)/((d:ℝ)^2+2*gam-1)) - ((d:ℝ)-1)/2 *
+      (1 - ((d:ℝ)-1)/((d:ℝ)^2+2*gam-1) - (d:ℝ)*((d:ℝ)-1)/((d:ℝ)^2+2*gam-1)) = _
+    field_simp
+    ring
+  rw [hval] at hkey
+  have halgam : gam < al := by rw [haldef]; linarith
+  have hposv : 0 < ((d:ℝ)-1)*(al - gam)/((d:ℝ)^2+2*gam-1) :=
+    div_pos (by nlinarith) hNg
+  linarith
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.MinkowskiFacts
+
+
+
+/-! ### Theorem 1.2(i): the sufficiency in all cases -/
+
+/-- **The sufficiency in Theorem 1.2(i).**  Every closed convex set squeezed between `Q(β,γ)`
+and `Q(β,β)` is the closure of a type set. -/
+theorem exists_closure_fractalTypeSet_eq_of_sandwich {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hb0 : 0 ≤ beta) (hbg : beta ≤ gam) (hg1 : gam ≤ 1)
+    {W : Set ExponentPoint} (hWc : IsClosed W) (hWconv : Convex ℝ W)
+    (hQW : Q d beta gam ⊆ W) (hWQ : W ⊆ Q d beta beta) :
+    ∃ E : Set ℝ, E ⊆ Icc (1:ℝ) 2 ∧ E.Nonempty ∧ closure (fractalTypeSet d E) = W := by
+  have hb1 : beta ≤ 1 := le_trans hbg hg1
+  have hdegenerate : beta = 0 ∨ beta = gam → W = Q d beta beta := by
+    intro hcase
+    refine subset_antisymm hWQ ?_
+    have hQQ : Q d beta beta = Q d beta gam := by
+      rcases hcase with h0 | heq
+      · rw [h0]
+        exact (Q_zero_beta_eq hd (le_trans hb0 hbg)).symm
+      · rw [heq]
+    rw [hQQ]
+    exact hQW
+  rcases eq_or_lt_of_le hb0 with hb0' | hbpos
+  · -- `β = 0`, so `W = Q(0,0)`
+    have hWeq : W = Q d beta beta := hdegenerate (Or.inl hb0'.symm)
+    obtain ⟨E, hE, hEne, hclos⟩ := exists_closure_fractalTypeSet_eq_Q' hd hb0 (le_refl beta) hb1
+    exact ⟨E, hE, hEne, by rw [hclos, hWeq]⟩
+  rcases eq_or_lt_of_le hbg with hbgeq | hbglt
+  · -- `β = γ`, so `W = Q(β,β)`
+    have hWeq : W = Q d beta beta := hdegenerate (Or.inr hbgeq)
+    obtain ⟨E, hE, hEne, hclos⟩ := exists_closure_fractalTypeSet_eq_Q' hd hb0 (le_refl beta) hb1
+    exact ⟨E, hE, hEne, by rw [hclos, hWeq]⟩
+  · exact exists_closure_fractalTypeSet_eq_of_sandwich_pos hd hbpos hbglt hg1 hWc hWconv hQW hWQ
+
+/-- **Theorem 1.2(i) of Roos--Seeger.**  A set `W` in the reciprocal-exponent plane is the closure
+of the type set of some nonempty `E ⊆ [1,2]` if and only if `W` is closed, convex and squeezed
+between `Q(β,γ)` and `Q(β,β)` for some `0 ≤ β ≤ γ ≤ 1`. -/
+theorem closure_fractalTypeSet_iff_isClosed_convex_sandwich {d : ℕ} (hd : 2 ≤ d)
+    (W : Set ExponentPoint) :
+    (∃ E : Set ℝ, E ⊆ Icc (1:ℝ) 2 ∧ E.Nonempty ∧ closure (fractalTypeSet d E) = W) ↔
+      (IsClosed W ∧ Convex ℝ W ∧ ∃ beta gam : ℝ, 0 ≤ beta ∧ beta ≤ gam ∧ gam ≤ 1 ∧
+        Q d beta gam ⊆ W ∧ W ⊆ Q d beta beta) := by
+  constructor
+  · rintro ⟨E, hE, hEne, rfl⟩
+    exact isClosed_convex_sandwich_closure_fractalTypeSet hd hE hEne
+  · rintro ⟨hWc, hWconv, beta, gam, hb0, hbg, hg1, hQW, hWQ⟩
+    exact exists_closure_fractalTypeSet_eq_of_sandwich hd hb0 hbg hg1 hWc hWconv hQW hWQ
+
+/-! ### Theorem 1.2(ii): the parameters are the dimensions of `E` -/
+
+/-- **Theorem 1.2(ii) of Roos--Seeger.**  If the closure of the type set of `E` is squeezed
+between `Q(β,γ)` and `Q(β,β)`, then `β` is the upper Minkowski dimension of `E`, and if `γ` is
+minimal with this property then `γ` is the quasi-Assouad dimension of `E`. -/
+theorem dimensions_of_sandwich_closure_fractalTypeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1:ℝ) 2) (hEne : E.Nonempty) {beta gam : ℝ}
+    (hb0 : 0 ≤ beta) (hbg : beta ≤ gam) (hg1 : gam ≤ 1)
+    (hQW : Q d beta gam ⊆ closure (fractalTypeSet d E))
+    (hWQ : closure (fractalTypeSet d E) ⊆ Q d beta beta) :
+    upperMinkowskiDimension E = beta ∧
+      ((∀ g' : ℝ, beta ≤ g' → g' ≤ 1 → Q d beta g' ⊆ closure (fractalTypeSet d E) → gam ≤ g') →
+        quasiAssouadDimension E = gam) :=
+  ⟨upperMinkowskiDimension_eq_of_sandwich hd hE hEne hb0 hbg hg1 hQW hWQ,
+    fun hmin => quasiAssouadDimension_eq_of_sandwich_minimal hd hE hEne hb0 hbg hg1 hQW hWQ hmin⟩
+
 end
 
 end Auto.Spherical.FractalDilations.RS

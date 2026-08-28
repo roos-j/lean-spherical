@@ -38,6 +38,24 @@ source in the session that added this note, so the first step of that phase is t
 paper's Theorem 1.2 verbatim and record it at the top of the new work, exactly as the Theorem 1.1
 statement is recorded above. Only then begin formalizing.
 
+### The statement, verbatim from the source (`circular.tex`, `egin{thm}\label{thm:type}`)
+
+> **Theorem 1.2.** Let `W ⊆ [0,1]²`. Then
+>
+> (i) `W = closure(T_E)` holds for some `E ⊆ [1,2]` if and only if `W` is a closed convex set and
+> `Q(β,γ) ⊆ W ⊆ Q(β,β)` for some `0 ≤ β ≤ γ ≤ 1`.
+>
+> (ii) For `W = closure(T_E)` in the display above one necessarily has `dim_M E = β` and if in
+> addition `γ` is chosen minimally, then `dim_qA E = γ`.
+
+Remark 1.4 of the paper (for every `γ_* ∈ [γ,1]` the set `E` can be chosen with
+`dim_A E = γ_*`) is a *remark*, not part of Theorem 1.2, and was not formalized.
+
+**Status: complete (2026-08-28).** Both parts are in `LeanSpherical/Theorems.lean` as
+`Spherical.FractalDilations.closure_fractalTypeSet_iff_isClosed_convex_sandwich` and
+`Spherical.FractalDilations.dimensions_of_sandwich_closure_fractalTypeSet`, sorry-free, axioms
+`[propext, Classical.choice, Quot.sound]`. See Milestone 20 in `Report.md`.
+
 ## File layout (hard constraints)
 
 * All generated code goes in the `Auto` namespace and under `LeanSpherical/Auto/`.

@@ -1393,6 +1393,175 @@ relative bands `k = j-1, …, j+3` sum to one on the support of the absolute ban
 absolute band maximal operator is dominated by five relative ones applied to the band projection,
 whose `L^p` norm is uniformly controlled by Young's inequality.
 
+## Milestone 20 (2026-08-28 10:38 EDT): **Theorem 1.2 is proved**
+
+`RS.lean` (44,151 lines, green, no `sorry`) and `LeanSpherical/Theorems.lean` now contain both
+parts of Theorem 1.2 of arXiv:2004.00984, sorry-free and depending only on
+`[propext, Classical.choice, Quot.sound]`:
+
+```lean
+theorem Spherical.FractalDilations.closure_fractalTypeSet_iff_isClosed_convex_sandwich
+    {d : ℕ} (hd : 2 ≤ d) (W : Set ExponentPoint) :
+    (∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧ closure (fractalTypeSet d E) = W) ↔
+      (IsClosed W ∧ Convex ℝ W ∧ ∃ β γ : ℝ, 0 ≤ β ∧ β ≤ γ ∧ γ ≤ 1 ∧
+        Q d β γ ⊆ W ∧ W ⊆ Q d β β)
+
+theorem Spherical.FractalDilations.dimensions_of_sandwich_closure_fractalTypeSet
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β γ : ℝ}
+    (hβ : 0 ≤ β) (hβγ : β ≤ γ) (hγ : γ ≤ 1)
+    (hlower : Q d β γ ⊆ closure (fractalTypeSet d E))
+    (hupper : closure (fractalTypeSet d E) ⊆ Q d β β) :
+    upperMinkowskiDimension E = β ∧
+      ((∀ g : ℝ, β ≤ g → g ≤ 1 → Q d β g ⊆ closure (fractalTypeSet d E) → γ ≤ g) →
+        quasiAssouadDimension E = γ)
+```
+
+The "only if" half of (i) was Milestone 17 (convexity) plus the two sharpness inclusions; the
+analytic core of the "if" half was Milestones 16, 18, 19.  What this milestone adds are the two
+pieces that were still missing.
+
+### 1. The convex geometry of §7 (`exists_pair_separating`, `exists_countable_family_iInter`)
+
+The paper writes `W = ⋂ₙ Q(βₙ,γₙ)` by taking all supporting lines of `W` and reading off, for each
+one, its intersections with the segments `[Q₃(β),Q₃(0)]` and `[Q₄(γ),Q₄(β)]`.  Formalized in the
+following equivalent but fully computational form.  Write a line as `x₁ - s x₂ = τ`.  Then the
+cluster halfspace of the pair `(β',γ')` is exactly this line with
+
+* `A := β'(d-1)/(2γ')`, `s = (d-β'-A)/(1+A)`, `τ = A/(1+A)`,
+
+and conversely, given `(s,τ)` with `0 < τ < 1`,
+
+* `P := d - s - τ(d+1)`, `β' := P/(1-τ)`, `γ' := P(d-1)/(2τ)`,
+
+and the identity
+
+```
+clusterEdgeFunctional d (β'/γ') β' x = (τ - x₁ + s x₂)/(1-τ)
+```
+
+(`clusterEdgeFunctional_of_line`).  So *every* line with `0 < τ < 1` is a cluster line; the only
+thing to check is that the four admissibility constraints `0 ≤ β' ≤ β ≤ γ' ≤ γ` hold.  The
+surprise is that each of them is *exactly* one of the vertex inequalities of the separating line:
+
+| constraint | equivalent to | reason it holds |
+|---|---|---|
+| `β' ≤ β` | `τ ≥ (d-β-s)/(d-β+1)` | `Q₃(β) ∈ Q(β,γ) ⊆ W` |
+| `γ' ≤ γ` | `τ ≥ (d-1)(d-s)/(d²+2γ-1)` | `Q₄(γ) ∈ Q(β,γ) ⊆ W` |
+| `β ≤ γ'` | `τ ≤ (d-1)(d-s)/(d²+2β-1)` | `z ∈ Q(β,β)`, and the other three vertices of `Q(β,β)` are in `W` |
+| `0 ≤ β'` | `τ(d+1) ≤ d-s` | the same inequality, plus `d²-1 ≤ d²+2β-1` |
+
+(the values in the middle column are the values of the functional `x ↦ x₁ - s x₂` at
+`Q₃(β)`, `Q₄(γ)`, `Q₄(β)`).  The three remaining halfspaces of `Q(β',γ')` are weaker than those of
+`Q(β,β) ⊇ W` because `β' ≤ β`.  So the whole geometric step of §7 becomes: separate `z ∉ W` from
+`W` by Hahn–Banach (`geometric_hahn_banach_closed_point`), normalize the functional, and verify
+that its linear part has `a > 0` and `b < 0` — which follows from `Q₄(β)ᵗ > u > Q₃(β)ᵗ` together
+with the two elementary vertex comparisons `(Q₄(β))₁ < (Q₃(β))₁` and `(Q₄(β))₂ < (Q₃(β))₂`
+(`Q4_first_lt_Q3_first`, `Q4_second_lt_Q3_second`).
+
+A countable family is then extracted with `TopologicalSpace.isOpen_iUnion_countable` applied to the
+open sets `Q(β',γ')ᶜ`, adding the pair `(β,β)` to the family so that the annulus halfspace of
+`Q(β,β)` is present (`exists_countable_family_iInter`).
+
+`exists_closure_fractalTypeSet_eq_of_sandwich_pos` then combines this with the §7 construction
+(`exists_iUnion_type_points`, Milestone 19) applied to a dense sequence of interior points
+(`exists_dense_seq_interior`), and `Convex.closure_interior_eq_closure_of_nonempty_interior` turns
+density into the inclusion `W ⊆ closure (T_E)`.  The degenerate cases `β = 0` and `β = γ` force
+`W = Q(β,β)` and are handled by the single Cantor example of Milestone 16.
+
+### 2. Lemma 5.1 of the paper (`closure_fractalTypeSet_subset_clusterTestSet`)
+
+Part (ii) needs the necessary condition on the critical ray `1/p = d/q`.  Instead of redoing the
+spherical-cap counterexample, the repository's clustered-radius engine
+`ClusterSpectrumSharpness.fractalSphericalUnbounded_of_upper_spectrum_cluster_gap` is used with a
+*general* spectrum exponent (its statement does not require the regular relation
+`spectrum θ = β/(1-θ)`).  Its two hypotheses at `x = (1/p, 1/q)` are
+
+* `k(x) := α x₂ - ((d-1)/2)(1 - x₂ - x₁) > 0`,
+* `d x₂ - (1-θ)k(x) < x₁`.
+
+On the ray `x₁ = d x₂` the second one *is* the first one, for every `θ` — which is exactly why the
+ray sees the quasi-Assouad dimension (`quasiAssouadDimension = sSup` of the spectrum over
+`θ ∈ [0,1)`) and not just one spectrum value.  Since the set where the two hypotheses fail is
+closed, the conclusion passes to `closure (T_E)`; evaluating `k` at `Q₄(γ)` gives
+`(d-1)(α-γ)/(d²+2γ-1)`, so `α ≤ γ` for every `α < dim_qA E`, i.e. `dim_qA E ≤ γ`.  Minimality of
+`γ` gives the reverse inequality from Theorem 1.1.
+
+The Minkowski half of (ii) is elementary once the diagonal vertex is used: if `Q₂(β) ∈ Q(β',γ')`
+then the annulus halfspace of `Q(β',γ')` at `Q₂(β) = (m,m)`, `m = (d-1)/(d-1+β)`, reads
+`m(d-1+β') ≤ d-1 = m(d-1+β)`, i.e. `β' ≤ β` (`le_of_Q2_mem_Q`); applying this in both directions to
+`Q(β,γ) ⊆ closure (T_E) ⊆ Q(β_E,β_E)` and `Q(β_E,γ_E) ⊆ closure (T_E) ⊆ Q(β,β)` gives `β = β_E`.
+
+### Judgment calls
+
+* **Nonemptiness of `E`.**  The paper writes `E ⊆ [1,2]` without further comment; `E = ∅` makes
+  `M_E = 0`, so `T_E` is the whole half-plane `{p ≤ q}` and no sandwich holds.  The formal
+  statement therefore quantifies over nonempty `E`, as the rest of the repository does.
+* **"γ minimal" is spelled out** as the hypothesis
+  `∀ g, β ≤ g → g ≤ 1 → Q(β,g) ⊆ closure (T_E) → γ ≤ g`, which is the literal reading of the
+  paper's "if in addition `γ` is chosen minimally".
+* **Remark 1.4** (`dim_A E = γ_*` for any prescribed `γ_* ∈ [γ,1]`) is a remark, not part of
+  Theorem 1.2, and is not formalized.
+
+## Milestone 19 (2026-08-28 08:45 EDT): the union estimate of §7
+
+`RS.lean` (42,715 lines, green, no `sorry`) now proves the analytic core of §7:
+
+```lean
+theorem hasFractalSphericalStrongType_iUnion_of_bandRates {d : ℕ} (hd : 2 ≤ d)
+    {Es : ℕ → Set ℝ} (hEs : ∀ n, Es n ⊆ Icc (1 : ℝ) 2)
+    {L : ℕ → ℕ} (hL : ∀ n, n ≤ L n)
+    (hloc : ∀ n, Es n ⊆ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ L n)⁻¹))
+    (phi …) {p q : ℝ} (hp : 1 < p) (hpq : p < q)
+    {Cs rhos : ℕ → ℝ} (hCs : ∀ n, 0 ≤ Cs n) (hrhos : ∀ n, 0 ≤ rhos n) (hrhos1 : ∀ n, rhos n < 1)
+    (hrates : ∀ (n j : ℕ), 1 ≤ j → ∀ f, eLpNorm (band j (Es n) f) q ≤ ofReal (Cs n * rhos n ^ j) * ‖f‖_p)
+    (hcell : HasOneCellBandRateReal phi hphiOne hphiZero p q)
+    {A0 : ℝ} (hA0 : ∀ N, ∑ n ∈ Finset.range N, Cs n * rhos n ^ (L n + 1) / (1 - rhos n) ≤ A0) :
+    HasFractalSphericalStrongType d (⋃ n, Es n) p q
+```
+
+This is exactly the paper's estimate (5_basic): at frequency `2^j` only the pieces with
+`L n < j` are resolved, the remaining ones lie in a single cell `[1, 1+2^{-j}]`, and
+`Σ_j Σ_{n : L n < j} Cₙρₙ^j = Σₙ Cₙ ρₙ^{L n+1}/(1-ρₙ)`.  The supporting pieces are
+
+* `fractalDyadicBandpassMaximal_biUnion_le`, `eLpNorm_bandMaximal_iUnion_le`: the band-level
+  splitting of a countable union into the resolved pieces and one cell;
+* `sum_geometric_tail_eq/le`, `sum_double_geometric_le`: the exchange of the double sum;
+* `finite_output_sum_of_bounds`, `absolute_off_diagonal_reassembly_of_summable`: the reassembly
+  of the dyadic pieces from a *summable* (rather than geometric) sequence of coefficients — the
+  geometric hypothesis of the repository's `absolute_off_diagonal_reassembly_from_eLpNorm` is
+  replaced by `∀ N, ∑_{j<N} a j ≤ A`;
+* the low-frequency and zeroth-band bounds are the repository's
+  `absolute_lowpass_improving_eLpNorm` and `absoluteDyadicBandpass_zero_improving_eLpNorm`.
+
+Also proved (needed to place the pieces): affine invariance of the two dimensions,
+
+```lean
+theorem upperMinkowskiDimension_image_affine / upperAssouadSpectrum_image_affine /
+  quasiAssouadDimension_image_affine / isQuasiAssouadRegular_image_affine
+```
+
+each by transferring the covering estimates through `r ↦ c + s·r` in both directions
+(`hasUpperMinkowskiExponent_image_affine`, `hasUpperAssouadSpectrumExponent_image_affine`; the
+short-interval case of the spectrum transfer enlarges the pulled-back interval to the critical
+length `(δ/s)^θ`).
+
+### The one remaining obstruction
+
+The union estimate needs, for the `n`-th piece, band-rate constants that do **not** depend on
+how deep the piece is placed — otherwise the choice of `L(n)` (which must be made *after* the
+constants are known) becomes circular, because the piece is a copy of a fixed regular set scaled
+into `[1+2^{-L(n)-1}, 1+2^{-L(n)}]`.  Two ways out, both still to be formalized:
+
+1. take the pieces to be *tails* `Fₙ ∩ [1, 1+2^{-L(n)}]` of one fixed regular set `Fₙ`
+   accumulating at `1`; monotonicity of the maximal operator in the radius set then gives the
+   band rates of `Fₙ` for every tail, with constants independent of `L(n)`.  What is missing is
+   that such a tail is again `(βₙ,γₙ)`-regular — for the self-similar Cantor examples this
+   follows from the affine invariance above, for the off-diagonal example it needs the §6
+   covering estimates re-run from an arbitrary starting index;
+2. or make the constants of Corollary 2.5 explicit in the covering data (the paper's route),
+   which means re-deriving the five interior routes with the covering constants as hypotheses
+   instead of the dimension equalities.
+
 ## Milestone 18 (2026-08-28 07:42 EDT): the one-cell band estimate — the last analytic ingredient of §7
 
 `RS.lean` (41,766 lines, green, no `sorry`) now proves the band estimate for radius sets confined
