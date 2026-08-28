@@ -1164,3 +1164,706 @@ net data inside an existential.  The majorant form is what the reassembly needs:
    be redone for `d = 2, γ > 1/2` is the triangle geometry whose fourth vertex is the new `Q₄(γ)`,
    including the Stein segment `β = 1`.
 6. **Theorem 1.1** into `LeanSpherical/Theorems.lean`.
+
+## Progress (2026-08-27 21:05 EDT) — the §3 constant is estimated; the `Q₄` single-scale bound is clean
+
+*Not a milestone: two of the three coordinate waves, and the reassembly into the repository's
+maximal operator is not yet combined with the middle wave.*
+
+`exists_waveInt_single_scale_clean` now states, for the outgoing and the incoming wave, that for
+every scale `j` the majorant `W` of `sup_{t∈E}|waveInt part j t f|` obeys
+
+    ‖W‖_{L^{2p₄}} ≤ D · (j+3)² · 2^{jη/(2p₄)} · ‖f‖_{L^{p₄}}
+
+with `D` independent of `j` and `f`.  The exponent is exactly right: the loss is only the subpower
+Assouad loss `2^{jη}` (with `η` at the caller's disposal) and a polynomial factor.
+
+How the scale cancels: `C3` is a product of `ofReal`-factors raised to fixed positive powers, hence
+`C3 = ENNReal.ofReal (c3R …)` (`C3_eq_ofReal`), and `c3R` factorizes as
+
+    c3R = c3D · σ² · 2^J   (`c3Rr_eq`),
+
+where `σ` is the size of the symbol bounds (`σ = 1` for the multiplier, `σ = 2^J` for its dilation
+derivative) and `c3D` is scale-free.  The two exponent computations `4/p + 2(1−2/p) = 2` and
+`2/p + (1−2/p) = 1` are what make the powers of `2^J` collapse.  Together with the plate parameter
+`2^{Mk} ≤ 256·2^{J/2}` this gives, after the prefactor `2^{−J/2}` of the sector decomposition,
+
+    2^{−J/2}·(C3^{1/2} + 2·2^{−J}·C3_t^{1/2}) ≤ c3D_B^{1/2} + 2·c3D_{B_t}^{1/2}
+
+(`prefactor_KQ4_le`), i.e. the derivative term is exactly as large as the main term — the net
+length `δ = 2^{−J}` pays for the factor `2^J` of the phase derivative.  Finally `exists_c3D_bound`
+bounds `c3D` by `D·(j+3)⁴·2^{jη/p}`.
+
+## Milestone 13 (2026-08-27 22:32 EDT) — **Theorem 2.5 (`thm:Q4`) is proved**
+
+`exists_q4_single_scale` is the paper's single-scale `Q₄` estimate, for `d = 2` and `γ > 1/2`,
+with `p₄ = (3+2γ)/2` and `q₄ = 2p₄`:
+
+    ‖ sup_{t∈E} |A^j_t f| ‖_{L^{q₄}}  ≤  C · (j+3)² · 2^{jη/(2p₄)} · ‖f‖_{L^{p₄}},
+
+where the maximal operator is the repository's `fractalDyadicBandpassMaximal 2 E ψ_j` and `η > 0`
+is the subpower Assouad loss of `E`, at the caller's disposal.  Since
+`[χ^E_{A,γ}(2^{-j})]^{1/q₄} ≈ 2^{jη/q₄} = 2^{jη/(2p₄)}`, the Assouad factor is exactly the
+paper's; the polynomial factor `(j+3)²` is weaker than the paper's
+`min(j^{1/2}/(2γ−1), j)^{1/p₄}` (see the judgment call below).
+
+The proof is the whole of §2–§4 of the paper:
+
+* §4 (Propositions 4.2–4.4) and §3 (Theorem 2.1 for the single-scale operator), previously proved
+  under the two hypothesis packages;
+* the packages are now *constructed*: `exists_msc_data`, `exists_mtil_data` for the two
+  oscillatory waves and `exists_mscMid_data`, `exists_mtilMid_data` for the middle wave;
+* the operator identity: the surface Fourier factor is the sum of the three coordinate waves
+  (`sphericalAverage_bandpass_eq_wave_sum`), each wave is `2^{-(j+1)/2}` times the sum of `2^17`
+  rotated sector operators (`sector_sum_msc`, `sector_sum_mscMid`, `waveInt_eq_sector_sum`),
+  and the rotations are absorbed by the measure-preserving change of variables;
+* the constant: the powers of `2^j` in the §3 constant cancel the prefactor `2^{-(j+1)/2}` exactly
+  (`c3Rr_eq`, `prefactor_KQ4_le`), leaving `poly(j)·2^{jη/(2p₄)}` (`exists_c3D_bound`);
+* the middle wave — the non-oscillatory error term of the normal form — is handled by *dividing
+  out* the phase of `mfull`: the compensating factor `e^{-2πit2^J u}` costs `2^{Ji}` per
+  derivative, and the middle amplitude's decay of arbitrary order `N` pays for it
+  (`gmidProfile`, `exists_ampMid_decay`, `exists_goutMid_bound`).  So the middle wave goes through
+  the same sector machinery, with no separate kernel estimate.
+
+`RS.lean` is 31,091 lines, `lake build` green, no `sorry`, axioms `propext`,
+`Classical.choice`, `Quot.sound`.
+
+### Judgment call — the polynomial factor in Theorem 2.5
+
+The paper's factor `min(j^{1/2}/(2γ−1), j)^{1/p₄}` is replaced by `(j+3)²`, which is larger.
+The two places where the paper's sharper factor could matter are (i) the interpolation that
+proves Theorem 1.1, which only needs the factor to be subexponential in `j`, and (ii) endpoint
+statements outside Theorem 1.1.  Since the goal is Theorem 1.1, the weaker factor is used; it
+comes from bounding `(Mc+2)^{2/p}` and `(10(L+1)+1)^{2(1−2/p)}` by `(j+3)²` rather than tracking
+the exponents.
+
+## Progress (2026-08-27 22:50 EDT) — the summation step is free for the planar case
+
+*Not a milestone: an architectural finding plus one small lemma.*
+
+`strong_type_of_rate_planar`: a geometric dyadic rate
+
+    ‖M_j f‖_q ≤ C ρ^j ‖f‖_p   (ρ < 1, all j ≥ 1)
+
+implies `HasFractalSphericalStrongType 2 E p q`, **with no restriction on γ**.  The repository's
+`strong_type_of_strict_high_dyadic_rate` carries the hypothesis `3 ≤ d ∨ (d = 2 ∧ γ ≤ 1/2)`, but
+its `γ` is a *dummy*: it is only forwarded to the `j = 0` bandpass bound
+(`absoluteDyadicBandpass_zero_improving_eLpNorm`), and from there to
+`exists_theoremOneSharpSurfaceFourierInput`, whose conclusion
+(`HasTheoremOneSharpSurfaceFourierInput d`) does not mention `γ` at all.  Instantiating that `γ`
+with `0` satisfies the hypothesis for every planar dilation set.  The same trick applies to every
+repository lemma whose `hd` is only used for `γ`-free conclusions; it does **not** apply where `γ`
+enters through a cover bound or a gap exponent (that is where the paper's new content is needed).
+
+## Milestone 15 (2026-08-28 02:08 EDT): **Theorem 1.1 is proved**
+
+`LeanSpherical/Theorems.lean` now ends with
+
+```lean
+theorem hasFractalSphericalStrongType_of_mem_R_of_two_le
+    {d : ℕ} {β γ p q : ℝ} (hd : 2 ≤ d)
+    (E : Set ℝ) (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hβγ : 0 ≤ β ∧ β ≤ γ ∧ γ ≤ 1)
+    (hMinkowski : upperMinkowskiDimension E = β)
+    (hquasiAssouad : quasiAssouadDimension E = γ)
+    (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ R d β γ) :
+    HasFractalSphericalStrongType d E p q
+```
+
+that is, **`R(β,γ) ⊆ T_E` in every dimension `d ≥ 2`, with no restriction on `γ`** -- Theorem 1.1
+of Roos--Seeger.  The hypothesis `3 ≤ d ∨ (d = 2 ∧ γ ≤ 1/2)` of the repository's previous
+Theorem 1 is gone.  Both the new planar theorem and the assembled statement are `sorry`-free and
+depend only on `[propext, Classical.choice, Quot.sound]`; the whole project builds
+(`lake build`, 3762 jobs).
+
+The planar theorem itself is
+
+```lean
+theorem Auto.Spherical.FractalDilations.RS.theorem_one_planar
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ R 2 beta gam) :
+    HasFractalSphericalStrongType 2 E p q
+```
+
+(`RS.lean`: 34,611 lines, no `sorry`).
+
+### What closed the last gap: `β = 1`
+
+Milestone 14 reduced the planar theorem to a single missing ingredient, the diagonal gains
+`HasDiagGains φ hφone hφzero 1`, i.e. a geometric dyadic rate at `p = q > 2` for the
+**absolute** dyadic band, which for `β = 1` can only come from Bourgain's theorem.  The
+repository proves the corresponding statement for the **radius-relative** band at every `p > 2`
+(`Auto.Spherical.Bourgain.HasRelativeCircularBandGeometricDecay`, from the MSS local-smoothing
+endpoint).  The conversion is now carried out in four steps, all inside `RS.lean`:
+
+1. **Young's inequality in `Lᵖ`** for convolution with an `L¹` kernel
+   (`rs_eLpNorm_convolution_le`), by Hölder against the kernel mass and Tonelli.  Mathlib has no
+   `Lᵖ` Young inequality for convolutions, and the repository's version is `private`.
+2. **The band projection is bounded on `Lᵖ` uniformly in the band index**
+   (`rs_eLpNorm_absoluteDyadicBandpassProjection_le`): the absolute band multiplier is the
+   difference of two dilated low-pass multipliers, each of which is a convolution with a dilate
+   of `𝓕⁻φ`, so step 1 applies with the scale-invariant mass `∫ ‖𝓕⁻φ‖`.
+3. **Four relative bands cover one absolute band**
+   (`rs_fractalDyadicBandpass_maximal_le_relative`): for `r ∈ [1,2]` and `ξ` in the support of
+   the absolute band `ψ_{m+1}` one has `‖rξ‖ ∈ [2^{m+1}, 2^{m+4}]`, so the telescoping sum of the
+   relative bands `k = m, …, m+3` at radius `r` equals `1` there.  Splitting the band projection
+   accordingly *inside the Schwartz space* (where `𝓕⁻` is linear, so no integrability side
+   conditions arise) and using additivity of the spherical average gives the pointwise bound of
+   the absolute band maximal operator by four relative ones applied to the band projection.
+4. **Assembly** (`rs_hasDiagGains_one`): Minkowski's inequality and a scalar pull-out for
+   `ENNReal`-valued `Lᵖ` seminorms, plus `ρ^k ≤ ρ^m` for `k ≥ m`, turn the four relative-band
+   rates into one absolute-band rate with ratio `max(ρ, 1/2) < 1`.
+
+The Stein segment at `β = 1` is Bourgain's theorem itself
+(`rs_strongType_bourgain_diagonal`): on `Seg(1)` the constraint `β < p - 1` forces `p > 2`, and
+the fractal maximal operator over `E ⊆ [1,2]` is pointwise dominated by the full circular
+maximal operator.
+
+## Milestone 14 (2026-08-28 01:25 EDT): Theorem 1.1 in the plane for `β < 1`
+
+`RS.lean` is green (33,594 lines, no `sorry`, axioms `[propext, Classical.choice, Quot.sound]`) and
+now contains
+
+```lean
+theorem theorem_one_planar_of_beta_lt_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbeta1 : beta < 1) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ R 2 beta gam) :
+    HasFractalSphericalStrongType 2 E p q
+```
+
+that is, **`R(β,γ) ⊆ T_E` for `d = 2` and `γ > 1/2`**, whenever `β = dim_M E < 1`.  This is the
+paper's Corollary 2.6 together with its consequence Theorem 1.1, in the only case the literature
+left open, minus the boundary case `β = 1` (which the paper also treats separately, by Bourgain's
+theorem: see the remaining gap below).
+
+### The covering (`§2` of the paper)
+
+Write `(a,b) = (1/p, 1/q)` and `Y₄ = 1/(3+2γ)`, so `Q₄(γ) = (2Y₄, Y₄)`.  Every interior point of
+`Q(β,γ)` is reached in one interpolation step from `Q₄` (small loss, Theorem 2.5) and one
+`β`-only endpoint (genuine gain):
+
+| region | endpoints | lemma |
+|---|---|---|
+| `b < Y₄` | `Q₄(γ)` and a diagonal point | `exists_rate_caseI` |
+| `b ≥ Y₄`, `a < 2Y₄` | a Case-I point and the diagonal point at the same input (vertical) | `exists_rate_caseIII` |
+| `b > Y₄`, `a = 2Y₄` | `Q₄` and the diagonal point at the same input (vertical) | `exists_rate_caseIIIb` |
+| `b > Y₄`, `a > 2Y₄` | `Q₄` and the diagonal *or* conjugate point on the ray from `Q₄` | `exists_rate_caseII` |
+| `a + b ≥ 1` | the repository's `β`-only routes (`γ`-dummy) | `strongType_planar_sum_ge_one` |
+| `Seg` | the planar Minkowski diagonal estimates | `strongType_planar_seg` |
+
+Two points deserve emphasis.
+
+* The off-diagonal interpolation of the previous milestone is only valid on segments of
+  **positive slope** in the `(1/p,1/q)` diagram (both exponents ordered the same way); this is
+  forced by the method, since the amplitude-scale exponent `m` must be positive.  The case
+  division above is exactly a decomposition of `int Q(β,γ)` into positive-slope segments through
+  `Q₄` and vertical segments, which is why the vertical (common-input) interpolation of the
+  repository is used in Cases III and III(b).
+* In Case II the ray from `Q₄` through the target hits the diagonal exactly when the auxiliary
+  functional `G = Y₄ + b(1-4Y₄) - a(1-2Y₄)` is nonnegative, and otherwise hits the conjugate
+  line; the identity `2w - 1 = -G/(a+b-3Y₄)` for the conjugate abscissa `w` makes this precise.
+  That the conjugate endpoint lies **inside** `Q` is exactly the cluster inequality of
+  `int Q(β,γ)`: the cluster functional vanishes at `Q₄` and at `Q₃`, hence is positive at the
+  conjugate point, which is equivalent to `w < X₃`.  This is the one place where the
+  quasi-Assouad geometry of the region is used, and it is where `γ` enters the covering.
+
+### The remaining gap: `β = 1`
+
+`β = 1` forces `γ = 1`, and then all `β`-only gains vanish (`Q₂` needs `β < 1`, `Q₃` needs
+`q < 3-β = 2` while `q > 2`).  The paper covers this case by Bourgain's circular maximal theorem
+in its local-smoothing form.  Accordingly the covering above takes the diagonal gains as the
+abstract hypothesis `HasDiagGains φ hφone hφzero β`, and the only thing missing is an instance of
+
+```lean
+HasDiagGains (E := E) φ hφone hφzero 1
+```
+
+i.e. a geometric dyadic rate at `p = q > 2` for the **absolute** dyadic band.  The repository
+already proves the corresponding statement for the **radius-relative** band, for every `p > 2`
+(`Auto.PowerWeights.DuoandikoetxeaVega.exists_relativeCircularBandGeometricDecay`, whose input is
+the MSS local-smoothing endpoint).  What is left is the elementary conversion: for `r ∈ [1,2]` the
+relative bands `k = j-1, …, j+3` sum to one on the support of the absolute band `j`, so the
+absolute band maximal operator is dominated by five relative ones applied to the band projection,
+whose `L^p` norm is uniformly controlled by Young's inequality.
+
+## Milestone 18 (2026-08-28 07:42 EDT): the one-cell band estimate — the last analytic ingredient of §7
+
+`RS.lean` (41,766 lines, green, no `sorry`) now proves the band estimate for radius sets confined
+to a *single cell* of the band scale, with a constant and a ratio that do not depend on the set:
+
+```lean
+def HasOneCellBandRateReal {d : ℕ} (phi : SchwartzMap (Euclidean d) ℂ) (hphiOne …) (hphiZero …)
+    (p q : ℝ) : Prop :=
+  ∃ C rho : ℝ, 0 < C ∧ 0 < rho ∧ rho < 1 ∧ ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ},
+    E ⊆ Icc (1 : ℝ) 2 → E.Nonempty → ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+    ∀ f, eLpNorm (fractalDyadicBandpassMaximal d E (absoluteDyadicBandpass phi … j) f) q
+      ≤ ENNReal.ofReal (C * rho ^ j) * eLpNorm f p
+
+theorem oneCell_bandRate_of_strict {n : ℕ} (hn : 1 ≤ n) (phi psi …) {x y : ℝ}
+    (hy : 0 < y) (hyx : y < x)
+    (hcap : x < ((n : ℝ) + 1) * y) (hann : ((n : ℝ) + 1) * x < y + (n : ℝ)) :
+    HasOneCellBandRateReal phi hphiOne hphiZero (1 / x) (1 / y)
+```
+
+The three hypotheses on `(x,y) = (1/p, 1/q)` are exactly the interior conditions of `Q(d,0,0)`
+for `d = n + 1`.  This is the estimate the paper writes as
+`‖sup_{1≤t≤1+2^{-j}}|A^j_t f|‖_q ≲ 2^{-aj}‖f‖_p`, in the form the union construction needs: the
+tail of the family of pieces sits inside one cell at every frequency.
+
+### How it is proved
+
+At the band scale `δ = 2^{-j}` a set inside an interval of length `δ` is covered by *one*
+interval, so the repository's cover-parameterized single-band endpoints apply with covering
+exponent `α = 0` and cardinality `1`:
+
+* `exists_oneCell_dyadic_endpoints` / `…_circle` / `…_all`: the `L¹` bound with a constant and
+  the `L²` bound with the gain `2^{-jn}` (via `absolute_dyadic_minkowski_endpoints_of_cover` for
+  `d ≥ 3` and its local-`L²` variant with the circle radius-Sobolev estimate for `d = 2`).
+* `oneCell_crossed_bandRate`: the physical `L¹ → L∞` endpoint (`D·2^j`, valid for *every* radius
+  set) crossed with the one-cell `L²` bound gives the conjugate-line rate
+  `2^{j(1-(n+2)/q)}`, which decays exactly when `q < d + 1`, i.e. strictly inside the
+  `Q₃(0)`-edge.
+* `oneCell_diagonal_bandRate` (`1 < p < 2`, from the `L¹`/`L²` pair) and
+  `oneCell_diagonal_bandRate_above` (every `p` above a given one, through the uniform `L∞`
+  bound of the band operator) give the diagonal rates.
+* `oneCell_bandRate_interp`: two one-cell rates on a segment of positive slope interpolate, by
+  the two-pair machinery of Milestone 17; `exists_twoPair_data_of_reciprocal` extracts the
+  amplitude-scale exponent `m` from reciprocal collinearity.
+* `exists_oneCell_segment_data` + `oneCell_bandRate_of_strict`: every interior point of `Q(0,0)`
+  lies on a segment joining a point of the open conjugate segment
+  `{(ξ,1-ξ) : 1/2 < ξ < d/(d+1)}` to a diagonal point `(t,t)`, `0 < t < 1`; the three cases
+  (below, on, above the conjugate line) differ only in which endpoint is the upper-right one.
+  The four inequalities that place `ξ` are
+  `ξ > 1/2`, `ξ > (1+x-y)/2`, `ξ > x/(x+y)`, `ξ > (1-y)/(2-x-y)`,
+  and they are compatible with `ξ < min(1-y, d/(d+1))` (resp. `ξ < min(x, d/(d+1))`) precisely
+  because of the three interior inequalities; the identity
+  `(d-1)/(d+1) - (x-y) = ((d y - x) + (y + d - 1 - d x))/(d+1)` is what makes the weight
+  positive.
+
+### Remaining for Theorem 1.2
+
+* affine invariance of the two dimensions, to place `(βₙ,γₙ)`-regular copies inside the
+  intervals `[1+2^{-L(n)-1}, 1+2^{-L(n)}]`;
+* the union argument itself (band splitting + the diagonal choice of `L(n)`);
+* the convex geometry `W = ⋂ₙ Q(βₙ,γₙ)`;
+* Lemma 5.1 for part (ii).
+
+## Progress (2026-08-28 05:55 EDT): the band-rate form of Corollary 2.5, in every dimension
+
+`RS.lean` (40,562 lines, green, no `sorry`) now carries the *band* form of the interior estimate,
+which is the shape §7 of the paper needs:
+
+```lean
+def HasAbsoluteBandRate {d : Nat} (E : Set Real) (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi, ‖xi‖ ≤ 1 → phi xi = 1) (hphiZero : ∀ xi, 2 ≤ ‖xi‖ → phi xi = 0)
+    (p q : Real) : Prop :=
+  ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧ ∀ j : Nat, 1 ≤ j → ∀ f, MemLp … ∧
+    eLpNorm (fractalDyadicBandpassMaximal d E (absoluteDyadicBandpass phi … j) f) q ≤
+      (C * rho ^ j) * eLpNorm f p
+
+theorem bandRate_of_mem_interior_Q {d : ℕ} {beta gam p q : ℝ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hp : 0 < p) (hq : 1 ≤ q) (phi psi : SchwartzMap (Euclidean d) ℂ) … 
+    (hregion : reciprocalExponentPoint p q ∈ interior (Q d beta gam)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q
+```
+
+The proof of Theorem 1.1 always went through such rates, but they were consumed immediately by
+`strong_type_of_strict_high_dyadic_rate`.  The five interior routes of the repository skeleton
+(`two_le_input`, `sum_gt_one`, `conjugate_output`, `strict_lower_sector`, `loss_gain`), their
+dispatcher, and the planar assembly of Theorem 1.1 (`bandRate_planar_sum_ge_one`,
+`bandRate_planar_interior`, `bandRate_planar`) are now available in the rate-returning form, with
+the bandpass family `φ` passed in rather than chosen inside, so that all radius sets of a family
+can be treated with one and the same dyadic decomposition.
+
+### The plan for §7 (Theorem 1.2, sufficiency)
+
+The paper writes `W = ⋂ₙ Q(βₙ,γₙ)`, takes `(βₙ,γₙ)`-regular sets `Eₙ` and places a rescaled copy
+of `Eₙ` inside `Jₙ = [1+2^{-L(n)-1}, 1+2^{-L(n)}]`; the whole point of the estimate
+`‖sup_{t∈E}|A^j_t f|‖_q ≤ Σ_{n : L(n) < j} ‖sup_{t∈Eₙ}|A^j_t f|‖_q + ‖sup_{1≤t≤1+2^{-j}}|A^j_t f|‖_q`
+is that at frequency `2^j` only the finitely many pieces with `L(n) < j` are resolved, the rest
+being contained in an interval of length `2^{-j}`.  The paper needs the constants of
+`Aⱼ`-estimates to be uniform in `n`; the formalization avoids that by choosing `L(n)` *after* the
+constants: for a countable dense set `{z_k}` of the interior of `W`, one chooses `L(n)` so large
+that the `n`-th piece contributes at most `2^{-n}` to the `j`-sums at `z_1,…,z_n`.  Then every
+`z_k` is a type point, and `closure T_E ⊇ closure {z_k} = W`.
+
+The remaining analytic ingredient is the last term: a band estimate for the maximal operator over
+an interval of length `2^{-j}` with a geometric gain at every point of the interior of `Q(0,0)`.
+The repository's cover-parameterized single-band endpoints are exactly what is needed here
+(`absolute_dyadic_minkowski_endpoints_of_cover`, its local-`L²` variant, the physical crossed
+`Q₃` estimate `q3_literal_minkowski_cover_crossed_eLpNorm_physical_of_sharp`, and the uniform
+`L¹ → L∞` and `L∞ → L∞` band bounds), since a single interval of length `2^{-j}` is covered by
+*one* interval at the band scale, i.e. by a cover with `α = 0` and cardinality `1`.  Interpolating
+those endpoints (with the interpolation layer built for Milestone 17) gives the required gain
+inside `Q(0,0)`, whose vertices are `(0,0)`, `(1,1)` and `Q₃(0) = (d/(d+1), 1/(d+1))`.
+
+## Milestone 17 (2026-08-28 05:03 EDT): the type set is convex — the interpolation half of Theorem 1.2(i)
+
+`RS.lean` (39,231 lines, green, no `sorry`) now contains a complete interpolation theory for the
+strong type set of the fractal spherical maximal operator, in every dimension `d ≥ 2`:
+
+```lean
+theorem hasFractalSphericalStrongType_interp {d : ℕ} {E : Set ℝ}
+    (hd : 0 < d) (hEpos : E ⊆ Ioi (0 : ℝ)) {p0 q0 p1 q1 p q lam : ℝ}
+    (hp0 : 0 < p0) (hp1 : 0 < p1) (hq0one : 1 ≤ q0) (hq1one : 1 ≤ q1)
+    (hpq0 : p0 ≤ q0) (hpq1 : p1 ≤ q1) (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hpa : p⁻¹ = (1 - lam) * p0⁻¹ + lam * p1⁻¹)
+    (hqb : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹)
+    (h0 : HasFractalSphericalStrongType d E p0 q0)
+    (h1 : HasFractalSphericalStrongType d E p1 q1) :
+    HasFractalSphericalStrongType d E p q
+
+theorem convex_fractalTypeSet {d : ℕ} {E : Set ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) : Convex ℝ (fractalTypeSet d E)
+
+theorem convex_closure_fractalTypeSet {d : ℕ} {E : Set ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) :
+    Convex ℝ (closure (fractalTypeSet d E))
+```
+
+Together with the sandwich `Q(β,γ) ⊆ closure T_E ⊆ Q(β,β)` already proved (Theorem 1.1 and the
+sharpness assertions of arXiv:1909.05389), this is the whole "only if" direction of
+Theorem 1.2(i): the closure of a type set is a closed convex set between `Q(β,γ)` and `Q(β,β)`.
+
+### The three interpolation regimes
+
+A segment of the reciprocal diagram joining two type points is handled by one of three devices,
+selected by the slope of the segment.  With the endpoints labelled so that `p₀ < p₁`:
+
+* **vertical** (`p₀ = p₁`): Lyapunov's inequality for the output norms,
+  `eLpNorm_le_rpow_mul_rpow_of_inv_eq`, proved from Hölder for lower integrals.  No property of
+  the operator is used beyond measurability.
+* **horizontal** (`q₀ = q₁`): the repository's same-output amplitude split
+  (`memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output`).
+* **oblique** (`q₀ ≠ q₁`): two-pair Marcinkiewicz interpolation with a power-law amplitude
+  scale `t ↦ t^m`.  The identities
+  `q - qᵢ = m (p - pᵢ)(qᵢ/pᵢ)` determine `m = (q/p)·(q₀⁻¹-q₁⁻¹)/(p₀⁻¹-p₁⁻¹)`, whose sign is the
+  sign of the slope of the segment.  The positive-slope case was already available from the
+  proof of Theorem 1.1; the negative-slope case is new.
+
+### The negative amplitude exponent
+
+For a segment of negative slope the amplitude scale `t ↦ t^m` is *decreasing*, and the two
+weighted tails
+`∫₀^∞ ‖f·1_{|f|≥t^m}‖_{p₀}^{q₀} t^{q-q₀-1} dt`, `∫₀^∞ ‖f·1_{|f|≤t^m}‖_{p₁}^{q₁} t^{q-q₁-1} dt`
+are no longer of the form already proved.  Instead of mirroring the Hardy-type computation, the
+substitution `t = 1/s` is used:
+
+```lean
+theorem lintegral_Ioi_comp_inv (u : ℝ → ℝ≥0∞) :
+    (∫⁻ t in Ioi (0 : ℝ), u t) = ∫⁻ s in Ioi (0 : ℝ), ENNReal.ofReal ((s ^ 2)⁻¹) * u s⁻¹
+```
+
+(a change of variables for lower integrals, from Mathlib's antitone Jacobian formula).  Under
+this substitution the weight `t^{m(p-p₀)r₀-1}` picks up the two extra factors `s^{-2}` and
+`s^{-(m(p-p₀)r₀-1)}`, which combine to exactly `s^{(-m)(p-p₀)r₀-1}`, and the threshold set
+`{c t^m ≤ u}` becomes `{c s^{-m} ≤ u}`: the tails at exponent `m < 0` are *literally* the tails
+at exponent `-m > 0`.  Only two further points of the assembly are sign-sensitive: the
+interpolation weights `w₀ = (q₁-q)/(q₁-q₀)`, `w₁ = (q-q₀)/(q₁-q₀)` (still positive, being
+quotients of two negative numbers) and the balancing lemma, applied with its two endpoints
+exchanged — the balancing scale `(X₀/X₁)^{1/(q₁-q₀)}` and the final constant are unchanged.
+
+### Two by-products
+
+```lean
+theorem le_of_hasFractalSphericalStrongType {d : ℕ} {E : Set ℝ} {p q : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) (hp : 0 < p) (hq : 1 ≤ q)
+    (hst : HasFractalSphericalStrongType d E p q) : p ≤ q
+
+theorem eLpNorm_schwartz_ne_top {d : ℕ} {p : ℝ} (hp : 0 < p) (f : SchwartzMap (Euclidean d) ℂ) :
+    eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ≠ ⊤
+```
+
+The first (needed to feed `1 ≤ qᵢ/pᵢ` to the two-pair interpolation) is the trivial sharpness
+assertion, read off from the H-representation of `Q`.  The interpolation layer of the plane
+(`twoPair_high_tail_le`, `twoPair_low_tail_le`, `exists_twoPair_interpolation_const` and the two
+`eLpNorm` helpers) was generalized in place from `Pl = Euclidean 2` to `Euclidean d`.
+
+### Remaining for Theorem 1.2
+
+The "if" direction of 1.2(i) — the analysis of §7 for a countable union `E = ⋃ₙ Eₙ` together with
+the convex geometry identifying a closed convex `W` between `Q(β,γ)` and `Q(β,β)` with an
+intersection `⋂ₙ Q(βₙ,γₙ)` — and Lemma 5.1 for part (ii).  The polygonal case (finite
+intersections) is already proved (Milestone 16 and `exists_closure_fractalTypeSet_eq_biInter`).
+
+## Milestone 16 (2026-08-28 04:11 EDT): §6 of the paper — every region `Q(β,γ)` is a type set
+
+`RS.lean` (38,085 lines, green, no `sorry`) now contains the construction of §6 and the resulting
+realization theorem, in every dimension `d ≥ 2`:
+
+```lean
+theorem exists_isQuasiAssouadRegular {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbg : beta ≤ gam)
+    (hgam1 : gam ≤ 1) (hzero : beta = 0 → gam = 0) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧ IsQuasiAssouadRegular E beta gam
+
+theorem exists_closure_fractalTypeSet_eq_Q {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam1 : gam ≤ 1) (hzero : beta = 0 → gam = 0) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
+      closure (fractalTypeSet d E) = Q d beta gam
+```
+
+(The hypothesis `β = 0 → γ = 0` is not a restriction: sets of Minkowski dimension zero have
+quasi-Assouad dimension zero, and `Q(0,γ) = Q(0,0)` anyway, since for `β = 0` the cluster
+constraint degenerates to the spherical-cap constraint.)
+
+### The three examples
+
+* `β = γ = 0`: a single radius (`isQuasiAssouadRegular_singleton`).
+* `0 < β = γ`: the Cantor set of dimension `γ` (`isQuasiAssouadRegular_cantorSet`), with ratio
+  `cantorRatio γ = 2^{-1/γ}`.
+* `0 < β < γ ≤ 1`: the off-diagonal example (`isQuasiAssouadRegular_offDiagSet`)
+
+  ```lean
+  def offDiagSet (beta gam : ℝ) (k0 : ℕ) : Set ℝ := ⋃ j : ℕ, ↑(offDiagPiece beta gam k0 j)
+  ```
+
+  where the `j`-th piece is the `k₀j`-th generation of *midpoints* of the Cantor construction of
+  dimension `γ` inside the interval `[1 + 2Lⱼ, 1 + 3Lⱼ]` of length `Lⱼ = 4⁻¹ρ^{k₀j}`,
+  `ρ = 2^{-(1/β - 1/γ)}`, and `k₀` is any step with `ρ^{k₀} ≤ 1/3` (which makes the intervals
+  disjoint).  The two exponent identities that make this work are
+
+  `2^{k₀j} = (4σⱼ)^{-β}`  and  `Lⱼ = 4⁻¹(4σⱼ)^{1-β/γ}`,   `σⱼ = 4⁻¹2^{-k₀j/β}`,
+
+  the separation of the `j`-th piece being `σⱼ`.  Compared with the paper, the piece index and
+  the generation index are tied together (`m(k) = k₀k` instead of `⌈k/θ⌉`) and the pieces are
+  placed at height comparable to their own length; both choices make the two exponents visible
+  as the displayed identities, and the second is what keeps the pieces below the scale `δ`
+  inside a single interval of length `3δ`.
+
+### What the covering estimates look like
+
+Every estimate is a statement about finite point sets and finite covers:
+
+* `cantorMid_assouad_cover`: for every interval `I` with `|I| ≥ δ` the generation-`m` midpoints
+  inside `I` are covered by at most `16(|I|/δ)^γ` intervals of length `δ`.  The proof counts
+  ancestors: the relevant `δ`-scale midpoints have at most four ancestors at the generation of
+  size `|I|`, and each ancestor carries `2^{m-l}` descendants.
+* `offDiagSet_minkowski_cover`: `N(E,δ) ≤ (5 + 16/(1-q))δ^{-β}`, by splitting the pieces at the
+  separation scale: above it the points are counted (an increasing geometric sum, dominated by
+  its last term), below it the Assouad cover is used (a decreasing geometric sum, dominated by
+  its first term).  The two sums are `sum_ite_geom_incr_le` and `sum_ite_geom_decr_le`.
+* `offDiagSet_spectrum_cover`: `N(E ∩ I, δ) ≤ (19 + 16/(1-q))(|I|/δ)^γ`, using that *at most one*
+  piece longer than `|I|` can meet `I` (consecutive pieces are three times apart), and that the
+  shorter pieces contribute a convergent geometric sum.
+* The matching lower bounds come from the left endpoints of the Cantor construction (which lie
+  *in* the Cantor set) and from the pieces themselves (`not_hasUpperMinkowskiExponent_of_separated`,
+  `not_hasUpperAssouadSpectrumExponent_of_separated`).
+
+### Remaining for Theorem 1.2
+
+§7: the convex geometry (`W = ⋂ₙ Q(βₙ,γₙ)` for closed convex `W` between `Q(β,γ)` and `Q(β,β)`),
+the analysis of the union `E = ⋃ₙ Eₙ` (with the diagonal choice of separating scales described in
+the previous progress entry, which avoids the paper's uniformity requirement), and Lemma 5.1 of
+the paper for part (ii).
+
+## Progress (2026-08-28 03:12 EDT): the regular examples of §6, diagonal case
+
+`RS.lean` (36,416 lines, green, no `sorry`) now contains the Cantor-set machinery of §6 and the
+first family of regular examples.
+
+### Cantor sets from finite midpoint sets
+
+The construction is organized so that *every covering estimate is a statement about finite sets
+of points*.  For `0 < μ ≤ 1/2`,
+
+```lean
+def cantorMid (mu : ℝ) : ℕ → ℝ → ℝ → Finset ℝ        -- the 2^m midpoints of generation m
+def cantorGen (mu : ℝ) : ℕ → ℝ → ℝ → Set ℝ           -- the union of the generation-m intervals
+def cantorSet (mu u L : ℝ) : Set ℝ := ⋂ m, cantorGen mu m u L
+def cantorLeft (mu : ℝ) : ℕ → ℝ → ℝ → Finset ℝ       -- the 2^m left endpoints
+```
+
+with, all proved by induction on the generation,
+
+* `cantorMid_mem_bounds`, `cantorMid_separated` (distinct midpoints are `μ^m L` apart),
+  `cantorMid_card` (`= 2^m`), `cantorMid_cover` (generation `j` covers generation `m ≥ j` at
+  every scale `≥ μ^j L`), and the tree identity `cantorMid_add`;
+* `cantorGen_eq_biUnion_Icc` (the generation is the union of the intervals centered at the
+  midpoints), `cantorGen_antitone`, `cantorSet_intervalCover`;
+* `cantorLeft_subset_cantorSet` — the left endpoints are *in* the Cantor set, are `μ^m L`
+  separated and number `2^m`, which is the source of all lower bounds.
+
+### The dimension toolkit
+
+* `card_le_card_of_intervalCover_of_separated`: a `δ`-separated subset bounds every cover at
+  scale `δ` from below.
+* `upperMinkowskiDimension_eq_of_bounds`, `upperAssouadSpectrum_eq_of_bounds`,
+  `quasiAssouadDimension_eq_of_spectrum`: the dimensions are infima/suprema of exponent sets, so
+  a matching pair of bounds identifies them.
+* `hasUpperMinkowskiExponent_of_hasUpperAssouadSpectrumExponent`: for subsets of `[1,2]` the
+  spectrum estimate implies the global Minkowski estimate.
+
+### The examples
+
+* `cantorSet_assouad_cover`: for every interval `I` with `|I| ≥ δ`, the Cantor set of dimension
+  `γ` inside `I` is covered by at most `12 (|I|/δ)^γ` intervals of length `δ`.  The proof is the
+  ancestor count: the `δ`-scale midpoints meeting `I` have at most three ancestors at the
+  generation of size `|I|` (`card_le_three_of_separated_in_interval`,
+  `exists_ancestor_cantorMid`), and each ancestor carries `2^{m-l}` descendants.
+* `upperMinkowskiDimension_cantorSet`, `upperAssouadSpectrum_cantorSet`,
+  `quasiAssouadDimension_cantorSet`, and hence
+
+```lean
+theorem isQuasiAssouadRegular_cantorSet {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (u : ℝ) (hu : 1 ≤ u) (hu2 : u + 1 ≤ 2) :
+    IsQuasiAssouadRegular (cantorSet (cantorRatio gam) u 1) gam gam
+```
+
+together with `isQuasiAssouadRegular_singleton` for the pair `(0,0)`.  With
+`closure_fractalTypeSet_eq_Q_of_regular` this already identifies the closure of the type set of
+these sets as `Q(γ,γ)`, and via Theorem 1.3 the closure of the type set of any finite union of
+them as the corresponding finite intersection.
+
+### Next
+
+The remaining example family is the off-diagonal one, `0 < β < γ ≤ 1` (§6.2).  With
+`c = 1/β - 1/γ > 0` the pieces can be taken to be
+
+`F_k = cantorMid (cantorRatio γ) k (1 + Λ^k) L_k`,  `L_k = s 2^{-kc}`,  `Λ = 2^{-c/2}`,
+
+for a small constant `s = s(c)`; then the `k`-th piece has `2^k` points at separation
+`σ_k = s 2^{-k/β}`, so `2^k = s^β σ_k^{-β}` (Minkowski dimension `β`) while
+`L_k = s^{1-θ} σ_k^{θ}` with `θ = 1 - β/γ` (spectrum `γ` for `θ' > θ`).  This choice makes the
+generation index of the `k`-th piece equal to `k`, which is what keeps the two exponents
+independent.
+
+## Progress (2026-08-28 02:34 EDT): the type set, and Theorem 1.3
+
+With Theorem 1.1 finished, work has moved to **Theorem 1.2** (`thm:type` of the paper): the
+characterization of the closed convex sets that occur as closures of type sets.  Three layers are
+in place (`RS.lean`, green, no `sorry`).
+
+### The type set
+
+```lean
+def fractalTypeSet (d : ℕ) (E : Set ℝ) : Set ExponentPoint :=
+  {z | ∃ p q : ℝ, 0 < p ∧ 1 ≤ q ∧ z = reciprocalExponentPoint p q ∧
+    HasFractalSphericalStrongType d E p q}
+```
+
+* `mem_interior_Q_of_strict` / `exists_pos_bound_mem_interior_Q`: the four strict sharpness
+  inequalities are a *sufficient* condition for interior membership in `Q(β,γ)` (the repository
+  had only the necessary direction), and all sufficiently small points of the ray
+  `t ↦ ((1+d)t/2, t)` satisfy them.  In particular `interior Q(β,γ) ≠ ∅`, and finitely many
+  regions have a common interior point.
+* `interior_Q_subset_fractalTypeSet`, `Q_subset_closure_fractalTypeSet`: Theorem 1.1 in the
+  exponent plane, for every `d ≥ 2` (`theorem_one_unrestricted`).
+* `fractalTypeSet_subset_Q_self`, `fractalTypeSet_subset_Q_of_regular`: the sharpness half of
+  Theorem 2 of arXiv:1909.05389 confines the type set to `Q(β,β)`, and to `Q(β,γ)` for
+  quasi-Assouad regular sets.
+* **`closure_fractalTypeSet_eq_Q_of_regular`**: for a `(β,γ)`-quasi-Assouad regular set,
+  `closure T_E = Q(β,γ)` — equation (1.13) of the paper, in all dimensions `d ≥ 2`.
+
+### Theorem 1.3 (finite unions)
+
+```lean
+theorem closure_fractalTypeSet_biUnion_eq_iInter
+    {d : ℕ} {ι : Type*} [DecidableEq ι] {Es : ι → Set ℝ} {betas gams : ι → ℝ}
+    (hd : 2 ≤ d) (s : Finset ι) (hs : s.Nonempty)
+    (hE : ∀ j ∈ s, Es j ⊆ Icc (1 : ℝ) 2) (hEne : ∀ j ∈ s, (Es j).Nonempty)
+    (hbg : ∀ j ∈ s, 0 ≤ betas j ∧ betas j ≤ gams j ∧ gams j ≤ 1)
+    (hreg : ∀ j ∈ s, IsQuasiAssouadRegular (Es j) (betas j) (gams j)) :
+    closure (fractalTypeSet d (⋃ j ∈ s, Es j)) = ⋂ j ∈ s, Q d (betas j) (gams j)
+```
+
+The two inputs are the subadditivity of the maximal operator over a finite union
+(`hasFractalSphericalStrongType_biUnion`) and its monotonicity in the radius set; the geometric
+input is `closure_biInter_interior_Q_eq`, that the closure of the intersection of the interiors is
+the intersection of the regions (proved from the common interior point above).
+
+### Plan for Theorem 1.2, and one deviation from the paper
+
+The remaining ingredients are
+
+1. existence of `(β,γ)`-quasi-Assouad regular subsets of `[1,2]` for all `0 ≤ β ≤ γ ≤ 1`
+   (§6 of the paper: Cantor-type constructions);
+2. the convex geometry of §7: a closed convex `W` with `Q(β,γ) ⊆ W ⊆ Q(β,β)` is a countable
+   intersection `⋂ₙ Q(βₙ,γₙ)`;
+3. the analysis of the union `E = ⋃ₙ (1 + 2^{-L(n)-1} E_{βₙ,γₙ})`;
+4. Lemma 5.1 of the paper (the covering-number necessary condition) for part (ii).
+
+For step 3 the paper needs its Corollary 2.6 with constants *uniform in `n`*, which is why §6
+constructs a *uniform* family of regular sets.  A quantitative version of the present
+formalization of Theorem 1.1 would be a very large refactor, and it can be avoided: the
+separating scales `L(n)` may be chosen *after* the constants of the `n`-th set are known.  If
+`C_n(z)` and `ε_n(z)` are the constant and the gain of the band estimate for `E_n` at an exponent
+point `z`, choosing `L(n)` so large that `C_n(z_k) 2^{-L(n)ε_n(z_k)}/(1-2^{-ε_n(z_k)}) ≤ 2^{-n}`
+for all `k ≤ n` — a diagonal choice over a countable dense subset `{z_k}` of `int W`, which
+suffices because only the *closure* of the type set is at stake — makes the double sum over
+bands `j` and pieces `n` converge with no uniformity in `n`.  The reassembly then needs a
+summable-rate variant of `absolute_off_diagonal_reassembly_from_eLpNorm`, whose proof uses the
+geometric ratio only through `∑ⱼ ρ^j < ∞`.
+
+## Progress (2026-08-28 00:06 EDT): the off-diagonal two-pair interpolation
+
+`RS.lean` is green (32,405 lines, no `sorry`) with a complete **off-diagonal (two-pair)
+Marcinkiewicz interpolation theorem** for subadditive nonnegative operators on the Schwartz class
+of the plane, and its dyadic-rate corollary:
+
+* `exists_twoPair_interpolation_const` — for collinear exponent pairs
+  `(1/p₀,1/q₀), (1/p,1/q), (1/p₁,1/q₁)` with `p₀ < p < p₁`, `q₀ < q < q₁`, `p_i ≤ q_i`, there is a
+  constant depending only on the exponents such that two strong endpoint estimates with constants
+  `B₀, B₁` imply the strong estimate at `(p,q)` with constant `C·B₀^{e₀}·B₁^{e₁}`, where
+  `e₀ = q₀(q₁-q)/(q(q₁-q₀))`, `e₁ = q₁(q-q₀)/(q(q₁-q₀))` are the interpolation weights.
+* `exists_twoPair_dyadic_rate` — the same statement for the dyadic bandpass maximal operator
+  `Mdy φ j` in rate form: two rates `C_i ρ_i^j` give the rate `C·(ρ₀^{e₀}ρ₁^{e₁})^j`.  This is
+  what converts an arbitrarily small `Q₄` **loss** together with a genuine `Q₂`/`Q₃` **gain** into
+  a gain at every intermediate exponent pair.
+
+Why this was needed.  The repository has only *same-input* and *same-output* interpolations of
+dyadic rates, plus two special two-pair arguments in which one endpoint is `L¹ → L^∞` or
+`L^∞ → L^∞` (so that one half of the amplitude split is killed pointwise).  Theorem 2.5 supplies a
+single exponent pair `Q₄(γ) = ((3+2γ)/2, 3+2γ)`, and the pairs `Q₂,β`, `Q₃,β` share neither the
+input nor the output exponent with it, so the genuinely off-diagonal theorem is unavoidable.  An
+analysis of the reachable set (rays from `Q₁`, lines through `(1,0)`, and vertical/horizontal
+combinations) shows that no chain of the repository's interpolations covers the wedge between the
+`Q₁Q₃` diagonal and the cluster edge `Q₃Q₄`.
+
+Structure of the proof (all in `RS.lean`):
+
+1. `lintegral_highTail_pow_eq`, `lintegral_lowTailA_eq`, `lintegral_lowTailB_eq` — Tonelli
+   identities for the amplitude tails at a **power-law amplitude scale** `a(t) = c·t^m`.  The
+   substitution is performed by reparametrizing the threshold: `c·t^m ≤ u x ↔ t ≤ (u x/c)^{1/m}`
+   (`thr`, `mem_thr_iff`), which makes the repository's swap lemmas
+   `lintegral_swap_indicator_le/lt` directly applicable.
+2. `lintegral_highTail_rpow_le`, `lintegral_lowTail_rpow_le` — the tails raised to the powers
+   `r_i = q_i/p_i ≥ 1`.  The Hardy inequality of the classical proof is avoided by the elementary
+   bound `B^{r} ≤ (crude bound)^{r-1}·B`, after which Tonelli applies verbatim; the exponent
+   condition `q - q_i = m(p - p_i)r_i` (two equations, one unknown `m`) is exactly the
+   collinearity of the three exponent pairs.
+3. `twoPair_high_tail_le`, `twoPair_low_tail_le` — the same tails for the literal smooth
+   amplitude split of `Auto.Spherical.SchwartzData` (both pieces stay Schwartz).
+4. `balance_two_terms` — the free scale of
+   `Auto.Spherical.MSS.sourceOutput_two_pair_marcinkiewicz_moment_of_strong_endpoints_and_scaled_split_tails`
+   is chosen so that the two contributions of the moment coefficient are equal; both then equal
+   their weighted geometric mean.  `geom_mean_expand` and `root_of_balanced` extract the powers of
+   `B₀`, `B₁` and of the input moment, the latter with the exponent identity
+   `r₀w₀ + r₁w₁ = q/p`.
+
+### Revised plan for the rest of Theorem 1.1
+
+1. ✅ **Theorem 2.5** (`exists_q4_single_scale`): the `Q₄` rate with the subexponential loss.
+2. **Interpolation** to geometric decay at nearby exponents.  The repository's interpolation
+   machinery is `hd`-free and usable: `eLpNorm_schwartz_of_two_nearby_strong_outputs`
+   (output interpolation at fixed input) and
+   `two_pair_marcinkiewicz_moment_of_strong_endpoints_and_split_tails` (two-pair Marcinkiewicz for
+   a sublinear operator).  A corner rate *with* decay is needed as the second input; the
+   repository's `exists_q2_diagonal_dyadic_rate` needs only `d = 2 ∧ β < 1`, and the `Q₃` rates
+   are of the same kind.  Note the repository's *planar* `Q₄` chain
+   (`exists_q4_planar_critical_upper_sector_strict_dyadic_rate`) is capped at `γ = 1/2` precisely
+   because its `L²` inputs require `q4GapExponent 2 γ θ < 0`, i.e. `θ < 1/(1+2γ)`, which fails at
+   `θ = p/q = 1/2` once `γ > 1/2` — this is exactly the gap the new estimate fills.
+3. ✅ **Summation over `j`** (`strong_type_of_rate_planar`).
+4. **Geometry**: cover the interior of `R(β,γ)` for `d = 2, γ > 1/2` by the convex combinations of
+   `Q₄(γ)` with the `Q₁, Q₂,β, Q₃,β` corners, including the Stein segment `β = 1`.
+5. **Theorem 1.1** into `LeanSpherical/Theorems.lean`.

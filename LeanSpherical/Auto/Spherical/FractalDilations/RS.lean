@@ -9,6 +9,11 @@ import Mathlib.Analysis.Complex.ExponentialBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.QuasiAssouadBridge
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4RadialReduction
 import LeanSpherical.Auto.Spherical.FractalDilations.Q4AbsoluteBandpassBridge
+import LeanSpherical.Auto.Spherical.FractalDilations.StrictDyadicReassembly
+import LeanSpherical.Auto.Spherical.FractalDilations.ProofSkeleton
+import LeanSpherical.Auto.Spherical.FractalDilations.Theorems
+import LeanSpherical.Auto.Spherical.MSSBase
+import LeanSpherical.Auto.Spherical.Bourgain
 import LeanSpherical.Auto.Spherical.FractalDilations.PlanarTripleWaveNormalForm
 import LeanSpherical.Auto.Spherical.FractalDilations.CoordinateWaveSymbolBounds
 import LeanSpherical.Auto.Spherical.FourierRadius
@@ -28202,17 +28207,18 @@ theorem integrable_integrand_mfull_rot {j : ℕ} {m : ℝ → Pl → ℂ}
   exact mul_le_mul_of_nonneg_right (norm_mfull_le hm ε t _) (norm_nonneg _)
 
 set_option maxHeartbeats 1000000 in
-/-- **The wave piece is the sum of the rotated sector operators.** -/
+/-- **The wave piece is the sum of the rotated sector operators**, given the sector expansion of
+the multiplier. -/
 theorem waveInt_eq_sector_sum {φ : SchwartzMap Pl ℂ}
     (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
     (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
-    (hφrad : IsNormRadial (φ : Pl → ℂ))
-    (part : CoordinateWavePart) {ε : ℝ} {j : ℕ}
-    {m2 : ℝ → Pl → Pl → Pl → ℂ} {B0 : ℝ}
-    (hm : MultData (j + 1) (msc φ part (j + 1)) m2 B0)
-    {t : ℝ} (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
-    (hph : ∀ ρ : ℝ, oscillatoryExp (coordinateWaveRadialPhase part t) ρ
-      = Complex.exp (((2 * π * ε * t * ρ : ℝ) : ℂ) * Complex.I))
+    (part : CoordinateWavePart) {ε : ℝ} {j : ℕ} {msym : ℝ → Pl → ℂ}
+    {m2 : ℝ → Pl → Pl → Pl → ℂ} {B0 : ℝ} (hm : MultData (j + 1) msym m2 B0) {t : ℝ}
+    (hsum : ∀ ξ : Pl, (∑ ν ∈ Finset.range Nsec,
+        mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ))
+      = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+        * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+          * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ))
     (f : SchwartzMap Pl ℂ) (x : Pl) :
     waveInt hφone hφzero part j t f x
       = (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ) * ∑ ν ∈ Finset.range Nsec,
@@ -28225,12 +28231,12 @@ theorem waveInt_eq_sector_sum {φ : SchwartzMap Pl ℂ}
   have hpiece : ∀ α : ℝ,
       (TopS hm ε t (rotSch α f) : Pl → ℂ) (rotF (-α) x)
         = ∫ ξ : Pl, ee (-(inner ℝ x ξ : ℝ))
-            * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-α) ξ) * 𝓕 ((f : Pl → ℂ)) ξ) := by
+            * (mfull (j + 1) ε msym t (rotF (-α) ξ) * 𝓕 ((f : Pl → ℂ)) ξ) := by
     intro α
     rw [TopS_eq_integral hm ε t (rotSch α f) (rotF (-α) x)]
     have h := (measurePreserving_rotF α).integral_comp (measurableEmbedding_rotF α)
       (fun ξ : Pl => ee (-(inner ℝ x ξ : ℝ))
-        * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-α) ξ) * 𝓕 ((f : Pl → ℂ)) ξ))
+        * (mfull (j + 1) ε msym t (rotF (-α) ξ) * 𝓕 ((f : Pl → ℂ)) ξ))
     rw [← h]
     refine integral_congr_ae (Filter.Eventually.of_forall fun ω => ?_)
     have hinner : (inner ℝ x (rotF α ω) : ℝ) = (inner ℝ (rotF (-α) x) ω : ℝ) := by
@@ -28242,22 +28248,22 @@ theorem waveInt_eq_sector_sum {φ : SchwartzMap Pl ℂ}
       rw [rotSch_coe]
       exact fourier_comp_rotF α ω
     show ee (-(inner ℝ (rotF (-α) x) ω : ℝ))
-        * (mfull (j + 1) ε (msc φ part (j + 1)) t ω * 𝓕 ((rotSch α f : Pl → ℂ)) ω)
+        * (mfull (j + 1) ε msym t ω * 𝓕 ((rotSch α f : Pl → ℂ)) ω)
       = ee (-(inner ℝ x (rotF α ω) : ℝ))
-        * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-α) (rotF α ω))
+        * (mfull (j + 1) ε msym t (rotF (-α) (rotF α ω))
           * 𝓕 ((f : Pl → ℂ)) (rotF α ω))
     rw [hinner, hrot2, hfour]
   have hsumeq : (∑ ν ∈ Finset.range Nsec,
       (TopS hm ε t (rotSch ((ν : ℝ) * hsec) f) : Pl → ℂ) (rotF (-((ν : ℝ) * hsec)) x))
       = ∑ ν ∈ Finset.range Nsec, ∫ ξ : Pl, ee (-(inner ℝ x ξ : ℝ))
-          * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
+          * (mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ)
             * 𝓕 ((f : Pl → ℂ)) ξ) :=
     Finset.sum_congr rfl fun ν _ => hpiece ((ν : ℝ) * hsec)
   rw [hsumeq]
   -- step 2: combine the finite sum with the integral
   have hint : ∀ ν ∈ Finset.range Nsec, Integrable (fun ξ : Pl =>
       ee (-(inner ℝ x ξ : ℝ))
-        * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
+        * (mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ)
           * 𝓕 ((f : Pl → ℂ)) ξ)) (volume : Measure Pl) := fun ν _ =>
     integrable_integrand_mfull_rot hm ε t f x _
   rw [← integral_finset_sum _ hint, ← integral_const_mul, waveInt]
@@ -28268,62 +28274,36 @@ theorem waveInt_eq_sector_sum {φ : SchwartzMap Pl ℂ}
         * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ * 𝓕 ((f : Pl → ℂ)) ξ)
     = (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ) * ∑ ν ∈ Finset.range Nsec,
         ee (-(inner ℝ x ξ : ℝ))
-          * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
+          * (mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ)
             * 𝓕 ((f : Pl → ℂ)) ξ)
   have hcancel : (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ)
       * ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ) = 1 := by
     rw [← Complex.ofReal_mul, inv_mul_cancel₀ (ne_of_gt hsqrtpos), Complex.ofReal_one]
-  have hterm : planarCoordinateWaveRadialTerm part t ‖ξ‖
-      = planarCoordinateWaveRadialAmplitude part t ‖ξ‖
-        * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I) := by
-    rw [planarCoordinateWaveRadialTerm, hph]
-  have h1 : ∀ ν : ℕ, ee (-(inner ℝ x ξ : ℝ))
-        * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
-          * 𝓕 ((f : Pl → ℂ)) ξ)
-      = (ee (-(inner ℝ x ξ : ℝ)) * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
-          * 𝓕 ((f : Pl → ℂ)) ξ) * msc φ part (j + 1) t (rotF (-((ν : ℝ) * hsec)) ξ) := by
-    intro ν
-    rw [mfull, norm_rotF]
+  have hpull : (∑ ν ∈ Finset.range Nsec, ee (-(inner ℝ x ξ : ℝ))
+        * (mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ) * 𝓕 ((f : Pl → ℂ)) ξ))
+      = (ee (-(inner ℝ x ξ : ℝ)) * 𝓕 ((f : Pl → ℂ)) ξ)
+        * ∑ ν ∈ Finset.range Nsec,
+            mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun ν _ => ?_
     ring
+  rw [hpull, hsum ξ]
   calc ee (-(inner ℝ x ξ : ℝ))
         * (planarCoordinateWaveRadialTerm part t ‖ξ‖
           * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ * 𝓕 ((f : Pl → ℂ)) ξ)
       = ((((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ)
           * ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ))
         * (ee (-(inner ℝ x ξ : ℝ))
-          * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
-          * 𝓕 ((f : Pl → ℂ)) ξ
-          * (planarCoordinateWaveRadialAmplitude part t ‖ξ‖
-            * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ)) := by
-        rw [hcancel, hterm]
-        ring
+          * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+            * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ
+            * 𝓕 ((f : Pl → ℂ)) ξ)) := by
+        rw [hcancel, one_mul]
     _ = (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ)
-        * ((ee (-(inner ℝ x ξ : ℝ))
-            * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
-            * 𝓕 ((f : Pl → ℂ)) ξ)
+        * ((ee (-(inner ℝ x ξ : ℝ)) * 𝓕 ((f : Pl → ℂ)) ξ)
           * (((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
-            * (planarCoordinateWaveRadialAmplitude part t ‖ξ‖
-              * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ))) := by ring
-    _ = (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ)
-        * ((ee (-(inner ℝ x ξ : ℝ))
-            * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
-            * 𝓕 ((f : Pl → ℂ)) ξ)
-          * ∑ ν ∈ Finset.range Nsec,
-              msc φ part (j + 1) t (rotF (-((ν : ℝ) * hsec)) ξ)) := by
-        rw [sector_sum_msc hφone hφzero hφrad part j ht1 ht2 ξ]
-    _ = (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ)
-        * ∑ ν ∈ Finset.range Nsec,
-            (ee (-(inner ℝ x ξ : ℝ))
-              * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
-              * 𝓕 ((f : Pl → ℂ)) ξ)
-              * msc φ part (j + 1) t (rotF (-((ν : ℝ) * hsec)) ξ) := by
-        rw [Finset.mul_sum]
-    _ = (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ) * ∑ ν ∈ Finset.range Nsec,
-          ee (-(inner ℝ x ξ : ℝ))
-            * (mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
-              * 𝓕 ((f : Pl → ℂ)) ξ) := by
-        refine congrArg (fun z : ℂ => (((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ) * z) ?_
-        exact (Finset.sum_congr rfl fun ν _ => (h1 ν).symm)
+            * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+              * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ))) := by
+        ring
 
 /-! ### The three wave pieces reassemble the single-scale average -/
 
@@ -28516,15 +28496,16 @@ operator, the `part`-wave of the dyadic spherical average obeys the same bound w
 theorem lintegral_pow_iSup_waveInt_le {φ : SchwartzMap Pl ℂ}
     (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
     (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
-    (hφrad : IsNormRadial (φ : Pl → ℂ))
-    (part : CoordinateWavePart) {ε : ℝ} {j : ℕ} {mdot : ℝ → Pl → ℂ}
+    (part : CoordinateWavePart) {ε : ℝ} {j : ℕ} {mdot msym : ℝ → Pl → ℂ}
     {m2 m2' : ℝ → Pl → Pl → Pl → ℂ} {B0 B0' : ℝ}
-    (hm : MultData (j + 1) (msc φ part (j + 1)) m2 B0)
-    (hmt : MultData (j + 1) (mtil ε (msc φ part (j + 1)) mdot) m2' B0')
-    (hmd : ∀ (ω : Pl) (t : ℝ),
-      HasDerivAt (fun s : ℝ => msc φ part (j + 1) s ω) (mdot t ω) t)
-    (hph : ∀ t ρ : ℝ, oscillatoryExp (coordinateWaveRadialPhase part t) ρ
-      = Complex.exp (((2 * π * ε * t * ρ : ℝ) : ℂ) * Complex.I))
+    (hm : MultData (j + 1) msym m2 B0)
+    (hmt : MultData (j + 1) (mtil ε msym mdot) m2' B0')
+    (hmd : ∀ (ω : Pl) (t : ℝ), HasDerivAt (fun s : ℝ => msym s ω) (mdot t ω) t)
+    (hsum : ∀ t : ℝ, 1 ≤ t → t ≤ 2 → ∀ ξ : Pl, (∑ ν ∈ Finset.range Nsec,
+        mfull (j + 1) ε msym t (rotF (-((ν : ℝ) * hsec)) ξ))
+      = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+        * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+          * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ))
     {E : Set ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2) {p : ℝ} (hp : 2 < p) {K : ℝ≥0∞}
     (hK : ∀ g : SchwartzMap Pl ℂ,
       (∫⁻ x : Pl, (⨆ t : E, ‖(TopS hm ε t.1 g : Pl → ℂ) x‖ₑ) ^ (2 * p)) ^ (1 / (2 * p))
@@ -28561,7 +28542,7 @@ theorem lintegral_pow_iSup_waveInt_le {φ : SchwartzMap Pl ℂ}
     refine iSup_le fun t => ?_
     have ht1 : (1 : ℝ) ≤ t.1 := (hE t.2).1
     have ht2 : t.1 ≤ 2 := (hE t.2).2
-    rw [waveInt_eq_sector_sum hφone hφzero hφrad part hm ht1 ht2 (hph t.1) f x]
+    rw [waveInt_eq_sector_sum hφone hφzero part hm (hsum t.1 ht1 ht2) f x]
     rw [Finset.sum_apply]
     calc ‖(((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹ : ℝ) : ℂ) * ∑ ν ∈ Finset.range Nsec,
             (TopS hm ε t.1 (rotSch ((ν : ℝ) * hsec) f) : Pl → ℂ)
@@ -28669,6 +28650,76 @@ theorem C3_mono {Cs CV Cst Na Na' B0 B0' : ℝ} {j Mc Mc' Mk L : ℕ} {p gam : �
 
 /-! ### The single-scale estimate for one coordinate wave, with the §3 constant -/
 
+/-- The plate parameters, together with the size bounds needed to estimate the §3 constant. -/
+theorem exists_plate_params_sized (j : ℕ) :
+    ∃ Mk L : ℕ, 1 ≤ Mk ∧ (2 : ℝ) ^ (-(Mk : ℤ)) ≤ 1 / 100
+      ∧ 2 * (Mk : ℤ) ≤ (j : ℤ) + 14 ∧ (j : ℤ) ≤ 2 * (Mk : ℤ)
+      ∧ ⌈π * (2 : ℝ) ^ Mk⌉ ≤ 2 ^ L
+      ∧ (2 : ℝ) ^ Mk ≤ 256 * ((2 : ℝ) ^ (j : ℤ)) ^ ((1 : ℝ) / 2)
+      ∧ 10 * ((L : ℝ) + 1) + 1 ≤ 5 * (j : ℝ) + 111 := by
+  obtain ⟨Mk, L, h1, h2, h3, h4, h5⟩ := exists_plate_params j
+  refine ⟨max 7 ((j + 1) / 2), max 7 ((j + 1) / 2) + 2, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact le_trans (by norm_num) (le_max_left _ _)
+  · have h7 : (7 : ℤ) ≤ (max 7 ((j + 1) / 2) : ℕ) := by
+      have : 7 ≤ max 7 ((j + 1) / 2) := le_max_left _ _
+      exact_mod_cast this
+    have hle : (2 : ℝ) ^ (-((max 7 ((j + 1) / 2) : ℕ) : ℤ)) ≤ (2 : ℝ) ^ (-(7 : ℤ)) :=
+      zpow_le_zpow_right₀ (by norm_num) (by omega)
+    refine le_trans hle ?_
+    norm_num
+  · have hh1 : 2 * max 7 ((j + 1) / 2) ≤ j + 14 := by omega
+    exact_mod_cast hh1
+  · have hh1 : j ≤ 2 * max 7 ((j + 1) / 2) := by omega
+    exact_mod_cast hh1
+  · refine Int.ceil_le.mpr ?_
+    have hpi : π ≤ 4 := by
+      have h := Real.pi_lt_d2
+      linarith
+    have hpow : (0 : ℝ) < (2 : ℝ) ^ (max 7 ((j + 1) / 2)) := by positivity
+    have hh1 : π * (2 : ℝ) ^ (max 7 ((j + 1) / 2))
+        ≤ 4 * (2 : ℝ) ^ (max 7 ((j + 1) / 2)) :=
+      mul_le_mul_of_nonneg_right hpi hpow.le
+    refine le_trans hh1 (le_of_eq ?_)
+    push_cast
+    rw [pow_add]
+    ring
+  · -- the size bound for `2^{Mk}`
+    have hMkle : (max 7 ((j + 1) / 2) : ℕ) ≤ 7 + (j + 1) / 2 := by omega
+    have ha : (2 : ℝ) ^ (max 7 ((j + 1) / 2) : ℕ) ≤ (2 : ℝ) ^ (7 + (j + 1) / 2 : ℕ) :=
+      pow_le_pow_right₀ (by norm_num) hMkle
+    have hb : (2 : ℝ) ^ (7 + (j + 1) / 2 : ℕ) = 128 * (2 : ℝ) ^ ((j + 1) / 2 : ℕ) := by
+      rw [pow_add]
+      norm_num
+    have hexp : (((j + 1) / 2 : ℕ) : ℝ) ≤ (j : ℝ) / 2 + 1 := by
+      have hnat : 2 * ((j + 1) / 2) ≤ j + 2 := by omega
+      have : ((2 * ((j + 1) / 2) : ℕ) : ℝ) ≤ ((j + 2 : ℕ) : ℝ) := by exact_mod_cast hnat
+      push_cast at this
+      linarith
+    have hc : (2 : ℝ) ^ ((j + 1) / 2 : ℕ) ≤ 2 * ((2 : ℝ) ^ (j : ℤ)) ^ ((1 : ℝ) / 2) := by
+      have hz : ((2 : ℝ) ^ (j : ℤ)) ^ ((1 : ℝ) / 2) = (2 : ℝ) ^ ((j : ℝ) / 2) := by
+        rw [← Real.rpow_intCast (2 : ℝ) (j : ℤ), ← Real.rpow_mul (by norm_num)]
+        congr 1
+        push_cast
+        ring
+      have hnat : (2 : ℝ) ^ ((j + 1) / 2 : ℕ) = (2 : ℝ) ^ ((((j + 1) / 2 : ℕ) : ℝ)) := by
+        rw [Real.rpow_natCast]
+      rw [hz, hnat]
+      have hmono : (2 : ℝ) ^ ((((j + 1) / 2 : ℕ) : ℝ)) ≤ (2 : ℝ) ^ ((j : ℝ) / 2 + 1) :=
+        Real.rpow_le_rpow_of_exponent_le (by norm_num) hexp
+      refine le_trans hmono (le_of_eq ?_)
+      rw [Real.rpow_add (by norm_num), Real.rpow_one]
+      ring
+    calc (2 : ℝ) ^ (max 7 ((j + 1) / 2) : ℕ) ≤ 128 * (2 : ℝ) ^ ((j + 1) / 2 : ℕ) := by
+          rw [← hb]; exact ha
+      _ ≤ 128 * (2 * ((2 : ℝ) ^ (j : ℤ)) ^ ((1 : ℝ) / 2)) := by
+          exact mul_le_mul_of_nonneg_left hc (by norm_num)
+      _ = 256 * ((2 : ℝ) ^ (j : ℤ)) ^ ((1 : ℝ) / 2) := by ring
+  · -- the size bound for `L`
+    have hnat : 10 * (max 7 ((j + 1) / 2) + 2) + 11 ≤ 5 * j + 111 := by omega
+    have hR := (Nat.cast_le (α := ℝ)).mpr hnat
+    push_cast at hR ⊢
+    linarith
+
 noncomputable def shrC : ℝ := Classical.choose exists_shrinkS_deriv_bound
 
 theorem one_le_shrC : 1 ≤ shrC := (Classical.choose_spec exists_shrinkS_deriv_bound).1
@@ -28699,15 +28750,30 @@ set_option maxHeartbeats 4000000 in
 theorem exists_waveInt_single_scale_bound (φ : SchwartzMap Pl ℂ)
     (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
     (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
-    (hφrad : IsNormRadial (φ : Pl → ℂ))
     (part : CoordinateWavePart) {ε : ℝ} (hε : |ε| = 1)
-    (hph : ∀ t ρ : ℝ, oscillatoryExp (coordinateWaveRadialPhase part t) ρ
-      = Complex.exp (((2 * π * ε * t * ρ : ℝ) : ℂ) * Complex.I))
+    {msym mdotsym : ℕ → ℝ → Pl → ℂ} {B Bt : ℝ} (hBpos : 0 < B) (hBtpos : 0 < Bt)
+    (hdata : ∀ J : ℕ, 1 ≤ J → MultData J (msym J) (m2can (msym J)) B
+      ∧ PolarData J (msym J) (mrcan (msym J)) (macan (msym J)) (384 * B))
+    (hdatat : ∀ J : ℕ, 1 ≤ J →
+      MultData J (mtil ε (msym J) (mdotsym J)) (m2can (mtil ε (msym J) (mdotsym J)))
+          (Bt * (2 : ℝ) ^ J)
+        ∧ PolarData J (mtil ε (msym J) (mdotsym J)) (mrcan (mtil ε (msym J) (mdotsym J)))
+          (macan (mtil ε (msym J) (mdotsym J))) (384 * (Bt * (2 : ℝ) ^ J)))
+    (hmd : ∀ (J : ℕ) (ω : Pl) (t : ℝ), HasDerivAt (fun s : ℝ => msym J s ω) (mdotsym J t ω) t)
+    (hmdc : ∀ (J : ℕ) (ω : Pl), Continuous fun s : ℝ => mdotsym J s ω)
+    (hsum : ∀ (j : ℕ) (t : ℝ), 1 ≤ t → t ≤ 2 → ∀ ξ : Pl, (∑ ν ∈ Finset.range Nsec,
+        mfull (j + 1) ε (msym (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ))
+      = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+        * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+          * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ))
     {E : Set ℝ} {gam eta Cass : ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2)
     (hcov : HasSubpowerAssouadCoverBound E gam eta Cass) (hCnn : 0 ≤ Cass)
     (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
     {p : ℝ} (hp : p = (3 + 2 * gam) / 2) :
-    ∃ B Bt : ℝ, 0 < B ∧ 0 < Bt ∧ ∀ j : ℕ, ∃ Mk L : ℕ, ∀ f : SchwartzMap Pl ℂ,
+    ∀ j : ℕ, ∃ Mk L : ℕ,
+      (2 : ℝ) ^ Mk ≤ 256 * ((2 : ℝ) ^ (((j + 1 : ℕ)) : ℤ)) ^ ((1 : ℝ) / 2)
+      ∧ 10 * ((L : ℝ) + 1) + 1 ≤ 5 * ((j + 1 : ℕ) : ℝ) + 111
+      ∧ ∀ f : SchwartzMap Pl ℂ,
       ∃ W : Pl → ℝ≥0∞, Measurable W
         ∧ (∀ x : Pl, (⨆ t : E, ‖waveInt hφone hφzero part j t.1 f x‖ₑ) ≤ W x)
         ∧ (∫⁻ x : Pl, W x ^ (2 * p)) ^ (1 / (2 * p))
@@ -28718,11 +28784,10 @@ theorem exists_waveInt_single_scale_bound (φ : SchwartzMap Pl ℂ)
   have hp2 : 2 < p := by
     rw [hp]
     linarith
-  obtain ⟨B, hBpos, hdata⟩ := exists_msc_data φ hφone hφzero part
-  obtain ⟨Bt, hBtpos, hdatat⟩ := exists_mtil_data φ hφone hφzero part hε
-  refine ⟨B, Bt, hBpos, hBtpos, fun j => ?_⟩
-  obtain ⟨Mk, L, hMk, hQb, hMj, hMj2, hBL⟩ := exists_plate_params (j + 1)
-  refine ⟨Mk, L, fun f => ?_⟩
+  intro j
+  obtain ⟨Mk, L, hMk, hQb, hMj, hMj2, hBL, hMksize, hLsize⟩ :=
+    exists_plate_params_sized (j + 1)
+  refine ⟨Mk, L, hMksize, hLsize, fun f => ?_⟩
   have hJ : 1 ≤ j + 1 := by omega
   obtain ⟨hm, hpol⟩ := hdata (j + 1) hJ
   obtain ⟨hmt, hpolt⟩ := hdatat (j + 1) hJ
@@ -28733,8 +28798,7 @@ theorem exists_waveInt_single_scale_bound (φ : SchwartzMap Pl ℂ)
     intro g
     obtain ⟨Na, Mc, hNa1, hNable, hMc, hMc2, hbound⟩ :=
       lintegral_pow_iSup_TopS_le_of_assouad hpol hm hpolt hmt
-        (fun ω t => hasDerivAt_msc φ part (j + 1) ω t)
-        (fun ω => continuous_mscDot φ part (j + 1) ω)
+        (fun ω t => hmd (j + 1) ω t) (fun ω => hmdc (j + 1) ω)
         abs_deriv_shrinkS_le (le_trans zero_le_one one_le_uvC)
         norm_iteratedFDeriv_unitVec_le one_le_stC abs_deriv_st_le abs_deriv2_st_le
         hε hE hcov hCnn hgam1 hgam2 hJ hMk hQb hMj hMj2 hBL hp g
@@ -28755,8 +28819,8 @@ theorem exists_waveInt_single_scale_bound (φ : SchwartzMap Pl ℂ)
     rw [KQ4]
     refine add_le_add (ENNReal.rpow_le_rpow hc1 (by positivity)) ?_
     exact mul_le_mul' (le_refl _) (ENNReal.rpow_le_rpow hc2 (by positivity))
-  exact lintegral_pow_iSup_waveInt_le hφone hφzero hφrad part hm hmt
-    (fun ω t => hasDerivAt_msc φ part (j + 1) ω t) hph hE hp2 hK f
+  exact lintegral_pow_iSup_waveInt_le hφone hφzero part hm hmt
+    (fun ω t => hmd (j + 1) ω t) (hsum j) hE hp2 hK f
 
 /-! ### Reassembly into the repository's dyadic maximal operator -/
 
@@ -28889,8 +28953,3430 @@ theorem C3_eq_ofReal {Cs CV Cst Na B0 B0' : ℝ} {j Mc Mk L : ℕ} {p gam : ℝ}
       ← Real.rpow_mul hynn]
   rw [hx4, hy2]
 
+/-! ### Extracting the powers of the scale from the §3 constant -/
+
+/-- The §3 constant with the discrete parameters replaced by real ones. -/
+noncomputable def c3Rr (Na B0 B0' mm kk ll p gam P : ℝ) : ℝ :=
+  (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na * P ^ 2)) ^ (1 / p)
+    * (700000000 * (1 + stC) * B0 * (kk * ll)) ^ (2 * (1 - 2 / p))
+    * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam))) ^ (1 - 1 / p)
+
+theorem c3R_eq_c3Rr (Na B0 B0' : ℝ) (J Mc Mk L : ℕ) (p gam : ℝ) :
+    c3R shrC uvC stC Na B0 B0' J Mc Mk L p gam
+      = c3Rr Na B0 B0' ((Mc : ℝ) + 2) ((2 : ℝ) ^ Mk) (10 * ((L : ℝ) + 1) + 1) p gam
+        ((2 : ℝ) ^ (J : ℤ)) := rfl
+
+/-- The scale-free part of the §3 constant. -/
+noncomputable def c3D (Na b mm ll K0 p gam : ℝ) : ℝ :=
+  (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) ^ (1 / p)
+    * (700000000 * (1 + stC) * (384 * b) * (K0 * ll)) ^ (2 * (1 - 2 / p))
+    * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam))) ^ (1 - 1 / p)
+
+set_option maxHeartbeats 1000000 in
+/-- **The §3 constant factorizes**: with symbol bounds of size `σ` and the plate parameter
+`2^{Mk} = 128√P`, the constant is the scale-free part times `σ² P`. -/
+theorem c3Rr_eq {Na b mm ll K0 σ P p gam : ℝ} (hp : 2 < p) (hNa : 0 ≤ Na) (hb : 0 ≤ b)
+    (hmm : 0 ≤ mm) (hll : 0 ≤ ll) (hK0 : 0 ≤ K0) (hσ : 0 < σ) (hP : 0 < P) :
+    c3Rr Na (384 * b * σ) (b * σ) mm (K0 * P ^ ((1 : ℝ) / 2)) ll p gam P
+      = c3D Na b mm ll K0 p gam * σ ^ 2 * P := by
+  have hppos : (0 : ℝ) < p := by linarith
+  have hpne : p ≠ 0 := ne_of_gt hppos
+  have hKP : (0 : ℝ) ≤ KP31 shrC uvC stC := KP31_nonneg _ _ _
+  have hstC : (0 : ℝ) ≤ stC := stC_nonneg
+  have hPh : (0 : ℝ) < P ^ ((1 : ℝ) / 2) := Real.rpow_pos_of_pos hP _
+  -- the powers of `σ` and `P` in the two factors
+  have hsig : (σ ^ (4 : ℕ)) ^ (1 / p) = σ ^ (4 / p) := by
+    rw [show (σ ^ (4 : ℕ)) = σ ^ (4 : ℝ) from (Real.rpow_natCast σ 4).symm,
+      ← Real.rpow_mul hσ.le, show (4 : ℝ) * (1 / p) = 4 / p from by ring]
+  have hpp : (P ^ (2 : ℕ)) ^ (1 / p) = P ^ (2 / p) := by
+    rw [show (P ^ (2 : ℕ)) = P ^ (2 : ℝ) from (Real.rpow_natCast P 2).symm,
+      ← Real.rpow_mul hP.le, show (2 : ℝ) * (1 / p) = 2 / p from by ring]
+  have hPhalf : (P ^ ((1 : ℝ) / 2)) ^ (2 * (1 - 2 / p)) = P ^ (1 - 2 / p) := by
+    rw [← Real.rpow_mul hP.le, show (1 : ℝ) / 2 * (2 * (1 - 2 / p)) = 1 - 2 / p from by ring]
+  -- the first factor
+  have hA : 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * (b * σ) ^ 2) ^ 2 * Na * P ^ 2)
+      = (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) * (σ ^ (4 : ℕ) * P ^ (2 : ℕ)) := by
+    ring
+  have hA1 : (0 : ℝ) ≤ 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na) := by positivity
+  have hfirst : (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * (b * σ) ^ 2) ^ 2 * Na * P ^ 2)) ^ (1 / p)
+      = (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) ^ (1 / p)
+        * (σ ^ (4 / p) * P ^ (2 / p)) := by
+    rw [hA, Real.mul_rpow hA1 (by positivity),
+      Real.mul_rpow (by positivity : (0 : ℝ) ≤ σ ^ (4 : ℕ))
+        (by positivity : (0 : ℝ) ≤ P ^ (2 : ℕ)), hsig, hpp]
+  -- the second factor
+  have hB : 700000000 * (1 + stC) * (384 * b * σ) * (K0 * P ^ ((1 : ℝ) / 2) * ll)
+      = (700000000 * (1 + stC) * (384 * b) * (K0 * ll)) * (σ * P ^ ((1 : ℝ) / 2)) := by
+    ring
+  have hB1 : (0 : ℝ) ≤ 700000000 * (1 + stC) * (384 * b) * (K0 * ll) := by positivity
+  have hsecond : (700000000 * (1 + stC) * (384 * b * σ) * (K0 * P ^ ((1 : ℝ) / 2) * ll))
+        ^ (2 * (1 - 2 / p))
+      = (700000000 * (1 + stC) * (384 * b) * (K0 * ll)) ^ (2 * (1 - 2 / p))
+        * (σ ^ (2 * (1 - 2 / p)) * P ^ (1 - 2 / p)) := by
+    rw [hB, Real.mul_rpow hB1 (by positivity), Real.mul_rpow hσ.le hPh.le, hPhalf]
+  -- collect the powers
+  have hσpow : σ ^ (4 / p) * σ ^ (2 * (1 - 2 / p)) = σ ^ 2 := by
+    rw [← Real.rpow_add hσ]
+    have hexp : 4 / p + 2 * (1 - 2 / p) = 2 := by
+      field_simp
+      ring
+    rw [hexp, show ((2 : ℝ)) = ((2 : ℕ) : ℝ) from by norm_num, Real.rpow_natCast]
+  have hPpow : P ^ (2 / p) * P ^ (1 - 2 / p) = P := by
+    rw [← Real.rpow_add hP, show 2 / p + (1 - 2 / p) = (1 : ℝ) from by ring, Real.rpow_one]
+  rw [c3Rr, c3D, hfirst, hsecond]
+  calc (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) ^ (1 / p)
+        * (σ ^ (4 / p) * P ^ (2 / p))
+      * ((700000000 * (1 + stC) * (384 * b) * (K0 * ll)) ^ (2 * (1 - 2 / p))
+        * (σ ^ (2 * (1 - 2 / p)) * P ^ (1 - 2 / p)))
+      * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam))) ^ (1 - 1 / p)
+      = ((8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) ^ (1 / p)
+          * (700000000 * (1 + stC) * (384 * b) * (K0 * ll)) ^ (2 * (1 - 2 / p))
+          * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+              ^ (1 - 1 / p))
+        * (σ ^ (4 / p) * σ ^ (2 * (1 - 2 / p))) * (P ^ (2 / p) * P ^ (1 - 2 / p)) := by
+        ring
+    _ = ((8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) ^ (1 / p)
+          * (700000000 * (1 + stC) * (384 * b) * (K0 * ll)) ^ (2 * (1 - 2 / p))
+          * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+              ^ (1 - 1 / p))
+        * σ ^ 2 * P := by rw [hσpow, hPpow]
+
+set_option maxHeartbeats 1000000 in
+/-- The §3 constant is monotone in the four size parameters. -/
+theorem c3Rr_mono {Na Na' B0 B0' mm mm' kk kk' ll ll' p gam P : ℝ} (hp : 2 < p)
+    (hNa : 0 ≤ Na) (hNaNa' : Na ≤ Na') (hmm : 0 ≤ mm) (hmmmm' : mm ≤ mm')
+    (hkk : 0 ≤ kk) (hkkkk' : kk ≤ kk') (hll : 0 ≤ ll) (hllll' : ll ≤ ll')
+    (hB0 : 0 ≤ B0) (hP : 0 ≤ P) (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) :
+    c3Rr Na B0 B0' mm kk ll p gam P ≤ c3Rr Na' B0 B0' mm' kk' ll' p gam P := by
+  have hppos : (0 : ℝ) < p := by linarith
+  have h1p : (0 : ℝ) ≤ 1 / p := by positivity
+  have h2p : (0 : ℝ) ≤ 2 * (1 - 2 / p) := by
+    have h : 2 / p < 1 := by
+      rw [div_lt_one hppos]
+      linarith
+    nlinarith
+  have hKP : (0 : ℝ) ≤ KP31 shrC uvC stC := KP31_nonneg _ _ _
+  have hstC : (0 : ℝ) ≤ stC := stC_nonneg
+  have hNa' : (0 : ℝ) ≤ Na' := le_trans hNa hNaNa'
+  have hkk' : (0 : ℝ) ≤ kk' := le_trans hkk hkkkk'
+  have hll' : (0 : ℝ) ≤ ll' := le_trans hll hllll'
+  have hfac : (0 : ℝ) ≤ KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 := mul_nonneg hKP (by positivity)
+  -- the first factor
+  have hAnn : (0 : ℝ) ≤ 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na * P ^ 2) :=
+    mul_nonneg (by positivity) (mul_nonneg (mul_nonneg hfac hNa) (by positivity))
+  have hAle : 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na * P ^ 2)
+      ≤ 8 * mm' ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na' * P ^ 2) := by
+    have h1 : KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na * P ^ 2
+        ≤ KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na' * P ^ 2 :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hNaNa' hfac) (by positivity)
+    have h2 : (0 : ℝ) ≤ KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na' * P ^ 2 :=
+      mul_nonneg (mul_nonneg hfac hNa') (by positivity)
+    have hmmsq : mm ^ 2 ≤ mm' ^ 2 := by nlinarith
+    calc 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na * P ^ 2)
+        ≤ 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na' * P ^ 2) :=
+          mul_le_mul_of_nonneg_left h1 (by positivity)
+      _ ≤ 8 * mm' ^ 2 * (KP31 shrC uvC stC * (4 * B0' ^ 2) ^ 2 * Na' * P ^ 2) :=
+          mul_le_mul_of_nonneg_right (by nlinarith) h2
+  -- the second factor
+  have hBnn : (0 : ℝ) ≤ 700000000 * (1 + stC) * B0 * (kk * ll) :=
+    mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) (by linarith)) hB0) (mul_nonneg hkk hll)
+  have hBle : 700000000 * (1 + stC) * B0 * (kk * ll)
+      ≤ 700000000 * (1 + stC) * B0 * (kk' * ll') := by
+    refine mul_le_mul_of_nonneg_left (mul_le_mul hkkkk' hllll' hll hkk')
+      (mul_nonneg (mul_nonneg (by norm_num) (by linarith)) hB0)
+  have hznn : (0 : ℝ)
+      ≤ Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)) :=
+    hlsConst_nonneg hgam1 hgam2
+  rw [c3Rr, c3Rr]
+  refine mul_le_mul (mul_le_mul (Real.rpow_le_rpow hAnn hAle h1p)
+    (Real.rpow_le_rpow hBnn hBle h2p) (Real.rpow_nonneg hBnn _)
+    (Real.rpow_nonneg (le_trans hAnn hAle) _)) (le_refl _) (Real.rpow_nonneg hznn _) ?_
+  exact mul_nonneg (Real.rpow_nonneg (le_trans hAnn hAle) _)
+    (Real.rpow_nonneg (le_trans hBnn hBle) _)
+
+/-- **The §3 constant of the sector multiplier, with the powers of the scale extracted.** -/
+theorem c3R_le_c3D {Na b σ mm ll B0 B0' : ℝ} {J Mc Mk L : ℕ} {p gam : ℝ}
+    (hp : 2 < p) (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (hNa : 0 ≤ Na) (hb : 0 ≤ b) (hσ : 0 < σ)
+    (hB0 : B0 = 384 * b * σ) (hB0' : B0' = b * σ)
+    (hmm : ((Mc : ℝ) + 2) ≤ mm)
+    (hkk : (2 : ℝ) ^ Mk ≤ 256 * ((2 : ℝ) ^ (J : ℤ)) ^ ((1 : ℝ) / 2))
+    (hll : 10 * ((L : ℝ) + 1) + 1 ≤ ll) :
+    c3R shrC uvC stC Na B0 B0' J Mc Mk L p gam
+      ≤ c3D Na b mm ll 256 p gam * σ ^ 2 * ((2 : ℝ) ^ (J : ℤ)) := by
+  subst hB0
+  subst hB0'
+  have hP : (0 : ℝ) < (2 : ℝ) ^ (J : ℤ) := by positivity
+  have hmm0 : (0 : ℝ) ≤ mm := le_trans (by positivity) hmm
+  have hll0 : (0 : ℝ) ≤ ll := le_trans (by positivity) hll
+  rw [c3R_eq_c3Rr]
+  refine le_trans (c3Rr_mono hp hNa (le_refl Na) (by positivity) hmm
+    (by positivity) hkk (by positivity) hll (by positivity) hP.le hgam1 hgam2) ?_
+  rw [c3Rr_eq hp hNa hb hmm0 hll0 (by norm_num : (0 : ℝ) ≤ 256) hσ hP]
+
+set_option maxHeartbeats 2000000 in
+/-- **The scale-free part of the §3 constant grows at most polynomially times `2^{jη/p}`.** -/
+theorem exists_c3D_bound {b Cass eta p gam : ℝ} (hb : 0 ≤ b) (hCnn : 0 ≤ Cass)
+    (heta : 0 ≤ eta) (hp : 2 < p) (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) :
+    ∃ D : ℝ, 0 < D ∧ ∀ j : ℕ,
+      c3D (6 + 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta)) b ((j : ℝ) + 3)
+          (5 * (j : ℝ) + 116) 256 p gam
+        ≤ D * (((j : ℝ) + 3) ^ 4 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p)) := by
+  classical
+  have hppos : (0 : ℝ) < p := by linarith
+  have h1p : (0 : ℝ) ≤ 1 / p := by positivity
+  have h1ple : 1 / p ≤ 2 := by
+    rw [div_le_iff₀ hppos]
+    linarith
+  have h2p : (0 : ℝ) ≤ 2 * (1 - 2 / p) := by
+    have h : 2 / p < 1 := by
+      rw [div_lt_one hppos]
+      linarith
+    nlinarith
+  have h2ple : 2 * (1 - 2 / p) ≤ 2 := by
+    have h : (0 : ℝ) < 2 / p := by positivity
+    nlinarith
+  have h1p' : (0 : ℝ) ≤ 1 - 1 / p := by
+    have h : 1 / p < 1 := by
+      rw [div_lt_one hppos]
+      linarith
+    linarith
+  have hKP : (0 : ℝ) ≤ KP31 shrC uvC stC := KP31_nonneg _ _ _
+  have hstC : (0 : ℝ) ≤ stC := stC_nonneg
+  have hz : (0 : ℝ)
+      ≤ Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)) :=
+    hlsConst_nonneg hgam1 hgam2
+  set A : ℝ := 8 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2) with hAdef
+  set C2 : ℝ := 700000000 * (1 + stC) * (384 * b) * 256 with hC2def
+  have hAnn : (0 : ℝ) ≤ A := by
+    rw [hAdef]
+    exact mul_nonneg (by norm_num) (mul_nonneg hKP (by positivity))
+  have hC2nn : (0 : ℝ) ≤ C2 := by
+    rw [hC2def]
+    exact mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) (by linarith)) (by positivity))
+      (by norm_num)
+  refine ⟨A ^ (1 / p) * (6 * (1 + Cass)) ^ (1 / p) * (2 : ℝ) ^ (eta / p)
+      * C2 ^ (2 * (1 - 2 / p)) * 13456
+      * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+          ^ (1 - 1 / p) + 1, ?_, ?_⟩
+  · have h1 : (0 : ℝ) ≤ A ^ (1 / p) := Real.rpow_nonneg hAnn _
+    have h2 : (0 : ℝ) ≤ (6 * (1 + Cass)) ^ (1 / p) := Real.rpow_nonneg (by linarith) _
+    have h3 : (0 : ℝ) ≤ (2 : ℝ) ^ (eta / p) := Real.rpow_nonneg (by norm_num) _
+    have h4 : (0 : ℝ) ≤ C2 ^ (2 * (1 - 2 / p)) := Real.rpow_nonneg hC2nn _
+    have h5 : (0 : ℝ)
+        ≤ (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+            ^ (1 - 1 / p) := Real.rpow_nonneg hz _
+    have h6 : (0 : ℝ) ≤ A ^ (1 / p) * (6 * (1 + Cass)) ^ (1 / p) * (2 : ℝ) ^ (eta / p)
+        * C2 ^ (2 * (1 - 2 / p)) * 13456
+        * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+            ^ (1 - 1 / p) := by
+      refine mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg h1 h2) h3) h4)
+        (by norm_num)) h5
+    linarith
+  · intro j
+    set mm : ℝ := (j : ℝ) + 3 with hmmdef
+    set ll : ℝ := 5 * (j : ℝ) + 116 with hlldef
+    set Na : ℝ := 6 + 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) with hNadef
+    have hmm1 : (1 : ℝ) ≤ mm := by
+      rw [hmmdef]
+      have : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+      linarith
+    have hll1 : (1 : ℝ) ≤ ll := by
+      rw [hlldef]
+      have : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+      linarith
+    have hpow1 : (1 : ℝ) ≤ (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) := by
+      refine Real.one_le_rpow (by norm_num) ?_
+      have : (0 : ℝ) ≤ ((j + 1 : ℕ) : ℝ) := Nat.cast_nonneg _
+      positivity
+    have hNann : (0 : ℝ) ≤ Na := by
+      rw [hNadef]
+      have h := hpow1
+      have : (0 : ℝ) ≤ 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) := by positivity
+      linarith
+    -- the three factors
+    have hfirstbase : 8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)
+        = A * (mm ^ 2 * Na) := by
+      rw [hAdef]
+      ring
+    have hfirst : (8 * mm ^ 2 * (KP31 shrC uvC stC * (4 * b ^ 2) ^ 2 * Na)) ^ (1 / p)
+        = A ^ (1 / p) * ((mm ^ 2) ^ (1 / p) * Na ^ (1 / p)) := by
+      rw [hfirstbase, Real.mul_rpow hAnn (by positivity),
+        Real.mul_rpow (by positivity : (0 : ℝ) ≤ mm ^ 2) hNann]
+    have hmmp : (mm ^ 2) ^ (1 / p) ≤ mm ^ 2 := by
+      have hcast : (mm ^ (2 : ℕ)) = mm ^ (2 : ℝ) := (Real.rpow_natCast mm 2).symm
+      rw [hcast, ← Real.rpow_mul (by linarith : (0 : ℝ) ≤ mm)]
+      refine Real.rpow_le_rpow_of_exponent_le hmm1 ?_
+      rw [show (2 : ℝ) * (1 / p) = 2 / p from by ring, div_le_iff₀ hppos]
+      nlinarith
+    have hNap : Na ^ (1 / p) ≤ (6 * (1 + Cass)) ^ (1 / p)
+        * ((2 : ℝ) ^ (eta / p) * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p)) := by
+      have hNale : Na ≤ (6 * (1 + Cass)) * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) := by
+        rw [hNadef]
+        nlinarith [hpow1]
+      refine le_trans (Real.rpow_le_rpow hNann hNale h1p) (le_of_eq ?_)
+      rw [Real.mul_rpow (by linarith) (Real.rpow_nonneg (by norm_num) _),
+        ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2)]
+      congr 1
+      have hsplit : ((j + 1 : ℕ) : ℝ) * eta * (1 / p) = eta / p + (j : ℝ) * (eta / p) := by
+        push_cast
+        ring
+      rw [hsplit, Real.rpow_add (by norm_num)]
+      congr 1
+      rw [show ((2 : ℝ) ^ (j : ℕ)) = (2 : ℝ) ^ ((j : ℕ) : ℝ) from (Real.rpow_natCast 2 j).symm,
+        ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2)]
+    have hsecond : (700000000 * (1 + stC) * (384 * b) * (256 * ll)) ^ (2 * (1 - 2 / p))
+        ≤ C2 ^ (2 * (1 - 2 / p)) * ll ^ 2 := by
+      have hbase : 700000000 * (1 + stC) * (384 * b) * (256 * ll) = C2 * ll := by
+        rw [hC2def]
+        ring
+      rw [hbase, Real.mul_rpow hC2nn (by linarith)]
+      refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hC2nn _)
+      refine le_trans (Real.rpow_le_rpow_of_exponent_le hll1 h2ple) (le_of_eq ?_)
+      rw [show ((2 : ℝ)) = ((2 : ℕ) : ℝ) from by norm_num, Real.rpow_natCast]
+    -- assemble
+    have hllsq : ll ^ 2 ≤ 13456 * mm ^ 2 := by
+      have hj : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+      have h1 : ll ≤ 116 * mm := by
+        rw [hlldef, hmmdef]
+        linarith
+      nlinarith [hll1, hmm1]
+    rw [c3D, hfirst]
+    have hznn2 : (0 : ℝ)
+        ≤ (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+            ^ (1 - 1 / p) := Real.rpow_nonneg hz _
+    have hstep : A ^ (1 / p) * ((mm ^ 2) ^ (1 / p) * Na ^ (1 / p))
+          * (700000000 * (1 + stC) * (384 * b) * (256 * ll)) ^ (2 * (1 - 2 / p))
+        ≤ A ^ (1 / p) * (mm ^ 2 * ((6 * (1 + Cass)) ^ (1 / p)
+            * ((2 : ℝ) ^ (eta / p) * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p))))
+          * (C2 ^ (2 * (1 - 2 / p)) * (13456 * mm ^ 2)) := by
+      refine mul_le_mul ?_ ?_ (Real.rpow_nonneg (by positivity) _) ?_
+      · refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hAnn _)
+        exact mul_le_mul hmmp hNap (Real.rpow_nonneg hNann _) (by positivity)
+      · refine le_trans hsecond ?_
+        exact mul_le_mul_of_nonneg_left hllsq (Real.rpow_nonneg hC2nn _)
+      · refine mul_nonneg (Real.rpow_nonneg hAnn _) ?_
+        refine mul_nonneg (by positivity) ?_
+        refine mul_nonneg (Real.rpow_nonneg (by linarith) _) ?_
+        exact mul_nonneg (Real.rpow_nonneg (by norm_num) _) (Real.rpow_nonneg (by positivity) _)
+    refine le_trans (mul_le_mul_of_nonneg_right hstep hznn2) ?_
+    have hmm4 : mm ^ 2 * mm ^ 2 = mm ^ 4 := by ring
+    have hfin : A ^ (1 / p) * (mm ^ 2 * ((6 * (1 + Cass)) ^ (1 / p)
+          * ((2 : ℝ) ^ (eta / p) * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p))))
+        * (C2 ^ (2 * (1 - 2 / p)) * (13456 * mm ^ 2))
+        * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+            ^ (1 - 1 / p)
+        = (A ^ (1 / p) * (6 * (1 + Cass)) ^ (1 / p) * (2 : ℝ) ^ (eta / p)
+            * C2 ^ (2 * (1 - 2 / p)) * 13456
+            * (Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)))
+                ^ (1 - 1 / p))
+          * (mm ^ 4 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p)) := by
+      rw [← hmm4]
+      ring
+    rw [hfin, hmmdef]
+    refine mul_le_mul_of_nonneg_right (by linarith) ?_
+    have h1 : (0 : ℝ) ≤ ((j : ℝ) + 3) ^ 4 := by positivity
+    have h2 : (0 : ℝ) ≤ ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p) :=
+      Real.rpow_nonneg (by positivity) _
+    exact mul_nonneg h1 h2
+
+theorem c3D_nonneg {Na b mm ll K0 p gam : ℝ} (hNa : 0 ≤ Na) (hb : 0 ≤ b) (hmm : 0 ≤ mm)
+    (hll : 0 ≤ ll) (hK0 : 0 ≤ K0) (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) :
+    0 ≤ c3D Na b mm ll K0 p gam := by
+  have hKP : (0 : ℝ) ≤ KP31 shrC uvC stC := KP31_nonneg _ _ _
+  have hstC : (0 : ℝ) ≤ stC := stC_nonneg
+  have hz : (0 : ℝ)
+      ≤ Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)) :=
+    hlsConst_nonneg hgam1 hgam2
+  rw [c3D]
+  refine mul_nonneg (mul_nonneg (Real.rpow_nonneg ?_ _) (Real.rpow_nonneg ?_ _))
+    (Real.rpow_nonneg hz _)
+  · exact mul_nonneg (by positivity) (mul_nonneg (mul_nonneg hKP (by positivity)) hNa)
+  · exact mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) (by linarith)) (by positivity))
+      (mul_nonneg hK0 hll)
+
+theorem c3R_nonneg {Na B0 B0' : ℝ} {J Mc Mk L : ℕ} {p gam : ℝ} (hNa : 0 ≤ Na) (hB0 : 0 ≤ B0)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) :
+    0 ≤ c3R shrC uvC stC Na B0 B0' J Mc Mk L p gam := by
+  have hKP : (0 : ℝ) ≤ KP31 shrC uvC stC := KP31_nonneg _ _ _
+  have hstC : (0 : ℝ) ≤ stC := stC_nonneg
+  have hz : (0 : ℝ)
+      ≤ Auto.HardyLittlewoodSobolev.hlsConst (2 * (2 * gam - 1) / (1 + 2 * gam)) :=
+    hlsConst_nonneg hgam1 hgam2
+  rw [c3R]
+  refine mul_nonneg (mul_nonneg (Real.rpow_nonneg ?_ _) (Real.rpow_nonneg ?_ _))
+    (Real.rpow_nonneg hz _)
+  · exact mul_nonneg (by positivity) (mul_nonneg (mul_nonneg (mul_nonneg hKP (by positivity))
+      hNa) (by positivity))
+  · exact mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) (by linarith)) hB0) (by positivity)
+
+set_option maxHeartbeats 4000000 in
+/-- **The prefactor cancels the scale in the §3 constant.** -/
+theorem prefactor_KQ4_le {Cass eta B Bt : ℝ} {j Mk L : ℕ} {p gam : ℝ}
+    (hp : 2 < p) (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) (hCnn : 0 ≤ Cass) (heta : 0 ≤ eta)
+    (hB : 0 ≤ B) (hBt : 0 ≤ Bt)
+    (hMk : (2 : ℝ) ^ Mk ≤ 256 * ((2 : ℝ) ^ (((j + 1 : ℕ)) : ℤ)) ^ ((1 : ℝ) / 2))
+    (hL : 10 * ((L : ℝ) + 1) + 1 ≤ 5 * (j : ℝ) + 116) :
+    ENNReal.ofReal ((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹) * KQ4 Cass eta B Bt j Mk L p gam
+      ≤ ENNReal.ofReal
+          (c3D (6 + 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta)) B ((j : ℝ) + 3)
+              (5 * (j : ℝ) + 116) 256 p gam ^ ((1 : ℝ) / 2)
+            + 2 * c3D (6 + 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta)) Bt ((j : ℝ) + 3)
+              (5 * (j : ℝ) + 116) 256 p gam ^ ((1 : ℝ) / 2)) := by
+  classical
+  have hhalf : (0 : ℝ) ≤ (1 : ℝ) / 2 := by norm_num
+  set P : ℝ := (2 : ℝ) ^ (((j + 1 : ℕ)) : ℤ) with hPdef
+  have hP : (0 : ℝ) < P := by
+    rw [hPdef]
+    positivity
+  have hPnat : (2 : ℝ) ^ (j + 1) = P := by
+    rw [hPdef, zpow_natCast]
+  set sq : ℝ := P ^ ((1 : ℝ) / 2) with hsqdef
+  have hsq : (0 : ℝ) < sq := Real.rpow_pos_of_pos hP _
+  have hsqsq : sq * sq = P := by
+    rw [hsqdef, ← Real.rpow_add hP]
+    norm_num
+  have hsqrtval : Real.sqrt ((2 : ℝ) ^ (j + 1)) = sq := by
+    rw [hPnat, hsqdef, Real.sqrt_eq_rpow]
+  set Na0 : ℝ := 6 + 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) with hNa0def
+  set mm0 : ℝ := (j : ℝ) + 3 with hmm0def
+  set ll0 : ℝ := 5 * (j : ℝ) + 116 with hll0def
+  have hpow1 : (1 : ℝ) ≤ (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) := by
+    refine Real.one_le_rpow (by norm_num) ?_
+    have : (0 : ℝ) ≤ ((j + 1 : ℕ) : ℝ) := Nat.cast_nonneg _
+    positivity
+  have hNa0 : (0 : ℝ) ≤ Na0 := by
+    rw [hNa0def]
+    have h : (0 : ℝ) ≤ 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) := by positivity
+    linarith
+  have hmm0nn : (0 : ℝ) ≤ mm0 := by
+    rw [hmm0def]
+    have : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+    linarith
+  have hll0nn : (0 : ℝ) ≤ ll0 := by
+    rw [hll0def]
+    have : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+    linarith
+  have hmm : ((((j + 1) / 2 : ℕ) : ℝ) + 2) ≤ mm0 := by
+    have hnat : ((j + 1) / 2 : ℕ) ≤ j + 1 := by omega
+    have hR := (Nat.cast_le (α := ℝ)).mpr hnat
+    rw [hmm0def]
+    push_cast at hR ⊢
+    linarith
+  set cB : ℝ := c3D Na0 B mm0 ll0 256 p gam with hcBdef
+  set cBt : ℝ := c3D Na0 Bt mm0 ll0 256 p gam with hcBtdef
+  have hcBnn : (0 : ℝ) ≤ cB :=
+    c3D_nonneg hNa0 hB hmm0nn hll0nn (by norm_num) hgam1 hgam2
+  have hcBtnn : (0 : ℝ) ≤ cBt :=
+    c3D_nonneg hNa0 hBt hmm0nn hll0nn (by norm_num) hgam1 hgam2
+  -- the two §3 constants, with the scale extracted
+  have hmain : c3R shrC uvC stC Na0 (384 * B) B (j + 1) ((j + 1) / 2) Mk L p gam ≤ cB * P := by
+    have h := c3R_le_c3D (b := B) (σ := 1) (B0 := 384 * B) (B0' := B) (mm := mm0) (ll := ll0)
+      hp hgam1 hgam2 hNa0 hB one_pos (by ring) (by ring) hmm hMk hL
+    rw [hcBdef]
+    refine le_trans h (le_of_eq ?_)
+    rw [hPdef]
+    ring
+  have hderiv : c3R shrC uvC stC Na0 (384 * (Bt * (2 : ℝ) ^ (j + 1))) (Bt * (2 : ℝ) ^ (j + 1))
+        (j + 1) ((j + 1) / 2) Mk L p gam
+      ≤ cBt * P ^ 2 * P := by
+    rw [hcBtdef]
+    refine c3R_le_c3D (b := Bt) (σ := P) (B0 := 384 * (Bt * (2 : ℝ) ^ (j + 1)))
+      (B0' := Bt * (2 : ℝ) ^ (j + 1)) (mm := mm0) (ll := ll0)
+      hp hgam1 hgam2 hNa0 hBt hP ?_ ?_ hmm hMk hL
+    · rw [hPnat]
+      ring
+    · rw [hPnat]
+  have hmainnn : (0 : ℝ) ≤ c3R shrC uvC stC Na0 (384 * B) B (j + 1) ((j + 1) / 2) Mk L p gam :=
+    c3R_nonneg hNa0 (by positivity) hgam1 hgam2
+  have hderivnn : (0 : ℝ) ≤ c3R shrC uvC stC Na0 (384 * (Bt * (2 : ℝ) ^ (j + 1)))
+      (Bt * (2 : ℝ) ^ (j + 1)) (j + 1) ((j + 1) / 2) Mk L p gam :=
+    c3R_nonneg hNa0 (by positivity) hgam1 hgam2
+  -- rewrite `KQ4` as an `ofReal`
+  have hKQ4 : KQ4 Cass eta B Bt j Mk L p gam
+      = ENNReal.ofReal
+          (c3R shrC uvC stC Na0 (384 * B) B (j + 1) ((j + 1) / 2) Mk L p gam ^ ((1 : ℝ) / 2))
+        + ENNReal.ofReal (2 * P⁻¹)
+          * ENNReal.ofReal (c3R shrC uvC stC Na0 (384 * (Bt * (2 : ℝ) ^ (j + 1)))
+              (Bt * (2 : ℝ) ^ (j + 1)) (j + 1) ((j + 1) / 2) Mk L p gam ^ ((1 : ℝ) / 2)) := by
+    rw [KQ4, C3_eq_ofReal hp hNa0 (by positivity) hgam1 hgam2,
+      C3_eq_ofReal hp hNa0 (by positivity) hgam1 hgam2,
+      ENNReal.ofReal_rpow_of_nonneg hmainnn hhalf,
+      ENNReal.ofReal_rpow_of_nonneg hderivnn hhalf]
+    congr 2
+  -- the real inequality
+  have ha1 : c3R shrC uvC stC Na0 (384 * B) B (j + 1) ((j + 1) / 2) Mk L p gam ^ ((1 : ℝ) / 2)
+      ≤ cB ^ ((1 : ℝ) / 2) * sq := by
+    refine le_trans (Real.rpow_le_rpow hmainnn hmain hhalf) (le_of_eq ?_)
+    rw [Real.mul_rpow hcBnn hP.le, hsqdef]
+  have ha2 : c3R shrC uvC stC Na0 (384 * (Bt * (2 : ℝ) ^ (j + 1))) (Bt * (2 : ℝ) ^ (j + 1))
+        (j + 1) ((j + 1) / 2) Mk L p gam ^ ((1 : ℝ) / 2)
+      ≤ cBt ^ ((1 : ℝ) / 2) * (sq * sq * sq) := by
+    refine le_trans (Real.rpow_le_rpow hderivnn hderiv hhalf) (le_of_eq ?_)
+    have hPcube : cBt * P ^ 2 * P = cBt * (P * P * P) := by ring
+    rw [hPcube, Real.mul_rpow hcBtnn (by positivity)]
+    congr 1
+    have hPPP : P * P * P = (sq * sq) * (sq * sq) * (sq * sq) := by rw [hsqsq]
+    rw [hPPP]
+    have hexp : ((sq * sq) * (sq * sq) * (sq * sq)) = (sq * sq * sq) ^ (2 : ℕ) := by ring
+    rw [hexp, show ((sq * sq * sq) ^ (2 : ℕ)) = (sq * sq * sq) ^ (2 : ℝ) from
+      (Real.rpow_natCast _ 2).symm, ← Real.rpow_mul (by positivity)]
+    norm_num
+  -- assemble
+  rw [hsqrtval, hKQ4, mul_add]
+  have hsnn : (0 : ℝ) ≤ sq⁻¹ := by positivity
+  have hbig1 : (0 : ℝ) ≤ c3R shrC uvC stC Na0 (384 * B) B (j + 1) ((j + 1) / 2) Mk L p gam
+      ^ ((1 : ℝ) / 2) := Real.rpow_nonneg hmainnn _
+  have hbig2 : (0 : ℝ) ≤ c3R shrC uvC stC Na0 (384 * (Bt * (2 : ℝ) ^ (j + 1)))
+      (Bt * (2 : ℝ) ^ (j + 1)) (j + 1) ((j + 1) / 2) Mk L p gam ^ ((1 : ℝ) / 2) :=
+    Real.rpow_nonneg hderivnn _
+  rw [← ENNReal.ofReal_mul hsnn, ← mul_assoc, ← ENNReal.ofReal_mul hsnn,
+    ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_add (by positivity) (by positivity)]
+  refine ENNReal.ofReal_le_ofReal ?_
+  have hstep1 : sq⁻¹ * c3R shrC uvC stC Na0 (384 * B) B (j + 1) ((j + 1) / 2) Mk L p gam
+        ^ ((1 : ℝ) / 2)
+      ≤ cB ^ ((1 : ℝ) / 2) := by
+    refine le_trans (mul_le_mul_of_nonneg_left ha1 hsnn) (le_of_eq ?_)
+    field_simp
+  have hstep2 : sq⁻¹ * (2 * P⁻¹) * c3R shrC uvC stC Na0 (384 * (Bt * (2 : ℝ) ^ (j + 1)))
+        (Bt * (2 : ℝ) ^ (j + 1)) (j + 1) ((j + 1) / 2) Mk L p gam ^ ((1 : ℝ) / 2)
+      ≤ 2 * cBt ^ ((1 : ℝ) / 2) := by
+    have hfac : (0 : ℝ) ≤ sq⁻¹ * (2 * P⁻¹) := by positivity
+    refine le_trans (mul_le_mul_of_nonneg_left ha2 hfac) (le_of_eq ?_)
+    rw [← hsqsq]
+    field_simp
+  linarith
+
+set_option maxHeartbeats 4000000 in
+/-- **The single-scale estimate for one coordinate wave, with a clean constant.**  The `L^{q₄}`
+norm of the majorant of the wave piece is at most `C · j² · 2^{jη/(2p₄)}` times `‖f‖_{p₄}`:
+the powers of the scale cancel exactly, and the only loss is the subpower Assouad loss `2^{jη}`
+and a polynomial factor. -/
+theorem exists_waveInt_single_scale_clean (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (part : CoordinateWavePart) {ε : ℝ} (hε : |ε| = 1)
+    {msym mdotsym : ℕ → ℝ → Pl → ℂ} {B Bt : ℝ} (hBpos : 0 < B) (hBtpos : 0 < Bt)
+    (hdata : ∀ J : ℕ, 1 ≤ J → MultData J (msym J) (m2can (msym J)) B
+      ∧ PolarData J (msym J) (mrcan (msym J)) (macan (msym J)) (384 * B))
+    (hdatat : ∀ J : ℕ, 1 ≤ J →
+      MultData J (mtil ε (msym J) (mdotsym J)) (m2can (mtil ε (msym J) (mdotsym J)))
+          (Bt * (2 : ℝ) ^ J)
+        ∧ PolarData J (mtil ε (msym J) (mdotsym J)) (mrcan (mtil ε (msym J) (mdotsym J)))
+          (macan (mtil ε (msym J) (mdotsym J))) (384 * (Bt * (2 : ℝ) ^ J)))
+    (hmd : ∀ (J : ℕ) (ω : Pl) (t : ℝ), HasDerivAt (fun s : ℝ => msym J s ω) (mdotsym J t ω) t)
+    (hmdc : ∀ (J : ℕ) (ω : Pl), Continuous fun s : ℝ => mdotsym J s ω)
+    (hsum : ∀ (j : ℕ) (t : ℝ), 1 ≤ t → t ≤ 2 → ∀ ξ : Pl, (∑ ν ∈ Finset.range Nsec,
+        mfull (j + 1) ε (msym (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ))
+      = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+        * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+          * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ))
+    {E : Set ℝ} {gam eta Cass : ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2)
+    (hcov : HasSubpowerAssouadCoverBound E gam eta Cass) (hCnn : 0 ≤ Cass) (heta : 0 ≤ eta)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    {p : ℝ} (hp : p = (3 + 2 * gam) / 2) :
+    ∃ D : ℝ, 0 < D ∧ ∀ j : ℕ, ∀ f : SchwartzMap Pl ℂ, ∃ W : Pl → ℝ≥0∞, Measurable W
+      ∧ (∀ x : Pl, (⨆ t : E, ‖waveInt hφone hφzero part j t.1 f x‖ₑ) ≤ W x)
+      ∧ (∫⁻ x : Pl, W x ^ (2 * p)) ^ (1 / (2 * p))
+        ≤ ENNReal.ofReal (D * (((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))))
+          * (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) := by
+  classical
+  have hp2 : 2 < p := by
+    rw [hp]
+    linarith
+  have hppos : (0 : ℝ) < p := by linarith
+  have hhalf : (0 : ℝ) ≤ (1 : ℝ) / 2 := by norm_num
+  have hbound := exists_waveInt_single_scale_bound φ hφone hφzero part hε hBpos hBtpos
+    hdata hdatat hmd hmdc hsum hE hcov hCnn hgam1 hgam2 hp
+  obtain ⟨DB, hDBpos, hDB⟩ :=
+    exists_c3D_bound (b := B) (Cass := Cass) (eta := eta) (p := p) (gam := gam)
+      hBpos.le hCnn heta hp2 hgam1 hgam2
+  obtain ⟨DBt, hDBtpos, hDBt⟩ :=
+    exists_c3D_bound (b := Bt) (Cass := Cass) (eta := eta) (p := p) (gam := gam)
+      hBtpos.le hCnn heta hp2 hgam1 hgam2
+  refine ⟨(Nsec : ℝ) * (DB ^ ((1 : ℝ) / 2) + 2 * DBt ^ ((1 : ℝ) / 2)), ?_, ?_⟩
+  · have h1 : (0 : ℝ) < DB ^ ((1 : ℝ) / 2) := Real.rpow_pos_of_pos hDBpos _
+    have h2 : (0 : ℝ) < DBt ^ ((1 : ℝ) / 2) := Real.rpow_pos_of_pos hDBtpos _
+    have h3 : (0 : ℝ) < (Nsec : ℝ) := by
+      have := Nsec_pos
+      exact_mod_cast this
+    positivity
+  intro j f
+  obtain ⟨Mk, L, hMksize, hLsize, hb⟩ := hbound j
+  obtain ⟨W, hWmeas, hWmaj, hWbound⟩ := hb f
+  refine ⟨W, hWmeas, hWmaj, le_trans hWbound ?_⟩
+  refine mul_le_mul' ?_ (le_refl _)
+  -- the constant
+  set mm0 : ℝ := (j : ℝ) + 3 with hmm0def
+  set ll0 : ℝ := 5 * (j : ℝ) + 116 with hll0def
+  set Na0 : ℝ := 6 + 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) with hNa0def
+  have hL' : 10 * ((L : ℝ) + 1) + 1 ≤ 5 * (j : ℝ) + 116 := by
+    refine le_trans hLsize (le_of_eq ?_)
+    push_cast
+    ring
+  have hpre := prefactor_KQ4_le (Cass := Cass) (eta := eta) (B := B) (Bt := Bt)
+    (j := j) (Mk := Mk) (L := L) (p := p) (gam := gam)
+    hp2 hgam1 hgam2 hCnn heta hBpos.le hBtpos.le hMksize hL'
+  -- bound the two scale-free constants
+  have hcube : ∀ (b Db : ℝ), 0 ≤ b → 0 < Db →
+      (c3D Na0 b mm0 ll0 256 p gam ≤ Db * (mm0 ^ 4 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p))) →
+      c3D Na0 b mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)
+        ≤ Db ^ ((1 : ℝ) / 2) * (mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))) := by
+    intro b Db hb hDb hle
+    have hmm0nn : (0 : ℝ) ≤ mm0 := by
+      rw [hmm0def]
+      have : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+      linarith
+    have hll0nn : (0 : ℝ) ≤ ll0 := by
+      rw [hll0def]
+      have : (0 : ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+      linarith
+    have hpowj : (0 : ℝ) < ((2 : ℝ) ^ (j : ℕ)) ^ (eta / p) :=
+      Real.rpow_pos_of_pos (by positivity) _
+    have hc3nn : (0 : ℝ) ≤ c3D Na0 b mm0 ll0 256 p gam := by
+      refine c3D_nonneg ?_ hb hmm0nn hll0nn (by norm_num) hgam1 hgam2
+      rw [hNa0def]
+      have h : (0 : ℝ) ≤ 6 * Cass * (2 : ℝ) ^ (((j + 1 : ℕ) : ℝ) * eta) := by positivity
+      linarith
+    refine le_trans (Real.rpow_le_rpow hc3nn hle hhalf) (le_of_eq ?_)
+    rw [Real.mul_rpow hDb.le (by positivity),
+      Real.mul_rpow (by positivity : (0 : ℝ) ≤ mm0 ^ 4) hpowj.le]
+    congr 2
+    · rw [show (mm0 ^ (4 : ℕ)) = mm0 ^ (4 : ℝ) from (Real.rpow_natCast mm0 4).symm,
+        ← Real.rpow_mul hmm0nn, show (4 : ℝ) * ((1 : ℝ) / 2) = ((2 : ℕ) : ℝ) from by norm_num,
+        Real.rpow_natCast]
+    · rw [← Real.rpow_mul (by positivity : (0 : ℝ) ≤ (2 : ℝ) ^ (j : ℕ))]
+      congr 1
+      field_simp
+  have h1 : c3D Na0 B mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)
+      ≤ DB ^ ((1 : ℝ) / 2) * (mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))) := by
+    refine hcube B DB hBpos.le hDBpos ?_
+    have h := hDB j
+    rw [hNa0def, hmm0def, hll0def]
+    exact h
+  have h2 : c3D Na0 Bt mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)
+      ≤ DBt ^ ((1 : ℝ) / 2) * (mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))) := by
+    refine hcube Bt DBt hBtpos.le hDBtpos ?_
+    have h := hDBt j
+    rw [hNa0def, hmm0def, hll0def]
+    exact h
+  -- assemble
+  have hfinal : c3D Na0 B mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)
+        + 2 * c3D Na0 Bt mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)
+      ≤ (DB ^ ((1 : ℝ) / 2) + 2 * DBt ^ ((1 : ℝ) / 2))
+        * (mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))) := by
+    have hfac : (0 : ℝ) ≤ mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p)) := by
+      have h : (0 : ℝ) ≤ ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p)) :=
+        Real.rpow_nonneg (by positivity) _
+      have h' : (0 : ℝ) ≤ mm0 ^ 2 := by positivity
+      exact mul_nonneg h' h
+    nlinarith [h1, h2, hfac]
+  calc (Nsec : ℝ≥0∞) * ENNReal.ofReal ((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹)
+        * KQ4 Cass eta B Bt j Mk L p gam
+      = (Nsec : ℝ≥0∞) * (ENNReal.ofReal ((Real.sqrt ((2 : ℝ) ^ (j + 1)))⁻¹)
+          * KQ4 Cass eta B Bt j Mk L p gam) := by ring
+    _ ≤ (Nsec : ℝ≥0∞) * ENNReal.ofReal (c3D Na0 B mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)
+          + 2 * c3D Na0 Bt mm0 ll0 256 p gam ^ ((1 : ℝ) / 2)) :=
+        mul_le_mul' (le_refl _) hpre
+    _ ≤ (Nsec : ℝ≥0∞) * ENNReal.ofReal ((DB ^ ((1 : ℝ) / 2) + 2 * DBt ^ ((1 : ℝ) / 2))
+          * (mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p)))) :=
+        mul_le_mul' (le_refl _) (ENNReal.ofReal_le_ofReal hfinal)
+    _ = ENNReal.ofReal ((Nsec : ℝ) * (DB ^ ((1 : ℝ) / 2) + 2 * DBt ^ ((1 : ℝ) / 2))
+          * (mm0 ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p)))) := by
+        rw [← ENNReal.ofReal_natCast Nsec, ← ENNReal.ofReal_mul (by positivity), mul_assoc]
+
+/-! ### The kernel of a compactly supported smooth symbol -/
+
+theorem norm_iteratedDeriv_line_offset_le {G : Pl → ℂ} (hG : ContDiff ℝ (↑(⊤ : ℕ∞)) G) {e : Pl}
+    (he : ‖e‖ = 1) (a : Pl) (k : ℕ) (ρ : ℝ) :
+    ‖iteratedDeriv k (fun s : ℝ => G (a + s • e)) ρ‖ ≤ ‖iteratedFDeriv ℝ k G (a + ρ • e)‖ := by
+  have hG' : ContDiff ℝ (↑(⊤ : ℕ∞)) fun v : Pl => G (a + v) :=
+    hG.comp (contDiff_const.add contDiff_id)
+  have h := norm_iteratedDeriv_line_le hG' he k ρ
+  rw [iteratedFDeriv_comp_add_left] at h
+  exact h
+
+theorem integral_Pl_eq_iterated {F : Pl → ℂ}
+    (hint : Integrable (fun q : ℝ × ℝ => F (mk2 q.1 q.2)) (volume : Measure (ℝ × ℝ))) :
+    (∫ ω : Pl, F ω) = ∫ q₂ : ℝ, ∫ q₁ : ℝ, F (mk2 q₁ q₂) := by
+  have hcoords : (∫ ω : Pl, F ω) = ∫ q : ℝ × ℝ, F (mk2 q.1 q.2) := by
+    have h := measurePreserving_coords.integral_comp coords.measurableEmbedding
+      (fun q : ℝ × ℝ => F (mk2 q.1 q.2))
+    rw [← h]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun ω => ?_)
+    show F ω = F (mk2 (coords ω).1 (coords ω).2)
+    rw [coords_apply]
+    congr 1
+    exact (mk2_coords ω).symm
+  rw [hcoords, Measure.volume_eq_prod]
+  rw [Measure.volume_eq_prod] at hint
+  exact integral_prod_symm (fun q : ℝ × ℝ => F (mk2 q.1 q.2)) hint
+
+/-- The slab bound: a function supported in the ball of radius `2` vanishes off the square. -/
+theorem mk2_eq_zero_of_large {M : Pl → ℂ} (hsupp : ∀ v : Pl, 2 ≤ ‖v‖ → M v = 0)
+    {x y : ℝ} (h : 2 ≤ |x| ∨ 2 ≤ |y| ) : M (mk2 x y) = 0 := by
+  refine hsupp _ ?_
+  have hx : |x| ≤ ‖mk2 x y‖ := by
+    have hsq : x ^ 2 ≤ ‖mk2 x y‖ ^ 2 := by
+      rw [norm_sq_two, mk2_apply_zero, mk2_apply_one]
+      nlinarith [sq_nonneg y]
+    nlinarith [abs_nonneg x, norm_nonneg (mk2 x y), sq_abs x]
+  have hy : |y| ≤ ‖mk2 x y‖ := by
+    have hsq : y ^ 2 ≤ ‖mk2 x y‖ ^ 2 := by
+      rw [norm_sq_two, mk2_apply_zero, mk2_apply_one]
+      nlinarith [sq_nonneg x]
+    nlinarith [abs_nonneg y, norm_nonneg (mk2 x y), sq_abs y]
+  rcases h with h | h
+  · linarith
+  · linarith
+
+/-! ### The middle wave: rapid decay of its amplitude -/
+
+set_option maxHeartbeats 1000000 in
+/-- The middle amplitude and its radial derivatives decay at every order. -/
+theorem exists_ampMid_decay_order (N k : ℕ) : ∃ C : ℝ, 0 < C ∧ ∀ t u : ℝ,
+    1 / 2 ≤ t → t ≤ 3 → 1 ≤ u →
+    ‖iteratedDeriv k (fun u' : ℝ =>
+        planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t u') u‖
+      ≤ C / u ^ N := by
+  obtain ⟨C, hC, hbd⟩ :=
+    exists_norm_iteratedDeriv_planarCoordinateWaveRadialAmplitude_middle_decay k N
+  refine ⟨C * (6 * π) ^ k / π ^ N, by positivity, ?_⟩
+  intro t u ht1 ht2 hu
+  have hπ : (3 : ℝ) < π := Real.pi_gt_three
+  have hupos : (0 : ℝ) < u := by linarith
+  have htpos : (0 : ℝ) < t := by linarith
+  have hprodpos : (0 : ℝ) < (2 * π * t) * u := by positivity
+  have habs : |(2 * π * t) * u| = (2 * π * t) * u := abs_of_pos hprodpos
+  have h3t : (3 : ℝ) ≤ 2 * π * t := by
+    nlinarith [mul_pos (sub_pos.mpr hπ) htpos]
+  have hge1 : (1 : ℝ) ≤ |(2 * π * t) * u| := by
+    rw [habs]
+    have h2 : 2 * π * t * 1 ≤ 2 * π * t * u := mul_le_mul_of_nonneg_left hu (by positivity)
+    linarith
+  have h := hbd t u hge1
+  refine le_trans h ?_
+  have habs2 : |2 * π * t| = 2 * π * t := abs_of_pos (by positivity)
+  rw [habs, habs2]
+  have hnum : (2 * π * t) ^ k ≤ (6 * π) ^ k := by
+    refine pow_le_pow_left₀ (by positivity) ?_ k
+    nlinarith
+  have hden : (π : ℝ) ^ N * u ^ N ≤ ((2 * π * t) * u) ^ N := by
+    have hstep : (π : ℝ) * u ≤ (2 * π * t) * u := by nlinarith
+    have h1 : ((π : ℝ) * u) ^ N ≤ ((2 * π * t) * u) ^ N :=
+      pow_le_pow_left₀ (by positivity) hstep N
+    calc (π : ℝ) ^ N * u ^ N = ((π : ℝ) * u) ^ N := by rw [mul_pow]
+      _ ≤ ((2 * π * t) * u) ^ N := h1
+  have hdenpos : (0 : ℝ) < ((2 * π * t) * u) ^ N := by positivity
+  rw [div_le_div_iff₀ hdenpos (by positivity : (0 : ℝ) < u ^ N)]
+  calc C * (2 * π * t) ^ k * u ^ N
+      ≤ C * (6 * π) ^ k * u ^ N := by
+        refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hnum hC.le) (by positivity)
+    _ = (C * (6 * π) ^ k / π ^ N) * ((π : ℝ) ^ N * u ^ N) := by
+        field_simp
+    _ ≤ (C * (6 * π) ^ k / π ^ N) * ((2 * π * t) * u) ^ N := by
+        refine mul_le_mul_of_nonneg_left hden (by positivity)
+
+/-- The middle amplitude bounds, uniform for `k ≤ M`. -/
+theorem exists_ampMid_decay (N M : ℕ) : ∃ C : ℝ, 0 < C ∧ ∀ k ≤ M, ∀ t u : ℝ,
+    1 / 2 ≤ t → t ≤ 3 → 1 ≤ u →
+    ‖iteratedDeriv k (fun u' : ℝ =>
+        planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t u') u‖
+      ≤ C / u ^ N := by
+  induction M with
+  | zero =>
+      obtain ⟨C, hC, h⟩ := exists_ampMid_decay_order N 0
+      refine ⟨C, hC, fun k hk => ?_⟩
+      have hk0 : k = 0 := by omega
+      subst hk0
+      exact h
+  | succ n ih =>
+      obtain ⟨C, hC, h⟩ := ih
+      obtain ⟨C', hC', h'⟩ := exists_ampMid_decay_order N (n + 1)
+      refine ⟨max C C', by positivity, fun k hk t u ht1 ht2 hu => ?_⟩
+      have hupos : (0 : ℝ) < u := by linarith
+      have hdenpos : (0 : ℝ) < u ^ N := by positivity
+      by_cases heq : k = n + 1
+      · subst heq
+        refine le_trans (h' t u ht1 ht2 hu) ?_
+        gcongr
+        exact le_max_right _ _
+      · refine le_trans (h k (by omega) t u ht1 ht2 hu) ?_
+        gcongr
+        exact le_max_left _ _
+
+/-- The closed form of the derivatives of a linear exponential. -/
+theorem iteratedDeriv_expLin (c : ℝ) (i : ℕ) :
+    iteratedDeriv i (fun u' : ℝ => Complex.exp (((c * u' : ℝ) : ℂ) * Complex.I))
+      = fun u : ℝ => (((c : ℝ) : ℂ) * Complex.I) ^ i
+        * Complex.exp (((c * u : ℝ) : ℂ) * Complex.I) := by
+  induction i with
+  | zero =>
+      funext u
+      rw [iteratedDeriv_zero, pow_zero, one_mul]
+  | succ n ih =>
+      funext u
+      rw [iteratedDeriv_succ, ih]
+      have hlin : HasDerivAt (fun w : ℝ => ((c * w : ℝ) : ℂ) * Complex.I)
+          (((c : ℝ) : ℂ) * Complex.I) u := by
+        have h2 : HasDerivAt (fun w : ℝ => ((c * w : ℝ) : ℂ)) ((c : ℝ) : ℂ) u := by
+          have h3 : HasDerivAt (fun w : ℝ => c * w) c u := by
+            simpa using (hasDerivAt_id u).const_mul c
+          simpa using h3.ofReal_comp
+        simpa using h2.mul_const Complex.I
+      have hexp : HasDerivAt (fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I))
+          (Complex.exp (((c * u : ℝ) : ℂ) * Complex.I) * (((c : ℝ) : ℂ) * Complex.I)) u :=
+        hlin.cexp
+      have hfull := hexp.const_mul ((((c : ℝ) : ℂ) * Complex.I) ^ n)
+      rw [hfull.deriv]
+      ring
+
+theorem norm_iteratedDeriv_expLin (c : ℝ) (i : ℕ) (u : ℝ) :
+    ‖iteratedDeriv i (fun u' : ℝ => Complex.exp (((c * u' : ℝ) : ℂ) * Complex.I)) u‖
+      = |c| ^ i := by
+  rw [iteratedDeriv_expLin, norm_mul, norm_pow, norm_mul, Complex.norm_I, mul_one,
+    Complex.norm_real, Real.norm_eq_abs]
+  have hone : ‖Complex.exp (((c * u : ℝ) : ℂ) * Complex.I)‖ = 1 := by
+    rw [Complex.norm_exp]
+    have hre : (((c * u : ℝ) : ℂ) * Complex.I).re = 0 := by
+      simp [Complex.ext_iff]
+    rw [hre, Real.exp_zero]
+  rw [hone, mul_one]
+
+theorem contDiff_expLin (c : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) fun u' : ℝ => Complex.exp (((c * u' : ℝ) : ℂ) * Complex.I) := by
+  refine Complex.contDiff_exp.comp ?_
+  exact (Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)).mul contDiff_const
+
+/-! ### The middle radial profile, with the phase of `mfull` divided out -/
+
+/-- The phase-compensated radial profile built from an amplitude family `Bfun`.  The exponential
+factor cancels the phase `e^{2πit‖ω‖}` of `mfull`, so that a phase-free wave becomes an instance of
+the same sector machinery; the price is a factor `2^{Ji}` per derivative, which the rapid decay of
+the amplitude pays for. -/
+noncomputable def gmidProfile (Bfun : ℝ → ℝ → ℂ) (J : ℕ) (t u : ℝ) : ℂ :=
+  ((Real.sqrt ((2 : ℝ) ^ J) : ℝ) : ℂ)
+    * (Complex.exp (((-(2 * π * t * (2 : ℝ) ^ J) * u : ℝ) : ℂ) * Complex.I)
+      * Bfun t ((2 : ℝ) ^ J * u))
+
+theorem contDiff_gmidProfile {Bfun : ℝ → ℝ → ℂ}
+    (hB : ∀ t : ℝ, ContDiff ℝ (↑(⊤ : ℕ∞)) (Bfun t)) (J : ℕ) (t : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (gmidProfile Bfun J t) :=
+  contDiff_const.mul ((contDiff_expLin (-(2 * π * t * (2 : ℝ) ^ J))).mul
+    ((hB t).comp (contDiff_const.mul contDiff_id)))
+
+set_option maxHeartbeats 4000000 in
+/-- **The phase-compensated profile has uniformly bounded derivatives on the annulus**, provided
+the amplitude decays of order `12`. -/
+theorem exists_gmidProfile_bound {Bfun : ℝ → ℝ → ℂ} {Cm : ℝ} (hCm : 0 < Cm)
+    (hB : ∀ t : ℝ, ContDiff ℝ (↑(⊤ : ℕ∞)) (Bfun t))
+    (hamp : ∀ k ≤ 5, ∀ t u : ℝ, 1 / 2 ≤ t → t ≤ 3 → 1 ≤ u →
+      ‖iteratedDeriv k (Bfun t) u‖ ≤ Cm / u ^ 12) :
+    ∃ C : ℝ, 0 < C ∧ ∀ J : ℕ, 1 ≤ J → ∀ i ≤ 5, ∀ t u : ℝ,
+      1 / 2 ≤ t → t ≤ 3 → 1 / 2 ≤ u → u ≤ 2 →
+      ‖iteratedDeriv i (gmidProfile Bfun J t) u‖ ≤ C := by
+  classical
+  have hπ : (3 : ℝ) < π := Real.pi_gt_three
+  refine ⟨32 * (6 * π) ^ 5 * 4096 * Cm, by positivity, ?_⟩
+  intro J hJ i hi t u ht1 ht2 hu1 hu2
+  set P : ℝ := (2 : ℝ) ^ J with hPdef
+  have hPpos : (0 : ℝ) < P := by
+    rw [hPdef]
+    positivity
+  have hP2 : (2 : ℝ) ≤ P := by
+    rw [hPdef]
+    calc (2 : ℝ) = (2 : ℝ) ^ (1 : ℕ) := by norm_num
+      _ ≤ (2 : ℝ) ^ J := pow_le_pow_right₀ (by norm_num) hJ
+  have hupos : (0 : ℝ) < u := by linarith
+  have hPu1 : (1 : ℝ) ≤ P * u := by
+    have h1 : P * (1 / 2 : ℝ) ≤ P * u := mul_le_mul_of_nonneg_left hu1 (by linarith)
+    nlinarith
+  set c : ℝ := -(2 * π * t * P) with hcdef
+  have hcabs : |c| ≤ 6 * π * P := by
+    rw [hcdef, abs_neg, abs_of_pos (by positivity)]
+    have hfac : (0 : ℝ) ≤ 2 * π * P := by positivity
+    nlinarith [mul_le_mul_of_nonneg_left ht2 hfac]
+  have hcabs0 : (0 : ℝ) ≤ |c| := abs_nonneg c
+  -- the two factors of the profile
+  have hf : ContDiff ℝ (↑(⊤ : ℕ∞))
+      fun u' : ℝ => Complex.exp (((c * u' : ℝ) : ℂ) * Complex.I) := contDiff_expLin c
+  have hg : ContDiff ℝ (↑(⊤ : ℕ∞)) fun u' : ℝ => Bfun t (P * u') :=
+    (hB t).comp (contDiff_const.mul contDiff_id)
+  have hile : ((i : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : ((i : ℕ∞)) ≤ ⊤)
+  -- the derivative bounds of the two factors
+  have hfb : ∀ k : ℕ,
+      ‖iteratedFDeriv ℝ k (fun u' : ℝ => Complex.exp (((c * u' : ℝ) : ℂ) * Complex.I)) u‖
+        = |c| ^ k := by
+    intro k
+    rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, norm_iteratedDeriv_expLin]
+  have hgb : ∀ m ≤ 5, ‖iteratedFDeriv ℝ m (fun u' : ℝ => Bfun t (P * u')) u‖
+      ≤ P ^ m * (Cm * 4096 / P ^ 12) := by
+    intro m hm
+    have hchain : iteratedDeriv m (fun u' : ℝ => Bfun t (P * u'))
+        = fun u' : ℝ => P ^ m • iteratedDeriv m (Bfun t) (P * u') :=
+      iteratedDeriv_comp_const_smul
+        ((hB t).of_le (by exact_mod_cast (le_top : ((m : ℕ∞)) ≤ ⊤))) _
+    rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, hchain]
+    have hval : ‖(P ^ m : ℝ) • iteratedDeriv m (Bfun t) (P * u)‖
+        = P ^ m * ‖iteratedDeriv m (Bfun t) (P * u)‖ := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : (0 : ℝ) < P ^ m)]
+    rw [hval]
+    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+    refine le_trans (hamp m hm t (P * u) ht1 ht2 hPu1) ?_
+    -- `(P u)^{-12} ≤ 4096 / P^{12}`
+    have hdiv : Cm / (P * u) ^ 12 ≤ Cm * 4096 / P ^ 12 := by
+      have h1 : P ^ 12 * (1 / 2) ^ 12 ≤ (P * u) ^ 12 := by
+        have h2 : P * (1 / 2) ≤ P * u := mul_le_mul_of_nonneg_left hu1 hPpos.le
+        calc P ^ 12 * (1 / 2 : ℝ) ^ 12 = (P * (1 / 2)) ^ 12 := by rw [mul_pow]
+          _ ≤ (P * u) ^ 12 := pow_le_pow_left₀ (by positivity) h2 12
+      have hpos1 : (0 : ℝ) < P ^ 12 * (1 / 2 : ℝ) ^ 12 := by positivity
+      have hpos2 : (0 : ℝ) < (P * u) ^ 12 := by positivity
+      rw [div_le_div_iff₀ hpos2 (by positivity : (0 : ℝ) < P ^ 12)]
+      have hstep : Cm * P ^ 12 ≤ Cm * 4096 * (P ^ 12 * (1 / 2 : ℝ) ^ 12) := by
+        have heq : Cm * 4096 * (P ^ 12 * (1 / 2 : ℝ) ^ 12) = Cm * P ^ 12 := by
+          rw [show ((1 : ℝ) / 2) ^ 12 = 1 / 4096 from by norm_num]
+          ring
+        rw [heq]
+      refine le_trans hstep ?_
+      exact mul_le_mul_of_nonneg_left h1 (by positivity)
+    exact hdiv
+  -- Leibniz
+  have hfun : gmidProfile Bfun J t = fun u' : ℝ => ((Real.sqrt P : ℝ) : ℂ)
+      * ((fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u'
+        * (fun w : ℝ => Bfun t (P * w)) u') := by
+    funext u'
+    rw [gmidProfile, hPdef, hcdef]
+  rw [hfun]
+  have hsm : (fun u' : ℝ => ((Real.sqrt P : ℝ) : ℂ)
+      * ((fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u'
+        * (fun w : ℝ => Bfun t (P * w)) u'))
+      = (Real.sqrt P) • fun u' : ℝ =>
+          ((fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u'
+            * (fun w : ℝ => Bfun t (P * w)) u') := by
+    funext u'
+    rw [Pi.smul_apply, Complex.real_smul]
+  rw [hsm]
+  have hprodsmooth : ContDiff ℝ (↑(⊤ : ℕ∞)) fun u' : ℝ =>
+      ((fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u'
+        * (fun w : ℝ => Bfun t (P * w)) u') := hf.mul hg
+  rw [← norm_iteratedFDeriv_eq_norm_iteratedDeriv, iteratedFDeriv_const_smul_apply
+    ((hprodsmooth.of_le hile).contDiffAt), norm_smul, Real.norm_eq_abs,
+    abs_of_nonneg (Real.sqrt_nonneg P)]
+  have hprodbd := norm_iteratedFDeriv_mul_le hf hg u hile
+  have hterm : ∀ k ∈ Finset.range (i + 1),
+      (i.choose k : ℝ)
+          * ‖iteratedFDeriv ℝ k (fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u‖
+          * ‖iteratedFDeriv ℝ (i - k) (fun w : ℝ => Bfun t (P * w)) u‖
+        ≤ (i.choose k : ℝ) * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)) := by
+    intro k hk
+    rw [Finset.mem_range] at hk
+    have hkle : k ≤ 5 := by omega
+    have h1 : |c| ^ k ≤ (6 * π) ^ k * P ^ k := by
+      have := pow_le_pow_left₀ hcabs0 hcabs k
+      calc |c| ^ k ≤ (6 * π * P) ^ k := this
+        _ = (6 * π) ^ k * P ^ k := by rw [mul_pow]
+    have h2 : (6 * π) ^ k ≤ (6 * π) ^ 5 :=
+      pow_le_pow_right₀ (by nlinarith) hkle
+    have h3 : ‖iteratedFDeriv ℝ (i - k) (fun w : ℝ => Bfun t (P * w)) u‖
+        ≤ P ^ (i - k) * (Cm * 4096 / P ^ 12) := hgb (i - k) (by omega)
+    have hPk : P ^ k * P ^ (i - k) = P ^ i := by
+      rw [← pow_add]
+      congr 1
+      omega
+    have hQnn : (0 : ℝ) ≤ Cm * 4096 / P ^ 12 := by positivity
+    calc (i.choose k : ℝ)
+            * ‖iteratedFDeriv ℝ k (fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u‖
+            * ‖iteratedFDeriv ℝ (i - k) (fun w : ℝ => Bfun t (P * w)) u‖
+        = (i.choose k : ℝ) * (|c| ^ k)
+            * ‖iteratedFDeriv ℝ (i - k) (fun w : ℝ => Bfun t (P * w)) u‖ := by
+          rw [hfb k]
+      _ ≤ (i.choose k : ℝ) * ((6 * π) ^ 5 * P ^ k) * (P ^ (i - k) * (Cm * 4096 / P ^ 12)) := by
+          refine mul_le_mul ?_ h3 (norm_nonneg _) (by positivity)
+          refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+          calc |c| ^ k ≤ (6 * π) ^ k * P ^ k := h1
+            _ ≤ (6 * π) ^ 5 * P ^ k := mul_le_mul_of_nonneg_right h2 (by positivity)
+      _ = (i.choose k : ℝ) * ((6 * π) ^ 5 * (P ^ k * P ^ (i - k)) * (Cm * 4096 / P ^ 12)) := by
+          ring
+      _ = (i.choose k : ℝ) * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)) := by
+          rw [hPk]
+  have hchoose : (∑ k ∈ Finset.range (i + 1), (i.choose k : ℝ)) = (2 : ℝ) ^ i := by
+    have h := Nat.sum_range_choose i
+    have hcast : (∑ k ∈ Finset.range (i + 1), (i.choose k : ℝ))
+        = ((∑ k ∈ Finset.range (i + 1), i.choose k : ℕ) : ℝ) := by
+      push_cast
+      ring
+    rw [hcast, h]
+    push_cast
+    ring
+  have hsum : ‖iteratedFDeriv ℝ i (fun u' : ℝ =>
+        (fun w : ℝ => Complex.exp (((c * w : ℝ) : ℂ) * Complex.I)) u'
+          * (fun w : ℝ => Bfun t (P * w)) u') u‖
+      ≤ (2 : ℝ) ^ i * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)) := by
+    refine le_trans hprodbd (le_trans (Finset.sum_le_sum hterm) (le_of_eq ?_))
+    rw [← Finset.sum_mul, hchoose]
+  refine le_trans (mul_le_mul_of_nonneg_left hsum (Real.sqrt_nonneg P)) ?_
+  · -- the final numerical bound
+    have hsqrtle : Real.sqrt P ≤ P := by
+      nlinarith [Real.sq_sqrt hPpos.le, Real.sqrt_nonneg P, hP2]
+    have h2i : (2 : ℝ) ^ i ≤ 32 := by
+      have := pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hi
+      calc (2 : ℝ) ^ i ≤ (2 : ℝ) ^ 5 := this
+        _ = 32 := by norm_num
+    have hPi : P ^ (i + 1) ≤ P ^ 12 := pow_le_pow_right₀ (by linarith) (by omega)
+    have hP12 : (0 : ℝ) < P ^ 12 := by positivity
+    have hkey : Real.sqrt P * ((2 : ℝ) ^ i * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)))
+        ≤ 32 * (6 * π) ^ 5 * 4096 * Cm := by
+      have hstep1 : Real.sqrt P * ((2 : ℝ) ^ i * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)))
+          ≤ P * (32 * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12))) := by
+        refine mul_le_mul hsqrtle ?_ (by positivity) (by linarith)
+        exact mul_le_mul_of_nonneg_right h2i (by positivity)
+      have hrewrite : P * (32 * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)))
+          = (32 * (6 * π) ^ 5 * 4096 * Cm) * (P ^ (i + 1) / P ^ 12) := by
+        rw [pow_succ]
+        field_simp
+        ring
+      have hfrac : P ^ (i + 1) / P ^ 12 ≤ 1 := by
+        rw [div_le_one hP12]
+        exact hPi
+      calc Real.sqrt P * ((2 : ℝ) ^ i * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12)))
+          ≤ P * (32 * ((6 * π) ^ 5 * P ^ i * (Cm * 4096 / P ^ 12))) := hstep1
+        _ = (32 * (6 * π) ^ 5 * 4096 * Cm) * (P ^ (i + 1) / P ^ 12) := hrewrite
+        _ ≤ (32 * (6 * π) ^ 5 * 4096 * Cm) * 1 :=
+            mul_le_mul_of_nonneg_left hfrac (by positivity)
+        _ = 32 * (6 * π) ^ 5 * 4096 * Cm := by ring
+    exact hkey
+
+/-- The middle radial profile. -/
+noncomputable def goutMid (J : ℕ) (t u : ℝ) : ℂ :=
+  gmidProfile (fun s w => planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle s w) J t u
+
+theorem contDiff_goutMid (J : ℕ) (t : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (goutMid J t) :=
+  contDiff_gmidProfile (fun s => contDiff_ampR CoordinateWavePart.middle s) J t
+
+theorem exists_goutMid_bound :
+    ∃ C : ℝ, 0 < C ∧ ∀ J : ℕ, 1 ≤ J → ∀ i ≤ 5, ∀ t u : ℝ,
+      1 / 2 ≤ t → t ≤ 3 → 1 / 2 ≤ u → u ≤ 2 →
+      ‖iteratedDeriv i (goutMid J t) u‖ ≤ C := by
+  obtain ⟨Cm, hCm, hamp⟩ := exists_ampMid_decay 12 5
+  exact exists_gmidProfile_bound hCm (fun s => contDiff_ampR CoordinateWavePart.middle s) hamp
+
+/-! ### The middle sector symbol -/
+
+/-- **The fixed-scale middle symbol**, with the phase of `mfull` divided out. -/
+noncomputable def gSymMid (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) (v : Pl) : ℂ :=
+  ((tcut t : ℝ) : ℂ) * (cutF φ v * goutMid J t (nrm v))
+
+theorem contDiff_gSymMid (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (gSymMid φ J t) :=
+  contDiff_const.mul ((contDiff_cutF φ).mul ((contDiff_goutMid J t).comp contDiff_nrm))
+
+theorem gSymMid_eq_zero_of_cutF {φ : SchwartzMap Pl ℂ} (J : ℕ) (t : ℝ) {v : Pl}
+    (h : cutF φ v = 0) : gSymMid φ J t v = 0 := by
+  rw [gSymMid, h, zero_mul, mul_zero]
+
+theorem gSymMid_eq_zero_of_large {φ : SchwartzMap Pl ℂ}
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) (J : ℕ) (t : ℝ) {v : Pl}
+    (h : 2 ≤ ‖v‖) : gSymMid φ J t v = 0 := by
+  refine gSymMid_eq_zero_of_cutF J t ?_
+  rw [cutF, bpCut_eq_zero_of_large hφzero h, zero_mul]
+
+set_option maxHeartbeats 2000000 in
+/-- **The middle symbol has derivative bounds uniform in the scale and the dilation.** -/
+theorem exists_gSymMid_bound (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) :
+    ∃ B : ℝ, 0 < B ∧ ∀ J : ℕ, 1 ≤ J → ∀ n ≤ 4, ∀ (t : ℝ) (v : Pl),
+      ‖iteratedFDeriv ℝ n (gSymMid φ J t) v‖ ≤ B := by
+  classical
+  obtain ⟨Cg, hCg, hgb⟩ := exists_goutMid_bound
+  obtain ⟨D, hD1, hDbd⟩ := exists_nrm_deriv_bound 4
+  obtain ⟨Cc, hCc, hcut⟩ := exists_cutF_bound φ 4
+  refine ⟨(2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4), by positivity, ?_⟩
+  intro J hJ n hn t v
+  have hnle : ((n : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : ((n : ℕ∞)) ≤ ⊤)
+  set F : Pl → ℂ := fun w : Pl => cutF φ w * goutMid J t (nrm w) with hFdef
+  have hFsmooth : ContDiff ℝ (↑(⊤ : ℕ∞)) F :=
+    (contDiff_cutF φ).mul ((contDiff_goutMid J t).comp contDiff_nrm)
+  have hsplit : ‖iteratedFDeriv ℝ n (gSymMid φ J t) v‖
+      = |tcut t| * ‖iteratedFDeriv ℝ n F v‖ := by
+    have hsm : gSymMid φ J t = (tcut t) • F := by
+      funext w
+      rw [gSymMid, hFdef, Pi.smul_apply, Complex.real_smul]
+    rw [hsm, iteratedFDeriv_const_smul_apply (hFsmooth.of_le hnle).contDiffAt, norm_smul,
+      Real.norm_eq_abs]
+  rw [hsplit]
+  by_cases ht : 1 / 2 < t ∧ t < 3
+  · have hGbd : ∀ i ≤ 4, ∀ u : ℝ, 1 / 2 ≤ u → u ≤ 2 →
+        ‖iteratedDeriv i (goutMid J t) u‖ ≤ Cg :=
+      fun i hi u hu1 hu2 => hgb J hJ i (by omega) t u ht.1.le ht.2.le hu1 hu2
+    have hbd : ‖iteratedFDeriv ℝ n F v‖
+        ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4) :=
+      norm_iteratedFDeriv_cut_mul_comp_le hφone hφzero (contDiff_goutMid J t) hCg hGbd
+        hD1 hDbd hCc hcut hn v
+    have htcut : |tcut t| ≤ 1 := by
+      rw [abs_of_nonneg (tcut_nonneg t)]
+      exact tcut_le_one t
+    calc |tcut t| * ‖iteratedFDeriv ℝ n F v‖ ≤ 1 * ‖iteratedFDeriv ℝ n F v‖ :=
+          mul_le_mul_of_nonneg_right htcut (norm_nonneg _)
+      _ = ‖iteratedFDeriv ℝ n F v‖ := one_mul _
+      _ ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4) := hbd
+  · have hz : tcut t = 0 := by
+      by_contra hc
+      exact ht (tcut_mem hc)
+    rw [hz, abs_zero, zero_mul]
+    positivity
+
+/-- The middle sector multiplier at scale `J`. -/
+noncomputable def mscMid (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) (ω : Pl) : ℂ :=
+  gSymMid φ J t ((2 : ℝ) ^ (-(J : ℤ)) • ω)
+
+theorem mscMid_support {φ : SchwartzMap Pl ℂ}
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) (J : ℕ) (t : ℝ) (ω : Pl)
+    (h : gSymMid φ J t ((2 : ℝ) ^ (-(J : ℤ)) • ω) ≠ 0) : ω ∈ Theta J := by
+  refine theta_of_cutF_ne_zero hφone hφzero J ?_
+  intro hc
+  exact h (gSymMid_eq_zero_of_cutF J t hc)
+
+/-- **The middle sector multiplier satisfies both hypothesis packages.** -/
+theorem exists_mscMid_data (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) :
+    ∃ B : ℝ, 0 < B ∧ ∀ J : ℕ, 1 ≤ J →
+      MultData J (mscMid φ J) (m2can (mscMid φ J)) B
+        ∧ PolarData J (mscMid φ J) (mrcan (mscMid φ J)) (macan (mscMid φ J)) (384 * B) := by
+  obtain ⟨B, hBpos, hB⟩ := exists_gSymMid_bound φ hφone hφzero
+  refine ⟨B, hBpos, fun J hJ => ⟨?_, ?_⟩⟩
+  · exact multData_of_rescaled (fun t => contDiff_gSymMid φ J t)
+      (fun t ω h => mscMid_support hφone hφzero J t ω h)
+      (fun n hn t v => hB J hJ n (by omega) t v)
+  · exact polarData_of_rescaled (fun t => contDiff_gSymMid φ J t)
+      (fun t ω h => mscMid_support hφone hφzero J t ω h)
+      (fun t v hv => gSymMid_eq_zero_of_large hφzero J t hv)
+      (fun n hn t v => hB J hJ n hn t v)
+
+/-! ### The dilation derivative of the middle amplitude -/
+
+theorem norm_iteratedDeriv_lin_le' (c u : ℝ) (k : ℕ) :
+    ‖iteratedDeriv k (fun u' : ℝ => ((c * u' : ℝ) : ℂ)) u‖ ≤ |c| * (|u| + 1) := by
+  have hd : deriv (fun u' : ℝ => ((c * u' : ℝ) : ℂ)) = fun _ : ℝ => ((c : ℝ) : ℂ) := by
+    funext x
+    have h1 : HasDerivAt (fun u' : ℝ => c * u') c x := by
+      simpa using (hasDerivAt_id x).const_mul c
+    have h2 : HasDerivAt (fun u' : ℝ => ((c * u' : ℝ) : ℂ)) ((c : ℝ) : ℂ) x := by
+      simpa using h1.ofReal_comp
+    exact h2.deriv
+  match k with
+  | 0 =>
+      rw [iteratedDeriv_zero, Complex.norm_real, Real.norm_eq_abs, abs_mul]
+      nlinarith [abs_nonneg c, abs_nonneg u]
+  | (n + 1) =>
+      rw [iteratedDeriv_succ', hd, iteratedDeriv_const]
+      split_ifs with hn
+      · rw [Complex.norm_real, Real.norm_eq_abs]
+        nlinarith [abs_nonneg c, abs_nonneg u]
+      · rw [norm_zero]
+        nlinarith [abs_nonneg c, abs_nonneg u]
+
+/-- The dilation derivative of the middle amplitude, as a function of the radius, has the same
+rapid decay. -/
+theorem ampRD_middle_eq {t : ℝ} (ht : t ≠ 0) (w : ℝ) :
+    ampRD CoordinateWavePart.middle w t
+      = ((t⁻¹ * w : ℝ) : ℂ)
+        * deriv (fun ρ : ℝ => planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ)
+            w := by
+  have hswap := ampRD_swap CoordinateWavePart.middle t w
+  have htC : ((t : ℝ) : ℂ) ≠ 0 := by exact_mod_cast ht
+  have hval : deriv (fun ρ : ℝ =>
+      planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ) w
+      = ampRD CoordinateWavePart.middle t w :=
+    (hasDerivAt_ampR CoordinateWavePart.middle t w).deriv
+  have hgoal : ((t : ℝ) : ℂ) * ampRD CoordinateWavePart.middle w t
+      = ((t : ℝ) : ℂ) * (((t⁻¹ * w : ℝ) : ℂ) * ampRD CoordinateWavePart.middle t w) := by
+    rw [hswap]
+    push_cast
+    field_simp
+  rw [hval]
+  exact mul_left_cancel₀ htC hgoal
+
+set_option maxHeartbeats 2000000 in
+theorem exists_ampMidD_decay : ∃ C : ℝ, 0 < C ∧ ∀ k ≤ 5, ∀ t w : ℝ,
+    1 / 2 ≤ t → t ≤ 3 → 1 ≤ w →
+    ‖iteratedDeriv k (fun w' : ℝ => ampRD CoordinateWavePart.middle w' t) w‖ ≤ C / w ^ 12 := by
+  classical
+  obtain ⟨Cm, hCm, hamp⟩ := exists_ampMid_decay 13 6
+  refine ⟨128 * Cm, by positivity, ?_⟩
+  intro k hk t w ht1 ht2 hw
+  have htpos : (0 : ℝ) < t := by linarith
+  have hwpos : (0 : ℝ) < w := by linarith
+  have htne : t ≠ 0 := ne_of_gt htpos
+  have hkle : ((k : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤)
+  -- rewrite the function as an affine factor times a derivative
+  have hfun : (fun w' : ℝ => ampRD CoordinateWavePart.middle w' t)
+      = fun w' : ℝ => ((t⁻¹ * w' : ℝ) : ℂ)
+        * deriv (fun ρ : ℝ =>
+            planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ) w' := by
+    funext w'
+    exact ampRD_middle_eq htne w'
+  have hDsmooth : ContDiff ℝ (↑(⊤ : ℕ∞)) (deriv fun ρ : ℝ =>
+      planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ) :=
+    (contDiff_infty_iff_deriv.mp (contDiff_ampR CoordinateWavePart.middle t)).2
+  have hlinsmooth : ContDiff ℝ (↑(⊤ : ℕ∞)) fun w' : ℝ => ((t⁻¹ * w' : ℝ) : ℂ) :=
+    Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)
+  rw [hfun, ← norm_iteratedFDeriv_eq_norm_iteratedDeriv]
+  refine le_trans (norm_iteratedFDeriv_mul_le hlinsmooth hDsmooth w hkle) ?_
+  -- bound each term
+  have hterm : ∀ m ∈ Finset.range (k + 1),
+      (k.choose m : ℝ) * ‖iteratedFDeriv ℝ m (fun w' : ℝ => ((t⁻¹ * w' : ℝ) : ℂ)) w‖
+          * ‖iteratedFDeriv ℝ (k - m) (deriv fun ρ : ℝ =>
+              planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ) w‖
+        ≤ (k.choose m : ℝ) * (4 * w * (Cm / w ^ 13)) := by
+    intro m hm
+    rw [Finset.mem_range] at hm
+    have h1 : ‖iteratedFDeriv ℝ m (fun w' : ℝ => ((t⁻¹ * w' : ℝ) : ℂ)) w‖ ≤ 4 * w := by
+      rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
+      refine le_trans (norm_iteratedDeriv_lin_le' t⁻¹ w m) ?_
+      have habs : |t⁻¹| ≤ 2 := by
+        rw [abs_of_pos (inv_pos.mpr htpos), inv_le_comm₀ htpos (by norm_num)]
+        linarith
+      have habsw : |w| = w := abs_of_pos hwpos
+      rw [habsw]
+      nlinarith
+    have h2 : ‖iteratedFDeriv ℝ (k - m) (deriv fun ρ : ℝ =>
+        planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ) w‖
+        ≤ Cm / w ^ 13 := by
+      rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, ← iteratedDeriv_succ']
+      exact hamp (k - m + 1) (by omega) t w ht1 ht2 hw
+    have h3 : (0 : ℝ) ≤ (k.choose m : ℝ) := by positivity
+    calc (k.choose m : ℝ) * ‖iteratedFDeriv ℝ m (fun w' : ℝ => ((t⁻¹ * w' : ℝ) : ℂ)) w‖
+            * ‖iteratedFDeriv ℝ (k - m) (deriv fun ρ : ℝ =>
+                planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ρ) w‖
+        ≤ (k.choose m : ℝ) * (4 * w) * (Cm / w ^ 13) := by
+          refine mul_le_mul (mul_le_mul_of_nonneg_left h1 h3) h2 (norm_nonneg _) ?_
+          positivity
+      _ = (k.choose m : ℝ) * (4 * w * (Cm / w ^ 13)) := by ring
+  refine le_trans (Finset.sum_le_sum hterm) ?_
+  rw [← Finset.sum_mul]
+  have hchoose : (∑ m ∈ Finset.range (k + 1), (k.choose m : ℝ)) = (2 : ℝ) ^ k := by
+    have h := Nat.sum_range_choose k
+    have hcast : (∑ m ∈ Finset.range (k + 1), (k.choose m : ℝ))
+        = ((∑ m ∈ Finset.range (k + 1), k.choose m : ℕ) : ℝ) := by
+      push_cast
+      ring
+    rw [hcast, h]
+    push_cast
+    ring
+  rw [hchoose]
+  have h2k : (2 : ℝ) ^ k ≤ 32 := by
+    have := pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hk
+    calc (2 : ℝ) ^ k ≤ (2 : ℝ) ^ 5 := this
+      _ = 32 := by norm_num
+  have hw13 : w * (Cm / w ^ 13) = Cm / w ^ 12 := by
+    rw [eq_div_iff (by positivity : (w : ℝ) ^ 12 ≠ 0)]
+    field_simp
+  calc (2 : ℝ) ^ k * (4 * w * (Cm / w ^ 13))
+      ≤ 32 * (4 * w * (Cm / w ^ 13)) := by
+        refine mul_le_mul_of_nonneg_right h2k ?_
+        positivity
+    _ = 128 * (w * (Cm / w ^ 13)) := by ring
+    _ = 128 * Cm / w ^ 12 := by
+        rw [hw13]
+        ring
+
+/-! ### The dilation derivative of the middle profile -/
+
+theorem hasDerivAt_expLin (c t : ℝ) :
+    HasDerivAt (fun s : ℝ => Complex.exp (((c * s : ℝ) : ℂ) * Complex.I))
+      (Complex.exp (((c * t : ℝ) : ℂ) * Complex.I) * (((c : ℝ) : ℂ) * Complex.I)) t := by
+  have hlin : HasDerivAt (fun w : ℝ => ((c * w : ℝ) : ℂ) * Complex.I)
+      (((c : ℝ) : ℂ) * Complex.I) t := by
+    have h2 : HasDerivAt (fun w : ℝ => ((c * w : ℝ) : ℂ)) ((c : ℝ) : ℂ) t := by
+      have h3 : HasDerivAt (fun w : ℝ => c * w) c t := by
+        simpa using (hasDerivAt_id t).const_mul c
+      simpa using h3.ofReal_comp
+    simpa using h2.mul_const Complex.I
+  exact hlin.cexp
+
+/-- The dilation derivative of the middle profile. -/
+noncomputable def goutMidDot (J : ℕ) (t u : ℝ) : ℂ :=
+  ((-(2 * π * (2 : ℝ) ^ J) * u : ℝ) : ℂ) * (Complex.I * goutMid J t u)
+    + gmidProfile (fun s w => ampRD CoordinateWavePart.middle w s) J t u
+
+set_option maxHeartbeats 1000000 in
+theorem hasDerivAt_goutMid_param (J : ℕ) (t u : ℝ) :
+    HasDerivAt (fun s : ℝ => goutMid J s u) (goutMidDot J t u) t := by
+  set P : ℝ := (2 : ℝ) ^ J with hPdef
+  set c : ℝ := -(2 * π * P * u) with hcdef
+  have hph : ∀ s : ℝ, -(2 * π * s * P) * u = c * s := by
+    intro s
+    rw [hcdef]
+    ring
+  have hfun : (fun s : ℝ => goutMid J s u)
+      = fun s : ℝ => ((Real.sqrt P : ℝ) : ℂ)
+        * (Complex.exp (((c * s : ℝ) : ℂ) * Complex.I)
+          * planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle s (P * u)) := by
+    funext s
+    rw [goutMid, gmidProfile, hph s]
+  rw [hfun]
+  have hE := hasDerivAt_expLin c t
+  have hA : HasDerivAt (fun s : ℝ =>
+      planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle s (P * u))
+      (ampRD CoordinateWavePart.middle (P * u) t) t :=
+    hasDerivAt_ampR_param CoordinateWavePart.middle (P * u) t
+  have hprod := (hE.mul hA).const_mul (((Real.sqrt P : ℝ) : ℂ))
+  refine hprod.congr_deriv ?_
+  rw [goutMidDot, goutMid, gmidProfile, gmidProfile, hph t]
+  have hcast : ((-(2 * π * P) * u : ℝ) : ℂ) = ((c : ℝ) : ℂ) := by
+    congr 1
+    rw [hcdef]
+    ring
+  rw [hcast]
+  ring
+
+set_option maxHeartbeats 2000000 in
+/-- **The dilation derivative of the middle profile loses only the factor `2^J` of the phase.** -/
+theorem exists_goutMidDot_bound :
+    ∃ C : ℝ, 0 < C ∧ ∀ J : ℕ, 1 ≤ J → ∀ i ≤ 4, ∀ t u : ℝ,
+      1 / 2 ≤ t → t ≤ 3 → 1 / 2 ≤ u → u ≤ 2 →
+      ‖iteratedDeriv i (goutMidDot J t) u‖ ≤ C * (2 : ℝ) ^ J := by
+  classical
+  obtain ⟨Cg, hCg, hgb⟩ := exists_goutMid_bound
+  obtain ⟨Cd, hCd, hdb⟩ := exists_ampMidD_decay
+  obtain ⟨C2, hC2, hgb2⟩ := exists_gmidProfile_bound (Bfun := fun s w =>
+      ampRD CoordinateWavePart.middle w s) hCd
+    (fun s => contDiff_ampRD_left CoordinateWavePart.middle s)
+    (fun k hk t w ht1 ht2 hw => hdb k hk t w ht1 ht2 hw)
+  have hπ : (3 : ℝ) < π := Real.pi_gt_three
+  refine ⟨16 * (2 * (2 * π + 1)) * Cg + C2, by positivity, ?_⟩
+  intro J hJ i hi t u ht1 ht2 hu1 hu2
+  set P : ℝ := (2 : ℝ) ^ J with hPdef
+  have hPpos : (0 : ℝ) < P := by
+    rw [hPdef]
+    positivity
+  have hP1 : (1 : ℝ) ≤ P := by
+    rw [hPdef]
+    exact one_le_pow₀ (by norm_num)
+  have hile : ((i : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : ((i : ℕ∞)) ≤ ⊤)
+  -- the two terms
+  set G1 : ℝ → ℂ := fun u' : ℝ => ((-(2 * π * P) * u' : ℝ) : ℂ) * (Complex.I * goutMid J t u')
+    with hG1def
+  set G2 : ℝ → ℂ := gmidProfile (fun s w => ampRD CoordinateWavePart.middle w s) J t with hG2def
+  have hG1smooth : ContDiff ℝ (↑(⊤ : ℕ∞)) G1 := by
+    rw [hG1def]
+    exact (Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)).mul
+      (contDiff_const.mul (contDiff_goutMid J t))
+  have hG2smooth : ContDiff ℝ (↑(⊤ : ℕ∞)) G2 := by
+    rw [hG2def]
+    exact contDiff_gmidProfile (fun s => contDiff_ampRD_left CoordinateWavePart.middle s) J t
+  have hsplit : ‖iteratedDeriv i (goutMidDot J t) u‖
+      ≤ ‖iteratedDeriv i G1 u‖ + ‖iteratedDeriv i G2 u‖ := by
+    have hadd : goutMidDot J t = G1 + G2 := by
+      funext u'
+      rw [goutMidDot, hG1def, hG2def, hPdef]
+      rfl
+    have heq : ‖iteratedDeriv i (goutMidDot J t) u‖ = ‖iteratedFDeriv ℝ i (G1 + G2) u‖ := by
+      rw [hadd, norm_iteratedFDeriv_eq_norm_iteratedDeriv]
+    rw [heq, iteratedFDeriv_add_apply (hG1smooth.of_le hile).contDiffAt
+      (hG2smooth.of_le hile).contDiffAt]
+    refine le_trans (norm_add_le _ _) ?_
+    rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, norm_iteratedFDeriv_eq_norm_iteratedDeriv]
+  refine le_trans hsplit ?_
+  -- the first term
+  have hIbd : ∀ k ≤ 4, ∀ u' : ℝ, 1 / 2 ≤ u' → u' ≤ 2 →
+      ‖iteratedDeriv k (fun w : ℝ => Complex.I * goutMid J t w) u'‖ ≤ Cg := by
+    intro k hk u' hu1' hu2'
+    have hcm : iteratedDeriv k (fun w : ℝ => Complex.I * goutMid J t w) u'
+        = Complex.I * iteratedDeriv k (goutMid J t) u' := by
+      refine iteratedDeriv_const_mul _ ?_
+      exact ((contDiff_goutMid J t).of_le
+        (by exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤))).contDiffAt
+    rw [hcm, norm_mul, Complex.norm_I, one_mul]
+    exact hgb J hJ k (by omega) t u' ht1 ht2 hu1' hu2'
+  have h1 : ‖iteratedDeriv i G1 u‖
+      ≤ (2 : ℝ) ^ 4 * (2 * (|-(2 * π * P)| + 1)) * Cg := by
+    rw [hG1def]
+    exact norm_iteratedDeriv_lin_mul_le (contDiff_const.mul (contDiff_goutMid J t)) hCg.le
+      hIbd hi hu1 hu2
+  have habs : |-(2 * π * P)| = 2 * π * P := by
+    rw [abs_neg, abs_of_pos (by positivity)]
+  have h1' : ‖iteratedDeriv i G1 u‖ ≤ 16 * (2 * (2 * π + 1)) * Cg * P := by
+    rw [habs] at h1
+    refine le_trans h1 ?_
+    have h2 : 2 * π * P + 1 ≤ (2 * π + 1) * P := by nlinarith
+    nlinarith [hCg.le, h2]
+  -- the second term
+  have h2 : ‖iteratedDeriv i G2 u‖ ≤ C2 := by
+    rw [hG2def]
+    exact hgb2 J hJ i (by omega) t u ht1 ht2 hu1 hu2
+  have h2' : C2 ≤ C2 * P := by nlinarith [hC2.le]
+  calc ‖iteratedDeriv i G1 u‖ + ‖iteratedDeriv i G2 u‖
+      ≤ 16 * (2 * (2 * π + 1)) * Cg * P + C2 * P := by
+        exact add_le_add h1' (le_trans h2 h2')
+    _ = (16 * (2 * (2 * π + 1)) * Cg + C2) * P := by ring
+
+/-! ### The dilation derivative of the middle symbol -/
+
+theorem contDiff_goutMidDot (J : ℕ) (t : ℝ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (goutMidDot J t) := by
+  have hfun : goutMidDot J t
+      = (fun u : ℝ => ((-(2 * π * (2 : ℝ) ^ J) * u : ℝ) : ℂ) * (Complex.I * goutMid J t u))
+        + gmidProfile (fun s w => ampRD CoordinateWavePart.middle w s) J t := by
+    funext u
+    rw [goutMidDot]
+    rfl
+  rw [hfun]
+  exact ((Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)).mul
+    (contDiff_const.mul (contDiff_goutMid J t))).add
+      (contDiff_gmidProfile (fun s => contDiff_ampRD_left CoordinateWavePart.middle s) J t)
+
+/-- The dilation derivative of the middle symbol. -/
+noncomputable def gSymMidDot (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) (v : Pl) : ℂ :=
+  ((tcutD t : ℝ) : ℂ) * (cutF φ v * goutMid J t (nrm v))
+    + ((tcut t : ℝ) : ℂ) * (cutF φ v * goutMidDot J t (nrm v))
+
+theorem hasDerivAt_gSymMid_param (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) (v : Pl) :
+    HasDerivAt (fun s : ℝ => gSymMid φ J s v) (gSymMidDot φ J t v) t := by
+  have h1 : HasDerivAt (fun s : ℝ => ((tcut s : ℝ) : ℂ)) ((tcutD t : ℝ) : ℂ) t := by
+    simpa using (hasDerivAt_tcut t).ofReal_comp
+  have h2 : HasDerivAt (fun s : ℝ => cutF φ v * goutMid J s (nrm v))
+      (cutF φ v * goutMidDot J t (nrm v)) t :=
+    (hasDerivAt_goutMid_param J t (nrm v)).const_mul _
+  refine (h1.mul h2).congr_deriv ?_
+  rw [gSymMidDot]
+
+theorem contDiff_gSymMidDot (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (gSymMidDot φ J t) := by
+  have h1 : ContDiff ℝ (↑(⊤ : ℕ∞)) fun v : Pl => cutF φ v * goutMid J t (nrm v) :=
+    (contDiff_cutF φ).mul ((contDiff_goutMid J t).comp contDiff_nrm)
+  have h2 : ContDiff ℝ (↑(⊤ : ℕ∞)) fun v : Pl => cutF φ v * goutMidDot J t (nrm v) :=
+    (contDiff_cutF φ).mul ((contDiff_goutMidDot J t).comp contDiff_nrm)
+  exact (contDiff_const.mul h1).add (contDiff_const.mul h2)
+
+theorem continuous_gSymMidDot_param (φ : SchwartzMap Pl ℂ) (J : ℕ) (v : Pl) :
+    Continuous fun t : ℝ => gSymMidDot φ J t v := by
+  have hE : Continuous fun t : ℝ =>
+      Complex.exp (((-(2 * π * t * (2 : ℝ) ^ J) * nrm v : ℝ) : ℂ) * Complex.I) := by
+    refine Complex.continuous_exp.comp ?_
+    exact (Complex.continuous_ofReal.comp
+      (((continuous_const.mul continuous_id).mul continuous_const).neg.mul
+        continuous_const)).mul continuous_const
+  have hAmp : Continuous fun t : ℝ =>
+      planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t
+        ((2 : ℝ) ^ J * nrm v) := continuous_ampR_param CoordinateWavePart.middle _
+  have hmid : Continuous fun t : ℝ => goutMid J t (nrm v) := by
+    show Continuous fun t : ℝ =>
+      gmidProfile (fun s w => planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle s w)
+        J t (nrm v)
+    exact continuous_const.mul (hE.mul hAmp)
+  have hampD : Continuous fun t : ℝ => ampRD CoordinateWavePart.middle ((2 : ℝ) ^ J * nrm v) t :=
+    continuous_ampRD_param CoordinateWavePart.middle _
+  have hmidDot : Continuous fun t : ℝ => goutMidDot J t (nrm v) := by
+    show Continuous fun t : ℝ =>
+      ((-(2 * π * (2 : ℝ) ^ J) * nrm v : ℝ) : ℂ) * (Complex.I * goutMid J t (nrm v))
+        + gmidProfile (fun s w => ampRD CoordinateWavePart.middle w s) J t (nrm v)
+    refine (continuous_const.mul (continuous_const.mul hmid)).add ?_
+    exact continuous_const.mul (hE.mul hampD)
+  have h1 : Continuous fun t : ℝ => ((tcutD t : ℝ) : ℂ) :=
+    Complex.continuous_ofReal.comp continuous_tcutD
+  have h2 : Continuous fun t : ℝ => ((tcut t : ℝ) : ℂ) :=
+    Complex.continuous_ofReal.comp continuous_tcut
+  exact (h1.mul (continuous_const.mul hmid)).add (h2.mul (continuous_const.mul hmidDot))
+
+set_option maxHeartbeats 2000000 in
+/-- **The dilation derivative of the middle symbol loses only the factor `2^J`.** -/
+theorem exists_gSymMidDot_bound (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) :
+    ∃ B : ℝ, 0 < B ∧ ∀ J : ℕ, 1 ≤ J → ∀ n ≤ 4, ∀ (t : ℝ) (v : Pl),
+      ‖iteratedFDeriv ℝ n (gSymMidDot φ J t) v‖ ≤ B * (2 : ℝ) ^ J := by
+  classical
+  obtain ⟨Cg, hCg, hgb⟩ := exists_goutMid_bound
+  obtain ⟨Cd, hCd, hdb⟩ := exists_goutMidDot_bound
+  obtain ⟨D, hD1, hDbd⟩ := exists_nrm_deriv_bound 4
+  obtain ⟨Cc, hCc, hcut⟩ := exists_cutF_bound φ 4
+  obtain ⟨Cst, hCst1, hCstd1, hCstd2⟩ := exists_st_deriv2_bound
+  have hCstpos : (0 : ℝ) < Cst := by linarith
+  refine ⟨3 * Cst * ((2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4))
+      + (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cd * D ^ 4), by positivity, ?_⟩
+  intro J hJ n hn t v
+  have hPpos : (0 : ℝ) < (2 : ℝ) ^ J := by positivity
+  have hP1 : (1 : ℝ) ≤ (2 : ℝ) ^ J := one_le_pow₀ (by norm_num)
+  have hnle : ((n : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : ((n : ℕ∞)) ≤ ⊤)
+  set F1 : Pl → ℂ := fun w : Pl => cutF φ w * goutMid J t (nrm w) with hF1def
+  set F2 : Pl → ℂ := fun w : Pl => cutF φ w * goutMidDot J t (nrm w) with hF2def
+  have hF1smooth : ContDiff ℝ (↑(⊤ : ℕ∞)) F1 :=
+    (contDiff_cutF φ).mul ((contDiff_goutMid J t).comp contDiff_nrm)
+  have hF2smooth : ContDiff ℝ (↑(⊤ : ℕ∞)) F2 :=
+    (contDiff_cutF φ).mul ((contDiff_goutMidDot J t).comp contDiff_nrm)
+  have hsplit : ‖iteratedFDeriv ℝ n (gSymMidDot φ J t) v‖
+      ≤ |tcutD t| * ‖iteratedFDeriv ℝ n F1 v‖ + |tcut t| * ‖iteratedFDeriv ℝ n F2 v‖ := by
+    have hadd : gSymMidDot φ J t
+        = (fun v' : Pl => ((tcutD t : ℝ) : ℂ) * F1 v')
+          + fun v' : Pl => ((tcut t : ℝ) : ℂ) * F2 v' := rfl
+    have hsm1 : (fun v' : Pl => ((tcutD t : ℝ) : ℂ) * F1 v') = (tcutD t) • F1 := by
+      funext v'
+      rw [Pi.smul_apply, Complex.real_smul]
+    have hsm2 : (fun v' : Pl => ((tcut t : ℝ) : ℂ) * F2 v') = (tcut t) • F2 := by
+      funext v'
+      rw [Pi.smul_apply, Complex.real_smul]
+    have hc1 : ContDiffAt ℝ n (fun v' : Pl => ((tcutD t : ℝ) : ℂ) * F1 v') v := by
+      rw [hsm1]
+      exact ((hF1smooth.of_le hnle).const_smul (tcutD t)).contDiffAt
+    have hc2 : ContDiffAt ℝ n (fun v' : Pl => ((tcut t : ℝ) : ℂ) * F2 v') v := by
+      rw [hsm2]
+      exact ((hF2smooth.of_le hnle).const_smul (tcut t)).contDiffAt
+    rw [hadd, iteratedFDeriv_add_apply hc1 hc2]
+    refine le_trans (norm_add_le _ _) ?_
+    have he1 : ‖iteratedFDeriv ℝ n (fun v' : Pl => ((tcutD t : ℝ) : ℂ) * F1 v') v‖
+        = |tcutD t| * ‖iteratedFDeriv ℝ n F1 v‖ := by
+      rw [hsm1, iteratedFDeriv_const_smul_apply (hF1smooth.of_le hnle).contDiffAt, norm_smul,
+        Real.norm_eq_abs]
+    have he2 : ‖iteratedFDeriv ℝ n (fun v' : Pl => ((tcut t : ℝ) : ℂ) * F2 v') v‖
+        = |tcut t| * ‖iteratedFDeriv ℝ n F2 v‖ := by
+      rw [hsm2, iteratedFDeriv_const_smul_apply (hF2smooth.of_le hnle).contDiffAt, norm_smul,
+        Real.norm_eq_abs]
+    rw [he1, he2]
+  refine le_trans hsplit ?_
+  by_cases ht : 1 / 2 < t ∧ t < 3
+  · have hGbd1 : ∀ i ≤ 4, ∀ u : ℝ, 1 / 2 ≤ u → u ≤ 2 →
+        ‖iteratedDeriv i (goutMid J t) u‖ ≤ Cg :=
+      fun i hi u hu1 hu2 => hgb J hJ i (by omega) t u ht.1.le ht.2.le hu1 hu2
+    have hGbd2 : ∀ i ≤ 4, ∀ u : ℝ, 1 / 2 ≤ u → u ≤ 2 →
+        ‖iteratedDeriv i (goutMidDot J t) u‖ ≤ Cd * (2 : ℝ) ^ J :=
+      fun i hi u hu1 hu2 => hdb J hJ i hi t u ht.1.le ht.2.le hu1 hu2
+    have hb1 : ‖iteratedFDeriv ℝ n F1 v‖
+        ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4) :=
+      norm_iteratedFDeriv_cut_mul_comp_le hφone hφzero (contDiff_goutMid J t) hCg hGbd1
+        hD1 hDbd hCc hcut hn v
+    have hb2 : ‖iteratedFDeriv ℝ n F2 v‖
+        ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * (Cd * (2 : ℝ) ^ J) * D ^ 4) :=
+      norm_iteratedFDeriv_cut_mul_comp_le hφone hφzero (contDiff_goutMidDot J t)
+        (by positivity) hGbd2 hD1 hDbd hCc hcut hn v
+    have htcutD : |tcutD t| ≤ 3 * Cst := by
+      have h1 := hCstd1 (2 * t - 1)
+      have h2 := hCstd1 (3 - t)
+      have h3 := Real.smoothTransition.le_one (2 * t - 1)
+      have h4 := Real.smoothTransition.nonneg (2 * t - 1)
+      have h5 := Real.smoothTransition.le_one (3 - t)
+      have h6 := Real.smoothTransition.nonneg (3 - t)
+      have hb : |2 * deriv Real.smoothTransition (2 * t - 1) * Real.smoothTransition (3 - t)|
+          ≤ 2 * Cst := by
+        rw [abs_mul, abs_mul]
+        have habs : |(2 : ℝ)| = 2 := by norm_num
+        rw [habs, abs_of_nonneg h6]
+        nlinarith [abs_nonneg (deriv Real.smoothTransition (2 * t - 1))]
+      have hb' : |Real.smoothTransition (2 * t - 1) * deriv Real.smoothTransition (3 - t)|
+          ≤ Cst := by
+        rw [abs_mul, abs_of_nonneg h4]
+        nlinarith [abs_nonneg (deriv Real.smoothTransition (3 - t))]
+      rw [tcutD]
+      calc |2 * deriv Real.smoothTransition (2 * t - 1) * Real.smoothTransition (3 - t)
+              - Real.smoothTransition (2 * t - 1) * deriv Real.smoothTransition (3 - t)|
+          ≤ |2 * deriv Real.smoothTransition (2 * t - 1) * Real.smoothTransition (3 - t)|
+              + |Real.smoothTransition (2 * t - 1) * deriv Real.smoothTransition (3 - t)| :=
+            abs_sub _ _
+        _ ≤ 2 * Cst + Cst := add_le_add hb hb'
+        _ = 3 * Cst := by ring
+    have htcut : |tcut t| ≤ 1 := by
+      rw [abs_of_nonneg (tcut_nonneg t)]
+      exact tcut_le_one t
+    have hK1 : (0 : ℝ) ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4) := by positivity
+    have hstep1 : |tcutD t| * ‖iteratedFDeriv ℝ n F1 v‖
+        ≤ 3 * Cst * ((2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4)) :=
+      mul_le_mul htcutD hb1 (norm_nonneg _) (by positivity)
+    have hstep2 : |tcut t| * ‖iteratedFDeriv ℝ n F2 v‖
+        ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cd * D ^ 4) * (2 : ℝ) ^ J := by
+      refine le_trans (mul_le_mul htcut hb2 (norm_nonneg _) (by norm_num)) (le_of_eq ?_)
+      ring
+    have hfinal : 3 * Cst * ((2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4))
+          + (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cd * D ^ 4) * (2 : ℝ) ^ J
+        ≤ (3 * Cst * ((2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4))
+            + (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cd * D ^ 4)) * (2 : ℝ) ^ J := by
+      have hKst : (0 : ℝ) ≤ 3 * Cst * ((2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ) * Cg * D ^ 4)) := by
+        positivity
+      nlinarith [hKst, hP1]
+    exact le_trans (add_le_add hstep1 hstep2) hfinal
+  · have hz1 : tcutD t = 0 := tcutD_eq_zero ht
+    have hz2 : tcut t = 0 := by
+      by_contra hc
+      exact ht (tcut_mem hc)
+    rw [hz1, hz2, abs_zero, zero_mul, zero_mul, add_zero]
+    positivity
+
+/-! ### The dilation-derivative data of the middle wave -/
+
+/-- The phase term of the middle dilation derivative. -/
+noncomputable def goutPhMid (J : ℕ) (ε t u : ℝ) : ℂ :=
+  (((2 * π * ε * (2 : ℝ) ^ J) * u : ℝ) : ℂ) * (Complex.I * goutMid J t u)
+
+theorem contDiff_goutPhMid (J : ℕ) (ε t : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (goutPhMid J ε t) :=
+  (Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)).mul
+    (contDiff_const.mul (contDiff_goutMid J t))
+
+theorem norm_iteratedDeriv_goutPhMid_le {Cg : ℝ} (hCg : 0 ≤ Cg) {J : ℕ} {ε t : ℝ}
+    (hgb : ∀ i ≤ 4, ∀ u : ℝ, 1 / 2 ≤ u → u ≤ 2 → ‖iteratedDeriv i (goutMid J t) u‖ ≤ Cg)
+    {i : ℕ} (hi : i ≤ 4) {u : ℝ} (hu1 : 1 / 2 ≤ u) (hu2 : u ≤ 2) :
+    ‖iteratedDeriv i (goutPhMid J ε t) u‖
+      ≤ (2 : ℝ) ^ 4 * (2 * (|2 * π * ε * (2 : ℝ) ^ J| + 1)) * Cg := by
+  have hIbd : ∀ k ≤ 4, ∀ u' : ℝ, 1 / 2 ≤ u' → u' ≤ 2 →
+      ‖iteratedDeriv k (fun w : ℝ => Complex.I * goutMid J t w) u'‖ ≤ Cg := by
+    intro k hk u' hu1' hu2'
+    have hcm : iteratedDeriv k (fun w : ℝ => Complex.I * goutMid J t w) u'
+        = Complex.I * iteratedDeriv k (goutMid J t) u' := by
+      refine iteratedDeriv_const_mul _ ?_
+      exact ((contDiff_goutMid J t).of_le
+        (by exact_mod_cast (le_top : ((k : ℕ∞)) ≤ ⊤))).contDiffAt
+    rw [hcm, norm_mul, Complex.norm_I, one_mul]
+    exact hgb k hk u' hu1' hu2'
+  exact norm_iteratedDeriv_lin_mul_le (contDiff_const.mul (contDiff_goutMid J t)) hCg hIbd
+    hi hu1 hu2
+
+/-- The rescaled middle multiplier and its dilation derivative. -/
+noncomputable def mscMidDot (φ : SchwartzMap Pl ℂ) (J : ℕ) (t : ℝ) (ω : Pl) : ℂ :=
+  gSymMidDot φ J t ((2 : ℝ) ^ (-(J : ℤ)) • ω)
+
+theorem hasDerivAt_mscMid (φ : SchwartzMap Pl ℂ) (J : ℕ) (ω : Pl) (t : ℝ) :
+    HasDerivAt (fun s : ℝ => mscMid φ J s ω) (mscMidDot φ J t ω) t :=
+  hasDerivAt_gSymMid_param φ J t _
+
+theorem continuous_mscMidDot (φ : SchwartzMap Pl ℂ) (J : ℕ) (ω : Pl) :
+    Continuous fun s : ℝ => mscMidDot φ J s ω :=
+  continuous_gSymMidDot_param φ J _
+
+/-- **The symbol of the dilation derivative of the full middle multiplier.** -/
+noncomputable def mtilSymMid (φ : SchwartzMap Pl ℂ) (J : ℕ) (ε t : ℝ) (v : Pl) : ℂ :=
+  ((tcut t : ℝ) : ℂ) * (cutF φ v * goutPhMid J ε t (nrm v)) + gSymMidDot φ J t v
+
+theorem contDiff_mtilSymMid (φ : SchwartzMap Pl ℂ) (J : ℕ) (ε t : ℝ) :
+    ContDiff ℝ (↑(⊤ : ℕ∞)) (mtilSymMid φ J ε t) := by
+  have h1 : ContDiff ℝ (↑(⊤ : ℕ∞)) fun v : Pl => cutF φ v * goutPhMid J ε t (nrm v) :=
+    (contDiff_cutF φ).mul ((contDiff_goutPhMid J ε t).comp contDiff_nrm)
+  exact (contDiff_const.mul h1).add (contDiff_gSymMidDot φ J t)
+
+theorem mtilSymMid_eq_zero_of_cutF {φ : SchwartzMap Pl ℂ} (J : ℕ) (ε t : ℝ) {v : Pl}
+    (h : cutF φ v = 0) : mtilSymMid φ J ε t v = 0 := by
+  have h2 : gSymMidDot φ J t v = 0 := by
+    rw [gSymMidDot, h, zero_mul, zero_mul, mul_zero, mul_zero, add_zero]
+  rw [mtilSymMid, h, zero_mul, mul_zero, h2, add_zero]
+
+set_option maxHeartbeats 1000000 in
+/-- **The dilation derivative of the middle multiplier is the rescaling of `mtilSymMid`.** -/
+theorem mtil_mscMid_eq (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (J : ℕ) (ε t : ℝ) (ω : Pl) :
+    mtil ε (mscMid φ J) (mscMidDot φ J) t ω
+      = mtilSymMid φ J ε t ((2 : ℝ) ^ (-(J : ℤ)) • ω) := by
+  set v : Pl := (2 : ℝ) ^ (-(J : ℤ)) • ω with hv
+  have hkey : ((2 * π * ε * ‖ω‖ : ℝ) : ℂ) * Complex.I * gSymMid φ J t v
+      = ((tcut t : ℝ) : ℂ) * (cutF φ v * goutPhMid J ε t (nrm v)) := by
+    by_cases hc : cutF φ v = 0
+    · rw [gSymMid, goutPhMid, hc]
+      ring
+    · obtain ⟨hlow, hhigh⟩ := norm_mem_of_cutF_ne_zero hφone hφzero hc
+      have hnrm : nrm v = ‖v‖ := nrm_eq (by linarith) (by linarith)
+      have hJpos : (0 : ℝ) < (2 : ℝ) ^ (-(J : ℤ)) := by positivity
+      have hnormv : ‖v‖ = (2 : ℝ) ^ (-(J : ℤ)) * ‖ω‖ := by
+        rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hJpos]
+      have hid : (2 : ℝ) ^ (-(J : ℤ)) * (2 : ℝ) ^ (J : ℤ) = 1 := by
+        rw [← two_zpow_add, neg_add_cancel, zpow_zero]
+      have hJn : ((2 : ℝ) ^ J : ℝ) = (2 : ℝ) ^ (J : ℤ) := by
+        rw [zpow_natCast]
+      have hprod : (2 : ℝ) ^ J * nrm v = ‖ω‖ := by
+        rw [hnrm, hnormv, hJn]
+        nlinarith [hid]
+      have hprod2 : 2 * π * ε * (2 : ℝ) ^ J * nrm v = 2 * π * ε * ‖ω‖ := by
+        rw [← hprod]
+        ring
+      rw [gSymMid, goutPhMid, hprod2]
+      ring
+  rw [mtil, mscMidDot, mscMid, mtilSymMid, ← hv, hkey]
+
+set_option maxHeartbeats 2000000 in
+/-- **The dilation-derivative symbol of the middle wave loses only the factor `2^J`.** -/
+theorem exists_mtilSymMid_bound (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) {ε : ℝ} (hε : |ε| = 1) :
+    ∃ B : ℝ, 0 < B ∧ ∀ J : ℕ, 1 ≤ J → ∀ n ≤ 4, ∀ (t : ℝ) (v : Pl),
+      ‖iteratedFDeriv ℝ n (mtilSymMid φ J ε t) v‖ ≤ B * (2 : ℝ) ^ J := by
+  classical
+  obtain ⟨Cg, hCg, hgb⟩ := exists_goutMid_bound
+  obtain ⟨D, hD1, hDbd⟩ := exists_nrm_deriv_bound 4
+  obtain ⟨Cc, hCc, hcut⟩ := exists_cutF_bound φ 4
+  obtain ⟨Bdot, hBdot, hdot⟩ := exists_gSymMidDot_bound φ hφone hφzero
+  have hπ : (0 : ℝ) < π := Real.pi_pos
+  refine ⟨(2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ)
+      * ((2 : ℝ) ^ 4 * (2 * (2 * π + 1)) * Cg) * D ^ 4) + Bdot, by positivity, ?_⟩
+  intro J hJ n hn t v
+  have hPpos : (0 : ℝ) < (2 : ℝ) ^ J := by positivity
+  have hP1 : (1 : ℝ) ≤ (2 : ℝ) ^ J := one_le_pow₀ (by norm_num)
+  have hnle : ((n : ℕ∞) : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast (le_top : ((n : ℕ∞)) ≤ ⊤)
+  set Fph : Pl → ℂ := fun v' : Pl => cutF φ v' * goutPhMid J ε t (nrm v') with hFphdef
+  have hFphsmooth : ContDiff ℝ (↑(⊤ : ℕ∞)) Fph :=
+    (contDiff_cutF φ).mul ((contDiff_goutPhMid J ε t).comp contDiff_nrm)
+  have hsplit : ‖iteratedFDeriv ℝ n (mtilSymMid φ J ε t) v‖
+      ≤ |tcut t| * ‖iteratedFDeriv ℝ n Fph v‖
+        + ‖iteratedFDeriv ℝ n (gSymMidDot φ J t) v‖ := by
+    have hadd : mtilSymMid φ J ε t
+        = (fun v' : Pl => ((tcut t : ℝ) : ℂ) * Fph v') + gSymMidDot φ J t := rfl
+    have hsm : (fun v' : Pl => ((tcut t : ℝ) : ℂ) * Fph v') = (tcut t) • Fph := by
+      funext v'
+      rw [Pi.smul_apply, Complex.real_smul]
+    have hc1 : ContDiffAt ℝ n (fun v' : Pl => ((tcut t : ℝ) : ℂ) * Fph v') v := by
+      rw [hsm]
+      exact ((hFphsmooth.of_le hnle).const_smul (tcut t)).contDiffAt
+    have hc2 : ContDiffAt ℝ n (gSymMidDot φ J t) v :=
+      ((contDiff_gSymMidDot φ J t).of_le hnle).contDiffAt
+    rw [hadd, iteratedFDeriv_add_apply hc1 hc2]
+    refine le_trans (norm_add_le _ _) (add_le_add ?_ (le_refl _))
+    have he : ‖iteratedFDeriv ℝ n (fun v' : Pl => ((tcut t : ℝ) : ℂ) * Fph v') v‖
+        = |tcut t| * ‖iteratedFDeriv ℝ n Fph v‖ := by
+      rw [hsm, iteratedFDeriv_const_smul_apply (hFphsmooth.of_le hnle).contDiffAt, norm_smul,
+        Real.norm_eq_abs]
+    rw [he]
+  have hdotbd : ‖iteratedFDeriv ℝ n (gSymMidDot φ J t) v‖ ≤ Bdot * (2 : ℝ) ^ J :=
+    hdot J hJ n hn t v
+  refine le_trans hsplit ?_
+  by_cases ht : 1 / 2 < t ∧ t < 3
+  · have hgb' : ∀ i ≤ 4, ∀ u : ℝ, 1 / 2 ≤ u → u ≤ 2 →
+        ‖iteratedDeriv i (goutMid J t) u‖ ≤ Cg :=
+      fun i hi u hu1 hu2 => hgb J hJ i (by omega) t u ht.1.le ht.2.le hu1 hu2
+    have habs : |2 * π * ε * (2 : ℝ) ^ J| = 2 * π * (2 : ℝ) ^ J := by
+      have h1 : 2 * π * ε * (2 : ℝ) ^ J = (2 * π * (2 : ℝ) ^ J) * ε := by ring
+      rw [h1, abs_mul, hε, mul_one, abs_of_pos (by positivity)]
+    have hGph : ∀ i ≤ 4, ∀ u : ℝ, 1 / 2 ≤ u → u ≤ 2 →
+        ‖iteratedDeriv i (goutPhMid J ε t) u‖
+          ≤ (2 : ℝ) ^ 4 * ((2 * (2 * π + 1)) * (2 : ℝ) ^ J) * Cg := by
+      intro i hi u hu1 hu2
+      refine le_trans (norm_iteratedDeriv_goutPhMid_le hCg.le hgb' hi hu1 hu2) ?_
+      refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left ?_ (by positivity)) hCg.le
+      rw [habs]
+      nlinarith [hP1, hπ]
+    have hb : ‖iteratedFDeriv ℝ n Fph v‖ ≤ (2 : ℝ) ^ 4 * Cc
+        * ((Nat.factorial 4 : ℝ) * ((2 : ℝ) ^ 4 * ((2 * (2 * π + 1)) * (2 : ℝ) ^ J) * Cg)
+          * D ^ 4) :=
+      norm_iteratedFDeriv_cut_mul_comp_le hφone hφzero (contDiff_goutPhMid J ε t)
+        (by positivity) hGph hD1 hDbd hCc hcut hn v
+    have htcut : |tcut t| ≤ 1 := by
+      rw [abs_of_nonneg (tcut_nonneg t)]
+      exact tcut_le_one t
+    have hstep : |tcut t| * ‖iteratedFDeriv ℝ n Fph v‖
+        ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ)
+            * ((2 : ℝ) ^ 4 * (2 * (2 * π + 1)) * Cg) * D ^ 4) * (2 : ℝ) ^ J := by
+      refine le_trans (mul_le_mul htcut hb (norm_nonneg _) (by norm_num)) (le_of_eq ?_)
+      ring
+    calc |tcut t| * ‖iteratedFDeriv ℝ n Fph v‖
+          + ‖iteratedFDeriv ℝ n (gSymMidDot φ J t) v‖
+        ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ)
+              * ((2 : ℝ) ^ 4 * (2 * (2 * π + 1)) * Cg) * D ^ 4) * (2 : ℝ) ^ J
+            + Bdot * (2 : ℝ) ^ J := add_le_add hstep hdotbd
+      _ = ((2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ)
+              * ((2 : ℝ) ^ 4 * (2 * (2 * π + 1)) * Cg) * D ^ 4) + Bdot) * (2 : ℝ) ^ J := by
+          ring
+  · have hz : tcut t = 0 := by
+      by_contra hc
+      exact ht (tcut_mem hc)
+    rw [hz, abs_zero, zero_mul, zero_add]
+    have hKnn : (0 : ℝ) ≤ (2 : ℝ) ^ 4 * Cc * ((Nat.factorial 4 : ℝ)
+        * ((2 : ℝ) ^ 4 * (2 * (2 * π + 1)) * Cg) * D ^ 4) := by positivity
+    nlinarith [hdotbd, hP1, hKnn, hBdot]
+
+/-- **The dilation-derivative middle multiplier satisfies both hypothesis packages.** -/
+theorem exists_mtilMid_data (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) {ε : ℝ} (hε : |ε| = 1) :
+    ∃ B : ℝ, 0 < B ∧ ∀ J : ℕ, 1 ≤ J →
+      MultData J (mtil ε (mscMid φ J) (mscMidDot φ J))
+          (m2can (mtil ε (mscMid φ J) (mscMidDot φ J))) (B * (2 : ℝ) ^ J)
+        ∧ PolarData J (mtil ε (mscMid φ J) (mscMidDot φ J))
+          (mrcan (mtil ε (mscMid φ J) (mscMidDot φ J)))
+          (macan (mtil ε (mscMid φ J) (mscMidDot φ J))) (384 * (B * (2 : ℝ) ^ J)) := by
+  obtain ⟨B, hBpos, hB⟩ := exists_mtilSymMid_bound φ hφone hφzero hε
+  refine ⟨B, hBpos, fun J hJ => ?_⟩
+  have hfun : mtil ε (mscMid φ J) (mscMidDot φ J)
+      = fun t ω => mtilSymMid φ J ε t ((2 : ℝ) ^ (-(J : ℤ)) • ω) := by
+    funext t ω
+    exact mtil_mscMid_eq φ hφone hφzero J ε t ω
+  have hsupp : ∀ (t : ℝ) (ω : Pl),
+      mtilSymMid φ J ε t ((2 : ℝ) ^ (-(J : ℤ)) • ω) ≠ 0 → ω ∈ Theta J := by
+    intro t ω h
+    refine theta_of_cutF_ne_zero hφone hφzero J ?_
+    intro hc
+    exact h (mtilSymMid_eq_zero_of_cutF J ε t hc)
+  have hzero : ∀ (t : ℝ) (v : Pl), 2 ≤ ‖v‖ → mtilSymMid φ J ε t v = 0 := by
+    intro t v hv
+    refine mtilSymMid_eq_zero_of_cutF J ε t ?_
+    rw [cutF, bpCut_eq_zero_of_large hφzero hv, zero_mul]
+  rw [hfun]
+  refine ⟨?_, ?_⟩
+  · exact multData_of_rescaled (fun t => contDiff_mtilSymMid φ J ε t) hsupp
+      (fun n hn t v => hB J hJ n (by omega) t v)
+  · exact polarData_of_rescaled (fun t => contDiff_mtilSymMid φ J ε t) hsupp hzero
+      (fun n hn t v => hB J hJ n hn t v)
+
+/-! ### The sector decomposition of the middle wave -/
+
+set_option maxHeartbeats 2000000 in
+/-- **The sector decomposition of the middle wave.**  The compensating phase of the middle symbol
+cancels the phase of `mfull`, so the sum of the rotated sector multipliers is exactly the middle
+wave term. -/
+theorem sector_sum_mscMid {φ : SchwartzMap Pl ℂ}
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (j : ℕ) {t : ℝ} (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) :
+    (∑ ν ∈ Finset.range Nsec,
+        mfull (j + 1) 1 (mscMid φ (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ))
+      = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+        * (planarCoordinateWaveRadialTerm CoordinateWavePart.middle t ‖ξ‖
+          * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ) := by
+  classical
+  set c : ℝ := (2 : ℝ) ^ (-((j + 1 : ℕ) : ℤ)) with hcdef
+  set v : Pl := c • ξ with hvdef
+  have hcpos : (0 : ℝ) < c := by
+    rw [hcdef]
+    positivity
+  have hbp : (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ = bpCut φ v :=
+    absoluteDyadicBandpass_eq_bpCut hφone hφzero j ξ
+  -- the middle wave term has no phase
+  have hmidterm : planarCoordinateWaveRadialTerm CoordinateWavePart.middle t ‖ξ‖
+      = planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ‖ξ‖ := by
+    rw [planarCoordinateWaveRadialTerm]
+    have hph : oscillatoryExp (coordinateWaveRadialPhase CoordinateWavePart.middle t) ‖ξ‖ = 1 := by
+      show Complex.exp (((coordinateWaveRadialPhase CoordinateWavePart.middle t * ‖ξ‖ : ℝ) : ℂ)
+        * Complex.I) = 1
+      rw [show coordinateWaveRadialPhase CoordinateWavePart.middle t = 0 from rfl]
+      norm_num
+    rw [hph, mul_one]
+  -- each rotated multiplier, written out
+  have hterm : ∀ ν : ℕ,
+      mfull (j + 1) 1 (mscMid φ (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
+      = Complex.exp (((2 * π * 1 * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
+        * (((tcut t : ℝ) : ℂ) * (bpCut φ v * ((psiSec (rotF (-((ν : ℝ) * hsec)) v) : ℝ) : ℂ)
+          * goutMid (j + 1) t (nrm v))) := by
+    intro ν
+    have hrot : c • rotF (-((ν : ℝ) * hsec)) ξ = rotF (-((ν : ℝ) * hsec)) v := by
+      rw [hvdef, rotF_smul_apply]
+    rw [mfull, norm_rotF, mscMid, hrot, gSymMid, cutF, bpCut_rotF hφrad, nrm_rotF]
+  rw [Finset.sum_congr rfl fun ν _ => hterm ν]
+  by_cases hz : bpCut φ v = 0
+  · rw [hbp, hz, hmidterm]
+    simp
+  · -- on the support the annulus condition holds
+    have hlow : 1 / 2 < ‖v‖ := by
+      by_contra hcon
+      exact hz (bpCut_eq_zero_of_small hφone (not_lt.mp hcon))
+    have hhigh : ‖v‖ < 2 := by
+      by_contra hcon
+      exact hz (bpCut_eq_zero_of_large hφzero (not_lt.mp hcon))
+    have hnrm : nrm v = ‖v‖ := nrm_eq (by linarith) (by linarith)
+    have hnormv : ‖v‖ = c * ‖ξ‖ := by
+      rw [hvdef, norm_smul, Real.norm_eq_abs, abs_of_pos hcpos]
+    have hid : c * (2 : ℝ) ^ (j + 1) = 1 := by
+      rw [hcdef, show ((2 : ℝ) ^ (j + 1)) = (2 : ℝ) ^ ((j + 1 : ℕ) : ℤ) from by rw [zpow_natCast],
+        ← two_zpow_add, neg_add_cancel, zpow_zero]
+    have hprod : (2 : ℝ) ^ (j + 1) * nrm v = ‖ξ‖ := by
+      rw [hnrm, hnormv]
+      nlinarith [hid]
+    have htcut1 : tcut t = 1 := tcut_eq_one ht1 ht2
+    -- the phase of the middle profile cancels the phase of `mfull`
+    have hgm : goutMid (j + 1) t (nrm v)
+        = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+          * (Complex.exp (((-(2 * π * t * ‖ξ‖) : ℝ) : ℂ) * Complex.I)
+            * planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ‖ξ‖) := by
+      rw [goutMid, gmidProfile]
+      have harg : -(2 * π * t * (2 : ℝ) ^ (j + 1)) * nrm v = -(2 * π * t * ‖ξ‖) := by
+        rw [← hprod]
+        ring
+      rw [harg, hprod]
+    have hcancel : Complex.exp (((2 * π * 1 * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
+        * Complex.exp (((-(2 * π * t * ‖ξ‖) : ℝ) : ℂ) * Complex.I) = 1 := by
+      rw [← Complex.exp_add]
+      have hsum0 : ((2 * π * 1 * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I
+          + ((-(2 * π * t * ‖ξ‖) : ℝ) : ℂ) * Complex.I = 0 := by
+        push_cast
+        ring
+      rw [hsum0, Complex.exp_zero]
+    rw [htcut1, hgm, hmidterm, hbp]
+    have hsum : (∑ ν ∈ Finset.range Nsec,
+        Complex.exp (((2 * π * 1 * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
+          * ((((1 : ℝ)) : ℂ) * (bpCut φ v * ((psiSec (rotF (-((ν : ℝ) * hsec)) v) : ℝ) : ℂ)
+            * (((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+              * (Complex.exp (((-(2 * π * t * ‖ξ‖) : ℝ) : ℂ) * Complex.I)
+                * planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ‖ξ‖)))))
+        = (Complex.exp (((2 * π * 1 * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
+            * Complex.exp (((-(2 * π * t * ‖ξ‖) : ℝ) : ℂ) * Complex.I))
+          * (((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+            * (planarCoordinateWaveRadialAmplitude CoordinateWavePart.middle t ‖ξ‖
+              * bpCut φ v))
+          * ((∑ ν ∈ Finset.range Nsec, psiSec (rotF (-((ν : ℝ) * hsec)) v) : ℝ) : ℂ) := by
+      rw [Complex.ofReal_sum, Finset.mul_sum]
+      refine Finset.sum_congr rfl fun ν _ => ?_
+      push_cast
+      ring
+    rw [hsum, sum_psiSec_rotF (le_of_lt hlow) (le_of_lt hhigh), hcancel]
+    push_cast
+    ring
+
+/-! ### The three single-scale wave estimates -/
+
+theorem sector_sum_mfull_msc {φ : SchwartzMap Pl ℂ}
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (part : CoordinateWavePart) {ε : ℝ}
+    (hph : ∀ t ρ : ℝ, oscillatoryExp (coordinateWaveRadialPhase part t) ρ
+      = Complex.exp (((2 * π * ε * t * ρ : ℝ) : ℂ) * Complex.I))
+    (j : ℕ) (t : ℝ) (ht1 : 1 ≤ t) (ht2 : t ≤ 2) (ξ : Pl) :
+    (∑ ν ∈ Finset.range Nsec,
+        mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ))
+      = ((Real.sqrt ((2 : ℝ) ^ (j + 1)) : ℝ) : ℂ)
+        * (planarCoordinateWaveRadialTerm part t ‖ξ‖
+          * (absoluteDyadicBandpass φ hφone hφzero j : Pl → ℂ) ξ) := by
+  have hmf : ∀ ν : ℕ, mfull (j + 1) ε (msc φ part (j + 1)) t (rotF (-((ν : ℝ) * hsec)) ξ)
+      = Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I)
+        * msc φ part (j + 1) t (rotF (-((ν : ℝ) * hsec)) ξ) := by
+    intro ν
+    rw [mfull, norm_rotF]
+  rw [Finset.sum_congr rfl fun ν _ => hmf ν, ← Finset.mul_sum,
+    sector_sum_msc hφone hφzero hφrad part j ht1 ht2 ξ]
+  have hterm : planarCoordinateWaveRadialTerm part t ‖ξ‖
+      = planarCoordinateWaveRadialAmplitude part t ‖ξ‖
+        * Complex.exp (((2 * π * ε * t * ‖ξ‖ : ℝ) : ℂ) * Complex.I) := by
+    rw [planarCoordinateWaveRadialTerm, hph]
+  rw [hterm]
+  ring
+
+theorem oscExp_outgoing (t ρ : ℝ) :
+    oscillatoryExp (coordinateWaveRadialPhase CoordinateWavePart.outgoing t) ρ
+      = Complex.exp (((2 * π * (-1) * t * ρ : ℝ) : ℂ) * Complex.I) := by
+  rw [oscillatoryExp]
+  congr 3
+  rw [show coordinateWaveRadialPhase CoordinateWavePart.outgoing t = -(2 * π * t) from rfl]
+  ring
+
+theorem oscExp_incoming (t ρ : ℝ) :
+    oscillatoryExp (coordinateWaveRadialPhase CoordinateWavePart.incoming t) ρ
+      = Complex.exp (((2 * π * 1 * t * ρ : ℝ) : ℂ) * Complex.I) := by
+  rw [oscillatoryExp]
+  congr 3
+  rw [show coordinateWaveRadialPhase CoordinateWavePart.incoming t = 2 * π * t from rfl]
+  ring
+
+set_option maxHeartbeats 1000000 in
+/-- **The single-scale estimate for an oscillatory wave** (outgoing or incoming). -/
+theorem exists_waveOsc_single_scale_clean (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (part : CoordinateWavePart) {ε : ℝ} (hε : |ε| = 1)
+    (hph : ∀ t ρ : ℝ, oscillatoryExp (coordinateWaveRadialPhase part t) ρ
+      = Complex.exp (((2 * π * ε * t * ρ : ℝ) : ℂ) * Complex.I))
+    {E : Set ℝ} {gam eta Cass : ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2)
+    (hcov : HasSubpowerAssouadCoverBound E gam eta Cass) (hCnn : 0 ≤ Cass) (heta : 0 ≤ eta)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    {p : ℝ} (hp : p = (3 + 2 * gam) / 2) :
+    ∃ D : ℝ, 0 < D ∧ ∀ j : ℕ, ∀ f : SchwartzMap Pl ℂ, ∃ W : Pl → ℝ≥0∞, Measurable W
+      ∧ (∀ x : Pl, (⨆ t : E, ‖waveInt hφone hφzero part j t.1 f x‖ₑ) ≤ W x)
+      ∧ (∫⁻ x : Pl, W x ^ (2 * p)) ^ (1 / (2 * p))
+        ≤ ENNReal.ofReal (D * (((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))))
+          * (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) := by
+  obtain ⟨B, hBpos, hdata⟩ := exists_msc_data φ hφone hφzero part
+  obtain ⟨Bt, hBtpos, hdatat⟩ := exists_mtil_data φ hφone hφzero part hε
+  exact exists_waveInt_single_scale_clean φ hφone hφzero part hε hBpos hBtpos
+    (fun J hJ => hdata J hJ) (fun J hJ => hdatat J hJ)
+    (fun J ω t => hasDerivAt_msc φ part J ω t)
+    (fun J ω => continuous_mscDot φ part J ω)
+    (fun j t ht1 ht2 ξ => sector_sum_mfull_msc hφone hφzero hφrad part hph j t ht1 ht2 ξ)
+    hE hcov hCnn heta hgam1 hgam2 hp
+
+set_option maxHeartbeats 1000000 in
+/-- **The single-scale estimate for the middle wave.** -/
+theorem exists_waveMid_single_scale_clean (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    {E : Set ℝ} {gam eta Cass : ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2)
+    (hcov : HasSubpowerAssouadCoverBound E gam eta Cass) (hCnn : 0 ≤ Cass) (heta : 0 ≤ eta)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    {p : ℝ} (hp : p = (3 + 2 * gam) / 2) :
+    ∃ D : ℝ, 0 < D ∧ ∀ j : ℕ, ∀ f : SchwartzMap Pl ℂ, ∃ W : Pl → ℝ≥0∞, Measurable W
+      ∧ (∀ x : Pl,
+          (⨆ t : E, ‖waveInt hφone hφzero CoordinateWavePart.middle j t.1 f x‖ₑ) ≤ W x)
+      ∧ (∫⁻ x : Pl, W x ^ (2 * p)) ^ (1 / (2 * p))
+        ≤ ENNReal.ofReal (D * (((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))))
+          * (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) := by
+  obtain ⟨B, hBpos, hdata⟩ := exists_mscMid_data φ hφone hφzero
+  obtain ⟨Bt, hBtpos, hdatat⟩ := exists_mtilMid_data φ hφone hφzero
+    (by norm_num : |(1 : ℝ)| = 1)
+  exact exists_waveInt_single_scale_clean φ hφone hφzero CoordinateWavePart.middle
+    (by norm_num : |(1 : ℝ)| = 1) hBpos hBtpos
+    (fun J hJ => hdata J hJ) (fun J hJ => hdatat J hJ)
+    (fun J ω t => hasDerivAt_mscMid φ J ω t)
+    (fun J ω => continuous_mscMidDot φ J ω)
+    (fun j t ht1 ht2 ξ => sector_sum_mscMid hφone hφzero hφrad j ht1 ht2 ξ)
+    hE hcov hCnn heta hgam1 hgam2 hp
+
+/-! ### Theorem 2.5: the single-scale `Q₄` estimate for the dyadic maximal operator -/
+
+theorem eLpNorm_ofReal_eq {d : ℕ} {α : Type*} [NormedAddCommGroup α] {g : (Euclidean d) → α} {r : ℝ} (hr : 0 < r) :
+    eLpNorm g (ENNReal.ofReal r) (volume : Measure (Euclidean d)) = (∫⁻ x : (Euclidean d), ‖g x‖ₑ ^ r) ^ (1 / r) := by
+  have hne : ENNReal.ofReal r ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+    exact hr
+  have htop : ENNReal.ofReal r ≠ ⊤ := ENNReal.ofReal_ne_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop, ENNReal.toReal_ofReal hr.le]
+
+theorem lintegral_rpow_add3_le {a b c : Pl → ℝ≥0∞} (ha : AEMeasurable a (volume : Measure Pl))
+    (hb : AEMeasurable b (volume : Measure Pl)) (hc : AEMeasurable c (volume : Measure Pl))
+    {r : ℝ} (hr : 1 ≤ r) :
+    (∫⁻ x : Pl, (a x + b x + c x) ^ r) ^ (1 / r)
+      ≤ (∫⁻ x : Pl, a x ^ r) ^ (1 / r) + (∫⁻ x : Pl, b x ^ r) ^ (1 / r)
+        + (∫⁻ x : Pl, c x ^ r) ^ (1 / r) := by
+  have h1 := ENNReal.lintegral_Lp_add_le (μ := (volume : Measure Pl)) (f := a + b) (g := c)
+    (ha.add hb) hc hr
+  have h2 := ENNReal.lintegral_Lp_add_le (μ := (volume : Measure Pl)) (f := a) (g := b)
+    ha hb hr
+  have heq : (∫⁻ x : Pl, (a x + b x + c x) ^ r) = ∫⁻ x : Pl, ((a + b) + c) x ^ r := by
+    refine lintegral_congr fun x => ?_
+    rfl
+  rw [heq]
+  refine le_trans h1 ?_
+  have heq2 : (∫⁻ x : Pl, (a + b) x ^ r) = ∫⁻ x : Pl, (a x + b x) ^ r := by
+    refine lintegral_congr fun x => ?_
+    rfl
+  refine add_le_add ?_ (le_refl _)
+  refine le_trans (le_of_eq ?_) h2
+  rw [heq2]
+
+set_option maxHeartbeats 4000000 in
+/-- **Theorem 2.5 of the paper (`thm:Q4`), for the dyadic single-scale maximal operator.**
+For `d = 2` and `γ > 1/2`, with `p₄ = (3+2γ)/2` and `q₄ = 2p₄`, the maximal function over `E` of
+the `j`-th dyadic piece of the spherical averages satisfies
+
+`‖M_j f‖_{q₄} ≤ C · (j+3)² · 2^{jη/(2p₄)} · ‖f‖_{p₄}`,
+
+where `η` is the subpower Assouad loss, which the caller may take as small as desired. -/
+theorem exists_q4_single_scale (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    {E : Set ℝ} {gam eta Cass : ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2)
+    (hcov : HasSubpowerAssouadCoverBound E gam eta Cass) (hCnn : 0 ≤ Cass) (heta : 0 ≤ eta)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    {p : ℝ} (hp : p = (3 + 2 * gam) / 2) :
+    ∃ D : ℝ, 0 < D ∧ ∀ j : ℕ, ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (fractalDyadicBandpassMaximal 2 E (absoluteDyadicBandpass φ hφone hφzero j) f)
+          (ENNReal.ofReal (2 * p)) (volume : Measure Pl)
+        ≤ ENNReal.ofReal (D * (((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p))))
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) (volume : Measure Pl) := by
+  classical
+  have hp2 : 2 < p := by
+    rw [hp]
+    linarith
+  have hppos : (0 : ℝ) < p := by linarith
+  have hq0 : (0 : ℝ) < 2 * p := by linarith
+  have hq1 : (1 : ℝ) ≤ 2 * p := by linarith
+  obtain ⟨Dout, hDout, hout⟩ := exists_waveOsc_single_scale_clean φ hφone hφzero hφrad
+    CoordinateWavePart.outgoing (ε := -1) (by norm_num) oscExp_outgoing hE hcov hCnn heta
+    hgam1 hgam2 hp
+  obtain ⟨Din, hDin, hin⟩ := exists_waveOsc_single_scale_clean φ hφone hφzero hφrad
+    CoordinateWavePart.incoming (ε := 1) (by norm_num) oscExp_incoming hE hcov hCnn heta
+    hgam1 hgam2 hp
+  obtain ⟨Dmid, hDmid, hmid⟩ := exists_waveMid_single_scale_clean φ hφone hφzero hφrad
+    hE hcov hCnn heta hgam1 hgam2 hp
+  set K : ℝ := |((surfaceMass 2)⁻¹ : ℝ)| with hKdef
+  have hKnn : (0 : ℝ) ≤ K := abs_nonneg _
+  refine ⟨(K + 1) * (Dout + Din + Dmid), by positivity, ?_⟩
+  intro j f
+  obtain ⟨Wout, hWoutm, hWoutmaj, hWoutb⟩ := hout j f
+  obtain ⟨Win, hWinm, hWinmaj, hWinb⟩ := hin j f
+  obtain ⟨Wmid, hWmidm, hWmidmaj, hWmidb⟩ := hmid j f
+  -- the pointwise bound
+  have hpt : ∀ x : Pl,
+      ‖fractalDyadicBandpassMaximal 2 E (absoluteDyadicBandpass φ hφone hφzero j) f x‖ₑ
+        ≤ ENNReal.ofReal K * (Wout x + Win x + Wmid x) := by
+    intro x
+    have h := enorm_fractalDyadicBandpassMaximal_le hφone hφzero j hE f hWoutmaj hWinmaj
+      hWmidmaj x
+    have hKval : ‖((surfaceMass 2)⁻¹ : ℝ)‖ₑ = ENNReal.ofReal K := by
+      rw [hKdef, ← ofReal_norm, Real.norm_eq_abs]
+    rw [hKval] at h
+    exact h
+  -- pass to the `L^{2p}` norms
+  have hlhs : eLpNorm (fractalDyadicBandpassMaximal 2 E
+        (absoluteDyadicBandpass φ hφone hφzero j) f) (ENNReal.ofReal (2 * p))
+        (volume : Measure Pl)
+      = (∫⁻ x : Pl, ‖fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass φ hφone hφzero j) f x‖ₑ ^ (2 * p)) ^ (1 / (2 * p)) :=
+    eLpNorm_ofReal_eq hq0
+  have hrhs : eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) (volume : Measure Pl)
+      = (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) := eLpNorm_ofReal_eq hppos
+  rw [hlhs, hrhs]
+  have hmono : (∫⁻ x : Pl, ‖fractalDyadicBandpassMaximal 2 E
+        (absoluteDyadicBandpass φ hφone hφzero j) f x‖ₑ ^ (2 * p)) ^ (1 / (2 * p))
+      ≤ (∫⁻ x : Pl, (ENNReal.ofReal K * (Wout x + Win x + Wmid x)) ^ (2 * p)) ^ (1 / (2 * p)) := by
+    refine ENNReal.rpow_le_rpow (lintegral_mono fun x => ?_) (by positivity)
+    exact ENNReal.rpow_le_rpow (hpt x) hq0.le
+  refine le_trans hmono ?_
+  rw [lintegral_rpow_const_mul ENNReal.ofReal_ne_top _ hq0]
+  -- Minkowski over the three waves
+  have hsum3 : (∫⁻ x : Pl, (Wout x + Win x + Wmid x) ^ (2 * p)) ^ (1 / (2 * p))
+      ≤ (∫⁻ x : Pl, Wout x ^ (2 * p)) ^ (1 / (2 * p))
+        + (∫⁻ x : Pl, Win x ^ (2 * p)) ^ (1 / (2 * p))
+        + (∫⁻ x : Pl, Wmid x ^ (2 * p)) ^ (1 / (2 * p)) :=
+    lintegral_rpow_add3_le hWoutm.aemeasurable hWinm.aemeasurable hWmidm.aemeasurable hq1
+  refine le_trans (mul_le_mul' (le_refl _) (le_trans hsum3 (add_le_add (add_le_add hWoutb hWinb)
+    hWmidb))) ?_
+  -- collect the constants
+  set A : ℝ≥0∞ := (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) with hAdef
+  set g : ℝ := ((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p)) with hgdef
+  have hgnn : (0 : ℝ) ≤ g := by
+    rw [hgdef]
+    have h1 : (0 : ℝ) ≤ ((2 : ℝ) ^ (j : ℕ)) ^ (eta / (2 * p)) :=
+      Real.rpow_nonneg (by positivity) _
+    positivity
+  have hcollect : ENNReal.ofReal (Dout * g) * A + ENNReal.ofReal (Din * g) * A
+        + ENNReal.ofReal (Dmid * g) * A
+      = ENNReal.ofReal ((Dout + Din + Dmid) * g) * A := by
+    have hsum : ENNReal.ofReal (Dout * g) + ENNReal.ofReal (Din * g)
+          + ENNReal.ofReal (Dmid * g)
+        = ENNReal.ofReal ((Dout + Din + Dmid) * g) := by
+      rw [← ENNReal.ofReal_add (by positivity) (by positivity),
+        ← ENNReal.ofReal_add (by positivity) (by positivity)]
+      congr 1
+      ring
+    calc ENNReal.ofReal (Dout * g) * A + ENNReal.ofReal (Din * g) * A
+          + ENNReal.ofReal (Dmid * g) * A
+        = (ENNReal.ofReal (Dout * g) + ENNReal.ofReal (Din * g)
+            + ENNReal.ofReal (Dmid * g)) * A := by ring
+      _ = ENNReal.ofReal ((Dout + Din + Dmid) * g) * A := by rw [hsum]
+  rw [hcollect, ← mul_assoc, ← ENNReal.ofReal_mul hKnn]
+  refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) (le_refl _)
+  have hDnn : (0 : ℝ) ≤ Dout + Din + Dmid := by linarith
+  calc K * ((Dout + Din + Dmid) * g) = (K * (Dout + Din + Dmid)) * g := by ring
+    _ ≤ ((K + 1) * (Dout + Din + Dmid)) * g := by
+        refine mul_le_mul_of_nonneg_right ?_ hgnn
+        nlinarith [hDnn]
+
+/-! ### Summing the dyadic rates -/
+
+/-- **The planar summation step.**  A geometric dyadic rate gives the strong type.  The
+repository's reassembly lemma carries the hypothesis `3 ≤ d ∨ (d = 2 ∧ γ ≤ 1/2)`, but its `γ` is a
+dummy: it is only passed to the `j = 0` bandpass bound, whose conclusion does not mention `γ`.  So
+it may be instantiated with `γ = 0` and used for every planar dilation set. -/
+theorem strong_type_of_rate_planar {E : Set ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2)
+    (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    {p q : ℝ} (hp : 1 < p) (hq : 1 ≤ q) (hpq : p < q)
+    {C rho : ℝ≥0∞} (hCtop : C < ⊤) (hrho : rho < 1)
+    (hhigh : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      MemLp (fractalDyadicBandpassMaximal 2 E (absoluteDyadicBandpass φ hφone hφzero j) f)
+        (ENNReal.ofReal q) volume
+      ∧ eLpNorm (fractalDyadicBandpassMaximal 2 E
+          (absoluteDyadicBandpass φ hφone hφzero j) f) (ENNReal.ofReal q) volume
+        ≤ (C * rho ^ j) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume) :
+    Auto.Spherical.FractalDilations.Definitions.HasFractalSphericalStrongType 2 E p q :=
+  Auto.Spherical.FractalDilations.StrictDyadicReassembly.strong_type_of_strict_high_dyadic_rate
+    (gamma := 0) (Or.inr ⟨rfl, by norm_num⟩) E hE φ hφone hφzero hφnorm hp hq hpq hCtop hrho hhigh
+
 end KernelPlates
 
+/-! ## The off-diagonal two-pair interpolation
+
+Section 2 of the paper interpolates the endpoint estimate at `Q₄` against the `β`-only
+estimates at `Q₂` and `Q₃`.  The exponent pairs involved are not aligned in a common input or
+a common output exponent, so the required interpolation is the genuine off-diagonal (two-pair)
+Marcinkiewicz theorem.  This section proves it for subadditive nonnegative operators on the
+Schwartz class, in the form needed for dyadic rates: the smooth amplitude split of
+`Auto.Spherical.SchwartzData` is used at a power-law amplitude scale `t ^ m`, the two weighted
+amplitude tails are evaluated by Tonelli, and the free scale is chosen so that the two
+contributions balance.  The resulting geometric ratio is the weighted geometric mean of the two
+input ratios, which is exactly what turns a small `Q₄` loss into a genuine gain. -/
+
+open Auto.Spherical.InterpolationCore
+
+def thr (c m : ℝ) {α : Type*} (u : α → ℝ) : α → ℝ := fun x => (u x / c) ^ m⁻¹
+
+theorem measurable_thr {α : Type*} [MeasurableSpace α] {c m : ℝ} (hm : 0 < m) {u : α → ℝ}
+    (hu : Measurable u) : Measurable (thr c m u) :=
+  (Real.continuous_rpow_const (inv_pos.mpr hm).le).measurable.comp (hu.div_const c)
+
+theorem thr_nonneg {α : Type*} {c m : ℝ} {u : α → ℝ} (hc : 0 < c) (hunn : ∀ x, 0 ≤ u x) (x : α) :
+    0 ≤ thr c m u x :=
+  Real.rpow_nonneg (div_nonneg (hunn x) hc.le) _
+
+theorem mem_thr_iff {α : Type*} {c m : ℝ} {u : α → ℝ} (hc : 0 < c) (hm : 0 < m)
+    (hunn : ∀ x, 0 ≤ u x) {t : ℝ} (ht : 0 < t) (x : α) :
+    c * t ^ m ≤ u x ↔ t ≤ thr c m u x := by
+  have h1 : c * t ^ m ≤ u x ↔ t ^ m ≤ u x / c := by
+    rw [le_div_iff₀ hc]
+    constructor
+    · intro h; linarith [h]
+    · intro h; linarith [h]
+  rw [h1, thr]
+  exact (Real.le_rpow_inv_iff_of_pos ht.le (div_nonneg (hunn x) hc.le) hm).symm
+
+theorem thr_rpow {α : Type*} {c m : ℝ} {u : α → ℝ} (hc : 0 < c)
+    (hunn : ∀ x, 0 ≤ u x) (w : ℝ) (x : α) :
+    (thr c m u x) ^ w = (u x) ^ (w / m) * c ^ (-(w / m)) := by
+  have hnn : 0 ≤ u x / c := div_nonneg (hunn x) hc.le
+  rw [thr, ← Real.rpow_mul hnn, Real.div_rpow (hunn x) hc.le,
+    show m⁻¹ * w = w / m by ring, Real.rpow_neg hc.le, div_eq_mul_inv]
+
+/-- The sharp high-amplitude tail, at a power-law amplitude scale.  This is the Tonelli
+identity behind the off-diagonal two-pair interpolation. -/
+theorem lintegral_highTail_pow_eq {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p0 p m c : ℝ} (hp0 : 0 < p0) (hp0p : p0 < p) (hm : 0 < m) (hc : 0 < c) :
+    (∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (m * (p - p0) - 1)
+        * ∫⁻ x in {x | c * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ)
+      = ENNReal.ofReal (c ^ (p0 - p) / (m * (p - p0)))
+          * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ := by
+  set W : ℝ := m * (p - p0) with hWdef
+  have hWpos : 0 < W := mul_pos hm (by linarith)
+  set v : α → ℝ≥0∞ := fun x => (ENNReal.ofReal (u x)) ^ p0 with hvdef
+  have hv : Measurable v :=
+    ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal
+  set w : ℝ → ℝ≥0∞ := fun t => (ENNReal.ofReal t) ^ (W - 1) with hwdef
+  have hw : Measurable w :=
+    ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal
+  have hthrm : Measurable (thr c m u) := measurable_thr hm hu
+  -- replace the amplitude sublevel set by the threshold set
+  have hstep : (∫⁻ t in Ioi (0 : ℝ), w t
+        * ∫⁻ x in {x | c * t ^ m ≤ u x}, v x ∂μ)
+      = ∫⁻ t in Ioi (0 : ℝ), w t * ∫⁻ x in {x | t ≤ thr c m u x}, v x ∂μ := by
+    refine lintegral_congr_ae ?_
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    have hsets : {x : α | c * t ^ m ≤ u x} = {x : α | t ≤ thr c m u x} := by
+      ext y
+      exact mem_thr_iff hc hm hunn ht y
+    rw [hsets]
+  rw [hstep, lintegral_swap_indicator_le (thr c m u) hthrm v hv w hw]
+  -- evaluate the inner height integral
+  have hinner : ∀ x : α, (∫⁻ t in Ioc (0 : ℝ) (thr c m u x), w t)
+      = ENNReal.ofReal ((thr c m u x) ^ W / W) := by
+    intro x
+    have h := lintegral_rpow_Ioc_eq (p := W + 1) (u := thr c m u x) (by linarith)
+      (thr_nonneg hc hunn x)
+    rw [hwdef]
+    simp only
+    rw [show W - 1 = (W + 1) - 2 by ring, h, show W + 1 - 1 = W by ring]
+  have hpoint : ∀ x : α, v x * ENNReal.ofReal ((thr c m u x) ^ W / W)
+      = ENNReal.ofReal (c ^ (p0 - p) / W) * (ENNReal.ofReal (u x)) ^ p := by
+    intro x
+    have hWm : W / m = p - p0 := by
+      rw [hWdef]; field_simp
+    have hthr : (thr c m u x) ^ W = (u x) ^ (p - p0) * c ^ (-(p - p0)) := by
+      rw [thr_rpow hc hunn W x, hWm]
+    rcases (hunn x).eq_or_lt with h0 | hpos
+    · have hu0 : u x = 0 := h0.symm
+      rw [hvdef]
+      simp only [hu0, ENNReal.ofReal_zero, ENNReal.zero_rpow_of_pos hp0,
+        ENNReal.zero_rpow_of_pos (by linarith : (0:ℝ) < p), zero_mul, mul_zero]
+    · rw [hvdef]
+      simp only
+      rw [ENNReal.ofReal_rpow_of_pos hpos, ENNReal.ofReal_rpow_of_pos hpos,
+        ← ENNReal.ofReal_mul (Real.rpow_nonneg (hunn x) _),
+        ← ENNReal.ofReal_mul (by positivity), hthr]
+      congr 1
+      have h1 : u x ^ p0 * u x ^ (p - p0) = u x ^ p := by
+        rw [← Real.rpow_add hpos]
+        congr 1
+        ring
+      have h2 : c ^ (p0 - p) = (c ^ (p - p0))⁻¹ := by
+        rw [show p0 - p = -(p - p0) by ring, Real.rpow_neg hc.le]
+      rw [Real.rpow_neg hc.le]
+      calc u x ^ p0 * (u x ^ (p - p0) * (c ^ (p - p0))⁻¹ / W)
+          = (u x ^ p0 * u x ^ (p - p0)) * ((c ^ (p - p0))⁻¹ / W) := by ring
+        _ = u x ^ p * ((c ^ (p - p0))⁻¹ / W) := by rw [h1]
+        _ = c ^ (p0 - p) / W * u x ^ p := by rw [h2]; ring
+  rw [show (fun x => v x * ∫⁻ t in Ioc (0 : ℝ) (thr c m u x), w t)
+      = fun x => ENNReal.ofReal (c ^ (p0 - p) / W) * (ENNReal.ofReal (u x)) ^ p by
+    funext x
+    rw [hinner x, hpoint x]]
+  exact lintegral_const_mul _
+    (ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal)
+
+
+/-- Crude bound for the high-amplitude sublevel integral. -/
+theorem highTail_crude {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p0 p J lam : ℝ} (hp0 : 0 < p0) (hp0p : p0 < p) (hlam : 0 < lam) (hJ0 : 0 ≤ J)
+    (hJ : (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) ≤ ENNReal.ofReal J) :
+    (∫⁻ x in {x | lam ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ)
+      ≤ ENNReal.ofReal (lam ^ (p0 - p) * J) := by
+  have hset : MeasurableSet {x : α | lam ≤ u x} := measurableSet_le measurable_const hu
+  have hpoint : ∀ x ∈ {x : α | lam ≤ u x},
+      (ENNReal.ofReal (u x)) ^ p0
+        ≤ ENNReal.ofReal (lam ^ (p0 - p)) * (ENNReal.ofReal (u x)) ^ p := by
+    intro x hx
+    have hxu : lam ≤ u x := hx
+    have hpos : 0 < u x := lt_of_lt_of_le hlam hxu
+    have hreal : (u x) ^ p0 ≤ lam ^ (p0 - p) * (u x) ^ p := by
+      have hpow : (u x) ^ (p0 - p) ≤ lam ^ (p0 - p) :=
+        Real.rpow_le_rpow_of_nonpos hlam hxu (by linarith)
+      calc (u x) ^ p0 = (u x) ^ p * (u x) ^ (p0 - p) := by
+            rw [← Real.rpow_add hpos]
+            congr 1
+            ring
+        _ ≤ (u x) ^ p * lam ^ (p0 - p) :=
+            mul_le_mul_of_nonneg_left hpow (Real.rpow_nonneg hpos.le _)
+        _ = lam ^ (p0 - p) * (u x) ^ p := by ring
+    rw [ENNReal.ofReal_rpow_of_pos hpos, ENNReal.ofReal_rpow_of_pos hpos,
+      ← ENNReal.ofReal_mul (Real.rpow_nonneg hlam.le _)]
+    exact ENNReal.ofReal_le_ofReal hreal
+  calc (∫⁻ x in {x | lam ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ)
+      ≤ ∫⁻ x in {x | lam ≤ u x},
+          ENNReal.ofReal (lam ^ (p0 - p)) * (ENNReal.ofReal (u x)) ^ p ∂μ := by
+        refine setLIntegral_mono_ae (by
+          exact (measurable_const.mul
+            (ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal)).aemeasurable) ?_
+        filter_upwards [] with x
+        intro hx
+        exact hpoint x hx
+    _ ≤ ∫⁻ x, ENNReal.ofReal (lam ^ (p0 - p)) * (ENNReal.ofReal (u x)) ^ p ∂μ :=
+        setLIntegral_le_lintegral _ _
+    _ = ENNReal.ofReal (lam ^ (p0 - p)) * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ ENNReal.ofReal (lam ^ (p0 - p)) * ENNReal.ofReal J :=
+        mul_le_mul' (le_refl _) hJ
+    _ = ENNReal.ofReal (lam ^ (p0 - p) * J) :=
+        (ENNReal.ofReal_mul (Real.rpow_nonneg hlam.le _)).symm
+
+
+/-- The weighted high-amplitude tail at a power `r0 ≥ 1`.  This is the first of the two tail
+estimates of the off-diagonal two-pair Marcinkiewicz interpolation. -/
+theorem lintegral_highTail_rpow_le {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p0 p m c r0 J : ℝ} (hp0 : 0 < p0) (hp0p : p0 < p) (hm : 0 < m) (hc : 0 < c)
+    (hr0 : 1 ≤ r0) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) ≤ ENNReal.ofReal J) :
+    (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x in {x | c * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ) ^ r0
+          * (ENNReal.ofReal t) ^ (m * (p - p0) * r0 - 1))
+      ≤ ENNReal.ofReal (c ^ ((p0 - p) * r0) * J ^ r0 / (m * (p - p0))) := by
+  set W : ℝ := m * (p - p0) with hWdef
+  have hWpos : 0 < W := mul_pos hm (by linarith)
+  set B : ℝ → ℝ≥0∞ := fun t =>
+    ∫⁻ x in {x | c * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ with hBdef
+  set K : ℝ≥0∞ := ENNReal.ofReal (c ^ ((p0 - p) * (r0 - 1)) * J ^ (r0 - 1)) with hKdef
+  have hcrude : ∀ t : ℝ, 0 < t → B t ≤ ENNReal.ofReal ((c * t ^ m) ^ (p0 - p) * J) := by
+    intro t ht
+    exact highTail_crude u hu hunn hp0 hp0p (by positivity) hJ0.le hJ
+  have hkey : ∀ t : ℝ, 0 < t →
+      (B t) ^ r0 * (ENNReal.ofReal t) ^ (W * r0 - 1)
+        ≤ K * ((ENNReal.ofReal t) ^ (W - 1) * B t) := by
+    intro t ht
+    have htne : ENNReal.ofReal t ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr ht
+    have httop : ENNReal.ofReal t ≠ ⊤ := ENNReal.ofReal_ne_top
+    have hcr := hcrude t ht
+    by_cases hB0 : B t = 0
+    · rw [hB0, ENNReal.zero_rpow_of_pos (by linarith), zero_mul]
+      simp
+    · have hBtop : B t ≠ ⊤ := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hcr
+      have hsplit : (B t) ^ r0 = (B t) ^ (r0 - 1) * B t := by
+        have hadd := ENNReal.rpow_add (x := B t) (r0 - 1) 1 hB0 hBtop
+        rw [ENNReal.rpow_one] at hadd
+        rw [← hadd]
+        congr 1
+        ring
+      have hreal : ((c * t ^ m) ^ (p0 - p) * J) ^ (r0 - 1)
+          = (c ^ ((p0 - p) * (r0 - 1)) * J ^ (r0 - 1)) * t ^ (m * (p0 - p) * (r0 - 1)) := by
+        have hcm : (0:ℝ) ≤ c * t ^ m := by positivity
+        calc ((c * t ^ m) ^ (p0 - p) * J) ^ (r0 - 1)
+            = ((c * t ^ m) ^ (p0 - p)) ^ (r0 - 1) * J ^ (r0 - 1) :=
+              Real.mul_rpow (Real.rpow_nonneg hcm _) hJ0.le
+          _ = (c * t ^ m) ^ ((p0 - p) * (r0 - 1)) * J ^ (r0 - 1) := by
+              rw [← Real.rpow_mul hcm]
+          _ = (c ^ ((p0 - p) * (r0 - 1)) * (t ^ m) ^ ((p0 - p) * (r0 - 1)))
+                * J ^ (r0 - 1) := by
+              rw [Real.mul_rpow hc.le (Real.rpow_nonneg ht.le _)]
+          _ = (c ^ ((p0 - p) * (r0 - 1)) * t ^ (m * ((p0 - p) * (r0 - 1))))
+                * J ^ (r0 - 1) := by
+              rw [← Real.rpow_mul ht.le]
+          _ = (c ^ ((p0 - p) * (r0 - 1)) * J ^ (r0 - 1))
+                * t ^ (m * (p0 - p) * (r0 - 1)) := by
+              rw [show m * (p0 - p) * (r0 - 1) = m * ((p0 - p) * (r0 - 1)) by ring]
+              ring
+      have hpow : (B t) ^ (r0 - 1)
+          ≤ K * (ENNReal.ofReal t) ^ (m * (p0 - p) * (r0 - 1)) := by
+        have h1 : (B t) ^ (r0 - 1)
+            ≤ (ENNReal.ofReal ((c * t ^ m) ^ (p0 - p) * J)) ^ (r0 - 1) :=
+          ENNReal.rpow_le_rpow hcr (by linarith)
+        refine h1.trans (le_of_eq ?_)
+        rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by linarith), hreal,
+          ENNReal.ofReal_mul (by positivity), hKdef,
+          ENNReal.ofReal_rpow_of_pos ht]
+      calc (B t) ^ r0 * (ENNReal.ofReal t) ^ (W * r0 - 1)
+          = ((B t) ^ (r0 - 1) * B t) * (ENNReal.ofReal t) ^ (W * r0 - 1) := by
+            rw [hsplit]
+        _ ≤ ((K * (ENNReal.ofReal t) ^ (m * (p0 - p) * (r0 - 1))) * B t)
+              * (ENNReal.ofReal t) ^ (W * r0 - 1) := by
+            exact mul_le_mul' (mul_le_mul' hpow (le_refl _)) (le_refl _)
+        _ = K * ((ENNReal.ofReal t) ^ (W - 1) * B t) := by
+            rw [show (W - 1 : ℝ) = m * (p0 - p) * (r0 - 1) + (W * r0 - 1) by
+              rw [hWdef]; ring]
+            rw [ENNReal.rpow_add _ _ htne httop]
+            ring
+  calc (∫⁻ t in Ioi (0 : ℝ), (B t) ^ r0 * (ENNReal.ofReal t) ^ (W * r0 - 1))
+      ≤ ∫⁻ t in Ioi (0 : ℝ), K * ((ENNReal.ofReal t) ^ (W - 1) * B t) := by
+        refine lintegral_mono_ae ?_
+        filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+        exact hkey t ht
+    _ = K * ∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (W - 1) * B t :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ = K * (ENNReal.ofReal (c ^ (p0 - p) / W) * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) := by
+        rw [hBdef, hWdef]
+        rw [lintegral_highTail_pow_eq u hu hunn hp0 hp0p hm hc]
+    _ ≤ K * (ENNReal.ofReal (c ^ (p0 - p) / W) * ENNReal.ofReal J) :=
+        mul_le_mul' (le_refl _) (mul_le_mul' (le_refl _) hJ)
+    _ = ENNReal.ofReal (c ^ ((p0 - p) * r0) * J ^ r0 / (m * (p - p0))) := by
+        rw [hKdef, ← ENNReal.ofReal_mul (by positivity),
+          ← ENNReal.ofReal_mul (by positivity)]
+        congr 1
+        have hc1 : c ^ ((p0 - p) * (r0 - 1)) * c ^ (p0 - p) = c ^ ((p0 - p) * r0) := by
+          rw [← Real.rpow_add hc]
+          congr 1
+          ring
+        have hJ1 : J ^ (r0 - 1) * J = J ^ r0 := by
+          have h := Real.rpow_add hJ0 (r0 - 1) 1
+          rw [Real.rpow_one] at h
+          rw [← h]
+          congr 1
+          ring
+        calc c ^ ((p0 - p) * (r0 - 1)) * J ^ (r0 - 1) * (c ^ (p0 - p) / W * J)
+            = (c ^ ((p0 - p) * (r0 - 1)) * c ^ (p0 - p)) * (J ^ (r0 - 1) * J) / W := by
+              ring
+          _ = c ^ ((p0 - p) * r0) * J ^ r0 / W := by rw [hc1, hJ1]
+          _ = c ^ ((p0 - p) * r0) * J ^ r0 / (m * (p - p0)) := by rw [hWdef]
+
+
+/-- The low-amplitude tail, small-value region.  A Tonelli identity. -/
+theorem lintegral_lowTailA_eq {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p1 p m c : ℝ} (hp : 0 < p) (hpp1 : p < p1) (hm : 0 < m) (hc : 0 < c) :
+    (∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (m * (p - p1) - 1)
+        * ∫⁻ x in {x | u x < c * t ^ m}, (ENNReal.ofReal (u x)) ^ p1 ∂μ)
+      = ENNReal.ofReal (c ^ (p1 - p) / (m * (p1 - p)))
+          * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ := by
+  set W : ℝ := m * (p - p1) with hWdef
+  have hWneg : W < 0 := by
+    rw [hWdef]
+    have : p - p1 < 0 := by linarith
+    exact mul_neg_of_pos_of_neg hm this
+  set v : α → ℝ≥0∞ := fun x => (ENNReal.ofReal (u x)) ^ p1 with hvdef
+  have hv : Measurable v :=
+    ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal
+  set w : ℝ → ℝ≥0∞ := fun t => (ENNReal.ofReal t) ^ (W - 1) with hwdef
+  have hw : Measurable w :=
+    ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal
+  have hthrm : Measurable (thr c m u) := measurable_thr hm hu
+  have hstep : (∫⁻ t in Ioi (0 : ℝ), w t
+        * ∫⁻ x in {x | u x < c * t ^ m}, v x ∂μ)
+      = ∫⁻ t in Ioi (0 : ℝ), w t * ∫⁻ x in {x | thr c m u x < t}, v x ∂μ := by
+    refine lintegral_congr_ae ?_
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    have hsets : {x : α | u x < c * t ^ m} = {x : α | thr c m u x < t} := by
+      ext y
+      have h := mem_thr_iff hc hm hunn ht y
+      constructor
+      · intro hy
+        by_contra hcon
+        exact absurd (h.mpr (not_lt.mp hcon)) (not_le.mpr hy)
+      · intro hy
+        by_contra hcon
+        exact absurd (h.mp (not_lt.mp hcon)) (not_le.mpr hy)
+    rw [hsets]
+  rw [hstep, lintegral_swap_indicator_lt (thr c m u) hthrm
+    (thr_nonneg hc hunn) v hv w hw]
+  have hpoint : ∀ x : α, v x * (∫⁻ t in Ioi (thr c m u x), w t)
+      = ENNReal.ofReal (c ^ (p1 - p) / (m * (p1 - p))) * (ENNReal.ofReal (u x)) ^ p := by
+    intro x
+    rcases (hunn x).eq_or_lt with h0 | hpos
+    · have hu0 : u x = 0 := h0.symm
+      rw [hvdef]
+      simp only [hu0, ENNReal.ofReal_zero, ENNReal.zero_rpow_of_pos (by linarith : (0:ℝ) < p1),
+        ENNReal.zero_rpow_of_pos hp, zero_mul, mul_zero]
+    · have hthrpos : 0 < thr c m u x := by
+        rw [thr]
+        exact Real.rpow_pos_of_pos (by positivity) _
+      have hinner : (∫⁻ t in Ioi (thr c m u x), w t)
+          = ENNReal.ofReal ((thr c m u x) ^ W / (-W)) := by
+        have h := lintegral_rpow_Ioi_eq (p := W + 2) (u := thr c m u x)
+          (by linarith) hthrpos
+        rw [hwdef]
+        simp only
+        rw [show W - 1 = (W + 2) - 3 by ring, h, show W + 2 - 2 = W by ring,
+          show (2 : ℝ) - (W + 2) = -W by ring]
+      have hWm : W / m = p - p1 := by
+        rw [hWdef]; field_simp
+      have hthrw : (thr c m u x) ^ W = (u x) ^ (p - p1) * c ^ (-(p - p1)) := by
+        rw [thr_rpow hc hunn W x, hWm]
+      rw [hinner, hvdef]
+      simp only
+      rw [ENNReal.ofReal_rpow_of_pos hpos, ENNReal.ofReal_rpow_of_pos hpos,
+        ← ENNReal.ofReal_mul (Real.rpow_nonneg (hunn x) _),
+        ← ENNReal.ofReal_mul (by positivity), hthrw]
+      congr 1
+      have h1 : u x ^ p1 * u x ^ (p - p1) = u x ^ p := by
+        rw [← Real.rpow_add hpos]
+        congr 1
+        ring
+      have h2 : c ^ (-(p - p1)) = c ^ (p1 - p) := by
+        congr 1
+        ring
+      have hmW : -W = m * (p1 - p) := by
+        rw [hWdef]; ring
+      rw [h2, hmW]
+      calc u x ^ p1 * (u x ^ (p - p1) * c ^ (p1 - p) / (m * (p1 - p)))
+          = (u x ^ p1 * u x ^ (p - p1)) * (c ^ (p1 - p) / (m * (p1 - p))) := by ring
+        _ = c ^ (p1 - p) / (m * (p1 - p)) * u x ^ p := by rw [h1]; ring
+  rw [show (fun x => v x * ∫⁻ t in Ioi (thr c m u x), w t)
+      = fun x => ENNReal.ofReal (c ^ (p1 - p) / (m * (p1 - p))) * (ENNReal.ofReal (u x)) ^ p by
+    funext x
+    exact hpoint x]
+  exact lintegral_const_mul _
+    (ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal)
+
+
+/-- The low-amplitude tail, large-value region.  A Tonelli identity. -/
+theorem lintegral_lowTailB_eq {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p1 p m c : ℝ} (hp : 0 < p) (hpp1 : p < p1) (hm : 0 < m) (hc : 0 < c) :
+    (∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (m * (p - p1) - 1)
+        * (ENNReal.ofReal ((c * t ^ m) ^ p1) * μ {x | c * t ^ m ≤ u x}))
+      = ENNReal.ofReal (c ^ (p1 - p) / (m * p))
+          * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ := by
+  set W : ℝ := m * (p - p1) with hWdef
+  set V : ℝ := m * p with hVdef
+  have hVpos : 0 < V := mul_pos hm hp
+  have hVW : m * p1 + W = V := by rw [hWdef, hVdef]; ring
+  set w : ℝ → ℝ≥0∞ := fun t => ENNReal.ofReal (c ^ p1) * (ENNReal.ofReal t) ^ (V - 1) with hwdef
+  have hw : Measurable w :=
+    measurable_const.mul
+      (ENNReal.continuous_rpow_const.measurable.comp measurable_id.ennreal_ofReal)
+  have hthrm : Measurable (thr c m u) := measurable_thr hm hu
+  -- rewrite the integrand
+  have hstep : (∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (W - 1)
+        * (ENNReal.ofReal ((c * t ^ m) ^ p1) * μ {x | c * t ^ m ≤ u x}))
+      = ∫⁻ t in Ioi (0 : ℝ), w t * ∫⁻ x in {x | t ≤ thr c m u x}, (1 : ℝ≥0∞) ∂μ := by
+    refine lintegral_congr_ae ?_
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    have hsets : {x : α | c * t ^ m ≤ u x} = {x : α | t ≤ thr c m u x} := by
+      ext y
+      exact mem_thr_iff hc hm hunn ht y
+    have hone : (∫⁻ x in {x : α | t ≤ thr c m u x}, (1 : ℝ≥0∞) ∂μ)
+        = μ {x : α | t ≤ thr c m u x} := by
+      rw [setLIntegral_one]
+    have hamp : ENNReal.ofReal ((c * t ^ m) ^ p1)
+        = ENNReal.ofReal (c ^ p1) * (ENNReal.ofReal t) ^ (m * p1) := by
+      rw [Real.mul_rpow hc.le (Real.rpow_nonneg ht.le _), ← Real.rpow_mul ht.le,
+        ENNReal.ofReal_mul (Real.rpow_nonneg hc.le _),
+        ENNReal.ofReal_rpow_of_pos ht]
+    have htne : ENNReal.ofReal t ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr ht
+    have httop : ENNReal.ofReal t ≠ ⊤ := ENNReal.ofReal_ne_top
+    rw [hone, hsets, hamp, hwdef]
+    simp only
+    rw [show (V - 1 : ℝ) = (W - 1) + m * p1 by rw [← hVW]; ring,
+      ENNReal.rpow_add _ _ htne httop]
+    ring
+  rw [hstep, lintegral_swap_indicator_le (thr c m u) hthrm (fun _ => (1 : ℝ≥0∞))
+    measurable_const w hw]
+  have hpoint : ∀ x : α, (1 : ℝ≥0∞) * (∫⁻ t in Ioc (0 : ℝ) (thr c m u x), w t)
+      = ENNReal.ofReal (c ^ (p1 - p) / (m * p)) * (ENNReal.ofReal (u x)) ^ p := by
+    intro x
+    have hthrnn : 0 ≤ thr c m u x := thr_nonneg hc hunn x
+    have hinner : (∫⁻ t in Ioc (0 : ℝ) (thr c m u x), (ENNReal.ofReal t) ^ (V - 1))
+        = ENNReal.ofReal ((thr c m u x) ^ V / V) := by
+      have h := lintegral_rpow_Ioc_eq (p := V + 1) (u := thr c m u x) (by linarith) hthrnn
+      rw [show V - 1 = (V + 1) - 2 by ring, h, show V + 1 - 1 = V by ring]
+    have hVm : V / m = p := by rw [hVdef]; field_simp
+    have hthrv : (thr c m u x) ^ V = (u x) ^ p * c ^ (-p) := by
+      rw [thr_rpow hc hunn V x, hVm]
+    rw [one_mul, hwdef]
+    simp only
+    rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top, hinner, hthrv]
+    rcases (hunn x).eq_or_lt with h0 | hpos
+    · have hu0 : u x = 0 := h0.symm
+      simp only [hu0, ENNReal.ofReal_zero, ENNReal.zero_rpow_of_pos hp, mul_zero]
+      rw [Real.zero_rpow (by linarith : p ≠ 0)]
+      simp
+    · rw [ENNReal.ofReal_rpow_of_pos hpos,
+        ← ENNReal.ofReal_mul (Real.rpow_nonneg hc.le _),
+        ← ENNReal.ofReal_mul (by positivity)]
+      congr 1
+      have h2 : c ^ p1 * (u x ^ p * c ^ (-p) / V) = c ^ (p1 - p) / V * u x ^ p := by
+        rw [Real.rpow_neg hc.le]
+        have h3 : c ^ (p1 - p) = c ^ p1 * (c ^ p)⁻¹ := by
+          rw [show p1 - p = p1 + (-p) by ring, Real.rpow_add hc, Real.rpow_neg hc.le]
+        rw [h3]
+        ring
+      rw [h2, hVdef]
+  rw [show (fun x => (1 : ℝ≥0∞) * ∫⁻ t in Ioc (0 : ℝ) (thr c m u x), w t)
+      = fun x => ENNReal.ofReal (c ^ (p1 - p) / (m * p)) * (ENNReal.ofReal (u x)) ^ p by
+    funext x
+    exact hpoint x]
+  exact lintegral_const_mul _
+    (ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal)
+
+
+/-- The two-region bound for one member of a low-amplitude family. -/
+theorem lowTail_two_region_le {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    (g : α → ℝ) (hgnn : ∀ x, 0 ≤ g x)
+    {p1 lam : ℝ} (hp1 : 0 < p1) (hlam : 0 < lam)
+    (hg1 : ∀ x, g x ≤ u x) (hg2 : ∀ x, g x ≤ lam) :
+    (∫⁻ x, (ENNReal.ofReal (g x)) ^ p1 ∂μ)
+      ≤ (∫⁻ x in {x | u x < lam}, (ENNReal.ofReal (u x)) ^ p1 ∂μ)
+        + ENNReal.ofReal (lam ^ p1) * μ {x | lam ≤ u x} := by
+  have hS : MeasurableSet {x : α | u x < lam} := measurableSet_lt hu measurable_const
+  have hcompl : {x : α | u x < lam}ᶜ = {x : α | lam ≤ u x} := by
+    ext x
+    simp only [Set.mem_compl_iff, Set.mem_setOf_eq, not_lt]
+  have hsplit := lintegral_add_compl (μ := μ)
+    (fun x => (ENNReal.ofReal (g x)) ^ p1) hS
+  rw [← hsplit]
+  refine add_le_add ?_ ?_
+  · refine lintegral_mono ?_
+    intro x
+    exact ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal (hg1 x)) hp1.le
+  · rw [hcompl]
+    calc (∫⁻ x in {x : α | lam ≤ u x}, (ENNReal.ofReal (g x)) ^ p1 ∂μ)
+        ≤ ∫⁻ _x in {x : α | lam ≤ u x}, ENNReal.ofReal (lam ^ p1) ∂μ := by
+          refine lintegral_mono ?_
+          intro x
+          rw [← ENNReal.ofReal_rpow_of_pos hlam]
+          exact ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal (hg2 x)) hp1.le
+      _ = ENNReal.ofReal (lam ^ p1) * μ {x : α | lam ≤ u x} := by
+          rw [setLIntegral_const]
+
+/-- The crude bound for one member of a low-amplitude family. -/
+theorem lowTail_crude {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    (u : α → ℝ) (hunn : ∀ x, 0 ≤ u x)
+    (g : α → ℝ) (hgnn : ∀ x, 0 ≤ g x)
+    {p1 p lam J : ℝ} (hp : 0 < p) (hpp1 : p < p1) (hlam : 0 < lam) (hJ0 : 0 ≤ J)
+    (hJ : (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) ≤ ENNReal.ofReal J)
+    (hg1 : ∀ x, g x ≤ u x) (hg2 : ∀ x, g x ≤ lam) :
+    (∫⁻ x, (ENNReal.ofReal (g x)) ^ p1 ∂μ) ≤ ENNReal.ofReal (lam ^ (p1 - p) * J) := by
+  have hpoint : ∀ x : α, (ENNReal.ofReal (g x)) ^ p1
+      ≤ ENNReal.ofReal (lam ^ (p1 - p)) * (ENNReal.ofReal (u x)) ^ p := by
+    intro x
+    have hreal : (g x) ^ p1 ≤ lam ^ (p1 - p) * (u x) ^ p := by
+      rcases (hgnn x).eq_or_lt with h0 | hpos
+      · rw [← h0, Real.zero_rpow (by linarith : p1 ≠ 0)]
+        exact mul_nonneg (Real.rpow_nonneg hlam.le _) (Real.rpow_nonneg (hunn x) _)
+      · calc (g x) ^ p1 = (g x) ^ (p1 - p) * (g x) ^ p := by
+              rw [← Real.rpow_add hpos]
+              congr 1
+              ring
+          _ ≤ lam ^ (p1 - p) * (u x) ^ p := by
+              refine mul_le_mul (Real.rpow_le_rpow hpos.le (hg2 x) (by linarith))
+                (Real.rpow_le_rpow hpos.le (hg1 x) hp.le)
+                (Real.rpow_nonneg hpos.le _) (Real.rpow_nonneg hlam.le _)
+    rcases (hgnn x).eq_or_lt with h0 | hpos
+    · rw [← h0]
+      simp only [ENNReal.ofReal_zero, ENNReal.zero_rpow_of_pos (by linarith : (0:ℝ) < p1)]
+      simp
+    · have hupos : 0 < u x := lt_of_lt_of_le hpos (hg1 x)
+      rw [ENNReal.ofReal_rpow_of_pos hpos, ENNReal.ofReal_rpow_of_pos hupos,
+        ← ENNReal.ofReal_mul (Real.rpow_nonneg hlam.le _)]
+      exact ENNReal.ofReal_le_ofReal hreal
+  calc (∫⁻ x, (ENNReal.ofReal (g x)) ^ p1 ∂μ)
+      ≤ ∫⁻ x, ENNReal.ofReal (lam ^ (p1 - p)) * (ENNReal.ofReal (u x)) ^ p ∂μ :=
+        lintegral_mono hpoint
+    _ = ENNReal.ofReal (lam ^ (p1 - p)) * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ ENNReal.ofReal (lam ^ (p1 - p)) * ENNReal.ofReal J := mul_le_mul' (le_refl _) hJ
+    _ = ENNReal.ofReal (lam ^ (p1 - p) * J) :=
+        (ENNReal.ofReal_mul (Real.rpow_nonneg hlam.le _)).symm
+
+
+/-- The full weighted low-amplitude tail at a power `r1 ≥ 1`.  This is the second of the two
+tail estimates of the off-diagonal two-pair Marcinkiewicz interpolation. -/
+theorem lintegral_lowTail_rpow_le {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
+    (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p1 p m c r1 J : ℝ} (g : ℝ → α → ℝ) (hgnn : ∀ t x, 0 ≤ g t x)
+    (hg1 : ∀ t x, 0 < t → g t x ≤ u x)
+    (hg2 : ∀ t x, 0 < t → g t x ≤ c * t ^ m)
+    (hp : 0 < p) (hpp1 : p < p1) (hm : 0 < m) (hc : 0 < c)
+    (hr1 : 1 ≤ r1) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) ≤ ENNReal.ofReal J) :
+    (∫⁻ t in Ioi (0 : ℝ), (∫⁻ x, (ENNReal.ofReal (g t x)) ^ p1 ∂μ) ^ r1
+        * (ENNReal.ofReal t) ^ (m * (p - p1) * r1 - 1))
+      ≤ ENNReal.ofReal (c ^ ((p1 - p) * r1) * J ^ r1
+          * (1 / (m * (p1 - p)) + 1 / (m * p))) := by
+  set W : ℝ := m * (p - p1) with hWdef
+  have hp1pos : 0 < p1 := by linarith
+  have hp1p : 0 < p1 - p := by linarith
+  have hWneg : W < 0 := by
+    rw [hWdef]
+    exact mul_neg_of_pos_of_neg hm (by linarith)
+  set L : ℝ → ℝ≥0∞ := fun t => ∫⁻ x, (ENNReal.ofReal (g t x)) ^ p1 ∂μ with hLdef
+  set K : ℝ≥0∞ := ENNReal.ofReal (c ^ ((p1 - p) * (r1 - 1)) * J ^ (r1 - 1)) with hKdef
+  have hct : Measurable (fun t : ℝ => c * t ^ m) :=
+    (Real.continuous_rpow_const hm.le).measurable.const_mul c
+  have hcrude : ∀ t : ℝ, 0 < t → L t ≤ ENNReal.ofReal ((c * t ^ m) ^ (p1 - p) * J) := by
+    intro t ht
+    exact lowTail_crude u hunn (g t) (fun x => hgnn t x) hp hpp1 (by positivity) hJ0.le hJ
+      (fun x => hg1 t x ht) (fun x => hg2 t x ht)
+  have hkey : ∀ t : ℝ, 0 < t →
+      (L t) ^ r1 * (ENNReal.ofReal t) ^ (W * r1 - 1)
+        ≤ K * ((ENNReal.ofReal t) ^ (W - 1) * L t) := by
+    intro t ht
+    have htne : ENNReal.ofReal t ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr ht
+    have httop : ENNReal.ofReal t ≠ ⊤ := ENNReal.ofReal_ne_top
+    have hcr := hcrude t ht
+    by_cases hL0 : L t = 0
+    · rw [hL0, ENNReal.zero_rpow_of_pos (by linarith), zero_mul]
+      simp
+    · have hLtop : L t ≠ ⊤ := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hcr
+      have hsplit : (L t) ^ r1 = (L t) ^ (r1 - 1) * L t := by
+        have hadd := ENNReal.rpow_add (x := L t) (r1 - 1) 1 hL0 hLtop
+        rw [ENNReal.rpow_one] at hadd
+        rw [← hadd]
+        congr 1
+        ring
+      have hcm : (0:ℝ) ≤ c * t ^ m := by positivity
+      have hreal : ((c * t ^ m) ^ (p1 - p) * J) ^ (r1 - 1)
+          = (c ^ ((p1 - p) * (r1 - 1)) * J ^ (r1 - 1)) * t ^ (m * (p1 - p) * (r1 - 1)) := by
+        calc ((c * t ^ m) ^ (p1 - p) * J) ^ (r1 - 1)
+            = ((c * t ^ m) ^ (p1 - p)) ^ (r1 - 1) * J ^ (r1 - 1) :=
+              Real.mul_rpow (Real.rpow_nonneg hcm _) hJ0.le
+          _ = (c * t ^ m) ^ ((p1 - p) * (r1 - 1)) * J ^ (r1 - 1) := by
+              rw [← Real.rpow_mul hcm]
+          _ = (c ^ ((p1 - p) * (r1 - 1)) * (t ^ m) ^ ((p1 - p) * (r1 - 1)))
+                * J ^ (r1 - 1) := by
+              rw [Real.mul_rpow hc.le (Real.rpow_nonneg ht.le _)]
+          _ = (c ^ ((p1 - p) * (r1 - 1)) * t ^ (m * ((p1 - p) * (r1 - 1))))
+                * J ^ (r1 - 1) := by
+              rw [← Real.rpow_mul ht.le]
+          _ = (c ^ ((p1 - p) * (r1 - 1)) * J ^ (r1 - 1))
+                * t ^ (m * (p1 - p) * (r1 - 1)) := by
+              rw [show m * (p1 - p) * (r1 - 1) = m * ((p1 - p) * (r1 - 1)) by ring]
+              ring
+      have hpow : (L t) ^ (r1 - 1)
+          ≤ K * (ENNReal.ofReal t) ^ (m * (p1 - p) * (r1 - 1)) := by
+        have h1 : (L t) ^ (r1 - 1)
+            ≤ (ENNReal.ofReal ((c * t ^ m) ^ (p1 - p) * J)) ^ (r1 - 1) :=
+          ENNReal.rpow_le_rpow hcr (by linarith)
+        refine h1.trans (le_of_eq ?_)
+        rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by linarith), hreal,
+          ENNReal.ofReal_mul (by positivity), hKdef,
+          ENNReal.ofReal_rpow_of_pos ht]
+      calc (L t) ^ r1 * (ENNReal.ofReal t) ^ (W * r1 - 1)
+          = ((L t) ^ (r1 - 1) * L t) * (ENNReal.ofReal t) ^ (W * r1 - 1) := by
+            rw [hsplit]
+        _ ≤ ((K * (ENNReal.ofReal t) ^ (m * (p1 - p) * (r1 - 1))) * L t)
+              * (ENNReal.ofReal t) ^ (W * r1 - 1) :=
+            mul_le_mul' (mul_le_mul' hpow (le_refl _)) (le_refl _)
+        _ = K * ((ENNReal.ofReal t) ^ (W - 1) * L t) := by
+            rw [show (W - 1 : ℝ) = m * (p1 - p) * (r1 - 1) + (W * r1 - 1) by
+              rw [hWdef]; ring]
+            rw [ENNReal.rpow_add _ _ htne httop]
+            ring
+  have hAmeas : Measurable (fun t : ℝ => (ENNReal.ofReal t) ^ (W - 1)
+      * ∫⁻ x in {x | u x < c * t ^ m}, (ENNReal.ofReal (u x)) ^ p1 ∂μ) := by
+    refine (ENNReal.continuous_rpow_const.measurable.comp
+      measurable_id.ennreal_ofReal).mul ?_
+    exact (measurable_lintegral_indicator_lt u hu _
+      (ENNReal.continuous_rpow_const.measurable.comp hu.ennreal_ofReal)).comp hct
+  have hbase : (∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (W - 1) * L t)
+      ≤ ENNReal.ofReal (c ^ (p1 - p) / (m * (p1 - p)) + c ^ (p1 - p) / (m * p))
+          * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ := by
+    have hmono : (∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (W - 1) * L t)
+        ≤ ∫⁻ t in Ioi (0 : ℝ),
+            ((ENNReal.ofReal t) ^ (W - 1)
+                * ∫⁻ x in {x | u x < c * t ^ m}, (ENNReal.ofReal (u x)) ^ p1 ∂μ
+              + (ENNReal.ofReal t) ^ (W - 1)
+                * (ENNReal.ofReal ((c * t ^ m) ^ p1) * μ {x | c * t ^ m ≤ u x})) := by
+      refine lintegral_mono_ae ?_
+      filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+      have hreg := lowTail_two_region_le (μ := μ) u hu hunn (g t) (fun x => hgnn t x)
+        hp1pos (mul_pos hc (Real.rpow_pos_of_pos ht m))
+        (fun x => hg1 t x ht) (fun x => hg2 t x ht)
+      calc (ENNReal.ofReal t) ^ (W - 1) * L t
+          ≤ (ENNReal.ofReal t) ^ (W - 1)
+              * ((∫⁻ x in {x | u x < c * t ^ m}, (ENNReal.ofReal (u x)) ^ p1 ∂μ)
+                + ENNReal.ofReal ((c * t ^ m) ^ p1) * μ {x | c * t ^ m ≤ u x}) :=
+            mul_le_mul' (le_refl _) hreg
+        _ = _ := by rw [mul_add]
+    refine hmono.trans ?_
+    rw [lintegral_add_left hAmeas]
+    rw [hWdef]
+    rw [lintegral_lowTailA_eq u hu hunn hp hpp1 hm hc,
+      lintegral_lowTailB_eq u hu hunn hp hpp1 hm hc,
+      ← add_mul, ← ENNReal.ofReal_add (by positivity) (by positivity)]
+  calc (∫⁻ t in Ioi (0 : ℝ), (L t) ^ r1 * (ENNReal.ofReal t) ^ (W * r1 - 1))
+      ≤ ∫⁻ t in Ioi (0 : ℝ), K * ((ENNReal.ofReal t) ^ (W - 1) * L t) := by
+        refine lintegral_mono_ae ?_
+        filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+        exact hkey t ht
+    _ = K * ∫⁻ t in Ioi (0 : ℝ), (ENNReal.ofReal t) ^ (W - 1) * L t :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ K * (ENNReal.ofReal (c ^ (p1 - p) / (m * (p1 - p)) + c ^ (p1 - p) / (m * p))
+          * ∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) := mul_le_mul' (le_refl _) hbase
+    _ ≤ K * (ENNReal.ofReal (c ^ (p1 - p) / (m * (p1 - p)) + c ^ (p1 - p) / (m * p))
+          * ENNReal.ofReal J) := mul_le_mul' (le_refl _) (mul_le_mul' (le_refl _) hJ)
+    _ = ENNReal.ofReal (c ^ ((p1 - p) * r1) * J ^ r1
+          * (1 / (m * (p1 - p)) + 1 / (m * p))) := by
+        rw [hKdef, ← ENNReal.ofReal_mul (by positivity),
+          ← ENNReal.ofReal_mul (by positivity)]
+        congr 1
+        have hc1 : c ^ ((p1 - p) * (r1 - 1)) * c ^ (p1 - p) = c ^ ((p1 - p) * r1) := by
+          rw [← Real.rpow_add hc]
+          congr 1
+          ring
+        have hJ1 : J ^ (r1 - 1) * J = J ^ r1 := by
+          have h := Real.rpow_add hJ0 (r1 - 1) 1
+          rw [Real.rpow_one] at h
+          rw [← h]
+          congr 1
+          ring
+        have hmp1 : 0 < m * (p1 - p) := mul_pos hm hp1p
+        have hmp : 0 < m * p := mul_pos hm hp
+        calc c ^ ((p1 - p) * (r1 - 1)) * J ^ (r1 - 1)
+              * ((c ^ (p1 - p) / (m * (p1 - p)) + c ^ (p1 - p) / (m * p)) * J)
+            = (c ^ ((p1 - p) * (r1 - 1)) * c ^ (p1 - p)) * (J ^ (r1 - 1) * J)
+                * (1 / (m * (p1 - p)) + 1 / (m * p)) := by
+              field_simp
+          _ = c ^ ((p1 - p) * r1) * J ^ r1 * (1 / (m * (p1 - p)) + 1 / (m * p)) := by
+              rw [hc1, hJ1]
+
+
+/-! ### Elementary balancing algebra for the two-pair interpolation -/
+
+/-- Balancing the two terms of the two-pair Marcinkiewicz coefficient.  The scale is chosen so
+that both terms equal the weighted geometric mean. -/
+theorem balance_two_terms {X0 X1 q0 q q1 : ℝ} (hX0 : 0 < X0) (hX1 : 0 < X1)
+    (h01 : q0 < q) (h1 : q < q1) :
+    X0 * ((X0 / X1) ^ (q1 - q0)⁻¹) ^ (q0 - q)
+        + X1 * ((X0 / X1) ^ (q1 - q0)⁻¹) ^ (q1 - q)
+      = 2 * (X0 ^ ((q1 - q) / (q1 - q0)) * X1 ^ ((q - q0) / (q1 - q0))) := by
+  have hden : 0 < q1 - q0 := by linarith
+  have hratio : 0 < X0 / X1 := div_pos hX0 hX1
+  set w0 : ℝ := (q1 - q) / (q1 - q0) with hw0def
+  set w1 : ℝ := (q - q0) / (q1 - q0) with hw1def
+  have hsum : w0 + w1 = 1 := by
+    rw [hw0def, hw1def]
+    field_simp
+    ring
+  have hs0 : ((X0 / X1) ^ (q1 - q0)⁻¹) ^ (q0 - q) = (X0 / X1) ^ (-w1) := by
+    rw [← Real.rpow_mul hratio.le, hw1def]
+    congr 1
+    field_simp
+    ring
+  have hs1 : ((X0 / X1) ^ (q1 - q0)⁻¹) ^ (q1 - q) = (X0 / X1) ^ w0 := by
+    rw [← Real.rpow_mul hratio.le, hw0def]
+    congr 1
+    field_simp
+  have hdiv : ∀ e : ℝ, (X0 / X1) ^ e = X0 ^ e * (X1 ^ e)⁻¹ := by
+    intro e
+    rw [Real.div_rpow hX0.le hX1.le, div_eq_mul_inv]
+  have hterm0 : X0 * ((X0 / X1) ^ (q1 - q0)⁻¹) ^ (q0 - q) = X0 ^ w0 * X1 ^ w1 := by
+    rw [hs0, hdiv]
+    have h1' : X0 * (X0 ^ (-w1) * (X1 ^ (-w1))⁻¹)
+        = (X0 * X0 ^ (-w1)) * (X1 ^ (-w1))⁻¹ := by ring
+    rw [h1']
+    have h2 : X0 * X0 ^ (-w1) = X0 ^ w0 := by
+      have h := Real.rpow_add hX0 1 (-w1)
+      rw [Real.rpow_one] at h
+      rw [← h]
+      congr 1
+      linarith [hsum]
+    have h3 : (X1 ^ (-w1))⁻¹ = X1 ^ w1 := by
+      rw [Real.rpow_neg hX1.le, inv_inv]
+    rw [h2, h3]
+  have hterm1 : X1 * ((X0 / X1) ^ (q1 - q0)⁻¹) ^ (q1 - q) = X0 ^ w0 * X1 ^ w1 := by
+    rw [hs1, hdiv]
+    have h1' : X1 * (X0 ^ w0 * (X1 ^ w0)⁻¹)
+        = X0 ^ w0 * (X1 * (X1 ^ w0)⁻¹) := by ring
+    rw [h1']
+    have h2 : X1 * (X1 ^ w0)⁻¹ = X1 ^ w1 := by
+      rw [← Real.rpow_neg hX1.le]
+      have h := Real.rpow_add hX1 1 (-w0)
+      rw [Real.rpow_one] at h
+      rw [← h]
+      congr 1
+      linarith [hsum]
+    rw [h2]
+  rw [hterm0, hterm1]
+  ring
+
+/-- Expanding a weighted geometric mean of two products. -/
+theorem geom_mean_expand {A0 A1 B0 B1 J q0 q1 r0 r1 w0 w1 : ℝ}
+    (hA0 : 0 < A0) (hA1 : 0 < A1) (hB0 : 0 < B0) (hB1 : 0 < B1) (hJ : 0 < J) :
+    (A0 * B0 ^ q0 * J ^ r0) ^ w0 * (A1 * B1 ^ q1 * J ^ r1) ^ w1
+      = (A0 ^ w0 * A1 ^ w1) * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1))
+          * J ^ (r0 * w0 + r1 * w1) := by
+  have e1 : (A0 * B0 ^ q0 * J ^ r0) ^ w0
+      = A0 ^ w0 * B0 ^ (q0 * w0) * J ^ (r0 * w0) := by
+    rw [Real.mul_rpow (by positivity) (Real.rpow_nonneg hJ.le _),
+      Real.mul_rpow hA0.le (Real.rpow_nonneg hB0.le _),
+      ← Real.rpow_mul hB0.le, ← Real.rpow_mul hJ.le]
+  have e2 : (A1 * B1 ^ q1 * J ^ r1) ^ w1
+      = A1 ^ w1 * B1 ^ (q1 * w1) * J ^ (r1 * w1) := by
+    rw [Real.mul_rpow (by positivity) (Real.rpow_nonneg hJ.le _),
+      Real.mul_rpow hA1.le (Real.rpow_nonneg hB1.le _),
+      ← Real.rpow_mul hB1.le, ← Real.rpow_mul hJ.le]
+  rw [e1, e2, Real.rpow_add hJ]
+  ring
+
+/-- The `q`-th root of the balanced coefficient. -/
+theorem root_of_balanced {G B0 B1 J q e0 e1 f0 f1 : ℝ}
+    (hG : 0 < G) (hB0 : 0 < B0) (hB1 : 0 < B1) (hJ : 0 < J) (hq : 0 < q)
+    (he0 : e0 = f0 / q) (he1 : e1 = f1 / q) :
+    (G * (B0 ^ f0 * B1 ^ f1) * J) ^ q⁻¹
+      = G ^ q⁻¹ * (B0 ^ e0 * B1 ^ e1) * J ^ q⁻¹ := by
+  rw [Real.mul_rpow (by positivity) hJ.le,
+    Real.mul_rpow hG.le (by positivity),
+    Real.mul_rpow (Real.rpow_nonneg hB0.le _) (Real.rpow_nonneg hB1.le _),
+    ← Real.rpow_mul hB0.le, ← Real.rpow_mul hB1.le, he0, he1]
+  congr 3 <;> field_simp
+
+
+/-! ### The smooth amplitude split with a power-law amplitude scale -/
+
+open Auto.Spherical.SchwartzData
+open Auto.Spherical.FractalDilations.SameOutputInputInterpolation
+
+/-- The smooth low family is jointly measurable in scale and space. -/
+theorem measurable_smooth_low_family {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ) :
+    Measurable (fun z : ℝ × (Euclidean d) =>
+      ((smooth_half_height_bump ((z.1⁻¹ : ℝ) • f z.2) : ℝ) : ℂ) • f z.2) := by
+  have hf : Measurable (fun z : ℝ × (Euclidean d) => f z.2) :=
+    f.continuous.measurable.comp measurable_snd
+  have hscale : Measurable (fun z : ℝ × (Euclidean d) => (z.1⁻¹ : ℝ) • f z.2) :=
+    measurable_fst.inv.smul hf
+  have hcut_real : Measurable (fun z : ℝ × (Euclidean d) =>
+      (smooth_half_height_bump ((z.1⁻¹ : ℝ) • f z.2) : ℝ)) :=
+    smooth_half_height_bump.continuous.measurable.comp hscale
+  have hcut : Measurable (fun z : ℝ × (Euclidean d) =>
+      (((smooth_half_height_bump ((z.1⁻¹ : ℝ) • f z.2) : ℝ)) : ℂ)) :=
+    Complex.ofRealCLM.continuous.measurable.comp hcut_real
+  exact hcut.smul hf
+
+/-- Measurability of every real profile of the smooth low family. -/
+theorem measurable_smooth_low_profile_lintegrals {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
+    (low : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hlow : ∀ t x, low t x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    (r : ℝ) :
+    Measurable (fun t : ℝ => ∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖low t x‖) ^ r) := by
+  have heq : (fun t : ℝ => ∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖low t x‖) ^ r)
+      = fun t : ℝ => ∫⁻ x : (Euclidean d),
+        (ENNReal.ofReal ‖((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x‖) ^ r := by
+    funext t
+    refine lintegral_congr fun x => ?_
+    rw [hlow t x]
+  rw [heq]
+  refine Measurable.lintegral_prod_right ?_
+  exact ENNReal.continuous_rpow_const.measurable.comp
+    (measurable_smooth_low_family f).norm.ennreal_ofReal
+
+/-- The `k`-th power of an `L^r` norm as a power of a lower integral. -/
+theorem eLpNorm_rpow_eq {d : ℕ} {g : (Euclidean d) → ℂ} {r k : ℝ} (hr : 0 < r) :
+    (eLpNorm g (ENNReal.ofReal r) (volume : Measure (Euclidean d))) ^ k
+      = (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖g x‖) ^ r) ^ (k / r) := by
+  rw [eLpNorm_ofReal_eq hr, ← ENNReal.rpow_mul]
+  congr 1
+  · refine lintegral_congr fun x => ?_
+    rw [← ofReal_norm]
+  · field_simp
+
+
+/-- The high-amplitude weighted tail for the smooth split at the power-law amplitude scale. -/
+theorem twoPair_high_tail_le {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
+    (low high : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hlow : ∀ t x, low t x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    (hhigh : ∀ t, high t = f - low t)
+    {p0 p q q0 m J : ℝ} (hp0 : 0 < p0) (hp0p : p0 < p) (hm : 0 < m)
+    (hr0 : 1 ≤ q0 / p0) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p) ≤ ENNReal.ofReal J)
+    (hweight : q - q0 = m * (p - p0) * (q0 / p0)) :
+    (∫⁻ t in Ioi (0 : ℝ),
+        (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0
+          * (ENNReal.ofReal t) ^ (q - q0 - 1))
+      ≤ ENNReal.ofReal ((1 / 4 : ℝ) ^ ((p0 - p) * (q0 / p0)) * J ^ (q0 / p0)
+          / (m * (p - p0))) := by
+  set r0 : ℝ := q0 / p0 with hr0def
+  set u : (Euclidean d) → ℝ := fun x => ‖f x‖ with hudef
+  have hu : Measurable u := f.continuous.norm.measurable
+  have hunn : ∀ x, 0 ≤ u x := fun x => norm_nonneg _
+  have hmain := lintegral_highTail_rpow_le u hu hunn
+    (p0 := p0) (p := p) (m := m) (c := 1 / 4) (r0 := r0) (J := J)
+    hp0 hp0p hm (by norm_num) hr0 hJ0 hJ
+  refine le_trans (lintegral_mono_ae ?_) hmain
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  have htm : 0 < t ^ m := Real.rpow_pos_of_pos ht m
+  have hset : MeasurableSet {x : (Euclidean d) | (1 / 4 : ℝ) * t ^ m ≤ u x} :=
+    measurableSet_le measurable_const hu
+  have hinner : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high (t ^ m) x‖) ^ p0)
+      ≤ ∫⁻ x in {x | (1 / 4 : ℝ) * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 := by
+    rw [← lintegral_indicator hset]
+    refine lintegral_mono fun x => ?_
+    by_cases hx : (1 / 4 : ℝ) * t ^ m ≤ u x
+    · have hmem : x ∈ {x : (Euclidean d) | (1 / 4 : ℝ) * t ^ m ≤ u x} := hx
+      rw [Set.indicator_of_mem hmem]
+      exact ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal
+        (smooth_high_norm_le f (low (t ^ m)) (high (t ^ m)) (hlow (t ^ m))
+          (hhigh (t ^ m)) x)) hp0.le
+    · have hnotmem : x ∉ {x : (Euclidean d) | (1 / 4 : ℝ) * t ^ m ≤ u x} := hx
+      have hle : ‖f x‖ ≤ t ^ m / 4 := by
+        have hlt := not_le.mp hx
+        rw [hudef] at hlt
+        simp only at hlt
+        linarith
+      rw [smooth_high_eq_zero_of_norm_le_quarter f (low (t ^ m)) (high (t ^ m)) htm
+        (hlow (t ^ m)) (hhigh (t ^ m)) x hle]
+      simp [ENNReal.zero_rpow_of_pos hp0]
+  calc (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0
+        * (ENNReal.ofReal t) ^ (q - q0 - 1)
+      = (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high (t ^ m) x‖) ^ p0) ^ r0
+          * (ENNReal.ofReal t) ^ (q - q0 - 1) := by
+        rw [eLpNorm_rpow_eq hp0, hr0def]
+    _ ≤ (∫⁻ x in {x | (1 / 4 : ℝ) * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0) ^ r0
+          * (ENNReal.ofReal t) ^ (m * (p - p0) * r0 - 1) := by
+        rw [show q - q0 - 1 = m * (p - p0) * r0 - 1 by rw [← hweight]]
+        exact mul_le_mul' (ENNReal.rpow_le_rpow hinner (by linarith)) (le_refl _)
+
+/-- The low-amplitude weighted tail for the smooth split at the power-law amplitude scale. -/
+theorem twoPair_low_tail_le {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
+    (low : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hlow : ∀ t x, low t x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    {p1 p q q1 m J : ℝ} (hp : 0 < p) (hpp1 : p < p1) (hm : 0 < m)
+    (hr1 : 1 ≤ q1 / p1) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p) ≤ ENNReal.ofReal J)
+    (hweight : q - q1 = m * (p - p1) * (q1 / p1)) :
+    (∫⁻ t in Ioi (0 : ℝ),
+        (eLpNorm ((low (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1
+          * (ENNReal.ofReal t) ^ (q - q1 - 1))
+      ≤ ENNReal.ofReal ((1 / 2 : ℝ) ^ ((p1 - p) * (q1 / p1)) * J ^ (q1 / p1)
+          * (1 / (m * (p1 - p)) + 1 / (m * p))) := by
+  set r1 : ℝ := q1 / p1 with hr1def
+  set u : (Euclidean d) → ℝ := fun x => ‖f x‖ with hudef
+  have hu : Measurable u := f.continuous.norm.measurable
+  have hunn : ∀ x, 0 ≤ u x := fun x => norm_nonneg _
+  have hp1 : 0 < p1 := by linarith
+  have hmain := lintegral_lowTail_rpow_le u hu hunn
+    (p1 := p1) (p := p) (m := m) (c := 1 / 2) (r1 := r1) (J := J)
+    (fun t x => ‖low (t ^ m) x‖) (fun t x => norm_nonneg _)
+    (fun t x ht => smooth_low_norm_le f (low (t ^ m)) (hlow (t ^ m)) x)
+    (fun t x ht => by
+      have htm : 0 < t ^ m := Real.rpow_pos_of_pos ht m
+      have h := smooth_low_norm_le_half_height f (low (t ^ m)) htm (hlow (t ^ m)) x
+      linarith)
+    hp hpp1 hm (by norm_num) hr1 hJ0 hJ
+  refine le_trans (lintegral_mono_ae ?_) hmain
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  rw [eLpNorm_rpow_eq hp1, ← hr1def,
+    show q - q1 - 1 = m * (p - p1) * r1 - 1 by rw [← hweight]]
+
+
+/-! ### The off-diagonal two-pair interpolation -/
+
+/-- The explicit tail constant of the high-amplitude side. -/
+def twoPairA0 (p0 p q0 m : ℝ) : ℝ :=
+  (1 / 4 : ℝ) ^ ((p0 - p) * (q0 / p0)) / (m * (p - p0))
+
+/-- The explicit tail constant of the low-amplitude side. -/
+def twoPairA1 (p1 p q1 m : ℝ) : ℝ :=
+  (1 / 2 : ℝ) ^ ((p1 - p) * (q1 / p1)) * (1 / (m * (p1 - p)) + 1 / (m * p))
+
+theorem twoPairA0_pos {p0 p q0 m : ℝ} (hp0p : p0 < p) (hm : 0 < m) :
+    0 < twoPairA0 p0 p q0 m := by
+  rw [twoPairA0]
+  have h1 : (0:ℝ) < (1 / 4 : ℝ) ^ ((p0 - p) * (q0 / p0)) :=
+    Real.rpow_pos_of_pos (by norm_num) _
+  have h2 : (0:ℝ) < m * (p - p0) := mul_pos hm (by linarith)
+  exact div_pos h1 h2
+
+theorem twoPairA1_pos {p1 p q1 m : ℝ} (hp : 0 < p) (hpp1 : p < p1) (hm : 0 < m) :
+    0 < twoPairA1 p1 p q1 m := by
+  rw [twoPairA1]
+  have h1 : (0:ℝ) < (1 / 2 : ℝ) ^ ((p1 - p) * (q1 / p1)) :=
+    Real.rpow_pos_of_pos (by norm_num) _
+  have h2 : (0:ℝ) < 1 / (m * (p1 - p)) + 1 / (m * p) := by
+    have h3 : (0:ℝ) < m * (p1 - p) := mul_pos hm (by linarith)
+    have h4 : (0:ℝ) < m * p := mul_pos hm hp
+    positivity
+  exact mul_pos h1 h2
+
+set_option maxHeartbeats 1000000 in
+/-- **Off-diagonal two-pair interpolation on the Schwartz class of the plane.**
+Given two strong estimates at the exponent pairs `(p0,q0)` and `(p1,q1)`, a subadditive
+nonnegative operator satisfies the strong estimate at every intermediate pair `(p,q)` on the
+segment, with the interpolated constant.  The collinearity of the three pairs enters through
+the two amplitude-scale identities and the exponent identity `hcol`. -/
+theorem exists_twoPair_interpolation_const {d : ℕ}
+    {p0 q0 p1 q1 p q m : ℝ}
+    (hp0 : 0 < p0) (hp0p : p0 < p) (hpp1 : p < p1)
+    (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    (hr0 : 1 ≤ q0 / p0) (hr1 : 1 ≤ q1 / p1) (hm : 0 < m)
+    (hm0 : q - q0 = m * (p - p0) * (q0 / p0))
+    (hm1 : q - q1 = m * (p - p1) * (q1 / p1))
+    (hcol : (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0))
+      = q / p) :
+    ∃ C : ℝ, 0 < C ∧ ∀ T : SchwartzMap (Euclidean d) ℂ → (Euclidean d) → ℝ,
+      (∀ g x, 0 ≤ T g x) →
+      (∀ g h : SchwartzMap (Euclidean d) ℂ, ∀ x, T (g + h) x ≤ T g x + T h x) →
+      (∀ g, AEStronglyMeasurable (T g) (volume : Measure (Euclidean d))) →
+      (∀ x, T 0 x = 0) →
+      ∀ B0 B1 : ℝ, 0 < B0 → 0 < B1 →
+      (∀ g : SchwartzMap (Euclidean d) ℂ, eLpNorm (T g) (ENNReal.ofReal q0) volume
+        ≤ ENNReal.ofReal B0 * eLpNorm ((g : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) →
+      (∀ g : SchwartzMap (Euclidean d) ℂ, eLpNorm (T g) (ENNReal.ofReal q1) volume
+        ≤ ENNReal.ofReal B1 * eLpNorm ((g : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) →
+      ∀ f : SchwartzMap (Euclidean d) ℂ, eLpNorm (T f) (ENNReal.ofReal q) volume
+        ≤ ENNReal.ofReal (C * B0 ^ (q0 * ((q1 - q) / (q1 - q0)) / q)
+              * B1 ^ (q1 * ((q - q0) / (q1 - q0)) / q))
+          * eLpNorm ((f : (Euclidean d) → ℂ)) (ENNReal.ofReal p) volume := by
+  have hp : 0 < p := lt_trans hp0 hp0p
+  have hp1 : 0 < p1 := lt_trans hp hpp1
+  have hq : 0 < q := lt_trans hq0 hq0q
+  have hq1 : 0 < q1 := lt_trans hq hqq1
+  have hqden : 0 < q1 - q0 := by linarith
+  set r0 : ℝ := q0 / p0 with hr0def
+  set r1 : ℝ := q1 / p1 with hr1def
+  set w0 : ℝ := (q1 - q) / (q1 - q0) with hw0def
+  set w1 : ℝ := (q - q0) / (q1 - q0) with hw1def
+  have hw0pos : 0 < w0 := by rw [hw0def]; exact div_pos (by linarith) hqden
+  have hw1pos : 0 < w1 := by rw [hw1def]; exact div_pos (by linarith) hqden
+  set a0 : ℝ := twoPairA0 p0 p q0 m with ha0def
+  set a1 : ℝ := twoPairA1 p1 p q1 m with ha1def
+  have ha0 : 0 < a0 := by rw [ha0def]; exact twoPairA0_pos hp0p hm
+  have ha1 : 0 < a1 := by rw [ha1def]; exact twoPairA1_pos hp hpp1 hm
+  set G : ℝ := ((2:ℝ) ^ q0 * a0) ^ w0 * ((2:ℝ) ^ q1 * a1) ^ w1 with hGdef
+  have hGpos : 0 < G := by
+    rw [hGdef]
+    exact mul_pos (Real.rpow_pos_of_pos (by positivity) _)
+      (Real.rpow_pos_of_pos (by positivity) _)
+  refine ⟨(2 * q * G) ^ q⁻¹, Real.rpow_pos_of_pos (by positivity) _, ?_⟩
+  intro T hTnonneg hTsub hTmeas hTzero B0 B1 hB0 hB1 hs0 hs1 f
+  -- the vanishing case
+  by_cases hfz : f = 0
+  · have hTf0 : T f = fun _ => 0 := by
+      rw [hfz]
+      funext x
+      exact hTzero x
+    rw [hTf0]
+    have : eLpNorm (fun _ : (Euclidean d) => (0:ℝ)) (ENNReal.ofReal q) volume = 0 := by
+      simp
+    rw [this]
+    simp
+  -- the main case
+  have hJint : Integrable (fun x : (Euclidean d) => ‖f x‖ ^ p) volume :=
+    Auto.Spherical.FractalDilations.Q4FactorInterpolation.q4_schwartz_integrable_norm_rpow f hp
+  set J : ℝ := ∫ x : (Euclidean d), ‖f x‖ ^ p with hJdef
+  have hJnn : 0 ≤ J := by
+    rw [hJdef]
+    exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) _
+  have hJeq : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p) = ENNReal.ofReal J := by
+    have h1 : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p)
+        = ∫⁻ x : (Euclidean d), ENNReal.ofReal (‖f x‖ ^ p) := by
+      refine lintegral_congr fun x => ?_
+      rw [ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp.le]
+    rw [h1, hJdef]
+    exact (ofReal_integral_eq_lintegral_ofReal hJint
+      (Filter.Eventually.of_forall fun x => Real.rpow_nonneg (norm_nonneg _) _)).symm
+  have hJpos : 0 < J := by
+    rcases hJnn.eq_or_lt with h0 | hpos
+    · exfalso
+      have hzero : ∀ x : (Euclidean d), ‖f x‖ ^ p = 0 := by
+        have hcont : Continuous fun x : (Euclidean d) => ‖f x‖ ^ p := by
+          refine (Real.continuous_rpow_const hp.le).comp f.continuous.norm
+        refine fun x => ?_
+        have hnonneg : ∀ y : (Euclidean d), 0 ≤ ‖f y‖ ^ p := fun y =>
+          Real.rpow_nonneg (norm_nonneg _) _
+        have := (integral_eq_zero_iff_of_nonneg hnonneg hJint).mp (by rw [← hJdef, ← h0])
+        have hx := hcont.ae_eq_iff_eq volume (continuous_const (y := (0:ℝ))) |>.mp this
+        exact congrFun hx x
+      have hf0 : f = 0 := by
+        refine SchwartzMap.ext fun x => ?_
+        have h := hzero x
+        have : ‖f x‖ = 0 := by
+          by_contra hne
+          have hpos' : 0 < ‖f x‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hne)
+          exact absurd h (ne_of_gt (Real.rpow_pos_of_pos hpos' p))
+        simpa using this
+      exact hfz hf0
+    · exact hpos
+  have hfnorm : eLpNorm ((f : (Euclidean d) → ℂ)) (ENNReal.ofReal p) volume
+      = ENNReal.ofReal (J ^ p⁻¹) := by
+    rw [eLpNorm_ofReal_eq hp]
+    have h1 : (∫⁻ x : (Euclidean d), ‖(f : (Euclidean d) → ℂ) x‖ₑ ^ p) = ENNReal.ofReal J := by
+      rw [← hJeq]
+      refine lintegral_congr fun x => ?_
+      rw [← ofReal_norm]
+    rw [h1, ENNReal.ofReal_rpow_of_pos hJpos]
+    congr 1
+    rw [one_div]
+  -- the smooth amplitude split
+  obtain ⟨low, high, hlow, hhigh, hsplitpt⟩ := exists_schwartz_smooth_low_high_family f
+  have htail0 := twoPair_high_tail_le f low high hlow hhigh hp0 hp0p hm hr0 hJpos
+    (le_of_eq hJeq) hm0
+  have htail1 := twoPair_low_tail_le f low hlow hp hpp1 hm hr1 hJpos (le_of_eq hJeq) hm1
+  -- the two tails in the normalized form
+  have hmpow : Measurable (fun t : ℝ => t ^ m) :=
+    (Real.continuous_rpow_const hm.le).measurable
+  have htail0' : (∫⁻ t in Ioi (0 : ℝ),
+      (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0
+        * (ENNReal.ofReal t) ^ (q - q0 - 1))
+      ≤ ENNReal.ofReal (a0 * J ^ r0) := by
+    refine htail0.trans (ENNReal.ofReal_le_ofReal (le_of_eq ?_))
+    rw [ha0def, twoPairA0, ← hr0def]
+    ring
+  have htail1' : (∫⁻ t in Ioi (0 : ℝ),
+      (eLpNorm ((low (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1
+        * (ENNReal.ofReal t) ^ (q - q1 - 1))
+      ≤ ENNReal.ofReal (a1 * J ^ r1) := by
+    refine htail1.trans (ENNReal.ofReal_le_ofReal (le_of_eq ?_))
+    rw [ha1def, twoPairA1, ← hr1def]
+    ring
+  -- measurability of the two profiles
+  have hmeas0 : Measurable (fun t : ℝ =>
+      (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0) := by
+    have h : Measurable (fun t : ℝ =>
+        (eLpNorm ((high t : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0) := by
+      have heq : (fun t : ℝ => (eLpNorm ((high t : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0)
+          = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high t x‖) ^ p0) ^ (q0 / p0) := by
+        funext t
+        exact eLpNorm_rpow_eq hp0
+      rw [heq]
+      exact ENNReal.continuous_rpow_const.measurable.comp
+        (measurable_smooth_high_profile_lintegrals f low high hlow hhigh p0)
+    exact h.comp hmpow
+  have hmeas1 : Measurable (fun t : ℝ =>
+      (eLpNorm ((low (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1) := by
+    have h : Measurable (fun t : ℝ =>
+        (eLpNorm ((low t : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1) := by
+      have heq : (fun t : ℝ => (eLpNorm ((low t : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1)
+          = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖low t x‖) ^ p1) ^ (q1 / p1) := by
+        funext t
+        exact eLpNorm_rpow_eq hp1
+      rw [heq]
+      exact ENNReal.continuous_rpow_const.measurable.comp
+        (measurable_smooth_low_profile_lintegrals f low hlow p1)
+    exact h.comp hmpow
+  -- the split identity
+  have hsplitfam : ∀ t : ℝ, f = low (t ^ m) + high (t ^ m) := by
+    intro t
+    refine SchwartzMap.ext fun x => ?_
+    have h := hsplitpt (t ^ m) x
+    simpa using h
+  -- the balancing scale
+  set X0 : ℝ := ((2:ℝ) ^ q0 * a0) * B0 ^ q0 * J ^ r0 with hX0def
+  set X1 : ℝ := ((2:ℝ) ^ q1 * a1) * B1 ^ q1 * J ^ r1 with hX1def
+  have hX0pos : 0 < X0 := by
+    rw [hX0def]
+    have h1 : (0:ℝ) < (2:ℝ) ^ q0 := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0:ℝ) < B0 ^ q0 := Real.rpow_pos_of_pos hB0 _
+    have h3 : (0:ℝ) < J ^ r0 := Real.rpow_pos_of_pos hJpos _
+    positivity
+  have hX1pos : 0 < X1 := by
+    rw [hX1def]
+    have h1 : (0:ℝ) < (2:ℝ) ^ q1 := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0:ℝ) < B1 ^ q1 := Real.rpow_pos_of_pos hB1 _
+    have h3 : (0:ℝ) < J ^ r1 := Real.rpow_pos_of_pos hJpos _
+    positivity
+  set sc : ℝ := (X0 / X1) ^ (q1 - q0)⁻¹ with hscdef
+  have hscpos : 0 < sc := by
+    rw [hscdef]
+    exact Real.rpow_pos_of_pos (div_pos hX0pos hX1pos) _
+  -- the two-pair moment estimate
+  have hmoment := Auto.Spherical.MSS.sourceOutput_two_pair_marcinkiewicz_moment_of_strong_endpoints_and_scaled_split_tails
+    (D := (Set.univ : Set (SchwartzMap (Euclidean d) ℂ)))
+    (eval := fun g : SchwartzMap (Euclidean d) ℂ => (g : (Euclidean d) → ℂ)) (T := T)
+    (μ := (volume : Measure (Euclidean d))) (ν := (volume : Measure (Euclidean d)))
+    (fun g x => hTnonneg g x) (fun g h _ _ x => hTsub g h x) (fun g _ => hTmeas g)
+    hq0 hq1 hq (ENNReal.ofReal B0) (ENNReal.ofReal B1)
+    (fun g _ => hs0 g) (fun g _ => hs1 g) f (hTmeas f).aemeasurable
+    (fun t => low (t ^ m)) (fun t => high (t ^ m))
+    (fun t => Set.mem_univ _) (fun t => Set.mem_univ _) hsplitfam
+    hmeas1 hmeas0 (ENNReal.ofReal (a0 * J ^ r0)) (ENNReal.ofReal (a1 * J ^ r1))
+    htail0' htail1' sc hscpos
+  -- identify the coefficient
+  have hcoeff : Auto.Spherical.MSS.sourceOutputTwoPairMarcinkiewiczMomentCoefficient q q0 q1
+      ((ENNReal.ofReal B0) ^ q0) ((ENNReal.ofReal B1) ^ q1)
+      ((ENNReal.ofReal sc) ^ (q0 - q) * ENNReal.ofReal (a0 * J ^ r0))
+      ((ENNReal.ofReal sc) ^ (q1 - q) * ENNReal.ofReal (a1 * J ^ r1))
+      = ENNReal.ofReal (q * (X0 * sc ^ (q0 - q) + X1 * sc ^ (q1 - q))) := by
+    have hterm0 : (ENNReal.ofReal 2) ^ q0 * ((ENNReal.ofReal B0) ^ q0)
+        * ((ENNReal.ofReal sc) ^ (q0 - q) * ENNReal.ofReal (a0 * J ^ r0))
+        = ENNReal.ofReal (X0 * sc ^ (q0 - q)) := by
+      rw [ENNReal.ofReal_rpow_of_pos (by norm_num : (0:ℝ) < 2),
+        ENNReal.ofReal_rpow_of_pos hB0, ENNReal.ofReal_rpow_of_pos hscpos,
+        ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity),
+        ← ENNReal.ofReal_mul (by positivity)]
+      congr 1
+      rw [hX0def]
+      ring
+    have hterm1 : (ENNReal.ofReal 2) ^ q1 * ((ENNReal.ofReal B1) ^ q1)
+        * ((ENNReal.ofReal sc) ^ (q1 - q) * ENNReal.ofReal (a1 * J ^ r1))
+        = ENNReal.ofReal (X1 * sc ^ (q1 - q)) := by
+      rw [ENNReal.ofReal_rpow_of_pos (by norm_num : (0:ℝ) < 2),
+        ENNReal.ofReal_rpow_of_pos hB1, ENNReal.ofReal_rpow_of_pos hscpos,
+        ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity),
+        ← ENNReal.ofReal_mul (by positivity)]
+      congr 1
+      rw [hX1def]
+      ring
+    rw [Auto.Spherical.MSS.sourceOutputTwoPairMarcinkiewiczMomentCoefficient,
+      hterm0, hterm1, ← ENNReal.ofReal_add (by positivity) (by positivity),
+      ← ENNReal.ofReal_mul hq.le]
+  rw [hcoeff] at hmoment
+  -- balance the two terms
+  have hbal := balance_two_terms hX0pos hX1pos hq0q hqq1
+  rw [← hscdef] at hbal
+  rw [hbal] at hmoment
+  -- expand the geometric mean
+  have hexp := geom_mean_expand (A0 := (2:ℝ) ^ q0 * a0) (A1 := (2:ℝ) ^ q1 * a1)
+    (B0 := B0) (B1 := B1) (J := J) (q0 := q0) (q1 := q1) (r0 := r0) (r1 := r1)
+    (w0 := w0) (w1 := w1)
+    (by positivity) (by positivity) hB0 hB1 hJpos
+  rw [← hX0def, ← hX1def, ← hGdef] at hexp
+  have hcolJ : r0 * w0 + r1 * w1 = q / p := by
+    rw [hr0def, hr1def, hw0def, hw1def]
+    exact hcol
+  rw [hcolJ] at hexp
+  rw [hexp] at hmoment
+  -- take the q-th root
+  have hfinal := Auto.Spherical.MSS.sourceOutput_eLpNorm_le_of_nonnegative_moment
+    T f hq (hTnonneg f) _ hmoment
+  refine hfinal.trans (le_of_eq ?_)
+  have hJqp : (0:ℝ) < J ^ (q / p) := Real.rpow_pos_of_pos hJpos _
+  rw [ENNReal.ofReal_rpow_of_pos (by positivity :
+    (0:ℝ) < q * (2 * (G * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1)) * J ^ (q / p))))]
+  rw [hfnorm, ← ENNReal.ofReal_mul (by positivity)]
+  congr 1
+  have hreal : q * (2 * (G * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1)) * J ^ (q / p)))
+      = (2 * q * G) * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1)) * J ^ (q / p) := by ring
+  rw [hreal]
+  have hroot := root_of_balanced (G := 2 * q * G) (B0 := B0) (B1 := B1)
+    (J := J ^ (q / p)) (q := q)
+    (e0 := q0 * w0 / q) (e1 := q1 * w1 / q) (f0 := q0 * w0) (f1 := q1 * w1)
+    (by positivity) hB0 hB1 hJqp hq rfl rfl
+  rw [hroot]
+  have hJroot : (J ^ (q / p)) ^ q⁻¹ = J ^ p⁻¹ := by
+    rw [← Real.rpow_mul hJpos.le]
+    congr 1
+    field_simp
+  rw [hJroot]
+  have he0 : q0 * w0 / q = q0 * ((q1 - q) / (q1 - q0)) / q := by rw [hw0def]
+  have he1 : q1 * w1 / q = q1 * ((q - q0) / (q1 - q0)) / q := by rw [hw1def]
+  rw [he0, he1]
+  ring
+
+
+/-! ### The two-pair interpolation of dyadic rates -/
+
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+/-- Exchanging a natural power and a real power. -/
+theorem rpow_npow_swap {x e : ℝ} (hx : 0 ≤ x) (j : ℕ) : (x ^ j) ^ e = (x ^ e) ^ j := by
+  rw [← Real.rpow_natCast x j, ← Real.rpow_natCast (x ^ e) j,
+    ← Real.rpow_mul hx, ← Real.rpow_mul hx]
+  congr 1
+  ring
+
+/-- The dyadic bandpass maximal operator of the plane, as an operator on Schwartz maps. -/
+noncomputable def Mdy {E : Set ℝ} (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) (j : ℕ) :
+    SchwartzMap Pl ℂ → Pl → ℝ :=
+  fun f => fractalDyadicBandpassMaximal 2 E (absoluteDyadicBandpass φ hφone hφzero j) f
+
+theorem Mdy_nonneg {E : Set ℝ} {φ : SchwartzMap Pl ℂ}
+    {hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1}
+    {hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0} {j : ℕ}
+    (f : SchwartzMap Pl ℂ) (x : Pl) : 0 ≤ Mdy (E := E) φ hφone hφzero j f x :=
+  fractalDyadicBandpassMaximal_nonneg E _ f x
+
+theorem Mdy_measurable {E : Set ℝ} {φ : SchwartzMap Pl ℂ}
+    {hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1}
+    {hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0} {j : ℕ}
+    (f : SchwartzMap Pl ℂ) :
+    AEStronglyMeasurable (Mdy (E := E) φ hφone hφzero j f) (volume : Measure Pl) :=
+  (measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable
+
+theorem Mdy_add_le {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {φ : SchwartzMap Pl ℂ}
+    {hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1}
+    {hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0} {j : ℕ}
+    (f g : SchwartzMap Pl ℂ) (x : Pl) :
+    Mdy (E := E) φ hφone hφzero j (f + g) x
+      ≤ Mdy (E := E) φ hφone hφzero j f x + Mdy (E := E) φ hφone hφzero j g x := by
+  have hEpos : E ⊆ Ioi (0 : ℝ) := fun t ht => lt_of_lt_of_le zero_lt_one (hE ht).1
+  exact fractalDyadicBandpassMaximal_add_le (by norm_num) E hEpos _ f g x
+
+theorem Mdy_zero {E : Set ℝ} {φ : SchwartzMap Pl ℂ}
+    {hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1}
+    {hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0} {j : ℕ} (x : Pl) :
+    Mdy (E := E) φ hφone hφzero j (0 : SchwartzMap Pl ℂ) x = 0 := by
+  have hprojection : dyadicBandpassProjection
+      (absoluteDyadicBandpass φ hφone hφzero j) (0 : SchwartzMap Pl ℂ) = 0 := by
+    simp [dyadicBandpassProjection]
+  rw [Mdy, fractalDyadicBandpassMaximal, hprojection]
+  exact fractalSphericalMaximalReal_zero E x
+
+/-- **Interpolation of two dyadic rates at collinear exponent pairs.**  The interpolated
+geometric ratio is the corresponding weighted geometric mean of the two ratios. -/
+theorem exists_twoPair_dyadic_rate
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    {p0 q0 p1 q1 p q m : ℝ}
+    (hp0 : 0 < p0) (hp0p : p0 < p) (hpp1 : p < p1)
+    (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    (hr0 : 1 ≤ q0 / p0) (hr1 : 1 ≤ q1 / p1) (hm : 0 < m)
+    (hm0 : q - q0 = m * (p - p0) * (q0 / p0))
+    (hm1 : q - q1 = m * (p - p1) * (q1 / p1))
+    (hcol : (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0))
+      = q / p)
+    {C0 C1 rho0 rho1 : ℝ} (hC0 : 0 < C0) (hC1 : 0 < C1) (hrho0 : 0 < rho0)
+    (hrho1 : 0 < rho1)
+    (hrate0 : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal q0) volume
+        ≤ ENNReal.ofReal (C0 * rho0 ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p0) volume)
+    (hrate1 : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal q1) volume
+        ≤ ENNReal.ofReal (C1 * rho1 ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p1) volume) :
+    ∃ C : ℝ, 0 < C ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal q) volume
+        ≤ ENNReal.ofReal (C
+            * (rho0 ^ (q0 * ((q1 - q) / (q1 - q0)) / q)
+              * rho1 ^ (q1 * ((q - q0) / (q1 - q0)) / q)) ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+  set e0 : ℝ := q0 * ((q1 - q) / (q1 - q0)) / q with he0def
+  set e1 : ℝ := q1 * ((q - q0) / (q1 - q0)) / q with he1def
+  obtain ⟨C, hCpos, hC⟩ := exists_twoPair_interpolation_const
+    hp0 hp0p hpp1 hq0 hq0q hqq1 hr0 hr1 hm hm0 hm1 hcol
+  refine ⟨C * C0 ^ e0 * C1 ^ e1, by positivity, ?_⟩
+  intro j hj f
+  have hmain := hC (Mdy (E := E) φ hφone hφzero j)
+    (fun g x => Mdy_nonneg g x) (fun g h x => Mdy_add_le hE g h x)
+    (fun g => Mdy_measurable g) (fun x => Mdy_zero x)
+    (C0 * rho0 ^ j) (C1 * rho1 ^ j) (by positivity) (by positivity)
+    (hrate0 j hj) (hrate1 j hj) f
+  refine hmain.trans (le_of_eq ?_)
+  congr 1
+  have hexp0 : (C0 * rho0 ^ j) ^ e0 = C0 ^ e0 * (rho0 ^ e0) ^ j := by
+    rw [Real.mul_rpow hC0.le (by positivity), rpow_npow_swap hrho0.le]
+  have hexp1 : (C1 * rho1 ^ j) ^ e1 = C1 ^ e1 * (rho1 ^ e1) ^ j := by
+    rw [Real.mul_rpow hC1.le (by positivity), rpow_npow_swap hrho1.le]
+  rw [hexp0, hexp1, mul_pow]
+  ring
 
 
 
@@ -28914,6 +32400,10022 @@ end KernelPlates
 
 
 
+
+
+/-! ## The endpoint rates and interpolation along segments -/
+
+open Auto.Spherical.FractalDilations.QuasiAssouadCovers
+open Auto.Spherical.FractalDilations.RadialCutoff
+open Auto.Spherical.FractalDilations.ProofSkeleton
+open Auto.Spherical.FractalDilations.CircleQ3PhysicalRate
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+/-- A quadratic factor is absorbed by any geometric growth. -/
+theorem exists_sq_le_geometric {eps : ℝ} (heps : 0 < eps) :
+    ∃ C : ℝ, 0 < C ∧ ∀ j : ℕ, ((j : ℝ) + 3) ^ 2 ≤ C * ((2 : ℝ) ^ eps) ^ j := by
+  set a : ℝ := (2 : ℝ) ^ (eps / 2) with hadef
+  have ha1 : 1 < a := by
+    rw [hadef]
+    exact Real.one_lt_rpow_iff_of_pos (by norm_num) |>.mpr (Or.inl ⟨by norm_num, by linarith⟩)
+  set d : ℝ := min 1 (a - 1) with hddef
+  have hd0 : 0 < d := lt_min zero_lt_one (by linarith)
+  refine ⟨9 / d ^ 2, by positivity, ?_⟩
+  intro j
+  have hjnn : (0:ℝ) ≤ (j : ℝ) := Nat.cast_nonneg j
+  have hbern : 1 + (j : ℝ) * (a - 1) ≤ a ^ j := by
+    have h := one_add_mul_le_pow (a := a - 1) (by linarith) j
+    simpa using h
+  have hd1 : d ≤ 1 := min_le_left _ _
+  have hd2 : d ≤ a - 1 := min_le_right _ _
+  have h1 : d * (1 + (j : ℝ)) ≤ a ^ j := by
+    nlinarith [hbern]
+  have hapow : (0:ℝ) < a ^ j := pow_pos (by linarith) j
+  have h2 : ((j : ℝ) + 3) ≤ 3 * (1 + (j : ℝ)) := by linarith
+  have hgeom : ((2 : ℝ) ^ eps) ^ j = (a ^ j) ^ 2 := by
+    rw [hadef, ← Real.rpow_natCast ((2:ℝ) ^ (eps / 2)) j,
+      ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2),
+      ← Real.rpow_natCast ((2:ℝ) ^ eps) j, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2),
+      ← Real.rpow_natCast ((2:ℝ) ^ (eps / 2 * (j:ℝ))) 2,
+      ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    push_cast
+    ring
+  rw [hgeom]
+  have hsq : (1 + (j:ℝ)) ^ 2 * d ^ 2 ≤ (a ^ j) ^ 2 := by
+    have h4 : (d * (1 + (j:ℝ))) ^ 2 ≤ (a ^ j) ^ 2 :=
+      pow_le_pow_left₀ (by positivity) h1 2
+    nlinarith [h4]
+  calc ((j : ℝ) + 3) ^ 2 ≤ (3 * (1 + (j:ℝ))) ^ 2 := by nlinarith [h2]
+    _ = 9 * (1 + (j:ℝ)) ^ 2 := by ring
+    _ ≤ 9 / d ^ 2 * (a ^ j) ^ 2 := by
+        rw [div_mul_eq_mul_div, le_div_iff₀ (by positivity : (0:ℝ) < d ^ 2)]
+        nlinarith [hsq]
+
+/-- Convert an extended-real dyadic rate into a real one. -/
+theorem exists_real_rate_of_ennreal {C rho : ℝ≥0∞} (hCtop : C < ⊤) (hrho : rho < 1) :
+    ∃ C' rho' : ℝ, 0 < C' ∧ 0 < rho' ∧ rho' < 1 ∧
+      ∀ j : ℕ, C * rho ^ j ≤ ENNReal.ofReal (C' * rho' ^ j) := by
+  have hrhotop : rho ≠ ⊤ := by
+    intro h
+    rw [h] at hrho
+    exact absurd hrho (by simp)
+  set c : ℝ := C.toReal with hcdef
+  set r : ℝ := rho.toReal with hrdef
+  have hcnn : 0 ≤ c := by rw [hcdef]; exact ENNReal.toReal_nonneg
+  have hrnn : 0 ≤ r := by rw [hrdef]; exact ENNReal.toReal_nonneg
+  have hrone : r < 1 := by
+    have h := ENNReal.toReal_lt_toReal hrhotop ENNReal.one_ne_top
+    rw [ENNReal.toReal_one] at h
+    rw [hrdef]
+    exact h.mpr hrho
+  have hCeq : C = ENNReal.ofReal c := by rw [hcdef, ENNReal.ofReal_toReal hCtop.ne]
+  have hreq : rho = ENNReal.ofReal r := by rw [hrdef, ENNReal.ofReal_toReal hrhotop]
+  refine ⟨c + 1, max r (1/2), by linarith, ?_, ?_, ?_⟩
+  · exact lt_of_lt_of_le (by norm_num) (le_max_right _ _)
+  · exact max_lt hrone (by norm_num)
+  · intro j
+    have hstep : C * rho ^ j = ENNReal.ofReal (c * r ^ j) := by
+      rw [hCeq, hreq, ← ENNReal.ofReal_pow hrnn, ← ENNReal.ofReal_mul hcnn]
+    rw [hstep]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have h1 : r ^ j ≤ (max r (1/2)) ^ j := pow_le_pow_left₀ hrnn (le_max_left _ _) j
+    have h2 : (0:ℝ) ≤ (max r (1/2)) ^ j := by positivity
+    calc c * r ^ j ≤ c * (max r (1/2)) ^ j := mul_le_mul_of_nonneg_left h1 hcnn
+      _ ≤ (c + 1) * (max r (1/2)) ^ j := mul_le_mul_of_nonneg_right (by linarith) h2
+
+/-! ### The three endpoint rates -/
+
+set_option maxHeartbeats 1000000 in
+/-- **The `Q₄` rate with an arbitrarily small loss**, from Theorem 2.5. -/
+theorem exists_q4_loss_rate (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    {E : Set ℝ} {gam : ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1) {p : ℝ} (hp : p = (3 + 2 * gam) / 2)
+    {tau : ℝ} (htau : 0 < tau) :
+    ∃ C : ℝ, 0 < C ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal (2 * p)) volume
+        ≤ ENNReal.ofReal (C * ((2 : ℝ) ^ tau) ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+  have hppos : 0 < p := by rw [hp]; linarith
+  obtain ⟨Cass, hCass, hcov⟩ := exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq
+    hE hquasi (by positivity : (0:ℝ) < p * tau)
+  obtain ⟨D, hD, hbound⟩ := exists_q4_single_scale φ hφone hφzero hφrad hE hcov hCass.le
+    (by positivity) hgam1 hgam2 hp
+  obtain ⟨Cpoly, hCpoly, hpoly⟩ := exists_sq_le_geometric (eps := tau / 2) (by linarith)
+  refine ⟨D * Cpoly, by positivity, ?_⟩
+  intro j hj f
+  refine (hbound j f).trans ?_
+  refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) (le_refl _)
+  have hexp : p * tau / (2 * p) = tau / 2 := by
+    field_simp
+  have h2 : ((2 : ℝ) ^ (j : ℕ)) ^ (p * tau / (2 * p)) = ((2 : ℝ) ^ (tau / 2)) ^ j := by
+    rw [hexp, rpow_npow_swap (by norm_num : (0:ℝ) ≤ 2) j]
+  have hhalf : ((2 : ℝ) ^ (tau / 2)) ^ j * ((2 : ℝ) ^ (tau / 2)) ^ j
+      = ((2 : ℝ) ^ tau) ^ j := by
+    rw [← mul_pow, ← Real.rpow_add (by norm_num : (0:ℝ) < 2)]
+    congr 2
+    ring
+  have hgpos : (0:ℝ) < ((2 : ℝ) ^ (tau / 2)) ^ j := by
+    have : (0:ℝ) < (2 : ℝ) ^ (tau / 2) := Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  calc D * (((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (j : ℕ)) ^ (p * tau / (2 * p)))
+      = D * (((j : ℝ) + 3) ^ 2 * ((2 : ℝ) ^ (tau / 2)) ^ j) := by rw [h2]
+    _ ≤ D * ((Cpoly * ((2 : ℝ) ^ (tau / 2)) ^ j) * ((2 : ℝ) ^ (tau / 2)) ^ j) := by
+        refine mul_le_mul_of_nonneg_left ?_ hD.le
+        exact mul_le_mul_of_nonneg_right (hpoly j) hgpos.le
+    _ = D * Cpoly * (((2 : ℝ) ^ (tau / 2)) ^ j * ((2 : ℝ) ^ (tau / 2)) ^ j) := by ring
+    _ = D * Cpoly * ((2 : ℝ) ^ tau) ^ j := by rw [hhalf]
+
+/-- **The diagonal `Q₂` rate**, for `β < 1`. -/
+theorem exists_diag_gain_rate {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta < 1)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (φ psi : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    (hpsi : ∀ ξ : Pl, psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ))
+    {sdg : ℝ} (hs1 : 1 < sdg) (hcrit : beta < sdg - 1) :
+    ∃ C rho : ℝ, 0 < C ∧ 0 < rho ∧ rho < 1 ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal sdg) volume
+        ≤ ENNReal.ofReal (C * rho ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal sdg) volume := by
+  obtain ⟨C, rho, hCtop, hrho, hrate⟩ := exists_q2_diagonal_dyadic_rate
+    (d := 2) (E := E) (beta := beta) (Or.inr ⟨rfl, hbeta1⟩) hE hEne hbeta hMinkowski
+    φ psi hφone hφzero hφnorm hpsi hs1 (by push_cast; linarith)
+  obtain ⟨C', rho', hC', hrho'pos, hrho'one, hconv⟩ := exists_real_rate_of_ennreal hCtop hrho
+  refine ⟨C', rho', hC', hrho'pos, hrho'one, ?_⟩
+  intro j hj f
+  refine le_trans (hrate j f).2 ?_
+  exact mul_le_mul' (hconv j) (le_refl _)
+
+/-- **The conjugate-line `Q₃` rate**. -/
+theorem exists_conj_gain_rate {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta : ℝ} (hMinkowski : upperMinkowskiDimension E = beta)
+    (φ psi : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    (hpsi : ∀ ξ : Pl, psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ))
+    {u v : ℝ} (hu1 : 1 < u) (hu2 : u < 2) (hv : v = u / (u - 1))
+    (hstrict : v < 3 - beta) :
+    ∃ C rho : ℝ, 0 < C ∧ 0 < rho ∧ rho < 1 ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal v) volume
+        ≤ ENNReal.ofReal (C * rho ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal u) volume := by
+  obtain ⟨C, rho, hCpos, hCtop, hrho, hrhoeq, hrate⟩ :=
+    circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+      hE hEne hMinkowski (eps := (3 - beta - v) / 2) (by linarith) hu1 hu2 hv
+      (by linarith) φ psi hφone hφzero hφnorm hpsi
+  obtain ⟨C', rho', hC', hrho'pos, hrho'one, hconv⟩ := exists_real_rate_of_ennreal hCtop hrho
+  refine ⟨C', rho', hC', hrho'pos, hrho'one, ?_⟩
+  intro j hj f
+  refine le_trans (hrate j hj f).2 ?_
+  exact mul_le_mul' (hconv j) (le_refl _)
+
+
+/-! ### Interpolation along a segment of the exponent diagram
+
+The reciprocal exponent point `(1/p, 1/q)` of the target is a strict convex combination of the
+two endpoint points, and both reciprocal coordinates are ordered the same way.  The resulting
+geometric ratio is `ρ_A^{1-t} ρ_B^{t}`. -/
+
+set_option maxHeartbeats 1000000 in
+theorem exists_rate_between
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    {ua va ub vb t : ℝ}
+    (hub : 0 < ub) (hvb : 0 < vb)
+    (hvaua : va ≤ ua) (hvbub : vb ≤ ub)
+    (horderu : ub < ua) (horderv : vb < va)
+    (ht0 : 0 < t) (ht1 : t < 1)
+    {CA CB rhoA rhoB : ℝ} (hCA : 0 < CA) (hCB : 0 < CB)
+    (hrhoA : 0 < rhoA) (hrhoB : 0 < rhoB)
+    (hrateA : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal (1 / va)) volume
+        ≤ ENNReal.ofReal (CA * rhoA ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / ua)) volume)
+    (hrateB : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal (1 / vb)) volume
+        ≤ ENNReal.ofReal (CB * rhoB ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / ub)) volume) :
+    ∃ C : ℝ, 0 < C ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f)
+          (ENNReal.ofReal (1 / ((1 - t) * va + t * vb))) volume
+        ≤ ENNReal.ofReal (C * (rhoA ^ (1 - t) * rhoB ^ t) ^ j)
+          * eLpNorm ((f : Pl → ℂ))
+            (ENNReal.ofReal (1 / ((1 - t) * ua + t * ub))) volume := by
+  have huapos : 0 < ua := lt_trans hub horderu
+  have hvapos : 0 < va := lt_trans hvb horderv
+  set u : ℝ := (1 - t) * ua + t * ub with hu
+  set v : ℝ := (1 - t) * va + t * vb with hv
+  have hupos : 0 < u := by rw [hu]; nlinarith
+  have hvpos : 0 < v := by rw [hv]; nlinarith
+  have hub' : ub < u := by rw [hu]; nlinarith
+  have hua' : u < ua := by rw [hu]; nlinarith
+  have hvb' : vb < v := by rw [hv]; nlinarith
+  have hva' : v < va := by rw [hv]; nlinarith
+  have hne_uau : ua - u ≠ 0 := by
+    have : 0 < ua - u := by linarith
+    exact this.ne'
+  have hne_uub : u - ub ≠ 0 := by
+    have : 0 < u - ub := by linarith
+    exact this.ne'
+  have hne_vav : va - v ≠ 0 := by
+    have : 0 < va - v := by linarith
+    exact this.ne'
+  have hne_vvb : v - vb ≠ 0 := by
+    have : 0 < v - vb := by linarith
+    exact this.ne'
+  have hne_ab : ua - ub ≠ 0 := by
+    have : 0 < ua - ub := by linarith
+    exact this.ne'
+  have hne_vab : va - vb ≠ 0 := by
+    have : 0 < va - vb := by linarith
+    exact this.ne'
+  have hne_t : (1 : ℝ) - t ≠ 0 := by
+    have : 0 < 1 - t := by linarith
+    exact this.ne'
+  set m : ℝ := u * (va - v) / (v * (ua - u)) with hmdef
+  have hmpos : 0 < m := by
+    rw [hmdef]
+    exact div_pos (mul_pos hupos (by linarith)) (mul_pos hvpos (by linarith))
+  have hvaa : va - v = t * (va - vb) := by rw [hv]; ring
+  have huaa : ua - u = t * (ua - ub) := by rw [hu]; ring
+  have hvab : v - vb = (1 - t) * (va - vb) := by rw [hv]; ring
+  have huab : u - ub = (1 - t) * (ua - ub) := by rw [hu]; ring
+  have hmalt : m = u * (va - vb) / (v * (ua - ub)) := by
+    rw [hmdef, hvaa, huaa]
+    rw [div_eq_div_iff (by positivity) (by positivity)]
+    ring
+  have hm0 : 1 / v - 1 / va = m * (1 / u - 1 / ua) * ((1 / va) / (1 / ua)) := by
+    rw [hmdef]
+    field_simp
+  have hm1 : 1 / v - 1 / vb = m * (1 / u - 1 / ub) * ((1 / vb) / (1 / ub)) := by
+    rw [hmalt]
+    field_simp
+    rw [hu, hv]
+    ring
+  have hposdiff : (0 : ℝ) < 1 / vb - 1 / va := by
+    have h := one_div_lt_one_div_of_lt hvb (show vb < va by linarith)
+    linarith
+  have hwA : ((1 / vb) - (1 / v)) / ((1 / vb) - (1 / va)) = (1 - t) * va / v := by
+    rw [div_eq_div_iff hposdiff.ne' (ne_of_gt hvpos)]
+    field_simp
+    linarith [hvab]
+  have hwB : ((1 / v) - (1 / va)) / ((1 / vb) - (1 / va)) = t * vb / v := by
+    rw [div_eq_div_iff hposdiff.ne' (ne_of_gt hvpos)]
+    field_simp
+    linarith [hvaa]
+  have hcol : ((1 / va) / (1 / ua)) * (((1 / vb) - (1 / v)) / ((1 / vb) - (1 / va)))
+      + ((1 / vb) / (1 / ub)) * (((1 / v) - (1 / va)) / ((1 / vb) - (1 / va)))
+      = (1 / v) / (1 / u) := by
+    rw [hwA, hwB]
+    field_simp
+    rw [hu]
+    ring
+  have hratio_a : (1 : ℝ) ≤ (1 / va) / (1 / ua) := by
+    have heq : (1 : ℝ) / va / (1 / ua) = ua / va := by field_simp
+    rw [heq, le_div_iff₀ hvapos]
+    linarith
+  have hratio_b : (1 : ℝ) ≤ (1 / vb) / (1 / ub) := by
+    have heq : (1 : ℝ) / vb / (1 / ub) = ub / vb := by field_simp
+    rw [heq, le_div_iff₀ hvb]
+    linarith
+  obtain ⟨C, hCpos, hrate⟩ := exists_twoPair_dyadic_rate hE φ hφone hφzero
+    (p0 := 1 / ua) (q0 := 1 / va) (p1 := 1 / ub) (q1 := 1 / vb)
+    (p := 1 / u) (q := 1 / v) (m := m)
+    (by positivity) (one_div_lt_one_div_of_lt hupos hua')
+    (one_div_lt_one_div_of_lt hub hub')
+    (by positivity) (one_div_lt_one_div_of_lt hvpos hva')
+    (one_div_lt_one_div_of_lt hvb hvb')
+    hratio_a hratio_b hmpos hm0 hm1 hcol hCA hCB hrhoA hrhoB hrateA hrateB
+  refine ⟨C, hCpos, ?_⟩
+  intro j hj f
+  have heA : (1 / va) * (((1 / vb) - (1 / v)) / ((1 / vb) - (1 / va))) / (1 / v) = 1 - t := by
+    rw [hwA]
+    field_simp
+  have heB : (1 / vb) * (((1 / v) - (1 / va)) / ((1 / vb) - (1 / va))) / (1 / v) = t := by
+    rw [hwB]
+    field_simp
+  have h := hrate j hj f
+  rw [heA, heB] at h
+  exact h
+
+
+/-! ## The covering of the exponent region
+
+Corollary 2.6 of the paper covers the interior of `Q(β,γ)` by interpolating the endpoint
+estimate at `Q₄` against the `β`-only estimates.  In the plane the covering is organized by the
+position of the target relative to the vertex `Q₄ = (2/(3+2γ), 1/(3+2γ))`:
+
+* below its height, `Q₄(γ)` is interpolated against a diagonal point (Case I);
+* above its height and to the left of its input exponent, a Case-I point below is interpolated
+  vertically against the diagonal point at the same input (Case III);
+* exactly above its input exponent, `Q₄` itself is used as the lower endpoint (Case III(b));
+* above its height and to the right of its input exponent, the ray from `Q₄` through the target
+  meets either the diagonal segment or the conjugate segment, and the sign of the auxiliary
+  functional `G = Y₄ + b(1-4Y₄) - a(1-2Y₄)` decides which (Case II).  There the cluster
+  inequality of `Q(β,γ)` is exactly what places the conjugate endpoint inside `Q`.
+
+The diagonal gains are abstracted into `HasDiagGains`: for `β < 1` they are the Minkowski `Q₂`
+estimate, and for `β = 1` they come from Bourgain's circular maximal theorem. -/
+
+open Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+
+/-- A small loss is beaten by a fixed gain in a fixed convex combination. -/
+theorem exists_small_tau {rhoB t : ℝ} (hrhoB : 0 < rhoB) (hrhoB1 : rhoB < 1)
+    (ht0 : 0 < t) (ht1 : t < 1) :
+    ∃ tau : ℝ, 0 < tau ∧ ((2 : ℝ) ^ tau) ^ (1 - t) * rhoB ^ t < 1 := by
+  have hrt : (0 : ℝ) < rhoB ^ t := Real.rpow_pos_of_pos hrhoB t
+  have hrt1 : rhoB ^ t < 1 := Real.rpow_lt_one hrhoB.le hrhoB1 ht0
+  set L : ℝ := -Real.logb 2 (rhoB ^ t) with hLdef
+  have hLpos : 0 < L := by
+    rw [hLdef, neg_pos]
+    exact Real.logb_neg (by norm_num) hrt hrt1
+  refine ⟨L / (2 * (1 - t)), by positivity, ?_⟩
+  have hpow : ((2 : ℝ) ^ (L / (2 * (1 - t)))) ^ (1 - t) = (2 : ℝ) ^ (L / 2) := by
+    rw [← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    have h1t : (1:ℝ) - t ≠ 0 := by
+      have : (0:ℝ) < 1 - t := by linarith
+      exact this.ne'
+    field_simp
+  have hval : rhoB ^ t = (2 : ℝ) ^ (-L) := by
+    rw [hLdef, neg_neg]
+    exact (Real.rpow_logb (by norm_num) (by norm_num) hrt).symm
+  rw [hpow, hval, ← Real.rpow_add (by norm_num : (0:ℝ) < 2)]
+  refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+  linarith
+
+/-- The vertical (common-input) interpolation of two dyadic rates. -/
+theorem exists_rate_vertical
+    {E : Set ℝ} (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    {uu va vb t : ℝ} (hva : 0 < va) (hvb : 0 < vb) (ht0 : 0 < t) (ht1 : t < 1)
+    {CA CB rhoA rhoB : ℝ} (hCA : 0 < CA) (hCB : 0 < CB)
+    (hrhoA : 0 < rhoA) (hrhoB : 0 < rhoB)
+    (hrateA : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal (1 / va)) volume
+        ≤ ENNReal.ofReal (CA * rhoA ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / uu)) volume)
+    (hrateB : ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal (1 / vb)) volume
+        ≤ ENNReal.ofReal (CB * rhoB ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / uu)) volume) :
+    ∃ C : ℝ, 0 < C ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+      eLpNorm (Mdy (E := E) φ hφone hφzero j f)
+          (ENNReal.ofReal (1 / ((1 - t) * va + t * vb))) volume
+        ≤ ENNReal.ofReal (C * (rhoA ^ (1 - t) * rhoB ^ t) ^ j)
+          * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / uu)) volume := by
+  have hvpos : 0 < (1 - t) * va + t * vb := by nlinarith
+  have hmain := memLp_and_eLpNorm_schwartz_of_weighted_output_dyadic_rates
+    (d := 2) (fun j g => Mdy (E := E) φ hφone hφzero j g)
+    (fun j g => Mdy_measurable g)
+    (p := 1 / uu) (q0 := 1 / va) (q := 1 / ((1 - t) * va + t * vb)) (q1 := 1 / vb)
+    (lam := 1 - t) (by positivity) (by positivity) (by positivity)
+    (by linarith) (by linarith)
+    (by
+      rw [show (1:ℝ) - (1 - t) = t by ring, one_div_one_div]
+      field_simp)
+    (C0 := ENNReal.ofReal CA) (C1 := ENNReal.ofReal CB)
+    (rho0 := ENNReal.ofReal rhoA) (rho1 := ENNReal.ofReal rhoB)
+    ENNReal.ofReal_lt_top ENNReal.ofReal_lt_top ENNReal.ofReal_lt_top ENNReal.ofReal_lt_top
+    (by
+      intro j hj f
+      refine le_trans (hrateA j hj f) ?_
+      rw [ENNReal.ofReal_mul hCA.le, ← ENNReal.ofReal_pow hrhoA.le])
+    (by
+      intro j hj f
+      refine le_trans (hrateB j hj f) ?_
+      rw [ENNReal.ofReal_mul hCB.le, ← ENNReal.ofReal_pow hrhoB.le])
+  refine ⟨CA ^ (1 - t) * CB ^ t, by positivity, ?_⟩
+  intro j hj f
+  refine le_trans (hmain j hj f).2 (le_of_eq ?_)
+  congr 1
+  rw [show (1:ℝ) - (1 - t) = t by ring]
+  rw [ENNReal.ofReal_rpow_of_pos hCA, ENNReal.ofReal_rpow_of_pos hCB,
+    ENNReal.ofReal_rpow_of_pos hrhoA, ENNReal.ofReal_rpow_of_pos hrhoB,
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg hrhoA.le _),
+    ← ENNReal.ofReal_pow (by positivity),
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg hCA.le _),
+    ← ENNReal.ofReal_mul (by positivity)]
+
+/-- The dyadic-rate predicate at the reciprocal exponent pair `(a, b) = (1/p, 1/q)`. -/
+def HasDyRate {E : Set ℝ} (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) (a b : ℝ) : Prop :=
+  ∃ C rho : ℝ, 0 < C ∧ 0 < rho ∧ rho < 1 ∧ ∀ j : ℕ, 1 ≤ j → ∀ f : SchwartzMap Pl ℂ,
+    eLpNorm (Mdy (E := E) φ hφone hφzero j f) (ENNReal.ofReal (1 / b)) volume
+      ≤ ENNReal.ofReal (C * rho ^ j)
+        * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / a)) volume
+
+/-- The abstract diagonal-gain hypothesis: every point of the open diagonal segment
+`(Q₁, Q₂,β)` carries a dyadic rate.  For `β < 1` this is the Minkowski `Q₂` estimate; for
+`β = 1` it is Bourgain's circular maximal theorem in its local-smoothing form. -/
+def HasDiagGains {E : Set ℝ} (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) (beta : ℝ) : Prop :=
+  ∀ s : ℝ, 0 < s → s < 1 / (1 + beta) → HasDyRate (E := E) φ hφone hφzero s s
+
+/-- For `β < 1` the Minkowski `Q₂` diagonal estimate supplies the diagonal gains. -/
+theorem hasDiagGains_of_beta_lt_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta < 1)
+    (hMink : upperMinkowskiDimension E = beta)
+    (φ psi : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    (hpsi : ∀ ξ : Pl, psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ)) :
+    HasDiagGains (E := E) φ hφone hφzero beta := by
+  intro s hs hsbeta
+  obtain ⟨C, rho, hC, hrho, hrho1, hrate⟩ := exists_diag_gain_rate hE hEne hbeta hbeta1
+    hMink φ psi hφone hφzero hφnorm hpsi (sdg := 1 / s)
+    (by
+      have hone : (1 : ℝ) / (1 + beta) ≤ 1 := by
+        rw [div_le_one (by linarith)]
+        linarith
+      rw [lt_div_iff₀ hs]
+      linarith)
+    (by
+      have h : (1 : ℝ) + beta < 1 / s := by
+        rw [lt_div_iff₀ hs]
+        have h2 := hsbeta
+        rw [lt_div_iff₀ (by linarith : (0:ℝ) < 1 + beta)] at h2
+        nlinarith
+      linarith)
+  exact ⟨C, rho, hC, hrho, hrho1, hrate⟩
+
+set_option maxHeartbeats 1000000 in
+/-- **Case I**: below the height of `Q₄`.  The cap endpoint `Q₄(γ)` is interpolated against a
+diagonal endpoint. -/
+theorem exists_rate_caseI
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1)
+    (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (hdiag : HasDiagGains (E := E) φ hφone hφzero beta)
+    {a b : ℝ} (hb : 0 < b) (hba : b < a) (hab : a < 2 * b)
+    (hbY : b < 1 / (3 + 2 * gam)) :
+    HasDyRate (E := E) φ hφone hφzero a b := by
+  have hgpos : (0 : ℝ) < 3 + 2 * gam := by linarith
+  set Y4 : ℝ := 1 / (3 + 2 * gam) with hY4def
+  have hY4pos : 0 < Y4 := by rw [hY4def]; positivity
+  have hY4lt : Y4 < 1 / 4 := by
+    rw [hY4def]
+    exact one_div_lt_one_div_of_lt (by norm_num) (by linarith)
+  set p4 : ℝ := (3 + 2 * gam) / 2 with hp4def
+  have hp4pos : 0 < p4 := by rw [hp4def]; linarith
+  have hX4 : 1 / p4 = 2 * Y4 := by
+    rw [hp4def, hY4def]
+    field_simp
+  have hY4inv : 1 / Y4 = 2 * p4 := by
+    rw [hp4def, hY4def]
+    field_simp
+  have hden : 0 < Y4 - (a - b) := by
+    have : a - b < b := by linarith
+    linarith
+  set t : ℝ := (Y4 - a + b) / Y4 with htdef
+  have ht0 : 0 < t := by
+    rw [htdef]
+    apply div_pos (by linarith) hY4pos
+  have ht1 : t < 1 := by
+    rw [htdef, div_lt_one hY4pos]
+    linarith
+  have h1t : 1 - t = (a - b) / Y4 := by
+    rw [htdef]
+    field_simp
+    ring
+  set sdg : ℝ := (2 * b - a) * Y4 / (Y4 - a + b) with hsdef
+  have hsdpos : 0 < sdg := by
+    rw [hsdef]
+    apply div_pos (by nlinarith) (by linarith)
+  have hts : t * sdg = 2 * b - a := by
+    have hne : Y4 - a + b ≠ 0 := by
+      have h : 0 < Y4 - a + b := by linarith
+      exact h.ne'
+    rw [htdef, hsdef]
+    field_simp
+  have hsdY4 : sdg < Y4 := by
+    rw [hsdef, div_lt_iff₀ (by linarith : (0:ℝ) < Y4 - a + b)]
+    nlinarith
+  have hsdbeta : sdg < 1 / (1 + beta) := by
+    have h1 : (1 : ℝ) / 2 ≤ 1 / (1 + beta) :=
+      one_div_le_one_div_of_le (by linarith) (by linarith)
+    linarith
+  obtain ⟨CB, rhoB, hCB, hrhoB, hrhoB1, hrateB⟩ := hdiag sdg hsdpos hsdbeta
+  obtain ⟨tau, htau, hsmall⟩ := exists_small_tau hrhoB hrhoB1 ht0 ht1
+  obtain ⟨CA, hCA, hrateA⟩ := exists_q4_loss_rate φ hφone hφzero hφrad hE hquasi hgam1 hgam2
+    (p := p4) (by rw [hp4def]) htau
+  obtain ⟨C, hCpos, hrate⟩ := exists_rate_between hE φ hφone hφzero
+    (ua := 2 * Y4) (va := Y4) (ub := sdg) (vb := sdg) (t := t)
+    hsdpos hsdpos (by linarith) (le_refl _)
+    (by linarith) (by linarith) ht0 ht1
+    hCA hCB (Real.rpow_pos_of_pos (by norm_num : (0:ℝ) < 2) tau) hrhoB
+    (by
+      intro j hj f
+      have h := hrateA j hj f
+      have e1 : (1 : ℝ) / Y4 = 2 * p4 := hY4inv
+      have e2 : (1 : ℝ) / (2 * Y4) = p4 := by
+        rw [← hX4]
+        field_simp
+      rw [e1, e2]
+      exact h)
+    (by intro j hj f; exact hrateB j hj f)
+  refine ⟨C, ((2 : ℝ) ^ tau) ^ (1 - t) * rhoB ^ t, hCpos, by positivity, hsmall, ?_⟩
+  intro j hj f
+  have hbeq : (1 - t) * Y4 + t * sdg = b := by
+    rw [h1t, hts]
+    field_simp
+    ring
+  have haeq : (1 - t) * (2 * Y4) + t * sdg = a := by
+    rw [h1t, hts]
+    field_simp
+    ring
+  have h := hrate j hj f
+  rw [hbeq, haeq] at h
+  exact h
+
+set_option maxHeartbeats 1000000 in
+/-- **Case III**: above the height of `Q₄` and strictly to the left of its input exponent.  A
+vertical interpolation between a Case-I point below and the diagonal point at the same input. -/
+theorem exists_rate_caseIII
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1)
+    (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (hdiag : HasDiagGains (E := E) φ hφone hφzero beta)
+    {a b : ℝ} (hba : b < a) (hab : a < 2 * b)
+    (hann : 2 * a < (1 - beta) * b + 1)
+    (hbY : 1 / (3 + 2 * gam) ≤ b) (haX : a < 2 * (1 / (3 + 2 * gam))) :
+    HasDyRate (E := E) φ hφone hφzero a b := by
+  have hgpos : (0 : ℝ) < 3 + 2 * gam := by linarith
+  set Y4 : ℝ := 1 / (3 + 2 * gam) with hY4def
+  have hY4pos : 0 < Y4 := by rw [hY4def]; positivity
+  have hb : 0 < b := lt_of_lt_of_le hY4pos hbY
+  have hapos : 0 < a := lt_trans hb hba
+  -- the diagonal point at the same input is a gain
+  have habeta : a < 1 / (1 + beta) := by
+    rw [lt_div_iff₀ (by linarith : (0:ℝ) < 1 + beta)]
+    nlinarith
+  obtain ⟨CB, rhoB, hCB, hrhoB, hrhoB1, hrateB⟩ := hdiag a hapos habeta
+  -- the lower endpoint
+  set b1 : ℝ := (a / 2 + min Y4 b) / 2 with hb1def
+  have hminlt : a / 2 < min Y4 b := lt_min (by linarith) (by linarith)
+  have hb1low : a / 2 < b1 := by
+    rw [hb1def]
+    linarith
+  have hb1Y4 : b1 < Y4 := by
+    rw [hb1def]
+    have h1 : min Y4 b ≤ Y4 := min_le_left _ _
+    linarith
+  have hb1b : b1 < b := by
+    rw [hb1def]
+    have h1 : min Y4 b ≤ b := min_le_right _ _
+    linarith
+  have hb1pos : 0 < b1 := by linarith
+  obtain ⟨CA, rhoA, hCA, hrhoA, hrhoA1, hrateA⟩ := exists_rate_caseI hE hbeta hbeta1 hquasi
+    hgam1 hgam2 φ hφone hφzero hφrad hdiag (a := a) (b := b1) hb1pos (by linarith)
+    (by linarith) hb1Y4
+  -- the vertical interpolation
+  set t : ℝ := (b - b1) / (a - b1) with htdef
+  have ht0 : 0 < t := by
+    rw [htdef]
+    apply div_pos (by linarith) (by linarith)
+  have ht1 : t < 1 := by
+    rw [htdef, div_lt_one (by linarith)]
+    linarith
+  obtain ⟨C, hCpos, hrate⟩ := exists_rate_vertical (E := E) φ hφone hφzero
+    (uu := a) (va := b1) (vb := a) (t := t) hb1pos hapos ht0 ht1
+    hCA hCB hrhoA hrhoB hrateA hrateB
+  refine ⟨C, rhoA ^ (1 - t) * rhoB ^ t, hCpos, by positivity, ?_, ?_⟩
+  · have h1 : rhoA ^ (1 - t) < 1 := Real.rpow_lt_one hrhoA.le hrhoA1 (by linarith)
+    have h2 : rhoB ^ t < 1 := Real.rpow_lt_one hrhoB.le hrhoB1 ht0
+    nlinarith [Real.rpow_pos_of_pos hrhoA (1 - t), Real.rpow_pos_of_pos hrhoB t]
+  · intro j hj f
+    have hbeq : (1 - t) * b1 + t * a = b := by
+      have hne : a - b1 ≠ 0 := by
+        have h : 0 < a - b1 := by linarith
+        exact h.ne'
+      rw [htdef]
+      field_simp
+      ring
+    have h := hrate j hj f
+    rw [hbeq] at h
+    exact h
+
+set_option maxHeartbeats 1000000 in
+/-- **Case III(b)**: exactly above the input exponent of `Q₄`.  A vertical interpolation between
+`Q₄` itself and the diagonal point at the same input. -/
+theorem exists_rate_caseIIIb
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1)
+    (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (hdiag : HasDiagGains (E := E) φ hφone hφzero beta)
+    {a b : ℝ} (haeq : a = 2 * (1 / (3 + 2 * gam)))
+    (hbY : 1 / (3 + 2 * gam) < b) (hba : b < a)
+    (hann : 2 * a < (1 - beta) * b + 1) :
+    HasDyRate (E := E) φ hφone hφzero a b := by
+  have hgpos : (0 : ℝ) < 3 + 2 * gam := by linarith
+  set Y4 : ℝ := 1 / (3 + 2 * gam) with hY4def
+  have hY4pos : 0 < Y4 := by rw [hY4def]; positivity
+  set p4 : ℝ := (3 + 2 * gam) / 2 with hp4def
+  have hp4pos : 0 < p4 := by rw [hp4def]; linarith
+  have hX4 : 1 / p4 = 2 * Y4 := by
+    rw [hp4def, hY4def]
+    field_simp
+  have hY4inv : 1 / Y4 = 2 * p4 := by
+    rw [hp4def, hY4def]
+    field_simp
+  have hb : 0 < b := lt_trans hY4pos hbY
+  have hapos : 0 < a := lt_trans hb hba
+  have habeta : a < 1 / (1 + beta) := by
+    rw [lt_div_iff₀ (by linarith : (0:ℝ) < 1 + beta)]
+    nlinarith
+  obtain ⟨CB, rhoB, hCB, hrhoB, hrhoB1, hrateB⟩ := hdiag a hapos habeta
+  set t : ℝ := (b - Y4) / (a - Y4) with htdef
+  have ht0 : 0 < t := by
+    rw [htdef]
+    apply div_pos (by linarith) (by linarith)
+  have ht1 : t < 1 := by
+    rw [htdef, div_lt_one (by linarith)]
+    linarith
+  obtain ⟨tau, htau, hsmall⟩ := exists_small_tau hrhoB hrhoB1 ht0 ht1
+  obtain ⟨CA, hCA, hrateA⟩ := exists_q4_loss_rate φ hφone hφzero hφrad hE hquasi hgam1 hgam2
+    (p := p4) (by rw [hp4def]) htau
+  obtain ⟨C, hCpos, hrate⟩ := exists_rate_vertical (E := E) φ hφone hφzero
+    (uu := a) (va := Y4) (vb := a) (t := t) hY4pos hapos ht0 ht1
+    hCA hCB (Real.rpow_pos_of_pos (by norm_num : (0:ℝ) < 2) tau) hrhoB
+    (by
+      intro j hj f
+      have h := hrateA j hj f
+      have e1 : (1 : ℝ) / Y4 = 2 * p4 := hY4inv
+      have e2 : (1 : ℝ) / a = p4 := by
+        rw [haeq, ← hX4]
+        field_simp
+      rw [e1, e2]
+      exact h)
+    hrateB
+  refine ⟨C, ((2 : ℝ) ^ tau) ^ (1 - t) * rhoB ^ t, hCpos, by positivity, hsmall, ?_⟩
+  intro j hj f
+  have hbeq : (1 - t) * Y4 + t * a = b := by
+    have hne : a - Y4 ≠ 0 := by
+      have h : 0 < a - Y4 := by linarith
+      exact h.ne'
+    rw [htdef]
+    field_simp
+    ring
+  have h := hrate j hj f
+  rw [hbeq] at h
+  exact h
+
+
+set_option maxHeartbeats 1600000 in
+/-- **Case II**: above the height of `Q₄` and to the right of its input exponent.  The ray from
+`Q₄` through the target meets the chain formed by the open diagonal segment and the conjugate
+segment; the sign of the auxiliary functional `G` decides which. -/
+theorem exists_rate_caseII
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (φ psi : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (hpsi : ∀ ξ : Pl, psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ))
+    (hdiag : HasDiagGains (E := E) φ hφone hφzero beta)
+    {a b : ℝ} (hba : b < a) (hab : a < 2 * b) (hsum : a + b < 1)
+    (hclu : 0 < beta / gam / 2 + (2 - beta - beta / gam / 2) * b
+      - (1 + beta / gam / 2) * a)
+    (hbY : 1 / (3 + 2 * gam) < b) (haX : 2 * (1 / (3 + 2 * gam)) < a) :
+    HasDyRate (E := E) φ hφone hφzero a b := by
+  have hgpos : (0 : ℝ) < gam := by linarith
+  have hgpos' : (0 : ℝ) < 3 + 2 * gam := by linarith
+  set Y4 : ℝ := 1 / (3 + 2 * gam) with hY4def
+  have hY4pos : 0 < Y4 := by rw [hY4def]; positivity
+  have hY4lt : Y4 < 1 / 4 := by
+    rw [hY4def]
+    exact one_div_lt_one_div_of_lt (by norm_num) (by linarith)
+  set p4 : ℝ := (3 + 2 * gam) / 2 with hp4def
+  have hp4pos : 0 < p4 := by rw [hp4def]; linarith
+  have hX4 : 1 / p4 = 2 * Y4 := by
+    rw [hp4def, hY4def]
+    field_simp
+  have hY4inv : 1 / Y4 = 2 * p4 := by
+    rw [hp4def, hY4def]
+    field_simp
+  have hb : 0 < b := lt_trans hY4pos hbY
+  have hapos : 0 < a := lt_trans hb hba
+  set alpha : ℝ := beta / gam with haldef
+  have halpos : 0 ≤ alpha := by rw [haldef]; positivity
+  have hcluQ4 : alpha / 2 + (2 - beta - alpha / 2) * Y4 - (1 + alpha / 2) * (2 * Y4) = 0 := by
+    rw [haldef, hY4def]
+    field_simp
+    ring
+  set G : ℝ := Y4 + b * (1 - 4 * Y4) - a * (1 - 2 * Y4) with hGdef
+  by_cases hG : 0 ≤ G
+  · -- ### the diagonal branch
+    have hdiff : a - b < Y4 := by
+      rw [hGdef] at hG
+      nlinarith
+    have hden : 0 < Y4 - (a - b) := by linarith
+    set sdg : ℝ := (2 * b - a) * Y4 / (Y4 - (a - b)) with hsdef
+    have hsdpos : 0 < sdg := by
+      rw [hsdef]
+      apply div_pos (by nlinarith) hden
+    have hsda : a < sdg := by
+      rw [hsdef, lt_div_iff₀ hden]
+      nlinarith [haX]
+    have hsdhalf : sdg ≤ 1 / 2 := by
+      rw [hsdef, div_le_div_iff₀ hden (by norm_num : (0:ℝ) < 2)]
+      rw [hGdef] at hG
+      nlinarith
+    have hsdbeta : sdg < 1 / (1 + beta) := by
+      rcases lt_or_eq_of_le hbeta1 with hb1 | hb1
+      · have h1 : (1 : ℝ) / 2 < 1 / (1 + beta) :=
+          one_div_lt_one_div_of_lt (by linarith : (0:ℝ) < 1 + beta) (by linarith)
+        linarith
+      · have hgam : gam = 1 := by linarith
+        have hY4val : Y4 = 1 / 5 := by
+          rw [hY4def, hgam]
+          norm_num
+        have halval : alpha = 1 := by
+          rw [haldef, hgam, hb1]
+          norm_num
+        have hGpos : 0 < Y4 + b * (1 - 4 * Y4) - a * (1 - 2 * Y4) := by
+          have h := hclu
+          rw [halval, hb1] at h
+          rw [hY4val]
+          nlinarith
+        have hstrict : sdg < 1 / 2 := by
+          rw [hsdef, div_lt_div_iff₀ hden (by norm_num : (0:ℝ) < 2)]
+          nlinarith [hGpos]
+        rw [hb1]
+        linarith [hstrict]
+    obtain ⟨CA, rhoA, hCA, hrhoA, hrhoA1, hrateA⟩ := hdiag sdg hsdpos hsdbeta
+    set t : ℝ := (a - b) / Y4 with htdef
+    have ht0 : 0 < t := by
+      rw [htdef]
+      apply div_pos (by linarith) hY4pos
+    have ht1 : t < 1 := by
+      rw [htdef, div_lt_one hY4pos]
+      linarith
+    obtain ⟨tau, htau, hsmall⟩ := exists_small_tau hrhoA hrhoA1
+      (t := 1 - t) (by linarith) (by linarith)
+    obtain ⟨CB, hCB, hrateB⟩ := exists_q4_loss_rate φ hφone hφzero hφrad hE hquasi hgam1 hgam2
+      (p := p4) (by rw [hp4def]) htau
+    obtain ⟨C, hCpos, hrate⟩ := exists_rate_between hE φ hφone hφzero
+      (ua := sdg) (va := sdg) (ub := 2 * Y4) (vb := Y4) (t := t)
+      (by linarith) hY4pos (le_refl _) (by linarith)
+      (by linarith) (by linarith) ht0 ht1
+      hCA hCB hrhoA (Real.rpow_pos_of_pos (by norm_num : (0:ℝ) < 2) tau)
+      (by intro j hj f; exact hrateA j hj f)
+      (by
+        intro j hj f
+        have h := hrateB j hj f
+        have e1 : (1 : ℝ) / Y4 = 2 * p4 := hY4inv
+        have e2 : (1 : ℝ) / (2 * Y4) = p4 := by
+          rw [← hX4]
+          field_simp
+        rw [e1, e2]
+        exact h)
+    refine ⟨C, rhoA ^ (1 - t) * ((2 : ℝ) ^ tau) ^ t, hCpos, by positivity, ?_, ?_⟩
+    · have hcomm : ((2 : ℝ) ^ tau) ^ (1 - (1 - t)) * rhoA ^ (1 - t)
+          = rhoA ^ (1 - t) * ((2 : ℝ) ^ tau) ^ t := by
+        rw [show (1 : ℝ) - (1 - t) = t by ring]
+        ring
+      rw [← hcomm]
+      exact hsmall
+    · intro j hj f
+      have hbeq : (1 - t) * sdg + t * Y4 = b := by
+        rw [hsdef, htdef]
+        have hne : Y4 - (a - b) ≠ 0 := hden.ne'
+        field_simp
+        ring
+      have haeq : (1 - t) * sdg + t * (2 * Y4) = a := by
+        rw [hsdef, htdef]
+        have hne : Y4 - (a - b) ≠ 0 := hden.ne'
+        field_simp
+        ring
+      have h := hrate j hj f
+      rw [hbeq, haeq] at h
+      exact h
+  · -- ### the conjugate branch
+    push_neg at hG
+    have h3Y4 : 3 * Y4 < a + b := by linarith
+    have h3Y4one : 3 * Y4 < 1 := by linarith
+    have hden : 0 < a + b - 3 * Y4 := by linarith
+    have hden' : 0 < 1 - 3 * Y4 := by linarith
+    set w : ℝ := (a * (1 - 3 * Y4) - 2 * Y4 * (1 - (a + b))) / (a + b - 3 * Y4) with hwdef
+    have hwhalf : 1 / 2 < w := by
+      rw [hwdef, lt_div_iff₀ hden]
+      rw [hGdef] at hG
+      nlinarith
+    have hwlt : w < 1 - Y4 := by
+      rw [hwdef, div_lt_iff₀ hden]
+      nlinarith [hY4lt, hb, hapos]
+    have hwpos : 0 < w := by linarith
+    have hw1 : (0 : ℝ) < 1 - w := by linarith
+    set t : ℝ := (1 - (a + b)) / (1 - 3 * Y4) with htdef
+    have ht0 : 0 < t := by
+      rw [htdef]
+      apply div_pos (by linarith) hden'
+    have ht1 : t < 1 := by
+      rw [htdef, div_lt_one hden']
+      linarith
+    have hbeq : (1 - t) * (1 - w) + t * Y4 = b := by
+      rw [hwdef, htdef]
+      have hne : a + b - 3 * Y4 ≠ 0 := hden.ne'
+      have hne' : (1 : ℝ) - 3 * Y4 ≠ 0 := hden'.ne'
+      field_simp
+      ring
+    have haeq : (1 - t) * w + t * (2 * Y4) = a := by
+      rw [hwdef, htdef]
+      have hne : a + b - 3 * Y4 ≠ 0 := hden.ne'
+      have hne' : (1 : ℝ) - 3 * Y4 ≠ 0 := hden'.ne'
+      field_simp
+      ring
+    have hwX3 : w < (2 - beta) / (3 - beta) := by
+      have hclB : 0 < 2 - beta - w * (3 - beta) := by
+        have hlin : alpha / 2 + (2 - beta - alpha / 2) * b - (1 + alpha / 2) * a
+            = (1 - t) * (2 - beta - w * (3 - beta))
+              + t * (alpha / 2 + (2 - beta - alpha / 2) * Y4
+                - (1 + alpha / 2) * (2 * Y4)) := by
+          rw [← hbeq, ← haeq]
+          ring
+        rw [hcluQ4, mul_zero, add_zero] at hlin
+        have h := hclu
+        rw [hlin] at h
+        have h1t : 0 < 1 - t := by linarith
+        nlinarith [h, h1t]
+      rw [lt_div_iff₀ (by linarith : (0:ℝ) < 3 - beta)]
+      linarith
+    have hbetalt : beta < 1 := by
+      have h1 : (1 : ℝ) / 2 < (2 - beta) / (3 - beta) := lt_trans hwhalf hwX3
+      rw [div_lt_div_iff₀ (by norm_num : (0:ℝ) < 2) (by linarith : (0:ℝ) < 3 - beta)] at h1
+      linarith
+    obtain ⟨CA, rhoA, hCA, hrhoA, hrhoA1, hrateA⟩ := exists_conj_gain_rate hE hEne hMink
+      φ psi hφone hφzero hφnorm hpsi (u := 1 / w) (v := 1 / (1 - w))
+      (by rw [lt_div_iff₀ hwpos]; linarith)
+      (by rw [div_lt_iff₀ hwpos]; linarith)
+      (by
+        have hw0 : w ≠ 0 := hwpos.ne'
+        have hw1' : (1 : ℝ) - w ≠ 0 := hw1.ne'
+        have h1 : (1 : ℝ) / w - 1 = (1 - w) / w := by field_simp
+        have hne : (1 : ℝ) / w - 1 ≠ 0 := by
+          rw [h1]
+          exact (div_pos hw1 hwpos).ne'
+        rw [div_eq_div_iff hw1' hne, h1]
+        field_simp)
+      (by
+        rw [div_lt_iff₀ hw1]
+        have h := hwX3
+        rw [lt_div_iff₀ (by linarith : (0:ℝ) < 3 - beta)] at h
+        nlinarith)
+    obtain ⟨tau, htau, hsmall⟩ := exists_small_tau hrhoA hrhoA1
+      (t := 1 - t) (by linarith) (by linarith)
+    obtain ⟨CB, hCB, hrateB⟩ := exists_q4_loss_rate φ hφone hφzero hφrad hE hquasi hgam1 hgam2
+      (p := p4) (by rw [hp4def]) htau
+    obtain ⟨C, hCpos, hrate⟩ := exists_rate_between hE φ hφone hφzero
+      (ua := w) (va := 1 - w) (ub := 2 * Y4) (vb := Y4) (t := t)
+      (by linarith) hY4pos (by linarith) (by linarith)
+      (by linarith) (by linarith) ht0 ht1
+      hCA hCB hrhoA (Real.rpow_pos_of_pos (by norm_num : (0:ℝ) < 2) tau)
+      (by intro j hj f; exact hrateA j hj f)
+      (by
+        intro j hj f
+        have h := hrateB j hj f
+        have e1 : (1 : ℝ) / Y4 = 2 * p4 := hY4inv
+        have e2 : (1 : ℝ) / (2 * Y4) = p4 := by
+          rw [← hX4]
+          field_simp
+        rw [e1, e2]
+        exact h)
+    refine ⟨C, rhoA ^ (1 - t) * ((2 : ℝ) ^ tau) ^ t, hCpos, by positivity, ?_, ?_⟩
+    · have hcomm : ((2 : ℝ) ^ tau) ^ (1 - (1 - t)) * rhoA ^ (1 - t)
+          = rhoA ^ (1 - t) * ((2 : ℝ) ^ tau) ^ t := by
+        rw [show (1 : ℝ) - (1 - t) = t by ring]
+        ring
+      rw [← hcomm]
+      exact hsmall
+    · intro j hj f
+      have h := hrate j hj f
+      rw [hbeq, haeq] at h
+      exact h
+
+
+/-! ### The dispatcher and the passage to the strong type -/
+
+set_option maxHeartbeats 1000000 in
+/-- Every reciprocal exponent pair strictly inside `Q(β,γ)` and strictly below the conjugate
+line carries a dyadic rate. -/
+theorem exists_rate_interior
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hgam2 : gam ≤ 1)
+    (φ psi : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    (hφrad : IsNormRadial (φ : Pl → ℂ))
+    (hpsi : ∀ ξ : Pl, psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ))
+    (hdiag : HasDiagGains (E := E) φ hφone hφzero beta)
+    {a b : ℝ} (hbpos : 0 < b) (hba : b < a) (hab : a < 2 * b) (hsum : a + b < 1)
+    (hann : 2 * a < (1 - beta) * b + 1)
+    (hclu : 0 < beta / gam / 2 + (2 - beta - beta / gam / 2) * b
+      - (1 + beta / gam / 2) * a) :
+    HasDyRate (E := E) φ hφone hφzero a b := by
+  have hgpos : (0 : ℝ) < 3 + 2 * gam := by linarith
+  set Y4 : ℝ := 1 / (3 + 2 * gam) with hY4def
+  rcases lt_or_ge b Y4 with hlow | hhigh
+  · exact exists_rate_caseI hE hbeta hbeta1 hquasi hgam1 hgam2 φ hφone hφzero hφrad hdiag
+      hbpos hba hab hlow
+  · rcases lt_trichotomy a (2 * Y4) with hlt | heq | hgt
+    · exact exists_rate_caseIII hE hbeta hbeta1 hquasi hgam1 hgam2 φ hφone hφzero hφrad hdiag
+        hba hab hann hhigh hlt
+    · have hbY : Y4 < b := by
+        rw [heq] at hab
+        linarith
+      exact exists_rate_caseIIIb hE hbeta hbeta1 hquasi hgam1 hgam2 φ hφone hφzero hφrad hdiag
+        heq hbY hba hann
+    · have hbY : Y4 < b := by linarith
+      exact exists_rate_caseII hE hEne hbeta hbeta1 hbg hMink hquasi hgam1 hgam2 φ psi
+        hφone hφzero hφnorm hφrad hpsi hdiag hba hab hsum hclu hbY hgt
+
+/-- A dyadic rate gives the strong type. -/
+theorem strongType_of_hasDyRate
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0)
+    (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
+    {a b : ℝ} (hbpos : 0 < b) (hba : b < a) (ha1 : a < 1) (hb1 : b ≤ 1)
+    (hrate : HasDyRate (E := E) φ hφone hφzero a b) :
+    Auto.Spherical.FractalDilations.Definitions.HasFractalSphericalStrongType 2 E (1 / a) (1 / b) := by
+  obtain ⟨C, rho, hC, hrho, hrho1, hbound⟩ := hrate
+  have hapos : 0 < a := lt_trans hbpos hba
+  refine strong_type_of_rate_planar hE φ hφone hφzero hφnorm
+    (p := 1 / a) (q := 1 / b)
+    (by rw [lt_div_iff₀ hapos]; linarith)
+    (by rw [le_div_iff₀ hbpos]; linarith)
+    (one_div_lt_one_div_of_lt hbpos hba)
+    (C := ENNReal.ofReal C) (rho := ENNReal.ofReal rho)
+    ENNReal.ofReal_lt_top
+    (by
+      rw [← ENNReal.ofReal_one]
+      exact ENNReal.ofReal_lt_ofReal_iff (by norm_num) |>.mpr hrho1)
+    ?_
+  intro j hj f
+  have h := hbound j hj f
+  have hconv : ENNReal.ofReal (C * rho ^ j)
+      = ENNReal.ofReal C * ENNReal.ofReal rho ^ j := by
+    rw [ENNReal.ofReal_mul hC.le, ← ENNReal.ofReal_pow hrho.le]
+  rw [hconv] at h
+  refine ⟨?_, h⟩
+  refine ⟨(measurable_fractalDyadicBandpassMaximal E
+    (absoluteDyadicBandpass φ hφone hφzero j) f).aestronglyMeasurable, ?_⟩
+  refine lt_of_le_of_lt h ?_
+  exact ENNReal.mul_lt_top
+    (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (ENNReal.pow_lt_top ENNReal.ofReal_lt_top))
+    (f.memLp (ENNReal.ofReal (1 / a)) volume).2
+
+/-! ## Assembly of Theorem 1.1 in the plane -/
+
+open Auto.Spherical.FractalDilations.CircleMinkowski
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.ExponentGeometry
+open Auto.Spherical.FractalDilations.StrictInteriorGeometry
+open Auto.Spherical.FractalDilations.SteinSegment
+open Auto.Spherical.FractalDilations.MinkowskiDiagonal
+
+set_option maxHeartbeats 1000000 in
+/-- On and above the conjugate line the two `β`-only routes of the repository apply verbatim:
+their hypotheses do not mention `γ`. -/
+theorem strongType_planar_sum_ge_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta : ℝ} (hbeta : 0 ≤ beta)
+    (hMink : upperMinkowskiDimension E = beta)
+    {a b : ℝ} (hbpos : 0 < b) (hba : b < a) (ha1 : a < 1) (hsum : 1 ≤ a + b)
+    (hann : 2 * a < (1 - beta) * b + 1) :
+    HasFractalSphericalStrongType 2 E (1 / a) (1 / b) := by
+  have hapos : 0 < a := lt_trans hbpos hba
+  have hahalf : 1 / 2 < a := by linarith
+  have hone_a : (0 : ℝ) < 1 - a := by linarith
+  have hp1 : (1 : ℝ) < 1 / a := by
+    rw [lt_div_iff₀ hapos]
+    linarith
+  have hp2 : (1 : ℝ) / a < 2 := by
+    rw [div_lt_iff₀ hapos]
+    linarith
+  have hpq : (1 : ℝ) / a < 1 / b := one_div_lt_one_div_of_lt hbpos hba
+  have hcrit : beta < 1 / a - 1 := by
+    have h2 : (1 : ℝ) + beta < 1 / a := by
+      rw [lt_div_iff₀ hapos]
+      nlinarith
+    linarith
+  have hne : (1 : ℝ) / a - 1 ≠ 0 := by
+    have h : (0:ℝ) < 1 / a - 1 := by linarith
+    exact h.ne'
+  have hconj : (1 : ℝ) / a / (1 / a - 1) = 1 / (1 - a) := by
+    have hane : a ≠ 0 := hapos.ne'
+    have h1 : (1 : ℝ) - a ≠ 0 := hone_a.ne'
+    rw [div_eq_div_iff hne h1]
+    field_simp
+  rcases lt_or_eq_of_le hsum with hgt | heq
+  · refine q4_interior_strong_type_of_sum_gt_one (d := 2) (gamma := 0)
+      (Or.inr ⟨rfl, by norm_num⟩) hE hEne hbeta hMink hp1 hp2 hpq ?_ ?_ ?_
+    · rw [hconj]
+      exact one_div_lt_one_div_of_lt hone_a (by linarith)
+    · push_cast
+      rw [one_div_one_div, one_div_one_div]
+      nlinarith [hann]
+    · push_cast
+      linarith [hcrit]
+  · have hb : b = 1 - a := by linarith
+    refine q4_interior_strong_type_of_conjugate_output (d := 2) (gamma := 0) (beta := beta)
+      (Or.inr ⟨rfl, by norm_num⟩) hE hEne hMink hp1 hp2 hpq ?_ ?_
+    · rw [hconj, hb]
+    · have hbgt : 1 / (3 - beta) < b := by
+        rw [div_lt_iff₀ (by linarith : (0:ℝ) < 3 - beta)]
+        nlinarith [hann]
+      have hqlt : (1 : ℝ) / b < 3 - beta := by
+        rw [div_lt_iff₀ hbpos]
+        rw [div_lt_iff₀ (by linarith : (0:ℝ) < 3 - beta)] at hbgt
+        nlinarith [hbgt]
+      push_cast
+      linarith [hqlt]
+
+/-- The Stein segment in the plane, for `β < 1`. -/
+theorem strongType_planar_seg
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {beta p q : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta < 1)
+    (hMink : upperMinkowskiDimension E = beta) (hp : 0 < p)
+    (hregion : reciprocalExponentPoint p q ∈ Seg 2 beta) :
+    HasFractalSphericalStrongType 2 E p q := by
+  have hpq : p = q := reciprocal_coordinates_eq_of_mem_Seg hregion
+  subst hpq
+  obtain ⟨hpone, hcritical⟩ :=
+    one_lt_and_minkowski_critical_of_mem_Seg (by omega) hbeta hp hregion
+  have hcritical' : beta < p - 1 := by
+    norm_num at hcritical ⊢
+    exact hcritical
+  by_cases hp2 : p < 2
+  · exact circle_minkowski_diagonal_strong_type_of_upperMinkowskiDimension_eq
+      E hE hbeta hMink hpone hp2 hcritical'
+  · exact circle_minkowski_diagonal_strong_type_of_upperMinkowskiDimension_eq_ge_two
+      E hE hbeta hbeta1 hMink (le_of_not_gt hp2)
+
+
+set_option maxHeartbeats 1000000 in
+/-- **The interior of `Q(β,γ)` for `d = 2`, `γ > 1/2`.**  The diagonal gains are taken as a
+hypothesis, so that the same proof serves `β < 1` (Minkowski `Q₂`) and `β = 1` (Bourgain). -/
+theorem strongType_planar_interior
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hdiagall : ∀ (φ : SchwartzMap Pl ℂ)
+      (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+      (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0),
+      (∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1) → HasDiagGains (E := E) φ hφone hφzero beta)
+    (hregion : reciprocalExponentPoint p q ∈ interior (Q 2 beta gam)) :
+    HasFractalSphericalStrongType 2 E p q := by
+  rcases Set.eq_empty_or_nonempty E with rfl | hEne
+  · exact hasFractalSphericalStrongType_empty 2 p q
+  have hgamnn : (0 : ℝ) ≤ gam := by linarith
+  have htrans := strict_second_lt_first_of_mem_interior_Q (d := 2) (by omega) hbeta1 hgamnn
+    hregion
+  have hcap := strict_first_lt_natCast_mul_second_of_mem_interior_Q (d := 2) (by omega) hbeta
+    hbeta1 hgamnn hregion
+  have hannraw := strict_annulus_of_mem_interior_Q (d := 2) (by omega) hbeta hbg hbeta1 hregion
+  have hcluraw := strict_clusterEdgeFunctional_of_mem_interior_Q (d := 2) (by omega) hbeta
+    hbeta1 hbg hregion
+  have ha1raw := strict_first_lt_one_of_mem_interior_Q (d := 2) (by omega) hbeta hbeta1 hbg
+    hregion
+  have hqpos : 0 < q := lt_of_lt_of_le zero_lt_one hq
+  set a : ℝ := p⁻¹ with hadef
+  set b : ℝ := q⁻¹ with hbdef
+  have hbpos : 0 < b := by rw [hbdef]; positivity
+  have hb1 : b ≤ 1 := by
+    rw [hbdef, inv_le_one_iff₀]
+    right
+    exact hq
+  have hba : b < a := htrans
+  have hab : a < 2 * b := by
+    have h : a < ((2:ℕ):ℝ) * b := hcap
+    push_cast at h
+    exact h
+  have hann : 2 * a < (1 - beta) * b + 1 := by
+    have h : ((2:ℕ):ℝ) * a < (1 - beta) * b + (((2:ℕ):ℝ) - 1) := hannraw
+    push_cast at h
+    linarith
+  have hclu : 0 < beta / gam / 2 + (2 - beta - beta / gam / 2) * b
+      - (1 + beta / gam / 2) * a := by
+    have h : 0 < Auto.Spherical.FractalDilations.ExponentGeometry.clusterEdgeFunctional
+        2 (beta / gam) beta (a, b) := hcluraw
+    rw [Auto.Spherical.FractalDilations.ExponentGeometry.clusterEdgeFunctional] at h
+    push_cast at h
+    have hform : beta / gam / 2 * ((2 : ℝ) - 1)
+        + ((2 : ℝ) - beta - ((2 : ℝ) - 1) * (beta / gam) / 2) * b
+        - (1 + beta / gam / 2 * ((2 : ℝ) - 1)) * a
+        = beta / gam / 2 + (2 - beta - beta / gam / 2) * b
+          - (1 + beta / gam / 2) * a := by ring
+    linarith [h]
+  have ha1 : a < 1 := ha1raw
+  have hpa : (1 : ℝ) / a = p := by
+    rw [hadef, one_div, inv_inv]
+  have hqb : (1 : ℝ) / b = q := by
+    rw [hbdef, one_div, inv_inv]
+  rcases lt_or_ge (a + b) 1 with hsum | hsum
+  · obtain ⟨φ, psi, hφone, hφzero, hφnorm, hφrad, hpsi, -⟩ :=
+      exists_normRadial_smooth_absolute_dyadic_bandpass_family 2
+    have hrate := exists_rate_interior hE hEne hbeta hbeta1 hbg hMink hquasi hgam1 hgam2
+      φ psi hφone hφzero hφnorm hφrad hpsi (hdiagall φ hφone hφzero hφnorm)
+      hbpos hba hab hsum hann hclu
+    have h := strongType_of_hasDyRate hE φ hφone hφzero hφnorm hbpos hba ha1 hb1 hrate
+    rw [hpa, hqb] at h
+    exact h
+  · have h := strongType_planar_sum_ge_one hE hEne hbeta hMink hbpos hba ha1 hsum hann
+    rw [hpa, hqb] at h
+    exact h
+
+/-- **Theorem 1.1 of Roos--Seeger in the plane, for `β < 1`.** -/
+theorem theorem_one_planar_of_beta_lt_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbeta1 : beta < 1) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ R 2 beta gam) :
+    HasFractalSphericalStrongType 2 E p q := by
+  rcases hregion with hseg | hint
+  · exact strongType_planar_seg hE hbeta hbeta1 hMink hp hseg
+  · refine strongType_planar_interior hE hbeta hbeta1.le hbg hgam2 hMink hquasi hgam1 hp hq
+      ?_ hint
+    intro φ hφone hφzero hφnorm
+    rcases Set.eq_empty_or_nonempty E with rfl | hEne
+    · intro s hs hsbeta
+      refine ⟨1, 1 / 2, by norm_num, by norm_num, by norm_num, ?_⟩
+      intro j hj f
+      have hzero : Mdy (E := (∅ : Set ℝ)) φ hφone hφzero j f = 0 := by
+        funext x
+        simp [Mdy, fractalDyadicBandpassMaximal, fractalSphericalMaximalReal,
+          fractalSphericalMaximal]
+      rw [hzero]
+      simp
+    · obtain ⟨psi, hpsi⟩ : ∃ psi : SchwartzMap Pl ℂ, ∀ ξ : Pl,
+          psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ) :=
+        Auto.Spherical.SchwartzData.exists_schwartzMap_smooth_dyadic_bandpass φ 0
+      exact hasDiagGains_of_beta_lt_one hE hEne hbeta hbeta1 hMink φ psi hφone hφzero
+        hφnorm hpsi
+
+/-! ## Bourgain's circular maximal theorem and the case `β = 1`
+
+For `β = 1` the Minkowski gains of the previous section are unavailable (`Q₂` needs `β < 1`, and
+`Q₃` needs `q < 3 - β = 2` while the region forces `q > 2`).  The paper covers this case by
+Bourgain's circular maximal theorem in its local-smoothing form, which the repository proves
+unconditionally (`Auto.Spherical.Bourgain.bourgainCircularMaximal`, and in band form
+`Auto.Spherical.Bourgain.HasRelativeCircularBandGeometricDecay`).  The band form is stated for the
+*radius-relative* Littlewood--Paley band; the diagonal gains needed by the covering are for the
+*absolute* band.  The conversion is carried out in this section: for `r ∈ [1,2]` four relative
+bands sum to one on the support of the absolute band, so the absolute band maximal operator is
+dominated by four relative ones applied to the band projection, whose `Lᵖ` norm is controlled
+uniformly in the band index by Young's inequality. -/
+
+/-! ### Young's inequality in `Lᵖ` for a convolution with an `L¹` kernel -/
+
+/-- Hölder factorization of a product against a weight. -/
+theorem rs_ennreal_weighted_factor_of_holder
+    {p r : ℝ} (hpq : r.HolderConjugate p) (a b : ENNReal) :
+    a * b = a ^ r⁻¹ * (a * b ^ p) ^ p⁻¹ := by
+  have hp0 : 0 < p := hpq.symm.pos
+  have hbinv : (b ^ p) ^ p⁻¹ = b := by
+    calc
+      (b ^ p) ^ p⁻¹ = b ^ (p * p⁻¹) := (ENNReal.rpow_mul _ _ _).symm
+      _ = b := by rw [mul_inv_cancel₀ hp0.ne', ENNReal.rpow_one]
+  rw [ENNReal.mul_rpow_of_nonneg _ _ hpq.symm.inv_nonneg]
+  rw [hbinv]
+  calc
+    a * b = a ^ (r⁻¹ + p⁻¹) * b := by rw [hpq.inv_add_inv_eq_one, ENNReal.rpow_one]
+    _ = (a ^ r⁻¹ * a ^ p⁻¹) * b := by
+      rw [ENNReal.rpow_add_of_nonneg _ _ hpq.inv_nonneg hpq.symm.inv_nonneg]
+    _ = a ^ r⁻¹ * (a ^ p⁻¹ * b) := by ring
+
+/-- The pointwise Hölder step of Young's inequality. -/
+theorem rs_lintegral_spatial_p_pointwise
+    (p r : ℝ) (hpq : r.HolderConjugate p) (K q : Pl → ENNReal)
+    (hK : Measurable K) (hq : Measurable q) (x : Pl) :
+    (∫⁻ y : Pl, K y * q (x - y)) ^ p ≤
+      (∫⁻ y : Pl, K y) ^ (p - 1) * ∫⁻ y : Pl, K y * q (x - y) ^ p := by
+  have hp0 : 0 < p := hpq.symm.pos
+  have hr0 : 0 < r := hpq.pos
+  let a : Pl → ENNReal := fun y => K y ^ r⁻¹
+  let b : Pl → ENNReal := fun y => (K y * q (x - y) ^ p) ^ p⁻¹
+  have ha : AEMeasurable a volume := (hK.pow measurable_const).aemeasurable
+  have hqx : Measurable (fun y : Pl => q (x - y)) :=
+    hq.comp (measurable_const.sub measurable_id)
+  have hb : AEMeasurable b volume :=
+    ((hK.mul (hqx.pow measurable_const)).pow measurable_const).aemeasurable
+  have hholder := ENNReal.lintegral_mul_le_Lp_mul_Lq volume hpq ha hb
+  have hleft : (∫⁻ y : Pl, (a * b) y) = ∫⁻ y : Pl, K y * q (x - y) := by
+    apply lintegral_congr
+    intro y
+    simp only [a, b, Pi.mul_apply]
+    exact (rs_ennreal_weighted_factor_of_holder hpq (K y) (q (x - y))).symm
+  have hfirst : (∫⁻ y : Pl, a y ^ r) = ∫⁻ y : Pl, K y := by
+    apply lintegral_congr
+    intro y
+    simp only [a]
+    rw [← ENNReal.rpow_mul, inv_mul_cancel₀ hr0.ne', ENNReal.rpow_one]
+  have hsecond : (∫⁻ y : Pl, b y ^ p) = ∫⁻ y : Pl, K y * q (x - y) ^ p := by
+    apply lintegral_congr
+    intro y
+    simp only [b]
+    rw [← ENNReal.rpow_mul, inv_mul_cancel₀ hp0.ne', ENNReal.rpow_one]
+  have hholder2 :
+      (∫⁻ y : Pl, K y * q (x - y)) ≤
+        (∫⁻ y : Pl, K y) ^ r⁻¹ * (∫⁻ y : Pl, K y * q (x - y) ^ p) ^ p⁻¹ := by
+    rw [hleft, hfirst, hsecond] at hholder
+    simpa only [one_div] using hholder
+  have hrp : r⁻¹ * p = p - 1 := by
+    rw [← hpq.symm.one_sub_inv]
+    field_simp [hp0.ne']
+  have hpow := ENNReal.rpow_le_rpow hholder2 hp0.le
+  calc
+    (∫⁻ y : Pl, K y * q (x - y)) ^ p ≤
+        ((∫⁻ y : Pl, K y) ^ r⁻¹ *
+          (∫⁻ y : Pl, K y * q (x - y) ^ p) ^ p⁻¹) ^ p := hpow
+    _ = (∫⁻ y : Pl, K y) ^ (p - 1) * ∫⁻ y : Pl, K y * q (x - y) ^ p := by
+      rw [ENNReal.mul_rpow_of_nonneg _ _ hp0.le]
+      rw [← ENNReal.rpow_mul, ← ENNReal.rpow_mul, hrp,
+        inv_mul_cancel₀ hp0.ne', ENNReal.rpow_one]
+
+/-- Young's inequality for the moment of a positive-kernel convolution. -/
+theorem rs_lintegral_spatial_p_young
+    (p r : ℝ) (hpq : r.HolderConjugate p) (K q : Pl → ENNReal)
+    (hK : Measurable K) (hq : Measurable q) :
+    ∫⁻ x : Pl, (∫⁻ y : Pl, K y * q (x - y)) ^ p ≤
+      (∫⁻ y : Pl, K y) ^ p * ∫⁻ x : Pl, q x ^ p := by
+  have hp0 : 0 < p := hpq.symm.pos
+  have hpone : 1 ≤ p := hpq.symm.lt.le
+  let H : Pl × Pl → ENNReal := fun z => K z.2 * q (z.1 - z.2) ^ p
+  have hH : Measurable H :=
+    (hK.comp measurable_snd).mul
+      ((hq.comp (measurable_fst.sub measurable_snd)).pow measurable_const)
+  have hinner : Measurable (fun x : Pl => ∫⁻ y : Pl, K y * q (x - y) ^ p) :=
+    hH.lintegral_prod_right
+  have htranslate (y : Pl) : (∫⁻ x : Pl, q (x - y) ^ p) = ∫⁻ x : Pl, q x ^ p :=
+    (measurePreserving_sub_right (volume : Measure Pl) y).lintegral_comp
+      (hq.pow measurable_const)
+  have hdouble :
+      (∫⁻ x : Pl, ∫⁻ y : Pl, K y * q (x - y) ^ p) =
+        (∫⁻ y : Pl, K y) * ∫⁻ x : Pl, q x ^ p := by
+    calc
+      (∫⁻ x : Pl, ∫⁻ y : Pl, K y * q (x - y) ^ p) =
+          ∫⁻ y : Pl, ∫⁻ x : Pl, K y * q (x - y) ^ p :=
+        lintegral_lintegral_swap hH.aemeasurable
+      _ = ∫⁻ y : Pl, K y * (∫⁻ x : Pl, q (x - y) ^ p) := by
+        apply lintegral_congr
+        intro y
+        simpa only [Function.comp_apply, Pi.sub_apply, id_eq] using
+          (lintegral_const_mul (K y)
+            ((hq.comp (measurable_id.sub measurable_const)).pow measurable_const))
+      _ = ∫⁻ y : Pl, K y * (∫⁻ x : Pl, q x ^ p) := by
+        apply lintegral_congr
+        intro y
+        rw [htranslate y]
+      _ = (∫⁻ y : Pl, K y) * ∫⁻ x : Pl, q x ^ p := lintegral_mul_const _ hK
+  calc
+    (∫⁻ x : Pl, (∫⁻ y : Pl, K y * q (x - y)) ^ p) ≤
+        ∫⁻ x : Pl, (∫⁻ y : Pl, K y) ^ (p - 1) *
+          (∫⁻ y : Pl, K y * q (x - y) ^ p) := by
+      apply lintegral_mono
+      intro x
+      exact rs_lintegral_spatial_p_pointwise p r hpq K q hK hq x
+    _ = (∫⁻ y : Pl, K y) ^ (p - 1) *
+        (∫⁻ x : Pl, ∫⁻ y : Pl, K y * q (x - y) ^ p) := by
+      rw [lintegral_const_mul _ hinner]
+    _ = (∫⁻ y : Pl, K y) ^ (p - 1) *
+        ((∫⁻ y : Pl, K y) * ∫⁻ x : Pl, q x ^ p) := by rw [hdouble]
+    _ = (∫⁻ y : Pl, K y) ^ p * ∫⁻ x : Pl, q x ^ p := by
+      calc
+        (∫⁻ y : Pl, K y) ^ (p - 1) * ((∫⁻ y : Pl, K y) * ∫⁻ x : Pl, q x ^ p) =
+            ((∫⁻ y : Pl, K y) ^ (p - 1) * (∫⁻ y : Pl, K y) ^ (1 : ℝ)) *
+              ∫⁻ x : Pl, q x ^ p := by
+          rw [ENNReal.rpow_one]; ring
+        _ = (∫⁻ y : Pl, K y) ^ ((p - 1) + 1) * ∫⁻ x : Pl, q x ^ p := by
+          rw [← ENNReal.rpow_add_of_nonneg _ _ (sub_nonneg.mpr hpone)
+            (by norm_num : (0 : ℝ) ≤ 1)]
+        _ = (∫⁻ y : Pl, K y) ^ p * ∫⁻ x : Pl, q x ^ p := by
+          congr 2
+          ring
+
+/-- The `Lᵖ` Young inequality for a convolution with an `L¹` kernel. -/
+theorem rs_eLpNorm_convolution_le
+    (p : ℝ) (hp : 1 < p) (K f : Pl → ℂ) (hK : Measurable K) (hf : Measurable f) :
+    eLpNorm (K ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] f) (ENNReal.ofReal p) volume ≤
+      (∫⁻ y : Pl, ‖K y‖ₑ) * eLpNorm f (ENNReal.ofReal p) volume := by
+  have hp0 : 0 < p := lt_trans zero_lt_one hp
+  have hpq : p.conjExponent.HolderConjugate p :=
+    (Real.HolderConjugate.conjExponent hp).symm
+  have hpoint (x : Pl) :
+      ‖(K ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] f) x‖ₑ ≤
+        ∫⁻ y : Pl, ‖K y‖ₑ * ‖f (x - y)‖ₑ := by
+    change ‖∫ y : Pl, K y * f (x - y)‖ₑ ≤ _
+    calc
+      ‖∫ y : Pl, K y * f (x - y)‖ₑ ≤ ∫⁻ y : Pl, ‖K y * f (x - y)‖ₑ :=
+        enorm_integral_le_lintegral_enorm _
+      _ = ∫⁻ y : Pl, ‖K y‖ₑ * ‖f (x - y)‖ₑ := by
+        apply lintegral_congr
+        intro y
+        rw [enorm_mul]
+  have hmoment :
+      (∫⁻ x : Pl, ‖(K ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] f) x‖ₑ ^ p) ≤
+        (∫⁻ y : Pl, ‖K y‖ₑ) ^ p * ∫⁻ x : Pl, ‖f x‖ₑ ^ p := by
+    calc
+      (∫⁻ x : Pl, ‖(K ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] f) x‖ₑ ^ p) ≤
+          ∫⁻ x : Pl, (∫⁻ y : Pl, ‖K y‖ₑ * ‖f (x - y)‖ₑ) ^ p := by
+        apply lintegral_mono
+        intro x
+        exact ENNReal.rpow_le_rpow (hpoint x) (by positivity)
+      _ ≤ (∫⁻ y : Pl, ‖K y‖ₑ) ^ p * ∫⁻ x : Pl, ‖f x‖ₑ ^ p :=
+        rs_lintegral_spatial_p_young p p.conjExponent hpq
+          (fun y => ‖K y‖ₑ) (fun x => ‖f x‖ₑ) hK.enorm hf.enorm
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+  simp only [ENNReal.toReal_ofReal hp0.le, one_div]
+  have hstep := ENNReal.rpow_le_rpow hmoment (by positivity : (0:ℝ) ≤ p⁻¹)
+  calc
+    (∫⁻ x : Pl, ‖(K ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] f) x‖ₑ ^ p) ^ p⁻¹ ≤
+        ((∫⁻ y : Pl, ‖K y‖ₑ) ^ p * ∫⁻ x : Pl, ‖f x‖ₑ ^ p) ^ p⁻¹ := hstep
+    _ = (∫⁻ y : Pl, ‖K y‖ₑ) * (∫⁻ x : Pl, ‖f x‖ₑ ^ p) ^ p⁻¹ := by
+      rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:ℝ) ≤ p⁻¹)]
+      congr 1
+      rw [← ENNReal.rpow_mul, mul_inv_cancel₀ hp0.ne', ENNReal.rpow_one]
+
+open Auto.Spherical.SmoothDyadicPhysicalCore
+
+/-! ### The band projection is bounded on `Lᵖ`, uniformly in the band index -/
+
+/-- The dilation of a Schwartz function by a nonzero factor. -/
+def dilS (u : ℝ) (hu : u ≠ 0) (φ : SchwartzMap Pl ℂ) : SchwartzMap Pl ℂ :=
+  (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ
+    (ContinuousLinearEquiv.smulLeft (Units.mk0 u hu))) φ
+
+theorem dilS_apply (u : ℝ) (hu : u ≠ 0) (φ : SchwartzMap Pl ℂ) (ξ : Pl) :
+    dilS u hu φ ξ = φ (u • ξ) := by
+  change φ ((ContinuousLinearEquiv.smulLeft (Units.mk0 u hu)) ξ) = _
+  simp
+
+/-- The `L¹` mass of the physical low-pass kernel. -/
+def lowpassMass (φ : SchwartzMap Pl ℂ) : ℝ :=
+  ∫ y : Pl, ‖(𝓕⁻ φ : SchwartzMap Pl ℂ) y‖
+
+theorem lowpassMass_nonneg (φ : SchwartzMap Pl ℂ) : 0 ≤ lowpassMass φ := by
+  rw [lowpassMass]
+  exact integral_nonneg fun y => norm_nonneg _
+
+/-- A smooth low-pass projection is bounded on `Lᵖ` by the kernel mass, uniformly in the
+frequency scale. -/
+theorem rs_eLpNorm_lowpass_le (φ f : SchwartzMap Pl ℂ) {R : ℝ} (hR : 0 < R)
+    {p : ℝ} (hp : 1 < p) :
+    eLpNorm (fun x : Pl => 𝓕⁻ (fun ξ : Pl => φ (R⁻¹ • ξ) * 𝓕 (f : Pl → ℂ) ξ) x)
+        (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+  set A : Pl ≃L[ℝ] Pl := ContinuousLinearEquiv.smulLeft (Units.mk0 R hR.ne') with hA
+  set kS : SchwartzMap Pl ℂ :=
+    (R ^ (2 : ℕ)) • (SchwartzMap.compCLMOfContinuousLinearEquiv ℂ A) (𝓕⁻ φ) with hkS
+  have hk (y : Pl) :
+      kS y = (R ^ (2 : ℕ)) • ((𝓕⁻ φ : SchwartzMap Pl ℂ) : Pl → ℂ) (R • y) := by
+    rw [hkS]
+    change (R ^ (2 : ℕ)) • (𝓕⁻ φ : SchwartzMap Pl ℂ) (A y) = _
+    simp [hA]
+  have hfun : (fun x : Pl => 𝓕⁻ (fun ξ : Pl => φ (R⁻¹ • ξ) * 𝓕 (f : Pl → ℂ) ξ) x)
+      = ((kS : Pl → ℂ) ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Pl → ℂ)) := by
+    funext x
+    rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hR x]
+    exact congrArg
+      (fun K : Pl → ℂ => (K ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] (f : Pl → ℂ)) x)
+      (funext fun y => (hk y).symm)
+  rw [hfun]
+  refine le_trans (rs_eLpNorm_convolution_le p hp (kS : Pl → ℂ) (f : Pl → ℂ)
+    kS.continuous.measurable f.continuous.measurable) ?_
+  have hmass : (∫⁻ y : Pl, ‖kS y‖ₑ) = ENNReal.ofReal (lowpassMass φ) := by
+    rw [← ofReal_integral_norm_eq_lintegral_enorm kS.integrable]
+    congr 1
+    rw [lowpassMass]
+    calc
+      (∫ y : Pl, ‖kS y‖) =
+          ∫ y : Pl, ‖(R ^ (2 : ℕ)) • ((𝓕⁻ φ : SchwartzMap Pl ℂ) : Pl → ℂ) (R • y)‖ := by
+        apply integral_congr_ae
+        filter_upwards with y
+        rw [hk y]
+      _ = ∫ y : Pl, ‖((𝓕⁻ φ : SchwartzMap Pl ℂ) : Pl → ℂ) y‖ :=
+        integral_norm_dilate_eq 2 _ hR
+  rw [hmass]
+
+/-- The absolute dyadic band projection is bounded on `Lᵖ`, uniformly in the band index. -/
+theorem rs_eLpNorm_absoluteDyadicBandpassProjection_le
+    (φ : SchwartzMap Pl ℂ) (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → φ ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → φ ξ = 0) {p : ℝ} (hp : 1 < p) (j : ℕ)
+    (f : SchwartzMap Pl ℂ) :
+    eLpNorm ((dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero j) f : Pl → ℂ))
+        (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (2 * lowpassMass φ) *
+        eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+  have hRone : (0 : ℝ) < (2 : ℝ) ^ (j + 1) := by positivity
+  have hRzero : (0 : ℝ) < (2 : ℝ) ^ j := by positivity
+  set AS : SchwartzMap Pl ℂ :=
+    dyadicBandpassProjection (dilS (((2 : ℝ) ^ (j + 1))⁻¹) (inv_ne_zero hRone.ne') φ) f with hAS
+  set BS : SchwartzMap Pl ℂ :=
+    dyadicBandpassProjection (dilS (((2 : ℝ) ^ j)⁻¹) (inv_ne_zero hRzero.ne') φ) f with hBS
+  have hASapply (x : Pl) :
+      AS x = 𝓕⁻ (fun ξ : Pl => φ ((((2 : ℝ) ^ (j + 1))⁻¹) • ξ) * 𝓕 (f : Pl → ℂ) ξ) x := by
+    rw [hAS, dyadicBandpassProjection_apply]
+    apply congrArg (fun h : Pl → ℂ => 𝓕⁻ h x)
+    funext ξ
+    rw [dilS_apply]
+  have hBSapply (x : Pl) :
+      BS x = 𝓕⁻ (fun ξ : Pl => φ ((((2 : ℝ) ^ j)⁻¹) • ξ) * 𝓕 (f : Pl → ℂ) ξ) x := by
+    rw [hBS, dyadicBandpassProjection_apply]
+    apply congrArg (fun h : Pl → ℂ => 𝓕⁻ h x)
+    funext ξ
+    rw [dilS_apply]
+  have hsplit :
+      ((dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero j) f : Pl → ℂ))
+        = ((AS : Pl → ℂ) - (BS : Pl → ℂ)) := by
+    funext x
+    have hspec := fun ξ : Pl => absoluteDyadicBandpass_spec φ hφone hφzero j ξ
+    rw [dyadicBandpassProjection_apply]
+    have hmult :
+        (fun ξ : Pl => (absoluteDyadicBandpass φ hφone hφzero j) ξ * 𝓕 (f : Pl → ℂ) ξ)
+          = fun ξ : Pl =>
+            (φ ((((2 : ℝ) ^ (j + 1))⁻¹) • ξ) - φ ((((2 : ℝ) ^ j)⁻¹) • ξ)) *
+              𝓕 (f : Pl → ℂ) ξ := by
+      funext ξ
+      rw [hspec ξ]
+    rw [hmult]
+    rw [fourierInv_smooth_dyadic_bandpass_multiplier_eq_sub_convolution φ f j x]
+    rw [Pi.sub_apply, hASapply x, hBSapply x]
+    rw [fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hRone x,
+      fourierInv_scaled_schwartz_multiplier_eq_convolution φ f hRzero x]
+  rw [hsplit]
+  have hpone : (1 : ENNReal) ≤ ENNReal.ofReal p := by
+    rw [show (1 : ENNReal) = ENNReal.ofReal 1 by simp]
+    exact ENNReal.ofReal_le_ofReal hp.le
+  have hAmeas : AEStronglyMeasurable ((AS : Pl → ℂ)) volume :=
+    AS.continuous.aestronglyMeasurable
+  have hBmeas : AEStronglyMeasurable ((BS : Pl → ℂ)) volume :=
+    BS.continuous.aestronglyMeasurable
+  have hA : eLpNorm ((AS : Pl → ℂ)) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+    have hfun : ((AS : Pl → ℂ)) =
+        fun x : Pl => 𝓕⁻ (fun ξ : Pl =>
+          φ ((((2 : ℝ) ^ (j + 1))⁻¹) • ξ) * 𝓕 (f : Pl → ℂ) ξ) x := by
+      funext x
+      exact hASapply x
+    rw [hfun]
+    exact rs_eLpNorm_lowpass_le φ f hRone hp
+  have hB : eLpNorm ((BS : Pl → ℂ)) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+    have hfun : ((BS : Pl → ℂ)) =
+        fun x : Pl => 𝓕⁻ (fun ξ : Pl =>
+          φ ((((2 : ℝ) ^ j)⁻¹) • ξ) * 𝓕 (f : Pl → ℂ) ξ) x := by
+      funext x
+      exact hBSapply x
+    rw [hfun]
+    exact rs_eLpNorm_lowpass_le φ f hRzero hp
+  calc
+    eLpNorm ((AS : Pl → ℂ) - (BS : Pl → ℂ)) (ENNReal.ofReal p) volume ≤
+        eLpNorm ((AS : Pl → ℂ)) (ENNReal.ofReal p) volume +
+          eLpNorm ((BS : Pl → ℂ)) (ENNReal.ofReal p) volume :=
+      eLpNorm_sub_le hAmeas hBmeas hpone
+    _ ≤ ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume +
+        ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume :=
+      add_le_add hA hB
+    _ = ENNReal.ofReal (2 * lowpassMass φ) *
+        eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+      rw [← add_mul]
+      congr 1
+      rw [← ENNReal.ofReal_add (lowpassMass_nonneg φ) (lowpassMass_nonneg φ)]
+      congr 1
+      ring
+
+open Auto.Spherical.PowerWeights.LocalizedUpper
+
+/-! ### The absolute band maximal operator is dominated by four relative bands -/
+
+/-- Additivity of the spherical average on continuous data. -/
+theorem rs_sphericalAverage_add (g h : Pl → ℂ) (hg : Continuous g) (hh : Continuous h)
+    (r : ℝ) (x : Pl) :
+    sphericalAverage 2 (g + h) r x = sphericalAverage 2 g r x + sphericalAverage 2 h r x := by
+  have hint (k : Pl → ℂ) (hk : Continuous k) : Integrable
+      (fun ω : Metric.sphere (0 : Pl) 1 => k (x + r • (ω : Pl))) (unitSurfaceMeasure 2) := by
+    apply Continuous.integrable_of_hasCompactSupport
+    · exact hk.comp
+        ((continuous_const : Continuous fun _ : Metric.sphere (0 : Pl) 1 => x).add
+          ((continuous_const : Continuous fun _ : Metric.sphere (0 : Pl) 1 => r).smul
+            continuous_subtype_val))
+    · exact HasCompactSupport.of_compactSpace _
+  unfold Auto.Spherical.SurfaceCore.sphericalAverage
+  change ∫ ω : Metric.sphere (0 : Pl) 1,
+    (g (x + r • (ω : Pl)) + h (x + r • (ω : Pl))) ∂unitSurfaceMeasure 2 = _
+  rw [MeasureTheory.integral_add (hint g hg) (hint h hh)]
+
+/-- The Fourier transform of a dyadic band projection. -/
+theorem rs_fourier_dyadicBandpassProjection (ψ f : SchwartzMap Pl ℂ) (ξ : Pl) :
+    𝓕 ((dyadicBandpassProjection ψ f : Pl → ℂ)) ξ = ψ ξ * 𝓕 (f : Pl → ℂ) ξ := by
+  unfold dyadicBandpassProjection
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  rw [SchwartzMap.smulLeftCLM_apply ψ.hasTemperateGrowth, SchwartzMap.fourier_coe]
+  simp only [smul_eq_mul]
+
+/-- For radii in `[1,2]` the absolute dyadic band of index `m+1` is covered by the four
+radius-relative bands of indices `m, …, m+3`; hence the absolute band maximal operator is
+dominated by the corresponding four relative band operators applied to the band projection. -/
+theorem rs_fractalDyadicBandpass_maximal_le_relative
+    (C : Auto.Spherical.LittlewoodPaley.lpCutoffs 2)
+    (φ : SchwartzMap Pl ℂ) (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → φ ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → φ ξ = 0)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (m : ℕ)
+    (f : SchwartzMap Pl ℂ) (x : Pl) :
+    fractalSphericalMaximal 2 E
+        ((dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero (m + 1)) f :
+          Pl → ℂ)) x ≤
+      ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff m
+            (dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero (m + 1)) f) x +
+          restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff (m + 1)
+            (dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero (m + 1)) f) x +
+          restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff (m + 2)
+            (dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero (m + 1)) f) x +
+          restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff (m + 3)
+            (dyadicBandpassProjection (absoluteDyadicBandpass φ hφone hφzero (m + 1)) f) x) := by
+  set psi : SchwartzMap Pl ℂ := absoluteDyadicBandpass φ hφone hφzero (m + 1) with hpsidef
+  set g : SchwartzMap Pl ℂ := dyadicBandpassProjection psi f with hgdef
+  have hsurf : (0 : ℝ) < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  refine iSup_le fun tt => ?_
+  obtain ⟨t, ht⟩ := tt
+  have hmem := hE ht
+  have ht1 : (1 : ℝ) ≤ t := hmem.1
+  have ht2 : t ≤ 2 := hmem.2
+  have htpos : (0 : ℝ) < t := lt_of_lt_of_le zero_lt_one ht1
+  have hune : ∀ k : ℕ, (((2 : ℝ) ^ k)⁻¹ * t) ≠ 0 := by
+    intro k
+    have hpos : (0 : ℝ) < ((2 : ℝ) ^ k)⁻¹ * t := by positivity
+    exact hpos.ne'
+  -- the relative band multipliers at radius `t`
+  set H : ℕ → SchwartzMap Pl ℂ := fun k =>
+    dilS ((((2 : ℝ) ^ (k + 1))⁻¹) * t) (hune (k + 1)) C.cutoff -
+      dilS ((((2 : ℝ) ^ k)⁻¹) * t) (hune k) C.cutoff with hHdef
+  have hH (k : ℕ) (ξ : Pl) :
+      H k ξ = C.cutoff ((((2 : ℝ) ^ (k + 1))⁻¹) • (t • ξ)) -
+        C.cutoff ((((2 : ℝ) ^ k)⁻¹) • (t • ξ)) := by
+    rw [hHdef]
+    simp only [sub_apply, dilS_apply, smul_smul]
+  -- the Fourier transform of the band projection
+  have hfg (ξ : Pl) : 𝓕 ((g : Pl → ℂ)) ξ = psi ξ * 𝓕 (f : Pl → ℂ) ξ := by
+    rw [hgdef]
+    exact rs_fourier_dyadicBandpassProjection psi f ξ
+  -- the four relative bands sum to one on the support of the absolute band
+  have hsumH (ξ : Pl) :
+      (H m ξ + H (m + 1) ξ + H (m + 2) ξ + H (m + 3) ξ) * 𝓕 ((g : Pl → ℂ)) ξ =
+        𝓕 ((g : Pl → ℂ)) ξ := by
+    by_cases hz : psi ξ = 0
+    · rw [hfg ξ, hz, zero_mul, mul_zero]
+    · have hlow : (2 : ℝ) ^ (m + 1) < ‖ξ‖ := by
+        by_contra hcon
+        exact hz (by
+          rw [hpsidef, absoluteDyadicBandpass_spec φ hφone hφzero (m + 1) ξ]
+          exact smooth_dyadic_bandpass_eq_zero_of_norm_le hφone (le_of_not_gt hcon))
+      have hhigh : ‖ξ‖ < (2 : ℝ) ^ (m + 3) := by
+        by_contra hcon
+        exact hz (by
+          rw [hpsidef, absoluteDyadicBandpass_spec φ hφone hφzero (m + 1) ξ]
+          exact smooth_dyadic_bandpass_eq_zero_of_le_norm hφzero (le_of_not_gt hcon))
+      have hnormt : ‖t • ξ‖ = t * ‖ξ‖ := by
+        rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg htpos.le]
+      have hone : C.cutoff ((((2 : ℝ) ^ (m + 4))⁻¹) • (t • ξ)) = 1 := by
+        apply C.cutoff_one
+        rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (by positivity : (0:ℝ) ≤ (((2:ℝ) ^ (m+4))⁻¹)),
+          hnormt]
+        rw [inv_mul_le_iff₀ (by positivity : (0:ℝ) < (2:ℝ) ^ (m + 4))]
+        have hmul : t * ‖ξ‖ ≤ 2 * (2 : ℝ) ^ (m + 3) := by
+          have h1 : t * ‖ξ‖ ≤ 2 * ‖ξ‖ := by
+            have hnn : (0:ℝ) ≤ ‖ξ‖ := norm_nonneg _
+            nlinarith
+          nlinarith [hhigh, norm_nonneg ξ]
+        have hpow : (2 : ℝ) * (2 : ℝ) ^ (m + 3) = (2 : ℝ) ^ (m + 4) := by
+          rw [show m + 4 = (m + 3) + 1 from rfl, pow_succ]
+          ring
+        calc t * ‖ξ‖ ≤ 2 * (2 : ℝ) ^ (m + 3) := hmul
+          _ = (2 : ℝ) ^ (m + 4) := hpow
+          _ = (2 : ℝ) ^ (m + 4) * 1 := by ring
+      have hzero : C.cutoff ((((2 : ℝ) ^ m)⁻¹) • (t • ξ)) = 0 := by
+        apply C.cutoff_zero
+        rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (by positivity : (0:ℝ) ≤ (((2:ℝ) ^ m)⁻¹)),
+          hnormt]
+        rw [le_inv_mul_iff₀ (by positivity : (0:ℝ) < (2:ℝ) ^ m)]
+        have hpow : (2 : ℝ) ^ m * 2 = (2 : ℝ) ^ (m + 1) := by
+          rw [pow_succ]
+        have h1 : (2 : ℝ) ^ (m + 1) ≤ t * ‖ξ‖ := by
+          nlinarith [hlow, ht1, norm_nonneg ξ]
+        calc (2 : ℝ) ^ m * 2 = (2 : ℝ) ^ (m + 1) := hpow
+          _ ≤ t * ‖ξ‖ := h1
+      have htel : H m ξ + H (m + 1) ξ + H (m + 2) ξ + H (m + 3) ξ = 1 := by
+        rw [hH m ξ, hH (m + 1) ξ, hH (m + 2) ξ, hH (m + 3) ξ]
+        have e1 : m + 1 + 1 = m + 2 := rfl
+        have e2 : m + 2 + 1 = m + 3 := rfl
+        have e3 : m + 3 + 1 = m + 4 := rfl
+        rw [e1, e2, e3, hone, hzero]
+        ring
+      rw [htel, one_mul]
+  -- the four band projections of `g`
+  set gk : ℕ → SchwartzMap Pl ℂ := fun k => dyadicBandpassProjection (H k) g with hgkdef
+  have hfourier_gk (k : ℕ) (ξ : Pl) :
+      𝓕 ((gk k : Pl → ℂ)) ξ = H k ξ * 𝓕 ((g : Pl → ℂ)) ξ := by
+    rw [hgkdef]
+    exact rs_fourier_dyadicBandpassProjection (H k) g ξ
+  have hsplitS : gk m + gk (m + 1) + gk (m + 2) + gk (m + 3) = g := by
+    have hmult : SchwartzMap.smulLeftCLM ℂ ((H m : Pl → ℂ)) (𝓕 g) +
+          SchwartzMap.smulLeftCLM ℂ ((H (m + 1) : Pl → ℂ)) (𝓕 g) +
+          SchwartzMap.smulLeftCLM ℂ ((H (m + 2) : Pl → ℂ)) (𝓕 g) +
+          SchwartzMap.smulLeftCLM ℂ ((H (m + 3) : Pl → ℂ)) (𝓕 g) = 𝓕 g := by
+      ext ξ
+      simp only [add_apply,
+        SchwartzMap.smulLeftCLM_apply (H m).hasTemperateGrowth,
+        SchwartzMap.smulLeftCLM_apply (H (m + 1)).hasTemperateGrowth,
+        SchwartzMap.smulLeftCLM_apply (H (m + 2)).hasTemperateGrowth,
+        SchwartzMap.smulLeftCLM_apply (H (m + 3)).hasTemperateGrowth, smul_eq_mul]
+      have hco : ((𝓕 g : SchwartzMap Pl ℂ) : Pl → ℂ) ξ = 𝓕 ((g : Pl → ℂ)) ξ := by
+        rw [SchwartzMap.fourier_coe]
+      rw [hco]
+      have := hsumH ξ
+      calc
+        H m ξ * 𝓕 ((g : Pl → ℂ)) ξ + H (m + 1) ξ * 𝓕 ((g : Pl → ℂ)) ξ +
+            H (m + 2) ξ * 𝓕 ((g : Pl → ℂ)) ξ + H (m + 3) ξ * 𝓕 ((g : Pl → ℂ)) ξ =
+            (H m ξ + H (m + 1) ξ + H (m + 2) ξ + H (m + 3) ξ) * 𝓕 ((g : Pl → ℂ)) ξ := by
+          ring
+        _ = 𝓕 ((g : Pl → ℂ)) ξ := this
+    calc
+      gk m + gk (m + 1) + gk (m + 2) + gk (m + 3) =
+          𝓕⁻ (SchwartzMap.smulLeftCLM ℂ ((H m : Pl → ℂ)) (𝓕 g) +
+            SchwartzMap.smulLeftCLM ℂ ((H (m + 1) : Pl → ℂ)) (𝓕 g) +
+            SchwartzMap.smulLeftCLM ℂ ((H (m + 2) : Pl → ℂ)) (𝓕 g) +
+            SchwartzMap.smulLeftCLM ℂ ((H (m + 3) : Pl → ℂ)) (𝓕 g)) := by
+        rw [FourierTransform.fourierInv_add, FourierTransform.fourierInv_add,
+          FourierTransform.fourierInv_add]
+        rfl
+      _ = 𝓕⁻ (𝓕 g) := by rw [hmult]
+      _ = g := FourierTransform.fourierInv_fourier_eq g
+  have hsplit : (g : Pl → ℂ) =
+      ((gk m : Pl → ℂ) + (gk (m + 1) : Pl → ℂ)) + (gk (m + 2) : Pl → ℂ) +
+        (gk (m + 3) : Pl → ℂ) := by
+    funext y
+    have h := congrArg (fun F : SchwartzMap Pl ℂ => F y) hsplitS
+    simp only [add_apply] at h
+    simp only [Pi.add_apply]
+    exact h.symm
+  -- additivity of the spherical average
+  have havg : sphericalAverage 2 ((g : Pl → ℂ)) t x =
+      sphericalAverage 2 ((gk m : Pl → ℂ)) t x + sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x +
+        sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x +
+        sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x := by
+    rw [hsplit]
+    rw [rs_sphericalAverage_add _ _
+      (((gk m).continuous.add (gk (m + 1)).continuous).add (gk (m + 2)).continuous)
+      (gk (m + 3)).continuous]
+    rw [rs_sphericalAverage_add _ _ ((gk m).continuous.add (gk (m + 1)).continuous)
+      (gk (m + 2)).continuous]
+    rw [rs_sphericalAverage_add _ _ (gk m).continuous (gk (m + 1)).continuous]
+  -- each piece is dominated by the corresponding relative band operator
+  have hterm (k : ℕ) : ENNReal.ofReal ‖sphericalAverage 2 ((gk k : Pl → ℂ)) t x‖ ≤
+      restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff k g x := by
+    have hrep : sphericalAverage 2 ((gk k : Pl → ℂ)) t x =
+        𝓕⁻ (fun ξ : Pl => surfaceFourier 2 (-t • ξ) *
+          (C.cutoff ((((2 : ℝ) ^ (k + 1))⁻¹) • (t • ξ)) -
+            C.cutoff ((((2 : ℝ) ^ k)⁻¹) • (t • ξ))) * 𝓕 ((g : Pl → ℂ)) ξ) x := by
+      rw [Auto.Spherical.SphericalAverages.sphericalAverage_eq_fourierInv_surfaceMultiplier_schwartz
+        (gk k) t]
+      apply congrArg (fun h : Pl → ℂ => 𝓕⁻ h x)
+      funext ξ
+      rw [hfourier_gk k ξ, hH k ξ]
+      ring
+    rw [hrep]
+    exact le_iSup (fun r : ↥(Ioi (0 : ℝ) ∩ Ioi (0 : ℝ)) =>
+      ENNReal.ofReal ‖𝓕⁻ (fun ξ : Pl => surfaceFourier 2 (-r.1 • ξ) *
+        (C.cutoff ((((2 : ℝ) ^ (k + 1))⁻¹) • (r.1 • ξ)) -
+          C.cutoff ((((2 : ℝ) ^ k)⁻¹) • (r.1 • ξ))) * 𝓕 ((g : Pl → ℂ)) ξ) x‖)
+      ⟨t, ⟨htpos, htpos⟩⟩
+  -- assemble
+  have hnormalized : ‖normalizedSphericalAverage 2 ((g : Pl → ℂ)) t x‖ =
+      (surfaceMass 2)⁻¹ * ‖sphericalAverage 2 ((g : Pl → ℂ)) t x‖ := by
+    unfold normalizedSphericalAverage
+    rw [norm_mul]
+    congr 1
+    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hsurf.le]
+  calc
+    ENNReal.ofReal ‖normalizedSphericalAverage 2 ((g : Pl → ℂ)) t x‖ =
+        ENNReal.ofReal ((surfaceMass 2)⁻¹ * ‖sphericalAverage 2 ((g : Pl → ℂ)) t x‖) := by
+      rw [hnormalized]
+    _ = ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        ENNReal.ofReal ‖sphericalAverage 2 ((g : Pl → ℂ)) t x‖ := by
+      rw [ENNReal.ofReal_mul (by positivity)]
+    _ ≤ ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (ENNReal.ofReal ‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x‖ +
+          ENNReal.ofReal ‖sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x‖ +
+          ENNReal.ofReal ‖sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖ +
+          ENNReal.ofReal ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖) := by
+      gcongr
+      rw [havg]
+      calc
+        ENNReal.ofReal ‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x +
+              sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x +
+              sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x +
+              sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ ≤
+            ENNReal.ofReal (‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x‖ +
+              ‖sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x‖ +
+              ‖sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖ +
+              ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖) := by
+          apply ENNReal.ofReal_le_ofReal
+          calc
+            ‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x +
+                  sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x +
+                  sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x +
+                  sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ ≤
+                ‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x +
+                  sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x +
+                  sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖ +
+                ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ := norm_add_le _ _
+            _ ≤ (‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x +
+                  sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x‖ +
+                  ‖sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖) +
+                ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ := by
+              gcongr
+              exact norm_add_le _ _
+            _ ≤ ((‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x‖ +
+                  ‖sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x‖) +
+                  ‖sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖) +
+                ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ := by
+              gcongr
+              exact norm_add_le _ _
+            _ = ‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x‖ +
+                ‖sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x‖ +
+                ‖sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖ +
+                ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ := by ring
+        _ = ENNReal.ofReal ‖sphericalAverage 2 ((gk m : Pl → ℂ)) t x‖ +
+            ENNReal.ofReal ‖sphericalAverage 2 ((gk (m + 1) : Pl → ℂ)) t x‖ +
+            ENNReal.ofReal ‖sphericalAverage 2 ((gk (m + 2) : Pl → ℂ)) t x‖ +
+            ENNReal.ofReal ‖sphericalAverage 2 ((gk (m + 3) : Pl → ℂ)) t x‖ := by
+          rw [ENNReal.ofReal_add (by positivity) (norm_nonneg _),
+            ENNReal.ofReal_add (by positivity) (norm_nonneg _),
+            ENNReal.ofReal_add (norm_nonneg _) (norm_nonneg _)]
+    _ ≤ ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff m g x +
+          restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff (m + 1) g x +
+          restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff (m + 2) g x +
+          restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C.cutoff (m + 3) g x) := by
+      gcongr
+      · exact hterm m
+      · exact hterm (m + 1)
+      · exact hterm (m + 2)
+      · exact hterm (m + 3)
+
+/-! ### `Lᵖ` bookkeeping for `ENNReal`-valued operators -/
+
+/-- Minkowski's inequality for `ENNReal`-valued functions. -/
+theorem rs_eLpNorm_enn_add_le {p : ℝ} (hp : 1 ≤ p) (F G : Pl → ENNReal)
+    (hF : AEMeasurable F volume) (hG : AEMeasurable G volume) :
+    eLpNorm (fun x => F x + G x) (ENNReal.ofReal p) volume ≤
+      eLpNorm F (ENNReal.ofReal p) volume + eLpNorm G (ENNReal.ofReal p) volume := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hne : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top]
+  simp only [ENNReal.toReal_ofReal hp0.le, enorm_eq_self]
+  exact ENNReal.lintegral_Lp_add_le hF hG hp
+
+/-- A constant factor can be pulled out of the `Lᵖ` seminorm of an `ENNReal`-valued
+function. -/
+theorem rs_eLpNorm_enn_const_mul_le {p : ℝ} (hp : 0 < p) {c : ENNReal} (hc : c ≠ ⊤)
+    (F : Pl → ENNReal) :
+    eLpNorm (fun x => c * F x) (ENNReal.ofReal p) volume ≤
+      c * eLpNorm F (ENNReal.ofReal p) volume := by
+  have hne : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top]
+  simp only [ENNReal.toReal_ofReal hp.le, enorm_eq_self]
+  have hmul : (∫⁻ x : Pl, (c * F x) ^ p) = c ^ p * ∫⁻ x : Pl, (F x) ^ p := by
+    rw [← lintegral_const_mul' (c ^ p) _ (by
+      exact ENNReal.rpow_ne_top_of_nonneg hp.le hc)]
+    apply lintegral_congr
+    intro x
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hp.le]
+  rw [hmul, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:ℝ) ≤ 1 / p)]
+  apply le_of_eq
+  congr 1
+  rw [← ENNReal.rpow_mul, mul_one_div, div_self hp.ne', ENNReal.rpow_one]
+
+/-! ### The diagonal gains at `β = 1` -/
+
+/-- **Bourgain's theorem supplies the diagonal gains at `β = 1`.** -/
+theorem rs_hasDiagGains_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (φ : SchwartzMap Pl ℂ)
+    (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+    (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0) :
+    HasDiagGains (E := E) φ hφone hφzero 1 := by
+  intro s hs hsbeta
+  have hs2 : s < 1 / 2 := by
+    have h : (1 : ℝ) / (1 + 1) = 1 / 2 := by norm_num
+    rw [h] at hsbeta
+    exact hsbeta
+  have hp2 : 2 < 1 / s := by
+    rw [lt_div_iff₀ hs]
+    linarith
+  have hp1 : (1 : ℝ) < 1 / s := by linarith
+  have hp0 : (0 : ℝ) < 1 / s := by linarith
+  obtain ⟨C0⟩ := Auto.Spherical.LittlewoodPaley.exists_lpCutoffs 2
+  obtain ⟨bandConst, rho, hbandtop, hrho1, hbound⟩ :=
+    Auto.Spherical.Bourgain.hasRelativeCircularBandGeometricDecay_of_positiveLocalSmoothingGain
+      C0
+      (Auto.Spherical.MSS.p4LocalSmoothing_to_hasPositiveLocalSmoothingGain
+        (Auto.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs C0) (ρ := (1 / 16 : ℝ))
+        (by norm_num) (by norm_num)) hp2
+  have hbc0 : (0 : ℝ) ≤ bandConst.toReal := ENNReal.toReal_nonneg
+  have hbandeq : bandConst = ENNReal.ofReal bandConst.toReal :=
+    (ENNReal.ofReal_toReal hbandtop).symm
+  have hrhotop : rho ≠ ⊤ := ne_top_of_lt hrho1
+  have hrhoR0 : (0 : ℝ) < max rho.toReal (1 / 2) :=
+    lt_of_lt_of_le (by norm_num) (le_max_right _ _)
+  have hrhoRhalf : (1 : ℝ) / 2 ≤ max rho.toReal (1 / 2) := le_max_right _ _
+  have hrhoR1 : max rho.toReal (1 / 2) < 1 := by
+    refine max_lt ?_ (by norm_num)
+    have h := (ENNReal.toReal_lt_toReal hrhotop ENNReal.one_ne_top).mpr hrho1
+    simpa using h
+  have hrholeR : rho ≤ ENNReal.ofReal (max rho.toReal (1 / 2)) := by
+    calc rho = ENNReal.ofReal rho.toReal := (ENNReal.ofReal_toReal hrhotop).symm
+      _ ≤ ENNReal.ofReal (max rho.toReal (1 / 2)) :=
+        ENNReal.ofReal_le_ofReal (le_max_left _ _)
+  have hcm0 : (0 : ℝ) < (surfaceMass 2)⁻¹ := inv_pos.mpr (surfaceMass_pos (by norm_num))
+  have hmass0 : (0 : ℝ) ≤ 2 * lowpassMass φ := by
+    have := lowpassMass_nonneg φ
+    linarith
+  refine ⟨16 * (surfaceMass 2)⁻¹ * bandConst.toReal * (2 * lowpassMass φ) + 1,
+    max rho.toReal (1 / 2), ?_, hrhoR0, hrhoR1, ?_⟩
+  · have hprod : (0 : ℝ) ≤ 16 * (surfaceMass 2)⁻¹ * bandConst.toReal * (2 * lowpassMass φ) :=
+      mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) hcm0.le) hbc0) hmass0
+    linarith
+  intro j hj f
+  obtain ⟨m, rfl⟩ : ∃ m : ℕ, j = m + 1 := ⟨j - 1, by omega⟩
+  set psi : SchwartzMap Pl ℂ := absoluteDyadicBandpass φ hφone hφzero (m + 1) with hpsidef
+  set g : SchwartzMap Pl ℂ := dyadicBandpassProjection psi f with hgdef
+  set RB : ℕ → Pl → ENNReal := fun k =>
+    restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C0.cutoff k g with hRBdef
+  have hRBmeas (k : ℕ) : AEMeasurable (RB k) volume := by
+    have h := (hbound k g).1
+    exact h.1.aemeasurable
+  -- Step 1: pass to the `ENNReal`-valued maximal operator
+  have hstep1 : eLpNorm (Mdy (E := E) φ hφone hφzero (m + 1) f)
+        (ENNReal.ofReal (1 / s)) volume ≤
+      eLpNorm (fractalSphericalMaximal 2 E ((g : Pl → ℂ))) (ENNReal.ofReal (1 / s)) volume := by
+    apply eLpNorm_mono_enorm
+    intro x
+    simp only [enorm_eq_self]
+    have hval : Mdy (E := E) φ hφone hφzero (m + 1) f x =
+        (fractalSphericalMaximal 2 E ((g : Pl → ℂ)) x).toReal := by
+      simp only [Mdy, fractalDyadicBandpassMaximal, fractalSphericalMaximalReal, hgdef, hpsidef]
+    rw [hval]
+    calc ‖(fractalSphericalMaximal 2 E ((g : Pl → ℂ)) x).toReal‖ₑ =
+          ENNReal.ofReal ((fractalSphericalMaximal 2 E ((g : Pl → ℂ)) x).toReal) := by
+          rw [Real.enorm_eq_ofReal_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+      _ ≤ fractalSphericalMaximal 2 E ((g : Pl → ℂ)) x := ENNReal.ofReal_toReal_le
+  -- Step 2: the pointwise domination by four relative bands
+  have hstep2 : eLpNorm (fractalSphericalMaximal 2 E ((g : Pl → ℂ)))
+        (ENNReal.ofReal (1 / s)) volume ≤
+      eLpNorm (fun x => ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x))
+        (ENNReal.ofReal (1 / s)) volume := by
+    apply eLpNorm_mono_enorm
+    intro x
+    simp only [enorm_eq_self]
+    exact rs_fractalDyadicBandpass_maximal_le_relative C0 φ hφone hφzero hE m f x
+  -- Step 3: pull out the constant and split the sum
+  have hstep3 : eLpNorm (fun x => ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x))
+        (ENNReal.ofReal (1 / s)) volume ≤
+      ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        eLpNorm (fun x => RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x)
+          (ENNReal.ofReal (1 / s)) volume :=
+    rs_eLpNorm_enn_const_mul_le hp0 ENNReal.ofReal_ne_top _
+  have hstep4 : eLpNorm (fun x => RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x)
+        (ENNReal.ofReal (1 / s)) volume ≤
+      eLpNorm (RB m) (ENNReal.ofReal (1 / s)) volume +
+        eLpNorm (RB (m + 1)) (ENNReal.ofReal (1 / s)) volume +
+        eLpNorm (RB (m + 2)) (ENNReal.ofReal (1 / s)) volume +
+        eLpNorm (RB (m + 3)) (ENNReal.ofReal (1 / s)) volume := by
+    have h1 := rs_eLpNorm_enn_add_le hp1.le
+      (fun x => RB m x + RB (m + 1) x + RB (m + 2) x) (RB (m + 3))
+      (((hRBmeas m).add (hRBmeas (m + 1))).add (hRBmeas (m + 2))) (hRBmeas (m + 3))
+    have h2 := rs_eLpNorm_enn_add_le hp1.le
+      (fun x => RB m x + RB (m + 1) x) (RB (m + 2))
+      ((hRBmeas m).add (hRBmeas (m + 1))) (hRBmeas (m + 2))
+    have h3 := rs_eLpNorm_enn_add_le hp1.le (RB m) (RB (m + 1))
+      (hRBmeas m) (hRBmeas (m + 1))
+    calc
+      eLpNorm (fun x => RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x)
+          (ENNReal.ofReal (1 / s)) volume ≤
+          eLpNorm (fun x => RB m x + RB (m + 1) x + RB (m + 2) x)
+            (ENNReal.ofReal (1 / s)) volume +
+            eLpNorm (RB (m + 3)) (ENNReal.ofReal (1 / s)) volume := h1
+      _ ≤ (eLpNorm (fun x => RB m x + RB (m + 1) x) (ENNReal.ofReal (1 / s)) volume +
+            eLpNorm (RB (m + 2)) (ENNReal.ofReal (1 / s)) volume) +
+            eLpNorm (RB (m + 3)) (ENNReal.ofReal (1 / s)) volume := by
+        gcongr
+      _ ≤ ((eLpNorm (RB m) (ENNReal.ofReal (1 / s)) volume +
+            eLpNorm (RB (m + 1)) (ENNReal.ofReal (1 / s)) volume) +
+            eLpNorm (RB (m + 2)) (ENNReal.ofReal (1 / s)) volume) +
+            eLpNorm (RB (m + 3)) (ENNReal.ofReal (1 / s)) volume := by
+        gcongr
+  -- Step 4: the band estimates and the uniform bound for the band projection
+  have hproj : eLpNorm ((g : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume ≤
+      ENNReal.ofReal (2 * lowpassMass φ) *
+        eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume := by
+    rw [hgdef, hpsidef]
+    exact rs_eLpNorm_absoluteDyadicBandpassProjection_le φ hφone hφzero hp1 (m + 1) f
+  have hpow (i : ℕ) : rho ^ (m + i) ≤ ENNReal.ofReal ((max rho.toReal (1 / 2)) ^ m) := by
+    calc
+      rho ^ (m + i) = rho ^ m * rho ^ i := pow_add rho m i
+      _ ≤ rho ^ m * 1 := by
+        gcongr
+        exact pow_le_one₀ (by simp) hrho1.le
+      _ = rho ^ m := mul_one _
+      _ ≤ (ENNReal.ofReal (max rho.toReal (1 / 2))) ^ m := by gcongr
+      _ = ENNReal.ofReal ((max rho.toReal (1 / 2)) ^ m) :=
+        (ENNReal.ofReal_pow hrhoR0.le m).symm
+  have hRBbound (i : ℕ) : eLpNorm (RB (m + i)) (ENNReal.ofReal (1 / s)) volume ≤
+      ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+        (ENNReal.ofReal (2 * lowpassMass φ) *
+          eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) := by
+    calc
+      eLpNorm (RB (m + i)) (ENNReal.ofReal (1 / s)) volume ≤
+          bandConst * rho ^ (m + i) * eLpNorm ((g : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume :=
+        (hbound (m + i) g).2
+      _ ≤ ENNReal.ofReal bandConst.toReal *
+            ENNReal.ofReal ((max rho.toReal (1 / 2)) ^ m) *
+            (ENNReal.ofReal (2 * lowpassMass φ) *
+              eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) := by
+        gcongr
+        · rw [← hbandeq]
+        · exact hpow i
+      _ = ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+            (ENNReal.ofReal (2 * lowpassMass φ) *
+              eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) := by
+        rw [← ENNReal.ofReal_mul hbc0]
+  -- assemble
+  have hfinal : ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+      (ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+        ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+        ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+        ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume)) ≤
+      ENNReal.ofReal ((16 * (surfaceMass 2)⁻¹ * bandConst.toReal * (2 * lowpassMass φ) + 1) *
+          (max rho.toReal (1 / 2)) ^ (m + 1)) *
+        eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume := by
+    have hsum : ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+        ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+        ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+        ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) =
+        ENNReal.ofReal (4 * (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m)) *
+          (ENNReal.ofReal (2 * lowpassMass φ) *
+            eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) := by
+      rw [ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 4)]
+      have h4 : ENNReal.ofReal (4 : ℝ) = 4 := by
+        rw [show (4 : ℝ) = ((4 : ℕ) : ℝ) by norm_num, ENNReal.ofReal_natCast]
+        norm_num
+      rw [h4]
+      ring
+    rw [hsum]
+    rw [← mul_assoc, ← mul_assoc]
+    rw [← ENNReal.ofReal_mul hcm0.le, ← ENNReal.ofReal_mul (by positivity)]
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
+    have hrm : (0 : ℝ) < (max rho.toReal (1 / 2)) ^ m := by positivity
+    have hstep : (max rho.toReal (1 / 2)) ^ m ≤ 2 * (max rho.toReal (1 / 2)) ^ (m + 1) := by
+      rw [pow_succ]
+      nlinarith [hrm, hrhoRhalf]
+    have hbase : (0 : ℝ) ≤ (surfaceMass 2)⁻¹ * (4 * bandConst.toReal) * (2 * lowpassMass φ) := by
+      have h1 : (0:ℝ) ≤ 4 * bandConst.toReal := by linarith
+      exact mul_nonneg (mul_nonneg hcm0.le h1) hmass0
+    calc
+      (surfaceMass 2)⁻¹ * (4 * (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m)) *
+          (2 * lowpassMass φ) =
+          ((surfaceMass 2)⁻¹ * (4 * bandConst.toReal) * (2 * lowpassMass φ)) *
+            (max rho.toReal (1 / 2)) ^ m := by ring
+      _ ≤ ((surfaceMass 2)⁻¹ * (4 * bandConst.toReal) * (2 * lowpassMass φ)) *
+            (2 * (max rho.toReal (1 / 2)) ^ (m + 1)) := by
+        exact mul_le_mul_of_nonneg_left hstep hbase
+      _ ≤ (16 * (surfaceMass 2)⁻¹ * bandConst.toReal * (2 * lowpassMass φ) + 1) *
+            (max rho.toReal (1 / 2)) ^ (m + 1) := by
+        have hpp : (0 : ℝ) < (max rho.toReal (1 / 2)) ^ (m + 1) := by positivity
+        nlinarith [hbase, hpp]
+  calc
+    eLpNorm (Mdy (E := E) φ hφone hφzero (m + 1) f) (ENNReal.ofReal (1 / s)) volume ≤
+        eLpNorm (fractalSphericalMaximal 2 E ((g : Pl → ℂ)))
+          (ENNReal.ofReal (1 / s)) volume := hstep1
+    _ ≤ eLpNorm (fun x => ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+          (RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x))
+          (ENNReal.ofReal (1 / s)) volume := hstep2
+    _ ≤ ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        eLpNorm (fun x => RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x)
+          (ENNReal.ofReal (1 / s)) volume := hstep3
+    _ ≤ ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (eLpNorm (RB m) (ENNReal.ofReal (1 / s)) volume +
+          eLpNorm (RB (m + 1)) (ENNReal.ofReal (1 / s)) volume +
+          eLpNorm (RB (m + 2)) (ENNReal.ofReal (1 / s)) volume +
+          eLpNorm (RB (m + 3)) (ENNReal.ofReal (1 / s)) volume) := by
+      exact mul_le_mul' le_rfl hstep4
+    _ ≤ ENNReal.ofReal ((surfaceMass 2)⁻¹) *
+        (ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+            (ENNReal.ofReal (2 * lowpassMass φ) *
+              eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+          ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+            (ENNReal.ofReal (2 * lowpassMass φ) *
+              eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+          ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+            (ENNReal.ofReal (2 * lowpassMass φ) *
+              eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume) +
+          ENNReal.ofReal (bandConst.toReal * (max rho.toReal (1 / 2)) ^ m) *
+            (ENNReal.ofReal (2 * lowpassMass φ) *
+              eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume)) := by
+      gcongr
+      · exact hRBbound 0
+      · exact hRBbound 1
+      · exact hRBbound 2
+      · exact hRBbound 3
+    _ ≤ ENNReal.ofReal ((16 * (surfaceMass 2)⁻¹ * bandConst.toReal * (2 * lowpassMass φ) + 1) *
+          (max rho.toReal (1 / 2)) ^ (m + 1)) *
+        eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume := hfinal
+
+open Auto.Spherical.PowerWeights.RestrictedMaximal
+open Auto.Spherical.PowerWeights.OperatorBridge
+open Auto.Spherical.FractalDilations.SteinSegment
+open Auto.Spherical.FractalDilations.MinkowskiDiagonal
+open Auto.Spherical.FractalDilations.MinkowskiFacts
+
+/-! ### The diagonal above `p = 2` from Bourgain's theorem -/
+
+/-- Bourgain's circular maximal theorem restricted to a dilation set contained in `[1,2]`. -/
+theorem rs_strongType_bourgain_diagonal
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {p : ℝ} (hp : 2 < p) :
+    HasFractalSphericalStrongType 2 E p p := by
+  obtain ⟨C, hC, hbound⟩ := Auto.Spherical.Bourgain.bourgainCircularMaximal p hp
+  refine ⟨C, hC, ?_⟩
+  intro f
+  have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
+  have hpoint (x : Pl) :
+      fractalSphericalMaximal 2 E ((f : Pl → ℂ)) x ≤
+        Auto.Spherical.Bourgain.fullCircularMaximal ((f : Pl → ℂ)) x := by
+    have hbridge :
+        Auto.Spherical.Bourgain.fullCircularMaximal ((f : Pl → ℂ)) =
+          restrictedNormalizedSphericalMaximal 2 (Ioi (0 : ℝ)) ((f : Pl → ℂ)) := by
+      exact restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal
+        (Ioi (0 : ℝ)) ((f : Pl → ℂ))
+    rw [hbridge]
+    refine iSup_le fun tt => ?_
+    obtain ⟨t, ht⟩ := tt
+    have hmem := hE ht
+    have htpos : (0 : ℝ) < t := lt_of_lt_of_le zero_lt_one hmem.1
+    exact le_iSup (fun r : ↥(Ioi (0 : ℝ) ∩ Ioi (0 : ℝ)) =>
+      ENNReal.ofReal ‖normalizedSphericalAverage 2 ((f : Pl → ℂ)) r.1 x‖) ⟨t, ⟨htpos, htpos⟩⟩
+  have hnorm : eLpNorm (fractalSphericalMaximalReal 2 E f) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal C * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
+    refine le_trans ?_ (hbound f)
+    apply eLpNorm_mono_enorm
+    intro x
+    simp only [enorm_eq_self]
+    calc ‖fractalSphericalMaximalReal 2 E f x‖ₑ =
+          ENNReal.ofReal ((fractalSphericalMaximal 2 E ((f : Pl → ℂ)) x).toReal) := by
+          rw [fractalSphericalMaximalReal, Real.enorm_eq_ofReal_abs,
+            abs_of_nonneg ENNReal.toReal_nonneg]
+      _ ≤ fractalSphericalMaximal 2 E ((f : Pl → ℂ)) x := ENNReal.ofReal_toReal_le
+      _ ≤ Auto.Spherical.Bourgain.fullCircularMaximal ((f : Pl → ℂ)) x := hpoint x
+  refine ⟨?_, hnorm⟩
+  refine ⟨(measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable, ?_⟩
+  refine lt_of_le_of_lt hnorm ?_
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp (ENNReal.ofReal p) volume).2
+
+/-! ### The Stein segment in the plane, for every `β ≤ 1` -/
+
+/-- The Stein segment in the plane.  For `β < 1` this is the repository's Minkowski
+diagonal estimate; for `β = 1` the segment forces `p > 2` and Bourgain's theorem applies. -/
+theorem strongType_planar_seg_le_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {beta p q : ℝ} (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hp : 0 < p)
+    (hregion : reciprocalExponentPoint p q ∈ Seg 2 beta) :
+    HasFractalSphericalStrongType 2 E p q := by
+  rcases lt_or_eq_of_le hbeta1 with hlt | heq
+  · exact strongType_planar_seg hE hbeta hlt hMink hp hregion
+  · have hpq : p = q := reciprocal_coordinates_eq_of_mem_Seg hregion
+    subst hpq
+    obtain ⟨hpone, hcritical⟩ :=
+      one_lt_and_minkowski_critical_of_mem_Seg (by omega) hbeta hp hregion
+    have hcritical' : beta < p - 1 := by
+      norm_num at hcritical ⊢
+      exact hcritical
+    have hp2 : 2 < p := by
+      rw [heq] at hcritical'
+      linarith
+    exact rs_strongType_bourgain_diagonal hE hp2
+
+/-! ### Theorem 1.1 in the plane -/
+
+/-- **Theorem 1.1 of Roos--Seeger in the plane.**  For `E ⊆ [1,2]` with upper Minkowski
+dimension `β` and quasi-Assouad dimension `γ > 1/2`, every reciprocal exponent point in
+`R(β,γ)` is of strong type for the planar fractal spherical maximal operator. -/
+theorem theorem_one_planar
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ R 2 beta gam) :
+    HasFractalSphericalStrongType 2 E p q := by
+  have hbeta1 : beta ≤ 1 := by
+    have h := upperMinkowskiDimension_le_one_of_subset_Icc hE
+    simpa only [hMink] using h
+  rcases hregion with hseg | hint
+  · exact strongType_planar_seg_le_one hE hbeta hbeta1 hMink hp hseg
+  · refine strongType_planar_interior hE hbeta hbeta1 hbg hgam2 hMink hquasi hgam1 hp hq
+      ?_ hint
+    intro φ hφone hφzero hφnorm
+    rcases lt_or_eq_of_le hbeta1 with hlt | heq
+    · rcases Set.eq_empty_or_nonempty E with rfl | hEne
+      · intro s hs hsbeta
+        refine ⟨1, 1 / 2, by norm_num, by norm_num, by norm_num, ?_⟩
+        intro j hj f
+        have hzero : Mdy (E := (∅ : Set ℝ)) φ hφone hφzero j f = 0 := by
+          funext x
+          simp [Mdy, fractalDyadicBandpassMaximal, fractalSphericalMaximalReal,
+            fractalSphericalMaximal]
+        rw [hzero]
+        simp
+      · obtain ⟨psi, hpsi⟩ : ∃ psi : SchwartzMap Pl ℂ, ∀ ξ : Pl,
+            psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ) :=
+          Auto.Spherical.SchwartzData.exists_schwartzMap_smooth_dyadic_bandpass φ 0
+        exact hasDiagGains_of_beta_lt_one hE hEne hbeta hlt hMink φ psi hφone hφzero
+          hφnorm hpsi
+    · rw [heq]
+      exact rs_hasDiagGains_one hE φ hφone hφzero
+
+/-! ## Theorem 1.1 without dimensional restrictions -/
+
+/-- **Theorem 1.1 of Roos--Seeger**, in every dimension `d ≥ 2`: `R(β,γ) ⊆ T_E`.  The planar
+case `γ > 1/2` is `theorem_one_planar`; everything else is the repository's Theorem 1. -/
+theorem theorem_one_unrestricted
+    {d : ℕ} {beta gam p q : ℝ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ R d beta gam) :
+    HasFractalSphericalStrongType d E p q := by
+  by_cases hd3 : 3 ≤ d
+  · exact Auto.Spherical.FractalDilations.Theorems.theorem_one (Or.inl hd3) E hE
+      ⟨hbeta, hbg, hgam⟩ hMink hquasi hp hq hregion
+  · have hd2 : d = 2 := by omega
+    subst hd2
+    by_cases hg : gam ≤ 1 / 2
+    · exact Auto.Spherical.FractalDilations.Theorems.theorem_one (Or.inr ⟨rfl, hg⟩) E hE
+        ⟨hbeta, hbg, hgam⟩ hMink hquasi hp hq hregion
+    · exact theorem_one_planar hE hbeta hbg hgam hMink hquasi (not_le.mp hg) hp hq hregion
+
+/-! ## The type set
+
+Theorem 1.2 of the paper describes which subsets of `[0,1]²` arise as closures of type sets.
+The type set is the set of reciprocal exponent points for which the fractal spherical maximal
+operator is of strong type. -/
+
+/-- The type set `T_E` of the fractal spherical maximal operator, in the reciprocal coordinates
+`(1/p, 1/q)` and in the Banach range `q ≥ 1` used throughout the repository. -/
+def fractalTypeSet (d : ℕ) (E : Set ℝ) : Set ExponentPoint :=
+  {z | ∃ p q : ℝ, 0 < p ∧ 1 ≤ q ∧ z = reciprocalExponentPoint p q ∧
+    HasFractalSphericalStrongType d E p q}
+
+/-! ### The interior of `Q` -/
+
+/-- The four strict sharpness inequalities place a point in the interior of `Q(β,γ)`. -/
+theorem mem_interior_Q_of_strict {d : ℕ} {beta gam : ℝ} {x : ExponentPoint}
+    (hd : 2 ≤ d) (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam)
+    (h1 : x.2 < x.1) (h2 : x.1 < (d : ℝ) * x.2)
+    (h3 : (d : ℝ) * x.1 < (1 - beta) * x.2 + ((d : ℝ) - 1))
+    (h4 : 0 < clusterEdgeFunctional d (beta / gam) beta x) :
+    x ∈ interior (Q d beta gam) := by
+  have hUopen : IsOpen {y : ExponentPoint | y.2 < y.1 ∧ y.1 < (d : ℝ) * y.2 ∧
+      (d : ℝ) * y.1 < (1 - beta) * y.2 + ((d : ℝ) - 1) ∧
+      0 < clusterEdgeFunctional d (beta / gam) beta y} := by
+    have hset : {y : ExponentPoint | y.2 < y.1 ∧ y.1 < (d : ℝ) * y.2 ∧
+        (d : ℝ) * y.1 < (1 - beta) * y.2 + ((d : ℝ) - 1) ∧
+        0 < clusterEdgeFunctional d (beta / gam) beta y} =
+        ((fun y : ExponentPoint => y.1 - y.2) ⁻¹' Ioi 0) ∩
+          (((fun y : ExponentPoint => (d : ℝ) * y.2 - y.1) ⁻¹' Ioi 0) ∩
+            (((fun y : ExponentPoint =>
+                (1 - beta) * y.2 + ((d : ℝ) - 1) - (d : ℝ) * y.1) ⁻¹' Ioi 0) ∩
+              ((fun y : ExponentPoint =>
+                clusterEdgeFunctional d (beta / gam) beta y) ⁻¹' Ioi 0))) := by
+      ext y
+      simp only [mem_setOf_eq, mem_inter_iff, mem_preimage, mem_Ioi, sub_pos]
+    have hcontclu : Continuous fun y : ExponentPoint =>
+        clusterEdgeFunctional d (beta / gam) beta y := by
+      have hfun : (fun y : ExponentPoint => clusterEdgeFunctional d (beta / gam) beta y)
+          = fun y : ExponentPoint => beta / gam / 2 * ((d : ℝ) - 1)
+            + ((d : ℝ) - beta - ((d : ℝ) - 1) * (beta / gam) / 2) * y.2
+            - (1 + beta / gam / 2 * ((d : ℝ) - 1)) * y.1 := by
+        funext y
+        simp only [clusterEdgeFunctional]
+        ring
+      rw [hfun]
+      continuity
+    rw [hset]
+    refine IsOpen.inter ?_ (IsOpen.inter ?_ (IsOpen.inter ?_ ?_))
+    · exact isOpen_Ioi.preimage (by continuity)
+    · exact isOpen_Ioi.preimage (by continuity)
+    · exact isOpen_Ioi.preimage (by continuity)
+    · exact isOpen_Ioi.preimage hcontclu
+  have hUsub : {y : ExponentPoint | y.2 < y.1 ∧ y.1 < (d : ℝ) * y.2 ∧
+      (d : ℝ) * y.1 < (1 - beta) * y.2 + ((d : ℝ) - 1) ∧
+      0 < clusterEdgeFunctional d (beta / gam) beta y} ⊆ Q d beta gam := by
+    intro y hy
+    rw [mem_Q_iff_not_sharpnessViolation hd hbeta hbeta1 hbg]
+    intro hbad
+    rcases hbad with hb | hb | hb | hb
+    · exact absurd hb (not_lt.mpr hy.1.le)
+    · exact absurd hb (not_lt.mpr hy.2.1.le)
+    · exact absurd hb (not_lt.mpr hy.2.2.1.le)
+    · exact absurd hb (not_lt.mpr hy.2.2.2.le)
+  exact interior_maximal hUsub hUopen ⟨h1, h2, h3, h4⟩
+
+/-- An elementary scaling lemma: a positive constant term, or a positive linear coefficient,
+makes an affine function of a small positive parameter positive. -/
+theorem exists_small_positive_affine {A X c0 : ℝ} (hA : 0 ≤ A) (hc0 : 0 < c0)
+    (hpos : 0 < A ∨ 0 < X) : ∃ t : ℝ, 0 < t ∧ t ≤ c0 ∧ 0 < A + X * t := by
+  rcases hpos with hA' | hX
+  · have hden : (0 : ℝ) < 2 * (|X| + 1) := by positivity
+    have hquot : (0 : ℝ) < A / (2 * (|X| + 1)) := div_pos hA' hden
+    refine ⟨min c0 (A / (2 * (|X| + 1))), lt_min hc0 hquot, min_le_left _ _, ?_⟩
+    have ht : (0 : ℝ) < min c0 (A / (2 * (|X| + 1))) := lt_min hc0 hquot
+    have h1 : min c0 (A / (2 * (|X| + 1))) ≤ A / (2 * (|X| + 1)) := min_le_right _ _
+    have h2 : |X * min c0 (A / (2 * (|X| + 1)))| ≤ A / 2 := by
+      rw [abs_mul, abs_of_nonneg ht.le]
+      have hstep : |X| * min c0 (A / (2 * (|X| + 1))) ≤ (|X| + 1) * (A / (2 * (|X| + 1))) := by
+        apply mul_le_mul (by linarith) h1 ht.le (by positivity)
+      have hval : (|X| + 1) * (A / (2 * (|X| + 1))) = A / 2 := by
+        field_simp
+      linarith [hstep, hval]
+    have h3 := neg_abs_le (X * min c0 (A / (2 * (|X| + 1))))
+    linarith
+  · refine ⟨c0, hc0, le_refl _, ?_⟩
+    have : 0 < X * c0 := mul_pos hX hc0
+    linarith
+
+/-- The interior of `Q(β,γ)` is nonempty. -/
+theorem interior_Q_nonempty {d : ℕ} {beta gam : ℝ}
+    (hd : 2 ≤ d) (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam) :
+    (interior (Q d beta gam)).Nonempty := by
+  have hD : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have hc1 : (1 : ℝ) < (1 + (d : ℝ)) / 2 := by linarith
+  have hcD : (1 + (d : ℝ)) / 2 < (d : ℝ) := by linarith
+  have hcpos : (0 : ℝ) < (1 + (d : ℝ)) / 2 := by linarith
+  have hal0 : (0 : ℝ) ≤ beta / gam := by
+    rcases le_or_gt gam 0 with hg | hg
+    · have hb0 : beta = 0 := le_antisymm (le_trans hbg hg) hbeta
+      rw [hb0]
+      simp
+    · exact div_nonneg hbeta hg.le
+  have hA0 : (0 : ℝ) ≤ beta / gam / 2 * ((d : ℝ) - 1) := by
+    apply mul_nonneg (by linarith) (by linarith)
+  have hc0pos : (0 : ℝ) < ((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2)) := by
+    apply div_pos (by linarith) (by positivity)
+  have hpos : 0 < beta / gam / 2 * ((d : ℝ) - 1) ∨
+      0 < ((d : ℝ) - beta - ((d : ℝ) - 1) * (beta / gam) / 2) -
+        (1 + beta / gam / 2 * ((d : ℝ) - 1)) * ((1 + (d : ℝ)) / 2) := by
+    rcases eq_or_lt_of_le hal0 with hal | hal
+    · -- `β / γ = 0` forces `β = 0`
+      right
+      have hb0 : beta = 0 := by
+        by_contra hne
+        have hbpos : 0 < beta := lt_of_le_of_ne hbeta (Ne.symm hne)
+        have hgpos : 0 < gam := lt_of_lt_of_le hbpos hbg
+        have hpos2 : 0 < beta / gam := div_pos hbpos hgpos
+        rw [← hal] at hpos2
+        exact absurd hpos2 (lt_irrefl _)
+      have hzero : beta / gam = 0 := hal.symm
+      rw [hzero, hb0]
+      norm_num
+      linarith [hcD, hD]
+    · left
+      apply _root_.mul_pos (by linarith) (by linarith)
+  obtain ⟨t, htpos, htle, hclu⟩ :=
+    exists_small_positive_affine hA0 hc0pos hpos
+  refine ⟨((1 + (d : ℝ)) / 2 * t, t), ?_⟩
+  refine mem_interior_Q_of_strict hd hbeta hbeta1 hbg ?_ ?_ ?_ ?_
+  · show t < (1 + (d : ℝ)) / 2 * t
+    nlinarith [htpos, hc1]
+  · show (1 + (d : ℝ)) / 2 * t < (d : ℝ) * t
+    nlinarith [htpos, hcD]
+  · show (d : ℝ) * ((1 + (d : ℝ)) / 2 * t) < (1 - beta) * t + ((d : ℝ) - 1)
+    have hmul : (d : ℝ) * ((1 + (d : ℝ)) / 2) * t ≤ ((d : ℝ) - 1) / 2 := by
+      have hval : (d : ℝ) * ((1 + (d : ℝ)) / 2) *
+          (((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2))) = ((d : ℝ) - 1) / 2 := by
+        field_simp
+      calc (d : ℝ) * ((1 + (d : ℝ)) / 2) * t ≤
+            (d : ℝ) * ((1 + (d : ℝ)) / 2) *
+              (((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2))) := by
+            apply mul_le_mul_of_nonneg_left htle (by positivity)
+        _ = ((d : ℝ) - 1) / 2 := hval
+    have hbt : 0 ≤ (1 - beta) * t := mul_nonneg (by linarith) htpos.le
+    nlinarith [hmul, hbt]
+  · show 0 < clusterEdgeFunctional d (beta / gam) beta ((1 + (d : ℝ)) / 2 * t, t)
+    have hgoal : clusterEdgeFunctional d (beta / gam) beta ((1 + (d : ℝ)) / 2 * t, t)
+        = beta / gam / 2 * ((d : ℝ) - 1) +
+          (((d : ℝ) - beta - ((d : ℝ) - 1) * (beta / gam) / 2) -
+            (1 + beta / gam / 2 * ((d : ℝ) - 1)) * ((1 + (d : ℝ)) / 2)) * t := by
+      unfold clusterEdgeFunctional
+      dsimp only
+      ring
+    rw [hgoal]
+    exact hclu
+
+/-! ### The type set contains the interior of `Q` -/
+
+/-- Every interior point of `Q(β,γ)` is a point of strong type: this is Theorem 1.1 read in
+the exponent plane. -/
+theorem interior_Q_subset_fractalTypeSet
+    {d : ℕ} {E : Set ℝ} {beta gam : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam) :
+    interior (Q d beta gam) ⊆ fractalTypeSet d E := by
+  intro x hx
+  have hbeta1 : beta ≤ 1 := le_trans hbg hgam
+  have hgamnn : (0 : ℝ) ≤ gam := le_trans hbeta hbg
+  have hD : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have h21 : x.2 < x.1 := strict_second_lt_first_of_mem_interior_Q hd hbeta1 hgamnn hx
+  have hcap : x.1 < (d : ℝ) * x.2 :=
+    strict_first_lt_natCast_mul_second_of_mem_interior_Q hd hbeta hbeta1 hgamnn hx
+  have hone : x.1 < 1 := strict_first_lt_one_of_mem_interior_Q hd hbeta hbeta1 hbg hx
+  have h2pos : 0 < x.2 := by
+    by_contra hcon
+    have hle : x.2 ≤ 0 := not_lt.mp hcon
+    have : (d : ℝ) * x.2 ≤ x.2 := by nlinarith [hle, hD]
+    linarith
+  have h1pos : 0 < x.1 := lt_trans h2pos h21
+  refine ⟨x.1⁻¹, x.2⁻¹, by positivity, ?_, ?_, ?_⟩
+  · rw [le_inv_comm₀ (by norm_num) h2pos]
+    linarith
+  · rw [reciprocalExponentPoint, inv_inv, inv_inv]
+  · refine theorem_one_unrestricted hd hE hbeta hbg hgam hMink hquasi (by positivity) ?_ ?_
+    · rw [le_inv_comm₀ (by norm_num) h2pos]
+      linarith
+    · have hz : reciprocalExponentPoint x.1⁻¹ x.2⁻¹ = x := by
+        rw [reciprocalExponentPoint, inv_inv, inv_inv]
+      rw [hz]
+      exact Or.inr hx
+
+/-- `Q(β,γ)` is contained in the closure of the type set. -/
+theorem Q_subset_closure_fractalTypeSet
+    {d : ℕ} {E : Set ℝ} {beta gam : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam) :
+    Q d beta gam ⊆ closure (fractalTypeSet d E) := by
+  have hbeta1 : beta ≤ 1 := le_trans hbg hgam
+  have hne := interior_Q_nonempty hd hbeta hbeta1 hbg
+  have hclos : closure (interior (Q d beta gam)) = Q d beta gam := by
+    rw [(convex_Q d beta gam).closure_interior_eq_closure_of_nonempty_interior hne]
+    exact (isClosed_Q d beta gam).closure_eq
+  calc Q d beta gam = closure (interior (Q d beta gam)) := hclos.symm
+    _ ⊆ closure (fractalTypeSet d E) :=
+      closure_mono (interior_Q_subset_fractalTypeSet hd hE hbeta hbg hgam hMink hquasi)
+
+/-! ### The type set is contained in `Q` -/
+
+/-- Strong type and unboundedness are incompatible. -/
+theorem not_unbounded_of_hasFractalSphericalStrongType
+    {d : ℕ} {E : Set ℝ} {p q : ℝ}
+    (h : HasFractalSphericalStrongType d E p q) :
+    ¬ FractalSphericalUnbounded d E p q := by
+  intro hun
+  obtain ⟨C, hC, hbound⟩ := h
+  obtain ⟨f, hf1, hf2⟩ := hun C hC
+  have h1 := (hbound f).2
+  have h2 : ENNReal.ofReal C *
+      eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ≤ ENNReal.ofReal C := by
+    calc ENNReal.ofReal C * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ≤
+          ENNReal.ofReal C * 1 := by gcongr
+      _ = ENNReal.ofReal C := mul_one _
+  exact absurd (lt_of_lt_of_le hf2 (le_trans h1 h2)) (lt_irrefl _)
+
+/-- The Minkowski sharpness assertion of Theorem 2 of arXiv:1909.05389 confines the type set
+to `Q(β,β)`. -/
+theorem fractalTypeSet_subset_Q_self
+    {d : ℕ} {E : Set ℝ} {beta : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) :
+    fractalTypeSet d E ⊆ Q d beta beta := by
+  intro z hz
+  obtain ⟨p, q, hp, hq, hzeq, hst⟩ := hz
+  by_contra hnot
+  refine not_unbounded_of_hasFractalSphericalStrongType hst ?_
+  refine Auto.Spherical.FractalDilations.Theorems.theorem_two_i hd E hE hEne
+    ⟨hbeta, hbeta1⟩ hMink hp hq ?_
+  rw [← hzeq]
+  exact hnot
+
+/-- For a quasi-Assouad regular set the sharpness assertion confines the type set to
+`Q(β,γ)`. -/
+theorem fractalTypeSet_subset_Q_of_regular
+    {d : ℕ} {E : Set ℝ} {beta gam : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    (hbg : 0 ≤ beta ∧ beta ≤ gam ∧ gam ≤ 1)
+    (hreg : IsQuasiAssouadRegular E beta gam) :
+    fractalTypeSet d E ⊆ Q d beta gam := by
+  intro z hz
+  obtain ⟨p, q, hp, hq, hzeq, hst⟩ := hz
+  by_contra hnot
+  refine not_unbounded_of_hasFractalSphericalStrongType hst ?_
+  refine Auto.Spherical.FractalDilations.Theorems.theorem_two_iii hd E hE hEne hbg hreg
+    hp hq ?_
+  rw [← hzeq]
+  exact hnot
+
+/-! ### The type set of a quasi-Assouad regular set -/
+
+/-- **The closure of the type set of a `(β,γ)`-quasi-Assouad regular set is exactly
+`Q(β,γ)`.**  The inclusion `⊇` is Theorem 1.1; the inclusion `⊆` is the sharpness part of
+Theorem 2 of arXiv:1909.05389. -/
+theorem closure_fractalTypeSet_eq_Q_of_regular
+    {d : ℕ} {E : Set ℝ} {beta gam : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    (hbg : 0 ≤ beta ∧ beta ≤ gam ∧ gam ≤ 1)
+    (hreg : IsQuasiAssouadRegular E beta gam) :
+    closure (fractalTypeSet d E) = Q d beta gam := by
+  obtain ⟨hbeta, hbetagam, hgam⟩ := hbg
+  refine le_antisymm ?_ ?_
+  · exact closure_minimal
+      (fractalTypeSet_subset_Q_of_regular hd hE hEne ⟨hbeta, hbetagam, hgam⟩ hreg)
+      (isClosed_Q d beta gam)
+  · exact Q_subset_closure_fractalTypeSet hd hE hbeta hbetagam hgam hreg.1 hreg.2.1
+
+/-! ### A uniform family of interior points of `Q` -/
+
+/-- A positive constant term, or a positive linear coefficient, makes an affine function of a
+small positive parameter positive, uniformly for small parameters. -/
+theorem exists_bound_positive_affine {A X : ℝ} (hA : 0 ≤ A) (hpos : 0 < A ∨ 0 < X) :
+    ∃ t0 : ℝ, 0 < t0 ∧ ∀ t : ℝ, 0 < t → t ≤ t0 → 0 < A + X * t := by
+  rcases hpos with hA' | hX
+  · refine ⟨A / (2 * (|X| + 1)), by positivity, fun t htpos htle => ?_⟩
+    have h2 : |X * t| ≤ A / 2 := by
+      rw [abs_mul, abs_of_nonneg htpos.le]
+      have hstep : |X| * t ≤ (|X| + 1) * (A / (2 * (|X| + 1))) :=
+        mul_le_mul (by linarith) htle htpos.le (by positivity)
+      have hval : (|X| + 1) * (A / (2 * (|X| + 1))) = A / 2 := by
+        field_simp
+      linarith
+    have h3 := neg_abs_le (X * t)
+    linarith
+  · refine ⟨1, one_pos, fun t htpos _ => ?_⟩
+    have hXt : 0 < X * t := mul_pos hX htpos
+    linarith
+
+/-- All sufficiently small points on the ray `t ↦ ((1+d)t/2, t)` lie in the interior of
+`Q(β,γ)`. -/
+theorem exists_pos_bound_mem_interior_Q {d : ℕ} {beta gam : ℝ}
+    (hd : 2 ≤ d) (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam) :
+    ∃ t0 : ℝ, 0 < t0 ∧ ∀ t : ℝ, 0 < t → t ≤ t0 →
+      ((1 + (d : ℝ)) / 2 * t, t) ∈ interior (Q d beta gam) := by
+  have hD : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have hc1 : (1 : ℝ) < (1 + (d : ℝ)) / 2 := by linarith
+  have hcD : (1 + (d : ℝ)) / 2 < (d : ℝ) := by linarith
+  have hcpos : (0 : ℝ) < (1 + (d : ℝ)) / 2 := by linarith
+  have hal0 : (0 : ℝ) ≤ beta / gam := by
+    rcases le_or_gt gam 0 with hg | hg
+    · have hb0 : beta = 0 := le_antisymm (le_trans hbg hg) hbeta
+      rw [hb0]
+      simp
+    · exact div_nonneg hbeta hg.le
+  have hA0 : (0 : ℝ) ≤ beta / gam / 2 * ((d : ℝ) - 1) :=
+    mul_nonneg (by linarith) (by linarith)
+  have hpos : 0 < beta / gam / 2 * ((d : ℝ) - 1) ∨
+      0 < ((d : ℝ) - beta - ((d : ℝ) - 1) * (beta / gam) / 2) -
+        (1 + beta / gam / 2 * ((d : ℝ) - 1)) * ((1 + (d : ℝ)) / 2) := by
+    rcases eq_or_lt_of_le hal0 with hal | hal
+    · right
+      have hb0 : beta = 0 := by
+        by_contra hne
+        have hbpos : 0 < beta := lt_of_le_of_ne hbeta (Ne.symm hne)
+        have hgpos : 0 < gam := lt_of_lt_of_le hbpos hbg
+        have hpos2 : 0 < beta / gam := div_pos hbpos hgpos
+        rw [← hal] at hpos2
+        exact absurd hpos2 (lt_irrefl _)
+      have hzero : beta / gam = 0 := hal.symm
+      rw [hzero, hb0]
+      norm_num
+      linarith [hcD, hD]
+    · left
+      exact _root_.mul_pos (by linarith) (by linarith)
+  obtain ⟨t1, ht1pos, ht1⟩ := exists_bound_positive_affine hA0 hpos
+  refine ⟨min t1 (((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2))), ?_, ?_⟩
+  · exact lt_min ht1pos (div_pos (by linarith) (by positivity))
+  intro t htpos htle
+  have htle1 : t ≤ t1 := le_trans htle (min_le_left _ _)
+  have htle2 : t ≤ ((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2)) :=
+    le_trans htle (min_le_right _ _)
+  have hclu := ht1 t htpos htle1
+  refine mem_interior_Q_of_strict hd hbeta hbeta1 hbg ?_ ?_ ?_ ?_
+  · show t < (1 + (d : ℝ)) / 2 * t
+    nlinarith [htpos, hc1]
+  · show (1 + (d : ℝ)) / 2 * t < (d : ℝ) * t
+    nlinarith [htpos, hcD]
+  · show (d : ℝ) * ((1 + (d : ℝ)) / 2 * t) < (1 - beta) * t + ((d : ℝ) - 1)
+    have hmul : (d : ℝ) * ((1 + (d : ℝ)) / 2) * t ≤ ((d : ℝ) - 1) / 2 := by
+      have hval : (d : ℝ) * ((1 + (d : ℝ)) / 2) *
+          (((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2))) = ((d : ℝ) - 1) / 2 := by
+        field_simp
+      calc (d : ℝ) * ((1 + (d : ℝ)) / 2) * t ≤
+            (d : ℝ) * ((1 + (d : ℝ)) / 2) *
+              (((d : ℝ) - 1) / (2 * (d : ℝ) * ((1 + (d : ℝ)) / 2))) := by
+            exact mul_le_mul_of_nonneg_left htle2 (by positivity)
+        _ = ((d : ℝ) - 1) / 2 := hval
+    have hbt : 0 ≤ (1 - beta) * t := mul_nonneg (by linarith) htpos.le
+    nlinarith [hmul, hbt]
+  · show 0 < clusterEdgeFunctional d (beta / gam) beta ((1 + (d : ℝ)) / 2 * t, t)
+    have hgoal : clusterEdgeFunctional d (beta / gam) beta ((1 + (d : ℝ)) / 2 * t, t)
+        = beta / gam / 2 * ((d : ℝ) - 1) +
+          (((d : ℝ) - beta - ((d : ℝ) - 1) * (beta / gam) / 2) -
+            (1 + beta / gam / 2 * ((d : ℝ) - 1)) * ((1 + (d : ℝ)) / 2)) * t := by
+      unfold clusterEdgeFunctional
+      dsimp only
+      ring
+    rw [hgoal]
+    exact hclu
+
+/-- Finitely many regions `Q(β_j, γ_j)` have a common interior point. -/
+theorem exists_common_mem_interior_Q {d : ℕ} {ι : Type*} {betas gams : ι → ℝ}
+    (hd : 2 ≤ d) (s : Finset ι) (hs : s.Nonempty)
+    (hbg : ∀ j ∈ s, 0 ≤ betas j ∧ betas j ≤ gams j ∧ gams j ≤ 1) :
+    ∃ z : ExponentPoint, ∀ j ∈ s, z ∈ interior (Q d (betas j) (gams j)) := by
+  classical
+  have hchoice : ∀ j ∈ s, ∃ t0 : ℝ, 0 < t0 ∧ ∀ t : ℝ, 0 < t → t ≤ t0 →
+      ((1 + (d : ℝ)) / 2 * t, t) ∈ interior (Q d (betas j) (gams j)) := by
+    intro j hj
+    obtain ⟨hb, hbg', hg⟩ := hbg j hj
+    exact exists_pos_bound_mem_interior_Q hd hb (le_trans hbg' hg) hbg'
+  choose! t0 ht0pos ht0 using hchoice
+  have hpos : 0 < s.inf' hs t0 := (Finset.lt_inf'_iff hs).mpr fun i hi => ht0pos i hi
+  refine ⟨((1 + (d : ℝ)) / 2 * (s.inf' hs t0), s.inf' hs t0), fun j hj => ?_⟩
+  exact ht0 j hj _ hpos (Finset.inf'_le _ hj)
+
+/-- The closure of the intersection of the interiors is the intersection of the regions. -/
+theorem closure_biInter_interior_Q_eq {d : ℕ} {ι : Type*} {betas gams : ι → ℝ}
+    (hd : 2 ≤ d) (s : Finset ι) (hs : s.Nonempty)
+    (hbg : ∀ j ∈ s, 0 ≤ betas j ∧ betas j ≤ gams j ∧ gams j ≤ 1) :
+    closure (⋂ j ∈ s, interior (Q d (betas j) (gams j))) =
+      ⋂ j ∈ s, Q d (betas j) (gams j) := by
+  refine le_antisymm ?_ ?_
+  · refine closure_minimal ?_
+      (isClosed_iInter fun j => isClosed_iInter fun _ => isClosed_Q d _ _)
+    exact Set.iInter₂_mono fun j _ => interior_subset
+  · intro x hx
+    obtain ⟨y, hy⟩ := exists_common_mem_interior_Q hd s hs hbg
+    rw [Metric.mem_closure_iff]
+    intro ε hε
+    have hDnn : (0 : ℝ) ≤ dist y x := dist_nonneg
+    have hden : (0 : ℝ) < 2 * (dist y x + 1) := by positivity
+    have hquot : (0 : ℝ) < ε / (2 * (dist y x + 1)) := div_pos hε hden
+    refine ⟨min 1 (ε / (2 * (dist y x + 1))) • y +
+      (1 - min 1 (ε / (2 * (dist y x + 1)))) • x, ?_, ?_⟩
+    · refine Set.mem_iInter₂.mpr fun j hj => ?_
+      refine (convex_Q d (betas j) (gams j)).combo_interior_self_mem_interior (hy j hj)
+        (Set.mem_iInter₂.mp hx j hj) (lt_min one_pos hquot) ?_ (by ring)
+      have : min 1 (ε / (2 * (dist y x + 1))) ≤ 1 := min_le_left _ _
+      linarith
+    · have hapos : (0 : ℝ) < min 1 (ε / (2 * (dist y x + 1))) := lt_min one_pos hquot
+      have hale : min 1 (ε / (2 * (dist y x + 1))) ≤ ε / (2 * (dist y x + 1)) :=
+        min_le_right _ _
+      have hval : min 1 (ε / (2 * (dist y x + 1))) • y +
+          (1 - min 1 (ε / (2 * (dist y x + 1)))) • x - x =
+          min 1 (ε / (2 * (dist y x + 1))) • (y - x) := by
+        module
+      rw [dist_comm, dist_eq_norm, hval, norm_smul, Real.norm_eq_abs, abs_of_nonneg hapos.le,
+        ← dist_eq_norm]
+      have hstep : min 1 (ε / (2 * (dist y x + 1))) * dist y x ≤
+          (ε / (2 * (dist y x + 1))) * dist y x :=
+        mul_le_mul_of_nonneg_right hale hDnn
+      have hstep2 : (ε / (2 * (dist y x + 1))) * dist y x < ε := by
+        rw [div_mul_eq_mul_div, div_lt_iff₀ hden]
+        nlinarith [hε, hDnn]
+      linarith
+
+/-! ## Finite unions of dilation sets
+
+The type set of a finite union is the intersection of the type sets: the maximal operator of a
+union is dominated by the sum of the individual maximal operators, and dominates each of them.
+For finite unions of quasi-Assouad regular sets this gives Theorem 1.3 of the paper. -/
+
+/-- The maximal operator over a union is dominated by the sum of the two maximal operators. -/
+theorem fractalSphericalMaximalReal_union_le
+    {d : ℕ} (hd : 0 < d) {E F : Set ℝ} (hE : E ⊆ Ioi (0 : ℝ)) (hF : F ⊆ Ioi (0 : ℝ))
+    (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    fractalSphericalMaximalReal d (E ∪ F) f x ≤
+      fractalSphericalMaximalReal d E f x + fractalSphericalMaximalReal d F f x := by
+  have hEtop : fractalSphericalMaximal d E ((f : Euclidean d → ℂ)) x ≠ ⊤ :=
+    fractalSphericalMaximal_ne_top hd E hE f x
+  have hFtop : fractalSphericalMaximal d F ((f : Euclidean d → ℂ)) x ≠ ⊤ :=
+    fractalSphericalMaximal_ne_top hd F hF f x
+  have hUtop : fractalSphericalMaximal d (E ∪ F) ((f : Euclidean d → ℂ)) x ≠ ⊤ :=
+    fractalSphericalMaximal_ne_top hd (E ∪ F) (union_subset hE hF) f x
+  have hle : fractalSphericalMaximal d (E ∪ F) ((f : Euclidean d → ℂ)) x ≤
+      fractalSphericalMaximal d E ((f : Euclidean d → ℂ)) x +
+        fractalSphericalMaximal d F ((f : Euclidean d → ℂ)) x := by
+    refine iSup_le fun t => ?_
+    rcases t.2 with ht | ht
+    · exact le_trans
+        (normalizedSphericalAverage_le_fractalSphericalMaximal E ((f : Euclidean d → ℂ)) ht x)
+        le_self_add
+    · exact le_trans
+        (normalizedSphericalAverage_le_fractalSphericalMaximal F ((f : Euclidean d → ℂ)) ht x)
+        le_add_self
+  unfold fractalSphericalMaximalReal
+  rw [← ENNReal.toReal_add hEtop hFtop]
+  exact (ENNReal.toReal_le_toReal hUtop (ENNReal.add_ne_top.mpr ⟨hEtop, hFtop⟩)).mpr hle
+
+/-- Strong type is inherited by finite unions. -/
+theorem hasFractalSphericalStrongType_union
+    {d : ℕ} (hd : 0 < d) {E F : Set ℝ} {p q : ℝ} (hq : 1 ≤ q)
+    (hEpos : E ⊆ Ioi (0 : ℝ)) (hFpos : F ⊆ Ioi (0 : ℝ))
+    (hE : HasFractalSphericalStrongType d E p q)
+    (hF : HasFractalSphericalStrongType d F p q) :
+    HasFractalSphericalStrongType d (E ∪ F) p q := by
+  obtain ⟨C1, hC1, hb1⟩ := hE
+  obtain ⟨C2, hC2, hb2⟩ := hF
+  have hqone : (1 : ENNReal) ≤ ENNReal.ofReal q := by
+    rw [show (1 : ENNReal) = ENNReal.ofReal 1 by simp]
+    exact ENNReal.ofReal_le_ofReal hq
+  refine ⟨C1 + C2, by linarith, fun f => ?_⟩
+  have hmeasU : AEStronglyMeasurable (fractalSphericalMaximalReal d (E ∪ F) f) volume :=
+    (measurable_fractalSphericalMaximalReal (E ∪ F) f).aestronglyMeasurable
+  have hmeas1 : AEStronglyMeasurable (fractalSphericalMaximalReal d E f) volume :=
+    (measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable
+  have hmeas2 : AEStronglyMeasurable (fractalSphericalMaximalReal d F f) volume :=
+    (measurable_fractalSphericalMaximalReal F f).aestronglyMeasurable
+  have hbound : eLpNorm (fractalSphericalMaximalReal d (E ∪ F) f)
+        (ENNReal.ofReal q) volume ≤
+      ENNReal.ofReal (C1 + C2) *
+        eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+    have hstep1 : eLpNorm (fractalSphericalMaximalReal d (E ∪ F) f) (ENNReal.ofReal q) volume ≤
+        eLpNorm (fractalSphericalMaximalReal d E f + fractalSphericalMaximalReal d F f)
+          (ENNReal.ofReal q) volume := by
+      apply eLpNorm_mono_enorm
+      intro x
+      have hpoint := fractalSphericalMaximalReal_union_le hd hEpos hFpos f x
+      have h1 : 0 ≤ fractalSphericalMaximalReal d E f x := ENNReal.toReal_nonneg
+      have h2 : 0 ≤ fractalSphericalMaximalReal d F f x := ENNReal.toReal_nonneg
+      have h0 : 0 ≤ fractalSphericalMaximalReal d (E ∪ F) f x := ENNReal.toReal_nonneg
+      rw [Real.enorm_eq_ofReal_abs, Real.enorm_eq_ofReal_abs, abs_of_nonneg h0,
+        abs_of_nonneg (by simpa [Pi.add_apply] using add_nonneg h1 h2 :
+          (0:ℝ) ≤ (fractalSphericalMaximalReal d E f + fractalSphericalMaximalReal d F f) x)]
+      exact ENNReal.ofReal_le_ofReal (by simpa [Pi.add_apply] using hpoint)
+    have hstep2 := eLpNorm_add_le hmeas1 hmeas2 hqone
+    have hstep3 : eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume +
+          eLpNorm (fractalSphericalMaximalReal d F f) (ENNReal.ofReal q) volume ≤
+        ENNReal.ofReal (C1 + C2) *
+          eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+      have h1 := (hb1 f).2
+      have h2 := (hb2 f).2
+      calc eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume +
+            eLpNorm (fractalSphericalMaximalReal d F f) (ENNReal.ofReal q) volume ≤
+            ENNReal.ofReal C1 * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume +
+              ENNReal.ofReal C2 *
+                eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := add_le_add h1 h2
+        _ = ENNReal.ofReal (C1 + C2) *
+            eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+          rw [ENNReal.ofReal_add hC1.le hC2.le, add_mul]
+    exact le_trans hstep1 (le_trans hstep2 hstep3)
+  refine ⟨⟨hmeasU, ?_⟩, hbound⟩
+  refine lt_of_le_of_lt hbound ?_
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp (ENNReal.ofReal p) volume).2
+
+/-- Strong type is inherited by finite unions indexed by a `Finset`. -/
+theorem hasFractalSphericalStrongType_biUnion
+    {d : ℕ} {ι : Type*} [DecidableEq ι] {Es : ι → Set ℝ} {p q : ℝ}
+    (hd : 0 < d) (hq : 1 ≤ q) (s : Finset ι)
+    (hpos : ∀ j ∈ s, Es j ⊆ Ioi (0 : ℝ))
+    (h : ∀ j ∈ s, HasFractalSphericalStrongType d (Es j) p q) :
+    HasFractalSphericalStrongType d (⋃ j ∈ s, Es j) p q := by
+  classical
+  induction s using Finset.induction_on with
+  | empty =>
+      simpa using hasFractalSphericalStrongType_empty d p q
+  | insert a s ha ih =>
+      have hposa : Es a ⊆ Ioi (0 : ℝ) := hpos a (Finset.mem_insert_self a s)
+      have hposs : ∀ j ∈ s, Es j ⊆ Ioi (0 : ℝ) := fun j hj =>
+        hpos j (Finset.mem_insert_of_mem hj)
+      have hsa : HasFractalSphericalStrongType d (Es a) p q :=
+        h a (Finset.mem_insert_self a s)
+      have hss : ∀ j ∈ s, HasFractalSphericalStrongType d (Es j) p q := fun j hj =>
+        h j (Finset.mem_insert_of_mem hj)
+      have hrest := ih hposs hss
+      have hunion : (⋃ j ∈ insert a s, Es j) = Es a ∪ ⋃ j ∈ s, Es j := by
+        simp
+      rw [hunion]
+      refine hasFractalSphericalStrongType_union hd hq hposa ?_ hsa hrest
+      intro t ht
+      obtain ⟨j, hj, hjt⟩ := Set.mem_iUnion₂.mp ht
+      exact hposs j hj hjt
+
+/-- The type set is antitone in the dilation set. -/
+theorem fractalTypeSet_mono
+    {d : ℕ} (hd : 0 < d) {E F : Set ℝ} (hEF : E ⊆ F) (hFpos : F ⊆ Ioi (0 : ℝ)) :
+    fractalTypeSet d F ⊆ fractalTypeSet d E := by
+  intro z hz
+  obtain ⟨p, q, hp, hq, hzeq, hst⟩ := hz
+  exact ⟨p, q, hp, hq, hzeq, hst.mono_radii hd hEF hFpos⟩
+
+/-! ### Theorem 1.3: finite unions of quasi-Assouad regular sets -/
+
+/-- **Theorem 1.3 of Roos--Seeger.**  For a finite union of quasi-Assouad regular sets the
+closure of the type set is the intersection of the corresponding regions, hence a closed convex
+polygon. -/
+theorem closure_fractalTypeSet_biUnion_eq_iInter
+    {d : ℕ} {ι : Type*} [DecidableEq ι] {Es : ι → Set ℝ} {betas gams : ι → ℝ}
+    (hd : 2 ≤ d) (s : Finset ι) (hs : s.Nonempty)
+    (hE : ∀ j ∈ s, Es j ⊆ Icc (1 : ℝ) 2) (hEne : ∀ j ∈ s, (Es j).Nonempty)
+    (hbg : ∀ j ∈ s, 0 ≤ betas j ∧ betas j ≤ gams j ∧ gams j ≤ 1)
+    (hreg : ∀ j ∈ s, IsQuasiAssouadRegular (Es j) (betas j) (gams j)) :
+    closure (fractalTypeSet d (⋃ j ∈ s, Es j)) = ⋂ j ∈ s, Q d (betas j) (gams j) := by
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  have hpos : ∀ j ∈ s, Es j ⊆ Ioi (0 : ℝ) := by
+    intro j hj t ht
+    have := hE j hj ht
+    exact lt_of_lt_of_le zero_lt_one this.1
+  have hUpos : (⋃ j ∈ s, Es j) ⊆ Ioi (0 : ℝ) := by
+    intro t ht
+    obtain ⟨j, hj, hjt⟩ := Set.mem_iUnion₂.mp ht
+    exact hpos j hj hjt
+  refine le_antisymm ?_ ?_
+  · -- the union is at least as large as each piece, so its type set is contained in each `Q`
+    refine closure_minimal ?_ ?_
+    · intro z hz
+      refine Set.mem_iInter₂.mpr fun j hj => ?_
+      have hsub : Es j ⊆ ⋃ i ∈ s, Es i := fun t ht => Set.mem_iUnion₂.mpr ⟨j, hj, ht⟩
+      have hz' : z ∈ fractalTypeSet d (Es j) :=
+        fractalTypeSet_mono hdpos hsub hUpos hz
+      exact fractalTypeSet_subset_Q_of_regular hd (hE j hj) (hEne j hj) (hbg j hj)
+        (hreg j hj) hz'
+    · exact isClosed_iInter fun j => isClosed_iInter fun _ => isClosed_Q d _ _
+  · -- conversely the intersection of the interiors consists of points of strong type
+    have hint : ∀ j ∈ s, interior (Q d (betas j) (gams j)) ⊆ fractalTypeSet d (Es j) := by
+      intro j hj
+      obtain ⟨hb, hbg', hg⟩ := hbg j hj
+      exact interior_Q_subset_fractalTypeSet hd (hE j hj) hb hbg' hg
+        (hreg j hj).1 (hreg j hj).2.1
+    have hsubset : (⋂ j ∈ s, interior (Q d (betas j) (gams j))) ⊆
+        fractalTypeSet d (⋃ j ∈ s, Es j) := by
+      intro z hz
+      obtain ⟨j0, hj0⟩ := hs
+      have hzj0 := Set.mem_iInter₂.mp hz j0 hj0
+      obtain ⟨p, q, hp, hq, hzeq, -⟩ := hint j0 hj0 hzj0
+      refine ⟨p, q, hp, hq, hzeq, ?_⟩
+      refine hasFractalSphericalStrongType_biUnion hdpos hq s hpos ?_
+      intro j hj
+      have hzj := Set.mem_iInter₂.mp hz j hj
+      obtain ⟨p', q', hp', hq', hzeq', hst'⟩ := hint j hj hzj
+      have heq := hzeq.symm.trans hzeq'
+      have hpp : p = p' := by
+        have h := (Prod.ext_iff.mp heq).1
+        simp only [reciprocalExponentPoint] at h
+        exact inv_injective h
+      have hqq : q = q' := by
+        have h := (Prod.ext_iff.mp heq).2
+        simp only [reciprocalExponentPoint] at h
+        exact inv_injective h
+      rw [← hpp, ← hqq] at hst'
+      exact hst'
+    have hclos : closure (⋂ j ∈ s, interior (Q d (betas j) (gams j))) =
+        ⋂ j ∈ s, Q d (betas j) (gams j) :=
+      closure_biInter_interior_Q_eq hd s hs hbg
+    calc (⋂ j ∈ s, Q d (betas j) (gams j)) =
+          closure (⋂ j ∈ s, interior (Q d (betas j) (gams j))) := hclos.symm
+      _ ⊆ closure (fractalTypeSet d (⋃ j ∈ s, Es j)) := closure_mono hsubset
+
+/-! ## Cantor midpoint sets
+
+Section 6 of the paper builds quasi-Assouad regular sets from the *midpoints* of the
+generations of a Cantor construction.  Working with these finite point sets keeps every
+covering estimate elementary.
+
+`cantorMid μ m u L` is the set of midpoints of the `2 ^ m` intervals of the `m`-th generation of
+the Cantor construction with ratio `μ ≤ 1/2` inside the interval `[u, u + L]`. -/
+
+/-- The midpoints of the `m`-th generation of the Cantor construction of ratio `mu` in
+`[u, u + L]`. -/
+def cantorMid (mu : ℝ) : ℕ → ℝ → ℝ → Finset ℝ
+  | 0, u, L => {u + L / 2}
+  | (m + 1), u, L =>
+      cantorMid mu m u (mu * L) ∪ cantorMid mu m (u + (1 - mu) * L) (mu * L)
+
+theorem cantorMid_zero (mu u L : ℝ) : cantorMid mu 0 u L = {u + L / 2} := rfl
+
+theorem cantorMid_succ (mu : ℝ) (m : ℕ) (u L : ℝ) :
+    cantorMid mu (m + 1) u L =
+      cantorMid mu m u (mu * L) ∪ cantorMid mu m (u + (1 - mu) * L) (mu * L) := rfl
+
+theorem cantorMid_nonempty (mu : ℝ) (m : ℕ) (u L : ℝ) : (cantorMid mu m u L).Nonempty := by
+  induction m generalizing u L with
+  | zero => exact ⟨u + L / 2, by simp [cantorMid_zero]⟩
+  | succ m ih =>
+      obtain ⟨x, hx⟩ := ih u (mu * L)
+      exact ⟨x, by rw [cantorMid_succ]; exact Finset.mem_union_left _ hx⟩
+
+/-- Every point of the midpoint set lies well inside `[u, u + L]`. -/
+theorem cantorMid_mem_bounds {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (m : ℕ) {u L : ℝ} (hL : 0 ≤ L) {x : ℝ} (hx : x ∈ cantorMid mu m u L) :
+    u + mu ^ m * L / 2 ≤ x ∧ x ≤ u + L - mu ^ m * L / 2 := by
+  induction m generalizing u L with
+  | zero =>
+      rw [cantorMid_zero, Finset.mem_singleton] at hx
+      subst hx
+      refine ⟨by simp, ?_⟩
+      simp
+      linarith
+  | succ m ih =>
+      rw [cantorMid_succ, Finset.mem_union] at hx
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      have hpow : 0 ≤ mu ^ m := le_of_lt (pow_pos hmu m)
+      have hpowsucc : 0 ≤ mu ^ (m + 1) := le_of_lt (pow_pos hmu (m + 1))
+      have hpowmul : mu ^ m * (mu * L) = mu ^ (m + 1) * L := by ring
+      rcases hx with hx | hx
+      · obtain ⟨h1, h2⟩ := ih hmuL hx
+        rw [hpowmul] at h1 h2
+        constructor
+        · linarith
+        · have hmuLle : mu * L ≤ L := by nlinarith [hL, hmu2]
+          linarith
+      · obtain ⟨h1, h2⟩ := ih hmuL hx
+        rw [hpowmul] at h1 h2
+        have hone : 0 ≤ (1 - mu) * L := mul_nonneg (by linarith) hL
+        constructor
+        · linarith
+        · linarith
+
+/-- Distinct points of the midpoint set are separated by at least the length of the generation
+intervals. -/
+theorem cantorMid_separated {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (m : ℕ) {u L : ℝ} (hL : 0 ≤ L) {x y : ℝ}
+    (hx : x ∈ cantorMid mu m u L) (hy : y ∈ cantorMid mu m u L) (hxy : x ≠ y) :
+    mu ^ m * L ≤ |x - y| := by
+  induction m generalizing u L with
+  | zero =>
+      rw [cantorMid_zero, Finset.mem_singleton] at hx hy
+      exact absurd (hx.trans hy.symm) hxy
+  | succ m ih =>
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      have hpowmul : mu ^ m * (mu * L) = mu ^ (m + 1) * L := by ring
+      rw [cantorMid_succ, Finset.mem_union] at hx hy
+      rcases hx with hx | hx
+      · rcases hy with hy | hy
+        · have h := ih hmuL hx hy
+          rw [hpowmul] at h
+          exact h
+        · -- `x` in the left half, `y` in the right half
+          obtain ⟨-, hx2⟩ := cantorMid_mem_bounds hmu hmu2 m hmuL hx
+          obtain ⟨hy1, -⟩ := cantorMid_mem_bounds hmu hmu2 m hmuL hy
+          rw [hpowmul] at hx2 hy1
+          have hposL : 0 ≤ mu ^ (m + 1) * L := mul_nonneg (pow_pos hmu (m + 1)).le hL
+          have hgap : mu ^ (m + 1) * L ≤ y - x := by
+            have hmu2L : (1 - 2 * mu) * L ≥ 0 := mul_nonneg (by linarith) hL
+            nlinarith [hx2, hy1, hmu2L]
+          rw [abs_sub_comm, abs_of_nonneg (by linarith : (0:ℝ) ≤ y - x)]
+          exact hgap
+      · rcases hy with hy | hy
+        · obtain ⟨hx1, -⟩ := cantorMid_mem_bounds hmu hmu2 m hmuL hx
+          obtain ⟨-, hy2⟩ := cantorMid_mem_bounds hmu hmu2 m hmuL hy
+          rw [hpowmul] at hx1 hy2
+          have hposL : 0 ≤ mu ^ (m + 1) * L := mul_nonneg (pow_pos hmu (m + 1)).le hL
+          have hgap : mu ^ (m + 1) * L ≤ x - y := by
+            have hmu2L : (1 - 2 * mu) * L ≥ 0 := mul_nonneg (by linarith) hL
+            nlinarith [hx1, hy2, hmu2L]
+          rw [abs_of_nonneg (by linarith : (0:ℝ) ≤ x - y)]
+          exact hgap
+        · have h := ih hmuL hx hy
+          rw [hpowmul] at h
+          exact h
+
+/-- The midpoint set has exactly `2 ^ m` elements. -/
+theorem cantorMid_card {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (m : ℕ) {u L : ℝ} (hL : 0 < L) :
+    (cantorMid mu m u L).card = 2 ^ m := by
+  induction m generalizing u L with
+  | zero => simp [cantorMid_zero]
+  | succ m ih =>
+      have hmuL : 0 < mu * L := mul_pos hmu hL
+      have hdisj : Disjoint (cantorMid mu m u (mu * L))
+          (cantorMid mu m (u + (1 - mu) * L) (mu * L)) := by
+        rw [Finset.disjoint_left]
+        intro x hx hx'
+        obtain ⟨-, hx2⟩ := cantorMid_mem_bounds hmu hmu2 m hmuL.le hx
+        obtain ⟨hx1, -⟩ := cantorMid_mem_bounds hmu hmu2 m hmuL.le hx'
+        have hpos : 0 < mu ^ m * (mu * L) := mul_pos (pow_pos hmu m) hmuL
+        have hmu2L : (1 - 2 * mu) * L ≥ 0 := mul_nonneg (by linarith) hL.le
+        nlinarith [hx1, hx2, hpos, hmu2L]
+      rw [cantorMid_succ, Finset.card_union_of_disjoint hdisj, ih hmuL, ih hmuL]
+      ring
+
+/-- The `j`-th generation midpoints cover the `m`-th generation midpoints at every scale at
+least the length of the `j`-th generation intervals. -/
+theorem cantorMid_cover {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (j : ℕ) : ∀ (m : ℕ), j ≤ m → ∀ (u L δ : ℝ), 0 ≤ L → mu ^ j * L ≤ δ →
+      ∀ x ∈ cantorMid mu m u L, ∃ y ∈ cantorMid mu j u L, |x - y| ≤ δ / 2 := by
+  induction j with
+  | zero =>
+      intro m _ u L δ hL hδ x hx
+      refine ⟨u + L / 2, by simp [cantorMid_zero], ?_⟩
+      obtain ⟨h1, h2⟩ := cantorMid_mem_bounds hmu hmu2 m hL hx
+      have hpow : 0 ≤ mu ^ m * L / 2 := by
+        apply div_nonneg (mul_nonneg (le_of_lt (pow_pos hmu m)) hL) (by norm_num)
+      rw [abs_le]
+      constructor
+      · simp only [pow_zero, one_mul] at hδ
+        linarith
+      · simp only [pow_zero, one_mul] at hδ
+        linarith
+  | succ j ih =>
+      intro m hjm u L δ hL hδ x hx
+      obtain ⟨m', rfl⟩ : ∃ m' : ℕ, m = m' + 1 := ⟨m - 1, by omega⟩
+      have hjm' : j ≤ m' := by omega
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      have hδ' : mu ^ j * (mu * L) ≤ δ := by
+        have : mu ^ j * (mu * L) = mu ^ (j + 1) * L := by ring
+        rw [this]
+        exact hδ
+      rw [cantorMid_succ, Finset.mem_union] at hx
+      rcases hx with hx | hx
+      · obtain ⟨y, hy, hdist⟩ := ih m' hjm' u (mu * L) δ hmuL hδ' x hx
+        refine ⟨y, ?_, hdist⟩
+        rw [cantorMid_succ]
+        exact Finset.mem_union_left _ hy
+      · obtain ⟨y, hy, hdist⟩ := ih m' hjm' (u + (1 - mu) * L) (mu * L) δ hmuL hδ' x hx
+        refine ⟨y, ?_, hdist⟩
+        rw [cantorMid_succ]
+        exact Finset.mem_union_right _ hy
+
+/-! ## A toolkit for computing the covering dimensions
+
+Lower bounds for covering numbers come from separated finite subsets, and the two dimensions
+are infima of the sets of admissible exponents. -/
+
+/-- A `δ`-separated subset is not larger than any cover at scale `δ`. -/
+theorem card_le_card_of_intervalCover_of_separated
+    {F : Set ℝ} {δ : ℝ} {ι S : Finset ℝ}
+    (hcover : IsIntervalCover F δ ι) (hSF : ∀ x ∈ S, x ∈ F)
+    (hsep : ∀ x ∈ S, ∀ y ∈ S, x ≠ y → δ < |x - y|) :
+    S.card ≤ ι.card := by
+  classical
+  have hmem : ∀ x ∈ S, ∃ a ∈ ι, x ∈ Icc (a - δ / 2) (a + δ / 2) := by
+    intro x hx
+    obtain ⟨a, ha, hax⟩ := Set.mem_iUnion₂.mp (hcover (hSF x hx))
+    exact ⟨a, ha, hax⟩
+  choose! c hc hcmem using hmem
+  refine Finset.card_le_card_of_injOn c (fun x hx => hc x hx) ?_
+  intro x hx y hy hxy
+  by_contra hne
+  have h1 := hcmem x hx
+  have h2 := hcmem y hy
+  rw [hxy] at h1
+  simp only [mem_Icc] at h1 h2
+  have hdist : |x - y| ≤ δ := by
+    rw [abs_le]
+    exact ⟨by linarith [h1.1, h2.2], by linarith [h1.2, h2.1]⟩
+  exact absurd hdist (not_le.mpr (hsep x hx y hy hne))
+
+/-- Characterization of the upper Minkowski dimension by a matching pair of bounds. -/
+theorem upperMinkowskiDimension_eq_of_bounds {F : Set ℝ} {beta : ℝ}
+    (hbeta : 0 ≤ beta) (hup : HasUpperMinkowskiExponent F beta)
+    (hlow : ∀ beta' : ℝ, 0 ≤ beta' → beta' < beta → ¬ HasUpperMinkowskiExponent F beta') :
+    upperMinkowskiDimension F = beta := by
+  have hmem : beta ∈ {b : ℝ | 0 ≤ b ∧ HasUpperMinkowskiExponent F b} := ⟨hbeta, hup⟩
+  have hbdd : ∀ b ∈ {b : ℝ | 0 ≤ b ∧ HasUpperMinkowskiExponent F b}, beta ≤ b := by
+    intro b hb
+    by_contra hcon
+    exact hlow b hb.1 (not_le.mp hcon) hb.2
+  refine le_antisymm ?_ ?_
+  · exact csInf_le ⟨0, fun b hb => hb.1⟩ hmem
+  · exact le_csInf ⟨beta, hmem⟩ hbdd
+
+/-- Characterization of the upper Assouad spectrum by a matching pair of bounds. -/
+theorem upperAssouadSpectrum_eq_of_bounds {F : Set ℝ} {θ gam : ℝ}
+    (hgam : 0 ≤ gam) (hup : HasUpperAssouadSpectrumExponent F θ gam)
+    (hlow : ∀ gam' : ℝ, 0 ≤ gam' → gam' < gam → ¬ HasUpperAssouadSpectrumExponent F θ gam') :
+    upperAssouadSpectrum F θ = gam := by
+  have hmem : gam ∈ {g : ℝ | 0 ≤ g ∧ HasUpperAssouadSpectrumExponent F θ g} := ⟨hgam, hup⟩
+  have hbdd : ∀ g ∈ {g : ℝ | 0 ≤ g ∧ HasUpperAssouadSpectrumExponent F θ g}, gam ≤ g := by
+    intro g hg
+    by_contra hcon
+    exact hlow g hg.1 (not_le.mp hcon) hg.2
+  refine le_antisymm ?_ ?_
+  · exact csInf_le ⟨0, fun g hg => hg.1⟩ hmem
+  · exact le_csInf ⟨gam, hmem⟩ hbdd
+
+/-- If the spectrum is bounded by `γ` everywhere and equals `γ` at parameters arbitrarily close
+to one, the quasi-Assouad dimension is `γ`. -/
+theorem quasiAssouadDimension_eq_of_spectrum {F : Set ℝ} {gam : ℝ}
+    (hle : ∀ θ : ℝ, 0 ≤ θ → θ < 1 → upperAssouadSpectrum F θ ≤ gam)
+    (hex : ∀ ε : ℝ, 0 < ε → ∃ θ : ℝ, 0 ≤ θ ∧ θ < 1 ∧ gam - ε ≤ upperAssouadSpectrum F θ) :
+    quasiAssouadDimension F = gam := by
+  have hne : (upperAssouadSpectrum F '' Ico (0 : ℝ) 1).Nonempty :=
+    ⟨upperAssouadSpectrum F 0, ⟨0, ⟨le_refl _, one_pos⟩, rfl⟩⟩
+  have hbdd : ∀ y ∈ upperAssouadSpectrum F '' Ico (0 : ℝ) 1, y ≤ gam := by
+    intro y hy
+    obtain ⟨θ, hθ, rfl⟩ := hy
+    exact hle θ hθ.1 hθ.2
+  refine le_antisymm (csSup_le hne hbdd) ?_
+  by_contra hcon
+  have hlt : sSup (upperAssouadSpectrum F '' Ico (0 : ℝ) 1) < gam := by
+    rw [quasiAssouadDimension] at hcon
+    exact not_le.mp hcon
+  obtain ⟨θ, hθ0, hθ1, hθ⟩ := hex ((gam - sSup (upperAssouadSpectrum F '' Ico (0 : ℝ) 1)) / 2)
+    (by linarith)
+  have hmem : upperAssouadSpectrum F θ ∈ upperAssouadSpectrum F '' Ico (0 : ℝ) 1 :=
+    ⟨θ, ⟨hθ0, hθ1⟩, rfl⟩
+  have hle' : upperAssouadSpectrum F θ ≤ sSup (upperAssouadSpectrum F '' Ico (0 : ℝ) 1) :=
+    le_csSup ⟨gam, hbdd⟩ hmem
+  linarith
+
+/-! ## The Cantor sets behind the regular examples
+
+`cantorGen μ m u L` is the union of the `2 ^ m` intervals of the `m`-th generation, and
+`cantorSet μ u L` is their intersection over all generations.  The midpoint sets of the previous
+section provide the centers of the generation intervals. -/
+
+/-- The tree structure of the midpoint sets: the `(a+b)`-th generation midpoints are the `b`-th
+generation midpoints of the `a`-th generation intervals. -/
+theorem cantorMid_add (mu : ℝ) (a b : ℕ) (u L : ℝ) :
+    cantorMid mu (a + b) u L =
+      (cantorMid mu a u L).biUnion
+        (fun c => cantorMid mu b (c - mu ^ a * L / 2) (mu ^ a * L)) := by
+  classical
+  induction a generalizing u L with
+  | zero =>
+      simp only [Nat.zero_add, pow_zero, one_mul, cantorMid_zero, Finset.singleton_biUnion]
+      congr 1
+      ring
+  | succ a ih =>
+      have hsucc : a + 1 + b = (a + b) + 1 := by omega
+      have hpow : mu ^ a * (mu * L) = mu ^ (a + 1) * L := by ring
+      rw [hsucc, cantorMid_succ, ih u (mu * L), ih (u + (1 - mu) * L) (mu * L), cantorMid_succ,
+        Finset.union_biUnion]
+      simp only [hpow]
+
+/-- The union of the `m`-th generation intervals. -/
+def cantorGen (mu : ℝ) : ℕ → ℝ → ℝ → Set ℝ
+  | 0, u, L => Icc u (u + L)
+  | (m + 1), u, L =>
+      cantorGen mu m u (mu * L) ∪ cantorGen mu m (u + (1 - mu) * L) (mu * L)
+
+theorem cantorGen_zero (mu u L : ℝ) : cantorGen mu 0 u L = Icc u (u + L) := rfl
+
+theorem cantorGen_succ (mu : ℝ) (m : ℕ) (u L : ℝ) :
+    cantorGen mu (m + 1) u L =
+      cantorGen mu m u (mu * L) ∪ cantorGen mu m (u + (1 - mu) * L) (mu * L) := rfl
+
+/-- Each generation is the union of the closed intervals centered at the midpoints. -/
+theorem cantorGen_eq_biUnion_Icc {mu : ℝ} (m : ℕ) (u L : ℝ) :
+    cantorGen mu m u L =
+      ⋃ c ∈ cantorMid mu m u L, Icc (c - mu ^ m * L / 2) (c + mu ^ m * L / 2) := by
+  induction m generalizing u L with
+  | zero =>
+      rw [cantorGen_zero, cantorMid_zero]
+      apply Set.eq_of_subset_of_subset
+      · intro x hx
+        refine Set.mem_iUnion₂.mpr ⟨u + L / 2, Finset.mem_singleton_self _, ?_⟩
+        simp only [pow_zero, one_mul, Set.mem_Icc] at hx ⊢
+        constructor <;> linarith [hx.1, hx.2]
+      · intro x hx
+        obtain ⟨c, hc, hx'⟩ := Set.mem_iUnion₂.mp hx
+        rw [Finset.mem_singleton] at hc
+        subst hc
+        simp only [pow_zero, one_mul, Set.mem_Icc] at hx' ⊢
+        constructor <;> linarith [hx'.1, hx'.2]
+  | succ m ih =>
+      rw [cantorGen_succ, cantorMid_succ, ih u (mu * L), ih (u + (1 - mu) * L) (mu * L)]
+      have hpow : mu ^ m * (mu * L) = mu ^ (m + 1) * L := by ring
+      rw [hpow]
+      apply Set.eq_of_subset_of_subset
+      · intro x hx
+        rcases hx with hx | hx
+        · obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp hx
+          exact Set.mem_iUnion₂.mpr ⟨c, Finset.mem_union_left _ hc, hxc⟩
+        · obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp hx
+          exact Set.mem_iUnion₂.mpr ⟨c, Finset.mem_union_right _ hc, hxc⟩
+      · intro x hx
+        obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp hx
+        rw [Finset.mem_union] at hc
+        rcases hc with hc | hc
+        · exact Or.inl (Set.mem_iUnion₂.mpr ⟨c, hc, hxc⟩)
+        · exact Or.inr (Set.mem_iUnion₂.mpr ⟨c, hc, hxc⟩)
+
+/-- Later generations are contained in earlier ones. -/
+theorem cantorGen_succ_subset {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2) (m : ℕ)
+    {u L : ℝ} (hL : 0 ≤ L) : cantorGen mu (m + 1) u L ⊆ cantorGen mu m u L := by
+  induction m generalizing u L with
+  | zero =>
+      rw [cantorGen_succ, cantorGen_zero, cantorGen_zero, cantorGen_zero]
+      intro x hx
+      rcases hx with hx | hx
+      · refine ⟨hx.1, le_trans hx.2 ?_⟩
+        have : mu * L ≤ L := by nlinarith
+        linarith
+      · refine ⟨le_trans ?_ hx.1, le_trans hx.2 ?_⟩
+        · have : 0 ≤ (1 - mu) * L := mul_nonneg (by linarith) hL
+          linarith
+        · have : (1 - mu) * L + mu * L = L := by ring
+          linarith
+  | succ m ih =>
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      rw [cantorGen_succ, cantorGen_succ]
+      exact Set.union_subset_union (ih hmuL) (ih hmuL)
+
+theorem cantorGen_antitone {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    {u L : ℝ} (hL : 0 ≤ L) : ∀ {m m' : ℕ}, m ≤ m' →
+      cantorGen mu m' u L ⊆ cantorGen mu m u L := by
+  intro m m' hmm
+  induction m' with
+  | zero =>
+      have : m = 0 := by omega
+      subst this
+      exact subset_rfl
+  | succ m' ih =>
+      rcases Nat.lt_or_ge m (m' + 1) with hlt | hge
+      · have hm : m ≤ m' := by omega
+        exact (cantorGen_succ_subset hmu hmu2 m' hL).trans (ih hm)
+      · have : m = m' + 1 := by omega
+        subst this
+        exact subset_rfl
+
+/-- The Cantor set of ratio `mu` in `[u, u + L]`. -/
+def cantorSet (mu u L : ℝ) : Set ℝ := ⋂ m : ℕ, cantorGen mu m u L
+
+theorem cantorSet_subset_cantorGen (mu u L : ℝ) (m : ℕ) :
+    cantorSet mu u L ⊆ cantorGen mu m u L := Set.iInter_subset _ m
+
+theorem cantorSet_subset_Icc (mu u L : ℝ) : cantorSet mu u L ⊆ Icc u (u + L) := by
+  have := cantorSet_subset_cantorGen mu u L 0
+  rwa [cantorGen_zero] at this
+
+/-- The left endpoints of the `m`-th generation intervals. -/
+def cantorLeft (mu : ℝ) : ℕ → ℝ → ℝ → Finset ℝ
+  | 0, u, _ => {u}
+  | (m + 1), u, L =>
+      cantorLeft mu m u (mu * L) ∪ cantorLeft mu m (u + (1 - mu) * L) (mu * L)
+
+theorem cantorLeft_zero (mu u L : ℝ) : cantorLeft mu 0 u L = {u} := rfl
+
+theorem cantorLeft_succ (mu : ℝ) (m : ℕ) (u L : ℝ) :
+    cantorLeft mu (m + 1) u L =
+      cantorLeft mu m u (mu * L) ∪ cantorLeft mu m (u + (1 - mu) * L) (mu * L) := rfl
+
+/-- Left endpoints are contained in the corresponding generation. -/
+theorem cantorLeft_subset_cantorGen {mu : ℝ} (hmu : 0 < mu) (_hmu2 : mu ≤ 1 / 2) (m : ℕ)
+    {u L : ℝ} (hL : 0 ≤ L) :
+    ∀ x ∈ cantorLeft mu m u L, x ∈ cantorGen mu m u L := by
+  induction m generalizing u L with
+  | zero =>
+      intro x hx
+      rw [cantorLeft_zero, Finset.mem_singleton] at hx
+      subst hx
+      rw [cantorGen_zero]
+      exact ⟨le_refl _, by linarith⟩
+  | succ m ih =>
+      intro x hx
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      rw [cantorLeft_succ, Finset.mem_union] at hx
+      rw [cantorGen_succ]
+      rcases hx with hx | hx
+      · exact Or.inl (ih hmuL x hx)
+      · exact Or.inr (ih hmuL x hx)
+
+/-- Left endpoints persist into the next generation. -/
+theorem cantorLeft_subset_succ {mu : ℝ} (m : ℕ) {u L : ℝ} :
+    ∀ x ∈ cantorLeft mu m u L, x ∈ cantorLeft mu (m + 1) u L := by
+  induction m generalizing u L with
+  | zero =>
+      intro x hx
+      rw [cantorLeft_zero, Finset.mem_singleton] at hx
+      subst hx
+      rw [cantorLeft_succ]
+      refine Finset.mem_union_left _ ?_
+      rw [cantorLeft_zero]
+      exact Finset.mem_singleton_self _
+  | succ m ih =>
+      intro x hx
+      rw [cantorLeft_succ, Finset.mem_union] at hx
+      rw [cantorLeft_succ, Finset.mem_union]
+      rcases hx with hx | hx
+      · exact Or.inl (ih x hx)
+      · exact Or.inr (ih x hx)
+
+theorem cantorLeft_subset_of_le {mu : ℝ} {m m' : ℕ} (hmm : m ≤ m') {u L : ℝ} :
+    ∀ x ∈ cantorLeft mu m u L, x ∈ cantorLeft mu m' u L := by
+  induction m' with
+  | zero =>
+      have : m = 0 := by omega
+      subst this
+      exact fun x hx => hx
+  | succ m' ih =>
+      rcases Nat.lt_or_ge m (m' + 1) with hlt | hge
+      · have hm : m ≤ m' := by omega
+        exact fun x hx => cantorLeft_subset_succ m' x (ih hm x hx)
+      · have : m = m' + 1 := by omega
+        subst this
+        exact fun x hx => hx
+
+/-- The left endpoints of every generation belong to the Cantor set. -/
+theorem cantorLeft_subset_cantorSet {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2) (m : ℕ)
+    {u L : ℝ} (hL : 0 ≤ L) :
+    ∀ x ∈ cantorLeft mu m u L, x ∈ cantorSet mu u L := by
+  intro x hx
+  rw [cantorSet, Set.mem_iInter]
+  intro m'
+  rcases Nat.lt_or_ge m' m with hlt | hge
+  · exact cantorGen_antitone hmu hmu2 hL (le_of_lt hlt)
+      (cantorLeft_subset_cantorGen hmu hmu2 m hL x hx)
+  · exact cantorLeft_subset_cantorGen hmu hmu2 m' hL x
+      (cantorLeft_subset_of_le hge x hx)
+
+/-! ### Left endpoints: bounds, separation and cardinality -/
+
+theorem cantorLeft_mem_bounds {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (m : ℕ) {u L : ℝ} (hL : 0 ≤ L) {x : ℝ} (hx : x ∈ cantorLeft mu m u L) :
+    u ≤ x ∧ x ≤ u + L - mu ^ m * L := by
+  induction m generalizing u L with
+  | zero =>
+      rw [cantorLeft_zero, Finset.mem_singleton] at hx
+      subst hx
+      refine ⟨le_refl _, ?_⟩
+      simp
+  | succ m ih =>
+      rw [cantorLeft_succ, Finset.mem_union] at hx
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      have hpowmul : mu ^ m * (mu * L) = mu ^ (m + 1) * L := by ring
+      rcases hx with hx | hx
+      · obtain ⟨h1, h2⟩ := ih hmuL hx
+        rw [hpowmul] at h2
+        refine ⟨h1, ?_⟩
+        have hmuLle : mu * L ≤ L := by nlinarith
+        linarith
+      · obtain ⟨h1, h2⟩ := ih hmuL hx
+        rw [hpowmul] at h2
+        have hone : 0 ≤ (1 - mu) * L := mul_nonneg (by linarith) hL
+        refine ⟨by linarith, ?_⟩
+        have hsum : (1 - mu) * L + mu * L = L := by ring
+        linarith
+
+theorem cantorLeft_separated {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (m : ℕ) {u L : ℝ} (hL : 0 ≤ L) {x y : ℝ}
+    (hx : x ∈ cantorLeft mu m u L) (hy : y ∈ cantorLeft mu m u L) (hxy : x ≠ y) :
+    mu ^ m * L ≤ |x - y| := by
+  induction m generalizing u L with
+  | zero =>
+      rw [cantorLeft_zero, Finset.mem_singleton] at hx hy
+      exact absurd (hx.trans hy.symm) hxy
+  | succ m ih =>
+      have hmuL : 0 ≤ mu * L := mul_nonneg hmu.le hL
+      have hpowmul : mu ^ m * (mu * L) = mu ^ (m + 1) * L := by ring
+      have hposL : 0 ≤ mu ^ (m + 1) * L := mul_nonneg (pow_pos hmu (m + 1)).le hL
+      rw [cantorLeft_succ, Finset.mem_union] at hx hy
+      rcases hx with hx | hx
+      · rcases hy with hy | hy
+        · have h := ih hmuL hx hy
+          rw [hpowmul] at h
+          exact h
+        · obtain ⟨-, hx2⟩ := cantorLeft_mem_bounds hmu hmu2 m hmuL hx
+          obtain ⟨hy1, -⟩ := cantorLeft_mem_bounds hmu hmu2 m hmuL hy
+          rw [hpowmul] at hx2
+          have hgap : mu ^ (m + 1) * L ≤ y - x := by
+            have hmu2L : (1 - 2 * mu) * L ≥ 0 := mul_nonneg (by linarith) hL
+            nlinarith [hx2, hy1, hmu2L]
+          rw [abs_sub_comm, abs_of_nonneg (by linarith : (0:ℝ) ≤ y - x)]
+          exact hgap
+      · rcases hy with hy | hy
+        · obtain ⟨hx1, -⟩ := cantorLeft_mem_bounds hmu hmu2 m hmuL hx
+          obtain ⟨-, hy2⟩ := cantorLeft_mem_bounds hmu hmu2 m hmuL hy
+          rw [hpowmul] at hy2
+          have hgap : mu ^ (m + 1) * L ≤ x - y := by
+            have hmu2L : (1 - 2 * mu) * L ≥ 0 := mul_nonneg (by linarith) hL
+            nlinarith [hx1, hy2, hmu2L]
+          rw [abs_of_nonneg (by linarith : (0:ℝ) ≤ x - y)]
+          exact hgap
+        · have h := ih hmuL hx hy
+          rw [hpowmul] at h
+          exact h
+
+theorem cantorLeft_card {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2)
+    (m : ℕ) {u L : ℝ} (hL : 0 < L) :
+    (cantorLeft mu m u L).card = 2 ^ m := by
+  induction m generalizing u L with
+  | zero => simp [cantorLeft_zero]
+  | succ m ih =>
+      have hmuL : 0 < mu * L := mul_pos hmu hL
+      have hdisj : Disjoint (cantorLeft mu m u (mu * L))
+          (cantorLeft mu m (u + (1 - mu) * L) (mu * L)) := by
+        rw [Finset.disjoint_left]
+        intro x hx hx'
+        obtain ⟨-, hx2⟩ := cantorLeft_mem_bounds hmu hmu2 m hmuL.le hx
+        obtain ⟨hx1, -⟩ := cantorLeft_mem_bounds hmu hmu2 m hmuL.le hx'
+        have hpos : 0 < mu ^ m * (mu * L) := mul_pos (pow_pos hmu m) hmuL
+        have hmu2L : (1 - 2 * mu) * L ≥ 0 := mul_nonneg (by linarith) hL.le
+        nlinarith [hx1, hx2, hpos, hmu2L]
+      rw [cantorLeft_succ, Finset.card_union_of_disjoint hdisj, ih hmuL, ih hmuL]
+      ring
+
+/-! ### The generation midpoints cover the Cantor set -/
+
+theorem cantorSet_intervalCover {mu : ℝ} (m : ℕ) {u L δ : ℝ}
+    (hδ : mu ^ m * L ≤ δ) :
+    IsIntervalCover (cantorSet mu u L) δ (cantorMid mu m u L) := by
+  intro x hx
+  have hxgen : x ∈ cantorGen mu m u L := cantorSet_subset_cantorGen mu u L m hx
+  rw [cantorGen_eq_biUnion_Icc] at hxgen
+  obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp hxgen
+  refine Set.mem_iUnion₂.mpr ⟨c, hc, ?_⟩
+  simp only [Set.mem_Icc] at hxc ⊢
+  constructor <;> linarith [hxc.1, hxc.2, hδ]
+
+/-! ### The Cantor ratio attached to a dimension -/
+
+/-- The contraction ratio of a Cantor set of dimension `gam`. -/
+def cantorRatio (gam : ℝ) : ℝ := (2 : ℝ) ^ (-(1 / gam))
+
+theorem cantorRatio_pos (gam : ℝ) : 0 < cantorRatio gam :=
+  Real.rpow_pos_of_pos (by norm_num) _
+
+theorem cantorRatio_le_half {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) :
+    cantorRatio gam ≤ 1 / 2 := by
+  rw [cantorRatio]
+  have hexp : -(1 / gam) ≤ -1 := by
+    have h1 : (1 : ℝ) ≤ 1 / gam := by
+      rw [le_div_iff₀ hgam]
+      linarith
+    linarith
+  calc (2 : ℝ) ^ (-(1 / gam)) ≤ (2 : ℝ) ^ (-1 : ℝ) :=
+        Real.rpow_le_rpow_of_exponent_le (by norm_num) hexp
+    _ = 1 / 2 := by
+        rw [Real.rpow_neg_one]
+        norm_num
+
+theorem cantorRatio_lt_one {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) :
+    cantorRatio gam < 1 :=
+  lt_of_le_of_lt (cantorRatio_le_half hgam hgam1) (by norm_num)
+
+/-- The defining relation of the ratio: the `m`-th generation has `2 ^ m` intervals of
+length `μ ^ m`, and `(μ ^ m) ^ (-γ) = 2 ^ m`. -/
+theorem cantorRatio_pow_rpow_neg {gam : ℝ} (hgam : 0 < gam) (m : ℕ) :
+    ((cantorRatio gam) ^ m) ^ (-gam) = (2 : ℝ) ^ m := by
+  have hpos : (0 : ℝ) < cantorRatio gam := cantorRatio_pos gam
+  have hpow : (cantorRatio gam) ^ m = (2 : ℝ) ^ (-(m / gam)) := by
+    rw [cantorRatio, ← Real.rpow_natCast ((2 : ℝ) ^ (-(1 / gam))) m,
+      ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    field_simp
+  rw [hpow, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+  rw [show -(m / gam) * -gam = (m : ℝ) by field_simp]
+  rw [Real.rpow_natCast]
+
+/-! ### The Minkowski dimension of the Cantor set -/
+
+/-- The `m`-th generation cover gives the upper Minkowski estimate at the exponent `gam`. -/
+theorem hasUpperMinkowskiExponent_cantorSet {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (u : ℝ) : HasUpperMinkowskiExponent (cantorSet (cantorRatio gam) u 1) gam := by
+  intro ε hε
+  refine ⟨2, by norm_num, ?_⟩
+  intro δ hδ hδone
+  have hmu : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hmu2 : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  have hmulone : cantorRatio gam < 1 := lt_of_le_of_lt hmu2 (by norm_num)
+  -- the least generation whose intervals are shorter than `δ`
+  have hex : ∃ n : ℕ, (cantorRatio gam) ^ n < δ := exists_pow_lt_of_lt_one hδ hmulone
+  classical
+  set m : ℕ := Nat.find hex with hmdef
+  have hmspec : (cantorRatio gam) ^ m < δ := Nat.find_spec hex
+  have hmpos : 0 < m := by
+    rcases Nat.eq_zero_or_pos m with h0 | h
+    · rw [h0] at hmspec
+      simp only [pow_zero] at hmspec
+      linarith
+    · exact h
+  have hprev : ¬ ((cantorRatio gam) ^ (m - 1) < δ) := Nat.find_min hex (by omega)
+  have hprevle : δ ≤ (cantorRatio gam) ^ (m - 1) := not_lt.mp hprev
+  refine ⟨cantorMid (cantorRatio gam) m u 1, ?_, ?_⟩
+  · refine cantorSet_intervalCover m ?_
+    rw [mul_one]
+    exact hmspec.le
+  · rw [cantorMid_card hmu hmu2 m (by norm_num : (0:ℝ) < 1)]
+    -- `2 ^ m = (μ ^ m) ^ (-γ) < (μ δ) ^ (-γ) = 2 δ ^ (-γ) ≤ 2 δ ^ (-(γ + ε))`
+    have hpowpos : 0 < (cantorRatio gam) ^ m := pow_pos hmu m
+    have hmuprev : (cantorRatio gam) ^ m = cantorRatio gam * (cantorRatio gam) ^ (m - 1) := by
+      rw [← pow_succ']
+      congr 1
+      omega
+    have hlow : cantorRatio gam * δ ≤ (cantorRatio gam) ^ m := by
+      rw [hmuprev]
+      exact mul_le_mul_of_nonneg_left hprevle hmu.le
+    have hstep1 : ((cantorRatio gam) ^ m) ^ (-gam) ≤ (cantorRatio gam * δ) ^ (-gam) := by
+      rcases eq_or_lt_of_le hlow with heq | hlt
+      · rw [heq]
+      · exact le_of_lt (Real.rpow_lt_rpow_of_neg (by positivity) hlt (by linarith))
+    have hstep2 : (cantorRatio gam * δ) ^ (-gam) = 2 * δ ^ (-gam) := by
+      rw [Real.mul_rpow hmu.le hδ.le]
+      congr 1
+      have h1 : (cantorRatio gam) ^ (-gam) = ((cantorRatio gam) ^ (1 : ℕ)) ^ (-gam) := by
+        norm_num
+      rw [h1, cantorRatio_pow_rpow_neg hgam 1]
+      norm_num
+    have hstep3 : δ ^ (-gam) ≤ δ ^ (-(gam + ε)) := by
+      apply Real.rpow_le_rpow_of_exponent_ge hδ hδone.le
+      linarith
+    have hcast : ((2 ^ m : ℕ) : ℝ) = (2 : ℝ) ^ m := by
+      push_cast
+      ring
+    rw [hcast, ← cantorRatio_pow_rpow_neg hgam m]
+    calc ((cantorRatio gam) ^ m) ^ (-gam) ≤ (cantorRatio gam * δ) ^ (-gam) := hstep1
+      _ = 2 * δ ^ (-gam) := hstep2
+      _ ≤ 2 * δ ^ (-(gam + ε)) := by
+          exact mul_le_mul_of_nonneg_left hstep3 (by norm_num)
+
+/-- The separated left-endpoint sets rule out every smaller Minkowski exponent. -/
+theorem not_hasUpperMinkowskiExponent_cantorSet {gam gam' : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (hgam'0 : 0 ≤ gam') (hlt : gam' < gam) (u : ℝ) :
+    ¬ HasUpperMinkowskiExponent (cantorSet (cantorRatio gam) u 1) gam' := by
+  intro hcon
+  have hmu : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hmu2 : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  have hmulone : cantorRatio gam < 1 := lt_of_le_of_lt hmu2 (by norm_num)
+  set ε : ℝ := (gam - gam') / 2 with hεdef
+  have hε : 0 < ε := by rw [hεdef]; linarith
+  obtain ⟨C, hC, hcover⟩ := hcon ε hε
+  set gam'' : ℝ := gam' + ε with hg2def
+  have hg2 : gam'' < gam := by rw [hg2def, hεdef]; linarith
+  have hg20 : 0 ≤ gam'' := by rw [hg2def]; linarith
+  -- choose a generation with more separated points than the covering bound allows
+  set ρ : ℝ := 1 - gam'' / gam with hρdef
+  have hρpos : 0 < ρ := by
+    rw [hρdef]
+    have : gam'' / gam < 1 := by
+      rw [div_lt_one hgam]
+      exact hg2
+    linarith
+  have hbase : (1 : ℝ) < (2 : ℝ) ^ ρ := Real.one_lt_rpow_iff_of_pos (by norm_num) |>.mpr
+    (Or.inl ⟨by norm_num, hρpos⟩)
+  have hexn : ∃ n : ℕ, ((2 : ℝ) ^ ρ)⁻¹ ^ n < (C * 2 ^ gam'')⁻¹ := by
+    apply exists_pow_lt_of_lt_one
+    · positivity
+    · rw [inv_lt_one_iff₀]
+      right
+      exact hbase
+  obtain ⟨m, hm⟩ := hexn
+  -- the cover at scale `δ = μ ^ m / 2`
+  set δ : ℝ := (cantorRatio gam) ^ m / 2 with hδdef
+  have hδpos : 0 < δ := by rw [hδdef]; positivity
+  have hδone : δ < 1 := by
+    rw [hδdef]
+    have h1 : (cantorRatio gam) ^ m ≤ 1 := pow_le_one₀ hmu.le hmulone.le
+    linarith
+  obtain ⟨ι, hι, hcard⟩ := hcover δ hδpos hδone
+  have hsep : ∀ x ∈ cantorLeft (cantorRatio gam) m u 1, ∀ y ∈ cantorLeft (cantorRatio gam) m u 1,
+      x ≠ y → δ < |x - y| := by
+    intro x hx y hy hxy
+    have h := cantorLeft_separated hmu hmu2 m (by norm_num : (0:ℝ) ≤ 1) hx hy hxy
+    rw [mul_one] at h
+    rw [hδdef]
+    have hpospow : 0 < (cantorRatio gam) ^ m := pow_pos hmu m
+    linarith
+  have hSF : ∀ x ∈ cantorLeft (cantorRatio gam) m u 1, x ∈ cantorSet (cantorRatio gam) u 1 := by
+    intro x hx
+    exact cantorLeft_subset_cantorSet hmu hmu2 m (by norm_num : (0:ℝ) ≤ 1) x hx
+  have hlow := card_le_card_of_intervalCover_of_separated hι hSF hsep
+  rw [cantorLeft_card hmu hmu2 m (by norm_num : (0:ℝ) < 1)] at hlow
+  -- contradiction with the covering bound
+  have hcardreal : ((2 ^ m : ℕ) : ℝ) ≤ C * δ ^ (-(gam' + ε)) := by
+    refine le_trans ?_ hcard
+    exact_mod_cast hlow
+  have hcast : ((2 ^ m : ℕ) : ℝ) = (2 : ℝ) ^ m := by push_cast; ring
+  rw [hcast] at hcardreal
+  -- evaluate the right-hand side
+  have hval : δ ^ (-gam'') = 2 ^ gam'' * ((2 : ℝ) ^ m) ^ (gam'' / gam) := by
+    rw [hδdef]
+    rw [Real.div_rpow (by positivity) (by norm_num : (0:ℝ) ≤ 2)]
+    have h1 : ((cantorRatio gam) ^ m) ^ (-gam'') =
+        (((cantorRatio gam) ^ m) ^ (-gam)) ^ (gam'' / gam) := by
+      rw [← Real.rpow_natCast (cantorRatio gam) m]
+      rw [← Real.rpow_mul hmu.le, ← Real.rpow_mul hmu.le, ← Real.rpow_mul hmu.le]
+      congr 1
+      field_simp
+    have h2 : ((2 : ℝ) ^ (-gam'')) = ((2 : ℝ) ^ gam'')⁻¹ :=
+      Real.rpow_neg (by norm_num : (0:ℝ) ≤ 2) gam''
+    rw [h1, cantorRatio_pow_rpow_neg hgam m, h2]
+    field_simp
+  rw [← hg2def] at hcardreal
+  rw [hval] at hcardreal
+  -- now `2 ^ m ≤ C * 2 ^ γ'' * (2 ^ m) ^ (γ''/γ)`, contradicting the choice of `m`
+  have hpow2 : (0 : ℝ) < (2 : ℝ) ^ m := by positivity
+  have hsplit : ((2 : ℝ) ^ m) ^ ρ ≤ C * 2 ^ gam'' := by
+    have hid : ((2 : ℝ) ^ m) ^ ρ * ((2 : ℝ) ^ m) ^ (gam'' / gam) = (2 : ℝ) ^ m := by
+      rw [← Real.rpow_natCast 2 m, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2),
+        ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2), ← Real.rpow_add (by norm_num : (0:ℝ) < 2)]
+      congr 1
+      rw [hρdef]
+      ring
+    have hposq : (0 : ℝ) < ((2 : ℝ) ^ m) ^ (gam'' / gam) := by positivity
+    have hmul : ((2 : ℝ) ^ m) ^ ρ * ((2 : ℝ) ^ m) ^ (gam'' / gam) ≤
+        (C * 2 ^ gam'') * ((2 : ℝ) ^ m) ^ (gam'' / gam) := by
+      rw [hid]
+      calc (2 : ℝ) ^ m ≤ C * (2 ^ gam'' * ((2 : ℝ) ^ m) ^ (gam'' / gam)) := hcardreal
+        _ = C * 2 ^ gam'' * ((2 : ℝ) ^ m) ^ (gam'' / gam) := by ring
+    exact le_of_mul_le_mul_right hmul hposq
+  have hgrow : C * 2 ^ gam'' < ((2 : ℝ) ^ ρ) ^ m := by
+    have hinv : ((2 : ℝ) ^ ρ)⁻¹ ^ m < (C * 2 ^ gam'')⁻¹ := hm
+    have hposbase : (0 : ℝ) < ((2 : ℝ) ^ ρ) ^ m := by positivity
+    have hposC : (0 : ℝ) < C * 2 ^ gam'' := by positivity
+    rw [inv_pow] at hinv
+    exact (inv_lt_inv₀ hposbase hposC).mp hinv
+  have hidpow : ((2 : ℝ) ^ m) ^ ρ = ((2 : ℝ) ^ ρ) ^ m := by
+    rw [← Real.rpow_natCast 2 m, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2),
+      ← Real.rpow_natCast ((2 : ℝ) ^ ρ) m, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    ring
+  rw [hidpow] at hsplit
+  linarith
+
+/-! ### Counting separated points in a short interval -/
+
+/-- A `len`-separated subset of an interval of length `2 * len` has at most three points. -/
+theorem card_le_three_of_separated_in_interval {S : Finset ℝ} {s len : ℝ} (hlen : 0 < len)
+    (hsub : ∀ x ∈ S, x ∈ Icc s (s + 2 * len))
+    (hsep : ∀ x ∈ S, ∀ y ∈ S, x ≠ y → len ≤ |x - y|) :
+    S.card ≤ 3 := by
+  classical
+  have hcard : S.card ≤ (Finset.Icc (0 : ℤ) 2).card := by
+    refine Finset.card_le_card_of_injOn (fun x => ⌊(x - s) / len⌋) ?_ ?_
+    · intro x hx
+      obtain ⟨h1, h2⟩ := hsub x hx
+      have hq0 : (0 : ℝ) ≤ (x - s) / len := by
+        apply div_nonneg (by linarith) hlen.le
+      have hq2 : (x - s) / len ≤ 2 := by
+        rw [div_le_iff₀ hlen]
+        linarith
+      refine Finset.mem_Icc.mpr ⟨?_, ?_⟩
+      · exact Int.le_floor.mpr (by simpa using hq0)
+      · have hfl := Int.floor_le_floor hq2
+        simpa using hfl
+    · intro x hx y hy hxy
+      by_contra hne
+      have hfx : ((⌊(x - s) / len⌋ : ℝ)) ≤ (x - s) / len := Int.floor_le _
+      have hfy : ((⌊(y - s) / len⌋ : ℝ)) ≤ (y - s) / len := Int.floor_le _
+      have hfx' : (x - s) / len < (⌊(x - s) / len⌋ : ℝ) + 1 := Int.lt_floor_add_one _
+      have hfy' : (y - s) / len < (⌊(y - s) / len⌋ : ℝ) + 1 := Int.lt_floor_add_one _
+      have hxy' : ⌊(x - s) / len⌋ = ⌊(y - s) / len⌋ := hxy
+      rw [hxy'] at hfx hfx'
+      have hdiff : |(x - s) / len - (y - s) / len| < 1 := by
+        rw [abs_lt]
+        constructor <;> linarith
+      have hlenne : len ≠ 0 := hlen.ne'
+      have hxydiv : (x - s) / len - (y - s) / len = (x - y) / len := by
+        field_simp
+        ring
+      rw [hxydiv, abs_div, abs_of_pos hlen, div_lt_one hlen] at hdiff
+      exact absurd (hsep x hx y hy hne) (not_le.mpr hdiff)
+  simpa using hcard
+
+/-! ### The ancestor of a midpoint -/
+
+/-- Every `m`-th generation midpoint lies in the copy attached to a unique `ℓ`-th generation
+midpoint, and is close to it. -/
+theorem exists_ancestor_cantorMid {mu : ℝ} (hmu : 0 < mu) (hmu2 : mu ≤ 1 / 2) {l m : ℕ}
+    (hlm : l ≤ m) {u L : ℝ} (hL : 0 ≤ L) {c : ℝ} (hc : c ∈ cantorMid mu m u L) :
+    ∃ c' ∈ cantorMid mu l u L,
+      c ∈ cantorMid mu (m - l) (c' - mu ^ l * L / 2) (mu ^ l * L) ∧
+        |c - c'| ≤ (mu ^ l * L - mu ^ m * L) / 2 := by
+  classical
+  have hml : m = l + (m - l) := by omega
+  rw [hml, cantorMid_add] at hc
+  obtain ⟨c', hc', hcc⟩ := Finset.mem_biUnion.mp hc
+  refine ⟨c', hc', hcc, ?_⟩
+  have hLl : 0 ≤ mu ^ l * L := mul_nonneg (pow_pos hmu l).le hL
+  obtain ⟨h1, h2⟩ := cantorMid_mem_bounds hmu hmu2 (m - l) hLl hcc
+  have hpowmul : mu ^ (m - l) * (mu ^ l * L) = mu ^ m * L := by
+    have hp : mu ^ (m - l) * mu ^ l = mu ^ m := by
+      rw [← pow_add]
+      congr 1
+      omega
+    calc mu ^ (m - l) * (mu ^ l * L) = (mu ^ (m - l) * mu ^ l) * L := by ring
+      _ = mu ^ m * L := by rw [hp]
+  rw [hpowmul] at h1 h2
+  rw [abs_le]
+  constructor <;> linarith
+
+/-! ### The Assouad estimate for the Cantor set -/
+
+set_option maxHeartbeats 1000000 in
+/-- For every interval longer than the scale, the Cantor set inside it is covered by at most
+`12 (|I|/δ)^γ` intervals of length `δ`. -/
+theorem cantorSet_assouad_cover {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) (u : ℝ)
+    {δ a b : ℝ} (hδ : 0 < δ) (_hab : a ≤ b) (hlen : δ ≤ b - a) (hb1 : b - a ≤ 1) :
+    ∃ ι : Finset ℝ, IsIntervalCover (cantorSet (cantorRatio gam) u 1 ∩ Icc a b) δ ι ∧
+      (ι.card : ℝ) ≤ 12 * ((b - a) / δ) ^ gam := by
+  classical
+  set mu : ℝ := cantorRatio gam with hmudef
+  have hmu : 0 < mu := cantorRatio_pos gam
+  have hmu2 : mu ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  have hmulone : mu < 1 := lt_of_le_of_lt hmu2 (by norm_num)
+  have hlenpos : 0 < b - a := lt_of_lt_of_le hδ hlen
+  -- the generation finer than `δ`
+  have hexm : ∃ n : ℕ, mu ^ n < δ := exists_pow_lt_of_lt_one hδ hmulone
+  set m : ℕ := Nat.find hexm with hmdef
+  have hmspec : mu ^ m < δ := Nat.find_spec hexm
+  have hmpos : 0 < m ∨ δ > 1 := by
+    rcases Nat.eq_zero_or_pos m with h0 | h
+    · right
+      rw [h0] at hmspec
+      simpa using hmspec
+    · left
+      exact h
+  -- the generation coarser than the interval
+  have hexl : ∃ n : ℕ, mu ^ n < b - a := exists_pow_lt_of_lt_one hlenpos hmulone
+  set l1 : ℕ := Nat.find hexl with hl1def
+  have hl1spec : mu ^ l1 < b - a := Nat.find_spec hexl
+  have hl1pos : 0 < l1 := by
+    rcases Nat.eq_zero_or_pos l1 with h0 | h
+    · rw [h0] at hl1spec
+      simp only [pow_zero] at hl1spec
+      linarith
+    · exact h
+  set l : ℕ := l1 - 1 with hldef
+  have hlprev : ¬ (mu ^ l < b - a) := by
+    rw [hldef]
+    exact Nat.find_min hexl (by omega)
+  have hlge : b - a ≤ mu ^ l := not_lt.mp hlprev
+  have hl1eq : l1 = l + 1 := by omega
+  have hlsucc : mu ^ (l + 1) < b - a := by rw [← hl1eq]; exact hl1spec
+  -- the fine generation is finer than the coarse one
+  have hlm : l ≤ m := by
+    by_contra hcon
+    have hml : m < l := by omega
+    have hlt : mu ^ l < mu ^ m := (pow_lt_pow_iff_right_of_lt_one₀ hmu hmulone).2 hml
+    linarith [hmspec, hlge, hlen]
+  have hpowmpos : 0 < mu ^ m := pow_pos hmu m
+  have hpowlpos : 0 < mu ^ l := pow_pos hmu l
+  -- the cover: the fine midpoints whose intervals meet `[a, b]`
+  set ι : Finset ℝ := (cantorMid mu m u 1).filter
+    (fun c => a - mu ^ m / 2 ≤ c ∧ c ≤ b + mu ^ m / 2) with hιdef
+  refine ⟨ι, ?_, ?_⟩
+  · -- the covering property
+    intro x hx
+    obtain ⟨hxset, hxab⟩ := hx
+    have hcover := cantorSet_intervalCover (mu := mu) m (u := u) (L := 1) (δ := mu ^ m)
+      (by rw [mul_one])
+    have hxmem := hcover hxset
+    obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp hxmem
+    simp only [Set.mem_Icc] at hxc hxab
+    refine Set.mem_iUnion₂.mpr ⟨c, ?_, ?_⟩
+    · rw [hιdef, Finset.mem_filter]
+      refine ⟨hc, ?_, ?_⟩
+      · linarith [hxc.2, hxab.1]
+      · linarith [hxc.1, hxab.2]
+    · simp only [Set.mem_Icc]
+      constructor <;> linarith [hxc.1, hxc.2, hmspec]
+  · -- the cardinality bound
+    set A : Finset ℝ := (cantorMid mu l u 1).filter
+      (fun c' => a - mu ^ l / 2 ≤ c' ∧ c' ≤ b + mu ^ l / 2) with hAdef
+    have hAcard : A.card ≤ 3 := by
+      refine card_le_three_of_separated_in_interval (s := a - mu ^ l / 2) (len := mu ^ l)
+        hpowlpos ?_ ?_
+      · intro x hx
+        rw [hAdef, Finset.mem_filter] at hx
+        obtain ⟨-, h1, h2⟩ := hx
+        simp only [Set.mem_Icc]
+        constructor
+        · exact h1
+        · linarith [hlge]
+      · intro x hx y hy hxy
+        rw [hAdef, Finset.mem_filter] at hx hy
+        have h := cantorMid_separated hmu hmu2 l (by norm_num : (0:ℝ) ≤ 1) hx.1 hy.1 hxy
+        rw [mul_one] at h
+        exact h
+    have hsub : ι ⊆ A.biUnion (fun c' => cantorMid mu (m - l) (c' - mu ^ l * 1 / 2)
+        (mu ^ l * 1)) := by
+      intro c hc
+      rw [hιdef, Finset.mem_filter] at hc
+      obtain ⟨hcmid, hc1, hc2⟩ := hc
+      obtain ⟨c', hc', hcpiece, hdist⟩ :=
+        exists_ancestor_cantorMid hmu hmu2 hlm (by norm_num : (0:ℝ) ≤ 1) hcmid
+      rw [mul_one, mul_one] at hdist
+      refine Finset.mem_biUnion.mpr ⟨c', ?_, hcpiece⟩
+      rw [hAdef, Finset.mem_filter]
+      refine ⟨hc', ?_, ?_⟩
+      · have habs := abs_le.mp hdist
+        linarith [habs.1, habs.2]
+      · have habs := abs_le.mp hdist
+        linarith [habs.1, habs.2]
+    have hcardbound : ι.card ≤ 3 * 2 ^ (m - l) := by
+      have hstep1 : ι.card ≤ (A.biUnion (fun c' => cantorMid mu (m - l) (c' - mu ^ l * 1 / 2)
+          (mu ^ l * 1))).card := Finset.card_le_card hsub
+      have hstep2 : (A.biUnion (fun c' => cantorMid mu (m - l) (c' - mu ^ l * 1 / 2)
+          (mu ^ l * 1))).card ≤ ∑ c' ∈ A, (cantorMid mu (m - l) (c' - mu ^ l * 1 / 2)
+            (mu ^ l * 1)).card := Finset.card_biUnion_le
+      have hstep3 : ∑ c' ∈ A, (cantorMid mu (m - l) (c' - mu ^ l * 1 / 2)
+          (mu ^ l * 1)).card = A.card * 2 ^ (m - l) := by
+        rw [Finset.sum_congr rfl (fun c' _ => cantorMid_card hmu hmu2 (m - l)
+          (by rw [mul_one]; exact hpowlpos))]
+        rw [Finset.sum_const, smul_eq_mul]
+      calc ι.card ≤ ∑ c' ∈ A, (cantorMid mu (m - l) (c' - mu ^ l * 1 / 2)
+            (mu ^ l * 1)).card := le_trans hstep1 hstep2
+        _ = A.card * 2 ^ (m - l) := hstep3
+        _ ≤ 3 * 2 ^ (m - l) := Nat.mul_le_mul_right _ hAcard
+    -- convert to the real-valued estimate
+    have hpow : ((2 : ℝ) ^ (m - l)) = ((mu ^ (m - l)) ^ (-gam)) := by
+      rw [hmudef, cantorRatio_pow_rpow_neg hgam (m - l)]
+    have hsplit : mu ^ (m - l) * mu ^ l = mu ^ m := by
+      rw [← pow_add]
+      congr 1
+      omega
+    have hlowbd : mu * δ ≤ mu ^ m * 1 := by
+      rw [mul_one]
+      have hmprev : ¬ (mu ^ (m - 1) < δ) := by
+        rcases hmpos with hm | hd
+        · exact Nat.find_min hexm (by omega)
+        · exfalso
+          linarith [hδ, hd, hlen, hb1]
+      have hprevle : δ ≤ mu ^ (m - 1) := not_lt.mp hmprev
+      have hmuprev : mu ^ m = mu * mu ^ (m - 1) := by
+        rw [← pow_succ']
+        congr 1
+        rcases hmpos with hm | hd
+        · omega
+        · exfalso; linarith [hδ, hd, hlen, hb1]
+      rw [hmuprev]
+      exact mul_le_mul_of_nonneg_left hprevle hmu.le
+    have hupbd : mu ^ l * mu < b - a := by
+      calc mu ^ l * mu = mu ^ (l + 1) := (pow_succ mu l).symm
+        _ < b - a := hlsucc
+    have hratio : mu ^ 2 * δ / (b - a) < mu ^ (m - l) := by
+      rw [div_lt_iff₀ hlenpos]
+      have hkey : mu ^ (m - l) * (b - a) > mu ^ (m - l) * (mu ^ l * mu) := by
+        apply mul_lt_mul_of_pos_left hupbd (pow_pos hmu (m - l))
+      have hid : mu ^ (m - l) * (mu ^ l * mu) = mu ^ m * mu := by
+        rw [← mul_assoc, hsplit]
+      rw [hid] at hkey
+      have hlow : mu ^ 2 * δ ≤ mu ^ m * mu := by
+        have h1 : mu * δ ≤ mu ^ m := by
+          have := hlowbd
+          rw [mul_one] at this
+          exact this
+        calc mu ^ 2 * δ = mu * (mu * δ) := by ring
+          _ ≤ mu * mu ^ m := by exact mul_le_mul_of_nonneg_left h1 hmu.le
+          _ = mu ^ m * mu := by ring
+      linarith
+    have hfinal : ((2 : ℝ) ^ (m - l)) ≤ 4 * ((b - a) / δ) ^ gam := by
+      rw [hpow]
+      have hposq : (0 : ℝ) < mu ^ 2 * δ / (b - a) := by positivity
+      have hstep : (mu ^ (m - l)) ^ (-gam) ≤ (mu ^ 2 * δ / (b - a)) ^ (-gam) := by
+        exact le_of_lt (Real.rpow_lt_rpow_of_neg hposq hratio (by linarith))
+      have heval : (mu ^ 2 * δ / (b - a)) ^ (-gam) = 4 * ((b - a) / δ) ^ gam := by
+        have h1 : mu ^ 2 * δ / (b - a) = (mu ^ 2) * (δ / (b - a)) := by ring
+        rw [h1, Real.mul_rpow (by positivity) (by positivity)]
+        have h2 : ((mu ^ 2 : ℝ)) ^ (-gam) = 4 := by
+          rw [hmudef, cantorRatio_pow_rpow_neg hgam 2]
+          norm_num
+        have h3 : ((δ / (b - a)) : ℝ) ^ (-gam) = ((b - a) / δ) ^ gam := by
+          rw [Real.rpow_neg (by positivity), Real.div_rpow hδ.le hlenpos.le,
+            Real.div_rpow hlenpos.le hδ.le, inv_div]
+        rw [h2, h3]
+      rw [heval] at hstep
+      exact hstep
+    have hcast : ((ι.card : ℝ)) ≤ 3 * (2 : ℝ) ^ (m - l) := by
+      have h := hcardbound
+      have hc : ((ι.card : ℝ)) ≤ ((3 * 2 ^ (m - l) : ℕ) : ℝ) := by exact_mod_cast h
+      calc ((ι.card : ℝ)) ≤ ((3 * 2 ^ (m - l) : ℕ) : ℝ) := hc
+        _ = 3 * (2 : ℝ) ^ (m - l) := by push_cast; ring
+    calc ((ι.card : ℝ)) ≤ 3 * (2 : ℝ) ^ (m - l) := hcast
+      _ ≤ 3 * (4 * ((b - a) / δ) ^ gam) := by
+          exact mul_le_mul_of_nonneg_left hfinal (by norm_num)
+      _ = 12 * ((b - a) / δ) ^ gam := by ring
+
+/-! ### From the spectrum to the Minkowski estimate -/
+
+/-- For a subset of `[1,2]` an upper-spectrum estimate implies the global Minkowski
+estimate at the same exponent. -/
+theorem hasUpperMinkowskiExponent_of_hasUpperAssouadSpectrumExponent {F : Set ℝ} {θ gam : ℝ}
+    (hF : F ⊆ Icc (1 : ℝ) 2) (hθ0 : 0 ≤ θ)
+    (h : HasUpperAssouadSpectrumExponent F θ gam) :
+    HasUpperMinkowskiExponent F gam := by
+  intro ε hε
+  obtain ⟨C, hC, hcov⟩ := h
+  refine ⟨C, hC, ?_⟩
+  intro δ hδ hδone
+  have hscale : δ ^ θ ≤ (2 : ℝ) - 1 := by
+    have h1 : δ ^ θ ≤ 1 := Real.rpow_le_one hδ.le hδone.le hθ0
+    linarith
+  obtain ⟨ι, hι, hcard⟩ := hcov δ 1 2 hδ hδone (le_refl _) (by norm_num) (le_refl _) hscale
+  refine ⟨ι, ?_, ?_⟩
+  · refine IsIntervalCover.mono ?_ hι
+    intro x hx
+    exact ⟨hx, hF hx⟩
+  · refine le_trans hcard ?_
+    have hval : ((2 : ℝ) - 1) / δ = δ⁻¹ := by
+      norm_num
+    rw [hval]
+    have hstep : (δ⁻¹ : ℝ) ^ gam ≤ δ ^ (-(gam + ε)) := by
+      rw [Real.inv_rpow hδ.le, ← Real.rpow_neg hδ.le]
+      exact Real.rpow_le_rpow_of_exponent_ge hδ hδone.le (by linarith)
+    exact mul_le_mul_of_nonneg_left hstep hC.le
+
+/-! ### The dimensions of the Cantor set -/
+
+theorem cantorSet_subset_Icc_one_two {gam : ℝ} (u : ℝ) (hu : 1 ≤ u) (hu2 : u + 1 ≤ 2) :
+    cantorSet (cantorRatio gam) u 1 ⊆ Icc (1 : ℝ) 2 := by
+  intro x hx
+  obtain ⟨h1, h2⟩ := cantorSet_subset_Icc (cantorRatio gam) u 1 hx
+  exact ⟨by linarith, by linarith⟩
+
+theorem cantorSet_nonempty {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) (u : ℝ) :
+    (cantorSet (cantorRatio gam) u 1).Nonempty := by
+  refine ⟨u, ?_⟩
+  have hmu : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hmu2 : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  refine cantorLeft_subset_cantorSet hmu hmu2 0 (by norm_num : (0:ℝ) ≤ 1) u ?_
+  rw [cantorLeft_zero]
+  exact Finset.mem_singleton_self _
+
+/-- The upper Assouad spectrum of the Cantor set is its dimension, at every scale
+parameter. -/
+theorem upperAssouadSpectrum_cantorSet {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    {θ : ℝ} (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1) (u : ℝ) (hu : 1 ≤ u) (hu2 : u + 1 ≤ 2) :
+    upperAssouadSpectrum (cantorSet (cantorRatio gam) u 1) θ = gam := by
+  refine upperAssouadSpectrum_eq_of_bounds hgam.le ?_ ?_
+  · -- the covering estimate
+    refine ⟨12, by norm_num, ?_⟩
+    intro δ a b hδ hδone ha hab hb hscale
+    have hb1 : b - a ≤ 1 := by linarith
+    have hδscale : δ ≤ b - a := by
+      have h1 : δ ≤ δ ^ θ := by
+        calc δ = δ ^ (1 : ℝ) := (Real.rpow_one δ).symm
+          _ ≤ δ ^ θ := Real.rpow_le_rpow_of_exponent_ge hδ hδone.le hθ1
+      linarith
+    obtain ⟨ι, hι, hcard⟩ := cantorSet_assouad_cover hgam hgam1 u hδ hab hδscale hb1
+    exact ⟨ι, hι, hcard⟩
+  · -- no smaller exponent works
+    intro gam' hgam'0 hlt hcon
+    have hmink := hasUpperMinkowskiExponent_of_hasUpperAssouadSpectrumExponent
+      (cantorSet_subset_Icc_one_two u hu hu2) hθ0 hcon
+    exact not_hasUpperMinkowskiExponent_cantorSet hgam hgam1 hgam'0 hlt u hmink
+
+/-- The quasi-Assouad dimension of the Cantor set is its dimension. -/
+theorem quasiAssouadDimension_cantorSet {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (u : ℝ) (hu : 1 ≤ u) (hu2 : u + 1 ≤ 2) :
+    quasiAssouadDimension (cantorSet (cantorRatio gam) u 1) = gam := by
+  refine quasiAssouadDimension_eq_of_spectrum ?_ ?_
+  · intro θ hθ0 hθ1
+    rw [upperAssouadSpectrum_cantorSet hgam hgam1 hθ0 hθ1.le u hu hu2]
+  · intro ε hε
+    refine ⟨0, le_refl _, one_pos, ?_⟩
+    rw [upperAssouadSpectrum_cantorSet hgam hgam1 (le_refl _) (by norm_num) u hu hu2]
+    linarith
+
+/-- The upper Minkowski dimension of the Cantor set is its dimension. -/
+theorem upperMinkowskiDimension_cantorSet {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (u : ℝ) : upperMinkowskiDimension (cantorSet (cantorRatio gam) u 1) = gam := by
+  refine upperMinkowskiDimension_eq_of_bounds hgam.le
+    (hasUpperMinkowskiExponent_cantorSet hgam hgam1 u) ?_
+  intro beta' hbeta'0 hlt
+  exact not_hasUpperMinkowskiExponent_cantorSet hgam hgam1 hbeta'0 hlt u
+
+/-- **The Cantor set of dimension `γ` is `(γ,γ)`-quasi-Assouad regular.** -/
+theorem isQuasiAssouadRegular_cantorSet {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (u : ℝ) (hu : 1 ≤ u) (hu2 : u + 1 ≤ 2) :
+    IsQuasiAssouadRegular (cantorSet (cantorRatio gam) u 1) gam gam := by
+  refine ⟨upperMinkowskiDimension_cantorSet hgam hgam1 u,
+    quasiAssouadDimension_cantorSet hgam hgam1 u hu hu2, Or.inr ?_⟩
+  intro θ hθ0 hθ1 _
+  exact upperAssouadSpectrum_cantorSet hgam hgam1 hθ0 hθ1.le u hu hu2
+
+/-! ### The trivial example: a single radius -/
+
+theorem hasUpperMinkowskiExponent_singleton (t : ℝ) :
+    HasUpperMinkowskiExponent ({t} : Set ℝ) 0 := by
+  intro ε hε
+  refine ⟨1, one_pos, ?_⟩
+  intro δ hδ hδone
+  refine ⟨{t}, ?_, ?_⟩
+  · intro x hx
+    rw [Set.mem_singleton_iff] at hx
+    subst hx
+    refine Set.mem_iUnion₂.mpr ⟨x, Finset.mem_singleton_self _, ?_⟩
+    simp only [Set.mem_Icc]
+    constructor <;> linarith
+  · simp only [Finset.card_singleton, Nat.cast_one, one_mul]
+    have h1 : (1 : ℝ) ≤ δ ^ (-(0 + ε)) := by
+      rw [zero_add, Real.rpow_neg hδ.le]
+      have hle : δ ^ ε ≤ 1 := Real.rpow_le_one hδ.le hδone.le hε.le
+      have hpos : 0 < δ ^ ε := Real.rpow_pos_of_pos hδ ε
+      rw [le_inv_comm₀ (by norm_num) hpos]
+      simpa using hle
+    linarith
+
+theorem hasUpperAssouadSpectrumExponent_singleton (t : ℝ) (θ : ℝ) :
+    HasUpperAssouadSpectrumExponent ({t} : Set ℝ) θ 0 := by
+  refine ⟨1, one_pos, ?_⟩
+  intro δ a b hδ hδone ha hab hb hscale
+  refine ⟨{t}, ?_, ?_⟩
+  · intro x hx
+    obtain ⟨hx1, -⟩ := hx
+    rw [Set.mem_singleton_iff] at hx1
+    subst hx1
+    refine Set.mem_iUnion₂.mpr ⟨x, Finset.mem_singleton_self _, ?_⟩
+    simp only [Set.mem_Icc]
+    constructor <;> linarith
+  · simp only [Finset.card_singleton, Nat.cast_one, one_mul]
+    rw [Real.rpow_zero]
+
+theorem isQuasiAssouadRegular_singleton (t : ℝ) :
+    IsQuasiAssouadRegular ({t} : Set ℝ) 0 0 := by
+  refine ⟨?_, ?_, Or.inl rfl⟩
+  · refine upperMinkowskiDimension_eq_of_bounds (le_refl _)
+      (hasUpperMinkowskiExponent_singleton t) ?_
+    intro beta' hbeta'0 hlt
+    exact absurd hlt (not_lt.mpr hbeta'0)
+  · refine quasiAssouadDimension_eq_of_spectrum ?_ ?_
+    · intro θ hθ0 hθ1
+      refine le_of_eq ?_
+      refine upperAssouadSpectrum_eq_of_bounds (le_refl _)
+        (hasUpperAssouadSpectrumExponent_singleton t θ) ?_
+      intro gam' hgam'0 hlt
+      exact absurd hlt (not_lt.mpr hgam'0)
+    · intro ε hε
+      refine ⟨0, le_refl _, one_pos, ?_⟩
+      have heq : upperAssouadSpectrum ({t} : Set ℝ) 0 = 0 := by
+        refine upperAssouadSpectrum_eq_of_bounds (le_refl _)
+          (hasUpperAssouadSpectrumExponent_singleton t 0) ?_
+        intro gam' hgam'0 hlt
+        exact absurd hlt (not_lt.mpr hgam'0)
+      rw [heq]
+      linarith
+
+/-! ### The localized covering estimate for a single midpoint set -/
+
+/-- A `len`-separated subset of an interval of length `n * len` has at most `n + 1` points. -/
+theorem card_le_succ_of_separated_in_interval {S : Finset ℝ} {s len : ℝ} {n : ℕ} (hlen : 0 < len)
+    (hsub : ∀ x ∈ S, x ∈ Icc s (s + (n : ℝ) * len))
+    (hsep : ∀ x ∈ S, ∀ y ∈ S, x ≠ y → len ≤ |x - y|) :
+    S.card ≤ n + 1 := by
+  classical
+  have hcard : S.card ≤ (Finset.Icc (0 : ℤ) (n : ℤ)).card := by
+    refine Finset.card_le_card_of_injOn (fun x => ⌊(x - s) / len⌋) ?_ ?_
+    · intro x hx
+      obtain ⟨h1, h2⟩ := hsub x hx
+      have hq0 : (0 : ℝ) ≤ (x - s) / len := div_nonneg (by linarith) hlen.le
+      have hqn : (x - s) / len ≤ (n : ℝ) := by
+        rw [div_le_iff₀ hlen]
+        linarith
+      refine Finset.mem_Icc.mpr ⟨Int.le_floor.mpr (by simpa using hq0), ?_⟩
+      have hfl := Int.floor_le_floor hqn
+      simpa using hfl
+    · intro x hx y hy hxy
+      by_contra hne
+      have hfx : ((⌊(x - s) / len⌋ : ℝ)) ≤ (x - s) / len := Int.floor_le _
+      have hfy : ((⌊(y - s) / len⌋ : ℝ)) ≤ (y - s) / len := Int.floor_le _
+      have hfx' : (x - s) / len < (⌊(x - s) / len⌋ : ℝ) + 1 := Int.lt_floor_add_one _
+      have hfy' : (y - s) / len < (⌊(y - s) / len⌋ : ℝ) + 1 := Int.lt_floor_add_one _
+      have hxy' : ⌊(x - s) / len⌋ = ⌊(y - s) / len⌋ := hxy
+      rw [hxy'] at hfx hfx'
+      have hdiff : |(x - s) / len - (y - s) / len| < 1 := by
+        rw [abs_lt]
+        constructor <;> linarith
+      have hlenne : len ≠ 0 := hlen.ne'
+      have hxydiv : (x - s) / len - (y - s) / len = (x - y) / len := by
+        field_simp
+        ring
+      rw [hxydiv, abs_div, abs_of_pos hlen, div_lt_one hlen] at hdiff
+      exact absurd (hsep x hx y hy hne) (not_le.mpr hdiff)
+  simpa using hcard
+
+set_option maxHeartbeats 2000000 in
+/-- The Assouad-type covering estimate for the finite midpoint sets: inside every interval
+shorter than the ambient one, the `m`-th generation midpoints are covered by at most
+`12 (|I|/δ)^γ` intervals of length `δ`. -/
+theorem cantorMid_assouad_cover {gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) (m : ℕ)
+    (u : ℝ) {L : ℝ} (hL : 0 < L) {δ a b : ℝ} (hδ : 0 < δ) (hlen : δ ≤ b - a)
+    (hbL : b - a ≤ L) :
+    ∃ ι : Finset ℝ,
+      IsIntervalCover ((↑(cantorMid (cantorRatio gam) m u L) : Set ℝ) ∩ Icc a b) δ ι ∧
+        (ι.card : ℝ) ≤ 16 * ((b - a) / δ) ^ gam := by
+  classical
+  set mu : ℝ := cantorRatio gam with hmudef
+  have hmu : 0 < mu := cantorRatio_pos gam
+  have hmu2 : mu ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  have hmulone : mu < 1 := lt_of_le_of_lt hmu2 (by norm_num)
+  have htpos : 0 < b - a := lt_of_lt_of_le hδ hlen
+  have hab : a ≤ b := by linarith
+  -- the fine generation
+  obtain ⟨j, hjm, hjcov, hjlow⟩ : ∃ j : ℕ, j ≤ m ∧
+      (∀ x ∈ cantorMid mu m u L, ∃ y ∈ cantorMid mu j u L, |x - y| ≤ δ / 2) ∧
+        mu * δ ≤ mu ^ j * L := by
+    by_cases hcase : mu ^ m * L ≤ δ
+    · have hex : ∃ n : ℕ, mu ^ n * L ≤ δ := ⟨m, hcase⟩
+      set j : ℕ := Nat.find hex with hjdef
+      have hjspec : mu ^ j * L ≤ δ := Nat.find_spec hex
+      have hjm : j ≤ m := Nat.find_le hcase
+      refine ⟨j, hjm, ?_, ?_⟩
+      · intro x hx
+        exact cantorMid_cover hmu hmu2 j m hjm u L δ hL.le hjspec x hx
+      · rcases Nat.eq_zero_or_pos j with h0 | hpos
+        · rw [h0]
+          simp only [pow_zero, one_mul]
+          nlinarith [hδ, hlen, hbL, hmulone, hmu]
+        · have hprev : ¬ (mu ^ (j - 1) * L ≤ δ) := Nat.find_min hex (by omega)
+          have hprevlt : δ < mu ^ (j - 1) * L := not_le.mp hprev
+          have hsucc : mu ^ j = mu * mu ^ (j - 1) := by
+            rw [← pow_succ']
+            congr 1
+            omega
+          rw [hsucc]
+          calc mu * δ ≤ mu * (mu ^ (j - 1) * L) := by
+                exact mul_le_mul_of_nonneg_left hprevlt.le hmu.le
+            _ = mu * mu ^ (j - 1) * L := by ring
+    · refine ⟨m, le_refl _, fun x hx => ⟨x, hx, ?_⟩, ?_⟩
+      · simp only [sub_self, abs_zero]
+        linarith
+      · have hgt : δ < mu ^ m * L := not_le.mp hcase
+        nlinarith [hmu, hmulone, hδ]
+  have hjpow : 0 < mu ^ j * L := mul_pos (pow_pos hmu j) hL
+  -- the coarse generation
+  have hexl : ∃ n : ℕ, mu ^ n * L < b - a := by
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one (div_pos htpos hL) hmulone
+    exact ⟨n, by rw [lt_div_iff₀ hL] at hn; linarith⟩
+  set l1 : ℕ := Nat.find hexl with hl1def
+  have hl1spec : mu ^ l1 * L < b - a := Nat.find_spec hexl
+  have hl1pos : 0 < l1 := by
+    rcases Nat.eq_zero_or_pos l1 with h0 | h
+    · rw [h0] at hl1spec
+      simp only [pow_zero, one_mul] at hl1spec
+      linarith
+    · exact h
+  set l : ℕ := l1 - 1 with hldef
+  have hlge : b - a ≤ mu ^ l * L := by
+    have hprev : ¬ (mu ^ l * L < b - a) := by
+      rw [hldef]
+      exact Nat.find_min hexl (by omega)
+    exact not_lt.mp hprev
+  have hlsucc : mu ^ (l + 1) * L < b - a := by
+    have : l + 1 = l1 := by omega
+    rw [this]
+    exact hl1spec
+  have hlpow : 0 < mu ^ l * L := mul_pos (pow_pos hmu l) hL
+  -- the candidate cover
+  set ι : Finset ℝ := (cantorMid mu j u L).filter
+    (fun c => a - δ / 2 ≤ c ∧ c ≤ b + δ / 2) with hιdef
+  have hcover : IsIntervalCover ((↑(cantorMid mu m u L) : Set ℝ) ∩ Icc a b) δ ι := by
+    intro x hx
+    obtain ⟨hxmid, hxab⟩ := hx
+    obtain ⟨y, hy, hdist⟩ := hjcov x hxmid
+    simp only [Set.mem_Icc] at hxab
+    have habs := abs_le.mp hdist
+    refine Set.mem_iUnion₂.mpr ⟨y, ?_, ?_⟩
+    · rw [hιdef, Finset.mem_filter]
+      refine ⟨hy, ?_, ?_⟩
+      · linarith [habs.1, habs.2, hxab.1]
+      · linarith [habs.1, habs.2, hxab.2]
+    · simp only [Set.mem_Icc]
+      constructor <;> linarith [habs.1, habs.2]
+  refine ⟨ι, hcover, ?_⟩
+  have hge1 : (1 : ℝ) ≤ (b - a) / δ := by
+    rw [le_div_iff₀ hδ]
+    linarith
+  have hrpowge1 : (1 : ℝ) ≤ ((b - a) / δ) ^ gam := Real.one_le_rpow hge1 hgam.le
+  rcases Nat.lt_or_ge j l with hjl | hlj
+  · -- the interval is much shorter than the generation intervals: few centers
+    have hsep : ∀ x ∈ ι, ∀ y ∈ ι, x ≠ y → mu ^ j * L ≤ |x - y| := by
+      intro x hx y hy hxy
+      rw [hιdef, Finset.mem_filter] at hx hy
+      exact cantorMid_separated hmu hmu2 j hL.le hx.1 hy.1 hxy
+    have hsub : ∀ x ∈ ι, x ∈ Icc (a - δ / 2) (a - δ / 2 + 2 * (mu ^ j * L)) := by
+      intro x hx
+      rw [hιdef, Finset.mem_filter] at hx
+      obtain ⟨-, h1, h2⟩ := hx
+      have hlgt : mu ^ l * L < mu ^ j * L := by
+        have := (pow_lt_pow_iff_right_of_lt_one₀ hmu hmulone).2 hjl
+        exact mul_lt_mul_of_pos_right this hL
+      simp only [Set.mem_Icc]
+      refine ⟨h1, ?_⟩
+      have hdt : b - a ≤ mu ^ j * L := le_trans hlge hlgt.le
+      have hδle : δ ≤ mu ^ j * L := le_trans hlen hdt
+      linarith
+    have hcard3 : ι.card ≤ 3 :=
+      card_le_three_of_separated_in_interval hjpow hsub hsep
+    calc ((ι.card : ℝ)) ≤ 3 := by exact_mod_cast hcard3
+      _ ≤ 16 * ((b - a) / δ) ^ gam := by nlinarith [hrpowge1]
+  · -- the ancestor count
+    set A : Finset ℝ := (cantorMid mu l u L).filter
+      (fun c' => a - mu ^ l * L ≤ c' ∧ c' ≤ b + mu ^ l * L) with hAdef
+    have hAcard : A.card ≤ 4 := by
+      refine card_le_succ_of_separated_in_interval (s := a - mu ^ l * L) (n := 3)
+        (len := mu ^ l * L) hlpow ?_ ?_
+      · intro x hx
+        rw [hAdef, Finset.mem_filter] at hx
+        obtain ⟨-, h1, h2⟩ := hx
+        simp only [Set.mem_Icc]
+        refine ⟨h1, ?_⟩
+        push_cast
+        linarith [hlge]
+      · intro x hx y hy hxy
+        rw [hAdef, Finset.mem_filter] at hx hy
+        exact cantorMid_separated hmu hmu2 l hL.le hx.1 hy.1 hxy
+    have hsubset : ι ⊆ A.biUnion (fun c' => cantorMid mu (j - l) (c' - mu ^ l * L / 2)
+        (mu ^ l * L)) := by
+      intro c hc
+      rw [hιdef, Finset.mem_filter] at hc
+      obtain ⟨hcmid, hc1, hc2⟩ := hc
+      obtain ⟨c', hc', hcpiece, hdist⟩ :=
+        exists_ancestor_cantorMid hmu hmu2 hlj hL.le hcmid
+      refine Finset.mem_biUnion.mpr ⟨c', ?_, hcpiece⟩
+      rw [hAdef, Finset.mem_filter]
+      have habs := abs_le.mp hdist
+      have hjle : mu ^ j * L ≤ mu ^ l * L := by
+        refine mul_le_mul_of_nonneg_right ?_ hL.le
+        exact pow_le_pow_of_le_one hmu.le hmulone.le hlj
+      have hδle : δ ≤ mu ^ l * L := by
+        calc δ ≤ b - a := hlen
+          _ ≤ mu ^ l * L := hlge
+      refine ⟨hc', ?_, ?_⟩
+      · linarith [habs.1, habs.2]
+      · linarith [habs.1, habs.2]
+    have hcardbound : ι.card ≤ 4 * 2 ^ (j - l) := by
+      have hstep1 : ι.card ≤ (A.biUnion (fun c' => cantorMid mu (j - l) (c' - mu ^ l * L / 2)
+          (mu ^ l * L))).card := Finset.card_le_card hsubset
+      have hstep2 : (A.biUnion (fun c' => cantorMid mu (j - l) (c' - mu ^ l * L / 2)
+          (mu ^ l * L))).card ≤ ∑ c' ∈ A, (cantorMid mu (j - l) (c' - mu ^ l * L / 2)
+            (mu ^ l * L)).card := Finset.card_biUnion_le
+      have hstep3 : ∑ c' ∈ A, (cantorMid mu (j - l) (c' - mu ^ l * L / 2)
+          (mu ^ l * L)).card = A.card * 2 ^ (j - l) := by
+        rw [Finset.sum_congr rfl (fun c' _ => cantorMid_card hmu hmu2 (j - l) hlpow)]
+        rw [Finset.sum_const, smul_eq_mul]
+      calc ι.card ≤ ∑ c' ∈ A, (cantorMid mu (j - l) (c' - mu ^ l * L / 2)
+            (mu ^ l * L)).card := le_trans hstep1 hstep2
+        _ = A.card * 2 ^ (j - l) := hstep3
+        _ ≤ 4 * 2 ^ (j - l) := Nat.mul_le_mul_right _ hAcard
+    -- the numerical bound
+    have hsplit : mu ^ (j - l) * mu ^ l = mu ^ j := by
+      rw [← pow_add]
+      congr 1
+      omega
+    have hratio : mu ^ 2 * δ / (b - a) < mu ^ (j - l) := by
+      rw [div_lt_iff₀ htpos]
+      have hupbd : mu ^ l * L * mu < b - a := by
+        calc mu ^ l * L * mu = mu ^ (l + 1) * L := by rw [pow_succ]; ring
+          _ < b - a := hlsucc
+      have hkey : mu ^ (j - l) * (mu ^ l * L * mu) < mu ^ (j - l) * (b - a) :=
+        mul_lt_mul_of_pos_left hupbd (pow_pos hmu (j - l))
+      have hid : mu ^ (j - l) * (mu ^ l * L * mu) = mu ^ j * L * mu := by
+        calc mu ^ (j - l) * (mu ^ l * L * mu) = (mu ^ (j - l) * mu ^ l) * L * mu := by ring
+          _ = mu ^ j * L * mu := by rw [hsplit]
+      rw [hid] at hkey
+      have hlow2 : mu ^ 2 * δ ≤ mu ^ j * L * mu := by
+        calc mu ^ 2 * δ = mu * (mu * δ) := by ring
+          _ ≤ mu * (mu ^ j * L) := mul_le_mul_of_nonneg_left hjlow hmu.le
+          _ = mu ^ j * L * mu := by ring
+      linarith
+    have hfinal : ((2 : ℝ) ^ (j - l)) ≤ 4 * ((b - a) / δ) ^ gam := by
+      have hpow : ((2 : ℝ) ^ (j - l)) = ((mu ^ (j - l)) ^ (-gam)) := by
+        rw [hmudef, cantorRatio_pow_rpow_neg hgam (j - l)]
+      rw [hpow]
+      have hposq : (0 : ℝ) < mu ^ 2 * δ / (b - a) := by positivity
+      have hstep : (mu ^ (j - l)) ^ (-gam) ≤ (mu ^ 2 * δ / (b - a)) ^ (-gam) :=
+        le_of_lt (Real.rpow_lt_rpow_of_neg hposq hratio (by linarith))
+      have heval : (mu ^ 2 * δ / (b - a)) ^ (-gam) = 4 * ((b - a) / δ) ^ gam := by
+        have h1 : mu ^ 2 * δ / (b - a) = (mu ^ 2) * (δ / (b - a)) := by ring
+        rw [h1, Real.mul_rpow (by positivity) (by positivity)]
+        have h2 : ((mu ^ 2 : ℝ)) ^ (-gam) = 4 := by
+          rw [hmudef, cantorRatio_pow_rpow_neg hgam 2]
+          norm_num
+        have h3 : ((δ / (b - a)) : ℝ) ^ (-gam) = ((b - a) / δ) ^ gam := by
+          rw [Real.rpow_neg (by positivity), Real.div_rpow hδ.le htpos.le,
+            Real.div_rpow htpos.le hδ.le, inv_div]
+        rw [h2, h3]
+      rw [heval] at hstep
+      exact hstep
+    have hcast : ((ι.card : ℝ)) ≤ 4 * (2 : ℝ) ^ (j - l) := by
+      have hc : ((ι.card : ℝ)) ≤ ((4 * 2 ^ (j - l) : ℕ) : ℝ) := by exact_mod_cast hcardbound
+      calc ((ι.card : ℝ)) ≤ ((4 * 2 ^ (j - l) : ℕ) : ℝ) := hc
+        _ = 4 * (2 : ℝ) ^ (j - l) := by push_cast; ring
+    calc ((ι.card : ℝ)) ≤ 4 * (2 : ℝ) ^ (j - l) := hcast
+      _ ≤ 4 * (4 * ((b - a) / δ) ^ gam) := mul_le_mul_of_nonneg_left hfinal (by norm_num)
+      _ = 16 * ((b - a) / δ) ^ gam := by ring
+
+/-! ## The off-diagonal regular examples
+
+For `0 < β < γ ≤ 1` the example of §6.2 of the paper is a union of Cantor midpoint sets placed in
+intervals whose lengths decay geometrically.  The `j`-th piece is the generation `k₀ j` of the
+Cantor construction of dimension `γ` inside an interval of length `Lⱼ = 4⁻¹ρ^{k₀ j}`, where
+`ρ = 2^{-(1/β - 1/γ)}`.  Then the `j`-th piece consists of `2^{k₀ j}` points at separation
+`σⱼ = 4⁻¹2^{-k₀ j/β}`, so that
+
+* `2^{k₀ j} = (4σⱼ)^{-β}`  (the Minkowski dimension is `β`), and
+* `Lⱼ = 4⁻¹(4σⱼ)^{1 - β/γ}` (the Assouad spectrum reaches `γ` at `θ > 1 - β/γ`).
+
+The step `k₀` is any natural number with `ρ^{k₀} ≤ 1/3`; this makes the intervals disjoint. -/
+
+/-- The gap exponent `1/β - 1/γ` of an off-diagonal pair. -/
+def offDiagGap (beta gam : ℝ) : ℝ := 1 / beta - 1 / gam
+
+/-- The geometric ratio of the piece lengths at unit step. -/
+def offDiagRatio (beta gam : ℝ) : ℝ := (2 : ℝ) ^ (-offDiagGap beta gam)
+
+/-- The length of the `j`-th piece. -/
+def offDiagLen (beta gam : ℝ) (k0 j : ℕ) : ℝ :=
+  (1 / 4) * (offDiagRatio beta gam) ^ (k0 * j)
+
+/-- The `j`-th piece of the off-diagonal example. -/
+def offDiagPiece (beta gam : ℝ) (k0 j : ℕ) : Finset ℝ :=
+  cantorMid (cantorRatio gam) (k0 * j) (1 + 2 * offDiagLen beta gam k0 j)
+    (offDiagLen beta gam k0 j)
+
+/-- The off-diagonal example itself. -/
+def offDiagSet (beta gam : ℝ) (k0 : ℕ) : Set ℝ :=
+  ⋃ j : ℕ, (↑(offDiagPiece beta gam k0 j) : Set ℝ)
+
+/-- The separation of the points of the `j`-th piece. -/
+def offDiagSep (beta gam : ℝ) (k0 j : ℕ) : ℝ :=
+  (cantorRatio gam) ^ (k0 * j) * offDiagLen beta gam k0 j
+
+theorem offDiagGap_pos {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam) :
+    0 < offDiagGap beta gam := by
+  rw [offDiagGap, sub_pos]
+  exact one_div_lt_one_div_of_lt hbeta hbg
+
+theorem offDiagRatio_pos (beta gam : ℝ) : 0 < offDiagRatio beta gam :=
+  Real.rpow_pos_of_pos (by norm_num) _
+
+theorem offDiagRatio_lt_one {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam) :
+    offDiagRatio beta gam < 1 := by
+  rw [offDiagRatio]
+  apply Real.rpow_lt_one_of_one_lt_of_neg (by norm_num)
+  simpa using offDiagGap_pos hbeta hbg
+
+theorem offDiagLen_pos {beta gam : ℝ} (k0 j : ℕ) : 0 < offDiagLen beta gam k0 j := by
+  rw [offDiagLen]
+  have := offDiagRatio_pos beta gam
+  positivity
+
+theorem offDiagLen_le_quarter {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam) (k0 j : ℕ) :
+    offDiagLen beta gam k0 j ≤ 1 / 4 := by
+  have h1 : (offDiagRatio beta gam) ^ (k0 * j) ≤ 1 :=
+    pow_le_one₀ (offDiagRatio_pos beta gam).le (offDiagRatio_lt_one hbeta hbg).le
+  have h2 : 0 < (offDiagRatio beta gam) ^ (k0 * j) := pow_pos (offDiagRatio_pos beta gam) _
+  rw [offDiagLen]
+  nlinarith [h1, h2]
+
+/-- With a step for which the ratio drops below `1/3`, consecutive pieces are well separated. -/
+theorem offDiagLen_succ {beta gam : ℝ} {k0 : ℕ}
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (j : ℕ) :
+    3 * offDiagLen beta gam k0 (j + 1) ≤ offDiagLen beta gam k0 j := by
+  have hpos : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+  have hstep : (offDiagRatio beta gam) ^ (k0 * (j + 1)) =
+      (offDiagRatio beta gam) ^ (k0 * j) * (offDiagRatio beta gam) ^ k0 := by
+    rw [← pow_add]
+    congr 1
+  rw [offDiagLen, offDiagLen, hstep]
+  have hjpos : 0 < (offDiagRatio beta gam) ^ (k0 * j) := pow_pos hpos _
+  nlinarith [hk0, hjpos]
+
+theorem offDiagPiece_subset_Icc {beta gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    (k0 j : ℕ) :
+    ∀ x ∈ offDiagPiece beta gam k0 j,
+      1 + 2 * offDiagLen beta gam k0 j ≤ x ∧ x ≤ 1 + 3 * offDiagLen beta gam k0 j := by
+  intro x hx
+  have hmu : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hmu2 : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  obtain ⟨h1, h2⟩ := cantorMid_mem_bounds hmu hmu2 (k0 * j) (offDiagLen_pos k0 j).le hx
+  have hpow : 0 ≤ (cantorRatio gam) ^ (k0 * j) * offDiagLen beta gam k0 j / 2 := by
+    have := (offDiagLen_pos (beta := beta) (gam := gam) k0 j).le
+    positivity
+  exact ⟨by linarith, by linarith⟩
+
+theorem offDiagSet_subset_Icc {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam : 0 < gam) (hgam1 : gam ≤ 1) (k0 : ℕ) :
+    offDiagSet beta gam k0 ⊆ Icc (1 : ℝ) 2 := by
+  intro x hx
+  obtain ⟨j, hj⟩ := Set.mem_iUnion.mp hx
+  obtain ⟨h1, h2⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 j x hj
+  have hlen := offDiagLen_le_quarter hbeta hbg k0 j
+  have hlenpos := offDiagLen_pos (beta := beta) (gam := gam) k0 j
+  exact ⟨by linarith, by linarith⟩
+
+theorem offDiagSet_nonempty {beta gam : ℝ} (k0 : ℕ) : (offDiagSet beta gam k0).Nonempty := by
+  obtain ⟨x, hx⟩ := cantorMid_nonempty (cantorRatio gam) (k0 * 0)
+    (1 + 2 * offDiagLen beta gam k0 0) (offDiagLen beta gam k0 0)
+  exact ⟨x, Set.mem_iUnion.mpr ⟨0, hx⟩⟩
+
+/-! ### The two exponent relations -/
+
+theorem offDiagSep_pos {beta gam : ℝ} (k0 j : ℕ) : 0 < offDiagSep beta gam k0 j := by
+  rw [offDiagSep]
+  have h1 : 0 < (cantorRatio gam) ^ (k0 * j) := pow_pos (cantorRatio_pos gam) _
+  have h2 := offDiagLen_pos (beta := beta) (gam := gam) k0 j
+  positivity
+
+/-- The separation of the `j`-th piece is `4⁻¹ 2^{-k₀ j/β}`. -/
+theorem offDiagSep_eq {beta gam : ℝ} (hbeta : 0 < beta) (hgam : 0 < gam) (k0 j : ℕ) :
+    offDiagSep beta gam k0 j = (1 / 4) * (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) / beta) := by
+  have h1 : (cantorRatio gam) ^ (k0 * j) = (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) / gam) := by
+    rw [cantorRatio, ← Real.rpow_natCast ((2 : ℝ) ^ (-(1 / gam))) (k0 * j),
+      ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    field_simp
+  have h2 : (offDiagRatio beta gam) ^ (k0 * j)
+      = (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) * offDiagGap beta gam) := by
+    rw [offDiagRatio, ← Real.rpow_natCast ((2 : ℝ) ^ (-offDiagGap beta gam)) (k0 * j),
+      ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    ring
+  rw [offDiagSep, offDiagLen, h1, h2]
+  rw [show (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) / gam) *
+        ((1 / 4) * (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) * offDiagGap beta gam))
+      = (1 / 4) * ((2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) / gam) *
+        (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) * offDiagGap beta gam)) by ring]
+  rw [← Real.rpow_add (by norm_num : (0:ℝ) < 2)]
+  congr 2
+  rw [offDiagGap]
+  field_simp
+  ring
+
+/-! ### Two geometric sums -/
+
+/-- A sum of increasing geometric terms, each below a threshold, is at most twice the
+threshold. -/
+theorem sum_ite_geom_incr_le {r M : ℝ} (hr : 2 ≤ r) (hM : 0 ≤ M) (J : ℕ) :
+    ∑ j ∈ Finset.range J, (if r ^ j ≤ M then r ^ j else 0) ≤ 2 * M := by
+  classical
+  have hr0 : (0 : ℝ) < r := by linarith
+  set S := (Finset.range J).filter (fun j => r ^ j ≤ M) with hS
+  have hsum : ∑ j ∈ Finset.range J, (if r ^ j ≤ M then r ^ j else 0) = ∑ j ∈ S, r ^ j := by
+    rw [hS, Finset.sum_filter]
+  rw [hsum]
+  rcases S.eq_empty_or_nonempty with hempty | hne
+  · rw [hempty, Finset.sum_empty]
+    linarith
+  · set jstar := S.max' hne with hjs
+    have hjstar : r ^ jstar ≤ M := by
+      have hmem := S.max'_mem hne
+      simp only [hS, Finset.mem_filter] at hmem
+      exact hmem.2
+    have hsub : S ⊆ Finset.range (jstar + 1) := by
+      intro j hj
+      exact Finset.mem_range.mpr (Nat.lt_succ_of_le (Finset.le_max' S j hj))
+    have hstep : ∑ j ∈ S, r ^ j ≤ ∑ j ∈ Finset.range (jstar + 1), r ^ j :=
+      Finset.sum_le_sum_of_subset_of_nonneg hsub (fun j _ _ => by positivity)
+    have hgeom : ∑ j ∈ Finset.range (jstar + 1), r ^ j ≤ 2 * r ^ jstar := by
+      rw [geom_sum_eq (by linarith : r ≠ 1)]
+      rw [div_le_iff₀ (by linarith : (0:ℝ) < r - 1)]
+      have hpos : (0 : ℝ) < r ^ jstar := by positivity
+      have hsucc : r ^ (jstar + 1) = r ^ jstar * r := by rw [pow_succ]
+      rw [hsucc]
+      nlinarith [hpos]
+    calc ∑ j ∈ S, r ^ j ≤ ∑ j ∈ Finset.range (jstar + 1), r ^ j := hstep
+      _ ≤ 2 * r ^ jstar := hgeom
+      _ ≤ 2 * M := by linarith
+
+/-- A sum of decreasing geometric terms, each below a threshold, is controlled by the
+threshold. -/
+theorem sum_ite_geom_decr_le {q M : ℝ} (hq0 : 0 < q) (hq1 : q < 1) (hM : 0 ≤ M) (J : ℕ) :
+    ∑ j ∈ Finset.range J, (if q ^ j ≤ M then q ^ j else 0) ≤ M / (1 - q) := by
+  classical
+  set S := (Finset.range J).filter (fun j => q ^ j ≤ M) with hS
+  have hsum : ∑ j ∈ Finset.range J, (if q ^ j ≤ M then q ^ j else 0) = ∑ j ∈ S, q ^ j := by
+    rw [hS, Finset.sum_filter]
+  rw [hsum]
+  rcases S.eq_empty_or_nonempty with hempty | hne
+  · rw [hempty, Finset.sum_empty]
+    positivity
+  · set j0 := S.min' hne with hj0
+    have hj0mem : q ^ j0 ≤ M := by
+      have hmem := S.min'_mem hne
+      simp only [hS, Finset.mem_filter] at hmem
+      exact hmem.2
+    have hsub : S ⊆ Finset.Ico j0 J := by
+      intro j hj
+      refine Finset.mem_Ico.mpr ⟨Finset.min'_le S j hj, ?_⟩
+      simp only [hS, Finset.mem_filter, Finset.mem_range] at hj
+      exact hj.1
+    have hstep : ∑ j ∈ S, q ^ j ≤ ∑ j ∈ Finset.Ico j0 J, q ^ j :=
+      Finset.sum_le_sum_of_subset_of_nonneg hsub (fun j _ _ => by positivity)
+    have hshift : ∑ j ∈ Finset.Ico j0 J, q ^ j =
+        q ^ j0 * ∑ i ∈ Finset.range (J - j0), q ^ i := by
+      rw [Finset.mul_sum]
+      rw [Finset.sum_Ico_eq_sum_range]
+      apply Finset.sum_congr rfl
+      intro i _
+      rw [pow_add]
+    have hgeom : ∑ i ∈ Finset.range (J - j0), q ^ i ≤ 1 / (1 - q) := by
+      have h1q : (0 : ℝ) < 1 - q := by linarith
+      have hqpow : (0 : ℝ) < q ^ (J - j0) := by positivity
+      rw [geom_sum_eq (by linarith : q ≠ 1)]
+      have hid : (q ^ (J - j0) - 1) / (q - 1) = (1 - q ^ (J - j0)) / (1 - q) := by
+        rw [div_eq_div_iff (by linarith : q - 1 ≠ 0) (by linarith : (1 : ℝ) - q ≠ 0)]
+        ring
+      rw [hid, div_le_div_iff₀ h1q h1q]
+      nlinarith [hqpow]
+    have hqpow0 : (0 : ℝ) < q ^ j0 := by positivity
+    calc ∑ j ∈ S, q ^ j ≤ ∑ j ∈ Finset.Ico j0 J, q ^ j := hstep
+      _ = q ^ j0 * ∑ i ∈ Finset.range (J - j0), q ^ i := hshift
+      _ ≤ q ^ j0 * (1 / (1 - q)) := by
+          exact mul_le_mul_of_nonneg_left hgeom hqpow0.le
+      _ ≤ M * (1 / (1 - q)) := by
+          apply mul_le_mul_of_nonneg_right hj0mem
+          positivity
+      _ = M / (1 - q) := by ring
+
+/-! ### The two exponent identities and the per-piece covers -/
+
+/-- The number of points of the `j`-th piece is `(4σⱼ)^{-β}`. -/
+theorem offDiagCount_eq {beta gam : ℝ} (hbeta : 0 < beta) (hgam : 0 < gam) (k0 j : ℕ) :
+    (4 * offDiagSep beta gam k0 j) ^ (-beta) = (2 : ℝ) ^ (k0 * j) := by
+  have h4 : 4 * offDiagSep beta gam k0 j = (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) / beta) := by
+    rw [offDiagSep_eq hbeta hgam]
+    ring
+  rw [h4, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+  rw [show -((k0 * j : ℕ) : ℝ) / beta * -beta = ((k0 * j : ℕ) : ℝ) by field_simp]
+  rw [Real.rpow_natCast]
+
+/-- The length of the `j`-th piece is `4⁻¹(4σⱼ)^{1-β/γ}`. -/
+theorem offDiagRatioPow_eq {beta gam : ℝ} (hbeta : 0 < beta) (hgam : 0 < gam) (k0 j : ℕ) :
+    (offDiagRatio beta gam) ^ (k0 * j) = (4 * offDiagSep beta gam k0 j) ^ (1 - beta / gam) := by
+  have h4 : 4 * offDiagSep beta gam k0 j = (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) / beta) := by
+    rw [offDiagSep_eq hbeta hgam]
+    ring
+  have hleft : (offDiagRatio beta gam) ^ (k0 * j)
+      = (2 : ℝ) ^ (-((k0 * j : ℕ) : ℝ) * offDiagGap beta gam) := by
+    rw [offDiagRatio, ← Real.rpow_natCast ((2 : ℝ) ^ (-offDiagGap beta gam)) (k0 * j),
+      ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    ring
+  rw [hleft, h4, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+  congr 1
+  rw [offDiagGap]
+  field_simp
+
+/-! ### The per-piece covers -/
+
+theorem offDiagPiece_card {beta gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) (k0 j : ℕ) :
+    (offDiagPiece beta gam k0 j).card = 2 ^ (k0 * j) :=
+  cantorMid_card (cantorRatio_pos gam) (cantorRatio_le_half hgam hgam1) _
+    (offDiagLen_pos (beta := beta) (gam := gam) k0 j)
+
+/-- The points of the piece cover it at any scale. -/
+theorem offDiagPiece_cover_self {beta gam : ℝ} (k0 j : ℕ) {δ : ℝ} (hδ : 0 < δ) :
+    IsIntervalCover (↑(offDiagPiece beta gam k0 j) : Set ℝ) δ (offDiagPiece beta gam k0 j) := by
+  intro x hx
+  refine Set.mem_iUnion₂.mpr ⟨x, hx, ?_⟩
+  simp only [Set.mem_Icc]
+  constructor <;> linarith
+
+/-- Below the length of the piece the Assouad cover applies. -/
+theorem offDiagPiece_cover_assouad {beta gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1) (k0 j : ℕ)
+    {δ : ℝ} (hδ : 0 < δ) (hδL : δ ≤ offDiagLen beta gam k0 j) :
+    ∃ ι : Finset ℝ, IsIntervalCover (↑(offDiagPiece beta gam k0 j) : Set ℝ) δ ι ∧
+      (ι.card : ℝ) ≤ 16 * (offDiagLen beta gam k0 j / δ) ^ gam := by
+  have hLpos : 0 < offDiagLen beta gam k0 j := offDiagLen_pos k0 j
+  have hdiff : (1 + 3 * offDiagLen beta gam k0 j) - (1 + 2 * offDiagLen beta gam k0 j)
+      = offDiagLen beta gam k0 j := by ring
+  obtain ⟨ι, hι, hcard⟩ := cantorMid_assouad_cover hgam hgam1 (k0 * j)
+    (1 + 2 * offDiagLen beta gam k0 j) hLpos (δ := δ)
+    (a := 1 + 2 * offDiagLen beta gam k0 j) (b := 1 + 3 * offDiagLen beta gam k0 j)
+    hδ (by rw [hdiff]; exact hδL) (by rw [hdiff])
+  rw [hdiff] at hcard
+  refine ⟨ι, ?_, hcard⟩
+  refine IsIntervalCover.mono ?_ hι
+  intro x hx
+  refine ⟨hx, ?_⟩
+  obtain ⟨h1, h2⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 j x hx
+  exact ⟨h1, h2⟩
+
+/-- The piece lengths are antitone in the index. -/
+theorem offDiagLen_antitone {beta gam : ℝ} {k0 : ℕ}
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) (i : ℕ) :
+    ∀ j : ℕ, i ≤ j → offDiagLen beta gam k0 j ≤ offDiagLen beta gam k0 i := by
+  intro j
+  induction j with
+  | zero =>
+      intro h
+      have hi : i = 0 := by omega
+      rw [hi]
+  | succ j ih =>
+      intro h
+      rcases Nat.lt_or_ge i (j + 1) with hlt | hge
+      · have hij : i ≤ j := by omega
+        have hstep : offDiagLen beta gam k0 (j + 1) ≤ offDiagLen beta gam k0 j := by
+          have h3 := offDiagLen_succ hk0 j
+          have hpos := offDiagLen_pos (beta := beta) (gam := gam) k0 (j + 1)
+          linarith
+        exact le_trans hstep (ih hij)
+      · have hi : i = j + 1 := by omega
+        rw [hi]
+
+/-- The pieces of index at least `J` all lie in `[1, 1 + 3 δ]` as soon as `L_J ≤ δ`. -/
+theorem offDiagPiece_near_one {beta gam : ℝ} (hgam : 0 < gam) (hgam1 : gam ≤ 1)
+    {k0 : ℕ} (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {J j : ℕ} (hJj : J ≤ j)
+    {δ : ℝ} (hδ : offDiagLen beta gam k0 J ≤ δ) :
+    ∀ x ∈ offDiagPiece beta gam k0 j, 1 ≤ x ∧ x ≤ 1 + 3 * δ := by
+  intro x hx
+  obtain ⟨h1, h2⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 j x hx
+  have hmono := offDiagLen_antitone hk0 J j hJj
+  have hlenpos := offDiagLen_pos (beta := beta) (gam := gam) k0 j
+  exact ⟨by linarith, by linarith⟩
+
+/-- Three intervals of length `δ` cover `[1, 1 + 3 δ]`. -/
+theorem cover_near_one {δ : ℝ} (_hδ : 0 < δ) {x : ℝ} (h1 : 1 ≤ x) (h2 : x ≤ 1 + 3 * δ) :
+    x ∈ ⋃ c ∈ ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ),
+      Icc (c - δ / 2) (c + δ / 2) := by
+  rcases le_or_gt x (1 + δ) with hc1 | hc1
+  · refine Set.mem_iUnion₂.mpr ⟨1 + δ / 2, by simp, ?_⟩
+    simp only [Set.mem_Icc]
+    constructor <;> linarith
+  · rcases le_or_gt x (1 + 2 * δ) with hc2 | hc2
+    · refine Set.mem_iUnion₂.mpr ⟨1 + 3 * δ / 2, by simp, ?_⟩
+      simp only [Set.mem_Icc]
+      constructor <;> linarith
+    · refine Set.mem_iUnion₂.mpr ⟨1 + 5 * δ / 2, by simp, ?_⟩
+      simp only [Set.mem_Icc]
+      constructor <;> linarith
+
+/-! ### The two pointwise comparisons -/
+
+/-- Commuting a real power past two natural powers. -/
+theorem rpow_pow_comm {x : ℝ} (hx : 0 < x) (y : ℝ) (a b : ℕ) :
+    ((x ^ a) ^ y) ^ b = (x ^ (a * b)) ^ y := by
+  have e1 : (x ^ a : ℝ) = x ^ ((a : ℕ) : ℝ) := (Real.rpow_natCast _ _).symm
+  have e2 : (x ^ (a * b) : ℝ) = x ^ (((a * b : ℕ)) : ℝ) := (Real.rpow_natCast _ _).symm
+  calc ((x ^ a) ^ y) ^ b = (x ^ ((a : ℝ) * y)) ^ b := by
+        rw [e1, ← Real.rpow_mul hx.le]
+    _ = x ^ ((a : ℝ) * y * (b : ℝ)) := by
+        rw [← Real.rpow_natCast (x ^ ((a : ℝ) * y)) b, ← Real.rpow_mul hx.le]
+    _ = (x ^ (((a * b : ℕ)) : ℝ)) ^ y := by
+        rw [← Real.rpow_mul hx.le]
+        congr 1
+        push_cast
+        ring
+    _ = (x ^ (a * b)) ^ y := by rw [← e2]
+
+/-- Above the separation scale the number of points is controlled by `(4δ)^{-β}`. -/
+theorem offDiagCount_le_of_le_sep {beta gam : ℝ} (hbeta : 0 < beta) (hgam : 0 < gam)
+    (k0 j : ℕ) {δ : ℝ} (hδ : 0 < δ) (hσ : δ ≤ offDiagSep beta gam k0 j) :
+    ((2 : ℝ) ^ k0) ^ j ≤ (4 * δ) ^ (-beta) := by
+  rw [← pow_mul, ← offDiagCount_eq hbeta hgam k0 j]
+  have h4 : 4 * δ ≤ 4 * offDiagSep beta gam k0 j := by linarith
+  rcases eq_or_lt_of_le h4 with heq | hlt
+  · rw [heq]
+  · exact le_of_lt (Real.rpow_lt_rpow_of_neg (by positivity) hlt (by linarith))
+
+/-- Below the separation scale the piece length is controlled by `(4δ)^{γ-β}`. -/
+theorem offDiagLenPow_le_of_sep_lt {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta ≤ gam)
+    (hgam : 0 < gam) (k0 j : ℕ) {δ : ℝ} (_hδ : 0 < δ) (hσ : offDiagSep beta gam k0 j < δ) :
+    (((offDiagRatio beta gam) ^ k0) ^ gam) ^ j ≤ (4 * δ) ^ (gam - beta) := by
+  have hr0 : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+  have hσpos : 0 < offDiagSep beta gam k0 j := offDiagSep_pos k0 j
+  rw [rpow_pow_comm hr0 gam k0 j, offDiagRatioPow_eq hbeta hgam]
+  rw [← Real.rpow_mul (by linarith : (0:ℝ) ≤ 4 * offDiagSep beta gam k0 j)]
+  have hexp : (1 - beta / gam) * gam = gam - beta := by
+    field_simp
+  rw [hexp]
+  have h4 : 4 * offDiagSep beta gam k0 j ≤ 4 * δ := by linarith
+  exact Real.rpow_le_rpow (by linarith) h4 (by linarith)
+
+/-- The `γ`-th power of the piece length. -/
+theorem offDiagLen_rpow_eq {beta gam : ℝ} (_hgam : 0 < gam) (k0 j : ℕ) :
+    (offDiagLen beta gam k0 j) ^ gam
+      = (4 : ℝ) ^ (-gam) * (((offDiagRatio beta gam) ^ k0) ^ gam) ^ j := by
+  have hr0 : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+  rw [offDiagLen, Real.mul_rpow (by norm_num) (by positivity)]
+  have h1 : ((1 : ℝ) / 4) ^ gam = (4 : ℝ) ^ (-gam) := by
+    rw [one_div, Real.inv_rpow (by norm_num), Real.rpow_neg (by norm_num)]
+  rw [h1, rpow_pow_comm hr0 gam k0 j]
+
+theorem offDiagLen_eq_pow {beta gam : ℝ} (k0 j : ℕ) :
+    offDiagLen beta gam k0 j = (1 / 4) * ((offDiagRatio beta gam) ^ k0) ^ j := by
+  rw [offDiagLen, ← pow_mul]
+
+/-! ### The Minkowski cover of the off-diagonal example -/
+
+set_option maxHeartbeats 1000000 in
+theorem offDiagSet_minkowski_cover {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {δ : ℝ} (hδ : 0 < δ) (hδone : δ < 1) :
+    ∃ ι : Finset ℝ, IsIntervalCover (offDiagSet beta gam k0) δ ι ∧
+      (ι.card : ℝ) ≤
+        (5 + 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam)) * δ ^ (-beta) := by
+  classical
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hR0 : (0 : ℝ) < (offDiagRatio beta gam) ^ k0 := pow_pos (offDiagRatio_pos beta gam) k0
+  have hR1 : (offDiagRatio beta gam) ^ k0 < 1 := by linarith
+  set q : ℝ := ((offDiagRatio beta gam) ^ k0) ^ gam with hqdef
+  have hq0 : 0 < q := Real.rpow_pos_of_pos hR0 gam
+  have hq1 : q < 1 := by
+    rw [hqdef]
+    exact Real.rpow_lt_one hR0.le hR1 hgam
+  have hr2 : (2 : ℝ) ≤ (2 : ℝ) ^ k0 := by
+    calc (2 : ℝ) = (2 : ℝ) ^ 1 := by norm_num
+      _ ≤ (2 : ℝ) ^ k0 := pow_le_pow_right₀ (by norm_num) hk0pos
+  -- the least index whose piece is shorter than `δ`
+  have hexJ : ∃ n : ℕ, offDiagLen beta gam k0 n ≤ δ := by
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one (by linarith : (0:ℝ) < 4 * δ) hR1
+    refine ⟨n, ?_⟩
+    rw [offDiagLen_eq_pow]
+    linarith
+  set J : ℕ := Nat.find hexJ with hJdef
+  have hJspec : offDiagLen beta gam k0 J ≤ δ := Nat.find_spec hexJ
+  have hJmin : ∀ j, j < J → δ < offDiagLen beta gam k0 j := by
+    intro j hj
+    exact not_le.mp (Nat.find_min hexJ hj)
+  -- the per-piece covers
+  have hchoice : ∀ j : ℕ, j < J → ∃ ι : Finset ℝ,
+      IsIntervalCover (↑(offDiagPiece beta gam k0 j) : Set ℝ) δ ι ∧
+        (ι.card : ℝ) ≤
+          (if δ ≤ offDiagSep beta gam k0 j then ((2 : ℝ) ^ k0) ^ j else 0) +
+            (if δ ≤ offDiagSep beta gam k0 j then 0
+              else 16 * (offDiagLen beta gam k0 j / δ) ^ gam) := by
+    intro j hj
+    by_cases hσ : δ ≤ offDiagSep beta gam k0 j
+    · refine ⟨offDiagPiece beta gam k0 j, offDiagPiece_cover_self k0 j hδ, ?_⟩
+      rw [if_pos hσ, if_pos hσ, offDiagPiece_card hgam hgam1 k0 j]
+      have hcast : (((2 ^ (k0 * j) : ℕ)) : ℝ) = ((2 : ℝ) ^ k0) ^ j := by
+        rw [← pow_mul]
+        push_cast
+        ring
+      rw [hcast]
+      linarith
+    · obtain ⟨ι, hι, hcard⟩ :=
+        offDiagPiece_cover_assouad hgam hgam1 k0 j hδ (le_of_lt (hJmin j hj))
+      refine ⟨ι, hι, ?_⟩
+      rw [if_neg hσ, if_neg hσ]
+      linarith
+  choose! covOf hcovIs hcovCard using hchoice
+  set ι : Finset ℝ := ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ) ∪
+    (Finset.range J).biUnion covOf with hιdef
+  refine ⟨ι, ?_, ?_⟩
+  · -- covering
+    intro x hx
+    obtain ⟨j, hj⟩ := Set.mem_iUnion.mp hx
+    rcases Nat.lt_or_ge j J with hlt | hge
+    · obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp (hcovIs j hlt hj)
+      refine Set.mem_iUnion₂.mpr ⟨c, ?_, hxc⟩
+      rw [hιdef]
+      exact Finset.mem_union_right _
+        (Finset.mem_biUnion.mpr ⟨j, Finset.mem_range.mpr hlt, hc⟩)
+    · obtain ⟨h1, h2⟩ := offDiagPiece_near_one hgam hgam1 hk0 hge hJspec x hj
+      obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp (cover_near_one hδ h1 h2)
+      refine Set.mem_iUnion₂.mpr ⟨c, ?_, hxc⟩
+      rw [hιdef]
+      exact Finset.mem_union_left _ hc
+  · -- cardinality
+    have hcard3 : ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ).card ≤ 3 := by
+      apply le_trans (Finset.card_insert_le _ _)
+      have h2 : ({1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ).card ≤ 2 := by
+        apply le_trans (Finset.card_insert_le _ _)
+        simp
+      omega
+    have hbi : ((Finset.range J).biUnion covOf).card ≤ ∑ j ∈ Finset.range J, (covOf j).card :=
+      Finset.card_biUnion_le
+    have hcardι : (ι.card : ℝ) ≤ 3 + ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) := by
+      have hunion : ι.card ≤ ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ).card +
+          ((Finset.range J).biUnion covOf).card := by
+        rw [hιdef]
+        exact Finset.card_union_le _ _
+      have hnat : ι.card ≤ 3 + ∑ j ∈ Finset.range J, (covOf j).card := by
+        omega
+      calc (ι.card : ℝ) ≤ ((3 + ∑ j ∈ Finset.range J, (covOf j).card : ℕ) : ℝ) := by
+            exact_mod_cast hnat
+        _ = 3 + ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) := by push_cast; ring
+    -- the two sums
+    have hsum : ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) ≤
+        (∑ j ∈ Finset.range J,
+          (if δ ≤ offDiagSep beta gam k0 j then ((2 : ℝ) ^ k0) ^ j else 0)) +
+        (∑ j ∈ Finset.range J,
+          (if δ ≤ offDiagSep beta gam k0 j then 0
+            else 16 * (offDiagLen beta gam k0 j / δ) ^ gam)) := by
+      rw [← Finset.sum_add_distrib]
+      refine Finset.sum_le_sum ?_
+      intro j hj
+      exact hcovCard j (Finset.mem_range.mp hj)
+    -- the increasing sum
+    have hsumA : (∑ j ∈ Finset.range J,
+        (if δ ≤ offDiagSep beta gam k0 j then ((2 : ℝ) ^ k0) ^ j else 0)) ≤
+        2 * (4 * δ) ^ (-beta) := by
+      refine le_trans (Finset.sum_le_sum ?_)
+        (sum_ite_geom_incr_le hr2 (by positivity : (0:ℝ) ≤ (4 * δ) ^ (-beta)) J)
+      intro j _
+      by_cases hσ : δ ≤ offDiagSep beta gam k0 j
+      · rw [if_pos hσ, if_pos (offDiagCount_le_of_le_sep hbeta hgam k0 j hδ hσ)]
+      · rw [if_neg hσ]
+        by_cases hc : ((2 : ℝ) ^ k0) ^ j ≤ (4 * δ) ^ (-beta)
+        · rw [if_pos hc]
+          positivity
+        · rw [if_neg hc]
+    -- the decreasing sum
+    have hsumB : (∑ j ∈ Finset.range J,
+        (if δ ≤ offDiagSep beta gam k0 j then 0
+          else 16 * (offDiagLen beta gam k0 j / δ) ^ gam)) ≤
+        16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * δ) ^ (gam - beta) / (1 - q)) := by
+      have hstep : ∀ j ∈ Finset.range J,
+          (if δ ≤ offDiagSep beta gam k0 j then 0
+            else 16 * (offDiagLen beta gam k0 j / δ) ^ gam) ≤
+          16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) *
+            (if q ^ j ≤ (4 * δ) ^ (gam - beta) then q ^ j else 0) := by
+        intro j _
+        by_cases hσ : δ ≤ offDiagSep beta gam k0 j
+        · rw [if_pos hσ]
+          positivity
+        · rw [if_neg hσ]
+          have hqle : q ^ j ≤ (4 * δ) ^ (gam - beta) := by
+            rw [hqdef]
+            exact offDiagLenPow_le_of_sep_lt hbeta hbg.le hgam k0 j hδ (not_le.mp hσ)
+          rw [if_pos hqle]
+          have hdiv : (offDiagLen beta gam k0 j / δ) ^ gam
+              = (4 : ℝ) ^ (-gam) * q ^ j * δ ^ (-gam) := by
+            rw [Real.div_rpow (offDiagLen_pos k0 j).le hδ.le,
+              offDiagLen_rpow_eq hgam k0 j, hqdef]
+            rw [Real.rpow_neg hδ.le]
+            field_simp
+          rw [hdiv]
+          ring_nf
+          exact le_refl _
+      refine le_trans (Finset.sum_le_sum hstep) ?_
+      rw [← Finset.mul_sum]
+      have hgeom := sum_ite_geom_decr_le hq0 hq1
+        (by positivity : (0:ℝ) ≤ (4 * δ) ^ (gam - beta)) J
+      have hcoef : (0 : ℝ) ≤ 16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) := by positivity
+      exact mul_le_mul_of_nonneg_left hgeom hcoef
+    -- collect
+    have hδpow : (1 : ℝ) ≤ δ ^ (-beta) := by
+      rw [Real.rpow_neg hδ.le]
+      have hpos : 0 < δ ^ beta := Real.rpow_pos_of_pos hδ beta
+      have hle : δ ^ beta ≤ 1 := Real.rpow_le_one hδ.le hδone.le hbeta.le
+      rw [le_inv_comm₀ (by norm_num) hpos]
+      simpa using hle
+    have hA' : 2 * (4 * δ) ^ (-beta) ≤ 2 * δ ^ (-beta) := by
+      have h4 : (4 * δ) ^ (-beta) ≤ δ ^ (-beta) := by
+        apply Real.rpow_le_rpow_of_nonpos hδ (by linarith) (by linarith)
+      linarith
+    have hB' : 16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * δ) ^ (gam - beta) / (1 - q))
+        ≤ 16 / (1 - q) * δ ^ (-beta) := by
+      have hsplit : (4 * δ) ^ (gam - beta) = (4 : ℝ) ^ (gam - beta) * δ ^ (gam - beta) :=
+        Real.mul_rpow (by norm_num) hδ.le
+      have hδsplit : δ ^ (-gam) * δ ^ (gam - beta) = δ ^ (-beta) := by
+        rw [← Real.rpow_add hδ]
+        congr 1
+        ring
+      have h4split : (4 : ℝ) ^ (-gam) * (4 : ℝ) ^ (gam - beta) = (4 : ℝ) ^ (-beta) := by
+        rw [← Real.rpow_add (by norm_num : (0:ℝ) < 4)]
+        congr 1
+        ring
+      have h4le : (4 : ℝ) ^ (-beta) ≤ 1 := by
+        apply Real.rpow_le_one_of_one_le_of_nonpos (by norm_num) (by linarith)
+      have hone_q : 0 < 1 - q := by linarith
+      have hδpos : 0 < δ ^ (-beta) := Real.rpow_pos_of_pos hδ _
+      calc 16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * δ) ^ (gam - beta) / (1 - q))
+          = 16 * ((4 : ℝ) ^ (-gam) * (4 : ℝ) ^ (gam - beta)) *
+              (δ ^ (-gam) * δ ^ (gam - beta)) / (1 - q) := by
+            rw [hsplit]
+            ring
+        _ = 16 * (4 : ℝ) ^ (-beta) * δ ^ (-beta) / (1 - q) := by
+            rw [h4split, hδsplit]
+        _ ≤ 16 * 1 * δ ^ (-beta) / (1 - q) := by
+            gcongr
+        _ = 16 / (1 - q) * δ ^ (-beta) := by ring
+    calc (ι.card : ℝ) ≤ 3 + ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) := hcardι
+      _ ≤ 3 + (2 * (4 * δ) ^ (-beta) +
+          16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * δ) ^ (gam - beta) / (1 - q))) := by
+          linarith [hsum, hsumA, hsumB]
+      _ ≤ 3 * δ ^ (-beta) + (2 * δ ^ (-beta) + 16 / (1 - q) * δ ^ (-beta)) := by
+          have h3 : (3 : ℝ) ≤ 3 * δ ^ (-beta) := by linarith
+          linarith [hA', hB']
+      _ = (5 + 16 / (1 - q)) * δ ^ (-beta) := by ring
+
+theorem rpow_pow_comm' {x : ℝ} (hx : 0 < x) (y : ℝ) (b : ℕ) :
+    (x ^ y) ^ b = (x ^ b) ^ y := by
+  have h := rpow_pow_comm hx y 1 b
+  simpa using h
+
+/-! ### The Minkowski exponent of the off-diagonal example -/
+
+theorem hasUpperMinkowskiExponent_offDiagSet {beta gam : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) :
+    HasUpperMinkowskiExponent (offDiagSet beta gam k0) beta := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hR0 : (0 : ℝ) < (offDiagRatio beta gam) ^ k0 := pow_pos (offDiagRatio_pos beta gam) k0
+  have hR1 : (offDiagRatio beta gam) ^ k0 < 1 := by linarith
+  have hq1 : ((offDiagRatio beta gam) ^ k0) ^ gam < 1 := Real.rpow_lt_one hR0.le hR1 hgam
+  have hq0 : (0 : ℝ) < ((offDiagRatio beta gam) ^ k0) ^ gam := Real.rpow_pos_of_pos hR0 gam
+  intro ε hε
+  refine ⟨5 + 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam), ?_, ?_⟩
+  · have hpos : 0 < 1 - ((offDiagRatio beta gam) ^ k0) ^ gam := by linarith
+    have : 0 < 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam) := by positivity
+    linarith
+  intro δ hδ hδone
+  obtain ⟨ι, hι, hcard⟩ := offDiagSet_minkowski_cover hbeta hbg hgam1 hk0pos hk0 hδ hδone
+  refine ⟨ι, hι, le_trans hcard ?_⟩
+  have hstep : δ ^ (-beta) ≤ δ ^ (-(beta + ε)) :=
+    Real.rpow_le_rpow_of_exponent_ge hδ hδone.le (by linarith)
+  have hC : (0 : ℝ) ≤ 5 + 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam) := by
+    have hpos : 0 < 1 - ((offDiagRatio beta gam) ^ k0) ^ gam := by linarith
+    have : 0 < 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam) := by positivity
+    linarith
+  exact mul_le_mul_of_nonneg_left hstep hC
+
+/-! ### The spectrum cover of the off-diagonal example -/
+
+set_option maxHeartbeats 1000000 in
+theorem offDiagSet_spectrum_cover {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (_hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3)
+    {δ a b : ℝ} (hδ : 0 < δ) (hab : a ≤ b) (hδt : δ ≤ b - a) (_ht1 : b - a ≤ 1) :
+    ∃ ι : Finset ℝ, IsIntervalCover (offDiagSet beta gam k0 ∩ Icc a b) δ ι ∧
+      (ι.card : ℝ) ≤
+        (19 + 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam)) * ((b - a) / δ) ^ gam := by
+  classical
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have htpos : 0 < b - a := lt_of_lt_of_le hδ hδt
+  have hR0 : (0 : ℝ) < (offDiagRatio beta gam) ^ k0 := pow_pos (offDiagRatio_pos beta gam) k0
+  have hR1 : (offDiagRatio beta gam) ^ k0 < 1 := by linarith
+  set q : ℝ := ((offDiagRatio beta gam) ^ k0) ^ gam with hqdef
+  have hq0 : 0 < q := Real.rpow_pos_of_pos hR0 gam
+  have hq1 : q < 1 := by
+    rw [hqdef]
+    exact Real.rpow_lt_one hR0.le hR1 hgam
+  have hone_q : 0 < 1 - q := by linarith
+  have hratio1 : (1 : ℝ) ≤ (b - a) / δ := by
+    rw [le_div_iff₀ hδ]
+    linarith
+  have hrpow1 : (1 : ℝ) ≤ ((b - a) / δ) ^ gam := Real.one_le_rpow hratio1 hgam.le
+  -- the least index whose piece is shorter than `δ`
+  have hexJ : ∃ n : ℕ, offDiagLen beta gam k0 n ≤ δ := by
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one (by linarith : (0:ℝ) < 4 * δ) hR1
+    refine ⟨n, ?_⟩
+    rw [offDiagLen_eq_pow]
+    linarith
+  set J : ℕ := Nat.find hexJ with hJdef
+  have hJspec : offDiagLen beta gam k0 J ≤ δ := Nat.find_spec hexJ
+  have hJmin : ∀ j, j < J → δ < offDiagLen beta gam k0 j := by
+    intro j hj
+    exact not_le.mp (Nat.find_min hexJ hj)
+  -- the per-piece covers of the localized pieces
+  have hchoice : ∀ j : ℕ, j < J → ∃ ι : Finset ℝ,
+      IsIntervalCover ((↑(offDiagPiece beta gam k0 j) : Set ℝ) ∩ Icc a b) δ ι ∧
+        (ι.card : ℝ) ≤
+          (if (b - a ≤ offDiagLen beta gam k0 j ∧
+              ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty)
+            then 16 * ((b - a) / δ) ^ gam else 0) +
+          (if b - a ≤ offDiagLen beta gam k0 j then 0
+            else 16 * (offDiagLen beta gam k0 j / δ) ^ gam) := by
+    intro j hj
+    by_cases hbig : b - a ≤ offDiagLen beta gam k0 j
+    · by_cases hne : ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty
+      · obtain ⟨ι, hι, hcard⟩ := cantorMid_assouad_cover hgam hgam1 (k0 * j)
+          (1 + 2 * offDiagLen beta gam k0 j) (offDiagLen_pos k0 j)
+          (δ := δ) (a := a) (b := b) hδ hδt hbig
+        refine ⟨ι, hι, ?_⟩
+        rw [if_pos ⟨hbig, hne⟩, if_pos hbig]
+        linarith
+      · refine ⟨∅, ?_, ?_⟩
+        · intro x hx
+          exfalso
+          obtain ⟨hxpiece, hxab⟩ := hx
+          refine hne ⟨x, ?_⟩
+          rw [Finset.mem_filter]
+          exact ⟨hxpiece, hxab.1, hxab.2⟩
+        · rw [if_neg (by tauto), if_pos hbig]
+          simp
+    · obtain ⟨ι, hι, hcard⟩ :=
+        offDiagPiece_cover_assouad hgam hgam1 k0 j hδ (le_of_lt (hJmin j hj))
+      refine ⟨ι, ?_, ?_⟩
+      · refine IsIntervalCover.mono ?_ hι
+        exact Set.inter_subset_left
+      · rw [if_neg (by tauto), if_neg hbig]
+        linarith
+  choose! covOf hcovIs hcovCard using hchoice
+  set ι : Finset ℝ := ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ) ∪
+    (Finset.range J).biUnion covOf with hιdef
+  refine ⟨ι, ?_, ?_⟩
+  · -- covering
+    intro x hx
+    obtain ⟨hxset, hxab⟩ := hx
+    obtain ⟨j, hj⟩ := Set.mem_iUnion.mp hxset
+    rcases Nat.lt_or_ge j J with hlt | hge
+    · obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp (hcovIs j hlt ⟨hj, hxab⟩)
+      refine Set.mem_iUnion₂.mpr ⟨c, ?_, hxc⟩
+      rw [hιdef]
+      exact Finset.mem_union_right _
+        (Finset.mem_biUnion.mpr ⟨j, Finset.mem_range.mpr hlt, hc⟩)
+    · obtain ⟨h1, h2⟩ := offDiagPiece_near_one hgam hgam1 hk0 hge hJspec x hj
+      obtain ⟨c, hc, hxc⟩ := Set.mem_iUnion₂.mp (cover_near_one hδ h1 h2)
+      refine Set.mem_iUnion₂.mpr ⟨c, ?_, hxc⟩
+      rw [hιdef]
+      exact Finset.mem_union_left _ hc
+  · -- cardinality
+    have hcard3 : ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ).card ≤ 3 := by
+      apply le_trans (Finset.card_insert_le _ _)
+      have h2 : ({1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ).card ≤ 2 := by
+        apply le_trans (Finset.card_insert_le _ _)
+        simp
+      omega
+    have hcardι : (ι.card : ℝ) ≤ 3 + ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) := by
+      have hunion : ι.card ≤ ({1 + δ / 2, 1 + 3 * δ / 2, 1 + 5 * δ / 2} : Finset ℝ).card +
+          ((Finset.range J).biUnion covOf).card := by
+        rw [hιdef]
+        exact Finset.card_union_le _ _
+      have hbi : ((Finset.range J).biUnion covOf).card ≤
+          ∑ j ∈ Finset.range J, (covOf j).card := Finset.card_biUnion_le
+      have hnat : ι.card ≤ 3 + ∑ j ∈ Finset.range J, (covOf j).card := by omega
+      calc (ι.card : ℝ) ≤ ((3 + ∑ j ∈ Finset.range J, (covOf j).card : ℕ) : ℝ) := by
+            exact_mod_cast hnat
+        _ = 3 + ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) := by push_cast; ring
+    have hsum : ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) ≤
+        (∑ j ∈ Finset.range J,
+          (if (b - a ≤ offDiagLen beta gam k0 j ∧
+              ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty)
+            then 16 * ((b - a) / δ) ^ gam else 0)) +
+        (∑ j ∈ Finset.range J,
+          (if b - a ≤ offDiagLen beta gam k0 j then 0
+            else 16 * (offDiagLen beta gam k0 j / δ) ^ gam)) := by
+      rw [← Finset.sum_add_distrib]
+      exact Finset.sum_le_sum fun j hj => hcovCard j (Finset.mem_range.mp hj)
+    -- at most one long piece meets the interval
+    have hlong : ((Finset.range J).filter (fun j => b - a ≤ offDiagLen beta gam k0 j ∧
+        ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty)).card ≤ 1 := by
+      rw [Finset.card_le_one]
+      intro j1 hj1 j2 hj2
+      by_contra hne
+      -- the two pieces are separated by more than the length of the interval
+      have hkey : ∀ i1 i2 : ℕ, i1 < i2 →
+          (b - a ≤ offDiagLen beta gam k0 i1 ∧
+            ((offDiagPiece beta gam k0 i1).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty) →
+          (b - a ≤ offDiagLen beta gam k0 i2 ∧
+            ((offDiagPiece beta gam k0 i2).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty) →
+          False := by
+        intro i1 i2 hlt ⟨hbig1, hne1⟩ ⟨hbig2, hne2⟩
+        obtain ⟨x1, hx1⟩ := hne1
+        obtain ⟨x2, hx2⟩ := hne2
+        rw [Finset.mem_filter] at hx1 hx2
+        obtain ⟨hx1piece, hx1a, hx1b⟩ := hx1
+        obtain ⟨hx2piece, hx2a, hx2b⟩ := hx2
+        obtain ⟨h1low, -⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 i1 x1 hx1piece
+        obtain ⟨-, h2up⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 i2 x2 hx2piece
+        have hchain : 3 * offDiagLen beta gam k0 i2 ≤ offDiagLen beta gam k0 i1 := by
+          have hstep := offDiagLen_succ hk0 i1
+          have hmono := offDiagLen_antitone hk0 (i1 + 1) i2 (by omega)
+          have hpos := offDiagLen_pos (beta := beta) (gam := gam) k0 i2
+          nlinarith [hstep, hmono, hpos]
+        have hgapbig : offDiagLen beta gam k0 i1 ≤ b - a := by
+          nlinarith [h1low, h2up, hx1b, hx2a, hchain]
+        linarith [hbig1, hgapbig, offDiagLen_pos (beta := beta) (gam := gam) k0 i1]
+      rw [Finset.mem_filter] at hj1 hj2
+      rcases Nat.lt_or_ge j1 j2 with hlt | hge
+      · exact hkey j1 j2 hlt hj1.2 hj2.2
+      · rcases Nat.lt_or_ge j2 j1 with hlt2 | hge2
+        · exact hkey j2 j1 hlt2 hj2.2 hj1.2
+        · exact hne (by omega)
+    have hsumA : (∑ j ∈ Finset.range J,
+        (if (b - a ≤ offDiagLen beta gam k0 j ∧
+            ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty)
+          then 16 * ((b - a) / δ) ^ gam else 0)) ≤ 16 * ((b - a) / δ) ^ gam := by
+      rw [← Finset.sum_filter, Finset.sum_const]
+      have hnn : (0 : ℝ) ≤ 16 * ((b - a) / δ) ^ gam := by positivity
+      calc (((Finset.range J).filter (fun j => b - a ≤ offDiagLen beta gam k0 j ∧
+              ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty)).card •
+            (16 * ((b - a) / δ) ^ gam))
+          = (((Finset.range J).filter (fun j => b - a ≤ offDiagLen beta gam k0 j ∧
+              ((offDiagPiece beta gam k0 j).filter (fun x => a ≤ x ∧ x ≤ b)).Nonempty)).card : ℝ) *
+              (16 * ((b - a) / δ) ^ gam) := by
+            rw [nsmul_eq_mul]
+        _ ≤ 1 * (16 * ((b - a) / δ) ^ gam) := by
+            apply mul_le_mul_of_nonneg_right _ hnn
+            exact_mod_cast hlong
+        _ = 16 * ((b - a) / δ) ^ gam := by ring
+    -- the short pieces
+    have hsumB : (∑ j ∈ Finset.range J,
+        (if b - a ≤ offDiagLen beta gam k0 j then 0
+          else 16 * (offDiagLen beta gam k0 j / δ) ^ gam)) ≤
+        16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * (b - a)) ^ gam / (1 - q)) := by
+      have hstep : ∀ j ∈ Finset.range J,
+          (if b - a ≤ offDiagLen beta gam k0 j then 0
+            else 16 * (offDiagLen beta gam k0 j / δ) ^ gam) ≤
+          16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) *
+            (if q ^ j ≤ (4 * (b - a)) ^ gam then q ^ j else 0) := by
+        intro j _
+        by_cases hbig : b - a ≤ offDiagLen beta gam k0 j
+        · rw [if_pos hbig]
+          positivity
+        · rw [if_neg hbig]
+          have hqle : q ^ j ≤ (4 * (b - a)) ^ gam := by
+            have hlt : offDiagLen beta gam k0 j < b - a := not_le.mp hbig
+            have h4 : ((offDiagRatio beta gam) ^ k0) ^ j ≤ 4 * (b - a) := by
+              rw [offDiagLen_eq_pow] at hlt
+              linarith
+            have hqj : q ^ j = (((offDiagRatio beta gam) ^ k0) ^ j) ^ gam := by
+              rw [hqdef]
+              exact rpow_pow_comm' hR0 gam j
+            rw [hqj]
+            exact Real.rpow_le_rpow (by positivity) h4 hgam.le
+          rw [if_pos hqle]
+          have hdiv : (offDiagLen beta gam k0 j / δ) ^ gam
+              = (4 : ℝ) ^ (-gam) * q ^ j * δ ^ (-gam) := by
+            rw [Real.div_rpow (offDiagLen_pos k0 j).le hδ.le,
+              offDiagLen_rpow_eq hgam k0 j, hqdef]
+            rw [Real.rpow_neg hδ.le]
+            field_simp
+          rw [hdiv]
+          ring_nf
+          exact le_refl _
+      refine le_trans (Finset.sum_le_sum hstep) ?_
+      rw [← Finset.mul_sum]
+      have hgeom := sum_ite_geom_decr_le hq0 hq1
+        (by positivity : (0:ℝ) ≤ (4 * (b - a)) ^ gam) J
+      have hcoef : (0 : ℝ) ≤ 16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) := by positivity
+      exact mul_le_mul_of_nonneg_left hgeom hcoef
+    -- collect
+    have hB' : 16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * (b - a)) ^ gam / (1 - q))
+        = 16 / (1 - q) * ((b - a) / δ) ^ gam := by
+      have hsplit : (4 * (b - a)) ^ gam = (4 : ℝ) ^ gam * (b - a) ^ gam :=
+        Real.mul_rpow (by norm_num) htpos.le
+      have h4split : (4 : ℝ) ^ (-gam) * (4 : ℝ) ^ gam = 1 := by
+        rw [← Real.rpow_add (by norm_num : (0:ℝ) < 4)]
+        simp
+      have hδsplit : δ ^ (-gam) * (b - a) ^ gam = ((b - a) / δ) ^ gam := by
+        rw [Real.div_rpow htpos.le hδ.le, Real.rpow_neg hδ.le]
+        field_simp
+      calc 16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * (b - a)) ^ gam / (1 - q))
+          = 16 * ((4 : ℝ) ^ (-gam) * (4 : ℝ) ^ gam) *
+              (δ ^ (-gam) * (b - a) ^ gam) / (1 - q) := by
+            rw [hsplit]
+            ring
+        _ = 16 * ((b - a) / δ) ^ gam / (1 - q) := by
+            rw [h4split, hδsplit]
+            ring
+        _ = 16 / (1 - q) * ((b - a) / δ) ^ gam := by ring
+    calc (ι.card : ℝ) ≤ 3 + ∑ j ∈ Finset.range J, ((covOf j).card : ℝ) := hcardι
+      _ ≤ 3 + (16 * ((b - a) / δ) ^ gam +
+          16 * (4 : ℝ) ^ (-gam) * δ ^ (-gam) * ((4 * (b - a)) ^ gam / (1 - q))) := by
+          linarith [hsum, hsumA, hsumB]
+      _ ≤ 3 * ((b - a) / δ) ^ gam + (16 * ((b - a) / δ) ^ gam +
+          16 / (1 - q) * ((b - a) / δ) ^ gam) := by
+          have h3 : (3 : ℝ) ≤ 3 * ((b - a) / δ) ^ gam := by linarith
+          linarith [hB']
+      _ = (19 + 16 / (1 - q)) * ((b - a) / δ) ^ gam := by ring
+
+/-! ### Ruling out exponents by separated families -/
+
+/-- A family of separated subsets whose cardinalities beat the covering bound rules out a
+Minkowski exponent. -/
+theorem not_hasUpperMinkowskiExponent_of_separated {F : Set ℝ} {beta' ε : ℝ} (hε : 0 < ε)
+    (hfam : ∀ C : ℝ, 0 < C → ∃ (S : Finset ℝ) (δ : ℝ), 0 < δ ∧ δ < 1 ∧
+      (∀ x ∈ S, x ∈ F) ∧ (∀ x ∈ S, ∀ y ∈ S, x ≠ y → δ < |x - y|) ∧
+      C * δ ^ (-(beta' + ε)) < (S.card : ℝ)) :
+    ¬ HasUpperMinkowskiExponent F beta' := by
+  intro hcon
+  obtain ⟨C, hC, hcov⟩ := hcon ε hε
+  obtain ⟨S, δ, hδ, hδ1, hSF, hsep, hbig⟩ := hfam C hC
+  obtain ⟨ι, hι, hcard⟩ := hcov δ hδ hδ1
+  have hlow := card_le_card_of_intervalCover_of_separated hι hSF hsep
+  have hlow' : (S.card : ℝ) ≤ (ι.card : ℝ) := by exact_mod_cast hlow
+  linarith
+
+/-- The same for the upper Assouad spectrum. -/
+theorem not_hasUpperAssouadSpectrumExponent_of_separated {F : Set ℝ} {θ gam' : ℝ}
+    (hfam : ∀ C : ℝ, 0 < C → ∃ (S : Finset ℝ) (δ a b : ℝ),
+      0 < δ ∧ δ < 1 ∧ 1 ≤ a ∧ a ≤ b ∧ b ≤ 2 ∧ δ ^ θ ≤ b - a ∧
+      (∀ x ∈ S, x ∈ F ∩ Icc a b) ∧
+      (∀ x ∈ S, ∀ y ∈ S, x ≠ y → δ < |x - y|) ∧
+      C * ((b - a) / δ) ^ gam' < (S.card : ℝ)) :
+    ¬ HasUpperAssouadSpectrumExponent F θ gam' := by
+  intro hcon
+  obtain ⟨C, hC, hcov⟩ := hcon
+  obtain ⟨S, δ, a, b, hδ, hδ1, ha, hab, hb, hscale, hSF, hsep, hbig⟩ := hfam C hC
+  obtain ⟨ι, hι, hcard⟩ := hcov δ a b hδ hδ1 ha hab hb hscale
+  have hlow := card_le_card_of_intervalCover_of_separated hι hSF hsep
+  have hlow' : (S.card : ℝ) ≤ (ι.card : ℝ) := by exact_mod_cast hlow
+  linarith
+
+/-! ### The spectrum of the off-diagonal example, upper bound -/
+
+theorem hasUpperAssouadSpectrumExponent_offDiagSet {beta gam : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {θ : ℝ} (hθ1 : θ ≤ 1) :
+    HasUpperAssouadSpectrumExponent (offDiagSet beta gam k0) θ gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hR0 : (0 : ℝ) < (offDiagRatio beta gam) ^ k0 := pow_pos (offDiagRatio_pos beta gam) k0
+  have hR1 : (offDiagRatio beta gam) ^ k0 < 1 := by linarith
+  have hq1 : ((offDiagRatio beta gam) ^ k0) ^ gam < 1 := Real.rpow_lt_one hR0.le hR1 hgam
+  have hq0 : (0 : ℝ) < ((offDiagRatio beta gam) ^ k0) ^ gam := Real.rpow_pos_of_pos hR0 gam
+  have hone_q : (0 : ℝ) < 1 - ((offDiagRatio beta gam) ^ k0) ^ gam := by linarith
+  refine ⟨19 + 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam), ?_, ?_⟩
+  · have : 0 < 16 / (1 - ((offDiagRatio beta gam) ^ k0) ^ gam) := by positivity
+    linarith
+  intro δ a b hδ hδone ha hab hb hscale
+  have hδt : δ ≤ b - a := by
+    have h1 : δ ≤ δ ^ θ := by
+      calc δ = δ ^ (1 : ℝ) := (Real.rpow_one δ).symm
+        _ ≤ δ ^ θ := Real.rpow_le_rpow_of_exponent_ge hδ hδone.le hθ1
+    linarith
+  have ht1 : b - a ≤ 1 := by linarith
+  obtain ⟨ι, hι, hcard⟩ :=
+    offDiagSet_spectrum_cover hbeta hbg hgam1 hk0pos hk0 hδ hab hδt ht1
+  exact ⟨ι, hι, hcard⟩
+
+/-! ### The separation scale as a geometric sequence -/
+
+/-- The separation of the `j`-th piece is `4⁻¹ν^j` for the product ratio `ν`. -/
+theorem offDiagSep_eq_pow {beta gam : ℝ} (k0 j : ℕ) :
+    offDiagSep beta gam k0 j =
+      (1 / 4) * ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ j := by
+  rw [offDiagSep, offDiagLen, mul_pow, ← pow_mul, ← pow_mul]
+  ring
+
+theorem offDiagNu_pos {beta gam : ℝ} (k0 : ℕ) :
+    0 < (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0 :=
+  mul_pos (pow_pos (cantorRatio_pos gam) k0) (pow_pos (offDiagRatio_pos beta gam) k0)
+
+theorem offDiagNu_lt_one {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam) (hgam1 : gam ≤ 1)
+    {k0 : ℕ} (hk0pos : 1 ≤ k0) :
+    (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0 < 1 := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hmu : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  have hmupos : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hrpos : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+  have hr1 : offDiagRatio beta gam < 1 := offDiagRatio_lt_one hbeta hbg
+  have hmupow : (cantorRatio gam) ^ k0 ≤ 1 / 2 := by
+    calc (cantorRatio gam) ^ k0 ≤ (cantorRatio gam) ^ 1 :=
+          pow_le_pow_of_le_one hmupos.le (by linarith) hk0pos
+      _ = cantorRatio gam := pow_one _
+      _ ≤ 1 / 2 := hmu
+  have hrpow : (offDiagRatio beta gam) ^ k0 ≤ 1 :=
+    pow_le_one₀ hrpos.le hr1.le
+  have hmupowpos : 0 < (cantorRatio gam) ^ k0 := pow_pos hmupos k0
+  have hrpowpos : 0 < (offDiagRatio beta gam) ^ k0 := pow_pos hrpos k0
+  nlinarith [hmupow, hrpow, hmupowpos, hrpowpos]
+
+/-! ### The Minkowski lower bound -/
+
+set_option maxHeartbeats 1000000 in
+theorem not_hasUpperMinkowskiExponent_offDiagSet {beta gam beta' : ℝ} (hbeta : 0 < beta)
+    (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hbeta'0 : 0 ≤ beta') (hlt : beta' < beta) :
+    ¬ HasUpperMinkowskiExponent (offDiagSet beta gam k0) beta' := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  set ε : ℝ := (beta - beta') / 2 with hεdef
+  have hε : 0 < ε := by rw [hεdef]; linarith
+  set beta'' : ℝ := beta' + ε with hb2def
+  have hb2lt : beta'' < beta := by rw [hb2def, hεdef]; linarith
+  have hb20 : 0 ≤ beta'' := by rw [hb2def]; linarith
+  have hgap : 0 < beta - beta'' := by linarith
+  refine not_hasUpperMinkowskiExponent_of_separated hε ?_
+  intro C hC
+  -- the threshold
+  set K : ℝ := C * (8 : ℝ) ^ beta'' + 1 with hKdef
+  have hK : 0 < K := by
+    rw [hKdef]
+    have : (0 : ℝ) < (8 : ℝ) ^ beta'' := Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  set t0 : ℝ := (1 / K) ^ (1 / (beta - beta'')) with ht0def
+  have ht0 : 0 < t0 := Real.rpow_pos_of_pos (by positivity) _
+  have hν : 0 < (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0 := offDiagNu_pos k0
+  have hν1 : (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0 < 1 :=
+    offDiagNu_lt_one hbeta hbg hgam1 hk0pos
+  obtain ⟨j, hj⟩ := exists_pow_lt_of_lt_one ht0 hν1
+  set s : ℝ := ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ j with hsdef
+  have hs0 : 0 < s := pow_pos hν j
+  have hst0 : s < t0 := hj
+  -- the separated family
+  refine ⟨offDiagPiece beta gam k0 j, offDiagSep beta gam k0 j / 2, by
+    have := offDiagSep_pos (beta := beta) (gam := gam) k0 j
+    linarith, ?_, ?_, ?_, ?_⟩
+  · -- the scale is below one
+    have h1 : offDiagSep beta gam k0 j ≤ offDiagLen beta gam k0 j := by
+      rw [offDiagSep]
+      have hpow : (cantorRatio gam) ^ (k0 * j) ≤ 1 :=
+        pow_le_one₀ (cantorRatio_pos gam).le (le_of_lt (lt_of_le_of_lt
+          (cantorRatio_le_half hgam hgam1) (by norm_num)))
+      have hlen := offDiagLen_pos (beta := beta) (gam := gam) k0 j
+      nlinarith [hpow, hlen]
+    have h2 : offDiagLen beta gam k0 j ≤ 1 / 4 :=
+      offDiagLen_le_quarter hbeta hbg k0 j
+    linarith
+  · -- the points belong to the set
+    intro x hx
+    exact Set.mem_iUnion.mpr ⟨j, hx⟩
+  · -- separation
+    intro x hx y hy hxy
+    have hsep := cantorMid_separated (cantorRatio_pos gam) (cantorRatio_le_half hgam hgam1)
+      (k0 * j) (offDiagLen_pos (beta := beta) (gam := gam) k0 j).le hx hy hxy
+    have hσ : offDiagSep beta gam k0 j =
+        (cantorRatio gam) ^ (k0 * j) * offDiagLen beta gam k0 j := rfl
+    rw [← hσ] at hsep
+    have hpos := offDiagSep_pos (beta := beta) (gam := gam) k0 j
+    linarith
+  · -- the cardinality beats the covering bound
+    have hcard : ((offDiagPiece beta gam k0 j).card : ℝ) = (4 * offDiagSep beta gam k0 j) ^ (-beta) := by
+      rw [offDiagPiece_card hgam hgam1 k0 j, offDiagCount_eq hbeta hgam k0 j]
+      push_cast
+      ring
+    have hs4 : 4 * offDiagSep beta gam k0 j = s := by
+      rw [offDiagSep_eq_pow, hsdef]
+      ring
+    rw [hcard, hs4]
+    -- the scale in terms of `s`
+    have hδs : offDiagSep beta gam k0 j / 2 = s / 8 := by
+      rw [offDiagSep_eq_pow, hsdef]
+      ring
+    rw [hδs]
+    -- `s ^ (-(β'' )) * 8 ^ β''` versus `s ^ (-β)`
+    have hsplit1 : (s / 8) ^ (-beta'') = s ^ (-beta'') * (8 : ℝ) ^ beta'' := by
+      rw [Real.div_rpow hs0.le (by norm_num), Real.rpow_neg hs0.le,
+        Real.rpow_neg (by norm_num : (0:ℝ) ≤ 8)]
+      field_simp
+    have hsplit2 : s ^ (-beta) = s ^ (-beta'') * s ^ (-(beta - beta'')) := by
+      rw [← Real.rpow_add hs0]
+      congr 1
+      ring
+    have hbig : K < s ^ (-(beta - beta'')) := by
+      have hspow : s ^ (beta - beta'') < 1 / K := by
+        have hmono : s ^ (beta - beta'') < t0 ^ (beta - beta'') :=
+          Real.rpow_lt_rpow hs0.le hst0 hgap
+        have ht0pow : t0 ^ (beta - beta'') = 1 / K := by
+          rw [ht0def, ← Real.rpow_mul (by positivity)]
+          rw [one_div_mul_cancel (by linarith : beta - beta'' ≠ 0), Real.rpow_one]
+        rw [ht0pow] at hmono
+        exact hmono
+      have hspos : 0 < s ^ (beta - beta'') := Real.rpow_pos_of_pos hs0 _
+      have hinv : s ^ (-(beta - beta'')) = (s ^ (beta - beta''))⁻¹ :=
+        Real.rpow_neg hs0.le _
+      rw [hinv]
+      rw [lt_inv_comm₀ hK hspos]
+      calc s ^ (beta - beta'') < 1 / K := hspow
+        _ = K⁻¹ := by rw [one_div]
+    have hspos2 : 0 < s ^ (-beta'') := Real.rpow_pos_of_pos hs0 _
+    have h8 : (0 : ℝ) < (8 : ℝ) ^ beta'' := Real.rpow_pos_of_pos (by norm_num) _
+    rw [hsplit1, hsplit2]
+    calc C * (s ^ (-beta'') * (8 : ℝ) ^ beta'')
+        = (C * (8 : ℝ) ^ beta'') * s ^ (-beta'') := by ring
+      _ < K * s ^ (-beta'') := by
+          apply mul_lt_mul_of_pos_right _ hspos2
+          rw [hKdef]
+          linarith
+      _ < s ^ (-(beta - beta'')) * s ^ (-beta'') := by
+          exact mul_lt_mul_of_pos_right hbig hspos2
+      _ = s ^ (-beta'') * s ^ (-(beta - beta'')) := by ring
+
+/-! ### Eventual bounds for geometric sequences -/
+
+theorem exists_le_pow_of_one_lt {B : ℝ} (hB : 1 < B) (K : ℝ) :
+    ∃ j0 : ℕ, ∀ j : ℕ, j0 ≤ j → K ≤ B ^ j := by
+  have hBpos : (0 : ℝ) < B := by linarith
+  have hinvlt : B⁻¹ < 1 := by
+    rw [inv_lt_one_iff₀]
+    right
+    exact hB
+  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one (by positivity : (0:ℝ) < 1 / (|K| + 1)) hinvlt
+  refine ⟨n, fun j hj => ?_⟩
+  have hstep : B ^ n ≤ B ^ j := pow_le_pow_right₀ hB.le hj
+  have hBn : |K| + 1 < B ^ n := by
+    have hpos : (0 : ℝ) < B ^ n := pow_pos hBpos n
+    rw [inv_pow] at hn
+    have habs : (0 : ℝ) < |K| + 1 := by positivity
+    rw [inv_lt_iff_one_lt_mul₀' hpos] at hn
+    have hmul := mul_lt_mul_of_pos_right hn habs
+    have hsimp : (B ^ n * (1 / (|K| + 1))) * (|K| + 1) = B ^ n := by field_simp
+    rw [hsimp, one_mul] at hmul
+    exact hmul
+  have hKle : K ≤ |K| := le_abs_self K
+  linarith
+
+theorem exists_pow_le_of_lt_one {b : ℝ} (hb0 : 0 < b) (hb : b < 1) {t : ℝ} (ht : 0 < t) :
+    ∃ j0 : ℕ, ∀ j : ℕ, j0 ≤ j → b ^ j ≤ t := by
+  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one ht hb
+  refine ⟨n, fun j hj => ?_⟩
+  have hstep : b ^ j ≤ b ^ n := pow_le_pow_of_le_one hb0.le hb.le hj
+  linarith
+
+/-! ### The product ratio and the ratio of the two scales -/
+
+/-- The product ratio is `2^{-k₀/β}`. -/
+theorem offDiagNu_eq {beta gam : ℝ} (hbeta : 0 < beta) (hgam : 0 < gam) (k0 : ℕ) :
+    (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0
+      = (2 : ℝ) ^ (-(k0 : ℝ) / beta) := by
+  have h1 := offDiagSep_eq_pow (beta := beta) (gam := gam) k0 1
+  have h2 := offDiagSep_eq hbeta hgam k0 1
+  rw [pow_one] at h1
+  rw [h1] at h2
+  have hcast : ((k0 * 1 : ℕ) : ℝ) = (k0 : ℝ) := by push_cast; ring
+  rw [hcast] at h2
+  linarith
+
+/-- The `k₀`-th power of the length ratio is `2^{-k₀ gap}`. -/
+theorem offDiagRatio_pow_eq {beta gam : ℝ} (k0 : ℕ) :
+    (offDiagRatio beta gam) ^ k0 = (2 : ℝ) ^ (-(k0 : ℝ) * offDiagGap beta gam) := by
+  rw [offDiagRatio, ← Real.rpow_natCast ((2 : ℝ) ^ (-offDiagGap beta gam)) k0,
+    ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+  congr 1
+  ring
+
+/-- Above the critical scale parameter the length ratio beats the separation ratio. -/
+theorem one_lt_offDiagRatio_div_nu_rpow {beta gam θ : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    {k0 : ℕ} (hk0pos : 1 ≤ k0) (hθ : 1 - beta / gam < θ) :
+    1 < (offDiagRatio beta gam) ^ k0 /
+      ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hnueq : (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0
+      = (2 : ℝ) ^ (-(k0 : ℝ) / beta) := offDiagNu_eq hbeta hgam k0
+  have hRpeq : (offDiagRatio beta gam) ^ k0
+      = (2 : ℝ) ^ (-(k0 : ℝ) * offDiagGap beta gam) := offDiagRatio_pow_eq k0
+  have hdiv : (offDiagRatio beta gam) ^ k0 /
+      ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ
+      = (2 : ℝ) ^ (-(k0 : ℝ) * offDiagGap beta gam - (-(k0 : ℝ) / beta) * θ) := by
+    rw [hnueq, hRpeq, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2),
+      ← Real.rpow_sub (by norm_num : (0:ℝ) < 2)]
+  rw [hdiv]
+  refine (Real.one_lt_rpow_iff_of_pos (by norm_num)).mpr (Or.inl ⟨by norm_num, ?_⟩)
+  have hk0R : (1 : ℝ) ≤ (k0 : ℝ) := by exact_mod_cast hk0pos
+  have hkey : 0 < θ / beta - 1 / beta + 1 / gam := by
+    have hid : θ / beta - 1 / beta + 1 / gam = (θ * gam - gam + beta) / (beta * gam) := by
+      field_simp
+    rw [hid]
+    refine div_pos ?_ (by positivity)
+    have hmul : (1 - beta / gam) * gam < θ * gam := by
+      apply mul_lt_mul_of_pos_right hθ hgam
+    have hsimp : (1 - beta / gam) * gam = gam - beta := by
+      field_simp
+    rw [hsimp] at hmul
+    linarith
+  rw [offDiagGap]
+  have hexp : -(k0 : ℝ) * (1 / beta - 1 / gam) - (-(k0 : ℝ) / beta) * θ
+      = (k0 : ℝ) * (θ / beta - 1 / beta + 1 / gam) := by
+    field_simp
+    ring
+  rw [hexp]
+  have hk0pos' : (0 : ℝ) < (k0 : ℝ) := by linarith
+  exact mul_pos hk0pos' hkey
+
+/-! ### The spectrum lower bound for the off-diagonal example -/
+
+set_option maxHeartbeats 1000000 in
+theorem not_hasUpperAssouadSpectrumExponent_offDiagSet {beta gam gam' θ : ℝ}
+    (hbeta : 0 < beta) (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hθ : 1 - beta / gam < θ) (_hgam'0 : 0 ≤ gam') (hlt : gam' < gam) :
+    ¬ HasUpperAssouadSpectrumExponent (offDiagSet beta gam k0) θ gam' := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hmu : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hmu2 : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  have hmulone : cantorRatio gam < 1 := lt_of_le_of_lt hmu2 (by norm_num)
+  have hmu0pos : (0 : ℝ) < (cantorRatio gam) ^ k0 := pow_pos hmu k0
+  have hmu0lt : (cantorRatio gam) ^ k0 < 1 := pow_lt_one₀ hmu.le hmulone (by omega)
+  have hRp0 : (0 : ℝ) < (offDiagRatio beta gam) ^ k0 := pow_pos (offDiagRatio_pos beta gam) k0
+  have hnu0 : (0 : ℝ) < (cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0 :=
+    offDiagNu_pos k0
+  have hgapgam : 0 < gam - gam' := by linarith
+  refine not_hasUpperAssouadSpectrumExponent_of_separated ?_
+  intro C hC
+  -- the threshold for the scale condition
+  obtain ⟨j1, hj1⟩ := exists_le_pow_of_one_lt
+    (one_lt_offDiagRatio_div_nu_rpow hbeta hbg hk0pos hθ) ((1 / 8 : ℝ) ^ θ / (1 / 4))
+  -- the threshold for the cardinality condition
+  set K2 : ℝ := C * (2 : ℝ) ^ gam' + 1 with hK2def
+  have hK2 : 0 < K2 := by
+    rw [hK2def]
+    have h2 : (0 : ℝ) < (2 : ℝ) ^ gam' := Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  set t2 : ℝ := (1 / K2) ^ (1 / (gam - gam')) with ht2def
+  have ht2 : 0 < t2 := Real.rpow_pos_of_pos (by positivity) _
+  obtain ⟨j2, hj2⟩ := exists_pow_le_of_lt_one hmu0pos hmu0lt ht2
+  set j : ℕ := max j1 j2 with hjdef
+  have hj1le : j1 ≤ j := le_max_left _ _
+  have hj2le : j2 ≤ j := le_max_right _ _
+  -- the data
+  have hLpos : 0 < offDiagLen beta gam k0 j := offDiagLen_pos k0 j
+  have hLquarter : offDiagLen beta gam k0 j ≤ 1 / 4 := offDiagLen_le_quarter hbeta hbg k0 j
+  have hσpos : 0 < offDiagSep beta gam k0 j := offDiagSep_pos k0 j
+  have hσL : offDiagSep beta gam k0 j ≤ offDiagLen beta gam k0 j := by
+    rw [offDiagSep]
+    have hpow : (cantorRatio gam) ^ (k0 * j) ≤ 1 := pow_le_one₀ hmu.le hmulone.le
+    nlinarith [hpow, hLpos]
+  have hmu0j : (cantorRatio gam) ^ (k0 * j) = ((cantorRatio gam) ^ k0) ^ j := by
+    rw [← pow_mul]
+  refine ⟨offDiagPiece beta gam k0 j, offDiagSep beta gam k0 j / 2,
+    1 + 2 * offDiagLen beta gam k0 j, 1 + 3 * offDiagLen beta gam k0 j,
+    by linarith, by linarith, by linarith, by linarith, by linarith, ?_, ?_, ?_, ?_⟩
+  · -- the scale condition `δ ^ θ ≤ b - a`
+    have hdiff : (1 + 3 * offDiagLen beta gam k0 j) - (1 + 2 * offDiagLen beta gam k0 j)
+        = offDiagLen beta gam k0 j := by ring
+    rw [hdiff]
+    have hδeq : offDiagSep beta gam k0 j / 2
+        = (1 / 8) * ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ j := by
+      rw [offDiagSep_eq_pow]
+      ring
+    have hLeq : offDiagLen beta gam k0 j = (1 / 4) * ((offDiagRatio beta gam) ^ k0) ^ j :=
+      offDiagLen_eq_pow k0 j
+    rw [hδeq, hLeq]
+    have hnujpos : (0 : ℝ) < (((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j := by
+      have : (0 : ℝ) < ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ :=
+        Real.rpow_pos_of_pos hnu0 θ
+      positivity
+    have hsplit : ((1 / 8 : ℝ) * ((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ j) ^ θ
+        = (1 / 8 : ℝ) ^ θ *
+          ((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j) := by
+      rw [Real.mul_rpow (by norm_num) (by positivity)]
+      congr 1
+      exact (rpow_pow_comm' hnu0 θ j).symm
+    rw [hsplit]
+    have hj1' := hj1 j hj1le
+    rw [div_pow] at hj1'
+    -- rearrange
+    have hkey : (1 / 8 : ℝ) ^ θ / (1 / 4) *
+        (((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j)) ≤
+        (((offDiagRatio beta gam) ^ k0) ^ j /
+          ((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j)) *
+          (((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j)) := by
+      exact mul_le_mul_of_nonneg_right hj1' hnujpos.le
+    rw [div_mul_cancel₀ _ hnujpos.ne'] at hkey
+    have hfinal : (1 / 8 : ℝ) ^ θ *
+        (((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j)) ≤
+        (1 / 4 : ℝ) * (((offDiagRatio beta gam) ^ k0) ^ j) := by
+      have h4 : (0 : ℝ) < 1 / 4 := by norm_num
+      have := mul_le_mul_of_nonneg_left hkey h4.le
+      calc (1 / 8 : ℝ) ^ θ *
+            (((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j))
+          = (1 / 4 : ℝ) * ((1 / 8 : ℝ) ^ θ / (1 / 4) *
+              (((((cantorRatio gam) ^ k0 * (offDiagRatio beta gam) ^ k0) ^ θ) ^ j))) := by
+            field_simp
+        _ ≤ (1 / 4 : ℝ) * (((offDiagRatio beta gam) ^ k0) ^ j) := this
+    exact hfinal
+  · -- the points belong to the set and the interval
+    intro x hx
+    refine ⟨Set.mem_iUnion.mpr ⟨j, hx⟩, ?_⟩
+    obtain ⟨h1, h2⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 j x hx
+    exact ⟨h1, h2⟩
+  · -- separation
+    intro x hx y hy hxy
+    have hsep := cantorMid_separated hmu hmu2 (k0 * j) hLpos.le hx hy hxy
+    have hσeq : offDiagSep beta gam k0 j
+        = (cantorRatio gam) ^ (k0 * j) * offDiagLen beta gam k0 j := rfl
+    rw [← hσeq] at hsep
+    linarith
+  · -- the cardinality condition
+    have hcard : ((offDiagPiece beta gam k0 j).card : ℝ)
+        = (((cantorRatio gam) ^ k0) ^ j) ^ (-gam) := by
+      rw [offDiagPiece_card hgam hgam1 k0 j]
+      push_cast
+      rw [← hmu0j, ← cantorRatio_pow_rpow_neg hgam (k0 * j)]
+    have hdiff : (1 + 3 * offDiagLen beta gam k0 j) - (1 + 2 * offDiagLen beta gam k0 j)
+        = offDiagLen beta gam k0 j := by ring
+    rw [hcard, hdiff]
+    -- the ratio of the two scales
+    have hratio : offDiagLen beta gam k0 j / (offDiagSep beta gam k0 j / 2)
+        = 2 / ((cantorRatio gam) ^ k0) ^ j := by
+      rw [offDiagSep, ← hmu0j]
+      field_simp
+    rw [hratio]
+    -- the numerical comparison
+    set w : ℝ := ((cantorRatio gam) ^ k0) ^ j with hwdef
+    have hw0 : 0 < w := by
+      rw [hwdef]
+      positivity
+    have hwt2 : w ≤ t2 := hj2 j hj2le
+    have hwpow : w ^ (gam - gam') ≤ 1 / K2 := by
+      have hmono : w ^ (gam - gam') ≤ t2 ^ (gam - gam') :=
+        Real.rpow_le_rpow hw0.le hwt2 hgapgam.le
+      have ht2pow : t2 ^ (gam - gam') = 1 / K2 := by
+        rw [ht2def, ← Real.rpow_mul (by positivity)]
+        rw [one_div_mul_cancel (by linarith : gam - gam' ≠ 0), Real.rpow_one]
+      rw [ht2pow] at hmono
+      exact hmono
+    have hbig : K2 ≤ w ^ (-(gam - gam')) := by
+      have hpos : 0 < w ^ (gam - gam') := Real.rpow_pos_of_pos hw0 _
+      rw [Real.rpow_neg hw0.le]
+      rw [le_inv_comm₀ hK2 hpos]
+      calc w ^ (gam - gam') ≤ 1 / K2 := hwpow
+        _ = K2⁻¹ := by rw [one_div]
+    have hsplit1 : (2 / w) ^ gam' = (2 : ℝ) ^ gam' * w ^ (-gam') := by
+      rw [Real.div_rpow (by norm_num) hw0.le, Real.rpow_neg hw0.le]
+      field_simp
+    have hsplit2 : w ^ (-gam) = w ^ (-gam') * w ^ (-(gam - gam')) := by
+      rw [← Real.rpow_add hw0]
+      congr 1
+      ring
+    have hwneg : 0 < w ^ (-gam') := Real.rpow_pos_of_pos hw0 _
+    rw [hsplit1, hsplit2]
+    calc C * ((2 : ℝ) ^ gam' * w ^ (-gam'))
+        = (C * (2 : ℝ) ^ gam') * w ^ (-gam') := by ring
+      _ < K2 * w ^ (-gam') := by
+          refine mul_lt_mul_of_pos_right ?_ hwneg
+          rw [hK2def]
+          linarith
+      _ ≤ w ^ (-(gam - gam')) * w ^ (-gam') := by
+          exact mul_le_mul_of_nonneg_right hbig hwneg.le
+      _ = w ^ (-gam') * w ^ (-(gam - gam')) := by ring
+
+/-! ### The off-diagonal example is regular -/
+
+theorem upperMinkowskiDimension_offDiagSet {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) :
+    upperMinkowskiDimension (offDiagSet beta gam k0) = beta := by
+  refine upperMinkowskiDimension_eq_of_bounds hbeta.le
+    (hasUpperMinkowskiExponent_offDiagSet hbeta hbg hgam1 hk0pos hk0) ?_
+  intro beta' hbeta'0 hlt
+  exact not_hasUpperMinkowskiExponent_offDiagSet hbeta hbg hgam1 hk0pos hbeta'0 hlt
+
+theorem upperAssouadSpectrum_offDiagSet_le {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {θ : ℝ} (hθ1 : θ ≤ 1) :
+    upperAssouadSpectrum (offDiagSet beta gam k0) θ ≤ gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  refine csInf_le ⟨0, fun g hg => hg.1⟩ ⟨hgam.le, ?_⟩
+  exact hasUpperAssouadSpectrumExponent_offDiagSet hbeta hbg hgam1 hk0pos hk0 hθ1
+
+theorem upperAssouadSpectrum_offDiagSet {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) {θ : ℝ}
+    (hθ : 1 - beta / gam < θ) (hθ1 : θ ≤ 1) :
+    upperAssouadSpectrum (offDiagSet beta gam k0) θ = gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  refine upperAssouadSpectrum_eq_of_bounds hgam.le
+    (hasUpperAssouadSpectrumExponent_offDiagSet hbeta hbg hgam1 hk0pos hk0 hθ1) ?_
+  intro gam' hgam'0 hlt
+  exact not_hasUpperAssouadSpectrumExponent_offDiagSet hbeta hbg hgam1 hk0pos hθ hgam'0 hlt
+
+theorem quasiAssouadDimension_offDiagSet {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) :
+    quasiAssouadDimension (offDiagSet beta gam k0) = gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hcrit : 1 - beta / gam < 1 := by
+    have : 0 < beta / gam := div_pos hbeta hgam
+    linarith
+  have hcrit0 : 0 ≤ 1 - beta / gam := by
+    have hle : beta / gam ≤ 1 := by
+      rw [div_le_one hgam]
+      linarith
+    linarith
+  refine quasiAssouadDimension_eq_of_spectrum ?_ ?_
+  · intro θ hθ0 hθ1
+    exact upperAssouadSpectrum_offDiagSet_le hbeta hbg hgam1 hk0pos hk0 hθ1.le
+  · intro ε hε
+    -- pick a scale parameter above the critical one
+    refine ⟨(1 - beta / gam + 1) / 2, by linarith, by linarith, ?_⟩
+    rw [upperAssouadSpectrum_offDiagSet hbeta hbg hgam1 hk0pos hk0 (by linarith) (by linarith)]
+    linarith
+
+/-- **The off-diagonal example is `(β,γ)`-quasi-Assouad regular.** -/
+theorem isQuasiAssouadRegular_offDiagSet {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) {k0 : ℕ} (hk0pos : 1 ≤ k0)
+    (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) :
+    IsQuasiAssouadRegular (offDiagSet beta gam k0) beta gam := by
+  refine ⟨upperMinkowskiDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0,
+    quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0, Or.inr ?_⟩
+  intro θ hθ0 hθ1 hθcrit
+  exact upperAssouadSpectrum_offDiagSet hbeta hbg hgam1 hk0pos hk0 hθcrit hθ1.le
+
+/-! ### Every admissible pair is realized -/
+
+/-- **For every pair `0 ≤ β ≤ γ ≤ 1` with `β = 0 → γ = 0` there is an explicit
+`(β,γ)`-quasi-Assouad regular subset of `[1,2]`.** -/
+theorem exists_isQuasiAssouadRegular {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbg : beta ≤ gam)
+    (hgam1 : gam ≤ 1) (hzero : beta = 0 → gam = 0) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧ IsQuasiAssouadRegular E beta gam := by
+  rcases eq_or_lt_of_le hbeta with hb0 | hbpos
+  · -- `β = 0`, hence `γ = 0`
+    have hg0 : gam = 0 := hzero hb0.symm
+    refine ⟨{1}, ?_, ⟨1, rfl⟩, ?_⟩
+    · intro x hx
+      rw [Set.mem_singleton_iff] at hx
+      subst hx
+      exact ⟨le_refl _, by norm_num⟩
+    · rw [← hb0, hg0]
+      exact isQuasiAssouadRegular_singleton 1
+  · rcases eq_or_lt_of_le hbg with hbeq | hblt
+    · -- the diagonal case
+      subst hbeq
+      refine ⟨cantorSet (cantorRatio beta) 1 1, ?_, ?_, ?_⟩
+      · exact cantorSet_subset_Icc_one_two 1 (le_refl _) (by norm_num)
+      · exact cantorSet_nonempty hbpos hgam1 1
+      · exact isQuasiAssouadRegular_cantorSet hbpos hgam1 1 (le_refl _) (by norm_num)
+    · -- the off-diagonal case
+      have hgam : 0 < gam := lt_trans hbpos hblt
+      have hr0 : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+      have hr1 : offDiagRatio beta gam < 1 := offDiagRatio_lt_one hbpos hblt
+      obtain ⟨k0, hk0⟩ := exists_pow_lt_of_lt_one (by norm_num : (0:ℝ) < 1 / 3) hr1
+      have hk0pos : 1 ≤ k0 := by
+        rcases Nat.eq_zero_or_pos k0 with h0 | h
+        · rw [h0] at hk0
+          simp only [pow_zero] at hk0
+          linarith
+        · exact h
+      refine ⟨offDiagSet beta gam k0, ?_, offDiagSet_nonempty k0, ?_⟩
+      · exact offDiagSet_subset_Icc hbpos hblt hgam hgam1 k0
+      · exact isQuasiAssouadRegular_offDiagSet hbpos hblt hgam1 hk0pos hk0.le
+
+/-- **The closure of the type set realizes every region `Q(β,γ)`.** -/
+theorem exists_closure_fractalTypeSet_eq_Q {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam1 : gam ≤ 1) (hzero : beta = 0 → gam = 0) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
+      closure (fractalTypeSet d E) = Q d beta gam := by
+  obtain ⟨E, hE, hEne, hreg⟩ := exists_isQuasiAssouadRegular hbeta hbg hgam1 hzero
+  exact ⟨E, hE, hEne,
+    closure_fractalTypeSet_eq_Q_of_regular hd hE hEne ⟨hbeta, hbg, hgam1⟩ hreg⟩
+
+/-! ### The region at `β = 0` does not see `γ` -/
+
+theorem Q_zero_beta_eq {d : ℕ} (hd : 2 ≤ d) {gam : ℝ} (hgam : 0 ≤ gam) :
+    Q d 0 gam = Q d 0 0 := by
+  ext x
+  rw [mem_Q_iff_not_sharpnessViolation hd (le_refl (0:ℝ)) (by norm_num) hgam,
+    mem_Q_iff_not_sharpnessViolation hd (le_refl (0:ℝ)) (by norm_num) (le_refl (0:ℝ))]
+  have hcl : clusterEdgeFunctional d ((0:ℝ) / gam) 0 x
+      = clusterEdgeFunctional d ((0:ℝ) / 0) 0 x := by
+    rw [zero_div, zero_div]
+  rw [SharpnessViolation, SharpnessViolation, hcl]
+
+/-! ### Realizing a single region without the degenerate hypothesis -/
+
+theorem exists_closure_fractalTypeSet_eq_Q' {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam1 : gam ≤ 1) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
+      closure (fractalTypeSet d E) = Q d beta gam := by
+  rcases eq_or_lt_of_le hbeta with hb0 | hbpos
+  · -- `β = 0`: the single-radius example realizes `Q(0,0) = Q(0,γ)`
+    obtain ⟨E, hE, hEne, hclos⟩ :=
+      exists_closure_fractalTypeSet_eq_Q hd (le_refl (0:ℝ)) (le_refl (0:ℝ))
+        (by norm_num : (0:ℝ) ≤ 1) (fun _ => rfl)
+    refine ⟨E, hE, hEne, ?_⟩
+    rw [hclos, ← hb0]
+    exact (Q_zero_beta_eq hd (hb0 ▸ hbg)).symm
+  · exact exists_closure_fractalTypeSet_eq_Q hd hbeta hbg hgam1
+      (fun h => absurd h (by linarith))
+
+/-! ### Theorem 1.2 for polygons: every finite intersection is a type set -/
+
+/-- **Every finite intersection of regions `Q(βⱼ,γⱼ)` is the closure of a type set.**  This is the
+polygonal case of Theorem 1.2(i), obtained from Theorem 1.3 and the examples of §6. -/
+theorem exists_closure_fractalTypeSet_eq_biInter {d : ℕ} {ι : Type*} [DecidableEq ι]
+    (hd : 2 ≤ d) (s : Finset ι) (hs : s.Nonempty) (betas gams : ι → ℝ)
+    (hbg : ∀ j ∈ s, 0 ≤ betas j ∧ betas j ≤ gams j ∧ gams j ≤ 1) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
+      closure (fractalTypeSet d E) = ⋂ j ∈ s, Q d (betas j) (gams j) := by
+  classical
+  -- choose a regular set for each index, replacing a degenerate pair by `(0,0)`
+  have hchoice : ∀ j ∈ s, ∃ Ej : Set ℝ, Ej ⊆ Icc (1 : ℝ) 2 ∧ Ej.Nonempty ∧
+      ∃ b g : ℝ, 0 ≤ b ∧ b ≤ g ∧ g ≤ 1 ∧ IsQuasiAssouadRegular Ej b g ∧
+        Q d b g = Q d (betas j) (gams j) := by
+    intro j hj
+    obtain ⟨hb, hbgj, hg⟩ := hbg j hj
+    rcases eq_or_lt_of_le hb with hb0 | hbpos
+    · obtain ⟨Ej, hEj, hEjne, hreg⟩ :=
+        exists_isQuasiAssouadRegular (le_refl (0:ℝ)) (le_refl (0:ℝ))
+          (by norm_num : (0:ℝ) ≤ 1) (fun _ => rfl)
+      refine ⟨Ej, hEj, hEjne, 0, 0, le_refl _, le_refl _, by norm_num, hreg, ?_⟩
+      rw [← hb0]
+      exact (Q_zero_beta_eq hd (hb0 ▸ hbgj)).symm
+    · obtain ⟨Ej, hEj, hEjne, hreg⟩ :=
+        exists_isQuasiAssouadRegular hb hbgj hg (fun h => absurd h (by linarith))
+      exact ⟨Ej, hEj, hEjne, betas j, gams j, hb, hbgj, hg, hreg, rfl⟩
+  choose! Es hEs hEsne bs gs hbs hbgs hgs hregs hQs using hchoice
+  refine ⟨⋃ j ∈ s, Es j, ?_, ?_, ?_⟩
+  · intro x hx
+    obtain ⟨j, hj, hxj⟩ := Set.mem_iUnion₂.mp hx
+    exact hEs j hj hxj
+  · obtain ⟨j0, hj0⟩ := hs
+    obtain ⟨x, hx⟩ := hEsne j0 hj0
+    exact ⟨x, Set.mem_iUnion₂.mpr ⟨j0, hj0, hx⟩⟩
+  · have hbi := closure_fractalTypeSet_biUnion_eq_iInter (Es := Es) (betas := bs) (gams := gs)
+      hd s hs (fun j hj => hEs j hj) (fun j hj => hEsne j hj)
+      (fun j hj => ⟨hbs j hj, hbgs j hj, hgs j hj⟩) (fun j hj => hregs j hj)
+    rw [hbi]
+    refine Set.iInter₂_congr ?_
+    intro j hj
+    exact hQs j hj
+
+open Auto.Spherical.FractalDilations.Maximal
+
+/-! ### The trivial necessary condition `p ≤ q` -/
+
+/-- A strong type point of the fractal spherical maximal operator has `p ≤ q`.  This is the
+first sharpness assertion of Theorem 2 of arXiv:1909.05389, read off from the region `Q`. -/
+theorem le_of_hasFractalSphericalStrongType {d : ℕ} {E : Set ℝ} {p q : ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) (hp : 0 < p) (hq : 1 ≤ q)
+    (hst : HasFractalSphericalStrongType d E p q) : p ≤ q := by
+  have hmem : reciprocalExponentPoint p q ∈ fractalTypeSet d E :=
+    ⟨p, q, hp, hq, rfl, hst⟩
+  have hsub := fractalTypeSet_subset_Q_self hd hE hEne
+    (upperMinkowskiDimension_nonneg_of_subset_Icc hE)
+    (upperMinkowskiDimension_le_one_of_subset_Icc hE) rfl
+  have hQ := hsub hmem
+  have hQ' := not_sharpnessViolation_of_mem_Q hd
+    (upperMinkowskiDimension_nonneg_of_subset_Icc hE)
+    (upperMinkowskiDimension_le_one_of_subset_Icc hE)
+    (le_refl (upperMinkowskiDimension E)) hQ
+  rw [SharpnessViolation] at hQ'
+  have hfirst : ¬ ((reciprocalExponentPoint p q).1 < (reciprocalExponentPoint p q).2) := by
+    intro h
+    exact hQ' (Or.inl h)
+  have hle : q⁻¹ ≤ p⁻¹ := not_lt.mp hfirst
+  have hq0 : 0 < q := lt_of_lt_of_le zero_lt_one hq
+  exact (inv_le_inv₀ hq0 hp).mp hle
+
+/-! ### Lyapunov interpolation of output norms -/
+
+/-- **Lyapunov's inequality.**  The `L^q` norm at an intermediate exponent is dominated by the
+geometric mean of the two endpoint norms. -/
+theorem eLpNorm_le_rpow_mul_rpow_of_inv_eq {d : ℕ} {g : Euclidean d → ℝ}
+    (hg : AEMeasurable g (volume : Measure (Euclidean d)))
+    {q0 q1 q lam : ℝ} (hq0 : 0 < q0) (hq1 : 0 < q1) (hq : 0 < q)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hrel : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹) :
+    eLpNorm g (ENNReal.ofReal q) volume
+      ≤ (eLpNorm g (ENNReal.ofReal q0) volume) ^ (1 - lam)
+        * (eLpNorm g (ENNReal.ofReal q1) volume) ^ lam := by
+  have hlam1' : 0 < 1 - lam := by linarith
+  have hq0' : q0 ≠ 0 := ne_of_gt hq0
+  have hq1' : q1 ≠ 0 := ne_of_gt hq1
+  have hqne : q ≠ 0 := ne_of_gt hq
+  have hlamne : lam ≠ 0 := ne_of_gt hlam0
+  have hlamne' : 1 - lam ≠ 0 := ne_of_gt hlam1'
+  set u : ℝ := q0 / (q * (1 - lam)) with hudef
+  set v : ℝ := q1 / (q * lam) with hvdef
+  have hupos : 0 < u := by rw [hudef]; exact div_pos hq0 (by positivity)
+  have hvpos : 0 < v := by rw [hvdef]; exact div_pos hq1 (by positivity)
+  have hu1 : u⁻¹ = q * (1 - lam) * q0⁻¹ := by rw [hudef]; field_simp
+  have hv1 : v⁻¹ = q * lam * q1⁻¹ := by rw [hvdef]; field_simp
+  have hconj : Real.HolderConjugate u v := by
+    refine ⟨?_, hupos, hvpos⟩
+    have hsum : q * (1 - lam) * q0⁻¹ + q * lam * q1⁻¹
+        = q * ((1 - lam) * q0⁻¹ + lam * q1⁻¹) := by ring
+    rw [hu1, hv1, inv_one, hsum, ← hrel, mul_inv_cancel₀ hqne]
+  -- the two factors of the pointwise splitting
+  set F : Euclidean d → ℝ≥0∞ := fun x => ‖g x‖ₑ ^ (q * (1 - lam)) with hFdef
+  set G : Euclidean d → ℝ≥0∞ := fun x => ‖g x‖ₑ ^ (q * lam) with hGdef
+  have hFmeas : AEMeasurable F (volume : Measure (Euclidean d)) := by
+    rw [hFdef]
+    exact (ENNReal.continuous_rpow_const).measurable.comp_aemeasurable hg.enorm
+  have hGmeas : AEMeasurable G (volume : Measure (Euclidean d)) := by
+    rw [hGdef]
+    exact (ENNReal.continuous_rpow_const).measurable.comp_aemeasurable hg.enorm
+  have hprod : ∀ x, (F * G) x = ‖g x‖ₑ ^ q := by
+    intro x
+    rw [hFdef, hGdef]
+    simp only [Pi.mul_apply]
+    rw [← ENNReal.rpow_add_of_nonneg _ _ (by positivity) (by positivity)]
+    congr 1
+    ring
+  have hFu : ∀ x, F x ^ u = ‖g x‖ₑ ^ q0 := by
+    intro x
+    rw [hFdef]
+    simp only
+    rw [← ENNReal.rpow_mul]
+    congr 1
+    rw [hudef]
+    field_simp
+  have hGv : ∀ x, G x ^ v = ‖g x‖ₑ ^ q1 := by
+    intro x
+    rw [hGdef]
+    simp only
+    rw [← ENNReal.rpow_mul]
+    congr 1
+    rw [hvdef]
+    field_simp
+  have hholder := ENNReal.lintegral_mul_le_Lp_mul_Lq
+    (volume : Measure (Euclidean d)) hconj hFmeas hGmeas
+  rw [lintegral_congr hprod, lintegral_congr hFu, lintegral_congr hGv] at hholder
+  -- take q-th roots
+  set A : ℝ≥0∞ := ∫⁻ x : Euclidean d, ‖g x‖ₑ ^ q0 with hAdef
+  set B : ℝ≥0∞ := ∫⁻ x : Euclidean d, ‖g x‖ₑ ^ q1 with hBdef
+  have hmain : (∫⁻ x : Euclidean d, ‖g x‖ₑ ^ q) ^ q⁻¹
+      ≤ (A ^ (1 / u) * B ^ (1 / v)) ^ q⁻¹ :=
+    ENNReal.rpow_le_rpow hholder (by positivity)
+  rw [eLpNorm_ofReal_eq hq, eLpNorm_ofReal_eq hq0, eLpNorm_ofReal_eq hq1, ← hAdef, ← hBdef,
+    one_div q]
+  refine hmain.trans (le_of_eq ?_)
+  have he0 : (1 / u) * q⁻¹ = (1 / q0) * (1 - lam) := by
+    rw [hudef]
+    field_simp
+  have he1 : (1 / v) * q⁻¹ = (1 / q1) * lam := by
+    rw [hvdef]
+    field_simp
+  have hL : (A ^ (1 / u) * B ^ (1 / v)) ^ q⁻¹ = A ^ ((1 / u) * q⁻¹) * B ^ ((1 / v) * q⁻¹) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:ℝ) ≤ q⁻¹), ← ENNReal.rpow_mul,
+      ← ENNReal.rpow_mul]
+  have hR : (A ^ (1 / q0)) ^ (1 - lam) * (B ^ (1 / q1)) ^ lam
+      = A ^ ((1 / q0) * (1 - lam)) * B ^ ((1 / q1) * lam) := by
+    rw [← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+  rw [hL, hR, he0, he1]
+
+/-! ### Interpolation of two strong types at a common input exponent -/
+
+/-- **Same-input interpolation.**  Two strong estimates with the same input exponent give the
+strong estimate at every intermediate output exponent. -/
+theorem hasFractalSphericalStrongType_interp_same_input {d : ℕ} {E : Set ℝ}
+    {p q0 q1 q lam : ℝ} (hq0 : 0 < q0) (hq1 : 0 < q1) (hq : 0 < q)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hrel : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹)
+    (h0 : HasFractalSphericalStrongType d E p q0)
+    (h1 : HasFractalSphericalStrongType d E p q1) :
+    HasFractalSphericalStrongType d E p q := by
+  obtain ⟨C0, hC0, hb0⟩ := h0
+  obtain ⟨C1, hC1, hb1⟩ := h1
+  have hlam1' : 0 < 1 - lam := by linarith
+  refine ⟨C0 ^ (1 - lam) * C1 ^ lam, by positivity, fun f => ?_⟩
+  obtain ⟨hmem0, hbound0⟩ := hb0 f
+  obtain ⟨hmem1, hbound1⟩ := hb1 f
+  have hmeas : AEMeasurable (fractalSphericalMaximalReal d E f)
+      (volume : Measure (Euclidean d)) := hmem0.1.aemeasurable
+  have hlyap := eLpNorm_le_rpow_mul_rpow_of_inv_eq (g := fractalSphericalMaximalReal d E f)
+    hmeas hq0 hq1 hq hlam0 hlam1 hrel
+  -- the interpolated bound
+  have hbound : eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume
+      ≤ ENNReal.ofReal (C0 ^ (1 - lam) * C1 ^ lam)
+        * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
+    refine hlyap.trans ?_
+    have h0' : (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q0) volume)
+          ^ (1 - lam)
+        ≤ (ENNReal.ofReal C0 * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume)
+          ^ (1 - lam) := ENNReal.rpow_le_rpow hbound0 hlam1'.le
+    have h1' : (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q1) volume) ^ lam
+        ≤ (ENNReal.ofReal C1 * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume)
+          ^ lam := ENNReal.rpow_le_rpow hbound1 hlam0.le
+    refine le_trans (mul_le_mul' h0' h1') (le_of_eq ?_)
+    set Y : ℝ≥0∞ := eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume with hYdef
+    have hY : Y ^ (1 - lam) * Y ^ lam = Y := by
+      rw [← ENNReal.rpow_add_of_nonneg _ _ hlam1'.le hlam0.le]
+      simp
+    have hC : ENNReal.ofReal C0 ^ (1 - lam) * ENNReal.ofReal C1 ^ lam
+        = ENNReal.ofReal (C0 ^ (1 - lam) * C1 ^ lam) := by
+      rw [ENNReal.ofReal_rpow_of_pos hC0, ENNReal.ofReal_rpow_of_pos hC1,
+        ← ENNReal.ofReal_mul (by positivity)]
+    calc (ENNReal.ofReal C0 * Y) ^ (1 - lam) * (ENNReal.ofReal C1 * Y) ^ lam
+        = (ENNReal.ofReal C0 ^ (1 - lam) * Y ^ (1 - lam))
+          * (ENNReal.ofReal C1 ^ lam * Y ^ lam) := by
+          rw [ENNReal.mul_rpow_of_nonneg _ _ hlam1'.le, ENNReal.mul_rpow_of_nonneg _ _ hlam0.le]
+      _ = (ENNReal.ofReal C0 ^ (1 - lam) * ENNReal.ofReal C1 ^ lam)
+          * (Y ^ (1 - lam) * Y ^ lam) := by ring
+      _ = ENNReal.ofReal (C0 ^ (1 - lam) * C1 ^ lam) * Y := by rw [hC, hY]
+  refine ⟨⟨hmem0.1, ?_⟩, hbound⟩
+  -- finiteness of the interpolated norm
+  refine lt_of_le_of_lt hlyap ?_
+  have h0top : (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q0) volume)
+      ^ (1 - lam) ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_nonneg hlam1'.le (ne_of_lt hmem0.2)
+  have h1top : (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q1) volume)
+      ^ lam ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_nonneg hlam0.le (ne_of_lt hmem1.2)
+  exact ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr h0top) (lt_top_iff_ne_top.mpr h1top)
+
+/-! ### Inversion of the half line -/
+
+/-- The substitution `t = 1/s` on the half line. -/
+theorem lintegral_Ioi_comp_inv (u : ℝ → ℝ≥0∞) :
+    (∫⁻ t in Ioi (0 : ℝ), u t)
+      = ∫⁻ s in Ioi (0 : ℝ), ENNReal.ofReal ((s ^ 2)⁻¹) * u s⁻¹ := by
+  have himg : (fun x : ℝ => x⁻¹) '' Ioi (0 : ℝ) = Ioi (0 : ℝ) := by
+    ext y
+    simp only [Set.mem_image, Set.mem_Ioi]
+    constructor
+    · rintro ⟨x, hx, rfl⟩
+      exact inv_pos.mpr hx
+    · intro hy
+      exact ⟨y⁻¹, inv_pos.mpr hy, inv_inv y⟩
+  have hderiv : ∀ x ∈ Ioi (0 : ℝ),
+      HasDerivWithinAt (fun y : ℝ => y⁻¹) (-(x ^ 2)⁻¹) (Ioi (0 : ℝ)) x := by
+    intro x hx
+    exact (hasDerivAt_inv (ne_of_gt hx)).hasDerivWithinAt
+  have hanti : AntitoneOn (fun y : ℝ => y⁻¹) (Ioi (0 : ℝ)) := by
+    intro a ha b hb hab
+    exact (inv_le_inv₀ hb ha).mpr hab
+  have hchange := lintegral_image_eq_lintegral_deriv_mul_of_antitoneOn
+    (f := fun y : ℝ => y⁻¹) (f' := fun x : ℝ => -(x ^ 2)⁻¹) measurableSet_Ioi hderiv hanti u
+  rw [himg] at hchange
+  rw [hchange]
+  refine lintegral_congr fun s => ?_
+  congr 1
+  rw [neg_neg]
+
+/-! ### The two weighted tails at a negative amplitude exponent -/
+
+/-- The weighted high-amplitude tail for a negative amplitude exponent, obtained from the
+positive case by the substitution `t = 1/s`. -/
+theorem lintegral_highTail_rpow_le_of_neg {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    [SFinite μ] (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p0 p m c r0 J : ℝ} (hp0 : 0 < p0) (hp0p : p0 < p) (hm : m < 0) (hc : 0 < c)
+    (hr0 : 1 ≤ r0) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) ≤ ENNReal.ofReal J) :
+    (∫⁻ t in Ioi (0 : ℝ),
+        (∫⁻ x in {x | c * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ) ^ r0
+          * (ENNReal.ofReal t) ^ (m * (p - p0) * r0 - 1))
+      ≤ ENNReal.ofReal (c ^ ((p0 - p) * r0) * J ^ r0 / (-m * (p - p0))) := by
+  set m' : ℝ := -m with hm'def
+  have hm' : 0 < m' := by rw [hm'def]; linarith
+  rw [lintegral_Ioi_comp_inv]
+  have hpt : ∀ s : ℝ, s ∈ Ioi (0 : ℝ) →
+      ENNReal.ofReal ((s ^ 2)⁻¹) *
+          ((∫⁻ x in {x | c * (s⁻¹) ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ) ^ r0
+            * (ENNReal.ofReal s⁻¹) ^ (m * (p - p0) * r0 - 1))
+        = (∫⁻ x in {x | c * s ^ m' ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 ∂μ) ^ r0
+            * (ENNReal.ofReal s) ^ (m' * (p - p0) * r0 - 1) := by
+    intro s hs
+    have hspos : 0 < s := hs
+    have hsne : ENNReal.ofReal s ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hspos
+    have hstop : ENNReal.ofReal s ≠ ⊤ := ENNReal.ofReal_ne_top
+    have hinvm : (s⁻¹) ^ m = s ^ m' := by
+      rw [Real.inv_rpow hspos.le, hm'def, Real.rpow_neg hspos.le]
+    have hinvE : (ENNReal.ofReal s⁻¹) ^ (m * (p - p0) * r0 - 1)
+        = (ENNReal.ofReal s) ^ (-(m * (p - p0) * r0 - 1)) := by
+      rw [ENNReal.ofReal_inv_of_pos hspos, ← ENNReal.rpow_neg_one,
+        ← ENNReal.rpow_mul]
+      congr 1
+      ring
+    have hpow2 : (s : ℝ) ^ (2 : ℝ) = s ^ 2 := by
+      rw [show (2:ℝ) = ((2:ℕ):ℝ) by norm_num, Real.rpow_natCast]
+    have hsq : ENNReal.ofReal ((s ^ 2)⁻¹) = (ENNReal.ofReal s) ^ (-2 : ℝ) := by
+      rw [ENNReal.rpow_neg, ENNReal.ofReal_rpow_of_pos hspos, hpow2,
+        ENNReal.ofReal_inv_of_pos (pow_pos hspos 2)]
+    rw [hinvm, hinvE, hsq]
+    rw [show (m' * (p - p0) * r0 - 1 : ℝ)
+        = (-2) + (-(m * (p - p0) * r0 - 1)) by rw [hm'def]; ring]
+    rw [ENNReal.rpow_add _ _ hsne hstop]
+    ring
+  rw [setLIntegral_congr_fun measurableSet_Ioi hpt]
+  exact lintegral_highTail_rpow_le u hu hunn hp0 hp0p hm' hc hr0 hJ0 hJ
+
+/-- The weighted low-amplitude tail for a negative amplitude exponent. -/
+theorem lintegral_lowTail_rpow_le_of_neg {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    [SFinite μ] (u : α → ℝ) (hu : Measurable u) (hunn : ∀ x, 0 ≤ u x)
+    {p1 p m c r1 J : ℝ} (g : ℝ → α → ℝ) (hgnn : ∀ t x, 0 ≤ g t x)
+    (hg1 : ∀ t x, 0 < t → g t x ≤ u x)
+    (hg2 : ∀ t x, 0 < t → g t x ≤ c * t ^ m)
+    (hp : 0 < p) (hpp1 : p < p1) (hm : m < 0) (hc : 0 < c)
+    (hr1 : 1 ≤ r1) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x, (ENNReal.ofReal (u x)) ^ p ∂μ) ≤ ENNReal.ofReal J) :
+    (∫⁻ t in Ioi (0 : ℝ), (∫⁻ x, (ENNReal.ofReal (g t x)) ^ p1 ∂μ) ^ r1
+        * (ENNReal.ofReal t) ^ (m * (p - p1) * r1 - 1))
+      ≤ ENNReal.ofReal (c ^ ((p1 - p) * r1) * J ^ r1
+          * (1 / (-m * (p1 - p)) + 1 / (-m * p))) := by
+  set m' : ℝ := -m with hm'def
+  have hm' : 0 < m' := by rw [hm'def]; linarith
+  set g' : ℝ → α → ℝ := fun s x => g s⁻¹ x with hg'def
+  have hg'nn : ∀ s x, 0 ≤ g' s x := fun s x => hgnn _ _
+  have hg'1 : ∀ s x, 0 < s → g' s x ≤ u x := by
+    intro s x hs
+    exact hg1 s⁻¹ x (inv_pos.mpr hs)
+  have hg'2 : ∀ s x, 0 < s → g' s x ≤ c * s ^ m' := by
+    intro s x hs
+    have h := hg2 s⁻¹ x (inv_pos.mpr hs)
+    have hinvm : (s⁻¹) ^ m = s ^ m' := by
+      rw [Real.inv_rpow hs.le, hm'def, Real.rpow_neg hs.le]
+    rw [hinvm] at h
+    exact h
+  rw [lintegral_Ioi_comp_inv]
+  have hpt : ∀ s : ℝ, s ∈ Ioi (0 : ℝ) →
+      ENNReal.ofReal ((s ^ 2)⁻¹) *
+          ((∫⁻ x, (ENNReal.ofReal (g s⁻¹ x)) ^ p1 ∂μ) ^ r1
+            * (ENNReal.ofReal s⁻¹) ^ (m * (p - p1) * r1 - 1))
+        = (∫⁻ x, (ENNReal.ofReal (g' s x)) ^ p1 ∂μ) ^ r1
+            * (ENNReal.ofReal s) ^ (m' * (p - p1) * r1 - 1) := by
+    intro s hs
+    have hspos : 0 < s := hs
+    have hsne : ENNReal.ofReal s ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hspos
+    have hstop : ENNReal.ofReal s ≠ ⊤ := ENNReal.ofReal_ne_top
+    have hinvE : (ENNReal.ofReal s⁻¹) ^ (m * (p - p1) * r1 - 1)
+        = (ENNReal.ofReal s) ^ (-(m * (p - p1) * r1 - 1)) := by
+      rw [ENNReal.ofReal_inv_of_pos hspos, ← ENNReal.rpow_neg_one, ← ENNReal.rpow_mul]
+      congr 1
+      ring
+    have hpow2 : (s : ℝ) ^ (2 : ℝ) = s ^ 2 := by
+      rw [show (2:ℝ) = ((2:ℕ):ℝ) by norm_num, Real.rpow_natCast]
+    have hsq : ENNReal.ofReal ((s ^ 2)⁻¹) = (ENNReal.ofReal s) ^ (-2 : ℝ) := by
+      rw [ENNReal.rpow_neg, ENNReal.ofReal_rpow_of_pos hspos, hpow2,
+        ENNReal.ofReal_inv_of_pos (pow_pos hspos 2)]
+    rw [hinvE, hsq, hg'def]
+    simp only
+    rw [show (m' * (p - p1) * r1 - 1 : ℝ)
+        = (-2) + (-(m * (p - p1) * r1 - 1)) by rw [hm'def]; ring]
+    rw [ENNReal.rpow_add _ _ hsne hstop]
+    ring
+  rw [setLIntegral_congr_fun measurableSet_Ioi hpt]
+  exact lintegral_lowTail_rpow_le u hu hunn g' hg'nn hg'1 hg'2 hp hpp1 hm' hc hr1 hJ0 hJ
+
+/-! ### The two operator tails at a negative amplitude exponent -/
+
+theorem twoPair_high_tail_le_of_neg {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
+    (low high : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hlow : ∀ t x, low t x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    (hhigh : ∀ t, high t = f - low t)
+    {p0 p q q0 m J : ℝ} (hp0 : 0 < p0) (hp0p : p0 < p) (hm : m < 0)
+    (hr0 : 1 ≤ q0 / p0) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p) ≤ ENNReal.ofReal J)
+    (hweight : q - q0 = m * (p - p0) * (q0 / p0)) :
+    (∫⁻ t in Ioi (0 : ℝ),
+        (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0
+          * (ENNReal.ofReal t) ^ (q - q0 - 1))
+      ≤ ENNReal.ofReal ((1 / 4 : ℝ) ^ ((p0 - p) * (q0 / p0)) * J ^ (q0 / p0)
+          / (-m * (p - p0))) := by
+  set r0 : ℝ := q0 / p0 with hr0def
+  set u : (Euclidean d) → ℝ := fun x => ‖f x‖ with hudef
+  have hu : Measurable u := f.continuous.norm.measurable
+  have hunn : ∀ x, 0 ≤ u x := fun x => norm_nonneg _
+  have hmain := lintegral_highTail_rpow_le_of_neg u hu hunn
+    (p0 := p0) (p := p) (m := m) (c := 1 / 4) (r0 := r0) (J := J)
+    hp0 hp0p hm (by norm_num) hr0 hJ0 hJ
+  refine le_trans (lintegral_mono_ae ?_) hmain
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  have htm : 0 < t ^ m := Real.rpow_pos_of_pos ht m
+  have hset : MeasurableSet {x : (Euclidean d) | (1 / 4 : ℝ) * t ^ m ≤ u x} :=
+    measurableSet_le measurable_const hu
+  have hinner : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high (t ^ m) x‖) ^ p0)
+      ≤ ∫⁻ x in {x | (1 / 4 : ℝ) * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0 := by
+    rw [← lintegral_indicator hset]
+    refine lintegral_mono fun x => ?_
+    by_cases hx : (1 / 4 : ℝ) * t ^ m ≤ u x
+    · have hmem : x ∈ {x : (Euclidean d) | (1 / 4 : ℝ) * t ^ m ≤ u x} := hx
+      rw [Set.indicator_of_mem hmem]
+      exact ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal
+        (smooth_high_norm_le f (low (t ^ m)) (high (t ^ m)) (hlow (t ^ m))
+          (hhigh (t ^ m)) x)) hp0.le
+    · have hnotmem : x ∉ {x : (Euclidean d) | (1 / 4 : ℝ) * t ^ m ≤ u x} := hx
+      have hle : ‖f x‖ ≤ t ^ m / 4 := by
+        have hlt := not_le.mp hx
+        rw [hudef] at hlt
+        simp only at hlt
+        linarith
+      rw [smooth_high_eq_zero_of_norm_le_quarter f (low (t ^ m)) (high (t ^ m)) htm
+        (hlow (t ^ m)) (hhigh (t ^ m)) x hle]
+      simp [ENNReal.zero_rpow_of_pos hp0]
+  calc (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0
+        * (ENNReal.ofReal t) ^ (q - q0 - 1)
+      = (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high (t ^ m) x‖) ^ p0) ^ r0
+          * (ENNReal.ofReal t) ^ (q - q0 - 1) := by
+        rw [eLpNorm_rpow_eq hp0, hr0def]
+    _ ≤ (∫⁻ x in {x | (1 / 4 : ℝ) * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0) ^ r0
+          * (ENNReal.ofReal t) ^ (m * (p - p0) * r0 - 1) := by
+        rw [show q - q0 - 1 = m * (p - p0) * r0 - 1 by rw [← hweight]]
+        exact mul_le_mul' (ENNReal.rpow_le_rpow hinner (by linarith)) (le_refl _)
+
+theorem twoPair_low_tail_le_of_neg {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
+    (low : ℝ → SchwartzMap (Euclidean d) ℂ)
+    (hlow : ∀ t x, low t x = ((smooth_half_height_bump ((t⁻¹ : ℝ) • f x) : ℝ) : ℂ) • f x)
+    {p1 p q q1 m J : ℝ} (hp : 0 < p) (hpp1 : p < p1) (hm : m < 0)
+    (hr1 : 1 ≤ q1 / p1) (hJ0 : 0 < J)
+    (hJ : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p) ≤ ENNReal.ofReal J)
+    (hweight : q - q1 = m * (p - p1) * (q1 / p1)) :
+    (∫⁻ t in Ioi (0 : ℝ),
+        (eLpNorm ((low (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1
+          * (ENNReal.ofReal t) ^ (q - q1 - 1))
+      ≤ ENNReal.ofReal ((1 / 2 : ℝ) ^ ((p1 - p) * (q1 / p1)) * J ^ (q1 / p1)
+          * (1 / (-m * (p1 - p)) + 1 / (-m * p))) := by
+  set r1 : ℝ := q1 / p1 with hr1def
+  set u : (Euclidean d) → ℝ := fun x => ‖f x‖ with hudef
+  have hu : Measurable u := f.continuous.norm.measurable
+  have hunn : ∀ x, 0 ≤ u x := fun x => norm_nonneg _
+  have hp1 : 0 < p1 := by linarith
+  have hmain := lintegral_lowTail_rpow_le_of_neg u hu hunn
+    (p1 := p1) (p := p) (m := m) (c := 1 / 2) (r1 := r1) (J := J)
+    (fun t x => ‖low (t ^ m) x‖) (fun t x => norm_nonneg _)
+    (fun t x ht => smooth_low_norm_le f (low (t ^ m)) (hlow (t ^ m)) x)
+    (fun t x ht => by
+      have htm : 0 < t ^ m := Real.rpow_pos_of_pos ht m
+      have h := smooth_low_norm_le_half_height f (low (t ^ m)) htm (hlow (t ^ m)) x
+      linarith)
+    hp hpp1 hm (by norm_num) hr1 hJ0 hJ
+  refine le_trans (lintegral_mono_ae ?_) hmain
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  rw [eLpNorm_rpow_eq hp1, ← hr1def,
+    show q - q1 - 1 = m * (p - p1) * r1 - 1 by rw [← hweight]]
+
+/-! ### Two-pair interpolation along a segment of negative slope -/
+
+set_option maxHeartbeats 1000000 in
+theorem exists_twoPair_interpolation_const_of_neg {d : ℕ}
+    {p0 q0 p1 q1 p q m : ℝ}
+    (hp0 : 0 < p0) (hp0p : p0 < p) (hpp1 : p < p1)
+    (hq1 : 0 < q1) (hq1q : q1 < q) (hqq0 : q < q0)
+    (hr0 : 1 ≤ q0 / p0) (hr1 : 1 ≤ q1 / p1) (hm : m < 0)
+    (hm0 : q - q0 = m * (p - p0) * (q0 / p0))
+    (hm1 : q - q1 = m * (p - p1) * (q1 / p1))
+    (hcol : (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0))
+      = q / p) :
+    ∃ C : ℝ, 0 < C ∧ ∀ T : SchwartzMap (Euclidean d) ℂ → (Euclidean d) → ℝ,
+      (∀ g x, 0 ≤ T g x) →
+      (∀ g h : SchwartzMap (Euclidean d) ℂ, ∀ x, T (g + h) x ≤ T g x + T h x) →
+      (∀ g, AEStronglyMeasurable (T g) (volume : Measure (Euclidean d))) →
+      (∀ x, T 0 x = 0) →
+      ∀ B0 B1 : ℝ, 0 < B0 → 0 < B1 →
+      (∀ g : SchwartzMap (Euclidean d) ℂ, eLpNorm (T g) (ENNReal.ofReal q0) volume
+        ≤ ENNReal.ofReal B0 * eLpNorm ((g : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) →
+      (∀ g : SchwartzMap (Euclidean d) ℂ, eLpNorm (T g) (ENNReal.ofReal q1) volume
+        ≤ ENNReal.ofReal B1 * eLpNorm ((g : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) →
+      ∀ f : SchwartzMap (Euclidean d) ℂ, eLpNorm (T f) (ENNReal.ofReal q) volume
+        ≤ ENNReal.ofReal (C * B0 ^ (q0 * ((q1 - q) / (q1 - q0)) / q)
+              * B1 ^ (q1 * ((q - q0) / (q1 - q0)) / q))
+          * eLpNorm ((f : (Euclidean d) → ℂ)) (ENNReal.ofReal p) volume := by
+  have hp : 0 < p := lt_trans hp0 hp0p
+  have hp1 : 0 < p1 := lt_trans hp hpp1
+  have hq : 0 < q := lt_trans hq1 hq1q
+  have hq0 : 0 < q0 := lt_trans hq hqq0
+  have hqden : q1 - q0 < 0 := by linarith
+  have hqdne : q1 - q0 ≠ 0 := by linarith
+  have hqdne' : q0 - q1 ≠ 0 := by linarith
+  have hmneg : 0 < -m := by linarith
+  set r0 : ℝ := q0 / p0 with hr0def
+  set r1 : ℝ := q1 / p1 with hr1def
+  set w0 : ℝ := (q1 - q) / (q1 - q0) with hw0def
+  set w1 : ℝ := (q - q0) / (q1 - q0) with hw1def
+  have hw0pos : 0 < w0 := by
+    rw [hw0def]
+    exact div_pos_iff.mpr (Or.inr ⟨by linarith, hqden⟩)
+  have hw1pos : 0 < w1 := by
+    rw [hw1def]
+    exact div_pos_iff.mpr (Or.inr ⟨by linarith, hqden⟩)
+  set a0 : ℝ := twoPairA0 p0 p q0 (-m) with ha0def
+  set a1 : ℝ := twoPairA1 p1 p q1 (-m) with ha1def
+  have ha0 : 0 < a0 := by rw [ha0def]; exact twoPairA0_pos hp0p hmneg
+  have ha1 : 0 < a1 := by rw [ha1def]; exact twoPairA1_pos hp hpp1 hmneg
+  set G : ℝ := ((2:ℝ) ^ q0 * a0) ^ w0 * ((2:ℝ) ^ q1 * a1) ^ w1 with hGdef
+  have hGpos : 0 < G := by
+    rw [hGdef]
+    exact mul_pos (Real.rpow_pos_of_pos (by positivity) _)
+      (Real.rpow_pos_of_pos (by positivity) _)
+  refine ⟨(2 * q * G) ^ q⁻¹, Real.rpow_pos_of_pos (by positivity) _, ?_⟩
+  intro T hTnonneg hTsub hTmeas hTzero B0 B1 hB0 hB1 hs0 hs1 f
+  -- the vanishing case
+  by_cases hfz : f = 0
+  · have hTf0 : T f = fun _ => 0 := by
+      rw [hfz]
+      funext x
+      exact hTzero x
+    rw [hTf0]
+    have : eLpNorm (fun _ : (Euclidean d) => (0:ℝ)) (ENNReal.ofReal q) volume = 0 := by
+      simp
+    rw [this]
+    simp
+  -- the main case
+  have hJint : Integrable (fun x : (Euclidean d) => ‖f x‖ ^ p) volume :=
+    Auto.Spherical.FractalDilations.Q4FactorInterpolation.q4_schwartz_integrable_norm_rpow f hp
+  set J : ℝ := ∫ x : (Euclidean d), ‖f x‖ ^ p with hJdef
+  have hJnn : 0 ≤ J := by
+    rw [hJdef]
+    exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) _
+  have hJeq : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p) = ENNReal.ofReal J := by
+    have h1 : (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖f x‖) ^ p)
+        = ∫⁻ x : (Euclidean d), ENNReal.ofReal (‖f x‖ ^ p) := by
+      refine lintegral_congr fun x => ?_
+      rw [ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp.le]
+    rw [h1, hJdef]
+    exact (ofReal_integral_eq_lintegral_ofReal hJint
+      (Filter.Eventually.of_forall fun x => Real.rpow_nonneg (norm_nonneg _) _)).symm
+  have hJpos : 0 < J := by
+    rcases hJnn.eq_or_lt with h0 | hpos
+    · exfalso
+      have hzero : ∀ x : (Euclidean d), ‖f x‖ ^ p = 0 := by
+        have hcont : Continuous fun x : (Euclidean d) => ‖f x‖ ^ p := by
+          refine (Real.continuous_rpow_const hp.le).comp f.continuous.norm
+        refine fun x => ?_
+        have hnonneg : ∀ y : (Euclidean d), 0 ≤ ‖f y‖ ^ p := fun y =>
+          Real.rpow_nonneg (norm_nonneg _) _
+        have := (integral_eq_zero_iff_of_nonneg hnonneg hJint).mp (by rw [← hJdef, ← h0])
+        have hx := hcont.ae_eq_iff_eq volume (continuous_const (y := (0:ℝ))) |>.mp this
+        exact congrFun hx x
+      have hf0 : f = 0 := by
+        refine SchwartzMap.ext fun x => ?_
+        have h := hzero x
+        have : ‖f x‖ = 0 := by
+          by_contra hne
+          have hpos' : 0 < ‖f x‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hne)
+          exact absurd h (ne_of_gt (Real.rpow_pos_of_pos hpos' p))
+        simpa using this
+      exact hfz hf0
+    · exact hpos
+  have hfnorm : eLpNorm ((f : (Euclidean d) → ℂ)) (ENNReal.ofReal p) volume
+      = ENNReal.ofReal (J ^ p⁻¹) := by
+    rw [eLpNorm_ofReal_eq hp]
+    have h1 : (∫⁻ x : (Euclidean d), ‖(f : (Euclidean d) → ℂ) x‖ₑ ^ p) = ENNReal.ofReal J := by
+      rw [← hJeq]
+      refine lintegral_congr fun x => ?_
+      rw [← ofReal_norm]
+    rw [h1, ENNReal.ofReal_rpow_of_pos hJpos]
+    congr 1
+    rw [one_div]
+  -- the smooth amplitude split
+  obtain ⟨low, high, hlow, hhigh, hsplitpt⟩ := exists_schwartz_smooth_low_high_family f
+  have htail0 := twoPair_high_tail_le_of_neg f low high hlow hhigh hp0 hp0p hm hr0 hJpos
+    (le_of_eq hJeq) hm0
+  have htail1 := twoPair_low_tail_le_of_neg f low hlow hp hpp1 hm hr1 hJpos
+    (le_of_eq hJeq) hm1
+  -- the two tails in the normalized form
+  have hmpow : Measurable (fun t : ℝ => t ^ m) := measurable_id.pow_const m
+  have htail0' : (∫⁻ t in Ioi (0 : ℝ),
+      (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0
+        * (ENNReal.ofReal t) ^ (q - q0 - 1))
+      ≤ ENNReal.ofReal (a0 * J ^ r0) := by
+    refine htail0.trans (ENNReal.ofReal_le_ofReal (le_of_eq ?_))
+    rw [ha0def, twoPairA0, ← hr0def]
+    ring
+  have htail1' : (∫⁻ t in Ioi (0 : ℝ),
+      (eLpNorm ((low (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1
+        * (ENNReal.ofReal t) ^ (q - q1 - 1))
+      ≤ ENNReal.ofReal (a1 * J ^ r1) := by
+    refine htail1.trans (ENNReal.ofReal_le_ofReal (le_of_eq ?_))
+    rw [ha1def, twoPairA1, ← hr1def]
+    ring
+  -- measurability of the two profiles
+  have hmeas0 : Measurable (fun t : ℝ =>
+      (eLpNorm ((high (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0) := by
+    have h : Measurable (fun t : ℝ =>
+        (eLpNorm ((high t : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0) := by
+      have heq : (fun t : ℝ => (eLpNorm ((high t : (Euclidean d) → ℂ)) (ENNReal.ofReal p0) volume) ^ q0)
+          = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high t x‖) ^ p0) ^ (q0 / p0) := by
+        funext t
+        exact eLpNorm_rpow_eq hp0
+      rw [heq]
+      exact ENNReal.continuous_rpow_const.measurable.comp
+        (measurable_smooth_high_profile_lintegrals f low high hlow hhigh p0)
+    exact h.comp hmpow
+  have hmeas1 : Measurable (fun t : ℝ =>
+      (eLpNorm ((low (t ^ m) : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1) := by
+    have h : Measurable (fun t : ℝ =>
+        (eLpNorm ((low t : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1) := by
+      have heq : (fun t : ℝ => (eLpNorm ((low t : (Euclidean d) → ℂ)) (ENNReal.ofReal p1) volume) ^ q1)
+          = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖low t x‖) ^ p1) ^ (q1 / p1) := by
+        funext t
+        exact eLpNorm_rpow_eq hp1
+      rw [heq]
+      exact ENNReal.continuous_rpow_const.measurable.comp
+        (measurable_smooth_low_profile_lintegrals f low hlow p1)
+    exact h.comp hmpow
+  -- the split identity
+  have hsplitfam : ∀ t : ℝ, f = low (t ^ m) + high (t ^ m) := by
+    intro t
+    refine SchwartzMap.ext fun x => ?_
+    have h := hsplitpt (t ^ m) x
+    simpa using h
+  -- the balancing scale
+  set X0 : ℝ := ((2:ℝ) ^ q0 * a0) * B0 ^ q0 * J ^ r0 with hX0def
+  set X1 : ℝ := ((2:ℝ) ^ q1 * a1) * B1 ^ q1 * J ^ r1 with hX1def
+  have hX0pos : 0 < X0 := by
+    rw [hX0def]
+    have h1 : (0:ℝ) < (2:ℝ) ^ q0 := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0:ℝ) < B0 ^ q0 := Real.rpow_pos_of_pos hB0 _
+    have h3 : (0:ℝ) < J ^ r0 := Real.rpow_pos_of_pos hJpos _
+    positivity
+  have hX1pos : 0 < X1 := by
+    rw [hX1def]
+    have h1 : (0:ℝ) < (2:ℝ) ^ q1 := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0:ℝ) < B1 ^ q1 := Real.rpow_pos_of_pos hB1 _
+    have h3 : (0:ℝ) < J ^ r1 := Real.rpow_pos_of_pos hJpos _
+    positivity
+  set sc : ℝ := (X0 / X1) ^ (q1 - q0)⁻¹ with hscdef
+  have hscpos : 0 < sc := by
+    rw [hscdef]
+    exact Real.rpow_pos_of_pos (div_pos hX0pos hX1pos) _
+  -- the two-pair moment estimate
+  have hmoment := Auto.Spherical.MSS.sourceOutput_two_pair_marcinkiewicz_moment_of_strong_endpoints_and_scaled_split_tails
+    (D := (Set.univ : Set (SchwartzMap (Euclidean d) ℂ)))
+    (eval := fun g : SchwartzMap (Euclidean d) ℂ => (g : (Euclidean d) → ℂ)) (T := T)
+    (μ := (volume : Measure (Euclidean d))) (ν := (volume : Measure (Euclidean d)))
+    (fun g x => hTnonneg g x) (fun g h _ _ x => hTsub g h x) (fun g _ => hTmeas g)
+    hq0 hq1 hq (ENNReal.ofReal B0) (ENNReal.ofReal B1)
+    (fun g _ => hs0 g) (fun g _ => hs1 g) f (hTmeas f).aemeasurable
+    (fun t => low (t ^ m)) (fun t => high (t ^ m))
+    (fun t => Set.mem_univ _) (fun t => Set.mem_univ _) hsplitfam
+    hmeas1 hmeas0 (ENNReal.ofReal (a0 * J ^ r0)) (ENNReal.ofReal (a1 * J ^ r1))
+    htail0' htail1' sc hscpos
+  -- identify the coefficient
+  have hcoeff : Auto.Spherical.MSS.sourceOutputTwoPairMarcinkiewiczMomentCoefficient q q0 q1
+      ((ENNReal.ofReal B0) ^ q0) ((ENNReal.ofReal B1) ^ q1)
+      ((ENNReal.ofReal sc) ^ (q0 - q) * ENNReal.ofReal (a0 * J ^ r0))
+      ((ENNReal.ofReal sc) ^ (q1 - q) * ENNReal.ofReal (a1 * J ^ r1))
+      = ENNReal.ofReal (q * (X0 * sc ^ (q0 - q) + X1 * sc ^ (q1 - q))) := by
+    have hterm0 : (ENNReal.ofReal 2) ^ q0 * ((ENNReal.ofReal B0) ^ q0)
+        * ((ENNReal.ofReal sc) ^ (q0 - q) * ENNReal.ofReal (a0 * J ^ r0))
+        = ENNReal.ofReal (X0 * sc ^ (q0 - q)) := by
+      rw [ENNReal.ofReal_rpow_of_pos (by norm_num : (0:ℝ) < 2),
+        ENNReal.ofReal_rpow_of_pos hB0, ENNReal.ofReal_rpow_of_pos hscpos,
+        ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity),
+        ← ENNReal.ofReal_mul (by positivity)]
+      congr 1
+      rw [hX0def]
+      ring
+    have hterm1 : (ENNReal.ofReal 2) ^ q1 * ((ENNReal.ofReal B1) ^ q1)
+        * ((ENNReal.ofReal sc) ^ (q1 - q) * ENNReal.ofReal (a1 * J ^ r1))
+        = ENNReal.ofReal (X1 * sc ^ (q1 - q)) := by
+      rw [ENNReal.ofReal_rpow_of_pos (by norm_num : (0:ℝ) < 2),
+        ENNReal.ofReal_rpow_of_pos hB1, ENNReal.ofReal_rpow_of_pos hscpos,
+        ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity),
+        ← ENNReal.ofReal_mul (by positivity)]
+      congr 1
+      rw [hX1def]
+      ring
+    rw [Auto.Spherical.MSS.sourceOutputTwoPairMarcinkiewiczMomentCoefficient,
+      hterm0, hterm1, ← ENNReal.ofReal_add (by positivity) (by positivity),
+      ← ENNReal.ofReal_mul hq.le]
+  rw [hcoeff] at hmoment
+  -- balance the two terms
+  have hsceq : (X1 / X0) ^ (q0 - q1)⁻¹ = sc := by
+    rw [hscdef, show X1 / X0 = (X0 / X1)⁻¹ from (inv_div X0 X1).symm,
+      Real.inv_rpow (le_of_lt (div_pos hX0pos hX1pos)),
+      ← Real.rpow_neg (le_of_lt (div_pos hX0pos hX1pos))]
+    congr 1
+    field_simp
+    ring
+  have hbal0 := balance_two_terms hX1pos hX0pos hq1q hqq0
+  rw [hsceq] at hbal0
+  have hw0eq : (q - q1) / (q0 - q1) = w0 := by
+    rw [hw0def]
+    field_simp
+    ring
+  have hw1eq : (q0 - q) / (q0 - q1) = w1 := by
+    rw [hw1def]
+    field_simp
+    ring
+  have hbal : X0 * sc ^ (q0 - q) + X1 * sc ^ (q1 - q) = 2 * (X0 ^ w0 * X1 ^ w1) := by
+    rw [show X0 * sc ^ (q0 - q) + X1 * sc ^ (q1 - q)
+        = X1 * sc ^ (q1 - q) + X0 * sc ^ (q0 - q) by ring, hbal0, hw0eq, hw1eq]
+    ring
+  rw [hbal] at hmoment
+  -- expand the geometric mean
+  have hexp := geom_mean_expand (A0 := (2:ℝ) ^ q0 * a0) (A1 := (2:ℝ) ^ q1 * a1)
+    (B0 := B0) (B1 := B1) (J := J) (q0 := q0) (q1 := q1) (r0 := r0) (r1 := r1)
+    (w0 := w0) (w1 := w1)
+    (by positivity) (by positivity) hB0 hB1 hJpos
+  rw [← hX0def, ← hX1def, ← hGdef] at hexp
+  have hcolJ : r0 * w0 + r1 * w1 = q / p := by
+    rw [hr0def, hr1def, hw0def, hw1def]
+    exact hcol
+  rw [hcolJ] at hexp
+  rw [hexp] at hmoment
+  -- take the q-th root
+  have hfinal := Auto.Spherical.MSS.sourceOutput_eLpNorm_le_of_nonnegative_moment
+    T f hq (hTnonneg f) _ hmoment
+  refine hfinal.trans (le_of_eq ?_)
+  have hJqp : (0:ℝ) < J ^ (q / p) := Real.rpow_pos_of_pos hJpos _
+  rw [ENNReal.ofReal_rpow_of_pos (by positivity :
+    (0:ℝ) < q * (2 * (G * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1)) * J ^ (q / p))))]
+  rw [hfnorm, ← ENNReal.ofReal_mul (by positivity)]
+  congr 1
+  have hreal : q * (2 * (G * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1)) * J ^ (q / p)))
+      = (2 * q * G) * (B0 ^ (q0 * w0) * B1 ^ (q1 * w1)) * J ^ (q / p) := by ring
+  rw [hreal]
+  have hroot := root_of_balanced (G := 2 * q * G) (B0 := B0) (B1 := B1)
+    (J := J ^ (q / p)) (q := q)
+    (e0 := q0 * w0 / q) (e1 := q1 * w1 / q) (f0 := q0 * w0) (f1 := q1 * w1)
+    (by positivity) hB0 hB1 hJqp hq rfl rfl
+  rw [hroot]
+  have hJroot : (J ^ (q / p)) ^ q⁻¹ = J ^ p⁻¹ := by
+    rw [← Real.rpow_mul hJpos.le]
+    congr 1
+    field_simp
+  rw [hJroot]
+  have he0 : q0 * w0 / q = q0 * ((q1 - q) / (q1 - q0)) / q := by rw [hw0def]
+  have he1 : q1 * w1 / q = q1 * ((q - q0) / (q1 - q0)) / q := by rw [hw1def]
+  rw [he0, he1]
+  ring
+
+/-! ### Finiteness of Schwartz input norms -/
+
+theorem eLpNorm_schwartz_ne_top {d : ℕ} {p : ℝ} (hp : 0 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ≠ ⊤ := by
+  have hJint : Integrable (fun x : Euclidean d => ‖f x‖ ^ p) volume :=
+    Auto.Spherical.FractalDilations.Q4FactorInterpolation.q4_schwartz_integrable_norm_rpow f hp
+  rw [eLpNorm_ofReal_eq hp]
+  have hconv : (∫⁻ x : Euclidean d, ‖(f : Euclidean d → ℂ) x‖ₑ ^ p)
+      = ENNReal.ofReal (∫ x : Euclidean d, ‖f x‖ ^ p) := by
+    rw [ofReal_integral_eq_lintegral_ofReal hJint
+      (Filter.Eventually.of_forall fun x => Real.rpow_nonneg (norm_nonneg _) _)]
+    refine lintegral_congr fun x => ?_
+    rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp.le]
+  rw [hconv]
+  exact ENNReal.rpow_ne_top_of_nonneg (by positivity) ENNReal.ofReal_ne_top
+
+/-! ### Elementary properties of the fractal maximal operator as an operator -/
+
+theorem fractalSphericalMaximalReal_nonneg' {d : ℕ} (E : Set ℝ)
+    (f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    0 ≤ fractalSphericalMaximalReal d E f x := by
+  unfold fractalSphericalMaximalReal
+  exact ENNReal.toReal_nonneg
+
+/-! ### Interpolation at a common output exponent -/
+
+/-- **Same-output interpolation of strong types.** -/
+theorem hasFractalSphericalStrongType_interp_same_output {d : ℕ} {E : Set ℝ}
+    (hd : 0 < d) (hEpos : E ⊆ Ioi (0 : ℝ)) {p0 p1 p q : ℝ}
+    (hp0 : 0 < p0) (hp0p : p0 < p) (hpp1 : p < p1) (hq : 1 ≤ q)
+    (h0 : HasFractalSphericalStrongType d E p0 q)
+    (h1 : HasFractalSphericalStrongType d E p1 q) :
+    HasFractalSphericalStrongType d E p q := by
+  obtain ⟨C0, hC0, hb0⟩ := h0
+  obtain ⟨C1, hC1, hb1⟩ := h1
+  refine ⟨C0 * (4 : ℝ) ^ ((p - p0) / p0) + C1 * (2 : ℝ) ^ ((p - p1) / p1), by positivity,
+    fun f => ?_⟩
+  have hmain := memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
+    (fractalSphericalMaximalReal d E)
+    (fun g => (measurable_fractalSphericalMaximalReal E g).aestronglyMeasurable)
+    (fun g x => fractalSphericalMaximalReal_nonneg' E g x)
+    (fun g h x => fractalSphericalMaximalReal_schwartz_add_le hd E hEpos g h x)
+    (by funext x; exact fractalSphericalMaximalReal_zero E x)
+    hp0 hp0p hpp1 hq (ENNReal.ofReal C0) (ENNReal.ofReal C1) hb0 hb1 f
+  obtain ⟨hmem, hbd⟩ := hmain
+  refine ⟨hmem, hbd.trans (le_of_eq ?_)⟩
+  congr 1
+  rw [sameOutputInputInterpolationConstant, ← ENNReal.ofReal_mul hC0.le,
+    ← ENNReal.ofReal_mul hC1.le, ← ENNReal.ofReal_add (by positivity) (by positivity)]
+
+/-! ### Interpolation along a segment of positive slope -/
+
+/-- **Two-pair interpolation of strong types, positive slope.** -/
+theorem hasFractalSphericalStrongType_interp_twoPair {d : ℕ} {E : Set ℝ}
+    (hd : 0 < d) (hEpos : E ⊆ Ioi (0 : ℝ)) {p0 q0 p1 q1 p q m : ℝ}
+    (hp0 : 0 < p0) (hp0p : p0 < p) (hpp1 : p < p1)
+    (hq0 : 0 < q0) (hq0q : q0 < q) (hqq1 : q < q1)
+    (hr0 : 1 ≤ q0 / p0) (hr1 : 1 ≤ q1 / p1) (hm : 0 < m)
+    (hm0 : q - q0 = m * (p - p0) * (q0 / p0))
+    (hm1 : q - q1 = m * (p - p1) * (q1 / p1))
+    (hcol : (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0))
+      = q / p)
+    (h0 : HasFractalSphericalStrongType d E p0 q0)
+    (h1 : HasFractalSphericalStrongType d E p1 q1) :
+    HasFractalSphericalStrongType d E p q := by
+  have hp : 0 < p := lt_trans hp0 hp0p
+  obtain ⟨C0, hC0, hb0⟩ := h0
+  obtain ⟨C1, hC1, hb1⟩ := h1
+  obtain ⟨C, hCpos, hC⟩ := exists_twoPair_interpolation_const (d := d)
+    hp0 hp0p hpp1 hq0 hq0q hqq1 hr0 hr1 hm hm0 hm1 hcol
+  refine ⟨C * C0 ^ (q0 * ((q1 - q) / (q1 - q0)) / q)
+      * C1 ^ (q1 * ((q - q0) / (q1 - q0)) / q), by positivity, fun f => ?_⟩
+  have hbd := hC (fractalSphericalMaximalReal d E)
+    (fun g x => fractalSphericalMaximalReal_nonneg' E g x)
+    (fun g h x => fractalSphericalMaximalReal_schwartz_add_le hd E hEpos g h x)
+    (fun g => (measurable_fractalSphericalMaximalReal E g).aestronglyMeasurable)
+    (fun x => fractalSphericalMaximalReal_zero E x)
+    C0 C1 hC0 hC1 (fun g => (hb0 g).2) (fun g => (hb1 g).2) f
+  refine ⟨⟨(hb0 f).1.1, ?_⟩, hbd⟩
+  refine lt_of_le_of_lt hbd ?_
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+    (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp f))
+
+/-- **Two-pair interpolation of strong types, negative slope.** -/
+theorem hasFractalSphericalStrongType_interp_twoPair_neg {d : ℕ} {E : Set ℝ}
+    (hd : 0 < d) (hEpos : E ⊆ Ioi (0 : ℝ)) {p0 q0 p1 q1 p q m : ℝ}
+    (hp0 : 0 < p0) (hp0p : p0 < p) (hpp1 : p < p1)
+    (hq1 : 0 < q1) (hq1q : q1 < q) (hqq0 : q < q0)
+    (hr0 : 1 ≤ q0 / p0) (hr1 : 1 ≤ q1 / p1) (hm : m < 0)
+    (hm0 : q - q0 = m * (p - p0) * (q0 / p0))
+    (hm1 : q - q1 = m * (p - p1) * (q1 / p1))
+    (hcol : (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0))
+      = q / p)
+    (h0 : HasFractalSphericalStrongType d E p0 q0)
+    (h1 : HasFractalSphericalStrongType d E p1 q1) :
+    HasFractalSphericalStrongType d E p q := by
+  have hp : 0 < p := lt_trans hp0 hp0p
+  obtain ⟨C0, hC0, hb0⟩ := h0
+  obtain ⟨C1, hC1, hb1⟩ := h1
+  obtain ⟨C, hCpos, hC⟩ := exists_twoPair_interpolation_const_of_neg (d := d)
+    hp0 hp0p hpp1 hq1 hq1q hqq0 hr0 hr1 hm hm0 hm1 hcol
+  refine ⟨C * C0 ^ (q0 * ((q1 - q) / (q1 - q0)) / q)
+      * C1 ^ (q1 * ((q - q0) / (q1 - q0)) / q), by positivity, fun f => ?_⟩
+  have hbd := hC (fractalSphericalMaximalReal d E)
+    (fun g x => fractalSphericalMaximalReal_nonneg' E g x)
+    (fun g h x => fractalSphericalMaximalReal_schwartz_add_le hd E hEpos g h x)
+    (fun g => (measurable_fractalSphericalMaximalReal E g).aestronglyMeasurable)
+    (fun x => fractalSphericalMaximalReal_zero E x)
+    C0 C1 hC0 hC1 (fun g => (hb0 g).2) (fun g => (hb1 g).2) f
+  refine ⟨⟨(hb0 f).1.1, ?_⟩, hbd⟩
+  refine lt_of_le_of_lt hbd ?_
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+    (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp f))
+
+/-! ### Interpolation along a segment with increasing input exponent -/
+
+/-- **Interpolation of strong types along a segment of the reciprocal diagram.**  The two
+endpoints are ordered by their input exponents; the three collinear cases (vertical, positive
+slope, negative slope) are handled by the three interpolation devices. -/
+theorem hasFractalSphericalStrongType_interp_of_lt {d : ℕ} {E : Set ℝ}
+    (hd : 0 < d) (hEpos : E ⊆ Ioi (0 : ℝ)) {p0 q0 p1 q1 p q lam : ℝ}
+    (hp0 : 0 < p0) (hp1 : 0 < p1) (hq0one : 1 ≤ q0) (hq1one : 1 ≤ q1)
+    (hpq0 : p0 ≤ q0) (hpq1 : p1 ≤ q1) (hp01 : p0 < p1)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hpa : p⁻¹ = (1 - lam) * p0⁻¹ + lam * p1⁻¹)
+    (hqb : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹)
+    (h0 : HasFractalSphericalStrongType d E p0 q0)
+    (h1 : HasFractalSphericalStrongType d E p1 q1) :
+    HasFractalSphericalStrongType d E p q := by
+  have hq0 : 0 < q0 := lt_of_lt_of_le zero_lt_one hq0one
+  have hq1 : 0 < q1 := lt_of_lt_of_le zero_lt_one hq1one
+  have hlam1' : 0 < 1 - lam := by linarith
+  have hpinv : 0 < p⁻¹ := by
+    rw [hpa]
+    exact add_pos (mul_pos hlam1' (inv_pos.mpr hp0)) (mul_pos hlam0 (inv_pos.mpr hp1))
+  have hp : 0 < p := inv_pos.mp hpinv
+  have hqinv : 0 < q⁻¹ := by
+    rw [hqb]
+    exact add_pos (mul_pos hlam1' (inv_pos.mpr hq0)) (mul_pos hlam0 (inv_pos.mpr hq1))
+  have hq : 0 < q := inv_pos.mp hqinv
+  have hpne : p ≠ 0 := ne_of_gt hp
+  have hqne : q ≠ 0 := ne_of_gt hq
+  have hp0ne : p0 ≠ 0 := ne_of_gt hp0
+  have hp1ne : p1 ≠ 0 := ne_of_gt hp1
+  have hq0ne : q0 ≠ 0 := ne_of_gt hq0
+  have hq1ne : q1 ≠ 0 := ne_of_gt hq1
+  -- the output exponent is at least one
+  have hq0inv : q0⁻¹ ≤ 1 := by
+    have hmul := mul_le_mul_of_nonneg_left hq0one (le_of_lt (inv_pos.mpr hq0))
+    rw [mul_one, inv_mul_cancel₀ hq0ne] at hmul
+    exact hmul
+  have hq1inv : q1⁻¹ ≤ 1 := by
+    have hmul := mul_le_mul_of_nonneg_left hq1one (le_of_lt (inv_pos.mpr hq1))
+    rw [mul_one, inv_mul_cancel₀ hq1ne] at hmul
+    exact hmul
+  have hqinvle : q⁻¹ ≤ 1 := by
+    rw [hqb]
+    have t0 := mul_le_mul_of_nonneg_left hq0inv hlam1'.le
+    have t1 := mul_le_mul_of_nonneg_left hq1inv hlam0.le
+    rw [mul_one] at t0 t1
+    linarith
+  have hqone : 1 ≤ q := by
+    have hmul := mul_le_mul_of_nonneg_left hqinvle hq.le
+    rw [mul_one, mul_inv_cancel₀ hqne] at hmul
+    exact hmul
+  -- the reciprocal gaps
+  set Da : ℝ := p0⁻¹ - p1⁻¹ with hDadef
+  set Db : ℝ := q0⁻¹ - q1⁻¹ with hDbdef
+  have hDapos : 0 < Da := by
+    rw [hDadef]
+    have hinv : p1⁻¹ < p0⁻¹ := (inv_lt_inv₀ hp1 hp0).mpr hp01
+    linarith
+  have hDane : Da ≠ 0 := ne_of_gt hDapos
+  -- the four difference identities
+  have hdp0 : p - p0 = p * p0 * (lam * Da) := by
+    have hstep : p0⁻¹ - p⁻¹ = lam * Da := by rw [hpa, hDadef]; ring
+    have hbase : p - p0 = p * p0 * (p0⁻¹ - p⁻¹) := by field_simp
+    rw [hbase, hstep]
+  have hdp1 : p - p1 = -(p * p1 * ((1 - lam) * Da)) := by
+    have hstep : p1⁻¹ - p⁻¹ = -((1 - lam) * Da) := by rw [hpa, hDadef]; ring
+    have hbase : p - p1 = p * p1 * (p1⁻¹ - p⁻¹) := by field_simp
+    rw [hbase, hstep]
+    ring
+  have hdq0 : q - q0 = q * q0 * (lam * Db) := by
+    have hstep : q0⁻¹ - q⁻¹ = lam * Db := by rw [hqb, hDbdef]; ring
+    have hbase : q - q0 = q * q0 * (q0⁻¹ - q⁻¹) := by field_simp
+    rw [hbase, hstep]
+  have hdq1 : q - q1 = -(q * q1 * ((1 - lam) * Db)) := by
+    have hstep : q1⁻¹ - q⁻¹ = -((1 - lam) * Db) := by rw [hqb, hDbdef]; ring
+    have hbase : q - q1 = q * q1 * (q1⁻¹ - q⁻¹) := by field_simp
+    rw [hbase, hstep]
+    ring
+  -- the input exponent is strictly between the endpoints
+  have hp0p : p0 < p := by
+    have hpos : 0 < p * p0 * (lam * Da) :=
+      mul_pos (mul_pos hp hp0) (mul_pos hlam0 hDapos)
+    linarith [hdp0]
+  have hpp1 : p < p1 := by
+    have hpos : 0 < p * p1 * ((1 - lam) * Da) :=
+      mul_pos (mul_pos hp hp1) (mul_pos hlam1' hDapos)
+    linarith [hdp1]
+  have hr0 : 1 ≤ q0 / p0 := (one_le_div hp0).mpr hpq0
+  have hr1 : 1 ≤ q1 / p1 := (one_le_div hp1).mpr hpq1
+  -- the amplitude-scale identities
+  have hm0 : q - q0 = ((q / p) * (Db / Da)) * (p - p0) * (q0 / p0) := by
+    rw [hdq0, hdp0]
+    field_simp
+  have hm1 : q - q1 = ((q / p) * (Db / Da)) * (p - p1) * (q1 / p1) := by
+    rw [hdq1, hdp1]
+    field_simp
+  have hq10 : q1 - q0 = q0 * q1 * Db := by
+    rw [hDbdef]
+    field_simp
+  have hq1q : q1 - q = q * q1 * ((1 - lam) * Db) := by linarith [hdq1]
+  have hcolgen : Db ≠ 0 →
+      (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0)) = q / p := by
+    intro hDbne
+    rw [hq1q, hdq0, hq10, div_eq_mul_inv q p, hpa]
+    field_simp
+  rcases lt_trichotomy Db 0 with hDbneg | hDbzero | hDbpos
+  · -- negative slope
+    have hDbne : Db ≠ 0 := ne_of_lt hDbneg
+    have hqq0 : q < q0 := by
+      have hneg : q * q0 * (lam * Db) < 0 :=
+        mul_neg_of_pos_of_neg (mul_pos hq hq0) (mul_neg_of_pos_of_neg hlam0 hDbneg)
+      linarith [hdq0]
+    have hq1q' : q1 < q := by
+      have hneg : q * q1 * ((1 - lam) * Db) < 0 :=
+        mul_neg_of_pos_of_neg (mul_pos hq hq1) (mul_neg_of_pos_of_neg hlam1' hDbneg)
+      linarith [hdq1]
+    have hmneg : (q / p) * (Db / Da) < 0 := by
+      have h1 : 0 < q / p := div_pos hq hp
+      have h2 : Db / Da < 0 := div_neg_of_neg_of_pos hDbneg hDapos
+      exact mul_neg_of_pos_of_neg h1 h2
+    exact hasFractalSphericalStrongType_interp_twoPair_neg hd hEpos hp0 hp0p hpp1
+      hq1 hq1q' hqq0 hr0 hr1 hmneg hm0 hm1 (hcolgen hDbne) h0 h1
+  · -- equal output exponents
+    have hq01 : q0 = q1 := by
+      have hinv : q0⁻¹ = q1⁻¹ := by
+        rw [hDbdef] at hDbzero
+        linarith
+      have := congrArg (fun x : ℝ => x⁻¹) hinv
+      simpa using this
+    have hqeq : q = q0 := by
+      have hinv : q⁻¹ = q0⁻¹ := by
+        rw [hqb, ← hq01]
+        ring
+      have := congrArg (fun x : ℝ => x⁻¹) hinv
+      simpa using this
+    rw [hqeq]
+    refine hasFractalSphericalStrongType_interp_same_output hd hEpos hp0 hp0p hpp1
+      hq0one h0 ?_
+    rw [hq01]
+    exact h1
+  · -- positive slope
+    have hDbne : Db ≠ 0 := ne_of_gt hDbpos
+    have hq0q : q0 < q := by
+      have hpos : 0 < q * q0 * (lam * Db) :=
+        mul_pos (mul_pos hq hq0) (mul_pos hlam0 hDbpos)
+      linarith [hdq0]
+    have hqq1 : q < q1 := by
+      have hpos : 0 < q * q1 * ((1 - lam) * Db) :=
+        mul_pos (mul_pos hq hq1) (mul_pos hlam1' hDbpos)
+      linarith [hdq1]
+    have hmpos : 0 < (q / p) * (Db / Da) :=
+      mul_pos (div_pos hq hp) (div_pos hDbpos hDapos)
+    exact hasFractalSphericalStrongType_interp_twoPair hd hEpos hp0 hp0p hpp1
+      hq0 hq0q hqq1 hr0 hr1 hmpos hm0 hm1 (hcolgen hDbne) h0 h1
+
+/-! ### Interpolation of strong types, unordered form -/
+
+/-- **Interpolation of strong types.**  If the fractal spherical maximal operator is of strong
+type at two exponent pairs, then it is of strong type at every pair whose reciprocal point lies
+on the segment joining the two reciprocal points. -/
+theorem hasFractalSphericalStrongType_interp {d : ℕ} {E : Set ℝ}
+    (hd : 0 < d) (hEpos : E ⊆ Ioi (0 : ℝ)) {p0 q0 p1 q1 p q lam : ℝ}
+    (hp0 : 0 < p0) (hp1 : 0 < p1) (hq0one : 1 ≤ q0) (hq1one : 1 ≤ q1)
+    (hpq0 : p0 ≤ q0) (hpq1 : p1 ≤ q1)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hpa : p⁻¹ = (1 - lam) * p0⁻¹ + lam * p1⁻¹)
+    (hqb : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹)
+    (h0 : HasFractalSphericalStrongType d E p0 q0)
+    (h1 : HasFractalSphericalStrongType d E p1 q1) :
+    HasFractalSphericalStrongType d E p q := by
+  have hq0 : 0 < q0 := lt_of_lt_of_le zero_lt_one hq0one
+  have hq1 : 0 < q1 := lt_of_lt_of_le zero_lt_one hq1one
+  have hlam1' : 0 < 1 - lam := by linarith
+  rcases lt_trichotomy p0 p1 with hlt | heq | hgt
+  · exact hasFractalSphericalStrongType_interp_of_lt hd hEpos hp0 hp1 hq0one hq1one
+      hpq0 hpq1 hlt hlam0 hlam1 hpa hqb h0 h1
+  · -- equal input exponents
+    have hpinveq : p⁻¹ = p0⁻¹ := by
+      rw [hpa, ← heq]
+      ring
+    have hpeq : p = p0 := by
+      have := congrArg (fun x : ℝ => x⁻¹) hpinveq
+      simpa using this
+    have hqinv : 0 < q⁻¹ := by
+      rw [hqb]
+      exact add_pos (mul_pos hlam1' (inv_pos.mpr hq0)) (mul_pos hlam0 (inv_pos.mpr hq1))
+    have hq : 0 < q := inv_pos.mp hqinv
+    have h1' : HasFractalSphericalStrongType d E p0 q1 := by
+      rw [heq]
+      exact h1
+    rw [hpeq]
+    exact hasFractalSphericalStrongType_interp_same_input hq0 hq1 hq hlam0 hlam1 hqb h0 h1'
+  · -- the reversed segment
+    refine hasFractalSphericalStrongType_interp_of_lt hd hEpos hp1 hp0 hq1one hq0one
+      hpq1 hpq0 hgt (lam := 1 - lam) (by linarith) (by linarith) ?_ ?_ h1 h0
+    · rw [hpa]; ring
+    · rw [hqb]; ring
+
+/-! ### Convexity of the type set -/
+
+/-- **The type set is convex.**  This is the interpolation half of Theorem 1.2(i). -/
+theorem convex_fractalTypeSet {d : ℕ} {E : Set ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) :
+    Convex ℝ (fractalTypeSet d E) := by
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  have hEpos : E ⊆ Ioi (0 : ℝ) := fun t ht => lt_of_lt_of_le zero_lt_one (hE ht).1
+  rintro z0 ⟨p0, q0, hp0, hq0one, hz0, hst0⟩ z1 ⟨p1, q1, hp1, hq1one, hz1, hst1⟩ a b ha hb hab
+  have hq0 : 0 < q0 := lt_of_lt_of_le zero_lt_one hq0one
+  have hq1 : 0 < q1 := lt_of_lt_of_le zero_lt_one hq1one
+  have hpq0 : p0 ≤ q0 := le_of_hasFractalSphericalStrongType hd hE hEne hp0 hq0one hst0
+  have hpq1 : p1 ≤ q1 := le_of_hasFractalSphericalStrongType hd hE hEne hp1 hq1one hst1
+  rcases eq_or_lt_of_le ha with ha0 | hapos
+  · -- `a = 0`
+    have hb1 : b = 1 := by linarith
+    have hzero : a • z0 + b • z1 = z1 := by
+      rw [← ha0, hb1, zero_smul, one_smul, zero_add]
+    rw [hzero]
+    exact ⟨p1, q1, hp1, hq1one, hz1, hst1⟩
+  rcases eq_or_lt_of_le hb with hb0 | hbpos
+  · -- `b = 0`
+    have ha1 : a = 1 := by linarith
+    have hzero : a • z0 + b • z1 = z0 := by
+      rw [← hb0, ha1, zero_smul, one_smul, add_zero]
+    rw [hzero]
+    exact ⟨p0, q0, hp0, hq0one, hz0, hst0⟩
+  -- the interior of the segment
+  have haeq : a = 1 - b := by linarith
+  have hb1 : b < 1 := by linarith
+  set P : ℝ := (1 - b) * p0⁻¹ + b * p1⁻¹ with hPdef
+  set Q : ℝ := (1 - b) * q0⁻¹ + b * q1⁻¹ with hQdef
+  have hb1' : 0 < 1 - b := by linarith
+  have hPpos : 0 < P := by
+    rw [hPdef]
+    exact add_pos (mul_pos hb1' (inv_pos.mpr hp0)) (mul_pos hbpos (inv_pos.mpr hp1))
+  have hQpos : 0 < Q := by
+    rw [hQdef]
+    exact add_pos (mul_pos hb1' (inv_pos.mpr hq0)) (mul_pos hbpos (inv_pos.mpr hq1))
+  have hPinv : (P⁻¹)⁻¹ = P := inv_inv P
+  have hQinv : (Q⁻¹)⁻¹ = Q := inv_inv Q
+  -- the interpolated point is the reciprocal point of the interpolated exponents
+  have hpoint : a • z0 + b • z1 = reciprocalExponentPoint P⁻¹ Q⁻¹ := by
+    rw [hz0, hz1, reciprocalExponentPoint, reciprocalExponentPoint, reciprocalExponentPoint,
+      haeq]
+    refine Prod.ext ?_ ?_
+    · simp only [Prod.fst_add, Prod.smul_fst, smul_eq_mul]
+      rw [hPinv, hPdef]
+    · simp only [Prod.snd_add, Prod.smul_snd, smul_eq_mul]
+      rw [hQinv, hQdef]
+  -- the output exponent is at least one
+  have hq0inv : q0⁻¹ ≤ 1 := by
+    have hmul := mul_le_mul_of_nonneg_left hq0one (le_of_lt (inv_pos.mpr hq0))
+    rw [mul_one, inv_mul_cancel₀ (ne_of_gt hq0)] at hmul
+    exact hmul
+  have hq1inv : q1⁻¹ ≤ 1 := by
+    have hmul := mul_le_mul_of_nonneg_left hq1one (le_of_lt (inv_pos.mpr hq1))
+    rw [mul_one, inv_mul_cancel₀ (ne_of_gt hq1)] at hmul
+    exact hmul
+  have hQle : Q ≤ 1 := by
+    rw [hQdef]
+    have t0 := mul_le_mul_of_nonneg_left hq0inv hb1'.le
+    have t1 := mul_le_mul_of_nonneg_left hq1inv hbpos.le
+    rw [mul_one] at t0 t1
+    linarith
+  have hQinvone : 1 ≤ Q⁻¹ := by
+    have hmul := mul_le_mul_of_nonneg_left hQle (le_of_lt (inv_pos.mpr hQpos))
+    rw [mul_one, inv_mul_cancel₀ (ne_of_gt hQpos)] at hmul
+    exact hmul
+  rw [hpoint]
+  refine ⟨P⁻¹, Q⁻¹, inv_pos.mpr hPpos, hQinvone, rfl, ?_⟩
+  exact hasFractalSphericalStrongType_interp hdpos hEpos hp0 hp1 hq0one hq1one hpq0 hpq1
+    hbpos hb1 (by rw [hPinv, hPdef]) (by rw [hQinv, hQdef]) hst0 hst1
+
+/-- **The closure of the type set is convex.** -/
+theorem convex_closure_fractalTypeSet {d : ℕ} {E : Set ℝ} (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) :
+    Convex ℝ (closure (fractalTypeSet d E)) :=
+  (convex_fractalTypeSet hd hE hEne).closure
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.ProofSkeleton
+open Auto.Spherical.FractalDilations.AnnulusLowerBound
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.MinkowskiFacts
+open Auto.Spherical.FractalDilations.QuasiAssouadCovers
+open Auto.Spherical.FractalDilations.MinkowskiQ2PhysicalRate
+open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalRate
+open Auto.Spherical.FractalDilations.CircleQ2PhysicalRate
+open Auto.Spherical.FractalDilations.CircleQ3PhysicalRate
+open Auto.Spherical.FractalDilations.MinkowskiT123PhysicalCrossed
+open Auto.Spherical.FractalDilations.SameInputOutputDyadicRate
+open Auto.Spherical.FractalDilations.RadialCutoff
+open Auto.Spherical.FractalDilations.Q4RadialReduction
+open Auto.Spherical.FractalDilations.Q4StrictParameters
+open Auto.Spherical.FractalDilations.Q4SubpowerParameters
+open Auto.Spherical.FractalDilations.Q4TriangleGeometry
+open Auto.Spherical.FractalDilations.Q4UpperInputLiteral
+open Auto.Spherical.FractalDilations.Q4LowerInputInterpolation
+open Auto.Spherical.FractalDilations.Q4LowerInputLiteralRate
+open Auto.Spherical.FractalDilations.Q4LowerInputPhysicalLiteralRate
+open Auto.Spherical.FractalDilations.Q4UpperInputInterpolation
+open Auto.Spherical.FractalDilations.QuasiAssouadBridge
+open Auto.Spherical.FractalDilations.StrictDyadicReassembly
+open Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+open Auto.Spherical.FractalDilations.StrictInteriorGeometry
+open Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Q4LtwoLiteralRate
+open Auto.Spherical.FractalDilations.Q4TriangleGeometry
+open Auto.Spherical.FractalDilations.StrictDyadicReassembly
+open Auto.Spherical.FractalDilations.StrictInteriorGeometry
+open Auto.Spherical.InterpolationCore
+open Auto.Spherical.FractalDilations.AnnulusTheorem
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+open Auto.Spherical.FractalDilations.AssouadSpectrumContinuity
+open Auto.Spherical.FractalDilations.AssouadSpectrumFacts
+open Auto.Spherical.FractalDilations.CircleMinkowski
+open Auto.Spherical.FractalDilations.ClusterSpectrumSharpness
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.DimensionSpectrumZero
+open Auto.Spherical.FractalDilations.ExponentGeometry
+open Auto.Spherical.FractalDilations.ExponentRegions
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.MinkowskiDiagonal
+open Auto.Spherical.FractalDilations.RegularityBridge
+open Auto.Spherical.FractalDilations.SharpnessGeometry
+open Auto.Spherical.FractalDilations.ShellSharpness
+open Auto.Spherical.FractalDilations.SteinSegment
+open Auto.Spherical.FractalDilations.StrongTypeExtension
+open Auto.Spherical.FractalDilations.TranslationSharpness
+open MeasureTheory Set
+
+
+
+/-! ### The band-rate form of the interior estimate -/
+
+/-- A geometric dyadic band rate at the exponent pair `(p,q)`: the `j`-th absolute dyadic
+bandpass piece of the maximal operator obeys an `L^p → L^q` estimate with a constant decaying
+geometrically in `j`.  This is the form of Corollary 2.5 of arXiv:2004.00984 that the
+construction of §7 needs. -/
+def HasAbsoluteBandRate {d : Nat} (E : Set Real) (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0) (p q : Real) : Prop :=
+  ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧ ∀ j : Nat, 1 ≤ j →
+    ∀ f : SchwartzMap (Euclidean d) Complex,
+      MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume ≤
+        (C * rho ^ j) * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume
+
+set_option maxHeartbeats 1000000 in
+theorem q4_interior_band_rate_of_two_le_input
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta) (hgamma : 0 ≤ gamma) (hgamma_one : gamma ≤ 1)
+    (hbeta_gamma : beta ≤ gamma)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hquasi : quasiAssouadDimension E = gamma)
+    (hp : 2 ≤ p) (hpq : p < q)
+    (hcap : q < (d : Real) * p)
+    (hcrit : beta < ((d : Real) - 1) * (p - 1))
+    (phi psi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → Complex))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : Real) ^ (0 + 1))⁻¹ • eta) - phi (((2 : Real) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hp0 : 0 < p := by linarith
+  have hp1 : 1 < p := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 ≤ q := by linarith
+  -- the below exponent
+  obtain ⟨qq, hqqgt, hqqlow, hqqone, hqqmax⟩ :
+      ∃ qq : Real, q < qq ∧ 1 / (d : Real) < p / qq ∧ p / qq < 1 ∧
+        (3 ≤ d → p / qq <
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma)) := by
+    have hthetamax : 0 < (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) := by
+      apply div_pos (by linarith)
+      nlinarith
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · have hD3 : (3 : Real) ≤ (d : Real) := by exact_mod_cast hd3
+      have hdpos : (0 : Real) < (d : Real) := by linarith
+      set A : Real := ((d : Real) - 1) / 2 with hAdef
+      set tm : Real := A / (A + gamma) with htmdef
+      have hApos : 0 < A := by rw [hAdef]; linarith
+      have hAg : 0 < A + gamma := by linarith
+      have htmpos : 0 < tm := by rw [htmdef]; exact div_pos hApos hAg
+      have htmone : tm ≤ 1 := by
+        rw [htmdef, div_le_one hAg]
+        linarith
+      have htmlow : 1 < (d : Real) * tm := by
+        have hkey : A + gamma < (d : Real) * A := by
+          rw [hAdef]
+          nlinarith
+        rw [htmdef, ← mul_div_assoc, lt_div_iff₀ hAg]
+        nlinarith
+      have hptm : p ≤ p / tm := by
+        rw [le_div_iff₀ htmpos]
+        nlinarith
+      have hptmlt : p / tm < (d : Real) * p := by
+        rw [div_lt_iff₀ htmpos]
+        nlinarith
+      set M : Real := max q (p / tm) with hMdef
+      have hMq : q ≤ M := le_max_left _ _
+      have hMpt : p / tm ≤ M := le_max_right _ _
+      have hMlt : M < (d : Real) * p := max_lt hcap hptmlt
+      refine ⟨(M + (d : Real) * p) / 2, ?_, ?_, ?_, ?_⟩
+      · linarith
+      · rw [div_lt_div_iff₀ hdpos (by linarith)]
+        linarith
+      · rw [div_lt_one (by linarith)]
+        linarith
+      · intro _
+        rw [div_lt_iff₀ (by linarith)]
+        have h1 : p / tm < (M + (d : Real) * p) / 2 := by linarith
+        have h2 : tm * (p / tm) = p := mul_div_cancel₀ p htmpos.ne'
+        have h3 := mul_lt_mul_of_pos_left h1 htmpos
+        rw [h2] at h3
+        linarith
+    · subst hd2'
+      have h2c : ((2 : Nat) : Real) = 2 := by norm_num
+      have hcap2 : q < 2 * p := by
+        have h := hcap
+        rw [h2c] at h
+        linarith
+      set M : Real := max q p with hMdef
+      have hMq : q ≤ M := le_max_left _ _
+      have hMp : p ≤ M := le_max_right _ _
+      have hMlt : M < 2 * p := max_lt hcap2 (by linarith)
+      refine ⟨(M + 2 * p) / 2, ?_, ?_, ?_, ?_⟩
+      · linarith
+      · rw [h2c, div_lt_div_iff₀ (by norm_num) (by linarith)]
+        linarith
+      · rw [div_lt_one (by linarith)]
+        linarith
+      · intro h3
+        omega
+  have hqq0 : 0 < qq := by linarith
+  -- the below rate
+  obtain ⟨C1, rho1, hC1, hrho1, hrate1⟩ :
+      ∃ C rho : ENNReal, C < ⊤ ∧ rho < 1 ∧
+        ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+          MemLp (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal qq) volume ∧
+          eLpNorm (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal qq) volume ≤
+            (C * rho ^ j) *
+              eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                (ENNReal.ofReal p) volume := by
+    rcases eq_or_lt_of_le hp with hpeq | hplt
+    · subst hpeq
+      exact exists_q4_ltwo_sector_dyadic_rate hd hE hEne hgamma hquasi
+        phi hphiOne hphiZero hphiNorm hphiRadial hqq0 hqqlow hqqone hqqmax
+    · exact exists_q4_sector_dyadic_rate hd hE hEne hgamma hquasi
+        phi hphiOne hphiZero hphiNorm hphiRadial hplt hqq0 hqqlow hqqone hqqmax
+  -- the above rate
+  obtain ⟨C0, rho0, hC0, hrho0, hrate0⟩ :=
+    exists_q2_diagonal_dyadic_rate (d := d) (E := E) (beta := beta)
+      (by
+        rcases hd with h | ⟨h, hg⟩
+        · exact Or.inl h
+        · exact Or.inr ⟨h, by linarith⟩)
+      hE hEne hbeta hMinkowski phi psi hphiOne hphiZero hphiNorm hpsi hp1 hcrit
+  -- interpolate at the common input exponent
+  obtain ⟨C, rho, hCtop, hrho, hrate⟩ :=
+    memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
+      (d := d)
+      (fun j g => fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g)
+      (fun j g => (measurable_fractalDyadicBandpassMaximal E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable)
+      (fun j g x => fractalDyadicBandpassMaximal_nonneg E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g x)
+      (p := p) (q0 := p) (q := q) (q1 := qq) hp0 hp0 hpq hqqgt
+      hC0 hC1 hrho0 hrho1
+      (fun j hj f => hrate0 j f) hrate1
+  exact ⟨C, rho, hCtop, hrho, hrate⟩
+
+set_option maxHeartbeats 1000000 in
+theorem q4_interior_band_rate_of_sum_gt_one
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hsum : q < p / (p - 1))
+    (hannulus : (d : Real) * (1 / p) < (1 - beta) * (1 / q) + ((d : Real) - 1))
+    (hcrit : beta < ((d : Real) - 1) * (p - 1))
+    (phi psi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → Complex))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : Real) ^ (0 + 1))⁻¹ • eta) - phi (((2 : Real) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hp0 : 0 < p := by linarith
+  have hpm : 0 < p - 1 := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 ≤ q := by linarith
+  set s : Real := 1 + q * (p - 1) / p with hsdef
+  have hsm : s - 1 = q * (p - 1) / p := by rw [hsdef]; ring
+  have hps : p < s := by
+    have h : p - 1 < q * (p - 1) / p := by
+      rw [lt_div_iff₀ hp0]
+      nlinarith
+    rw [hsdef]
+    linarith
+  have hs2 : s < 2 := by
+    have hqp : q * (p - 1) < p := (lt_div_iff₀ hpm).mp hsum
+    have h : q * (p - 1) / p < 1 := by
+      rw [div_lt_one hp0]
+      exact hqp
+    rw [hsdef]
+    linarith
+  have hs1 : 1 < s := lt_trans hp1 hps
+  have hqeq : q = p * (s - 1) / (p - 1) := by
+    rw [hsm]
+    field_simp
+  set c1 : Real := ((d : Real) - 1) * (s - 1) - beta with hc1def
+  set c2 : Real := (1 - beta) * (1 / q) + ((d : Real) - 1) - (d : Real) * (1 / p)
+    with hc2def
+  have hc1 : 0 < c1 := by
+    rw [hc1def]
+    have h1 : (p - 1) < s - 1 := by linarith
+    nlinarith
+  have hc2 : 0 < c2 := by rw [hc2def]; linarith
+  set m : Real := min c1 (c2 * q) / 4 with hmdef
+  have hm : 0 < m := by
+    rw [hmdef]
+    have : 0 < min c1 (c2 * q) := lt_min hc1 (by positivity)
+    linarith
+  have hmc1 : 2 * m < c1 := by
+    rw [hmdef]
+    have : min c1 (c2 * q) ≤ c1 := min_le_left _ _
+    linarith
+  have hmc2 : 2 * m < c2 * q := by
+    rw [hmdef]
+    have : min c1 (c2 * q) ≤ c2 * q := min_le_right _ _
+    linarith
+  have hM : HasUpperMinkowskiExponent E (beta + m) :=
+    hasUpperMinkowskiExponent_add_of_upperMinkowskiDimension_eq hE hMinkowski hm
+  have halpha : 0 ≤ beta + m := by linarith
+  have hcritical : beta + m + m < ((d : Real) - 1) * (s - 1) := by
+    rw [hc1def] at hmc1
+    linarith
+  have hgainReal : q < s + (((d : Real) - 1) * s - ((d : Real) - 1) -
+      (beta + m + m)) := by
+    have hkey : beta + 2 * m < 1 + ((d : Real) - 1) * q - (d : Real) * q / p := by
+      have hexp : c2 * q = (1 - beta) + ((d : Real) - 1) * q - (d : Real) * q / p := by
+        rw [hc2def]
+        field_simp
+      rw [hexp] at hmc2
+      linarith
+    have hsq : (d : Real) * s = (d : Real) + (d : Real) * q -
+        (d : Real) * q / p := by
+      rw [hsdef]
+      field_simp
+      ring
+    nlinarith
+  -- the crossed rate at (p, q)
+  obtain ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩ :
+      ∃ C rho : ENNReal, 0 < C ∧ C < ⊤ ∧ 0 < rho ∧ rho < 1 ∧
+        ∀ j : Nat, 1 ≤ j → ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+          MemLp (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal q) volume ∧
+          eLpNorm (fractalDyadicBandpassMaximal d E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+            (ENNReal.ofReal q) volume ≤
+            C * rho ^ j *
+              eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                (ENNReal.ofReal p) volume := by
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+      have hcast : ((n : Nat) : Real) = ((n + 1 : Nat) : Real) - 1 := by
+        push_cast
+        ring
+      obtain ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩ :=
+        minkowski_t123_physical_crossed_dyadic_rate_of_hasUpperMinkowskiExponent
+          (n := n) (alpha := beta + m) (eta := m) (p := p) (q := q) (s := s)
+          (by omega) hE hEne halpha hM
+          hp1 hps hs2 hm (by rw [hcast]; exact hcritical) hqeq
+          (by
+            unfold q2PhysicalMinkowskiKappaWithLoss
+            rw [hcast]
+            linarith [hgainReal])
+          phi psi hphiOne hphiZero hphiNorm hpsi
+      exact ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩
+    · subst hd2'
+      obtain ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩ :=
+        minkowski_t123_physical_crossed_planar_dyadic_rate_of_hasUpperMinkowskiExponent
+          (alpha := beta + m) (eta := m) (p := p) (q := q) (s := s)
+          hE hEne halpha hM hp1 hps hs2 hm
+          (by
+            have hone : ((2 : Nat) : Real) - 1 = 1 := by norm_num
+            nlinarith [hcritical])
+          hqeq
+          (by
+            unfold q2PhysicalMinkowskiKappaWithLoss
+            have hone : ((1 : Nat) : Real) = 1 := by norm_num
+            rw [hone]
+            have h2 : ((2 : Nat) : Real) = 2 := by norm_num
+            rw [h2] at hgainReal
+            linarith [hgainReal])
+          phi psi hphiOne hphiZero hphiNorm hpsi
+      exact ⟨C, rho, hC, hCtop, hrho0, hrho, hrate⟩
+  refine ⟨C, rho, hCtop, hrho, ?_⟩
+  intro j hj f
+  obtain ⟨hmem, hbound⟩ := hrate j hj f
+  exact ⟨hmem, by simpa only [mul_assoc] using hbound⟩
+
+set_option maxHeartbeats 1000000 in
+theorem q4_interior_band_rate_of_strict_lower_sector
+    {d : Nat} {E : Set Real} {gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hgamma : 0 ≤ gamma)
+    (hquasi : quasiAssouadDimension E = gamma)
+    {beta : Real} (hbeta : 0 ≤ beta) (hbeta_gamma : beta ≤ gamma)
+    (hgamma_one : gamma ≤ 1)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hcap : q < (d : Real) * p)
+    (hslope : p / (q * (p - 1)) <
+      (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma))
+    (phi psi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → Complex))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : Real) ^ (0 + 1))⁻¹ • eta) - phi (((2 : Real) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hDpos : (0 : Real) < (d : Real) := by linarith
+  have hp0 : 0 < p := by linarith
+  have hpm : 0 < p - 1 := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 ≤ q := by linarith
+  set A : Real := ((d : Real) - 1) / 2 with hAdef
+  set tm : Real := A / (A + gamma) with htmdef
+  have hApos : 0 < A := by rw [hAdef]; linarith
+  have hAg : 0 < A + gamma := by linarith
+  have htmpos : 0 < tm := by rw [htmdef]; exact div_pos hApos hAg
+  have htmone : tm ≤ 1 := by rw [htmdef, div_le_one hAg]; linarith
+  set ts : Real := p / (q * (p - 1)) with htsdef
+  have htspos : 0 < ts := by rw [htsdef]; positivity
+  have htsmax : ts < tm := hslope
+  have htsone : ts < 1 := lt_of_lt_of_le htsmax htmone
+  set kappa : Real := (d : Real) - q / p with hkdef
+  have hkpos : 0 < kappa := by
+    rw [hkdef, sub_pos, div_lt_iff₀ hp0]
+    linarith
+  have hkle : kappa < (d : Real) := by
+    rw [hkdef]
+    have : 0 < q / p := by positivity
+    linarith
+  set delta : Real := kappa / (4 * (d : Real)) with hddef
+  set eta : Real := kappa / 4 with hedef
+  have hdpos : 0 < delta := by rw [hddef]; positivity
+  have hepos : 0 < eta := by rw [hedef]; positivity
+  have hdhalf : delta < 1 / 2 := by
+    rw [hddef, div_lt_iff₀ (by positivity)]
+    linarith
+  set t1 : Real := ts * (1 - delta) with ht1def
+  set t0 : Real := (ts + tm) / 2 with ht0def
+  have ht1pos : 0 < t1 := by rw [ht1def]; nlinarith
+  have ht1ts : t1 < ts := by rw [ht1def]; nlinarith
+  have ht1one : t1 < 1 := lt_trans ht1ts htsone
+  have ht0pos : 0 < t0 := by rw [ht0def]; linarith
+  have ht0ts : ts < t0 := by rw [ht0def]; linarith
+  have ht0tm : t0 < tm := by rw [ht0def]; linarith
+  have ht0one : t0 < 1 := lt_of_lt_of_le ht0tm htmone
+  -- gap exponents
+  have hgap : ∀ t : Real, 0 < t → t < tm → q4GapExponent d gamma t < 0 := by
+    intro t htpos httm
+    unfold q4GapExponent
+    rw [htmdef, hAdef, lt_div_iff₀ hAg] at httm
+    nlinarith
+  -- output bracketing
+  have hout : ∀ t : Real, 0 < t →
+      q4LowerWeakOutputExponent p (2 / t) = p / (t * (p - 1)) := by
+    intro t htpos
+    unfold q4LowerWeakOutputExponent
+    field_simp
+  have hq0q : q4LowerWeakOutputExponent p (2 / t0) < q := by
+    rw [hout t0 ht0pos, div_lt_iff₀ (by positivity)]
+    rw [htsdef, div_lt_iff₀ (by positivity)] at ht0ts
+    nlinarith
+  have ht1val : t1 * (p - 1) = p * (1 - delta) / q := by
+    rw [ht1def, htsdef]
+    field_simp
+  have hqq1 : q < q4LowerWeakOutputExponent p (2 / t1) := by
+    rw [hout t1 ht1pos, lt_div_iff₀ (mul_pos ht1pos hpm), ht1val]
+    have hcancel : q * (p * (1 - delta) / q) = p * (1 - delta) := by
+      field_simp
+    rw [hcancel]
+    nlinarith
+  -- the net exponent
+  set S : Real := (1 / q) * (1 / (t1 * (p - 1)) - (d : Real) + eta) with hSdef
+  have hinv1 : 1 / (t1 * (p - 1)) = (q / p) / (1 - delta) := by
+    rw [ht1def, htsdef]
+    field_simp
+  have hSneg : S < 0 := by
+    rw [hSdef, hinv1]
+    have hbound : (q / p) / (1 - delta) < (d : Real) - eta := by
+      rw [div_lt_iff₀ (by linarith)]
+      have hqp : q / p = (d : Real) - kappa := by rw [hkdef]; ring
+      rw [hqp]
+      have hexpand : ((d : Real) - eta) * (1 - delta) =
+          (d : Real) - kappa / 2 + kappa ^ 2 / (16 * (d : Real)) := by
+        rw [hedef, hddef]
+        field_simp
+        ring
+      rw [hexpand]
+      have hpos : 0 < kappa ^ 2 / (16 * (d : Real)) := by positivity
+      linarith
+    have : 1 / q > 0 := by positivity
+    nlinarith
+  have hS0 : (2 / t0) * (q4FrequencyExponentWithSubpowerLoss d t0 eta / 2) +
+      q4LowerWeakTailExponent p (2 / t0) ≤ q * S := by
+    rw [q4_lower_net_exponent_eq hp1 ht0pos, hSdef]
+    have hqS : q * ((1 / q) * (1 / (t1 * (p - 1)) - (d : Real) + eta)) =
+        1 / (t1 * (p - 1)) - (d : Real) + eta := by
+      field_simp
+    rw [hqS]
+    have hmono : 1 / (t0 * (p - 1)) ≤ 1 / (t1 * (p - 1)) := by
+      apply one_div_le_one_div_of_le (by positivity)
+      nlinarith
+    linarith
+  have hS1 : (2 / t1) * (q4FrequencyExponentWithSubpowerLoss d t1 eta / 2) +
+      q4LowerWeakTailExponent p (2 / t1) ≤ q * S := by
+    rw [q4_lower_net_exponent_eq hp1 ht1pos, hSdef]
+    have hqS : q * ((1 / q) * (1 / (t1 * (p - 1)) - (d : Real) + eta)) =
+        1 / (t1 * (p - 1)) - (d : Real) + eta := by
+      field_simp
+    rw [hqS]
+  obtain ⟨Ccover, hCcover, hcov⟩ :=
+    exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi hepos
+  obtain ⟨C, hC, hrate⟩ :=
+    exists_q4_lower_sector_explicit_dyadic_rate hd hE hEne hgamma hepos.le
+      hCcover.le hcov phi hphiOne hphiZero hphiNorm hphiRadial hp1 hp2 hq0
+      ht0pos ht0one ht1pos ht1one (hgap t0 ht0pos ht0tm) (hgap t1 ht1pos
+        (lt_trans ht1ts htsmax)) hq0q hqq1 hS0 hS1
+  refine ⟨_, _, hC, ?_, hrate⟩
+  refine ENNReal.ofReal_lt_one.mpr ?_
+  exact Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) hSneg
+
+set_option maxHeartbeats 4000000 in
+theorem q4_interior_band_rate_of_loss_gain
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hbeta : 0 ≤ beta) (hgamma : 0 < gamma) (hgamma_one : gamma ≤ 1)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hquasi : quasiAssouadDimension E = gamma)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hsum : p / (p - 1) < q)
+    (hQ3 : p / (p - 1) < (d : Real) + 1 - beta)
+    (hbalance : (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + gamma) *
+      (1 - 1 / p) ≤ 1 / q)
+    (hcluster : 0 < clusterEdgeFunctional d (beta / gamma) beta (1 / p, 1 / q))
+    (phi psi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → Complex))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : Real) ^ (0 + 1))⁻¹ • eta) - phi (((2 : Real) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, _⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hDpos : (0 : Real) < (d : Real) := by linarith
+  have hp0 : 0 < p := by linarith
+  have hpm : 0 < p - 1 := by linarith
+  have hq0 : 0 < q := by linarith
+  have hq1 : 1 < q := by linarith
+  set w : Real := 1 - 1 / p with hwdef
+  set y : Real := 1 / q with hydef
+  have hwpos : 0 < w := by
+    rw [hwdef, sub_pos, div_lt_one hp0]
+    linarith
+  have hwone : w < 1 := by
+    rw [hwdef]
+    have : 0 < 1 / p := by positivity
+    linarith
+  have hypos : 0 < y := by rw [hydef]; positivity
+  have hyone : y < 1 := by
+    rw [hydef, div_lt_one hq0]
+    linarith
+  have hwy : y < w := by
+    rw [hydef, hwdef]
+    have hconj : 1 - 1 / p = (p - 1) / p := by field_simp
+    rw [hconj, div_lt_div_iff₀ hq0 hp0]
+    have := (div_lt_iff₀ hpm).mp hsum
+    linarith
+  set A : Real := ((d : Real) - 1) / 2 with hAdef
+  have hApos : 0 < A := by rw [hAdef]; linarith
+  have hAg : 0 < A + gamma := by linarith
+  set tm : Real := A / (A + gamma) with htmdef
+  have htmpos : 0 < tm := by rw [htmdef]; exact div_pos hApos hAg
+  have htmone : tm ≤ 1 := by rw [htmdef, div_le_one hAg]; linarith
+  have hbal : tm * w ≤ y := by rw [htmdef, hAdef, hwdef, hydef] at *; exact hbalance
+  set c : Real := clusterEdgeFunctional d (beta / gamma) beta (1 - w, y) with hcdef
+  have hcpos : 0 < c := by
+    rw [hcdef]
+    have hx : (1 : Real) - w = 1 / p := by rw [hwdef]; ring
+    rw [hx]
+    exact hcluster
+  set P : Real := w * gamma * c / (A + gamma) with hPdef
+  have hPpos : 0 < P := by
+    rw [hPdef]
+    exact div_pos (mul_pos (mul_pos hwpos hgamma) hcpos) hAg
+  -- the small parameters
+  set slack3 : Real := ((d : Real) + 1 - beta) * w - 1 with hs3def
+  have hslack3 : 0 < slack3 := by
+    rw [hs3def, sub_pos]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    have hQ3' : p < ((d : Real) + 1 - beta) * (p - 1) := (div_lt_iff₀ hpm).mp hQ3
+    rw [hwv, ← mul_div_assoc, lt_div_iff₀ hp0]
+    linarith
+  set eps : Real := min (P / 8) (slack3 / 2) with hepsdef
+  set eta : Real := P / 8 with hetadef
+  set rho : Real := min (tm / 6) (P * tm / (24 * (1 + (d : Real)))) with hrhodef
+  have hepspos : 0 < eps := by
+    rw [hepsdef]
+    exact lt_min (by positivity) (by positivity)
+  have hetapos : 0 < eta := by rw [hetadef]; positivity
+  have hrhopos : 0 < rho := by
+    rw [hrhodef]
+    exact lt_min (by positivity) (by positivity)
+  have hepsP : eps ≤ P / 8 := by rw [hepsdef]; exact min_le_left _ _
+  have hepsS : eps ≤ slack3 / 2 := by rw [hepsdef]; exact min_le_right _ _
+  have hrhotm : rho ≤ tm / 6 := by rw [hrhodef]; exact min_le_left _ _
+  have hrhoP : rho ≤ P * tm / (24 * (1 + (d : Real))) := by
+    rw [hrhodef]; exact min_le_right _ _
+  -- shell parameters
+  set t0 : Real := tm - rho with ht0def
+  set t1 : Real := tm - 3 * rho with ht1def
+  set u : Real := (tm - 2 * rho) * w with hudef
+  have ht1pos : 0 < t1 := by rw [ht1def]; linarith
+  have ht1t0 : t1 < t0 := by rw [ht1def, ht0def]; linarith
+  have ht0tm : t0 < tm := by rw [ht0def]; linarith
+  have ht0pos : 0 < t0 := lt_trans ht1pos ht1t0
+  have ht0one : t0 < 1 := lt_of_lt_of_le ht0tm htmone
+  have ht1one : t1 < 1 := lt_trans ht1t0 ht0one
+  have ht1tm : t1 < tm := lt_trans ht1t0 ht0tm
+  have hupos : 0 < u := by
+    rw [hudef]
+    apply mul_pos _ hwpos
+    linarith
+  have huy : u < y := by
+    rw [hudef]
+    have : (tm - 2 * rho) * w < tm * w := by nlinarith
+    linarith
+  have hut1 : t1 * w < u := by rw [hudef, ht1def]; nlinarith
+  have hut0 : u < t0 * w := by rw [hudef, ht0def]; nlinarith
+  -- gap exponents
+  have hgap : ∀ t : Real, t < tm → q4GapExponent d gamma t < 0 := by
+    intro t httm
+    unfold q4GapExponent
+    rw [htmdef, hAdef, lt_div_iff₀ hAg] at httm
+    nlinarith
+  have hout : ∀ t : Real, 0 < t →
+      q4LowerWeakOutputExponent p (2 / t) = p / (t * (p - 1)) := by
+    intro t htpos
+    unfold q4LowerWeakOutputExponent
+    field_simp
+  have hinvw : ∀ t : Real, 0 < t → 1 / (t * (p - 1)) = (1 - w) / (t * w) := by
+    intro t htpos
+    have hx : (1 : Real) - w = 1 / p := by rw [hwdef]; ring
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    rw [hx, hwv]
+    field_simp
+  -- the below rate at output 1 / u
+  set S : Real := u * (1 / (t1 * (p - 1)) - (d : Real) + eta) with hSdef
+  clear_value S u t1 t0 rho eta eps slack3 P c tm A y w
+  have hq0q : q4LowerWeakOutputExponent p (2 / t0) < 1 / u := by
+    rw [hout t0 ht0pos, div_lt_div_iff₀ (mul_pos ht0pos hpm) hupos]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    rw [hwv, ← mul_div_assoc, lt_div_iff₀ hp0] at hut0
+    linarith
+  have hqq1 : (1 : Real) / u < q4LowerWeakOutputExponent p (2 / t1) := by
+    rw [hout t1 ht1pos, div_lt_div_iff₀ hupos (mul_pos ht1pos hpm)]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    rw [hwv, ← mul_div_assoc, div_lt_iff₀ hp0] at hut1
+    linarith
+  have hSbound : ∀ t : Real, 0 < t → t1 ≤ t →
+      (2 / t) * (q4FrequencyExponentWithSubpowerLoss d t eta / 2) +
+        q4LowerWeakTailExponent p (2 / t) ≤ (1 / u) * S := by
+    intro t htpos ht1t
+    rw [q4_lower_net_exponent_eq hp1 htpos, hSdef]
+    have hqS : (1 / u) * (u * (1 / (t1 * (p - 1)) - (d : Real) + eta)) =
+        1 / (t1 * (p - 1)) - (d : Real) + eta := by
+      field_simp
+    rw [hqS]
+    have hmono : 1 / (t * (p - 1)) ≤ 1 / (t1 * (p - 1)) := by
+      apply one_div_le_one_div_of_le (mul_pos ht1pos hpm)
+      nlinarith
+    linarith
+  obtain ⟨Ccover, hCcover, hcov⟩ :=
+    exists_hasSubpowerAssouadCoverBound_of_quasiAssouadDimension_eq hE hquasi hetapos
+  obtain ⟨C1, hC1, hrate1⟩ :=
+    exists_q4_lower_sector_explicit_dyadic_rate hd hE hEne hgamma.le hetapos.le
+      hCcover.le hcov phi hphiOne hphiZero hphiNorm hphiRadial hp1 hp2
+      (one_div_pos.mpr hupos)
+      ht0pos ht0one ht1pos ht1one (hgap t0 ht0tm) (hgap t1 ht1tm) hq0q hqq1
+      (hSbound t0 ht0pos (le_of_lt ht1t0)) (hSbound t1 ht1pos le_rfl)
+  -- the above rate: the physical Q3 estimate at the dual output exponent
+  have hQ3strict : p / (p - 1) < ((d - 1 : Nat) : Real) + 2 - (beta + eps) := by
+    have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
+    rw [hcast]
+    have hwv : w = (p - 1) / p := by rw [hwdef]; field_simp
+    have hkey : 1 < ((d : Real) + 1 - beta - eps) * w := by
+      rw [hs3def] at hslack3 hepsS
+      nlinarith [hwone, hwpos, hepspos]
+    rw [hwv, ← mul_div_assoc, lt_div_iff₀ hp0] at hkey
+    rw [div_lt_iff₀ hpm]
+    linarith
+  obtain ⟨C0, rho0, hC0pos, hC0, hrho0, hrho0eq, hrate0⟩ :
+      ∃ C rho : ENNReal, 0 < C ∧ C < ⊤ ∧ rho < 1 ∧
+        rho = ENNReal.ofReal
+          (q3PhysicalMinkowskiRatio (d - 1) (beta + eps) (p / (p - 1))) ∧
+        ∀ j : Nat, 1 ≤ j →
+          ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+            MemLp (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal (p / (p - 1))) volume ∧
+            eLpNorm (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal (p / (p - 1))) volume ≤
+              C * rho ^ j *
+                eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                  (ENNReal.ofReal p) volume := by
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+      have hQ3s : p / (p - 1) < ((n : Nat) : Real) + 2 - (beta + eps) := by
+        simpa only [Nat.add_sub_cancel] using hQ3strict
+      exact q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        (n := n) (by omega) hE hEne hMinkowski hepspos hp1 hp2 rfl hQ3s
+        phi psi hphiOne hphiZero hphiNorm hpsi
+    · subst hd2'
+      have hQ3s : p / (p - 1) < 3 - (beta + eps) := by
+        have h := hQ3strict
+        norm_num at h
+        linarith
+      exact circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        hE hEne hMinkowski hepspos hp1 hp2 rfl hQ3s
+        phi psi hphiOne hphiZero hphiNorm hpsi
+  have hrate0' : ∀ j : Nat, 1 ≤ j →
+      ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+        eLpNorm (fractalDyadicBandpassMaximal d E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal (p / (p - 1))) volume ≤
+          C0 * rho0 ^ j *
+            eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+              (ENNReal.ofReal p) volume := by
+    intro j hj f
+    exact (hrate0 j hj f).2
+  -- interpolation weight
+  set lam : Real := (y - u) / (w - u) with hlamdef
+  clear_value lam
+  have hwu : 0 < w - u := by linarith
+  have hlam0 : 0 < lam := by rw [hlamdef]; exact div_pos (by linarith) hwu
+  have hlam1 : lam < 1 := by
+    rw [hlamdef, div_lt_one hwu]
+    linarith
+  have hexp : 1 / q = lam / (p / (p - 1)) + (1 - lam) / (1 / u) := by
+    have hdual : p / (p - 1) = 1 / w := by
+      rw [hwdef]
+      field_simp
+    have hwne : w ≠ 0 := hwpos.ne'
+    have hune : u ≠ 0 := hupos.ne'
+    have hwune : w - u ≠ 0 := hwu.ne'
+    have hkey : lam / (1 / w) + (1 - lam) / (1 / u) = y := by
+      rw [hlamdef]
+      field_simp
+      ring
+    rw [hdual, hkey, hydef]
+  -- the two explicit frequency exponents
+  set e3 : Real := q3PhysicalMinkowskiExponent (d - 1) (beta + eps) (p / (p - 1))
+    with he3def
+  clear_value e3
+  have he3val : e3 = 1 - ((d : Real) + 1 - beta - eps) * w := by
+    rw [he3def]
+    unfold q3PhysicalMinkowskiExponent
+    have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
+    have hdual : ((d : Real) + 1 - beta - eps) * w =
+        (((d : Real) - 1) + 2 - (beta + eps)) / (p / (p - 1)) := by
+      have hw : w = (p - 1) / p := by rw [hwdef]; field_simp
+      rw [hw]
+      field_simp
+      ring
+    rw [hcast, hdual]
+  have he3neg : e3 < 0 := by
+    rw [he3val, hs3def] at *
+    nlinarith [hslack3, hepsS, hwone, hwpos]
+  have hrho0val : rho0 = ENNReal.ofReal ((2 : Real) ^ e3) := by
+    rw [hrho0eq, he3def]
+    unfold q3PhysicalMinkowskiRatio
+    rfl
+  -- the arithmetic core
+  have hSform : S = (1 - w) * (tm - 2 * rho) / (tm - 3 * rho) -
+      (d : Real) * ((tm - 2 * rho) * w) + eta * ((tm - 2 * rho) * w) := by
+    rw [hSdef, hinvw t1 ht1pos, hudef, ht1def]
+    have hw0 : w ≠ 0 := hwpos.ne'
+    have ht0' : tm - 3 * rho ≠ 0 := by
+      have : 0 < tm - 3 * rho := by rw [ht1def] at ht1pos; linarith
+      exact this.ne'
+    field_simp
+  have htm3 : tm / 2 ≤ tm - 3 * rho := by linarith
+  have hSle : S ≤ ((1 - w) - (d : Real) * tm * w) +
+      (2 * rho / tm + 2 * (d : Real) * rho + eta) := by
+    rw [hSform]
+    have h1 : (tm - 2 * rho) / (tm - 3 * rho) ≤ 1 + 2 * rho / tm := by
+      rw [div_le_iff₀ (by linarith)]
+      have hexp2 : (1 + 2 * rho / tm) * (tm - 3 * rho) =
+          tm - 3 * rho + 2 * rho - 6 * rho * rho / tm := by
+        field_simp
+        ring
+      rw [hexp2]
+      have : 0 ≤ 6 * rho * rho / tm :=
+        div_nonneg (by nlinarith [hrhopos]) htmpos.le
+      have h6 : 6 * rho * rho / tm ≤ rho := by
+        rw [div_le_iff₀ htmpos]
+        nlinarith
+      linarith
+    have h2 : (1 - w) * ((tm - 2 * rho) / (tm - 3 * rho)) ≤
+        (1 - w) * (1 + 2 * rho / tm) := by
+      apply mul_le_mul_of_nonneg_left h1 (by linarith)
+    have h3 : (1 - w) * (1 + 2 * rho / tm) ≤ (1 - w) + 2 * rho / tm := by
+      have hr : 0 ≤ 2 * rho / tm := div_nonneg (by linarith) htmpos.le
+      nlinarith
+    have h4 : (1 - w) * (tm - 2 * rho) / (tm - 3 * rho) =
+        (1 - w) * ((tm - 2 * rho) / (tm - 3 * rho)) := by
+      rw [mul_div_assoc]
+    have h5 : -((d : Real) * ((tm - 2 * rho) * w)) ≤
+        -((d : Real) * tm * w) + 2 * (d : Real) * rho := by
+      have hkey : 0 ≤ (d : Real) * rho * (1 - w) :=
+        mul_nonneg (mul_nonneg hDpos.le hrhopos.le) (by linarith)
+      have : (d : Real) * ((tm - 2 * rho) * w) ≥ (d : Real) * tm * w
+          - 2 * (d : Real) * rho := by
+        nlinarith [hkey]
+      linarith
+    have h6 : eta * ((tm - 2 * rho) * w) ≤ eta := by
+      have hle : (tm - 2 * rho) * w ≤ 1 := by nlinarith
+      nlinarith [hetapos]
+    rw [h4]
+    linarith
+  have hyu : y - u = (y - tm * w) + 2 * rho * w := by
+    rw [hudef]; ring
+  have hyutm : 0 ≤ y - tm * w := by linarith
+  have htmw : 0 ≤ tm * w := (mul_pos htmpos hwpos).le
+  have hstep1 : (y - u) * e3 ≤ (y - tm * w) * e3 := by
+    rw [hyu]
+    have h1 : 0 < 2 * rho * w := mul_pos (by linarith only [hrhopos]) hwpos
+    have hneg := mul_nonneg h1.le (neg_nonneg.mpr he3neg.le)
+    linarith only [hneg]
+  have hstep2 : (y - tm * w) * e3 ≤
+      (y - tm * w) * (1 - ((d : Real) + 1 - beta) * w) + eps := by
+    rw [he3val]
+    have hA2 : y - tm * w ≤ 1 := by linarith only [hyone, htmw]
+    have hA3 : (0 : Real) ≤ eps * w := (mul_pos hepspos hwpos).le
+    have hA4 : eps * w ≤ eps := by
+      have := mul_nonneg hepspos.le (by linarith only [hwone] : (0 : Real) ≤ 1 - w)
+      linarith only [this]
+    have hle : (y - tm * w) * (eps * w) ≤ eps := by
+      calc (y - tm * w) * (eps * w) ≤ 1 * (eps * w) :=
+            mul_le_mul_of_nonneg_right hA2 hA3
+        _ = eps * w := one_mul _
+        _ ≤ eps := hA4
+    linarith only [hle]
+  have hstep3 : (w - y) * S ≤
+      (w - y) * ((1 - w) - (d : Real) * tm * w) +
+        (2 * rho / tm + 2 * (d : Real) * rho + eta) := by
+    have hwy0 : 0 < w - y := by linarith only [hwy]
+    have hwy1 : w - y ≤ 1 := by linarith only [hwone, hypos]
+    have hpert : 0 ≤ 2 * rho / tm + 2 * (d : Real) * rho + eta :=
+      add_nonneg (add_nonneg (div_nonneg (by linarith only [hrhopos]) htmpos.le)
+        ((mul_nonneg (by linarith only [hDpos]) hrhopos.le))) hetapos.le
+    have hmain := mul_le_mul_of_nonneg_left hSle hwy0.le
+    have hshrink :
+        (w - y) * (2 * rho / tm + 2 * (d : Real) * rho + eta) ≤
+          2 * rho / tm + 2 * (d : Real) * rho + eta := by
+      have := mul_nonneg (by linarith only [hwy1] : (0 : Real) ≤ 1 - (w - y)) hpert
+      linarith only [this]
+    linarith only [hmain, hshrink]
+  have hidentP : (y - tm * w) * (1 - ((d : Real) + 1 - beta) * w) +
+      (w - y) * ((1 - w) - (d : Real) * tm * w) = -P := by
+    have hident := q4_lower_loss_gain_identity (d := d) (beta := beta)
+      (gamma := gamma) (w := w) (y := y) hgamma (by rw [← hAdef]; exact hAg)
+    rw [← hAdef, ← htmdef] at hident
+    rw [hident, hPdef, hcdef, neg_div]
+  have hsmall : eps + (2 * rho / tm + 2 * (d : Real) * rho + eta) < P := by
+    have hden : (0 : Real) < 24 * (1 + (d : Real)) := by positivity
+    have hbase : rho * (24 * (1 + (d : Real))) ≤ P * tm := by
+      have h := hrhoP
+      rw [le_div_iff₀ hden] at h
+      exact h
+    have h1 : 2 * rho / tm ≤ P / 12 := by
+      rw [div_le_div_iff₀ htmpos (by norm_num)]
+      have hpos : (0 : Real) ≤ 24 * rho * (d : Real) :=
+        mul_nonneg (by linarith only [hrhopos]) hDpos.le
+      linarith only [hbase, hpos]
+    have h2 : 2 * (d : Real) * rho ≤ P / 12 := by
+      rw [le_div_iff₀ (by norm_num : (0 : Real) < 12)]
+      have hPtm : P * tm ≤ P := mul_le_of_le_one_right hPpos.le htmone
+      have hr : (0 : Real) ≤ 24 * rho := by linarith only [hrhopos]
+      linarith only [hbase, hPtm, hr]
+    have h3 : eta = P / 8 := hetadef
+    linarith only [hepsP, h1, h2, h3, hPpos]
+  have hfinal : (y - u) * e3 + (w - y) * S < 0 := by
+    linarith only [hstep1, hstep2, hstep3, hidentP, hsmall]
+  -- assemble the two rates
+  obtain ⟨Cfin, hfin⟩ :
+      ∃ Cfin : ENNReal, Cfin < ⊤ ∧ True := ⟨(C0 ^ lam * C1 ^ (1 - lam)), by
+        exact ⟨ENNReal.mul_lt_top
+          (ENNReal.rpow_lt_top_of_nonneg hlam0.le hC0.ne)
+          (ENNReal.rpow_lt_top_of_nonneg (by linarith) hC1.ne), trivial⟩⟩
+  have hratio : (rho0 ^ lam * (ENNReal.ofReal ((2 : Real) ^ S)) ^ (1 - lam)) < 1 := by
+    rw [hrho0val, ofReal_two_rpow_rpow e3 lam, ofReal_two_rpow_rpow S (1 - lam),
+      ← ENNReal.ofReal_mul (by positivity), ← Real.rpow_add (by norm_num)]
+    refine ENNReal.ofReal_lt_one.mpr ?_
+    refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+    have hwu' : 0 < w - u := hwu
+    have hwune : w - u ≠ 0 := hwu.ne'
+    have hlamval : e3 * lam + S * (1 - lam) =
+        ((y - u) * e3 + (w - y) * S) / (w - u) := by
+      rw [hlamdef]
+      field_simp
+      ring
+    rw [hlamval]
+    exact div_neg_of_neg_of_pos hfinal hwu'
+  have hinterp := memLp_and_eLpNorm_schwartz_of_weighted_output_dyadic_rates
+    (d := d)
+    (fun j g => fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g)
+    (fun j g => (measurable_fractalDyadicBandpassMaximal E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable)
+    (p := p) (q0 := p / (p - 1)) (q := q) (q1 := 1 / u) (lam := lam)
+    (by positivity) (by positivity) hq0 hlam0 hlam1 hexp
+    hC0 hC1 (lt_of_lt_of_le hrho0 le_top) ENNReal.ofReal_lt_top
+    hrate0' (fun j hj f => (hrate1 j hj f).2)
+  exact ⟨_, _,
+    ENNReal.mul_lt_top
+      (ENNReal.rpow_lt_top_of_nonneg hlam0.le hC0.ne)
+      (ENNReal.rpow_lt_top_of_nonneg (by linarith) hC1.ne),
+    hratio, hinterp⟩
+
+set_option maxHeartbeats 1000000 in
+theorem q4_interior_band_rate_of_conjugate_output
+    {d : Nat} {E : Set Real} {beta gamma p q : Real}
+    (hd : 3 ≤ d ∨ d = 2 ∧ gamma ≤ 1 / 2)
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hMinkowski : upperMinkowskiDimension E = beta)
+    (hp1 : 1 < p) (hp2 : p < 2) (hpq : p < q)
+    (hqeq : q = p / (p - 1))
+    (hQ3 : q < (d : Real) + 1 - beta)
+    (phi psi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → Complex))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : Real) ^ (0 + 1))⁻¹ • eta) - phi (((2 : Real) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, -⟩ <;> omega
+  have hq1 : (1 : Real) ≤ q := by linarith
+  set eps : Real := ((d : Real) + 1 - beta - q) / 2 with hepsdef
+  have hepspos : 0 < eps := by rw [hepsdef]; linarith
+  have hstrict : q < ((d - 1 : Nat) : Real) + 2 - (beta + eps) := by
+    have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one]
+    rw [hcast, hepsdef]
+    linarith
+  obtain ⟨C, rho, hCpos, hCtop, hrho, hrhoeq, hrate⟩ :
+      ∃ C rho : ENNReal, 0 < C ∧ C < ⊤ ∧ rho < 1 ∧
+        rho = ENNReal.ofReal
+          (q3PhysicalMinkowskiRatio (d - 1) (beta + eps) q) ∧
+        ∀ j : Nat, 1 ≤ j →
+          ∀ f : SchwartzMap (SurfaceCore.Euclidean d) Complex,
+            MemLp (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal q) volume ∧
+            eLpNorm (fractalDyadicBandpassMaximal d E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+              (ENNReal.ofReal q) volume ≤
+              C * rho ^ j *
+                eLpNorm (f : SurfaceCore.Euclidean d → Complex)
+                  (ENNReal.ofReal p) volume := by
+    rcases hd with hd3 | ⟨hd2', hgh⟩
+    · obtain ⟨n, rfl⟩ : ∃ n : Nat, d = n + 1 := ⟨d - 1, by omega⟩
+      have hs : q < ((n : Nat) : Real) + 2 - (beta + eps) := by
+        simpa only [Nat.add_sub_cancel] using hstrict
+      exact q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        (n := n) (by omega) hE hEne hMinkowski hepspos hp1 hp2 hqeq hs
+        phi psi hphiOne hphiZero hphiNorm hpsi
+    · subst hd2'
+      have hs : q < 3 - (beta + eps) := by
+        have h := hstrict
+        norm_num at h
+        linarith
+      exact circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
+        hE hEne hMinkowski hepspos hp1 hp2 hqeq hs
+        phi psi hphiOne hphiZero hphiNorm hpsi
+  exact ⟨C, rho, hCtop, hrho, hrate⟩
+
+/-! ### The empty radius set -/
+
+theorem hasAbsoluteBandRate_empty {d : Nat} (phi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0) (p q : Real) :
+    HasAbsoluteBandRate (∅ : Set Real) phi hphiOne hphiZero p q := by
+  refine ⟨1, 1 / 2, by norm_num, by norm_num, fun j hj f => ?_⟩
+  have hzero : fractalDyadicBandpassMaximal d (∅ : Set Real)
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f = fun _ => 0 := by
+    funext x
+    rw [fractalDyadicBandpassMaximal, fractalSphericalMaximalReal,
+      fractalSphericalMaximal_empty]
+    simp
+  rw [hzero]
+  refine ⟨?_, ?_⟩
+  · exact ⟨aestronglyMeasurable_const, by simp⟩
+  · simp
+
+/-! ### The band-rate dispatcher for the repository skeleton -/
+
+set_option maxHeartbeats 1000000 in
+theorem band_rate_of_mem_interior_Q_of_skeleton
+    {d : ℕ} {β γ p q : ℝ}
+    (hd : 3 ≤ d ∨ d = 2 ∧ γ ≤ 1 / 2)
+    (E : Set ℝ) (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hβγ : 0 ≤ β ∧ β ≤ γ ∧ γ ≤ 1)
+    (hMinkowski : upperMinkowskiDimension E = β)
+    (hquasiAssouad : quasiAssouadDimension E = γ)
+    (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ interior (Q d β γ))
+    (phi psi : SchwartzMap (Euclidean d) Complex)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → Complex))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : Real) ^ (0 + 1))⁻¹ • eta) - phi (((2 : Real) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  rcases Set.eq_empty_or_nonempty E with rfl | hEne
+  · exact hasAbsoluteBandRate_empty phi hphiOne hphiZero p q
+  obtain ⟨hbeta, hbeta_gamma, hgamma_one⟩ := hβγ
+  have hgamma : (0 : Real) ≤ γ := hbeta.trans hbeta_gamma
+  have hbeta_one : β ≤ 1 := hbeta_gamma.trans hgamma_one
+  have hd2 : 2 ≤ d := by rcases hd with h | ⟨h, -⟩ <;> omega
+  have hD : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd2
+  have hp1 : 1 < p :=
+    one_lt_inputExponent_of_mem_interior_Q hd2 hbeta hbeta_one hbeta_gamma hp
+      hregion
+  have hpq : p < q :=
+    inputExponent_lt_outputExponent_of_mem_interior_Q hd2 hbeta_one hgamma hp hq
+      hregion
+  have hq0 : (0 : Real) < q := by linarith
+  have hpm : (0 : Real) < p - 1 := by linarith
+  have hw : (0 : Real) < 1 - 1 / p := by
+    rw [sub_pos, div_lt_one hp]
+    linarith
+  have hcrit : β < ((d : Real) - 1) * (p - 1) :=
+    minkowski_critical_of_mem_interior_Q hd2 hbeta hbeta_one hbeta_gamma
+      hgamma_one hp hregion
+  have hcap : q < (d : Real) * p := by
+    have h := strict_first_lt_natCast_mul_second_of_mem_interior_Q
+      (x := reciprocalExponentPoint p q) hd2 hbeta hbeta_one hgamma hregion
+    change p⁻¹ < (d : Real) * q⁻¹ at h
+    have hpqpos : (0 : Real) < p * q := mul_pos hp hq0
+    have h2 := mul_lt_mul_of_pos_right h hpqpos
+    rw [show p⁻¹ * (p * q) = q by field_simp,
+      show (d : Real) * q⁻¹ * (p * q) = (d : Real) * p by field_simp] at h2
+    exact h2
+  have hannulus :
+      (d : Real) * (1 / p) < (1 - β) * (1 / q) + ((d : Real) - 1) := by
+    have h := strict_annulus_of_mem_interior_Q
+      (x := reciprocalExponentPoint p q) hd2 hbeta hbeta_gamma hbeta_one hregion
+    change (d : Real) * p⁻¹ < (1 - β) * q⁻¹ + ((d : Real) - 1) at h
+    simpa only [one_div] using h
+  have hcluster : 0 < clusterEdgeFunctional d (β / γ) β (1 / p, 1 / q) := by
+    have h := strict_clusterEdgeFunctional_of_mem_interior_Q
+      (x := reciprocalExponentPoint p q) hd2 hbeta hbeta_one hbeta_gamma hregion
+    simpa only [reciprocalExponentPoint, one_div] using h
+  by_cases hp2 : 2 ≤ p
+  · exact q4_interior_band_rate_of_two_le_input hd hE hEne hbeta hgamma
+      hgamma_one hbeta_gamma hMinkowski hquasiAssouad hp2 hpq hcap hcrit phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+  push_neg at hp2
+  rcases lt_trichotomy q (p / (p - 1)) with hlt | heq | hgt
+  · exact q4_interior_band_rate_of_sum_gt_one hd hE hEne hbeta hMinkowski
+      hp1 hp2 hpq hlt hannulus hcrit phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+  · have hxq : 1 / q = 1 - 1 / p := by
+      rw [heq]
+      field_simp
+    have hxbound : (1 / p) * ((d : Real) + 1 - β) < (d : Real) - β := by
+      rw [hxq] at hannulus
+      nlinarith [hannulus]
+    have hQ3 : q < (d : Real) + 1 - β := by
+      have hval : q = 1 / (1 - 1 / p) := by
+        have h1 : (1 : Real) - 1 / p = (p - 1) / p := by field_simp
+        rw [h1, one_div_div, heq]
+      rw [hval, div_lt_iff₀ hw]
+      nlinarith [hxbound]
+    exact q4_interior_band_rate_of_conjugate_output (gamma := γ) hd hE hEne
+      hMinkowski hp1 hp2 hpq heq hQ3 phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+  · by_cases hslope :
+        p / (q * (p - 1)) <
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ)
+    · exact q4_interior_band_rate_of_strict_lower_sector hd hE hEne hgamma
+        hquasiAssouad hbeta hbeta_gamma hgamma_one hp1 hp2 hpq hcap hslope phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+    · push_neg at hslope
+      have hApos : (0 : Real) < ((d : Real) - 1) / 2 := by linarith
+      have hAg : (0 : Real) < ((d : Real) - 1) / 2 + γ := by linarith
+      have hratio : p / (q * (p - 1)) = (1 / q) / (1 - 1 / p) := by
+        field_simp
+      rw [hratio] at hslope
+      have hbalance :
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ) *
+            (1 - 1 / p) ≤ 1 / q := (le_div_iff₀ hw).mp hslope
+      have hywlt : 1 / q < 1 - 1 / p := by
+        have h1 : (1 : Real) - 1 / p = (p - 1) / p := by field_simp
+        rw [h1, div_lt_div_iff₀ hq0 hp]
+        have h2 : p < q * (p - 1) := (div_lt_iff₀ hpm).mp hgt
+        linarith
+      have htmone :
+          (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ) < 1 := by
+        have hlt :
+            (((d : Real) - 1) / 2) / ((((d : Real) - 1) / 2) + γ) *
+              (1 - 1 / p) < 1 * (1 - 1 / p) := by
+          rw [one_mul]
+          exact lt_of_le_of_lt hbalance hywlt
+        exact lt_of_mul_lt_mul_right hlt hw.le
+      have hgammapos : (0 : Real) < γ := by
+        rw [div_lt_one hAg] at htmone
+        linarith
+      have hxbound : (1 / p) * ((d : Real) + 1 - β) < (d : Real) - β := by
+        have hle : (1 - β) * (1 / q) ≤ (1 - β) * (1 - 1 / p) :=
+          mul_le_mul_of_nonneg_left hywlt.le (by linarith)
+        nlinarith [hannulus, hle]
+      have hQ3 : p / (p - 1) < (d : Real) + 1 - β := by
+        have hval : p / (p - 1) = 1 / (1 - 1 / p) := by
+          have h1 : (1 : Real) - 1 / p = (p - 1) / p := by field_simp
+          rw [h1, one_div_div]
+        rw [hval, div_lt_iff₀ hw]
+        nlinarith [hxbound]
+      exact q4_interior_band_rate_of_loss_gain hd hE hEne hbeta hgammapos
+        hgamma_one hMinkowski hquasiAssouad hp1 hp2 hpq hgt hQ3 hbalance hcluster phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+
+/-! ### From the planar dyadic rate to the band rate -/
+
+theorem hasAbsoluteBandRate_of_hasDyRate
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (phi : SchwartzMap Pl ℂ)
+    (hphiOne : ∀ xi : Pl, ‖xi‖ ≤ 1 → (phi : Pl → ℂ) xi = 1)
+    (hphiZero : ∀ xi : Pl, 2 ≤ ‖xi‖ → (phi : Pl → ℂ) xi = 0)
+    (hphiNorm : ∀ xi : Pl, ‖(phi : Pl → ℂ) xi‖ ≤ 1)
+    {a b : ℝ} (hbpos : 0 < b) (hba : b < a) (ha1 : a < 1) (hb1 : b ≤ 1)
+    (hrate : HasDyRate (E := E) phi hphiOne hphiZero a b) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero (1 / a) (1 / b) := by
+  obtain ⟨C, rho, hC, hrho, hrho1, hbound⟩ := hrate
+  have hapos : 0 < a := lt_trans hbpos hba
+  refine ⟨ENNReal.ofReal C, ENNReal.ofReal rho, ENNReal.ofReal_lt_top, ?_, ?_⟩
+  · rw [← ENNReal.ofReal_one]
+    exact (ENNReal.ofReal_lt_ofReal_iff (by norm_num)).mpr hrho1
+  intro j hj f
+  have h := hbound j hj f
+  have hconv : ENNReal.ofReal (C * rho ^ j)
+      = ENNReal.ofReal C * ENNReal.ofReal rho ^ j := by
+    rw [ENNReal.ofReal_mul hC.le, ← ENNReal.ofReal_pow hrho.le]
+  rw [hconv] at h
+  refine ⟨?_, h⟩
+  refine ⟨(measurable_fractalDyadicBandpassMaximal E
+    (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable, ?_⟩
+  refine lt_of_le_of_lt h ?_
+  exact ENNReal.mul_lt_top
+    (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (ENNReal.pow_lt_top ENNReal.ofReal_lt_top))
+    (f.memLp (ENNReal.ofReal (1 / a)) volume).2
+
+/-! ### The planar band rate above the conjugate line -/
+
+theorem bandRate_planar_sum_ge_one
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    {beta : ℝ} (hbeta : 0 ≤ beta)
+    (hMink : upperMinkowskiDimension E = beta)
+    {a b : ℝ} (hbpos : 0 < b) (hba : b < a) (ha1 : a < 1) (hsum : 1 ≤ a + b)
+    (hann : 2 * a < (1 - beta) * b + 1)
+    (phi psi : SchwartzMap Pl ℂ)
+    (hphiOne : ∀ xi : Pl, ‖xi‖ ≤ 1 → (phi : Pl → ℂ) xi = 1)
+    (hphiZero : ∀ xi : Pl, 2 ≤ ‖xi‖ → (phi : Pl → ℂ) xi = 0)
+    (hphiNorm : ∀ xi : Pl, ‖(phi : Pl → ℂ) xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Pl → ℂ))
+    (hpsi : ∀ eta : Pl, psi eta =
+      phi (((2 : ℝ) ^ (0 + 1))⁻¹ • eta) - phi (((2 : ℝ) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero (1 / a) (1 / b) := by
+  have hapos : 0 < a := lt_trans hbpos hba
+  have hahalf : 1 / 2 < a := by linarith
+  have hone_a : (0 : ℝ) < 1 - a := by linarith
+  have hp1 : (1 : ℝ) < 1 / a := by
+    rw [lt_div_iff₀ hapos]
+    linarith
+  have hp2 : (1 : ℝ) / a < 2 := by
+    rw [div_lt_iff₀ hapos]
+    linarith
+  have hpq : (1 : ℝ) / a < 1 / b := one_div_lt_one_div_of_lt hbpos hba
+  have hcrit : beta < 1 / a - 1 := by
+    have h2 : (1 : ℝ) + beta < 1 / a := by
+      rw [lt_div_iff₀ hapos]
+      nlinarith
+    linarith
+  have hne : (1 : ℝ) / a - 1 ≠ 0 := by
+    have h : (0:ℝ) < 1 / a - 1 := by linarith
+    exact h.ne'
+  have hconj : (1 : ℝ) / a / (1 / a - 1) = 1 / (1 - a) := by
+    have hane : a ≠ 0 := hapos.ne'
+    have h1 : (1 : ℝ) - a ≠ 0 := hone_a.ne'
+    rw [div_eq_div_iff hne h1]
+    field_simp
+  rcases lt_or_eq_of_le hsum with hgt | heq
+  · refine q4_interior_band_rate_of_sum_gt_one (d := 2) (gamma := 0)
+      (Or.inr ⟨rfl, by norm_num⟩) hE hEne hbeta hMink hp1 hp2 hpq ?_ ?_ ?_ phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+    · rw [hconj]
+      exact one_div_lt_one_div_of_lt hone_a (by linarith)
+    · push_cast
+      rw [one_div_one_div, one_div_one_div]
+      nlinarith [hann]
+    · push_cast
+      linarith [hcrit]
+  · have hb : b = 1 - a := by linarith
+    refine q4_interior_band_rate_of_conjugate_output (d := 2) (gamma := 0) (beta := beta)
+      (Or.inr ⟨rfl, by norm_num⟩) hE hEne hMink hp1 hp2 hpq ?_ ?_ phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+    · rw [hconj, hb]
+    · have hbgt : 1 / (3 - beta) < b := by
+        rw [div_lt_iff₀ (by linarith : (0:ℝ) < 3 - beta)]
+        nlinarith [hann]
+      have hqlt : (1 : ℝ) / b < 3 - beta := by
+        rw [div_lt_iff₀ hbpos]
+        rw [div_lt_iff₀ (by linarith : (0:ℝ) < 3 - beta)] at hbgt
+        nlinarith [hbgt]
+      push_cast
+      linarith [hqlt]
+
+/-! ### The planar band rate in the interior -/
+
+set_option maxHeartbeats 1000000 in
+theorem bandRate_planar_interior
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbeta1 : beta ≤ 1) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hdiagall : ∀ (φ : SchwartzMap Pl ℂ)
+      (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → (φ : Pl → ℂ) ξ = 1)
+      (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → (φ : Pl → ℂ) ξ = 0),
+      (∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1) → HasDiagGains (E := E) φ hφone hφzero beta)
+    (hregion : reciprocalExponentPoint p q ∈ interior (Q 2 beta gam))
+    (phi psi : SchwartzMap Pl ℂ)
+    (hphiOne : ∀ xi : Pl, ‖xi‖ ≤ 1 → (phi : Pl → ℂ) xi = 1)
+    (hphiZero : ∀ xi : Pl, 2 ≤ ‖xi‖ → (phi : Pl → ℂ) xi = 0)
+    (hphiNorm : ∀ xi : Pl, ‖(phi : Pl → ℂ) xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Pl → ℂ))
+    (hpsi : ∀ eta : Pl, psi eta =
+      phi (((2 : ℝ) ^ (0 + 1))⁻¹ • eta) - phi (((2 : ℝ) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  rcases Set.eq_empty_or_nonempty E with rfl | hEne
+  · exact hasAbsoluteBandRate_empty phi hphiOne hphiZero p q
+  have hgamnn : (0 : ℝ) ≤ gam := by linarith
+  have htrans := strict_second_lt_first_of_mem_interior_Q (d := 2) (by omega) hbeta1 hgamnn
+    hregion
+  have hcap := strict_first_lt_natCast_mul_second_of_mem_interior_Q (d := 2) (by omega) hbeta
+    hbeta1 hgamnn hregion
+  have hannraw := strict_annulus_of_mem_interior_Q (d := 2) (by omega) hbeta hbg hbeta1 hregion
+  have hcluraw := strict_clusterEdgeFunctional_of_mem_interior_Q (d := 2) (by omega) hbeta
+    hbeta1 hbg hregion
+  have ha1raw := strict_first_lt_one_of_mem_interior_Q (d := 2) (by omega) hbeta hbeta1 hbg
+    hregion
+  have hqpos : 0 < q := lt_of_lt_of_le zero_lt_one hq
+  set a : ℝ := p⁻¹ with hadef
+  set b : ℝ := q⁻¹ with hbdef
+  have hbpos : 0 < b := by rw [hbdef]; positivity
+  have hb1 : b ≤ 1 := by
+    rw [hbdef, inv_le_one_iff₀]
+    right
+    exact hq
+  have hba : b < a := htrans
+  have hab : a < 2 * b := by
+    have h : a < ((2:ℕ):ℝ) * b := hcap
+    push_cast at h
+    exact h
+  have hann : 2 * a < (1 - beta) * b + 1 := by
+    have h : ((2:ℕ):ℝ) * a < (1 - beta) * b + (((2:ℕ):ℝ) - 1) := hannraw
+    push_cast at h
+    linarith
+  have hclu : 0 < beta / gam / 2 + (2 - beta - beta / gam / 2) * b
+      - (1 + beta / gam / 2) * a := by
+    have h : 0 < Auto.Spherical.FractalDilations.ExponentGeometry.clusterEdgeFunctional
+        2 (beta / gam) beta (a, b) := hcluraw
+    rw [Auto.Spherical.FractalDilations.ExponentGeometry.clusterEdgeFunctional] at h
+    push_cast at h
+    have hform : beta / gam / 2 * ((2 : ℝ) - 1)
+        + ((2 : ℝ) - beta - ((2 : ℝ) - 1) * (beta / gam) / 2) * b
+        - (1 + beta / gam / 2 * ((2 : ℝ) - 1)) * a
+        = beta / gam / 2 + (2 - beta - beta / gam / 2) * b
+          - (1 + beta / gam / 2) * a := by ring
+    linarith [h]
+  have ha1 : a < 1 := ha1raw
+  have hpa : (1 : ℝ) / a = p := by
+    rw [hadef, one_div, inv_inv]
+  have hqb : (1 : ℝ) / b = q := by
+    rw [hbdef, one_div, inv_inv]
+  rcases lt_or_ge (a + b) 1 with hsum | hsum
+  · have hrate := exists_rate_interior hE hEne hbeta hbeta1 hbg hMink hquasi hgam1 hgam2
+      phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+      (hdiagall phi hphiOne hphiZero hphiNorm)
+      hbpos hba hab hsum hann hclu
+    have h := hasAbsoluteBandRate_of_hasDyRate hE phi hphiOne hphiZero hphiNorm hbpos hba
+      ha1 hb1 hrate
+    rw [hpa, hqb] at h
+    exact h
+  · have h := bandRate_planar_sum_ge_one hE hEne hbeta hMink hbpos hba ha1 hsum hann
+      phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+    rw [hpa, hqb] at h
+    exact h
+
+/-! ### The planar band rate, assembled -/
+
+theorem bandRate_planar
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {beta gam p q : ℝ}
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam2 : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hgam1 : 1 / 2 < gam) (hp : 0 < p) (hq : 1 ≤ q)
+    (hregion : reciprocalExponentPoint p q ∈ interior (Q 2 beta gam))
+    (phi psi : SchwartzMap Pl ℂ)
+    (hphiOne : ∀ xi : Pl, ‖xi‖ ≤ 1 → (phi : Pl → ℂ) xi = 1)
+    (hphiZero : ∀ xi : Pl, 2 ≤ ‖xi‖ → (phi : Pl → ℂ) xi = 0)
+    (hphiNorm : ∀ xi : Pl, ‖(phi : Pl → ℂ) xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Pl → ℂ))
+    (hpsi : ∀ eta : Pl, psi eta =
+      phi (((2 : ℝ) ^ (0 + 1))⁻¹ • eta) - phi (((2 : ℝ) ^ 0)⁻¹ • eta)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  have hbeta1 : beta ≤ 1 := by
+    have h := upperMinkowskiDimension_le_one_of_subset_Icc hE
+    simpa only [hMink] using h
+  refine bandRate_planar_interior hE hbeta hbeta1 hbg hgam2 hMink hquasi hgam1 hp hq
+      ?_ hregion phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+  intro φ hφone hφzero hφnorm
+  rcases lt_or_eq_of_le hbeta1 with hlt | heq
+  · rcases Set.eq_empty_or_nonempty E with rfl | hEne
+    · intro s hs hsbeta
+      refine ⟨1, 1 / 2, by norm_num, by norm_num, by norm_num, ?_⟩
+      intro j hj f
+      have hzero : Mdy (E := (∅ : Set ℝ)) φ hφone hφzero j f = 0 := by
+        funext x
+        simp [Mdy, fractalDyadicBandpassMaximal, fractalSphericalMaximalReal,
+          fractalSphericalMaximal]
+      rw [hzero]
+      simp
+    · obtain ⟨psi, hpsi⟩ : ∃ psi : SchwartzMap Pl ℂ, ∀ ξ : Pl,
+          psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ) :=
+        Auto.Spherical.SchwartzData.exists_schwartzMap_smooth_dyadic_bandpass φ 0
+      exact hasDiagGains_of_beta_lt_one hE hEne hbeta hlt hMink φ psi hφone hφzero
+        hφnorm hpsi
+  · rw [heq]
+    exact rs_hasDiagGains_one hE φ hφone hφzero
+
+/-! ### The band rate at every interior point, in every dimension -/
+
+theorem bandRate_of_mem_interior_Q
+    {d : ℕ} {beta gam p q : ℝ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hbeta : 0 ≤ beta) (hbg : beta ≤ gam) (hgam : gam ≤ 1)
+    (hMink : upperMinkowskiDimension E = beta) (hquasi : quasiAssouadDimension E = gam)
+    (hp : 0 < p) (hq : 1 ≤ q)
+    (phi psi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean d, ‖phi xi‖ ≤ 1)
+    (hphiRadial : IsNormRadial (phi : Euclidean d → ℂ))
+    (hpsi : ∀ eta : Euclidean d, psi eta =
+      phi (((2 : ℝ) ^ (0 + 1))⁻¹ • eta) - phi (((2 : ℝ) ^ 0)⁻¹ • eta))
+    (hregion : reciprocalExponentPoint p q ∈ interior (Q d beta gam)) :
+    HasAbsoluteBandRate E phi hphiOne hphiZero p q := by
+  by_cases hd3 : 3 ≤ d
+  · exact band_rate_of_mem_interior_Q_of_skeleton (Or.inl hd3) E hE ⟨hbeta, hbg, hgam⟩
+      hMink hquasi hp hq hregion phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+  · have hd2 : d = 2 := by omega
+    subst hd2
+    by_cases hg : gam ≤ 1 / 2
+    · exact band_rate_of_mem_interior_Q_of_skeleton (Or.inr ⟨rfl, hg⟩) E hE
+        ⟨hbeta, hbg, hgam⟩ hMink hquasi hp hq hregion phi psi hphiOne hphiZero hphiNorm
+        hphiRadial hpsi
+    · exact bandRate_planar hE hbeta hbg hgam hMink hquasi (not_le.mp hg) hp hq hregion
+        phi psi hphiOne hphiZero hphiNorm hphiRadial hpsi
+
+/-! ### Comparison of the two dimensions -/
+
+theorem quasiAssouadDimension_le_one (E : Set ℝ) :
+    quasiAssouadDimension E ≤ 1 := by
+  rw [quasiAssouadDimension]
+  refine csSup_le ⟨upperAssouadSpectrum E 0, ⟨0, ⟨le_refl (0:ℝ), zero_lt_one⟩, rfl⟩⟩ ?_
+  rintro x ⟨θ, hθ, rfl⟩
+  exact upperAssouadSpectrum_le_one E (le_of_lt hθ.2)
+
+/-- **Upper Minkowski dimension is at most quasi-Assouad dimension.**  Both are computed from
+the same covering numbers, and the spectrum at parameter zero is the Minkowski dimension. -/
+theorem upperMinkowskiDimension_le_quasiAssouadDimension {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) :
+    upperMinkowskiDimension E ≤ quasiAssouadDimension E := by
+  refine (upperMinkowskiDimension_le_upperAssouadSpectrum_zero hE).trans ?_
+  rw [quasiAssouadDimension]
+  refine le_csSup ⟨1, ?_⟩ ⟨0, ⟨le_refl (0:ℝ), zero_lt_one⟩, rfl⟩
+  rintro x ⟨θ, hθ, rfl⟩
+  exact upperAssouadSpectrum_le_one E (le_of_lt hθ.2)
+
+/-! ### Theorem 1.2(i), the necessary conditions -/
+
+/-- **The closure of a type set is a closed convex set squeezed between two regions.**  This is
+the "only if" direction of Theorem 1.2(i): the pair `(β,γ)` is the pair of dimensions of `E`. -/
+theorem isClosed_convex_sandwich_closure_fractalTypeSet {d : ℕ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) :
+    IsClosed (closure (fractalTypeSet d E)) ∧ Convex ℝ (closure (fractalTypeSet d E)) ∧
+      ∃ beta gam : ℝ, 0 ≤ beta ∧ beta ≤ gam ∧ gam ≤ 1 ∧
+        Q d beta gam ⊆ closure (fractalTypeSet d E) ∧
+        closure (fractalTypeSet d E) ⊆ Q d beta beta := by
+  refine ⟨isClosed_closure, convex_closure_fractalTypeSet hd hE hEne, ?_⟩
+  refine ⟨upperMinkowskiDimension E, quasiAssouadDimension E,
+    upperMinkowskiDimension_nonneg_of_subset_Icc hE,
+    upperMinkowskiDimension_le_quasiAssouadDimension hE,
+    quasiAssouadDimension_le_one E, ?_, ?_⟩
+  · exact Q_subset_closure_fractalTypeSet hd hE
+      (upperMinkowskiDimension_nonneg_of_subset_Icc hE)
+      (upperMinkowskiDimension_le_quasiAssouadDimension hE)
+      (quasiAssouadDimension_le_one E) rfl rfl
+  · refine closure_minimal ?_ (isClosed_Q d _ _)
+    exact fractalTypeSet_subset_Q_self hd hE hEne
+      (upperMinkowskiDimension_nonneg_of_subset_Icc hE)
+      (upperMinkowskiDimension_le_one_of_subset_Icc hE) rfl
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceHeight
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.AbsoluteDyadicLInfinity
+
+/-! ### Radius sets inside a single band cell -/
+
+/-- A set inside an interval of length at most `δ` is covered by the single interval of length
+`δ` centred at the midpoint. -/
+theorem oneCell_isIntervalCover {E : Set ℝ} {a b δ : ℝ}
+    (hE : E ⊆ Icc a b) (hlen : b - a ≤ δ) :
+    IsIntervalCover E δ {(a + b) / 2} := by
+  intro x hx
+  obtain ⟨hxa, hxb⟩ := hE hx
+  refine Set.mem_iUnion₂.mpr ⟨(a + b) / 2, Finset.mem_singleton_self _, ?_, ?_⟩
+  · linarith
+  · linarith
+
+/-- The `L¹` and `L²` endpoint estimates for one band cell: a radius set confined to an interval
+of length `2^{-j}` behaves at frequency `2^j` like a single radius. -/
+theorem exists_oneCell_dyadic_endpoints {n : ℕ} (hn : 2 ≤ n)
+    (phi psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean (n + 1), ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean (n + 1),
+      psi xi = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ 0)⁻¹ • xi)) :
+    ∃ B1 B2 : ℝ, 0 ≤ B1 ∧ 0 ≤ B2 ∧
+      ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ}, E ⊆ Icc (1 : ℝ) 2 → E.Nonempty →
+        ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+        ∀ f : SchwartzMap (Euclidean (n + 1)) ℂ,
+          (MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 1 volume ∧
+            (∫ x : Euclidean (n + 1),
+              ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖)
+              ≤ B1 * ∫ x : Euclidean (n + 1), ‖f x‖) ∧
+          (MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 2 volume ∧
+            (∫ x : Euclidean (n + 1),
+              ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖ ^ (2 : ℕ))
+              ≤ (B2 * ((2 : ℝ) ^ j) ^ (-(n : ℝ)))
+                * ∫ x : Euclidean (n + 1), ‖f x‖ ^ (2 : ℕ)) := by
+  obtain ⟨C0, C1, hC0, hC1, hdecay, hderiv⟩ := exists_sharp_surfaceFourier_succ_decay_and_deriv hn
+  refine ⟨surfaceMass (n + 1) *
+      ((∫ x : Euclidean (n + 1), ‖(𝓕⁻ psi : SchwartzMap (Euclidean (n + 1)) ℂ) x‖) +
+        ∫ x : Euclidean (n + 1),
+          ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean (n + 1)) ℂ) :
+            Euclidean (n + 1) → ℂ) x‖),
+    8 * C0 ^ 2 + 8 * C1 ^ 2, ?_, by positivity, ?_⟩
+  · have hmass : 0 ≤ surfaceMass (n + 1) := le_of_lt (surfaceMass_pos (Nat.succ_pos n))
+    have h1 : 0 ≤ ∫ x : Euclidean (n + 1), ‖(𝓕⁻ psi : SchwartzMap (Euclidean (n + 1)) ℂ) x‖ :=
+      integral_nonneg fun _ => norm_nonneg _
+    have h2 : 0 ≤ ∫ x : Euclidean (n + 1),
+        ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean (n + 1)) ℂ) :
+          Euclidean (n + 1) → ℂ) x‖ := integral_nonneg fun _ => norm_nonneg _
+    positivity
+  intro j hj E hE hEne a b hEab hlen f
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ j := by positivity
+  have hRone : (1 : ℝ) ≤ (2 : ℝ) ^ j := one_le_pow₀ (by norm_num)
+  have hδpos : (0 : ℝ) < ((2 : ℝ) ^ j)⁻¹ := by positivity
+  have hδone : ((2 : ℝ) ^ j)⁻¹ < 1 := by
+    rw [inv_lt_one₀ hRpos]
+    calc (1 : ℝ) < 2 := by norm_num
+      _ = (2 : ℝ) ^ (1 : ℕ) := by norm_num
+      _ ≤ (2 : ℝ) ^ j := pow_le_pow_right₀ (by norm_num) hj
+  have hcover : IsIntervalCover E (((2 : ℝ) ^ j)⁻¹) {(a + b) / 2} :=
+    oneCell_isIntervalCover hEab hlen
+  have hcard : (({(a + b) / 2} : Finset ℝ).card : ℝ) ≤ 1 * (((2 : ℝ) ^ j)⁻¹) ^ (-(0 : ℝ)) := by
+    simp
+  have hmain := absolute_dyadic_minkowski_endpoints_of_cover hn C0 C1 hC0 hC1 hdecay hderiv
+    hE hEne hRpos hRone hδpos hδone (le_refl _) {(a + b) / 2} hcover hcard
+    phi f psi (absoluteDyadicBandpass phi hphiOne hphiZero j) hphiOne hphiZero hphiNorm j
+    (absoluteDyadicBandpass_spec phi hphiOne hphiZero j)
+    (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
+    rfl
+    (by
+      intro xi
+      simpa only [Auto.Spherical.SurfaceCore.dyadicScale] using
+        smooth_dyadic_bandpass_eq_scaled_base phi psi
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) hpsi j
+          (absoluteDyadicBandpass_spec phi hphiOne hphiZero j) xi)
+  obtain ⟨hm1, hb1, hm2, hb2⟩ := hmain
+  refine ⟨⟨hm1, ?_⟩, ⟨hm2, ?_⟩⟩
+  · refine hb1.trans (le_of_eq ?_)
+    norm_num
+  · refine hb2.trans (le_of_eq ?_)
+    norm_num
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceHeight
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.AbsoluteDyadicLInfinity
+open Auto.Spherical.FractalDilations.MinkowskiLocalEndpoints
+open Auto.Spherical.FractalDilations.CircleSurface
+open Auto.Spherical.FractalDilations.CircleDyadicL2
+
+
+
+/-- The `L¹` and `L²` endpoint estimates for one band cell in the plane. -/
+theorem exists_oneCell_dyadic_endpoints_circle
+    (phi psi : SchwartzMap (Euclidean 2) ℂ)
+    (hphiOne : ∀ xi : Euclidean 2, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean 2, 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean 2, ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean 2,
+      psi xi = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ 0)⁻¹ • xi)) :
+    ∃ B1 B2 : ℝ, 0 ≤ B1 ∧ 0 ≤ B2 ∧
+      ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ}, E ⊆ Icc (1 : ℝ) 2 → E.Nonempty →
+        ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+        ∀ f : SchwartzMap (Euclidean 2) ℂ,
+          (MemLp (unnormalizedFractalDyadicBandpassMaximal 2 E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 1 volume ∧
+            (∫ x : Euclidean 2,
+              ‖unnormalizedFractalDyadicBandpassMaximal 2 E
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖)
+              ≤ B1 * ∫ x : Euclidean 2, ‖f x‖) ∧
+          (MemLp (unnormalizedFractalDyadicBandpassMaximal 2 E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 2 volume ∧
+            (∫ x : Euclidean 2,
+              ‖unnormalizedFractalDyadicBandpassMaximal 2 E
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖ ^ (2 : ℕ))
+              ≤ (B2 * ((2 : ℝ) ^ j) ^ (-(1 : ℝ)))
+                * ∫ x : Euclidean 2, ‖f x‖ ^ (2 : ℕ)) := by
+  obtain ⟨C0, C1, hC0, hC1, hdecay, hderiv⟩ := exists_sharp_surfaceFourier_two_decay_and_deriv
+  refine ⟨surfaceMass 2 *
+      ((∫ x : Euclidean 2, ‖(𝓕⁻ psi : SchwartzMap (Euclidean 2) ℂ) x‖) +
+        ∫ x : Euclidean 2,
+          ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean 2) ℂ) : Euclidean 2 → ℂ) x‖),
+    8 * C0 ^ 2 + 32 * C1 ^ 2, ?_, by positivity, ?_⟩
+  · have hmass : 0 ≤ surfaceMass 2 := le_of_lt (surfaceMass_pos (by norm_num))
+    have h1 : 0 ≤ ∫ x : Euclidean 2, ‖(𝓕⁻ psi : SchwartzMap (Euclidean 2) ℂ) x‖ :=
+      integral_nonneg fun _ => norm_nonneg _
+    have h2 : 0 ≤ ∫ x : Euclidean 2,
+        ‖fderiv ℝ ((𝓕⁻ psi : SchwartzMap (Euclidean 2) ℂ) : Euclidean 2 → ℂ) x‖ :=
+      integral_nonneg fun _ => norm_nonneg _
+    positivity
+  intro j hj E hE hEne a b hEab hlen f
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ j := by positivity
+  have hRone : (1 : ℝ) ≤ (2 : ℝ) ^ j := one_le_pow₀ (by norm_num)
+  have hδpos : (0 : ℝ) < ((2 : ℝ) ^ j)⁻¹ := by positivity
+  have hδone : ((2 : ℝ) ^ j)⁻¹ < 1 := by
+    rw [inv_lt_one₀ hRpos]
+    calc (1 : ℝ) < 2 := by norm_num
+      _ = (2 : ℝ) ^ (1 : ℕ) := by norm_num
+      _ ≤ (2 : ℝ) ^ j := pow_le_pow_right₀ (by norm_num) hj
+  have hcover : IsIntervalCover E (((2 : ℝ) ^ j)⁻¹) {(a + b) / 2} :=
+    oneCell_isIntervalCover hEab hlen
+  have hcard : (({(a + b) / 2} : Finset ℝ).card : ℝ) ≤ 1 * (((2 : ℝ) ^ j)⁻¹) ^ (-(0 : ℝ)) := by
+    simp
+  have hlocal := absolute_dyadic_minkowski_endpoints_of_cover_of_local_l2
+    (n := 1) (by norm_num) hE hEne hRpos hRone hδpos hδone (le_refl _)
+    {(a + b) / 2} hcover hcard psi f (absoluteDyadicBandpass phi hphiOne hphiZero j)
+    (by
+      intro xi
+      simpa only [Auto.Spherical.SurfaceCore.dyadicScale] using
+        smooth_dyadic_bandpass_eq_scaled_base phi psi
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) hpsi j
+          (absoluteDyadicBandpass_spec phi hphiOne hphiZero j) xi)
+    (B2 := 8 * C0 ^ 2 + 32 * C1 ^ 2) (by positivity)
+    (by
+      intro u v huv huvinterval hlenuv
+      rcases sphericalIntervalMaximalRaw_memLp_two_of_circle_sharp
+          C0 C1 hC0 hC1 hdecay hderiv phi f
+          (absoluteDyadicBandpass phi hphiOne hphiZero j)
+          hphiOne hphiZero hphiNorm j
+          (absoluteDyadicBandpass_spec phi hphiOne hphiZero j)
+          (absoluteDyadicBandpass_compact phi hphiOne hphiZero j)
+          huv huvinterval with ⟨hmem, hbound⟩
+      refine ⟨hmem, hbound.trans ?_⟩
+      apply mul_le_mul_of_nonneg_right
+        (by
+          simpa only [Nat.cast_one, Auto.Spherical.SurfaceCore.dyadicScale] using
+            circle_short_interval_l2_coefficient_le_frequency_decay
+              C0 C1 hC0.le hC1.le hRpos hRone (sub_nonneg.mpr huv) hlenuv)
+        (integral_nonneg fun _ => sq_nonneg _))
+  obtain ⟨hm1, hb1, hm2, hb2⟩ := hlocal
+  refine ⟨⟨hm1, ?_⟩, ⟨hm2, ?_⟩⟩
+  · refine hb1.trans (le_of_eq ?_)
+    norm_num
+  · refine hb2.trans (le_of_eq ?_)
+    norm_num
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.AbsoluteDyadicPhysicalEndpoint
+open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalRate
+open Auto.Spherical.FractalDilations.MinkowskiQ3PhysicalInterpolation
+
+
+
+/-! ### Band rates that are uniform over the radius sets inside one band cell -/
+
+/-- A geometric band rate valid, with one and the same constant, for every radius set confined
+to an interval of length `2^{-j}`.  This is the estimate the union construction of §7 needs for
+the tail of the family, which at frequency `2^j` is contained in a single cell. -/
+def HasOneCellBandRate {d : ℕ} (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0) (p q : ℝ) : Prop :=
+  ∃ C rho : ℝ≥0∞, C < ⊤ ∧ rho < 1 ∧ ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ}, E ⊆ Icc (1 : ℝ) 2 →
+    E.Nonempty → ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+    ∀ f : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (fractalDyadicBandpassMaximal d E (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume
+        ≤ (C * rho ^ j) * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume
+
+/-- Monotonicity of the dyadic band maximal operator in the radius set. -/
+theorem fractalDyadicBandpassMaximal_mono {d : ℕ} (hd : 0 < d) {E F : Set ℝ} (hEF : E ⊆ F)
+    (hF : F ⊆ Ioi (0 : ℝ)) (psi f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d E psi f x ≤ fractalDyadicBandpassMaximal d F psi f x := by
+  unfold fractalDyadicBandpassMaximal
+  exact fractalSphericalMaximalReal_mono hd hEF hF _ x
+
+/-- **The crossed one-cell band rate.**  On the conjugate line the physical `L¹ → L∞` endpoint
+and the one-cell `L²` estimate interpolate to a geometric rate, uniformly over all radius sets
+inside one band cell. -/
+theorem oneCell_crossed_bandRate {n : ℕ}
+    (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    {B2 : ℝ} (hB2 : 0 ≤ B2)
+    (hl2 : ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ}, E ⊆ Icc (1 : ℝ) 2 → E.Nonempty →
+      ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+      ∀ f : SchwartzMap (Euclidean (n + 1)) ℂ,
+        MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 2 volume ∧
+        (∫ x : Euclidean (n + 1),
+          ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖ ^ (2 : ℕ))
+          ≤ (B2 * ((2 : ℝ) ^ j) ^ (-(n : ℝ)))
+            * ∫ x : Euclidean (n + 1), ‖f x‖ ^ (2 : ℕ))
+    {p q : ℝ} (hp1 : 1 < p) (hp2 : p < 2) (hq : q = p / (p - 1))
+    (hstrict : q < (n : ℝ) + 2) :
+    HasOneCellBandRate phi hphiOne hphiZero p q := by
+  have hdpos : 0 < n + 1 := Nat.succ_pos n
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hqpos : 0 < q := by
+    rw [hq]
+    exact div_pos hp0 (by linarith)
+  have hqtwo : 2 < q := by
+    rw [hq]
+    have hpminus : 0 < p - 1 := by linarith
+    apply (lt_div_iff₀ hpminus).mpr
+    nlinarith
+  -- the physical `L¹ → L∞` endpoint on the whole radius interval
+  obtain ⟨D, hD, hphysical⟩ := exists_absoluteDyadicBandpass_lone_linf_endpoint
+    (d := n + 1) hdpos (Icc (1 : ℝ) 2) (subset_refl _) phi hphiOne hphiZero
+  set A0 : ℝ := surfaceMass (n + 1) * D with hA0def
+  have hA0 : 0 < A0 := by
+    rw [hA0def]
+    exact mul_pos (surfaceMass_pos hdpos) hD
+  set rho : ℝ≥0∞ :=
+    ENNReal.ofReal ((2 : ℝ) ^ q3PhysicalMinkowskiExponent n 0 q) with hrhodef
+  have hrho : rho < 1 := by
+    rw [hrhodef]
+    refine ENNReal.ofReal_lt_one.mpr ?_
+    have h := q3PhysicalMinkowskiRatio_mem_Ioo (n := n) (a := 0) (q := q) hqpos (by simpa using hstrict)
+    simpa only [q3PhysicalMinkowskiRatio] using h.2
+  set CT : ℝ≥0∞ := ENNReal.ofReal ((surfaceMass (n + 1))⁻¹) *
+    (q3PhysicalCrossedConstant A0 B2 q) ^ q⁻¹ with hCTdef
+  have hcrossTop : q3PhysicalCrossedConstant A0 B2 q < ⊤ := by
+    unfold q3PhysicalCrossedConstant
+    refine ENNReal.mul_lt_top ENNReal.ofReal_lt_top ?_
+    refine ENNReal.mul_lt_top (ENNReal.mul_lt_top (by norm_num) ENNReal.ofReal_lt_top) ?_
+    refine ENNReal.mul_lt_top ?_ ?_
+    · exact ENNReal.inv_lt_top.mpr (ENNReal.ofReal_pos.mpr (by linarith : 0 < q - 2))
+    · exact ENNReal.rpow_lt_top_of_nonneg (by linarith) ENNReal.ofReal_ne_top
+  have hCTtop : CT < ⊤ := by
+    rw [hCTdef]
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (ENNReal.rpow_lt_top_of_nonneg (inv_nonneg.mpr hqpos.le) hcrossTop.ne)
+  refine ⟨CT, rho, hCTtop, hrho, ?_⟩
+  intro j hj E hE hEne a b hEab hlen f
+  set R : ℝ := (2 : ℝ) ^ j with hRdef
+  have hR : 0 < R := by rw [hRdef]; positivity
+  -- the endpoint on `E`, by monotonicity in the radius set
+  have hendpoint : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ, ∀ x : Euclidean (n + 1),
+      fractalDyadicBandpassMaximal (n + 1) E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g x
+        ≤ D * R * ∫ y : Euclidean (n + 1), ‖(g : Euclidean (n + 1) → ℂ) y‖ := by
+    intro g x
+    refine le_trans (fractalDyadicBandpassMaximal_mono hdpos hE
+      (fun t ht => lt_of_lt_of_le zero_lt_one ht.1) _ g x) ?_
+    rw [hRdef]
+    exact hphysical j g x
+  have hBscale : 0 ≤ B2 * R ^ (0 - (n : ℝ)) :=
+    mul_nonneg hB2 (Real.rpow_nonneg hR.le _)
+  have hl2' : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g) 2 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) g x‖ ^ (2 : ℕ))
+        ≤ (B2 * R ^ (0 - (n : ℝ))) * ∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ) := by
+    intro g
+    obtain ⟨hmem, hbd⟩ := hl2 j hj hE hEne hEab hlen g
+    refine ⟨hmem, hbd.trans (le_of_eq ?_)⟩
+    congr 2
+    rw [hRdef, zero_sub]
+  have hpiece := q3_rational_schwartz_crossed_eLpNorm_of_physical_lone_ltwo_homogeneous
+    (n := n) (E := E) (R := R) (D := D) (B := B2 * R ^ (0 - (n : ℝ)))
+    hE hR hD hBscale phi hphiOne hphiZero hendpoint hl2' hp1 hp2 hq f
+  have hscale := q3PhysicalCrossedConstant_rpow_scale
+    (n := n) (A := A0) (B := B2) (R := R) (a := 0) (q := q) hA0 hB2 hR hqtwo
+  have hRrate : (ENNReal.ofReal R) ^ q3PhysicalMinkowskiExponent n 0 q = rho ^ j := by
+    rw [hrhodef, hRdef]
+    calc (ENNReal.ofReal ((2 : ℝ) ^ j)) ^ q3PhysicalMinkowskiExponent n 0 q
+        = ENNReal.ofReal (((2 : ℝ) ^ j) ^ q3PhysicalMinkowskiExponent n 0 q) :=
+          ENNReal.ofReal_rpow_of_pos (pow_pos (by norm_num : (0:ℝ) < 2) j)
+      _ = ENNReal.ofReal (((2 : ℝ) ^ q3PhysicalMinkowskiExponent n 0 q) ^ j) := by
+          congr 1
+          calc ((2 : ℝ) ^ j) ^ q3PhysicalMinkowskiExponent n 0 q
+              = (2 : ℝ) ^ ((j : ℝ) * q3PhysicalMinkowskiExponent n 0 q) := by
+                rw [← Real.rpow_natCast, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+            _ = (2 : ℝ) ^ (q3PhysicalMinkowskiExponent n 0 q * (j : ℝ)) := by
+                congr 1
+                ring
+            _ = ((2 : ℝ) ^ q3PhysicalMinkowskiExponent n 0 q) ^ j :=
+                Real.rpow_mul_natCast (by norm_num) _ _
+      _ = (ENNReal.ofReal ((2 : ℝ) ^ q3PhysicalMinkowskiExponent n 0 q)) ^ j := by
+          rw [ENNReal.ofReal_pow (Real.rpow_nonneg (by norm_num) _)]
+  -- assemble
+  have hstep : eLpNorm (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+      ≤ (q3PhysicalCrossedConstant (A0 * R) (B2 * R ^ (0 - (n : ℝ))) q) ^ q⁻¹ *
+        eLpNorm ((f : Euclidean (n + 1) → ℂ)) (ENNReal.ofReal p) volume := by
+    simpa only [hA0def, mul_assoc] using hpiece
+  rw [hscale, hRrate] at hstep
+  have hunnorm : eLpNorm (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
+      ≤ ((q3PhysicalCrossedConstant A0 B2 q) ^ q⁻¹) * rho ^ j *
+        eLpNorm ((f : Euclidean (n + 1) → ℂ)) (ENNReal.ofReal p) volume := hstep
+  have hnorm := fractalDyadicBandpass_eLpNorm_le_of_unnormalized_rate (d := n + 1) hdpos hunnorm
+  refine hnorm.trans (le_of_eq ?_)
+  rw [hCTdef]
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.AbsoluteAssembly
+open Auto.Spherical.FractalDilations.AbsoluteDyadicLInfinity
+open Auto.Spherical.FractalDilations.MinkowskiPositiveInterpolation
+open Auto.Spherical.FractalDilations.CompactLowpassImproving
+open Auto.Spherical.FractalDilations.SameOutputInputInterpolation
+
+
+
+/-- A real-constant form of the one-cell band rate. -/
+def HasOneCellBandRateReal {d : ℕ} (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0) (p q : ℝ) : Prop :=
+  ∃ C rho : ℝ, 0 < C ∧ 0 < rho ∧ rho < 1 ∧ ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ},
+    E ⊆ Icc (1 : ℝ) 2 → E.Nonempty → ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+    ∀ f : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (fractalDyadicBandpassMaximal d E (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
+          (ENNReal.ofReal q) volume
+        ≤ ENNReal.ofReal (C * rho ^ j) * eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume
+
+theorem hasOneCellBandRateReal_of_hasOneCellBandRate {d : ℕ}
+    {phi : SchwartzMap (Euclidean d) ℂ}
+    {hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1}
+    {hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0} {p q : ℝ}
+    (h : HasOneCellBandRate phi hphiOne hphiZero p q) :
+    HasOneCellBandRateReal phi hphiOne hphiZero p q := by
+  obtain ⟨C, rho, hCtop, hrho, hbound⟩ := h
+  obtain ⟨C', rho', hC', hrho', hrho1', hconv⟩ := exists_real_rate_of_ennreal hCtop hrho
+  refine ⟨C', rho', hC', hrho', hrho1', ?_⟩
+  intro j hj E hE hEne a b hEab hlen f
+  exact (hbound j hj hE hEne hEab hlen f).trans
+    (mul_le_mul' (hconv j) (le_refl _))
+
+/-! ### The diagonal one-cell rate below `L²` -/
+
+/-- **The diagonal one-cell band rate for `1 < p < 2`.**  The one-cell `L¹` and `L²` endpoints
+interpolate to a geometric `L^p → L^p` rate, uniformly over all radius sets inside a cell. -/
+theorem oneCell_diagonal_bandRate {n : ℕ} (hn : 0 < n)
+    (phi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    {B1 B2 : ℝ} (hB1 : 0 ≤ B1) (hB2 : 0 ≤ B2)
+    (hend : ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ}, E ⊆ Icc (1 : ℝ) 2 → E.Nonempty →
+      ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+      ∀ f : SchwartzMap (Euclidean (n + 1)) ℂ,
+        (MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 1 volume ∧
+          (∫ x : Euclidean (n + 1),
+            ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖)
+            ≤ B1 * ∫ x : Euclidean (n + 1), ‖f x‖) ∧
+        (MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 2 volume ∧
+          (∫ x : Euclidean (n + 1),
+            ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+              (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖ ^ (2 : ℕ))
+            ≤ (B2 * ((2 : ℝ) ^ j) ^ (-(n : ℝ)))
+              * ∫ x : Euclidean (n + 1), ‖f x‖ ^ (2 : ℕ)))
+    {p : ℝ} (hp1 : 1 < p) (hp2 : p < 2) :
+    HasOneCellBandRateReal phi hphiOne hphiZero p p := by
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hmass : 0 < surfaceMass (n + 1) := surfaceMass_pos (Nat.succ_pos n)
+  set a1 : ℝ := (p - 1)⁻¹ + (3 - p)⁻¹ with ha1def
+  set a2 : ℝ := ((1 : ℝ) / 4) * p⁻¹ + (2 - p)⁻¹ with ha2def
+  set A : ℝ := ((surfaceMass (n + 1))⁻¹) ^ p * (p * (4 * (1 * B2) * a2 + 2 * (1 * B1) * a1))
+    with hAdef
+  have ha1 : 0 < a1 := by
+    rw [ha1def]
+    have h1 : 0 < (p - 1)⁻¹ := by positivity
+    have h2 : 0 < (3 - p)⁻¹ := by
+      apply inv_pos.mpr
+      linarith
+    linarith
+  have ha2 : 0 < a2 := by
+    rw [ha2def]
+    have h1 : 0 < ((1 : ℝ) / 4) * p⁻¹ := by positivity
+    have h2 : 0 < (2 - p)⁻¹ := by
+      apply inv_pos.mpr
+      linarith
+    linarith
+  have hA : 0 ≤ A := by
+    rw [hAdef]
+    have h1 : 0 ≤ ((surfaceMass (n + 1))⁻¹) ^ p :=
+      Real.rpow_nonneg (inv_nonneg.mpr hmass.le) _
+    have h2 : 0 ≤ p * (4 * (1 * B2) * a2 + 2 * (1 * B1) * a1) := by
+      have : 0 ≤ 4 * (1 * B2) * a2 + 2 * (1 * B1) * a1 := by
+        have hx : 0 ≤ 4 * (1 * B2) * a2 := by positivity
+        have hy : 0 ≤ 2 * (1 * B1) * a1 := by positivity
+        linarith
+      positivity
+    positivity
+  set eps : ℝ := (n : ℝ) * (p - 1) with hepsdef
+  have heps : 0 < eps := by
+    rw [hepsdef]
+    have hnpos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+    have : 0 < p - 1 := by linarith
+    positivity
+  refine ⟨(A + 1) ^ p⁻¹, (2 : ℝ) ^ (-eps / p), by positivity, by positivity, ?_, ?_⟩
+  · exact Real.rpow_lt_one_of_one_lt_of_neg (by norm_num)
+      (by
+        apply div_neg_of_neg_of_pos _ hp0
+        linarith)
+  intro j hj E hE hEne a b hEab hlen f
+  have hRpos : (0 : ℝ) < (2 : ℝ) ^ j := by positivity
+  have hEpos : E ⊆ Ioi (0 : ℝ) := fun t ht => lt_of_lt_of_le zero_lt_one (hE ht).1
+  -- the endpoints in the shape required by the interpolation lemma
+  have hendpoints : ∀ g : SchwartzMap (Euclidean (n + 1)) ℂ,
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g) 1 volume ∧
+        (∫ x : Euclidean (n + 1),
+          ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) g x‖)
+          ≤ (1 * (((2 : ℝ) ^ j)⁻¹) ^ (-(0 : ℝ))) * B1
+            * ∫ x : Euclidean (n + 1), ‖g x‖ ∧
+      MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) g) 2 volume ∧
+      (∫ x : Euclidean (n + 1),
+        ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+          (absoluteDyadicBandpass phi hphiOne hphiZero j) g x‖ ^ (2 : ℕ))
+        ≤ (1 * (((2 : ℝ) ^ j)⁻¹) ^ (-(0 : ℝ))) * (B2 * ((2 : ℝ) ^ j) ^ (-(n : ℝ)))
+          * ∫ x : Euclidean (n + 1), ‖g x‖ ^ (2 : ℕ) := by
+    intro g
+    obtain ⟨⟨hm1, hb1⟩, ⟨hm2, hb2⟩⟩ := hend j hj hE hEne hEab hlen g
+    refine ⟨hm1, ?_, hm2, ?_⟩
+    · refine hb1.trans (le_of_eq ?_)
+      norm_num
+    · refine hb2.trans (le_of_eq ?_)
+      norm_num
+  have hmoment := normalized_absolute_minkowski_moment_of_cover_endpoints_of_pos
+    (n := n) (E := E) (R := (2 : ℝ) ^ j) (δ := (((2 : ℝ) ^ j)⁻¹)) (α := 0) (C := 1) (D := 1)
+    (B₁ := B1) (B₂ := B2) (p := p) hn hRpos (le_refl _) (by norm_num) hB1 hB2 hp1 hp2
+    (by norm_num) (absoluteDyadicBandpass phi hphiOne hphiZero j) hEpos hendpoints f
+  obtain ⟨hmemp, hmomentbd⟩ := hmoment
+  -- rewrite the frequency power as a geometric factor
+  have hpow : ((2 : ℝ) ^ j) ^ ((0 : ℝ) + (n : ℝ) - (n : ℝ) * p) = (2 : ℝ) ^ (-eps * (j : ℝ)) := by
+    rw [hepsdef, ← Real.rpow_natCast (2 : ℝ) j, ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+    congr 1
+    ring
+  have hI : 0 ≤ ∫ x : Euclidean (n + 1), ‖f x‖ ^ p :=
+    integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) _
+  have hmoment' : (∫ x : Euclidean (n + 1),
+      (fractalDyadicBandpassMaximal (n + 1) E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f x) ^ p)
+      ≤ A * (2 : ℝ) ^ (-eps * (j : ℝ)) * ∫ x : Euclidean (n + 1), ‖f x‖ ^ p := by
+    refine hmomentbd.trans (le_of_eq ?_)
+    rw [hAdef, hpow]
+  have hnormbd := absolute_eLpNorm_le_of_bandpass_real_moment_bound
+    (d := n + 1) (p := p) (A := A) (ε := eps) (I := ∫ x : Euclidean (n + 1), ‖f x‖ ^ p)
+    hp0 (fractalDyadicBandpassMaximal (n + 1) E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f) hmemp
+    (fun x => fractalDyadicBandpassMaximal_nonneg E _ f x) hA hI j hmoment'
+  -- identify the input norm
+  have hinput : ENNReal.ofReal ((∫ x : Euclidean (n + 1), ‖f x‖ ^ p) ^ p⁻¹)
+      = eLpNorm ((f : Euclidean (n + 1) → ℂ)) (ENNReal.ofReal p) volume := by
+    have h := eLpNorm_schwartz_eq_sameOutputInputScale (d := n + 1) (p := p)
+      (I := ∫ x : Euclidean (n + 1), ‖f x‖ ^ p) hp0 f rfl
+    rw [h, sameOutputInputScale]
+  have hApow : A ^ p⁻¹ ≤ (A + 1) ^ p⁻¹ :=
+    Real.rpow_le_rpow hA (by linarith) (by positivity)
+  refine hnormbd.trans ?_
+  calc (ENNReal.ofReal (A ^ p⁻¹) *
+        ENNReal.ofReal ((∫ x : Euclidean (n + 1), ‖f x‖ ^ p) ^ p⁻¹)) *
+        ENNReal.ofReal ((2 : ℝ) ^ (-eps / p)) ^ j
+      = ENNReal.ofReal (A ^ p⁻¹ * ((2 : ℝ) ^ (-eps / p)) ^ j) *
+          ENNReal.ofReal ((∫ x : Euclidean (n + 1), ‖f x‖ ^ p) ^ p⁻¹) := by
+        rw [ENNReal.ofReal_mul (by positivity : (0:ℝ) ≤ A ^ p⁻¹),
+          ENNReal.ofReal_pow (by positivity : (0:ℝ) ≤ (2 : ℝ) ^ (-eps / p))]
+        ring
+    _ ≤ ENNReal.ofReal ((A + 1) ^ p⁻¹ * ((2 : ℝ) ^ (-eps / p)) ^ j) *
+          eLpNorm ((f : Euclidean (n + 1) → ℂ)) (ENNReal.ofReal p) volume := by
+        rw [hinput]
+        exact mul_le_mul' (ENNReal.ofReal_le_ofReal
+          (mul_le_mul_of_nonneg_right hApow (by positivity))) (le_refl _)
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.AbsoluteDyadicLInfinity
+open Auto.Spherical.FractalDilations.CompactLowpassImproving
+open Auto.Spherical.FractalDilations.MinkowskiQ2PhysicalRate
+
+
+
+/-! ### Upgrading a one-cell diagonal rate through the `L∞` endpoint -/
+
+/-- **The diagonal one-cell band rate above a given exponent.**  The uniform `L∞` bound of the
+band operator upgrades a diagonal one-cell rate at `r` to every exponent `s > r`. -/
+theorem oneCell_diagonal_bandRate_above {d : ℕ} (hd : 0 < d)
+    (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    {r s : ℝ} (hr : 0 < r) (hrs : r < s)
+    (hrate : HasOneCellBandRateReal phi hphiOne hphiZero r r) :
+    HasOneCellBandRateReal phi hphiOne hphiZero s s := by
+  obtain ⟨c, rho, hc, hrho, hrho1, hbound⟩ := hrate
+  set L : ℝ := absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero + 1 with hLdef
+  have hK : 0 ≤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero :=
+    absoluteDyadicBandpassLInfinityConstant_nonneg phi hphiOne hphiZero
+  have hL : 0 < L := by rw [hLdef]; linarith
+  refine ⟨q2TopDyadicRateConstant r s c L, q2TopDyadicRateRatio r s rho,
+    q2TopDyadicRateConstant_pos hr hrs hc hL,
+    (q2TopDyadicRateRatio_mem_Ioo hr hrs hrho hrho1).1,
+    (q2TopDyadicRateRatio_mem_Ioo hr hrs hrho hrho1).2, ?_⟩
+  intro j hj E hE hEne a b hEab hlen f
+  have hEpos : E ⊆ Ioi (0 : ℝ) := fun t ht => lt_of_lt_of_le zero_lt_one (hE ht).1
+  set T : SchwartzMap (Euclidean d) ℂ → Euclidean d → ℝ :=
+    fun g => fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g with hTdef
+  have hTmeas : ∀ g : SchwartzMap (Euclidean d) ℂ, AEStronglyMeasurable (T g) volume := by
+    intro g
+    rw [hTdef]
+    exact (measurable_fractalDyadicBandpassMaximal E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g).aestronglyMeasurable
+  have hTnonneg : ∀ (g : SchwartzMap (Euclidean d) ℂ) x, 0 ≤ T g x := by
+    intro g x
+    rw [hTdef]
+    exact fractalDyadicBandpassMaximal_nonneg E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g x
+  have hTsub : ∀ (g h : SchwartzMap (Euclidean d) ℂ) x, T (g + h) x ≤ T g x + T h x := by
+    intro g h x
+    rw [hTdef]
+    exact fractalDyadicBandpassMaximal_add_le hd E hEpos
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g h x
+  have hcj : 0 < c * rho ^ j := mul_pos hc (pow_pos hrho j)
+  have hstrong : ∀ g : SchwartzMap (Euclidean d) ℂ,
+      MemLp (T g) (ENNReal.ofReal r) volume ∧
+      eLpNorm (T g) (ENNReal.ofReal r) volume ≤
+        ENNReal.ofReal (c * rho ^ j) *
+          eLpNorm ((g : Euclidean d → ℂ)) (ENNReal.ofReal r) volume := by
+    intro g
+    have hbd := hbound j hj hE hEne hEab hlen g
+    refine ⟨⟨hTmeas g, ?_⟩, hbd⟩
+    refine lt_of_le_of_lt hbd ?_
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hr g))
+  have htop : ∀ (g : SchwartzMap (Euclidean d) ℂ) (u : ℝ), 0 ≤ u →
+      (∀ x, ‖g x‖ ≤ u) → ∀ x, T g x ≤ L * u := by
+    intro g u hu hgu x
+    have hbase := fractalDyadicBandpassMaximal_absoluteDyadicBandpass_le_of_uniform_norm
+      hd E hE phi hphiOne hphiZero j g hgu x
+    calc T g x ≤ absoluteDyadicBandpassLInfinityConstant phi hphiOne hphiZero * u := hbase
+      _ ≤ L * u := by
+        refine mul_le_mul_of_nonneg_right ?_ hu
+        rw [hLdef]
+        linarith
+  have hhigh := schwartz_operator_strong_above_of_diagonal_top_with_constant
+    T hr hrs hcj hL hTmeas hTnonneg hTsub hstrong htop f
+  have hcoefficient := q2TopDyadicRateCoefficient_eq hr hrs hc hrho hL j
+  refine hhigh.2.trans (le_of_eq ?_)
+  rw [hcoefficient]
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+/-- The one-cell `L¹` and `L²` endpoints in every dimension `n + 1 ≥ 2`. -/
+theorem exists_oneCell_dyadic_endpoints_all {n : ℕ} (hn : 1 ≤ n)
+    (phi psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean (n + 1), ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean (n + 1),
+      psi xi = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ 0)⁻¹ • xi)) :
+    ∃ B1 B2 : ℝ, 0 ≤ B1 ∧ 0 ≤ B2 ∧
+      ∀ (j : ℕ), 1 ≤ j → ∀ {E : Set ℝ}, E ⊆ Icc (1 : ℝ) 2 → E.Nonempty →
+        ∀ {a b : ℝ}, E ⊆ Icc a b → b - a ≤ ((2 : ℝ) ^ j)⁻¹ →
+        ∀ f : SchwartzMap (Euclidean (n + 1)) ℂ,
+          (MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 1 volume ∧
+            (∫ x : Euclidean (n + 1),
+              ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖)
+              ≤ B1 * ∫ x : Euclidean (n + 1), ‖f x‖) ∧
+          (MemLp (unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+            (absoluteDyadicBandpass phi hphiOne hphiZero j) f) 2 volume ∧
+            (∫ x : Euclidean (n + 1),
+              ‖unnormalizedFractalDyadicBandpassMaximal (n + 1) E
+                (absoluteDyadicBandpass phi hphiOne hphiZero j) f x‖ ^ (2 : ℕ))
+              ≤ (B2 * ((2 : ℝ) ^ j) ^ (-(n : ℝ)))
+                * ∫ x : Euclidean (n + 1), ‖f x‖ ^ (2 : ℕ)) := by
+  rcases eq_or_lt_of_le hn with hn1 | hn2
+  · -- the plane
+    have hn1' : n = 1 := hn1.symm
+    subst hn1'
+    have h := exists_oneCell_dyadic_endpoints_circle phi psi hphiOne hphiZero hphiNorm hpsi
+    obtain ⟨B1, B2, hB1, hB2, hmain⟩ := h
+    refine ⟨B1, B2, hB1, hB2, ?_⟩
+    intro j hj E hE hEne a b hEab hlen f
+    simpa only [Nat.cast_one] using hmain j hj hE hEne hEab hlen f
+  · -- the higher-dimensional case
+    exact exists_oneCell_dyadic_endpoints (by omega) phi psi hphiOne hphiZero hphiNorm hpsi
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+/-! ### The amplitude-scale data of a collinear triple of exponent pairs -/
+
+/-- From the reciprocal collinearity of three exponent pairs with increasing input and output
+exponents one reads off the strict orderings and the amplitude-scale exponent `m` of the
+two-pair interpolation. -/
+theorem exists_twoPair_data_of_reciprocal {p0 q0 p1 q1 p q lam : ℝ}
+    (hp0 : 0 < p0) (hp1 : 0 < p1) (hq0 : 0 < q0) (hq1 : 0 < q1)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hpa : p⁻¹ = (1 - lam) * p0⁻¹ + lam * p1⁻¹)
+    (hqb : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹)
+    (hp01 : p0 < p1) (hq01 : q0 < q1) :
+    0 < p ∧ 0 < q ∧ p0 < p ∧ p < p1 ∧ q0 < q ∧ q < q1 ∧
+      ∃ m : ℝ, 0 < m ∧ q - q0 = m * (p - p0) * (q0 / p0) ∧
+        q - q1 = m * (p - p1) * (q1 / p1) ∧
+        (q0 / p0) * ((q1 - q) / (q1 - q0)) + (q1 / p1) * ((q - q0) / (q1 - q0)) = q / p := by
+  have hlam1' : 0 < 1 - lam := by linarith
+  have hpinv : 0 < p⁻¹ := by
+    rw [hpa]
+    exact add_pos (mul_pos hlam1' (inv_pos.mpr hp0)) (mul_pos hlam0 (inv_pos.mpr hp1))
+  have hp : 0 < p := inv_pos.mp hpinv
+  have hqinv : 0 < q⁻¹ := by
+    rw [hqb]
+    exact add_pos (mul_pos hlam1' (inv_pos.mpr hq0)) (mul_pos hlam0 (inv_pos.mpr hq1))
+  have hq : 0 < q := inv_pos.mp hqinv
+  have hpne : p ≠ 0 := ne_of_gt hp
+  have hqne : q ≠ 0 := ne_of_gt hq
+  have hp0ne : p0 ≠ 0 := ne_of_gt hp0
+  have hp1ne : p1 ≠ 0 := ne_of_gt hp1
+  have hq0ne : q0 ≠ 0 := ne_of_gt hq0
+  have hq1ne : q1 ≠ 0 := ne_of_gt hq1
+  set Da : ℝ := p0⁻¹ - p1⁻¹ with hDadef
+  set Db : ℝ := q0⁻¹ - q1⁻¹ with hDbdef
+  have hDapos : 0 < Da := by
+    rw [hDadef]
+    have hinv : p1⁻¹ < p0⁻¹ := (inv_lt_inv₀ hp1 hp0).mpr hp01
+    linarith
+  have hDbpos : 0 < Db := by
+    rw [hDbdef]
+    have hinv : q1⁻¹ < q0⁻¹ := (inv_lt_inv₀ hq1 hq0).mpr hq01
+    linarith
+  have hDane : Da ≠ 0 := ne_of_gt hDapos
+  have hDbne : Db ≠ 0 := ne_of_gt hDbpos
+  have hdp0 : p - p0 = p * p0 * (lam * Da) := by
+    have hstep : p0⁻¹ - p⁻¹ = lam * Da := by rw [hpa, hDadef]; ring
+    have hbase : p - p0 = p * p0 * (p0⁻¹ - p⁻¹) := by field_simp
+    rw [hbase, hstep]
+  have hdp1 : p - p1 = -(p * p1 * ((1 - lam) * Da)) := by
+    have hstep : p1⁻¹ - p⁻¹ = -((1 - lam) * Da) := by rw [hpa, hDadef]; ring
+    have hbase : p - p1 = p * p1 * (p1⁻¹ - p⁻¹) := by field_simp
+    rw [hbase, hstep]
+    ring
+  have hdq0 : q - q0 = q * q0 * (lam * Db) := by
+    have hstep : q0⁻¹ - q⁻¹ = lam * Db := by rw [hqb, hDbdef]; ring
+    have hbase : q - q0 = q * q0 * (q0⁻¹ - q⁻¹) := by field_simp
+    rw [hbase, hstep]
+  have hdq1 : q - q1 = -(q * q1 * ((1 - lam) * Db)) := by
+    have hstep : q1⁻¹ - q⁻¹ = -((1 - lam) * Db) := by rw [hqb, hDbdef]; ring
+    have hbase : q - q1 = q * q1 * (q1⁻¹ - q⁻¹) := by field_simp
+    rw [hbase, hstep]
+    ring
+  have hp0p : p0 < p := by
+    have hpos : 0 < p * p0 * (lam * Da) :=
+      mul_pos (mul_pos hp hp0) (mul_pos hlam0 hDapos)
+    linarith [hdp0]
+  have hpp1 : p < p1 := by
+    have hpos : 0 < p * p1 * ((1 - lam) * Da) :=
+      mul_pos (mul_pos hp hp1) (mul_pos hlam1' hDapos)
+    linarith [hdp1]
+  have hq0q : q0 < q := by
+    have hpos : 0 < q * q0 * (lam * Db) :=
+      mul_pos (mul_pos hq hq0) (mul_pos hlam0 hDbpos)
+    linarith [hdq0]
+  have hqq1 : q < q1 := by
+    have hpos : 0 < q * q1 * ((1 - lam) * Db) :=
+      mul_pos (mul_pos hq hq1) (mul_pos hlam1' hDbpos)
+    linarith [hdq1]
+  refine ⟨hp, hq, hp0p, hpp1, hq0q, hqq1, (q / p) * (Db / Da),
+    mul_pos (div_pos hq hp) (div_pos hDbpos hDapos), ?_, ?_, ?_⟩
+  · rw [hdq0, hdp0]
+    field_simp
+  · rw [hdq1, hdp1]
+    field_simp
+  · have hq10 : q1 - q0 = q0 * q1 * Db := by
+      rw [hDbdef]
+      field_simp
+    have hq1q : q1 - q = q * q1 * ((1 - lam) * Db) := by linarith [hdq1]
+    rw [hq1q, hdq0, hq10, div_eq_mul_inv q p, hpa]
+    field_simp
+
+/-! ### Interpolating two one-cell band rates -/
+
+/-- **Two-pair interpolation of one-cell band rates.**  Along a segment of positive slope the
+uniform one-cell rates interpolate, and the interpolated ratio is the weighted geometric mean. -/
+theorem oneCell_bandRate_interp {d : ℕ} (hd : 0 < d)
+    (phi : SchwartzMap (Euclidean d) ℂ)
+    (hphiOne : ∀ xi : Euclidean d, ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean d, 2 ≤ ‖xi‖ → phi xi = 0)
+    {p0 q0 p1 q1 p q lam : ℝ}
+    (hp0 : 0 < p0) (hp1 : 0 < p1) (hq0 : 0 < q0) (hq1 : 0 < q1)
+    (hr0 : 1 ≤ q0 / p0) (hr1 : 1 ≤ q1 / p1)
+    (hlam0 : 0 < lam) (hlam1 : lam < 1)
+    (hpa : p⁻¹ = (1 - lam) * p0⁻¹ + lam * p1⁻¹)
+    (hqb : q⁻¹ = (1 - lam) * q0⁻¹ + lam * q1⁻¹)
+    (hp01 : p0 < p1) (hq01 : q0 < q1)
+    (h0 : HasOneCellBandRateReal phi hphiOne hphiZero p0 q0)
+    (h1 : HasOneCellBandRateReal phi hphiOne hphiZero p1 q1) :
+    HasOneCellBandRateReal phi hphiOne hphiZero p q := by
+  obtain ⟨hp, hq, hp0p, hpp1, hq0q, hqq1, m, hm, hm0, hm1, hcol⟩ :=
+    exists_twoPair_data_of_reciprocal hp0 hp1 hq0 hq1 hlam0 hlam1 hpa hqb hp01 hq01
+  obtain ⟨C0, rho0, hC0, hrho0, hrho01, hbound0⟩ := h0
+  obtain ⟨C1, rho1, hC1, hrho1, hrho11, hbound1⟩ := h1
+  obtain ⟨C, hCpos, hC⟩ := exists_twoPair_interpolation_const (d := d)
+    hp0 hp0p hpp1 hq0 hq0q hqq1 hr0 hr1 hm hm0 hm1 hcol
+  set e0 : ℝ := q0 * ((q1 - q) / (q1 - q0)) / q with he0def
+  set e1 : ℝ := q1 * ((q - q0) / (q1 - q0)) / q with he1def
+  have hqden : 0 < q1 - q0 := by linarith
+  have he0pos : 0 < e0 := by
+    rw [he0def]
+    exact div_pos (mul_pos hq0 (div_pos (by linarith) hqden)) hq
+  have he1pos : 0 < e1 := by
+    rw [he1def]
+    exact div_pos (mul_pos hq1 (div_pos (by linarith) hqden)) hq
+  have hsum : e0 + e1 = 1 := by
+    rw [he0def, he1def]
+    field_simp
+    ring
+  refine ⟨C * C0 ^ e0 * C1 ^ e1, rho0 ^ e0 * rho1 ^ e1, by positivity, by positivity, ?_, ?_⟩
+  · -- the interpolated ratio is below one
+    have h0' : rho0 ^ e0 < 1 ^ e0 := Real.rpow_lt_rpow hrho0.le hrho01 he0pos
+    have h1' : rho1 ^ e1 < 1 ^ e1 := Real.rpow_lt_rpow hrho1.le hrho11 he1pos
+    rw [Real.one_rpow] at h0' h1'
+    have hpos0 : 0 < rho0 ^ e0 := Real.rpow_pos_of_pos hrho0 _
+    have hpos1 : 0 < rho1 ^ e1 := Real.rpow_pos_of_pos hrho1 _
+    calc rho0 ^ e0 * rho1 ^ e1 < 1 * 1 := by
+          exact mul_lt_mul'' h0' h1' hpos0.le hpos1.le
+      _ = 1 := by norm_num
+  intro j hj E hE hEne a b hEab hlen f
+  set T : SchwartzMap (Euclidean d) ℂ → Euclidean d → ℝ :=
+    fun g => fractalDyadicBandpassMaximal d E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) g with hTdef
+  have hEpos : E ⊆ Ioi (0 : ℝ) := fun t ht => lt_of_lt_of_le zero_lt_one (hE ht).1
+  have hmain := hC T
+    (fun g x => fractalDyadicBandpassMaximal_nonneg E _ g x)
+    (fun g h x => fractalDyadicBandpassMaximal_add_le hd E hEpos _ g h x)
+    (fun g => (measurable_fractalDyadicBandpassMaximal E _ g).aestronglyMeasurable)
+    (fun x => by
+      have hprojection : dyadicBandpassProjection
+          (absoluteDyadicBandpass phi hphiOne hphiZero j)
+          (0 : SchwartzMap (Euclidean d) ℂ) = 0 := by
+        simp [dyadicBandpassProjection]
+      rw [hTdef]
+      simp only
+      rw [fractalDyadicBandpassMaximal, hprojection]
+      exact fractalSphericalMaximalReal_zero E x)
+    (C0 * rho0 ^ j) (C1 * rho1 ^ j) (by positivity) (by positivity)
+    (fun g => hbound0 j hj hE hEne hEab hlen g)
+    (fun g => hbound1 j hj hE hEne hEab hlen g) f
+  refine hmain.trans (le_of_eq ?_)
+  congr 1
+  have hexp0 : (C0 * rho0 ^ j) ^ e0 = C0 ^ e0 * (rho0 ^ e0) ^ j := by
+    rw [Real.mul_rpow hC0.le (by positivity), rpow_npow_swap hrho0.le]
+  have hexp1 : (C1 * rho1 ^ j) ^ e1 = C1 ^ e1 * (rho1 ^ e1) ^ j := by
+    rw [Real.mul_rpow hC1.le (by positivity), rpow_npow_swap hrho1.le]
+  rw [hexp0, hexp1, mul_pow]
+  ring
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+/-! ### The two families of one-cell rates -/
+
+/-- The diagonal one-cell rate at every exponent above one. -/
+theorem oneCell_diagonal_bandRate_all {n : ℕ} (hn : 1 ≤ n)
+    (phi psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean (n + 1), ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean (n + 1),
+      psi xi = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ 0)⁻¹ • xi))
+    {u : ℝ} (hu : 1 < u) :
+    HasOneCellBandRateReal phi hphiOne hphiZero u u := by
+  obtain ⟨B1, B2, hB1, hB2, hend⟩ :=
+    exists_oneCell_dyadic_endpoints_all hn phi psi hphiOne hphiZero hphiNorm hpsi
+  have hnpos : 0 < n := hn
+  rcases lt_or_ge u 2 with hu2 | hu2
+  · exact oneCell_diagonal_bandRate hnpos phi hphiOne hphiZero hB1 hB2 hend hu hu2
+  · have hbase : HasOneCellBandRateReal phi hphiOne hphiZero (3 / 2) (3 / 2) :=
+      oneCell_diagonal_bandRate hnpos phi hphiOne hphiZero hB1 hB2 hend
+        (by norm_num) (by norm_num)
+    exact oneCell_diagonal_bandRate_above (Nat.succ_pos n) phi hphiOne hphiZero
+      (by norm_num) (by linarith) hbase
+
+/-- The crossed one-cell rate on the conjugate line, parameterized by the reciprocal input
+exponent `ξ`. -/
+theorem oneCell_crossed_bandRate_of_xi {n : ℕ} (hn : 1 ≤ n)
+    (phi psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean (n + 1), ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean (n + 1),
+      psi xi = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ 0)⁻¹ • xi))
+    {xi : ℝ} (hxi1 : 1 / 2 < xi) (hxi2 : xi < ((n : ℝ) + 1) / ((n : ℝ) + 2)) :
+    HasOneCellBandRateReal phi hphiOne hphiZero (1 / xi) (1 / (1 - xi)) := by
+  obtain ⟨B1, B2, hB1, hB2, hend⟩ :=
+    exists_oneCell_dyadic_endpoints_all hn phi psi hphiOne hphiZero hphiNorm hpsi
+  have hn1 : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have hxipos : 0 < xi := by linarith
+  have hxione : xi < 1 := by
+    have : ((n : ℝ) + 1) / ((n : ℝ) + 2) < 1 := by
+      rw [div_lt_one (by linarith)]
+      linarith
+    linarith
+  have honeminus : 0 < 1 - xi := by linarith
+  have hp1 : 1 < 1 / xi := by
+    rw [lt_div_iff₀ hxipos]
+    linarith
+  have hp2 : 1 / xi < 2 := by
+    rw [div_lt_iff₀ hxipos]
+    linarith
+  have hq : 1 / (1 - xi) = (1 / xi) / ((1 / xi) - 1) := by
+    field_simp
+  have hstrict : 1 / (1 - xi) < (n : ℝ) + 2 := by
+    rw [div_lt_iff₀ honeminus]
+    have hxi2' : xi * ((n : ℝ) + 2) < (n : ℝ) + 1 :=
+      (lt_div_iff₀ (show (0:ℝ) < (n : ℝ) + 2 by linarith)).mp hxi2
+    linarith
+  have hrate := oneCell_crossed_bandRate phi hphiOne hphiZero hB2
+    (fun j hj E hE hEne a b hEab hlen f => (hend j hj hE hEne hEab hlen f).2)
+    hp1 hp2 hq hstrict
+  exact hasOneCellBandRateReal_of_hasOneCellBandRate hrate
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+/-! ### The segment through a reciprocal point joining the conjugate line to the diagonal -/
+
+/-- Given a reciprocal point `(x,y)` with `y < x` and a conjugate-line parameter `xi` satisfying
+three explicit lower bounds, the segment joining `(xi, 1 - xi)` to the diagonal passes through
+`(x,y)`, with weight `nu ∈ (0,1)` and diagonal parameter `t ∈ (0,1)`. -/
+theorem exists_oneCell_segment_data {x y xi : ℝ} (hy : 0 < y) (hyx : y < x)
+    (hxihalf : 1 / 2 < xi) (hxinu : (1 + x - y) / 2 < xi)
+    (hxit0 : x / (x + y) < xi) (hxit1 : (1 - y) / (2 - x - y) < xi) (hx1 : x < 1) :
+    ∃ nu t : ℝ, 0 < nu ∧ nu < 1 ∧ 0 < t ∧ t < 1 ∧
+      x = (1 - nu) * xi + nu * t ∧ y = (1 - nu) * (1 - xi) + nu * t := by
+  have hxpos : 0 < x := lt_trans hy hyx
+  have hsumpos : 0 < x + y := by linarith
+  have hD1 : 0 < 2 * xi - 1 := by linarith
+  have hD2 : 0 < (2 * xi - 1) - (x - y) := by linarith
+  have hD1' : (2 * xi - 1) ≠ 0 := ne_of_gt hD1
+  have hD2' : ((2 * xi - 1) - (x - y)) ≠ 0 := ne_of_gt hD2
+  have hden : 0 < 2 - x - y := by linarith
+  have hnum0 : 0 < x * (2 * xi - 1) - (x - y) * xi := by
+    have h := (div_lt_iff₀ hsumpos).mp hxit0
+    nlinarith
+  have hnum1 : x * (2 * xi - 1) - (x - y) * xi < (2 * xi - 1) - (x - y) := by
+    have h := (div_lt_iff₀ hden).mp hxit1
+    nlinarith
+  refine ⟨((2 * xi - 1) - (x - y)) / (2 * xi - 1),
+    (x * (2 * xi - 1) - (x - y) * xi) / ((2 * xi - 1) - (x - y)), ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact div_pos hD2 hD1
+  · rw [div_lt_one hD1]
+    linarith
+  · exact div_pos hnum0 hD2
+  · rw [div_lt_one hD2]
+    exact hnum1
+  · have h1 : (1 : ℝ) - ((2 * xi - 1) - (x - y)) / (2 * xi - 1) = (x - y) / (2 * xi - 1) := by
+      field_simp
+      ring
+    rw [h1]
+    field_simp
+    ring
+  · have h1 : (1 : ℝ) - ((2 * xi - 1) - (x - y)) / (2 * xi - 1) = (x - y) / (2 * xi - 1) := by
+      field_simp
+      ring
+    rw [h1]
+    field_simp
+    ring
+
+open MeasureTheory Set ENNReal Metric FourierTransform
+open scoped FourierTransform
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+set_option maxHeartbeats 1000000 in
+/-- **The one-cell band rate at every interior point of `Q(0,0)`.**  The three strict
+inequalities are the interior conditions of the region `Q(d,0,0)` for `d = n + 1`; the rate is
+uniform over all radius sets confined to a single band cell. -/
+theorem oneCell_bandRate_of_strict {n : ℕ} (hn : 1 ≤ n)
+    (phi psi : SchwartzMap (Euclidean (n + 1)) ℂ)
+    (hphiOne : ∀ xi : Euclidean (n + 1), ‖xi‖ ≤ 1 → phi xi = 1)
+    (hphiZero : ∀ xi : Euclidean (n + 1), 2 ≤ ‖xi‖ → phi xi = 0)
+    (hphiNorm : ∀ xi : Euclidean (n + 1), ‖phi xi‖ ≤ 1)
+    (hpsi : ∀ xi : Euclidean (n + 1),
+      psi xi = phi (((2 : ℝ) ^ (0 + 1))⁻¹ • xi) - phi (((2 : ℝ) ^ 0)⁻¹ • xi))
+    {x y : ℝ} (hy : 0 < y) (hyx : y < x)
+    (hcap : x < ((n : ℝ) + 1) * y) (hann : ((n : ℝ) + 1) * x < y + (n : ℝ)) :
+    HasOneCellBandRateReal phi hphiOne hphiZero (1 / x) (1 / y) := by
+  have hn1 : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have hxpos : 0 < x := lt_trans hy hyx
+  have hsumpos : 0 < x + y := by linarith
+  have hx1 : x < 1 := by nlinarith
+  have hy1 : y < 1 := by linarith
+  have hgap : x - y < (n : ℝ) / ((n : ℝ) + 2) := by
+    rw [lt_div_iff₀ (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+    nlinarith
+  have hhalfmax : (1 : ℝ) / 2 < ((n : ℝ) + 1) / ((n : ℝ) + 2) := by
+    rw [div_lt_div_iff₀ (by norm_num) (by linarith)]
+    linarith
+  rcases lt_trichotomy (x + y) 1 with hcase | hcase | hcase
+  · -- below the conjugate line
+    have hylt : y < 1 / 2 := by linarith
+    have hxupper : x < ((n : ℝ) + 1) / ((n : ℝ) + 2) := by
+      rw [lt_div_iff₀ (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+      nlinarith
+    set m : ℝ := min (1 - y) (((n : ℝ) + 1) / ((n : ℝ) + 2)) with hmdef
+    set M : ℝ := max (max (1 / 2) x)
+      (max (x / (x + y)) (max ((1 + x - y) / 2) ((1 - y) / (2 - x - y)))) with hMdef
+    have hden : (0 : ℝ) < 2 - x - y := by linarith
+    have hMm : M < m := by
+      rw [hMdef, hmdef]
+      refine max_lt (max_lt ?_ ?_) (max_lt ?_ (max_lt ?_ ?_)) <;> refine lt_min ?_ ?_
+      · linarith
+      · exact hhalfmax
+      · linarith
+      · exact hxupper
+      · rw [div_lt_iff₀ hsumpos]
+        nlinarith
+      · rw [div_lt_div_iff₀ hsumpos (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+      · linarith
+      · rw [div_lt_div_iff₀ (by norm_num : (0:ℝ) < 2) (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+      · rw [div_lt_iff₀ hden]
+        nlinarith
+      · rw [div_lt_div_iff₀ hden (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+    set xi : ℝ := (M + m) / 2 with hxidef
+    have hxiM : M < xi := by rw [hxidef]; linarith
+    have hxim : xi < m := by rw [hxidef]; linarith
+    have hxihalf : (1 : ℝ) / 2 < xi := lt_of_le_of_lt (le_trans (le_max_left _ _)
+      (le_max_left _ _)) hxiM
+    have hxix : x < xi := lt_of_le_of_lt (le_trans (le_max_right _ _) (le_max_left _ _)) hxiM
+    have hxit0 : x / (x + y) < xi := lt_of_le_of_lt
+      (le_trans (le_max_left _ _) (le_max_right _ _)) hxiM
+    have hxinu : (1 + x - y) / 2 < xi := lt_of_le_of_lt
+      (le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) (le_max_right _ _)) hxiM
+    have hxit1 : (1 - y) / (2 - x - y) < xi := lt_of_le_of_lt
+      (le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) (le_max_right _ _)) hxiM
+    have hxiy : xi < 1 - y := lt_of_lt_of_le hxim (min_le_left _ _)
+    have hxin : xi < ((n : ℝ) + 1) / ((n : ℝ) + 2) := lt_of_lt_of_le hxim (min_le_right _ _)
+    have hxione : xi < 1 := by linarith
+    have hxipos : 0 < xi := by linarith
+    obtain ⟨nu, t, hnu0, hnu1, ht0, ht1, hxid, hyid⟩ :=
+      exists_oneCell_segment_data hy hyx hxihalf hxinu hxit0 hxit1 hx1
+    -- the diagonal parameter is below both `x` and `1 - xi`
+    have htx : t < x := by nlinarith
+    have hty : t < y := by nlinarith
+    have htxi : t < 1 - xi := by linarith
+    -- the two rates
+    have h0 : HasOneCellBandRateReal phi hphiOne hphiZero (1 / xi) (1 / (1 - xi)) :=
+      oneCell_crossed_bandRate_of_xi hn phi psi hphiOne hphiZero hphiNorm hpsi hxihalf hxin
+    have h1 : HasOneCellBandRateReal phi hphiOne hphiZero (1 / t) (1 / t) :=
+      oneCell_diagonal_bandRate_all hn phi psi hphiOne hphiZero hphiNorm hpsi
+        (by rw [lt_div_iff₀ ht0]; linarith)
+    refine oneCell_bandRate_interp (Nat.succ_pos n) phi hphiOne hphiZero
+      (by positivity) (by positivity) (by positivity) (by positivity) ?_
+      (by rw [div_self (by positivity : (1:ℝ) / t ≠ 0)])
+      hnu0 hnu1 ?_ ?_ ?_ ?_ h0 h1
+    · have hratio : (1 : ℝ) / (1 - xi) / (1 / xi) = xi / (1 - xi) := by
+        field_simp
+      rw [hratio, le_div_iff₀ (by linarith : (0:ℝ) < 1 - xi)]
+      linarith
+    · simp only [one_div, inv_inv]
+      exact hxid
+    · simp only [one_div, inv_inv]
+      exact hyid
+    · exact one_div_lt_one_div_of_lt ht0 (by linarith)
+    · exact one_div_lt_one_div_of_lt ht0 (by linarith)
+  · -- on the conjugate line
+    have hxhalf : (1 : ℝ) / 2 < x := by linarith
+    have hxupper : x < ((n : ℝ) + 1) / ((n : ℝ) + 2) := by
+      rw [lt_div_iff₀ (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+      nlinarith
+    have hyx' : y = 1 - x := by linarith
+    have h := oneCell_crossed_bandRate_of_xi hn phi psi hphiOne hphiZero hphiNorm hpsi
+      hxhalf hxupper
+    rw [← hyx'] at h
+    exact h
+  · -- above the conjugate line
+    have hxhalf : (1 : ℝ) / 2 < x := by linarith
+    have hylower : 1 / ((n : ℝ) + 2) < y := by
+      rw [div_lt_iff₀ (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+      nlinarith
+    set m : ℝ := min x (((n : ℝ) + 1) / ((n : ℝ) + 2)) with hmdef
+    set M : ℝ := max (max (1 / 2) (1 - y))
+      (max (x / (x + y)) (max ((1 + x - y) / 2) ((1 - y) / (2 - x - y)))) with hMdef
+    have hden : (0 : ℝ) < 2 - x - y := by linarith
+    have hMm : M < m := by
+      rw [hMdef, hmdef]
+      refine max_lt (max_lt ?_ ?_) (max_lt ?_ (max_lt ?_ ?_)) <;> refine lt_min ?_ ?_
+      · linarith
+      · exact hhalfmax
+      · linarith
+      · have hy' : 1 < y * ((n : ℝ) + 2) :=
+          (div_lt_iff₀ (by linarith : (0:ℝ) < (n : ℝ) + 2)).mp hylower
+        rw [lt_div_iff₀ (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+      · rw [div_lt_iff₀ hsumpos]
+        nlinarith
+      · rw [div_lt_div_iff₀ hsumpos (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+      · linarith
+      · rw [div_lt_div_iff₀ (by norm_num : (0:ℝ) < 2) (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+      · rw [div_lt_iff₀ hden]
+        nlinarith
+      · rw [div_lt_div_iff₀ hden (by linarith : (0:ℝ) < (n : ℝ) + 2)]
+        nlinarith
+    set xi : ℝ := (M + m) / 2 with hxidef
+    have hxiM : M < xi := by rw [hxidef]; linarith
+    have hxim : xi < m := by rw [hxidef]; linarith
+    have hxihalf : (1 : ℝ) / 2 < xi := lt_of_le_of_lt (le_trans (le_max_left _ _)
+      (le_max_left _ _)) hxiM
+    have hxiy : 1 - y < xi := lt_of_le_of_lt (le_trans (le_max_right _ _) (le_max_left _ _)) hxiM
+    have hxit0 : x / (x + y) < xi := lt_of_le_of_lt
+      (le_trans (le_max_left _ _) (le_max_right _ _)) hxiM
+    have hxinu : (1 + x - y) / 2 < xi := lt_of_le_of_lt
+      (le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) (le_max_right _ _)) hxiM
+    have hxit1 : (1 - y) / (2 - x - y) < xi := lt_of_le_of_lt
+      (le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) (le_max_right _ _)) hxiM
+    have hxix : xi < x := lt_of_lt_of_le hxim (min_le_left _ _)
+    have hxin : xi < ((n : ℝ) + 1) / ((n : ℝ) + 2) := lt_of_lt_of_le hxim (min_le_right _ _)
+    have hxione : xi < 1 := by linarith
+    have hxipos : 0 < xi := by linarith
+    obtain ⟨nu, t, hnu0, hnu1, ht0, ht1, hxid, hyid⟩ :=
+      exists_oneCell_segment_data hy hyx hxihalf hxinu hxit0 hxit1 hx1
+    -- the diagonal parameter is above both `x` and `1 - xi`
+    have htx : x < t := by nlinarith
+    have htxi : 1 - xi < t := by nlinarith
+    have h1 : HasOneCellBandRateReal phi hphiOne hphiZero (1 / xi) (1 / (1 - xi)) :=
+      oneCell_crossed_bandRate_of_xi hn phi psi hphiOne hphiZero hphiNorm hpsi hxihalf hxin
+    have h0 : HasOneCellBandRateReal phi hphiOne hphiZero (1 / t) (1 / t) :=
+      oneCell_diagonal_bandRate_all hn phi psi hphiOne hphiZero hphiNorm hpsi
+        (by rw [lt_div_iff₀ ht0]; linarith)
+    refine oneCell_bandRate_interp (Nat.succ_pos n) phi hphiOne hphiZero
+      (by positivity) (by positivity) (by positivity) (by positivity)
+      (by rw [div_self (by positivity : (1:ℝ) / t ≠ 0)]) ?_
+      (by linarith : (0:ℝ) < 1 - nu) (by linarith : 1 - nu < 1) ?_ ?_ ?_ ?_ h0 h1
+    · have hratio : (1 : ℝ) / (1 - xi) / (1 / xi) = xi / (1 - xi) := by
+        field_simp
+      rw [hratio, le_div_iff₀ (by linarith : (0:ℝ) < 1 - xi)]
+      linarith
+    · simp only [one_div, inv_inv]
+      rw [show (1 : ℝ) - (1 - nu) = nu by ring]
+      linarith [hxid]
+    · simp only [one_div, inv_inv]
+      rw [show (1 : ℝ) - (1 - nu) = nu by ring]
+      linarith [hyid]
+    · exact one_div_lt_one_div_of_lt hxipos (by linarith)
+    · exact one_div_lt_one_div_of_lt (by linarith : (0:ℝ) < 1 - xi) (by linarith)
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+/-! ### Affine images of radius sets -/
+
+/-- An affine image of an interval cover is an interval cover of the affine image. -/
+theorem isIntervalCover_image_affine {E : Set ℝ} {c s δ : ℝ} (hs : 0 < s) {ι : Finset ℝ}
+    (h : IsIntervalCover E δ ι) :
+    IsIntervalCover ((fun r => c + s * r) '' E) (s * δ) (ι.image (fun a => c + s * a)) := by
+  intro x hx
+  obtain ⟨r, hr, rfl⟩ := hx
+  obtain ⟨a, ha, hra⟩ := Set.mem_iUnion₂.mp (h hr)
+  refine Set.mem_iUnion₂.mpr ⟨c + s * a, Finset.mem_image_of_mem _ ha, ?_, ?_⟩
+  · have := hra.1
+    nlinarith
+  · have := hra.2
+    nlinarith
+
+/-- A one-element cover of a set of small diameter. -/
+theorem isIntervalCover_singleton_of_subset {E : Set ℝ} {u v δ : ℝ}
+    (hE : E ⊆ Icc u v) (hlen : v - u ≤ δ) :
+    IsIntervalCover E δ {(u + v) / 2} :=
+  oneCell_isIntervalCover hE hlen
+
+/-- **Affine invariance of the upper Minkowski covering exponents.** -/
+theorem hasUpperMinkowskiExponent_image_affine {E : Set ℝ} {c s β : ℝ} (hs : 0 < s)
+    (hβ : 0 ≤ β) (hE : E ⊆ Icc (1 : ℝ) 2)
+    (h : HasUpperMinkowskiExponent E β) :
+    HasUpperMinkowskiExponent ((fun r => c + s * r) '' E) β := by
+  intro ε hε
+  obtain ⟨C, hC, hcov⟩ := h ε hε
+  refine ⟨max (C * s ^ (β + ε)) 1, lt_of_lt_of_le zero_lt_one (le_max_right _ _), ?_⟩
+  intro δ hδ hδone
+  have hpow : (1 : ℝ) ≤ δ ^ (-(β + ε)) := by
+    rw [show (-(β + ε) : ℝ) = -(β + ε) from rfl]
+    refine Real.one_le_rpow_of_pos_of_le_one_of_nonpos hδ hδone.le (by linarith)
+  rcases le_or_gt s δ with hsδ | hsδ
+  · -- the whole affine image fits into a single interval of length `δ`
+    refine ⟨{(c + s * 1 + (c + s * 2)) / 2}, ?_, ?_⟩
+    · refine isIntervalCover_singleton_of_subset (u := c + s * 1) (v := c + s * 2) ?_ ?_
+      · intro x hx
+        obtain ⟨r, hr, rfl⟩ := hx
+        obtain ⟨hr1, hr2⟩ := hE hr
+        exact ⟨by nlinarith, by nlinarith⟩
+      · nlinarith
+    · have h1 : ((({(c + s * 1 + (c + s * 2)) / 2} : Finset ℝ).card : ℝ)) = 1 := by simp
+      rw [h1]
+      calc (1 : ℝ) ≤ δ ^ (-(β + ε)) := hpow
+        _ = 1 * δ ^ (-(β + ε)) := by ring
+        _ ≤ max (C * s ^ (β + ε)) 1 * δ ^ (-(β + ε)) := by
+            refine mul_le_mul_of_nonneg_right (le_max_right _ _) ?_
+            exact Real.rpow_nonneg hδ.le _
+  · -- pull the scale back through the affine map
+    have hδ' : 0 < δ / s := div_pos hδ hs
+    have hδ'one : δ / s < 1 := by
+      rw [div_lt_one hs]
+      exact hsδ
+    obtain ⟨ι, hcover, hcard⟩ := hcov (δ / s) hδ' hδ'one
+    refine ⟨ι.image (fun a => c + s * a), ?_, ?_⟩
+    · have h := isIntervalCover_image_affine (c := c) hs hcover
+      rw [show s * (δ / s) = δ by field_simp] at h
+      exact h
+    · have hcardle : ((ι.image (fun a => c + s * a)).card : ℝ) ≤ (ι.card : ℝ) := by
+        exact_mod_cast Nat.cast_le.mpr (Finset.card_image_le)
+      refine hcardle.trans (hcard.trans ?_)
+      have hrw : (δ / s) ^ (-(β + ε)) = s ^ (β + ε) * δ ^ (-(β + ε)) := by
+        rw [Real.div_rpow hδ.le hs.le, Real.rpow_neg hδ.le, Real.rpow_neg hs.le]
+        field_simp
+      rw [hrw]
+      calc C * (s ^ (β + ε) * δ ^ (-(β + ε)))
+          = (C * s ^ (β + ε)) * δ ^ (-(β + ε)) := by ring
+        _ ≤ max (C * s ^ (β + ε)) 1 * δ ^ (-(β + ε)) := by
+            refine mul_le_mul_of_nonneg_right (le_max_left _ _) ?_
+            exact Real.rpow_nonneg hδ.le _
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+
+
+
+set_option maxHeartbeats 1000000 in
+/-- **Affine invariance of the upper Assouad spectrum exponents.** -/
+theorem hasUpperAssouadSpectrumExponent_image_affine {E : Set ℝ} {c s θ γ : ℝ}
+    (hs : 0 < s) (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1) (hγ : 0 ≤ γ)
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    (h : HasUpperAssouadSpectrumExponent E θ γ) :
+    HasUpperAssouadSpectrumExponent ((fun r => c + s * r) '' E) θ γ := by
+  obtain ⟨C, hC, hcov⟩ := h
+  refine ⟨max (C * (max 1 s) ^ γ) 1, lt_of_lt_of_le zero_lt_one (le_max_right _ _), ?_⟩
+  intro δ a b hδ hδone ha hab hb hscale
+  have hCmax : C * (max 1 s) ^ γ ≤ max (C * (max 1 s) ^ γ) 1 := le_max_left _ _
+  have honemax : (1 : ℝ) ≤ max (C * (max 1 s) ^ γ) 1 := le_max_right _ _
+  have hratio : (1 : ℝ) ≤ (b - a) / δ := by
+    rw [le_div_iff₀ hδ]
+    have hδθ : δ ≤ δ ^ θ := by
+      calc δ = δ ^ (1 : ℝ) := by rw [Real.rpow_one]
+        _ ≤ δ ^ θ := Real.rpow_le_rpow_of_exponent_ge hδ hδone.le hθ1
+    linarith
+  have hratiopow : (1 : ℝ) ≤ ((b - a) / δ) ^ γ :=
+    Real.one_le_rpow hratio hγ
+  rcases le_or_gt s δ with hsδ | hsδ
+  · -- one interval covers the whole affine image
+    refine ⟨{(c + s * 1 + (c + s * 2)) / 2}, ?_, ?_⟩
+    · refine isIntervalCover_singleton_of_subset (u := c + s * 1) (v := c + s * 2) ?_ (by nlinarith)
+      intro x hx
+      obtain ⟨hx1, -⟩ := hx
+      obtain ⟨r, hr, rfl⟩ := hx1
+      obtain ⟨hr1, hr2⟩ := hE hr
+      exact ⟨by nlinarith, by nlinarith⟩
+    · have h1 : ((({(c + s * 1 + (c + s * 2)) / 2} : Finset ℝ).card : ℝ)) = 1 := by simp
+      rw [h1]
+      calc (1 : ℝ) ≤ ((b - a) / δ) ^ γ := hratiopow
+        _ = 1 * ((b - a) / δ) ^ γ := by ring
+        _ ≤ max (C * (max 1 s) ^ γ) 1 * ((b - a) / δ) ^ γ := by
+            exact mul_le_mul_of_nonneg_right honemax (Real.rpow_nonneg (by positivity) _)
+  -- from now on the band scale is finer than the affine scale
+  have hδ' : 0 < δ / s := div_pos hδ hs
+  have hδ'one : δ / s < 1 := by
+    rw [div_lt_one hs]
+    exact hsδ
+  set alpha : ℝ := max 1 ((a - c) / s) with halphadef
+  set beta : ℝ := min 2 ((b - c) / s) with hbetadef
+  have halpha1 : (1 : ℝ) ≤ alpha := le_max_left _ _
+  have hbeta2 : beta ≤ 2 := min_le_left _ _
+  have hsubset : ((fun r => c + s * r) '' E) ∩ Icc a b
+      ⊆ (fun r => c + s * r) '' (E ∩ Icc alpha beta) := by
+    intro x hx
+    obtain ⟨hx1, hx2⟩ := hx
+    obtain ⟨r, hr, rfl⟩ := hx1
+    obtain ⟨hr1, hr2⟩ := hE hr
+    refine ⟨r, ⟨hr, ?_, ?_⟩, rfl⟩
+    · refine max_le hr1 ?_
+      rw [div_le_iff₀ hs]
+      have := hx2.1
+      nlinarith
+    · refine le_min hr2 ?_
+      rw [le_div_iff₀ hs]
+      have := hx2.2
+      nlinarith
+  have hlenle : beta - alpha ≤ (b - a) / s := by
+    have h1 : (a - c) / s ≤ alpha := le_max_right _ _
+    have h2 : beta ≤ (b - c) / s := min_le_right _ _
+    have h3 : (b - c) / s - (a - c) / s = (b - a) / s := by
+      field_simp
+      ring
+    linarith
+  rcases le_or_gt alpha beta with hab' | hab'
+  · rcases le_or_gt ((δ / s) ^ θ) (beta - alpha) with hcase | hcase
+    · -- the pulled back interval is long enough for the spectrum estimate
+      obtain ⟨ι, hcover, hcard⟩ := hcov (δ / s) alpha beta hδ' hδ'one halpha1 hab' hbeta2 hcase
+      refine ⟨ι.image (fun u => c + s * u), ?_, ?_⟩
+      · have himg := isIntervalCover_image_affine (c := c) hs hcover
+        rw [show s * (δ / s) = δ by field_simp] at himg
+        exact fun x hx => himg (hsubset hx)
+      · have hcardle : ((ι.image (fun u => c + s * u)).card : ℝ) ≤ (ι.card : ℝ) := by
+          exact_mod_cast Nat.cast_le.mpr Finset.card_image_le
+        refine hcardle.trans (hcard.trans ?_)
+        have hkey : (beta - alpha) / (δ / s) ≤ (b - a) / δ := by
+          rw [div_le_div_iff₀ hδ' hδ]
+          have h1 : (beta - alpha) * δ ≤ ((b - a) / s) * δ :=
+            mul_le_mul_of_nonneg_right hlenle hδ.le
+          have h2 : ((b - a) / s) * δ = (b - a) * (δ / s) := by field_simp
+          linarith
+        calc C * ((beta - alpha) / (δ / s)) ^ γ
+            ≤ C * ((b - a) / δ) ^ γ := by
+              refine mul_le_mul_of_nonneg_left ?_ hC.le
+              exact Real.rpow_le_rpow (by positivity) hkey hγ
+          _ ≤ max (C * (max 1 s) ^ γ) 1 * ((b - a) / δ) ^ γ := by
+              refine mul_le_mul_of_nonneg_right ?_ (Real.rpow_nonneg (by positivity) _)
+              have hone : (1 : ℝ) ≤ (max 1 s) ^ γ :=
+                Real.one_le_rpow (le_max_left _ _) hγ
+              calc C = C * 1 := by ring
+                _ ≤ C * (max 1 s) ^ γ := mul_le_mul_of_nonneg_left hone hC.le
+                _ ≤ max (C * (max 1 s) ^ γ) 1 := hCmax
+    · -- the pulled back interval is short: enlarge it to the critical length
+      set ell : ℝ := (δ / s) ^ θ with helldef
+      have hellpos : 0 < ell := Real.rpow_pos_of_pos hδ' _
+      have hellone : ell ≤ 1 := by
+        rw [helldef]
+        exact Real.rpow_le_one hδ'.le hδ'one.le hθ0
+      set alpha0 : ℝ := min alpha (2 - ell) with halpha0def
+      have halpha01 : (1 : ℝ) ≤ alpha0 := by
+        rw [halpha0def]
+        exact le_min halpha1 (by linarith)
+      have halpha0le : alpha0 ≤ alpha := min_le_left _ _
+      have hbeta0 : alpha0 + ell ≤ 2 := by
+        rcases min_cases alpha (2 - ell) with ⟨heq, hle⟩ | ⟨heq, hle⟩
+        · rw [halpha0def, heq]
+          linarith
+        · rw [halpha0def, heq]
+          linarith
+      have hbetale : beta ≤ alpha0 + ell := by
+        rcases min_cases alpha (2 - ell) with ⟨heq, hle⟩ | ⟨heq, hle⟩
+        · rw [halpha0def, heq]
+          linarith
+        · rw [halpha0def, heq]
+          linarith
+      obtain ⟨ι, hcover, hcard⟩ := hcov (δ / s) alpha0 (alpha0 + ell) hδ' hδ'one halpha01
+        (by linarith) hbeta0 (by rw [← helldef]; linarith)
+      refine ⟨ι.image (fun u => c + s * u), ?_, ?_⟩
+      · have himg := isIntervalCover_image_affine (c := c) hs hcover
+        rw [show s * (δ / s) = δ by field_simp] at himg
+        refine fun x hx => himg ?_
+        obtain ⟨r, ⟨hrE, hr1, hr2⟩, rfl⟩ := hsubset hx
+        refine ⟨r, ⟨hrE, ?_, ?_⟩, rfl⟩
+        · linarith
+        · linarith
+      · have hcardle : ((ι.image (fun u => c + s * u)).card : ℝ) ≤ (ι.card : ℝ) := by
+          exact_mod_cast Nat.cast_le.mpr Finset.card_image_le
+        refine hcardle.trans (hcard.trans ?_)
+        have hlenratio : (alpha0 + ell - alpha0) / (δ / s) = (δ / s) ^ (θ - 1) := by
+          rw [show alpha0 + ell - alpha0 = ell by ring, helldef,
+            show (θ - 1 : ℝ) = θ + (-1) by ring, Real.rpow_add hδ', Real.rpow_neg_one]
+          rw [div_eq_mul_inv]
+        rw [hlenratio]
+        have hspow : (δ / s) ^ (θ - 1) ≤ (max 1 s) * ((b - a) / δ) := by
+          have h1 : (δ / s) ^ (θ - 1) = δ ^ (θ - 1) * s ^ (1 - θ) := by
+            rw [Real.div_rpow hδ.le hs.le, show (1 - θ : ℝ) = -(θ - 1) by ring,
+              Real.rpow_neg hs.le]
+            field_simp
+          have h2 : s ^ (1 - θ) ≤ max 1 s := by
+            rcases le_or_gt s 1 with hs1 | hs1
+            · calc s ^ (1 - θ) ≤ 1 ^ (1 - θ) := Real.rpow_le_rpow hs.le hs1 (by linarith)
+                _ = 1 := Real.one_rpow _
+                _ ≤ max 1 s := le_max_left _ _
+            · calc s ^ (1 - θ) ≤ s ^ (1 : ℝ) :=
+                    Real.rpow_le_rpow_of_exponent_le hs1.le (by linarith)
+                _ = s := Real.rpow_one s
+                _ ≤ max 1 s := le_max_right _ _
+          have h3 : δ ^ (θ - 1) ≤ (b - a) / δ := by
+            rw [le_div_iff₀ hδ]
+            have h4 : δ ^ (θ - 1) * δ = δ ^ θ := by
+              rw [show (θ : ℝ) = (θ - 1) + 1 by ring, Real.rpow_add hδ, Real.rpow_one]
+              congr 2
+              ring
+            rw [h4]
+            exact hscale
+          rw [h1]
+          have hδpow : 0 ≤ δ ^ (θ - 1) := Real.rpow_nonneg hδ.le _
+          have hspos : 0 ≤ s ^ (1 - θ) := Real.rpow_nonneg hs.le _
+          calc δ ^ (θ - 1) * s ^ (1 - θ) ≤ δ ^ (θ - 1) * max 1 s :=
+                mul_le_mul_of_nonneg_left h2 hδpow
+            _ ≤ ((b - a) / δ) * max 1 s := by
+                refine mul_le_mul_of_nonneg_right h3 ?_
+                exact le_trans zero_le_one (le_max_left _ _)
+            _ = max 1 s * ((b - a) / δ) := by ring
+        calc C * ((δ / s) ^ (θ - 1)) ^ γ
+            ≤ C * ((max 1 s) * ((b - a) / δ)) ^ γ := by
+              refine mul_le_mul_of_nonneg_left ?_ hC.le
+              exact Real.rpow_le_rpow (Real.rpow_nonneg (by positivity) _) hspow hγ
+          _ = (C * (max 1 s) ^ γ) * ((b - a) / δ) ^ γ := by
+              rw [Real.mul_rpow (le_trans zero_le_one (le_max_left _ _)) (by positivity)]
+              ring
+          _ ≤ max (C * (max 1 s) ^ γ) 1 * ((b - a) / δ) ^ γ :=
+              mul_le_mul_of_nonneg_right hCmax (Real.rpow_nonneg (by positivity) _)
+  · -- the pulled back interval is empty
+    refine ⟨∅, ?_, ?_⟩
+    · intro x hx
+      obtain ⟨r, ⟨-, hr1, hr2⟩, rfl⟩ := hsubset hx
+      exact absurd (le_trans hr1 hr2) (by linarith)
+    · simp only [Finset.card_empty, Nat.cast_zero]
+      have hpos : (0 : ℝ) ≤ ((b - a) / δ) ^ γ := Real.rpow_nonneg (by positivity) _
+      have hCpos : (0 : ℝ) ≤ max (C * (max 1 s) ^ γ) 1 := le_trans zero_le_one honemax
+      exact mul_nonneg hCpos hpos
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.FractalDilations.Minkowski
+open Auto.Spherical.FractalDilations.MinkowskiFacts
+open Auto.Spherical.FractalDilations.AssouadSpectrum
+open Auto.Spherical.FractalDilations.AssouadSpectrumFacts
+
+
+
+/-! ### The inverse of an affine map -/
+
+theorem image_affine_inverse {E : Set ℝ} {c s : ℝ} (hs : 0 < s) :
+    (fun x => (-(c / s)) + s⁻¹ * x) '' ((fun r => c + s * r) '' E) = E := by
+  rw [Set.image_image]
+  have hid : ∀ r : ℝ, (-(c / s)) + s⁻¹ * (c + s * r) = r := by
+    intro r
+    field_simp
+    ring
+  simp only [hid]
+  exact Set.image_id E
+
+/-! ### Affine invariance of the two dimensions -/
+
+theorem upperMinkowskiDimension_image_affine {E : Set ℝ} {c s : ℝ} (hs : 0 < s)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hA : ((fun r => c + s * r) '' E) ⊆ Icc (1 : ℝ) 2) :
+    upperMinkowskiDimension ((fun r => c + s * r) '' E) = upperMinkowskiDimension E := by
+  have hsets : {t : ℝ | 0 ≤ t ∧ HasUpperMinkowskiExponent ((fun r => c + s * r) '' E) t}
+      = {t : ℝ | 0 ≤ t ∧ HasUpperMinkowskiExponent E t} := by
+    ext t
+    simp only [Set.mem_setOf_eq]
+    constructor
+    · rintro ⟨ht, hexp⟩
+      refine ⟨ht, ?_⟩
+      have hback := hasUpperMinkowskiExponent_image_affine (c := -(c / s)) (s := s⁻¹)
+        (inv_pos.mpr hs) ht hA hexp
+      rwa [image_affine_inverse hs] at hback
+    · rintro ⟨ht, hexp⟩
+      exact ⟨ht, hasUpperMinkowskiExponent_image_affine hs ht hE hexp⟩
+  unfold upperMinkowskiDimension
+  rw [hsets]
+
+theorem upperAssouadSpectrum_image_affine {E : Set ℝ} {c s θ : ℝ} (hs : 0 < s)
+    (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hA : ((fun r => c + s * r) '' E) ⊆ Icc (1 : ℝ) 2) :
+    upperAssouadSpectrum ((fun r => c + s * r) '' E) θ = upperAssouadSpectrum E θ := by
+  have hsets : {t : ℝ | 0 ≤ t ∧ HasUpperAssouadSpectrumExponent ((fun r => c + s * r) '' E) θ t}
+      = {t : ℝ | 0 ≤ t ∧ HasUpperAssouadSpectrumExponent E θ t} := by
+    ext t
+    simp only [Set.mem_setOf_eq]
+    constructor
+    · rintro ⟨ht, hexp⟩
+      refine ⟨ht, ?_⟩
+      have hback := hasUpperAssouadSpectrumExponent_image_affine (c := -(c / s)) (s := s⁻¹)
+        (inv_pos.mpr hs) hθ0 hθ1 ht hA hexp
+      rwa [image_affine_inverse hs] at hback
+    · rintro ⟨ht, hexp⟩
+      exact ⟨ht, hasUpperAssouadSpectrumExponent_image_affine hs hθ0 hθ1 ht hE hexp⟩
+  unfold upperAssouadSpectrum
+  rw [hsets]
+
+theorem quasiAssouadDimension_image_affine {E : Set ℝ} {c s : ℝ} (hs : 0 < s)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hA : ((fun r => c + s * r) '' E) ⊆ Icc (1 : ℝ) 2) :
+    quasiAssouadDimension ((fun r => c + s * r) '' E) = quasiAssouadDimension E := by
+  unfold quasiAssouadDimension
+  congr 1
+  refine Set.image_congr ?_
+  intro θ hθ
+  exact upperAssouadSpectrum_image_affine hs hθ.1 (le_of_lt hθ.2) hE hA
+
+/-- **Affine invariance of quasi-Assouad regularity.** -/
+theorem isQuasiAssouadRegular_image_affine {E : Set ℝ} {c s beta gam : ℝ} (hs : 0 < s)
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hA : ((fun r => c + s * r) '' E) ⊆ Icc (1 : ℝ) 2)
+    (h : IsQuasiAssouadRegular E beta gam) :
+    IsQuasiAssouadRegular ((fun r => c + s * r) '' E) beta gam := by
+  obtain ⟨hM, hQ, hspec⟩ := h
+  refine ⟨?_, ?_, ?_⟩
+  · rw [upperMinkowskiDimension_image_affine hs hE hA]
+    exact hM
+  · rw [quasiAssouadDimension_image_affine hs hE hA]
+    exact hQ
+  · rcases hspec with hzero | hall
+    · exact Or.inl hzero
+    · refine Or.inr ?_
+      intro θ hθ0 hθ1 hθcrit
+      rw [upperAssouadSpectrum_image_affine hs hθ0 hθ1.le hE hA]
+      exact hall θ hθ0 hθ1 hθcrit
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.OffDiagonalReassembly
+open Auto.Spherical.FractalDilations.OffDiagonalDyadicReassembly
+
+
+
+/-! ### Reassembly from a summable sequence of band bounds -/
+
+/-- The `L^q` norm of a finite sum is bounded by the corresponding sum of bounds. -/
+theorem finite_output_sum_of_bounds {d : ℕ} {q : ENNReal} (hq : (1 : ENNReal) ≤ q)
+    (T : ℕ → Euclidean d → ℝ) (hTmem : ∀ j, MemLp (T j) q volume)
+    (a : ℕ → ENNReal) (hTnorm : ∀ j, eLpNorm (T j) q volume ≤ a j) (N : ℕ) :
+    MemLp (fun x => ∑ j ∈ Finset.range N, T j x) q volume ∧
+      eLpNorm (fun x => ∑ j ∈ Finset.range N, T j x) q volume
+        ≤ ∑ j ∈ Finset.range N, a j := by
+  induction N with
+  | zero =>
+      refine ⟨?_, ?_⟩
+      · simpa using (memLp_zero_iff_aestronglyMeasurable (μ := (volume : Measure (Euclidean d)))
+          (p := q) (f := fun _ : Euclidean d => (0 : ℝ))) |>.mpr aestronglyMeasurable_const
+      · simp
+  | succ N ih =>
+      obtain ⟨hmem, hnorm⟩ := ih
+      have hsplit : ∀ x : Euclidean d, ∑ j ∈ Finset.range (N + 1), T j x
+          = (∑ j ∈ Finset.range N, T j x) + T N x := by
+        intro x
+        rw [Finset.sum_range_succ]
+      have hrw0 : (fun x : Euclidean d => ∑ j ∈ Finset.range (N + 1), T j x)
+          = (fun x => ∑ j ∈ Finset.range N, T j x) + T N := by
+        funext x
+        rw [hsplit x]
+        rfl
+      have hmem' : MemLp (fun x => ∑ j ∈ Finset.range (N + 1), T j x) q volume := by
+        rw [hrw0]
+        exact hmem.add (hTmem N)
+      refine ⟨hmem', ?_⟩
+      have hrw : (fun x : Euclidean d => ∑ j ∈ Finset.range (N + 1), T j x)
+          = (fun x => ∑ j ∈ Finset.range N, T j x) + T N := by
+        funext x
+        rw [hsplit x]
+        rfl
+      rw [hrw, Finset.sum_range_succ]
+      refine le_trans (eLpNorm_add_le hmem.1 (hTmem N).1 hq) ?_
+      exact add_le_add hnorm (hTnorm N)
+
+set_option maxHeartbeats 1000000 in
+/-- **Reassembly of a summable family of band bounds.**  The geometric hypothesis of
+`absolute_off_diagonal_reassembly_from_eLpNorm` is replaced by the summability of the band
+coefficients; this is what the union construction of §7 produces. -/
+theorem absolute_off_diagonal_reassembly_of_summable
+    {d : ℕ} {p q : ℝ} (hd0 : 0 < d) (hp : 0 < p) (hq : 1 ≤ q)
+    (E : Set ℝ) (hEpos : E ⊆ Ioi (0 : ℝ))
+    (φ : SchwartzMap (Euclidean d) ℂ)
+    (hφone : ∀ ξ, ‖ξ‖ ≤ 1 → φ ξ = 1)
+    (hφzero : ∀ ξ, 2 ≤ ‖ξ‖ → φ ξ = 0)
+    (CR A : ENNReal) (hCRtop : CR < ⊤) (hAtop : A < ⊤) (a : ℕ → ENNReal)
+    (hsum : ∀ N : ℕ, ∑ j ∈ Finset.range N, a j ≤ A)
+    (hregular : ∀ f : SchwartzMap (Euclidean d) ℂ,
+      MemLp (fractalSphericalMaximalReal d E
+        (absoluteCutoffProjection φ 0 f)) (ENNReal.ofReal q) volume ∧
+      eLpNorm (fractalSphericalMaximalReal d E
+        (absoluteCutoffProjection φ 0 f)) (ENNReal.ofReal q) volume ≤
+        CR * eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume)
+    (hdyadic : ∀ (j : ℕ) (f : SchwartzMap (Euclidean d) ℂ),
+      MemLp (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass φ hφone hφzero j) f) (ENNReal.ofReal q) volume ∧
+      eLpNorm (fractalDyadicBandpassMaximal d E
+        (absoluteDyadicBandpass φ hφone hφzero j) f) (ENNReal.ofReal q) volume ≤
+        a j * eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume) :
+    HasFractalSphericalStrongType d E p q := by
+  have hq0 : 0 < q := lt_of_lt_of_le zero_lt_one hq
+  have hqENN : (1 : ENNReal) ≤ ENNReal.ofReal q := by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal hq
+  set D : ENNReal := CR + A with hDdef
+  have hDtop : D < ⊤ := by
+    rw [hDdef]
+    exact ENNReal.add_lt_top.mpr ⟨hCRtop, hAtop⟩
+  set C : ℝ := D.toReal ^ q + 1 with hCdef
+  have hC : 0 < C := by
+    rw [hCdef]
+    positivity
+  refine absolute_reassembly_limit_off_diagonal hd0 hp hq0 E hEpos φ hφone C hC ?_
+  intro N f
+  set I : ℝ := ∫ x : Euclidean d, ‖f x‖ ^ p with hIdef
+  have hI : 0 ≤ I := by
+    rw [hIdef]
+    exact integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) p
+  set hroot : ENNReal := eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume with hrootdef
+  -- the finite bound at level `N`
+  set T : ℕ → Euclidean d → ℝ := fun j =>
+    fractalDyadicBandpassMaximal d E (absoluteDyadicBandpass φ hφone hφzero j) f with hTdef
+  have hTmem : ∀ j, MemLp (T j) (ENNReal.ofReal q) volume := fun j => (hdyadic j f).1
+  have hTnorm : ∀ j, eLpNorm (T j) (ENNReal.ofReal q) volume ≤ a j * hroot :=
+    fun j => (hdyadic j f).2
+  obtain ⟨hSmem, hSnorm⟩ := finite_output_sum_of_bounds hqENN T hTmem
+    (fun j => a j * hroot) hTnorm N
+  have hSbound : eLpNorm (fun x => ∑ j ∈ Finset.range N, T j x) (ENNReal.ofReal q) volume
+      ≤ A * hroot := by
+    refine hSnorm.trans ?_
+    rw [← Finset.sum_mul]
+    exact mul_le_mul' (hsum N) (le_refl _)
+  obtain ⟨hRmem, hRnorm⟩ := hregular f
+  set R : Euclidean d → ℝ := fractalSphericalMaximalReal d E
+    (absoluteCutoffProjection φ 0 f) with hRdef
+  set S : Euclidean d → ℝ := fun x => ∑ j ∈ Finset.range N, T j x with hSdef
+  set P : Euclidean d → ℝ := fractalAbsoluteCutoffMaximal d E φ N f with hPdef
+  have hR0 : ∀ x, 0 ≤ R x := fun x => ENNReal.toReal_nonneg
+  have hT0 : ∀ j x, 0 ≤ T j x := fun j x => ENNReal.toReal_nonneg
+  have hS0 : ∀ x, 0 ≤ S x := fun x => Finset.sum_nonneg fun j _ => hT0 j x
+  have hP0 : ∀ x, 0 ≤ P x := fun x => fractalAbsoluteCutoffMaximal_nonneg E φ N f x
+  have hRS0 : ∀ x, 0 ≤ R x + S x := fun x => add_nonneg (hR0 x) (hS0 x)
+  have hpoint : ∀ x, P x ≤ R x + S x := by
+    intro x
+    rw [hPdef, hRdef, hSdef, hTdef]
+    exact fractalAbsoluteCutoffMaximal_le_low_add_band_sum hd0 E hEpos φ hφone hφzero N f x
+  have hPmeas : AEStronglyMeasurable P volume :=
+    (measurable_fractalAbsoluteCutoffMaximal E φ N f).aestronglyMeasurable
+  have hRS_mem : MemLp (R + S) (ENNReal.ofReal q) volume := hRmem.add hSmem
+  have hPmem : MemLp P (ENNReal.ofReal q) volume := by
+    refine hRS_mem.mono hPmeas ?_
+    filter_upwards with x
+    change ‖P x‖ ≤ ‖R x + S x‖
+    rw [Real.norm_eq_abs, abs_of_nonneg (hP0 x), Real.norm_eq_abs, abs_of_nonneg (hRS0 x)]
+    exact hpoint x
+  have hPnorm : eLpNorm P (ENNReal.ofReal q) volume ≤ D * hroot := by
+    calc eLpNorm P (ENNReal.ofReal q) volume
+        ≤ eLpNorm (R + S) (ENNReal.ofReal q) volume := by
+          refine eLpNorm_mono ?_
+          intro x
+          change ‖P x‖ ≤ ‖R x + S x‖
+          rw [Real.norm_eq_abs, abs_of_nonneg (hP0 x), Real.norm_eq_abs,
+            abs_of_nonneg (hRS0 x)]
+          exact hpoint x
+      _ ≤ eLpNorm R (ENNReal.ofReal q) volume + eLpNorm S (ENNReal.ofReal q) volume :=
+          eLpNorm_add_le hRmem.1 hSmem.1 hqENN
+      _ ≤ CR * hroot + A * hroot := add_le_add hRnorm hSbound
+      _ = D * hroot := by rw [hDdef]; ring
+  refine ⟨hPmem, ?_⟩
+  calc (∫ x : Euclidean d, (fractalAbsoluteCutoffMaximal d E φ N f x) ^ q)
+      ≤ D.toReal ^ q * I ^ (q / p) := by
+        rw [hIdef]
+        exact off_diagonal_moment_bound_of_eLpNorm hp hq0 P hPmem hP0 f D hDtop.ne hPnorm
+    _ ≤ C * I ^ (q / p) := by
+        refine mul_le_mul_of_nonneg_right ?_ (Real.rpow_nonneg hI _)
+        rw [hCdef]
+        linarith
+
+open MeasureTheory Set ENNReal
+open Auto.Spherical.SurfaceCore
+open Auto.Spherical.FractalDilations.Definitions
+open Auto.Spherical.FractalDilations.Maximal
+open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.FractalDilations.AbsoluteReassembly
+
+
+
+/-! ### Finite unions of radius sets at the band level -/
+
+/-- The band maximal operator over a finite union is dominated by the sum over the pieces. -/
+theorem fractalDyadicBandpassMaximal_biUnion_le {d : ℕ} (hd : 0 < d) (S : Finset ℕ)
+    (A : ℕ → Set ℝ) (hA : ∀ n, A n ⊆ Ioi (0 : ℝ))
+    (psi f : SchwartzMap (Euclidean d) ℂ) (x : Euclidean d) :
+    fractalDyadicBandpassMaximal d (⋃ n ∈ S, A n) psi f x
+      ≤ ∑ n ∈ S, fractalDyadicBandpassMaximal d (A n) psi f x := by
+  classical
+  induction S using Finset.induction with
+  | empty =>
+      simp only [Finset.notMem_empty, Set.iUnion_of_empty, Set.iUnion_empty,
+        Finset.sum_empty]
+      have hzero : fractalDyadicBandpassMaximal d (∅ : Set ℝ) psi f x = 0 := by
+        rw [fractalDyadicBandpassMaximal, fractalSphericalMaximalReal,
+          fractalSphericalMaximal_empty]
+        simp
+      rw [hzero]
+  | insert n S hn ih =>
+      have hsplit : (⋃ m ∈ insert n S, A m) = A n ∪ (⋃ m ∈ S, A m) := by
+        rw [Finset.set_biUnion_insert]
+      rw [hsplit, Finset.sum_insert hn]
+      have hsub1 : A n ⊆ Ioi (0 : ℝ) := hA n
+      have hsub2 : (⋃ m ∈ S, A m) ⊆ Ioi (0 : ℝ) := by
+        intro t ht
+        obtain ⟨m, hm, htm⟩ := Set.mem_iUnion₂.mp ht
+        exact hA m htm
+      have hstep := fractalSphericalMaximalReal_union_le hd hsub1 hsub2
+        (dyadicBandpassProjection psi f) x
+      calc fractalDyadicBandpassMaximal d (A n ∪ (⋃ m ∈ S, A m)) psi f x
+          ≤ fractalDyadicBandpassMaximal d (A n) psi f x
+            + fractalDyadicBandpassMaximal d (⋃ m ∈ S, A m) psi f x := hstep
+        _ ≤ fractalDyadicBandpassMaximal d (A n) psi f x
+            + ∑ m ∈ S, fractalDyadicBandpassMaximal d (A m) psi f x :=
+            add_le_add_right ih (fractalDyadicBandpassMaximal d (A n) psi f x)
+
+/-- The `L^q` norm of the band maximal operator over a countable union of pieces, each confined
+to `[1, 1 + 2^{-L n}]`, splits into the resolved pieces and one cell. -/
+theorem eLpNorm_bandMaximal_iUnion_le {d : ℕ} (hd : 0 < d) {q : ℝ} (hq : 1 ≤ q)
+    {Es : ℕ → Set ℝ} (hEs : ∀ n, Es n ⊆ Icc (1 : ℝ) 2) {L : ℕ → ℕ} (hL : ∀ n, n ≤ L n)
+    (hloc : ∀ n, Es n ⊆ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ L n)⁻¹))
+    (psi f : SchwartzMap (Euclidean d) ℂ) (j : ℕ) :
+    eLpNorm (fractalDyadicBandpassMaximal d (⋃ n, Es n) psi f) (ENNReal.ofReal q) volume
+      ≤ (∑ n ∈ (Finset.range j).filter (fun n => L n < j),
+          eLpNorm (fractalDyadicBandpassMaximal d (Es n) psi f) (ENNReal.ofReal q) volume)
+        + eLpNorm (fractalDyadicBandpassMaximal d
+            ((⋃ n, Es n) ∩ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ j)⁻¹)) psi f)
+            (ENNReal.ofReal q) volume := by
+  classical
+  have hqENN : (1 : ENNReal) ≤ ENNReal.ofReal q := by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal hq
+  set S : Finset ℕ := (Finset.range j).filter (fun n => L n < j) with hSdef
+  set U : Set ℝ := ⋃ n, Es n with hUdef
+  set V : Set ℝ := U ∩ Icc (1 : ℝ) (1 + ((2 : ℝ) ^ j)⁻¹) with hVdef
+  have hEpos : ∀ n, Es n ⊆ Ioi (0 : ℝ) := fun n t ht =>
+    lt_of_lt_of_le zero_lt_one (hEs n ht).1
+  have hUpos : U ⊆ Ioi (0 : ℝ) := by
+    intro t ht
+    obtain ⟨n, htn⟩ := Set.mem_iUnion.mp ht
+    exact hEpos n htn
+  have hVpos : V ⊆ Ioi (0 : ℝ) := fun t ht => hUpos ht.1
+  -- the covering of the radius set
+  have hcover : U ⊆ (⋃ n ∈ S, Es n) ∪ V := by
+    intro t ht
+    obtain ⟨n, htn⟩ := Set.mem_iUnion.mp ht
+    by_cases hcase : n ∈ S
+    · exact Or.inl (Set.mem_iUnion₂.mpr ⟨n, hcase, htn⟩)
+    · refine Or.inr ⟨ht, ?_⟩
+      have hjL : j ≤ L n := by
+        rw [hSdef, Finset.mem_filter, Finset.mem_range] at hcase
+        by_contra hlt
+        push_neg at hlt
+        exact hcase ⟨lt_of_le_of_lt (hL n) (lt_of_not_ge (fun h => absurd hlt (not_lt.mpr h))),
+          hlt⟩
+      obtain ⟨h1, h2⟩ := hloc n htn
+      refine ⟨h1, le_trans h2 ?_⟩
+      have hmono : ((2 : ℝ) ^ L n)⁻¹ ≤ ((2 : ℝ) ^ j)⁻¹ := by
+        refine (inv_le_inv₀ (by positivity) (by positivity)).mpr ?_
+        exact pow_le_pow_right₀ (by norm_num) hjL
+      linarith
+  set G : Euclidean d → ℝ := ∑ n ∈ S, fractalDyadicBandpassMaximal d (Es n) psi f with hGdef
+  have hGapply : ∀ x, G x = ∑ n ∈ S, fractalDyadicBandpassMaximal d (Es n) psi f x := by
+    intro x
+    rw [hGdef]
+    exact Finset.sum_apply x S _
+  -- the pointwise bound
+  have hpoint : ∀ x, fractalDyadicBandpassMaximal d U psi f x
+      ≤ G x + fractalDyadicBandpassMaximal d V psi f x := by
+    intro x
+    have hmono := fractalDyadicBandpassMaximal_mono hd hcover
+      (Set.union_subset (fun t ht => by
+        obtain ⟨n, hn, htn⟩ := Set.mem_iUnion₂.mp ht
+        exact hEpos n htn) hVpos) psi f x
+    refine hmono.trans ?_
+    have hstep : fractalDyadicBandpassMaximal d ((⋃ n ∈ S, Es n) ∪ V) psi f x
+        ≤ fractalDyadicBandpassMaximal d (⋃ n ∈ S, Es n) psi f x
+          + fractalDyadicBandpassMaximal d V psi f x :=
+      fractalSphericalMaximalReal_union_le hd
+        (show (⋃ n ∈ S, Es n) ⊆ Ioi (0:ℝ) from fun t ht => by
+          obtain ⟨n, hn, htn⟩ := Set.mem_iUnion₂.mp ht
+          exact hEpos n htn) hVpos (dyadicBandpassProjection psi f) x
+    refine hstep.trans ?_
+    rw [hGapply x]
+    exact add_le_add_left
+      (fractalDyadicBandpassMaximal_biUnion_le hd S Es hEpos psi f x) _
+  -- pass to the norms
+  have hmeasV : AEStronglyMeasurable (fractalDyadicBandpassMaximal d V psi f) volume :=
+    (measurable_fractalDyadicBandpassMaximal V psi f).aestronglyMeasurable
+  have hmeasS : AEStronglyMeasurable G volume := by
+    rw [hGdef]
+    refine Finset.aestronglyMeasurable_sum S ?_
+    intro n hn
+    exact (measurable_fractalDyadicBandpassMaximal (Es n) psi f).aestronglyMeasurable
+  calc eLpNorm (fractalDyadicBandpassMaximal d U psi f) (ENNReal.ofReal q) volume
+      ≤ eLpNorm (G + fractalDyadicBandpassMaximal d V psi f) (ENNReal.ofReal q) volume := by
+        refine eLpNorm_mono ?_
+        intro x
+        have h0 : 0 ≤ fractalDyadicBandpassMaximal d U psi f x :=
+          fractalDyadicBandpassMaximal_nonneg U psi f x
+        have hG0 : 0 ≤ G x := by
+          rw [hGapply x]
+          exact Finset.sum_nonneg fun n _ => fractalDyadicBandpassMaximal_nonneg (Es n) psi f x
+        have h1 : 0 ≤ (G + fractalDyadicBandpassMaximal d V psi f) x := by
+          change 0 ≤ G x + fractalDyadicBandpassMaximal d V psi f x
+          exact add_nonneg hG0 (fractalDyadicBandpassMaximal_nonneg V psi f x)
+        rw [Real.norm_eq_abs, abs_of_nonneg h0, Real.norm_eq_abs, abs_of_nonneg h1]
+        exact hpoint x
+    _ ≤ eLpNorm G (ENNReal.ofReal q) volume
+        + eLpNorm (fractalDyadicBandpassMaximal d V psi f) (ENNReal.ofReal q) volume :=
+        eLpNorm_add_le hmeasS hmeasV hqENN
+    _ ≤ (∑ n ∈ S, eLpNorm (fractalDyadicBandpassMaximal d (Es n) psi f)
+          (ENNReal.ofReal q) volume)
+        + eLpNorm (fractalDyadicBandpassMaximal d V psi f) (ENNReal.ofReal q) volume := by
+        refine add_le_add_left ?_ _
+        rw [hGdef]
+        exact eLpNorm_sum_le (fun n _ =>
+          (measurable_fractalDyadicBandpassMaximal (Es n) psi f).aestronglyMeasurable) hqENN
 
 end
 
