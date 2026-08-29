@@ -28,9 +28,8 @@ import Mathlib.Analysis.SpecialFunctions.Log.Base
 import LeanSpherical.Auto.Spherical.LittlewoodPaley
 import LeanSpherical.Auto.Spherical.OneDimStationaryPhase
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
-import LeanSpherical.Auto.Spherical.FourierRadius
+import LeanSpherical.Auto.Spherical.Auxiliary
 import Mathlib.Order.Interval.Set.Union
-import LeanSpherical.Auto.Spherical.LpSpaceFacts
 
 -- BEGIN ScratchKakeyaDensityExtension
 section
@@ -1579,7 +1578,7 @@ open Auto.Spherical.SurfaceCore
 open Auto.Spherical.MSS
 open scoped ENNReal ContDiff
 
-namespace ScratchInnerSlab
+namespace Auto.Spherical.MSSKakeya.ScratchInnerSlab
 
 noncomputable section
 
@@ -2174,9 +2173,12 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt
 
 end
 
-end ScratchInnerSlab
+end Auto.Spherical.MSSKakeya.ScratchInnerSlab
 end
 -- END ScratchInnerSlabDensity
+
+/- The remaining consolidated scratch components live under this file's Auto namespace. -/
+open Auto.Spherical.MSSKakeya
 
 -- BEGIN ScratchTensorDensity
 section
@@ -2213,7 +2215,7 @@ open MeasureTheory
 #check ContinuousMap.coe_comp
 #check Commute.all
 
-namespace ScratchTensor
+namespace Auto.Spherical.MSSKakeya.ScratchTensor
 
 noncomputable def tensorAlgHom (X Y : Type*) [TopologicalSpace X] [TopologicalSpace Y] :
     C(X, Real) ⊗[Real] C(Y, Real) →ₐ[Real] C(X × Y, Real) :=
@@ -2956,7 +2958,7 @@ theorem exists_finite_smooth_compact_separated_uniform_close_complex
           Complex.norm_real, Real.norm_eq_abs, one_mul]
       _ < epsilon := by linarith
 
-end ScratchTensor
+end Auto.Spherical.MSSKakeya.ScratchTensor
 #check Fin.sum_univ_succ
 #check Fin.sum_univ_zero
 #check Fin.sum_univ_two
@@ -2987,7 +2989,7 @@ open Auto.Spherical.SurfaceCore
 open Auto.Spherical.MSS
 open scoped ENNReal EuclideanSpace FourierTransform ContDiff
 
-namespace ScratchSlabTensor
+namespace Auto.Spherical.MSSKakeya.ScratchSlabTensor
 
 noncomputable section
 
@@ -3586,7 +3588,7 @@ theorem hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDen
 
 end
 
-end ScratchSlabTensor
+end Auto.Spherical.MSSKakeya.ScratchSlabTensor
 end
 -- END ScratchSlabTensorDensity
 
@@ -3598,7 +3600,7 @@ open Auto.Spherical.SurfaceCore
 open Auto.Spherical.MSS
 open scoped ENNReal EuclideanSpace ContDiff FourierTransform
 
-namespace ScratchInnerSlabTensorDensityIntegration
+namespace Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorDensityIntegration
 
 noncomputable section
 
@@ -3992,7 +3994,7 @@ theorem hasLightRayMaximalEstimate_of_innerSlabFiniteTensorSignedEnvelope
 
 end
 
-end ScratchInnerSlabTensorDensityIntegration
+end Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorDensityIntegration
 end
 -- END ScratchInnerSlabTensorDensityIntegration
 
@@ -8858,7 +8860,7 @@ end
 -- BEGIN ScratchInnerSlabTensorL4Density
 section
 
-namespace ScratchInnerSlabTensorL4Density
+namespace Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorL4Density
 
 open Filter MeasureTheory Set
 open Auto.Spherical.SurfaceCore
@@ -9107,7 +9109,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
 
 end
 
-end ScratchInnerSlabTensorL4Density
+end Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorL4Density
 end
 -- END ScratchInnerSlabTensorL4Density
 
@@ -13189,7 +13191,7 @@ end
 -- BEGIN ScratchKakeyaTTStarAngular
 section
 
-namespace ScratchKakeyaTTStarAngular
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaTTStarAngular
 
 open MeasureTheory Set
 open Auto.Spherical.OneDimStationaryPhase
@@ -14860,14 +14862,14 @@ theorem exists_uniform_literalOuterCircleUnitShell_fixedBump_order_zero
 
 end
 
-end ScratchKakeyaTTStarAngular
+end Auto.Spherical.MSSKakeya.ScratchKakeyaTTStarAngular
 end
 -- END ScratchKakeyaTTStarAngular
 
 -- BEGIN ScratchKakeyaParametricShellChain
 section
 
-namespace ScratchKakeyaParametricShellChain
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaParametricShellChain
 
 open MeasureTheory Set
 open Auto.Spherical.OneDimStationaryPhase
@@ -15147,14 +15149,14 @@ theorem exists_uniform_literalOuterCircleUnitShell_phaseDerivativeProduct
 
 end
 
-end ScratchKakeyaParametricShellChain
+end Auto.Spherical.MSSKakeya.ScratchKakeyaParametricShellChain
 end
 -- END ScratchKakeyaParametricShellChain
 
 -- BEGIN ScratchKakeyaCutoffDerivative
 section
 
-namespace ScratchKakeyaCutoffDerivative
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCutoffDerivative
 
 open MeasureTheory Set
 open ScratchKakeyaTTStarAngular
@@ -15264,14 +15266,14 @@ theorem exists_uniform_literalOuterCircleUnitShell_cutoffDerivativeProduct
 
 end
 
-end ScratchKakeyaCutoffDerivative
+end Auto.Spherical.MSSKakeya.ScratchKakeyaCutoffDerivative
 end
 -- END ScratchKakeyaCutoffDerivative
 
 -- BEGIN ScratchKakeyaOuterAngularLeibniz
 section
 
-namespace ScratchKakeyaOuterAngularLeibniz
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaOuterAngularLeibniz
 
 open ScratchKakeyaTTStarAngular
 open ScratchKakeyaCutoffDerivative
@@ -15338,14 +15340,14 @@ theorem hasDerivAt_outerCircleLocalizedAngular
 
 end
 
-end ScratchKakeyaOuterAngularLeibniz
+end Auto.Spherical.MSSKakeya.ScratchKakeyaOuterAngularLeibniz
 end
 -- END ScratchKakeyaOuterAngularLeibniz
 
 -- BEGIN ScratchKakeyaContinuousShell
 section
 
-namespace ScratchKakeyaContinuousShell
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaContinuousShell
 
 open Filter MeasureTheory Set
 open Auto.Spherical.MSS
@@ -15695,7 +15697,7 @@ theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN_of_memLp_energy
 
 end
 
-end ScratchKakeyaContinuousShell
+end Auto.Spherical.MSSKakeya.ScratchKakeyaContinuousShell
 end
 -- END ScratchKakeyaContinuousShell
 
@@ -28157,7 +28159,7 @@ end
 -- BEGIN ScratchKakeyaTimeEnvelope
 section
 
-namespace ScratchKakeyaTimeEnvelope
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaTimeEnvelope
 
 open MeasureTheory Set
 
@@ -28375,14 +28377,14 @@ theorem intervalIntegral_norm_le_of_central_outer_column
 
 end
 
-end ScratchKakeyaTimeEnvelope
+end Auto.Spherical.MSSKakeya.ScratchKakeyaTimeEnvelope
 end
 -- END ScratchKakeyaTimeEnvelope
 
 -- BEGIN ScratchKakeyaGlobalTimeEnvelope
 section
 
-namespace ScratchKakeyaGlobalTimeEnvelope
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalTimeEnvelope
 
 open MeasureTheory Set
 open ScratchKakeyaTimeEnvelope
@@ -28539,14 +28541,14 @@ theorem integral_norm_le_of_central_outer_univ_column
 
 end
 
-end ScratchKakeyaGlobalTimeEnvelope
+end Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalTimeEnvelope
 end
 -- END ScratchKakeyaGlobalTimeEnvelope
 
 -- BEGIN ScratchKakeyaGlobalComplexSchur
 section
 
-namespace ScratchKakeyaGlobalComplexSchur
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalComplexSchur
 
 open MeasureTheory Set
 open Auto.Spherical.MSS
@@ -28602,7 +28604,7 @@ theorem norm_integral_integral_le_of_symmetricSchur
 
 end
 
-end ScratchKakeyaGlobalComplexSchur
+end Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalComplexSchur
 end
 -- END ScratchKakeyaGlobalComplexSchur
 
@@ -29782,7 +29784,7 @@ end
 -- BEGIN ScratchKakeyaCircleTimeKernel
 section
 
-namespace ScratchKakeyaCircleTimeKernel
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
 
 open MeasureTheory Set
 open scoped BigOperators
@@ -30531,14 +30533,14 @@ theorem exists_outerCircleTTStarProductTimeKernel_quadratic_norm_schur
 
 end
 
-end ScratchKakeyaCircleTimeKernel
+end Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
 end
 -- END ScratchKakeyaCircleTimeKernel
 
 -- BEGIN ScratchKakeyaCircleGlobalTimeSchur
 section
 
-namespace ScratchKakeyaCircleGlobalTimeSchur
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCircleGlobalTimeSchur
 
 open MeasureTheory Set
 open ScratchKakeyaTimeEnvelope ScratchKakeyaGlobalTimeEnvelope
@@ -30633,14 +30635,14 @@ theorem exists_outerCircleTTStarProductTimeKernel_global_row_column_schur
 
 end
 
-end ScratchKakeyaCircleGlobalTimeSchur
+end Auto.Spherical.MSSKakeya.ScratchKakeyaCircleGlobalTimeSchur
 end
 -- END ScratchKakeyaCircleGlobalTimeSchur
 
 -- BEGIN ScratchKakeyaTimePhaseBridge
 section
 
-namespace ScratchKakeyaCircleTimeKernel
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
 
 open MeasureTheory Set
 open scoped BigOperators FourierTransform
@@ -30669,14 +30671,14 @@ theorem norm_outerCircleTTStarProductTimeKernel_fourierChar_neg
 
 end
 
-end ScratchKakeyaCircleTimeKernel
+end Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
 end
 -- END ScratchKakeyaTimePhaseBridge
 
 -- BEGIN ScratchKakeyaGenericTTStarFactorization
 section
 
-namespace ScratchKakeyaGenericTTStarFactorization
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaGenericTTStarFactorization
 
 open MeasureTheory
 
@@ -30768,14 +30770,14 @@ theorem ttstar_factorization
 
 end
 
-end ScratchKakeyaGenericTTStarFactorization
+end Auto.Spherical.MSSKakeya.ScratchKakeyaGenericTTStarFactorization
 end
 -- END ScratchKakeyaGenericTTStarFactorization
 
 -- BEGIN ScratchKakeyaFiniteTensorOuterShell
 section
 
-namespace ScratchKakeyaFiniteTensorOuterShell
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorOuterShell
 
 open Filter MeasureTheory FourierTransform Set
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
@@ -31333,7 +31335,7 @@ theorem exists_outerShellFiniteTensor_localized_E0
 
 end
 
-end ScratchKakeyaFiniteTensorOuterShell
+end Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorOuterShell
 end
 -- END ScratchKakeyaFiniteTensorOuterShell
 
@@ -45130,7 +45132,7 @@ end
 -- BEGIN ScratchKakeyaFiniteTensorCentralShell
 section
 
-namespace ScratchKakeyaFiniteTensorCentralShell
+namespace Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorCentralShell
 
 open Filter MeasureTheory FourierTransform Set
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
@@ -45347,7 +45349,7 @@ theorem norm_centralCircleFourierCharProductKernel_le
 
 end
 
-end ScratchKakeyaFiniteTensorCentralShell
+end Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorCentralShell
 end
 -- END ScratchKakeyaFiniteTensorCentralShell
 

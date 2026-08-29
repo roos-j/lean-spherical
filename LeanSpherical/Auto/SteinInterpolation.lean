@@ -7251,6 +7251,9 @@ theorem riesz_thorin
     exact hbound₁ f hf
 
 end Auto
+
+namespace Auto.SteinInterpolation
+
 theorem stein_interpolation
     {X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
     {μ : Measure X} {ν : Measure Y} [SigmaFinite ν]
@@ -7329,3 +7332,5 @@ theorem riesz_thorin
           eLpNorm (f : X → ℂ) p μ :=
   Auto.riesz_thorin T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul hT_measurable hM₀ hM₁
     hbound₀ hbound₁
+
+end Auto.SteinInterpolation
