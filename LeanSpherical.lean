@@ -2,23 +2,23 @@ import LeanSpherical.Auto.Spherical.SphericalMaximal
 import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.RSTypeSetCharacterization
 
-#check Auto.Spherical.PowerWeights.PlanarClosure.closure_typeSet_eq
-#print axioms Auto.Spherical.PowerWeights.PlanarClosure.closure_typeSet_eq
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq
 
-#check Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le
-#print axioms Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_restrictedSphericalMaximal_le
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_restrictedSphericalMaximal_le
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_restrictedSphericalMaximal_le
 
-#check Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le
-#print axioms Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_sphericalMaximal_le
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_sphericalMaximal_le
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_sphericalMaximal_le
 
-#check Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_lacunarySphericalMaximal_le
-#print axioms Auto.Spherical.FractalDilations.DiagonalTheorem.eLpNorm_lacunarySphericalMaximal_le
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_lacunarySphericalMaximal_le
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_lacunarySphericalMaximal_le
 
-#check Auto.Spherical.FractalDilations.Theorems.theorem_one
-#print axioms Auto.Spherical.FractalDilations.Theorems.theorem_one
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.theorem_one
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.theorem_one
 
-#check Auto.Spherical.FractalDilations.Theorems.theorem_one_Lp
-#print axioms Auto.Spherical.FractalDilations.Theorems.theorem_one_Lp
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.theorem_one_Lp
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.theorem_one_Lp
 
 #check Auto.Spherical.SphericalMaximal.stein_spherical_maximal
 #print axioms Auto.Spherical.SphericalMaximal.stein_spherical_maximal
