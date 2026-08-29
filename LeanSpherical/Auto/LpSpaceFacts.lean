@@ -10,6 +10,8 @@ import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
 import Mathlib.MeasureTheory.Function.Holder
 import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
 
+namespace Auto.LpSpaceFacts
+
 /-!
 # Reusable facts about `Lp` spaces
 
@@ -20,7 +22,7 @@ duality pairing against the raw dual test function `pRawDualTest`, and the
 `MemLp` interpolation of exponents.
 -/
 
-namespace Auto.Spherical.LpSpaceFacts
+section Auto.LpSpaceFacts
 
 open MeasureTheory ENNReal
 open scoped ENNReal
@@ -752,4 +754,6 @@ theorem memLp_of_power_interpolation
 
 end
 
-end Auto.Spherical.LpSpaceFacts
+end Auto.LpSpaceFacts
+
+end Auto.LpSpaceFacts

@@ -8,6 +8,9 @@ import Mathlib.Analysis.Fourier.FourierTransform
 import Mathlib.Analysis.Fourier.LpSpace
 import Mathlib.Analysis.SpecialFunctions.SmoothTransition
 
+
+namespace Auto.CalderonVaillancourt
+
 /-!
 # The Calderón--Vaillancourt theorem
 
@@ -31,7 +34,7 @@ variable, and checks the two Cotlar--Stein conditions by an oscillatory integral
 * E. M. Stein, *Harmonic analysis*, Ch. VII, §2.5.
 -/
 
-namespace Auto.CalderonVaillancourt
+section Auto.CalderonVaillancourt
 
 open MeasureTheory FourierTransform
 open scoped ENNReal NNReal FourierTransform
@@ -251,7 +254,7 @@ structure IsGoodKernel (μ : Measure α) (K : α → α → ℂ) : Prop where
   exists_data : ∃ (B : ℝ≥0∞) (S : Set α), B ≠ ⊤ ∧ MeasurableSet S ∧ μ S ≠ ⊤ ∧
     (∀ x y, ‖K x y‖ₑ ≤ B) ∧ (∀ x y, K x y ≠ 0 → x ∈ S ∧ y ∈ S)
 
-namespace IsGoodKernel
+section IsGoodKernel
 
 variable {μ : Measure α} {K : α → α → ℂ}
 
@@ -331,7 +334,7 @@ end IsGoodKernel
 theorem memLp_kernelApply_of_good {μ : Measure α} [SFinite μ] {K : α → α → ℂ}
     (hK : IsGoodKernel μ K) {f : α → ℂ} (hf : MemLp f 2 μ) :
     MemLp (kernelApply μ K f) 2 μ := by
-  obtain ⟨C, hC, h₁, h₂⟩ := hK.exists_schur
+  obtain ⟨C, hC, h₁, h₂⟩ := exists_schur hK
   exact memLp_kernelApply hK.meas hC h₁ h₂ hf
 
 variable (μ : Measure α) [SFinite μ] (K : α → α → ℂ)
@@ -347,8 +350,8 @@ def goodLinearMap (hK : IsGoodKernel μ K) : Lp ℂ 2 μ →ₗ[ℂ] Lp ℂ 2 μ
           MemLp.coeFn_toLp (memLp_kernelApply_of_good hK (Lp.memLp (F + G)))
       _ = kernelApply μ K ((F : α → ℂ) + (G : α → ℂ)) := kernelApply_congr_ae K hc
       _ = kernelApply μ K (F : α → ℂ) + kernelApply μ K (G : α → ℂ) :=
-          kernelApply_add (fun x => (hK.row_meas x).aestronglyMeasurable)
-            hK.sqMass_row_ne_top (Lp.memLp F).1 (sqMass_ne_top_of_memLp (Lp.memLp F))
+          kernelApply_add (fun x => (row_meas hK x).aestronglyMeasurable)
+            (sqMass_row_ne_top hK) (Lp.memLp F).1 (sqMass_ne_top_of_memLp (Lp.memLp F))
             (Lp.memLp G).1 (sqMass_ne_top_of_memLp (Lp.memLp G))
       _ =ᵐ[μ]
           ((MemLp.toLp _ (memLp_kernelApply_of_good hK (Lp.memLp F)) : Lp ℂ 2 μ) : α → ℂ) +
@@ -391,7 +394,7 @@ theorem norm_goodLinearMap_apply_le (hK : IsGoodKernel μ K) {C : ℝ≥0∞} (h
 /-- The `L²` operator attached to a good kernel. -/
 def goodCLM (hK : IsGoodKernel μ K) : Lp ℂ 2 μ →L[ℂ] Lp ℂ 2 μ :=
   LinearMap.mkContinuousOfExistsBound (goodLinearMap μ K hK) (by
-    obtain ⟨C, hC, h₁, h₂⟩ := hK.exists_schur
+    obtain ⟨C, hC, h₁, h₂⟩ := exists_schur hK
     exact ⟨C.toReal, norm_goodLinearMap_apply_le μ K hK hC h₁ h₂⟩)
 
 @[simp] theorem goodCLM_apply (hK : IsGoodKernel μ K) (F : Lp ℂ 2 μ) :
@@ -618,10 +621,10 @@ theorem kernelApply_comp {μ : Measure α} [SFinite μ] {K₁ K₂ : α → α �
   funext x
   have hint : Integrable (Function.uncurry
       (fun y z => K₁ x y * K₂ y z * f z)) (μ.prod μ) := by
-    refine integrable_prod_of_good h₂ hfm (h₁.row_meas x).aestronglyMeasurable hf2
-      (h₁.sqMass_row_ne_top x) ?_ ?_
+    refine integrable_prod_of_good h₂ hfm (row_meas h₁ x).aestronglyMeasurable hf2
+      (sqMass_row_ne_top h₁ x) ?_ ?_
     · refine AEStronglyMeasurable.mul (AEStronglyMeasurable.mul ?_ ?_) ?_
-      · exact ((h₁.row_meas x).comp measurable_fst).stronglyMeasurable.aestronglyMeasurable
+      · exact ((row_meas h₁ x).comp measurable_fst).stronglyMeasurable.aestronglyMeasurable
       · exact h₂.meas.stronglyMeasurable.aestronglyMeasurable
       · exact hfm.comp_snd
     · intro y z
@@ -1243,7 +1246,7 @@ structure IsCVSymbol (d N : ℕ)
   boundx : ∀ ξ, ∀ n ≤ N, ∀ x, ‖iteratedFDeriv ℝ n (fun x => a x ξ) x‖ ≤ A
   boundξ : ∀ x, ∀ n ≤ N, ∀ ξ, ‖iteratedFDeriv ℝ n (fun ξ => a x ξ) ξ‖ ≤ A
 
-namespace IsCVSymbol
+section IsCVSymbol
 
 variable {d N : ℕ} {a : EuclideanSpace ℝ (Fin d) → EuclideanSpace ℝ (Fin d) → ℂ} {A : ℝ}
 
@@ -1251,8 +1254,8 @@ theorem norm_le (ha : IsCVSymbol d N a A) (x ξ : EuclideanSpace ℝ (Fin d)) : 
   have h := ha.boundx ξ 0 (Nat.zero_le _) x
   rwa [norm_iteratedFDeriv_zero] at h
 
-theorem nonneg (ha : IsCVSymbol d N a A) : 0 ≤ A :=
-  le_trans (norm_nonneg _) (ha.norm_le 0 0)
+theorem isCVSymbol_nonneg (ha : IsCVSymbol d N a A) : 0 ≤ A :=
+  le_trans (norm_nonneg _) (norm_le ha 0 0)
 
 end IsCVSymbol
 
@@ -1287,7 +1290,7 @@ theorem norm_cvK_le {d N : ℕ} {a : EuclideanSpace ℝ (Fin d) → EuclideanSpa
   calc ‖cbump d k x‖ * ‖cbump d l ξ‖ * ‖a x ξ‖
       ≤ 1 * 1 * A := by
         refine mul_le_mul (mul_le_mul (norm_cbump_le_one d k x) (norm_cbump_le_one d l ξ)
-          (norm_nonneg _) (by norm_num)) (ha.norm_le x ξ) (norm_nonneg _) (by norm_num)
+          (norm_nonneg _) (by norm_num)) (norm_le ha x ξ) (norm_nonneg _) (by norm_num)
     _ = A := by ring
 
 theorem cvK_eq_zero_left {d : ℕ} {a : EuclideanSpace ℝ (Fin d) → EuclideanSpace ℝ (Fin d) → ℂ}
@@ -1527,7 +1530,7 @@ theorem norm_compKernel_adj_cvK_le
       ≤ 4 ^ N * ((N : ℝ) + 1) * ((8 ^ N * (Cφ * Cφ) * (A * A)) *
           (volume (Metric.closedBall (0 : EuclideanSpace ℝ (Fin d)) (Real.sqrt d))).toReal) := by
   rw [compKernel_adj_cvK ha k l k' l' ξ ξ']
-  have hosc := osc_estimate (d := d) hCφb hCφ ha.nonneg
+  have hosc := osc_estimate (d := d) hCφb hCφ (isCVSymbol_nonneg ha)
     (u := fun y => (starRingEnd ℂ) (a y ξ)) (v := fun y => a y ξ')
     (contDiff_conj (ha.smoothx ξ)) (ha.smoothx ξ')
     (fun n hn x => by
@@ -1602,7 +1605,7 @@ theorem norm_compKernel_cvK_adj_le
       ≤ 4 ^ N * ((N : ℝ) + 1) * ((8 ^ N * (Cφ * Cφ) * (A * A)) *
           (volume (Metric.closedBall (0 : EuclideanSpace ℝ (Fin d)) (Real.sqrt d))).toReal) := by
   rw [compKernel_cvK_adj ha k l k' l' x x']
-  have hosc := osc_estimate (d := d) hCφb hCφ ha.nonneg
+  have hosc := osc_estimate (d := d) hCφb hCφ (isCVSymbol_nonneg ha)
     (u := fun η => a x η) (v := fun η => (starRingEnd ℂ) (a x' η))
     (ha.smoothξ x) (contDiff_conj (ha.smoothξ x'))
     (fun n hn ξ => ha.boundξ x n hn ξ)
@@ -2059,13 +2062,13 @@ theorem integrable_cvOp_integrand (ha : IsCVSymbol d N a A)
   refine Integrable.mono' (hfi.norm.const_mul A) (hmeas.mul hfi.1)
     (Filter.Eventually.of_forall fun ξ => ?_)
   rw [norm_mul, norm_mul, norm_cvChar, one_mul]
-  exact mul_le_mul_of_nonneg_right (ha.norm_le x ξ) (norm_nonneg _)
+  exact mul_le_mul_of_nonneg_right (norm_le ha x ξ) (norm_nonneg _)
 
 theorem integrable_cvK_integrand (ha : IsCVSymbol d N a A)
     {f : EuclideanSpace ℝ (Fin d) → ℂ} (hfi : Integrable f) (k l : Fin d → ℤ)
     (x : EuclideanSpace ℝ (Fin d)) :
     Integrable (fun ξ => cvK a k l x ξ * f ξ) := by
-  have hm : Measurable (cvK a k l x) := (isGoodKernel_cvK ha k l).row_meas x
+  have hm : Measurable (cvK a k l x) := row_meas (isGoodKernel_cvK ha k l) x
   refine Integrable.mono' (hfi.norm.const_mul A)
     (hm.stronglyMeasurable.aestronglyMeasurable.mul hfi.1)
     (Filter.Eventually.of_forall fun ξ => ?_)
@@ -2263,7 +2266,7 @@ theorem exists_cv_bound (d : ℕ) :
   refine ⟨Real.sqrt (cvQ d (2 * (2 * d)) Cφ 1) * ((3 : ℝ) ^ d * (3 : ℝ) ^ d) + 1, by positivity,
     ?_⟩
   intro a A ha f hfcont hfcs
-  have hAnn : 0 ≤ A := ha.nonneg
+  have hAnn : 0 ≤ A := isCVSymbol_nonneg ha
   have hmain := eLpNorm_cvOp_le ha hCφb (by linarith) rfl hfcont hfcs
   refine le_trans hmain ?_
   refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) (le_refl _)
@@ -2337,11 +2340,11 @@ structure IsCVSymbolAniso (d N : ℕ)
   boundx : ∀ ξ, ∀ n ≤ N, ∀ x, ‖iteratedFDeriv ℝ n (fun x => a x ξ) x‖ ≤ A * σ ^ n
   boundξ : ∀ x, ∀ n ≤ N, ∀ ξ, ‖iteratedFDeriv ℝ n (fun ξ => a x ξ) ξ‖ ≤ A * τ ^ n
 
-namespace IsCVSymbolAniso
+section IsCVSymbolAniso
 
 variable {N : ℕ} {a : EuclideanSpace ℝ (Fin d) → EuclideanSpace ℝ (Fin d) → ℂ} {A σ τ : ℝ}
 
-theorem nonneg (ha : IsCVSymbolAniso d N a A σ τ) : 0 ≤ A := by
+theorem isCVSymbolAniso_nonneg (ha : IsCVSymbolAniso d N a A σ τ) : 0 ≤ A := by
   have h := ha.boundx 0 0 (Nat.zero_le _) 0
   rw [norm_iteratedFDeriv_zero, pow_zero, mul_one] at h
   exact le_trans (norm_nonneg _) h
@@ -2358,7 +2361,7 @@ theorem isCVSymbol_cvRescale {N : ℕ}
     (hσ : 0 < σ) (hτ : 0 ≤ τ) (hστ : σ * τ ≤ 1)
     (ha : IsCVSymbolAniso d N a A σ τ) :
     IsCVSymbol d N (cvRescale σ a) A := by
-  have hA : 0 ≤ A := ha.nonneg
+  have hA : 0 ≤ A := isCVSymbolAniso_nonneg ha
   have hσ0 : σ ≠ 0 := hσ.ne'
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · have h : Measurable (fun q : EuclideanSpace ℝ (Fin d) × EuclideanSpace ℝ (Fin d) =>
@@ -2488,5 +2491,7 @@ end Aniso
 
 
 end
+
+end Auto.CalderonVaillancourt
 
 end Auto.CalderonVaillancourt

@@ -1,28 +1,28 @@
 /-
 Roos--Seeger lower-bound constructions used for Theorem 1.2.
-Declaration namespace `Auto.Spherical.FractalDilations.RS` is retained.
+All declarations use `Auto.Spherical.FractalDilations.RSLowerBounds`.
 -/
 
 import LeanSpherical.Auto.Spherical.FractalDilations.RSUpperBounds
 
-namespace Auto.Spherical.FractalDilations.RS
-
+namespace Auto.Spherical.FractalDilations.RSLowerBounds
+open Auto.Spherical.FractalDilations.RSUpperBounds
 open MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FractalDilations.AssouadSpectrum
-open Auto.Spherical.FractalDilations.Minkowski
-open Auto.Spherical.FractalDilations.QuasiAssouadBridge
-open Auto.Spherical.FractalDilations.Q4RadialReduction
-open Auto.Spherical.FractalDilations.OscillatoryIBP
-open Auto.Spherical.FractalDilations.PlanarTripleWaveNormalForm
-open Auto.Spherical.FractalDilations.CoordinateWaveSymbolBounds
-open Auto.Spherical.FractalDilations.QuadraticStationaryPhase
-open Auto.Spherical.FractalDilations.PlanarEndpointAmplitude
-open Auto.Spherical.FractalDilations.CoordinateMeridianWaves
-open Auto.Spherical.FractalDilations.CoordinateMiddleParameterDerivatives
-open Auto.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
-open Auto.Spherical.FractalDilations.AbsoluteReassembly
-open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.FractalDimensions
+open Auto.FractalDimensions
+open Auto.FractalDimensions
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
 open scoped ENNReal NNReal Real FourierTransform Convolution
 
 noncomputable section
@@ -2851,4 +2851,4 @@ theorem exists_isQuasiAssouadRegular {beta gam : ℝ} (hbeta : 0 ≤ beta) (hbg 
 
 end
 
-end Auto.Spherical.FractalDilations.RS
+end Auto.Spherical.FractalDilations.RSLowerBounds

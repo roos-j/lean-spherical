@@ -20,9 +20,11 @@ import Mathlib.LinearAlgebra.Basis.Submodule
 
 namespace Auto.Spherical.MSS
 
+section Auto.Spherical.MSS
+
 /-- The light-ray maximal estimate. -/
-theorem hasLightRayMaximalEstimate : HasLightRayMaximalEstimate :=
-  KakeyaFinal.final_hasLightRayMaximalEstimate
+theorem hasLightRayMaximalEstimate : Auto.Spherical.MSSBase.HasLightRayMaximalEstimate :=
+  Auto.Spherical.MSSKakeya.final_hasLightRayMaximalEstimate
 
 /-!
 ## Truncated duality closure for the MSS square function
@@ -34,9 +36,11 @@ the proof never tests the light-ray estimate directly against an unknown
 -/
 
 open Filter MeasureTheory Set
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.SmoothDyadicPhysicalCore
+open Auto.LittlewoodPaley
+open Auto.Spherical.MSSBase
+open Auto.Spherical.MSSKakeya
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped ENNReal EuclideanSpace
 
 noncomputable section
@@ -1581,7 +1585,7 @@ private theorem aux_fourierCubeKernel_translate_scale
     (R ^ 2 : Real) • FourierTransform.fourierInv
       (φ : Euclidean 2 → Complex) (R • z)
   simpa only [finrank_euclideanSpace_fin] using
-    Auto.Spherical.FourierRadius.fourierInv_comp_inv_smul
+    Auto.Spherical.Auxiliary.fourierInv_comp_inv_smul
       (φ : Euclidean 2 → Complex) hR z
 
 /-- Source-kernel version of the arbitrary-scale lattice translation formula. -/
@@ -4323,15 +4327,15 @@ private theorem aux_integrable_fourth_fourierCubeSquareFunction
   let g : ι → Euclidean 2 → Complex := fun cube =>
     fourierCubeProjection (m cube) f
   have hproj (cube : ι) : fourierCubeProjection (m cube) f =
-      (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz (m cube) f :
+      (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz (m cube) f :
         Euclidean 2 → Complex) := by
     funext x
-    exact (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz_apply (m cube) f x).symm
+    exact (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz_apply (m cube) f x).symm
   have hg : ∀ cube ∈ s,
       Integrable (fun x : Euclidean 2 => ‖g cube x‖ ^ (4 : Nat)) volume := by
     intro cube hcube
     let P : SchwartzMap (Euclidean 2) Complex :=
-      SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz (m cube) f
+      Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz (m cube) f
     have hP : Integrable (fun x : Euclidean 2 => ‖P x‖ ^ (4 : Nat)) volume :=
       (P.memLp 4 volume).integrable_norm_pow (by norm_num)
     rw [show (fun x : Euclidean 2 => ‖g cube x‖ ^ (4 : Nat)) =
@@ -4348,15 +4352,15 @@ private theorem aux_integrable_fourth_fourierCubeSquareFunction
     hsum.const_mul _
   have hgcont (cube : ι) : Continuous (g cube) := by
     rw [show g cube = fourierCubeProjection (m cube) f by rfl, hproj cube]
-    exact (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz (m cube) f).continuous
+    exact (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz (m cube) f).continuous
   have hmeas : AEStronglyMeasurable (fun x : Euclidean 2 =>
-      Auto.Spherical.LittlewoodPaley.finiteSquareEnergy s g x ^ (2 : Nat)) volume :=
+      Auto.LittlewoodPaley.finiteSquareEnergy s g x ^ (2 : Nat)) volume :=
     ((continuous_finsetSum s (fun cube hcube => (hgcont cube).norm.pow 2)).pow 2).aestronglyMeasurable
   have hrepr : (fun x : Euclidean 2 =>
       fourierCubeSquareFunction s m f x ^ (4 : Nat)) =
-      fun x => Auto.Spherical.LittlewoodPaley.finiteSquareEnergy s g x ^ (2 : Nat) := by
+      fun x => Auto.LittlewoodPaley.finiteSquareEnergy s g x ^ (2 : Nat) := by
     funext x
-    unfold fourierCubeSquareFunction Auto.Spherical.LittlewoodPaley.finiteSquareEnergy
+    unfold fourierCubeSquareFunction Auto.LittlewoodPaley.finiteSquareEnergy
     have hnonneg : 0 ≤ ∑ cube ∈ s, ‖fourierCubeProjection (m cube) f x‖ ^ 2 :=
       Finset.sum_nonneg fun cube hcube => sq_nonneg _
     calc
@@ -4369,7 +4373,7 @@ private theorem aux_integrable_fourth_fourierCubeSquareFunction
   apply hmajor.mono' hmeas
   filter_upwards with x
   rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
-  exact Auto.Spherical.LittlewoodPaley.finiteSquareEnergy_sq_le_card_mul_sum_norm_four
+  exact Auto.LittlewoodPaley.finiteSquareEnergy_sq_le_card_mul_sum_norm_four
     s g x
 
 /-- Reindexing an exact analysis-lattice model along its embedding preserves
@@ -4738,7 +4742,7 @@ private noncomputable def mssFinePlaneWaveResidualSymbol
     (hqcompact : HasCompactSupport (q : Euclidean 2 → Complex))
     (t : Real) (omega : Euclidean 2) :
     SchwartzMap (Euclidean 2) Complex :=
-  SmoothDyadicPhysicalCore.planeWaveModulatedCompactSchwartz (-(t • omega))
+  Auto.Spherical.Auxiliary.planeWaveModulatedCompactSchwartz (-(t • omega))
     (q : Euclidean 2 → Complex) hqcompact (q.smooth (⊤ : ℕ∞))
 
 private theorem fourierInv_mssFinePlaneWaveResidualSymbol_shift
@@ -4750,7 +4754,7 @@ private theorem fourierInv_mssFinePlaneWaveResidualSymbol_shift
       (x + t • omega) =
       FourierTransform.fourierInv (q : Euclidean 2 → Complex) x := by
   unfold mssFinePlaneWaveResidualSymbol
-  rw [SmoothDyadicPhysicalCore.fourierInv_planeWaveModulatedCompactSchwartz_eq_translate]
+  rw [Auto.Spherical.Auxiliary.fourierInv_planeWaveModulatedCompactSchwartz_eq_translate]
   simp only [add_neg_cancel_right]
 
 private theorem fourierInv_eq_fourierCubeKernel_mssFinePlaneWaveResidualSymbol_shifted
@@ -4758,9 +4762,9 @@ private theorem fourierInv_eq_fourierCubeKernel_mssFinePlaneWaveResidualSymbol_s
     (hqcompact : HasCompactSupport (q : Euclidean 2 → Complex))
     (t : Real) (omega x : Euclidean 2) :
     FourierTransform.fourierInv (q : Euclidean 2 → Complex) x =
-      SmoothDyadicPhysicalCore.fourierCubeKernel
+      Auto.Spherical.Auxiliary.fourierCubeKernel
         (mssFinePlaneWaveResidualSymbol q hqcompact t omega) (x + t • omega) := by
-  unfold SmoothDyadicPhysicalCore.fourierCubeKernel
+  unfold Auto.Spherical.Auxiliary.fourierCubeKernel
   rw [SchwartzMap.fourierInv_coe]
   symm
   exact fourierInv_mssFinePlaneWaveResidualSymbol_shift q hqcompact t omega x
@@ -4791,7 +4795,7 @@ private theorem mssFineCubeResidualSymbol_apply_phaseMismatch
               (D.directions scale nu) xi : Real) : Complex) * Complex.I) *
         (cubes.cutoff scale cube xi * D.spatialProfile scale n nu xi) := by
   rw [mssFineCubeResidualSymbol, mssFinePlaneWaveResidualSymbol,
-    SmoothDyadicPhysicalCore.planeWaveModulatedCompactSchwartz_apply,
+    Auto.Spherical.Auxiliary.planeWaveModulatedCompactSchwartz_apply,
     mssFineCubeSchwartzSymbol_apply]
   simp only [Real.fourierChar_apply]
   rw [halfWaveMultiplier]
@@ -5973,13 +5977,13 @@ theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
           ∫ xi : Euclidean 2,
             ‖iteratedFDeriv Real j (q : Euclidean 2 → Complex) xi‖ := by
   let qR : SchwartzMap (Euclidean 2) Complex :=
-    Auto.Spherical.SmoothDyadicPhysicalCore.translatedDilatedSchwartzCutoff
+    Auto.Spherical.Auxiliary.translatedDilatedSchwartzCutoff
       q 0 R⁻¹ (inv_ne_zero hR.ne')
   let S : Real := ∑ j ∈ Finset.range (N + 1),
     ∫ eta : Euclidean 2, ‖iteratedFDeriv Real j (qR : Euclidean 2 → Complex) eta‖
   have hqR (xi : Euclidean 2) : qR xi = q (R • xi) := by
     dsimp [qR]
-    rw [Auto.Spherical.SmoothDyadicPhysicalCore.translatedDilatedSchwartzCutoff_apply]
+    rw [Auto.Spherical.Auxiliary.translatedDilatedSchwartzCutoff_apply]
     simp
   have hqRfun : (qR : Euclidean 2 → Complex) = fun xi => q (R • xi) := by
     funext xi
@@ -5989,7 +5993,7 @@ theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
         (R⁻¹) ^ 2 • FourierTransform.fourierInv (q : Euclidean 2 → Complex) x := by
     simpa only [hqRfun, inv_inv, smul_smul, inv_mul_cancel₀ hR.ne', one_smul,
       finrank_euclideanSpace_fin] using
-      Auto.Spherical.FourierRadius.fourierInv_comp_inv_smul
+      Auto.Spherical.Auxiliary.fourierInv_comp_inv_smul
         (g := (q : Euclidean 2 → Complex)) (R := R⁻¹) (inv_pos.mpr hR) (R • x)
   have hunit : R ^ 2 * (R⁻¹) ^ 2 = 1 := by
     rw [← mul_pow, mul_inv_cancel₀ hR.ne', one_pow]
@@ -6014,7 +6018,7 @@ theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
             ‖iteratedFDeriv Real j (q : Euclidean 2 → Complex) xi‖ := by
     dsimp [qR]
     simpa only [finrank_euclideanSpace_fin, inv_inv] using
-      Auto.Spherical.SmoothDyadicPhysicalCore.integral_norm_iteratedFDeriv_translatedDilatedSchwartzCutoff
+      Auto.Spherical.Auxiliary.integral_norm_iteratedFDeriv_translatedDilatedSchwartzCutoff
         q 0 (inv_pos.mpr hR) j
   have hS : S = (R⁻¹) ^ 2 *
       ∑ j ∈ Finset.range (N + 1), R ^ j *
@@ -6106,7 +6110,7 @@ theorem mssFineCubeHalfWaveKernel_eq_residual_shifted
     (scale : Real) (hscale : 2 ≤ scale) (n nu : Int)
     (cube : Fin (cubes.cubeCount scale)) (z : WaveSpaceTime) (y : Euclidean 2) :
     mssFineCubeHalfWaveKernel D cubes scale n nu cube z y =
-      D.radialTime.time z.2 * SmoothDyadicPhysicalCore.fourierCubeKernel
+      D.radialTime.time z.2 * Auto.Spherical.Auxiliary.fourierCubeKernel
         (mssFineCubeResidualSymbol D cubes hscale n nu cube z)
         (z.1 + z.2 • D.directions scale nu - y) := by
   have hraw : (fun xi : Euclidean 2 =>
@@ -6120,7 +6124,7 @@ theorem mssFineCubeHalfWaveKernel_eq_residual_shifted
   have hshift : FourierTransform.fourierInv
       (mssFineCubeSchwartzSymbol D cubes hscale n nu cube z :
         Euclidean 2 → Complex) (z.1 - y) =
-      SmoothDyadicPhysicalCore.fourierCubeKernel
+      Auto.Spherical.Auxiliary.fourierCubeKernel
         (mssFineCubeResidualSymbol D cubes hscale n nu cube z)
         ((z.1 - y) + z.2 • D.directions scale nu) := by
     simpa only [mssFineCubeResidualSymbol] using
@@ -6189,7 +6193,7 @@ theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_seminorm
     (cubeWidth_inv_mul_sqrt_pos_lt_half hwidth hscale).1
   have hT : 0 ≤ T := (norm_nonneg (D.radialTime.time 0)).trans (htime 0)
   by_cases hz : z.2 ∈ lightRayTimeInterval
-  · have hdecay := SmoothDyadicPhysicalCore.norm_fourierCubeKernel_le_scaled_seminorm_decay
+  · have hdecay := Auto.Spherical.Auxiliary.norm_fourierCubeKernel_le_scaled_seminorm_decay
       (mssFineCubeResidualSymbol D cubes hscale n nu cube z)
       δ (A * (δ⁻¹) ^ 2) N hδ
       (by simpa only [δ] using hseminormZero scale hscale n hn nu hnu cube hcube z hz)
@@ -6197,12 +6201,12 @@ theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_seminorm
       (z.1 + z.2 • D.directions scale nu - y)
     calc
       ‖mssFineCubeHalfWaveKernel D cubes scale n nu cube z y‖ =
-          ‖D.radialTime.time z.2‖ * ‖SmoothDyadicPhysicalCore.fourierCubeKernel
+          ‖D.radialTime.time z.2‖ * ‖Auto.Spherical.Auxiliary.fourierCubeKernel
             (mssFineCubeResidualSymbol D cubes hscale n nu cube z)
             (z.1 + z.2 • D.directions scale nu - y)‖ := by
         rw [mssFineCubeHalfWaveKernel_eq_residual_shifted D cubes scale hscale n nu cube z y,
           norm_mul]
-      _ ≤ T * ‖SmoothDyadicPhysicalCore.fourierCubeKernel
+      _ ≤ T * ‖Auto.Spherical.Auxiliary.fourierCubeKernel
             (mssFineCubeResidualSymbol D cubes hscale n nu cube z)
             (z.1 + z.2 • D.directions scale nu - y)‖ :=
         mul_le_mul_of_nonneg_right (htime z.2) (norm_nonneg _)
@@ -6413,13 +6417,13 @@ theorem integrable_mssFineCubeHalfWaveKernel
     symm
     exact mssFineCubeSchwartzSymbol_apply D cubes hscale n nu cube z xi
   have hsource : Integrable (fun y : Euclidean 2 =>
-      SmoothDyadicPhysicalCore.fourierCubeSourceKernel m z.1 y) volume :=
-    SmoothDyadicPhysicalCore.integrable_fourierCubeSourceKernel m z.1
+      Auto.Spherical.Auxiliary.fourierCubeSourceKernel m z.1 y) volume :=
+    Auto.Spherical.Auxiliary.integrable_fourierCubeSourceKernel m z.1
   unfold mssFineCubeHalfWaveKernel
   rw [hraw_eq_m]
   simpa only [
-    SmoothDyadicPhysicalCore.fourierCubeSourceKernel,
-    SmoothDyadicPhysicalCore.fourierCubeKernel,
+    Auto.Spherical.Auxiliary.fourierCubeSourceKernel,
+    Auto.Spherical.Auxiliary.fourierCubeKernel,
     SchwartzMap.fourierInv_coe] using
       hsource.const_mul (D.radialTime.time z.2)
 
@@ -6449,7 +6453,7 @@ theorem mssFineCubePacket_eq_integral_mssFineCubeHalfWaveKernel
       fun xi => cubes.cutoff scale cube xi * D.spatialProfile scale n nu xi *
         halfWaveMultiplier WaveSign.plus z.2 xi := by
     exact hsymbol
-  have hsource := SmoothDyadicPhysicalCore.fourierCubeProjection_eq_sourceKernel
+  have hsource := Auto.Spherical.Auxiliary.fourierCubeProjection_eq_sourceKernel
     m f z.1
   unfold mssFineCubePacket
   change D.radialTime.time z.2 * FourierTransform.fourierInv
@@ -6479,19 +6483,19 @@ theorem mssFineCubePacket_eq_integral_mssFineCubeHalfWaveKernel
             _ = m xi * FourierTransform.fourier (f : Euclidean 2 → Complex) xi := by
               rw [← congrFun hsymbol xi]
     _ = D.radialTime.time z.2 * ∫ y : Euclidean 2,
-        SmoothDyadicPhysicalCore.fourierCubeSourceKernel m z.1 y * f y := by
+        Auto.Spherical.Auxiliary.fourierCubeSourceKernel m z.1 y * f y := by
           rw [hsource]
     _ = ∫ y : Euclidean 2,
         D.radialTime.time z.2 *
-          (SmoothDyadicPhysicalCore.fourierCubeSourceKernel m z.1 y * f y) := by
+          (Auto.Spherical.Auxiliary.fourierCubeSourceKernel m z.1 y * f y) := by
           rw [← integral_const_mul]
     _ = ∫ y : Euclidean 2,
         mssFineCubeHalfWaveKernel D cubes scale n nu cube z y * f y := by
           apply integral_congr_ae
           filter_upwards with y
           unfold mssFineCubeHalfWaveKernel
-          simp only [SmoothDyadicPhysicalCore.fourierCubeSourceKernel,
-            SmoothDyadicPhysicalCore.fourierCubeKernel]
+          simp only [Auto.Spherical.Auxiliary.fourierCubeSourceKernel,
+            Auto.Spherical.Auxiliary.fourierCubeKernel]
           rw [SchwartzMap.fourierInv_coe]
           rw [hsymbol']
           ring
@@ -6868,7 +6872,7 @@ theorem continuous_mssFineCubePacket
   have hU : Continuous U := by
     change Continuous (Function.uncurry (fun t x =>
       FourierTransform.fourierInv (m t) x))
-    apply KakeyaInverseFourierContinuity.continuous_uncurry_fourierInv_of_dominated m
+    apply Auto.Spherical.MSSKakeya.continuous_uncurry_fourierInv_of_dominated m
       (bound := fun xi => ‖B xi‖)
     · intro xi
       have hphase : Continuous (fun p : Real × Euclidean 2 =>
@@ -6932,19 +6936,19 @@ theorem continuous_sq_mssFineCubePacketSquareFunction
   have hsum (n nu : Int) : Continuous (fun z : WaveSpaceTime =>
       ∑ cube ∈ cubes.cubeSets scale n nu,
         mssFineCubePacket D cubes scale n nu cube
-          (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+          (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
             (cubes.analysisCutoff scale cube) f) z) := by
     apply continuous_finsetSum
     intro cube hcube
     exact continuous_mssFineCubePacket D cubes scale n nu cube
-      (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+      (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
         (cubes.analysisCutoff scale cube) f)
   have hpieces : Continuous (fun z : WaveSpaceTime =>
       ∑ n ∈ relevantRadialIndexEnumeration scale,
         ∑ nu ∈ D.angularIndices scale,
           ‖∑ cube ∈ cubes.cubeSets scale n nu,
             mssFineCubePacket D cubes scale n nu cube
-              (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+              (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
                 (cubes.analysisCutoff scale cube) f) z‖ ^ 2) := by
     apply continuous_finsetSum
     intro n hn
@@ -6966,11 +6970,11 @@ theorem mssFineCubePacketSquareFunction_eq_zero_of_time_not_mem_lightRayTimeInte
     mssFineCubePacketSquareFunction D cubes scale f z = 0 := by
   have hpacket (n nu : Int) (cube : Fin (cubes.cubeCount scale)) :
       mssFineCubePacket D cubes scale n nu cube
-          (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+          (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
             (cubes.analysisCutoff scale cube) f) z = 0 :=
     mssFineCubePacket_eq_zero_of_time_not_mem_lightRayTimeInterval
       D cubes hslab scale n nu cube
-        (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+        (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
           (cubes.analysisCutoff scale cube) f) z hz
   simp [mssFineCubePacketSquareFunction, hpacket]
 
@@ -7208,7 +7212,7 @@ theorem continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
   classical
   unfold continuumFineCubeSquareEnergy mssFineNormalizedCubeInput
     fourierCubeSquareFunction fourierCubeProjection
-  simp only [SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz_apply]
+  simp only [Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz_apply]
   rw [Real.sq_sqrt]
   · rw [Finset.mul_sum]
     apply Finset.sum_congr rfl
@@ -7232,7 +7236,7 @@ theorem continuous_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
   refine continuous_finsetSum _ ?_
   intro cube hcube
   exact (continuous_const.mul
-    (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+    (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
       (cubes.analysisCutoff scale cube) f).continuous).norm.pow _
 
 /-- The global normalized cube energy is pointwise nonnegative. -/
@@ -7320,7 +7324,7 @@ theorem integrable_sq_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
       Integrable (fun y : Euclidean 2 => ‖u cube y‖ ^ (4 : Nat)) volume := by
     intro cube hcube
     let P : SchwartzMap (Euclidean 2) Complex :=
-      SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+      Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
         (cubes.analysisCutoff scale cube) f
     have hP : Integrable (fun y : Euclidean 2 => ‖P y‖ ^ (4 : Nat)) volume :=
       (P.memLp 4 volume).integrable_norm_pow (by norm_num)
@@ -7335,7 +7339,7 @@ theorem integrable_sq_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
   have hucont (cube : Fin (cubes.cubeCount scale)) : Continuous (u cube) := by
     dsimp only [u, mssFineNormalizedCubeInput]
     exact continuous_const.mul
-      (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+      (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
         (cubes.analysisCutoff scale cube) f).continuous
   have hcont : Continuous (fun y : Euclidean 2 =>
       (continuumFineCubeSquareEnergy
@@ -7348,8 +7352,8 @@ theorem integrable_sq_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
   · filter_upwards with y
     rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
     simpa only [continuumFineCubeSquareEnergy,
-      Auto.Spherical.LittlewoodPaley.finiteSquareEnergy] using
-      Auto.Spherical.LittlewoodPaley.finiteSquareEnergy_sq_le_card_mul_sum_norm_four S u y
+      Auto.LittlewoodPaley.finiteSquareEnergy] using
+      Auto.LittlewoodPaley.finiteSquareEnergy_sq_le_card_mul_sum_norm_four S u y
 
 /-- An averaged Rademacher fourth-moment estimate for the enlarged analysis
 cutoffs supplies the uniform `L²` bound for the global normalized cube
@@ -7501,7 +7505,7 @@ theorem mssFineCubeContinuumRegularity_of_localization_of_boundedCompactTest
         (volume : Measure (Euclidean 2)) := by
     intro cube
     let P : SchwartzMap (Euclidean 2) Complex :=
-      SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+      Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
         (cubes.analysisCutoff scale cube) f
     have hP : Integrable (fun y : Euclidean 2 => ‖P y‖ ^ (2 : Nat))
         (volume : Measure (Euclidean 2)) :=
@@ -7519,7 +7523,7 @@ theorem mssFineCubeContinuumRegularity_of_localization_of_boundedCompactTest
         (volume : Measure (Euclidean 2)) := by
     intro cube
     let P : SchwartzMap (Euclidean 2) Complex :=
-      SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+      Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
         (cubes.analysisCutoff scale cube) f
     have hP : Integrable (fun y : Euclidean 2 => ‖P y‖ ^ (4 : Nat))
         (volume : Measure (Euclidean 2)) :=
@@ -7655,11 +7659,11 @@ theorem mssFineCubeContinuumRegularity_of_localization_of_boundedCompactTest
         continuumLightRayMeasure := by
       have hpacketMeas : AEStronglyMeasurable (fun z : WaveSpaceTime =>
           ‖mssFineCubePacket D cubes scale n nu cube
-            (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+            (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
               (cubes.analysisCutoff scale cube) f) z‖ ^ 2 * ‖g z‖)
           continuumLightRayMeasure :=
         ((continuous_mssFineCubePacket D cubes scale n nu cube
-          (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+          (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
             (cubes.analysisCutoff scale cube) f)).norm.pow 2).aestronglyMeasurable.mul
           hgMem.norm.aestronglyMeasurable
       refine hpacketMeas.congr ?_
@@ -7972,7 +7976,7 @@ theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient_of_uniformB
       (∑ piece ∈ mssFinePieceIndices D scale,
         ‖∑ cube ∈ cubes.cubeSets scale piece.1 piece.2,
           mssFineCubePacket D cubes scale piece.1 piece.2 cube
-            (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+            (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
               (cubes.analysisCutoff scale cube) f) z‖ ^ 2) * ‖g z‖)
         continuumLightRayMeasure := by
     refine regularity.squareWeighted.congr ?_
@@ -7991,7 +7995,7 @@ theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient_of_uniformB
       mssFineNormalizedCubeInput D cubes kernelConstant scale cube f y)
     (fun piece cube z =>
       mssFineCubePacket D cubes scale piece.1 piece.2 cube
-        (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+        (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
           (cubes.analysisCutoff scale cube) f) z)
     g
     (by
@@ -8071,7 +8075,7 @@ theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient_of_uniformB
             (∑ piece ∈ mssFinePieceIndices D scale,
               ‖∑ cube ∈ cubes.cubeSets scale piece.1 piece.2,
                 mssFineCubePacket D cubes scale piece.1 piece.2 cube
-                  (SmoothDyadicPhysicalCore.fourierCubeProjectedSchwartz
+                  (Auto.Spherical.Auxiliary.fourierCubeProjectedSchwartz
                     (cubes.analysisCutoff scale cube) f) z‖ ^ 2) * ‖g z‖
             ∂continuumLightRayMeasure := by
         apply integral_congr_ae
@@ -9132,10 +9136,10 @@ theorem mssFineSquareFunctionEstimate_of_uniform_packet_fourthMoment
   refine ⟨C, hC, ?_⟩
   intro scale hscale f
   have hmoment := hfourth scale hscale f
-  rw [Auto.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+  rw [Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
         (μ := volume) (q := (4 : Real)) (by norm_num)
         (mssFineCubePacketSquareFunction D cubes scale f),
-      Auto.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+      Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
         (μ := volume) (q := (4 : Real)) (by norm_num)
         (f : Euclidean 2 → Complex)] at hmoment
   norm_num at hmoment
@@ -11625,23 +11629,23 @@ theorem mssCanonicalTime_support_lightRayTimeInterval :
 Multiplying it by the norm gives a globally Schwartz smooth extension of the
 radial phase. -/
 noncomputable def mssAnnularNormCutoff : SchwartzMap (Euclidean 2) Real :=
-  (KakeyaSectorPartition.hasCompactSupport_sectorAnnularCutoff).toSchwartzMap
-    KakeyaSectorPartition.contDiff_sectorAnnularCutoff
+  (Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff).toSchwartzMap
+    Auto.Spherical.MSSKakeya.contDiff_sectorAnnularCutoff
 
 theorem mssAnnularNormCutoff_apply (xi : Euclidean 2) :
-    mssAnnularNormCutoff xi = KakeyaSectorPartition.sectorAnnularCutoff xi := by
+    mssAnnularNormCutoff xi = Auto.Spherical.MSSKakeya.sectorAnnularCutoff xi := by
   rfl
 
 theorem mssAnnularNormCutoff_compact :
     HasCompactSupport (mssAnnularNormCutoff : Euclidean 2 → Real) := by
-  change HasCompactSupport KakeyaSectorPartition.sectorAnnularCutoff
-  exact KakeyaSectorPartition.hasCompactSupport_sectorAnnularCutoff
+  change HasCompactSupport Auto.Spherical.MSSKakeya.sectorAnnularCutoff
+  exact Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff
 
 private theorem mssAnnularNormCutoff_eq_zero_near_zero
     (xi : Euclidean 2) (hxi : ‖xi‖ < 1 / 4) :
     mssAnnularNormCutoff xi = 0 := by
   rw [mssAnnularNormCutoff_apply]
-  exact KakeyaSectorPartition.sectorAnnularCutoff_eq_zero_of_norm_le_quarter hxi.le
+  exact Auto.Spherical.MSSKakeya.sectorAnnularCutoff_eq_zero_of_norm_le_quarter hxi.le
 
 /-- A fixed global Schwartz extension of the norm which agrees with the
 literal norm on the entire structured annulus. -/
@@ -11656,7 +11660,7 @@ theorem mssAnnularNormExtension_eq_norm {xi : Euclidean 2}
     mssAnnularNormCutoff mssAnnularNormCutoff_compact (1 / 4 : Real)
     (by norm_num) mssAnnularNormCutoff_eq_zero_near_zero xi
   rw [mssAnnularNormCutoff_apply]
-  exact KakeyaSectorPartition.sectorAnnularCutoff_eq_one hlo hhi
+  exact Auto.Spherical.MSSKakeya.sectorAnnularCutoff_eq_one hlo hhi
 
 /-- A single smooth sine transition gives a compactly supported square
 partition of unity under integer translation.  On adjacent unit intervals it
@@ -11934,21 +11938,21 @@ strict buffer permits genuine angular cutoffs and enlarged angular cutoffs
 later in the MSS packet construction. -/
 private def mssP4SourceChartBump (q : Fin 4) (xi : Euclidean 2) : Real :=
   Real.smoothTransition
-    (16 * KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi - 3)
+    (16 * Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi - 3)
 
 private theorem mssP4SourceChartBump_contDiff (q : Fin 4) :
     ContDiff Real (⊤ : ℕ∞) (mssP4SourceChartBump q) := by
   unfold mssP4SourceChartBump
   exact Real.smoothTransition.contDiff.comp
     ((contDiff_const.mul
-      (KakeyaSectorPartition.contDiff_sectorProjection
-        (KakeyaSectorPartition.chartSectorIndex q))).sub contDiff_const)
+      (Auto.Spherical.MSSKakeya.contDiff_sectorProjection
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q))).sub contDiff_const)
 
 private theorem mssP4SourceChartBump_eq_one_of_quarter_le_projection
     {q : Fin 4} {xi : Euclidean 2}
-    (h : 1 / 4 ≤ KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi) :
+    (h : 1 / 4 ≤ Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi) :
     mssP4SourceChartBump q xi = 1 := by
   unfold mssP4SourceChartBump
   apply Real.smoothTransition.one_of_one_le
@@ -11957,8 +11961,8 @@ private theorem mssP4SourceChartBump_eq_one_of_quarter_le_projection
 private theorem mssP4SourceChartBump_ne_zero_imp_three_sixteenths_lt_projection
     {q : Fin 4} {xi : Euclidean 2}
     (h : mssP4SourceChartBump q xi ≠ 0) :
-    3 / 16 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi := by
+    3 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi := by
   apply lt_of_not_ge
   intro hle
   apply h
@@ -12026,7 +12030,7 @@ private theorem sum_mssP4SourceChartOrderedWeight_eq_one_of_exists_bump_eq_one
 private theorem exists_mssP4SourceChartBump_eq_one_of_norm_half_le
     (xi : Euclidean 2) (hnorm : 1 / 2 ≤ ‖xi‖) :
     ∃ q : Fin 4, mssP4SourceChartBump q xi = 1 := by
-  rcases KakeyaSectorPartition.exists_sectorProjection_quarter_le_of_norm_half_le
+  rcases Auto.Spherical.MSSKakeya.exists_sectorProjection_quarter_le_of_norm_half_le
     xi hnorm with ⟨q, hq⟩
   rcases q with ⟨b, k⟩
   cases b <;> fin_cases k
@@ -12046,19 +12050,19 @@ private theorem exists_mssP4SourceChartBump_eq_one_of_norm_half_le
 /-- The compact annular source multiplier for a buffered coarse chart. -/
 private noncomputable def mssP4SourceChartMultiplier (q : Fin 4)
     (xi : Euclidean 2) : Complex :=
-  (KakeyaSectorPartition.sectorAnnularCutoff xi : Complex) *
+  (Auto.Spherical.MSSKakeya.sectorAnnularCutoff xi : Complex) *
     (mssP4SourceChartOrderedWeight q xi : Complex)
 
 private theorem mssP4SourceChartMultiplier_contDiff (q : Fin 4) :
     ContDiff Real (⊤ : ℕ∞) (mssP4SourceChartMultiplier q) := by
   unfold mssP4SourceChartMultiplier
-  exact KakeyaSectorPartition.contDiff_sectorAnnularCutoff_complex.mul
+  exact Auto.Spherical.MSSKakeya.contDiff_sectorAnnularCutoff_complex.mul
     (Complex.ofRealCLM.contDiff.comp (mssP4SourceChartOrderedWeight_contDiff q))
 
 private theorem mssP4SourceChartMultiplier_compact (q : Fin 4) :
     HasCompactSupport (mssP4SourceChartMultiplier q) := by
   unfold mssP4SourceChartMultiplier
-  exact KakeyaSectorPartition.hasCompactSupport_sectorAnnularCutoff_complex.mul_right
+  exact Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff_complex.mul_right
 
 private theorem sum_mssP4SourceChartMultiplier_eq_one_on_unit_annulus
     {xi : Euclidean 2} (hxi : ‖xi‖ ∈ Icc (1 / 2 : Real) 2) :
@@ -12068,9 +12072,9 @@ private theorem sum_mssP4SourceChartMultiplier_eq_one_on_unit_annulus
   have hweights : ∑ q : Fin 4, mssP4SourceChartOrderedWeight q xi = 1 :=
     sum_mssP4SourceChartOrderedWeight_eq_one_of_exists_bump_eq_one xi
       (exists_mssP4SourceChartBump_eq_one_of_norm_half_le xi hxi.1)
-  have hcut : (KakeyaSectorPartition.sectorAnnularCutoff xi : Complex) = 1 := by
+  have hcut : (Auto.Spherical.MSSKakeya.sectorAnnularCutoff xi : Complex) = 1 := by
     norm_cast
-    exact KakeyaSectorPartition.sectorAnnularCutoff_eq_one hxi.1 hxi.2
+    exact Auto.Spherical.MSSKakeya.sectorAnnularCutoff_eq_one hxi.1 hxi.2
   have hweightsC : ∑ q : Fin 4,
       (mssP4SourceChartOrderedWeight q xi : Complex) = 1 := by
     exact_mod_cast hweights
@@ -12081,24 +12085,24 @@ Its support remains in the region where the chart's global angle is the
 literal polar angle. -/
 private def mssP4ChiChartGate (q : Fin 4) (xi : Euclidean 2) : Real :=
   Real.smoothTransition
-    (16 * KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi - 2)
+    (16 * Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi - 2)
 
 private theorem mssP4ChiChartGate_contDiff (q : Fin 4) :
     ContDiff Real (⊤ : ℕ∞) (mssP4ChiChartGate q) := by
   unfold mssP4ChiChartGate
   exact Real.smoothTransition.contDiff.comp
     ((contDiff_const.mul
-      (KakeyaSectorPartition.contDiff_sectorProjection
-        (KakeyaSectorPartition.chartSectorIndex q))).sub contDiff_const)
+      (Auto.Spherical.MSSKakeya.contDiff_sectorProjection
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q))).sub contDiff_const)
 
 private theorem mssP4ChiChartGate_eq_one_of_source_weight_ne_zero
     {q : Fin 4} {xi : Euclidean 2}
     (h : mssP4SourceChartOrderedWeight q xi ≠ 0) :
     mssP4ChiChartGate q xi = 1 := by
   apply Real.smoothTransition.one_of_one_le
-  have hsource : 3 / 16 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi :=
+  have hsource : 3 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi :=
     mssP4SourceChartBump_ne_zero_imp_three_sixteenths_lt_projection
       (mssP4SourceChartOrderedWeight_ne_zero_imp_bump_ne_zero h)
   linarith
@@ -12106,8 +12110,8 @@ private theorem mssP4ChiChartGate_eq_one_of_source_weight_ne_zero
 private theorem mssP4ChiChartGate_ne_zero_imp_eighth_lt_projection
     {q : Fin 4} {xi : Euclidean 2}
     (h : mssP4ChiChartGate q xi ≠ 0) :
-    1 / 8 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi := by
+    1 / 8 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi := by
   apply lt_of_not_ge
   intro hle
   apply h
@@ -12120,32 +12124,32 @@ private theorem mssP4ChiChartGate_ne_zero_imp_eighth_lt_projection
 literal polar angle. -/
 private def mssP4TildeChiChartGate (q : Fin 4) (xi : Euclidean 2) : Real :=
   Real.smoothTransition
-    (16 * KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi - 1)
+    (16 * Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi - 1)
 
 private theorem mssP4TildeChiChartGate_contDiff (q : Fin 4) :
     ContDiff Real (⊤ : ℕ∞) (mssP4TildeChiChartGate q) := by
   unfold mssP4TildeChiChartGate
   exact Real.smoothTransition.contDiff.comp
     ((contDiff_const.mul
-      (KakeyaSectorPartition.contDiff_sectorProjection
-        (KakeyaSectorPartition.chartSectorIndex q))).sub contDiff_const)
+      (Auto.Spherical.MSSKakeya.contDiff_sectorProjection
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q))).sub contDiff_const)
 
 private theorem mssP4TildeChiChartGate_eq_one_of_chi_gate_ne_zero
     {q : Fin 4} {xi : Euclidean 2}
     (h : mssP4ChiChartGate q xi ≠ 0) :
     mssP4TildeChiChartGate q xi = 1 := by
   apply Real.smoothTransition.one_of_one_le
-  have hchi : 1 / 8 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi :=
+  have hchi : 1 / 8 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi :=
     mssP4ChiChartGate_ne_zero_imp_eighth_lt_projection h
   linarith
 
 private theorem mssP4TildeChiChartGate_ne_zero_imp_sixteenth_lt_projection
     {q : Fin 4} {xi : Euclidean 2}
     (h : mssP4TildeChiChartGate q xi ≠ 0) :
-    1 / 16 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) xi := by
+    1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi := by
   apply lt_of_not_ge
   intro hle
   apply h
@@ -12160,31 +12164,31 @@ this range contains every active integer translate after multiplication by
 `16`. -/
 def mssP4AngleLattice (q : Fin 4) (r : Fin 193) (xi : Euclidean 2) : Real :=
   mssUnitLatticeTransitionPiece
-    (16 * KakeyaSectorPartition.globalSectorAngle
-      (KakeyaSectorPartition.chartSectorIndex q) xi + 96 - (r.val : Real))
+    (16 * Auto.Spherical.MSSKakeya.globalSectorAngle
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi + 96 - (r.val : Real))
 
 theorem mssP4AngleLattice_contDiff (q : Fin 4) (r : Fin 193) :
     ContDiff Real (⊤ : ℕ∞) (mssP4AngleLattice q r) := by
   unfold mssP4AngleLattice
   apply mssUnitLatticeTransitionPiece_contDiff.comp
   exact ((contDiff_const.mul
-    (KakeyaSectorPartition.contDiff_globalSectorAngle
-      (KakeyaSectorPartition.chartSectorIndex q))).add contDiff_const).sub
+    (Auto.Spherical.MSSKakeya.contDiff_globalSectorAngle
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q))).add contDiff_const).sub
         contDiff_const
 
 /-- The finite angular lattice exactly synthesizes one in every chart. -/
 theorem sum_mssP4AngleLattice (q : Fin 4) (xi : Euclidean 2) :
     ∑ r : Fin 193, mssP4AngleLattice q r xi = 1 := by
-  let θ : Real := KakeyaSectorPartition.globalSectorAngle
-    (KakeyaSectorPartition.chartSectorIndex q) xi
+  let θ : Real := Auto.Spherical.MSSKakeya.globalSectorAngle
+    (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi
   have hθlo : -4 < θ := by
     dsimp only [θ]
-    exact KakeyaSectorPartition.neg_four_lt_globalSectorAngle
-      (KakeyaSectorPartition.chartSectorIndex q) xi
+    exact Auto.Spherical.MSSKakeya.neg_four_lt_globalSectorAngle
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi
   have hθhi : θ < 6 := by
     dsimp only [θ]
-    exact KakeyaSectorAngleBounds.globalSectorAngle_lt_six
-      (KakeyaSectorPartition.chartSectorIndex q) xi
+    exact Auto.Spherical.MSSKakeya.globalSectorAngle_lt_six
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi
   have habs : |16 * θ| ≤ (96 : Real) := by
     rw [abs_le]
     constructor <;> nlinarith
@@ -12217,12 +12221,12 @@ private def mssP4CoarseAngleCenter (r : Fin 193) : Real :=
 private theorem mssP4AngleLattice_ne_zero_imp_abs_sub_center_le
     {q : Fin 4} {r : Fin 193} {xi : Euclidean 2}
     (h : mssP4AngleLattice q r xi ≠ 0) :
-    |KakeyaSectorPartition.globalSectorAngle
-        (KakeyaSectorPartition.chartSectorIndex q) xi -
+    |Auto.Spherical.MSSKakeya.globalSectorAngle
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi -
         mssP4CoarseAngleCenter r| ≤ 1 / 16 := by
   have hsupport :
-      16 * KakeyaSectorPartition.globalSectorAngle
-          (KakeyaSectorPartition.chartSectorIndex q) xi + 96 - (r.val : Real) ∈
+      16 * Auto.Spherical.MSSKakeya.globalSectorAngle
+          (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi + 96 - (r.val : Real) ∈
         Icc (-1 : Real) 1 := by
     apply mssUnitLatticeTransitionPiece_support_subset
     exact Function.mem_support.mpr (by
@@ -12236,20 +12240,20 @@ the slightly enlarged chart support.  The public chart lemma uses the more
 conservative `1/8` threshold; the denominator definition already gives this
 at `1/16`. -/
 private theorem mssP4_globalSectorAngle_eq_sectorAngle_of_sixteenth_lt_projection
-    {q : KakeyaSectorPartition.SectorIndex} {xi : Euclidean 2}
-    (h : 1 / 16 < KakeyaSectorPartition.sectorProjection q xi) :
-    KakeyaSectorPartition.globalSectorAngle q xi =
-      KakeyaSectorPartition.sectorAngle q xi := by
-  unfold KakeyaSectorPartition.globalSectorAngle KakeyaSectorPartition.sectorAngle
-  rw [KakeyaSectorPartition.sectorAngleDenom_eq_self_of_one_sixteenth_le h.le]
+    {q : Auto.Spherical.MSSKakeya.SectorIndex} {xi : Euclidean 2}
+    (h : 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection q xi) :
+    Auto.Spherical.MSSKakeya.globalSectorAngle q xi =
+      Auto.Spherical.MSSKakeya.sectorAngle q xi := by
+  unfold Auto.Spherical.MSSKakeya.globalSectorAngle Auto.Spherical.MSSKakeya.sectorAngle
+  rw [Auto.Spherical.MSSKakeya.sectorAngleDenom_eq_self_of_one_sixteenth_le h.le]
 
 private theorem mssP4_polar_of_sixteenth_lt_projection
-    {q : KakeyaSectorPartition.SectorIndex} {xi : Euclidean 2}
-    (h : 1 / 16 < KakeyaSectorPartition.sectorProjection q xi) :
-    xi = ‖xi‖ • KakeyaCircleDirection.circleDirection
-      (KakeyaSectorPartition.globalSectorAngle q xi) := by
+    {q : Auto.Spherical.MSSKakeya.SectorIndex} {xi : Euclidean 2}
+    (h : 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection q xi) :
+    xi = ‖xi‖ • Auto.Spherical.MSSKakeya.circleDirection
+      (Auto.Spherical.MSSKakeya.globalSectorAngle q xi) := by
   rw [mssP4_globalSectorAngle_eq_sectorAngle_of_sixteenth_lt_projection h]
-  exact KakeyaSectorPartition.sectorAngle_polar_of_projection_pos
+  exact Auto.Spherical.MSSKakeya.sectorAngle_polar_of_projection_pos
     (lt_trans (by norm_num) h)
 
 /-- The number of scale-dependent fine angular lattice steps on either side
@@ -12272,7 +12276,7 @@ private def mssP4FineAngularIndices (scale : Real) : Finset Int :=
 frequency variable. -/
 private def mssP4FineChartAngle (q : Fin 4) (scale : Real)
     (xi : Euclidean 2) : Real :=
-  KakeyaScaledSectorPartition.scaledChartAngle scale q xi
+  Auto.Spherical.MSSKakeya.scaledChartAngle scale q xi
 
 /-- The coarse angular lattice coordinate transported to the MSS scale. -/
 private def mssP4FineCoarseCoordinate (q : Fin 4) (r : Fin 193)
@@ -12287,7 +12291,7 @@ private def mssP4FineCoordinate (q : Fin 4) (r : Fin 193)
 /-- Fine angular centers at separation `1 / (64 sqrt scale)`. -/
 private noncomputable def mssP4FineDirection (r : Fin 193)
     (scale : Real) (nu : Int) : Euclidean 2 :=
-  KakeyaCircleDirection.circleDirection
+  Auto.Spherical.MSSKakeya.circleDirection
     (mssP4CoarseAngleCenter r +
       (nu : Real) / (64 * Real.sqrt scale))
 
@@ -12378,23 +12382,23 @@ cutoff is active.  The two independent buffers respectively handle the outer
 and inner edge of the annulus. -/
 private theorem mssP4FineTildeRadialGate_eq_one_of_sectorAnnularCutoff_ne_zero
     {eta : Euclidean 2}
-    (h : KakeyaSectorPartition.sectorAnnularCutoff eta ≠ 0) :
+    (h : Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta ≠ 0) :
     mssP4FineTildeRadialGate eta = 1 := by
-  have houter : KakeyaSectorPartition.outerSectorRadialBump eta ≠ 0 := by
-    unfold KakeyaSectorPartition.sectorAnnularCutoff at h
+  have houter : Auto.Spherical.MSSKakeya.outerSectorRadialBump eta ≠ 0 := by
+    unfold Auto.Spherical.MSSKakeya.sectorAnnularCutoff at h
     exact (mul_ne_zero_iff.mp h).1
   have hnormlt : ‖eta‖ < 3 := by
     apply lt_of_not_ge
     intro hge
     apply houter
-    apply KakeyaSectorPartition.outerSectorRadialBump.zero_of_le_dist
-    simpa only [KakeyaSectorPartition.outerSectorRadialBump,
+    apply Auto.Spherical.MSSKakeya.outerSectorRadialBump.zero_of_le_dist
+    simpa only [Auto.Spherical.MSSKakeya.outerSectorRadialBump,
       dist_zero_right] using hge
   have hnormgt : 1 / 4 < ‖eta‖ := by
     apply lt_of_not_ge
     intro hle
     apply h
-    exact KakeyaSectorPartition.sectorAnnularCutoff_eq_zero_of_norm_le_quarter hle
+    exact Auto.Spherical.MSSKakeya.sectorAnnularCutoff_eq_zero_of_norm_le_quarter hle
   have houterMem : eta ∈ Metric.closedBall (0 : Euclidean 2)
       mssP4FineOuterRadialBump.rIn := by
     simpa only [mssP4FineOuterRadialBump, Metric.mem_closedBall,
@@ -12414,7 +12418,7 @@ private def mssP4FineChiReal (q : Fin 4) (r : Fin 193) (scale : Real)
     (nu : Int) (xi : Euclidean 2) : Real :=
   if 2 ≤ scale then
     let eta : Euclidean 2 := scale⁻¹ • xi
-    KakeyaSectorPartition.sectorAnnularCutoff eta *
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
       mssP4ChiChartGate q eta *
       mssUnitLatticeTransitionPiece
         (mssP4FineCoordinate q r scale xi - nu)
@@ -12541,11 +12545,11 @@ private theorem mssP4FineTildeChiReal_eq_one_of_chiReal_ne_zero
     mssP4FineTildeChiReal q r scale nu xi = 1 := by
   rw [mssP4FineChiReal, if_pos hscale] at h
   let eta : Euclidean 2 := scale⁻¹ • xi
-  have hfac : KakeyaSectorPartition.sectorAnnularCutoff eta ≠ 0 ∧
+  have hfac : Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta ≠ 0 ∧
       mssP4ChiChartGate q eta ≠ 0 ∧
       mssUnitLatticeTransitionPiece
         (mssP4FineCoordinate q r scale xi - nu) ≠ 0 := by
-    change KakeyaSectorPartition.sectorAnnularCutoff eta *
+    change Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
         mssP4ChiChartGate q eta *
         mssUnitLatticeTransitionPiece
           (mssP4FineCoordinate q r scale xi - nu) ≠ 0 at h
@@ -12578,7 +12582,7 @@ private theorem mssP4FineChiReal_nonneg
     0 ≤ mssP4FineChiReal q r scale nu xi := by
   rw [mssP4FineChiReal, if_pos hscale]
   exact mul_nonneg
-    (mul_nonneg (KakeyaSectorEnergyOverlap.sectorAnnularCutoff_nonneg _)
+    (mul_nonneg (Auto.Spherical.MSSKakeya.sectorAnnularCutoff_nonneg _)
       (by
         unfold mssP4ChiChartGate
         exact Real.smoothTransition.nonneg _))
@@ -12591,7 +12595,7 @@ private theorem mssP4FineChiReal_le_one
   rw [mssP4FineChiReal, if_pos hscale]
   apply mul_le_one₀
   · apply mul_le_one₀
-    · exact KakeyaSectorEnergyOverlap.sectorAnnularCutoff_le_one _
+    · exact Auto.Spherical.MSSKakeya.sectorAnnularCutoff_le_one _
     · unfold mssP4ChiChartGate
       exact Real.smoothTransition.nonneg _
     · unfold mssP4ChiChartGate
@@ -12611,20 +12615,20 @@ private theorem mssP4FineChi_norm_le_one
 absolute angular difference.  This deliberately coarse constant keeps the
 subsequent sector calculations elementary. -/
 private theorem mssP4_circleDirection_sub_le_two_abs (a b : Real) :
-    ‖KakeyaCircleDirection.circleDirection a -
-      KakeyaCircleDirection.circleDirection b‖ ≤ 2 * |a - b| := by
+    ‖Auto.Spherical.MSSKakeya.circleDirection a -
+      Auto.Spherical.MSSKakeya.circleDirection b‖ ≤ 2 * |a - b| := by
   let u : Real := a - b
-  have hdecomp : KakeyaCircleDirection.circleDirection a =
-      Real.cos u • KakeyaCircleDirection.circleDirection b +
-        Real.sin u • KakeyaCircleDirection.circleDirectionDeriv b := by
+  have hdecomp : Auto.Spherical.MSSKakeya.circleDirection a =
+      Real.cos u • Auto.Spherical.MSSKakeya.circleDirection b +
+        Real.sin u • Auto.Spherical.MSSKakeya.circleDirectionDeriv b := by
     rw [show a = b + u by dsimp only [u]; ring,
-      KakeyaSectorPartition.circleDirection_add_decompose]
+      Auto.Spherical.MSSKakeya.circleDirection_add_decompose]
   have hrewrite :
-      Real.cos u • KakeyaCircleDirection.circleDirection b +
-          Real.sin u • KakeyaCircleDirection.circleDirectionDeriv b -
-          KakeyaCircleDirection.circleDirection b =
-        (Real.cos u - 1) • KakeyaCircleDirection.circleDirection b +
-          Real.sin u • KakeyaCircleDirection.circleDirectionDeriv b := by
+      Real.cos u • Auto.Spherical.MSSKakeya.circleDirection b +
+          Real.sin u • Auto.Spherical.MSSKakeya.circleDirectionDeriv b -
+          Auto.Spherical.MSSKakeya.circleDirection b =
+        (Real.cos u - 1) • Auto.Spherical.MSSKakeya.circleDirection b +
+          Real.sin u • Auto.Spherical.MSSKakeya.circleDirectionDeriv b := by
     module
   have hcos : |Real.cos u - 1| ≤ |u| := by
     rw [show (1 : Real) = Real.cos 0 by norm_num]
@@ -12632,15 +12636,15 @@ private theorem mssP4_circleDirection_sub_le_two_abs (a b : Real) :
   have hsin : |Real.sin u| ≤ |u| := Real.abs_sin_le_abs
   rw [hdecomp, hrewrite]
   calc
-    ‖(Real.cos u - 1) • KakeyaCircleDirection.circleDirection b +
-        Real.sin u • KakeyaCircleDirection.circleDirectionDeriv b‖ ≤
-        ‖(Real.cos u - 1) • KakeyaCircleDirection.circleDirection b‖ +
-          ‖Real.sin u • KakeyaCircleDirection.circleDirectionDeriv b‖ :=
+    ‖(Real.cos u - 1) • Auto.Spherical.MSSKakeya.circleDirection b +
+        Real.sin u • Auto.Spherical.MSSKakeya.circleDirectionDeriv b‖ ≤
+        ‖(Real.cos u - 1) • Auto.Spherical.MSSKakeya.circleDirection b‖ +
+          ‖Real.sin u • Auto.Spherical.MSSKakeya.circleDirectionDeriv b‖ :=
       norm_add_le _ _
     _ = |Real.cos u - 1| + |Real.sin u| := by
       rw [norm_smul, norm_smul,
-        KakeyaCircleDirection.norm_circleDirection,
-        KakeyaCircleDirection.norm_circleDirectionDeriv,
+        Auto.Spherical.MSSKakeya.norm_circleDirection,
+        Auto.Spherical.MSSKakeya.norm_circleDirectionDeriv,
         mul_one, mul_one, Real.norm_eq_abs, Real.norm_eq_abs]
     _ ≤ |u| + |u| := add_le_add hcos hsin
     _ = 2 * |a - b| := by
@@ -12652,39 +12656,39 @@ by one half of the angular distance. -/
 private theorem mssP4_half_abs_sub_le_circleDirection_sub {a b : Real}
     (hab : |a - b| ≤ Real.pi / 2) :
     (1 / 2 : Real) * |a - b| ≤
-      ‖KakeyaCircleDirection.circleDirection a -
-        KakeyaCircleDirection.circleDirection b‖ := by
+      ‖Auto.Spherical.MSSKakeya.circleDirection a -
+        Auto.Spherical.MSSKakeya.circleDirection b‖ := by
   let u : Real := a - b
-  have hdecomp : KakeyaCircleDirection.circleDirection a =
-      Real.cos u • KakeyaCircleDirection.circleDirection b +
-        Real.sin u • KakeyaCircleDirection.circleDirectionDeriv b := by
+  have hdecomp : Auto.Spherical.MSSKakeya.circleDirection a =
+      Real.cos u • Auto.Spherical.MSSKakeya.circleDirection b +
+        Real.sin u • Auto.Spherical.MSSKakeya.circleDirectionDeriv b := by
     rw [show a = b + u by dsimp only [u]; ring,
-      KakeyaSectorPartition.circleDirection_add_decompose]
+      Auto.Spherical.MSSKakeya.circleDirection_add_decompose]
   have hinner : inner Real
-      (KakeyaCircleDirection.circleDirection a -
-        KakeyaCircleDirection.circleDirection b)
-      (KakeyaCircleDirection.circleDirectionDeriv b) = Real.sin u := by
+      (Auto.Spherical.MSSKakeya.circleDirection a -
+        Auto.Spherical.MSSKakeya.circleDirection b)
+      (Auto.Spherical.MSSKakeya.circleDirectionDeriv b) = Real.sin u := by
     rw [hdecomp, inner_sub_left, inner_add_left,
       real_inner_smul_left, real_inner_smul_left,
-      KakeyaCircleDirection.inner_circleDirection_circleDirectionDeriv,
+      Auto.Spherical.MSSKakeya.inner_circleDirection_circleDirectionDeriv,
       real_inner_self_eq_norm_sq,
-      KakeyaCircleDirection.norm_circleDirectionDeriv]
+      Auto.Spherical.MSSKakeya.norm_circleDirectionDeriv]
     ring
   have hinnerabs : |Real.sin u| ≤
-      ‖KakeyaCircleDirection.circleDirection a -
-        KakeyaCircleDirection.circleDirection b‖ := by
+      ‖Auto.Spherical.MSSKakeya.circleDirection a -
+        Auto.Spherical.MSSKakeya.circleDirection b‖ := by
     calc
       |Real.sin u| = |inner Real
-          (KakeyaCircleDirection.circleDirection a -
-            KakeyaCircleDirection.circleDirection b)
-          (KakeyaCircleDirection.circleDirectionDeriv b)| := by rw [hinner]
-      _ ≤ ‖KakeyaCircleDirection.circleDirection a -
-            KakeyaCircleDirection.circleDirection b‖ *
-          ‖KakeyaCircleDirection.circleDirectionDeriv b‖ :=
+          (Auto.Spherical.MSSKakeya.circleDirection a -
+            Auto.Spherical.MSSKakeya.circleDirection b)
+          (Auto.Spherical.MSSKakeya.circleDirectionDeriv b)| := by rw [hinner]
+      _ ≤ ‖Auto.Spherical.MSSKakeya.circleDirection a -
+            Auto.Spherical.MSSKakeya.circleDirection b‖ *
+          ‖Auto.Spherical.MSSKakeya.circleDirectionDeriv b‖ :=
         abs_real_inner_le_norm _ _
-      _ = ‖KakeyaCircleDirection.circleDirection a -
-            KakeyaCircleDirection.circleDirection b‖ := by
-        rw [KakeyaCircleDirection.norm_circleDirectionDeriv, mul_one]
+      _ = ‖Auto.Spherical.MSSKakeya.circleDirection a -
+            Auto.Spherical.MSSKakeya.circleDirection b‖ := by
+        rw [Auto.Spherical.MSSKakeya.norm_circleDirectionDeriv, mul_one]
   have hratio : (1 / 2 : Real) ≤ 2 / Real.pi := by
     rw [le_div_iff₀ Real.pi_pos]
     nlinarith [Real.pi_le_four]
@@ -12696,8 +12700,8 @@ private theorem mssP4_half_abs_sub_le_circleDirection_sub {a b : Real}
     _ ≤ |Real.sin u| := by
       apply Real.mul_abs_le_abs_sin
       simpa only [u] using hab
-    _ ≤ ‖KakeyaCircleDirection.circleDirection a -
-          KakeyaCircleDirection.circleDirection b‖ := hinnerabs
+    _ ≤ ‖Auto.Spherical.MSSKakeya.circleDirection a -
+          Auto.Spherical.MSSKakeya.circleDirection b‖ := hinnerabs
 
 private theorem mssP4FineDirection_center_angle_abs
     (r : Fin 193) {scale : Real} (hscale : 0 < scale) (nu : Int) :
@@ -12729,7 +12733,7 @@ private theorem mssP4FineDirection_center_dist_le_quarter (r : Fin 193)
     {scale : Real} (hscale : 2 ≤ scale) {nu : Int}
     (hnu : nu ∈ mssP4FineAngularIndices scale) :
     ‖mssP4FineDirection r scale nu -
-      KakeyaCircleDirection.circleDirection (mssP4CoarseAngleCenter r)‖ ≤
+      Auto.Spherical.MSSKakeya.circleDirection (mssP4CoarseAngleCenter r)‖ ≤
       1 / 4 := by
   have hscalePos : 0 < scale := by linarith
   have hroot : 0 < Real.sqrt scale := Real.sqrt_pos.2 hscalePos
@@ -12742,9 +12746,9 @@ private theorem mssP4FineDirection_center_dist_le_quarter (r : Fin 193)
     nlinarith
   unfold mssP4FineDirection
   calc
-    ‖KakeyaCircleDirection.circleDirection
+    ‖Auto.Spherical.MSSKakeya.circleDirection
           (mssP4CoarseAngleCenter r + (nu : Real) / (64 * Real.sqrt scale)) -
-        KakeyaCircleDirection.circleDirection (mssP4CoarseAngleCenter r)‖ ≤
+        Auto.Spherical.MSSKakeya.circleDirection (mssP4CoarseAngleCenter r)‖ ≤
         2 * |(mssP4CoarseAngleCenter r + (nu : Real) /
           (64 * Real.sqrt scale)) - mssP4CoarseAngleCenter r| :=
       mssP4_circleDirection_sub_le_two_abs _ _
@@ -12789,9 +12793,9 @@ private theorem mssP4FineDirection_spacing_upper (r : Fin 193)
   rw [mss_rpow_neg_half_eq_sqrt_inv hscalePos]
   unfold mssP4FineDirection
   calc
-    ‖KakeyaCircleDirection.circleDirection
+    ‖Auto.Spherical.MSSKakeya.circleDirection
           (mssP4CoarseAngleCenter r + (nu : Real) / (64 * Real.sqrt scale)) -
-        KakeyaCircleDirection.circleDirection
+        Auto.Spherical.MSSKakeya.circleDirection
           (mssP4CoarseAngleCenter r + (nu' : Real) /
             (64 * Real.sqrt scale))‖ ≤
         2 * |(mssP4CoarseAngleCenter r + (nu : Real) /
@@ -12841,9 +12845,9 @@ private theorem mssP4FineDirection_spacing_lower (r : Fin 193)
       rw [mssP4FineDirection_pair_angle_abs r hscalePos, hcast]
       field_simp [hroot.ne']
       ring
-    _ ≤ ‖KakeyaCircleDirection.circleDirection
+    _ ≤ ‖Auto.Spherical.MSSKakeya.circleDirection
           (mssP4CoarseAngleCenter r + (nu : Real) / (64 * Real.sqrt scale)) -
-        KakeyaCircleDirection.circleDirection
+        Auto.Spherical.MSSKakeya.circleDirection
           (mssP4CoarseAngleCenter r + (nu' : Real) /
             (64 * Real.sqrt scale))‖ :=
       mssP4_half_abs_sub_le_circleDirection_sub hangle
@@ -12854,8 +12858,8 @@ literal polar-coordinate identity on the buffered chart carrier. -/
 private theorem mssP4Fine_mem_angularSector_of_projection_and_coordinate
     {q : Fin 4} {r : Fin 193} {scale : Real} {nu : Int} {xi : Euclidean 2}
     (hscale : 2 ≤ scale)
-    (hproj : 1 / 16 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) (scale⁻¹ • xi))
+    (hproj : 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) (scale⁻¹ • xi))
     (hcoord : |mssP4FineCoordinate q r scale xi - nu| ≤ 2) :
     xi ∈ angularSector (mssP4FineDirection r scale nu)
       (scale ^ (-(1 / 2 : Real))) := by
@@ -12863,14 +12867,14 @@ private theorem mssP4Fine_mem_angularSector_of_projection_and_coordinate
   have hrootPos : 0 < Real.sqrt scale := Real.sqrt_pos.2 hscalePos
   have hdenPos : 0 < 64 * Real.sqrt scale := by positivity
   let eta : Euclidean 2 := scale⁻¹ • xi
-  have hetaProj : 1 / 16 < KakeyaSectorPartition.sectorProjection
-      (KakeyaSectorPartition.chartSectorIndex q) eta := by
+  have hetaProj : 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+      (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta := by
     simpa only [eta] using hproj
   have heta0 : eta ≠ 0 := by
     intro hz
     rw [hz] at hetaProj
     have hfalse : (1 / 16 : Real) < 0 := by
-      simpa [KakeyaSectorPartition.sectorProjection] using hetaProj
+      simpa [Auto.Spherical.MSSKakeya.sectorProjection] using hetaProj
     norm_num at hfalse
   have hetaNormPos : 0 < ‖eta‖ := norm_pos_iff.mpr heta0
   have hxi0 : xi ≠ 0 := by
@@ -12878,31 +12882,31 @@ private theorem mssP4Fine_mem_angularSector_of_projection_and_coordinate
     apply heta0
     simpa [eta, hz]
   have hpolar : eta = ‖eta‖ •
-      KakeyaCircleDirection.circleDirection (mssP4FineChartAngle q scale xi) := by
+      Auto.Spherical.MSSKakeya.circleDirection (mssP4FineChartAngle q scale xi) := by
     simpa only [eta, mssP4FineChartAngle,
-      KakeyaScaledSectorPartition.scaledChartAngle] using
+      Auto.Spherical.MSSKakeya.scaledChartAngle] using
       (mssP4_polar_of_sixteenth_lt_projection hetaProj)
   have hxiScale : xi = scale • eta := by
     dsimp [eta]
-    exact (KakeyaScaledSectorPartition.smul_inv_smul_eq_self hscalePos xi).symm
+    exact (Auto.Spherical.MSSKakeya.smul_inv_smul_eq_self hscalePos xi).symm
   have hnormalize : (‖xi‖)⁻¹ • xi =
-      KakeyaCircleDirection.circleDirection (mssP4FineChartAngle q scale xi) := by
+      Auto.Spherical.MSSKakeya.circleDirection (mssP4FineChartAngle q scale xi) := by
     change NormedSpace.normalize xi = _
     calc
       NormedSpace.normalize xi = NormedSpace.normalize (scale • eta) :=
         congrArg NormedSpace.normalize hxiScale
       _ = NormedSpace.normalize eta :=
         NormedSpace.normalize_smul_of_pos hscalePos eta
-      _ = KakeyaCircleDirection.circleDirection
+      _ = Auto.Spherical.MSSKakeya.circleDirection
           (mssP4FineChartAngle q scale xi) := by
         change (‖eta‖)⁻¹ • eta = _
         calc
           (‖eta‖)⁻¹ • eta =
               (‖eta‖)⁻¹ • (‖eta‖ •
-                KakeyaCircleDirection.circleDirection
+                Auto.Spherical.MSSKakeya.circleDirection
                   (mssP4FineChartAngle q scale xi)) :=
             congrArg (fun z : Euclidean 2 => (‖eta‖)⁻¹ • z) hpolar
-          _ = KakeyaCircleDirection.circleDirection
+          _ = Auto.Spherical.MSSKakeya.circleDirection
               (mssP4FineChartAngle q scale xi) := by
             rw [smul_smul, inv_mul_cancel₀ hetaNormPos.ne', one_smul]
   have hid : mssP4FineCoordinate q r scale xi - (nu : Real) =
@@ -12931,18 +12935,18 @@ private theorem mssP4Fine_mem_angularSector_of_projection_and_coordinate
             (64 * Real.sqrt scale) := by rw [← hid]
       _ ≤ 2 / (64 * Real.sqrt scale) :=
         div_le_div_of_nonneg_right hcoord hdenPos.le
-  have hchord : ‖KakeyaCircleDirection.circleDirection
+  have hchord : ‖Auto.Spherical.MSSKakeya.circleDirection
       (mssP4FineChartAngle q scale xi) -
       mssP4FineDirection r scale nu‖ ≤
         scale ^ (-(1 / 2 : Real)) := by
-    change ‖KakeyaCircleDirection.circleDirection (mssP4FineChartAngle q scale xi) -
-      KakeyaCircleDirection.circleDirection
+    change ‖Auto.Spherical.MSSKakeya.circleDirection (mssP4FineChartAngle q scale xi) -
+      Auto.Spherical.MSSKakeya.circleDirection
         (mssP4CoarseAngleCenter r + (nu : Real) /
           (64 * Real.sqrt scale))‖ ≤ _
     calc
-      ‖KakeyaCircleDirection.circleDirection
+      ‖Auto.Spherical.MSSKakeya.circleDirection
           (mssP4FineChartAngle q scale xi) -
-          KakeyaCircleDirection.circleDirection
+          Auto.Spherical.MSSKakeya.circleDirection
             (mssP4CoarseAngleCenter r + (nu : Real) /
               (64 * Real.sqrt scale))‖ ≤
           2 * |mssP4FineChartAngle q scale xi -
@@ -12990,18 +12994,18 @@ private theorem mssP4FineChi_support (q : Fin 4) (r : Fin 193)
     have hfac : mssP4ChiChartGate q eta ≠ 0 ∧
         mssUnitLatticeTransitionPiece
           (mssP4FineCoordinate q r scale xi - nu) ≠ 0 := by
-      change KakeyaSectorPartition.sectorAnnularCutoff eta *
+      change Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
           mssP4ChiChartGate q eta *
           mssUnitLatticeTransitionPiece
             (mssP4FineCoordinate q r scale xi - nu) ≠ 0 at hreal
       rcases mul_ne_zero_iff.mp hreal with ⟨hab, hc⟩
       rcases mul_ne_zero_iff.mp hab with ⟨ha, hb⟩
       exact ⟨hb, hc⟩
-    have hproj : 1 / 16 < KakeyaSectorPartition.sectorProjection
-        (KakeyaSectorPartition.chartSectorIndex q) (scale⁻¹ • xi) := by
+    have hproj : 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) (scale⁻¹ • xi) := by
       have heighth := mssP4ChiChartGate_ne_zero_imp_eighth_lt_projection hfac.1
-      simpa only [eta] using (show 1 / 16 < KakeyaSectorPartition.sectorProjection
-        (KakeyaSectorPartition.chartSectorIndex q) eta by linarith)
+      simpa only [eta] using (show 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta by linarith)
     have hcoord : |mssP4FineCoordinate q r scale xi - nu| ≤ 2 := by
       have hpiece : mssP4FineCoordinate q r scale xi - nu ∈ Icc (-1 : Real) 1 :=
         mssUnitLatticeTransitionPiece_support_subset
@@ -13039,8 +13043,8 @@ private theorem mssP4FineTildeChi_support (q : Fin 4) (r : Fin 193)
       rcases mul_ne_zero_iff.mp hreal with ⟨hab, hc⟩
       rcases mul_ne_zero_iff.mp hab with ⟨ha, hb⟩
       exact ⟨hb, hc⟩
-    have hproj : 1 / 16 < KakeyaSectorPartition.sectorProjection
-        (KakeyaSectorPartition.chartSectorIndex q) (scale⁻¹ • xi) := by
+    have hproj : 1 / 16 < Auto.Spherical.MSSKakeya.sectorProjection
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) (scale⁻¹ • xi) := by
       simpa only [eta] using
         mssP4TildeChiChartGate_ne_zero_imp_sixteenth_lt_projection hfac.1
     have hcoord : |mssP4FineCoordinate q r scale xi - nu| ≤ 2 :=
@@ -13059,7 +13063,7 @@ private theorem mssP4FineCoordinate_contDiff (q : Fin 4) (r : Fin 193)
   unfold mssP4FineCoordinate mssP4FineCoarseCoordinate mssP4FineChartAngle
   exact contDiff_const.mul
     (((contDiff_const.mul
-      (KakeyaScaledSectorPartition.contDiff_scaledChartAngle scale q)).add
+      (Auto.Spherical.MSSKakeya.contDiff_scaledChartAngle scale q)).add
         contDiff_const).sub contDiff_const)
 
 private theorem mssP4FineTildeRadialGate_contDiff :
@@ -13083,26 +13087,26 @@ private noncomputable def mssP4BoundedChartAngle (q : Fin 4) :
   let raw : Euclidean 2 → Real := fun eta =>
     mssP4FineTildeRadialGate eta *
       mssP4TildeChiChartGate q eta *
-      KakeyaSectorPartition.globalSectorAngle
-        (KakeyaSectorPartition.chartSectorIndex q) eta
+      Auto.Spherical.MSSKakeya.globalSectorAngle
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta
   have hcompact : HasCompactSupport raw := by
     change HasCompactSupport (fun eta : Euclidean 2 =>
       mssP4FineTildeRadialGate eta *
         mssP4TildeChiChartGate q eta *
-        KakeyaSectorPartition.globalSectorAngle
-          (KakeyaSectorPartition.chartSectorIndex q) eta)
+        Auto.Spherical.MSSKakeya.globalSectorAngle
+          (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta)
     exact mssP4FineTildeRadialGate_compact.mul_right.mul_right
   have hsmooth : ContDiff Real (⊤ : ℕ∞) raw := by
     change ContDiff Real (⊤ : ℕ∞) (fun eta : Euclidean 2 =>
       mssP4FineTildeRadialGate eta *
         mssP4TildeChiChartGate q eta *
-        KakeyaSectorPartition.globalSectorAngle
-          (KakeyaSectorPartition.chartSectorIndex q) eta)
+        Auto.Spherical.MSSKakeya.globalSectorAngle
+          (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta)
     exact
       ((mssP4FineTildeRadialGate_contDiff.mul
         (mssP4TildeChiChartGate_contDiff q)).mul
-        (KakeyaSectorPartition.contDiff_globalSectorAngle
-          (KakeyaSectorPartition.chartSectorIndex q)))
+        (Auto.Spherical.MSSKakeya.contDiff_globalSectorAngle
+          (Auto.Spherical.MSSKakeya.chartSectorIndex q)))
   exact hcompact.toSchwartzMap hsmooth
 
 private theorem mssP4BoundedChartAngle_apply (q : Fin 4)
@@ -13110,18 +13114,18 @@ private theorem mssP4BoundedChartAngle_apply (q : Fin 4)
     mssP4BoundedChartAngle q eta =
       mssP4FineTildeRadialGate eta *
         mssP4TildeChiChartGate q eta *
-        KakeyaSectorPartition.globalSectorAngle
-          (KakeyaSectorPartition.chartSectorIndex q) eta := by
+        Auto.Spherical.MSSKakeya.globalSectorAngle
+          (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta := by
   rfl
 
 private theorem mssP4BoundedChartAngle_eq_globalSectorAngle_of_carrier_ne_zero
     {q : Fin 4} {eta : Euclidean 2}
     (hcarrier :
-      KakeyaSectorPartition.sectorAnnularCutoff eta *
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
         mssP4ChiChartGate q eta ≠ 0) :
     mssP4BoundedChartAngle q eta =
-      KakeyaSectorPartition.globalSectorAngle
-        (KakeyaSectorPartition.chartSectorIndex q) eta := by
+      Auto.Spherical.MSSKakeya.globalSectorAngle
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) eta := by
   rcases mul_ne_zero_iff.mp hcarrier with ⟨hann, hgate⟩
   rw [mssP4BoundedChartAngle_apply,
     mssP4FineTildeRadialGate_eq_one_of_sectorAnnularCutoff_ne_zero hann,
@@ -13132,32 +13136,32 @@ private theorem mssP4BoundedChartAngle_eq_globalSectorAngle_of_carrier_ne_zero
 private noncomputable def mssP4FineChiCarrier (q : Fin 4) :
     SchwartzMap (Euclidean 2) Complex := by
   let raw : Euclidean 2 → Complex := fun eta =>
-    (KakeyaSectorPartition.sectorAnnularCutoff eta *
+    (Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
       mssP4ChiChartGate q eta : Real)
   have hcompactReal : HasCompactSupport (fun eta : Euclidean 2 =>
-      KakeyaSectorPartition.sectorAnnularCutoff eta *
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
         mssP4ChiChartGate q eta) :=
-    KakeyaSectorPartition.hasCompactSupport_sectorAnnularCutoff.mul_right
+    Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff.mul_right
   have hcompact : HasCompactSupport raw := by
     change HasCompactSupport
       (Complex.ofRealCLM ∘ fun eta : Euclidean 2 =>
-        KakeyaSectorPartition.sectorAnnularCutoff eta *
+        Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
           mssP4ChiChartGate q eta)
     exact hcompactReal.comp_left (by rfl)
   have hsmooth : ContDiff Real (⊤ : ℕ∞) raw := by
     change ContDiff Real (⊤ : ℕ∞)
       (Complex.ofRealCLM ∘ fun eta : Euclidean 2 =>
-        KakeyaSectorPartition.sectorAnnularCutoff eta *
+        Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
           mssP4ChiChartGate q eta)
     exact Complex.ofRealCLM.contDiff.comp
-      (KakeyaSectorPartition.contDiff_sectorAnnularCutoff.mul
+      (Auto.Spherical.MSSKakeya.contDiff_sectorAnnularCutoff.mul
         (mssP4ChiChartGate_contDiff q))
   exact hcompact.toSchwartzMap hsmooth
 
 private theorem mssP4FineChiCarrier_apply (q : Fin 4)
     (eta : Euclidean 2) :
     mssP4FineChiCarrier q eta =
-      (KakeyaSectorPartition.sectorAnnularCutoff eta *
+      (Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
         mssP4ChiChartGate q eta : Real) := by
   rfl
 
@@ -13172,18 +13176,18 @@ private theorem
     mssP4FineRegularCoordinate_eq_mssP4FineCoordinate_of_carrier_ne_zero
     {q : Fin 4} {r : Fin 193} {scale : Real} {xi : Euclidean 2}
     (hcarrier :
-      KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi) *
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi) *
         mssP4ChiChartGate q (scale⁻¹ • xi) ≠ 0) :
     mssP4FineRegularCoordinate q r scale xi =
       mssP4FineCoordinate q r scale xi := by
   unfold mssP4FineRegularCoordinate mssP4FineCoordinate
     mssP4FineCoarseCoordinate mssP4FineChartAngle
-    KakeyaScaledSectorPartition.scaledChartAngle
+    Auto.Spherical.MSSKakeya.scaledChartAngle
   change 4 * Real.sqrt scale *
       (16 * mssP4BoundedChartAngle q (scale⁻¹ • xi) + 96 - (r.val : Real)) =
     4 * Real.sqrt scale *
-      (16 * KakeyaSectorPartition.globalSectorAngle
-        (KakeyaSectorPartition.chartSectorIndex q) (scale⁻¹ • xi) +
+      (16 * Auto.Spherical.MSSKakeya.globalSectorAngle
+        (Auto.Spherical.MSSKakeya.chartSectorIndex q) (scale⁻¹ • xi) +
           96 - (r.val : Real))
   rw [mssP4BoundedChartAngle_eq_globalSectorAngle_of_carrier_ne_zero hcarrier]
 
@@ -13194,7 +13198,7 @@ private def mssP4FineRegularChiReal (q : Fin 4) (r : Fin 193)
     (scale : Real) (nu : Int) (xi : Euclidean 2) : Real :=
   if 2 ≤ scale then
     let eta : Euclidean 2 := scale⁻¹ • xi
-    KakeyaSectorPartition.sectorAnnularCutoff eta *
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
       mssP4ChiChartGate q eta *
       mssUnitLatticeTransitionPiece
         (mssP4FineRegularCoordinate q r scale xi - nu)
@@ -13210,7 +13214,7 @@ private theorem mssP4FineRegularChiReal_eq_mssP4FineChiReal
       if_pos hscale, if_pos hscale]
     let eta : Euclidean 2 := scale⁻¹ • xi
     by_cases hcarrier :
-        KakeyaSectorPartition.sectorAnnularCutoff eta *
+        Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
           mssP4ChiChartGate q eta = 0
     · simp [eta, hcarrier]
     · have hcoord :=
@@ -13244,19 +13248,19 @@ private theorem mssP4FineRegularChiReal_contDiff (q : Fin 4) (r : Fin 193)
   change ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
     if 2 ≤ scale then
       let eta : Euclidean 2 := scale⁻¹ • xi
-      KakeyaSectorPartition.sectorAnnularCutoff eta *
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
         mssP4ChiChartGate q eta *
         mssUnitLatticeTransitionPiece
           (mssP4FineRegularCoordinate q r scale xi - nu)
     else 0)
   simp only [if_pos hscale]
   change ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
-    KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi) *
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi) *
       mssP4ChiChartGate q (scale⁻¹ • xi) *
       mssUnitLatticeTransitionPiece
         (mssP4FineRegularCoordinate q r scale xi - nu))
   exact
-    ((KakeyaSectorPartition.contDiff_sectorAnnularCutoff.comp
+    ((Auto.Spherical.MSSKakeya.contDiff_sectorAnnularCutoff.comp
       (contDiff_id.const_smul scale⁻¹)).mul
       ((mssP4ChiChartGate_contDiff q).comp
         (contDiff_id.const_smul scale⁻¹))).mul
@@ -13268,20 +13272,20 @@ private theorem mssP4FineRegularChiReal_compact (q : Fin 4) (r : Fin 193)
     HasCompactSupport (mssP4FineRegularChiReal q r scale nu) := by
   have hscalePos : 0 < scale := by linarith
   have hann : HasCompactSupport (fun xi : Euclidean 2 =>
-      KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi)) :=
-    KakeyaSectorPartition.hasCompactSupport_sectorAnnularCutoff.comp_smul
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi)) :=
+    Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff.comp_smul
       (c := scale⁻¹) (inv_ne_zero hscalePos.ne')
   change HasCompactSupport (fun xi : Euclidean 2 =>
     if 2 ≤ scale then
       let eta : Euclidean 2 := scale⁻¹ • xi
-      KakeyaSectorPartition.sectorAnnularCutoff eta *
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
         mssP4ChiChartGate q eta *
         mssUnitLatticeTransitionPiece
           (mssP4FineRegularCoordinate q r scale xi - nu)
     else 0)
   simp only [if_pos hscale]
   change HasCompactSupport (fun xi : Euclidean 2 =>
-    KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi) *
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi) *
       mssP4ChiChartGate q (scale⁻¹ • xi) *
       mssUnitLatticeTransitionPiece
         (mssP4FineRegularCoordinate q r scale xi - nu))
@@ -13571,12 +13575,12 @@ private theorem mssP4FineChiReal_contDiff (q : Fin 4) (r : Fin 193)
   unfold mssP4FineChiReal
   simp only [if_pos hscale]
   change ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
-    KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi) *
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi) *
       mssP4ChiChartGate q (scale⁻¹ • xi) *
       mssUnitLatticeTransitionPiece
         (mssP4FineCoordinate q r scale xi - nu))
   exact
-    ((KakeyaSectorPartition.contDiff_sectorAnnularCutoff.comp
+    ((Auto.Spherical.MSSKakeya.contDiff_sectorAnnularCutoff.comp
       (contDiff_id.const_smul scale⁻¹)).mul
       ((mssP4ChiChartGate_contDiff q).comp
         (contDiff_id.const_smul scale⁻¹))).mul
@@ -13606,13 +13610,13 @@ private theorem mssP4FineChiReal_compact (q : Fin 4) (r : Fin 193)
     HasCompactSupport (mssP4FineChiReal q r scale nu) := by
   have hscalePos : 0 < scale := by linarith
   have hann : HasCompactSupport (fun xi : Euclidean 2 =>
-      KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi)) :=
-    KakeyaSectorPartition.hasCompactSupport_sectorAnnularCutoff.comp_smul
+      Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi)) :=
+    Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff.comp_smul
       (c := scale⁻¹) (inv_ne_zero hscalePos.ne')
   unfold mssP4FineChiReal
   simp only [if_pos hscale]
   change HasCompactSupport (fun xi : Euclidean 2 =>
-    KakeyaSectorPartition.sectorAnnularCutoff (scale⁻¹ • xi) *
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff (scale⁻¹ • xi) *
       mssP4ChiChartGate q (scale⁻¹ • xi) *
       mssUnitLatticeTransitionPiece
         (mssP4FineCoordinate q r scale xi - nu))
@@ -13803,7 +13807,7 @@ private theorem mssP4FineCoarseCoordinate_abs_le_one_of_coarseAmplitude_ne_zero
   have hpiece : mssUnitLatticeTransitionPiece
       (mssP4FineCoarseCoordinate q r scale xi) ≠ 0 := by
     simpa only [mssP4FineCoarseCoordinate, mssP4FineChartAngle,
-      KakeyaScaledSectorPartition.scaledChartAngle, mssP4AngleLattice] using hlattice
+      Auto.Spherical.MSSKakeya.scaledChartAngle, mssP4AngleLattice] using hlattice
   exact abs_le.mpr (mssUnitLatticeTransitionPiece_support_subset
     (Function.mem_support.mpr hpiece))
 
@@ -13842,8 +13846,8 @@ private theorem sum_mssP4FineChi_eq_one_on_coarseAmplitude
   have hann : ‖eta‖ ∈ Icc (1 / 2 : Real) 2 := by
     apply mssP4CoarseAmplitude_support_annulus C q r
     exact Function.mem_support.mpr (by simpa only [eta] using h)
-  have hcut : KakeyaSectorPartition.sectorAnnularCutoff eta = 1 :=
-    KakeyaSectorPartition.sectorAnnularCutoff_eq_one hann.1 hann.2
+  have hcut : Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta = 1 :=
+    Auto.Spherical.MSSKakeya.sectorAnnularCutoff_eq_one hann.1 hann.2
   have hweight : mssP4SourceChartOrderedWeight q eta ≠ 0 := by
     apply mssP4CoarseAmplitude_ne_zero_imp_source_weight_ne_zero C
     simpa only [eta] using h
@@ -13860,17 +13864,17 @@ private theorem sum_mssP4FineChi_eq_one_on_coarseAmplitude
       mssP4FineChiReal q r scale nu xi = 1 := by
     simp_rw [mssP4FineChiReal, if_pos hscale]
     change ∑ nu ∈ mssP4FineAngularIndices scale,
-        KakeyaSectorPartition.sectorAnnularCutoff eta *
+        Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
           mssP4ChiChartGate q eta *
           mssUnitLatticeTransitionPiece
             (mssP4FineCoordinate q r scale xi - nu) = 1
     calc
       ∑ nu ∈ mssP4FineAngularIndices scale,
-          KakeyaSectorPartition.sectorAnnularCutoff eta *
+          Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
             mssP4ChiChartGate q eta *
             mssUnitLatticeTransitionPiece
               (mssP4FineCoordinate q r scale xi - nu) =
-          (KakeyaSectorPartition.sectorAnnularCutoff eta *
+          (Auto.Spherical.MSSKakeya.sectorAnnularCutoff eta *
             mssP4ChiChartGate q eta) *
             ∑ nu ∈ mssP4FineAngularIndices scale,
               mssUnitLatticeTransitionPiece
@@ -13887,7 +13891,7 @@ theorem sum_mssP4CoarseAmplitude (C : lpCutoffs 2) (xi : Euclidean 2) :
       mssP4ScaledBandpassAmplitude C xi := by
   by_cases hbase : mssP4ScaledBandpassAmplitude C xi = 0
   · simp [mssP4CoarseAmplitude_apply, hbase]
-  · have hann : xi ∈ KakeyaSectorPartition.unitDyadicFrequencyAnnulus :=
+  · have hann : xi ∈ Auto.Spherical.MSSKakeya.unitDyadicFrequencyAnnulus :=
       mssP4ScaledBandpassAmplitude_support_annulus C hbase
     calc
       ∑ q : Fin 4, ∑ r : Fin 193, mssP4CoarseAmplitude C q r xi =
@@ -13934,7 +13938,7 @@ private noncomputable def mssP4FineCutoffData
     exact mssP4FineAngularIndices_card_le_eleven_sqrt hscale
   direction_unit := by
     intro scale nu _hnu
-    exact KakeyaCircleDirection.norm_circleDirection _
+    exact Auto.Spherical.MSSKakeya.norm_circleDirection _
   chi_support := by
     intro scale nu hnu
     simpa using mssP4FineChi_support q r scale nu hnu
@@ -13965,10 +13969,10 @@ private noncomputable def mssP4FineAngularData
     change angularSectorGeometry scale (mssP4FineAngularIndices scale)
       (mssP4FineDirection r scale) (1 / 4) (1 / 128) (1 / 32)
     refine ⟨by norm_num, by norm_num, by norm_num, by norm_num, ?_⟩
-    refine ⟨KakeyaCircleDirection.circleDirection (mssP4CoarseAngleCenter r),
-      KakeyaCircleDirection.norm_circleDirection _, ?_⟩
+    refine ⟨Auto.Spherical.MSSKakeya.circleDirection (mssP4CoarseAngleCenter r),
+      Auto.Spherical.MSSKakeya.norm_circleDirection _, ?_⟩
     intro nu hnu
-    refine ⟨KakeyaCircleDirection.norm_circleDirection _,
+    refine ⟨Auto.Spherical.MSSKakeya.norm_circleDirection _,
       mssP4FineDirection_center_dist_le_quarter r hscale hnu, ?_⟩
     intro nu' hnu'
     exact ⟨mssP4FineDirection_spacing_lower r hscale hnu hnu',
@@ -13987,7 +13991,7 @@ private noncomputable def mssP4FineScaledCoarseAmplitude
     (scale : Real) (hscale : 0 < scale) :
     SchwartzMap (Euclidean 2) Complex :=
   (SchwartzMap.compCLMOfContinuousLinearEquiv Complex
-    (KakeyaScaledSectorPartition.frequencyScaleEquiv scale hscale.ne'))
+    (Auto.Spherical.MSSKakeya.frequencyScaleEquiv scale hscale.ne'))
       (mssP4CoarseAmplitude C q r)
 
 private theorem mssP4FineScaledCoarseAmplitude_apply
@@ -13996,7 +14000,7 @@ private theorem mssP4FineScaledCoarseAmplitude_apply
     mssP4FineScaledCoarseAmplitude C q r scale hscale xi =
       mssP4CoarseAmplitude C q r (scale⁻¹ • xi) := by
   simp [mssP4FineScaledCoarseAmplitude,
-    KakeyaScaledSectorPartition.frequencyScaleEquiv]
+    Auto.Spherical.MSSKakeya.frequencyScaleEquiv]
 
 /-- The active spatial multiplier is a literal product of the fine angular,
 scaled annular, and raw radial Schwartz profiles. -/
@@ -14702,7 +14706,7 @@ private theorem integral_norm_iteratedFDeriv_mssP4FineSpatialProfile_eq_normaliz
         rw [norm_smul, Real.norm_eq_abs,
           abs_of_nonneg (pow_nonneg (inv_nonneg.mpr hrootPos.le) k)],
     integral_const_mul]
-  rw [Auto.Spherical.SurfaceCore.integral_norm_comp_smul_eq 2
+  rw [Auto.Spherical.SurfaceMeasureDecay.integral_norm_comp_smul_eq 2
     (iteratedFDeriv Real k
       (mssP4FineNormalizedRegularProfile C q r scale n nu hscale :
         Euclidean 2 → Complex))
@@ -14771,7 +14775,7 @@ private theorem mssP4FineUniformRegularity
       (∫ y : Euclidean 2,
         ‖iteratedFDeriv Real k (Q : Euclidean 2 → Complex) y‖) ≤
         B * (volume K).toReal := by
-    exact _root_.Auto.Spherical.MikhlinHormander.integral_norm_le_of_support_subset_of_norm_le
+    exact _root_.Auto.MikhlinHormander.integral_norm_le_of_support_subset_of_norm_le
         (iteratedFDeriv Real k (Q : Euclidean 2 → Complex)) K hKmeas hKfinite
         hQintegrable hQpoint hQderivSupport
   have hKvolume : (volume K).toReal = V := by
@@ -14903,7 +14907,7 @@ private theorem continuous_mssP4CoarseConicOperator
   have hU : Continuous U := by
     change Continuous (Function.uncurry (fun t x =>
       FourierTransform.fourierInv (m t) x))
-    apply KakeyaInverseFourierContinuity.continuous_uncurry_fourierInv_of_dominated m
+    apply Auto.Spherical.MSSKakeya.continuous_uncurry_fourierInv_of_dominated m
       (bound := fun xi => ‖B xi‖)
     · intro xi
       have hphase : Continuous (fun p : Real × Euclidean 2 =>
@@ -15022,7 +15026,7 @@ private theorem sum_mssP4CoarseConicOperator
     intro qr _
     exact integrable_mssP4CoarseSpectrum C qr.1 qr.2 scale hscale f z.2
   have hfourier :=
-    _root_.Auto.Spherical.MikhlinHormander.fourierInv_finset_sum_of_integrable
+    _root_.Auto.MikhlinHormander.fourierInv_finset_sum_of_integrable
       ((Finset.univ : Finset (Fin 4)).product Finset.univ) g hg z.1
   have hsum : (fun xi : Euclidean 2 =>
       ∑ qr ∈ (Finset.univ : Finset (Fin 4)).product Finset.univ, g qr xi) =
@@ -15271,24 +15275,24 @@ for the negative half-wave.  It preserves the Littlewood--Paley cutoff
 axioms without assuming that the original cutoff is real or even. -/
 private noncomputable def mssP4ReflectedConjugateCutoffs
     (C : lpCutoffs 2) : lpCutoffs 2 where
-  cutoff := ScratchKakeyaBandlimitedCore.testNeg
-    (ScratchKakeyaBandlimitedCore.testConj C.cutoff)
+  cutoff := Auto.Spherical.MSSKakeya.testNeg
+    (Auto.Spherical.MSSKakeya.testConj C.cutoff)
   cutoff_one := by
     intro xi hxi
-    rw [ScratchKakeyaBandlimitedCore.testNeg_apply,
-      ScratchKakeyaBandlimitedCore.testConj_apply,
+    rw [Auto.Spherical.MSSKakeya.testNeg_apply,
+      Auto.Spherical.MSSKakeya.testConj_apply,
       C.cutoff_one (-xi) (by simpa using hxi)]
     norm_num
   cutoff_zero := by
     intro xi hxi
-    rw [ScratchKakeyaBandlimitedCore.testNeg_apply,
-      ScratchKakeyaBandlimitedCore.testConj_apply,
+    rw [Auto.Spherical.MSSKakeya.testNeg_apply,
+      Auto.Spherical.MSSKakeya.testConj_apply,
       C.cutoff_zero (-xi) (by simpa using hxi)]
     norm_num
   norm_le_one := by
     intro xi
-    rw [ScratchKakeyaBandlimitedCore.testNeg_apply,
-      ScratchKakeyaBandlimitedCore.testConj_apply, norm_star]
+    rw [Auto.Spherical.MSSKakeya.testNeg_apply,
+      Auto.Spherical.MSSKakeya.testConj_apply, norm_star]
     exact C.norm_le_one (-xi)
 
 /-- The dyadic band-pass of the reflected-conjugate cutoff is the reflected
@@ -15299,8 +15303,8 @@ private theorem dyadicBandpassMultiplier_mssP4ReflectedConjugateCutoffs_apply
       star (dyadicBandpassMultiplier C.cutoff j (-xi)) := by
   rw [dyadicBandpassMultiplier_apply, dyadicBandpassMultiplier_apply]
   simp only [mssP4ReflectedConjugateCutoffs,
-    ScratchKakeyaBandlimitedCore.testNeg_apply,
-    ScratchKakeyaBandlimitedCore.testConj_apply]
+    Auto.Spherical.MSSKakeya.testNeg_apply,
+    Auto.Spherical.MSSKakeya.testConj_apply]
   simp
 
 /-- Conjugating the reflected positive half-wave phase gives the negative
@@ -15331,7 +15335,7 @@ private noncomputable def mssP4ReflectedPlusSpectrum
     (dyadicHalfWaveSchwartzSymbol (mssP4ReflectedConjugateCutoffs C)
       WaveSign.plus j t : Euclidean 2 → Complex)
     (FourierTransform.fourier
-      (ScratchKakeyaBandlimitedCore.testConj f))
+      (Auto.Spherical.MSSKakeya.testConj f))
 
 private noncomputable def mssP4NegativeSpectrum
     (C : lpCutoffs 2) (j : Nat) (t : Real)
@@ -15348,26 +15352,26 @@ private theorem mssP4NegativeSpectrum_eq_reflectedConjPlusSpectrum
     (C : lpCutoffs 2) (j : Nat) (t : Real)
     (f : SchwartzMap (Euclidean 2) Complex) :
     mssP4NegativeSpectrum C j t f =
-      ScratchKakeyaBandlimitedCore.testNeg
-        (ScratchKakeyaBandlimitedCore.testConj
+      Auto.Spherical.MSSKakeya.testNeg
+        (Auto.Spherical.MSSKakeya.testConj
           (mssP4ReflectedPlusSpectrum C j t f)) := by
   have hfourier : FourierTransform.fourier
-      (ScratchKakeyaBandlimitedCore.testConj f) =
-      ScratchKakeyaBandlimitedCore.testNeg
-        (ScratchKakeyaBandlimitedCore.testConj
+      (Auto.Spherical.MSSKakeya.testConj f) =
+      Auto.Spherical.MSSKakeya.testNeg
+        (Auto.Spherical.MSSKakeya.testConj
           (FourierTransform.fourier f)) := by
     simpa only [FourierTransform.fourierInv_fourier_eq] using
-      ScratchKakeyaBandlimitedCore.fourier_testConj_fourierInv
+      Auto.Spherical.MSSKakeya.fourier_testConj_fourierInv
         (FourierTransform.fourier f)
   ext xi
   have hfourier_apply : FourierTransform.fourier
-      (ScratchKakeyaBandlimitedCore.testConj f : Euclidean 2 → Complex) (-xi) =
+      (Auto.Spherical.MSSKakeya.testConj f : Euclidean 2 → Complex) (-xi) =
       star (FourierTransform.fourier (f : Euclidean 2 → Complex) xi) := by
     change (FourierTransform.fourier
-      (ScratchKakeyaBandlimitedCore.testConj f) :
+      (Auto.Spherical.MSSKakeya.testConj f) :
         SchwartzMap (Euclidean 2) Complex) (-xi) = _
-    rw [hfourier, ScratchKakeyaBandlimitedCore.testNeg_apply,
-      ScratchKakeyaBandlimitedCore.testConj_apply, neg_neg,
+    rw [hfourier, Auto.Spherical.MSSKakeya.testNeg_apply,
+      Auto.Spherical.MSSKakeya.testConj_apply, neg_neg,
       SchwartzMap.fourier_coe]
   have hband : dyadicBandpassMultiplier
       (mssP4ReflectedConjugateCutoffs C).cutoff j (-xi) =
@@ -15377,8 +15381,8 @@ private theorem mssP4NegativeSpectrum_eq_reflectedConjPlusSpectrum
   unfold mssP4NegativeSpectrum mssP4ReflectedPlusSpectrum
   rw [SchwartzMap.smulLeftCLM_apply_apply
       (dyadicHalfWaveSchwartzSymbol C WaveSign.minus j t).hasTemperateGrowth,
-    ScratchKakeyaBandlimitedCore.testNeg_apply,
-    ScratchKakeyaBandlimitedCore.testConj_apply,
+    Auto.Spherical.MSSKakeya.testNeg_apply,
+    Auto.Spherical.MSSKakeya.testConj_apply,
     SchwartzMap.smulLeftCLM_apply_apply
       (dyadicHalfWaveSchwartzSymbol (mssP4ReflectedConjugateCutoffs C)
         WaveSign.plus j t).hasTemperateGrowth]
@@ -15393,7 +15397,7 @@ private theorem fourierInv_mssP4ReflectedPlusSpectrum_apply
     (f : SchwartzMap (Euclidean 2) Complex) (x : Euclidean 2) :
     FourierTransform.fourierInv (mssP4ReflectedPlusSpectrum C j t f) x =
       dyadicHalfWave (mssP4ReflectedConjugateCutoffs C).cutoff
-        WaveSign.plus j t (ScratchKakeyaBandlimitedCore.testConj f) x := by
+        WaveSign.plus j t (Auto.Spherical.MSSKakeya.testConj f) x := by
   unfold mssP4ReflectedPlusSpectrum
   rw [SchwartzMap.fourierInv_coe]
   apply congrArg (fun q : Euclidean 2 → Complex => FourierTransform.fourierInv q x)
@@ -15425,25 +15429,25 @@ private theorem dyadicHalfWave_minus_eq_star_plus_reflectedConj
     (f : SchwartzMap (Euclidean 2) Complex) (x : Euclidean 2) :
     dyadicHalfWave C.cutoff WaveSign.minus j t f x =
       star (dyadicHalfWave (mssP4ReflectedConjugateCutoffs C).cutoff
-        WaveSign.plus j t (ScratchKakeyaBandlimitedCore.testConj f) x) := by
+        WaveSign.plus j t (Auto.Spherical.MSSKakeya.testConj f) x) := by
   have hreflect : FourierTransform.fourierInv (mssP4NegativeSpectrum C j t f) =
-      ScratchKakeyaBandlimitedCore.testConj
+      Auto.Spherical.MSSKakeya.testConj
         (FourierTransform.fourierInv (mssP4ReflectedPlusSpectrum C j t f)) := by
     rw [mssP4NegativeSpectrum_eq_reflectedConjPlusSpectrum,
-      ScratchKakeyaCanonicalReflection.fourierInv_testNeg_eq_testNeg_fourierInv]
-    exact (ScratchKakeyaBandlimitedCore.testConj_fourierInv_eq_testNeg_fourierInv_testConj
+      Auto.Spherical.MSSKakeya.fourierInv_testNeg_eq_testNeg_fourierInv]
+    exact (Auto.Spherical.MSSKakeya.testConj_fourierInv_eq_testNeg_fourierInv_testConj
       (mssP4ReflectedPlusSpectrum C j t f)).symm
   calc
     dyadicHalfWave C.cutoff WaveSign.minus j t f x =
         FourierTransform.fourierInv (mssP4NegativeSpectrum C j t f) x :=
       (fourierInv_mssP4NegativeSpectrum_apply C j t f x).symm
-    _ = ScratchKakeyaBandlimitedCore.testConj
+    _ = Auto.Spherical.MSSKakeya.testConj
         (FourierTransform.fourierInv (mssP4ReflectedPlusSpectrum C j t f)) x :=
       DFunLike.congr_fun hreflect x
     _ = star (FourierTransform.fourierInv (mssP4ReflectedPlusSpectrum C j t f) x) :=
-      ScratchKakeyaBandlimitedCore.testConj_apply _ _
+      Auto.Spherical.MSSKakeya.testConj_apply _ _
     _ = star (dyadicHalfWave (mssP4ReflectedConjugateCutoffs C).cutoff
-        WaveSign.plus j t (ScratchKakeyaBandlimitedCore.testConj f) x) := by
+        WaveSign.plus j t (Auto.Spherical.MSSKakeya.testConj f) x) := by
       rw [fourierInv_mssP4ReflectedPlusSpectrum_apply C j t f x]
 
 private theorem dyadicHalfWaveSpaceTime_minus_eq_star_plus_reflectedConj
@@ -15451,18 +15455,18 @@ private theorem dyadicHalfWaveSpaceTime_minus_eq_star_plus_reflectedConj
     (z : WaveSpaceTime) :
     dyadicHalfWaveSpaceTime C.cutoff WaveSign.minus j f z =
       star (dyadicHalfWaveSpaceTime (mssP4ReflectedConjugateCutoffs C).cutoff
-        WaveSign.plus j (ScratchKakeyaBandlimitedCore.testConj f) z) := by
+        WaveSign.plus j (Auto.Spherical.MSSKakeya.testConj f) z) := by
   exact dyadicHalfWave_minus_eq_star_plus_reflectedConj C j z.2 f z.1
 
 private theorem eLpNorm_testConj_eq
     (f : SchwartzMap (Euclidean 2) Complex) (p : ENNReal)
     (mu : Measure (Euclidean 2)) :
-    eLpNorm (ScratchKakeyaBandlimitedCore.testConj f : Euclidean 2 → Complex) p mu =
+    eLpNorm (Auto.Spherical.MSSKakeya.testConj f : Euclidean 2 → Complex) p mu =
       eLpNorm (f : Euclidean 2 → Complex) p mu := by
-  have htest : (ScratchKakeyaBandlimitedCore.testConj f :
+  have htest : (Auto.Spherical.MSSKakeya.testConj f :
       Euclidean 2 → Complex) = star (f : Euclidean 2 → Complex) := by
     funext x
-    exact ScratchKakeyaBandlimitedCore.testConj_apply f x
+    exact Auto.Spherical.MSSKakeya.testConj_apply f x
   rw [htest, eLpNorm_star]
 
 /-- The negative dyadic half-wave obeys the same p=4 estimate, transported
@@ -15482,7 +15486,7 @@ private theorem mssP4NegativeL4
   intro j f
   have hsymm : dyadicHalfWaveSpaceTime C.cutoff WaveSign.minus j f =
       star (dyadicHalfWaveSpaceTime (mssP4ReflectedConjugateCutoffs C).cutoff
-        WaveSign.plus j (ScratchKakeyaBandlimitedCore.testConj f)) := by
+        WaveSign.plus j (Auto.Spherical.MSSKakeya.testConj f)) := by
     funext z
     exact dyadicHalfWaveSpaceTime_minus_eq_star_plus_reflectedConj C j f z
   calc
@@ -15490,17 +15494,17 @@ private theorem mssP4NegativeL4
         (4 : ENNReal) localSmoothingMeasure =
         eLpNorm (star (dyadicHalfWaveSpaceTime
           (mssP4ReflectedConjugateCutoffs C).cutoff WaveSign.plus j
-          (ScratchKakeyaBandlimitedCore.testConj f)))
+          (Auto.Spherical.MSSKakeya.testConj f)))
           (4 : ENNReal) localSmoothingMeasure := by rw [hsymm]
     _ = eLpNorm (dyadicHalfWaveSpaceTime
           (mssP4ReflectedConjugateCutoffs C).cutoff WaveSign.plus j
-          (ScratchKakeyaBandlimitedCore.testConj f))
+          (Auto.Spherical.MSSKakeya.testConj f))
           (4 : ENNReal) localSmoothingMeasure := by rw [eLpNorm_star]
     _ ≤ ENNReal.ofReal
           (A * (2 : Real) ^ ((j : Real) * ((1 / 8 : Real) + eta))) *
-          eLpNorm (ScratchKakeyaBandlimitedCore.testConj f :
+          eLpNorm (Auto.Spherical.MSSKakeya.testConj f :
             Euclidean 2 → Complex) (4 : ENNReal) volume :=
-      hplus j (ScratchKakeyaBandlimitedCore.testConj f)
+      hplus j (Auto.Spherical.MSSKakeya.testConj f)
     _ = ENNReal.ofReal
           (A * (2 : Real) ^ ((j : Real) * ((1 / 8 : Real) + eta))) *
           eLpNorm (f : Euclidean 2 → Complex) (4 : ENNReal) volume := by
@@ -15606,9 +15610,11 @@ structure MSSP4ConicAtlas (C : lpCutoffs 2) where
         star (∑ r, conicOperator (mssP4ConicScale j)
           ((minusData r).D.radialTime.amplitude : Euclidean 2 → Complex)
           ((minusData r).D.radialTime.time : Real → Complex)
-          ((ScratchKakeyaBandlimitedCore.testConj f :
+          ((Auto.Spherical.MSSKakeya.testConj f :
             SchwartzMap (Euclidean 2) Complex) : Euclidean 2 → Complex))
 
 end
+
+end Auto.Spherical.MSS
 
 end Auto.Spherical.MSS

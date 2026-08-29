@@ -8,6 +8,8 @@ public import Mathlib.MeasureTheory.Function.Holder
 public import Mathlib.MeasureTheory.Function.JacobianOneDim
 public import Mathlib.MeasureTheory.Function.SimpleFuncDenseLp
 
+namespace Auto.SteinInterpolation
+
 /-!
 # Stein interpolation
 
@@ -29,7 +31,7 @@ open MeasureTheory Complex.HadamardThreeLines Real Filter Topology ENNReal Asymp
   MeromorphicOn
 open scoped BigOperators
 
-namespace Auto
+section Auto
 /-- Turns the pointwise growth hypothesis used in Stein's theorem into the filter formulation
 needed by the Phragmén--Lindelöf principle. -/
 private theorem isBigO_of_verticalClosedStrip_exp_growth
@@ -6774,7 +6776,7 @@ The common domain is the integrable-simple-function core: for a simple function,
 `Integrable f μ` is equivalent to finite measure support. Analyticity is the source theorem's
 weak scalar-pairing analyticity, and the conclusion has the exact Hirschman
 harmonic-measure constant. -/
-theorem stein_interpolation
+theorem stein_interpolation_core
     {X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
     {μ : Measure X} {ν : Measure Y} [SigmaFinite ν]
     {p₀ p₁ p q₀ q₁ q : ENNReal} {θ : ℝ} {M₀ M₁ : ℝ → ℝ}
@@ -7185,7 +7187,7 @@ theorem stein_interpolation_constant_bounds
         ENNReal.ofReal (Real.rpow M₀ (1 - θ) * Real.rpow M₁ θ) *
           eLpNorm (f : X → ℂ) p μ := by
   intro f hf
-  obtain ⟨hmem, hnorm⟩ := stein_interpolation T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul
+  obtain ⟨hmem, hnorm⟩ := stein_interpolation_core T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul
     hT_measurable hpair_integrable hanalytic hfamily_growth
     ⟨measurable_const, measurable_const⟩ (fun t ↦ ⟨hM₀, hM₁⟩)
     ⟨0, max |Real.log M₀| |Real.log M₁|, Real.pi_pos,
@@ -7197,7 +7199,7 @@ theorem stein_interpolation_constant_bounds
 
 /-- **Riesz--Thorin interpolation**, obtained from `stein_interpolation_constant_bounds` by
 taking the analytic family to be constant. -/
-theorem riesz_thorin
+theorem riesz_thorin_core
     {X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
     {μ : Measure X} {ν : Measure Y} [SigmaFinite ν]
     {p₀ p₁ p q₀ q₁ q : ENNReal} {θ M₀ M₁ : ℝ}
@@ -7252,7 +7254,7 @@ theorem riesz_thorin
 
 end Auto
 
-namespace Auto.SteinInterpolation
+section Auto.SteinInterpolation
 
 theorem stein_interpolation
     {X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
@@ -7300,7 +7302,7 @@ theorem stein_interpolation
                 log (M₀ t) / (cosh (Real.pi * t) - cos (Real.pi * θ)) +
                   log (M₁ t) / (cosh (Real.pi * t) + cos (Real.pi * θ)))) *
           eLpNorm (f : X → ℂ) p μ :=
-  Auto.stein_interpolation T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul hT_measurable
+  stein_interpolation_core T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul hT_measurable
     hpair_integrable hanalytic hfamily_growth hM_measurable hM_pos hM_growth hbound₀ hbound₁
 
 /-- **Riesz--Thorin interpolation**, obtained from `stein_interpolation_constant_bounds` by
@@ -7330,7 +7332,11 @@ theorem riesz_thorin
       eLpNorm (T f) q ν ≤
         ENNReal.ofReal (Real.rpow M₀ (1 - θ) * Real.rpow M₁ θ) *
           eLpNorm (f : X → ℂ) p μ :=
-  Auto.riesz_thorin T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul hT_measurable hM₀ hM₁
+  riesz_thorin_core T hp₀ hp₁ hq₀ hq₁ hθ hp hq hT_add hT_smul hT_measurable hM₀ hM₁
     hbound₀ hbound₁
+
+end Auto.SteinInterpolation
+
+end
 
 end Auto.SteinInterpolation

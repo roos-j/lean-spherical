@@ -7,12 +7,14 @@ import LeanSpherical.Auto.Spherical.Auxiliary
 import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
 import Mathlib.MeasureTheory.Covering.Vitali
 import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
-open Auto.Spherical.InterpolationCore
-open Auto.Spherical.InterpolationTail
-open Auto.Spherical.SchwartzData
-open Auto.Spherical.SmoothDyadicPhysical
-open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.SurfaceCore
+
+namespace Auto.HardyLittlewoodMaximal
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.SurfaceMeasureDecay
 
 
 
@@ -23,7 +25,7 @@ open Auto.Spherical.SurfaceCore
 # Hardy--Littlewood and lowpass spherical maximal estimates
 -/
 
-namespace Auto.Spherical.HardyLittlewoodMaximal
+section Auto.HardyLittlewoodMaximal
 
 open MeasureTheory FourierTransform Set Filter
 open scoped Convolution FourierTransform Topology
@@ -1473,4 +1475,6 @@ theorem relative_lowpass_strong_type
 
 end
 
-end Auto.Spherical.HardyLittlewoodMaximal
+end Auto.HardyLittlewoodMaximal
+
+end Auto.HardyLittlewoodMaximal

@@ -1,6 +1,6 @@
 /-
 Roos--Seeger Theorem 1.1: planar and higher-dimensional upper-bound work.
-Declaration namespace `Auto.Spherical.FractalDilations.RS` is retained.
+All declarations use `Auto.Spherical.FractalDilations.RSUpperBounds`.
 -/
 
 import LeanSpherical.Auto.CalderonVaillancourt
@@ -12,7 +12,7 @@ import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
 import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
-import LeanSpherical.Auto.Spherical.FractalDilations.FractalDimensions
+import LeanSpherical.Auto.FractalDimensions
 import Mathlib.Analysis.Calculus.Deriv.Star
 import Mathlib.Analysis.Complex.ExponentialBounds
 import Mathlib.Analysis.Complex.HasPrimitives
@@ -22,23 +22,22 @@ import Mathlib.Analysis.Real.Pi.Bounds
 import Mathlib.Analysis.SpecialFunctions.ImproperIntegrals
 import Mathlib.Geometry.Euclidean.Angle.Unoriented.Basic
 
-namespace Auto.Spherical.FractalDilations.RS
-
+namespace Auto.Spherical.FractalDilations.RSUpperBounds
 open MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FractalDilations.Minkowski
-open Auto.Spherical.FractalDilations.QuasiAssouadBridge
-open Auto.Spherical.FractalDilations.Q4RadialReduction
-open Auto.Spherical.FractalDilations.OscillatoryIBP
-open Auto.Spherical.FractalDilations.PlanarTripleWaveNormalForm
-open Auto.Spherical.FractalDilations.CoordinateWaveSymbolBounds
-open Auto.Spherical.FractalDilations.QuadraticStationaryPhase
-open Auto.Spherical.FractalDilations.PlanarEndpointAmplitude
-open Auto.Spherical.FractalDilations.CoordinateMeridianWaves
-open Auto.Spherical.FractalDilations.CoordinateMiddleParameterDerivatives
-open Auto.Spherical.FractalDilations.AllDimensionalTripleWaveNormalForm
-open Auto.Spherical.FractalDilations.AbsoluteReassembly
-open Auto.Spherical.FractalDilations.AbsoluteDyadic
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.FractalDimensions
+open Auto.FractalDimensions
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
 open scoped ENNReal NNReal Real FourierTransform Convolution
 
 noncomputable section
@@ -28355,7 +28354,7 @@ theorem sphericalAverage_bandpass_eq_wave_sum {φ : SchwartzMap Pl ℂ}
         + waveInt hφone hφzero CoordinateWavePart.incoming j t f x
         + waveInt hφone hφzero CoordinateWavePart.middle j t f x := by
   classical
-  rw [Auto.Spherical.SphericalAverages.sphericalAverage_eq_fourierInv_surfaceMultiplier_schwartz,
+  rw [Auto.Spherical.Auxiliary.sphericalAverage_eq_fourierInv_surfaceMultiplier_schwartz,
     fourierInv_eq_ee_Pl]
   have hA := integrable_waveInt_integrand hφone hφzero CoordinateWavePart.outgoing j t f x
   have hB := integrable_waveInt_integrand hφone hφzero CoordinateWavePart.incoming j t f x
@@ -28372,7 +28371,7 @@ theorem sphericalAverage_bandpass_eq_wave_sum {φ : SchwartzMap Pl ℂ}
           + waveIntegrand hφone hφzero CoordinateWavePart.incoming j t f x ω)
         + waveIntegrand hφone hφzero CoordinateWavePart.middle j t f x ω := by
     intro ω
-    rw [Auto.Spherical.FractalDilations.Q4AbsoluteBandpassBridge.fourier_dyadicBandpassProjection,
+    rw [Auto.Spherical.FractalDilations.AHRSUpperBounds.fourier_dyadicBandpassProjection,
       surfaceFourier_two_neg_smul_eq_planarCoordinateSurfaceWaveSum ht ω,
       planarCoordinateSurfaceWaveSum_eq_three_radialTerms t ‖ω‖, waveIntegrand, waveIntegrand,
       waveIntegrand]
@@ -31044,8 +31043,8 @@ theorem strong_type_of_rate_planar {E : Set ℝ} (hE : E ⊆ Set.Icc (1 : ℝ) 2
       ∧ eLpNorm (fractalDyadicBandpassMaximal 2 E
           (absoluteDyadicBandpass φ hφone hφzero j) f) (ENNReal.ofReal q) volume
         ≤ (C * rho ^ j) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume) :
-    Auto.Spherical.FractalDilations.Definitions.HasFractalSphericalStrongType 2 E p q :=
-  Auto.Spherical.FractalDilations.StrictDyadicReassembly.strong_type_of_strict_high_dyadic_rate
+    Auto.Spherical.FractalDilations.Auxiliary.HasFractalSphericalStrongType 2 E p q :=
+  Auto.Spherical.FractalDilations.AHRSUpperBounds.strong_type_of_strict_high_dyadic_rate
     (gamma := 0) (Or.inr ⟨rfl, by norm_num⟩) E hE φ hφone hφzero hφnorm hp hq hpq hCtop hrho hhigh
 
 end KernelPlates
@@ -31057,12 +31056,12 @@ estimates at `Q₂` and `Q₃`.  The exponent pairs involved are not aligned in 
 a common output exponent, so the required interpolation is the genuine off-diagonal (two-pair)
 Marcinkiewicz theorem.  This section proves it for subadditive nonnegative operators on the
 Schwartz class, in the form needed for dyadic rates: the smooth amplitude split of
-`Auto.Spherical.SchwartzData` is used at a power-law amplitude scale `t ^ m`, the two weighted
+`Auto.Spherical.Auxiliary` is used at a power-law amplitude scale `t ^ m`, the two weighted
 amplitude tails are evaluated by Tonelli, and the free scale is chosen so that the two
 contributions balance.  The resulting geometric ratio is the weighted geometric mean of the two
 input ratios, which is exactly what turns a small `Q₄` loss into a genuine gain. -/
 
-open Auto.Spherical.InterpolationCore
+open Auto.Spherical.Auxiliary
 
 def thr (c m : ℝ) {α : Type*} (u : α → ℝ) : α → ℝ := fun x => (u x / c) ^ m⁻¹
 
@@ -31805,8 +31804,8 @@ theorem root_of_balanced {G B0 B1 J q e0 e1 f0 f1 : ℝ}
 
 /-! ### The smooth amplitude split with a power-law amplitude scale -/
 
-open Auto.Spherical.SchwartzData
-open Auto.Spherical.FractalDilations.SameOutputInputInterpolation
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
 
 /-- The smooth low family is jointly measurable in scale and space. -/
 theorem measurable_smooth_low_family {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ) :
@@ -32033,7 +32032,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
     simp
   -- the main case
   have hJint : Integrable (fun x : (Euclidean d) => ‖f x‖ ^ p) volume :=
-    Auto.Spherical.FractalDilations.Q4FactorInterpolation.q4_schwartz_integrable_norm_rpow f hp
+    Auto.Spherical.FractalDilations.AHRSUpperBounds.q4_schwartz_integrable_norm_rpow f hp
   set J : ℝ := ∫ x : (Euclidean d), ‖f x‖ ^ p with hJdef
   have hJnn : 0 ≤ J := by
     rw [hJdef]
@@ -32151,7 +32150,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
     rw [hscdef]
     exact Real.rpow_pos_of_pos (div_pos hX0pos hX1pos) _
   -- the two-pair moment estimate
-  have hmoment := Auto.Spherical.MSS.sourceOutput_two_pair_marcinkiewicz_moment_of_strong_endpoints_and_scaled_split_tails
+  have hmoment := Auto.Spherical.MSSBase.sourceOutput_two_pair_marcinkiewicz_moment_of_strong_endpoints_and_scaled_split_tails
     (D := (Set.univ : Set (SchwartzMap (Euclidean d) ℂ)))
     (eval := fun g : SchwartzMap (Euclidean d) ℂ => (g : (Euclidean d) → ℂ)) (T := T)
     (μ := (volume : Measure (Euclidean d))) (ν := (volume : Measure (Euclidean d)))
@@ -32163,7 +32162,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
     hmeas1 hmeas0 (ENNReal.ofReal (a0 * J ^ r0)) (ENNReal.ofReal (a1 * J ^ r1))
     htail0' htail1' sc hscpos
   -- identify the coefficient
-  have hcoeff : Auto.Spherical.MSS.sourceOutputTwoPairMarcinkiewiczMomentCoefficient q q0 q1
+  have hcoeff : Auto.Spherical.MSSBase.sourceOutputTwoPairMarcinkiewiczMomentCoefficient q q0 q1
       ((ENNReal.ofReal B0) ^ q0) ((ENNReal.ofReal B1) ^ q1)
       ((ENNReal.ofReal sc) ^ (q0 - q) * ENNReal.ofReal (a0 * J ^ r0))
       ((ENNReal.ofReal sc) ^ (q1 - q) * ENNReal.ofReal (a1 * J ^ r1))
@@ -32188,7 +32187,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
       congr 1
       rw [hX1def]
       ring
-    rw [Auto.Spherical.MSS.sourceOutputTwoPairMarcinkiewiczMomentCoefficient,
+    rw [Auto.Spherical.MSSBase.sourceOutputTwoPairMarcinkiewiczMomentCoefficient,
       hterm0, hterm1, ← ENNReal.ofReal_add (by positivity) (by positivity),
       ← ENNReal.ofReal_mul hq.le]
   rw [hcoeff] at hmoment
@@ -32208,7 +32207,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
   rw [hcolJ] at hexp
   rw [hexp] at hmoment
   -- take the q-th root
-  have hfinal := Auto.Spherical.MSS.sourceOutput_eLpNorm_le_of_nonnegative_moment
+  have hfinal := Auto.Spherical.MSSBase.sourceOutput_eLpNorm_le_of_nonnegative_moment
     T f hq (hTnonneg f) _ hmoment
   refine hfinal.trans (le_of_eq ?_)
   have hJqp : (0:ℝ) < J ^ (q / p) := Real.rpow_pos_of_pos hJpos _
@@ -32237,10 +32236,10 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
 
 /-! ### The two-pair interpolation of dyadic rates -/
 
-open Auto.Spherical.FractalDilations.Definitions
-open Auto.Spherical.FractalDilations.Maximal
-open Auto.Spherical.FractalDilations.AbsoluteDyadic
-open Auto.Spherical.FractalDilations.AbsoluteReassembly
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
 
 /-- Exchanging a natural power and a real power. -/
 theorem rpow_npow_swap {x e : ℝ} (hx : 0 ≤ x) (j : ℕ) : (x ^ j) ^ e = (x ^ e) ^ j := by
@@ -32286,7 +32285,7 @@ theorem Mdy_zero {E : Set ℝ} {φ : SchwartzMap Pl ℂ}
       (absoluteDyadicBandpass φ hφone hφzero j) (0 : SchwartzMap Pl ℂ) = 0 := by
     simp [dyadicBandpassProjection]
   rw [Mdy, fractalDyadicBandpassMaximal, hprojection]
-  exact fractalSphericalMaximalReal_zero E x
+  exact Auto.Spherical.FractalDilations.AHRSLowerBounds.fractalSphericalMaximalReal_zero E x
 
 /-- **Interpolation of two dyadic rates at collinear exponent pairs.**  The interpolated
 geometric ratio is the corresponding weighted geometric mean of the two ratios. -/
@@ -32364,12 +32363,11 @@ theorem exists_twoPair_dyadic_rate
 
 /-! ## The endpoint rates and interpolation along segments -/
 
-open Auto.Spherical.FractalDilations.QuasiAssouadCovers
-open Auto.Spherical.FractalDilations.RadialCutoff
-open Auto.Spherical.FractalDilations.ProofSkeleton
-open Auto.Spherical.FractalDilations.CircleQ3PhysicalRate
-open Auto.Spherical.FractalDilations.AssouadSpectrum
-
+open Auto.FractalDimensions
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.FractalDimensions
 /-- A quadratic factor is absorbed by any geometric growth. -/
 theorem exists_sq_le_geometric {eps : ℝ} (heps : 0 < eps) :
     ∃ C : ℝ, 0 < C ∧ ∀ j : ℕ, ((j : ℝ) + 3) ^ 2 ≤ C * ((2 : ℝ) ^ eps) ^ j := by
@@ -32685,7 +32683,7 @@ position of the target relative to the vertex `Q₄ = (2/(3+2γ), 1/(3+2γ))`:
 The diagonal gains are abstracted into `HasDiagGains`: for `β < 1` they are the Minkowski `Q₂`
 estimate, and for `β = 1` they come from Bourgain's circular maximal theorem. -/
 
-open Auto.Spherical.FractalDilations.FiniteDyadicOutputInterpolation
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
 
 /-- A small loss is beaten by a fixed gain in a fixed convex combination. -/
 theorem exists_small_tau {rhoB t : ℝ} (hrhoB : 0 < rhoB) (hrhoB1 : rhoB < 1)
@@ -33333,7 +33331,7 @@ theorem strongType_of_hasDyRate
     (hφnorm : ∀ ξ : Pl, ‖(φ : Pl → ℂ) ξ‖ ≤ 1)
     {a b : ℝ} (hbpos : 0 < b) (hba : b < a) (ha1 : a < 1) (hb1 : b ≤ 1)
     (hrate : HasDyRate (E := E) φ hφone hφzero a b) :
-    Auto.Spherical.FractalDilations.Definitions.HasFractalSphericalStrongType 2 E (1 / a) (1 / b) := by
+    Auto.Spherical.FractalDilations.Auxiliary.HasFractalSphericalStrongType 2 E (1 / a) (1 / b) := by
   obtain ⟨C, rho, hC, hrho, hrho1, hbound⟩ := hrate
   have hapos : 0 < a := lt_trans hbpos hba
   refine strong_type_of_rate_planar hE φ hφone hφzero hφnorm
@@ -33364,12 +33362,12 @@ theorem strongType_of_hasDyRate
 
 /-! ## Assembly of Theorem 1.1 in the plane -/
 
-open Auto.Spherical.FractalDilations.CircleMinkowski
-open Auto.Spherical.FractalDilations.ExponentRegions
-open Auto.Spherical.FractalDilations.ExponentGeometry
-open Auto.Spherical.FractalDilations.StrictInteriorGeometry
-open Auto.Spherical.FractalDilations.SteinSegment
-open Auto.Spherical.FractalDilations.MinkowskiDiagonal
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
 
 set_option maxHeartbeats 1000000 in
 /-- On and above the conjugate line the two `β`-only routes of the repository apply verbatim:
@@ -33494,9 +33492,9 @@ theorem strongType_planar_interior
     linarith
   have hclu : 0 < beta / gam / 2 + (2 - beta - beta / gam / 2) * b
       - (1 + beta / gam / 2) * a := by
-    have h : 0 < Auto.Spherical.FractalDilations.ExponentGeometry.clusterEdgeFunctional
+    have h : 0 < Auto.Spherical.FractalDilations.Auxiliary.clusterEdgeFunctional
         2 (beta / gam) beta (a, b) := hcluraw
-    rw [Auto.Spherical.FractalDilations.ExponentGeometry.clusterEdgeFunctional] at h
+    rw [Auto.Spherical.FractalDilations.Auxiliary.clusterEdgeFunctional] at h
     push_cast at h
     have hform : beta / gam / 2 * ((2 : ℝ) - 1)
         + ((2 : ℝ) - beta - ((2 : ℝ) - 1) * (beta / gam) / 2) * b
@@ -33547,7 +33545,7 @@ theorem theorem_one_planar_of_beta_lt_one
       simp
     · obtain ⟨psi, hpsi⟩ : ∃ psi : SchwartzMap Pl ℂ, ∀ ξ : Pl,
           psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ) :=
-        Auto.Spherical.SchwartzData.exists_schwartzMap_smooth_dyadic_bandpass φ 0
+        Auto.Spherical.Auxiliary.exists_schwartzMap_smooth_dyadic_bandpass φ 0
       exact hasDiagGains_of_beta_lt_one hE hEne hbeta hbeta1 hMink φ psi hφone hφzero
         hφnorm hpsi
 
@@ -33737,7 +33735,7 @@ theorem rs_eLpNorm_convolution_le
       congr 1
       rw [← ENNReal.rpow_mul, mul_inv_cancel₀ hp0.ne', ENNReal.rpow_one]
 
-open Auto.Spherical.SmoothDyadicPhysicalCore
+open Auto.Spherical.Auxiliary
 
 /-! ### The band projection is bounded on `Lᵖ`, uniformly in the band index -/
 
@@ -33885,7 +33883,7 @@ theorem rs_eLpNorm_absoluteDyadicBandpassProjection_le
       congr 1
       ring
 
-open Auto.Spherical.PowerWeights.LocalizedUpper
+open Auto.Spherical.PowerWeights
 
 /-! ### The absolute band maximal operator is dominated by four relative bands -/
 
@@ -33901,7 +33899,7 @@ theorem rs_sphericalAverage_add (g h : Pl → ℂ) (hg : Continuous g) (hh : Con
           ((continuous_const : Continuous fun _ : Metric.sphere (0 : Pl) 1 => r).smul
             continuous_subtype_val))
     · exact HasCompactSupport.of_compactSpace _
-  unfold Auto.Spherical.SurfaceCore.sphericalAverage
+  unfold Auto.Spherical.SurfaceMeasureDecay.sphericalAverage
   change ∫ ω : Metric.sphere (0 : Pl) 1,
     (g (x + r • (ω : Pl)) + h (x + r • (ω : Pl))) ∂unitSurfaceMeasure 2 = _
   rw [MeasureTheory.integral_add (hint g hg) (hint h hh)]
@@ -33918,7 +33916,7 @@ theorem rs_fourier_dyadicBandpassProjection (ψ f : SchwartzMap Pl ℂ) (ξ : Pl
 radius-relative bands of indices `m, …, m+3`; hence the absolute band maximal operator is
 dominated by the corresponding four relative band operators applied to the band projection. -/
 theorem rs_fractalDyadicBandpass_maximal_le_relative
-    (C : Auto.Spherical.LittlewoodPaley.lpCutoffs 2)
+    (C : Auto.LittlewoodPaley.lpCutoffs 2)
     (φ : SchwartzMap Pl ℂ) (hφone : ∀ ξ : Pl, ‖ξ‖ ≤ 1 → φ ξ = 1)
     (hφzero : ∀ ξ : Pl, 2 ≤ ‖ξ‖ → φ ξ = 0)
     {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (m : ℕ)
@@ -34079,7 +34077,7 @@ theorem rs_fractalDyadicBandpass_maximal_le_relative
         𝓕⁻ (fun ξ : Pl => surfaceFourier 2 (-t • ξ) *
           (C.cutoff ((((2 : ℝ) ^ (k + 1))⁻¹) • (t • ξ)) -
             C.cutoff ((((2 : ℝ) ^ k)⁻¹) • (t • ξ))) * 𝓕 ((g : Pl → ℂ)) ξ) x := by
-      rw [Auto.Spherical.SphericalAverages.sphericalAverage_eq_fourierInv_surfaceMultiplier_schwartz
+      rw [Auto.Spherical.Auxiliary.sphericalAverage_eq_fourierInv_surfaceMultiplier_schwartz
         (gk k) t]
       apply congrArg (fun h : Pl → ℂ => 𝓕⁻ h x)
       funext ξ
@@ -34220,11 +34218,11 @@ theorem rs_hasDiagGains_one
     linarith
   have hp1 : (1 : ℝ) < 1 / s := by linarith
   have hp0 : (0 : ℝ) < 1 / s := by linarith
-  obtain ⟨C0⟩ := Auto.Spherical.LittlewoodPaley.exists_lpCutoffs 2
+  obtain ⟨C0⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 2
   obtain ⟨bandConst, rho, hbandtop, hrho1, hbound⟩ :=
     Auto.Spherical.Bourgain.hasRelativeCircularBandGeometricDecay_of_positiveLocalSmoothingGain
       C0
-      (Auto.Spherical.MSS.p4LocalSmoothing_to_hasPositiveLocalSmoothingGain
+      (Auto.Spherical.MSSBase.p4LocalSmoothing_to_hasPositiveLocalSmoothingGain
         (Auto.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs C0) (ρ := (1 / 16 : ℝ))
         (by norm_num) (by norm_num)) hp2
   have hbc0 : (0 : ℝ) ≤ bandConst.toReal := ENNReal.toReal_nonneg
@@ -34456,11 +34454,11 @@ theorem rs_hasDiagGains_one
           (max rho.toReal (1 / 2)) ^ (m + 1)) *
         eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal (1 / s)) volume := hfinal
 
-open Auto.Spherical.PowerWeights.RestrictedMaximal
-open Auto.Spherical.PowerWeights.OperatorBridge
-open Auto.Spherical.FractalDilations.SteinSegment
-open Auto.Spherical.FractalDilations.MinkowskiDiagonal
-open Auto.Spherical.FractalDilations.MinkowskiFacts
+open Auto.Spherical.PowerWeights
+open Auto.Spherical.PowerWeights
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.Spherical.FractalDilations.AHRSUpperBounds
+open Auto.FractalDimensions
 
 /-! ### The diagonal above `p = 2` from Bourgain's theorem -/
 
@@ -34561,7 +34559,7 @@ theorem theorem_one_planar
         simp
       · obtain ⟨psi, hpsi⟩ : ∃ psi : SchwartzMap Pl ℂ, ∀ ξ : Pl,
             psi ξ = φ (((2 : ℝ) ^ (0 + 1))⁻¹ • ξ) - φ (((2 : ℝ) ^ 0)⁻¹ • ξ) :=
-          Auto.Spherical.SchwartzData.exists_schwartzMap_smooth_dyadic_bandpass φ 0
+          Auto.Spherical.Auxiliary.exists_schwartzMap_smooth_dyadic_bandpass φ 0
         exact hasDiagGains_of_beta_lt_one hE hEne hbeta hlt hMink φ psi hφone hφzero
           hφnorm hpsi
     · rw [heq]
@@ -34580,12 +34578,12 @@ theorem theorem_one_unrestricted
     (hregion : reciprocalExponentPoint p q ∈ R d beta gam) :
     HasFractalSphericalStrongType d E p q := by
   by_cases hd3 : 3 ≤ d
-  · exact Auto.Spherical.FractalDilations.Theorems.theorem_one (Or.inl hd3) E hE
+  · exact Auto.Spherical.FractalDilations.AHRSUpperBounds.theorem_one (Or.inl hd3) E hE
       ⟨hbeta, hbg, hgam⟩ hMink hquasi hp hq hregion
   · have hd2 : d = 2 := by omega
     subst hd2
     by_cases hg : gam ≤ 1 / 2
-    · exact Auto.Spherical.FractalDilations.Theorems.theorem_one (Or.inr ⟨rfl, hg⟩) E hE
+    · exact Auto.Spherical.FractalDilations.AHRSUpperBounds.theorem_one (Or.inr ⟨rfl, hg⟩) E hE
         ⟨hbeta, hbg, hgam⟩ hMink hquasi hp hq hregion
     · exact theorem_one_planar hE hbeta hbg hgam hMink hquasi (not_le.mp hg) hp hq hregion
 
@@ -34593,4 +34591,4 @@ theorem theorem_one_unrestricted
 
 end
 
-end Auto.Spherical.FractalDilations.RS
+end Auto.Spherical.FractalDilations.RSUpperBounds

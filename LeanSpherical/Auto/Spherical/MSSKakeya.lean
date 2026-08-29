@@ -25,19 +25,25 @@ import Mathlib.Analysis.Complex.Tietze
 import Mathlib.Analysis.Fourier.LpSpace
 import Mathlib.Analysis.Calculus.BumpFunction.Normed
 import Mathlib.Analysis.SpecialFunctions.Log.Base
-import LeanSpherical.Auto.Spherical.LittlewoodPaley
-import LeanSpherical.Auto.Spherical.OneDimStationaryPhase
+import LeanSpherical.Auto.LittlewoodPaley
+import LeanSpherical.Auto.OneDimStationaryPhase
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
 import LeanSpherical.Auto.Spherical.Auxiliary
 import Mathlib.Order.Interval.Set.Union
 
+namespace Auto.Spherical.MSSKakeya
+
+open Auto.Spherical.MSSBase
+open Auto.Spherical.SurfaceMeasureDecay
+
 -- BEGIN ScratchKakeyaDensityExtension
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.MSSBase
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal
 
 noncomputable section
@@ -1566,7 +1572,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_innerSlabCompactFrequencyTensorCor
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaDensityExtension
 
@@ -1574,11 +1580,11 @@ end
 section
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 open scoped ENNReal ContDiff
 
-namespace Auto.Spherical.MSSKakeya.ScratchInnerSlab
+section Auto.Spherical.MSSKakeya
 
 noncomputable section
 
@@ -2173,12 +2179,11 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchInnerSlab
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchInnerSlabDensity
 
 /- The remaining consolidated scratch components live under this file's Auto namespace. -/
-open Auto.Spherical.MSSKakeya
 
 -- BEGIN ScratchTensorDensity
 section
@@ -2215,7 +2220,7 @@ open MeasureTheory
 #check ContinuousMap.coe_comp
 #check Commute.all
 
-namespace Auto.Spherical.MSSKakeya.ScratchTensor
+section Auto.Spherical.MSSKakeya
 
 noncomputable def tensorAlgHom (X Y : Type*) [TopologicalSpace X] [TopologicalSpace Y] :
     C(X, Real) ⊗[Real] C(Y, Real) →ₐ[Real] C(X × Y, Real) :=
@@ -2958,7 +2963,7 @@ theorem exists_finite_smooth_compact_separated_uniform_close_complex
           Complex.norm_real, Real.norm_eq_abs, one_mul]
       _ < epsilon := by linarith
 
-end Auto.Spherical.MSSKakeya.ScratchTensor
+end Auto.Spherical.MSSKakeya
 #check Fin.sum_univ_succ
 #check Fin.sum_univ_zero
 #check Fin.sum_univ_two
@@ -2985,11 +2990,11 @@ end
 section
 
 open MeasureTheory
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 open scoped ENNReal EuclideanSpace FourierTransform ContDiff
 
-namespace Auto.Spherical.MSSKakeya.ScratchSlabTensor
+section Auto.Spherical.MSSKakeya
 
 noncomputable section
 
@@ -3494,7 +3499,7 @@ def InnerSlabCompactFrequencyTensorCore
       Metric.closedBall (3 / 2 : Real) r) ∧
     f = compactFrequencyTensor q (fun i => (a i : Real → Complex))
 
-private theorem timeClosedBall_subset_lightRayTimeInterval {r : Real}
+private theorem scratch_timeClosedBall_subset_lightRayTimeInterval {r : Real}
     (hr : r < 1) :
     Metric.closedBall (3 / 2 : Real) r ⊆ lightRayTimeInterval := by
   intro t ht
@@ -3588,7 +3593,7 @@ theorem hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDen
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchSlabTensor
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchSlabTensorDensity
 
@@ -3596,11 +3601,11 @@ end
 section
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 open scoped ENNReal EuclideanSpace ContDiff FourierTransform
 
-namespace Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorDensityIntegration
+section Auto.Spherical.MSSKakeya
 
 noncomputable section
 
@@ -3644,7 +3649,7 @@ theorem support_smoothSpatialTensor_subset_prod
     (A : Set (Euclidean 2)) (B : Set Real)
     (hU : ∀ i, Function.support (U i) ⊆ A)
     (ha : ∀ i, Function.support (a i) ⊆ B) :
-    Function.support (ScratchSlabTensor.smoothSpatialTensor U a) ⊆ A ×ˢ B := by
+    Function.support (smoothSpatialTensor U a) ⊆ A ×ˢ B := by
   intro z hz
   by_cases hzA : z.1 ∈ A
   · by_cases hzB : z.2 ∈ B
@@ -3656,7 +3661,7 @@ theorem support_smoothSpatialTensor_subset_prod
       rw [Function.mem_support] at hz
       apply False.elim
       apply hz
-      unfold ScratchSlabTensor.smoothSpatialTensor
+      unfold smoothSpatialTensor
       apply Finset.sum_eq_zero
       intro i hi
       rw [hazero i, mul_zero]
@@ -3667,7 +3672,7 @@ theorem support_smoothSpatialTensor_subset_prod
     rw [Function.mem_support] at hz
     apply False.elim
     apply hz
-    unfold ScratchSlabTensor.smoothSpatialTensor
+    unfold smoothSpatialTensor
     apply Finset.sum_eq_zero
     intro i hi
     rw [hUzero i, zero_mul]
@@ -3676,8 +3681,8 @@ theorem continuous_smoothSpatialTensor
     {ι : Type*} [Fintype ι]
     (U : ι → Euclidean 2 → Complex) (a : ι → Real → Complex)
     (hU : ∀ i, Continuous (U i)) (ha : ∀ i, Continuous (a i)) :
-    Continuous (ScratchSlabTensor.smoothSpatialTensor U a) := by
-  unfold ScratchSlabTensor.smoothSpatialTensor
+    Continuous (smoothSpatialTensor U a) := by
+  unfold smoothSpatialTensor
   apply continuous_finset_sum
   intro i hi
   exact ((hU i).comp continuous_fst).mul ((ha i).comp continuous_snd)
@@ -3740,8 +3745,8 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
       (∀ i, HasCompactSupport (U i) ∧ ContDiff Real ∞ (U i)) ∧
       (∀ i, HasCompactSupport (a i) ∧ ContDiff Real ∞ (a i) ∧
         Function.support (a i) ⊆ Metric.closedBall (3 / 2 : Real) RF) ∧
-      MemLp (ScratchSlabTensor.smoothSpatialTensor U a) 2 volume ∧
-      eLpNorm (u - ScratchSlabTensor.smoothSpatialTensor U a) 2 volume <
+      MemLp (smoothSpatialTensor U a) 2 volume ∧
+      eLpNorm (u - smoothSpatialTensor U a) 2 volume <
         ENNReal.ofReal epsilon := by
   let S : Set WaveSpaceTime :=
     Metric.closedBall (0 : Euclidean 2) RE ×ˢ
@@ -3759,7 +3764,7 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
   obtain ⟨alpha, halphapos, halpha⟩ :=
     exists_uniform_l2_budget S hSfinite hepsilon
   obtain ⟨ι, hι, U, a, hU, ha, huniform⟩ :=
-    ScratchTensor.exists_finite_smooth_compact_separated_uniform_close_complex
+    exists_finite_smooth_compact_separated_uniform_close_complex
       (Euclidean 2) Real (0 : Euclidean 2) (3 / 2 : Real)
       hrE hrERE hr hrRF u hucont husupport halphapos
   letI : Fintype ι := hι
@@ -3767,7 +3772,7 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
       Metric.closedBall (0 : Euclidean 2) RE := fun i => (hU i).2.2
   have haSupport : ∀ i, Function.support (a i) ⊆
       Metric.closedBall (3 / 2 : Real) RF := fun i => (ha i).2.2
-  have hvSupport : Function.support (ScratchSlabTensor.smoothSpatialTensor U a) ⊆ S := by
+  have hvSupport : Function.support (smoothSpatialTensor U a) ⊆ S := by
     simpa only [S] using support_smoothSpatialTensor_subset_prod U a
       (Metric.closedBall (0 : Euclidean 2) RE)
       (Metric.closedBall (3 / 2 : Real) RF) hUSupport haSupport
@@ -3777,16 +3782,16 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
     exact ⟨Metric.closedBall_subset_closedBall hrERE.le hz'.1,
       Metric.closedBall_subset_closedBall hrRF.le hz'.2⟩
   have huniform' : ∀ z : WaveSpaceTime,
-      dist (ScratchSlabTensor.smoothSpatialTensor U a z) (u z) ≤ alpha := by
+      dist (smoothSpatialTensor U a z) (u z) ≤ alpha := by
     intro z
     exact (huniform z).le
   have hL2le := eLpNorm_two_sub_le_of_support_subset_and_uniform_complex
-    volume S hSmeas hSfinite u (ScratchSlabTensor.smoothSpatialTensor U a)
+    volume S hSmeas hSfinite u (smoothSpatialTensor U a)
     huSupportS hvSupport huniform'
-  have hcont : Continuous (ScratchSlabTensor.smoothSpatialTensor U a) :=
+  have hcont : Continuous (smoothSpatialTensor U a) :=
     continuous_smoothSpatialTensor U a
       (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)
-  have hvcompact : HasCompactSupport (ScratchSlabTensor.smoothSpatialTensor U a) :=
+  have hvcompact : HasCompactSupport (smoothSpatialTensor U a) :=
     HasCompactSupport.of_support_subset_isCompact hScompact hvSupport
   refine ⟨ι, inferInstance, U, a, ?_, ?_,
     hcont.memLp_of_hasCompactSupport hvcompact, ?_⟩
@@ -3807,22 +3812,22 @@ theorem exists_smoothSeparated_innerSlabTensor_near_lightRayTimeRestriction
       (∀ i, HasCompactSupport (U i) ∧ ContDiff Real ∞ (U i)) ∧
       (∀ i, HasCompactSupport (a i) ∧ ContDiff Real ∞ (a i) ∧
         Function.support (a i) ⊆ Metric.closedBall (3 / 2 : Real) r) ∧
-      MemLp (ScratchSlabTensor.smoothSpatialTensor U a) 2 volume ∧
+      MemLp (smoothSpatialTensor U a) 2 volume ∧
       eLpNorm (scratch_lightRayTimeRestriction g -
-        ScratchSlabTensor.smoothSpatialTensor U a) 2 volume <
+        smoothSpatialTensor U a) 2 volume <
           ENNReal.ofReal epsilon := by
   let h : WaveSpaceTime → Complex := scratch_lightRayTimeRestriction g
   have hh : MemLp h 2 volume := by
     dsimp only [h]
     exact scratch_memLp_lightRayTimeRestriction g hg
-  have hzero : ∀ z : WaveSpaceTime, z ∈ ScratchInnerSlab.outsideTimeSlab → h z = 0 := by
+  have hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab → h z = 0 := by
     intro z hz
     dsimp only [h]
-    simp only [ScratchInnerSlab.outsideTimeSlab, Set.mem_setOf_eq] at hz
+    simp only [outsideTimeSlab, Set.mem_setOf_eq] at hz
     simp [scratch_lightRayTimeRestriction, hz]
   have hepshalf : 0 < epsilon / 2 := by positivity
   obtain ⟨r0, hr0pos, hr0lt, u, hucompact, hucont, husupport, huerr⟩ :=
-    ScratchInnerSlab.exists_innerSlab_smoothCompact_eLpNorm_sub_lt_with_radius
+    exists_innerSlab_smoothCompact_eLpNorm_sub_lt_with_radius
       h hh hzero hepshalf
   change Function.support u ⊆
     {z : WaveSpaceTime | z.2 ∈ Metric.closedBall (3 / 2 : Real) r0} at husupport
@@ -3873,20 +3878,20 @@ theorem exists_smoothSeparated_innerSlabTensor_near_lightRayTimeRestriction
   · have huMem : MemLp u 2 volume :=
       hucont.continuous.memLp_of_hasCompactSupport hucompact
     have hfirstMem : MemLp (h - u) 2 volume := hh.sub huMem
-    have hsecondMem : MemLp (u - ScratchSlabTensor.smoothSpatialTensor U a) 2 volume :=
+    have hsecondMem : MemLp (u - smoothSpatialTensor U a) 2 volume :=
       huMem.sub hvmem
     calc
       eLpNorm (scratch_lightRayTimeRestriction g -
-          ScratchSlabTensor.smoothSpatialTensor U a) 2 volume =
+          smoothSpatialTensor U a) 2 volume =
           eLpNorm ((h - u) +
-            (u - ScratchSlabTensor.smoothSpatialTensor U a)) 2 volume := by
+            (u - smoothSpatialTensor U a)) 2 volume := by
               congr 1
               funext z
               dsimp only [h]
               simp only [Pi.sub_apply, Pi.add_apply]
               abel
       _ ≤ eLpNorm (h - u) 2 volume +
-          eLpNorm (u - ScratchSlabTensor.smoothSpatialTensor U a) 2 volume :=
+          eLpNorm (u - smoothSpatialTensor U a) 2 volume :=
         eLpNorm_add_le hfirstMem.aestronglyMeasurable hsecondMem.aestronglyMeasurable
           (by norm_num)
       _ < ENNReal.ofReal (epsilon / 2) + ENNReal.ofReal (epsilon / 2) :=
@@ -3900,28 +3905,28 @@ core are definitionally the same tensors; this explicit bridge keeps the
 density proof independent from the maximal-operator file. -/
 theorem innerSlabCompactFrequencyTensorCore_iff
     (f : WaveSpaceTime → Complex) :
-    ScratchSlabTensor.InnerSlabCompactFrequencyTensorCore f ↔
+    InnerSlabCompactFrequencyTensorCore f ↔
       scratch_InnerSlabCompactFrequencyTensorCore f := by
   constructor
   · rintro ⟨ι, hι, q, a, r, hq, hrpos, hrlt, ha, hf⟩
     letI : Fintype ι := hι
     refine ⟨ι, inferInstance, q, a, r, hq, hrpos, hrlt, ha, ?_⟩
     calc
-      f = ScratchSlabTensor.compactFrequencyTensor q
+      f = compactFrequencyTensor q
           (fun i => (a i : Real → Complex)) := hf
       _ = scratch_innerSlabCompactFrequencyTensor q a := by
         funext z
-        simp only [ScratchSlabTensor.compactFrequencyTensor,
+        simp only [compactFrequencyTensor,
           scratch_innerSlabCompactFrequencyTensor]
   · rintro ⟨ι, hι, q, a, r, hq, hrpos, hrlt, ha, hf⟩
     letI : Fintype ι := hι
     refine ⟨ι, inferInstance, q, a, r, hq, hrpos, hrlt, ha, ?_⟩
     calc
       f = scratch_innerSlabCompactFrequencyTensor q a := hf
-      _ = ScratchSlabTensor.compactFrequencyTensor q
+      _ = compactFrequencyTensor q
           (fun i => (a i : Real → Complex)) := by
         funext z
-        simp only [ScratchSlabTensor.compactFrequencyTensor,
+        simp only [compactFrequencyTensor,
           scratch_innerSlabCompactFrequencyTensor]
 
 /-- Literal slab `L²` density of the finite compact-frequency tensor core,
@@ -3929,10 +3934,10 @@ with the strict common time margin needed by the outer `E₁` estimate. -/
 theorem scratch_hasLightRaySlabL2DenseCore_innerSlabCompactFrequencyTensor :
     scratch_HasLightRaySlabL2DenseCore
       scratch_InnerSlabCompactFrequencyTensorCore := by
-  have hlocal : ScratchSlabTensor.HasL2DenseCoreAfter
+  have hlocal : HasL2DenseCoreAfter
       scratch_lightRayTimeRestriction
-      ScratchSlabTensor.InnerSlabCompactFrequencyTensorCore :=
-    ScratchSlabTensor.hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDensity
+      InnerSlabCompactFrequencyTensorCore :=
+    hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDensity
       scratch_lightRayTimeRestriction
       (fun g hg => scratch_memLp_lightRayTimeRestriction g hg)
       (fun g hg epsilon hepsilon =>
@@ -3994,17 +3999,17 @@ theorem hasLightRayMaximalEstimate_of_innerSlabFiniteTensorSignedEnvelope
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorDensityIntegration
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchInnerSlabTensorDensityIntegration
 
 -- BEGIN ScratchKakeyaSmoothDomination
 section
 
-namespace Auto.Spherical.MSS.KakeyaSmoothDomination
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal Topology EuclideanSpace
 
 noncomputable section
@@ -4335,19 +4340,18 @@ theorem lightRayKernel_le_tsum_weighted_smoothLightRayCore
 
 end
 
-end Auto.Spherical.MSS.KakeyaSmoothDomination
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSmoothDomination
 
 -- BEGIN ScratchKakeyaBandlimitedCore
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.MSS.KakeyaSmoothDomination
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -4662,14 +4666,14 @@ theorem fourierInv_canonicalPositiveCoreMultiplier_eq_core :
   exact FourierTransform.fourierInv_fourier_eq canonicalPositiveCore
 
 end
-end Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBandlimitedCore
 
 -- BEGIN ScratchBandlimitedCoefficientTail
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators ENNReal Topology
@@ -4750,17 +4754,17 @@ theorem scratch_sum_range_dyadic_narrow_broad_le
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchBandlimitedCoefficientTail
 
 -- BEGIN ScratchKakeyaBroadWidth
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal Topology EuclideanSpace
 
 noncomputable section
@@ -5073,7 +5077,7 @@ theorem scratch_integral_sq_timeAverage_le
   have hpoint (y : Euclidean 2) :
       ‖∫ t, F y t ∂mu‖ ^ 2 ≤
         mu.real univ * ∫ t, ‖F y t‖ ^ 2 ∂mu :=
-    Auto.Spherical.FourierRadius.norm_integral_sq_le_measureReal_mul_integral_norm_sq
+    Auto.Spherical.Auxiliary.norm_integral_sq_le_measureReal_mul_integral_norm_sq
       mu (F y) (hslice y)
   have hleft : Integrable (fun y : Euclidean 2 =>
       ‖∫ t, F y t ∂mu‖ ^ 2) volume := by
@@ -5324,17 +5328,17 @@ theorem scratch_integral_sq_zeroDirectionTubeEnvelope_le
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBroadWidth
 
 -- BEGIN ScratchBandlimitedPositiveCore
 section
 
-namespace Auto.Spherical.MSS.BandlimitedPositiveCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal Topology EuclideanSpace Convolution FourierTransform ContDiff
 
 noncomputable section
@@ -5675,17 +5679,17 @@ theorem scratch_exists_positive_bandlimited_schwartzCore :
 
 end
 
-end Auto.Spherical.MSS.BandlimitedPositiveCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchBandlimitedPositiveCore
 
 -- BEGIN ScratchBandlimitedBroadWidth
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal Topology EuclideanSpace
 
 noncomputable section
@@ -5963,17 +5967,17 @@ theorem scratch_exists_broadWidth_envelope_positiveBandlimitedCore
     ∃ A : Real, 0 ≤ A ∧
       HasCompactSupport
         (FourierTransform.fourier
-          (BandlimitedPositiveCore.scratch_normSqSchwartz
+          (scratch_normSqSchwartz
             (FourierTransform.fourierInv q)) : Euclidean 2 → Complex) ∧
       scratch_smoothTubeCore
-        (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+        (scratch_positiveSchwartzCore
           (FourierTransform.fourierInv q)) rho omega y (x, t) ≤
         ((6 : Real) ^ K * A) * lightRayKernel rho K 0 x (y, 0) := by
   rcases scratch_schwartz_le_lightRayDecayProfile
-    (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+    (scratch_positiveSchwartzCore
       (FourierTransform.fourierInv q)) K with ⟨A, hA, hdecay⟩
   refine ⟨A, hA,
-    BandlimitedPositiveCore.scratch_fourier_normSq_fourierInv_hasCompactSupport q hq,
+    scratch_fourier_normSq_fourierInv_hasCompactSupport q hq,
     ?_⟩
   exact scratch_smoothTubeCore_le_zeroDirectionLightRayKernel_of_decay
     _ K hA hdecay hrho omega y x t homega ht
@@ -5989,13 +5993,13 @@ theorem scratch_exists_integral_sq_broadWidth_positiveBandlimitedCore_le
     (G : Euclidean 2 → Real → Real) (hG : ∀ x t, 0 ≤ G x t)
     (hcoreSlice : ∀ y t, Integrable (fun x : Euclidean 2 =>
       scratch_smoothTubeCore
-        (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+        (scratch_positiveSchwartzCore
           (FourierTransform.fourierInv q)) rho omega y (x, t) * G x t) volume)
     (henvSlice : ∀ y t, Integrable (fun x : Euclidean 2 =>
       lightRayKernel rho K 0 x (y, 0) * G x t) volume)
     (hcoreTime : ∀ y, Integrable (fun t : Real => ∫ x : Euclidean 2,
       scratch_smoothTubeCore
-        (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+        (scratch_positiveSchwartzCore
           (FourierTransform.fourierInv q)) rho omega y (x, t) * G x t)
       (volume.restrict lightRayTimeInterval))
     (henvTime : ∀ y, Integrable (fun t : Real => ∫ x : Euclidean 2,
@@ -6003,27 +6007,27 @@ theorem scratch_exists_integral_sq_broadWidth_positiveBandlimitedCore_le
       (volume.restrict lightRayTimeInterval))
     (hcoreSq : Integrable (fun y : Euclidean 2 =>
       scratch_positiveSmoothTubeAverage
-        (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+        (scratch_positiveSchwartzCore
           (FourierTransform.fourierInv q)) rho omega y G ^ 2) volume)
     (henvSq : Integrable (fun y : Euclidean 2 =>
       scratch_zeroDirectionPositiveEnvelope rho K y G ^ 2) volume) :
     ∃ A : Real, 0 ≤ A ∧
       HasCompactSupport
         (FourierTransform.fourier
-          (BandlimitedPositiveCore.scratch_normSqSchwartz
+          (scratch_normSqSchwartz
             (FourierTransform.fourierInv q)) : Euclidean 2 → Complex) ∧
       (∫ y : Euclidean 2,
         scratch_positiveSmoothTubeAverage
-          (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+          (scratch_positiveSchwartzCore
             (FourierTransform.fourierInv q)) rho omega y G ^ 2) ≤
         ((6 : Real) ^ K * A) ^ 2 *
           ∫ y : Euclidean 2,
             scratch_zeroDirectionPositiveEnvelope rho K y G ^ 2 := by
   let b : Euclidean 2 → Real :=
-    BandlimitedPositiveCore.scratch_positiveSchwartzCore
+    scratch_positiveSchwartzCore
       (FourierTransform.fourierInv q)
   rcases scratch_schwartz_le_lightRayDecayProfile
-    (BandlimitedPositiveCore.scratch_positiveSchwartzCore
+    (scratch_positiveSchwartzCore
       (FourierTransform.fourierInv q)) K with ⟨A, hA, hdecay⟩
   have hpoint : ∀ y : Euclidean 2,
       scratch_positiveSmoothTubeAverage b rho omega y G ≤
@@ -6042,7 +6046,7 @@ theorem scratch_exists_integral_sq_broadWidth_positiveBandlimitedCore_le
     intro x
     exact mul_nonneg
       (mul_nonneg (sq_nonneg _)
-        (BandlimitedPositiveCore.scratch_positiveSchwartzCore_nonneg _ _))
+        (scratch_positiveSchwartzCore_nonneg _ _))
       (hG x t)
   have hrho_pos : 0 < rho := lt_of_lt_of_le (by norm_num) hrho
   have henv_nonneg : ∀ y : Euclidean 2,
@@ -6055,7 +6059,7 @@ theorem scratch_exists_integral_sq_broadWidth_positiveBandlimitedCore_le
     intro x
     exact mul_nonneg (lightRayKernel_nonneg hrho_pos K 0 x (y, 0)) (hG x t)
   refine ⟨A, hA,
-    BandlimitedPositiveCore.scratch_fourier_normSq_fourierInv_hasCompactSupport q hq,
+    scratch_fourier_normSq_fourierInv_hasCompactSupport q hq,
     ?_⟩
   simpa only [b] using
     (scratch_integral_sq_positiveSmoothTubeAverage_le_of_decay b rho omega K G
@@ -6090,18 +6094,17 @@ theorem scratch_exists_dyadic_broadWidthStart
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchBandlimitedBroadWidth
 
 -- BEGIN ScratchKakeyaBandlimitedLower
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSmoothDomination
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -6177,18 +6180,17 @@ theorem exists_canonicalPositiveCore_lower_closedBall :
   linarith
 
 end
-end Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBandlimitedLower
 
 -- BEGIN ScratchKakeyaBandlimitedDyadic
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSmoothDomination
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -6501,19 +6503,18 @@ theorem lightRayDecayProfile_le_tsum_canonicalBandlimitedDyadicCore
     exact hterm.trans (hsum.le_tsum n fun j _ => hnonneg j)
 
 end
-end Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBandlimitedDyadic
 
 -- BEGIN ScratchBandlimitedCanonicalTail
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators ENNReal Topology
 
-open ScratchKakeyaBandlimitedCore
 
 noncomputable section
 
@@ -6589,19 +6590,18 @@ theorem scratch_exists_canonicalBandlimitedDyadic_broadStart
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchBandlimitedCanonicalTail
 
 -- BEGIN ScratchKakeyaBandlimitedFrequencyScale
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSmoothDomination
-open Auto.Spherical.SmoothDyadicPhysicalCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -6693,7 +6693,7 @@ theorem canonicalBandlimitedDyadicPhysicalCore_apply
         ((canonicalBandlimitedDyadicScale r j)⁻¹ • xi) by
     funext xi
     exact canonicalBandlimitedDyadicMultiplier_apply hr j xi]
-  rw [Auto.Spherical.FourierRadius.fourierInv_comp_inv_smul
+  rw [Auto.Spherical.Auxiliary.fourierInv_comp_inv_smul
     (canonicalPositiveCoreMultiplier : Euclidean 2 → Complex) hs u]
   rw [show Module.finrank Real (Euclidean 2) = 2 by norm_num]
   rw [raw_fourierInv_canonicalPositiveCoreMultiplier_apply]
@@ -6726,14 +6726,14 @@ theorem canonicalBandlimitedDyadicPhysicalCore_re_lower_of_norm_le
   exact canonicalBandlimitedDyadicCore_lower_of_norm_le hr hcore j u hu
 
 end
-end Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBandlimitedFrequencyScale
 
 -- BEGIN ScratchKakeyaRadialBandLevel
 section
 
-namespace Auto.Spherical.MSS.KakeyaRadialBandLevel
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 
@@ -6814,14 +6814,14 @@ theorem exists_kakeyaRadialBandLevel_log_bound :
 
 end
 
-end Auto.Spherical.MSS.KakeyaRadialBandLevel
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRadialBandLevel
 
 -- BEGIN ScratchKakeyaWidthLogTransfer
 section
 
-namespace Auto.Spherical.MSS.KakeyaWidthLogTransfer
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 
@@ -6848,21 +6848,19 @@ theorem one_add_abs_log_width_le_of_mul_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaWidthLogTransfer
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaWidthLogTransfer
 
 -- BEGIN ScratchKakeyaBandlimitedDyadicBridge
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSmoothDomination
-open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.LittlewoodPaley
-open ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
+open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -7052,40 +7050,40 @@ theorem scratch_canonicalBandlimitedTube_finiteRadialResolution_at_level
     scratch_canonicalBandlimitedTubeMultiplier rho hrho xi =
       intDyadicLowpassMultiplier C.cutoff 0 xi *
         scratch_canonicalBandlimitedTubeMultiplier rho hrho xi +
-      ∑ i ∈ Finset.range (KakeyaRadialBandLevel.kakeyaRadialBandLevel rho),
+      ∑ i ∈ Finset.range (kakeyaRadialBandLevel rho),
         intDyadicBandpassMultiplier C.cutoff ((0 : Int) + i) xi *
           scratch_canonicalBandlimitedTubeMultiplier rho hrho xi := by
   apply scratch_bandlimitedMultiplier_eq_lowpass_add_finiteBands C
     (scratch_canonicalBandlimitedTubeMultiplier rho hrho) 0
-    (KakeyaRadialBandLevel.kakeyaRadialBandLevel rho)
+    (kakeyaRadialBandLevel rho)
   intro z hz
   rw [Metric.mem_closedBall, dist_zero_right]
   have hsupport := support_scratch_canonicalBandlimitedTubeMultiplier_subset hrho hz
   rw [Metric.mem_closedBall, dist_zero_right] at hsupport
   calc
     ‖z‖ ≤ 4 / rho := hsupport
-    _ ≤ (2 : Real) ^ (KakeyaRadialBandLevel.kakeyaRadialBandLevel rho) :=
-      KakeyaRadialBandLevel.four_div_rho_le_two_pow_kakeyaRadialBandLevel hrho
+    _ ≤ (2 : Real) ^ (kakeyaRadialBandLevel rho) :=
+      four_div_rho_le_two_pow_kakeyaRadialBandLevel hrho
     _ = (2 : Real) ^ ((0 : Int) +
-        KakeyaRadialBandLevel.kakeyaRadialBandLevel rho) := by norm_num
+        kakeyaRadialBandLevel rho) := by norm_num
 
 /-- The canonical positive physical core is exactly the squared-modulus
 bandlimited core used by the broad-width artifact. -/
 theorem scratch_canonicalPositiveCore_eq_normSqBandlimitedCore :
     canonicalPositiveCore =
-      BandlimitedPositiveCore.scratch_normSqSchwartz
+      scratch_normSqSchwartz
         (FourierTransform.fourierInv canonicalFrequencyBump) := by
   ext u
   rw [canonicalPositiveCore_apply_eq_normSq,
-    BandlimitedPositiveCore.scratch_normSqSchwartz_apply]
+    scratch_normSqSchwartz_apply]
 
 theorem scratch_canonicalPositiveCore_re_eq_positiveBandlimitedCore
     (u : Euclidean 2) :
     (canonicalPositiveCore u).re =
-      BandlimitedPositiveCore.scratch_positiveSchwartzCore
+      scratch_positiveSchwartzCore
         (FourierTransform.fourierInv canonicalFrequencyBump) u := by
   rw [canonicalPositiveCore_apply_eq_normSq,
-    BandlimitedPositiveCore.scratch_positiveSchwartzCore_apply]
+    scratch_positiveSchwartzCore_apply]
   simp
 
 theorem scratch_canonicalFrequencyBump_hasCompactSupport :
@@ -7131,7 +7129,7 @@ theorem scratch_exists_canonicalNarrowRadialBandCount_log_delta_bound
     (hr : 0 < r) (j : Nat)
     (hrhoOne : delta / canonicalBandlimitedDyadicScale r j ≤ 1) :
     ∃ A : Real, 0 < A ∧
-      ((KakeyaRadialBandLevel.kakeyaRadialBandLevel
+      ((kakeyaRadialBandLevel
         (delta / canonicalBandlimitedDyadicScale r j) : Real) + 1) ≤
         A * (1 + |Real.log delta|) := by
   let s : Real := canonicalBandlimitedDyadicScale r j
@@ -7147,17 +7145,17 @@ theorem scratch_exists_canonicalNarrowRadialBandCount_log_delta_bound
       _ = delta / s := by ring
   have hrho : 0 < delta / s := div_pos hdelta hs
   obtain ⟨A0, hA0, hA0bound⟩ :=
-    KakeyaRadialBandLevel.exists_kakeyaRadialBandLevel_log_bound
+    exists_kakeyaRadialBandLevel_log_bound
   let c : Real := 2 / r
   have hc : 0 < c := by dsimp [c]; positivity
   have hlog : 1 + |Real.log (delta / s)| ≤
       (1 + |Real.log c|) * (1 + |Real.log delta|) := by
-    exact KakeyaWidthLogTransfer.one_add_abs_log_width_le_of_mul_le
+    exact one_add_abs_log_width_le_of_mul_le
       hc hdelta hdeltaOne hrho hrhoOne (by simpa only [c] using hbelow)
   refine ⟨A0 * (1 + |Real.log c|),
     mul_pos hA0 (by positivity), ?_⟩
   calc
-    (KakeyaRadialBandLevel.kakeyaRadialBandLevel (delta / s) : Real) + 1 ≤
+    (kakeyaRadialBandLevel (delta / s) : Real) + 1 ≤
         A0 * (1 + |Real.log (delta / s)|) := hA0bound _ hrho hrhoOne
     _ ≤ A0 * ((1 + |Real.log c|) * (1 + |Real.log delta|)) :=
       mul_le_mul_of_nonneg_left hlog hA0.le
@@ -7171,7 +7169,7 @@ theorem scratch_exists_canonicalNarrowRadialBandCount_log_threeHalves_bound
     (hr : 0 < r) (j : Nat)
     (hrhoOne : delta / canonicalBandlimitedDyadicScale r j ≤ 1) :
     ∃ A : Real, 0 < A ∧
-      ((KakeyaRadialBandLevel.kakeyaRadialBandLevel
+      ((kakeyaRadialBandLevel
         (delta / canonicalBandlimitedDyadicScale r j) : Real) + 1) ≤
         A * (1 + |Real.log delta|) ^ (3 / 2 : Real) := by
   obtain ⟨A, hA, hbound⟩ :=
@@ -7183,7 +7181,7 @@ theorem scratch_exists_canonicalNarrowRadialBandCount_log_threeHalves_bound
       (1 + |Real.log delta|) ^ (3 / 2 : Real) := by
     exact Real.self_le_rpow_of_one_le hbase (by norm_num)
   calc
-    (KakeyaRadialBandLevel.kakeyaRadialBandLevel
+    (kakeyaRadialBandLevel
         (delta / canonicalBandlimitedDyadicScale r j) : Real) + 1 ≤
         A * (1 + |Real.log delta|) := hbound
     _ ≤ A * (1 + |Real.log delta|) ^ (3 / 2 : Real) :=
@@ -7191,19 +7189,17 @@ theorem scratch_exists_canonicalNarrowRadialBandCount_log_threeHalves_bound
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBandlimitedDyadicBridge
 
 -- BEGIN ScratchKakeyaPositiveReBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaPositiveReBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSmoothDomination
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
@@ -7272,31 +7268,30 @@ theorem integral_smoothTubeCore_le_norm_integral_canonicalBandlimitedTube
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaPositiveReBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveReBridge
 
 -- BEGIN ScratchKakeyaNonnegativeSquareCore
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform Pointwise
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev nonnegativeSquareE2 := Euclidean 2
 
 /-- The compact frequency profile of the physical square of `𝓕⁻ ψ`. -/
 noncomputable def squareFrequencyMultiplier
-    (psi : SchwartzMap E2 Complex) : SchwartzMap E2 Complex :=
+    (psi : SchwartzMap nonnegativeSquareE2 Complex) : SchwartzMap nonnegativeSquareE2 Complex :=
   FourierTransform.fourier (testProduct (FourierTransform.fourierInv psi))
 
 theorem squareFrequencyMultiplier_eq_bandlimitedPositiveCoreMultiplier
-    (psi : SchwartzMap E2 Complex) :
+    (psi : SchwartzMap nonnegativeSquareE2 Complex) :
     squareFrequencyMultiplier psi = bandlimitedPositiveCoreMultiplier psi := by
   rfl
 
@@ -7304,17 +7299,17 @@ theorem squareFrequencyMultiplier_eq_bandlimitedPositiveCoreMultiplier
 The symmetric compact set `K ∪ (-K)` avoids any unjustified assumption that
 the original profile itself has symmetric support. -/
 theorem squareFrequencyMultiplier_hasCompactSupport
-    (psi : SchwartzMap E2 Complex)
-    (hpsi : HasCompactSupport (psi : E2 -> Complex)) :
-    HasCompactSupport (squareFrequencyMultiplier psi : E2 -> Complex) := by
-  let S : Set E2 := tsupport (psi : E2 -> Complex) ∪ -tsupport (psi : E2 -> Complex)
+    (psi : SchwartzMap nonnegativeSquareE2 Complex)
+    (hpsi : HasCompactSupport (psi : nonnegativeSquareE2 -> Complex)) :
+    HasCompactSupport (squareFrequencyMultiplier psi : nonnegativeSquareE2 -> Complex) := by
+  let S : Set nonnegativeSquareE2 := tsupport (psi : nonnegativeSquareE2 -> Complex) ∪ -tsupport (psi : nonnegativeSquareE2 -> Complex)
   have hScompact : IsCompact S := by
     dsimp only [S]
     exact hpsi.isCompact.union hpsi.isCompact.neg
-  have hpsiS : Set.Subset (Function.support (psi : E2 -> Complex)) S := by
+  have hpsiS : Set.Subset (Function.support (psi : nonnegativeSquareE2 -> Complex)) S := by
     intro x hx
     exact Or.inl (subset_tsupport _ hx)
-  have hneg : ∀ x : E2, S (-x) -> S x := by
+  have hneg : ∀ x : nonnegativeSquareE2, S (-x) -> S x := by
     intro x hx
     rcases hx with hx | hx
     · exact Or.inr (Set.mem_neg.mpr hx)
@@ -7323,51 +7318,51 @@ theorem squareFrequencyMultiplier_hasCompactSupport
   apply HasCompactSupport.of_support_subset_isCompact (hScompact.add hScompact)
   change Set.Subset
     (Function.support (FourierTransform.fourier
-      (testProduct (FourierTransform.fourierInv psi)) : E2 -> Complex)) (S + S)
+      (testProduct (FourierTransform.fourierInv psi)) : nonnegativeSquareE2 -> Complex)) (S + S)
   exact hsupp
 
 theorem fourierInv_squareFrequencyMultiplier_eq_testProduct
-    (psi : SchwartzMap E2 Complex) :
+    (psi : SchwartzMap nonnegativeSquareE2 Complex) :
     FourierTransform.fourierInv (squareFrequencyMultiplier psi) =
       testProduct (FourierTransform.fourierInv psi) := by
   unfold squareFrequencyMultiplier
   exact FourierTransform.fourierInv_fourier_eq _
 
 theorem fourierInv_squareFrequencyMultiplier_apply_eq_normSq
-    (psi : SchwartzMap E2 Complex) (x : E2) :
+    (psi : SchwartzMap nonnegativeSquareE2 Complex) (x : nonnegativeSquareE2) :
     (FourierTransform.fourierInv (squareFrequencyMultiplier psi) :
-      SchwartzMap E2 Complex) x =
+      SchwartzMap nonnegativeSquareE2 Complex) x =
         (Complex.normSq ((FourierTransform.fourierInv psi :
-          SchwartzMap E2 Complex) x) : Complex) := by
+          SchwartzMap nonnegativeSquareE2 Complex) x) : Complex) := by
   rw [fourierInv_squareFrequencyMultiplier_eq_testProduct]
   exact testProduct_apply_eq_normSq _ _
 
 /-- The sesquilinear physical product used for the off-diagonal terms in a
 square of a finite tensor. -/
 noncomputable def crossProduct
-    (f g : SchwartzMap E2 Complex) : SchwartzMap E2 Complex :=
-  SchwartzMap.smulLeftCLM Complex (f : E2 -> Complex) (testConj g)
+    (f g : SchwartzMap nonnegativeSquareE2 Complex) : SchwartzMap nonnegativeSquareE2 Complex :=
+  SchwartzMap.smulLeftCLM Complex (f : nonnegativeSquareE2 -> Complex) (testConj g)
 
 theorem crossProduct_apply
-    (f g : SchwartzMap E2 Complex) (x : E2) :
+    (f g : SchwartzMap nonnegativeSquareE2 Complex) (x : nonnegativeSquareE2) :
     crossProduct f g x = f x * star (g x) := by
   unfold crossProduct
   rw [SchwartzMap.smulLeftCLM_apply_apply f.hasTemperateGrowth]
   rfl
 
 theorem fourier_crossProduct_eq_convolution
-    (f g : SchwartzMap E2 Complex) :
+    (f g : SchwartzMap nonnegativeSquareE2 Complex) :
     FourierTransform.fourier (crossProduct f g) =
       (SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex)
         (FourierTransform.fourier f))
         (FourierTransform.fourier (testConj g)) := by
-  let C : SchwartzMap E2 Complex :=
+  let C : SchwartzMap nonnegativeSquareE2 Complex :=
     (SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex)
       (FourierTransform.fourier f)) (FourierTransform.fourier (testConj g))
   have hC : FourierTransform.fourierInv C = crossProduct f g := by
     ext z
     rw [SchwartzMap.fourierInv_coe, Real.fourierInv_eq_fourier_neg]
-    change (FourierTransform.fourier C : SchwartzMap E2 Complex) (-z) = _
+    change (FourierTransform.fourier C : SchwartzMap nonnegativeSquareE2 Complex) (-z) = _
     rw [show C =
       (SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex)
         (FourierTransform.fourier f)) (FourierTransform.fourier (testConj g)) by rfl]
@@ -7375,21 +7370,21 @@ theorem fourier_crossProduct_eq_convolution
     rw [crossProduct_apply]
     have hf :
         (FourierTransform.fourier (FourierTransform.fourier f) :
-          SchwartzMap E2 Complex) (-z) = f z := by
+          SchwartzMap nonnegativeSquareE2 Complex) (-z) = f z := by
       have h0 : FourierTransform.fourierInv (FourierTransform.fourier f) = f :=
         FourierTransform.fourierInv_fourier_eq f
-      have h1 := congrArg (fun R : SchwartzMap E2 Complex => R z) h0
+      have h1 := congrArg (fun R : SchwartzMap nonnegativeSquareE2 Complex => R z) h0
       change (FourierTransform.fourier (FourierTransform.fourier f) :
-        SchwartzMap E2 Complex) (-z) = f z at h1
+        SchwartzMap nonnegativeSquareE2 Complex) (-z) = f z at h1
       exact h1
     have hg :
         (FourierTransform.fourier (FourierTransform.fourier (testConj g)) :
-          SchwartzMap E2 Complex) (-z) = testConj g z := by
+          SchwartzMap nonnegativeSquareE2 Complex) (-z) = testConj g z := by
       have h0 : FourierTransform.fourierInv (FourierTransform.fourier (testConj g)) =
           testConj g := FourierTransform.fourierInv_fourier_eq (testConj g)
-      have h1 := congrArg (fun R : SchwartzMap E2 Complex => R z) h0
+      have h1 := congrArg (fun R : SchwartzMap nonnegativeSquareE2 Complex => R z) h0
       change (FourierTransform.fourier (FourierTransform.fourier (testConj g)) :
-        SchwartzMap E2 Complex) (-z) = testConj g z at h1
+        SchwartzMap nonnegativeSquareE2 Complex) (-z) = testConj g z at h1
       exact h1
     rw [hf, hg, testConj_apply]
     rfl
@@ -7402,12 +7397,12 @@ theorem fourier_crossProduct_eq_convolution
 /-- The compact frequency profile of the physical product
 `(𝓕⁻ q) * conj (𝓕⁻ r)`. -/
 noncomputable def crossFrequencyMultiplier
-    (q r : SchwartzMap E2 Complex) : SchwartzMap E2 Complex :=
+    (q r : SchwartzMap nonnegativeSquareE2 Complex) : SchwartzMap nonnegativeSquareE2 Complex :=
   FourierTransform.fourier
     (crossProduct (FourierTransform.fourierInv q) (FourierTransform.fourierInv r))
 
 theorem crossFrequencyMultiplier_eq_convolution
-    (q r : SchwartzMap E2 Complex) :
+    (q r : SchwartzMap nonnegativeSquareE2 Complex) :
     crossFrequencyMultiplier q r =
       (SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex) q)
         (testNeg (testConj r)) := by
@@ -7417,9 +7412,9 @@ theorem crossFrequencyMultiplier_eq_convolution
     fourier_testConj_fourierInv]
 
 theorem hasCompactSupport_testNeg_testConj
-    (q : SchwartzMap E2 Complex)
-    (hq : HasCompactSupport (q : E2 -> Complex)) :
-    HasCompactSupport (testNeg (testConj q) : E2 -> Complex) := by
+    (q : SchwartzMap nonnegativeSquareE2 Complex)
+    (hq : HasCompactSupport (q : nonnegativeSquareE2 -> Complex)) :
+    HasCompactSupport (testNeg (testConj q) : nonnegativeSquareE2 -> Complex) := by
   apply HasCompactSupport.of_support_subset_isCompact hq.isCompact.neg
   intro x hx
   apply Set.mem_neg.mpr
@@ -7431,24 +7426,24 @@ theorem hasCompactSupport_testNeg_testConj
   exact map_zero (starRingEnd Complex)
 
 theorem crossFrequencyMultiplier_hasCompactSupport
-    (q r : SchwartzMap E2 Complex)
-    (hq : HasCompactSupport (q : E2 -> Complex))
-    (hr : HasCompactSupport (r : E2 -> Complex)) :
-    HasCompactSupport (crossFrequencyMultiplier q r : E2 -> Complex) := by
+    (q r : SchwartzMap nonnegativeSquareE2 Complex)
+    (hq : HasCompactSupport (q : nonnegativeSquareE2 -> Complex))
+    (hr : HasCompactSupport (r : nonnegativeSquareE2 -> Complex)) :
+    HasCompactSupport (crossFrequencyMultiplier q r : nonnegativeSquareE2 -> Complex) := by
   rw [crossFrequencyMultiplier_eq_convolution]
   apply HasCompactSupport.of_support_subset_isCompact
     (hq.isCompact.add hr.isCompact.neg)
   intro z hz
   have hraw : Set.Mem (Function.support (MeasureTheory.convolution
-      (q : E2 -> Complex) (testNeg (testConj r) : E2 -> Complex)
+      (q : nonnegativeSquareE2 -> Complex) (testNeg (testConj r) : nonnegativeSquareE2 -> Complex)
       (ContinuousLinearMap.mul Complex Complex) volume)) z := by
     apply Function.mem_support.mpr
     have hz0 := Function.mem_support.mp hz
     simpa only [SchwartzMap.convolution_apply] using hz0
-  have hqsub : Set.Subset (Function.support (q : E2 -> Complex))
-      (tsupport (q : E2 -> Complex)) := subset_tsupport _
-  have hrsub : Set.Subset (Function.support (testNeg (testConj r) : E2 -> Complex))
-      (-tsupport (r : E2 -> Complex)) := by
+  have hqsub : Set.Subset (Function.support (q : nonnegativeSquareE2 -> Complex))
+      (tsupport (q : nonnegativeSquareE2 -> Complex)) := subset_tsupport _
+  have hrsub : Set.Subset (Function.support (testNeg (testConj r) : nonnegativeSquareE2 -> Complex))
+      (-tsupport (r : nonnegativeSquareE2 -> Complex)) := by
     intro x hx
     apply Set.mem_neg.mpr
     apply subset_tsupport _
@@ -7462,7 +7457,7 @@ theorem crossFrequencyMultiplier_hasCompactSupport
       (ContinuousLinearMap.mul Complex Complex) hraw)
 
 theorem fourierInv_crossFrequencyMultiplier_eq_crossProduct
-    (q r : SchwartzMap E2 Complex) :
+    (q r : SchwartzMap nonnegativeSquareE2 Complex) :
     FourierTransform.fourierInv (crossFrequencyMultiplier q r) =
       crossProduct (FourierTransform.fourierInv q) (FourierTransform.fourierInv r) := by
   unfold crossFrequencyMultiplier
@@ -7496,7 +7491,7 @@ theorem support_timeCrossProduct_subset_left
 tensor. -/
 noncomputable def nonnegativeSquareInnerSlabTensor
     {ι : Type*} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex) : WaveSpaceTime -> Complex :=
   fun z => (Complex.normSq (scratch_innerSlabCompactFrequencyTensor q a z) : Complex)
 
@@ -7504,7 +7499,7 @@ noncomputable def nonnegativeSquareInnerSlabTensor
 profiles are the compact-frequency cross multipliers. -/
 noncomputable def reassembledSquareInnerSlabTensor
     {ι : Type*} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex) : WaveSpaceTime -> Complex :=
   scratch_innerSlabCompactFrequencyTensor
     (fun ij : ι × ι => crossFrequencyMultiplier (q ij.1) (q ij.2))
@@ -7512,7 +7507,7 @@ noncomputable def reassembledSquareInnerSlabTensor
 
 theorem nonnegativeSquareInnerSlabTensor_eq_reassembled
     {ι : Type*} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex) :
     nonnegativeSquareInnerSlabTensor q a =
       reassembledSquareInnerSlabTensor q a := by
@@ -7537,10 +7532,10 @@ theorem nonnegativeSquareInnerSlabTensor_eq_reassembled
 shape required by the finite signed-envelope theorem. -/
 theorem reassembledSquareInnerSlabTensor_mem_innerSlabCompactFrequencyTensorCore
     {ι : Type} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex)
     (r : Real)
-    (hq : ∀ i, HasCompactSupport (q i : E2 -> Complex))
+    (hq : ∀ i, HasCompactSupport (q i : nonnegativeSquareE2 -> Complex))
     (hrpos : 0 < r) (hrlt : r < 1)
     (ha : ∀ i, Function.support (a i : Real -> Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r) :
@@ -7560,10 +7555,10 @@ theorem reassembledSquareInnerSlabTensor_mem_innerSlabCompactFrequencyTensorCore
 is itself an admissible finite compact-frequency inner-slab tensor. -/
 theorem nonnegativeSquareInnerSlabTensor_mem_innerSlabCompactFrequencyTensorCore
     {ι : Type} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex)
     (r : Real)
-    (hq : ∀ i, HasCompactSupport (q i : E2 -> Complex))
+    (hq : ∀ i, HasCompactSupport (q i : nonnegativeSquareE2 -> Complex))
     (hrpos : 0 < r) (hrlt : r < 1)
     (ha : ∀ i, Function.support (a i : Real -> Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r) :
@@ -7575,7 +7570,7 @@ theorem nonnegativeSquareInnerSlabTensor_mem_innerSlabCompactFrequencyTensorCore
 
 theorem nonnegativeSquareInnerSlabTensor_re_nonneg
     {ι : Type*} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex) (z : WaveSpaceTime) :
     0 ≤ (nonnegativeSquareInnerSlabTensor q a z).re := by
   unfold nonnegativeSquareInnerSlabTensor
@@ -7583,7 +7578,7 @@ theorem nonnegativeSquareInnerSlabTensor_re_nonneg
 
 theorem nonnegativeSquareInnerSlabTensor_eq_ofReal_normSq
     {ι : Type*} [Fintype ι]
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap nonnegativeSquareE2 Complex)
     (a : ι -> SchwartzMap Real Complex) :
     nonnegativeSquareInnerSlabTensor q a =
       fun z => (Complex.normSq (scratch_innerSlabCompactFrequencyTensor q a z) : Complex) := by
@@ -7604,14 +7599,14 @@ theorem memLp_four_sqrt_norm
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaNonnegativeSquareCore
 
 -- BEGIN ScratchKakeyaPositiveSquareDensity
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaPositiveSquareDensity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped ENNReal
@@ -7698,7 +7693,7 @@ theorem memLp_four_complex_sqrt_norm
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
     (F : X -> Complex) (hF : MemLp F 2 μ) :
     MemLp (fun x => (Real.sqrt ‖F x‖ : Complex)) 4 μ := by
-  have hreal := ScratchKakeyaNonnegativeSquareCore.memLp_four_sqrt_norm F hF
+  have hreal := memLp_four_sqrt_norm F hF
   apply hreal.congr_norm
   · exact Complex.ofRealCLM.continuous.comp_aestronglyMeasurable
       hreal.aestronglyMeasurable
@@ -7709,7 +7704,7 @@ theorem memLp_four_complex_sqrt_norm
 time margin whenever the original positive datum is slab-supported. -/
 theorem exists_innerSlab_smoothCompact_near_complex_sqrt_norm
     (F : WaveSpaceTime -> Complex) (hF : MemLp F 2 volume)
-    (hzero : ∀ z : WaveSpaceTime, z ∈ ScratchInnerSlab.outsideTimeSlab -> F z = 0)
+    (hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab -> F z = 0)
     {epsilon : Real} (hepsilon : 0 < epsilon) :
     ∃ r : Real, 0 < r ∧ r < 1 ∧ ∃ u : WaveSpaceTime -> Complex,
       HasCompactSupport u ∧ ContDiff Real (⊤ : ℕ∞) u ∧
@@ -7719,28 +7714,28 @@ theorem exists_innerSlab_smoothCompact_near_complex_sqrt_norm
         ENNReal.ofReal epsilon := by
   have hroot := memLp_four_complex_sqrt_norm F hF
   have hrootzero : ∀ z : WaveSpaceTime,
-      z ∈ ScratchInnerSlab.outsideTimeSlab ->
+      z ∈ outsideTimeSlab ->
         (Real.sqrt ‖F z‖ : Complex) = 0 := by
     intro z hz
     rw [hzero z hz]
     norm_num
-  exact ScratchInnerSlab.exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
+  exact exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
     (fun z => (Real.sqrt ‖F z‖ : Complex)) hroot hrootzero hepsilon
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaPositiveSquareDensity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveSquareDensity
 
 -- BEGIN ScratchSmoothTubeFourierBand
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.SmoothDyadicPhysicalCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -7861,18 +7856,18 @@ theorem scratch_smoothTubeBand_eq_fourierInv
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchSmoothTubeFourierBand
 
 -- BEGIN ScratchPartialFourier
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.SmoothDyadicPhysicalCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -8020,7 +8015,7 @@ theorem scratch_spatialFourierTransport_integral_norm_sq_eq
         ‖FourierTransform.fourier
           ((FourierTransform.fourierInv B : SchwartzMap (Euclidean 2) Complex) :
             Euclidean 2 → Complex) xi‖ ^ 2 := by
-      exact (Auto.Spherical.FourierRadius.integral_norm_sq_fourier_schwartz_eq
+      exact (Auto.Spherical.Auxiliary.integral_norm_sq_fourier_schwartz_eq
         (FourierTransform.fourierInv B : SchwartzMap (Euclidean 2) Complex)).symm
     _ = ∫ xi : Euclidean 2, ‖B xi‖ ^ 2 := by
       apply integral_congr_ae
@@ -8029,18 +8024,18 @@ theorem scratch_spatialFourierTransport_integral_norm_sq_eq
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchPartialFourier
 
 -- BEGIN ScratchKakeyaFiniteTensorWrapper
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.SmoothDyadicPhysicalCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -8192,7 +8187,7 @@ theorem scratch_integral_norm_sq_finiteTensorTubeBand_eq_frequency
           (inner Real omega xi)‖ ^ (2 : Nat) := by
   let M : SchwartzMap (Euclidean 2) Complex :=
     scratch_finiteTensorTubeMultiplier s q hqcompact a omega
-  have h := Auto.Spherical.FourierRadius.integral_norm_sq_fourier_schwartz_eq
+  have h := Auto.Spherical.Auxiliary.integral_norm_sq_fourier_schwartz_eq
     (FourierTransform.fourierInv M)
   have hplanch :
       (∫ y : Euclidean 2,
@@ -8219,30 +8214,29 @@ theorem scratch_integral_norm_sq_finiteTensorTubeBand_eq_frequency
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorWrapper
 
 -- BEGIN ScratchKakeyaCanonicalReflection
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalReflection
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.SmoothDyadicPhysicalCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev canonicalReflectionE2 := Euclidean 2
 
 /-- Reflection commutes with inverse Fourier transformation.  This is the
 sign identity needed when the literal tube kernel is written as
 `K (x + t • omega - y)`. -/
 theorem fourierInv_testNeg_eq_testNeg_fourierInv
-    (m : SchwartzMap E2 Complex) :
+    (m : SchwartzMap canonicalReflectionE2 Complex) :
     FourierTransform.fourierInv (testNeg m) =
       testNeg (FourierTransform.fourierInv m) := by
   have hfourier :
@@ -8260,20 +8254,20 @@ theorem fourierInv_testNeg_eq_testNeg_fourierInv
 /-- Convolving a spatial inverse-Fourier packet against the literal kernel
 `K (x - y)` uses the reflected kernel multiplier. -/
 theorem integral_fourierInv_kernel_sub_mul_eq_fourierInv_reflected_mul
-    (m q : SchwartzMap E2 Complex) (y : E2) :
-    (∫ x : E2, (FourierTransform.fourierInv m : SchwartzMap E2 Complex) (x - y) *
-      (FourierTransform.fourierInv q : SchwartzMap E2 Complex) x) =
-      FourierTransform.fourierInv (fun xi : E2 => testNeg m xi * q xi) y := by
+    (m q : SchwartzMap canonicalReflectionE2 Complex) (y : canonicalReflectionE2) :
+    (∫ x : canonicalReflectionE2, (FourierTransform.fourierInv m : SchwartzMap canonicalReflectionE2 Complex) (x - y) *
+      (FourierTransform.fourierInv q : SchwartzMap canonicalReflectionE2 Complex) x) =
+      FourierTransform.fourierInv (fun xi : canonicalReflectionE2 => testNeg m xi * q xi) y := by
   have hsource := fourierCubeProjection_eq_sourceKernel
     (testNeg m) (FourierTransform.fourierInv q) y
-  have hleft : (fun xi : E2 => testNeg m xi * q xi) =
-      (fun xi : E2 => testNeg m xi *
-        FourierTransform.fourier (FourierTransform.fourierInv q : E2 → Complex) xi) := by
+  have hleft : (fun xi : canonicalReflectionE2 => testNeg m xi * q xi) =
+      (fun xi : canonicalReflectionE2 => testNeg m xi *
+        FourierTransform.fourier (FourierTransform.fourierInv q : canonicalReflectionE2 → Complex) xi) := by
     funext xi
     have hq : FourierTransform.fourier
-        (FourierTransform.fourierInv q : E2 → Complex) xi = q xi := by
+        (FourierTransform.fourierInv q : canonicalReflectionE2 → Complex) xi = q xi := by
       change (FourierTransform.fourier (FourierTransform.fourierInv q) :
-        SchwartzMap E2 Complex) xi = q xi
+        SchwartzMap canonicalReflectionE2 Complex) xi = q xi
       rw [FourierTransform.fourier_fourierInv_eq]
     rw [hq]
   rw [hleft]
@@ -8287,33 +8281,31 @@ theorem integral_fourierInv_kernel_sub_mul_eq_fourierInv_reflected_mul
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalReflection
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalReflection
 
 -- BEGIN ScratchKakeyaReflectedTubeTensorBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflection
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev reflectedTubeTensorE2 := Euclidean 2
 
 /-- The source-oriented kernel `K (x + tω - y)` forces the reflected
 frequency profile `m (-ξ)`. -/
 noncomputable def reflectedTubeProfile
-    (m q : SchwartzMap E2 Complex) : SchwartzMap E2 Complex :=
-  SchwartzMap.smulLeftCLM Complex (testNeg m : E2 -> Complex) q
+    (m q : SchwartzMap reflectedTubeTensorE2 Complex) : SchwartzMap reflectedTubeTensorE2 Complex :=
+  SchwartzMap.smulLeftCLM Complex (testNeg m : reflectedTubeTensorE2 -> Complex) q
 
 theorem reflectedTubeProfile_apply
-    (m q : SchwartzMap E2 Complex) (xi : E2) :
+    (m q : SchwartzMap reflectedTubeTensorE2 Complex) (xi : reflectedTubeTensorE2) :
     reflectedTubeProfile m q xi = m (-xi) * q xi := by
   unfold reflectedTubeProfile
   rw [SchwartzMap.smulLeftCLM_apply_apply (testNeg m).hasTemperateGrowth,
@@ -8321,9 +8313,9 @@ theorem reflectedTubeProfile_apply
   exact smul_eq_mul _ _
 
 theorem reflectedTubeProfile_hasCompactSupport
-    (m q : SchwartzMap E2 Complex)
-    (hq : HasCompactSupport (q : E2 -> Complex)) :
-    HasCompactSupport (reflectedTubeProfile m q : E2 -> Complex) := by
+    (m q : SchwartzMap reflectedTubeTensorE2 Complex)
+    (hq : HasCompactSupport (q : reflectedTubeTensorE2 -> Complex)) :
+    HasCompactSupport (reflectedTubeProfile m q : reflectedTubeTensorE2 -> Complex) := by
   apply HasCompactSupport.of_support_subset_isCompact hq.isCompact
   intro xi hxi
   apply subset_tsupport _
@@ -8337,9 +8329,9 @@ is the form needed for dense Schwartz input tensors: after a canonical
 bandlimited tube multiplier is inserted, no compact-frequency hypothesis on
 the input profile itself is needed. -/
 theorem reflectedTubeProfile_hasCompactSupport_left
-    (m q : SchwartzMap E2 Complex)
-    (hm : HasCompactSupport (m : E2 -> Complex)) :
-    HasCompactSupport (reflectedTubeProfile m q : E2 -> Complex) := by
+    (m q : SchwartzMap reflectedTubeTensorE2 Complex)
+    (hm : HasCompactSupport (m : reflectedTubeTensorE2 -> Complex)) :
+    HasCompactSupport (reflectedTubeProfile m q : reflectedTubeTensorE2 -> Complex) := by
   apply HasCompactSupport.of_support_subset_isCompact hm.isCompact.neg
   intro xi hxi
   apply Set.mem_neg.mpr
@@ -8352,15 +8344,15 @@ theorem reflectedTubeProfile_hasCompactSupport_left
 /-- Exact source-kernel/tensor identity.  It uses the separately verified
 reflection theorem, so no evenness of the canonical multiplier is assumed. -/
 theorem integral_kernel_translated_tensor_eq_smoothTubeBand_reflected
-    (m q : SchwartzMap E2 Complex) (hq : HasCompactSupport (q : E2 -> Complex))
-    (a : SchwartzMap Real Complex) (omega y : E2) :
-    (∫ t : Real, a t * ∫ x : E2,
-      FourierTransform.fourierInv (m : E2 -> Complex) (x + t • omega - y) *
-        FourierTransform.fourierInv (q : E2 -> Complex) x) =
+    (m q : SchwartzMap reflectedTubeTensorE2 Complex) (hq : HasCompactSupport (q : reflectedTubeTensorE2 -> Complex))
+    (a : SchwartzMap Real Complex) (omega y : reflectedTubeTensorE2) :
+    (∫ t : Real, a t * ∫ x : reflectedTubeTensorE2,
+      FourierTransform.fourierInv (m : reflectedTubeTensorE2 -> Complex) (x + t • omega - y) *
+        FourierTransform.fourierInv (q : reflectedTubeTensorE2 -> Complex) x) =
       scratch_smoothTubeBand (reflectedTubeProfile m q)
         (reflectedTubeProfile_hasCompactSupport m q hq) a omega y := by
-  have hprofile : (reflectedTubeProfile m q : E2 -> Complex) =
-      fun xi : E2 => testNeg m xi * q xi := by
+  have hprofile : (reflectedTubeProfile m q : reflectedTubeTensorE2 -> Complex) =
+      fun xi : reflectedTubeTensorE2 => testNeg m xi * q xi := by
     funext xi
     rw [reflectedTubeProfile_apply, testNeg_apply]
   rw [scratch_smoothTubeBand_eq_translated, hprofile]
@@ -8380,15 +8372,15 @@ kernel multiplier rather than by the input packet.  This is the density-safe
 version: an arbitrary Schwartz input profile becomes compact only after the
 canonical bandlimited multiplier is inserted. -/
 theorem integral_kernel_translated_tensor_eq_smoothTubeBand_reflected_left
-    (m q : SchwartzMap E2 Complex) (hm : HasCompactSupport (m : E2 -> Complex))
-    (a : SchwartzMap Real Complex) (omega y : E2) :
-    (∫ t : Real, a t * ∫ x : E2,
-      FourierTransform.fourierInv (m : E2 -> Complex) (x + t • omega - y) *
-        FourierTransform.fourierInv (q : E2 -> Complex) x) =
+    (m q : SchwartzMap reflectedTubeTensorE2 Complex) (hm : HasCompactSupport (m : reflectedTubeTensorE2 -> Complex))
+    (a : SchwartzMap Real Complex) (omega y : reflectedTubeTensorE2) :
+    (∫ t : Real, a t * ∫ x : reflectedTubeTensorE2,
+      FourierTransform.fourierInv (m : reflectedTubeTensorE2 -> Complex) (x + t • omega - y) *
+        FourierTransform.fourierInv (q : reflectedTubeTensorE2 -> Complex) x) =
       scratch_smoothTubeBand (reflectedTubeProfile m q)
         (reflectedTubeProfile_hasCompactSupport_left m q hm) a omega y := by
-  have hprofile : (reflectedTubeProfile m q : E2 -> Complex) =
-      fun xi : E2 => testNeg m xi * q xi := by
+  have hprofile : (reflectedTubeProfile m q : reflectedTubeTensorE2 -> Complex) =
+      fun xi : reflectedTubeTensorE2 => testNeg m xi * q xi := by
     funext xi
     rw [reflectedTubeProfile_apply, testNeg_apply]
   rw [scratch_smoothTubeBand_eq_translated, hprofile]
@@ -8405,26 +8397,22 @@ theorem integral_kernel_translated_tensor_eq_smoothTubeBand_reflected_left
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaReflectedTubeTensorBridge
 
 -- BEGIN ScratchKakeyaPositiveSquareClosure
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareDensity
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev positiveSquareClosureE2 := Euclidean 2
 
 /-- The genuinely positive finite core used by the canonical-kernel
 majorization.  It is the physical norm square of a finite separated tensor;
@@ -8433,9 +8421,9 @@ inner-slab shape consumed by the signed FIO estimate. -/
 def NonnegativeSquareInnerSlabCompactFrequencyTensorCore
     (f : WaveSpaceTime -> Complex) : Prop :=
   ∃ (ι : Type) (_ : Fintype ι)
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap positiveSquareClosureE2 Complex)
     (a : ι -> SchwartzMap Real Complex) (r : Real),
-    (∀ i, HasCompactSupport (q i : E2 -> Complex)) ∧
+    (∀ i, HasCompactSupport (q i : positiveSquareClosureE2 -> Complex)) ∧
     0 < r ∧ r < 1 ∧
     (∀ i, Function.support (a i : Real -> Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r) ∧
@@ -8447,7 +8435,7 @@ where it is analytically used, by the reflected canonical multiplier. -/
 def NonnegativeSquareInnerSlabSchwartzTensorCore
     (f : WaveSpaceTime -> Complex) : Prop :=
   ∃ (ι : Type) (_ : Fintype ι)
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap positiveSquareClosureE2 Complex)
     (a : ι -> SchwartzMap Real Complex) (r : Real),
     0 < r ∧ r < 1 ∧
     (∀ i, Function.support (a i : Real -> Complex) ⊆
@@ -8471,11 +8459,11 @@ convolution by `K (x + tω - y)` acts on every square cross-profile through
 `m (-ξ) * qᵢⱼ(ξ)`. -/
 noncomputable def reflectedSquareTubeBand
     {ι : Type*} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (q : ι -> SchwartzMap E2 Complex)
-    (hq : ∀ i, HasCompactSupport (q i : E2 -> Complex))
+    (m : SchwartzMap positiveSquareClosureE2 Complex)
+    (q : ι -> SchwartzMap positiveSquareClosureE2 Complex)
+    (hq : ∀ i, HasCompactSupport (q i : positiveSquareClosureE2 -> Complex))
     (a : ι -> SchwartzMap Real Complex)
-    (omega : E2) : E2 -> Complex :=
+    (omega : positiveSquareClosureE2) : positiveSquareClosureE2 -> Complex :=
   scratch_finiteTensorTubeBand Finset.univ
     (fun ij : ι × ι =>
       reflectedTubeProfile m (crossFrequencyMultiplier (q ij.1) (q ij.2)))
@@ -8491,11 +8479,11 @@ only compactness supplied to the finite angular/radial machinery is the
 compactness of `m`; this is exactly the canonical bandlimited situation. -/
 noncomputable def reflectedSchwartzSquareTubeBand
     {ι : Type*} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (hm : HasCompactSupport (m : E2 -> Complex))
-    (q : ι -> SchwartzMap E2 Complex)
+    (m : SchwartzMap positiveSquareClosureE2 Complex)
+    (hm : HasCompactSupport (m : positiveSquareClosureE2 -> Complex))
+    (q : ι -> SchwartzMap positiveSquareClosureE2 Complex)
     (a : ι -> SchwartzMap Real Complex)
-    (omega : E2) : E2 -> Complex :=
+    (omega : positiveSquareClosureE2) : positiveSquareClosureE2 -> Complex :=
   scratch_finiteTensorTubeBand Finset.univ
     (fun ij : ι × ι =>
       reflectedTubeProfile m (crossFrequencyMultiplier (q ij.1) (q ij.2)))
@@ -8506,11 +8494,11 @@ noncomputable def reflectedSchwartzSquareTubeBand
 
 theorem reflectedSquareTubeBand_apply
     {ι : Type*} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (q : ι -> SchwartzMap E2 Complex)
-    (hq : ∀ i, HasCompactSupport (q i : E2 -> Complex))
+    (m : SchwartzMap positiveSquareClosureE2 Complex)
+    (q : ι -> SchwartzMap positiveSquareClosureE2 Complex)
+    (hq : ∀ i, HasCompactSupport (q i : positiveSquareClosureE2 -> Complex))
     (a : ι -> SchwartzMap Real Complex)
-    (omega y : E2) :
+    (omega y : positiveSquareClosureE2) :
     reflectedSquareTubeBand m q hq a omega y =
       ∑ ij : ι × ι,
         scratch_smoothTubeBand
@@ -8526,11 +8514,11 @@ theorem reflectedSquareTubeBand_apply
 
 theorem reflectedSchwartzSquareTubeBand_apply
     {ι : Type*} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (hm : HasCompactSupport (m : E2 -> Complex))
-    (q : ι -> SchwartzMap E2 Complex)
+    (m : SchwartzMap positiveSquareClosureE2 Complex)
+    (hm : HasCompactSupport (m : positiveSquareClosureE2 -> Complex))
+    (q : ι -> SchwartzMap positiveSquareClosureE2 Complex)
     (a : ι -> SchwartzMap Real Complex)
-    (omega y : E2) :
+    (omega y : positiveSquareClosureE2) :
     reflectedSchwartzSquareTubeBand m hm q a omega y =
       ∑ ij : ι × ι,
         scratch_smoothTubeBand
@@ -8564,8 +8552,8 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope
     (Core : (WaveSpaceTime -> Complex) -> Prop)
     (hdense : HasPositiveSlabL2DenseCore Core)
     (T : Real -> Nat -> (WaveSpaceTime -> Complex) ->
-      E2 -> E2 -> Complex)
-    (P : Real -> Nat -> (WaveSpaceTime -> Complex) -> E2 -> ENNReal)
+      positiveSquareClosureE2 -> positiveSquareClosureE2 -> Complex)
+    (P : Real -> Nat -> (WaveSpaceTime -> Complex) -> positiveSquareClosureE2 -> ENNReal)
     (hPmeas : ∀ delta N f, Core f -> Measurable (P delta N f))
     (hstrong : ∀ N : Nat, 3 < N -> ∃ C : Real, 0 < C ∧
       ∀ delta : Real, 0 < delta -> delta < 1 / 2 ->
@@ -8574,7 +8562,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope
           ENNReal.ofReal (C * (1 + abs (Real.log delta)) ^ (3 / 2 : Real)) *
             eLpNorm f 2 volume)
     (hidentify : ∀ delta N (h : WaveSpaceTime -> Complex)
-      (omega y : E2),
+      (omega y : positiveSquareClosureE2),
       T delta N
           (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
         (lightRayAverage delta N omega y h : Complex))
@@ -8655,7 +8643,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope
         Tendsto (fun n => T delta N (core n) omega y) atTop
           (nhds (T delta N F omega y)) :=
       hTgeom delta N F core hFmem hcoreMem hscaled
-    have hfatou : ∀ᵐ y : E2 ∂volume,
+    have hfatou : ∀ᵐ y : positiveSquareClosureE2 ∂volume,
         ENNReal.ofReal (lightRayMaximal delta N h y) <=
           atTop.liminf (fun n => P delta N (core n) y) := by
       filter_upwards with y
@@ -8722,8 +8710,8 @@ theorem hasLightRayMaximalEstimate_of_nonnegativeSquareInnerSlabCore
     (hdense : HasPositiveSlabL2DenseCore
       NonnegativeSquareInnerSlabCompactFrequencyTensorCore)
     (T : Real -> Nat -> (WaveSpaceTime -> Complex) ->
-      E2 -> E2 -> Complex)
-    (P : Real -> Nat -> (WaveSpaceTime -> Complex) -> E2 -> ENNReal)
+      positiveSquareClosureE2 -> positiveSquareClosureE2 -> Complex)
+    (P : Real -> Nat -> (WaveSpaceTime -> Complex) -> positiveSquareClosureE2 -> ENNReal)
     (hPmeas : ∀ delta N f, scratch_InnerSlabCompactFrequencyTensorCore f ->
       Measurable (P delta N f))
     (hstrong : ∀ N : Nat, 3 < N -> ∃ C : Real, 0 < C ∧
@@ -8734,7 +8722,7 @@ theorem hasLightRayMaximalEstimate_of_nonnegativeSquareInnerSlabCore
           ENNReal.ofReal (C * (1 + abs (Real.log delta)) ^ (3 / 2 : Real)) *
             eLpNorm f 2 volume)
     (hidentify : ∀ delta N (h : WaveSpaceTime -> Complex)
-      (omega y : E2),
+      (omega y : positiveSquareClosureE2),
       T delta N
           (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
         (lightRayAverage delta N omega y h : Complex))
@@ -8853,21 +8841,20 @@ theorem eLpNorm_pointwiseNormSquare_sub_le_linear_of_error_le_one
     _ = (1 + 2 * V) * e := by ring
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveSquareClosure
 
 -- BEGIN ScratchInnerSlabTensorL4Density
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorL4Density
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 open scoped ENNReal EuclideanSpace ContDiff FourierTransform
 
-open ScratchInnerSlabTensorDensityIntegration
 
 noncomputable section
 
@@ -8962,8 +8949,8 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
       (∀ i, HasCompactSupport (U i) ∧ ContDiff Real ∞ (U i)) ∧
       (∀ i, HasCompactSupport (a i) ∧ ContDiff Real ∞ (a i) ∧
         Function.support (a i) ⊆ Metric.closedBall (3 / 2 : Real) RF) ∧
-      MemLp (ScratchSlabTensor.smoothSpatialTensor U a) 4 volume ∧
-      eLpNorm (u - ScratchSlabTensor.smoothSpatialTensor U a) 4 volume <
+      MemLp (smoothSpatialTensor U a) 4 volume ∧
+      eLpNorm (u - smoothSpatialTensor U a) 4 volume <
         ENNReal.ofReal epsilon := by
   let S : Set WaveSpaceTime :=
     Metric.closedBall (0 : Euclidean 2) RE ×ˢ
@@ -8981,7 +8968,7 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
   obtain ⟨alpha, halphapos, halpha⟩ :=
     exists_uniform_l4_budget S hSfinite hepsilon
   obtain ⟨ι, hι, U, a, hU, ha, huniform⟩ :=
-    ScratchTensor.exists_finite_smooth_compact_separated_uniform_close_complex
+    exists_finite_smooth_compact_separated_uniform_close_complex
       (Euclidean 2) Real (0 : Euclidean 2) (3 / 2 : Real)
       hrE hrERE hr hrRF u hucont husupport halphapos
   letI : Fintype ι := hι
@@ -8989,7 +8976,7 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
       Metric.closedBall (0 : Euclidean 2) RE := fun i => (hU i).2.2
   have haSupport : ∀ i, Function.support (a i) ⊆
       Metric.closedBall (3 / 2 : Real) RF := fun i => (ha i).2.2
-  have hvSupport : Function.support (ScratchSlabTensor.smoothSpatialTensor U a) ⊆ S := by
+  have hvSupport : Function.support (smoothSpatialTensor U a) ⊆ S := by
     simpa only [S] using support_smoothSpatialTensor_subset_prod U a
       (Metric.closedBall (0 : Euclidean 2) RE)
       (Metric.closedBall (3 / 2 : Real) RF) hUSupport haSupport
@@ -8999,16 +8986,16 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
     exact ⟨Metric.closedBall_subset_closedBall hrERE.le hz'.1,
       Metric.closedBall_subset_closedBall hrRF.le hz'.2⟩
   have huniform' : ∀ z : WaveSpaceTime,
-      dist (ScratchSlabTensor.smoothSpatialTensor U a z) (u z) ≤ alpha := by
+      dist (smoothSpatialTensor U a z) (u z) ≤ alpha := by
     intro z
     exact (huniform z).le
   have hL4le := eLpNorm_four_sub_le_of_support_subset_and_uniform_complex
-    volume S hSmeas hSfinite u (ScratchSlabTensor.smoothSpatialTensor U a)
+    volume S hSmeas hSfinite u (smoothSpatialTensor U a)
     huSupportS hvSupport huniform'
-  have hcont : Continuous (ScratchSlabTensor.smoothSpatialTensor U a) :=
+  have hcont : Continuous (smoothSpatialTensor U a) :=
     continuous_smoothSpatialTensor U a
       (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)
-  have hvcompact : HasCompactSupport (ScratchSlabTensor.smoothSpatialTensor U a) :=
+  have hvcompact : HasCompactSupport (smoothSpatialTensor U a) :=
     HasCompactSupport.of_support_subset_isCompact hScompact hvSupport
   refine ⟨ι, inferInstance, U, a, ?_, ?_,
     hcont.memLp_of_hasCompactSupport hvcompact, ?_⟩
@@ -9023,7 +9010,7 @@ It is intentionally parameterized by a slab-supported function, so it can
 be applied to the square root of a positive `L²` datum. -/
 theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
     (v : WaveSpaceTime -> Complex) (hv : MemLp v 4 volume)
-    (hzero : ∀ z : WaveSpaceTime, z ∈ ScratchInnerSlab.outsideTimeSlab → v z = 0)
+    (hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab → v z = 0)
     {epsilon : Real} (hepsilon : 0 < epsilon) :
     ∃ (ι : Type) (_ : Fintype ι)
       (U : ι → Euclidean 2 → Complex) (a : ι → Real → Complex) (r : Real),
@@ -9031,12 +9018,12 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
       (∀ i, HasCompactSupport (U i) ∧ ContDiff Real ∞ (U i)) ∧
       (∀ i, HasCompactSupport (a i) ∧ ContDiff Real ∞ (a i) ∧
         Function.support (a i) ⊆ Metric.closedBall (3 / 2 : Real) r) ∧
-      MemLp (ScratchSlabTensor.smoothSpatialTensor U a) 4 volume ∧
-      eLpNorm (v - ScratchSlabTensor.smoothSpatialTensor U a) 4 volume <
+      MemLp (smoothSpatialTensor U a) 4 volume ∧
+      eLpNorm (v - smoothSpatialTensor U a) 4 volume <
         ENNReal.ofReal epsilon := by
   have hepshalf : 0 < epsilon / 2 := by positivity
   obtain ⟨r0, hr0pos, hr0lt, u, hucompact, hucont, husupport, huerr⟩ :=
-    ScratchInnerSlab.exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
+    exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
       v hv hzero hepshalf
   change Function.support u ⊆
     {z : WaveSpaceTime | z.2 ∈ Metric.closedBall (3 / 2 : Real) r0} at husupport
@@ -9087,18 +9074,18 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
   · have huMem : MemLp u 4 volume :=
       hucont.continuous.memLp_of_hasCompactSupport hucompact
     have hfirstMem : MemLp (v - u) 4 volume := hv.sub huMem
-    have hsecondMem : MemLp (u - ScratchSlabTensor.smoothSpatialTensor U a) 4 volume :=
+    have hsecondMem : MemLp (u - smoothSpatialTensor U a) 4 volume :=
       huMem.sub hvmem
     calc
-      eLpNorm (v - ScratchSlabTensor.smoothSpatialTensor U a) 4 volume =
+      eLpNorm (v - smoothSpatialTensor U a) 4 volume =
           eLpNorm ((v - u) +
-            (u - ScratchSlabTensor.smoothSpatialTensor U a)) 4 volume := by
+            (u - smoothSpatialTensor U a)) 4 volume := by
               congr 1
               funext z
               simp only [Pi.sub_apply, Pi.add_apply]
               abel
       _ ≤ eLpNorm (v - u) 4 volume +
-          eLpNorm (u - ScratchSlabTensor.smoothSpatialTensor U a) 4 volume :=
+          eLpNorm (u - smoothSpatialTensor U a) 4 volume :=
         eLpNorm_add_le hfirstMem.aestronglyMeasurable hsecondMem.aestronglyMeasurable
           (by norm_num)
       _ < ENNReal.ofReal (epsilon / 2) + ENNReal.ofReal (epsilon / 2) :=
@@ -9109,26 +9096,22 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchInnerSlabTensorL4Density
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchInnerSlabTensorL4Density
 
 -- BEGIN ScratchKakeyaSchwartzSquareCoreDensity
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareDensity
-open ScratchInnerSlabTensorL4Density
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform ContDiff
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev schwartzSquareCoreDensityE2 := Euclidean 2
 
 /-- A finite inner-slab tensor with merely Schwartz spatial frequency
 profiles.  This is the density-safe core: the canonical tube multiplier,
@@ -9136,7 +9119,7 @@ not the datum, supplies compact frequency support to every later FIO slice. -/
 def InnerSlabSchwartzTensorCore
     (f : WaveSpaceTime -> Complex) : Prop :=
   ∃ (ι : Type) (_ : Fintype ι)
-    (q : ι -> SchwartzMap E2 Complex)
+    (q : ι -> SchwartzMap schwartzSquareCoreDensityE2 Complex)
     (a : ι -> SchwartzMap Real Complex) (r : Real),
     0 < r ∧ r < 1 ∧
     (∀ i, Function.support (a i : Real -> Complex) ⊆
@@ -9153,7 +9136,7 @@ theorem pointwiseNormSquare_mem_nonnegativeSquareInnerSlabSchwartzTensorCore
   letI : Fintype ι := hι
   refine ⟨ι, inferInstance, q, a, r, hrpos, hrlt, ha, ?_⟩
   funext z
-  rw [Auto.Spherical.MSS.ScratchKakeyaPositiveSquareDensity.pointwiseNormSquare_apply,
+  rw [pointwiseNormSquare_apply,
     hu]
   rfl
 
@@ -9198,18 +9181,18 @@ after Fourier transforming each spatial factor and packaging its time factor
 as a Schwartz map. -/
 theorem smoothSpatialTensor_eq_innerSlabSchwartzTensor
     {ι : Type} [Fintype ι]
-    (U : ι -> E2 -> Complex) (a : ι -> Real -> Complex)
+    (U : ι -> schwartzSquareCoreDensityE2 -> Complex) (a : ι -> Real -> Complex)
     (hUcompact : ∀ i, HasCompactSupport (U i))
     (hUsmooth : ∀ i, ContDiff Real ∞ (U i))
     (hacompact : ∀ i, HasCompactSupport (a i))
     (hasmooth : ∀ i, ContDiff Real ∞ (a i)) :
-    ScratchSlabTensor.smoothSpatialTensor U a =
+    smoothSpatialTensor U a =
       scratch_innerSlabCompactFrequencyTensor
         (fun i => FourierTransform.fourier
           ((hUcompact i).toSchwartzMap (hUsmooth i)))
         (fun i => (hacompact i).toSchwartzMap (hasmooth i)) := by
   funext z
-  simp only [ScratchSlabTensor.smoothSpatialTensor,
+  simp only [smoothSpatialTensor,
     scratch_innerSlabCompactFrequencyTensor]
   apply Finset.sum_congr rfl
   intro i hi
@@ -9220,7 +9203,7 @@ theorem smoothSpatialTensor_eq_innerSlabSchwartzTensor
 membership. -/
 theorem smoothSpatialTensor_mem_innerSlabSchwartzTensorCore
     {ι : Type} [Fintype ι]
-    (U : ι -> E2 -> Complex) (a : ι -> Real -> Complex) (r : Real)
+    (U : ι -> schwartzSquareCoreDensityE2 -> Complex) (a : ι -> Real -> Complex) (r : Real)
     (hUcompact : ∀ i, HasCompactSupport (U i))
     (hUsmooth : ∀ i, ContDiff Real ∞ (U i))
     (hacompact : ∀ i, HasCompactSupport (a i))
@@ -9228,7 +9211,7 @@ theorem smoothSpatialTensor_mem_innerSlabSchwartzTensorCore
     (hrpos : 0 < r) (hrlt : r < 1)
     (hasupport : ∀ i, Function.support (a i) ⊆
       Metric.closedBall (3 / 2 : Real) r) :
-    InnerSlabSchwartzTensorCore (ScratchSlabTensor.smoothSpatialTensor U a) := by
+    InnerSlabSchwartzTensorCore (smoothSpatialTensor U a) := by
   refine ⟨ι, inferInstance,
     (fun i => FourierTransform.fourier
       ((hUcompact i).toSchwartzMap (hUsmooth i))),
@@ -9252,10 +9235,10 @@ theorem hasPositiveSlabL2DenseCore_nonnegativeSquareInnerSlabSchwartzTensor :
     dsimp only [v]
     exact positiveSlabSquareRoot_memLp_four h hh
   have hvzero : ∀ z : WaveSpaceTime,
-      z ∈ ScratchInnerSlab.outsideTimeSlab → v z = 0 := by
+      z ∈ outsideTimeSlab → v z = 0 := by
     intro z hz
     dsimp only [v, positiveSlabSquareRoot, positiveSlabDatum]
-    simp only [ScratchInnerSlab.outsideTimeSlab, Set.mem_setOf_eq] at hz
+    simp only [outsideTimeSlab, Set.mem_setOf_eq] at hz
     simp [scratch_lightRayTimeRestriction, hz]
   let D : ENNReal := 1 + 2 * eLpNorm v 4 volume
   have hDtop : D ≠ ⊤ := by
@@ -9265,7 +9248,7 @@ theorem hasPositiveSlabL2DenseCore_nonnegativeSquareInnerSlabSchwartzTensor :
     · norm_num
     · exact ENNReal.mul_ne_top (by norm_num) hv.eLpNorm_ne_top
   obtain ⟨b, hbpos, hbudget⟩ :=
-    ScratchSlabTensor.exists_positive_real_budgets
+    exists_positive_real_budgets
       (fun _ : Unit => D) (fun _ => hDtop) hepsilon
   have hbudget' : ENNReal.ofReal (b ()) * D < ENNReal.ofReal epsilon := by
     simpa using hbudget
@@ -9277,7 +9260,7 @@ theorem hasPositiveSlabL2DenseCore_nonnegativeSquareInnerSlabSchwartzTensor :
     exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
       v hv hvzero hetapos
   letI : Fintype ι := hι
-  let u : WaveSpaceTime → Complex := ScratchSlabTensor.smoothSpatialTensor U a
+  let u : WaveSpaceTime → Complex := smoothSpatialTensor U a
   have hucore : InnerSlabSchwartzTensorCore u := by
     dsimp only [u]
     exact smoothSpatialTensor_mem_innerSlabSchwartzTensorCore U a r
@@ -9326,8 +9309,8 @@ squares.  Thus no false domination of a positive tube average by a signed
 envelope is assumed for arbitrary complex inputs. -/
 theorem hasLightRayMaximalEstimate_of_nonnegativeSquareInnerSlabSchwartzCore
     (T : Real → Nat → (WaveSpaceTime → Complex) →
-      E2 → E2 → Complex)
-    (P : Real → Nat → (WaveSpaceTime → Complex) → E2 → ENNReal)
+      schwartzSquareCoreDensityE2 → schwartzSquareCoreDensityE2 → Complex)
+    (P : Real → Nat → (WaveSpaceTime → Complex) → schwartzSquareCoreDensityE2 → ENNReal)
     (hPmeas : ∀ delta N f, InnerSlabSchwartzTensorCore f →
       Measurable (P delta N f))
     (hstrong : ∀ N : Nat, 3 < N → ∃ C : Real, 0 < C ∧
@@ -9337,7 +9320,7 @@ theorem hasLightRayMaximalEstimate_of_nonnegativeSquareInnerSlabSchwartzCore
           ENNReal.ofReal (C * (1 + abs (Real.log delta)) ^ (3 / 2 : Real)) *
             eLpNorm f 2 volume)
     (hidentify : ∀ delta N (h : WaveSpaceTime → Complex)
-      (omega y : E2),
+      (omega y : schwartzSquareCoreDensityE2),
       T delta N
           (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
         (lightRayAverage delta N omega y h : Complex))
@@ -9372,14 +9355,14 @@ theorem hasLightRayMaximalEstimate_of_nonnegativeSquareInnerSlabSchwartzCore
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSchwartzSquareCoreDensity
 
 -- BEGIN ScratchKakeyaPositiveEnvelopeFatou
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators ENNReal
@@ -9524,21 +9507,19 @@ theorem scratch_eLpNorm_rawEnvelope_le_of_uniform_finiteEnvelope
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveEnvelopeFatou
 
 -- BEGIN ScratchKakeyaCanonicalDyadicClosure
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalDyadicClosure
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators ENNReal Topology EuclideanSpace
 
-open Auto.Spherical.SurfaceCore
-open ScratchKakeyaBandlimitedCore
-open ScratchInnerSlabTensorDensityIntegration
+open Auto.Spherical.SurfaceMeasureDecay
 
 noncomputable section
 
@@ -9828,39 +9809,35 @@ theorem hasLightRayMaximalEstimate_of_canonicalDyadicNarrowBroadFiniteEnvelope
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalDyadicClosure
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalDyadicClosure
 
 -- BEGIN ScratchKakeyaPositiveSquareCanonicalDyadicClosure
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaPositiveSquareCanonicalDyadicClosure
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalDyadicClosure
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal Topology EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev positiveSquareCanonicalDyadicE2 := Euclidean 2
 
 /-- The sound canonical-dyadic model.  Its finite envelope is evaluated on
 signed Schwartz tensors, but the raw positive canonical kernel is dominated
 only for nonnegative norm-square tensors. -/
 structure CanonicalDyadicFiniteEnvelopePositiveSquareModel where
-  T : Real → Nat → (WaveSpaceTime → Complex) → E2 → E2 → Complex
-  E : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → ENNReal
+  T : Real → Nat → (WaveSpaceTime → Complex) → positiveSquareCanonicalDyadicE2 → positiveSquareCanonicalDyadicE2 → Complex
+  E : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareCanonicalDyadicE2 → ENNReal
   hEmeas : ∀ delta N f M, InnerSlabSchwartzTensorCore f →
     Measurable (E delta N f M)
   hLimitMeas : ∀ delta N f, InnerSlabSchwartzTensorCore f →
     Measurable (canonicalDyadicFiniteEnvelopeLimit E delta N f)
   hidentify : ∀ delta N (h : WaveSpaceTime → Complex)
-    (omega y : E2),
+    (omega y : positiveSquareCanonicalDyadicE2),
     T delta N
         (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
       (lightRayAverage delta N omega y h : Complex)
@@ -9880,7 +9857,7 @@ structure CanonicalDyadicFiniteEnvelopePositiveSquareModel where
 
 /-- The only finite analytic premise after the density and positive-kernel
 logic have been separated. -/
-def HasCanonicalDyadicFiniteEnvelopeL2Estimate
+def HasCanonicalDyadicPositiveSquareFiniteEnvelopeL2Estimate
     (model : CanonicalDyadicFiniteEnvelopePositiveSquareModel) : Prop :=
   ∀ N : Nat, 3 < N → ∃ C : Real, 0 < C ∧
     ∀ delta : Real, 0 < delta → delta < 1 / 2 →
@@ -9894,7 +9871,7 @@ def HasCanonicalDyadicFiniteEnvelopeL2Estimate
 limit, while retaining the signed tensor input class. -/
 theorem canonicalDyadicFiniteEnvelopeLimit_hasStrongBound
     (model : CanonicalDyadicFiniteEnvelopePositiveSquareModel)
-    (hfinite : HasCanonicalDyadicFiniteEnvelopeL2Estimate model) :
+    (hfinite : HasCanonicalDyadicPositiveSquareFiniteEnvelopeL2Estimate model) :
     ∀ N : Nat, 3 < N → ∃ C : Real, 0 < C ∧
       ∀ delta : Real, 0 < delta → delta < 1 / 2 →
       ∀ f : WaveSpaceTime → Complex, InnerSlabSchwartzTensorCore f →
@@ -9914,9 +9891,9 @@ theorem canonicalDyadicFiniteEnvelopeLimit_hasStrongBound
 The formerly unsound condition is repaired here: `hcanonicalDom` is used only
 for the positive square approximants generated by the L⁴ square-root density
 theorem. -/
-theorem hasLightRayMaximalEstimate_of_canonicalDyadicFiniteEnvelope
+theorem hasLightRayMaximalEstimate_of_canonicalDyadicPositiveSquareFiniteEnvelope
     (model : CanonicalDyadicFiniteEnvelopePositiveSquareModel)
-    (hfinite : HasCanonicalDyadicFiniteEnvelopeL2Estimate model) :
+    (hfinite : HasCanonicalDyadicPositiveSquareFiniteEnvelopeL2Estimate model) :
     HasLightRayMaximalEstimate := by
   exact hasLightRayMaximalEstimate_of_nonnegativeSquareInnerSlabSchwartzCore
     model.T (canonicalDyadicFiniteEnvelopeLimit model.E)
@@ -9927,7 +9904,7 @@ theorem hasLightRayMaximalEstimate_of_canonicalDyadicFiniteEnvelope
 /-- A narrow/broad statement of the finite analytic premise.  It is the same
 coefficient arithmetic as the earlier canonical closure, but on the actual
 Schwartz square-core interface. -/
-def HasCanonicalDyadicNarrowBroadFiniteEnvelopeL2Estimate
+def HasCanonicalDyadicPositiveSquareNarrowBroadFiniteEnvelopeL2Estimate
     (model : CanonicalDyadicFiniteEnvelopePositiveSquareModel) : Prop :=
   ∀ N : Nat, 3 < N → ∃ c r A B : Real,
     0 < c ∧ 0 < r ∧ 0 < A ∧ 0 ≤ B ∧
@@ -9946,10 +9923,10 @@ def HasCanonicalDyadicNarrowBroadFiniteEnvelopeL2Estimate
 
 /-- Geometric canonical coefficients convert the narrow/broad estimate into
 the uniform finite-envelope estimate. -/
-theorem hasCanonicalDyadicFiniteEnvelopeL2Estimate_of_narrowBroad
+theorem hasCanonicalDyadicPositiveSquareFiniteEnvelopeL2Estimate_of_narrowBroad
     (model : CanonicalDyadicFiniteEnvelopePositiveSquareModel)
-    (hfinite : HasCanonicalDyadicNarrowBroadFiniteEnvelopeL2Estimate model) :
-    HasCanonicalDyadicFiniteEnvelopeL2Estimate model := by
+    (hfinite : HasCanonicalDyadicPositiveSquareNarrowBroadFiniteEnvelopeL2Estimate model) :
+    HasCanonicalDyadicPositiveSquareFiniteEnvelopeL2Estimate model := by
   intro N hN
   obtain ⟨c, r, A, B, hc, hr, hA, hB, hscales⟩ := hfinite N hN
   let q : Real := ((2 : Real)⁻¹) ^ (N - 2)
@@ -9997,27 +9974,26 @@ theorem hasCanonicalDyadicFiniteEnvelopeL2Estimate_of_narrowBroad
 
 /-- Source-facing corrected closure: only the finite narrow radial-band /
 broad-tail estimate remains analytic. -/
-theorem hasLightRayMaximalEstimate_of_canonicalDyadicNarrowBroadFiniteEnvelope
+theorem hasLightRayMaximalEstimate_of_canonicalDyadicPositiveSquareNarrowBroadFiniteEnvelope
     (model : CanonicalDyadicFiniteEnvelopePositiveSquareModel)
-    (hfinite : HasCanonicalDyadicNarrowBroadFiniteEnvelopeL2Estimate model) :
+    (hfinite : HasCanonicalDyadicPositiveSquareNarrowBroadFiniteEnvelopeL2Estimate model) :
     HasLightRayMaximalEstimate := by
-  exact hasLightRayMaximalEstimate_of_canonicalDyadicFiniteEnvelope model
-    (hasCanonicalDyadicFiniteEnvelopeL2Estimate_of_narrowBroad model hfinite)
+  exact hasLightRayMaximalEstimate_of_canonicalDyadicPositiveSquareFiniteEnvelope model
+    (hasCanonicalDyadicPositiveSquareFiniteEnvelopeL2Estimate_of_narrowBroad model hfinite)
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaPositiveSquareCanonicalDyadicClosure
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveSquareCanonicalDyadicClosure
 
 -- BEGIN ScratchKakeyaPositiveLinearBridge
 section
 
-namespace Auto.Spherical.MSS.KakeyaPositiveLinearBridge
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory
-open Auto.Spherical.SurfaceCore
-open ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators
 
 noncomputable section
@@ -10084,27 +10060,22 @@ theorem canonicalTubePositiveAverage_le_norm_linearAverage
 
 end
 
-end Auto.Spherical.MSS.KakeyaPositiveLinearBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveLinearBridge
 
 -- BEGIN ScratchKakeyaPositiveSquareFatouWiring
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaPositiveSquareFatouWiring
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaPositiveLinearBridge
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareCanonicalDyadicClosure
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalDyadicClosure
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal Topology EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev positiveSquareFatouE2 := Euclidean 2
 
 /-- Finite canonical envelope sums are measurable as soon as their one-scale
 pieces are.  This is the measurability input supplied by the continuous
@@ -10121,7 +10092,7 @@ theorem measurable_finiteCanonicalEnvelope_of_measurable_pieces
 /-- No separate measurable-selector argument is needed for the Fatou limit:
 the countable `liminf` of the measurable finite envelopes is measurable. -/
 theorem measurable_canonicalDyadicFiniteEnvelopeLimit_of_measurable_finite
-    (E : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → ENNReal)
+    (E : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareFatouE2 → ENNReal)
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex)
     (hE : ∀ M, Measurable (E delta N f M)) :
     Measurable (canonicalDyadicFiniteEnvelopeLimit E delta N f) := by
@@ -10134,7 +10105,7 @@ convolution identity (with the slab restriction removed using the common
 inner-time support). -/
 theorem canonicalPositiveTubeTerm_le_norm_reflectedSquareField
     {rho : Real} (hrho : 0 < rho)
-    (F : WaveSpaceTime → Real) (omega y : E2)
+    (F : WaveSpaceTime → Real) (omega y : positiveSquareFatouE2)
     (hInt : Integrable (fun z : WaveSpaceTime =>
       scratch_canonicalBandlimitedTubePhysicalCore rho hrho
         (z.1 + z.2 • omega - y) * (F z : Complex))
@@ -10146,12 +10117,12 @@ theorem canonicalPositiveTubeTerm_le_norm_reflectedSquareField
           (z.1 + z.2 • omega - y) * (F z : Complex)
           ∂(volume.restrict (Set.univ ×ˢ lightRayTimeInterval))) = L) :
     (∫ z : WaveSpaceTime,
-      scratch_smoothTubeCore (fun u => (ScratchKakeyaBandlimitedCore.canonicalPositiveCore u).re)
+      scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
         rho omega y z * F z
         ∂(volume.restrict (Set.univ ×ˢ lightRayTimeInterval))) ≤ ‖L‖ := by
   calc
     (∫ z : WaveSpaceTime,
-      scratch_smoothTubeCore (fun u => (ScratchKakeyaBandlimitedCore.canonicalPositiveCore u).re)
+      scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
         rho omega y z * F z
         ∂(volume.restrict (Set.univ ×ˢ lightRayTimeInterval))) ≤
         ‖∫ z : WaveSpaceTime,
@@ -10167,9 +10138,9 @@ theorem exists_canonicalDyadic_narrow_broad_width_split
     {delta r : Real} (hdelta : 0 < delta) (hr : 0 < r) :
     ∃ k0 : Nat,
       (∀ j : Nat, j < k0 →
-        delta / ScratchKakeyaBandlimitedCore.canonicalBandlimitedDyadicScale r j < 1 / 2) ∧
+        delta / canonicalBandlimitedDyadicScale r j < 1 / 2) ∧
       (∀ j : Nat, k0 ≤ j →
-        1 / 2 ≤ delta / ScratchKakeyaBandlimitedCore.canonicalBandlimitedDyadicScale r j) := by
+        1 / 2 ≤ delta / canonicalBandlimitedDyadicScale r j) := by
   obtain ⟨k0, hk0, hnarrow⟩ :=
     scratch_exists_canonicalBandlimitedDyadic_broadStart hdelta hr
   refine ⟨k0, hnarrow, ?_⟩
@@ -10191,14 +10162,14 @@ positive-kernel hypotheses are asked only for nonnegative square cores. -/
 noncomputable def mkCanonicalDyadicFiniteEnvelopePositiveSquareModel_of_positiveFatou
     {Z D : Type*} [MeasurableSpace Z]
     (mu : Measure Z)
-    (T : Real → Nat → (WaveSpaceTime → Complex) → E2 → E2 → Complex)
-    (E : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → ENNReal)
+    (T : Real → Nat → (WaveSpaceTime → Complex) → positiveSquareFatouE2 → positiveSquareFatouE2 → Complex)
+    (E : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareFatouE2 → ENNReal)
     (hEmeas : ∀ delta N f M, InnerSlabSchwartzTensorCore f →
       Measurable (E delta N f M))
     (hLimitMeas : ∀ delta N f, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalDyadicFiniteEnvelopeLimit E delta N f))
     (hidentify : ∀ delta N (h : WaveSpaceTime → Complex)
-      (omega y : E2),
+      (omega y : positiveSquareFatouE2),
       T delta N
           (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
         (lightRayAverage delta N omega y h : Complex))
@@ -10211,16 +10182,16 @@ noncomputable def mkCanonicalDyadicFiniteEnvelopePositiveSquareModel_of_positive
       ∀ omega y,
         Tendsto (fun n => T delta N (core n) omega y) atTop
           (nhds (T delta N F omega y)))
-    (K : Real → Nat → (WaveSpaceTime → Complex) → Nat → D → E2 → Z → ENNReal)
+    (K : Real → Nat → (WaveSpaceTime → Complex) → Nat → D → positiveSquareFatouE2 → Z → ENNReal)
     (G : (WaveSpaceTime → Complex) → Z → ENNReal)
-    (directional : Real → Nat → (WaveSpaceTime → Complex) → D → E2 → ENNReal)
-    (piece : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → ENNReal)
+    (directional : Real → Nat → (WaveSpaceTime → Complex) → D → positiveSquareFatouE2 → ENNReal)
+    (piece : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareFatouE2 → ENNReal)
     (hKmeas : ∀ delta N f,
       NonnegativeSquareInnerSlabSchwartzTensorCore f →
       ∀ j d y, AEMeasurable (fun z => K delta N f j d y z * G f z) mu)
     (hraw : ∀ delta N f,
       NonnegativeSquareInnerSlabSchwartzTensorCore f → ∀ y,
-      (⨆ omega : E2, ENNReal.ofReal ‖T delta N f omega y‖) ≤
+      (⨆ omega : positiveSquareFatouE2, ENNReal.ofReal ‖T delta N f omega y‖) ≤
         ⨆ d : D, directional delta N f d y)
     (hdir : ∀ delta N f,
       NonnegativeSquareInnerSlabSchwartzTensorCore f → ∀ d y,
@@ -10242,8 +10213,8 @@ noncomputable def mkCanonicalDyadicFiniteEnvelopePositiveSquareModel_of_positive
     intro delta N f hf omega y
     calc
       ENNReal.ofReal ‖T delta N f omega y‖ ≤
-          ⨆ omega : E2, ENNReal.ofReal ‖T delta N f omega y‖ :=
-        le_iSup (fun omega : E2 => ENNReal.ofReal ‖T delta N f omega y‖) omega
+          ⨆ omega : positiveSquareFatouE2, ENNReal.ofReal ‖T delta N f omega y‖ :=
+        le_iSup (fun omega : positiveSquareFatouE2 => ENNReal.ofReal ‖T delta N f omega y‖) omega
       _ ≤ ⨆ d : D, directional delta N f d y := hraw delta N f hf y
       _ ≤ atTop.liminf (fun M => ∑ j ∈ Finset.range M,
           piece delta N f j y) :=
@@ -10262,39 +10233,39 @@ norm envelope delivered by the Re/reflection bridge; on a general signed
 Schwartz tensor it is the finite FIO envelope to which the analytic estimate
 is applied. -/
 noncomputable def canonicalReflectedScaleEnvelope
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareFatouE2 → positiveSquareFatouE2 → Complex)
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex) (j : Nat) :
-    E2 → ENNReal :=
-  fun y => ⨆ omega : E2, ENNReal.ofReal ‖S delta N f j omega y‖
+    positiveSquareFatouE2 → ENNReal :=
+  fun y => ⨆ omega : positiveSquareFatouE2, ENNReal.ofReal ‖S delta N f j omega y‖
 
 /-- The actual finite canonical envelope used in the corrected model: a
 finite, coefficient-weighted sum of reflected signed norm envelopes. -/
 noncomputable def canonicalReflectedFiniteEnvelope
     (c r : Real)
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareFatouE2 → positiveSquareFatouE2 → Complex)
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex) (M : Nat) :
-    E2 → ENNReal :=
+    positiveSquareFatouE2 → ENNReal :=
   fun y => ∑ j ∈ Finset.range M,
-    ENNReal.ofReal (ScratchKakeyaBandlimitedCore.canonicalBandlimitedDyadicCoefficient N c r j) *
+    ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j) *
       canonicalReflectedScaleEnvelope S delta N f j y
 
 /-- The non-analytic wiring data for the corrected model.  The three
 positive fields `hraw`, `hdir`, and `hpiece` are exactly what the canonical
 kernel tsum, Re-to-norm, and reflected convolution bridges establish. -/
 structure CanonicalReflectedScalePositiveWiring (c r : Real) where
-  T : Real → Nat → (WaveSpaceTime → Complex) → E2 → E2 → Complex
-  S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex
+  T : Real → Nat → (WaveSpaceTime → Complex) → positiveSquareFatouE2 → positiveSquareFatouE2 → Complex
+  S : Real → Nat → (WaveSpaceTime → Complex) → Nat → positiveSquareFatouE2 → positiveSquareFatouE2 → Complex
   Z : Type*
   D : Type*
   instMeasurableZ : MeasurableSpace Z
   mu : Measure Z
-  K : Real → Nat → (WaveSpaceTime → Complex) → Nat → D → E2 → Z → ENNReal
+  K : Real → Nat → (WaveSpaceTime → Complex) → Nat → D → positiveSquareFatouE2 → Z → ENNReal
   G : (WaveSpaceTime → Complex) → Z → ENNReal
-  directional : Real → Nat → (WaveSpaceTime → Complex) → D → E2 → ENNReal
+  directional : Real → Nat → (WaveSpaceTime → Complex) → D → positiveSquareFatouE2 → ENNReal
   hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
     Measurable (canonicalReflectedScaleEnvelope S delta N f j)
   hidentify : ∀ delta N (h : WaveSpaceTime → Complex)
-    (omega y : E2),
+    (omega y : positiveSquareFatouE2),
     T delta N
         (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
       (lightRayAverage delta N omega y h : Complex)
@@ -10312,7 +10283,7 @@ structure CanonicalReflectedScalePositiveWiring (c r : Real) where
     ∀ j d y, AEMeasurable (fun z => K delta N f j d y z * G f z) mu
   hraw : ∀ delta N f,
     NonnegativeSquareInnerSlabSchwartzTensorCore f → ∀ y,
-    (⨆ omega : E2, ENNReal.ofReal ‖T delta N f omega y‖) ≤
+    (⨆ omega : positiveSquareFatouE2, ENNReal.ofReal ‖T delta N f omega y‖) ≤
       ⨆ d : D, directional delta N f d y
   hdir : ∀ delta N f,
     NonnegativeSquareInnerSlabSchwartzTensorCore f → ∀ d y,
@@ -10321,7 +10292,7 @@ structure CanonicalReflectedScalePositiveWiring (c r : Real) where
   hpiece : ∀ delta N f,
     NonnegativeSquareInnerSlabSchwartzTensorCore f → ∀ j d y,
     (∫⁻ z, K delta N f j d y z * G f z ∂mu) ≤
-      ENNReal.ofReal (ScratchKakeyaBandlimitedCore.canonicalBandlimitedDyadicCoefficient
+      ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient
         N c r j) * canonicalReflectedScaleEnvelope S delta N f j y
 
 attribute [instance] CanonicalReflectedScalePositiveWiring.instMeasurableZ
@@ -10350,7 +10321,7 @@ noncomputable def CanonicalReflectedScalePositiveWiring.toModel
       exact measurable_const.mul (w.hScaleMeas delta N f j hf))
     w.hidentify w.hTgeom w.K w.G w.directional
     (fun delta N f j y =>
-      ENNReal.ofReal (ScratchKakeyaBandlimitedCore.canonicalBandlimitedDyadicCoefficient
+      ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient
         N c r j) * canonicalReflectedScaleEnvelope w.S delta N f j y)
     w.hKmeas w.hraw w.hdir w.hpiece
     (by
@@ -10362,55 +10333,51 @@ minimal literal endpoint: its only remaining premise is the finite signed
 narrow/broad `L²` theorem. -/
 theorem hasLightRayMaximalEstimate_of_canonicalReflectedScalePositiveWiring
     {c r : Real} (w : CanonicalReflectedScalePositiveWiring c r)
-    (hfinite : HasCanonicalDyadicNarrowBroadFiniteEnvelopeL2Estimate w.toModel) :
+    (hfinite : HasCanonicalDyadicPositiveSquareNarrowBroadFiniteEnvelopeL2Estimate w.toModel) :
     HasLightRayMaximalEstimate :=
-  hasLightRayMaximalEstimate_of_canonicalDyadicNarrowBroadFiniteEnvelope
+  hasLightRayMaximalEstimate_of_canonicalDyadicPositiveSquareNarrowBroadFiniteEnvelope
     w.toModel hfinite
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaPositiveSquareFatouWiring
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPositiveSquareFatouWiring
 
 -- BEGIN ScratchKakeyaCanonicalSquareTubeBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev canonicalSquareTubeE2 := Euclidean 2
 
 /-- The canonical physical-width tube multiplier is compact; this is the
 only compactness needed for arbitrary-Schwartz square-root tensors. -/
 theorem hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier
     {rho : Real} (hrho : 0 < rho) :
     HasCompactSupport
-      (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex) := by
+      (scratch_canonicalBandlimitedTubeMultiplier rho hrho : canonicalSquareTubeE2 → Complex) := by
   apply HasCompactSupport.of_support_subset_isCompact
-    (isCompact_closedBall (0 : E2) (4 / rho))
+    (isCompact_closedBall (0 : canonicalSquareTubeE2) (4 / rho))
   exact support_scratch_canonicalBandlimitedTubeMultiplier_subset hrho
 
 /-- The exact one-packet canonical convolution bridge, retaining the
 mandatory reflected multiplier. -/
 theorem integral_canonicalTube_translated_tensor_eq_smoothTubeBand_reflected
     {rho : Real} (hrho : 0 < rho)
-    (q : SchwartzMap E2 Complex) (a : SchwartzMap Real Complex)
-    (omega y : E2) :
-    (∫ t : Real, a t * ∫ x : E2,
+    (q : SchwartzMap canonicalSquareTubeE2 Complex) (a : SchwartzMap Real Complex)
+    (omega y : canonicalSquareTubeE2) :
+    (∫ t : Real, a t * ∫ x : canonicalSquareTubeE2,
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : canonicalSquareTubeE2 → Complex)
           (x + t • omega - y) *
-        FourierTransform.fourierInv (q : E2 → Complex) x) =
+        FourierTransform.fourierInv (q : canonicalSquareTubeE2 → Complex) x) =
       scratch_smoothTubeBand
         (reflectedTubeProfile
           (scratch_canonicalBandlimitedTubeMultiplier rho hrho) q)
@@ -10426,12 +10393,12 @@ theorem integral_canonicalTube_translated_tensor_eq_smoothTubeBand_reflected
 Schwartz tensor. -/
 noncomputable def canonicalTubeSquareAverage
     {ι : Type*} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (q : ι → SchwartzMap E2 Complex)
+    (m : SchwartzMap canonicalSquareTubeE2 Complex)
+    (q : ι → SchwartzMap canonicalSquareTubeE2 Complex)
     (a : ι → SchwartzMap Real Complex)
-    (omega y : E2) : Complex :=
-  ∫ t : Real, ∫ x : E2,
-    FourierTransform.fourierInv (m : E2 → Complex) (x + t • omega - y) *
+    (omega y : canonicalSquareTubeE2) : Complex :=
+  ∫ t : Real, ∫ x : canonicalSquareTubeE2,
+    FourierTransform.fourierInv (m : canonicalSquareTubeE2 → Complex) (x + t • omega - y) *
       nonnegativeSquareInnerSlabTensor q a (x, t)
 
 /-- Expanding the physical square and applying the reflected one-packet
@@ -10439,26 +10406,26 @@ identity gives precisely the finite signed tube field used by the angular
 and radial machinery. -/
 theorem canonicalTubeSquareAverage_eq_reflectedSchwartzSquareTubeBand
     {ι : Type} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (hm : HasCompactSupport (m : E2 → Complex))
-    (q : ι → SchwartzMap E2 Complex)
+    (m : SchwartzMap canonicalSquareTubeE2 Complex)
+    (hm : HasCompactSupport (m : canonicalSquareTubeE2 → Complex))
+    (q : ι → SchwartzMap canonicalSquareTubeE2 Complex)
     (a : ι → SchwartzMap Real Complex)
-    (omega y : E2)
-    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : E2 =>
+    (omega y : canonicalSquareTubeE2)
+    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : canonicalSquareTubeE2 =>
       timeCrossProduct (a ij.1) (a ij.2) t *
-        (((FourierTransform.fourierInv m : SchwartzMap E2 Complex) : E2 → Complex)
+        (((FourierTransform.fourierInv m : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex)
           (x + t • omega - y) *
           ((FourierTransform.fourierInv
-            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-              SchwartzMap E2 Complex) : E2 → Complex) x)) volume)
+            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalSquareTubeE2 Complex) :
+              SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x)) volume)
     (houter : ∀ ij : ι × ι, Integrable (fun t : Real =>
-      ∫ x : E2,
+      ∫ x : canonicalSquareTubeE2,
         timeCrossProduct (a ij.1) (a ij.2) t *
-          (((FourierTransform.fourierInv m : SchwartzMap E2 Complex) : E2 → Complex)
+          (((FourierTransform.fourierInv m : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex)
             (x + t • omega - y) *
             ((FourierTransform.fourierInv
-              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-                SchwartzMap E2 Complex) : E2 → Complex) x)) volume) :
+              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalSquareTubeE2 Complex) :
+                SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x)) volume) :
     canonicalTubeSquareAverage m q a omega y =
       reflectedSchwartzSquareTubeBand m hm q a omega y := by
   classical
@@ -10466,39 +10433,39 @@ theorem canonicalTubeSquareAverage_eq_reflectedSchwartzSquareTubeBand
   rw [nonnegativeSquareInnerSlabTensor_eq_reassembled]
   unfold reassembledSquareInnerSlabTensor scratch_innerSlabCompactFrequencyTensor
   rw [reflectedSchwartzSquareTubeBand_apply]
-  let K : E2 → Complex :=
-    ((FourierTransform.fourierInv m : SchwartzMap E2 Complex) : E2 → Complex)
-  let Q : ι × ι → SchwartzMap E2 Complex :=
+  let K : canonicalSquareTubeE2 → Complex :=
+    ((FourierTransform.fourierInv m : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex)
+  let Q : ι × ι → SchwartzMap canonicalSquareTubeE2 Complex :=
     fun ij => crossFrequencyMultiplier (q ij.1) (q ij.2)
   let A : ι × ι → SchwartzMap Real Complex :=
     fun ij => timeCrossProduct (a ij.1) (a ij.2)
-  have hinner' : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : E2 =>
+  have hinner' : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : canonicalSquareTubeE2 =>
       A ij t * (K (x + t • omega - y) *
-        ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x)) volume := by
+        ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x)) volume := by
     intro t ij
     simpa only [K, Q, A] using hinner t ij
   have houter' : ∀ ij : ι × ι, Integrable (fun t : Real =>
-      ∫ x : E2, A ij t * (K (x + t • omega - y) *
-        ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x)) volume := by
+      ∫ x : canonicalSquareTubeE2, A ij t * (K (x + t • omega - y) *
+        ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x)) volume := by
     intro ij
     simpa only [K, Q, A] using houter ij
   have hsum :
-      (∫ t : Real, ∫ x : E2,
+      (∫ t : Real, ∫ x : canonicalSquareTubeE2,
         K (x + t • omega - y) *
           (∑ ij : ι × ι,
-            ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x * A ij t)) =
+            ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x * A ij t)) =
         ∑ ij : ι × ι, ∫ t : Real,
-          A ij t * ∫ x : E2,
+          A ij t * ∫ x : canonicalSquareTubeE2,
             K (x + t • omega - y) *
-              ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x := by
+              ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x := by
     calc
-      (∫ t : Real, ∫ x : E2,
+      (∫ t : Real, ∫ x : canonicalSquareTubeE2,
         K (x + t • omega - y) *
           (∑ ij : ι × ι,
-            ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x * A ij t)) =
-          ∫ t : Real, ∫ x : E2, ∑ ij : ι × ι,
+            ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x * A ij t)) =
+          ∫ t : Real, ∫ x : canonicalSquareTubeE2, ∑ ij : ι × ι,
             A ij t * (K (x + t • omega - y) *
-              ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x) := by
+              ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x) := by
             apply integral_congr_ae
             filter_upwards with t
             apply integral_congr_ae
@@ -10507,20 +10474,20 @@ theorem canonicalTubeSquareAverage_eq_reflectedSchwartzSquareTubeBand
             apply Finset.sum_congr rfl
             intro ij hij
             ring
-      _ = ∫ t : Real, ∑ ij : ι × ι, ∫ x : E2,
+      _ = ∫ t : Real, ∑ ij : ι × ι, ∫ x : canonicalSquareTubeE2,
             A ij t * (K (x + t • omega - y) *
-              ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x) := by
+              ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x) := by
             apply integral_congr_ae
             filter_upwards with t
             rw [integral_finset_sum Finset.univ (fun i _ => hinner' t i)]
-      _ = ∑ ij : ι × ι, ∫ t : Real, ∫ x : E2,
+      _ = ∑ ij : ι × ι, ∫ t : Real, ∫ x : canonicalSquareTubeE2,
             A ij t * (K (x + t • omega - y) *
-              ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x) := by
+              ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x) := by
             rw [integral_finset_sum Finset.univ (fun i _ => houter' i)]
       _ = ∑ ij : ι × ι, ∫ t : Real,
-          A ij t * ∫ x : E2,
+          A ij t * ∫ x : canonicalSquareTubeE2,
             K (x + t • omega - y) *
-              (FourierTransform.fourierInv (Q ij) : E2 → Complex) x := by
+              (FourierTransform.fourierInv (Q ij) : canonicalSquareTubeE2 → Complex) x := by
             apply Finset.sum_congr rfl
             intro ij hij
             apply integral_congr_ae
@@ -10528,9 +10495,9 @@ theorem canonicalTubeSquareAverage_eq_reflectedSchwartzSquareTubeBand
             rw [integral_const_mul]
   have hterms :
       (∑ ij : ι × ι, ∫ t : Real,
-        A ij t * ∫ x : E2,
+        A ij t * ∫ x : canonicalSquareTubeE2,
           K (x + t • omega - y) *
-            ((FourierTransform.fourierInv (Q ij) : SchwartzMap E2 Complex) : E2 → Complex) x) =
+            ((FourierTransform.fourierInv (Q ij) : SchwartzMap canonicalSquareTubeE2 Complex) : canonicalSquareTubeE2 → Complex) x) =
         reflectedSchwartzSquareTubeBand m hm q a omega y := by
     rw [reflectedSchwartzSquareTubeBand_apply]
     apply Finset.sum_congr rfl
@@ -10543,31 +10510,22 @@ theorem canonicalTubeSquareAverage_eq_reflectedSchwartzSquareTubeBand
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalSquareTubeBridge
 
 -- BEGIN ScratchKakeyaCanonicalReflectedSquareUnitWiring
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareFatouWiring
-open Auto.Spherical.MSS.KakeyaPositiveLinearBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalDyadicClosure
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev canonicalReflectedSquareUnitE2 := Euclidean 2
 
 /-- A convenient total extension of the raw positive tube average to a
 complex-valued input.  On the positive square cores used below its norm is
@@ -10575,16 +10533,16 @@ the intended positive integral; on the density target it is definitionally
 the literal light-ray average after the slab restriction. -/
 noncomputable def positiveNormLightRayLinear
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex)
-    (omega y : E2) : Complex :=
+    (omega y : canonicalReflectedSquareUnitE2) : Complex :=
   (lightRayAverage delta N omega y f : Complex)
 
 /-- The literal direction set for every finite canonical scale envelope.
 Using the subtype is important: neither the physical maximal operator nor
 the finite signed estimate is meant to range over all of `E²`. -/
 noncomputable def canonicalReflectedUnitScaleEnvelope
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex)
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex) (j : Nat) :
-    E2 → ENNReal :=
+    canonicalReflectedSquareUnitE2 → ENNReal :=
   fun y => ⨆ omega : aux_lightRayDirection,
     ENNReal.ofReal ‖S delta N f j omega.1 y‖
 
@@ -10592,9 +10550,9 @@ noncomputable def canonicalReflectedUnitScaleEnvelope
 unit-direction supremum at every dyadic scale. -/
 noncomputable def canonicalReflectedUnitFiniteEnvelope
     (c r : Real)
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex)
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex) (M : Nat) :
-    E2 → ENNReal :=
+    canonicalReflectedSquareUnitE2 → ENNReal :=
   fun y => ∑ j ∈ Finset.range M,
     ENNReal.ofReal
       (canonicalBandlimitedDyadicCoefficient N c r j) *
@@ -10603,8 +10561,8 @@ noncomputable def canonicalReflectedUnitFiniteEnvelope
 /-- Fatou limit of the literal unit-direction finite envelopes. -/
 noncomputable def canonicalReflectedUnitFiniteEnvelopeLimit
     (c r : Real)
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
-    (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex) : E2 → ENNReal :=
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex)
+    (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex) : canonicalReflectedSquareUnitE2 → ENNReal :=
   fun y => atTop.liminf
     (fun M => canonicalReflectedUnitFiniteEnvelope c r S delta N f M y)
 
@@ -10612,7 +10570,7 @@ noncomputable def canonicalReflectedUnitFiniteEnvelopeLimit
 direction argument is the literal unit-direction subtype. -/
 noncomputable def canonicalReflectedSquareDyadicKernel
     (c r delta : Real) (N j : Nat)
-    (omega : aux_lightRayDirection) (y : E2) (z : WaveSpaceTime) : ENNReal :=
+    (omega : aux_lightRayDirection) (y : canonicalReflectedSquareUnitE2) (z : WaveSpaceTime) : ENNReal :=
   ENNReal.ofReal
     (canonicalBandlimitedDyadicCoefficient N c r j *
       scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
@@ -10628,7 +10586,7 @@ only observation is that the restriction is identically one on the very
 time interval over which `lightRayAverage` integrates. -/
 theorem positiveNormLightRayLinear_identify
     (delta : Real) (N : Nat) (h : WaveSpaceTime → Complex)
-    (omega y : E2) :
+    (omega y : canonicalReflectedSquareUnitE2) :
     positiveNormLightRayLinear delta N
         (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
       (lightRayAverage delta N omega y h : Complex) := by
@@ -10650,8 +10608,8 @@ theorem scratch_lightRayMaximal_ofReal_le_liminf_of_signedCore_unitDom
     {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N)
     (g : WaveSpaceTime → Complex) (hg : MemLp g 2 volume)
     (F : WaveSpaceTime → Complex)
-    (T : (WaveSpaceTime → Complex) → E2 → E2 → Complex)
-    (P : (WaveSpaceTime → Complex) → E2 → ENNReal)
+    (T : (WaveSpaceTime → Complex) → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex)
+    (P : (WaveSpaceTime → Complex) → canonicalReflectedSquareUnitE2 → ENNReal)
     (core : Nat → WaveSpaceTime → Complex)
     (hidentify : ∀ omega y,
       T F omega y = (lightRayAverage delta N omega y g : Complex))
@@ -10659,7 +10617,7 @@ theorem scratch_lightRayMaximal_ofReal_le_liminf_of_signedCore_unitDom
       Tendsto (fun n => T (core n) omega y) atTop (nhds (T F omega y)))
     (hdom : ∀ n omega, omega ∈ unitLightRayDirections → ∀ y,
       ENNReal.ofReal ‖T (core n) omega y‖ ≤ P (core n) y)
-    (y : E2) :
+    (y : canonicalReflectedSquareUnitE2) :
     ENNReal.ofReal (lightRayMaximal delta N g y) ≤
       atTop.liminf (fun n => P (core n) y) := by
   obtain ⟨omega, homega, hmax⟩ :=
@@ -10692,9 +10650,9 @@ theorem scratchLightRayMeasure_eq_volume_restrict_slab :
       (volume : Measure WaveSpaceTime).restrict
         (Set.univ ×ˢ lightRayTimeInterval) := by
   unfold scratchLightRayMeasure
-  change (volume : Measure E2).prod
+  change (volume : Measure canonicalReflectedSquareUnitE2).prod
       ((volume : Measure Real).restrict lightRayTimeInterval) =
-    ((volume : Measure E2).prod (volume : Measure Real)).restrict
+    ((volume : Measure canonicalReflectedSquareUnitE2).prod (volume : Measure Real)).restrict
       (Set.univ ×ˢ lightRayTimeInterval)
   rw [← Measure.prod_restrict]
   simp
@@ -10715,11 +10673,11 @@ slab.  This is the exact support fact needed to replace its restricted
 canonical average by the full Schwartz/Fourier tube field. -/
 theorem scratch_innerSlabCompactFrequencyTensor_eq_zero_of_time_not_mem
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     {r : Real} (hr : r < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r)
-    (x : E2) (t : Real) (ht : t ∉ lightRayTimeInterval) :
+    (x : canonicalReflectedSquareUnitE2) (t : Real) (ht : t ∉ lightRayTimeInterval) :
     scratch_innerSlabCompactFrequencyTensor q a (x, t) = 0 := by
   have ha_zero : ∀ i, (a i : Real → Complex) t = 0 := by
     intro i
@@ -10735,11 +10693,11 @@ theorem scratch_innerSlabCompactFrequencyTensor_eq_zero_of_time_not_mem
 /-- The nonnegative norm-square core has the same strict slab support. -/
 theorem nonnegativeSquareInnerSlabTensor_eq_zero_of_time_not_mem
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     {r : Real} (hr : r < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r)
-    (x : E2) (t : Real) (ht : t ∉ lightRayTimeInterval) :
+    (x : canonicalReflectedSquareUnitE2) (t : Real) (ht : t ∉ lightRayTimeInterval) :
     nonnegativeSquareInnerSlabTensor q a (x, t) = 0 := by
   rw [nonnegativeSquareInnerSlabTensor_eq_ofReal_normSq]
   simp [scratch_innerSlabCompactFrequencyTensor_eq_zero_of_time_not_mem
@@ -10749,7 +10707,7 @@ theorem nonnegativeSquareInnerSlabTensor_eq_zero_of_time_not_mem
 every point, so its complex norm is its real part. -/
 theorem norm_nonnegativeSquareInnerSlabTensor_eq_re
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     (z : WaveSpaceTime) :
     ‖nonnegativeSquareInnerSlabTensor q a z‖ =
       (nonnegativeSquareInnerSlabTensor q a z).re := by
@@ -10763,31 +10721,31 @@ integral under the restricted measure and then uses the pointwise zero
 outside the slab. -/
 theorem canonicalTubeSquareAverage_restrict_eq_full
     {ι : Type*} [Fintype ι]
-    (m : SchwartzMap E2 Complex)
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (m : SchwartzMap canonicalReflectedSquareUnitE2 Complex)
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     {r : Real} (hr : r < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r)
-    (omega y : E2)
+    (omega y : canonicalReflectedSquareUnitE2)
     (hfull : Integrable (fun z : WaveSpaceTime =>
-      (FourierTransform.fourierInv m : E2 → Complex)
+      (FourierTransform.fourierInv m : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z)
       volume) :
     (∫ z : WaveSpaceTime,
-      (FourierTransform.fourierInv m : E2 → Complex)
+      (FourierTransform.fourierInv m : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z
         ∂scratchLightRayMeasure) =
       canonicalTubeSquareAverage m q a omega y := by
   let F : WaveSpaceTime → Complex := fun z =>
-    (FourierTransform.fourierInv m : E2 → Complex)
+    (FourierTransform.fourierInv m : canonicalReflectedSquareUnitE2 → Complex)
       (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z
   have hrestrict : Integrable F scratchLightRayMeasure :=
     hfull.mono_measure scratchLightRayMeasure_le_volume
-  let H : Real → Complex := fun t => ∫ x : E2, F (x, t)
+  let H : Real → Complex := fun t => ∫ x : canonicalReflectedSquareUnitE2, F (x, t)
   have hHzero : ∀ t : Real, t ∉ lightRayTimeInterval → H t = 0 := by
     intro t ht
     dsimp only [H]
-    rw [← integral_zero E2 Complex]
+    rw [← integral_zero canonicalReflectedSquareUnitE2 Complex]
     apply integral_congr_ae
     filter_upwards with x
     dsimp only [F]
@@ -10811,10 +10769,10 @@ theorem canonicalTubeSquareAverage_restrict_eq_full
   change (∫ z : WaveSpaceTime, F z ∂scratchLightRayMeasure) = _
   calc
     (∫ z : WaveSpaceTime, F z ∂scratchLightRayMeasure) =
-        ∫ x : E2, ∫ t : Real in lightRayTimeInterval, F (x, t) := by
+        ∫ x : canonicalReflectedSquareUnitE2, ∫ t : Real in lightRayTimeInterval, F (x, t) := by
       simpa only [scratchLightRayMeasure] using
         (integral_prod F hrestrict)
-    _ = ∫ t : Real in lightRayTimeInterval, ∫ x : E2, F (x, t) := by
+    _ = ∫ t : Real in lightRayTimeInterval, ∫ x : canonicalReflectedSquareUnitE2, F (x, t) := by
       simpa only using (integral_integral_swap hrestrict)
     _ = ∫ t : Real in lightRayTimeInterval, H t := by rfl
     _ = ∫ t : Real, H t := htime
@@ -10827,39 +10785,39 @@ kept explicit through `reflectedSchwartzSquareTubeBand`; no evenness of the
 canonical multiplier is used. -/
 theorem canonicalTubeSquareAverage_restrict_eq_reflectedSchwartzSquareTubeBand
     {ι : Type} [Fintype ι]
-    (m : SchwartzMap E2 Complex) (hm : HasCompactSupport (m : E2 → Complex))
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (m : SchwartzMap canonicalReflectedSquareUnitE2 Complex) (hm : HasCompactSupport (m : canonicalReflectedSquareUnitE2 → Complex))
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     {r : Real} (hr : r < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r)
-    (omega y : E2)
+    (omega y : canonicalReflectedSquareUnitE2)
     (hfull : Integrable (fun z : WaveSpaceTime =>
-      (FourierTransform.fourierInv m : E2 → Complex)
+      (FourierTransform.fourierInv m : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z)
       volume)
-    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : E2 =>
+    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : canonicalReflectedSquareUnitE2 =>
       timeCrossProduct (a ij.1) (a ij.2) t *
-        (((FourierTransform.fourierInv m : SchwartzMap E2 Complex) : E2 → Complex)
+        (((FourierTransform.fourierInv m : SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
           (x + t • omega - y) *
           ((FourierTransform.fourierInv
-            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-              SchwartzMap E2 Complex) : E2 → Complex) x)) volume)
+            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+              SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume)
     (houter : ∀ ij : ι × ι, Integrable (fun t : Real =>
-      ∫ x : E2,
+      ∫ x : canonicalReflectedSquareUnitE2,
         timeCrossProduct (a ij.1) (a ij.2) t *
-          (((FourierTransform.fourierInv m : SchwartzMap E2 Complex) : E2 → Complex)
+          (((FourierTransform.fourierInv m : SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
             (x + t • omega - y) *
             ((FourierTransform.fourierInv
-              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-                SchwartzMap E2 Complex) : E2 → Complex) x)) volume) :
+              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+                SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume) :
     (∫ z : WaveSpaceTime,
-      (FourierTransform.fourierInv m : E2 → Complex)
+      (FourierTransform.fourierInv m : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z
         ∂scratchLightRayMeasure) =
       reflectedSchwartzSquareTubeBand m hm q a omega y := by
   calc
     (∫ z : WaveSpaceTime,
-      (FourierTransform.fourierInv m : E2 → Complex)
+      (FourierTransform.fourierInv m : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z
         ∂scratchLightRayMeasure) =
         canonicalTubeSquareAverage m q a omega y :=
@@ -10875,35 +10833,35 @@ input before multiplying by the dyadic coefficient. -/
 theorem canonicalPositiveSquareScaleAverage_le_norm_reflected
     {ι : Type} [Fintype ι]
     {rho : Real} (hrho : 0 < rho)
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     {r : Real} (hr : r < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) r)
-    (omega y : E2)
+    (omega y : canonicalReflectedSquareUnitE2)
     (hfull : Integrable (fun z : WaveSpaceTime =>
       (FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z)
       volume)
-    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : E2 =>
+    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : canonicalReflectedSquareUnitE2 =>
       timeCrossProduct (a ij.1) (a ij.2) t *
         (((FourierTransform.fourierInv
           (scratch_canonicalBandlimitedTubeMultiplier rho hrho) :
-            SchwartzMap E2 Complex) : E2 → Complex)
+            SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
           (x + t • omega - y) *
           ((FourierTransform.fourierInv
-            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-              SchwartzMap E2 Complex) : E2 → Complex) x)) volume)
+            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+              SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume)
     (houter : ∀ ij : ι × ι, Integrable (fun t : Real =>
-      ∫ x : E2,
+      ∫ x : canonicalReflectedSquareUnitE2,
         timeCrossProduct (a ij.1) (a ij.2) t *
           (((FourierTransform.fourierInv
             (scratch_canonicalBandlimitedTubeMultiplier rho hrho) :
-              SchwartzMap E2 Complex) : E2 → Complex)
+              SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
             (x + t • omega - y) *
             ((FourierTransform.fourierInv
-              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-                SchwartzMap E2 Complex) : E2 → Complex) x)) volume) :
+              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+                SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume) :
     (∫ z : WaveSpaceTime,
       scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
         rho omega y z * (nonnegativeSquareInnerSlabTensor q a z).re
@@ -10974,41 +10932,41 @@ theorem lintegral_canonicalReflectedSquareDyadicKernel_mul_input_le
     {ι : Type} [Fintype ι]
     {c r delta : Real} (hc : 0 < c) (hr : 0 < r) (hdelta : 0 < delta)
     (N j : Nat)
-    (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+    (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
     {timeRadius : Real} (htimeRadius : timeRadius < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) timeRadius)
-    (omega : aux_lightRayDirection) (y : E2)
+    (omega : aux_lightRayDirection) (y : canonicalReflectedSquareUnitE2)
     (hfull : Integrable (fun z : WaveSpaceTime =>
       (FourierTransform.fourierInv
         (scratch_canonicalBandlimitedTubeMultiplier
           (delta / canonicalBandlimitedDyadicScale r j)
-          (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))) : E2 → Complex)
+          (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))) : canonicalReflectedSquareUnitE2 → Complex)
         (z.1 + z.2 • omega.1 - y) * nonnegativeSquareInnerSlabTensor q a z)
       volume)
-    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : E2 =>
+    (hinner : ∀ (t : Real) (ij : ι × ι), Integrable (fun x : canonicalReflectedSquareUnitE2 =>
       timeCrossProduct (a ij.1) (a ij.2) t *
         (((FourierTransform.fourierInv
           (scratch_canonicalBandlimitedTubeMultiplier
             (delta / canonicalBandlimitedDyadicScale r j)
             (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))) :
-            SchwartzMap E2 Complex) : E2 → Complex)
+            SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
           (x + t • omega.1 - y) *
           ((FourierTransform.fourierInv
-            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-              SchwartzMap E2 Complex) : E2 → Complex) x)) volume)
+            (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+              SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume)
     (houter : ∀ ij : ι × ι, Integrable (fun t : Real =>
-      ∫ x : E2,
+      ∫ x : canonicalReflectedSquareUnitE2,
         timeCrossProduct (a ij.1) (a ij.2) t *
           (((FourierTransform.fourierInv
             (scratch_canonicalBandlimitedTubeMultiplier
               (delta / canonicalBandlimitedDyadicScale r j)
               (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))) :
-              SchwartzMap E2 Complex) : E2 → Complex)
+              SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
             (x + t • omega.1 - y) *
             ((FourierTransform.fourierInv
-              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-                SchwartzMap E2 Complex) : E2 → Complex) x)) volume)
+              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+                SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume)
     (hpositive : Integrable (fun z : WaveSpaceTime =>
       scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
         (delta / canonicalBandlimitedDyadicScale r j) omega.1 y z *
@@ -11107,11 +11065,11 @@ direction. -/
 theorem ofReal_lightRayKernel_le_tsum_canonicalReflectedSquareDyadicKernel
     {delta c r : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
     (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
-    (omega : aux_lightRayDirection) (y : E2) (z : WaveSpaceTime) :
+    (hcore : ∀ u : canonicalReflectedSquareUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (omega : aux_lightRayDirection) (y : canonicalReflectedSquareUnitE2) (z : WaveSpaceTime) :
     ENNReal.ofReal (lightRayKernel delta N omega.1 y z) ≤
       ∑' j : Nat, canonicalReflectedSquareDyadicKernel c r delta N j omega y z := by
-  let u : E2 := delta⁻¹ • (z.1 + z.2 • omega.1 - y)
+  let u : canonicalReflectedSquareUnitE2 := delta⁻¹ • (z.1 + z.2 • omega.1 - y)
   let term : Nat → Real := fun j =>
     canonicalBandlimitedDyadicCoefficient N c r j *
       scratch_smoothTubeCore (fun v => (canonicalPositiveCore v).re)
@@ -11158,9 +11116,9 @@ Tonelli/triangle/sup order. -/
 theorem positiveNormLightRayLinear_le_canonicalReflectedSquareDirectional
     {delta c r : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
     (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : canonicalReflectedSquareUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (f : WaveSpaceTime → Complex) (hf : MemLp f 2 volume)
-    (omega : aux_lightRayDirection) (y : E2) :
+    (omega : aux_lightRayDirection) (y : canonicalReflectedSquareUnitE2) :
     ENNReal.ofReal ‖positiveNormLightRayLinear delta N f omega.1 y‖ ≤
       scratch_positiveKernelTsum scratchLightRayMeasure
         (fun j (d : aux_lightRayDirection) y z =>
@@ -11209,8 +11167,8 @@ unit-direction supremum. -/
 theorem iSup_positiveNormLightRayLinear_le_iSup_canonicalReflectedSquareDirectional
     {delta c r : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
     (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
-    (f : WaveSpaceTime → Complex) (hf : MemLp f 2 volume) (y : E2) :
+    (hcore : ∀ u : canonicalReflectedSquareUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (f : WaveSpaceTime → Complex) (hf : MemLp f 2 volume) (y : canonicalReflectedSquareUnitE2) :
     (⨆ omega : aux_lightRayDirection,
       ENNReal.ofReal ‖positiveNormLightRayLinear delta N f omega.1 y‖) ≤
       ⨆ omega : aux_lightRayDirection,
@@ -11233,7 +11191,7 @@ positive operator, the `ENNReal` canonical kernels, and the finite envelope
 are fixed below; only continuity/measurability and the finite signed field
 identification are supplied by the analytic construction. -/
 structure CanonicalReflectedScalePositiveUnitWiring (c r : Real) where
-  S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex
+  S : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex
   hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
     Measurable (canonicalReflectedUnitScaleEnvelope S delta N f j)
   hTgeom : ∀ delta N (F : WaveSpaceTime → Complex)
@@ -11305,13 +11263,13 @@ theorem CanonicalReflectedScalePositiveUnitWiring.limitEnvelope_measurable
 positive domination is asked only at literal unit directions, precisely the
 range used by `lightRayMaximal`. -/
 structure CanonicalDyadicFiniteEnvelopePositiveSquareUnitModel where
-  T : Real → Nat → (WaveSpaceTime → Complex) → E2 → E2 → Complex
-  E : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → ENNReal
+  T : Real → Nat → (WaveSpaceTime → Complex) → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex
+  E : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → ENNReal
   hEmeas : ∀ delta N f M, InnerSlabSchwartzTensorCore f →
     Measurable (E delta N f M)
   hLimitMeas : ∀ delta N f, InnerSlabSchwartzTensorCore f →
     Measurable (fun y => atTop.liminf (fun M => E delta N f M y))
-  hidentify : ∀ delta N (h : WaveSpaceTime → Complex) (omega y : E2),
+  hidentify : ∀ delta N (h : WaveSpaceTime → Complex) (omega y : canonicalReflectedSquareUnitE2),
     T delta N
         (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
       (lightRayAverage delta N omega y h : Complex)
@@ -11396,8 +11354,8 @@ maximizer, never at an arbitrary vector in `E²`. -/
 theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit
     (Core : (WaveSpaceTime → Complex) → Prop)
     (hdense : HasPositiveSlabL2DenseCore Core)
-    (T : Real → Nat → (WaveSpaceTime → Complex) → E2 → E2 → Complex)
-    (P : Real → Nat → (WaveSpaceTime → Complex) → E2 → ENNReal)
+    (T : Real → Nat → (WaveSpaceTime → Complex) → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex)
+    (P : Real → Nat → (WaveSpaceTime → Complex) → canonicalReflectedSquareUnitE2 → ENNReal)
     (hPmeas : ∀ delta N f, Core f → Measurable (P delta N f))
     (hstrong : ∀ N : Nat, 3 < N → ∃ C : Real, 0 < C ∧
       ∀ delta : Real, 0 < delta → delta < 1 / 2 →
@@ -11405,7 +11363,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit
         eLpNorm (P delta N f) 2 volume ≤
           ENNReal.ofReal (C * (1 + abs (Real.log delta)) ^ (3 / 2 : Real)) *
             eLpNorm f 2 volume)
-    (hidentify : ∀ delta N (h : WaveSpaceTime → Complex) (omega y : E2),
+    (hidentify : ∀ delta N (h : WaveSpaceTime → Complex) (omega y : canonicalReflectedSquareUnitE2),
       T delta N
           (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
         (lightRayAverage delta N omega y h : Complex))
@@ -11488,7 +11446,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit
         Tendsto (fun n => T delta N (core n) omega y) atTop
           (nhds (T delta N F omega y)) :=
       hTgeom delta N F core hFmem hcoreMem hscaled
-    have hfatou : ∀ᵐ y : E2 ∂volume,
+    have hfatou : ∀ᵐ y : canonicalReflectedSquareUnitE2 ∂volume,
         ENNReal.ofReal (lightRayMaximal delta N h y) ≤
           atTop.liminf (fun n => P delta N (core n) y) := by
       filter_upwards with y
@@ -11692,10 +11650,10 @@ This deliberately contains no maximal estimate: those are the separate
 finite signed-envelope analytic input. -/
 def HasCanonicalReflectedSquareScaleBridge
     (r : Real) (hr : 0 < r)
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex) : Prop :=
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex) : Prop :=
   ∀ {delta : Real} (hdelta : 0 < delta) (N j : Nat),
     ∀ {ι : Type} [Fintype ι]
-      (q : ι → SchwartzMap E2 Complex) (a : ι → SchwartzMap Real Complex)
+      (q : ι → SchwartzMap canonicalReflectedSquareUnitE2 Complex) (a : ι → SchwartzMap Real Complex)
       {timeRadius : Real}, timeRadius < 1 →
       (∀ i, Function.support (a i : Real → Complex) ⊆
         Metric.closedBall (3 / 2 : Real) timeRadius) →
@@ -11710,28 +11668,28 @@ def HasCanonicalReflectedSquareScaleBridge
           q a omega.1 y ∧
       Integrable (fun z : WaveSpaceTime =>
         (FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : canonicalReflectedSquareUnitE2 → Complex)
           (z.1 + z.2 • omega.1 - y) * nonnegativeSquareInnerSlabTensor q a z)
         volume ∧
-      (∀ (t : Real) (ij : ι × ι), Integrable (fun x : E2 =>
+      (∀ (t : Real) (ij : ι × ι), Integrable (fun x : canonicalReflectedSquareUnitE2 =>
         timeCrossProduct (a ij.1) (a ij.2) t *
           (((FourierTransform.fourierInv
             (scratch_canonicalBandlimitedTubeMultiplier rho hrho) :
-              SchwartzMap E2 Complex) : E2 → Complex)
+              SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
             (x + t • omega.1 - y) *
             ((FourierTransform.fourierInv
-              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-                SchwartzMap E2 Complex) : E2 → Complex) x)) volume) ∧
+              (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+                SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume) ∧
       (∀ ij : ι × ι, Integrable (fun t : Real =>
-        ∫ x : E2,
+        ∫ x : canonicalReflectedSquareUnitE2,
           timeCrossProduct (a ij.1) (a ij.2) t *
             (((FourierTransform.fourierInv
               (scratch_canonicalBandlimitedTubeMultiplier rho hrho) :
-                SchwartzMap E2 Complex) : E2 → Complex)
+                SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex)
               (x + t • omega.1 - y) *
               ((FourierTransform.fourierInv
-                (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap E2 Complex) :
-                  SchwartzMap E2 Complex) : E2 → Complex) x)) volume) ∧
+                (crossFrequencyMultiplier (q ij.1) (q ij.2) : SchwartzMap canonicalReflectedSquareUnitE2 Complex) :
+                  SchwartzMap canonicalReflectedSquareUnitE2 Complex) : canonicalReflectedSquareUnitE2 → Complex) x)) volume) ∧
       Integrable (fun z : WaveSpaceTime =>
         scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
           rho omega.1 y z * (nonnegativeSquareInnerSlabTensor q a z).re)
@@ -11746,8 +11704,8 @@ fields are proved here from the canonical kernel decomposition, the
 fixed-direction Tonelli bound, and the reflected slab identity. -/
 noncomputable def canonicalReflectedSquareUnitWiring_of_scaleBridge
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
+    (hcore : ∀ u : canonicalReflectedSquareUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalReflectedSquareUnitE2 → canonicalReflectedSquareUnitE2 → Complex)
     (hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalReflectedUnitScaleEnvelope S delta N f j))
     (hTgeom : ∀ delta N (F : WaveSpaceTime → Complex)
@@ -11817,18 +11775,16 @@ noncomputable def canonicalReflectedSquareUnitWiring_of_scaleBridge
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalReflectedSquareUnitWiring
 
 -- BEGIN ScratchKakeyaUnitFiniteEnvelopeScaleAdapter
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -11877,18 +11833,18 @@ theorem exists_canonicalDyadic_broadPositiveEnvelope_unit
     {delta r : Real}
     (j : Nat)
     (hj : (1 / 2 : Real) <= delta / canonicalBandlimitedDyadicScale r j)
-    (K : Nat) (omega : aux_lightRayDirection) (y x : E2) (t : Real)
+    (K : Nat) (omega : aux_lightRayDirection) (y x : Euclidean 2) (t : Real)
     (ht : t ∈ lightRayTimeInterval) :
     exists A : Real, 0 <= A /\
       HasCompactSupport
-        (FourierTransform.fourier canonicalPositiveCore : E2 -> Complex) /\
+        (FourierTransform.fourier canonicalPositiveCore : Euclidean 2 -> Complex) /\
       scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
           (delta / canonicalBandlimitedDyadicScale r j) omega.1 y (x, t) <=
         ((6 : Real) ^ K * A) *
           lightRayKernel (delta / canonicalBandlimitedDyadicScale r j) K 0 x (y, 0) := by
   have homega : ‖omega.1‖ <= 1 := by
     exact (mem_unitLightRayDirections_iff omega.1).mp omega.2 |>.le
-  exact Auto.Spherical.MSS.scratch_exists_broadWidth_envelope_canonicalPositiveCore
+  exact scratch_exists_broadWidth_envelope_canonicalPositiveCore
     K hj omega.1 y x t homega ht
 
 /-- The precise missing signed broad-width bridge.  Unlike the preceding
@@ -12027,46 +11983,43 @@ theorem hasLightRayMaximalEstimate_of_canonicalReflectedSquareUnitWeightedScale
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUnitFiniteEnvelopeScaleAdapter
 
 -- BEGIN ScratchKakeyaCanonicalAbsoluteBroadBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalAbsoluteBroadBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.BandlimitedPositiveCore
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev canonicalAbsoluteBroadE2 := Euclidean 2
 
 /-- The fixed nonnegative Schwartz profile which is the absolute value of the
 complex canonical physical core.  This is the correct broad-width profile for
 a signed tube field; using only the real part would lose the required norm
 domination. -/
-noncomputable def canonicalAbsoluteCore : SchwartzMap E2 Real :=
-  BandlimitedPositiveCore.scratch_positiveSchwartzCore
+noncomputable def canonicalAbsoluteCore : SchwartzMap canonicalAbsoluteBroadE2 Real :=
+  scratch_positiveSchwartzCore
     (FourierTransform.fourierInv canonicalFrequencyBump)
 
-theorem canonicalAbsoluteCore_apply (u : E2) :
+theorem canonicalAbsoluteCore_apply (u : canonicalAbsoluteBroadE2) :
     canonicalAbsoluteCore u = ‖canonicalPositiveCore u‖ := by
   unfold canonicalAbsoluteCore
   rw [canonicalPositiveCore_apply_eq_normSq,
-    BandlimitedPositiveCore.scratch_positiveSchwartzCore_apply]
+    scratch_positiveSchwartzCore_apply]
   rw [Complex.norm_real]
   exact (abs_of_nonneg (Complex.normSq_nonneg _)).symm
 
 /-- Exact absolute-value scaling for the complex canonical tube kernel. -/
 theorem norm_scratch_canonicalBandlimitedTubePhysicalCore_eq
-    {rho : Real} (hrho : 0 < rho) (u : E2) :
-    ‖Auto.Spherical.MSS.scratch_canonicalBandlimitedTubePhysicalCore rho hrho u‖ =
+    {rho : Real} (hrho : 0 < rho) (u : canonicalAbsoluteBroadE2) :
+    ‖scratch_canonicalBandlimitedTubePhysicalCore rho hrho u‖ =
       (rho⁻¹) ^ 2 * canonicalAbsoluteCore (rho⁻¹ • u) := by
   have hscale : canonicalBandlimitedDyadicScale (2 / rho) 0 = rho⁻¹ := by
     unfold canonicalBandlimitedDyadicScale
@@ -12081,14 +12034,14 @@ theorem norm_scratch_canonicalBandlimitedTubePhysicalCore_eq
 the positive smooth tube core associated to `canonicalAbsoluteCore`. -/
 theorem norm_canonicalTubeKernel_eq_smoothTubeCore
     {rho : Real} (hrho : 0 < rho)
-    (omega y x : E2) (t : Real) :
+    (omega y x : canonicalAbsoluteBroadE2) (t : Real) :
     ‖FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-          E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+          canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y)‖ =
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) := by
   rw [← SchwartzMap.fourierInv_coe]
-  change ‖Auto.Spherical.MSS.scratch_canonicalBandlimitedTubePhysicalCore rho hrho
+  change ‖scratch_canonicalBandlimitedTubePhysicalCore rho hrho
       (x + t • omega - y)‖ = _
   rw [norm_scratch_canonicalBandlimitedTubePhysicalCore_eq hrho]
   rfl
@@ -12097,20 +12050,20 @@ theorem norm_canonicalTubeKernel_eq_smoothTubeCore
 Schwartz-decay certificate. -/
 theorem exists_canonicalAbsoluteCore_le_lightRayDecayProfile (K : Nat) :
     exists A : Real, 0 <= A /\
-      forall u : E2,
+      forall u : canonicalAbsoluteBroadE2,
         canonicalAbsoluteCore u <= A * lightRayDecayProfile K u :=
-  Auto.Spherical.MSS.scratch_schwartz_le_lightRayDecayProfile
+  scratch_schwartz_le_lightRayDecayProfile
     canonicalAbsoluteCore K
 
 /-- The literal signed convolution by the canonical multiplier, before the
 positive broad-width domination is applied. -/
 noncomputable def canonicalTubeSignedAverage
-    (rho : Real) (hrho : 0 < rho) (omega y : E2)
+    (rho : Real) (hrho : 0 < rho) (omega y : canonicalAbsoluteBroadE2)
     (f : WaveSpaceTime -> Complex) : Complex :=
-  ∫ t in lightRayTimeInterval, ∫ x : E2,
+  ∫ t in lightRayTimeInterval, ∫ x : canonicalAbsoluteBroadE2,
     FourierTransform.fourierInv
-      (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-        E2 -> Complex)
+      (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+        canonicalAbsoluteBroadE2 -> Complex)
       (x + t • omega - y) * f (x, t)
 
 /-- Absolute-value domination of a signed canonical tube convolution by the
@@ -12118,18 +12071,18 @@ positive smooth-tube average with `canonicalAbsoluteCore`.  The two outer
 integrability assumptions are precisely what is needed to
 pass the two norm-of-integral inequalities. -/
 theorem norm_canonicalTubeSignedAverage_le_positiveSmoothTubeAverage
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
+    {rho : Real} (hrho : 0 < rho) (omega y : canonicalAbsoluteBroadE2)
     (f : WaveSpaceTime -> Complex)
-    (houter : Integrable (fun t : Real => ∫ x : E2,
+    (houter : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-          E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+          canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y) * f (x, t))
       (volume.restrict lightRayTimeInterval))
-    (habsOuter : Integrable (fun t : Real => ∫ x : E2,
+    (habsOuter : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       ‖FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-          E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+          canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y) * f (x, t)‖)
       (volume.restrict lightRayTimeInterval)) :
     ‖canonicalTubeSignedAverage rho hrho omega y f‖ <=
@@ -12137,21 +12090,21 @@ theorem norm_canonicalTubeSignedAverage_le_positiveSmoothTubeAverage
         (fun x t => ‖f (x, t)‖) := by
   unfold canonicalTubeSignedAverage
   calc
-    ‖∫ t in lightRayTimeInterval, ∫ x : E2,
+    ‖∫ t in lightRayTimeInterval, ∫ x : canonicalAbsoluteBroadE2,
         FourierTransform.fourierInv
-          (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-            E2 -> Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+            canonicalAbsoluteBroadE2 -> Complex)
           (x + t • omega - y) * f (x, t)‖ <=
-        ∫ t in lightRayTimeInterval, ‖∫ x : E2,
+        ∫ t in lightRayTimeInterval, ‖∫ x : canonicalAbsoluteBroadE2,
           FourierTransform.fourierInv
-            (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-              E2 -> Complex)
+            (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+              canonicalAbsoluteBroadE2 -> Complex)
             (x + t • omega - y) * f (x, t)‖ :=
       norm_integral_le_integral_norm _
-    _ <= ∫ t in lightRayTimeInterval, ∫ x : E2,
+    _ <= ∫ t in lightRayTimeInterval, ∫ x : canonicalAbsoluteBroadE2,
         ‖FourierTransform.fourierInv
-          (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho hrho :
-            E2 -> Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho :
+            canonicalAbsoluteBroadE2 -> Complex)
           (x + t • omega - y) * f (x, t)‖ := by
         apply integral_mono houter.norm habsOuter
         intro t
@@ -12170,32 +12123,32 @@ theorem norm_canonicalTubeSignedAverage_le_positiveSmoothTubeAverage
 dyadic scales: one constant is chosen once for a fixed decay order. -/
 theorem norm_canonicalTubeSignedAverage_le_zeroDirectionPositiveEnvelope_of_decay
     (K : Nat) (A : Real) (hA : 0 <= A)
-    (hdecay : forall u : E2,
+    (hdecay : forall u : canonicalAbsoluteBroadE2,
       canonicalAbsoluteCore u <= A * lightRayDecayProfile K u)
     {rho : Real} (hrho : (1 / 2 : Real) <= rho)
-    (omega y : E2) (homega : ‖omega‖ <= 1)
+    (omega y : canonicalAbsoluteBroadE2) (homega : ‖omega‖ <= 1)
     (f : WaveSpaceTime -> Complex)
-    (houter : Integrable (fun t : Real => ∫ x : E2,
+    (houter : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho
-          (lt_of_lt_of_le (by norm_num) hrho) : E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho
+          (lt_of_lt_of_le (by norm_num) hrho) : canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y) * f (x, t))
       (volume.restrict lightRayTimeInterval))
-    (habsOuter : Integrable (fun t : Real => ∫ x : E2,
+    (habsOuter : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       ‖FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho
-          (lt_of_lt_of_le (by norm_num) hrho) : E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho
+          (lt_of_lt_of_le (by norm_num) hrho) : canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y) * f (x, t)‖)
       (volume.restrict lightRayTimeInterval))
-    (hcoreSlice : forall t, Integrable (fun x : E2 =>
+    (hcoreSlice : forall t, Integrable (fun x : canonicalAbsoluteBroadE2 =>
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖f (x, t)‖) volume)
-    (henvSlice : forall t, Integrable (fun x : E2 =>
+    (henvSlice : forall t, Integrable (fun x : canonicalAbsoluteBroadE2 =>
       lightRayKernel rho K 0 x (y, 0) * ‖f (x, t)‖) volume)
-    (hcoreTime : Integrable (fun t : Real => ∫ x : E2,
+    (hcoreTime : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖f (x, t)‖) (volume.restrict lightRayTimeInterval))
-    (henvTime : Integrable (fun t : Real => ∫ x : E2,
+    (henvTime : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       lightRayKernel rho K 0 x (y, 0) * ‖f (x, t)‖)
       (volume.restrict lightRayTimeInterval)) :
     ‖canonicalTubeSignedAverage rho (lt_of_lt_of_le (by norm_num) hrho)
@@ -12211,7 +12164,7 @@ theorem norm_canonicalTubeSignedAverage_le_zeroDirectionPositiveEnvelope_of_deca
         hrho' omega y f houter habsOuter
     _ <= ((6 : Real) ^ K * A) *
         scratch_zeroDirectionPositiveEnvelope rho K y (fun x t => ‖f (x, t)‖) := by
-      exact Auto.Spherical.MSS.scratch_positiveSmoothTubeAverage_le_zeroDirectionPositiveEnvelope_of_decay
+      exact scratch_positiveSmoothTubeAverage_le_zeroDirectionPositiveEnvelope_of_decay
         canonicalAbsoluteCore K hA hdecay hrho omega y homega
           (fun x t => ‖f (x, t)‖)
           (fun x t => norm_nonneg _) hcoreSlice henvSlice hcoreTime henvTime
@@ -12221,29 +12174,29 @@ constant depends only on the fixed absolute core and on `K`, never on the
 physical width, direction, or input tensor. -/
 theorem exists_norm_canonicalTubeSignedAverage_le_zeroDirectionPositiveEnvelope
     (K : Nat) {rho : Real} (hrho : (1 / 2 : Real) <= rho)
-    (omega y : E2) (homega : ‖omega‖ <= 1)
+    (omega y : canonicalAbsoluteBroadE2) (homega : ‖omega‖ <= 1)
     (f : WaveSpaceTime -> Complex)
-    (houter : Integrable (fun t : Real => ∫ x : E2,
+    (houter : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho
-          (lt_of_lt_of_le (by norm_num) hrho) : E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho
+          (lt_of_lt_of_le (by norm_num) hrho) : canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y) * f (x, t))
       (volume.restrict lightRayTimeInterval))
-    (habsOuter : Integrable (fun t : Real => ∫ x : E2,
+    (habsOuter : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       ‖FourierTransform.fourierInv
-        (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho
-          (lt_of_lt_of_le (by norm_num) hrho) : E2 -> Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho
+          (lt_of_lt_of_le (by norm_num) hrho) : canonicalAbsoluteBroadE2 -> Complex)
         (x + t • omega - y) * f (x, t)‖)
       (volume.restrict lightRayTimeInterval))
-    (hcoreSlice : forall t, Integrable (fun x : E2 =>
+    (hcoreSlice : forall t, Integrable (fun x : canonicalAbsoluteBroadE2 =>
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖f (x, t)‖) volume)
-    (henvSlice : forall t, Integrable (fun x : E2 =>
+    (henvSlice : forall t, Integrable (fun x : canonicalAbsoluteBroadE2 =>
       lightRayKernel rho K 0 x (y, 0) * ‖f (x, t)‖) volume)
-    (hcoreTime : Integrable (fun t : Real => ∫ x : E2,
+    (hcoreTime : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖f (x, t)‖) (volume.restrict lightRayTimeInterval))
-    (henvTime : Integrable (fun t : Real => ∫ x : E2,
+    (henvTime : Integrable (fun t : Real => ∫ x : canonicalAbsoluteBroadE2,
       lightRayKernel rho K 0 x (y, 0) * ‖f (x, t)‖)
       (volume.restrict lightRayTimeInterval)) :
     exists A : Real, 0 <= A /\
@@ -12283,8 +12236,8 @@ theorem eLpNorm_ennreal_le_ofReal_mul_real
 /-- The literal compact unit-direction supremum is bounded by any uniform
 per-direction majorant, with no choice of maximizing direction. -/
 theorem canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise
-    (S : Real -> Nat -> (WaveSpaceTime -> Complex) -> Nat -> E2 -> E2 -> Complex)
-    (delta : Real) (N : Nat) (f : WaveSpaceTime -> Complex) (j : Nat) (y : E2)
+    (S : Real -> Nat -> (WaveSpaceTime -> Complex) -> Nat -> canonicalAbsoluteBroadE2 -> canonicalAbsoluteBroadE2 -> Complex)
+    (delta : Real) (N : Nat) (f : WaveSpaceTime -> Complex) (j : Nat) (y : canonicalAbsoluteBroadE2)
     (H : ENNReal)
     (hpoint : forall omega : aux_lightRayDirection,
       ENNReal.ofReal ‖S delta N f j omega.1 y‖ <= H) :
@@ -12295,9 +12248,9 @@ theorem canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise
 /-- The preceding supremum bound together with a real positive majorant gives
 the one-scale `L²` inequality required by the finite-envelope model. -/
 theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise_real
-    (S : Real -> Nat -> (WaveSpaceTime -> Complex) -> Nat -> E2 -> E2 -> Complex)
+    (S : Real -> Nat -> (WaveSpaceTime -> Complex) -> Nat -> canonicalAbsoluteBroadE2 -> canonicalAbsoluteBroadE2 -> Complex)
     (delta : Real) (N : Nat) (f : WaveSpaceTime -> Complex) (j : Nat)
-    (Z : E2 -> Real) (C : Real) (hC : 0 <= C) (hZ : forall y, 0 <= Z y)
+    (Z : canonicalAbsoluteBroadE2 -> Real) (C : Real) (hC : 0 <= C) (hZ : forall y, 0 <= Z y)
     (hpoint : forall (omega : aux_lightRayDirection) y,
       ENNReal.ofReal ‖S delta N f j omega.1 y‖ <= ENNReal.ofReal (C * Z y)) :
     eLpNorm (canonicalReflectedUnitScaleEnvelope S delta N f j) 2 volume <=
@@ -12311,16 +12264,16 @@ theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise_real
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalAbsoluteBroadBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalAbsoluteBroadBridge
 
 -- BEGIN ScratchKakeyaCircleDirection
 section
 
-namespace Auto.Spherical.MSS.KakeyaCircleDirection
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped EuclideanSpace
 
 noncomputable section
@@ -12463,18 +12416,17 @@ theorem circleDirectionDeriv_periodic (s : Real) :
   rw [Real.cos_add_two_pi, Real.sin_add_two_pi]
 
 end
-end Auto.Spherical.MSS.KakeyaCircleDirection
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCircleDirection
 
 -- BEGIN ScratchKakeyaAngularDerivativeTransport
 section
 
-namespace Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -13114,19 +13066,17 @@ theorem hasDerivAt_fourierInv_scratch_finiteTensorTubeMultiplier_circle
       (hasDerivAt_scratch_finiteTensorTubeMultiplier_apply_circle
         s q hqcompact a r xi)
 end
-end Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAngularDerivativeTransport
 
 -- BEGIN ScratchKakeyaAngularDerivativeFourierGlue
 section
 
-namespace Auto.Spherical.MSS.KakeyaAngularDerivativeFourierGlue
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaCircleDirection
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -13184,17 +13134,17 @@ theorem finiteTensorTubeBandAngularDeriv_eq_fourierInv
 
 end
 
-end Auto.Spherical.MSS.KakeyaAngularDerivativeFourierGlue
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAngularDerivativeFourierGlue
 
 -- BEGIN ScratchKakeyaTTStarAngular
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaTTStarAngular
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
-open Auto.Spherical.OneDimStationaryPhase
+open Auto.OneDimStationaryPhase
 open scoped BigOperators
 
 noncomputable section
@@ -14862,18 +14812,17 @@ theorem exists_uniform_literalOuterCircleUnitShell_fixedBump_order_zero
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaTTStarAngular
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTTStarAngular
 
 -- BEGIN ScratchKakeyaParametricShellChain
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaParametricShellChain
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
-open Auto.Spherical.OneDimStationaryPhase
-open ScratchKakeyaTTStarAngular
+open Auto.OneDimStationaryPhase
 open scoped BigOperators
 
 noncomputable section
@@ -15149,18 +15098,16 @@ theorem exists_uniform_literalOuterCircleUnitShell_phaseDerivativeProduct
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaParametricShellChain
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaParametricShellChain
 
 -- BEGIN ScratchKakeyaCutoffDerivative
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCutoffDerivative
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaParametricShellChain
 open scoped BigOperators
 
 noncomputable section
@@ -15266,17 +15213,15 @@ theorem exists_uniform_literalOuterCircleUnitShell_cutoffDerivativeProduct
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaCutoffDerivative
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCutoffDerivative
 
 -- BEGIN ScratchKakeyaOuterAngularLeibniz
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaOuterAngularLeibniz
+section Auto.Spherical.MSSKakeya
 
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaCutoffDerivative
 
 noncomputable section
 
@@ -15340,19 +15285,19 @@ theorem hasDerivAt_outerCircleLocalizedAngular
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaOuterAngularLeibniz
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaOuterAngularLeibniz
 
 -- BEGIN ScratchKakeyaContinuousShell
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaContinuousShell
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FourierRadius
+open Auto.Spherical.MSSBase
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators ENNReal
 
 noncomputable section
@@ -15697,19 +15642,17 @@ theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN_of_memLp_energy
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaContinuousShell
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaContinuousShell
 
 -- BEGIN ScratchKakeyaInverseFourierDerivative
 section
 
-namespace Auto.Spherical.MSS.KakeyaInverseFourierDerivative
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaCircleDirection
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -15747,16 +15690,16 @@ theorem hasDerivAt_fourierInv_of_dominated
 
 end
 
-end Auto.Spherical.MSS.KakeyaInverseFourierDerivative
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaInverseFourierDerivative
 
 -- BEGIN ScratchKakeyaPolarDirection
 section
 
-namespace Auto.Spherical.MSS.KakeyaPolarDirection
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped EuclideanSpace
 
 noncomputable section
@@ -15767,8 +15710,8 @@ noncomputable def complexToEuclidean2 :
 
 theorem complexToEuclidean2_cos_sin (s : Real) :
     complexToEuclidean2 (Real.cos s + Real.sin s * Complex.I) =
-      KakeyaCircleDirection.circleDirection s := by
-  unfold complexToEuclidean2 KakeyaCircleDirection.circleDirection
+      circleDirection s := by
+  unfold complexToEuclidean2 circleDirection
   rw [Complex.isometryOfOrthonormal_apply]
   simp only [Complex.add_re, Complex.ofReal_re, Complex.mul_re, Complex.ofReal_im,
     Complex.I_re, sub_zero, Complex.add_im, Complex.mul_im, Complex.I_im,
@@ -15778,7 +15721,7 @@ theorem complexToEuclidean2_cos_sin (s : Real) :
 /-- Every nonzero planar frequency has a literal angular coordinate for the
 circle parametrization used by the stationary shell analysis. -/
 theorem exists_polar_circleDirection (xi : Euclidean 2) :
-    ∃ alpha : Real, xi = ‖xi‖ • KakeyaCircleDirection.circleDirection alpha := by
+    ∃ alpha : Real, xi = ‖xi‖ • circleDirection alpha := by
   by_cases hxi : xi = 0
   · refine ⟨0, ?_⟩
     simp [hxi]
@@ -15811,14 +15754,14 @@ theorem exists_polar_circleDirection (xi : Euclidean 2) :
       _ = ‖z‖ • complexToEuclidean2
           (Real.cos alpha + Real.sin alpha * Complex.I) :=
             complexToEuclidean2.map_smul ‖z‖ _
-      _ = ‖z‖ • KakeyaCircleDirection.circleDirection alpha := by
+      _ = ‖z‖ • circleDirection alpha := by
             rw [complexToEuclidean2_cos_sin]
-      _ = ‖xi‖ • KakeyaCircleDirection.circleDirection alpha := by
+      _ = ‖xi‖ • circleDirection alpha := by
             rw [hnorm]
 
 noncomputable def circleDirectionSubtype (alpha : Real) : aux_lightRayDirection :=
-  ⟨KakeyaCircleDirection.circleDirection alpha,
-    KakeyaCircleDirection.circleDirection_mem_unitLightRayDirections alpha⟩
+  ⟨circleDirection alpha,
+    circleDirection_mem_unitLightRayDirections alpha⟩
 
 theorem surjective_circleDirectionSubtype :
     Function.Surjective circleDirectionSubtype := by
@@ -15826,7 +15769,7 @@ theorem surjective_circleDirectionSubtype :
   rcases exists_polar_circleDirection xi with ⟨alpha, halpha⟩
   refine ⟨alpha, Subtype.ext ?_⟩
   have hnorm : ‖xi‖ = 1 := hxi
-  have hxi_eq : xi = KakeyaCircleDirection.circleDirection alpha := by
+  have hxi_eq : xi = circleDirection alpha := by
     simpa only [hnorm, one_smul] using halpha
   exact hxi_eq.symm
 
@@ -15837,7 +15780,7 @@ theorem lightRayMaximal_eq_realCircleSup
     (delta : Real) (N : Nat) (g : WaveSpaceTime -> Complex) (y : Euclidean 2) :
     lightRayMaximal delta N g y =
       sSup ((fun alpha : Real =>
-        lightRayAverage delta N (KakeyaCircleDirection.circleDirection alpha) y g) '' Set.univ) := by
+        lightRayAverage delta N (circleDirection alpha) y g) '' Set.univ) := by
   unfold lightRayMaximal
   congr 1
   ext r
@@ -15846,25 +15789,25 @@ theorem lightRayMaximal_eq_realCircleSup
     let omega' : aux_lightRayDirection := ⟨omega, homega⟩
     rcases surjective_circleDirectionSubtype omega' with ⟨alpha, halpha⟩
     refine ⟨alpha, Set.mem_univ _, ?_⟩
-    have hvalue : KakeyaCircleDirection.circleDirection alpha = omega := by
+    have hvalue : circleDirection alpha = omega := by
       simpa only [omega', circleDirectionSubtype] using congrArg Subtype.val halpha
     exact congrArg (fun w : Euclidean 2 => lightRayAverage delta N w y g) hvalue
   · rintro ⟨alpha, -, rfl⟩
-    exact ⟨KakeyaCircleDirection.circleDirection alpha,
-      KakeyaCircleDirection.circleDirection_mem_unitLightRayDirections alpha, rfl⟩
+    exact ⟨circleDirection alpha,
+      circleDirection_mem_unitLightRayDirections alpha, rfl⟩
 
 end
 
-end Auto.Spherical.MSS.KakeyaPolarDirection
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaPolarDirection
 
 -- BEGIN ScratchKakeyaMeasurablePolar
 section
 
-namespace Auto.Spherical.MSS.KakeyaPolarDirection
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 
 noncomputable section
 
@@ -15887,7 +15830,7 @@ theorem measurablePolarAngle_le_pi (xi : Euclidean 2) :
   (measurablePolarAngle_mem_Ioc xi).2
 
 theorem measurablePolarAngle_polar (xi : Euclidean 2) :
-    xi = ‖xi‖ • KakeyaCircleDirection.circleDirection (measurablePolarAngle xi) := by
+    xi = ‖xi‖ • circleDirection (measurablePolarAngle xi) := by
   let z : Complex := complexToEuclidean2.symm xi
   have hrepr := Complex.norm_mul_cos_add_sin_mul_I z
   have hmap := congrArg complexToEuclidean2 hrepr
@@ -15912,34 +15855,25 @@ theorem measurablePolarAngle_polar (xi : Euclidean 2) :
         (Real.cos (measurablePolarAngle xi) +
           Real.sin (measurablePolarAngle xi) * Complex.I) := by
           exact complexToEuclidean2.map_smul ‖z‖ _
-    _ = ‖z‖ • KakeyaCircleDirection.circleDirection (measurablePolarAngle xi) := by
+    _ = ‖z‖ • circleDirection (measurablePolarAngle xi) := by
           rw [complexToEuclidean2_cos_sin]
-    _ = ‖xi‖ • KakeyaCircleDirection.circleDirection (measurablePolarAngle xi) := by
+    _ = ‖xi‖ • circleDirection (measurablePolarAngle xi) := by
           rw [hnorm]
 
 end
 
-end Auto.Spherical.MSS.KakeyaPolarDirection
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaMeasurablePolar
 
 -- BEGIN ScratchKakeyaFiniteTensorPseudodiffShell
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteTensorPseudodiffShell
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FourierRadius
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaAngularDerivativeFourierGlue
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open ScratchKakeyaContinuousShell
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaCutoffDerivative
-open ScratchKakeyaOuterAngularLeibniz
-open Auto.Spherical.MSS.KakeyaInverseFourierDerivative
-open Auto.Spherical.MSS.KakeyaPolarDirection
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -16300,19 +16234,17 @@ theorem outerFiniteTensorPseudodifferentialShell_endpointZeroSobolev
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteTensorPseudodiffShell
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorPseudodiffShell
 
 -- BEGIN ScratchKakeyaAngularChartReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaAngularChartReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaFiniteTensorPseudodiffShell
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -16344,7 +16276,7 @@ structure SmoothAngularFrequencyChartFamily (κ : Type*) (charts : Finset κ)
   /-- The chart count is an absolute geometric constant. -/
   card_le_four : charts.card ≤ 4
 
-namespace SmoothAngularFrequencyChartFamily
+section SmoothAngularFrequencyChartFamily
 
 variable {κ : Type*} {charts : Finset κ} {active : Set (Euclidean 2)}
 
@@ -16362,7 +16294,7 @@ noncomputable def chartProfile
 theorem chartProfile_apply
     (C : SmoothAngularFrequencyChartFamily κ charts active) (j : κ)
     (q : SchwartzMap (Euclidean 2) Complex) (xi : Euclidean 2) :
-    C.chartProfile j q xi = C.sector j xi * q xi := by
+    chartProfile C j q xi = C.sector j xi * q xi := by
   unfold chartProfile
   rw [SchwartzMap.smulLeftCLM_apply_apply (C.sector j).hasTemperateGrowth]
   simp only [smul_eq_mul]
@@ -16371,11 +16303,11 @@ theorem chartProfile_compact
     (C : SmoothAngularFrequencyChartFamily κ charts active) (j : κ)
     (q : SchwartzMap (Euclidean 2) Complex)
     (hqcompact : HasCompactSupport (q : Euclidean 2 → Complex)) :
-    HasCompactSupport (C.chartProfile j q : Euclidean 2 → Complex) := by
-  rw [show (C.chartProfile j q : Euclidean 2 → Complex) =
+    HasCompactSupport (chartProfile C j q : Euclidean 2 → Complex) := by
+  rw [show (chartProfile C j q : Euclidean 2 → Complex) =
       fun xi => C.sector j xi * q xi by
         funext xi
-        exact C.chartProfile_apply j q xi]
+        exact chartProfile_apply C j q xi]
   exact hqcompact.mul_left
 
 /-- Pointwise active-frequency support, the form used by chart synthesis. -/
@@ -16387,18 +16319,18 @@ def SupportedOnActive
 theorem sum_chartProfile_eq
     (C : SmoothAngularFrequencyChartFamily κ charts active)
     (q : SchwartzMap (Euclidean 2) Complex)
-    (hqactive : C.SupportedOnActive q) (xi : Euclidean 2) :
-    ∑ j ∈ charts, C.chartProfile j q xi = q xi := by
+    (hqactive : SupportedOnActive C q) (xi : Euclidean 2) :
+    ∑ j ∈ charts, chartProfile C j q xi = q xi := by
   classical
   by_cases hq : q xi = 0
-  · simp [C.chartProfile_apply, hq]
+  · simp [chartProfile_apply C, hq]
   · have hpartition : ∑ j ∈ charts, C.sector j xi = 1 :=
       C.sum_eq_one_on_active xi (hqactive xi hq)
-    rw [show (∑ j ∈ charts, C.chartProfile j q xi) =
+    rw [show (∑ j ∈ charts, chartProfile C j q xi) =
         ∑ j ∈ charts, C.sector j xi * q xi by
           apply Finset.sum_congr rfl
           intro j hj
-          exact C.chartProfile_apply j q xi]
+          exact chartProfile_apply C j q xi]
     rw [← Finset.sum_mul, hpartition, one_mul]
 
 /-- Apply one chart multiplier to every spatial profile in a finite tensor. -/
@@ -16406,15 +16338,15 @@ noncomputable def chartProfiles
     (C : SmoothAngularFrequencyChartFamily κ charts active) (j : κ)
     {ι : Type*} (q : ι → SchwartzMap (Euclidean 2) Complex) :
     ι → SchwartzMap (Euclidean 2) Complex :=
-  fun i => C.chartProfile j (q i)
+  fun i => chartProfile C j (q i)
 
 theorem chartProfiles_compact
     (C : SmoothAngularFrequencyChartFamily κ charts active) (j : κ)
     {ι : Type*} (q : ι → SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex)) :
-    ∀ i, HasCompactSupport (C.chartProfiles j q i : Euclidean 2 → Complex) := by
+    ∀ i, HasCompactSupport (chartProfiles C j q i : Euclidean 2 → Complex) := by
   intro i
-  exact C.chartProfile_compact j (q i) (hqcompact i)
+  exact chartProfile_compact C j (q i) (hqcompact i)
 
 /-- The literal physical outer-shell field associated to one smooth angular
 frequency chart.  Its centre is the chart's smooth angle extension, not the
@@ -16426,8 +16358,8 @@ noncomputable def outerChartShellField
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
     (a : ι → SchwartzMap Real Complex)
     (rho theta : Real) (y : Euclidean 2) : Complex :=
-  outerFiniteTensorPseudodifferentialShellField s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a (C.angle j) rho theta y
+  outerFiniteTensorPseudodifferentialShellField s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a (C.angle j) rho theta y
 
 noncomputable def outerChartShellFieldDeriv
     (C : SmoothAngularFrequencyChartFamily κ charts active) (j : κ)
@@ -16436,8 +16368,8 @@ noncomputable def outerChartShellFieldDeriv
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
     (a : ι → SchwartzMap Real Complex)
     (rho theta : Real) (y : Euclidean 2) : Complex :=
-  outerFiniteTensorPseudodifferentialShellFieldDeriv s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a (C.angle j) rho theta y
+  outerFiniteTensorPseudodifferentialShellFieldDeriv s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a (C.angle j) rho theta y
 
 /-- Every chart field has the common physical endpoint required by the
 endpoint-zero GN step. -/
@@ -16449,10 +16381,10 @@ theorem outerChartShellField_eq_zero_at_negFive
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
     (a : ι → SchwartzMap Real Complex)
     {rho : Real} (hrho : 0 < rho) (y : Euclidean 2) :
-    C.outerChartShellField j s q hqcompact a rho (-5) y = 0 := by
+    outerChartShellField C j s q hqcompact a rho (-5) y = 0 := by
   unfold outerChartShellField
   apply outerFiniteTensorPseudodifferentialShellField_eq_zero_at_negFive
-    s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+    s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     (C.angle j) hrho
   exact C.angle_lower j hj
 
@@ -16464,19 +16396,19 @@ theorem sum_charted_finiteTensorTubeMultiplier_eq
     {ι : Type*} (s : Finset ι)
     (q : ι → SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
-    (hqactive : ∀ i, C.SupportedOnActive (q i))
+    (hqactive : ∀ i, SupportedOnActive C (q i))
     (a : ι → SchwartzMap Real Complex)
     (omega xi : Euclidean 2) :
     ∑ j ∈ charts,
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a omega xi =
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a omega xi =
       scratch_finiteTensorTubeMultiplier s q hqcompact a omega xi := by
   classical
   rw [show (∑ j ∈ charts,
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a omega xi) =
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a omega xi) =
       ∑ j ∈ charts, ∑ i ∈ s,
-        C.chartProfiles j q i xi *
+        chartProfiles C j q i xi *
           (FourierTransform.fourier (a i) : SchwartzMap Real Complex)
             (inner Real omega xi) by
         apply Finset.sum_congr rfl
@@ -16485,7 +16417,7 @@ theorem sum_charted_finiteTensorTubeMultiplier_eq
   rw [Finset.sum_comm]
   calc
     (∑ i ∈ s, ∑ j ∈ charts,
-        C.chartProfiles j q i xi *
+        chartProfiles C j q i xi *
           (FourierTransform.fourier (a i) : SchwartzMap Real Complex)
             (inner Real omega xi)) =
         ∑ i ∈ s, q i xi *
@@ -16494,8 +16426,8 @@ theorem sum_charted_finiteTensorTubeMultiplier_eq
       apply Finset.sum_congr rfl
       intro i hi
       rw [← Finset.sum_mul]
-      rw [show (∑ j ∈ charts, C.chartProfiles j q i xi) = q i xi by
-        exact C.sum_chartProfile_eq (q i) (hqactive i) xi]
+      rw [show (∑ j ∈ charts, chartProfiles C j q i xi) = q i xi by
+        exact sum_chartProfile_eq C (q i) (hqactive i) xi]
     _ = scratch_finiteTensorTubeMultiplier s q hqcompact a omega xi := by
       symm
       rw [scratch_finiteTensorTubeMultiplier_apply]
@@ -16556,38 +16488,38 @@ theorem outerChartShells_endpointGN_reassembly
     (a : ι → SchwartzMap Real Complex)
     {rho : Real} (hrho : 0 < rho) {E0 E1 : κ → Real}
     (hFcont : ∀ j ∈ charts, Continuous (Function.uncurry
-      (C.outerChartShellField j s q hqcompact a rho)))
+      (outerChartShellField C j s q hqcompact a rho)))
     (hDcont : ∀ j ∈ charts, Continuous (Function.uncurry
-      (C.outerChartShellFieldDeriv j s q hqcompact a rho)))
+      (outerChartShellFieldDeriv C j s q hqcompact a rho)))
     (hderiv : ∀ j ∈ charts, ∀ theta y, HasDerivAt
-      (fun r => C.outerChartShellField j s q hqcompact a rho r y)
-      (C.outerChartShellFieldDeriv j s q hqcompact a rho theta y) theta)
+      (fun r => outerChartShellField C j s q hqcompact a rho r y)
+      (outerChartShellFieldDeriv C j s q hqcompact a rho theta y) theta)
     (hFmem : ∀ j ∈ charts, MemLp (fun p : Real × Euclidean 2 =>
-      C.outerChartShellField j s q hqcompact a rho p.1 p.2) 2
+      outerChartShellField C j s q hqcompact a rho p.1 p.2) 2
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume))
     (hDmem : ∀ j ∈ charts, MemLp (fun p : Real × Euclidean 2 =>
-      C.outerChartShellFieldDeriv j s q hqcompact a rho p.1 p.2) 2
+      outerChartShellFieldDeriv C j s q hqcompact a rho p.1 p.2) 2
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume))
     (hE0 : ∀ j ∈ charts, (∫ p : Real × Euclidean 2,
-      ‖C.outerChartShellField j s q hqcompact a rho p.1 p.2‖ ^ 2 ∂
+      ‖outerChartShellField C j s q hqcompact a rho p.1 p.2‖ ^ 2 ∂
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume)) ≤ E0 j)
     (hE1 : ∀ j ∈ charts, (∫ p : Real × Euclidean 2,
-      ‖C.outerChartShellFieldDeriv j s q hqcompact a rho p.1 p.2‖ ^ 2 ∂
+      ‖outerChartShellFieldDeriv C j s q hqcompact a rho p.1 p.2‖ ^ 2 ∂
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume)) ≤ E1 j) :
     (∫⁻ y : Euclidean 2, ∑ j ∈ charts,
       ⨆ theta : Icc (-5 : Real) 12,
-        ENNReal.ofReal (‖C.outerChartShellField
+        ENNReal.ofReal (‖outerChartShellField C
           j s q hqcompact a rho theta.1 y‖ ^ 2)) ≤
       ∑ j ∈ charts, ENNReal.ofReal (2 * Real.sqrt (E0 j * E1 j)) := by
   apply lintegral_sum_chart_endpointGN_le charts (F := fun j =>
-      C.outerChartShellField j s q hqcompact a rho) (D := fun j =>
-      C.outerChartShellFieldDeriv j s q hqcompact a rho)
+      outerChartShellField C j s q hqcompact a rho) (D := fun j =>
+      outerChartShellFieldDeriv C j s q hqcompact a rho)
     (E0 := E0) (E1 := E1) (by norm_num)
   · exact hFcont
   · exact hDcont
   · exact hderiv
   · intro j hj y
-    exact C.outerChartShellField_eq_zero_at_negFive j hj s q hqcompact a hrho y
+    exact outerChartShellField_eq_zero_at_negFive C j hj s q hqcompact a hrho y
   · exact hFmem
   · exact hDmem
   · exact hE0
@@ -16653,28 +16585,28 @@ theorem outerChartShells_endpointGN_of_reciprocal_energy_reassembly
     (timeProfiles : ι → SchwartzMap Real Complex)
     {rho : Real} (hrho : 0 < rho) {E E0 E1 scale : κ → Real}
     (hFcont : ∀ j ∈ charts, Continuous (Function.uncurry
-      (C.outerChartShellField j s spatialProfiles hspatialCompact timeProfiles rho)))
+      (outerChartShellField C j s spatialProfiles hspatialCompact timeProfiles rho)))
     (hDcont : ∀ j ∈ charts, Continuous (Function.uncurry
-      (C.outerChartShellFieldDeriv j s spatialProfiles hspatialCompact timeProfiles rho)))
+      (outerChartShellFieldDeriv C j s spatialProfiles hspatialCompact timeProfiles rho)))
     (hderiv : ∀ j ∈ charts, ∀ theta y, HasDerivAt
-      (fun r => C.outerChartShellField
+      (fun r => outerChartShellField C
         j s spatialProfiles hspatialCompact timeProfiles rho r y)
-      (C.outerChartShellFieldDeriv
+      (outerChartShellFieldDeriv C
         j s spatialProfiles hspatialCompact timeProfiles rho theta y) theta)
     (hFmem : ∀ j ∈ charts, MemLp (fun p : Real × Euclidean 2 =>
-      C.outerChartShellField
+      outerChartShellField C
         j s spatialProfiles hspatialCompact timeProfiles rho p.1 p.2) 2
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume))
     (hDmem : ∀ j ∈ charts, MemLp (fun p : Real × Euclidean 2 =>
-      C.outerChartShellFieldDeriv
+      outerChartShellFieldDeriv C
         j s spatialProfiles hspatialCompact timeProfiles rho p.1 p.2) 2
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume))
     (hE0 : ∀ j ∈ charts, (∫ p : Real × Euclidean 2,
-      ‖C.outerChartShellField
+      ‖outerChartShellField C
         j s spatialProfiles hspatialCompact timeProfiles rho p.1 p.2‖ ^ 2 ∂
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume)) ≤ E0 j)
     (hE1 : ∀ j ∈ charts, (∫ p : Real × Euclidean 2,
-      ‖C.outerChartShellFieldDeriv
+      ‖outerChartShellFieldDeriv C
         j s spatialProfiles hspatialCompact timeProfiles rho p.1 p.2‖ ^ 2 ∂
       ((volume.restrict (Icc (-5 : Real) 12)).prod volume)) ≤ E1 j)
     (hE : ∀ j ∈ charts, 0 ≤ E j)
@@ -16683,20 +16615,20 @@ theorem outerChartShells_endpointGN_of_reciprocal_energy_reassembly
     (hE1scale : ∀ j ∈ charts, E1 j ≤ scale j * E j) :
     (∫⁻ y : Euclidean 2, ∑ j ∈ charts,
       ⨆ theta : Icc (-5 : Real) 12,
-        ENNReal.ofReal (‖C.outerChartShellField
+        ENNReal.ofReal (‖outerChartShellField C
           j s spatialProfiles hspatialCompact timeProfiles rho theta.1 y‖ ^ 2)) ≤
       ∑ j ∈ charts, ENNReal.ofReal (2 * E j) := by
   apply lintegral_sum_chart_endpointGN_of_reciprocal_energy_le charts
-    (F := fun j => C.outerChartShellField
+    (F := fun j => outerChartShellField C
       j s spatialProfiles hspatialCompact timeProfiles rho)
-    (D := fun j => C.outerChartShellFieldDeriv
+    (D := fun j => outerChartShellFieldDeriv C
       j s spatialProfiles hspatialCompact timeProfiles rho)
     (E := E) (E0 := E0) (E1 := E1) (q := scale) (by norm_num)
   · exact hFcont
   · exact hDcont
   · exact hderiv
   · intro j hj y
-    exact C.outerChartShellField_eq_zero_at_negFive
+    exact outerChartShellField_eq_zero_at_negFive C
       j hj s spatialProfiles hspatialCompact timeProfiles hrho y
   · exact hFmem
   · exact hDmem
@@ -16812,19 +16744,17 @@ theorem lintegral_iSup_sq_finite_shell_sum_le_of_bounds
 
 end
 
-end Auto.Spherical.MSS.KakeyaAngularChartReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAngularChartReassembly
 
 -- BEGIN ScratchKakeyaSectorPartition
 section
 
-namespace Auto.Spherical.MSS.KakeyaSectorPartition
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -17658,17 +17588,16 @@ noncomputable def unitDyadicFourChartFamily :
 
 end
 
-end Auto.Spherical.MSS.KakeyaSectorPartition
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSectorPartition
 
 -- BEGIN ScratchKakeyaSectorAngleBounds
 section
 
-namespace Auto.Spherical.MSS.KakeyaSectorAngleBounds
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.MSS.KakeyaSectorPartition
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 
 noncomputable section
 
@@ -17698,21 +17627,17 @@ theorem abs_sub_globalSectorAngle_lt_ten
 
 end
 
-end Auto.Spherical.MSS.KakeyaSectorAngleBounds
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSectorAngleBounds
 
 -- BEGIN ScratchKakeyaScaledSectorPartition
 section
 
-namespace Auto.Spherical.MSS.KakeyaScaledSectorPartition
+section Auto.Spherical.MSSKakeya.KakeyaScaledSectorPartition
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaSectorPartition
-open Auto.Spherical.MSS.KakeyaSectorAngleBounds
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -17946,22 +17871,19 @@ theorem sum_scaledDyadicFourChartFamily_sector_eq_one
 
 end
 
-end Auto.Spherical.MSS.KakeyaScaledSectorPartition
+end Auto.Spherical.MSSKakeya.KakeyaScaledSectorPartition
 end
 -- END ScratchKakeyaScaledSectorPartition
 
 -- BEGIN ScratchKakeyaFiniteRadialFrequencyDecomposition
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaRadialBandLevel
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -18187,8 +18109,8 @@ theorem kakeyaRadialBandPiece_supportedOn_scaledDyadicFrequencyAnnulus
 /-- Direct compatibility datum for the scaled four-chart partition. -/
 theorem kakeyaRadialBandPiece_supportedOn_scaledDyadicFourChartFamily
     (C : lpCutoffs 2) (m : SchwartzMap (Euclidean 2) Complex) (i : Nat) :
-    (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-      (kakeyaRadialBandScale_pos i)).SupportedOnActive
+    SupportedOnActive (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+      (kakeyaRadialBandScale_pos i))
         (kakeyaRadialBandPiece C m i) := by
   exact kakeyaRadialBandPiece_supportedOn_scaledDyadicFrequencyAnnulus C m i
 
@@ -18197,33 +18119,30 @@ theorem kakeyaRadialBandPiece_reassembly_by_scaledCharts
     (C : lpCutoffs 2) (m : SchwartzMap (Euclidean 2) Complex) (i : Nat) :
     kakeyaRadialBandPiece C m i =
       ∑ j ∈ Finset.univ,
-        (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-          (kakeyaRadialBandScale_pos i)).chartProfile j
+        chartProfile (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+          (kakeyaRadialBandScale_pos i)) j
           (kakeyaRadialBandPiece C m i) := by
   symm
   ext xi
-  exact (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-    (kakeyaRadialBandScale_pos i)).sum_chartProfile_eq
+  exact sum_chartProfile_eq (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+    (kakeyaRadialBandScale_pos i))
       (kakeyaRadialBandPiece C m i)
       (kakeyaRadialBandPiece_supportedOn_scaledDyadicFourChartFamily C m i) xi
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteRadialFrequencyDecomposition
 
 -- BEGIN ScratchKakeyaFiniteRadialPhysicalMaxReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaRadialBandLevel
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform ENNReal EuclideanSpace Pointwise
 
 noncomputable section
@@ -18504,17 +18423,17 @@ theorem exists_kakeyaRadialPhysicalPieces_card_sq_log_sq_bound :
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteRadialPhysicalMaxReassembly
 
 -- BEGIN ScratchKakeyaParametricPlancherel
 section
 
-namespace Auto.Spherical.MSS.KakeyaParametricPlancherel
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -18531,7 +18450,7 @@ theorem integral_norm_sq_fourierInvParametricField_eq_frequency
     (m : Real -> SchwartzMap (Euclidean 2) Complex) (theta : Real) :
     (∫ y : Euclidean 2, ‖fourierInvParametricField m theta y‖ ^ (2 : Nat)) =
       ∫ xi : Euclidean 2, ‖m theta xi‖ ^ (2 : Nat) := by
-  have h := Auto.Spherical.FourierRadius.integral_norm_sq_fourier_schwartz_eq
+  have h := Auto.Spherical.Auxiliary.integral_norm_sq_fourier_schwartz_eq
     (FourierTransform.fourierInv (m theta))
   have hfourier :
       (FourierTransform.fourier
@@ -18662,24 +18581,19 @@ theorem integral_product_Icc_spatial_sq_fourierInvParametricField_pair_eq_freque
 
 end
 
-end Auto.Spherical.MSS.KakeyaParametricPlancherel
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaParametricPlancherel
 
 -- BEGIN ScratchKakeyaLowFrequencyCompanion
 section
 
-namespace Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FourierRadius
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open ScratchKakeyaContinuousShell
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
+open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform ENNReal EuclideanSpace Pointwise
 
 noncomputable section
@@ -19064,17 +18978,17 @@ theorem measurable_and_lintegral_iSup_sq_finiteTensorLowpassCircleField_le_globa
 
 end
 
-end Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaLowFrequencyCompanion
 
 -- BEGIN ScratchKakeyaFiniteTensorTimeFourier
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -19317,14 +19231,14 @@ theorem scratch_finiteTensor_timeTTStar_eq_productIntegral
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorTimeFourier
 
 -- BEGIN ScratchKakeyaCompactTimeWeight
 section
 
-namespace Auto.Spherical.MSS.KakeyaCompactTimeWeight
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set
 
@@ -19402,18 +19316,17 @@ theorem integrable_norm_sq_timeWeighted_and_integral_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaCompactTimeWeight
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCompactTimeWeight
 
 -- BEGIN ScratchKakeyaFiniteTensorCompactTime
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators
 
 noncomputable section
@@ -19468,24 +19381,18 @@ theorem integrable_norm_sq_timeWeighted_scratch_finiteTensorTimeData_and_integra
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorCompactTime
 
 -- BEGIN ScratchKakeyaFiniteCoreLowpassEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -19991,20 +19898,19 @@ def HasFiniteCoreLowpassAngularTraceEnergyBound
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteCoreLowpassEnergy
 
 -- BEGIN ScratchKakeyaFiniteCoreLowpassClosure
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FourierRadius
-open Auto.Spherical.MSS
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
+open Auto.Spherical.MSSBase
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -20139,7 +20045,7 @@ private theorem integral_norm_sq_finiteTensorPhysicalTime_slice_eq_frequency
     simp only [smul_eq_mul]
     ring
   have hplanch :=
-    Auto.Spherical.FourierRadius.integral_norm_sq_fourier_schwartz_eq Q
+    Auto.Spherical.Auxiliary.integral_norm_sq_fourier_schwartz_eq Q
   calc
     (∫ x : Euclidean 2, ‖finiteTensorPhysicalTimeData s q a (x, t)‖ ^ 2) =
         ∫ x : Euclidean 2, ‖Q x‖ ^ 2 := by
@@ -20175,22 +20081,21 @@ theorem finiteTensorFrequencyTimeEnergy_eq_integral_norm_sq_physical
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteCoreLowpassClosure
 
 -- BEGIN ScratchKakeyaBroadWidthSmooth
 section
 
-namespace Auto.Spherical.MSS
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal Topology EuclideanSpace
 
 noncomputable section
 
-open KakeyaSmoothDomination
 
 /-- The normalized smooth core used in the dyadic domination file is exactly
 the generic positive tube core used by the broad-width argument. -/
@@ -20482,7 +20387,7 @@ theorem scratch_integrable_sq_timeAverage
   rw [Real.norm_of_nonneg (sq_nonneg _),
     Real.norm_of_nonneg (mul_nonneg measureReal_nonneg
       (integral_nonneg fun _ => sq_nonneg _))]
-  exact Auto.Spherical.FourierRadius.norm_integral_sq_le_measureReal_mul_integral_norm_sq
+  exact Auto.Spherical.Auxiliary.norm_integral_sq_le_measureReal_mul_integral_norm_sq
     mu (F y) (hslice y)
 
 /-- Both broad-width averages are pointwise nonnegative for the positive
@@ -20722,27 +20627,22 @@ theorem scratch_integral_sq_smoothLightRayCoreAverage_broad
 
 end
 
-end Auto.Spherical.MSS
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaBroadWidthSmooth
 
 -- BEGIN ScratchKakeyaCanonicalSignedBroadScaleAdapter
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalAbsoluteBroadBridge
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev canonicalSignedBroadScaleE2 := Euclidean 2
 
 /-- The exact identification needed to use the physical broad-width argument
 for a signed finite-envelope field.  It is deliberately required for every
@@ -20764,7 +20664,7 @@ the closure (`delta > 0`) it is harmlessly set to zero, so this is a total
 candidate for the finite-envelope field `S`. -/
 noncomputable def canonicalTubeSignedScale
     (r : Real) (hr : 0 < r) :
-    Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex :=
+    Real → Nat → (WaveSpaceTime → Complex) → Nat → canonicalSignedBroadScaleE2 → canonicalSignedBroadScaleE2 → Complex :=
   fun delta _N f j omega y =>
     if hdelta : 0 < delta then
       canonicalTubeSignedAverage
@@ -20777,7 +20677,7 @@ noncomputable def canonicalTubeSignedScale
 convolution, with the scale positivity proof made explicit. -/
 theorem canonicalTubeSignedScale_apply_of_pos
     {r : Real} (hr : 0 < r) {delta : Real} (hdelta : 0 < delta)
-    (N : Nat) (f : WaveSpaceTime → Complex) (j : Nat) (omega y : E2) :
+    (N : Nat) (f : WaveSpaceTime → Complex) (j : Nat) (omega y : canonicalSignedBroadScaleE2) :
     canonicalTubeSignedScale r hr delta N f j omega y =
       canonicalTubeSignedAverage
         (delta / canonicalBandlimitedDyadicScale r j)
@@ -20800,29 +20700,29 @@ theorem canonicalTubeSignedScale_hasBridge
 domination.  They are kept explicit because they are independent of every
 Kakeya maximal estimate. -/
 structure CanonicalTubeSignedBroadRegularity
-    (rho : Real) (hrho : 0 < rho) (N : Nat) (omega y : E2)
+    (rho : Real) (hrho : 0 < rho) (N : Nat) (omega y : canonicalSignedBroadScaleE2)
     (f : WaveSpaceTime → Complex) : Prop where
-  outer : Integrable (fun t : Real => ∫ x : E2,
+  outer : Integrable (fun t : Real => ∫ x : canonicalSignedBroadScaleE2,
     FourierTransform.fourierInv
-      (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho
-        hrho : E2 → Complex)
+      (scratch_canonicalBandlimitedTubeMultiplier rho
+        hrho : canonicalSignedBroadScaleE2 → Complex)
       (x + t • omega - y) * f (x, t))
     (volume.restrict lightRayTimeInterval)
-  absOuter : Integrable (fun t : Real => ∫ x : E2,
+  absOuter : Integrable (fun t : Real => ∫ x : canonicalSignedBroadScaleE2,
     ‖FourierTransform.fourierInv
-      (Auto.Spherical.MSS.scratch_canonicalBandlimitedTubeMultiplier rho
-        hrho : E2 → Complex)
+      (scratch_canonicalBandlimitedTubeMultiplier rho
+        hrho : canonicalSignedBroadScaleE2 → Complex)
       (x + t • omega - y) * f (x, t)‖)
     (volume.restrict lightRayTimeInterval)
-  coreSlice : ∀ t, Integrable (fun x : E2 =>
+  coreSlice : ∀ t, Integrable (fun x : canonicalSignedBroadScaleE2 =>
     scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
       ‖f (x, t)‖) volume
-  envSlice : ∀ t, Integrable (fun x : E2 =>
+  envSlice : ∀ t, Integrable (fun x : canonicalSignedBroadScaleE2 =>
     lightRayKernel rho N 0 x (y, 0) * ‖f (x, t)‖) volume
-  coreTime : Integrable (fun t : Real => ∫ x : E2,
+  coreTime : Integrable (fun t : Real => ∫ x : canonicalSignedBroadScaleE2,
     scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
       ‖f (x, t)‖) (volume.restrict lightRayTimeInterval)
-  envTime : Integrable (fun t : Real => ∫ x : E2,
+  envTime : Integrable (fun t : Real => ∫ x : canonicalSignedBroadScaleE2,
     lightRayKernel rho N 0 x (y, 0) * ‖f (x, t)‖)
     (volume.restrict lightRayTimeInterval)
 
@@ -20842,7 +20742,7 @@ def HasCanonicalZeroDirectionPositiveEnvelopeL2Bound (D : Nat → Real) : Prop :
 /-- The exact square-root constant supplied by the zero-direction Young and
 finite-time Cauchy argument. -/
 noncomputable def canonicalZeroDirectionL2Constant (N : Nat) : Real :=
-  Real.sqrt (2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2)
+  Real.sqrt (2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2)
 
 theorem canonicalZeroDirectionL2Constant_nonneg (N : Nat) :
     0 ≤ canonicalZeroDirectionL2Constant N :=
@@ -20850,7 +20750,7 @@ theorem canonicalZeroDirectionL2Constant_nonneg (N : Nat) :
 
 theorem canonicalZeroDirectionL2Constant_sq (N : Nat) :
     canonicalZeroDirectionL2Constant N ^ 2 =
-      2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2 := by
+      2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 := by
   unfold canonicalZeroDirectionL2Constant
   rw [Real.sq_sqrt]
   positivity
@@ -20861,7 +20761,7 @@ enters the zero-direction norm conversion. -/
 theorem integral_sq_lightRayTimeInterval_le_full
     (f : WaveSpaceTime → Complex)
     (hfull : Integrable (fun z : WaveSpaceTime => ‖f z‖ ^ 2) volume) :
-    (∫ t in lightRayTimeInterval, ∫ x : E2, ‖f (x, t)‖ ^ 2) ≤
+    (∫ t in lightRayTimeInterval, ∫ x : canonicalSignedBroadScaleE2, ‖f (x, t)‖ ^ 2) ≤
       ∫ z : WaveSpaceTime, ‖f z‖ ^ 2 := by
   let F : WaveSpaceTime → Real := fun z => ‖f z‖ ^ 2
   have hrestrict : Integrable F scratchLightRayMeasure :=
@@ -20869,14 +20769,14 @@ theorem integral_sq_lightRayTimeInterval_le_full
   have hnonneg : 0 ≤ᵐ[volume] F :=
     Filter.Eventually.of_forall fun z => sq_nonneg _
   have hswap : Integrable
-      (Function.uncurry (fun t : Real => fun x : E2 => F (x, t)))
+      (Function.uncurry (fun t : Real => fun x : canonicalSignedBroadScaleE2 => F (x, t)))
       ((volume.restrict lightRayTimeInterval).prod volume) := by
     convert hrestrict.swap using 1
     ext z
     rfl
   calc
-    (∫ t in lightRayTimeInterval, ∫ x : E2, ‖f (x, t)‖ ^ 2) =
-        ∫ x : E2, ∫ t in lightRayTimeInterval, F (x, t) := by
+    (∫ t in lightRayTimeInterval, ∫ x : canonicalSignedBroadScaleE2, ‖f (x, t)‖ ^ 2) =
+        ∫ x : canonicalSignedBroadScaleE2, ∫ t in lightRayTimeInterval, F (x, t) := by
           exact integral_integral_swap hswap
     _ = ∫ z : WaveSpaceTime, F z ∂scratchLightRayMeasure := by
           simpa only [scratchLightRayMeasure] using
@@ -20897,7 +20797,7 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
         (fun x t => ‖f (x, t)‖)) 2 volume ≤
       ENNReal.ofReal (canonicalZeroDirectionL2Constant N) *
         eLpNorm f 2 volume := by
-  let Z : E2 → Real := fun y =>
+  let Z : canonicalSignedBroadScaleE2 → Real := fun y =>
     scratch_zeroDirectionPositiveEnvelope rho N y (fun x t => ‖f (x, t)‖)
   let D : Real := canonicalZeroDirectionL2Constant N
   have hrho0 : 0 < rho := lt_of_lt_of_le (by norm_num) hrho
@@ -20910,7 +20810,7 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
     apply integral_nonneg
     intro x
     exact mul_nonneg (lightRayKernel_nonneg hrho0 N 0 x (y, 0)) (norm_nonneg _)
-  have hZsq : Integrable (fun y : E2 => Z y ^ 2) volume := by
+  have hZsq : Integrable (fun y : canonicalSignedBroadScaleE2 => Z y ^ 2) volume := by
     have hbase := scratch_integrable_sq_zeroDirectionLightRayEnvelope
       hrho0 N f hregular.output hregular.prod hregular.slice
     refine hbase.congr ?_
@@ -20918,8 +20818,8 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
     change Z y ^ 2 = scratch_zeroDirectionLightRayEnvelope rho N y f ^ 2
     rfl
   have hZident :
-      (∫ y : E2, Z y ^ 2) =
-        ∫ y : E2, ‖scratch_zeroDirectionLightRayComplexEnvelope rho N y f‖ ^ 2 := by
+      (∫ y : canonicalSignedBroadScaleE2, Z y ^ 2) =
+        ∫ y : canonicalSignedBroadScaleE2, ‖scratch_zeroDirectionLightRayComplexEnvelope rho N y f‖ ^ 2 := by
     apply integral_congr_ae
     filter_upwards with y
     change scratch_zeroDirectionLightRayEnvelope rho N y f ^ 2 =
@@ -20934,16 +20834,16 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
       hregular.spatialSliceEnergy
   rw [scratch_lightRayTimeInterval_measureReal_univ] at hraw
   have hslab := integral_sq_lightRayTimeInterval_le_full f hfull
-  have hrawZ : (∫ y : E2, Z y ^ 2) ≤
-      2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2 *
+  have hrawZ : (∫ y : canonicalSignedBroadScaleE2, Z y ^ 2) ≤
+      2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 *
         ∫ z : WaveSpaceTime, ‖f z‖ ^ 2 := by
     calc
-      (∫ y : E2, Z y ^ 2) =
-          ∫ y : E2, ‖scratch_zeroDirectionLightRayComplexEnvelope rho N y f‖ ^ 2 :=
+      (∫ y : canonicalSignedBroadScaleE2, Z y ^ 2) =
+          ∫ y : canonicalSignedBroadScaleE2, ‖scratch_zeroDirectionLightRayComplexEnvelope rho N y f‖ ^ 2 :=
         hZident
-      _ ≤ 2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2 *
-          (∫ t in lightRayTimeInterval, ∫ x : E2, ‖f (x, t)‖ ^ 2) := hraw
-      _ ≤ 2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2 *
+      _ ≤ 2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 *
+          (∫ t in lightRayTimeInterval, ∫ x : canonicalSignedBroadScaleE2, ‖f (x, t)‖ ^ 2) := hraw
+      _ ≤ 2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 *
           ∫ z : WaveSpaceTime, ‖f z‖ ^ 2 :=
         mul_le_mul_of_nonneg_left hslab (by positivity)
   have hinputEq : ENNReal.ofReal (∫ z : WaveSpaceTime, ‖f z‖ ^ 2) =
@@ -20958,25 +20858,25 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
             rw [ENNReal.ofReal_pow (norm_nonneg _) 2, ENNReal.rpow_two]
       _ = (eLpNorm f 2 volume) ^ (2 : Real) := by
         simpa only [ENNReal.ofReal_ofNat] using
-          (Auto.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+          (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
             (μ := volume) (q := (2 : Real)) (by norm_num) f)
   have hD : 0 ≤ D := by
     dsimp only [D]
     exact canonicalZeroDirectionL2Constant_nonneg N
-  have hDsq : D ^ 2 = 2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2 := by
+  have hDsq : D ^ 2 = 2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 := by
     dsimp only [D]
     exact canonicalZeroDirectionL2Constant_sq N
   have hmoment :
-      (∫⁻ y : E2, ENNReal.ofReal (Z y ^ (2 : Real))) ≤
+      (∫⁻ y : canonicalSignedBroadScaleE2, ENNReal.ofReal (Z y ^ (2 : Real))) ≤
         (ENNReal.ofReal D * eLpNorm f 2 volume) ^ (2 : Real) := by
     calc
-      (∫⁻ y : E2, ENNReal.ofReal (Z y ^ (2 : Real))) =
-          ENNReal.ofReal (∫ y : E2, Z y ^ 2) := by
+      (∫⁻ y : canonicalSignedBroadScaleE2, ENNReal.ofReal (Z y ^ (2 : Real))) =
+          ENNReal.ofReal (∫ y : canonicalSignedBroadScaleE2, Z y ^ 2) := by
             simpa only [Real.rpow_two] using
               (ofReal_integral_eq_lintegral_ofReal hZsq
                 (Filter.Eventually.of_forall fun y => sq_nonneg _)).symm
       _ ≤ ENNReal.ofReal
-          (2 * (∫ u : E2, lightRayDecayProfile N u) ^ 2 *
+          (2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 *
             ∫ z : WaveSpaceTime, ‖f z‖ ^ 2) :=
         ENNReal.ofReal_le_ofReal hrawZ
       _ = (ENNReal.ofReal D * eLpNorm f 2 volume) ^ (2 : Real) := by
@@ -20993,7 +20893,7 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
         ((ENNReal.ofReal D * eLpNorm f 2 volume) ^ (2 : Real)) ^
           ((2 : Real)⁻¹) := by
       simpa only [ENNReal.ofReal_ofNat] using
-        (Auto.Spherical.LpSpaceFacts.eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
+        (Auto.LpSpaceFacts.eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
           volume Z (by norm_num) hZnonneg hmoment)
     _ = ENNReal.ofReal D * eLpNorm f 2 volume := by
       rw [← ENNReal.rpow_mul]
@@ -21006,7 +20906,7 @@ theorem integrable_sq_innerSlabSchwartzTensorCore
     Integrable (fun z : WaveSpaceTime => ‖f z‖ ^ 2) volume := by
   rcases hf with ⟨ι, hι, q, a, radius, hradiusPos, hradiusLt, ha, rfl⟩
   letI : Fintype ι := hι
-  change Integrable (fun z : E2 × Real =>
+  change Integrable (fun z : canonicalSignedBroadScaleE2 × Real =>
     ‖scratch_innerSlabCompactFrequencyTensor q a z‖ ^ 2) (volume.prod volume)
   simpa only [scratch_innerSlabCompactFrequencyTensor,
     finiteTensorPhysicalTimeData] using
@@ -21065,7 +20965,7 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_of_canonicalTube
     dsimp only [rho]
     exact hk0 j hj
   have hrho0 : 0 < rho := lt_of_lt_of_le (by norm_num) hrho
-  let Z : E2 → Real := fun y =>
+  let Z : canonicalSignedBroadScaleE2 → Real := fun y =>
     scratch_zeroDirectionPositiveEnvelope rho N y (fun x t => ‖f (x, t)‖)
   have hZ : ∀ y, 0 ≤ Z y := by
     intro y
@@ -21185,25 +21085,22 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_of_canonicalTube_regula
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalSignedBroadScaleAdapter
 
 -- BEGIN ScratchKakeyaInnerSlabRegularity
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaInnerSlabRegularity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev innerSlabRegularityE2 := Euclidean 2
 
 /-- The spatial slice of a finite inner-slab Schwartz tensor is itself a
 Schwartz map.  Keeping this object explicit makes all fixed-time kernel
@@ -21211,16 +21108,16 @@ integrability facts elementary rather than relying on an unexported Fubini
 bundle. -/
 noncomputable def innerSlabSpatialSlice
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) (t : Real) :
-    SchwartzMap E2 Complex :=
+    SchwartzMap innerSlabRegularityE2 Complex :=
   ∑ i, (a i t) • (FourierTransform.fourierInv (q i) :
-    SchwartzMap E2 Complex)
+    SchwartzMap innerSlabRegularityE2 Complex)
 
 theorem innerSlabSpatialSlice_apply
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (x : E2) (t : Real) :
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (x : innerSlabRegularityE2) (t : Real) :
     innerSlabSpatialSlice q a t x =
       scratch_innerSlabCompactFrequencyTensor q a (x, t) := by
   unfold innerSlabSpatialSlice scratch_innerSlabCompactFrequencyTensor
@@ -21230,37 +21127,37 @@ theorem innerSlabSpatialSlice_apply
   | insert i s hi ih =>
       simp only [Finset.sum_insert hi]
       rw [show ((a i t) • (FourierTransform.fourierInv (q i) :
-        SchwartzMap E2 Complex) + ∑ j ∈ s,
+        SchwartzMap innerSlabRegularityE2 Complex) + ∑ j ∈ s,
           (a j t) • (FourierTransform.fourierInv (q j) :
-            SchwartzMap E2 Complex)) x =
+            SchwartzMap innerSlabRegularityE2 Complex)) x =
           ((a i t) • (FourierTransform.fourierInv (q i) :
-            SchwartzMap E2 Complex)) x +
+            SchwartzMap innerSlabRegularityE2 Complex)) x +
             (∑ j ∈ s, (a j t) • (FourierTransform.fourierInv (q j) :
-              SchwartzMap E2 Complex)) x by rfl]
+              SchwartzMap innerSlabRegularityE2 Complex)) x by rfl]
       rw [ih]
       have hsmul : ((a i t) • (FourierTransform.fourierInv (q i) :
-          SchwartzMap E2 Complex)) x =
+          SchwartzMap innerSlabRegularityE2 Complex)) x =
           (a i t) * (FourierTransform.fourierInv (q i) :
-            SchwartzMap E2 Complex) x := rfl
+            SchwartzMap innerSlabRegularityE2 Complex) x := rfl
       rw [hsmul, mul_comm]
 
 theorem continuous_scratch_innerSlabCompactFrequencyTensor
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Continuous (scratch_innerSlabCompactFrequencyTensor q a) := by
   unfold scratch_innerSlabCompactFrequencyTensor
   exact continuous_finsetSum _ fun i hi =>
     ((FourierTransform.fourierInv (q i) :
-      SchwartzMap E2 Complex).continuous.comp continuous_fst).mul
+      SchwartzMap innerSlabRegularityE2 Complex).continuous.comp continuous_fst).mul
       ((a i).continuous.comp continuous_snd)
 
 theorem memLp_two_scratch_innerSlabCompactFrequencyTensor
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     MemLp (scratch_innerSlabCompactFrequencyTensor q a) 2 volume := by
-  change MemLp (fun z : E2 × Real =>
+  change MemLp (fun z : innerSlabRegularityE2 × Real =>
     scratch_innerSlabCompactFrequencyTensor q a z) 2 (volume.prod volume)
   apply (memLp_two_iff_integrable_sq_norm
     (continuous_scratch_innerSlabCompactFrequencyTensor q a).aestronglyMeasurable).mpr
@@ -21278,11 +21175,11 @@ theorem memLp_two_innerSlabSchwartzTensorCore
 /-- The fixed zero-direction spatial kernel, with terminal variable first.
 This order is the one used by the reusable broad-width spatial Young lemma. -/
 noncomputable def zeroDirectionSpatialKernel
-    (rho : Real) (N : Nat) (y x : E2) : Real :=
+    (rho : Real) (N : Nat) (y x : innerSlabRegularityE2) : Real :=
   lightRayKernel rho N 0 x (y, 0)
 
 theorem zeroDirectionSpatialKernel_symm
-    (rho : Real) (N : Nat) (y x : E2) :
+    (rho : Real) (N : Nat) (y x : innerSlabRegularityE2) :
     zeroDirectionSpatialKernel rho N y x =
       zeroDirectionSpatialKernel rho N x y := by
   unfold zeroDirectionSpatialKernel lightRayKernel
@@ -21291,13 +21188,13 @@ theorem zeroDirectionSpatialKernel_symm
 
 theorem continuous_zeroDirectionSpatialKernel
     {rho : Real} (hrho : 0 < rho) (N : Nat) :
-    Continuous (fun p : E2 × E2 =>
+    Continuous (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N p.1 p.2) := by
   unfold zeroDirectionSpatialKernel lightRayKernel
   simp only [smul_zero, add_zero]
-  have hline : Continuous (fun p : E2 × E2 => p.1 - p.2) := by fun_prop
+  have hline : Continuous (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 => p.1 - p.2) := by fun_prop
   have hinv : 0 ≤ rho⁻¹ := inv_nonneg.mpr hrho.le
-  have hbase : Continuous (fun p : E2 × E2 =>
+  have hbase : Continuous (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 =>
       1 + rho⁻¹ * ‖p.1 - p.2‖) :=
     continuous_const.add (continuous_const.mul hline.norm)
   refine continuous_const.mul ((Continuous.inv₀ hbase ?_).pow N)
@@ -21306,39 +21203,39 @@ theorem continuous_zeroDirectionSpatialKernel
   exact hpos.ne'
 
 theorem integrable_zeroDirectionSpatialKernel_slice
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N) (y : E2) :
-    Integrable (fun x : E2 => zeroDirectionSpatialKernel rho N y x) volume := by
-  rw [show (fun x : E2 => zeroDirectionSpatialKernel rho N y x) =
-      fun x : E2 => lightRayKernel rho N 0 y (x, 0) by
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N) (y : innerSlabRegularityE2) :
+    Integrable (fun x : innerSlabRegularityE2 => zeroDirectionSpatialKernel rho N y x) volume := by
+  rw [show (fun x : innerSlabRegularityE2 => zeroDirectionSpatialKernel rho N y x) =
+      fun x : innerSlabRegularityE2 => lightRayKernel rho N 0 y (x, 0) by
         funext x
         exact zeroDirectionSpatialKernel_symm rho N y x]
   exact integrable_lightRayKernel_spatial hrho N hN 0 y 0
 
 theorem integral_zeroDirectionSpatialKernel_slice
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (y : E2) :
-    (∫ x : E2, zeroDirectionSpatialKernel rho N y x) =
-      ∫ u : E2, lightRayDecayProfile N u := by
-  rw [show (fun x : E2 => zeroDirectionSpatialKernel rho N y x) =
-      fun x : E2 => lightRayKernel rho N 0 y (x, 0) by
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (y : innerSlabRegularityE2) :
+    (∫ x : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N y x) =
+      ∫ u : innerSlabRegularityE2, lightRayDecayProfile N u := by
+  rw [show (fun x : innerSlabRegularityE2 => zeroDirectionSpatialKernel rho N y x) =
+      fun x : innerSlabRegularityE2 => lightRayKernel rho N 0 y (x, 0) by
         funext x
         exact zeroDirectionSpatialKernel_symm rho N y x]
   exact integral_lightRayKernel_spatial_eq_decayProfile hrho N 0 y 0
 
 theorem zeroDirectionSpatialKernel_pos
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : E2) :
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : innerSlabRegularityE2) :
     0 < zeroDirectionSpatialKernel rho N y x := by
   unfold zeroDirectionSpatialKernel lightRayKernel
   positivity
 
 theorem norm_zeroDirectionSpatialKernel_mul
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : E2) (z : Complex) :
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : innerSlabRegularityE2) (z : Complex) :
     ‖(zeroDirectionSpatialKernel rho N y x : Complex) * z‖ =
       zeroDirectionSpatialKernel rho N y x * ‖z‖ := by
   rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
     abs_of_pos (zeroDirectionSpatialKernel_pos hrho N y x)]
 
 theorem zeroDirectionSpatialKernel_inv_norm_sq_mul
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : E2) (z : Complex) :
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : innerSlabRegularityE2) (z : Complex) :
     (zeroDirectionSpatialKernel rho N y x)⁻¹ *
       ‖(zeroDirectionSpatialKernel rho N y x : Complex) * z‖ ^ 2 =
       zeroDirectionSpatialKernel rho N y x * ‖z‖ ^ 2 := by
@@ -21352,12 +21249,12 @@ Young bound.  It uses only the explicit kernel mass and an `L²` spatial
 slice; no Kakeya estimate is hidden here. -/
 theorem integrable_zeroDirectionSpatialEnergy
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (F : E2 → Complex) (hFcont : Continuous F)
-    (hFtwo : Integrable (fun x : E2 => ‖F x‖ ^ 2) volume) :
-    Integrable (fun p : E2 × E2 =>
+    (F : innerSlabRegularityE2 → Complex) (hFcont : Continuous F)
+    (hFtwo : Integrable (fun x : innerSlabRegularityE2 => ‖F x‖ ^ 2) volume) :
+    Integrable (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N p.1 p.2 * ‖F p.2‖ ^ 2)
       (volume.prod volume) := by
-  have hmeas : AEStronglyMeasurable (fun p : E2 × E2 =>
+  have hmeas : AEStronglyMeasurable (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N p.1 p.2 * ‖F p.2‖ ^ 2)
       (volume.prod volume) :=
     ((continuous_zeroDirectionSpatialKernel hrho N).mul
@@ -21370,36 +21267,36 @@ theorem integrable_zeroDirectionSpatialEnergy
     refine hbase.congr ?_
     filter_upwards with y
     rw [zeroDirectionSpatialKernel_symm]
-  · let A : Real := ∫ u : E2, lightRayDecayProfile N u
-    have hright : Integrable (fun x : E2 => A * ‖F x‖ ^ 2) volume :=
+  · let A : Real := ∫ u : innerSlabRegularityE2, lightRayDecayProfile N u
+    have hright : Integrable (fun x : innerSlabRegularityE2 => A * ‖F x‖ ^ 2) volume :=
       hFtwo.const_mul A
     refine hright.congr ?_
     filter_upwards with x
     have hkernel := integrable_zeroDirectionSpatialKernel_slice hrho N hN x
     symm
     calc
-      (∫ y : E2, ‖zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2‖) =
-          ∫ y : E2, zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2 := by
+      (∫ y : innerSlabRegularityE2, ‖zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2‖) =
+          ∫ y : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2 := by
             apply integral_congr_ae
             filter_upwards with y
             rw [Real.norm_eq_abs, abs_of_nonneg]
             exact mul_nonneg
               (zeroDirectionSpatialKernel_pos hrho N y x).le (sq_nonneg _)
-      _ = ∫ y : E2, zeroDirectionSpatialKernel rho N x y * ‖F x‖ ^ 2 := by
+      _ = ∫ y : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N x y * ‖F x‖ ^ 2 := by
             apply integral_congr_ae
             filter_upwards with y
             rw [zeroDirectionSpatialKernel_symm]
-      _ = (∫ y : E2, zeroDirectionSpatialKernel rho N x y) * ‖F x‖ ^ 2 := by
+      _ = (∫ y : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N x y) * ‖F x‖ ^ 2 := by
             rw [integral_mul_const]
       _ = A * ‖F x‖ ^ 2 := by
             rw [integral_zeroDirectionSpatialKernel_slice hrho N x]
 
 theorem aestronglyMeasurable_zeroDirectionSpatialOutput
     {rho : Real} (hrho : 0 < rho) (N : Nat)
-    (F : E2 → Complex) (hFcont : Continuous F) :
-    AEStronglyMeasurable (fun y : E2 => ∫ x : E2,
+    (F : innerSlabRegularityE2 → Complex) (hFcont : Continuous F) :
+    AEStronglyMeasurable (fun y : innerSlabRegularityE2 => ∫ x : innerSlabRegularityE2,
       (zeroDirectionSpatialKernel rho N y x : Complex) * F x) volume := by
-  have hcont : Continuous (fun p : E2 × E2 =>
+  have hcont : Continuous (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N p.1 p.2 : Complex) * F p.2) :=
     (Complex.continuous_ofReal.comp
       (continuous_zeroDirectionSpatialKernel hrho N)).mul
@@ -21407,13 +21304,13 @@ theorem aestronglyMeasurable_zeroDirectionSpatialOutput
   exact hcont.stronglyMeasurable.integral_prod_right'.aestronglyMeasurable
 
 theorem aestronglyMeasurable_zeroDirectionWeightedSlice
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (y : E2)
-    (F : E2 → Complex) (hFcont : Continuous F) :
-    AEStronglyMeasurable (fun x : E2 =>
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (y : innerSlabRegularityE2)
+    (F : innerSlabRegularityE2 → Complex) (hFcont : Continuous F) :
+    AEStronglyMeasurable (fun x : innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N y x)⁻¹ *
         ‖(zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2)
       volume := by
-  have hcont : Continuous (fun x : E2 =>
+  have hcont : Continuous (fun x : innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2) :=
     ((continuous_zeroDirectionSpatialKernel hrho N).comp
       (continuous_const.prodMk continuous_id)).mul (hFcont.norm.pow 2)
@@ -21423,12 +21320,12 @@ theorem aestronglyMeasurable_zeroDirectionWeightedSlice
 
 theorem integrable_zeroDirectionSpatialSliceEnergy
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (y : E2) (F : E2 → Complex) (hFcont : Continuous F)
-    {B : Real} (hB : 0 ≤ B) (hFbound : ∀ x : E2, ‖F x‖ ≤ B) :
-    Integrable (fun x : E2 =>
+    (y : innerSlabRegularityE2) (F : innerSlabRegularityE2 → Complex) (hFcont : Continuous F)
+    {B : Real} (hB : 0 ≤ B) (hFbound : ∀ x : innerSlabRegularityE2, ‖F x‖ ≤ B) :
+    Integrable (fun x : innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2) volume := by
   have hkernel := integrable_zeroDirectionSpatialKernel_slice hrho N hN y
-  have hmeas : AEStronglyMeasurable (fun x : E2 => ‖F x‖ ^ 2) volume :=
+  have hmeas : AEStronglyMeasurable (fun x : innerSlabRegularityE2 => ‖F x‖ ^ 2) volume :=
     (hFcont.norm.pow 2).aestronglyMeasurable
   apply hkernel.mul_bdd hmeas
   filter_upwards with x
@@ -21439,14 +21336,14 @@ theorem integrable_zeroDirectionSpatialSliceEnergy
 operator on one spatial slice of an inner-slab tensor. -/
 noncomputable def innerSlabNormSpatialSlice
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (t : Real) : E2 → Complex :=
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (t : Real) : innerSlabRegularityE2 → Complex :=
   fun x => (‖innerSlabSpatialSlice q a t x‖ : Complex)
 
 theorem innerSlabNormSpatialSlice_apply
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (x : E2) (t : Real) :
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (x : innerSlabRegularityE2) (t : Real) :
     innerSlabNormSpatialSlice q a t x =
       scratch_normInput (scratch_innerSlabCompactFrequencyTensor q a) x t := by
   unfold innerSlabNormSpatialSlice scratch_normInput
@@ -21454,7 +21351,7 @@ theorem innerSlabNormSpatialSlice_apply
 
 theorem continuous_innerSlabNormSpatialSlice
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) (t : Real) :
     Continuous (innerSlabNormSpatialSlice q a t) := by
   unfold innerSlabNormSpatialSlice
@@ -21463,11 +21360,11 @@ theorem continuous_innerSlabNormSpatialSlice
 
 theorem integrable_sq_innerSlabNormSpatialSlice
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) (t : Real) :
-    Integrable (fun x : E2 => ‖innerSlabNormSpatialSlice q a t x‖ ^ 2)
+    Integrable (fun x : innerSlabRegularityE2 => ‖innerSlabNormSpatialSlice q a t x‖ ^ 2)
       volume := by
-  have hbase : Integrable (fun x : E2 =>
+  have hbase : Integrable (fun x : innerSlabRegularityE2 =>
       ‖innerSlabSpatialSlice q a t x‖ ^ 2) volume :=
     (memLp_two_iff_integrable_sq_norm
       (innerSlabSpatialSlice q a t).continuous.aestronglyMeasurable).mp
@@ -21479,9 +21376,9 @@ theorem integrable_sq_innerSlabNormSpatialSlice
 
 theorem innerSlabNormSpatialSlice_bounded
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) (t : Real) :
-    ∀ x : E2, ‖innerSlabNormSpatialSlice q a t x‖ ≤
+    ∀ x : innerSlabRegularityE2, ‖innerSlabNormSpatialSlice q a t x‖ ≤
       (SchwartzMap.seminorm Real 0 0) (innerSlabSpatialSlice q a t) := by
   intro x
   unfold innerSlabNormSpatialSlice
@@ -21490,28 +21387,28 @@ theorem innerSlabNormSpatialSlice_bounded
 
 theorem continuous_scratch_normInput_of_continuous
     (f : WaveSpaceTime → Complex) (hf : Continuous f) :
-    Continuous (fun p : E2 × Real => scratch_normInput f p.1 p.2) := by
+    Continuous (fun p : innerSlabRegularityE2 × Real => scratch_normInput f p.1 p.2) := by
   unfold scratch_normInput
   exact Complex.continuous_ofReal.comp hf.norm
 
 structure ZeroDirectionSpatialSliceRegularity
-    (rho : Real) (N : Nat) (F : E2 → Complex) : Prop where
-  output : AEStronglyMeasurable (fun y : E2 => ∫ x : E2,
+    (rho : Real) (N : Nat) (F : innerSlabRegularityE2 → Complex) : Prop where
+  output : AEStronglyMeasurable (fun y : innerSlabRegularityE2 => ∫ x : innerSlabRegularityE2,
     (zeroDirectionSpatialKernel rho N y x : Complex) * F x) volume
-  energy : Integrable (fun p : E2 × E2 =>
+  energy : Integrable (fun p : innerSlabRegularityE2 × innerSlabRegularityE2 =>
     zeroDirectionSpatialKernel rho N p.1 p.2 * ‖F p.2‖ ^ 2)
       (volume.prod volume)
-  meas : ∀ y : E2, AEStronglyMeasurable (fun x : E2 =>
+  meas : ∀ y : innerSlabRegularityE2, AEStronglyMeasurable (fun x : innerSlabRegularityE2 =>
     (zeroDirectionSpatialKernel rho N y x)⁻¹ *
       ‖(zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2) volume
-  sliceEnergy : ∀ y : E2, Integrable (fun x : E2 =>
+  sliceEnergy : ∀ y : innerSlabRegularityE2, Integrable (fun x : innerSlabRegularityE2 =>
     zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2) volume
 
 theorem zeroDirectionSpatialSliceRegularity_of_continuous
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (F : E2 → Complex) (hFcont : Continuous F)
-    (hFtwo : Integrable (fun x : E2 => ‖F x‖ ^ 2) volume)
-    {B : Real} (hB : 0 ≤ B) (hFbound : ∀ x : E2, ‖F x‖ ≤ B) :
+    (F : innerSlabRegularityE2 → Complex) (hFcont : Continuous F)
+    (hFtwo : Integrable (fun x : innerSlabRegularityE2 => ‖F x‖ ^ 2) volume)
+    {B : Real} (hB : 0 ≤ B) (hFbound : ∀ x : innerSlabRegularityE2, ‖F x‖ ≤ B) :
     ZeroDirectionSpatialSliceRegularity rho N F := by
   refine ⟨aestronglyMeasurable_zeroDirectionSpatialOutput hrho N F hFcont,
     integrable_zeroDirectionSpatialEnergy hrho N hN F hFcont hFtwo,
@@ -21522,7 +21419,7 @@ theorem zeroDirectionSpatialSliceRegularity_of_continuous
 theorem innerSlabNormSpatialSlice_zeroDirectionSpatialRegularity
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) (t : Real) :
     ZeroDirectionSpatialSliceRegularity rho N
       (innerSlabNormSpatialSlice q a t) := by
@@ -21541,14 +21438,14 @@ is the one-slice estimate used twice below to manufacture the product and
 time-slice integrability required by the pre-existing broad-width theorem. -/
 theorem sq_norm_zeroDirectionSpatialOutput_le
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (F : E2 → Complex)
-    (hreg : ZeroDirectionSpatialSliceRegularity rho N F) (y : E2) :
-    ‖∫ x : E2, (zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2 ≤
-      (∫ u : E2, lightRayDecayProfile N u) *
-        ∫ x : E2, zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2 := by
-  let A : Real := ∫ u : E2, lightRayDecayProfile N u
+    (F : innerSlabRegularityE2 → Complex)
+    (hreg : ZeroDirectionSpatialSliceRegularity rho N F) (y : innerSlabRegularityE2) :
+    ‖∫ x : innerSlabRegularityE2, (zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2 ≤
+      (∫ u : innerSlabRegularityE2, lightRayDecayProfile N u) *
+        ∫ x : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2 := by
+  let A : Real := ∫ u : innerSlabRegularityE2, lightRayDecayProfile N u
   have hbase := sq_norm_continuumFineKernelTerm_le_lightRayEnergy (A := A) hrho N 0
-    (fun z : WaveSpaceTime => fun x : E2 =>
+    (fun z : WaveSpaceTime => fun x : innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N z.1 x : Complex)) F
     (by
       intro z x
@@ -21561,8 +21458,8 @@ theorem sq_norm_zeroDirectionSpatialOutput_le
       exact le_rfl)
     (by
       intro z
-      have hsymm : (fun u : E2 => lightRayKernel rho N 0 u z) =
-          fun u : E2 => lightRayKernel rho N 0 z.1 (u, z.2) := by
+      have hsymm : (fun u : innerSlabRegularityE2 => lightRayKernel rho N 0 u z) =
+          fun u : innerSlabRegularityE2 => lightRayKernel rho N 0 z.1 (u, z.2) := by
         funext u
         unfold lightRayKernel
         simp only [smul_zero, add_zero]
@@ -21589,13 +21486,13 @@ theorem sq_norm_zeroDirectionSpatialOutput_le
 integrability used by the time-Cauchy closure. -/
 theorem integrable_innerSlabNormInput_product_swap
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
-    Integrable (fun p : Real × E2 =>
+    Integrable (fun p : Real × innerSlabRegularityE2 =>
       ‖scratch_normInput (scratch_innerSlabCompactFrequencyTensor q a) p.2 p.1‖ ^ 2)
       ((volume.restrict lightRayTimeInterval).prod volume) := by
   have hfull := integrable_sq_finiteTensorPhysicalTimeData Finset.univ q a
-  have hrestrict : Integrable (fun z : E2 × Real =>
+  have hrestrict : Integrable (fun z : innerSlabRegularityE2 × Real =>
       ‖scratch_innerSlabCompactFrequencyTensor q a z‖ ^ 2) scratchLightRayMeasure := by
     simpa only [scratch_innerSlabCompactFrequencyTensor,
       finiteTensorPhysicalTimeData] using
@@ -21610,13 +21507,13 @@ theorem integrable_innerSlabNormInput_product_swap
 the literal light-ray slab. -/
 theorem integrable_innerSlabNormInput_timeSpatialEnergy
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
-    Integrable (fun t : Real => ∫ x : E2,
+    Integrable (fun t : Real => ∫ x : innerSlabRegularityE2,
       ‖scratch_normInput (scratch_innerSlabCompactFrequencyTensor q a) x t‖ ^ 2)
       (volume.restrict lightRayTimeInterval) := by
   have hfull := integrable_sq_finiteTensorPhysicalTimeData Finset.univ q a
-  have hrestrict : Integrable (fun z : E2 × Real =>
+  have hrestrict : Integrable (fun z : innerSlabRegularityE2 × Real =>
       ‖scratch_innerSlabCompactFrequencyTensor q a z‖ ^ 2) scratchLightRayMeasure := by
     simpa only [scratch_innerSlabCompactFrequencyTensor,
       finiteTensorPhysicalTimeData] using
@@ -21631,18 +21528,18 @@ theorem integrable_innerSlabNormInput_timeSpatialEnergy
 theorem aestronglyMeasurable_innerSlab_zeroDirectionEnvelope
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 1 < N)
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
-    AEStronglyMeasurable (fun y : E2 =>
+    AEStronglyMeasurable (fun y : innerSlabRegularityE2 =>
       scratch_zeroDirectionLightRayComplexEnvelope rho N y
         (scratch_innerSlabCompactFrequencyTensor q a)) volume := by
   have hcont := aux_continuous_lightRayAverage_terminal_of_memLp hrho N hN 0
     (scratch_innerSlabCompactFrequencyTensor q a)
     (memLp_two_scratch_innerSlabCompactFrequencyTensor q a)
-  have hident : (fun y : E2 =>
+  have hident : (fun y : innerSlabRegularityE2 =>
       scratch_zeroDirectionLightRayComplexEnvelope rho N y
         (scratch_innerSlabCompactFrequencyTensor q a)) =
-      fun y : E2 => (lightRayAverage rho N 0 y
+      fun y : innerSlabRegularityE2 => (lightRayAverage rho N 0 y
         (scratch_innerSlabCompactFrequencyTensor q a) : Complex) := by
     funext y
     rw [scratch_zeroDirectionLightRayComplexEnvelope_eq_ofReal]
@@ -21661,38 +21558,38 @@ theorem aestronglyMeasurable_innerSlab_zeroDirectionEnvelope
 /-- The spatially convolved integrand before its final time integration. -/
 noncomputable def zeroDirectionSpatialOutput
     (rho : Real) (N : Nat) (f : WaveSpaceTime → Complex)
-    (y : E2) (t : Real) : Complex :=
-  ∫ x : E2, (zeroDirectionSpatialKernel rho N y x : Complex) *
+    (y : innerSlabRegularityE2) (t : Real) : Complex :=
+  ∫ x : innerSlabRegularityE2, (zeroDirectionSpatialKernel rho N y x : Complex) *
     scratch_normInput f x t
 
 theorem stronglyMeasurable_zeroDirectionSpatialOutput_joint
     {rho : Real} (hrho : 0 < rho) (N : Nat)
     (f : WaveSpaceTime → Complex) (hfcont : Continuous f) :
-    StronglyMeasurable (fun p : E2 × Real =>
+    StronglyMeasurable (fun p : innerSlabRegularityE2 × Real =>
       zeroDirectionSpatialOutput rho N f p.1 p.2) := by
-  have hkernelReal : Continuous (fun p : (E2 × Real) × E2 =>
+  have hkernelReal : Continuous (fun p : (innerSlabRegularityE2 × Real) × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N p.1.1 p.2) := by
     unfold zeroDirectionSpatialKernel lightRayKernel
     simp only [smul_zero, add_zero]
-    have hline : Continuous (fun p : (E2 × Real) × E2 => p.1.1 - p.2) := by
+    have hline : Continuous (fun p : (innerSlabRegularityE2 × Real) × innerSlabRegularityE2 => p.1.1 - p.2) := by
       fun_prop
     have hinv : 0 ≤ rho⁻¹ := inv_nonneg.mpr hrho.le
-    have hbase : Continuous (fun p : (E2 × Real) × E2 =>
+    have hbase : Continuous (fun p : (innerSlabRegularityE2 × Real) × innerSlabRegularityE2 =>
         1 + rho⁻¹ * ‖p.1.1 - p.2‖) :=
       continuous_const.add (continuous_const.mul hline.norm)
     refine continuous_const.mul ((Continuous.inv₀ hbase ?_).pow N)
     intro p
     have : 0 < 1 + rho⁻¹ * ‖p.1.1 - p.2‖ := by positivity
     exact this.ne'
-  have hkernel : Continuous (fun p : (E2 × Real) × E2 =>
+  have hkernel : Continuous (fun p : (innerSlabRegularityE2 × Real) × innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N p.1.1 p.2 : Complex)) :=
     Complex.continuous_ofReal.comp hkernelReal
-  have hinput : Continuous (fun p : (E2 × Real) × E2 =>
+  have hinput : Continuous (fun p : (innerSlabRegularityE2 × Real) × innerSlabRegularityE2 =>
       scratch_normInput f p.2 p.1.2) := by
     unfold scratch_normInput
     exact Complex.continuous_ofReal.comp
       (hfcont.comp (by fun_prop)).norm
-  have hjoint : StronglyMeasurable (fun p : (E2 × Real) × E2 =>
+  have hjoint : StronglyMeasurable (fun p : (innerSlabRegularityE2 × Real) × innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N p.1.1 p.2 : Complex) *
         scratch_normInput f p.2 p.1.2) :=
     (hkernel.mul hinput).stronglyMeasurable
@@ -21700,31 +21597,31 @@ theorem stronglyMeasurable_zeroDirectionSpatialOutput_joint
 
 theorem stronglyMeasurable_zeroDirectionSpatialOutput_slice
     {rho : Real} (hrho : 0 < rho) (N : Nat)
-    (f : WaveSpaceTime → Complex) (hfcont : Continuous f) (y : E2) :
+    (f : WaveSpaceTime → Complex) (hfcont : Continuous f) (y : innerSlabRegularityE2) :
     StronglyMeasurable (fun t : Real =>
       zeroDirectionSpatialOutput rho N f y t) := by
-  have hkernelReal : Continuous (fun p : Real × E2 =>
+  have hkernelReal : Continuous (fun p : Real × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N y p.2) := by
     unfold zeroDirectionSpatialKernel lightRayKernel
     simp only [smul_zero, add_zero]
-    have hline : Continuous (fun p : Real × E2 => y - p.2) := by fun_prop
+    have hline : Continuous (fun p : Real × innerSlabRegularityE2 => y - p.2) := by fun_prop
     have hinv : 0 ≤ rho⁻¹ := inv_nonneg.mpr hrho.le
-    have hbase : Continuous (fun p : Real × E2 =>
+    have hbase : Continuous (fun p : Real × innerSlabRegularityE2 =>
         1 + rho⁻¹ * ‖y - p.2‖) :=
       continuous_const.add (continuous_const.mul hline.norm)
     refine continuous_const.mul ((Continuous.inv₀ hbase ?_).pow N)
     intro p
     have : 0 < 1 + rho⁻¹ * ‖y - p.2‖ := by positivity
     exact this.ne'
-  have hkernel : Continuous (fun p : Real × E2 =>
+  have hkernel : Continuous (fun p : Real × innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N y p.2 : Complex)) :=
     Complex.continuous_ofReal.comp hkernelReal
-  have hinput : Continuous (fun p : Real × E2 =>
+  have hinput : Continuous (fun p : Real × innerSlabRegularityE2 =>
       scratch_normInput f p.2 p.1) := by
     unfold scratch_normInput
     exact Complex.continuous_ofReal.comp
       (hfcont.comp (by fun_prop)).norm
-  have hjoint : StronglyMeasurable (fun p : Real × E2 =>
+  have hjoint : StronglyMeasurable (fun p : Real × innerSlabRegularityE2 =>
       (zeroDirectionSpatialKernel rho N y p.2 : Complex) *
         scratch_normInput f p.2 p.1) :=
     (hkernel.mul hinput).stronglyMeasurable
@@ -21733,11 +21630,11 @@ theorem stronglyMeasurable_zeroDirectionSpatialOutput_slice
 theorem zeroDirectionSpatialOutput_inner_eq
     {ι : Type*} [Fintype ι]
     (rho : Real) (N : Nat)
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (y : E2) (t : Real) :
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (y : innerSlabRegularityE2) (t : Real) :
     zeroDirectionSpatialOutput rho N
       (scratch_innerSlabCompactFrequencyTensor q a) y t =
-      ∫ x : E2, (zeroDirectionSpatialKernel rho N y x : Complex) *
+      ∫ x : innerSlabRegularityE2, (zeroDirectionSpatialKernel rho N y x : Complex) *
         innerSlabNormSpatialSlice q a t x := by
   unfold zeroDirectionSpatialOutput
   apply integral_congr_ae
@@ -21751,9 +21648,9 @@ slab.  This is the nontrivial `prod` field of
 theorem integrable_sq_zeroDirectionSpatialOutput_inner
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
-    Integrable (fun p : E2 × Real =>
+    Integrable (fun p : innerSlabRegularityE2 × Real =>
       ‖zeroDirectionSpatialOutput rho N
         (scratch_innerSlabCompactFrequencyTensor q a) p.1 p.2‖ ^ 2)
       (volume.prod (volume.restrict lightRayTimeInterval)) := by
@@ -21762,21 +21659,21 @@ theorem integrable_sq_zeroDirectionSpatialOutput_inner
     continuous_scratch_innerSlabCompactFrequencyTensor q a
   have hHjoint := stronglyMeasurable_zeroDirectionSpatialOutput_joint
     hrho N f hfcont
-  have hHmeas : AEStronglyMeasurable (fun p : E2 × Real =>
+  have hHmeas : AEStronglyMeasurable (fun p : innerSlabRegularityE2 × Real =>
       ‖zeroDirectionSpatialOutput rho N f p.1 p.2‖ ^ 2)
       (volume.prod (volume.restrict lightRayTimeInterval)) :=
     (hHjoint.norm.pow 2).aestronglyMeasurable
   apply (integrable_prod_iff' hHmeas).mpr
   constructor
   · filter_upwards with t
-    let F : E2 → Complex := innerSlabNormSpatialSlice q a t
-    let A : Real := ∫ u : E2, lightRayDecayProfile N u
+    let F : innerSlabRegularityE2 → Complex := innerSlabNormSpatialSlice q a t
+    let A : Real := ∫ u : innerSlabRegularityE2, lightRayDecayProfile N u
     have hreg := innerSlabNormSpatialSlice_zeroDirectionSpatialRegularity
       hrho N hN q a t
-    have hmajor : Integrable (fun y : E2 => A * ∫ x : E2,
+    have hmajor : Integrable (fun y : innerSlabRegularityE2 => A * ∫ x : innerSlabRegularityE2,
         zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2) volume :=
       (hreg.energy.integral_prod_left).const_mul A
-    have hsqmeas : AEStronglyMeasurable (fun y : E2 =>
+    have hsqmeas : AEStronglyMeasurable (fun y : innerSlabRegularityE2 =>
         ‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2) volume := by
       refine (hreg.output.norm.pow 2).congr ?_
       filter_upwards with y
@@ -21788,16 +21685,16 @@ theorem integrable_sq_zeroDirectionSpatialOutput_inner
     rw [Real.norm_of_nonneg (sq_nonneg _)]
     rw [zeroDirectionSpatialOutput_inner_eq rho N q a y t]
     exact sq_norm_zeroDirectionSpatialOutput_le hrho N hN F hreg y
-  · let A : Real := ∫ u : E2, lightRayDecayProfile N u
+  · let A : Real := ∫ u : innerSlabRegularityE2, lightRayDecayProfile N u
     have htime := integrable_innerSlabNormInput_timeSpatialEnergy q a
-    have hright : Integrable (fun t : Real => A ^ 2 * ∫ x : E2,
+    have hright : Integrable (fun t : Real => A ^ 2 * ∫ x : innerSlabRegularityE2,
         ‖scratch_normInput f x t‖ ^ 2)
         (volume.restrict lightRayTimeInterval) :=
       htime.const_mul (A ^ 2)
-    have houterBase : StronglyMeasurable (fun t : Real => ∫ y : E2,
+    have houterBase : StronglyMeasurable (fun t : Real => ∫ y : innerSlabRegularityE2,
         ‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2) :=
       (hHjoint.norm.pow 2).integral_prod_left'
-    have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ y : E2,
+    have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ y : innerSlabRegularityE2,
         ‖‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2‖)
         (volume.restrict lightRayTimeInterval) := by
       refine houterBase.aestronglyMeasurable.congr ?_
@@ -21807,39 +21704,39 @@ theorem integrable_sq_zeroDirectionSpatialOutput_inner
       rw [Real.norm_of_nonneg (sq_nonneg _)]
     refine hright.mono' houterMeas ?_
     filter_upwards with t
-    rw [show (∫ y : E2,
+    rw [show (∫ y : innerSlabRegularityE2,
         ‖‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2‖) =
-        ∫ y : E2, ‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2 by
+        ∫ y : innerSlabRegularityE2, ‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2 by
           apply integral_congr_ae
           filter_upwards with y
           rw [Real.norm_of_nonneg (sq_nonneg _)]]
     rw [Real.norm_of_nonneg (integral_nonneg fun y => sq_nonneg _)]
-    let F : E2 → Complex := innerSlabNormSpatialSlice q a t
+    let F : innerSlabRegularityE2 → Complex := innerSlabNormSpatialSlice q a t
     have hreg := innerSlabNormSpatialSlice_zeroDirectionSpatialRegularity
       hrho N hN q a t
     have hspatial := scratch_integral_sq_zeroDirectionSpatialKernel_le
       hrho N hN F hreg.output hreg.energy hreg.meas hreg.sliceEnergy
-    have hident : (∫ y : E2,
+    have hident : (∫ y : innerSlabRegularityE2,
         ‖zeroDirectionSpatialOutput rho N f y t‖ ^ 2) =
-        ∫ y : E2, ‖∫ x : E2,
+        ∫ y : innerSlabRegularityE2, ‖∫ x : innerSlabRegularityE2,
           (zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2 := by
       apply integral_congr_ae
       filter_upwards with y
       rw [zeroDirectionSpatialOutput_inner_eq rho N q a y t]
     rw [hident]
     calc
-      (∫ y : E2, ‖∫ x : E2,
+      (∫ y : innerSlabRegularityE2, ‖∫ x : innerSlabRegularityE2,
           (zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2) ≤
-          A ^ 2 * ∫ x : E2, ‖F x‖ ^ 2 := by
+          A ^ 2 * ∫ x : innerSlabRegularityE2, ‖F x‖ ^ 2 := by
             simpa only [A, zeroDirectionSpatialKernel] using hspatial
-      _ = A ^ 2 * ∫ x : E2, ‖scratch_normInput f x t‖ ^ 2 := by
+      _ = A ^ 2 * ∫ x : innerSlabRegularityE2, ‖scratch_normInput f x t‖ ^ 2 := by
             congr 1
             apply integral_congr_ae
             filter_upwards with x
             rw [← innerSlabNormSpatialSlice_apply]
 
 theorem zeroDirectionSpatialKernel_le_normalization
-    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : E2) :
+    {rho : Real} (hrho : 0 < rho) (N : Nat) (y x : innerSlabRegularityE2) :
     zeroDirectionSpatialKernel rho N y x ≤ rho⁻¹ ^ 2 := by
   unfold zeroDirectionSpatialKernel
   exact lightRayKernel_le_normalization hrho N 0 x (y, 0)
@@ -21848,9 +21745,9 @@ theorem zeroDirectionSpatialKernel_le_normalization
 theorem integrable_zeroDirectionSpatialKernel_inner_timeEnergy
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat)
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (y : E2) :
-    Integrable (fun p : Real × E2 =>
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (y : innerSlabRegularityE2) :
+    Integrable (fun p : Real × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N y p.2 *
         ‖scratch_normInput (scratch_innerSlabCompactFrequencyTensor q a) p.2 p.1‖ ^ 2)
       ((volume.restrict lightRayTimeInterval).prod volume) := by
@@ -21858,29 +21755,29 @@ theorem integrable_zeroDirectionSpatialKernel_inner_timeEnergy
   have hfcont : Continuous f :=
     continuous_scratch_innerSlabCompactFrequencyTensor q a
   have hinput := integrable_innerSlabNormInput_product_swap q a
-  have hright : Integrable (fun p : Real × E2 => rho⁻¹ ^ 2 *
+  have hright : Integrable (fun p : Real × innerSlabRegularityE2 => rho⁻¹ ^ 2 *
       ‖scratch_normInput f p.2 p.1‖ ^ 2)
       ((volume.restrict lightRayTimeInterval).prod volume) :=
     hinput.const_mul (rho⁻¹ ^ 2)
-  have hkernel : Continuous (fun p : Real × E2 =>
+  have hkernel : Continuous (fun p : Real × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N y p.2) := by
     unfold zeroDirectionSpatialKernel lightRayKernel
     simp only [smul_zero, add_zero]
-    have hline : Continuous (fun p : Real × E2 => y - p.2) := by fun_prop
+    have hline : Continuous (fun p : Real × innerSlabRegularityE2 => y - p.2) := by fun_prop
     have hinv : 0 ≤ rho⁻¹ := inv_nonneg.mpr hrho.le
-    have hbase : Continuous (fun p : Real × E2 =>
+    have hbase : Continuous (fun p : Real × innerSlabRegularityE2 =>
         1 + rho⁻¹ * ‖y - p.2‖) :=
       continuous_const.add (continuous_const.mul hline.norm)
     refine continuous_const.mul ((Continuous.inv₀ hbase ?_).pow N)
     intro p
     have : 0 < 1 + rho⁻¹ * ‖y - p.2‖ := by positivity
     exact this.ne'
-  have hnormInput : Continuous (fun p : Real × E2 =>
+  have hnormInput : Continuous (fun p : Real × innerSlabRegularityE2 =>
       scratch_normInput f p.2 p.1) := by
     unfold scratch_normInput
     exact Complex.continuous_ofReal.comp
       (hfcont.comp (by fun_prop)).norm
-  have hmeas : AEStronglyMeasurable (fun p : Real × E2 =>
+  have hmeas : AEStronglyMeasurable (fun p : Real × innerSlabRegularityE2 =>
       zeroDirectionSpatialKernel rho N y p.2 *
         ‖scratch_normInput f p.2 p.1‖ ^ 2)
       ((volume.restrict lightRayTimeInterval).prod volume) :=
@@ -21895,8 +21792,8 @@ theorem integrable_zeroDirectionSpatialKernel_inner_timeEnergy
 theorem memLp_two_zeroDirectionSpatialOutput_inner_slice
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (y : E2) :
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (y : innerSlabRegularityE2) :
     MemLp (fun t : Real => zeroDirectionSpatialOutput rho N
       (scratch_innerSlabCompactFrequencyTensor q a) y t) 2
       (volume.restrict lightRayTimeInterval) := by
@@ -21905,10 +21802,10 @@ theorem memLp_two_zeroDirectionSpatialOutput_inner_slice
     continuous_scratch_innerSlabCompactFrequencyTensor q a
   apply (memLp_two_iff_integrable_sq_norm
     (stronglyMeasurable_zeroDirectionSpatialOutput_slice hrho N f hfcont y).aestronglyMeasurable).mpr
-  let A : Real := ∫ u : E2, lightRayDecayProfile N u
+  let A : Real := ∫ u : innerSlabRegularityE2, lightRayDecayProfile N u
   have henergy := integrable_zeroDirectionSpatialKernel_inner_timeEnergy
     hrho N q a y
-  have hmajor : Integrable (fun t : Real => A * ∫ x : E2,
+  have hmajor : Integrable (fun t : Real => A * ∫ x : innerSlabRegularityE2,
       zeroDirectionSpatialKernel rho N y x *
         ‖scratch_normInput f x t‖ ^ 2)
       (volume.restrict lightRayTimeInterval) :=
@@ -21920,15 +21817,15 @@ theorem memLp_two_zeroDirectionSpatialOutput_inner_slice
   refine hmajor.mono' hsqmeas ?_
   filter_upwards with t
   rw [Real.norm_of_nonneg (sq_nonneg _)]
-  let F : E2 → Complex := innerSlabNormSpatialSlice q a t
+  let F : innerSlabRegularityE2 → Complex := innerSlabNormSpatialSlice q a t
   have hreg := innerSlabNormSpatialSlice_zeroDirectionSpatialRegularity
     hrho N hN q a t
   rw [zeroDirectionSpatialOutput_inner_eq rho N q a y t]
   calc
-    ‖∫ x : E2, (zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2 ≤
-        A * ∫ x : E2, zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2 := by
+    ‖∫ x : innerSlabRegularityE2, (zeroDirectionSpatialKernel rho N y x : Complex) * F x‖ ^ 2 ≤
+        A * ∫ x : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N y x * ‖F x‖ ^ 2 := by
           exact sq_norm_zeroDirectionSpatialOutput_le hrho N hN F hreg y
-    _ = A * ∫ x : E2, zeroDirectionSpatialKernel rho N y x *
+    _ = A * ∫ x : innerSlabRegularityE2, zeroDirectionSpatialKernel rho N y x *
         ‖scratch_normInput f x t‖ ^ 2 := by
           congr 1
           apply integral_congr_ae
@@ -21941,7 +21838,7 @@ tensors.  The proof is entirely positive-kernel/Fubini bookkeeping. -/
 theorem zeroDirectionLightRayRegularity_innerSlabSchwartzTensor
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat) (hN : 2 < N)
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap innerSlabRegularityE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     ScratchZeroDirectionLightRayRegularity rho N
       (scratch_innerSlabCompactFrequencyTensor q a) := by
@@ -21980,64 +21877,58 @@ theorem zeroDirectionLightRayRegularity_innerSlabSchwartzTensor
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaInnerSlabRegularity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaInnerSlabRegularity
 
 -- BEGIN ScratchKakeyaConcreteBroad
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaConcreteBroad
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalAbsoluteBroadBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaInnerSlabRegularity
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev concreteBroadE2 := Euclidean 2
 
 /-- A finite separated inner-slab tensor is jointly integrable.  This is
 the L¹ companion to the existing L² tensor-energy lemma. -/
 theorem integrable_innerSlabSchwartzTensor
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Integrable (scratch_innerSlabCompactFrequencyTensor q a) volume := by
-  change Integrable (fun p : E2 × Real =>
+  change Integrable (fun p : concreteBroadE2 × Real =>
     scratch_innerSlabCompactFrequencyTensor q a p) (volume.prod volume)
   unfold scratch_innerSlabCompactFrequencyTensor
   refine integrable_finsetSum Finset.univ ?_
   intro i hi
   exact ((FourierTransform.fourierInv (q i) :
-    SchwartzMap E2 Complex).integrable).mul_prod ((a i).integrable)
+    SchwartzMap concreteBroadE2 Complex).integrable).mul_prod ((a i).integrable)
 
 theorem integrable_norm_innerSlabSchwartzTensor
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Integrable (fun z : WaveSpaceTime =>
       ‖scratch_innerSlabCompactFrequencyTensor q a z‖) volume :=
   (integrable_innerSlabSchwartzTensor q a).norm
 
 theorem continuous_canonicalTubeKernel
-    {rho : Real} (hrho : 0 < rho) (omega y : E2) :
-    Continuous (fun p : E2 × Real =>
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteBroadE2) :
+    Continuous (fun p : concreteBroadE2 × Real =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteBroadE2 → Complex)
         (p.1 + p.2 • omega - y)) := by
-  have harg : Continuous (fun p : E2 × Real => p.1 + p.2 • omega - y) := by
+  have harg : Continuous (fun p : concreteBroadE2 × Real => p.1 + p.2 • omega - y) := by
     fun_prop
   rw [← SchwartzMap.fourierInv_coe]
   exact (FourierTransform.fourierInv
     (scratch_canonicalBandlimitedTubeMultiplier rho hrho) :
-      SchwartzMap E2 Complex).continuous.comp harg
+      SchwartzMap concreteBroadE2 Complex).continuous.comp harg
 
 /-- At a fixed time, the positive zero-direction envelope is integrable
 against a finite tensor slice.  We use only boundedness of the kernel here,
@@ -22045,31 +21936,31 @@ so this statement is valid at every decay order. -/
 theorem integrable_lightRayKernel_mul_innerSlabSlice
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat)
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (y : E2) (t : Real) :
-    Integrable (fun x : E2 =>
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (y : concreteBroadE2) (t : Real) :
+    Integrable (fun x : concreteBroadE2 =>
       lightRayKernel rho N 0 x (y, 0) *
         ‖scratch_innerSlabCompactFrequencyTensor q a (x, t)‖) volume := by
-  let F : SchwartzMap E2 Complex := innerSlabSpatialSlice q a t
-  have hF : Integrable (fun x : E2 => ‖F x‖) volume := F.integrable.norm
-  have hmajor : Integrable (fun x : E2 => rho⁻¹ ^ 2 * ‖F x‖) volume :=
+  let F : SchwartzMap concreteBroadE2 Complex := innerSlabSpatialSlice q a t
+  have hF : Integrable (fun x : concreteBroadE2 => ‖F x‖) volume := F.integrable.norm
+  have hmajor : Integrable (fun x : concreteBroadE2 => rho⁻¹ ^ 2 * ‖F x‖) volume :=
     hF.const_mul (rho⁻¹ ^ 2)
-  have hkernel : Continuous (fun x : E2 => lightRayKernel rho N 0 x (y, 0)) := by
+  have hkernel : Continuous (fun x : concreteBroadE2 => lightRayKernel rho N 0 x (y, 0)) := by
     unfold lightRayKernel
     simp only [smul_zero, add_zero]
-    have hline : Continuous (fun x : E2 => y - x) := by fun_prop
+    have hline : Continuous (fun x : concreteBroadE2 => y - x) := by fun_prop
     have hinv : 0 ≤ rho⁻¹ := inv_nonneg.mpr hrho.le
-    have hbase : Continuous (fun x : E2 => 1 + rho⁻¹ * ‖y - x‖) :=
+    have hbase : Continuous (fun x : concreteBroadE2 => 1 + rho⁻¹ * ‖y - x‖) :=
       continuous_const.add (continuous_const.mul hline.norm)
     refine continuous_const.mul ((Continuous.inv₀ hbase ?_).pow N)
     intro x
     have : 0 < 1 + rho⁻¹ * ‖y - x‖ := by positivity
     exact this.ne'
-  have hfSlice : Continuous (fun x : E2 =>
+  have hfSlice : Continuous (fun x : concreteBroadE2 =>
       scratch_innerSlabCompactFrequencyTensor q a (x, t)) := by
     exact (continuous_scratch_innerSlabCompactFrequencyTensor q a).comp
-      (continuous_id.prodMk (continuous_const : Continuous fun _ : E2 => t))
-  have hmeas : AEStronglyMeasurable (fun x : E2 =>
+      (continuous_id.prodMk (continuous_const : Continuous fun _ : concreteBroadE2 => t))
+  have hmeas : AEStronglyMeasurable (fun x : concreteBroadE2 =>
       lightRayKernel rho N 0 x (y, 0) *
         ‖scratch_innerSlabCompactFrequencyTensor q a (x, t)‖) volume :=
     (hkernel.mul hfSlice.norm).aestronglyMeasurable
@@ -22088,38 +21979,38 @@ estimate. -/
 theorem integrable_lightRayKernel_mul_innerSlabTime
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : 0 < rho) (N : Nat)
-    (q : ι → SchwartzMap E2 Complex)
-    (a : ι → SchwartzMap Real Complex) (y : E2) :
-    Integrable (fun t : Real => ∫ x : E2,
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
+    (a : ι → SchwartzMap Real Complex) (y : concreteBroadE2) :
+    Integrable (fun t : Real => ∫ x : concreteBroadE2,
       lightRayKernel rho N 0 x (y, 0) *
         ‖scratch_innerSlabCompactFrequencyTensor q a (x, t)‖)
       (volume.restrict lightRayTimeInterval) := by
   let f : WaveSpaceTime → Complex := scratch_innerSlabCompactFrequencyTensor q a
   have hinput : Integrable (fun z : WaveSpaceTime => ‖f z‖) volume :=
     integrable_norm_innerSlabSchwartzTensor q a
-  have hinputR : Integrable (fun p : E2 × Real => ‖f p‖)
+  have hinputR : Integrable (fun p : concreteBroadE2 × Real => ‖f p‖)
       (volume.prod (volume.restrict lightRayTimeInterval)) := by
     exact hinput.mono_measure (Measure.prod_mono le_rfl Measure.restrict_le_self)
-  have hmajor : Integrable (fun p : E2 × Real => rho⁻¹ ^ 2 * ‖f p‖)
+  have hmajor : Integrable (fun p : concreteBroadE2 × Real => rho⁻¹ ^ 2 * ‖f p‖)
       (volume.prod (volume.restrict lightRayTimeInterval)) :=
     hinputR.const_mul (rho⁻¹ ^ 2)
-  have hkernel : Continuous (fun x : E2 => lightRayKernel rho N 0 x (y, 0)) := by
+  have hkernel : Continuous (fun x : concreteBroadE2 => lightRayKernel rho N 0 x (y, 0)) := by
     unfold lightRayKernel
     simp only [smul_zero, add_zero]
-    have hline : Continuous (fun x : E2 => y - x) := by fun_prop
+    have hline : Continuous (fun x : concreteBroadE2 => y - x) := by fun_prop
     have hinv : 0 ≤ rho⁻¹ := inv_nonneg.mpr hrho.le
-    have hbase : Continuous (fun x : E2 => 1 + rho⁻¹ * ‖y - x‖) :=
+    have hbase : Continuous (fun x : concreteBroadE2 => 1 + rho⁻¹ * ‖y - x‖) :=
       continuous_const.add (continuous_const.mul hline.norm)
     refine continuous_const.mul ((Continuous.inv₀ hbase ?_).pow N)
     intro x
     have : 0 < 1 + rho⁻¹ * ‖y - x‖ := by positivity
     exact this.ne'
   have hfcont : Continuous f := continuous_scratch_innerSlabCompactFrequencyTensor q a
-  have hmeas : AEStronglyMeasurable (fun p : E2 × Real =>
+  have hmeas : AEStronglyMeasurable (fun p : concreteBroadE2 × Real =>
       lightRayKernel rho N 0 p.1 (y, 0) * ‖f p‖)
       (volume.prod (volume.restrict lightRayTimeInterval)) :=
     ((hkernel.comp continuous_fst).mul hfcont.norm).aestronglyMeasurable
-  have hjoint : Integrable (fun p : E2 × Real =>
+  have hjoint : Integrable (fun p : concreteBroadE2 × Real =>
       lightRayKernel rho N 0 p.1 (y, 0) * ‖f p‖)
       (volume.prod (volume.restrict lightRayTimeInterval)) := by
     refine hmajor.mono' hmeas ?_
@@ -22130,7 +22021,7 @@ theorem integrable_lightRayKernel_mul_innerSlabTime
       (lightRayKernel_le_normalization hrho N 0 p.1 (y, 0)) (norm_nonneg _)
   exact hjoint.integral_prod_right
 
-theorem canonicalAbsoluteCore_nonneg (u : E2) :
+theorem canonicalAbsoluteCore_nonneg (u : concreteBroadE2) :
     0 ≤ canonicalAbsoluteCore u := by
   rw [canonicalAbsoluteCore_apply]
   exact norm_nonneg _
@@ -22139,28 +22030,28 @@ theorem canonicalAbsoluteCore_nonneg (u : E2) :
 zero-order Schwartz decay bound is enough outside the actual time slab. -/
 theorem integrable_canonicalAbsoluteCore_mul_innerSlabSlice
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteBroadE2)
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
     (a : ι → SchwartzMap Real Complex) (t : Real) :
-    Integrable (fun x : E2 =>
+    Integrable (fun x : concreteBroadE2 =>
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖scratch_innerSlabCompactFrequencyTensor q a (x, t)‖) volume := by
   obtain ⟨A, hA, hdecay⟩ := exists_canonicalAbsoluteCore_le_lightRayDecayProfile 0
-  let F : SchwartzMap E2 Complex := innerSlabSpatialSlice q a t
-  have hF : Integrable (fun x : E2 => ‖F x‖) volume := F.integrable.norm
-  have hmajor : Integrable (fun x : E2 => (rho⁻¹ ^ 2 * A) * ‖F x‖) volume :=
+  let F : SchwartzMap concreteBroadE2 Complex := innerSlabSpatialSlice q a t
+  have hF : Integrable (fun x : concreteBroadE2 => ‖F x‖) volume := F.integrable.norm
+  have hmajor : Integrable (fun x : concreteBroadE2 => (rho⁻¹ ^ 2 * A) * ‖F x‖) volume :=
     hF.const_mul (rho⁻¹ ^ 2 * A)
-  have harg : Continuous (fun x : E2 => rho⁻¹ • (x + t • omega - y)) := by
+  have harg : Continuous (fun x : concreteBroadE2 => rho⁻¹ • (x + t • omega - y)) := by
     fun_prop
-  have hcore : Continuous (fun x : E2 =>
+  have hcore : Continuous (fun x : concreteBroadE2 =>
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t)) := by
     unfold scratch_smoothTubeCore
     exact continuous_const.mul (canonicalAbsoluteCore.continuous.comp harg)
-  have hfSlice : Continuous (fun x : E2 =>
+  have hfSlice : Continuous (fun x : concreteBroadE2 =>
       scratch_innerSlabCompactFrequencyTensor q a (x, t)) := by
     exact (continuous_scratch_innerSlabCompactFrequencyTensor q a).comp
-      (continuous_id.prodMk (continuous_const : Continuous fun _ : E2 => t))
-  have hmeas : AEStronglyMeasurable (fun x : E2 =>
+      (continuous_id.prodMk (continuous_const : Continuous fun _ : concreteBroadE2 => t))
+  have hmeas : AEStronglyMeasurable (fun x : concreteBroadE2 =>
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖scratch_innerSlabCompactFrequencyTensor q a (x, t)‖) volume :=
     (hcore.mul hfSlice.norm).aestronglyMeasurable
@@ -22186,10 +22077,10 @@ bridge. -/
 theorem integrable_canonicalAbsoluteCore_mul_innerSlabTime
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : (1 / 2 : Real) ≤ rho) (N : Nat)
-    (omega y : E2) (homega : ‖omega‖ ≤ 1)
-    (q : ι → SchwartzMap E2 Complex)
+    (omega y : concreteBroadE2) (homega : ‖omega‖ ≤ 1)
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
-    Integrable (fun t : Real => ∫ x : E2,
+    Integrable (fun t : Real => ∫ x : concreteBroadE2,
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
         ‖scratch_innerSlabCompactFrequencyTensor q a (x, t)‖)
       (volume.restrict lightRayTimeInterval) := by
@@ -22201,26 +22092,26 @@ theorem integrable_canonicalAbsoluteCore_mul_innerSlabTime
   have hrho0 : 0 < rho := lt_of_lt_of_le (by norm_num) hrho
   let f : WaveSpaceTime → Complex := scratch_innerSlabCompactFrequencyTensor q a
   have henv := integrable_lightRayKernel_mul_innerSlabTime hrho0 N q a y
-  have harg : Continuous (fun p : E2 × Real =>
+  have harg : Continuous (fun p : concreteBroadE2 × Real =>
       rho⁻¹ • (p.1 + p.2 • omega - y)) := by
     fun_prop
-  have hcoreCont : Continuous (fun p : E2 × Real =>
+  have hcoreCont : Continuous (fun p : concreteBroadE2 × Real =>
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (p.1, p.2)) := by
     unfold scratch_smoothTubeCore
     exact continuous_const.mul (canonicalAbsoluteCore.continuous.comp harg)
   have hfcont : Continuous f := continuous_scratch_innerSlabCompactFrequencyTensor q a
-  have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ x : E2,
+  have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ x : concreteBroadE2,
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) * ‖f (x, t)‖)
       (volume.restrict lightRayTimeInterval) :=
     ((hcoreCont.mul hfcont.norm).stronglyMeasurable.integral_prod_left').aestronglyMeasurable
-  have hmajor : Integrable (fun t : Real => C * ∫ x : E2,
+  have hmajor : Integrable (fun t : Real => C * ∫ x : concreteBroadE2,
       lightRayKernel rho N 0 x (y, 0) * ‖f (x, t)‖)
       (volume.restrict lightRayTimeInterval) := henv.const_mul C
   refine hmajor.mono' houterMeas ?_
   filter_upwards [ae_restrict_mem (by
     unfold lightRayTimeInterval
     exact measurableSet_Icc)] with t ht
-  have hcoreNonneg : 0 ≤ ∫ x : E2,
+  have hcoreNonneg : 0 ≤ ∫ x : concreteBroadE2,
       scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) * ‖f (x, t)‖ :=
     integral_nonneg fun x => by
       unfold scratch_smoothTubeCore
@@ -22232,9 +22123,9 @@ theorem integrable_canonicalAbsoluteCore_mul_innerSlabTime
   have henvSlice := integrable_lightRayKernel_mul_innerSlabSlice
     hrho0 N q a y t
   calc
-    (∫ x : E2,
+    (∫ x : concreteBroadE2,
         scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) * ‖f (x, t)‖) ≤
-        ∫ x : E2, C *
+        ∫ x : concreteBroadE2, C *
           (lightRayKernel rho N 0 x (y, 0) * ‖f (x, t)‖) := by
           apply integral_mono hcoreSlice (henvSlice.const_mul C)
           intro x
@@ -22242,7 +22133,7 @@ theorem integrable_canonicalAbsoluteCore_mul_innerSlabTime
             canonicalAbsoluteCore N hA hdecay hrho omega y x t homega ht
           simpa only [f, C, mul_assoc] using
             mul_le_mul_of_nonneg_right hdom (norm_nonneg _)
-    _ = C * ∫ x : E2,
+    _ = C * ∫ x : concreteBroadE2,
         lightRayKernel rho N 0 x (y, 0) * ‖f (x, t)‖ := by
           rw [integral_const_mul]
 
@@ -22253,8 +22144,8 @@ broad scale. -/
 theorem canonicalTubeSignedBroadRegularity_innerSlabSchwartzTensor
     {ι : Type*} [Fintype ι]
     {rho : Real} (hrho : (1 / 2 : Real) ≤ rho) (N : Nat)
-    (omega y : E2) (homega : ‖omega‖ ≤ 1)
-    (q : ι → SchwartzMap E2 Complex)
+    (omega y : concreteBroadE2) (homega : ‖omega‖ ≤ 1)
+    (q : ι → SchwartzMap concreteBroadE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     CanonicalTubeSignedBroadRegularity rho
       (lt_of_lt_of_le (by norm_num) hrho) N omega y
@@ -22263,23 +22154,23 @@ theorem canonicalTubeSignedBroadRegularity_innerSlabSchwartzTensor
   let f : WaveSpaceTime → Complex := scratch_innerSlabCompactFrequencyTensor q a
   have hfcont : Continuous f := continuous_scratch_innerSlabCompactFrequencyTensor q a
   have hkernel := continuous_canonicalTubeKernel hrho0 omega y
-  have hinnerMeas : StronglyMeasurable (fun p : E2 × Real =>
+  have hinnerMeas : StronglyMeasurable (fun p : concreteBroadE2 × Real =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : concreteBroadE2 → Complex)
         (p.1 + p.2 • omega - y) * f p) :=
     (hkernel.mul hfcont).stronglyMeasurable
-  have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ x : E2,
+  have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ x : concreteBroadE2,
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : concreteBroadE2 → Complex)
         (x + t • omega - y) * f (x, t))
       (volume.restrict lightRayTimeInterval) :=
     hinnerMeas.integral_prod_left'.aestronglyMeasurable
   have hcoreTime := integrable_canonicalAbsoluteCore_mul_innerSlabTime
     hrho N omega y homega q a
   have henvTime := integrable_lightRayKernel_mul_innerSlabTime hrho0 N q a y
-  have habsOuter : Integrable (fun t : Real => ∫ x : E2,
+  have habsOuter : Integrable (fun t : Real => ∫ x : concreteBroadE2,
       ‖FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : concreteBroadE2 → Complex)
         (x + t • omega - y) * f (x, t)‖)
       (volume.restrict lightRayTimeInterval) := by
     refine hcoreTime.congr ?_
@@ -22287,9 +22178,9 @@ theorem canonicalTubeSignedBroadRegularity_innerSlabSchwartzTensor
     apply integral_congr_ae
     filter_upwards with x
     rw [norm_mul, norm_canonicalTubeKernel_eq_smoothTubeCore hrho0]
-  have houter : Integrable (fun t : Real => ∫ x : E2,
+  have houter : Integrable (fun t : Real => ∫ x : concreteBroadE2,
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho0 : concreteBroadE2 → Complex)
         (x + t • omega - y) * f (x, t))
       (volume.restrict lightRayTimeInterval) := by
     refine habsOuter.mono' houterMeas ?_
@@ -22355,38 +22246,28 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_canonicalTubeSignedScal
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaConcreteBroad
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteBroad
 
 -- BEGIN ScratchKakeyaThresholdedUnitWiring
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaThresholdedUnitWiring
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.MSS.ScratchKakeyaInnerSlabRegularity
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalDyadicClosure
-open Auto.Spherical.LpSpaceFacts
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LpSpaceFacts
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev thresholdedUnitE2 := Euclidean 2
 
 /-- The elementary square identity behind the thresholded fixed-direction
 continuity argument. -/
 theorem lightRayKernel_sq_eq_scale_mul_double
-    {delta : Real} (N : Nat) (omega y x : E2) (t : Real) :
+    {delta : Real} (N : Nat) (omega y x : thresholdedUnitE2) (t : Real) :
     lightRayKernel delta N omega y (x, t) ^ 2 =
       (delta⁻¹) ^ 2 * lightRayKernel delta (2 * N) omega y (x, t) := by
   unfold lightRayKernel
@@ -22394,12 +22275,12 @@ theorem lightRayKernel_sq_eq_scale_mul_double
 
 theorem integrable_sq_lightRayKernel_spatial
     {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N)
-    (omega y : E2) (t : Real) :
-    Integrable (fun x : E2 => lightRayKernel delta N omega y (x, t) ^ 2) volume := by
+    (omega y : thresholdedUnitE2) (t : Real) :
+    Integrable (fun x : thresholdedUnitE2 => lightRayKernel delta N omega y (x, t) ^ 2) volume := by
   have hdouble : 2 < 2 * N := by omega
   have hbase := integrable_lightRayKernel_spatial hdelta (2 * N) hdouble omega y t
-  rw [show (fun x : E2 => lightRayKernel delta N omega y (x, t) ^ 2) =
-      fun x : E2 => (delta⁻¹) ^ 2 *
+  rw [show (fun x : thresholdedUnitE2 => lightRayKernel delta N omega y (x, t) ^ 2) =
+      fun x : thresholdedUnitE2 => (delta⁻¹) ^ 2 *
         lightRayKernel delta (2 * N) omega y (x, t) by
         funext x
         exact lightRayKernel_sq_eq_scale_mul_double N omega y x t]
@@ -22407,11 +22288,11 @@ theorem integrable_sq_lightRayKernel_spatial
 
 theorem integral_sq_lightRayKernel_spatial_eq
     {delta : Real} (hdelta : 0 < delta) (N : Nat)
-    (omega y : E2) (t : Real) :
-    (∫ x : E2, lightRayKernel delta N omega y (x, t) ^ 2) =
-      (delta⁻¹) ^ 2 * ∫ u : E2, lightRayDecayProfile (2 * N) u := by
-  rw [show (fun x : E2 => lightRayKernel delta N omega y (x, t) ^ 2) =
-      fun x : E2 => (delta⁻¹) ^ 2 *
+    (omega y : thresholdedUnitE2) (t : Real) :
+    (∫ x : thresholdedUnitE2, lightRayKernel delta N omega y (x, t) ^ 2) =
+      (delta⁻¹) ^ 2 * ∫ u : thresholdedUnitE2, lightRayDecayProfile (2 * N) u := by
+  rw [show (fun x : thresholdedUnitE2 => lightRayKernel delta N omega y (x, t) ^ 2) =
+      fun x : thresholdedUnitE2 => (delta⁻¹) ^ 2 *
         lightRayKernel delta (2 * N) omega y (x, t) by
         funext x
         exact lightRayKernel_sq_eq_scale_mul_double N omega y x t,
@@ -22422,22 +22303,22 @@ theorem integral_sq_lightRayKernel_spatial_eq
 the range needed by the endpoint (`N > 1`). -/
 theorem integrable_sq_lightRayKernel_spaceTime
     {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N)
-    (omega y : E2) :
-    Integrable (fun z : E2 × Real =>
+    (omega y : thresholdedUnitE2) :
+    Integrable (fun z : thresholdedUnitE2 × Real =>
       lightRayKernel delta N omega y (z.1, z.2) ^ 2)
       (volume.prod (volume.restrict lightRayTimeInterval)) := by
-  let F : E2 × Real → Real := fun z =>
+  let F : thresholdedUnitE2 × Real → Real := fun z =>
     lightRayKernel delta N omega y (z.1, z.2) ^ 2
   have hFcont : Continuous F := by
     dsimp only [F]
     unfold lightRayKernel
-    have hline : Continuous (fun z : E2 × Real =>
+    have hline : Continuous (fun z : thresholdedUnitE2 × Real =>
         z.1 + z.2 • omega - y) := by fun_prop
-    have hne : ∀ z : E2 × Real,
+    have hne : ∀ z : thresholdedUnitE2 × Real,
         1 + delta⁻¹ * ‖z.1 + z.2 • omega - y‖ ≠ 0 := by
       intro z
       positivity
-    have hinv : Continuous (fun z : E2 × Real =>
+    have hinv : Continuous (fun z : thresholdedUnitE2 × Real =>
         (1 + delta⁻¹ * ‖z.1 + z.2 • omega - y‖)⁻¹) :=
       (continuous_const.add (hline.norm.const_mul delta⁻¹)).inv₀ hne
     exact (continuous_const.mul (hinv.pow N)).pow 2
@@ -22445,19 +22326,19 @@ theorem integrable_sq_lightRayKernel_spaceTime
   constructor
   · filter_upwards with t
     exact integrable_sq_lightRayKernel_spatial hdelta N hN omega y t
-  · let C : Real := (delta⁻¹) ^ 2 * ∫ u : E2,
+  · let C : Real := (delta⁻¹) ^ 2 * ∫ u : thresholdedUnitE2,
       lightRayDecayProfile (2 * N) u
-    have htime : (fun t : Real => ∫ x : E2, ‖F (x, t)‖) =
+    have htime : (fun t : Real => ∫ x : thresholdedUnitE2, ‖F (x, t)‖) =
         fun _ : Real => C := by
       funext t
       dsimp only [F, C]
       calc
-        (∫ x : E2, ‖lightRayKernel delta N omega y (x, t) ^ 2‖) =
-            ∫ x : E2, lightRayKernel delta N omega y (x, t) ^ 2 := by
+        (∫ x : thresholdedUnitE2, ‖lightRayKernel delta N omega y (x, t) ^ 2‖) =
+            ∫ x : thresholdedUnitE2, lightRayKernel delta N omega y (x, t) ^ 2 := by
               apply integral_congr_ae
               filter_upwards with x
               rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
-        _ = (delta⁻¹) ^ 2 * ∫ u : E2,
+        _ = (delta⁻¹) ^ 2 * ∫ u : thresholdedUnitE2,
             lightRayDecayProfile (2 * N) u :=
               integral_sq_lightRayKernel_spatial_eq hdelta N omega y t
     rw [htime]
@@ -22468,17 +22349,17 @@ theorem integrable_sq_lightRayKernel_spaceTime
 
 theorem memLp_two_lightRayKernel_spaceTime
     {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N)
-    (omega y : E2) :
+    (omega y : thresholdedUnitE2) :
     MemLp (fun z : WaveSpaceTime =>
       (lightRayKernel delta N omega y z : Complex)) 2 scratchLightRayMeasure := by
   rw [show scratchLightRayMeasure =
-      (volume : Measure E2).prod (volume.restrict lightRayTimeInterval) by rfl]
-  have hcont : Continuous (fun z : E2 × Real =>
+      (volume : Measure thresholdedUnitE2).prod (volume.restrict lightRayTimeInterval) by rfl]
+  have hcont : Continuous (fun z : thresholdedUnitE2 × Real =>
       (lightRayKernel delta N omega y (z.1, z.2) : Complex)) := by
       unfold lightRayKernel
-      have hline : Continuous (fun z : E2 × Real =>
+      have hline : Continuous (fun z : thresholdedUnitE2 × Real =>
           z.1 + z.2 • omega - y) := by fun_prop
-      have hne : ∀ z : E2 × Real,
+      have hne : ∀ z : thresholdedUnitE2 × Real,
           1 + delta⁻¹ * ‖z.1 + z.2 • omega - y‖ ≠ 0 := by
         intro z
         positivity
@@ -22504,7 +22385,7 @@ theorem memLp_complex_ofReal_of_memLp
 /-- The displayed nested light-ray integral is the product-space pairing
 with the literal restricted slab measure. -/
 theorem coe_lightRayAverage_eq_integral_kernel_norm
-    {delta : Real} (N : Nat) (omega y : E2)
+    {delta : Real} (N : Nat) (omega y : thresholdedUnitE2)
     (f : WaveSpaceTime → Complex)
     (hprod : Integrable (fun z : WaveSpaceTime =>
       (lightRayKernel delta N omega y z * ‖f z‖ : Complex)) scratchLightRayMeasure) :
@@ -22514,35 +22395,35 @@ theorem coe_lightRayAverage_eq_integral_kernel_norm
         ∂scratchLightRayMeasure := by
   unfold positiveNormLightRayLinear lightRayAverage
   rw [show scratchLightRayMeasure =
-      (volume : Measure E2).prod (volume.restrict lightRayTimeInterval) by rfl]
+      (volume : Measure thresholdedUnitE2).prod (volume.restrict lightRayTimeInterval) by rfl]
   calc
-    (↑(∫ t in lightRayTimeInterval, ∫ x : E2,
+    (↑(∫ t in lightRayTimeInterval, ∫ x : thresholdedUnitE2,
         lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖) : Complex) =
-        ∫ t in lightRayTimeInterval, ∫ x : E2,
+        ∫ t in lightRayTimeInterval, ∫ x : thresholdedUnitE2,
           (lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖ : Complex) := by
           simp only [← Complex.ofReal_mul]
           calc
-            (↑(∫ t in lightRayTimeInterval, ∫ x : E2,
+            (↑(∫ t in lightRayTimeInterval, ∫ x : thresholdedUnitE2,
                 lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖) : Complex) =
                 ∫ t in lightRayTimeInterval,
-                  (↑(∫ x : E2,
+                  (↑(∫ x : thresholdedUnitE2,
                     lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖) : Complex) := by
                   exact (integral_ofReal
                     (μ := volume.restrict lightRayTimeInterval)
-                    (f := fun t : Real => ∫ x : E2,
+                    (f := fun t : Real => ∫ x : thresholdedUnitE2,
                       lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖)).symm
-            _ = ∫ t in lightRayTimeInterval, ∫ x : E2,
+            _ = ∫ t in lightRayTimeInterval, ∫ x : thresholdedUnitE2,
                 (↑(lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖) : Complex) := by
                   apply integral_congr_ae
                   filter_upwards with t
                   exact (integral_ofReal
                     (μ := volume)
-                    (f := fun x : E2 =>
+                    (f := fun x : thresholdedUnitE2 =>
                       lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖)).symm
-    _ = ∫ x : E2, ∫ t in lightRayTimeInterval,
+    _ = ∫ x : thresholdedUnitE2, ∫ t in lightRayTimeInterval,
         (lightRayKernel delta N omega y (x, t) * ‖f (x, t)‖ : Complex) := by
           simpa only using (integral_integral_swap hprod).symm
-    _ = ∫ z : E2 × Real,
+    _ = ∫ z : thresholdedUnitE2 × Real,
         (lightRayKernel delta N omega y z * ‖f z‖ : Complex)
         ∂(volume.prod (volume.restrict lightRayTimeInterval)) := by
           exact (integral_prod _ hprod).symm
@@ -22558,7 +22439,7 @@ theorem tendsto_positiveNormLightRayLinear_of_geometric_L2
     (hcore : ∀ n, MemLp (core n) 2 volume)
     (hgeo : ∀ n, eLpNorm (F - core n) 2 volume ≤
       eLpNorm F 2 volume * ENNReal.ofReal ((2 : Real)⁻¹ ^ n))
-    (omega y : E2) :
+    (omega y : thresholdedUnitE2) :
     Tendsto (fun n => positiveNormLightRayLinear delta N (core n) omega y)
       atTop (nhds (positiveNormLightRayLinear delta N F omega y)) := by
   let K : WaveSpaceTime → Complex := fun z =>
@@ -22680,8 +22561,8 @@ is needed solely after the final theorem has assumed `3 < N`. -/
 theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit_gt
     (Core : (WaveSpaceTime → Complex) → Prop)
     (hdense : HasPositiveSlabL2DenseCore Core)
-    (T : Real → Nat → (WaveSpaceTime → Complex) → E2 → E2 → Complex)
-    (P : Real → Nat → (WaveSpaceTime → Complex) → E2 → ENNReal)
+    (T : Real → Nat → (WaveSpaceTime → Complex) → thresholdedUnitE2 → thresholdedUnitE2 → Complex)
+    (P : Real → Nat → (WaveSpaceTime → Complex) → thresholdedUnitE2 → ENNReal)
     (hPmeas : ∀ delta N f, Core f → Measurable (P delta N f))
     (hstrong : ∀ N : Nat, 3 < N → ∃ C : Real, 0 < C ∧
       ∀ delta : Real, 0 < delta → delta < 1 / 2 →
@@ -22689,7 +22570,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit_gt
         eLpNorm (P delta N f) 2 volume ≤
           ENNReal.ofReal (C * (1 + abs (Real.log delta)) ^ (3 / 2 : Real)) *
             eLpNorm f 2 volume)
-    (hidentify : ∀ delta N (h : WaveSpaceTime → Complex) (omega y : E2),
+    (hidentify : ∀ delta N (h : WaveSpaceTime → Complex) (omega y : thresholdedUnitE2),
       T delta N
           (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) omega y =
         (lightRayAverage delta N omega y h : Complex))
@@ -22772,7 +22653,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit_gt
         Tendsto (fun n => T delta N (core n) omega y) atTop
           (nhds (T delta N F omega y)) :=
       hTgeom hdelta N (by omega) F core hFmem hcoreMem hscaled
-    have hfatou : ∀ᵐ y : E2 ∂volume,
+    have hfatou : ∀ᵐ y : thresholdedUnitE2 ∂volume,
         ENNReal.ofReal (lightRayMaximal delta N h y) ≤
           atTop.liminf (fun n => P delta N (core n) y) := by
       filter_upwards with y
@@ -22835,7 +22716,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit_gt
 /-- The old scale wiring with its only problematic field corrected to the
 honest kernel threshold. -/
 structure CanonicalReflectedScalePositiveUnitWiringGT (c r : Real) where
-  S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex
+  S : Real → Nat → (WaveSpaceTime → Complex) → Nat → thresholdedUnitE2 → thresholdedUnitE2 → Complex
   hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
     Measurable (canonicalReflectedUnitScaleEnvelope S delta N f j)
   hTgeom : ∀ {delta : Real}, 0 < delta → ∀ N, 1 < N → (F : WaveSpaceTime → Complex) →
@@ -22987,8 +22868,8 @@ the literal unit-direction canonical decomposition; no all-`E²` envelope is
 introduced. -/
 noncomputable def canonicalReflectedSquareUnitWiringGT_of_scaleBridge
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
-    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → E2 → E2 → Complex)
+    (hcore : ∀ u : thresholdedUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (S : Real → Nat → (WaveSpaceTime → Complex) → Nat → thresholdedUnitE2 → thresholdedUnitE2 → Complex)
     (hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalReflectedUnitScaleEnvelope S delta N f j))
     (hTgeom : ∀ {delta : Real}, 0 < delta → ∀ N, 1 < N → (F : WaveSpaceTime → Complex) →
@@ -23060,7 +22941,7 @@ the scale measurability and reflected packet bridge needed for the finite
 analytic envelope. -/
 noncomputable def canonicalTubeSignedScaleUnitWiringGT_of_scaleBridge
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : thresholdedUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalReflectedUnitScaleEnvelope
         (canonicalTubeSignedScale r hr) delta N f j))
@@ -23085,7 +22966,7 @@ Thus the sole analytic bound to feed the closure is a finite unit-direction
 signed-envelope `L²` estimate for this exact reflected-scale wiring. -/
 theorem hasLightRayMaximalEstimate_of_canonicalTubeSignedScaleFiniteEnvelope
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : thresholdedUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalReflectedUnitScaleEnvelope
         (canonicalTubeSignedScale r hr) delta N f j))
@@ -23194,7 +23075,7 @@ The only unresolved analytic input is exactly its stated finite
 unit-direction reflected-envelope bound. -/
 theorem hasLightRayMaximalEstimate_of_canonicalTubeSignedScaleNarrowBroad
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : thresholdedUnitE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalReflectedUnitScaleEnvelope
         (canonicalTubeSignedScale r hr) delta N f j))
@@ -23216,33 +23097,26 @@ theorem hasLightRayMaximalEstimate_of_canonicalTubeSignedScaleNarrowBroad
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaThresholdedUnitWiring
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaThresholdedUnitWiring
 
 -- BEGIN ScratchKakeyaConcreteScaleMeas
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaConcreteScaleMeas
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaInnerSlabRegularity
-open Auto.Spherical.MSS.ScratchKakeyaThresholdedUnitWiring
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev concreteScaleMeasE2 := Euclidean 2
 
 theorem continuous_nonnegativeSquareInnerSlabTensor
     {ι : Type*} [Fintype ι]
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap concreteScaleMeasE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Continuous (nonnegativeSquareInnerSlabTensor q a) := by
   unfold nonnegativeSquareInnerSlabTensor
@@ -23252,7 +23126,7 @@ theorem continuous_nonnegativeSquareInnerSlabTensor
 
 theorem continuous_canonicalReflectedSquareDyadicKernel
     (c r delta : Real) (N j : Nat)
-    (omega : aux_lightRayDirection) (y : E2) :
+    (omega : aux_lightRayDirection) (y : concreteScaleMeasE2) :
     Continuous (fun z : WaveSpaceTime =>
       canonicalReflectedSquareDyadicKernel c r delta N j omega y z) := by
   unfold canonicalReflectedSquareDyadicKernel
@@ -23267,7 +23141,7 @@ theorem aemeasurable_canonicalReflectedSquareDyadicKernel_mul_input
     {c r : Real} (delta : Real) (N : Nat)
     (f : WaveSpaceTime → Complex)
     (hf : NonnegativeSquareInnerSlabSchwartzTensorCore f)
-    (j : Nat) (omega : aux_lightRayDirection) (y : E2) :
+    (j : Nat) (omega : aux_lightRayDirection) (y : concreteScaleMeasE2) :
     AEMeasurable (fun z =>
       canonicalReflectedSquareDyadicKernel c r delta N j omega y z *
         canonicalSquareInput f z) scratchLightRayMeasure := by
@@ -23283,62 +23157,61 @@ theorem aemeasurable_canonicalReflectedSquareDyadicKernel_mul_input
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaConcreteScaleMeas
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteScaleMeas
 
 -- BEGIN ScratchKakeyaSmoothTubeContinuity
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaSmoothTubeContinuity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev smoothTubeContinuityE2 := Euclidean 2
 
 /-- A compact-frequency smooth tube band is jointly continuous in the
 direction and terminal point.  Compact frequency support permits the
 Fourier integral to be taken over a fixed compact set. -/
 theorem continuous_uncurry_scratch_smoothTubeBand
-    (q : SchwartzMap E2 Complex)
-    (hq : HasCompactSupport (q : E2 → Complex))
+    (q : SchwartzMap smoothTubeContinuityE2 Complex)
+    (hq : HasCompactSupport (q : smoothTubeContinuityE2 → Complex))
     (a : SchwartzMap Real Complex) :
-    Continuous (fun p : E2 × E2 => scratch_smoothTubeBand q hq a p.1 p.2) := by
-  let K : Set E2 := tsupport (q : E2 → Complex)
+    Continuous (fun p : smoothTubeContinuityE2 × smoothTubeContinuityE2 => scratch_smoothTubeBand q hq a p.1 p.2) := by
+  let K : Set smoothTubeContinuityE2 := tsupport (q : smoothTubeContinuityE2 → Complex)
   have hK : IsCompact K := hq.isCompact
   have hKmeas : MeasurableSet K := hK.measurableSet
-  let G : (E2 × E2) → E2 → Complex := fun p xi =>
+  let G : (smoothTubeContinuityE2 × smoothTubeContinuityE2) → smoothTubeContinuityE2 → Complex := fun p xi =>
     (Real.fourierChar (inner Real xi p.2) : Complex) *
       (q xi * (FourierTransform.fourier a : SchwartzMap Real Complex)
         (inner Real p.1 xi))
   have hGcont : Continuous (Function.uncurry G) := by
-    change Continuous (fun z : (E2 × E2) × E2 =>
+    change Continuous (fun z : (smoothTubeContinuityE2 × smoothTubeContinuityE2) × smoothTubeContinuityE2 =>
       (Real.fourierChar (inner Real z.2 z.1.2) : Complex) *
         (q z.2 * (FourierTransform.fourier a : SchwartzMap Real Complex)
           (inner Real z.1.1 z.2)))
     fun_prop
-  have hGsupport (p : E2 × E2) : Function.support (G p) ⊆ K := by
+  have hGsupport (p : smoothTubeContinuityE2 × smoothTubeContinuityE2) : Function.support (G p) ⊆ K := by
     intro xi hxi
     apply subset_tsupport _
     apply Function.mem_support.mpr
     intro hqzero
     apply Function.mem_support.mp hxi
     simp [G, hqzero]
-  have hGintegral (p : E2 × E2) :
-      (∫ xi : E2, G p xi) = ∫ xi in K, G p xi := by
+  have hGintegral (p : smoothTubeContinuityE2 × smoothTubeContinuityE2) :
+      (∫ xi : smoothTubeContinuityE2, G p xi) = ∫ xi in K, G p xi := by
     rw [← MeasureTheory.integral_indicator hKmeas]
     rw [Set.indicator_eq_self.mpr (hGsupport p)]
-  have hEq (p : E2 × E2) :
+  have hEq (p : smoothTubeContinuityE2 × smoothTubeContinuityE2) :
       scratch_smoothTubeBand q hq a p.1 p.2 = ∫ xi in K, G p xi := by
     rw [scratch_smoothTubeBand_eq_fourierInv]
     rw [Real.fourierInv_eq]
     exact hGintegral p
-  rw [show (fun p : E2 × E2 => scratch_smoothTubeBand q hq a p.1 p.2) =
+  rw [show (fun p : smoothTubeContinuityE2 × smoothTubeContinuityE2 => scratch_smoothTubeBand q hq a p.1 p.2) =
       fun p => ∫ xi in K, G p xi by
         funext p
         exact hEq p]
@@ -23346,17 +23219,17 @@ theorem continuous_uncurry_scratch_smoothTubeBand
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaSmoothTubeContinuity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSmoothTubeContinuity
 
 -- BEGIN ScratchKakeyaCompactDirectionMeas
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCompactDirectionMeas
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal EuclideanSpace
 
 noncomputable section
@@ -23397,65 +23270,50 @@ theorem measurable_iSup_ennreal_norm_of_continuous_auxDirection
 /-- Restrict a jointly continuous Euclidean direction field to the literal
 unit-direction subtype.  Keeping this generic prevents unfolding a concrete
 oscillatory field during the final measurability application. -/
-theorem Continuous.comp_auxLightRayDirection_val_prod
+theorem comp_auxLightRayDirection_val_prod
     {F : Euclidean 2 × Euclidean 2 → Complex} (hF : Continuous F) :
     Continuous (fun p : aux_lightRayDirection × Euclidean 2 => F (p.1.1, p.2)) := by
   exact hF.comp ((continuous_subtype_val.comp continuous_fst).prodMk continuous_snd)
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCompactDirectionMeas
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCompactDirectionMeas
 
 -- BEGIN ScratchKakeyaConcreteScaleBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaConcreteScaleBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaConcreteBroad
-open Auto.Spherical.MSS.ScratchKakeyaInnerSlabRegularity
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalAbsoluteBroadBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.LpSpaceFacts
-open Auto.Spherical.MSS.ScratchKakeyaConcreteScaleMeas
-open Auto.Spherical.MSS.ScratchKakeyaPositiveReBridge
-open Auto.Spherical.MSS.ScratchKakeyaSmoothTubeContinuity
-open Auto.Spherical.MSS.ScratchKakeyaCompactDirectionMeas
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LpSpaceFacts
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev concreteScaleBridgeE2 := Euclidean 2
 
 theorem memLp_two_fourierInv_translate
-    (m : SchwartzMap E2 Complex) (v : E2) :
-    MemLp (fun x : E2 =>
-      FourierTransform.fourierInv (m : E2 → Complex) (x + v)) 2 volume := by
-  have hm : MemLp (FourierTransform.fourierInv m : E2 → Complex) 2 volume :=
+    (m : SchwartzMap concreteScaleBridgeE2 Complex) (v : concreteScaleBridgeE2) :
+    MemLp (fun x : concreteScaleBridgeE2 =>
+      FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex) (x + v)) 2 volume := by
+  have hm : MemLp (FourierTransform.fourierInv m : concreteScaleBridgeE2 → Complex) 2 volume :=
     (FourierTransform.fourierInv m).memLp 2 volume
   have hmp := hm.comp_measurePreserving
-    (measurePreserving_add_right (volume : Measure E2) v)
+    (measurePreserving_add_right (volume : Measure concreteScaleBridgeE2) v)
   rw [← SchwartzMap.fourierInv_coe]
   simpa [Function.comp_def] using hmp
 
 theorem integrable_fourierInv_translate_mul
-    (m q : SchwartzMap E2 Complex) (v : E2) :
-    Integrable (fun x : E2 =>
-      FourierTransform.fourierInv (m : E2 → Complex) (x + v) *
-        FourierTransform.fourierInv (q : E2 → Complex) x) volume := by
-  let M : E2 → Complex := fun x =>
-    FourierTransform.fourierInv (m : E2 → Complex) (x + v)
-  let Q : E2 → Complex := FourierTransform.fourierInv (q : E2 → Complex)
+    (m q : SchwartzMap concreteScaleBridgeE2 Complex) (v : concreteScaleBridgeE2) :
+    Integrable (fun x : concreteScaleBridgeE2 =>
+      FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex) (x + v) *
+        FourierTransform.fourierInv (q : concreteScaleBridgeE2 → Complex) x) volume := by
+  let M : concreteScaleBridgeE2 → Complex := fun x =>
+    FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex) (x + v)
+  let Q : concreteScaleBridgeE2 → Complex := FourierTransform.fourierInv (q : concreteScaleBridgeE2 → Complex)
   have hM : MemLp M 2 volume := by
     simpa only [M] using memLp_two_fourierInv_translate m v
   have hQ : MemLp Q 2 volume := by
@@ -23469,15 +23327,15 @@ tensor is integrable on the full space-time product.  This is the full-time
 Fubini fact missing from the broad-only adapter. -/
 theorem integrable_canonicalTubeKernel_mul_innerSlabFull
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Integrable (fun z : WaveSpaceTime =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (z.1 + z.2 • omega - y) *
           scratch_innerSlabCompactFrequencyTensor q a z) volume := by
-  rw [Measure.volume_eq_prod E2 Real]
+  rw [Measure.volume_eq_prod concreteScaleBridgeE2 Real]
   let f : WaveSpaceTime → Complex := scratch_innerSlabCompactFrequencyTensor q a
   obtain ⟨A, hA, hdecay⟩ :=
     exists_canonicalAbsoluteCore_le_lightRayDecayProfile 0
@@ -23487,39 +23345,39 @@ theorem integrable_canonicalTubeKernel_mul_innerSlabFull
     exact mul_nonneg (sq_nonneg _) hA
   have hinput : Integrable (fun z : WaveSpaceTime => ‖f z‖) volume := by
     simpa only [f] using integrable_norm_innerSlabSchwartzTensor q a
-  have hinputProd : Integrable (fun p : E2 × Real => ‖f p‖)
+  have hinputProd : Integrable (fun p : concreteScaleBridgeE2 × Real => ‖f p‖)
       (volume.prod volume) := by
-    rw [Measure.volume_eq_prod E2 Real] at hinput
+    rw [Measure.volume_eq_prod concreteScaleBridgeE2 Real] at hinput
     exact hinput
-  have hinputTime : Integrable (fun t : Real => ∫ x : E2, ‖f (x, t)‖)
+  have hinputTime : Integrable (fun t : Real => ∫ x : concreteScaleBridgeE2, ‖f (x, t)‖)
       volume := hinputProd.integral_prod_right
-  have hmajor : Integrable (fun t : Real => C * ∫ x : E2, ‖f (x, t)‖)
+  have hmajor : Integrable (fun t : Real => C * ∫ x : concreteScaleBridgeE2, ‖f (x, t)‖)
       volume := hinputTime.const_mul C
-  have hkernel : Continuous (fun p : E2 × Real =>
+  have hkernel : Continuous (fun p : concreteScaleBridgeE2 × Real =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (p.1 + p.2 • omega - y)) :=
     continuous_canonicalTubeKernel hrho omega y
   have hfcont : Continuous f := continuous_scratch_innerSlabCompactFrequencyTensor q a
-  have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ x : E2,
+  have houterMeas : AEStronglyMeasurable (fun t : Real => ∫ x : concreteScaleBridgeE2,
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (x + t • omega - y) * f (x, t)) volume :=
     ((hkernel.mul hfcont).stronglyMeasurable.integral_prod_left').aestronglyMeasurable
-  have hjointMeas : AEStronglyMeasurable (fun p : E2 × Real =>
+  have hjointMeas : AEStronglyMeasurable (fun p : concreteScaleBridgeE2 × Real =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (p.1 + p.2 • omega - y) * f p) (volume.prod volume) :=
     (hkernel.mul hfcont).aestronglyMeasurable
   apply (integrable_prod_iff' hjointMeas).mpr
   constructor
   · filter_upwards with t
     unfold f scratch_innerSlabCompactFrequencyTensor
-    have hsum : Integrable (fun x : E2 => ∑ i : ι,
+    have hsum : Integrable (fun x : concreteScaleBridgeE2 => ∑ i : ι,
         FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) *
-          (FourierTransform.fourierInv (q i) : E2 → Complex) x * a i t) volume := by
+          (FourierTransform.fourierInv (q i) : concreteScaleBridgeE2 → Complex) x * a i t) volume := by
       refine integrable_finsetSum (Finset.univ : Finset ι) ?_
       intro i hi
       have hterm := integrable_fourierInv_translate_mul
@@ -23539,16 +23397,16 @@ theorem integrable_canonicalTubeKernel_mul_innerSlabFull
   · refine hmajor.mono'
       ((hkernel.mul hfcont).norm.stronglyMeasurable.integral_prod_left').aestronglyMeasurable ?_
     filter_upwards with t
-    have hinner : Integrable (fun x : E2 =>
+    have hinner : Integrable (fun x : concreteScaleBridgeE2 =>
         FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) * f (x, t)) volume := by
       unfold f scratch_innerSlabCompactFrequencyTensor
-      have hsum : Integrable (fun x : E2 => ∑ i : ι,
+      have hsum : Integrable (fun x : concreteScaleBridgeE2 => ∑ i : ι,
           FourierTransform.fourierInv
-            (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+            (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
             (x + t • omega - y) *
-            (FourierTransform.fourierInv (q i) : E2 → Complex) x * a i t) volume := by
+            (FourierTransform.fourierInv (q i) : concreteScaleBridgeE2 → Complex) x * a i t) volume := by
         refine integrable_finsetSum (Finset.univ : Finset ι) ?_
         intro i hi
         have hterm := integrable_fourierInv_translate_mul
@@ -23565,39 +23423,39 @@ theorem integrable_canonicalTubeKernel_mul_innerSlabFull
       apply Finset.sum_congr rfl
       intro i hi
       ring
-    let F : SchwartzMap E2 Complex := innerSlabSpatialSlice q a t
-    have hF : Integrable (fun x : E2 => ‖f (x, t)‖) volume := by
-      have hFbase : Integrable (fun x : E2 => ‖F x‖) volume := F.integrable.norm
+    let F : SchwartzMap concreteScaleBridgeE2 Complex := innerSlabSpatialSlice q a t
+    have hF : Integrable (fun x : concreteScaleBridgeE2 => ‖f (x, t)‖) volume := by
+      have hFbase : Integrable (fun x : concreteScaleBridgeE2 => ‖F x‖) volume := F.integrable.norm
       refine hFbase.congr ?_
       filter_upwards with x
       dsimp only [F, f]
       rw [innerSlabSpatialSlice_apply]
     rw [Real.norm_of_nonneg (integral_nonneg fun x => norm_nonneg _)]
     have hnormEq :
-        (∫ x : E2, ‖FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (∫ x : concreteScaleBridgeE2, ‖FourierTransform.fourierInv
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) * f (x, t)‖) =
-        ∫ x : E2,
+        ∫ x : concreteScaleBridgeE2,
           scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
             ‖f (x, t)‖ := by
           apply integral_congr_ae
           filter_upwards with x
           rw [norm_mul, norm_canonicalTubeKernel_eq_smoothTubeCore hrho]
-    have hcoreInt : Integrable (fun x : E2 =>
+    have hcoreInt : Integrable (fun x : concreteScaleBridgeE2 =>
         scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
           ‖f (x, t)‖) volume := by
       refine hinner.norm.congr ?_
       filter_upwards with x
       rw [norm_mul, norm_canonicalTubeKernel_eq_smoothTubeCore hrho]
     calc
-      (∫ x : E2,
+      (∫ x : concreteScaleBridgeE2,
           ‖FourierTransform.fourierInv
-            (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+            (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
             (x + t • omega - y) * f (x, t)‖) =
-          ∫ x : E2,
+          ∫ x : concreteScaleBridgeE2,
             scratch_smoothTubeCore canonicalAbsoluteCore rho omega y (x, t) *
               ‖f (x, t)‖ := hnormEq
-      _ ≤ ∫ x : E2, C * ‖f (x, t)‖ := by
+      _ ≤ ∫ x : concreteScaleBridgeE2, C * ‖f (x, t)‖ := by
           apply integral_mono hcoreInt (hF.const_mul C)
           intro x
           have hbase : canonicalAbsoluteCore
@@ -23607,24 +23465,24 @@ theorem integrable_canonicalTubeKernel_mul_innerSlabFull
           unfold scratch_smoothTubeCore C
           exact mul_le_mul_of_nonneg_right
             (mul_le_mul_of_nonneg_left hbase (sq_nonneg _)) (norm_nonneg _)
-      _ = C * ∫ x : E2, ‖f (x, t)‖ := by
+      _ = C * ∫ x : concreteScaleBridgeE2, ‖f (x, t)‖ := by
           rw [integral_const_mul]
 
 /-- The expanded `(i,j)` summands in a square tensor are themselves full
 space--time integrable.  This is the precise Fubini input for the reflected
 square-tube identity. -/
 theorem integrable_canonicalTubeKernel_mul_crossTermFull
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q₁ q₂ : SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q₁ q₂ : SchwartzMap concreteScaleBridgeE2 Complex)
     (a₁ a₂ : SchwartzMap Real Complex) :
     Integrable (fun z : WaveSpaceTime =>
       timeCrossProduct a₁ a₂ z.2 *
         ((FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : concreteScaleBridgeE2 → Complex)
           (z.1 + z.2 • omega - y) *
           (FourierTransform.fourierInv
-            (crossFrequencyMultiplier q₁ q₂) : E2 → Complex) z.1)) volume := by
-  let Q : Unit → SchwartzMap E2 Complex := fun _ =>
+            (crossFrequencyMultiplier q₁ q₂) : concreteScaleBridgeE2 → Complex) z.1)) volume := by
+  let Q : Unit → SchwartzMap concreteScaleBridgeE2 Complex := fun _ =>
     crossFrequencyMultiplier q₁ q₂
   let A : Unit → SchwartzMap Real Complex := fun _ =>
     timeCrossProduct a₁ a₂
@@ -23640,18 +23498,18 @@ theorem integrable_canonicalTubeKernel_mul_crossTermFull
 
 /-- Fixed-time Fubini integrability for one expanded square-tensor term. -/
 theorem integrable_canonicalTubeKernel_crossTerm_inner
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q₁ q₂ : SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q₁ q₂ : SchwartzMap concreteScaleBridgeE2 Complex)
     (a₁ a₂ : SchwartzMap Real Complex) (t : Real) :
-    Integrable (fun x : E2 =>
+    Integrable (fun x : concreteScaleBridgeE2 =>
       timeCrossProduct a₁ a₂ t *
         (((FourierTransform.fourierInv
           (scratch_canonicalBandlimitedTubeMultiplier rho hrho) :
-            SchwartzMap E2 Complex) : E2 → Complex)
+            SchwartzMap concreteScaleBridgeE2 Complex) : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) *
           ((FourierTransform.fourierInv
-            (crossFrequencyMultiplier q₁ q₂) : SchwartzMap E2 Complex) :
-            E2 → Complex) x)) volume := by
+            (crossFrequencyMultiplier q₁ q₂) : SchwartzMap concreteScaleBridgeE2 Complex) :
+            concreteScaleBridgeE2 → Complex) x)) volume := by
   have hterm := integrable_fourierInv_translate_mul
     (scratch_canonicalBandlimitedTubeMultiplier rho hrho)
     (crossFrequencyMultiplier q₁ q₂) (t • omega - y)
@@ -23665,17 +23523,17 @@ theorem integrable_canonicalTubeKernel_crossTerm_inner
 /-- Taking the spatial integral of a full integrable cross term gives the
 outer-time integrability needed by `canonicalTubeSquareAverage`. -/
 theorem integrable_canonicalTubeKernel_crossTerm_outer
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q₁ q₂ : SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q₁ q₂ : SchwartzMap concreteScaleBridgeE2 Complex)
     (a₁ a₂ : SchwartzMap Real Complex) :
-    Integrable (fun t : Real => ∫ x : E2,
+    Integrable (fun t : Real => ∫ x : concreteScaleBridgeE2,
       timeCrossProduct a₁ a₂ t *
         ((FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho) : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) *
           (FourierTransform.fourierInv
-            (crossFrequencyMultiplier q₁ q₂) : E2 → Complex) x)) volume := by
-  simpa only [Measure.volume_eq_prod E2 Real] using
+            (crossFrequencyMultiplier q₁ q₂) : concreteScaleBridgeE2 → Complex) x)) volume := by
+  simpa only [Measure.volume_eq_prod concreteScaleBridgeE2 Real] using
     (integrable_canonicalTubeKernel_mul_crossTermFull
       hrho omega y q₁ q₂ a₁ a₂).integral_prod_right
 
@@ -23684,12 +23542,12 @@ physical canonical kernel times that square is integrable on full
 space--time. -/
 theorem integrable_canonicalTubeKernel_mul_nonnegativeSquareFull
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Integrable (fun z : WaveSpaceTime =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (z.1 + z.2 • omega - y) * nonnegativeSquareInnerSlabTensor q a z)
       volume := by
   rw [nonnegativeSquareInnerSlabTensor_eq_reassembled]
@@ -23700,30 +23558,30 @@ theorem integrable_canonicalTubeKernel_mul_nonnegativeSquareFull
 /-- The literal interval integral defining `canonicalTubeSignedAverage` is
 the integral against the product slab measure. -/
 theorem canonicalTubeSignedAverage_eq_integral_scratchLightRayMeasure
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
     (f : WaveSpaceTime → Complex)
     (h : Integrable (fun z : WaveSpaceTime =>
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (z.1 + z.2 • omega - y) * f z) scratchLightRayMeasure) :
     canonicalTubeSignedAverage rho hrho omega y f =
       ∫ z : WaveSpaceTime,
         FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
           (z.1 + z.2 • omega - y) * f z ∂scratchLightRayMeasure := by
   let F : WaveSpaceTime → Complex := fun z =>
     FourierTransform.fourierInv
-      (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+      (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
       (z.1 + z.2 • omega - y) * f z
   unfold canonicalTubeSignedAverage
-  change (∫ t : Real in lightRayTimeInterval, ∫ x : E2, F (x, t)) =
+  change (∫ t : Real in lightRayTimeInterval, ∫ x : concreteScaleBridgeE2, F (x, t)) =
     ∫ z : WaveSpaceTime, F z ∂scratchLightRayMeasure
   symm
   calc
     (∫ z : WaveSpaceTime, F z ∂scratchLightRayMeasure) =
-        ∫ x : E2, ∫ t : Real in lightRayTimeInterval, F (x, t) := by
+        ∫ x : concreteScaleBridgeE2, ∫ t : Real in lightRayTimeInterval, F (x, t) := by
       simpa only [scratchLightRayMeasure] using (integral_prod F h)
-    _ = ∫ t : Real in lightRayTimeInterval, ∫ x : E2, F (x, t) := by
+    _ = ∫ t : Real in lightRayTimeInterval, ∫ x : concreteScaleBridgeE2, F (x, t) := by
       simpa only using (integral_integral_swap h)
 
 /-- The real positive canonical core times a nonnegative square tensor is
@@ -23732,8 +23590,8 @@ proved complex full-product integrability by taking real parts; no
 unjustified real-valued-kernel assertion is used. -/
 theorem integrable_positiveCanonicalCore_mul_nonnegativeSquare
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Integrable (fun z : WaveSpaceTime =>
       scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
@@ -23775,8 +23633,8 @@ This is kept separate because the dyadic Tonelli step needs literal
 measurability, not merely an a.e. statement. -/
 theorem measurable_ofReal_positiveCanonicalCore_mul_nonnegativeSquare
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex) :
     Measurable (fun z : WaveSpaceTime => ENNReal.ofReal
       (scratch_smoothTubeCore (fun u => (canonicalPositiveCore u).re)
@@ -23827,7 +23685,7 @@ theorem hasCanonicalReflectedSquareScaleBridge_canonicalTubeSignedScale
         q a omega.1 y
     have hrestrict : Integrable (fun z : WaveSpaceTime =>
         FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
           (z.1 + z.2 • omega.1 - y) * nonnegativeSquareInnerSlabTensor q a z)
         scratchLightRayMeasure :=
       hfull.mono_measure scratchLightRayMeasure_le_volume
@@ -23836,7 +23694,7 @@ theorem hasCanonicalReflectedSquareScaleBridge_canonicalTubeSignedScale
           (nonnegativeSquareInnerSlabTensor q a) =
           ∫ z : WaveSpaceTime,
             FourierTransform.fourierInv
-              (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+              (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
               (z.1 + z.2 • omega.1 - y) * nonnegativeSquareInnerSlabTensor q a z
                 ∂scratchLightRayMeasure :=
         canonicalTubeSignedAverage_eq_integral_scratchLightRayMeasure
@@ -23869,23 +23727,23 @@ theorem hasCanonicalReflectedSquareScaleBridge_canonicalTubeSignedScale
 /-- The outer time integral for one signed tensor packet is integrable on
 the full real line. -/
 theorem integrable_canonicalTubeKernel_tensor_outer
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : SchwartzMap E2 Complex) (a : SchwartzMap Real Complex) :
-    Integrable (fun t : Real => a t * ∫ x : E2,
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : SchwartzMap concreteScaleBridgeE2 Complex) (a : SchwartzMap Real Complex) :
+    Integrable (fun t : Real => a t * ∫ x : concreteScaleBridgeE2,
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (x + t • omega - y) *
-      FourierTransform.fourierInv (q : E2 → Complex) x) volume := by
-  let Q : Unit → SchwartzMap E2 Complex := fun _ => q
+      FourierTransform.fourierInv (q : concreteScaleBridgeE2 → Complex) x) volume := by
+  let Q : Unit → SchwartzMap concreteScaleBridgeE2 Complex := fun _ => q
   let A : Unit → SchwartzMap Real Complex := fun _ => a
   have hfull := integrable_canonicalTubeKernel_mul_innerSlabFull
     hrho omega y Q A
-  have houterRaw : Integrable (fun t : Real => ∫ x : E2,
+  have houterRaw : Integrable (fun t : Real => ∫ x : concreteScaleBridgeE2,
       FourierTransform.fourierInv
-        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+        (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
         (x + t • omega - y) *
       scratch_innerSlabCompactFrequencyTensor Q A (x, t)) volume := by
-    simpa only [Measure.volume_eq_prod E2 Real] using hfull.integral_prod_right
+    simpa only [Measure.volume_eq_prod concreteScaleBridgeE2 Real] using hfull.integral_prod_right
   refine houterRaw.congr ?_
   filter_upwards with t
   rw [← integral_const_mul]
@@ -23902,27 +23760,27 @@ extended to all times for a strict inner-slab tensor, because the tensor is
 pointwise zero off that interval. -/
 theorem canonicalTubeSignedAverage_eq_full_innerSlabTensor
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex)
     {timeRadius : Real} (htimeRadius : timeRadius < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
       Metric.closedBall (3 / 2 : Real) timeRadius) :
     canonicalTubeSignedAverage rho hrho omega y
         (scratch_innerSlabCompactFrequencyTensor q a) =
-      ∫ t : Real, ∫ x : E2,
+      ∫ t : Real, ∫ x : concreteScaleBridgeE2,
         FourierTransform.fourierInv
-          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+          (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) *
         scratch_innerSlabCompactFrequencyTensor q a (x, t) := by
-  let H : Real → Complex := fun t => ∫ x : E2,
+  let H : Real → Complex := fun t => ∫ x : concreteScaleBridgeE2,
     FourierTransform.fourierInv
-      (scratch_canonicalBandlimitedTubeMultiplier rho hrho : E2 → Complex)
+      (scratch_canonicalBandlimitedTubeMultiplier rho hrho : concreteScaleBridgeE2 → Complex)
       (x + t • omega - y) * scratch_innerSlabCompactFrequencyTensor q a (x, t)
   have hHzero : ∀ t : Real, t ∉ lightRayTimeInterval → H t = 0 := by
     intro t ht
     dsimp only [H]
-    rw [← integral_zero E2 Complex]
+    rw [← integral_zero concreteScaleBridgeE2 Complex]
     apply integral_congr_ae
     filter_upwards with x
     rw [show scratch_innerSlabCompactFrequencyTensor q a (x, t) = 0 by
@@ -23950,8 +23808,8 @@ from the canonical multiplier, so the input frequency packets need only be
 Schwartz. -/
 theorem canonicalTubeSignedAverage_innerSlab_eq_reflectedFiniteTensorTubeBand
     {ι : Type*} [Fintype ι]
-    {rho : Real} (hrho : 0 < rho) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    {rho : Real} (hrho : 0 < rho) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex)
     {timeRadius : Real} (htimeRadius : timeRadius < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
@@ -23966,39 +23824,39 @@ theorem canonicalTubeSignedAverage_innerSlab_eq_reflectedFiniteTensorTubeBand
           (hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho))
         a omega y := by
   classical
-  let m : SchwartzMap E2 Complex :=
+  let m : SchwartzMap concreteScaleBridgeE2 Complex :=
     scratch_canonicalBandlimitedTubeMultiplier rho hrho
-  have hinner (t : Real) (i : ι) : Integrable (fun x : E2 =>
+  have hinner (t : Real) (i : ι) : Integrable (fun x : concreteScaleBridgeE2 =>
       a i t *
-        (FourierTransform.fourierInv (m : E2 → Complex)
+        (FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) *
-        FourierTransform.fourierInv (q i : E2 → Complex) x)) volume := by
+        FourierTransform.fourierInv (q i : concreteScaleBridgeE2 → Complex) x)) volume := by
     have h := integrable_fourierInv_translate_mul m (q i) (t • omega - y)
     refine (h.const_mul (a i t)).congr ?_
     filter_upwards with x
     rw [show x + (t • omega - y) = x + t • omega - y by abel]
   have houter (i : ι) : Integrable (fun t : Real =>
-      a i t * ∫ x : E2,
-        FourierTransform.fourierInv (m : E2 → Complex)
+      a i t * ∫ x : concreteScaleBridgeE2,
+        FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
           (x + t • omega - y) *
-        FourierTransform.fourierInv (q i : E2 → Complex) x) volume := by
+        FourierTransform.fourierInv (q i : concreteScaleBridgeE2 → Complex) x) volume := by
     simpa only [m] using
       integrable_canonicalTubeKernel_tensor_outer hrho omega y (q i) (a i)
   calc
     canonicalTubeSignedAverage rho hrho omega y
         (scratch_innerSlabCompactFrequencyTensor q a) =
-        ∫ t : Real, ∫ x : E2,
-          FourierTransform.fourierInv (m : E2 → Complex)
+        ∫ t : Real, ∫ x : concreteScaleBridgeE2,
+          FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
             (x + t • omega - y) *
           scratch_innerSlabCompactFrequencyTensor q a (x, t) := by
       simpa only [m] using
         canonicalTubeSignedAverage_eq_full_innerSlabTensor
           hrho omega y q a htimeRadius ha
-    _ = ∫ t : Real, ∫ x : E2, ∑ i : ι,
+    _ = ∫ t : Real, ∫ x : concreteScaleBridgeE2, ∑ i : ι,
           a i t *
-            (FourierTransform.fourierInv (m : E2 → Complex)
+            (FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
               (x + t • omega - y) *
-            FourierTransform.fourierInv (q i : E2 → Complex) x) := by
+            FourierTransform.fourierInv (q i : concreteScaleBridgeE2 → Complex) x) := by
       apply integral_congr_ae
       filter_upwards with t
       apply integral_congr_ae
@@ -24009,29 +23867,29 @@ theorem canonicalTubeSignedAverage_innerSlab_eq_reflectedFiniteTensorTubeBand
       intro i hi
       rw [← SchwartzMap.fourierInv_coe (q i)]
       ring
-    _ = ∫ t : Real, ∑ i : ι, ∫ x : E2,
+    _ = ∫ t : Real, ∑ i : ι, ∫ x : concreteScaleBridgeE2,
           a i t *
-            (FourierTransform.fourierInv (m : E2 → Complex)
+            (FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
               (x + t • omega - y) *
-            FourierTransform.fourierInv (q i : E2 → Complex) x) := by
+            FourierTransform.fourierInv (q i : concreteScaleBridgeE2 → Complex) x) := by
       apply integral_congr_ae
       filter_upwards with t
       rw [integral_finset_sum Finset.univ (fun i _ => hinner t i)]
     _ = ∫ t : Real, ∑ i : ι,
-          a i t * ∫ x : E2,
-            FourierTransform.fourierInv (m : E2 → Complex)
+          a i t * ∫ x : concreteScaleBridgeE2,
+            FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
               (x + t • omega - y) *
-            FourierTransform.fourierInv (q i : E2 → Complex) x := by
+            FourierTransform.fourierInv (q i : concreteScaleBridgeE2 → Complex) x := by
       apply integral_congr_ae
       filter_upwards with t
       apply Finset.sum_congr rfl
       intro i hi
       rw [integral_const_mul]
     _ = ∑ i : ι, ∫ t : Real,
-          a i t * ∫ x : E2,
-            FourierTransform.fourierInv (m : E2 → Complex)
+          a i t * ∫ x : concreteScaleBridgeE2,
+            FourierTransform.fourierInv (m : concreteScaleBridgeE2 → Complex)
               (x + t • omega - y) *
-            FourierTransform.fourierInv (q i : E2 → Complex) x := by
+            FourierTransform.fourierInv (q i : concreteScaleBridgeE2 → Complex) x := by
       rw [integral_finset_sum Finset.univ (fun i _ => houter i)]
     _ = ∑ i : ι,
           scratch_smoothTubeBand (reflectedTubeProfile m (q i))
@@ -24065,8 +23923,8 @@ profiles themselves need only be Schwartz. -/
 theorem canonicalTubeSignedScale_innerSlab_eq_reflectedFiniteTensorTubeBand
     {ι : Type*} [Fintype ι]
     {r delta : Real} (hr : 0 < r) (hdelta : 0 < delta)
-    (N j : Nat) (omega y : E2)
-    (q : ι → SchwartzMap E2 Complex)
+    (N j : Nat) (omega y : concreteScaleBridgeE2)
+    (q : ι → SchwartzMap concreteScaleBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex)
     {timeRadius : Real} (htimeRadius : timeRadius < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
@@ -24097,25 +23955,25 @@ theorem continuous_canonicalTubeSignedScale_of_pos
     {r delta : Real} (hr : 0 < r) (hdelta : 0 < delta)
     (N j : Nat) (f : WaveSpaceTime → Complex)
     (hf : InnerSlabSchwartzTensorCore f) :
-    Continuous (fun p : E2 × E2 =>
+    Continuous (fun p : concreteScaleBridgeE2 × concreteScaleBridgeE2 =>
       canonicalTubeSignedScale r hr delta N f j p.1 p.2) := by
   rcases hf with ⟨ι, hι, q, a, timeRadius, htimeRadiusPos, htimeRadiusLt, ha, rfl⟩
   letI : Fintype ι := hι
   let rho : Real := delta / canonicalBandlimitedDyadicScale r j
   let hrho : 0 < rho :=
     div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
-  let Q : ι → SchwartzMap E2 Complex := fun i =>
+  let Q : ι → SchwartzMap concreteScaleBridgeE2 Complex := fun i =>
     reflectedTubeProfile (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
-  let hQ : ∀ i, HasCompactSupport (Q i : E2 → Complex) := fun i =>
+  let hQ : ∀ i, HasCompactSupport (Q i : concreteScaleBridgeE2 → Complex) := fun i =>
     reflectedTubeProfile_hasCompactSupport_left
       (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
       (hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho)
-  have hband : Continuous (fun p : E2 × E2 =>
+  have hband : Continuous (fun p : concreteScaleBridgeE2 × concreteScaleBridgeE2 =>
       scratch_finiteTensorTubeBand Finset.univ Q hQ a p.1 p.2) := by
     unfold scratch_finiteTensorTubeBand
     exact continuous_finsetSum _ fun i hi =>
       continuous_uncurry_scratch_smoothTubeBand (Q i) (hQ i) (a i)
-  have hfield (omega y : E2) :
+  have hfield (omega y : concreteScaleBridgeE2) :
       canonicalTubeSignedScale r hr delta N
           (scratch_innerSlabCompactFrequencyTensor q a) j omega y =
         scratch_finiteTensorTubeBand Finset.univ Q hQ a omega y := by
@@ -24137,12 +23995,12 @@ theorem measurable_canonicalReflectedUnitScaleEnvelope_canonicalTubeSignedScale
     Measurable (canonicalReflectedUnitScaleEnvelope
       (canonicalTubeSignedScale r hr) delta N f j) := by
   by_cases hdelta : 0 < delta
-  · have hcont : Continuous (fun p : E2 × E2 =>
+  · have hcont : Continuous (fun p : concreteScaleBridgeE2 × concreteScaleBridgeE2 =>
         canonicalTubeSignedScale r hr delta N f j p.1 p.2) :=
       continuous_canonicalTubeSignedScale_of_pos hr hdelta N j f hf
-    have hunit : Continuous (fun p : aux_lightRayDirection × E2 =>
+    have hunit : Continuous (fun p : aux_lightRayDirection × concreteScaleBridgeE2 =>
         canonicalTubeSignedScale r hr delta N f j p.1.1 p.2) :=
-      hcont.comp_auxLightRayDirection_val_prod
+      comp_auxLightRayDirection_val_prod hcont
     have hmeas :=
       measurable_iSup_ennreal_norm_of_continuous_auxDirection hunit
     unfold canonicalReflectedUnitScaleEnvelope
@@ -24163,40 +24021,29 @@ theorem measurable_canonicalReflectedUnitScaleEnvelope_canonicalTubeSignedScale
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaConcreteScaleBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteScaleBridge
 
 -- BEGIN ScratchKakeyaGTNarrowBroadAdapter
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaGTNarrowBroadAdapter
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalAbsoluteBroadBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.MSS.ScratchKakeyaConcreteBroad
-open Auto.Spherical.MSS.ScratchKakeyaConcreteScaleBridge
-open Auto.Spherical.MSS.ScratchKakeyaConcreteScaleMeas
-open Auto.Spherical.MSS.ScratchKakeyaNonnegativeSquareCore
-open Auto.Spherical.MSS.ScratchKakeyaPositiveSquareClosure
-open Auto.Spherical.MSS.ScratchKakeyaSchwartzSquareCoreDensity
-open Auto.Spherical.MSS.ScratchKakeyaThresholdedUnitWiring
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev gtNarrowBroadAdapterE2 := Euclidean 2
 
 /-- The literal thresholded wiring with every structural field concrete: the
 unit-direction envelope measurability, kernel measurability, and reflected
 square Fubini bridge are all supplied by scratch theorems. -/
 noncomputable def canonicalTubeSignedScaleConcreteUnitWiringGT
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re) :
+    (hcore : ∀ u : gtNarrowBroadAdapterE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re) :
     CanonicalReflectedScalePositiveUnitWiringGT c r :=
   canonicalTubeSignedScaleUnitWiringGT_of_scaleBridge hc hr hcore
     (fun delta N f j hf =>
@@ -24295,7 +24142,7 @@ theorem hasCanonicalTubeSignedScaleBroadCost
     dsimp only [rho]
     exact hk0 j hj
   have hrho0 : 0 < rho := lt_of_lt_of_le (by norm_num) hrho
-  let Z : E2 → Real := fun y =>
+  let Z : gtNarrowBroadAdapterE2 → Real := fun y =>
     scratch_zeroDirectionPositiveEnvelope rho N y (fun x t => ‖f (x, t)‖)
   have hZ : ∀ y, 0 ≤ Z y := by
     intro y
@@ -24412,7 +24259,7 @@ theorem hasCanonicalTubeSignedScaleBroadCost
 wiring definitionally; its fixed-direction field is never used here. -/
 theorem hasCanonicalDyadicUnitBroadScaleCostGT_canonicalTubeSignedScale
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : gtNarrowBroadAdapterE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (hScaleMeas : ∀ delta N f j, InnerSlabSchwartzTensorCore f →
       Measurable (canonicalReflectedUnitScaleEnvelope
         (canonicalTubeSignedScale r hr) delta N f j))
@@ -24433,7 +24280,7 @@ theorem hasCanonicalDyadicUnitBroadScaleCostGT_canonicalTubeSignedScale
 /-- Fully concrete broad clause for the literal thresholded wiring. -/
 theorem hasCanonicalDyadicUnitBroadScaleCostGT_concrete
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re) :
+    (hcore : ∀ u : gtNarrowBroadAdapterE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re) :
     HasCanonicalDyadicUnitBroadScaleCostGT
       (canonicalTubeSignedScaleConcreteUnitWiringGT hc hr hcore) := by
   change HasCanonicalTubeSignedScaleBroadCost c r hr
@@ -24546,7 +24393,7 @@ narrow per-scale signed-envelope estimate.  The broad contribution, all
 measurability, and the reflected positive-square bridge are concrete. -/
 theorem hasCanonicalDyadicUnitNarrowBroadFiniteEnvelopeL2EstimateGT_concrete_of_narrow
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : gtNarrowBroadAdapterE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (hnarrow : HasCanonicalDyadicUnitNarrowScaleCostGT
       (canonicalTubeSignedScaleConcreteUnitWiringGT hc hr hcore)) :
     HasCanonicalDyadicUnitNarrowBroadFiniteEnvelopeL2EstimateGT
@@ -24559,7 +24406,7 @@ theorem hasCanonicalDyadicUnitNarrowBroadFiniteEnvelopeL2EstimateGT_concrete_of_
 per-scale signed-envelope estimate. -/
 theorem hasLightRayMaximalEstimate_of_concreteNarrowScaleCost
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
+    (hcore : ∀ u : gtNarrowBroadAdapterE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re)
     (hnarrow : HasCanonicalDyadicUnitNarrowScaleCostGT
       (canonicalTubeSignedScaleConcreteUnitWiringGT hc hr hcore)) :
     HasLightRayMaximalEstimate :=
@@ -24570,30 +24417,28 @@ theorem hasLightRayMaximalEstimate_of_concreteNarrowScaleCost
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaGTNarrowBroadAdapter
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGTNarrowBroadAdapter
 
 -- BEGIN ScratchKakeyaFinalLiteralClosure
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaFinalLiteralClosure
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaGTNarrowBroadAdapter
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev finalLiteralClosureE2 := Euclidean 2
 
 /-- Final root-level closure.  The canonical positive core itself supplies a
 strict lower bound on some closed ball; after choosing that ball, the sole
 input is the narrow per-scale reflected-envelope theorem. -/
 theorem hasLightRayMaximalEstimate_of_uniformConcreteNarrowScaleCost
     (hnarrow : ∀ {c r : Real} (hc : 0 < c) (hr : 0 < r)
-      (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re),
+      (hcore : ∀ u : finalLiteralClosureE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re),
       HasCanonicalDyadicUnitNarrowScaleCostGT
         (canonicalTubeSignedScaleConcreteUnitWiringGT hc hr hcore)) :
     HasLightRayMaximalEstimate := by
@@ -24604,17 +24449,17 @@ theorem hasLightRayMaximalEstimate_of_uniformConcreteNarrowScaleCost
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaFinalLiteralClosure
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFinalLiteralClosure
 
 -- BEGIN ScratchKakeyaInverseFourierContinuity
 section
 
-namespace Auto.Spherical.MSS.KakeyaInverseFourierContinuity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -24649,21 +24494,17 @@ theorem continuous_uncurry_fourierInv_of_dominated
 
 end
 
-end Auto.Spherical.MSS.KakeyaInverseFourierContinuity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaInverseFourierContinuity
 
 -- BEGIN ScratchKakeyaGenericAngularCutoffShell
 section
 
-namespace Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaFiniteTensorPseudodiffShell
-open Auto.Spherical.MSS.KakeyaInverseFourierDerivative
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -24882,17 +24723,17 @@ theorem angularCutoffFiniteTensorShell_endpointZeroSobolev
 
 end
 
-end Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGenericAngularCutoffShell
 
 -- BEGIN ScratchKakeyaAngularShellPartition
 section
 
-namespace Auto.Spherical.MSS.KakeyaAngularShellPartition
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -25414,19 +25255,17 @@ theorem norm_sq_le_centeredFiniteShell_sum
           exact le_add_of_nonneg_left (by positivity)
 
 end
-end Auto.Spherical.MSS.KakeyaAngularShellPartition
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAngularShellPartition
 
 -- BEGIN ScratchKakeyaSmoothShellPartition
 section
 
-namespace Auto.Spherical.MSS.KakeyaSmoothShellPartition
+section Auto.Spherical.MSSKakeya
 
 open Filter Finset Set
-open Auto.Spherical.SurfaceCore
-open ScratchKakeyaTTStarAngular
-open Auto.Spherical.MSS.KakeyaAngularShellPartition
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators
 
 noncomputable section
@@ -25853,19 +25692,17 @@ theorem sum_orderedSmoothShellPartitionPiece_eq_one_of_mem_centeredShellWindow
 
 end
 
-end Auto.Spherical.MSS.KakeyaSmoothShellPartition
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSmoothShellPartition
 
 -- BEGIN ScratchKakeyaTelescopingShellPartition
 section
 
-namespace Auto.Spherical.MSS.KakeyaTelescopingShellPartition
+section Auto.Spherical.MSSKakeya
 
 open Filter Finset Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaAngularShellPartition
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators
 
 noncomputable section
@@ -26040,25 +25877,18 @@ theorem telescopingShellCutoff_commonLeft_zero
 
 end
 
-end Auto.Spherical.MSS.KakeyaTelescopingShellPartition
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTelescopingShellPartition
 
 -- BEGIN ScratchKakeyaFiniteAngularShellReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteAngularShellReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaAngularShellPartition
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -26078,8 +25908,8 @@ noncomputable def chartedAngularShellMultiplier
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
     (a : iota -> SchwartzMap Real Complex)
     (cutoff : Real -> Real) (theta : Real) (xi : Euclidean 2) : Complex :=
-  angularCutoffFiniteTensorMultiplier s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a cutoff (C.angle j) theta xi
+  angularCutoffFiniteTensorMultiplier s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a cutoff (C.angle j) theta xi
 
 /-- The corresponding literal derivative multiplier. -/
 noncomputable def chartedAngularShellMultiplierDeriv
@@ -26090,8 +25920,8 @@ noncomputable def chartedAngularShellMultiplierDeriv
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
     (a : iota -> SchwartzMap Real Complex)
     (cutoff cutoffDeriv : Real -> Real) (theta : Real) (xi : Euclidean 2) : Complex :=
-  angularCutoffFiniteTensorMultiplierDeriv s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a cutoff cutoffDeriv (C.angle j) theta xi
+  angularCutoffFiniteTensorMultiplierDeriv s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a cutoff cutoffDeriv (C.angle j) theta xi
 
 /-- The physical inverse-Fourier field for one charted shell. -/
 noncomputable def chartedAngularShellField
@@ -26102,8 +25932,8 @@ noncomputable def chartedAngularShellField
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
     (a : iota -> SchwartzMap Real Complex)
     (cutoff : Real -> Real) (theta : Real) (y : Euclidean 2) : Complex :=
-  angularCutoffFiniteTensorShellField s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a cutoff (C.angle j) theta y
+  angularCutoffFiniteTensorShellField s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a cutoff (C.angle j) theta y
 
 noncomputable def chartedAngularShellFieldDeriv
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -26113,8 +25943,8 @@ noncomputable def chartedAngularShellFieldDeriv
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
     (a : iota -> SchwartzMap Real Complex)
     (cutoff cutoffDeriv : Real -> Real) (theta : Real) (y : Euclidean 2) : Complex :=
-  angularCutoffFiniteTensorShellFieldDeriv s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a cutoff cutoffDeriv (C.angle j) theta y
+  angularCutoffFiniteTensorShellFieldDeriv s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a cutoff cutoffDeriv (C.angle j) theta y
 
 /-- One shell is literally the cutoff times its charted finite-tensor
 multiplier.  Keeping this rewrite separate makes finite partition algebra
@@ -26129,8 +25959,8 @@ theorem chartedAngularShellMultiplier_eq_cutoff_smul
     (cutoff : Real -> Real) (theta : Real) (xi : Euclidean 2) :
     chartedAngularShellMultiplier C j s q hqcompact a cutoff theta xi =
       cutoff (theta - C.angle j xi) •
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi := by
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi := by
   rfl
 
 /-- When the sector multiplier vanishes, its entire chart multiplier vanishes.
@@ -26145,15 +25975,15 @@ theorem chartMultiplier_eq_zero_of_sector_eq_zero
     (a : iota -> SchwartzMap Real Complex)
     (theta : Real) (xi : Euclidean 2)
     (hsector : C.sector j xi = 0) :
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi = 0 := by
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi = 0 := by
   rw [scratch_finiteTensorTubeMultiplier_apply]
   apply Finset.sum_eq_zero
   intro i hi
-  change C.chartProfile j (q i) xi *
+  change chartProfile C j (q i) xi *
       (FourierTransform.fourier (a i) : SchwartzMap Real Complex)
         (inner Real (circleDirection theta) xi) = 0
-  rw [C.chartProfile_apply]
+  rw [chartProfile_apply C]
   simp [hsector]
 
 /-- A finite smooth cutoff family reconstructs one chart multiplier whenever
@@ -26171,16 +26001,16 @@ theorem sum_chartedAngularShellMultiplier_eq_chartMultiplier
       (∑ k ∈ shells, cutoff k (theta - C.angle j xi)) = 1) :
     (∑ k ∈ shells, chartedAngularShellMultiplier C j s q hqcompact a
       (cutoff k) theta xi) =
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi := by
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi := by
   classical
   by_cases hsector : C.sector j xi = 0
   · have hzero := chartMultiplier_eq_zero_of_sector_eq_zero C j s q hqcompact a theta xi hsector
     rw [show (∑ k ∈ shells, chartedAngularShellMultiplier C j s q hqcompact a
         (cutoff k) theta xi) =
         ∑ k ∈ shells, cutoff k (theta - C.angle j xi) •
-          scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi by
+          scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi by
       apply Finset.sum_congr rfl
       intro k hk
       rfl]
@@ -26189,8 +26019,8 @@ theorem sum_chartedAngularShellMultiplier_eq_chartMultiplier
   · rw [show (∑ k ∈ shells, chartedAngularShellMultiplier C j s q hqcompact a
         (cutoff k) theta xi) =
         ∑ k ∈ shells, cutoff k (theta - C.angle j xi) •
-          scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi by
+          scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi by
       apply Finset.sum_congr rfl
       intro k hk
       rfl]
@@ -26206,7 +26036,7 @@ theorem sum_chartedAngularShellMultiplier_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     (shells : Finset sigma) (cutoff : sigma -> Real -> Real)
     (theta : Real) (xi : Euclidean 2)
@@ -26217,13 +26047,13 @@ theorem sum_chartedAngularShellMultiplier_eq
       scratch_finiteTensorTubeMultiplier s q hqcompact a (circleDirection theta) xi := by
   rw [show (∑ j ∈ charts, ∑ k ∈ shells,
       chartedAngularShellMultiplier C j s q hqcompact a (cutoff k) theta xi) =
-      ∑ j ∈ charts, scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi by
+      ∑ j ∈ charts, scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi by
       apply Finset.sum_congr rfl
       intro j hj
       exact sum_chartedAngularShellMultiplier_eq_chartMultiplier C j s q hqcompact a
         shells cutoff theta xi (hsum j hj)]
-  exact C.sum_charted_finiteTensorTubeMultiplier_eq s q hqcompact hqactive a
+  exact sum_charted_finiteTensorTubeMultiplier_eq C s q hqcompact hqactive a
     (circleDirection theta) xi
 
 /-- The exact chart--shell multiplier decomposition transports to literal
@@ -26236,7 +26066,7 @@ theorem sum_chartedAngularShellField_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     (shells : Finset sigma) (cutoff : sigma -> Real -> Real)
     (theta : Real) (y : Euclidean 2)
@@ -26260,7 +26090,7 @@ theorem sum_chartedAngularShellField_eq
     exact hintegrable j (Finset.mem_product.mp hjk').1 k
       (Finset.mem_product.mp hjk').2
   have hfourier :=
-    Auto.Spherical.MikhlinHormander.fourierInv_finset_sum_of_integrable
+    Auto.MikhlinHormander.fourierInv_finset_sum_of_integrable
       (charts ×ˢ shells) m hm y
   have hmult : (fun xi => ∑ jk ∈ charts ×ˢ shells, m jk xi) =
       fun xi => scratch_finiteTensorTubeMultiplier s q hqcompact a
@@ -26298,7 +26128,7 @@ theorem sum_chartedTelescopingShellMultiplier_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     {eps : Real} (heps : 0 < eps) (J : Nat)
     (theta : Real) (xi : Euclidean 2)
@@ -26323,7 +26153,7 @@ theorem sum_chartedTelescopingShellField_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     {eps : Real} (heps : 0 < eps) (J : Nat)
     (theta : Real) (y : Euclidean 2)
@@ -26361,7 +26191,7 @@ theorem chartedTelescopingShellField_eq_zero_commonLeft
   have hkJ : k ≤ J := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
   unfold chartedAngularShellField
   apply angularCutoffFiniteTensorShellField_eq_zero_of_cutoff_zero
-    s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+    s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     (telescopingShellCutoff eps k) (C.angle j) (smoothShellCommonLeft eps J)
   intro xi
   exact telescopingShellCutoff_commonLeft_zero heps J k
@@ -26423,7 +26253,7 @@ theorem chartedTelescopingShell_endpointZeroSobolev
         ENNReal.ofReal (2 * Real.sqrt (E0 * E1)) := by
   have hkJ : k ≤ J := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
   exact angularCutoffFiniteTensorShell_endpointZeroSobolev
-    s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+    s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     (telescopingShellCutoff eps k) (deriv (telescopingShellCutoff eps k))
     (C.angle j) hlohi
     (hasDerivAt_telescopingShellCutoff eps k) hFcont hDcont hderiv
@@ -26433,18 +26263,16 @@ theorem chartedTelescopingShell_endpointZeroSobolev
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteAngularShellReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteAngularShellReassembly
 
 -- BEGIN ScratchKakeyaCappedTelescopingPartition
 section
 
-namespace Auto.Spherical.MSS.KakeyaCappedTelescopingPartition
+section Auto.Spherical.MSSKakeya
 
 open Filter Finset Set
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
 open scoped BigOperators
 
 noncomputable section
@@ -26544,24 +26372,18 @@ theorem cappedTerminalUnitProfile_eq_zero_of_abs_le_five_eighth
 
 end
 
-end Auto.Spherical.MSS.KakeyaCappedTelescopingPartition
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCappedTelescopingPartition
 
 -- BEGIN ScratchKakeyaCappedAngularShellReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaFiniteAngularShellReassembly
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
-open Auto.Spherical.MSS.KakeyaCappedTelescopingPartition
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -26633,7 +26455,7 @@ theorem sum_chartedCappedTelescopingShellMultiplier_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     {eps R : Real} (hR : 0 < R) (K : Nat)
     (theta : Real) (xi : Euclidean 2)
@@ -26658,7 +26480,7 @@ theorem sum_chartedCappedTelescopingShellField_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     {eps R : Real} (hR : 0 < R) (K : Nat)
     (theta : Real) (y : Euclidean 2)
@@ -26753,17 +26575,16 @@ theorem cappedTelescopingCutoff_eq_zero_at_cappedCommonLeft
 
 end
 
-end Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCappedAngularShellReassembly
 
 -- BEGIN ScratchKakeyaCirclePhaseAlignment
 section
 
-namespace Auto.Spherical.MSS.KakeyaCirclePhaseAlignment
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped EuclideanSpace
 
 noncomputable section
@@ -26808,21 +26629,17 @@ theorem circle_phase_centered_shell
 
 end
 
-end Auto.Spherical.MSS.KakeyaCirclePhaseAlignment
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCirclePhaseAlignment
 
 -- BEGIN ScratchKakeyaShiftedStationaryCover
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedStationaryCover
+section Auto.Spherical.MSSKakeya
 
 open Filter Finset Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaCirclePhaseAlignment
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators
 
 noncomputable section
@@ -27217,24 +27034,18 @@ theorem shiftedCappedTelescopingCutoff_eq_zero_at_globalCommonLeft
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedStationaryCover
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedStationaryCover
 
 -- BEGIN ScratchKakeyaShiftedChartReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedChartReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaFiniteAngularShellReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaSectorPartition
-open Auto.Spherical.MSS.KakeyaSectorAngleBounds
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -27252,8 +27063,8 @@ noncomputable def shiftedChartedCappedTelescopingMultiplier
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K n i : Nat) (theta : Real) (xi : Euclidean 2) : Complex :=
   SMul.smul (shiftedCappedTelescopingCutoff eps K n i (C.angle j xi) theta)
-    (scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi)
+    (scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi)
 
 /-- The corresponding literal physical inverse-spatial-Fourier field. -/
 noncomputable def shiftedChartedCappedTelescopingField
@@ -27297,10 +27108,10 @@ theorem sum_shiftedChartedCappedTelescopingMultiplier_eq_chart
     Finset.sum (Finset.range 7) (fun n =>
       Finset.sum (Finset.range (K + 2)) (fun i =>
         shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi)) =
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi := by
-  let M : Complex := scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi := by
+  let M : Complex := scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi
   have hpartition :
       Finset.sum (Finset.range 7) (fun n =>
         Finset.sum (Finset.range (K + 2)) (fun i =>
@@ -27348,7 +27159,7 @@ theorem sum_shiftedChartedCappedTelescopingMultiplier_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : forall l, C.SupportedOnActive (q l))
+    (hqactive : forall l, SupportedOnActive C (q l))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K : Nat) (theta : Real) (xi : Euclidean 2)
     (htheta : Icc (-Real.pi) Real.pi theta)
@@ -27364,8 +27175,8 @@ theorem sum_shiftedChartedCappedTelescopingMultiplier_eq
           Finset.sum (Finset.range (K + 2)) (fun i =>
             shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi))) =
         Finset.sum charts (fun j =>
-          scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) := by
+          scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) := by
           apply Finset.sum_congr rfl
           intro j hj
           exact sum_shiftedChartedCappedTelescopingMultiplier_eq_chart C j s q hqcompact a
@@ -27373,7 +27184,7 @@ theorem sum_shiftedChartedCappedTelescopingMultiplier_eq
             (fun z => C.angle_lower j hj z)
             (fun z => hangleUpper j z)
     _ = scratch_finiteTensorTubeMultiplier s q hqcompact a (circleDirection theta) xi :=
-      C.sum_charted_finiteTensorTubeMultiplier_eq s q hqcompact hqactive a
+      sum_charted_finiteTensorTubeMultiplier_eq C s q hqcompact hqactive a
         (circleDirection theta) xi
 
 /-- The concrete four-chart polar identity at a shifted stationary centre. -/
@@ -27394,7 +27205,7 @@ theorem sum_unitDyadicFourChart_shiftedCappedTelescopingMultiplier_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : forall l, unitDyadicFourChartFamily.SupportedOnActive (q l))
+    (hqactive : forall l, SupportedOnActive unitDyadicFourChartFamily (q l))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K : Nat) (theta : Real) (xi : Euclidean 2)
     (htheta : Icc (-Real.pi) Real.pi theta) :
@@ -27418,7 +27229,7 @@ theorem sum_shiftedChartedCappedTelescopingField_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : forall l, C.SupportedOnActive (q l))
+    (hqactive : forall l, SupportedOnActive C (q l))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K : Nat) (theta : Real) (y : Euclidean 2)
     (hintegrable : forall j n i, Integrable (fun xi =>
@@ -27441,7 +27252,7 @@ theorem sum_shiftedChartedCappedTelescopingField_eq
     intro jni
     exact hintegrable jni.1.1 jni.1.2 jni.2
   have hfourier :=
-    Auto.Spherical.MikhlinHormander.fourierInv_finset_sum_of_integrable pieces m
+    Auto.MikhlinHormander.fourierInv_finset_sum_of_integrable pieces m
       (fun jni hni => hm jni) y
   have hmult : (fun xi => Finset.sum pieces (fun jni => m jni xi)) =
       fun xi => scratch_finiteTensorTubeMultiplier s q hqcompact a
@@ -27498,7 +27309,7 @@ theorem sum_unitDyadicFourChart_shiftedCappedTelescopingField_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : forall l, unitDyadicFourChartFamily.SupportedOnActive (q l))
+    (hqactive : forall l, SupportedOnActive unitDyadicFourChartFamily (q l))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K : Nat) (theta : Real) (y : Euclidean 2)
     (hintegrable : forall j n i, Integrable (fun xi =>
@@ -27520,22 +27331,18 @@ theorem sum_unitDyadicFourChart_shiftedCappedTelescopingField_eq
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedChartReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedChartReassembly
 
 -- BEGIN ScratchKakeyaCappedAngularMaxReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaFiniteAngularShellReassembly
-open Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -27562,7 +27369,7 @@ theorem lintegral_iSup_sq_cappedChartedShell_reassembly
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : forall i, HasCompactSupport (q i : Euclidean 2 -> Complex))
-    (hqactive : forall i, C.SupportedOnActive (q i))
+    (hqactive : forall i, SupportedOnActive C (q i))
     (a : iota -> SchwartzMap Real Complex)
     {eps R : Real} (hR : 0 < R) (K : Nat)
     (thetaVal : Theta -> Real)
@@ -27619,19 +27426,17 @@ theorem lintegral_iSup_sq_cappedChartedShell_reassembly
 
 end
 
-end Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCappedAngularMaxReassembly
 
 -- BEGIN ScratchKakeyaCenteredFundamentalMax
 section
 
-namespace Auto.Spherical.MSS.KakeyaCenteredFundamentalMax
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped ENNReal
 
 noncomputable section
@@ -27688,16 +27493,15 @@ theorem centeredFundamental_mem_closed
 
 end
 
-end Auto.Spherical.MSS.KakeyaCenteredFundamentalMax
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCenteredFundamentalMax
 
 -- BEGIN ScratchKakeyaCappedShellLevel
 section
 
-namespace Auto.Spherical.MSS.KakeyaCappedShellLevel
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.MSS.KakeyaAngularShellPartition
 
 noncomputable section
 
@@ -27919,24 +27723,17 @@ theorem exists_cappedShellFamily_card_log_bound :
 
 end
 
-end Auto.Spherical.MSS.KakeyaCappedShellLevel
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCappedShellLevel
 
 -- BEGIN ScratchKakeyaShiftedCappedMaxReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedCappedMaxReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaCenteredFundamentalMax
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaSectorPartition
-open Auto.Spherical.MSS.KakeyaCappedShellLevel
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -27969,7 +27766,7 @@ theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped
     (s : Finset iota)
     (q : iota → SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 → Complex))
-    (hqactive : ∀ l, unitDyadicFourChartFamily.SupportedOnActive (q l))
+    (hqactive : ∀ l, SupportedOnActive unitDyadicFourChartFamily (q l))
     (a : iota → SchwartzMap Real Complex)
     (eps : Real) (K : Nat)
     (hintegrable : ∀ theta j n i,
@@ -28072,12 +27869,12 @@ theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped
 
 /-- A uniform local shell estimate is paid twice by finite Cauchy/Tonelli:
 once for the pointwise finite sum and once for the list of local energies. -/
-theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_uniform
+theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_uniform_shiftedMax
     {iota : Type*}
     (s : Finset iota)
     (q : iota → SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 → Complex))
-    (hqactive : ∀ l, unitDyadicFourChartFamily.SupportedOnActive (q l))
+    (hqactive : ∀ l, SupportedOnActive unitDyadicFourChartFamily (q l))
     (a : iota → SchwartzMap Real Complex)
     (eps : Real) (K : Nat)
     (hintegrable : ∀ theta j n i,
@@ -28152,14 +27949,14 @@ theorem exists_shiftedCappedShellIndices_card_sq_log_sq_bound :
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedCappedMaxReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedCappedMaxReassembly
 
 -- BEGIN ScratchKakeyaTimeEnvelope
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaTimeEnvelope
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
 
@@ -28377,17 +28174,16 @@ theorem intervalIntegral_norm_le_of_central_outer_column
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaTimeEnvelope
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTimeEnvelope
 
 -- BEGIN ScratchKakeyaGlobalTimeEnvelope
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalTimeEnvelope
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
-open ScratchKakeyaTimeEnvelope
 
 noncomputable section
 
@@ -28541,18 +28337,17 @@ theorem integral_norm_le_of_central_outer_univ_column
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalTimeEnvelope
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGlobalTimeEnvelope
 
 -- BEGIN ScratchKakeyaGlobalComplexSchur
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalComplexSchur
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
-open Auto.Spherical.MSS
-
+open Auto.Spherical.MSSBase
 noncomputable section
 
 /-- Complex-valued whole-line quadratic Schur, reduced to the existing
@@ -28604,21 +28399,16 @@ theorem norm_integral_integral_le_of_symmetricSchur
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaGlobalComplexSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGlobalComplexSchur
 
 -- BEGIN ScratchKakeyaGenericOuterProfileSchur
 section
 
-namespace Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaParametricShellChain
-open ScratchKakeyaTimeEnvelope
-open ScratchKakeyaGlobalTimeEnvelope
-open ScratchKakeyaGlobalComplexSchur
 open scoped BigOperators
 
 noncomputable section
@@ -29146,18 +28936,16 @@ theorem exists_outerCircleProfileProductTimeKernel_phaseFactor_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGenericOuterProfileSchur
 
 -- BEGIN ScratchKakeyaGenericProfileFourierSchur
 section
 
-namespace Auto.Spherical.MSS.KakeyaGenericProfileFourierSchur
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
-open ScratchKakeyaGlobalComplexSchur
 open scoped BigOperators FourierTransform
 
 noncomputable section
@@ -29473,20 +29261,16 @@ theorem exists_outerCircleRealProfileFourierCharProductKernel_phaseFactor_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaGenericProfileFourierSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGenericProfileFourierSchur
 
 -- BEGIN ScratchKakeyaGenericAmplitudeFourierSchur
 section
 
-namespace Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
-open Auto.Spherical.MSS.KakeyaGenericProfileFourierSchur
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaGlobalComplexSchur
 open scoped BigOperators FourierTransform
 
 noncomputable section
@@ -29777,21 +29561,19 @@ theorem exists_outerCircleProfileFourierCharProductKernel_phaseFactor_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGenericAmplitudeFourierSchur
 
 -- BEGIN ScratchKakeyaCircleTimeKernel
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
 open scoped BigOperators
 
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaTimeEnvelope
-open Auto.Spherical.OneDimStationaryPhase
+open Auto.OneDimStationaryPhase
 
 noncomputable section
 
@@ -30506,7 +30288,7 @@ theorem exists_outerCircleTTStarProductTimeKernel_quadratic_norm_schur
   letI : IsFiniteMeasure (outerCircleTimeIntervalMeasure a b) := by
     unfold outerCircleTimeIntervalMeasure
     infer_instance
-  apply Auto.Spherical.MSS.aux_kernelQuadratic_le_of_symmetricSchur
+  apply Auto.Spherical.MSSBase.aux_kernelQuadratic_le_of_symmetricSchur
     (μ := outerCircleTimeIntervalMeasure a b)
     (K := outerCircleTTStarProductNormKernel rho lambda)
     ((2 * B) * rho * (Real.pi / (lambda * rho ^ 2)))
@@ -30533,18 +30315,16 @@ theorem exists_outerCircleTTStarProductTimeKernel_quadratic_norm_schur
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCircleTimeKernel
 
 -- BEGIN ScratchKakeyaCircleGlobalTimeSchur
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCircleGlobalTimeSchur
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
-open ScratchKakeyaTimeEnvelope ScratchKakeyaGlobalTimeEnvelope
-open ScratchKakeyaCircleTimeKernel
 
 noncomputable section
 
@@ -30635,14 +30415,14 @@ theorem exists_outerCircleTTStarProductTimeKernel_global_row_column_schur
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaCircleGlobalTimeSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCircleGlobalTimeSchur
 
 -- BEGIN ScratchKakeyaTimePhaseBridge
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory Set
 open scoped BigOperators FourierTransform
@@ -30671,14 +30451,14 @@ theorem norm_outerCircleTTStarProductTimeKernel_fourierChar_neg
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaCircleTimeKernel
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTimePhaseBridge
 
 -- BEGIN ScratchKakeyaGenericTTStarFactorization
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaGenericTTStarFactorization
+section Auto.Spherical.MSSKakeya
 
 open MeasureTheory
 
@@ -30770,27 +30550,19 @@ theorem ttstar_factorization
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaGenericTTStarFactorization
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGenericTTStarFactorization
 
 -- BEGIN ScratchKakeyaFiniteTensorOuterShell
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorOuterShell
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaCirclePhaseAlignment
-open ScratchKakeyaCircleTimeKernel
-open ScratchKakeyaCircleGlobalTimeSchur
-open ScratchKakeyaGlobalComplexSchur
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
-
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 noncomputable section
 
 /-- The spatial frequency centered at the circle direction `alpha`. -/
@@ -31335,24 +31107,19 @@ theorem exists_outerShellFiniteTensor_localized_E0
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorOuterShell
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorOuterShell
 
 -- BEGIN ScratchKakeyaParametricProfileFiniteTensor
 section
 
-namespace Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
-open ScratchKakeyaFiniteTensorOuterShell
-open ScratchKakeyaGenericTTStarFactorization
-
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 noncomputable section
 
 /-- A real lobe profile jointly depending on the shell carrier and normalized
@@ -31622,19 +31389,16 @@ theorem outerShellFiniteTensor_parametricRealProfile_localized_ttstar_factorizat
 
 end
 
-end Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaParametricProfileFiniteTensor
 
 -- BEGIN ScratchKakeyaShiftedParametricProfiles
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open ScratchKakeyaTTStarAngular
 
 noncomputable section
 
@@ -31816,21 +31580,16 @@ theorem shiftedOuterParametricScaledPhaseProfile_eventuallyEq_zero_right
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedParametricProfiles
 
 -- BEGIN ScratchKakeyaShiftedParametricFiberEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedParametricFiberEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
 open scoped BigOperators
 
 noncomputable section
@@ -32040,28 +31799,18 @@ theorem exists_shiftedOuterParametricProfile_phaseFactor_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedParametricFiberEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedParametricFiberEnergy
 
 -- BEGIN ScratchKakeyaShiftedPhysicalEndpoint
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaFiniteTensorPseudodiffShell
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedMaxReassembly
-open Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
-open Auto.Spherical.MSS.KakeyaCappedTelescopingPartition
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -32123,8 +31872,8 @@ noncomputable def shiftedChartedCappedTelescopingFieldDeriv
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 -> Complex))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K n i : Nat) (theta : Real) (y : Euclidean 2) : Complex :=
-  angularCutoffFiniteTensorShellFieldDeriv s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a
+  angularCutoffFiniteTensorShellFieldDeriv s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a
     (shiftedCappedTelescopingCutoffProfile eps K n i)
     (deriv (shiftedCappedTelescopingCutoffProfile eps K n i))
     (C.angle j) theta y
@@ -32138,8 +31887,8 @@ theorem shiftedChartedCappedTelescopingField_eq_angularCutoff
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K n i : Nat) (theta : Real) (y : Euclidean 2) :
     shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i theta y =
-      angularCutoffFiniteTensorShellField s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a
+      angularCutoffFiniteTensorShellField s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a
         (shiftedCappedTelescopingCutoffProfile eps K n i)
         (C.angle j) theta y := by
   unfold shiftedChartedCappedTelescopingField angularCutoffFiniteTensorShellField
@@ -32225,23 +31974,18 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedPhysicalEndpoint
 
 -- BEGIN ScratchKakeyaShiftedPhysicalFrequencyTransport
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -32423,18 +32167,17 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_frequency_bo
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedPhysicalFrequencyTransport
 
 -- BEGIN ScratchKakeyaAnnularFiberCompression
 section
 
-namespace Auto.Spherical.MSS.KakeyaAnnularFiberCompression
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
+open Auto.Spherical.SurfaceMeasureDecay
 
 noncomputable section
 
@@ -32545,25 +32288,18 @@ theorem integral_le_common_direct_scale_of_annular
 
 end
 
-end Auto.Spherical.MSS.KakeyaAnnularFiberCompression
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAnnularFiberCompression
 
 -- BEGIN ScratchKakeyaAnnularHpieceCore
 section
 
-namespace Auto.Spherical.MSS.KakeyaAnnularHpieceCore
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaAnnularFiberCompression
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -32734,25 +32470,18 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_annular_fibe
 
 end
 
-end Auto.Spherical.MSS.KakeyaAnnularHpieceCore
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAnnularHpieceCore
 
 -- BEGIN ScratchKakeyaShiftedSliceSchwartz
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -32773,8 +32502,8 @@ theorem contDiff_shiftedChartedCappedTelescopingMultiplier_slice
   rw [show (fun xi : Euclidean 2 =>
       shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi) =
       fun xi => (shiftedCappedTelescopingCutoff eps K n i (C.angle j xi) theta : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi by
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi by
         funext xi
         unfold shiftedChartedCappedTelescopingMultiplier
         change (↑(shiftedCappedTelescopingCutoff eps K n i (C.angle j xi) theta) : Complex) * _ = _
@@ -32793,24 +32522,24 @@ theorem contDiff_shiftedChartedCappedTelescopingMultiplier_slice
       (shiftedCappedTelescopingCutoff eps K n i (C.angle j xi) theta : Complex)) :=
     (Complex.ofRealCLM.contDiff).comp hcutReal
   have hmult : ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) := by
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) := by
     have hinner : ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
         inner Real (circleDirection theta) xi) := by
       simpa using ((innerSL Real (circleDirection theta)).contDiff :
         ContDiff Real (⊤ : ℕ∞) (innerSL Real (circleDirection theta)))
     rw [show (fun xi : Euclidean 2 =>
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) =
-        fun xi => ∑ l ∈ s, C.chartProfiles j q l xi *
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) =
+        fun xi => ∑ l ∈ s, chartProfiles C j q l xi *
           (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
             (inner Real (circleDirection theta) xi) by
           funext xi
-          exact scratch_finiteTensorTubeMultiplier_apply s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi]
+          exact scratch_finiteTensorTubeMultiplier_apply s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi]
     apply ContDiff.sum
     intro l hl
-    exact ((C.chartProfiles j q l).smooth (⊤ : ℕ∞)).mul
+    exact ((chartProfiles C j q l).smooth (⊤ : ℕ∞)).mul
       (((FourierTransform.fourier (a l) : SchwartzMap Real Complex).smooth (⊤ : ℕ∞)).comp
         hinner)
   exact hcut.mul hmult
@@ -32828,30 +32557,30 @@ theorem hasCompactSupport_shiftedChartedCappedTelescopingMultiplier_slice
   rw [show (fun xi : Euclidean 2 =>
       shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi) =
       fun xi => (shiftedCappedTelescopingCutoff eps K n i (C.angle j xi) theta : Complex) *
-        ∑ l ∈ s, C.chartProfiles j q l xi *
+        ∑ l ∈ s, chartProfiles C j q l xi *
           (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
             (inner Real (circleDirection theta) xi) by
         funext xi
         unfold shiftedChartedCappedTelescopingMultiplier
         change (↑(shiftedCappedTelescopingCutoff eps K n i (C.angle j xi) theta) : Complex) * _ = _
         rw [
-          scratch_finiteTensorTubeMultiplier_apply s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi]]
+          scratch_finiteTensorTubeMultiplier_apply s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi]]
   apply HasCompactSupport.mul_left
-  have hsumEq : (fun xi : Euclidean 2 => ∑ l ∈ s, C.chartProfiles j q l xi *
+  have hsumEq : (fun xi : Euclidean 2 => ∑ l ∈ s, chartProfiles C j q l xi *
       (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
         (inner Real (circleDirection theta) xi)) =
-      ∑ l ∈ s, fun xi : Euclidean 2 => C.chartProfiles j q l xi *
+      ∑ l ∈ s, fun xi : Euclidean 2 => chartProfiles C j q l xi *
         (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
           (inner Real (circleDirection theta) xi) := by
     funext xi
-    exact (Finset.sum_apply xi s (fun l xi => C.chartProfiles j q l xi *
+    exact (Finset.sum_apply xi s (fun l xi => chartProfiles C j q l xi *
       (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
         (inner Real (circleDirection theta) xi))).symm
   rw [hsumEq]
   apply HasCompactSupport.finset_sum
   intro l hl
-  exact (C.chartProfiles_compact j q hqcompact l).mul_right
+  exact (chartProfiles_compact C j q hqcompact l).mul_right
 
 /-- A fixed shifted chart/shell multiplier slice has an exact compact
 Schwartz realization. -/
@@ -32939,8 +32668,8 @@ noncomputable def shiftedChartedCappedTelescopingMultiplierDerivRaw
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 -> Complex))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K n i : Nat) (theta : Real) (xi : Euclidean 2) : Complex :=
-  angularCutoffFiniteTensorMultiplierDeriv s (C.chartProfiles j q)
-    (C.chartProfiles_compact j q hqcompact) a
+  angularCutoffFiniteTensorMultiplierDeriv s (chartProfiles C j q)
+    (chartProfiles_compact C j q hqcompact) a
     (shiftedCappedTelescopingCutoffProfile eps K n i)
     (deriv (shiftedCappedTelescopingCutoffProfile eps K n i))
     (C.angle j) theta xi
@@ -32969,27 +32698,27 @@ theorem contDiff_shiftedChartedCappedTelescopingMultiplierDerivRaw_slice
       ((deriv cutoff (theta - C.angle j xi) : Real) : Complex)) :=
     (Complex.ofRealCLM.contDiff).comp (hcutoffDeriv.comp harg)
   have hmult : ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) := by
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) := by
     have hinner : ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
         inner Real (circleDirection theta) xi) := by
       simpa using ((innerSL Real (circleDirection theta)).contDiff :
         ContDiff Real (⊤ : ℕ∞) (innerSL Real (circleDirection theta)))
     rw [show (fun xi : Euclidean 2 =>
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) =
-        fun xi => ∑ l ∈ s, C.chartProfiles j q l xi *
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) =
+        fun xi => ∑ l ∈ s, chartProfiles C j q l xi *
           (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
             (inner Real (circleDirection theta) xi) by
           funext xi
-          exact scratch_finiteTensorTubeMultiplier_apply s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi]
+          exact scratch_finiteTensorTubeMultiplier_apply s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi]
     apply ContDiff.sum
     intro l hl
-    exact ((C.chartProfiles j q l).smooth (⊤ : ℕ∞)).mul
+    exact ((chartProfiles C j q l).smooth (⊤ : ℕ∞)).mul
       (((FourierTransform.fourier (a l) : SchwartzMap Real Complex).smooth (⊤ : ℕ∞)).comp hinner)
   have hmultDeriv := contDiff_finiteTensorTubeMultiplierAngularDeriv_slice
-    s (C.chartProfiles j q) a theta
+    s (chartProfiles C j q) a theta
   unfold shiftedChartedCappedTelescopingMultiplierDerivRaw
     angularCutoffFiniteTensorMultiplierDeriv
   change ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
@@ -33010,35 +32739,35 @@ theorem hasCompactSupport_shiftedChartedCappedTelescopingMultiplierDerivRaw_slic
       shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i theta xi) := by
   let cutoff := shiftedCappedTelescopingCutoffProfile eps K n i
   have hmult : HasCompactSupport (fun xi : Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) := by
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) := by
     rw [show (fun xi : Euclidean 2 =>
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi) =
-        fun xi => ∑ l ∈ s, C.chartProfiles j q l xi *
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi) =
+        fun xi => ∑ l ∈ s, chartProfiles C j q l xi *
           (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
             (inner Real (circleDirection theta) xi) by
           funext xi
-          exact scratch_finiteTensorTubeMultiplier_apply s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi]
-    have hsumEq : (fun xi : Euclidean 2 => ∑ l ∈ s, C.chartProfiles j q l xi *
+          exact scratch_finiteTensorTubeMultiplier_apply s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi]
+    have hsumEq : (fun xi : Euclidean 2 => ∑ l ∈ s, chartProfiles C j q l xi *
         (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
           (inner Real (circleDirection theta) xi)) =
-        ∑ l ∈ s, fun xi : Euclidean 2 => C.chartProfiles j q l xi *
+        ∑ l ∈ s, fun xi : Euclidean 2 => chartProfiles C j q l xi *
           (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
             (inner Real (circleDirection theta) xi) := by
       funext xi
-      exact (Finset.sum_apply xi s (fun l xi => C.chartProfiles j q l xi *
+      exact (Finset.sum_apply xi s (fun l xi => chartProfiles C j q l xi *
         (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
           (inner Real (circleDirection theta) xi))).symm
     rw [hsumEq]
     apply HasCompactSupport.finset_sum
     intro l hl
-    exact (C.chartProfiles_compact j q hqcompact l).mul_right
+    exact (chartProfiles_compact C j q hqcompact l).mul_right
   have hmultDeriv : HasCompactSupport (fun xi : Euclidean 2 =>
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi) :=
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi) :=
     hasCompactSupport_finiteTensorTubeMultiplierAngularDeriv_slice
-      s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a theta
+      s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a theta
   unfold shiftedChartedCappedTelescopingMultiplierDerivRaw
     angularCutoffFiniteTensorMultiplierDeriv
   change HasCompactSupport (fun xi : Euclidean 2 =>
@@ -33071,18 +32800,17 @@ theorem exists_shiftedChartedCappedTelescopingMultiplierDerivRaw_slice_schwartz
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedSliceSchwartz
 
 -- BEGIN ScratchKakeyaParametricPhysicalIntegrability
 section
 
-namespace Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -33262,31 +32990,19 @@ theorem integrable_sq_compactInterval_of_continuous_commonSupport
 
 end
 
-end Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaParametricPhysicalIntegrability
 
 -- BEGIN ScratchKakeyaFiniteCoreLowpassTrace
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
+open Auto.Spherical.MSSBase
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -34087,7 +33803,7 @@ theorem hasFiniteCoreLowpassAngularTraceEnergyBound
     calc
       (∫ p : Real × Euclidean 2, G p ∂(μ.prod volume)) =
           ∫ theta in -Real.pi..Real.pi, ∫ xi : Euclidean 2, G (theta, xi) := by
-            exact (ScratchKakeyaContinuousShell.intervalIntegral_integral_eq_integral_productShell hpi
+            exact (intervalIntegral_integral_eq_integral_productShell hpi
                 (fun theta xi => G (theta, xi)) (by simpa only [μ] using hG)).symm
       _ = ∫ theta in -Real.pi..Real.pi,
           (200 * Real.pi ^ 2) * ∫ xi : Euclidean 2, E xi := by
@@ -34153,27 +33869,18 @@ theorem hasFiniteCoreLowpassAngularTraceEnergyBound_reflectedCanonicalTube
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteCoreLowpassTrace
 
 -- BEGIN ScratchKakeyaShiftedJointMultiplier
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedJointMultiplier
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
-open Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -34185,7 +33892,7 @@ noncomputable def shiftedChartedFrequencySupport
     (C : SmoothAngularFrequencyChartFamily kappa charts active) (j : kappa)
     (s : Finset iota) (q : iota → SchwartzMap (Euclidean 2) Complex) :
     Set (Euclidean 2) :=
-  ⋃ l ∈ (s : Set iota), tsupport (C.chartProfiles j q l : Euclidean 2 → Complex)
+  ⋃ l ∈ (s : Set iota), tsupport (chartProfiles C j q l : Euclidean 2 → Complex)
 
 theorem isCompact_shiftedChartedFrequencySupport
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -34196,7 +33903,7 @@ theorem isCompact_shiftedChartedFrequencySupport
   unfold shiftedChartedFrequencySupport
   apply s.finite_toSet.isCompact_biUnion
   intro l hl
-  exact (C.chartProfiles_compact j q hqcompact l).isCompact
+  exact (chartProfiles_compact C j q hqcompact l).isCompact
 
 theorem chartProfile_eq_zero_of_not_mem_shiftedChartedFrequencySupport
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -34205,11 +33912,11 @@ theorem chartProfile_eq_zero_of_not_mem_shiftedChartedFrequencySupport
     (xi : Euclidean 2)
     (hxi : xi ∉ shiftedChartedFrequencySupport C j s q)
     {l : iota} (hl : l ∈ s) :
-    C.chartProfiles j q l xi = 0 := by
+    chartProfiles C j q l xi = 0 := by
   by_contra hne
-  have hsupport : xi ∈ Function.support (C.chartProfiles j q l : Euclidean 2 → Complex) :=
+  have hsupport : xi ∈ Function.support (chartProfiles C j q l : Euclidean 2 → Complex) :=
     Function.mem_support.mpr hne
-  have htsupport : xi ∈ tsupport (C.chartProfiles j q l : Euclidean 2 → Complex) :=
+  have htsupport : xi ∈ tsupport (chartProfiles C j q l : Euclidean 2 → Complex) :=
     subset_tsupport _ hsupport
   apply hxi
   exact Set.mem_iUnion₂.mpr ⟨l, by simpa using hl, htsupport⟩
@@ -34240,26 +33947,26 @@ theorem continuous_uncurry_shiftedChartedCappedTelescopingMultiplier
   have hphase : Continuous (fun p : Real × Euclidean 2 =>
       inner Real (circleDirection p.1) p.2) := hdir.inner continuous_snd
   have hmult : Continuous (fun p : Real × Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2) := by
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2) := by
     rw [show (fun p : Real × Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2) =
-      fun p => ∑ l ∈ s, C.chartProfiles j q l p.2 *
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2) =
+      fun p => ∑ l ∈ s, chartProfiles C j q l p.2 *
         (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
           (inner Real (circleDirection p.1) p.2) by
         funext p
-        exact scratch_finiteTensorTubeMultiplier_apply s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2]
+        exact scratch_finiteTensorTubeMultiplier_apply s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2]
     exact continuous_finsetSum _ fun l hl =>
-      ((C.chartProfiles j q l).continuous.comp continuous_snd).mul
+      ((chartProfiles C j q l).continuous.comp continuous_snd).mul
         ((FourierTransform.fourier (a l) : SchwartzMap Real Complex).continuous.comp hphase)
   rw [show (fun p : Real × Euclidean 2 =>
       shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i p.1 p.2) =
       fun p => (shiftedCappedTelescopingCutoffProfile eps K n i
         (p.1 - C.angle j p.2) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2 by
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2 by
         funext p
         unfold shiftedChartedCappedTelescopingMultiplier
         rw [shiftedCappedTelescopingCutoff_eq_profile]
@@ -34293,28 +34000,28 @@ theorem continuous_uncurry_shiftedChartedCappedTelescopingMultiplierDerivRaw
   have hmult := continuous_uncurry_shiftedChartedCappedTelescopingMultiplier
     C j s q hqcompact a eps K n i
   have hbase : Continuous (fun p : Real × Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2) := by
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2) := by
     have hdir : Continuous (fun p : Real × Euclidean 2 => circleDirection p.1) := by
       unfold circleDirection
       fun_prop
     have hphase : Continuous (fun p : Real × Euclidean 2 =>
         inner Real (circleDirection p.1) p.2) := hdir.inner continuous_snd
     rw [show (fun p : Real × Euclidean 2 =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2) =
-      fun p => ∑ l ∈ s, C.chartProfiles j q l p.2 *
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2) =
+      fun p => ∑ l ∈ s, chartProfiles C j q l p.2 *
         (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
           (inner Real (circleDirection p.1) p.2) by
         funext p
-        exact scratch_finiteTensorTubeMultiplier_apply s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2]
+        exact scratch_finiteTensorTubeMultiplier_apply s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2]
     exact continuous_finsetSum _ fun l hl =>
-      ((C.chartProfiles j q l).continuous.comp continuous_snd).mul
+      ((chartProfiles C j q l).continuous.comp continuous_snd).mul
         ((FourierTransform.fourier (a l) : SchwartzMap Real Complex).continuous.comp hphase)
   have hangular : Continuous (fun p : Real × Euclidean 2 =>
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a p.1 p.2) :=
-    continuous_uncurry_finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a p.1 p.2) :=
+    continuous_uncurry_finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
   unfold shiftedChartedCappedTelescopingMultiplierDerivRaw
     angularCutoffFiniteTensorMultiplierDeriv
   change Continuous (fun p : Real × Euclidean 2 =>
@@ -34334,7 +34041,7 @@ theorem shiftedChartedCappedTelescopingMultiplier_eq_zero_of_not_mem_support
     shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi = 0 := by
   unfold shiftedChartedCappedTelescopingMultiplier
   rw [scratch_finiteTensorTubeMultiplier_apply]
-  have hsum : (∑ l ∈ s, C.chartProfiles j q l xi *
+  have hsum : (∑ l ∈ s, chartProfiles C j q l xi *
       (FourierTransform.fourier (a l) : SchwartzMap Real Complex)
         (inner Real (circleDirection theta) xi)) = 0 := by
     apply Finset.sum_eq_zero
@@ -34356,14 +34063,14 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_eq_zero_of_not_mem_sup
     shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i theta xi = 0 := by
   unfold shiftedChartedCappedTelescopingMultiplierDerivRaw
     angularCutoffFiniteTensorMultiplierDeriv
-  have hbase : scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi = 0 := by
+  have hbase : scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi = 0 := by
     rw [scratch_finiteTensorTubeMultiplier_apply]
     apply Finset.sum_eq_zero
     intro l hl
     rw [chartProfile_eq_zero_of_not_mem_shiftedChartedFrequencySupport C j s q xi hxi hl]
     ring
-  have hderiv : finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi = 0 := by
+  have hderiv : finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi = 0 := by
     unfold finiteTensorTubeMultiplierAngularDeriv
     apply Finset.sum_eq_zero
     intro l hl
@@ -34421,17 +34128,17 @@ theorem integrable_sq_shiftedChartedCappedTelescopingMultiplierDerivRaw_frequenc
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedJointMultiplier
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedJointMultiplier
 
 -- BEGIN ScratchKakeyaLocalInverseFourierContinuity
 section
 
-namespace Auto.Spherical.MSS.KakeyaLocalInverseFourierContinuity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -34479,28 +34186,18 @@ theorem continuousOn_uncurry_fourierInv_of_continuous_commonSupport
 
 end
 
-end Auto.Spherical.MSS.KakeyaLocalInverseFourierContinuity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaLocalInverseFourierContinuity
 
 -- BEGIN ScratchKakeyaConcreteShiftedSlices
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedJointMultiplier
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
-open Auto.Spherical.MSS.KakeyaLocalInverseFourierContinuity
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -34679,17 +34376,17 @@ noncomputable def shiftedChartedCappedTelescopingSchwartzSlices_concrete
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteShiftedSlices
 
 -- BEGIN ScratchKakeyaCommonSupportDerivative
 section
 
-namespace Auto.Spherical.MSS.KakeyaCommonSupportDerivative
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set Topology
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped FourierTransform EuclideanSpace
 
 noncomputable section
@@ -34771,17 +34468,17 @@ theorem hasDerivAt_fourierInv_of_jointContinuous_commonCompactSupport
 
 end
 
-end Auto.Spherical.MSS.KakeyaCommonSupportDerivative
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCommonSupportDerivative
 
 -- BEGIN ScratchKakeyaGlobalInverseFourierContinuity
 section
 
-namespace Auto.Spherical.MSS.KakeyaGlobalInverseFourierContinuity
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -34826,27 +34523,18 @@ theorem continuous_uncurry_fourierInv_of_continuous_commonSupport
 
 end
 
-end Auto.Spherical.MSS.KakeyaGlobalInverseFourierContinuity
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGlobalInverseFourierContinuity
 
 -- BEGIN ScratchKakeyaShiftedPhysicalDifferentiation
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedPhysicalDifferentiation
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedJointMultiplier
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaCommonSupportDerivative
-open Auto.Spherical.MSS.KakeyaGlobalInverseFourierContinuity
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -34866,15 +34554,15 @@ theorem hasDerivAt_shiftedChartedCappedTelescopingMultiplier
       (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i theta xi)
       theta := by
   have h := hasDerivAt_angularCutoffFiniteTensorMultiplier
-    s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+    s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     (shiftedCappedTelescopingCutoffProfile eps K n i)
     (deriv (shiftedCappedTelescopingCutoffProfile eps K n i))
     (C.angle j)
     (hasDerivAt_shiftedCappedTelescopingCutoffProfile eps K n i) theta xi
   have hfun :
       (fun r => shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i r xi) =
-      (fun r => angularCutoffFiniteTensorMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a
+      (fun r => angularCutoffFiniteTensorMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a
         (shiftedCappedTelescopingCutoffProfile eps K n i) (C.angle j) r xi) := by
     funext r
     unfold shiftedChartedCappedTelescopingMultiplier angularCutoffFiniteTensorMultiplier
@@ -34882,11 +34570,11 @@ theorem hasDerivAt_shiftedChartedCappedTelescopingMultiplier
     exact Complex.real_smul
   rw [hfun]
   change HasDerivAt
-    (fun r => angularCutoffFiniteTensorMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a
+    (fun r => angularCutoffFiniteTensorMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a
       (shiftedCappedTelescopingCutoffProfile eps K n i) (C.angle j) r xi)
-    (angularCutoffFiniteTensorMultiplierDeriv s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a
+    (angularCutoffFiniteTensorMultiplierDeriv s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a
       (shiftedCappedTelescopingCutoffProfile eps K n i)
       (deriv (shiftedCappedTelescopingCutoffProfile eps K n i))
       (C.angle j) theta xi) theta
@@ -34989,27 +34677,18 @@ theorem continuous_uncurry_shiftedChartedCappedTelescopingFieldDeriv
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedPhysicalDifferentiation
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedPhysicalDifferentiation
 
 -- BEGIN ScratchKakeyaConcreteAnnularHpiece
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteAnnularHpiece
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaAnnularHpieceCore
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalDifferentiation
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -35029,17 +34708,17 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_concrete_ann
     (hi : i ∈ Finset.range (K + 2)) (hn : n < 7) (hj : j ∈ charts)
     (hscale : (2 : Real) ^ K * eps ≤ Real.pi / 2)
     {hiAngle lambda rho B : Real}
-    (hlohi : KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft ≤ hiAngle)
+    (hlohi : shiftedCappedShellGlobalCommonLeft ≤ hiAngle)
     (S : ShiftedCappedShellSchwartzSlices C j s q hqcompact a eps K n i
-      KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle)
+      shiftedCappedShellGlobalCommonLeft hiAngle)
     (W : AnnularShellFiberEnergyWitness C j s q hqcompact a eps K n i
-      KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle lambda rho B S)
+      shiftedCappedShellGlobalCommonLeft hiAngle lambda rho B S)
     (hlambda : 0 < lambda) (hrho : 0 < rho) (hB : 0 ≤ B) :
     Measurable (fun y : Euclidean 2 =>
-      ⨆ theta : Icc KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle, ENNReal.ofReal
+      ⨆ theta : Icc shiftedCappedShellGlobalCommonLeft hiAngle, ENNReal.ofReal
         (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i theta.1 y‖ ^ 2)) ∧
       (∫⁻ y : Euclidean 2,
-        ⨆ theta : Icc KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle, ENNReal.ofReal
+        ⨆ theta : Icc shiftedCappedShellGlobalCommonLeft hiAngle, ENNReal.ofReal
           (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i theta.1 y‖ ^ 2)) ≤
         ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2, W.h xi ∂
           (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
@@ -35056,7 +34735,7 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_concrete_ann
     exact hasDerivAt_shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i theta y
   have hFint : Integrable (fun p : Real × Euclidean 2 =>
       ‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i p.1 p.2‖ ^ (2 : Nat))
-      ((volume.restrict (Icc KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
+      ((volume.restrict (Icc shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
     rw [show (fun p : Real × Euclidean 2 =>
       ‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i p.1 p.2‖ ^ (2 : Nat)) =
       (fun p : Real × Euclidean 2 =>
@@ -35066,7 +34745,7 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_concrete_ann
     exact S.physical_integrable
   have hDint : Integrable (fun p : Real × Euclidean 2 =>
       ‖shiftedChartedCappedTelescopingFieldDeriv C j s q hqcompact a eps K n i p.1 p.2‖ ^ (2 : Nat))
-      ((volume.restrict (Icc KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
+      ((volume.restrict (Icc shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
     rw [show (fun p : Real × Euclidean 2 =>
       ‖shiftedChartedCappedTelescopingFieldDeriv C j s q hqcompact a eps K n i p.1 p.2‖ ^ (2 : Nat)) =
       (fun p : Real × Euclidean 2 =>
@@ -35076,11 +34755,11 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_concrete_ann
     exact S.physicalDeriv_integrable
   have hFmem : MemLp (fun p : Real × Euclidean 2 =>
       shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i p.1 p.2) 2
-      ((volume.restrict (Icc KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
+      ((volume.restrict (Icc shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
     exact (memLp_two_iff_integrable_sq_norm hFcont.aestronglyMeasurable).mpr hFint
   have hDmem : MemLp (fun p : Real × Euclidean 2 =>
       shiftedChartedCappedTelescopingFieldDeriv C j s q hqcompact a eps K n i p.1 p.2) 2
-      ((volume.restrict (Icc KakeyaShiftedStationaryCover.shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
+      ((volume.restrict (Icc shiftedCappedShellGlobalCommonLeft hiAngle)).prod volume) := by
     exact (memLp_two_iff_integrable_sq_norm hDcont.aestronglyMeasurable).mpr hDint
   exact shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_annular_fiber_witness
     C j s q hqcompact a heps K n i hi hn hj hscale
@@ -35089,17 +34768,17 @@ theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_concrete_ann
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteAnnularHpiece
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteAnnularHpiece
 
 -- BEGIN ScratchKakeyaFiberEnergyFubini
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiberEnergyFubini
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -35162,18 +34841,17 @@ theorem integrable_shellFrequencyEnergy_restrict
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiberEnergyFubini
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiberEnergyFubini
 
 -- BEGIN ScratchKakeyaLocalSchurFubini
 section
 
-namespace Auto.Spherical.MSS.KakeyaLocalSchurFubini
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.MSSBase
 open scoped BigOperators
 
 noncomputable section
@@ -35355,21 +35033,16 @@ theorem norm_integral_integral_restrict_Icc_le_of_symmetricSchur
 
 end
 
-end Auto.Spherical.MSS.KakeyaLocalSchurFubini
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaLocalSchurFubini
 
 -- BEGIN ScratchKakeyaSignedAmplitudeFourierSchur
 section
 
-namespace Auto.Spherical.MSS.KakeyaSignedAmplitudeFourierSchur
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
-open Auto.Spherical.MSS.KakeyaGenericProfileFourierSchur
-open Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
-open ScratchKakeyaGlobalComplexSchur
-open ScratchKakeyaTTStarAngular
 open scoped BigOperators FourierTransform
 
 noncomputable section
@@ -35687,26 +35360,17 @@ theorem exists_outerCircleProfileFourierCharProductKernel_phaseFactor_E1_abs
 
 end
 
-end Auto.Spherical.MSS.KakeyaSignedAmplitudeFourierSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSignedAmplitudeFourierSchur
 
 -- BEGIN ScratchKakeyaCompactTimeParametricTTStar
 section
 
-namespace Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaLocalSchurFubini
-open Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
-open Auto.Spherical.MSS.KakeyaSignedAmplitudeFourierSchur
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -36183,19 +35847,17 @@ theorem exists_outerCircleParametricRealProfile_scaled_E1_abs_of_support_subset_
 
 end
 
-end Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCompactTimeParametricTTStar
 
 -- BEGIN ScratchKakeyaTTStarRealEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaTTStarRealEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaLocalSchurFubini
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -36267,18 +35929,16 @@ theorem integrable_norm_sq_ttstarAnalysis_restrict_Icc_of_continuous
 
 end
 
-end Auto.Spherical.MSS.KakeyaTTStarRealEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTTStarRealEnergy
 
 -- BEGIN ScratchKakeyaTelescopingOuterNormalization
 section
 
-namespace Auto.Spherical.MSS.KakeyaTelescopingOuterNormalization
+section Auto.Spherical.MSSKakeya
 
 open Filter Set
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
 
 noncomputable section
 
@@ -36351,19 +36011,16 @@ theorem telescopingShellCutoff_succ_eq_normalizedOuterProfile
 
 end
 
-end Auto.Spherical.MSS.KakeyaTelescopingOuterNormalization
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTelescopingOuterNormalization
 
 -- BEGIN ScratchKakeyaNormalizedTelescopingLobes
 section
 
-namespace Auto.Spherical.MSS.KakeyaNormalizedTelescopingLobes
+section Auto.Spherical.MSSKakeya
 
 open Filter Set
-open Auto.Spherical.MSS.KakeyaTelescopingOuterNormalization
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
 
 noncomputable section
 
@@ -36548,20 +36205,16 @@ theorem telescopingShellCutoff_succ_eq_normalizedLobes
 
 end
 
-end Auto.Spherical.MSS.KakeyaNormalizedTelescopingLobes
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaNormalizedTelescopingLobes
 
 -- BEGIN ScratchKakeyaCappedTelescopingLobes
 section
 
-namespace Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
+section Auto.Spherical.MSSKakeya
 
 open Filter Set
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaCappedTelescopingPartition
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
-open ScratchKakeyaTTStarAngular
 
 noncomputable section
 
@@ -36853,25 +36506,16 @@ theorem safeCappedTerminalReflectedNegativeProductAmplitude_eventuallyEq_zero_ri
 
 end
 
-end Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCappedTelescopingLobes
 
 -- BEGIN ScratchKakeyaShiftedCappedAmplitudeAdapter
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
+section Auto.Spherical.MSSKakeya
 
 open Filter Set
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaNormalizedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
-open Auto.Spherical.MSS.KakeyaTelescopingOuterNormalization
-open Auto.Spherical.MSS.KakeyaCappedTelescopingPartition
-open ScratchKakeyaTTStarAngular
 
 noncomputable section
 
@@ -37736,26 +37380,18 @@ theorem shiftedCappedTelescopingCutoff_terminal_local_eq_lobes
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedCappedAmplitudeAdapter
 
 -- BEGIN ScratchKakeyaShiftedFiberPhaseTransport
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -37774,13 +37410,13 @@ theorem shiftedCharted_finiteTensorMultiplier_eq_ttstarAnalysis
     (xi : Euclidean 2) (alpha : Real)
     (hpolar : xi = ‖xi‖ • circleDirection alpha)
     (n : Nat) (hn : n < 7) (rho u : Real) :
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a
         (circleDirection (alpha + stationaryShift n + rho * u)) xi =
       ttstarAnalysis volume
         (fun v t => (Real.fourierChar
           (-t * (stationaryRadialSign n * ‖xi‖) * Real.cos (rho * v)) : Complex))
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u := by
   rw [scratch_finiteTensorTubeMultiplier_apply]
   rw [scratch_finiteTensor_timeFourier_eq_timeIntegral]
   unfold ttstarAnalysis
@@ -37806,13 +37442,13 @@ theorem shiftedCharted_lobeMultiplier_eq_parametricAnalysis
     (hpolar : xi = ‖xi‖ • circleDirection alpha)
     (n : Nat) (hn : n < 7) (g : Real × Real → Real) (rho u : Real) :
     (g (rho, u) : Complex) *
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a
         (circleDirection (alpha + stationaryShift n + rho * u)) xi =
       ttstarAnalysis volume
         (outerCircleParametricRealProfileFourierCharAnalysisAmplitude g rho
           (stationaryRadialSign n * ‖xi‖))
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u := by
   rw [shiftedCharted_finiteTensorMultiplier_eq_ttstarAnalysis
     C j s q hqcompact a xi alpha hpolar n hn rho u]
   unfold ttstarAnalysis outerCircleParametricRealProfileFourierCharAnalysisAmplitude
@@ -37823,24 +37459,18 @@ theorem shiftedCharted_lobeMultiplier_eq_parametricAnalysis
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedFiberPhaseTransport
 
 -- BEGIN ScratchKakeyaConcreteFiberRealEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteFiberRealEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
 open Metric
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaTTStarRealEnergy
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -38044,26 +37674,18 @@ theorem exists_outerCircleParametricRealProfile_realEnergy_scaled_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteFiberRealEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteFiberRealEnergy
 
 -- BEGIN ScratchKakeyaGenericJointRealEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaGenericJointRealEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
 open Metric
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaConcreteFiberRealEnergy
-open Auto.Spherical.MSS.KakeyaTTStarRealEnergy
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -38190,28 +37812,17 @@ theorem exists_outerCircleParametricRealProfile_realEnergy_scaled_E1_of_hasJoint
 
 end
 
-end Auto.Spherical.MSS.KakeyaGenericJointRealEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGenericJointRealEnergy
 
 -- BEGIN ScratchKakeyaShiftedCappedFiberLobeEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaConcreteFiberRealEnergy
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaTTStarRealEnergy
-open Auto.Spherical.MSS.KakeyaGenericJointRealEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -39051,26 +38662,18 @@ theorem shiftedCappedTerminalTelescope_negative_reflect
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedCappedFiberLobeEnergy
 
 -- BEGIN ScratchKakeyaConcreteAnnularWitness
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteAnnularWitness
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
-open Auto.Spherical.MSS.KakeyaAnnularHpieceCore
-open Auto.Spherical.MSS.KakeyaAnnularFiberCompression
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -39095,14 +38698,14 @@ noncomputable def concreteAnnularShellFiberEnergyWitness
       S.multiplierDeriv theta xi = 0)
     (he0 : ∀ xi, xi ∈ scaledDyadicFrequencyAnnulus lambda ->
       shellFrequencyEnergy (fun theta xi => S.multiplier theta xi) lo hi xi <=
-        (B / (‖xi‖ * rho)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi)
+        (B / (‖xi‖ * rho)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi)
     (he1 : ∀ xi, xi ∈ scaledDyadicFrequencyAnnulus lambda ->
       shellFrequencyEnergy (fun theta xi => S.multiplierDeriv theta xi) lo hi xi <=
-        (B * (‖xi‖ * rho)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) :
+        (B * (‖xi‖ * rho)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) :
     AnnularShellFiberEnergyWitness C j s q hqcompact a eps K n i lo hi lambda rho B S where
   e0 := shellFrequencyEnergy (fun theta xi => S.multiplier theta xi) lo hi
   e1 := shellFrequencyEnergy (fun theta xi => S.multiplierDeriv theta xi) lo hi
-  h := shiftedFiberSourceEnergy s (C.chartProfiles j q) a
+  h := shiftedFiberSourceEnergy s (chartProfiles C j q) a
   e0_integrable :=
     integrable_shellFrequencyEnergy_restrict (fun theta xi => S.multiplier theta xi) lo hi
       (scaledDyadicFrequencyAnnulus lambda) S.frequency_integrable
@@ -39111,15 +38714,15 @@ noncomputable def concreteAnnularShellFiberEnergyWitness
       (scaledDyadicFrequencyAnnulus lambda) S.frequencyDeriv_integrable
   h_integrable := by
     have hprod : Integrable (fun p : Euclidean 2 × Real =>
-        ‖scratch_finiteTensorTimeData s (C.chartProfiles j q) a p.1 p.2‖ ^ (2 : Nat))
+        ‖scratch_finiteTensorTimeData s (chartProfiles C j q) a p.1 p.2‖ ^ (2 : Nat))
         (volume.prod volume) :=
-      integrable_sq_scratch_finiteTensorTimeData_product s (C.chartProfiles j q) a
-    have hbase : Integrable (shiftedFiberSourceEnergy s (C.chartProfiles j q) a) volume := by
+      integrable_sq_scratch_finiteTensorTimeData_product s (chartProfiles C j q) a
+    have hbase : Integrable (shiftedFiberSourceEnergy s (chartProfiles C j q) a) volume := by
       change Integrable (fun xi : Euclidean 2 =>
-        ∫ t : Real, ‖scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi t‖ ^ (2 : Nat)) volume
+        ∫ t : Real, ‖scratch_finiteTensorTimeData s (chartProfiles C j q) a xi t‖ ^ (2 : Nat)) volume
       exact hprod.integral_prod_left
     exact hbase.restrict
-  h_nonneg := shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a
+  h_nonneg := shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a
   multiplier_energy_eq := by
     exact (integral_shellFrequencyEnergy_restrict_eq_product_of_support
       (fun theta xi => S.multiplier theta xi) lo hi (scaledDyadicFrequencyAnnulus lambda)
@@ -39139,25 +38742,18 @@ noncomputable def concreteAnnularShellFiberEnergyWitness
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteAnnularWitness
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteAnnularWitness
 
 -- BEGIN ScratchKakeyaChartedSectorZero
 section
 
-namespace Auto.Spherical.MSS.KakeyaChartedSectorZero
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -39174,13 +38770,13 @@ theorem shiftedChartedCappedTelescopingMultiplier_eq_zero_of_sector_eq_zero
     (eps : Real) (K n i : Nat) (theta : Real) (xi : Euclidean 2)
     (hsector : C.sector j xi = 0) :
     shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi = 0 := by
-  have hbase : scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi = 0 := by
+  have hbase : scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi = 0 := by
     rw [scratch_finiteTensorTubeMultiplier_apply]
     apply Finset.sum_eq_zero
     intro l hl
-    change (C.chartProfile j (q l)) xi * _ = 0
-    rw [C.chartProfile_apply]
+    change (chartProfile C j (q l)) xi * _ = 0
+    rw [chartProfile_apply C]
     simp [hsector]
   unfold shiftedChartedCappedTelescopingMultiplier
   rw [hbase]
@@ -39199,20 +38795,20 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_eq_zero_of_sector_eq_z
     (eps : Real) (K n i : Nat) (theta : Real) (xi : Euclidean 2)
     (hsector : C.sector j xi = 0) :
     shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i theta xi = 0 := by
-  have hbase : scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi = 0 := by
+  have hbase : scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi = 0 := by
     rw [scratch_finiteTensorTubeMultiplier_apply]
     apply Finset.sum_eq_zero
     intro l hl
-    change (C.chartProfile j (q l)) xi * _ = 0
-    rw [C.chartProfile_apply]
+    change (chartProfile C j (q l)) xi * _ = 0
+    rw [chartProfile_apply C]
     simp [hsector]
-  have hderiv : finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi = 0 := by
+  have hderiv : finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi = 0 := by
     unfold finiteTensorTubeMultiplierAngularDeriv
     apply Finset.sum_eq_zero
     intro l hl
-    change (C.chartProfile j (q l)) xi * _ = 0
-    rw [C.chartProfile_apply]
+    change (chartProfile C j (q l)) xi * _ = 0
+    rw [chartProfile_apply C]
     simp [hsector]
   unfold shiftedChartedCappedTelescopingMultiplierDerivRaw
     angularCutoffFiniteTensorMultiplierDeriv
@@ -39221,24 +38817,18 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_eq_zero_of_sector_eq_z
 
 end
 
-end Auto.Spherical.MSS.KakeyaChartedSectorZero
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaChartedSectorZero
 
 -- BEGIN ScratchKakeyaAnnularMultiplierSupport
 section
 
-namespace Auto.Spherical.MSS.KakeyaAnnularMultiplierSupport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -39257,13 +38847,13 @@ theorem shiftedChartedCappedTelescopingMultiplier_eq_zero_of_profiles_eq_zero
     (eps : Real) (K n i : Nat) (theta : Real) (xi : Euclidean 2)
     (hqzero : ∀ l ∈ s, q l xi = 0) :
     shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n i theta xi = 0 := by
-  have hbase : scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi = 0 := by
+  have hbase : scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi = 0 := by
     rw [scratch_finiteTensorTubeMultiplier_apply]
     apply Finset.sum_eq_zero
     intro l hl
-    change C.chartProfile j (q l) xi * _ = 0
-    rw [C.chartProfile_apply]
+    change chartProfile C j (q l) xi * _ = 0
+    rw [chartProfile_apply C]
     rw [hqzero l hl]
     simp
   unfold shiftedChartedCappedTelescopingMultiplier
@@ -39282,21 +38872,21 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_eq_zero_of_profiles_eq
     (eps : Real) (K n i : Nat) (theta : Real) (xi : Euclidean 2)
     (hqzero : ∀ l ∈ s, q l xi = 0) :
     shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i theta xi = 0 := by
-  have hbase : scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi = 0 := by
+  have hbase : scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi = 0 := by
     rw [scratch_finiteTensorTubeMultiplier_apply]
     apply Finset.sum_eq_zero
     intro l hl
-    change C.chartProfile j (q l) xi * _ = 0
-    rw [C.chartProfile_apply]
+    change chartProfile C j (q l) xi * _ = 0
+    rw [chartProfile_apply C]
     rw [hqzero l hl]
     simp
-  have hderiv : finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi = 0 := by
+  have hderiv : finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi = 0 := by
     unfold finiteTensorTubeMultiplierAngularDeriv
     apply Finset.sum_eq_zero
     intro l hl
-    change C.chartProfile j (q l) xi * _ = 0
-    rw [C.chartProfile_apply]
+    change chartProfile C j (q l) xi * _ = 0
+    rw [chartProfile_apply C]
     rw [hqzero l hl]
     simp
   unfold shiftedChartedCappedTelescopingMultiplierDerivRaw
@@ -39335,25 +38925,18 @@ theorem shiftedChartedCappedTelescopingMultiplier_support_on_of_profiles_support
 
 end
 
-end Auto.Spherical.MSS.KakeyaAnnularMultiplierSupport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAnnularMultiplierSupport
 
 -- BEGIN ScratchKakeyaReflectedLobePhaseTransport
 section
 
-namespace Auto.Spherical.MSS.KakeyaReflectedLobePhaseTransport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -39373,13 +38956,13 @@ theorem shiftedCharted_reflectedLobeMultiplier_eq_parametricAnalysis
     (hpolar : xi = ‖xi‖ • circleDirection alpha)
     (n : Nat) (hn : n < 7) (g : Real × Real -> Real) (rho u : Real) :
     (g (rho, u) : Complex) *
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a
         (circleDirection (alpha + stationaryShift n - rho * u)) xi =
       ttstarAnalysis volume
         (outerCircleParametricRealProfileFourierCharAnalysisAmplitude g rho
           (stationaryRadialSign n * ‖xi‖))
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u := by
   rw [show alpha + stationaryShift n - rho * u =
       alpha + stationaryShift n + (-rho) * u by ring]
   rw [shiftedCharted_finiteTensorMultiplier_eq_ttstarAnalysis
@@ -39395,29 +38978,18 @@ theorem shiftedCharted_reflectedLobeMultiplier_eq_parametricAnalysis
 
 end
 
-end Auto.Spherical.MSS.KakeyaReflectedLobePhaseTransport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaReflectedLobePhaseTransport
 
 -- BEGIN ScratchKakeyaShiftedDyadicLocalSplit
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
-open Auto.Spherical.MSS.KakeyaReflectedLobePhaseTransport
-open Auto.Spherical.MSS.KakeyaNormalizedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -39438,12 +39010,12 @@ theorem shiftedCharted_dyadicMultiplier_local_split
     shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (k + 1)
       (C.angle j xi + stationaryShift n + r * u) xi =
       (shiftedDyadicPositiveProfile n (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (shiftedDyadicNegativeProfile n (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi := by
   unfold shiftedChartedCappedTelescopingMultiplier
   rw [shiftedDyadicTelescope_local_split heps K n k hk (C.angle j xi) u hr]
@@ -39463,12 +39035,12 @@ theorem shiftedCharted_dyadicMultiplier_reflected_negative
     (a : iota -> SchwartzMap Real Complex)
     (n : Nat) (alpha r u : Real) (xi : Euclidean 2) :
     (shiftedDyadicNegativeProfile n (r, -u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (alpha + stationaryShift n - r * u)) xi =
       (shiftedDyadicReflectedNegativeProfile n (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (alpha + stationaryShift n - r * u)) xi := by
   rw [shiftedDyadicTelescope_negative_reflect n r u]
 
@@ -39527,12 +39099,12 @@ theorem shiftedCharted_dyadicMultiplier_eq_affine_plus_reflected
       theta xi =
       (shiftedDyadicPositiveProfile n
         (r, (theta - (C.angle j xi + stationaryShift n)) / r) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi +
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi +
       (shiftedDyadicReflectedNegativeProfile n
         (r, ((C.angle j xi + stationaryShift n) - theta) / r) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi := by
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi := by
   let c : Real := C.angle j xi + stationaryShift n
   let u : Real := (theta - c) / r
   have hr0 : r ≠ 0 := by
@@ -39572,12 +39144,12 @@ theorem shiftedCharted_terminalMultiplier_local_split
     shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1)
       (C.angle j xi + stationaryShift n + r * u) xi =
       (shiftedCappedTerminalPositiveProfile n ratio (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (shiftedCappedTerminalNegativeProfile n ratio (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi := by
   unfold shiftedChartedCappedTelescopingMultiplier
   rw [shiftedCappedTerminalTelescope_local_split K n (C.angle j xi) u
@@ -39596,12 +39168,12 @@ theorem shiftedCharted_terminalMultiplier_reflected_negative
     (a : iota -> SchwartzMap Real Complex)
     (n : Nat) (ratio alpha r u : Real) (xi : Euclidean 2) :
     (shiftedCappedTerminalNegativeProfile n ratio (r, -u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (alpha + stationaryShift n - r * u)) xi =
       (shiftedCappedTerminalReflectedNegativeProfile n ratio (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (alpha + stationaryShift n - r * u)) xi := by
   rw [shiftedCappedTerminalTelescope_negative_reflect n ratio r u]
 
@@ -39659,12 +39231,12 @@ theorem shiftedCharted_terminalMultiplier_eq_affine_plus_reflected
       theta xi =
       (shiftedCappedTerminalPositiveProfile n ratio
         (r, (theta - (C.angle j xi + stationaryShift n)) / r) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi +
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi +
       (shiftedCappedTerminalReflectedNegativeProfile n ratio
         (r, ((C.angle j xi + stationaryShift n) - theta) / r) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi := by
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi := by
   let c : Real := C.angle j xi + stationaryShift n
   let u : Real := (theta - c) / r
   have hr0 : r ≠ 0 := by
@@ -39691,14 +39263,14 @@ theorem shiftedCharted_terminalMultiplier_eq_affine_plus_reflected
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDyadicLocalSplit
 
 -- BEGIN ScratchKakeyaAffineEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaAffineEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators
@@ -39788,14 +39360,14 @@ theorem integral_norm_sq_affine_lobe_restrict_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaAffineEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAffineEnergy
 
 -- BEGIN ScratchKakeyaAffineLobeIntegrability
 section
 
-namespace Auto.Spherical.MSS.KakeyaAffineLobeIntegrability
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators
@@ -39836,14 +39408,14 @@ theorem integrable_norm_sq_affine_lobe
 
 end
 
-end Auto.Spherical.MSS.KakeyaAffineLobeIntegrability
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAffineLobeIntegrability
 
 -- BEGIN ScratchKakeyaTwoLobeAlgebra
 section
 
-namespace Auto.Spherical.MSS.KakeyaTwoLobeAlgebra
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators
@@ -39893,19 +39465,16 @@ theorem integral_norm_sq_add_le_two_mul_add
 
 end
 
-end Auto.Spherical.MSS.KakeyaTwoLobeAlgebra
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTwoLobeAlgebra
 
 -- BEGIN ScratchKakeyaTwoLobeAffineTransport
 section
 
-namespace Auto.Spherical.MSS.KakeyaTwoLobeAffineTransport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS.KakeyaAffineEnergy
-open Auto.Spherical.MSS.KakeyaAffineLobeIntegrability
-open Auto.Spherical.MSS.KakeyaTwoLobeAlgebra
 open scoped BigOperators
 
 noncomputable section
@@ -40127,31 +39696,19 @@ theorem integral_norm_sq_affine_plus_reflected_lobes_restrict_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaTwoLobeAffineTransport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTwoLobeAffineTransport
 
 -- BEGIN ScratchKakeyaFiniteCoreLowpassPhysical
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
-open Auto.Spherical.MSS.KakeyaInverseFourierContinuity
-open Auto.Spherical.MSS.KakeyaInverseFourierDerivative
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
+open Auto.Spherical.MSSBase
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -40626,32 +40183,18 @@ theorem measurable_and_lintegral_iSup_sq_canonicalFiniteTensorLowpassField_le_of
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteCoreLowpassPhysical
 
 -- BEGIN ScratchKakeyaShiftedDyadicE0Transport
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDyadicE0Transport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
-open Auto.Spherical.MSS.KakeyaReflectedLobePhaseTransport
-open Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
-open Auto.Spherical.MSS.KakeyaTwoLobeAffineTransport
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -40680,15 +40223,15 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_le_two_lobes
       2 *
         (shiftedFiberLobeEnergy (shiftedDyadicPositiveProfile n) r
           (stationaryRadialSign n * ‖xi‖)
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
         shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeProfile n) r
           (stationaryRadialSign n * ‖xi‖)
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   let c : Real := C.angle j xi + stationaryShift n
   let M : Real -> Complex := fun theta =>
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi
-  let H : Real -> Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi
+  let H : Real -> Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   let gPlus : Real -> Real -> Real := fun rho u => shiftedDyadicPositiveProfile n (rho, u)
   let gMinus : Real -> Real -> Real := fun rho u =>
     shiftedDyadicReflectedNegativeProfile n (rho, u)
@@ -40697,11 +40240,11 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_le_two_lobes
     positivity
   have hMcont : Continuous M := by
     let F : Real × Euclidean 2 -> Complex := fun p =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2
     have hF : Continuous F :=
       continuous_uncurry_scratch_finiteTensorTubeMultiplier_circle
-        s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+        s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
@@ -40904,7 +40447,7 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_le_source_of_lobeBounds
       (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (k + 1))
       lo hi xi ≤
       ((2 * (D.B0plus + D.B0minus)) / (‖xi‖ * r)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   let signedLambda : Real := stationaryRadialSign n * ‖xi‖
   have hsign : stationaryRadialSign n ≠ 0 := by
     interval_cases n <;> norm_num [stationaryRadialSign]
@@ -40922,24 +40465,24 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_le_source_of_lobeBounds
     (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n)
     (shiftedDyadicPositiveScaledPhaseProfile n)
     (shiftedDyadicReflectedNegativeScaledPhaseProfile n)
-    D r signedLambda hrmem hsigned iota s (C.chartProfiles j q) a xi rTime hrTime hsupport
+    D r signedLambda hrmem hsigned iota s (chartProfiles C j q) a xi rTime hrTime hsupport
   calc
     shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (k + 1))
         lo hi xi ≤
         2 *
           (shiftedFiberLobeEnergy (shiftedDyadicPositiveProfile n) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
           shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeProfile n) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
       simpa only [signedLambda] using hbase
     _ ≤ 2 *
         ((D.B0plus / (|signedLambda| * r)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi +
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi +
         (D.B0minus / (|signedLambda| * r)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) := hbudget
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) := hbudget
     _ = ((2 * (D.B0plus + D.B0minus)) / (‖xi‖ * r)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
       rw [habs]
       ring
 
@@ -40965,26 +40508,26 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_le_two_lobes
       2 *
         (shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveProfile n ratio) r
           (stationaryRadialSign n * ‖xi‖)
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
         shiftedFiberLobeEnergy (shiftedCappedTerminalReflectedNegativeProfile n ratio) r
           (stationaryRadialSign n * ‖xi‖)
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   let c : Real := C.angle j xi + stationaryShift n
   let M : Real -> Complex := fun theta =>
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi
-  let H : Real -> Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi
+  let H : Real -> Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hrpos : 0 < r := by
     rw [hr]
     have : 0 < Real.pi := Real.pi_pos
     positivity
   have hMcont : Continuous M := by
     let F : Real × Euclidean 2 -> Complex := fun p =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2
     have hF : Continuous F :=
       continuous_uncurry_scratch_finiteTensorTubeMultiplier_circle
-        s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+        s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
@@ -41067,7 +40610,7 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_lobeBounds
       (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1))
       lo hi xi ≤
       ((2 * (D.B0plus + D.B0minus)) / (‖xi‖ * r)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   let signedLambda : Real := stationaryRadialSign n * ‖xi‖
   have hsign : stationaryRadialSign n ≠ 0 := by
     interval_cases n <;> norm_num [stationaryRadialSign]
@@ -41085,50 +40628,41 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_lobeBounds
     (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio)
     (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio)
     (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio)
-    D r signedLambda hrmem hsigned iota s (C.chartProfiles j q) a xi rTime hrTime hsupport
+    D r signedLambda hrmem hsigned iota s (chartProfiles C j q) a xi rTime hrTime hsupport
   calc
     shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1))
         lo hi xi ≤
         2 *
           (shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveProfile n ratio) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
           shiftedFiberLobeEnergy (shiftedCappedTerminalReflectedNegativeProfile n ratio) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
       simpa only [signedLambda] using hbase
     _ ≤ 2 *
         ((D.B0plus / (|signedLambda| * r)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi +
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi +
         (D.B0minus / (|signedLambda| * r)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) := hbudget
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) := hbudget
     _ = ((2 * (D.B0plus + D.B0minus)) / (‖xi‖ * r)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
       rw [habs]
       ring
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDyadicE0Transport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDyadicE0Transport
 
 -- BEGIN ScratchKakeyaShiftedDyadicAnnularE0
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDyadicAnnularE0
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedDyadicE0Transport
-open Auto.Spherical.MSS.KakeyaChartedSectorZero
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -41165,7 +40699,7 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_le_source_of_sectorCases
       (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (k + 1))
       lo hi xi ≤
       ((2 * (D.B0plus + D.B0minus)) / (‖xi‖ * r)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   by_cases hsector : C.sector j xi = 0
   · have hzero : ∀ theta,
         shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (k + 1)
@@ -41191,7 +40725,7 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_le_source_of_sectorCases
       simp [h]
     have hden : 0 < ‖xi‖ * r := mul_pos (norm_pos_iff.mpr hxinonzero) hrpos
     exact mul_nonneg (div_nonneg hB hden.le)
-      (shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi)
+      (shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi)
   · exact shellFrequencyEnergy_shiftedCharted_dyadic_le_source_of_lobeBounds
       C j s q hqcompact a heps K n k hk lo hi xi
       (C.polar_on_sector j hj xi hsector) hn hxi hr hrmem D hrTime hsupport
@@ -41227,7 +40761,7 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_sectorCases
       (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1))
       lo hi xi ≤
       ((2 * (D.B0plus + D.B0minus)) / (‖xi‖ * r)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   by_cases hsector : C.sector j xi = 0
   · have hzero : ∀ theta,
         shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1)
@@ -41253,7 +40787,7 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_sectorCases
       simp [h]
     have hden : 0 < ‖xi‖ * r := mul_pos (norm_pos_iff.mpr hxinonzero) hrpos
     exact mul_nonneg (div_nonneg hB hden.le)
-      (shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi)
+      (shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi)
   · exact shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_lobeBounds
       C j s q hqcompact a K n lo hi xi
       (C.polar_on_sector j hj xi hsector) hn hxi hratio hratioDef hr hrmem
@@ -41261,19 +40795,17 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_sectorCases
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDyadicAnnularE0
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDyadicAnnularE0
 
 -- BEGIN ScratchKakeyaDerivativeEnergyRecombine
 section
 
-namespace Auto.Spherical.MSS.KakeyaDerivativeEnergyRecombine
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaTwoLobeAlgebra
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -41339,19 +40871,17 @@ theorem shellFrequencyEnergy_add_le_two_mul_add
 
 end
 
-end Auto.Spherical.MSS.KakeyaDerivativeEnergyRecombine
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaDerivativeEnergyRecombine
 
 -- BEGIN ScratchKakeyaDerivativeEnergyFourTerms
 section
 
-namespace Auto.Spherical.MSS.KakeyaDerivativeEnergyFourTerms
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaDerivativeEnergyRecombine
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -41413,7 +40943,7 @@ theorem shellFrequencyEnergy_four_terms_le
       (hcpint.add hcmint).const_mul 2
     exact hright.mono' (by fun_prop) (Filter.Eventually.of_forall fun theta => by
       rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
-      exact Auto.Spherical.MSS.KakeyaTwoLobeAlgebra.norm_add_sq_le_two_mul_add_norm_sq
+      exact norm_add_sq_le_two_mul_add_norm_sq
         (mcp theta xi) (mcm theta xi))
   have hphaseint : Integrable (fun theta : Real =>
       ‖mpp theta xi + mpm theta xi‖ ^ (2 : Nat))
@@ -41424,7 +40954,7 @@ theorem shellFrequencyEnergy_four_terms_le
       (hppint.add hpmint).const_mul 2
     exact hright.mono' (by fun_prop) (Filter.Eventually.of_forall fun theta => by
       rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
-      exact Auto.Spherical.MSS.KakeyaTwoLobeAlgebra.norm_add_sq_le_two_mul_add_norm_sq
+      exact norm_add_sq_le_two_mul_add_norm_sq
         (mpp theta xi) (mpm theta xi))
   have houter := shellFrequencyEnergy_add_le_two_mul_add
     (fun theta xi => mcp theta xi + mcm theta xi)
@@ -41441,18 +40971,16 @@ theorem shellFrequencyEnergy_four_terms_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaDerivativeEnergyFourTerms
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaDerivativeEnergyFourTerms
 
 -- BEGIN ScratchKakeyaAffineComplexLobes
 section
 
-namespace Auto.Spherical.MSS.KakeyaAffineComplexLobes
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS.KakeyaAffineEnergy
-open Auto.Spherical.MSS.KakeyaTwoLobeAlgebra
 open scoped BigOperators
 
 noncomputable section
@@ -41584,22 +41112,17 @@ theorem integral_norm_sq_reflected_affine_complex_lobe_restrict_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaAffineComplexLobes
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAffineComplexLobes
 
 -- BEGIN ScratchKakeyaParametricAnalysisSupport
 section
 
-namespace Auto.Spherical.MSS.KakeyaParametricAnalysisSupport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaAffineComplexLobes
-open Auto.Spherical.MSS.KakeyaTwoLobeAffineTransport
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform
 
 noncomputable section
@@ -41701,21 +41224,17 @@ theorem integrable_norm_sq_reflected_affine_lobe_of_continuous_analysis
 
 end
 
-end Auto.Spherical.MSS.KakeyaParametricAnalysisSupport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaParametricAnalysisSupport
 
 -- BEGIN ScratchKakeyaAffineFourLobeE1
 section
 
-namespace Auto.Spherical.MSS.KakeyaAffineFourLobeE1
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaDerivativeEnergyFourTerms
-open Auto.Spherical.MSS.KakeyaAffineComplexLobes
-open Auto.Spherical.MSS.KakeyaParametricAnalysisSupport
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -41873,37 +41392,18 @@ theorem shellFrequencyEnergy_affine_four_lobes_restrict_le
 
 end
 
-end Auto.Spherical.MSS.KakeyaAffineFourLobeE1
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaAffineFourLobeE1
 
 -- BEGIN ScratchKakeyaShiftedDerivativeLocalSplit
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDerivativeLocalSplit
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaGenericAngularCutoffShell
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaNormalizedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
-open Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
-open Auto.Spherical.MSS.KakeyaReflectedLobePhaseTransport
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -42143,16 +41643,16 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_positive
     (n : Nat) (hn : n < 7) (g : Real × Real -> Real)
     {r : Real} (hr : r ≠ 0) (u : Real) :
     (g (r, u) : Complex) *
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
         (alpha + stationaryShift n + r * u) xi =
       (-Complex.I) * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (fun p : Real × Real => g p * outerCircleScaledDerivative p.1 p.2)
             r (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   rw [finiteTensorTubeMultiplierAngularDeriv_eq_shiftedDerivativeTimeIntegral
-    s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+    s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     (alpha + stationaryShift n + r * u) xi]
   have hderiv : inner Real
       (circleDirectionDeriv (alpha + stationaryShift n + r * u)) xi =
@@ -42169,7 +41669,7 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_positive
         (((-(stationaryRadialSign n * ‖xi‖) * Real.sin (r * u) : Real) : Complex) *
           ((Real.fourierChar (-t * ((stationaryRadialSign n * ‖xi‖) * Real.cos (r * u))) : Complex) *
             (-2 * (Real.pi : Complex) * Complex.I *
-              timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) t))) := by
+              timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) t))) := by
         congr 1
         exact (integral_const_mul
           ((-(stationaryRadialSign n * ‖xi‖) * Real.sin (r * u) : Real) : Complex) _).symm
@@ -42177,13 +41677,13 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_positive
         (((-(stationaryRadialSign n * ‖xi‖) * Real.sin (r * u) : Real) : Complex) *
           ((Real.fourierChar (-t * ((stationaryRadialSign n * ‖xi‖) * Real.cos (r * u))) : Complex) *
             (-2 * (Real.pi : Complex) * Complex.I *
-              timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) t))) := by
+              timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) t))) := by
         exact (integral_const_mul (g (r, u) : Complex) _).symm
     _ = ∫ t : Real, (-Complex.I) *
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
           (((g (r, u) * outerCircleScaledDerivative r u : Real) : Complex) *
             (Real.fourierChar (-t * (stationaryRadialSign n * ‖xi‖) * Real.cos (r * u)) : Complex) *
-              timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) t) := by
+              timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) t) := by
         apply integral_congr_ae
         filter_upwards with t
         have hscale : ((-Real.sin (r * u) : Real) : Complex) =
@@ -42213,16 +41713,16 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_negative
     (n : Nat) (hn : n < 7) (g : Real × Real -> Real)
     {r : Real} (hr : r ≠ 0) (u : Real) :
     (g (r, u) : Complex) *
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
         (alpha + stationaryShift n - r * u) xi =
       Complex.I * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (fun p : Real × Real => g p * outerCircleScaledDerivative p.1 p.2)
             r (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   rw [finiteTensorTubeMultiplierAngularDeriv_eq_shiftedDerivativeTimeIntegral
-    s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+    s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     (alpha + stationaryShift n - r * u) xi]
   have hderiv : inner Real
       (circleDirectionDeriv (alpha + stationaryShift n - r * u)) xi =
@@ -42243,7 +41743,7 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_negative
         (((stationaryRadialSign n * ‖xi‖ * Real.sin (r * u) : Real) : Complex) *
           ((Real.fourierChar (-t * ((stationaryRadialSign n * ‖xi‖) * Real.cos (r * u))) : Complex) *
             (-2 * (Real.pi : Complex) * Complex.I *
-              timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) t))) := by
+              timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) t))) := by
         congr 1
         exact (integral_const_mul
           ((stationaryRadialSign n * ‖xi‖ * Real.sin (r * u) : Real) : Complex) _).symm
@@ -42251,13 +41751,13 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_negative
         (((stationaryRadialSign n * ‖xi‖ * Real.sin (r * u) : Real) : Complex) *
           ((Real.fourierChar (-t * ((stationaryRadialSign n * ‖xi‖) * Real.cos (r * u))) : Complex) *
             (-2 * (Real.pi : Complex) * Complex.I *
-              timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) t))) := by
+              timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) t))) := by
         exact (integral_const_mul (g (r, u) : Complex) _).symm
     _ = ∫ t : Real, Complex.I *
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
           (((g (r, u) * outerCircleScaledDerivative r u : Real) : Complex) *
             (Real.fourierChar (-t * (stationaryRadialSign n * ‖xi‖) * Real.cos (r * u)) : Complex) *
-              timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) t) := by
+              timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) t) := by
         apply integral_congr_ae
         filter_upwards with t
         have hscale : ((-Real.sin (r * u) : Real) : Complex) =
@@ -42294,11 +41794,11 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_local_of_profile
       (C.angle j xi + stationaryShift n + r * u) xi =
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => g (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (g (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi := by
   let cutoff : Real -> Real := shiftedCappedTelescopingCutoffProfile eps K n i
   have hlocal' :
@@ -42356,11 +41856,11 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_reflected_local_of_pro
       (C.angle j xi + stationaryShift n - r * u) xi =
       (((-r)⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => g (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n - r * u)) xi +
       (g (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n - r * u) xi := by
   let gref : Real × Real -> Real := fun p => g (-p.1, p.2)
   have hlocal' :
@@ -42396,19 +41896,19 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_local_of_profile_sum
       (C.angle j xi + stationaryShift n + r * u) xi =
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => gPlus (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => gMinus (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (gPlus (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi +
       (gMinus (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi := by
   let g : Real × Real -> Real := fun p => gPlus p + gMinus p
   have hlocal :
@@ -42454,19 +41954,19 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_dyadic_global_lobe_spl
       (C.angle j xi + stationaryShift n + r * u) xi =
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => shiftedDyadicPositiveProfile n (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => shiftedDyadicNegativeProfile n (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (shiftedDyadicPositiveProfile n (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi +
       (shiftedDyadicNegativeProfile n (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi := by
   have hrne : r ≠ 0 := by
     rw [hr]
@@ -42516,19 +42016,19 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_terminal_global_lobe_s
       (C.angle j xi + stationaryShift n + r * u) xi =
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => shiftedCappedTerminalPositiveProfile n c (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       ((r⁻¹ : Real) : Complex) *
           ((deriv (fun v : Real => shiftedCappedTerminalNegativeProfile n c (r, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (shiftedCappedTerminalPositiveProfile n c (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi +
       (shiftedCappedTerminalNegativeProfile n c (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n + r * u) xi := by
   have hrne : r ≠ 0 := by
     rw [hr]
@@ -42749,13 +42249,13 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_dyadic_reflected_E1
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u +
       Complex.I * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   have hrne : r ≠ 0 := by
     rw [hr]
     positivity
@@ -42780,14 +42280,14 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_dyadic_reflected_E1
     (shiftedDyadicReflectedNegativeProfile n) (r := r) hrne u
   have hphase' :
       (shiftedDyadicReflectedNegativeProfile n (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n - r * u) xi =
       Complex.I * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
     have hscaled :
         (fun p : Real × Real => shiftedDyadicReflectedNegativeProfile n p *
           outerCircleScaledDerivative p.1 p.2) =
@@ -42802,32 +42302,32 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_dyadic_reflected_E1
         (C.angle j xi + stationaryShift n - r * u) xi =
       (((-r)⁻¹ : Real) : Complex) *
           ((shiftedDyadicReflectedNegativeCutoffDerivativeProfile n (r, u) : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n - r * u)) xi +
       (shiftedDyadicReflectedNegativeProfile n (r, u) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
           (C.angle j xi + stationaryShift n - r * u) xi := hraw
     _ = (((-r)⁻¹ : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u +
       Complex.I * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
         calc
           _ = (((-r)⁻¹ : Real) : Complex) *
               (((shiftedDyadicReflectedNegativeCutoffDerivativeProfile n (r, u) : Real) : Complex) *
-                scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-                  (C.chartProfiles_compact j q hqcompact) a
+                scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+                  (chartProfiles_compact C j q hqcompact) a
                   (circleDirection (C.angle j xi + stationaryShift n - r * u)) xi) +
             (shiftedDyadicReflectedNegativeProfile n (r, u) : Complex) *
-              finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+              finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
                 (C.angle j xi + stationaryShift n - r * u) xi := by ring
           _ = _ := by rw [hcut, hphase']
 
@@ -42978,12 +42478,12 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_positive_E1_of_profile
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude gCut r
             (stationaryRadialSign n * ‖xi‖))
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u +
       (-Complex.I) * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude gPhase r
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   have hraw := shiftedChartedCappedTelescopingMultiplierDerivRaw_local_of_profile
     C j s q hqcompact a eps K n i g hr u xi hlocal
   rw [hderiv] at hraw
@@ -42996,17 +42496,17 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_positive_E1_of_profile
     shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i
         (C.angle j xi + stationaryShift n + r * u) xi =
       ((r⁻¹ : Real) : Complex) * (gCut (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi +
       (g (r, u) : Complex) * finiteTensorTubeMultiplierAngularDeriv s
-        (C.chartProfiles j q) a (C.angle j xi + stationaryShift n + r * u) xi := hraw
+        (chartProfiles C j q) a (C.angle j xi + stationaryShift n + r * u) xi := hraw
     _ = ((r⁻¹ : Real) : Complex) *
-          ((gCut (r, u) : Complex) * scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a
+          ((gCut (r, u) : Complex) * scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a
             (circleDirection (C.angle j xi + stationaryShift n + r * u)) xi) +
         (g (r, u) : Complex) * finiteTensorTubeMultiplierAngularDeriv s
-          (C.chartProfiles j q) a (C.angle j xi + stationaryShift n + r * u) xi := by ring
+          (chartProfiles C j q) a (C.angle j xi + stationaryShift n + r * u) xi := by ring
     _ = _ := by rw [hcut, hphase]
 
 /-- The reflected counterpart of the preceding profile-parametric E1
@@ -43036,12 +42536,12 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_reflected_E1_of_profil
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude gCut r
             (stationaryRadialSign n * ‖xi‖))
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u +
       Complex.I * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude gPhase r
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   have hraw := shiftedChartedCappedTelescopingMultiplierDerivRaw_reflected_local_of_profile
     C j s q hqcompact a eps K n i g hr u xi hlocal
   rw [hderiv] at hraw
@@ -43054,17 +42554,17 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_reflected_E1_of_profil
     shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n i
         (C.angle j xi + stationaryShift n - r * u) xi =
       (((-r)⁻¹ : Real) : Complex) * (gCut (r, u) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n - r * u)) xi +
       (g (r, u) : Complex) * finiteTensorTubeMultiplierAngularDeriv s
-        (C.chartProfiles j q) a (C.angle j xi + stationaryShift n - r * u) xi := hraw
+        (chartProfiles C j q) a (C.angle j xi + stationaryShift n - r * u) xi := hraw
     _ = (((-r)⁻¹ : Real) : Complex) *
-          ((gCut (r, u) : Complex) * scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a
+          ((gCut (r, u) : Complex) * scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a
             (circleDirection (C.angle j xi + stationaryShift n - r * u)) xi) +
         (g (r, u) : Complex) * finiteTensorTubeMultiplierAngularDeriv s
-          (C.chartProfiles j q) a (C.angle j xi + stationaryShift n - r * u) xi := by ring
+          (chartProfiles C j q) a (C.angle j xi + stationaryShift n - r * u) xi := by ring
     _ = _ := by rw [hcut, hphase]
 
 /-- The positive dyadic specialization of the generic E1 normal form. -/
@@ -43087,13 +42587,13 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_dyadic_positive_E1
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicPositiveCutoffDerivativeProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u +
       (-Complex.I) * (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedDyadicPositiveScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   have hrne : r ≠ 0 := by
     rw [hr]
     positivity
@@ -43115,19 +42615,16 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_dyadic_positive_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDerivativeLocalSplit
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDerivativeLocalSplit
 
 -- BEGIN ScratchKakeyaShiftedNegativeDerivativeSupport
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedNegativeDerivativeSupport
+section Auto.Spherical.MSSKakeya
 
 open Filter Set
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedDerivativeLocalSplit
-open Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
 
 noncomputable section
 
@@ -43215,14 +42712,14 @@ theorem deriv_shiftedCappedTerminalNegativeProfile_eq_zero_of_neg_not_mem_Icc
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedNegativeDerivativeSupport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedNegativeDerivativeSupport
 
 -- BEGIN ScratchKakeyaOuterE1ScaleAlgebra
 section
 
-namespace Auto.Spherical.MSS.KakeyaOuterE1ScaleAlgebra
+section Auto.Spherical.MSSKakeya
 
 open scoped BigOperators
 
@@ -43269,40 +42766,18 @@ theorem outer_E1_two_budget_le_direct_scale
     field_simp [ne_of_gt hell, ne_of_gt hr]
   nlinarith [hcutbase, hphasebase]
 
-end Auto.Spherical.MSS.KakeyaOuterE1ScaleAlgebra
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaOuterE1ScaleAlgebra
 
 -- BEGIN ScratchKakeyaShiftedDyadicE1Transport
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDyadicE1Transport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
-open Auto.Spherical.MSS.KakeyaShiftedDerivativeLocalSplit
-open Auto.Spherical.MSS.KakeyaShiftedNegativeDerivativeSupport
-open Auto.Spherical.MSS.KakeyaAffineFourLobeE1
-open Auto.Spherical.MSS.KakeyaDerivativeEnergyFourTerms
-open Auto.Spherical.MSS.KakeyaParametricAnalysisSupport
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaOuterE1ScaleAlgebra
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -43325,7 +42800,7 @@ noncomputable def shiftedDyadicE1CutoffPlus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedDyadicPositiveCutoffDerivativeProfile n) r
         (stationaryRadialSign n * ‖xi‖))
-      (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u
+      (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u
 
 noncomputable def shiftedDyadicE1CutoffMinus
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -43338,7 +42813,7 @@ noncomputable def shiftedDyadicE1CutoffMinus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r
         (stationaryRadialSign n * ‖xi‖))
-      (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u
+      (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u
 
 noncomputable def shiftedDyadicE1PhasePlus
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -43351,7 +42826,7 @@ noncomputable def shiftedDyadicE1PhasePlus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedDyadicPositiveScaledPhaseProfile n) r
         (stationaryRadialSign n * ‖xi‖))
-      (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u
+      (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u
 
 noncomputable def shiftedDyadicE1PhaseMinus
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -43364,7 +42839,7 @@ noncomputable def shiftedDyadicE1PhaseMinus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
         (stationaryRadialSign n * ‖xi‖))
-      (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u
+      (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u
 
 theorem shiftedDyadicE1CutoffPlus_eq_zero_of_not_mem_Icc
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -43377,7 +42852,7 @@ theorem shiftedDyadicE1CutoffPlus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedDyadicPositiveCutoffDerivativeProfile n) r
     (stationaryRadialSign n * ‖xi‖) u
-    (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)
+    (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)
     (shiftedDyadicPositiveCutoffDerivativeProfile_eq_zero_of_not_mem_Icc n r u hu)]
   simp
 
@@ -43392,7 +42867,7 @@ theorem shiftedDyadicE1CutoffMinus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r
     (stationaryRadialSign n * ‖xi‖) u
-    (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)
+    (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)
     (shiftedDyadicReflectedNegativeCutoffDerivativeProfile_eq_zero_of_not_mem_Icc n r u hu)]
   simp
 
@@ -43407,7 +42882,7 @@ theorem shiftedDyadicE1PhasePlus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedDyadicPositiveScaledPhaseProfile n) r
     (stationaryRadialSign n * ‖xi‖) u
-    (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))
+    (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))
     (shiftedDyadicPositiveScaledPhaseProfile_eq_zero_of_not_mem_Icc n r u hu)]
   simp
 
@@ -43422,7 +42897,7 @@ theorem shiftedDyadicE1PhaseMinus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
     (stationaryRadialSign n * ‖xi‖) u
-    (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))
+    (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))
     (shiftedDyadicReflectedNegativeScaledPhaseProfile_eq_zero_of_not_mem_Icc n r u hu)]
   simp
 
@@ -43547,14 +43022,14 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_four_analysis
           ∂(volume.restrict (Icc (1 / 2 : Real) 2))) +
           r * (∫ u : Real, ‖shiftedDyadicE1PhaseMinus C j s q a n r xi u‖ ^ (2 : Nat)
             ∂(volume.restrict (Icc (1 / 2 : Real) 2))))) := by
-  let H : Real -> Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+  let H : Real -> Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hHcont : Continuous H := by
     dsimp [H]
-    exact continuous_scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    exact continuous_scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hHsupport : Function.support H ⊆ Ioc (1 / 2 : Real) (5 / 2 : Real) := by
     dsimp [H]
     exact (support_scratch_finiteTensorTimeData_subset_innerSlab
-      s (C.chartProfiles j q) a xi hsupport).trans
+      s (chartProfiles C j q) a xi hsupport).trans
       (closedBall_innerSlab_subset_Ioc hrTime)
   let W : Real -> Complex := timeWeighted H
   have hWcont : Continuous W := by
@@ -43671,7 +43146,7 @@ theorem dyadicE1_cutoffPlus_affine_energy_eq
       (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
         (shiftedDyadicPositiveCutoffDerivativeProfile n) r
         (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
   unfold shiftedDyadicE1CutoffPlus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [Complex.norm_real, Real.norm_eq_abs, abs_inv, inv_pow, sq_abs]
@@ -43688,7 +43163,7 @@ theorem dyadicE1_cutoffMinus_affine_energy_eq
       (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
         (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r
         (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
   unfold shiftedDyadicE1CutoffMinus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [Complex.norm_real, Real.norm_eq_abs, abs_inv, abs_neg, inv_pow, sq_abs]
@@ -43706,7 +43181,7 @@ theorem dyadicE1_phasePlus_affine_energy_eq
         shiftedFiberLobeEnergy
           (shiftedDyadicPositiveScaledPhaseProfile n) r
           (stationaryRadialSign n * ‖xi‖)
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   unfold shiftedDyadicE1PhasePlus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [norm_mul]
@@ -43726,7 +43201,7 @@ theorem dyadicE1_phaseMinus_affine_energy_eq
         shiftedFiberLobeEnergy
           (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
           (stationaryRadialSign n * ‖xi‖)
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   unfold shiftedDyadicE1PhaseMinus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [norm_mul, Complex.norm_I, one_mul, Complex.norm_real, Real.norm_eq_abs, sq_abs]
@@ -43756,19 +43231,19 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_two_lobe_budget
         2 * ((r ^ 2)⁻¹ * shiftedFiberLobeEnergy
           (shiftedDyadicPositiveCutoffDerivativeProfile n) r
           (stationaryRadialSign n * ‖xi‖)
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
           (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r
             (stationaryRadialSign n * ‖xi‖)
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
         2 * ((((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedDyadicPositiveScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖)
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖)
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ) := by
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ) := by
   have hbase := shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_four_analysis
     C j s q hqcompact a heps K n k hk lo hi xi hpolar hn hr hrTime hsupport
   rw [dyadicE1_cutoffPlus_affine_energy_eq,
@@ -43812,25 +43287,25 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_cutoff_and
       2 * ((((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedDyadicPositiveScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖)
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r
             (stationaryRadialSign n * ‖xi‖)
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ≤
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ≤
       2 * ((((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           (Bphaseplus / (‖xi‖ * r)) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi +
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi +
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           (Bphaseminus / (‖xi‖ * r)) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi)) :
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi)) :
     shellFrequencyEnergy
       (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (k + 1))
       lo hi xi <=
       (4 * (D.Bcutplus + D.Bcutminus) +
         4 * (2 * Real.pi) ^ 2 * (Bphaseplus + Bphaseminus)) *
-        (‖xi‖ * r) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        (‖xi‖ * r) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   let signedLambda : Real := stationaryRadialSign n * ‖xi‖
-  let H : Real := shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi
+  let H : Real := shiftedFiberSourceEnergy s (chartProfiles C j q) a xi
   have hsign : stationaryRadialSign n ≠ 0 := by
     interval_cases n <;> norm_num [stationaryRadialSign]
   have hsigned : signedLambda ≠ 0 := mul_ne_zero hsign hxi
@@ -43845,7 +43320,7 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_cutoff_and
   have hrpos : 0 < r := hrmem.1
   have hHnonneg : 0 ≤ H := by
     dsimp [H]
-    exact shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    exact shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
   have hBcut : 0 ≤ D.Bcutplus + D.Bcutminus := by
     exact add_nonneg (le_of_lt D.cutoffplus.1) (le_of_lt D.cutoffminus.1)
   have hbase := shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_two_lobe_budget
@@ -43858,24 +43333,24 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_cutoff_and
     (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n)
     (shiftedDyadicPositiveScaledPhaseProfile n)
     (shiftedDyadicReflectedNegativeScaledPhaseProfile n)
-    D r signedLambda hrmem hsigned iota s (C.chartProfiles j q) a xi rTime hrTime hsupport
+    D r signedLambda hrmem hsigned iota s (chartProfiles C j q) a xi rTime hrTime hsupport
   have hcut' :
       2 * ((r ^ 2)⁻¹ * shiftedFiberLobeEnergy
           (shiftedDyadicPositiveCutoffDerivativeProfile n) r signedLambda
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
         (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
           (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r signedLambda
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) <=
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) <=
       2 * ((r ^ 2)⁻¹ * (D.Bcutplus / (|signedLambda| * r)) * H +
         (r ^ 2)⁻¹ * (D.Bcutminus / (|signedLambda| * r)) * H) := by
     simpa only [H] using hcut
   have hphase' :
       2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedDyadicPositiveScaledPhaseProfile n) r signedLambda
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
         (((2 * Real.pi) * signedLambda * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r signedLambda
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) <=
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) <=
       2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
           (Bphaseplus / (|signedLambda| * r)) * H +
         (((2 * Real.pi) * signedLambda * r) ^ 2) *
@@ -43899,16 +43374,16 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_cutoff_and
         2 * (
           2 * ((r ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedDyadicPositiveCutoffDerivativeProfile n) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
             (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
               (shiftedDyadicReflectedNegativeCutoffDerivativeProfile n) r signedLambda
-              (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedDyadicPositiveScaledPhaseProfile n) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
             (((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ) := by
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ) := by
         simpa only [signedLambda] using hbase
       _ <= 2 * (
         2 * ((r ^ 2)⁻¹ * (D.Bcutplus / (|signedLambda| * r)) * H +
@@ -43953,32 +43428,22 @@ theorem shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_cutoff_and
       outer_E1_two_budget_le_direct_scale hnormpos hrpos houter hBcut hHnonneg
     _ = (4 * (D.Bcutplus + D.Bcutminus) +
         4 * (2 * Real.pi) ^ 2 * (Bphaseplus + Bphaseminus)) *
-        (‖xi‖ * r) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        (‖xi‖ * r) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
       rfl
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDyadicE1Transport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDyadicE1Transport
 
 -- BEGIN ScratchKakeyaTimeWeightedPhaseEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaTimeWeightedPhaseEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaGenericJointRealEnergy
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaTTStarRealEnergy
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -44083,29 +43548,18 @@ theorem exists_timeWeighted_shiftedFiberLobeEnergy_scaled_E1_of_hasJoint
 
 end
 
-end Auto.Spherical.MSS.KakeyaTimeWeightedPhaseEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTimeWeightedPhaseEnergy
 
 -- BEGIN ScratchKakeyaShiftedDyadicE1Source
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDyadicE1Source
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedDyadicE1Transport
-open Auto.Spherical.MSS.KakeyaTimeWeightedPhaseEnergy
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -44141,7 +43595,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source
       shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (k + 1))
         lo hi xi ≤ B * (‖xi‖ * r) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases nonempty_shiftedDyadicFiberLobeEnergyBounds.{uI}
       hrhoMax hrhoMax_small n with ⟨D⟩
   rcases exists_timeWeighted_shiftedFiberLobeEnergy_scaled_E1_of_hasJoint
@@ -44176,23 +43630,23 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source
       interval_cases n <;> simp [stationaryRadialSign, norm_nonneg]
     have hphaseplus' := hphaseplus r hrmem signedLambda hsigned
       (((2 * Real.pi) * signedLambda * r) ^ 2) (sq_nonneg _)
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphaseminus' := hphaseminus r hrmem signedLambda hsigned
       (((2 * Real.pi) * signedLambda * r) ^ 2) (sq_nonneg _)
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphaseWeighted :
         2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedDyadicPositiveScaledPhaseProfile n) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           (((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedDyadicReflectedNegativeScaledPhaseProfile n) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ≤
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ≤
         2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
             (Bphaseplus / (|signedLambda| * r)) *
-              shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi +
+              shiftedFiberSourceEnergy s (chartProfiles C j q) a xi +
           (((2 * Real.pi) * signedLambda * r) ^ 2) *
             (Bphaseminus / (|signedLambda| * r)) *
-              shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) := by
+              shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) := by
       exact mul_le_mul_of_nonneg_left (add_le_add hphaseplus' hphaseminus') (by norm_num)
     have hphaseWeighted' := hphaseWeighted
     rw [habs] at hphaseWeighted'
@@ -44205,42 +43659,18 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDyadicE1Source
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDyadicE1Source
 
 -- BEGIN ScratchKakeyaShiftedTerminalE1Transport
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedTerminalE1Transport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedDyadicLocalSplit
-open Auto.Spherical.MSS.KakeyaShiftedDerivativeLocalSplit
-open Auto.Spherical.MSS.KakeyaShiftedNegativeDerivativeSupport
-open Auto.Spherical.MSS.KakeyaAffineFourLobeE1
-open Auto.Spherical.MSS.KakeyaDerivativeEnergyFourTerms
-open Auto.Spherical.MSS.KakeyaParametricAnalysisSupport
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaOuterE1ScaleAlgebra
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -44258,7 +43688,7 @@ noncomputable def shiftedTerminalE1CutoffPlus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio) r
         (stationaryRadialSign n * ‖xi‖))
-      (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u
+      (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u
 
 noncomputable def shiftedTerminalE1CutoffMinus
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -44271,7 +43701,7 @@ noncomputable def shiftedTerminalE1CutoffMinus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio) r
         (stationaryRadialSign n * ‖xi‖))
-      (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u
+      (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u
 
 noncomputable def shiftedTerminalE1PhasePlus
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -44284,7 +43714,7 @@ noncomputable def shiftedTerminalE1PhasePlus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio) r
         (stationaryRadialSign n * ‖xi‖))
-      (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u
+      (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u
 
 noncomputable def shiftedTerminalE1PhaseMinus
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -44297,7 +43727,7 @@ noncomputable def shiftedTerminalE1PhaseMinus
       (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
         (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio) r
         (stationaryRadialSign n * ‖xi‖))
-      (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u
+      (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u
 
 theorem shiftedTerminalE1CutoffPlus_eq_zero_of_not_mem_Icc
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -44311,7 +43741,7 @@ theorem shiftedTerminalE1CutoffPlus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio) r
     (stationaryRadialSign n * ‖xi‖) u
-    (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)
+    (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)
     (shiftedCappedTerminalPositiveCutoffDerivativeProfile_eq_zero_of_not_mem_Icc
       n ratio r u hratio hu)]
   simp
@@ -44328,7 +43758,7 @@ theorem shiftedTerminalE1CutoffMinus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio) r
     (stationaryRadialSign n * ‖xi‖) u
-    (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)
+    (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)
     (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile_eq_zero_of_not_mem_Icc
       n ratio r u hratio hu)]
   simp
@@ -44345,7 +43775,7 @@ theorem shiftedTerminalE1PhasePlus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio) r
     (stationaryRadialSign n * ‖xi‖) u
-    (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))
+    (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))
     (shiftedCappedTerminalPositiveScaledPhaseProfile_eq_zero_of_not_mem_Icc
       n ratio r u hratio hu)]
   simp
@@ -44362,7 +43792,7 @@ theorem shiftedTerminalE1PhaseMinus_eq_zero_of_not_mem_Icc
   rw [ttstarAnalysis_parametricProfile_eq_zero_of_profile_eq_zero
     (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio) r
     (stationaryRadialSign n * ‖xi‖) u
-    (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))
+    (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))
     (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile_eq_zero_of_not_mem_Icc
       n ratio r u hratio hu)]
   simp
@@ -44527,14 +43957,14 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_four_analysis
           ∂(volume.restrict (Icc (1 / 2 : Real) 2))) +
           r * (∫ u : Real, ‖shiftedTerminalE1PhaseMinus C j s q a n ratio r xi u‖ ^ (2 : Nat)
             ∂(volume.restrict (Icc (1 / 2 : Real) 2))))) := by
-  let H : Real → Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+  let H : Real → Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hHcont : Continuous H := by
     dsimp [H]
-    exact continuous_scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    exact continuous_scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hHsupport : Function.support H ⊆ Ioc (1 / 2 : Real) (5 / 2 : Real) := by
     dsimp [H]
     exact (support_scratch_finiteTensorTimeData_subset_innerSlab
-      s (C.chartProfiles j q) a xi hsupport).trans
+      s (chartProfiles C j q) a xi hsupport).trans
       (closedBall_innerSlab_subset_Ioc hrTime)
   let W : Real → Complex := timeWeighted H
   have hWcont : Continuous W := by
@@ -44650,7 +44080,7 @@ theorem terminalE1_cutoffPlus_affine_energy_eq
       (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
         (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio) r
         (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
   unfold shiftedTerminalE1CutoffPlus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [Complex.norm_real, Real.norm_eq_abs, abs_inv, inv_pow, sq_abs]
@@ -44667,7 +44097,7 @@ theorem terminalE1_cutoffMinus_affine_energy_eq
       (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
         (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio) r
         (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
   unfold shiftedTerminalE1CutoffMinus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [Complex.norm_real, Real.norm_eq_abs, abs_inv, abs_neg, inv_pow, sq_abs]
@@ -44685,7 +44115,7 @@ theorem terminalE1_phasePlus_affine_energy_eq
         shiftedFiberLobeEnergy
           (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio) r
           (stationaryRadialSign n * ‖xi‖)
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   unfold shiftedTerminalE1PhasePlus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [norm_mul]
@@ -44705,7 +44135,7 @@ theorem terminalE1_phaseMinus_affine_energy_eq
         shiftedFiberLobeEnergy
           (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio) r
           (stationaryRadialSign n * ‖xi‖)
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   unfold shiftedTerminalE1PhaseMinus shiftedFiberLobeEnergy
   rw [integral_norm_sq_const_mul]
   rw [norm_mul, Complex.norm_I, one_mul, Complex.norm_real, Real.norm_eq_abs, sq_abs]
@@ -44734,19 +44164,19 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_two_lobe_budget
         2 * ((r ^ 2)⁻¹ * shiftedFiberLobeEnergy
           (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio) r
           (stationaryRadialSign n * ‖xi‖)
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
           (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio) r
             (stationaryRadialSign n * ‖xi‖)
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
         2 * ((((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio) r
             (stationaryRadialSign n * ‖xi‖)
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r) ^ 2) *
           shiftedFiberLobeEnergy (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio) r
             (stationaryRadialSign n * ‖xi‖)
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ) := by
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ) := by
   have hbase := shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_four_analysis
     C j s q hqcompact a K n hratio hratioDef hr lo hi xi hpolar hn hrTime hsupport
   rw [terminalE1_cutoffPlus_affine_energy_eq,
@@ -44757,16 +44187,15 @@ theorem shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_two_lobe_budget
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedTerminalE1Transport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedTerminalE1Transport
 
 -- BEGIN ScratchKakeyaOuterE1TwoBudgetSource
 section
 
-namespace Auto.Spherical.MSS.KakeyaOuterE1TwoBudgetSource
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.MSS.KakeyaOuterE1ScaleAlgebra
 
 /-- Pure real algebra for the literal four-term angular derivative.  It
 turns separate cutoff and time-weighted-phase pair budgets into the direct
@@ -44815,30 +44244,18 @@ theorem outer_E1_from_two_pair_budgets
           (ell * r) * H :=
       outer_E1_two_budget_le_direct_scale hell hr houter hBcut hH
 
-end Auto.Spherical.MSS.KakeyaOuterE1TwoBudgetSource
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaOuterE1TwoBudgetSource
 
 -- BEGIN ScratchKakeyaShiftedTerminalE1Source
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedTerminalE1Source
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedTerminalE1Transport
-open Auto.Spherical.MSS.KakeyaTimeWeightedPhaseEnergy
-open Auto.Spherical.MSS.KakeyaOuterE1TwoBudgetSource
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -44875,7 +44292,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
       shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (K + 1))
         lo hi xi ≤ B * (‖xi‖ * r) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases nonempty_shiftedCappedTerminalFiberLobeEnergyBounds.{uI}
       hrhoMax hrhoMax_small n hratio with ⟨D⟩
   rcases exists_timeWeighted_shiftedFiberLobeEnergy_scaled_E1_of_hasJoint
@@ -44902,7 +44319,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
   · intro kappa iota charts active C j s q hqcompact a eps r K hratioDef hr lo hi xi
       hpolar hn hxi hrmem houter rTime hrTime hsupport
     let signedLambda : Real := stationaryRadialSign n * ‖xi‖
-    let H : Real := shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi
+    let H : Real := shiftedFiberSourceEnergy s (chartProfiles C j q) a xi
     have hsign : stationaryRadialSign n ≠ 0 := by
       interval_cases n <;> norm_num [stationaryRadialSign]
     have hsigned : signedLambda ≠ 0 := mul_ne_zero hsign hxi
@@ -44917,7 +44334,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
     have hrpos : 0 < r := hrmem.1
     have hHnonneg : 0 ≤ H := by
       dsimp [H]
-      exact shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+      exact shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     have hBcut : 0 ≤ D.Bcutplus + D.Bcutminus := by
       exact add_nonneg (le_of_lt D.cutoffplus.1) (le_of_lt D.cutoffminus.1)
     have hbase := shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_two_lobe_budget
@@ -44930,20 +44347,20 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
       (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio)
       (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio)
       (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio)
-      D r signedLambda hrmem hsigned iota s (C.chartProfiles j q) a xi rTime hrTime hsupport
+      D r signedLambda hrmem hsigned iota s (chartProfiles C j q) a xi rTime hrTime hsupport
     have hphaseplus' := hphaseplus r hrmem signedLambda hsigned
       (((2 * Real.pi) * signedLambda * r) ^ 2) (sq_nonneg _)
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphaseminus' := hphaseminus r hrmem signedLambda hsigned
       (((2 * Real.pi) * signedLambda * r) ^ 2) (sq_nonneg _)
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphase :
         2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           (((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ≤
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ≤
         2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
             (Bphaseplus / (|signedLambda| * r)) * H +
           (((2 * Real.pi) * signedLambda * r) ^ 2) *
@@ -44956,24 +44373,24 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
         2 *
           (2 * ((r ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
             (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
               (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio) r signedLambda
-              (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           2 * ((((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
             (((2 * Real.pi) * signedLambda * r) ^ 2) *
             shiftedFiberLobeEnergy (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio) r signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ) := by
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ) := by
       simpa only [signedLambda] using hbase
     have hcut' :
         2 * ((r ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
           (r ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio) r signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) ≤
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) ≤
         2 * ((r ^ 2)⁻¹ * (D.Bcutplus / (|signedLambda| * r)) * H +
           (r ^ 2)⁻¹ * (D.Bcutminus / (|signedLambda| * r)) * H) := by
       simpa only [H] using hcut
@@ -44982,29 +44399,18 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedTerminalE1Source
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedTerminalE1Source
 
 -- BEGIN ScratchKakeyaShiftedDyadicAnnularE1
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedDyadicAnnularE1
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedDyadicE1Source
-open Auto.Spherical.MSS.KakeyaShiftedTerminalE1Source
-open Auto.Spherical.MSS.KakeyaChartedSectorZero
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -45037,7 +44443,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_sec
       shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (k + 1))
         lo hi xi ≤ B * (‖xi‖ * r) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source
       hrhoMax hrhoMax_small n with ⟨B, hB, hsource⟩
   refine ⟨B, hB, ?_⟩
@@ -45065,7 +44471,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_sec
     have hfactor : 0 ≤ B * (‖xi‖ * r) := by
       exact mul_nonneg hB.le (mul_nonneg (norm_nonneg _) hrpos.le)
     exact mul_nonneg hfactor
-      (shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi)
+      (shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi)
   · exact hsource C j s q hqcompact a heps K k hk lo hi xi
       (C.polar_on_sector j hj xi hsector) hn hxi hr hrmem houter hrTime hsupport
 
@@ -45095,7 +44501,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_of_s
       shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (K + 1))
         lo hi xi ≤ B * (‖xi‖ * r) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source
       hrhoMax hrhoMax_small n hratio with ⟨B, hB, hsource⟩
   refine ⟨B, hB, ?_⟩
@@ -45119,30 +44525,25 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_of_s
     have hfactor : 0 ≤ B * (‖xi‖ * r) := by
       exact mul_nonneg hB.le (mul_nonneg (norm_nonneg _) hrpos.le)
     exact mul_nonneg hfactor
-      (shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi)
+      (shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi)
   · exact hsource C j s q hqcompact a K hratioDef hr lo hi xi
       (C.polar_on_sector j hj xi hsector) hn hxi hrmem houter hrTime hsupport
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedDyadicAnnularE1
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedDyadicAnnularE1
 
 -- BEGIN ScratchKakeyaFiniteTensorCentralShell
 section
 
-namespace Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorCentralShell
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaCirclePhaseAlignment
-open ScratchKakeyaFiniteTensorOuterShell
-open ScratchKakeyaGenericTTStarFactorization
-
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.MSSBase
 noncomputable section
 
 /-- A fixed central cutoff, supported strictly inside the rescaled central
@@ -45349,17 +44750,15 @@ theorem norm_centralCircleFourierCharProductKernel_le
 
 end
 
-end Auto.Spherical.MSSKakeya.ScratchKakeyaFiniteTensorCentralShell
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorCentralShell
 
 -- BEGIN ScratchKakeyaCentralProfileAdapter
 section
 
-namespace Auto.Spherical.MSS.KakeyaCentralProfileAdapter
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open ScratchKakeyaFiniteTensorCentralShell
 
 noncomputable section
 
@@ -45388,48 +44787,18 @@ theorem smoothCentralShellCutoff_rescaled_eq_fixedCentralBump
 
 end
 
-end Auto.Spherical.MSS.KakeyaCentralProfileAdapter
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCentralProfileAdapter
 
 -- BEGIN ScratchKakeyaCentralParametricEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaCentralParametricEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly
-open Auto.Spherical.MSS.KakeyaTelescopingShellPartition
-open Auto.Spherical.MSS.KakeyaSmoothShellPartition
-open Auto.Spherical.MSS.KakeyaCentralProfileAdapter
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalEndpoint
-open Auto.Spherical.MSS.KakeyaShiftedFiberPhaseTransport
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaAffineEnergy
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaTTStarRealEnergy
-open Auto.Spherical.MSS.KakeyaLocalSchurFubini
-open Auto.Spherical.MSS.KakeyaShiftedDerivativeLocalSplit
-open Auto.Spherical.MSS.KakeyaDerivativeEnergyRecombine
-open Auto.Spherical.MSS.KakeyaAffineLobeIntegrability
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
-open ScratchKakeyaFiniteTensorCentralShell
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaGenericTTStarFactorization
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -45655,7 +45024,7 @@ theorem shiftedCharted_centralMultiplier_eq_parametricAnalysis
         (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
           (shiftedCentralParametricProfile n) (4 * eps)
           (stationaryRadialSign n * ‖xi‖))
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u := by
   unfold shiftedChartedCappedTelescopingMultiplier
   rw [shiftedCappedTelescopingCutoff_central_rescaled_eq heps]
   exact shiftedCharted_lobeMultiplier_eq_parametricAnalysis
@@ -46385,20 +45754,20 @@ theorem shellFrequencyEnergy_shiftedCharted_central_le_parametric
       lo hi xi ≤
       centralParametricFiberEnergy (shiftedCentralParametricProfile n) (4 * eps)
         (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
   let c : Real := C.angle j xi + stationaryShift n
   let M : Real → Complex := fun theta =>
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi
-  let H : Real → Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi
+  let H : Real → Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hr : 0 < 4 * eps := by positivity
   have hMcont : Continuous M := by
     let F : Real × Euclidean 2 → Complex := fun p =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2
     have hF : Continuous F :=
       continuous_uncurry_scratch_finiteTensorTubeMultiplier_circle
-        s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+        s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
@@ -46475,24 +45844,24 @@ theorem shellFrequencyEnergy_shiftedCharted_central_profile_component_le_paramet
     shellFrequencyEnergy (fun theta _ =>
       (g (4 * eps,
         (theta - (C.angle j xi + stationaryShift n)) / (4 * eps)) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi)
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi)
       lo hi xi ≤
       centralParametricFiberEnergy g (4 * eps) (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
   let c : Real := C.angle j xi + stationaryShift n
   let M : Real → Complex := fun theta =>
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi
-  let H : Real → Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi
+  let H : Real → Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   have hr : 0 < 4 * eps := by positivity
   have hMcont : Continuous M := by
     let F : Real × Euclidean 2 → Complex := fun p =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2
     have hF : Continuous F :=
       continuous_uncurry_scratch_finiteTensorTubeMultiplier_circle
-        s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+        s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
@@ -46529,14 +45898,14 @@ theorem shiftedCharted_centralMultiplierDerivRaw_eq_twoParametricAnalyses
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedCentralParametricCutoffDerivativeProfile n) (4 * eps)
             (stationaryRadialSign n * ‖xi‖))
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) u +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) u +
       (-Complex.I) *
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * (4 * eps) : Real) : Complex) *
         ttstarAnalysis volume
           (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
             (shiftedCentralParametricScaledPhaseProfile n) (4 * eps)
             (stationaryRadialSign n * ‖xi‖))
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) u := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) u := by
   apply shiftedChartedCappedTelescopingMultiplierDerivRaw_positive_E1_of_profile
     C j s q hqcompact a eps K n 0
     (shiftedCentralParametricProfile n)
@@ -46568,11 +45937,11 @@ theorem shiftedCharted_centralMultiplierDerivRaw_eq_affine_twoTerms
       (((4 * eps)⁻¹ : Real) : Complex) *
         ((shiftedCentralParametricCutoffDerivativeProfile n
           (4 * eps, (theta - (C.angle j xi + stationaryShift n)) / (4 * eps)) : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi +
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi +
       (shiftedCentralParametricProfile n
         (4 * eps, (theta - (C.angle j xi + stationaryShift n)) / (4 * eps)) : Complex) *
-        finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi := by
+        finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi := by
   let c : Real := C.angle j xi + stationaryShift n
   let u : Real := (theta - c) / (4 * eps)
   have hr : 0 < 4 * eps := by positivity
@@ -46587,11 +45956,11 @@ theorem shiftedCharted_centralMultiplierDerivRaw_eq_affine_twoTerms
         (C.angle j xi + stationaryShift n + (4 * eps) * u) xi := by rw [← htheta]
     _ = (((4 * eps)⁻¹ : Real) : Complex) *
         ((deriv (fun v : Real => shiftedCentralParametricProfile n (4 * eps, v)) u : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + (4 * eps) * u)) xi +
         (shiftedCentralParametricProfile n (4 * eps, u) : Complex) *
-          finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+          finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
             (C.angle j xi + stationaryShift n + (4 * eps) * u) xi := by
       apply shiftedChartedCappedTelescopingMultiplierDerivRaw_local_of_profile
         C j s q hqcompact a eps K n 0 (shiftedCentralParametricProfile n)
@@ -46601,11 +45970,11 @@ theorem shiftedCharted_centralMultiplierDerivRaw_eq_affine_twoTerms
         (ne_of_gt heps) K n v
     _ = (((4 * eps)⁻¹ : Real) : Complex) *
         ((shiftedCentralParametricCutoffDerivativeProfile n (4 * eps, u) : Real) : Complex) *
-        scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-          (C.chartProfiles_compact j q hqcompact) a
+        scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+          (chartProfiles_compact C j q hqcompact) a
           (circleDirection (C.angle j xi + stationaryShift n + (4 * eps) * u)) xi +
         (shiftedCentralParametricProfile n (4 * eps, u) : Complex) *
-          finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+          finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
             (C.angle j xi + stationaryShift n + (4 * eps) * u) xi := by
       rw [deriv_slice_shiftedCentralParametricProfile_eq_cutoffDerivative]
     _ = _ := by
@@ -46628,16 +45997,16 @@ theorem shellFrequencyEnergy_shiftedCharted_central_phase_component_le_parametri
     shellFrequencyEnergy (fun theta _ =>
       (shiftedCentralParametricProfile n
         (4 * eps, (theta - (C.angle j xi + stationaryShift n)) / (4 * eps)) : Complex) *
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi)
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi)
       lo hi xi ≤
       ((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * (4 * eps)) ^ (2 : Nat) *
         centralParametricFiberEnergy (shiftedCentralParametricScaledPhaseProfile n)
           (4 * eps) (stationaryRadialSign n * ‖xi‖)
-          (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
   let c : Real := C.angle j xi + stationaryShift n
   let M : Real → Complex := fun theta =>
-    finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi
-  let H : Real → Complex := scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi
+    finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi
+  let H : Real → Complex := scratch_finiteTensorTimeData s (chartProfiles C j q) a xi
   let A := ttstarAnalysis volume
     (outerCircleParametricRealProfileFourierCharAnalysisAmplitude
       (shiftedCentralParametricScaledPhaseProfile n) (4 * eps)
@@ -46646,9 +46015,9 @@ theorem shellFrequencyEnergy_shiftedCharted_central_phase_component_le_parametri
   have hr : 0 < 4 * eps := by positivity
   have hMcont : Continuous M := by
     let F : Real × Euclidean 2 → Complex := fun p =>
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a p.1 p.2
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a p.1 p.2
     have hF : Continuous F :=
-      continuous_uncurry_finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+      continuous_uncurry_finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
@@ -46732,16 +46101,16 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_budget
       2 * (
         ((4 * eps) ^ (2 : Nat))⁻¹ *
           ((2 * (4 * eps) * Mcut ^ (2 : Nat)) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) +
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) +
         ((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * (4 * eps)) ^ (2 : Nat) *
           ((2 * (4 * eps) * Mphase ^ (2 : Nat)) * (5 / 2 : Real) ^ (2 : Nat) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi)) := by
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi)) := by
   let c : Real := C.angle j xi + stationaryShift n
   let M : Real → Complex := fun theta =>
-    scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-      (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi
+    scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+      (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi
   let M' : Real → Complex := fun theta =>
-    finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi
+    finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi
   let mCut : Real → Complex := fun theta =>
     (shiftedCentralParametricCutoffDerivativeProfile n
       (4 * eps, (theta - c) / (4 * eps)) : Complex) * M theta
@@ -46753,20 +46122,20 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_budget
   have hr : 0 < 4 * eps := by positivity
   have hMcont : Continuous M := by
     let F : Real × Euclidean 2 → Complex := fun p =>
-      scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-        (C.chartProfiles_compact j q hqcompact) a (circleDirection p.1) p.2
+      scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+        (chartProfiles_compact C j q hqcompact) a (circleDirection p.1) p.2
     have hF : Continuous F :=
       continuous_uncurry_scratch_finiteTensorTubeMultiplier_circle
-        s (C.chartProfiles j q) (C.chartProfiles_compact j q hqcompact) a
+        s (chartProfiles C j q) (chartProfiles_compact C j q hqcompact) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
     exact (hF.comp hmap).congr (by intro theta; rfl)
   have hM'cont : Continuous M' := by
     let F : Real × Euclidean 2 → Complex := fun p =>
-      finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a p.1 p.2
+      finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a p.1 p.2
     have hF : Continuous F :=
-      continuous_uncurry_finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a
+      continuous_uncurry_finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a
     have hmap : Continuous (fun theta : Real => (theta, xi)) :=
       continuous_id.prodMk continuous_const
     change Continuous (fun theta : Real => F (theta, xi))
@@ -46800,11 +46169,11 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_budget
         (((4 * eps)⁻¹ : Real) : Complex) *
           ((shiftedCentralParametricCutoffDerivativeProfile n
             (4 * eps, (theta - (C.angle j xi + stationaryShift n)) / (4 * eps)) : Real) : Complex) *
-          scratch_finiteTensorTubeMultiplier s (C.chartProfiles j q)
-            (C.chartProfiles_compact j q hqcompact) a (circleDirection theta) xi +
+          scratch_finiteTensorTubeMultiplier s (chartProfiles C j q)
+            (chartProfiles_compact C j q hqcompact) a (circleDirection theta) xi +
           (shiftedCentralParametricProfile n
             (4 * eps, (theta - (C.angle j xi + stationaryShift n)) / (4 * eps)) : Complex) *
-          finiteTensorTubeMultiplierAngularDeriv s (C.chartProfiles j q) a theta xi :=
+          finiteTensorTubeMultiplierAngularDeriv s (chartProfiles C j q) a theta xi :=
         shiftedCharted_centralMultiplierDerivRaw_eq_affine_twoTerms
           C j s q hqcompact a heps K n xi hpolar hn theta
       _ = _ := by ring
@@ -46821,23 +46190,23 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_budget
   have hcutEnergy := centralParametricFiberEnergy_le_source_of_uniform_bound
     (shiftedCentralParametricCutoffDerivativeProfile n) Mcut
     (contDiff_shiftedCentralParametricCutoffDerivativeProfile n).continuous hMcut
-    s (C.chartProfiles j q) a xi (4 * eps) lambda rTime hr hrTime hcutBound hsupport
+    s (chartProfiles C j q) a xi (4 * eps) lambda rTime hr hrTime hcutBound hsupport
   have hphaseEnergy := centralParametricFiberEnergy_timeWeighted_le_source_of_uniform_bound
     (shiftedCentralParametricScaledPhaseProfile n) Mphase
     (continuous_shiftedCentralParametricScaledPhaseProfile n) hMphase
-    s (C.chartProfiles j q) a xi (4 * eps) lambda rTime hr hrTime hphaseBound hsupport
+    s (chartProfiles C j q) a xi (4 * eps) lambda rTime hr hrTime hphaseBound hsupport
   have hcutTransport' :
       shellFrequencyEnergy (fun theta _ => mCut theta) lo hi xi ≤
         centralParametricFiberEnergy (shiftedCentralParametricCutoffDerivativeProfile n)
           (4 * eps) lambda
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) := by
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) := by
     simpa only [mCut, M, c, lambda] using hcutTransport
   have hphaseTransport' :
       shellFrequencyEnergy (fun theta _ => mPhase theta) lo hi xi ≤
         sigma ^ (2 : Nat) *
           centralParametricFiberEnergy (shiftedCentralParametricScaledPhaseProfile n)
             (4 * eps) lambda
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
     simpa only [mPhase, M', c, lambda, sigma] using hphaseTransport
   have hinv : 0 ≤ ((4 * eps) ^ (2 : Nat))⁻¹ := inv_nonneg.mpr (sq_nonneg _)
   have hsigma : 0 ≤ sigma ^ (2 : Nat) := sq_nonneg _
@@ -46850,26 +46219,26 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_budget
         shellFrequencyEnergy (fun theta _ => mPhase theta) lo hi xi) := hcombine
     _ ≤ 2 * (((4 * eps) ^ (2 : Nat))⁻¹ *
         centralParametricFiberEnergy (shiftedCentralParametricCutoffDerivativeProfile n)
-          (4 * eps) lambda (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (4 * eps) lambda (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
         sigma ^ (2 : Nat) *
           centralParametricFiberEnergy (shiftedCentralParametricScaledPhaseProfile n)
             (4 * eps) lambda
-            (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) := by
+            (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) := by
       gcongr
     _ ≤ 2 * (((4 * eps) ^ (2 : Nat))⁻¹ *
           ((2 * (4 * eps) * Mcut ^ (2 : Nat)) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) +
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) +
         sigma ^ (2 : Nat) *
           ((2 * (4 * eps) * Mphase ^ (2 : Nat)) * (5 / 2 : Real) ^ (2 : Nat) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi)) := by
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi)) := by
       gcongr
     _ = 2 * (
         ((4 * eps) ^ (2 : Nat))⁻¹ *
           ((2 * (4 * eps) * Mcut ^ (2 : Nat)) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) +
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) +
         ((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * (4 * eps)) ^ (2 : Nat) *
           ((2 * (4 * eps) * Mphase ^ (2 : Nat)) * (5 / 2 : Real) ^ (2 : Nat) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi)) := by
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi)) := by
       dsimp only [sigma, lambda]
 
 set_option maxHeartbeats 1200000 in
@@ -46901,11 +46270,11 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_of_critical_
       lo hi xi ≤
       (4 * Mcut ^ (2 : Nat) +
         800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)) *
-        (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   have hr : 0 < 4 * eps := by positivity
   have hell : 0 < ‖xi‖ := norm_pos_iff.mpr hxi
-  have hH : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-    shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+  have hH : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+    shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
   have hbudget := shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_budget
     C j s q hqcompact a heps K n lo hi xi hpolar hn
     Mcut Mphase hMcut hMphase hcutBound hphaseBound hrTime hsupport
@@ -46923,13 +46292,13 @@ theorem shellFrequencyEnergy_shiftedCharted_central_deriv_le_source_of_critical_
       2 * (
         ((4 * eps) ^ (2 : Nat))⁻¹ *
           ((2 * (4 * eps) * Mcut ^ (2 : Nat)) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) +
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) +
         ((2 * Real.pi) * ‖xi‖ * (4 * eps)) ^ (2 : Nat) *
           ((2 * (4 * eps) * Mphase ^ (2 : Nat)) * (5 / 2 : Real) ^ (2 : Nat) *
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi)) := hbudget
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi)) := hbudget
     _ ≤ (4 * Mcut ^ (2 : Nat) +
         800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)) *
-        (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := hscale
+        (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := hscale
 
 /-- Concrete E0 endpoint for `i = 0`.  With `r = 4*eps`, it has the exact
 annular-witness shape with the literal constant `B = 2*A` whenever
@@ -46951,26 +46320,26 @@ theorem shellFrequencyEnergy_shiftedCharted_central_le_source_of_critical_upper
       (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n 0)
       lo hi xi ≤
       ((2 * A) / (‖xi‖ * (4 * eps))) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   have hr : 0 < 4 * eps := by positivity
   have hnu : 0 < ‖xi‖ := norm_pos_iff.mpr hxi
   have hsource := centralParametricFiberEnergy_shiftedCentral_le_source
-    n s (C.chartProfiles j q) a xi (4 * eps)
+    n s (chartProfiles C j q) a xi (4 * eps)
     (stationaryRadialSign n * ‖xi‖) rTime hr hrTime hsupport
   have hscale := central_E0_scale_from_critical_upper hnu hr
-    (shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi) hcritical
+    (shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi) hcritical
   calc
     shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n 0)
         lo hi xi ≤
       centralParametricFiberEnergy (shiftedCentralParametricProfile n) (4 * eps)
         (stationaryRadialSign n * ‖xi‖)
-        (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) :=
+        (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) :=
       shellFrequencyEnergy_shiftedCharted_central_le_parametric
         C j s q hqcompact a heps K n lo hi xi hpolar hn
-    _ ≤ (2 * (4 * eps)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := hsource
+    _ ≤ (2 * (4 * eps)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := hsource
     _ ≤ ((2 * A) / (‖xi‖ * (4 * eps))) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
       simpa only [mul_assoc] using hscale
 
 set_option maxHeartbeats 1200000 in
@@ -47004,22 +46373,22 @@ theorem shiftedCharted_central_i0_E0_E1_source_bounds_of_critical_window
       ((64 + 4 * Mcut ^ (2 : Nat) +
         800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)) /
           (‖xi‖ * (4 * eps))) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∧
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∧
     shellFrequencyEnergy
       (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n 0)
       lo hi xi ≤
       (64 + 4 * Mcut ^ (2 : Nat) +
         800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)) *
-        (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   let B1 : Real := 4 * Mcut ^ (2 : Nat) +
     800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)
-  let H : Real := shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi
+  let H : Real := shiftedFiberSourceEnergy s (chartProfiles C j q) a xi
   have hr : 0 < 4 * eps := by positivity
   have hnorm : 0 < ‖xi‖ := norm_pos_iff.mpr hxi
   have hden : 0 < ‖xi‖ * (4 * eps) := mul_pos hnorm hr
   have hH : 0 ≤ H := by
     dsimp only [H]
-    exact shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    exact shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
   have hB1 : 0 ≤ B1 := by
     dsimp only [B1]
     positivity
@@ -47045,7 +46414,7 @@ theorem shiftedCharted_central_i0_E0_E1_source_bounds_of_critical_window
       _ = ((64 + 4 * Mcut ^ (2 : Nat) +
         800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)) /
           (‖xi‖ * (4 * eps))) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
         dsimp only [B1, H]
         ring
   · calc
@@ -47060,7 +46429,7 @@ theorem shiftedCharted_central_i0_E0_E1_source_bounds_of_critical_window
       _ = (64 + B1) * (‖xi‖ * (4 * eps)) * H := by ring
       _ = (64 + 4 * Mcut ^ (2 : Nat) +
         800 * (2 * Real.pi) ^ (2 : Nat) * Mphase ^ (2 : Nat)) *
-          (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          (‖xi‖ * (4 * eps)) * shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
         dsimp only [B1, H]
         ring
 
@@ -47091,12 +46460,12 @@ theorem exists_shiftedCharted_central_i0_E0_E1_source_constant
         (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n 0)
         lo hi xi ≤
         (B / (‖xi‖ * (4 * eps))) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∧
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∧
       shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n 0)
         lo hi xi ≤
         B * (‖xi‖ * (4 * eps)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_uniform_abs_bound_shiftedCentralCutoffDerivative n hrhoMax with
     ⟨Mcut, hMcut, hcut⟩
   rcases exists_uniform_abs_bound_shiftedCentralScaledPhase n hrhoMax with
@@ -47124,32 +46493,18 @@ theorem exists_shiftedCharted_central_i0_E0_E1_source_constant
 
 end
 
-end Auto.Spherical.MSS.KakeyaCentralParametricEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCentralParametricEnergy
 
 -- BEGIN ScratchKakeyaConcreteOuterAnnularWitness
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteOuterAnnularWitness
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaAnnularHpieceCore
-open Auto.Spherical.MSS.KakeyaConcreteAnnularWitness
-open Auto.Spherical.MSS.KakeyaAnnularMultiplierSupport
-open Auto.Spherical.MSS.KakeyaChartedSectorZero
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedDyadicAnnularE0
-open Auto.Spherical.MSS.KakeyaShiftedDyadicAnnularE1
-open Auto.Spherical.MSS.KakeyaCentralParametricEnergy
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -47186,7 +46541,7 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_dyadic
         lo hi lambda r B
         (shiftedChartedCappedTelescopingSchwartzSlices_concrete
           C j s q hqcompact a eps K n (k + 1) lo hi),
-        ∀ xi, W.h xi = shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        ∀ xi, W.h xi = shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases nonempty_shiftedDyadicFiberLobeEnergyBounds.{uI}
       hrhoMax hrhoMax_small n with ⟨D⟩
   rcases exists_shellFrequencyEnergy_shiftedCharted_dyadic_deriv_le_source_of_sectorCases
@@ -47225,8 +46580,8 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_dyadic
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
     have hbase := shellFrequencyEnergy_shiftedCharted_dyadic_le_source_of_sectorCases
       C j hj s q hqcompact a heps K n k hk lo hi xi hn hnorm hr hrmem D hrTime htime
-    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     have hden : 0 < ‖xi‖ * r :=
       mul_pos (norm_pos_iff.mpr hxine) hrmem.1
     have hcoef : B0 / (‖xi‖ * r) ≤ B / (‖xi‖ * r) := by
@@ -47246,8 +46601,8 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_dyadic
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
     have hbase := hE1 C j hj s q hqcompact a heps K k hk lo hi xi hn hnorm
       hr hrmem (houter xi hxi) hrTime htime
-    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     have hfactor : 0 ≤ ‖xi‖ * r := mul_nonneg (norm_nonneg _) hrmem.1.le
     have hcoef : B1 * (‖xi‖ * r) ≤ B * (‖xi‖ * r) := by
       apply mul_le_mul_of_nonneg_right
@@ -47292,7 +46647,7 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_terminal
         lo hi lambda r B
         (shiftedChartedCappedTelescopingSchwartzSlices_concrete
           C j s q hqcompact a eps K n (K + 1) lo hi),
-        ∀ xi, W.h xi = shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        ∀ xi, W.h xi = shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases nonempty_shiftedCappedTerminalFiberLobeEnergyBounds.{uI}
       hrhoMax hrhoMax_small n hratio with ⟨D⟩
   rcases exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_of_sectorCases
@@ -47331,8 +46686,8 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_terminal
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
     have hbase := shellFrequencyEnergy_shiftedCharted_terminal_le_source_of_sectorCases
       C j hj s q hqcompact a K n lo hi xi hn hnorm hratio hratioDef hr hrmem D hrTime htime
-    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     have hden : 0 < ‖xi‖ * r :=
       mul_pos (norm_pos_iff.mpr hxine) hrmem.1
     have hcoef : B0 / (‖xi‖ * r) ≤ B / (‖xi‖ * r) := by
@@ -47351,8 +46706,8 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_terminal
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
     have hbase := hE1 C j hj s q hqcompact a K hratioDef hr lo hi xi hn hnorm
       hrmem (houter xi hxi) hrTime htime
-    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     have hfactor : 0 ≤ ‖xi‖ * r := mul_nonneg (norm_nonneg _) hrmem.1.le
     have hcoef : B1 * (‖xi‖ * r) ≤ B * (‖xi‖ * r) := by
       apply mul_le_mul_of_nonneg_right
@@ -47391,7 +46746,7 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_central
           lo hi lambda (4 * eps) B
           (shiftedChartedCappedTelescopingSchwartzSlices_concrete
             C j s q hqcompact a eps K n 0 lo hi),
-          ∀ xi, W.h xi = shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          ∀ xi, W.h xi = shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_shiftedCharted_central_i0_E0_E1_source_constant
       hrhoMax C j s q hqcompact a K n hn lo hi with ⟨B, hB, hsource⟩
   refine ⟨B, hB, ?_⟩
@@ -47417,8 +46772,8 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_central
       linarith
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
     have hrpos : 0 < 4 * eps := by positivity
-    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     by_cases hsector : C.sector j xi = 0
     · have hzero : ∀ theta,
           shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n 0 theta xi = 0 := by
@@ -47446,8 +46801,8 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_central
       simp at hnormlo
       linarith
     have hrpos : 0 < 4 * eps := by positivity
-    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 ≤ shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     by_cases hsector : C.sector j xi = 0
     · have hzero : ∀ theta,
           shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n 0 theta xi = 0 := by
@@ -47472,27 +46827,18 @@ theorem exists_concreteAnnularShellFiberEnergyWitness_shifted_central
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteOuterAnnularWitness
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteOuterAnnularWitness
 
 -- BEGIN ScratchKakeyaConcreteAnnularHpieceCorollaries
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteAnnularHpieceCorollaries
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaConcreteAnnularHpiece
-open Auto.Spherical.MSS.KakeyaConcreteOuterAnnularWitness
-open Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedPhysicalFrequencyTransport
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -47500,7 +46846,7 @@ noncomputable section
 private theorem shiftedCappedShellGlobalCommonLeft_le_pi :
     shiftedCappedShellGlobalCommonLeft <= Real.pi := by
   unfold shiftedCappedShellGlobalCommonLeft
-  unfold Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly.cappedShellCommonLeft
+  unfold cappedShellCommonLeft
   nlinarith [Real.pi_gt_three]
 
 /-- Direct dyadic physical hpiece estimate.  The fibre witness is selected
@@ -47540,7 +46886,7 @@ theorem exists_shifted_dyadic_physical_hpiece_bound
               (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n (k + 1)
                 theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_concreteAnnularShellFiberEnergyWitness_shifted_dyadic
       hrhoMax hrhoMax_small n with ⟨B, hB, hW⟩
@@ -47604,7 +46950,7 @@ theorem exists_shifted_terminal_physical_hpiece_bound
               (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n (K + 1)
                 theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_concreteAnnularShellFiberEnergyWitness_shifted_terminal
       hrhoMax hrhoMax_small n hratio with ⟨B, hB, hW⟩
@@ -47663,7 +47009,7 @@ theorem exists_shifted_central_physical_hpiece_bound
                   (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n 0
                     theta.1 y‖ ^ 2)) <=
               ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                   (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_concreteAnnularShellFiberEnergyWitness_shifted_central
       hrhoMax C j hj s q hqcompact a K n hn
@@ -47689,18 +47035,17 @@ theorem exists_shifted_central_physical_hpiece_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteAnnularHpieceCorollaries
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteAnnularHpieceCorollaries
 
 -- BEGIN ScratchKakeyaEnvelopeReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaEnvelopeReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal
 
 noncomputable section
@@ -47785,23 +47130,18 @@ theorem lintegral_iSup_sq_finite_shell_sum_le_of_envelopes
 
 end
 
-end Auto.Spherical.MSS.KakeyaEnvelopeReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaEnvelopeReassembly
 
 -- BEGIN ScratchKakeyaShiftedCappedEnvelopeReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaCenteredFundamentalMax
-open Auto.Spherical.MSS.KakeyaEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section
@@ -47840,7 +47180,7 @@ theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_env
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : ∀ l, C.SupportedOnActive (q l))
+    (hqactive : ∀ l, SupportedOnActive C (q l))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K : Nat) {lo : Real} (hlo : lo <= -Real.pi)
     (hintegrable : ∀ theta j n i,
@@ -47946,28 +47286,18 @@ theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_env
 
 end
 
-end Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaShiftedCappedEnvelopeReassembly
 
 -- BEGIN ScratchKakeyaConcreteCappedAnnularReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteCappedAnnularReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaConcreteAnnularHpieceCorollaries
-open Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -48017,7 +47347,7 @@ theorem exists_shiftedCapped_annular_piece_hpiece_bounds
             ENNReal.ofReal
               (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K jni theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   classical
   let shells := shiftedCappedShellIndicesGeneric charts K
@@ -48032,7 +47362,7 @@ theorem exists_shiftedCapped_annular_piece_hpiece_bounds
             ENNReal.ofReal
               (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K jni theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
     rintro ⟨j, n, i⟩ hjni
     have hjni' : j ∈ charts ∧ n ∈ Finset.range 7 ∧
@@ -48083,7 +47413,7 @@ theorem exists_shiftedCapped_annular_piece_hpiece_bounds
             ENNReal.ofReal
               (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K jni theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) := by
     intro jni
     by_cases hjni : jni ∈ shells
@@ -48106,7 +47436,7 @@ theorem exists_shiftedCapped_annular_max_bound
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : ∀ l, C.SupportedOnActive (q l))
+    (hqactive : ∀ l, SupportedOnActive C (q l))
     (a : iota -> SchwartzMap Real Complex)
     {rhoMax eps lambda ratio rTerminal : Real}
     (hrhoMax : 0 <= rhoMax) (hrhoMax_small : 9 * rhoMax / 4 < Real.pi)
@@ -48139,7 +47469,7 @@ theorem exists_shiftedCapped_annular_max_bound
         ((shiftedCappedShellIndicesGeneric charts K).card : ENNReal) *
           ∑ jni ∈ shiftedCappedShellIndicesGeneric charts K,
             ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
-              shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+              shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_shiftedCapped_annular_piece_hpiece_bounds C s q hqcompact a
       hrhoMax hrhoMax_small heps hlambda K hscale hqann hcentralMem hcentralCritical
@@ -48151,7 +47481,7 @@ theorem exists_shiftedCapped_annular_max_bound
     (lo := shiftedCappedShellGlobalCommonLeft)
     (by
       unfold shiftedCappedShellGlobalCommonLeft
-      unfold Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly.cappedShellCommonLeft
+      unfold cappedShellCommonLeft
       nlinarith [Real.pi_gt_three])
   · intro theta j n i
     exact (contDiff_shiftedChartedCappedTelescopingMultiplier_slice
@@ -48166,21 +47496,18 @@ theorem exists_shiftedCapped_annular_max_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteCappedAnnularReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteCappedAnnularReassembly
 
 -- BEGIN ScratchKakeyaFiniteTensorRadialBandBridge
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -48249,40 +47576,38 @@ theorem finiteTensorCircleMultiplierField_radialBand_eq
       (finiteTensorRadialBandProfiles_compact C q hqcompact i) a theta x =
       kakeyaRadialBandPhysicalField C
         (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-          (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+          (circleDirection theta))
         i theta x := by
   unfold finiteTensorCircleMultiplierField kakeyaRadialBandPhysicalField
   rw [show (fun xi => scratch_finiteTensorTubeMultiplier s
       (finiteTensorRadialBandProfiles C q i)
       (finiteTensorRadialBandProfiles_compact C q hqcompact i) a
-      (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta) xi) =
+      (circleDirection theta) xi) =
       fun xi => kakeyaRadialBandPiece C
         (scratch_finiteTensorTubeMultiplier s q hqcompact a
-          (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta)) i xi by
+          (circleDirection theta)) i xi by
     funext xi
     exact congrArg (fun z : SchwartzMap (Euclidean 2) Complex => z xi)
       (scratch_finiteTensorTubeMultiplier_radialBand_eq C s q hqcompact a i
-        (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))]
+        (circleDirection theta))]
   rw [SchwartzMap.fourierInv_coe]
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorRadialBandBridge
 
 -- BEGIN ScratchKakeyaRadialMaxNormAdapter
 section
 
-namespace Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
 open scoped BigOperators ENNReal EuclideanSpace
 
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaRadialBandLevel
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
+open Auto.LittlewoodPaley
+open Auto.Spherical.SurfaceMeasureDecay
 
 noncomputable section
 
@@ -48416,33 +47741,30 @@ theorem rpow_half_cube_mul (L E : ENNReal) :
 
 end
 
-end Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRadialMaxNormAdapter
 
 -- BEGIN ScratchKakeyaTubeCircleFieldBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev tubeCircleFieldBridgeE2 := Euclidean 2
 
 /-- The finite physical tube field at a circle direction is exactly the
 finite circle multiplier field used by the angular/radial analysis. -/
 theorem scratch_finiteTensorTubeBand_circle_eq_finiteTensorCircleMultiplierField
     {ι : Type*} (s : Finset ι)
-    (q : ι → SchwartzMap E2 Complex)
-    (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
-    (a : ι → SchwartzMap Real Complex) (theta : Real) (y : E2) :
+    (q : ι → SchwartzMap tubeCircleFieldBridgeE2 Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : tubeCircleFieldBridgeE2 → Complex))
+    (a : ι → SchwartzMap Real Complex) (theta : Real) (y : tubeCircleFieldBridgeE2) :
     scratch_finiteTensorTubeBand s q hqcompact a (circleDirection theta) y =
       finiteTensorCircleMultiplierField s q hqcompact a theta y := by
   rw [scratch_finiteTensorTubeBand_eq_fourierInv]
@@ -48452,10 +47774,10 @@ theorem scratch_finiteTensorTubeBand_circle_eq_finiteTensorCircleMultiplierField
 is the finite circle multiplier field. -/
 noncomputable def finiteTensorCircleRadialMultiplier
     {ι : Type*} (s : Finset ι)
-    (q : ι → SchwartzMap E2 Complex)
-    (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
+    (q : ι → SchwartzMap tubeCircleFieldBridgeE2 Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : tubeCircleFieldBridgeE2 → Complex))
     (a : ι → SchwartzMap Real Complex) :
-    Real → SchwartzMap E2 Complex :=
+    Real → SchwartzMap tubeCircleFieldBridgeE2 Complex :=
   fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
     (circleDirection theta)
 
@@ -48463,9 +47785,9 @@ noncomputable def finiteTensorCircleRadialMultiplier
 field as the finite circle multiplier model. -/
 theorem finiteTensorCircleMultiplierField_eq_kakeyaRadialPhysicalField
     {ι : Type*} (s : Finset ι)
-    (q : ι → SchwartzMap E2 Complex)
-    (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
-    (a : ι → SchwartzMap Real Complex) (theta : Real) (y : E2) :
+    (q : ι → SchwartzMap tubeCircleFieldBridgeE2 Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : tubeCircleFieldBridgeE2 → Complex))
+    (a : ι → SchwartzMap Real Complex) (theta : Real) (y : tubeCircleFieldBridgeE2) :
     finiteTensorCircleMultiplierField s q hqcompact a theta y =
       kakeyaRadialPhysicalField
         (finiteTensorCircleRadialMultiplier s q hqcompact a) theta y := by
@@ -48475,18 +47797,17 @@ theorem finiteTensorCircleMultiplierField_eq_kakeyaRadialPhysicalField
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTubeCircleFieldBridge
 
 -- BEGIN ScratchKakeyaSectorEnergyOverlap
 section
 
-namespace Auto.Spherical.MSS.KakeyaSectorEnergyOverlap
+section Auto.Spherical.MSSKakeya
 
 open Finset
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaSectorPartition
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -48611,25 +47932,18 @@ theorem sum_norm_sq_chartAnnularMultiplierSchwartz_mul_le_four
 
 end
 
-end Auto.Spherical.MSS.KakeyaSectorEnergyOverlap
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaSectorEnergyOverlap
 
 -- BEGIN ScratchKakeyaScaledSectorEnergyOverlap
 section
 
-namespace Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaSectorPartition
-open Auto.Spherical.MSS.KakeyaSectorEnergyOverlap
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -48642,15 +47956,15 @@ theorem scratch_finiteTensorTimeData_chartProfiles_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (a : iota -> SchwartzMap Real Complex) (xi : Euclidean 2) (t : Real) :
-    scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi t =
+    scratch_finiteTensorTimeData s (chartProfiles C j q) a xi t =
       C.sector j xi * scratch_finiteTensorTimeData s q a xi t := by
   unfold scratch_finiteTensorTimeData
   rw [Finset.mul_sum]
   apply Finset.sum_congr rfl
   intro l hl
-  change C.chartProfile j (q l) xi * a l t =
+  change chartProfile C j (q l) xi * a l t =
     C.sector j xi * (q l xi * a l t)
-  rw [C.chartProfile_apply]
+  rw [chartProfile_apply C]
   ring
 
 /-- The source-time square energy of a charted tensor is exactly the square
@@ -48661,11 +47975,11 @@ theorem shiftedFiberSourceEnergy_chartProfiles_eq
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (a : iota -> SchwartzMap Real Complex) (xi : Euclidean 2) :
-    shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi =
+    shiftedFiberSourceEnergy s (chartProfiles C j q) a xi =
       ‖C.sector j xi‖ ^ (2 : Nat) * shiftedFiberSourceEnergy s q a xi := by
   unfold shiftedFiberSourceEnergy
   have hpoint : (fun t : Real =>
-      ‖scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi t‖ ^ (2 : Nat)) =
+      ‖scratch_finiteTensorTimeData s (chartProfiles C j q) a xi t‖ ^ (2 : Nat)) =
       fun t : Real => ‖C.sector j xi‖ ^ (2 : Nat) •
         ‖scratch_finiteTensorTimeData s q a xi t‖ ^ (2 : Nat) := by
     funext t
@@ -48700,14 +48014,14 @@ theorem sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_eq
     (a : iota -> SchwartzMap Real Complex) (xi : Euclidean 2) :
     ∑ j : Fin 4,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi =
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi =
       (∑ j : Fin 4,
         ‖(scaledDyadicFourChartFamily lambda hlambda).sector j xi‖ ^ (2 : Nat)) *
           shiftedFiberSourceEnergy s q a xi := by
   calc
     ∑ j : Fin 4,
         shiftedFiberSourceEnergy s
-          ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi =
+          (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi =
         ∑ j : Fin 4,
           ‖(scaledDyadicFourChartFamily lambda hlambda).sector j xi‖ ^ (2 : Nat) *
             shiftedFiberSourceEnergy s q a xi := by
@@ -48726,7 +48040,7 @@ theorem sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_le_four
     (a : iota -> SchwartzMap Real Complex) (xi : Euclidean 2) :
     ∑ j : Fin 4,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi ≤
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi ≤
       4 * shiftedFiberSourceEnergy s q a xi := by
   rw [sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_eq]
   exact mul_le_mul_of_nonneg_right
@@ -48758,7 +48072,7 @@ theorem integral_sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_le_fou
     (a : iota -> SchwartzMap Real Complex) (A : Set (Euclidean 2)) :
     (∫ xi : Euclidean 2, ∑ j : Fin 4,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi ∂
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi ∂
           (volume.restrict A)) ≤
       4 * ∫ xi : Euclidean 2, shiftedFiberSourceEnergy s q a xi ∂
         (volume.restrict A) := by
@@ -48766,12 +48080,12 @@ theorem integral_sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_le_fou
   have hbase : Integrable (shiftedFiberSourceEnergy s q a) (volume.restrict A) :=
     (integrable_shiftedFiberSourceEnergy s q a).restrict
   have hchart : ∀ j : Fin 4,
-      Integrable (shiftedFiberSourceEnergy s (C.chartProfiles j q) a)
+      Integrable (shiftedFiberSourceEnergy s (chartProfiles C j q) a)
         (volume.restrict A) := by
     intro j
-    exact (integrable_shiftedFiberSourceEnergy s (C.chartProfiles j q) a).restrict
+    exact (integrable_shiftedFiberSourceEnergy s (chartProfiles C j q) a).restrict
   have hsum : Integrable (fun xi : Euclidean 2 => ∑ j : Fin 4,
-      shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) (volume.restrict A) := by
+      shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) (volume.restrict A) := by
     exact MeasureTheory.integrable_finsetSum Finset.univ (fun j _ => hchart j)
   have hscalar : (fun xi : Euclidean 2 =>
       4 * shiftedFiberSourceEnergy s q a xi) =
@@ -48782,7 +48096,7 @@ theorem integral_sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_le_fou
     rw [hscalar]
     exact MeasureTheory.Integrable.smul (4 : Real) hbase
   have hmono : (∫ xi : Euclidean 2, ∑ j : Fin 4,
-      shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂(volume.restrict A)) ≤
+      shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂(volume.restrict A)) ≤
       ∫ xi : Euclidean 2, 4 * shiftedFiberSourceEnergy s q a xi ∂(volume.restrict A) :=
     MeasureTheory.integral_mono hsum hright (fun xi =>
       sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_le_four
@@ -48790,10 +48104,10 @@ theorem integral_sum_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_le_fou
   calc
     (∫ xi : Euclidean 2, ∑ j : Fin 4,
         shiftedFiberSourceEnergy s
-          ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi ∂
+          (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi ∂
             (volume.restrict A)) =
         ∫ xi : Euclidean 2, ∑ j : Fin 4,
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂(volume.restrict A) := by rfl
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂(volume.restrict A) := by rfl
     _ ≤ ∫ xi : Euclidean 2, 4 * shiftedFiberSourceEnergy s q a xi ∂
         (volume.restrict A) := hmono
     _ = 4 * ∫ xi : Euclidean 2, shiftedFiberSourceEnergy s q a xi ∂
@@ -48816,7 +48130,7 @@ theorem shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_chart_le
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (a : iota -> SchwartzMap Real Complex) (xi : Euclidean 2) :
     shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi ≤
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi ≤
       shiftedFiberSourceEnergy s q a xi := by
   rw [shiftedFiberSourceEnergy_chartProfiles_eq]
   have hnorm := norm_scaledDyadicFourChartFamily_sector_le_one hlambda j xi
@@ -48836,13 +48150,13 @@ theorem integral_shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_chart_le
     (a : iota -> SchwartzMap Real Complex) (A : Set (Euclidean 2)) :
     (∫ xi : Euclidean 2,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi ∂
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi ∂
           (volume.restrict A)) ≤
       ∫ xi : Euclidean 2, shiftedFiberSourceEnergy s q a xi ∂
         (volume.restrict A) := by
   apply MeasureTheory.integral_mono
   · exact (integrable_shiftedFiberSourceEnergy s
-      ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a).restrict
+      (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a).restrict
   · exact (integrable_shiftedFiberSourceEnergy s q a).restrict
   · intro xi
     exact shiftedFiberSourceEnergy_scaledDyadicFourChartFamily_chart_le
@@ -48855,7 +48169,7 @@ theorem ENNReal_ofReal_integral_shiftedFiberSourceEnergy_scaledDyadicFourChartFa
     (a : iota -> SchwartzMap Real Complex) (A : Set (Euclidean 2)) :
     ENNReal.ofReal (∫ xi : Euclidean 2,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles j q) a xi ∂
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) j q) a xi ∂
           (volume.restrict A)) ≤
       ENNReal.ofReal (∫ xi : Euclidean 2,
         shiftedFiberSourceEnergy s q a xi ∂(volume.restrict A)) := by
@@ -48875,7 +48189,7 @@ theorem sum_weighted_ENNReal_ofReal_chartSourceEnergy_le_four
     (a : iota -> SchwartzMap Real Complex) (A : Set (Euclidean 2)) :
     (∑ jni ∈ J, w jni * ENNReal.ofReal (∫ xi : Euclidean 2,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
           (volume.restrict A))) ≤
       (∑ jni ∈ J, w jni) *
         (4 * ENNReal.ofReal (∫ xi : Euclidean 2,
@@ -48884,7 +48198,7 @@ theorem sum_weighted_ENNReal_ofReal_chartSourceEnergy_le_four
     shiftedFiberSourceEnergy s q a xi ∂(volume.restrict A))
   have hterm : ∀ jni ∈ J, w jni * ENNReal.ofReal (∫ xi : Euclidean 2,
       shiftedFiberSourceEnergy s
-        ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+        (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
           (volume.restrict A)) ≤ w jni * E := by
     intro jni hjni
     exact mul_le_mul_of_nonneg_left
@@ -48893,7 +48207,7 @@ theorem sum_weighted_ENNReal_ofReal_chartSourceEnergy_le_four
   calc
     (∑ jni ∈ J, w jni * ENNReal.ofReal (∫ xi : Euclidean 2,
         shiftedFiberSourceEnergy s
-          ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+          (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
             (volume.restrict A))) ≤
         ∑ jni ∈ J, w jni * E := by
           exact Finset.sum_le_sum fun jni hjni => hterm jni hjni
@@ -48918,7 +48232,7 @@ theorem sum_weighted_shiftedCappedShellIndices_ENNReal_ofReal_chartSourceEnergy_
     (∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
       ENNReal.ofReal (4 * cost jni) * ENNReal.ofReal (∫ xi : Euclidean 2,
         shiftedFiberSourceEnergy s
-          ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+          (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
             (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) ≤
       (∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
         ENNReal.ofReal (4 * cost jni)) *
@@ -48944,7 +48258,7 @@ theorem sum_ENNReal_ofReal_shiftedCappedShell_hpieceCosts_le_four
     (∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
       ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
         shiftedFiberSourceEnergy s
-          ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+          (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
             (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) ≤
       (∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
         ENNReal.ofReal (4 * cost jni)) *
@@ -48955,12 +48269,12 @@ theorem sum_ENNReal_ofReal_shiftedCappedShell_hpieceCosts_le_four
     (∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
         ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
           shiftedFiberSourceEnergy s
-            ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+            (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) =
         ∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
           ENNReal.ofReal (4 * cost jni) * ENNReal.ofReal (∫ xi : Euclidean 2,
             shiftedFiberSourceEnergy s
-              ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+              (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
           apply Finset.sum_congr rfl
           intro jni hjni
@@ -48971,22 +48285,19 @@ theorem sum_ENNReal_ofReal_shiftedCappedShell_hpieceCosts_le_four
 
 end
 
-end Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaScaledSectorEnergyOverlap
 
 -- BEGIN ScratchKakeyaRadialSourceEnergyOverlap
 section
 
-namespace Auto.Spherical.MSS.KakeyaRadialSourceEnergyOverlap
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MikhlinHormander
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
+open Auto.MikhlinHormander
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -49172,40 +48483,19 @@ theorem sum_integral_shiftedFiberSourceEnergy_radialBandProfiles_range_le_sixtee
 
 end
 
-end Auto.Spherical.MSS.KakeyaRadialSourceEnergyOverlap
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRadialSourceEnergyOverlap
 
 -- BEGIN ScratchKakeyaFiniteLowRadialBandH1
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteLowRadialBandH1
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FourierRadius
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaCenteredFundamentalMax
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaRadialSourceEnergyOverlap
-open Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
-open Auto.Spherical.MSS.KakeyaInverseFourierContinuity
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
+open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal FourierTransform EuclideanSpace
 
 noncomputable section
@@ -49334,7 +48624,7 @@ private theorem integral_norm_sq_finiteTensorRadialBandAngularDeriv_le_low_sourc
     calc
       (∫ p : Real × Euclidean 2, G p ∂(μ.prod volume)) =
           ∫ theta in -Real.pi..Real.pi, ∫ xi : Euclidean 2, G (theta, xi) := by
-            exact (ScratchKakeyaContinuousShell.intervalIntegral_integral_eq_integral_productShell
+            exact (intervalIntegral_integral_eq_integral_productShell
               hpi (fun theta xi => G (theta, xi))
               (by simpa only [μ] using hG)).symm
       _ = ∫ theta in -Real.pi..Real.pi,
@@ -49675,7 +48965,7 @@ theorem measurable_and_lintegral_iSup_sq_finiteTensorRadialBandPhysicalField_le_
           ∫ p : Real × Euclidean 2,
             ‖fourierInvParametricField dm p.1 p.2‖ ^ 2 ∂
               ((volume.restrict (Icc (-Real.pi) Real.pi)).prod volume) := by
-            exact ScratchKakeyaContinuousShell.intervalIntegral_integral_eq_integral_productShell
+            exact intervalIntegral_integral_eq_integral_productShell
               hpi (fun theta y => ‖fourierInvParametricField dm theta y‖ ^ 2)
               hDphysical
       _ = ∫ p : Real × Euclidean 2, ‖dm p.1 p.2‖ ^ 2 ∂
@@ -49880,20 +49170,17 @@ theorem reflected_finiteTensorRadialLowThreeH1_band_bounds
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteLowRadialBandH1
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteLowRadialBandH1
 
 -- BEGIN ScratchKakeyaFiniteCoreNorm
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteCoreNorm
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -49925,7 +49212,7 @@ theorem eLpNorm_sq_innerSlabCompactFrequencyTensor_eq_frequencyTimeEnergy
           (ENNReal.ofReal ‖f z‖) ^ (2 : Real) ∂(volume.prod volume) := by
       change (eLpNorm f 2 (volume.prod volume)) ^ 2 = _
       convert
-        (Auto.Spherical.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+        (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
           (μ := volume.prod volume) (by norm_num : (0 : Real) < 2) f).symm using 1 <;>
         norm_num
     _ = ∫⁻ z : Euclidean 2 × Real,
@@ -49957,35 +49244,19 @@ theorem integral_shiftedFiberSourceEnergy_eq_frequencyTimeEnergy
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteCoreNorm
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteCoreNorm
 
 -- BEGIN ScratchKakeyaRawPostProfileLowpassB0
 section
 
-namespace Auto.Spherical.MSS.KakeyaRawPostProfileLowpassB0
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.FourierRadius
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaAngularDerivativeTransport
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassClosure
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassTrace
-open Auto.Spherical.MSS.KakeyaFiniteCoreNorm
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaInverseFourierContinuity
-open Auto.Spherical.MSS.KakeyaInverseFourierDerivative
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaParametricPhysicalIntegrability
-open Auto.Spherical.MSS.KakeyaParametricPlancherel
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.Auxiliary
+open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal FourierTransform EuclideanSpace
 
 noncomputable section
@@ -50483,32 +49754,18 @@ theorem reflected_measurable_and_lintegral_iSup_sq_kakeyaRadialLowpassPhysicalFi
 
 end
 
-end Auto.Spherical.MSS.KakeyaRawPostProfileLowpassB0
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRawPostProfileLowpassB0
 
 -- BEGIN ScratchKakeyaUniformCentralHpiece
 section
 
-namespace Auto.Spherical.MSS.KakeyaUniformCentralHpiece
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaAnnularHpieceCore
-open Auto.Spherical.MSS.KakeyaAnnularMultiplierSupport
-open Auto.Spherical.MSS.KakeyaChartedSectorZero
-open Auto.Spherical.MSS.KakeyaCentralParametricEnergy
-open Auto.Spherical.MSS.KakeyaConcreteAnnularWitness
-open Auto.Spherical.MSS.KakeyaConcreteAnnularHpiece
-open Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -50558,7 +49815,7 @@ theorem exists_uniform_shiftedCharted_central_i0_E0_E1_source_constant
         (K : Nat) (lo hi : Real) {eps : Real}, 0 < eps ->
           4 * eps ∈ Icc (0 : Real) rhoMax ->
           ∀ xi : Euclidean 2,
-          xi = ‖xi‖ • Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection
+          xi = ‖xi‖ • circleDirection
             (C.angle j xi) ->
           ∀ {rTime : Real}, rTime < 1 ->
             (∀ l, Function.support (a l : Real -> Complex) ⊆
@@ -50570,12 +49827,12 @@ theorem exists_uniform_shiftedCharted_central_i0_E0_E1_source_constant
               (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n 0)
               lo hi xi <=
               (B / (‖xi‖ * (4 * eps))) *
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∧
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∧
             shellFrequencyEnergy
               (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n 0)
               lo hi xi <=
               B * (‖xi‖ * (4 * eps)) *
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_uniform_abs_bound_shiftedCentralCutoffDerivative n hrhoMax with
     ⟨Mcut, hMcut, hcut⟩
   rcases exists_uniform_abs_bound_shiftedCentralScaledPhase n hrhoMax with
@@ -50629,7 +49886,7 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_central
           lo hi lambda (4 * eps) B
           (shiftedChartedCappedTelescopingSchwartzSlices_concrete
             C j s q hqcompact a eps K n 0 lo hi),
-          ∀ xi, W.h xi = shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          ∀ xi, W.h xi = shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_uniform_shiftedCharted_central_i0_E0_E1_source_constant
       hrhoMax n hn with ⟨B, hB, hsource⟩
   refine ⟨B, hB, ?_⟩
@@ -50656,8 +49913,8 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_central
       linarith
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
     have hrpos : 0 < 4 * eps := by positivity
-    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     by_cases hsector : C.sector j xi = 0
     · have hzero : ∀ theta,
           shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n 0 theta xi = 0 := by
@@ -50686,8 +49943,8 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_central
       simp at hnormlo
       linarith
     have hrpos : 0 < 4 * eps := by positivity
-    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     by_cases hsector : C.sector j xi = 0
     · have hzero : ∀ theta,
           shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n 0 theta xi = 0 := by
@@ -50714,7 +49971,7 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_central
 private theorem uniformCentral_commonLeft_le_pi :
     shiftedCappedShellGlobalCommonLeft <= Real.pi := by
   unfold shiftedCappedShellGlobalCommonLeft
-  unfold Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly.cappedShellCommonLeft
+  unfold cappedShellCommonLeft
   nlinarith [Real.pi_gt_three]
 
 /-- Uniform-central physical endpoint estimate.  Its cost depends only on the
@@ -50750,7 +50007,7 @@ theorem exists_uniform_shifted_central_physical_hpiece_bound
                   (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n 0
                     theta.1 y‖ ^ 2)) <=
               ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                   (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_central
       hrhoMax n hn with ⟨B, hB, hW⟩
@@ -50776,22 +50033,17 @@ theorem exists_uniform_shifted_central_physical_hpiece_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaUniformCentralHpiece
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUniformCentralHpiece
 
 -- BEGIN ScratchKakeyaFixedWidthParametricProfileSchur
 section
 
-namespace Auto.Spherical.MSS.KakeyaFixedWidthParametricProfileSchur
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open ScratchKakeyaTTStarAngular
-open Auto.Spherical.OneDimStationaryPhase
-open ScratchKakeyaTimeEnvelope
-open ScratchKakeyaGlobalTimeEnvelope
-open ScratchKakeyaGlobalComplexSchur
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
+open Auto.OneDimStationaryPhase
 open scoped BigOperators
 
 noncomputable section
@@ -51295,17 +50547,15 @@ theorem exists_outerCircleFixedWidthParametricProductTimeKernel_phaseFactor_E1
 
 end
 
-end Auto.Spherical.MSS.KakeyaFixedWidthParametricProfileSchur
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFixedWidthParametricProfileSchur
 
 -- BEGIN ScratchKakeyaCappedTerminalFixedWidth
 section
 
-namespace Auto.Spherical.MSS.KakeyaCappedTerminalFixedWidth
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaFixedWidthParametricProfileSchur
 
 noncomputable section
 
@@ -51406,48 +50656,18 @@ def exists_cappedTerminalReflectedNegativeProduct_phaseFactor_E1 :=
 
 end
 
-end Auto.Spherical.MSS.KakeyaCappedTerminalFixedWidth
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCappedTerminalFixedWidth
 
 -- BEGIN ScratchKakeyaTerminalUniformFixedWidth
 section
 
-namespace Auto.Spherical.MSS.KakeyaTerminalUniformFixedWidth
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFixedWidthParametricProfileSchur
-open Auto.Spherical.MSS.KakeyaGenericOuterProfileSchur
-open Auto.Spherical.MSS.KakeyaGenericAmplitudeFourierSchur
-open Auto.Spherical.MSS.KakeyaSignedAmplitudeFourierSchur
-open Auto.Spherical.MSS.KakeyaCompactTimeParametricTTStar
-open Auto.Spherical.MSS.KakeyaLocalSchurFubini
-open Auto.Spherical.MSS.KakeyaParametricProfileFiniteTensor
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaFiniteTensorCompactTime
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaCompactTimeWeight
-open Auto.Spherical.MSS.KakeyaTTStarRealEnergy
-open Auto.Spherical.MSS.KakeyaCappedTerminalFixedWidth
-open Auto.Spherical.MSS.KakeyaCappedTelescopingLobes
-open Auto.Spherical.MSS.KakeyaShiftedCappedAmplitudeAdapter
-open Auto.Spherical.MSS.KakeyaShiftedParametricProfiles
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCircleDirection
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaShiftedDyadicE0Transport
-open Auto.Spherical.MSS.KakeyaShiftedTerminalE1Transport
-open Auto.Spherical.MSS.KakeyaOuterE1TwoBudgetSource
-open Auto.Spherical.MSS.KakeyaChartedSectorZero
-open Auto.Spherical.MSS.KakeyaConcreteAnnularHpiece
-open ScratchKakeyaGenericTTStarFactorization
-open ScratchKakeyaTTStarAngular
-open ScratchKakeyaGlobalComplexSchur
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -52335,7 +51555,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_le_source_uniform
         (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1))
         lo hi xi ≤
         (B / (‖xi‖ * r)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_shiftedCappedTerminalPositiveFiberEnergy_E0_uniform n with
     ⟨Bplus, hBplus, hplus⟩
   rcases exists_shiftedCappedTerminalReflectedNegativeFiberEnergy_E0_uniform n with
@@ -52357,27 +51577,27 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_le_source_uniform
     unfold cappedTerminalCarrier
     ring
   have hplus' := hplus ratio hratio signedLambda hsigned
-    s (C.chartProfiles j q) a xi hrTime hsupport
+    s (chartProfiles C j q) a xi hrTime hsupport
   have hminus' := hminus ratio hratio signedLambda hsigned
-    s (C.chartProfiles j q) a xi hrTime hsupport
+    s (chartProfiles C j q) a xi hrTime hsupport
   calc
     shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1))
         lo hi xi ≤
         2 * (shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveProfile n ratio)
           cappedTerminalCarrier signedLambda
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
         shiftedFiberLobeEnergy (shiftedCappedTerminalReflectedNegativeProfile n ratio)
           cappedTerminalCarrier signedLambda
-          (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) := by
+          (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) := by
       simpa only [signedLambda, hcarrier] using hbase
     _ ≤ 2 * ((Bplus / (|signedLambda| * cappedTerminalCarrier)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi +
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi +
         (Bminus / (|signedLambda| * cappedTerminalCarrier)) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi) := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi) := by
       exact mul_le_mul_of_nonneg_left (add_le_add hplus' hminus') (by norm_num)
     _ = ((2 * (Bplus + Bminus)) / (‖xi‖ * cappedTerminalCarrier)) *
-        shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+        shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
       rw [habs]
       ring
 
@@ -52410,7 +51630,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_unif
       shellFrequencyEnergy
         (shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (K + 1))
         lo hi xi ≤ B * (‖xi‖ * r) *
-          shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_shiftedCappedTerminalPositiveFiberEnergy_cutoff_E1_uniform n with
     ⟨Bcutplus, hBcutplus, hcutplus⟩
   rcases exists_shiftedCappedTerminalReflectedNegativeFiberEnergy_cutoff_E1_uniform n with
@@ -52427,7 +51647,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_unif
       hratioDef hr lo hi xi hpolar hn hxi hrmem houter rTime hrTime hsupport
     subst r
     let signedLambda : Real := stationaryRadialSign n * ‖xi‖
-    let H : Real := shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi
+    let H : Real := shiftedFiberSourceEnergy s (chartProfiles C j q) a xi
     have hsign : stationaryRadialSign n ≠ 0 := by
       interval_cases n <;> norm_num [stationaryRadialSign]
     have hsigned : signedLambda ≠ 0 := mul_ne_zero hsign hxi
@@ -52441,7 +51661,7 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_unif
     have hnormpos : 0 < ‖xi‖ := norm_pos_iff.mpr hxine
     have hHnonneg : 0 ≤ H := by
       dsimp [H]
-      exact shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+      exact shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     have hBcut : 0 ≤ Bcutplus + Bcutminus :=
       add_nonneg hBcutplus.le hBcutminus.le
     have hbase := shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_two_lobe_budget
@@ -52450,25 +51670,25 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_unif
       unfold cappedTerminalCarrier
       ring
     have hcutplus' := hcutplus ratio hratio signedLambda hsigned
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hcutminus' := hcutminus ratio hratio signedLambda hsigned
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphaseplus' := hphaseplus ratio hratio signedLambda hsigned
       (((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) (sq_nonneg _)
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphaseminus' := hphaseminus ratio hratio signedLambda hsigned
       (((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) (sq_nonneg _)
-      s (C.chartProfiles j q) a xi hrTime hsupport
+      s (chartProfiles C j q) a xi hrTime hsupport
     have hphase :
         2 * ((((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) *
             shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio)
               cappedTerminalCarrier signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           (((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) *
             shiftedFiberLobeEnergy
               (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio)
               cappedTerminalCarrier signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi))) ≤
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi))) ≤
         2 * ((((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) *
             (Bphaseplus / (|signedLambda| * cappedTerminalCarrier)) * H +
           (((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) *
@@ -52482,30 +51702,30 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_unif
           (2 * ((cappedTerminalCarrier ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio)
             cappedTerminalCarrier signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
             (cappedTerminalCarrier ^ 2)⁻¹ * shiftedFiberLobeEnergy
               (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio)
               cappedTerminalCarrier signedLambda
-              (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
           2 * ((((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) *
             shiftedFiberLobeEnergy (shiftedCappedTerminalPositiveScaledPhaseProfile n ratio)
               cappedTerminalCarrier signedLambda
-              (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) +
+              (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) +
             (((2 * Real.pi) * signedLambda * cappedTerminalCarrier) ^ 2) *
               shiftedFiberLobeEnergy
                 (shiftedCappedTerminalReflectedNegativeScaledPhaseProfile n ratio)
                 cappedTerminalCarrier signedLambda
-                (timeWeighted (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)))) := by
+                (timeWeighted (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)))) := by
       simpa only [signedLambda, hcarrier] using hbase
     have hcut' :
         2 * ((cappedTerminalCarrier ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalPositiveCutoffDerivativeProfile n ratio)
             cappedTerminalCarrier signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi) +
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi) +
           (cappedTerminalCarrier ^ 2)⁻¹ * shiftedFiberLobeEnergy
             (shiftedCappedTerminalReflectedNegativeCutoffDerivativeProfile n ratio)
             cappedTerminalCarrier signedLambda
-            (scratch_finiteTensorTimeData s (C.chartProfiles j q) a xi)) ≤
+            (scratch_finiteTensorTimeData s (chartProfiles C j q) a xi)) ≤
         2 * ((cappedTerminalCarrier ^ 2)⁻¹ *
             (Bcutplus / (|signedLambda| * cappedTerminalCarrier)) * H +
           (cappedTerminalCarrier ^ 2)⁻¹ *
@@ -52516,33 +51736,18 @@ theorem exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_unif
 
 end
 
-end Auto.Spherical.MSS.KakeyaTerminalUniformFixedWidth
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaTerminalUniformFixedWidth
 
 -- BEGIN ScratchKakeyaUniformTerminalHpiece
 section
 
-namespace Auto.Spherical.MSS.KakeyaUniformTerminalHpiece
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaAnnularMultiplierSupport
-open Auto.Spherical.MSS.KakeyaAnnularHpieceCore
-open Auto.Spherical.MSS.KakeyaCappedTerminalFixedWidth
-open Auto.Spherical.MSS.KakeyaChartedSectorZero
-open Auto.Spherical.MSS.KakeyaConcreteAnnularHpiece
-open Auto.Spherical.MSS.KakeyaConcreteAnnularWitness
-open Auto.Spherical.MSS.KakeyaConcreteShiftedSlices
-open Auto.Spherical.MSS.KakeyaFiberEnergyFubini
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaTerminalUniformFixedWidth
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -52578,7 +51783,7 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_terminal
           lo hi lambda r B
           (shiftedChartedCappedTelescopingSchwartzSlices_concrete
             C j s q hqcompact a eps K n (K + 1) lo hi),
-          ∀ xi, W.h xi = shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi := by
+          ∀ xi, W.h xi = shiftedFiberSourceEnergy s (chartProfiles C j q) a xi := by
   rcases exists_shellFrequencyEnergy_shiftedCharted_terminal_le_source_uniform n with
     ⟨B0, hB0, hE0⟩
   rcases exists_shellFrequencyEnergy_shiftedCharted_terminal_deriv_le_source_uniform
@@ -52615,8 +51820,8 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_terminal
       simp at hnormlo
       linarith
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
-    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     by_cases hsector : C.sector j xi = 0
     · have hzero : ∀ theta,
           shiftedChartedCappedTelescopingMultiplier C j s q hqcompact a eps K n (K + 1)
@@ -52651,8 +51856,8 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_terminal
       simp at hnormlo
       linarith
     have hnorm : ‖xi‖ ≠ 0 := norm_ne_zero_iff.mpr hxine
-    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi :=
-      shiftedFiberSourceEnergy_nonneg s (C.chartProfiles j q) a xi
+    have hsourceNonneg : 0 <= shiftedFiberSourceEnergy s (chartProfiles C j q) a xi :=
+      shiftedFiberSourceEnergy_nonneg s (chartProfiles C j q) a xi
     by_cases hsector : C.sector j xi = 0
     · have hzero : ∀ theta,
           shiftedChartedCappedTelescopingMultiplierDerivRaw C j s q hqcompact a eps K n (K + 1)
@@ -52685,7 +51890,7 @@ theorem exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_terminal
 private theorem uniformTerminal_commonLeft_le_pi :
     shiftedCappedShellGlobalCommonLeft <= Real.pi := by
   unfold shiftedCappedShellGlobalCommonLeft
-  unfold Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly.cappedShellCommonLeft
+  unfold cappedShellCommonLeft
   nlinarith [Real.pi_gt_three]
 
 /-- Ratio-uniform physical endpoint for the literal capped terminal shell. -/
@@ -52725,7 +51930,7 @@ theorem exists_uniform_shifted_terminal_physical_hpiece_bound
                   (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n (K + 1)
                     theta.1 y‖ ^ 2)) <=
               ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                   (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_uniform_concreteAnnularShellFiberEnergyWitness_shifted_terminal
       hrhoMax hrhoMax_small n with ⟨B, hB, hW⟩
@@ -52752,26 +51957,18 @@ theorem exists_uniform_shifted_terminal_physical_hpiece_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaUniformTerminalHpiece
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUniformTerminalHpiece
 
 -- BEGIN ScratchKakeyaUniformCappedAnnularReassembly
 section
 
-namespace Auto.Spherical.MSS.KakeyaUniformCappedAnnularReassembly
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -52786,7 +51983,7 @@ theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_uni
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : ∀ l, C.SupportedOnActive (q l))
+    (hqactive : ∀ l, SupportedOnActive C (q l))
     (a : iota -> SchwartzMap Real Complex)
     (eps : Real) (K : Nat) {lambda B : Real}
     (hangleUpper : ∀ j xi, C.angle j xi < 6)
@@ -52800,21 +51997,21 @@ theorem lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_uni
           ENNReal.ofReal
             (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K jni theta.1 y‖ ^ 2)) <=
         ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-          shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+          shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
             (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) :
     (∫⁻ y : Euclidean 2, ⨆ theta : Real,
       ENNReal.ofReal (‖finiteTensorCircleMultiplierField s q hqcompact a theta y‖ ^ 2)) <=
       ((shiftedCappedShellIndicesGeneric charts K).card : ENNReal) *
         ∑ jni ∈ shiftedCappedShellIndicesGeneric charts K,
           ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   apply lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_envelopes
     C s q hqcompact hqactive a eps K
     (lo := shiftedCappedShellGlobalCommonLeft)
     (by
       unfold shiftedCappedShellGlobalCommonLeft
-      unfold Auto.Spherical.MSS.KakeyaCappedAngularShellReassembly.cappedShellCommonLeft
+      unfold cappedShellCommonLeft
       nlinarith [Real.pi_gt_three])
   · intro theta j n i
     exact (contDiff_shiftedChartedCappedTelescopingMultiplier_slice
@@ -52849,7 +52046,7 @@ theorem shiftedCapped_hpiece_bound_mono
           ENNReal.ofReal
             (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K jni theta.1 y‖ ^ 2)) <=
         ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-          shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+          shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
             (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) :
     Measurable (fun y : Euclidean 2 =>
       ⨆ theta : Icc shiftedCappedShellGlobalCommonLeft Real.pi,
@@ -52860,44 +52057,33 @@ theorem shiftedCapped_hpiece_bound_mono
           ENNReal.ofReal
             (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K jni theta.1 y‖ ^ 2)) <=
         ENNReal.ofReal (4 * B' * ∫ xi : Euclidean 2,
-          shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+          shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
             (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   refine ⟨h.1, h.2.trans ?_⟩
   apply ENNReal.ofReal_le_ofReal
   have hE : 0 <= ∫ xi : Euclidean 2,
-      shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+      shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
         (volume.restrict (scaledDyadicFrequencyAnnulus lambda)) := by
     apply integral_nonneg
     intro xi
-    exact shiftedFiberSourceEnergy_nonneg s (C.chartProfiles jni.1 q) a xi
+    exact shiftedFiberSourceEnergy_nonneg s (chartProfiles C jni.1 q) a xi
   have hfour : 4 * B <= 4 * B' := by nlinarith
   exact mul_le_mul_of_nonneg_right hfour hE
 
 end
 
-end Auto.Spherical.MSS.KakeyaUniformCappedAnnularReassembly
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUniformCappedAnnularReassembly
 
 -- BEGIN ScratchKakeyaUniformShiftedCappedShellHpiece
 section
 
-namespace Auto.Spherical.MSS.KakeyaUniformShiftedCappedShellHpiece
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaConcreteAnnularHpieceCorollaries
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaUniformCappedAnnularReassembly
-open Auto.Spherical.MSS.KakeyaUniformCentralHpiece
-open Auto.Spherical.MSS.KakeyaUniformTerminalHpiece
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -52949,7 +52135,7 @@ theorem exists_uniform_shiftedCapped_shell_physical_hpiece_bound
                     (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i
                       theta.1 y‖ ^ 2)) <=
                 ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-                  shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                  shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                     (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_uniform_shifted_central_physical_hpiece_bound hrhoMax n hn with
     ⟨Bcentral, hBcentral, hcentral⟩
@@ -52990,7 +52176,7 @@ theorem exists_uniform_shiftedCapped_shell_physical_hpiece_bound
                 (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K (j, (n, 0))
                   theta.1 y‖ ^ 2)) <=
             ENNReal.ofReal (4 * Bcentral * ∫ xi : Euclidean 2,
-              shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+              shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
       simpa only [shiftedCappedShellPieceGeneric] using hraw
     have hraised := shiftedCapped_hpiece_bound_mono C s q hqcompact a eps K (j, (n, 0))
@@ -53012,7 +52198,7 @@ theorem exists_uniform_shiftedCapped_shell_physical_hpiece_bound
                   (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K (j, (n, K + 1))
                     theta.1 y‖ ^ 2)) <=
               ENNReal.ofReal (4 * Bterminal * ∫ xi : Euclidean 2,
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                   (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
         simpa only [shiftedCappedShellPieceGeneric] using hraw
       have hraised := shiftedCapped_hpiece_bound_mono C s q hqcompact a eps K
@@ -53038,7 +52224,7 @@ theorem exists_uniform_shiftedCapped_shell_physical_hpiece_bound
                   (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K (j, (n, k + 1))
                     theta.1 y‖ ^ 2)) <=
               ENNReal.ofReal (4 * Bdyadic * ∫ xi : Euclidean 2,
-                shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                   (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
         simpa only [shiftedCappedShellPieceGeneric] using hraw
       have hraised := shiftedCapped_hpiece_bound_mono C s q hqcompact a eps K
@@ -53047,28 +52233,18 @@ theorem exists_uniform_shiftedCapped_shell_physical_hpiece_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaUniformShiftedCappedShellHpiece
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUniformShiftedCappedShellHpiece
 
 -- BEGIN ScratchKakeyaUniformAllShiftCappedHpiece
 section
 
-namespace Auto.Spherical.MSS.KakeyaUniformAllShiftCappedHpiece
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedChartReassembly
-open Auto.Spherical.MSS.KakeyaShiftedSliceSchwartz
-open Auto.Spherical.MSS.KakeyaShiftedStationaryCover
-open Auto.Spherical.MSS.KakeyaUniformCappedAnnularReassembly
-open Auto.Spherical.MSS.KakeyaUniformShiftedCappedShellHpiece
+open Auto.Spherical.SurfaceMeasureDecay
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -53120,7 +52296,7 @@ theorem exists_uniform_allShiftCapped_shell_physical_hpiece_bound
                     (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K n i
                       theta.1 y‖ ^ 2)) <=
                 ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-                  shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+                  shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                     (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_uniform_shiftedCapped_shell_physical_hpiece_bound
       hrhoMax hrhoMax_small 0 (by omega) with ⟨B0, hB0, hP0⟩
@@ -53156,7 +52332,7 @@ theorem exists_uniform_allShiftCapped_shell_physical_hpiece_bound
               (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K m i
                 theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * b * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) ->
       Measurable (fun y : Euclidean 2 =>
         ⨆ theta : Icc shiftedCappedShellGlobalCommonLeft Real.pi,
@@ -53169,7 +52345,7 @@ theorem exists_uniform_allShiftCapped_shell_physical_hpiece_bound
               (‖shiftedChartedCappedTelescopingField C j s q hqcompact a eps K m i
                 theta.1 y‖ ^ 2)) <=
           ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-            shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+            shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
               (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
     intro m b hle hraw
     have hrawGeneric :
@@ -53184,7 +52360,7 @@ theorem exists_uniform_allShiftCapped_shell_physical_hpiece_bound
                 (‖shiftedCappedShellPieceGeneric C s q hqcompact a eps K (j, (m, i))
                   theta.1 y‖ ^ 2)) <=
             ENNReal.ofReal (4 * b * ∫ xi : Euclidean 2,
-              shiftedFiberSourceEnergy s (C.chartProfiles j q) a xi ∂
+              shiftedFiberSourceEnergy s (chartProfiles C j q) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
       simpa only [shiftedCappedShellPieceGeneric] using hraw
     have hraised := shiftedCapped_hpiece_bound_mono C s q hqcompact a eps K
@@ -53232,7 +52408,7 @@ theorem exists_uniform_allShiftCapped_annular_max_bound
     (s : Finset iota)
     (q : iota -> SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ l, HasCompactSupport (q l : Euclidean 2 -> Complex))
-    (hqactive : ∀ l, C.SupportedOnActive (q l))
+    (hqactive : ∀ l, SupportedOnActive C (q l))
     (a : iota -> SchwartzMap Real Complex)
     {eps lambda ratio rTerminal : Real}
     (heps : 0 < eps) (hlambda : 0 < lambda) (K : Nat)
@@ -53263,7 +52439,7 @@ theorem exists_uniform_allShiftCapped_annular_max_bound
         ((shiftedCappedShellIndicesGeneric charts K).card : ENNReal) *
           ∑ jni ∈ shiftedCappedShellIndicesGeneric charts K,
             ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-              shiftedFiberSourceEnergy s (C.chartProfiles jni.1 q) a xi ∂
+              shiftedFiberSourceEnergy s (chartProfiles C jni.1 q) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
   rcases exists_uniform_allShiftCapped_shell_physical_hpiece_bound
       hrhoMax hrhoMax_small with ⟨B, hB, hpiece⟩
@@ -53285,29 +52461,19 @@ theorem exists_uniform_allShiftCapped_annular_max_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaUniformAllShiftCappedHpiece
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUniformAllShiftCappedHpiece
 
 -- BEGIN ScratchKakeyaConcreteRadialBandAnnular
 section
 
-namespace Auto.Spherical.MSS.KakeyaConcreteRadialBandAnnular
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaConcreteCappedAnnularReassembly
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators FourierTransform EuclideanSpace
 
 noncomputable section
@@ -53329,7 +52495,7 @@ theorem le_shiftedCappedShell_scaleCost_of_raw_bound
         ∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
           ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
             shiftedFiberSourceEnergy s
-              ((scaledDyadicFourChartFamily lambda hlambda).chartProfiles jni.1 q) a xi ∂
+              (chartProfiles (scaledDyadicFourChartFamily lambda hlambda) jni.1 q) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda)))) :
     X <=
       ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K).card : ENNReal) *
@@ -53384,14 +52550,14 @@ theorem exists_kakeyaRadialBandPhysicalField_shiftedCapped_annular_max_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K).card : ENNReal) *
           ∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
             ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
               shiftedFiberSourceEnergy s
-                ((scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-                  (kakeyaRadialBandScale_pos i)).chartProfiles jni.1
+                (chartProfiles (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+                  (kakeyaRadialBandScale_pos i)) jni.1
                   (finiteTensorRadialBandProfiles L q i)) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus
                   (kakeyaRadialBandScale i)))) := by
@@ -53400,7 +52566,7 @@ theorem exists_kakeyaRadialBandPhysicalField_shiftedCapped_annular_max_bound
   let qBand := finiteTensorRadialBandProfiles L q i
   have hqBandCompact : ∀ l, HasCompactSupport (qBand l : Euclidean 2 -> Complex) := by
     exact finiteTensorRadialBandProfiles_compact L q hqcompact i
-  have hqBandActive : ∀ l, C.SupportedOnActive (qBand l) := by
+  have hqBandActive : ∀ l, SupportedOnActive C (qBand l) := by
     intro l xi hxi
     change kakeyaRadialBandPiece L (q l) i xi ≠ 0 at hxi
     exact kakeyaRadialBandPiece_supportedOn_scaledDyadicFrequencyAnnulus L (q l) i xi hxi
@@ -53422,7 +52588,7 @@ theorem exists_kakeyaRadialBandPhysicalField_shiftedCapped_annular_max_bound
     let G : Real -> Euclidean 2 -> Complex := fun theta y =>
       kakeyaRadialBandPhysicalField L
         (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-          (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+          (circleDirection theta))
         i theta y
     have hFG : F = G := by
       funext theta y
@@ -53449,14 +52615,14 @@ theorem exists_kakeyaRadialBandPhysicalField_scaleCost_of_max_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K).card : ENNReal) *
           ∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
             ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
               shiftedFiberSourceEnergy s
-                ((scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-                  (kakeyaRadialBandScale_pos i)).chartProfiles jni.1
+                (chartProfiles (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+                  (kakeyaRadialBandScale_pos i)) jni.1
                   (finiteTensorRadialBandProfiles L q i)) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus
                   (kakeyaRadialBandScale i))))) :
@@ -53467,7 +52633,7 @@ theorem exists_kakeyaRadialBandPhysicalField_scaleCost_of_max_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K).card : ENNReal) *
           ((∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
@@ -53485,27 +52651,18 @@ theorem exists_kakeyaRadialBandPhysicalField_scaleCost_of_max_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaConcreteRadialBandAnnular
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteRadialBandAnnular
 
 -- BEGIN ScratchKakeyaRadialBandCappedGeometry
 section
 
-namespace Auto.Spherical.MSS.KakeyaRadialBandCappedGeometry
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaAngularShellPartition
-open Auto.Spherical.MSS.KakeyaCappedShellLevel
-open Auto.Spherical.MSS.KakeyaConcreteRadialBandAnnular
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -53696,7 +52853,7 @@ theorem exists_kakeyaRadialBandPhysicalField_narrow_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4))
           (radialBandAngularLevel i)).card : ENNReal) *
@@ -53704,8 +52861,8 @@ theorem exists_kakeyaRadialBandPhysicalField_narrow_bound
               (radialBandAngularLevel i),
             ENNReal.ofReal (4 * cost jni * ∫ xi : Euclidean 2,
               shiftedFiberSourceEnergy s
-                ((scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-                  (kakeyaRadialBandScale_pos i)).chartProfiles jni.1
+                (chartProfiles (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+                  (kakeyaRadialBandScale_pos i)) jni.1
                   (finiteTensorRadialBandProfiles L q i)) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus
                   (kakeyaRadialBandScale i)))) := by
@@ -53783,7 +52940,7 @@ theorem exists_kakeyaRadialBandPhysicalField_narrow_scaleCost_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4))
           (radialBandAngularLevel i)).card : ENNReal) *
@@ -53800,32 +52957,19 @@ theorem exists_kakeyaRadialBandPhysicalField_narrow_scaleCost_bound
 
 end
 
-end Auto.Spherical.MSS.KakeyaRadialBandCappedGeometry
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRadialBandCappedGeometry
 
 -- BEGIN ScratchKakeyaUniformRadialBandNarrow
 section
 
-namespace Auto.Spherical.MSS.KakeyaUniformRadialBandNarrow
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly
-open Auto.Spherical.MSS.KakeyaAngularChartReassembly.SmoothAngularFrequencyChartFamily
-open Auto.Spherical.MSS.KakeyaAngularShellPartition
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaCappedShellLevel
-open Auto.Spherical.MSS.KakeyaConcreteRadialBandAnnular
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaRadialBandCappedGeometry
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaUniformAllShiftCappedHpiece
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
+open SmoothAngularFrequencyChartFamily
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -53980,7 +53124,7 @@ theorem exists_kakeyaRadialBandPhysicalField_uniform_narrow_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4))
           (radialBandAngularLevel i)).card : ENNReal) *
@@ -53988,8 +53132,8 @@ theorem exists_kakeyaRadialBandPhysicalField_uniform_narrow_bound
               (radialBandAngularLevel i),
             ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
               shiftedFiberSourceEnergy s
-                ((scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
-                  (kakeyaRadialBandScale_pos i)).chartProfiles jni.1
+                (chartProfiles (scaledDyadicFourChartFamily (kakeyaRadialBandScale i)
+                  (kakeyaRadialBandScale_pos i)) jni.1
                   (finiteTensorRadialBandProfiles L q i)) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus
                   (kakeyaRadialBandScale i)))) := by
@@ -54042,7 +53186,7 @@ theorem exists_kakeyaRadialBandPhysicalField_uniform_narrow_bound
   let qBand := finiteTensorRadialBandProfiles L q i
   have hqBandCompact : ∀ l, HasCompactSupport (qBand l : Euclidean 2 -> Complex) := by
     exact finiteTensorRadialBandProfiles_compact L q hqcompact i
-  have hqBandActive : ∀ l, C.SupportedOnActive (qBand l) := by
+  have hqBandActive : ∀ l, SupportedOnActive C (qBand l) := by
     intro l xi hxi
     change kakeyaRadialBandPiece L (q l) i xi ≠ 0 at hxi
     exact kakeyaRadialBandPiece_supportedOn_scaledDyadicFrequencyAnnulus L (q l) i xi hxi
@@ -54063,7 +53207,7 @@ theorem exists_kakeyaRadialBandPhysicalField_uniform_narrow_bound
   let G : Real -> Euclidean 2 -> Complex := fun theta y =>
     kakeyaRadialBandPhysicalField L
       (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-        (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+        (circleDirection theta))
       i theta y
   have hFG : F = G := by
     funext theta y
@@ -54090,7 +53234,7 @@ theorem exists_kakeyaRadialBandPhysicalField_uniform_narrow_scaleCost_bound
         ENNReal.ofReal
           (‖kakeyaRadialBandPhysicalField L
             (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-              (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+              (circleDirection theta))
             i theta y‖ ^ 2)) <=
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4))
           (radialBandAngularLevel i)).card : ENNReal) *
@@ -54127,7 +53271,7 @@ theorem exists_global_kakeyaRadialBandPhysicalField_uniform_narrow_scaleCost_bou
             ENNReal.ofReal
               (‖kakeyaRadialBandPhysicalField L
                 (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-                  (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+                  (circleDirection theta))
                 i theta y‖ ^ 2)) ≤
             ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4))
               (radialBandAngularLevel i)).card : ENNReal) *
@@ -54191,7 +53335,7 @@ theorem exists_global_kakeyaRadialBandPhysicalField_uniform_narrow_scaleCost_bou
   let qBand := finiteTensorRadialBandProfiles L q i
   have hqBandCompact : ∀ l, HasCompactSupport (qBand l : Euclidean 2 -> Complex) := by
     exact finiteTensorRadialBandProfiles_compact L q hqcompact i
-  have hqBandActive : ∀ l, C.SupportedOnActive (qBand l) := by
+  have hqBandActive : ∀ l, SupportedOnActive C (qBand l) := by
     intro l xi hxi
     change kakeyaRadialBandPiece L (q l) i xi ≠ 0 at hxi
     exact kakeyaRadialBandPiece_supportedOn_scaledDyadicFrequencyAnnulus L (q l) i xi hxi
@@ -54206,9 +53350,9 @@ theorem exists_global_kakeyaRadialBandPhysicalField_uniform_narrow_scaleCost_bou
         ((shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K).card : ENNReal) *
           ∑ jni ∈ shiftedCappedShellIndicesGeneric (Finset.univ : Finset (Fin 4)) K,
             ENNReal.ofReal (4 * B * ∫ xi : Euclidean 2,
-              shiftedFiberSourceEnergy s (C.chartProfiles jni.1 qBand) a xi ∂
+              shiftedFiberSourceEnergy s (chartProfiles C jni.1 qBand) a xi ∂
                 (volume.restrict (scaledDyadicFrequencyAnnulus lambda))) := by
-    apply Auto.Spherical.MSS.KakeyaUniformCappedAnnularReassembly.lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_uniform
+    apply lintegral_iSup_sq_finiteTensorCircleMultiplierField_le_shiftedCapped_uniform
       C s qBand hqBandCompact hqBandActive a eps K
     · exact fun j xi => scaledChartAngle_lt_six lambda j xi
     · intro jni hjni
@@ -54227,7 +53371,7 @@ theorem exists_global_kakeyaRadialBandPhysicalField_uniform_narrow_scaleCost_bou
   let G : Real → Euclidean 2 → Complex := fun theta y =>
     kakeyaRadialBandPhysicalField L
       (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-        (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+        (circleDirection theta))
       i theta y
   have hFG : F = G := by
     funext theta y
@@ -54246,30 +53390,18 @@ theorem exists_global_kakeyaRadialBandPhysicalField_uniform_narrow_scaleCost_bou
 
 end
 
-end Auto.Spherical.MSS.KakeyaUniformRadialBandNarrow
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaUniformRadialBandNarrow
 
 -- BEGIN ScratchKakeyaGlobalHighRadialBandSummation
 section
 
-namespace Auto.Spherical.MSS.KakeyaGlobalHighRadialBandSummation
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaRadialBandCappedGeometry
-open Auto.Spherical.MSS.KakeyaRadialSourceEnergyOverlap
-open Auto.Spherical.MSS.KakeyaScaledSectorPartition
-open Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
-open Auto.Spherical.MSS.KakeyaShiftedCappedEnvelopeReassembly
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedMaxReassembly
-open Auto.Spherical.MSS.KakeyaUniformRadialBandNarrow
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -54354,7 +53486,7 @@ noncomputable def highRadialBandSquareMass
     ENNReal.ofReal
       (‖kakeyaRadialBandPhysicalField C
         (fun theta => scratch_finiteTensorTubeMultiplier s q hqcompact a
-          (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+          (circleDirection theta))
         i theta y‖ ^ 2)
 
 noncomputable def highRadialBandSourceEnergy
@@ -54584,29 +53716,18 @@ theorem exists_global_highRadialBand_summed_scaleCost_bound :
 
 end
 
-end Auto.Spherical.MSS.KakeyaGlobalHighRadialBandSummation
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaGlobalHighRadialBandSummation
 
 -- BEGIN ScratchKakeyaThreeBlockRadialEnergy
 section
 
-namespace Auto.Spherical.MSS.KakeyaThreeBlockRadialEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaFiniteLowRadialBandH1
-open Auto.Spherical.MSS.KakeyaFiniteRadialFrequencyDecomposition
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaGlobalHighRadialBandSummation
-open Auto.Spherical.MSS.KakeyaRadialBandLevel
-open Auto.Spherical.MSS.KakeyaRadialSourceEnergyOverlap
-open Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
-open Auto.Spherical.MSS.KakeyaUniformRadialBandNarrow
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -54849,21 +53970,18 @@ theorem exists_global_threeBlock_cost_family_and_hsummed :
     · exact hF
 end
 
-end Auto.Spherical.MSS.KakeyaThreeBlockRadialEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaThreeBlockRadialEnergy
 
 -- BEGIN ScratchKakeyaFiniteRadialNarrowEstimate
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteRadialNarrowEstimate
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaRadialBandLevel
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform ENNReal EuclideanSpace Pointwise
 
 noncomputable section
@@ -55056,22 +54174,17 @@ theorem eLpNorm_kakeyaRadialPhysicalEnvelope_le_log_three_halves_of_summed_energ
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteRadialNarrowEstimate
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteRadialNarrowEstimate
 
 -- BEGIN ScratchKakeyaFiniteTensorCircleMeas
 section
 
-namespace Auto.Spherical.MSS.KakeyaFiniteTensorCircleMeas
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory FourierTransform Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaCenteredFundamentalMax
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassPhysical
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaInverseFourierContinuity
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -55090,11 +54203,11 @@ theorem continuous_uncurry_finiteTensorCircleMultiplierField
       (finiteTensorCircleMultiplierField s q hqcompact a)) := by
   let m : Real -> Euclidean 2 -> Complex := fun theta xi =>
     scratch_finiteTensorTubeMultiplier s q hqcompact a
-      (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta) xi
+      (circleDirection theta) xi
   have hm : Continuous (Function.uncurry m) := by
     change Continuous (fun p : Real × Euclidean 2 =>
       scratch_finiteTensorTubeMultiplier s q hqcompact a
-        (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection p.1) p.2)
+        (circleDirection p.1) p.2)
     exact continuous_uncurry_scratch_finiteTensorTubeMultiplier_circle s q hqcompact a
   change Continuous (Function.uncurry (fun theta y =>
     FourierTransform.fourierInv (m theta) y))
@@ -55166,32 +54279,28 @@ theorem measurable_iSup_sq_finiteTensorCircleMultiplierField
 
 end
 
-end Auto.Spherical.MSS.KakeyaFiniteTensorCircleMeas
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaFiniteTensorCircleMeas
 
 -- BEGIN ScratchKakeyaRadialUnitEnvelopeBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaRadialUnitEnvelopeBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaPolarDirection
-open Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev radialUnitEnvelopeBridgeE2 := Euclidean 2
 
 /-- A single squared term is bounded by the directional maximal square; the
 square-root form is the one needed to compare the literal signed envelope to
 the radial `L²` envelope. -/
 theorem ennreal_ofReal_norm_le_iSup_sq_rpow_half
-    {Theta : Type*} (F : Theta → E2 → Complex) (theta : Theta) (y : E2) :
+    {Theta : Type*} (F : Theta → radialUnitEnvelopeBridgeE2 → Complex) (theta : Theta) (y : radialUnitEnvelopeBridgeE2) :
     ENNReal.ofReal ‖F theta y‖ ≤
       (⨆ eta : Theta, ENNReal.ofReal (‖F eta y‖ ^ 2)) ^ ((2 : Real)⁻¹) := by
   have hsq : ENNReal.ofReal ‖F theta y‖ ^ 2 ≤
@@ -55214,9 +54323,9 @@ circle parametrization gives a pointwise bound by the radial square-root
 envelope. -/
 theorem canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
     {ι : Type*} (s : Finset ι)
-    (q : ι → SchwartzMap E2 Complex)
-    (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
-    (a : ι → SchwartzMap Real Complex) (y : E2) :
+    (q : ι → SchwartzMap radialUnitEnvelopeBridgeE2 Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : radialUnitEnvelopeBridgeE2 → Complex))
+    (a : ι → SchwartzMap Real Complex) (y : radialUnitEnvelopeBridgeE2) :
     (⨆ omega : aux_lightRayDirection,
       ENNReal.ofReal ‖scratch_finiteTensorTubeBand s q hqcompact a omega.1 y‖) ≤
       kakeyaRadialPhysicalEnvelope
@@ -55231,7 +54340,7 @@ theorem canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
           (finiteTensorCircleRadialMultiplier s q hqcompact a) theta y := by
     rw [← htheta]
     change scratch_finiteTensorTubeBand s q hqcompact a
-      (KakeyaCircleDirection.circleDirection theta) y = _
+      (circleDirection theta) y = _
     rw [scratch_finiteTensorTubeBand_circle_eq_finiteTensorCircleMultiplierField]
     exact finiteTensorCircleMultiplierField_eq_kakeyaRadialPhysicalField
       s q hqcompact a theta y
@@ -55243,7 +54352,7 @@ theorem canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
 /-- A low-elaboration `eLpNorm` monotonicity wrapper for `ENNReal`-valued
 envelopes. -/
 theorem eLpNorm_mono_ennreal
-    {f g : E2 → ENNReal} (hfg : ∀ y, f y ≤ g y) :
+    {f g : radialUnitEnvelopeBridgeE2 → ENNReal} (hfg : ∀ y, f y ≤ g y) :
     eLpNorm f 2 volume ≤ eLpNorm g 2 volume := by
   apply eLpNorm_mono_enorm
   intro y
@@ -55253,10 +54362,10 @@ theorem eLpNorm_mono_ennreal
 seminorm. -/
 theorem eLpNorm_canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
     {ι : Type*} (s : Finset ι)
-    (q : ι → SchwartzMap E2 Complex)
-    (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
+    (q : ι → SchwartzMap radialUnitEnvelopeBridgeE2 Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : radialUnitEnvelopeBridgeE2 → Complex))
     (a : ι → SchwartzMap Real Complex) :
-    eLpNorm (fun y : E2 =>
+    eLpNorm (fun y : radialUnitEnvelopeBridgeE2 =>
       ⨆ omega : aux_lightRayDirection,
         ENNReal.ofReal ‖scratch_finiteTensorTubeBand s q hqcompact a omega.1 y‖)
       2 volume ≤
@@ -55267,31 +54376,22 @@ theorem eLpNorm_canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaRadialUnitEnvelopeBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRadialUnitEnvelopeBridge
 
 -- BEGIN ScratchKakeyaCanonicalScaleRadialBridge
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalScaleRadialBridge
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.MSS.ScratchKakeyaConcreteScaleBridge
-open Auto.Spherical.MSS.ScratchKakeyaRadialUnitEnvelopeBridge
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
-open Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev canonicalScaleRadialBridgeE2 := Euclidean 2
 
 /-- Exact mechanical handoff from the canonical reflected signed scale to the
 radial physical envelope.  The profiles on the radial side are literally the
@@ -55301,7 +54401,7 @@ theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_innerSlab_le_radial
     {ι : Type*} [Fintype ι]
     {r delta : Real} (hr : 0 < r) (hdelta : 0 < delta)
     (N j : Nat)
-    (q : ι → SchwartzMap E2 Complex)
+    (q : ι → SchwartzMap canonicalScaleRadialBridgeE2 Complex)
     (a : ι → SchwartzMap Real Complex)
     {timeRadius : Real} (htimeRadius : timeRadius < 1)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆
@@ -55309,10 +54409,10 @@ theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_innerSlab_le_radial
     let rho : Real := delta / canonicalBandlimitedDyadicScale r j
     let hrho : 0 < rho :=
       div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
-    let Q : ι → SchwartzMap E2 Complex := fun i =>
+    let Q : ι → SchwartzMap canonicalScaleRadialBridgeE2 Complex := fun i =>
       reflectedTubeProfile
         (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
-    let hQ : ∀ i, HasCompactSupport (Q i : E2 → Complex) := fun i =>
+    let hQ : ∀ i, HasCompactSupport (Q i : canonicalScaleRadialBridgeE2 → Complex) := fun i =>
       reflectedTubeProfile_hasCompactSupport_left
         (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
         (hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho)
@@ -55325,14 +54425,14 @@ theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_innerSlab_le_radial
   let rho : Real := delta / canonicalBandlimitedDyadicScale r j
   let hrho : 0 < rho :=
     div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
-  let Q : ι → SchwartzMap E2 Complex := fun i =>
+  let Q : ι → SchwartzMap canonicalScaleRadialBridgeE2 Complex := fun i =>
     reflectedTubeProfile
       (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
-  let hQ : ∀ i, HasCompactSupport (Q i : E2 → Complex) := fun i =>
+  let hQ : ∀ i, HasCompactSupport (Q i : canonicalScaleRadialBridgeE2 → Complex) := fun i =>
     reflectedTubeProfile_hasCompactSupport_left
       (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
       (hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho)
-  have hfield (omega y : E2) :
+  have hfield (omega y : canonicalScaleRadialBridgeE2) :
       canonicalTubeSignedScale r hr delta N
           (scratch_innerSlabCompactFrequencyTensor q a) j omega y =
         scratch_finiteTensorTubeBand Finset.univ Q hQ a omega y := by
@@ -55354,18 +54454,16 @@ theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_innerSlab_le_radial
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalScaleRadialBridge
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalScaleRadialBridge
 
 -- BEGIN ScratchKakeyaCanonicalWidthLogTransfer
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaCanonicalWidthLogTransfer
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.KakeyaWidthLogTransfer
 
 noncomputable section
 
@@ -55412,36 +54510,35 @@ theorem canonicalWidth_log_threeHalves_le
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaCanonicalWidthLogTransfer
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaCanonicalWidthLogTransfer
 
 -- BEGIN ScratchKakeyaRadialMultiplierSupport
 section
 
-namespace Auto.Spherical.MSS.KakeyaRadialMultiplierSupport
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev radialMultiplierSupportE2 := Euclidean 2
 
 /-- A common spatial-frequency support for the tensor profiles is inherited
 by every literal circle multiplier.  This is the support input for radial
 lowpass-plus-band reassembly. -/
 theorem support_finiteTensorCircleRadialMultiplier_of_profiles_supportedOn
     {ι : Type*} (s : Finset ι)
-    (q : ι → SchwartzMap E2 Complex)
-    (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
-    (a : ι → SchwartzMap Real Complex) (A : Set E2)
-    (hqsupport : ∀ i ∈ s, Function.support (q i : E2 → Complex) ⊆ A) :
+    (q : ι → SchwartzMap radialMultiplierSupportE2 Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : radialMultiplierSupportE2 → Complex))
+    (a : ι → SchwartzMap Real Complex) (A : Set radialMultiplierSupportE2)
+    (hqsupport : ∀ i ∈ s, Function.support (q i : radialMultiplierSupportE2 → Complex) ⊆ A) :
     ∀ theta,
       Function.support
-        (finiteTensorCircleRadialMultiplier s q hqcompact a theta : E2 → Complex) ⊆ A := by
+        (finiteTensorCircleRadialMultiplier s q hqcompact a theta : radialMultiplierSupportE2 → Complex) ⊆ A := by
   intro theta xi hxi
   by_contra hxiA
   have hqzero : ∀ i ∈ s, q i xi = 0 := by
@@ -55459,21 +54556,17 @@ theorem support_finiteTensorCircleRadialMultiplier_of_profiles_supportedOn
 
 end
 
-end Auto.Spherical.MSS.KakeyaRadialMultiplierSupport
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaRadialMultiplierSupport
 
 -- BEGIN ScratchKakeyaReflectedSourceEnergy
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaReflectedSourceEnergy
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.KakeyaScaledSectorEnergyOverlap
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators EuclideanSpace
 
 noncomputable section
@@ -55583,22 +54676,17 @@ theorem reflectedCanonicalTubeProfile_support_subset_closedBall
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaReflectedSourceEnergy
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaReflectedSourceEnergy
 
 -- BEGIN ScratchKakeyaReflectedEnergyNorm
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaReflectedEnergyNorm
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.ScratchKakeyaReflectedSourceEnergy
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.KakeyaFiniteCoreNorm
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -55638,21 +54726,17 @@ theorem ENNReal_ofReal_integral_shiftedFiberSourceEnergy_reflectedCanonical_le_c
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaReflectedEnergyNorm
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaReflectedEnergyNorm
 
 -- BEGIN ScratchKakeyaReflectedEnergyRoot
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaReflectedEnergyRoot
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.ScratchKakeyaReflectedEnergyNorm
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace
 
 noncomputable section
@@ -55704,39 +54788,23 @@ theorem rpow_half_ENNReal_ofReal_integral_shiftedFiberSourceEnergy_reflectedCano
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaReflectedEnergyRoot
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaReflectedEnergyRoot
 
 -- BEGIN ScratchKakeyaNarrowFromRadial
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaNarrowFromRadial
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalScaleRadialBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSquareTubeBridge
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalWidthLogTransfer
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalReflectedSquareUnitWiring
-open Auto.Spherical.MSS.ScratchKakeyaCanonicalSignedBroadScaleAdapter
-open Auto.Spherical.MSS.ScratchKakeyaConcreteScaleBridge
-open Auto.Spherical.MSS.ScratchKakeyaGTNarrowBroadAdapter
-open Auto.Spherical.MSS.KakeyaRadialMultiplierSupport
-open Auto.Spherical.MSS.ScratchKakeyaReflectedEnergyRoot
-open Auto.Spherical.MSS.ScratchKakeyaReflectedSourceEnergy
-open Auto.Spherical.MSS.ScratchKakeyaReflectedTubeTensorBridge
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
-open Auto.Spherical.MSS.KakeyaFiniteCoreLowpassEnergy
-open Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev narrowFromRadialE2 := Euclidean 2
 
 /-- The concrete radial input needed by the final GT narrow-scale adapter.
 It is deliberately expressed for the already post-canonical compact profile
@@ -55744,8 +54812,8 @@ family, so no compactness is imposed on the original Schwartz tensor. -/
 def HasRawPostProfileRadialNarrow (C : lpCutoffs 2) : Prop :=
   ∃ A : Real, 0 < A ∧
     ∀ {ι : Type} [Fintype ι]
-      (q : ι → SchwartzMap E2 Complex)
-      (hqcompact : ∀ i, HasCompactSupport (q i : E2 → Complex))
+      (q : ι → SchwartzMap narrowFromRadialE2 Complex)
+      (hqcompact : ∀ i, HasCompactSupport (q i : narrowFromRadialE2 → Complex))
       (a : ι → SchwartzMap Real Complex)
       {rho timeRadius : Real},
       0 < rho → rho ≤ 1 → timeRadius < 1 →
@@ -55753,11 +54821,11 @@ def HasRawPostProfileRadialNarrow (C : lpCutoffs 2) : Prop :=
         closedBall (3 / 2 : Real) timeRadius) →
       (∀ theta, Function.support
         (finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a theta :
-          E2 → Complex) ⊆ closedBall 0 (4 / rho)) →
+          narrowFromRadialE2 → Complex) ⊆ closedBall 0 (4 / rho)) →
       eLpNorm (kakeyaRadialPhysicalEnvelope
         (finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a)) 2 volume ≤
         ENNReal.ofReal (A * (1 + |Real.log rho|) ^ ((3 : Real) / 2)) *
-          (ENNReal.ofReal (∫ xi : E2,
+          (ENNReal.ofReal (∫ xi : narrowFromRadialE2,
             shiftedFiberSourceEnergy Finset.univ q a xi)) ^ ((2 : Real)⁻¹)
 
 set_option maxHeartbeats 800000 in
@@ -55766,7 +54834,7 @@ the exact weighted GT narrow-scale predicate for the literal signed scale. -/
 theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
     (C : lpCutoffs 2) (hraw : HasRawPostProfileRadialNarrow C)
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
-    (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re) :
+    (hcore : ∀ u : narrowFromRadialE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re) :
     HasCanonicalDyadicUnitNarrowScaleCostGT
       (canonicalTubeSignedScaleConcreteUnitWiringGT hc hr hcore) := by
   rcases hraw with ⟨A, hA, hraw⟩
@@ -55795,9 +54863,9 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
   let rho : Real := delta / canonicalBandlimitedDyadicScale r j
   let hrho : 0 < rho :=
     div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
-  let Q : ι → SchwartzMap E2 Complex := fun i =>
+  let Q : ι → SchwartzMap narrowFromRadialE2 Complex := fun i =>
     reflectedTubeProfile (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
-  let hQ : ∀ i, HasCompactSupport (Q i : E2 → Complex) := fun i =>
+  let hQ : ∀ i, HasCompactSupport (Q i : narrowFromRadialE2 → Complex) := fun i =>
     reflectedTubeProfile_hasCompactSupport_left
       (scratch_canonicalBandlimitedTubeMultiplier rho hrho) (q i)
       (hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho)
@@ -55811,12 +54879,12 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
       (canonicalWidth_log_threeHalves_le
         hdelta (by linarith) hr j (by simpa only [rho] using hrhoOne))
   have hQsupport : ∀ i,
-      Function.support (Q i : E2 → Complex) ⊆ closedBall 0 (4 / rho) := by
+      Function.support (Q i : narrowFromRadialE2 → Complex) ⊆ closedBall 0 (4 / rho) := by
     intro i
     exact reflectedCanonicalTubeProfile_support_subset_closedBall hrho (q i)
   have hmultsupport : ∀ theta,
       Function.support
-        (finiteTensorCircleRadialMultiplier Finset.univ Q hQ a theta : E2 → Complex) ⊆
+        (finiteTensorCircleRadialMultiplier Finset.univ Q hQ a theta : narrowFromRadialE2 → Complex) ⊆
           closedBall 0 (4 / rho) := by
     apply support_finiteTensorCircleRadialMultiplier_of_profiles_supportedOn
       Finset.univ Q hQ a (closedBall 0 (4 / rho))
@@ -55826,11 +54894,11 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
       eLpNorm (kakeyaRadialPhysicalEnvelope
         (finiteTensorCircleRadialMultiplier Finset.univ Q hQ a)) 2 volume ≤
         ENNReal.ofReal (A * (1 + |Real.log rho|) ^ ((3 : Real) / 2)) *
-          (ENNReal.ofReal (∫ xi : E2,
+          (ENNReal.ofReal (∫ xi : narrowFromRadialE2,
             shiftedFiberSourceEnergy Finset.univ Q a xi)) ^ ((2 : Real)⁻¹) :=
     @hraw ι _ Q hQ a rho timeRadius hrho hrhoOne htimeLt ha hmultsupport
   have henergyRoot :
-      (ENNReal.ofReal (∫ xi : E2,
+      (ENNReal.ofReal (∫ xi : narrowFromRadialE2,
         shiftedFiberSourceEnergy Finset.univ Q a xi)) ^ ((2 : Real)⁻¹) ≤
         ENNReal.ofReal U *
           eLpNorm (scratch_innerSlabCompactFrequencyTensor q a) 2 volume := by
@@ -55842,7 +54910,7 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
         (finiteTensorCircleRadialMultiplier Finset.univ Q hQ a)) 2 volume ≤
         ENNReal.ofReal
           (A * (1 + |Real.log rho|) ^ ((3 : Real) / 2)) *
-          (ENNReal.ofReal (∫ xi : E2,
+          (ENNReal.ofReal (∫ xi : narrowFromRadialE2,
             shiftedFiberSourceEnergy Finset.univ Q a xi)) ^ ((2 : Real)⁻¹) := hradbnd
   have hscale :
       eLpNorm (canonicalReflectedUnitScaleEnvelope (canonicalTubeSignedScale r hr)
@@ -55887,7 +54955,7 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
           eLpNorm (kakeyaRadialPhysicalEnvelope
             (finiteTensorCircleRadialMultiplier Finset.univ Q hQ a)) 2 volume := hscale
       _ ≤ ENNReal.ofReal (A * Lrho) *
-          (ENNReal.ofReal (∫ xi : E2,
+          (ENNReal.ofReal (∫ xi : narrowFromRadialE2,
             shiftedFiberSourceEnergy Finset.univ Q a xi)) ^ ((2 : Real)⁻¹) := by
           simpa only [Lrho] using hradial
       _ ≤ ENNReal.ofReal (A * Lrho) *
@@ -55964,14 +55032,14 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaNarrowFromRadial
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaNarrowFromRadial
 
 -- BEGIN ScratchKakeyaENNRealBudget
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaENNRealBudget
+section Auto.Spherical.MSSKakeya
 
 open scoped ENNReal
 
@@ -56064,47 +55132,31 @@ theorem exists_threeBlock_budget_factor
     ∃ K : Real, 0 < K ∧
       ENNReal.ofReal C0 * ENNReal.ofReal E +
           ENNReal.ofReal
-              KakeyaThreeBlockRadialEnergy.lowThreeRadialBandSourceConstant *
+              lowThreeRadialBandSourceConstant *
             ENNReal.ofReal (16 * E) +
           ENNReal.ofReal D * ENNReal.ofReal E ≤
         (ENNReal.ofReal K *
           (ENNReal.ofReal E) ^ ((2 : Real)⁻¹)) ^ 2 := by
   exact exists_budget_factor_of_nonneg hC0
-    KakeyaThreeBlockRadialEnergy.lowThreeRadialBandSourceConstant_pos.le hD hE
+    lowThreeRadialBandSourceConstant_pos.le hD hE
 
-end Auto.Spherical.MSS.ScratchKakeyaENNRealBudget
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaENNRealBudget
 
 -- BEGIN ScratchKakeyaConcreteRawPostProfileRadialNarrow
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaConcreteRawPostProfileRadialNarrow
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Metric Set FourierTransform
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.KakeyaRawPostProfileLowpassB0
-open Auto.Spherical.MSS.KakeyaThreeBlockRadialEnergy
-open Auto.Spherical.MSS.KakeyaFiniteRadialNarrowEstimate
-open Auto.Spherical.MSS.KakeyaFiniteTensorCircleMeas
-open Auto.Spherical.MSS.KakeyaFiniteTensorRadialBandBridge
-open Auto.Spherical.MSS.KakeyaGlobalHighRadialBandSummation
-open Auto.Spherical.MSS.KakeyaFiniteLowRadialBandH1
-open Auto.Spherical.MSS.KakeyaFiniteRadialPhysicalMaxReassembly
-open Auto.Spherical.MSS.KakeyaRadialBandLevel
-open Auto.Spherical.MSS.KakeyaCappedAngularMaxReassembly
-open Auto.Spherical.MSS.KakeyaLowFrequencyCompanion
-open Auto.Spherical.MSS.KakeyaRadialMaxNormAdapter
-open Auto.Spherical.MSS.KakeyaShiftedCappedFiberLobeEnergy
-open Auto.Spherical.MSS.ScratchKakeyaTubeCircleFieldBridge
-open Auto.Spherical.MSS.ScratchKakeyaNarrowFromRadial
-open Auto.Spherical.MSS.ScratchKakeyaENNRealBudget
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal EuclideanSpace FourierTransform
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev rawPostProfileRadialNarrowE2 := Euclidean 2
 
 /- Concrete radial narrow estimate for a compact post-canonical tensor. -/
 theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
@@ -56140,7 +55192,7 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
   refine ⟨A0 * H, mul_pos hA0 hHpos, ?_⟩
   intro ι _ q hqcompact a rho timeRadius hrho hrhoOne htime ha hsupp
   let N : Nat := kakeyaRadialBandLevel rho
-  let Ereal : Real := ∫ xi : E2, shiftedFiberSourceEnergy Finset.univ q a xi
+  let Ereal : Real := ∫ xi : rawPostProfileRadialNarrowE2, shiftedFiberSourceEnergy Finset.univ q a xi
   let E : ENNReal := ENNReal.ofReal Ereal
   let B0 : ENNReal := ENNReal.ofReal C0 * E
   let F : ENNReal := ENNReal.ofReal H * E ^ ((2 : Real)⁻¹)
@@ -56157,7 +55209,7 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
       finiteTensorCircleMultiplierFamily Finset.univ q hqcompact a =
         finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a := by
     rfl
-  have hlowMeas : Measurable (fun x : E2 =>
+  have hlowMeas : Measurable (fun x : rawPostProfileRadialNarrowE2 =>
       ⨆ theta : Real, ENNReal.ofReal
         (‖kakeyaRadialLowpassPhysicalField C
           (finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a)
@@ -56165,7 +55217,7 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
     rw [hfamily] at hlowMeasRaw
     exact hlowMeasRaw
   have hlowBound :
-      (∫⁻ x : E2, ⨆ theta : Real, ENNReal.ofReal
+      (∫⁻ x : rawPostProfileRadialNarrowE2, ⨆ theta : Real, ENNReal.ofReal
         (‖kakeyaRadialLowpassPhysicalField C
           (finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a)
           theta x‖ ^ 2)) ≤ B0 := by
@@ -56177,13 +55229,13 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
     rw [hfamily] at hlowBoundRaw
     simpa only [C0, Ereal, hC0eq] using hlowBoundRaw
   have hbandMeas : ∀ i ∈ Finset.range N,
-      Measurable (fun x : E2 => ⨆ theta : Real, ENNReal.ofReal
+      Measurable (fun x : rawPostProfileRadialNarrowE2 => ⨆ theta : Real, ENNReal.ofReal
         (‖kakeyaRadialBandPhysicalField C
           (finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a)
           i theta x‖ ^ 2)) := by
     intro i hi
-    let qBand : ι → SchwartzMap E2 Complex := finiteTensorRadialBandProfiles C q i
-    let hqBandCompact : ∀ l, HasCompactSupport (qBand l : E2 → Complex) :=
+    let qBand : ι → SchwartzMap rawPostProfileRadialNarrowE2 Complex := finiteTensorRadialBandProfiles C q i
+    let hqBandCompact : ∀ l, HasCompactSupport (qBand l : rawPostProfileRadialNarrowE2 → Complex) :=
       finiteTensorRadialBandProfiles_compact C q hqcompact i
     have hmeasRaw := measurable_iSup_sq_finiteTensorCircleMultiplierField
       Finset.univ qBand hqBandCompact a
@@ -56197,14 +55249,14 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
           (finiteTensorRadialBandProfiles C q i) _ a theta x =
         kakeyaRadialBandPhysicalField C
           (fun theta => scratch_finiteTensorTubeMultiplier Finset.univ q hqcompact a
-            (Auto.Spherical.MSS.KakeyaCircleDirection.circleDirection theta))
+            (circleDirection theta))
           i theta x
       exact finiteTensorCircleMultiplierField_radialBand_eq C Finset.univ q hqcompact a
         i theta x
     rw [hfield] at hmeasRaw
     exact hmeasRaw
   have hbandBound : ∀ i ∈ Finset.range N,
-      (∫⁻ x : E2, ⨆ theta : Real, ENNReal.ofReal
+      (∫⁻ x : rawPostProfileRadialNarrowE2, ⨆ theta : Real, ENNReal.ofReal
         (‖kakeyaRadialBandPhysicalField C
           (finiteTensorCircleRadialMultiplier Finset.univ q hqcompact a)
           i theta x‖ ^ 2)) ≤
@@ -56222,18 +55274,18 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
     hC0 hL0 hD.le hEreal hHone hcoeff
   have hbudget :
       ENNReal.ofReal C0 * ENNReal.ofReal
-          (∫ xi : E2, shiftedFiberSourceEnergy Finset.univ q a xi) +
+          (∫ xi : rawPostProfileRadialNarrowE2, shiftedFiberSourceEnergy Finset.univ q a xi) +
         ENNReal.ofReal lowThreeRadialBandSourceConstant *
-          ENNReal.ofReal (16 * ∫ xi : E2,
+          ENNReal.ofReal (16 * ∫ xi : rawPostProfileRadialNarrowE2,
             shiftedFiberSourceEnergy Finset.univ q a xi) +
         ENNReal.ofReal D * ENNReal.ofReal
-          (∫ xi : E2, shiftedFiberSourceEnergy Finset.univ q a xi) ≤ F ^ 2 := by
+          (∫ xi : rawPostProfileRadialNarrowE2, shiftedFiberSourceEnergy Finset.univ q a xi) ≤ F ^ 2 := by
     change ENNReal.ofReal C0 * E +
         ENNReal.ofReal L0 * ENNReal.ofReal (16 * Ereal) +
         ENNReal.ofReal D * E ≤ F ^ 2
     simpa only [E, F] using hbudgetRaw
   have hB0 : B0 ≤ ENNReal.ofReal C0 * ENNReal.ofReal
-      (∫ xi : E2, shiftedFiberSourceEnergy Finset.univ q a xi) := by
+      (∫ xi : rawPostProfileRadialNarrowE2, shiftedFiberSourceEnergy Finset.univ q a xi) := by
     change B0 ≤ ENNReal.ofReal C0 * E
     exact le_rfl
   have hsummed := hsummedData C0 B0 F hB0 hbudget
@@ -56267,39 +55319,35 @@ theorem hasRawPostProfileRadialNarrow (C : lpCutoffs 2) :
             ring
     _ = ENNReal.ofReal ((A0 * H) *
           (1 + |Real.log rho|) ^ ((3 : Real) / 2)) *
-        (ENNReal.ofReal (∫ xi : E2,
+        (ENNReal.ofReal (∫ xi : rawPostProfileRadialNarrowE2,
           shiftedFiberSourceEnergy Finset.univ q a xi)) ^ ((2 : Real)⁻¹) := by
       dsimp only [Lrho, E, Ereal]
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaConcreteRawPostProfileRadialNarrow
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteRawPostProfileRadialNarrow
 
 -- BEGIN ScratchKakeyaConcreteNarrowScaleCost
 section
 
-namespace Auto.Spherical.MSS.ScratchKakeyaConcreteNarrowScaleCost
+section Auto.Spherical.MSSKakeya
 
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.LittlewoodPaley
-open Auto.Spherical.MSS.ScratchKakeyaBandlimitedCore
-open Auto.Spherical.MSS.ScratchKakeyaGTNarrowBroadAdapter
-open Auto.Spherical.MSS.ScratchKakeyaNarrowFromRadial
-open Auto.Spherical.MSS.ScratchKakeyaConcreteRawPostProfileRadialNarrow
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.LittlewoodPaley
 open scoped ENNReal EuclideanSpace
 
 noncomputable section
 
-abbrev E2 := Euclidean 2
+abbrev concreteNarrowScaleCostE2 := Euclidean 2
 
 /-- The fully concrete narrow-scale input for the canonical signed tube
 operator.  The radial Littlewood--Paley cutoff is chosen once here; every
 constant subsequently used is uniform in the finite tensor and scale data. -/
 theorem uniformConcreteNarrowScaleCost :
     ∀ {c r : Real} (hc : 0 < c) (hr : 0 < r)
-      (hcore : ∀ u : E2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re),
+      (hcore : ∀ u : concreteNarrowScaleCostE2, ‖u‖ ≤ r → c ≤ (canonicalPositiveCore u).re),
       HasCanonicalDyadicUnitNarrowScaleCostGT
         (canonicalTubeSignedScaleConcreteUnitWiringGT hc hr hcore) := by
   intro c r hc hr hcore
@@ -56309,19 +55357,17 @@ theorem uniformConcreteNarrowScaleCost :
 
 end
 
-end Auto.Spherical.MSS.ScratchKakeyaConcreteNarrowScaleCost
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaConcreteNarrowScaleCost
 
 -- BEGIN ScratchKakeyaLightRayMaximalFinal
 section
 
-namespace Auto.Spherical.MSS.KakeyaFinal
+section Auto.Spherical.MSSKakeya
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceCore
-open Auto.Spherical.MSS.ScratchKakeyaFinalLiteralClosure
-open Auto.Spherical.MSS.ScratchKakeyaConcreteNarrowScaleCost
+open Auto.Spherical.SurfaceMeasureDecay
 open scoped BigOperators ENNReal EuclideanSpace
 
 /-- The literal light-ray maximal estimate, assembled from the concrete
@@ -56507,6 +55553,8 @@ theorem continuumFineKernelWeightedPairing_le_of_finalHasLightRayMaximalEstimate
     henergyWeighted hprod hRayInt hbounded hinputMeas hinputFour hmaxMeas
     hmaxTwo hKakeya
 
-end Auto.Spherical.MSS.KakeyaFinal
+end Auto.Spherical.MSSKakeya
 end
 -- END ScratchKakeyaLightRayMaximalFinal
+
+end Auto.Spherical.MSSKakeya

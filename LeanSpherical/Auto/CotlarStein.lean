@@ -4,6 +4,9 @@ import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Analysis.CStarAlgebra.Basic
 import Mathlib.Analysis.Real.Sqrt
 
+
+namespace Auto.CotlarStein
+
 /-!
 # The Cotlar--Stein almost orthogonality lemma
 
@@ -35,7 +38,7 @@ along the powers of two.
 * E. M. Stein, *Harmonic analysis*, Ch. VII, §2.
 -/
 
-namespace Auto.CotlarStein
+section Auto.CotlarStein
 
 open ContinuousLinearMap Finset
 
@@ -463,5 +466,7 @@ theorem norm_sum_le_of_cotlar_stein (T : ι → (E →L[𝕜] F)) {s : Finset ι
   linarith [hcontra, hN, hrm1]
 
 end
+
+end Auto.CotlarStein
 
 end Auto.CotlarStein

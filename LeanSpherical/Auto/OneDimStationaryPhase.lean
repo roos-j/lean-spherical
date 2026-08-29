@@ -12,6 +12,8 @@ import Mathlib.Analysis.Calculus.TaylorIntegral
 import Mathlib.Analysis.SpecialFunctions.Integrals.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 
+namespace Auto.OneDimStationaryPhase
+
 /-!
 # One-dimensional stationary phase
 
@@ -27,15 +29,14 @@ claimed here: later applications can reduce a concrete phase to this quadratic
 normal form and use the quantitative results below.
 -/
 
-namespace Auto.Spherical.OneDimStationaryPhase
+section Auto.OneDimStationaryPhase
 
 open Filter MeasureTheory Set
-open Auto.Spherical.SurfaceDecay
-open Auto.Spherical.FractalDilations.RepeatedOscillatoryIBP
-open Auto.Spherical.FractalDilations.OscillatoryIBP
-open Auto.Spherical.FractalDilations.CompactOscillatoryIBP
-open Auto.Spherical.FractalDilations.QuadraticStationaryPhase
-open Auto.Spherical.FractalDilations.QuadraticMomentDerivatives
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
+open Auto.Spherical.FractalDilations.Auxiliary
 open scoped ContDiff
 
 noncomputable section
@@ -2429,4 +2430,6 @@ theorem hasRapidDecayRemainder_of_contDiff_deriv
 
 end
 
-end Auto.Spherical.OneDimStationaryPhase
+end Auto.OneDimStationaryPhase
+
+end Auto.OneDimStationaryPhase

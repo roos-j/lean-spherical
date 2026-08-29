@@ -7,6 +7,8 @@ import Mathlib.Analysis.SpecialFunctions.Integrals.Basic
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 
+namespace Auto.HardyLittlewoodSobolev
+
 /-!
 # The bilinear Hardy--Littlewood--Sobolev inequality on the line
 
@@ -41,7 +43,7 @@ summable precisely because `r > 1`.
 * E. H. Lieb and M. Loss, *Analysis*, Theorem 4.3.
 -/
 
-namespace Auto.HardyLittlewoodSobolev
+section Auto.HardyLittlewoodSobolev
 
 open MeasureTheory Set
 open scoped ENNReal NNReal
@@ -1136,5 +1138,7 @@ theorem lintegral_bilinear_riesz_le {lam : ℝ} (hlam0 : 0 < lam) (hlam1 : lam <
     _ = ENNReal.ofReal (hlsConst lam) * Ah * Ag := by ring
 
 end Main
+
+end Auto.HardyLittlewoodSobolev
 
 end Auto.HardyLittlewoodSobolev
