@@ -4,6 +4,7 @@ import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.Auxiliary
 import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
 import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
+import LeanSpherical.Definitions
 
 namespace Auto.Spherical.SphericalMaximal
 
@@ -5585,6 +5586,765 @@ end
 
 
 end FormerNamespace_4
+
+
+/-! ## Stein's endpoint example -/
+
+section SteinEndpoint
+
+open MeasureTheory Metric Set
+open scoped ENNReal
+
+noncomputable section
+
+/-- A chordal cap of the concrete unit sphere. -/
+def steinSphericalCap (d : ℕ) (v : Euclidean d) (ε : ℝ) :
+    Set (sphere (0 : Euclidean d) 1) :=
+  {ω | dist (ω : Euclidean d) v < ε}
+
+theorem measurableSet_steinSphericalCap (d : ℕ) (v : Euclidean d) (ε : ℝ) :
+    MeasurableSet (steinSphericalCap d v ε) := by
+  change MeasurableSet
+    ((Subtype.val : sphere (0 : Euclidean d) 1 → Euclidean d) ⁻¹' ball v ε)
+  exact isOpen_ball.measurableSet.preimage continuous_subtype_val.measurable
+
+/-- The radial power measure of a positive interval is bounded by the
+largest radial density times its length. -/
+private theorem stein_volumeIoiPow_preimage_Ioo_le
+    (n : ℕ) {lo hi : ℝ} (hlo : 0 ≤ lo) (_hhi : lo ≤ hi) :
+    (Measure.volumeIoiPow n) (Subtype.val ⁻¹' Ioo lo hi) ≤
+      ENNReal.ofReal (hi ^ n) * ENNReal.ofReal (hi - lo) := by
+  let J : Set ℝ := Ioo lo hi
+  let S : Set (Ioi (0 : ℝ)) := Subtype.val ⁻¹' J
+  have hJ : MeasurableSet J := by
+    dsimp [J]
+    exact measurableSet_Ioo
+  have hS : MeasurableSet S := by
+    exact hJ.preimage measurable_subtype_coe
+  have hJpos : J ⊆ Ioi (0 : ℝ) := by
+    intro ρ hρ
+    exact lt_of_le_of_lt hlo hρ.1
+  let F : ℝ → ENNReal := J.indicator (fun _ => (1 : ENNReal))
+  have hF : Measurable F := by
+    exact (measurable_indicator_const_iff 1).mpr hJ
+  have hmeasure :
+      (Measure.volumeIoiPow n) S =
+        ∫⁻ ρ in Ioi (0 : ℝ), ENNReal.ofReal ρ ^ n * F ρ := by
+    calc
+      (Measure.volumeIoiPow n) S =
+          ∫⁻ ρ : Ioi (0 : ℝ), S.indicator (fun _ => (1 : ENNReal)) ρ ∂
+            Measure.volumeIoiPow n := by
+        rw [lintegral_indicator_const hS]
+        simp
+      _ = ∫⁻ ρ : Ioi (0 : ℝ), F ρ.1 ∂Measure.volumeIoiPow n := by
+        apply lintegral_congr
+        intro ρ
+        by_cases hρ : ρ.1 ∈ J
+        · have hρS : ρ ∈ S := hρ
+          simp [F, hρ, hρS]
+        · have hρS : ρ ∉ S := hρ
+          simp [F, hρ, hρS]
+      _ = ∫⁻ ρ in Ioi (0 : ℝ), ENNReal.ofReal ρ ^ n * F ρ :=
+        lintegral_volumeIoiPow n F hF
+  have hpoint (ρ : ℝ) :
+      ENNReal.ofReal ρ ^ n * F ρ ≤ ENNReal.ofReal (hi ^ n) * F ρ := by
+    by_cases hρ : ρ ∈ J
+    · have hFρ : F ρ = 1 := by simp [F, hρ]
+      rw [hFρ, mul_one, mul_one]
+      have hρnonneg : 0 ≤ ρ := (hJpos hρ).le
+      rw [← ENNReal.ofReal_pow hρnonneg]
+      apply ENNReal.ofReal_le_ofReal
+      exact pow_le_pow_left₀ hρnonneg hρ.2.le n
+    · have hFρ : F ρ = 0 := by simp [F, hρ]
+      rw [hFρ, mul_zero, mul_zero]
+  have hupper :
+      (∫⁻ ρ in Ioi (0 : ℝ), ENNReal.ofReal ρ ^ n * F ρ) ≤
+        ∫⁻ ρ in Ioi (0 : ℝ), ENNReal.ofReal (hi ^ n) * F ρ := by
+    apply lintegral_mono
+    intro ρ
+    exact hpoint ρ
+  have hconst :
+      (∫⁻ ρ in Ioi (0 : ℝ), ENNReal.ofReal (hi ^ n) * F ρ) =
+        ENNReal.ofReal (hi ^ n) * ENNReal.ofReal (hi - lo) := by
+    rw [show (fun ρ : ℝ => ENNReal.ofReal (hi ^ n) * F ρ) =
+      J.indicator (fun _ => ENNReal.ofReal (hi ^ n)) by
+        funext ρ
+        by_cases hρ : ρ ∈ J <;> simp [F, hρ]]
+    rw [lintegral_indicator hJ]
+    change ∫⁻ ρ : ℝ, ENNReal.ofReal (hi ^ n) ∂
+      (volume.restrict (Ioi (0 : ℝ))).restrict J = _
+    rw [Measure.restrict_restrict hJ]
+    simp only [Set.inter_eq_left.mpr hJpos]
+    rw [setLIntegral_const, Real.volume_Ioo]
+  change (Measure.volumeIoiPow n) S ≤ _
+  rw [hmeasure]
+  exact hupper.trans_eq hconst
+
+/-- A point in a small Euclidean ball about a unit vector has polar direction
+in the corresponding spherical cap and radial coordinate in a short interval. -/
+private theorem stein_polar_mem_cap_radialInterval_of_mem_ball
+    {n : ℕ} {v : Euclidean (n + 1)} (hv : ‖v‖ = 1) {ε : ℝ} (hε : 0 < ε)
+    (ω : sphere (0 : Euclidean (n + 1)) 1) (ρ : Ioi (0 : ℝ))
+    (hmem : ρ.1 • (ω : Euclidean (n + 1)) ∈ ball v (ε / 4)) :
+    ω ∈ steinSphericalCap (n + 1) v ε ∧
+      ρ ∈ Subtype.val ⁻¹' Ioo (1 - ε / 4) (1 + ε / 4) := by
+  have hωnorm : ‖(ω : Euclidean (n + 1))‖ = 1 := by
+    simpa only [mem_sphere_zero_iff_norm] using ω.property
+  have hρnorm : ‖ρ.1 • (ω : Euclidean (n + 1))‖ = ρ.1 := by
+    rw [norm_smul, Real.norm_eq_abs]
+    have hρpos : 0 < ρ.1 := ρ.2
+    rw [abs_of_pos hρpos, hωnorm, mul_one]
+  have hdist : dist (ρ.1 • (ω : Euclidean (n + 1))) v < ε / 4 := hmem
+  have hrad : |ρ.1 - 1| < ε / 4 := by
+    calc
+      |ρ.1 - 1| = |‖ρ.1 • (ω : Euclidean (n + 1))‖ - ‖v‖| := by
+        rw [hρnorm, hv]
+      _ ≤ ‖ρ.1 • (ω : Euclidean (n + 1)) - v‖ :=
+        abs_norm_sub_norm_le _ _
+      _ = dist (ρ.1 • (ω : Euclidean (n + 1))) v := by
+        rw [dist_eq_norm]
+      _ < ε / 4 := hmem
+  constructor
+  · change dist (ω : Euclidean (n + 1)) v < ε
+    calc
+      dist (ω : Euclidean (n + 1)) v ≤
+          dist (ω : Euclidean (n + 1)) (ρ.1 • (ω : Euclidean (n + 1))) +
+            dist (ρ.1 • (ω : Euclidean (n + 1))) v :=
+        dist_triangle _ _ _
+      _ = |1 - ρ.1| + dist (ρ.1 • (ω : Euclidean (n + 1))) v := by
+        congr 1
+        rw [dist_eq_norm]
+        have hsub : (ω : Euclidean (n + 1)) - ρ.1 •
+            (ω : Euclidean (n + 1)) = (1 - ρ.1) • (ω : Euclidean (n + 1)) := by
+          module
+        rw [hsub, norm_smul, Real.norm_eq_abs, hωnorm, mul_one]
+      _ = |ρ.1 - 1| + dist (ρ.1 • (ω : Euclidean (n + 1))) v := by
+        rw [abs_sub_comm]
+      _ < ε := by linarith [hrad, hdist]
+  · rcases abs_lt.mp hrad with ⟨hl, hu⟩
+    constructor <;> linarith
+
+/-- Polar coordinates compare a Euclidean ball about a unit vector with its
+angular cap times a short radial interval. -/
+private theorem stein_volume_ball_le_unitSurfaceMeasure_cap_mul_radial
+    {n : ℕ} {v : Euclidean (n + 1)} (hv : ‖v‖ = 1) {ε : ℝ} (hε : 0 < ε) :
+    volume (ball v (ε / 4)) ≤
+      unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) *
+        (Measure.volumeIoiPow n)
+          (Subtype.val ⁻¹' Ioo (1 - ε / 4) (1 + ε / 4)) := by
+  let B : Set (Euclidean (n + 1)) := ball v (ε / 4)
+  let S : Set (sphere (0 : Euclidean (n + 1)) 1) :=
+    steinSphericalCap (n + 1) v ε
+  let I : Set (Ioi (0 : ℝ)) :=
+    Subtype.val ⁻¹' Ioo (1 - ε / 4) (1 + ε / 4)
+  have hB : MeasurableSet B := isOpen_ball.measurableSet
+  have hS : MeasurableSet S := measurableSet_steinSphericalCap (n + 1) v ε
+  have hI : MeasurableSet I := measurableSet_Ioo.preimage measurable_subtype_coe
+  have hindicator (z : sphere (0 : Euclidean (n + 1)) 1 × Ioi (0 : ℝ)) :
+      B.indicator (fun _ => (1 : ENNReal))
+          (z.2.1 • (z.1 : Euclidean (n + 1))) ≤
+        (S ×ˢ I).indicator (fun _ => (1 : ENNReal)) z := by
+    by_cases hz : z.2.1 • (z.1 : Euclidean (n + 1)) ∈ B
+    · have hz' : z.1 ∈ S ∧ z.2 ∈ I := by
+        exact stein_polar_mem_cap_radialInterval_of_mem_ball hv hε z.1 z.2 hz
+      have hz'' : z ∈ S ×ˢ I := hz'
+      rw [Set.indicator_of_mem hz, Set.indicator_of_mem hz'']
+    · rw [Set.indicator_of_notMem hz]
+      exact zero_le
+  calc
+    volume (ball v (ε / 4)) =
+        ∫⁻ x : Euclidean (n + 1), B.indicator (fun _ => (1 : ENNReal)) x := by
+          rw [lintegral_indicator_const hB]
+          simp [B]
+    _ = ∫⁻ z : sphere (0 : Euclidean (n + 1)) 1 × Ioi (0 : ℝ),
+          B.indicator (fun _ => (1 : ENNReal))
+            (z.2.1 • (z.1 : Euclidean (n + 1))) ∂
+          ((unitSurfaceMeasure (n + 1)).prod (Measure.volumeIoiPow n)) := by
+          simpa only [Nat.add_sub_cancel] using
+            (lintegral_polar_unitSurfaceMeasure
+              (d := n + 1) (by omega)
+              (B.indicator (fun _ => (1 : ENNReal))))
+    _ ≤ ∫⁻ z : sphere (0 : Euclidean (n + 1)) 1 × Ioi (0 : ℝ),
+          (S ×ˢ I).indicator (fun _ => (1 : ENNReal)) z ∂
+          ((unitSurfaceMeasure (n + 1)).prod (Measure.volumeIoiPow n)) :=
+      lintegral_mono hindicator
+    _ = ((unitSurfaceMeasure (n + 1)).prod (Measure.volumeIoiPow n)) (S ×ˢ I) := by
+      rw [lintegral_indicator_const (hS.prod hI)]
+      simp
+    _ = unitSurfaceMeasure (n + 1) S * (Measure.volumeIoiPow n) I :=
+      MeasureTheory.Measure.prod_prod S I
+
+/-- Dividing the preceding polar estimate by a controlled radial interval
+gives a lower estimate for a cap about any unit vector. -/
+private theorem stein_cap_volume_div_radialCoefficient_le_unitSurfaceMeasure
+    (n : ℕ) {v : Euclidean (n + 1)} (hv : ‖v‖ = 1)
+    {ε : ℝ} (hε : 0 < ε) (hεhalf : ε ≤ 1 / 2) :
+    volume (ball v (ε / 4)) /
+        (ENNReal.ofReal ((2 : ℝ) ^ n) * ENNReal.ofReal (ε / 2)) ≤
+      unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) := by
+  have hradial0 := stein_volumeIoiPow_preimage_Ioo_le n
+    (lo := 1 - ε / 4) (hi := 1 + ε / 4)
+    (by linarith) (by linarith)
+  have hhi_nonneg : 0 ≤ 1 + ε / 4 := by linarith
+  have hhi_le_two : 1 + ε / 4 ≤ 2 := by linarith
+  have hcoeff : ENNReal.ofReal ((1 + ε / 4) ^ n) ≤
+      ENNReal.ofReal ((2 : ℝ) ^ n) := by
+    apply ENNReal.ofReal_le_ofReal
+    exact pow_le_pow_left₀ hhi_nonneg hhi_le_two n
+  have hlength : ENNReal.ofReal ((1 + ε / 4) - (1 - ε / 4)) =
+      ENNReal.ofReal (ε / 2) := by ring_nf
+  have hradial :
+      (Measure.volumeIoiPow n) (Subtype.val ⁻¹' Ioo (1 - ε / 4) (1 + ε / 4)) ≤
+        ENNReal.ofReal ((2 : ℝ) ^ n) * ENNReal.ofReal (ε / 2) := by
+    calc
+      (Measure.volumeIoiPow n) (Subtype.val ⁻¹' Ioo (1 - ε / 4) (1 + ε / 4)) ≤
+          ENNReal.ofReal ((1 + ε / 4) ^ n) *
+            ENNReal.ofReal ((1 + ε / 4) - (1 - ε / 4)) := hradial0
+      _ = ENNReal.ofReal ((1 + ε / 4) ^ n) * ENNReal.ofReal (ε / 2) := by
+        rw [hlength]
+      _ ≤ ENNReal.ofReal ((2 : ℝ) ^ n) * ENNReal.ofReal (ε / 2) := by
+        simpa only [mul_comm] using
+          (mul_le_mul_right hcoeff (ENNReal.ofReal (ε / 2)))
+  have hcone := stein_volume_ball_le_unitSurfaceMeasure_cap_mul_radial hv hε
+  have hmul : volume (ball v (ε / 4)) ≤
+      unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) *
+        (ENNReal.ofReal ((2 : ℝ) ^ n) * ENNReal.ofReal (ε / 2)) := by
+    calc
+      volume (ball v (ε / 4)) ≤
+          unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) *
+            (Measure.volumeIoiPow n)
+              (Subtype.val ⁻¹' Ioo (1 - ε / 4) (1 + ε / 4)) := hcone
+      _ ≤ unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) *
+            (ENNReal.ofReal ((2 : ℝ) ^ n) * ENNReal.ofReal (ε / 2)) := by
+          simpa only [mul_comm] using
+            (mul_le_mul_left hradial
+              (unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε)))
+  refine (ENNReal.div_le_iff ?_ ?_).2 hmul
+  · exact mul_ne_zero
+      (ENNReal.ofReal_pos.mpr (pow_pos (by norm_num) _)).ne'
+      (ENNReal.ofReal_pos.mpr (by linarith)).ne'
+  · exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top
+
+/-- Uniform power lower bound for a small cap about an arbitrary unit vector. -/
+private theorem exists_stein_unitSurfaceMeasure_cap_ge_power
+    (n : ℕ) :
+    ∃ c : ENNReal, 0 < c ∧ c ≠ ∞ ∧ ∀ v : Euclidean (n + 1), ‖v‖ = 1 →
+      ∀ ε : ℝ, 0 < ε → ε ≤ 1 / 2 →
+        c * ENNReal.ofReal (ε ^ n) ≤
+          unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) := by
+  let V : ENNReal := volume (ball (0 : Euclidean (n + 1)) (1 / 4))
+  let A : ENNReal := ENNReal.ofReal ((2 : ℝ) ^ n)
+  let B : ENNReal := ENNReal.ofReal (1 / 2)
+  let K : ENNReal := A * B
+  let c : ENNReal := V / K
+  have hV0 : V ≠ 0 := by
+    dsimp [V]
+    exact (Metric.measure_ball_pos volume (0 : Euclidean (n + 1)) (by norm_num)).ne'
+  have hVtop : V ≠ ∞ := by
+    dsimp [V]
+    exact (measure_ball_lt_top (μ := volume) (x := (0 : Euclidean (n + 1)))
+      (r := (1 / 4 : ℝ))).ne
+  have hA0 : A ≠ 0 := by
+    dsimp [A]
+    exact (ENNReal.ofReal_pos.mpr (pow_pos (by norm_num) _)).ne'
+  have hB0 : B ≠ 0 := by
+    dsimp [B]
+    exact (ENNReal.ofReal_pos.mpr (by norm_num)).ne'
+  have hK0 : K ≠ 0 := mul_ne_zero hA0 hB0
+  have hKtop : K ≠ ∞ := by
+    dsimp [K, A, B]
+    exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top
+  refine ⟨c, ENNReal.div_pos hV0 hKtop, ENNReal.div_ne_top hVtop hK0, ?_⟩
+  intro v hv ε hε hεhalf
+  have hA_top : A ≠ ∞ := by
+    dsimp [A]
+    exact ENNReal.ofReal_ne_top
+  have hD0 : A * ENNReal.ofReal (ε / 2) ≠ 0 := by
+    apply mul_ne_zero hA0
+    exact (ENNReal.ofReal_pos.mpr (by linarith)).ne'
+  have hDtop : A * ENNReal.ofReal (ε / 2) ≠ ∞ :=
+    ENNReal.mul_ne_top hA_top ENNReal.ofReal_ne_top
+  have hdenom : A * ENNReal.ofReal (ε / 2) = K * ENNReal.ofReal ε := by
+    have hhalf : ENNReal.ofReal (ε / 2) = ENNReal.ofReal ε * B := by
+      rw [show ε / 2 = ε * (1 / 2) by ring,
+        ENNReal.ofReal_mul hε.le]
+    rw [hhalf]
+    dsimp [K]
+    ring
+  have hVformula : V =
+      (ENNReal.ofReal (1 / 4 : ℝ)) ^ (n + 1) *
+        volume (ball (0 : Euclidean (n + 1)) 1) := by
+    dsimp [V]
+    rw [Measure.addHaar_ball_of_pos volume (0 : Euclidean (n + 1)) (by norm_num)]
+    rw [finrank_euclideanSpace_fin]
+    rw [ENNReal.ofReal_pow (by norm_num : (0 : ℝ) ≤ 1 / 4)]
+  have hvol : volume (ball v (ε / 4)) =
+      (ENNReal.ofReal ε) ^ (n + 1) * V := by
+    rw [Measure.addHaar_ball_of_pos volume v (by positivity), hVformula]
+    rw [finrank_euclideanSpace_fin]
+    rw [show (ε / 4) ^ (n + 1) = ε ^ (n + 1) * (1 / 4) ^ (n + 1) by ring]
+    rw [ENNReal.ofReal_mul (pow_nonneg hε.le _),
+      ENNReal.ofReal_pow hε.le,
+      ENNReal.ofReal_pow (by positivity)]
+    ring
+  have hscaled : c * ENNReal.ofReal (ε ^ n) ≤
+      volume (ball v (ε / 4)) /
+        (A * ENNReal.ofReal (ε / 2)) := by
+    apply (ENNReal.le_div_iff_mul_le (Or.inl hD0) (Or.inl hDtop)).2
+    rw [hvol, hdenom, ENNReal.ofReal_pow hε.le]
+    dsimp [c]
+    calc
+      (V / K * ENNReal.ofReal ε ^ n) * (K * ENNReal.ofReal ε) =
+          (V / K * K) * (ENNReal.ofReal ε ^ n * ENNReal.ofReal ε) := by ring
+      _ = V * ENNReal.ofReal ε ^ (n + 1) := by
+          rw [ENNReal.div_mul_cancel hK0 hKtop, ← pow_succ]
+      _ ≤ ENNReal.ofReal ε ^ (n + 1) * V := by
+        simpa only [mul_comm] using
+          (le_refl (V * ENNReal.ofReal ε ^ (n + 1)))
+  calc
+    c * ENNReal.ofReal (ε ^ n) ≤
+        volume (ball v (ε / 4)) /
+          (A * ENNReal.ofReal (ε / 2)) := hscaled
+    _ ≤ unitSurfaceMeasure (n + 1) (steinSphericalCap (n + 1) v ε) := by
+      exact stein_cap_volume_div_radialCoefficient_le_unitSurfaceMeasure n hv hε hεhalf
+
+/-- Bounded measurable real data are integrable after restricting to a
+sampling sphere. -/
+private theorem stein_integrable_sphere_comp_of_bounded_measurable
+    {d : ℕ} {g : Euclidean d → ℝ} (hg : Measurable g) {B : ℝ}
+    (hbound : ∀ y, ‖g y‖ ≤ B) (t : ℝ) (x : Euclidean d) :
+    Integrable (fun ω : sphere (0 : Euclidean d) 1 =>
+      g (x + t • (ω : Euclidean d))) (unitSurfaceMeasure d) := by
+  letI : IsFiniteMeasure (unitSurfaceMeasure d) := by
+    unfold unitSurfaceMeasure
+    infer_instance
+  apply Integrable.of_bound
+  · change AEStronglyMeasurable (g ∘ fun ω : sphere (0 : Euclidean d) 1 =>
+      x + t • (ω : Euclidean d)) (unitSurfaceMeasure d)
+    exact (hg.comp_aemeasurable
+      (((continuous_const : Continuous fun _ : sphere (0 : Euclidean d) 1 => x).add
+        ((continuous_const : Continuous fun _ : sphere (0 : Euclidean d) 1 => t).smul
+          continuous_subtype_val)).measurable.aemeasurable)).aestronglyMeasurable
+  · filter_upwards with ω
+    exact hbound _
+
+/-- A nonnegative real input equal to one on a measurable portion of a
+sampling sphere contributes at least that portion's normalized mass. -/
+private theorem stein_cap_fraction_le_ennreal_norm_normalizedSphericalAverage
+    {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℝ) (r : ℝ) (x : Euclidean d)
+    (A : Set (sphere (0 : Euclidean d) 1)) (hA : MeasurableSet A)
+    (hgi : Integrable (fun ω : sphere (0 : Euclidean d) 1 =>
+      g (x + r • (ω : Euclidean d))) (unitSurfaceMeasure d))
+    (hgnonneg : ∀ ω : sphere (0 : Euclidean d) 1,
+      0 ≤ g (x + r • (ω : Euclidean d)))
+    (hg_one : ∀ ω ∈ A, g (x + r • (ω : Euclidean d)) = 1) :
+    unitSurfaceMeasure d A / ENNReal.ofReal (surfaceMass d) ≤
+      ENNReal.ofReal ‖normalizedSphericalAverage d
+        (fun y => (g y : ℂ)) r x‖ := by
+  let q : sphere (0 : Euclidean d) 1 → ℝ := fun ω =>
+    g (x + r • (ω : Euclidean d))
+  let χ : sphere (0 : Euclidean d) 1 → ℝ :=
+    A.indicator (fun _ => (1 : ℝ))
+  have hχi : Integrable χ (unitSurfaceMeasure d) := by
+    exact (integrable_const (1 : ℝ)).indicator hA
+  have hχle : χ ≤ q := by
+    intro ω
+    dsimp only [χ, q]
+    by_cases hω : ω ∈ A
+    · rw [Set.indicator_of_mem hω]
+      exact le_of_eq (hg_one ω hω).symm
+    · rw [Set.indicator_of_notMem hω]
+      exact hgnonneg ω
+  have hmono : (∫ ω, χ ω ∂unitSurfaceMeasure d) ≤
+      ∫ ω, q ω ∂unitSurfaceMeasure d :=
+    integral_mono hχi hgi hχle
+  have hχint : (∫ ω, χ ω ∂unitSurfaceMeasure d) =
+      (unitSurfaceMeasure d).real A := by
+    rw [integral_indicator hA, setIntegral_const]
+    simp
+  have hqnonneg : 0 ≤ ∫ ω, q ω ∂unitSurfaceMeasure d :=
+    integral_nonneg hgnonneg
+  have hmasspos : 0 < surfaceMass d := surfaceMass_pos hd
+  have hreal : (unitSurfaceMeasure d).real A / surfaceMass d ≤
+      ‖normalizedSphericalAverage d (fun y => (g y : ℂ)) r x‖ := by
+    have hbase : (unitSurfaceMeasure d).real A ≤
+        ∫ ω, q ω ∂unitSurfaceMeasure d := by
+      rw [← hχint]
+      exact hmono
+    have hnorm : ‖normalizedSphericalAverage d (fun y => (g y : ℂ)) r x‖ =
+        (surfaceMass d)⁻¹ * ∫ ω, q ω ∂unitSurfaceMeasure d := by
+      unfold normalizedSphericalAverage sphericalAverage
+      change ‖((surfaceMass d)⁻¹ : ℂ) *
+          ∫ ω : sphere (0 : Euclidean d) 1, (q ω : ℂ) ∂unitSurfaceMeasure d‖ = _
+      rw [integral_complex_ofReal]
+      have hinvnorm : ‖((surfaceMass d : ℂ)⁻¹)‖ = (surfaceMass d)⁻¹ := by
+        rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hmasspos]
+      have hintnorm : ‖((∫ ω, q ω ∂unitSurfaceMeasure d : ℝ) : ℂ)‖ =
+          ∫ ω, q ω ∂unitSurfaceMeasure d := by
+        rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hqnonneg]
+      rw [norm_mul, hinvnorm, hintnorm]
+    rw [hnorm, div_eq_mul_inv]
+    simpa only [mul_comm] using
+      (mul_le_mul_of_nonneg_left hbase (inv_nonneg.mpr hmasspos.le))
+  have hof : ENNReal.ofReal ((unitSurfaceMeasure d A).toReal / surfaceMass d) ≤
+      ENNReal.ofReal ‖normalizedSphericalAverage d
+        (fun y => (g y : ℂ)) r x‖ := by
+    simpa only [Measure.real_def] using ENNReal.ofReal_le_ofReal hreal
+  have hconvert : ENNReal.ofReal ((unitSurfaceMeasure d A).toReal / surfaceMass d) =
+      unitSurfaceMeasure d A / ENNReal.ofReal (surfaceMass d) := by
+    rw [ENNReal.ofReal_div_of_pos hmasspos,
+      ENNReal.ofReal_toReal (measure_ne_top _ _)]
+  rw [hconvert] at hof
+  exact hof
+
+/-- The inward unit direction from a nonzero point towards the origin. -/
+private def steinInwardRadialDirection {d : ℕ} (x : Euclidean d) : Euclidean d :=
+  -(‖x‖⁻¹ • x)
+
+private theorem norm_steinInwardRadialDirection {d : ℕ} {x : Euclidean d}
+    (hx : 0 < ‖x‖) : ‖steinInwardRadialDirection x‖ = 1 := by
+  unfold steinInwardRadialDirection
+  rw [norm_neg, norm_smul, Real.norm_eq_abs, abs_inv, abs_of_pos hx,
+    inv_mul_cancel₀ hx.ne']
+
+/-- At radius `‖x‖`, a cap around the inward direction lands in a small ball
+about the origin. -/
+private theorem stein_inward_cap_translate_subset_ball
+    {d : ℕ} {x : Euclidean d} (hx : 0 < ‖x‖)
+    {w : sphere (0 : Euclidean d) 1} {h : ℝ}
+    (hw : w ∈ steinSphericalCap d (steinInwardRadialDirection x) h) :
+    ‖x + ‖x‖ • (w : Euclidean d)‖ < ‖x‖ * h := by
+  let δ : Euclidean d := (w : Euclidean d) - steinInwardRadialDirection x
+  have hδ : ‖δ‖ < h := by
+    change dist (w : Euclidean d) (steinInwardRadialDirection x) < h at hw
+    simpa only [δ, dist_eq_norm] using hw
+  have hsplit : x + ‖x‖ • (w : Euclidean d) =
+      (x + ‖x‖ • steinInwardRadialDirection x) + ‖x‖ • δ := by
+    dsimp only [δ]
+    module
+  have hcentre : x + ‖x‖ • steinInwardRadialDirection x = 0 := by
+    unfold steinInwardRadialDirection
+    have hinv : ‖x‖ * ‖x‖⁻¹ = 1 := mul_inv_cancel₀ hx.ne'
+    calc
+      x + ‖x‖ • -(‖x‖⁻¹ • x) = (1 - ‖x‖ * ‖x‖⁻¹) • x := by module
+      _ = 0 := by rw [hinv]; simp
+  rw [hsplit, hcentre, zero_add, norm_smul, Real.norm_eq_abs, abs_of_pos hx]
+  exact mul_lt_mul_of_pos_left hδ hx
+
+/-- The raw public spherical average agrees with the normalized average used
+by the surface-measure development. -/
+private theorem stein_sphericalAverage_eq_normalizedSphericalAverage {d : ℕ}
+    (t : ℝ) (f : Euclidean d → ℂ) (x : Euclidean d) :
+    _root_.Spherical.sphericalAverage t f x = normalizedSphericalAverage d f t x := by
+  rw [_root_.Spherical.sphericalAverage, _root_.Spherical.unitSphereMeasure,
+    MeasureTheory.integral_smul_measure]
+  unfold Auto.Spherical.SurfaceMeasureDecay.normalizedSphericalAverage
+    Auto.Spherical.SurfaceMeasureDecay.surfaceMass
+    Auto.Spherical.SurfaceMeasureDecay.sphericalAverage
+    Auto.Spherical.SurfaceMeasureDecay.unitSurfaceMeasure
+  rw [ENNReal.toReal_inv]
+  simp only [MeasureTheory.measureReal_def]
+  rw [Complex.real_smul]
+  rw [Complex.ofReal_inv]
+
+/-- The public full spherical maximal operator is the normalized one. -/
+private theorem stein_sphericalMaximal_eq_normalizedSphericalMaximal {d : ℕ}
+    (f : Euclidean d → ℂ) :
+    _root_.Spherical.M (Ioi (0 : ℝ)) f = normalizedSphericalMaximal d f := by
+  funext x
+  unfold _root_.Spherical.M _root_.Spherical.restrictedSphericalMaximal
+    normalizedSphericalMaximal
+  rw [iSup_subtype]
+  simp only [inter_self]
+  simp_rw [stein_sphericalAverage_eq_normalizedSphericalAverage (d := d)]
+
+/-- The radial Stein tail is outside `L^p` at and below the critical
+exponent. -/
+private theorem stein_eLpNorm_radialTail_eq_top
+    {d : ℕ} {p : ENNReal} (hd : 2 ≤ d) (hp0 : 0 < p)
+    (hptop : p ≠ ∞) (hp : p ≤ (d : ENNReal) / (d - 1)) :
+    eLpNorm
+      (fun x : Euclidean d =>
+        (Ici (2 : ℝ)).indicator
+          (fun r : ℝ => (max r 2) ^ (-(((d - 1 : ℕ) : ℝ)))) ‖x‖)
+      p volume = ∞ := by
+  let n : ℝ := ((d - 1 : ℕ) : ℝ)
+  let T : ℝ → ℝ :=
+    (Ici (2 : ℝ)).indicator (fun r : ℝ => (max r 2) ^ (-n))
+  let q : Euclidean d → ℝ := fun x => T ‖x‖
+  have hnpos : 0 < n := by
+    dsimp [n]
+    exact_mod_cast (show 0 < d - 1 by omega)
+  have hncast : n = (d : ℝ) - 1 := by
+    dsimp [n]
+    rw [Nat.cast_sub (by omega : 1 ≤ d)]
+    norm_num
+  have hcrit_top : (d : ENNReal) / (d - 1) ≠ ∞ := by
+    apply ENNReal.div_ne_top
+    · exact ENNReal.natCast_ne_top d
+    · exact_mod_cast (show d - 1 ≠ 0 by omega)
+  have hpReal : p.toReal ≤ (d : ℝ) / n := by
+    have h := (ENNReal.toReal_le_toReal hptop hcrit_top).mpr hp
+    have hden : ((d : ENNReal) - 1).toReal = (d : ℝ) - 1 := by
+      have hdone : (1 : ENNReal) ≤ (d : ENNReal) := by
+        exact_mod_cast (show 1 ≤ d by omega)
+      rw [ENNReal.toReal_sub_of_le hdone (ENNReal.natCast_ne_top d)]
+      norm_num
+    rw [ENNReal.toReal_div, hden] at h
+    simpa only [ENNReal.toReal_natCast, hncast] using h
+  have hTnonneg (r : ℝ) : 0 ≤ T r := by
+    by_cases hr : r ∈ Ici (2 : ℝ)
+    · dsimp only [T]
+      rw [Set.indicator_of_mem hr]
+      exact Real.rpow_nonneg (zero_le_two.trans (le_max_right r 2)) _
+    · dsimp only [T]
+      rw [Set.indicator_of_notMem hr]
+  have hTmeas : Measurable T := by
+    have hmax : Continuous (fun r : ℝ => max r 2) :=
+      continuous_id.max continuous_const
+    have hpow : Continuous (fun r : ℝ => (max r 2) ^ (-n)) :=
+      hmax.rpow_const fun r => Or.inl (by
+        have : 0 < max r 2 := lt_of_lt_of_le (by norm_num) (le_max_right _ _)
+        exact this.ne')
+    exact hpow.measurable.indicator measurableSet_Ici
+  have hqmeas : Measurable q := hTmeas.comp continuous_norm.measurable
+  change eLpNorm q p volume = ∞
+  by_contra hqtop
+  have hqlt : eLpNorm q p volume < ∞ := lt_top_iff_ne_top.mpr hqtop
+  have hqmem : MemLp q p volume := ⟨hqmeas.aestronglyMeasurable, hqlt⟩
+  have hqpow : Integrable (fun x : Euclidean d => ‖q x‖ ^ p.toReal) volume :=
+    hqmem.integrable_norm_rpow (ne_of_gt hp0) hptop
+  have hradial : Integrable (fun x : Euclidean d => (T ‖x‖) ^ p.toReal) volume := by
+    convert hqpow using 1
+    funext x
+    rw [show q x = T ‖x‖ by rfl, Real.norm_eq_abs, abs_of_nonneg (hTnonneg _)]
+  letI : Nonempty (Fin d) := Fin.pos_iff_nonempty.mp (by omega)
+  rw [integrable_fun_norm_addHaar volume (f := fun r : ℝ => (T r) ^ p.toReal)] at hradial
+  have hradial' : IntegrableOn
+      (fun r : ℝ => r ^ (d - 1) • (T r) ^ p.toReal) (Ioi (0 : ℝ)) := by
+    simpa only [finrank_euclideanSpace_fin] using hradial
+  have hradialTwo : IntegrableOn
+      (fun r : ℝ => r ^ (d - 1) • (T r) ^ p.toReal) (Ioi (2 : ℝ)) :=
+    hradial'.mono (Ioi_subset_Ioi (by norm_num)) le_rfl
+  have hpoint (r : ℝ) (hr : r ∈ Ioi (2 : ℝ)) :
+      r ^ (d - 1) • (T r) ^ p.toReal = r ^ (n * (1 - p.toReal)) := by
+    have hrpos : 0 < r := lt_trans (by norm_num) hr
+    have hTr : T r = r ^ (-n) := by
+      have hrIci : r ∈ Ici (2 : ℝ) := by
+        change (2 : ℝ) ≤ r
+        exact le_of_lt hr
+      dsimp only [T]
+      rw [Set.indicator_of_mem hrIci]
+      rw [max_eq_left hrIci]
+    rw [hTr, smul_eq_mul, ← Real.rpow_natCast,
+      ← Real.rpow_mul hrpos.le, ← Real.rpow_add hrpos]
+    congr 1
+    ring
+  have hpowInt : IntegrableOn (fun r : ℝ => r ^ (n * (1 - p.toReal)))
+      (Ioi (2 : ℝ)) :=
+    hradialTwo.congr_fun hpoint measurableSet_Ioi
+  have hExpLt : n * (1 - p.toReal) < -1 :=
+    (integrableOn_Ioi_rpow_iff (by norm_num : (0 : ℝ) < 2)).mp hpowInt
+  have hmul : p.toReal * n ≤ (d : ℝ) :=
+    (le_div_iff₀ hnpos).mp hpReal
+  have hExpGe : -1 ≤ n * (1 - p.toReal) := by
+    nlinarith [hmul, hncast]
+  exact (not_lt_of_ge hExpGe) hExpLt
+
+/-- Stein's ball example: the full spherical maximal function has infinite
+`L^p` size at and below the critical exponent. -/
+theorem eLpNorm_sphericalMaximal_ge_of_le_criticalExponent
+    {d : ℕ} {p : ENNReal} (hd : 2 ≤ d) (hp0 : 0 < p)
+    (hp : p ≤ (d : ENNReal) / (d - 1)) :
+    ∀ C : ℝ, ∃ f : Euclidean d → ℂ, MemLp f p volume ∧ 0 < eLpNorm f p volume ∧
+      eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume ≥
+        ENNReal.ofReal C * eLpNorm f p volume := by
+  have hcrit_top : (d : ENNReal) / (d - 1) ≠ ∞ := by
+    apply ENNReal.div_ne_top
+    · exact ENNReal.natCast_ne_top d
+    · exact_mod_cast (show d - 1 ≠ 0 by omega)
+  have hptop : p ≠ ∞ := ne_top_of_le_ne_top hcrit_top hp
+  let S : Set (Euclidean d) := closedBall (0 : Euclidean d) 1
+  let g : Euclidean d → ℝ := S.indicator (fun _ => (1 : ℝ))
+  let f : Euclidean d → ℂ := fun y => (g y : ℂ)
+  have hSmeas : MeasurableSet S := by
+    dsimp [S]
+    exact measurableSet_closedBall
+  have hgmeas : Measurable g := by
+    dsimp [g]
+    exact measurable_const.indicator hSmeas
+  have hgnonneg : ∀ y : Euclidean d, 0 ≤ g y := by
+    intro y
+    by_cases hy : y ∈ S <;> simp [g, hy]
+  have hgbound : ∀ y : Euclidean d, ‖g y‖ ≤ 1 := by
+    intro y
+    by_cases hy : y ∈ S <;> simp [g, hy]
+  have hg_one : ∀ y : Euclidean d, ‖y‖ ≤ 1 → g y = 1 := by
+    intro y hy
+    have hyS : y ∈ S := by
+      dsimp [S]
+      simpa only [mem_closedBall, dist_zero_right] using hy
+    simp [g, hyS]
+  have hfIndicator : f = S.indicator (fun _ : Euclidean d => (1 : ℂ)) := by
+    funext y
+    by_cases hy : y ∈ S <;> simp [f, g, hy]
+  have hSpos : 0 < volume S := by
+    dsimp [S]
+    exact lt_of_lt_of_le
+      (Metric.measure_ball_pos volume (0 : Euclidean d) (by norm_num))
+      (measure_mono Metric.ball_subset_closedBall)
+  have hStop : volume S ≠ ∞ := by
+    dsimp [S]
+    exact (measure_closedBall_lt_top (μ := volume) (x := (0 : Euclidean d))
+      (r := (1 : ℝ))).ne
+  have hfnorm : eLpNorm f p volume = volume S ^ (1 / p.toReal) := by
+    rw [hfIndicator, eLpNorm_indicator_const hSmeas (ne_of_gt hp0) hptop]
+    simp
+  have hfmem : MemLp f p volume := by
+    refine ⟨?_, ?_⟩
+    · rw [hfIndicator]
+      exact (measurable_const.indicator hSmeas).aestronglyMeasurable
+    · rw [hfnorm]
+      exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hStop
+  have hfpos : 0 < eLpNorm f p volume := by
+    rw [hfnorm]
+    exact ENNReal.rpow_pos hSpos hStop
+  let n : ℕ := d - 1
+  have hnpos : 0 < n := by
+    dsimp [n]
+    omega
+  have hdim : n + 1 = d := by
+    dsimp [n]
+    omega
+  have hcapExists : ∃ c : ENNReal, 0 < c ∧ c ≠ ∞ ∧ ∀ v : Euclidean d, ‖v‖ = 1 →
+      ∀ ε : ℝ, 0 < ε → ε ≤ 1 / 2 →
+        c * ENNReal.ofReal (ε ^ n) ≤ unitSurfaceMeasure d (steinSphericalCap d v ε) := by
+    rw [← hdim]
+    exact exists_stein_unitSurfaceMeasure_cap_ge_power n
+  obtain ⟨c, hcpos, hctop, hc⟩ := hcapExists
+  let m : ENNReal := ENNReal.ofReal (surfaceMass d)
+  let A : ENNReal := c / m
+  have hmasspos : 0 < surfaceMass d := surfaceMass_pos (by omega)
+  have hmpos : 0 < m := by
+    dsimp [m]
+    exact ENNReal.ofReal_pos.mpr hmasspos
+  have hmTop : m ≠ ∞ := by
+    dsimp [m]
+    exact ENNReal.ofReal_ne_top
+  have hApos : 0 < A := by
+    dsimp [A]
+    exact ENNReal.div_pos hcpos.ne' hmTop
+  have hAtop : A ≠ ∞ := by
+    dsimp [A]
+    exact ENNReal.div_ne_top hctop hmpos.ne'
+  let a : ℝ := A.toReal
+  have ha : 0 < a := ENNReal.toReal_pos hApos.ne' hAtop
+  have haof : ENNReal.ofReal a = A := ENNReal.ofReal_toReal hAtop
+  let q : Euclidean d → ℝ := fun x =>
+    (Ici (2 : ℝ)).indicator
+      (fun r : ℝ => (max r 2) ^ (-((n : ℝ))) ) ‖x‖
+  have hqtop : eLpNorm q p volume = ∞ := by
+    simpa only [q, n] using stein_eLpNorm_radialTail_eq_top hd hp0 hptop hp
+  have hscaledtop : eLpNorm (a • q) p volume = ∞ := by
+    rw [eLpNorm_const_smul, hqtop]
+    rw [Real.enorm_eq_ofReal ha.le]
+    exact ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr ha)
+  have hpoint (x : Euclidean d) : ‖(a • q) x‖₊ ≤ normalizedSphericalMaximal d f x := by
+    by_cases hx : ‖x‖ < 2
+    · have hxS : ‖x‖ ∉ Ici (2 : ℝ) := by
+        change ¬ (2 : ℝ) ≤ ‖x‖
+        linarith
+      have hqx : q x = 0 := by
+        dsimp [q]
+        rw [Set.indicator_of_notMem hxS]
+      simp [hqx]
+    · have hxge : (2 : ℝ) ≤ ‖x‖ := le_of_not_gt hx
+      have hxpos : 0 < ‖x‖ := lt_of_lt_of_le (by norm_num) hxge
+      let v : Euclidean d := steinInwardRadialDirection x
+      let ε : ℝ := ‖x‖⁻¹
+      have hv : ‖v‖ = 1 := by
+        dsimp [v]
+        exact norm_steinInwardRadialDirection hxpos
+      have hεpos : 0 < ε := by
+        dsimp [ε]
+        exact inv_pos.mpr hxpos
+      have hεhalf : ε ≤ 1 / 2 := by
+        dsimp [ε]
+        rw [show ‖x‖⁻¹ = 1 / ‖x‖ by ring]
+        apply (div_le_iff₀ hxpos).mpr
+        nlinarith
+      have hcap : c * ENNReal.ofReal (ε ^ n) ≤
+          unitSurfaceMeasure d (steinSphericalCap d v ε) :=
+        hc v hv ε hεpos hεhalf
+      have hgi : Integrable (fun w : sphere (0 : Euclidean d) 1 =>
+          g (x + ‖x‖ • (w : Euclidean d))) (unitSurfaceMeasure d) :=
+        stein_integrable_sphere_comp_of_bounded_measurable hgmeas hgbound ‖x‖ x
+      have hcap_one : ∀ w ∈ steinSphericalCap d v ε,
+          g (x + ‖x‖ • (w : Euclidean d)) = 1 := by
+        intro w hw
+        have hgeom : ‖x + ‖x‖ • (w : Euclidean d)‖ < ‖x‖ * ε := by
+          apply stein_inward_cap_translate_subset_ball hxpos
+          simpa only [v] using hw
+        have hprod : ‖x‖ * ε = 1 := by
+          dsimp [ε]
+          exact mul_inv_cancel₀ hxpos.ne'
+        rw [hprod] at hgeom
+        exact hg_one _ hgeom.le
+      have havg : unitSurfaceMeasure d (steinSphericalCap d v ε) / m ≤
+          ENNReal.ofReal ‖normalizedSphericalAverage d f ‖x‖ x‖ := by
+        change unitSurfaceMeasure d (steinSphericalCap d v ε) /
+            ENNReal.ofReal (surfaceMass d) ≤ _
+        simpa only [f] using
+          (stein_cap_fraction_le_ennreal_norm_normalizedSphericalAverage
+            (d := d) (by omega) g ‖x‖ x (steinSphericalCap d v ε)
+            (measurableSet_steinSphericalCap d v ε) hgi
+            (fun w => hgnonneg _) hcap_one)
+      have hεpow : ENNReal.ofReal (ε ^ n) =
+          ENNReal.ofReal (‖x‖ ^ (-((n : ℝ)))) := by
+        congr 1
+        dsimp [ε]
+        calc
+          (‖x‖⁻¹) ^ n = (‖x‖⁻¹) ^ (n : ℝ) := (Real.rpow_natCast _ n).symm
+          _ = ‖x‖ ^ (-(n : ℝ)) := (Real.rpow_neg_eq_inv_rpow ‖x‖ (n : ℝ)).symm
+      have hlow : A * ENNReal.ofReal (‖x‖ ^ (-((n : ℝ)))) ≤
+          ENNReal.ofReal ‖normalizedSphericalAverage d f ‖x‖ x‖ := by
+        calc
+          A * ENNReal.ofReal (‖x‖ ^ (-((n : ℝ)))) =
+              c * ENNReal.ofReal (ε ^ n) / m := by
+            rw [hεpow]
+            dsimp [A]
+            simp only [div_eq_mul_inv]
+            ring
+          _ ≤ unitSurfaceMeasure d (steinSphericalCap d v ε) / m :=
+            ENNReal.div_le_div_right hcap _
+          _ ≤ ENNReal.ofReal ‖normalizedSphericalAverage d f ‖x‖ x‖ := havg
+      have hqx : q x = ‖x‖ ^ (-((n : ℝ))) := by
+        have hxIci : ‖x‖ ∈ Ici (2 : ℝ) := by
+          change (2 : ℝ) ≤ ‖x‖
+          exact hxge
+        dsimp [q]
+        rw [Set.indicator_of_mem hxIci, max_eq_left hxge]
+      rw [← enorm_eq_nnnorm, ← ofReal_norm]
+      rw [Pi.smul_apply, smul_eq_mul, hqx, Real.norm_eq_abs,
+        abs_of_nonneg (mul_nonneg ha.le (Real.rpow_nonneg (norm_nonneg _) _)),
+        ENNReal.ofReal_mul ha.le, haof]
+      exact hlow.trans
+        (normalizedSphericalAverage_le_normalizedSphericalMaximal d f ‖x‖ hxpos x)
+  have hMtop : eLpNorm (normalizedSphericalMaximal d f) p volume = ∞ := by
+    apply top_unique
+    rw [← hscaledtop]
+    exact eLpNorm_mono_enorm hpoint
+  have hrawtop : eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume = ∞ := by
+    rw [stein_sphericalMaximal_eq_normalizedSphericalMaximal f]
+    exact hMtop
+  intro C
+  refine ⟨f, hfmem, hfpos, ?_⟩
+  rw [hrawtop]
+  exact le_top
+
+end
+
+end SteinEndpoint
 
 
 end Auto.Spherical.SphericalMaximal
