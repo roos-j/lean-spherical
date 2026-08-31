@@ -4,6 +4,7 @@ import LeanSpherical.Auto.Spherical.Auxiliary
 import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.LpSpaceFacts
 import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.LegendreAssouad
 import LeanSpherical.Auto.LittlewoodPaley
 import Mathlib.Analysis.Fourier.FourierTransformDeriv
 import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
@@ -12,6 +13,8 @@ import Mathlib.Analysis.Fourier.Convolution
 import Mathlib.Analysis.Distribution.AEEqOfIntegralContDiff
 
 namespace Auto.MikhlinHormander
+
+open Auto.Spherical.LegendreAssouad
 
 /-!
 # Mikhlin--Hörmander multipliers

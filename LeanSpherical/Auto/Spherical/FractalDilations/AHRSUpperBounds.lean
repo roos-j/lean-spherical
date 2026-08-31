@@ -8,12 +8,14 @@ Spherical, Bourgain, and PowerWeights layers.
 import LeanSpherical.Auto.Spherical.Auxiliary
 import LeanSpherical.Auto.Spherical.Bourgain
 import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.RadialFourierTransform
 import LeanSpherical.Auto.Spherical.SphericalMaximal
 import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
 import LeanSpherical.Auto.SteinInterpolation
 import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
 import LeanSpherical.Auto.FractalDimensions
+import LeanSpherical.Auto.Spherical.LegendreAssouad
 import LeanSpherical.Definitions
 import Mathlib.Algebra.Order.Field.GeomSum
 import Mathlib.Analysis.Calculus.BumpFunction.SmoothApprox
@@ -197,12 +199,12 @@ private theorem core_of_multiplicative_critical_subtwo
     {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p : ℝ}
     (hp1 : 1 < p) (hp2 : p < 2)
-    (hcritical : multiplicativeMinkowskiExponent E <
+    (hcritical : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E <
       (↑(((d : ℝ) - 1) * (p - 1)) : EReal)) :
     _root_.Auto.Spherical.PowerWeights.HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
       d E p 0 := by
   obtain ⟨beta, _hbeta, hM, hbetacritical⟩ :=
-    _root_.Auto.Spherical.PowerWeights.exists_nonneg_real_between_multiplicativeMinkowskiExponent_and
+    _root_.Auto.Spherical.LegendreAssouad.exists_nonneg_real_between_multiplicativeMinkowskiExponent_and
       hE hEpos hcritical
   exact
     _root_.Auto.Spherical.PowerWeights.hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_multiplicativeMinkowskiExponent_lt_and_uniform_finite_physical_CZ_weak_one_dim
@@ -221,27 +223,27 @@ private theorem core_of_root_critical
   have hm : 0 < (d : ℝ) - 1 := by
     have hd' : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
     linarith
-  have hMtop := Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_top hE hEpos
-  have hMbot := Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have hMtop := Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_top hE hEpos
+  have hMbot := Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_bot hE hEpos
   have hbeta : upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
-  have hp' : 1 + (multiplicativeMinkowskiExponent E).toReal /
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+  have hp' : 1 + (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal /
       ((d : ℝ) - 1) < p := by
     simpa only [criticalExponent, hbeta] using hp
-  have hdiv : (multiplicativeMinkowskiExponent E).toReal / ((d : ℝ) - 1) <
+  have hdiv : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal / ((d : ℝ) - 1) <
       p - 1 := by
     linarith
-  have hreal : (multiplicativeMinkowskiExponent E).toReal <
+  have hreal : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal <
       ((d : ℝ) - 1) * (p - 1) := by
     have h := (div_lt_iff₀ hm).mp hdiv
     nlinarith
-  have hcritical : multiplicativeMinkowskiExponent E <
+  have hcritical : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E <
       (↑(((d : ℝ) - 1) * (p - 1)) : EReal) := by
     rw [← EReal.coe_toReal hMtop hMbot]
     exact EReal.coe_lt_coe hreal
   have hMnonneg :=
-    _root_.Auto.FractalDimensions.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
+    _root_.Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
       hE hEpos
   have hTpos : (0 : EReal) <
       (↑(((d : ℝ) - 1) * (p - 1)) : EReal) :=
@@ -254,10 +256,10 @@ private theorem core_of_root_critical
   · by_cases hd2 : d = 2
     · subst d
       rcases eq_or_lt_of_le (le_of_not_gt hp2) with rfl | hpgt
-      · let q : ℝ := (3 + (multiplicativeMinkowskiExponent E).toReal) / 2
-        have hMnonneg_real : 0 ≤ (multiplicativeMinkowskiExponent E).toReal :=
+      · let q : ℝ := (3 + (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal) / 2
+        have hMnonneg_real : 0 ≤ (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
           EReal.toReal_nonneg hMnonneg
-        have hMltone : (multiplicativeMinkowskiExponent E).toReal < 1 := by
+        have hMltone : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal < 1 := by
           norm_num at hreal ⊢
           exact hreal
         have hqone : 1 < q := by
@@ -266,12 +268,12 @@ private theorem core_of_root_critical
         have hqtwo : q < 2 := by
           dsimp only [q]
           linarith
-        have hcriticalq_real : (multiplicativeMinkowskiExponent E).toReal <
+        have hcriticalq_real : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal <
             ((2 : ℝ) - 1) * (q - 1) := by
           dsimp only [q]
           norm_num
           linarith
-        have hcriticalq : multiplicativeMinkowskiExponent E <
+        have hcriticalq : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E <
             (↑(((2 : ℝ) - 1) * (q - 1)) : EReal) := by
           rw [← EReal.coe_toReal hMtop hMbot]
           exact EReal.coe_lt_coe hcriticalq_real
@@ -296,11 +298,11 @@ private theorem core_of_root_critical_ennreal
     _root_.Auto.Spherical.PowerWeights.HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
       d E p.toReal 0 := by
   have hMnonneg :=
-    _root_.Auto.FractalDimensions.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
+    _root_.Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
       hE hEpos
   have hbeta : upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
   have hbeta_nonneg : 0 ≤ upperMinkowskiExponent E := by
     rw [hbeta]
     exact EReal.toReal_nonneg hMnonneg
@@ -333,13 +335,13 @@ private theorem criticalExponent_lt_two_of_nonempty
     {d : ℕ} (hd : 3 ≤ d) {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) :
     criticalExponent d E < 2 := by
-  have hMbot := Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_bot hE hEpos
-  have hMreal : (multiplicativeMinkowskiExponent E).toReal ≤ (1 : ℝ) := by
-    exact EReal.toReal_le_toReal (multiplicativeMinkowskiExponent_le_one E) hMbot
+  have hMbot := Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have hMreal : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal ≤ (1 : ℝ) := by
+    exact EReal.toReal_le_toReal (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_le_one E) hMbot
       (EReal.coe_ne_top 1)
   have hbeta : upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
   have hbeta_le : upperMinkowskiExponent E ≤ 1 := by
     rw [hbeta]
     exact hMreal
@@ -362,13 +364,13 @@ exponent `3`. -/
 private theorem criticalExponent_lt_three_of_nonempty_of_two
     {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) :
     criticalExponent 2 E < 3 := by
-  have hMbot := Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_bot hE hEpos
-  have hMreal : (multiplicativeMinkowskiExponent E).toReal ≤ (1 : ℝ) := by
-    exact EReal.toReal_le_toReal (multiplicativeMinkowskiExponent_le_one E) hMbot
+  have hMbot := Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have hMreal : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal ≤ (1 : ℝ) := by
+    exact EReal.toReal_le_toReal (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_le_one E) hMbot
       (EReal.coe_ne_top 1)
   have hbeta : upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
   rw [criticalExponent]
   change 1 + upperMinkowskiExponent E / ((2 : ℝ) - 1) < 3
   rw [hbeta]
@@ -1763,226 +1765,12 @@ private theorem eLpNorm_sphericalMaximal_le_two_of_bourgain
     exact aux_bourgain_full_finite_eLpNorm hp hptop
       (Auto.Spherical.Bourgain.bourgainCircularMaximal p.toReal hp2real)
 
-private theorem full_log_mem (u : ℝ) (hu : |u| ≤ 1) :
-    u ∈ logDilationSet
-      ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1) := by
-  let r : Ioi (0 : ℝ) :=
-    ⟨(2 : ℝ) ^ u, Real.rpow_pos_of_pos (by norm_num) _⟩
-  refine ⟨r, ?_, ?_⟩
-  · constructor
-    · exact r.2
-    · constructor
-      · exact r.2
-      · change |Real.log r.1 / Real.log 2 - Real.log 1 / Real.log 2| ≤ (1 : ℝ)
-        rw [show r.1 = (2 : ℝ) ^ u from rfl,
-          Real.log_rpow (by norm_num : (0 : ℝ) < 2)]
-        norm_num
-        simpa using hu
-  · change Real.log r.1 / Real.log 2 = u
-    rw [show r.1 = (2 : ℝ) ^ u from rfl,
-      Real.log_rpow (by norm_num : (0 : ℝ) < 2)]
-    field_simp
-
-private def full_grid (n : ℕ) : Finset ℝ :=
-  (Finset.range (n + 1)).image fun k : ℕ => -1 + 2 * (k : ℝ) / n
-
-private theorem full_grid_card (n : ℕ) (hn : 0 < n) :
-    (full_grid n).card = n + 1 := by
-  unfold full_grid
-  rw [Finset.card_image_of_injective]
-  · simp
-  · intro a b hab
-    have hn0 : (n : ℝ) ≠ 0 := by exact_mod_cast (ne_of_gt hn)
-    have hab' : (a : ℝ) = b := by
-      field_simp [hn0] at hab
-      linarith
-    exact_mod_cast hab'
-
-private theorem abs_full_grid_le_one {n : ℕ} (hn : 0 < n) {x : ℝ}
-    (hx : x ∈ full_grid n) : |x| ≤ 1 := by
-  rw [full_grid, Finset.mem_image] at hx
-  obtain ⟨k, hk, rfl⟩ := hx
-  have hklt : k < n + 1 := Finset.mem_range.mp hk
-  have hk' : k ≤ n := by omega
-  have hnreal : (0 : ℝ) < n := by exact_mod_cast hn
-  have hkreal : (k : ℝ) ≤ n := by exact_mod_cast hk'
-  have hfrac_nonneg : 0 ≤ (k : ℝ) / n := by positivity
-  have hfrac_le_one : (k : ℝ) / n ≤ 1 := (div_le_one₀ hnreal).2 hkreal
-  have hform : 2 * (k : ℝ) / n = 2 * ((k : ℝ) / n) := by ring
-  rw [abs_le, hform]
-  constructor <;> linarith
-
-private theorem full_grid_distance {n k l : ℕ} (hn : 0 < n) (hkl : k ≠ l) :
-    2 / ((n + 1 : ℕ) : ℝ) <
-      |(-1 + 2 * (k : ℝ) / n) - (-1 + 2 * (l : ℝ) / n)| := by
-  have hnreal : (0 : ℝ) < n := by exact_mod_cast hn
-  have habs : (1 : ℝ) ≤ |(k : ℝ) - l| := by
-    rcases lt_or_gt_of_ne hkl with hlt | hgt
-    · have hcast : (k : ℝ) < l := by exact_mod_cast hlt
-      have hstep : (k : ℝ) + 1 ≤ l := by
-        exact_mod_cast (Nat.succ_le_iff.mpr hlt)
-      rw [abs_of_nonpos (by linarith)]
-      linarith
-    · have hcast : (l : ℝ) < k := by exact_mod_cast hgt
-      have hstep : (l : ℝ) + 1 ≤ k := by
-        exact_mod_cast (Nat.succ_le_iff.mpr hgt)
-      rw [abs_of_nonneg (by linarith)]
-      linarith
-  have hdiff :
-      (-1 + 2 * (k : ℝ) / n) - (-1 + 2 * (l : ℝ) / n) =
-        2 * ((k : ℝ) - l) / n := by ring
-  rw [hdiff, abs_div, abs_mul, abs_of_pos hnreal]
-  have htwo : (0 : ℝ) < 2 := by norm_num
-  rw [abs_of_pos htwo]
-  have hmain : 2 / ((n + 1 : ℕ) : ℝ) < 2 / (n : ℝ) := by
-    apply (div_lt_div_iff_of_pos_left htwo (by positivity) hnreal).2
-    norm_num
-  calc
-    2 / ((n + 1 : ℕ) : ℝ) < 2 / (n : ℝ) := hmain
-    _ ≤ 2 * |(k : ℝ) - l| / n := by
-      apply (div_le_div_iff_of_pos_right hnreal).2
-      nlinarith
-
-private def full_grid_scale (n : ℕ) : ℝ≥0 := ((n + 1 : ℕ) : ℝ≥0)⁻¹
-
-private theorem coe_full_grid_scale (n : ℕ) :
-    (full_grid_scale n : ℝ) = 1 / ((n + 1 : ℕ) : ℝ) := by
-  simp [full_grid_scale]
-
-private theorem full_grid_isSeparated {n : ℕ} (hn : 0 < n) :
-    Metric.IsSeparated (2 * full_grid_scale n) (full_grid n : Set ℝ) := by
-  unfold Metric.IsSeparated
-  rintro x hx y hy hxy
-  change x ∈ full_grid n at hx
-  change y ∈ full_grid n at hy
-  rw [full_grid, Finset.mem_image] at hx hy
-  obtain ⟨k, hk, rfl⟩ := hx
-  obtain ⟨l, hl, rfl⟩ := hy
-  have hkl : k ≠ l := by
-    intro h
-    subst l
-    exact hxy rfl
-  rw [edist_dist, Real.dist_eq]
-  apply ENNReal.coe_lt_ofReal.2
-  rw [NNReal.coe_mul, coe_full_grid_scale]
-  simpa [div_eq_mul_inv] using full_grid_distance hn hkl
-
-private theorem full_grid_subset_logDilationSet {n : ℕ} (hn : 0 < n) :
-    (full_grid n : Set ℝ) ⊆ logDilationSet
-      ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1) := by
-  intro x hx
-  change x ∈ full_grid n at hx
-  exact full_log_mem x (abs_full_grid_le_one hn hx)
-
-private theorem full_entropy_lower {n : ℕ} (hn : 0 < n) :
-    (n + 1 : ℕ∞) ≤ N
-      ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1)
-      (full_grid_scale n) := by
-  change (n + 1 : ℕ∞) ≤ Metric.externalCoveringNumber (full_grid_scale n)
-    (logDilationSet ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1))
-  calc
-    (n + 1 : ℕ∞) = (full_grid n : Set ℝ).encard := by
-      rw [Set.encard_coe_eq_coe_finsetCard, full_grid_card n hn]
-      norm_num
-    _ ≤ Metric.packingNumber (2 * full_grid_scale n)
-        (logDilationSet ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1)) :=
-      (full_grid_isSeparated hn).encard_le_packingNumber
-        (full_grid_subset_logDilationSet hn)
-    _ ≤ Metric.externalCoveringNumber (full_grid_scale n)
-        (logDilationSet ((Ioi (0 : ℝ)) ∩ logBall ⟨1, by norm_num⟩ 1)) :=
-      Metric.packingNumber_two_mul_le_externalCoveringNumber _ _
-
-private theorem log_full_grid_scale_inv (n : ℕ) :
-    ENNReal.log ((n + 1 : ℕ) : ℝ≥0∞) =
-      (Real.log ((full_grid_scale n : ℝ)⁻¹) : EReal) := by
-  rw [← ENNReal.ofReal_natCast, ENNReal.log_ofReal]
-  have hpos : (0 : ℝ) < ((n + 1 : ℕ) : ℝ) := by positivity
-  rw [if_neg (not_le_of_gt hpos)]
-  rw [coe_full_grid_scale]
-  have hne : ((n + 1 : ℕ) : ℝ) ≠ 0 := ne_of_gt hpos
-  field_simp
-
-private theorem one_le_full_entropy_quotient {n : ℕ} (hn : 0 < n) :
-    (1 : EReal) ≤ ENNReal.log ((⨆ c : Ioi (0 : ℝ),
-      N ((Ioi (0 : ℝ)) ∩ logBall c 1) (full_grid_scale n) : ℕ∞) : ℝ≥0∞) /
-      (Real.log ((full_grid_scale n : ℝ)⁻¹) : EReal) := by
-  have hNnat : (n + 1 : ℕ∞) ≤ ⨆ c : Ioi (0 : ℝ),
-      N ((Ioi (0 : ℝ)) ∩ logBall c 1) (full_grid_scale n) := by
-    let c0 : Ioi (0 : ℝ) := ⟨1, by norm_num⟩
-    apply le_iSup_of_le c0
-    exact full_entropy_lower hn
-  have hN : ((n + 1 : ℕ) : ℝ≥0∞) ≤ ((⨆ c : Ioi (0 : ℝ),
-      N ((Ioi (0 : ℝ)) ∩ logBall c 1) (full_grid_scale n) : ℕ∞) : ℝ≥0∞) := by
-    exact_mod_cast hNnat
-  have hscale : ((full_grid_scale n : ℝ)⁻¹) = ((n + 1 : ℕ) : ℝ) := by
-    rw [coe_full_grid_scale]
-    have hne : ((n + 1 : ℕ) : ℝ) ≠ 0 := by positivity
-    field_simp
-  have hdenreal : 0 < Real.log ((full_grid_scale n : ℝ)⁻¹) := by
-    rw [hscale]
-    apply Real.log_pos
-    have : 1 < n + 1 := by omega
-    exact_mod_cast this
-  have hden : (0 : EReal) < (Real.log ((full_grid_scale n : ℝ)⁻¹) : EReal) :=
-    by exact_mod_cast hdenreal
-  by_contra h
-  have hlt : ENNReal.log ((⨆ c : Ioi (0 : ℝ),
-      N ((Ioi (0 : ℝ)) ∩ logBall c 1) (full_grid_scale n) : ℕ∞) : ℝ≥0∞) /
-      (Real.log ((full_grid_scale n : ℝ)⁻¹) : EReal) < 1 := lt_of_not_ge h
-  have hmul := (EReal.div_lt_iff hden (EReal.coe_ne_top _)).1 hlt
-  have hnum : (Real.log ((full_grid_scale n : ℝ)⁻¹) : EReal) ≤ ENNReal.log
-      ((⨆ c : Ioi (0 : ℝ),
-        N ((Ioi (0 : ℝ)) ∩ logBall c 1) (full_grid_scale n) : ℕ∞) : ℝ≥0∞) := by
-    rw [← log_full_grid_scale_inv n]
-    exact ENNReal.log_le_log hN
-  exact (not_lt_of_ge hnum) (by simpa using hmul)
-
-private theorem tendsto_full_grid_scale :
-    Tendsto full_grid_scale atTop (𝓝[>] (0 : ℝ≥0)) := by
-  have hshiftNat : Tendsto (fun n : ℕ => n + 1) atTop atTop :=
-    (Filter.tendsto_add_atTop_iff_nat 1).2 tendsto_id
-  have hshift : Tendsto (fun n : ℕ => ((n + 1 : ℕ) : ℝ≥0)) atTop atTop :=
-    tendsto_natCast_atTop_iff.2 hshiftNat
-  change Tendsto (fun n : ℕ => ((n + 1 : ℕ) : ℝ≥0)⁻¹) atTop (𝓝[>] (0 : ℝ≥0))
-  exact tendsto_inv_atTop_nhdsGT_zero.comp hshift
-
-private def full_entropy_quotient (δ : ℝ≥0) : EReal :=
-  ENNReal.log ((⨆ c : Ioi (0 : ℝ),
-    N ((Ioi (0 : ℝ)) ∩ logBall c 1) δ : ℕ∞) : ℝ≥0∞) /
-    (Real.log ((δ : ℝ)⁻¹) : EReal)
-
-private theorem frequently_one_le_full_entropy_quotient :
-    ∃ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
-      (1 : EReal) ≤ full_entropy_quotient δ := by
-  have hpos : ∀ᶠ n : ℕ in atTop, 0 < n :=
-    Filter.eventually_atTop.2 ⟨1, fun n hn => hn⟩
-  apply tendsto_full_grid_scale.frequently
-  exact (hpos.mono fun n hn => one_le_full_entropy_quotient hn).frequently
-
-private theorem beta_full :
-    β (Ioi (0 : ℝ)) = 1 := by
-  change upperMinkowskiExponent (Ioi (0 : ℝ)) = 1
-  rw [Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_legacyMinkowskiExponent]
-  have hlow : (1 : EReal) ≤
-      Auto.Spherical.Bourgain.legacyMinkowskiExponent (Ioi (0 : ℝ)) := by
-    unfold Auto.Spherical.Bourgain.legacyMinkowskiExponent
-      Auto.FractalDimensions.entropyLogQuotient
-      Auto.Spherical.Bourgain.legacyUnitEntropy
-    change (1 : EReal) ≤ Filter.limsup full_entropy_quotient (𝓝[>] (0 : ℝ≥0))
-    exact Filter.le_limsup_of_frequently_le' frequently_one_le_full_entropy_quotient
-  have hupp : Auto.Spherical.Bourgain.legacyMinkowskiExponent (Ioi (0 : ℝ)) ≤
-      (1 : EReal) := by
-    rw [← Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_eq_legacyMinkowskiExponent]
-    exact Auto.FractalDimensions.multiplicativeMinkowskiExponent_le_one _
-  have heq : Auto.Spherical.Bourgain.legacyMinkowskiExponent (Ioi (0 : ℝ)) =
-      (1 : EReal) :=
-    le_antisymm hupp hlow
-  rw [heq]
-  rfl
-
 private theorem criticalExponent_full (d : ℕ) (hd : 2 ≤ d) :
     criticalExponent d (Ioi (0 : ℝ)) = (d : ℝ) / (d - 1) := by
-  rw [criticalExponent, beta_full]
+  rw [criticalExponent]
+  change 1 + Auto.Spherical.LegendreAssouad.β (Ioi (0 : ℝ)) / ((d : ℝ) - 1) = _
+  rw [
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_Ioi_eq_one]
   have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
   have hden : (d : ℝ) - 1 ≠ 0 := by
     linarith
@@ -2071,9 +1859,10 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
         ENNReal.ofReal_toReal hptop] at h
       exact h
     have hbeta_nonneg : 0 ≤ upperMinkowskiExponent E := by
-      rw [Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E]
+      change 0 ≤ Auto.Spherical.LegendreAssouad.upperMinkowskiExponent E
+      rw [Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E]
       exact EReal.toReal_nonneg
-        (_root_.Auto.FractalDimensions.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
+        (_root_.Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
           hEnonempty hE)
     have hden : 0 < (d : ℝ) - 1 := by
       have hd' : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
@@ -2179,172 +1968,10 @@ theorem eLpNorm_sphericalMaximal_le_of_mss
   exact eLpNorm_sphericalMaximal_le_of_p4LocalSmoothing hd hp C
     (_root_.Auto.Spherical.MSS.p4LocalSmoothing_of_lpCutoffs C)
 
-/-- The dyadic lacunary set has zero upper Minkowski exponent. -/
-private theorem lacunary_log_subset (c : Ioi (0 : ℝ)) :
-    logDilationSet (({2 ^ k | k : ℤ} : Set ℝ) ∩ logBall c 1) ⊆
-      (fun k : ℤ => (k : ℝ)) ''
-        Set.Icc (⌊Real.log c.1 / Real.log 2 - 1⌋ : ℤ)
-          (⌊Real.log c.1 / Real.log 2 - 1⌋ + 2) := by
-  intro x hx
-  rcases hx with ⟨r, hr, hxr⟩
-  rcases hr.1 with ⟨k, hk⟩
-  have hlog : Real.log ((2 : ℝ) ^ k) / Real.log 2 = (k : ℝ) := by
-    cases k with
-    | ofNat n =>
-        rw [Int.ofNat_eq_natCast, zpow_natCast, Real.log_pow]
-        field_simp
-        norm_num
-    | negSucc n =>
-        rw [zpow_negSucc, Real.log_inv, Real.log_pow]
-        field_simp
-        norm_num
-  have hxk : x = (k : ℝ) := by
-    calc
-      x = Real.log r.1 / Real.log 2 := hxr.symm
-      _ = Real.log ((2 : ℝ) ^ k) / Real.log 2 := by rw [hk]
-      _ = (k : ℝ) := hlog
-  refine ⟨k, ?_, hxk.symm⟩
-  have hball := hr.2.2
-  rw [← hk, hlog] at hball
-  have hlo : Real.log c.1 / Real.log 2 - 1 ≤ (k : ℝ) := by
-    have hdiff := (neg_le_neg hball).trans
-      (neg_abs_le ((k : ℝ) - Real.log c.1 / Real.log 2))
-    have hdiff' : -(1 : ℝ) ≤ (k : ℝ) - Real.log c.1 / Real.log 2 := by
-      simpa using hdiff
-    linarith
-  have hhi : (k : ℝ) ≤ Real.log c.1 / Real.log 2 + 1 := by
-    have hdiff := (le_abs_self ((k : ℝ) - Real.log c.1 / Real.log 2)).trans hball
-    have hdiff' : (k : ℝ) - Real.log c.1 / Real.log 2 ≤ (1 : ℝ) := by
-      simpa using hdiff
-    linarith
-  constructor
-  · exact Int.cast_le.1 ((Int.floor_le _).trans hlo)
-  · have hkminus : k - 2 ≤ ⌊Real.log c.1 / Real.log 2 - 1⌋ := by
-      apply Int.le_floor.2
-      rw [Int.cast_sub]
-      linarith
-    omega
-
-private theorem lacunary_entropy_bound (c : Ioi (0 : ℝ)) (δ : ℝ≥0) :
-    N (({2 ^ k | k : ℤ} : Set ℝ) ∩ logBall c 1) δ ≤ 3 := by
-  let A := logDilationSet (({2 ^ k | k : ℤ} : Set ℝ) ∩ logBall c 1)
-  let m : ℤ := ⌊Real.log c.1 / Real.log 2 - 1⌋
-  have hA : A ⊆ (fun k : ℤ => (k : ℝ)) '' Set.Icc m (m + 2) := by
-    simpa [A, m] using lacunary_log_subset c
-  calc
-    N (({2 ^ k | k : ℤ} : Set ℝ) ∩ logBall c 1) δ
-        = Metric.externalCoveringNumber δ A := rfl
-    _ ≤ A.encard := Metric.externalCoveringNumber_le_encard_self A
-    _ ≤ ((fun k : ℤ => (k : ℝ)) '' Set.Icc m (m + 2)).encard :=
-      Set.encard_le_encard hA
-    _ ≤ (Set.Icc m (m + 2) : Set ℤ).encard := Set.encard_image_le _ _
-    _ = 3 := by
-      rw [← Set.coe_fintypeCard]
-      have hcard := Int.card_fintype_Icc_of_le (a := m) (b := m + 2) (by omega)
-      have hcard_int : (Fintype.card (Set.Icc m (m + 2)) : ℤ) = 3 := by
-        omega
-      have hcard' : Fintype.card (Set.Icc m (m + 2)) = 3 := by
-        exact_mod_cast hcard_int
-      rw [hcard']
-      norm_num
-
-theorem beta_lacunary :
-    β ({2 ^ k | k : ℤ} : Set ℝ) = 0 := by
-  let D : Set ℝ := {2 ^ k | k : ℤ}
-  let q : ℝ≥0 → EReal := fun δ =>
-    ENNReal.log (⨆ c : Ioi (0 : ℝ), (N (D ∩ logBall c 1) δ : ENNReal)) /
-      (Real.log ((δ : ℝ)⁻¹) : EReal)
-  have hN (c : Ioi (0 : ℝ)) (δ : ℝ≥0) :
-      N (D ∩ logBall c 1) δ ≤ 3 := by
-    simpa [D] using lacunary_entropy_bound c δ
-  have hsup_one (δ : ℝ≥0) :
-      (1 : ENNReal) ≤ (⨆ c : Ioi (0 : ℝ),
-        (N (D ∩ logBall c 1) δ : ENNReal)) := by
-    let c0 : Ioi (0 : ℝ) := ⟨1, by norm_num⟩
-    apply le_iSup_of_le c0
-    have hpos : 0 < N (D ∩ logBall c0 1) δ :=
-      Metric.externalCoveringNumber_pos_iff.2 <| by
-      refine ⟨0, ?_⟩
-      refine ⟨⟨1, by norm_num⟩, ?_⟩
-      constructor
-      · constructor
-        · exact ⟨0, by simp⟩
-        · simp [logBall, c0]
-      · simp
-    have hone : (1 : ENat) ≤ N (D ∩ logBall c0 1) δ :=
-      Order.one_le_iff_ne_zero.2 (ne_of_gt hpos)
-    exact_mod_cast hone
-  have hnum_le (δ : ℝ≥0) :
-      ENNReal.log (⨆ c : Ioi (0 : ℝ),
-        (N (D ∩ logBall c 1) δ : ENNReal)) ≤ ENNReal.log (3 : ENNReal) := by
-    apply ENNReal.log_le_log
-    exact iSup_le fun c => by exact_mod_cast hN c δ
-  have hnum_nonneg (δ : ℝ≥0) :
-      (0 : EReal) ≤ ENNReal.log
-        (⨆ c : Ioi (0 : ℝ), (N (D ∩ logBall c 1) δ : ENNReal)) := by
-    rw [← ENNReal.log_one]
-    apply ENNReal.log_le_log
-    exact hsup_one δ
-  have hnum_top (δ : ℝ≥0) :
-      ENNReal.log (⨆ c : Ioi (0 : ℝ),
-        (N (D ∩ logBall c 1) δ : ENNReal)) < (⊤ : EReal) := by
-    exact hnum_le δ |>.trans_lt (by norm_num)
-  have hKtop : ENNReal.log (3 : ENNReal) < (⊤ : EReal) := by
-    rw [← ENNReal.log_top]
-    apply ENNReal.log_lt_log
-    norm_num
-  have hden : Tendsto (fun δ : ℝ≥0 =>
-      (Real.log ((δ : ℝ)⁻¹) : EReal)) (𝓝[>] 0) (𝓝 (⊤ : EReal)) := by
-    have hcoe : Tendsto (fun δ : ℝ≥0 => (δ : ℝ))
-        (𝓝[>] 0) (𝓝[>] (0 : ℝ)) := by
-      change (𝓝[>] (0 : ℝ≥0)).map NNReal.toReal ≤ 𝓝[>] (0 : ℝ)
-      simp
-    have hinv : Tendsto (fun δ : ℝ≥0 => ((δ : ℝ)⁻¹)) (𝓝[>] 0) atTop :=
-      tendsto_inv_nhdsGT_zero.comp hcoe
-    exact EReal.tendsto_coe_atTop.comp (Real.tendsto_log_atTop.comp hinv)
-  have hden_pos : ∀ᶠ δ : ℝ≥0 in 𝓝[>] 0,
-      (0 : EReal) < (Real.log ((δ : ℝ)⁻¹) : EReal) :=
-    hden.eventually (lt_mem_nhds (EReal.coe_lt_top 0))
-  have hq : Tendsto q (𝓝[>] 0) (𝓝 (0 : EReal)) := by
-    apply tendsto_order.2
-    constructor
-    · intro a ha
-      filter_upwards [hden_pos] with δ hδ
-      have hq_nonneg : (0 : EReal) ≤ q δ := by
-        dsimp [q]
-        exact EReal.div_nonneg (hnum_nonneg δ) hδ.le
-      exact ha.trans_le hq_nonneg
-    · intro a ha
-      cases a with
-      | bot => simp at ha
-      | top =>
-          filter_upwards [hden_pos] with δ hδ
-          dsimp [q]
-          apply (EReal.div_lt_iff hδ (EReal.coe_ne_top _)).2
-          rw [EReal.top_mul_of_pos hδ]
-          exact hnum_top δ
-      | coe a =>
-          have ha_pos : 0 < a := EReal.coe_pos.1 ha
-          have hmul : Tendsto (fun δ : ℝ≥0 =>
-              (a : EReal) * (Real.log ((δ : ℝ)⁻¹) : EReal)) (𝓝[>] 0)
-              (𝓝 (⊤ : EReal)) := by
-            simpa [EReal.coe_mul_top_of_pos ha_pos] using
-              (EReal.Tendsto.const_mul hden (a := (a : EReal))
-                (b := (⊤ : EReal)) (by simp) (by simp))
-          filter_upwards [hden_pos,
-            hmul.eventually (lt_mem_nhds hKtop)] with δ hδ hmulδ
-          dsimp [q]
-          apply (EReal.div_lt_iff hδ (EReal.coe_ne_top _)).2
-          exact (hnum_le δ).trans_lt hmulδ
-  have hlimsup : Filter.limsup q (𝓝[>] 0) = 0 := hq.limsup_eq
-  have hresult : (Filter.limsup q (𝓝[>] 0)).toReal = 0 := by
-    rw [hlimsup]
-    rfl
-  simpa [q, D, upperMinkowskiExponent] using hresult
-
 theorem criticalExponent_lacunary (d : ℕ) :
     criticalExponent d ({2 ^ k | k : ℤ} : Set ℝ) = 1 := by
-  simp [criticalExponent, beta_lacunary]
+  simp [criticalExponent,
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_dyadicLacunary_eq_zero]
 
 /-- C.P. Calderon's lacunary spherical maximal theorem. -/
 theorem eLpNorm_lacunarySphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 2 ≤ d)
@@ -2429,29 +2056,29 @@ private theorem not_strongType_of_lt_critical_of_three_le
       (E := E) (p := p.toReal) (d - 1) (by omega) hpReal0
       (show (0 : ℝ) ≤ 0 by norm_num)
       (by simpa only [hdim] using hstrong)
-  have hM' : multiplicativeMinkowskiExponent E ≤
+  have hM' : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E ≤
       ((((d - 1 : ℕ) : ℝ) * (p.toReal - 1) : ℝ) : EReal) := by
     simpa using hM
-  have hMbot := Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_bot hE hEpos
-  have hMreal : (multiplicativeMinkowskiExponent E).toReal ≤
+  have hMbot := Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have hMreal : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal ≤
       ((d - 1 : ℕ) : ℝ) * (p.toReal - 1) :=
     EReal.toReal_le_toReal hM' hMbot (EReal.coe_ne_top _)
-  have hMreal' : (multiplicativeMinkowskiExponent E).toReal ≤
+  have hMreal' : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal ≤
       ((d : ℝ) - 1) * (p.toReal - 1) := by
     simpa only [Nat.cast_sub (by omega : 1 ≤ d), Nat.cast_one] using hMreal
   have hden : 0 < (d : ℝ) - 1 := by
     have hdreal : (3 : ℝ) ≤ d := by exact_mod_cast hd
     linarith
   have hbeta : upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
-  have hdiv : (multiplicativeMinkowskiExponent E).toReal / ((d : ℝ) - 1) ≤
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+  have hdiv : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal / ((d : ℝ) - 1) ≤
       p.toReal - 1 := by
     calc
       _ ≤ (((d : ℝ) - 1) * (p.toReal - 1)) / ((d : ℝ) - 1) :=
         div_le_div_of_nonneg_right hMreal' hden.le
       _ = p.toReal - 1 := by field_simp
-  have hcrit' : 1 + (multiplicativeMinkowskiExponent E).toReal / ((d : ℝ) - 1) ≤
+  have hcrit' : 1 + (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal / ((d : ℝ) - 1) ≤
       p.toReal := by
     linarith
   have hcrit : criticalExponent d E ≤ p.toReal := by
@@ -2593,7 +2220,7 @@ private theorem circle_finite_knapp_bound_of_bound
           (ENNReal.ofReal p) (powerWeightedVolume 2 0) ≤
           ENNReal.ofReal C * eLpNorm (f : (ℝ^2) → ℂ)
             (ENNReal.ofReal p) (powerWeightedVolume 2 0))
-    (T : Finset PositiveRadius) {b h R : ℝ} {m : ℝ≥0∞}
+    (T : Finset Auto.Spherical.LegendreAssouad.PositiveRadius) {b h R : ℝ} {m : ℝ≥0∞}
     (hT : ∀ r ∈ T, (r : ℝ) ∈ E)
     (hsep : ∀ r ∈ T, ∀ s ∈ T, r ≠ s → 2 * b ≤ |(r : ℝ) - (s : ℝ)|)
     (hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 0 (radialShell 2 (r : ℝ) b))
@@ -2608,9 +2235,9 @@ private theorem circle_finite_knapp_bound_of_bound
           (1 / (ENNReal.ofReal p).toReal) := by
   classical
   let D : Set (ℝ^2) := Metric.closedBall 0 (2 * R)
-  let U : PositiveRadius → Set (ℝ^2) :=
+  let U : Auto.Spherical.LegendreAssouad.PositiveRadius → Set (ℝ^2) :=
     fun r => radialShell 2 (r : ℝ) b
-  let V : Set (ℝ^2) := ⋃ r ∈ (↑T : Set PositiveRadius), U r
+  let V : Set (ℝ^2) := ⋃ r ∈ (↑T : Set Auto.Spherical.LegendreAssouad.PositiveRadius), U r
   rcases exists_schwartz_nonnegative_ball_test 2 hRpos with
     ⟨g, f, hfg, hgcont, hgnonneg, hgleone, hgone, hzero⟩
   have hp0 : ENNReal.ofReal p ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hppos)
@@ -2631,7 +2258,7 @@ private theorem circle_finite_knapp_bound_of_bound
   have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
     intro r hr
     exact measurableSet_radialShell 2 (r : ℝ) b
-  have hUdisjoint : (↑T : Set PositiveRadius).PairwiseDisjoint U := by
+  have hUdisjoint : (↑T : Set Auto.Spherical.LegendreAssouad.PositiveRadius).PairwiseDisjoint U := by
     intro r hr s hs hrs
     change Disjoint (U r) (U s)
     exact disjoint_radialShell_of_radius_separated 2
@@ -2692,20 +2319,20 @@ private theorem circle_unit_localEntropy_lower_of_bound
             (ENNReal.ofReal p) (powerWeightedVolume 2 0))
     (δ : ℝ≥0) (hδ : 0 < δ) (hδone : δ ≤ 1) (hppos : 0 < p) :
     circleCapFactor κ δ *
-        ((localMultiplicativeEntropy E ⟨1, by norm_num⟩ 1 δ).toENNReal *
+        ((Auto.Spherical.LegendreAssouad.localMultiplicativeEntropy E ⟨1, by norm_num⟩ 1 δ).toENNReal *
           ballOriginTubeMass 1 0 δ) ^ (1 / (ENNReal.ofReal p).toReal) ≤
       ENNReal.ofReal C *
         (ballOriginInputMass 1 0 δ) ^ (1 / (ENNReal.ofReal p).toReal) := by
   classical
-  let c : PositiveRadius := ⟨1, by norm_num⟩
+  let c : Auto.Spherical.LegendreAssouad.PositiveRadius := ⟨1, by norm_num⟩
   let b : ℝ := Real.log 2 * (δ : ℝ) / 16
   let h : ℝ := (δ : ℝ) / 8
   let R : ℝ := (δ : ℝ)
   let ρ : ℝ := (1 : ℝ) / 4
   let m : ℝ≥0∞ := ballOriginTubeMass 1 0 δ
-  let F : Set ℝ := E ∩ multiplicativeInterval c 1
+  let F : Set ℝ := E ∩ Auto.Spherical.LegendreAssouad.multiplicativeInterval c 1
   obtain ⟨T, hT, hnet, _hlogsep, hphyssep⟩ :=
-    exists_finset_unitMultiplicative_packing F c δ hδ (by
+    Auto.Spherical.LegendreAssouad.exists_finset_unitMultiplicative_packing F c δ hδ (by
       intro r hr
       exact hr.2)
   have hδreal : 0 < (δ : ℝ) := by exact_mod_cast hδ
@@ -2750,13 +2377,13 @@ private theorem circle_unit_localEntropy_lower_of_bound
     exact hscale.trans (by simpa using hstrict.le)
   have hinner : ∀ r ∈ T, b < (r : ℝ) := by
     intro r hr
-    have hrhalf := half_center_le_radius_of_mem_unitMultiplicativeInterval c
+    have hrhalf := Auto.Spherical.LegendreAssouad.half_center_le_radius_of_mem_unitMultiplicativeInterval c
       (hT r hr).2
     change (1 : ℝ) / 2 ≤ (r : ℝ) at hrhalf
     linarith
   have hmargin : ∀ r ∈ T, b + (r : ℝ) * h ≤ R := by
     intro r hr
-    have hrupper := radius_le_two_center_of_mem_unitMultiplicativeInterval c
+    have hrupper := Auto.Spherical.LegendreAssouad.radius_le_two_center_of_mem_unitMultiplicativeInterval c
       (hT r hr).2
     dsimp only [c] at hrupper
     have hrupper' : (r : ℝ) ≤ 2 := by simpa using hrupper
@@ -2769,7 +2396,7 @@ private theorem circle_unit_localEntropy_lower_of_bound
   have hm : ∀ r ∈ T, m ≤ powerWeightedVolume 2 0
       (radialShell 2 (r : ℝ) b) := by
     intro r hr
-    have hrhalf := half_center_le_radius_of_mem_unitMultiplicativeInterval c
+    have hrhalf := Auto.Spherical.LegendreAssouad.half_center_le_radius_of_mem_unitMultiplicativeInterval c
       (hT r hr).2
     change (1 : ℝ) / 2 ≤ (r : ℝ) at hrhalf
     have hρr : ρ ≤ (r : ℝ) := by
@@ -2795,26 +2422,26 @@ private theorem circle_unit_localEntropy_lower_of_bound
       intro r hr
       exact (hT r hr).1)
     hsep hm hppos hRpos hhpos hhalf hinner hmargin hDfinite
-  let centers : Set ℝ := logRadius '' (↑T : Set PositiveRadius)
-  have hcover : Metric.IsCover (δ / 2) (logRadiusSet F) centers := by
+  let centers : Set ℝ := Auto.Spherical.LegendreAssouad.logRadius '' (↑T : Set Auto.Spherical.LegendreAssouad.PositiveRadius)
+  have hcover : Metric.IsCover (δ / 2) (Auto.Spherical.LegendreAssouad.logRadiusSet F) centers := by
     rintro u ⟨r, hrF, rfl⟩
     obtain ⟨t, htT, hrt⟩ := hnet r (by simpa only [F] using hrF)
-    refine ⟨logRadius t, ⟨t, htT, rfl⟩, ?_⟩
-    change edist (logRadius r) (logRadius t) ≤ ((δ / 2 : ℝ≥0) : ℝ≥0∞)
+    refine ⟨Auto.Spherical.LegendreAssouad.logRadius t, ⟨t, htT, rfl⟩, ?_⟩
+    change edist (Auto.Spherical.LegendreAssouad.logRadius r) (Auto.Spherical.LegendreAssouad.logRadius t) ≤ ((δ / 2 : ℝ≥0) : ℝ≥0∞)
     rw [edist_dist]
     apply ENNReal.ofReal_le_coe.mpr
     simpa only [Real.dist_eq, NNReal.coe_div, NNReal.coe_ofNat] using hrt
   have hCcard : centers.encard = T.card := by
-    have hC : centers = (↑(T.image logRadius) : Set ℝ) := by
+    have hC : centers = (↑(T.image Auto.Spherical.LegendreAssouad.logRadius) : Set ℝ) := by
       ext u
       simp [centers]
     rw [hC, Set.encard_coe_eq_coe_finsetCard,
-      Finset.card_image_of_injective T logRadius_injective]
-  have hentropyENat : localMultiplicativeEntropy E c 1 δ ≤ T.card := by
-    change Metric.externalCoveringNumber (δ / 2) (logRadiusSet F) ≤ T.card
+      Finset.card_image_of_injective T Auto.Spherical.LegendreAssouad.logRadius_injective]
+  have hentropyENat : Auto.Spherical.LegendreAssouad.localMultiplicativeEntropy E c 1 δ ≤ T.card := by
+    change Metric.externalCoveringNumber (δ / 2) (Auto.Spherical.LegendreAssouad.logRadiusSet F) ≤ T.card
     rw [← hCcard]
     exact hcover.externalCoveringNumber_le_encard
-  have hentropy : (localMultiplicativeEntropy E c 1 δ).toENNReal ≤
+  have hentropy : (Auto.Spherical.LegendreAssouad.localMultiplicativeEntropy E c 1 δ).toENNReal ≤
       (T.card : ℝ≥0∞) := by
     exact_mod_cast ENat.toENNReal_mono hentropyENat
   have hinput : powerWeightedVolume 2 0
@@ -2826,7 +2453,7 @@ private theorem circle_unit_localEntropy_lower_of_bound
     positivity
   calc
     circleCapFactor κ δ *
-        ((localMultiplicativeEntropy E ⟨1, by norm_num⟩ 1 δ).toENNReal *
+        ((Auto.Spherical.LegendreAssouad.localMultiplicativeEntropy E ⟨1, by norm_num⟩ 1 δ).toENNReal *
           ballOriginTubeMass 1 0 δ) ^ (1 / (ENNReal.ofReal p).toReal) ≤
         (κ * ENNReal.ofReal h /
           ENNReal.ofReal (Auto.Spherical.SurfaceMeasureDecay.surfaceMass 2)) *
@@ -2878,12 +2505,12 @@ private theorem circle_unitMultiplicativeEntropy_bound_of_bound
           ENNReal.ofReal C * eLpNorm (f : (ℝ^2) → ℂ)
             (ENNReal.ofReal p) (powerWeightedVolume 2 0))
     (δ : ℝ≥0) (hδ : 0 < δ) (hδone : δ ≤ 1) (hppos : 0 < p) :
-    (unitMultiplicativeEntropy E δ).toENNReal ≤
+    (Auto.Spherical.LegendreAssouad.unitMultiplicativeEntropy E δ).toENNReal ≤
       ((ENNReal.ofReal C * (ballOriginInputMass 1 0 δ) ^ (1 / p)) /
         circleCapFactor κ δ) ^ p /
         ballOriginTubeMass 1 0 δ := by
   classical
-  unfold unitMultiplicativeEntropy
+  unfold Auto.Spherical.LegendreAssouad.unitMultiplicativeEntropy
   rw [ENat.toENNReal_iSup]
   apply iSup_le
   intro c
@@ -2896,16 +2523,16 @@ private theorem circle_unitMultiplicativeEntropy_bound_of_bound
     (d := 2) (by omega) hppos ha hstrong
   have htest := circle_unit_localEntropy_lower_of_bound κ hκ hdil δ hδ hδone hppos
   have hcentre :
-      (⟨a * (c : ℝ), mul_pos ha c.2⟩ : PositiveRadius) = ⟨1, by norm_num⟩ := by
+      (⟨a * (c : ℝ), mul_pos ha c.2⟩ : Auto.Spherical.LegendreAssouad.PositiveRadius) = ⟨1, by norm_num⟩ := by
     apply Subtype.ext
     dsimp only [a]
     exact inv_mul_cancel₀ hcpos.ne'
-  have hlocal := localMultiplicativeEntropy_dilateRadiusSet E c 1 δ ha
+  have hlocal := Auto.Spherical.LegendreAssouad.localMultiplicativeEntropy_dilateRadiusSet E c 1 δ ha
   rw [hcentre] at hlocal
   rw [hlocal] at htest
   have htest' :
       circleCapFactor κ δ *
-          ((localMultiplicativeEntropy E c 1 δ).toENNReal *
+          ((Auto.Spherical.LegendreAssouad.localMultiplicativeEntropy E c 1 δ).toENNReal *
             ballOriginTubeMass 1 0 δ) ^ (1 / p) ≤
         ENNReal.ofReal C *
           (ballOriginInputMass 1 0 δ) ^ (1 / p) := by
@@ -3021,7 +2648,7 @@ private theorem circle_unitMultiplicativeEntropy_power_bound_of_bound
             (ENNReal.ofReal p) (powerWeightedVolume 2 0))
     (hC : 0 < C) (hppos : 0 < p) :
     ∃ A : ℝ≥0∞, A ≠ ∞ ∧ ∀ δ : ℝ≥0, 0 < δ → δ ≤ 1 →
-      (unitMultiplicativeEntropy E δ).toENNReal ≤
+      (Auto.Spherical.LegendreAssouad.unitMultiplicativeEntropy E δ).toENNReal ≤
         A * (δ : ℝ≥0∞) ^ (-(p - 1)) := by
   let A : ℝ≥0∞ :=
     ((ENNReal.ofReal C * (ballOriginInputConstant 1 0) ^ (1 / p) /
@@ -3079,7 +2706,7 @@ private theorem circle_unitMultiplicativeEntropy_power_bound_of_bound
   have hcapscale := circleCapFactor_scale κ hδ
   have htubescale := ballOriginTubeMass_scale 1 0 hδ
   calc
-    (unitMultiplicativeEntropy E δ).toENNReal ≤
+    (Auto.Spherical.LegendreAssouad.unitMultiplicativeEntropy E δ).toENNReal ≤
         ((ENNReal.ofReal C * (ballOriginInputMass 1 0 δ) ^ (1 / p)) /
           circleCapFactor κ δ) ^ p /
           ballOriginTubeMass 1 0 δ := hbound
@@ -3119,18 +2746,18 @@ private theorem not_strongType_of_lt_critical_of_two
   have hsmall : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0), δ ∈ Ioo 0 1 :=
     nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
   have hpower' : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
-      (unitMultiplicativeEntropy E δ).toENNReal ≤
+      (Auto.Spherical.LegendreAssouad.unitMultiplicativeEntropy E δ).toENNReal ≤
         A * (δ : ℝ≥0∞) ^ (-(p.toReal - 1)) := by
     filter_upwards [hsmall] with δ hδ
     exact hpower δ hδ.1 hδ.2.le
-  have hM : multiplicativeMinkowskiExponent E ≤ ((p.toReal - 1 : ℝ) : EReal) :=
-    multiplicativeMinkowskiExponent_le_of_unitEntropy_power_bound hAtop hpower'
-  have hMbot := Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_bot hE hEpos
-  have hMreal : (multiplicativeMinkowskiExponent E).toReal ≤ p.toReal - 1 :=
+  have hM : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E ≤ ((p.toReal - 1 : ℝ) : EReal) :=
+    Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_le_of_unitEntropy_power_bound hAtop hpower'
+  have hMbot := Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have hMreal : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal ≤ p.toReal - 1 :=
     EReal.toReal_le_toReal hM hMbot (EReal.coe_ne_top _)
   have hbeta : upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
   have hcrit : criticalExponent 2 E ≤ p.toReal := by
     rw [criticalExponent]
     change 1 + upperMinkowskiExponent E / ((2 : ℝ) - 1) ≤ p.toReal
@@ -6567,7 +6194,8 @@ theorem q4DyadicPairKernel_eq_polar_of_normRadial
       fun ξ : Euclidean d => q4RadialPairProfile ψ r r' v ‖ξ‖ by
     funext ξ
     exact q4DyadicPairMultiplier_eq_radialProfile ψ hψ r r' v hv ξ]
-  exact fourierInv_radial_eq_polar hd (q4RadialPairProfile ψ r r' v) x
+  exact Auto.RadialFourierTransform.fourierInv_radial_eq_polar hd
+    (q4RadialPairProfile ψ r r' v) x
 
 end
 end Former_Q4RadialReduction
@@ -19780,7 +19408,7 @@ theorem integrable_polar_q4RadialPairProfile
         q4RadialPairProfile psi r r' v p.2.1)
       ((unitSurfaceMeasure d).prod (Measure.volumeIoiPow (d - 1))) := by
   obtain ⟨m, hm⟩ := exists_schwartz_q4DyadicPairMultiplier psi hpsiCompact r r'
-  apply integrable_polar_fourierChar_mul_of_schwartz_radial m
+  apply Auto.RadialFourierTransform.integrable_polar_fourierChar_mul_of_schwartz_radial m
     (q4RadialPairProfile psi r r' v)
   intro xi
   rw [hm xi]
@@ -19804,7 +19432,7 @@ theorem q4DyadicPairKernel_eq_surfaceFourier_integral
       fun xi : Euclidean d => q4RadialPairProfile psi r r' v ‖xi‖ by
     funext xi
     exact q4DyadicPairMultiplier_eq_radialProfile psi hpsiRadial r r' v hv xi]
-  exact fourierInv_radial_eq_surfaceFourier_integral hd
+  exact Auto.Spherical.SurfaceMeasureDecay.fourierInv_radial_eq_surfaceFourier_integral hd
     (q4RadialPairProfile psi r r' v) x
     (integrable_polar_q4RadialPairProfile psi hpsiCompact hpsiRadial r r' v hv x)
 
@@ -43842,7 +43470,7 @@ private theorem integrable_polar_q4ScaledNormalizedDerivativeRadialPairProfile_a
   obtain ⟨m, hm⟩ :=
     exists_schwartz_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier
       psi hpsiCompact j r r'
-  apply integrable_polar_fourierChar_mul_of_schwartz_radial m
+  apply Auto.RadialFourierTransform.integrable_polar_fourierChar_mul_of_schwartz_radial m
     (q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r' v)
   intro xi
   rw [hm xi]
@@ -43868,7 +43496,7 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_eq_surfaceFour
     funext xi
     exact q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_eq_radialProfile_allDim
       psi hpsiRadial j r r' v hv xi]
-  exact fourierInv_radial_eq_surfaceFourier_integral hd
+  exact Auto.Spherical.SurfaceMeasureDecay.fourierInv_radial_eq_surfaceFourier_integral hd
     (q4ScaledNormalizedDerivativeRadialPairProfileAllDim psi j r r' v) x
     (integrable_polar_q4ScaledNormalizedDerivativeRadialPairProfile_allDim
       psi hpsiCompact hpsiRadial j r r' v hv x)
@@ -44289,7 +43917,7 @@ private theorem integrable_polar_q4ScaledNormalizedDerivativeRadialPairProfile
   obtain ⟨m, hm⟩ :=
     exists_schwartz_q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier
       psi hpsiCompact j r r'
-  apply integrable_polar_fourierChar_mul_of_schwartz_radial m
+  apply Auto.RadialFourierTransform.integrable_polar_fourierChar_mul_of_schwartz_radial m
     (q4ScaledNormalizedDerivativeRadialPairProfile psi j r r' v)
   intro xi
   rw [hm xi]
@@ -44315,7 +43943,7 @@ theorem q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairKernel_eq_surfaceFour
     funext xi
     exact q4ScaledNormalizedDyadicSurfaceRadiusDerivativePairMultiplier_eq_radialProfile
       psi hpsiRadial j r r' v hv xi]
-  exact fourierInv_radial_eq_surfaceFourier_integral (by omega)
+  exact Auto.Spherical.SurfaceMeasureDecay.fourierInv_radial_eq_surfaceFourier_integral (by omega)
     (q4ScaledNormalizedDerivativeRadialPairProfile psi j r r' v) x
     (integrable_polar_q4ScaledNormalizedDerivativeRadialPairProfile
       psi hpsiCompact hpsiRadial j r r' v hv x)
@@ -71526,7 +71154,7 @@ open Auto.Spherical.PowerWeights
 # The planar negative-power circular maximal theorem
 
 This file is the single source file of the Duoandikoetxea--Vega formalization
-project, following `blueprints/duoandikoetxea_vega_planar_blueprint.tex`.
+project, following `automation/blueprints/duoandikoetxea_vega_planar_blueprint.tex`.
 
 The public target is the planar negative-power circular maximal theorem
 (blueprint `thm:direct-missing`): for `2 < p` and `-1 < α < 0` the full
@@ -71633,8 +71261,8 @@ power weight. -/
 theorem neg_one_lt_alpha_of_planar_strict {E : Set ℝ} (hE : E.Nonempty)
     (hEpos : E ⊆ Ioi (0 : ℝ)) {p α : ℝ}
     (hstrict :
-      max ((α : EReal) + multiplicativeMinkowskiExponent E)
-          (multiplicativeLegendreAssouadExponent E
+      max ((α : EReal) + Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E)
+          (Auto.Spherical.LegendreAssouad.multiplicativeLegendreAssouadExponent E
             ((((2 : ℕ) : ℝ) - 1) * (p - 2) - α)) <
         ((((((2 : ℕ) : ℝ) - 1) * (p - 1)) : ℝ) : EReal)) :
     -1 < α := by
@@ -71912,10 +71540,10 @@ def HasPlanarNegativeRawBandRate (E : Set ℝ) (p α : ℝ)
       (∀ x : Euclidean 2, x ∉ euclideanAnnulus 2 (1 / 4 : ℝ) 8 → f x = 0) →
       (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
           (restrictedRelativeBandpassSphericalMaximal 2
-            (normalizedRadiusBlock E R) phi j f x) ^ p ∂
+            (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p ∂
             powerWeightedVolume 2 α) ≤
         (K * (ENNReal.ofReal ((j : ℝ) + 1)) ^ (2 * p - 1) *
-            (dyadicMultiplicativeScale j : ENNReal) ^ ε) *
+            (Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ENNReal) ^ ε) *
           ∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖f x‖) ^ p ∂
             powerWeightedVolume 2 α
 
@@ -72002,42 +71630,42 @@ theorem hasPlanarNegativeRawBandRate_of_criticalWeight (E : Set ℝ) {p α : ℝ
     positivity
   have hnegθ : -θ = α := by rw [hθdef]; ring
   have hscale : ∀ j : ℕ,
-      ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) =
+      ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) =
         ENNReal.ofReal (((1 : ℝ) / 2) ^ j) := by
     intro j
-    have h1 : ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ) = ((1 : ℝ) / 2) ^ j := by
-      simp only [dyadicMultiplicativeScale, NNReal.coe_pow, NNReal.coe_inv]
+    have h1 : ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ) = ((1 : ℝ) / 2) ^ j := by
+      simp only [Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale, NNReal.coe_pow, NNReal.coe_inv]
       norm_num
     rw [← ENNReal.ofReal_coe_nnreal, h1]
   refine ⟨ε, ENNReal.ofReal (A * K0), hε, ENNReal.ofReal_ne_top, ?_⟩
   intro R hR j f hfsupp
-  have hERIcc : normalizedRadiusBlock E R ⊆ Icc (1 : ℝ) 2 :=
-    normalizedRadiusBlock_subset_Icc_one_two hR
-  have hERpos : normalizedRadiusBlock E R ⊆ Ioi (0 : ℝ) := fun r hr =>
+  have hERIcc : Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R ⊆ Icc (1 : ℝ) 2 :=
+    Auto.Spherical.LegendreAssouad.normalizedRadiusBlock_subset_Icc_one_two hR
+  have hERpos : Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R ⊆ Ioi (0 : ℝ) := fun r hr =>
     lt_of_lt_of_le (by norm_num) (hERIcc hr).1
   have hGmeas : Measurable
-      (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f) :=
+      (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f) :=
     measurable_restrictedRelativeBandpassSphericalMaximal_global
-      (normalizedRadiusBlock E R) phi f hphi_one hphi_zero j
+      (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi f hphi_one hphi_zero j
   have hHmeas : Measurable (fun x : Euclidean 2 =>
-      (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p) :=
+      (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p) :=
     hGmeas.pow_const p
   -- the weighted integral in physical form
   have hLHS : (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
-        (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+        (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
           ∂ powerWeightedVolume 2 α) =
       ∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
         radialPowerWeight 2 (-θ) x *
-          (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+          (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
             ∂ volume := by
     rw [powerWeightedVolume, restrict_withDensity measurableSet_closedBall,
       lintegral_withDensity_eq_lintegral_mul _ (measurable_radialPowerWeight 2 α) hHmeas,
       hnegθ]
     rfl
   -- the two Hoelder factors
-  have hfactor1 := hcritb j (normalizedRadiusBlock E R) hERIcc f hfsupp
+  have hfactor1 := hcritb j (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) hERIcc f hfsupp
   have hfactor2 : (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
-        (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+        (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
           ∂ volume) ≤
       (bandConst * rho ^ j) ^ p *
         ∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖f x‖) ^ p ∂ volume := by
@@ -72052,10 +71680,10 @@ theorem hasPlanarNegativeRawBandRate_of_criticalWeight (E : Set ℝ) {p α : ℝ
   have hcombine :
       (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
         radialPowerWeight 2 (-1) x *
-          (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+          (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
             ∂ volume) ^ θ *
       (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
-        (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+        (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
             ∂ volume) ^ (1 - θ) ≤
       (ENNReal.ofReal (C * ((j : ℝ) + 1) ^ N) *
           ∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖f x‖) ^ p ∂ volume) ^ θ *
@@ -72110,11 +71738,11 @@ theorem hasPlanarNegativeRawBandRate_of_criticalWeight (E : Set ℝ) {p α : ℝ
       _ = A * K0 * (t ^ j)⁻¹ := by ring
   -- assemble
   calc (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
-        (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+        (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
           ∂ powerWeightedVolume 2 α)
       = ∫⁻ x in Metric.closedBall (0 : Euclidean 2) (1 / 32 : ℝ),
           radialPowerWeight 2 (-θ) x *
-            (restrictedRelativeBandpassSphericalMaximal 2 (normalizedRadiusBlock E R) phi j f x) ^ p
+            (restrictedRelativeBandpassSphericalMaximal 2 (Auto.Spherical.LegendreAssouad.normalizedRadiusBlock E R) phi j f x) ^ p
               ∂ volume := hLHS
     _ ≤ (ENNReal.ofReal (C * ((j : ℝ) + 1) ^ N) *
             ∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖f x‖) ^ p ∂ volume) ^ θ *
@@ -72135,7 +71763,7 @@ theorem hasPlanarNegativeRawBandRate_of_criticalWeight (E : Set ℝ) {p α : ℝ
         ring
     _ ≤ (ENNReal.ofReal (A * K0) *
           (ENNReal.ofReal ((j : ℝ) + 1)) ^ (2 * p - 1) *
-            ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε) *
+            ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε) *
               ∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖f x‖) ^ p
                 ∂ powerWeightedVolume 2 α := by
         refine mul_le_mul' ?_ le_rfl
@@ -72166,7 +71794,7 @@ theorem hasPlanarNegativeRawBandRate_of_criticalWeight (E : Set ℝ) {p α : ℝ
           rw [hAdef]
           ring
         have hstep4 : ENNReal.ofReal (A * K0) *
-            ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε =
+            ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε =
             ENNReal.ofReal (A * K0 * (((1 : ℝ) / 2) ^ j) ^ ε) := by
           rw [hscale j, ENNReal.ofReal_rpow_of_nonneg (by positivity) hε.le,
             ← ENNReal.ofReal_mul (by positivity)]
@@ -72183,12 +71811,12 @@ theorem hasPlanarNegativeRawBandRate_of_criticalWeight (E : Set ℝ) {p α : ℝ
           _ ≤ ENNReal.ofReal (A * K0 * (((1 : ℝ) / 2) ^ j) ^ ε) :=
               ENNReal.ofReal_le_ofReal hreal
           _ = ENNReal.ofReal (A * K0) *
-                ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε := hstep4.symm
+                ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε := hstep4.symm
           _ = ENNReal.ofReal (A * K0) * 1 *
-                ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε := by rw [mul_one]
+                ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε := by rw [mul_one]
           _ ≤ ENNReal.ofReal (A * K0) *
                 (ENNReal.ofReal ((j : ℝ) + 1)) ^ (2 * p - 1) *
-                  ((dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε := by
+                  ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale j : ℝ≥0) : ℝ≥0∞) ^ ε := by
               gcongr
 
 /-! ## Phase D: the oscillatory radial kernel
@@ -80568,7 +80196,7 @@ the planar negative range.**
 
 This is the one declaration of the project which is not yet proved.  Its
 content is exactly `prop:critical-loss` of
-`blueprints/duoandikoetxea_vega_planar_blueprint.tex` after the Phase E
+`automation/blueprints/duoandikoetxea_vega_planar_blueprint.tex` after the Phase E
 interpolation: the localized `L^p(|x|^{-1})` estimate for the
 frequency-localized local circular maximal operator, with a polynomial loss in
 the frequency index.
@@ -80776,26 +80404,26 @@ Seeger--Wainger--Wright theorem.  The hypothesis is the strict critical
 inequality in the internal `EReal` entropy formulation. -/
 theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_sww
     (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) {q : ℝ} (hq : 1 < q)
-    (hcritical : multiplicativeMinkowskiExponent E <
+    (hcritical : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E <
       (((((2 : ℕ) : ℝ) - 1) * (q - 1) : ℝ) : EReal)) :
     HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E q 0 := by
-  have hbot : multiplicativeMinkowskiExponent E ≠ ⊥ :=
-    Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_bot hE hEpos
-  have htop : multiplicativeMinkowskiExponent E ≠ ⊤ :=
-    Auto.Spherical.Bourgain.multiplicativeMinkowskiExponent_ne_top hE hEpos
-  have hcoe : ((multiplicativeMinkowskiExponent E).toReal : EReal) =
-      multiplicativeMinkowskiExponent E := EReal.coe_toReal htop hbot
-  have hbeta : (multiplicativeMinkowskiExponent E).toReal <
+  have hbot : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E ≠ ⊥ :=
+    Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_bot hE hEpos
+  have htop : Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E ≠ ⊤ :=
+    Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_ne_top hE hEpos
+  have hcoe : ((Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal : EReal) =
+      Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E := EReal.coe_toReal htop hbot
+  have hbeta : (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal <
       (((2 : ℕ) : ℝ) - 1) * (q - 1) := by
     rw [← EReal.coe_lt_coe_iff, hcoe]
     exact hcritical
   have hbetaeq : _root_.Spherical.upperMinkowskiExponent E =
-      (multiplicativeMinkowskiExponent E).toReal :=
-    Auto.Spherical.Bourgain.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
+      (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal :=
+    Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E
   have hval : _root_.Spherical.RestrictedDilations.criticalExponent 2 E =
-      1 + (multiplicativeMinkowskiExponent E).toReal := by
+      1 + (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal := by
     unfold _root_.Spherical.RestrictedDilations.criticalExponent
-    rw [show _root_.Spherical.β E = (multiplicativeMinkowskiExponent E).toReal from hbetaeq]
+    rw [show _root_.Spherical.β E = (Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E).toReal from hbetaeq]
     norm_num
   have hcrit : _root_.Spherical.RestrictedDilations.criticalExponent 2 E < q := by
     rw [hval]
@@ -80834,8 +80462,8 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_high
     (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) {p α : ℝ}
     (hp : 2 < p) (hα : α < 0)
     (hstrict :
-      max ((α : EReal) + multiplicativeMinkowskiExponent E)
-          (multiplicativeLegendreAssouadExponent E
+      max ((α : EReal) + Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E)
+          (Auto.Spherical.LegendreAssouad.multiplicativeLegendreAssouadExponent E
             ((((2 : ℕ) : ℝ) - 1) * (p - 2) - α)) <
         ((((((2 : ℕ) : ℝ) - 1) * (p - 1)) : ℝ) : EReal)) :
     HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p α :=
@@ -80853,21 +80481,21 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_planar_of_s
     (E : Set ℝ) (hE : E.Nonempty) (hEpos : E ⊆ Ioi (0 : ℝ)) {p α : ℝ}
     (hp : 1 < p)
     (hstrict :
-      max ((α : EReal) + multiplicativeMinkowskiExponent E)
-          (multiplicativeLegendreAssouadExponent E
+      max ((α : EReal) + Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E)
+          (Auto.Spherical.LegendreAssouad.multiplicativeLegendreAssouadExponent E
             ((((2 : ℕ) : ℝ) - 1) * (p - 2) - α)) <
         ((((((2 : ℕ) : ℝ) - 1) * (p - 1)) : ℝ) : EReal)) :
     HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E p α := by
   have hunweighted : ∀ ⦃q : ℝ⦄, 1 < q →
-      multiplicativeMinkowskiExponent E <
+      Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E <
         (((((2 : ℕ) : ℝ) - 1) * (q - 1) : ℝ) : EReal) →
       HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E q 0 :=
     fun q hq hcrit =>
       hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar_of_sww
         E hE hEpos hq hcrit
   have hnegative : ∀ ⦃q a : ℝ⦄, 1 < q → q < 2 → a < 0 →
-      max ((a : EReal) + multiplicativeMinkowskiExponent E)
-          (multiplicativeLegendreAssouadExponent E
+      max ((a : EReal) + Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent E)
+          (Auto.Spherical.LegendreAssouad.multiplicativeLegendreAssouadExponent E
             ((((2 : ℕ) : ℝ) - 1) * (q - 2) - a)) <
         ((((((2 : ℕ) : ℝ) - 1) * (q - 1)) : ℝ) : EReal) →
       HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 E q a := by
