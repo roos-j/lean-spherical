@@ -1,15 +1,25 @@
 ## Formalization of spherical maximal functions
 
-This repository contains formalizations for some of the basic Lebesgue space theory of spherical maximal functions with an emphasis on restricted dilation sets. It includes in particular a formalization of Bourgain's circular maximal theorem.
+[![Lean](https://github.com/roos-j/lean-spherical/actions/workflows/lean_action_ci.yml/badge.svg?branch=master)](https://github.com/roos-j/lean-spherical/actions/workflows/lean_action_ci.yml)
+
+This repository contains formalizations for some of the basic Lebesgue space theory of spherical maximal functions with an emphasis on restricted dilation sets, as well as related results. It includes in particular a formalization of Bourgain's circular maximal theorem.
 
 Completed:
 
-* Stein's spherical maximal theorems and Bourgain's circular maximal theorem: [`Spherical.eLpNorm_sphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/4aabd0124fefcdffc1531e3eebb96613f75d8af3/LeanSpherical/Theorems.lean#L17-L21)
+* Stein's spherical maximal theorem and Bourgain's circular maximal theorem: [`Spherical.eLpNorm_sphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/4aabd0124fefcdffc1531e3eebb96613f75d8af3/LeanSpherical/Theorems.lean#L17-L21)
 * Lacunary spherical maximal theorem: [`Spherical.RestrictedDilations.eLpNorm_lacunarySphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/4aabd0124fefcdffc1531e3eebb96613f75d8af3/LeanSpherical/Theorems.lean#L44-L49)
 * $`L^p \to L^p`$ bounds for restricted dilation sets: [Seeger-Wainger-Wright '08](https://doi.org/10.1017/S0305004100073503): [`Spherical.RestrictedDilations.eLpNorm_restrictedSphericalMaximal_le`](https://github.com/roos-j/lean-spherical/blob/4aabd0124fefcdffc1531e3eebb96613f75d8af3/LeanSpherical/Theorems.lean#L26-L32)
 * Power weights, Thm. 1.1 of [Fraccaroli-Roos-Seeger '26](https://arxiv.org/abs/2602.17613): [`Spherical.PowerWeights.closure_typeSet_eq`](https://github.com/roos-j/lean-spherical/blob/4aabd0124fefcdffc1531e3eebb96613f75d8af3/LeanSpherical/Theorems.lean#L57-L60)
-* Thm. 2 of [arXiv:1909.05389](https://arxiv.org/abs/1909.05389) (Sharpness examples for $`L^p`$ improving)
-* Thm. 1 of [arXiv:1909.05389](https://arxiv.org/abs/1909.05389) ($`L^p \to L^q`$ bounds for fractal dilation sets, non-endpoint range): [`Spherical.FractalDilations.hasFractalSphericalStrongType_of_mem_R`](https://github.com/roos-j/lean-spherical/blob/master/LeanSpherical/Theorems.lean) and its representative-independent form [`Spherical.FractalDilations.hasFractalSphericalLpExtension_of_mem_R`](https://github.com/roos-j/lean-spherical/blob/master/LeanSpherical/Theorems.lean)
+
+Completed, pending final human verification:
+* $`L^p`$ improving for fractal dilation sets: Thm. 1 of [AHRS](https://arxiv.org/abs/1909.05389),
+and Thm. 2 of [AHRS](https://arxiv.org/abs/1909.05389) (sharpness examples)
+* $`L^p`$ improving for fractal dilation sets, $`d\ge 2`$, large sets: Thm. 1.1 of [RS' 20](https://arxiv.org/abs/2004.00984)
+* Typeset characterization theorem: Thm. 1.2 of [RS '20](https://arxiv.org/abs/2004.00984)
+* Legendre-Assouad function characterization: Thm. 1.2 of [BRRS '25](https://arxiv.org/abs/2501.12805)
+
+Pending:
+* Fractal local smoothing on radial functions: Thm. 1.1 of [BRRS '25](https://arxiv.org/abs/2501.12805)
 
 ### Verification / build instructions
 
@@ -70,7 +80,7 @@ Lean certifies correctness[^2] of the human-written theorems, so the machine-gen
 
 ### ToDo
 
-* Many standard theorems in harmonic analysis are contained in the machine-generated code. They should be cleaned up and presented in convenient, reusable form:
+* Many standard theorems in harmonic analysis are contained in this project. They should be cleaned up and presented in convenient, reusable form:
   - Mikhlin multiplier theorem
   - Hardy-Littlewood maximal function
   - Rademacher functions / Khinchine's inequality
@@ -81,6 +91,9 @@ Lean certifies correctness[^2] of the human-written theorems, so the machine-gen
   - Cotlar-Stein lemma
   - Calderon-Vaillancourt theorem
   - Hardy-Littlewood-Sobolev inequality
+  - Convex duality for the Legendre transform
+  - Fourier transform of radial functions
+  - Basic facts on fractal dimensions including Minkowski dimension, Assouad dimension, Assouad spectrum, Legendre-Assouad function
 
 [^1]: Within reason. The code still had to be reviewed sufficiently to ensure that coding agents followed instructions and did not attempt to act adverserially, for example by writing adverserial meta programs or otherwise trying to compromise the user's system. The degree to which machine-generated code has to be looked at can be further minimized by relying on a correctness judge like [Lean Comparator](https://github.com/leanprover/comparator).
 

@@ -13,12 +13,19 @@ namespace Spherical
 open Filter MeasureTheory Set Topology ENNReal
 open scoped Spherical ENNReal NNReal Topology
 
-/-- The Stein-Bourgain spherical maximal theorem -/
+/-- Bourgain's circular maximal theorem (`d = 2`) and Stein's spherical maximal theorem (`d ≥ 3`) -/
 theorem eLpNorm_sphericalMaximal_le {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
     (hp : (d : ENNReal) / (d - 1) < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume → MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
       eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_sphericalMaximal_le hd hp
+
+/-- Sharpness of Bourgain's and Stein's theorems -/
+theorem eLpNorm_sphericalMaximal_ge_of_le_criticalExponent {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) (hp0 : 0 < p) (hp : p ≤ (d : ENNReal) / (d - 1)) :
+    ∀ C : ℝ, ∃ f : (ℝ^d) → ℂ, MemLp f p volume ∧ 0 <  eLpNorm f p volume ∧
+      eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≥ (ENNReal.ofReal C) * eLpNorm f p volume :=
+  Auto.Spherical.SphericalMaximal.eLpNorm_sphericalMaximal_ge_of_le_criticalExponent hd hp0 hp
 
 namespace RestrictedDilations
 
