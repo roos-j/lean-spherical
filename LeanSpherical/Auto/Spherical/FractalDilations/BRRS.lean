@@ -3484,6 +3484,22 @@ theorem sobolevExponent_nonneg {d : Nat} {p : Real}
     exact one_div_le_one_div_of_le (by norm_num) hp
   exact mul_nonneg hd' hp'
 
+/-- Below the Hilbert exponent, the BRRS fixed-time Sobolev exponent has the
+opposite sign.  This is the sign which forces the lower, rather than upper,
+endpoint of a dyadic source annulus in the low-`p` part of Section 5. -/
+theorem sobolevExponent_nonpos {d : Nat} {p : Real}
+    (hd : 2 ≤ d) (hp_pos : 0 < p) (hp : p ≤ 2) :
+    sobolevExponent d p ≤ 0 := by
+  unfold sobolevExponent
+  have hdreal : (2 : Real) ≤ (d : Real) := by
+    exact_mod_cast hd
+  have hd' : 0 ≤ (d : Real) - 1 := by
+    linarith
+  have hp' : 1 / 2 - 1 / p ≤ 0 := by
+    rw [sub_nonpos]
+    exact one_div_le_one_div_of_le hp_pos hp
+  exact mul_nonpos_of_nonneg_of_nonpos hd' hp'
+
 /-- The entropy penalty appearing in the BRRS critical exponent is
 nonnegative in the theorem range. -/
 theorem mul_sobolevExponent_nonneg {d : Nat} {p : Real}
@@ -14519,7 +14535,7 @@ theorem brrs_sum_mainCell_add_weighted_profileConvolution_le
       W r * brrsOneDimProfileConvolution omega f (t + r)) ≤
         7 * brrsKappa T R alpha *
           ∫⁻ x : Real, (brrsOneDimProfileConvolution omega f x) ^ (1 : Real) := by
-      simpa only [ENNReal.rpow_one] using
+      simpa only [ENNReal.rpow_one, mul_assoc, mul_left_comm, mul_comm] using
         (brrs_sum_mainCell_add_weighted_profileConvolution_rpow_le
           T R alpha 1 hR W omega f homega hf hW)
     _ = 7 * brrsKappa T R alpha *
@@ -15035,7 +15051,7 @@ theorem measurable_brrsExteriorAbsorbedKernel
   unfold brrsExteriorAbsorbedKernel
   apply (ENNReal.continuous_rpow_const.measurable.comp
     (ENNReal.continuous_ofReal.measurable.comp ?_)).mul homega
-  exact measurable_const.mul (measurable_const.add measurable_abs)
+  exact measurable_const.mul (measurable_const.add continuous_abs.measurable)
 
 /-- The exact exterior radial ratio is pointwise absorbed by the weighted
 phase-line kernel.  This is the common algebraic step for all four travelling
@@ -15048,10 +15064,12 @@ theorem brrs_exterior_ratioWeight_mul_le_absorbedKernel
     (ENNReal.ofReal (s / r)) ^ sigma * omega u ≤
       brrsExteriorAbsorbedKernel sigma omega u := by
   unfold brrsExteriorAbsorbedKernel
-  apply mul_le_mul_right
-  apply ENNReal.rpow_le_rpow
-  apply ENNReal.ofReal_le_ofReal
-  exact brrs_radiusRatio_le_two_mul_one_add_abs_of_phase r s t u hr ht hphase
+  exact mul_le_mul'
+    (ENNReal.rpow_le_rpow
+      (ENNReal.ofReal_le_ofReal
+        (brrs_radiusRatio_le_two_mul_one_add_abs_of_phase r s t u hr ht hphase))
+      hsigma)
+    le_rfl
 
 /-- The `t-r-s` exterior phase is bounded by an ordinary translated
 convolution with the absorbed kernel. -/
@@ -15068,19 +15086,17 @@ theorem brrs_exterior_weighted_sub_sub_le_convolution
           brrsExteriorAbsorbedKernel sigma omega (t - r - s) * f s := by
       apply setLIntegral_mono' measurableSet_Ioi
       intro s hs
-      exact mul_le_mul_right
+      exact mul_le_mul'
         (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
-          (brrs_sourceRadius_le_time_add_output_add_abs_sub_sub r s t hr.le))
-        (f s)
+          (brrs_sourceRadius_le_time_add_output_add_abs_sub_sub r s t
+            (le_trans (by norm_num) hr)))
+        le_rfl
     _ ≤ ∫⁻ s : Real,
           brrsExteriorAbsorbedKernel sigma omega ((t - r) - s) * f s :=
       setLIntegral_le_lintegral _ _
     _ = brrsOneDimProfileConvolution (brrsExteriorAbsorbedKernel sigma omega) f
           (t - r) := by
-      unfold brrsOneDimProfileConvolution
-      congr 1
-      funext s
-      ring_nf
+      rfl
 
 /-- The `t-r+s` exterior phase is bounded by the reflected-source
 convolution with the absorbed kernel. -/
@@ -15097,10 +15113,11 @@ theorem brrs_exterior_weighted_sub_add_le_convolutionPlus
           brrsExteriorAbsorbedKernel sigma omega (t - r + s) * f s := by
       apply setLIntegral_mono' measurableSet_Ioi
       intro s hs
-      exact mul_le_mul_right
+      exact mul_le_mul'
         (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
-          (brrs_sourceRadius_le_time_add_output_add_abs_sub_add r s t ht.1))
-        (f s)
+          (brrs_sourceRadius_le_time_add_output_add_abs_sub_add r s t
+            (le_trans (by norm_num) ht.1)))
+        le_rfl
     _ ≤ ∫⁻ s : Real,
           brrsExteriorAbsorbedKernel sigma omega ((t - r) + s) * f s :=
       setLIntegral_le_lintegral _ _
@@ -15123,10 +15140,10 @@ theorem brrs_exterior_weighted_add_sub_le_convolution
           brrsExteriorAbsorbedKernel sigma omega (t + r - s) * f s := by
       apply setLIntegral_mono' measurableSet_Ioi
       intro s hs
-      exact mul_le_mul_right
+      exact mul_le_mul'
         (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
           (brrs_sourceRadius_le_time_add_output_add_abs_add_sub r s t))
-        (f s)
+        le_rfl
     _ ≤ ∫⁻ s : Real,
           brrsExteriorAbsorbedKernel sigma omega ((t + r) - s) * f s :=
       setLIntegral_le_lintegral _ _
@@ -15149,16 +15166,174 @@ theorem brrs_exterior_weighted_add_add_le_convolutionPlus
           brrsExteriorAbsorbedKernel sigma omega (t + r + s) * f s := by
       apply setLIntegral_mono' measurableSet_Ioi
       intro s hs
-      exact mul_le_mul_right
+      exact mul_le_mul'
         (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
-          (brrs_sourceRadius_le_time_add_output_add_abs_add_add r s t hr.le ht.1))
-        (f s)
+          (brrs_sourceRadius_le_time_add_output_add_abs_add_add r s t
+            (le_trans (by norm_num) hr) (le_trans (by norm_num) ht.1)))
+        le_rfl
     _ ≤ ∫⁻ s : Real,
           brrsExteriorAbsorbedKernel sigma omega ((t + r) + s) * f s :=
       setLIntegral_le_lintegral _ _
     _ = brrsOneDimProfileConvolutionPlus (brrsExteriorAbsorbedKernel sigma omega) f
           (t + r) := by
       rfl
+
+/-- The phasewise aggregate of the four exact travelling-phase `Lᵖ` moments
+on the exterior radial region.  It is deliberately a sum of the four
+individual moments; passing from a pointwise sum of phases to this block
+requires the separate convexity factor.  The source is restricted to the
+physical half-line, but no compact source cutoff is imposed. -/
+noncomputable def brrsExteriorWeightedFourPhaseBlock
+    (sigma p t : Real) (omega f : Real → ENNReal) : ENNReal :=
+  (∫⁻ r in Ici (16 : Real),
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r - s) * f s) ^ p) +
+  (∫⁻ r in Ici (16 : Real),
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r + s) * f s) ^ p) +
+  (∫⁻ r in Ici (16 : Real),
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r - s) * f s) ^ p) +
+  ∫⁻ r in Ici (16 : Real),
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r + s) * f s) ^ p
+
+/-- A positive `L¹` phase-line kernel controls all four exact exterior radial
+phases by the same one-dimensional Young constant.  This is the reusable
+analytic core needed for the fixed-time radial exterior estimate: it covers
+both compact and arbitrarily large source radii, but deliberately makes no
+claim yet about the half-wave kernel itself. -/
+theorem brrsExteriorWeightedFourPhaseBlock_rpow_le
+    {sigma p t : Real} {omega f : Real → ENNReal}
+    (hsigma : 0 ≤ sigma) (hp : 1 < p) (ht : t ∈ Icc (1 : Real) 2)
+    (hOmega : Measurable (brrsExteriorAbsorbedKernel sigma omega))
+    (hf : Measurable f)
+    (hOmega_pos : ∀ u : Real, 0 < brrsExteriorAbsorbedKernel sigma omega u)
+    (hOmega_top : ∀ u : Real, brrsExteriorAbsorbedKernel sigma omega u ≠ ∞)
+    (hmass_pos : 0 < ∫⁻ u : Real, brrsExteriorAbsorbedKernel sigma omega u)
+    (hmass_top : (∫⁻ u : Real, brrsExteriorAbsorbedKernel sigma omega u) ≠ ∞) :
+    brrsExteriorWeightedFourPhaseBlock sigma p t omega f ≤
+      4 * ((∫⁻ u : Real, brrsExteriorAbsorbedKernel sigma omega u) ^ p *
+        ∫⁻ s : Real, (f s) ^ p) := by
+  let Omega : Real → ENNReal := brrsExteriorAbsorbedKernel sigma omega
+  let A : ENNReal := (∫⁻ u : Real, Omega u) ^ p * ∫⁻ s : Real, (f s) ^ p
+  have hp0 : 0 ≤ p := le_trans zero_le_one hp.le
+  have hminusYoung :
+      (∫⁻ x : Real, (brrsOneDimProfileConvolution Omega f x) ^ p) ≤ A := by
+    dsimp only [A]
+    exact lintegral_brrsOneDimProfileConvolution_rpow_le hp
+      (by simpa only [Omega] using hOmega) hf
+      (by simpa only [Omega] using hOmega_pos)
+      (by simpa only [Omega] using hOmega_top)
+      (by simpa only [Omega] using hmass_pos)
+      (by simpa only [Omega] using hmass_top)
+  have hplusYoung :
+      (∫⁻ x : Real, (brrsOneDimProfileConvolutionPlus Omega f x) ^ p) ≤ A := by
+    dsimp only [A]
+    exact lintegral_brrsOneDimProfileConvolutionPlus_rpow_le hp
+      (by simpa only [Omega] using hOmega) hf
+      (by simpa only [Omega] using hOmega_pos)
+      (by simpa only [Omega] using hOmega_top)
+      (by simpa only [Omega] using hmass_pos)
+      (by simpa only [Omega] using hmass_top)
+  have hsubsub :
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r - s) * f s) ^ p) ≤ A := by
+    calc
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r - s) * f s) ^ p) ≤
+          ∫⁻ r in Ici (16 : Real),
+            (brrsOneDimProfileConvolution Omega f (t - r)) ^ p := by
+        apply setLIntegral_mono' measurableSet_Ici
+        intro r hr
+        exact ENNReal.rpow_le_rpow
+          (by
+            dsimp only [Omega]
+            exact brrs_exterior_weighted_sub_sub_le_convolution hsigma hr ht)
+          hp0
+      _ ≤ ∫⁻ r : Real, (brrsOneDimProfileConvolution Omega f (t - r)) ^ p :=
+        setLIntegral_le_lintegral _ _
+      _ = ∫⁻ x : Real, (brrsOneDimProfileConvolution Omega f x) ^ p := by
+        rw [lintegral_sub_left_eq_self
+          (fun x : Real => (brrsOneDimProfileConvolution Omega f x) ^ p) t]
+      _ ≤ A := hminusYoung
+  have hsubadd :
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r + s) * f s) ^ p) ≤ A := by
+    calc
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r + s) * f s) ^ p) ≤
+          ∫⁻ r in Ici (16 : Real),
+            (brrsOneDimProfileConvolutionPlus Omega f (t - r)) ^ p := by
+        apply setLIntegral_mono' measurableSet_Ici
+        intro r hr
+        exact ENNReal.rpow_le_rpow
+          (by
+            dsimp only [Omega]
+            exact brrs_exterior_weighted_sub_add_le_convolutionPlus hsigma hr ht)
+          hp0
+      _ ≤ ∫⁻ r : Real, (brrsOneDimProfileConvolutionPlus Omega f (t - r)) ^ p :=
+        setLIntegral_le_lintegral _ _
+      _ = ∫⁻ x : Real, (brrsOneDimProfileConvolutionPlus Omega f x) ^ p := by
+        rw [lintegral_sub_left_eq_self
+          (fun x : Real => (brrsOneDimProfileConvolutionPlus Omega f x) ^ p) t]
+      _ ≤ A := hplusYoung
+  have haddsub :
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r - s) * f s) ^ p) ≤ A := by
+    calc
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r - s) * f s) ^ p) ≤
+          ∫⁻ r in Ici (16 : Real),
+            (brrsOneDimProfileConvolution Omega f (t + r)) ^ p := by
+        apply setLIntegral_mono' measurableSet_Ici
+        intro r hr
+        exact ENNReal.rpow_le_rpow
+          (by
+            dsimp only [Omega]
+            exact brrs_exterior_weighted_add_sub_le_convolution hsigma hr ht)
+          hp0
+      _ ≤ ∫⁻ r : Real, (brrsOneDimProfileConvolution Omega f (t + r)) ^ p :=
+        setLIntegral_le_lintegral _ _
+      _ = ∫⁻ x : Real, (brrsOneDimProfileConvolution Omega f x) ^ p := by
+        rw [lintegral_add_left_eq_self
+          (fun x : Real => (brrsOneDimProfileConvolution Omega f x) ^ p) t]
+      _ ≤ A := hminusYoung
+  have haddadd :
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r + s) * f s) ^ p) ≤ A := by
+    calc
+      (∫⁻ r in Ici (16 : Real),
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r + s) * f s) ^ p) ≤
+          ∫⁻ r in Ici (16 : Real),
+            (brrsOneDimProfileConvolutionPlus Omega f (t + r)) ^ p := by
+        apply setLIntegral_mono' measurableSet_Ici
+        intro r hr
+        exact ENNReal.rpow_le_rpow
+          (by
+            dsimp only [Omega]
+            exact brrs_exterior_weighted_add_add_le_convolutionPlus hsigma hr ht)
+          hp0
+      _ ≤ ∫⁻ r : Real, (brrsOneDimProfileConvolutionPlus Omega f (t + r)) ^ p :=
+        setLIntegral_le_lintegral _ _
+      _ = ∫⁻ x : Real, (brrsOneDimProfileConvolutionPlus Omega f x) ^ p := by
+        rw [lintegral_add_left_eq_self
+          (fun x : Real => (brrsOneDimProfileConvolutionPlus Omega f x) ^ p) t]
+      _ ≤ A := hplusYoung
+  change _ + _ + _ + _ ≤ _
+  calc
+    _ ≤ A + A + A + A := add_le_add (add_le_add (add_le_add hsubsub hsubadd) haddsub) haddadd
+    _ = 4 * A := by ring
+    _ = 4 * ((∫⁻ u : Real, brrsExteriorAbsorbedKernel sigma omega u) ^ p *
+        ∫⁻ s : Real, (f s) ^ p) := by rfl
 
 /-- The outgoing weighted radial-block estimate in the precise `Lᵖ` form
 used in BRRS (5.4), once the positive integrable profile is supplied. -/
@@ -41605,7 +41780,14 @@ theorem summable_brrsSectionFiveFarAnnulusScalarCoefficient
   refine hmajor.of_nonneg_of_le ?_ ?_
   · intro k
     unfold brrsSectionFiveFarAnnulusScalarCoefficient
-    positivity
+    exact mul_nonneg
+      (mul_nonneg
+        (mul_nonneg (pow_nonneg (by norm_num) _)
+          (Real.rpow_nonneg
+            (brrsSectionFiveFarAnnulusBound_nonneg (L + d + 2) j (10 + k)) _))
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _))
+      (Real.rpow_nonneg
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) _)
   · intro k
     simpa only [C] using
       (brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
@@ -41677,6 +41859,216 @@ theorem brrsSectionFiveOmega_fourPhase_le_farAnnulusBound
     by simpa only [brrsSectionFiveFarAnnulusBound] using h₃',
     by simpa only [brrsSectionFiveFarAnnulusBound] using h₄'⟩
 
+/-- The low-`p` scalar coefficient on a far annulus.  Since `s_p ≤ 0`, the
+Sobolev source factor is evaluated at the lower endpoint `2^n`, exactly as
+required by the decreasing radial weight in the lower branch of BRRS (5.5). -/
+noncomputable def brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    (d N j n : Nat) (p : Real) : Real :=
+  ((2 : Real) ^ j) *
+    (brrsSectionFiveFarAnnulusBound N j n) ^ p *
+      ((2 : Real) ^ n) ^ (p - 1) *
+        (((2 : Real) ^ n) ^ sobolevExponent d p) ^ p
+
+/-- The product-decay form of the low-`p` coefficient has the same annular
+decay exponent as the upper-endpoint coefficient, but no upper-endpoint
+constant factor. -/
+theorem brrsSectionFiveFarAnnulusLower_productDecay_scalar_normalForm
+    (d N j n : Nat) (p : Real) :
+    (2 : Real) ^ j *
+      (((2 : Real) ^ N * (2 : Real) ^ j *
+        (2 / ((2 : Real) ^ j * (2 : Real) ^ n)) ^ N) ^ p) *
+      ((2 : Real) ^ n) ^ (p - 1) *
+        (((2 : Real) ^ n) ^ sobolevExponent d p) ^ p =
+      (2 : Real) ^
+        (2 * (N : Real) * p -
+          (p * ((N : Real) - 1) - 1) * (j : Real) -
+          (p * (N : Real) - (p - 1) - p * sobolevExponent d p) * (n : Real)) := by
+  have htwo : 0 < (2 : Real) := by norm_num
+  have htwo_nonneg : 0 ≤ (2 : Real) := htwo.le
+  have hquot :
+      2 / ((2 : Real) ^ (j : Real) * (2 : Real) ^ (n : Real)) =
+        (2 : Real) ^ (1 - (j : Real) - (n : Real)) := by
+    calc
+      2 / ((2 : Real) ^ (j : Real) * (2 : Real) ^ (n : Real)) =
+          (2 : Real) ^ (1 : Real) /
+            (2 : Real) ^ ((j : Real) + (n : Real)) := by
+        rw [Real.rpow_one, ← Real.rpow_add htwo]
+      _ = (2 : Real) ^ (1 - ((j : Real) + (n : Real))) :=
+        (Real.rpow_sub htwo _ _).symm
+      _ = (2 : Real) ^ (1 - (j : Real) - (n : Real)) := by
+        congr 1
+        ring
+  simp_rw [← Real.rpow_natCast]
+  rw [hquot]
+  simp_rw [← Real.rpow_mul htwo_nonneg, ← Real.rpow_add htwo]
+  rw [← Real.rpow_mul htwo_nonneg]
+  rw [← Real.rpow_add htwo, ← Real.rpow_add htwo, ← Real.rpow_add htwo]
+  congr 1
+  push_cast
+  ring
+
+/-- Replacing the actual rapid kernel by its product-decay majorant bounds
+the low-`p` scalar coefficient. -/
+theorem brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_productDecay
+    (d N j n : Nat) {p : Real} (hp : 0 ≤ p) :
+    brrsSectionFiveFarAnnulusLowerScalarCoefficient d N j n p ≤
+      (2 : Real) ^ j *
+        (((2 : Real) ^ N * (2 : Real) ^ j *
+          (2 / ((2 : Real) ^ j * (2 : Real) ^ n)) ^ N) ^ p) *
+        ((2 : Real) ^ n) ^ (p - 1) *
+          (((2 : Real) ^ n) ^ sobolevExponent d p) ^ p := by
+  unfold brrsSectionFiveFarAnnulusLowerScalarCoefficient
+  have hrapid := brrsSectionFiveFarAnnulusBound_rpow_le_productDecay N j n hp
+  gcongr
+
+/-- The rapid order `L + d + 2` provides both the frequency decay and one
+unit of annular decay in the low-`p` branch. -/
+theorem brrsSectionFiveFarSource_lower_decay_exponent_bounds
+    {d L : Nat} {p : Real} (hd : 2 ≤ d) (hp : 1 ≤ p)
+    (hsobolev : sobolevExponent d p ≤ 0) :
+    (L : Real) ≤
+        p * (((L + d + 2 : Nat) : Real) - 1) - 1 ∧
+      1 ≤ p * ((L + d + 2 : Nat) : Real) - (p - 1) -
+        p * sobolevExponent d p := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hL : 0 ≤ (L : Real) := by positivity
+  have hp0 : 0 ≤ p := le_trans (by norm_num) hp
+  have hps : p * sobolevExponent d p ≤ 0 :=
+    mul_nonpos_of_nonneg_of_nonpos hp0 hsobolev
+  have horder : (L + d + 2 : Nat) = L + d + 2 := by omega
+  rw [horder]
+  norm_num [Nat.cast_add]
+  constructor <;> nlinarith
+
+/-- With the lower annular endpoint, the low-`p` coefficient has the same
+`2^{-L j} 2^{-k}` geometric tail as in the high-`p` branch. -/
+theorem brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_geometric
+    {d L j k : Nat} {p : Real} (hd : 2 ≤ d) (hp : 1 ≤ p)
+    (hsobolev : sobolevExponent d p ≤ 0) :
+    brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) p ≤
+      (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real)) *
+          ((2 : Real)⁻¹) ^ k := by
+  have hp0 : 0 ≤ p := le_trans (by norm_num) hp
+  have hdecay := brrsSectionFiveFarSource_lower_decay_exponent_bounds
+    (d := d) (L := L) hd hp hsobolev
+  rcases hdecay with ⟨hfrequency_raw, hannulus_raw⟩
+  let alpha : Real := p * (((L + d + 2 : Nat) : Real) - 1) - 1
+  let beta : Real := p * ((L + d + 2 : Nat) : Real) - (p - 1) -
+    p * sobolevExponent d p
+  have hfrequency : (L : Real) ≤ alpha := by
+    simpa only [alpha] using hfrequency_raw
+  have hannulus : 1 ≤ beta := by
+    simpa only [beta] using hannulus_raw
+  have hj : 0 ≤ (j : Real) := by positivity
+  have hk : 0 ≤ (k : Real) := by positivity
+  have hannulus0 : 0 ≤ beta := le_trans zero_le_one hannulus
+  have hfrequencyj := mul_le_mul_of_nonneg_right hfrequency hj
+  have hkannulus := mul_le_mul_of_nonneg_right hannulus hk
+  have htenannulus : 0 ≤ beta * 10 :=
+    mul_nonneg hannulus0 (by norm_num)
+  have hexponent :
+      2 * ((L + d + 2 : Nat) : Real) * p - alpha * (j : Real) -
+          beta * ((10 + k : Nat) : Real) ≤
+        2 * ((L + d + 2 : Nat) : Real) * p -
+          (L : Real) * (j : Real) - (k : Real) := by
+    norm_num [Nat.cast_add]
+    nlinarith
+  have htwo : 0 < (2 : Real) := by norm_num
+  have htail :
+      (2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p -
+            (L : Real) * (j : Real) - (k : Real)) =
+        (2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p -
+            (L : Real) * (j : Real)) * ((2 : Real)⁻¹) ^ k := by
+    rw [Real.rpow_sub htwo, Real.rpow_natCast, div_eq_mul_inv, ← inv_pow]
+  calc
+    brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) p ≤
+        (2 : Real) ^ j *
+          (((2 : Real) ^ (L + d + 2) * (2 : Real) ^ j *
+            (2 / ((2 : Real) ^ j * (2 : Real) ^ (10 + k))) ^
+              (L + d + 2)) ^ p) *
+          ((2 : Real) ^ (10 + k)) ^ (p - 1) *
+            (((2 : Real) ^ (10 + k)) ^ sobolevExponent d p) ^ p :=
+      brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_productDecay
+        d (L + d + 2) j (10 + k) hp0
+    _ = (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p -
+          (p * (((L + d + 2 : Nat) : Real) - 1) - 1) * (j : Real) -
+          (p * ((L + d + 2 : Nat) : Real) - (p - 1) -
+            p * sobolevExponent d p) * ((10 + k : Nat) : Real)) := by
+      convert brrsSectionFiveFarAnnulusLower_productDecay_scalar_normalForm
+        d (L + d + 2) j (10 + k) p using 1 <;> ring
+    _ ≤ (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p -
+          (L : Real) * (j : Real) - (k : Real)) :=
+      Real.rpow_le_rpow_of_exponent_le (by norm_num)
+        (by simpa only [alpha, beta] using hexponent)
+    _ = (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real)) *
+          ((2 : Real)⁻¹) ^ k := htail
+
+/-- The low-`p` lower-endpoint coefficients are summable on the far source
+annuli, before any phase aggregation. -/
+theorem summable_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 1 ≤ p)
+    (hsobolev : sobolevExponent d p ≤ 0) :
+    Summable (fun k : Nat =>
+      brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) p) := by
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real))
+  have hgeom : Summable (fun k : Nat => ((2 : Real)⁻¹) ^ k) :=
+    summable_geometric_of_lt_one (by positivity) (by norm_num)
+  have hmajor : Summable (fun k : Nat => C * ((2 : Real)⁻¹) ^ k) :=
+    hgeom.mul_left C
+  refine hmajor.of_nonneg_of_le ?_ ?_
+  · intro k
+    unfold brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    exact mul_nonneg
+      (mul_nonneg
+        (mul_nonneg (pow_nonneg (by norm_num) _)
+          (Real.rpow_nonneg
+            (brrsSectionFiveFarAnnulusBound_nonneg (L + d + 2) j (10 + k)) _))
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _))
+      (Real.rpow_nonneg
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) _)
+  · intro k
+    simpa only [C] using
+      (brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_geometric
+        (d := d) (L := L) (j := j) (k := k) hd hp hsobolev)
+
+/-- The low-`p` scalar annular series has geometric mass `2`. -/
+theorem tsum_brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_geometric
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 1 ≤ p)
+    (hsobolev : sobolevExponent d p ≤ 0) :
+    (∑' k : Nat,
+      brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) p) ≤
+      (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real)) * 2 := by
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real))
+  have hgeom : Summable (fun k : Nat => ((2 : Real)⁻¹) ^ k) :=
+    summable_geometric_of_lt_one (by positivity) (by norm_num)
+  have hmajor : Summable (fun k : Nat => C * ((2 : Real)⁻¹) ^ k) :=
+    hgeom.mul_left C
+  have hsum := summable_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    (d := d) (L := L) (j := j) hd hp hsobolev
+  calc
+    (∑' k : Nat,
+      brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) p) ≤
+        ∑' k : Nat, C * ((2 : Real)⁻¹) ^ k :=
+      Summable.tsum_le_tsum
+        (fun k => by
+          simpa only [C] using
+            (brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_geometric
+              (d := d) (L := L) (j := j) (k := k) hd hp hsobolev))
+        hsum hmajor
+    _ = C * 2 := by rw [tsum_mul_left, tsum_geometric_inv_two]
+    _ = (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real)) * 2 := by
+      rfl
+
 /-! ### The far source annuli in BRRS (5.5)
 
 The source splits the radial input into the literal annuli
@@ -41703,15 +42095,14 @@ theorem measurable_brrsSectionFiveFarSourceOutputWeight
 polar output exponent is strictly below the one-dimensional integrability
 threshold. -/
 theorem mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical
-    {d : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    {d : Nat} {p : Real} (hd : 2 ≤ d) (hp : 0 < p)
     (hcritical : p < 2 * (d : Real) / ((d : Real) - 1)) :
     p * sobolevExponent d p < 1 := by
   have hdreal : (2 : Real) ≤ (d : Real) := by
     exact_mod_cast hd
   have hden : 0 < (d : Real) - 1 := by
     linarith
-  have hppos : 0 < p := lt_of_lt_of_le (by norm_num) hp
-  rw [mul_sobolevExponent_eq hppos.ne']
+  rw [mul_sobolevExponent_eq hp.ne']
   have hmult : p * ((d : Real) - 1) < 2 * (d : Real) :=
     (lt_div_iff₀ hden).mp hcritical
   nlinarith
@@ -41756,7 +42147,8 @@ theorem lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_eq_of_lt_fixedTimeCri
         ((20 : Real) ^ (1 - p * sobolevExponent d p) /
           (1 - p * sobolevExponent d p)) :=
   lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_eq
-    (mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd hp hcritical)
+    (mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd
+      (lt_of_lt_of_le (by norm_num) hp) hcritical)
 
 /-- The four-sign aggregate of the four single-phase far-source
 `II_n^σ` contributions from BRRS (5.5).  It retains the polar source weight
@@ -42170,6 +42562,59 @@ theorem brrsSectionFiveFarSource_weighted_annulus_lintegral_le
         ∫⁻ s, (f s) ^ p := by
       rfl
 
+/-- On a far-source annulus, a nonpositive Sobolev exponent is controlled at
+the lower endpoint.  This is the low-`p` counterpart of the preceding upper
+endpoint estimate and is the source-weight step needed for the literal
+single-sign `II_n^σ` estimate in BRRS (5.5). -/
+theorem brrsSectionFiveFarSource_weighted_annulus_lintegral_le_lower
+    {d n : Nat} {p : Real} (hsobolev : sobolevExponent d p ≤ 0) (hp : 0 ≤ p)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+      ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) ≤
+      ((ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d p) ^ p *
+        ∫⁻ s, (f s) ^ p := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let C : ENNReal :=
+    ((ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d p) ^ p
+  have hfp : Measurable (fun s : Real => (f s) ^ p) :=
+    ENNReal.continuous_rpow_const.measurable.comp hf
+  have hlower_pos : 0 < (2 : Real) ^ n := by positivity
+  have hpointwise : ∀ s ∈ A,
+      ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p ≤
+        C * (f s) ^ p := by
+    intro s hs
+    have hs_pos : 0 < s := lt_trans hlower_pos hs.1
+    have hweight_real : s ^ sobolevExponent d p ≤
+        ((2 : Real) ^ n) ^ sobolevExponent d p :=
+      Real.rpow_le_rpow_of_nonpos hlower_pos (le_of_lt hs.1) hsobolev
+    have hweight : (ENNReal.ofReal s) ^ sobolevExponent d p ≤
+        (ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d p := by
+      rw [ENNReal.ofReal_rpow_of_pos hs_pos,
+        ENNReal.ofReal_rpow_of_pos hlower_pos]
+      exact ENNReal.ofReal_le_ofReal hweight_real
+    calc
+      ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p ≤
+          ((ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d p * f s) ^ p :=
+        ENNReal.rpow_le_rpow (mul_le_mul' hweight le_rfl) hp
+      _ = C * (f s) ^ p := by
+        dsimp only [C]
+        rw [ENNReal.mul_rpow_of_nonneg _ _ hp]
+  calc
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) ≤
+        ∫⁻ s in A, C * (f s) ^ p := by
+      apply setLIntegral_mono' measurableSet_Ioc
+      intro s hs
+      exact hpointwise s hs
+    _ = C * ∫⁻ s in A, (f s) ^ p := by
+      rw [lintegral_const_mul C hfp]
+    _ ≤ C * ∫⁻ s, (f s) ^ p := by
+      simpa only [mul_comm] using
+        (mul_le_mul_left (setLIntegral_le_lintegral A (fun s => (f s) ^ p)) C)
+    _ = ((ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d p) ^ p *
+        ∫⁻ s, (f s) ^ p := by
+      rfl
+
 /-- After the four-phase Hölder step, the aggregate source annulus has its
 dyadic coefficient.  Apart from the explicit factor four for aggregation,
 each summand is the coefficient used in BRRS (5.5).  This combines only the
@@ -42248,6 +42693,1006 @@ theorem brrsSectionFiveFarSourceFourPhaseBlock_le_dyadic_sourceMass
             ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
               ∫⁻ s, (f s) ^ p) := by
       ring
+
+/-- The four literal travelling phase choices which occur in the individual
+far-source terms `II_n^σ` of BRRS (5.5).  This is deliberately distinct from
+the later four-phase aggregate: one value of this type selects exactly one
+of the four signs. -/
+inductive BRRSSectionFiveFarSourcePhase
+  | subSub
+  | subAdd
+  | addSub
+  | addAdd
+  deriving DecidableEq
+
+/-- The phase-line argument selected by a literal far-source sign. -/
+def brrsSectionFiveFarSourcePhaseLine
+    (sigma : BRRSSectionFiveFarSourcePhase) (t r s : Real) : Real :=
+  match sigma with
+  | .subSub => t - r - s
+  | .subAdd => t - r + s
+  | .addSub => t + r - s
+  | .addAdd => t + r + s
+
+/-- The literal single-sign far-source contribution `II_n^σ` in BRRS (5.5).
+It retains the source annulus, polar output weight, and exactly one travelling
+phase; the formal profile `f` is the paper's nonnegative radial source
+profile `f₀`.  This is not a four-phase block. -/
+noncomputable def brrsSectionFiveFarSourceII
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (d N j n : Nat) (p : Real) (f : Real → ENNReal) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d p r *
+      (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega N j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p
+
+/-- The restricted HÃ¶lder bound for the one literal phase selected by
+`sigma`.  Each branch is one of the four source terms in BRRS (5.5). -/
+theorem brrsSectionFiveFarSourceII_holder_le
+    {d N j n : Nat} {p : Real} (sigma : BRRSSectionFiveFarSourcePhase)
+    (hn : 10 ≤ n) (hp : 1 < p)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega N j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p ≤
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+        (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+          ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p := by
+  cases sigma
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveFarSource_sub_sub_holder_le
+        (d := d) (N := N) (j := j) (n := n) hn hp ht hr f hf)
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveFarSource_sub_add_holder_le
+        (d := d) (N := N) (j := j) (n := n) hn hp ht hr f hf)
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveFarSource_add_sub_holder_le
+        (d := d) (N := N) (j := j) (n := n) hn hp ht hr f hf)
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveFarSource_add_add_holder_le
+        (d := d) (N := N) (j := j) (n := n) hn hp ht hr f hf)
+
+/-- The rapid-decay majorant for one explicitly selected phase line.  This
+separate selector lemma is used by the direct `L¹` endpoint calculation and
+avoids re-aggregating the four signs. -/
+theorem brrsSectionFiveFarSourcePhaseLine_omega_le_farAnnulusBound
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (N j : Nat) {n : Nat} {t r s : Real} (hn : 10 ≤ n)
+    (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (hs : s ∈ Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))) :
+    brrsSectionFiveOmega N j
+      (brrsSectionFiveFarSourcePhaseLine sigma t r s) ≤
+        brrsSectionFiveFarAnnulusBound N j n := by
+  have hr' : r ∈ Icc (0 : Real) 20 := ⟨le_of_lt hr.1, hr.2⟩
+  have hs' : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)) :=
+    ⟨le_of_lt hs.1, hs.2⟩
+  cases sigma
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').1
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').2.1
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').2.2.1
+  · simpa only [brrsSectionFiveFarSourcePhaseLine] using
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').2.2.2
+
+/-- Direct annular `L¹` control of one selected source phase.  It is the
+endpoint replacement for the strict Hölder argument and uses only the
+pointwise rapid-decay majorant. -/
+theorem brrsSectionFiveFarSourceII_one_inner_le
+    {d N j n : Nat} (sigma : BRRSSectionFiveFarSourcePhase) (hn : 10 ≤ n)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+      (ENNReal.ofReal s) ^ sobolevExponent d 1 *
+        ENNReal.ofReal
+          (brrsSectionFiveOmega N j
+            (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ≤
+      ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+        ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+          (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let K : Real → ENNReal := fun s =>
+    ENNReal.ofReal
+      (brrsSectionFiveOmega N j
+        (brrsSectionFiveFarSourcePhaseLine sigma t r s))
+  let g : Real → ENNReal := fun s =>
+    (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s
+  have hg : Measurable g := by
+    dsimp only [g]
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      ENNReal.continuous_ofReal.measurable).mul hf
+  have hK : ∀ s ∈ A, K s ≤
+      ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) := by
+    intro s hs
+    dsimp only [K]
+    exact ENNReal.ofReal_le_ofReal
+      (brrsSectionFiveFarSourcePhaseLine_omega_le_farAnnulusBound
+        sigma N j hn ht hr hs)
+  calc
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d 1 *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega N j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) =
+        ∫⁻ s in A, K s * g s := by
+      simp only [A, K, g, mul_assoc, mul_left_comm, mul_comm]
+    _ ≤ ∫⁻ s in A,
+        ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) * g s := by
+      apply setLIntegral_mono' measurableSet_Ioc
+      intro s hs
+      exact mul_le_mul' (hK s hs) le_rfl
+    _ = ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+        ∫⁻ s in A, g s :=
+      lintegral_const_mul _ hg
+    _ = ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+        ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+          (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s := by
+      rfl
+
+/-- One literal `II_n^σ` is controlled by its common far-annulus coefficient,
+before the dyadic-cardinality and endpoint source-weight estimates are used. -/
+theorem brrsSectionFiveFarSourceII_le_common
+    {d N j n : Nat} {p : Real} (sigma : BRRSSectionFiveFarSourcePhase)
+    (hn : 10 ≤ n) (hp : 1 < p)
+    (T : Finset Real) (hT : ∀ t ∈ T, t ∈ Icc (1 : Real) 2)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceII sigma T d N j n p f ≤
+      (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+          (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+            ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+  let C : ENNReal :=
+    (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+      (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+        ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+          ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p
+  have hW : Measurable (brrsSectionFiveFarSourceOutputWeight d p) :=
+    measurable_brrsSectionFiveFarSourceOutputWeight d p
+  have houtput (g : Real → ENNReal)
+      (hg : ∀ r ∈ Ioc (0 : Real) 20, g r ≤ C) :
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r * g r) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r * g r) ≤
+          ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r * C := by
+        apply setLIntegral_mono' measurableSet_Ioc
+        intro r hr
+        exact mul_le_mul' le_rfl (hg r hr)
+      _ = (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C :=
+        lintegral_mul_const C hW
+  have hphase : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega N j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    intro t ht
+    apply houtput
+    intro r hr
+    dsimp only [C]
+    exact brrsSectionFiveFarSourceII_holder_le sigma hn hp (hT t ht) hr f hf
+  unfold brrsSectionFiveFarSourceII
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega N j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p) ≤
+        ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+      apply Finset.sum_le_sum
+      intro t ht
+      exact hphase t ht
+    _ = (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+      simp only [Finset.sum_const, nsmul_eq_mul]
+      ring
+
+/-- The literal one-phase source term at `p = 1` is controlled directly by
+the kernel majorant, before the lower-endpoint source-weight estimate. -/
+theorem brrsSectionFiveFarSourceII_one_le_common
+    {d N j n : Nat} (sigma : BRRSSectionFiveFarSourcePhase) (hn : 10 ≤ n)
+    (T : Finset Real) (hT : ∀ t ∈ T, t ∈ Icc (1 : Real) 2)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceII sigma T d N j n 1 f ≤
+      (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) *
+        (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+          ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s) := by
+  let C : ENNReal := ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+    ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+      (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s
+  have hW : Measurable (brrsSectionFiveFarSourceOutputWeight d 1) :=
+    measurable_brrsSectionFiveFarSourceOutputWeight d 1
+  have houtput (g : Real → ENNReal)
+      (hg : ∀ r ∈ Ioc (0 : Real) 20, g r ≤ C) :
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d 1 r * g r) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) * C := by
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r * g r) ≤
+          ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d 1 r * C := by
+        apply setLIntegral_mono' measurableSet_Ioc
+        intro r hr
+        exact mul_le_mul' le_rfl (hg r hr)
+      _ = (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) * C :=
+        lintegral_mul_const C hW
+  have hphase : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d 1 r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d 1 *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega N j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^
+            (1 : Real)) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) * C := by
+    intro t ht
+    apply houtput
+    intro r hr
+    dsimp only [C]
+    simpa only [ENNReal.rpow_one] using
+      (brrsSectionFiveFarSourceII_one_inner_le
+        (d := d) (N := N) (j := j) (n := n)
+        sigma hn (hT t ht) hr f hf)
+  unfold brrsSectionFiveFarSourceII
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d 1 r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d 1 *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega N j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^
+            (1 : Real)) ≤
+        ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) * C := by
+      apply Finset.sum_le_sum
+      intro t ht
+      exact hphase t ht
+    _ = (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) * C := by
+      simp only [Finset.sum_const, nsmul_eq_mul]
+      ring
+
+/-- Conversion of the low-`p` lower-endpoint scalar coefficient to the
+nonnegative extended-real form used by the literal `II_n^σ` estimate. -/
+theorem ennreal_ofReal_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    (d N j n : Nat) {p : Real} (hp : 0 ≤ p) :
+    ENNReal.ofReal (brrsSectionFiveFarAnnulusLowerScalarCoefficient d N j n p) =
+      (2 : ENNReal) ^ j *
+        (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+          (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+            ((ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d p) ^ p := by
+  have hrapid : 0 ≤ brrsSectionFiveFarAnnulusBound N j n :=
+    brrsSectionFiveFarAnnulusBound_nonneg N j n
+  have hrapidPow : 0 ≤ (brrsSectionFiveFarAnnulusBound N j n) ^ p :=
+    Real.rpow_nonneg hrapid p
+  have hannulusPow : 0 ≤ ((2 : Real) ^ n) ^ (p - 1) :=
+    Real.rpow_nonneg (by positivity) (p - 1)
+  have hsourcePow : 0 ≤
+      (((2 : Real) ^ n) ^ sobolevExponent d p) ^ p :=
+    Real.rpow_nonneg (Real.rpow_nonneg (by positivity) _) p
+  unfold brrsSectionFiveFarAnnulusLowerScalarCoefficient
+  rw [ENNReal.ofReal_mul' hsourcePow]
+  rw [ENNReal.ofReal_mul' hannulusPow]
+  rw [ENNReal.ofReal_mul' hrapidPow]
+  rw [← ENNReal.ofReal_rpow_of_nonneg hrapid hp]
+  rw [← ENNReal.ofReal_rpow_of_pos
+    (by positivity : 0 < (2 : Real) ^ n)]
+  rw [← ENNReal.ofReal_rpow_of_pos
+    (by positivity : 0 < ((2 : Real) ^ n) ^ sobolevExponent d p)]
+  rw [← ENNReal.ofReal_rpow_of_pos
+    (by positivity : 0 < (2 : Real) ^ n)]
+  simp only [ENNReal.ofReal_pow (by norm_num : (0 : Real) ≤ 2),
+    ENNReal.ofReal_ofNat]
+
+/-- After the dyadic cardinality estimate, the `p = 1` literal phase term is
+controlled by the same lower-endpoint scalar coefficient as the open low-`p`
+branch. -/
+theorem brrsSectionFiveFarSourceII_one_le_dyadic_sourceMass
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d N j n : Nat} (hd : 2 ≤ d) (hn : 10 ≤ n)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceII sigma T d N j n 1 f ≤
+      8 * (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d 1 r) *
+        ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusLowerScalarCoefficient d N j n 1) *
+          ∫⁻ s, f s := by
+  have hsobolev : sobolevExponent d 1 ≤ 0 :=
+    sobolevExponent_nonpos hd (by norm_num) (by norm_num)
+  have hTinterval : ∀ t ∈ T, t ∈ Icc (1 : Real) 2 := by
+    intro t ht
+    exact hE (hT.subset ht)
+  have hcommon := brrsSectionFiveFarSourceII_one_le_common
+    (d := d) (N := N) (j := j) (n := n) sigma hn T hTinterval f hf
+  have hcard := dyadicDiscretization_card_le_eight_mul_two_pow_of_subset_Icc
+    hE j T hT
+  have hsource := brrsSectionFiveFarSource_weighted_annulus_lintegral_le_lower
+    (d := d) (p := (1 : Real)) (n := n) hsobolev (by norm_num) f hf
+  have hcoefficient := ennreal_ofReal_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    d N j n (by norm_num : (0 : Real) ≤ 1)
+  calc
+    brrsSectionFiveFarSourceII sigma T d N j n 1 f ≤
+        (T.card : ENNReal) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d 1 r) *
+          (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+            ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s) := hcommon
+    _ ≤ (8 * (2 : ENNReal) ^ j) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d 1 r) *
+          (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+            ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s) := by
+      gcongr
+    _ = 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d 1 r) *
+          (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+            ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              (ENNReal.ofReal s) ^ sobolevExponent d 1 * f s) := by
+      ring
+    _ ≤ 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d 1 r) *
+          (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) *
+            ((ENNReal.ofReal ((2 : Real) ^ n)) ^ sobolevExponent d 1 *
+              ∫⁻ s, f s)) := by
+      simpa only [ENNReal.rpow_one, mul_assoc, mul_left_comm, mul_comm] using
+        (mul_le_mul_left hsource
+          (8 * (2 : ENNReal) ^ j *
+            (∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d 1 r) *
+            ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)))
+    _ = 8 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) *
+        ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusLowerScalarCoefficient d N j n 1) *
+          ∫⁻ s, f s := by
+      rw [hcoefficient]
+      norm_num
+      ring
+
+/-- Summing the direct `p = 1` annular estimate gives the literal one-phase
+low-endpoint tail with the same geometric mass `16 = 8 · 2`. -/
+theorem tsum_brrsSectionFiveFarSourceII_one_le_geometric
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d L j : Nat} (hd : 2 ≤ d)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∑' k : Nat,
+      brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) 1 f) ≤
+      16 * (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d 1 r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) - (L : Real) * (j : Real))) *
+          ∫⁻ s, f s := by
+  let a : Nat → Real := fun k =>
+    brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) 1
+  let W : ENNReal := ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d 1 r
+  let S : ENNReal := ∫⁻ s, f s
+  let A : ENNReal := 8 * W * S
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) - (L : Real) * (j : Real))
+  have hsobolev : sobolevExponent d 1 ≤ 0 :=
+    sobolevExponent_nonpos hd (by norm_num) (by norm_num)
+  have hscalarNonneg : ∀ k : Nat, 0 ≤ a k := by
+    intro k
+    dsimp only [a]
+    unfold brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    exact mul_nonneg
+      (mul_nonneg
+        (mul_nonneg (pow_nonneg (by norm_num) _)
+          (Real.rpow_nonneg
+            (brrsSectionFiveFarAnnulusBound_nonneg (L + d + 2) j (10 + k)) _))
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _))
+      (Real.rpow_nonneg
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) _)
+  have hscalarSummable : Summable a := by
+    dsimp only [a]
+    exact summable_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+      (d := d) (L := L) (j := j) hd (by norm_num) hsobolev
+  have hscalarTsum : (∑' k : Nat, a k) ≤ C * 2 := by
+    dsimp only [a, C]
+    simpa only [mul_one] using
+      (tsum_brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_geometric
+        (d := d) (L := L) (j := j) hd (by norm_num) hsobolev)
+  have hpointwise : ∀ k : Nat,
+      brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) 1 f ≤
+        A * ENNReal.ofReal (a k) := by
+    intro k
+    simpa only [A, W, S, a, mul_assoc, mul_left_comm, mul_comm] using
+      (brrsSectionFiveFarSourceII_one_le_dyadic_sourceMass
+        (E := E) hE (d := d) (N := L + d + 2) (j := j) (n := 10 + k)
+        hd (by omega) sigma T hT f hf)
+  calc
+    (∑' k : Nat,
+        brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) 1 f) ≤
+        ∑' k : Nat, A * ENNReal.ofReal (a k) :=
+      ENNReal.tsum_le_tsum fun k => hpointwise k
+    _ = A * ∑' k : Nat, ENNReal.ofReal (a k) := by
+      rw [ENNReal.tsum_mul_left]
+    _ = A * ENNReal.ofReal (∑' k : Nat, a k) := by
+      rw [ENNReal.ofReal_tsum_of_nonneg hscalarNonneg hscalarSummable]
+    _ ≤ A * ENNReal.ofReal (C * 2) := by
+      simpa only [mul_comm] using
+        (mul_le_mul_left (ENNReal.ofReal_le_ofReal hscalarTsum) A)
+    _ = 16 * W * ENNReal.ofReal C * S := by
+      rw [ENNReal.ofReal_mul (by positivity)]
+      norm_num
+      ring
+    _ = 16 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d 1 r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) - (L : Real) * (j : Real))) *
+          ∫⁻ s, f s := by
+      rfl
+
+/-- The real scalar coefficient of one far annulus has the expected
+nonnegative `ENNReal` form.  This is the coefficient which couples the
+literal `II_n^σ` estimate to the scalar geometric summation. -/
+theorem ennreal_ofReal_brrsSectionFiveFarAnnulusScalarCoefficient
+    (d N j n : Nat) {p : Real} (hp : 0 ≤ p) :
+    ENNReal.ofReal (brrsSectionFiveFarAnnulusScalarCoefficient d N j n p) =
+      (2 : ENNReal) ^ j *
+        (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+          (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+            ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^
+              sobolevExponent d p) ^ p := by
+  have hrapid : 0 ≤ brrsSectionFiveFarAnnulusBound N j n :=
+    brrsSectionFiveFarAnnulusBound_nonneg N j n
+  have hrapidPow : 0 ≤ (brrsSectionFiveFarAnnulusBound N j n) ^ p :=
+    Real.rpow_nonneg hrapid p
+  have hannulusPow : 0 ≤ ((2 : Real) ^ n) ^ (p - 1) :=
+    Real.rpow_nonneg (by positivity) (p - 1)
+  have hsourcePow : 0 ≤
+      (((2 : Real) ^ (n + 1)) ^ sobolevExponent d p) ^ p :=
+    Real.rpow_nonneg (Real.rpow_nonneg (by positivity) _) p
+  unfold brrsSectionFiveFarAnnulusScalarCoefficient
+  rw [ENNReal.ofReal_mul' hsourcePow]
+  rw [ENNReal.ofReal_mul' hannulusPow]
+  rw [ENNReal.ofReal_mul' hrapidPow]
+  rw [← ENNReal.ofReal_rpow_of_nonneg
+    hrapid hp]
+  rw [← ENNReal.ofReal_rpow_of_pos
+    (by positivity : 0 < (2 : Real) ^ n)]
+  rw [← ENNReal.ofReal_rpow_of_pos
+    (by positivity : 0 < ((2 : Real) ^ (n + 1)) ^ sobolevExponent d p)]
+  rw [← ENNReal.ofReal_rpow_of_pos
+    (by positivity : 0 < (2 : Real) ^ (n + 1))]
+  simp only [ENNReal.ofReal_pow (by norm_num : (0 : Real) ≤ 2),
+    ENNReal.ofReal_ofNat]
+
+/-- After the dyadic cardinality bound and endpoint source-weight estimate,
+one literal source sign `II_n^σ` has exactly the scalar coefficient used in
+the one-phase form of BRRS (5.5).  The explicit constant `8` is solely the
+time-grid cardinality constant; there is no four-phase convexity factor. -/
+theorem brrsSectionFiveFarSourceII_le_dyadic_sourceMass
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d N j n : Nat} {p : Real} (hd : 2 ≤ d) (hn : 10 ≤ n) (hp : 2 ≤ p)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceII sigma T d N j n p f ≤
+      8 * (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusScalarCoefficient d N j n p) *
+          ∫⁻ s, (f s) ^ p := by
+  have hTinterval : ∀ t ∈ T, t ∈ Icc (1 : Real) 2 := by
+    intro t ht
+    exact hE (hT.subset ht)
+  have hcommon := brrsSectionFiveFarSourceII_le_common
+    (d := d) (N := N) (j := j) (n := n) (p := p)
+    sigma hn (lt_of_lt_of_le (by norm_num) hp) T hTinterval f hf
+  have hcard := dyadicDiscretization_card_le_eight_mul_two_pow_of_subset_Icc
+    hE j T hT
+  have hsource := brrsSectionFiveFarSource_weighted_annulus_lintegral_le
+    (d := d) (p := p) hd hp f hf (n := n)
+  have hcoefficient := ennreal_ofReal_brrsSectionFiveFarAnnulusScalarCoefficient
+    d N j n (le_trans zero_le_two hp)
+  calc
+    brrsSectionFiveFarSourceII sigma T d N j n p f ≤
+        (T.card : ENNReal) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := hcommon
+    _ ≤ (8 * (2 : ENNReal) ^ j) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      gcongr
+    _ = 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      ring
+    _ = 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      rw [volume_brrsSectionFiveFarSourceAnnulus n]
+    _ ≤ 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+            (((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^
+              sobolevExponent d p) ^ p * ∫⁻ s, (f s) ^ p)) := by
+      gcongr
+    _ = 8 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusScalarCoefficient d N j n p) *
+          ∫⁻ s, (f s) ^ p := by
+      rw [hcoefficient]
+      ring
+
+/-- The literal single-sign far-source tail in BRRS (5.5).  After the source
+annuli are summed, one fixed phase `sigma` has the explicit `2^{-L j}`
+geometric bound.  The constant `16 = 8 · 2` is respectively the dyadic-grid
+cardinality constant and the mass of the ratio-`1/2` annular series; no
+four-phase aggregation is present in this statement. -/
+theorem tsum_brrsSectionFiveFarSourceII_le_geometric
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∑' k : Nat,
+      brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+      16 * (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p +
+              p * sobolevExponent d p - (L : Real) * (j : Real))) *
+          ∫⁻ s, (f s) ^ p := by
+  let a : Nat → Real := fun k =>
+    brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p
+  let W : ENNReal := ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d p r
+  let S : ENNReal := ∫⁻ s, (f s) ^ p
+  let A : ENNReal := 8 * W * S
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) * p +
+      p * sobolevExponent d p - (L : Real) * (j : Real))
+  have hscalarNonneg : ∀ k : Nat, 0 ≤ a k := by
+    intro k
+    dsimp only [a]
+    unfold brrsSectionFiveFarAnnulusScalarCoefficient
+    exact mul_nonneg
+      (mul_nonneg
+        (mul_nonneg (pow_nonneg (by norm_num) _)
+          (Real.rpow_nonneg
+            (brrsSectionFiveFarAnnulusBound_nonneg (L + d + 2) j (10 + k)) _))
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _))
+      (Real.rpow_nonneg
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) _)
+  have hscalarSummable : Summable a := by
+    dsimp only [a]
+    exact summable_brrsSectionFiveFarAnnulusScalarCoefficient
+      (d := d) (L := L) (j := j) hd hp hsubcritical
+  have hscalarTsum : (∑' k : Nat, a k) ≤ C * 2 := by
+    dsimp only [a, C]
+    exact tsum_brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
+      (d := d) (L := L) (j := j) hd hp hsubcritical
+  have hpointwise : ∀ k : Nat,
+      brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f ≤
+        A * ENNReal.ofReal (a k) := by
+    intro k
+    simpa only [A, W, S, a, mul_assoc, mul_left_comm, mul_comm] using
+      (brrsSectionFiveFarSourceII_le_dyadic_sourceMass
+        (E := E) hE (d := d) (N := L + d + 2) (j := j) (n := 10 + k)
+        hd (by omega) hp sigma T hT f hf)
+  calc
+    (∑' k : Nat,
+        brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+        ∑' k : Nat, A * ENNReal.ofReal (a k) :=
+      ENNReal.tsum_le_tsum fun k => hpointwise k
+    _ = A * ∑' k : Nat, ENNReal.ofReal (a k) := by
+      rw [ENNReal.tsum_mul_left]
+    _ = A * ENNReal.ofReal (∑' k : Nat, a k) := by
+      rw [ENNReal.ofReal_tsum_of_nonneg hscalarNonneg hscalarSummable]
+    _ ≤ A * ENNReal.ofReal (C * 2) := by
+      simpa only [mul_comm] using
+        (mul_le_mul_left (ENNReal.ofReal_le_ofReal hscalarTsum) A)
+    _ = 16 * W * ENNReal.ofReal C * S := by
+      rw [ENNReal.ofReal_mul (by positivity)]
+      norm_num
+      ring
+    _ = 16 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p +
+              p * sobolevExponent d p - (L : Real) * (j : Real))) *
+          ∫⁻ s, (f s) ^ p := by
+      rfl
+
+/-- For `1 < p ≤ 2`, the literal one-phase term `II_n^σ` is bounded using
+the lower annular endpoint of the decreasing Sobolev source weight.  The
+constant `8` comes only from the dyadic time-grid cardinality. -/
+theorem brrsSectionFiveFarSourceII_le_dyadic_sourceMass_lower
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d N j n : Nat} {p : Real} (hd : 2 ≤ d) (hn : 10 ≤ n)
+    (hp : 1 < p) (hp_two : p ≤ 2)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceII sigma T d N j n p f ≤
+      8 * (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusLowerScalarCoefficient d N j n p) *
+          ∫⁻ s, (f s) ^ p := by
+  have hp0 : 0 ≤ p := le_trans (by norm_num) hp.le
+  have hsobolev : sobolevExponent d p ≤ 0 :=
+    sobolevExponent_nonpos hd (by linarith) hp_two
+  have hTinterval : ∀ t ∈ T, t ∈ Icc (1 : Real) 2 := by
+    intro t ht
+    exact hE (hT.subset ht)
+  have hcommon := brrsSectionFiveFarSourceII_le_common
+    (d := d) (N := N) (j := j) (n := n) (p := p)
+    sigma hn hp T hTinterval f hf
+  have hcard := dyadicDiscretization_card_le_eight_mul_two_pow_of_subset_Icc
+    hE j T hT
+  have hsource := brrsSectionFiveFarSource_weighted_annulus_lintegral_le_lower
+    (d := d) (p := p) (n := n) hsobolev hp0 f hf
+  have hcoefficient := ennreal_ofReal_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    d N j n hp0
+  calc
+    brrsSectionFiveFarSourceII sigma T d N j n p f ≤
+        (T.card : ENNReal) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := hcommon
+    _ ≤ (8 * (2 : ENNReal) ^ j) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      gcongr
+    _ = 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      ring
+    _ = 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      rw [volume_brrsSectionFiveFarSourceAnnulus n]
+    _ ≤ 8 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+            (((ENNReal.ofReal ((2 : Real) ^ n)) ^
+              sobolevExponent d p) ^ p * ∫⁻ s, (f s) ^ p)) := by
+      gcongr
+    _ = 8 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusLowerScalarCoefficient d N j n p) *
+          ∫⁻ s, (f s) ^ p := by
+      rw [hcoefficient]
+      ring
+
+/-- The literal one-phase far-source tail in the open low-`p` branch of BRRS
+(5.5).  Its geometric constant is again `16 = 8 · 2`, with no four-phase
+aggregation. -/
+theorem tsum_brrsSectionFiveFarSourceII_lower_le_geometric
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 1 < p) (hp_two : p < 2)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∑' k : Nat,
+      brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+      16 * (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real))) *
+          ∫⁻ s, (f s) ^ p := by
+  let a : Nat → Real := fun k =>
+    brrsSectionFiveFarAnnulusLowerScalarCoefficient d (L + d + 2) j (10 + k) p
+  let W : ENNReal := ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d p r
+  let S : ENNReal := ∫⁻ s, (f s) ^ p
+  let A : ENNReal := 8 * W * S
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real))
+  have hsobolev : sobolevExponent d p ≤ 0 :=
+    sobolevExponent_nonpos hd (by linarith) hp_two.le
+  have hscalarNonneg : ∀ k : Nat, 0 ≤ a k := by
+    intro k
+    dsimp only [a]
+    unfold brrsSectionFiveFarAnnulusLowerScalarCoefficient
+    exact mul_nonneg
+      (mul_nonneg
+        (mul_nonneg (pow_nonneg (by norm_num) _)
+          (Real.rpow_nonneg
+            (brrsSectionFiveFarAnnulusBound_nonneg (L + d + 2) j (10 + k)) _))
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _))
+      (Real.rpow_nonneg
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) _)
+  have hscalarSummable : Summable a := by
+    dsimp only [a]
+    exact summable_brrsSectionFiveFarAnnulusLowerScalarCoefficient
+      (d := d) (L := L) (j := j) hd hp.le hsobolev
+  have hscalarTsum : (∑' k : Nat, a k) ≤ C * 2 := by
+    dsimp only [a, C]
+    exact tsum_brrsSectionFiveFarAnnulusLowerScalarCoefficient_le_geometric
+      (d := d) (L := L) (j := j) hd hp.le hsobolev
+  have hpointwise : ∀ k : Nat,
+      brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f ≤
+        A * ENNReal.ofReal (a k) := by
+    intro k
+    simpa only [A, W, S, a, mul_assoc, mul_left_comm, mul_comm] using
+      (brrsSectionFiveFarSourceII_le_dyadic_sourceMass_lower
+        (E := E) hE (d := d) (N := L + d + 2) (j := j) (n := 10 + k)
+        hd (by omega) hp hp_two.le sigma T hT f hf)
+  calc
+    (∑' k : Nat,
+        brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+        ∑' k : Nat, A * ENNReal.ofReal (a k) :=
+      ENNReal.tsum_le_tsum fun k => hpointwise k
+    _ = A * ∑' k : Nat, ENNReal.ofReal (a k) := by
+      rw [ENNReal.tsum_mul_left]
+    _ = A * ENNReal.ofReal (∑' k : Nat, a k) := by
+      rw [ENNReal.ofReal_tsum_of_nonneg hscalarNonneg hscalarSummable]
+    _ ≤ A * ENNReal.ofReal (C * 2) := by
+      simpa only [mul_comm] using
+        (mul_le_mul_left (ENNReal.ofReal_le_ofReal hscalarTsum) A)
+    _ = 16 * W * ENNReal.ofReal C * S := by
+      rw [ENNReal.ofReal_mul (by positivity)]
+      norm_num
+      ring
+    _ = 16 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p - (L : Real) * (j : Real))) *
+          ∫⁻ s, (f s) ^ p := by
+      rfl
+
+/-- Separating the frequency gain from a positive real dyadic power gives
+the exact extended-real `2^{-L j}` factor used in the final form of BRRS
+(5.5). -/
+theorem ennreal_ofReal_two_rpow_sub_eq
+    (a b : Real) :
+    ENNReal.ofReal ((2 : Real) ^ (a - b)) =
+      ENNReal.ofReal ((2 : Real) ^ a) * (2 : ENNReal) ^ (-b) := by
+  have htwo : 0 < (2 : Real) := by norm_num
+  calc
+    ENNReal.ofReal ((2 : Real) ^ (a - b)) =
+        ENNReal.ofReal ((2 : Real) ^ a / (2 : Real) ^ b) := by
+      rw [Real.rpow_sub htwo]
+    _ = ENNReal.ofReal ((2 : Real) ^ a) *
+        ENNReal.ofReal (((2 : Real) ^ b)⁻¹) := by
+      rw [div_eq_mul_inv, ENNReal.ofReal_mul
+        (Real.rpow_nonneg (by norm_num) a)]
+    _ = ENNReal.ofReal ((2 : Real) ^ a) *
+        (ENNReal.ofReal ((2 : Real) ^ b))⁻¹ := by
+      rw [ENNReal.ofReal_inv_of_pos (Real.rpow_pos_of_pos htwo b)]
+    _ = ENNReal.ofReal ((2 : Real) ^ a) * (2 : ENNReal) ^ (-b) := by
+      have hb : ENNReal.ofReal ((2 : Real) ^ b) = (2 : ENNReal) ^ b := by
+        rw [← ENNReal.ofReal_rpow_of_pos htwo]
+        norm_num
+      rw [hb, ENNReal.rpow_neg]
+
+/-- The literal single-sign source-annulus estimate of BRRS (5.5), across
+the full printed fixed-time range.  Its finite constant is explicit and
+independent of the dyadic level `j`, the annular index `k`, and the chosen
+dyadic discretization; the remaining frequency factor is exactly
+`2^{-L j}`. -/
+theorem tsum_brrsSectionFiveFarSourceII_le_geometric_fullRange
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 1 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (16 * (∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal ((2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p +
+            max (p * sobolevExponent d p) 0))) ≠ ∞ ∧
+      (∑' k : Nat,
+        brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+        (16 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+            ENNReal.ofReal ((2 : Real) ^
+              (2 * ((L + d + 2 : Nat) : Real) * p +
+                max (p * sobolevExponent d p) 0))) *
+          (2 : ENNReal) ^ (-((L : Real) * (j : Real))) *
+            ∫⁻ s, (f s) ^ p := by
+  have hp_pos : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hpenalty : p * sobolevExponent d p < 1 :=
+    mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd hp_pos hcritical
+  have hweight_ne_top :
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) ≠ ∞ :=
+    lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_ne_top hpenalty
+  constructor
+  · exact ENNReal.mul_ne_top
+      (ENNReal.mul_ne_top ENNReal.ofNat_ne_top hweight_ne_top)
+      ENNReal.ofReal_ne_top
+  rcases lt_or_ge p 2 with hp_lt | hp_ge
+  · rcases lt_or_eq_of_le hp with hp_one | hp_one
+    · have hsobolev : sobolevExponent d p ≤ 0 :=
+        sobolevExponent_nonpos hd hp_pos hp_lt.le
+      have hpenalty_nonpos : p * sobolevExponent d p ≤ 0 :=
+        mul_nonpos_of_nonneg_of_nonpos hp.le hsobolev
+      have hfactor :
+          ENNReal.ofReal ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p -
+              (L : Real) * (j : Real))) =
+            ENNReal.ofReal ((2 : Real) ^
+              (2 * ((L + d + 2 : Nat) : Real) * p +
+                max (p * sobolevExponent d p) 0)) *
+              (2 : ENNReal) ^ (-((L : Real) * (j : Real))) := by
+        simpa only [max_eq_right hpenalty_nonpos, add_zero] using
+          (ennreal_ofReal_two_rpow_sub_eq
+            (2 * ((L + d + 2 : Nat) : Real) * p)
+            ((L : Real) * (j : Real)))
+      calc
+        (∑' k : Nat,
+            brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+            16 * (∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d p r) *
+              ENNReal.ofReal ((2 : Real) ^
+                (2 * ((L + d + 2 : Nat) : Real) * p -
+                  (L : Real) * (j : Real))) *
+                ∫⁻ s, (f s) ^ p :=
+          tsum_brrsSectionFiveFarSourceII_lower_le_geometric
+            hE hd hp_one hp_lt sigma T hT f hf
+        _ = (16 * (∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d p r) *
+                ENNReal.ofReal ((2 : Real) ^
+                  (2 * ((L + d + 2 : Nat) : Real) * p +
+                    max (p * sobolevExponent d p) 0))) *
+              (2 : ENNReal) ^ (-((L : Real) * (j : Real))) *
+                ∫⁻ s, (f s) ^ p := by
+          rw [hfactor]
+          ring
+    · subst p
+      have hsobolev : sobolevExponent d 1 ≤ 0 :=
+        sobolevExponent_nonpos hd (by norm_num) (by norm_num)
+      have hfactor :
+          ENNReal.ofReal ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) -
+              (L : Real) * (j : Real))) =
+            ENNReal.ofReal ((2 : Real) ^
+              (2 * ((L + d + 2 : Nat) : Real) * 1 +
+                max ((1 : Real) * sobolevExponent d 1) 0)) *
+              (2 : ENNReal) ^ (-((L : Real) * (j : Real))) := by
+        simpa only [one_mul, mul_one, max_eq_right hsobolev, add_zero] using
+          (ennreal_ofReal_two_rpow_sub_eq
+            (2 * ((L + d + 2 : Nat) : Real))
+            ((L : Real) * (j : Real)))
+      calc
+        (∑' k : Nat,
+            brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) 1 f) ≤
+            16 * (∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d 1 r) *
+              ENNReal.ofReal ((2 : Real) ^
+                (2 * ((L + d + 2 : Nat) : Real) -
+                  (L : Real) * (j : Real))) *
+                ∫⁻ s, f s :=
+          tsum_brrsSectionFiveFarSourceII_one_le_geometric
+            hE hd sigma T hT f hf
+        _ = (16 * (∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d 1 r) *
+                ENNReal.ofReal ((2 : Real) ^
+                  (2 * ((L + d + 2 : Nat) : Real) * 1 +
+                    max ((1 : Real) * sobolevExponent d 1) 0))) *
+              (2 : ENNReal) ^ (-((L : Real) * (j : Real))) *
+                ∫⁻ s, (f s) ^ (1 : Real) := by
+          rw [hfactor]
+          simp only [ENNReal.rpow_one]
+          ring
+  · have hpenalty_nonneg : 0 ≤ p * sobolevExponent d p :=
+      mul_sobolevExponent_nonneg hd hp_ge
+    have hfactor :
+        ENNReal.ofReal ((2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p +
+            p * sobolevExponent d p - (L : Real) * (j : Real))) =
+          ENNReal.ofReal ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p +
+              max (p * sobolevExponent d p) 0)) *
+            (2 : ENNReal) ^ (-((L : Real) * (j : Real))) := by
+      simpa only [max_eq_left hpenalty_nonneg] using
+        (ennreal_ofReal_two_rpow_sub_eq
+          (2 * ((L + d + 2 : Nat) : Real) * p +
+            p * sobolevExponent d p)
+          ((L : Real) * (j : Real)))
+    calc
+      (∑' k : Nat,
+          brrsSectionFiveFarSourceII sigma T d (L + d + 2) j (10 + k) p f) ≤
+          16 * (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+            ENNReal.ofReal ((2 : Real) ^
+              (2 * ((L + d + 2 : Nat) : Real) * p +
+                p * sobolevExponent d p - (L : Real) * (j : Real))) *
+              ∫⁻ s, (f s) ^ p :=
+        tsum_brrsSectionFiveFarSourceII_le_geometric
+          hE hd hp_ge hpenalty sigma T hT f hf
+      _ = (16 * (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+              ENNReal.ofReal ((2 : Real) ^
+                (2 * ((L + d + 2 : Nat) : Real) * p +
+                  max (p * sobolevExponent d p) 0))) *
+            (2 : ENNReal) ^ (-((L : Real) * (j : Real))) *
+              ∫⁻ s, (f s) ^ p := by
+        rw [hfactor]
+        ring
 
 /-- The four BRRS travelling phase lines are four translates of the one
 dyadic kernel `ω_j`. -/

@@ -153,3 +153,15 @@ Proof standards:
 Current status must be read from `automation/Status-BRRS.md`, whose entries
 are the authoritative dependency-by-dependency record.  Re-check that file
 against the actual declarations and the original paper whenever resuming work.
+
+## Current Theorem 1.1 handoff
+
+The far-source tail (5.5) is complete: `tsum_brrsSectionFiveFarSourceII_le_geometric_fullRange` proves the literal one-sign estimate through the full printed exponent range.
+Do not reopen it unless a source-faithfulness audit finds a genuine error.
+
+For the upper-bound stream, next complete the literal terminal-cell estimate (5.6), then (5.7), then join those with the already-complete strict-intermediate-cell estimate in (5.8).
+Only after those are closed may work continue through (5.4), the actual-kernel reduction (5.3), the exterior estimate and dyadic reduction (5.2), and Proposition 5.1/(5.1). Keep a single selected source item active within this stream.
+
+For the lower-bound stream, first finish the conventional ordinary-Bessel/surface-Fourier bridge and literal asymptotic (3.3); only then proceed through the packet norm and decomposition/error chain (3.2), (3.4)--(3.7), (3.1), and the sharpness deduction. The existing `RadialFourierTransform.lean` Bessel series/Beta/Gamma groundwork is reusable, but no ordinary-Bessel-to-sphere-Fourier identification is proved yet.
+
+After both streams close, complete the fixed-time/interpolation portion of Theorem 1.1. Preserve the paper's intended mathematical meaning; document any genuine source typo before repairing it.

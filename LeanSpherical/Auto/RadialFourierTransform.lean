@@ -1,7 +1,12 @@
 import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
 import Mathlib.Analysis.Fourier.FourierTransform
 import Mathlib.Analysis.InnerProductSpace.Projection.Reflection
+import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
+import Mathlib.Analysis.SpecialFunctions.Gamma.Beta
+import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Series
 import Mathlib.MeasureTheory.Constructions.HaarToSphere
+import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.MeasureTheory.Measure.Haar.InnerProductSpace
 
@@ -178,14 +183,312 @@ theorem sphereFourier_neg (d : Nat) (xi : Euclidean d) :
   apply sphereFourier_eq_of_norm_eq d
   simp
 
+/-! ### Classical ordinary Bessel series
+
+Mathlib does not currently provide the ordinary Bessel function `J`.  For the
+positive radial arguments relevant to spherical Fourier transforms, its
+classical power series is nevertheless available directly from Mathlib's real
+Gamma function.  We record that series independently of `sphereFourier`: the
+comparison between the two objects is a theorem still to be proved, not part
+of this definition.
+
+The definition is intended to be used at nonnegative arguments.  On positive
+arguments it is the usual real-valued series
+`sum (-1)^n (x / 2)^(2*n + nu) / (n! Gamma (n + nu + 1))`.
+-/
+
+/-- The `n`th coefficient of the classical ordinary Bessel-`J` power series.
+For the intended nonnegative arguments, this is the usual real coefficient
+of `J_ν(x)`. -/
+noncomputable def ordinaryBesselJTerm (nu x : Real) (n : Nat) : Real :=
+  ((-1 : Real) ^ n / (n.factorial : Real) /
+      Real.Gamma ((n : Real) + nu + 1)) *
+    Real.rpow (x / 2) (2 * (n : Real) + nu)
+
+/-- The classical ordinary Bessel function `J_ν(x)`, defined by its power
+series on the nonnegative real axis.  No relation to `sphereFourier` is built
+into this definition. -/
+noncomputable def ordinaryBesselJ (nu x : Real) : Real :=
+  ∑' n : Nat, ordinaryBesselJTerm nu x n
+
+/-- At order zero and argument zero, the ordinary Bessel series is normalized
+by `J₀(0) = 1`. -/
+theorem ordinaryBesselJ_zero_zero : ordinaryBesselJ 0 0 = 1 := by
+  unfold ordinaryBesselJ
+  rw [tsum_eq_single 0]
+  · norm_num [ordinaryBesselJTerm, Real.Gamma_one]
+  · intro n hn
+    have hn_pos : 0 < (n : Real) := by exact_mod_cast Nat.pos_of_ne_zero hn
+    have hpow : Real.rpow (0 / 2) (2 * (n : Real) + 0) = 0 := by
+      rw [zero_div]
+      exact Real.zero_rpow (by positivity)
+    calc
+      ordinaryBesselJTerm 0 0 n =
+          ((-1 : Real) ^ n / (n.factorial : Real) /
+              Real.Gamma ((n : Real) + 0 + 1)) *
+            Real.rpow (0 / 2) (2 * (n : Real) + 0) := rfl
+      _ = 0 := by rw [hpow, mul_zero]
+
+/-- Consecutive coefficients of the ordinary Bessel series satisfy the
+classical recurrence.  This is the ratio estimate underlying convergence of
+the series on the nonnegative real axis. -/
+theorem ordinaryBesselJTerm_succ {nu x : Real} (hnu : 0 ≤ nu) (hx : 0 < x)
+    (n : Nat) :
+    ordinaryBesselJTerm nu x (n + 1) =
+      -ordinaryBesselJTerm nu x n * (x / 2) ^ 2 /
+        ((n + 1 : Real) * ((n : Real) + nu + 1)) := by
+  have hbase : 0 < x / 2 := by positivity
+  have harg : 0 < (n : Real) + nu + 1 := by positivity
+  have hfactorial : (((n + 1).factorial : Nat) : Real) =
+      (n + 1 : Real) * (n.factorial : Real) := by
+    norm_num [Nat.factorial_succ]
+  have hgamma : Real.Gamma ((n + 1 : Real) + nu + 1) =
+      ((n : Real) + nu + 1) * Real.Gamma ((n : Real) + nu + 1) := by
+    rw [show (n + 1 : Real) + nu + 1 = ((n : Real) + nu + 1) + 1 by ring]
+    exact Real.Gamma_add_one harg.ne'
+  have hpow : Real.rpow (x / 2) (2 * (n + 1 : Real) + nu) =
+      Real.rpow (x / 2) (2 * (n : Real) + nu) * (x / 2) ^ 2 := by
+    calc
+      Real.rpow (x / 2) (2 * (n + 1 : Real) + nu) =
+          Real.rpow (x / 2) ((2 * (n : Real) + nu) + 2) := by
+            congr 1
+            ring
+      _ = Real.rpow (x / 2) (2 * (n : Real) + nu) * (x / 2) ^ 2 := by
+            calc
+              Real.rpow (x / 2) ((2 * (n : Real) + nu) + 2) =
+                  Real.rpow (x / 2) (2 * (n : Real) + nu) *
+                    (x / 2) ^ (2 : Real) :=
+                Real.rpow_add hbase _ _
+              _ = _ := by rw [Real.rpow_two]
+  have hfactorial_ne : (n.factorial : Real) ≠ 0 := by
+    exact_mod_cast Nat.factorial_ne_zero n
+  have hgamma_ne : Real.Gamma ((n : Real) + nu + 1) ≠ 0 :=
+    (Real.Gamma_pos_of_pos harg).ne'
+  have hn_one_ne : (n + 1 : Real) ≠ 0 := by positivity
+  unfold ordinaryBesselJTerm
+  rw [hfactorial]
+  simp only [Nat.cast_add, Nat.cast_one]
+  rw [hgamma, hpow, pow_succ]
+  field_simp [hfactorial_ne, hgamma_ne, hn_one_ne]
+
+/-- The absolute-value form of `ordinaryBesselJTerm_succ`. -/
+theorem norm_ordinaryBesselJTerm_succ {nu x : Real} (hnu : 0 ≤ nu) (hx : 0 < x)
+    (n : Nat) :
+    ‖ordinaryBesselJTerm nu x (n + 1)‖ =
+      ((x / 2) ^ 2 / ((n + 1 : Real) * ((n : Real) + nu + 1))) *
+        ‖ordinaryBesselJTerm nu x n‖ := by
+  have hleft : 0 < (n + 1 : Real) := by positivity
+  have hright : 0 < (n : Real) + nu + 1 := by positivity
+  have hden : 0 < (n + 1 : Real) * ((n : Real) + nu + 1) := mul_pos hleft hright
+  rw [ordinaryBesselJTerm_succ hnu hx]
+  rw [norm_div, norm_mul, norm_neg,
+    Real.norm_of_nonneg (sq_nonneg (x / 2)), Real.norm_of_nonneg hden.le]
+  ring
+
+/-- The ordinary Bessel series is summable at every positive argument and
+nonnegative order.  The proof uses the exact coefficient recurrence and the
+geometric ratio test. -/
+theorem summable_ordinaryBesselJTerm_of_nonneg_of_pos {nu x : Real}
+    (hnu : 0 ≤ nu) (hx : 0 < x) :
+    Summable (ordinaryBesselJTerm nu x) := by
+  obtain ⟨N, hN⟩ := exists_nat_ge (2 * (x / 2) ^ 2 + 1)
+  refine summable_of_ratio_norm_eventually_le (by norm_num : (1 / 2 : Real) < 1) ?_
+  rw [eventually_atTop]
+  refine ⟨N, ?_⟩
+  intro n hn
+  rw [norm_ordinaryBesselJTerm_succ hnu hx]
+  have hNn : 2 * (x / 2) ^ 2 + 1 ≤ (n : Real) :=
+    hN.trans (by exact_mod_cast hn)
+  have hleft : 0 < (n + 1 : Real) := by positivity
+  have hright : 1 ≤ (n : Real) + nu + 1 := by
+    nlinarith [(Nat.cast_nonneg n : (0 : Real) ≤ (n : Real))]
+  have hden : 0 < (n + 1 : Real) * ((n : Real) + nu + 1) :=
+    mul_pos hleft (by linarith)
+  have hproduct_ge_first : (n + 1 : Real) * 1 ≤
+      (n + 1 : Real) * ((n : Real) + nu + 1) :=
+    mul_le_mul_of_nonneg_left hright hleft.le
+  have hden_lower : 2 * (x / 2) ^ 2 ≤
+      (n + 1 : Real) * ((n : Real) + nu + 1) := by
+    linarith
+  have hratio : (x / 2) ^ 2 /
+      ((n + 1 : Real) * ((n : Real) + nu + 1)) ≤ 1 / 2 := by
+    rw [div_le_iff₀ hden]
+    nlinarith
+  exact mul_le_mul_of_nonneg_right hratio (norm_nonneg _)
+
+/-- At zero argument, every positive-index Bessel coefficient of
+nonnegative order vanishes. -/
+theorem ordinaryBesselJTerm_zero_of_ne_zero {nu : Real} (hnu : 0 ≤ nu)
+    {n : Nat} (hn : n ≠ 0) : ordinaryBesselJTerm nu 0 n = 0 := by
+  have hn_pos : 0 < (n : Real) := by
+    exact_mod_cast Nat.pos_of_ne_zero hn
+  have hexponent : 0 < 2 * (n : Real) + nu := by nlinarith
+  unfold ordinaryBesselJTerm
+  have hpow : Real.rpow (0 / 2) (2 * (n : Real) + nu) = 0 := by
+    rw [zero_div]
+    exact Real.zero_rpow hexponent.ne'
+  rw [hpow, mul_zero]
+
+/-- The classical ordinary Bessel series is summable for every nonnegative
+order and nonnegative argument. -/
+theorem summable_ordinaryBesselJTerm_of_nonneg {nu x : Real}
+    (hnu : 0 ≤ nu) (hx : 0 ≤ x) : Summable (ordinaryBesselJTerm nu x) := by
+  rcases hx.eq_or_lt with rfl | hx
+  · refine summable_of_ne_finset_zero (s := {0}) ?_
+    intro n hn
+    apply ordinaryBesselJTerm_zero_of_ne_zero hnu
+    simpa using hn
+  · exact summable_ordinaryBesselJTerm_of_nonneg_of_pos hnu hx
+
+/-- The real Beta kernel is interval-integrable when both endpoint exponents
+are greater than `-1`.  This is obtained from Mathlib's complex Beta-integral
+convergence theorem, with the real/complex power conversion made explicit. -/
+theorem intervalIntegrable_real_betaKernel {a b : Real} (ha : 0 < a) (hb : 0 < b) :
+    IntervalIntegrable (fun u : Real => u ^ (a - 1) * (1 - u) ^ (b - 1)) volume 0 1 := by
+  rw [intervalIntegrable_iff_integrableOn_Ioc_of_le (by norm_num : (0 : Real) ≤ 1)]
+  have hcomplex := Complex.betaIntegral_convergent (u := (a : Complex)) (v := (b : Complex))
+    (by simpa) (by simpa)
+  rw [intervalIntegrable_iff_integrableOn_Ioc_of_le (by norm_num : (0 : Real) ≤ 1)] at hcomplex
+  refine hcomplex.re.congr ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioc] with u hu
+  have hu0 : 0 ≤ u := hu.1.le
+  have hu1 : 0 ≤ 1 - u := sub_nonneg.mpr hu.2
+  norm_cast
+  rw [← Complex.ofReal_cpow hu0 (a - 1),
+    ← Complex.ofReal_cpow hu1 (b - 1),
+    RCLike.re_to_complex, Complex.re_mul_ofReal, Complex.ofReal_re]
+
+/-- The real Beta integral, expressed in Gamma factors.  This is the
+one-dimensional integral identity used to turn the cosine series in the
+Poisson--Beta representation of `ordinaryBesselJ` into its defining series. -/
+theorem real_betaIntegral_eq_gamma_mul_div {a b : Real} (ha : 0 < a) (hb : 0 < b) :
+    (∫ u in (0 : Real)..1, u ^ (a - 1) * (1 - u) ^ (b - 1)) =
+      Real.Gamma a * Real.Gamma b / Real.Gamma (a + b) := by
+  calc
+    (∫ u in (0 : Real)..1, u ^ (a - 1) * (1 - u) ^ (b - 1)) =
+        (Complex.betaIntegral (a : Complex) (b : Complex)).re := by
+      rw [intervalIntegral.integral_of_le (by norm_num)]
+      conv_rhs =>
+        rw [Complex.betaIntegral, intervalIntegral.integral_of_le (by norm_num)]
+      rw [← RCLike.re_to_complex, ← integral_re]
+      · refine setIntegral_congr_fun measurableSet_Ioc fun u hu => ?_
+        have hu0 : 0 ≤ u := hu.1.le
+        have hu1 : 0 ≤ 1 - u := sub_nonneg.mpr hu.2
+        norm_cast
+        rw [← Complex.ofReal_cpow hu0 (a - 1),
+          ← Complex.ofReal_cpow hu1 (b - 1),
+          RCLike.re_to_complex, Complex.re_mul_ofReal, Complex.ofReal_re]
+      · convert! Complex.betaIntegral_convergent (u := (a : Complex)) (v := (b : Complex))
+          (by simpa) (by simpa)
+        rw [intervalIntegrable_iff_integrableOn_Ioc_of_le (by norm_num), IntegrableOn]
+    _ = Real.Gamma a * Real.Gamma b / Real.Gamma (a + b) := by
+      rw [Complex.betaIntegral_eq_Gamma_mul_div]
+      · simp_rw [← Complex.ofReal_add a b, Complex.Gamma_ofReal]
+        norm_cast
+      all_goals simpa
+
+/-- The even cosine moment of the Beta kernel appearing in the Bessel
+representation. -/
+theorem ordinaryBessel_beta_moment {nu : Real} (hnu : 0 ≤ nu) (n : Nat) :
+    (∫ u in (0 : Real)..1,
+      u ^ ((n : Real) - 1 / 2) * (1 - u) ^ (nu - 1 / 2)) =
+      Real.Gamma ((n : Real) + 1 / 2) * Real.Gamma (nu + 1 / 2) /
+        Real.Gamma ((n : Real) + nu + 1) := by
+  have ha : 0 < (n : Real) + 1 / 2 := by positivity
+  have hb : 0 < nu + 1 / 2 := by linarith
+  convert real_betaIntegral_eq_gamma_mul_div ha hb using 1 <;> ring_nf
+
+/-- The Poisson--Beta kernel for a nonnegative Bessel order is integrable on
+the unit interval. -/
+theorem intervalIntegrable_ordinaryBessel_betaKernel {nu : Real} (hnu : 0 ≤ nu) :
+    IntervalIntegrable
+      (fun u : Real => Real.rpow u (-1 / 2) * Real.rpow (1 - u) (nu - 1 / 2))
+      volume 0 1 := by
+  convert intervalIntegrable_real_betaKernel (a := (1 : Real) / 2)
+      (b := nu + 1 / 2) (by positivity) (by linarith) using 1
+  simp only [Real.rpow_eq_pow]
+  ring
+
+/-- The half-integer Gamma normalization which converts a Beta moment into
+the factorial coefficient in the ordinary Bessel series. -/
+theorem ordinaryBessel_gamma_half_factorial_identity (n : Nat) :
+    Real.Gamma ((n : Real) + 1 / 2) * (n.factorial : Real) * (4 : Real) ^ n =
+      Real.sqrt Real.pi * ((2 * n).factorial : Real) := by
+  induction n with
+  | zero => norm_num [Real.Gamma_one_half_eq]
+  | succ n ih =>
+    have hgamma_arg : (n : Real) + 1 / 2 ≠ 0 := by positivity
+    have hfactorial : ((2 * (n + 1)).factorial : Real) =
+        (2 * (n : Real) + 2) * (2 * (n : Real) + 1) * ((2 * n).factorial : Real) := by
+      norm_num [show 2 * (n + 1) = 2 * n + 2 by omega, Nat.factorial_succ]
+      ring
+    rw [show ((n + 1 : Nat) : Real) + 1 / 2 = ((n : Real) + 1 / 2) + 1 by
+          norm_num; ring,
+      Real.Gamma_add_one hgamma_arg, Nat.factorial_succ, pow_succ, hfactorial]
+    simp only [Nat.cast_mul, Nat.cast_add, Nat.cast_one]
+    calc
+      _ = (2 * (n : Real) + 2) * (2 * (n : Real) + 1) *
+          (Real.Gamma ((n : Real) + 1 / 2) * (n.factorial : Real) * (4 : Real) ^ n) := by
+            ring
+      _ = _ := by rw [ih]; ring
+
+/-- The exact coefficient conversion from the cosine--Beta expansion to the
+classical ordinary Bessel series. -/
+theorem ordinaryBessel_beta_coefficient {nu x : Real} (hnu : 0 ≤ nu) (hx : 0 < x)
+    (n : Nat) :
+    (Real.rpow (x / 2) nu / (Real.sqrt Real.pi * Real.Gamma (nu + 1 / 2))) *
+        (((-1 : Real) ^ n * x ^ (2 * n) / ((2 * n).factorial : Real)) *
+          (Real.Gamma ((n : Real) + 1 / 2) * Real.Gamma (nu + 1 / 2) /
+            Real.Gamma ((n : Real) + nu + 1))) =
+      ordinaryBesselJTerm nu x n := by
+  have hbase : 0 < x / 2 := by positivity
+  have hgammaNu_pos : 0 < Real.Gamma (nu + 1 / 2) :=
+    Real.Gamma_pos_of_pos (by linarith)
+  have hgammaN_pos : 0 < Real.Gamma ((n : Real) + nu + 1) :=
+    Real.Gamma_pos_of_pos (by positivity)
+  have hsqrtpi_pos : 0 < Real.sqrt Real.pi := Real.sqrt_pos.2 Real.pi_pos
+  have hfactorial_pos : 0 < ((n.factorial : Nat) : Real) := by positivity
+  have hdouble_factorial_pos : 0 < (((2 * n).factorial : Nat) : Real) := by positivity
+  have hfour_pos : 0 < (4 : Real) ^ n := by positivity
+  have hpow : Real.rpow (x / 2) (2 * (n : Real) + nu) =
+      Real.rpow (x / 2) nu * (x ^ (2 * n) / (4 : Real) ^ n) := by
+    calc
+      Real.rpow (x / 2) (2 * (n : Real) + nu) =
+          Real.rpow (x / 2) (nu + 2 * (n : Real)) := by ring_nf
+      _ = Real.rpow (x / 2) nu * Real.rpow (x / 2) (2 * (n : Real)) :=
+          Real.rpow_add hbase _ _
+      _ = Real.rpow (x / 2) nu * (x ^ (2 * n) / (4 : Real) ^ n) := by
+        rw [show 2 * (n : Real) = ((2 * n : Nat) : Real) by norm_num]
+        simp only [Real.rpow_eq_pow]
+        rw [Real.rpow_natCast]
+        rw [div_pow, show (2 : Real) ^ (2 * n) = (4 : Real) ^ n by
+          rw [show 2 * n = n * 2 by omega]
+          rw [pow_mul' (2 : Real) n 2]
+          norm_num]
+  unfold ordinaryBesselJTerm
+  rw [hpow]
+  have hnormal := ordinaryBessel_gamma_half_factorial_identity n
+  have hnormal' : Real.Gamma ((2 * (n : Real) + 1) / 2) * (n.factorial : Real) *
+      (4 : Real) ^ n = Real.sqrt Real.pi * ((2 * n).factorial : Real) := by
+    convert hnormal using 1
+    ring
+  field_simp [hgammaNu_pos.ne', hgammaN_pos.ne', hsqrtpi_pos.ne',
+    hfactorial_pos.ne', hdouble_factorial_pos.ne', hfour_pos.ne']
+  calc
+    _ = Real.rpow (x / 2) nu *
+        (Real.Gamma ((2 * (n : Real) + 1) / 2) * (n.factorial : Real) *
+          (4 : Real) ^ n) := by ring
+    _ = _ := by rw [hnormal']; ring
+
 /-! ### Repository-normalized radial Bessel factor
 
-Mathlib currently has no Bessel-`J` special-function API.  The exact object
-which appears as the Bessel factor in the radial Fourier formula is therefore
-recorded here directly as the restriction of `sphereFourier` to a unit ray.
-Since `sphereFourier` uses `Real.fourierChar`, this fixes the convention
-`exp (-2 pi i <x, xi>)` once and for all.  Components using a classical
-Bessel notation may prove a comparison later, but must not assume one here.
+Mathlib currently has no Bessel-`J` special-function API.  The local
+`ordinaryBesselJ` series above is independent of the sphere transform, and no
+comparison theorem between it and `sphereFourier` has yet been proved.  The
+exact object which occurs in the radial Fourier formula is therefore also
+recorded directly as the restriction of `sphereFourier` to a unit ray.  Since
+`sphereFourier` uses `Real.fourierChar`, this fixes the convention
+`exp (-2 pi i <x, xi>)` once and for all.
 -/
 
 /-- The scalar spherical-Bessel factor in Mathlib's Fourier normalization.
