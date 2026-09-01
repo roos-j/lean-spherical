@@ -36,6 +36,33 @@ literal source row. Do not use it to start a successor in the source-proof
 DAG until that source prerequisite is closed, or the ledger explicitly
 records a mathematically equivalent replacement and its proof.
 
+## Source-faithfulness audit rule
+
+Before recording `complete with qualification`, classify the difference from
+the source explicitly.  A harmless convention-level issue (for example the
+empty-set convention, a source expression outside its stated domain, or a
+choice between equivalent closed/open covering normalizations) may be
+recorded in the evidence for a `complete` row.  It must not be described as
+an unfinished mathematical qualification.
+
+A material difference is never a completed source milestone.  This includes
+a weaker hypothesis or conclusion, an unproved source bridge, a conditional
+wrapper, an altered operator, or a claim whose proof does not establish the
+source statement.  Such a row stays `not started` or `in progress` until the
+literal mathematical statement is proved.  If the source contains a genuine
+typesetting error, formalize the mathematically necessary corrected statement,
+document the correction and its derivation in the evidence, and make clear
+that it is a correction to the display rather than an unproved replacement.
+Clear typographical or transcription errors may therefore be repaired, but a
+repair must preserve the intended mathematical meaning; it may never silently
+strengthen, weaken, or substitute the paper's claim.
+
+On every resumption, audit all existing qualified rows that lie on an active
+dependency path.  Do not let a stale status label overstate the completion of
+Theorem 1.2 or Theorem 1.1.  A source theorem may be marked complete only
+when its actual Lean statement is mathematically equivalent to the intended
+paper theorem, apart from an explicitly documented harmless edge convention.
+
 At any time, select a concrete next logical item from the proof: a named
 theorem, proposition, lemma, or substantial labelled displayed step whose
 prerequisites have all been completed.  Formalize that item faithfully,

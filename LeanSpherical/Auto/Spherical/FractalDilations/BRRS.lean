@@ -1,6 +1,7 @@
 import LeanSpherical.Auto.FractalDimensions
 import LeanSpherical.Auto.LittlewoodPaley
 import LeanSpherical.Auto.MikhlinHormander
+import LeanSpherical.Auto.OneDimStationaryPhase
 import LeanSpherical.Auto.RadialFourierTransform
 import LeanSpherical.Auto.Spherical.Bourgain
 import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
@@ -2455,6 +2456,19 @@ def brrsSurfaceWaveAmplitude
     | .middle => coordinateMiddleMeridianLocalizedIntegral (d - 2)
         ((2 * Real.pi * a) * rho)
 
+/-- The incoming endpoint amplitude is exactly the complex conjugate of the
+outgoing one.  This is an identity for the literal meridional integrals,
+not an asymptotic assertion. -/
+theorem brrsSurfaceWaveAmplitude_incoming_eq_conj_outgoing
+    (d : Nat) (a rho : Real) :
+    brrsSurfaceWaveAmplitude d .incoming a rho =
+      starRingEnd Complex (brrsSurfaceWaveAmplitude d .outgoing a rho) := by
+  have hsign : (-(2 * Real.pi * a)) * rho = -((2 * Real.pi * a) * rho) := by
+    ring
+  unfold brrsSurfaceWaveAmplitude
+  rw [hsign, smoothEndpointQuadraticIntegral_neg_eq_conj]
+  simp only [map_mul, Complex.conj_ofReal]
+
 /-- One concrete stationary surface-wave term on a radial frequency ray. -/
 def brrsSurfaceWaveTerm
     (d : Nat) (part : BRRSSurfaceWavePart) (a rho : Real) : Complex :=
@@ -4341,6 +4355,85 @@ theorem brrsDyadicKappaRadius_le_one {j m : Nat} (hmj : m ≤ j) :
       mul_le_mul_of_nonneg_left hpow hbase
     _ = 1 := inv_mul_cancel₀ (pow_ne_zero _ (by norm_num))
 
+/-- At the terminal radius `m = j`, the BRRS local counting coefficient
+contains the whole dyadic packet.  This is the endpoint-cardinality
+comparison used in the final-cell part of the Section 5 decomposition:
+the radius is exactly one, and every discretized time lies in `[1,2]`.
+
+The comparison is stated for the actual finite packet rather than for an
+auxiliary cover, so it can be combined directly with the kernel estimate. -/
+theorem dyadicDiscretization_card_le_brrsDyadicKappa_terminal
+    {E : Set Real} {j : Nat} {T : Finset Real} (hE : E ⊆ Icc (1 : Real) 2)
+    (hT : IsDyadicDiscretization E j T) (alpha : Real) :
+    (T.card : ENNReal) ≤ brrsDyadicKappa T j j alpha := by
+  classical
+  have hradius :
+      (⟨dyadicTimeScale j * (2 : Real) ^ j, by
+        unfold dyadicTimeScale
+        positivity⟩ : NNReal) = 1 := by
+    apply NNReal.eq
+    change ((2 : Real) ^ j)⁻¹ * (2 : Real) ^ j = 1
+    exact inv_mul_cancel₀ (pow_ne_zero _ (by norm_num))
+  have hTin : ∀ t ∈ T,
+      t ∈ Auto.Spherical.LegendreAssouad.brrsInterval (1 : Real) 1 := by
+    intro t ht
+    have htE : t ∈ E := hT.subset ht
+    have htI : t ∈ Icc (1 : Real) 2 := hE htE
+    change 1 ≤ t ∧ t ≤ 1 + 1
+    refine ⟨htI.1, ?_⟩
+    calc
+      t ≤ 2 := htI.2
+      _ = 1 + 1 := by norm_num
+  have hfilter : T.filter (fun t => t ∈
+      Auto.Spherical.LegendreAssouad.brrsInterval (1 : Real) 1) = T := by
+    apply Finset.filter_eq_self.mpr
+    intro t ht
+    exact hTin t ht
+  unfold brrsDyadicKappa
+  rw [hradius]
+  unfold brrsKappa
+  calc
+    (T.card : ENNReal) =
+        (1 : ENNReal) ^ (-alpha) *
+          ((T.filter fun t => t ∈
+            Auto.Spherical.LegendreAssouad.brrsInterval (1 : Real) 1).card : ENNReal) := by
+      rw [hfilter]
+      simp
+    _ ≤ ⨆ a : Real, (1 : ENNReal) ^ (-alpha) *
+        ((T.filter fun t => t ∈
+          Auto.Spherical.LegendreAssouad.brrsInterval a (1 : Real)).card : ENNReal) :=
+      le_iSup (fun a : Real => (1 : ENNReal) ^ (-alpha) *
+        ((T.filter fun t => t ∈
+          Auto.Spherical.LegendreAssouad.brrsInterval a (1 : Real)).card : ENNReal)) 1
+
+/-- The terminal coefficient also dominates the entropy of the time set at
+twice the sampling mesh.  Together with the reverse half-mesh packing bound,
+this is the exact finite packing/covering-to-`\kappa` comparison needed at
+the endpoint of the Section 5 dyadic decomposition. -/
+theorem brrsEntropyNumber_two_dyadicMesh_le_brrsDyadicKappa_terminal
+    {E : Set Real} {j : Nat} {T : Finset Real} (hE : E ⊆ Icc (1 : Real) 2)
+    (hT : IsDyadicDiscretization E j T) (alpha : Real) :
+    brrsEntropyNumber E
+        (⟨2 * dyadicTimeScale j, by
+          unfold dyadicTimeScale
+          positivity⟩ : NNReal) ≤
+      brrsDyadicKappa T j j alpha := by
+  let delta : NNReal := ⟨dyadicTimeScale j, by
+    unfold dyadicTimeScale
+    positivity⟩
+  have hdelta : 0 < delta := by
+    change 0 < ((2 : Real) ^ j)⁻¹
+    positivity
+  have hTdelta : IsMaximalSeparatedSubset E (delta : Real) T := by
+    change IsMaximalSeparatedSubset E (dyadicTimeScale j) T
+    exact hT
+  change brrsEntropyNumber E (2 * delta) ≤ brrsDyadicKappa T j j alpha
+  calc
+    brrsEntropyNumber E (2 * delta) ≤ (T.card : ENNReal) :=
+      IsMaximalSeparatedSubset.brrsEntropyNumber_le_card_at_twice_scale hTdelta hdelta
+    _ ≤ brrsDyadicKappa T j j alpha :=
+      dyadicDiscretization_card_le_brrsDyadicKappa_terminal hE hT alpha
+
 /-- The exact entropy profile bounds every finite local counting coefficient
 of a dyadic discretization.  This is the metric half of the
 `κ_{j,m}` estimate in BRRS Proposition 5.1; the remaining analytic half is
@@ -5195,6 +5288,71 @@ theorem pairwiseDisjoint_brrsTimeRadialShell_of_isSeparated
     _ = |(|t - referenceTime|) - (|u - referenceTime|)| :=
       (hcentres t ht u hu).symm
 
+/-- The closed radial interval `J_t` used in BRRS Section 3.  The radius is
+written with an absolute value so that the construction treats the two
+symmetric choices of the remote endpoint uniformly. -/
+def brrsSectionThreeRadiusWindow (referenceTime t mesh : Real) : Set Real :=
+  Icc (|t - referenceTime| - mesh / 32) (|t - referenceTime| + mesh / 32)
+
+/-- The physical-space region `D_t` obtained by revolving the Section 3
+radial interval `J_t`. -/
+def brrsSectionThreeSpatialShell (d : Nat) (referenceTime t mesh : Real) :
+    Set (BRRSSpace d) :=
+  {x | ‖x‖ ∈ brrsSectionThreeRadiusWindow referenceTime t mesh}
+
+/-- Membership in the literal Section 3 shell is membership of the radial
+coordinate in its closed `J_t` interval. -/
+theorem mem_brrsSectionThreeSpatialShell_iff
+    {d : Nat} {referenceTime t mesh : Real} {x : BRRSSpace d} :
+    x ∈ brrsSectionThreeSpatialShell d referenceTime t mesh ↔
+      |t - referenceTime| - mesh / 32 ≤ ‖x‖ ∧
+        ‖x‖ ≤ |t - referenceTime| + mesh / 32 := Iff.rfl
+
+/-- The Section 3 shells are disjoint as soon as their centre radii are
+separated by more than the sum of their two half-widths. -/
+theorem disjoint_brrsSectionThreeSpatialShell_of_center_separation
+    {d : Nat} {referenceTime t u mesh : Real}
+    (hsep : mesh / 16 < |(|t - referenceTime|) - (|u - referenceTime|)|) :
+    Disjoint (brrsSectionThreeSpatialShell d referenceTime t mesh)
+      (brrsSectionThreeSpatialShell d referenceTime u mesh) := by
+  rw [Set.disjoint_left]
+  intro x ht hu
+  rw [mem_brrsSectionThreeSpatialShell_iff] at ht hu
+  have htx : |(|t - referenceTime|) - ‖x‖| ≤ mesh / 32 := by
+    rw [abs_le]
+    constructor <;> linarith [ht.1, ht.2]
+  have hxu : |‖x‖ - (|u - referenceTime|)| ≤ mesh / 32 := by
+    rw [abs_le]
+    constructor <;> linarith [hu.1, hu.2]
+  have hbound : |(|t - referenceTime|) - (|u - referenceTime|)| ≤ mesh / 16 := by
+    calc
+      |(|t - referenceTime|) - (|u - referenceTime|)| =
+          |((|t - referenceTime|) - ‖x‖) + (‖x‖ - (|u - referenceTime|))| := by
+        congr 1
+        ring
+      _ ≤ |(|t - referenceTime|) - ‖x‖| + |‖x‖ - (|u - referenceTime|)| :=
+        abs_add_le _ _
+      _ ≤ mesh / 32 + mesh / 32 := add_le_add htx hxu
+      _ = mesh / 16 := by ring
+  exact (not_lt_of_ge hbound) hsep
+
+/-- A separated time packet on one side of a remote endpoint produces
+pairwise-disjoint literal Section 3 regions `D_t`. -/
+theorem pairwiseDisjoint_brrsSectionThreeSpatialShell_of_isSeparated
+    {d : Nat} {U : Finset Real} {referenceTime mesh : Real}
+    (hmesh : 0 < mesh) (hsep : IsSeparated U mesh)
+    (hcentres : ∀ t ∈ U, ∀ u ∈ U,
+      |(|t - referenceTime|) - (|u - referenceTime|)| = |t - u|) :
+    (↑U : Set Real).PairwiseDisjoint
+      (fun t => brrsSectionThreeSpatialShell d referenceTime t mesh) := by
+  intro t ht u hu htu
+  apply disjoint_brrsSectionThreeSpatialShell_of_center_separation
+  calc
+    mesh / 16 < mesh := by nlinarith
+    _ ≤ |t - u| := hsep ht hu htu
+    _ = |(|t - referenceTime|) - (|u - referenceTime|)| :=
+      (hcentres t ht u hu).symm
+
 /-- A finite packet in an interval has a half-packet containing at least half
 of its points.  The endpoint opposite that half is a remote reference time:
 absolute distances from it preserve separation and are at least half the
@@ -5207,7 +5365,8 @@ theorem exists_half_brrs_packet_with_remote_reference
       U ⊆ T ∧ T.card ≤ 2 * U.card ∧
         (∀ t ∈ U, R / 2 ≤ |t - referenceTime|) ∧
           (∀ t ∈ U, ∀ u ∈ U,
-            |(|t - referenceTime|) - (|u - referenceTime|)| = |t - u|) := by
+            |(|t - referenceTime|) - (|u - referenceTime|)| = |t - u|) ∧
+              (referenceTime = a ∨ referenceTime = a + R) := by
   classical
   let midpoint : Real := a + R / 2
   let L : Finset Real := T.filter (fun t => t < midpoint)
@@ -5233,7 +5392,7 @@ theorem exists_half_brrs_packet_with_remote_reference
   have hcard : T.card = L.card + U.card := by
     rw [hpartition, Finset.card_union_of_disjoint hdisjoint]
   by_cases hLU : L.card ≤ U.card
-  · refine ⟨U, a, Finset.filter_subset _ _, ?_, ?_, ?_⟩
+  · refine ⟨U, a, Finset.filter_subset _ _, ?_, ?_, ?_, Or.inl rfl⟩
     · rw [hcard]
       omega
     · intro t ht
@@ -5257,7 +5416,7 @@ theorem exists_half_brrs_packet_with_remote_reference
       congr 1
       ring
   · have hUL : U.card ≤ L.card := Nat.le_of_lt (Nat.lt_of_not_ge hLU)
-    refine ⟨L, a + R, Finset.filter_subset _ _, ?_, ?_, ?_⟩
+    refine ⟨L, a + R, Finset.filter_subset _ _, ?_, ?_, ?_, Or.inr rfl⟩
     · rw [hcard]
       omega
     · intro t ht
@@ -5305,11 +5464,60 @@ theorem exists_half_brrs_packet_with_pairwiseDisjoint_shells
           (↑U : Set Real).PairwiseDisjoint
             (fun t => brrsTimeRadialShell d referenceTime t width) := by
   rcases exists_half_brrs_packet_with_remote_reference hR hT with
-    ⟨U, referenceTime, hUT, hcard, hremote, hcentres⟩
+    ⟨U, referenceTime, hUT, hcard, hremote, hcentres, _⟩
   refine ⟨U, referenceTime, hUT, hcard, hremote, ?_⟩
   exact pairwiseDisjoint_brrsTimeRadialShell_of_isSeparated
     (fun t ht u hu htu => hsep (hUT ht) (hUT hu) htu)
     hcentres hwidth
+
+/-- **BRRS, Section 3 packet geometry.**  A separated finite time packet in
+an interval has a half-interval `I'`, the opposite endpoint `t_I`, and a
+subpacket of comparable cardinality.  Its exact closed radial regions `D_t`
+are pairwise disjoint.  The two alternatives are the source's `t_I`-left
+choice and its reflected counterpart. -/
+theorem exists_brrsSectionThree_packet_geometry
+    {d : Nat} {a R mesh : Real} {T : Finset Real}
+    (hR : 0 ≤ R)
+    (hT : (↑T : Set Real) ⊆ Auto.Spherical.LegendreAssouad.brrsInterval a R)
+    (hsep : IsSeparated T mesh) (hmesh : 0 < mesh) :
+    ∃ I' : Set Real, ∃ referenceTime : Real, ∃ U : Finset Real,
+      ((I' = Icc (a + R / 2) (a + R) ∧ referenceTime = a) ∨
+        (I' = Icc a (a + R / 2) ∧ referenceTime = a + R)) ∧
+        U ⊆ T ∧ (↑U : Set Real) ⊆ I' ∧ T.card ≤ 2 * U.card ∧
+          (∀ t ∈ U, R / 2 ≤ |t - referenceTime|) ∧
+            (↑U : Set Real).PairwiseDisjoint
+              (fun t => brrsSectionThreeSpatialShell d referenceTime t mesh) := by
+  rcases exists_half_brrs_packet_with_remote_reference hR hT with
+    ⟨U, referenceTime, hUT, hcard, hremote, hcentres, href⟩
+  have hdisjoint : (↑U : Set Real).PairwiseDisjoint
+      (fun t => brrsSectionThreeSpatialShell d referenceTime t mesh) :=
+    pairwiseDisjoint_brrsSectionThreeSpatialShell_of_isSeparated hmesh
+      (fun t ht u hu htu => hsep (hUT ht) (hUT hu) htu) hcentres
+  rcases href with href | href
+  · subst referenceTime
+    refine ⟨Icc (a + R / 2) (a + R), a, U,
+      Or.inl ⟨rfl, rfl⟩, hUT, ?_, hcard, hremote, ?_⟩
+    · intro t ht
+      have htI : t ∈ Icc a (a + R) := by
+        simpa only [Auto.Spherical.LegendreAssouad.brrsInterval] using
+          hT (by simpa using hUT ht)
+      have hnonneg : 0 ≤ t - a := by linarith [htI.1]
+      have hdistance := hremote t ht
+      rw [abs_of_nonneg hnonneg] at hdistance
+      exact ⟨by linarith, htI.2⟩
+    · simpa using hdisjoint
+  · subst referenceTime
+    refine ⟨Icc a (a + R / 2), a + R, U,
+      Or.inr ⟨rfl, rfl⟩, hUT, ?_, hcard, hremote, ?_⟩
+    · intro t ht
+      have htI : t ∈ Icc a (a + R) := by
+        simpa only [Auto.Spherical.LegendreAssouad.brrsInterval] using
+          hT (by simpa using hUT ht)
+      have hnonpos : t - (a + R) ≤ 0 := by linarith [htI.2]
+      have hdistance := hremote t ht
+      rw [abs_of_nonpos hnonpos] at hdistance
+      exact ⟨htI.1, by linarith⟩
+    · simpa using hdisjoint
 
 /-- The entropy lower witnesses for `ν_E^♯(0)` therefore yield, at
 arbitrarily fine scales, a half-packet of comparable cardinality whose
@@ -9156,6 +9364,88 @@ theorem exists_norm_iteratedDeriv_brrsSurfaceWaveAmplitude_middle_decay
       · exact mul_le_mul_of_nonneg_right hconst hpow
       · exact hden.le
 
+/-- Exact stationary-phase replacement for the Bessel asymptotic used in
+BRRS (3.3).  It concerns the actual Fourier transform of surface measure,
+with Mathlib's explicit `2 * pi` Fourier normalization: the two endpoint
+waves have the sharp quadratic stationary scale, while the middle wave has
+arbitrarily rapid decay.
+
+This deliberately does not introduce a replacement definition for the
+ordinary Bessel function.  Together with the displayed exact identity, these
+are precisely the three pieces needed in place of the Bessel expansion when
+forming the radial Fourier integral in (3.2)--(3.4). -/
+theorem exists_brrs_surfaceFourier_threeWave_replacement_bounds
+    (d N : Nat) (hd : 3 <= d) :
+    ∃ C : Real, 0 < C ∧ ∀ (x : BRRSSpace d) (rho : Real), 0 < rho →
+      1 <= |(2 * Real.pi * ‖x‖) * rho| →
+        surfaceFourier d (-rho • x) =
+          brrsSurfaceWaveTerm d .outgoing ‖x‖ rho +
+            brrsSurfaceWaveTerm d .incoming ‖x‖ rho +
+              brrsSurfaceWaveTerm d .middle ‖x‖ rho ∧
+        ‖brrsSurfaceWaveAmplitude d .outgoing ‖x‖ rho‖ <=
+          C / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| ∧
+        ‖brrsSurfaceWaveAmplitude d .incoming ‖x‖ rho‖ <=
+          C / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| ∧
+        ‖brrsSurfaceWaveAmplitude d .middle ‖x‖ rho‖ <=
+          C / |(2 * Real.pi * ‖x‖) * rho| ^ N := by
+  obtain ⟨Cout, hCout, hout⟩ :=
+    exists_norm_iteratedDeriv_brrsSurfaceWaveAmplitude_outgoing_decay d 0
+  obtain ⟨Cin, hCin, hin⟩ :=
+    exists_norm_iteratedDeriv_brrsSurfaceWaveAmplitude_incoming_decay d 0
+  obtain ⟨Cmid, hCmid, hmid⟩ :=
+    exists_norm_iteratedDeriv_brrsSurfaceWaveAmplitude_middle_decay d 0 N
+  let C : Real := Cout + Cin + Cmid
+  have hC : 0 < C := by
+    dsimp [C]
+    positivity
+  refine ⟨C, hC, ?_⟩
+  intro x rho hrho hlarge
+  have hscale : 0 < quadraticMomentScale (d - 2)
+      |(2 * Real.pi * ‖x‖) * rho| :=
+    brrs_quadraticMomentScale_pos_of_one_le _ hlarge
+  have hsign : |(-(2 * Real.pi * ‖x‖)) * rho| =
+      |(2 * Real.pi * ‖x‖) * rho| := by
+    rw [show (-(2 * Real.pi * ‖x‖)) * rho =
+      -((2 * Real.pi * ‖x‖) * rho) by ring, abs_neg]
+  have hout0 : ‖brrsSurfaceWaveAmplitude d .outgoing ‖x‖ rho‖ <=
+      Cout / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| := by
+    simpa using hout ‖x‖ rho hlarge
+  have hin0 : ‖brrsSurfaceWaveAmplitude d .incoming ‖x‖ rho‖ <=
+      Cin / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| := by
+    simpa only [hsign, iteratedDeriv_zero, pow_zero, mul_one,
+      Nat.mul_zero, Nat.add_zero] using
+      hin ‖x‖ rho (by simpa only [hsign] using hlarge)
+  have hmid0 : ‖brrsSurfaceWaveAmplitude d .middle ‖x‖ rho‖ <=
+      Cmid / |(2 * Real.pi * ‖x‖) * rho| ^ N := by
+    simpa using hmid ‖x‖ rho hlarge
+  refine ⟨brrs_surfaceFourier_neg_smul_eq_three_terms hd hrho x, ?_, ?_, ?_⟩
+  · calc
+      ‖brrsSurfaceWaveAmplitude d .outgoing ‖x‖ rho‖ <=
+          Cout / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| := hout0
+      _ <= C / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| := by
+        apply div_le_div_of_nonneg_right
+        · dsimp [C]
+          linarith
+        · exact hscale.le
+  · calc
+      ‖brrsSurfaceWaveAmplitude d .incoming ‖x‖ rho‖ <=
+          Cin / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| := hin0
+      _ <= C / quadraticMomentScale (d - 2) |(2 * Real.pi * ‖x‖) * rho| := by
+        apply div_le_div_of_nonneg_right
+        · dsimp [C]
+          linarith
+        · exact hscale.le
+  · have hden : 0 < |(2 * Real.pi * ‖x‖) * rho| ^ N :=
+      pow_pos (lt_of_lt_of_le zero_lt_one hlarge) _
+    calc
+      ‖brrsSurfaceWaveAmplitude d .middle ‖x‖ rho‖ <=
+          Cmid / |(2 * Real.pi * ‖x‖) * rho| ^ N := hmid0
+      _ <= C / |(2 * Real.pi * ‖x‖) * rho| ^ N := by
+        apply div_le_div_of_nonneg_right
+        · dsimp [C]
+          linarith
+        · exact hden.le
+
 /-- Multiplying a BRRS stationary surface wave by the level-zero half-wave
 profile simply adds their two linear radial frequencies.  This exact identity
 is the bridge from the physical kernel to compact nonstationary integration by
@@ -9459,13 +9749,16 @@ positive radii) into a constant-free scalar integral with
 `lambda * J_((d - 2) / 2) (lambda * r) * J_((d - 2) / 2) (lambda * s)`.
 The display immediately after BRRS (5.3) prints the same expression with
 ordinary `d lambda` but without that `lambda` factor, while explicitly
-calling `J` the usual Bessel function and writing `f(x) = f_0(|x|)`.
-No alternative convention that absorbs the factor is stated there.  Thus the
-definition below is *not* claimed to be literally equal to that printed
-`K_j` display; it is the proved repository-normalized polar kernel.  The
-omission is an unresolved source-normalization discrepancy (and appears to
-be a likely typographical omission), so a source-literal Bessel-`J` bridge
-must remain qualified until it is resolved.
+calling `J` the usual Bessel function and writing `f(x) = f_0(|x|)`.  This
+was checked both in arXiv:2501.12805v1 and in the published version, *Bull.
+Lond. Math. Soc.* 57 (2025), §5, immediately before its kernel estimate.
+The same paper's (3.3) gives the standard large-argument asymptotic for that
+ordinary Bessel function, so it does not supply a normalization that can
+absorb the factor.  Thus the definition below is *not* claimed to be
+literally equal to that printed `K_j` display; it is the proved
+repository-normalized polar kernel.  The omission is a confirmed
+source-normalization discrepancy (apparently typographical), so a
+source-literal Bessel-`J` bridge must remain qualified until it is resolved.
 -/
 
 /-- In the surface-measure convention used by this file, the shared radial
@@ -9608,6 +9901,29 @@ theorem brrsDyadicHalfWave_eq_radialBesselKernel_integral
       rw [← mul_assoc,
         ← brrsRadialBesselKernel_eq_twoRadius_surfaceFourier Phi j t r s v hv]
 
+/-- The exact radial kernel formula at an arbitrary physical point.  This is
+the coordinate-free form of the preceding polar identity: its first kernel
+variable is precisely `‖x‖`, as in the Section 5 notation `K_j(|x|, t, s)`.
+It is stated in the repository's Fourier normalization and makes no claim
+that the published Bessel display (which omits the required frequency
+Jacobian) is literally identical to this kernel. -/
+theorem brrsDyadicHalfWave_eq_radialBesselKernel_integral_of_norm
+    {d : Nat} (hd : 0 < d) (Phi : BRRSAnnularCutoff) (j : Nat) (t : Real)
+    (f : BRRSSchwartz d) (hf : IsRadial (f : BRRSSpace d → Complex))
+    (v w x : BRRSSpace d) (hv : ‖v‖ = 1) (hw : ‖w‖ = 1) :
+    brrsDyadicHalfWave Phi j t f x =
+      ∫ s in Ioi (0 : Real),
+        brrsRadialBesselKernel Phi d v j ‖x‖ s t * f (s • w) := by
+  calc
+    brrsDyadicHalfWave Phi j t f x =
+        brrsDyadicHalfWave Phi j t f (‖x‖ • v) := by
+      apply brrsDyadicHalfWave_isRadial Phi j t f hf
+      rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _), hv, mul_one]
+    _ = ∫ s in Ioi (0 : Real),
+        brrsRadialBesselKernel Phi d v j ‖x‖ s t * f (s • w) :=
+      brrsDyadicHalfWave_eq_radialBesselKernel_integral
+        hd Phi j t f hf v w hv hw ‖x‖
+
 /-- The literal translation-invariant source kernel for the annular BRRS
 half-wave.  This is the physical kernel occurring in the radial convolution
 formula of Section 5. -/
@@ -9710,6 +10026,99 @@ theorem integral_volumeIoiPow_dilate
       rfl
     _ = ∫ u : Ioi (0 : Real), F u.1 ∂Measure.volumeIoiPow n :=
       (Auto.Spherical.FractalDilations.Auxiliary.integral_volumeIoiPow_eq_setIntegral n F).symm
+
+/-- Exact dyadic scaling of the repository-normalized radial Bessel kernel.
+The scalar factor is one power of the frequency scale (rather than the full
+spatial Jacobian), because the remaining `q ^ (d - 1)` is already contained
+in the polar source factor of the level-zero kernel. -/
+theorem brrsRadialBesselKernel_eq_levelZero_scaled
+    {d : Nat} (hd : 1 ≤ d) (Phi : BRRSAnnularCutoff) (j : Nat)
+    (r s t : Real) (v : BRRSSpace d) (hv : ‖v‖ = 1) :
+    brrsRadialBesselKernel Phi d v j r s t =
+      ((2 : Real) ^ j) •
+        brrsRadialBesselKernel Phi d v 0
+          (((2 : Real) ^ j) * r) (((2 : Real) ^ j) * s) (((2 : Real) ^ j) * t) := by
+  let q : Real := (2 : Real) ^ j
+  have hq : 0 < q := by
+    dsimp [q]
+    positivity
+  change brrsRadialBesselKernel Phi d v j r s t =
+    q • brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t)
+  let G : Real → Complex := fun rho =>
+    surfaceFourier d (-rho • (r • v)) *
+      (brrsDyadicHalfWaveSymbol Phi j t (rho • v) *
+        surfaceFourier d (s • (rho • v)))
+  let H : Real → Complex := fun u =>
+    surfaceFourier d (-u • ((q * r) • v)) *
+      (brrsDyadicHalfWaveSymbol Phi 0 (q * t) (u • v) *
+        surfaceFourier d ((q * s) • (u • v)))
+  have hsymbol (u : Real) :
+      brrsDyadicHalfWaveSymbol Phi j t ((q * u) • v) =
+        brrsDyadicHalfWaveSymbol Phi 0 (q * t) (u • v) := by
+    rw [brrsDyadicHalfWaveSymbol_eq_levelZero_scaled_general Phi j t]
+    dsimp [q]
+    rw [smul_smul]
+    congr 1
+    field_simp [hq.ne']
+  have hpoint (u : Real) : G (q * u) = H u := by
+    dsimp [G, H]
+    have houter : -(q * u) • (r • v) = -u • ((q * r) • v) := by
+      module
+    have hinner : s • ((q * u) • v) = (q * s) • (u • v) := by
+      module
+    rw [houter, hinner, hsymbol]
+  have hscale :
+      (∫ u : Ioi (0 : Real), ((q ^ d : Real) : Complex) * H u.1
+        ∂Measure.volumeIoiPow (d - 1)) =
+        ∫ rho : Ioi (0 : Real), G rho.1 ∂Measure.volumeIoiPow (d - 1) := by
+    calc
+      (∫ u : Ioi (0 : Real), ((q ^ d : Real) : Complex) * H u.1
+        ∂Measure.volumeIoiPow (d - 1)) =
+          ∫ u : Ioi (0 : Real), ((q ^ d : Real) : Complex) * G (q * u.1)
+            ∂Measure.volumeIoiPow (d - 1) := by
+              apply integral_congr_ae
+              filter_upwards with u
+              rw [hpoint]
+      _ = ∫ rho : Ioi (0 : Real), G rho.1 ∂Measure.volumeIoiPow (d - 1) := by
+        simpa only [Nat.sub_add_cancel hd] using
+          (integral_volumeIoiPow_dilate (d - 1) G hq)
+  have hKj :
+      brrsRadialBesselKernel Phi d v j r s t =
+        ((s ^ (d - 1) : Real) : Complex) *
+          ∫ rho : Ioi (0 : Real), G rho.1 ∂Measure.volumeIoiPow (d - 1) := by
+    simpa only [G] using
+      (brrsRadialBesselKernel_eq_twoRadius_surfaceFourier Phi j t r s v hv)
+  have hK0 :
+      brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t) =
+        (((q * s) ^ (d - 1) : Real) : Complex) *
+          ∫ u : Ioi (0 : Real), H u.1 ∂Measure.volumeIoiPow (d - 1) := by
+    simpa only [H] using
+      (brrsRadialBesselKernel_eq_twoRadius_surfaceFourier
+        Phi 0 (q * t) (q * r) (q * s) v hv)
+  calc
+    brrsRadialBesselKernel Phi d v j r s t =
+        ((s ^ (d - 1) : Real) : Complex) *
+          ∫ rho : Ioi (0 : Real), G rho.1 ∂Measure.volumeIoiPow (d - 1) := hKj
+    _ = ((s ^ (d - 1) : Real) : Complex) *
+          ∫ u : Ioi (0 : Real), ((q ^ d : Real) : Complex) * H u.1
+            ∂Measure.volumeIoiPow (d - 1) := by rw [hscale]
+    _ = ((s ^ (d - 1) : Real) : Complex) *
+          (((q ^ d : Real) : Complex) *
+            ∫ u : Ioi (0 : Real), H u.1 ∂Measure.volumeIoiPow (d - 1)) := by
+              rw [MeasureTheory.integral_const_mul]
+    _ = q • ((((q * s) ^ (d - 1) : Real) : Complex) *
+          ∫ u : Ioi (0 : Real), H u.1 ∂Measure.volumeIoiPow (d - 1)) := by
+      rw [Complex.real_smul]
+      have hpow : q ^ d = q * q ^ (d - 1) := by
+        calc
+          q ^ d = q ^ (d - 1 + 1) := by rw [Nat.sub_add_cancel hd]
+          _ = q ^ (d - 1) * q := by rw [pow_succ]
+          _ = q * q ^ (d - 1) := by ring
+      rw [mul_pow, hpow]
+      push_cast
+      ring
+    _ = q • brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t) := by
+      rw [hK0]
 
 /-- Exact source-variable scaling of the literal BRRS half-wave.  This form
 uses the actual level-zero source kernel and the genuinely dilated Schwartz
@@ -14360,6 +14769,72 @@ theorem brrs_sum_mainCell_sub_weighted_profileConvolution_rpow_two_le_global
 
 /-- Pointwise Hölder control of a positive finite profile convolution at an
 arbitrary exponent strictly larger than one. -/
+theorem brrs_lintegral_restrict_rpow_le
+    {p : Real} (hp : 1 < p) {A : Set Real} (hA : MeasurableSet A)
+    {f : Real → ENNReal} (hf : Measurable f) :
+    (∫⁻ s in A, f s) ^ p ≤
+      (volume A) ^ (p - 1) * ∫⁻ s in A, (f s) ^ p := by
+  let q : Real := p.conjExponent
+  have hpq : p.HolderConjugate q := by
+    dsimp only [q]
+    exact Real.HolderConjugate.conjExponent hp
+  have hone : AEMeasurable (fun _ : Real => (1 : ENNReal)) (volume.restrict A) :=
+    measurable_const.aemeasurable
+  have hf' : AEMeasurable f (volume.restrict A) := hf.aemeasurable
+  have hholder := ENNReal.lintegral_mul_le_Lp_mul_Lq
+    (volume.restrict A) hpq.symm hone hf'
+  have hbase : (∫⁻ s in A, f s) ≤
+      (volume A) ^ q⁻¹ * (∫⁻ s in A, (f s) ^ p) ^ p⁻¹ := by
+    simpa [hA] using hholder
+  have hp0 : 0 ≤ p := le_trans zero_le_one hp.le
+  have hqexp : q⁻¹ * p = p - 1 := by
+    calc
+      q⁻¹ * p = p / q := by
+        simp only [div_eq_mul_inv]
+        ring
+      _ = p - 1 := hpq.div_conj_eq_sub_one
+  calc
+    (∫⁻ s in A, f s) ^ p ≤
+        ((volume A) ^ q⁻¹ * (∫⁻ s in A, (f s) ^ p) ^ p⁻¹) ^ p :=
+      ENNReal.rpow_le_rpow hbase hp0
+    _ = (volume A) ^ (p - 1) * ∫⁻ s in A, (f s) ^ p := by
+      rw [ENNReal.mul_rpow_of_nonneg _ _ hp0,
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul,
+        hqexp, inv_mul_cancel₀ hpq.left_pos.ne', ENNReal.rpow_one]
+
+/-- The literal Hölder step used on one far source annulus in BRRS (5.5).
+If a nonnegative phase kernel is uniformly bounded by `B` on the annulus,
+then its weighted source integral has the stated `L^p` control.  This is
+kept in restricted-integral form because the next source calculation applies
+it separately for each time and output radius. -/
+theorem brrsSectionFive_farAnnulus_holder_bound
+    {p : Real} (hp : 1 < p) {A : Set Real} (hA : MeasurableSet A)
+    {K f : Real → ENNReal} (hf : Measurable f) (B : ENNReal)
+    (hB : ∀ s ∈ A, K s ≤ B) :
+    (∫⁻ s in A, K s * f s) ^ p ≤
+      B ^ p * (volume A) ^ (p - 1) * ∫⁻ s in A, (f s) ^ p := by
+  have hp0 : 0 ≤ p := le_trans zero_le_one hp.le
+  have hpoint : (∫⁻ s in A, K s * f s) ≤ B * ∫⁻ s in A, f s := by
+    calc
+      (∫⁻ s in A, K s * f s) ≤ ∫⁻ s in A, B * f s := by
+        apply setLIntegral_mono' hA
+        intro s hs
+        exact mul_le_mul' (hB s hs) le_rfl
+      _ = B * ∫⁻ s in A, f s :=
+        lintegral_const_mul B hf
+  calc
+    (∫⁻ s in A, K s * f s) ^ p ≤
+        (B * ∫⁻ s in A, f s) ^ p :=
+      ENNReal.rpow_le_rpow hpoint hp0
+    _ = B ^ p * (∫⁻ s in A, f s) ^ p :=
+      ENNReal.mul_rpow_of_nonneg _ _ hp0
+    _ ≤ B ^ p * ((volume A) ^ (p - 1) * ∫⁻ s in A, (f s) ^ p) :=
+      mul_le_mul_right (brrs_lintegral_restrict_rpow_le hp hA hf) (B ^ p)
+    _ = B ^ p * (volume A) ^ (p - 1) * ∫⁻ s in A, (f s) ^ p := by
+      ring
+
+/-- Pointwise Hölder control of a positive finite profile convolution at an
+arbitrary exponent strictly larger than one. -/
 theorem brrsOneDimProfileConvolution_rpow_le
     {omega f : Real → ENNReal} {p : Real} (hp : 1 < p)
     (homega : Measurable omega) (hf : Measurable f)
@@ -14533,6 +15008,157 @@ theorem lintegral_brrsOneDimProfileConvolutionPlus_rpow_le
         (measurable_brrsReflectProfile hf) homega_pos homega_top hmass_pos hmass_top
     _ = (∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f s) ^ p := by
       rw [lintegral_brrsReflectProfile_rpow_eq]
+
+/-! ### Exterior radial weighted Young estimates
+
+The fixed-time exterior estimate for radial half-waves has a different
+geometry from the compact Section 5 decomposition: the output radius is
+bounded below, while the source radius ranges over the whole positive
+half-line.  The exact polar normalization leaves the factor `(s / r)^σ`.
+On `r ≥ 16` it can be absorbed into one polynomially weighted phase-line
+kernel, uniformly for all four signs.  The following lemmas isolate that
+one-dimensional fact; they do not assert an exterior half-wave bound, whose
+kernel reduction still has to account for every radial region.
+-/
+
+/-- The phase-line kernel after absorbing the exact exterior radial ratio.
+The factor is chosen so that every phase `t ± r ± s`, with `r ≥ 16` and
+`t ∈ [1,2]`, dominates `(s / r)^σ` on the positive source half-line. -/
+noncomputable def brrsExteriorAbsorbedKernel
+    (sigma : Real) (omega : Real → ENNReal) : Real → ENNReal :=
+  fun u => (ENNReal.ofReal (2 * (1 + |u|))) ^ sigma * omega u
+
+/-- Measurability of the exterior-weighted phase kernel. -/
+theorem measurable_brrsExteriorAbsorbedKernel
+    (sigma : Real) {omega : Real → ENNReal} (homega : Measurable omega) :
+    Measurable (brrsExteriorAbsorbedKernel sigma omega) := by
+  unfold brrsExteriorAbsorbedKernel
+  apply (ENNReal.continuous_rpow_const.measurable.comp
+    (ENNReal.continuous_ofReal.measurable.comp ?_)).mul homega
+  exact measurable_const.mul (measurable_const.add measurable_abs)
+
+/-- The exact exterior radial ratio is pointwise absorbed by the weighted
+phase-line kernel.  This is the common algebraic step for all four travelling
+phases. -/
+theorem brrs_exterior_ratioWeight_mul_le_absorbedKernel
+    {sigma r s t u : Real} {omega : Real → ENNReal}
+    (hsigma : 0 ≤ sigma) (hs : 0 ≤ s) (hr : 16 ≤ r)
+    (ht : t ∈ Icc (1 : Real) 2)
+    (hphase : s ≤ t + r + |u|) :
+    (ENNReal.ofReal (s / r)) ^ sigma * omega u ≤
+      brrsExteriorAbsorbedKernel sigma omega u := by
+  unfold brrsExteriorAbsorbedKernel
+  apply mul_le_mul_right
+  apply ENNReal.rpow_le_rpow
+  apply ENNReal.ofReal_le_ofReal
+  exact brrs_radiusRatio_le_two_mul_one_add_abs_of_phase r s t u hr ht hphase
+
+/-- The `t-r-s` exterior phase is bounded by an ordinary translated
+convolution with the absorbed kernel. -/
+theorem brrs_exterior_weighted_sub_sub_le_convolution
+    {sigma t r : Real} {omega f : Real → ENNReal}
+    (hsigma : 0 ≤ sigma) (hr : 16 ≤ r) (ht : t ∈ Icc (1 : Real) 2) :
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r - s) * f s) ≤
+      brrsOneDimProfileConvolution (brrsExteriorAbsorbedKernel sigma omega) f (t - r) := by
+  calc
+    (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r - s) * f s) ≤
+        ∫⁻ s in Ioi (0 : Real),
+          brrsExteriorAbsorbedKernel sigma omega (t - r - s) * f s := by
+      apply setLIntegral_mono' measurableSet_Ioi
+      intro s hs
+      exact mul_le_mul_right
+        (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
+          (brrs_sourceRadius_le_time_add_output_add_abs_sub_sub r s t hr.le))
+        (f s)
+    _ ≤ ∫⁻ s : Real,
+          brrsExteriorAbsorbedKernel sigma omega ((t - r) - s) * f s :=
+      setLIntegral_le_lintegral _ _
+    _ = brrsOneDimProfileConvolution (brrsExteriorAbsorbedKernel sigma omega) f
+          (t - r) := by
+      unfold brrsOneDimProfileConvolution
+      congr 1
+      funext s
+      ring_nf
+
+/-- The `t-r+s` exterior phase is bounded by the reflected-source
+convolution with the absorbed kernel. -/
+theorem brrs_exterior_weighted_sub_add_le_convolutionPlus
+    {sigma t r : Real} {omega f : Real → ENNReal}
+    (hsigma : 0 ≤ sigma) (hr : 16 ≤ r) (ht : t ∈ Icc (1 : Real) 2) :
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r + s) * f s) ≤
+      brrsOneDimProfileConvolutionPlus (brrsExteriorAbsorbedKernel sigma omega) f (t - r) := by
+  calc
+    (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sigma * omega (t - r + s) * f s) ≤
+        ∫⁻ s in Ioi (0 : Real),
+          brrsExteriorAbsorbedKernel sigma omega (t - r + s) * f s := by
+      apply setLIntegral_mono' measurableSet_Ioi
+      intro s hs
+      exact mul_le_mul_right
+        (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
+          (brrs_sourceRadius_le_time_add_output_add_abs_sub_add r s t ht.1))
+        (f s)
+    _ ≤ ∫⁻ s : Real,
+          brrsExteriorAbsorbedKernel sigma omega ((t - r) + s) * f s :=
+      setLIntegral_le_lintegral _ _
+    _ = brrsOneDimProfileConvolutionPlus (brrsExteriorAbsorbedKernel sigma omega) f
+          (t - r) := by
+      rfl
+
+/-- The `t+r-s` exterior phase is bounded by an ordinary translated
+convolution with the absorbed kernel. -/
+theorem brrs_exterior_weighted_add_sub_le_convolution
+    {sigma t r : Real} {omega f : Real → ENNReal}
+    (hsigma : 0 ≤ sigma) (hr : 16 ≤ r) (ht : t ∈ Icc (1 : Real) 2) :
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r - s) * f s) ≤
+      brrsOneDimProfileConvolution (brrsExteriorAbsorbedKernel sigma omega) f (t + r) := by
+  calc
+    (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r - s) * f s) ≤
+        ∫⁻ s in Ioi (0 : Real),
+          brrsExteriorAbsorbedKernel sigma omega (t + r - s) * f s := by
+      apply setLIntegral_mono' measurableSet_Ioi
+      intro s hs
+      exact mul_le_mul_right
+        (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
+          (brrs_sourceRadius_le_time_add_output_add_abs_add_sub r s t))
+        (f s)
+    _ ≤ ∫⁻ s : Real,
+          brrsExteriorAbsorbedKernel sigma omega ((t + r) - s) * f s :=
+      setLIntegral_le_lintegral _ _
+    _ = brrsOneDimProfileConvolution (brrsExteriorAbsorbedKernel sigma omega) f
+          (t + r) := by
+      rfl
+
+/-- The `t+r+s` exterior phase is bounded by the reflected-source
+convolution with the absorbed kernel. -/
+theorem brrs_exterior_weighted_add_add_le_convolutionPlus
+    {sigma t r : Real} {omega f : Real → ENNReal}
+    (hsigma : 0 ≤ sigma) (hr : 16 ≤ r) (ht : t ∈ Icc (1 : Real) 2) :
+    (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r + s) * f s) ≤
+      brrsOneDimProfileConvolutionPlus (brrsExteriorAbsorbedKernel sigma omega) f (t + r) := by
+  calc
+    (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sigma * omega (t + r + s) * f s) ≤
+        ∫⁻ s in Ioi (0 : Real),
+          brrsExteriorAbsorbedKernel sigma omega (t + r + s) * f s := by
+      apply setLIntegral_mono' measurableSet_Ioi
+      intro s hs
+      exact mul_le_mul_right
+        (brrs_exterior_ratioWeight_mul_le_absorbedKernel hsigma hs.le hr ht
+          (brrs_sourceRadius_le_time_add_output_add_abs_add_add r s t hr.le ht.1))
+        (f s)
+    _ ≤ ∫⁻ s : Real,
+          brrsExteriorAbsorbedKernel sigma omega ((t + r) + s) * f s :=
+      setLIntegral_le_lintegral _ _
+    _ = brrsOneDimProfileConvolutionPlus (brrsExteriorAbsorbedKernel sigma omega) f
+          (t + r) := by
+      rfl
 
 /-- The outgoing weighted radial-block estimate in the precise `Lᵖ` form
 used in BRRS (5.4), once the positive integrable profile is supplied. -/
@@ -16555,6 +17181,329 @@ theorem brrsOddQuadraticLeadingCoefficient_ne_zero (n : Nat) :
         exact Nat.cast_ne_zero.mpr (by omega)
       · exact ih
 
+/-- For an odd meridional vanishing order the localized endpoint profile is
+literally a polynomial in the quadratic coordinate times the core cutoff.
+This is the algebraic input which separates the stationary derivative term
+from the nonstationary cutoff derivative. -/
+private theorem brrs_smoothEndpointProfile_odd_eq_polynomial_core
+    (n : Nat) (u : Real) :
+    smoothEndpointProfile (2 * n + 1) u =
+      ((2 * (2 - u ^ 2) ^ n * endpointCoreCutoff u : Real) : Complex) := by
+  by_cases hu : endpointCoreCutoff u = 0
+  · simp [smoothEndpointProfile, smoothEndpointProfileReal, hu]
+  · have hguard : endpointGuardCutoff u = 1 :=
+      endpointGuardCutoff_eq_one_of_endpointCoreCutoff_ne_zero hu
+    have hsmall : |u| < (1 / 4 : Real) :=
+      abs_lt_one_quarter_of_endpointCoreCutoff_ne_zero hu
+    have harg : 0 ≤ 2 - u ^ 2 := by
+      have husq : u ^ 2 < 1 := by
+        rw [sq_lt_one_iff_abs_lt_one]
+        exact lt_of_lt_of_le hsmall (by norm_num)
+      linarith
+    have hexp : 2 * n + 1 - 1 = 2 * n := by omega
+    unfold smoothEndpointProfile smoothEndpointProfileReal endpointGuardedCoordinate
+    rw [hguard, hexp, pow_mul]
+    simp only [one_mul]
+    rw [Real.sq_sqrt harg]
+
+/-- The compact core cutoff is identically zero near the artificial endpoint
+of the quadratic interval. -/
+private theorem brrs_endpointCoreCutoff_eventuallyEq_zero_at_one :
+    (fun u : Real => (endpointCoreCutoff u : Complex)) =ᶠ[nhds (1 : Real)] 0 := by
+  filter_upwards [Metric.ball_mem_nhds (1 : Real)
+    (by norm_num : (0 : Real) < 1 / 2)] with u hu
+  rw [Metric.mem_ball, Real.dist_eq] at hu
+  have hu_lower : 1 / 2 < u := by linarith [(abs_lt.mp hu).1]
+  have hu_abs : (1 / 4 : Real) ≤ |u| := by
+    rw [abs_of_pos (by linarith)]
+    linarith
+  rw [endpointCoreCutoff_eq_zero_of_one_quarter_le_abs hu_abs]
+  simp
+
+/-- The derivative of the core cutoff vanishes throughout its constant inner
+region. -/
+private theorem brrs_deriv_endpointCoreCutoff_eq_zero_of_abs_lt_one_eighth
+    {u : Real} (hu : |u| < (1 / 8 : Real)) :
+    deriv (fun v : Real => (endpointCoreCutoff v : Complex)) u = 0 := by
+  have hmem : u ∈ Metric.ball (0 : Real) endpointCoreBump.rIn := by
+    rw [Metric.mem_ball, Real.dist_eq]
+    simpa [endpointCoreBump] using hu
+  have hlocal : (endpointCoreBump : Real → Real) =ᶠ[nhds u] 1 :=
+    endpointCoreBump.eventuallyEq_one_of_mem_ball hmem
+  have hlocalC : (fun v : Real => (endpointCoreCutoff v : Complex)) =ᶠ[nhds u]
+      (fun _ : Real => (1 : Complex)) := by
+    filter_upwards [hlocal] with v hv
+    simpa [endpointCoreCutoff, hv]
+  have hderiv := hlocalC.deriv_eq
+  simpa using hderiv
+
+/-- Differentiating the odd profile splits into a term with an explicit
+quadratic-coordinate factor and a cutoff-derivative term supported away from
+the stationary endpoint. -/
+private theorem brrs_deriv_smoothEndpointProfile_odd_eq
+    (n : Nat) (u : Real) :
+    deriv (smoothEndpointProfile (2 * n + 1)) u =
+      ((u * (-4 * (n : Real) * (2 - u ^ 2) ^ (n - 1)) : Real) : Complex) *
+          (endpointCoreCutoff u : Complex) +
+        ((2 * (2 - u ^ 2) ^ n : Real) : Complex) *
+          deriv (fun v : Real => (endpointCoreCutoff v : Complex)) u := by
+  let P : Real → Complex := fun v => (2 * (2 - v ^ 2) ^ n : Real)
+  let C : Real → Complex := fun v => (endpointCoreCutoff v : Complex)
+  have hPderiv (v : Real) : HasDerivAt P
+      ((v * (-4 * (n : Real) * (2 - v ^ 2) ^ (n - 1)) : Real) : Complex) v := by
+    have hbase : HasDerivAt (fun w : Real => 2 - w ^ 2) (-2 * v) v := by
+      convert! (hasDerivAt_pow 2 v).neg.const_add (2 : Real) using 1 <;> ring
+    have hpow := hbase.pow n
+    have hmul := (hasDerivAt_const v (2 : Real)).mul hpow
+    have hreal : HasDerivAt (fun w : Real => 2 * (2 - w ^ 2) ^ n)
+        (v * (-4 * (n : Real) * (2 - v ^ 2) ^ (n - 1))) v := by
+      convert! hmul using 1 <;> ring
+    simpa [P] using hreal.ofReal_comp
+  have hC : ContDiff Real (⊤ : ℕ∞) C := by
+    change ContDiff Real (⊤ : ℕ∞)
+      ((Complex.ofRealCLM : Real →L[Real] Complex) ∘ endpointCoreBump)
+    exact Complex.ofRealCLM.contDiff.comp endpointCoreBump.contDiff
+  have hCderiv : HasDerivAt C (deriv C u) u :=
+    ((hC.differentiable (by simp)) u).hasDerivAt
+  have hraw : smoothEndpointProfile (2 * n + 1) = fun v => P v * C v := by
+    funext v
+    simpa [P, C] using brrs_smoothEndpointProfile_odd_eq_polynomial_core n v
+  rw [hraw]
+  change deriv (P * C) u = _
+  simpa [P, C] using (hPderiv u).mul hCderiv |>.deriv
+
+/-- The quadratic phase is rapidly nonstationary on the cutoff-derivative
+tail.  The auxiliary phase derivative is a globally positive smooth extension
+of `2u` on `[1/16, 1]`, so this invokes the verified arbitrary-order
+nonstationary-phase chain rather than an unproved Bessel surrogate. -/
+private theorem brrs_quadratic_cutoff_tail_hasRapidDecay
+    (g : Real → Complex) (hg : ContDiff Real (⊤ : ℕ∞) g)
+    (hleft : g =ᶠ[nhds (1 / 16 : Real)] 0)
+    (hright : g =ᶠ[nhds (1 : Real)] 0) :
+    Auto.OneDimStationaryPhase.HasRapidDecayRemainder
+      (fun lambda : Real => ∫ u in (1 / 16 : Real)..1,
+        g u * Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)) := by
+  let phase : Real → Real := fun u => u ^ 2
+  let step : Real → Real := fun u => Real.smoothTransition (32 * u - 1)
+  let phaseDeriv : Real → Real := fun u =>
+    (1 - step u) * (1 / 8 : Real) + step u * (2 * u)
+  have hphase : ContDiff Real (⊤ : ℕ∞) phase := by
+    dsimp [phase]
+    fun_prop
+  have hstep : ContDiff Real (⊤ : ℕ∞) step := by
+    dsimp [step]
+    exact Real.smoothTransition.contDiff.comp
+      ((contDiff_const.mul contDiff_id).sub contDiff_const)
+  have hphaseDeriv : ContDiff Real (⊤ : ℕ∞) phaseDeriv := by
+    dsimp [phaseDeriv]
+    exact ((contDiff_const.sub hstep).mul contDiff_const).add
+      (hstep.mul (contDiff_const.mul contDiff_id))
+  have hphaseDeriv_pos (u : Real) : 0 < phaseDeriv u := by
+    have hnonneg : 0 ≤ step u := by
+      dsimp [step]
+      exact Real.smoothTransition.nonneg _
+    have hone : step u ≤ 1 := by
+      dsimp [step]
+      exact Real.smoothTransition.le_one _
+    by_cases hzero : step u = 0
+    · dsimp [phaseDeriv]
+      rw [hzero]
+      norm_num
+    · have hstep_pos : 0 < step u := lt_of_le_of_ne hnonneg (Ne.symm hzero)
+      have hu : 1 / 32 < u := by
+        by_contra hnot
+        have hle : u ≤ 1 / 32 := le_of_not_gt hnot
+        have harg : 32 * u - 1 ≤ 0 := by linarith
+        exact hzero (by
+          dsimp [step]
+          exact Real.smoothTransition.zero_of_nonpos harg)
+      have htwou : 0 < 2 * u := by linarith
+      dsimp [phaseDeriv]
+      exact add_pos_of_nonneg_of_pos
+        (mul_nonneg (sub_nonneg.mpr hone) (by norm_num))
+        (mul_pos hstep_pos htwou)
+  have hphaseDeriv_ne (u : Real) : phaseDeriv u ≠ 0 :=
+    ne_of_gt (hphaseDeriv_pos u)
+  have hphase_deriv : ∀ u ∈ Set.uIcc (1 / 16 : Real) 1,
+      HasDerivAt phase (phaseDeriv u) u := by
+    intro u hu
+    have hu' : u ∈ Set.Icc (1 / 16 : Real) 1 := by
+      rw [Set.uIcc_of_le (by norm_num : (1 / 16 : Real) ≤ 1)] at hu
+      exact hu
+    have hstep_one : step u = 1 := by
+      dsimp [step]
+      apply Real.smoothTransition.one_of_one_le
+      nlinarith [hu'.1]
+    dsimp [phase, phaseDeriv]
+    rw [hstep_one]
+    convert! hasDerivAt_pow 2 u using 1 <;> ring
+  have hlower : ∃ c : Real, 0 < c ∧ ∀ u ∈ Set.Icc (1 / 16 : Real) 1,
+      c ≤ |phaseDeriv u| := by
+    refine ⟨1 / 8, by norm_num, ?_⟩
+    intro u hu
+    have hstep_one : step u = 1 := by
+      dsimp [step]
+      apply Real.smoothTransition.one_of_one_le
+      nlinarith [hu.1]
+    have htwou_nonneg : 0 ≤ 2 * u := by linarith [hu.1]
+    dsimp [phaseDeriv]
+    rw [hstep_one]
+    simp only [sub_self, zero_mul, zero_add, one_mul]
+    rw [abs_of_nonneg htwou_nonneg]
+    nlinarith [hu.1]
+  have hrapid := Auto.OneDimStationaryPhase.hasRapidDecayRemainder_of_contDiff
+    (a := g) (phase := phase) (phaseDeriv := phaseDeriv)
+    (by norm_num : (1 / 16 : Real) ≤ 1) hg hleft hright hphase hphaseDeriv
+    hphaseDeriv_ne hphase_deriv hlower
+  have heq : Auto.OneDimStationaryPhase.stationaryOscillatoryIntegral g phase
+      (1 / 16 : Real) 1 =
+      (fun lambda : Real => ∫ u in (1 / 16 : Real)..1,
+        g u * Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)) := by
+    funext lambda
+    unfold Auto.OneDimStationaryPhase.stationaryOscillatoryIntegral
+    apply intervalIntegral.integral_congr
+    intro u hu
+    dsimp [phase]
+  rw [heq] at hrapid
+  exact hrapid
+
+/-- For an odd meridional profile, its derivative has no stationary
+contribution at order zero: its quadratic moment gains a full inverse power
+of the frequency.  The polynomial part has an explicit factor of the
+quadratic coordinate, while the cutoff derivative is treated on the
+nonstationary tail. -/
+private theorem exists_quadraticMoment_zero_deriv_smoothEndpointProfile_odd_decay
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖quadraticMomentIntegral 0 (deriv (smoothEndpointProfile (2 * n + 1))) lambda‖ ≤
+        C / lambda := by
+  let C0 : Real → Complex := fun v => (endpointCoreCutoff v : Complex)
+  let P : Real → Complex := fun v => ((2 * (2 - v ^ 2) ^ n : Real) : Complex)
+  let G : Real → Complex := fun v =>
+    ((-4 * (n : Real) * (2 - v ^ 2) ^ (n - 1) : Real) : Complex) * C0 v
+  let R : Real → Complex := fun v => P v * deriv C0 v
+  have hC0 : ContDiff Real (⊤ : ℕ∞) C0 := by
+    change ContDiff Real (⊤ : ℕ∞)
+      ((Complex.ofRealCLM : Real →L[Real] Complex) ∘ endpointCoreBump)
+    exact Complex.ofRealCLM.contDiff.comp endpointCoreBump.contDiff
+  have hC0' : ContDiff Real (⊤ : ℕ∞) (deriv C0) :=
+    (contDiff_infty_iff_deriv.mp hC0).2
+  have hP : ContDiff Real (⊤ : ℕ∞) P := by
+    change ContDiff Real (⊤ : ℕ∞)
+      ((Complex.ofRealCLM : Real →L[Real] Complex) ∘
+        fun v : Real => 2 * (2 - v ^ 2) ^ n)
+    apply Complex.ofRealCLM.contDiff.comp
+    fun_prop
+  have hG : ContDiff Real (⊤ : ℕ∞) G := by
+    have hpoly : ContDiff Real (⊤ : ℕ∞)
+        ((Complex.ofRealCLM : Real →L[Real] Complex) ∘
+          fun v : Real => -4 * (n : Real) * (2 - v ^ 2) ^ (n - 1)) := by
+      apply Complex.ofRealCLM.contDiff.comp
+      fun_prop
+    exact hpoly.mul hC0
+  have hR : ContDiff Real (⊤ : ℕ∞) R := hP.mul hC0'
+  have hGvanish : VanishesNearOne G := by
+    filter_upwards [brrs_endpointCoreCutoff_eventuallyEq_zero_at_one] with u hu
+    have hu' : (endpointCoreCutoff u : Complex) = 0 := by simpa using hu
+    dsimp [G, C0]
+    rw [hu']
+    ring
+  have hRzero (u : Real) (hu : |u| < (1 / 8 : Real)) : R u = 0 := by
+    dsimp [R]
+    rw [show deriv C0 u = 0 by
+      simpa [C0] using brrs_deriv_endpointCoreCutoff_eq_zero_of_abs_lt_one_eighth hu]
+    ring
+  have hRleft : R =ᶠ[nhds (1 / 16 : Real)] 0 := by
+    filter_upwards [Metric.ball_mem_nhds (1 / 16 : Real)
+      (by norm_num : (0 : Real) < 1 / 32)] with u hu
+    rw [Metric.mem_ball, Real.dist_eq] at hu
+    have hu' := abs_lt.mp hu
+    have hupos : 0 < u := by linarith [hu'.1]
+    have habs : |u| < (1 / 8 : Real) := by
+      rw [abs_of_pos hupos]
+      linarith [hu'.2]
+    simpa only [Pi.zero_apply] using hRzero u habs
+  have hRright : R =ᶠ[nhds (1 : Real)] 0 := by
+    have hC0right : deriv C0 =ᶠ[nhds (1 : Real)] 0 := by
+      have hC0zero : C0 =ᶠ[nhds (1 : Real)] 0 := by
+        simpa [C0] using brrs_endpointCoreCutoff_eventuallyEq_zero_at_one
+      exact hC0zero.deriv.trans (Filter.Eventually.of_forall fun u => by simp)
+    filter_upwards [hC0right] with u hu
+    simp only [Pi.zero_apply] at hu
+    dsimp [R]
+    rw [hu]
+    ring
+  have hRrapid := brrs_quadratic_cutoff_tail_hasRapidDecay R hR hRleft hRright
+  obtain ⟨D, hD, hDtail⟩ := hRrapid 1 0
+  obtain ⟨E, hE, hEmoment⟩ := exists_quadraticMoment_one_decay G hG hGvanish
+  let C : Real := E + D
+  have hC : 0 < C := by
+    dsimp [C]
+    positivity
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  let phase : Real → Complex := fun u =>
+    Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)
+  have hphase : Continuous phase := by
+    dsimp [phase]
+    fun_prop
+  have hRtail_identity :
+      quadraticMomentIntegral 0 R lambda =
+        ∫ u in (1 / 16 : Real)..1, R u * phase u := by
+    have hzero : (∫ u in (0 : Real)..(1 / 16 : Real), R u * phase u) = 0 := by
+      calc
+        (∫ u in (0 : Real)..(1 / 16 : Real), R u * phase u) =
+            ∫ u in (0 : Real)..(1 / 16 : Real), 0 := by
+          apply intervalIntegral.integral_congr
+          intro u hu
+          have hu' : u ∈ Set.Icc (0 : Real) (1 / 16 : Real) := by
+            simpa [Set.uIcc_of_le (by norm_num : (0 : Real) ≤ 1 / 16)] using hu
+          have habs : |u| < (1 / 8 : Real) := by
+            rw [abs_of_nonneg hu'.1]
+            linarith [hu'.2]
+          change R u * phase u = 0
+          rw [hRzero u habs]
+          simp
+        _ = 0 := by simp
+    have hcont : Continuous (fun u : Real => R u * phase u) := hR.continuous.mul hphase
+    unfold quadraticMomentIntegral
+    simp only [pow_zero, Complex.ofReal_one, one_mul]
+    rw [← intervalIntegral.integral_add_adjacent_intervals
+      (hcont.intervalIntegrable 0 (1 / 16))
+      (hcont.intervalIntegrable (1 / 16) 1), hzero, zero_add]
+  have hRbound : ‖quadraticMomentIntegral 0 R lambda‖ ≤ D / lambda := by
+    rw [hRtail_identity]
+    simpa [iteratedDeriv_zero, phase] using hDtail lambda hlambda
+  have hsplit :
+      quadraticMomentIntegral 0 (deriv (smoothEndpointProfile (2 * n + 1))) lambda =
+        quadraticMomentIntegral 1 G lambda + quadraticMomentIntegral 0 R lambda := by
+    have hGint : Continuous (fun u : Real =>
+        ((u ^ 1 : Real) : Complex) * G u * phase u) := by
+      fun_prop
+    have hRint : Continuous (fun u : Real =>
+        ((u ^ 0 : Real) : Complex) * R u * phase u) := by
+      fun_prop
+    unfold quadraticMomentIntegral
+    rw [← intervalIntegral.integral_add
+      (hGint.intervalIntegrable 0 1) (hRint.intervalIntegrable 0 1)]
+    apply intervalIntegral.integral_congr
+    intro u hu
+    simp only [pow_zero, Complex.ofReal_one, one_mul, pow_one]
+    rw [brrs_deriv_smoothEndpointProfile_odd_eq]
+    dsimp [G, R, P, C0, phase]
+    push_cast
+    ring
+  rw [hsplit]
+  calc
+    ‖quadraticMomentIntegral 1 G lambda + quadraticMomentIntegral 0 R lambda‖ ≤
+        ‖quadraticMomentIntegral 1 G lambda‖ + ‖quadraticMomentIntegral 0 R lambda‖ :=
+      norm_add_le _ _
+    _ ≤ E / lambda + D / lambda :=
+      add_le_add (hEmoment lambda hlambda) hRbound
+    _ = C / lambda := by
+      dsimp [C]
+      ring
+
 /-- The exact first-odd-moment recurrence yields a quantitative leading
 stationary coefficient, with the derivative moment as its `O(lambda⁻¹ᐟ²)`
 remainder. -/
@@ -16753,6 +17702,175 @@ theorem exists_quadraticMoment_odd_leading_asymptotic
       have hsucc_index : 2 * Nat.succ n + 1 = (2 * n + 1) + 2 := by omega
       have hsucc_power : Nat.succ n + 1 = n + 2 := by omega
       rw [hsucc_index, hsucc_power]
+      rw [hid]
+      exact hsum
+
+/-- The first odd endpoint recurrence has a one-full-power remainder whenever
+the derivative moments have their corresponding one-full-power bounds.  This
+is the exact stationary recurrence used below for the literal meridional
+profiles; it does not invoke a Bessel function by definition. -/
+private theorem exists_quadraticMoment_one_leading_asymptotic_sharp_of_zero_deriv_decay
+    (h : Real → Complex) (hh : ContDiff Real (⊤ : ℕ∞) h)
+    (hvanish : VanishesNearOne h)
+    (hderiv : ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖quadraticMomentIntegral 0 (deriv h) lambda‖ ≤ C / lambda) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖(((2 * lambda : Real) : Complex) * Complex.I) *
+          quadraticMomentIntegral 1 h lambda + h 0‖ ≤ C / lambda := by
+  obtain ⟨C, hC, hCbound⟩ := hderiv
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  have hlambda_pos : 0 < lambda := lt_of_lt_of_le zero_lt_one hlambda
+  have hrec := quadraticMomentIntegral_one_recurrence h hh hvanish
+    (ne_of_gt hlambda_pos)
+  let q : Complex := ((2 * lambda : Real) : Complex) * Complex.I
+  let R : Complex := quadraticMomentIntegral 0 (deriv h) lambda
+  have hq : q ≠ 0 := by
+    dsimp [q]
+    exact mul_ne_zero
+      (Complex.ofReal_ne_zero.mpr (mul_ne_zero (by norm_num) (ne_of_gt hlambda_pos)))
+      Complex.I_ne_zero
+  have hid : q * (-q⁻¹ * (h 0 + R)) + h 0 = -R := by
+    calc
+      q * (-q⁻¹ * (h 0 + R)) + h 0 = -(q * q⁻¹) * (h 0 + R) + h 0 := by ring
+      _ = -(h 0 + R) + h 0 := by simp [hq]
+      _ = -R := by ring
+  change ‖q * quadraticMomentIntegral 1 h lambda + h 0‖ ≤ _
+  rw [hrec]
+  rw [hid, norm_neg]
+  exact hCbound lambda hlambda
+
+/-- A full leading term and a one-full-power remainder for odd quadratic
+moments, under the precise derivative-moment estimates supplied by a compact
+stationary amplitude. -/
+private theorem exists_quadraticMoment_odd_leading_asymptotic_sharp_of_deriv_bounds
+    (h : Real → Complex) (hh : ContDiff Real (⊤ : ℕ∞) h)
+    (hvanish : VanishesNearOne h)
+    (hzero : ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖quadraticMomentIntegral 0 (deriv h) lambda‖ ≤ C / lambda)
+    (heven : ∀ n : Nat, ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖quadraticMomentIntegral (2 * n + 2) (deriv h) lambda‖ ≤ C / lambda ^ (n + 2))
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖(((2 * lambda : Real) : Complex) * Complex.I) ^ (n + 1) *
+          quadraticMomentIntegral (2 * n + 1) h lambda -
+            brrsOddQuadraticLeadingCoefficient n * h 0‖ ≤ C / lambda := by
+  induction n with
+  | zero =>
+      obtain ⟨C, hC, hbound⟩ :=
+        exists_quadraticMoment_one_leading_asymptotic_sharp_of_zero_deriv_decay
+          h hh hvanish hzero
+      refine ⟨C, hC, ?_⟩
+      intro lambda hlambda
+      have hrewrite :
+          (((2 * lambda : Real) : Complex) * Complex.I) ^ (0 + 1) *
+              quadraticMomentIntegral (2 * 0 + 1) h lambda -
+                brrsOddQuadraticLeadingCoefficient 0 * h 0 =
+            (((2 * lambda : Real) : Complex) * Complex.I) *
+              quadraticMomentIntegral 1 h lambda + h 0 := by
+        simp [brrsOddQuadraticLeadingCoefficient]
+      rw [hrewrite]
+      exact hbound lambda hlambda
+  | succ n ih =>
+      obtain ⟨C₀, hC₀, hmain⟩ := ih
+      obtain ⟨C₁, hC₁, hrem⟩ := heven n
+      let D : Real := ((2 * n + 2 : Nat) : Real) * C₀ + (2 : Real) ^ (n + 1) * C₁
+      have hD : 0 < D := by
+        dsimp [D]
+        have hcoeff : (0 : Real) < ((2 * n + 2 : Nat) : Real) := by positivity
+        positivity
+      refine ⟨D, hD, ?_⟩
+      intro lambda hlambda
+      have hlambda_pos : 0 < lambda := lt_of_lt_of_le zero_lt_one hlambda
+      let q : Complex := ((2 * lambda : Real) : Complex) * Complex.I
+      let A : Complex := quadraticMomentIntegral (2 * n + 1) h lambda
+      let R : Complex := quadraticMomentIntegral ((2 * n + 1) + 1) (deriv h) lambda
+      let K : Complex := brrsOddQuadraticLeadingCoefficient n
+      have hmain' : ‖q ^ (n + 1) * A - K * h 0‖ ≤ C₀ / lambda := by
+        dsimp [q, A, K]
+        exact hmain lambda hlambda
+      have hindex : (2 * n + 1) + 1 = 2 * n + 2 := by omega
+      have hR : ‖R‖ ≤ C₁ / lambda ^ (n + 2) := by
+        dsimp [R]
+        rw [hindex]
+        exact hrem lambda hlambda
+      have hqpow : ‖q ^ (n + 1)‖ = (2 * lambda) ^ (n + 1) := by
+        dsimp [q]
+        exact brrs_norm_quadraticCarrier_pow (n + 1) lambda hlambda_pos.le
+      have hqpow_nonneg : 0 ≤ (2 * lambda) ^ (n + 1) := by positivity
+      have hqR : ‖q ^ (n + 1) * R‖ ≤
+          ((2 : Real) ^ (n + 1) * C₁) / lambda := by
+        calc
+          ‖q ^ (n + 1) * R‖ = ‖q ^ (n + 1)‖ * ‖R‖ := norm_mul _ _
+          _ = (2 * lambda) ^ (n + 1) * ‖R‖ := by rw [hqpow]
+          _ ≤ (2 * lambda) ^ (n + 1) * (C₁ / lambda ^ (n + 2)) :=
+            mul_le_mul_of_nonneg_left hR hqpow_nonneg
+          _ = ((2 : Real) ^ (n + 1) * C₁) / lambda := by
+            have hpow : lambda ^ (n + 2) = lambda ^ (n + 1) * lambda := by
+              rw [show n + 2 = (n + 1) + 1 by omega, pow_succ]
+            rw [mul_pow, hpow]
+            field_simp [ne_of_gt hlambda_pos]
+      have hq : q ≠ 0 := by
+        dsimp [q]
+        apply mul_ne_zero
+        · exact Complex.ofReal_ne_zero.mpr (mul_ne_zero (by norm_num) (ne_of_gt hlambda_pos))
+        · exact Complex.I_ne_zero
+      have hrec := quadraticMomentIntegral_succ_two_recurrence (2 * n + 1) h hh hvanish
+        (ne_of_gt hlambda_pos)
+      have hrec' :
+          quadraticMomentIntegral ((2 * n + 1) + 2) h lambda =
+            -q⁻¹ * (((2 * n + 2 : Nat) : Complex) * A + R) := by
+        dsimp [q, A, R]
+        rw [hindex]
+        exact hrec
+      have hid :
+          q ^ (n + 2) * quadraticMomentIntegral ((2 * n + 1) + 2) h lambda -
+              brrsOddQuadraticLeadingCoefficient (n + 1) * h 0 =
+            -((2 * n + 2 : Nat) : Complex) * (q ^ (n + 1) * A - K * h 0) -
+              q ^ (n + 1) * R := by
+        rw [brrsOddQuadraticLeadingCoefficient_succ, hrec']
+        rw [show n + 2 = (n + 1) + 1 by omega, pow_succ]
+        have hcancel : q * q⁻¹ = 1 := mul_inv_cancel₀ hq
+        calc
+          q ^ (n + 1) * q * (-q⁻¹ * (((2 * n + 2 : Nat) : Complex) * A + R)) -
+                (-((2 * n + 2 : Nat) : Complex) * K) * h 0 =
+              -(q ^ (n + 1) * (q * q⁻¹) *
+                  (((2 * n + 2 : Nat) : Complex) * A + R)) +
+                ((2 * n + 2 : Nat) : Complex) * K * h 0 := by
+                ring
+          _ = -((2 * n + 2 : Nat) : Complex) * (q ^ (n + 1) * A - K * h 0) -
+                q ^ (n + 1) * R := by
+                rw [hcancel]
+                ring
+      have hcoeff_norm : ‖-((2 * n + 2 : Nat) : Complex)‖ =
+          ((2 * n + 2 : Nat) : Real) := by
+        rw [norm_neg, norm_natCast]
+      have hfirst : ‖-((2 * n + 2 : Nat) : Complex) *
+          (q ^ (n + 1) * A - K * h 0)‖ ≤
+          (((2 * n + 2 : Nat) : Real) * C₀) / lambda := by
+        rw [norm_mul, hcoeff_norm]
+        calc
+          ((2 * n + 2 : Nat) : Real) * ‖q ^ (n + 1) * A - K * h 0‖ ≤
+              ((2 * n + 2 : Nat) : Real) * (C₀ / lambda) :=
+            mul_le_mul_of_nonneg_left hmain' (Nat.cast_nonneg _)
+          _ = (((2 * n + 2 : Nat) : Real) * C₀) / lambda := by ring
+      have hsum : ‖-((2 * n + 2 : Nat) : Complex) *
+          (q ^ (n + 1) * A - K * h 0) - q ^ (n + 1) * R‖ ≤
+          D / lambda := by
+        calc
+          ‖-((2 * n + 2 : Nat) : Complex) *
+              (q ^ (n + 1) * A - K * h 0) - q ^ (n + 1) * R‖ ≤
+              ‖-((2 * n + 2 : Nat) : Complex) *
+                (q ^ (n + 1) * A - K * h 0)‖ + ‖q ^ (n + 1) * R‖ :=
+            norm_sub_le _ _
+          _ ≤ (((2 * n + 2 : Nat) : Real) * C₀) / lambda +
+              ((2 : Real) ^ (n + 1) * C₁) / lambda :=
+            add_le_add hfirst hqR
+          _ = D / lambda := by
+            dsimp [D]
+            ring
+      change ‖q ^ (n + 2) * quadraticMomentIntegral ((2 * n + 1) + 2) h lambda -
+          brrsOddQuadraticLeadingCoefficient (n + 1) * h 0‖ ≤ D / lambda
       rw [hid]
       exact hsum
 
@@ -17689,6 +18807,406 @@ private theorem brrs_quadraticMomentScale_odd
     _ = (Real.sqrt lambda ^ 2) ^ (n + 1) := by rw [pow_mul]
     _ = lambda ^ (n + 1) := by rw [hsquare]
 
+/-- For the literal odd meridional profile, every even derivative moment
+has the one-full-power improvement forced by the stationary factor in its
+derivative.  The cutoff-derivative term is a compact nonstationary tail. -/
+private theorem exists_quadraticMoment_even_deriv_smoothEndpointProfile_odd_decay
+    (n k : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖quadraticMomentIntegral (2 * k + 2)
+          (deriv (smoothEndpointProfile (2 * n + 1))) lambda‖ ≤
+        C / lambda ^ (k + 2) := by
+  let C0 : Real → Complex := fun v => (endpointCoreCutoff v : Complex)
+  let P : Real → Complex := fun v => ((2 * (2 - v ^ 2) ^ n : Real) : Complex)
+  let G : Real → Complex := fun v =>
+    ((-4 * (n : Real) * (2 - v ^ 2) ^ (n - 1) : Real) : Complex) * C0 v
+  let R : Real → Complex := fun v => P v * deriv C0 v
+  let Rk : Real → Complex := fun v => ((v ^ (2 * k + 2) : Real) : Complex) * R v
+  have hC0 : ContDiff Real (⊤ : ℕ∞) C0 := by
+    change ContDiff Real (⊤ : ℕ∞)
+      ((Complex.ofRealCLM : Real →L[Real] Complex) ∘ endpointCoreBump)
+    exact Complex.ofRealCLM.contDiff.comp endpointCoreBump.contDiff
+  have hC0' : ContDiff Real (⊤ : ℕ∞) (deriv C0) :=
+    (contDiff_infty_iff_deriv.mp hC0).2
+  have hP : ContDiff Real (⊤ : ℕ∞) P := by
+    change ContDiff Real (⊤ : ℕ∞)
+      ((Complex.ofRealCLM : Real →L[Real] Complex) ∘
+        fun v : Real => 2 * (2 - v ^ 2) ^ n)
+    apply Complex.ofRealCLM.contDiff.comp
+    fun_prop
+  have hG : ContDiff Real (⊤ : ℕ∞) G := by
+    have hpoly : ContDiff Real (⊤ : ℕ∞)
+        ((Complex.ofRealCLM : Real →L[Real] Complex) ∘
+          fun v : Real => -4 * (n : Real) * (2 - v ^ 2) ^ (n - 1)) := by
+      apply Complex.ofRealCLM.contDiff.comp
+      fun_prop
+    exact hpoly.mul hC0
+  have hR : ContDiff Real (⊤ : ℕ∞) R := hP.mul hC0'
+  have hRk : ContDiff Real (⊤ : ℕ∞) Rk := by
+    have hmonomial : ContDiff Real (⊤ : ℕ∞)
+        (fun v : Real => ((v ^ (2 * k + 2) : Real) : Complex)) := by
+      change ContDiff Real (⊤ : ℕ∞)
+        ((Complex.ofRealCLM : Real →L[Real] Complex) ∘
+          fun v : Real => v ^ (2 * k + 2))
+      exact Complex.ofRealCLM.contDiff.comp (contDiff_id.pow _)
+    exact hmonomial.mul hR
+  have hGvanish : VanishesNearOne G := by
+    filter_upwards [brrs_endpointCoreCutoff_eventuallyEq_zero_at_one] with u hu
+    have hu' : (endpointCoreCutoff u : Complex) = 0 := by simpa using hu
+    dsimp [G, C0]
+    rw [hu']
+    ring
+  have hRzero (u : Real) (hu : |u| < (1 / 8 : Real)) : R u = 0 := by
+    dsimp [R]
+    rw [show deriv C0 u = 0 by
+      simpa [C0] using brrs_deriv_endpointCoreCutoff_eq_zero_of_abs_lt_one_eighth hu]
+    ring
+  have hRleft : R =ᶠ[nhds (1 / 16 : Real)] 0 := by
+    filter_upwards [Metric.ball_mem_nhds (1 / 16 : Real)
+      (by norm_num : (0 : Real) < 1 / 32)] with u hu
+    rw [Metric.mem_ball, Real.dist_eq] at hu
+    have hu' := abs_lt.mp hu
+    have hupos : 0 < u := by linarith [hu'.1]
+    have habs : |u| < (1 / 8 : Real) := by
+      rw [abs_of_pos hupos]
+      linarith [hu'.2]
+    simpa only [Pi.zero_apply] using hRzero u habs
+  have hRright : R =ᶠ[nhds (1 : Real)] 0 := by
+    have hC0right : deriv C0 =ᶠ[nhds (1 : Real)] 0 := by
+      have hC0zero : C0 =ᶠ[nhds (1 : Real)] 0 := by
+        simpa [C0] using brrs_endpointCoreCutoff_eventuallyEq_zero_at_one
+      exact hC0zero.deriv.trans (Filter.Eventually.of_forall fun u => by simp)
+    filter_upwards [hC0right] with u hu
+    simp only [Pi.zero_apply] at hu
+    dsimp [R]
+    rw [hu]
+    ring
+  have hRkleft : Rk =ᶠ[nhds (1 / 16 : Real)] 0 := by
+    filter_upwards [hRleft] with u hu
+    have hu' : R u = 0 := by simpa only [Pi.zero_apply] using hu
+    dsimp [Rk]
+    rw [hu']
+    ring
+  have hRkright : Rk =ᶠ[nhds (1 : Real)] 0 := by
+    filter_upwards [hRright] with u hu
+    have hu' : R u = 0 := by simpa only [Pi.zero_apply] using hu
+    dsimp [Rk]
+    rw [hu']
+    ring
+  have hRkrapid := brrs_quadratic_cutoff_tail_hasRapidDecay Rk hRk hRkleft hRkright
+  obtain ⟨D, hD, hDtail⟩ := hRkrapid (k + 2) 0
+  obtain ⟨E, hE, hEmoment⟩ :=
+    exists_quadraticMoment_decay (2 * k + 3) G hG hGvanish
+  let C : Real := E + D
+  have hC : 0 < C := by
+    dsimp [C]
+    positivity
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  have hlambda_pos : 0 < lambda := lt_of_lt_of_le zero_lt_one hlambda
+  let phase : Real → Complex := fun u =>
+    Complex.exp (((lambda * u ^ 2 : Real) : Complex) * Complex.I)
+  have hphase : Continuous phase := by
+    dsimp [phase]
+    fun_prop
+  have hRktail_identity :
+      quadraticMomentIntegral 0 Rk lambda =
+        ∫ u in (1 / 16 : Real)..1, Rk u * phase u := by
+    have hzero : (∫ u in (0 : Real)..(1 / 16 : Real), Rk u * phase u) = 0 := by
+      calc
+        (∫ u in (0 : Real)..(1 / 16 : Real), Rk u * phase u) =
+            ∫ u in (0 : Real)..(1 / 16 : Real), 0 := by
+          apply intervalIntegral.integral_congr
+          intro u hu
+          have hu' : u ∈ Set.Icc (0 : Real) (1 / 16 : Real) := by
+            simpa [Set.uIcc_of_le (by norm_num : (0 : Real) ≤ 1 / 16)] using hu
+          have habs : |u| < (1 / 8 : Real) := by
+            rw [abs_of_nonneg hu'.1]
+            linarith [hu'.2]
+          change Rk u * phase u = 0
+          dsimp [Rk]
+          rw [hRzero u habs]
+          ring
+        _ = 0 := by simp
+    have hcont : Continuous (fun u : Real => Rk u * phase u) := hRk.continuous.mul hphase
+    unfold quadraticMomentIntegral
+    simp only [pow_zero, Complex.ofReal_one, one_mul]
+    rw [← intervalIntegral.integral_add_adjacent_intervals
+      (hcont.intervalIntegrable 0 (1 / 16))
+      (hcont.intervalIntegrable (1 / 16) 1), hzero, zero_add]
+  have hRmoment :
+      quadraticMomentIntegral (2 * k + 2) R lambda = quadraticMomentIntegral 0 Rk lambda := by
+    unfold quadraticMomentIntegral
+    simp only [pow_zero, Complex.ofReal_one, one_mul]
+    apply intervalIntegral.integral_congr
+    intro u hu
+    dsimp [Rk]
+  have hRbound : ‖quadraticMomentIntegral (2 * k + 2) R lambda‖ ≤
+      D / lambda ^ (k + 2) := by
+    rw [hRmoment, hRktail_identity]
+    simpa [iteratedDeriv_zero, phase] using hDtail lambda hlambda
+  have hGbound : ‖quadraticMomentIntegral (2 * k + 3) G lambda‖ ≤
+      E / lambda ^ (k + 2) := by
+    calc
+      ‖quadraticMomentIntegral (2 * k + 3) G lambda‖ ≤
+          E / quadraticMomentScale (2 * k + 3) lambda := hEmoment lambda hlambda
+      _ = E / lambda ^ (k + 2) := by
+        rw [show 2 * k + 3 = 2 * (k + 1) + 1 by omega,
+          brrs_quadraticMomentScale_odd (k + 1) hlambda_pos.le]
+  have hsplit :
+      quadraticMomentIntegral (2 * k + 2)
+          (deriv (smoothEndpointProfile (2 * n + 1))) lambda =
+        quadraticMomentIntegral (2 * k + 3) G lambda +
+          quadraticMomentIntegral (2 * k + 2) R lambda := by
+    have hGint : Continuous (fun u : Real =>
+        ((u ^ (2 * k + 3) : Real) : Complex) * G u * phase u) := by
+      fun_prop
+    have hRint : Continuous (fun u : Real =>
+        ((u ^ (2 * k + 2) : Real) : Complex) * R u * phase u) := by
+      fun_prop
+    unfold quadraticMomentIntegral
+    rw [← intervalIntegral.integral_add
+      (hGint.intervalIntegrable 0 1) (hRint.intervalIntegrable 0 1)]
+    apply intervalIntegral.integral_congr
+    intro u hu
+    change ((u ^ (2 * k + 2) : Real) : Complex) *
+        deriv (smoothEndpointProfile (2 * n + 1)) u * phase u =
+      ((u ^ (2 * k + 3) : Real) : Complex) * G u * phase u +
+        ((u ^ (2 * k + 2) : Real) : Complex) * R u * phase u
+    rw [brrs_deriv_smoothEndpointProfile_odd_eq]
+    dsimp [G, R, P, C0]
+    rw [show 2 * k + 3 = (2 * k + 2) + 1 by omega, pow_succ]
+    push_cast
+    ring
+  rw [hsplit]
+  calc
+    ‖quadraticMomentIntegral (2 * k + 3) G lambda +
+        quadraticMomentIntegral (2 * k + 2) R lambda‖ ≤
+        ‖quadraticMomentIntegral (2 * k + 3) G lambda‖ +
+          ‖quadraticMomentIntegral (2 * k + 2) R lambda‖ := norm_add_le _ _
+    _ ≤ E / lambda ^ (k + 2) + D / lambda ^ (k + 2) :=
+      add_le_add hGbound hRbound
+    _ = C / lambda ^ (k + 2) := by
+      dsimp [C]
+      ring
+
+/-- The literal odd meridional endpoint has its fixed leading stationary
+coefficient with a full one-inverse-frequency normalized remainder.  This is
+the odd-parity component missing from the all-dimensional replacement for the
+Bessel expansion in BRRS (3.3). -/
+theorem exists_smoothEndpointQuadraticIntegral_odd_leading_asymptotic_sharp
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖(((2 * lambda : Real) : Complex) * Complex.I) ^ (n + 1) *
+          smoothEndpointQuadraticIntegral (2 * n + 1) lambda -
+            brrsOddQuadraticLeadingCoefficient n *
+              smoothEndpointProfile (2 * n + 1) 0‖ ≤ C / lambda := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_quadraticMoment_odd_leading_asymptotic_sharp_of_deriv_bounds
+      (smoothEndpointProfile (2 * n + 1))
+      (contDiff_smoothEndpointProfile (2 * n + 1))
+      (smoothEndpointProfile_eventuallyEq_zero_at_one (2 * n + 1))
+      (exists_quadraticMoment_zero_deriv_smoothEndpointProfile_odd_decay n)
+      (fun k =>
+        exists_quadraticMoment_even_deriv_smoothEndpointProfile_odd_decay n k)
+      n
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  rw [smoothEndpointQuadraticIntegral_eq_quadraticMomentIntegral]
+  exact hbound lambda hlambda
+
+/-- The outgoing odd-dimensional surface wave has the exact fixed stationary
+carrier and a full one-inverse-frequency normalized remainder. -/
+theorem exists_brrsSurfaceWaveAmplitude_outgoing_odd_leading_asymptotic_sharp
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ a rho : Real, 1 ≤ (2 * Real.pi * a) * rho →
+      ‖(((2 * ((2 * Real.pi * a) * rho) : Real) : Complex) * Complex.I) ^
+            (n + 1) *
+          brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing a rho -
+            (surfaceMass (2 * n + 2) : Complex) *
+              (brrsOddQuadraticLeadingCoefficient n *
+                smoothEndpointProfile (2 * n + 1) 0)‖ ≤
+        C / ((2 * Real.pi * a) * rho) := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_smoothEndpointQuadraticIntegral_odd_leading_asymptotic_sharp n
+  let mass : Real := surfaceMass (2 * n + 2)
+  have hmass : 0 < mass := by
+    dsimp [mass]
+    exact surfaceMass_pos (by omega)
+  refine ⟨mass * C, mul_pos hmass hC, ?_⟩
+  intro a rho hlambda
+  let lambda : Real := (2 * Real.pi * a) * rho
+  have hmain := hbound lambda (by simpa [lambda] using hlambda)
+  have hdim_one : (2 * n + 3) - 1 = 2 * n + 2 := by omega
+  have hdim_two : (2 * n + 3) - 2 = 2 * n + 1 := by omega
+  have hamp :
+      brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing a rho =
+        (mass : Complex) * smoothEndpointQuadraticIntegral (2 * n + 1) lambda := by
+    unfold brrsSurfaceWaveAmplitude
+    dsimp [lambda, mass]
+    rw [hdim_two]
+  rw [hamp]
+  have hfactor :
+      (((2 * lambda : Real) : Complex) * Complex.I) ^ (n + 1) *
+          ((mass : Complex) * smoothEndpointQuadraticIntegral (2 * n + 1) lambda) -
+            (mass : Complex) *
+              (brrsOddQuadraticLeadingCoefficient n *
+                smoothEndpointProfile (2 * n + 1) 0) =
+        (mass : Complex) *
+          ((((2 * lambda : Real) : Complex) * Complex.I) ^ (n + 1) *
+            smoothEndpointQuadraticIntegral (2 * n + 1) lambda -
+              brrsOddQuadraticLeadingCoefficient n *
+                smoothEndpointProfile (2 * n + 1) 0) := by
+      ring
+  rw [show (2 * Real.pi * a) * rho = lambda by rfl, hfactor, norm_mul,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos hmass]
+  calc
+    mass * ‖(((2 * lambda : Real) : Complex) * Complex.I) ^ (n + 1) *
+        smoothEndpointQuadraticIntegral (2 * n + 1) lambda -
+          brrsOddQuadraticLeadingCoefficient n *
+            smoothEndpointProfile (2 * n + 1) 0‖ ≤
+        mass * (C / lambda) :=
+      mul_le_mul_of_nonneg_left hmain hmass.le
+    _ = (mass * C) / lambda := by ring
+
+/-- The incoming odd-dimensional surface wave is the conjugate stationary
+branch, with the same full one-inverse-frequency normalized remainder. -/
+theorem exists_brrsSurfaceWaveAmplitude_incoming_odd_leading_asymptotic_sharp
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ a rho : Real, 1 ≤ (2 * Real.pi * a) * rho →
+      ‖(-(((2 * ((2 * Real.pi * a) * rho) : Real) : Complex) * Complex.I)) ^
+            (n + 1) *
+          brrsSurfaceWaveAmplitude (2 * n + 3) .incoming a rho -
+            starRingEnd Complex
+              ((surfaceMass (2 * n + 2) : Complex) *
+                (brrsOddQuadraticLeadingCoefficient n *
+                  smoothEndpointProfile (2 * n + 1) 0))‖ ≤
+        C / ((2 * Real.pi * a) * rho) := by
+  obtain ⟨C, hC, hout⟩ :=
+    exists_brrsSurfaceWaveAmplitude_outgoing_odd_leading_asymptotic_sharp n
+  refine ⟨C, hC, ?_⟩
+  intro a rho hlambda
+  let lambda : Real := (2 * Real.pi * a) * rho
+  let q : Complex := ((2 * lambda : Real) : Complex) * Complex.I
+  let Aout : Complex := brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing a rho
+  let Ain : Complex := brrsSurfaceWaveAmplitude (2 * n + 3) .incoming a rho
+  let K : Complex := (surfaceMass (2 * n + 2) : Complex) *
+    (brrsOddQuadraticLeadingCoefficient n *
+      smoothEndpointProfile (2 * n + 1) 0)
+  have hmain : ‖q ^ (n + 1) * Aout - K‖ ≤ C / lambda := by
+    dsimp [lambda, q, Aout, K]
+    exact hout a rho hlambda
+  have hAin : Ain = starRingEnd Complex Aout := by
+    dsimp [Ain, Aout]
+    exact brrsSurfaceWaveAmplitude_incoming_eq_conj_outgoing (2 * n + 3) a rho
+  have hstarq : starRingEnd Complex q = -q := by
+    dsimp [q]
+    simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
+    ring
+  have hrewrite :
+      (-q) ^ (n + 1) * Ain - starRingEnd Complex K =
+        starRingEnd Complex (q ^ (n + 1) * Aout - K) := by
+    simp only [map_sub, map_mul, map_pow]
+    rw [hAin, hstarq, neg_pow]
+  change ‖(-q) ^ (n + 1) * Ain - starRingEnd Complex K‖ ≤ C / lambda
+  rw [hrewrite, RCLike.norm_conj]
+  exact hmain
+
+/-- In every odd spatial dimension, the actual surface Fourier factor has an
+exact outgoing/incoming/middle decomposition whose two stationary amplitudes
+have their explicit leading carriers with a full one-inverse-frequency
+remainder, and whose middle amplitude is arbitrarily rapidly decaying.  This
+is the odd-dimensional literal replacement for the Bessel expansion used in
+BRRS (3.3). -/
+theorem exists_brrs_surfaceFourier_odd_threeWave_leading_remainder
+    (n N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (x : BRRSSpace (2 * n + 3)) (rho : Real),
+      0 < rho → 1 ≤ (2 * Real.pi * ‖x‖) * rho →
+        surfaceFourier (2 * n + 3) (-rho • x) =
+          brrsSurfaceWaveTerm (2 * n + 3) .outgoing ‖x‖ rho +
+            brrsSurfaceWaveTerm (2 * n + 3) .incoming ‖x‖ rho +
+              brrsSurfaceWaveTerm (2 * n + 3) .middle ‖x‖ rho ∧
+        ‖(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing ‖x‖ rho -
+              (surfaceMass (2 * n + 2) : Complex) *
+                (brrsOddQuadraticLeadingCoefficient n *
+                  smoothEndpointProfile (2 * n + 1) 0)‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖(-(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I)) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * n + 3) .incoming ‖x‖ rho -
+              starRingEnd Complex
+                ((surfaceMass (2 * n + 2) : Complex) *
+                  (brrsOddQuadraticLeadingCoefficient n *
+                    smoothEndpointProfile (2 * n + 1) 0))‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖brrsSurfaceWaveAmplitude (2 * n + 3) .middle ‖x‖ rho‖ ≤
+          C / ((2 * Real.pi * ‖x‖) * rho) ^ N := by
+  obtain ⟨Cbase, hCbase, hbase⟩ :=
+    exists_brrs_surfaceFourier_threeWave_replacement_bounds (2 * n + 3) N (by omega)
+  obtain ⟨Cout, hCout, hout⟩ :=
+    exists_brrsSurfaceWaveAmplitude_outgoing_odd_leading_asymptotic_sharp n
+  obtain ⟨Cin, hCin, hin⟩ :=
+    exists_brrsSurfaceWaveAmplitude_incoming_odd_leading_asymptotic_sharp n
+  let C : Real := Cbase + Cout + Cin
+  have hC : 0 < C := by
+    dsimp [C]
+    positivity
+  refine ⟨C, hC, ?_⟩
+  intro x rho hrho hlambda
+  let lambda : Real := (2 * Real.pi * ‖x‖) * rho
+  have hlambda_pos : 0 < lambda := lt_of_lt_of_le zero_lt_one (by simpa [lambda] using hlambda)
+  have hlargeabs : 1 ≤ |(2 * Real.pi * ‖x‖) * rho| := by
+    simpa [lambda, abs_of_nonneg hlambda_pos.le] using hlambda
+  obtain ⟨hexact, -, -, hmiddle⟩ := hbase x rho hrho hlargeabs
+  refine ⟨hexact, ?_, ?_, ?_⟩
+  · have hmain := hout ‖x‖ rho hlambda
+    calc
+      ‖(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I) ^
+            (n + 1) *
+          brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing ‖x‖ rho -
+            (surfaceMass (2 * n + 2) : Complex) *
+              (brrsOddQuadraticLeadingCoefficient n *
+                smoothEndpointProfile (2 * n + 1) 0)‖ ≤
+          Cout / lambda := by
+        simpa [lambda] using hmain
+      _ ≤ C / lambda := by
+        apply div_le_div_of_nonneg_right
+        · dsimp [C]
+          linarith
+        · exact hlambda_pos.le
+      _ = C / ((2 * Real.pi * ‖x‖) * rho) := by rfl
+  · have hmain := hin ‖x‖ rho hlambda
+    calc
+      ‖(-(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I)) ^
+            (n + 1) *
+          brrsSurfaceWaveAmplitude (2 * n + 3) .incoming ‖x‖ rho -
+            starRingEnd Complex
+              ((surfaceMass (2 * n + 2) : Complex) *
+                (brrsOddQuadraticLeadingCoefficient n *
+                  smoothEndpointProfile (2 * n + 1) 0))‖ ≤
+          Cin / lambda := by
+        simpa [lambda] using hmain
+      _ ≤ C / lambda := by
+        apply div_le_div_of_nonneg_right
+        · dsimp [C]
+          linarith
+        · exact hlambda_pos.le
+      _ = C / ((2 * Real.pi * ‖x‖) * rho) := by rfl
+  · calc
+      ‖brrsSurfaceWaveAmplitude (2 * n + 3) .middle ‖x‖ rho‖ ≤
+          Cbase / |(2 * Real.pi * ‖x‖) * rho| ^ N := hmiddle
+      _ = Cbase / lambda ^ N := by
+        rw [show |(2 * Real.pi * ‖x‖) * rho| = lambda by
+          simpa [lambda] using abs_of_nonneg hlambda_pos.le]
+      _ ≤ C / lambda ^ N := by
+        apply div_le_div_of_nonneg_right
+        · dsimp [C]
+          linarith
+        · exact (pow_pos hlambda_pos N).le
+      _ = C / ((2 * Real.pi * ‖x‖) * rho) ^ N := by rfl
+
 /-! ### A normalized finite Fresnel lower bound
 
 The elementary unit-quadratic Fresnel integral is the analytic base case for
@@ -18200,6 +19718,392 @@ theorem exists_brrsEvenQuadraticBaseNormalized_carrier_decay
     exact htail hlambda hb
   have hbound := le_of_tendsto hnorm_tendsto hevent
   simpa only [norm_sub_rev] using hbound
+
+/-- The concrete endpoint profile is even.  This supplies the stationary
+point cancellation used by the even-dimensional endpoint expansion. -/
+private theorem brrs_smoothEndpointProfile_neg (m : Nat) (u : Real) :
+    smoothEndpointProfile m (-u) = smoothEndpointProfile m u := by
+  have hcore : endpointCoreCutoff (-u) = endpointCoreCutoff u := by
+    exact ContDiffBump.neg endpointCoreBump u
+  have hguard : endpointGuardCutoff (-u) = endpointGuardCutoff u := by
+    exact ContDiffBump.neg endpointGuardBump u
+  have hcoord : endpointGuardedCoordinate (-u) = -endpointGuardedCoordinate u := by
+    unfold endpointGuardedCoordinate
+    rw [hguard]
+    ring
+  have hsquare : (-endpointGuardedCoordinate u) ^ 2 =
+      endpointGuardedCoordinate u ^ 2 := by
+    ring
+  unfold smoothEndpointProfile smoothEndpointProfileReal
+  rw [hcoord, hsquare, hcore]
+
+/-- The first derivative of the actual even endpoint profile vanishes at the
+stationary point. -/
+private theorem brrs_deriv_smoothEndpointProfile_zero (m : Nat) :
+    deriv (smoothEndpointProfile m) 0 = 0 := by
+  have heven : (fun u : Real => smoothEndpointProfile m (-u)) =
+      smoothEndpointProfile m := by
+    funext u
+    exact brrs_smoothEndpointProfile_neg m u
+  have hderiv := congrArg (fun g : (Real -> Complex) => deriv g 0) heven
+  rw [deriv_comp_neg, neg_zero] at hderiv
+  exact CharZero.eq_neg_self_iff.mp hderiv.symm
+
+/-- The order-zero concrete endpoint moment has a fixed Fresnel carrier and
+the full one-inverse-power normalized remainder required for the even branch
+of the surface-measure stationary expansion. -/
+theorem exists_smoothEndpointQuadraticIntegral_zero_leading_asymptotic :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      norm ((Real.sqrt lambda : Complex) * smoothEndpointQuadraticIntegral 0 lambda -
+        brrsEvenQuadraticBaseCarrier (smoothEndpointProfile 0)) ≤ C / lambda := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_brrsEvenQuadraticBaseNormalized_carrier_decay
+      (smoothEndpointProfile 0) (contDiff_smoothEndpointProfile 0)
+      (smoothEndpointProfile_eventuallyEq_zero_at_one 0)
+      (brrs_deriv_smoothEndpointProfile_zero 0)
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  rw [smoothEndpointQuadraticIntegral_eq_quadraticMomentIntegral]
+  simpa [brrsEvenQuadraticBaseNormalized] using hbound lambda hlambda
+
+/-- The recurrence coefficient of an even quadratic endpoint moment.  The
+base carrier is the order-zero Fresnel carrier; each later coefficient comes
+from the literal two-step endpoint recurrence. -/
+def brrsEvenQuadraticLeadingCoefficient : Nat → Complex
+  | 0 => 1
+  | n + 1 => -((2 * n + 1 : Nat) : Complex) *
+      brrsEvenQuadraticLeadingCoefficient n
+
+theorem brrsEvenQuadraticLeadingCoefficient_succ (n : Nat) :
+    brrsEvenQuadraticLeadingCoefficient (n + 1) =
+      -((2 * n + 1 : Nat) : Complex) *
+        brrsEvenQuadraticLeadingCoefficient n := rfl
+
+/-- The even recurrence never loses its leading coefficient. -/
+theorem brrsEvenQuadraticLeadingCoefficient_ne_zero (n : Nat) :
+    brrsEvenQuadraticLeadingCoefficient n ≠ 0 := by
+  induction n with
+  | zero => norm_num [brrsEvenQuadraticLeadingCoefficient]
+  | succ n ih =>
+      rw [brrsEvenQuadraticLeadingCoefficient_succ]
+      apply mul_ne_zero
+      · apply neg_ne_zero.mpr
+        exact Nat.cast_ne_zero.mpr (by omega)
+      · exact ih
+
+/-- The all-even quadratic endpoint stationary expansion.  After the natural
+`sqrt(lambda) * lambda^n` normalization, symmetry at the stationary point
+removes the half-order correction and leaves a fixed carrier with an
+`O(lambda⁻¹)` remainder. -/
+theorem exists_quadraticMoment_even_leading_asymptotic
+    (n : Nat) (h : Real -> Complex) (hh : ContDiff Real (⊤ : ℕ∞) h)
+    (hvanish : VanishesNearOne h) (hderiv_zero : deriv h 0 = 0) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖(Real.sqrt lambda : Complex) *
+          (((2 * lambda : Real) : Complex) * Complex.I) ^ n *
+          quadraticMomentIntegral (2 * n) h lambda -
+        brrsEvenQuadraticLeadingCoefficient n *
+          brrsEvenQuadraticBaseCarrier h‖ ≤ C / lambda := by
+  induction n with
+  | zero =>
+      obtain ⟨C, hC, hbound⟩ :=
+        exists_brrsEvenQuadraticBaseNormalized_carrier_decay h hh hvanish hderiv_zero
+      refine ⟨C, hC, ?_⟩
+      intro lambda hlambda
+      simpa [brrsEvenQuadraticBaseNormalized,
+        brrsEvenQuadraticLeadingCoefficient] using hbound lambda hlambda
+  | succ n ih =>
+      obtain ⟨C₀, hC₀, hmain⟩ := ih
+      obtain ⟨C₁, hC₁, hrem⟩ :=
+        exists_quadraticMoment_odd_leading_asymptotic n (deriv h)
+          ((contDiff_infty_iff_deriv.mp hh).2) hvanish.deriv
+      let D : Real := ((2 * n + 1 : Nat) : Real) * C₀ + C₁
+      have hD : 0 < D := by
+        dsimp [D]
+        positivity
+      refine ⟨D, hD, ?_⟩
+      intro lambda hlambda
+      have hlambda_pos : 0 < lambda := lt_of_lt_of_le zero_lt_one hlambda
+      have hsqrt_pos : 0 < Real.sqrt lambda := Real.sqrt_pos.2 hlambda_pos
+      let q : Complex := ((2 * lambda : Real) : Complex) * Complex.I
+      let A : Complex := quadraticMomentIntegral (2 * n) h lambda
+      let R : Complex := quadraticMomentIntegral (2 * n + 1) (deriv h) lambda
+      let K : Complex := brrsEvenQuadraticLeadingCoefficient n
+      let E : Complex := brrsEvenQuadraticBaseCarrier h
+      have hmain' : ‖(Real.sqrt lambda : Complex) * q ^ n * A - K * E‖ ≤
+          C₀ / lambda := by
+        dsimp [q, A, K, E]
+        exact hmain lambda hlambda
+      have hRlead : ‖q ^ (n + 1) * R‖ ≤ C₁ / Real.sqrt lambda := by
+        dsimp [q, R]
+        simpa [hderiv_zero] using hrem lambda hlambda
+      have hqnorm : ‖q‖ = 2 * lambda := by
+        dsimp [q]
+        exact brrs_norm_quadraticCarrier lambda hlambda_pos.le
+      have hq : q ≠ 0 := by
+        dsimp [q]
+        apply mul_ne_zero
+        · exact Complex.ofReal_ne_zero.mpr
+            (mul_ne_zero (by norm_num) (ne_of_gt hlambda_pos))
+        · exact Complex.I_ne_zero
+      have hqinv : q * q⁻¹ = 1 := mul_inv_cancel₀ hq
+      have hRterm : ‖(Real.sqrt lambda : Complex) * q ^ n * R‖ ≤ C₁ / lambda := by
+        have hrewrite :
+            (Real.sqrt lambda : Complex) * q ^ n * R =
+              ((Real.sqrt lambda : Complex) / q) * (q ^ (n + 1) * R) := by
+          rw [show n + 1 = Nat.succ n by omega, pow_succ]
+          field_simp [hq]
+        rw [hrewrite, norm_mul]
+        have hcoef : ‖(Real.sqrt lambda : Complex) / q‖ =
+            Real.sqrt lambda / (2 * lambda) := by
+          rw [norm_div, Complex.norm_real, Real.norm_eq_abs,
+            abs_of_pos hsqrt_pos, hqnorm]
+        rw [hcoef]
+        calc
+          (Real.sqrt lambda / (2 * lambda)) * ‖q ^ (n + 1) * R‖ ≤
+              (Real.sqrt lambda / (2 * lambda)) *
+                (C₁ / Real.sqrt lambda) := by
+              gcongr
+          _ = C₁ / (2 * lambda) := by
+              field_simp [ne_of_gt hlambda_pos, ne_of_gt hsqrt_pos]
+          _ ≤ C₁ / lambda := by
+              have hden : 0 < lambda := hlambda_pos
+              have hnonneg : 0 ≤ C₁ / lambda := div_nonneg hC₁.le hden.le
+              calc
+                C₁ / (2 * lambda) = (C₁ / lambda) / 2 := by
+                  field_simp [ne_of_gt hden]
+                _ ≤ C₁ / lambda := by linarith
+      have hrec := quadraticMomentIntegral_succ_two_recurrence (2 * n) h hh hvanish
+        (ne_of_gt hlambda_pos)
+      have hrec' :
+          quadraticMomentIntegral (2 * n + 2) h lambda =
+            -q⁻¹ * (((2 * n + 1 : Nat) : Complex) * A + R) := by
+        dsimp [q, A, R]
+        exact hrec
+      have hid :
+          (Real.sqrt lambda : Complex) * q ^ (n + 1) *
+              quadraticMomentIntegral (2 * n + 2) h lambda -
+            brrsEvenQuadraticLeadingCoefficient (n + 1) * E =
+              -((2 * n + 1 : Nat) : Complex) *
+                ((Real.sqrt lambda : Complex) * q ^ n * A - K * E) -
+              (Real.sqrt lambda : Complex) * q ^ n * R := by
+        rw [brrsEvenQuadraticLeadingCoefficient_succ, hrec']
+        rw [show n + 1 = Nat.succ n by omega, pow_succ]
+        calc
+          (Real.sqrt lambda : Complex) * (q ^ n * q) *
+                (-q⁻¹ * (((2 * n + 1 : Nat) : Complex) * A + R)) -
+              (-((2 * n + 1 : Nat) : Complex) * K) * E =
+              -((Real.sqrt lambda : Complex) * q ^ n * (q * q⁻¹) *
+                (((2 * n + 1 : Nat) : Complex) * A + R)) +
+              ((2 * n + 1 : Nat) : Complex) * K * E := by
+                ring
+          _ = -((2 * n + 1 : Nat) : Complex) *
+                ((Real.sqrt lambda : Complex) * q ^ n * A - K * E) -
+              (Real.sqrt lambda : Complex) * q ^ n * R := by
+                rw [hqinv]
+                ring
+      have hcoeff_norm : ‖-((2 * n + 1 : Nat) : Complex)‖ =
+          ((2 * n + 1 : Nat) : Real) := by
+        rw [norm_neg, norm_natCast]
+      have hfirst : ‖-((2 * n + 1 : Nat) : Complex) *
+          ((Real.sqrt lambda : Complex) * q ^ n * A - K * E)‖ ≤
+          (((2 * n + 1 : Nat) : Real) * C₀) / lambda := by
+        rw [norm_mul, hcoeff_norm]
+        calc
+          ((2 * n + 1 : Nat) : Real) *
+              ‖(Real.sqrt lambda : Complex) * q ^ n * A - K * E‖ ≤
+              ((2 * n + 1 : Nat) : Real) * (C₀ / lambda) := by
+            gcongr
+          _ = (((2 * n + 1 : Nat) : Real) * C₀) / lambda := by ring
+      have hsum : ‖-((2 * n + 1 : Nat) : Complex) *
+          ((Real.sqrt lambda : Complex) * q ^ n * A - K * E) -
+          (Real.sqrt lambda : Complex) * q ^ n * R‖ ≤ D / lambda := by
+        calc
+          ‖-((2 * n + 1 : Nat) : Complex) *
+              ((Real.sqrt lambda : Complex) * q ^ n * A - K * E) -
+              (Real.sqrt lambda : Complex) * q ^ n * R‖ ≤
+              ‖-((2 * n + 1 : Nat) : Complex) *
+                ((Real.sqrt lambda : Complex) * q ^ n * A - K * E)‖ +
+              ‖(Real.sqrt lambda : Complex) * q ^ n * R‖ := norm_sub_le _ _
+          _ ≤ (((2 * n + 1 : Nat) : Real) * C₀) / lambda + C₁ / lambda :=
+              add_le_add hfirst hRterm
+          _ = D / lambda := by
+              dsimp [D]
+              ring
+      change ‖(Real.sqrt lambda : Complex) * q ^ (n + 1) *
+        quadraticMomentIntegral (2 * n + 2) h lambda -
+        brrsEvenQuadraticLeadingCoefficient (n + 1) * E‖ ≤ D / lambda
+      rw [hid]
+      exact hsum
+
+/-- The literal circle endpoint profile is even, just as the nonplanar
+endpoint profiles are. -/
+private theorem brrs_planarEndpointProfile_neg (u : Real) :
+    planarEndpointProfile (-u) = planarEndpointProfile u := by
+  have hcore : endpointCoreCutoff (-u) = endpointCoreCutoff u := by
+    exact ContDiffBump.neg endpointCoreBump u
+  have hguard : endpointGuardCutoff (-u) = endpointGuardCutoff u := by
+    exact ContDiffBump.neg endpointGuardBump u
+  have hcoord : endpointGuardedCoordinate (-u) = -endpointGuardedCoordinate u := by
+    unfold endpointGuardedCoordinate
+    rw [hguard]
+    ring
+  have hsquare : (-endpointGuardedCoordinate u) ^ 2 =
+      endpointGuardedCoordinate u ^ 2 := by
+    ring
+  unfold planarEndpointProfile planarEndpointProfileReal
+  rw [hcoord, hsquare, hcore]
+
+/-- The circle endpoint profile has zero first derivative at its quadratic
+stationary point. -/
+private theorem brrs_deriv_planarEndpointProfile_zero :
+    deriv planarEndpointProfile 0 = 0 := by
+  have heven : (fun u : Real => planarEndpointProfile (-u)) =
+      planarEndpointProfile := by
+    funext u
+    exact brrs_planarEndpointProfile_neg u
+  have hderiv := congrArg (fun g : (Real -> Complex) => deriv g 0) heven
+  rw [deriv_comp_neg, neg_zero] at hderiv
+  exact CharZero.eq_neg_self_iff.mp hderiv.symm
+
+/-- The circle endpoint has the same fixed Fresnel carrier and full
+one-inverse-power normalized remainder as the zero-order even branch. -/
+theorem exists_planarEndpointQuadraticIntegral_leading_asymptotic :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖(Real.sqrt lambda : Complex) * planarEndpointQuadraticIntegral lambda -
+        brrsEvenQuadraticBaseCarrier planarEndpointProfile‖ ≤ C / lambda := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_quadraticMoment_even_leading_asymptotic 0 planarEndpointProfile
+      contDiff_planarEndpointProfile
+      planarEndpointProfile_eventuallyEq_zero_at_one
+      brrs_deriv_planarEndpointProfile_zero
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  simpa [planarEndpointQuadraticIntegral, brrsEvenQuadraticLeadingCoefficient] using
+    hbound lambda hlambda
+
+/-- The actual smooth endpoint symbol has the even stationary expansion in
+every even order. -/
+theorem exists_smoothEndpointQuadraticIntegral_even_leading_asymptotic
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ lambda : Real, 1 ≤ lambda →
+      ‖(Real.sqrt lambda : Complex) *
+          (((2 * lambda : Real) : Complex) * Complex.I) ^ n *
+          smoothEndpointQuadraticIntegral (2 * n) lambda -
+        brrsEvenQuadraticLeadingCoefficient n *
+          brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n))‖ ≤
+        C / lambda := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_quadraticMoment_even_leading_asymptotic n
+      (smoothEndpointProfile (2 * n))
+      (contDiff_smoothEndpointProfile (2 * n))
+      (smoothEndpointProfile_eventuallyEq_zero_at_one (2 * n))
+      (brrs_deriv_smoothEndpointProfile_zero (2 * n))
+  refine ⟨C, hC, ?_⟩
+  intro lambda hlambda
+  rw [smoothEndpointQuadraticIntegral_eq_quadraticMomentIntegral]
+  exact hbound lambda hlambda
+
+/-- In every even nonplanar dimension, the outgoing surface-wave amplitude
+has a fixed normalized endpoint carrier and a one-inverse-power remainder. -/
+theorem exists_brrsSurfaceWaveAmplitude_outgoing_even_leading_asymptotic
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ a rho : Real, 1 ≤ (2 * Real.pi * a) * rho →
+      ‖(Real.sqrt ((2 * Real.pi * a) * rho) : Complex) *
+          (((2 * ((2 * Real.pi * a) * rho) : Real) : Complex) * Complex.I) ^ n *
+          brrsSurfaceWaveAmplitude (2 * n + 2) .outgoing a rho -
+        (surfaceMass (2 * n + 1) : Complex) *
+          (brrsEvenQuadraticLeadingCoefficient n *
+            brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n)))‖ ≤
+        C / ((2 * Real.pi * a) * rho) := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_smoothEndpointQuadraticIntegral_even_leading_asymptotic n
+  let mass : Real := surfaceMass (2 * n + 1)
+  have hmass : 0 < mass := by
+    dsimp [mass]
+    exact surfaceMass_pos (by omega)
+  refine ⟨mass * C, mul_pos hmass hC, ?_⟩
+  intro a rho hlambda
+  let lambda : Real := (2 * Real.pi * a) * rho
+  have hmain := hbound lambda (by simpa [lambda] using hlambda)
+  have hdim_one : (2 * n + 2) - 1 = 2 * n + 1 := by omega
+  have hdim_two : (2 * n + 2) - 2 = 2 * n := by omega
+  have hamp :
+      brrsSurfaceWaveAmplitude (2 * n + 2) .outgoing a rho =
+        (mass : Complex) * smoothEndpointQuadraticIntegral (2 * n) lambda := by
+    unfold brrsSurfaceWaveAmplitude
+    dsimp [lambda, mass]
+    rw [hdim_two]
+  rw [hamp]
+  have hfactor :
+      (Real.sqrt lambda : Complex) *
+          (((2 * lambda : Real) : Complex) * Complex.I) ^ n *
+          ((mass : Complex) * smoothEndpointQuadraticIntegral (2 * n) lambda) -
+        (mass : Complex) *
+          (brrsEvenQuadraticLeadingCoefficient n *
+            brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n))) =
+          (mass : Complex) *
+            ((Real.sqrt lambda : Complex) *
+              (((2 * lambda : Real) : Complex) * Complex.I) ^ n *
+              smoothEndpointQuadraticIntegral (2 * n) lambda -
+            brrsEvenQuadraticLeadingCoefficient n *
+              brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n))) := by
+    ring
+  rw [show (2 * Real.pi * a) * rho = lambda by rfl, hfactor, norm_mul,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos hmass]
+  calc
+    mass * ‖(Real.sqrt lambda : Complex) *
+        (((2 * lambda : Real) : Complex) * Complex.I) ^ n *
+        smoothEndpointQuadraticIntegral (2 * n) lambda -
+        brrsEvenQuadraticLeadingCoefficient n *
+          brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n))‖ ≤
+        mass * (C / lambda) :=
+      mul_le_mul_of_nonneg_left hmain hmass.le
+    _ = (mass * C) / lambda := by ring
+
+/-- The incoming even-dimensional endpoint wave has the conjugate stationary
+carrier and the same one-inverse-power normalized remainder. -/
+theorem exists_brrsSurfaceWaveAmplitude_incoming_even_leading_asymptotic
+    (n : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ a rho : Real, 1 ≤ (2 * Real.pi * a) * rho →
+      ‖(Real.sqrt ((2 * Real.pi * a) * rho) : Complex) *
+          (-(((2 * ((2 * Real.pi * a) * rho) : Real) : Complex) * Complex.I)) ^ n *
+          brrsSurfaceWaveAmplitude (2 * n + 2) .incoming a rho -
+        starRingEnd Complex
+          ((surfaceMass (2 * n + 1) : Complex) *
+            (brrsEvenQuadraticLeadingCoefficient n *
+              brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n))))‖ ≤
+        C / ((2 * Real.pi * a) * rho) := by
+  obtain ⟨C, hC, hout⟩ :=
+    exists_brrsSurfaceWaveAmplitude_outgoing_even_leading_asymptotic n
+  refine ⟨C, hC, ?_⟩
+  intro a rho hlambda
+  let lambda : Real := (2 * Real.pi * a) * rho
+  let q : Complex := ((2 * lambda : Real) : Complex) * Complex.I
+  let Aout : Complex := brrsSurfaceWaveAmplitude (2 * n + 2) .outgoing a rho
+  let Ain : Complex := brrsSurfaceWaveAmplitude (2 * n + 2) .incoming a rho
+  let K : Complex := (surfaceMass (2 * n + 1) : Complex) *
+    (brrsEvenQuadraticLeadingCoefficient n *
+      brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * n)))
+  have hmain : ‖(Real.sqrt lambda : Complex) * q ^ n * Aout - K‖ ≤ C / lambda := by
+    dsimp [lambda, q, Aout, K]
+    exact hout a rho hlambda
+  have hAin : Ain = starRingEnd Complex Aout := by
+    dsimp [Ain, Aout]
+    exact brrsSurfaceWaveAmplitude_incoming_eq_conj_outgoing (2 * n + 2) a rho
+  have hstarq : starRingEnd Complex q = -q := by
+    dsimp [q]
+    simp only [map_mul, Complex.conj_ofReal, Complex.conj_I]
+    ring
+  have hrewrite :
+      (Real.sqrt lambda : Complex) * (-q) ^ n * Ain - starRingEnd Complex K =
+        starRingEnd Complex ((Real.sqrt lambda : Complex) * q ^ n * Aout - K) := by
+    simp only [map_sub, map_mul, map_pow, Complex.conj_ofReal]
+    rw [hAin, hstarq, neg_pow]
+  change ‖(Real.sqrt lambda : Complex) * (-q) ^ n * Ain -
+      starRingEnd Complex K‖ ≤ C / lambda
+  rw [hrewrite, RCLike.norm_conj]
+  exact hmain
 
 /-- Exact rescaling of an order-zero quadratic stationary moment.  This is the
 change of variables `v = sqrt(lambda) * u` written without any limiting or
@@ -21825,6 +23729,105 @@ theorem lintegral_brrsDyadicStationaryPhaseProfile_ne_top
     exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top hbase
   rw [lintegral_brrsDyadicStationaryPhaseProfile_eq]
   exact hphase
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The terminal radius cell in BRRS Section 5
+
+For the last radial packet, the source does not use the local counting
+coefficient.  It first restricts the source radius to `[0, 2^10]`, drops the
+nonpositive polar weight on `[1,20]`, and then applies one-dimensional Young
+to each of the four travelling phase lines.  The declarations below keep all
+four signs visible in the positive `ENNReal` formulation.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The literal compact source-radius truncation in the definition of
+`I_j` in BRRS (5.6). -/
+noncomputable def brrsSectionFiveTerminalSourceProfile
+    (f : Real → ENNReal) : Real → ENNReal :=
+  (Icc (0 : Real) ((2 : Real) ^ (10 : Nat))).indicator f
+
+/-- The polar output weight occurring in BRRS (5.4), retained on the
+terminal radial interval `[1,20]` before it is bounded by one. -/
+noncomputable def brrsSectionFiveTerminalWeight (d : Nat) (p r : Real) : ENNReal :=
+  (ENNReal.ofReal r) ^ ((d - 1 : Nat) * (1 - p / 2))
+
+/-- The four literal phase-line contributions to the terminal radial cell.
+The minus and plus source conventions respectively encode
+`t ± r - s` and `t ± r + s`; the source profile enforces `0 ≤ s ≤ 2^10`.
+-/
+noncomputable def brrsSectionFiveTerminalFourPhaseBlock
+    (T : Finset Real) (d : Nat) (p : Real)
+    (omega f : Real → ENNReal) : ENNReal :=
+  (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+      brrsSectionFiveTerminalWeight d p r *
+        (brrsOneDimProfileConvolution omega
+          (brrsSectionFiveTerminalSourceProfile f) (t - r)) ^ p) +
+    (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+      brrsSectionFiveTerminalWeight d p r *
+        (brrsOneDimProfileConvolution omega
+          (brrsSectionFiveTerminalSourceProfile f) (t + r)) ^ p) +
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega
+            (brrsSectionFiveTerminalSourceProfile f) (t - r)) ^ p) +
+        ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r *
+            (brrsOneDimProfileConvolutionPlus omega
+              (brrsSectionFiveTerminalSourceProfile f) (t + r)) ^ p
+
+/-- The compact source truncation preserves measurability. -/
+theorem measurable_brrsSectionFiveTerminalSourceProfile
+    {f : Real → ENNReal} (hf : Measurable f) :
+    Measurable (brrsSectionFiveTerminalSourceProfile f) := by
+  unfold brrsSectionFiveTerminalSourceProfile
+  exact hf.indicator measurableSet_Icc
+
+/-- Restriction to the literal compact source interval can only decrease
+every nonnegative `Lᵖ` moment. -/
+theorem lintegral_brrsSectionFiveTerminalSourceProfile_rpow_le
+    (f : Real → ENNReal) {p : Real} (hp : 0 ≤ p) :
+    (∫⁻ s : Real, (brrsSectionFiveTerminalSourceProfile f s) ^ p) ≤
+      ∫⁻ s : Real, (f s) ^ p := by
+  apply lintegral_mono
+  intro s
+  apply ENNReal.rpow_le_rpow
+  · by_cases hs : s ∈ Icc (0 : Real) ((2 : Real) ^ (10 : Nat))
+    · simp [brrsSectionFiveTerminalSourceProfile, hs]
+    · simp [brrsSectionFiveTerminalSourceProfile, hs]
+  · exact hp
+
+/-- On the terminal output interval, the BRRS polar weight is at most one
+when `d ≥ 2` and `p ≥ 2`; this is the first inequality in (5.6). -/
+theorem brrsSectionFiveTerminalWeight_le_one
+    {d : Nat} {p r : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hr : r ∈ Icc (1 : Real) 20) :
+    brrsSectionFiveTerminalWeight d p r ≤ 1 := by
+  have hrpos : 0 < r := lt_of_lt_of_le (by norm_num) hr.1
+  have hdim : 0 ≤ ((d - 1 : Nat) : Real) := Nat.cast_nonneg _
+  have hpminus : 0 ≤ p / 2 - 1 := by linarith
+  have hexp : 0 ≤ (d - 1 : Nat) * (p / 2 - 1) := by
+    exact mul_nonneg hdim hpminus
+  have hpow : (ENNReal.ofReal r) ^ (-((d - 1 : Nat) * (p / 2 - 1))) ≤ 1 := by
+    by_cases hzero : (d - 1 : Nat) * (p / 2 - 1) = 0
+    · simp [hzero]
+    · apply ENNReal.rpow_le_one_of_one_le_of_neg
+      · exact (ENNReal.one_le_ofReal).mpr hr.1
+      · exact neg_neg_of_pos (lt_of_le_of_ne hexp (Ne.symm hzero))
+  have heq : ((d - 1 : Nat) : Real) * (1 - p / 2) =
+      -(((d - 1 : Nat) : Real) * (p / 2 - 1)) := by ring
+  unfold brrsSectionFiveTerminalWeight
+  rw [heq]
+  exact hpow
 
 end
 
@@ -27983,14 +29986,15 @@ theorem exists_norm_brrsTwoRadiusAllStationaryComponentIntegralSum_lowLow_fourPh
     (mul_le_mul_of_nonneg_left hCmo_le_C₀ hLone.le).trans hLone_C₀_le_C
   have hCmi_le : Lone * Cmi ≤ C :=
     (mul_le_mul_of_nonneg_left hCmi_le_C₀ hLone.le).trans hLone_C₀_le_C
+  have hCmm_le_C₀' : Ltwo * Lone * Cmm ≤ Ltwo * Lone * C₀ := by
+    calc
+      Ltwo * Lone * Cmm = Ltwo * (Lone * Cmm) := by ring
+      _ ≤ Ltwo * (Lone * C₀) :=
+        mul_le_mul_of_nonneg_left
+          (mul_le_mul_of_nonneg_left hCmm_le_C₀ hLone.le) hLtwo.le
+      _ = Ltwo * Lone * C₀ := by ring
   have hCmm_le : Ltwo * Lone * Cmm ≤ C :=
-    (by
-      calc
-        Ltwo * Lone * Cmm = Ltwo * (Lone * Cmm) := by ring
-        _ ≤ Ltwo * (Lone * C₀) :=
-          mul_le_mul_of_nonneg_left
-            (mul_le_mul_of_nonneg_left hCmm_le_C₀ hLone.le) hLtwo.le
-        _ = Ltwo * Lone * C₀ := by ring).trans hLtwoLone_C₀_le_C
+    hCmm_le_C₀'.trans hLtwoLone_C₀_le_C
   refine ⟨(9 : Real) * C, by positivity, ?_⟩
   intro r s t hr0 hr hs0 hs
   let δ : Real := 1 - (1 / 32 : Real)
@@ -28703,6 +30707,39 @@ theorem brrsTwoRadiusFullStationaryIntervalIntegral_eq_allStationaryComponentSum
     brrsTwoRadiusStationaryComponentIntegral
   simpa only [F] using hsplit
 
+/-- Compatibility of the corrected repository-normalized radial kernel with
+the literal all-nine stationary kernel at level zero.  The left side is the
+exact `ds` kernel from the radial Fourier formula; the factor
+`s ^ (d - 1)` converts it to the polar source measure used by the stationary
+calculation.  Thus every later all-nine stationary estimate is an estimate
+for the actual corrected radial kernel, rather than for a separate model.
+
+This does not identify the result with the published Bessel display after
+BRRS (5.3), whose missing frequency Jacobian is documented above. -/
+theorem brrsRadialBesselKernel_levelZero_eq_allStationary
+    {d : Nat} (hd : 3 ≤ d) (Phi : BRRSAnnularCutoff)
+    (r s t : Real) (v : BRRSSpace d) (hv : ‖v‖ = 1)
+    (hr : 0 ≤ r) (hs : 0 < s) :
+    brrsRadialBesselKernel Phi d v 0 r s t =
+      ((s ^ (d - 1) : Real) : Complex) *
+        brrsTwoRadiusAllStationaryComponentIntegralSum Phi d r s t := by
+  rw [brrsRadialBesselKernel_eq_twoRadius_surfaceFourier Phi 0 t r s v hv]
+  have hinner :
+      (∫ rho : Ioi (0 : Real),
+        surfaceFourier d (-rho.1 • (r • v)) *
+          (brrsDyadicHalfWaveSymbol Phi 0 t (rho.1 • v) *
+            surfaceFourier d (s • (rho.1 • v)))
+          ∂Measure.volumeIoiPow (d - 1)) =
+        brrsTwoRadiusSurfaceFourierIntervalIntegral Phi d v r s t := by
+    simpa using
+      (brrs_levelZero_twoRadiusInnerIntegral_eq_intervalIntegral
+        (d := d) Phi t r v hv (⟨s, hs⟩ : Ioi (0 : Real)))
+  rw [hinner,
+    brrsTwoRadiusSurfaceFourierIntervalIntegral_eq_fullStationary
+      hd Phi v hv r s t hr hs.le,
+    brrsTwoRadiusFullStationaryIntervalIntegral_eq_allStationaryComponentSum
+      hd Phi r s t]
+
 /-- The literal level-zero BRRS half-wave on radial Schwartz data is an
 outer radial integral of all nine exact two-radius stationary components.
 No middle contribution is discarded in this identity. -/
@@ -28896,6 +30933,93 @@ noncomputable def brrsPlanarSurfaceWaveAmplitude
     | .middle => coordinateMiddleMeridianLocalizedIntegral 0
         ((2 * Real.pi * a) * rho)
 
+/-- The circle incoming endpoint amplitude is the conjugate of the outgoing
+one, with no asymptotic approximation involved. -/
+theorem brrsPlanarSurfaceWaveAmplitude_incoming_eq_conj_outgoing
+    (a rho : Real) :
+    brrsPlanarSurfaceWaveAmplitude .incoming a rho =
+      starRingEnd Complex (brrsPlanarSurfaceWaveAmplitude .outgoing a rho) := by
+  have hsign : (-(2 * Real.pi * a)) * rho = -((2 * Real.pi * a) * rho) := by
+    ring
+  unfold brrsPlanarSurfaceWaveAmplitude
+  rw [hsign, planarEndpointQuadraticIntegral_neg_eq_conj]
+  simp only [map_mul, Complex.conj_ofReal]
+
+/-- The outgoing circle endpoint wave has the literal Fresnel leading carrier
+and the full one-inverse-power normalized stationary remainder. -/
+theorem exists_brrsPlanarSurfaceWaveAmplitude_outgoing_leading_asymptotic :
+    ∃ C : Real, 0 < C ∧ ∀ a rho : Real, 1 ≤ (2 * Real.pi * a) * rho →
+      ‖(Real.sqrt ((2 * Real.pi * a) * rho) : Complex) *
+          brrsPlanarSurfaceWaveAmplitude .outgoing a rho -
+        (surfaceMass 1 : Complex) *
+          brrsEvenQuadraticBaseCarrier planarEndpointProfile‖ ≤
+        C / ((2 * Real.pi * a) * rho) := by
+  obtain ⟨C, hC, hbound⟩ :=
+    exists_planarEndpointQuadraticIntegral_leading_asymptotic
+  let mass : Real := surfaceMass 1
+  have hmass : 0 < mass := by
+    dsimp [mass]
+    exact surfaceMass_pos (by omega)
+  refine ⟨mass * C, mul_pos hmass hC, ?_⟩
+  intro a rho hlambda
+  let lambda : Real := (2 * Real.pi * a) * rho
+  have hmain := hbound lambda (by simpa [lambda] using hlambda)
+  have hamp :
+      brrsPlanarSurfaceWaveAmplitude .outgoing a rho =
+        (mass : Complex) * planarEndpointQuadraticIntegral lambda := by
+    unfold brrsPlanarSurfaceWaveAmplitude
+    dsimp [lambda, mass]
+  rw [hamp]
+  have hfactor :
+      (Real.sqrt lambda : Complex) *
+          ((mass : Complex) * planarEndpointQuadraticIntegral lambda) -
+        (mass : Complex) * brrsEvenQuadraticBaseCarrier planarEndpointProfile =
+          (mass : Complex) *
+            ((Real.sqrt lambda : Complex) * planarEndpointQuadraticIntegral lambda -
+              brrsEvenQuadraticBaseCarrier planarEndpointProfile) := by
+    ring
+  rw [show (2 * Real.pi * a) * rho = lambda by rfl, hfactor, norm_mul,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos hmass]
+  calc
+    mass * ‖(Real.sqrt lambda : Complex) * planarEndpointQuadraticIntegral lambda -
+        brrsEvenQuadraticBaseCarrier planarEndpointProfile‖ ≤ mass * (C / lambda) :=
+      mul_le_mul_of_nonneg_left hmain hmass.le
+    _ = (mass * C) / lambda := by ring
+
+/-- The incoming circle endpoint wave has the conjugate carrier and the same
+one-inverse-power stationary remainder. -/
+theorem exists_brrsPlanarSurfaceWaveAmplitude_incoming_leading_asymptotic :
+    ∃ C : Real, 0 < C ∧ ∀ a rho : Real, 1 ≤ (2 * Real.pi * a) * rho →
+      ‖(Real.sqrt ((2 * Real.pi * a) * rho) : Complex) *
+          brrsPlanarSurfaceWaveAmplitude .incoming a rho -
+        starRingEnd Complex
+          ((surfaceMass 1 : Complex) *
+            brrsEvenQuadraticBaseCarrier planarEndpointProfile)‖ ≤
+        C / ((2 * Real.pi * a) * rho) := by
+  obtain ⟨C, hC, hout⟩ :=
+    exists_brrsPlanarSurfaceWaveAmplitude_outgoing_leading_asymptotic
+  refine ⟨C, hC, ?_⟩
+  intro a rho hlambda
+  let lambda : Real := (2 * Real.pi * a) * rho
+  let Aout : Complex := brrsPlanarSurfaceWaveAmplitude .outgoing a rho
+  let Ain : Complex := brrsPlanarSurfaceWaveAmplitude .incoming a rho
+  let K : Complex := (surfaceMass 1 : Complex) *
+    brrsEvenQuadraticBaseCarrier planarEndpointProfile
+  have hmain : ‖(Real.sqrt lambda : Complex) * Aout - K‖ ≤ C / lambda := by
+    dsimp [lambda, Aout, K]
+    exact hout a rho hlambda
+  have hAin : Ain = starRingEnd Complex Aout := by
+    dsimp [Ain, Aout]
+    exact brrsPlanarSurfaceWaveAmplitude_incoming_eq_conj_outgoing a rho
+  have hrewrite :
+      (Real.sqrt lambda : Complex) * Ain - starRingEnd Complex K =
+        starRingEnd Complex ((Real.sqrt lambda : Complex) * Aout - K) := by
+    simp only [map_sub, map_mul, Complex.conj_ofReal]
+    rw [hAin]
+  change ‖(Real.sqrt lambda : Complex) * Ain - starRingEnd Complex K‖ ≤ C / lambda
+  rw [hrewrite, RCLike.norm_conj]
+  exact hmain
+
 /-- One outgoing, incoming, or middle circle wave on a radial frequency
 ray.  The carrier convention is shared with `brrsSurfaceWavePhase`. -/
 noncomputable def brrsPlanarSurfaceWaveTerm
@@ -28933,6 +31057,216 @@ theorem brrs_surfaceFourier_two_neg_smul_eq_three_terms
     rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrho]
   rw [hnorm]
   simpa only [mul_comm] using brrsPlanarSurfaceWaveSum_eq_three_terms ‖x‖ rho
+
+/-- Parity-complete stationary-phase replacement for the Bessel asymptotic
+in BRRS (3.3), stated directly for `surfaceFourier` with Mathlib's `2 * pi`
+normalization.  It covers the circle, every even nonplanar dimension, and
+every odd nonplanar dimension.  In each case the identity is exact, both
+endpoint carriers have their literal leading coefficients with a full
+one-inverse-frequency normalized remainder, and the middle term has arbitrary
+rapid decay. -/
+theorem exists_brrs_surfaceFourier_threeWave_leading_remainder_all_dimensions
+    (N : Nat) :
+    (∃ C : Real, 0 < C ∧ ∀ (x : BRRSSpace 2) (rho : Real),
+      0 < rho → 1 ≤ (2 * Real.pi * ‖x‖) * rho →
+        surfaceFourier 2 (-rho • x) =
+          brrsPlanarSurfaceWaveTerm .outgoing ‖x‖ rho +
+            brrsPlanarSurfaceWaveTerm .incoming ‖x‖ rho +
+              brrsPlanarSurfaceWaveTerm .middle ‖x‖ rho ∧
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            brrsPlanarSurfaceWaveAmplitude .outgoing ‖x‖ rho -
+              (surfaceMass 1 : Complex) *
+                brrsEvenQuadraticBaseCarrier planarEndpointProfile‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            brrsPlanarSurfaceWaveAmplitude .incoming ‖x‖ rho -
+              starRingEnd Complex
+                ((surfaceMass 1 : Complex) *
+                  brrsEvenQuadraticBaseCarrier planarEndpointProfile)‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖brrsPlanarSurfaceWaveAmplitude .middle ‖x‖ rho‖ ≤
+          C / ((2 * Real.pi * ‖x‖) * rho) ^ N) ∧
+    (∀ n : Nat, ∃ C : Real, 0 < C ∧
+      ∀ (x : BRRSSpace (2 * (n + 1) + 2)) (rho : Real),
+      0 < rho → 1 ≤ (2 * Real.pi * ‖x‖) * rho →
+        surfaceFourier (2 * (n + 1) + 2) (-rho • x) =
+          brrsSurfaceWaveTerm (2 * (n + 1) + 2) .outgoing ‖x‖ rho +
+            brrsSurfaceWaveTerm (2 * (n + 1) + 2) .incoming ‖x‖ rho +
+              brrsSurfaceWaveTerm (2 * (n + 1) + 2) .middle ‖x‖ rho ∧
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            (((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .outgoing ‖x‖ rho -
+              (surfaceMass (2 * (n + 1) + 1) : Complex) *
+                (brrsEvenQuadraticLeadingCoefficient (n + 1) *
+                  brrsEvenQuadraticBaseCarrier
+                    (smoothEndpointProfile (2 * (n + 1))))‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            (-(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I)) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .incoming ‖x‖ rho -
+              starRingEnd Complex
+                ((surfaceMass (2 * (n + 1) + 1) : Complex) *
+                  (brrsEvenQuadraticLeadingCoefficient (n + 1) *
+                    brrsEvenQuadraticBaseCarrier
+                      (smoothEndpointProfile (2 * (n + 1)))))‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .middle ‖x‖ rho‖ ≤
+          C / ((2 * Real.pi * ‖x‖) * rho) ^ N) ∧
+    (∀ n : Nat, ∃ C : Real, 0 < C ∧
+      ∀ (x : BRRSSpace (2 * n + 3)) (rho : Real),
+      0 < rho → 1 ≤ (2 * Real.pi * ‖x‖) * rho →
+        surfaceFourier (2 * n + 3) (-rho • x) =
+          brrsSurfaceWaveTerm (2 * n + 3) .outgoing ‖x‖ rho +
+            brrsSurfaceWaveTerm (2 * n + 3) .incoming ‖x‖ rho +
+              brrsSurfaceWaveTerm (2 * n + 3) .middle ‖x‖ rho ∧
+        ‖(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing ‖x‖ rho -
+              (surfaceMass (2 * n + 2) : Complex) *
+                (brrsOddQuadraticLeadingCoefficient n *
+                  smoothEndpointProfile (2 * n + 1) 0)‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖(-(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I)) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * n + 3) .incoming ‖x‖ rho -
+              starRingEnd Complex
+                ((surfaceMass (2 * n + 2) : Complex) *
+                  (brrsOddQuadraticLeadingCoefficient n *
+                    smoothEndpointProfile (2 * n + 1) 0))‖ ≤
+            C / ((2 * Real.pi * ‖x‖) * rho) ∧
+        ‖brrsSurfaceWaveAmplitude (2 * n + 3) .middle ‖x‖ rho‖ ≤
+          C / ((2 * Real.pi * ‖x‖) * rho) ^ N) := by
+  constructor
+  · obtain ⟨Cout, hCout, hout⟩ :=
+      exists_brrsPlanarSurfaceWaveAmplitude_outgoing_leading_asymptotic
+    obtain ⟨Cin, hCin, hin⟩ :=
+      exists_brrsPlanarSurfaceWaveAmplitude_incoming_leading_asymptotic
+    obtain ⟨Cmid, hCmid, hmid⟩ :=
+      exists_norm_iteratedDeriv_brrsSurfaceWaveAmplitude_middle_decay 2 0 N
+    let C : Real := Cout + Cin + Cmid
+    have hC : 0 < C := by
+      dsimp [C]
+      positivity
+    refine ⟨C, hC, ?_⟩
+    intro x rho hrho hlambda
+    let lambda : Real := (2 * Real.pi * ‖x‖) * rho
+    have hlambda_pos : 0 < lambda :=
+      lt_of_lt_of_le zero_lt_one (by simpa [lambda] using hlambda)
+    have hlargeabs : 1 ≤ |(2 * Real.pi * ‖x‖) * rho| := by
+      simpa [lambda, abs_of_nonneg hlambda_pos.le] using hlambda
+    have hmiddle0 :
+        ‖brrsPlanarSurfaceWaveAmplitude .middle ‖x‖ rho‖ ≤ Cmid / lambda ^ N := by
+      simpa [brrsPlanarSurfaceWaveAmplitude, brrsSurfaceWaveAmplitude, lambda,
+        abs_of_nonneg hlambda_pos.le] using hmid ‖x‖ rho hlargeabs
+    refine ⟨brrs_surfaceFourier_two_neg_smul_eq_three_terms hrho x, ?_, ?_, ?_⟩
+    · have hmain := hout ‖x‖ rho hlambda
+      calc
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            brrsPlanarSurfaceWaveAmplitude .outgoing ‖x‖ rho -
+              (surfaceMass 1 : Complex) *
+                brrsEvenQuadraticBaseCarrier planarEndpointProfile‖ ≤ Cout / lambda := by
+          simpa [lambda] using hmain
+        _ ≤ C / lambda := by
+          apply div_le_div_of_nonneg_right
+          · dsimp [C]
+            linarith
+          · exact hlambda_pos.le
+        _ = C / ((2 * Real.pi * ‖x‖) * rho) := by rfl
+    · have hmain := hin ‖x‖ rho hlambda
+      calc
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            brrsPlanarSurfaceWaveAmplitude .incoming ‖x‖ rho -
+              starRingEnd Complex
+                ((surfaceMass 1 : Complex) *
+                  brrsEvenQuadraticBaseCarrier planarEndpointProfile)‖ ≤ Cin / lambda := by
+          simpa [lambda] using hmain
+        _ ≤ C / lambda := by
+          apply div_le_div_of_nonneg_right
+          · dsimp [C]
+            linarith
+          · exact hlambda_pos.le
+        _ = C / ((2 * Real.pi * ‖x‖) * rho) := by rfl
+    · calc
+        ‖brrsPlanarSurfaceWaveAmplitude .middle ‖x‖ rho‖ ≤ Cmid / lambda ^ N := hmiddle0
+        _ ≤ C / lambda ^ N := by
+          apply div_le_div_of_nonneg_right
+          · dsimp [C]
+            linarith
+          · exact (pow_pos hlambda_pos N).le
+        _ = C / ((2 * Real.pi * ‖x‖) * rho) ^ N := by rfl
+  constructor
+  · intro n
+    obtain ⟨Cbase, hCbase, hbase⟩ :=
+      exists_brrs_surfaceFourier_threeWave_replacement_bounds (2 * (n + 1) + 2) N
+        (by omega)
+    obtain ⟨Cout, hCout, hout⟩ :=
+      exists_brrsSurfaceWaveAmplitude_outgoing_even_leading_asymptotic (n + 1)
+    obtain ⟨Cin, hCin, hin⟩ :=
+      exists_brrsSurfaceWaveAmplitude_incoming_even_leading_asymptotic (n + 1)
+    let C : Real := Cbase + Cout + Cin
+    have hC : 0 < C := by
+      dsimp [C]
+      positivity
+    refine ⟨C, hC, ?_⟩
+    intro x rho hrho hlambda
+    let lambda : Real := (2 * Real.pi * ‖x‖) * rho
+    have hlambda_pos : 0 < lambda :=
+      lt_of_lt_of_le zero_lt_one (by simpa [lambda] using hlambda)
+    have hlargeabs : 1 ≤ |(2 * Real.pi * ‖x‖) * rho| := by
+      simpa [lambda, abs_of_nonneg hlambda_pos.le] using hlambda
+    obtain ⟨hexact, -, -, hmiddle⟩ := hbase x rho hrho hlargeabs
+    refine ⟨hexact, ?_, ?_, ?_⟩
+    · have hmain := hout ‖x‖ rho hlambda
+      calc
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            (((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .outgoing ‖x‖ rho -
+              (surfaceMass (2 * (n + 1) + 1) : Complex) *
+                (brrsEvenQuadraticLeadingCoefficient (n + 1) *
+                  brrsEvenQuadraticBaseCarrier
+                    (smoothEndpointProfile (2 * (n + 1))))‖ ≤ Cout / lambda := by
+          simpa [lambda] using hmain
+        _ ≤ C / lambda := by
+          apply div_le_div_of_nonneg_right
+          · dsimp [C]
+            linarith
+          · exact hlambda_pos.le
+        _ = C / ((2 * Real.pi * ‖x‖) * rho) := by rfl
+    · have hmain := hin ‖x‖ rho hlambda
+      calc
+        ‖(Real.sqrt ((2 * Real.pi * ‖x‖) * rho) : Complex) *
+            (-(((2 * ((2 * Real.pi * ‖x‖) * rho) : Real) : Complex) * Complex.I)) ^
+              (n + 1) *
+            brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .incoming ‖x‖ rho -
+              starRingEnd Complex
+                ((surfaceMass (2 * (n + 1) + 1) : Complex) *
+                  (brrsEvenQuadraticLeadingCoefficient (n + 1) *
+                    brrsEvenQuadraticBaseCarrier
+                      (smoothEndpointProfile (2 * (n + 1)))))‖ ≤ Cin / lambda := by
+          simpa [lambda] using hmain
+        _ ≤ C / lambda := by
+          apply div_le_div_of_nonneg_right
+          · dsimp [C]
+            linarith
+          · exact hlambda_pos.le
+        _ = C / ((2 * Real.pi * ‖x‖) * rho) := by rfl
+    · calc
+        ‖brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .middle ‖x‖ rho‖ ≤
+            Cbase / |(2 * Real.pi * ‖x‖) * rho| ^ N := hmiddle
+        _ = Cbase / lambda ^ N := by
+          rw [show |(2 * Real.pi * ‖x‖) * rho| = lambda by
+            simpa [lambda] using abs_of_nonneg hlambda_pos.le]
+        _ ≤ C / lambda ^ N := by
+          apply div_le_div_of_nonneg_right
+          · dsimp [C]
+            linarith
+          · exact (pow_pos hlambda_pos N).le
+        _ = C / ((2 * Real.pi * ‖x‖) * rho) ^ N := by rfl
+  · intro n
+    exact exists_brrs_surfaceFourier_odd_threeWave_leading_remainder n N
 
 /-- The positive-ray circle identity, obtained by reflecting the ray before
 using the negative-ray identity. -/
@@ -29079,6 +31413,25 @@ noncomputable def brrsPlanarTwoRadiusAllStationaryComponentIntegralSum
           ((brrsPlanarTwoRadiusStationaryComponentIntegral Phi .middle .outgoing r s t +
             brrsPlanarTwoRadiusStationaryComponentIntegral Phi .middle .incoming r s t) +
               brrsPlanarTwoRadiusStationaryComponentIntegral Phi .middle .middle r s t))
+
+/-- The exact planar all-nine stationary kernel is symmetric in its two
+radial variables.  This is an identity of the literal nine components, not a
+comparison with an auxiliary model. -/
+theorem brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_swap
+    (Phi : BRRSAnnularCutoff) (r s t : Real) :
+    brrsPlanarTwoRadiusAllStationaryComponentIntegralSum Phi r s t =
+      brrsPlanarTwoRadiusAllStationaryComponentIntegralSum Phi s r t := by
+  unfold brrsPlanarTwoRadiusAllStationaryComponentIntegralSum
+  rw [brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .outgoing .outgoing r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .outgoing .incoming r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .outgoing .middle r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .incoming .outgoing r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .incoming .incoming r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .incoming .middle r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .middle .outgoing r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .middle .incoming r s t,
+    brrsPlanarTwoRadiusStationaryComponentIntegral_swap Phi .middle .middle r s t]
+  ring
 
 /-- The five exact planar components that contain a middle circle wave. -/
 noncomputable def brrsPlanarTwoRadiusMiddleComponentIntegralSum
@@ -29239,6 +31592,32 @@ theorem brrsPlanarTwoRadiusFullStationaryIntervalIntegral_eq_allStationaryCompon
     brrsPlanarTwoRadiusAllStationaryComponentIntegralSum
     brrsPlanarTwoRadiusStationaryComponentIntegral
   simpa only [F] using hsplit
+
+/-- Compatibility of the corrected repository-normalized radial kernel with
+the literal all-nine circle stationary kernel at level zero.  As in the
+nonplanar identity, the displayed `s` factor changes the ordinary `ds`
+kernel into the polar source measure used by the stationary calculation. -/
+theorem brrsRadialBesselKernel_two_levelZero_eq_allPlanarStationary
+    (Phi : BRRSAnnularCutoff) (r s t : Real) (v : BRRSSpace 2) (hv : ‖v‖ = 1)
+    (hr : 0 ≤ r) (hs : 0 < s) :
+    brrsRadialBesselKernel Phi 2 v 0 r s t =
+      ((s ^ (2 - 1) : Real) : Complex) *
+        brrsPlanarTwoRadiusAllStationaryComponentIntegralSum Phi r s t := by
+  rw [brrsRadialBesselKernel_eq_twoRadius_surfaceFourier Phi 0 t r s v hv]
+  have hinner :
+      (∫ rho : Ioi (0 : Real),
+        surfaceFourier 2 (-rho.1 • (r • v)) *
+          (brrsDyadicHalfWaveSymbol Phi 0 t (rho.1 • v) *
+            surfaceFourier 2 (s • (rho.1 • v)))
+          ∂Measure.volumeIoiPow (2 - 1)) =
+        brrsTwoRadiusSurfaceFourierIntervalIntegral Phi 2 v r s t := by
+    simpa using
+      (brrs_levelZero_twoRadiusInnerIntegral_eq_intervalIntegral
+        (d := 2) Phi t r v hv (⟨s, hs⟩ : Ioi (0 : Real)))
+  rw [hinner,
+    brrsTwoRadiusSurfaceFourierIntervalIntegral_two_eq_fullPlanarStationary
+      Phi v hv r s t hr hs.le,
+    brrsPlanarTwoRadiusFullStationaryIntervalIntegral_eq_allStationaryComponentSum]
 
 /-- The literal level-zero planar half-wave on radial Schwartz data is an
 outer radial integral of all nine exact planar stationary components. -/
@@ -36450,7 +38829,6 @@ theorem exists_norm_brrsTwoRadiusAllStationaryComponentIntegralSum_lowHigh_fourP
       dsimp [R, Lhigh, P₃] <;> ring
   have hMsub : M - 1 = d + 2 * N - 1 := by
     dsimp [M]
-    omega
   have hfactor (D : Real) :
       δ * (D / R ^ (M - 1)) =
         (δ * (D / q)) * (1 / R ^ (2 * N)) := by
@@ -37124,6 +39502,164 @@ theorem exists_uniform_iteratedDeriv_brrsPlanarSurfaceWaveAmplitude_lowRadius_bo
     dsimp [C]
     exact Finset.single_le_sum (fun l hl => (hApos l).le) hkmem
   exact (hAbound k a rho ha0 ha).trans hle
+
+/-- On the compact planar radial cell, the one-radius coefficient obtained
+after extracting a circle-wave carrier has uniform derivative bounds of every
+fixed order.  This is the fixed-factor/product estimate needed before the
+two-radius compact--compact integration-by-parts argument. -/
+theorem exists_uniform_iteratedDeriv_brrsPlanarStationaryWaveRadialCoefficient_lowRadius_bound
+    (N : Nat) (Phi : BRRSAnnularCutoff) (part : BRRSSurfaceWavePart) :
+    ∃ C : Real, 0 < C ∧ ∀ k : Nat, k ≤ N → ∀ a rho : Real,
+      0 ≤ a → a ≤ 16 → rho ∈ Icc (1 / 32 : Real) 1 →
+        ‖iteratedDeriv k (fun u : Real =>
+          brrsPlanarStationaryWaveRadialCoefficient Phi part a u) rho‖ ≤ C := by
+  obtain ⟨A, hA, hAbound⟩ :=
+    exists_uniform_iteratedDeriv_brrsStationaryWaveRadialFixedFactor_bound Phi 2 N
+  obtain ⟨B, hB, hBbound⟩ :=
+    exists_uniform_iteratedDeriv_brrsPlanarSurfaceWaveAmplitude_lowRadius_bound N part
+  let C : Real := ∑ l ∈ Finset.range (N + 1),
+    brrsStationaryLeibnizConstant l A B
+  have hCnonneg : 0 ≤ C := by
+    dsimp [C]
+    apply Finset.sum_nonneg
+    intro l hl
+    exact brrsStationaryLeibnizConstant_nonneg l hA.le hB.le
+  refine ⟨C + 1, by linarith, ?_⟩
+  intro k hk a rho ha0 ha hrho
+  let fixed : Real → Complex := brrsStationaryWaveRadialFixedFactor Phi 2
+  let physical : Real → Complex := fun u : Real =>
+    brrsPlanarSurfaceWaveAmplitude part a u
+  have hfixed : ContDiff Real (⊤ : ENat) fixed := by
+    dsimp [fixed]
+    exact contDiff_brrsStationaryWaveRadialFixedFactor Phi 2
+  have hphysical : ContDiff Real (⊤ : ENat) physical := by
+    dsimp [physical]
+    exact contDiff_brrsPlanarSurfaceWaveAmplitude part a
+  have hphysicalbound : ∀ l : Nat, l ≤ k →
+      ‖iteratedDeriv l physical rho‖ ≤ B := by
+    intro l hl
+    exact hBbound l (hl.trans hk) a rho ha0 ha hrho
+  have hprod := norm_iteratedDeriv_mul_le_brrsStationaryLeibnizConstant
+    (n := k) hfixed hphysical hA.le hB.le
+    (fun l hl => hAbound l (hl.trans hk) rho hrho) hphysicalbound
+  have hfactorfun : (fun u : Real =>
+      brrsPlanarStationaryWaveRadialCoefficient Phi part a u) =
+      fun u : Real => fixed u * physical u := by
+    funext u
+    dsimp [fixed, physical]
+    rfl
+  rw [hfactorfun]
+  have hCbound : brrsStationaryLeibnizConstant k A B ≤ C := by
+    unfold C
+    have hkmem : k ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
+    exact Finset.single_le_sum
+      (fun l hl => brrsStationaryLeibnizConstant_nonneg l hA.le hB.le) hkmem
+  calc
+    ‖iteratedDeriv k (fun u : Real => fixed u * physical u) rho‖ ≤
+        brrsStationaryLeibnizConstant k A B := hprod
+    _ ≤ C := hCbound
+    _ ≤ C + 1 := by linarith
+
+/-- Every derivative of a literal planar two-radius stationary coefficient is
+uniformly bounded when both radii lie in the compact cell.  This is the
+precise compact--compact amplitude input for the radial kernel estimate. -/
+theorem exists_uniform_iteratedDeriv_brrsPlanarTwoRadiusStationaryCoefficient_lowLow_bound
+    (N : Nat) (Phi : BRRSAnnularCutoff)
+    (partR partS : BRRSSurfaceWavePart) :
+    ∃ C : Real, 0 < C ∧ ∀ k : Nat, k ≤ N → ∀ r s rho : Real,
+      0 ≤ r → r ≤ 16 → 0 ≤ s → s ≤ 16 →
+      rho ∈ Icc (1 / 32 : Real) 1 →
+        ‖iteratedDeriv k (fun u : Real =>
+          brrsPlanarTwoRadiusStationaryCoefficient Phi partR partS r s u) rho‖ ≤ C := by
+  obtain ⟨A, hA, hAbound⟩ :=
+    exists_uniform_iteratedDeriv_brrsPlanarSurfaceWaveAmplitude_lowRadius_bound N partR
+  obtain ⟨B, hB, hBbound⟩ :=
+    exists_uniform_iteratedDeriv_brrsPlanarStationaryWaveRadialCoefficient_lowRadius_bound
+      N Phi partS
+  let C : Real := ∑ l ∈ Finset.range (N + 1),
+    brrsStationaryLeibnizConstant l A B
+  have hCnonneg : 0 ≤ C := by
+    dsimp [C]
+    apply Finset.sum_nonneg
+    intro l hl
+    exact brrsStationaryLeibnizConstant_nonneg l hA.le hB.le
+  refine ⟨C + 1, by linarith, ?_⟩
+  intro k hk r s rho hr0 hr hs0 hs hrho
+  let left : Real → Complex := fun u : Real =>
+    brrsPlanarSurfaceWaveAmplitude partR r u
+  let right : Real → Complex := fun u : Real =>
+    brrsPlanarStationaryWaveRadialCoefficient Phi partS s u
+  have hleft : ContDiff Real (⊤ : ENat) left := by
+    dsimp [left]
+    exact contDiff_brrsPlanarSurfaceWaveAmplitude partR r
+  have hright : ContDiff Real (⊤ : ENat) right := by
+    dsimp [right]
+    exact contDiff_brrsPlanarStationaryWaveRadialCoefficient Phi partS s
+  have hleftbound : ∀ l : Nat, l ≤ k →
+      ‖iteratedDeriv l left rho‖ ≤ A := by
+    intro l hl
+    exact hAbound l (hl.trans hk) r rho hr0 hr hrho
+  have hrightbound : ∀ l : Nat, l ≤ k →
+      ‖iteratedDeriv l right rho‖ ≤ B := by
+    intro l hl
+    exact hBbound l (hl.trans hk) s rho hs0 hs hrho
+  have hprod := norm_iteratedDeriv_mul_le_brrsStationaryLeibnizConstant
+    (n := k) hleft hright hA.le hB.le hleftbound hrightbound
+  have hfactorfun : (fun u : Real =>
+      brrsPlanarTwoRadiusStationaryCoefficient Phi partR partS r s u) =
+      fun u : Real => left u * right u := by
+    funext u
+    dsimp [left, right]
+    exact brrsPlanarTwoRadiusStationaryCoefficient_eq_amplitude_mul_coefficient
+      Phi partR partS r s u
+  rw [hfactorfun]
+  have hCbound : brrsStationaryLeibnizConstant k A B ≤ C := by
+    unfold C
+    have hkmem : k ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
+    exact Finset.single_le_sum
+      (fun l hl => brrsStationaryLeibnizConstant_nonneg l hA.le hB.le) hkmem
+  calc
+    ‖iteratedDeriv k (fun u : Real => left u * right u) rho‖ ≤
+        brrsStationaryLeibnizConstant k A B := hprod
+    _ ≤ C := hCbound
+    _ ≤ C + 1 := by linarith
+
+/-- The compact--compact planar stationary component has a bounded rapidly
+decaying profile of its exact carrier.  This is the missing circle analogue
+of the low--low two-radius integration-by-parts estimate. -/
+theorem exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+    (N : Nat) (Phi : BRRSAnnularCutoff)
+    (partR partS : BRRSSurfaceWavePart) :
+    ∃ C : Real, 0 < C ∧ ∀ r s t : Real,
+      0 ≤ r → r ≤ 16 → 0 ≤ s → s ≤ 16 →
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi partR partS r s t‖ ≤
+        (1 - (1 / 32 : Real)) * C *
+          brrsStationaryRapidProfile N
+            (brrsSurfaceWavePhase partR r +
+              brrsSurfaceWavePhase partS s + 2 * Real.pi * t) := by
+  obtain ⟨C, hC, hprofile⟩ :=
+    exists_norm_intervalIntegral_brrsPlanarTwoRadiusStationaryCoefficient_profile_le_of_deriv_decay
+      N Phi partR partS
+      (fun r s => 0 ≤ r ∧ r ≤ 16 ∧ 0 ≤ s ∧ s ≤ 16)
+      (fun _ _ => (1 : Real))
+      (by
+        intro r s hrs
+        norm_num)
+      (by
+        obtain ⟨D, hD, hderiv⟩ :=
+          exists_uniform_iteratedDeriv_brrsPlanarTwoRadiusStationaryCoefficient_lowLow_bound
+            N Phi partR partS
+        refine ⟨D, hD, ?_⟩
+        intro k hk r s rho hrs hrho
+        simpa only [div_one] using
+          hderiv k hk r s rho hrs.1 hrs.2.1 hrs.2.2.1 hrs.2.2.2 hrho)
+  refine ⟨C, hC, ?_⟩
+  intro r s t hr0 hr hs0 hs
+  rw [brrsPlanarTwoRadiusStationaryComponentIntegral_eq_oscillatoryExp]
+  simpa using hprofile r s
+    (brrsSurfaceWavePhase partR r +
+      brrsSurfaceWavePhase partS s + 2 * Real.pi * t)
+    ⟨hr0, hr, hs0, hs⟩
 
 /-- In the planar compact-output/high-source regime, every literal stationary
 component retains the one available source half-density.  The source part may
@@ -37921,6 +40457,282 @@ theorem exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowHigh_middl
       brrsSurfaceWavePhase .middle s + 2 * Real.pi * t)
     ⟨hr0, hr, hs⟩
 
+/-- On the compact planar two-radius cell, the literal all-nine stationary
+kernel is controlled by the four endpoint signs.  This is the circle
+counterpart of the compact--compact phase transfer: every middle carrier is
+moved by a bounded radial displacement, and the middle--middle component is
+moved twice. -/
+theorem exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_lowLow_fourPhase_profile_le
+    (N : Nat) (Phi : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ r s t : Real,
+      0 ≤ r → r ≤ 16 → 0 ≤ s → s ≤ 16 →
+      ‖brrsPlanarTwoRadiusAllStationaryComponentIntegralSum Phi r s t‖ ≤
+        (1 - (1 / 32 : Real)) * C *
+          (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+            brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))) := by
+  obtain ⟨Coo, hCoo, hoo⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      N Phi .outgoing .outgoing
+  obtain ⟨Coi, hCoi, hoi⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      N Phi .outgoing .incoming
+  obtain ⟨Cio, hCio, hio⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      N Phi .incoming .outgoing
+  obtain ⟨Cii, hCii, hii⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      N Phi .incoming .incoming
+  obtain ⟨Com, hCom, hom⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      (2 * N) Phi .outgoing .middle
+  obtain ⟨Cim, hCim, him⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      (2 * N) Phi .incoming .middle
+  obtain ⟨Cmo, hCmo, hmo⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      (2 * N) Phi .middle .outgoing
+  obtain ⟨Cmi, hCmi, hmi⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      (2 * N) Phi .middle .incoming
+  obtain ⟨Cmm, hCmm, hmm⟩ :=
+    exists_norm_brrsPlanarTwoRadiusStationaryComponentIntegral_lowLow_profile_le
+      (2 * (2 * N)) Phi .middle .middle
+  let Lone : Real := (17 : Real) ^ N *
+    ((2 : Real) ^ (2 * N) * (2 * Real.pi) ^ N)
+  let Ltwo : Real := (17 : Real) ^ (2 * N) *
+    ((2 : Real) ^ (2 * (2 * N)) * (2 * Real.pi) ^ (2 * N))
+  let C0 : Real := Coo + Coi + Cio + Cii + Com + Cim + Cmo + Cmi + Cmm
+  let C : Real := (1 + Lone + Ltwo * Lone) * C0
+  have hLone : 0 < Lone := by
+    dsimp [Lone]
+    positivity
+  have hLtwo : 0 < Ltwo := by
+    dsimp [Ltwo]
+    positivity
+  have hC0 : 0 < C0 := by
+    dsimp [C0]
+    linarith
+  have hC : 0 < C := by
+    dsimp [C]
+    exact mul_pos (by positivity) hC0
+  have hC0_le_C : C0 ≤ C := by
+    dsimp [C]
+    calc
+      C0 = 1 * C0 := by ring
+      _ ≤ (1 + Lone + Ltwo * Lone) * C0 :=
+        mul_le_mul_of_nonneg_right
+          (by nlinarith [mul_nonneg hLtwo.le hLone.le]) hC0.le
+  have hCoo_le_C0 : Coo ≤ C0 := by dsimp [C0]; linarith
+  have hCoi_le_C0 : Coi ≤ C0 := by dsimp [C0]; linarith
+  have hCio_le_C0 : Cio ≤ C0 := by dsimp [C0]; linarith
+  have hCii_le_C0 : Cii ≤ C0 := by dsimp [C0]; linarith
+  have hCom_le_C0 : Com ≤ C0 := by dsimp [C0]; linarith
+  have hCim_le_C0 : Cim ≤ C0 := by dsimp [C0]; linarith
+  have hCmo_le_C0 : Cmo ≤ C0 := by dsimp [C0]; linarith
+  have hCmi_le_C0 : Cmi ≤ C0 := by dsimp [C0]; linarith
+  have hCmm_le_C0 : Cmm ≤ C0 := by dsimp [C0]; linarith
+  have hLone_C0_le_C : Lone * C0 ≤ C := by
+    dsimp [C]
+    exact mul_le_mul_of_nonneg_right
+      (by nlinarith [mul_nonneg hLtwo.le hLone.le]) hC0.le
+  have hLtwoLone_C0_le_C : Ltwo * Lone * C0 ≤ C := by
+    dsimp [C]
+    exact mul_le_mul_of_nonneg_right (by nlinarith [hLone.le]) hC0.le
+  have hCoo_le : Coo ≤ C := hCoo_le_C0.trans hC0_le_C
+  have hCoi_le : Coi ≤ C := hCoi_le_C0.trans hC0_le_C
+  have hCio_le : Cio ≤ C := hCio_le_C0.trans hC0_le_C
+  have hCii_le : Cii ≤ C := hCii_le_C0.trans hC0_le_C
+  have hCom_le : Lone * Com ≤ C :=
+    (mul_le_mul_of_nonneg_left hCom_le_C0 hLone.le).trans hLone_C0_le_C
+  have hCim_le : Lone * Cim ≤ C :=
+    (mul_le_mul_of_nonneg_left hCim_le_C0 hLone.le).trans hLone_C0_le_C
+  have hCmo_le : Lone * Cmo ≤ C :=
+    (mul_le_mul_of_nonneg_left hCmo_le_C0 hLone.le).trans hLone_C0_le_C
+  have hCmi_le : Lone * Cmi ≤ C :=
+    (mul_le_mul_of_nonneg_left hCmi_le_C0 hLone.le).trans hLone_C0_le_C
+  have hCmm_le_aux : Ltwo * Lone * Cmm ≤ Ltwo * Lone * C0 := by
+    calc
+      Ltwo * Lone * Cmm = Ltwo * (Lone * Cmm) := by ring
+      _ ≤ Ltwo * (Lone * C0) :=
+        mul_le_mul_of_nonneg_left
+          (mul_le_mul_of_nonneg_left hCmm_le_C0 hLone.le) hLtwo.le
+      _ = Ltwo * Lone * C0 := by ring
+  have hCmm_le : Ltwo * Lone * Cmm ≤ C :=
+    hCmm_le_aux.trans hLtwoLone_C0_le_C
+  refine ⟨(9 : Real) * C, by positivity, ?_⟩
+  intro r s t hr0 hr hs0 hs
+  let delta : Real := 1 - (1 / 32 : Real)
+  let P1 : Real := brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s))
+  let P2 : Real := brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s))
+  let P3 : Real := brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s))
+  let P4 : Real := brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))
+  let P : Real := P1 + P2 + P3 + P4
+  let A : Real := delta * C
+  have hdelta : 0 ≤ delta := by
+    dsimp [delta]
+    norm_num
+  have hA : 0 ≤ A := by
+    dsimp [A]
+    positivity
+  have hP1 : 0 ≤ P1 := by dsimp [P1]; exact brrsStationaryRapidProfile_nonneg _ _
+  have hP2 : 0 ≤ P2 := by dsimp [P2]; exact brrsStationaryRapidProfile_nonneg _ _
+  have hP3 : 0 ≤ P3 := by dsimp [P3]; exact brrsStationaryRapidProfile_nonneg _ _
+  have hP4 : 0 ≤ P4 := by dsimp [P4]; exact brrsStationaryRapidProfile_nonneg _ _
+  have hP1_le : P1 ≤ P := by dsimp [P]; linarith
+  have hP2_le : P2 ≤ P := by dsimp [P]; linarith
+  have hP3_le : P3 ≤ P := by dsimp [P]; linarith
+  have hP4_le : P4 ≤ P := by dsimp [P]; linarith
+  have hAbsorb (D E : Real) (hD : D ≤ C) (hE : E ≤ P) (hE0 : 0 ≤ E) :
+      delta * D * E ≤ A * P := by
+    have hcoef : delta * D ≤ A := by
+      dsimp [A]
+      exact mul_le_mul_of_nonneg_left hD hdelta
+    calc
+      delta * D * E ≤ A * E := mul_le_mul_of_nonneg_right hcoef hE0
+      _ ≤ A * P := mul_le_mul_of_nonneg_left hE hA
+  have hphase_om :
+      brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t - r)) ≤ Lone * P1 := by
+    convert brrsStationaryRapidProfile_smallRadius_shift_to_endpointPhase
+      N (t - r) s (by rw [abs_of_nonneg hs0]; exact hs) using 1 <;>
+      dsimp [Lone, P1] <;> ring
+  have hphase_im :
+      brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t + r)) ≤ Lone * P3 := by
+    convert brrsStationaryRapidProfile_smallRadius_shift_to_endpointPhase
+      N (t + r) s (by rw [abs_of_nonneg hs0]; exact hs) using 1 <;>
+      dsimp [Lone, P3] <;> ring
+  have hphase_mo :
+      brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t - s)) ≤ Lone * P1 := by
+    convert brrsStationaryRapidProfile_smallRadius_shift_to_endpointPhase
+      N (t - s) r (by rw [abs_of_nonneg hr0]; exact hr) using 1 <;>
+      dsimp [Lone, P1] <;> ring
+  have hphase_mi :
+      brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t + s)) ≤ Lone * P2 := by
+    convert brrsStationaryRapidProfile_smallRadius_shift_to_endpointPhase
+      N (t + s) r (by rw [abs_of_nonneg hr0]; exact hr) using 1 <;>
+      dsimp [Lone, P2] <;> ring
+  have hphase_mm_first :
+      brrsStationaryRapidProfile (2 * (2 * N)) (2 * Real.pi * t) ≤
+        Ltwo * brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t - r)) := by
+    convert brrsStationaryRapidProfile_smallRadius_shift_to_endpointPhase
+      (2 * N) t r (by rw [abs_of_nonneg hr0]; exact hr) using 1 <;>
+      dsimp [Ltwo] <;> ring
+  have hphase_mm :
+      brrsStationaryRapidProfile (2 * (2 * N)) (2 * Real.pi * t) ≤
+        (Ltwo * Lone) * P1 := by
+    calc
+      _ ≤ Ltwo * brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t - r)) :=
+        hphase_mm_first
+      _ ≤ Ltwo * (Lone * P1) :=
+        mul_le_mul_of_nonneg_left hphase_om hLtwo.le
+      _ = (Ltwo * Lone) * P1 := by ring
+  have hIoo :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .outgoing .outgoing r s t‖ ≤ A * P := by
+    calc
+      _ ≤ delta * Coo * P1 := by
+        convert hoo r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, P1, brrsSurfaceWavePhase] <;> ring
+      _ ≤ A * P := hAbsorb Coo P1 hCoo_le hP1_le hP1
+  have hIoi :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .outgoing .incoming r s t‖ ≤ A * P := by
+    calc
+      _ ≤ delta * Coi * P2 := by
+        convert hoi r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, P2, brrsSurfaceWavePhase] <;> ring
+      _ ≤ A * P := hAbsorb Coi P2 hCoi_le hP2_le hP2
+  have hIio :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .incoming .outgoing r s t‖ ≤ A * P := by
+    calc
+      _ ≤ delta * Cio * P3 := by
+        convert hio r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, P3, brrsSurfaceWavePhase] <;> ring
+      _ ≤ A * P := hAbsorb Cio P3 hCio_le hP3_le hP3
+  have hIii :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .incoming .incoming r s t‖ ≤ A * P := by
+    calc
+      _ ≤ delta * Cii * P4 := by
+        convert hii r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, P4, brrsSurfaceWavePhase] <;> ring
+      _ ≤ A * P := hAbsorb Cii P4 hCii_le hP4_le hP4
+  have hIom :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .outgoing .middle r s t‖ ≤ A * P := by
+    have hcoef : 0 ≤ delta * Com := by positivity
+    calc
+      _ ≤ delta * Com * brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t - r)) := by
+        convert hom r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, brrsSurfaceWavePhase] <;> ring
+      _ ≤ delta * Com * (Lone * P1) := mul_le_mul_of_nonneg_left hphase_om hcoef
+      _ = delta * (Lone * Com) * P1 := by ring
+      _ ≤ A * P := hAbsorb (Lone * Com) P1 hCom_le hP1_le hP1
+  have hIim :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .incoming .middle r s t‖ ≤ A * P := by
+    have hcoef : 0 ≤ delta * Cim := by positivity
+    calc
+      _ ≤ delta * Cim * brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t + r)) := by
+        convert him r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, brrsSurfaceWavePhase] <;> ring
+      _ ≤ delta * Cim * (Lone * P3) := mul_le_mul_of_nonneg_left hphase_im hcoef
+      _ = delta * (Lone * Cim) * P3 := by ring
+      _ ≤ A * P := hAbsorb (Lone * Cim) P3 hCim_le hP3_le hP3
+  have hImo :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .middle .outgoing r s t‖ ≤ A * P := by
+    have hcoef : 0 ≤ delta * Cmo := by positivity
+    calc
+      _ ≤ delta * Cmo * brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t - s)) := by
+        convert hmo r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, brrsSurfaceWavePhase] <;> ring
+      _ ≤ delta * Cmo * (Lone * P1) := mul_le_mul_of_nonneg_left hphase_mo hcoef
+      _ = delta * (Lone * Cmo) * P1 := by ring
+      _ ≤ A * P := hAbsorb (Lone * Cmo) P1 hCmo_le hP1_le hP1
+  have hImi :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .middle .incoming r s t‖ ≤ A * P := by
+    have hcoef : 0 ≤ delta * Cmi := by positivity
+    calc
+      _ ≤ delta * Cmi * brrsStationaryRapidProfile (2 * N) (2 * Real.pi * (t + s)) := by
+        convert hmi r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, brrsSurfaceWavePhase] <;> ring
+      _ ≤ delta * Cmi * (Lone * P2) := mul_le_mul_of_nonneg_left hphase_mi hcoef
+      _ = delta * (Lone * Cmi) * P2 := by ring
+      _ ≤ A * P := hAbsorb (Lone * Cmi) P2 hCmi_le hP2_le hP2
+  have hImm :
+      ‖brrsPlanarTwoRadiusStationaryComponentIntegral Phi .middle .middle r s t‖ ≤ A * P := by
+    have hcoef : 0 ≤ delta * Cmm := by positivity
+    calc
+      _ ≤ delta * Cmm * brrsStationaryRapidProfile (2 * (2 * N)) (2 * Real.pi * t) := by
+        convert hmm r s t hr0 hr hs0 hs using 1 <;>
+          dsimp [delta, brrsSurfaceWavePhase] <;> ring
+      _ ≤ delta * Cmm * ((Ltwo * Lone) * P1) :=
+        mul_le_mul_of_nonneg_left hphase_mm hcoef
+      _ = delta * (Ltwo * Lone * Cmm) * P1 := by ring
+      _ ≤ A * P := hAbsorb (Ltwo * Lone * Cmm) P1 hCmm_le hP1_le hP1
+  have hall :=
+    norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_le_of_component_common_bound
+      Phi r s t A P (by
+        intro partR partS
+        cases partR <;> cases partS
+        · exact hIoo
+        · exact hIoi
+        · exact hIom
+        · exact hIio
+        · exact hIii
+        · exact hIim
+        · exact hImo
+        · exact hImi
+        · exact hImm)
+  calc
+    ‖brrsPlanarTwoRadiusAllStationaryComponentIntegralSum Phi r s t‖ ≤
+        (9 : Real) * A * P := hall
+    _ = (1 - (1 / 32 : Real)) * ((9 : Real) * C) * P := by
+      dsimp [A, delta]
+      ring
+    _ = (1 - (1 / 32 : Real)) * ((9 : Real) * C) *
+          (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+            brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))) := by
+      dsimp [P, P1, P2, P3, P4]
+
 /-- The compact-output/high-source planar all-nine kernel has the same
 four-endpoint-phase majorant as the higher-dimensional kernel.  The middle
 source amplitude supplies the extra square-root decay needed for the
@@ -38103,7 +40915,6 @@ theorem exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_lowHigh
       dsimp [R, Lhigh, P₃] <;> ring
   have hMsub : M - 1 = 2 + 2 * N - 1 := by
     dsimp [M]
-    omega
   have hfactor (D : Real) :
       δ * (D / R ^ (M - 1)) =
         (δ * (D / R)) * (1 / R ^ (2 * N)) := by
@@ -38254,6 +41065,1772 @@ theorem exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_lowHigh
               brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
                 brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))) := by
       dsimp [δ, R, P, P₁, P₂, P₃, P₄]
+
+/-- The high-output/compact-source planar four-sign estimate is the exact
+radial reflection of the compact-output/high-source estimate. -/
+theorem exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_highLow_fourPhase_profile_le
+    (N : Nat) (Phi : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ r s t : Real,
+      16 ≤ r → 0 ≤ s → s ≤ 16 →
+      ‖brrsPlanarTwoRadiusAllStationaryComponentIntegralSum Phi r s t‖ ≤
+        (1 - (1 / 32 : Real)) * (C / Real.sqrt (r / 16)) *
+          (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+            brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))) := by
+  obtain ⟨C, hC, hlowHigh⟩ :=
+    exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_lowHigh_fourPhase_profile_le
+      N Phi
+  refine ⟨C, hC, ?_⟩
+  intro r s t hr hs0 hs
+  rw [brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_swap Phi r s t]
+  have hswapped := hlowHigh s r t hs0 hs hr
+  convert hswapped using 1 <;> ring
+
+/-- The corrected level-zero radial Fourier kernel has the literal BRRS
+four-sign rapid majorant in every radial region.  The factor
+`s ^ (d - 1)` is part of the actual `ds` kernel: it is precisely the polar
+source Jacobian in the exact identities above.  Thus this theorem binds the
+corrected `brrsRadialBesselKernel` itself, rather than an auxiliary
+stationary proxy. -/
+theorem exists_norm_brrsRadialBesselKernel_levelZero_fourPhase_region_majorants
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (r s t : Real), ‖v‖ = 1 →
+      0 ≤ r → r ≤ 16 → 0 < s → s ≤ 16 →
+      ‖brrsRadialBesselKernel Phi d v 0 r s t‖ ≤
+        (s ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) * C *
+            (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                  brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))))) ∧
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (r s t : Real), ‖v‖ = 1 →
+      0 ≤ r → r ≤ 16 → 16 ≤ s →
+      ‖brrsRadialBesselKernel Phi d v 0 r s t‖ ≤
+        (s ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (C / (Real.sqrt (s / 16)) ^ (d - 1)) *
+            (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                  brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))))) ∧
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (r s t : Real), ‖v‖ = 1 →
+      16 ≤ r → 0 < s → s ≤ 16 →
+      ‖brrsRadialBesselKernel Phi d v 0 r s t‖ ≤
+        (s ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (C / (Real.sqrt (r / 16)) ^ (d - 1)) *
+            (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                  brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))))) ∧
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (r s t : Real), ‖v‖ = 1 →
+      16 ≤ r → 16 ≤ s →
+      ‖brrsRadialBesselKernel Phi d v 0 r s t‖ ≤
+        (s ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (C / ((Real.sqrt (r / 16)) ^ (d - 1) *
+              (Real.sqrt (s / 16)) ^ (d - 1))) *
+            (brrsStationaryRapidProfile N (2 * Real.pi * (t - r - s)) +
+              brrsStationaryRapidProfile N (2 * Real.pi * (t - r + s)) +
+                brrsStationaryRapidProfile N (2 * Real.pi * (t + r - s)) +
+                  brrsStationaryRapidProfile N (2 * Real.pi * (t + r + s))))) := by
+  by_cases htwo : d = 2
+  · subst d
+    obtain ⟨Cll, hCll, hll⟩ :=
+      exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_lowLow_fourPhase_profile_le
+        N Phi
+    obtain ⟨Clh, hClh, hlh⟩ :=
+      exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_lowHigh_fourPhase_profile_le
+        N Phi
+    obtain ⟨Chl, hChl, hhl⟩ :=
+      exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_highLow_fourPhase_profile_le
+        N Phi
+    obtain ⟨Chh, hChh, hhh⟩ :=
+      exists_norm_brrsPlanarTwoRadiusAllStationaryComponentIntegralSum_highRadius_fourPhase_profile_le
+        N Phi
+    refine ⟨⟨Cll, hCll, ?_⟩, ⟨Clh, hClh, ?_⟩,
+      ⟨Chl, hChl, ?_⟩, ⟨Chh, hChh, ?_⟩⟩
+    · intro v r s t hv hr0 hr hspos hs
+      rw [brrsRadialBesselKernel_two_levelZero_eq_allPlanarStationary
+        Phi r s t v hv hr0 hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      exact mul_le_mul_of_nonneg_left (hll r s t hr0 hr hspos.le hs)
+        (pow_nonneg hspos.le _)
+    · intro v r s t hv hr0 hr hs
+      have hspos : 0 < s := by linarith
+      rw [brrsRadialBesselKernel_two_levelZero_eq_allPlanarStationary
+        Phi r s t v hv hr0 hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      simpa using mul_le_mul_of_nonneg_left (hlh r s t hr0 hr hs)
+        (pow_nonneg hspos.le 1)
+    · intro v r s t hv hr hspos hs
+      rw [brrsRadialBesselKernel_two_levelZero_eq_allPlanarStationary
+        Phi r s t v hv (by linarith) hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      simpa using mul_le_mul_of_nonneg_left (hhl r s t hr hspos.le hs)
+        (pow_nonneg hspos.le 1)
+    · intro v r s t hv hr hs
+      have hspos : 0 < s := by linarith
+      rw [brrsRadialBesselKernel_two_levelZero_eq_allPlanarStationary
+        Phi r s t v hv (by linarith) hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      simpa using mul_le_mul_of_nonneg_left (hhh r s t hr hs)
+        (pow_nonneg hspos.le 1)
+  · have hd3 : 3 ≤ d := by omega
+    obtain ⟨Cll, hCll, hll⟩ :=
+      exists_norm_brrsTwoRadiusAllStationaryComponentIntegralSum_lowLow_fourPhase_profile_le
+        (d := d) (N := N) Phi
+    obtain ⟨Clh, hClh, hlh⟩ :=
+      exists_norm_brrsTwoRadiusAllStationaryComponentIntegralSum_lowHigh_fourPhase_profile_le
+        (d := d) (N := N) hd3 Phi
+    obtain ⟨Chl, hChl, hhl⟩ :=
+      exists_norm_brrsTwoRadiusAllStationaryComponentIntegralSum_highLow_fourPhase_profile_le
+        (d := d) (N := N) hd3 Phi
+    obtain ⟨Chh, hChh, hhh⟩ :=
+      exists_norm_brrsTwoRadiusAllStationaryComponentIntegralSum_highRadius_fourPhase_profile_le
+        (d := d) (N := N) hd3 Phi
+    refine ⟨⟨Cll, hCll, ?_⟩, ⟨Clh, hClh, ?_⟩,
+      ⟨Chl, hChl, ?_⟩, ⟨Chh, hChh, ?_⟩⟩
+    · intro v r s t hv hr0 hr hspos hs
+      rw [brrsRadialBesselKernel_levelZero_eq_allStationary
+        hd3 Phi r s t v hv hr0 hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      exact mul_le_mul_of_nonneg_left (hll r s t hr0 hr hspos.le hs)
+        (pow_nonneg hspos.le _)
+    · intro v r s t hv hr0 hr hs
+      have hspos : 0 < s := by linarith
+      rw [brrsRadialBesselKernel_levelZero_eq_allStationary
+        hd3 Phi r s t v hv hr0 hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      exact mul_le_mul_of_nonneg_left (hlh r s t hr0 hr hs)
+        (pow_nonneg hspos.le _)
+    · intro v r s t hv hr hspos hs
+      rw [brrsRadialBesselKernel_levelZero_eq_allStationary
+        hd3 Phi r s t v hv (by linarith) hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      exact mul_le_mul_of_nonneg_left (hhl r s t hr hspos.le hs)
+        (pow_nonneg hspos.le _)
+    · intro v r s t hv hr hs
+      have hspos : 0 < s := by linarith
+      rw [brrsRadialBesselKernel_levelZero_eq_allStationary
+        hd3 Phi r s t v hv (by linarith) hspos, norm_mul, Complex.norm_real,
+        Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hspos.le _)]
+      exact mul_le_mul_of_nonneg_left (hhh r s t hr hs)
+        (pow_nonneg hspos.le _)
+
+/-- The single real phase-line kernel denoted by `ω_j` in BRRS Section 5.
+It is the real realization of the already normalized dyadic stationary
+profile; the leading dyadic factor is therefore part of the kernel itself. -/
+noncomputable def brrsSectionFiveOmega (N j : Nat) (u : Real) : Real :=
+  (brrsDyadicStationaryPhaseProfile N j u).toReal
+
+/-- The Section 5 phase-line kernel is exactly the scaled stationary rapid
+profile in the repository's `2π` Fourier convention. -/
+theorem brrsSectionFiveOmega_eq_scaledRapidProfile (N j : Nat) (u : Real) :
+    brrsSectionFiveOmega N j u =
+      ((2 : Real) ^ j) * brrsStationaryRapidProfile N
+        (2 * Real.pi * ((2 : Real) ^ j * u)) :=
+  brrsDyadicStationaryPhaseProfile_toReal N j u
+
+/-- The Section 5 phase-line kernel is nonnegative. -/
+theorem brrsSectionFiveOmega_nonneg (N j : Nat) (u : Real) :
+    0 ≤ brrsSectionFiveOmega N j u := by
+  rw [brrsSectionFiveOmega_eq_scaledRapidProfile]
+  exact mul_nonneg (by positivity) (brrsStationaryRapidProfile_nonneg N _)
+
+/-- Source-style rapid decay for the single phase-line kernel.  Apart from
+the harmless Fourier-normalization constant `2π`, this is exactly
+`ω_j(u) \lesssim_N 2^j (1 + 2^j |u|)^{-N}` from BRRS Section 5. -/
+theorem brrsSectionFiveOmega_le_sourceRapidDecay
+    (N j : Nat) (u : Real) :
+    brrsSectionFiveOmega N j u ≤
+      (2 : Real) ^ N * ((2 : Real) ^ j) *
+        ((1 + ((2 : Real) ^ j) * |u|)⁻¹) ^ N := by
+  let q : Real := (2 : Real) ^ j
+  have hq : 0 < q := by
+    dsimp [q]
+    positivity
+  have hqu : |q * u| = q * |u| := by
+    rw [abs_mul, abs_of_pos hq]
+  have habs : |2 * Real.pi * (q * u)| = (2 * Real.pi) * (q * |u|) := by
+    calc
+      |2 * Real.pi * (q * u)| = |2 * Real.pi| * |q * u| := by
+        rw [abs_mul]
+      _ = (2 * Real.pi) * (q * |u|) := by
+        rw [hqu, abs_mul, abs_of_nonneg (by norm_num : (0 : Real) ≤ 2),
+          abs_of_pos Real.pi_pos]
+  have hden : 1 + q * |u| ≤ 1 + |2 * Real.pi * (q * u)| := by
+    rw [habs]
+    nlinarith [Real.pi_gt_three, mul_nonneg hq.le (abs_nonneg u)]
+  have hinv : (1 + |2 * Real.pi * (q * u)|)⁻¹ ≤
+      (1 + q * |u|)⁻¹ := by
+    simpa only [one_div] using
+      (one_div_le_one_div_of_le (by positivity) hden)
+  have hpow : ((1 + |2 * Real.pi * (q * u)|)⁻¹) ^ N ≤
+      ((1 + q * |u|)⁻¹) ^ N :=
+    pow_le_pow_left₀ (by positivity) hinv N
+  rw [brrsSectionFiveOmega_eq_scaledRapidProfile]
+  change q * brrsStationaryRapidProfile N (2 * Real.pi * (q * u)) ≤
+    (2 : Real) ^ N * q * ((1 + q * |u|)⁻¹) ^ N
+  calc
+    q * brrsStationaryRapidProfile N (2 * Real.pi * (q * u)) ≤
+        q * ((2 : Real) ^ N *
+          ((1 + |2 * Real.pi * (q * u)|)⁻¹) ^ N) :=
+      mul_le_mul_of_nonneg_left
+        (brrsStationaryRapidProfile_le_japaneseBracket N
+          (2 * Real.pi * (q * u))) hq.le
+    _ ≤ q * ((2 : Real) ^ N * ((1 + q * |u|)⁻¹) ^ N) := by
+      exact mul_le_mul_of_nonneg_left
+        (mul_le_mul_of_nonneg_left hpow (by positivity)) hq.le
+    _ = (2 : Real) ^ N * q * ((1 + q * |u|)⁻¹) ^ N := by ring
+
+/-- On the far source annuli used in BRRS (5.5), each of the four travelling
+phase lines is separated from zero by at least half of the source radius.
+The numerical threshold `n ≥ 10` is the literal one in the source: it makes
+the bounded time/output region `[1,2] × [0,20]` negligible compared with
+`s ∈ [2^n,2^(n+1)]`. -/
+theorem brrsSectionFive_farSource_fourPhase_abs_ge_half
+    {n : Nat} {r s t : Real} (hn : 10 ≤ n)
+    (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Icc (0 : Real) 20)
+    (hs : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))) :
+    s / 2 ≤ |t - r - s| ∧ s / 2 ≤ |t - r + s| ∧
+      s / 2 ≤ |t + r - s| ∧ s / 2 ≤ |t + r + s| := by
+  have hpow : (2 : Real) ^ 10 ≤ (2 : Real) ^ n :=
+    pow_le_pow_right₀ (by norm_num) hn
+  have hslarge : (1024 : Real) ≤ s := by
+    calc
+      (1024 : Real) = (2 : Real) ^ 10 := by norm_num
+      _ ≤ (2 : Real) ^ n := hpow
+      _ ≤ s := hs.1
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · have hphase : s / 2 ≤ -(t - r - s) := by
+      nlinarith [ht.2, hr.1, hslarge]
+    exact hphase.trans (neg_le_abs _)
+  · have hphase : s / 2 ≤ t - r + s := by
+      nlinarith [ht.1, hr.2, hslarge]
+    exact hphase.trans (le_abs_self _)
+  · have hphase : s / 2 ≤ -(t + r - s) := by
+      nlinarith [ht.2, hr.2, hslarge]
+    exact hphase.trans (neg_le_abs _)
+  · have hphase : s / 2 ≤ t + r + s := by
+      nlinarith [ht.1, hr.1, hslarge]
+    exact hphase.trans (le_abs_self _)
+
+/-- The actual Section 5 phase-line kernel inherits its rapid bound with the
+far-annulus lower bound substituted into the Japanese bracket.  This is the
+pointwise input to the Hölder summation in BRRS (5.5), not an abstract
+kernel hypothesis. -/
+theorem brrsSectionFiveOmega_le_farSourceRapidDecay
+    (N j : Nat) {s u : Real} (hs : 0 ≤ s) (hu : s / 2 ≤ |u|) :
+    brrsSectionFiveOmega N j u ≤
+      (2 : Real) ^ N * ((2 : Real) ^ j) *
+        ((1 + ((2 : Real) ^ j) * (s / 2))⁻¹) ^ N := by
+  let q : Real := (2 : Real) ^ j
+  have hq : 0 < q := by
+    dsimp [q]
+    positivity
+  have hhalf : 0 ≤ s / 2 := div_nonneg hs (by norm_num)
+  have hbase : 0 < 1 + q * (s / 2) := by
+    nlinarith [mul_nonneg hq.le hhalf]
+  have hden : 1 + q * (s / 2) ≤ 1 + q * |u| := by
+    nlinarith [mul_le_mul_of_nonneg_left hu hq.le]
+  have hinv : (1 + q * |u|)⁻¹ ≤ (1 + q * (s / 2))⁻¹ := by
+    simpa only [one_div] using
+      (one_div_le_one_div_of_le hbase hden)
+  have hpow : ((1 + q * |u|)⁻¹) ^ N ≤
+      ((1 + q * (s / 2))⁻¹) ^ N :=
+    pow_le_pow_left₀ (by positivity) hinv N
+  calc
+    brrsSectionFiveOmega N j u ≤
+        (2 : Real) ^ N * q * ((1 + q * |u|)⁻¹) ^ N := by
+      simpa only [q] using brrsSectionFiveOmega_le_sourceRapidDecay N j u
+    _ ≤ (2 : Real) ^ N * q * ((1 + q * (s / 2))⁻¹) ^ N := by
+      exact mul_le_mul_of_nonneg_left hpow (by positivity)
+    _ = (2 : Real) ^ N * ((2 : Real) ^ j) *
+        ((1 + ((2 : Real) ^ j) * (s / 2))⁻¹) ^ N := by
+      dsimp [q]
+
+/-- Summing the four literal travelling phases preserves the far-source
+rapid decay.  The factor four is explicit, so later Hölder and dyadic-series
+arguments can choose the decay order without hiding a sign multiplicity. -/
+theorem brrsSectionFiveOmega_fourPhase_le_farSourceRapidDecay
+    (N j : Nat) {n : Nat} {r s t : Real} (hn : 10 ≤ n)
+    (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Icc (0 : Real) 20)
+    (hs : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))) :
+    brrsSectionFiveOmega N j (t - r - s) +
+      brrsSectionFiveOmega N j (t - r + s) +
+        brrsSectionFiveOmega N j (t + r - s) +
+          brrsSectionFiveOmega N j (t + r + s) ≤
+      4 * ((2 : Real) ^ N * ((2 : Real) ^ j) *
+        ((1 + ((2 : Real) ^ j) * (s / 2))⁻¹) ^ N) := by
+  rcases brrsSectionFive_farSource_fourPhase_abs_ge_half hn ht hr hs with
+    ⟨h₁, h₂, h₃, h₄⟩
+  have hs0 : 0 ≤ s := le_trans (by positivity) hs.1
+  have h₁' := brrsSectionFiveOmega_le_farSourceRapidDecay N j hs0 h₁
+  have h₂' := brrsSectionFiveOmega_le_farSourceRapidDecay N j hs0 h₂
+  have h₃' := brrsSectionFiveOmega_le_farSourceRapidDecay N j hs0 h₃
+  have h₄' := brrsSectionFiveOmega_le_farSourceRapidDecay N j hs0 h₄
+  nlinarith
+
+/-- The dyadic constant obtained by evaluating the source rapid decay at the
+left endpoint of the far annulus `[2^n,2^(n+1)]`.  Keeping this as a named
+real quantity makes the later ENNReal Hölder calculation use the actual
+`\omega_j` estimate without replacing it by an assumed abstract decay
+constant. -/
+noncomputable def brrsSectionFiveFarAnnulusBound (N j n : Nat) : Real :=
+  (2 : Real) ^ N * ((2 : Real) ^ j) *
+    ((1 + ((2 : Real) ^ j) * ((2 : Real) ^ n / 2))⁻¹) ^ N
+
+/-- The far-annulus constant has the explicit product decay supplied by the
+source rapid kernel estimate.  This is the form used when choosing the
+decay order large enough to absorb the cardinality and Hölder factors in
+the summation of (5.5). -/
+theorem brrsSectionFiveFarAnnulusBound_le_productDecay
+    (N j n : Nat) :
+    brrsSectionFiveFarAnnulusBound N j n ≤
+      (2 : Real) ^ N * ((2 : Real) ^ j) *
+        (2 / (((2 : Real) ^ j) * ((2 : Real) ^ n))) ^ N := by
+  let q : Real := (2 : Real) ^ j
+  let a : Real := (2 : Real) ^ n
+  have hq : 0 < q := by
+    dsimp [q]
+    positivity
+  have ha : 0 < a := by
+    dsimp [a]
+    positivity
+  have hden : q * (a / 2) ≤ 1 + q * (a / 2) := by
+    linarith
+  have hinv : (1 + q * (a / 2))⁻¹ ≤ 2 / (q * a) := by
+    calc
+      (1 + q * (a / 2))⁻¹ ≤ (q * (a / 2))⁻¹ := by
+        simpa only [one_div] using
+          (one_div_le_one_div_of_le (by positivity) hden)
+      _ = 2 / (q * a) := by
+        field_simp [hq.ne', ha.ne']
+  have hpow : ((1 + q * (a / 2))⁻¹) ^ N ≤
+      (2 / (q * a)) ^ N :=
+    pow_le_pow_left₀ (by positivity) hinv N
+  change (2 : Real) ^ N * q * ((1 + q * (a / 2))⁻¹) ^ N ≤
+    (2 : Real) ^ N * q * (2 / (q * a)) ^ N
+  exact mul_le_mul_of_nonneg_left hpow (by positivity)
+
+/-- The far-annulus rapid-decay constant is nonnegative.  This elementary
+sign fact is kept separate because the source estimate is subsequently raised
+to the real exponent `p`. -/
+theorem brrsSectionFiveFarAnnulusBound_nonneg (N j n : Nat) :
+    0 ≤ brrsSectionFiveFarAnnulusBound N j n := by
+  unfold brrsSectionFiveFarAnnulusBound
+  positivity
+
+/-- Raising the actual far-annulus rapid-decay estimate to a nonnegative
+Lebesgue exponent preserves its explicit product-decay majorant. -/
+theorem brrsSectionFiveFarAnnulusBound_rpow_le_productDecay
+    (N j n : Nat) {p : Real} (hp : 0 ≤ p) :
+    (brrsSectionFiveFarAnnulusBound N j n) ^ p ≤
+      ((2 : Real) ^ N * ((2 : Real) ^ j) *
+        (2 / (((2 : Real) ^ j) * ((2 : Real) ^ n))) ^ N) ^ p := by
+  exact Real.rpow_le_rpow
+    (brrsSectionFiveFarAnnulusBound_nonneg N j n)
+    (brrsSectionFiveFarAnnulusBound_le_productDecay N j n) hp
+
+/-- The rapid order `L + d + 2` has enough `j`-decay to absorb the source
+discretization cardinality, and enough annular decay to leave a geometric
+factor.  These are precisely the two scalar exponent inequalities used in
+the far-source summation of BRRS (5.5). -/
+theorem brrsSectionFiveFarSource_decay_exponent_bounds
+    {d L : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1) :
+    (L : Real) ≤
+        p * (((L + d + 2 : Nat) : Real) - 1) - 1 ∧
+      1 ≤ p * ((L + d + 2 : Nat) : Real) - (p - 1) -
+        p * sobolevExponent d p := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hL : 0 ≤ (L : Real) := by positivity
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have horder : (L + d + 2 : Nat) = L + d + 2 := by omega
+  rw [horder]
+  norm_num [Nat.cast_add]
+  constructor <;> nlinarith
+
+/-- The purely scalar coefficient left after the one-phase Hölder estimate
+on the source annulus `[(2 : ℝ)^n, (2 : ℝ)^(n+1)]`.  It records the time-grid
+cardinality factor, rapid kernel, annular volume, and Sobolev source weight,
+but no four-phase aggregation; consequently it applies to each literal
+single-sign `II_n` in BRRS (5.5). -/
+noncomputable def brrsSectionFiveFarAnnulusScalarCoefficient
+    (d N j n : Nat) (p : Real) : Real :=
+  ((2 : Real) ^ j) *
+    (brrsSectionFiveFarAnnulusBound N j n) ^ p *
+      ((2 : Real) ^ n) ^ (p - 1) *
+        (((2 : Real) ^ (n + 1)) ^ sobolevExponent d p) ^ p
+
+/-- The product-decay scalar coefficient has a single dyadic-power normal
+form.  This is the exact algebra behind the far-source geometric series. -/
+theorem brrsSectionFiveFarAnnulus_productDecay_scalar_normalForm
+    (d N j n : Nat) (p : Real) :
+    (2 : Real) ^ j *
+      (((2 : Real) ^ N * (2 : Real) ^ j *
+        (2 / ((2 : Real) ^ j * (2 : Real) ^ n)) ^ N) ^ p) *
+      ((2 : Real) ^ n) ^ (p - 1) *
+        (((2 : Real) ^ (n + 1)) ^ sobolevExponent d p) ^ p =
+      (2 : Real) ^
+        (2 * (N : Real) * p + p * sobolevExponent d p -
+          (p * ((N : Real) - 1) - 1) * (j : Real) -
+          (p * (N : Real) - (p - 1) - p * sobolevExponent d p) * (n : Real)) := by
+  have htwo : 0 < (2 : Real) := by norm_num
+  have htwo_nonneg : 0 ≤ (2 : Real) := htwo.le
+  have hquot :
+      2 / ((2 : Real) ^ (j : Real) * (2 : Real) ^ (n : Real)) =
+        (2 : Real) ^ (1 - (j : Real) - (n : Real)) := by
+    calc
+      2 / ((2 : Real) ^ (j : Real) * (2 : Real) ^ (n : Real)) =
+          (2 : Real) ^ (1 : Real) /
+            (2 : Real) ^ ((j : Real) + (n : Real)) := by
+        rw [Real.rpow_one, ← Real.rpow_add htwo]
+      _ = (2 : Real) ^ (1 - ((j : Real) + (n : Real))) :=
+        (Real.rpow_sub htwo _ _).symm
+      _ = (2 : Real) ^ (1 - (j : Real) - (n : Real)) := by
+        congr 1
+        ring
+  simp_rw [← Real.rpow_natCast]
+  rw [hquot]
+  simp_rw [← Real.rpow_mul htwo_nonneg, ← Real.rpow_add htwo]
+  rw [← Real.rpow_mul htwo_nonneg]
+  rw [← Real.rpow_add htwo, ← Real.rpow_add htwo, ← Real.rpow_add htwo]
+  congr 1
+  push_cast
+  ring
+
+/-- The actual far-annulus scalar coefficient is bounded by the same
+coefficient with the source rapid product-decay majorant substituted for the
+kernel. -/
+theorem brrsSectionFiveFarAnnulusScalarCoefficient_le_productDecay
+    (d N j n : Nat) {p : Real} (hp : 0 ≤ p) :
+    brrsSectionFiveFarAnnulusScalarCoefficient d N j n p ≤
+      (2 : Real) ^ j *
+        (((2 : Real) ^ N * (2 : Real) ^ j *
+          (2 / ((2 : Real) ^ j * (2 : Real) ^ n)) ^ N) ^ p) *
+        ((2 : Real) ^ n) ^ (p - 1) *
+          (((2 : Real) ^ (n + 1)) ^ sobolevExponent d p) ^ p := by
+  unfold brrsSectionFiveFarAnnulusScalarCoefficient
+  have hrapid := brrsSectionFiveFarAnnulusBound_rpow_le_productDecay N j n hp
+  gcongr
+
+/-- Choosing rapid order `L + d + 2` gives a one-phase far-source coefficient
+with the dyadic tail required by BRRS (5.5): `2^{-L j}` at frequency level
+`j` and a summable factor `2^{-k}` on the annulus `n = 10 + k`. -/
+theorem brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
+    {d L j k : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1) :
+    brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p ≤
+      (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real)) * ((2 : Real)⁻¹) ^ k := by
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have hdecay := brrsSectionFiveFarSource_decay_exponent_bounds
+    (d := d) (L := L) hd hp hsubcritical
+  rcases hdecay with ⟨hfrequency_raw, hannulus_raw⟩
+  let alpha : Real := p * (((L + d + 2 : Nat) : Real) - 1) - 1
+  let beta : Real := p * ((L + d + 2 : Nat) : Real) - (p - 1) -
+    p * sobolevExponent d p
+  have hfrequency : (L : Real) ≤ alpha := by
+    simpa only [alpha] using hfrequency_raw
+  have hannulus : 1 ≤ beta := by
+    simpa only [beta] using hannulus_raw
+  have hj : 0 ≤ (j : Real) := by positivity
+  have hk : 0 ≤ (k : Real) := by positivity
+  have hannulus0 : 0 ≤ beta := le_trans zero_le_one hannulus
+  have hfrequencyj := mul_le_mul_of_nonneg_right hfrequency hj
+  have hkannulus := mul_le_mul_of_nonneg_right hannulus hk
+  have htenannulus : 0 ≤ beta * 10 :=
+    mul_nonneg hannulus0 (by norm_num)
+  have hexponent :
+      2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          alpha * (j : Real) - beta * ((10 + k : Nat) : Real) ≤
+        2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real) - (k : Real) := by
+    norm_num [Nat.cast_add]
+    nlinarith
+  have htwo : 0 < (2 : Real) := by norm_num
+  have htail :
+      (2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+            (L : Real) * (j : Real) - (k : Real)) =
+        (2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+            (L : Real) * (j : Real)) * ((2 : Real)⁻¹) ^ k := by
+    rw [Real.rpow_sub htwo, Real.rpow_natCast, div_eq_mul_inv, ← inv_pow]
+  calc
+    brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p ≤
+        (2 : Real) ^ j *
+          (((2 : Real) ^ (L + d + 2) * (2 : Real) ^ j *
+            (2 / ((2 : Real) ^ j * (2 : Real) ^ (10 + k))) ^
+              (L + d + 2)) ^ p) *
+          ((2 : Real) ^ (10 + k)) ^ (p - 1) *
+            (((2 : Real) ^ (10 + k + 1)) ^ sobolevExponent d p) ^ p :=
+      brrsSectionFiveFarAnnulusScalarCoefficient_le_productDecay
+        d (L + d + 2) j (10 + k) hp0
+    _ = (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (p * (((L + d + 2 : Nat) : Real) - 1) - 1) * (j : Real) -
+          (p * ((L + d + 2 : Nat) : Real) - (p - 1) -
+            p * sobolevExponent d p) * ((10 + k : Nat) : Real)) := by
+      convert brrsSectionFiveFarAnnulus_productDecay_scalar_normalForm
+        d (L + d + 2) j (10 + k) p using 1 <;> ring
+    _ ≤ (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real) - (k : Real)) :=
+      Real.rpow_le_rpow_of_exponent_le (by norm_num)
+        (by simpa only [alpha, beta] using hexponent)
+    _ = (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real)) * ((2 : Real)⁻¹) ^ k := htail
+
+/-- The literal one-phase far-source coefficients are summable over the
+annuli `n = 10 + k`.  The majorant is the geometric tail established above,
+with no aggregation over the four travelling signs. -/
+theorem summable_brrsSectionFiveFarAnnulusScalarCoefficient
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1) :
+    Summable (fun k : Nat =>
+      brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p) := by
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+      (L : Real) * (j : Real))
+  have hgeom : Summable (fun k : Nat => ((2 : Real)⁻¹) ^ k) :=
+    summable_geometric_of_lt_one (by positivity) (by norm_num)
+  have hmajor : Summable (fun k : Nat => C * ((2 : Real)⁻¹) ^ k) :=
+    hgeom.mul_left C
+  refine hmajor.of_nonneg_of_le ?_ ?_
+  · intro k
+    unfold brrsSectionFiveFarAnnulusScalarCoefficient
+    positivity
+  · intro k
+    simpa only [C] using
+      (brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
+        (d := d) (L := L) (j := j) (k := k) hd hp hsubcritical)
+
+/-- The geometric tail has the explicit mass `2` of the ratio-`1/2` series.
+This is the scalar annular summation in BRRS (5.5), still prior to inserting
+any four-phase kernel aggregation. -/
+theorem tsum_brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1) :
+    (∑' k : Nat,
+      brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p) ≤
+      (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real)) * 2 := by
+  let C : Real := (2 : Real) ^
+    (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+      (L : Real) * (j : Real))
+  have hgeom : Summable (fun k : Nat => ((2 : Real)⁻¹) ^ k) :=
+    summable_geometric_of_lt_one (by positivity) (by norm_num)
+  have hmajor : Summable (fun k : Nat => C * ((2 : Real)⁻¹) ^ k) :=
+    hgeom.mul_left C
+  have hsum := summable_brrsSectionFiveFarAnnulusScalarCoefficient
+    (d := d) (L := L) (j := j) hd hp hsubcritical
+  calc
+    (∑' k : Nat,
+      brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p) ≤
+        ∑' k : Nat, C * ((2 : Real)⁻¹) ^ k :=
+      Summable.tsum_le_tsum
+        (fun k => by
+          simpa only [C] using
+            (brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
+              (d := d) (L := L) (j := j) (k := k) hd hp hsubcritical))
+        hsum hmajor
+    _ = C * 2 := by rw [tsum_mul_left, tsum_geometric_inv_two]
+    _ = (2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real)) * 2 := by rfl
+
+/-- Every literal travelling phase on a far source annulus is bounded by the
+same left-endpoint rapid-decay constant. -/
+theorem brrsSectionFiveOmega_fourPhase_le_farAnnulusBound
+    (N j : Nat) {n : Nat} {r s t : Real} (hn : 10 ≤ n)
+    (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Icc (0 : Real) 20)
+    (hs : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))) :
+    brrsSectionFiveOmega N j (t - r - s) ≤
+        brrsSectionFiveFarAnnulusBound N j n ∧
+      brrsSectionFiveOmega N j (t - r + s) ≤
+        brrsSectionFiveFarAnnulusBound N j n ∧
+      brrsSectionFiveOmega N j (t + r - s) ≤
+        brrsSectionFiveFarAnnulusBound N j n ∧
+      brrsSectionFiveOmega N j (t + r + s) ≤
+        brrsSectionFiveFarAnnulusBound N j n := by
+  rcases brrsSectionFive_farSource_fourPhase_abs_ge_half hn ht hr hs with
+    ⟨h₁, h₂, h₃, h₄⟩
+  have hscale : ((2 : Real) ^ n) / 2 ≤ s / 2 :=
+    div_le_div_of_nonneg_right hs.1 (by norm_num)
+  have h₁' := brrsSectionFiveOmega_le_farSourceRapidDecay
+    N j (s := (2 : Real) ^ n) (by positivity) (hscale.trans h₁)
+  have h₂' := brrsSectionFiveOmega_le_farSourceRapidDecay
+    N j (s := (2 : Real) ^ n) (by positivity) (hscale.trans h₂)
+  have h₃' := brrsSectionFiveOmega_le_farSourceRapidDecay
+    N j (s := (2 : Real) ^ n) (by positivity) (hscale.trans h₃)
+  have h₄' := brrsSectionFiveOmega_le_farSourceRapidDecay
+    N j (s := (2 : Real) ^ n) (by positivity) (hscale.trans h₄)
+  exact ⟨by simpa only [brrsSectionFiveFarAnnulusBound] using h₁',
+    by simpa only [brrsSectionFiveFarAnnulusBound] using h₂',
+    by simpa only [brrsSectionFiveFarAnnulusBound] using h₃',
+    by simpa only [brrsSectionFiveFarAnnulusBound] using h₄'⟩
+
+/-! ### The far source annuli in BRRS (5.5)
+
+The source splits the radial input into the literal annuli
+`(2^n, 2^(n+1)]`, `n ≥ 10`.  The following definition is the sum of all four
+travelling phase contributions on one such annulus.  Closed versus half-open
+endpoints are immaterial for Lebesgue integration; the half-open convention
+avoids assigning a singular radial power at the single endpoint `r = 0`.
+-/
+
+/-- The polar output weight in the far-source part of (5.4). -/
+noncomputable def brrsSectionFiveFarSourceOutputWeight
+    (d : Nat) (p r : Real) : ENNReal :=
+  (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p))
+
+/-- Measurability of the polar output weight used in the far-source cells. -/
+theorem measurable_brrsSectionFiveFarSourceOutputWeight
+    (d : Nat) (p : Real) :
+    Measurable (brrsSectionFiveFarSourceOutputWeight d p) := by
+  unfold brrsSectionFiveFarSourceOutputWeight
+  exact ENNReal.continuous_rpow_const.measurable.comp
+    ENNReal.continuous_ofReal.measurable
+
+/-- In the finite fixed-time Sobolev range used in BRRS Section 5, the
+polar output exponent is strictly below the one-dimensional integrability
+threshold. -/
+theorem mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical
+    {d : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1)) :
+    p * sobolevExponent d p < 1 := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by
+    exact_mod_cast hd
+  have hden : 0 < (d : Real) - 1 := by
+    linarith
+  have hppos : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  rw [mul_sobolevExponent_eq hppos.ne']
+  have hmult : p * ((d : Real) - 1) < 2 * (d : Real) :=
+    (lt_div_iff₀ hden).mp hcritical
+  nlinarith
+
+/-- Exact polar mass of the far-source output weight.  The exponent is
+integrable precisely in the range `p * s_p < 1`; the displayed value is the
+one-dimensional radial integral which occurs after the four phase estimates
+in BRRS (5.5). -/
+theorem lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_eq
+    {d : Nat} {p : Real} (hpenalty : p * sobolevExponent d p < 1) :
+    (∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r) =
+      ENNReal.ofReal
+        ((20 : Real) ^ (1 - p * sobolevExponent d p) /
+          (1 - p * sobolevExponent d p)) := by
+  have hq : 1 < 2 - p * sobolevExponent d p := by
+    linarith
+  have hformula := Auto.Spherical.Auxiliary.lintegral_rpow_Ioc_eq
+    (p := 2 - p * sobolevExponent d p) (u := (20 : Real)) hq (by norm_num)
+  unfold brrsSectionFiveFarSourceOutputWeight
+  rw [show -(p * sobolevExponent d p) =
+      (2 - p * sobolevExponent d p) - 2 by ring]
+  convert hformula using 1 <;> ring
+
+/-- The polar output mass is finite throughout the Section 5 fixed-time
+range. -/
+theorem lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_ne_top
+    {d : Nat} {p : Real} (hpenalty : p * sobolevExponent d p < 1) :
+    (∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r) ≠ ∞ := by
+  rw [lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_eq hpenalty]
+  exact ENNReal.ofReal_ne_top
+
+/-- The exact polar mass in the finite fixed-time Sobolev range of BRRS
+Section 5. -/
+theorem lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_eq_of_lt_fixedTimeCritical
+    {d : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1)) :
+    (∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r) =
+      ENNReal.ofReal
+        ((20 : Real) ^ (1 - p * sobolevExponent d p) /
+          (1 - p * sobolevExponent d p)) :=
+  lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_eq
+    (mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd hp hcritical)
+
+/-- The four-sign aggregate of the four single-phase far-source
+`II_n^σ` contributions from BRRS (5.5).  It retains the polar source weight
+`s^{s_p}`, the polar output weight `r^{-p s_p}`, the radial ranges
+`0 < r ≤ 20` and `2^n < s ≤ 2^(n+1)`, and all four travelling phase signs.
+The later passage from the kernel majorant to this aggregate accounts
+explicitly for the convexity factor; this definition is not identified with
+one single-sign source `II_n`. -/
+noncomputable def brrsSectionFiveFarSourceFourPhaseBlock
+    (T : Finset Real) (d N j n : Nat) (p : Real) (f : Real → ENNReal) : ENNReal :=
+  (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r *
+        (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f s) ^ p) +
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r *
+        (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f s) ^ p) +
+      (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f s) ^ p) +
+        ∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              (ENNReal.ofReal s) ^ sobolevExponent d p *
+                ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f s) ^ p
+
+/-- The literal Hölder estimate for the `t-r-s` phase on one far source
+annulus.  This is the first line of the argument for BRRS (5.5): the
+far-annulus rapid-decay bound makes this one phase uniformly small, and
+Hölder is then applied to the weighted source profile. -/
+theorem brrsSectionFiveFarSource_sub_sub_holder_le
+    {d N j n : Nat} {p : Real} (hn : 10 ≤ n) (hp : 1 < p)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f s) ^ p ≤
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+        (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+          ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let K : Real → ENNReal := fun s =>
+    ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s))
+  let g : Real → ENNReal := fun s =>
+    (ENNReal.ofReal s) ^ sobolevExponent d p * f s
+  have hg : Measurable g := by
+    dsimp only [g]
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      ENNReal.continuous_ofReal.measurable).mul hf
+  have hK : ∀ s ∈ A, K s ≤
+      ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) := by
+    intro s hs
+    have hr' : r ∈ Icc (0 : Real) 20 := ⟨le_of_lt hr.1, hr.2⟩
+    have hs' : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)) :=
+      ⟨le_of_lt hs.1, hs.2⟩
+    exact ENNReal.ofReal_le_ofReal
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').1
+  have hholder := brrsSectionFive_farAnnulus_holder_bound hp
+    (A := A) measurableSet_Ioc hg
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) hK
+  simpa only [A, K, g, mul_assoc, mul_left_comm, mul_comm] using hholder
+
+/-- The literal Hölder estimate for the `t-r+s` phase on one far source
+annulus in BRRS (5.5).  This is a separate source term, so its pointwise
+kernel majorization is taken from the second component of the four-phase
+far-annulus estimate before applying the same restricted Hölder step. -/
+theorem brrsSectionFiveFarSource_sub_add_holder_le
+    {d N j n : Nat} {p : Real} (hn : 10 ≤ n) (hp : 1 < p)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f s) ^ p ≤
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+        (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+          ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let K : Real → ENNReal := fun s =>
+    ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s))
+  let g : Real → ENNReal := fun s =>
+    (ENNReal.ofReal s) ^ sobolevExponent d p * f s
+  have hg : Measurable g := by
+    dsimp only [g]
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      ENNReal.continuous_ofReal.measurable).mul hf
+  have hK : ∀ s ∈ A, K s ≤
+      ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) := by
+    intro s hs
+    have hr' : r ∈ Icc (0 : Real) 20 := ⟨le_of_lt hr.1, hr.2⟩
+    have hs' : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)) :=
+      ⟨le_of_lt hs.1, hs.2⟩
+    exact ENNReal.ofReal_le_ofReal
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').2.1
+  have hholder := brrsSectionFive_farAnnulus_holder_bound hp
+    (A := A) measurableSet_Ioc hg
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) hK
+  simpa only [A, K, g, mul_assoc, mul_left_comm, mul_comm] using hholder
+
+/-- The literal Hölder estimate for the `t+r-s` phase on one far source
+annulus in BRRS (5.5). -/
+theorem brrsSectionFiveFarSource_add_sub_holder_le
+    {d N j n : Nat} {p : Real} (hn : 10 ≤ n) (hp : 1 < p)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f s) ^ p ≤
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+        (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+          ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let K : Real → ENNReal := fun s =>
+    ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s))
+  let g : Real → ENNReal := fun s =>
+    (ENNReal.ofReal s) ^ sobolevExponent d p * f s
+  have hg : Measurable g := by
+    dsimp only [g]
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      ENNReal.continuous_ofReal.measurable).mul hf
+  have hK : ∀ s ∈ A, K s ≤
+      ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) := by
+    intro s hs
+    have hr' : r ∈ Icc (0 : Real) 20 := ⟨le_of_lt hr.1, hr.2⟩
+    have hs' : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)) :=
+      ⟨le_of_lt hs.1, hs.2⟩
+    exact ENNReal.ofReal_le_ofReal
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').2.2.1
+  have hholder := brrsSectionFive_farAnnulus_holder_bound hp
+    (A := A) measurableSet_Ioc hg
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) hK
+  simpa only [A, K, g, mul_assoc, mul_left_comm, mul_comm] using hholder
+
+/-- The literal Hölder estimate for the `t+r+s` phase on one far source
+annulus in BRRS (5.5). -/
+theorem brrsSectionFiveFarSource_add_add_holder_le
+    {d N j n : Nat} {p : Real} (hn : 10 ≤ n) (hp : 1 < p)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f s) ^ p ≤
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+        (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+          ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let K : Real → ENNReal := fun s =>
+    ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s))
+  let g : Real → ENNReal := fun s =>
+    (ENNReal.ofReal s) ^ sobolevExponent d p * f s
+  have hg : Measurable g := by
+    dsimp only [g]
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      ENNReal.continuous_ofReal.measurable).mul hf
+  have hK : ∀ s ∈ A, K s ≤
+      ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n) := by
+    intro s hs
+    have hr' : r ∈ Icc (0 : Real) 20 := ⟨le_of_lt hr.1, hr.2⟩
+    have hs' : s ∈ Icc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)) :=
+      ⟨le_of_lt hs.1, hs.2⟩
+    exact ENNReal.ofReal_le_ofReal
+      (brrsSectionFiveOmega_fourPhase_le_farAnnulusBound N j hn ht hr' hs').2.2.2
+  have hholder := brrsSectionFive_farAnnulus_holder_bound hp
+    (A := A) measurableSet_Ioc hg
+      (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) hK
+  simpa only [A, K, g, mul_assoc, mul_left_comm, mul_comm] using hholder
+
+/-- Summing the four literal phase estimates on one far source annulus gives
+a four-sign aggregate convenient for the later kernel reduction.  The
+individual summands are the source `II_n` estimates in BRRS (5.5); the
+conclusion keeps the exact radial output mass and weighted source mass
+visible for the following geometric summation in `n`. -/
+theorem brrsSectionFiveFarSourceFourPhaseBlock_le_common
+    {d N j n : Nat} {p : Real} (hn : 10 ≤ n) (hp : 1 < p)
+    (T : Finset Real) (hT : ∀ t ∈ T, t ∈ Icc (1 : Real) 2)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceFourPhaseBlock T d N j n p f ≤
+      4 * (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+          (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+            ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+  let C : ENNReal :=
+    (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+      (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+        ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+          ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p
+  have hW : Measurable (brrsSectionFiveFarSourceOutputWeight d p) :=
+    measurable_brrsSectionFiveFarSourceOutputWeight d p
+  have houtput (g : Real → ENNReal)
+      (hg : ∀ r ∈ Ioc (0 : Real) 20, g r ≤ C) :
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r * g r) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r * g r) ≤
+          ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r * C := by
+        apply setLIntegral_mono' measurableSet_Ioc
+        intro r hr
+        exact mul_le_mul' le_rfl (hg r hr)
+      _ = (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C :=
+        lintegral_mul_const C hW
+  have hsubsub : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f s) ^ p) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    intro t ht
+    apply houtput
+    intro r hr
+    dsimp only [C]
+    exact brrsSectionFiveFarSource_sub_sub_holder_le hn hp (hT t ht) hr f hf
+  have hsubadd : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f s) ^ p) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    intro t ht
+    apply houtput
+    intro r hr
+    dsimp only [C]
+    exact brrsSectionFiveFarSource_sub_add_holder_le hn hp (hT t ht) hr f hf
+  have haddsub : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f s) ^ p) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    intro t ht
+    apply houtput
+    intro r hr
+    dsimp only [C]
+    exact brrsSectionFiveFarSource_add_sub_holder_le hn hp (hT t ht) hr f hf
+  have haddadd : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f s) ^ p) ≤
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    intro t ht
+    apply houtput
+    intro r hr
+    dsimp only [C]
+    exact brrsSectionFiveFarSource_add_add_holder_le hn hp (hT t ht) hr f hf
+  change brrsSectionFiveFarSourceFourPhaseBlock T d N j n p f ≤
+    4 * (T.card : ENNReal) *
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) * C
+  unfold brrsSectionFiveFarSourceFourPhaseBlock
+  have Hsubsub :
+      (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f s) ^ p) ≤
+        ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    apply Finset.sum_le_sum
+    intro t ht
+    exact hsubsub t ht
+  have Hsubadd :
+      (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f s) ^ p) ≤
+        ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    apply Finset.sum_le_sum
+    intro t ht
+    exact hsubadd t ht
+  have Haddsub :
+      (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f s) ^ p) ≤
+        ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    apply Finset.sum_le_sum
+    intro t ht
+    exact haddsub t ht
+  have Haddadd :
+      (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f s) ^ p) ≤
+        ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+    apply Finset.sum_le_sum
+    intro t ht
+    exact haddadd t ht
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f s) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r *
+            (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+              (ENNReal.ofReal s) ^ sobolevExponent d p *
+                ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f s) ^ p) +
+          (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r *
+              (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                (ENNReal.ofReal s) ^ sobolevExponent d p *
+                  ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f s) ^ p) +
+            ∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d p r *
+                (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                  (ENNReal.ofReal s) ^ sobolevExponent d p *
+                    ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f s) ^ p ≤
+      (∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) * C) +
+        (∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C) +
+          (∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) * C) +
+            ∑ _t ∈ T, (∫⁻ r in Ioc (0 : Real) 20,
+              brrsSectionFiveFarSourceOutputWeight d p r) * C :=
+        add_le_add (add_le_add (add_le_add Hsubsub Hsubadd) Haddsub) Haddadd
+    _ = 4 * (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) * C := by
+      simp only [Finset.sum_const, nsmul_eq_mul]
+      ring
+
+/-- The one-dimensional Lebesgue volume of the `n`th far-source annulus.
+This is the exact radial annular factor occurring after Hölder in the proof
+of BRRS (5.5). -/
+theorem volume_brrsSectionFiveFarSourceAnnulus (n : Nat) :
+    volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))) =
+      ENNReal.ofReal ((2 : Real) ^ n) := by
+  rw [Real.volume_Ioc, pow_succ]
+  congr 1
+  ring
+
+/-- On one far-source annulus, the nonnegative Sobolev radial weight can be
+pulled out at the upper endpoint.  This is the weighted source `L^p` estimate
+used with the literal four-phase block in BRRS (5.5). -/
+theorem brrsSectionFiveFarSource_weighted_annulus_lintegral_le
+    {d n : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+      ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) ≤
+      ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
+        ∫⁻ s, (f s) ^ p := by
+  let A : Set Real := Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1))
+  let C : ENNReal :=
+    ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p
+  have hsobolev : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  have hp_nonneg : 0 ≤ p := le_trans zero_le_two hp
+  have hfp : Measurable (fun s : Real => (f s) ^ p) :=
+    ENNReal.continuous_rpow_const.measurable.comp hf
+  have hpointwise : ∀ s ∈ A,
+      ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p ≤
+        C * (f s) ^ p := by
+    intro s hs
+    have hs_le : s ≤ (2 : Real) ^ (n + 1) := hs.2
+    have hweight : (ENNReal.ofReal s) ^ sobolevExponent d p ≤
+        (ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p :=
+      ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal hs_le) hsobolev
+    calc
+      ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p ≤
+          ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p *
+            f s) ^ p :=
+        ENNReal.rpow_le_rpow (mul_le_mul' hweight le_rfl) hp_nonneg
+      _ = C * (f s) ^ p := by
+        dsimp only [C]
+        rw [ENNReal.mul_rpow_of_nonneg _ _ hp_nonneg]
+  calc
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) ≤
+        ∫⁻ s in A, C * (f s) ^ p := by
+      apply setLIntegral_mono' measurableSet_Ioc
+      intro s hs
+      exact hpointwise s hs
+    _ = C * ∫⁻ s in A, (f s) ^ p := by
+      rw [lintegral_const_mul C hfp]
+    _ ≤ C * ∫⁻ s, (f s) ^ p :=
+      by
+        simpa only [mul_comm] using
+          (mul_le_mul_left (setLIntegral_le_lintegral A (fun s => (f s) ^ p)) C)
+    _ = ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
+        ∫⁻ s, (f s) ^ p := by
+      rfl
+
+/-- After the four-phase Hölder step, the aggregate source annulus has its
+dyadic coefficient.  Apart from the explicit factor four for aggregation,
+each summand is the coefficient used in BRRS (5.5).  This combines only the
+discretization cardinality, exact annular volume, and endpoint Sobolev-weight
+bound; the rapid decay is deliberately left visible for the following
+geometric summation. -/
+theorem brrsSectionFiveFarSourceFourPhaseBlock_le_dyadic_sourceMass
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d N j n : Nat} {p : Real} (hd : 2 ≤ d) (hn : 10 ≤ n) (hp : 2 ≤ p)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceFourPhaseBlock T d N j n p f ≤
+      32 * (2 : ENNReal) ^ j *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+          (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+          ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
+            ∫⁻ s, (f s) ^ p) := by
+  have hTinterval : ∀ t ∈ T, t ∈ Icc (1 : Real) 2 := by
+    intro t ht
+    exact hE (hT.subset ht)
+  have hcommon := brrsSectionFiveFarSourceFourPhaseBlock_le_common
+    (d := d) (N := N) (j := j) (n := n) (p := p)
+    hn (lt_of_lt_of_le (by norm_num) hp) T hTinterval f hf
+  have hcard := dyadicDiscretization_card_le_eight_mul_two_pow_of_subset_Icc
+    hE j T hT
+  have hsource := brrsSectionFiveFarSource_weighted_annulus_lintegral_le
+    (d := d) (p := p) hd hp f hf (n := n)
+  calc
+    brrsSectionFiveFarSourceFourPhaseBlock T d N j n p f ≤
+        4 * (T.card : ENNReal) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := hcommon
+    _ ≤ 4 * (8 * (2 : ENNReal) ^ j) *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      gcongr
+    _ = 32 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      ring
+    _ = 32 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+              ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+                ((ENNReal.ofReal s) ^ sobolevExponent d p * f s) ^ p) := by
+      rw [volume_brrsSectionFiveFarSourceAnnulus n]
+    _ ≤ 32 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+            (((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
+              ∫⁻ s, (f s) ^ p)) := by
+      gcongr
+    _ = 32 * (2 : ENNReal) ^ j *
+          (∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r) *
+          ((ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+            (ENNReal.ofReal ((2 : Real) ^ n)) ^ (p - 1) *
+            ((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
+              ∫⁻ s, (f s) ^ p) := by
+      ring
+
+/-- The four BRRS travelling phase lines are four translates of the one
+dyadic kernel `ω_j`. -/
+theorem brrsSectionFiveOmega_fourPhase_sum_eq
+    (N j : Nat) (r s t : Real) :
+    brrsSectionFiveOmega N j (t - r - s) +
+      brrsSectionFiveOmega N j (t - r + s) +
+        brrsSectionFiveOmega N j (t + r - s) +
+          brrsSectionFiveOmega N j (t + r + s) =
+      ((2 : Real) ^ j) *
+        (brrsStationaryRapidProfile N
+            (2 * Real.pi *
+              ((2 : Real) ^ j * t - (2 : Real) ^ j * r - (2 : Real) ^ j * s)) +
+          brrsStationaryRapidProfile N
+            (2 * Real.pi *
+              ((2 : Real) ^ j * t - (2 : Real) ^ j * r + (2 : Real) ^ j * s)) +
+            brrsStationaryRapidProfile N
+              (2 * Real.pi *
+                ((2 : Real) ^ j * t + (2 : Real) ^ j * r - (2 : Real) ^ j * s)) +
+              brrsStationaryRapidProfile N
+                (2 * Real.pi *
+                  ((2 : Real) ^ j * t + (2 : Real) ^ j * r +
+                    (2 : Real) ^ j * s))) := by
+  rw [brrsSectionFiveOmega_eq_scaledRapidProfile,
+    brrsSectionFiveOmega_eq_scaledRapidProfile,
+    brrsSectionFiveOmega_eq_scaledRapidProfile,
+    brrsSectionFiveOmega_eq_scaledRapidProfile]
+  have hsubsub : ((2 : Real) ^ j) * (t - r - s) =
+      ((2 : Real) ^ j * t) - ((2 : Real) ^ j * r) - ((2 : Real) ^ j * s) := by
+    ring
+  have hsubadd : ((2 : Real) ^ j) * (t - r + s) =
+      ((2 : Real) ^ j * t) - ((2 : Real) ^ j * r) + ((2 : Real) ^ j * s) := by
+    ring
+  have haddsub : ((2 : Real) ^ j) * (t + r - s) =
+      ((2 : Real) ^ j * t) + ((2 : Real) ^ j * r) - ((2 : Real) ^ j * s) := by
+    ring
+  have haddadd : ((2 : Real) ^ j) * (t + r + s) =
+      ((2 : Real) ^ j * t) + ((2 : Real) ^ j * r) + ((2 : Real) ^ j * s) := by
+    ring
+  rw [hsubsub, hsubadd, haddsub, haddadd]
+  ring
+
+/-- At every dyadic level, the actual corrected radial Bessel kernel obeys
+the four-sign BRRS majorant in each of the four radial regions.  All four
+terms use the one source-normalized phase-line kernel `ω_j` above; the proof
+is the exact dyadic scaling identity for the actual kernel composed with the
+level-zero all-region result. -/
+theorem exists_norm_brrsRadialBesselKernel_fourPhase_region_majorants
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real), ‖v‖ = 1 →
+      0 ≤ ((2 : Real) ^ j) * r → ((2 : Real) ^ j) * r ≤ 16 →
+      0 < ((2 : Real) ^ j) * s → ((2 : Real) ^ j) * s ≤ 16 →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        ((((2 : Real) ^ j) * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) * C *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s)))) ∧
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real), ‖v‖ = 1 →
+      0 ≤ ((2 : Real) ^ j) * r → ((2 : Real) ^ j) * r ≤ 16 →
+      16 ≤ ((2 : Real) ^ j) * s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        ((((2 : Real) ^ j) * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (C / (Real.sqrt ((((2 : Real) ^ j) * s) / 16)) ^ (d - 1)) *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s)))) ∧
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real), ‖v‖ = 1 →
+      16 ≤ ((2 : Real) ^ j) * r → 0 < ((2 : Real) ^ j) * s →
+      ((2 : Real) ^ j) * s ≤ 16 →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        ((((2 : Real) ^ j) * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (C / (Real.sqrt ((((2 : Real) ^ j) * r) / 16)) ^ (d - 1)) *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s)))) ∧
+    (∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real), ‖v‖ = 1 →
+      16 ≤ ((2 : Real) ^ j) * r → 16 ≤ ((2 : Real) ^ j) * s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        ((((2 : Real) ^ j) * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (C / ((Real.sqrt ((((2 : Real) ^ j) * r) / 16)) ^ (d - 1) *
+              (Real.sqrt ((((2 : Real) ^ j) * s) / 16)) ^ (d - 1))) *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s)))) := by
+  obtain ⟨⟨Cll, hCll, hll⟩, ⟨Clh, hClh, hlh⟩,
+    ⟨Chl, hChl, hhl⟩, ⟨Chh, hChh, hhh⟩⟩ :=
+    exists_norm_brrsRadialBesselKernel_levelZero_fourPhase_region_majorants
+      (d := d) (N := N) hd Phi
+  refine ⟨⟨Cll, hCll, ?_⟩, ⟨Clh, hClh, ?_⟩,
+    ⟨Chl, hChl, ?_⟩, ⟨Chh, hChh, ?_⟩⟩
+  · intro v j r s t hv hr0 hr hspos hs
+    let q : Real := (2 : Real) ^ j
+    have hq : 0 < q := by dsimp [q]; positivity
+    have hlevel := hll v (q * r) (q * s) (q * t) hv hr0 hr hspos hs
+    have hfour := brrsSectionFiveOmega_fourPhase_sum_eq N j r s t
+    rw [brrsRadialBesselKernel_eq_levelZero_scaled (by omega) Phi j r s t v hv,
+      norm_smul, Real.norm_eq_abs, abs_of_nonneg hq.le]
+    calc
+      q * ‖brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t)‖ ≤
+          q * (((q * s) ^ (d - 1)) *
+            ((1 - (1 / 32 : Real)) * Cll *
+              (brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) - (q * s))) +
+                brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) + (q * s))) +
+                  brrsStationaryRapidProfile N
+                    (2 * Real.pi * ((q * t) + (q * r) - (q * s))) +
+                    brrsStationaryRapidProfile N
+                      (2 * Real.pi * ((q * t) + (q * r) + (q * s)))))) :=
+        mul_le_mul_of_nonneg_left hlevel hq.le
+      _ = ((q * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) * Cll *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s))) := by
+        dsimp [q] at hfour ⊢
+        rw [hfour]
+        ring
+  · intro v j r s t hv hr0 hr hs
+    let q : Real := (2 : Real) ^ j
+    have hq : 0 < q := by dsimp [q]; positivity
+    have hspos : 0 < q * s := by linarith
+    have hlevel := hlh v (q * r) (q * s) (q * t) hv hr0 hr hs
+    have hfour := brrsSectionFiveOmega_fourPhase_sum_eq N j r s t
+    rw [brrsRadialBesselKernel_eq_levelZero_scaled (by omega) Phi j r s t v hv,
+      norm_smul, Real.norm_eq_abs, abs_of_nonneg hq.le]
+    calc
+      q * ‖brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t)‖ ≤
+          q * (((q * s) ^ (d - 1)) *
+            ((1 - (1 / 32 : Real)) *
+              (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) *
+              (brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) - (q * s))) +
+                brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) + (q * s))) +
+                  brrsStationaryRapidProfile N
+                    (2 * Real.pi * ((q * t) + (q * r) - (q * s))) +
+                    brrsStationaryRapidProfile N
+                      (2 * Real.pi * ((q * t) + (q * r) + (q * s)))))) :=
+        mul_le_mul_of_nonneg_left hlevel hq.le
+      _ = ((q * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s))) := by
+        dsimp [q] at hfour ⊢
+        rw [hfour]
+        ring
+  · intro v j r s t hv hr hspos hs
+    let q : Real := (2 : Real) ^ j
+    have hq : 0 < q := by dsimp [q]; positivity
+    have hlevel := hhl v (q * r) (q * s) (q * t) hv hr hspos hs
+    have hfour := brrsSectionFiveOmega_fourPhase_sum_eq N j r s t
+    rw [brrsRadialBesselKernel_eq_levelZero_scaled (by omega) Phi j r s t v hv,
+      norm_smul, Real.norm_eq_abs, abs_of_nonneg hq.le]
+    calc
+      q * ‖brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t)‖ ≤
+          q * (((q * s) ^ (d - 1)) *
+            ((1 - (1 / 32 : Real)) *
+              (Chl / (Real.sqrt ((q * r) / 16)) ^ (d - 1)) *
+              (brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) - (q * s))) +
+                brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) + (q * s))) +
+                  brrsStationaryRapidProfile N
+                    (2 * Real.pi * ((q * t) + (q * r) - (q * s))) +
+                    brrsStationaryRapidProfile N
+                      (2 * Real.pi * ((q * t) + (q * r) + (q * s)))))) :=
+        mul_le_mul_of_nonneg_left hlevel hq.le
+      _ = ((q * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (Chl / (Real.sqrt ((q * r) / 16)) ^ (d - 1)) *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s))) := by
+        dsimp [q] at hfour ⊢
+        rw [hfour]
+        ring
+  · intro v j r s t hv hr hs
+    let q : Real := (2 : Real) ^ j
+    have hq : 0 < q := by dsimp [q]; positivity
+    have hlevel := hhh v (q * r) (q * s) (q * t) hv hr hs
+    have hfour := brrsSectionFiveOmega_fourPhase_sum_eq N j r s t
+    rw [brrsRadialBesselKernel_eq_levelZero_scaled (by omega) Phi j r s t v hv,
+      norm_smul, Real.norm_eq_abs, abs_of_nonneg hq.le]
+    calc
+      q * ‖brrsRadialBesselKernel Phi d v 0 (q * r) (q * s) (q * t)‖ ≤
+          q * (((q * s) ^ (d - 1)) *
+            ((1 - (1 / 32 : Real)) *
+              (Chh / ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1))) *
+              (brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) - (q * s))) +
+                brrsStationaryRapidProfile N
+                  (2 * Real.pi * ((q * t) - (q * r) + (q * s))) +
+                  brrsStationaryRapidProfile N
+                    (2 * Real.pi * ((q * t) + (q * r) - (q * s))) +
+                    brrsStationaryRapidProfile N
+                      (2 * Real.pi * ((q * t) + (q * r) + (q * s)))))) :=
+        mul_le_mul_of_nonneg_left hlevel hq.le
+      _ = ((q * s) ^ (d - 1)) *
+          ((1 - (1 / 32 : Real)) *
+            (Chh / ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1))) *
+            (brrsSectionFiveOmega N j (t - r - s) +
+              brrsSectionFiveOmega N j (t - r + s) +
+                brrsSectionFiveOmega N j (t + r - s) +
+                  brrsSectionFiveOmega N j (t + r + s))) := by
+        dsimp [q] at hfour ⊢
+        rw [hfour]
+        ring
+
+/-- The square-root form of the radial half-density is the usual real-power
+form appearing in the Section 5 two-radius normalization. -/
+private theorem brrs_sqrtRatio_pow_eq_halfDensity
+    {d : Nat} (hd : 1 ≤ d) {r s : Real} (hr : 0 < r) (hs : 0 < s) :
+    (Real.sqrt (s / r)) ^ (d - 1) =
+      (s / r) ^ (((d : Real) - 1) / 2) := by
+  let n : Real := (d : Real) - 1
+  change (Real.sqrt (s / r)) ^ (d - 1) = (s / r) ^ (n / 2)
+  rw [Real.sqrt_eq_rpow, ← Real.rpow_natCast,
+    ← Real.rpow_mul (by positivity)]
+  dsimp [n]
+  norm_num [Nat.cast_sub hd]
+  congr 1
+  ring
+
+/-- In the low-output/high-source radial region, the single source
+half-density is controlled by the same two-radius half-density with only a
+fixed annular constant. -/
+private theorem brrs_highSource_lowHigh_prefactor_le_halfDensity
+    {d : Nat} (hd : 1 ≤ d) {q r s : Real} (hq : 0 < q)
+    (hr : 0 < r) (hs : 0 < s) (hqr : q * r ≤ 16) :
+    (q * s) ^ (d - 1) /
+        (Real.sqrt ((q * s) / 16)) ^ (d - 1) ≤
+      (16 : Real) ^ (d - 1) *
+        (s / r) ^ (((d : Real) - 1) / 2) := by
+  have hqs : 0 < q * s := mul_pos hq hs
+  have hsixteen : Real.sqrt (16 : Real) = 4 := by
+    apply (Real.sqrt_eq_iff_mul_self_eq (by norm_num) (by norm_num)).2
+    norm_num
+  have hqrsqrt : Real.sqrt (q * s) =
+      Real.sqrt (q * r) * Real.sqrt (s / r) := by
+    calc
+      Real.sqrt (q * s) = Real.sqrt ((q * r) * (s / r)) := by
+        congr 1
+        field_simp [ne_of_gt hr]
+      _ = Real.sqrt (q * r) * Real.sqrt (s / r) := by
+        rw [Real.sqrt_mul (mul_nonneg hq.le hr.le)]
+  have hroot : Real.sqrt (q * r) ≤ 4 := by
+    calc
+      Real.sqrt (q * r) ≤ Real.sqrt 16 := Real.sqrt_le_sqrt hqr
+      _ = 4 := hsixteen
+  have hrootpow : (Real.sqrt (q * r)) ^ (d - 1) ≤
+      (4 : Real) ^ (d - 1) := by
+    exact pow_le_pow_left₀ (Real.sqrt_nonneg _) hroot _
+  have hfactor :
+      (q * s) ^ (d - 1) /
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1) =
+        (4 : Real) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1) := by
+    simpa only [div_eq_mul_inv, one_mul, mul_one] using
+      (brrs_radial_factor_waveFrontDensity (d - 1) (q * s) 1 hqs)
+  have hhalf := brrs_sqrtRatio_pow_eq_halfDensity hd hr hs
+  calc
+    (q * s) ^ (d - 1) /
+        (Real.sqrt ((q * s) / 16)) ^ (d - 1) =
+        (4 : Real) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1) := hfactor
+    _ = (4 : Real) ^ (d - 1) *
+        ((Real.sqrt (q * r)) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1)) := by
+      rw [hqrsqrt, mul_pow]
+    _ ≤ (4 : Real) ^ (d - 1) *
+        ((4 : Real) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1)) := by
+      apply mul_le_mul_of_nonneg_left
+      · exact mul_le_mul_of_nonneg_right hrootpow
+          (pow_nonneg (Real.sqrt_nonneg _) _)
+      · positivity
+    _ = (16 : Real) ^ (d - 1) *
+        (Real.sqrt (s / r)) ^ (d - 1) := by
+      have hfour : (4 : Real) ^ (d - 1) * (4 : Real) ^ (d - 1) =
+          (16 : Real) ^ (d - 1) := by
+        rw [← mul_pow]
+        norm_num
+      rw [← mul_assoc, hfour]
+    _ = (16 : Real) ^ (d - 1) *
+        (s / r) ^ (((d : Real) - 1) / 2) := by rw [hhalf]
+
+/-- In the high-output/high-source radial region, the two stationary
+half-densities simplify exactly to the Section 5 ratio `(s / r)^((d-1)/2)`.
+-/
+private theorem brrs_highSource_highHigh_prefactor_eq_halfDensity
+    {d : Nat} (hd : 1 ≤ d) {q r s : Real} (hq : 0 < q)
+    (hr : 0 < r) (hs : 0 < s) :
+    (q * s) ^ (d - 1) /
+        ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1)) =
+      (16 : Real) ^ (d - 1) *
+        (s / r) ^ (((d : Real) - 1) / 2) := by
+  have hqs : 0 < q * s := mul_pos hq hs
+  have hqr : 0 < q * r := mul_pos hq hr
+  have hsixteen : Real.sqrt (16 : Real) = 4 := by
+    apply (Real.sqrt_eq_iff_mul_self_eq (by norm_num) (by norm_num)).2
+    norm_num
+  have hdenr : 0 < (Real.sqrt ((q * r) / 16)) ^ (d - 1) := by
+    apply pow_pos
+    exact Real.sqrt_pos.2 (by positivity)
+  have hdens : 0 < (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by
+    apply pow_pos
+    exact Real.sqrt_pos.2 (by positivity)
+  have hsourcefactor :
+      (q * s) ^ (d - 1) /
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1) =
+        (4 : Real) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1) := by
+    simpa only [div_eq_mul_inv, one_mul, mul_one] using
+      (brrs_radial_factor_waveFrontDensity (d - 1) (q * s) 1 hqs)
+  have hdenroot : Real.sqrt ((q * r) / 16) =
+      Real.sqrt (q * r) / 4 := by
+    rw [Real.sqrt_div (mul_nonneg hq.le hr.le), hsixteen]
+  have hrootratio : Real.sqrt (q * s) / Real.sqrt (q * r) =
+      Real.sqrt (s / r) := by
+    calc
+      Real.sqrt (q * s) / Real.sqrt (q * r) =
+          Real.sqrt ((q * s) / (q * r)) := by
+        rw [Real.sqrt_div (mul_nonneg hq.le hs.le)]
+      _ = Real.sqrt (s / r) := by
+        congr 1
+        field_simp [ne_of_gt hq, ne_of_gt hr]
+  have hhalf := brrs_sqrtRatio_pow_eq_halfDensity hd hr hs
+  calc
+    (q * s) ^ (d - 1) /
+        ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1)) =
+        ((q * s) ^ (d - 1) /
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1)) /
+          (Real.sqrt ((q * r) / 16)) ^ (d - 1) := by
+      field_simp [ne_of_gt hdenr, ne_of_gt hdens]
+    _ = ((4 : Real) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1)) /
+          (Real.sqrt (q * r) / 4) ^ (d - 1) := by
+      rw [hsourcefactor, hdenroot]
+    _ = (16 : Real) ^ (d - 1) *
+          (Real.sqrt (q * s) / Real.sqrt (q * r)) ^ (d - 1) := by
+      have hrootne : Real.sqrt (q * r) ≠ 0 :=
+        ne_of_gt (Real.sqrt_pos.2 hqr)
+      have hfour : (4 : Real) ^ (d - 1) * (4 : Real) ^ (d - 1) =
+          (16 : Real) ^ (d - 1) := by
+        rw [← mul_pow]
+        norm_num
+      calc
+        ((4 : Real) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1)) /
+            (Real.sqrt (q * r) / 4) ^ (d - 1) =
+            ((4 : Real) ^ (d - 1) * (4 : Real) ^ (d - 1)) *
+              ((Real.sqrt (q * s)) ^ (d - 1) /
+                (Real.sqrt (q * r)) ^ (d - 1)) := by
+          rw [div_pow]
+          field_simp [hrootne]
+        _ = (16 : Real) ^ (d - 1) *
+              ((Real.sqrt (q * s)) ^ (d - 1) /
+                (Real.sqrt (q * r)) ^ (d - 1)) := by rw [hfour]
+        _ = (16 : Real) ^ (d - 1) *
+              (Real.sqrt (q * s) / Real.sqrt (q * r)) ^ (d - 1) := by
+          rw [div_pow]
+    _ = (16 : Real) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1) := by rw [hrootratio]
+    _ = (16 : Real) ^ (d - 1) *
+          (s / r) ^ (((d : Real) - 1) / 2) := by rw [hhalf]
+
+/-- The corrected actual radial Bessel kernel has the global high-source
+four-phase majorant used in the later reduction from the exact radial kernel
+formula (5.3) to the four phase-line terms in (5.4).  The proof joins the
+low-output/high-source and high-output/high-source regions while retaining
+the exact two-radius half-density. -/
+theorem exists_norm_brrsRadialBesselKernel_fourPhase_highSource_halfDensity_majorant
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real),
+      ‖v‖ = 1 → 0 < r → 16 ≤ ((2 : Real) ^ j) * s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        C * (s / r) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s)) := by
+  obtain ⟨⟨_Cll, _hCll, _hll⟩, ⟨Clh, hClh, hlh⟩,
+    ⟨_Chl, _hChl, _hhl⟩, ⟨Chh, hChh, hhh⟩⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_region_majorants
+      (d := d) (N := N) hd Phi
+  let C : Real := (16 : Real) ^ (d - 1) * (Clh + Chh)
+  have hC : 0 < C := by
+    dsimp [C]
+    exact mul_pos (pow_pos (by norm_num) _) (add_pos hClh hChh)
+  refine ⟨C, hC, ?_⟩
+  intro v j r s t hv hr hs
+  let q : Real := (2 : Real) ^ j
+  let P : Real := brrsSectionFiveOmega N j (t - r - s) +
+    brrsSectionFiveOmega N j (t - r + s) +
+      brrsSectionFiveOmega N j (t + r - s) +
+        brrsSectionFiveOmega N j (t + r + s)
+  have hq : 0 < q := by
+    dsimp [q]
+    positivity
+  have hqs : 0 < q * s := by
+    simpa only [q] using lt_of_lt_of_le (by norm_num : (0 : Real) < 16) hs
+  have hspos : 0 < s := by
+    apply pos_of_mul_pos_right hqs
+    exact hq.le
+  have hP : 0 ≤ P := by
+    dsimp [P]
+    exact add_nonneg (add_nonneg (add_nonneg
+      (brrsSectionFiveOmega_nonneg N j (t - r - s))
+      (brrsSectionFiveOmega_nonneg N j (t - r + s)))
+      (brrsSectionFiveOmega_nonneg N j (t + r - s)))
+      (brrsSectionFiveOmega_nonneg N j (t + r + s))
+  have hsumC : 0 ≤ Clh + Chh := (add_pos hClh hChh).le
+  have hcoeffL : (1 - (1 / 32 : Real)) * Clh ≤ Clh + Chh := by
+    nlinarith
+  have hcoeffH : (1 - (1 / 32 : Real)) * Chh ≤ Clh + Chh := by
+    nlinarith
+  change ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+    C * (s / r) ^ (((d : Real) - 1) / 2) * P
+  by_cases hqr : q * r ≤ 16
+  · have hqr0 : 0 ≤ q * r := mul_nonneg hq.le hr.le
+    have hbase : ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        (q * s) ^ (d - 1) *
+          ((1 - (1 / 32 : Real)) *
+            (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) := by
+      simpa only [q, P] using
+        (hlh v j r s t hv (by simpa only [q] using hqr0)
+          (by simpa only [q] using hqr) (by simpa only [q] using hs))
+    have hden : 0 < (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by
+      apply pow_pos
+      exact Real.sqrt_pos.2 (by positivity)
+    have hpref := brrs_highSource_lowHigh_prefactor_le_halfDensity
+      (d := d) (q := q) (r := r) (s := s) (by omega) hq hr hspos hqr
+    have hpref0 : 0 ≤ (q * s) ^ (d - 1) /
+        (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by
+      exact div_nonneg (pow_nonneg (mul_nonneg hq.le hspos.le) _)
+        (pow_nonneg (Real.sqrt_nonneg _) _)
+    have hrearrange :
+        (q * s) ^ (d - 1) *
+          ((1 - (1 / 32 : Real)) *
+            (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) =
+          ((1 - (1 / 32 : Real)) * Clh) *
+            ((q * s) ^ (d - 1) /
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P := by
+      field_simp [ne_of_gt hden]
+    have hfirst : ((1 - (1 / 32 : Real)) * Clh) *
+          ((q * s) ^ (d - 1) /
+            (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P ≤
+        (Clh + Chh) * ((q * s) ^ (d - 1) /
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P := by
+      calc
+        ((1 - (1 / 32 : Real)) * Clh) *
+            ((q * s) ^ (d - 1) /
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P =
+            ((1 - (1 / 32 : Real)) * Clh) *
+              (((q * s) ^ (d - 1) /
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) := by ring
+        _ ≤ (Clh + Chh) *
+              (((q * s) ^ (d - 1) /
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) :=
+          mul_le_mul_of_nonneg_right hcoeffL (mul_nonneg hpref0 hP)
+        _ = (Clh + Chh) * ((q * s) ^ (d - 1) /
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P := by ring
+    have hsecond : (Clh + Chh) * ((q * s) ^ (d - 1) /
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P ≤
+        (Clh + Chh) * ((16 : Real) ^ (d - 1) *
+          (s / r) ^ (((d : Real) - 1) / 2)) * P := by
+      calc
+        (Clh + Chh) * ((q * s) ^ (d - 1) /
+            (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P =
+            (Clh + Chh) *
+              (((q * s) ^ (d - 1) /
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) := by ring
+        _ ≤ (Clh + Chh) *
+              (((16 : Real) ^ (d - 1) *
+                (s / r) ^ (((d : Real) - 1) / 2)) * P) :=
+          mul_le_mul_of_nonneg_left
+            (mul_le_mul_of_nonneg_right hpref hP) hsumC
+        _ = (Clh + Chh) * ((16 : Real) ^ (d - 1) *
+              (s / r) ^ (((d : Real) - 1) / 2)) * P := by ring
+    calc
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+          (q * s) ^ (d - 1) *
+            ((1 - (1 / 32 : Real)) *
+              (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) := hbase
+      _ = ((1 - (1 / 32 : Real)) * Clh) *
+            ((q * s) ^ (d - 1) /
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P := hrearrange
+      _ ≤ (Clh + Chh) * ((q * s) ^ (d - 1) /
+            (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P := hfirst
+      _ ≤ (Clh + Chh) * ((16 : Real) ^ (d - 1) *
+            (s / r) ^ (((d : Real) - 1) / 2)) * P := hsecond
+      _ = C * (s / r) ^ (((d : Real) - 1) / 2) * P := by
+        dsimp [C]
+        ring
+  · have hqrhigh : 16 ≤ q * r := le_of_not_ge hqr
+    have hbase : ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        (q * s) ^ (d - 1) *
+          ((1 - (1 / 32 : Real)) *
+            (Chh / ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P) := by
+      simpa only [q, P] using
+        (hhh v j r s t hv (by simpa only [q] using hqrhigh)
+          (by simpa only [q] using hs))
+    have hdenr : 0 < (Real.sqrt ((q * r) / 16)) ^ (d - 1) := by
+      apply pow_pos
+      exact Real.sqrt_pos.2 (by positivity)
+    have hdens : 0 < (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by
+      apply pow_pos
+      exact Real.sqrt_pos.2 (by positivity)
+    have hden : 0 < (Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+        (Real.sqrt ((q * s) / 16)) ^ (d - 1) := mul_pos hdenr hdens
+    have hpref := brrs_highSource_highHigh_prefactor_eq_halfDensity
+      (d := d) (q := q) (r := r) (s := s) (by omega) hq hr hspos
+    have hpref0 : 0 ≤ (q * s) ^ (d - 1) /
+        ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+          (Real.sqrt ((q * s) / 16)) ^ (d - 1)) := by
+      exact div_nonneg (pow_nonneg (mul_nonneg hq.le hspos.le) _)
+        (mul_nonneg (pow_nonneg (Real.sqrt_nonneg _) _)
+          (pow_nonneg (Real.sqrt_nonneg _) _))
+    have hrearrange :
+        (q * s) ^ (d - 1) *
+          ((1 - (1 / 32 : Real)) *
+            (Chh / ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P) =
+          ((1 - (1 / 32 : Real)) * Chh) *
+            ((q * s) ^ (d - 1) /
+              ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P := by
+      field_simp [ne_of_gt hden]
+    have hfirst : ((1 - (1 / 32 : Real)) * Chh) *
+          ((q * s) ^ (d - 1) /
+            ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P ≤
+        (Clh + Chh) * ((q * s) ^ (d - 1) /
+          ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+            (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P := by
+      calc
+        ((1 - (1 / 32 : Real)) * Chh) *
+            ((q * s) ^ (d - 1) /
+              ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P =
+            ((1 - (1 / 32 : Real)) * Chh) *
+              (((q * s) ^ (d - 1) /
+                ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                  (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P) := by ring
+        _ ≤ (Clh + Chh) *
+              (((q * s) ^ (d - 1) /
+                ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                  (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P) :=
+          mul_le_mul_of_nonneg_right hcoeffH (mul_nonneg hpref0 hP)
+        _ = (Clh + Chh) * ((q * s) ^ (d - 1) /
+              ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P := by ring
+    calc
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+          (q * s) ^ (d - 1) *
+            ((1 - (1 / 32 : Real)) *
+              (Chh / ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P) := hbase
+      _ = ((1 - (1 / 32 : Real)) * Chh) *
+            ((q * s) ^ (d - 1) /
+              ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P := hrearrange
+      _ ≤ (Clh + Chh) * ((q * s) ^ (d - 1) /
+            ((Real.sqrt ((q * r) / 16)) ^ (d - 1) *
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1))) * P := hfirst
+      _ = C * (s / r) ^ (((d : Real) - 1) / 2) * P := by
+        rw [hpref]
+        dsimp [C]
+        ring
 
 /-- Exact norm transport for one dyadic planar stationary component. -/
 theorem norm_brrsDyadicPlanarTwoRadiusStationaryComponentIntegral_eq_levelZero_scaled
@@ -39696,6 +44273,571 @@ theorem exists_odd_dyadic_coneTube_polar_obstruction_of_uniformEstimateAtExponen
     _ ≤ _ := by
       simpa only [amplitude, width] using
         (hbase j T U referenceTime hj hT hUT href hlarge)
+
+/-! ### The intermediate radial cells in BRRS Section 5
+
+For `0 < m < j`, the proof of (5.4) partitions the time packet into
+intervals of length `2^(m-j)`, translates each radial block by `t + r` or
+`t - r`, and uses bounded overlap of the fivefold enlargements.  The generic
+finite-grid argument above already proves that change-of-variables step for
+an arbitrary nonnegative profile.  The next declarations instantiate it for
+the *actual* phase-line kernel `ω_j` constructed in the corrected radial
+kernel estimate.  Its source rapid estimate is used only to dominate `ω_j`
+by the mass-normalized cubic profile, which is the precise Young input.
+
+This is deliberately stated only for the strict intermediate range.  The
+source treats the endpoint cells `m = 0` and `m = j` by separate arguments.
+-/
+
+/-- The nonnegative `ENNReal` realization of the source phase-line kernel
+`ω_j`.  The real kernel is the one occurring in
+`exists_norm_brrsRadialBesselKernel_fourPhase_region_majorants`. -/
+noncomputable def brrsSectionFiveOmegaENN (N j : Nat) : Real → ENNReal :=
+  fun u => ENNReal.ofReal (brrsSectionFiveOmega N j u)
+
+/-- A cubic, mass-normalized majorant at the physical dyadic scale.  The
+constant `8 = 2^3` is exactly the coefficient in the `N = 3` instance of
+the source rapid-decay bound for `ω_j`. -/
+noncomputable def brrsSectionFiveCubicMajorant (j : Nat) : Real → ENNReal :=
+  fun u => 8 * brrsNormalizedScaledCubicProfile ((2 : Real) ^ j) u
+
+/-- The cubic majorant is measurable. -/
+theorem measurable_brrsSectionFiveCubicMajorant (j : Nat) :
+    Measurable (brrsSectionFiveCubicMajorant j) := by
+  unfold brrsSectionFiveCubicMajorant
+  exact measurable_const.mul
+    (measurable_brrsNormalizedScaledCubicProfile ((2 : Real) ^ j))
+
+/-- Pointwise source-decay domination of `ω_j` by the normalized cubic
+profile.  This is the `N = 3` source estimate rewritten in the positive
+kernel convention used by the interval decomposition. -/
+theorem brrsSectionFiveOmegaENN_le_cubicMajorant (j : Nat) (u : Real) :
+    brrsSectionFiveOmegaENN 3 j u ≤ brrsSectionFiveCubicMajorant j u := by
+  let q : Real := (2 : Real) ^ j
+  have hq : 0 < q := by
+    dsimp [q]
+    positivity
+  have hsource := brrsSectionFiveOmega_le_sourceRapidDecay 3 j u
+  have hprofile :
+      brrsSectionFiveOmega 3 j u ≤
+        8 * q * ((1 + |q * u|)⁻¹) ^ 3 := by
+    have habs : |q * u| = q * |u| := by
+      rw [abs_mul, abs_of_nonneg hq.le]
+    calc
+      brrsSectionFiveOmega 3 j u ≤
+          (2 : Real) ^ 3 * q * ((1 + q * |u|)⁻¹) ^ 3 := by
+        simpa only [q] using hsource
+      _ = 8 * q * ((1 + |q * u|)⁻¹) ^ 3 := by
+        rw [habs]
+        norm_num
+  have hcube_nonneg : 0 ≤ ((1 + |q * u|)⁻¹) ^ 3 := by positivity
+  have hright_nonneg : 0 ≤ 8 * q * ((1 + |q * u|)⁻¹) ^ 3 := by positivity
+  change ENNReal.ofReal (brrsSectionFiveOmega 3 j u) ≤
+    8 * (ENNReal.ofReal q * brrsCubicJapaneseProfile (q * u))
+  calc
+    ENNReal.ofReal (brrsSectionFiveOmega 3 j u) ≤
+        ENNReal.ofReal (8 * q * ((1 + |q * u|)⁻¹) ^ 3) :=
+      ENNReal.ofReal_le_ofReal hprofile
+    _ = 8 * (ENNReal.ofReal q * brrsCubicJapaneseProfile (q * u)) := by
+      rw [show 8 * q * ((1 + |q * u|)⁻¹) ^ 3 =
+          8 * (q * ((1 + |q * u|)⁻¹) ^ 3) by ring,
+        ENNReal.ofReal_mul (by norm_num : (0 : Real) ≤ 8),
+        ENNReal.ofReal_mul hq.le]
+      norm_num [brrsCubicJapaneseProfile]
+
+/-- The cubic majorant is strictly positive, as required by the positive
+Young inequality. -/
+theorem brrsSectionFiveCubicMajorant_pos (j : Nat) (u : Real) :
+    0 < brrsSectionFiveCubicMajorant j u := by
+  have hq : 0 < (2 : Real) ^ j := by positivity
+  unfold brrsSectionFiveCubicMajorant
+  exact ENNReal.mul_pos (by norm_num)
+    (brrsNormalizedScaledCubicProfile_pos hq u).ne'
+
+/-- The cubic majorant is pointwise finite. -/
+theorem brrsSectionFiveCubicMajorant_ne_top (j : Nat) (u : Real) :
+    brrsSectionFiveCubicMajorant j u ≠ ∞ := by
+  unfold brrsSectionFiveCubicMajorant
+  exact ENNReal.mul_ne_top ENNReal.ofNat_ne_top
+    (brrsNormalizedScaledCubicProfile_ne_top ((2 : Real) ^ j) u)
+
+/-- The majorant has the scale-free mass expected for a dyadic
+approximate identity. -/
+theorem lintegral_brrsSectionFiveCubicMajorant_eq (j : Nat) :
+    (∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) =
+      8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u := by
+  unfold brrsSectionFiveCubicMajorant
+  rw [lintegral_const_mul 8
+    (measurable_brrsNormalizedScaledCubicProfile ((2 : Real) ^ j)),
+    lintegral_brrsNormalizedScaledCubicProfile_eq (by positivity)]
+
+/-- The scale-free cubic majorant has nonzero mass. -/
+theorem lintegral_brrsSectionFiveCubicMajorant_pos (j : Nat) :
+    0 < ∫⁻ u : Real, brrsSectionFiveCubicMajorant j u := by
+  rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+  exact ENNReal.mul_pos (by norm_num) lintegral_brrsCubicJapaneseProfile_pos.ne'
+
+/-- The scale-free cubic majorant has finite phase-line mass. -/
+theorem lintegral_brrsSectionFiveCubicMajorant_ne_top (j : Nat) :
+    (∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) ≠ ∞ := by
+  rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+  exact ENNReal.mul_ne_top ENNReal.ofNat_ne_top
+    lintegral_brrsCubicJapaneseProfile_ne_top
+
+/-- Monotonicity transfers the source-decay domination to the ordinary
+`t-r-s` phase convolution. -/
+theorem brrsOneDimProfileConvolution_sectionFiveOmegaENN_le_cubicMajorant
+    (j : Nat) (f : Real → ENNReal) (x : Real) :
+    brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f x ≤
+      brrsOneDimProfileConvolution (brrsSectionFiveCubicMajorant j) f x := by
+  unfold brrsOneDimProfileConvolution
+  apply lintegral_mono
+  intro s
+  exact mul_le_mul' (brrsSectionFiveOmegaENN_le_cubicMajorant j (x - s)) le_rfl
+
+/-- The same transfer for the `+s` source phase. -/
+theorem brrsOneDimProfileConvolutionPlus_sectionFiveOmegaENN_le_cubicMajorant
+    (j : Nat) (f : Real → ENNReal) (x : Real) :
+    brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f x ≤
+      brrsOneDimProfileConvolutionPlus (brrsSectionFiveCubicMajorant j) f x := by
+  unfold brrsOneDimProfileConvolutionPlus
+  apply lintegral_mono
+  intro s
+  exact mul_le_mul' (brrsSectionFiveOmegaENN_le_cubicMajorant j (x + s)) le_rfl
+
+/-- The four literal source sign contributions are monotone under the cubic
+majorization of `ω_j`.  This is a pointwise transfer, before any interval
+counting or Young inequality is invoked. -/
+theorem brrsDyadicRadialEndpointFourPhaseBlock_sectionFiveOmegaENN_le_cubicMajorant
+    (T : Finset Real) (j m : Nat) (p : Real) (W f : Real → ENNReal)
+    (hp : 0 ≤ p) :
+    brrsDyadicRadialEndpointFourPhaseBlock T j m p W
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      brrsDyadicRadialEndpointFourPhaseBlock T j m p W
+        (brrsSectionFiveCubicMajorant j) f := by
+  have hadd :
+      brrsDyadicRadialBlockAdd T j m p W (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialBlockAdd T j m p W
+          (brrsSectionFiveCubicMajorant j) f := by
+    unfold brrsDyadicRadialBlockAdd
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl
+      (ENNReal.rpow_le_rpow
+        (brrsOneDimProfileConvolution_sectionFiveOmegaENN_le_cubicMajorant j f
+          (t + r)) hp)
+  have hsub :
+      brrsDyadicRadialBlockSub T j m p W (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialBlockSub T j m p W
+          (brrsSectionFiveCubicMajorant j) f := by
+    unfold brrsDyadicRadialBlockSub
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl
+      (ENNReal.rpow_le_rpow
+        (brrsOneDimProfileConvolution_sectionFiveOmegaENN_le_cubicMajorant j f
+          (t - r)) hp)
+  have haddPlus :
+      brrsDyadicRadialBlockAddPlus T j m p W (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialBlockAddPlus T j m p W
+          (brrsSectionFiveCubicMajorant j) f := by
+    unfold brrsDyadicRadialBlockAddPlus
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl
+      (ENNReal.rpow_le_rpow
+        (brrsOneDimProfileConvolutionPlus_sectionFiveOmegaENN_le_cubicMajorant
+          j f (t + r)) hp)
+  have hsubPlus :
+      brrsDyadicRadialBlockSubPlus T j m p W (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialBlockSubPlus T j m p W
+          (brrsSectionFiveCubicMajorant j) f := by
+    unfold brrsDyadicRadialBlockSubPlus
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl
+      (ENNReal.rpow_le_rpow
+        (brrsOneDimProfileConvolutionPlus_sectionFiveOmegaENN_le_cubicMajorant
+          j f (t - r)) hp)
+  change brrsDyadicRadialBlockAdd T j m p W (brrsSectionFiveOmegaENN 3 j) f +
+      brrsDyadicRadialBlockSub T j m p W (brrsSectionFiveOmegaENN 3 j) f +
+        brrsDyadicRadialBlockAddPlus T j m p W (brrsSectionFiveOmegaENN 3 j) f +
+          brrsDyadicRadialBlockSubPlus T j m p W (brrsSectionFiveOmegaENN 3 j) f ≤
+      brrsDyadicRadialBlockAdd T j m p W (brrsSectionFiveCubicMajorant j) f +
+        brrsDyadicRadialBlockSub T j m p W (brrsSectionFiveCubicMajorant j) f +
+          brrsDyadicRadialBlockAddPlus T j m p W (brrsSectionFiveCubicMajorant j) f +
+            brrsDyadicRadialBlockSubPlus T j m p W
+              (brrsSectionFiveCubicMajorant j) f
+  exact add_le_add (add_le_add (add_le_add hadd hsub) haddPlus) hsubPlus
+
+/-- BRRS Section 5's strict intermediate-cell estimate.  This is the
+change-of-variables step in lines (5.4)--(5.8) of the source: for
+`0 < m < j`, the four phase contributions over the radial annulus
+`[2^(m-j), 2^(m-j+1)]` are controlled by the local counting coefficient at
+that scale.  The only constant left is the fixed mass of the cubic
+majorant, independent of `j`, `m`, and the time packet.
+
+The preceding corrected radial-kernel theorem supplies the four phase-line
+copies of `ω_j`; this theorem is precisely the subsequent one-dimensional
+interval-decomposition argument, so it does not repeat the Bessel analysis.
+-/
+theorem brrsSectionFiveIntermediateCell_fourPhase_le
+    {d : Nat} (T : Finset Real) (j m : Nat) (p : Real)
+    (_hm0 : 0 < m) (_hmj : m < j) (hp : 2 ≤ p)
+    (W f : Real → ENNReal) (hf : Measurable f)
+    (hW : ∀ r ∈ Icc (brrsDyadicRadialBlockRadius j m : Real)
+        (2 * (brrsDyadicRadialBlockRadius j m : Real)),
+      W r ≤ (brrsDyadicRadialBlockRadius j m : ENNReal) ^
+        (-(p * sobolevExponent d p))) :
+    brrsDyadicRadialEndpointFourPhaseBlock T j m p W
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      28 * brrsDyadicKappa T j m (p * sobolevExponent d p) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  calc
+    brrsDyadicRadialEndpointFourPhaseBlock T j m p W
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p W
+          (brrsSectionFiveCubicMajorant j) f :=
+      brrsDyadicRadialEndpointFourPhaseBlock_sectionFiveOmegaENN_le_cubicMajorant
+        T j m p W f hp0
+    _ ≤ 28 * brrsDyadicKappa T j m (p * sobolevExponent d p) *
+          ((∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) :=
+      brrsDyadicRadialEndpointFourPhaseBlock_le_kappa
+        T j m (p * sobolevExponent d p) p hp1 W
+          (brrsSectionFiveCubicMajorant j) f
+          (measurable_brrsSectionFiveCubicMajorant j)
+          hf
+          (by
+            exact fun u => brrsSectionFiveCubicMajorant_pos j u)
+          (by
+            exact fun u => brrsSectionFiveCubicMajorant_ne_top j u)
+          (lintegral_brrsSectionFiveCubicMajorant_pos j)
+          (lintegral_brrsSectionFiveCubicMajorant_ne_top j) hW
+    _ = 28 * brrsDyadicKappa T j m (p * sobolevExponent d p) *
+          ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) := by
+      rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+
+/-- The preceding intermediate-cell estimate with the literal radial outer
+weight from BRRS (5.4).  The proof of the required local comparison is the
+source inequality `r^(-p s_p) ≤ (2^(m-j))^(-p s_p)` on the `m`-th radial
+annulus. -/
+theorem brrsSectionFiveIntermediateCell_sourceWeight_fourPhase_le
+    {d : Nat} (hd : 2 ≤ d) (T : Finset Real) (j m : Nat) (p : Real)
+    (hm0 : 0 < m) (hmj : m < j) (hp : 2 ≤ p)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsDyadicRadialEndpointFourPhaseBlock T j m p
+        (fun r => (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p)))
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      28 * brrsDyadicKappa T j m (p * sobolevExponent d p) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  apply brrsSectionFiveIntermediateCell_fourPhase_le
+    T j m p hm0 hmj hp
+      (fun r => (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p))) f hf
+  intro r hr
+  let R : NNReal := brrsDyadicRadialBlockRadius j m
+  have hRpos : 0 < (R : Real) := by
+    dsimp [R]
+    exact brrsDyadicRadialBlockRadius_pos j m
+  have hrpos : 0 < r := lt_of_lt_of_le hRpos hr.1
+  have halpha : 0 ≤ p * sobolevExponent d p :=
+    mul_sobolevExponent_nonneg hd hp
+  change (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p)) ≤
+    (R : ENNReal) ^ (-(p * sobolevExponent d p))
+  rw [ENNReal.coe_nnreal_eq R,
+    ENNReal.ofReal_rpow_of_pos hrpos,
+    ENNReal.ofReal_rpow_of_pos hRpos]
+  exact ENNReal.ofReal_le_ofReal
+    (Real.rpow_le_rpow_of_nonpos hRpos hr.1 (neg_nonpos.mpr halpha))
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The terminal four-phase block is monotone in the nonnegative phase-line
+kernel.  This permits the actual `ω_j` to be replaced by its proved cubic
+majorant before Young's inequality is used. -/
+theorem brrsSectionFiveTerminalFourPhaseBlock_mono_kernel
+    (T : Finset Real) (d : Nat) (p : Real)
+    (omega omega' f : Real → ENNReal) (hp : 0 ≤ p)
+    (homega : ∀ u : Real, omega u ≤ omega' u) :
+    brrsSectionFiveTerminalFourPhaseBlock T d p omega f ≤
+      brrsSectionFiveTerminalFourPhaseBlock T d p omega' f := by
+  have hsub (x : Real) :
+      brrsOneDimProfileConvolution omega
+          (brrsSectionFiveTerminalSourceProfile f) x ≤
+        brrsOneDimProfileConvolution omega'
+          (brrsSectionFiveTerminalSourceProfile f) x := by
+    unfold brrsOneDimProfileConvolution
+    apply lintegral_mono
+    intro s
+    exact mul_le_mul' (homega (x - s)) le_rfl
+  have hadd (x : Real) :
+      brrsOneDimProfileConvolutionPlus omega
+          (brrsSectionFiveTerminalSourceProfile f) x ≤
+        brrsOneDimProfileConvolutionPlus omega'
+          (brrsSectionFiveTerminalSourceProfile f) x := by
+    unfold brrsOneDimProfileConvolutionPlus
+    apply lintegral_mono
+    intro s
+    exact mul_le_mul' (homega (x + s)) le_rfl
+  have hminus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega
+            (brrsSectionFiveTerminalSourceProfile f) (t - r)) ^ p) ≤
+        ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r *
+            (brrsOneDimProfileConvolution omega'
+              (brrsSectionFiveTerminalSourceProfile f) (t - r)) ^ p := by
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hsub (t - r)) hp)
+  have hplus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega
+            (brrsSectionFiveTerminalSourceProfile f) (t + r)) ^ p) ≤
+        ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r *
+            (brrsOneDimProfileConvolution omega'
+              (brrsSectionFiveTerminalSourceProfile f) (t + r)) ^ p := by
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hsub (t + r)) hp)
+  have hminusPlus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega
+            (brrsSectionFiveTerminalSourceProfile f) (t - r)) ^ p) ≤
+        ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r *
+            (brrsOneDimProfileConvolutionPlus omega'
+              (brrsSectionFiveTerminalSourceProfile f) (t - r)) ^ p := by
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hadd (t - r)) hp)
+  have hplusPlus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega
+            (brrsSectionFiveTerminalSourceProfile f) (t + r)) ^ p) ≤
+        ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r *
+            (brrsOneDimProfileConvolutionPlus omega'
+              (brrsSectionFiveTerminalSourceProfile f) (t + r)) ^ p := by
+    apply Finset.sum_le_sum
+    intro t ht
+    apply lintegral_mono
+    intro r
+    exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hadd (t + r)) hp)
+  simpa only [brrsSectionFiveTerminalFourPhaseBlock] using
+    add_le_add (add_le_add (add_le_add hminus hplus) hminusPlus) hplusPlus
+
+/-- The full terminal-radius calculation for an arbitrary positive
+phase-line kernel.  It is exactly the proof of BRRS (5.6): the compact source
+truncation is retained, the polar weight on `[1,20]` is bounded by one, and
+translation invariance together with Young controls each of the four phase
+lines. -/
+theorem brrsSectionFiveTerminalFourPhaseBlock_le_card_mul
+    {d : Nat} (hd : 2 ≤ d) (T : Finset Real) (p : Real)
+    (omega f : Real → ENNReal) (hp : 2 ≤ p)
+    (homega : Measurable omega) (hf : Measurable f)
+    (homega_pos : ∀ u : Real, 0 < omega u)
+    (homega_top : ∀ u : Real, omega u ≠ ∞)
+    (hmass_pos : 0 < ∫⁻ u : Real, omega u)
+    (hmass_top : (∫⁻ u : Real, omega u) ≠ ∞) :
+    brrsSectionFiveTerminalFourPhaseBlock T d p omega f ≤
+      4 * (T.card : ENNReal) *
+        ((∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f s) ^ p) := by
+  let f0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f
+  let A : ENNReal :=
+    (∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f s) ^ p
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  have hf0 : Measurable f0 := by
+    dsimp only [f0]
+    exact measurable_brrsSectionFiveTerminalSourceProfile hf
+  have hweight : ∀ r ∈ Icc (1 : Real) 20,
+      brrsSectionFiveTerminalWeight d p r ≤ 1 := by
+    intro r hr
+    exact brrsSectionFiveTerminalWeight_le_one hd hp hr
+  have hsourceMoment : (∫⁻ s : Real, (f0 s) ^ p) ≤
+      ∫⁻ s : Real, (f s) ^ p := by
+    dsimp only [f0]
+    exact lintegral_brrsSectionFiveTerminalSourceProfile_rpow_le f hp0
+  have hminusYoung :
+      (∫⁻ x : Real,
+        (brrsOneDimProfileConvolution omega f0 x) ^ p) ≤ A := by
+    calc
+      (∫⁻ x : Real,
+        (brrsOneDimProfileConvolution omega f0 x) ^ p) ≤
+          (∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f0 s) ^ p :=
+        lintegral_brrsOneDimProfileConvolution_rpow_le hp1 homega hf0
+          homega_pos homega_top hmass_pos hmass_top
+      _ ≤ A := by
+        dsimp only [A]
+        exact mul_le_mul_right hsourceMoment _
+  have hplusYoung :
+      (∫⁻ x : Real,
+        (brrsOneDimProfileConvolutionPlus omega f0 x) ^ p) ≤ A := by
+    calc
+      (∫⁻ x : Real,
+        (brrsOneDimProfileConvolutionPlus omega f0 x) ^ p) ≤
+          (∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f0 s) ^ p :=
+        lintegral_brrsOneDimProfileConvolutionPlus_rpow_le hp1 homega hf0
+          homega_pos homega_top hmass_pos hmass_top
+      _ ≤ A := by
+        dsimp only [A]
+        exact mul_le_mul_right hsourceMoment _
+  have hminus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega f0 (t - r)) ^ p) ≤
+        (T.card : ENNReal) * A := by
+    calc
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega f0 (t - r)) ^ p) ≤
+          (T.card : ENNReal) * 1 * ∫⁻ x : Real,
+            (brrsOneDimProfileConvolution omega f0 x) ^ p :=
+        brrs_sum_terminalInterval_sub_weighted_rpow_le_card_mul
+          T 1 20 p 1 (brrsSectionFiveTerminalWeight d p)
+            (brrsOneDimProfileConvolution omega f0)
+            (measurable_brrsOneDimProfileConvolution homega hf0) hweight
+      _ ≤ (T.card : ENNReal) * A := by
+        simpa only [mul_one] using mul_le_mul_right hminusYoung (T.card : ENNReal)
+  have hadd :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega f0 (t + r)) ^ p) ≤
+        (T.card : ENNReal) * A := by
+    calc
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega f0 (t + r)) ^ p) ≤
+          (T.card : ENNReal) * 1 * ∫⁻ x : Real,
+            (brrsOneDimProfileConvolution omega f0 x) ^ p :=
+        brrs_sum_terminalInterval_add_weighted_rpow_le_card_mul
+          T 1 20 p 1 (brrsSectionFiveTerminalWeight d p)
+            (brrsOneDimProfileConvolution omega f0)
+            (measurable_brrsOneDimProfileConvolution homega hf0) hweight
+      _ ≤ (T.card : ENNReal) * A := by
+        simpa only [mul_one] using mul_le_mul_right hminusYoung (T.card : ENNReal)
+  have hminusPlus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega f0 (t - r)) ^ p) ≤
+        (T.card : ENNReal) * A := by
+    calc
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega f0 (t - r)) ^ p) ≤
+          (T.card : ENNReal) * 1 * ∫⁻ x : Real,
+            (brrsOneDimProfileConvolutionPlus omega f0 x) ^ p :=
+        brrs_sum_terminalInterval_sub_weighted_rpow_le_card_mul
+          T 1 20 p 1 (brrsSectionFiveTerminalWeight d p)
+            (brrsOneDimProfileConvolutionPlus omega f0)
+            (measurable_brrsOneDimProfileConvolutionPlus homega hf0) hweight
+      _ ≤ (T.card : ENNReal) * A := by
+        simpa only [mul_one] using mul_le_mul_right hplusYoung (T.card : ENNReal)
+  have haddPlus :
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega f0 (t + r)) ^ p) ≤
+        (T.card : ENNReal) * A := by
+    calc
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolutionPlus omega f0 (t + r)) ^ p) ≤
+          (T.card : ENNReal) * 1 * ∫⁻ x : Real,
+            (brrsOneDimProfileConvolutionPlus omega f0 x) ^ p :=
+        brrs_sum_terminalInterval_add_weighted_rpow_le_card_mul
+          T 1 20 p 1 (brrsSectionFiveTerminalWeight d p)
+            (brrsOneDimProfileConvolutionPlus omega f0)
+            (measurable_brrsOneDimProfileConvolutionPlus homega hf0) hweight
+      _ ≤ (T.card : ENNReal) * A := by
+        simpa only [mul_one] using mul_le_mul_right hplusYoung (T.card : ENNReal)
+  unfold brrsSectionFiveTerminalFourPhaseBlock
+  change
+    (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+      brrsSectionFiveTerminalWeight d p r *
+        (brrsOneDimProfileConvolution omega f0 (t - r)) ^ p) +
+      (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+        brrsSectionFiveTerminalWeight d p r *
+          (brrsOneDimProfileConvolution omega f0 (t + r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r *
+            (brrsOneDimProfileConvolutionPlus omega f0 (t - r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolutionPlus omega f0 (t + r)) ^ p ≤ _
+  calc
+    _ ≤ (T.card : ENNReal) * A + (T.card : ENNReal) * A +
+        (T.card : ENNReal) * A + (T.card : ENNReal) * A :=
+      add_le_add (add_le_add (add_le_add hminus hadd) hminusPlus) haddPlus
+    _ = 4 * (T.card : ENNReal) * A := by ring
+    _ = _ := rfl
+
+/-- **BRRS (5.6), terminal cell.**  For the actual four phase copies of
+`ω_j`, the compact-source terminal radial contribution is bounded by the
+number of sampled times times the `Lᵖ` mass of the input.  The numerical
+constant is explicit because `ω_j` is dominated by the normalized cubic
+majorant `8 q (1 + |q u|)⁻³`. -/
+theorem brrsSectionFiveTerminalCell_sourceWeight_fourPhase_le
+    {d : Nat} (hd : 2 ≤ d) (T : Finset Real) (j : Nat) (p : Real)
+    (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      4 * (T.card : ENNReal) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  calc
+    brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsSectionFiveTerminalFourPhaseBlock T d p
+          (brrsSectionFiveCubicMajorant j) f :=
+      brrsSectionFiveTerminalFourPhaseBlock_mono_kernel T d p
+        (brrsSectionFiveOmegaENN 3 j) (brrsSectionFiveCubicMajorant j) f hp0
+        (brrsSectionFiveOmegaENN_le_cubicMajorant j)
+    _ ≤ 4 * (T.card : ENNReal) *
+        ((∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) :=
+      brrsSectionFiveTerminalFourPhaseBlock_le_card_mul hd T p
+        (brrsSectionFiveCubicMajorant j) f hp
+        (measurable_brrsSectionFiveCubicMajorant j) hf
+        (brrsSectionFiveCubicMajorant_pos j)
+        (brrsSectionFiveCubicMajorant_ne_top j)
+        (lintegral_brrsSectionFiveCubicMajorant_pos j)
+        (lintegral_brrsSectionFiveCubicMajorant_ne_top j)
+    _ = _ := by rw [lintegral_brrsSectionFiveCubicMajorant_eq]
 
 end
 

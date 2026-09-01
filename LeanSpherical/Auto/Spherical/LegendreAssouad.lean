@@ -2982,6 +2982,37 @@ closed balls of radius `δ / 2`, equivalently by closed intervals of length
 def brrsEntropyNumber (E : Set ℝ) (δ : ℝ≥0) : ℝ≥0∞ :=
   (Metric.externalCoveringNumber (δ / 2) E : ℝ≥0∞)
 
+/-- The exact-scale local covering number in the proof of BRRS Theorem 1.2(i).
+
+For fixed `δ` and `θ`, this is
+`sup_{|I| = δ^θ} N(E ∩ I, δ)`: writing an interval as
+`brrsInterval a (δ ^ θ)` makes its left endpoint the only supremum index.
+The definition deliberately keeps the equality-scale convention of the
+paper, rather than the older upper-spectrum convention in
+`Auto.FractalDimensions`. -/
+def brrsAssouadScaleCoveringNumber (E : Set ℝ) (δ : ℝ≥0) (θ : ℝ) : ℝ≥0∞ :=
+  ⨆ a : ℝ, brrsEntropyNumber (E ∩ brrsInterval a ((δ : ℝ) ^ θ)) δ
+
+/-- The weighted finite-scale entropy in the proof of BRRS Theorem 1.2(i).
+
+This is the numerator of the paper's `φ(δ, θ)`, divided by
+`log (1 / δ)`.  Keeping this weighted form total at `θ = 1` is useful in
+the compact parameter argument; on `θ < 1`, `brrsAssouadPhi` below is the
+literal `φ(δ, θ)`. -/
+def brrsAssouadWeightedEntropy (E : Set ℝ) (δ : ℝ≥0) (θ : ℝ) : EReal :=
+  entropyLogQuotient (brrsAssouadScaleCoveringNumber E δ θ) δ
+
+/-- The finite-scale quantity `φ(δ, θ)` from the proof of BRRS Theorem
+1.2(i), represented in `EReal` so the definition remains total before
+finiteness is established.  For `0 < δ < 1` and `θ < 1`, it is exactly
+
+`log (sup_{|I| = δ^θ} N(E ∩ I, δ)) / ((1 - θ) * log (1 / δ))`.
+
+The endpoint `θ = 1` is intentionally excluded from the subsequent limsup
+identity, since the displayed source formula has a zero denominator there. -/
+def brrsAssouadPhi (E : Set ℝ) (δ : ℝ≥0) (θ : ℝ) : EReal :=
+  ((1 - θ : ℝ) : EReal)⁻¹ * brrsAssouadWeightedEntropy E δ θ
+
 /-- The literal additive Legendre--Assouad function `ν_E^♯` in BRRS (1.4). -/
 def brrsLegendreAssouadFunction (E : Set ℝ) (α : ℝ) : ℝ :=
   limsup (fun δ : NNReal ↦ ENNReal.log
@@ -3002,6 +3033,30 @@ def brrsLegendreAssouadProfile (E : Set ℝ) (α : ℝ)
 /-- The compact interval of power-scale parameters used by the literal BRRS
 profile. -/
 abbrev BRRSParameter := Icc (0 : Real) 1
+
+/-- The finite-scale envelope on the left side of BRRS (2.1), for a fixed
+Legendre parameter `α`.  On `θ < 1`, its summand is exactly
+`θ α + (1 - θ) φ(δ, θ)`.  We use `brrsAssouadWeightedEntropy` to give that
+product its natural total value at `θ = 1`, where the printed definition of
+`φ` has a zero denominator. -/
+noncomputable def brrsSectionTwoFiniteScaleEnvelope (E : Set ℝ) (α : ℝ)
+    (δ : ℝ≥0) : EReal :=
+  ⨆ θ : BRRSParameter,
+    ((θ.1 * α : ℝ) : EReal) + brrsAssouadWeightedEntropy E δ θ.1
+
+/-- Away from the singular endpoint, the weighted entropy is exactly the
+product `(1 - θ) φ(δ, θ)` occurring in the printed finite-scale envelope. -/
+theorem one_sub_mul_brrsAssouadPhi_eq_weightedEntropy
+    (E : Set Real) (δ : NNReal) {θ : Real} (hθ : θ < 1) :
+    ((1 - θ : Real) : EReal) * brrsAssouadPhi E δ θ =
+      brrsAssouadWeightedEntropy E δ θ := by
+  have hfactor : 0 < 1 - θ := sub_pos.mpr hθ
+  rw [brrsAssouadPhi, ← mul_assoc]
+  have hcancel : ((1 - θ : Real) : EReal) *
+      ((1 - θ : Real) : EReal)⁻¹ = 1 := by
+    rw [← EReal.coe_inv, ← EReal.coe_mul,
+      mul_inv_cancel₀ (ne_of_gt hfactor), EReal.coe_one]
+  rw [hcancel, one_mul]
 
 /-- Every literal BRRS testing length lies on the exact power-scale curve.
 For `δ ≤ R ≤ 1` and `0 < δ < 1`, the parameter is
@@ -6854,7 +6909,7 @@ end Consolidated_DyadicPhysicalEntropyCells
 
 section BRRSAdditiveEntropy
 
-open Set
+open Filter Set
 open scoped ENNReal NNReal Topology
 
 /-- BRRS covering numbers are monotone under restriction of the underlying
@@ -6916,6 +6971,141 @@ theorem one_le_brrsEntropyNumber_of_nonempty {E : Set Real}
     (Order.one_le_iff_ne_zero.mpr
       (ne_of_gt (Metric.externalCoveringNumber_pos_iff.mpr hE) :
         Metric.externalCoveringNumber (delta / 2) E ≠ 0))
+
+/-- Each exact-scale local entropy term is bounded by the source's supremal
+covering number. -/
+theorem brrsEntropyNumber_le_brrsAssouadScaleCoveringNumber
+    (E : Set Real) (delta : NNReal) (theta a : Real) :
+    brrsEntropyNumber (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta ≤
+      brrsAssouadScaleCoveringNumber E delta theta := by
+  unfold brrsAssouadScaleCoveringNumber
+  exact le_iSup (fun a : Real =>
+    brrsEntropyNumber (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta) a
+
+/-- A nonempty set has at least one exact-scale local covering cell, uniformly
+over the source parameters. -/
+theorem one_le_brrsAssouadScaleCoveringNumber_of_nonempty
+    {E : Set Real} (hE : E.Nonempty) (delta : NNReal) (theta : Real) :
+    1 ≤ brrsAssouadScaleCoveringNumber E delta theta := by
+  rcases hE with ⟨x, hx⟩
+  have hlocal : (E ∩ brrsInterval x ((delta : Real) ^ theta)).Nonempty := by
+    refine ⟨x, hx, ?_⟩
+    simp only [brrsInterval, mem_Icc]
+    constructor
+    · exact le_rfl
+    · exact le_add_of_nonneg_right (Real.rpow_nonneg delta.2 _)
+  exact (one_le_brrsEntropyNumber_of_nonempty hlocal delta).trans
+    (brrsEntropyNumber_le_brrsAssouadScaleCoveringNumber E delta theta x)
+
+/-- The source's weighted finite-scale entropy is nonnegative for nonempty
+sets at the scales where its logarithmic denominator is positive. -/
+theorem brrsAssouadWeightedEntropy_nonneg_of_nonempty
+    {E : Set Real} (hE : E.Nonempty) {delta : NNReal} (hdelta_zero : 0 < delta)
+    (hdelta_one : delta < 1) (theta : Real) :
+    0 ≤ brrsAssouadWeightedEntropy E delta theta := by
+  unfold brrsAssouadWeightedEntropy entropyLogQuotient
+  have hone : (1 : ENNReal) ≤ brrsAssouadScaleCoveringNumber E delta theta :=
+    one_le_brrsAssouadScaleCoveringNumber_of_nonempty hE delta theta
+  have hlog : (0 : EReal) ≤
+      ENNReal.log (brrsAssouadScaleCoveringNumber E delta theta) := by
+    calc
+      (0 : EReal) = ENNReal.log 1 := ENNReal.log_one.symm
+      _ ≤ ENNReal.log (brrsAssouadScaleCoveringNumber E delta theta) :=
+        ENNReal.log_le_log hone
+  have hdelta_real_zero : 0 < (delta : Real) := by exact_mod_cast hdelta_zero
+  have hdelta_real_one : (delta : Real) < 1 := by exact_mod_cast hdelta_one
+  have hloginv : 0 < Real.log ((delta : Real)⁻¹) := by
+    apply Real.log_pos
+    exact (one_lt_inv₀ hdelta_real_zero).mpr hdelta_real_one
+  have hden : 0 ≤ (Real.log ((delta : Real)⁻¹) : EReal) := by
+    exact_mod_cast hloginv.le
+  exact EReal.div_nonneg hlog hden
+
+/-- The elementary power conversion at an exact Assouad-spectrum testing
+scale.  It is the algebra that turns the covering factor
+`(δ^θ / δ)^γ` into the weighted entropy exponent `(1 - θ)γ`. -/
+theorem brrsAssouadScale_power_identity {theta gamma C : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_one : theta ≤ 1) (hC : 0 ≤ C)
+    {delta : NNReal} (hdelta_zero : 0 < delta) (hdelta_one : delta < 1) :
+    ENNReal.ofReal (C * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)) =
+      ENNReal.ofReal C * (delta : ENNReal) ^ (-((1 - theta) * gamma)) := by
+  have hdelta_real_zero : 0 < (delta : Real) := by exact_mod_cast hdelta_zero
+  have hdelta_real_one : (delta : Real) ≤ 1 := by
+    exact_mod_cast hdelta_one.le
+  have hscale_real : (delta : Real) ≤ (delta : Real) ^ theta := by
+    calc
+      (delta : Real) = (delta : Real) ^ (1 : Real) := by rw [Real.rpow_one]
+      _ ≤ (delta : Real) ^ theta :=
+        Real.rpow_le_rpow_of_exponent_ge hdelta_real_zero hdelta_real_one htheta_one
+  have hR_one_real : (delta : Real) ^ theta ≤ 1 :=
+    Real.rpow_le_one hdelta_real_zero.le hdelta_real_one htheta_zero
+  have hscale : delta ≤ delta ^ theta := by
+    apply NNReal.coe_le_coe.mp
+    simpa only [NNReal.coe_rpow] using hscale_real
+  have hR_one : delta ^ theta ≤ 1 := by
+    apply NNReal.coe_le_coe.mp
+    simpa only [NNReal.coe_rpow, NNReal.coe_one] using hR_one_real
+  let R : Icc delta 1 := ⟨delta ^ theta, hscale, hR_one⟩
+  have hR : (R.1 : Real) = (delta : Real) ^ theta := by
+    simp only [R, NNReal.coe_rpow]
+  have hpower := brrs_weighted_entropy_power_identity (delta := delta)
+    hdelta_zero (R := R) (theta := theta) (eta := theta) (gamma := gamma)
+      (alpha := 0) (C := C) hR hC
+  calc
+    ENNReal.ofReal (C * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)) =
+        (R.1 : ENNReal) ^ (-(0 : Real)) *
+          ENNReal.ofReal (C * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)) := by
+      simp
+    _ = ENNReal.ofReal C * (delta : ENNReal) ^
+        (-(theta * (0 : Real) + (1 - theta) * gamma)) := hpower
+    _ = ENNReal.ofReal C * (delta : ENNReal) ^ (-((1 - theta) * gamma)) := by
+      congr 2
+      ring
+
+/-- A uniform equality-scale cover controls the source's single-scale
+supremum.  This is the direct finite-scale implication used in the upper
+half of `limsup φ = γ`; no upper-spectrum comparison is used. -/
+theorem brrsAssouadScaleCoveringNumber_le_of_cover
+    (E : Set Real) {theta gamma C : Real} (htheta_zero : 0 ≤ theta)
+    (htheta_one : theta ≤ 1) (hC : 0 ≤ C)
+    (hcover : ∀ delta : NNReal, 0 < delta → delta < 1 → ∀ a : Real,
+      brrsEntropyNumber (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta ≤
+        ENNReal.ofReal (C * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)))
+    {delta : NNReal} (hdelta_zero : 0 < delta) (hdelta_one : delta < 1) :
+    brrsAssouadScaleCoveringNumber E delta theta ≤
+      ENNReal.ofReal C *
+        (delta : ENNReal) ^ (-((1 - theta) * gamma)) := by
+  unfold brrsAssouadScaleCoveringNumber
+  apply iSup_le
+  intro a
+  calc
+    brrsEntropyNumber (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta ≤
+        ENNReal.ofReal (C * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)) :=
+      hcover delta hdelta_zero hdelta_one a
+    _ = ENNReal.ofReal C * (delta : ENNReal) ^ (-((1 - theta) * gamma)) :=
+      brrsAssouadScale_power_identity htheta_zero htheta_one hC hdelta_zero hdelta_one
+
+/-- Every admissible exponent in the definition of `γ_E(θ)` gives the
+corresponding upper bound for the weighted finite-scale entropy limsup. -/
+theorem brrsAssouadWeightedEntropy_limsup_le_of_hasBRRSAssouadSpectrumExponent
+    (E : Set Real) {theta gamma : Real} (htheta_zero : 0 ≤ theta)
+    (htheta_one : theta ≤ 1)
+    (hgamma : HasBRRSAssouadSpectrumExponent E theta gamma) :
+    Filter.limsup (fun delta : NNReal =>
+      brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) ≤
+      (((1 - theta) * gamma : Real) : EReal) := by
+  rcases hgamma with ⟨C, hC, hcover⟩
+  unfold brrsAssouadWeightedEntropy
+  apply limsup_entropyLogQuotient_le_of_power_bound
+    (N := fun delta => brrsAssouadScaleCoveringNumber E delta theta)
+    (A := ENNReal.ofReal C) (s := (1 - theta) * gamma)
+  · exact ENNReal.ofReal_ne_top
+  · have hsmall : ∀ᶠ delta : NNReal in 𝓝[>] (0 : NNReal),
+        delta ∈ Ioo 0 1 :=
+      nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
+    filter_upwards [hsmall] with delta hdelta
+    exact brrsAssouadScaleCoveringNumber_le_of_cover E htheta_zero htheta_one
+      hC.le hcover hdelta.1 hdelta.2
 
 /-- A nonempty set contributes the pure scale penalty to the BRRS profile:
 take the testing interval to have the same length as the covering scale. -/
@@ -7939,6 +8129,47 @@ theorem hasBRRSAssouadSpectrumExponent_of_brrsAssouadSpectrum_lt
     (brrsAssouadAdmissibleExponents_nonempty E htheta) hgamma
   exact HasBRRSAssouadSpectrumExponent.of_le htheta hgamma'_lt.le hgamma'.2
 
+/-- The upper half of the fixed-parameter source identity: the weighted
+finite-scale entropy limsup is at most `(1 - θ) γ_E(θ)`. -/
+theorem brrsAssouadWeightedEntropy_limsup_le_brrsAssouadSpectrum
+    (E : Set Real) {theta : Real} (htheta_zero : 0 ≤ theta)
+    (htheta_lt_one : theta < 1) :
+    Filter.limsup (fun delta : NNReal =>
+      brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) ≤
+      (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal) := by
+  refine (EReal.le_of_forall_lt_iff_le
+    (x := (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal))
+    (y := Filter.limsup (fun delta : NNReal =>
+      brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)))).mp ?_
+  intro z hz
+  have hz_real : (1 - theta) * brrsAssouadSpectrum E theta < z :=
+    EReal.coe_lt_coe_iff.mp hz
+  have hfactor : 0 < 1 - theta := sub_pos.mpr htheta_lt_one
+  let gap : Real := z - (1 - theta) * brrsAssouadSpectrum E theta
+  have hgap : 0 < gap := by
+    dsimp [gap]
+    exact sub_pos.mpr hz_real
+  let gamma : Real := brrsAssouadSpectrum E theta + gap / (2 * (1 - theta))
+  have hden : 0 < 2 * (1 - theta) := mul_pos (by norm_num) hfactor
+  have hgamma_lt : brrsAssouadSpectrum E theta < gamma := by
+    have hquotient : 0 < gap / (2 * (1 - theta)) := div_pos hgap hden
+    dsimp [gamma]
+    linarith
+  have htarget : (1 - theta) * gamma ≤ z := by
+    dsimp [gamma, gap]
+    field_simp [ne_of_gt hfactor]
+    linarith
+  have hhas : HasBRRSAssouadSpectrumExponent E theta gamma :=
+    hasBRRSAssouadSpectrumExponent_of_brrsAssouadSpectrum_lt E
+      htheta_lt_one.le hgamma_lt
+  calc
+    Filter.limsup (fun delta : NNReal =>
+        brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) ≤
+        (((1 - theta) * gamma : Real) : EReal) :=
+      brrsAssouadWeightedEntropy_limsup_le_of_hasBRRSAssouadSpectrumExponent
+        E htheta_zero htheta_lt_one.le hhas
+    _ ≤ (z : EReal) := by exact_mod_cast htarget
+
 /-- On its natural parameter range the equality-scale BRRS spectrum lies in
 the one-dimensional interval `[0,1]`. -/
 theorem brrsAssouadSpectrum_nonneg (E : Set Real) {theta : Real}
@@ -8064,6 +8295,230 @@ theorem exists_brrsEntropyNumber_lower_witness_at_small_scale
     apply ENNReal.ofReal_le_ofReal
     simpa using mul_le_mul_of_nonneg_right hC_one hpow_nonneg
   exact hsmall_le.trans_lt hlarge
+
+/-- A lower local-entropy witness at an exact testing scale gives the
+corresponding lower bound for the source's supremal covering number. -/
+theorem inv_rpow_le_brrsAssouadScaleCoveringNumber_of_lower
+    (E : Set Real) {theta gamma : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_one : theta ≤ 1)
+    {delta : NNReal} (hdelta_zero : 0 < delta) (hdelta_one : delta < 1)
+    {a : Real}
+    (hlower : ENNReal.ofReal
+        ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma) ≤
+      brrsEntropyNumber
+        (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta) :
+    (delta : ENNReal) ^ (-((1 - theta) * gamma)) ≤
+      brrsAssouadScaleCoveringNumber E delta theta := by
+  have hpower := brrsAssouadScale_power_identity
+    (theta := theta) (gamma := gamma) (C := 1)
+    htheta_zero htheta_one (by norm_num) hdelta_zero hdelta_one
+  calc
+    (delta : ENNReal) ^ (-((1 - theta) * gamma)) =
+        ENNReal.ofReal (1 : Real) *
+          (delta : ENNReal) ^ (-((1 - theta) * gamma)) := by simp
+    _ = ENNReal.ofReal
+        ((1 : Real) * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)) := by
+      rw [hpower]
+    _ = ENNReal.ofReal
+        ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma) := by simp
+    _ ≤ brrsEntropyNumber
+        (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta := hlower
+    _ ≤ brrsAssouadScaleCoveringNumber E delta theta :=
+      brrsEntropyNumber_le_brrsAssouadScaleCoveringNumber E delta theta a
+
+/-- Every strictly subcritical equality-scale spectrum exponent gives source
+lower witnesses arbitrarily close to scale zero. -/
+theorem frequently_inv_rpow_le_brrsAssouadScaleCoveringNumber_of_lt_brrsAssouadSpectrum
+    (E : Set Real) {theta gamma : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_one : theta ≤ 1)
+    (hgamma : 0 < gamma)
+    (hgamma_lt : gamma < brrsAssouadSpectrum E theta) :
+    ∃ᶠ delta : NNReal in 𝓝[>] (0 : NNReal),
+      delta ∈ Ioo 0 1 ∧
+        (delta : ENNReal) ^ (-((1 - theta) * gamma)) ≤
+          brrsAssouadScaleCoveringNumber E delta theta := by
+  refine (nhdsGT_basis (0 : NNReal)).frequently_iff.mpr ?_
+  intro epsilon hepsilon
+  let epsilon' : NNReal := min epsilon (1 / 2)
+  have hepsilon'_pos : 0 < epsilon' := by
+    dsimp [epsilon']
+    exact lt_min hepsilon (by norm_num)
+  have hepsilon'_one : epsilon' ≤ 1 := by
+    calc
+      epsilon' ≤ 1 / 2 := min_le_right _ _
+      _ ≤ 1 := by norm_num
+  obtain ⟨delta, hdelta, hdelta_epsilon', hdelta_one, a, hlower⟩ :=
+    exists_brrsEntropyNumber_lower_witness_at_small_scale E htheta_zero htheta_one
+      hgamma hgamma_lt epsilon' hepsilon'_pos hepsilon'_one
+  refine ⟨delta, ?_, ?_⟩
+  · exact ⟨hdelta, hdelta_epsilon'.trans_le (min_le_left _ _)⟩
+  · exact ⟨⟨hdelta, hdelta_one⟩,
+      inv_rpow_le_brrsAssouadScaleCoveringNumber_of_lower E htheta_zero htheta_one
+        hdelta hdelta_one (a := a) hlower.le⟩
+
+/-- For a nonempty set, the weighted source entropy limsup is nonnegative. -/
+theorem brrsAssouadWeightedEntropy_limsup_nonneg_of_nonempty
+    {E : Set Real} (hE : E.Nonempty) (theta : Real) :
+    0 ≤ Filter.limsup (fun delta : NNReal =>
+      brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) := by
+  apply Filter.le_limsup_of_frequently_le'
+  have hsmall : ∀ᶠ delta : NNReal in 𝓝[>] (0 : NNReal),
+      delta ∈ Ioo 0 1 :=
+    nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
+  exact (hsmall.mono fun delta hdelta =>
+    brrsAssouadWeightedEntropy_nonneg_of_nonempty hE hdelta.1 hdelta.2 theta).frequently
+
+/-- The lower half of the fixed-parameter source identity: every affine
+subcritical witness forces `(1 - θ) γ_E(θ)` below the weighted entropy
+limsup. -/
+theorem brrsAssouadSpectrum_weighted_le_brrsAssouadWeightedEntropy_limsup
+    {E : Set Real} (hE : E.Nonempty) {theta : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_lt_one : theta < 1) :
+    (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal) ≤
+      Filter.limsup (fun delta : NNReal =>
+        brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) := by
+  let L : EReal := Filter.limsup (fun delta : NNReal =>
+    brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal))
+  have hL_nonneg : 0 ≤ L := by
+    exact brrsAssouadWeightedEntropy_limsup_nonneg_of_nonempty hE theta
+  refine (EReal.ge_of_forall_gt_iff_ge
+    (x := L)
+    (y := (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal))).mp ?_
+  intro z hz
+  have hz_real : z < (1 - theta) * brrsAssouadSpectrum E theta :=
+    EReal.coe_lt_coe_iff.mp hz
+  by_cases hz_nonpos : z ≤ 0
+  · have hz_nonpos_e : (z : EReal) ≤ 0 := by exact_mod_cast hz_nonpos
+    exact hz_nonpos_e.trans hL_nonneg
+  · have hz_pos : 0 < z := lt_of_not_ge hz_nonpos
+    have hfactor : 0 < 1 - theta := sub_pos.mpr htheta_lt_one
+    let gamma : Real := z / (1 - theta)
+    have hgamma_pos : 0 < gamma := by
+      dsimp [gamma]
+      exact div_pos hz_pos hfactor
+    have hgamma_lt : gamma < brrsAssouadSpectrum E theta := by
+      apply (div_lt_iff₀ hfactor).mpr
+      simpa [mul_comm] using hz_real
+    have hzgamma : z = (1 - theta) * gamma := by
+      dsimp [gamma]
+      field_simp [ne_of_gt hfactor]
+    have hfrequent :=
+      frequently_inv_rpow_le_brrsAssouadScaleCoveringNumber_of_lt_brrsAssouadSpectrum
+        E htheta_zero htheta_lt_one.le hgamma_pos hgamma_lt
+    change (z : EReal) ≤ L
+    apply Filter.le_limsup_of_frequently_le'
+    exact hfrequent.mono fun delta hdelta => by
+      calc
+        (z : EReal) = entropyLogQuotient ((delta : ENNReal) ^ (-z)) delta :=
+          (entropyLogQuotient_inv_rpow hdelta.1.1 hdelta.1.2).symm
+        _ ≤ entropyLogQuotient
+            (brrsAssouadScaleCoveringNumber E delta theta) delta :=
+          entropyLogQuotient_mono hdelta.1.1 hdelta.1.2 (by
+            rw [hzgamma]
+            exact hdelta.2)
+
+/-- The fixed-parameter entropy/spectrum identity before division by
+`1 - θ`.  This is precisely the source assertion `limsup φ(δ,θ)=γ_E(θ)` in
+its weighted form, which remains meaningful at the endpoint. -/
+theorem brrsAssouadWeightedEntropy_limsup_eq_brrsAssouadSpectrum
+    {E : Set Real} (hE : E.Nonempty) {theta : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_lt_one : theta < 1) :
+    Filter.limsup (fun delta : NNReal =>
+      brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) =
+      (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal) := by
+  exact le_antisymm
+    (brrsAssouadWeightedEntropy_limsup_le_brrsAssouadSpectrum E
+      htheta_zero htheta_lt_one)
+    (brrsAssouadSpectrum_weighted_le_brrsAssouadWeightedEntropy_limsup
+      hE htheta_zero htheta_lt_one)
+
+/-- **BRRS, Section 2 starting identity.**  For a nonempty time set and a
+fixed parameter `0 ≤ θ < 1`, the literal source quantity
+`φ(δ, θ)` has limsup equal to the equality-scale Assouad spectrum
+`γ_E(θ)`. -/
+theorem brrsAssouadPhi_limsup_eq_brrsAssouadSpectrum
+    {E : Set Real} (hE : E.Nonempty) {theta : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_lt_one : theta < 1) :
+    Filter.limsup (fun delta : NNReal =>
+      brrsAssouadPhi E delta theta) (𝓝[>] (0 : NNReal)) =
+      (brrsAssouadSpectrum E theta : EReal) := by
+  have hfactor : 0 < 1 - theta := sub_pos.mpr htheta_lt_one
+  have hfactor_e_nonneg : 0 ≤ ((1 - theta : Real) : EReal) := by
+    exact_mod_cast hfactor.le
+  have hinv_nonneg : 0 ≤ ((1 - theta : Real) : EReal)⁻¹ :=
+    EReal.inv_nonneg_of_nonneg hfactor_e_nonneg
+  have hinv_ne_top : ((1 - theta : Real) : EReal)⁻¹ ≠ ⊤ :=
+    (EReal.inv_lt_top _).ne
+  change Filter.limsup (fun delta : NNReal =>
+    ((1 - theta : Real) : EReal)⁻¹ *
+      brrsAssouadWeightedEntropy E delta theta) (𝓝[>] (0 : NNReal)) =
+      (brrsAssouadSpectrum E theta : EReal)
+  rw [EReal.limsup_const_mul_of_nonneg_of_ne_top hinv_nonneg hinv_ne_top,
+    brrsAssouadWeightedEntropy_limsup_eq_brrsAssouadSpectrum
+      hE htheta_zero htheta_lt_one]
+  rw [← EReal.coe_inv, ← EReal.coe_mul]
+  congr 1
+  field_simp [ne_of_gt hfactor]
+
+/-- **BRRS, Section 2 limsup sequence.**  The finite-scale envelope in
+(2.1) admits a strictly decreasing sequence of positive scales converging to
+zero along which its values converge to its actual filter limsup.  This is
+the decreasing `δ_n` selection immediately before (2.3). -/
+theorem exists_strictAnti_brrsSectionTwo_limsup_sequence
+    (E : Set Real) (alpha : Real) :
+    ∃ delta : Nat → NNReal, StrictAnti delta ∧ (∀ n, 0 < delta n) ∧
+      Tendsto delta atTop (𝓝 (0 : NNReal)) ∧
+      Tendsto (fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta n))
+        atTop (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)))) := by
+  let F : NNReal → EReal := brrsSectionTwoFiniteScaleEnvelope E alpha
+  let l : Filter NNReal := 𝓝[>] (0 : NNReal)
+  obtain ⟨x, hFx, hx⟩ := exists_seq_tendsto_limsup (f := l) (u := F)
+  have hx_pos : ∀ᶠ k in atTop, 0 < x k := by
+    filter_upwards [hx.eventually self_mem_nhdsWithin] with k hk
+    exact hk
+  obtain ⟨initialIndex, hinitial⟩ := hx_pos.exists
+  let initial : {k : Nat // 0 < x k} := ⟨initialIndex, hinitial⟩
+  have hdescend : ∀ p : {k : Nat // 0 < x k},
+      ∃ q : {k : Nat // 0 < x k}, p.1 < q.1 ∧ x q.1 < x p.1 := by
+    intro p
+    have hsmall : Ioo (0 : NNReal) (x p.1) ∈ 𝓝[>] (0 : NNReal) :=
+      Ioo_mem_nhdsGT p.2
+    have htail : ∀ᶠ k in atTop, x k ∈ Ioo (0 : NNReal) (x p.1) :=
+      hx.eventually hsmall
+    obtain ⟨q, hq⟩ := ((eventually_gt_atTop p.1).and htail).exists
+    exact ⟨⟨q, hq.2.1⟩, hq.1, hq.2.2⟩
+  choose descend hdescendIndex hdescendValue using hdescend
+  let s : Nat → {k : Nat // 0 < x k} :=
+    Nat.rec initial (fun _ p => descend p)
+  let phi : Nat → Nat := fun n => (s n).1
+  let delta : Nat → NNReal := fun n => x (phi n)
+  have hs_succ (n : Nat) : s (n + 1) = descend (s n) := by
+    simp [s]
+  have hphi_strict : StrictMono phi := by
+    apply strictMono_nat_of_lt_succ
+    intro n
+    change (s n).1 < (s (n + 1)).1
+    rw [hs_succ]
+    exact hdescendIndex (s n)
+  have hdelta_strictAnti : StrictAnti delta := by
+    apply strictAnti_nat_of_succ_lt
+    intro n
+    change x (phi (n + 1)) < x (phi n)
+    change x (s (n + 1)).1 < x (s n).1
+    rw [hs_succ]
+    exact hdescendValue (s n)
+  have hdelta_pos : ∀ n, 0 < delta n := by
+    intro n
+    exact (s n).2
+  have hdelta_tendstoWithin : Tendsto delta atTop (𝓝[>] (0 : NNReal)) := by
+    simpa only [delta, phi, Function.comp_def, l] using
+      hx.comp hphi_strict.tendsto_atTop
+  have hdelta_tendsto : Tendsto delta atTop (𝓝 (0 : NNReal)) :=
+    hdelta_tendstoWithin.mono_right nhdsWithin_le_nhds
+  refine ⟨delta, hdelta_strictAnti, hdelta_pos, hdelta_tendsto, ?_⟩
+  simpa only [F, delta, phi, Function.comp_def, l] using
+    hFx.comp hphi_strict.tendsto_atTop
 
 /-- A lower entropy witness at the exact spectrum testing scale contributes
 the corresponding affine lower bound to the finite-scale BRRS profile. -/
@@ -8512,6 +8967,676 @@ theorem brrsWeightedAssouadSpectrum_continuousOn_Iic (E : Set Real) :
       (Iic (1 : Real)) :=
   (brrsWeightedAssouadSpectrum_lipschitzOn_Iic E).continuousOn
 
+/-- **BRRS, Section 2 compact-maximization step.**  The continuous spectrum
+expression which occurs on the right side of (2.1) attains its maximum on
+the literal compact parameter interval.  This is the source choice made in
+(2.2), stated with the weighted spectrum (the form also needed in (2.4)). -/
+theorem exists_brrsAssouadSpectrum_affine_maximizer (E : Set Real)
+    (alpha : Real) :
+    ∃ theta ∈ Icc (0 : Real) 1, ∀ eta ∈ Icc (0 : Real) 1,
+      eta * alpha + (1 - eta) * brrsAssouadSpectrum E eta ≤
+        theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta := by
+  let F : Real → Real := fun theta =>
+    theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta
+  have hweighted : ContinuousOn
+      (fun theta : Real => (1 - theta) * brrsAssouadSpectrum E theta)
+      (Icc (0 : Real) 1) :=
+    (brrsWeightedAssouadSpectrum_continuousOn_Iic E).mono
+      (fun theta htheta => htheta.2)
+  have hlinear : ContinuousOn (fun theta : Real => theta * alpha)
+      (Icc (0 : Real) 1) :=
+    continuousOn_id.mul continuousOn_const
+  have hFcont : ContinuousOn F (Icc (0 : Real) 1) := by
+    exact hlinear.add hweighted
+  obtain ⟨theta, htheta, hmax⟩ :=
+    isCompact_Icc.exists_isMaxOn (by exact ⟨0, by norm_num⟩) hFcont
+  refine ⟨theta, htheta, ?_⟩
+  intro eta heta
+  have hmax' : ∀ u ∈ Icc (0 : Real) 1, F u ≤ F theta := by
+    simpa only [IsMaxOn, IsMaxFilter, Filter.eventually_principal] using hmax
+  exact hmax' eta heta
+
+/-- **BRRS (2.2), the lower half of (2.1).**  Choose a maximizing parameter
+`θ_α` for the spectral affine expression.  Substituting this one fixed
+parameter into the literal finite-scale envelope gives the lower inequality
+in (2.1).  At `θ_α < 1` this is the source identity
+`(1 - θ_α) φ(δ, θ_α) =` weighted entropy; at the endpoint it follows from
+nonnegativity of the weighted entropy. -/
+theorem exists_brrsSectionTwo_lower_half_maximizer
+    {E : Set Real} (hE : E.Nonempty) (alpha : Real) :
+    ∃ theta ∈ Icc (0 : Real) 1,
+      (∀ eta ∈ Icc (0 : Real) 1,
+        eta * alpha + (1 - eta) * brrsAssouadSpectrum E eta ≤
+          theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta) ∧
+      (((theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta : Real) :
+        EReal) ≤
+        Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal))) := by
+  obtain ⟨theta, htheta, hmax⟩ :=
+    exists_brrsAssouadSpectrum_affine_maximizer E alpha
+  refine ⟨theta, htheta, hmax, ?_⟩
+  by_cases htheta_lt_one : theta < 1
+  · let c : EReal := ((theta * alpha : Real) : EReal)
+    let W : NNReal → EReal := fun delta =>
+      brrsAssouadWeightedEntropy E delta theta
+    let l : Filter NNReal := 𝓝[>] (0 : NNReal)
+    have hfactor_nonneg : 0 ≤ ((1 - theta : Real) : EReal) := by
+      exact_mod_cast (sub_nonneg.mpr htheta.2)
+    have hfactor_ne_top : ((1 - theta : Real) : EReal) ≠ ⊤ :=
+      EReal.coe_ne_top _
+    have hphi : Filter.limsup (fun delta : NNReal =>
+        brrsAssouadPhi E delta theta) l =
+        (brrsAssouadSpectrum E theta : EReal) := by
+      simpa only [l] using
+        (brrsAssouadPhi_limsup_eq_brrsAssouadSpectrum hE htheta.1
+          htheta_lt_one)
+    have hweighted : Filter.limsup W l =
+        (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal) := by
+      calc
+        Filter.limsup W l = Filter.limsup (fun delta : NNReal =>
+            ((1 - theta : Real) : EReal) * brrsAssouadPhi E delta theta) l := by
+              apply Filter.limsup_congr
+              exact Filter.Eventually.of_forall fun delta => by
+                dsimp [W]
+                exact (one_sub_mul_brrsAssouadPhi_eq_weightedEntropy E delta
+                  htheta_lt_one).symm
+        _ = ((1 - theta : Real) : EReal) *
+            Filter.limsup (fun delta : NNReal => brrsAssouadPhi E delta theta) l := by
+              rw [EReal.limsup_const_mul_of_nonneg_of_ne_top hfactor_nonneg
+                hfactor_ne_top]
+        _ = (((1 - theta) * brrsAssouadSpectrum E theta : Real) : EReal) := by
+              rw [hphi, ← EReal.coe_mul]
+    have hadd : c + Filter.limsup W l ≤
+        Filter.limsup (fun delta : NNReal => c + W delta) l := by
+      calc
+        c + Filter.limsup W l =
+            Filter.limsup W l + Filter.liminf (fun _ : NNReal => c) l := by
+              rw [Filter.liminf_const]
+              ac_rfl
+        _ ≤ Filter.limsup (W + fun _ : NNReal => c) l :=
+          EReal.le_limsup_add
+        _ = Filter.limsup (fun delta : NNReal => c + W delta) l := by
+          apply Filter.limsup_congr
+          exact Filter.Eventually.of_forall fun delta => by
+            simpa using (add_comm (W delta) c)
+    have hpoint : ∀ delta : NNReal, c + W delta ≤
+        brrsSectionTwoFiniteScaleEnvelope E alpha delta := by
+      intro delta
+      simpa [c, W, brrsSectionTwoFiniteScaleEnvelope] using
+        (le_iSup (fun eta : BRRSParameter =>
+          ((eta.1 * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E delta eta.1) ⟨theta, htheta⟩)
+    have htransfer : Filter.limsup (fun delta : NNReal => c + W delta) l ≤
+        Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha) l :=
+      Filter.limsup_le_limsup (Filter.Eventually.of_forall hpoint)
+    calc
+      ((theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta : Real) :
+          EReal) = c + Filter.limsup W l := by
+            rw [hweighted, ← EReal.coe_add]
+      _ ≤ Filter.limsup (fun delta : NNReal => c + W delta) l := hadd
+      _ ≤ Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha) l := htransfer
+      _ = Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)) := by rfl
+  · have htheta_eq : theta = 1 :=
+      le_antisymm htheta.2 (le_of_not_gt htheta_lt_one)
+    subst theta
+    simp only [one_mul, sub_self, zero_mul, add_zero]
+    apply Filter.le_limsup_of_frequently_le'
+    have hsmall : ∀ᶠ delta : NNReal in 𝓝[>] (0 : NNReal),
+        delta ∈ Ioo 0 1 :=
+      nhdsGT_basis 0 |>.mem_of_mem zero_lt_one
+    exact (hsmall.mono fun delta hdelta => by
+      calc
+        (alpha : EReal) = ((1 * alpha : Real) : EReal) := by norm_num
+        _ = ((1 * alpha : Real) : EReal) + 0 := (add_zero _).symm
+        _ ≤ ((1 * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E delta 1 :=
+              add_le_add_right
+                (brrsAssouadWeightedEntropy_nonneg_of_nonempty hE hdelta.1 hdelta.2 1) _
+        _ ≤ brrsSectionTwoFiniteScaleEnvelope E alpha delta := by
+              simpa [brrsSectionTwoFiniteScaleEnvelope] using
+                (le_iSup (fun eta : BRRSParameter =>
+                  ((eta.1 * alpha : Real) : EReal) +
+                    brrsAssouadWeightedEntropy E delta eta.1)
+                  ⟨1, by norm_num⟩)).frequently
+
+/-- The elementary one-dimensional grid gives a uniform finite bound for the
+weighted entropy occurring in the Section 2 envelope once the source scale is
+below `1 / 4`.  This is the finiteness input needed before selecting an
+approximate maximizer in (2.3). -/
+theorem brrsAssouadWeightedEntropy_le_two_of_small_scale
+    (E : Set Real) {delta : NNReal} (hdelta_zero : 0 < delta)
+    (hdelta_quarter : delta < (1 : NNReal) / 4)
+    {theta : Real} (htheta : theta ∈ Icc (0 : Real) 1) :
+    brrsAssouadWeightedEntropy E delta theta ≤ (2 : EReal) := by
+  have hdelta_one : delta < 1 := hdelta_quarter.trans (by norm_num)
+  have hcover : ∀ d : NNReal, 0 < d → d < 1 → ∀ a : Real,
+      brrsEntropyNumber (E ∩ brrsInterval a ((d : Real) ^ theta)) d ≤
+        ENNReal.ofReal (4 * ((((d : Real) ^ theta) / (d : Real)) ^ (1 : Real))) := by
+    intro d hd_zero hd_one a
+    have hd_real_zero : 0 < (d : Real) := by exact_mod_cast hd_zero
+    have hd_real_one : (d : Real) ≤ 1 := by exact_mod_cast hd_one.le
+    have hd_scale : (d : Real) ≤ (d : Real) ^ theta := by
+      calc
+        (d : Real) = (d : Real) ^ (1 : Real) := by rw [Real.rpow_one]
+        _ ≤ (d : Real) ^ theta :=
+          Real.rpow_le_rpow_of_exponent_ge hd_real_zero hd_real_one htheta.2
+    simpa [Real.rpow_one] using
+      (brrsEntropyNumber_inter_interval_le_four_mul_ratio E hd_real_zero hd_scale)
+  have hscale : brrsAssouadScaleCoveringNumber E delta theta ≤
+      ENNReal.ofReal 4 * (delta : ENNReal) ^ (-((1 - theta) * (1 : Real))) :=
+    brrsAssouadScaleCoveringNumber_le_of_cover (theta := theta) (gamma := (1 : Real))
+      (C := 4) E htheta.1 htheta.2 (by norm_num) hcover hdelta_zero hdelta_one
+  have hpower : (delta : ENNReal) ^ (-((1 - theta) * (1 : Real))) ≤
+      (delta : ENNReal) ^ (-1 : Real) := by
+    apply ENNReal.rpow_le_rpow_of_exponent_ge
+    · exact_mod_cast hdelta_one.le
+    · linarith [htheta.1]
+  have hfour : (4 : ENNReal) ≤ (delta : ENNReal)⁻¹ := by
+    apply ENNReal.le_inv_iff_mul_le.mpr
+    have hdelta_real : (delta : Real) < 1 / 4 := by
+      exact_mod_cast hdelta_quarter
+    have hreal : 4 * (delta : Real) ≤ 1 := by nlinarith
+    exact_mod_cast hreal
+  unfold brrsAssouadWeightedEntropy
+  apply entropyLogQuotient_le_of_le_inv_rpow hdelta_zero hdelta_one
+  calc
+    brrsAssouadScaleCoveringNumber E delta theta ≤
+        ENNReal.ofReal 4 * (delta : ENNReal) ^ (-((1 - theta) * (1 : Real))) := hscale
+    _ = (4 : ENNReal) * (delta : ENNReal) ^ (-((1 - theta) * (1 : Real))) := by
+      norm_num
+    _ ≤ (4 : ENNReal) * (delta : ENNReal) ^ (-1 : Real) :=
+      by simpa [mul_comm] using mul_le_mul_left hpower (4 : ENNReal)
+    _ = (4 : ENNReal) * (delta : ENNReal)⁻¹ := by
+      rw [ENNReal.rpow_neg_one]
+    _ ≤ (delta : ENNReal)⁻¹ * (delta : ENNReal)⁻¹ := by
+      exact mul_le_mul_left hfour ((delta : ENNReal)⁻¹)
+    _ = ((delta : ENNReal)⁻¹) ^ (2 : Real) := by
+      rw [ENNReal.rpow_two]
+      ring
+
+/-- The literal finite-scale envelope from BRRS (2.1) is a finite real
+quantity at every sufficiently small positive scale. -/
+theorem brrsSectionTwoFiniteScaleEnvelope_le_of_small_scale
+    (E : Set Real) (alpha : Real) {delta : NNReal} (hdelta_zero : 0 < delta)
+    (hdelta_quarter : delta < (1 : NNReal) / 4) :
+    brrsSectionTwoFiniteScaleEnvelope E alpha delta ≤
+      ((max 0 alpha + 2 : Real) : EReal) := by
+  unfold brrsSectionTwoFiniteScaleEnvelope
+  apply iSup_le
+  intro theta
+  have hscalar : theta.1 * alpha ≤ max 0 alpha := by
+    by_cases halpha : 0 ≤ alpha
+    · calc
+        theta.1 * alpha ≤ 1 * alpha :=
+          mul_le_mul_of_nonneg_right theta.2.2 halpha
+        _ = alpha := by ring
+        _ ≤ max 0 alpha := le_max_right _ _
+    · calc
+        theta.1 * alpha ≤ 0 :=
+          mul_nonpos_of_nonneg_of_nonpos theta.2.1 (le_of_not_ge halpha)
+        _ ≤ max 0 alpha := le_max_left _ _
+  calc
+    ((theta.1 * alpha : Real) : EReal) +
+        brrsAssouadWeightedEntropy E delta theta.1 ≤
+        ((max 0 alpha : Real) : EReal) + (2 : EReal) :=
+      add_le_add (by exact_mod_cast hscalar)
+        (brrsAssouadWeightedEntropy_le_two_of_small_scale E hdelta_zero
+          hdelta_quarter theta.2)
+    _ = ((max 0 alpha + 2 : Real) : EReal) := by
+      change ((max 0 alpha : Real) : EReal) + ((2 : Real) : EReal) =
+        ((max 0 alpha + 2 : Real) : EReal)
+      rw [← EReal.coe_add]
+
+/-- **BRRS, Section 2 (2.3).**  At each sufficiently small source scale, the
+literal finite-scale envelope has a parameter in `[0,1]` which is within any
+prescribed positive `ε` of its supremum. -/
+theorem exists_brrsSectionTwo_approximate_maximizer
+    {E : Set Real} (hE : E.Nonempty) (alpha : Real) {epsilon : Real}
+    (hepsilon : 0 < epsilon) {delta : NNReal} (hdelta_zero : 0 < delta)
+    (hdelta_quarter : delta < (1 : NNReal) / 4) :
+    ∃ theta ∈ Icc (0 : Real) 1,
+      brrsSectionTwoFiniteScaleEnvelope E alpha delta ≤
+        ((theta * alpha : Real) : EReal) +
+          brrsAssouadWeightedEntropy E delta theta + (epsilon : EReal) := by
+  let S : EReal := brrsSectionTwoFiniteScaleEnvelope E alpha delta
+  have hS_top : S ≠ ⊤ := by
+    apply ne_top_of_le_ne_top (EReal.coe_ne_top (max 0 alpha + 2 : Real))
+    simpa only [S] using
+      (brrsSectionTwoFiniteScaleEnvelope_le_of_small_scale E alpha hdelta_zero
+        hdelta_quarter)
+  have hdelta_one : delta < 1 := hdelta_quarter.trans (by norm_num)
+  have hS_nonneg : (0 : EReal) ≤ S := by
+    change (0 : EReal) ≤ ⨆ theta : BRRSParameter,
+      ((theta.1 * alpha : Real) : EReal) + brrsAssouadWeightedEntropy E delta theta.1
+    calc
+      (0 : EReal) ≤ ((0 * alpha : Real) : EReal) +
+          brrsAssouadWeightedEntropy E delta 0 := by
+        simpa using (brrsAssouadWeightedEntropy_nonneg_of_nonempty hE hdelta_zero
+          hdelta_one 0)
+      _ ≤ ⨆ theta : BRRSParameter,
+          ((theta.1 * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E delta theta.1 := by
+        exact le_iSup (fun theta : BRRSParameter =>
+          ((theta.1 * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E delta theta.1) ⟨0, by norm_num⟩
+  have hS_bot : S ≠ ⊥ :=
+    ne_of_gt (lt_of_lt_of_le (EReal.bot_lt_coe 0) hS_nonneg)
+  have hbelow : ((S.toReal - epsilon : Real) : EReal) < S := by
+    rw [← EReal.coe_toReal hS_top hS_bot]
+    exact_mod_cast sub_lt_self S.toReal hepsilon
+  change ((S.toReal - epsilon : Real) : EReal) <
+    ⨆ theta : BRRSParameter,
+      ((theta.1 * alpha : Real) : EReal) +
+        brrsAssouadWeightedEntropy E delta theta.1 at hbelow
+  obtain ⟨theta, htheta⟩ := lt_iSup_iff.mp hbelow
+  refine ⟨theta.1, theta.2, ?_⟩
+  have hsub : S - (epsilon : EReal) <
+      ((theta.1 * alpha : Real) : EReal) + brrsAssouadWeightedEntropy E delta theta.1 := by
+    simpa only [EReal.coe_sub, EReal.coe_toReal hS_top hS_bot] using htheta
+  have hlt : S < ((theta.1 * alpha : Real) : EReal) +
+      brrsAssouadWeightedEntropy E delta theta.1 + (epsilon : EReal) :=
+    (EReal.sub_lt_iff (Or.inl (EReal.coe_ne_bot epsilon))
+      (Or.inl (EReal.coe_ne_top epsilon))).mp hsub
+  simpa only [S] using hlt.le
+
+/-- **BRRS, Section 2 (2.3) along the limsup sequence.**  The sequence
+preceding (2.3) can be shifted to a tail of small scales and equipped with
+literal `ε`-maximizing parameters.  The shift does not change either of the
+two source limits. -/
+theorem exists_strictAnti_brrsSectionTwo_limsup_sequence_with_approximate_maximizers
+    {E : Set Real} (hE : E.Nonempty) (alpha : Real) {epsilon : Real}
+    (hepsilon : 0 < epsilon) :
+    ∃ delta : Nat → NNReal, ∃ theta : Nat → Real,
+      StrictAnti delta ∧ (∀ n, 0 < delta n) ∧ (∀ n, delta n < (1 : NNReal) / 4) ∧
+      Tendsto delta atTop (𝓝 (0 : NNReal)) ∧
+      Tendsto (fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta n)) atTop
+        (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)))) ∧
+      (∀ n, theta n ∈ Icc (0 : Real) 1 ∧
+        brrsSectionTwoFiniteScaleEnvelope E alpha (delta n) ≤
+          ((theta n * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E (delta n) (theta n) + (epsilon : EReal)) := by
+  obtain ⟨delta, hdelta_strict, hdelta_pos, hdelta_tendsto, hvalue_tendsto⟩ :=
+    exists_strictAnti_brrsSectionTwo_limsup_sequence E alpha
+  have hsmall_eventually : ∀ᶠ n : Nat in atTop, delta n < (1 : NNReal) / 4 := by
+    have hsmall_neighborhood : Iio ((1 : NNReal) / 4) ∈ 𝓝 (0 : NNReal) :=
+      Iio_mem_nhds (by norm_num)
+    exact hdelta_tendsto.eventually hsmall_neighborhood
+  obtain ⟨N, hN⟩ := eventually_atTop.1 hsmall_eventually
+  let delta' : Nat → NNReal := fun n => delta (n + N)
+  have hdelta'_strict : StrictAnti delta' := by
+    intro m n hmn
+    exact hdelta_strict (Nat.add_lt_add_right hmn N)
+  have hdelta'_pos : ∀ n, 0 < delta' n := by
+    intro n
+    exact hdelta_pos (n + N)
+  have hdelta'_small : ∀ n, delta' n < (1 : NNReal) / 4 := by
+    intro n
+    exact hN (n + N) (by omega)
+  have hdelta'_tendsto : Tendsto delta' atTop (𝓝 (0 : NNReal)) := by
+    simpa only [delta'] using
+      (Filter.tendsto_add_atTop_iff_nat N).mpr hdelta_tendsto
+  have hvalue'_tendsto :
+      Tendsto (fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta' n)) atTop
+        (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)))) := by
+    simpa only [delta'] using
+      (Filter.tendsto_add_atTop_iff_nat N).mpr hvalue_tendsto
+  have hchoose : ∀ n : Nat, ∃ theta ∈ Icc (0 : Real) 1,
+      brrsSectionTwoFiniteScaleEnvelope E alpha (delta' n) ≤
+        ((theta * alpha : Real) : EReal) +
+          brrsAssouadWeightedEntropy E (delta' n) theta + (epsilon : EReal) := by
+    intro n
+    exact exists_brrsSectionTwo_approximate_maximizer hE alpha hepsilon
+      (hdelta'_pos n) (hdelta'_small n)
+  choose theta htheta_range htheta_bound using hchoose
+  exact ⟨delta', theta, hdelta'_strict, hdelta'_pos, hdelta'_small,
+    hdelta'_tendsto, hvalue'_tendsto, fun n => ⟨htheta_range n, htheta_bound n⟩⟩
+
+/-- **BRRS, Section 2 compactness extraction.**  Passing to a subsequence of
+the parameters selected in (2.3) gives a limiting parameter in the literal
+compact interval.  All scale, envelope-limit, and `ε`-maximizer assertions
+are retained after reindexing, exactly as required for the next comparison
+step in the proof of (2.1). -/
+theorem exists_strictAnti_brrsSectionTwo_limsup_sequence_with_convergent_approximate_maximizers
+    {E : Set Real} (hE : E.Nonempty) (alpha : Real) {epsilon : Real}
+    (hepsilon : 0 < epsilon) :
+    ∃ delta : Nat → NNReal, ∃ theta : Nat → Real, ∃ thetaStar : Real,
+      StrictAnti delta ∧ (∀ n, 0 < delta n) ∧ (∀ n, delta n < (1 : NNReal) / 4) ∧
+      Tendsto delta atTop (𝓝 (0 : NNReal)) ∧
+      Tendsto (fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta n)) atTop
+        (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)))) ∧
+      thetaStar ∈ Icc (0 : Real) 1 ∧ Tendsto theta atTop (𝓝 thetaStar) ∧
+      (∀ n, theta n ∈ Icc (0 : Real) 1 ∧
+        brrsSectionTwoFiniteScaleEnvelope E alpha (delta n) ≤
+          ((theta n * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E (delta n) (theta n) + (epsilon : EReal)) := by
+  obtain ⟨delta, theta, hdelta_strict, hdelta_pos, hdelta_small, hdelta_tendsto,
+    hvalue_tendsto, htheta⟩ :=
+    exists_strictAnti_brrsSectionTwo_limsup_sequence_with_approximate_maximizers
+      hE alpha hepsilon
+  obtain ⟨thetaStar, hthetaStar, phi, hphi_strict, hphi_tendsto⟩ :=
+    isCompact_Icc.tendsto_subseq fun n => (htheta n).1
+  let delta' : Nat → NNReal := delta ∘ phi
+  let theta' : Nat → Real := theta ∘ phi
+  refine ⟨delta', theta', thetaStar, ?_, ?_, ?_, ?_, ?_, hthetaStar, ?_, ?_⟩
+  · intro m n hmn
+    change delta (phi n) < delta (phi m)
+    exact hdelta_strict (hphi_strict hmn)
+  · intro n
+    exact hdelta_pos (phi n)
+  · intro n
+    exact hdelta_small (phi n)
+  · simpa only [delta', Function.comp_apply] using
+      hdelta_tendsto.comp hphi_strict.tendsto_atTop
+  · change Tendsto
+      ((fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta n)) ∘ phi) atTop
+        (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal))))
+    exact hvalue_tendsto.comp hphi_strict.tendsto_atTop
+  · simpa only [theta', Function.comp_apply] using hphi_tendsto
+  · intro n
+    simpa only [delta', theta', Function.comp_apply] using htheta (phi n)
+
+/-- **BRRS, Section 2 (2.4).**  Once the compactness extraction in (2.3)
+has produced `θ_*`, the weighted spectrum can be approximated from strictly
+smaller parameters.  The printed assertion `θ_*^- ∈ [0, θ_*)` is meaningful
+only when `θ_* > 0`; at the genuine boundary `θ_* = 0` the faithful
+replacement is the endpoint choice `θ_*^- = θ_*`. -/
+theorem exists_brrsSectionTwo_left_weighted_approximation
+    (E : Set Real) {thetaStar epsilon : Real}
+    (hthetaStar : thetaStar ∈ Icc (0 : Real) 1) (hepsilon : 0 < epsilon) :
+    ∃ thetaStarMinus ∈ Icc (0 : Real) thetaStar,
+      (thetaStarMinus < thetaStar ∨
+        (thetaStar = 0 ∧ thetaStarMinus = thetaStar)) ∧
+      (1 - thetaStarMinus) * brrsAssouadSpectrum E thetaStarMinus ≤
+        (1 - thetaStar) * brrsAssouadSpectrum E thetaStar + epsilon := by
+  by_cases htheta_zero : thetaStar = 0
+  · subst thetaStar
+    refine ⟨0, by norm_num, Or.inr ⟨rfl, rfl⟩, ?_⟩
+    nlinarith [hepsilon.le]
+  · have htheta_pos : 0 < thetaStar :=
+      lt_of_le_of_ne hthetaStar.1 (Ne.symm htheta_zero)
+    let r : Real := min (thetaStar / 2) (epsilon / 2)
+    let thetaStarMinus : Real := thetaStar - r
+    have hr_pos : 0 < r := by
+      dsimp only [r]
+      exact lt_min (by linarith) (by linarith)
+    have hr_le_half : r ≤ thetaStar / 2 := by
+      dsimp only [r]
+      exact min_le_left _ _
+    have hr_lt_epsilon : r < epsilon := by
+      calc
+        r ≤ epsilon / 2 := by
+          dsimp only [r]
+          exact min_le_right _ _
+        _ < epsilon := by linarith
+    have hminus_nonneg : 0 ≤ thetaStarMinus := by
+      dsimp only [thetaStarMinus]
+      linarith
+    have hminus_lt : thetaStarMinus < thetaStar := by
+      dsimp only [thetaStarMinus]
+      linarith
+    have hminus_mem : thetaStarMinus ∈ Iic (1 : Real) :=
+      hminus_lt.le.trans hthetaStar.2
+    have hstar_mem : thetaStar ∈ Iic (1 : Real) := hthetaStar.2
+    let w : Real → Real := fun theta =>
+      (1 - theta) * brrsAssouadSpectrum E theta
+    have hdist := (brrsWeightedAssouadSpectrum_lipschitzOn_Iic E).dist_le_mul
+      thetaStarMinus hminus_mem thetaStar hstar_mem
+    change dist (w thetaStarMinus) (w thetaStar) ≤
+      1 * dist thetaStarMinus thetaStar at hdist
+    have hdist_parameter : dist thetaStarMinus thetaStar = r := by
+      rw [Real.dist_eq]
+      dsimp only [thetaStarMinus]
+      rw [show thetaStar - r - thetaStar = -r by ring,
+        abs_neg, abs_of_nonneg hr_pos.le]
+    have hdist_value : dist (w thetaStarMinus) (w thetaStar) ≤ r := by
+      calc
+        dist (w thetaStarMinus) (w thetaStar) ≤
+            1 * dist thetaStarMinus thetaStar := hdist
+        _ = r := by rw [hdist_parameter]; norm_num
+    have hvalue : w thetaStarMinus ≤ w thetaStar + epsilon := by
+      calc
+        w thetaStarMinus = w thetaStar + (w thetaStarMinus - w thetaStar) := by
+          ring
+        _ ≤ w thetaStar + |w thetaStarMinus - w thetaStar| := by
+          gcongr
+          exact le_abs_self _
+        _ = w thetaStar + dist (w thetaStarMinus) (w thetaStar) := by
+          rw [Real.dist_eq]
+        _ ≤ w thetaStar + r := by
+          simpa [add_comm] using add_le_add_left hdist_value (w thetaStar)
+        _ ≤ w thetaStar + epsilon := by linarith
+    refine ⟨thetaStarMinus, ⟨hminus_nonneg, hminus_lt.le⟩,
+      Or.inl hminus_lt, ?_⟩
+    simpa only [w] using hvalue
+
+/-- **BRRS, Section 2 (2.5), parameter tail.**  A convergent sequence of
+parameters eventually lies above the left comparison parameter from (2.4),
+and its nonnegative-`α` contribution is within `ε` of the limiting one.
+The second branch of the comparison certificate is precisely the genuine
+boundary case `θ_* = θ_*^- = 0`; there the lower inequality instead follows
+from the interval membership of every selected parameter. -/
+theorem eventually_brrsSectionTwo_parameter_tail_estimates
+    {theta : Nat → Real} {thetaStar thetaStarMinus alpha epsilon : Real}
+    (htheta_range : ∀ n, theta n ∈ Icc (0 : Real) 1)
+    (htheta_tendsto : Tendsto theta atTop (𝓝 thetaStar))
+    (hminus_certificate : thetaStarMinus < thetaStar ∨
+      (thetaStar = 0 ∧ thetaStarMinus = thetaStar))
+    (halpha : 0 ≤ alpha) (hepsilon : 0 < epsilon) :
+    ∀ᶠ n : Nat in atTop,
+      thetaStarMinus ≤ theta n ∧ theta n * alpha ≤ thetaStar * alpha + epsilon := by
+  have hlower : ∀ᶠ n : Nat in atTop, thetaStarMinus ≤ theta n := by
+    rcases hminus_certificate with hminus_lt | hminus_zero
+    · filter_upwards [htheta_tendsto.eventually (eventually_gt_nhds hminus_lt)]
+        with n hn
+      exact hn.le
+    · rcases hminus_zero with ⟨hthetaStar_zero, hminus_eq⟩
+      have hminus_zero : thetaStarMinus = 0 := hminus_eq.trans hthetaStar_zero
+      filter_upwards with n
+      simpa only [hminus_zero] using (htheta_range n).1
+  have halpha_one_pos : 0 < alpha + 1 := by linarith
+  let eta : Real := epsilon / (alpha + 1)
+  have heta_pos : 0 < eta := by
+    dsimp only [eta]
+    exact div_pos hepsilon halpha_one_pos
+  have hupper : ∀ᶠ n : Nat in atTop, theta n < thetaStar + eta := by
+    exact htheta_tendsto.eventually
+      (eventually_lt_nhds (show thetaStar < thetaStar + eta by linarith))
+  filter_upwards [hlower, hupper] with n hn_lower hn_upper
+  refine ⟨hn_lower, ?_⟩
+  have hmul : theta n * alpha ≤ (thetaStar + eta) * alpha :=
+    mul_le_mul_of_nonneg_right hn_upper.le halpha
+  have heta_alpha : eta * alpha ≤ epsilon := by
+    calc
+      eta * alpha ≤ eta * (alpha + 1) :=
+        mul_le_mul_of_nonneg_left (by linarith) heta_pos.le
+      _ = epsilon := by
+        dsimp only [eta]
+        field_simp [ne_of_gt halpha_one_pos]
+  calc
+    theta n * alpha ≤ (thetaStar + eta) * alpha := hmul
+    _ = thetaStar * alpha + eta * alpha := by ring
+    _ ≤ thetaStar * alpha + epsilon := by gcongr
+
+/-- **BRRS, Section 2 (2.5).**  Starting with the convergent subsequence of
+the literal (2.3) maximizers and the left approximation (2.4), one obtains a
+single eventual tail on which both estimates printed in (2.5) hold.  The
+full scale and maximizer data are retained for the following covering step. -/
+theorem exists_brrsSectionTwo_convergent_approximate_maximizers_with_tail_estimates
+    {E : Set Real} (hE : E.Nonempty) (alpha : Real) (halpha : 0 ≤ alpha)
+    {epsilon : Real} (hepsilon : 0 < epsilon) :
+    ∃ delta : Nat → NNReal, ∃ theta : Nat → Real, ∃ thetaStar thetaStarMinus : Real,
+      StrictAnti delta ∧ (∀ n, 0 < delta n) ∧
+      (∀ n, delta n < (1 : NNReal) / 4) ∧
+      Tendsto delta atTop (𝓝 (0 : NNReal)) ∧
+      Tendsto (fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta n)) atTop
+        (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)))) ∧
+      thetaStar ∈ Icc (0 : Real) 1 ∧ Tendsto theta atTop (𝓝 thetaStar) ∧
+      (∀ n, theta n ∈ Icc (0 : Real) 1 ∧
+        brrsSectionTwoFiniteScaleEnvelope E alpha (delta n) ≤
+          ((theta n * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E (delta n) (theta n) + (epsilon : EReal)) ∧
+      thetaStarMinus ∈ Icc (0 : Real) thetaStar ∧
+      (thetaStarMinus < thetaStar ∨
+        (thetaStar = 0 ∧ thetaStarMinus = thetaStar)) ∧
+      (1 - thetaStarMinus) * brrsAssouadSpectrum E thetaStarMinus ≤
+        (1 - thetaStar) * brrsAssouadSpectrum E thetaStar + epsilon ∧
+      (∀ᶠ n : Nat in atTop,
+        thetaStarMinus ≤ theta n ∧ theta n * alpha ≤ thetaStar * alpha + epsilon) := by
+  obtain ⟨delta, theta, thetaStar, hdelta_strict, hdelta_pos, hdelta_small,
+    hdelta_tendsto, henvelope_tendsto, hthetaStar, htheta_tendsto, hmaximizer⟩ :=
+    exists_strictAnti_brrsSectionTwo_limsup_sequence_with_convergent_approximate_maximizers
+      hE alpha hepsilon
+  obtain ⟨thetaStarMinus, hthetaStarMinus, hminus_certificate, hweighted⟩ :=
+    exists_brrsSectionTwo_left_weighted_approximation E hthetaStar hepsilon
+  have htail : ∀ᶠ n : Nat in atTop,
+      thetaStarMinus ≤ theta n ∧ theta n * alpha ≤ thetaStar * alpha + epsilon :=
+    eventually_brrsSectionTwo_parameter_tail_estimates
+      (fun n => (hmaximizer n).1) htheta_tendsto hminus_certificate halpha hepsilon
+  exact ⟨delta, theta, thetaStar, thetaStarMinus, hdelta_strict, hdelta_pos,
+    hdelta_small, hdelta_tendsto, henvelope_tendsto, hthetaStar, htheta_tendsto,
+    hmaximizer, hthetaStarMinus, hminus_certificate, hweighted, htail⟩
+
+/-- For a covering scale below one, enlarging the power parameter shortens
+the literal BRRS testing interval.  Thus the exact-scale covering supremum
+is antitone in that parameter.  This is the first inequality in BRRS (2.6),
+with the paper's closed intervals and closed-ball covering convention. -/
+theorem brrsAssouadScaleCoveringNumber_antitone_parameter
+    (E : Set Real) {delta : NNReal} (hdelta_zero : 0 < delta)
+    (hdelta_one : delta < 1) {theta eta : Real} (heta_theta : eta ≤ theta) :
+    brrsAssouadScaleCoveringNumber E delta theta ≤
+      brrsAssouadScaleCoveringNumber E delta eta := by
+  have hdelta_real_zero : 0 < (delta : Real) := by
+    exact_mod_cast hdelta_zero
+  have hdelta_real_one : (delta : Real) ≤ 1 := by
+    exact_mod_cast hdelta_one.le
+  have hlength : (delta : Real) ^ theta ≤ (delta : Real) ^ eta :=
+    Real.rpow_le_rpow_of_exponent_ge hdelta_real_zero hdelta_real_one heta_theta
+  unfold brrsAssouadScaleCoveringNumber
+  apply iSup_mono
+  intro a
+  apply brrsEntropyNumber_mono
+  intro x hx
+  exact ⟨hx.1, brrsInterval_mono hlength hx.2⟩
+
+/-- **BRRS, Section 2 (2.6), covering step.**  A parameter tail lying above
+`thetaStarMinus` is controlled by one equality-scale Assouad-spectrum cover
+at `thetaStarMinus`.  The exponent is the literal source exponent
+`(1 - thetaStarMinus) * gamma_E(thetaStarMinus) + epsilon`; the strictly
+subendpoint hypothesis is exactly what permits the spectrum approximation.
+-/
+theorem exists_brrsSectionTwo_covering_tail_of_parameter_tail
+    {E : Set Real} {delta : Nat → NNReal} {theta : Nat → Real}
+    {thetaStarMinus epsilon : Real}
+    (hdelta_zero : ∀ n, 0 < delta n) (hdelta_one : ∀ n, delta n < 1)
+    (hthetaStarMinus_nonneg : 0 ≤ thetaStarMinus)
+    (hthetaStarMinus_lt_one : thetaStarMinus < 1) (hepsilon : 0 < epsilon)
+    (htail : ∀ᶠ n : Nat in atTop, thetaStarMinus ≤ theta n) :
+    ∃ C : Real, 0 < C ∧ ∀ᶠ n : Nat in atTop,
+      brrsAssouadScaleCoveringNumber E (delta n) (theta n) ≤
+        brrsAssouadScaleCoveringNumber E (delta n) thetaStarMinus ∧
+      brrsAssouadScaleCoveringNumber E (delta n) thetaStarMinus ≤
+        ENNReal.ofReal C * (delta n : ENNReal) ^
+          (-((1 - thetaStarMinus) *
+            brrsAssouadSpectrum E thetaStarMinus + epsilon)) := by
+  have hden : 0 < 1 - thetaStarMinus := sub_pos.mpr hthetaStarMinus_lt_one
+  let gamma : Real := brrsAssouadSpectrum E thetaStarMinus +
+    epsilon / (1 - thetaStarMinus)
+  have hgamma_lt : brrsAssouadSpectrum E thetaStarMinus < gamma := by
+    dsimp only [gamma]
+    exact lt_add_of_pos_right _ (div_pos hepsilon hden)
+  obtain ⟨C, hC, hcover⟩ :=
+    hasBRRSAssouadSpectrumExponent_of_brrsAssouadSpectrum_lt E
+      hthetaStarMinus_lt_one.le hgamma_lt
+  have hgamma_weighted : (1 - thetaStarMinus) * gamma =
+      (1 - thetaStarMinus) * brrsAssouadSpectrum E thetaStarMinus + epsilon := by
+    dsimp only [gamma]
+    calc
+      (1 - thetaStarMinus) *
+          (brrsAssouadSpectrum E thetaStarMinus +
+            epsilon / (1 - thetaStarMinus)) =
+          (1 - thetaStarMinus) * brrsAssouadSpectrum E thetaStarMinus +
+            (epsilon / (1 - thetaStarMinus)) * (1 - thetaStarMinus) := by ring
+      _ = (1 - thetaStarMinus) * brrsAssouadSpectrum E thetaStarMinus + epsilon := by
+        rw [div_mul_cancel₀ epsilon (ne_of_gt hden)]
+  refine ⟨C, hC, ?_⟩
+  filter_upwards [htail] with n hn
+  refine ⟨brrsAssouadScaleCoveringNumber_antitone_parameter E
+      (hdelta_zero n) (hdelta_one n) hn, ?_⟩
+  calc
+    brrsAssouadScaleCoveringNumber E (delta n) thetaStarMinus ≤
+        ENNReal.ofReal C * (delta n : ENNReal) ^
+          (-((1 - thetaStarMinus) * gamma)) :=
+      brrsAssouadScaleCoveringNumber_le_of_cover E hthetaStarMinus_nonneg
+        hthetaStarMinus_lt_one.le hC.le hcover (hdelta_zero n) (hdelta_one n)
+    _ = ENNReal.ofReal C * (delta n : ENNReal) ^
+          (-((1 - thetaStarMinus) *
+            brrsAssouadSpectrum E thetaStarMinus + epsilon)) := by
+      rw [hgamma_weighted]
+
+/-- **BRRS, Section 2 (2.6).**  The compactly selected (2.3) maximizers,
+the left comparison (2.4), and the eventual parameter estimates (2.5) yield
+one positive constant and the two literal equality-scale covering bounds
+used in the next logarithmic estimate.  At the genuine `thetaStar = 0`
+boundary, the retained endpoint branch still gives
+`thetaStarMinus = 0 < 1`, so no invalid strict-left assertion is used. -/
+theorem exists_brrsSectionTwo_convergent_approximate_maximizers_with_covering_tail_estimates
+    {E : Set Real} (hE : E.Nonempty) (alpha : Real) (halpha : 0 ≤ alpha)
+    {epsilon : Real} (hepsilon : 0 < epsilon) :
+    ∃ delta : Nat → NNReal, ∃ theta : Nat → Real,
+      ∃ thetaStar thetaStarMinus C : Real,
+      StrictAnti delta ∧ (∀ n, 0 < delta n) ∧
+      (∀ n, delta n < (1 : NNReal) / 4) ∧
+      Tendsto delta atTop (𝓝 (0 : NNReal)) ∧
+      Tendsto (fun n => brrsSectionTwoFiniteScaleEnvelope E alpha (delta n)) atTop
+        (𝓝 (Filter.limsup (brrsSectionTwoFiniteScaleEnvelope E alpha)
+          (𝓝[>] (0 : NNReal)))) ∧
+      thetaStar ∈ Icc (0 : Real) 1 ∧ Tendsto theta atTop (𝓝 thetaStar) ∧
+      (∀ n, theta n ∈ Icc (0 : Real) 1 ∧
+        brrsSectionTwoFiniteScaleEnvelope E alpha (delta n) ≤
+          ((theta n * alpha : Real) : EReal) +
+            brrsAssouadWeightedEntropy E (delta n) (theta n) + (epsilon : EReal)) ∧
+      thetaStarMinus ∈ Icc (0 : Real) thetaStar ∧
+      (thetaStarMinus < thetaStar ∨
+        (thetaStar = 0 ∧ thetaStarMinus = thetaStar)) ∧
+      (1 - thetaStarMinus) * brrsAssouadSpectrum E thetaStarMinus ≤
+        (1 - thetaStar) * brrsAssouadSpectrum E thetaStar + epsilon ∧
+      (∀ᶠ n : Nat in atTop,
+        thetaStarMinus ≤ theta n ∧ theta n * alpha ≤ thetaStar * alpha + epsilon) ∧
+      0 < C ∧ ∀ᶠ n : Nat in atTop,
+        brrsAssouadScaleCoveringNumber E (delta n) (theta n) ≤
+          brrsAssouadScaleCoveringNumber E (delta n) thetaStarMinus ∧
+        brrsAssouadScaleCoveringNumber E (delta n) thetaStarMinus ≤
+          ENNReal.ofReal C * (delta n : ENNReal) ^
+            (-((1 - thetaStarMinus) *
+              brrsAssouadSpectrum E thetaStarMinus + epsilon)) := by
+  obtain ⟨delta, theta, thetaStar, thetaStarMinus, hdelta_strict, hdelta_pos,
+    hdelta_small, hdelta_tendsto, henvelope_tendsto, hthetaStar, htheta_tendsto,
+    hmaximizer, hthetaStarMinus, hminus_certificate, hweighted, htail⟩ :=
+    exists_brrsSectionTwo_convergent_approximate_maximizers_with_tail_estimates
+      hE alpha halpha hepsilon
+  have hdelta_one : ∀ n, delta n < 1 := fun n =>
+    (hdelta_small n).trans (by norm_num)
+  have hthetaStarMinus_lt_one : thetaStarMinus < 1 := by
+    rcases hminus_certificate with hminus_lt | hboundary
+    · exact hminus_lt.trans_le hthetaStar.2
+    · rcases hboundary with ⟨hthetaStar_zero, hminus_eq⟩
+      rw [hminus_eq, hthetaStar_zero]
+      norm_num
+  obtain ⟨C, hC, hcover_tail⟩ :=
+    exists_brrsSectionTwo_covering_tail_of_parameter_tail hdelta_pos hdelta_one
+      hthetaStarMinus.1 hthetaStarMinus_lt_one hepsilon
+      (htail.mono fun _ hn => hn.1)
+  exact ⟨delta, theta, thetaStar, thetaStarMinus, C, hdelta_strict, hdelta_pos,
+    hdelta_small, hdelta_tendsto, henvelope_tendsto, hthetaStar, htheta_tendsto,
+    hmaximizer, hthetaStarMinus, hminus_certificate, hweighted, htail, hC,
+    hcover_tail⟩
+
 /-- The weighted exact-scale spectrum has the prescribed endpoint limit.
 This is the continuity input at `theta = 1` used by the BRRS compactness
 argument. -/
@@ -8706,20 +9831,10 @@ theorem exists_brrsAssouadLegendreTransform_maximizer (E : Set Real)
         theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta := by
   let g : Real → Real :=
     fun theta => theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta
-  have hweighted : ContinuousOn
-      (fun theta : Real => (1 - theta) * brrsAssouadSpectrum E theta)
-      (Icc (0 : Real) 1) :=
-    (brrsWeightedAssouadSpectrum_continuousOn_Iic E).mono
-      (fun theta htheta => htheta.2)
-  have hlinear : ContinuousOn (fun theta : Real => theta * alpha)
-      (Icc (0 : Real) 1) :=
-    continuousOn_id.mul continuousOn_const
-  have hgcont : ContinuousOn g (Icc (0 : Real) 1) := by
-    exact hlinear.add hweighted
   obtain ⟨theta, htheta, hmax⟩ :=
-    isCompact_Icc.exists_isMaxOn (by exact ⟨0, by norm_num⟩) hgcont
+    exists_brrsAssouadSpectrum_affine_maximizer E alpha
   have hmax' : ∀ u ∈ Icc (0 : Real) 1, g u ≤ g theta := by
-    simpa only [IsMaxOn, IsMaxFilter, Filter.eventually_principal] using hmax
+    simpa only [g] using hmax
   have hgreatest : IsGreatest (g '' Icc (0 : Real) 1) (g theta) := by
     refine ⟨⟨theta, htheta, rfl⟩, ?_⟩
     rintro _ ⟨u, hu, rfl⟩
