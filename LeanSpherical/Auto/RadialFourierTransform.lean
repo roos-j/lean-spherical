@@ -178,6 +178,39 @@ theorem sphereFourier_neg (d : Nat) (xi : Euclidean d) :
   apply sphereFourier_eq_of_norm_eq d
   simp
 
+/-! ### Repository-normalized radial Bessel factor
+
+Mathlib currently has no Bessel-`J` special-function API.  The exact object
+which appears as the Bessel factor in the radial Fourier formula is therefore
+recorded here directly as the restriction of `sphereFourier` to a unit ray.
+Since `sphereFourier` uses `Real.fourierChar`, this fixes the convention
+`exp (-2 pi i <x, xi>)` once and for all.  Components using a classical
+Bessel notation may prove a comparison later, but must not assume one here.
+-/
+
+/-- The scalar spherical-Bessel factor in Mathlib's Fourier normalization.
+A unit vector merely selects a ray. -/
+noncomputable def brrsRadialBesselFactor
+    (d : Nat) (v : Euclidean d) (u : Real) : Complex :=
+  sphereFourier d (u • v)
+
+/-- The radial Bessel factor is independent of the selected unit ray. -/
+theorem brrsRadialBesselFactor_eq_of_unit
+    {d : Nat} {v w : Euclidean d} (hv : ‖v‖ = 1) (hw : ‖w‖ = 1)
+    (u : Real) :
+    brrsRadialBesselFactor d v u = brrsRadialBesselFactor d w u := by
+  unfold brrsRadialBesselFactor
+  apply sphereFourier_eq_of_norm_eq d
+  simp [norm_smul, hv, hw]
+
+/-- Central symmetry makes the radial Bessel factor even in its scalar
+argument. -/
+theorem brrsRadialBesselFactor_neg
+    (d : Nat) (v : Euclidean d) (u : Real) :
+    brrsRadialBesselFactor d v (-u) = brrsRadialBesselFactor d v u := by
+  unfold brrsRadialBesselFactor
+  rw [show (-u) • v = -(u • v) by module, sphereFourier_neg]
+
 /-- After choosing any unit direction, the angular Fourier factor reduces to
 the radial frequency on that direction. -/
 theorem sphereFourier_eq_norm_smul_unit (d : Nat) (xi v : Euclidean d)
@@ -394,6 +427,21 @@ theorem fourierInv_radial_eq_sphereFourier_integral
       apply integral_congr_ae
       filter_upwards with rho
       rw [polar_angular_fourierChar_eq_sphereFourier]
+
+/-- For an integrable radial profile, the forward Fourier transform has the
+same one-dimensional angular reduction.  This is the forward companion of
+`fourierInv_radial_eq_sphereFourier_integral`; the negated output direction is
+the only change forced by Mathlib's Fourier convention. -/
+theorem fourier_radial_eq_sphereFourier_integral
+    {d : Nat} (hd : 0 < d) (F : Real → Complex) (x : Euclidean d)
+    (hInt : Integrable (fun p : sphere (0 : Euclidean d) 1 × Ioi (0 : Real) =>
+      Real.fourierChar (inner Real (p.2.1 • (p.1 : Euclidean d)) (-x)) • F p.2.1)
+      ((unitSurfaceMeasure d).prod (Measure.volumeIoiPow (d - 1)))) :
+    𝓕 (fun xi : Euclidean d => F ‖xi‖) x =
+      ∫ rho : Ioi (0 : Real), sphereFourier d (rho.1 • (-x)) * F rho.1
+        ∂Measure.volumeIoiPow (d - 1) := by
+  simpa only [Real.fourierInv_eq_fourier_neg, neg_neg] using
+    (fourierInv_radial_eq_sphereFourier_integral hd F (-x) hInt)
 
 /-- A Schwartz radial multiplier supplies the integrability premise in the
 polar/Fubini formula.  This is a literal transport through the polar

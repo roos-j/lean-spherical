@@ -9596,6 +9596,192 @@ theorem brrsLegendreAssouadFunction_eq_brrsAssouadLegendreTransform_of_nonempty_
   rw [brrsLegendreAssouadFunction_eq_of_nonempty_of_one_le hE halpha,
     brrsAssouadLegendreTransform_eq_id_of_one_le E halpha]
 
+/-! ### The quasi-Assouad affine tail -/
+
+/-- Clamp an arbitrary testing interval of length at most one to an interval
+of the same length inside `[1,2]`.  On a radius set contained in `[1,2]`, the
+clamped interval contains precisely the portion relevant to the entropy
+estimate. -/
+private theorem brrs_inter_interval_subset_clamp
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) {a R : Real} :
+    E ∩ brrsInterval a R ⊆
+      E ∩ Icc (max 1 (min a (2 - R))) (max 1 (min a (2 - R)) + R) := by
+  intro x hx
+  have hxE := hE hx.1
+  simp only [brrsInterval, mem_inter_iff, mem_Icc] at hx ⊢
+  refine ⟨hx.1, ?_, ?_⟩
+  · apply max_le
+    · exact hxE.1
+    · exact (min_le_left _ _).trans hx.2.1
+  · have hxsub : x - R ≤ min a (2 - R) := by
+      apply le_min
+      · linarith [hx.2.2]
+      · linarith [hxE.2]
+    have hmin : min a (2 - R) ≤ max 1 (min a (2 - R)) := le_max_right _ _
+    linarith
+
+/-- An upper Assouad-spectrum covering estimate controls the literal
+equality-scale BRRS spectrum estimate.  The upper convention tests more
+intervals, and the only bookkeeping needed here is the interval clamping
+inside the normalized radius range `[1,2]`. -/
+theorem HasUpperAssouadSpectrumExponent.toHasBRRSAssouadSpectrumExponent
+    {E : Set Real} {theta gamma : Real} (hE : E ⊆ Icc (1 : Real) 2)
+    (htheta_zero : 0 ≤ theta)
+    (hupper : Auto.FractalDimensions.HasUpperAssouadSpectrumExponent E theta gamma) :
+    HasBRRSAssouadSpectrumExponent E theta gamma := by
+  rcases hupper with ⟨C, hC, hupper⟩
+  refine ⟨C, hC, ?_⟩
+  intro delta hdelta hdelta_one a
+  have hdelta_real : 0 < (delta : Real) := by exact_mod_cast hdelta
+  have hdelta_one_real : (delta : Real) ≤ 1 := by exact_mod_cast hdelta_one.le
+  let R : Real := (delta : Real) ^ theta
+  have hRpos : 0 < R := by
+    dsimp [R]
+    exact Real.rpow_pos_of_pos hdelta_real theta
+  have hRone : R ≤ 1 := by
+    dsimp [R]
+    exact Real.rpow_le_one hdelta_real.le hdelta_one_real htheta_zero
+  let c : Real := max 1 (min a (2 - R))
+  have hc_lower : 1 ≤ c := by
+    dsimp [c]
+    exact le_max_left _ _
+  have hc_upper : c ≤ 2 - R := by
+    dsimp [c]
+    apply max_le
+    · linarith
+    · exact min_le_right _ _
+  have hc_order : c ≤ c + R := by linarith
+  have hc_right : c + R ≤ 2 := by linarith
+  obtain ⟨centers, hcenters, hcard⟩ :=
+    hupper (delta : Real) c (c + R) hdelta_real (by exact_mod_cast hdelta_one)
+      hc_lower hc_order hc_right (by simp [R])
+  have hsubset : E ∩ brrsInterval a R ⊆ E ∩ Icc c (c + R) := by
+    dsimp only [c]
+    exact brrs_inter_interval_subset_clamp hE
+  calc
+    brrsEntropyNumber (E ∩ brrsInterval a ((delta : Real) ^ theta)) delta =
+        brrsEntropyNumber (E ∩ brrsInterval a R) delta := by rfl
+    _ ≤ brrsEntropyNumber (E ∩ Icc c (c + R)) delta :=
+      brrsEntropyNumber_mono hsubset delta
+    _ ≤ (centers.card : ENNReal) := brrsEntropyNumber_le_of_intervalCover hcenters
+    _ = ENNReal.ofReal (centers.card : Real) := by simp
+    _ ≤ ENNReal.ofReal (C * ((R / (delta : Real)) ^ gamma)) :=
+      ENNReal.ofReal_le_ofReal (by
+        simpa only [sub_self, add_sub_cancel_left] using hcard)
+    _ = ENNReal.ofReal (C * ((((delta : Real) ^ theta) / (delta : Real)) ^ gamma)) := by
+      rfl
+
+/-- The equality-scale BRRS spectrum is bounded by the upper Assouad
+spectrum.  This is the quantitative bridge from the older quasi-Assouad
+development to the literal BRRS entropy convention. -/
+theorem brrsAssouadSpectrum_le_upperAssouadSpectrum
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) {theta : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_one : theta ≤ 1) :
+    brrsAssouadSpectrum E theta ≤ Auto.FractalDimensions.upperAssouadSpectrum E theta := by
+  apply le_of_forall_pos_le_add
+  intro epsilon hepsilon
+  let gamma : Real := Auto.FractalDimensions.upperAssouadSpectrum E theta + epsilon
+  have hgamma_pos : 0 < gamma := by
+    dsimp [gamma]
+    have hnonneg : 0 ≤ Auto.FractalDimensions.upperAssouadSpectrum E theta :=
+      Auto.FractalDimensions.upperAssouadSpectrum_nonneg E htheta_one
+    linarith
+  have hupper : Auto.FractalDimensions.HasUpperAssouadSpectrumExponent E theta gamma :=
+    Auto.FractalDimensions.hasUpperAssouadSpectrumExponent_of_upperAssouadSpectrum_lt
+      htheta_zero htheta_one (by dsimp [gamma]; linarith)
+  unfold brrsAssouadSpectrum
+  apply csInf_le
+  · refine ⟨0, ?_⟩
+    intro q hq
+    exact hq.1.le
+  · exact ⟨hgamma_pos,
+      HasUpperAssouadSpectrumExponent.toHasBRRSAssouadSpectrumExponent
+        hE htheta_zero hupper⟩
+
+/-- The quasi-Assouad dimension bounds every literal BRRS spectrum parameter
+strictly below the endpoint. -/
+theorem brrsAssouadSpectrum_le_quasiAssouadDimension
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) {theta : Real}
+    (htheta_zero : 0 ≤ theta) (htheta_lt_one : theta < 1) :
+    brrsAssouadSpectrum E theta ≤ Auto.FractalDimensions.quasiAssouadDimension E := by
+  calc
+    brrsAssouadSpectrum E theta ≤ Auto.FractalDimensions.upperAssouadSpectrum E theta :=
+      brrsAssouadSpectrum_le_upperAssouadSpectrum hE htheta_zero htheta_lt_one.le
+    _ ≤ Auto.FractalDimensions.quasiAssouadDimension E := by
+      unfold Auto.FractalDimensions.quasiAssouadDimension
+      apply le_csSup
+      · refine ⟨1, ?_⟩
+        rintro _ ⟨u, hu, rfl⟩
+        exact Auto.FractalDimensions.upperAssouadSpectrum_le_one E hu.2.le
+      · exact ⟨theta, ⟨htheta_zero, htheta_lt_one⟩, rfl⟩
+
+/-- Above the quasi-Assouad threshold, the BRRS spectral transform is exactly
+the identity.  This is the affine-tail input used in the high-`p`
+interpolation argument. -/
+theorem brrsAssouadLegendreTransform_eq_id_of_quasiAssouadDimension_le
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) {alpha : Real}
+    (halpha : Auto.FractalDimensions.quasiAssouadDimension E ≤ alpha) :
+    brrsAssouadLegendreTransform E alpha = alpha := by
+  apply le_antisymm
+  · rw [brrsAssouadLegendreTransform_eq_restricted]
+    apply brrsRestrictedLegendreTransform_le
+    · exact ⟨0, by simp⟩
+    · intro theta htheta
+      by_cases htheta_one : theta = 1
+      · subst theta
+        simp [brrsAssouadPotential]
+      · have htheta_lt : theta < 1 := lt_of_le_of_ne htheta.2 htheta_one
+        have hspectrum : brrsAssouadSpectrum E theta ≤ alpha :=
+          (brrsAssouadSpectrum_le_quasiAssouadDimension hE htheta.1 htheta_lt).trans halpha
+        have hfactor : 0 ≤ 1 - theta := sub_nonneg.mpr htheta.2
+        rw [brrsAssouadPotential, if_neg htheta_one]
+        calc
+          theta * alpha - (-(1 - theta) * brrsAssouadSpectrum E theta) =
+              theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta := by ring
+          _ ≤ theta * alpha + (1 - theta) * alpha := by gcongr
+          _ = alpha := by ring
+  · exact le_brrsAssouadLegendreTransform E alpha
+
+/-- The literal entropy exponent has the same quasi-Assouad identity tail. -/
+theorem brrsLegendreAssouadFunction_eq_id_of_nonempty_of_quasiAssouadDimension_le
+    {E : Set Real} (hE : E.Nonempty) (hsubset : E ⊆ Icc (1 : Real) 2)
+    {alpha : Real} (halpha : Auto.FractalDimensions.quasiAssouadDimension E ≤ alpha) :
+    brrsLegendreAssouadFunction E alpha = alpha := by
+  rw [brrsLegendreAssouadFunction_eq_brrsAssouadLegendreTransform_of_nonempty hE]
+  exact brrsAssouadLegendreTransform_eq_id_of_quasiAssouadDimension_le hsubset halpha
+
+/-- Independently of the quasi-Assouad value, every nonnegative penalty at
+most one has BRRS Legendre--Assouad value at most one.  This is the robust
+endpoint fallback for interpolation. -/
+theorem brrsAssouadLegendreTransform_le_one_of_nonneg_of_le_one
+    (E : Set Real) {alpha : Real} (_halpha_nonneg : 0 ≤ alpha)
+    (halpha_one : alpha ≤ 1) :
+    brrsAssouadLegendreTransform E alpha ≤ 1 := by
+  rw [brrsAssouadLegendreTransform_eq_restricted]
+  apply brrsRestrictedLegendreTransform_le
+  · exact ⟨0, by simp⟩
+  · intro theta htheta
+    by_cases htheta_one : theta = 1
+    · subst theta
+      simp [brrsAssouadPotential, halpha_one]
+    · have hspectrum : brrsAssouadSpectrum E theta ≤ 1 :=
+        brrsAssouadSpectrum_le_one E htheta.2
+      have htheta_nonneg : 0 ≤ theta := htheta.1
+      have hfactor : 0 ≤ 1 - theta := sub_nonneg.mpr htheta.2
+      rw [brrsAssouadPotential, if_neg htheta_one]
+      calc
+        theta * alpha - (-(1 - theta) * brrsAssouadSpectrum E theta) =
+            theta * alpha + (1 - theta) * brrsAssouadSpectrum E theta := by ring
+        _ ≤ theta * 1 + (1 - theta) * 1 := by gcongr
+        _ = 1 := by ring
+
+/-- The universal `ν_E^♯(α) ≤ 1` fallback in the literal entropy convention. -/
+theorem brrsLegendreAssouadFunction_le_one_of_nonempty_of_nonneg_of_le_one
+    {E : Set Real} (hE : E.Nonempty) {alpha : Real} (halpha_nonneg : 0 ≤ alpha)
+    (halpha_one : alpha ≤ 1) : brrsLegendreAssouadFunction E alpha ≤ 1 := by
+  rw [brrsLegendreAssouadFunction_eq_brrsAssouadLegendreTransform_of_nonempty hE]
+  exact brrsAssouadLegendreTransform_le_one_of_nonneg_of_le_one E halpha_nonneg halpha_one
+
 /-- The analytic-free direction of BRRS Theorem 1.2(ii): once a function is
 identified with a BRRS Legendre transform on nonnegative parameters, the
 required increasing, convex, and eventual-identity structure follows from
