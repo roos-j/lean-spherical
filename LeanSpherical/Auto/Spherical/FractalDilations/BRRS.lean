@@ -43589,7 +43589,7 @@ theorem tsum_brrsSectionFiveFarSourceII_le_geometric_fullRange
     · have hsobolev : sobolevExponent d p ≤ 0 :=
         sobolevExponent_nonpos hd hp_pos hp_lt.le
       have hpenalty_nonpos : p * sobolevExponent d p ≤ 0 :=
-        mul_nonpos_of_nonneg_of_nonpos hp.le hsobolev
+        mul_nonpos_of_nonneg_of_nonpos hp_pos.le hsobolev
       have hfactor :
           ENNReal.ofReal ((2 : Real) ^
             (2 * ((L + d + 2 : Nat) : Real) * p -
@@ -46283,6 +46283,9151 @@ theorem brrsSectionFiveTerminalCell_sourceWeight_fourPhase_le
         (lintegral_brrsSectionFiveCubicMajorant_pos j)
         (lintegral_brrsSectionFiveCubicMajorant_ne_top j)
     _ = _ := by rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The `κ`-normalized terminal cell of BRRS (5.6)
+
+The preceding theorem bounds the terminal radial contribution by the
+cardinality of the sampled time packet.  The source states (5.6) in the same
+local-counting normalization as the other cells, so that the individual
+estimates can be added in (5.8).  At the terminal radius the counting radius
+is exactly one, and the whole packet lies inside a single unit interval, so
+`#T ≤ κ_{j,j}`; this is the endpoint cardinality comparison recorded in the
+Section 5 finite-net package.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **BRRS (5.6), terminal cell in local-counting normalization.**  The
+terminal radial contribution `I_j` of the four literal travelling phase
+lines is bounded by the terminal local counting coefficient
+`κ_{j,j}(p s_p)` times the `Lᵖ` mass of the radial profile.  The constant is
+explicit: `4` phase lines and the fixed mass of the cubic majorant which
+dominates `ω_j`. -/
+theorem brrsSectionFiveTerminalCell_kappa_fourPhase_le
+    {d : Nat} (hd : 2 ≤ d) {E : Set Real} {j : Nat} {T : Finset Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hT : IsDyadicDiscretization E j T)
+    (p : Real) (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      4 * brrsDyadicKappa T j j (p * sobolevExponent d p) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  refine le_trans
+    (brrsSectionFiveTerminalCell_sourceWeight_fourPhase_le hd T j p hp f hf) ?_
+  exact mul_le_mul'
+    (mul_le_mul' le_rfl
+      (dyadicDiscretization_card_le_brrsDyadicKappa_terminal hE hT
+        (p * sobolevExponent d p)))
+    le_rfl
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The initial radial cell in BRRS Section 5
+
+The `m = 0` cell of the Section 5 dyadic radial decomposition is treated by
+the source separately from the strict intermediate range.  Its counting
+radius is exactly the time mesh `2^{-j}`, so the local counting coefficient
+is bounded by pure packing rather than by the entropy of `E`; the printed
+exponent `2^{j nu_E^sharp(p s_p)}` then appears through the unconditional
+inequality `alpha <= nu_E^sharp(alpha)`.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Local packing at the separation scale.  A `R`-separated set of times
+meets a closed interval of length `R` in at most two points, so the local
+counting coefficient at counting radius `R` is at most `2 R^{-alpha}`.  This
+is the elementary packing input of BRRS (5.7); no entropy hypothesis on `E`
+is used. -/
+theorem brrsKappa_le_two_mul_rpow_of_isSeparated
+    {T : Finset Real} {R : NNReal} (hR : 0 < (R : Real))
+    (hsep : IsSeparated T (R : Real)) (alpha : Real) :
+    brrsKappa T R alpha ≤ 2 * (R : ENNReal) ^ (-alpha) := by
+  classical
+  unfold brrsKappa
+  refine iSup_le fun a => ?_
+  set S : Finset Real := T.filter fun t => t ∈
+    Auto.Spherical.LegendreAssouad.brrsInterval a (R : Real) with hS
+  have hsub : ∀ x ∈ S, x ∈ Icc a (a + (1 : Nat) * (R : Real)) := by
+    intro x hx
+    have hx' : x ∈ T ∧ x ∈ Auto.Spherical.LegendreAssouad.brrsInterval a (R : Real) := by
+      simpa only [hS, Finset.mem_filter] using hx
+    have h2 := hx'.2
+    simp only [Auto.Spherical.LegendreAssouad.brrsInterval, mem_Icc] at h2 ⊢
+    constructor <;> [exact h2.1; (push_cast; linarith [h2.2])]
+  have hsep' : ∀ x ∈ S, ∀ y ∈ S, x ≠ y → (R : Real) ≤ |x - y| := by
+    intro x hx y hy hxy
+    have hx' : x ∈ T := (Finset.mem_filter.mp hx).1
+    have hy' : y ∈ T := (Finset.mem_filter.mp hy).1
+    exact hsep (by simpa using hx') (by simpa using hy') hxy
+  have hcard : S.card ≤ 2 := by
+    simpa using brrs_card_le_succ_of_separated_in_interval (n := 1) hR hsub hsep'
+  calc
+    (R : ENNReal) ^ (-alpha) * (S.card : ENNReal) ≤
+        (R : ENNReal) ^ (-alpha) * 2 :=
+      mul_le_mul' le_rfl (by exact_mod_cast hcard)
+    _ = 2 * (R : ENNReal) ^ (-alpha) := mul_comm _ _
+
+/-- The initial radial block sits exactly at the time mesh. -/
+theorem brrsDyadicRadialBlockRadius_zero_coe (j : Nat) :
+    (brrsDyadicRadialBlockRadius j 0 : Real) = dyadicTimeScale j := by
+  change dyadicTimeScale j * (2 : Real) ^ (0 : Nat) = dyadicTimeScale j
+  norm_num
+
+/-- The negative power of the initial radial radius is the dyadic factor
+`2^{j alpha}` appearing in BRRS (5.7). -/
+theorem brrsDyadicRadialBlockRadius_zero_rpow_neg (j : Nat) (alpha : Real) :
+    (brrsDyadicRadialBlockRadius j 0 : ENNReal) ^ (-alpha) =
+      ENNReal.ofReal ((2 : Real) ^ ((j : Real) * alpha)) := by
+  have hcoe : (brrsDyadicRadialBlockRadius j 0 : Real) = ((2 : Real) ^ j)⁻¹ := by
+    rw [brrsDyadicRadialBlockRadius_zero_coe]
+    rfl
+  have hpos : 0 < (brrsDyadicRadialBlockRadius j 0 : Real) :=
+    brrsDyadicRadialBlockRadius_pos j 0
+  rw [ENNReal.coe_nnreal_eq, ENNReal.ofReal_rpow_of_pos hpos]
+  congr 1
+  rw [hcoe, Real.rpow_neg (by positivity), Real.inv_rpow (by positivity),
+    inv_inv, ← Real.rpow_natCast (2 : Real) j,
+    ← Real.rpow_mul (by norm_num : (0 : Real) ≤ 2)]
+
+/-- The initial-cell local counting coefficient of a `2^{-j}`-discretization
+is at most `2 * 2^{j alpha}`.  This is the packing half of BRRS (5.7): at the
+mesh radius the coefficient is controlled without any entropy input. -/
+theorem brrsDyadicKappa_zero_le_two_mul_two_rpow
+    {E : Set Real} {j : Nat} {T : Finset Real}
+    (hT : IsDyadicDiscretization E j T) (alpha : Real) :
+    brrsDyadicKappa T j 0 alpha ≤
+      2 * ENNReal.ofReal ((2 : Real) ^ ((j : Real) * alpha)) := by
+  have hR : 0 < (brrsDyadicRadialBlockRadius j 0 : Real) :=
+    brrsDyadicRadialBlockRadius_pos j 0
+  have hsep : IsSeparated T (brrsDyadicRadialBlockRadius j 0 : Real) := by
+    rw [brrsDyadicRadialBlockRadius_zero_coe]
+    exact hT.separated
+  rw [brrsDyadicKappa_eq_brrsKappa_dyadicRadialBlockRadius,
+    ← brrsDyadicRadialBlockRadius_zero_rpow_neg]
+  exact brrsKappa_le_two_mul_rpow_of_isSeparated hR hsep alpha
+
+/-- The Legendre--Assouad half of BRRS (5.7): the source replaces the raw
+exponent `alpha = p s_p` by `nu_E^sharp(p s_p)` using `alpha <= nu_E^sharp(alpha)`,
+which holds for every nonempty time set and every nonnegative parameter. -/
+theorem two_rpow_mul_le_two_rpow_mul_brrsLegendreAssouadFunction
+    {E : Set Real} (hE : E.Nonempty) {alpha : Real} (halpha : 0 ≤ alpha)
+    (j : Nat) :
+    ENNReal.ofReal ((2 : Real) ^ ((j : Real) * alpha)) ≤
+      ENNReal.ofReal ((2 : Real) ^
+        ((j : Real) * brrsLegendreAssouadFunction E alpha)) := by
+  apply ENNReal.ofReal_le_ofReal
+  apply Real.rpow_le_rpow_of_exponent_le (by norm_num : (1 : Real) ≤ 2)
+  exact mul_le_mul_of_nonneg_left
+    (Auto.Spherical.LegendreAssouad.le_brrsLegendreAssouadFunction_of_nonempty
+      hE halpha) (Nat.cast_nonneg j)
+
+/-- **BRRS (5.7), initial cell.**  For `d >= 2`, `p >= 2` and a nonempty
+time set `E` with `2^{-j}`-discretization `T`, the four literal travelling
+phase lines over the initial radial annulus `[2^{-j}, 2^{-j+1}]`, carrying the
+source outer weight `r^{-p s_p}`, are bounded by
+`2^{j nu_E^sharp(p s_p)}` times the `L^p` mass of the radial profile.  The
+proof is the source one: bounded overlap and Young reduce the cell to the
+local counting coefficient `kappa_{j,0}(p s_p)`, elementary packing at the
+mesh radius gives `kappa_{j,0}(p s_p) <= 2 * 2^{j p s_p}`, and
+`p s_p <= nu_E^sharp(p s_p)` upgrades the exponent to the printed one.  The
+constant `56 = 28 * 2` and the fixed cubic-majorant mass are explicit and
+independent of `j`, `T` and `f`. -/
+theorem brrsSectionFiveInitialCell_sourceWeight_fourPhase_le
+    {d : Nat} (hd : 2 ≤ d) {E : Set Real} (hE : E.Nonempty)
+    (T : Finset Real) (j : Nat) (hT : IsDyadicDiscretization E j T)
+    (p : Real) (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsDyadicRadialEndpointFourPhaseBlock T j 0 p
+        (fun r => (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p)))
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      56 * ENNReal.ofReal ((2 : Real) ^
+          ((j : Real) *
+            brrsLegendreAssouadFunction E (p * sobolevExponent d p))) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  have halpha : 0 ≤ p * sobolevExponent d p := mul_sobolevExponent_nonneg hd hp
+  have hW : ∀ r ∈ Icc (brrsDyadicRadialBlockRadius j 0 : Real)
+      (2 * (brrsDyadicRadialBlockRadius j 0 : Real)),
+      (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p)) ≤
+        (brrsDyadicRadialBlockRadius j 0 : ENNReal) ^
+          (-(p * sobolevExponent d p)) := by
+    intro r hr
+    have hRpos : 0 < (brrsDyadicRadialBlockRadius j 0 : Real) :=
+      brrsDyadicRadialBlockRadius_pos j 0
+    have hrpos : 0 < r := lt_of_lt_of_le hRpos hr.1
+    rw [ENNReal.coe_nnreal_eq (brrsDyadicRadialBlockRadius j 0),
+      ENNReal.ofReal_rpow_of_pos hrpos,
+      ENNReal.ofReal_rpow_of_pos hRpos]
+    exact ENNReal.ofReal_le_ofReal
+      (Real.rpow_le_rpow_of_nonpos hRpos hr.1 (neg_nonpos.mpr halpha))
+  calc
+    brrsDyadicRadialEndpointFourPhaseBlock T j 0 p
+        (fun r => (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p)))
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialEndpointFourPhaseBlock T j 0 p
+          (fun r => (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p)))
+          (brrsSectionFiveCubicMajorant j) f :=
+      brrsDyadicRadialEndpointFourPhaseBlock_sectionFiveOmegaENN_le_cubicMajorant
+        T j 0 p _ f hp0
+    _ ≤ 28 * brrsDyadicKappa T j 0 (p * sobolevExponent d p) *
+          ((∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) :=
+      brrsDyadicRadialEndpointFourPhaseBlock_le_kappa
+        T j 0 (p * sobolevExponent d p) p hp1 _
+          (brrsSectionFiveCubicMajorant j) f
+          (measurable_brrsSectionFiveCubicMajorant j) hf
+          (fun u => brrsSectionFiveCubicMajorant_pos j u)
+          (fun u => brrsSectionFiveCubicMajorant_ne_top j u)
+          (lintegral_brrsSectionFiveCubicMajorant_pos j)
+          (lintegral_brrsSectionFiveCubicMajorant_ne_top j) hW
+    _ = 28 * brrsDyadicKappa T j 0 (p * sobolevExponent d p) *
+          ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) := by
+      rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+    _ ≤ 28 * (2 * ENNReal.ofReal ((2 : Real) ^
+            ((j : Real) *
+              brrsLegendreAssouadFunction E (p * sobolevExponent d p)))) *
+          ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) := by
+      refine mul_le_mul' (mul_le_mul' le_rfl ?_) le_rfl
+      calc
+        brrsDyadicKappa T j 0 (p * sobolevExponent d p) ≤
+            2 * ENNReal.ofReal ((2 : Real) ^
+              ((j : Real) * (p * sobolevExponent d p))) :=
+          brrsDyadicKappa_zero_le_two_mul_two_rpow hT _
+        _ ≤ 2 * ENNReal.ofReal ((2 : Real) ^
+              ((j : Real) *
+                brrsLegendreAssouadFunction E (p * sobolevExponent d p))) :=
+          mul_le_mul' le_rfl
+            (two_rpow_mul_le_two_rpow_mul_brrsLegendreAssouadFunction hE halpha j)
+    _ = 56 * ENNReal.ofReal ((2 : Real) ^
+            ((j : Real) *
+              brrsLegendreAssouadFunction E (p * sobolevExponent d p))) *
+          ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) := by
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The global half-density kernel majorant for BRRS (5.3)
+
+The compact spatial reduction needs one majorant valid at every pair of
+radii.  The two high-source radial regions were already joined; the two
+low-source regions reduce to the same two-radius half-density by elementary
+comparisons at the fixed annular threshold.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The two-radius square-root ratio in half-density form. -/
+theorem brrs_sqrtRatio_pow_eq_halfDensity'
+    {d : Nat} (hd : 1 ≤ d) {r s : Real} (hr : 0 < r) (hs : 0 < s) :
+    (Real.sqrt (s / r)) ^ (d - 1) =
+      (s / r) ^ (((d : Real) - 1) / 2) := by
+  let n : Real := (d : Real) - 1
+  change (Real.sqrt (s / r)) ^ (d - 1) = (s / r) ^ (n / 2)
+  rw [Real.sqrt_eq_rpow, ← Real.rpow_natCast,
+    ← Real.rpow_mul (by positivity)]
+  dsimp [n]
+  norm_num [Nat.cast_sub hd]
+  congr 1
+  ring
+
+/-- Elementary square-root bound at the fixed annular threshold `16`. -/
+theorem brrs_sqrt_four_bound {x : Real} (hx : x ≤ 16) :
+    Real.sqrt x ≤ 4 := by
+  have h : Real.sqrt x ≤ Real.sqrt 16 := Real.sqrt_le_sqrt hx
+  have h16 : Real.sqrt (16 : Real) = 4 := by
+    apply (Real.sqrt_eq_iff_mul_self_eq (by norm_num) (by norm_num)).2
+    norm_num
+  rwa [h16] at h
+
+/-- In the low-output/low-source radial region, the bare source Jacobian is
+controlled by the two-radius half-density with a fixed annular constant. -/
+theorem brrs_lowSource_lowLow_prefactor_le_halfDensity
+    {d : Nat} (hd : 1 ≤ d) {q r s : Real} (hq : 0 < q)
+    (hr : 0 < r) (hs : 0 < s) (hqr : q * r ≤ 16) (hqs : q * s ≤ 16) :
+    (q * s) ^ (d - 1) ≤
+      (16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2) := by
+  have hqrpos : 0 < q * r := mul_pos hq hr
+  have hqspos : 0 < q * s := mul_pos hq hs
+  have hratio : 0 < s / r := div_pos hs hr
+  have hprod : q * s = Real.sqrt (q * r) * Real.sqrt (q * s) * Real.sqrt (s / r) := by
+    rw [← Real.sqrt_mul hqrpos.le, ← Real.sqrt_mul (by positivity)]
+    rw [show q * r * (q * s) * (s / r) = (q * s) ^ 2 by field_simp]
+    rw [Real.sqrt_sq hqspos.le]
+  have hbound1 : Real.sqrt (q * r) ≤ 4 := brrs_sqrt_four_bound hqr
+  have hbound2 : Real.sqrt (q * s) ≤ 4 := brrs_sqrt_four_bound hqs
+  calc
+    (q * s) ^ (d - 1) =
+        (Real.sqrt (q * r)) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1) := by
+      rw [← mul_pow, ← mul_pow, ← hprod]
+    _ ≤ (4 : Real) ^ (d - 1) * (4 : Real) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1) := by
+      apply mul_le_mul_of_nonneg_right _ (pow_nonneg (Real.sqrt_nonneg _) _)
+      exact mul_le_mul
+        (pow_le_pow_left₀ (Real.sqrt_nonneg _) hbound1 _)
+        (pow_le_pow_left₀ (Real.sqrt_nonneg _) hbound2 _)
+        (pow_nonneg (Real.sqrt_nonneg _) _) (by positivity)
+    _ = (16 : Real) ^ (d - 1) * (Real.sqrt (s / r)) ^ (d - 1) := by
+      rw [← mul_pow]
+      norm_num
+    _ = (16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2) := by
+      rw [brrs_sqrtRatio_pow_eq_halfDensity' hd hr hs]
+
+/-- In the high-output/low-source radial region, the same comparison holds
+after the single stationary half-density in the output radius. -/
+theorem brrs_lowSource_highLow_prefactor_le_halfDensity
+    {d : Nat} (hd : 1 ≤ d) {q r s : Real} (hq : 0 < q)
+    (hr : 0 < r) (hs : 0 < s) (hqs : q * s ≤ 16) :
+    (q * s) ^ (d - 1) / (Real.sqrt ((q * r) / 16)) ^ (d - 1) ≤
+      (16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2) := by
+  have hqrpos : 0 < q * r := mul_pos hq hr
+  have hqspos : 0 < q * s := mul_pos hq hs
+  have hratio : 0 < s / r := div_pos hs hr
+  have hsq : Real.sqrt ((q * r) / 16) = Real.sqrt (q * r) / 4 := by
+    rw [show (q * r) / 16 = (q * r) * (1 / 16) by ring,
+      Real.sqrt_mul hqrpos.le]
+    rw [show Real.sqrt (1 / 16 : Real) = 1 / 4 by
+      apply (Real.sqrt_eq_iff_mul_self_eq (by norm_num) (by norm_num)).2
+      norm_num]
+    ring
+  have hsqrtqr : 0 < Real.sqrt (q * r) := Real.sqrt_pos.2 hqrpos
+  have hkey : (q * s) / (Real.sqrt (q * r) / 4) =
+      4 * (Real.sqrt (q * s) * Real.sqrt (s / r)) := by
+    rw [← Real.sqrt_mul hqspos.le]
+    rw [show (q * s) * (s / r) = ((q * s) / Real.sqrt (q * r)) ^ 2 by
+      rw [div_pow, Real.sq_sqrt hqrpos.le]
+      field_simp]
+    rw [Real.sqrt_sq (by positivity)]
+    field_simp
+  have hbound2 : Real.sqrt (q * s) ≤ 4 := brrs_sqrt_four_bound hqs
+  calc
+    (q * s) ^ (d - 1) / (Real.sqrt ((q * r) / 16)) ^ (d - 1) =
+        ((q * s) / (Real.sqrt (q * r) / 4)) ^ (d - 1) := by
+      rw [hsq, ← div_pow]
+    _ = (4 : Real) ^ (d - 1) * ((Real.sqrt (q * s)) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1)) := by
+      rw [hkey, mul_pow, mul_pow]
+    _ ≤ (4 : Real) ^ (d - 1) * ((4 : Real) ^ (d - 1) *
+          (Real.sqrt (s / r)) ^ (d - 1)) := by
+      apply mul_le_mul_of_nonneg_left _ (by positivity)
+      exact mul_le_mul_of_nonneg_right
+        (pow_le_pow_left₀ (Real.sqrt_nonneg _) hbound2 _)
+        (pow_nonneg (Real.sqrt_nonneg _) _)
+    _ = (16 : Real) ^ (d - 1) * (Real.sqrt (s / r)) ^ (d - 1) := by
+      rw [← mul_assoc, ← mul_pow]
+      norm_num
+    _ = (16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2) := by
+      rw [brrs_sqrtRatio_pow_eq_halfDensity' hd hr hs]
+
+/-- **Global four-phase half-density majorant.**  The actual corrected radial
+Bessel kernel of BRRS Section 5 satisfies
+`‖K_j(r,s,t)‖ ≤ C (s/r)^((d-1)/2) ω_j`-four-phase for *all* positive radii,
+with one constant.  The four radial regions of the two-radius stationary
+analysis are joined here: the two high-source regions were already combined,
+and the two low-source regions are reduced to the same half-density by the
+elementary prefactor comparisons above.  This is the exact form in which the
+kernel enters the compact spatial reduction (5.3). -/
+theorem exists_norm_brrsRadialBesselKernel_fourPhase_halfDensity_majorant
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real),
+      ‖v‖ = 1 → 0 < r → 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        C * (s / r) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s)) := by
+  obtain ⟨⟨Cll, hCll, hll⟩, ⟨_Clh, _hClh, _hlh⟩,
+    ⟨Chl, hChl, hhl⟩, ⟨_Chh, _hChh, _hhh⟩⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_region_majorants
+      (d := d) (N := N) hd Phi
+  obtain ⟨Chigh, hChigh, hhigh⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_highSource_halfDensity_majorant
+      (d := d) (N := N) hd Phi
+  have hd1 : 1 ≤ d := le_trans (by norm_num) hd
+  let C : Real := Chigh + (16 : Real) ^ (d - 1) * (Cll + Chl)
+  have hC : 0 < C := by
+    dsimp [C]
+    have : (0 : Real) < (16 : Real) ^ (d - 1) := by positivity
+    nlinarith [hCll, hChl, hChigh]
+  refine ⟨C, hC, ?_⟩
+  intro v j r s t hv hr hs
+  let q : Real := (2 : Real) ^ j
+  let P : Real := brrsSectionFiveOmega N j (t - r - s) +
+    brrsSectionFiveOmega N j (t - r + s) +
+      brrsSectionFiveOmega N j (t + r - s) +
+        brrsSectionFiveOmega N j (t + r + s)
+  have hq : 0 < q := by dsimp [q]; positivity
+  have hP : 0 ≤ P := by
+    dsimp [P]
+    exact add_nonneg (add_nonneg (add_nonneg
+      (brrsSectionFiveOmega_nonneg N j (t - r - s))
+      (brrsSectionFiveOmega_nonneg N j (t - r + s)))
+      (brrsSectionFiveOmega_nonneg N j (t + r - s)))
+      (brrsSectionFiveOmega_nonneg N j (t + r + s))
+  have hhalf : 0 ≤ (s / r) ^ (((d : Real) - 1) / 2) :=
+    Real.rpow_nonneg (div_pos hs hr).le _
+  have hprefix : (16 : Real) ^ (d - 1) * (Cll + Chl) ≤ C := by
+    dsimp [C]; linarith
+  change ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+    C * (s / r) ^ (((d : Real) - 1) / 2) * P
+  by_cases hqs16 : 16 ≤ q * s
+  · refine le_trans (hhigh v j r s t hv hr (by simpa only [q] using hqs16)) ?_
+    have : Chigh ≤ C := by dsimp [C]; nlinarith [hCll, hChl, pow_pos (by norm_num : (0:Real) < 16) (d-1)]
+    exact mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_right this hhalf) hP
+  · push_neg at hqs16
+    have hqspos : 0 < q * s := mul_pos hq hs
+    rcases lt_or_ge (q * r) 16 with hqr | hqr
+    · have hbase := hll v j r s t hv (by positivity)
+        (by simpa only [q] using hqr.le) (by simpa only [q] using hqspos)
+        (by simpa only [q] using hqs16.le)
+      have hpref := brrs_lowSource_lowLow_prefactor_le_halfDensity
+        (d := d) hd1 hq hr hs hqr.le hqs16.le
+      calc
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+            (q * s) ^ (d - 1) * ((1 - (1 / 32 : Real)) * Cll * P) := by
+          simpa only [q, P] using hbase
+        _ ≤ (q * s) ^ (d - 1) * (Cll * P) := by
+          apply mul_le_mul_of_nonneg_left _ (by positivity)
+          nlinarith [hCll, hP]
+        _ ≤ ((16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2)) *
+              (Cll * P) := by
+          apply mul_le_mul_of_nonneg_right hpref
+          positivity
+        _ ≤ C * (s / r) ^ (((d : Real) - 1) / 2) * P := by
+          have hstep : (16 : Real) ^ (d - 1) * Cll ≤ C := by
+            dsimp [C]
+            nlinarith [hChl, hChigh, pow_pos (by norm_num : (0:Real) < 16) (d-1)]
+          calc
+            ((16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2)) *
+                (Cll * P) =
+                ((16 : Real) ^ (d - 1) * Cll) *
+                  (s / r) ^ (((d : Real) - 1) / 2) * P := by ring
+            _ ≤ C * (s / r) ^ (((d : Real) - 1) / 2) * P :=
+              mul_le_mul_of_nonneg_right
+                (mul_le_mul_of_nonneg_right hstep hhalf) hP
+    · have hbase := hhl v j r s t hv (by simpa only [q] using hqr)
+        (by simpa only [q] using hqspos)
+        (by simpa only [q] using hqs16.le)
+      have hpref := brrs_lowSource_highLow_prefactor_le_halfDensity
+        (d := d) hd1 hq hr hs hqs16.le
+      have hden : 0 < (Real.sqrt ((q * r) / 16)) ^ (d - 1) := by
+        apply pow_pos
+        exact Real.sqrt_pos.2 (by positivity)
+      calc
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+            (q * s) ^ (d - 1) *
+              ((1 - (1 / 32 : Real)) *
+                (Chl / (Real.sqrt ((q * r) / 16)) ^ (d - 1)) * P) := by
+          simpa only [q, P] using hbase
+        _ ≤ ((q * s) ^ (d - 1) /
+              (Real.sqrt ((q * r) / 16)) ^ (d - 1)) * (Chl * P) := by
+          have hA : (0 : Real) ≤
+              (q * s) ^ (d - 1) * (Chl * P) /
+                (Real.sqrt ((q * r) / 16)) ^ (d - 1) := by positivity
+          have hEqL : (q * s) ^ (d - 1) *
+              ((1 - (1 / 32 : Real)) *
+                (Chl / (Real.sqrt ((q * r) / 16)) ^ (d - 1)) * P) =
+              (1 - (1 / 32 : Real)) *
+                ((q * s) ^ (d - 1) * (Chl * P) /
+                  (Real.sqrt ((q * r) / 16)) ^ (d - 1)) := by
+            field_simp
+          have hEqR : ((q * s) ^ (d - 1) /
+                (Real.sqrt ((q * r) / 16)) ^ (d - 1)) * (Chl * P) =
+              (q * s) ^ (d - 1) * (Chl * P) /
+                (Real.sqrt ((q * r) / 16)) ^ (d - 1) := by
+            field_simp
+          rw [hEqL, hEqR]
+          linarith [hA]
+        _ ≤ ((16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2)) *
+              (Chl * P) := by
+          apply mul_le_mul_of_nonneg_right hpref
+          positivity
+        _ ≤ C * (s / r) ^ (((d : Real) - 1) / 2) * P := by
+          have hstep : (16 : Real) ^ (d - 1) * Chl ≤ C := by
+            dsimp [C]
+            nlinarith [hCll, hChigh, pow_pos (by norm_num : (0:Real) < 16) (d-1)]
+          calc
+            ((16 : Real) ^ (d - 1) * (s / r) ^ (((d : Real) - 1) / 2)) *
+                (Chl * P) =
+                ((16 : Real) ^ (d - 1) * Chl) *
+                  (s / r) ^ (((d : Real) - 1) / 2) * P := by ring
+            _ ≤ C * (s / r) ^ (((d : Real) - 1) / 2) * P :=
+              mul_le_mul_of_nonneg_right
+                (mul_le_mul_of_nonneg_right hstep hhalf) hP
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Polar reduction of the compact spatial region in BRRS (5.3)
+
+Two ingredients are needed before the compact spatial integral becomes the
+weighted one-dimensional quantity of (5.4): the pointwise half-density
+domination of the half-wave by the four travelling phase lines, and the
+polar-coordinate formula for a radial nonnegative function.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The four literal travelling phase lines of `ω_j`, as one nonnegative
+`ENNReal` weight. -/
+def brrsSectionFiveOmegaFourPhaseENN (N j : Nat) (t r s : Real) : ENNReal :=
+  ENNReal.ofReal
+    (brrsSectionFiveOmega N j (t - r - s) +
+      brrsSectionFiveOmega N j (t - r + s) +
+        brrsSectionFiveOmega N j (t + r - s) +
+          brrsSectionFiveOmega N j (t + r + s))
+
+/-- Pointwise consequence of the exact radial kernel representation and the
+global half-density majorant: at every nonzero point the annular half-wave is
+dominated by the one-dimensional half-density integral of the four travelling
+phase lines against the radial source profile. -/
+theorem enorm_brrsDyadicHalfWave_le_halfDensity_lintegral
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff)
+    {C : Real} (hC : 0 < C)
+    (hmaj : ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real),
+      ‖v‖ = 1 → 0 < r → 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        C * (s / r) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s)))
+    (j : Nat) (t : Real) (f : BRRSSchwartz d)
+    (hf : IsRadial (f : BRRSSpace d → Complex))
+    (v w x : BRRSSpace d) (hv : ‖v‖ = 1) (hw : ‖w‖ = 1) (hx : 0 < ‖x‖) :
+    ‖brrsDyadicHalfWave Phi j t f x‖ₑ ≤
+      ∫⁻ s in Ioi (0 : Real),
+        ENNReal.ofReal (C * (s / ‖x‖) ^ (((d : Real) - 1) / 2)) *
+          brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s *
+            ‖f (s • w)‖ₑ := by
+  have hrep := brrsDyadicHalfWave_eq_radialBesselKernel_integral_of_norm
+    (by omega : 0 < d) Phi j t f hf v w x hv hw
+  rw [hrep]
+  calc
+    ‖∫ s in Ioi (0 : Real),
+        brrsRadialBesselKernel Phi d v j ‖x‖ s t * f (s • w)‖ₑ ≤
+        ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t * f (s • w)‖ₑ :=
+      enorm_integral_le_lintegral_enorm _
+    _ ≤ ∫⁻ s in Ioi (0 : Real),
+          ENNReal.ofReal (C * (s / ‖x‖) ^ (((d : Real) - 1) / 2)) *
+            brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s *
+              ‖f (s • w)‖ₑ := by
+      apply setLIntegral_mono' measurableSet_Ioi
+      intro s hs
+      have hs0 : 0 < s := hs
+      have hmajs := hmaj v j ‖x‖ s t hv hx hs0
+      have hP : 0 ≤ brrsSectionFiveOmega N j (t - ‖x‖ - s) +
+          brrsSectionFiveOmega N j (t - ‖x‖ + s) +
+            brrsSectionFiveOmega N j (t + ‖x‖ - s) +
+              brrsSectionFiveOmega N j (t + ‖x‖ + s) :=
+        add_nonneg (add_nonneg (add_nonneg
+          (brrsSectionFiveOmega_nonneg N j _)
+          (brrsSectionFiveOmega_nonneg N j _))
+          (brrsSectionFiveOmega_nonneg N j _))
+          (brrsSectionFiveOmega_nonneg N j _)
+      have hcoef : 0 ≤ C * (s / ‖x‖) ^ (((d : Real) - 1) / 2) := by
+        have : (0 : Real) ≤ (s / ‖x‖) ^ (((d : Real) - 1) / 2) :=
+          Real.rpow_nonneg (div_pos hs0 hx).le _
+        positivity
+      rw [enorm_mul]
+      apply mul_le_mul' _ le_rfl
+      calc
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ ≤
+            ENNReal.ofReal (C * (s / ‖x‖) ^ (((d : Real) - 1) / 2) *
+              (brrsSectionFiveOmega N j (t - ‖x‖ - s) +
+                brrsSectionFiveOmega N j (t - ‖x‖ + s) +
+                  brrsSectionFiveOmega N j (t + ‖x‖ - s) +
+                    brrsSectionFiveOmega N j (t + ‖x‖ + s))) := by
+          rw [← ofReal_norm_eq_enorm]
+          exact ENNReal.ofReal_le_ofReal hmajs
+        _ = ENNReal.ofReal (C * (s / ‖x‖) ^ (((d : Real) - 1) / 2)) *
+              brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s := by
+          rw [brrsSectionFiveOmegaFourPhaseENN, ← ENNReal.ofReal_mul hcoef]
+
+/-- Polar coordinates for a nonnegative measurable function on Euclidean
+`d`-space, with the radial Jacobian written explicitly. -/
+theorem brrs_lintegral_polar {d : Nat} (hd : 0 < d)
+    (H : Euclidean d → ENNReal) (hH : Measurable H) :
+    (∫⁻ x : Euclidean d, H x) =
+      ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+        ∫⁻ ω : Metric.sphere (0 : Euclidean d) 1,
+          H (r • (ω : Euclidean d)) ∂(unitSurfaceMeasure d) := by
+  rw [lintegral_polar_unitSurfaceMeasure hd H]
+  rw [MeasureTheory.lintegral_prod_symm]
+  · rw [lintegral_volumeIoiPow (d - 1)
+      (fun r : Real => ∫⁻ ω : Metric.sphere (0 : Euclidean d) 1,
+        H (r • (ω : Euclidean d)) ∂(unitSurfaceMeasure d)) ?_]
+    · have hprod : Measurable (fun q : Real × Metric.sphere (0 : Euclidean d) 1 =>
+          H (q.1 • (q.2 : Euclidean d))) :=
+        hH.comp (measurable_fst.smul (measurable_subtype_coe.comp measurable_snd))
+      exact hprod.lintegral_prod_right'
+  · have hprod : Measurable (fun q : Metric.sphere (0 : Euclidean d) 1 × Ioi (0 : Real) =>
+        H (q.2.1 • (q.1 : Euclidean d))) :=
+      hH.comp ((measurable_subtype_coe.comp measurable_snd).smul
+        (measurable_subtype_coe.comp measurable_fst))
+    exact hprod.aemeasurable
+
+/-- Polar coordinates for a radial nonnegative measurable function: the
+angular integral is the total surface mass. -/
+theorem brrs_lintegral_polar_of_radial {d : Nat} (hd : 0 < d)
+    (H : Euclidean d → ENNReal) (hH : Measurable H)
+    (hrad : ∀ x y : Euclidean d, ‖x‖ = ‖y‖ → H x = H y)
+    (v : Euclidean d) (hv : ‖v‖ = 1) :
+    (∫⁻ x : Euclidean d, H x) =
+      (unitSurfaceMeasure d) univ *
+        ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) * H (r • v) := by
+  rw [brrs_lintegral_polar hd H hH]
+  have hinner : ∀ r : Real, 0 < r →
+      (∫⁻ ω : Metric.sphere (0 : Euclidean d) 1,
+        H (r • (ω : Euclidean d)) ∂(unitSurfaceMeasure d)) =
+        (unitSurfaceMeasure d) univ * H (r • v) := by
+    intro r hr
+    have hcongr : ∀ ω : Metric.sphere (0 : Euclidean d) 1,
+        H (r • (ω : Euclidean d)) = H (r • v) := by
+      intro ω
+      apply hrad
+      have hω : ‖(ω : Euclidean d)‖ = 1 := by
+        simpa using ω.2
+      rw [norm_smul, norm_smul, hω, hv]
+    calc
+      (∫⁻ ω : Metric.sphere (0 : Euclidean d) 1,
+        H (r • (ω : Euclidean d)) ∂(unitSurfaceMeasure d)) =
+          ∫⁻ _ω : Metric.sphere (0 : Euclidean d) 1,
+            H (r • v) ∂(unitSurfaceMeasure d) := by
+        exact lintegral_congr fun ω => hcongr ω
+      _ = (unitSurfaceMeasure d) univ * H (r • v) := by
+        rw [lintegral_const, mul_comm]
+  rw [← lintegral_const_mul' _ _ (measure_ne_top (unitSurfaceMeasure d) univ)]
+  apply setLIntegral_congr_fun measurableSet_Ioi
+  intro r hr
+  dsimp only
+  rw [hinner r hr]
+  ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The innermost radial cell of the BRRS Section 5 decomposition
+
+The dyadic radial cells `2^{m-j} ≤ r ≤ 2^{m-j+1}` cover `2^{-j} ≤ r ≤ 1`, and
+the terminal cell covers the remaining compact radii.  The compact spatial
+region also contains the innermost ball `r ≤ 2^{-j}`, whose treatment is the
+same one-dimensional estimate after a translation: the interval `[0,R]` is a
+translate of `[R,2R]`, so the block bound and the counting coefficient are
+unchanged.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Translating the innermost radial interval onto the standard dyadic cell.
+Lebesgue measure is translation invariant, so the innermost cell integral is
+literally a main-cell integral of the translated integrand. -/
+theorem brrs_lintegral_innerCell_shift
+    (R : Real) (g : Real → ENNReal) (hg : Measurable g) :
+    (∫⁻ r in Icc (0 : Real) R, g r) =
+      ∫⁻ r in Icc R (2 * R), g (r - R) := by
+  have hind : ∀ r : Real,
+      (Icc R (2 * R)).indicator (fun r => g (r - R)) r =
+        (Icc (0 : Real) R).indicator g (r - R) := by
+    intro r
+    by_cases hr : r ∈ Icc R (2 * R)
+    · have hr2 : r - R ∈ Icc (0 : Real) R := by
+        simp only [mem_Icc] at hr ⊢
+        constructor <;> linarith [hr.1, hr.2]
+      simp [hr, hr2]
+    · have hr2 : r - R ∉ Icc (0 : Real) R := by
+        simp only [mem_Icc] at hr ⊢
+        intro hc
+        exact hr ⟨by linarith [hc.1], by linarith [hc.2]⟩
+      simp [hr, hr2]
+  calc
+    (∫⁻ r in Icc (0 : Real) R, g r) =
+        ∫⁻ r : Real, (Icc (0 : Real) R).indicator g r := by
+      rw [lintegral_indicator measurableSet_Icc]
+    _ = ∫⁻ r : Real, (Icc (0 : Real) R).indicator g (r - R) := by
+      rw [lintegral_sub_right_eq_self
+        (fun r : Real => (Icc (0 : Real) R).indicator g r) R]
+    _ = ∫⁻ r : Real, (Icc R (2 * R)).indicator (fun r => g (r - R)) r := by
+      exact lintegral_congr fun r => (hind r).symm
+    _ = ∫⁻ r in Icc R (2 * R), g (r - R) := by
+      rw [lintegral_indicator measurableSet_Icc]
+
+/-- The innermost radial cell `0 ≤ r ≤ R` obeys the same local-counting
+estimate as the annular cell `R ≤ r ≤ 2R`.  The proof translates the cell and
+the majorizing profile simultaneously, so no new overlap geometry is needed;
+the counting radius, and hence `κ`, is unchanged. -/
+theorem brrs_sum_innerCell_add_weighted_profile_rpow_le
+    (T : Finset Real) (R : NNReal) (alpha p : Real) (hR : R ≠ 0)
+    (W F : Real → ENNReal) (hWmeas : Measurable W) (hF : Measurable F)
+    (hW : ∀ r ∈ Icc (0 : Real) (R : Real), W r ≤ (R : ENNReal) ^ (-alpha)) :
+    (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (R : Real),
+      W r * (F (t + r)) ^ p) ≤
+      7 * brrsKappa T R alpha * ∫⁻ x : Real, (F x) ^ p := by
+  have hFp : Measurable (fun x : Real => (F x) ^ p) :=
+    ENNReal.continuous_rpow_const.measurable.comp hF
+  have hshift : ∀ t : Real,
+      (∫⁻ r in Icc (0 : Real) (R : Real), W r * (F (t + r)) ^ p) =
+        ∫⁻ r in Icc (R : Real) (2 * (R : Real)),
+          W (r - (R : Real)) * (F (t + r - (R : Real))) ^ p := by
+    intro t
+    have hg : Measurable (fun r : Real => W r * (F (t + r)) ^ p) :=
+      hWmeas.mul (hFp.comp (measurable_const.add measurable_id))
+    have h := brrs_lintegral_innerCell_shift (R : Real)
+      (fun r : Real => W r * (F (t + r)) ^ p) hg
+    simpa only [show ∀ r : Real, t + (r - (R : Real)) = t + r - (R : Real) from
+      fun r => by ring] using h
+  have hG : Measurable (fun x : Real =>
+      (R : ENNReal) ^ (-alpha) * (F (x - (R : Real))) ^ p) :=
+    measurable_const.mul (hFp.comp (measurable_id.sub measurable_const))
+  have hmain := brrs_sum_mainCell_add_lintegral_le T R alpha hR
+    (fun t r => W (r - (R : Real)) * (F (t + r - (R : Real))) ^ p)
+    (fun x => (R : ENNReal) ^ (-alpha) * (F (x - (R : Real))) ^ p) hG
+    (by
+      intro t ht r hr
+      have hr2 : r - (R : Real) ∈ Icc (0 : Real) (R : Real) := by
+        simp only [mem_Icc] at hr ⊢
+        constructor <;> linarith [hr.1, hr.2]
+      exact mul_le_mul' (hW _ hr2) le_rfl)
+  have hGint : (∫⁻ x : Real, (R : ENNReal) ^ (-alpha) * (F (x - (R : Real))) ^ p) =
+      (R : ENNReal) ^ (-alpha) * ∫⁻ x : Real, (F x) ^ p := by
+    have hFpsub : Measurable (fun x : Real => (F (x - (R : Real))) ^ p) :=
+      hFp.comp (measurable_id.sub measurable_const)
+    rw [lintegral_const_mul _ hFpsub]
+    congr 1
+    exact lintegral_sub_right_eq_self (fun x : Real => (F x) ^ p) (R : Real)
+  have hRzero : (R : ENNReal) ≠ 0 := ENNReal.coe_ne_zero.mpr hR
+  have hscale : (R : ENNReal) ^ alpha * (R : ENNReal) ^ (-alpha) = 1 := by
+    rw [← ENNReal.rpow_add alpha (-alpha) hRzero ENNReal.coe_ne_top]
+    simp
+  calc
+    (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (R : Real), W r * (F (t + r)) ^ p) =
+        ∑ t ∈ T, ∫⁻ r in Icc (R : Real) (2 * (R : Real)),
+          W (r - (R : Real)) * (F (t + r - (R : Real))) ^ p :=
+      Finset.sum_congr rfl fun t _ => hshift t
+    _ ≤ ((R : ENNReal) ^ alpha * brrsKappa T R alpha) * 7 *
+          ∫⁻ x : Real, (R : ENNReal) ^ (-alpha) * (F (x - (R : Real))) ^ p := hmain
+    _ = 7 * brrsKappa T R alpha * ∫⁻ x : Real, (F x) ^ p := by
+      rw [hGint]
+      calc
+        ((R : ENNReal) ^ alpha * brrsKappa T R alpha) * 7 *
+            ((R : ENNReal) ^ (-alpha) * ∫⁻ x : Real, (F x) ^ p) =
+            ((R : ENNReal) ^ alpha * (R : ENNReal) ^ (-alpha)) *
+              (brrsKappa T R alpha * 7 * ∫⁻ x : Real, (F x) ^ p) := by ac_rfl
+        _ = 7 * brrsKappa T R alpha * ∫⁻ x : Real, (F x) ^ p := by
+          rw [hscale, one_mul]
+          ac_rfl
+
+/-- The reflected `t - r` form of the innermost-cell estimate. -/
+theorem brrs_sum_innerCell_sub_weighted_profile_rpow_le
+    (T : Finset Real) (R : NNReal) (alpha p : Real) (hR : R ≠ 0)
+    (W F : Real → ENNReal) (hWmeas : Measurable W) (hF : Measurable F)
+    (hW : ∀ r ∈ Icc (0 : Real) (R : Real), W r ≤ (R : ENNReal) ^ (-alpha)) :
+    (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (R : Real),
+      W r * (F (t - r)) ^ p) ≤
+      7 * brrsKappa T R alpha * ∫⁻ x : Real, (F x) ^ p := by
+  have hFp : Measurable (fun x : Real => (F x) ^ p) :=
+    ENNReal.continuous_rpow_const.measurable.comp hF
+  have hshift : ∀ t : Real,
+      (∫⁻ r in Icc (0 : Real) (R : Real), W r * (F (t - r)) ^ p) =
+        ∫⁻ r in Icc (R : Real) (2 * (R : Real)),
+          W (r - (R : Real)) * (F (t - r + (R : Real))) ^ p := by
+    intro t
+    have hg : Measurable (fun r : Real => W r * (F (t - r)) ^ p) :=
+      hWmeas.mul (hFp.comp (measurable_const.sub measurable_id))
+    have h := brrs_lintegral_innerCell_shift (R : Real)
+      (fun r : Real => W r * (F (t - r)) ^ p) hg
+    simpa only [show ∀ r : Real, t - (r - (R : Real)) = t - r + (R : Real) from
+      fun r => by ring] using h
+  have hG : Measurable (fun x : Real =>
+      (R : ENNReal) ^ (-alpha) * (F (x + (R : Real))) ^ p) :=
+    measurable_const.mul (hFp.comp (measurable_id.add measurable_const))
+  have hmain := brrs_sum_mainCell_sub_lintegral_le T R alpha hR
+    (fun t r => W (r - (R : Real)) * (F (t - r + (R : Real))) ^ p)
+    (fun x => (R : ENNReal) ^ (-alpha) * (F (x + (R : Real))) ^ p) hG
+    (by
+      intro t ht r hr
+      have hr2 : r - (R : Real) ∈ Icc (0 : Real) (R : Real) := by
+        simp only [mem_Icc] at hr ⊢
+        constructor <;> linarith [hr.1, hr.2]
+      exact mul_le_mul' (hW _ hr2) le_rfl)
+  have hGint : (∫⁻ x : Real, (R : ENNReal) ^ (-alpha) * (F (x + (R : Real))) ^ p) =
+      (R : ENNReal) ^ (-alpha) * ∫⁻ x : Real, (F x) ^ p := by
+    have hFpadd : Measurable (fun x : Real => (F (x + (R : Real))) ^ p) :=
+      hFp.comp (measurable_id.add measurable_const)
+    rw [lintegral_const_mul _ hFpadd]
+    congr 1
+    exact lintegral_add_right_eq_self (fun x : Real => (F x) ^ p) (R : Real)
+  have hRzero : (R : ENNReal) ≠ 0 := ENNReal.coe_ne_zero.mpr hR
+  have hscale : (R : ENNReal) ^ alpha * (R : ENNReal) ^ (-alpha) = 1 := by
+    rw [← ENNReal.rpow_add alpha (-alpha) hRzero ENNReal.coe_ne_top]
+    simp
+  calc
+    (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (R : Real), W r * (F (t - r)) ^ p) =
+        ∑ t ∈ T, ∫⁻ r in Icc (R : Real) (2 * (R : Real)),
+          W (r - (R : Real)) * (F (t - r + (R : Real))) ^ p :=
+      Finset.sum_congr rfl fun t _ => hshift t
+    _ ≤ ((R : ENNReal) ^ alpha * brrsKappa T R alpha) * 7 *
+          ∫⁻ x : Real, (R : ENNReal) ^ (-alpha) * (F (x + (R : Real))) ^ p := hmain
+    _ = 7 * brrsKappa T R alpha * ∫⁻ x : Real, (F x) ^ p := by
+      rw [hGint]
+      calc
+        ((R : ENNReal) ^ alpha * brrsKappa T R alpha) * 7 *
+            ((R : ENNReal) ^ (-alpha) * ∫⁻ x : Real, (F x) ^ p) =
+            ((R : ENNReal) ^ alpha * (R : ENNReal) ^ (-alpha)) *
+              (brrsKappa T R alpha * 7 * ∫⁻ x : Real, (F x) ^ p) := by ac_rfl
+        _ = 7 * brrsKappa T R alpha * ∫⁻ x : Real, (F x) ^ p := by
+          rw [hscale, one_mul]
+          ac_rfl
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The four innermost-cell phase blocks
+
+The innermost radial cell carries all four travelling phases, exactly as the
+annular cells do.  Its local-counting estimate is the translated main-cell
+estimate proved above.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The innermost radial cell `0 ≤ r ≤ 2^{-j}` of the Section 5 decomposition,
+outgoing phase. -/
+def brrsDyadicRadialInnerBlockAdd
+    (T : Finset Real) (j : Nat) (p : Real)
+    (W omega f : Real → ENNReal) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+    W r * (brrsOneDimProfileConvolution omega f (t + r)) ^ p
+
+/-- The innermost radial cell, incoming phase. -/
+def brrsDyadicRadialInnerBlockSub
+    (T : Finset Real) (j : Nat) (p : Real)
+    (W omega f : Real → ENNReal) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+    W r * (brrsOneDimProfileConvolution omega f (t - r)) ^ p
+
+/-- The innermost radial cell, outgoing reflected phase. -/
+def brrsDyadicRadialInnerBlockAddPlus
+    (T : Finset Real) (j : Nat) (p : Real)
+    (W omega f : Real → ENNReal) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+    W r * (brrsOneDimProfileConvolutionPlus omega f (t + r)) ^ p
+
+/-- The innermost radial cell, incoming reflected phase. -/
+def brrsDyadicRadialInnerBlockSubPlus
+    (T : Finset Real) (j : Nat) (p : Real)
+    (W omega f : Real → ENNReal) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ r in Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+    W r * (brrsOneDimProfileConvolutionPlus omega f (t - r)) ^ p
+
+/-- All four literal travelling phases over the innermost radial cell. -/
+def brrsDyadicRadialInnerFourPhaseBlock
+    (T : Finset Real) (j : Nat) (p : Real)
+    (W omega f : Real → ENNReal) : ENNReal :=
+  brrsDyadicRadialInnerBlockAdd T j p W omega f +
+    brrsDyadicRadialInnerBlockSub T j p W omega f +
+      brrsDyadicRadialInnerBlockAddPlus T j p W omega f +
+        brrsDyadicRadialInnerBlockSubPlus T j p W omega f
+
+/-- The innermost radial cell obeys the same local-counting bound as the
+dyadic annular cells, with the same constant. -/
+theorem brrsDyadicRadialInnerFourPhaseBlock_le_kappa
+    (T : Finset Real) (j : Nat) (alpha p : Real) (hp : 1 < p)
+    (W omega f : Real → ENNReal)
+    (hWmeas : Measurable W)
+    (homega : Measurable omega) (hf : Measurable f)
+    (homega_pos : ∀ u : Real, 0 < omega u)
+    (homega_top : ∀ u : Real, omega u ≠ ∞)
+    (hmass_pos : 0 < ∫⁻ u : Real, omega u)
+    (hmass_top : (∫⁻ u : Real, omega u) ≠ ∞)
+    (hW : ∀ r ∈ Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+      W r ≤ (brrsDyadicRadialBlockRadius j 0 : ENNReal) ^ (-alpha)) :
+    brrsDyadicRadialInnerFourPhaseBlock T j p W omega f ≤
+      28 * brrsDyadicKappa T j 0 alpha *
+        ((∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f s) ^ p) := by
+  set R : NNReal := brrsDyadicRadialBlockRadius j 0 with hR
+  have hRne : R ≠ 0 := brrsDyadicRadialBlockRadius_ne_zero j 0
+  set M : ENNReal := (∫⁻ u : Real, omega u) ^ p * ∫⁻ s : Real, (f s) ^ p with hM
+  have hconv : Measurable (brrsOneDimProfileConvolution omega f) :=
+    measurable_brrsOneDimProfileConvolution homega hf
+  have hconvPlus : Measurable (brrsOneDimProfileConvolutionPlus omega f) :=
+    measurable_brrsOneDimProfileConvolutionPlus homega hf
+  have hYoung : (∫⁻ x : Real,
+      (brrsOneDimProfileConvolution omega f x) ^ p) ≤ M :=
+    lintegral_brrsOneDimProfileConvolution_rpow_le hp homega hf
+      homega_pos homega_top hmass_pos hmass_top
+  have hYoungPlus : (∫⁻ x : Real,
+      (brrsOneDimProfileConvolutionPlus omega f x) ^ p) ≤ M :=
+    lintegral_brrsOneDimProfileConvolutionPlus_rpow_le hp homega hf
+      homega_pos homega_top hmass_pos hmass_top
+  have hkappa : brrsKappa T R alpha = brrsDyadicKappa T j 0 alpha :=
+    (brrsDyadicKappa_eq_brrsKappa_dyadicRadialBlockRadius T j 0 alpha).symm
+  have hadd : brrsDyadicRadialInnerBlockAdd T j p W omega f ≤
+      7 * brrsDyadicKappa T j 0 alpha * M := by
+    calc
+      brrsDyadicRadialInnerBlockAdd T j p W omega f ≤
+          7 * brrsKappa T R alpha *
+            ∫⁻ x : Real, (brrsOneDimProfileConvolution omega f x) ^ p :=
+        brrs_sum_innerCell_add_weighted_profile_rpow_le T R alpha p hRne W
+          (brrsOneDimProfileConvolution omega f) hWmeas hconv hW
+      _ ≤ 7 * brrsDyadicKappa T j 0 alpha * M := by
+        rw [hkappa]
+        exact mul_le_mul' le_rfl hYoung
+  have hsub : brrsDyadicRadialInnerBlockSub T j p W omega f ≤
+      7 * brrsDyadicKappa T j 0 alpha * M := by
+    calc
+      brrsDyadicRadialInnerBlockSub T j p W omega f ≤
+          7 * brrsKappa T R alpha *
+            ∫⁻ x : Real, (brrsOneDimProfileConvolution omega f x) ^ p :=
+        brrs_sum_innerCell_sub_weighted_profile_rpow_le T R alpha p hRne W
+          (brrsOneDimProfileConvolution omega f) hWmeas hconv hW
+      _ ≤ 7 * brrsDyadicKappa T j 0 alpha * M := by
+        rw [hkappa]
+        exact mul_le_mul' le_rfl hYoung
+  have haddPlus : brrsDyadicRadialInnerBlockAddPlus T j p W omega f ≤
+      7 * brrsDyadicKappa T j 0 alpha * M := by
+    calc
+      brrsDyadicRadialInnerBlockAddPlus T j p W omega f ≤
+          7 * brrsKappa T R alpha *
+            ∫⁻ x : Real, (brrsOneDimProfileConvolutionPlus omega f x) ^ p :=
+        brrs_sum_innerCell_add_weighted_profile_rpow_le T R alpha p hRne W
+          (brrsOneDimProfileConvolutionPlus omega f) hWmeas hconvPlus hW
+      _ ≤ 7 * brrsDyadicKappa T j 0 alpha * M := by
+        rw [hkappa]
+        exact mul_le_mul' le_rfl hYoungPlus
+  have hsubPlus : brrsDyadicRadialInnerBlockSubPlus T j p W omega f ≤
+      7 * brrsDyadicKappa T j 0 alpha * M := by
+    calc
+      brrsDyadicRadialInnerBlockSubPlus T j p W omega f ≤
+          7 * brrsKappa T R alpha *
+            ∫⁻ x : Real, (brrsOneDimProfileConvolutionPlus omega f x) ^ p :=
+        brrs_sum_innerCell_sub_weighted_profile_rpow_le T R alpha p hRne W
+          (brrsOneDimProfileConvolutionPlus omega f) hWmeas hconvPlus hW
+      _ ≤ 7 * brrsDyadicKappa T j 0 alpha * M := by
+        rw [hkappa]
+        exact mul_le_mul' le_rfl hYoungPlus
+  change brrsDyadicRadialInnerBlockAdd T j p W omega f +
+      brrsDyadicRadialInnerBlockSub T j p W omega f +
+        brrsDyadicRadialInnerBlockAddPlus T j p W omega f +
+          brrsDyadicRadialInnerBlockSubPlus T j p W omega f ≤ _
+  calc
+    _ ≤ 7 * brrsDyadicKappa T j 0 alpha * M +
+          7 * brrsDyadicKappa T j 0 alpha * M +
+            7 * brrsDyadicKappa T j 0 alpha * M +
+              7 * brrsDyadicKappa T j 0 alpha * M :=
+      add_le_add (add_le_add (add_le_add hadd hsub) haddPlus) hsubPlus
+    _ = 28 * brrsDyadicKappa T j 0 alpha * M := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The polar weight of the innermost cell
+
+On `0 ≤ r ≤ 2^{-j}` the low-output kernel majorant is independent of the
+output radius, so the weight produced by polar coordinates is `r^{d-1}` times
+the fixed frequency factor `2^{j p (d-1)/2}`.  That weight satisfies exactly
+the local-counting hypothesis at counting radius `2^{-j}`, because
+`r^{d-1} 2^{j p (d-1)/2} ≤ 2^{j p s_p}` there.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The outer weight carried by the innermost radial cell.  It is the polar
+Jacobian `r^{d-1}` together with the `r`-independent frequency factor
+`2^{j p (d-1)/2}` produced by the low-output kernel majorant. -/
+def brrsSectionFiveInnerWeight (d j : Nat) (p : Real) : Real → ENNReal :=
+  fun r => (ENNReal.ofReal r) ^ ((d : Real) - 1) *
+    ENNReal.ofReal ((2 : Real) ^ ((j : Real) * (p * ((d : Real) - 1) / 2)))
+
+theorem measurable_brrsSectionFiveInnerWeight (d j : Nat) (p : Real) :
+    Measurable (brrsSectionFiveInnerWeight d j p) := by
+  unfold brrsSectionFiveInnerWeight
+  exact (ENNReal.continuous_rpow_const.measurable.comp
+    ENNReal.measurable_ofReal).mul measurable_const
+
+/-- On the innermost radial cell the polar weight obeys exactly the bound
+required by the local-counting estimate at counting radius `2^{-j}`. -/
+theorem brrsSectionFiveInnerWeight_le_blockRadius_rpow
+    {d : Nat} (hd : 2 ≤ d) (j : Nat) {p : Real} (hp : 2 ≤ p)
+    {r : Real} (hr : r ∈ Icc (0 : Real)
+      (brrsDyadicRadialBlockRadius j 0 : Real)) :
+    brrsSectionFiveInnerWeight d j p r ≤
+      (brrsDyadicRadialBlockRadius j 0 : ENNReal) ^
+        (-(p * sobolevExponent d p)) := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hc : 0 ≤ (d : Real) - 1 := by linarith
+  have hRpos : 0 < (brrsDyadicRadialBlockRadius j 0 : Real) :=
+    brrsDyadicRadialBlockRadius_pos j 0
+  have hRcoe : (brrsDyadicRadialBlockRadius j 0 : Real) = ((2 : Real) ^ j)⁻¹ := by
+    rw [brrsDyadicRadialBlockRadius_zero_coe]
+    rfl
+  have hkey : (((2 : Real) ^ j)⁻¹) ^ ((d : Real) - 1) *
+      (2 : Real) ^ ((j : Real) * (p * ((d : Real) - 1) / 2)) =
+      (2 : Real) ^ ((j : Real) * (p * sobolevExponent d p)) := by
+    rw [Real.inv_rpow (by positivity), ← Real.rpow_natCast (2 : Real) j,
+      ← Real.rpow_mul (by norm_num : (0 : Real) ≤ 2),
+      ← Real.rpow_neg (by norm_num : (0 : Real) ≤ 2),
+      ← Real.rpow_add (by norm_num : (0 : Real) < 2)]
+    congr 1
+    have hpne : p ≠ 0 := by linarith
+    unfold sobolevExponent
+    field_simp
+    ring
+  have hstep :
+      (ENNReal.ofReal (brrsDyadicRadialBlockRadius j 0 : Real)) ^ ((d : Real) - 1) *
+        ENNReal.ofReal ((2 : Real) ^ ((j : Real) * (p * ((d : Real) - 1) / 2))) =
+      ENNReal.ofReal ((2 : Real) ^ ((j : Real) * (p * sobolevExponent d p))) := by
+    rw [ENNReal.ofReal_rpow_of_pos hRpos, ← ENNReal.ofReal_mul
+      (Real.rpow_nonneg hRpos.le _), hRcoe, hkey]
+  calc
+    brrsSectionFiveInnerWeight d j p r ≤
+        (ENNReal.ofReal (brrsDyadicRadialBlockRadius j 0 : Real)) ^ ((d : Real) - 1) *
+          ENNReal.ofReal
+            ((2 : Real) ^ ((j : Real) * (p * ((d : Real) - 1) / 2))) := by
+      unfold brrsSectionFiveInnerWeight
+      exact mul_le_mul' (ENNReal.rpow_le_rpow
+        (ENNReal.ofReal_le_ofReal hr.2) hc) le_rfl
+    _ = ENNReal.ofReal ((2 : Real) ^ ((j : Real) * (p * sobolevExponent d p))) :=
+      hstep
+    _ = (brrsDyadicRadialBlockRadius j 0 : ENNReal) ^
+          (-(p * sobolevExponent d p)) :=
+      (brrsDyadicRadialBlockRadius_zero_rpow_neg j (p * sobolevExponent d p)).symm
+
+/-- The innermost four-phase block is monotone in the nonnegative phase-line
+kernel. -/
+theorem brrsDyadicRadialInnerFourPhaseBlock_mono_kernel
+    (T : Finset Real) (j : Nat) (p : Real)
+    (W omega omega' f : Real → ENNReal) (hp : 0 ≤ p)
+    (homega : ∀ u : Real, omega u ≤ omega' u) :
+    brrsDyadicRadialInnerFourPhaseBlock T j p W omega f ≤
+      brrsDyadicRadialInnerFourPhaseBlock T j p W omega' f := by
+  have hconv : ∀ x : Real,
+      brrsOneDimProfileConvolution omega f x ≤
+        brrsOneDimProfileConvolution omega' f x := by
+    intro x
+    unfold brrsOneDimProfileConvolution
+    exact lintegral_mono fun s => mul_le_mul' (homega (x - s)) le_rfl
+  have hconvPlus : ∀ x : Real,
+      brrsOneDimProfileConvolutionPlus omega f x ≤
+        brrsOneDimProfileConvolutionPlus omega' f x := by
+    intro x
+    unfold brrsOneDimProfileConvolutionPlus
+    exact lintegral_mono fun s => mul_le_mul' (homega (x + s)) le_rfl
+  have hadd : brrsDyadicRadialInnerBlockAdd T j p W omega f ≤
+      brrsDyadicRadialInnerBlockAdd T j p W omega' f := by
+    unfold brrsDyadicRadialInnerBlockAdd
+    exact Finset.sum_le_sum fun t _ => lintegral_mono fun r =>
+      mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hconv (t + r)) hp)
+  have hsub : brrsDyadicRadialInnerBlockSub T j p W omega f ≤
+      brrsDyadicRadialInnerBlockSub T j p W omega' f := by
+    unfold brrsDyadicRadialInnerBlockSub
+    exact Finset.sum_le_sum fun t _ => lintegral_mono fun r =>
+      mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hconv (t - r)) hp)
+  have haddPlus : brrsDyadicRadialInnerBlockAddPlus T j p W omega f ≤
+      brrsDyadicRadialInnerBlockAddPlus T j p W omega' f := by
+    unfold brrsDyadicRadialInnerBlockAddPlus
+    exact Finset.sum_le_sum fun t _ => lintegral_mono fun r =>
+      mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hconvPlus (t + r)) hp)
+  have hsubPlus : brrsDyadicRadialInnerBlockSubPlus T j p W omega f ≤
+      brrsDyadicRadialInnerBlockSubPlus T j p W omega' f := by
+    unfold brrsDyadicRadialInnerBlockSubPlus
+    exact Finset.sum_le_sum fun t _ => lintegral_mono fun r =>
+      mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hconvPlus (t - r)) hp)
+  change brrsDyadicRadialInnerBlockAdd T j p W omega f +
+      brrsDyadicRadialInnerBlockSub T j p W omega f +
+        brrsDyadicRadialInnerBlockAddPlus T j p W omega f +
+          brrsDyadicRadialInnerBlockSubPlus T j p W omega f ≤ _
+  exact add_le_add (add_le_add (add_le_add hadd hsub) haddPlus) hsubPlus
+
+/-- The innermost radial cell of the Section 5 decomposition, with its polar
+weight and the actual phase-line kernel, obeys the local-counting bound at
+`m = 0`. -/
+theorem brrsSectionFiveInnerCell_kappa_le
+    {d : Nat} (hd : 2 ≤ d) (T : Finset Real) (j : Nat) (p : Real)
+    (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsDyadicRadialInnerFourPhaseBlock T j p
+        (brrsSectionFiveInnerWeight d j p)
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+      28 * brrsDyadicKappa T j 0 (p * sobolevExponent d p) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  calc
+    brrsDyadicRadialInnerFourPhaseBlock T j p
+        (brrsSectionFiveInnerWeight d j p)
+        (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialInnerFourPhaseBlock T j p
+          (brrsSectionFiveInnerWeight d j p)
+          (brrsSectionFiveCubicMajorant j) f :=
+      brrsDyadicRadialInnerFourPhaseBlock_mono_kernel T j p _ _ _ f hp0
+        (brrsSectionFiveOmegaENN_le_cubicMajorant j)
+    _ ≤ 28 * brrsDyadicKappa T j 0 (p * sobolevExponent d p) *
+          ((∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) :=
+      brrsDyadicRadialInnerFourPhaseBlock_le_kappa T j
+        (p * sobolevExponent d p) p hp1 _
+        (brrsSectionFiveCubicMajorant j) f
+        (measurable_brrsSectionFiveInnerWeight d j p)
+        (measurable_brrsSectionFiveCubicMajorant j) hf
+        (fun u => brrsSectionFiveCubicMajorant_pos j u)
+        (fun u => brrsSectionFiveCubicMajorant_ne_top j u)
+        (lintegral_brrsSectionFiveCubicMajorant_pos j)
+        (lintegral_brrsSectionFiveCubicMajorant_ne_top j)
+        (fun r hr => brrsSectionFiveInnerWeight_le_blockRadius_rpow hd j hp hr)
+    _ = _ := by rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Summing the Section 5 radial cells
+
+The dyadic radial cells `2^{m-j} ≤ r ≤ 2^{m-j+1}`, `0 ≤ m < j`, together with
+the terminal cell, exhaust the radial range of the corrected Section 5
+operator.  Adding their individual estimates is exactly the step (5.8) of the
+source; the only new ingredient is the base-scale cardinality edge which puts
+the terminal cell into the same local-counting normalization.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The literal outer radial weight `r^{-p s_p}` of BRRS (5.4). -/
+noncomputable def brrsSectionFiveSourceWeight (d : Nat) (p : Real) : Real → ENNReal :=
+  fun r => (ENNReal.ofReal r) ^ (-(p * sobolevExponent d p))
+
+/-- On the `m`-th radial annulus the source outer weight is bounded by its
+value at the inner radius.  This is the source inequality
+`r^{-p s_p} ≤ (2^{m-j})^{-p s_p}`. -/
+theorem brrsSectionFiveSourceWeight_le_blockRadius_rpow
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (j m : Nat)
+    {r : Real} (hr : r ∈ Icc (brrsDyadicRadialBlockRadius j m : Real)
+      (2 * (brrsDyadicRadialBlockRadius j m : Real))) :
+    brrsSectionFiveSourceWeight d p r ≤
+      (brrsDyadicRadialBlockRadius j m : ENNReal) ^
+        (-(p * sobolevExponent d p)) := by
+  have halpha : 0 ≤ p * sobolevExponent d p := mul_sobolevExponent_nonneg hd hp
+  have hRpos : 0 < (brrsDyadicRadialBlockRadius j m : Real) :=
+    brrsDyadicRadialBlockRadius_pos j m
+  have hrpos : 0 < r := lt_of_lt_of_le hRpos hr.1
+  unfold brrsSectionFiveSourceWeight
+  rw [ENNReal.coe_nnreal_eq (brrsDyadicRadialBlockRadius j m),
+    ENNReal.ofReal_rpow_of_pos hrpos, ENNReal.ofReal_rpow_of_pos hRpos]
+  exact ENNReal.ofReal_le_ofReal
+    (Real.rpow_le_rpow_of_nonpos hRpos hr.1 (neg_nonpos.mpr halpha))
+
+/-- The total near-source radial contribution of BRRS (5.4): the innermost
+cell `0 ≤ r ≤ 2^{-j}`, the dyadic cells `2^{m-j} ≤ r ≤ 2^{m-j+1}` for
+`0 ≤ m < j`, which together cover `0 ≤ r ≤ 1`, and the terminal cell covering
+the remaining compact radii.  All four literal travelling phase lines are
+retained in every cell. -/
+noncomputable def brrsSectionFiveNearSourceCellSum
+    (T : Finset Real) (d j : Nat) (p : Real) (f : Real → ENNReal) : ENNReal :=
+  brrsDyadicRadialInnerFourPhaseBlock T j p (brrsSectionFiveInnerWeight d j p)
+      (brrsSectionFiveOmegaENN 3 j) f +
+    (∑ m ∈ Finset.range j,
+      brrsDyadicRadialEndpointFourPhaseBlock T j m p
+        (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f) +
+      brrsSectionFiveTerminalFourPhaseBlock T d p (brrsSectionFiveOmegaENN 3 j) f
+
+/-- Every dyadic radial cell, with the literal source outer weight and the
+actual phase-line kernel `ω_j`, obeys the local-counting bound.  For
+`0 < m < j` this is U5.M and for `m = 0` it is the first half of (5.7); the
+statement is uniform in `m` because the bounded-overlap and Young steps do
+not distinguish the endpoint cells. -/
+theorem brrsSectionFiveCell_kappa_le
+    {d : Nat} (hd : 2 ≤ d) (T : Finset Real) (j m : Nat) (p : Real)
+    (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsDyadicRadialEndpointFourPhaseBlock T j m p
+        (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f ≤
+      28 * brrsDyadicKappa T j m (p * sobolevExponent d p) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  have hp0 : 0 ≤ p := le_trans zero_le_two hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  calc
+    brrsDyadicRadialEndpointFourPhaseBlock T j m p
+        (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f ≤
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p
+          (brrsSectionFiveSourceWeight d p)
+          (brrsSectionFiveCubicMajorant j) f :=
+      brrsDyadicRadialEndpointFourPhaseBlock_sectionFiveOmegaENN_le_cubicMajorant
+        T j m p _ f hp0
+    _ ≤ 28 * brrsDyadicKappa T j m (p * sobolevExponent d p) *
+          ((∫⁻ u : Real, brrsSectionFiveCubicMajorant j u) ^ p *
+            ∫⁻ s : Real, (f s) ^ p) :=
+      brrsDyadicRadialEndpointFourPhaseBlock_le_kappa
+        T j m (p * sobolevExponent d p) p hp1 _
+          (brrsSectionFiveCubicMajorant j) f
+          (measurable_brrsSectionFiveCubicMajorant j) hf
+          (fun u => brrsSectionFiveCubicMajorant_pos j u)
+          (fun u => brrsSectionFiveCubicMajorant_ne_top j u)
+          (lintegral_brrsSectionFiveCubicMajorant_pos j)
+          (lintegral_brrsSectionFiveCubicMajorant_ne_top j)
+          (fun r hr =>
+            brrsSectionFiveSourceWeight_le_blockRadius_rpow hd hp j m hr)
+    _ = _ := by rw [lintegral_brrsSectionFiveCubicMajorant_eq]
+
+/-- **BRRS (5.8).**  The individual cell estimates add up: the whole
+near-source radial contribution, initial and strict intermediate cells plus
+the terminal cell, is at most `56 (∑_{m=0}^{j} κ_{j,m}(p s_p))` times the
+fixed cubic-majorant constant and `∫|f₀|^p`.  The terminal cell enters
+through the base-scale cardinality edge `#T ≤ κ_{j,j}` recorded in (5.6), so
+that no cell is left outside the `κ_{j,m}` sum.  No entropy hypothesis on `E`
+is used here; that enters only in (5.1). -/
+theorem brrsSectionFiveNearSourceCellSum_le_kappa_sum
+    {d : Nat} (hd : 2 ≤ d) {E : Set Real} {j : Nat} {T : Finset Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hT : IsDyadicDiscretization E j T)
+    (p : Real) (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveNearSourceCellSum T d j p f ≤
+      56 * (∑ m ∈ Finset.range (j + 1),
+          brrsDyadicKappa T j m (p * sobolevExponent d p)) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  set M : ENNReal := (8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+    ∫⁻ s : Real, (f s) ^ p with hM
+  set K : Nat → ENNReal := fun m =>
+    brrsDyadicKappa T j m (p * sobolevExponent d p) with hK
+  have hcells :
+      (∑ m ∈ Finset.range j,
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p
+          (brrsSectionFiveSourceWeight d p)
+          (brrsSectionFiveOmegaENN 3 j) f) ≤
+        28 * (∑ m ∈ Finset.range j, K m) * M := by
+    calc
+      (∑ m ∈ Finset.range j,
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p
+          (brrsSectionFiveSourceWeight d p)
+          (brrsSectionFiveOmegaENN 3 j) f) ≤
+          ∑ m ∈ Finset.range j, 28 * K m * M := by
+        refine Finset.sum_le_sum ?_
+        intro m _
+        exact brrsSectionFiveCell_kappa_le hd T j m p hp f hf
+      _ = 28 * (∑ m ∈ Finset.range j, K m) * M := by
+        rw [← Finset.sum_mul, ← Finset.mul_sum]
+  have hterminal :
+      brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f ≤ 28 * K j * M := by
+    refine le_trans
+      (brrsSectionFiveTerminalCell_kappa_fourPhase_le hd hE hT p hp f hf) ?_
+    exact mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+  have hinner :
+      brrsDyadicRadialInnerFourPhaseBlock T j p
+        (brrsSectionFiveInnerWeight d j p)
+        (brrsSectionFiveOmegaENN 3 j) f ≤ 28 * K 0 * M :=
+    brrsSectionFiveInnerCell_kappa_le hd T j p hp f hf
+  have hK0le : K 0 ≤ ∑ m ∈ Finset.range (j + 1), K m :=
+    Finset.single_le_sum (f := K) (fun i _ => zero_le)
+      (Finset.mem_range.mpr (Nat.succ_pos j))
+  calc
+    brrsSectionFiveNearSourceCellSum T d j p f ≤
+        28 * K 0 * M + 28 * (∑ m ∈ Finset.range j, K m) * M + 28 * K j * M :=
+      add_le_add (add_le_add hinner hcells) hterminal
+    _ = 28 * K 0 * M + 28 * ((∑ m ∈ Finset.range j, K m) + K j) * M := by ring
+    _ = 28 * K 0 * M + 28 * (∑ m ∈ Finset.range (j + 1), K m) * M := by
+      rw [Finset.sum_range_succ]
+    _ ≤ 28 * (∑ m ∈ Finset.range (j + 1), K m) * M +
+          28 * (∑ m ∈ Finset.range (j + 1), K m) * M := by
+      exact add_le_add (mul_le_mul' (mul_le_mul' le_rfl hK0le) le_rfl) le_rfl
+    _ = 56 * (∑ m ∈ Finset.range (j + 1), K m) * M := by ring
+
+/-- BRRS (5.8) in the display which keeps the initial cell in its printed
+(5.7) form: the `m = 0` term of the `κ_{j,m}` sum is replaced by
+`2 · 2^{j ν_E^♯(p s_p)}` using the packing bound `κ_{j,0} ≤ 2 · 2^{j p s_p}`
+and `p s_p ≤ ν_E^♯(p s_p)`.  It is a formal consequence of the preceding
+`κ`-sum form, so the two displays agree. -/
+theorem brrsSectionFiveNearSourceCellSum_le_initialEntropy_add_kappa_tail
+    {d : Nat} (hd : 2 ≤ d) {E : Set Real} {j : Nat} {T : Finset Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hEne : E.Nonempty)
+    (hT : IsDyadicDiscretization E j T)
+    (p : Real) (hp : 2 ≤ p) (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveNearSourceCellSum T d j p f ≤
+      56 * (2 * ENNReal.ofReal ((2 : Real) ^
+            ((j : Real) *
+              brrsLegendreAssouadFunction E (p * sobolevExponent d p))) +
+          ∑ i ∈ Finset.range j,
+            brrsDyadicKappa T j (i + 1) (p * sobolevExponent d p)) *
+        ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+          ∫⁻ s : Real, (f s) ^ p) := by
+  have halpha : 0 ≤ p * sobolevExponent d p := mul_sobolevExponent_nonneg hd hp
+  refine le_trans
+    (brrsSectionFiveNearSourceCellSum_le_kappa_sum hd hE hT p hp f hf) ?_
+  refine mul_le_mul' (mul_le_mul' le_rfl ?_) le_rfl
+  have hK0 : brrsDyadicKappa T j 0 (p * sobolevExponent d p) ≤
+      2 * ENNReal.ofReal ((2 : Real) ^
+        ((j : Real) *
+          brrsLegendreAssouadFunction E (p * sobolevExponent d p))) :=
+    le_trans (brrsDyadicKappa_zero_le_two_mul_two_rpow hT _)
+      (mul_le_mul' le_rfl
+        (two_rpow_mul_le_two_rpow_mul_brrsLegendreAssouadFunction hEne halpha j))
+  rw [Finset.sum_range_succ']
+  calc
+    (∑ i ∈ Finset.range j,
+        brrsDyadicKappa T j (i + 1) (p * sobolevExponent d p)) +
+        brrsDyadicKappa T j 0 (p * sobolevExponent d p) ≤
+        (∑ i ∈ Finset.range j,
+          brrsDyadicKappa T j (i + 1) (p * sobolevExponent d p)) +
+          2 * ENNReal.ofReal ((2 : Real) ^
+            ((j : Real) *
+              brrsLegendreAssouadFunction E (p * sobolevExponent d p))) :=
+      add_le_add le_rfl hK0
+    _ = _ := add_comm _ _
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The low-output kernel majorant for the innermost cell
+
+The half-density majorant degenerates as the output radius tends to zero.  In
+the low-output region `2^j r ≤ 16` the two stationary regions give instead a
+bound which is independent of the output radius, which is what the innermost
+radial cell of (5.3) needs.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The single-variable square-root power in half-density form. -/
+theorem brrs_sqrt_pow_eq_half_rpow
+    {d : Nat} (hd : 1 ≤ d) {x : Real} (hx : 0 < x) :
+    (Real.sqrt x) ^ (d - 1) = x ^ (((d : Real) - 1) / 2) := by
+  rw [Real.sqrt_eq_rpow, ← Real.rpow_natCast _ (d - 1),
+    ← Real.rpow_mul hx.le]
+  congr 1
+  rw [Nat.cast_sub hd]
+  push_cast
+  ring
+
+/-- **Low-output four-phase majorant.**  When the output radius satisfies
+`2^j r ≤ 16` the two-radius stationary analysis gives a bound which does not
+degenerate as `r → 0`: the corrected radial Bessel kernel is dominated by
+`C (2^j s)^{(d-1)/2}` times the four travelling phase lines, uniformly in the
+output radius.  This is the majorant used on the innermost radial cell of the
+compact spatial reduction (5.3), where the half-density bound is unusable. -/
+theorem exists_norm_brrsRadialBesselKernel_fourPhase_lowOutput_majorant
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real),
+      ‖v‖ = 1 → 0 ≤ r → ((2 : Real) ^ j) * r ≤ 16 → 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        C * (((2 : Real) ^ j) * s) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s)) := by
+  obtain ⟨⟨Cll, hCll, hll⟩, ⟨Clh, hClh, hlh⟩,
+    ⟨_Chl, _hChl, _hhl⟩, ⟨_Chh, _hChh, _hhh⟩⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_region_majorants
+      (d := d) (N := N) hd Phi
+  have hd1 : 1 ≤ d := le_trans (by norm_num) hd
+  let C : Real := (4 : Real) ^ (d - 1) * (Cll + Clh)
+  have hC : 0 < C := by
+    dsimp [C]
+    exact mul_pos (pow_pos (by norm_num) _) (add_pos hCll hClh)
+  refine ⟨C, hC, ?_⟩
+  intro v j r s t hv hr0 hqr hs
+  let q : Real := (2 : Real) ^ j
+  let P : Real := brrsSectionFiveOmega N j (t - r - s) +
+    brrsSectionFiveOmega N j (t - r + s) +
+      brrsSectionFiveOmega N j (t + r - s) +
+        brrsSectionFiveOmega N j (t + r + s)
+  have hq : 0 < q := by dsimp [q]; positivity
+  have hqs : 0 < q * s := mul_pos hq hs
+  have hP : 0 ≤ P := by
+    dsimp [P]
+    exact add_nonneg (add_nonneg (add_nonneg
+      (brrsSectionFiveOmega_nonneg N j (t - r - s))
+      (brrsSectionFiveOmega_nonneg N j (t - r + s)))
+      (brrsSectionFiveOmega_nonneg N j (t + r - s)))
+      (brrsSectionFiveOmega_nonneg N j (t + r + s))
+  have hhalf : (0 : Real) ≤ (q * s) ^ (((d : Real) - 1) / 2) :=
+    Real.rpow_nonneg hqs.le _
+  have hsqrt : (Real.sqrt (q * s)) ^ (d - 1) = (q * s) ^ (((d : Real) - 1) / 2) :=
+    brrs_sqrt_pow_eq_half_rpow hd1 hqs
+  change ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+    C * (q * s) ^ (((d : Real) - 1) / 2) * P
+  by_cases hqs16 : q * s ≤ 16
+  · have hbase := hll v j r s t hv (by simpa only [q] using mul_nonneg hq.le hr0)
+      (by simpa only [q] using hqr) (by simpa only [q] using hqs)
+      (by simpa only [q] using hqs16)
+    have hroot : Real.sqrt (q * s) ≤ 4 := brrs_sqrt_four_bound hqs16
+    have hpref : (q * s) ^ (d - 1) ≤
+        (4 : Real) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2) := by
+      have hfac : (q * s) ^ (d - 1) =
+          (Real.sqrt (q * s)) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2) := by
+        rw [← hsqrt, ← mul_pow, Real.mul_self_sqrt hqs.le]
+      rw [hfac]
+      exact mul_le_mul_of_nonneg_right
+        (pow_le_pow_left₀ (Real.sqrt_nonneg _) hroot _) hhalf
+    calc
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+          (q * s) ^ (d - 1) * ((1 - (1 / 32 : Real)) * Cll * P) := by
+        simpa only [q, P] using hbase
+      _ ≤ (q * s) ^ (d - 1) * (Cll * P) := by
+        apply mul_le_mul_of_nonneg_left _ (by positivity)
+        nlinarith [hCll, hP]
+      _ ≤ ((4 : Real) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2)) *
+            (Cll * P) := by
+        apply mul_le_mul_of_nonneg_right hpref
+        positivity
+      _ ≤ C * (q * s) ^ (((d : Real) - 1) / 2) * P := by
+        have hstep : (4 : Real) ^ (d - 1) * Cll ≤ C := by
+          dsimp [C]
+          nlinarith [hClh, pow_pos (by norm_num : (0 : Real) < 4) (d - 1)]
+        calc
+          ((4 : Real) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2)) * (Cll * P) =
+              ((4 : Real) ^ (d - 1) * Cll) *
+                (q * s) ^ (((d : Real) - 1) / 2) * P := by ring
+          _ ≤ C * (q * s) ^ (((d : Real) - 1) / 2) * P :=
+            mul_le_mul_of_nonneg_right
+              (mul_le_mul_of_nonneg_right hstep hhalf) hP
+  · have hqs16 : (16 : Real) ≤ q * s := le_of_not_ge hqs16
+    have hbase := hlh v j r s t hv (by simpa only [q] using mul_nonneg hq.le hr0)
+      (by simpa only [q] using hqr) (by simpa only [q] using hqs16)
+    have hden : 0 < (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by
+      apply pow_pos
+      exact Real.sqrt_pos.2 (by positivity)
+    have hpref : (q * s) ^ (d - 1) / (Real.sqrt ((q * s) / 16)) ^ (d - 1) =
+        (4 : Real) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2) := by
+      have hsq : Real.sqrt ((q * s) / 16) = Real.sqrt (q * s) / 4 := by
+        rw [show (q * s) / 16 = (q * s) * (1 / 16) by ring,
+          Real.sqrt_mul hqs.le]
+        rw [show Real.sqrt (1 / 16 : Real) = 1 / 4 by
+          apply (Real.sqrt_eq_iff_mul_self_eq (by norm_num) (by norm_num)).2
+          norm_num]
+        ring
+      have hfac : (q * s) ^ (d - 1) =
+          (Real.sqrt (q * s)) ^ (d - 1) * (Real.sqrt (q * s)) ^ (d - 1) := by
+        rw [← mul_pow, Real.mul_self_sqrt hqs.le]
+      rw [hsq, div_pow, hfac, hsqrt]
+      field_simp
+    calc
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+          (q * s) ^ (d - 1) *
+            ((1 - (1 / 32 : Real)) *
+              (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) := by
+        simpa only [q, P] using hbase
+      _ ≤ ((q * s) ^ (d - 1) /
+            (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * (Clh * P) := by
+        have hA : (0 : Real) ≤ (q * s) ^ (d - 1) * (Clh * P) /
+            (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by positivity
+        have hEqL : (q * s) ^ (d - 1) *
+            ((1 - (1 / 32 : Real)) *
+              (Clh / (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * P) =
+            (1 - (1 / 32 : Real)) *
+              ((q * s) ^ (d - 1) * (Clh * P) /
+                (Real.sqrt ((q * s) / 16)) ^ (d - 1)) := by
+          field_simp
+        have hEqR : ((q * s) ^ (d - 1) /
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1)) * (Clh * P) =
+            (q * s) ^ (d - 1) * (Clh * P) /
+              (Real.sqrt ((q * s) / 16)) ^ (d - 1) := by
+          field_simp
+        rw [hEqL, hEqR]
+        linarith [hA]
+      _ = ((4 : Real) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2)) *
+            (Clh * P) := by rw [hpref]
+      _ ≤ C * (q * s) ^ (((d : Real) - 1) / 2) * P := by
+        have hstep : (4 : Real) ^ (d - 1) * Clh ≤ C := by
+          dsimp [C]
+          nlinarith [hCll, pow_pos (by norm_num : (0 : Real) < 4) (d - 1)]
+        calc
+          ((4 : Real) ^ (d - 1) * (q * s) ^ (((d : Real) - 1) / 2)) * (Clh * P) =
+              ((4 : Real) ^ (d - 1) * Clh) *
+                (q * s) ^ (((d : Real) - 1) / 2) * P := by ring
+          _ ≤ C * (q * s) ^ (((d : Real) - 1) / 2) * P :=
+            mul_le_mul_of_nonneg_right
+              (mul_le_mul_of_nonneg_right hstep hhalf) hP
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The aggregate far-source estimate of BRRS (5.5)
+
+The compact spatial reduction (5.3) needs the far-source contribution as a
+single integral over `s > 2^10`, not as a sum of `p`-th powers over the
+individual annuli.  The source obtains it from the per-annulus estimate by
+the triangle inequality in `L^p`; the same passage is carried out here with
+the per-annulus Hölder step applied pointwise in the sampled time and the
+output radius, so that only a scalar geometric series has to be summed.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The far source range is covered by the dyadic source annuli of BRRS
+(5.5). -/
+theorem brrs_farSource_subset_iUnion_annuli :
+    Ioi ((2 : Real) ^ (10 : Nat)) ⊆
+      ⋃ k : Nat, Ioc ((2 : Real) ^ (10 + k)) ((2 : Real) ^ (10 + k + 1)) := by
+  intro s hs
+  have hs10 : (2 : Real) ^ (10 : Nat) < s := hs
+  have hexists : ∃ k : Nat, s ≤ (2 : Real) ^ (10 + k + 1) := by
+    obtain ⟨m, hm⟩ := pow_unbounded_of_one_lt s (by norm_num : (1 : Real) < 2)
+    exact ⟨m, le_of_lt (lt_of_lt_of_le hm
+      (pow_le_pow_right₀ (by norm_num) (by omega)))⟩
+  classical
+  let k : Nat := Nat.find hexists
+  have hk : s ≤ (2 : Real) ^ (10 + k + 1) := Nat.find_spec hexists
+  have hklow : (2 : Real) ^ (10 + k) < s := by
+    rcases Nat.eq_zero_or_pos k with hk0 | hk0
+    · simpa only [hk0, Nat.add_zero] using hs10
+    · obtain ⟨m, hm⟩ : ∃ m : Nat, k = m + 1 := ⟨k - 1, by omega⟩
+      have hnot : ¬ (s ≤ (2 : Real) ^ (10 + m + 1)) :=
+        Nat.find_min hexists (by omega)
+      have : (2 : Real) ^ (10 + m + 1) < s := lt_of_not_ge hnot
+      simpa only [hm, show 10 + (m + 1) = 10 + m + 1 from by omega] using this
+  exact mem_iUnion.mpr ⟨k, ⟨hklow, hk⟩⟩
+
+/-- Consequently the far source integral is at most the sum of the dyadic
+annular integrals of BRRS (5.5). -/
+theorem brrs_lintegral_farSource_le_tsum_annuli
+    (F : Real → ENNReal) :
+    (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)), F s) ≤
+      ∑' k : Nat, ∫⁻ s in Ioc ((2 : Real) ^ (10 + k)) ((2 : Real) ^ (10 + k + 1)), F s := by
+  calc
+    (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)), F s) ≤
+        ∫⁻ s in ⋃ k : Nat,
+          Ioc ((2 : Real) ^ (10 + k)) ((2 : Real) ^ (10 + k + 1)), F s :=
+      lintegral_mono_set brrs_farSource_subset_iUnion_annuli
+    _ ≤ ∑' k : Nat,
+          ∫⁻ s in Ioc ((2 : Real) ^ (10 + k)) ((2 : Real) ^ (10 + k + 1)), F s :=
+      lintegral_iUnion_le _ _
+
+/-- The far-annulus Hölder coefficient with the time-grid cardinality factor
+removed.  It is the constant which appears pointwise in the sampled time and
+the output radius. -/
+noncomputable def brrsSectionFiveFarAnnulusPointwiseCoefficient
+    (d N j n : Nat) (p : Real) : Real :=
+  (brrsSectionFiveFarAnnulusBound N j n) ^ p *
+    ((2 : Real) ^ n) ^ (p - 1) *
+      (((2 : Real) ^ (n + 1)) ^ sobolevExponent d p) ^ p
+
+theorem brrsSectionFiveFarAnnulusPointwiseCoefficient_nonneg
+    (d N j n : Nat) {p : Real} :
+    0 ≤ brrsSectionFiveFarAnnulusPointwiseCoefficient d N j n p := by
+  unfold brrsSectionFiveFarAnnulusPointwiseCoefficient
+  exact mul_nonneg
+    (mul_nonneg
+      (Real.rpow_nonneg (brrsSectionFiveFarAnnulusBound_nonneg N j n) _)
+      (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _))
+    (Real.rpow_nonneg (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) _)
+
+theorem brrsSectionFiveFarAnnulusScalarCoefficient_eq_pow_mul_pointwise
+    (d N j n : Nat) (p : Real) :
+    brrsSectionFiveFarAnnulusScalarCoefficient d N j n p =
+      (2 : Real) ^ j *
+        brrsSectionFiveFarAnnulusPointwiseCoefficient d N j n p := by
+  unfold brrsSectionFiveFarAnnulusScalarCoefficient
+    brrsSectionFiveFarAnnulusPointwiseCoefficient
+  ring
+
+/-- The pointwise far-annulus estimate: for each sampled time and output
+radius, one literal source sign on the annulus is bounded by the Hölder
+coefficient times the `L^p` mass of the radial profile. -/
+theorem brrsSectionFiveFarSource_annulus_pointwise_le
+    {d N j n : Nat} {p : Real} (hd : 2 ≤ d) (hn : 10 ≤ n) (hp : 2 ≤ p)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega N j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ≤
+      ENNReal.ofReal
+        ((brrsSectionFiveFarAnnulusPointwiseCoefficient d N j n p) ^ p⁻¹) *
+        (∫⁻ s : Real, (f s) ^ p) ^ p⁻¹ := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  set b : ENNReal := ∫⁻ s in Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)),
+    (ENNReal.ofReal s) ^ sobolevExponent d p *
+      ENNReal.ofReal
+        (brrsSectionFiveOmega N j
+          (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s with hb
+  set S : ENNReal := ∫⁻ s : Real, (f s) ^ p with hS
+  have hholder := brrsSectionFiveFarSourceII_holder_le
+    (d := d) (N := N) (j := j) (n := n) sigma hn hp1 ht hr f hf
+  have hweight := brrsSectionFiveFarSource_weighted_annulus_lintegral_le
+    (d := d) (n := n) (p := p) hd hp f hf
+  have hstep : b ^ p ≤
+      ENNReal.ofReal
+        (brrsSectionFiveFarAnnulusPointwiseCoefficient d N j n p) * S := by
+    have hchain : b ^ p ≤
+        (ENNReal.ofReal (brrsSectionFiveFarAnnulusBound N j n)) ^ p *
+          (volume (Ioc ((2 : Real) ^ n) ((2 : Real) ^ (n + 1)))) ^ (p - 1) *
+            (((ENNReal.ofReal ((2 : Real) ^ (n + 1))) ^ sobolevExponent d p) ^ p *
+              S) := by
+      refine le_trans hholder ?_
+      exact mul_le_mul' le_rfl hweight
+    refine le_trans hchain (le_of_eq ?_)
+    rw [volume_brrsSectionFiveFarSourceAnnulus n]
+    unfold brrsSectionFiveFarAnnulusPointwiseCoefficient
+    rw [ENNReal.ofReal_mul (by
+        exact mul_nonneg
+          (Real.rpow_nonneg (brrsSectionFiveFarAnnulusBound_nonneg N j n) _)
+          (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _)),
+      ENNReal.ofReal_mul
+        (Real.rpow_nonneg (brrsSectionFiveFarAnnulusBound_nonneg N j n) _),
+      ← ENNReal.ofReal_rpow_of_nonneg
+        (brrsSectionFiveFarAnnulusBound_nonneg N j n) (le_of_lt hp0),
+      ← ENNReal.ofReal_rpow_of_nonneg (pow_nonneg (by norm_num) _)
+        (by linarith : (0 : Real) ≤ p - 1),
+      ← ENNReal.ofReal_rpow_of_nonneg
+        (Real.rpow_nonneg (pow_nonneg (by norm_num) _) _) (le_of_lt hp0),
+      ← ENNReal.ofReal_rpow_of_nonneg (pow_nonneg (by norm_num) _)
+        (sobolevExponent_nonneg hd hp)]
+    ring
+  have hpne : p ≠ 0 := ne_of_gt hp0
+  calc
+    b = (b ^ p) ^ p⁻¹ := (ENNReal.rpow_rpow_inv hpne b).symm
+    _ ≤ (ENNReal.ofReal
+          (brrsSectionFiveFarAnnulusPointwiseCoefficient d N j n p) * S) ^ p⁻¹ :=
+      ENNReal.rpow_le_rpow hstep (by positivity)
+    _ = ENNReal.ofReal
+          ((brrsSectionFiveFarAnnulusPointwiseCoefficient d N j n p) ^ p⁻¹) *
+            S ^ p⁻¹ := by
+      rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity),
+        ENNReal.ofReal_rpow_of_nonneg
+          (brrsSectionFiveFarAnnulusPointwiseCoefficient_nonneg d N j n)
+          (by positivity)]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Summing the far-source annuli in `L^p`
+
+The source sums its per-annulus estimate (5.5) by the triangle inequality in
+`L^p`.  Here the same passage is performed with the annular Hölder step taken
+pointwise in the sampled time and the output radius, so that the summation is
+a scalar geometric series.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The geometric ratio of the far-source annular series after the pointwise
+Hölder step. -/
+noncomputable def brrsSectionFiveFarRatio (p : Real) : Real := ((2 : Real)⁻¹) ^ p⁻¹
+
+theorem brrsSectionFiveFarRatio_nonneg (p : Real) :
+    0 ≤ brrsSectionFiveFarRatio p :=
+  Real.rpow_nonneg (by norm_num) _
+
+theorem brrsSectionFiveFarRatio_lt_one {p : Real} (hp : 2 ≤ p) :
+    brrsSectionFiveFarRatio p < 1 := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  unfold brrsSectionFiveFarRatio
+  exact Real.rpow_lt_one (by norm_num) (by norm_num) (by positivity)
+
+/-- The pointwise far-source bound: the geometric sum of the annular Hölder
+coefficients of BRRS (5.5). -/
+noncomputable def brrsSectionFiveFarTotalPointwiseBound (d L j : Nat) (p : Real) : Real :=
+  (((2 : Real) ^
+      (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+        (L : Real) * (j : Real)) / (2 : Real) ^ j) ^ p⁻¹) *
+    (1 - brrsSectionFiveFarRatio p)⁻¹
+
+theorem brrsSectionFiveFarTotalPointwiseBound_nonneg
+    (d L j : Nat) {p : Real} (hp : 2 ≤ p) :
+    0 ≤ brrsSectionFiveFarTotalPointwiseBound d L j p := by
+  have hrho := brrsSectionFiveFarRatio_lt_one (p := p) hp
+  unfold brrsSectionFiveFarTotalPointwiseBound
+  have h1 : 0 ≤ (1 - brrsSectionFiveFarRatio p)⁻¹ := by
+    apply inv_nonneg.mpr
+    linarith
+  exact mul_nonneg (Real.rpow_nonneg (by positivity) _) h1
+
+/-- The `p`-th root of the annular Hölder coefficient decays geometrically
+in the annulus index; this is the scalar series which the triangle inequality
+in `L^p` has to sum. -/
+theorem brrsSectionFiveFarAnnulusPointwiseCoefficient_rpow_le_geometric
+    {d L j k : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1) :
+    (brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j (10 + k) p)
+        ^ p⁻¹ ≤
+      (((2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real)) / (2 : Real) ^ j) ^ p⁻¹) *
+        (brrsSectionFiveFarRatio p) ^ k := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hinv : 0 ≤ p⁻¹ := by positivity
+  set Y : Real := 2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+    (L : Real) * (j : Real) with hY
+  have hgeom := brrsSectionFiveFarAnnulusScalarCoefficient_le_geometric
+    (d := d) (L := L) (j := j) (k := k) hd hp hsubcritical
+  have hsplit :=
+    brrsSectionFiveFarAnnulusScalarCoefficient_eq_pow_mul_pointwise
+      d (L + d + 2) j (10 + k) p
+  have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hpt : brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j (10 + k) p ≤
+      (2 : Real) ^ Y / (2 : Real) ^ j * ((2 : Real)⁻¹) ^ k := by
+    rw [div_mul_eq_mul_div, le_div_iff₀ hjpos]
+    calc
+      brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j (10 + k) p *
+          (2 : Real) ^ j =
+          brrsSectionFiveFarAnnulusScalarCoefficient d (L + d + 2) j (10 + k) p := by
+        rw [hsplit]; ring
+      _ ≤ (2 : Real) ^ Y * ((2 : Real)⁻¹) ^ k := by
+        simpa only [hY] using hgeom
+  have hratio : (((2 : Real)⁻¹) ^ k) ^ p⁻¹ = (brrsSectionFiveFarRatio p) ^ k := by
+    unfold brrsSectionFiveFarRatio
+    rw [← Real.rpow_natCast ((2 : Real)⁻¹) k, ← Real.rpow_mul (by norm_num),
+      ← Real.rpow_natCast (((2 : Real)⁻¹) ^ p⁻¹) k,
+      ← Real.rpow_mul (by norm_num)]
+    congr 1
+    ring
+  calc
+    (brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j (10 + k) p)
+        ^ p⁻¹ ≤
+        ((2 : Real) ^ Y / (2 : Real) ^ j * ((2 : Real)⁻¹) ^ k) ^ p⁻¹ :=
+      Real.rpow_le_rpow
+        (brrsSectionFiveFarAnnulusPointwiseCoefficient_nonneg d (L + d + 2) j (10 + k))
+        hpt hinv
+    _ = ((2 : Real) ^ Y / (2 : Real) ^ j) ^ p⁻¹ * (((2 : Real)⁻¹) ^ k) ^ p⁻¹ := by
+      rw [Real.mul_rpow (by positivity) (by positivity)]
+    _ = ((2 : Real) ^ Y / (2 : Real) ^ j) ^ p⁻¹ * (brrsSectionFiveFarRatio p) ^ k := by
+      rw [hratio]
+
+/-- Summing the geometric annular Hölder coefficients. -/
+theorem tsum_brrsSectionFiveFarAnnulusPointwiseCoefficient_rpow_le
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1) :
+    (∑' k : Nat, ENNReal.ofReal
+        ((brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j (10 + k) p)
+          ^ p⁻¹)) ≤
+      ENNReal.ofReal (brrsSectionFiveFarTotalPointwiseBound d L j p) := by
+  set D : Real := ((2 : Real) ^
+      (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+        (L : Real) * (j : Real)) / (2 : Real) ^ j) ^ p⁻¹ with hD
+  set rho : Real := brrsSectionFiveFarRatio p with hrho
+  have hrho0 : 0 ≤ rho := brrsSectionFiveFarRatio_nonneg p
+  have hrho1 : rho < 1 := brrsSectionFiveFarRatio_lt_one hp
+  have hD0 : 0 ≤ D := Real.rpow_nonneg (by positivity) _
+  have hsummable : Summable (fun k : Nat => D * rho ^ k) :=
+    (summable_geometric_of_lt_one hrho0 hrho1).mul_left D
+  have htsum : (∑' k : Nat, D * rho ^ k) = D * (1 - rho)⁻¹ := by
+    rw [tsum_mul_left, tsum_geometric_of_lt_one hrho0 hrho1]
+  calc
+    (∑' k : Nat, ENNReal.ofReal
+        ((brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j (10 + k) p)
+          ^ p⁻¹)) ≤
+        ∑' k : Nat, ENNReal.ofReal (D * rho ^ k) := by
+      refine ENNReal.tsum_le_tsum fun k => ENNReal.ofReal_le_ofReal ?_
+      simpa only [hD, hrho] using
+        (brrsSectionFiveFarAnnulusPointwiseCoefficient_rpow_le_geometric
+          (d := d) (L := L) (j := j) (k := k) hd hp hsubcritical)
+    _ = ENNReal.ofReal (∑' k : Nat, D * rho ^ k) := by
+      rw [ENNReal.ofReal_tsum_of_nonneg
+        (fun k => mul_nonneg hD0 (pow_nonneg hrho0 k)) hsummable]
+    _ = ENNReal.ofReal (brrsSectionFiveFarTotalPointwiseBound d L j p) := by
+      rw [htsum]
+      rfl
+
+/-- The pointwise aggregate far-source estimate: at each sampled time and
+output radius the whole far source contributes at most the geometric sum of
+the annular Hölder coefficients times the `L^p` mass of the profile. -/
+theorem brrsSectionFiveFarSource_total_pointwise_le
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    {t r : Real} (ht : t ∈ Icc (1 : Real) 2) (hr : r ∈ Ioc (0 : Real) 20)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega (L + d + 2) j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ≤
+      ENNReal.ofReal (brrsSectionFiveFarTotalPointwiseBound d L j p) *
+        (∫⁻ s : Real, (f s) ^ p) ^ p⁻¹ := by
+  set S : ENNReal := ∫⁻ s : Real, (f s) ^ p with hS
+  calc
+    (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega (L + d + 2) j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ≤
+        ∑' k : Nat,
+          ∫⁻ s in Ioc ((2 : Real) ^ (10 + k)) ((2 : Real) ^ (10 + k + 1)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega (L + d + 2) j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s :=
+      brrs_lintegral_farSource_le_tsum_annuli _
+    _ ≤ ∑' k : Nat,
+          ENNReal.ofReal
+            ((brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j
+              (10 + k) p) ^ p⁻¹) * S ^ p⁻¹ := by
+      refine ENNReal.tsum_le_tsum fun k => ?_
+      exact brrsSectionFiveFarSource_annulus_pointwise_le
+        (d := d) (N := L + d + 2) (j := j) (n := 10 + k) hd (by omega) hp
+        sigma ht hr f hf
+    _ = (∑' k : Nat,
+          ENNReal.ofReal
+            ((brrsSectionFiveFarAnnulusPointwiseCoefficient d (L + d + 2) j
+              (10 + k) p) ^ p⁻¹)) * S ^ p⁻¹ := by
+      rw [ENNReal.tsum_mul_right]
+    _ ≤ ENNReal.ofReal (brrsSectionFiveFarTotalPointwiseBound d L j p) *
+          S ^ p⁻¹ :=
+      mul_le_mul' (tsum_brrsSectionFiveFarAnnulusPointwiseCoefficient_rpow_le
+        hd hp hsubcritical) le_rfl
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The aggregate far-source term
+
+`brrsSectionFiveFarSourceTotal` is the far-source contribution written as a
+single source integral over `s > 2^10`, which is the form the compact spatial
+reduction produces.  Its estimate is the `L^p` triangle inequality applied to
+the per-annulus estimate (5.5).
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The aggregate far-source contribution of one literal travelling sign:
+the whole source range `s > 2^10` in a single integral. -/
+noncomputable def brrsSectionFiveFarSourceTotal
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (d N j : Nat) (p : Real) (f : Real → ENNReal) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d p r *
+      (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega N j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p
+
+/-- The aggregate far-source estimate with the time-grid cardinality left
+explicit. -/
+theorem brrsSectionFiveFarSourceTotal_le_card_mul
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceTotal sigma T d (L + d + 2) j p f ≤
+      (T.card : ENNReal) *
+        (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          ((brrsSectionFiveFarTotalPointwiseBound d L j p) ^ p) *
+        ∫⁻ s : Real, (f s) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hpne : p ≠ 0 := ne_of_gt hp0
+  set S : ENNReal := ∫⁻ s : Real, (f s) ^ p with hS
+  set B : Real := brrsSectionFiveFarTotalPointwiseBound d L j p with hB
+  have hB0 : 0 ≤ B := brrsSectionFiveFarTotalPointwiseBound_nonneg d L j hp
+  set W : ENNReal := ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d p r with hW
+  have hpoint : ∀ t ∈ T, ∀ r ∈ Ioc (0 : Real) 20,
+      (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega (L + d + 2) j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p ≤
+        ENNReal.ofReal (B ^ p) * S := by
+    intro t htT r hr
+    have ht : t ∈ Icc (1 : Real) 2 := hE (hT.subset htT)
+    have hbase := brrsSectionFiveFarSource_total_pointwise_le
+      (d := d) (L := L) (j := j) hd hp hsubcritical sigma ht hr f hf
+    calc
+      (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal
+            (brrsSectionFiveOmega (L + d + 2) j
+              (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p ≤
+          (ENNReal.ofReal B * S ^ p⁻¹) ^ p :=
+        ENNReal.rpow_le_rpow hbase (le_of_lt hp0)
+      _ = ENNReal.ofReal (B ^ p) * S := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (le_of_lt hp0),
+          ENNReal.rpow_inv_rpow hpne,
+          ENNReal.ofReal_rpow_of_nonneg hB0 (le_of_lt hp0)]
+  have hterm : ∀ t ∈ T,
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega (L + d + 2) j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p) ≤
+        W * (ENNReal.ofReal (B ^ p) * S) := by
+    intro t htT
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r *
+          (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal
+                (brrsSectionFiveOmega (L + d + 2) j
+                  (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r *
+              (ENNReal.ofReal (B ^ p) * S) := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r hr
+        exact mul_le_mul' le_rfl (hpoint t htT r hr)
+      _ = W * (ENNReal.ofReal (B ^ p) * S) := by
+        rw [lintegral_mul_const _
+          (measurable_brrsSectionFiveFarSourceOutputWeight d p)]
+  change (∑ t ∈ T, _) ≤ _
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r *
+        (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal
+              (brrsSectionFiveOmega (L + d + 2) j
+                (brrsSectionFiveFarSourcePhaseLine sigma t r s)) * f s) ^ p) ≤
+        ∑ _t ∈ T, W * (ENNReal.ofReal (B ^ p) * S) :=
+      Finset.sum_le_sum hterm
+    _ = (T.card : ENNReal) * (W * (ENNReal.ofReal (B ^ p) * S)) := by
+      simp only [Finset.sum_const, nsmul_eq_mul]
+    _ = (T.card : ENNReal) * W * ENNReal.ofReal (B ^ p) * S := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Normalizing the aggregate far-source constant
+
+The time-grid cardinality contributes `2^j`, which cancels exactly against
+the frequency factor in the pointwise far-source bound, leaving the printed
+gain `2^{-L j}`.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The frequency factor `2^j` from the time-grid cardinality cancels exactly
+against the one in the pointwise far-source bound. -/
+theorem two_pow_mul_brrsSectionFiveFarTotalPointwiseBound_rpow
+    (d L j : Nat) {p : Real} (hp : 2 ≤ p) :
+    ((2 : Real) ^ j) * (brrsSectionFiveFarTotalPointwiseBound d L j p) ^ p =
+      (2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+            (L : Real) * (j : Real)) *
+        ((1 - brrsSectionFiveFarRatio p)⁻¹) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hpne : p ≠ 0 := ne_of_gt hp0
+  have hrho1 : brrsSectionFiveFarRatio p < 1 := brrsSectionFiveFarRatio_lt_one hp
+  have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  set Y : Real := 2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+    (L : Real) * (j : Real) with hY
+  have hX0 : (0 : Real) ≤ (2 : Real) ^ Y / (2 : Real) ^ j := by positivity
+  have hZ0 : (0 : Real) ≤ (1 - brrsSectionFiveFarRatio p)⁻¹ := by
+    apply inv_nonneg.mpr
+    linarith
+  unfold brrsSectionFiveFarTotalPointwiseBound
+  rw [Real.mul_rpow (Real.rpow_nonneg hX0 _) hZ0, ← Real.rpow_mul hX0,
+    inv_mul_cancel₀ hpne, Real.rpow_one]
+  field_simp
+
+/-- The aggregate far-source estimate with the explicit frequency gain
+`2^{-L j}`. -/
+theorem brrsSectionFiveFarSourceTotal_le
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {d L j : Nat} {p : Real} (hd : 2 ≤ d) (hp : 2 ≤ p)
+    (hsubcritical : p * sobolevExponent d p < 1)
+    (sigma : BRRSSectionFiveFarSourcePhase)
+    (T : Finset Real) (hT : IsDyadicDiscretization E j T)
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarSourceTotal sigma T d (L + d + 2) j p f ≤
+      8 * (∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r) *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+              (L : Real) * (j : Real)) *
+            ((1 - brrsSectionFiveFarRatio p)⁻¹) ^ p) *
+        ∫⁻ s : Real, (f s) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hrho1 : brrsSectionFiveFarRatio p < 1 := brrsSectionFiveFarRatio_lt_one hp
+  set W : ENNReal := ∫⁻ r in Ioc (0 : Real) 20,
+    brrsSectionFiveFarSourceOutputWeight d p r with hW
+  set S : ENNReal := ∫⁻ s : Real, (f s) ^ p with hS
+  set B : Real := brrsSectionFiveFarTotalPointwiseBound d L j p with hB
+  have hB0 : 0 ≤ B := brrsSectionFiveFarTotalPointwiseBound_nonneg d L j hp
+  have hBp0 : 0 ≤ B ^ p := Real.rpow_nonneg hB0 _
+  have hcard : (T.card : ENNReal) ≤ 8 * (2 : ENNReal) ^ j :=
+    dyadicDiscretization_card_le_eight_mul_two_pow_of_subset_Icc hE j T hT
+  have htwo : ((2 : ENNReal) ^ j) = ENNReal.ofReal ((2 : Real) ^ j) := by
+    rw [ENNReal.ofReal_pow (by norm_num)]
+    norm_num
+  have hmerge : (2 : ENNReal) ^ j * ENNReal.ofReal (B ^ p) =
+      ENNReal.ofReal
+        ((2 : Real) ^
+          (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+            (L : Real) * (j : Real)) *
+          ((1 - brrsSectionFiveFarRatio p)⁻¹) ^ p) := by
+    rw [htwo, ← ENNReal.ofReal_mul (by positivity)]
+    congr 1
+    simpa only [hB] using
+      two_pow_mul_brrsSectionFiveFarTotalPointwiseBound_rpow d L j hp
+  calc
+    brrsSectionFiveFarSourceTotal sigma T d (L + d + 2) j p f ≤
+        (T.card : ENNReal) * W * ENNReal.ofReal (B ^ p) * S :=
+      brrsSectionFiveFarSourceTotal_le_card_mul hE hd hp hsubcritical sigma T hT
+        f hf
+    _ ≤ (8 * (2 : ENNReal) ^ j) * W * ENNReal.ofReal (B ^ p) * S := by
+      exact mul_le_mul' (mul_le_mul' (mul_le_mul' hcard le_rfl) le_rfl) le_rfl
+    _ = 8 * W * ((2 : ENNReal) ^ j * ENNReal.ofReal (B ^ p)) * S := by ring
+    _ = 8 * W *
+        ENNReal.ofReal
+          ((2 : Real) ^
+            (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+              (L : Real) * (j : Real)) *
+            ((1 - brrsSectionFiveFarRatio p)⁻¹) ^ p) * S := by
+      rw [hmerge]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The weighted one-dimensional estimate of BRRS (5.4)
+
+The source variable splits into the compact part `0 ≤ s ≤ 2^{10}`, treated by
+the radial cell decomposition, and the far part `s > 2^{10}`, treated by the
+annular tail summed in `L^p`.  Section (5.4) is the sum of those two
+completed estimates.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The explicit finite constant of the aggregate far-source estimate,
+including the frequency gain `2^{-L j}`. -/
+noncomputable def brrsSectionFiveFarTotalConstant (d L j : Nat) (p : Real) : ENNReal :=
+  8 * (∫⁻ r in Ioc (0 : Real) 20,
+      brrsSectionFiveFarSourceOutputWeight d p r) *
+    ENNReal.ofReal
+      ((2 : Real) ^
+        (2 * ((L + d + 2 : Nat) : Real) * p + p * sobolevExponent d p -
+          (L : Real) * (j : Real)) *
+        ((1 - brrsSectionFiveFarRatio p)⁻¹) ^ p)
+
+/-- The full weighted one-dimensional quantity of BRRS (5.4): the near-source
+radial cell sum, together with the four literal far-source sign contributions
+over the whole far range `s > 2^{10}`.  The two groups exhaust the source
+variable. -/
+noncomputable def brrsSectionFiveWeightedOneDimTotal
+    (T : Finset Real) (d L j : Nat) (p : Real) (f : Real → ENNReal) : ENNReal :=
+  brrsSectionFiveNearSourceCellSum T d j p f +
+    (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f +
+      brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f +
+        brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f)
+
+/-- **BRRS (5.4).**  The weighted one-dimensional estimate, obtained by
+joining the full near-source cell sum (5.8) with the aggregate far-source
+estimate for each of the four literal travelling signs.  The near part
+contributes `56 (∑_{m=0}^{j} κ_{j,m}(p s_p))` times a fixed constant, and the
+far part contributes a finite `d, L, p`-constant times the exact frequency
+gain `2^{-L j}`; both multiply `∫|f₀|^p`.  The printed exponent range
+`2 ≤ p < 2d/(d-1)` is the intersection of the two inputs' ranges. -/
+theorem brrsSectionFiveWeightedOneDim_le
+    {d L : Nat} (hd : 2 ≤ d) {E : Set Real} {j : Nat} {T : Finset Real}
+    (hE : E ⊆ Icc (1 : Real) 2) (hT : IsDyadicDiscretization E j T)
+    (p : Real) (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    (f : Real → ENNReal) (hf : Measurable f) :
+    brrsSectionFiveFarTotalConstant d L j p ≠ ∞ ∧
+      brrsSectionFiveWeightedOneDimTotal T d L j p f ≤
+        56 * (∑ m ∈ Finset.range (j + 1),
+            brrsDyadicKappa T j m (p * sobolevExponent d p)) *
+            ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p *
+              ∫⁻ s : Real, (f s) ^ p) +
+          4 * brrsSectionFiveFarTotalConstant d L j p * ∫⁻ s : Real, (f s) ^ p := by
+  have hp_pos : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hsubcritical : p * sobolevExponent d p < 1 :=
+    mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd hp_pos hcritical
+  have hweight_ne_top :
+      (∫⁻ r in Ioc (0 : Real) 20,
+        brrsSectionFiveFarSourceOutputWeight d p r) ≠ ∞ :=
+    lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_ne_top hsubcritical
+  refine ⟨?_, ?_⟩
+  · unfold brrsSectionFiveFarTotalConstant
+    exact ENNReal.mul_ne_top
+      (ENNReal.mul_ne_top ENNReal.ofNat_ne_top hweight_ne_top)
+      ENNReal.ofReal_ne_top
+  have hnear := brrsSectionFiveNearSourceCellSum_le_kappa_sum hd hE hT p hp f hf
+  set S : ENNReal := ∫⁻ s : Real, (f s) ^ p with hS
+  set C : ENNReal := brrsSectionFiveFarTotalConstant d L j p with hC
+  have hfar : ∀ sigma : BRRSSectionFiveFarSourcePhase,
+      brrsSectionFiveFarSourceTotal sigma T d (L + d + 2) j p f ≤ C * S := by
+    intro sigma
+    simpa only [hC, hS, brrsSectionFiveFarTotalConstant, mul_assoc] using
+      (brrsSectionFiveFarSourceTotal_le (L := L) hE hd hp hsubcritical sigma T hT
+        f hf)
+  calc
+    brrsSectionFiveWeightedOneDimTotal T d L j p f ≤
+        56 * (∑ m ∈ Finset.range (j + 1),
+            brrsDyadicKappa T j m (p * sobolevExponent d p)) *
+            ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p * S) +
+          (C * S + C * S + C * S + C * S) :=
+      add_le_add hnear
+        (add_le_add (add_le_add (add_le_add (hfar .subSub) (hfar .subAdd))
+          (hfar .addSub)) (hfar .addAdd))
+    _ = 56 * (∑ m ∈ Finset.range (j + 1),
+          brrsDyadicKappa T j m (p * sobolevExponent d p)) *
+          ((8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p * S) +
+        4 * C * S := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The one-dimensional radial source profile
+
+Polar coordinates turn a radial input into the one-dimensional profile
+`f₀(s) = s^{(d-1)/p} |f(s w)|`, whose `L^p` mass on the half line is the polar
+`L^p` mass of the input.  Written in that profile, the Section 5 source weight
+is exactly the literal `s^{s_p}` of the far-source terms.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The one-dimensional radial source profile `f₀(s) = s^{(d-1)/p} |f(s w)|`
+of BRRS Section 5.  Its `L^p` mass on the half line is the polar `L^p` mass
+of the radial input. -/
+noncomputable def brrsSectionFiveRadialProfile {d : Nat} (p : Real)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) : Real → ENNReal :=
+  (Ioi (0 : Real)).indicator
+    (fun s => ENNReal.ofReal (s ^ (((d : Real) - 1) / p) * ‖f (s • w)‖))
+
+theorem measurable_brrsSectionFiveRadialProfile {d : Nat} (hd : 2 ≤ d)
+    {p : Real} (hp : 0 < p)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) :
+    Measurable (brrsSectionFiveRadialProfile p w f) := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hexp : (0 : Real) ≤ ((d : Real) - 1) / p := by
+    apply div_nonneg _ hp.le
+    linarith
+  unfold brrsSectionFiveRadialProfile
+  refine Measurable.indicator ?_ measurableSet_Ioi
+  apply ENNReal.measurable_ofReal.comp
+  apply Measurable.mul
+  · exact (Real.continuous_rpow_const hexp).measurable
+  · have hcont : Continuous fun s : Real => ‖f (s • w)‖ := by
+      exact (SchwartzMap.continuous f).comp (continuous_id.smul continuous_const)
+        |>.norm
+    exact hcont.measurable
+
+/-- The literal source weight in the far-source terms is exactly the radial
+profile weight. -/
+theorem brrsSectionFiveRadialProfile_weight_eq {d : Nat} {p : Real}
+    (hp : 0 < p) (w : BRRSSpace d) (f : BRRSSchwartz d) {s : Real} (hs : 0 < s) :
+    ENNReal.ofReal (s ^ (((d : Real) - 1) / 2)) * ‖f (s • w)‖ₑ =
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        brrsSectionFiveRadialProfile p w f s := by
+  have hmem : s ∈ Ioi (0 : Real) := hs
+  have hsum : sobolevExponent d p + ((d : Real) - 1) / p = ((d : Real) - 1) / 2 := by
+    unfold sobolevExponent
+    field_simp
+    ring
+  rw [← ofReal_norm, ← ENNReal.ofReal_mul (Real.rpow_nonneg hs.le _)]
+  unfold brrsSectionFiveRadialProfile
+  rw [indicator_of_mem hmem, ENNReal.ofReal_rpow_of_pos hs,
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg hs.le _)]
+  congr 1
+  rw [← mul_assoc, ← Real.rpow_add hs, hsum]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The one-dimensional source quantity of the compact reduction
+
+Both radial kernel majorants have the shape `K s^{(d-1)/2}` times the four
+travelling phase lines: the half-density one with `K = C r^{-(d-1)/2}`, the
+low-output one with `K = C (2^j)^{(d-1)/2}`.  The following factored bound is
+stated once for any such `K`.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Measurability of the Section 5 phase-line kernel. -/
+theorem measurable_brrsSectionFiveOmega (N j : Nat) :
+    Measurable (brrsSectionFiveOmega N j) := by
+  have h : brrsSectionFiveOmega N j = fun u : Real =>
+      ((2 : Real) ^ j) * brrsStationaryRapidProfile N
+        (2 * Real.pi * ((2 : Real) ^ j * u)) := by
+    funext u
+    exact brrsSectionFiveOmega_eq_scaledRapidProfile N j u
+  rw [h]
+  exact measurable_const.mul
+    ((measurable_brrsStationaryRapidProfile N).comp
+      (measurable_const.mul (measurable_const.mul measurable_id)))
+
+/-- Measurability of the four-phase weight in the source variable. -/
+theorem measurable_brrsSectionFiveOmegaFourPhaseENN (N j : Nat) (t r : Real) :
+    Measurable (fun s : Real => brrsSectionFiveOmegaFourPhaseENN N j t r s) := by
+  unfold brrsSectionFiveOmegaFourPhaseENN
+  apply ENNReal.measurable_ofReal.comp
+  have h1 : Measurable fun s : Real => brrsSectionFiveOmega N j (t - r - s) :=
+    (measurable_brrsSectionFiveOmega N j).comp
+      (measurable_const.sub measurable_id)
+  have h2 : Measurable fun s : Real => brrsSectionFiveOmega N j (t - r + s) :=
+    (measurable_brrsSectionFiveOmega N j).comp
+      (measurable_const.add measurable_id)
+  have h3 : Measurable fun s : Real => brrsSectionFiveOmega N j (t + r - s) :=
+    (measurable_brrsSectionFiveOmega N j).comp
+      (measurable_const.sub measurable_id)
+  have h4 : Measurable fun s : Real => brrsSectionFiveOmega N j (t + r + s) :=
+    (measurable_brrsSectionFiveOmega N j).comp
+      (measurable_const.add measurable_id)
+  exact ((h1.add h2).add h3).add h4
+
+/-- The one-dimensional source quantity produced by the compact spatial
+reduction: the four travelling phase lines against the radial profile,
+carrying the literal Section 5 source weight `s^{s_p}`. -/
+noncomputable def brrsSectionFiveOneDimSource {d : Nat} (N j : Nat) (p : Real)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sobolevExponent d p *
+    brrsSectionFiveOmegaFourPhaseENN N j t r s *
+      brrsSectionFiveRadialProfile p w f s
+
+/-- Factored pointwise bound for the annular half-wave.  Any radial kernel
+majorant of the half-density shape `K s^{(d-1)/2}` times the four travelling
+phase lines produces the one-dimensional source quantity with the constant
+`K` pulled out. -/
+theorem enorm_brrsDyadicHalfWave_le_oneDimSource
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 0 < p)
+    (j : Nat) (t : Real) (f : BRRSSchwartz d)
+    (hf : IsRadial (f : BRRSSpace d → Complex))
+    (v w x : BRRSSpace d) (hv : ‖v‖ = 1) (hw : ‖w‖ = 1)
+    {K : Real} (hK : 0 ≤ K)
+    (hmaj : ∀ s : Real, 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ ≤
+        K * s ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - ‖x‖ - s) +
+            brrsSectionFiveOmega N j (t - ‖x‖ + s) +
+              brrsSectionFiveOmega N j (t + ‖x‖ - s) +
+                brrsSectionFiveOmega N j (t + ‖x‖ + s))) :
+    ‖brrsDyadicHalfWave Phi j t f x‖ₑ ≤
+      ENNReal.ofReal K * brrsSectionFiveOneDimSource N j p w f t ‖x‖ := by
+  have hrep := brrsDyadicHalfWave_eq_radialBesselKernel_integral_of_norm
+    (by omega : 0 < d) Phi j t f hf v w x hv hw
+  have hmeas : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s *
+          brrsSectionFiveRadialProfile p w f s) := by
+    refine Measurable.mul (Measurable.mul ?_ ?_) ?_
+    · exact ENNReal.continuous_rpow_const.measurable.comp
+        ENNReal.measurable_ofReal
+    · exact measurable_brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖
+    · exact measurable_brrsSectionFiveRadialProfile hd hp w f
+  rw [hrep]
+  calc
+    ‖∫ s in Ioi (0 : Real),
+        brrsRadialBesselKernel Phi d v j ‖x‖ s t * f (s • w)‖ₑ ≤
+        ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t * f (s • w)‖ₑ :=
+      enorm_integral_le_lintegral_enorm _
+    _ ≤ ∫⁻ s in Ioi (0 : Real), ENNReal.ofReal K *
+          ((ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s *
+              brrsSectionFiveRadialProfile p w f s) := by
+      apply setLIntegral_mono' measurableSet_Ioi
+      intro s hs
+      have hs0 : 0 < s := hs
+      have hP : 0 ≤ brrsSectionFiveOmega N j (t - ‖x‖ - s) +
+          brrsSectionFiveOmega N j (t - ‖x‖ + s) +
+            brrsSectionFiveOmega N j (t + ‖x‖ - s) +
+              brrsSectionFiveOmega N j (t + ‖x‖ + s) :=
+        add_nonneg (add_nonneg (add_nonneg
+          (brrsSectionFiveOmega_nonneg N j _)
+          (brrsSectionFiveOmega_nonneg N j _))
+          (brrsSectionFiveOmega_nonneg N j _))
+          (brrsSectionFiveOmega_nonneg N j _)
+      have hprof := brrsSectionFiveRadialProfile_weight_eq (d := d) hp w f hs0
+      rw [enorm_mul]
+      calc
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ * ‖f (s • w)‖ₑ ≤
+            (ENNReal.ofReal K * ENNReal.ofReal (s ^ (((d : Real) - 1) / 2)) *
+              brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s) * ‖f (s • w)‖ₑ := by
+          refine mul_le_mul' ?_ le_rfl
+          have hKs : (0 : Real) ≤ K * s ^ (((d : Real) - 1) / 2) :=
+            mul_nonneg hK (Real.rpow_nonneg hs0.le _)
+          rw [← ofReal_norm, brrsSectionFiveOmegaFourPhaseENN,
+            ← ENNReal.ofReal_mul hK, ← ENNReal.ofReal_mul hKs]
+          exact ENNReal.ofReal_le_ofReal (hmaj s hs0)
+        _ = ENNReal.ofReal K *
+              ((ENNReal.ofReal (s ^ (((d : Real) - 1) / 2)) * ‖f (s • w)‖ₑ) *
+                brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s) := by ring
+        _ = ENNReal.ofReal K *
+              (((ENNReal.ofReal s) ^ sobolevExponent d p *
+                brrsSectionFiveRadialProfile p w f s) *
+                brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s) := by
+          rw [hprof]
+        _ = ENNReal.ofReal K *
+              ((ENNReal.ofReal s) ^ sobolevExponent d p *
+                brrsSectionFiveOmegaFourPhaseENN N j t ‖x‖ s *
+                  brrsSectionFiveRadialProfile p w f s) := by ring
+    _ = ENNReal.ofReal K * brrsSectionFiveOneDimSource N j p w f t ‖x‖ := by
+      rw [lintegral_const_mul _ hmeas]
+      rfl
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The two instances of the factored pointwise bound, and the decay order
+
+The compact spatial reduction uses the half-density majorant away from the
+origin and the low-output majorant on the innermost cell.  Both are instances
+of the factored bound.  The near-source cells are stated with the cubic decay
+order `N = 3`, while the far source needs the higher order `N = L + d + 2`;
+the two are compatible because the phase-line kernel decreases when the decay
+order increases.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The half-density instance of the factored pointwise bound. -/
+theorem enorm_brrsDyadicHalfWave_le_halfDensity_oneDimSource
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {C : Real} (hC : 0 < C)
+    (hmaj : ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real),
+      ‖v‖ = 1 → 0 < r → 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        C * (s / r) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s)))
+    {p : Real} (hp : 0 < p) (j : Nat) (t : Real) (f : BRRSSchwartz d)
+    (hf : IsRadial (f : BRRSSpace d → Complex))
+    (v w x : BRRSSpace d) (hv : ‖v‖ = 1) (hw : ‖w‖ = 1) (hx : 0 < ‖x‖) :
+    ‖brrsDyadicHalfWave Phi j t f x‖ₑ ≤
+      ENNReal.ofReal (C * ‖x‖ ^ (-(((d : Real) - 1) / 2))) *
+        brrsSectionFiveOneDimSource N j p w f t ‖x‖ := by
+  refine enorm_brrsDyadicHalfWave_le_oneDimSource hd Phi hp j t f hf v w x hv hw
+    (K := C * ‖x‖ ^ (-(((d : Real) - 1) / 2)))
+    (by positivity) ?_
+  intro s hs
+  have hbase := hmaj v j ‖x‖ s t hv hx hs
+  have hsplit : C * (s / ‖x‖) ^ (((d : Real) - 1) / 2) =
+      C * ‖x‖ ^ (-(((d : Real) - 1) / 2)) * s ^ (((d : Real) - 1) / 2) := by
+    rw [Real.div_rpow hs.le (le_of_lt hx),
+      Real.rpow_neg (le_of_lt hx)]
+    field_simp
+  rw [← hsplit]
+  exact hbase
+
+/-- The low-output instance of the factored pointwise bound. -/
+theorem enorm_brrsDyadicHalfWave_le_lowOutput_oneDimSource
+    {d N : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {C : Real} (hC : 0 < C)
+    (hmaj : ∀ (v : BRRSSpace d) (j : Nat) (r s t : Real),
+      ‖v‖ = 1 → 0 ≤ r → ((2 : Real) ^ j) * r ≤ 16 → 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        C * (((2 : Real) ^ j) * s) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s)))
+    {p : Real} (hp : 0 < p) (j : Nat) (t : Real) (f : BRRSSchwartz d)
+    (hf : IsRadial (f : BRRSSpace d → Complex))
+    (v w x : BRRSSpace d) (hv : ‖v‖ = 1) (hw : ‖w‖ = 1)
+    (hxlow : ((2 : Real) ^ j) * ‖x‖ ≤ 16) :
+    ‖brrsDyadicHalfWave Phi j t f x‖ₑ ≤
+      ENNReal.ofReal (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) *
+        brrsSectionFiveOneDimSource N j p w f t ‖x‖ := by
+  refine enorm_brrsDyadicHalfWave_le_oneDimSource hd Phi hp j t f hf v w x hv hw
+    (K := C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2))
+    (by positivity) ?_
+  intro s hs
+  have hbase := hmaj v j ‖x‖ s t hv (norm_nonneg x) hxlow hs
+  have hsplit : C * (((2 : Real) ^ j) * s) ^ (((d : Real) - 1) / 2) =
+      C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) *
+        s ^ (((d : Real) - 1) / 2) := by
+    rw [Real.mul_rpow (by positivity) hs.le]
+    ring
+  rw [← hsplit]
+  exact hbase
+
+/-- The stationary rapid profile decreases when the decay order increases. -/
+theorem brrsStationaryRapidProfile_antitone_order
+    {N₁ N₂ : Nat} (h : N₁ ≤ N₂) (u : Real) :
+    brrsStationaryRapidProfile N₂ u ≤ brrsStationaryRapidProfile N₁ u := by
+  unfold brrsStationaryRapidProfile
+  by_cases hu : u = 0
+  · simp [hu]
+  · rw [if_neg hu, if_neg hu]
+    have habs : 0 < |u| := abs_pos.mpr hu
+    rcases le_or_gt (|u|) 1 with hle | hgt
+    · have hone : (1 : Real) ≤ 1 / |u| := by
+        rw [le_div_iff₀ habs]
+        linarith
+      have h1 : (1 : Real) ≤ (1 / |u|) ^ N₁ := one_le_pow₀ hone
+      have h2 : (1 : Real) ≤ (1 / |u|) ^ N₂ := one_le_pow₀ hone
+      rw [min_eq_left h1, min_eq_left h2]
+    · have hlt : 1 / |u| ≤ 1 := by
+        rw [div_le_one habs]
+        linarith
+      have hpow : (1 / |u|) ^ N₂ ≤ (1 / |u|) ^ N₁ :=
+        pow_le_pow_of_le_one (by positivity) hlt h
+      exact min_le_min le_rfl hpow
+
+/-- The Section 5 phase-line kernel decreases when the decay order
+increases. -/
+theorem brrsSectionFiveOmega_antitone_order
+    {N₁ N₂ : Nat} (h : N₁ ≤ N₂) (j : Nat) (u : Real) :
+    brrsSectionFiveOmega N₂ j u ≤ brrsSectionFiveOmega N₁ j u := by
+  rw [brrsSectionFiveOmega_eq_scaledRapidProfile,
+    brrsSectionFiveOmega_eq_scaledRapidProfile]
+  exact mul_le_mul_of_nonneg_left
+    (brrsStationaryRapidProfile_antitone_order h _) (by positivity)
+
+/-- The `ENNReal` phase-line kernel decreases when the decay order
+increases. -/
+theorem brrsSectionFiveOmegaENN_antitone_order
+    {N₁ N₂ : Nat} (h : N₁ ≤ N₂) (j : Nat) (u : Real) :
+    brrsSectionFiveOmegaENN N₂ j u ≤ brrsSectionFiveOmegaENN N₁ j u := by
+  unfold brrsSectionFiveOmegaENN
+  exact ENNReal.ofReal_le_ofReal (brrsSectionFiveOmega_antitone_order h j u)
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Splitting the one-dimensional source quantity
+
+The source variable splits at `s = 2^10`.  On the near part the source weight
+`s^{s_p}` is bounded by its endpoint value and the four travelling phase lines
+become the four cubic phase-line convolutions of the radial profile, which are
+exactly the integrands of the Section 5 radial cells.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The four-phase weight is literally the sum of its four travelling phase
+lines. -/
+theorem brrsSectionFiveOmegaFourPhaseENN_eq_sum (N j : Nat) (t r s : Real) :
+    brrsSectionFiveOmegaFourPhaseENN N j t r s =
+      brrsSectionFiveOmegaENN N j (t - r - s) +
+        brrsSectionFiveOmegaENN N j (t - r + s) +
+          brrsSectionFiveOmegaENN N j (t + r - s) +
+            brrsSectionFiveOmegaENN N j (t + r + s) := by
+  unfold brrsSectionFiveOmegaFourPhaseENN brrsSectionFiveOmegaENN
+  rw [ENNReal.ofReal_add
+      (by
+        exact add_nonneg (add_nonneg
+          (brrsSectionFiveOmega_nonneg N j _) (brrsSectionFiveOmega_nonneg N j _))
+          (brrsSectionFiveOmega_nonneg N j _))
+      (brrsSectionFiveOmega_nonneg N j _),
+    ENNReal.ofReal_add
+      (by
+        exact add_nonneg
+          (brrsSectionFiveOmega_nonneg N j _) (brrsSectionFiveOmega_nonneg N j _))
+      (brrsSectionFiveOmega_nonneg N j _),
+    ENNReal.ofReal_add
+      (brrsSectionFiveOmega_nonneg N j _) (brrsSectionFiveOmega_nonneg N j _)]
+
+/-- The near-source part of the one-dimensional source quantity is dominated
+by the four cubic phase-line convolutions of the compactly truncated radial
+profile.  The truncation is the literal source truncation `0 ≤ s ≤ 2^10` of
+the terminal cell, so this bound feeds all four near-source cell types. -/
+theorem brrsSectionFiveOneDimSource_near_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat) (hN : 3 ≤ N)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) :
+    (∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            brrsSectionFiveRadialProfile p w f s) ≤
+      ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) *
+        (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t - r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t - r) +
+          brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t + r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t + r)) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  have hprof : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd hp0 w f
+  have hg0meas : Measurable g0 :=
+    measurable_brrsSectionFiveTerminalSourceProfile hprof
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  set W : ENNReal :=
+    ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) with hW
+  have hsum : Measurable (fun s : Real =>
+      brrsSectionFiveOmegaENN 3 j (t - r - s) +
+        brrsSectionFiveOmegaENN 3 j (t - r + s) +
+          brrsSectionFiveOmegaENN 3 j (t + r - s) +
+            brrsSectionFiveOmegaENN 3 j (t + r + s)) :=
+    (((hom.comp (measurable_const.sub measurable_id)).add
+      (hom.comp (measurable_const.add measurable_id))).add
+      (hom.comp (measurable_const.sub measurable_id))).add
+      (hom.comp (measurable_const.add measurable_id))
+  calc
+    (∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) ≤
+        ∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+          W * ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * f0 s) := by
+      refine setLIntegral_mono' measurableSet_Ioc ?_
+      intro s hs
+      have hweight : (ENNReal.ofReal s) ^ sobolevExponent d p ≤ W := by
+        rw [hW, ← ENNReal.ofReal_rpow_of_nonneg (by positivity) hsob]
+        exact ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal hs.2) hsob
+      have hphase : brrsSectionFiveOmegaFourPhaseENN N j t r s ≤
+          brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s) := by
+        rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+        exact add_le_add (add_le_add (add_le_add
+          (brrsSectionFiveOmegaENN_antitone_order hN j _)
+          (brrsSectionFiveOmegaENN_antitone_order hN j _))
+          (brrsSectionFiveOmegaENN_antitone_order hN j _))
+          (brrsSectionFiveOmegaENN_antitone_order hN j _)
+      calc
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s ≤
+            W * (brrsSectionFiveOmegaENN 3 j (t - r - s) +
+              brrsSectionFiveOmegaENN 3 j (t - r + s) +
+                brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                  brrsSectionFiveOmegaENN 3 j (t + r + s)) * f0 s :=
+          mul_le_mul' (mul_le_mul' hweight hphase) le_rfl
+        _ = W * ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+              brrsSectionFiveOmegaENN 3 j (t - r + s) +
+                brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                  brrsSectionFiveOmegaENN 3 j (t + r + s)) * f0 s) := by
+          ring
+    _ ≤ ∫⁻ s : Real,
+          W * ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * g0 s) := by
+      rw [← lintegral_indicator measurableSet_Ioc]
+      refine lintegral_mono fun s => ?_
+      by_cases hs : s ∈ Ioc (0 : Real) ((2 : Real) ^ (10 : Nat))
+      · rw [indicator_of_mem hs]
+        have hmem : s ∈ Icc (0 : Real) ((2 : Real) ^ (10 : Nat)) :=
+          ⟨le_of_lt hs.1, hs.2⟩
+        have hgs : g0 s = f0 s := by
+          rw [hg0]
+          unfold brrsSectionFiveTerminalSourceProfile
+          rw [indicator_of_mem hmem]
+        rw [hgs]
+      · rw [indicator_of_notMem hs]
+        exact zero_le
+    _ = W * ∫⁻ s : Real,
+          ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * g0 s) := by
+      rw [lintegral_const_mul]
+      exact hsum.mul hg0meas
+    _ = W * (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r) +
+          brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) := by
+      congr 1
+      have hA : Measurable
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s) :=
+        (hom.comp (measurable_const.sub measurable_id)).mul hg0meas
+      have hB : Measurable
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s) :=
+        (hom.comp (measurable_const.add measurable_id)).mul hg0meas
+      have hC : Measurable
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s) :=
+        (hom.comp (measurable_const.sub measurable_id)).mul hg0meas
+      have hAB : Measurable (fun s : Real =>
+          brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s) := hA.add hB
+      have hABC : Measurable (fun s : Real =>
+          brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s) := hAB.add hC
+      have hfun : (fun s : Real =>
+          (brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * g0 s) =
+          fun s : Real =>
+            brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s +
+              brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s +
+                brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s +
+                  brrsSectionFiveOmegaENN 3 j (t + r + s) * g0 s := by
+        funext s
+        ring
+      unfold brrsOneDimProfileConvolution brrsOneDimProfileConvolutionPlus
+      rw [hfun,
+        lintegral_add_left (μ := volume) hABC
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t + r + s) * g0 s),
+        lintegral_add_left (μ := volume) hAB
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s),
+        lintegral_add_left (μ := volume) hA
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s)]
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The far part of the one-dimensional source quantity
+
+On the far range the four travelling phase lines are literally the four
+signs of BRRS (5.5), so the far part of the one-dimensional source quantity
+is exactly the sum of the four far-source integrands.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- One literal far-source sign integrand of BRRS (5.5), at a fixed sampled
+time and output radius. -/
+noncomputable def brrsSectionFiveFarSourceInner {d : Nat}
+    (sigma : BRRSSectionFiveFarSourcePhase) (N j : Nat) (p : Real)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+    (ENNReal.ofReal s) ^ sobolevExponent d p *
+      ENNReal.ofReal
+        (brrsSectionFiveOmega N j
+          (brrsSectionFiveFarSourcePhaseLine sigma t r s)) *
+        brrsSectionFiveRadialProfile p w f s
+
+/-- The far part of the one-dimensional source quantity is exactly the sum of
+the four literal far-source sign integrands. -/
+theorem brrsSectionFiveOneDimSource_far_eq
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) :
+    (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            brrsSectionFiveRadialProfile p w f s) =
+      brrsSectionFiveFarSourceInner .subSub N j p w f t r +
+        brrsSectionFiveFarSourceInner .subAdd N j p w f t r +
+          brrsSectionFiveFarSourceInner .addSub N j p w f t r +
+            brrsSectionFiveFarSourceInner .addAdd N j p w f t r := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  have hprof : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd hp0 w f
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  have homN : Measurable (fun u : Real =>
+      ENNReal.ofReal (brrsSectionFiveOmega N j u)) :=
+    ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hwt : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hA : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s) :=
+    (hwt.mul (homN.comp (measurable_const.sub measurable_id))).mul hprof
+  have hB : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s) :=
+    (hwt.mul (homN.comp (measurable_const.add measurable_id))).mul hprof
+  have hC : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s) :=
+    (hwt.mul (homN.comp (measurable_const.sub measurable_id))).mul hprof
+  have hAB : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s +
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s) :=
+    hA.add hB
+  have hABC : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s +
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s +
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s) :=
+    hAB.add hC
+  have hfun : (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) =
+      fun s : Real =>
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s +
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s +
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s +
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f0 s := by
+    funext s
+    rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+    unfold brrsSectionFiveOmegaENN
+    ring
+  unfold brrsSectionFiveFarSourceInner brrsSectionFiveFarSourcePhaseLine
+  rw [hfun,
+    lintegral_add_left (μ := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat)))) hABC
+      (fun s : Real => (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f0 s),
+    lintegral_add_left (μ := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat)))) hAB
+      (fun s : Real => (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s),
+    lintegral_add_left (μ := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat)))) hA
+      (fun s : Real => (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s)]
+
+/-- The one-dimensional source quantity splits into the near-source cell
+integrands and the four literal far-source sign integrands. -/
+theorem brrsSectionFiveOneDimSource_le_near_add_far
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat) (hN : 3 ≤ N)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) :
+    brrsSectionFiveOneDimSource N j p w f t r ≤
+      ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) *
+        (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t - r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t - r) +
+          brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t + r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (brrsSectionFiveRadialProfile p w f)) (t + r)) +
+      (brrsSectionFiveFarSourceInner .subSub N j p w f t r +
+        brrsSectionFiveFarSourceInner .subAdd N j p w f t r +
+          brrsSectionFiveFarSourceInner .addSub N j p w f t r +
+            brrsSectionFiveFarSourceInner .addAdd N j p w f t r) := by
+  have hunion : Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)) ∪
+      Ioi ((2 : Real) ^ (10 : Nat)) = Ioi (0 : Real) :=
+    Ioc_union_Ioi_eq_Ioi (by positivity)
+  calc
+    brrsSectionFiveOneDimSource N j p w f t r =
+        ∫⁻ s in (Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)) ∪
+            Ioi ((2 : Real) ^ (10 : Nat))),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s *
+              brrsSectionFiveRadialProfile p w f s := by
+      rw [hunion]
+      rfl
+    _ ≤ (∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s *
+              brrsSectionFiveRadialProfile p w f s) +
+        ∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s *
+              brrsSectionFiveRadialProfile p w f s :=
+      lintegral_union_le _ _ _
+    _ ≤ _ := by
+      refine add_le_add
+        (brrsSectionFiveOneDimSource_near_le hd hp N j hN w f t r) ?_
+      exact le_of_eq (brrsSectionFiveOneDimSource_far_eq hd hp N j w f t r)
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Polar reduction and the radial cell covering
+
+The compact spatial integral of a radial half-wave becomes, in polar
+coordinates, a one-dimensional integral over `0 < r ≤ 20` with the Jacobian
+`r^{d-1}`.  That range is exhausted by the innermost cell, the dyadic annular
+cells and the terminal cell.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The four-term convexity inequality in `ℝ≥0∞`. -/
+theorem brrs_ennreal_four_rpow_le {p : Real} (hp : 1 ≤ p) (a b c e : ENNReal) :
+    (a + b + c + e) ^ p ≤
+      (2 : ENNReal) ^ (2 * (p - 1)) * (a ^ p + b ^ p + c ^ p + e ^ p) := by
+  have hregroup : a + b + c + e = (a + b) + (c + e) := by ring
+  have hdouble : (2 : ENNReal) ^ (p - 1) * (2 : ENNReal) ^ (p - 1) =
+      (2 : ENNReal) ^ (2 * (p - 1)) := by
+    rw [← ENNReal.rpow_add _ _ (by norm_num) (by norm_num)]
+    congr 1
+    ring
+  rw [hregroup]
+  calc
+    ((a + b) + (c + e)) ^ p ≤
+        (2 : ENNReal) ^ (p - 1) * ((a + b) ^ p + (c + e) ^ p) :=
+      ENNReal.rpow_add_le_mul_rpow_add_rpow _ _ hp
+    _ ≤ (2 : ENNReal) ^ (p - 1) *
+          ((2 : ENNReal) ^ (p - 1) * (a ^ p + b ^ p) +
+            (2 : ENNReal) ^ (p - 1) * (c ^ p + e ^ p)) := by
+      refine mul_le_mul' le_rfl (add_le_add ?_ ?_)
+      · exact ENNReal.rpow_add_le_mul_rpow_add_rpow _ _ hp
+      · exact ENNReal.rpow_add_le_mul_rpow_add_rpow _ _ hp
+    _ = ((2 : ENNReal) ^ (p - 1) * (2 : ENNReal) ^ (p - 1)) *
+          (a ^ p + b ^ p + c ^ p + e ^ p) := by ring
+    _ = (2 : ENNReal) ^ (2 * (p - 1)) * (a ^ p + b ^ p + c ^ p + e ^ p) := by
+      rw [hdouble]
+
+/-- Polar reduction of the compact spatial integral of the annular half-wave
+of a radial input. -/
+theorem brrs_lintegral_closedBall_brrsDyadicHalfWave_eq
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) (j : Nat) (t : Real)
+    (f : BRRSSchwartz d) (hf : IsRadial (f : BRRSSpace d → Complex))
+    (p : Real) (v : BRRSSpace d) (hv : ‖v‖ = 1) :
+    (∫⁻ x : BRRSSpace d,
+        (Metric.closedBall (0 : BRRSSpace d) 20).indicator
+          (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) =
+      (unitSurfaceMeasure d) univ *
+        ∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p := by
+  have hd0 : 0 < d := by omega
+  set A : BRRSSpace d → Complex := brrsDyadicHalfWave Phi j t f with hA
+  set H : BRRSSpace d → ENNReal := fun x =>
+    (Metric.closedBall (0 : BRRSSpace d) 20).indicator
+      (fun y => ‖A y‖ₑ ^ p) x with hH
+  have hAcont : Continuous A := continuous_brrsDyadicHalfWave Phi j t f
+  have hHmeas : Measurable H := by
+    refine Measurable.indicator ?_ measurableSet_closedBall
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      hAcont.enorm.measurable)
+  have hArad : IsRadial A := brrsDyadicHalfWave_isRadial Phi j t f hf
+  have hHrad : ∀ x y : BRRSSpace d, ‖x‖ = ‖y‖ → H x = H y := by
+    intro x y hxy
+    have hval : A x = A y := hArad x y hxy
+    have hmem : (x ∈ Metric.closedBall (0 : BRRSSpace d) 20) ↔
+        (y ∈ Metric.closedBall (0 : BRRSSpace d) 20) := by
+      simp only [Metric.mem_closedBall, dist_zero_right, hxy]
+    by_cases hx : x ∈ Metric.closedBall (0 : BRRSSpace d) 20
+    · have hy : y ∈ Metric.closedBall (0 : BRRSSpace d) 20 := hmem.mp hx
+      simp only [hH, indicator_of_mem hx, indicator_of_mem hy, hval]
+    · have hy : y ∉ Metric.closedBall (0 : BRRSSpace d) 20 := fun hc => hx (hmem.mpr hc)
+      simp only [hH, indicator_of_notMem hx, indicator_of_notMem hy]
+  rw [brrs_lintegral_polar_of_radial hd0 H hHmeas hHrad v hv]
+  congr 1
+  have hsplit : ∀ r : Real, r ∈ Ioi (0 : Real) →
+      (ENNReal.ofReal r) ^ (d - 1) * H (r • v) =
+        (Ioc (0 : Real) 20).indicator
+          (fun r => (ENNReal.ofReal r) ^ (d - 1) * ‖A (r • v)‖ₑ ^ p) r := by
+    intro r hr
+    have hr0 : 0 < r := hr
+    have hnorm : ‖r • v‖ = r := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hr0, hv, mul_one]
+    by_cases hle : r ≤ 20
+    · have hmem : r • v ∈ Metric.closedBall (0 : BRRSSpace d) 20 := by
+        simp only [Metric.mem_closedBall, dist_zero_right, hnorm]
+        exact hle
+      have hrmem : r ∈ Ioc (0 : Real) 20 := ⟨hr0, hle⟩
+      simp only [hH, indicator_of_mem hmem, indicator_of_mem hrmem]
+    · have hmem : r • v ∉ Metric.closedBall (0 : BRRSSpace d) 20 := by
+        simp only [Metric.mem_closedBall, dist_zero_right, hnorm]
+        exact hle
+      have hrmem : r ∉ Ioc (0 : Real) 20 := by
+        simp only [mem_Ioc, not_and, not_le]
+        intro _
+        exact lt_of_not_ge hle
+      simp only [hH, indicator_of_notMem hmem, indicator_of_notMem hrmem, mul_zero]
+  calc
+    (∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) * H (r • v)) =
+        ∫⁻ r in Ioi (0 : Real),
+          (Ioc (0 : Real) 20).indicator
+            (fun r => (ENNReal.ofReal r) ^ (d - 1) * ‖A (r • v)‖ₑ ^ p) r :=
+      setLIntegral_congr_fun measurableSet_Ioi hsplit
+    _ = ∫⁻ r in Ioc (0 : Real) 20,
+          (ENNReal.ofReal r) ^ (d - 1) * ‖A (r • v)‖ₑ ^ p := by
+      rw [lintegral_indicator measurableSet_Ioc]
+      rw [Measure.restrict_restrict measurableSet_Ioc]
+      congr 1
+      rw [inter_eq_left.mpr Ioc_subset_Ioi_self]
+
+/-- The dyadic radial block radius in explicit form. -/
+theorem brrsDyadicRadialBlockRadius_coe (j m : Nat) :
+    (brrsDyadicRadialBlockRadius j m : Real) = ((2 : Real) ^ j)⁻¹ * (2 : Real) ^ m :=
+  rfl
+
+/-- The compact radial range is exhausted by the innermost cell, the dyadic
+annular cells, and the terminal cell. -/
+theorem brrs_mem_radialCells_of_mem_Ioc {j : Nat} {r : Real}
+    (hr0 : 0 < r) (hr20 : r ≤ 20) :
+    r ∈ Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real) ∨
+      (∃ m, m < j ∧ r ∈ Icc (brrsDyadicRadialBlockRadius j m : Real)
+        (2 * (brrsDyadicRadialBlockRadius j m : Real))) ∨
+      r ∈ Icc (1 : Real) 20 := by
+  classical
+  have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hR : ∀ m : Nat, (brrsDyadicRadialBlockRadius j m : Real) =
+      ((2 : Real) ^ j)⁻¹ * (2 : Real) ^ m := brrsDyadicRadialBlockRadius_coe j
+  by_cases h1 : r ≤ ((2 : Real) ^ j)⁻¹
+  · left
+    refine ⟨hr0.le, ?_⟩
+    rw [hR 0]
+    simpa using h1
+  · push_neg at h1
+    by_cases h2 : (1 : Real) ≤ r
+    · right; right
+      exact ⟨h2, hr20⟩
+    · push_neg at h2
+      right; left
+      have hjge : 1 ≤ j := by
+        by_contra hcon
+        have hj0 : j = 0 := by omega
+        rw [hj0] at h1
+        norm_num at h1
+        linarith
+      have hex : ∃ k : Nat, r ≤ 2 * (brrsDyadicRadialBlockRadius j k : Real) := by
+        refine ⟨j, ?_⟩
+        rw [hR j, inv_mul_cancel₀ (ne_of_gt hjpos)]
+        linarith
+      set m : Nat := Nat.find hex with hm
+      have hupper : r ≤ 2 * (brrsDyadicRadialBlockRadius j m : Real) :=
+        Nat.find_spec hex
+      have hlower : (brrsDyadicRadialBlockRadius j m : Real) ≤ r := by
+        rcases Nat.eq_zero_or_pos m with hm0 | hm0
+        · rw [hm0, hR 0]
+          simpa using h1.le
+        · obtain ⟨k, hk⟩ : ∃ k : Nat, m = k + 1 := ⟨m - 1, by omega⟩
+          have hnot : ¬ (r ≤ 2 * (brrsDyadicRadialBlockRadius j k : Real)) :=
+            Nat.find_min hex (by omega)
+          have hgt : 2 * (brrsDyadicRadialBlockRadius j k : Real) < r :=
+            lt_of_not_ge hnot
+          have heq : (brrsDyadicRadialBlockRadius j m : Real) =
+              2 * (brrsDyadicRadialBlockRadius j k : Real) := by
+            rw [hR m, hR k, hk, pow_succ]
+            ring
+          rw [heq]
+          exact hgt.le
+      have hmlt : m < j := by
+        obtain ⟨k, hjk⟩ : ∃ k : Nat, j = k + 1 := ⟨j - 1, by omega⟩
+        have hval : 2 * (((2 : Real) ^ (k + 1))⁻¹ * (2 : Real) ^ k) = 1 := by
+          have h2k : ((2 : Real) ^ (k + 1)) ≠ 0 := by positivity
+          field_simp
+          ring
+        have hpred : r ≤ 2 * (brrsDyadicRadialBlockRadius j k : Real) := by
+          rw [hR k, hjk, hval]
+          linarith
+        have hle : m ≤ k := Nat.find_le hpred
+        omega
+      exact ⟨m, hmlt, hlower, hupper⟩
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The radial cell covering at the level of integrals
+
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The compact radial integral is at most the sum of the integrals over the
+cells of the Section 5 radial decomposition. -/
+theorem brrs_lintegral_Ioc_le_radialCells (j : Nat) (F : Real → ENNReal)
+    (hF : Measurable F) :
+    (∫⁻ r in Ioc (0 : Real) 20, F r) ≤
+      (∫⁻ r in Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real), F r) +
+        (∑ m ∈ Finset.range j,
+          ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+            (2 * (brrsDyadicRadialBlockRadius j m : Real)), F r) +
+        ∫⁻ r in Icc (1 : Real) 20, F r := by
+  classical
+  set G0 : Real → ENNReal :=
+    (Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real)).indicator F with hG0
+  set Gm : Nat → Real → ENNReal := fun m =>
+    (Icc (brrsDyadicRadialBlockRadius j m : Real)
+      (2 * (brrsDyadicRadialBlockRadius j m : Real))).indicator F with hGm
+  set G1 : Real → ENNReal := (Icc (1 : Real) 20).indicator F with hG1
+  have hG0meas : Measurable G0 := hF.indicator measurableSet_Icc
+  have hGmmeas : ∀ m : Nat, Measurable (Gm m) := fun m =>
+    hF.indicator measurableSet_Icc
+  have hG1meas : Measurable G1 := hF.indicator measurableSet_Icc
+  have hsummeas : Measurable (fun r : Real => ∑ m ∈ Finset.range j, Gm m r) :=
+    Finset.measurable_sum _ fun m _ => hGmmeas m
+  have hpt : ∀ r : Real,
+      (Ioc (0 : Real) 20).indicator F r ≤
+        G0 r + (∑ m ∈ Finset.range j, Gm m r) + G1 r := by
+    intro r
+    by_cases hr : r ∈ Ioc (0 : Real) 20
+    · rw [indicator_of_mem hr]
+      rcases brrs_mem_radialCells_of_mem_Ioc (j := j) hr.1 hr.2 with
+        hcase | ⟨m, hm, hmem⟩ | hcase
+      · have : F r = G0 r := (indicator_of_mem hcase F).symm
+        rw [this]
+        exact le_add_right (le_add_right le_rfl)
+      · have hFm : F r = Gm m r := (indicator_of_mem hmem F).symm
+        have hle : Gm m r ≤ ∑ m' ∈ Finset.range j, Gm m' r :=
+          Finset.single_le_sum (f := fun m' => Gm m' r)
+            (fun i _ => zero_le) (Finset.mem_range.mpr hm)
+        rw [hFm]
+        exact le_add_right (le_add_left hle)
+      · have : F r = G1 r := (indicator_of_mem hcase F).symm
+        rw [this]
+        exact le_add_left le_rfl
+    · rw [indicator_of_notMem hr]
+      exact zero_le
+  calc
+    (∫⁻ r in Ioc (0 : Real) 20, F r) =
+        ∫⁻ r : Real, (Ioc (0 : Real) 20).indicator F r := by
+      rw [lintegral_indicator measurableSet_Ioc]
+    _ ≤ ∫⁻ r : Real, (G0 r + (∑ m ∈ Finset.range j, Gm m r) + G1 r) :=
+      lintegral_mono hpt
+    _ = (∫⁻ r : Real, G0 r) + (∫⁻ r : Real, ∑ m ∈ Finset.range j, Gm m r) +
+        ∫⁻ r : Real, G1 r := by
+      have hG0sum : Measurable
+          (fun r : Real => G0 r + ∑ m ∈ Finset.range j, Gm m r) :=
+        hG0meas.add hsummeas
+      rw [lintegral_add_left (μ := volume) hG0sum G1,
+        lintegral_add_left (μ := volume) hG0meas
+          (fun r : Real => ∑ m ∈ Finset.range j, Gm m r)]
+    _ = (∫⁻ r in Icc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real), F r) +
+          (∑ m ∈ Finset.range j,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), F r) +
+          ∫⁻ r in Icc (1 : Real) 20, F r := by
+      rw [lintegral_finset_sum _ (fun m _ => hGmmeas m)]
+      simp only [hG0, hGm, hG1, lintegral_indicator measurableSet_Icc]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The polar Jacobian and the Section 5 outer weights
+
+Combining the polar Jacobian `r^{d-1}` with the constant of each kernel
+majorant produces exactly the literal outer weight of the corresponding
+Section 5 cell: `r^{-p s_p}` away from the origin, and the innermost weight
+`r^{d-1} 2^{j p (d-1)/2}` on the innermost cell.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- On a cell away from the origin, the polar Jacobian combines with the
+half-density constant into exactly the literal Section 5 outer weight
+`r^{-p s_p}`. -/
+theorem brrs_radial_cell_pointwise_halfDensity
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) {C : Real} (hC : 0 < C)
+    {r : Real} (hr : 0 < r) (G A : ENNReal)
+    (hA : A ≤ ENNReal.ofReal (C * r ^ (-(((d : Real) - 1) / 2))) * G) :
+    (ENNReal.ofReal r) ^ (d - 1) * A ^ p ≤
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r * G ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hd1 : 1 ≤ d := le_trans (by norm_num) hd
+  have hKnn : (0 : Real) ≤ C * r ^ (-(((d : Real) - 1) / 2)) := by positivity
+  have hjac : (ENNReal.ofReal r) ^ (d - 1) =
+      ENNReal.ofReal (r ^ ((d : Real) - 1)) := by
+    rw [← ENNReal.ofReal_rpow_of_pos hr, ← ENNReal.rpow_natCast (ENNReal.ofReal r) (d - 1)]
+    congr 1
+    rw [Nat.cast_sub hd1]
+    norm_num
+  have hweight : brrsSectionFiveSourceWeight d p r =
+      ENNReal.ofReal (r ^ (-(p * sobolevExponent d p))) := by
+    unfold brrsSectionFiveSourceWeight
+    rw [ENNReal.ofReal_rpow_of_pos hr]
+  have hreal : r ^ ((d : Real) - 1) * (C * r ^ (-(((d : Real) - 1) / 2))) ^ p =
+      C ^ p * r ^ (-(p * sobolevExponent d p)) := by
+    rw [Real.mul_rpow hC.le (Real.rpow_nonneg hr.le _), ← Real.rpow_mul hr.le]
+    rw [show r ^ ((d : Real) - 1) *
+        (C ^ p * r ^ (-(((d : Real) - 1) / 2) * p)) =
+        C ^ p * (r ^ ((d : Real) - 1) *
+          r ^ (-(((d : Real) - 1) / 2) * p)) from by ring]
+    rw [← Real.rpow_add hr]
+    congr 1
+    unfold sobolevExponent
+    have hpne : p ≠ 0 := ne_of_gt hp0
+    field_simp
+    ring
+  calc
+    (ENNReal.ofReal r) ^ (d - 1) * A ^ p ≤
+        (ENNReal.ofReal r) ^ (d - 1) *
+          (ENNReal.ofReal (C * r ^ (-(((d : Real) - 1) / 2))) * G) ^ p :=
+      mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hA (le_of_lt hp0))
+    _ = ENNReal.ofReal (r ^ ((d : Real) - 1)) *
+          (ENNReal.ofReal ((C * r ^ (-(((d : Real) - 1) / 2))) ^ p) * G ^ p) := by
+      rw [hjac, ENNReal.mul_rpow_of_nonneg _ _ (le_of_lt hp0),
+        ENNReal.ofReal_rpow_of_nonneg hKnn (le_of_lt hp0)]
+    _ = ENNReal.ofReal
+          (r ^ ((d : Real) - 1) * (C * r ^ (-(((d : Real) - 1) / 2))) ^ p) * G ^ p := by
+      rw [← mul_assoc, ← ENNReal.ofReal_mul (Real.rpow_nonneg hr.le _)]
+    _ = ENNReal.ofReal (C ^ p * r ^ (-(p * sobolevExponent d p))) * G ^ p := by
+      rw [hreal]
+    _ = ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r * G ^ p := by
+      rw [hweight, ENNReal.ofReal_mul (Real.rpow_nonneg hC.le _)]
+
+/-- On the innermost cell, the polar Jacobian combines with the low-output
+constant into exactly the innermost outer weight. -/
+theorem brrs_radial_cell_pointwise_lowOutput
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) {C : Real} (hC : 0 < C)
+    (j : Nat) {r : Real} (hr : 0 ≤ r) (G A : ENNReal)
+    (hA : A ≤ ENNReal.ofReal (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) * G) :
+    (ENNReal.ofReal r) ^ (d - 1) * A ^ p ≤
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r * G ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hd1 : 1 ≤ d := le_trans (by norm_num) hd
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hKnn : (0 : Real) ≤ C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) := by
+    positivity
+  have hjac : (ENNReal.ofReal r) ^ (d - 1) =
+      (ENNReal.ofReal r) ^ ((d : Real) - 1) := by
+    rw [← ENNReal.rpow_natCast (ENNReal.ofReal r) (d - 1)]
+    congr 1
+    rw [Nat.cast_sub hd1]
+    norm_num
+  have hreal : (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) ^ p =
+      C ^ p * (2 : Real) ^ ((j : Real) * (p * ((d : Real) - 1) / 2)) := by
+    rw [Real.mul_rpow hC.le (Real.rpow_nonneg (by positivity) _),
+      ← Real.rpow_mul (by positivity), ← Real.rpow_natCast (2 : Real) j,
+      ← Real.rpow_mul (by norm_num : (0 : Real) ≤ 2)]
+    congr 2
+    ring
+  calc
+    (ENNReal.ofReal r) ^ (d - 1) * A ^ p ≤
+        (ENNReal.ofReal r) ^ (d - 1) *
+          (ENNReal.ofReal (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) * G) ^ p :=
+      mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hA (le_of_lt hp0))
+    _ = (ENNReal.ofReal r) ^ ((d : Real) - 1) *
+          (ENNReal.ofReal ((C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) ^ p) *
+            G ^ p) := by
+      rw [hjac, ENNReal.mul_rpow_of_nonneg _ _ (le_of_lt hp0),
+        ENNReal.ofReal_rpow_of_nonneg hKnn (le_of_lt hp0)]
+    _ = (ENNReal.ofReal r) ^ ((d : Real) - 1) *
+          (ENNReal.ofReal (C ^ p *
+            (2 : Real) ^ ((j : Real) * (p * ((d : Real) - 1) / 2))) * G ^ p) := by
+      rw [hreal]
+    _ = ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r * G ^ p := by
+      unfold brrsSectionFiveInnerWeight
+      rw [ENNReal.ofReal_mul (Real.rpow_nonneg hC.le _)]
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Comparing the two outer weights, and the outer cell covering
+
+Splitting the radial integral once at `r = 2^{-j}` costs only a factor two on
+the far-source term, because the innermost outer weight is dominated there by
+the literal Section 5 outer weight.  Splitting after the cell decomposition
+instead would count the far source once per cell.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- On the innermost radial cell the innermost outer weight is at most the
+literal Section 5 outer weight, so the far-source contribution of that cell
+can be absorbed into the ordinary far-source term. -/
+theorem brrsSectionFiveInnerWeight_le_sourceWeight
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (j : Nat)
+    {r : Real} (hr0 : 0 < r)
+    (hr : r ≤ (brrsDyadicRadialBlockRadius j 0 : Real)) :
+    brrsSectionFiveInnerWeight d j p r ≤ brrsSectionFiveSourceWeight d p r := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hrle : r ≤ ((2 : Real) ^ j)⁻¹ := by
+    have := brrsDyadicRadialBlockRadius_coe j 0
+    simp only [pow_zero, mul_one] at this
+    rw [this] at hr
+    exact hr
+  have hkey : (2 : Real) ^ j * r ≤ 1 := by
+    have hmul := mul_le_mul_of_nonneg_left hrle hjpos.le
+    rwa [mul_inv_cancel₀ (ne_of_gt hjpos)] at hmul
+  set a : Real := p * ((d : Real) - 1) / 2 with ha
+  have ha0 : 0 ≤ a := by
+    rw [ha]
+    have : (0 : Real) ≤ (d : Real) - 1 := by linarith
+    positivity
+  have hratio : ((2 : Real) ^ j * r) ^ a ≤ 1 := by
+    apply Real.rpow_le_one (by positivity) hkey ha0
+  have hreal : r ^ ((d : Real) - 1) * (2 : Real) ^ ((j : Real) * a) ≤
+      r ^ (-(p * sobolevExponent d p)) := by
+    have hexpand : ((2 : Real) ^ j * r) ^ a =
+        (2 : Real) ^ ((j : Real) * a) * r ^ a := by
+      rw [Real.mul_rpow (by positivity) hr0.le, ← Real.rpow_natCast (2 : Real) j,
+        ← Real.rpow_mul (by norm_num : (0 : Real) ≤ 2)]
+    have htarget : r ^ (-(p * sobolevExponent d p)) =
+        r ^ ((d : Real) - 1) * (r ^ a)⁻¹ := by
+      rw [← Real.rpow_neg hr0.le, ← Real.rpow_add hr0]
+      congr 1
+      rw [ha]
+      unfold sobolevExponent
+      have hpne : p ≠ 0 := ne_of_gt hp0
+      field_simp
+      ring
+    have hra : (0 : Real) < r ^ a := Real.rpow_pos_of_pos hr0 a
+    rw [htarget]
+    rw [hexpand] at hratio
+    have hmul : (2 : Real) ^ ((j : Real) * a) ≤ (r ^ a)⁻¹ := by
+      rw [← le_div_iff₀ hra] at hratio
+      simpa [one_div] using hratio
+    exact mul_le_mul_of_nonneg_left hmul (Real.rpow_nonneg hr0.le _)
+  unfold brrsSectionFiveInnerWeight brrsSectionFiveSourceWeight
+  rw [ENNReal.ofReal_rpow_of_pos hr0, ENNReal.ofReal_rpow_of_pos hr0,
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg hr0.le _)]
+  exact ENNReal.ofReal_le_ofReal (by simpa only [ha] using hreal)
+
+/-- Away from the innermost cell, the compact radial range is exhausted by
+the dyadic annular cells and the terminal cell. -/
+theorem brrs_lintegral_Ioc_outer_le_radialCells (j : Nat) (F : Real → ENNReal)
+    (hF : Measurable F) :
+    (∫⁻ r in Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20, F r) ≤
+      (∑ m ∈ Finset.range j,
+          ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+            (2 * (brrsDyadicRadialBlockRadius j m : Real)), F r) +
+        ∫⁻ r in Icc (1 : Real) 20, F r := by
+  classical
+  set Gm : Nat → Real → ENNReal := fun m =>
+    (Icc (brrsDyadicRadialBlockRadius j m : Real)
+      (2 * (brrsDyadicRadialBlockRadius j m : Real))).indicator F with hGm
+  set G1 : Real → ENNReal := (Icc (1 : Real) 20).indicator F with hG1
+  have hGmmeas : ∀ m : Nat, Measurable (Gm m) := fun m =>
+    hF.indicator measurableSet_Icc
+  have hG1meas : Measurable G1 := hF.indicator measurableSet_Icc
+  have hsummeas : Measurable (fun r : Real => ∑ m ∈ Finset.range j, Gm m r) :=
+    Finset.measurable_sum _ fun m _ => hGmmeas m
+  have hpt : ∀ r : Real,
+      (Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20).indicator F r ≤
+        (∑ m ∈ Finset.range j, Gm m r) + G1 r := by
+    intro r
+    by_cases hr : r ∈ Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20
+    · have hr0 : 0 < r :=
+        lt_of_le_of_lt (brrsDyadicRadialBlockRadius_pos j 0).le hr.1
+      rw [indicator_of_mem hr]
+      rcases brrs_mem_radialCells_of_mem_Ioc (j := j) hr0 hr.2 with
+        hcase | ⟨m, hm, hmem⟩ | hcase
+      · exact absurd hcase.2 (not_le.mpr hr.1)
+      · have hFm : F r = Gm m r := (indicator_of_mem hmem F).symm
+        have hle : Gm m r ≤ ∑ m' ∈ Finset.range j, Gm m' r :=
+          Finset.single_le_sum (f := fun m' => Gm m' r)
+            (fun i _ => zero_le) (Finset.mem_range.mpr hm)
+        rw [hFm]
+        exact le_add_right hle
+      · have : F r = G1 r := (indicator_of_mem hcase F).symm
+        rw [this]
+        exact le_add_left le_rfl
+    · rw [indicator_of_notMem hr]
+      exact zero_le
+  calc
+    (∫⁻ r in Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20, F r) =
+        ∫⁻ r : Real,
+          (Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20).indicator F r := by
+      rw [lintegral_indicator measurableSet_Ioc]
+    _ ≤ ∫⁻ r : Real, ((∑ m ∈ Finset.range j, Gm m r) + G1 r) :=
+      lintegral_mono hpt
+    _ = (∫⁻ r : Real, ∑ m ∈ Finset.range j, Gm m r) + ∫⁻ r : Real, G1 r := by
+      rw [lintegral_add_left (μ := volume) hsummeas G1]
+    _ = (∑ m ∈ Finset.range j,
+          ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+            (2 * (brrsDyadicRadialBlockRadius j m : Real)), F r) +
+        ∫⁻ r in Icc (1 : Real) 20, F r := by
+      rw [lintegral_finset_sum _ (fun m _ => hGmmeas m)]
+      simp only [hGm, hG1, lintegral_indicator measurableSet_Icc]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Distributing the `p`-th power over the eight Section 5 integrands
+
+Two applications of the convexity inequality turn the `p`-th power of the
+one-dimensional source quantity into the eight literal integrands of Section
+5: the four near-source phase-line convolutions and the four far-source sign
+integrands.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The fixed constant produced by the two convexity steps of the compact
+spatial reduction. -/
+noncomputable def brrsSectionFiveOneDimConstant (d : Nat) (p : Real) : ENNReal :=
+  (2 : ENNReal) ^ (3 * (p - 1)) *
+    ENNReal.ofReal ((((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) ^ p)
+
+/-- The `p`-th power of the one-dimensional source quantity is dominated by
+the eight literal Section 5 integrands: the four near-source phase-line
+convolutions and the four far-source sign integrands. -/
+theorem brrsSectionFiveOneDimSource_rpow_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat) (hN : 3 ≤ N)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) :
+    (brrsSectionFiveOneDimSource N j p w f t r) ^ p ≤
+      brrsSectionFiveOneDimConstant d p *
+        ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t - r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t - r)) ^ p +
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t + r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t + r)) ^ p +
+          (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p) := by
+  have hp1 : (1 : Real) ≤ p := le_trans one_le_two hp
+  have hp0 : 0 ≤ p := le_trans zero_le_one hp1
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set B1 : ENNReal := brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+    g0 (t - r) with hB1
+  set B2 : ENNReal := brrsOneDimProfileConvolutionPlus
+    (brrsSectionFiveOmegaENN 3 j) g0 (t - r) with hB2
+  set B3 : ENNReal := brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+    g0 (t + r) with hB3
+  set B4 : ENNReal := brrsOneDimProfileConvolutionPlus
+    (brrsSectionFiveOmegaENN 3 j) g0 (t + r) with hB4
+  set F1 : ENNReal := brrsSectionFiveFarSourceInner .subSub N j p w f t r with hF1
+  set F2 : ENNReal := brrsSectionFiveFarSourceInner .subAdd N j p w f t r with hF2
+  set F3 : ENNReal := brrsSectionFiveFarSourceInner .addSub N j p w f t r with hF3
+  set F4 : ENNReal := brrsSectionFiveFarSourceInner .addAdd N j p w f t r with hF4
+  set W : ENNReal :=
+    ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) with hW
+  have hWone : (1 : ENNReal) ≤ W ^ p := by
+    have hreal : (1 : Real) ≤ ((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p :=
+      Real.one_le_rpow (by norm_num) hsob
+    have : (1 : ENNReal) ≤ W := by
+      rw [hW, ← ENNReal.ofReal_one]
+      exact ENNReal.ofReal_le_ofReal hreal
+    calc (1 : ENNReal) = (1 : ENNReal) ^ p := by simp
+      _ ≤ W ^ p := ENNReal.rpow_le_rpow this hp0
+  have hWp : W ^ p =
+      ENNReal.ofReal ((((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) ^ p) := by
+    rw [hW, ENNReal.ofReal_rpow_of_nonneg (Real.rpow_nonneg (by norm_num) _) hp0]
+  have hbase := brrsSectionFiveOneDimSource_le_near_add_far hd hp N j hN w f t r
+  have hsplit : (brrsSectionFiveOneDimSource N j p w f t r) ^ p ≤
+      (2 : ENNReal) ^ (p - 1) *
+        ((W * (B1 + B2 + B3 + B4)) ^ p + (F1 + F2 + F3 + F4) ^ p) := by
+    refine le_trans (ENNReal.rpow_le_rpow hbase hp0) ?_
+    exact ENNReal.rpow_add_le_mul_rpow_add_rpow _ _ hp1
+  have hnear : (W * (B1 + B2 + B3 + B4)) ^ p ≤
+      W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) * (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p)) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hp0]
+    exact mul_le_mul' le_rfl (brrs_ennreal_four_rpow_le hp1 B1 B2 B3 B4)
+  have hfar : (F1 + F2 + F3 + F4) ^ p ≤
+      (2 : ENNReal) ^ (2 * (p - 1)) * (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p) :=
+    brrs_ennreal_four_rpow_le hp1 F1 F2 F3 F4
+  have hpow : (2 : ENNReal) ^ (p - 1) * (2 : ENNReal) ^ (2 * (p - 1)) =
+      (2 : ENNReal) ^ (3 * (p - 1)) := by
+    rw [← ENNReal.rpow_add _ _ (by norm_num) (by norm_num)]
+    congr 1
+    ring
+  calc
+    (brrsSectionFiveOneDimSource N j p w f t r) ^ p ≤
+        (2 : ENNReal) ^ (p - 1) *
+          ((W * (B1 + B2 + B3 + B4)) ^ p + (F1 + F2 + F3 + F4) ^ p) := hsplit
+    _ ≤ (2 : ENNReal) ^ (p - 1) *
+          (W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p)) +
+            (2 : ENNReal) ^ (2 * (p - 1)) * (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) :=
+      mul_le_mul' le_rfl (add_le_add hnear hfar)
+    _ ≤ (2 : ENNReal) ^ (p - 1) *
+          (W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p)) +
+            W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p))) := by
+      refine mul_le_mul' le_rfl (add_le_add le_rfl ?_)
+      calc
+        (2 : ENNReal) ^ (2 * (p - 1)) * (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p) =
+            1 * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) := by rw [one_mul]
+        _ ≤ W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) :=
+          mul_le_mul' hWone le_rfl
+    _ = ((2 : ENNReal) ^ (p - 1) * (2 : ENNReal) ^ (2 * (p - 1))) * W ^ p *
+          (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p +
+            (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) := by ring
+    _ = brrsSectionFiveOneDimConstant d p *
+          (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p +
+            F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p) := by
+      rw [hpow, hWp]
+      unfold brrsSectionFiveOneDimConstant
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Bookkeeping for the compact spatial assembly
+
+The terminal cell carries the same outer weight as the annular cells, the
+far-source integrand is measurable in the output radius, and a weighted
+integral distributes over the eight Section 5 integrands.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The terminal outer weight is the literal Section 5 outer weight. -/
+theorem brrsSectionFiveTerminalWeight_eq_sourceWeight
+    {d : Nat} (hd : 1 ≤ d) {p : Real} (hp : p ≠ 0) (r : Real) :
+    brrsSectionFiveTerminalWeight d p r = brrsSectionFiveSourceWeight d p r := by
+  unfold brrsSectionFiveTerminalWeight brrsSectionFiveSourceWeight
+  congr 1
+  rw [Nat.cast_sub hd]
+  unfold sobolevExponent
+  push_cast
+  field_simp
+  ring
+
+/-- Joint measurability of the far-source integrand in the output and source
+radii. -/
+theorem measurable_brrsSectionFiveFarSourceInner
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 0 < p)
+    (sigma : BRRSSectionFiveFarSourcePhase) (N j : Nat)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t : Real) :
+    Measurable (fun r : Real =>
+      brrsSectionFiveFarSourceInner sigma N j p w f t r) := by
+  have hprof : Measurable (brrsSectionFiveRadialProfile p w f) :=
+    measurable_brrsSectionFiveRadialProfile hd hp w f
+  have hwt : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have homN : Measurable (fun u : Real =>
+      ENNReal.ofReal (brrsSectionFiveOmega N j u)) :=
+    ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hline : Measurable (fun q : Real × Real =>
+      brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2) := by
+    cases sigma
+    · exact (measurable_const.sub measurable_fst).sub measurable_snd
+    · exact (measurable_const.sub measurable_fst).add measurable_snd
+    · exact (measurable_const.add measurable_fst).sub measurable_snd
+    · exact (measurable_const.add measurable_fst).add measurable_snd
+  have hjoint : Measurable (fun q : Real × Real =>
+      (ENNReal.ofReal q.2) ^ sobolevExponent d p *
+        ENNReal.ofReal
+          (brrsSectionFiveOmega N j
+            (brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2)) *
+          brrsSectionFiveRadialProfile p w f q.2) :=
+    ((hwt.comp measurable_snd).mul (homN.comp hline)).mul
+      (hprof.comp measurable_snd)
+  exact hjoint.lintegral_prod_right'
+    (ν := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat))))
+
+/-- Distributing a weighted integral over an eight-term sum. -/
+theorem brrs_lintegral_mul_sum8
+    {μ : Measure Real} (W a1 a2 a3 a4 a5 a6 a7 a8 : Real → ENNReal)
+    (hW : Measurable W) (h1 : Measurable a1) (h2 : Measurable a2)
+    (h3 : Measurable a3) (h4 : Measurable a4) (h5 : Measurable a5)
+    (h6 : Measurable a6) (h7 : Measurable a7) :
+    (∫⁻ r, W r * (a1 r + a2 r + a3 r + a4 r + a5 r + a6 r + a7 r + a8 r) ∂μ) =
+      (∫⁻ r, W r * a1 r ∂μ) + (∫⁻ r, W r * a2 r ∂μ) + (∫⁻ r, W r * a3 r ∂μ) +
+        (∫⁻ r, W r * a4 r ∂μ) + (∫⁻ r, W r * a5 r ∂μ) +
+        (∫⁻ r, W r * a6 r ∂μ) + (∫⁻ r, W r * a7 r ∂μ) +
+        ∫⁻ r, W r * a8 r ∂μ := by
+  have hfun : (fun r : Real =>
+      W r * (a1 r + a2 r + a3 r + a4 r + a5 r + a6 r + a7 r + a8 r)) =
+      fun r : Real =>
+        W r * a1 r + W r * a2 r + W r * a3 r + W r * a4 r + W r * a5 r +
+          W r * a6 r + W r * a7 r + W r * a8 r := by
+    funext r
+    ring
+  have m1 : Measurable (fun r : Real => W r * a1 r) := hW.mul h1
+  have m2 : Measurable (fun r : Real => W r * a2 r) := hW.mul h2
+  have m3 : Measurable (fun r : Real => W r * a3 r) := hW.mul h3
+  have m4 : Measurable (fun r : Real => W r * a4 r) := hW.mul h4
+  have m5 : Measurable (fun r : Real => W r * a5 r) := hW.mul h5
+  have m6 : Measurable (fun r : Real => W r * a6 r) := hW.mul h6
+  have m7 : Measurable (fun r : Real => W r * a7 r) := hW.mul h7
+  have s2 : Measurable (fun r : Real => W r * a1 r + W r * a2 r) := m1.add m2
+  have s3 : Measurable (fun r : Real =>
+      W r * a1 r + W r * a2 r + W r * a3 r) := s2.add m3
+  have s4 : Measurable (fun r : Real =>
+      W r * a1 r + W r * a2 r + W r * a3 r + W r * a4 r) := s3.add m4
+  have s5 : Measurable (fun r : Real =>
+      W r * a1 r + W r * a2 r + W r * a3 r + W r * a4 r + W r * a5 r) := s4.add m5
+  have s6 : Measurable (fun r : Real =>
+      W r * a1 r + W r * a2 r + W r * a3 r + W r * a4 r + W r * a5 r +
+        W r * a6 r) := s5.add m6
+  have s7 : Measurable (fun r : Real =>
+      W r * a1 r + W r * a2 r + W r * a3 r + W r * a4 r + W r * a5 r +
+        W r * a6 r + W r * a7 r) := s6.add m7
+  rw [hfun,
+    lintegral_add_left (μ := μ) s7 (fun r : Real => W r * a8 r),
+    lintegral_add_left (μ := μ) s6 (fun r : Real => W r * a7 r),
+    lintegral_add_left (μ := μ) s5 (fun r : Real => W r * a6 r),
+    lintegral_add_left (μ := μ) s4 (fun r : Real => W r * a5 r),
+    lintegral_add_left (μ := μ) s3 (fun r : Real => W r * a4 r),
+    lintegral_add_left (μ := μ) s2 (fun r : Real => W r * a3 r),
+    lintegral_add_left (μ := μ) m1 (fun r : Real => W r * a2 r)]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The innermost radial region of the compact reduction
+
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The innermost radial cell lies inside the compact radial range. -/
+theorem brrsDyadicRadialBlockRadius_zero_le_twenty (j : Nat) :
+    (brrsDyadicRadialBlockRadius j 0 : Real) ≤ 20 := by
+  rw [brrsDyadicRadialBlockRadius_coe]
+  have h : ((2 : Real) ^ j)⁻¹ ≤ 1 := by
+    apply inv_le_one_of_one_le₀
+    exact one_le_pow₀ (by norm_num)
+  simpa using h.trans (by norm_num : (1 : Real) ≤ 20)
+
+/-- The innermost radial region contributes the innermost cell block and one
+copy of the four far-source terms. -/
+theorem brrs_innerRegion_sum_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (T : Finset Real) (w : BRRSSpace d) (f : BRRSSchwartz d) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+        brrsSectionFiveInnerWeight d j p r *
+          ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t + r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t + r)) ^ p +
+            (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p +
+            (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p +
+            (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p +
+            (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p)) ≤
+      brrsDyadicRadialInnerFourPhaseBlock T j p
+          (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j)
+          (brrsSectionFiveRadialProfile p w f) +
+        (brrsSectionFiveFarSourceTotal .subSub T d N j p
+            (brrsSectionFiveRadialProfile p w f) +
+          brrsSectionFiveFarSourceTotal .subAdd T d N j p
+            (brrsSectionFiveRadialProfile p w f) +
+          brrsSectionFiveFarSourceTotal .addSub T d N j p
+            (brrsSectionFiveRadialProfile p w f) +
+          brrsSectionFiveFarSourceTotal .addAdd T d N j p
+            (brrsSectionFiveRadialProfile p w f)) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set W : Real → ENNReal := brrsSectionFiveInnerWeight d j p with hW
+  have hWmeas : Measurable W := measurable_brrsSectionFiveInnerWeight d j p
+  have hprof : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd hp0 w f
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  have hg0meas : Measurable g0 :=
+    measurable_brrsSectionFiveTerminalSourceProfile hprof
+  have hle : ∀ s : Real, g0 s ≤ f0 s := by
+    intro s
+    rw [hg0]
+    unfold brrsSectionFiveTerminalSourceProfile
+    exact Set.indicator_le_self' (fun a _ => zero_le) s
+  have hmono : ∀ x : Real,
+      brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 x ≤
+        brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 x := by
+    intro x
+    unfold brrsOneDimProfileConvolution
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hmonoP : ∀ x : Real,
+      brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 x ≤
+        brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 x := by
+    intro x
+    unfold brrsOneDimProfileConvolutionPlus
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hconv : Measurable
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolution hom hg0meas
+  have hconvP : Measurable
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolutionPlus hom hg0meas
+  have hrpow : ∀ g : Real → ENNReal, Measurable g →
+      Measurable (fun r : Real => (g r) ^ p) := fun g hg =>
+    ENNReal.continuous_rpow_const.measurable.comp hg
+  have hdist : ∀ t : Real,
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+        ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p)) =
+        (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p) +
+          ∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p := by
+    intro t
+    exact brrs_lintegral_mul_sum8 W _ _ _ _ _ _ _ _ hWmeas
+      (hrpow _ (hconv.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconv.comp (measurable_const.add measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.add measurable_id)))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInner hd hp0 _ N j w f t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInner hd hp0 _ N j w f t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInner hd hp0 _ N j w f t))
+  have hnearC : ∀ (x : Real → Real),
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+        ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+    intro x
+    calc
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r _
+        exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hmono (x r)) hp0.le)
+      _ ≤ ∫⁻ r in Icc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p :=
+        lintegral_mono_set Ioc_subset_Icc_self
+  have hnearP : ∀ (x : Real → Real),
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+        ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+    intro x
+    calc
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r _
+        exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hmonoP (x r)) hp0.le)
+      _ ≤ ∫⁻ r in Icc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p :=
+        lintegral_mono_set Ioc_subset_Icc_self
+  have hfar : ∀ (sigma : BRRSSectionFiveFarSourcePhase) (t : Real),
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p) ≤
+        ∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r *
+            (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p := by
+    intro sigma t
+    calc
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveFarSourceOutputWeight d p r *
+              (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r hr
+        exact mul_le_mul'
+          (brrsSectionFiveInnerWeight_le_sourceWeight hd hp j hr.1 hr.2) le_rfl
+      _ ≤ ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r *
+              (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p := by
+        refine lintegral_mono_set ?_
+        exact Ioc_subset_Ioc_right (brrsDyadicRadialBlockRadius_zero_le_twenty j)
+  rw [Finset.sum_congr rfl (fun t _ => hdist t)]
+  simp only [Finset.sum_add_distrib]
+  calc
+    _ ≤ (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+        brrsSectionFiveFarSourceTotal .subSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .subAdd T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addAdd T d N j p f0 := by
+      refine add_le_add (add_le_add (add_le_add (add_le_add (add_le_add
+        (add_le_add (add_le_add ?_ ?_) ?_) ?_) ?_) ?_) ?_) ?_
+      · exact Finset.sum_le_sum fun t _ => hnearC (fun r => t - r)
+      · exact Finset.sum_le_sum fun t _ => hnearP (fun r => t - r)
+      · exact Finset.sum_le_sum fun t _ => hnearC (fun r => t + r)
+      · exact Finset.sum_le_sum fun t _ => hnearP (fun r => t + r)
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+    _ = _ := by
+      unfold brrsDyadicRadialInnerFourPhaseBlock brrsDyadicRadialInnerBlockAdd
+        brrsDyadicRadialInnerBlockSub brrsDyadicRadialInnerBlockAddPlus
+        brrsDyadicRadialInnerBlockSubPlus
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The outer radial region of the compact reduction
+
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- One near-source phase component of the outer radial region lands on the
+annular cells and the terminal cell. -/
+theorem brrs_outerRegion_near_component_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (j : Nat)
+    (T : Finset Real) (f0 g0 : Real → ENNReal)
+    (hle : ∀ s : Real, g0 s ≤ f0 s)
+    (Conv : (Real → ENNReal) → Real → ENNReal)
+    (hConvMeas : Measurable (Conv g0))
+    (hConvMono : ∀ y : Real, Conv g0 y ≤ Conv f0 y)
+    (x : Real → Real → Real) (hx : ∀ t : Real, Measurable (x t)) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20,
+        brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) ≤
+      (∑ m ∈ Finset.range j, ∑ t ∈ T,
+          ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+            (2 * (brrsDyadicRadialBlockRadius j m : Real)),
+            brrsSectionFiveSourceWeight d p r * (Conv f0 (x t r)) ^ p) +
+        ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+          brrsSectionFiveTerminalWeight d p r * (Conv g0 (x t r)) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hd1 : 1 ≤ d := le_trans (by norm_num) hd
+  have hWmeas : Measurable (brrsSectionFiveSourceWeight d p) := by
+    unfold brrsSectionFiveSourceWeight
+    exact ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hFmeas : ∀ t : Real, Measurable (fun r : Real =>
+      brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) := by
+    intro t
+    exact hWmeas.mul
+      (ENNReal.continuous_rpow_const.measurable.comp (hConvMeas.comp (hx t)))
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20,
+        brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) ≤
+        ∑ t ∈ T, ((∑ m ∈ Finset.range j,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)),
+              brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) +
+          ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) := by
+      refine Finset.sum_le_sum fun t _ => ?_
+      exact brrs_lintegral_Ioc_outer_le_radialCells j _ (hFmeas t)
+    _ = (∑ t ∈ T, ∑ m ∈ Finset.range j,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)),
+              brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p := by
+      rw [Finset.sum_add_distrib]
+    _ = (∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)),
+              brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveSourceWeight d p r * (Conv g0 (x t r)) ^ p := by
+      rw [Finset.sum_comm]
+    _ ≤ (∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)),
+              brrsSectionFiveSourceWeight d p r * (Conv f0 (x t r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r * (Conv g0 (x t r)) ^ p := by
+      refine add_le_add ?_ ?_
+      · refine Finset.sum_le_sum fun m _ => Finset.sum_le_sum fun t _ => ?_
+        refine lintegral_mono fun r => ?_
+        exact mul_le_mul' le_rfl
+          (ENNReal.rpow_le_rpow (hConvMono (x t r)) hp0.le)
+      · refine Finset.sum_le_sum fun t _ => le_of_eq ?_
+        refine lintegral_congr fun r => ?_
+        rw [brrsSectionFiveTerminalWeight_eq_sourceWeight hd1 (ne_of_gt hp0) r]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The outer radial region contributes the annular cell blocks, the terminal
+cell block, and one further copy of the four far-source terms. -/
+theorem brrs_outerRegion_sum_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (T : Finset Real) (w : BRRSSpace d) (f : BRRSSchwartz d) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20,
+        brrsSectionFiveSourceWeight d p r *
+          ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t + r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (brrsSectionFiveRadialProfile p w f)) (t + r)) ^ p +
+            (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p +
+            (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p +
+            (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p +
+            (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p)) ≤
+      (∑ m ∈ Finset.range j,
+          brrsDyadicRadialEndpointFourPhaseBlock T j m p
+            (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveRadialProfile p w f)) +
+        brrsSectionFiveTerminalFourPhaseBlock T d p
+          (brrsSectionFiveOmegaENN 3 j) (brrsSectionFiveRadialProfile p w f) +
+        (brrsSectionFiveFarSourceTotal .subSub T d N j p
+            (brrsSectionFiveRadialProfile p w f) +
+          brrsSectionFiveFarSourceTotal .subAdd T d N j p
+            (brrsSectionFiveRadialProfile p w f) +
+          brrsSectionFiveFarSourceTotal .addSub T d N j p
+            (brrsSectionFiveRadialProfile p w f) +
+          brrsSectionFiveFarSourceTotal .addAdd T d N j p
+            (brrsSectionFiveRadialProfile p w f)) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set W : Real → ENNReal := brrsSectionFiveSourceWeight d p with hW
+  have hWmeas : Measurable W := by
+    rw [hW]
+    unfold brrsSectionFiveSourceWeight
+    exact ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hprof : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd hp0 w f
+  have hg0meas : Measurable g0 :=
+    measurable_brrsSectionFiveTerminalSourceProfile hprof
+  have hle : ∀ s : Real, g0 s ≤ f0 s := by
+    intro s
+    rw [hg0]
+    unfold brrsSectionFiveTerminalSourceProfile
+    exact Set.indicator_le_self' (fun a _ => zero_le) s
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  have hconv : Measurable
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolution hom hg0meas
+  have hconvP : Measurable
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolutionPlus hom hg0meas
+  have hmono : ∀ y : Real,
+      brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 y ≤
+        brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 y := by
+    intro y
+    unfold brrsOneDimProfileConvolution
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hmonoP : ∀ y : Real,
+      brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 y ≤
+        brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 y := by
+    intro y
+    unfold brrsOneDimProfileConvolutionPlus
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hrpow : ∀ g : Real → ENNReal, Measurable g →
+      Measurable (fun r : Real => (g r) ^ p) := fun g hg =>
+    ENNReal.continuous_rpow_const.measurable.comp hg
+  have hdist : ∀ t : Real,
+      (∫⁻ r in Ioc R0 20, W r *
+        ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p +
+          (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p)) =
+        (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInner .subSub N j p w f t r) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInner .subAdd N j p w f t r) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInner .addSub N j p w f t r) ^ p) +
+          ∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInner .addAdd N j p w f t r) ^ p := by
+    intro t
+    exact brrs_lintegral_mul_sum8 W _ _ _ _ _ _ _ _ hWmeas
+      (hrpow _ (hconv.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconv.comp (measurable_const.add measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.add measurable_id)))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInner hd hp0 _ N j w f t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInner hd hp0 _ N j w f t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInner hd hp0 _ N j w f t))
+  have hfar : ∀ (sigma : BRRSSectionFiveFarSourcePhase) (t : Real),
+      (∫⁻ r in Ioc R0 20, W r *
+          (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p) ≤
+        ∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r *
+            (brrsSectionFiveFarSourceInner sigma N j p w f t r) ^ p := by
+    intro sigma t
+    exact lintegral_mono_set (Ioc_subset_Ioc_left (brrsDyadicRadialBlockRadius_pos j 0).le)
+  have hcomp := fun (Conv : (Real → ENNReal) → Real → ENNReal)
+      (hcm : Measurable (Conv g0)) (hmo : ∀ y : Real, Conv g0 y ≤ Conv f0 y)
+      (x : Real → Real → Real) (hx : ∀ t : Real, Measurable (x t)) =>
+    brrs_outerRegion_near_component_le hd hp j T f0 g0 hle Conv hcm hmo x hx
+  rw [Finset.sum_congr rfl (fun t _ => hdist t)]
+  simp only [Finset.sum_add_distrib]
+  calc
+    _ ≤ ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+        ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+        ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+        ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+        brrsSectionFiveFarSourceTotal .subSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .subAdd T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addAdd T d N j p f0 := by
+      refine add_le_add (add_le_add (add_le_add (add_le_add (add_le_add
+        (add_le_add (add_le_add ?_ ?_) ?_) ?_) ?_) ?_) ?_) ?_
+      · exact hcomp _ hconv hmono (fun t r => t - r)
+          (fun t => measurable_const.sub measurable_id)
+      · exact hcomp _ hconv hmono (fun t r => t + r)
+          (fun t => measurable_const.add measurable_id)
+      · exact hcomp _ hconvP hmonoP (fun t r => t - r)
+          (fun t => measurable_const.sub measurable_id)
+      · exact hcomp _ hconvP hmonoP (fun t r => t + r)
+          (fun t => measurable_const.add measurable_id)
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+    _ = _ := by
+      unfold brrsDyadicRadialEndpointFourPhaseBlock brrsDyadicRadialBlockAdd
+        brrsDyadicRadialBlockSub brrsDyadicRadialBlockAddPlus
+        brrsDyadicRadialBlockSubPlus brrsSectionFiveTerminalFourPhaseBlock
+      simp only [Finset.sum_add_distrib]
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### BRRS (5.3): the compact spatial-region reduction
+
+Polar coordinates turn the compact spatial integral into a radial integral
+with the Jacobian `r^{d-1}`.  Splitting that integral once at `r = 2^{-j}`,
+the low-output kernel majorant applies below and the half-density majorant
+above; in each case the Jacobian combines with the majorant constant into the
+literal outer weight of the corresponding Section 5 cell.  The `p`-th power
+then distributes over the eight Section 5 integrands, and the two region
+assemblies land on the blocks of the aggregate estimated in (5.4).
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The compact spatial contribution of the annular half-wave, summed over
+the sampled times. -/
+noncomputable def brrsSectionFiveCompactSpatialSum
+    {d : Nat} (Phi : BRRSAnnularCutoff) (T : Finset Real) (j : Nat) (p : Real)
+    (f : BRRSSchwartz d) : ENNReal :=
+  ∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+    (Metric.closedBall (0 : BRRSSpace d) 20).indicator
+      (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x
+
+/-- The constant of the two convexity steps is finite. -/
+theorem brrsSectionFiveOneDimConstant_ne_top
+    {d : Nat} {p : Real} (hp : 2 ≤ p) :
+    brrsSectionFiveOneDimConstant d p ≠ ∞ := by
+  unfold brrsSectionFiveOneDimConstant
+  refine ENNReal.mul_ne_top ?_ ENNReal.ofReal_ne_top
+  apply ENNReal.rpow_ne_top_of_nonneg
+  · linarith
+  · norm_num
+
+/-- **BRRS (5.3).**  The compact spatial region reduces to the weighted
+one-dimensional quantity of (5.4). -/
+theorem brrsSectionFiveCompactSpatial_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (L : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (T : Finset Real)
+      (f : BRRSSchwartz d), IsRadial (f : BRRSSpace d → Complex) →
+      ∀ (v w : BRRSSpace d), ‖v‖ = 1 → ‖w‖ = 1 →
+      brrsSectionFiveCompactSpatialSum Phi T j p f ≤
+        (unitSurfaceMeasure d) univ *
+          (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+          brrsSectionFiveWeightedOneDimTotal T d L j p
+            (brrsSectionFiveRadialProfile p w f) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hN : 3 ≤ L + d + 2 := by omega
+  obtain ⟨C1, hC1, h1⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_halfDensity_majorant
+      (d := d) (N := L + d + 2) hd Phi
+  obtain ⟨C2, hC2, h2⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_lowOutput_majorant
+      (d := d) (N := L + d + 2) hd Phi
+  refine ⟨C1 + C2, by linarith, ?_⟩
+  intro j T f hf v w hv hw
+  set C : Real := C1 + C2 with hC
+  have hCpos : 0 < C := by rw [hC]; linarith
+  have hmaj1 : ∀ (u : BRRSSpace d) (i : Nat) (r s t : Real),
+      ‖u‖ = 1 → 0 < r → 0 < s →
+      ‖brrsRadialBesselKernel Phi d u i r s t‖ ≤
+        C * (s / r) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega (L + d + 2) i (t - r - s) +
+            brrsSectionFiveOmega (L + d + 2) i (t - r + s) +
+              brrsSectionFiveOmega (L + d + 2) i (t + r - s) +
+                brrsSectionFiveOmega (L + d + 2) i (t + r + s)) := by
+    intro u i r s t hu hr hs
+    refine le_trans (h1 u i r s t hu hr hs) ?_
+    have hP : 0 ≤ brrsSectionFiveOmega (L + d + 2) i (t - r - s) +
+        brrsSectionFiveOmega (L + d + 2) i (t - r + s) +
+          brrsSectionFiveOmega (L + d + 2) i (t + r - s) +
+            brrsSectionFiveOmega (L + d + 2) i (t + r + s) :=
+      add_nonneg (add_nonneg (add_nonneg
+        (brrsSectionFiveOmega_nonneg _ _ _) (brrsSectionFiveOmega_nonneg _ _ _))
+        (brrsSectionFiveOmega_nonneg _ _ _)) (brrsSectionFiveOmega_nonneg _ _ _)
+    have hhalf : (0 : Real) ≤ (s / r) ^ (((d : Real) - 1) / 2) :=
+      Real.rpow_nonneg (div_pos hs hr).le _
+    have hle : C1 ≤ C := by rw [hC]; linarith
+    exact mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_right hle hhalf) hP
+  have hmaj2 : ∀ (u : BRRSSpace d) (i : Nat) (r s t : Real),
+      ‖u‖ = 1 → 0 ≤ r → ((2 : Real) ^ i) * r ≤ 16 → 0 < s →
+      ‖brrsRadialBesselKernel Phi d u i r s t‖ ≤
+        C * (((2 : Real) ^ i) * s) ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega (L + d + 2) i (t - r - s) +
+            brrsSectionFiveOmega (L + d + 2) i (t - r + s) +
+              brrsSectionFiveOmega (L + d + 2) i (t + r - s) +
+                brrsSectionFiveOmega (L + d + 2) i (t + r + s)) := by
+    intro u i r s t hu hr0 hlow hs
+    refine le_trans (h2 u i r s t hu hr0 hlow hs) ?_
+    have hP : 0 ≤ brrsSectionFiveOmega (L + d + 2) i (t - r - s) +
+        brrsSectionFiveOmega (L + d + 2) i (t - r + s) +
+          brrsSectionFiveOmega (L + d + 2) i (t + r - s) +
+            brrsSectionFiveOmega (L + d + 2) i (t + r + s) :=
+      add_nonneg (add_nonneg (add_nonneg
+        (brrsSectionFiveOmega_nonneg _ _ _) (brrsSectionFiveOmega_nonneg _ _ _))
+        (brrsSectionFiveOmega_nonneg _ _ _)) (brrsSectionFiveOmega_nonneg _ _ _)
+    have hhalf : (0 : Real) ≤ (((2 : Real) ^ i) * s) ^ (((d : Real) - 1) / 2) :=
+      Real.rpow_nonneg (by positivity) _
+    have hle : C2 ≤ C := by rw [hC]; linarith
+    exact mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_right hle hhalf) hP
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set K : ENNReal :=
+    ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p with hK
+  have hKtop : K ≠ ∞ :=
+    ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      (brrsSectionFiveOneDimConstant_ne_top (d := d) hp)
+  set G : Real → Real → ENNReal := fun t r =>
+    brrsSectionFiveOneDimSource (L + d + 2) j p w f t r with hG
+  set S8 : Real → Real → ENNReal := fun t r =>
+    (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsSectionFiveFarSourceInner .subSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .subAdd (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addAdd (L + d + 2) j p w f t r) ^ p with hS8
+  set S8b : Real → Real → ENNReal := fun t r =>
+    (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsSectionFiveFarSourceInner .subSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .subAdd (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addAdd (L + d + 2) j p w f t r) ^ p with hS8b
+  have hreorder : ∀ t r : Real, S8 t r = S8b t r := by
+    intro t r
+    rw [hS8, hS8b]
+    ring
+  have hR0pos : 0 < R0 := brrsDyadicRadialBlockRadius_pos j 0
+  have hR0le : R0 ≤ 20 := brrsDyadicRadialBlockRadius_zero_le_twenty j
+  have hinnerpt : ∀ (t r : Real), r ∈ Ioc (0 : Real) R0 →
+      (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p ≤
+        K * (brrsSectionFiveInnerWeight d j p r * S8 t r) := by
+    intro t r hr
+    have hnorm : ‖r • v‖ = r := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hr.1, hv, mul_one]
+    have hrinv : r ≤ ((2 : Real) ^ j)⁻¹ := by
+      have h := hr.2
+      rw [hR0, brrsDyadicRadialBlockRadius_coe] at h
+      simpa using h
+    have hlow : ((2 : Real) ^ j) * ‖r • v‖ ≤ 16 := by
+      rw [hnorm]
+      have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+      calc (2 : Real) ^ j * r ≤ (2 : Real) ^ j * ((2 : Real) ^ j)⁻¹ :=
+            mul_le_mul_of_nonneg_left hrinv hjpos.le
+        _ = 1 := mul_inv_cancel₀ (ne_of_gt hjpos)
+        _ ≤ 16 := by norm_num
+    have hA := enorm_brrsDyadicHalfWave_le_lowOutput_oneDimSource
+      (N := L + d + 2) hd Phi hCpos hmaj2 hp0 j t f hf v w (r • v) hv hw hlow
+    rw [hnorm] at hA
+    have hstep := brrs_radial_cell_pointwise_lowOutput hd hp hCpos j
+      (le_of_lt hr.1) (G t r) (‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ) hA
+    refine le_trans hstep ?_
+    have hGle := brrsSectionFiveOneDimSource_rpow_le hd hp (L + d + 2) j hN w f t r
+    calc
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r * (G t r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r *
+            (brrsSectionFiveOneDimConstant d p * S8 t r) :=
+        mul_le_mul' le_rfl hGle
+      _ = K * (brrsSectionFiveInnerWeight d j p r * S8 t r) := by
+        rw [hK]
+        ring
+  have houterpt : ∀ (t r : Real), r ∈ Ioc R0 20 →
+      (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p ≤
+        K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+    intro t r hr
+    have hrpos : 0 < r := lt_trans hR0pos hr.1
+    have hnorm : ‖r • v‖ = r := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrpos, hv, mul_one]
+    have hxpos : 0 < ‖r • v‖ := by rw [hnorm]; exact hrpos
+    have hA := enorm_brrsDyadicHalfWave_le_halfDensity_oneDimSource
+      (N := L + d + 2) hd Phi hCpos hmaj1 hp0 j t f hf v w (r • v) hv hw hxpos
+    rw [hnorm] at hA
+    have hstep := brrs_radial_cell_pointwise_halfDensity hd hp hCpos hrpos
+      (G t r) (‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ) hA
+    refine le_trans hstep ?_
+    have hGle := brrsSectionFiveOneDimSource_rpow_le hd hp (L + d + 2) j hN w f t r
+    calc
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r * (G t r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r *
+            (brrsSectionFiveOneDimConstant d p * S8 t r) :=
+        mul_le_mul' le_rfl hGle
+      _ = K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+        rw [hK]
+        ring
+  have hunion : Ioc (0 : Real) R0 ∪ Ioc R0 20 = Ioc (0 : Real) 20 :=
+    Ioc_union_Ioc_eq_Ioc hR0pos.le hR0le
+  have hper : ∀ t : Real,
+      (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p) ≤
+        K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r := by
+    intro t
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p) =
+          ∫⁻ r in (Ioc (0 : Real) R0 ∪ Ioc R0 20),
+            (ENNReal.ofReal r) ^ (d - 1) *
+              ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p := by
+        rw [hunion]
+      _ ≤ (∫⁻ r in Ioc (0 : Real) R0, (ENNReal.ofReal r) ^ (d - 1) *
+            ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p) +
+          ∫⁻ r in Ioc R0 20, (ENNReal.ofReal r) ^ (d - 1) *
+            ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p :=
+        lintegral_union_le _ _ _
+      _ ≤ (∫⁻ r in Ioc (0 : Real) R0,
+            K * (brrsSectionFiveInnerWeight d j p r * S8 t r)) +
+          ∫⁻ r in Ioc R0 20,
+            K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+        refine add_le_add ?_ ?_
+        · exact setLIntegral_mono' measurableSet_Ioc (fun r hr => hinnerpt t r hr)
+        · exact setLIntegral_mono' measurableSet_Ioc (fun r hr => houterpt t r hr)
+      _ = K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r := by
+        rw [lintegral_const_mul' _ _ hKtop, lintegral_const_mul' _ _ hKtop]
+  have hinner := brrs_innerRegion_sum_le (d := d) hd hp (L + d + 2) j T w f
+  have houterB : (∑ t ∈ T, ∫⁻ r in Ioc R0 20,
+      brrsSectionFiveSourceWeight d p r * S8 t r) ≤
+      (∑ m ∈ Finset.range j,
+          brrsDyadicRadialEndpointFourPhaseBlock T j m p
+            (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f0) +
+        brrsSectionFiveTerminalFourPhaseBlock T d p
+          (brrsSectionFiveOmegaENN 3 j) f0 +
+        (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0) := by
+    refine le_trans (le_of_eq ?_)
+      (brrs_outerRegion_sum_le (d := d) hd hp (L + d + 2) j T w f)
+    refine Finset.sum_congr rfl fun t _ => ?_
+    refine lintegral_congr fun r => ?_
+    rw [hreorder t r]
+  unfold brrsSectionFiveCompactSpatialSum
+  calc
+    (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+        (Metric.closedBall (0 : BRRSSpace d) 20).indicator
+          (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) =
+        ∑ t ∈ T, (unitSurfaceMeasure d) univ *
+          ∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+            ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p := by
+      refine Finset.sum_congr rfl fun t _ => ?_
+      exact brrs_lintegral_closedBall_brrsDyadicHalfWave_eq hd Phi j t f hf p v hv
+    _ ≤ ∑ t ∈ T, (unitSurfaceMeasure d) univ *
+          (K * (∫⁻ r in Ioc (0 : Real) R0,
+              brrsSectionFiveInnerWeight d j p r * S8 t r) +
+            K * ∫⁻ r in Ioc R0 20,
+              brrsSectionFiveSourceWeight d p r * S8 t r) :=
+      Finset.sum_le_sum fun t _ => mul_le_mul' le_rfl (hper t)
+    _ = (unitSurfaceMeasure d) univ * K *
+          ((∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) R0,
+              brrsSectionFiveInnerWeight d j p r * S8 t r) +
+            ∑ t ∈ T, ∫⁻ r in Ioc R0 20,
+              brrsSectionFiveSourceWeight d p r * S8 t r) := by
+      have hfun : ∀ t : Real, (unitSurfaceMeasure d) univ *
+          ((K * ∫⁻ r in Ioc (0 : Real) R0,
+              brrsSectionFiveInnerWeight d j p r * S8 t r) +
+            K * ∫⁻ r in Ioc R0 20,
+              brrsSectionFiveSourceWeight d p r * S8 t r) =
+          ((unitSurfaceMeasure d) univ * K) *
+              (∫⁻ r in Ioc (0 : Real) R0,
+                brrsSectionFiveInnerWeight d j p r * S8 t r) +
+            ((unitSurfaceMeasure d) univ * K) *
+              ∫⁻ r in Ioc R0 20,
+                brrsSectionFiveSourceWeight d p r * S8 t r := by
+        intro t
+        ring
+      rw [Finset.sum_congr rfl (fun t _ => hfun t), Finset.sum_add_distrib,
+        ← Finset.mul_sum, ← Finset.mul_sum]
+      ring
+    _ ≤ (unitSurfaceMeasure d) univ * K *
+          ((brrsDyadicRadialInnerFourPhaseBlock T j p
+              (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j) f0 +
+            (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0)) +
+            ((∑ m ∈ Finset.range j,
+                brrsDyadicRadialEndpointFourPhaseBlock T j m p
+                  (brrsSectionFiveSourceWeight d p)
+                  (brrsSectionFiveOmegaENN 3 j) f0) +
+              brrsSectionFiveTerminalFourPhaseBlock T d p
+                (brrsSectionFiveOmegaENN 3 j) f0 +
+              (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+                brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+                brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+                brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0))) :=
+      mul_le_mul' le_rfl (add_le_add hinner houterB)
+    _ ≤ (unitSurfaceMeasure d) univ * (K * 2) *
+          brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+      unfold brrsSectionFiveWeightedOneDimTotal brrsSectionFiveNearSourceCellSum
+      set A : ENNReal := brrsDyadicRadialInnerFourPhaseBlock T j p
+        (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j) f0 with hA
+      set B : ENNReal := ∑ m ∈ Finset.range j,
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p
+          (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f0 with hB
+      set D : ENNReal := brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f0 with hD
+      set F : ENNReal :=
+        brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0 with hF
+      have hFle : F ≤ A + B + D + F := by
+        calc F = 0 + 0 + 0 + F := by ring
+          _ ≤ A + B + D + F :=
+            add_le_add (add_le_add (add_le_add zero_le zero_le)
+              zero_le) le_rfl
+      have hle : (A + F) + (B + D + F) ≤ 2 * (A + B + D + F) := by
+        calc (A + F) + (B + D + F) = A + B + D + F + F := by ring
+          _ ≤ A + B + D + F + (A + B + D + F) := add_le_add le_rfl hFle
+          _ = 2 * (A + B + D + F) := by ring
+      calc
+        (unitSurfaceMeasure d) univ * K * ((A + F) + (B + D + F)) ≤
+            (unitSurfaceMeasure d) univ * K * (2 * (A + B + D + F)) :=
+          mul_le_mul' le_rfl hle
+        _ = (unitSurfaceMeasure d) univ * (K * 2) * (A + B + D + F) := by ring
+    _ = (unitSurfaceMeasure d) univ *
+          (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+          brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+      rw [hK]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The absorbed exterior kernel of the actual phase-line kernel
+
+The exterior Young core needs the absorbed kernel
+`(2(1+|u|))^σ ω_j(u)` to be a positive, finite, integrable phase-line
+profile.  For the actual Section 5 kernel this holds as soon as the decay
+order exceeds the absorbed weight by three, because the absorbed kernel is
+then dominated by a fixed multiple of the cubic profile.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The actual Section 5 phase-line kernel is strictly positive. -/
+theorem brrsSectionFiveOmega_pos (N j : Nat) (u : Real) :
+    0 < brrsSectionFiveOmega N j u := by
+  rw [brrsSectionFiveOmega_eq_scaledRapidProfile]
+  have hprof : 0 < brrsStationaryRapidProfile N
+      (2 * Real.pi * ((2 : Real) ^ j * u)) := by
+    unfold brrsStationaryRapidProfile
+    by_cases hz : 2 * Real.pi * ((2 : Real) ^ j * u) = 0
+    · simp [hz]
+    · rw [if_neg hz]
+      apply lt_min (by norm_num)
+      positivity
+  positivity
+
+/-- The exterior absorbed kernel of the actual Section 5 phase-line kernel is
+strictly positive. -/
+theorem brrsExteriorAbsorbedKernel_sectionFiveOmega_pos
+    {sigma : Real} (N j : Nat) (u : Real) :
+    0 < brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u := by
+  unfold brrsExteriorAbsorbedKernel brrsSectionFiveOmegaENN
+  refine ENNReal.mul_pos ?_ ?_
+  · refine (ENNReal.rpow_pos ?_ ENNReal.ofReal_ne_top).ne'
+    exact ENNReal.ofReal_pos.mpr (by positivity)
+  · exact (ENNReal.ofReal_pos.mpr (brrsSectionFiveOmega_pos N j u)).ne'
+
+/-- The exterior absorbed kernel is pointwise finite. -/
+theorem brrsExteriorAbsorbedKernel_sectionFiveOmega_ne_top
+    {sigma : Real} (hsigma : 0 ≤ sigma) (N j : Nat) (u : Real) :
+    brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u ≠ ∞ := by
+  unfold brrsExteriorAbsorbedKernel brrsSectionFiveOmegaENN
+  exact ENNReal.mul_ne_top
+    (ENNReal.rpow_ne_top_of_nonneg hsigma ENNReal.ofReal_ne_top)
+    ENNReal.ofReal_ne_top
+
+/-- The exterior absorbed kernel of the actual phase-line kernel is dominated
+by a fixed multiple of the cubic profile, provided the decay order exceeds the
+absorbed weight by three. -/
+theorem brrsExteriorAbsorbedKernel_sectionFiveOmega_le_cubic
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat} (hN : sigma + 3 ≤ (N : Real))
+    (j : Nat) (u : Real) :
+    brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u ≤
+      ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+        brrsCubicJapaneseProfile u := by
+  have hbase : (1 : Real) ≤ 1 + |u| := by
+    have : (0 : Real) ≤ |u| := abs_nonneg u
+    linarith
+  have hbasepos : (0 : Real) < 1 + |u| := lt_of_lt_of_le zero_lt_one hbase
+  have hjone : (1 : Real) ≤ (2 : Real) ^ j := one_le_pow₀ (by norm_num)
+  have hstep1 : (1 : Real) + |u| ≤ 1 + (2 : Real) ^ j * |u| := by
+    have := mul_le_mul_of_nonneg_right hjone (abs_nonneg u)
+    linarith [this]
+  have hstep2 : (((1 : Real) + (2 : Real) ^ j * |u|)⁻¹) ^ N ≤
+      (((1 : Real) + |u|)⁻¹) ^ N := by
+    apply pow_le_pow_left₀ (by positivity)
+    simpa only [one_div] using one_div_le_one_div_of_le hbasepos hstep1
+  have homega : brrsSectionFiveOmega N j u ≤
+      (2 : Real) ^ N * ((2 : Real) ^ j) * (((1 : Real) + |u|)⁻¹) ^ N := by
+    refine le_trans (brrsSectionFiveOmega_le_sourceRapidDecay N j u) ?_
+    exact mul_le_mul_of_nonneg_left hstep2 (by positivity)
+  have hnpow : (((1 : Real) + |u|)⁻¹) ^ N = ((1 : Real) + |u|) ^ (-(N : Real)) := by
+    rw [Real.rpow_neg hbasepos.le, Real.rpow_natCast, inv_pow]
+  have hexp : ((1 : Real) + |u|) ^ sigma * ((1 : Real) + |u|) ^ (-(N : Real)) ≤
+      ((1 : Real) + |u|) ^ (-(3 : Real)) := by
+    rw [← Real.rpow_add hbasepos]
+    apply Real.rpow_le_rpow_of_exponent_le hbase
+    linarith
+  have hcubic : ((1 : Real) + |u|) ^ (-(3 : Real)) =
+      (((1 : Real) + |u|)⁻¹) ^ (3 : Nat) := by
+    rw [Real.rpow_neg hbasepos.le,
+      show ((1 : Real) + |u|) ^ (3 : Real) = ((1 : Real) + |u|) ^ (3 : Nat) by
+        rw [← Real.rpow_natCast ((1 : Real) + |u|) 3]
+        norm_num,
+      inv_pow]
+  have hreal : (2 * (1 + |u|)) ^ sigma * brrsSectionFiveOmega N j u ≤
+      ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+        (((1 : Real) + |u|)⁻¹) ^ (3 : Nat) := by
+    rw [Real.mul_rpow (by norm_num) hbasepos.le]
+    calc
+      (2 : Real) ^ sigma * ((1 + |u|) ^ sigma) * brrsSectionFiveOmega N j u ≤
+          (2 : Real) ^ sigma * ((1 + |u|) ^ sigma) *
+            ((2 : Real) ^ N * ((2 : Real) ^ j) * (((1 : Real) + |u|)⁻¹) ^ N) := by
+        apply mul_le_mul_of_nonneg_left homega
+        positivity
+      _ = ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+            (((1 + |u|) ^ sigma) * (((1 : Real) + |u|)⁻¹) ^ N) := by ring
+      _ ≤ ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+            (((1 : Real) + |u|)⁻¹) ^ (3 : Nat) := by
+        apply mul_le_mul_of_nonneg_left _ (by positivity)
+        rw [hnpow, ← hcubic]
+        exact hexp
+  unfold brrsExteriorAbsorbedKernel brrsSectionFiveOmegaENN
+    brrsCubicJapaneseProfile
+  rw [ENNReal.ofReal_rpow_of_pos (by positivity),
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg (by positivity) _),
+    ← ENNReal.ofReal_mul (by positivity)]
+  exact ENNReal.ofReal_le_ofReal hreal
+
+/-- Finiteness of the exterior absorbed phase mass. -/
+theorem lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_ne_top
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat} (hN : sigma + 3 ≤ (N : Real))
+    (j : Nat) :
+    (∫⁻ u : Real,
+      brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u) ≠ ∞ := by
+  have hbound : (∫⁻ u : Real,
+      brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u) ≤
+      ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+        ∫⁻ u : Real, brrsCubicJapaneseProfile u := by
+    calc
+      (∫⁻ u : Real,
+          brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u) ≤
+          ∫⁻ u : Real,
+            ENNReal.ofReal
+                ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+              brrsCubicJapaneseProfile u :=
+        lintegral_mono fun u =>
+          brrsExteriorAbsorbedKernel_sectionFiveOmega_le_cubic hsigma hN j u
+      _ = ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N * (2 : Real) ^ j) *
+            ∫⁻ u : Real, brrsCubicJapaneseProfile u := by
+        rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  refine ne_top_of_le_ne_top ?_ hbound
+  exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+    lintegral_brrsCubicJapaneseProfile_ne_top
+
+/-- Positivity of the exterior absorbed phase mass. -/
+theorem lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_pos
+    {sigma : Real} (N j : Nat) :
+    0 < ∫⁻ u : Real,
+      brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u := by
+  have hmeas : Measurable
+      (brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j)) := by
+    apply measurable_brrsExteriorAbsorbedKernel
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  rw [lintegral_pos_iff_support hmeas]
+  have hsupport : Function.support
+      (brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j)) =
+      Set.univ := by
+    ext u
+    simp only [Function.mem_support, Set.mem_univ, iff_true]
+    exact (brrsExteriorAbsorbedKernel_sectionFiveOmega_pos (sigma := sigma) N j u).ne'
+  rw [hsupport]
+  simp
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The exact exterior integrand
+
+On the exterior radial region the polar Jacobian and the half-density
+constant combine, exactly as in the compact region, into the literal outer
+weight `r^{-p s_p}`; that weight then merges with the inner source weight
+`s^{s_p}` into the exterior ratio weight `(s/r)^{s_p}` of the Young core.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The exterior radial ratio weight factors into the outer and inner
+Section 5 weights. -/
+theorem brrs_ofReal_div_rpow_eq
+    {sigma r s : Real} (hr : 0 < r) (hs : 0 < s) :
+    (ENNReal.ofReal (s / r)) ^ sigma =
+      (ENNReal.ofReal r) ^ (-sigma) * (ENNReal.ofReal s) ^ sigma := by
+  rw [ENNReal.ofReal_rpow_of_pos (div_pos hs hr),
+    ENNReal.ofReal_rpow_of_pos hr, ENNReal.ofReal_rpow_of_pos hs,
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg hr.le _)]
+  congr 1
+  rw [Real.div_rpow hs.le hr.le, Real.rpow_neg hr.le]
+  field_simp
+
+/-- The outer weight combines with the one-dimensional source quantity into
+the exact exterior integrand of the Young core. -/
+theorem brrsSectionFiveSourceWeight_mul_oneDimSource_rpow_eq
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t : Real) {r : Real} (hr : 0 < r) :
+    brrsSectionFiveSourceWeight d p r *
+        (brrsSectionFiveOneDimSource N j p w f t r) ^ p =
+      (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            brrsSectionFiveRadialProfile p w f s) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set sig : Real := sobolevExponent d p with hsig
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  have hconstne : (ENNReal.ofReal r) ^ (-sig) ≠ ∞ := by
+    rw [ENNReal.ofReal_rpow_of_pos hr]
+    exact ENNReal.ofReal_ne_top
+  have hpull : (ENNReal.ofReal r) ^ (-sig) *
+      brrsSectionFiveOneDimSource N j p w f t r =
+      ∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sig *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s := by
+    unfold brrsSectionFiveOneDimSource
+    rw [← lintegral_const_mul' _ _ hconstne]
+    refine setLIntegral_congr_fun measurableSet_Ioi ?_
+    intro s hs
+    have hs0 : 0 < s := hs
+    dsimp only
+    rw [← hsig, brrs_ofReal_div_rpow_eq (sigma := sig) hr hs0]
+    ring
+  have hweight : brrsSectionFiveSourceWeight d p r =
+      ((ENNReal.ofReal r) ^ (-sig)) ^ p := by
+    unfold brrsSectionFiveSourceWeight
+    rw [show -(p * sobolevExponent d p) = (-sig) * p by rw [hsig]; ring,
+      ENNReal.rpow_mul]
+  rw [hweight, ← ENNReal.mul_rpow_of_nonneg _ _ hp0.le, hpull]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The four exterior travelling phases and the exterior polar reduction
+
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The exact exterior integrand splits into the four literal travelling
+phases, at the cost of the four-term convexity factor. -/
+theorem brrs_exterior_integrand_rpow_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) :
+    (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            brrsSectionFiveRadialProfile p w f s) ^ p ≤
+      (2 : ENNReal) ^ (2 * (p - 1)) *
+        ((∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r - s) *
+                brrsSectionFiveRadialProfile p w f s) ^ p +
+          (∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r + s) *
+                brrsSectionFiveRadialProfile p w f s) ^ p +
+          (∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t + r - s) *
+                brrsSectionFiveRadialProfile p w f s) ^ p +
+          (∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t + r + s) *
+                brrsSectionFiveRadialProfile p w f s) ^ p) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hp1 : (1 : Real) ≤ p := le_trans one_le_two hp
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  have hprof : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd hp0 w f
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hratio : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp
+      (ENNReal.measurable_ofReal.comp (measurable_id.div_const r))
+  have hA : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j (t - r - s) * f0 s) :=
+    (hratio.mul (hom.comp (measurable_const.sub measurable_id))).mul hprof
+  have hB : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j (t - r + s) * f0 s) :=
+    (hratio.mul (hom.comp (measurable_const.add measurable_id))).mul hprof
+  have hC : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j (t + r - s) * f0 s) :=
+    (hratio.mul (hom.comp (measurable_const.sub measurable_id))).mul hprof
+  have hAB : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t - r - s) * f0 s +
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t - r + s) * f0 s) := hA.add hB
+  have hABC : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r - s) * f0 s +
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r + s) * f0 s +
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r - s) * f0 s) := hAB.add hC
+  have hfun : (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) =
+      fun s : Real =>
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r - s) * f0 s +
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r + s) * f0 s +
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t + r - s) * f0 s +
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r + s) * f0 s := by
+    funext s
+    rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+    ring
+  have hsplit : (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) =
+      (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r - s) * f0 s) +
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r + s) * f0 s) +
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t + r - s) * f0 s) +
+        ∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t + r + s) * f0 s := by
+    rw [hfun,
+      lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hABC
+        (fun s : Real => (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r + s) * f0 s),
+      lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hAB
+        (fun s : Real => (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r - s) * f0 s),
+      lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hA
+        (fun s : Real => (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t - r + s) * f0 s)]
+  rw [hsplit]
+  exact brrs_ennreal_four_rpow_le hp1 _ _ _ _
+
+/-- One literal travelling-phase integral of the exterior region. -/
+noncomputable def brrsExteriorPhaseIntegral {d : Nat}
+    (sigma : BRRSSectionFiveFarSourcePhase) (N j : Nat) (p : Real)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi (0 : Real),
+    (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+      brrsSectionFiveOmegaENN N j
+        (brrsSectionFiveFarSourcePhaseLine sigma t r s) *
+      brrsSectionFiveRadialProfile p w f s
+
+/-- Measurability of one exterior travelling-phase integral in the output
+radius. -/
+theorem measurable_brrsExteriorPhaseIntegral
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 0 < p)
+    (sigma : BRRSSectionFiveFarSourcePhase) (N j : Nat)
+    (w : BRRSSpace d) (f : BRRSSchwartz d) (t : Real) :
+    Measurable (fun r : Real => brrsExteriorPhaseIntegral sigma N j p w f t r) := by
+  have hprof : Measurable (brrsSectionFiveRadialProfile p w f) :=
+    measurable_brrsSectionFiveRadialProfile hd hp w f
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hline : Measurable (fun q : Real × Real =>
+      brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2) := by
+    cases sigma
+    · exact (measurable_const.sub measurable_fst).sub measurable_snd
+    · exact (measurable_const.sub measurable_fst).add measurable_snd
+    · exact (measurable_const.add measurable_fst).sub measurable_snd
+    · exact (measurable_const.add measurable_fst).add measurable_snd
+  have hratio : Measurable (fun q : Real × Real =>
+      (ENNReal.ofReal (q.2 / q.1)) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp
+      (ENNReal.measurable_ofReal.comp (measurable_snd.div measurable_fst))
+  have hjoint : Measurable (fun q : Real × Real =>
+      (ENNReal.ofReal (q.2 / q.1)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j
+          (brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2) *
+        brrsSectionFiveRadialProfile p w f q.2) :=
+    (hratio.mul (hom.comp hline)).mul (hprof.comp measurable_snd)
+  exact hjoint.lintegral_prod_right'
+    (ν := volume.restrict (Ioi (0 : Real)))
+
+/-- Polar reduction of the exterior spatial integral of the annular half-wave
+of a radial input. -/
+theorem brrs_lintegral_closedBallCompl_brrsDyadicHalfWave_eq
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) (j : Nat) (t : Real)
+    (f : BRRSSchwartz d) (hf : IsRadial (f : BRRSSpace d → Complex))
+    (p : Real) (v : BRRSSpace d) (hv : ‖v‖ = 1) :
+    (∫⁻ x : BRRSSpace d,
+        ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+          (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) =
+      (unitSurfaceMeasure d) univ *
+        ∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p := by
+  have hd0 : 0 < d := by omega
+  set A : BRRSSpace d → Complex := brrsDyadicHalfWave Phi j t f with hA
+  set H : BRRSSpace d → ENNReal := fun x =>
+    ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+      (fun y => ‖A y‖ₑ ^ p) x with hH
+  have hAcont : Continuous A := continuous_brrsDyadicHalfWave Phi j t f
+  have hHmeas : Measurable H := by
+    refine Measurable.indicator ?_ measurableSet_closedBall.compl
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      hAcont.enorm.measurable)
+  have hArad : IsRadial A := brrsDyadicHalfWave_isRadial Phi j t f hf
+  have hHrad : ∀ x y : BRRSSpace d, ‖x‖ = ‖y‖ → H x = H y := by
+    intro x y hxy
+    have hval : A x = A y := hArad x y hxy
+    have hmem : (x ∈ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ) ↔
+        (y ∈ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ) := by
+      simp only [Set.mem_compl_iff, Metric.mem_closedBall, dist_zero_right, hxy]
+    by_cases hx : x ∈ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ
+    · have hy : y ∈ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ := hmem.mp hx
+      simp only [hH, indicator_of_mem hx, indicator_of_mem hy, hval]
+    · have hy : y ∉ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ := fun hc =>
+        hx (hmem.mpr hc)
+      simp only [hH, indicator_of_notMem hx, indicator_of_notMem hy]
+  rw [brrs_lintegral_polar_of_radial hd0 H hHmeas hHrad v hv]
+  congr 1
+  have hsplit : ∀ r : Real, r ∈ Ioi (0 : Real) →
+      (ENNReal.ofReal r) ^ (d - 1) * H (r • v) =
+        (Ioi (20 : Real)).indicator
+          (fun r => (ENNReal.ofReal r) ^ (d - 1) * ‖A (r • v)‖ₑ ^ p) r := by
+    intro r hr
+    have hr0 : 0 < r := hr
+    have hnorm : ‖r • v‖ = r := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hr0, hv, mul_one]
+    by_cases hgt : 20 < r
+    · have hmem : r • v ∈ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ := by
+        simp only [Set.mem_compl_iff, Metric.mem_closedBall, dist_zero_right,
+          hnorm, not_le]
+        exact hgt
+      have hrmem : r ∈ Ioi (20 : Real) := hgt
+      simp only [hH, indicator_of_mem hmem, indicator_of_mem hrmem]
+    · have hle : r ≤ 20 := le_of_not_gt hgt
+      have hmem : r • v ∉ (Metric.closedBall (0 : BRRSSpace d) 20)ᶜ := by
+        simp only [Set.mem_compl_iff, Metric.mem_closedBall, dist_zero_right,
+          hnorm, not_not]
+        exact hle
+      have hrmem : r ∉ Ioi (20 : Real) := by
+        simp only [mem_Ioi, not_lt]
+        exact hle
+      simp only [hH, indicator_of_notMem hmem, indicator_of_notMem hrmem,
+        mul_zero]
+  calc
+    (∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) * H (r • v)) =
+        ∫⁻ r in Ioi (0 : Real),
+          (Ioi (20 : Real)).indicator
+            (fun r => (ENNReal.ofReal r) ^ (d - 1) * ‖A (r • v)‖ₑ ^ p) r :=
+      setLIntegral_congr_fun measurableSet_Ioi hsplit
+    _ = ∫⁻ r in Ioi (20 : Real),
+          (ENNReal.ofReal r) ^ (d - 1) * ‖A (r • v)‖ₑ ^ p := by
+      rw [lintegral_indicator measurableSet_Ioi]
+      rw [Measure.restrict_restrict measurableSet_Ioi]
+      congr 1
+      rw [inter_eq_left.mpr (Ioi_subset_Ioi (by norm_num))]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### U5.E: the exterior fixed-time radial estimate
+
+Outside the compact spatial region the polar reduction produces the same
+literal outer weight `r^{-p s_p}`, which merges with the inner source weight
+into the exterior ratio weight `(s/r)^{s_p}`.  The four travelling phases are
+then estimated by the one-dimensional Young core, whose absorbed kernel is
+integrable for the actual phase-line kernel.  No cell decomposition is needed:
+the exterior radial range is contained in the Young core's range.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **U5.E, exterior fixed-time radial estimate.**  For a fixed sampled time
+in `[1,2]` the exterior spatial contribution of the annular half-wave of a
+radial input is bounded by the absorbed-kernel Young constant times the polar
+`Lᵖ` mass of the radial profile. -/
+theorem brrsSectionFiveExteriorSpatial_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    {N : Nat} (hNsig : sobolevExponent d p + 3 ≤ (N : Real)) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) {t : Real}, t ∈ Icc (1 : Real) 2 →
+      ∀ (f : BRRSSchwartz d), IsRadial (f : BRRSSpace d → Complex) →
+      ∀ (v w : BRRSSpace d), ‖v‖ = 1 → ‖w‖ = 1 →
+      (∫⁻ x : BRRSSpace d,
+          ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+            (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) ≤
+        (unitSurfaceMeasure d) univ * ENNReal.ofReal (C ^ p) *
+          (2 : ENNReal) ^ (2 * (p - 1)) *
+            (4 * ((∫⁻ u : Real,
+                brrsExteriorAbsorbedKernel (sobolevExponent d p)
+                  (brrsSectionFiveOmegaENN N j) u) ^ p *
+              ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p)) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  obtain ⟨C, hC, hmaj⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_halfDensity_majorant
+      (d := d) (N := N) hd Phi
+  refine ⟨C, hC, ?_⟩
+  intro j t ht f hf v w hv hw
+  set sig : Real := sobolevExponent d p with hsig
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  have hprof : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd hp0 w f
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  set Kc : ENNReal := ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1))
+    with hKc
+  have hKctop : Kc ≠ ∞ := by
+    rw [hKc]
+    refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top ?_
+    exact ENNReal.rpow_ne_top_of_nonneg (by linarith) (by norm_num)
+  have hPmeas : ∀ sigma : BRRSSectionFiveFarSourcePhase,
+      Measurable (fun r : Real =>
+        (brrsExteriorPhaseIntegral sigma N j p w f t r) ^ p) := by
+    intro sigma
+    exact ENNReal.continuous_rpow_const.measurable.comp
+      (measurable_brrsExteriorPhaseIntegral hd hp0 sigma N j w f t)
+  have hpt : ∀ r : Real, r ∈ Ioi (20 : Real) →
+      (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p ≤
+        Kc * ((brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+          (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+          (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p +
+          (brrsExteriorPhaseIntegral .addAdd N j p w f t r) ^ p) := by
+    intro r hr
+    have hrpos : 0 < r := lt_trans (by norm_num) hr
+    have hnorm : ‖r • v‖ = r := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrpos, hv, mul_one]
+    have hxpos : 0 < ‖r • v‖ := by rw [hnorm]; exact hrpos
+    have hA := enorm_brrsDyadicHalfWave_le_halfDensity_oneDimSource
+      (N := N) hd Phi hC hmaj hp0 j t f hf v w (r • v) hv hw hxpos
+    rw [hnorm] at hA
+    have hstep := brrs_radial_cell_pointwise_halfDensity hd hp hC hrpos
+      (brrsSectionFiveOneDimSource N j p w f t r)
+      (‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ) hA
+    have hweq := brrsSectionFiveSourceWeight_mul_oneDimSource_rpow_eq
+      hd hp N j w f t hrpos
+    have hsplit := brrs_exterior_integrand_rpow_le hd hp N j w f t r
+    calc
+      (ENNReal.ofReal r) ^ (d - 1) *
+          ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r *
+            (brrsSectionFiveOneDimSource N j p w f t r) ^ p := hstep
+      _ = ENNReal.ofReal (C ^ p) *
+            (∫⁻ s in Ioi (0 : Real),
+              (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+                brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) ^ p := by
+        rw [mul_assoc, hweq]
+      _ ≤ ENNReal.ofReal (C ^ p) *
+            ((2 : ENNReal) ^ (2 * (p - 1)) *
+              ((brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+                (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+                (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p +
+                (brrsExteriorPhaseIntegral .addAdd N j p w f t r) ^ p)) := by
+        refine mul_le_mul' le_rfl ?_
+        unfold brrsExteriorPhaseIntegral brrsSectionFiveFarSourcePhaseLine
+        exact hsplit
+      _ = Kc * ((brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+            (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+            (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p +
+            (brrsExteriorPhaseIntegral .addAdd N j p w f t r) ^ p) := by
+        rw [hKc]
+        ring
+  have hblock : (∫⁻ r in Ioi (20 : Real),
+      ((brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+        (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+        (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p +
+        (brrsExteriorPhaseIntegral .addAdd N j p w f t r) ^ p)) ≤
+      brrsExteriorWeightedFourPhaseBlock sig p t
+        (brrsSectionFiveOmegaENN N j) f0 := by
+    have hAB : Measurable (fun r : Real =>
+        (brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+          (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p) :=
+      (hPmeas _).add (hPmeas _)
+    have hABC : Measurable (fun r : Real =>
+        (brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+            (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+          (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p) :=
+      hAB.add (hPmeas _)
+    rw [lintegral_add_left (μ := volume.restrict (Ioi (20 : Real))) hABC _,
+      lintegral_add_left (μ := volume.restrict (Ioi (20 : Real))) hAB _,
+      lintegral_add_left (μ := volume.restrict (Ioi (20 : Real))) (hPmeas _) _]
+    unfold brrsExteriorWeightedFourPhaseBlock brrsExteriorPhaseIntegral
+      brrsSectionFiveFarSourcePhaseLine
+    refine add_le_add (add_le_add (add_le_add ?_ ?_) ?_) ?_
+    all_goals
+      refine lintegral_mono_set ?_
+      intro x hx
+      exact le_of_lt (lt_of_le_of_lt (by norm_num : (16 : Real) ≤ 20) hx)
+  have hyoung := brrsExteriorWeightedFourPhaseBlock_rpow_le
+    (sigma := sig) (p := p) (t := t)
+    (omega := brrsSectionFiveOmegaENN N j) (f := f0)
+    (by rw [hsig]; exact hsob) hp1 ht
+    (measurable_brrsExteriorAbsorbedKernel sig hom) hprof
+    (fun u => brrsExteriorAbsorbedKernel_sectionFiveOmega_pos (sigma := sig) N j u)
+    (fun u => brrsExteriorAbsorbedKernel_sectionFiveOmega_ne_top
+      (by rw [hsig]; exact hsob) N j u)
+    (lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_pos (sigma := sig) N j)
+    (lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_ne_top
+      (by rw [hsig]; exact hsob) (by rw [hsig]; exact hNsig) j)
+  calc
+    (∫⁻ x : BRRSSpace d,
+        ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+          (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) =
+        (unitSurfaceMeasure d) univ *
+          ∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+            ‖brrsDyadicHalfWave Phi j t f (r • v)‖ₑ ^ p :=
+      brrs_lintegral_closedBallCompl_brrsDyadicHalfWave_eq hd Phi j t f hf p v hv
+    _ ≤ (unitSurfaceMeasure d) univ *
+          ∫⁻ r in Ioi (20 : Real), Kc *
+            ((brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+              (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+              (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p +
+              (brrsExteriorPhaseIntegral .addAdd N j p w f t r) ^ p) := by
+      refine mul_le_mul' le_rfl ?_
+      exact setLIntegral_mono' measurableSet_Ioi hpt
+    _ = (unitSurfaceMeasure d) univ * Kc *
+          ∫⁻ r in Ioi (20 : Real),
+            ((brrsExteriorPhaseIntegral .subSub N j p w f t r) ^ p +
+              (brrsExteriorPhaseIntegral .subAdd N j p w f t r) ^ p +
+              (brrsExteriorPhaseIntegral .addSub N j p w f t r) ^ p +
+              (brrsExteriorPhaseIntegral .addAdd N j p w f t r) ^ p) := by
+      rw [lintegral_const_mul' _ _ hKctop]
+      ring
+    _ ≤ (unitSurfaceMeasure d) univ * Kc *
+          brrsExteriorWeightedFourPhaseBlock sig p t
+            (brrsSectionFiveOmegaENN N j) f0 :=
+      mul_le_mul' le_rfl hblock
+    _ ≤ (unitSurfaceMeasure d) univ * Kc *
+          (4 * ((∫⁻ u : Real,
+              brrsExteriorAbsorbedKernel sig (brrsSectionFiveOmegaENN N j) u) ^ p *
+            ∫⁻ s : Real, (f0 s) ^ p)) :=
+      mul_le_mul' le_rfl hyoung
+    _ = (unitSurfaceMeasure d) univ * ENNReal.ofReal (C ^ p) *
+          (2 : ENNReal) ^ (2 * (p - 1)) *
+            (4 * ((∫⁻ u : Real,
+                brrsExteriorAbsorbedKernel (sobolevExponent d p)
+                  (brrsSectionFiveOmegaENN N j) u) ^ p *
+              ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p)) := by
+      rw [hKc, hsig, hf0]
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The exterior absorbed phase mass is uniform in the frequency level
+
+The crude cubic domination leaves a factor `2^j`.  Carrying the whole
+frequency factor in the scaled cubic profile instead removes it, which is what
+the exterior estimate needs: its constant must not grow with `j`, since it is
+later multiplied by the cardinality of the time packet.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Sharper pointwise domination of the exterior absorbed kernel: the whole
+frequency factor is carried by the scaled cubic profile, so no power of `2^j`
+is left over. -/
+theorem brrsExteriorAbsorbedKernel_sectionFiveOmega_le_scaledCubic
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat} (hN : sigma + 3 ≤ (N : Real))
+    (j : Nat) (u : Real) :
+    brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u ≤
+      ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+        brrsNormalizedScaledCubicProfile ((2 : Real) ^ j) u := by
+  have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hjone : (1 : Real) ≤ (2 : Real) ^ j := one_le_pow₀ (by norm_num)
+  set y : Real := (2 : Real) ^ j * |u| with hy
+  have hy0 : 0 ≤ y := by rw [hy]; positivity
+  have hbase : (1 : Real) ≤ 1 + y := by linarith
+  have hbasepos : (0 : Real) < 1 + y := lt_of_lt_of_le zero_lt_one hbase
+  have hstep : (1 : Real) + |u| ≤ 1 + y := by
+    have := mul_le_mul_of_nonneg_right hjone (abs_nonneg u)
+    rw [hy]
+    linarith [this]
+  have hweight : ((1 : Real) + |u|) ^ sigma ≤ (1 + y) ^ sigma := by
+    apply Real.rpow_le_rpow (by positivity) hstep hsigma
+  have hnpow : (((1 : Real) + y)⁻¹) ^ N = ((1 : Real) + y) ^ (-(N : Real)) := by
+    rw [Real.rpow_neg hbasepos.le, Real.rpow_natCast, inv_pow]
+  have hexp : ((1 : Real) + y) ^ sigma * ((1 : Real) + y) ^ (-(N : Real)) ≤
+      ((1 : Real) + y) ^ (-(3 : Real)) := by
+    rw [← Real.rpow_add hbasepos]
+    apply Real.rpow_le_rpow_of_exponent_le hbase
+    linarith
+  have hcubic : ((1 : Real) + y) ^ (-(3 : Real)) =
+      (((1 : Real) + y)⁻¹) ^ (3 : Nat) := by
+    rw [Real.rpow_neg hbasepos.le,
+      show ((1 : Real) + y) ^ (3 : Real) = ((1 : Real) + y) ^ (3 : Nat) by
+        rw [← Real.rpow_natCast ((1 : Real) + y) 3]
+        norm_num,
+      inv_pow]
+  have habs : |(2 : Real) ^ j * u| = y := by
+    rw [hy, abs_mul, abs_of_pos hjpos]
+  have hreal : (2 * (1 + |u|)) ^ sigma * brrsSectionFiveOmega N j u ≤
+      ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+        ((2 : Real) ^ j * (((1 : Real) + y)⁻¹) ^ (3 : Nat)) := by
+    rw [Real.mul_rpow (by norm_num) (by positivity)]
+    have homega : brrsSectionFiveOmega N j u ≤
+        (2 : Real) ^ N * ((2 : Real) ^ j) * (((1 : Real) + y)⁻¹) ^ N := by
+      simpa only [hy] using brrsSectionFiveOmega_le_sourceRapidDecay N j u
+    calc
+      (2 : Real) ^ sigma * ((1 + |u|) ^ sigma) * brrsSectionFiveOmega N j u ≤
+          (2 : Real) ^ sigma * ((1 + y) ^ sigma) *
+            ((2 : Real) ^ N * ((2 : Real) ^ j) * (((1 : Real) + y)⁻¹) ^ N) := by
+        refine mul_le_mul ?_ homega (brrsSectionFiveOmega_nonneg N j u) (by positivity)
+        exact mul_le_mul_of_nonneg_left hweight (by positivity)
+      _ = ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+            ((2 : Real) ^ j * (((1 + y) ^ sigma) * (((1 : Real) + y)⁻¹) ^ N)) := by
+        ring
+      _ ≤ ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+            ((2 : Real) ^ j * (((1 : Real) + y)⁻¹) ^ (3 : Nat)) := by
+        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+        refine mul_le_mul_of_nonneg_left ?_ hjpos.le
+        rw [hnpow, ← hcubic]
+        exact hexp
+  unfold brrsExteriorAbsorbedKernel brrsSectionFiveOmegaENN
+    brrsNormalizedScaledCubicProfile brrsCubicJapaneseProfile
+  rw [habs]
+  rw [ENNReal.ofReal_rpow_of_pos (by positivity),
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg (by positivity) _),
+    ← ENNReal.ofReal_mul hjpos.le,
+    ← ENNReal.ofReal_mul (by positivity)]
+  exact ENNReal.ofReal_le_ofReal hreal
+
+/-- The exterior absorbed phase mass is bounded uniformly in the frequency
+level. -/
+theorem lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_le_uniform
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat} (hN : sigma + 3 ≤ (N : Real))
+    (j : Nat) :
+    (∫⁻ u : Real,
+        brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u) ≤
+      ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+        ∫⁻ v : Real, brrsCubicJapaneseProfile v := by
+  calc
+    (∫⁻ u : Real,
+        brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j) u) ≤
+        ∫⁻ u : Real,
+          ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+            brrsNormalizedScaledCubicProfile ((2 : Real) ^ j) u :=
+      lintegral_mono fun u =>
+        brrsExteriorAbsorbedKernel_sectionFiveOmega_le_scaledCubic hsigma hN j u
+    _ = ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+          ∫⁻ u : Real, brrsNormalizedScaledCubicProfile ((2 : Real) ^ j) u := by
+      rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    _ = ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+          ∫⁻ v : Real, brrsCubicJapaneseProfile v := by
+      rw [lintegral_brrsNormalizedScaledCubicProfile_eq (by positivity)]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The exterior fixed-time estimate with a constant independent of the
+frequency level. -/
+theorem brrsSectionFiveExteriorSpatial_le_uniform
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    {N : Nat} (hNsig : sobolevExponent d p + 3 ≤ (N : Real)) :
+    ∃ B : ENNReal, B ≠ ∞ ∧ ∀ (j : Nat) {t : Real}, t ∈ Icc (1 : Real) 2 →
+      ∀ (f : BRRSSchwartz d), IsRadial (f : BRRSSpace d → Complex) →
+      ∀ (v w : BRRSSpace d), ‖v‖ = 1 → ‖w‖ = 1 →
+      (∫⁻ x : BRRSSpace d,
+          ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+            (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) ≤
+        B * ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p := by
+  have hp0 : (0 : Real) ≤ p := le_trans zero_le_two hp
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  obtain ⟨C, hC, hext⟩ := brrsSectionFiveExteriorSpatial_le hd Phi hp hNsig
+  set M : ENNReal :=
+    ENNReal.ofReal ((2 : Real) ^ sobolevExponent d p * (2 : Real) ^ N) *
+      ∫⁻ v : Real, brrsCubicJapaneseProfile v with hM
+  have hMtop : M ≠ ∞ := by
+    rw [hM]
+    exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      lintegral_brrsCubicJapaneseProfile_ne_top
+  refine ⟨(unitSurfaceMeasure d) univ * ENNReal.ofReal (C ^ p) *
+    (2 : ENNReal) ^ (2 * (p - 1)) * (4 * M ^ p), ?_, ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.mul_ne_top (ENNReal.mul_ne_top ?_ ?_) ?_) ?_
+    · exact measure_ne_top (unitSurfaceMeasure d) univ
+    · exact ENNReal.ofReal_ne_top
+    · exact ENNReal.rpow_ne_top_of_nonneg (by linarith) (by norm_num)
+    · exact ENNReal.mul_ne_top (by norm_num)
+        (ENNReal.rpow_ne_top_of_nonneg hp0 hMtop)
+  · intro j t ht f hf v w hv hw
+    have hmass : (∫⁻ u : Real,
+        brrsExteriorAbsorbedKernel (sobolevExponent d p)
+          (brrsSectionFiveOmegaENN N j) u) ≤ M := by
+      rw [hM]
+      exact lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_le_uniform
+        hsob hNsig j
+    refine le_trans (hext j ht f hf v w hv hw) ?_
+    calc
+      (unitSurfaceMeasure d) univ * ENNReal.ofReal (C ^ p) *
+          (2 : ENNReal) ^ (2 * (p - 1)) *
+            (4 * ((∫⁻ u : Real,
+                brrsExteriorAbsorbedKernel (sobolevExponent d p)
+                  (brrsSectionFiveOmegaENN N j) u) ^ p *
+              ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p)) ≤
+          (unitSurfaceMeasure d) univ * ENNReal.ofReal (C ^ p) *
+            (2 : ENNReal) ^ (2 * (p - 1)) *
+              (4 * (M ^ p *
+                ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p)) := by
+        refine mul_le_mul' le_rfl (mul_le_mul' le_rfl (mul_le_mul' ?_ le_rfl))
+        exact ENNReal.rpow_le_rpow hmass hp0
+      _ = (unitSurfaceMeasure d) univ * ENNReal.ofReal (C ^ p) *
+            (2 : ENNReal) ^ (2 * (p - 1)) * (4 * M ^ p) *
+            ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p := by
+        ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### BRRS (5.2): the `κ_{j,m}` dyadic reduction
+
+The full space splits into the compact region, controlled by (5.3) and (5.4)
+through the local counting coefficients of the time packet, and the exterior
+region, controlled by the fixed-time estimate U5.E.  Summing the latter over
+the packet costs its cardinality, which the U5.C comparison absorbs into the
+terminal counting coefficient.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **BRRS (5.2).**  The full-space dyadic reduction: the compact region is
+controlled by the local counting coefficients of the time packet through
+(5.3) and (5.4), and the exterior region is the fixed-time estimate U5.E
+summed over the packet, whose cardinality is absorbed by the terminal
+counting coefficient through the U5.C comparison. -/
+theorem brrsSectionFiveDyadicReduction_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1)) (L : Nat)
+    {N : Nat} (hNsig : sobolevExponent d p + 3 ≤ (N : Real)) :
+    ∃ C1 C2 : ENNReal, C1 ≠ ∞ ∧ C2 ≠ ∞ ∧
+      ∀ {E : Set Real} {j : Nat} {T : Finset Real},
+        E ⊆ Icc (1 : Real) 2 → IsDyadicDiscretization E j T →
+        ∀ (f : BRRSSchwartz d), IsRadial (f : BRRSSpace d → Complex) →
+        ∀ (v w : BRRSSpace d), ‖v‖ = 1 → ‖w‖ = 1 →
+          (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+              ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p) ≤
+            C1 * ((∑ m ∈ Finset.range (j + 1),
+                brrsDyadicKappa T j m (p * sobolevExponent d p)) *
+              ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p) +
+            C2 * (brrsSectionFiveFarTotalConstant d L j p *
+              ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p) := by
+  have hp0 : (0 : Real) ≤ p := le_trans zero_le_two hp
+  obtain ⟨C, hC, hcompact⟩ := brrsSectionFiveCompactSpatial_le hd Phi hp L
+  obtain ⟨B, hBtop, hext⟩ := brrsSectionFiveExteriorSpatial_le_uniform hd Phi hp hNsig
+  set A : ENNReal := (unitSurfaceMeasure d) univ *
+    (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) with hA
+  have hAtop : A ≠ ∞ := by
+    rw [hA]
+    refine ENNReal.mul_ne_top (measure_ne_top (unitSurfaceMeasure d) univ) ?_
+    exact ENNReal.mul_ne_top
+      (ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+        (brrsSectionFiveOneDimConstant_ne_top (d := d) hp)) (by norm_num)
+  set Ccube : ENNReal :=
+    (8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p with hCcube
+  have hCcubetop : Ccube ≠ ∞ := by
+    rw [hCcube]
+    refine ENNReal.rpow_ne_top_of_nonneg hp0 ?_
+    exact ENNReal.mul_ne_top (by norm_num)
+      lintegral_brrsCubicJapaneseProfile_ne_top
+  refine ⟨A * 56 * Ccube + B, A * 4, ?_, ?_, ?_⟩
+  · exact ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (ENNReal.mul_ne_top hAtop (by norm_num)) hCcubetop, hBtop⟩
+  · exact ENNReal.mul_ne_top hAtop (by norm_num)
+  intro E j T hE hT f hf v w hv hw
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set S : ENNReal := ∫⁻ s : Real, (f0 s) ^ p with hS
+  set K : ENNReal := ∑ m ∈ Finset.range (j + 1),
+    brrsDyadicKappa T j m (p * sobolevExponent d p) with hK
+  have hf0meas : Measurable f0 :=
+    measurable_brrsSectionFiveRadialProfile hd
+      (lt_of_lt_of_le (by norm_num) hp) w f
+  -- split the full-space integral
+  have hsplit : ∀ t : Real,
+      (∫⁻ x : BRRSSpace d, ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p) =
+        (∫⁻ x : BRRSSpace d,
+            (Metric.closedBall (0 : BRRSSpace d) 20).indicator
+              (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) +
+          ∫⁻ x : BRRSSpace d,
+            ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+              (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x := by
+    intro t
+    rw [lintegral_indicator measurableSet_closedBall,
+      lintegral_indicator measurableSet_closedBall.compl,
+      lintegral_add_compl _ measurableSet_closedBall]
+  have hsum : (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+      ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p) =
+      brrsSectionFiveCompactSpatialSum Phi T j p f +
+        ∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+          ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+            (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x := by
+    unfold brrsSectionFiveCompactSpatialSum
+    rw [← Finset.sum_add_distrib]
+    exact Finset.sum_congr rfl fun t _ => hsplit t
+  -- compact part
+  have hcomp := hcompact j T f hf v w hv hw
+  have hone := brrsSectionFiveWeightedOneDim_le (L := L) hd hE hT p hp hcritical
+    f0 hf0meas
+  have hcompbound : brrsSectionFiveCompactSpatialSum Phi T j p f ≤
+      A * 56 * Ccube * (K * S) + A * 4 *
+        (brrsSectionFiveFarTotalConstant d L j p * S) := by
+    calc
+      brrsSectionFiveCompactSpatialSum Phi T j p f ≤
+          A * brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+        rw [hA]
+        exact hcomp
+      _ ≤ A * (56 * K * (Ccube * S) +
+            4 * brrsSectionFiveFarTotalConstant d L j p * S) :=
+        mul_le_mul' le_rfl hone.2
+      _ = A * 56 * Ccube * (K * S) + A * 4 *
+            (brrsSectionFiveFarTotalConstant d L j p * S) := by ring
+  -- exterior part
+  have hextbound : (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+      ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+        (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) ≤ B * (K * S) := by
+    have hcard : (T.card : ENNReal) ≤ K := by
+      refine le_trans
+        (dyadicDiscretization_card_le_brrsDyadicKappa_terminal hE hT
+          (p * sobolevExponent d p)) ?_
+      rw [hK]
+      exact Finset.single_le_sum
+        (f := fun m => brrsDyadicKappa T j m (p * sobolevExponent d p))
+        (fun i _ => zero_le) (Finset.mem_range.mpr (Nat.lt_succ_self j))
+    calc
+      (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+          ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+            (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) ≤
+          ∑ _t ∈ T, B * S := by
+        refine Finset.sum_le_sum fun t htT => ?_
+        have ht : t ∈ Icc (1 : Real) 2 := hE (hT.subset htT)
+        exact hext j ht f hf v w hv hw
+      _ = (T.card : ENNReal) * (B * S) := by
+        simp only [Finset.sum_const, nsmul_eq_mul]
+      _ ≤ K * (B * S) := mul_le_mul' hcard le_rfl
+      _ = B * (K * S) := by ring
+  rw [hsum]
+  calc
+    brrsSectionFiveCompactSpatialSum Phi T j p f +
+        (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+          ((Metric.closedBall (0 : BRRSSpace d) 20)ᶜ).indicator
+            (fun y => ‖brrsDyadicHalfWave Phi j t f y‖ₑ ^ p) x) ≤
+        (A * 56 * Ccube * (K * S) + A * 4 *
+            (brrsSectionFiveFarTotalConstant d L j p * S)) + B * (K * S) :=
+      add_le_add hcompbound hextbound
+    _ = (A * 56 * Ccube + B) * (K * S) +
+          A * 4 * (brrsSectionFiveFarTotalConstant d L j p * S) := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### BRRS Proposition 5.1 and (5.1)
+
+Feeding the entropy tail U5.`κ`-ent into the local counting sum of (5.2)
+replaces `∑_{m=0}^{j} κ_{j,m}(p s_p)` by `(j+1) 2^{(j+1) q}` for any `q`
+strictly above the Legendre--Assouad value at the penalty `p s_p`.  The
+far-source term needs no gain at this point and is absorbed by the same
+factor.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The entropy-tail normalization in explicit dyadic form. -/
+theorem brrs_dyadicMultiplicativeScale_inv_rpow_eq (j : Nat) (q : Real) :
+    ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale (j + 1) :
+        ENNReal)⁻¹) ^ q =
+      (2 : ENNReal) ^ (((j : Real) + 1) * q) := by
+  have hcoe : ((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale (j + 1) :
+      ENNReal)) = ((2 : ENNReal) ^ (j + 1))⁻¹ := by
+    unfold Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale
+    rw [ENNReal.coe_pow, ENNReal.coe_inv (by norm_num)]
+    rw [ENNReal.inv_pow]
+    norm_num
+  rw [hcoe, inv_inv, ← ENNReal.rpow_natCast (2 : ENNReal) (j + 1),
+    ← ENNReal.rpow_mul]
+  congr 1
+  push_cast
+  ring
+
+/-- At `L = 0` the far-source constant carries no frequency factor. -/
+theorem brrsSectionFiveFarTotalConstant_zero_eq
+    (d j : Nat) (p : Real) :
+    brrsSectionFiveFarTotalConstant d 0 j p =
+      brrsSectionFiveFarTotalConstant d 0 0 p := by
+  unfold brrsSectionFiveFarTotalConstant
+  congr 2
+  push_cast
+  ring
+
+/-- The decay order `d + 3` exceeds the absorbed exterior weight by three. -/
+theorem brrs_sobolevExponent_add_three_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) :
+    sobolevExponent d p + 3 ≤ ((d + 3 : Nat) : Real) := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hbound : sobolevExponent d p ≤ ((d : Real) - 1) / 2 := by
+    unfold sobolevExponent
+    have hhalf : 1 / 2 - 1 / p ≤ 1 / 2 := by
+      have : 0 < 1 / p := by positivity
+      linarith
+    have hd1 : (0 : Real) ≤ (d : Real) - 1 := by linarith
+    calc ((d : Real) - 1) * (1 / 2 - 1 / p) ≤ ((d : Real) - 1) * (1 / 2) :=
+          mul_le_mul_of_nonneg_left hhalf hd1
+      _ = ((d : Real) - 1) / 2 := by ring
+  push_cast
+  linarith
+
+/-- **BRRS Proposition 5.1 / (5.1).**  Strictly above the Legendre--Assouad
+value at the penalty `p s_p`, the annular half-wave sum over any dyadic
+discretization of the time set obeys the entropy bound. -/
+theorem brrsPropositionFiveOne
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p * sobolevExponent d p) < q) :
+    ∃ (Cst : ENNReal) (J : Nat), Cst ≠ ∞ ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        ∀ (f : BRRSSchwartz d), IsRadial (f : BRRSSpace d → Complex) →
+        ∀ (v w : BRRSSpace d), ‖v‖ = 1 → ‖w‖ = 1 →
+          (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+              ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p) ≤
+            Cst * (((j : ENNReal) + 1) *
+              (2 : ENNReal) ^ (((j : Real) + 1) * q) *
+                ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p) := by
+  have halpha : 0 ≤ p * sobolevExponent d p := mul_sobolevExponent_nonneg hd hp
+  obtain ⟨C1, C2, hC1, hC2, hred⟩ :=
+    brrsSectionFiveDyadicReduction_le hd Phi hp hcritical 0
+      (N := d + 3) (brrs_sobolevExponent_add_three_le hd hp)
+  obtain ⟨J, hJ⟩ := exists_tail_brrsDyadicKappa_le_inv_rpow_of_lt halpha hq
+  refine ⟨C1 + C2 * brrsSectionFiveFarTotalConstant d 0 0 p, J, ?_, ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨hC1, ENNReal.mul_ne_top hC2 ?_⟩
+    unfold brrsSectionFiveFarTotalConstant
+    refine ENNReal.mul_ne_top (ENNReal.mul_ne_top (by norm_num) ?_)
+      ENNReal.ofReal_ne_top
+    exact lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_ne_top
+      (mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd
+        (lt_of_lt_of_le (by norm_num) hp) hcritical)
+  intro j hj T hT f hf v w hv hw
+  set S : ENNReal := ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p with hS
+  set P : ENNReal := ((j : ENNReal) + 1) *
+    (2 : ENNReal) ^ (((j : Real) + 1) * q) with hP
+  have hkappa : (∑ m ∈ Finset.range (j + 1),
+      brrsDyadicKappa T j m (p * sobolevExponent d p)) ≤ P := by
+    have hunif := sum_brrsDyadicKappa_le_of_uniform_bound T j
+      (p * sobolevExponent d p)
+      (((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale (j + 1) :
+        ENNReal))⁻¹ ^ q) (fun m hm => hJ j hj T hT m hm)
+    refine le_trans hunif ?_
+    rw [brrs_dyadicMultiplicativeScale_inv_rpow_eq j q, hP]
+  have hPone : (1 : ENNReal) ≤ P := by
+    rw [hP]
+    have h1 : (1 : ENNReal) ≤ (j : ENNReal) + 1 := by
+      exact le_add_self
+    have hz : (0 : Real) ≤ ((j : Real) + 1) * q :=
+      mul_nonneg (by positivity) hq0
+    have h2 : (1 : ENNReal) ≤ (2 : ENNReal) ^ (((j : Real) + 1) * q) := by
+      calc (1 : ENNReal) = (1 : ENNReal) ^ (((j : Real) + 1) * q) := by
+            rw [ENNReal.one_rpow]
+        _ ≤ (2 : ENNReal) ^ (((j : Real) + 1) * q) :=
+          ENNReal.rpow_le_rpow (by norm_num) hz
+    calc (1 : ENNReal) = 1 * 1 := by norm_num
+      _ ≤ ((j : ENNReal) + 1) * (2 : ENNReal) ^ (((j : Real) + 1) * q) :=
+        mul_le_mul' h1 h2
+  have hfar : brrsSectionFiveFarTotalConstant d 0 j p =
+      brrsSectionFiveFarTotalConstant d 0 0 p :=
+    brrsSectionFiveFarTotalConstant_zero_eq d j p
+  calc
+    (∑ t ∈ T, ∫⁻ x : BRRSSpace d, ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p) ≤
+        C1 * ((∑ m ∈ Finset.range (j + 1),
+            brrsDyadicKappa T j m (p * sobolevExponent d p)) * S) +
+          C2 * (brrsSectionFiveFarTotalConstant d 0 j p * S) :=
+      hred hE hT f hf v w hv hw
+    _ ≤ C1 * (P * S) +
+          C2 * (brrsSectionFiveFarTotalConstant d 0 0 p * (P * S)) := by
+      refine add_le_add (mul_le_mul' le_rfl (mul_le_mul' hkappa le_rfl)) ?_
+      rw [hfar]
+      refine mul_le_mul' le_rfl (mul_le_mul' le_rfl ?_)
+      calc S = 1 * S := by rw [one_mul]
+        _ ≤ P * S := mul_le_mul' hPone le_rfl
+    _ = (C1 + C2 * brrsSectionFiveFarTotalConstant d 0 0 p) * (P * S) := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The radial core of the compact reduction
+
+The compact estimate depends on the output only through the two pointwise
+kernel majorants.  Isolating that dependence makes the estimate available to
+any radial output obeying them: the annular half-wave, through polar
+coordinates, and the radial kernel operator on an arbitrary profile, directly.
+The latter is what the high-`p` interpolation of U1.I needs, since its
+endpoints must share a domain on which the Riesz--Thorin transport applies.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The radial core of the compact spatial reduction.  Any nonnegative radial
+output which obeys the two kernel majorants pointwise satisfies the compact
+weighted radial estimate.  The half-wave is one instance, through polar
+coordinates; the radial kernel operator is another, directly. -/
+theorem brrsSectionFiveCompactRadialCore_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (L j : Nat) (T : Finset Real)
+    (w : BRRSSpace d) (f : BRRSSchwartz d)
+    (A : Real → Real → ENNReal) {C : Real} (hC : 0 < C)
+    (hlow : ∀ (t r : Real), 0 ≤ r → ((2 : Real) ^ j) * r ≤ 16 →
+      A t r ≤ ENNReal.ofReal (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) *
+        brrsSectionFiveOneDimSource (L + d + 2) j p w f t r)
+    (hhd : ∀ (t r : Real), 0 < r →
+      A t r ≤ ENNReal.ofReal (C * r ^ (-(((d : Real) - 1) / 2))) *
+        brrsSectionFiveOneDimSource (L + d + 2) j p w f t r) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) ≤
+      (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+        brrsSectionFiveWeightedOneDimTotal T d L j p
+          (brrsSectionFiveRadialProfile p w f) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hN : 3 ≤ L + d + 2 := by omega
+  set f0 : Real → ENNReal := brrsSectionFiveRadialProfile p w f with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set K : ENNReal :=
+    ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p with hK
+  have hKtop : K ≠ ∞ :=
+    ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      (brrsSectionFiveOneDimConstant_ne_top (d := d) hp)
+  set G : Real → Real → ENNReal := fun t r =>
+    brrsSectionFiveOneDimSource (L + d + 2) j p w f t r with hG
+  set S8 : Real → Real → ENNReal := fun t r =>
+    (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsSectionFiveFarSourceInner .subSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .subAdd (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addAdd (L + d + 2) j p w f t r) ^ p with hS8
+  set S8b : Real → Real → ENNReal := fun t r =>
+    (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsSectionFiveFarSourceInner .subSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .subAdd (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addSub (L + d + 2) j p w f t r) ^ p +
+      (brrsSectionFiveFarSourceInner .addAdd (L + d + 2) j p w f t r) ^ p with hS8b
+  have hreorder : ∀ t r : Real, S8 t r = S8b t r := by
+    intro t r
+    rw [hS8, hS8b]
+    ring
+  have hR0pos : 0 < R0 := brrsDyadicRadialBlockRadius_pos j 0
+  have hR0le : R0 ≤ 20 := brrsDyadicRadialBlockRadius_zero_le_twenty j
+  have hinnerpt : ∀ (t r : Real), r ∈ Ioc (0 : Real) R0 →
+      (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p ≤
+        K * (brrsSectionFiveInnerWeight d j p r * S8 t r) := by
+    intro t r hr
+    have hrinv : r ≤ ((2 : Real) ^ j)⁻¹ := by
+      have h := hr.2
+      rw [hR0, brrsDyadicRadialBlockRadius_coe] at h
+      simpa using h
+    have hlowr : ((2 : Real) ^ j) * r ≤ 16 := by
+      have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+      calc (2 : Real) ^ j * r ≤ (2 : Real) ^ j * ((2 : Real) ^ j)⁻¹ :=
+            mul_le_mul_of_nonneg_left hrinv hjpos.le
+        _ = 1 := mul_inv_cancel₀ (ne_of_gt hjpos)
+        _ ≤ 16 := by norm_num
+    have hstep := brrs_radial_cell_pointwise_lowOutput hd hp hC j
+      (le_of_lt hr.1) (G t r) (A t r) (hlow t r (le_of_lt hr.1) hlowr)
+    refine le_trans hstep ?_
+    have hGle := brrsSectionFiveOneDimSource_rpow_le hd hp (L + d + 2) j hN w f t r
+    calc
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r * (G t r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r *
+            (brrsSectionFiveOneDimConstant d p * S8 t r) :=
+        mul_le_mul' le_rfl hGle
+      _ = K * (brrsSectionFiveInnerWeight d j p r * S8 t r) := by
+        rw [hK]
+        ring
+  have houterpt : ∀ (t r : Real), r ∈ Ioc R0 20 →
+      (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p ≤
+        K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+    intro t r hr
+    have hrpos : 0 < r := lt_trans hR0pos hr.1
+    have hstep := brrs_radial_cell_pointwise_halfDensity hd hp hC hrpos
+      (G t r) (A t r) (hhd t r hrpos)
+    refine le_trans hstep ?_
+    have hGle := brrsSectionFiveOneDimSource_rpow_le hd hp (L + d + 2) j hN w f t r
+    calc
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r * (G t r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r *
+            (brrsSectionFiveOneDimConstant d p * S8 t r) :=
+        mul_le_mul' le_rfl hGle
+      _ = K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+        rw [hK]
+        ring
+  have hunion : Ioc (0 : Real) R0 ∪ Ioc R0 20 = Ioc (0 : Real) 20 :=
+    Ioc_union_Ioc_eq_Ioc hR0pos.le hR0le
+  have hper : ∀ t : Real,
+      (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) ≤
+        K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r := by
+    intro t
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) =
+          ∫⁻ r in (Ioc (0 : Real) R0 ∪ Ioc R0 20),
+            (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p := by
+        rw [hunion]
+      _ ≤ (∫⁻ r in Ioc (0 : Real) R0,
+            (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) +
+          ∫⁻ r in Ioc R0 20, (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p :=
+        lintegral_union_le _ _ _
+      _ ≤ (∫⁻ r in Ioc (0 : Real) R0,
+            K * (brrsSectionFiveInnerWeight d j p r * S8 t r)) +
+          ∫⁻ r in Ioc R0 20,
+            K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+        refine add_le_add ?_ ?_
+        · exact setLIntegral_mono' measurableSet_Ioc (fun r hr => hinnerpt t r hr)
+        · exact setLIntegral_mono' measurableSet_Ioc (fun r hr => houterpt t r hr)
+      _ = K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r := by
+        rw [lintegral_const_mul' _ _ hKtop, lintegral_const_mul' _ _ hKtop]
+  have hinner := brrs_innerRegion_sum_le (d := d) hd hp (L + d + 2) j T w f
+  have houterB : (∑ t ∈ T, ∫⁻ r in Ioc R0 20,
+      brrsSectionFiveSourceWeight d p r * S8 t r) ≤
+      (∑ m ∈ Finset.range j,
+          brrsDyadicRadialEndpointFourPhaseBlock T j m p
+            (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f0) +
+        brrsSectionFiveTerminalFourPhaseBlock T d p
+          (brrsSectionFiveOmegaENN 3 j) f0 +
+        (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0) := by
+    refine le_trans (le_of_eq ?_)
+      (brrs_outerRegion_sum_le (d := d) hd hp (L + d + 2) j T w f)
+    refine Finset.sum_congr rfl fun t _ => ?_
+    refine lintegral_congr fun r => ?_
+    rw [hreorder t r]
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) ≤
+        ∑ t ∈ T, (K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r) :=
+      Finset.sum_le_sum fun t _ => hper t
+    _ = K * ((∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          ∑ t ∈ T, ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r) := by
+      rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+      ring
+    _ ≤ K * ((brrsDyadicRadialInnerFourPhaseBlock T j p
+            (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j) f0 +
+          (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+            brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+            brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+            brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0)) +
+          ((∑ m ∈ Finset.range j,
+              brrsDyadicRadialEndpointFourPhaseBlock T j m p
+                (brrsSectionFiveSourceWeight d p)
+                (brrsSectionFiveOmegaENN 3 j) f0) +
+            brrsSectionFiveTerminalFourPhaseBlock T d p
+              (brrsSectionFiveOmegaENN 3 j) f0 +
+            (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0))) :=
+      mul_le_mul' le_rfl (add_le_add hinner houterB)
+    _ ≤ (K * 2) * brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+      unfold brrsSectionFiveWeightedOneDimTotal brrsSectionFiveNearSourceCellSum
+      set Ai : ENNReal := brrsDyadicRadialInnerFourPhaseBlock T j p
+        (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j) f0 with hAi
+      set Bi : ENNReal := ∑ m ∈ Finset.range j,
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p
+          (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f0 with hBi
+      set Di : ENNReal := brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f0 with hDi
+      set Fi : ENNReal :=
+        brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0 with hFi
+      have hFle : Fi ≤ Ai + Bi + Di + Fi := by
+        calc Fi = 0 + 0 + 0 + Fi := by ring
+          _ ≤ Ai + Bi + Di + Fi :=
+            add_le_add (add_le_add (add_le_add zero_le zero_le) zero_le) le_rfl
+      have hle : (Ai + Fi) + (Bi + Di + Fi) ≤ 2 * (Ai + Bi + Di + Fi) := by
+        calc (Ai + Fi) + (Bi + Di + Fi) = Ai + Bi + Di + Fi + Fi := by ring
+          _ ≤ Ai + Bi + Di + Fi + (Ai + Bi + Di + Fi) := add_le_add le_rfl hFle
+          _ = 2 * (Ai + Bi + Di + Fi) := by ring
+      calc
+        K * ((Ai + Fi) + (Bi + Di + Fi)) ≤ K * (2 * (Ai + Bi + Di + Fi)) :=
+          mul_le_mul' le_rfl hle
+        _ = (K * 2) * (Ai + Bi + Di + Fi) := by ring
+    _ = (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+          brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+      rw [hK]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The one-dimensional source over an arbitrary profile
+
+The Section 5 source terms were built over the radial profile of a Schwartz
+function.  The high-`p` interpolation of U1.I needs the same terms over an
+arbitrary measurable profile, because the Riesz--Thorin transport supplies
+its endpoint bounds on simple profiles.  These are the profile-general forms;
+the earlier ones are their radial-Schwartz instances.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+noncomputable def brrsSectionFiveOneDimSourceOf (d N j : Nat) (p : Real)
+    (g : Real → ENNReal) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sobolevExponent d p *
+    brrsSectionFiveOmegaFourPhaseENN N j t r s *
+      g s
+
+noncomputable def brrsSectionFiveFarSourceInnerOf
+    (sigma : BRRSSectionFiveFarSourcePhase) (d N j : Nat) (p : Real)
+    (g : Real → ENNReal) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+    (ENNReal.ofReal s) ^ sobolevExponent d p *
+      ENNReal.ofReal
+        (brrsSectionFiveOmega N j
+          (brrsSectionFiveFarSourcePhaseLine sigma t r s)) *
+        g s
+
+theorem measurable_brrsSectionFiveFarSourceInnerOf
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 0 < p)
+    (sigma : BRRSSectionFiveFarSourcePhase) (N j : Nat)
+    (g : Real → ENNReal) (hg : Measurable g) (t : Real) :
+    Measurable (fun r : Real =>
+      brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) := by
+  have hprof : Measurable (g) :=
+    hg
+  have hwt : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have homN : Measurable (fun u : Real =>
+      ENNReal.ofReal (brrsSectionFiveOmega N j u)) :=
+    ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hline : Measurable (fun q : Real × Real =>
+      brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2) := by
+    cases sigma
+    · exact (measurable_const.sub measurable_fst).sub measurable_snd
+    · exact (measurable_const.sub measurable_fst).add measurable_snd
+    · exact (measurable_const.add measurable_fst).sub measurable_snd
+    · exact (measurable_const.add measurable_fst).add measurable_snd
+  have hjoint : Measurable (fun q : Real × Real =>
+      (ENNReal.ofReal q.2) ^ sobolevExponent d p *
+        ENNReal.ofReal
+          (brrsSectionFiveOmega N j
+            (brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2)) *
+          g q.2) :=
+    ((hwt.comp measurable_snd).mul (homN.comp hline)).mul
+      (hprof.comp measurable_snd)
+  exact hjoint.lintegral_prod_right'
+    (ν := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat))))
+
+theorem brrsSectionFiveOneDimSourceOf_near_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat) (hN : 3 ≤ N)
+    (g : Real → ENNReal) (hg : Measurable g) (t r : Real) :
+    (∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            g s) ≤
+      ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) *
+        (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t - r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t - r) +
+          brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t + r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t + r)) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  set f0 : Real → ENNReal := g with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  have hprof : Measurable f0 :=
+    hg
+  have hg0meas : Measurable g0 :=
+    measurable_brrsSectionFiveTerminalSourceProfile hprof
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  set W : ENNReal :=
+    ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) with hW
+  have hsum : Measurable (fun s : Real =>
+      brrsSectionFiveOmegaENN 3 j (t - r - s) +
+        brrsSectionFiveOmegaENN 3 j (t - r + s) +
+          brrsSectionFiveOmegaENN 3 j (t + r - s) +
+            brrsSectionFiveOmegaENN 3 j (t + r + s)) :=
+    (((hom.comp (measurable_const.sub measurable_id)).add
+      (hom.comp (measurable_const.add measurable_id))).add
+      (hom.comp (measurable_const.sub measurable_id))).add
+      (hom.comp (measurable_const.add measurable_id))
+  calc
+    (∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) ≤
+        ∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+          W * ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * f0 s) := by
+      refine setLIntegral_mono' measurableSet_Ioc ?_
+      intro s hs
+      have hweight : (ENNReal.ofReal s) ^ sobolevExponent d p ≤ W := by
+        rw [hW, ← ENNReal.ofReal_rpow_of_nonneg (by positivity) hsob]
+        exact ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal hs.2) hsob
+      have hphase : brrsSectionFiveOmegaFourPhaseENN N j t r s ≤
+          brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s) := by
+        rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+        exact add_le_add (add_le_add (add_le_add
+          (brrsSectionFiveOmegaENN_antitone_order hN j _)
+          (brrsSectionFiveOmegaENN_antitone_order hN j _))
+          (brrsSectionFiveOmegaENN_antitone_order hN j _))
+          (brrsSectionFiveOmegaENN_antitone_order hN j _)
+      calc
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s ≤
+            W * (brrsSectionFiveOmegaENN 3 j (t - r - s) +
+              brrsSectionFiveOmegaENN 3 j (t - r + s) +
+                brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                  brrsSectionFiveOmegaENN 3 j (t + r + s)) * f0 s :=
+          mul_le_mul' (mul_le_mul' hweight hphase) le_rfl
+        _ = W * ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+              brrsSectionFiveOmegaENN 3 j (t - r + s) +
+                brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                  brrsSectionFiveOmegaENN 3 j (t + r + s)) * f0 s) := by
+          ring
+    _ ≤ ∫⁻ s : Real,
+          W * ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * g0 s) := by
+      rw [← lintegral_indicator measurableSet_Ioc]
+      refine lintegral_mono fun s => ?_
+      by_cases hs : s ∈ Ioc (0 : Real) ((2 : Real) ^ (10 : Nat))
+      · rw [indicator_of_mem hs]
+        have hmem : s ∈ Icc (0 : Real) ((2 : Real) ^ (10 : Nat)) :=
+          ⟨le_of_lt hs.1, hs.2⟩
+        have hgs : g0 s = f0 s := by
+          rw [hg0]
+          unfold brrsSectionFiveTerminalSourceProfile
+          rw [indicator_of_mem hmem]
+        rw [hgs]
+      · rw [indicator_of_notMem hs]
+        exact zero_le
+    _ = W * ∫⁻ s : Real,
+          ((brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * g0 s) := by
+      rw [lintegral_const_mul]
+      exact hsum.mul hg0meas
+    _ = W * (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r) +
+          brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) := by
+      congr 1
+      have hA : Measurable
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s) :=
+        (hom.comp (measurable_const.sub measurable_id)).mul hg0meas
+      have hB : Measurable
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s) :=
+        (hom.comp (measurable_const.add measurable_id)).mul hg0meas
+      have hC : Measurable
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s) :=
+        (hom.comp (measurable_const.sub measurable_id)).mul hg0meas
+      have hAB : Measurable (fun s : Real =>
+          brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s) := hA.add hB
+      have hABC : Measurable (fun s : Real =>
+          brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s) := hAB.add hC
+      have hfun : (fun s : Real =>
+          (brrsSectionFiveOmegaENN 3 j (t - r - s) +
+            brrsSectionFiveOmegaENN 3 j (t - r + s) +
+              brrsSectionFiveOmegaENN 3 j (t + r - s) +
+                brrsSectionFiveOmegaENN 3 j (t + r + s)) * g0 s) =
+          fun s : Real =>
+            brrsSectionFiveOmegaENN 3 j (t - r - s) * g0 s +
+              brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s +
+                brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s +
+                  brrsSectionFiveOmegaENN 3 j (t + r + s) * g0 s := by
+        funext s
+        ring
+      unfold brrsOneDimProfileConvolution brrsOneDimProfileConvolutionPlus
+      rw [hfun,
+        lintegral_add_left (μ := volume) hABC
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t + r + s) * g0 s),
+        lintegral_add_left (μ := volume) hAB
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t + r - s) * g0 s),
+        lintegral_add_left (μ := volume) hA
+          (fun s : Real => brrsSectionFiveOmegaENN 3 j (t - r + s) * g0 s)]
+
+theorem brrsSectionFiveOneDimSourceOf_far_eq
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (g : Real → ENNReal) (hg : Measurable g) (t r : Real) :
+    (∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            g s) =
+      brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r +
+        brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r +
+          brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r +
+            brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set f0 : Real → ENNReal := g with hf0
+  have hprof : Measurable f0 :=
+    hg
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  have homN : Measurable (fun u : Real =>
+      ENNReal.ofReal (brrsSectionFiveOmega N j u)) :=
+    ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hwt : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hA : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s) :=
+    (hwt.mul (homN.comp (measurable_const.sub measurable_id))).mul hprof
+  have hB : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s) :=
+    (hwt.mul (homN.comp (measurable_const.add measurable_id))).mul hprof
+  have hC : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s) :=
+    (hwt.mul (homN.comp (measurable_const.sub measurable_id))).mul hprof
+  have hAB : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s +
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s) :=
+    hA.add hB
+  have hABC : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s +
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s +
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s) :=
+    hAB.add hC
+  have hfun : (fun s : Real =>
+      (ENNReal.ofReal s) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) =
+      fun s : Real =>
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r - s)) * f0 s +
+            (ENNReal.ofReal s) ^ sobolevExponent d p *
+              ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s +
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s +
+        (ENNReal.ofReal s) ^ sobolevExponent d p *
+          ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f0 s := by
+    funext s
+    rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+    unfold brrsSectionFiveOmegaENN
+    ring
+  unfold brrsSectionFiveFarSourceInnerOf brrsSectionFiveFarSourcePhaseLine
+  rw [hfun,
+    lintegral_add_left (μ := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat)))) hABC
+      (fun s : Real => (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t + r + s)) * f0 s),
+    lintegral_add_left (μ := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat)))) hAB
+      (fun s : Real => (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t + r - s)) * f0 s),
+    lintegral_add_left (μ := volume.restrict (Ioi ((2 : Real) ^ (10 : Nat)))) hA
+      (fun s : Real => (ENNReal.ofReal s) ^ sobolevExponent d p *
+        ENNReal.ofReal (brrsSectionFiveOmega N j (t - r + s)) * f0 s)]
+
+theorem brrsSectionFiveOneDimSourceOf_le_near_add_far
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat) (hN : 3 ≤ N)
+    (g : Real → ENNReal) (hg : Measurable g) (t r : Real) :
+    brrsSectionFiveOneDimSourceOf d N j p g t r ≤
+      ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) *
+        (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t - r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t - r) +
+          brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t + r) +
+          brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+            (brrsSectionFiveTerminalSourceProfile
+              (g)) (t + r)) +
+      (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r +
+        brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r +
+          brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r +
+            brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) := by
+  have hunion : Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)) ∪
+      Ioi ((2 : Real) ^ (10 : Nat)) = Ioi (0 : Real) :=
+    Ioc_union_Ioi_eq_Ioi (by positivity)
+  calc
+    brrsSectionFiveOneDimSourceOf d N j p g t r =
+        ∫⁻ s in (Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)) ∪
+            Ioi ((2 : Real) ^ (10 : Nat))),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s *
+              g s := by
+      rw [hunion]
+      rfl
+    _ ≤ (∫⁻ s in Ioc (0 : Real) ((2 : Real) ^ (10 : Nat)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s *
+              g s) +
+        ∫⁻ s in Ioi ((2 : Real) ^ (10 : Nat)),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s *
+              g s :=
+      lintegral_union_le _ _ _
+    _ ≤ _ := by
+      refine add_le_add
+        (brrsSectionFiveOneDimSourceOf_near_le hd hp N j hN g hg t r) ?_
+      exact le_of_eq (brrsSectionFiveOneDimSourceOf_far_eq hd hp N j g hg t r)
+
+theorem brrsSectionFiveOneDimSourceOf_rpow_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat) (hN : 3 ≤ N)
+    (g : Real → ENNReal) (hg : Measurable g) (t r : Real) :
+    (brrsSectionFiveOneDimSourceOf d N j p g t r) ^ p ≤
+      brrsSectionFiveOneDimConstant d p *
+        ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t - r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t - r)) ^ p +
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t + r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t + r)) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p) := by
+  have hp1 : (1 : Real) ≤ p := le_trans one_le_two hp
+  have hp0 : 0 ≤ p := le_trans zero_le_one hp1
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  set f0 : Real → ENNReal := g with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set B1 : ENNReal := brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+    g0 (t - r) with hB1
+  set B2 : ENNReal := brrsOneDimProfileConvolutionPlus
+    (brrsSectionFiveOmegaENN 3 j) g0 (t - r) with hB2
+  set B3 : ENNReal := brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+    g0 (t + r) with hB3
+  set B4 : ENNReal := brrsOneDimProfileConvolutionPlus
+    (brrsSectionFiveOmegaENN 3 j) g0 (t + r) with hB4
+  set F1 : ENNReal := brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r with hF1
+  set F2 : ENNReal := brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r with hF2
+  set F3 : ENNReal := brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r with hF3
+  set F4 : ENNReal := brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r with hF4
+  set W : ENNReal :=
+    ENNReal.ofReal (((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) with hW
+  have hWone : (1 : ENNReal) ≤ W ^ p := by
+    have hreal : (1 : Real) ≤ ((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p :=
+      Real.one_le_rpow (by norm_num) hsob
+    have : (1 : ENNReal) ≤ W := by
+      rw [hW, ← ENNReal.ofReal_one]
+      exact ENNReal.ofReal_le_ofReal hreal
+    calc (1 : ENNReal) = (1 : ENNReal) ^ p := by simp
+      _ ≤ W ^ p := ENNReal.rpow_le_rpow this hp0
+  have hWp : W ^ p =
+      ENNReal.ofReal ((((2 : Real) ^ (10 : Nat)) ^ sobolevExponent d p) ^ p) := by
+    rw [hW, ENNReal.ofReal_rpow_of_nonneg (Real.rpow_nonneg (by norm_num) _) hp0]
+  have hbase := brrsSectionFiveOneDimSourceOf_le_near_add_far hd hp N j hN g hg t r
+  have hsplit : (brrsSectionFiveOneDimSourceOf d N j p g t r) ^ p ≤
+      (2 : ENNReal) ^ (p - 1) *
+        ((W * (B1 + B2 + B3 + B4)) ^ p + (F1 + F2 + F3 + F4) ^ p) := by
+    refine le_trans (ENNReal.rpow_le_rpow hbase hp0) ?_
+    exact ENNReal.rpow_add_le_mul_rpow_add_rpow _ _ hp1
+  have hnear : (W * (B1 + B2 + B3 + B4)) ^ p ≤
+      W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) * (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p)) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hp0]
+    exact mul_le_mul' le_rfl (brrs_ennreal_four_rpow_le hp1 B1 B2 B3 B4)
+  have hfar : (F1 + F2 + F3 + F4) ^ p ≤
+      (2 : ENNReal) ^ (2 * (p - 1)) * (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p) :=
+    brrs_ennreal_four_rpow_le hp1 F1 F2 F3 F4
+  have hpow : (2 : ENNReal) ^ (p - 1) * (2 : ENNReal) ^ (2 * (p - 1)) =
+      (2 : ENNReal) ^ (3 * (p - 1)) := by
+    rw [← ENNReal.rpow_add _ _ (by norm_num) (by norm_num)]
+    congr 1
+    ring
+  calc
+    (brrsSectionFiveOneDimSourceOf d N j p g t r) ^ p ≤
+        (2 : ENNReal) ^ (p - 1) *
+          ((W * (B1 + B2 + B3 + B4)) ^ p + (F1 + F2 + F3 + F4) ^ p) := hsplit
+    _ ≤ (2 : ENNReal) ^ (p - 1) *
+          (W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p)) +
+            (2 : ENNReal) ^ (2 * (p - 1)) * (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) :=
+      mul_le_mul' le_rfl (add_le_add hnear hfar)
+    _ ≤ (2 : ENNReal) ^ (p - 1) *
+          (W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p)) +
+            W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p))) := by
+      refine mul_le_mul' le_rfl (add_le_add le_rfl ?_)
+      calc
+        (2 : ENNReal) ^ (2 * (p - 1)) * (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p) =
+            1 * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) := by rw [one_mul]
+        _ ≤ W ^ p * ((2 : ENNReal) ^ (2 * (p - 1)) *
+              (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) :=
+          mul_le_mul' hWone le_rfl
+    _ = ((2 : ENNReal) ^ (p - 1) * (2 : ENNReal) ^ (2 * (p - 1))) * W ^ p *
+          (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p +
+            (F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p)) := by ring
+    _ = brrsSectionFiveOneDimConstant d p *
+          (B1 ^ p + B2 ^ p + B3 ^ p + B4 ^ p +
+            F1 ^ p + F2 ^ p + F3 ^ p + F4 ^ p) := by
+      rw [hpow, hWp]
+      unfold brrsSectionFiveOneDimConstant
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The compact radial core over an arbitrary profile
+
+The two region estimates and the radial core, restated over an arbitrary
+measurable profile.  Together they give the compact weighted estimate for any
+nonnegative radial output obeying the two kernel majorants, with no Schwartz
+input anywhere: this is the form the interpolation domain of U1.I requires.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+theorem brrs_innerRegionOf_sum_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (T : Finset Real) (g : Real → ENNReal) (hg : Measurable g) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) (brrsDyadicRadialBlockRadius j 0 : Real),
+        brrsSectionFiveInnerWeight d j p r *
+          ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t + r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t + r)) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p)) ≤
+      brrsDyadicRadialInnerFourPhaseBlock T j p
+          (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j)
+          (g) +
+        (brrsSectionFiveFarSourceTotal .subSub T d N j p
+            (g) +
+          brrsSectionFiveFarSourceTotal .subAdd T d N j p
+            (g) +
+          brrsSectionFiveFarSourceTotal .addSub T d N j p
+            (g) +
+          brrsSectionFiveFarSourceTotal .addAdd T d N j p
+            (g)) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set f0 : Real → ENNReal := g with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set W : Real → ENNReal := brrsSectionFiveInnerWeight d j p with hW
+  have hWmeas : Measurable W := measurable_brrsSectionFiveInnerWeight d j p
+  have hprof : Measurable f0 :=
+    hg
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  have hg0meas : Measurable g0 :=
+    measurable_brrsSectionFiveTerminalSourceProfile hprof
+  have hle : ∀ s : Real, g0 s ≤ f0 s := by
+    intro s
+    rw [hg0]
+    unfold brrsSectionFiveTerminalSourceProfile
+    exact Set.indicator_le_self' (fun a _ => zero_le) s
+  have hmono : ∀ x : Real,
+      brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 x ≤
+        brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 x := by
+    intro x
+    unfold brrsOneDimProfileConvolution
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hmonoP : ∀ x : Real,
+      brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 x ≤
+        brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 x := by
+    intro x
+    unfold brrsOneDimProfileConvolutionPlus
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hconv : Measurable
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolution hom hg0meas
+  have hconvP : Measurable
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolutionPlus hom hg0meas
+  have hrpow : ∀ g : Real → ENNReal, Measurable g →
+      Measurable (fun r : Real => (g r) ^ p) := fun g hg =>
+    ENNReal.continuous_rpow_const.measurable.comp hg
+  have hdist : ∀ t : Real,
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+        ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p)) =
+        (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p) +
+          (∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p) +
+          ∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p := by
+    intro t
+    exact brrs_lintegral_mul_sum8 W _ _ _ _ _ _ _ _ hWmeas
+      (hrpow _ (hconv.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconv.comp (measurable_const.add measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.add measurable_id)))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInnerOf hd hp0 _ N j g hg t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInnerOf hd hp0 _ N j g hg t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInnerOf hd hp0 _ N j g hg t))
+  have hnearC : ∀ (x : Real → Real),
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+        ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+    intro x
+    calc
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r _
+        exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hmono (x r)) hp0.le)
+      _ ≤ ∫⁻ r in Icc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p :=
+        lintegral_mono_set Ioc_subset_Icc_self
+  have hnearP : ∀ (x : Real → Real),
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+        ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+    intro x
+    calc
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (x r)) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r _
+        exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hmonoP (x r)) hp0.le)
+      _ ≤ ∫⁻ r in Icc (0 : Real) R0, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (x r)) ^ p :=
+        lintegral_mono_set Ioc_subset_Icc_self
+  have hfar : ∀ (sigma : BRRSSectionFiveFarSourcePhase) (t : Real),
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p) ≤
+        ∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r *
+            (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p := by
+    intro sigma t
+    calc
+      (∫⁻ r in Ioc (0 : Real) R0, W r *
+          (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p) ≤
+          ∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveFarSourceOutputWeight d p r *
+              (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p := by
+        refine setLIntegral_mono' measurableSet_Ioc ?_
+        intro r hr
+        exact mul_le_mul'
+          (brrsSectionFiveInnerWeight_le_sourceWeight hd hp j hr.1 hr.2) le_rfl
+      _ ≤ ∫⁻ r in Ioc (0 : Real) 20,
+            brrsSectionFiveFarSourceOutputWeight d p r *
+              (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p := by
+        refine lintegral_mono_set ?_
+        exact Ioc_subset_Ioc_right (brrsDyadicRadialBlockRadius_zero_le_twenty j)
+  rw [Finset.sum_congr rfl (fun t _ => hdist t)]
+  simp only [Finset.sum_add_distrib]
+  calc
+    _ ≤ (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+        (∑ t ∈ T, ∫⁻ r in Icc (0 : Real) R0, W r *
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+        brrsSectionFiveFarSourceTotal .subSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .subAdd T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addAdd T d N j p f0 := by
+      refine add_le_add (add_le_add (add_le_add (add_le_add (add_le_add
+        (add_le_add (add_le_add ?_ ?_) ?_) ?_) ?_) ?_) ?_) ?_
+      · exact Finset.sum_le_sum fun t _ => hnearC (fun r => t - r)
+      · exact Finset.sum_le_sum fun t _ => hnearP (fun r => t - r)
+      · exact Finset.sum_le_sum fun t _ => hnearC (fun r => t + r)
+      · exact Finset.sum_le_sum fun t _ => hnearP (fun r => t + r)
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+    _ = _ := by
+      unfold brrsDyadicRadialInnerFourPhaseBlock brrsDyadicRadialInnerBlockAdd
+        brrsDyadicRadialInnerBlockSub brrsDyadicRadialInnerBlockAddPlus
+        brrsDyadicRadialInnerBlockSubPlus
+      ring
+
+theorem brrs_outerRegionOf_sum_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (T : Finset Real) (g : Real → ENNReal) (hg : Measurable g) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (brrsDyadicRadialBlockRadius j 0 : Real) 20,
+        brrsSectionFiveSourceWeight d p r *
+          ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t + r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t - r)) ^ p +
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j)
+              (brrsSectionFiveTerminalSourceProfile
+                (g)) (t + r)) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p +
+            (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p)) ≤
+      (∑ m ∈ Finset.range j,
+          brrsDyadicRadialEndpointFourPhaseBlock T j m p
+            (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j)
+            (g)) +
+        brrsSectionFiveTerminalFourPhaseBlock T d p
+          (brrsSectionFiveOmegaENN 3 j) (g) +
+        (brrsSectionFiveFarSourceTotal .subSub T d N j p
+            (g) +
+          brrsSectionFiveFarSourceTotal .subAdd T d N j p
+            (g) +
+          brrsSectionFiveFarSourceTotal .addSub T d N j p
+            (g) +
+          brrsSectionFiveFarSourceTotal .addAdd T d N j p
+            (g)) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set f0 : Real → ENNReal := g with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set W : Real → ENNReal := brrsSectionFiveSourceWeight d p with hW
+  have hWmeas : Measurable W := by
+    rw [hW]
+    unfold brrsSectionFiveSourceWeight
+    exact ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hprof : Measurable f0 :=
+    hg
+  have hg0meas : Measurable g0 :=
+    measurable_brrsSectionFiveTerminalSourceProfile hprof
+  have hle : ∀ s : Real, g0 s ≤ f0 s := by
+    intro s
+    rw [hg0]
+    unfold brrsSectionFiveTerminalSourceProfile
+    exact Set.indicator_le_self' (fun a _ => zero_le) s
+  have hom : Measurable (brrsSectionFiveOmegaENN 3 j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega 3 j)
+  have hconv : Measurable
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolution hom hg0meas
+  have hconvP : Measurable
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0) :=
+    measurable_brrsOneDimProfileConvolutionPlus hom hg0meas
+  have hmono : ∀ y : Real,
+      brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 y ≤
+        brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 y := by
+    intro y
+    unfold brrsOneDimProfileConvolution
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hmonoP : ∀ y : Real,
+      brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 y ≤
+        brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 y := by
+    intro y
+    unfold brrsOneDimProfileConvolutionPlus
+    exact lintegral_mono fun s => mul_le_mul' le_rfl (hle s)
+  have hrpow : ∀ g : Real → ENNReal, Measurable g →
+      Measurable (fun r : Real => (g r) ^ p) := fun g hg =>
+    ENNReal.continuous_rpow_const.measurable.comp hg
+  have hdist : ∀ t : Real,
+      (∫⁻ r in Ioc R0 20, W r *
+        ((brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+          (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p +
+          (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p)) =
+        (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInnerOf .subSub d N j p g t r) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInnerOf .subAdd d N j p g t r) ^ p) +
+          (∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInnerOf .addSub d N j p g t r) ^ p) +
+          ∫⁻ r in Ioc R0 20, W r *
+            (brrsSectionFiveFarSourceInnerOf .addAdd d N j p g t r) ^ p := by
+    intro t
+    exact brrs_lintegral_mul_sum8 W _ _ _ _ _ _ _ _ hWmeas
+      (hrpow _ (hconv.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconv.comp (measurable_const.add measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.sub measurable_id)))
+      (hrpow _ (hconvP.comp (measurable_const.add measurable_id)))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInnerOf hd hp0 _ N j g hg t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInnerOf hd hp0 _ N j g hg t))
+      (hrpow _ (measurable_brrsSectionFiveFarSourceInnerOf hd hp0 _ N j g hg t))
+  have hfar : ∀ (sigma : BRRSSectionFiveFarSourcePhase) (t : Real),
+      (∫⁻ r in Ioc R0 20, W r *
+          (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p) ≤
+        ∫⁻ r in Ioc (0 : Real) 20,
+          brrsSectionFiveFarSourceOutputWeight d p r *
+            (brrsSectionFiveFarSourceInnerOf sigma d N j p g t r) ^ p := by
+    intro sigma t
+    exact lintegral_mono_set (Ioc_subset_Ioc_left (brrsDyadicRadialBlockRadius_pos j 0).le)
+  have hcomp := fun (Conv : (Real → ENNReal) → Real → ENNReal)
+      (hcm : Measurable (Conv g0)) (hmo : ∀ y : Real, Conv g0 y ≤ Conv f0 y)
+      (x : Real → Real → Real) (hx : ∀ t : Real, Measurable (x t)) =>
+    brrs_outerRegion_near_component_le hd hp j T f0 g0 hle Conv hcm hmo x hx
+  rw [Finset.sum_congr rfl (fun t _ => hdist t)]
+  simp only [Finset.sum_add_distrib]
+  calc
+    _ ≤ ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+        ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+        ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t - r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p) +
+        ((∑ m ∈ Finset.range j, ∑ t ∈ T,
+            ∫⁻ r in Icc (brrsDyadicRadialBlockRadius j m : Real)
+              (2 * (brrsDyadicRadialBlockRadius j m : Real)), W r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) f0 (t + r)) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Icc (1 : Real) 20,
+            brrsSectionFiveTerminalWeight d p r *
+              (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p) +
+        brrsSectionFiveFarSourceTotal .subSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .subAdd T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addSub T d N j p f0 +
+        brrsSectionFiveFarSourceTotal .addAdd T d N j p f0 := by
+      refine add_le_add (add_le_add (add_le_add (add_le_add (add_le_add
+        (add_le_add (add_le_add ?_ ?_) ?_) ?_) ?_) ?_) ?_) ?_
+      · exact hcomp _ hconv hmono (fun t r => t - r)
+          (fun t => measurable_const.sub measurable_id)
+      · exact hcomp _ hconv hmono (fun t r => t + r)
+          (fun t => measurable_const.add measurable_id)
+      · exact hcomp _ hconvP hmonoP (fun t r => t - r)
+          (fun t => measurable_const.sub measurable_id)
+      · exact hcomp _ hconvP hmonoP (fun t r => t + r)
+          (fun t => measurable_const.add measurable_id)
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+      · exact Finset.sum_le_sum fun t _ => hfar _ t
+    _ = _ := by
+      unfold brrsDyadicRadialEndpointFourPhaseBlock brrsDyadicRadialBlockAdd
+        brrsDyadicRadialBlockSub brrsDyadicRadialBlockAddPlus
+        brrsDyadicRadialBlockSubPlus brrsSectionFiveTerminalFourPhaseBlock
+      simp only [Finset.sum_add_distrib]
+      ring
+
+theorem brrsSectionFiveCompactRadialCoreOf_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (L j : Nat) (T : Finset Real)
+    (g : Real → ENNReal) (hg : Measurable g)
+    (A : Real → Real → ENNReal) {C : Real} (hC : 0 < C)
+    (hlow : ∀ (t r : Real), 0 ≤ r → ((2 : Real) ^ j) * r ≤ 16 →
+      A t r ≤ ENNReal.ofReal (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) *
+        brrsSectionFiveOneDimSourceOf d (L + d + 2) j p g t r)
+    (hhd : ∀ (t r : Real), 0 < r →
+      A t r ≤ ENNReal.ofReal (C * r ^ (-(((d : Real) - 1) / 2))) *
+        brrsSectionFiveOneDimSourceOf d (L + d + 2) j p g t r) :
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) ≤
+      (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+        brrsSectionFiveWeightedOneDimTotal T d L j p
+          (g) := by
+  classical
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hN : 3 ≤ L + d + 2 := by omega
+  set f0 : Real → ENNReal := g with hf0
+  set g0 : Real → ENNReal := brrsSectionFiveTerminalSourceProfile f0 with hg0
+  set R0 : Real := (brrsDyadicRadialBlockRadius j 0 : Real) with hR0
+  set K : ENNReal :=
+    ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p with hK
+  have hKtop : K ≠ ∞ :=
+    ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      (brrsSectionFiveOneDimConstant_ne_top (d := d) hp)
+  set G : Real → Real → ENNReal := fun t r =>
+    brrsSectionFiveOneDimSourceOf d (L + d + 2) j p g t r with hG
+  set S8 : Real → Real → ENNReal := fun t r =>
+    (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .subSub d (L + d + 2) j p g t r) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .subAdd d (L + d + 2) j p g t r) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .addSub d (L + d + 2) j p g t r) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .addAdd d (L + d + 2) j p g t r) ^ p with hS8
+  set S8b : Real → Real → ENNReal := fun t r =>
+    (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolution (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t - r)) ^ p +
+      (brrsOneDimProfileConvolutionPlus (brrsSectionFiveOmegaENN 3 j) g0 (t + r)) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .subSub d (L + d + 2) j p g t r) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .subAdd d (L + d + 2) j p g t r) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .addSub d (L + d + 2) j p g t r) ^ p +
+      (brrsSectionFiveFarSourceInnerOf .addAdd d (L + d + 2) j p g t r) ^ p with hS8b
+  have hreorder : ∀ t r : Real, S8 t r = S8b t r := by
+    intro t r
+    rw [hS8, hS8b]
+    ring
+  have hR0pos : 0 < R0 := brrsDyadicRadialBlockRadius_pos j 0
+  have hR0le : R0 ≤ 20 := brrsDyadicRadialBlockRadius_zero_le_twenty j
+  have hinnerpt : ∀ (t r : Real), r ∈ Ioc (0 : Real) R0 →
+      (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p ≤
+        K * (brrsSectionFiveInnerWeight d j p r * S8 t r) := by
+    intro t r hr
+    have hrinv : r ≤ ((2 : Real) ^ j)⁻¹ := by
+      have h := hr.2
+      rw [hR0, brrsDyadicRadialBlockRadius_coe] at h
+      simpa using h
+    have hlowr : ((2 : Real) ^ j) * r ≤ 16 := by
+      have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+      calc (2 : Real) ^ j * r ≤ (2 : Real) ^ j * ((2 : Real) ^ j)⁻¹ :=
+            mul_le_mul_of_nonneg_left hrinv hjpos.le
+        _ = 1 := mul_inv_cancel₀ (ne_of_gt hjpos)
+        _ ≤ 16 := by norm_num
+    have hstep := brrs_radial_cell_pointwise_lowOutput hd hp hC j
+      (le_of_lt hr.1) (G t r) (A t r) (hlow t r (le_of_lt hr.1) hlowr)
+    refine le_trans hstep ?_
+    have hGle := brrsSectionFiveOneDimSourceOf_rpow_le hd hp (L + d + 2) j hN g hg t r
+    calc
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r * (G t r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveInnerWeight d j p r *
+            (brrsSectionFiveOneDimConstant d p * S8 t r) :=
+        mul_le_mul' le_rfl hGle
+      _ = K * (brrsSectionFiveInnerWeight d j p r * S8 t r) := by
+        rw [hK]
+        ring
+  have houterpt : ∀ (t r : Real), r ∈ Ioc R0 20 →
+      (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p ≤
+        K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+    intro t r hr
+    have hrpos : 0 < r := lt_trans hR0pos hr.1
+    have hstep := brrs_radial_cell_pointwise_halfDensity hd hp hC hrpos
+      (G t r) (A t r) (hhd t r hrpos)
+    refine le_trans hstep ?_
+    have hGle := brrsSectionFiveOneDimSourceOf_rpow_le hd hp (L + d + 2) j hN g hg t r
+    calc
+      ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r * (G t r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r *
+            (brrsSectionFiveOneDimConstant d p * S8 t r) :=
+        mul_le_mul' le_rfl hGle
+      _ = K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+        rw [hK]
+        ring
+  have hunion : Ioc (0 : Real) R0 ∪ Ioc R0 20 = Ioc (0 : Real) 20 :=
+    Ioc_union_Ioc_eq_Ioc hR0pos.le hR0le
+  have hper : ∀ t : Real,
+      (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) ≤
+        K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r := by
+    intro t
+    calc
+      (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) =
+          ∫⁻ r in (Ioc (0 : Real) R0 ∪ Ioc R0 20),
+            (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p := by
+        rw [hunion]
+      _ ≤ (∫⁻ r in Ioc (0 : Real) R0,
+            (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) +
+          ∫⁻ r in Ioc R0 20, (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p :=
+        lintegral_union_le _ _ _
+      _ ≤ (∫⁻ r in Ioc (0 : Real) R0,
+            K * (brrsSectionFiveInnerWeight d j p r * S8 t r)) +
+          ∫⁻ r in Ioc R0 20,
+            K * (brrsSectionFiveSourceWeight d p r * S8 t r) := by
+        refine add_le_add ?_ ?_
+        · exact setLIntegral_mono' measurableSet_Ioc (fun r hr => hinnerpt t r hr)
+        · exact setLIntegral_mono' measurableSet_Ioc (fun r hr => houterpt t r hr)
+      _ = K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r := by
+        rw [lintegral_const_mul' _ _ hKtop, lintegral_const_mul' _ _ hKtop]
+  have hinner := brrs_innerRegionOf_sum_le (d := d) hd hp (L + d + 2) j T g hg
+  have houterB : (∑ t ∈ T, ∫⁻ r in Ioc R0 20,
+      brrsSectionFiveSourceWeight d p r * S8 t r) ≤
+      (∑ m ∈ Finset.range j,
+          brrsDyadicRadialEndpointFourPhaseBlock T j m p
+            (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f0) +
+        brrsSectionFiveTerminalFourPhaseBlock T d p
+          (brrsSectionFiveOmegaENN 3 j) f0 +
+        (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0) := by
+    refine le_trans (le_of_eq ?_)
+      (brrs_outerRegionOf_sum_le (d := d) hd hp (L + d + 2) j T g hg)
+    refine Finset.sum_congr rfl fun t _ => ?_
+    refine lintegral_congr fun r => ?_
+    rw [hreorder t r]
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+        (ENNReal.ofReal r) ^ (d - 1) * (A t r) ^ p) ≤
+        ∑ t ∈ T, (K * (∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          K * ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r) :=
+      Finset.sum_le_sum fun t _ => hper t
+    _ = K * ((∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) R0,
+            brrsSectionFiveInnerWeight d j p r * S8 t r) +
+          ∑ t ∈ T, ∫⁻ r in Ioc R0 20,
+            brrsSectionFiveSourceWeight d p r * S8 t r) := by
+      rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+      ring
+    _ ≤ K * ((brrsDyadicRadialInnerFourPhaseBlock T j p
+            (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j) f0 +
+          (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+            brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+            brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+            brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0)) +
+          ((∑ m ∈ Finset.range j,
+              brrsDyadicRadialEndpointFourPhaseBlock T j m p
+                (brrsSectionFiveSourceWeight d p)
+                (brrsSectionFiveOmegaENN 3 j) f0) +
+            brrsSectionFiveTerminalFourPhaseBlock T d p
+              (brrsSectionFiveOmegaENN 3 j) f0 +
+            (brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+              brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0))) :=
+      mul_le_mul' le_rfl (add_le_add hinner houterB)
+    _ ≤ (K * 2) * brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+      unfold brrsSectionFiveWeightedOneDimTotal brrsSectionFiveNearSourceCellSum
+      set Ai : ENNReal := brrsDyadicRadialInnerFourPhaseBlock T j p
+        (brrsSectionFiveInnerWeight d j p) (brrsSectionFiveOmegaENN 3 j) f0 with hAi
+      set Bi : ENNReal := ∑ m ∈ Finset.range j,
+        brrsDyadicRadialEndpointFourPhaseBlock T j m p
+          (brrsSectionFiveSourceWeight d p) (brrsSectionFiveOmegaENN 3 j) f0 with hBi
+      set Di : ENNReal := brrsSectionFiveTerminalFourPhaseBlock T d p
+        (brrsSectionFiveOmegaENN 3 j) f0 with hDi
+      set Fi : ENNReal :=
+        brrsSectionFiveFarSourceTotal .subSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .subAdd T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addSub T d (L + d + 2) j p f0 +
+          brrsSectionFiveFarSourceTotal .addAdd T d (L + d + 2) j p f0 with hFi
+      have hFle : Fi ≤ Ai + Bi + Di + Fi := by
+        calc Fi = 0 + 0 + 0 + Fi := by ring
+          _ ≤ Ai + Bi + Di + Fi :=
+            add_le_add (add_le_add (add_le_add zero_le zero_le) zero_le) le_rfl
+      have hle : (Ai + Fi) + (Bi + Di + Fi) ≤ 2 * (Ai + Bi + Di + Fi) := by
+        calc (Ai + Fi) + (Bi + Di + Fi) = Ai + Bi + Di + Fi + Fi := by ring
+          _ ≤ Ai + Bi + Di + Fi + (Ai + Bi + Di + Fi) := add_le_add le_rfl hFle
+          _ = 2 * (Ai + Bi + Di + Fi) := by ring
+      calc
+        K * ((Ai + Fi) + (Bi + Di + Fi)) ≤ K * (2 * (Ai + Bi + Di + Fi)) :=
+          mul_le_mul' le_rfl hle
+        _ = (K * 2) * (Ai + Bi + Di + Fi) := by ring
+    _ = (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+          brrsSectionFiveWeightedOneDimTotal T d L j p f0 := by
+      rw [hK]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The positive radial kernel operator on the interpolation domain
+
+Section 5 controlled the annular half-wave through its radial kernel.  The
+same kernel defines a positive operator on the profile line, and the two
+kernel majorants dominate it by the one-dimensional source over an arbitrary
+profile -- with no Fourier inversion, hence no Schwartz hypothesis.  This is
+the operator the high-`p` interpolation of U1.I is carried out on.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The positive radial kernel operator of Section 5, acting on the weighted
+profile.  For a radial Schwartz input the weighted profile is
+`brrsSectionFiveRadialProfile`, and this quantity dominates the annular
+half-wave; but it is defined for an arbitrary measurable profile, so it is
+available on the domain of the Riesz--Thorin transport. -/
+noncomputable def brrsRadialKernelWeightedSource
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat) (p : Real)
+    (g : Real → ENNReal) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi (0 : Real),
+    ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ *
+      ((ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p)) * g s)
+
+/-- Splitting of the radial weight across the Sobolev exponent: this is the
+identity that lets the positive kernel operator on the weighted profile be
+compared with the one-dimensional source. -/
+theorem brrs_ofReal_rpow_halfDensity_split
+    {d : Nat} {p : Real} (hp : 0 < p) {s : Real} (hs : 0 < s) :
+    (ENNReal.ofReal s) ^ (((d : Real) - 1) / 2) *
+        (ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p)) =
+      (ENNReal.ofReal s) ^ sobolevExponent d p := by
+  have hne : ENNReal.ofReal s ≠ 0 := by
+    simpa using (ENNReal.ofReal_pos.mpr hs).ne'
+  have hsum : ((d : Real) - 1) / 2 + (-(((d : Real) - 1) / p)) =
+      sobolevExponent d p := by
+    unfold sobolevExponent
+    field_simp
+    ring
+  rw [← ENNReal.rpow_add _ _ hne ENNReal.ofReal_ne_top, hsum]
+
+/-- The positive kernel operator on the weighted profile is dominated by the
+one-dimensional source, with the constant of any half-density-type kernel
+majorant.  This is the profile-general analogue of
+`enorm_brrsDyadicHalfWave_le_oneDimSource`; unlike it, no Schwartz input and
+no Fourier inversion occur, so it holds on the interpolation domain. -/
+theorem brrsRadialKernelWeightedSource_le_oneDimSourceOf
+    {d N : Nat} (Phi : BRRSAnnularCutoff) {p : Real} (hp : 0 < p)
+    (v : BRRSSpace d) (j : Nat) (t r : Real) (g : Real → ENNReal)
+    {K : Real} (hK : 0 ≤ K)
+    (hmaj : ∀ s : Real, 0 < s →
+      ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+        K * s ^ (((d : Real) - 1) / 2) *
+          (brrsSectionFiveOmega N j (t - r - s) +
+            brrsSectionFiveOmega N j (t - r + s) +
+              brrsSectionFiveOmega N j (t + r - s) +
+                brrsSectionFiveOmega N j (t + r + s))) :
+    brrsRadialKernelWeightedSource Phi v j p g t r ≤
+      ENNReal.ofReal K * brrsSectionFiveOneDimSourceOf d N j p g t r := by
+  unfold brrsRadialKernelWeightedSource brrsSectionFiveOneDimSourceOf
+  calc
+    (∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ *
+          ((ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p)) * g s)) ≤
+        ∫⁻ s in Ioi (0 : Real), ENNReal.ofReal K *
+          ((ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s * g s) := by
+      refine setLIntegral_mono' measurableSet_Ioi ?_
+      intro s hs
+      have hs0 : 0 < s := hs
+      have hKs : (0 : Real) ≤ K * s ^ (((d : Real) - 1) / 2) :=
+        mul_nonneg hK (Real.rpow_nonneg hs0.le _)
+      have hker : ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ ≤
+          ENNReal.ofReal K * (ENNReal.ofReal s) ^ (((d : Real) - 1) / 2) *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s := by
+        rw [← ofReal_norm, brrsSectionFiveOmegaFourPhaseENN,
+          ENNReal.ofReal_rpow_of_pos hs0,
+          ← ENNReal.ofReal_mul hK, ← ENNReal.ofReal_mul hKs]
+        exact ENNReal.ofReal_le_ofReal (hmaj s hs0)
+      calc
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ *
+            ((ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p)) * g s) ≤
+            (ENNReal.ofReal K * (ENNReal.ofReal s) ^ (((d : Real) - 1) / 2) *
+                brrsSectionFiveOmegaFourPhaseENN N j t r s) *
+              ((ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p)) * g s) :=
+          mul_le_mul' hker le_rfl
+        _ = ENNReal.ofReal K *
+              (((ENNReal.ofReal s) ^ (((d : Real) - 1) / 2) *
+                  (ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p))) *
+                brrsSectionFiveOmegaFourPhaseENN N j t r s * g s) := by
+          ring
+        _ = ENNReal.ofReal K *
+              ((ENNReal.ofReal s) ^ sobolevExponent d p *
+                brrsSectionFiveOmegaFourPhaseENN N j t r s * g s) := by
+          rw [brrs_ofReal_rpow_halfDensity_split (d := d) hp hs0]
+    _ = ENNReal.ofReal K * ∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal s) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaFourPhaseENN N j t r s * g s := by
+      rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+
+/-- The half-density instance of the pointwise comparison. -/
+theorem brrsRadialKernelWeightedSource_halfDensity_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) (N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+      ∀ {p : Real}, 0 < p → ∀ (j : Nat) (t r : Real), 0 < r →
+      ∀ g : Real → ENNReal,
+        brrsRadialKernelWeightedSource Phi v j p g t r ≤
+          ENNReal.ofReal (C * r ^ (-(((d : Real) - 1) / 2))) *
+            brrsSectionFiveOneDimSourceOf d N j p g t r := by
+  obtain ⟨C, hC, hmaj⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_halfDensity_majorant
+      (d := d) (N := N) hd Phi
+  refine ⟨C, hC, ?_⟩
+  intro v hv p hp j t r hr g
+  have hK : (0 : Real) ≤ C * r ^ (-(((d : Real) - 1) / 2)) :=
+    mul_nonneg hC.le (Real.rpow_nonneg hr.le _)
+  refine brrsRadialKernelWeightedSource_le_oneDimSourceOf
+    (N := N) Phi hp v j t r g hK ?_
+  intro s hs
+  refine le_trans (hmaj v j r s t hv hr hs) (le_of_eq ?_)
+  have hdiv : (s / r) ^ (((d : Real) - 1) / 2) =
+      s ^ (((d : Real) - 1) / 2) * r ^ (-(((d : Real) - 1) / 2)) := by
+    rw [Real.div_rpow hs.le hr.le, Real.rpow_neg hr.le]
+    ring
+  rw [hdiv]
+  ring
+
+/-- The low-output instance of the pointwise comparison. -/
+theorem brrsRadialKernelWeightedSource_lowOutput_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) (N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+      ∀ {p : Real}, 0 < p → ∀ (j : Nat) (t r : Real), 0 ≤ r →
+        ((2 : Real) ^ j) * r ≤ 16 → ∀ g : Real → ENNReal,
+        brrsRadialKernelWeightedSource Phi v j p g t r ≤
+          ENNReal.ofReal (C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) *
+            brrsSectionFiveOneDimSourceOf d N j p g t r := by
+  obtain ⟨C, hC, hmaj⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_lowOutput_majorant
+      (d := d) (N := N) hd Phi
+  refine ⟨C, hC, ?_⟩
+  intro v hv p hp j t r hr0 hqr g
+  have hqpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hK : (0 : Real) ≤ C * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) :=
+    mul_nonneg hC.le (Real.rpow_nonneg hqpos.le _)
+  refine brrsRadialKernelWeightedSource_le_oneDimSourceOf
+    (N := N) Phi hp v j t r g hK ?_
+  intro s hs
+  refine le_trans (hmaj v j r s t hv hr0 hqr hs) (le_of_eq ?_)
+  have hsplit : (((2 : Real) ^ j) * s) ^ (((d : Real) - 1) / 2) =
+      ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) *
+        s ^ (((d : Real) - 1) / 2) := by
+    rw [Real.mul_rpow hqpos.le hs.le]
+  rw [hsplit]
+  ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The compact estimate for the positive radial kernel operator
+
+Both kernel majorants hold with a single constant, so the profile-general
+compact radial core applies to the positive kernel operator directly.  This
+is the compact half of the low endpoint of U1.I, now on the simple-profile
+domain.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Monotonicity of the two pointwise comparisons in the kernel constant. -/
+theorem brrsRadialKernelWeightedSource_mono_const
+    {A B : ENNReal} {C D : Real} (hCD : C ≤ D) (hC : 0 ≤ C)
+    (hle : A ≤ ENNReal.ofReal C * B) :
+    A ≤ ENNReal.ofReal D * B :=
+  le_trans hle (mul_le_mul' (ENNReal.ofReal_le_ofReal hCD) le_rfl)
+
+/-- **The compact weighted estimate for the positive radial kernel
+operator.**  Both kernel majorants hold with a single constant, so the
+profile-general compact radial core applies verbatim.  Unlike the
+corresponding estimate for the half-wave, this one carries no Schwartz
+hypothesis and no polar step, and so is available on the simple-profile
+domain of the Riesz--Thorin transport. -/
+theorem brrsRadialKernelWeightedSource_compact_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (L : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (T : Finset Real) (v : BRRSSpace d),
+      ‖v‖ = 1 → ∀ g : Real → ENNReal, Measurable g →
+        (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+          (ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2) *
+            brrsSectionFiveWeightedOneDimTotal T d L j p g := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  obtain ⟨C1, hC1, hlow⟩ :=
+    brrsRadialKernelWeightedSource_lowOutput_le hd Phi (L + d + 2)
+  obtain ⟨C2, hC2, hhd⟩ :=
+    brrsRadialKernelWeightedSource_halfDensity_le hd Phi (L + d + 2)
+  refine ⟨C1 + C2, by linarith, ?_⟩
+  intro j T v hv g hgmeas
+  refine brrsSectionFiveCompactRadialCoreOf_le hd hp L j T g hgmeas
+    (fun t r => brrsRadialKernelWeightedSource Phi v j p g t r)
+    (C := C1 + C2) (by linarith) ?_ ?_
+  · intro t r hr0 hqr
+    have hbase := hlow v hv hp0 j t r hr0 hqr g
+    refine brrsRadialKernelWeightedSource_mono_const ?_ ?_ hbase
+    · exact mul_le_mul_of_nonneg_right (by linarith)
+        (Real.rpow_nonneg (by positivity) _)
+    · exact mul_nonneg hC1.le (Real.rpow_nonneg (by positivity) _)
+  · intro t r hr
+    have hbase := hhd v hv hp0 j t r hr g
+    refine brrsRadialKernelWeightedSource_mono_const ?_ ?_ hbase
+    · exact mul_le_mul_of_nonneg_right (by linarith)
+        (Real.rpow_nonneg hr.le _)
+    · exact mul_nonneg hC2.le (Real.rpow_nonneg hr.le _)
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The exterior travelling-phase integrals over an arbitrary profile
+
+The exterior estimate is assembled from the same four travelling-phase
+integrals, and its Young step is already profile-general.  These are its
+remaining profile-tied pieces, restated over an arbitrary measurable profile.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+noncomputable def brrsExteriorPhaseIntegralOf
+    (sigma : BRRSSectionFiveFarSourcePhase) (d N j : Nat) (p : Real)
+    (g : Real → ENNReal) (t r : Real) : ENNReal :=
+  ∫⁻ s in Ioi (0 : Real),
+    (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+      brrsSectionFiveOmegaENN N j
+        (brrsSectionFiveFarSourcePhaseLine sigma t r s) *
+      g s
+
+theorem measurable_brrsExteriorPhaseIntegralOf
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 0 < p)
+    (sigma : BRRSSectionFiveFarSourcePhase) (N j : Nat)
+    (g : Real → ENNReal) (hg : Measurable g) (t : Real) :
+    Measurable (fun r : Real => brrsExteriorPhaseIntegralOf sigma d N j p g t r) := by
+  have hprof : Measurable (g) :=
+    hg
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hline : Measurable (fun q : Real × Real =>
+      brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2) := by
+    cases sigma
+    · exact (measurable_const.sub measurable_fst).sub measurable_snd
+    · exact (measurable_const.sub measurable_fst).add measurable_snd
+    · exact (measurable_const.add measurable_fst).sub measurable_snd
+    · exact (measurable_const.add measurable_fst).add measurable_snd
+  have hratio : Measurable (fun q : Real × Real =>
+      (ENNReal.ofReal (q.2 / q.1)) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp
+      (ENNReal.measurable_ofReal.comp (measurable_snd.div measurable_fst))
+  have hjoint : Measurable (fun q : Real × Real =>
+      (ENNReal.ofReal (q.2 / q.1)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j
+          (brrsSectionFiveFarSourcePhaseLine sigma t q.1 q.2) *
+        g q.2) :=
+    (hratio.mul (hom.comp hline)).mul (hprof.comp measurable_snd)
+  exact hjoint.lintegral_prod_right'
+    (ν := volume.restrict (Ioi (0 : Real)))
+
+theorem brrsSectionFiveSourceWeight_mul_oneDimSourceOf_rpow_eq
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (g : Real → ENNReal) (hg : Measurable g) (t : Real) {r : Real} (hr : 0 < r) :
+    brrsSectionFiveSourceWeight d p r *
+        (brrsSectionFiveOneDimSourceOf d N j p g t r) ^ p =
+      (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            g s) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  set sig : Real := sobolevExponent d p with hsig
+  set f0 : Real → ENNReal := g with hf0
+  have hconstne : (ENNReal.ofReal r) ^ (-sig) ≠ ∞ := by
+    rw [ENNReal.ofReal_rpow_of_pos hr]
+    exact ENNReal.ofReal_ne_top
+  have hpull : (ENNReal.ofReal r) ^ (-sig) *
+      brrsSectionFiveOneDimSourceOf d N j p g t r =
+      ∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sig *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s := by
+    unfold brrsSectionFiveOneDimSourceOf
+    rw [← lintegral_const_mul' _ _ hconstne]
+    refine setLIntegral_congr_fun measurableSet_Ioi ?_
+    intro s hs
+    have hs0 : 0 < s := hs
+    dsimp only
+    rw [← hsig, brrs_ofReal_div_rpow_eq (sigma := sig) hr hs0]
+    ring
+  have hweight : brrsSectionFiveSourceWeight d p r =
+      ((ENNReal.ofReal r) ^ (-sig)) ^ p := by
+    unfold brrsSectionFiveSourceWeight
+    rw [show -(p * sobolevExponent d p) = (-sig) * p by rw [hsig]; ring,
+      ENNReal.rpow_mul]
+  rw [hweight, ← ENNReal.mul_rpow_of_nonneg _ _ hp0.le, hpull]
+
+theorem brrs_exterior_integrandOf_rpow_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p) (N j : Nat)
+    (g : Real → ENNReal) (hg : Measurable g) (t r : Real) :
+    (∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s *
+            g s) ^ p ≤
+      (2 : ENNReal) ^ (2 * (p - 1)) *
+        ((∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r - s) *
+                g s) ^ p +
+          (∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r + s) *
+                g s) ^ p +
+          (∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t + r - s) *
+                g s) ^ p +
+          (∫⁻ s in Ioi (0 : Real),
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t + r + s) *
+                g s) ^ p) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hp1 : (1 : Real) ≤ p := le_trans one_le_two hp
+  set f0 : Real → ENNReal := g with hf0
+  have hprof : Measurable f0 :=
+    hg
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hratio : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p) :=
+    ENNReal.continuous_rpow_const.measurable.comp
+      (ENNReal.measurable_ofReal.comp (measurable_id.div_const r))
+  have hA : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j (t - r - s) * f0 s) :=
+    (hratio.mul (hom.comp (measurable_const.sub measurable_id))).mul hprof
+  have hB : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j (t - r + s) * f0 s) :=
+    (hratio.mul (hom.comp (measurable_const.add measurable_id))).mul hprof
+  have hC : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaENN N j (t + r - s) * f0 s) :=
+    (hratio.mul (hom.comp (measurable_const.sub measurable_id))).mul hprof
+  have hAB : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t - r - s) * f0 s +
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t - r + s) * f0 s) := hA.add hB
+  have hABC : Measurable (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r - s) * f0 s +
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r + s) * f0 s +
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r - s) * f0 s) := hAB.add hC
+  have hfun : (fun s : Real =>
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) =
+      fun s : Real =>
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r - s) * f0 s +
+            (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+              brrsSectionFiveOmegaENN N j (t - r + s) * f0 s +
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t + r - s) * f0 s +
+        (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r + s) * f0 s := by
+    funext s
+    rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+    ring
+  have hsplit : (∫⁻ s in Ioi (0 : Real),
+      (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s * f0 s) =
+      (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r - s) * f0 s) +
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t - r + s) * f0 s) +
+        (∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t + r - s) * f0 s) +
+        ∫⁻ s in Ioi (0 : Real),
+          (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+            brrsSectionFiveOmegaENN N j (t + r + s) * f0 s := by
+    rw [hfun,
+      lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hABC
+        (fun s : Real => (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r + s) * f0 s),
+      lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hAB
+        (fun s : Real => (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t + r - s) * f0 s),
+      lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hA
+        (fun s : Real => (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+          brrsSectionFiveOmegaENN N j (t - r + s) * f0 s)]
+  rw [hsplit]
+  exact brrs_ennreal_four_rpow_le hp1 _ _ _ _
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The exterior radial core
+
+As with the compact region, the exterior estimate depends on the output only
+through the half-density kernel majorant.  Abstracting the output makes it
+available both to the half-wave, through polar coordinates, and to the
+positive radial kernel operator, directly.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The exterior radial core.  Any nonnegative radial output obeying the
+half-density kernel majorant on the exterior region satisfies the exterior
+weighted estimate, with a constant independent of the profile.  The half-wave
+is one instance, through polar coordinates; the positive radial kernel
+operator is another, directly. -/
+theorem brrsExteriorRadialCoreOf_le
+    {d : Nat} (hd : 2 ≤ d) {p : Real} (hp : 2 ≤ p)
+    {N : Nat} (hNsig : sobolevExponent d p + 3 ≤ (N : Real))
+    (j : Nat) {t : Real} (ht : t ∈ Icc (1 : Real) 2)
+    (g : Real → ENNReal) (hg : Measurable g)
+    (A : Real → ENNReal) {C : Real} (hC : 0 < C)
+    (hhd : ∀ r : Real, 0 < r →
+      A r ≤ ENNReal.ofReal (C * r ^ (-(((d : Real) - 1) / 2))) *
+        brrsSectionFiveOneDimSourceOf d N j p g t r) :
+    (∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) * (A r) ^ p) ≤
+      ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1)) *
+        (4 * ((∫⁻ u : Real,
+            brrsExteriorAbsorbedKernel (sobolevExponent d p)
+              (brrsSectionFiveOmegaENN N j) u) ^ p *
+          ∫⁻ s : Real, (g s) ^ p)) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  set sig : Real := sobolevExponent d p with hsig
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  set Kc : ENNReal := ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1))
+    with hKc
+  have hKctop : Kc ≠ ∞ := by
+    rw [hKc]
+    refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top ?_
+    exact ENNReal.rpow_ne_top_of_nonneg (by linarith) (by norm_num)
+  have hPmeas : ∀ sigma : BRRSSectionFiveFarSourcePhase,
+      Measurable (fun r : Real =>
+        (brrsExteriorPhaseIntegralOf sigma d N j p g t r) ^ p) := by
+    intro sigma
+    exact ENNReal.continuous_rpow_const.measurable.comp
+      (measurable_brrsExteriorPhaseIntegralOf hd hp0 sigma N j g hg t)
+  have hpt : ∀ r : Real, r ∈ Ioi (20 : Real) →
+      (ENNReal.ofReal r) ^ (d - 1) * (A r) ^ p ≤
+        Kc * ((brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+          (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+          (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p +
+          (brrsExteriorPhaseIntegralOf .addAdd d N j p g t r) ^ p) := by
+    intro r hr
+    have hrpos : 0 < r := lt_trans (by norm_num) hr
+    have hstep := brrs_radial_cell_pointwise_halfDensity hd hp hC hrpos
+      (brrsSectionFiveOneDimSourceOf d N j p g t r) (A r) (hhd r hrpos)
+    have hweq := brrsSectionFiveSourceWeight_mul_oneDimSourceOf_rpow_eq
+      hd hp N j g hg t hrpos
+    have hsplit := brrs_exterior_integrandOf_rpow_le hd hp N j g hg t r
+    calc
+      (ENNReal.ofReal r) ^ (d - 1) * (A r) ^ p ≤
+          ENNReal.ofReal (C ^ p) * brrsSectionFiveSourceWeight d p r *
+            (brrsSectionFiveOneDimSourceOf d N j p g t r) ^ p := hstep
+      _ = ENNReal.ofReal (C ^ p) *
+            (∫⁻ s in Ioi (0 : Real),
+              (ENNReal.ofReal (s / r)) ^ sobolevExponent d p *
+                brrsSectionFiveOmegaFourPhaseENN N j t r s * g s) ^ p := by
+        rw [mul_assoc, hweq]
+      _ ≤ ENNReal.ofReal (C ^ p) *
+            ((2 : ENNReal) ^ (2 * (p - 1)) *
+              ((brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+                (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+                (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p +
+                (brrsExteriorPhaseIntegralOf .addAdd d N j p g t r) ^ p)) := by
+        refine mul_le_mul' le_rfl ?_
+        unfold brrsExteriorPhaseIntegralOf brrsSectionFiveFarSourcePhaseLine
+        exact hsplit
+      _ = Kc * ((brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .addAdd d N j p g t r) ^ p) := by
+        rw [hKc]
+        ring
+  have hblock : (∫⁻ r in Ioi (20 : Real),
+      ((brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+        (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+        (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p +
+        (brrsExteriorPhaseIntegralOf .addAdd d N j p g t r) ^ p)) ≤
+      brrsExteriorWeightedFourPhaseBlock sig p t
+        (brrsSectionFiveOmegaENN N j) g := by
+    have hAB : Measurable (fun r : Real =>
+        (brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+          (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p) :=
+      (hPmeas _).add (hPmeas _)
+    have hABC : Measurable (fun r : Real =>
+        (brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+          (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p) :=
+      hAB.add (hPmeas _)
+    rw [lintegral_add_left (μ := volume.restrict (Ioi (20 : Real))) hABC _,
+      lintegral_add_left (μ := volume.restrict (Ioi (20 : Real))) hAB _,
+      lintegral_add_left (μ := volume.restrict (Ioi (20 : Real))) (hPmeas _) _]
+    unfold brrsExteriorWeightedFourPhaseBlock brrsExteriorPhaseIntegralOf
+      brrsSectionFiveFarSourcePhaseLine
+    refine add_le_add (add_le_add (add_le_add ?_ ?_) ?_) ?_
+    all_goals
+      refine lintegral_mono_set ?_
+      intro x hx
+      exact le_of_lt (lt_of_le_of_lt (by norm_num : (16 : Real) ≤ 20) hx)
+  have hyoung := brrsExteriorWeightedFourPhaseBlock_rpow_le
+    (sigma := sig) (p := p) (t := t)
+    (omega := brrsSectionFiveOmegaENN N j) (f := g)
+    (by rw [hsig]; exact hsob) hp1 ht
+    (measurable_brrsExteriorAbsorbedKernel sig hom) hg
+    (fun u => brrsExteriorAbsorbedKernel_sectionFiveOmega_pos (sigma := sig) N j u)
+    (fun u => brrsExteriorAbsorbedKernel_sectionFiveOmega_ne_top
+      (by rw [hsig]; exact hsob) N j u)
+    (lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_pos (sigma := sig) N j)
+    (lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_ne_top
+      (by rw [hsig]; exact hsob) (by rw [hsig]; exact hNsig) j)
+  calc
+    (∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) * (A r) ^ p) ≤
+        ∫⁻ r in Ioi (20 : Real), Kc *
+          ((brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .addAdd d N j p g t r) ^ p) :=
+      setLIntegral_mono' measurableSet_Ioi hpt
+    _ = Kc * ∫⁻ r in Ioi (20 : Real),
+          ((brrsExteriorPhaseIntegralOf .subSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .subAdd d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .addSub d N j p g t r) ^ p +
+            (brrsExteriorPhaseIntegralOf .addAdd d N j p g t r) ^ p) := by
+      rw [lintegral_const_mul' _ _ hKctop]
+    _ ≤ Kc * brrsExteriorWeightedFourPhaseBlock sig p t
+          (brrsSectionFiveOmegaENN N j) g :=
+      mul_le_mul' le_rfl hblock
+    _ ≤ Kc * (4 * ((∫⁻ u : Real,
+            brrsExteriorAbsorbedKernel sig (brrsSectionFiveOmegaENN N j) u) ^ p *
+          ∫⁻ s : Real, (g s) ^ p)) :=
+      mul_le_mul' le_rfl hyoung
+    _ = ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1)) *
+          (4 * ((∫⁻ u : Real,
+              brrsExteriorAbsorbedKernel (sobolevExponent d p)
+                (brrsSectionFiveOmegaENN N j) u) ^ p *
+            ∫⁻ s : Real, (g s) ^ p)) := by
+      rw [hKc, hsig]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The exterior estimate for the positive radial kernel operator
+
+The exterior half of the low endpoint of U1.I, with a constant uniform in the
+frequency level -- as it must be, since the time packet's cardinality is
+absorbed against it later.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **The exterior estimate for the positive radial kernel operator**, with a
+constant independent of the frequency level and of the profile.  This is the
+exterior half of the low endpoint of U1.I. -/
+theorem brrsRadialKernelWeightedSource_exterior_le_uniform
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    {N : Nat} (hNsig : sobolevExponent d p + 3 ≤ (N : Real)) :
+    ∃ B : ENNReal, B ≠ ∞ ∧ ∀ (j : Nat) {t : Real}, t ∈ Icc (1 : Real) 2 →
+      ∀ (v : BRRSSpace d), ‖v‖ = 1 → ∀ g : Real → ENNReal, Measurable g →
+        (∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+          B * ∫⁻ s : Real, (g s) ^ p := by
+  have hp0 : (0 : Real) ≤ p := le_trans zero_le_two hp
+  have hppos : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hsob : 0 ≤ sobolevExponent d p := sobolevExponent_nonneg hd hp
+  obtain ⟨C, hC, hhd⟩ :=
+    brrsRadialKernelWeightedSource_halfDensity_le hd Phi N
+  set M : ENNReal :=
+    ENNReal.ofReal ((2 : Real) ^ sobolevExponent d p * (2 : Real) ^ N) *
+      ∫⁻ u : Real, brrsCubicJapaneseProfile u with hM
+  have hMtop : M ≠ ∞ := by
+    rw [hM]
+    exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      lintegral_brrsCubicJapaneseProfile_ne_top
+  refine ⟨ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1)) *
+    (4 * M ^ p), ?_, ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ?_) ?_
+    · exact ENNReal.rpow_ne_top_of_nonneg (by linarith) (by norm_num)
+    · exact ENNReal.mul_ne_top (by norm_num)
+        (ENNReal.rpow_ne_top_of_nonneg hp0 hMtop)
+  · intro j t ht v hv g hgmeas
+    have hmass : (∫⁻ u : Real,
+        brrsExteriorAbsorbedKernel (sobolevExponent d p)
+          (brrsSectionFiveOmegaENN N j) u) ≤ M := by
+      rw [hM]
+      exact lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_le_uniform
+        hsob hNsig j
+    have hcore := brrsExteriorRadialCoreOf_le hd hp hNsig j ht g hgmeas
+      (fun r => brrsRadialKernelWeightedSource Phi v j p g t r) hC
+      (fun r hr => hhd v hv hppos j t r hr g)
+    refine le_trans hcore ?_
+    calc
+      ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1)) *
+          (4 * ((∫⁻ u : Real,
+              brrsExteriorAbsorbedKernel (sobolevExponent d p)
+                (brrsSectionFiveOmegaENN N j) u) ^ p *
+            ∫⁻ s : Real, (g s) ^ p)) ≤
+          ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1)) *
+            (4 * (M ^ p * ∫⁻ s : Real, (g s) ^ p)) := by
+        refine mul_le_mul' le_rfl (mul_le_mul' le_rfl (mul_le_mul' ?_ le_rfl))
+        exact ENNReal.rpow_le_rpow hmass hp0
+      _ = ENNReal.ofReal (C ^ p) * (2 : ENNReal) ^ (2 * (p - 1)) *
+            (4 * M ^ p) * ∫⁻ s : Real, (g s) ^ p := by
+        ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The low endpoint of U1.I for the positive radial kernel operator
+
+The two spatial regions assemble exactly as in (5.2): the compact region
+through the compact radial core and (5.4), the exterior through the uniform
+exterior estimate with the packet's cardinality absorbed by the terminal
+counting coefficient.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **The dyadic reduction for the positive radial kernel operator.**  The
+compact region is controlled by the local counting coefficients of the time
+packet through the compact radial core and (5.4); the exterior region is the
+uniform exterior estimate summed over the packet, whose cardinality is
+absorbed by the terminal counting coefficient.  This is the low endpoint of
+U1.I, and unlike Proposition 5.1 it holds over an arbitrary measurable
+profile. -/
+theorem brrsRadialKernelWeightedSource_dyadicReduction_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1)) (L : Nat)
+    {N : Nat} (hNsig : sobolevExponent d p + 3 ≤ (N : Real)) :
+    ∃ C1 C2 : ENNReal, C1 ≠ ∞ ∧ C2 ≠ ∞ ∧
+      ∀ {E : Set Real} {j : Nat} {T : Finset Real},
+        E ⊆ Icc (1 : Real) 2 → IsDyadicDiscretization E j T →
+        ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+        ∀ g : Real → ENNReal, Measurable g →
+          (∑ t ∈ T, ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+              (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+            C1 * ((∑ m ∈ Finset.range (j + 1),
+                brrsDyadicKappa T j m (p * sobolevExponent d p)) *
+              ∫⁻ s : Real, (g s) ^ p) +
+            C2 * (brrsSectionFiveFarTotalConstant d L j p *
+              ∫⁻ s : Real, (g s) ^ p) := by
+  have hp0 : (0 : Real) ≤ p := le_trans zero_le_two hp
+  obtain ⟨C, hC, hcompact⟩ :=
+    brrsRadialKernelWeightedSource_compact_le hd Phi hp L
+  obtain ⟨B, hBtop, hext⟩ :=
+    brrsRadialKernelWeightedSource_exterior_le_uniform hd Phi hp hNsig
+  set A : ENNReal :=
+    ENNReal.ofReal (C ^ p) * brrsSectionFiveOneDimConstant d p * 2 with hA
+  have hAtop : A ≠ ∞ := by
+    rw [hA]
+    exact ENNReal.mul_ne_top
+      (ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+        (brrsSectionFiveOneDimConstant_ne_top (d := d) hp)) (by norm_num)
+  set Ccube : ENNReal :=
+    (8 * ∫⁻ u : Real, brrsCubicJapaneseProfile u) ^ p with hCcube
+  have hCcubetop : Ccube ≠ ∞ := by
+    rw [hCcube]
+    refine ENNReal.rpow_ne_top_of_nonneg hp0 ?_
+    exact ENNReal.mul_ne_top (by norm_num)
+      lintegral_brrsCubicJapaneseProfile_ne_top
+  refine ⟨A * 56 * Ccube + B, A * 4, ?_, ?_, ?_⟩
+  · exact ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (ENNReal.mul_ne_top hAtop (by norm_num)) hCcubetop,
+        hBtop⟩
+  · exact ENNReal.mul_ne_top hAtop (by norm_num)
+  intro E j T hE hT v hv g hgmeas
+  set S : ENNReal := ∫⁻ s : Real, (g s) ^ p with hS
+  set K : ENNReal := ∑ m ∈ Finset.range (j + 1),
+    brrsDyadicKappa T j m (p * sobolevExponent d p) with hK
+  have hunion : Ioc (0 : Real) 20 ∪ Ioi (20 : Real) = Ioi (0 : Real) :=
+    Ioc_union_Ioi_eq_Ioi (by norm_num)
+  have hsplit : ∀ t : Real,
+      (∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+          (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+        (∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) +
+          ∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p := by
+    intro t
+    calc
+      (∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+          (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) =
+          ∫⁻ r in (Ioc (0 : Real) 20 ∪ Ioi (20 : Real)),
+            (ENNReal.ofReal r) ^ (d - 1) *
+              (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p := by
+        rw [hunion]
+      _ ≤ _ := lintegral_union_le _ _ _
+  -- compact part
+  have hone := brrsSectionFiveWeightedOneDim_le (L := L) hd hE hT p hp hcritical
+    g hgmeas
+  have hcompbound : (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+      (ENNReal.ofReal r) ^ (d - 1) *
+        (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+      A * 56 * Ccube * (K * S) + A * 4 *
+        (brrsSectionFiveFarTotalConstant d L j p * S) := by
+    calc
+      (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20,
+          (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+          A * brrsSectionFiveWeightedOneDimTotal T d L j p g := by
+        rw [hA]
+        exact hcompact j T v hv g hgmeas
+      _ ≤ A * (56 * K * (Ccube * S) +
+            4 * brrsSectionFiveFarTotalConstant d L j p * S) :=
+        mul_le_mul' le_rfl hone.2
+      _ = A * 56 * Ccube * (K * S) + A * 4 *
+            (brrsSectionFiveFarTotalConstant d L j p * S) := by ring
+  -- exterior part
+  have hextbound : (∑ t ∈ T, ∫⁻ r in Ioi (20 : Real),
+      (ENNReal.ofReal r) ^ (d - 1) *
+        (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+      B * (K * S) := by
+    have hcard : (T.card : ENNReal) ≤ K := by
+      refine le_trans
+        (dyadicDiscretization_card_le_brrsDyadicKappa_terminal hE hT
+          (p * sobolevExponent d p)) ?_
+      rw [hK]
+      exact Finset.single_le_sum
+        (f := fun m => brrsDyadicKappa T j m (p * sobolevExponent d p))
+        (fun i _ => zero_le) (Finset.mem_range.mpr (Nat.lt_succ_self j))
+    calc
+      (∑ t ∈ T, ∫⁻ r in Ioi (20 : Real),
+          (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+          ∑ _t ∈ T, B * S := by
+        refine Finset.sum_le_sum fun t htT => ?_
+        have ht : t ∈ Icc (1 : Real) 2 := hE (hT.subset htT)
+        exact hext j ht v hv g hgmeas
+      _ = (T.card : ENNReal) * (B * S) := by
+        simp only [Finset.sum_const, nsmul_eq_mul]
+      _ ≤ K * (B * S) := mul_le_mul' hcard le_rfl
+      _ = B * (K * S) := by ring
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+        (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+        ∑ t ∈ T, ((∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+              (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) +
+            ∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+              (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) :=
+      Finset.sum_le_sum fun t _ => hsplit t
+    _ = (∑ t ∈ T, ∫⁻ r in Ioc (0 : Real) 20, (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) +
+          ∑ t ∈ T, ∫⁻ r in Ioi (20 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+            (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p := by
+      rw [Finset.sum_add_distrib]
+    _ ≤ (A * 56 * Ccube * (K * S) + A * 4 *
+            (brrsSectionFiveFarTotalConstant d L j p * S)) + B * (K * S) :=
+      add_le_add hcompbound hextbound
+    _ = (A * 56 * Ccube + B) * (K * S) +
+          A * 4 * (brrsSectionFiveFarTotalConstant d L j p * S) := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The entropy form of the low endpoint
+
+Proposition 5.1 for the positive radial kernel operator, over an arbitrary
+measurable profile.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **The entropy form of the low endpoint of U1.I.**  This is Proposition
+5.1 for the positive radial kernel operator: strictly above the
+Legendre--Assouad value at the penalty `p s_p`, the weighted radial output sum
+over any dyadic discretization of the time set obeys the entropy bound -- over
+an arbitrary measurable profile, hence on the domain of the Riesz--Thorin
+transport. -/
+theorem brrsRadialKernelWeightedSource_entropy_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p * sobolevExponent d p) < q) :
+    ∃ (Cst : ENNReal) (J : Nat), Cst ≠ ∞ ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+        ∀ g : Real → ENNReal, Measurable g →
+          (∑ t ∈ T, ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+              (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+            Cst * (((j : ENNReal) + 1) *
+              (2 : ENNReal) ^ (((j : Real) + 1) * q) *
+                ∫⁻ s : Real, (g s) ^ p) := by
+  have halpha : 0 ≤ p * sobolevExponent d p := mul_sobolevExponent_nonneg hd hp
+  obtain ⟨C1, C2, hC1, hC2, hred⟩ :=
+    brrsRadialKernelWeightedSource_dyadicReduction_le hd Phi hp hcritical 0
+      (N := d + 3) (brrs_sobolevExponent_add_three_le hd hp)
+  obtain ⟨J, hJ⟩ := exists_tail_brrsDyadicKappa_le_inv_rpow_of_lt halpha hq
+  refine ⟨C1 + C2 * brrsSectionFiveFarTotalConstant d 0 0 p, J, ?_, ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨hC1, ENNReal.mul_ne_top hC2 ?_⟩
+    unfold brrsSectionFiveFarTotalConstant
+    refine ENNReal.mul_ne_top (ENNReal.mul_ne_top (by norm_num) ?_)
+      ENNReal.ofReal_ne_top
+    exact lintegral_brrsSectionFiveFarSourceOutputWeight_Ioc_ne_top
+      (mul_sobolevExponent_lt_one_of_lt_fixedTimeCritical hd
+        (lt_of_lt_of_le (by norm_num) hp) hcritical)
+  intro j hj T hT v hv g hgmeas
+  set S : ENNReal := ∫⁻ s : Real, (g s) ^ p with hS
+  set P : ENNReal := ((j : ENNReal) + 1) *
+    (2 : ENNReal) ^ (((j : Real) + 1) * q) with hP
+  have hkappa : (∑ m ∈ Finset.range (j + 1),
+      brrsDyadicKappa T j m (p * sobolevExponent d p)) ≤ P := by
+    have hunif := sum_brrsDyadicKappa_le_of_uniform_bound T j
+      (p * sobolevExponent d p)
+      (((Auto.Spherical.LegendreAssouad.dyadicMultiplicativeScale (j + 1) :
+        ENNReal))⁻¹ ^ q) (fun m hm => hJ j hj T hT m hm)
+    refine le_trans hunif ?_
+    rw [brrs_dyadicMultiplicativeScale_inv_rpow_eq j q, hP]
+  have hPone : (1 : ENNReal) ≤ P := by
+    rw [hP]
+    have h1 : (1 : ENNReal) ≤ (j : ENNReal) + 1 := le_add_self
+    have hz : (0 : Real) ≤ ((j : Real) + 1) * q :=
+      mul_nonneg (by positivity) hq0
+    have h2 : (1 : ENNReal) ≤ (2 : ENNReal) ^ (((j : Real) + 1) * q) := by
+      calc (1 : ENNReal) = (1 : ENNReal) ^ (((j : Real) + 1) * q) := by
+            rw [ENNReal.one_rpow]
+        _ ≤ (2 : ENNReal) ^ (((j : Real) + 1) * q) :=
+          ENNReal.rpow_le_rpow (by norm_num) hz
+    calc (1 : ENNReal) = 1 * 1 := by norm_num
+      _ ≤ ((j : ENNReal) + 1) * (2 : ENNReal) ^ (((j : Real) + 1) * q) :=
+        mul_le_mul' h1 h2
+  have hfar : brrsSectionFiveFarTotalConstant d 0 j p =
+      brrsSectionFiveFarTotalConstant d 0 0 p :=
+    brrsSectionFiveFarTotalConstant_zero_eq d j p
+  calc
+    (∑ t ∈ T, ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+        (brrsRadialKernelWeightedSource Phi v j p g t r) ^ p) ≤
+        C1 * ((∑ m ∈ Finset.range (j + 1),
+            brrsDyadicKappa T j m (p * sobolevExponent d p)) * S) +
+          C2 * (brrsSectionFiveFarTotalConstant d 0 j p * S) :=
+      hred hE hT v hv g hgmeas
+    _ ≤ C1 * (P * S) +
+          C2 * (brrsSectionFiveFarTotalConstant d 0 0 p * (P * S)) := by
+      refine add_le_add (mul_le_mul' le_rfl (mul_le_mul' hkappa le_rfl)) ?_
+      rw [hfar]
+      refine mul_le_mul' le_rfl (mul_le_mul' le_rfl ?_)
+      calc S = 1 * S := by rw [one_mul]
+        _ ≤ P * S := mul_le_mul' hPone le_rfl
+    _ = (C1 + C2 * brrsSectionFiveFarTotalConstant d 0 0 p) * (P * S) := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Moment bounds for the phase kernel
+
+The `L^infty` endpoint of U1.I needs the `s`-integral of the kernel, and
+through the two kernel majorants that reduces to the mass of the phase kernel
+against a power weight.  The weight is absorbed exactly as in the exterior
+estimate: a source radius is at most the Japanese bracket of the phase centre
+times that of the phase value, and the second factor is what
+`brrsExteriorAbsorbedKernel` already integrates uniformly in the frequency
+level.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The elementary weight comparison behind the moment bound for the phase
+kernel: a source radius is controlled by the phase value it produces, at the
+cost of the Japanese bracket of the phase centre. -/
+theorem brrs_rpow_le_mul_absorbed_weight
+    {sigma : Real} (hsigma : 0 ≤ sigma) (a u s : Real)
+    (hs : s ≤ |a| + |u|) :
+    (ENNReal.ofReal s) ^ sigma ≤
+      ENNReal.ofReal ((1 + |a|) ^ sigma) *
+        (ENNReal.ofReal (2 * (1 + |u|))) ^ sigma := by
+  have habs : (0 : Real) ≤ |a| := abs_nonneg a
+  have hu : (0 : Real) ≤ |u| := abs_nonneg u
+  have hbase : (0 : Real) < 2 * (1 + |u|) := by positivity
+  have hprod : s ≤ (1 + |a|) * (2 * (1 + |u|)) := by
+    nlinarith [habs, hu, hs]
+  rw [ENNReal.ofReal_rpow_of_pos hbase,
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg (by linarith) _)]
+  rcases lt_or_ge 0 s with hs0 | hs0
+  case inr =>
+    have hzero : ENNReal.ofReal s = 0 := ENNReal.ofReal_eq_zero.mpr hs0
+    rcases eq_or_lt_of_le hsigma with hz | hpos
+    · rw [← hz]
+      simp only [ENNReal.rpow_zero, Real.rpow_zero, one_mul,
+        ENNReal.ofReal_one]
+      exact le_rfl
+    · rw [hzero, ENNReal.zero_rpow_of_pos hpos]
+      exact zero_le
+  case inl =>
+    rw [ENNReal.ofReal_rpow_of_pos hs0]
+    refine ENNReal.ofReal_le_ofReal ?_
+    rw [← Real.mul_rpow (by linarith) (by linarith)]
+    exact Real.rpow_le_rpow hs0.le hprod hsigma
+
+/-- **The moment bound for the receding phase line.**  The `s`-integral of a
+power weight against the phase kernel is controlled by the Japanese bracket
+of the phase centre, uniformly in the frequency level. -/
+theorem brrs_lintegral_rpow_mul_omega_sub_le
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat}
+    (hN : sigma + 3 ≤ (N : Real)) (j : Nat) (a : Real) :
+    (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaENN N j (a - s)) ≤
+      ENNReal.ofReal ((1 + |a|) ^ sigma) *
+        (ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+          ∫⁻ u : Real, brrsCubicJapaneseProfile u) := by
+  have hmass :=
+    lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_le_uniform hsigma hN j
+  have hpt : ∀ s : Real, (ENNReal.ofReal s) ^ sigma *
+      brrsSectionFiveOmegaENN N j (a - s) ≤
+        ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j)
+            (a - s) := by
+    intro s
+    have htri : s ≤ |a| + |a - s| := by
+      have h1 : s = a - (a - s) := by ring
+      calc s = a - (a - s) := h1
+        _ ≤ |a| + |a - s| := by
+          have ha : a ≤ |a| := le_abs_self a
+          have hb : -(a - s) ≤ |a - s| := neg_le_abs (a - s)
+          linarith
+    have hw := brrs_rpow_le_mul_absorbed_weight hsigma a (a - s) s htri
+    unfold brrsExteriorAbsorbedKernel
+    calc
+      (ENNReal.ofReal s) ^ sigma * brrsSectionFiveOmegaENN N j (a - s) ≤
+          (ENNReal.ofReal ((1 + |a|) ^ sigma) *
+              (ENNReal.ofReal (2 * (1 + |a - s|))) ^ sigma) *
+            brrsSectionFiveOmegaENN N j (a - s) :=
+        mul_le_mul' hw le_rfl
+      _ = ENNReal.ofReal ((1 + |a|) ^ sigma) *
+            ((ENNReal.ofReal (2 * (1 + |a - s|))) ^ sigma *
+              brrsSectionFiveOmegaENN N j (a - s)) := by
+        ring
+  calc
+    (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaENN N j (a - s)) ≤
+        ∫⁻ s : Real, (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (a - s) := by
+      exact le_trans (lintegral_mono_set (subset_univ _))
+        (le_of_eq (setLIntegral_univ _))
+    _ ≤ ∫⁻ s : Real, ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j)
+            (a - s) :=
+      lintegral_mono hpt
+    _ = ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          ∫⁻ s : Real, brrsExteriorAbsorbedKernel sigma
+            (brrsSectionFiveOmegaENN N j) (a - s) := by
+      rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    _ = ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          ∫⁻ u : Real, brrsExteriorAbsorbedKernel sigma
+            (brrsSectionFiveOmegaENN N j) u := by
+      rw [lintegral_sub_left_eq_self]
+    _ ≤ ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          (ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+            ∫⁻ u : Real, brrsCubicJapaneseProfile u) :=
+      mul_le_mul' le_rfl hmass
+
+/-- **The moment bound for the advancing phase line.** -/
+theorem brrs_lintegral_rpow_mul_omega_add_le
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat}
+    (hN : sigma + 3 ≤ (N : Real)) (j : Nat) (a : Real) :
+    (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaENN N j (a + s)) ≤
+      ENNReal.ofReal ((1 + |a|) ^ sigma) *
+        (ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+          ∫⁻ u : Real, brrsCubicJapaneseProfile u) := by
+  have hmass :=
+    lintegral_brrsExteriorAbsorbedKernel_sectionFiveOmega_le_uniform hsigma hN j
+  have hpt : ∀ s : Real, (ENNReal.ofReal s) ^ sigma *
+      brrsSectionFiveOmegaENN N j (s + a) ≤
+        ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j)
+            (s + a) := by
+    intro s
+    have htri : s ≤ |a| + |s + a| := by
+      have ha : -a ≤ |a| := neg_le_abs a
+      have hb : s + a ≤ |s + a| := le_abs_self (s + a)
+      linarith
+    have hw := brrs_rpow_le_mul_absorbed_weight hsigma a (s + a) s htri
+    unfold brrsExteriorAbsorbedKernel
+    calc
+      (ENNReal.ofReal s) ^ sigma * brrsSectionFiveOmegaENN N j (s + a) ≤
+          (ENNReal.ofReal ((1 + |a|) ^ sigma) *
+              (ENNReal.ofReal (2 * (1 + |s + a|))) ^ sigma) *
+            brrsSectionFiveOmegaENN N j (s + a) :=
+        mul_le_mul' hw le_rfl
+      _ = ENNReal.ofReal ((1 + |a|) ^ sigma) *
+            ((ENNReal.ofReal (2 * (1 + |s + a|))) ^ sigma *
+              brrsSectionFiveOmegaENN N j (s + a)) := by
+        ring
+  have hcomm : ∀ s : Real, brrsSectionFiveOmegaENN N j (a + s) =
+      brrsSectionFiveOmegaENN N j (s + a) := by
+    intro s
+    rw [add_comm]
+  calc
+    (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaENN N j (a + s)) =
+        ∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (s + a) := by
+      refine lintegral_congr fun s => ?_
+      rw [hcomm s]
+    _ ≤ ∫⁻ s : Real, (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (s + a) := by
+      exact le_trans (lintegral_mono_set (subset_univ _))
+        (le_of_eq (setLIntegral_univ _))
+    _ ≤ ∫⁻ s : Real, ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          brrsExteriorAbsorbedKernel sigma (brrsSectionFiveOmegaENN N j)
+            (s + a) :=
+      lintegral_mono hpt
+    _ = ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          ∫⁻ s : Real, brrsExteriorAbsorbedKernel sigma
+            (brrsSectionFiveOmegaENN N j) (s + a) := by
+      rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    _ = ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          ∫⁻ u : Real, brrsExteriorAbsorbedKernel sigma
+            (brrsSectionFiveOmegaENN N j) u := by
+      rw [lintegral_add_right_eq_self]
+    _ ≤ ENNReal.ofReal ((1 + |a|) ^ sigma) *
+          (ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+            ∫⁻ u : Real, brrsCubicJapaneseProfile u) :=
+      mul_le_mul' le_rfl hmass
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The four-line phase mass against a power weight
+
+Both phase centres contribute their Japanese bracket twice, once for the
+receding and once for the advancing line.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The uniform phase mass of the four travelling lines against a power
+weight.  Both phase centres contribute their Japanese bracket twice, once for
+the receding and once for the advancing line. -/
+theorem brrs_lintegral_rpow_mul_omegaFourPhase_le
+    {sigma : Real} (hsigma : 0 ≤ sigma) {N : Nat}
+    (hN : sigma + 3 ≤ (N : Real)) (j : Nat) (t r : Real) :
+    (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s) ≤
+      (ENNReal.ofReal ((1 + |t - r|) ^ sigma) * 2 +
+          ENNReal.ofReal ((1 + |t + r|) ^ sigma) * 2) *
+        (ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+          ∫⁻ u : Real, brrsCubicJapaneseProfile u) := by
+  set M : ENNReal := ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+    ∫⁻ u : Real, brrsCubicJapaneseProfile u with hM
+  have hom : Measurable (brrsSectionFiveOmegaENN N j) := by
+    unfold brrsSectionFiveOmegaENN
+    exact ENNReal.measurable_ofReal.comp (measurable_brrsSectionFiveOmega N j)
+  have hwt : Measurable (fun s : Real => (ENNReal.ofReal s) ^ sigma) :=
+    ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hA : Measurable (fun s : Real => (ENNReal.ofReal s) ^ sigma *
+      brrsSectionFiveOmegaENN N j (t - r - s)) :=
+    hwt.mul (hom.comp (measurable_const.sub measurable_id))
+  have hB : Measurable (fun s : Real => (ENNReal.ofReal s) ^ sigma *
+      brrsSectionFiveOmegaENN N j (t - r + s)) :=
+    hwt.mul (hom.comp (measurable_const.add measurable_id))
+  have hC : Measurable (fun s : Real => (ENNReal.ofReal s) ^ sigma *
+      brrsSectionFiveOmegaENN N j (t + r - s)) :=
+    hwt.mul (hom.comp (measurable_const.sub measurable_id))
+  have hAB : Measurable (fun s : Real => (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaENN N j (t - r - s) +
+      (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaENN N j (t - r + s)) := hA.add hB
+  have hABC : Measurable (fun s : Real =>
+      (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t - r - s) +
+        (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t - r + s) +
+        (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t + r - s)) := hAB.add hC
+  have hexpand : (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+      brrsSectionFiveOmegaFourPhaseENN N j t r s) =
+      (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t - r - s)) +
+        (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t - r + s)) +
+        (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t + r - s)) +
+        ∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t + r + s) := by
+    have hpoint : ∀ s : Real, (ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s =
+        (ENNReal.ofReal s) ^ sigma *
+            brrsSectionFiveOmegaENN N j (t - r - s) +
+          (ENNReal.ofReal s) ^ sigma *
+            brrsSectionFiveOmegaENN N j (t - r + s) +
+          (ENNReal.ofReal s) ^ sigma *
+            brrsSectionFiveOmegaENN N j (t + r - s) +
+          (ENNReal.ofReal s) ^ sigma *
+            brrsSectionFiveOmegaENN N j (t + r + s) := by
+      intro s
+      rw [brrsSectionFiveOmegaFourPhaseENN_eq_sum]
+      ring
+    calc
+      (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaFourPhaseENN N j t r s) =
+          ∫⁻ s in Ioi (0 : Real),
+            ((ENNReal.ofReal s) ^ sigma *
+                  brrsSectionFiveOmegaENN N j (t - r - s) +
+                (ENNReal.ofReal s) ^ sigma *
+                  brrsSectionFiveOmegaENN N j (t - r + s) +
+                (ENNReal.ofReal s) ^ sigma *
+                  brrsSectionFiveOmegaENN N j (t + r - s)) +
+              (ENNReal.ofReal s) ^ sigma *
+                brrsSectionFiveOmegaENN N j (t + r + s) := by
+        refine lintegral_congr fun s => ?_
+        rw [hpoint s]
+      _ = _ := by
+        rw [lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hABC _,
+          lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hAB _,
+          lintegral_add_left (μ := volume.restrict (Ioi (0 : Real))) hA _]
+  rw [hexpand]
+  have h1 := brrs_lintegral_rpow_mul_omega_sub_le hsigma hN j (t - r)
+  have h2 := brrs_lintegral_rpow_mul_omega_add_le hsigma hN j (t - r)
+  have h3 := brrs_lintegral_rpow_mul_omega_sub_le hsigma hN j (t + r)
+  have h4 := brrs_lintegral_rpow_mul_omega_add_le hsigma hN j (t + r)
+  have hsub : ∀ s : Real, t - r - s = (t - r) - s := by intro s; ring
+  have hadd : ∀ s : Real, t - r + s = (t - r) + s := by intro s; ring
+  calc
+    (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t - r - s)) +
+        (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t - r + s)) +
+        (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t + r - s)) +
+        (∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+          brrsSectionFiveOmegaENN N j (t + r + s)) ≤
+        ENNReal.ofReal ((1 + |t - r|) ^ sigma) * M +
+          ENNReal.ofReal ((1 + |t - r|) ^ sigma) * M +
+          ENNReal.ofReal ((1 + |t + r|) ^ sigma) * M +
+          ENNReal.ofReal ((1 + |t + r|) ^ sigma) * M := by
+      refine add_le_add (add_le_add (add_le_add ?_ ?_) ?_) ?_
+      · exact h1
+      · exact h2
+      · exact h3
+      · exact h4
+    _ = (ENNReal.ofReal ((1 + |t - r|) ^ sigma) * 2 +
+          ENNReal.ofReal ((1 + |t + r|) ^ sigma) * 2) * M := by
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The `L^1` bound in the source variable for the radial kernel
+
+This is the `L^infty` endpoint of U1.I in kernel form.  The low-output
+majorant handles small output radii, where both phase centres are bounded
+outright since the time lies in `[1,2]`; the half-density majorant handles
+large ones, where what produces the rate is the ratio of the phase centre to
+the output radius.  Both give the half-density rate, which is the rate of the
+top endpoint already available for the finite-time radial-profile operator.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Any factored real majorant for the radial kernel becomes a factored
+majorant in the extended reals. -/
+theorem brrs_enorm_radialBesselKernel_le_weight
+    {d : Nat} (Phi : BRRSAnnularCutoff) {N : Nat} (v : BRRSSpace d) (j : Nat)
+    {sigma A : Real} (hA : 0 ≤ A) (t r s : Real) (hs : 0 < s)
+    (hmaj : ‖brrsRadialBesselKernel Phi d v j r s t‖ ≤
+      A * s ^ sigma *
+        (brrsSectionFiveOmega N j (t - r - s) +
+          brrsSectionFiveOmega N j (t - r + s) +
+            brrsSectionFiveOmega N j (t + r - s) +
+              brrsSectionFiveOmega N j (t + r + s))) :
+    ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ ≤
+      ENNReal.ofReal A * ((ENNReal.ofReal s) ^ sigma *
+        brrsSectionFiveOmegaFourPhaseENN N j t r s) := by
+  have hAs : (0 : Real) ≤ A * s ^ sigma :=
+    mul_nonneg hA (Real.rpow_nonneg hs.le _)
+  rw [← ofReal_norm, brrsSectionFiveOmegaFourPhaseENN,
+    ENNReal.ofReal_rpow_of_pos hs, ← mul_assoc,
+    ← ENNReal.ofReal_mul hA, ← ENNReal.ofReal_mul hAs]
+  exact ENNReal.ofReal_le_ofReal hmaj
+
+/-- **The `L^1` bound in the source variable for the radial kernel.**  The
+low-output majorant handles small output radii, where both phase centres are
+bounded outright; the half-density majorant handles large ones, where the
+ratio of the phase centre to the output radius is what produces the rate.
+Both give the half-density rate `2^(j(d-1)/2)`, which is the rate of the
+`L^infty` endpoint. -/
+theorem exists_lintegral_enorm_brrsRadialBesselKernel_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {N : Nat}
+    (hN : ((d : Real) - 1) / 2 + 3 ≤ (N : Real)) :
+    ∃ Cst : ENNReal, Cst ≠ ∞ ∧ ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+      ∀ (j : Nat) {t : Real}, t ∈ Icc (1 : Real) 2 → ∀ r : Real, 0 ≤ r →
+        (∫⁻ s in Ioi (0 : Real),
+            ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ) ≤
+          Cst * ENNReal.ofReal (((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) := by
+  set sigma : Real := ((d : Real) - 1) / 2 with hsigmadef
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hsigma : 0 ≤ sigma := by
+    rw [hsigmadef]
+    linarith
+  obtain ⟨C1, hC1, hlow⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_lowOutput_majorant
+      (d := d) (N := N) hd Phi
+  obtain ⟨C2, hC2, hhd⟩ :=
+    exists_norm_brrsRadialBesselKernel_fourPhase_halfDensity_majorant
+      (d := d) (N := N) hd Phi
+  set M : ENNReal := ENNReal.ofReal ((2 : Real) ^ sigma * (2 : Real) ^ N) *
+    ∫⁻ u : Real, brrsCubicJapaneseProfile u with hM
+  have hMtop : M ≠ ∞ := by
+    rw [hM]
+    exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+      lintegral_brrsCubicJapaneseProfile_ne_top
+  have h19 : (1 : Real) ≤ (19 : Real) ^ sigma :=
+    Real.one_le_rpow (by norm_num) hsigma
+  have hq16 : (0 : Real) ≤ C2 * ((19 : Real) / 16) ^ sigma :=
+    mul_nonneg hC2.le (Real.rpow_nonneg (by norm_num) _)
+  set D : Real := (C1 + C2 * ((19 : Real) / 16) ^ sigma) * (19 : Real) ^ sigma
+    with hD
+  have hD1 : C1 * (19 : Real) ^ sigma ≤ D := by
+    rw [hD]
+    have : (0 : Real) ≤ (19 : Real) ^ sigma := Real.rpow_nonneg (by norm_num) _
+    nlinarith [hq16, this]
+  have hD2 : C2 * ((19 : Real) / 16) ^ sigma ≤ D := by
+    rw [hD]
+    nlinarith [hC1, h19, hq16]
+  refine ⟨ENNReal.ofReal D * 4 * M, ?_, ?_⟩
+  · exact ENNReal.mul_ne_top
+      (ENNReal.mul_ne_top ENNReal.ofReal_ne_top (by norm_num)) hMtop
+  intro v hv j t ht r hr0
+  have hjone : (1 : Real) ≤ (2 : Real) ^ j := one_le_pow₀ (by norm_num)
+  have hjpos : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hmoment := brrs_lintegral_rpow_mul_omegaFourPhase_le hsigma hN j t r
+  have ht1 : (1 : Real) ≤ t := ht.1
+  have ht2 : t ≤ 2 := ht.2
+  rcases le_or_gt (((2 : Real) ^ j) * r) 16 with hcase | hcase
+  · -- small output radius: the low-output majorant
+    have hrle : r ≤ 16 := by
+      have := mul_le_mul_of_nonneg_right hjone hr0
+      linarith [hcase, this]
+    have hA : (0 : Real) ≤ C1 * ((2 : Real) ^ j) ^ sigma :=
+      mul_nonneg hC1.le (Real.rpow_nonneg hjpos.le _)
+    have hpt : ∀ s : Real, s ∈ Ioi (0 : Real) →
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ ≤
+          ENNReal.ofReal (C1 * ((2 : Real) ^ j) ^ sigma) *
+            ((ENNReal.ofReal s) ^ sigma *
+              brrsSectionFiveOmegaFourPhaseENN N j t r s) := by
+      intro s hs
+      refine brrs_enorm_radialBesselKernel_le_weight Phi v j hA t r s hs ?_
+      refine le_trans (hlow v j r s t hv hr0 hcase hs) (le_of_eq ?_)
+      have hsplit : (((2 : Real) ^ j) * s) ^ sigma =
+          ((2 : Real) ^ j) ^ sigma * s ^ sigma :=
+        Real.mul_rpow hjpos.le (le_of_lt hs)
+      rw [hsplit]
+      ring
+    have hbrk : ∀ a : Real, |a| ≤ 18 → (1 + |a|) ^ sigma ≤ (19 : Real) ^ sigma :=
+      fun a ha => Real.rpow_le_rpow (by positivity) (by linarith) hsigma
+    have hb1 : |t - r| ≤ 18 := by
+      rw [abs_le]
+      constructor <;> linarith
+    have hb2 : |t + r| ≤ 18 := by
+      rw [abs_le]
+      constructor <;> linarith
+    calc
+      (∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ) ≤
+          ∫⁻ s in Ioi (0 : Real),
+            ENNReal.ofReal (C1 * ((2 : Real) ^ j) ^ sigma) *
+              ((ENNReal.ofReal s) ^ sigma *
+                brrsSectionFiveOmegaFourPhaseENN N j t r s) :=
+        setLIntegral_mono' measurableSet_Ioi hpt
+      _ = ENNReal.ofReal (C1 * ((2 : Real) ^ j) ^ sigma) *
+            ∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+              brrsSectionFiveOmegaFourPhaseENN N j t r s := by
+        rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+      _ ≤ ENNReal.ofReal (C1 * ((2 : Real) ^ j) ^ sigma) *
+            ((ENNReal.ofReal ((1 + |t - r|) ^ sigma) * 2 +
+                ENNReal.ofReal ((1 + |t + r|) ^ sigma) * 2) * M) :=
+        mul_le_mul' le_rfl hmoment
+      _ ≤ ENNReal.ofReal (C1 * ((2 : Real) ^ j) ^ sigma) *
+            ((ENNReal.ofReal ((19 : Real) ^ sigma) * 2 +
+                ENNReal.ofReal ((19 : Real) ^ sigma) * 2) * M) := by
+        refine mul_le_mul' le_rfl (mul_le_mul' (add_le_add ?_ ?_) le_rfl)
+        · exact mul_le_mul' (ENNReal.ofReal_le_ofReal (hbrk _ hb1)) le_rfl
+        · exact mul_le_mul' (ENNReal.ofReal_le_ofReal (hbrk _ hb2)) le_rfl
+      _ = (ENNReal.ofReal (C1 * (19 : Real) ^ sigma) * 4 * M) *
+            ENNReal.ofReal (((2 : Real) ^ j) ^ sigma) := by
+        rw [ENNReal.ofReal_mul hC1.le, ENNReal.ofReal_mul hC1.le]
+        ring
+      _ ≤ ENNReal.ofReal D * 4 * M *
+            ENNReal.ofReal (((2 : Real) ^ j) ^ sigma) := by
+        refine mul_le_mul' (mul_le_mul' (mul_le_mul' ?_ le_rfl) le_rfl) le_rfl
+        exact ENNReal.ofReal_le_ofReal hD1
+  · -- large output radius: the half-density majorant
+    have hr : 0 < r := by
+      rcases lt_or_ge 0 r with hpos | hneg
+      · exact hpos
+      · exfalso
+        nlinarith [hcase, hjpos, hneg]
+    have hA : (0 : Real) ≤ C2 * r ^ (-sigma) :=
+      mul_nonneg hC2.le (Real.rpow_nonneg hr.le _)
+    have hpt : ∀ s : Real, s ∈ Ioi (0 : Real) →
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ ≤
+          ENNReal.ofReal (C2 * r ^ (-sigma)) *
+            ((ENNReal.ofReal s) ^ sigma *
+              brrsSectionFiveOmegaFourPhaseENN N j t r s) := by
+      intro s hs
+      refine brrs_enorm_radialBesselKernel_le_weight Phi v j hA t r s hs ?_
+      refine le_trans (hhd v j r s t hv hr hs) (le_of_eq ?_)
+      have hdiv : (s / r) ^ sigma = s ^ sigma * r ^ (-sigma) := by
+        rw [Real.div_rpow (le_of_lt hs) hr.le, Real.rpow_neg hr.le]
+        ring
+      rw [hdiv]
+      ring
+    have hbrk : ∀ a : Real, |a| ≤ 2 + r →
+        (1 + |a|) ^ sigma ≤ (3 + r) ^ sigma :=
+      fun a ha => Real.rpow_le_rpow (by positivity) (by linarith) hsigma
+    have hb1 : |t - r| ≤ 2 + r := by
+      rw [abs_le]
+      constructor <;> linarith
+    have hb2 : |t + r| ≤ 2 + r := by
+      rw [abs_le]
+      constructor <;> linarith
+    have hrmul : (1 : Real) * r ≤ ((2 : Real) ^ j) * r :=
+      mul_le_mul_of_nonneg_right hjone hr.le
+    have hratio : r ^ (-sigma) * (3 + r) ^ sigma ≤
+        ((19 : Real) / 16) ^ sigma * ((2 : Real) ^ j) ^ sigma := by
+      have hstep : (3 + r) / r ≤ ((19 : Real) / 16) * ((2 : Real) ^ j) := by
+        rw [div_le_iff₀ hr]
+        nlinarith [hcase, hrmul, hr]
+      have heq : r ^ (-sigma) * (3 + r) ^ sigma = ((3 + r) / r) ^ sigma := by
+        rw [Real.div_rpow (by linarith) hr.le, Real.rpow_neg hr.le]
+        ring
+      rw [heq]
+      calc ((3 + r) / r) ^ sigma ≤
+            (((19 : Real) / 16) * ((2 : Real) ^ j)) ^ sigma :=
+            Real.rpow_le_rpow (by positivity) hstep hsigma
+        _ = ((19 : Real) / 16) ^ sigma * ((2 : Real) ^ j) ^ sigma :=
+            Real.mul_rpow (by norm_num) hjpos.le
+    calc
+      (∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ) ≤
+          ∫⁻ s in Ioi (0 : Real), ENNReal.ofReal (C2 * r ^ (-sigma)) *
+            ((ENNReal.ofReal s) ^ sigma *
+              brrsSectionFiveOmegaFourPhaseENN N j t r s) :=
+        setLIntegral_mono' measurableSet_Ioi hpt
+      _ = ENNReal.ofReal (C2 * r ^ (-sigma)) *
+            ∫⁻ s in Ioi (0 : Real), (ENNReal.ofReal s) ^ sigma *
+              brrsSectionFiveOmegaFourPhaseENN N j t r s := by
+        rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+      _ ≤ ENNReal.ofReal (C2 * r ^ (-sigma)) *
+            ((ENNReal.ofReal ((1 + |t - r|) ^ sigma) * 2 +
+                ENNReal.ofReal ((1 + |t + r|) ^ sigma) * 2) * M) :=
+        mul_le_mul' le_rfl hmoment
+      _ ≤ ENNReal.ofReal (C2 * r ^ (-sigma)) *
+            ((ENNReal.ofReal ((3 + r) ^ sigma) * 2 +
+                ENNReal.ofReal ((3 + r) ^ sigma) * 2) * M) := by
+        refine mul_le_mul' le_rfl (mul_le_mul' (add_le_add ?_ ?_) le_rfl)
+        · exact mul_le_mul' (ENNReal.ofReal_le_ofReal (hbrk _ hb1)) le_rfl
+        · exact mul_le_mul' (ENNReal.ofReal_le_ofReal (hbrk _ hb2)) le_rfl
+      _ = ENNReal.ofReal (C2 * (r ^ (-sigma) * (3 + r) ^ sigma)) * 4 * M := by
+        rw [ENNReal.ofReal_mul hC2.le, ENNReal.ofReal_mul hC2.le,
+          ENNReal.ofReal_mul (Real.rpow_nonneg hr.le _)]
+        ring
+      _ ≤ ENNReal.ofReal (C2 * (((19 : Real) / 16) ^ sigma *
+            ((2 : Real) ^ j) ^ sigma)) * 4 * M := by
+        refine mul_le_mul' (mul_le_mul' ?_ le_rfl) le_rfl
+        exact ENNReal.ofReal_le_ofReal
+          (mul_le_mul_of_nonneg_left hratio hC2.le)
+      _ = (ENNReal.ofReal (C2 * ((19 : Real) / 16) ^ sigma) * 4 * M) *
+            ENNReal.ofReal (((2 : Real) ^ j) ^ sigma) := by
+        rw [ENNReal.ofReal_mul hC2.le, ENNReal.ofReal_mul hC2.le,
+          ENNReal.ofReal_mul (Real.rpow_nonneg (by norm_num) _)]
+        ring
+      _ ≤ ENNReal.ofReal D * 4 * M *
+            ENNReal.ofReal (((2 : Real) ^ j) ^ sigma) := by
+        refine mul_le_mul' (mul_le_mul' (mul_le_mul' ?_ le_rfl) le_rfl) le_rfl
+        exact ENNReal.ofReal_le_ofReal hD2
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Measurability of the radial kernel
+
+The Riesz--Thorin transport requires the operator it interpolates to have
+measurable output.  The radial kernel is an integral in the frequency radius
+of a jointly continuous integrand, so the parametrized integral is
+measurable, and the operator it defines inherits that.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The scalar radial profile of the half-wave kernel is jointly continuous
+in the time and the frequency radius. -/
+theorem continuous_brrsDyadicHalfWaveKernelRadialProfile_uncurry
+    (Phi : BRRSAnnularCutoff) (j : Nat) :
+    Continuous fun q : Real × Real =>
+      brrsDyadicHalfWaveKernelRadialProfile Phi j q.1 q.2 := by
+  unfold brrsDyadicHalfWaveKernelRadialProfile
+  have hexp : Continuous fun q : Real × Real =>
+      Complex.exp (((2 * Real.pi * q.1 * q.2 : Real) : Complex) *
+        Complex.I) := by
+    refine Complex.continuous_exp.comp ?_
+    exact (Complex.continuous_ofReal.comp
+      (by continuity : Continuous fun q : Real × Real =>
+        2 * Real.pi * q.1 * q.2)).mul continuous_const
+  have hsym : Continuous fun q : Real × Real =>
+      Phi.symbol (2 * Real.pi * ((2 : Real) ^ j)⁻¹ * q.2) := by
+    refine (Phi.symbol.continuous).comp ?_
+    exact continuous_const.mul continuous_snd
+  exact hexp.mul hsym
+
+/-- The radial Bessel factor is continuous. -/
+theorem continuous_brrsRadialBesselFactor {d : Nat} (v : BRRSSpace d) :
+    Continuous fun u : Real =>
+      Auto.RadialFourierTransform.brrsRadialBesselFactor d v u := by
+  have hrw : (fun u : Real =>
+      Auto.RadialFourierTransform.brrsRadialBesselFactor d v u) =
+      fun u : Real => surfaceFourier d (u • v) := by
+    funext u
+    exact brrsRadialBesselFactor_eq_surfaceFourier d v u
+  rw [hrw]
+  exact (continuous_surfaceFourier d).comp (continuous_id.smul continuous_const)
+
+/-- **Joint measurability of the radial kernel in the two radial variables.**
+The kernel is an integral in the frequency radius of a jointly continuous
+integrand, so the parametrized integral is measurable; this is what lets the
+kernel define an operator whose output is measurable, as the Riesz--Thorin
+transport requires. -/
+theorem measurable_brrsRadialBesselKernel_prod
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (t : Real) :
+    Measurable fun q : Real × Real =>
+      brrsRadialBesselKernel Phi d v j q.1 q.2 t := by
+  have hcont : Continuous fun z : (Real × Real) × Real =>
+      ((z.2 ^ (d - 1) : Real) : Complex) *
+        (Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+            (-(z.2 * z.1.1)) *
+          (brrsDyadicHalfWaveKernelRadialProfile Phi j t z.2 *
+            Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+              (z.2 * z.1.2))) := by
+    have h1 : Continuous fun z : (Real × Real) × Real =>
+        ((z.2 ^ (d - 1) : Real) : Complex) :=
+      Complex.continuous_ofReal.comp (continuous_snd.pow _)
+    have h2 : Continuous fun z : (Real × Real) × Real =>
+        Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+          (-(z.2 * z.1.1)) := by
+      refine (continuous_brrsRadialBesselFactor v).comp ?_
+      exact (continuous_snd.mul (continuous_fst.comp continuous_fst)).neg
+    have h3 : Continuous fun z : (Real × Real) × Real =>
+        brrsDyadicHalfWaveKernelRadialProfile Phi j t z.2 := by
+      have := continuous_brrsDyadicHalfWaveKernelRadialProfile_uncurry Phi j
+      exact this.comp (continuous_const.prodMk continuous_snd)
+    have h4 : Continuous fun z : (Real × Real) × Real =>
+        Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+          (z.2 * z.1.2) := by
+      refine (continuous_brrsRadialBesselFactor v).comp ?_
+      exact continuous_snd.mul (continuous_snd.comp continuous_fst)
+    exact h1.mul (h2.mul (h3.mul h4))
+  have hint : StronglyMeasurable fun q : Real × Real =>
+      ∫ rho, (fun z : (Real × Real) × Real =>
+        ((z.2 ^ (d - 1) : Real) : Complex) *
+          (Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+              (-(z.2 * z.1.1)) *
+            (brrsDyadicHalfWaveKernelRadialProfile Phi j t z.2 *
+              Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+                (z.2 * z.1.2)))) (q, rho)
+        ∂(volume.restrict (Ioi (0 : Real))) :=
+    hcont.stronglyMeasurable.integral_prod_right'
+  have hmeasint : Measurable fun q : Real × Real =>
+      ∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        (Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+            (-(rho * q.1)) *
+          (brrsDyadicHalfWaveKernelRadialProfile Phi j t rho *
+            Auto.RadialFourierTransform.brrsRadialBesselFactor d v
+              (rho * q.2))) := hint.measurable
+  have hfac : Measurable fun q : Real × Real =>
+      ((q.2 ^ (d - 1) : Real) : Complex) :=
+    (Complex.continuous_ofReal.comp (continuous_snd.pow _)).measurable
+  unfold brrsRadialBesselKernel
+  exact hfac.mul hmeasint
+
+/-- Measurability of the kernel norm in the two radial variables. -/
+theorem measurable_enorm_brrsRadialBesselKernel_prod
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (t : Real) :
+    Measurable fun q : Real × Real =>
+      ‖brrsRadialBesselKernel Phi d v j q.1 q.2 t‖ₑ :=
+  (measurable_brrsRadialBesselKernel_prod Phi v j t).enorm
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The absolute radial kernel operator
+
+The operator U1.I interpolates.  Its kernel is the norm of the radial Bessel
+kernel, so it is linear in the profile -- which the Riesz--Thorin transport
+requires -- while agreeing with the positive operator of Section 5 on
+nonnegative profiles, and dominating the annular half-wave for radial
+Schwartz data through the kernel representation.  Its integrability,
+measurability, additivity and homogeneity are established here; the kernel
+`L^1` bound is what makes the defining integral converge.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **The absolute radial kernel operator.**  Its kernel is the norm of the
+radial Bessel kernel, so it is linear in the profile, dominates the annular
+half-wave for radial Schwartz data through the kernel representation, and
+agrees with the positive operator of Section 5 on nonnegative profiles.  This
+is the operator U1.I interpolates. -/
+noncomputable def brrsRadialKernelAbsOutput {d : Nat} (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (j : Nat) (T : Finset Real) (F : Real → Complex) :
+    ({t : Real // t ∈ (T : Set Real)} × BRRSSpace d) → Complex :=
+  fun z => ∫ s in Ioi (0 : Real),
+    ((‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ : Real) : Complex) *
+      F s
+
+/-- The decay order used by the kernel `L^1` bound is admissible. -/
+theorem brrs_halfDensityExponent_add_three_le {d : Nat} (hd : 2 ≤ d) :
+    ((d : Real) - 1) / 2 + 3 ≤ ((d + 3 : Nat) : Real) := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  push_cast
+  linarith
+
+/-- For a bounded measurable profile the kernel integral converges, since the
+kernel is integrable in the source variable. -/
+theorem brrs_integrable_radialKernelAbs_mul
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (hv : ‖v‖ = 1) (j : Nat) {t : Real}
+    (ht : t ∈ Icc (1 : Real) 2) {r : Real} (hr : 0 ≤ r)
+    {F : Real → Complex} (hF : Measurable F)
+    {B : Real} (hB : ∀ s : Real, ‖F s‖ ≤ B) :
+    Integrable (fun s : Real =>
+        ((‖brrsRadialBesselKernel Phi d v j r s t‖ : Real) : Complex) * F s)
+      (volume.restrict (Ioi (0 : Real))) := by
+  obtain ⟨Cst, hCst, hker⟩ :=
+    exists_lintegral_enorm_brrsRadialBesselKernel_le (N := d + 3) hd Phi
+      (brrs_halfDensityExponent_add_three_le hd)
+  have hBnonneg : (0 : Real) ≤ B := le_trans (norm_nonneg _) (hB 0)
+  have hkermeas : Measurable fun s : Real =>
+      brrsRadialBesselKernel Phi d v j r s t :=
+    (measurable_brrsRadialBesselKernel_prod Phi v j t).comp
+      (measurable_const.prodMk measurable_id)
+  have hmeas : Measurable fun s : Real =>
+      ((‖brrsRadialBesselKernel Phi d v j r s t‖ : Real) : Complex) * F s := by
+    refine Measurable.mul ?_ hF
+    exact Complex.measurable_ofReal.comp hkermeas.norm
+  refine ⟨hmeas.aestronglyMeasurable, ?_⟩
+  rw [hasFiniteIntegral_iff_enorm]
+  have hpt : ∀ s : Real,
+      ‖((‖brrsRadialBesselKernel Phi d v j r s t‖ : Real) : Complex) * F s‖ₑ ≤
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ * ENNReal.ofReal B := by
+    intro s
+    rw [enorm_mul]
+    have hcoe : ‖((‖brrsRadialBesselKernel Phi d v j r s t‖ : Real) :
+        Complex)‖ₑ = ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ := by
+      have h : ‖((‖brrsRadialBesselKernel Phi d v j r s t‖ : Real) :
+          Complex)‖ = ‖brrsRadialBesselKernel Phi d v j r s t‖ := by
+        rw [Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)]
+      rw [← ofReal_norm, ← ofReal_norm, h]
+    rw [hcoe]
+    refine mul_le_mul' le_rfl ?_
+    rw [← ofReal_norm]
+    exact ENNReal.ofReal_le_ofReal (hB s)
+  calc
+    (∫⁻ s in Ioi (0 : Real),
+        ‖((‖brrsRadialBesselKernel Phi d v j r s t‖ : Real) : Complex) *
+          F s‖ₑ) ≤
+        ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ * ENNReal.ofReal B :=
+      lintegral_mono hpt
+    _ = (∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ) * ENNReal.ofReal B := by
+      rw [lintegral_mul_const' _ _ ENNReal.ofReal_ne_top]
+    _ ≤ (Cst * ENNReal.ofReal (((2 : Real) ^ j) ^ (((d : Real) - 1) / 2))) *
+          ENNReal.ofReal B :=
+      mul_le_mul' (hker v hv j ht r hr) le_rfl
+    _ < ∞ := by
+      refine ENNReal.mul_lt_top (ENNReal.mul_lt_top ?_ ?_) ?_
+      · exact lt_of_le_of_ne le_top hCst
+      · exact ENNReal.ofReal_lt_top
+      · exact ENNReal.ofReal_lt_top
+
+/-- The absolute radial kernel operator has measurable output on a finite
+time set. -/
+theorem measurable_brrsRadialKernelAbsOutput
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (T : Finset Real) {F : Real → Complex} (hF : Measurable F) :
+    Measurable (brrsRadialKernelAbsOutput Phi v j T F) := by
+  unfold brrsRadialKernelAbsOutput
+  apply measurable_from_prod_countable_right
+  intro t
+  have hradial : Measurable fun r : Real =>
+      ∫ s in Ioi (0 : Real),
+        ((‖brrsRadialBesselKernel Phi d v j r s (t : Real)‖ : Real) :
+          Complex) * F s := by
+    have hjoint : Measurable fun q : Real × Real =>
+        ((‖brrsRadialBesselKernel Phi d v j q.1 q.2 (t : Real)‖ : Real) :
+          Complex) * F q.2 := by
+      refine Measurable.mul ?_ (hF.comp measurable_snd)
+      exact Complex.measurable_ofReal.comp
+        (measurable_brrsRadialBesselKernel_prod Phi v j (t : Real)).norm
+    exact hjoint.stronglyMeasurable.integral_prod_right'.measurable
+  exact hradial.comp continuous_norm.measurable
+
+/-- Additivity of the absolute radial kernel operator on bounded measurable
+profiles. -/
+theorem brrsRadialKernelAbsOutput_add
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (hv : ‖v‖ = 1) (j : Nat) (T : Finset Real)
+    (hT : ∀ t ∈ T, t ∈ Icc (1 : Real) 2)
+    {F G : Real → Complex} (hF : Measurable F) (hG : Measurable G)
+    {B1 B2 : Real} (hB1 : ∀ s : Real, ‖F s‖ ≤ B1)
+    (hB2 : ∀ s : Real, ‖G s‖ ≤ B2) :
+    brrsRadialKernelAbsOutput Phi v j T (F + G) =
+      brrsRadialKernelAbsOutput Phi v j T F +
+        brrsRadialKernelAbsOutput Phi v j T G := by
+  funext z
+  have ht : (z.1 : Real) ∈ Icc (1 : Real) 2 := hT (z.1 : Real) (by
+    simpa using z.1.2)
+  have hiF := brrs_integrable_radialKernelAbs_mul hd Phi v hv j ht
+    (r := ‖z.2‖) (norm_nonneg _) hF hB1
+  have hiG := brrs_integrable_radialKernelAbs_mul hd Phi v hv j ht
+    (r := ‖z.2‖) (norm_nonneg _) hG hB2
+  unfold brrsRadialKernelAbsOutput
+  simp only [Pi.add_apply]
+  rw [← integral_add hiF hiG]
+  refine setIntegral_congr_fun measurableSet_Ioi fun s _ => ?_
+  ring
+
+/-- Homogeneity of the absolute radial kernel operator. -/
+theorem brrsRadialKernelAbsOutput_smul
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (T : Finset Real) (c : Complex) (F : Real → Complex) :
+    brrsRadialKernelAbsOutput Phi v j T (c • F) =
+      c • brrsRadialKernelAbsOutput Phi v j T F := by
+  funext z
+  unfold brrsRadialKernelAbsOutput
+  simp only [Pi.smul_apply, smul_eq_mul]
+  rw [← integral_const_mul]
+  refine setIntegral_congr_fun measurableSet_Ioi fun s _ => ?_
+  ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The weighted profile and the transport's norm conversions
+
+The transport measures the profile in `L^p` of the radial pushforward
+measure, while the Section 5 chain measures it through the weighted profile.
+The two agree up to the total surface mass, which also appears on the output
+side through polar coordinates and therefore cancels.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The weighted radial profile of a scalar profile: the quantity whose
+`p`-th power integrates to the `L^p` norm of the profile against the radial
+pushforward measure.  It is the profile-general form of
+`brrsSectionFiveRadialProfile`. -/
+noncomputable def brrsRadialProfileWeightENN (d : Nat) (p : Real)
+    (F : Real → Complex) : Real → ENNReal :=
+  fun s => (Ioi (0 : Real)).indicator
+    (fun u : Real => (ENNReal.ofReal u) ^ (((d : Real) - 1) / p) * ‖F u‖ₑ) s
+
+theorem measurable_brrsRadialProfileWeightENN (d : Nat) (p : Real)
+    {F : Real → Complex} (hF : Measurable F) :
+    Measurable (brrsRadialProfileWeightENN d p F) := by
+  unfold brrsRadialProfileWeightENN
+  refine Measurable.indicator ?_ measurableSet_Ioi
+  exact (ENNReal.continuous_rpow_const.measurable.comp
+    ENNReal.measurable_ofReal).mul hF.enorm
+
+/-- On the source half-line the weight of the profile cancels the weight of
+the operator, so the positive kernel operator applied to the weighted profile
+is the kernel integral of the profile norm. -/
+theorem brrsRadialKernelWeightedSource_weight_eq
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    {p : Real} (hp : 0 < p) (F : Real → Complex) (t r : Real) :
+    brrsRadialKernelWeightedSource Phi v j p
+        (brrsRadialProfileWeightENN d p F) t r =
+      ∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ * ‖F s‖ₑ := by
+  unfold brrsRadialKernelWeightedSource brrsRadialProfileWeightENN
+  refine setLIntegral_congr_fun measurableSet_Ioi fun s hs => ?_
+  have hs0 : 0 < s := hs
+  have hne : ENNReal.ofReal s ≠ 0 := by
+    simpa using (ENNReal.ofReal_pos.mpr hs0).ne'
+  have hcancel : (ENNReal.ofReal s) ^ (-(((d : Real) - 1) / p)) *
+      ((ENNReal.ofReal s) ^ (((d : Real) - 1) / p) * ‖F s‖ₑ) = ‖F s‖ₑ := by
+    rw [← mul_assoc, ← ENNReal.rpow_add _ _ hne ENNReal.ofReal_ne_top]
+    simp
+  rw [indicator_of_mem hs, hcancel]
+
+/-- The absolute radial kernel operator is dominated by the positive kernel
+operator applied to the weighted profile.  This is the bridge from the linear
+operator that the transport interpolates to the positive operator for which
+the low endpoint was proved. -/
+theorem enorm_brrsRadialKernelAbsOutput_le
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (T : Finset Real) {p : Real} (hp : 0 < p) (F : Real → Complex)
+    (z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d) :
+    ‖brrsRadialKernelAbsOutput Phi v j T F z‖ₑ ≤
+      brrsRadialKernelWeightedSource Phi v j p
+        (brrsRadialProfileWeightENN d p F) (z.1 : Real) ‖z.2‖ := by
+  rw [brrsRadialKernelWeightedSource_weight_eq Phi v j hp F]
+  unfold brrsRadialKernelAbsOutput
+  refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+  refine lintegral_mono fun s => ?_
+  rw [enorm_mul]
+  refine mul_le_mul' (le_of_eq ?_) le_rfl
+  have h : ‖((‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ :
+      Real) : Complex)‖ =
+      ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ := by
+    rw [Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)]
+  rw [← ofReal_norm, ← ofReal_norm, h]
+
+/-- The `p`-th moment of the weighted profile is the `p`-th power of the
+profile's `L^p` norm against the radial pushforward measure, up to the total
+surface mass.  This is the input-side conversion for the transport. -/
+theorem brrs_lintegral_brrsRadialProfileWeightENN_rpow_eq
+    {d : Nat} (hd : 0 < d) {p : Real} (hp : 0 < p)
+    {F : Real → Complex} (hF : Measurable F)
+    (v : BRRSSpace d) (hv : ‖v‖ = 1) :
+    (unitSurfaceMeasure d) univ *
+        (∫⁻ s : Real, (brrsRadialProfileWeightENN d p F s) ^ p) =
+      (eLpNorm F (ENNReal.ofReal p) (brrsRadialProfileMeasure d)) ^ p := by
+  have hd1 : 1 ≤ d := hd
+  have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+    have : (1 : Nat) ≤ d := hd1
+    push_cast [Nat.cast_sub this]
+    ring
+  -- the left side is the weighted radial moment
+  have hleftpt : ∀ s : Real, (brrsRadialProfileWeightENN d p F s) ^ p =
+      (Ioi (0 : Real)).indicator
+        (fun u : Real => (ENNReal.ofReal u) ^ (d - 1) * ‖F u‖ₑ ^ p) s := by
+    intro s
+    unfold brrsRadialProfileWeightENN
+    rcases lt_or_ge 0 s with hs | hs
+    · have hsmem : s ∈ Ioi (0 : Real) := hs
+      rw [indicator_of_mem hsmem, indicator_of_mem hsmem,
+        ENNReal.mul_rpow_of_nonneg _ _ hp.le, ← ENNReal.rpow_mul,
+        div_mul_cancel₀ _ hp.ne', ← hcast, ENNReal.rpow_natCast]
+    · have hnot : s ∉ Ioi (0 : Real) := by simpa using hs
+      rw [indicator_of_notMem hnot, indicator_of_notMem hnot,
+        ENNReal.zero_rpow_of_pos hp]
+  have hleft : (∫⁻ s : Real, (brrsRadialProfileWeightENN d p F s) ^ p) =
+      ∫⁻ s in Ioi (0 : Real),
+        (ENNReal.ofReal s) ^ (d - 1) * ‖F s‖ₑ ^ p := by
+    rw [lintegral_congr hleftpt, lintegral_indicator measurableSet_Ioi]
+  -- the right side is the Euclidean moment of the radial extension
+  have hmeasH : Measurable fun x : BRRSSpace d => ‖F ‖x‖‖ₑ ^ p := by
+    refine ENNReal.continuous_rpow_const.measurable.comp ?_
+    exact (hF.comp continuous_norm.measurable).enorm
+  have hradH : ∀ x y : BRRSSpace d, ‖x‖ = ‖y‖ →
+      ‖F ‖x‖‖ₑ ^ p = ‖F ‖y‖‖ₑ ^ p := by
+    intro x y hxy
+    rw [hxy]
+  have hpolar := brrs_lintegral_polar_of_radial hd
+    (fun x : BRRSSpace d => ‖F ‖x‖‖ₑ ^ p) hmeasH hradH v hv
+  have hnormv : ∀ r : Real, 0 < r → ‖r • v‖ = r := by
+    intro r hr
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos hr, hv, mul_one]
+  have hpolar' : (∫⁻ x : BRRSSpace d, ‖F ‖x‖‖ₑ ^ p) =
+      (unitSurfaceMeasure d) univ *
+        ∫⁻ r in Ioi (0 : Real),
+          (ENNReal.ofReal r) ^ (d - 1) * ‖F r‖ₑ ^ p := by
+    rw [hpolar]
+    congr 1
+    refine setLIntegral_congr_fun measurableSet_Ioi fun r hr => ?_
+    rw [hnormv r hr]
+  have hmap : (∫⁻ s : Real, ‖F s‖ₑ ^ p ∂(brrsRadialProfileMeasure d)) =
+      ∫⁻ x : BRRSSpace d, ‖F ‖x‖‖ₑ ^ p := by
+    unfold brrsRadialProfileMeasure
+    rw [lintegral_map (by
+        refine ENNReal.continuous_rpow_const.measurable.comp ?_
+        exact hF.enorm) continuous_norm.measurable]
+  have hnorm : (eLpNorm F (ENNReal.ofReal p) (brrsRadialProfileMeasure d)) ^ p =
+      ∫⁻ s : Real, ‖F s‖ₑ ^ p ∂(brrsRadialProfileMeasure d) := by
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
+      (by simpa using (ENNReal.ofReal_pos.mpr hp).ne')
+      (by simp), ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul,
+      one_div, inv_mul_cancel₀ hp.ne', ENNReal.rpow_one]
+  rw [hnorm, hmap, hpolar', hleft]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The low endpoint of U1.I in the transport's form
+
+The `p`-th power of the output norm of the absolute radial kernel operator
+obeys the entropy bound over an arbitrary measurable profile.  The output
+`eLpNorm` becomes the discrete norm through the counting-product bridge, each
+time fibre reduces by polar coordinates, and the total surface mass cancels
+against the one carried by the radial pushforward measure on the input side.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- One time fibre of the absolute radial kernel operator. -/
+noncomputable def brrsRadialKernelAbsFibre {d : Nat} (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (j : Nat) (F : Real → Complex) (t : Real)
+    (x : BRRSSpace d) : Complex :=
+  ∫ s in Ioi (0 : Real),
+    ((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ : Real) : Complex) * F s
+
+theorem brrsRadialKernelAbsOutput_eq_fibre {d : Nat} (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (j : Nat) (T : Finset Real) (F : Real → Complex) :
+    brrsRadialKernelAbsOutput Phi v j T F =
+      fun z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d =>
+        brrsRadialKernelAbsFibre Phi v j F (z.1 : Real) z.2 := rfl
+
+theorem measurable_brrsRadialKernelAbsFibre {d : Nat} (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (j : Nat) {F : Real → Complex} (hF : Measurable F)
+    (t : Real) :
+    Measurable (brrsRadialKernelAbsFibre Phi v j F t) := by
+  unfold brrsRadialKernelAbsFibre
+  have hjoint : Measurable fun q : Real × Real =>
+      ((‖brrsRadialBesselKernel Phi d v j q.1 q.2 t‖ : Real) : Complex) *
+        F q.2 := by
+    refine Measurable.mul ?_ (hF.comp measurable_snd)
+    exact Complex.measurable_ofReal.comp
+      (measurable_brrsRadialBesselKernel_prod Phi v j t).norm
+  exact (hjoint.stronglyMeasurable.integral_prod_right'.measurable).comp
+    continuous_norm.measurable
+
+/-- Fibre form of the pointwise domination: no membership in the time set is
+involved, so it holds for every real time. -/
+theorem enorm_brrsRadialKernelAbsFibre_le
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    {p : Real} (hp : 0 < p) (F : Real → Complex) (t : Real)
+    (x : BRRSSpace d) :
+    ‖brrsRadialKernelAbsFibre Phi v j F t x‖ₑ ≤
+      brrsRadialKernelWeightedSource Phi v j p
+        (brrsRadialProfileWeightENN d p F) t ‖x‖ := by
+  rw [brrsRadialKernelWeightedSource_weight_eq Phi v j hp F]
+  unfold brrsRadialKernelAbsFibre
+  refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+  refine lintegral_mono fun s => ?_
+  rw [enorm_mul]
+  refine mul_le_mul' (le_of_eq ?_) le_rfl
+  have h : ‖((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ : Real) : Complex)‖ =
+      ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ := by
+    rw [Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)]
+  rw [← ofReal_norm, ← ofReal_norm, h]
+
+/-- The positive radial kernel operator is measurable in the output radius. -/
+theorem measurable_brrsRadialKernelWeightedSource_radius
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (p : Real) {g : Real → ENNReal} (hg : Measurable g) (t : Real) :
+    Measurable fun r : Real =>
+      brrsRadialKernelWeightedSource Phi v j p g t r := by
+  unfold brrsRadialKernelWeightedSource
+  have hjoint : Measurable fun q : Real × Real =>
+      ‖brrsRadialBesselKernel Phi d v j q.1 q.2 t‖ₑ *
+        ((ENNReal.ofReal q.2) ^ (-(((d : Real) - 1) / p)) * g q.2) := by
+    refine Measurable.mul
+      (measurable_enorm_brrsRadialBesselKernel_prod Phi v j t) ?_
+    refine Measurable.mul ?_ (hg.comp measurable_snd)
+    exact (ENNReal.continuous_rpow_const.measurable.comp
+      ENNReal.measurable_ofReal).comp measurable_snd
+  exact hjoint.lintegral_prod_right'
+
+/-- **The low endpoint of U1.I in the transport's form.**  The `p`-th power of
+the output norm of the absolute radial kernel operator obeys the entropy
+bound, over an arbitrary measurable profile.  The total surface mass cancels:
+it enters the output through polar coordinates and the input through the
+radial pushforward measure. -/
+theorem brrsRadialKernelAbsOutput_entropy_eLpNorm_rpow_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p * sobolevExponent d p) < q) :
+    ∃ (Cst : ENNReal) (J : Nat), Cst ≠ ∞ ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+        ∀ F : Real → Complex, Measurable F →
+          (eLpNorm (brrsRadialKernelAbsOutput Phi v j T F) (ENNReal.ofReal p)
+              (Measure.count.prod (volume : Measure (BRRSSpace d)))) ^ p ≤
+            Cst * (((j : ENNReal) + 1) *
+                (2 : ENNReal) ^ (((j : Real) + 1) * q)) *
+              (eLpNorm F (ENNReal.ofReal p)
+                (brrsRadialProfileMeasure d)) ^ p := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  obtain ⟨Cst, J, hCst, hentropy⟩ :=
+    brrsRadialKernelWeightedSource_entropy_le hd Phi hp hcritical hE hq0 hq
+  refine ⟨Cst, J, hCst, ?_⟩
+  intro j hj T hT v hv F hF
+  set g : Real → ENNReal := brrsRadialProfileWeightENN d p F with hg
+  have hgmeas : Measurable g := measurable_brrsRadialProfileWeightENN d p hF
+  set Pos : Real → Real → ENNReal := fun t r =>
+    brrsRadialKernelWeightedSource Phi v j p g t r with hPos
+  have hPosmeas : ∀ t : Real, Measurable fun r : Real => Pos t r := by
+    intro t
+    exact measurable_brrsRadialKernelWeightedSource_radius Phi v j p hgmeas t
+  -- output side: rewrite the eLpNorm as the discrete norm and expand
+  have hfibremeas : ∀ t ∈ T,
+      Measurable (brrsRadialKernelAbsFibre Phi v j F t) :=
+    fun t _ => measurable_brrsRadialKernelAbsFibre Phi v j hF t
+  have hbridge := discreteLpNorm_eq_eLpNorm_finset_counting_product_of_measurable
+    hp0 T (brrsRadialKernelAbsFibre Phi v j F) hfibremeas
+  have hexpand := discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp0 T
+    (brrsRadialKernelAbsFibre Phi v j F)
+  -- pointwise domination and polar reduction on each fibre
+  have hfibre : ∀ t : Real,
+      (∫⁻ x : BRRSSpace d,
+          (ENNReal.ofReal ‖brrsRadialKernelAbsFibre Phi v j F t x‖) ^ p) ≤
+        (unitSurfaceMeasure d) univ *
+          ∫⁻ r in Ioi (0 : Real),
+            (ENNReal.ofReal r) ^ (d - 1) * (Pos t r) ^ p := by
+    intro t
+    have hdom : ∀ x : BRRSSpace d,
+        (ENNReal.ofReal ‖brrsRadialKernelAbsFibre Phi v j F t x‖) ^ p ≤
+          (Pos t ‖x‖) ^ p := by
+      intro x
+      refine ENNReal.rpow_le_rpow ?_ hp0.le
+      rw [ofReal_norm]
+      exact enorm_brrsRadialKernelAbsFibre_le Phi v j hp0 F t x
+    exact le_trans (lintegral_mono hdom) (le_of_eq (by
+      have hmeasH : Measurable fun x : BRRSSpace d => (Pos t ‖x‖) ^ p := by
+        refine ENNReal.continuous_rpow_const.measurable.comp ?_
+        exact (hPosmeas t).comp continuous_norm.measurable
+      have hradH : ∀ x y : BRRSSpace d, ‖x‖ = ‖y‖ →
+          (Pos t ‖x‖) ^ p = (Pos t ‖y‖) ^ p := by
+        intro x y hxy
+        rw [hxy]
+      have hpolar := brrs_lintegral_polar_of_radial hdpos
+        (fun x : BRRSSpace d => (Pos t ‖x‖) ^ p) hmeasH hradH v hv
+      rw [hpolar]
+      congr 1
+      refine setLIntegral_congr_fun measurableSet_Ioi fun r hr => ?_
+      have hnormv : ‖r • v‖ = r := by
+        rw [norm_smul, Real.norm_eq_abs, abs_of_pos hr, hv, mul_one]
+      rw [hnormv]))
+  have hinput := brrs_lintegral_brrsRadialProfileWeightENN_rpow_eq
+    (d := d) hdpos hp0 hF v hv
+  calc
+    (eLpNorm (brrsRadialKernelAbsOutput Phi v j T F) (ENNReal.ofReal p)
+        (Measure.count.prod (volume : Measure (BRRSSpace d)))) ^ p =
+        (discreteLpNorm p T (brrsRadialKernelAbsFibre Phi v j F)) ^ p := by
+      rw [hbridge, brrsRadialKernelAbsOutput_eq_fibre]
+    _ = ∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+          (ENNReal.ofReal ‖brrsRadialKernelAbsFibre Phi v j F t x‖) ^ p :=
+      hexpand
+    _ ≤ ∑ t ∈ T, (unitSurfaceMeasure d) univ *
+          ∫⁻ r in Ioi (0 : Real),
+            (ENNReal.ofReal r) ^ (d - 1) * (Pos t r) ^ p :=
+      Finset.sum_le_sum fun t _ => hfibre t
+    _ = (unitSurfaceMeasure d) univ *
+          ∑ t ∈ T, ∫⁻ r in Ioi (0 : Real),
+            (ENNReal.ofReal r) ^ (d - 1) * (Pos t r) ^ p := by
+      rw [Finset.mul_sum]
+    _ ≤ (unitSurfaceMeasure d) univ *
+          (Cst * (((j : ENNReal) + 1) *
+            (2 : ENNReal) ^ (((j : Real) + 1) * q) *
+              ∫⁻ s : Real, (g s) ^ p)) :=
+      mul_le_mul' le_rfl (hentropy j hj T hT v hv g hgmeas)
+    _ = Cst * (((j : ENNReal) + 1) *
+            (2 : ENNReal) ^ (((j : Real) + 1) * q)) *
+          ((unitSurfaceMeasure d) univ * ∫⁻ s : Real, (g s) ^ p) := by
+      ring
+    _ = Cst * (((j : ENNReal) + 1) *
+            (2 : ENNReal) ^ (((j : Real) + 1) * q)) *
+          (eLpNorm F (ENNReal.ofReal p)
+            (brrsRadialProfileMeasure d)) ^ p := by
+      rw [hg, hinput]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Comparison of the two source measures
+
+The transport measures the input profile against the radial pushforward
+measure, while the kernel integral is taken against Lebesgue measure on the
+source half-line.  For the `L^infty` endpoint an essential bound against the
+former has to be usable inside the latter, which is exactly absolute
+continuity in that direction; polar coordinates give it, the radial density
+being positive on the half-line.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- On the source half-line, Lebesgue measure is absolutely continuous with
+respect to the radial pushforward measure.  Hence an essential bound for a
+profile against the pushforward measure may be used inside a kernel integral
+taken against Lebesgue measure -- which is what the `L^infty` endpoint needs,
+since the transport measures the input against the pushforward. -/
+theorem brrs_volume_restrict_Ioi_absolutelyContinuous_radialProfileMeasure
+    {d : Nat} (hd : 0 < d) (v : BRRSSpace d) (hv : ‖v‖ = 1) :
+    (volume.restrict (Ioi (0 : Real))) ≪ brrsRadialProfileMeasure d := by
+  refine Measure.AbsolutelyContinuous.mk ?_
+  intro A hA hzero
+  have hpre : volume ((fun x : BRRSSpace d => ‖x‖) ⁻¹' A) = 0 := by
+    rw [brrsRadialProfileMeasure,
+      Measure.map_apply continuous_norm.measurable hA] at hzero
+    exact hzero
+  set S : Set (BRRSSpace d) := (fun x : BRRSSpace d => ‖x‖) ⁻¹' A with hS
+  have hSmeas : MeasurableSet S := hA.preimage continuous_norm.measurable
+  have hHmeas : Measurable fun x : BRRSSpace d => S.indicator (1 : BRRSSpace d → ENNReal) x :=
+    measurable_one.indicator hSmeas
+  have hHrad : ∀ x y : BRRSSpace d, ‖x‖ = ‖y‖ →
+      S.indicator (1 : BRRSSpace d → ENNReal) x =
+        S.indicator (1 : BRRSSpace d → ENNReal) y := by
+    intro x y hxy
+    have hiff : (x ∈ S) ↔ (y ∈ S) := by
+      simp only [hS, mem_preimage, hxy]
+    by_cases hx : x ∈ S
+    · rw [indicator_of_mem hx, indicator_of_mem (hiff.mp hx)]
+      simp only [Pi.one_apply]
+    · rw [indicator_of_notMem hx,
+        indicator_of_notMem (fun hy => hx (hiff.mpr hy))]
+  have hpolar := brrs_lintegral_polar_of_radial hd
+    (fun x : BRRSSpace d => S.indicator (1 : BRRSSpace d → ENNReal) x)
+    hHmeas hHrad v hv
+  rw [lintegral_indicator_one hSmeas, hpre] at hpolar
+  have hfiber : ∀ r : Real, r ∈ Ioi (0 : Real) →
+      (ENNReal.ofReal r) ^ (d - 1) *
+          S.indicator (1 : BRRSSpace d → ENNReal) (r • v) =
+        (ENNReal.ofReal r) ^ (d - 1) * A.indicator (1 : Real → ENNReal) r := by
+    intro r hr
+    have hrpos : 0 < r := hr
+    have hnormv : ‖r • v‖ = r := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos hrpos, hv, mul_one]
+    have hiff : (r • v ∈ S) ↔ (r ∈ A) := by
+      simp only [hS, mem_preimage, hnormv]
+    by_cases hrA : r ∈ A
+    · rw [indicator_of_mem (hiff.mpr hrA), indicator_of_mem hrA]
+      simp only [Pi.one_apply]
+    · rw [indicator_of_notMem (fun hm => hrA (hiff.mp hm)),
+        indicator_of_notMem hrA]
+  have hzero2 : (∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+      A.indicator (1 : Real → ENNReal) r) = 0 := by
+    have hrewrite : (∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+        S.indicator (1 : BRRSSpace d → ENNReal) (r • v)) =
+        ∫⁻ r in Ioi (0 : Real), (ENNReal.ofReal r) ^ (d - 1) *
+          A.indicator (1 : Real → ENNReal) r :=
+      setLIntegral_congr_fun measurableSet_Ioi hfiber
+    rw [← hrewrite]
+    by_contra hne
+    have hpos : 0 < (unitSurfaceMeasure d) univ * ∫⁻ r in Ioi (0 : Real),
+        (ENNReal.ofReal r) ^ (d - 1) *
+          S.indicator (1 : BRRSSpace d → ENNReal) (r • v) := by
+      refine ENNReal.mul_pos (ne_of_gt (unitSurfaceMeasure_univ_pos hd)) hne
+    rw [← hpolar] at hpos
+    exact absurd rfl (ne_of_gt hpos)
+  have hae : (fun r : Real => (ENNReal.ofReal r) ^ (d - 1) *
+      A.indicator (1 : Real → ENNReal) r) =ᵐ[volume.restrict (Ioi (0 : Real))]
+        0 := by
+    have hmeas : Measurable fun r : Real => (ENNReal.ofReal r) ^ (d - 1) *
+        A.indicator (1 : Real → ENNReal) r := by
+      refine Measurable.mul ?_ (measurable_one.indicator hA)
+      exact ENNReal.measurable_ofReal.pow_const (d - 1)
+    exact (lintegral_eq_zero_iff hmeas).mp hzero2
+  have hsubset : A ∩ Ioi (0 : Real) ⊆
+      {r : Real | (ENNReal.ofReal r) ^ (d - 1) *
+        A.indicator (1 : Real → ENNReal) r ≠ 0} := by
+    intro r hr
+    have hrpos : 0 < r := hr.2
+    have hne0 : ENNReal.ofReal r ≠ 0 := by
+      simpa using (ENNReal.ofReal_pos.mpr hrpos).ne'
+    rw [mem_setOf_eq, indicator_of_mem hr.1]
+    simp only [Pi.one_apply, mul_one]
+    exact pow_ne_zero _ hne0
+  have hnull : (volume.restrict (Ioi (0 : Real)))
+      {r : Real | (ENNReal.ofReal r) ^ (d - 1) *
+        A.indicator (1 : Real → ENNReal) r ≠ 0} = 0 := ae_iff.mp hae
+  have hrestrict : (volume.restrict (Ioi (0 : Real))) A =
+      (volume.restrict (Ioi (0 : Real))) (A ∩ Ioi (0 : Real)) := by
+    rw [Measure.restrict_apply hA,
+      Measure.restrict_apply (hA.inter measurableSet_Ioi),
+      inter_assoc, inter_self]
+  rw [hrestrict]
+  exact measure_mono_null hsubset hnull
+
+/-- The kernel form of the pointwise bound for the absolute radial kernel
+operator. -/
+theorem enorm_brrsRadialKernelAbsFibre_le_kernelIntegral
+    {d : Nat} (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat)
+    (F : Real → Complex) (t : Real) (x : BRRSSpace d) :
+    ‖brrsRadialKernelAbsFibre Phi v j F t x‖ₑ ≤
+      ∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ * ‖F s‖ₑ := by
+  unfold brrsRadialKernelAbsFibre
+  refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+  refine lintegral_mono fun s => ?_
+  rw [enorm_mul]
+  refine mul_le_mul' (le_of_eq ?_) le_rfl
+  have h : ‖((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ : Real) : Complex)‖ =
+      ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ := by
+    rw [Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)]
+  rw [← ofReal_norm, ← ofReal_norm, h]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The `L^infty` endpoint of U1.I
+
+The absolute radial kernel operator maps essentially bounded profiles to
+essentially bounded outputs with the half-density rate, because the kernel is
+uniformly integrable in the source variable.  The essential bound arrives
+measured against the radial pushforward measure and is used against Lebesgue
+measure on the half-line, which is exactly what the absolute continuity above
+permits.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- **The `L^infty` endpoint of U1.I.**  The absolute radial kernel operator
+maps essentially bounded profiles to essentially bounded outputs with the
+half-density rate, because the kernel is uniformly integrable in the source
+variable.  The essential bound is transferred from the pushforward measure to
+Lebesgue measure on the half-line by absolute continuity. -/
+theorem brrsRadialKernelAbsOutput_top_eLpNorm_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    ∃ B : Real, 0 < B ∧ ∀ (j : Nat) (T : Finset Real),
+      (∀ t ∈ T, t ∈ Icc (1 : Real) 2) → ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+      ∀ F : Real → Complex, Measurable F →
+        eLpNorm (brrsRadialKernelAbsOutput Phi v j T F) ⊤
+            (Measure.count.prod (volume : Measure (BRRSSpace d))) ≤
+          ENNReal.ofReal (B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) *
+            eLpNorm F ⊤ (brrsRadialProfileMeasure d) := by
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  obtain ⟨Cst, hCst, hker⟩ :=
+    exists_lintegral_enorm_brrsRadialBesselKernel_le (N := d + 3) hd Phi
+      (brrs_halfDensityExponent_add_three_le hd)
+  refine ⟨Cst.toReal + 1, by positivity, ?_⟩
+  intro j T hT v hv F hF
+  set M : ENNReal := eLpNorm F ⊤ (brrsRadialProfileMeasure d) with hM
+  have hCstle : Cst ≤ ENNReal.ofReal (Cst.toReal + 1) :=
+    le_trans (le_of_eq (ENNReal.ofReal_toReal hCst).symm)
+      (ENNReal.ofReal_le_ofReal (by linarith))
+  -- transfer the essential bound to Lebesgue measure on the half-line
+  have hac := brrs_volume_restrict_Ioi_absolutelyContinuous_radialProfileMeasure
+    (d := d) hdpos v hv
+  have haeprof : ∀ᵐ s : Real ∂(brrsRadialProfileMeasure d), ‖F s‖ₑ ≤ M := by
+    rw [hM, eLpNorm_exponent_top]
+    exact enorm_ae_le_eLpNormEssSup F (brrsRadialProfileMeasure d)
+  have haeleb : ∀ᵐ s : Real ∂(volume.restrict (Ioi (0 : Real))),
+      ‖F s‖ₑ ≤ M := hac.ae_le haeprof
+  -- the pointwise bound on the output
+  have hptbound : ∀ z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d,
+      ‖brrsRadialKernelAbsOutput Phi v j T F z‖ₑ ≤
+        ENNReal.ofReal ((Cst.toReal + 1) *
+          ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) * M := by
+    intro z
+    have ht : (z.1 : Real) ∈ Icc (1 : Real) 2 :=
+      hT (z.1 : Real) (by simpa using z.1.2)
+    have hkerz := hker v hv j ht ‖z.2‖ (norm_nonneg _)
+    have hpair : Measurable fun s : Real => ((‖z.2‖ : Real), s) :=
+      measurable_const.prodMk measurable_id
+    have hkm : Measurable fun s : Real =>
+        ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ :=
+      (measurable_enorm_brrsRadialBesselKernel_prod Phi v j
+        (z.1 : Real)).comp hpair
+    have hstep : ‖brrsRadialKernelAbsFibre Phi v j F (z.1 : Real) z.2‖ₑ ≤
+        ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ * M := by
+      refine le_trans (enorm_brrsRadialKernelAbsFibre_le_kernelIntegral
+        Phi v j F (z.1 : Real) z.2) ?_
+      refine lintegral_mono_ae ?_
+      filter_upwards [haeleb] with s hs
+      exact mul_le_mul' le_rfl hs
+    calc
+      ‖brrsRadialKernelAbsOutput Phi v j T F z‖ₑ =
+          ‖brrsRadialKernelAbsFibre Phi v j F (z.1 : Real) z.2‖ₑ := by
+        rw [brrsRadialKernelAbsOutput_eq_fibre]
+      _ ≤ ∫⁻ s in Ioi (0 : Real),
+            ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ * M :=
+        hstep
+      _ = (∫⁻ s in Ioi (0 : Real),
+            ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ) * M := by
+        rw [lintegral_mul_const _ hkm]
+      _ ≤ (Cst * ENNReal.ofReal (((2 : Real) ^ j) ^ (((d : Real) - 1) / 2))) *
+            M := mul_le_mul' hkerz le_rfl
+      _ ≤ (ENNReal.ofReal (Cst.toReal + 1) *
+            ENNReal.ofReal (((2 : Real) ^ j) ^ (((d : Real) - 1) / 2))) * M :=
+        mul_le_mul' (mul_le_mul' hCstle le_rfl) le_rfl
+      _ = ENNReal.ofReal ((Cst.toReal + 1) *
+            ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) * M := by
+        rw [← ENNReal.ofReal_mul (by positivity)]
+  rw [eLpNorm_exponent_top]
+  exact eLpNormEssSup_le_of_ae_enorm_bound (Filter.Eventually.of_forall hptbound)
 
 end
 
