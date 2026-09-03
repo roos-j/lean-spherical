@@ -21817,6 +21817,35 @@ theorem brrsEvenQuadraticBaseCarrier_eq_fresnel
   unfold brrsEvenQuadraticBaseCarrier
   exact (brrsEvenQuadraticBaseNormalized_tendsto_fresnel h hh).limUnder_eq
 
+/-- The explicit Fresnel carrier is nonzero. -/
+theorem brrs_quadraticFresnelLimit_ne_zero : brrsQuadraticFresnelLimit ≠ 0 := by
+  rw [brrsQuadraticFresnelLimit_eq_explicit]
+  have hsqrt : (0 : Real) < Real.sqrt (Real.pi / 2) :=
+    Real.sqrt_pos.mpr (by positivity)
+  have h1 : ((Real.sqrt (Real.pi / 2) : Real) : Complex) ≠ 0 := by
+    simpa using ne_of_gt hsqrt
+  have h2 : (1 + Complex.I) ≠ 0 := by
+    intro h
+    have himag : (1 + Complex.I).im = 0 := by rw [h]; simp
+    simp at himag
+  exact div_ne_zero (mul_ne_zero h1 h2) (by norm_num)
+
+/-- The even stationary carrier of the smooth endpoint profile is nonzero.
+This is the nonvanishing of the leading coefficient in the two-wave
+asymptotic. -/
+theorem brrs_evenQuadraticBaseCarrier_smoothEndpointProfile_ne_zero (m : Nat) :
+    brrsEvenQuadraticBaseCarrier (smoothEndpointProfile m) ≠ 0 := by
+  rw [brrsEvenQuadraticBaseCarrier_eq_fresnel _ (contDiff_smoothEndpointProfile m)]
+  exact mul_ne_zero (brrs_smoothEndpointProfile_zero_ne_zero m)
+    brrs_quadraticFresnelLimit_ne_zero
+
+/-- The even stationary carrier of the planar endpoint profile is nonzero. -/
+theorem brrs_evenQuadraticBaseCarrier_planarEndpointProfile_ne_zero :
+    brrsEvenQuadraticBaseCarrier planarEndpointProfile ≠ 0 := by
+  rw [brrsEvenQuadraticBaseCarrier_eq_fresnel _ contDiff_planarEndpointProfile]
+  exact mul_ne_zero brrs_planarEndpointProfile_zero_ne_zero
+    brrs_quadraticFresnelLimit_ne_zero
+
 /-- The fixed finite Fresnel carrier gives the order-zero stationary lower
 bound for every genuinely smooth compact endpoint profile with a nonzero
 value at the stationary point.  The error is made explicit: subtract the
@@ -55428,6 +55457,9024 @@ theorem brrsRadialKernelAbsOutput_top_eLpNorm_le
         rw [← ENNReal.ofReal_mul (by positivity)]
   rw [eLpNorm_exponent_top]
   exact eLpNormEssSup_le_of_ae_enorm_bound (Filter.Eventually.of_forall hptbound)
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The entropy rate in the transport's rigid form
+
+The Riesz--Thorin transport takes its two endpoint rates in the form
+`A * 2^(j s)`, whereas the entropy bound carries the extra linear factor
+`j + 1` and the shift `2^q`.  A linear factor is absorbed by any positive
+exponential rate, so the entropy rate can be written in the required form at
+the cost of an arbitrarily small increase of the exponent -- which is exactly
+the freedom the strict inequality against the Legendre--Assouad value
+provides.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- A linear factor is absorbed by any positive exponential rate.  This is
+what lets the entropy rate of the low endpoint be written in the rigid form
+the Riesz--Thorin transport requires, at the cost of an arbitrarily small
+increase of the exponent. -/
+theorem brrs_natCast_add_one_le_const_mul_two_rpow
+    {eps : Real} (heps : 0 < eps) :
+    ∃ C : Real, 0 < C ∧ ∀ j : Nat,
+      ((j : Real) + 1) ≤ C * (2 : Real) ^ ((j : Real) * eps) := by
+  have hlog : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  have hprod : 0 < eps * Real.log 2 := mul_pos heps hlog
+  refine ⟨1 + 1 / (eps * Real.log 2), by positivity, ?_⟩
+  intro j
+  have hj : (0 : Real) ≤ (j : Real) := Nat.cast_nonneg j
+  have hexp : (j : Real) * eps * Real.log 2 + 1 ≤
+      Real.exp ((j : Real) * eps * Real.log 2) :=
+    Real.add_one_le_exp _
+  have hrpow : (2 : Real) ^ ((j : Real) * eps) =
+      Real.exp ((j : Real) * eps * Real.log 2) := by
+    rw [Real.rpow_def_of_pos (by norm_num)]
+    ring_nf
+  have hlow : (j : Real) * eps * Real.log 2 + 1 ≤
+      (2 : Real) ^ ((j : Real) * eps) := by
+    rw [hrpow]
+    exact hexp
+  have hkey : ((j : Real) + 1) ≤
+      (1 + 1 / (eps * Real.log 2)) *
+        ((j : Real) * eps * Real.log 2 + 1) := by
+    have hexpand : (1 + 1 / (eps * Real.log 2)) *
+        ((j : Real) * eps * Real.log 2 + 1) =
+        (j : Real) * eps * Real.log 2 + 1 + (j : Real) +
+          1 / (eps * Real.log 2) := by
+      field_simp
+      ring
+    rw [hexpand]
+    have h1 : (0 : Real) ≤ (j : Real) * eps * Real.log 2 := by positivity
+    have h2 : (0 : Real) < 1 / (eps * Real.log 2) := by positivity
+    linarith
+  calc ((j : Real) + 1) ≤
+      (1 + 1 / (eps * Real.log 2)) *
+        ((j : Real) * eps * Real.log 2 + 1) := hkey
+    _ ≤ (1 + 1 / (eps * Real.log 2)) * (2 : Real) ^ ((j : Real) * eps) := by
+      refine mul_le_mul_of_nonneg_left hlow ?_
+      positivity
+
+/-- Coercion of a dyadic power. -/
+theorem brrs_ofReal_two_rpow (a : Real) :
+    ENNReal.ofReal ((2 : Real) ^ a) = (2 : ENNReal) ^ a := by
+  rw [← ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : Real) < 2)]
+  norm_num
+
+/-- The entropy rate in the shifted exponential form. -/
+theorem brrs_entropyRate_le_shifted
+    {q : Real} (hq0 : 0 ≤ q) {eps : Real} (heps : 0 < eps) :
+    ∃ A : Real, 0 < A ∧ ∀ j : Nat,
+      ((j : ENNReal) + 1) * (2 : ENNReal) ^ (((j : Real) + 1) * q) ≤
+        ENNReal.ofReal A * (2 : ENNReal) ^ ((j : Real) * (q + eps)) := by
+  obtain ⟨C, hC, hCle⟩ := brrs_natCast_add_one_le_const_mul_two_rpow heps
+  refine ⟨C * (2 : Real) ^ q, by positivity, ?_⟩
+  intro j
+  have hj1 : ((j : ENNReal) + 1) = ENNReal.ofReal ((j : Real) + 1) := by
+    rw [ENNReal.ofReal_add (by positivity) zero_le_one, ENNReal.ofReal_one,
+      ENNReal.ofReal_natCast]
+  have hsplit : (2 : ENNReal) ^ (((j : Real) + 1) * q) =
+      (2 : ENNReal) ^ ((j : Real) * q) * (2 : ENNReal) ^ q := by
+    rw [← ENNReal.rpow_add _ _ (by norm_num) (by norm_num)]
+    congr 1
+    ring
+  have hsplit2 : (2 : ENNReal) ^ ((j : Real) * (q + eps)) =
+      (2 : ENNReal) ^ ((j : Real) * eps) *
+        (2 : ENNReal) ^ ((j : Real) * q) := by
+    rw [← ENNReal.rpow_add _ _ (by norm_num) (by norm_num)]
+    congr 1
+    ring
+  have hcast : ENNReal.ofReal ((j : Real) + 1) ≤
+      ENNReal.ofReal C * (2 : ENNReal) ^ ((j : Real) * eps) := by
+    have hrw : ENNReal.ofReal (C * (2 : Real) ^ ((j : Real) * eps)) =
+        ENNReal.ofReal C * (2 : ENNReal) ^ ((j : Real) * eps) := by
+      rw [ENNReal.ofReal_mul hC.le, brrs_ofReal_two_rpow]
+    rw [← hrw]
+    exact ENNReal.ofReal_le_ofReal (hCle j)
+  rw [hj1, hsplit, hsplit2, ENNReal.ofReal_mul hC.le, brrs_ofReal_two_rpow]
+  calc
+    ENNReal.ofReal ((j : Real) + 1) *
+        ((2 : ENNReal) ^ ((j : Real) * q) * (2 : ENNReal) ^ q) ≤
+        (ENNReal.ofReal C * (2 : ENNReal) ^ ((j : Real) * eps)) *
+          ((2 : ENNReal) ^ ((j : Real) * q) * (2 : ENNReal) ^ q) :=
+      mul_le_mul' hcast le_rfl
+    _ = ENNReal.ofReal C * (2 : ENNReal) ^ q *
+          ((2 : ENNReal) ^ ((j : Real) * eps) *
+            (2 : ENNReal) ^ ((j : Real) * q)) := by
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The low endpoint in the transport's rate form
+
+Taking `p`-th roots of the entropy bound and absorbing the linear factor puts
+the estimate in the shape the transport consumes, with exponent
+`(q + eps) / p`.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **The low endpoint of U1.I in the transport's rigid rate form.**  Taking
+`p`-th roots of the entropy bound and absorbing the linear factor into the
+exponential rate puts the estimate in the shape
+`A * 2^(j s)` that the Riesz--Thorin transport consumes, with
+`s = (q + eps) / p` for an arbitrarily small `eps`. -/
+theorem brrsRadialKernelAbsOutput_low_transport_form
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p * sobolevExponent d p) < q)
+    {eps : Real} (heps : 0 < eps) :
+    ∃ (A₀ : Real) (J : Nat), 0 < A₀ ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+        ∀ F : Real → Complex, Measurable F →
+          eLpNorm (brrsRadialKernelAbsOutput Phi v j T F) (ENNReal.ofReal p)
+              (Measure.count.prod (volume : Measure (BRRSSpace d))) ≤
+            ENNReal.ofReal
+                (A₀ * (2 : Real) ^ ((j : Real) * ((q + eps) / p))) *
+              eLpNorm F (ENNReal.ofReal p) (brrsRadialProfileMeasure d) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  obtain ⟨Cst, J, hCst, hlow⟩ :=
+    brrsRadialKernelAbsOutput_entropy_eLpNorm_rpow_le hd Phi hp hcritical hE
+      hq0 hq
+  obtain ⟨A, hA, hrate⟩ := brrs_entropyRate_le_shifted hq0 heps
+  set K : ENNReal := Cst * ENNReal.ofReal A with hK
+  have hKtop : K ≠ ∞ := ENNReal.mul_ne_top hCst ENNReal.ofReal_ne_top
+  refine ⟨(K.toReal) ^ (1 / p) + 1, J, by positivity, ?_⟩
+  intro j hj T hT v hv F hF
+  set X : ENNReal := eLpNorm (brrsRadialKernelAbsOutput Phi v j T F)
+    (ENNReal.ofReal p) (Measure.count.prod (volume : Measure (BRRSSpace d)))
+    with hX
+  set Z : ENNReal :=
+    eLpNorm F (ENNReal.ofReal p) (brrsRadialProfileMeasure d) with hZ
+  -- the entropy bound, with the rate rewritten
+  have hstep : X ^ p ≤
+      (K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) * Z ^ p := by
+    refine le_trans (hlow j hj T hT v hv F hF) ?_
+    rw [hK]
+    calc
+      Cst * (((j : ENNReal) + 1) *
+          (2 : ENNReal) ^ (((j : Real) + 1) * q)) * Z ^ p ≤
+          Cst * (ENNReal.ofReal A *
+            (2 : ENNReal) ^ ((j : Real) * (q + eps))) * Z ^ p :=
+        mul_le_mul' (mul_le_mul' le_rfl (hrate j)) le_rfl
+      _ = Cst * ENNReal.ofReal A *
+            (2 : ENNReal) ^ ((j : Real) * (q + eps)) * Z ^ p := by ring
+  -- take p-th roots
+  have hroot : X ≤ (K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) ^ (1 / p) *
+      Z := by
+    have hXp : X = (X ^ p) ^ (1 / p) := by
+      rw [← ENNReal.rpow_mul, mul_one_div, div_self hp0.ne', ENNReal.rpow_one]
+    rw [hXp]
+    calc
+      (X ^ p) ^ (1 / p) ≤
+          ((K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) * Z ^ p) ^ (1 / p) :=
+        ENNReal.rpow_le_rpow hstep (by positivity)
+      _ = (K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) ^ (1 / p) *
+            (Z ^ p) ^ (1 / p) := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity)]
+      _ = (K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) ^ (1 / p) * Z := by
+        rw [← ENNReal.rpow_mul, mul_one_div, div_self hp0.ne', ENNReal.rpow_one]
+  -- identify the constant
+  have hconst : (K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) ^ (1 / p) =
+      K ^ (1 / p) * (2 : ENNReal) ^ ((j : Real) * ((q + eps) / p)) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul]
+    congr 2
+    field_simp
+  have hKroot : K ^ (1 / p) ≤ ENNReal.ofReal ((K.toReal) ^ (1 / p) + 1) := by
+    have hKeq : K = ENNReal.ofReal K.toReal := (ENNReal.ofReal_toReal hKtop).symm
+    calc K ^ (1 / p) = (ENNReal.ofReal K.toReal) ^ (1 / p) := by rw [← hKeq]
+      _ = ENNReal.ofReal ((K.toReal) ^ (1 / p)) := by
+        rw [ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg (by positivity)]
+      _ ≤ ENNReal.ofReal ((K.toReal) ^ (1 / p) + 1) :=
+        ENNReal.ofReal_le_ofReal (by linarith)
+  have htarget : ENNReal.ofReal
+      (((K.toReal) ^ (1 / p) + 1) *
+        (2 : Real) ^ ((j : Real) * ((q + eps) / p))) =
+      ENNReal.ofReal ((K.toReal) ^ (1 / p) + 1) *
+        (2 : ENNReal) ^ ((j : Real) * ((q + eps) / p)) := by
+    rw [ENNReal.ofReal_mul (by positivity), brrs_ofReal_two_rpow]
+  rw [htarget]
+  calc
+    X ≤ (K * (2 : ENNReal) ^ ((j : Real) * (q + eps))) ^ (1 / p) * Z := hroot
+    _ = K ^ (1 / p) * (2 : ENNReal) ^ ((j : Real) * ((q + eps) / p)) * Z := by
+      rw [hconst]
+    _ ≤ ENNReal.ofReal ((K.toReal) ^ (1 / p) + 1) *
+          (2 : ENNReal) ^ ((j : Real) * ((q + eps) / p)) * Z :=
+      mul_le_mul' (mul_le_mul' hKroot le_rfl) le_rfl
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The high-exponent interpolation of U1.I on simple profiles
+
+Both endpoints now hold for the absolute radial kernel operator over the same
+domain, so the Riesz--Thorin transport applies and produces the interpolated
+rate with `theta = 1 - p_0 / p`.  The operator's additivity, homogeneity and
+measurable output are the structural hypotheses, and they were established
+with the operator itself.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+theorem brrs_two_pow_rpow_eq (j : Nat) (a : Real) :
+    ((2 : Real) ^ j) ^ a = (2 : Real) ^ ((j : Real) * a) := by
+  rw [← Real.rpow_natCast (2 : Real) j, ← Real.rpow_mul (by norm_num)]
+
+/-- **The high-exponent interpolation of U1.I on simple profiles.**  Both
+endpoints hold for the absolute radial kernel operator over the same domain,
+so the Riesz--Thorin transport applies and produces the interpolated rate
+with `theta = 1 - p_0 / p`. -/
+theorem brrsRadialKernelAbsOutput_highExponent_simple
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff)
+    {p₀ p : Real} (hp₀ : 2 ≤ p₀) (hp₀p : p₀ < p)
+    (hcritical : p₀ < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p₀ * sobolevExponent d p₀) < q)
+    {eps : Real} (heps : 0 < eps) :
+    ∃ (A : Real) (J : Nat), 0 < A ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        (∀ t ∈ T, t ∈ Icc (1 : Real) 2) →
+        ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+        ∀ F : SimpleFunc Real Complex,
+          Integrable (F : Real → Complex) (brrsRadialProfileMeasure d) →
+          eLpNorm (brrsRadialKernelAbsOutput Phi v j T (F : Real → Complex))
+              (ENNReal.ofReal p)
+              (Measure.count.prod (volume : Measure (BRRSSpace d))) ≤
+            ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) *
+                ((1 - (1 - p₀ / p)) * ((q + eps) / p₀) +
+                  (1 - p₀ / p) * (((d : Real) - 1) / 2)))) *
+              eLpNorm (F : Real → Complex) (ENNReal.ofReal p)
+                (brrsRadialProfileMeasure d) := by
+  obtain ⟨A₀, J, hA₀, hlow⟩ :=
+    brrsRadialKernelAbsOutput_low_transport_form hd Phi hp₀ hcritical hE hq0 hq
+      heps
+  obtain ⟨Atop, hAtop, htop⟩ := brrsRadialKernelAbsOutput_top_eLpNorm_le hd Phi
+  refine ⟨Real.rpow A₀ (1 - (1 - p₀ / p)) * Real.rpow Atop (1 - p₀ / p), J,
+    mul_pos (Real.rpow_pos_of_pos hA₀ _) (Real.rpow_pos_of_pos hAtop _), ?_⟩
+  intro j hj T hT hTicc v hv F hF
+  have hp₀one : (1 : Real) ≤ p₀ := le_trans one_le_two hp₀
+  refine (highExponent_discreteLpEstimate_of_lower_and_top
+    (μ := brrsRadialProfileMeasure d)
+    (ν := Measure.count.prod (volume : Measure (BRRSSpace d)))
+    hp₀one hp₀p
+    (fun G : SimpleFunc Real Complex =>
+      brrsRadialKernelAbsOutput Phi v j T (G : Real → Complex))
+    ?_ ?_ ?_ hA₀ hAtop j ?_ ?_ F hF).2
+  · -- additivity
+    intro G H hG hH
+    obtain ⟨B1, hB1⟩ := G.exists_forall_norm_le
+    obtain ⟨B2, hB2⟩ := H.exists_forall_norm_le
+    have hadd := brrsRadialKernelAbsOutput_add hd Phi v hv j T hTicc
+      G.measurable H.measurable hB1 hB2
+    simpa only [SimpleFunc.coe_add] using hadd
+  · -- homogeneity
+    intro c G _
+    have hsmul := brrsRadialKernelAbsOutput_smul Phi v j T c
+      (G : Real → Complex)
+    simpa only [SimpleFunc.coe_smul] using hsmul
+  · -- measurability
+    intro G _
+    exact measurable_brrsRadialKernelAbsOutput Phi v j T G.measurable
+  · -- low endpoint
+    intro G hG
+    exact hlow j hj T hT v hv (G : Real → Complex) G.measurable
+  · -- top endpoint
+    intro G hG
+    have h := htop j T hTicc v hv (G : Real → Complex) G.measurable
+    rwa [brrs_two_pow_rpow_eq] at h
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The positive output, and its agreement with the interpolated operator
+
+The monotone extension of U1.I is stated for the positive output of the
+kernel on a profile in the extended reals, which is defined for every
+measurable profile.  On a bounded nonnegative real profile it agrees exactly
+with the norm of the absolute kernel operator, which is the operator the
+transport interpolates; that agreement is what lets a bound proved on simple
+profiles pass to the monotone limit.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The positive output of the radial kernel on a nonnegative profile in the
+extended reals.  This is the quantity the monotone extension of U1.I is
+stated for: it is defined for every measurable profile, and on nonnegative
+bounded profiles it agrees with the norm of the absolute kernel operator. -/
+noncomputable def brrsRadialKernelPosOutput {d : Nat} (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (j : Nat) (T : Finset Real) (G : Real → ENNReal) :
+    ({t : Real // t ∈ (T : Set Real)} × BRRSSpace d) → ENNReal :=
+  fun z => ∫⁻ s in Ioi (0 : Real),
+    ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ * G s
+
+/-- The positive output is measurable. -/
+theorem measurable_brrsRadialKernelPosOutput {d : Nat}
+    (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat) (T : Finset Real)
+    {G : Real → ENNReal} (hG : Measurable G) :
+    Measurable (brrsRadialKernelPosOutput Phi v j T G) := by
+  unfold brrsRadialKernelPosOutput
+  apply measurable_from_prod_countable_right
+  intro t
+  have hradial : Measurable fun r : Real =>
+      ∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j r s (t : Real)‖ₑ * G s := by
+    have hjoint : Measurable fun q : Real × Real =>
+        ‖brrsRadialBesselKernel Phi d v j q.1 q.2 (t : Real)‖ₑ * G q.2 :=
+      (measurable_enorm_brrsRadialBesselKernel_prod Phi v j (t : Real)).mul
+        (hG.comp measurable_snd)
+    exact hjoint.lintegral_prod_right'
+  exact hradial.comp continuous_norm.measurable
+
+/-- On a bounded nonnegative real profile the absolute kernel operator has
+norm exactly the positive output.  This is the link between the operator the
+transport interpolates and the quantity the monotone extension passes to the
+limit. -/
+theorem enorm_brrsRadialKernelAbsFibre_eq_posOutput
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) (v : BRRSSpace d)
+    (hv : ‖v‖ = 1) (j : Nat) {t : Real} (ht : t ∈ Icc (1 : Real) 2)
+    (x : BRRSSpace d) {c : Real → Real} (hc : Measurable c)
+    (hc0 : ∀ s : Real, 0 ≤ c s) {B : Real} (hB : ∀ s : Real, c s ≤ B) :
+    ‖brrsRadialKernelAbsFibre Phi v j
+        (fun s : Real => ((c s : Real) : Complex)) t x‖ₑ =
+      ∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ *
+          ENNReal.ofReal (c s) := by
+  have hcmeas : Measurable fun s : Real => ((c s : Real) : Complex) :=
+    Complex.measurable_ofReal.comp hc
+  have hcB : ∀ s : Real, ‖((c s : Real) : Complex)‖ ≤ B := by
+    intro s
+    rw [Complex.norm_real, Real.norm_of_nonneg (hc0 s)]
+    exact hB s
+  have hint := brrs_integrable_radialKernelAbs_mul hd Phi v hv j ht
+    (r := ‖x‖) (norm_nonneg _) hcmeas hcB
+  -- the integrand is the coercion of a nonnegative real integrand
+  have hpoint : ∀ s : Real,
+      ((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ : Real) : Complex) *
+          ((c s : Real) : Complex) =
+        ((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s : Real) :
+          Complex) := by
+    intro s
+    rw [Complex.ofReal_mul]
+  have hrealint : Integrable
+      (fun s : Real => ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s)
+      (volume.restrict (Ioi (0 : Real))) := by
+    refine hint.norm.congr ?_
+    refine Filter.Eventually.of_forall fun s => ?_
+    show ‖((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ : Real) : Complex) *
+        ((c s : Real) : Complex)‖ =
+      ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s
+    rw [norm_mul, Complex.norm_real, Complex.norm_real,
+      Real.norm_of_nonneg (norm_nonneg _), Real.norm_of_nonneg (hc0 s)]
+  have hnonneg : (0 : Real → Real) ≤ᵐ[volume.restrict (Ioi (0 : Real))]
+      fun s : Real => ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s := by
+    refine Filter.Eventually.of_forall fun s => ?_
+    exact mul_nonneg (norm_nonneg _) (hc0 s)
+  have hbochner : brrsRadialKernelAbsFibre Phi v j
+      (fun s : Real => ((c s : Real) : Complex)) t x =
+      ((∫ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s : Real) :
+        Complex) := by
+    unfold brrsRadialKernelAbsFibre
+    have hcongr : (∫ s in Ioi (0 : Real),
+        ((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ : Real) : Complex) *
+          ((c s : Real) : Complex)) =
+        ∫ s in Ioi (0 : Real),
+          ((‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s : Real) :
+            Complex) :=
+      setIntegral_congr_fun measurableSet_Ioi fun s _ => hpoint s
+    rw [hcongr]
+    exact integral_ofReal (𝕜 := Complex)
+  rw [hbochner]
+  have hnormcoe : ‖((∫ s in Ioi (0 : Real),
+      ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s : Real) : Complex)‖ₑ =
+      ENNReal.ofReal (∫ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s) := by
+    have hge : (0 : Real) ≤ ∫ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s :=
+      integral_nonneg_of_ae hnonneg
+    have h : ‖((∫ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s : Real) :
+          Complex)‖ =
+        ∫ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ * c s := by
+      rw [Complex.norm_real, Real.norm_of_nonneg hge]
+    rw [← ofReal_norm, h]
+  rw [hnormcoe,
+    ofReal_integral_eq_lintegral_ofReal hrealint hnonneg]
+  refine setLIntegral_congr_fun measurableSet_Ioi fun s _ => ?_
+  rw [ENNReal.ofReal_mul (norm_nonneg _), ofReal_norm]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Simple approximants of a profile
+
+The monotone extension needs increasing simple profiles that the transport
+accepts, that is, integrable against the radial pushforward measure.  The
+standard increasing simple functions of a measurable extended-real profile
+are cut off to a bounded interval for that purpose; no lower cutoff is
+needed, since the radial density is bounded near the origin.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The truncated simple approximants of a measurable extended-real profile.
+The truncation to a bounded interval is what makes each approximant
+integrable against the radial pushforward measure, which the transport
+requires; no lower cutoff is needed, since the radial density is bounded near
+the origin. -/
+noncomputable def brrsProfileApproxSimple (G : Real → ENNReal) (n : Nat) :
+    SimpleFunc Real ENNReal :=
+  (SimpleFunc.eapprox G n).restrict (Iic ((n : Real) + 1))
+
+/-- The real form of one approximant. -/
+noncomputable def brrsProfileApproxReal (G : Real → ENNReal) (n : Nat)
+    (s : Real) : Real :=
+  (brrsProfileApproxSimple G n s).toReal
+
+/-- The complex simple function fed to the transport. -/
+noncomputable def brrsProfileApprox (G : Real → ENNReal) (n : Nat) :
+    SimpleFunc Real Complex :=
+  (brrsProfileApproxSimple G n).map
+    (fun u : ENNReal => ((u.toReal : Real) : Complex))
+
+theorem brrsProfileApproxSimple_apply (G : Real → ENNReal) (n : Nat)
+    (s : Real) :
+    brrsProfileApproxSimple G n s =
+      (Iic ((n : Real) + 1)).indicator
+        (fun u : Real => SimpleFunc.eapprox G n u) s := by
+  unfold brrsProfileApproxSimple
+  exact SimpleFunc.restrict_apply _ measurableSet_Iic s
+
+theorem brrsProfileApproxSimple_lt_top (G : Real → ENNReal) (n : Nat)
+    (s : Real) : brrsProfileApproxSimple G n s < ∞ := by
+  rw [brrsProfileApproxSimple_apply]
+  by_cases hs : s ∈ Iic ((n : Real) + 1)
+  · rw [indicator_of_mem hs]
+    exact SimpleFunc.eapprox_lt_top G n s
+  · rw [indicator_of_notMem hs]
+    exact ENNReal.zero_lt_top
+
+theorem ofReal_brrsProfileApproxReal_eq (G : Real → ENNReal) (n : Nat)
+    (s : Real) :
+    ENNReal.ofReal (brrsProfileApproxReal G n s) =
+      brrsProfileApproxSimple G n s := by
+  unfold brrsProfileApproxReal
+  exact ENNReal.ofReal_toReal (brrsProfileApproxSimple_lt_top G n s).ne
+
+theorem brrsProfileApproxReal_nonneg (G : Real → ENNReal) (n : Nat)
+    (s : Real) : 0 ≤ brrsProfileApproxReal G n s :=
+  ENNReal.toReal_nonneg
+
+theorem brrsProfileApprox_apply (G : Real → ENNReal) (n : Nat) (s : Real) :
+    (brrsProfileApprox G n : Real → Complex) s =
+      ((brrsProfileApproxReal G n s : Real) : Complex) := by
+  unfold brrsProfileApprox brrsProfileApproxReal
+  exact SimpleFunc.map_apply _ _ s
+
+theorem brrsProfileApproxSimple_le {G : Real → ENNReal} (hG : Measurable G)
+    (n : Nat) (s : Real) : brrsProfileApproxSimple G n s ≤ G s := by
+  rw [brrsProfileApproxSimple_apply]
+  have hle : SimpleFunc.eapprox G n s ≤ G s := by
+    rw [← SimpleFunc.iSup_eapprox_apply hG s]
+    exact le_iSup (fun m : Nat => (SimpleFunc.eapprox G m : Real → ENNReal) s) n
+  by_cases hs : s ∈ Iic ((n : Real) + 1)
+  · rw [indicator_of_mem hs]
+    exact hle
+  · rw [indicator_of_notMem hs]
+    exact zero_le
+
+theorem brrsProfileApproxSimple_monotone (G : Real → ENNReal) (s : Real) :
+    Monotone fun n : Nat => brrsProfileApproxSimple G n s := by
+  intro m n hmn
+  dsimp only
+  rw [brrsProfileApproxSimple_apply, brrsProfileApproxSimple_apply]
+  by_cases hs : s ∈ Iic ((m : Real) + 1)
+  · have hs' : s ∈ Iic ((n : Real) + 1) := by
+      have hcast : (m : Real) ≤ (n : Real) := Nat.cast_le.mpr hmn
+      have hsle : s ≤ (m : Real) + 1 := hs
+      show s ≤ (n : Real) + 1
+      linarith
+    rw [indicator_of_mem hs, indicator_of_mem hs']
+    exact SimpleFunc.monotone_eapprox G hmn s
+  · rw [indicator_of_notMem hs]
+    exact zero_le
+
+theorem iSup_brrsProfileApproxSimple {G : Real → ENNReal} (hG : Measurable G)
+    (s : Real) : (⨆ n : Nat, brrsProfileApproxSimple G n s) = G s := by
+  refine le_antisymm (iSup_le fun n => brrsProfileApproxSimple_le hG n s) ?_
+  rw [← SimpleFunc.iSup_eapprox_apply hG s]
+  refine iSup_le fun n => ?_
+  obtain ⟨m, hm⟩ := exists_nat_gt s
+  set k : Nat := max n m with hk
+  have hsk : s ∈ Iic ((k : Real) + 1) := by
+    have hmk : (m : Real) ≤ (k : Real) := Nat.cast_le.mpr (le_max_right n m)
+    have : s ≤ (k : Real) + 1 := by linarith [hm, hmk]
+    exact this
+  have hnk : n ≤ k := le_max_left n m
+  calc (SimpleFunc.eapprox G n : Real → ENNReal) s ≤
+      (SimpleFunc.eapprox G k : Real → ENNReal) s :=
+        SimpleFunc.monotone_eapprox G hnk s
+    _ = brrsProfileApproxSimple G k s := by
+        rw [brrsProfileApproxSimple_apply, indicator_of_mem hsk]
+    _ ≤ ⨆ n : Nat, brrsProfileApproxSimple G n s :=
+        le_iSup (fun n : Nat => brrsProfileApproxSimple G n s) k
+
+/-- The radial pushforward measure of a bounded interval is finite. -/
+theorem brrsRadialProfileMeasure_Iic_lt_top (d : Nat) (b : Real) :
+    brrsRadialProfileMeasure d (Iic b) < ∞ := by
+  unfold brrsRadialProfileMeasure
+  rw [Measure.map_apply continuous_norm.measurable measurableSet_Iic]
+  have hsub : (fun x : BRRSSpace d => ‖x‖) ⁻¹' (Iic b) ⊆
+      Metric.closedBall (0 : BRRSSpace d) b := by
+    intro x hx
+    simpa [Metric.mem_closedBall, dist_zero_right] using hx
+  exact lt_of_le_of_lt (measure_mono hsub)
+    (measure_closedBall_lt_top)
+
+/-- Each approximant is integrable against the radial pushforward measure. -/
+theorem brrs_integrable_profileApprox (d : Nat) (G : Real → ENNReal)
+    (n : Nat) :
+    Integrable ((brrsProfileApprox G n : Real → Complex))
+      (brrsRadialProfileMeasure d) := by
+  obtain ⟨B, hB⟩ := (brrsProfileApprox G n).exists_forall_norm_le
+  have hB0 : (0 : Real) ≤ B := le_trans (norm_nonneg _) (hB 0)
+  have hmeas : Measurable ((brrsProfileApprox G n : Real → Complex)) :=
+    (brrsProfileApprox G n).measurable
+  refine ⟨hmeas.aestronglyMeasurable, ?_⟩
+  rw [hasFiniteIntegral_iff_enorm]
+  have hsupp : ∀ s : Real, s ∉ Iic ((n : Real) + 1) →
+      ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ = 0 := by
+    intro s hs
+    rw [brrsProfileApprox_apply]
+    unfold brrsProfileApproxReal
+    rw [brrsProfileApproxSimple_apply, indicator_of_notMem hs]
+    simp
+  have hpt : ∀ s : Real, ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ ≤
+      (Iic ((n : Real) + 1)).indicator
+        (fun _ : Real => ENNReal.ofReal B) s := by
+    intro s
+    by_cases hs : s ∈ Iic ((n : Real) + 1)
+    · rw [indicator_of_mem hs]
+      rw [← ofReal_norm]
+      exact ENNReal.ofReal_le_ofReal (hB s)
+    · rw [indicator_of_notMem hs, hsupp s hs]
+  calc
+    (∫⁻ s : Real, ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ
+        ∂(brrsRadialProfileMeasure d)) ≤
+        ∫⁻ s : Real, (Iic ((n : Real) + 1)).indicator
+          (fun _ : Real => ENNReal.ofReal B) s
+          ∂(brrsRadialProfileMeasure d) := lintegral_mono hpt
+    _ = ENNReal.ofReal B * brrsRadialProfileMeasure d (Iic ((n : Real) + 1)) := by
+      rw [lintegral_indicator measurableSet_Iic, setLIntegral_const]
+    _ < ∞ :=
+      ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+        (brrsRadialProfileMeasure_Iic_lt_top d ((n : Real) + 1))
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Ingredients of the monotone limit
+
+A positive power commutes with a supremum; the `p`-th power of an `L^p`
+seminorm is a lower integral; the positive output is monotone in the profile
+and is the supremum of the positive outputs of the simple approximants.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- A positive power commutes with a supremum in the extended reals. -/
+theorem brrs_iSup_rpow {a : Nat → ENNReal} {p : Real} (hp : 0 < p) :
+    (⨆ n : Nat, a n) ^ p = ⨆ n : Nat, (a n) ^ p := by
+  refine le_antisymm ?_
+    (iSup_le fun n => ENNReal.rpow_le_rpow (le_iSup a n) hp.le)
+  have hle : ∀ n : Nat, a n ≤ (⨆ m : Nat, (a m) ^ p) ^ (1 / p) := by
+    intro n
+    have h1 : (a n) ^ p ≤ ⨆ m : Nat, (a m) ^ p :=
+      le_iSup (fun m : Nat => (a m) ^ p) n
+    have h2 := ENNReal.rpow_le_rpow h1 (by positivity : (0 : Real) ≤ 1 / p)
+    rwa [← ENNReal.rpow_mul, mul_one_div, div_self hp.ne', ENNReal.rpow_one]
+      at h2
+  have h3 := ENNReal.rpow_le_rpow (iSup_le hle) hp.le
+  rwa [← ENNReal.rpow_mul, one_div_mul_cancel hp.ne', ENNReal.rpow_one] at h3
+
+/-- The `p`-th power of an `L^p` seminorm as a lower integral. -/
+theorem brrs_eLpNorm_rpow_eq {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    {p : Real} (hp : 0 < p) (u : α → Complex) :
+    (eLpNorm u (ENNReal.ofReal p) μ) ^ p = ∫⁻ a : α, ‖u a‖ₑ ^ p ∂μ := by
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
+    (by simpa using (ENNReal.ofReal_pos.mpr hp).ne') (by simp),
+    ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul, one_div,
+    inv_mul_cancel₀ hp.ne', ENNReal.rpow_one]
+
+/-- The positive output is monotone in the profile. -/
+theorem brrsRadialKernelPosOutput_mono {d : Nat} (Phi : BRRSAnnularCutoff)
+    (v : BRRSSpace d) (j : Nat) (T : Finset Real) {G H : Real → ENNReal}
+    (hGH : ∀ s : Real, G s ≤ H s)
+    (z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d) :
+    brrsRadialKernelPosOutput Phi v j T G z ≤
+      brrsRadialKernelPosOutput Phi v j T H z := by
+  unfold brrsRadialKernelPosOutput
+  exact lintegral_mono fun s => mul_le_mul' le_rfl (hGH s)
+
+set_option maxHeartbeats 1000000 in
+/-- The positive output of the profile is the supremum of the positive
+outputs of its simple approximants. -/
+theorem brrsRadialKernelPosOutput_iSup_approx {d : Nat}
+    (Phi : BRRSAnnularCutoff) (v : BRRSSpace d) (j : Nat) (T : Finset Real)
+    {G : Real → ENNReal} (hG : Measurable G)
+    (z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d) :
+    (⨆ n : Nat, brrsRadialKernelPosOutput Phi v j T
+        (fun s : Real => brrsProfileApproxSimple G n s) z) =
+      brrsRadialKernelPosOutput Phi v j T G z := by
+  unfold brrsRadialKernelPosOutput
+  have hmeas : ∀ n : Nat, Measurable fun s : Real =>
+      ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ *
+        brrsProfileApproxSimple G n s := by
+    intro n
+    have hpair : Measurable fun s : Real => ((‖z.2‖ : Real), s) :=
+      measurable_const.prodMk measurable_id
+    have hkm : Measurable fun s : Real =>
+        ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ :=
+      (measurable_enorm_brrsRadialBesselKernel_prod Phi v j
+        (z.1 : Real)).comp hpair
+    exact hkm.mul (brrsProfileApproxSimple G n).measurable
+  have hmono : Monotone fun n : Nat => fun s : Real =>
+      ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ *
+        brrsProfileApproxSimple G n s := by
+    intro m n hmn s
+    exact mul_le_mul' le_rfl (brrsProfileApproxSimple_monotone G s hmn)
+  calc
+    (⨆ n : Nat, ∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ *
+          brrsProfileApproxSimple G n s) =
+        ∫⁻ s in Ioi (0 : Real), ⨆ n : Nat,
+          ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ *
+            brrsProfileApproxSimple G n s :=
+      (lintegral_iSup hmeas hmono).symm
+    _ = ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j ‖z.2‖ s (z.1 : Real)‖ₑ * G s := by
+      refine lintegral_congr fun s => ?_
+      rw [← ENNReal.mul_iSup, iSup_brrsProfileApproxSimple hG s]
+
+/-- The norm of one approximant is its extended-real form. -/
+theorem enorm_brrsProfileApprox (G : Real → ENNReal) (n : Nat) (s : Real) :
+    ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ =
+      brrsProfileApproxSimple G n s := by
+  rw [brrsProfileApprox_apply]
+  have h : ‖((brrsProfileApproxReal G n s : Real) : Complex)‖ =
+      brrsProfileApproxReal G n s := by
+    rw [Complex.norm_real,
+      Real.norm_of_nonneg (brrsProfileApproxReal_nonneg G n s)]
+  rw [← ofReal_norm, h, ofReal_brrsProfileApproxReal_eq]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The high-exponent estimate over an arbitrary profile
+
+The interpolated bound is proved on simple profiles.  Because the operator is
+positive, the passage to an arbitrary measurable profile is monotone
+convergence on both sides of the estimate rather than a density argument:
+the simple approximants increase to the profile, the positive output
+increases with them, and both the output integral and the input integral pass
+to the limit.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- **The high-exponent estimate of U1.I over an arbitrary profile.**  The
+interpolated bound is proved on simple profiles; since the operator is
+positive, the passage to an arbitrary measurable profile is monotone
+convergence on both sides of the estimate, not a density argument. -/
+theorem brrsRadialKernelPosOutput_highExponent_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff)
+    {p₀ p : Real} (hp₀ : 2 ≤ p₀) (hp₀p : p₀ < p)
+    (hcritical : p₀ < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p₀ * sobolevExponent d p₀) < q)
+    {eps : Real} (heps : 0 < eps) :
+    ∃ (A : Real) (J : Nat), 0 < A ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        (∀ t ∈ T, t ∈ Icc (1 : Real) 2) →
+        ∀ (v : BRRSSpace d), ‖v‖ = 1 →
+        ∀ G : Real → ENNReal, Measurable G →
+          (∫⁻ z, (brrsRadialKernelPosOutput Phi v j T G z) ^ p
+              ∂(Measure.count.prod (volume : Measure (BRRSSpace d)))) ≤
+            (ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) *
+                ((1 - (1 - p₀ / p)) * ((q + eps) / p₀) +
+                  (1 - p₀ / p) * (((d : Real) - 1) / 2))))) ^ p *
+              ∫⁻ s : Real, (G s) ^ p ∂(brrsRadialProfileMeasure d) := by
+  have hp₀pos : 0 < p₀ := lt_of_lt_of_le (by norm_num) hp₀
+  have hppos : 0 < p := lt_trans hp₀pos hp₀p
+  obtain ⟨A, J, hA, hsimple⟩ :=
+    brrsRadialKernelAbsOutput_highExponent_simple hd Phi hp₀ hp₀p hcritical hE
+      hq0 hq heps
+  refine ⟨A, J, hA, ?_⟩
+  intro j hj T hT hTicc v hv G hG
+  set C : ENNReal := ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) *
+    ((1 - (1 - p₀ / p)) * ((q + eps) / p₀) +
+      (1 - p₀ / p) * (((d : Real) - 1) / 2)))) with hC
+  set S : ENNReal :=
+    ∫⁻ s : Real, (G s) ^ p ∂(brrsRadialProfileMeasure d) with hS
+  -- the approximants realize the positive output
+  have hfibreeq : ∀ (n : Nat)
+      (z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d),
+      ‖brrsRadialKernelAbsOutput Phi v j T
+          (brrsProfileApprox G n : Real → Complex) z‖ₑ =
+        brrsRadialKernelPosOutput Phi v j T
+          (fun s : Real => brrsProfileApproxSimple G n s) z := by
+    intro n z
+    have ht : (z.1 : Real) ∈ Icc (1 : Real) 2 :=
+      hTicc (z.1 : Real) (by simpa using z.1.2)
+    obtain ⟨B, hB⟩ := (brrsProfileApprox G n).exists_forall_norm_le
+    have hBreal : ∀ s : Real, brrsProfileApproxReal G n s ≤ B := by
+      intro s
+      have h := hB s
+      rw [brrsProfileApprox_apply, Complex.norm_real,
+        Real.norm_of_nonneg (brrsProfileApproxReal_nonneg G n s)] at h
+      exact h
+    have hcmeas : Measurable (brrsProfileApproxReal G n) := by
+      unfold brrsProfileApproxReal
+      exact ENNReal.measurable_toReal.comp
+        (brrsProfileApproxSimple G n).measurable
+    have hcoe : (brrsProfileApprox G n : Real → Complex) =
+        fun s : Real => ((brrsProfileApproxReal G n s : Real) : Complex) := by
+      funext s
+      exact brrsProfileApprox_apply G n s
+    have hkey := enorm_brrsRadialKernelAbsFibre_eq_posOutput hd Phi v hv j ht
+      z.2 hcmeas (brrsProfileApproxReal_nonneg G n) hBreal
+    rw [brrsRadialKernelAbsOutput_eq_fibre, hcoe]
+    unfold brrsRadialKernelPosOutput
+    rw [hkey]
+    refine setLIntegral_congr_fun measurableSet_Ioi fun s _ => ?_
+    rw [ofReal_brrsProfileApproxReal_eq]
+  -- the estimate for each approximant
+  have hstep : ∀ n : Nat,
+      (∫⁻ z, (brrsRadialKernelPosOutput Phi v j T
+          (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p
+          ∂(Measure.count.prod (volume : Measure (BRRSSpace d)))) ≤
+        C ^ p * S := by
+    intro n
+    have hn := hsimple j hj T hT hTicc v hv (brrsProfileApprox G n)
+      (brrs_integrable_profileApprox d G n)
+    have hraise := ENNReal.rpow_le_rpow hn hppos.le
+    rw [brrs_eLpNorm_rpow_eq hppos, ENNReal.mul_rpow_of_nonneg _ _ hppos.le,
+      brrs_eLpNorm_rpow_eq hppos] at hraise
+    have hinput : (∫⁻ s : Real,
+        ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ ^ p
+          ∂(brrsRadialProfileMeasure d)) ≤ S := by
+      rw [hS]
+      refine lintegral_mono fun s => ?_
+      rw [enorm_brrsProfileApprox]
+      exact ENNReal.rpow_le_rpow (brrsProfileApproxSimple_le hG n s) hppos.le
+    calc
+      (∫⁻ z, (brrsRadialKernelPosOutput Phi v j T
+          (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p
+          ∂(Measure.count.prod (volume : Measure (BRRSSpace d)))) =
+          ∫⁻ z, ‖brrsRadialKernelAbsOutput Phi v j T
+            (brrsProfileApprox G n : Real → Complex) z‖ₑ ^ p
+            ∂(Measure.count.prod (volume : Measure (BRRSSpace d))) := by
+        refine lintegral_congr fun z => ?_
+        rw [hfibreeq n z]
+      _ ≤ C ^ p * ∫⁻ s : Real,
+            ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ ^ p
+              ∂(brrsRadialProfileMeasure d) := hraise
+      _ ≤ C ^ p * S := mul_le_mul' le_rfl hinput
+  -- monotone convergence
+  have hmeasn : ∀ n : Nat, Measurable fun z :
+      {t : Real // t ∈ (T : Set Real)} × BRRSSpace d =>
+      (brrsRadialKernelPosOutput Phi v j T
+        (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p := by
+    intro n
+    refine ENNReal.continuous_rpow_const.measurable.comp ?_
+    exact measurable_brrsRadialKernelPosOutput Phi v j T
+      (brrsProfileApproxSimple G n).measurable
+  have hmonon : Monotone fun n : Nat => fun z :
+      {t : Real // t ∈ (T : Set Real)} × BRRSSpace d =>
+      (brrsRadialKernelPosOutput Phi v j T
+        (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p := by
+    intro m n hmn z
+    refine ENNReal.rpow_le_rpow ?_ hppos.le
+    exact brrsRadialKernelPosOutput_mono Phi v j T
+      (fun s => brrsProfileApproxSimple_monotone G s hmn) z
+  calc
+    (∫⁻ z, (brrsRadialKernelPosOutput Phi v j T G z) ^ p
+        ∂(Measure.count.prod (volume : Measure (BRRSSpace d)))) =
+        ∫⁻ z, (⨆ n : Nat, brrsRadialKernelPosOutput Phi v j T
+            (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p
+          ∂(Measure.count.prod (volume : Measure (BRRSSpace d))) := by
+      refine lintegral_congr fun z => ?_
+      rw [brrsRadialKernelPosOutput_iSup_approx Phi v j T hG z]
+    _ = ∫⁻ z, ⨆ n : Nat, (brrsRadialKernelPosOutput Phi v j T
+            (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p
+          ∂(Measure.count.prod (volume : Measure (BRRSSpace d))) := by
+      refine lintegral_congr fun z => ?_
+      exact brrs_iSup_rpow hppos
+    _ = ⨆ n : Nat, ∫⁻ z, (brrsRadialKernelPosOutput Phi v j T
+            (fun s : Real => brrsProfileApproxSimple G n s) z) ^ p
+          ∂(Measure.count.prod (volume : Measure (BRRSSpace d))) :=
+      lintegral_iSup hmeasn hmonon
+    _ ≤ C ^ p * S := iSup_le hstep
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### U1.I: the high-exponent estimate for the literal half-wave
+
+The radial-kernel representation, which is available for radial Schwartz
+inputs, dominates the half-wave pointwise by the positive kernel output of
+its profile; the interpolated estimate applies to that profile, and the
+profile's `L^p` norm against the radial pushforward measure is the Euclidean
+`L^p` norm of the input.  This closes U1.I.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- Fubini on counting time times space for a nonnegative integrand. -/
+theorem brrs_lintegral_countProd_eq_sum {d : Nat} (T : Finset Real)
+    (H : Real → BRRSSpace d → ENNReal) (hH : ∀ t ∈ T, Measurable (H t)) :
+    (∫⁻ z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d,
+        H (z.1 : Real) z.2
+        ∂(Measure.count.prod (volume : Measure (BRRSSpace d)))) =
+      ∑ t ∈ T, ∫⁻ x : BRRSSpace d, H t x := by
+  have hprod : Measurable fun z :
+      {t : Real // t ∈ (T : Set Real)} × BRRSSpace d =>
+      H (z.1 : Real) z.2 := by
+    apply measurable_from_prod_countable_right
+    intro t
+    exact hH (t : Real) (by simpa using t.property)
+  rw [MeasureTheory.lintegral_prod _ hprod.aemeasurable,
+    MeasureTheory.lintegral_count, tsum_fintype]
+  exact (Finset.sum_subtype T (fun t => by
+      change t ∈ T ↔ t ∈ T
+      rfl)
+    (fun t => ∫⁻ x : BRRSSpace d, H t x)).symm
+
+/-- The radial profile of a radial Schwartz function reproduces its `L^p`
+norm against the radial pushforward measure. -/
+theorem brrs_lintegral_radialProfile_rpow_eq {d : Nat} (_hd : 0 < d)
+    {p : Real} (hp : 0 < p) (f : BRRSSchwartz d)
+    (hf : IsRadial (f : BRRSSpace d → Complex)) (w : BRRSSpace d)
+    (hw : ‖w‖ = 1) :
+    (∫⁻ s : Real, (‖f (s • w)‖ₑ) ^ p ∂(brrsRadialProfileMeasure d)) =
+      (eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume) ^ p := by
+  have hcont : Continuous (f : BRRSSpace d → Complex) := f.continuous
+  have hmeasG : Measurable fun s : Real => (‖f (s • w)‖ₑ) ^ p := by
+    refine ENNReal.continuous_rpow_const.measurable.comp ?_
+    exact (hcont.comp (continuous_id.smul continuous_const)).measurable.enorm
+  have hmap : (∫⁻ s : Real, (‖f (s • w)‖ₑ) ^ p
+      ∂(brrsRadialProfileMeasure d)) =
+      ∫⁻ x : BRRSSpace d, (‖f (‖x‖ • w)‖ₑ) ^ p := by
+    unfold brrsRadialProfileMeasure
+    rw [lintegral_map hmeasG continuous_norm.measurable]
+  have hradial : ∀ x : BRRSSpace d, f (‖x‖ • w) = f x := by
+    intro x
+    refine hf (‖x‖ • w) x ?_
+    rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (norm_nonneg x), hw, mul_one]
+  rw [hmap, brrs_eLpNorm_rpow_eq hp]
+  refine lintegral_congr fun x => ?_
+  rw [hradial x]
+
+set_option maxHeartbeats 1000000 in
+/-- **U1.I.**  The high-exponent estimate for the literal annular half-wave on
+radial Schwartz data.  The radial-kernel representation dominates the
+half-wave by the positive kernel output of its profile, and the interpolated
+estimate applies to that. -/
+theorem brrs_discreteLpNorm_highExponent_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff)
+    {p₀ p : Real} (hp₀ : 2 ≤ p₀) (hp₀p : p₀ < p)
+    (hcritical : p₀ < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {q : Real} (hq0 : 0 ≤ q)
+    (hq : brrsLegendreAssouadFunction E (p₀ * sobolevExponent d p₀) < q)
+    {eps : Real} (heps : 0 < eps) :
+    ∃ (A : Real) (J : Nat), 0 < A ∧
+      ∀ j : Nat, J ≤ j → ∀ T : Finset Real, IsDyadicDiscretization E j T →
+        (∀ t ∈ T, t ∈ Icc (1 : Real) 2) →
+        ∀ (f : BRRSSchwartz d), IsRadial (f : BRRSSpace d → Complex) →
+        ∀ (v w : BRRSSpace d), ‖v‖ = 1 → ‖w‖ = 1 →
+          discreteLpNorm p T (fun t => brrsDyadicHalfWave Phi j t f) ≤
+            ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) *
+                ((1 - (1 - p₀ / p)) * ((q + eps) / p₀) +
+                  (1 - p₀ / p) * (((d : Real) - 1) / 2)))) *
+              eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume := by
+  have hp₀pos : 0 < p₀ := lt_of_lt_of_le (by norm_num) hp₀
+  have hppos : 0 < p := lt_trans hp₀pos hp₀p
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  obtain ⟨A, J, hA, hext⟩ :=
+    brrsRadialKernelPosOutput_highExponent_le hd Phi hp₀ hp₀p hcritical hE hq0
+      hq heps
+  refine ⟨A, J, hA, ?_⟩
+  intro j hj T hT hTicc f hf v w hv hw
+  set C : ENNReal := ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) *
+    ((1 - (1 - p₀ / p)) * ((q + eps) / p₀) +
+      (1 - p₀ / p) * (((d : Real) - 1) / 2)))) with hC
+  set Gf : Real → ENNReal := fun s : Real => ‖f (s • w)‖ₑ with hGf
+  have hcont : Continuous (f : BRRSSpace d → Complex) := f.continuous
+  have hGmeas : Measurable Gf := by
+    rw [hGf]
+    exact (hcont.comp (continuous_id.smul continuous_const)).measurable.enorm
+  -- the pointwise domination, from the radial-kernel representation
+  have hfibre : ∀ (t : Real) (x : BRRSSpace d),
+      ‖brrsDyadicHalfWave Phi j t f x‖ₑ ≤
+        ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ * Gf s := by
+    intro t x
+    have hrep := brrsDyadicHalfWave_eq_radialBesselKernel_integral_of_norm
+      hdpos Phi j t f hf v w x hv hw
+    rw [hrep]
+    refine le_trans (enorm_integral_le_lintegral_enorm _) ?_
+    refine lintegral_mono fun s => ?_
+    rw [enorm_mul, hGf]
+  -- measurability of each majorant fibre
+  have hH : ∀ t ∈ T, Measurable fun x : BRRSSpace d =>
+      (∫⁻ s in Ioi (0 : Real),
+        ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ * Gf s) ^ p := by
+    intro t _
+    refine ENNReal.continuous_rpow_const.measurable.comp ?_
+    have hjoint : Measurable fun r : Real =>
+        ∫⁻ s in Ioi (0 : Real),
+          ‖brrsRadialBesselKernel Phi d v j r s t‖ₑ * Gf s := by
+      have h : Measurable fun z : Real × Real =>
+          ‖brrsRadialBesselKernel Phi d v j z.1 z.2 t‖ₑ * Gf z.2 :=
+        (measurable_enorm_brrsRadialBesselKernel_prod Phi v j t).mul
+          (hGmeas.comp measurable_snd)
+      exact h.lintegral_prod_right'
+    exact hjoint.comp continuous_norm.measurable
+  have hfub := brrs_lintegral_countProd_eq_sum T
+    (fun t x => (∫⁻ s in Ioi (0 : Real),
+      ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ * Gf s) ^ p) hH
+  have hinput := brrs_lintegral_radialProfile_rpow_eq hdpos hppos f hf w hw
+  -- the estimate for the `p`-th powers
+  have hkey : (discreteLpNorm p T
+      (fun t => brrsDyadicHalfWave Phi j t f)) ^ p ≤
+      (C * eLpNorm (f : BRRSSpace d → Complex)
+        (ENNReal.ofReal p) volume) ^ p := by
+    rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hppos,
+      ENNReal.mul_rpow_of_nonneg _ _ hppos.le]
+    calc
+      (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+          (ENNReal.ofReal ‖brrsDyadicHalfWave Phi j t f x‖) ^ p) ≤
+          ∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+            (∫⁻ s in Ioi (0 : Real),
+              ‖brrsRadialBesselKernel Phi d v j ‖x‖ s t‖ₑ * Gf s) ^ p := by
+        refine Finset.sum_le_sum fun t _ => lintegral_mono fun x => ?_
+        refine ENNReal.rpow_le_rpow ?_ hppos.le
+        rw [ofReal_norm]
+        exact hfibre t x
+      _ = ∫⁻ z : {t : Real // t ∈ (T : Set Real)} × BRRSSpace d,
+            (brrsRadialKernelPosOutput Phi v j T Gf z) ^ p
+            ∂(Measure.count.prod (volume : Measure (BRRSSpace d))) :=
+        hfub.symm
+      _ ≤ C ^ p * ∫⁻ s : Real, (Gf s) ^ p
+            ∂(brrsRadialProfileMeasure d) :=
+        hext j hj T hT hTicc v hv Gf hGmeas
+      _ = C ^ p * (eLpNorm (f : BRRSSpace d → Complex)
+            (ENNReal.ofReal p) volume) ^ p := by
+        rw [hGf, hinput]
+  -- extract the `p`-th root
+  have hroot : discreteLpNorm p T (fun t => brrsDyadicHalfWave Phi j t f) ≤
+      C * eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume := by
+    have h := ENNReal.rpow_le_rpow hkey (by positivity : (0 : Real) ≤ 1 / p)
+    rwa [← ENNReal.rpow_mul, ← ENNReal.rpow_mul, mul_one_div,
+      div_self hppos.ne', ENNReal.rpow_one, ENNReal.rpow_one] at h
+  exact hroot
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### A bound at every frequency level
+
+The sharp estimates of Section 5 and of U1.I hold beyond a threshold, while
+the statement of Theorem 1.1 is quantified over every level.  The crude bound
+below holds at every level -- Young's inequality against the kernel's `L^1`
+norm, with the packet cardinality paid in full -- and so absorbs the finitely
+many levels under any threshold into the constant.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The annular half-wave kernel has the half-density `L^1` bound in every
+dimension at least two.  The planar case is the recorded square-root bound and
+the higher-dimensional case the recorded half-density bound. -/
+theorem exists_brrs_dyadicHalfWaveKernelL1_bound_dim_ge_two
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) :
+    ∃ B : Real, 0 < B ∧ ∀ j : Nat, 1 ≤ j → ∀ t : Real,
+      t ∈ Icc (1 : Real) 2 →
+        (∫ x : BRRSSpace d, ‖brrsDyadicHalfWaveKernel Phi j t x‖) ≤
+          B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) := by
+  rcases eq_or_lt_of_le hd with h2 | h3
+  · subst h2
+    obtain ⟨B, hB, hbound⟩ := exists_brrs_planarDyadicHalfWaveKernelL1_bound Phi
+    refine ⟨B, hB, ?_⟩
+    intro j hj t ht
+    have hsq : Real.sqrt ((2 : Real) ^ j) =
+        ((2 : Real) ^ j) ^ (((2 : Nat) - 1 : Real) / 2) := by
+      rw [Real.sqrt_eq_rpow]
+      norm_num
+    have h := hbound j hj t ht
+    rw [hsq] at h
+    exact h
+  · exact exists_brrs_dyadicHalfWaveKernelL1_bound_dim_ge_three h3 Phi
+
+/-- The fixed-time `L^p` bound for the annular half-wave, from the kernel's
+`L^1` bound and Young's inequality. -/
+theorem brrs_eLpNorm_dyadicHalfWave_fixedTime_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 1 < p)
+    {B : Real} (hB : 0 < B)
+    (hbound : ∀ j : Nat, 1 ≤ j → ∀ t : Real, t ∈ Icc (1 : Real) 2 →
+      (∫ x : BRRSSpace d, ‖brrsDyadicHalfWaveKernel Phi j t x‖) ≤
+        B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2))
+    (j : Nat) (hj : 1 ≤ j) {t : Real} (ht : t ∈ Icc (1 : Real) 2)
+    (f : BRRSSchwartz d) :
+    eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x) (ENNReal.ofReal p)
+        volume ≤
+      ENNReal.ofReal (B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) *
+        eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume := by
+  set K : BRRSSpace d → Complex :=
+    ((brrsDyadicHalfWaveKernel Phi j t : BRRSSchwartz d) :
+      BRRSSpace d → Complex) with hK
+  have hKmeas : Measurable K := by
+    rw [hK]
+    exact (brrsDyadicHalfWaveKernel Phi j t).continuous.measurable
+  have hfmeas : Measurable (f : BRRSSpace d → Complex) := f.continuous.measurable
+  have hKint : Integrable K volume := by
+    rw [hK]
+    exact (brrsDyadicHalfWaveKernel Phi j t).integrable
+  have hmass : (∫⁻ y : BRRSSpace d, ‖K y‖ₑ) ≤
+      ENNReal.ofReal (B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) := by
+    have hnn : (0 : BRRSSpace d → Real) ≤ᵐ[volume] fun y => ‖K y‖ :=
+      Filter.Eventually.of_forall fun y => norm_nonneg _
+    have heq : ENNReal.ofReal (∫ y : BRRSSpace d, ‖K y‖) =
+        ∫⁻ y : BRRSSpace d, ‖K y‖ₑ := by
+      rw [ofReal_integral_eq_lintegral_ofReal hKint.norm hnn]
+      exact lintegral_congr fun y => by rw [ofReal_norm]
+    rw [← heq]
+    refine ENNReal.ofReal_le_ofReal ?_
+    rw [hK]
+    exact hbound j hj t ht
+  have hrep : (fun x => brrsDyadicHalfWave Phi j t f x) =
+      K ⋆[ContinuousLinearMap.mul Complex Complex, volume]
+        (f : BRRSSpace d → Complex) := by
+    funext x
+    rw [hK]
+    exact brrsDyadicHalfWave_eq_kernel_convolution Phi j t f x
+  rw [hrep]
+  refine le_trans (brrs_eLpNorm_convolution_le p hp K
+    (f : BRRSSpace d → Complex) hKmeas hfmeas) ?_
+  exact mul_le_mul' hmass le_rfl
+
+/-- **The crude bound valid at every frequency level.**  It has a worse
+exponent than the sharp estimate, but it holds for every level and so absorbs
+the finitely many levels below the threshold of the sharp estimates. -/
+theorem exists_brrs_discreteLpNorm_crude_bound
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 1 < p)
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) :
+    ∃ D : Real, 0 < D ∧ ∀ j : Nat, 1 ≤ j → ∀ T : Finset Real,
+      IsDyadicDiscretization E j T → ∀ f : BRRSSchwartz d,
+        discreteLpNorm p T (fun t => brrsDyadicHalfWave Phi j t f) ≤
+          ENNReal.ofReal (D *
+              ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2 + 1 / p)) *
+            eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume := by
+  have hp0 : 0 < p := lt_trans zero_lt_one hp
+  obtain ⟨B, hB, hbound⟩ :=
+    exists_brrs_dyadicHalfWaveKernelL1_bound_dim_ge_two hd Phi
+  refine ⟨8 * B, by positivity, ?_⟩
+  intro j hj T hT f
+  set Z : ENNReal :=
+    eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume with hZ
+  set W : ENNReal :=
+    ENNReal.ofReal (B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) * Z with hW
+  have hfixed : ∀ t ∈ T,
+      eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x) (ENNReal.ofReal p)
+        volume ≤ W := by
+    intro t htT
+    have ht : t ∈ Icc (1 : Real) 2 := hE (hT.subset htT)
+    rw [hW, hZ]
+    exact brrs_eLpNorm_dyadicHalfWave_fixedTime_le hd Phi hp hB hbound j hj ht f
+  have hsum : (∑ t ∈ T,
+      (eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x) (ENNReal.ofReal p)
+        volume) ^ p) ≤ (T.card : ENNReal) * W ^ p := by
+    calc
+      (∑ t ∈ T,
+          (eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x)
+            (ENNReal.ofReal p) volume) ^ p) ≤ ∑ _t ∈ T, W ^ p := by
+        refine Finset.sum_le_sum fun t htT => ?_
+        exact ENNReal.rpow_le_rpow (hfixed t htT) hp0.le
+      _ = (T.card : ENNReal) * W ^ p := by
+        simp only [Finset.sum_const, nsmul_eq_mul]
+  have hcard : (T.card : ENNReal) ≤ 8 * (2 : ENNReal) ^ j :=
+    dyadicDiscretization_card_le_eight_mul_two_pow_of_subset_Icc hE j T hT
+  have hroot : discreteLpNorm p T (fun t => brrsDyadicHalfWave Phi j t f) ≤
+      ((8 : ENNReal) * (2 : ENNReal) ^ j) ^ (1 / p) * W := by
+    unfold discreteLpNorm
+    have hstep : (∑ t ∈ T,
+        (eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x) (ENNReal.ofReal p)
+          volume) ^ p) ≤ ((8 : ENNReal) * (2 : ENNReal) ^ j) * W ^ p :=
+      le_trans hsum (mul_le_mul' hcard le_rfl)
+    have h := ENNReal.rpow_le_rpow hstep (by positivity : (0 : Real) ≤ 1 / p)
+    calc
+      (∑ t ∈ T, (eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x)
+          (ENNReal.ofReal p) volume) ^ p) ^ (p⁻¹) =
+          (∑ t ∈ T, (eLpNorm (fun x => brrsDyadicHalfWave Phi j t f x)
+            (ENNReal.ofReal p) volume) ^ p) ^ (1 / p) := by
+        rw [one_div]
+      _ ≤ (((8 : ENNReal) * (2 : ENNReal) ^ j) * W ^ p) ^ (1 / p) := h
+      _ = ((8 : ENNReal) * (2 : ENNReal) ^ j) ^ (1 / p) * W := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul,
+          mul_one_div, div_self hp0.ne', ENNReal.rpow_one]
+  refine le_trans hroot ?_
+  have h8 : ((8 : ENNReal) * (2 : ENNReal) ^ j) ^ (1 / p) =
+      ENNReal.ofReal ((8 : Real) ^ (1 / p) *
+        ((2 : Real) ^ j) ^ (1 / p)) := by
+    have h2 : ((2 : ENNReal) ^ j) = ENNReal.ofReal ((2 : Real) ^ j) := by
+      rw [ENNReal.ofReal_pow (by norm_num : (0 : Real) ≤ 2)]
+      norm_num
+    have h8' : (8 : ENNReal) = ENNReal.ofReal (8 : Real) := by
+      simp
+    rw [h2, h8', ← ENNReal.ofReal_mul (by norm_num : (0 : Real) ≤ 8),
+      ENNReal.ofReal_rpow_of_pos (by positivity),
+      Real.mul_rpow (by norm_num) (by positivity)]
+  rw [h8, hW, ← mul_assoc, ← ENNReal.ofReal_mul (by positivity)]
+  refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
+  have h8le : (8 : Real) ^ (1 / p) ≤ 8 := by
+    have h : (8 : Real) ^ (1 / p) ≤ (8 : Real) ^ (1 : Real) := by
+      refine Real.rpow_le_rpow_of_exponent_le (by norm_num : (1 : Real) ≤ 8) ?_
+      rw [div_le_one hp0]
+      linarith
+    rwa [Real.rpow_one] at h
+  have hcomb : ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2 + 1 / p) =
+      ((2 : Real) ^ j) ^ (1 / p) *
+        ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) := by
+    rw [Real.rpow_add (by positivity)]
+    ring
+  rw [hcomb]
+  have hpos : (0 : Real) ≤ ((2 : Real) ^ j) ^ (1 / p) *
+      ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) := by positivity
+  calc
+    ((8 : Real) ^ (1 / p) * ((2 : Real) ^ j) ^ (1 / p)) *
+        (B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) =
+        ((8 : Real) ^ (1 / p) * B) *
+          (((2 : Real) ^ j) ^ (1 / p) *
+            ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) := by ring
+    _ ≤ (8 * B) * (((2 : Real) ^ j) ^ (1 / p) *
+          ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) := by
+        refine mul_le_mul_of_nonneg_right ?_ hpos
+        nlinarith [hB, h8le]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Removal of the frequency threshold
+
+The statement of Theorem 1.1 is quantified over every frequency level, while
+the sharp estimates hold beyond a threshold.  The crude bound absorbs the
+finitely many lower levels into the constant.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- **Removal of the frequency threshold.**  An estimate holding beyond some
+level, at a prescribed rate, holds at every level once the constant absorbs
+the crude bound on the finitely many lower levels. -/
+theorem brrs_schwartzCoreUniformEstimate_of_eventually
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 1 < p)
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2) {s : Real}
+    (h : ∃ (K : Real) (J : Nat), 0 < K ∧ ∀ j : Nat, J ≤ j → 1 ≤ j →
+      ∀ T : Finset Real, IsDyadicDiscretization E j T →
+      ∀ f : BRRSSchwartz d, IsRadial (f : BRRSSpace d → Complex) →
+        discreteLpNorm p T (fun t => brrsDyadicHalfWave Phi j t f) ≤
+          ENNReal.ofReal (K * (2 : Real) ^ ((j : Real) * s)) *
+            eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume) :
+    SchwartzCoreUniformEstimateAtExponent (d := d) Phi E p s := by
+  have hp0 : 0 < p := lt_trans zero_lt_one hp
+  obtain ⟨K, J, hK, hsharp⟩ := h
+  obtain ⟨D, hD, hcrude⟩ :=
+    exists_brrs_discreteLpNorm_crude_bound hd Phi hp hE
+  set sigma : Real := ((d : Real) - 1) / 2 + 1 / p with hsigma
+  set g : Nat → Real := fun i =>
+    D * ((2 : Real) ^ i) ^ sigma / (2 : Real) ^ ((i : Real) * s) with hg
+  have hgnonneg : ∀ i : Nat, 0 ≤ g i := by
+    intro i
+    rw [hg]
+    positivity
+  set K' : Real := K + ∑ i ∈ Finset.range J, g i with hK'
+  have hK'pos : 0 < K' := by
+    rw [hK']
+    have : 0 ≤ ∑ i ∈ Finset.range J, g i :=
+      Finset.sum_nonneg fun i _ => hgnonneg i
+    linarith
+  refine ⟨K', hK'pos, ?_⟩
+  intro j hj T hT f hf
+  rcases le_or_gt J j with hJj | hjJ
+  · -- beyond the threshold: the sharp estimate, with a larger constant
+    refine le_trans (hsharp j hJj hj T hT f hf) ?_
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
+    have hmono : K ≤ K' := by
+      rw [hK']
+      have : 0 ≤ ∑ i ∈ Finset.range J, g i :=
+        Finset.sum_nonneg fun i _ => hgnonneg i
+      linarith
+    exact mul_le_mul_of_nonneg_right hmono (by positivity)
+  · -- below the threshold: the crude estimate, absorbed by the constant
+    refine le_trans (hcrude j hj T hT f) ?_
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
+    have hmem : j ∈ Finset.range J := Finset.mem_range.mpr hjJ
+    have hterm : g j ≤ ∑ i ∈ Finset.range J, g i :=
+      Finset.single_le_sum (f := g) (fun i _ => hgnonneg i) hmem
+    have hle : g j ≤ K' := by
+      rw [hK']
+      linarith
+    have hpow : (0 : Real) < (2 : Real) ^ ((j : Real) * s) := by positivity
+    rw [hg] at hle
+    rw [div_le_iff₀ hpow] at hle
+    calc D * ((2 : Real) ^ j) ^ sigma ≤ K' * (2 : Real) ^ ((j : Real) * s) :=
+        hle
+      _ = K' * (2 : Real) ^ ((j : Real) * s) := rfl
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The subcritical half of (1.5)
+
+Below the fixed-time critical exponent Proposition 5.1 gives the displayed
+estimate directly.  Three conversions are needed: the entropy rate is
+absorbed into the exponential, the moment of the Section 5 radial profile is
+the Euclidean `L^p` norm up to the total surface mass, and the frequency
+threshold is removed by the crude bound.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- A unit vector exists in every positive dimension. -/
+theorem exists_brrs_unit_vector {d : Nat} (hd : 0 < d) :
+    ∃ v : BRRSSpace d, ‖v‖ = 1 := by
+  refine ⟨EuclideanSpace.single (⟨0, hd⟩ : Fin d) (1 : Real), ?_⟩
+  rw [EuclideanSpace.norm_single]
+  norm_num
+
+/-- The Section 5 radial profile is the weighted profile of the radial
+restriction. -/
+theorem brrsSectionFiveRadialProfile_eq_weightENN {d : Nat} {p : Real}
+    (hp : 0 < p) (w : BRRSSpace d) (f : BRRSSchwartz d) :
+    brrsSectionFiveRadialProfile p w f =
+      brrsRadialProfileWeightENN d p (fun s : Real => f (s • w)) := by
+  funext s
+  unfold brrsSectionFiveRadialProfile brrsRadialProfileWeightENN
+  by_cases hs : s ∈ Ioi (0 : Real)
+  · have hs0 : 0 < s := hs
+    rw [indicator_of_mem hs, indicator_of_mem hs,
+      ENNReal.ofReal_mul (Real.rpow_nonneg hs0.le _),
+      ENNReal.ofReal_rpow_of_pos hs0, ofReal_norm]
+  · rw [indicator_of_notMem hs, indicator_of_notMem hs]
+
+/-- The `p`-th moment of the Section 5 radial profile is the `p`-th power of
+the Euclidean `L^p` norm, up to the total surface mass. -/
+theorem brrs_lintegral_brrsSectionFiveRadialProfile_rpow_eq {d : Nat}
+    (hd : 0 < d) {p : Real} (hp : 0 < p) (f : BRRSSchwartz d)
+    (hf : IsRadial (f : BRRSSpace d → Complex)) (v w : BRRSSpace d)
+    (hv : ‖v‖ = 1) (hw : ‖w‖ = 1) :
+    (unitSurfaceMeasure d) univ *
+        (∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p) =
+      (eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume) ^ p := by
+  have hFmeas : Measurable fun s : Real => f (s • w) :=
+    (f.continuous.comp (continuous_id.smul continuous_const)).measurable
+  rw [brrsSectionFiveRadialProfile_eq_weightENN hp w f,
+    brrs_lintegral_brrsRadialProfileWeightENN_rpow_eq hd hp hFmeas v hv,
+    brrs_eLpNorm_rpow_eq hp,
+    brrs_lintegral_radialProfile_rpow_eq hd hp f hf w hw]
+
+set_option maxHeartbeats 1000000 in
+/-- **The subcritical half of (1.5).**  Below the fixed-time critical
+exponent, Proposition 5.1 gives the displayed estimate directly: the entropy
+rate is absorbed into the exponential, the radial profile moment is the
+Euclidean `L^p` norm, and the threshold is removed by the crude bound. -/
+theorem brrs_schwartzCoreUniformEstimate_subcritical
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p)
+    (hcritical : p < 2 * (d : Real) / ((d : Real) - 1))
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {epsilon : Real} (heps : 0 < epsilon) :
+    SchwartzCoreUniformEstimateAtExponent (d := d) Phi E p
+      (criticalExponent brrsLegendreAssouadFunction E d p + epsilon) := by
+  have hp0 : 0 < p := lt_of_lt_of_le (by norm_num) hp
+  have hp1 : 1 < p := lt_of_lt_of_le (by norm_num) hp
+  have hdpos : 0 < d := lt_of_lt_of_le (by norm_num) hd
+  obtain ⟨v, hv⟩ := exists_brrs_unit_vector hdpos
+  by_cases hEne : E.Nonempty
+  · set alpha : Real := p * sobolevExponent d p with halphadef
+    have halpha0 : 0 ≤ alpha := mul_sobolevExponent_nonneg hd hp
+    set nu : Real := brrsLegendreAssouadFunction E alpha with hnudef
+    have hnu0 : 0 ≤ nu :=
+      Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction_nonneg_of_nonempty
+        hEne halpha0
+    have hhalf : 0 < p * epsilon / 2 := by positivity
+    set q : Real := nu + p * epsilon / 2 with hqdef
+    have hq0 : 0 ≤ q := by
+      rw [hqdef]
+      linarith
+    have hqgt : nu < q := by
+      rw [hqdef]
+      linarith
+    obtain ⟨Cst, J, hCst, hprop⟩ :=
+      brrsPropositionFiveOne hd Phi hp hcritical hE hq0 hqgt
+    obtain ⟨A, hA, hrate⟩ := brrs_entropyRate_le_shifted hq0 hhalf
+    have hSne : (unitSurfaceMeasure d) univ ≠ 0 :=
+      ne_of_gt (unitSurfaceMeasure_univ_pos hdpos)
+    have hStop : (unitSurfaceMeasure d) univ ≠ ∞ :=
+      measure_ne_top (unitSurfaceMeasure d) univ
+    set Kc : ENNReal := Cst * ENNReal.ofReal A *
+      ((unitSurfaceMeasure d) univ)⁻¹ with hKc
+    have hKctop : Kc ≠ ∞ := by
+      rw [hKc]
+      refine ENNReal.mul_ne_top (ENNReal.mul_ne_top hCst ENNReal.ofReal_ne_top) ?_
+      simpa using hSne
+    refine brrs_schwartzCoreUniformEstimate_of_eventually hd Phi hp1 hE ?_
+    refine ⟨(Kc.toReal) ^ (1 / p) + 1, J, by positivity, ?_⟩
+    intro j hJj hj T hT f hf
+    obtain ⟨w, hw⟩ := exists_brrs_unit_vector hdpos
+    set Z : ENNReal :=
+      eLpNorm (f : BRRSSpace d → Complex) (ENNReal.ofReal p) volume with hZ
+    set S : ENNReal :=
+      ∫⁻ s : Real, (brrsSectionFiveRadialProfile p w f s) ^ p with hS
+    have hmass := brrs_lintegral_brrsSectionFiveRadialProfile_rpow_eq hdpos hp0
+      f hf v w hv hw
+    have hSeq : S = ((unitSurfaceMeasure d) univ)⁻¹ * Z ^ p := by
+      rw [hZ, ← hmass, hS]
+      rw [← mul_assoc, ENNReal.inv_mul_cancel hSne hStop, one_mul]
+    -- the p-th power estimate
+    have hpow : (discreteLpNorm p T
+        (fun t => brrsDyadicHalfWave Phi j t f)) ^ p ≤
+        Kc * (2 : ENNReal) ^ ((j : Real) * (q + p * epsilon / 2)) * Z ^ p := by
+      rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp0]
+      have hsum : (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+          (ENNReal.ofReal ‖brrsDyadicHalfWave Phi j t f x‖) ^ p) =
+          ∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+            ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p := by
+        refine Finset.sum_congr rfl fun t _ => ?_
+        refine lintegral_congr fun x => ?_
+        rw [ofReal_norm]
+      rw [hsum]
+      calc
+        (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
+            ‖brrsDyadicHalfWave Phi j t f x‖ₑ ^ p) ≤
+            Cst * (((j : ENNReal) + 1) *
+              (2 : ENNReal) ^ (((j : Real) + 1) * q) * S) :=
+          hprop j hJj T hT f hf v w hv hw
+        _ ≤ Cst * ((ENNReal.ofReal A *
+              (2 : ENNReal) ^ ((j : Real) * (q + p * epsilon / 2))) * S) := by
+          refine mul_le_mul' le_rfl (mul_le_mul' (hrate j) le_rfl)
+        _ = Kc * (2 : ENNReal) ^ ((j : Real) * (q + p * epsilon / 2)) *
+              Z ^ p := by
+          rw [hSeq, hKc]
+          ring
+    -- take p-th roots
+    have hroot : discreteLpNorm p T (fun t => brrsDyadicHalfWave Phi j t f) ≤
+        (Kc * (2 : ENNReal) ^ ((j : Real) * (q + p * epsilon / 2))) ^ (1 / p) *
+          Z := by
+      have h := ENNReal.rpow_le_rpow hpow (by positivity : (0 : Real) ≤ 1 / p)
+      rw [← ENNReal.rpow_mul, mul_one_div, div_self hp0.ne', ENNReal.rpow_one,
+        ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul,
+        mul_one_div, div_self hp0.ne', ENNReal.rpow_one] at h
+      exact h
+    refine le_trans hroot ?_
+    have hsplit : (Kc * (2 : ENNReal) ^
+        ((j : Real) * (q + p * epsilon / 2))) ^ (1 / p) =
+        Kc ^ (1 / p) * (2 : ENNReal) ^
+          ((j : Real) * (nu / p + epsilon)) := by
+      rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul]
+      congr 2
+      rw [hqdef]
+      field_simp
+      ring
+    have hKroot : Kc ^ (1 / p) ≤ ENNReal.ofReal ((Kc.toReal) ^ (1 / p) + 1) := by
+      calc Kc ^ (1 / p) = (ENNReal.ofReal Kc.toReal) ^ (1 / p) := by
+            rw [ENNReal.ofReal_toReal hKctop]
+        _ = ENNReal.ofReal ((Kc.toReal) ^ (1 / p)) := by
+            rw [ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg
+              (by positivity)]
+        _ ≤ ENNReal.ofReal ((Kc.toReal) ^ (1 / p) + 1) :=
+            ENNReal.ofReal_le_ofReal (by linarith)
+    have htarget : criticalExponent brrsLegendreAssouadFunction E d p +
+        epsilon = nu / p + epsilon := by
+      unfold criticalExponent
+      rw [hnudef, halphadef]
+    rw [hsplit, htarget]
+    have hcoe : ENNReal.ofReal (((Kc.toReal) ^ (1 / p) + 1) *
+        (2 : Real) ^ ((j : Real) * (nu / p + epsilon))) =
+        ENNReal.ofReal ((Kc.toReal) ^ (1 / p) + 1) *
+          (2 : ENNReal) ^ ((j : Real) * (nu / p + epsilon)) := by
+      rw [ENNReal.ofReal_mul (by positivity), brrs_ofReal_two_rpow]
+    rw [hcoe]
+    exact mul_le_mul' (mul_le_mul' hKroot le_rfl) le_rfl
+  · -- the empty time set is vacuous
+    refine ⟨1, by norm_num, ?_⟩
+    intro j _hj T hT f _hf
+    have hEempty : E = ∅ := not_nonempty_iff_eq_empty.mp hEne
+    have hTempty : T = ∅ := by
+      apply Finset.not_nonempty_iff_eq_empty.mp
+      rintro ⟨t, ht⟩
+      have htE : t ∈ E := hT.subset (by simpa using ht)
+      rw [hEempty] at htE
+      exact (Set.mem_empty_iff_false t).mp htE
+    subst hTempty
+    have hzero : discreteLpNorm p (∅ : Finset Real)
+        (fun t => brrsDyadicHalfWave Phi j t f) = 0 := by
+      unfold discreteLpNorm
+      rw [Finset.sum_empty, ENNReal.zero_rpow_of_pos (by positivity)]
+    rw [hzero]
+    exact zero_le
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The supercritical half of (1.5), and the full displayed estimate
+
+At and above the fixed-time critical exponent the target exponent is at least
+the Sobolev one, because the Legendre--Assouad function dominates its
+penalty.  Interpolating from a subcritical exponent close enough to critical
+reaches it: the subcritical penalty increases to one as the exponent
+increases to critical, while the Legendre--Assouad value never exceeds one
+there.  Joining the two ranges gives the displayed radial upper estimate of
+Theorem 1.1 on the Schwartz core.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The Legendre--Assouad value at a penalty in the unit interval is at most
+one. -/
+theorem brrsLegendreAssouadFunction_le_one_of_nonneg_of_le_one
+    {E : Set Real} (hE : E.Nonempty) {alpha : Real} (halpha : 0 ≤ alpha)
+    (halpha1 : alpha ≤ 1) :
+    brrsLegendreAssouadFunction E alpha ≤ 1 := by
+  calc brrsLegendreAssouadFunction E alpha
+      = Auto.Spherical.LegendreAssouad.brrsAssouadLegendreTransform E alpha :=
+        Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction_eq_brrsAssouadLegendreTransform_of_nonempty
+          hE alpha
+    _ ≤ 1 :=
+        Auto.Spherical.LegendreAssouad.brrsAssouadLegendreTransform_le_one_of_nonneg_of_le_one
+          E halpha halpha1
+
+/-- The penalty attached to an exponent, in closed form. -/
+theorem brrs_mul_sobolevExponent_eq {d : Nat} {p : Real} (hp : p ≠ 0) :
+    p * sobolevExponent d p = ((d : Real) - 1) * (p / 2 - 1) := by
+  unfold sobolevExponent
+  field_simp
+
+set_option maxHeartbeats 1000000 in
+/-- **The supercritical half of (1.5).**  At and above the fixed-time critical
+exponent the target exponent is at least the Sobolev one, since the
+Legendre--Assouad function dominates its penalty.  Interpolating from a
+subcritical exponent close enough to critical, through U1.I, reaches it: the
+subcritical penalty increases to one as the exponent increases to critical,
+while the Legendre--Assouad value never exceeds one there. -/
+theorem brrs_schwartzCoreUniformEstimate_supercritical
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {p : Real}
+    (hp : 2 * (d : Real) / ((d : Real) - 1) ≤ p)
+    {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {epsilon : Real} (heps : 0 < epsilon) :
+    SchwartzCoreUniformEstimateAtExponent (d := d) Phi E p
+      (criticalExponent brrsLegendreAssouadFunction E d p + epsilon) := by
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hd1 : (0 : Real) < (d : Real) - 1 := by linarith
+  set pc : Real := 2 * (d : Real) / ((d : Real) - 1) with hpc
+  have hpc_eq : pc = 2 + 2 / ((d : Real) - 1) := by
+    rw [hpc]
+    field_simp
+    ring
+  have hpc2 : 2 < pc := by
+    rw [hpc_eq]
+    have : 0 < 2 / ((d : Real) - 1) := by positivity
+    linarith
+  have hp2 : 2 ≤ p := le_trans hpc2.le hp
+  have hp0 : 0 < p := by linarith
+  have hp1 : 1 < p := by linarith
+  by_cases hEne : E.Nonempty
+  · -- choose a subcritical exponent close to critical
+    set delta : Real :=
+      min (p * epsilon / (2 * ((d : Real) - 1))) (1 / ((d : Real) - 1))
+      with hdeltadef
+    have hdelta0 : 0 < delta := by
+      rw [hdeltadef]
+      exact lt_min (by positivity) (by positivity)
+    have hdelta_eps : delta ≤ p * epsilon / (2 * ((d : Real) - 1)) := by
+      rw [hdeltadef]
+      exact min_le_left _ _
+    have hdelta_one : delta ≤ 1 / ((d : Real) - 1) := by
+      rw [hdeltadef]
+      exact min_le_right _ _
+    set p₀ : Real := pc - delta with hp₀def
+    have hp₀2 : 2 ≤ p₀ := by
+      rw [hp₀def, hpc_eq]
+      have hone : (0 : Real) < 1 / ((d : Real) - 1) := by positivity
+      have hsplit : 2 / ((d : Real) - 1) =
+          1 / ((d : Real) - 1) + 1 / ((d : Real) - 1) := by
+        field_simp
+        ring
+      rw [hsplit]
+      linarith [hdelta_one]
+    have hp₀c : p₀ < pc := by
+      rw [hp₀def]
+      linarith
+    have hp₀p : p₀ < p := lt_of_lt_of_le hp₀c hp
+    have hp₀0 : 0 < p₀ := by linarith
+    -- the subcritical penalty
+    set alpha₀ : Real := p₀ * sobolevExponent d p₀ with halpha₀def
+    have halpha₀eq : alpha₀ = 1 - ((d : Real) - 1) * delta / 2 := by
+      rw [halpha₀def, brrs_mul_sobolevExponent_eq (ne_of_gt hp₀0), hp₀def,
+        hpc_eq]
+      field_simp
+      ring
+    have halpha₀0 : 0 ≤ alpha₀ := mul_sobolevExponent_nonneg hd hp₀2
+    have halpha₀1 : alpha₀ ≤ 1 := by
+      rw [halpha₀eq]
+      have : 0 ≤ ((d : Real) - 1) * delta / 2 := by positivity
+      linarith
+    have halpha₀big : ((d : Real) - 1) * delta / 2 ≤ p * epsilon / 4 := by
+      have h := hdelta_eps
+      rw [le_div_iff₀ (by positivity : (0 : Real) < 2 * ((d : Real) - 1))] at h
+      linarith
+    set nu₀ : Real := brrsLegendreAssouadFunction E alpha₀ with hnu₀def
+    have hnu₀1 : nu₀ ≤ 1 :=
+      brrsLegendreAssouadFunction_le_one_of_nonneg_of_le_one hEne halpha₀0
+        halpha₀1
+    have hnu₀0 : 0 ≤ nu₀ :=
+      Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction_nonneg_of_nonempty
+        hEne halpha₀0
+    -- the interpolation parameters
+    set eta : Real := p * epsilon / 4 with hetadef
+    have heta0 : 0 < eta := by
+      rw [hetadef]
+      positivity
+    set q : Real := nu₀ + eta with hqdef
+    have hq0 : 0 ≤ q := by
+      rw [hqdef]
+      linarith
+    have hqgt : nu₀ < q := by
+      rw [hqdef]
+      linarith
+    obtain ⟨A, J, hA, hU1I⟩ :=
+      brrs_discreteLpNorm_highExponent_le hd Phi hp₀2 hp₀p
+        (by rw [← hpc]; exact hp₀c) hE hq0 (by rw [← hnu₀def]; exact hqgt)
+        heta0
+    -- the interpolated exponent is at most the target
+    set nup : Real := brrsLegendreAssouadFunction E (p * sobolevExponent d p)
+      with hnupdef
+    have hnup_ge : p * sobolevExponent d p ≤ nup := by
+      rw [hnupdef]
+      exact Auto.Spherical.LegendreAssouad.le_brrsLegendreAssouadFunction_of_nonempty
+        hEne (mul_sobolevExponent_nonneg hd hp2)
+    have hnup_closed : p * sobolevExponent d p =
+        ((d : Real) - 1) * (p / 2 - 1) :=
+      brrs_mul_sobolevExponent_eq (ne_of_gt hp0)
+    have hexp : (1 - (1 - p₀ / p)) * ((q + eta) / p₀) +
+        (1 - p₀ / p) * (((d : Real) - 1) / 2) ≤ nup / p + epsilon := by
+      have hfirst : (1 - (1 - p₀ / p)) * ((q + eta) / p₀) = (q + eta) / p := by
+        have h1 : 1 - (1 - p₀ / p) = p₀ / p := by ring
+        rw [h1]
+        field_simp
+      rw [hfirst]
+      have hnum : (q + eta) + (p - p₀) * (((d : Real) - 1) / 2) ≤
+          nup + p * epsilon := by
+        have halpha₀expand : alpha₀ = ((d : Real) - 1) * (p₀ / 2 - 1) := by
+          rw [halpha₀def]
+          exact brrs_mul_sobolevExponent_eq (ne_of_gt hp₀0)
+        have hnupexp : ((d : Real) - 1) * (p / 2 - 1) ≤ nup := by
+          rw [← hnup_closed]
+          exact hnup_ge
+        have hq_le : q + eta ≤ 1 + p * epsilon / 2 := by
+          rw [hqdef, hetadef]
+          linarith
+        have hgap : 1 - alpha₀ ≤ p * epsilon / 4 := by
+          rw [halpha₀eq]
+          linarith
+        nlinarith [hnupexp, hq_le, hgap, halpha₀expand, hd1]
+      calc (q + eta) / p + (1 - p₀ / p) * (((d : Real) - 1) / 2)
+          = ((q + eta) + (p - p₀) * (((d : Real) - 1) / 2)) / p := by
+            field_simp
+        _ ≤ (nup + p * epsilon) / p := by
+            gcongr
+        _ = nup / p + epsilon := by
+            field_simp
+    -- transfer the interpolated bound to the target exponent
+    refine brrs_schwartzCoreUniformEstimate_of_eventually hd Phi hp1 hE ?_
+    refine ⟨A, J, hA, ?_⟩
+    intro j hJj hj T hT f hf
+    obtain ⟨v, hv⟩ := exists_brrs_unit_vector (lt_of_lt_of_le (by norm_num) hd)
+    obtain ⟨w, hw⟩ := exists_brrs_unit_vector (lt_of_lt_of_le (by norm_num) hd)
+    have hTicc : ∀ t ∈ T, t ∈ Icc (1 : Real) 2 :=
+      fun t htT => hE (hT.subset htT)
+    refine le_trans (hU1I j hJj T hT hTicc f hf v w hv hw) ?_
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
+    have hmono : (2 : Real) ^ ((j : Real) *
+        ((1 - (1 - p₀ / p)) * ((q + eta) / p₀) +
+          (1 - p₀ / p) * (((d : Real) - 1) / 2))) ≤
+        (2 : Real) ^ ((j : Real) *
+          (criticalExponent brrsLegendreAssouadFunction E d p + epsilon)) := by
+      refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+      have htarget : criticalExponent brrsLegendreAssouadFunction E d p +
+          epsilon = nup / p + epsilon := by
+        unfold criticalExponent
+        rw [hnupdef]
+      rw [htarget]
+      exact mul_le_mul_of_nonneg_left hexp (by positivity)
+    exact mul_le_mul_of_nonneg_left hmono hA.le
+  · -- the empty time set is vacuous
+    refine ⟨1, by norm_num, ?_⟩
+    intro j _hj T hT f _hf
+    have hEempty : E = ∅ := not_nonempty_iff_eq_empty.mp hEne
+    have hTempty : T = ∅ := by
+      apply Finset.not_nonempty_iff_eq_empty.mp
+      rintro ⟨t, ht⟩
+      have htE : t ∈ E := hT.subset (by simpa using ht)
+      rw [hEempty] at htE
+      exact (Set.mem_empty_iff_false t).mp htE
+    subst hTempty
+    have hzero : discreteLpNorm p (∅ : Finset Real)
+        (fun t => brrsDyadicHalfWave Phi j t f) = 0 := by
+      unfold discreteLpNorm
+      rw [Finset.sum_empty, ENNReal.zero_rpow_of_pos (by positivity)]
+    rw [hzero]
+    exact zero_le
+
+/-- **BRRS (1.5): the radial upper estimate of Theorem 1.1 on the Schwartz
+core.**  For every exponent at least two and every positive slack, the
+annular half-wave obeys the displayed estimate at the critical exponent plus
+that slack.  Below the fixed-time critical exponent this is Proposition 5.1;
+at and above it, the high-exponent interpolation of U1.I. -/
+theorem brrsTheoremOneSchwartzCoreStatement_of_two_le
+    {d : Nat} (hd : 2 ≤ d) (Phi : BRRSAnnularCutoff) {E : Set Real}
+    (hE : E ⊆ Icc (1 : Real) 2) {p : Real} (hp : 2 ≤ p) :
+    BRRSTheoremOneSchwartzCoreStatement d Phi E p := by
+  refine ⟨hd, hE, hp, ?_⟩
+  intro epsilon heps
+  rcases lt_or_ge p (2 * (d : Real) / ((d : Real) - 1)) with hsub | hsup
+  · exact brrs_schwartzCoreUniformEstimate_subcritical hd Phi hp hsub hE heps
+  · exact brrs_schwartzCoreUniformEstimate_supercritical hd Phi hsup hE heps
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Section 3: the Poisson--Beta representation of the ordinary Bessel
+function
+
+The paper's Bessel asymptotic is stated for the ordinary `J_{(d-2)/2}`, while
+the development's spherical Fourier transform carries the repository
+normalization.  The bridge between them runs through the classical
+Poisson--Beta representation of `J_nu`, whose coefficient arithmetic is
+already available in `RadialFourierTransform`: what is proved here is the
+cosine expansion of its integrand and the integral of each term.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- One term of the cosine expansion of the Poisson--Beta integrand. -/
+noncomputable def brrsBesselPoissonTerm (nu x : Real) (n : Nat) (u : Real) :
+    Real :=
+  ((-1 : Real) ^ n * x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+    (u ^ ((n : Real) - 1 / 2) * (1 - u) ^ (nu - 1 / 2))
+
+theorem continuousOn_brrsBesselPoissonTerm (nu x : Real) (n : Nat) :
+    ContinuousOn (brrsBesselPoissonTerm nu x n) (Ioo (0 : Real) 1) := by
+  unfold brrsBesselPoissonTerm
+  refine continuousOn_const.mul (ContinuousOn.mul ?_ ?_)
+  · intro u hu
+    exact (Real.continuousAt_rpow_const u ((n : Real) - 1 / 2)
+      (Or.inl (ne_of_gt hu.1))).continuousWithinAt
+  · intro u hu
+    have hne : (1 : Real) - u ≠ 0 := by
+      have : u < 1 := hu.2
+      linarith
+    exact ((Real.continuousAt_rpow_const ((1 : Real) - u) (nu - 1 / 2)
+      (Or.inl hne)).comp (by fun_prop)).continuousWithinAt
+
+/-- On the open unit interval the cosine expansion of the Poisson--Beta
+integrand converges to it. -/
+theorem brrs_tsum_brrsBesselPoissonTerm {nu x : Real} {u : Real}
+    (hu : u ∈ Ioo (0 : Real) 1) :
+    (∑' n : Nat, brrsBesselPoissonTerm nu x n u) =
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) *
+        Real.cos (x * Real.sqrt u) := by
+  have hu0 : 0 < u := hu.1
+  have hsqrt : Real.sqrt u ^ 2 = u := Real.sq_sqrt hu0.le
+  have hterm : ∀ n : Nat, brrsBesselPoissonTerm nu x n u =
+      (u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2)) *
+        ((-1 : Real) ^ n * (x * Real.sqrt u) ^ (2 * n) /
+          (((2 * n).factorial : Nat) : Real)) := by
+    intro n
+    unfold brrsBesselPoissonTerm
+    have hupow : u ^ ((n : Real) - 1 / 2) =
+        u ^ (-(1 : Real) / 2) * u ^ (n : Real) := by
+      rw [← Real.rpow_add hu0]
+      congr 1
+      ring
+    have hsplit : (x * Real.sqrt u) ^ (2 * n) = x ^ (2 * n) * u ^ (n : Real) := by
+      rw [mul_pow, show 2 * n = n * 2 by omega, pow_mul' (Real.sqrt u) n 2,
+        hsqrt, ← Real.rpow_natCast u n]
+    rw [hupow, hsplit]
+    ring
+  calc
+    (∑' n : Nat, brrsBesselPoissonTerm nu x n u) =
+        ∑' n : Nat, (u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2)) *
+          ((-1 : Real) ^ n * (x * Real.sqrt u) ^ (2 * n) /
+            (((2 * n).factorial : Nat) : Real)) := by
+      exact tsum_congr hterm
+    _ = (u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2)) *
+          ∑' n : Nat, ((-1 : Real) ^ n * (x * Real.sqrt u) ^ (2 * n) /
+            (((2 * n).factorial : Nat) : Real)) := by
+      exact tsum_mul_left
+    _ = u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) *
+          Real.cos (x * Real.sqrt u) := by
+      rw [Real.cos_eq_tsum]
+
+/-- The integral of one term of the cosine expansion. -/
+theorem brrs_integral_brrsBesselPoissonTerm {nu : Real} (hnu : 0 ≤ nu)
+    (x : Real) (n : Nat) :
+    (∫ u in (0 : Real)..1, brrsBesselPoissonTerm nu x n u) =
+      ((-1 : Real) ^ n * x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+        (Real.Gamma ((n : Real) + 1 / 2) * Real.Gamma (nu + 1 / 2) /
+          Real.Gamma ((n : Real) + nu + 1)) := by
+  unfold brrsBesselPoissonTerm
+  rw [intervalIntegral.integral_const_mul,
+    Auto.RadialFourierTransform.ordinaryBessel_beta_moment hnu n]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Integrability and summability for the Poisson--Beta expansion
+
+Interchanging the cosine series with the Beta integral needs each term
+integrable and the integrated norms summable.  The bound below compares the
+`n`-th integrated norm with the `n`-th term of a cosine series times a fixed
+Beta integral, which is what makes the interchange available.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- The Beta kernel is integrable on the open unit interval. -/
+theorem brrs_integrableOn_betaKernel_Ioo {a b : Real} (ha : 0 < a) (hb : 0 < b) :
+    IntegrableOn (fun u : Real => u ^ (a - 1) * (1 - u) ^ (b - 1))
+      (Ioo (0 : Real) 1) volume := by
+  have h := Auto.RadialFourierTransform.intervalIntegrable_real_betaKernel ha hb
+  rw [intervalIntegrable_iff_integrableOn_Ioc_of_le (by norm_num : (0 : Real) ≤ 1)]
+    at h
+  exact h.mono_set Ioo_subset_Ioc_self
+
+/-- Each term of the cosine expansion is integrable on the open unit
+interval. -/
+theorem brrs_integrableOn_brrsBesselPoissonTerm {nu : Real} (hnu : 0 ≤ nu)
+    (x : Real) (n : Nat) :
+    IntegrableOn (brrsBesselPoissonTerm nu x n) (Ioo (0 : Real) 1) volume := by
+  have hbase := brrs_integrableOn_betaKernel_Ioo
+    (a := (n : Real) + 1 / 2) (b := nu + 1 / 2) (by positivity) (by linarith)
+  set c : Real :=
+    (-1 : Real) ^ n * x ^ (2 * n) / (((2 * n).factorial : Nat) : Real) with hc
+  have hconst : IntegrableOn
+      (fun u : Real => c * (u ^ (((n : Real) + 1 / 2) - 1) *
+        (1 - u) ^ ((nu + 1 / 2) - 1))) (Ioo (0 : Real) 1) volume :=
+    hbase.const_mul c
+  refine hconst.congr_fun ?_ measurableSet_Ioo
+  intro u hu
+  unfold brrsBesselPoissonTerm
+  rw [hc]
+  congr 2 <;> ring_nf
+
+/-- The norm of one term of the cosine expansion, integrated, is at most the
+corresponding term of a convergent series. -/
+theorem brrs_integral_norm_brrsBesselPoissonTerm_le {nu : Real} (hnu : 0 ≤ nu)
+    {x : Real} (hx : 0 < x) (n : Nat) :
+    (∫ u in Ioo (0 : Real) 1, ‖brrsBesselPoissonTerm nu x n u‖) ≤
+      (x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+        (∫ u in Ioo (0 : Real) 1,
+          u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2)) := by
+  have hbase := brrs_integrableOn_betaKernel_Ioo
+    (a := (1 : Real) / 2) (b := nu + 1 / 2) (by positivity) (by linarith)
+  have hbase' : IntegrableOn (fun u : Real =>
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2))
+      (Ioo (0 : Real) 1) volume := by
+    refine hbase.congr_fun ?_ measurableSet_Ioo
+    intro u hu
+    congr 2 <;> ring_nf
+  have hcoef : (0 : Real) ≤ x ^ (2 * n) / (((2 * n).factorial : Nat) : Real) := by
+    positivity
+  have hptbound : ∀ u ∈ Ioo (0 : Real) 1,
+      ‖brrsBesselPoissonTerm nu x n u‖ ≤
+        (x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+          (u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2)) := by
+    intro u hu
+    have hu0 : 0 < u := hu.1
+    have hu1 : u < 1 := hu.2
+    have hupow : u ^ ((n : Real) - 1 / 2) ≤ u ^ (-(1 : Real) / 2) := by
+      refine Real.rpow_le_rpow_of_exponent_ge hu0 hu1.le ?_
+      have : (0 : Real) ≤ (n : Real) := Nat.cast_nonneg n
+      linarith
+    have hone : (0 : Real) ≤ (1 - u) ^ (nu - 1 / 2) :=
+      Real.rpow_nonneg (by linarith) _
+    have hupos : (0 : Real) ≤ u ^ ((n : Real) - 1 / 2) :=
+      Real.rpow_nonneg hu0.le _
+    have hval : brrsBesselPoissonTerm nu x n u =
+        ((-1 : Real) ^ n) *
+          ((x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+            (u ^ ((n : Real) - 1 / 2) * (1 - u) ^ (nu - 1 / 2))) := by
+      unfold brrsBesselPoissonTerm
+      ring
+    have hprodnn : (0 : Real) ≤
+        (x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+          (u ^ ((n : Real) - 1 / 2) * (1 - u) ^ (nu - 1 / 2)) :=
+      mul_nonneg hcoef (mul_nonneg hupos hone)
+    rw [hval, norm_mul, norm_pow, norm_neg, norm_one, one_pow, one_mul,
+      Real.norm_of_nonneg hprodnn]
+    refine mul_le_mul_of_nonneg_left ?_ hcoef
+    exact mul_le_mul_of_nonneg_right hupow hone
+  calc
+    (∫ u in Ioo (0 : Real) 1, ‖brrsBesselPoissonTerm nu x n u‖) ≤
+        ∫ u in Ioo (0 : Real) 1,
+          (x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+            (u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2)) := by
+      refine setIntegral_mono_on ?_ (hbase'.const_mul _) measurableSet_Ioo
+        hptbound
+      exact (brrs_integrableOn_brrsBesselPoissonTerm hnu x n).norm
+    _ = (x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+          ∫ u in Ioo (0 : Real) 1,
+            u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) := by
+      rw [integral_const_mul]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The Poisson--Beta representation of the ordinary Bessel function
+
+Interchanging the cosine series with the Beta integral, which the previous
+bound makes available, turns the classical Bessel series into a
+one-dimensional cosine integral.  This is the form the spherical Fourier
+transform will match, and hence the bridge to the paper's ordinary Bessel
+display.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- The even part of the exponential series is summable. -/
+theorem brrs_summable_even_pow_div_factorial (x : Real) :
+    Summable fun n : Nat => x ^ (2 * n) / (((2 * n).factorial : Nat) : Real) := by
+  have hbase : Summable fun m : Nat => x ^ m / ((m.factorial : Nat) : Real) :=
+    Real.summable_pow_div_factorial x
+  have hinj : Function.Injective fun n : Nat => 2 * n := by
+    intro a b hab
+    have h : 2 * a = 2 * b := hab
+    omega
+  exact hbase.comp_injective hinj
+
+set_option maxHeartbeats 1000000 in
+/-- **The Poisson--Beta representation of the ordinary Bessel function.**
+This is the bridge between the paper's ordinary `J_nu` and a one-dimensional
+cosine integral, which the spherical Fourier transform will supply. -/
+theorem brrs_ordinaryBesselJ_poisson_repr {nu : Real} (hnu : 0 ≤ nu)
+    {x : Real} (hx : 0 < x) :
+    Auto.RadialFourierTransform.ordinaryBesselJ nu x =
+      ((x / 2) ^ nu / (Real.sqrt Real.pi * Real.Gamma (nu + 1 / 2))) *
+        ∫ u in Ioo (0 : Real) 1,
+          u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) *
+            Real.cos (x * Real.sqrt u) := by
+  set B : Real := ∫ u in Ioo (0 : Real) 1,
+    u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) with hB
+  have hint : ∀ n : Nat,
+      IntegrableOn (brrsBesselPoissonTerm nu x n) (Ioo (0 : Real) 1) volume :=
+    fun n => brrs_integrableOn_brrsBesselPoissonTerm hnu x n
+  have hsum : Summable fun n : Nat =>
+      ∫ u in Ioo (0 : Real) 1, ‖brrsBesselPoissonTerm nu x n u‖ := by
+    refine Summable.of_nonneg_of_le (fun n => integral_nonneg fun u => norm_nonneg _)
+      (fun n => brrs_integral_norm_brrsBesselPoissonTerm_le hnu hx n) ?_
+    exact (brrs_summable_even_pow_div_factorial x).mul_right B
+  have hswap := integral_tsum_of_summable_integral_norm
+    (μ := volume.restrict (Ioo (0 : Real) 1)) hint hsum
+  -- the pointwise sum is the Poisson--Beta integrand
+  have hpt : (∫ u in Ioo (0 : Real) 1,
+      ∑' n : Nat, brrsBesselPoissonTerm nu x n u) =
+      ∫ u in Ioo (0 : Real) 1,
+        u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) *
+          Real.cos (x * Real.sqrt u) := by
+    refine setIntegral_congr_fun measurableSet_Ioo fun u hu => ?_
+    exact brrs_tsum_brrsBesselPoissonTerm hu
+  -- each term integrates to its Beta value
+  have hterm : ∀ n : Nat,
+      (∫ u in Ioo (0 : Real) 1, brrsBesselPoissonTerm nu x n u) =
+        ((-1 : Real) ^ n * x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+          (Real.Gamma ((n : Real) + 1 / 2) * Real.Gamma (nu + 1 / 2) /
+            Real.Gamma ((n : Real) + nu + 1)) := by
+    intro n
+    have hIoc : (∫ u in Ioo (0 : Real) 1, brrsBesselPoissonTerm nu x n u) =
+        ∫ u in (0 : Real)..1, brrsBesselPoissonTerm nu x n u := by
+      rw [intervalIntegral.integral_of_le (by norm_num : (0 : Real) ≤ 1),
+        integral_Ioc_eq_integral_Ioo]
+    rw [hIoc]
+    exact brrs_integral_brrsBesselPoissonTerm hnu x n
+  -- assemble
+  have hintegral : (∫ u in Ioo (0 : Real) 1,
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) *
+        Real.cos (x * Real.sqrt u)) =
+      ∑' n : Nat,
+        ((-1 : Real) ^ n * x ^ (2 * n) / (((2 * n).factorial : Nat) : Real)) *
+          (Real.Gamma ((n : Real) + 1 / 2) * Real.Gamma (nu + 1 / 2) /
+            Real.Gamma ((n : Real) + nu + 1)) := by
+    rw [← hpt, ← hswap]
+    exact tsum_congr hterm
+  rw [hintegral, ← tsum_mul_left]
+  unfold Auto.RadialFourierTransform.ordinaryBesselJ
+  refine tsum_congr fun n => ?_
+  exact (Auto.RadialFourierTransform.ordinaryBessel_beta_coefficient hnu hx n).symm
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The sphere slice as a cosine integral
+
+The development already records the surface Fourier transform as an integral
+of the exponential against the height density of the sphere slice.  Written
+as an ordinary integral and reflected in the height variable, it becomes a
+cosine integral over half the interval -- the shape the Poisson
+representation of the ordinary Bessel function produces.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- The height density of the sphere slice, as a real function. -/
+noncomputable def brrsSliceDensity (d : Nat) (t : Real) : Real :=
+  Real.sqrt (1 - t ^ 2) ^ (d - 2)
+
+theorem continuous_brrsSliceDensity (d : Nat) :
+    Continuous (brrsSliceDensity d) := by
+  unfold brrsSliceDensity
+  exact (Real.continuous_sqrt.comp (by fun_prop)).pow _
+
+theorem brrsSliceDensity_even (d : Nat) (t : Real) :
+    brrsSliceDensity d (-t) = brrsSliceDensity d t := by
+  unfold brrsSliceDensity
+  congr 2
+  ring
+
+/-- The surface Fourier transform as an ordinary integral against the height
+density. -/
+theorem brrs_surfaceFourier_succ_ordinary_integral {d : Nat} (hd : 2 ≤ d)
+    (xi : Euclidean (d + 1)) :
+    surfaceFourier (d + 1) xi =
+      ((surfaceMass d : Real) : Complex) *
+        ∫ t in Ioo (-1 : Real) 1,
+          ((brrsSliceDensity d t : Real) : Complex) *
+            Complex.exp (((-2 * Real.pi * ‖xi‖ * t : Real) : Complex) *
+              Complex.I) := by
+  have hmeas : Measurable fun t : Real =>
+      ENNReal.ofReal (Real.sqrt (1 - t ^ 2)) ^ (d - 2) := by
+    refine Measurable.pow_const ?_ _
+    exact ENNReal.measurable_ofReal.comp
+      (Real.continuous_sqrt.comp (by fun_prop)).measurable
+  have htop : ∀ᵐ t : Real ∂(volume.restrict (Ioo (-1 : Real) 1)),
+      ENNReal.ofReal (Real.sqrt (1 - t ^ 2)) ^ (d - 2) < ∞ := by
+    refine Filter.Eventually.of_forall fun t => ?_
+    exact ENNReal.pow_lt_top ENNReal.ofReal_lt_top
+  have hconv := setIntegral_withDensity_eq_setIntegral_toReal_smul hmeas htop
+    (fun t : Real => Complex.exp
+      (((-2 * Real.pi * ‖xi‖ * t : Real) : Complex) * Complex.I))
+    measurableSet_Ioo
+  rw [surfaceFourier_succ_height_integral hd xi]
+  congr 1
+  rw [hconv]
+  refine setIntegral_congr_fun measurableSet_Ioo fun t ht => ?_
+  have htoReal : (ENNReal.ofReal (Real.sqrt (1 - t ^ 2)) ^ (d - 2)).toReal =
+      brrsSliceDensity d t := by
+    unfold brrsSliceDensity
+    rw [ENNReal.toReal_pow, ENNReal.toReal_ofReal (Real.sqrt_nonneg _)]
+  rw [htoReal, Complex.real_smul]
+
+set_option maxHeartbeats 1000000 in
+/-- **The sphere slice as a cosine integral.**  Reflecting the height
+variable turns the exponential into a cosine on half the interval; this is the
+form matched by the Poisson representation of the ordinary Bessel
+function. -/
+theorem brrs_surfaceFourier_succ_cos_integral {d : Nat} (hd : 2 ≤ d)
+    (xi : Euclidean (d + 1)) :
+    surfaceFourier (d + 1) xi =
+      ((surfaceMass d : Real) : Complex) *
+        ((2 : Complex) * ∫ t in (0 : Real)..1,
+          ((brrsSliceDensity d t *
+            Real.cos (2 * Real.pi * ‖xi‖ * t) : Real) : Complex)) := by
+  set a : Real := 2 * Real.pi * ‖xi‖ with ha
+  set F : Real → Complex := fun t =>
+    ((brrsSliceDensity d t : Real) : Complex) *
+      Complex.exp (((-a * t : Real) : Complex) * Complex.I) with hF
+  have hFcont : Continuous F := by
+    rw [hF]
+    refine Continuous.mul ?_ ?_
+    · exact Complex.continuous_ofReal.comp (continuous_brrsSliceDensity d)
+    · exact Complex.continuous_exp.comp
+        ((Complex.continuous_ofReal.comp (by fun_prop)).mul continuous_const)
+  have hbase : surfaceFourier (d + 1) xi =
+      ((surfaceMass d : Real) : Complex) * ∫ t in Ioo (-1 : Real) 1, F t := by
+    rw [brrs_surfaceFourier_succ_ordinary_integral hd xi, hF, ha]
+    congr 1
+    refine setIntegral_congr_fun measurableSet_Ioo fun t ht => ?_
+    congr 2
+    push_cast
+    ring
+  have hIoo : (∫ t in Ioo (-1 : Real) 1, F t) =
+      ∫ t in (-1 : Real)..1, F t := by
+    rw [intervalIntegral.integral_of_le (by norm_num : (-1 : Real) ≤ 1),
+      integral_Ioc_eq_integral_Ioo]
+  have hsplit : (∫ t in (-1 : Real)..1, F t) =
+      (∫ t in (-1 : Real)..0, F t) + ∫ t in (0 : Real)..1, F t :=
+    (intervalIntegral.integral_add_adjacent_intervals
+      (hFcont.intervalIntegrable _ _) (hFcont.intervalIntegrable _ _)).symm
+  have hrefl : (∫ t in (-1 : Real)..0, F t) = ∫ t in (0 : Real)..1, F (-t) := by
+    rw [intervalIntegral.integral_comp_neg (a := (0 : Real)) (b := (1 : Real))
+      (f := F)]
+    norm_num
+  have hpair : ∀ t : Real, F t + F (-t) =
+      ((2 : Real) * (brrsSliceDensity d t * Real.cos (a * t)) : Real) := by
+    intro t
+    rw [hF]
+    simp only [brrsSliceDensity_even d t]
+    have hneg : ((-a * -t : Real) : Complex) = ((a * t : Real) : Complex) := by
+      push_cast
+      ring
+    rw [hneg]
+    have hcos : Complex.exp (((-a * t : Real) : Complex) * Complex.I) +
+        Complex.exp (((a * t : Real) : Complex) * Complex.I) =
+        2 * Complex.cos (((a * t : Real) : Complex)) := by
+      have hneg2 : ((-a * t : Real) : Complex) =
+          -((a * t : Real) : Complex) := by
+        push_cast
+        ring
+      rw [hneg2, Complex.cos]
+      ring
+    calc
+      ((brrsSliceDensity d t : Real) : Complex) *
+            Complex.exp (((-a * t : Real) : Complex) * Complex.I) +
+          ((brrsSliceDensity d t : Real) : Complex) *
+            Complex.exp (((a * t : Real) : Complex) * Complex.I) =
+          ((brrsSliceDensity d t : Real) : Complex) *
+            (Complex.exp (((-a * t : Real) : Complex) * Complex.I) +
+              Complex.exp (((a * t : Real) : Complex) * Complex.I)) := by
+        ring
+      _ = ((brrsSliceDensity d t : Real) : Complex) *
+            (2 * Complex.cos (((a * t : Real) : Complex))) := by
+        rw [hcos]
+      _ = ((2 : Real) * (brrsSliceDensity d t * Real.cos (a * t)) : Real) := by
+        rw [← Complex.ofReal_cos]
+        push_cast
+        ring
+  have hcomb : (∫ t in (0 : Real)..1, F (-t)) + (∫ t in (0 : Real)..1, F t) =
+      ∫ t in (0 : Real)..1, (F (-t) + F t) :=
+    (intervalIntegral.integral_add
+      ((hFcont.comp continuous_neg).intervalIntegrable _ _)
+      (hFcont.intervalIntegrable _ _)).symm
+  rw [hbase, hIoo, hsplit, hrefl, hcomb]
+  congr 1
+  calc
+    (∫ t in (0 : Real)..1, (F (-t) + F t)) =
+        ∫ t in (0 : Real)..1, (2 : Complex) *
+          ((brrsSliceDensity d t * Real.cos (a * t) : Real) : Complex) := by
+      refine intervalIntegral.integral_congr fun t _ => ?_
+      rw [add_comm, hpair t]
+      push_cast
+      ring
+    _ = (2 : Complex) * ∫ t in (0 : Real)..1,
+          ((brrsSliceDensity d t * Real.cos (a * t) : Real) : Complex) :=
+      intervalIntegral.integral_const_mul _ _
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The slice integral in the Poisson variable
+
+Substituting the square of the height brings the sphere-slice cosine integral
+to exactly the Poisson--Beta form: the slice density is the Poisson kernel of
+order `(d-2)/2` in the ambient dimension `d+1`, and the Jacobian of the
+substitution supplies the missing inverse square root.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- On the unit interval the slice density is the Poisson kernel of order
+`(d-2)/2`. -/
+theorem brrsSliceDensity_eq_rpow {d : Nat} (hd : 2 ≤ d) {t : Real}
+    (ht : t ∈ Ioo (0 : Real) 1) :
+    brrsSliceDensity d t = (1 - t ^ 2) ^ (((d : Real) - 2) / 2) := by
+  have h0 : 0 < t := ht.1
+  have h1 : t < 1 := ht.2
+  have hx : (0 : Real) ≤ 1 - t ^ 2 := by nlinarith
+  have hcast : (((d - 2 : Nat) : Real)) = (d : Real) - 2 := by
+    have hle : (2 : Nat) ≤ d := hd
+    push_cast [Nat.cast_sub hle]
+    ring
+  unfold brrsSliceDensity
+  rw [Real.sqrt_eq_rpow,
+    ← Real.rpow_natCast ((1 - t ^ 2) ^ ((1 : Real) / 2)) (d - 2),
+    ← Real.rpow_mul hx, hcast]
+  congr 1
+  ring
+
+/-- Squaring maps the open unit interval onto itself. -/
+theorem brrs_image_sq_Ioo :
+    (fun t : Real => t ^ 2) '' (Ioo (0 : Real) 1) = Ioo (0 : Real) 1 := by
+  ext u
+  constructor
+  · rintro ⟨t, ht, rfl⟩
+    have h0 : 0 < t := ht.1
+    have h1 : t < 1 := ht.2
+    exact ⟨pow_pos h0 2, by nlinarith⟩
+  · intro hu
+    have hu0 : 0 < u := hu.1
+    have hu1 : u < 1 := hu.2
+    refine ⟨Real.sqrt u, ⟨Real.sqrt_pos.mpr hu0, ?_⟩, Real.sq_sqrt hu0.le⟩
+    have h := Real.sqrt_lt_sqrt hu0.le hu1
+    simpa using h
+
+set_option maxHeartbeats 1000000 in
+/-- **The slice integral in the Poisson variable.**  Substituting the square
+of the height brings the sphere-slice cosine integral to exactly the
+Poisson--Beta form of the ordinary Bessel function. -/
+theorem brrs_slice_cos_integral_eq_poisson {d : Nat} (hd : 2 ≤ d) (a : Real) :
+    (2 : Real) * ∫ t in (0 : Real)..1,
+        brrsSliceDensity d t * Real.cos (a * t) =
+      ∫ u in Ioo (0 : Real) 1,
+        u ^ (-(1 : Real) / 2) * (1 - u) ^ (((d : Real) - 2) / 2) *
+          Real.cos (a * Real.sqrt u) := by
+  have hderiv : ∀ x ∈ Ioo (0 : Real) 1,
+      HasDerivWithinAt (fun t : Real => t ^ 2) (2 * x) (Ioo (0 : Real) 1) x := by
+    intro x hx
+    have h := (hasDerivAt_pow 2 x).hasDerivWithinAt (s := Ioo (0 : Real) 1)
+    simpa using h
+  have hinj : InjOn (fun t : Real => t ^ 2) (Ioo (0 : Real) 1) := by
+    intro x hx y hy hxy
+    have hx0 : 0 < x := hx.1
+    have hy0 : 0 < y := hy.1
+    have h : x ^ 2 = y ^ 2 := hxy
+    nlinarith
+  have hsub := integral_image_eq_integral_abs_deriv_smul measurableSet_Ioo
+    hderiv hinj (fun u : Real =>
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ (((d : Real) - 2) / 2) *
+        Real.cos (a * Real.sqrt u))
+  rw [brrs_image_sq_Ioo] at hsub
+  rw [hsub]
+  have hpt : ∀ t ∈ Ioo (0 : Real) 1,
+      |2 * t| • ((t ^ 2) ^ (-(1 : Real) / 2) *
+          (1 - (t ^ 2)) ^ (((d : Real) - 2) / 2) *
+          Real.cos (a * Real.sqrt (t ^ 2))) =
+        2 * (brrsSliceDensity d t * Real.cos (a * t)) := by
+    intro t ht
+    have h0 : 0 < t := ht.1
+    have hsqrt : Real.sqrt (t ^ 2) = t := Real.sqrt_sq h0.le
+    have hinvpow : (t ^ 2) ^ (-(1 : Real) / 2) = t⁻¹ := by
+      rw [← Real.rpow_natCast t 2, ← Real.rpow_mul h0.le,
+        show ((2 : Nat) : Real) * (-(1 : Real) / 2) = -1 by norm_num,
+        Real.rpow_neg_one]
+    have habs : |2 * t| = 2 * t := abs_of_pos (by positivity)
+    rw [hsqrt, hinvpow, habs, brrsSliceDensity_eq_rpow hd ht, smul_eq_mul]
+    field_simp
+  rw [setIntegral_congr_fun measurableSet_Ioo hpt, integral_const_mul]
+  congr 1
+  rw [intervalIntegral.integral_of_le (by norm_num : (0 : Real) ≤ 1),
+    integral_Ioc_eq_integral_Ioo]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The ordinary-Bessel bridge for (3.3)
+
+Combining the two halves identifies the repository's normalized surface
+Fourier transform with the paper's ordinary Bessel function at the matching
+order: the sphere slice produces the Poisson--Beta integral, and the Poisson
+representation turns that integral into the Bessel function.  The paper's
+asymptotic display is stated for exactly this object.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- **(3.3), the ordinary-Bessel bridge.**  In every ambient dimension at
+least three the surface Fourier transform is the paper's normalized ordinary
+Bessel function of order `(D-2)/2`, where `D` is the ambient dimension.  This
+is the literal identification the paper's asymptotic display is stated for;
+it is proved, not assumed. -/
+theorem brrs_surfaceFourier_succ_eq_ordinaryBesselJ {d : Nat} (hd : 2 ≤ d)
+    (xi : Euclidean (d + 1)) (hxi : xi ≠ 0) :
+    surfaceFourier (d + 1) xi =
+      ((surfaceMass d * (Real.sqrt Real.pi * Real.Gamma ((d : Real) / 2)) /
+          (Real.pi * ‖xi‖) ^ (((d : Real) - 1) / 2) *
+          Auto.RadialFourierTransform.ordinaryBesselJ (((d : Real) - 1) / 2)
+            (2 * Real.pi * ‖xi‖) : Real) : Complex) := by
+  have hnorm : 0 < ‖xi‖ := norm_pos_iff.mpr hxi
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  have hpi := Real.pi_pos
+  set nu : Real := ((d : Real) - 1) / 2 with hnu
+  have hnu0 : 0 ≤ nu := by
+    rw [hnu]
+    linarith
+  set x : Real := 2 * Real.pi * ‖xi‖ with hx
+  have hxpos : 0 < x := by
+    rw [hx]
+    positivity
+  have hnuhalf : nu - 1 / 2 = ((d : Real) - 2) / 2 := by
+    rw [hnu]
+    ring
+  have hnuplus : nu + 1 / 2 = (d : Real) / 2 := by
+    rw [hnu]
+    ring
+  set P : Real := ∫ u in Ioo (0 : Real) 1,
+    u ^ (-(1 : Real) / 2) * (1 - u) ^ (((d : Real) - 2) / 2) *
+      Real.cos (x * Real.sqrt u) with hP
+  -- the Poisson representation, solved for the integral
+  have hpois := brrs_ordinaryBesselJ_poisson_repr (nu := nu) hnu0 (x := x) hxpos
+  have hPeq : (∫ u in Ioo (0 : Real) 1,
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ (nu - 1 / 2) *
+        Real.cos (x * Real.sqrt u)) = P := by
+    rw [hP]
+    refine setIntegral_congr_fun measurableSet_Ioo fun u hu => ?_
+    rw [hnuhalf]
+  have hPoisP : Auto.RadialFourierTransform.ordinaryBesselJ nu x =
+      (x / 2) ^ nu / (Real.sqrt Real.pi * Real.Gamma ((d : Real) / 2)) * P := by
+    rw [hpois, hnuplus, hPeq]
+  have hbase : (x / 2) ^ nu = (Real.pi * ‖xi‖) ^ nu := by
+    congr 1
+    rw [hx]
+    ring
+  have hgamma : 0 < Real.Gamma ((d : Real) / 2) :=
+    Real.Gamma_pos_of_pos (by linarith)
+  have hsqrtpi : 0 < Real.sqrt Real.pi := Real.sqrt_pos.mpr Real.pi_pos
+  have hbasepos : 0 < (Real.pi * ‖xi‖) ^ nu :=
+    Real.rpow_pos_of_pos (by positivity) _
+  have hPvalue : P =
+      Real.sqrt Real.pi * Real.Gamma ((d : Real) / 2) /
+        (Real.pi * ‖xi‖) ^ nu *
+        Auto.RadialFourierTransform.ordinaryBesselJ nu x := by
+    rw [hPoisP, hbase]
+    field_simp
+  -- the sphere slice, in the Poisson variable
+  have hslice := brrs_surfaceFourier_succ_cos_integral hd xi
+  rw [← hx] at hslice
+  have hsub := brrs_slice_cos_integral_eq_poisson hd x
+  have hreal : ((2 : Complex) * ∫ t in (0 : Real)..1,
+      ((brrsSliceDensity d t * Real.cos (x * t) : Real) : Complex)) =
+      ((P : Real) : Complex) := by
+    rw [intervalIntegral.integral_ofReal, hP, ← hsub]
+    push_cast
+    ring
+  rw [hslice, hreal, ← Complex.ofReal_mul]
+  congr 1
+  rw [hPvalue]
+  ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### From scaled endpoint amplitudes to travelling waves
+
+The development's stationary-phase decomposition states its endpoint
+asymptotics in a scaled form, with the decay carried by an explicit factor
+multiplying the amplitude.  The paper's display instead exhibits two
+travelling waves with the decay in front.  The conversion is arithmetic: the
+scale moves into the error, and since both phases have unit modulus the two
+endpoint errors simply add to the middle term's.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- An amplitude asymptotic in the scaled form used by the stationary-phase
+decomposition becomes an amplitude asymptotic in the unscaled form, with the
+scale moved into the error.  This is the arithmetic that converts the
+development's normalization of the endpoint amplitudes into the paper's
+travelling-wave normalization. -/
+theorem brrs_amplitude_error_of_scaled {A K W : Complex} {u C : Real}
+    (hu : 0 < u) (hW : W ≠ 0)
+    (h : ‖(Real.sqrt u : Complex) * W * A - K‖ ≤ C / u) :
+    ‖A - ((Real.sqrt u : Complex) * W)⁻¹ * K‖ ≤
+      C / (u * Real.sqrt u * ‖W‖) := by
+  have hsqrt : 0 < Real.sqrt u := Real.sqrt_pos.mpr hu
+  have hsqrtne : ((Real.sqrt u : Real) : Complex) ≠ 0 := by
+    simpa using ne_of_gt hsqrt
+  have hprod : ((Real.sqrt u : Real) : Complex) * W ≠ 0 :=
+    mul_ne_zero hsqrtne hW
+  have hfactor : A - ((Real.sqrt u : Complex) * W)⁻¹ * K =
+      ((Real.sqrt u : Complex) * W)⁻¹ *
+        ((Real.sqrt u : Complex) * W * A - K) := by
+    field_simp
+  rw [hfactor, norm_mul, norm_inv, norm_mul]
+  have hnormsqrt : ‖((Real.sqrt u : Real) : Complex)‖ = Real.sqrt u := by
+    rw [Complex.norm_real, Real.norm_of_nonneg hsqrt.le]
+  rw [hnormsqrt]
+  have hWpos : 0 < ‖W‖ := norm_pos_iff.mpr hW
+  have hdenpos : 0 < Real.sqrt u * ‖W‖ := by positivity
+  calc
+    (Real.sqrt u * ‖W‖)⁻¹ *
+        ‖(Real.sqrt u : Complex) * W * A - K‖ ≤
+        (Real.sqrt u * ‖W‖)⁻¹ * (C / u) := by
+      exact mul_le_mul_of_nonneg_left h (le_of_lt (inv_pos.mpr hdenpos))
+    _ = C / (u * Real.sqrt u * ‖W‖) := by
+      field_simp
+
+/-- The three-wave decomposition with scaled endpoint asymptotics gives the
+paper's two travelling waves with one further order of decay in the
+remainder.  Both phases have unit modulus, so the endpoint errors add. -/
+theorem brrs_threeWave_error_bound {A_out A_in M K_out K_in W eout ein : Complex}
+    {u C : Real} (hu : 0 < u) (hW : W ≠ 0)
+    (hEout : ‖eout‖ = 1) (hEin : ‖ein‖ = 1)
+    (hout : ‖(Real.sqrt u : Complex) * W * A_out - K_out‖ ≤ C / u)
+    (hin : ‖(Real.sqrt u : Complex) * W * A_in - K_in‖ ≤ C / u)
+    (hM : ‖M‖ ≤ C / u) :
+    ‖(A_out * eout + A_in * ein + M) -
+        ((Real.sqrt u : Complex) * W)⁻¹ * (K_out * eout + K_in * ein)‖ ≤
+      2 * C / (u * Real.sqrt u * ‖W‖) + C / u := by
+  have hAout := brrs_amplitude_error_of_scaled hu hW hout
+  have hAin := brrs_amplitude_error_of_scaled hu hW hin
+  set Q : Complex := ((Real.sqrt u : Complex) * W)⁻¹ with hQ
+  have hsplit : (A_out * eout + A_in * ein + M) -
+      Q * (K_out * eout + K_in * ein) =
+      (A_out - Q * K_out) * eout + (A_in - Q * K_in) * ein + M := by
+    ring
+  rw [hsplit]
+  calc
+    ‖(A_out - Q * K_out) * eout + (A_in - Q * K_in) * ein + M‖ ≤
+        ‖(A_out - Q * K_out) * eout + (A_in - Q * K_in) * ein‖ + ‖M‖ :=
+      norm_add_le _ _
+    _ ≤ (‖(A_out - Q * K_out) * eout‖ + ‖(A_in - Q * K_in) * ein‖) + ‖M‖ :=
+      add_le_add (norm_add_le _ _) le_rfl
+    _ = (‖A_out - Q * K_out‖ + ‖A_in - Q * K_in‖) + ‖M‖ := by
+      rw [norm_mul, norm_mul, hEout, hEin, mul_one, mul_one]
+    _ ≤ (C / (u * Real.sqrt u * ‖W‖) + C / (u * Real.sqrt u * ‖W‖)) +
+          C / u := by
+      exact add_le_add (add_le_add hAout hAin) hM
+    _ = 2 * C / (u * Real.sqrt u * ‖W‖) + C / u := by
+      ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The planar case: preparation
+
+The planar bridge needs the Poisson exponent `-1/2`, which the slice form
+does not produce, and it needs the circle's angular integral rather than the
+height integral.  Both are prepared here: the substitution to the Poisson
+variable for an arbitrary kernel exponent, and the symmetry of the angular
+integrand about the right angle.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- The substitution to the Poisson variable, for an arbitrary kernel
+exponent.  The planar case needs the exponent `-1/2`, which the slice form
+does not cover. -/
+theorem brrs_cos_integral_sub_poisson (beta a : Real) :
+    (2 : Real) * ∫ t in (0 : Real)..1,
+        (1 - t ^ 2) ^ beta * Real.cos (a * t) =
+      ∫ u in Ioo (0 : Real) 1,
+        u ^ (-(1 : Real) / 2) * (1 - u) ^ beta *
+          Real.cos (a * Real.sqrt u) := by
+  have hderiv : ∀ x ∈ Ioo (0 : Real) 1,
+      HasDerivWithinAt (fun t : Real => t ^ 2) (2 * x) (Ioo (0 : Real) 1) x := by
+    intro x hx
+    have h := (hasDerivAt_pow 2 x).hasDerivWithinAt (s := Ioo (0 : Real) 1)
+    simpa using h
+  have hinj : InjOn (fun t : Real => t ^ 2) (Ioo (0 : Real) 1) := by
+    intro x hx y hy hxy
+    have hx0 : 0 < x := hx.1
+    have hy0 : 0 < y := hy.1
+    have h : x ^ 2 = y ^ 2 := hxy
+    nlinarith
+  have hsub := integral_image_eq_integral_abs_deriv_smul measurableSet_Ioo
+    hderiv hinj (fun u : Real =>
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ beta * Real.cos (a * Real.sqrt u))
+  rw [brrs_image_sq_Ioo] at hsub
+  rw [hsub]
+  have hpt : ∀ t ∈ Ioo (0 : Real) 1,
+      |2 * t| • ((t ^ 2) ^ (-(1 : Real) / 2) *
+          (1 - (t ^ 2)) ^ beta *
+          Real.cos (a * Real.sqrt (t ^ 2))) =
+        2 * ((1 - t ^ 2) ^ beta * Real.cos (a * t)) := by
+    intro t ht
+    have h0 : 0 < t := ht.1
+    have hsqrt : Real.sqrt (t ^ 2) = t := Real.sqrt_sq h0.le
+    have hinvpow : (t ^ 2) ^ (-(1 : Real) / 2) = t⁻¹ := by
+      rw [← Real.rpow_natCast t 2, ← Real.rpow_mul h0.le,
+        show ((2 : Nat) : Real) * (-(1 : Real) / 2) = -1 by norm_num,
+        Real.rpow_neg_one]
+    have habs : |2 * t| = 2 * t := abs_of_pos (by positivity)
+    rw [hsqrt, hinvpow, habs, smul_eq_mul]
+    field_simp
+  rw [setIntegral_congr_fun measurableSet_Ioo hpt, integral_const_mul]
+  congr 1
+  rw [intervalIntegral.integral_of_le (by norm_num : (0 : Real) ≤ 1),
+    integral_Ioc_eq_integral_Ioo]
+
+/-- The angular integrand of the circle is symmetric about the right angle. -/
+theorem brrs_angular_symmetry (z : Real) :
+    (∫ phi in (0 : Real)..Real.pi, Real.cos (z * Real.cos phi)) =
+      2 * ∫ phi in (0 : Real)..(Real.pi / 2),
+        Real.cos (z * Real.cos phi) := by
+  have hcont : Continuous fun phi : Real => Real.cos (z * Real.cos phi) :=
+    Real.continuous_cos.comp (continuous_const.mul Real.continuous_cos)
+  have hsplit : (∫ phi in (0 : Real)..Real.pi,
+      Real.cos (z * Real.cos phi)) =
+      (∫ phi in (0 : Real)..(Real.pi / 2), Real.cos (z * Real.cos phi)) +
+        ∫ phi in (Real.pi / 2)..Real.pi, Real.cos (z * Real.cos phi) :=
+    (intervalIntegral.integral_add_adjacent_intervals
+      (hcont.intervalIntegrable _ _) (hcont.intervalIntegrable _ _)).symm
+  have hrefl : (∫ phi in (Real.pi / 2)..Real.pi,
+      Real.cos (z * Real.cos phi)) =
+      ∫ phi in (0 : Real)..(Real.pi / 2), Real.cos (z * Real.cos phi) := by
+    have hcomp : (∫ phi in (0 : Real)..(Real.pi / 2),
+        Real.cos (z * Real.cos (Real.pi - phi))) =
+        ∫ phi in (Real.pi - Real.pi / 2)..(Real.pi - 0),
+          Real.cos (z * Real.cos phi) :=
+      intervalIntegral.integral_comp_sub_left
+        (fun phi : Real => Real.cos (z * Real.cos phi)) Real.pi
+    have hpt : ∀ phi : Real,
+        Real.cos (z * Real.cos (Real.pi - phi)) =
+          Real.cos (z * Real.cos phi) := by
+      intro phi
+      rw [Real.cos_pi_sub]
+      rw [show z * -Real.cos phi = -(z * Real.cos phi) by ring, Real.cos_neg]
+    have hleft : (∫ phi in (0 : Real)..(Real.pi / 2),
+        Real.cos (z * Real.cos (Real.pi - phi))) =
+        ∫ phi in (0 : Real)..(Real.pi / 2), Real.cos (z * Real.cos phi) := by
+      refine intervalIntegral.integral_congr fun phi _ => ?_
+      exact hpt phi
+    rw [hleft] at hcomp
+    have harg : Real.pi - Real.pi / 2 = Real.pi / 2 := by ring
+    have harg0 : Real.pi - 0 = Real.pi := by ring
+    rw [harg, harg0] at hcomp
+    exact hcomp.symm
+  rw [hsplit, hrefl]
+  ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The circle's angular integral
+
+The circle's slice is angular rather than a height integral, so its
+conversion to the Poisson variable substitutes the cosine.  The sine part of
+the exponential integrates to zero by the same reflection.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- The cosine maps the first quadrant of angles onto the open unit
+interval. -/
+theorem brrs_image_cos_Ioo :
+    Real.cos '' (Ioo (0 : Real) (Real.pi / 2)) = Ioo (0 : Real) 1 := by
+  ext u
+  constructor
+  · rintro ⟨phi, hphi, rfl⟩
+    have hpos : 0 < Real.cos phi := by
+      refine Real.cos_pos_of_mem_Ioo ⟨?_, hphi.2⟩
+      have := Real.pi_pos
+      have h0 : 0 < phi := hphi.1
+      linarith
+    have hlt : Real.cos phi < 1 := by
+      have hpi := Real.pi_pos
+      have h := Real.strictAntiOn_cos (a := (0 : Real)) (b := phi)
+        ⟨le_refl (0 : Real), by linarith⟩
+        ⟨hphi.1.le, by linarith [hphi.2]⟩ hphi.1
+      rwa [Real.cos_zero] at h
+    exact ⟨hpos, hlt⟩
+  · intro hu
+    have hu0 : 0 < u := hu.1
+    have hu1 : u < 1 := hu.2
+    refine ⟨Real.arccos u, ⟨?_, ?_⟩, Real.cos_arccos (by linarith) (by linarith)⟩
+    · exact Real.arccos_pos.mpr hu1
+    · exact Real.arccos_lt_pi_div_two.mpr hu0
+
+set_option maxHeartbeats 1000000 in
+/-- The angular integral of the circle equals the half-line integral with the
+Poisson kernel of exponent `-1/2`. -/
+theorem brrs_angular_cos_integral_eq_halfLine (z : Real) :
+    (∫ t in Ioo (0 : Real) 1,
+        (1 - t ^ 2) ^ (-(1 : Real) / 2) * Real.cos (z * t)) =
+      ∫ phi in Ioo (0 : Real) (Real.pi / 2), Real.cos (z * Real.cos phi) := by
+  have hderiv : ∀ phi ∈ Ioo (0 : Real) (Real.pi / 2),
+      HasDerivWithinAt Real.cos (-Real.sin phi)
+        (Ioo (0 : Real) (Real.pi / 2)) phi := by
+    intro phi hphi
+    exact (Real.hasDerivAt_cos phi).hasDerivWithinAt
+  have hinj : InjOn Real.cos (Ioo (0 : Real) (Real.pi / 2)) := by
+    refine (Real.strictAntiOn_cos.injOn).mono ?_
+    intro phi hphi
+    have hpi := Real.pi_pos
+    exact ⟨hphi.1.le, by linarith [hphi.2]⟩
+  have hsub := integral_image_eq_integral_abs_deriv_smul measurableSet_Ioo
+    hderiv hinj (fun t : Real =>
+      (1 - t ^ 2) ^ (-(1 : Real) / 2) * Real.cos (z * t))
+  rw [brrs_image_cos_Ioo] at hsub
+  rw [hsub]
+  refine setIntegral_congr_fun measurableSet_Ioo fun phi hphi => ?_
+  have hpi := Real.pi_pos
+  have hsinpos : 0 < Real.sin phi := by
+    refine Real.sin_pos_of_pos_of_lt_pi hphi.1 ?_
+    linarith [hphi.2]
+  have hsq : 1 - Real.cos phi ^ 2 = Real.sin phi ^ 2 := by
+    have := Real.sin_sq_add_cos_sq phi
+    linarith
+  have hpow : (Real.sin phi ^ 2) ^ (-(1 : Real) / 2) = (Real.sin phi)⁻¹ := by
+    rw [← Real.rpow_natCast (Real.sin phi) 2, ← Real.rpow_mul hsinpos.le,
+      show ((2 : Nat) : Real) * (-(1 : Real) / 2) = -1 by norm_num,
+      Real.rpow_neg_one]
+  have habs : |(-Real.sin phi)| = Real.sin phi := by
+    rw [abs_neg, abs_of_pos hsinpos]
+  rw [hsq, hpow, habs, smul_eq_mul]
+  field_simp
+
+/-- The angular sine integral of the circle vanishes by symmetry. -/
+theorem brrs_angular_sin_integral_zero (z : Real) :
+    (∫ phi in (0 : Real)..Real.pi, Real.sin (z * Real.cos phi)) = 0 := by
+  have hcont : Continuous fun phi : Real => Real.sin (z * Real.cos phi) :=
+    Real.continuous_sin.comp (continuous_const.mul Real.continuous_cos)
+  have hsplit : (∫ phi in (0 : Real)..Real.pi,
+      Real.sin (z * Real.cos phi)) =
+      (∫ phi in (0 : Real)..(Real.pi / 2), Real.sin (z * Real.cos phi)) +
+        ∫ phi in (Real.pi / 2)..Real.pi, Real.sin (z * Real.cos phi) :=
+    (intervalIntegral.integral_add_adjacent_intervals
+      (hcont.intervalIntegrable _ _) (hcont.intervalIntegrable _ _)).symm
+  have hrefl : (∫ phi in (Real.pi / 2)..Real.pi,
+      Real.sin (z * Real.cos phi)) =
+      -∫ phi in (0 : Real)..(Real.pi / 2), Real.sin (z * Real.cos phi) := by
+    have hcomp : (∫ phi in (0 : Real)..(Real.pi / 2),
+        Real.sin (z * Real.cos (Real.pi - phi))) =
+        ∫ phi in (Real.pi - Real.pi / 2)..(Real.pi - 0),
+          Real.sin (z * Real.cos phi) :=
+      intervalIntegral.integral_comp_sub_left
+        (fun phi : Real => Real.sin (z * Real.cos phi)) Real.pi
+    have hpt : ∀ phi : Real,
+        Real.sin (z * Real.cos (Real.pi - phi)) =
+          -Real.sin (z * Real.cos phi) := by
+      intro phi
+      rw [Real.cos_pi_sub,
+        show z * -Real.cos phi = -(z * Real.cos phi) by ring, Real.sin_neg]
+    have hleft : (∫ phi in (0 : Real)..(Real.pi / 2),
+        Real.sin (z * Real.cos (Real.pi - phi))) =
+        -∫ phi in (0 : Real)..(Real.pi / 2), Real.sin (z * Real.cos phi) := by
+      rw [← intervalIntegral.integral_neg]
+      refine intervalIntegral.integral_congr fun phi _ => ?_
+      exact hpt phi
+    rw [hleft] at hcomp
+    have harg : Real.pi - Real.pi / 2 = Real.pi / 2 := by ring
+    have harg0 : Real.pi - 0 = Real.pi := by ring
+    rw [harg, harg0] at hcomp
+    exact hcomp.symm
+  rw [hsplit, hrefl]
+  ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The planar ordinary-Bessel bridge
+
+On the circle the surface Fourier transform is the ordinary Bessel function
+of order zero, which is `(d-2)/2` in ambient dimension two.  With the
+higher-dimensional bridge this covers every dimension of the source
+statement.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- The angular cosine integral of the circle is the ordinary Bessel function
+of order zero, in the classical normalization. -/
+theorem brrs_angular_cos_integral_eq_besselJ_zero {l : Real} (hl : 0 < l) :
+    (∫ phi in (0 : Real)..Real.pi, Real.cos (l * Real.cos phi)) =
+      Real.pi * Auto.RadialFourierTransform.ordinaryBesselJ 0 l := by
+  have hpi := Real.pi_pos
+  have hIoo : (∫ phi in (0 : Real)..(Real.pi / 2),
+      Real.cos (l * Real.cos phi)) =
+      ∫ phi in Ioo (0 : Real) (Real.pi / 2),
+        Real.cos (l * Real.cos phi) := by
+    rw [intervalIntegral.integral_of_le (by positivity),
+      integral_Ioc_eq_integral_Ioo]
+  have hIoo2 : (∫ t in Ioo (0 : Real) 1,
+      (1 - t ^ 2) ^ (-(1 : Real) / 2) * Real.cos (l * t)) =
+      ∫ t in (0 : Real)..1,
+        (1 - t ^ 2) ^ (-(1 : Real) / 2) * Real.cos (l * t) := by
+    rw [intervalIntegral.integral_of_le (by norm_num : (0 : Real) ≤ 1),
+      integral_Ioc_eq_integral_Ioo]
+  have hpois := brrs_ordinaryBesselJ_poisson_repr (nu := 0) le_rfl (x := l) hl
+  have hdensity : ∀ u : Real,
+      u ^ (-(1 : Real) / 2) * (1 - u) ^ ((0 : Real) - 1 / 2) *
+          Real.cos (l * Real.sqrt u) =
+        u ^ (-(1 : Real) / 2) * (1 - u) ^ (-(1 : Real) / 2) *
+          Real.cos (l * Real.sqrt u) := by
+    intro u
+    congr 2
+    norm_num
+  have hprefactor : (l / 2) ^ (0 : Real) /
+      (Real.sqrt Real.pi * Real.Gamma ((0 : Real) + 1 / 2)) =
+      Real.pi⁻¹ := by
+    rw [Real.rpow_zero, show (0 : Real) + 1 / 2 = 1 / 2 by ring,
+      Real.Gamma_one_half_eq, ← Real.sqrt_mul_self Real.pi_pos.le]
+    norm_num
+  have hJ : Auto.RadialFourierTransform.ordinaryBesselJ 0 l =
+      Real.pi⁻¹ * ∫ u in Ioo (0 : Real) 1,
+        u ^ (-(1 : Real) / 2) * (1 - u) ^ (-(1 : Real) / 2) *
+          Real.cos (l * Real.sqrt u) := by
+    rw [hpois, hprefactor]
+    congr 1
+    refine setIntegral_congr_fun measurableSet_Ioo fun u hu => ?_
+    exact hdensity u
+  rw [brrs_angular_symmetry l, hIoo, ← brrs_angular_cos_integral_eq_halfLine l,
+    hIoo2, brrs_cos_integral_sub_poisson (-(1 : Real) / 2) l, hJ]
+  field_simp
+
+set_option maxHeartbeats 1000000 in
+/-- **(3.3), the planar ordinary-Bessel bridge.**  On the circle the surface
+Fourier transform is the ordinary Bessel function of order zero, which is
+`(d-2)/2` in ambient dimension two.  Together with the higher-dimensional
+bridge this covers every dimension of the source statement. -/
+theorem brrs_surfaceFourier_two_eq_ordinaryBesselJ (xi : Euclidean 2)
+    (hxi : xi ≠ 0) :
+    surfaceFourier 2 xi =
+      ((surfaceMass 1 * (Real.pi *
+          Auto.RadialFourierTransform.ordinaryBesselJ 0
+            (2 * Real.pi * ‖xi‖)) : Real) : Complex) := by
+  have hnorm : 0 < ‖xi‖ := norm_pos_iff.mpr hxi
+  have hpi := Real.pi_pos
+  set l : Real := 2 * Real.pi * ‖xi‖ with hl
+  have hlpos : 0 < l := by
+    rw [hl]
+    positivity
+  have hcontcos : Continuous fun phi : Real =>
+      ((Real.cos (l * Real.cos phi) : Real) : Complex) :=
+    Complex.continuous_ofReal.comp
+      (Real.continuous_cos.comp (continuous_const.mul Real.continuous_cos))
+  have hcontsin : Continuous fun phi : Real =>
+      ((Real.sin (l * Real.cos phi) : Real) : Complex) * Complex.I :=
+    (Complex.continuous_ofReal.comp
+      (Real.continuous_sin.comp
+        (continuous_const.mul Real.continuous_cos))).mul continuous_const
+  have hpt : ∀ phi : Real,
+      Complex.exp (((-l * Real.cos phi : Real) : Complex) * Complex.I) =
+        ((Real.cos (l * Real.cos phi) : Real) : Complex) -
+          ((Real.sin (l * Real.cos phi) : Real) : Complex) * Complex.I := by
+    intro phi
+    rw [Complex.exp_mul_I, ← Complex.ofReal_cos, ← Complex.ofReal_sin]
+    have hneg : (-l * Real.cos phi : Real) = -(l * Real.cos phi) := by ring
+    rw [hneg, Real.cos_neg, Real.sin_neg]
+    push_cast
+    ring
+  have hstep1 : surfaceFourier 2 xi =
+      (surfaceMass 1 : Complex) * ∫ phi in (0 : Real)..Real.pi,
+        Complex.exp (((-l * Real.cos phi : Real) : Complex) * Complex.I) := by
+    rw [surfaceFourier_two_meridian xi, ← hl,
+      ← intervalIntegral_circle_cos_eq_meridian l]
+  have hstep2 : (∫ phi in (0 : Real)..Real.pi,
+      Complex.exp (((-l * Real.cos phi : Real) : Complex) * Complex.I)) =
+      ((∫ phi in (0 : Real)..Real.pi,
+        Real.cos (l * Real.cos phi) : Real) : Complex) := by
+    calc
+      (∫ phi in (0 : Real)..Real.pi,
+          Complex.exp (((-l * Real.cos phi : Real) : Complex) * Complex.I)) =
+          ∫ phi in (0 : Real)..Real.pi,
+            (((Real.cos (l * Real.cos phi) : Real) : Complex) -
+              ((Real.sin (l * Real.cos phi) : Real) : Complex) *
+                Complex.I) := by
+        refine intervalIntegral.integral_congr fun phi _ => ?_
+        exact hpt phi
+      _ = (∫ phi in (0 : Real)..Real.pi,
+            ((Real.cos (l * Real.cos phi) : Real) : Complex)) -
+            ∫ phi in (0 : Real)..Real.pi,
+              ((Real.sin (l * Real.cos phi) : Real) : Complex) *
+                Complex.I := by
+        exact intervalIntegral.integral_sub
+          (hcontcos.intervalIntegrable _ _) (hcontsin.intervalIntegrable _ _)
+      _ = ((∫ phi in (0 : Real)..Real.pi,
+            Real.cos (l * Real.cos phi) : Real) : Complex) -
+            ((∫ phi in (0 : Real)..Real.pi,
+              Real.sin (l * Real.cos phi) : Real) : Complex) * Complex.I := by
+        rw [intervalIntegral.integral_ofReal,
+          intervalIntegral.integral_mul_const,
+          intervalIntegral.integral_ofReal]
+      _ = ((∫ phi in (0 : Real)..Real.pi,
+            Real.cos (l * Real.cos phi) : Real) : Complex) := by
+        rw [brrs_angular_sin_integral_zero l]
+        simp
+  rw [hstep1, hstep2, brrs_angular_cos_integral_eq_besselJ_zero hlpos,
+    ← Complex.ofReal_mul]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### (3.3) for the circle: the two travelling waves
+
+The stationary decomposition of the circle's surface Fourier transform,
+carried through the planar ordinary-Bessel bridge, is the paper's two-wave
+display for `J_0`: two unit-modulus carriers with the leading inverse square
+root in front, and a remainder one full order below.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- **(3.3) for the circle: the two travelling waves of `J_0`.**  The
+stationary decomposition of the circle's surface Fourier transform, carried
+through the planar ordinary-Bessel bridge, is exactly the paper's two-wave
+display with the remainder one full order below the leading decay. -/
+theorem exists_brrs_ordinaryBesselJ_zero_twoWave :
+    ∃ (cout cin : Complex) (C : Real), 0 < C ∧ cout ≠ 0 ∧ cin ≠ 0 ∧
+      ∀ u : Real, 1 ≤ u →
+      ‖((Auto.RadialFourierTransform.ordinaryBesselJ 0 u : Real) : Complex) -
+          ((Real.sqrt u : Real) : Complex)⁻¹ *
+            (cout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+              cin * Complex.exp (((u : Real) : Complex) * Complex.I))‖ ≤
+        C / (u * Real.sqrt u) := by
+  obtain ⟨⟨C0, hC0, hplanar⟩, -⟩ :=
+    exists_brrs_surfaceFourier_threeWave_leading_remainder_all_dimensions 2
+  obtain ⟨e, he⟩ := exists_brrs_unit_vector (d := 2) (by norm_num)
+  have hmass : 0 < surfaceMass 1 := surfaceMass_pos (by norm_num)
+  have hpi := Real.pi_pos
+  set M : Real := surfaceMass 1 * Real.pi with hM
+  have hMpos : 0 < M := by
+    rw [hM]
+    positivity
+  set K : Complex := (surfaceMass 1 : Complex) *
+    brrsEvenQuadraticBaseCarrier planarEndpointProfile with hK
+  have hKne : K ≠ 0 := by
+    rw [hK]
+    exact mul_ne_zero (by simpa using ne_of_gt hmass)
+      brrs_evenQuadraticBaseCarrier_planarEndpointProfile_ne_zero
+  have hMneC : ((M : Real) : Complex)⁻¹ ≠ 0 := by
+    simpa using ne_of_gt hMpos
+  refine ⟨((M : Real) : Complex)⁻¹ * K,
+    ((M : Real) : Complex)⁻¹ * (starRingEnd Complex K),
+    3 * C0 / M, by positivity, mul_ne_zero hMneC hKne,
+    mul_ne_zero hMneC (star_ne_zero.mpr hKne), ?_⟩
+  intro u hu
+  have hu0 : 0 < u := lt_of_lt_of_le zero_lt_one hu
+  have hsqrtpos : 0 < Real.sqrt u := Real.sqrt_pos.mpr hu0
+  set rho : Real := u / (2 * Real.pi) with hrho
+  have hrhopos : 0 < rho := by
+    rw [hrho]
+    positivity
+  have h2pirho : 2 * Real.pi * rho = u := by
+    rw [hrho]
+    field_simp
+  have hprod : (2 * Real.pi * ‖e‖) * rho = u := by
+    rw [he, mul_one]
+    exact h2pirho
+  have hne : (-rho) • e ≠ 0 := by
+    refine smul_ne_zero (by simpa using ne_of_gt hrhopos) ?_
+    intro hzero
+    rw [hzero, norm_zero] at he
+    exact absurd he (by norm_num)
+  have hnormsmul : ‖(-rho) • e‖ = rho := by
+    rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrhopos, he, mul_one]
+  obtain ⟨hdecomp, hout, hin, hmid⟩ :=
+    hplanar e rho hrhopos (by rw [hprod]; exact hu)
+  rw [hprod] at hout hin hmid
+  -- the bridge, at this frequency
+  have hbridge : surfaceFourier 2 ((-rho) • e) =
+      ((surfaceMass 1 * (Real.pi *
+        Auto.RadialFourierTransform.ordinaryBesselJ 0 u : Real)) : Complex) := by
+    rw [brrs_surfaceFourier_two_eq_ordinaryBesselJ ((-rho) • e) hne, hnormsmul,
+      h2pirho]
+    push_cast
+    ring
+  -- the three terms, with the phases identified
+  have hphase_out : brrsSurfaceWavePhase .outgoing ‖e‖ * rho = -u := by
+    unfold brrsSurfaceWavePhase
+    rw [he, ← h2pirho]
+    ring
+  have hphase_in : brrsSurfaceWavePhase .incoming ‖e‖ * rho = u := by
+    unfold brrsSurfaceWavePhase
+    rw [he, ← h2pirho]
+    ring
+  have hJvalue : ((Auto.RadialFourierTransform.ordinaryBesselJ 0 u : Real) :
+      Complex) =
+      ((M : Real) : Complex)⁻¹ *
+        (brrsPlanarSurfaceWaveTerm .outgoing ‖e‖ rho +
+          brrsPlanarSurfaceWaveTerm .incoming ‖e‖ rho +
+          brrsPlanarSurfaceWaveTerm .middle ‖e‖ rho) := by
+    have hmassC : ((surfaceMass 1 : Real) : Complex) ≠ 0 := by
+      simpa using ne_of_gt hmass
+    have hpiC : ((Real.pi : Real) : Complex) ≠ 0 := by
+      simpa using ne_of_gt hpi
+    rw [← hdecomp, hbridge, hM]
+    push_cast
+    field_simp
+  -- the endpoint errors
+  have hWne : (1 : Complex) ≠ 0 := one_ne_zero
+  have hout' : ‖((Real.sqrt u : Real) : Complex) *
+      (1 : Complex) * brrsPlanarSurfaceWaveAmplitude .outgoing ‖e‖ rho - K‖ ≤
+      C0 / u := by
+    rw [mul_one, hK]
+    exact hout
+  have hin' : ‖((Real.sqrt u : Real) : Complex) *
+      (1 : Complex) * brrsPlanarSurfaceWaveAmplitude .incoming ‖e‖ rho -
+      starRingEnd Complex K‖ ≤ C0 / u := by
+    rw [mul_one, hK]
+    exact hin
+  have herr_out := brrs_amplitude_error_of_scaled hu0 hWne hout'
+  have herr_in := brrs_amplitude_error_of_scaled hu0 hWne hin'
+  rw [norm_one, mul_one, mul_one] at herr_out herr_in
+  -- the middle term
+  have hmid' : ‖brrsPlanarSurfaceWaveAmplitude .middle ‖e‖ rho‖ ≤
+      C0 / (u * Real.sqrt u) := by
+    refine le_trans hmid ?_
+    have h1s : (1 : Real) ≤ Real.sqrt u := by
+      rw [show (1 : Real) = Real.sqrt 1 by simp]
+      exact Real.sqrt_le_sqrt hu
+    have hsqrtle : Real.sqrt u ≤ u := by
+      have hsq := Real.sq_sqrt hu0.le
+      nlinarith [h1s, Real.sqrt_nonneg u]
+    have hsq : u * Real.sqrt u ≤ u ^ 2 := by nlinarith [hu0, hsqrtle]
+    refine div_le_div_of_nonneg_left hC0.le (by positivity) hsq
+  -- assemble
+  have hsplit : ((Auto.RadialFourierTransform.ordinaryBesselJ 0 u : Real) :
+      Complex) -
+      ((Real.sqrt u : Real) : Complex)⁻¹ *
+        ((((M : Real) : Complex)⁻¹ * K) *
+            Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          (((M : Real) : Complex)⁻¹ * (starRingEnd Complex K)) *
+            Complex.exp (((u : Real) : Complex) * Complex.I)) =
+      ((M : Real) : Complex)⁻¹ *
+        (((brrsPlanarSurfaceWaveAmplitude .outgoing ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * K) *
+            Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          (brrsPlanarSurfaceWaveAmplitude .incoming ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * (starRingEnd Complex K)) *
+            Complex.exp (((u : Real) : Complex) * Complex.I)) +
+          brrsPlanarSurfaceWaveAmplitude .middle ‖e‖ rho *
+            Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho : Real) :
+              Complex) * Complex.I)) := by
+    rw [hJvalue]
+    unfold brrsPlanarSurfaceWaveTerm
+    rw [hphase_out, hphase_in]
+    ring
+  rw [hsplit, norm_mul, norm_inv]
+  have hnormM : ‖((M : Real) : Complex)‖ = M := by
+    rw [Complex.norm_real, Real.norm_of_nonneg hMpos.le]
+  rw [hnormM]
+  have hphaseout_norm : ‖Complex.exp (((-u : Real) : Complex) * Complex.I)‖ = 1 := by
+    rw [Complex.norm_exp_ofReal_mul_I]
+  have hphasein_norm : ‖Complex.exp (((u : Real) : Complex) * Complex.I)‖ = 1 := by
+    rw [Complex.norm_exp_ofReal_mul_I]
+  have hphasemid_norm : ‖Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho :
+      Real) : Complex) * Complex.I)‖ = 1 := by
+    rw [Complex.norm_exp_ofReal_mul_I]
+  have hinner : ‖((brrsPlanarSurfaceWaveAmplitude .outgoing ‖e‖ rho -
+        ((Real.sqrt u : Real) : Complex)⁻¹ * K) *
+      Complex.exp (((-u : Real) : Complex) * Complex.I) +
+    (brrsPlanarSurfaceWaveAmplitude .incoming ‖e‖ rho -
+        ((Real.sqrt u : Real) : Complex)⁻¹ * (starRingEnd Complex K)) *
+      Complex.exp (((u : Real) : Complex) * Complex.I)) +
+      brrsPlanarSurfaceWaveAmplitude .middle ‖e‖ rho *
+        Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho : Real) :
+          Complex) * Complex.I)‖ ≤ 3 * C0 / (u * Real.sqrt u) := by
+    calc
+      _ ≤ ‖(brrsPlanarSurfaceWaveAmplitude .outgoing ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * K) *
+            Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          (brrsPlanarSurfaceWaveAmplitude .incoming ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * (starRingEnd Complex K)) *
+            Complex.exp (((u : Real) : Complex) * Complex.I)‖ +
+          ‖brrsPlanarSurfaceWaveAmplitude .middle ‖e‖ rho *
+            Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho : Real) :
+              Complex) * Complex.I)‖ := norm_add_le _ _
+      _ ≤ (‖(brrsPlanarSurfaceWaveAmplitude .outgoing ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * K) *
+            Complex.exp (((-u : Real) : Complex) * Complex.I)‖ +
+          ‖(brrsPlanarSurfaceWaveAmplitude .incoming ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * (starRingEnd Complex K)) *
+            Complex.exp (((u : Real) : Complex) * Complex.I)‖) +
+          ‖brrsPlanarSurfaceWaveAmplitude .middle ‖e‖ rho *
+            Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho : Real) :
+              Complex) * Complex.I)‖ :=
+        add_le_add (norm_add_le _ _) le_rfl
+      _ = ‖brrsPlanarSurfaceWaveAmplitude .outgoing ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * K‖ +
+          ‖brrsPlanarSurfaceWaveAmplitude .incoming ‖e‖ rho -
+              ((Real.sqrt u : Real) : Complex)⁻¹ * (starRingEnd Complex K)‖ +
+          ‖brrsPlanarSurfaceWaveAmplitude .middle ‖e‖ rho‖ := by
+        rw [norm_mul, norm_mul, norm_mul, hphaseout_norm, hphasein_norm,
+          hphasemid_norm, mul_one, mul_one, mul_one]
+      _ ≤ C0 / (u * Real.sqrt u) + C0 / (u * Real.sqrt u) +
+            C0 / (u * Real.sqrt u) := by
+        refine add_le_add (add_le_add ?_ ?_) hmid'
+        · exact herr_out
+        · exact herr_in
+      _ = 3 * C0 / (u * Real.sqrt u) := by ring
+  calc
+    M⁻¹ * ‖_‖ ≤ M⁻¹ * (3 * C0 / (u * Real.sqrt u)) :=
+      mul_le_mul_of_nonneg_left hinner (le_of_lt (inv_pos.mpr hMpos))
+    _ = 3 * C0 / M / (u * Real.sqrt u) := by
+      field_simp
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Arithmetic of the even nonplanar packaging
+
+The even nonplanar decomposition carries a scaled weight alongside the square
+root.  Its norm and nonvanishing, and the closed form of the bridge
+prefactor, are recorded first so that the packaging itself stays readable.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- The bridge prefactor of the even nonplanar dimensions, in closed form. -/
+theorem brrs_bridge_prefactor_even (n : Nat) {u : Real} (hu : 0 < u) :
+    (Real.pi * (u / (2 * Real.pi))) ^ ((((2 * n + 3 : Nat) : Real) - 1) / 2) =
+      (u / 2) ^ (n + 1) := by
+  have hpi := Real.pi_pos
+  have harg : Real.pi * (u / (2 * Real.pi)) = u / 2 := by
+    field_simp
+  have hexp : ((((2 * n + 3 : Nat) : Real) - 1) / 2) = ((n + 1 : Nat) : Real) := by
+    push_cast
+    ring
+  rw [harg, hexp, Real.rpow_natCast]
+
+/-- The scaled weight of the even nonplanar decomposition is nonzero. -/
+theorem brrs_evenWeight_ne_zero (n : Nat) {u : Real} (hu : 0 < u) :
+    (((2 * u : Real) : Complex) * Complex.I) ^ (n + 1) ≠ 0 := by
+  refine pow_ne_zero _ (mul_ne_zero ?_ Complex.I_ne_zero)
+  simpa using ne_of_gt hu
+
+/-- The norm of the scaled weight of the even nonplanar decomposition. -/
+theorem brrs_norm_evenWeight (n : Nat) {u : Real} (hu : 0 < u) :
+    ‖(((2 * u : Real) : Complex) * Complex.I) ^ (n + 1)‖ = (2 * u) ^ (n + 1) := by
+  rw [norm_pow, norm_mul, Complex.norm_I, mul_one, Complex.norm_real,
+    Real.norm_of_nonneg (by positivity)]
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### The packaging lemma
+
+Each parity case of (3.3) has the same structure: a three-wave
+representation, scaled endpoint asymptotics, unit-modulus carriers, and two
+constant identities turning the scaled coefficients into travelling-wave
+coefficients.  Proving the passage once keeps each case to its own
+arithmetic.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 1000000 in
+/-- **The packaging lemma.**  Given a three-wave representation of a quantity
+with scaled endpoint asymptotics, unit-modulus carriers, and the two constant
+identities that turn the scaled coefficients into travelling-wave
+coefficients, the quantity differs from its two-wave display by the sum of the
+three errors.  Each parity case of (3.3) instantiates this once. -/
+theorem brrs_twoWave_package
+    {P C0 R u : Real} {Z Aout Ain Amid Wout Win K cout cin eout ein emid : Complex}
+    (hu : 0 < u) (hP : 0 < P) (hWout : Wout ≠ 0) (hWin : Win ≠ 0)
+    (heout : ‖eout‖ = 1) (hein : ‖ein‖ = 1) (hemid : ‖emid‖ = 1)
+    (hout : ‖((Real.sqrt u : Real) : Complex) * Wout * Aout - K‖ ≤ C0 / u)
+    (hin : ‖((Real.sqrt u : Real) : Complex) * Win * Ain -
+      starRingEnd Complex K‖ ≤ C0 / u)
+    (hmid : ‖Amid‖ ≤ R)
+    (hZ : Z = ((P : Real) : Complex) *
+      (Aout * eout + Ain * ein + Amid * emid))
+    (hcout : ((P : Real) : Complex) *
+      ((((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * K) =
+        (((Real.sqrt u : Real) : Complex))⁻¹ * cout)
+    (hcin : ((P : Real) : Complex) *
+      ((((Real.sqrt u : Real) : Complex) * Win)⁻¹ * (starRingEnd Complex K)) =
+        (((Real.sqrt u : Real) : Complex))⁻¹ * cin) :
+    ‖Z - (((Real.sqrt u : Real) : Complex))⁻¹ * (cout * eout + cin * ein)‖ ≤
+      P * (C0 / (u * Real.sqrt u * ‖Wout‖) +
+        C0 / (u * Real.sqrt u * ‖Win‖) + R) := by
+  have herr_out := brrs_amplitude_error_of_scaled hu hWout hout
+  have herr_in := brrs_amplitude_error_of_scaled hu hWin hin
+  have hsplit : Z - (((Real.sqrt u : Real) : Complex))⁻¹ *
+      (cout * eout + cin * ein) =
+      ((P : Real) : Complex) *
+        ((Aout - (((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * K) * eout +
+          (Ain - (((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+            (starRingEnd Complex K)) * ein + Amid * emid) := by
+    have hexp : (((Real.sqrt u : Real) : Complex))⁻¹ *
+        (cout * eout + cin * ein) =
+        ((((Real.sqrt u : Real) : Complex))⁻¹ * cout) * eout +
+          ((((Real.sqrt u : Real) : Complex))⁻¹ * cin) * ein := by
+      ring
+    rw [hZ, hexp, ← hcout, ← hcin]
+    ring
+  rw [hsplit, norm_mul]
+  have hnormP : ‖((P : Real) : Complex)‖ = P := by
+    rw [Complex.norm_real, Real.norm_of_nonneg hP.le]
+  rw [hnormP]
+  refine mul_le_mul_of_nonneg_left ?_ hP.le
+  calc
+    ‖(Aout - (((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * K) * eout +
+        (Ain - (((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+          (starRingEnd Complex K)) * ein + Amid * emid‖ ≤
+        ‖(Aout - (((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * K) * eout +
+          (Ain - (((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+            (starRingEnd Complex K)) * ein‖ + ‖Amid * emid‖ :=
+      norm_add_le _ _
+    _ ≤ (‖(Aout - (((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * K) * eout‖ +
+          ‖(Ain - (((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+            (starRingEnd Complex K)) * ein‖) + ‖Amid * emid‖ :=
+      add_le_add (norm_add_le _ _) le_rfl
+    _ = ‖Aout - (((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * K‖ +
+          ‖Ain - (((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+            (starRingEnd Complex K)‖ + ‖Amid‖ := by
+      rw [norm_mul, norm_mul, norm_mul, heout, hein, hemid, mul_one, mul_one,
+        mul_one]
+    _ ≤ C0 / (u * Real.sqrt u * ‖Wout‖) + C0 / (u * Real.sqrt u * ‖Win‖) + R :=
+      add_le_add (add_le_add herr_out herr_in) hmid
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### (3.3) in the even nonplanar dimensions
+
+The bridge prefactor cancels the scaled weight of the decomposition down to a
+constant power of four, so the surviving decay is the inverse square root of
+the paper's display, with the remainder one full order below.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 2000000 in
+/-- **(3.3) in the even nonplanar dimensions: the two travelling waves.**  The
+bridge prefactor cancels the scaled weight of the decomposition down to a
+constant, so the surviving decay is the inverse square root of the paper's
+display, with the remainder one full order below. -/
+theorem exists_brrs_ordinaryBesselJ_even_twoWave (n : Nat) :
+    ∃ (cout cin : Complex) (C : Real), 0 < C ∧ cout ≠ 0 ∧ cin ≠ 0 ∧
+      ∀ u : Real, 1 ≤ u →
+      ‖((Auto.RadialFourierTransform.ordinaryBesselJ ((n : Real) + 1) u :
+            Real) : Complex) -
+          ((Real.sqrt u : Real) : Complex)⁻¹ *
+            (cout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+              cin * Complex.exp (((u : Real) : Complex) * Complex.I))‖ ≤
+        C / (u * Real.sqrt u) := by
+  classical
+  obtain ⟨-, heven, -⟩ :=
+    exists_brrs_surfaceFourier_threeWave_leading_remainder_all_dimensions (n + 3)
+  obtain ⟨C0, hC0, hdec⟩ := heven n
+  have hpi := Real.pi_pos
+  have hdd2 : 2 ≤ 2 * (n + 1) + 1 := by omega
+  have hmass : 0 < surfaceMass (2 * (n + 1) + 1) := surfaceMass_pos (by omega)
+  have hgam : 0 < Real.Gamma (((2 * (n + 1) + 1 : Nat) : Real) / 2) := by
+    refine Real.Gamma_pos_of_pos ?_
+    positivity
+  have hsqrtpi : 0 < Real.sqrt Real.pi := Real.sqrt_pos.mpr Real.pi_pos
+  set G : Real := surfaceMass (2 * (n + 1) + 1) *
+    (Real.sqrt Real.pi *
+      Real.Gamma (((2 * (n + 1) + 1 : Nat) : Real) / 2)) with hG
+  have hGpos : 0 < G := by
+    rw [hG]
+    positivity
+  set q4 : Real := ((1 : Real) / 4) ^ (n + 1) with hq4
+  have hq4pos : 0 < q4 := by
+    rw [hq4]
+    positivity
+  set Kc : Complex := (surfaceMass (2 * (n + 1) + 1) : Complex) *
+    (brrsEvenQuadraticLeadingCoefficient (n + 1) *
+      brrsEvenQuadraticBaseCarrier (smoothEndpointProfile (2 * (n + 1))))
+    with hKc
+  set cfacOut : Complex := ((q4 / G : Real) : Complex) *
+    (Complex.I ^ (n + 1))⁻¹ with hcfacOut
+  set cfacIn : Complex := ((q4 / G : Real) : Complex) *
+    ((-Complex.I) ^ (n + 1))⁻¹ with hcfacIn
+  have hKcne : Kc ≠ 0 := by
+    rw [hKc]
+    refine mul_ne_zero (by simpa using ne_of_gt hmass) ?_
+    exact mul_ne_zero (brrsEvenQuadraticLeadingCoefficient_ne_zero (n + 1))
+      (brrs_evenQuadraticBaseCarrier_smoothEndpointProfile_ne_zero (2 * (n + 1)))
+  have hcfacOutne : cfacOut ≠ 0 := by
+    rw [hcfacOut]
+    refine mul_ne_zero ?_ (inv_ne_zero (pow_ne_zero _ Complex.I_ne_zero))
+    have hq : (0 : Real) < q4 / G := by positivity
+    simpa using ne_of_gt hq
+  have hcfacInne : cfacIn ≠ 0 := by
+    rw [hcfacIn]
+    refine mul_ne_zero ?_
+      (inv_ne_zero (pow_ne_zero _ (neg_ne_zero.mpr Complex.I_ne_zero)))
+    have hq : (0 : Real) < q4 / G := by positivity
+    simpa using ne_of_gt hq
+  refine ⟨cfacOut * Kc, cfacIn * (starRingEnd Complex Kc), 3 * C0 / G,
+    by positivity, mul_ne_zero hcfacOutne hKcne,
+    mul_ne_zero hcfacInne (star_ne_zero.mpr hKcne), ?_⟩
+  intro u hu
+  have hu0 : 0 < u := lt_of_lt_of_le zero_lt_one hu
+  have hsqrtpos : 0 < Real.sqrt u := Real.sqrt_pos.mpr hu0
+  have hsne : ((Real.sqrt u : Real) : Complex) ≠ 0 := by
+    simpa using ne_of_gt hsqrtpos
+  have hune : ((u : Real) : Complex) ≠ 0 := by simpa using ne_of_gt hu0
+  have hGneC : ((G : Real) : Complex) ≠ 0 := by simpa using ne_of_gt hGpos
+  have hIne : (Complex.I ^ (n + 1)) ≠ 0 := pow_ne_zero _ Complex.I_ne_zero
+  have hnegIne : ((-Complex.I) ^ (n + 1)) ≠ 0 :=
+    pow_ne_zero _ (neg_ne_zero.mpr Complex.I_ne_zero)
+  have h2une : ((((2 * u) ^ (n + 1) : Real)) : Complex) ≠ 0 := by
+    have : (0 : Real) < (2 * u) ^ (n + 1) := by positivity
+    simpa using ne_of_gt this
+  obtain ⟨e, he⟩ := exists_brrs_unit_vector (d := 2 * (n + 1) + 2) (by omega)
+  set rho : Real := u / (2 * Real.pi) with hrho
+  have hrhopos : 0 < rho := by
+    rw [hrho]
+    positivity
+  have h2pirho : 2 * Real.pi * rho = u := by
+    rw [hrho]
+    field_simp
+  have hprod : (2 * Real.pi * ‖e‖) * rho = u := by
+    rw [he, mul_one]
+    exact h2pirho
+  have hne : (-rho) • e ≠ 0 := by
+    refine smul_ne_zero (by simpa using ne_of_gt hrhopos) ?_
+    intro hzero
+    rw [hzero, norm_zero] at he
+    exact absurd he (by norm_num)
+  have hnormsmul : ‖(-rho) • e‖ = rho := by
+    rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrhopos, he, mul_one]
+  obtain ⟨hdecomp, hout, hin, hmid⟩ :=
+    hdec e rho hrhopos (by rw [hprod]; exact hu)
+  rw [hprod] at hout hin hmid
+  -- the bridge, with its prefactor in closed form
+  have hbridge := brrs_surfaceFourier_succ_eq_ordinaryBesselJ
+    (d := 2 * (n + 1) + 1) hdd2 ((-rho) • e) hne
+  have hexp : ((((2 * (n + 1) + 1 : Nat) : Real) - 1) / 2) = ((n : Real) + 1) := by
+    push_cast
+    ring
+  rw [hnormsmul, hexp] at hbridge
+  have hpref : (Real.pi * rho) ^ ((n : Real) + 1) = (u / 2) ^ (n + 1) := by
+    rw [hrho]
+    have harg : Real.pi * (u / (2 * Real.pi)) = u / 2 := by
+      field_simp
+    rw [harg, show ((n : Real) + 1) = ((n + 1 : Nat) : Real) by push_cast; ring,
+      Real.rpow_natCast]
+  rw [hpref, h2pirho] at hbridge
+  -- phases
+  have hphase_out : brrsSurfaceWavePhase .outgoing ‖e‖ * rho = -u := by
+    unfold brrsSurfaceWavePhase
+    rw [he, ← h2pirho]
+    ring
+  have hphase_in : brrsSurfaceWavePhase .incoming ‖e‖ * rho = u := by
+    unfold brrsSurfaceWavePhase
+    rw [he, ← h2pirho]
+    ring
+  -- the pieces
+  set W : Complex := (((2 * u : Real) : Complex) * Complex.I) ^ (n + 1) with hW
+  set Win : Complex :=
+    (-(((2 * u : Real) : Complex) * Complex.I)) ^ (n + 1) with hWin
+  have hWeq : W = ((((2 * u) ^ (n + 1) : Real)) : Complex) *
+      Complex.I ^ (n + 1) := by
+    rw [hW, mul_pow]
+    push_cast
+    ring
+  have hWineq : Win = ((((2 * u) ^ (n + 1) : Real)) : Complex) *
+      (-Complex.I) ^ (n + 1) := by
+    rw [hWin, show -(((2 * u : Real) : Complex) * Complex.I) =
+      ((2 * u : Real) : Complex) * (-Complex.I) by ring, mul_pow]
+    push_cast
+    ring
+  have hWne : W ≠ 0 := by
+    rw [hWeq]
+    exact mul_ne_zero h2une hIne
+  have hWinne : Win ≠ 0 := by
+    rw [hWineq]
+    exact mul_ne_zero h2une hnegIne
+  have hWnorm : ‖W‖ = (2 * u) ^ (n + 1) := by
+    rw [hW]
+    exact brrs_norm_evenWeight n hu0
+  have hWinnorm : ‖Win‖ = (2 * u) ^ (n + 1) := by
+    rw [hWin, norm_pow, norm_neg, norm_mul, Complex.norm_I, mul_one,
+      Complex.norm_real, Real.norm_of_nonneg (by positivity : (0 : Real) ≤ 2 * u)]
+  set Aout : Complex :=
+    brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .outgoing ‖e‖ rho with hAout
+  set Ain : Complex :=
+    brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .incoming ‖e‖ rho with hAin
+  set Amid : Complex :=
+    brrsSurfaceWaveAmplitude (2 * (n + 1) + 2) .middle ‖e‖ rho with hAmid
+  set emid : Complex :=
+    Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho : Real) : Complex) *
+      Complex.I) with hemid
+  set P : Real := (u / 2) ^ (n + 1) / G with hP
+  have hPpos : 0 < P := by
+    rw [hP]
+    positivity
+  have hPq : P = (q4 / G) * (2 * u) ^ (n + 1) := by
+    rw [hP, hq4]
+    have h4 : (u / 2) ^ (n + 1) =
+        ((1 : Real) / 4) ^ (n + 1) * (2 * u) ^ (n + 1) := by
+      rw [← mul_pow]
+      congr 1
+      ring
+    rw [h4]
+    field_simp
+  -- the hypotheses of the packaging lemma
+  have hout' : ‖((Real.sqrt u : Real) : Complex) * W * Aout - Kc‖ ≤ C0 / u := by
+    rw [hW, hKc, hAout]
+    exact hout
+  have hin' : ‖((Real.sqrt u : Real) : Complex) * Win * Ain -
+      starRingEnd Complex Kc‖ ≤ C0 / u := by
+    rw [hWin, hKc, hAin]
+    exact hin
+  have hmid' : ‖Amid‖ ≤ C0 / u ^ (n + 3) := by
+    rw [hAmid]
+    exact hmid
+  have hZ : ((Auto.RadialFourierTransform.ordinaryBesselJ ((n : Real) + 1) u :
+      Real) : Complex) =
+      ((P : Real) : Complex) *
+        (Aout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          Ain * Complex.exp (((u : Real) : Complex) * Complex.I) +
+          Amid * emid) := by
+    have hterms : brrsSurfaceWaveTerm (2 * (n + 1) + 2) .outgoing ‖e‖ rho +
+        brrsSurfaceWaveTerm (2 * (n + 1) + 2) .incoming ‖e‖ rho +
+        brrsSurfaceWaveTerm (2 * (n + 1) + 2) .middle ‖e‖ rho =
+        Aout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          Ain * Complex.exp (((u : Real) : Complex) * Complex.I) +
+          Amid * emid := by
+      unfold brrsSurfaceWaveTerm
+      rw [hphase_out, hphase_in, hAout, hAin, hAmid, hemid]
+    have hne1 : ((u / 2) ^ (n + 1) : Real) ≠ 0 := by positivity
+    have hreal : ((u / 2) ^ (n + 1) / G) *
+        (G / (u / 2) ^ (n + 1) *
+          Auto.RadialFourierTransform.ordinaryBesselJ ((n : Real) + 1) u) =
+        Auto.RadialFourierTransform.ordinaryBesselJ ((n : Real) + 1) u := by
+      field_simp
+    rw [← hterms, ← hdecomp, hbridge, ← hG, hP, ← Complex.ofReal_mul, hreal]
+  have hcout : ((P : Real) : Complex) *
+      ((((Real.sqrt u : Real) : Complex) * W)⁻¹ * Kc) =
+      (((Real.sqrt u : Real) : Complex))⁻¹ * (cfacOut * Kc) := by
+    rw [hWeq, hcfacOut, hPq]
+    push_cast
+    field_simp
+  have hcin : ((P : Real) : Complex) *
+      ((((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+        (starRingEnd Complex Kc)) =
+      (((Real.sqrt u : Real) : Complex))⁻¹ * (cfacIn * (starRingEnd Complex Kc)) := by
+    rw [hWineq, hcfacIn, hPq]
+    push_cast
+    field_simp
+  have hpack := brrs_twoWave_package hu0 hPpos hWne hWinne
+    (Complex.norm_exp_ofReal_mul_I (-u)) (Complex.norm_exp_ofReal_mul_I u)
+    (by rw [hemid]; exact Complex.norm_exp_ofReal_mul_I _)
+    hout' hin' hmid' hZ hcout hcin
+  refine le_trans hpack ?_
+  rw [hWnorm, hWinnorm]
+  -- convert the rate
+  have hsqrtle : Real.sqrt u ≤ u := by
+    have h1s : (1 : Real) ≤ Real.sqrt u := by
+      rw [show (1 : Real) = Real.sqrt 1 by simp]
+      exact Real.sqrt_le_sqrt hu
+    have hsq := Real.sq_sqrt hu0.le
+    nlinarith [h1s, Real.sqrt_nonneg u]
+  have hbound1 : P * (C0 / (u * Real.sqrt u * (2 * u) ^ (n + 1))) ≤
+      C0 / G / (u * Real.sqrt u) := by
+    have hval : P * (C0 / (u * Real.sqrt u * (2 * u) ^ (n + 1))) =
+        q4 * (C0 / G / (u * Real.sqrt u)) := by
+      rw [hPq]
+      field_simp
+    have hq4le : q4 ≤ 1 := by
+      rw [hq4]
+      exact pow_le_one₀ (by norm_num) (by norm_num)
+    rw [hval]
+    have hnn : 0 ≤ C0 / G / (u * Real.sqrt u) := by positivity
+    nlinarith [hnn, hq4le]
+  have hbound2 : P * (C0 / u ^ (n + 3)) ≤ C0 / G / (u * Real.sqrt u) := by
+    have hhalf : (u / 2) ^ (n + 1) ≤ u ^ (n + 1) := by
+      refine pow_le_pow_left₀ (by positivity) (by linarith) _
+    have hPle : P ≤ u ^ (n + 1) / G := by
+      rw [hP]
+      exact div_le_div_of_nonneg_right hhalf hGpos.le
+    calc P * (C0 / u ^ (n + 3)) ≤ (u ^ (n + 1) / G) * (C0 / u ^ (n + 3)) :=
+          mul_le_mul_of_nonneg_right hPle (by positivity)
+      _ = C0 / G / u ^ 2 := by
+          rw [show (n + 3) = (n + 1) + 2 by omega, pow_add]
+          field_simp
+          ring
+      _ ≤ C0 / G / (u * Real.sqrt u) := by
+          refine div_le_div_of_nonneg_left (by positivity) (by positivity) ?_
+          nlinarith [hu0, hsqrtle]
+  calc
+    P * (C0 / (u * Real.sqrt u * (2 * u) ^ (n + 1)) +
+        C0 / (u * Real.sqrt u * (2 * u) ^ (n + 1)) + C0 / u ^ (n + 3)) =
+        P * (C0 / (u * Real.sqrt u * (2 * u) ^ (n + 1))) +
+          P * (C0 / (u * Real.sqrt u * (2 * u) ^ (n + 1))) +
+          P * (C0 / u ^ (n + 3)) := by ring
+    _ ≤ C0 / G / (u * Real.sqrt u) + C0 / G / (u * Real.sqrt u) +
+          C0 / G / (u * Real.sqrt u) :=
+      add_le_add (add_le_add hbound1 hbound1) hbound2
+    _ = 3 * C0 / G / (u * Real.sqrt u) := by ring
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### (3.3) in the odd nonplanar dimensions
+
+Here the decomposition carries no square root, so the half power of the
+display comes from the bridge prefactor instead.  Rescaling the weight by the
+inverse square root puts the estimate in the form the packaging lemma takes,
+and the remaining arithmetic is the same cancellation as in the even case.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+set_option maxHeartbeats 2000000 in
+/-- **(3.3) in the odd nonplanar dimensions: the two travelling waves.**  Here
+the decomposition carries no square root, and the half power of the display
+comes from the bridge prefactor instead. -/
+theorem exists_brrs_ordinaryBesselJ_odd_twoWave (n : Nat) :
+    ∃ (cout cin : Complex) (C : Real), 0 < C ∧ cout ≠ 0 ∧ cin ≠ 0 ∧
+      ∀ u : Real, 1 ≤ u →
+      ‖((Auto.RadialFourierTransform.ordinaryBesselJ
+            (((2 * n + 1 : Nat) : Real) / 2) u : Real) : Complex) -
+          ((Real.sqrt u : Real) : Complex)⁻¹ *
+            (cout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+              cin * Complex.exp (((u : Real) : Complex) * Complex.I))‖ ≤
+        C / (u * Real.sqrt u) := by
+  classical
+  obtain ⟨-, -, hodd⟩ :=
+    exists_brrs_surfaceFourier_threeWave_leading_remainder_all_dimensions (n + 3)
+  obtain ⟨C0, hC0, hdec⟩ := hodd n
+  have hpi := Real.pi_pos
+  have hdd2 : 2 ≤ 2 * n + 2 := by omega
+  have hmass : 0 < surfaceMass (2 * n + 2) := surfaceMass_pos (by omega)
+  have hgam : 0 < Real.Gamma (((2 * n + 2 : Nat) : Real) / 2) := by
+    refine Real.Gamma_pos_of_pos ?_
+    positivity
+  have hsqrtpi : 0 < Real.sqrt Real.pi := Real.sqrt_pos.mpr Real.pi_pos
+  set G : Real := surfaceMass (2 * n + 2) *
+    (Real.sqrt Real.pi * Real.Gamma (((2 * n + 2 : Nat) : Real) / 2)) with hG
+  have hGpos : 0 < G := by
+    rw [hG]
+    positivity
+  set c0 : Real := 1 / ((2 : Real) ^ (((2 * n + 1 : Nat) : Real) / 2) * G *
+    (2 : Real) ^ (n + 1)) with hc0
+  have hc0pos : 0 < c0 := by
+    rw [hc0]
+    have h1 : (0 : Real) < (2 : Real) ^ (((2 * n + 1 : Nat) : Real) / 2) :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  set Kc : Complex := (surfaceMass (2 * n + 2) : Complex) *
+    (brrsOddQuadraticLeadingCoefficient n *
+      smoothEndpointProfile (2 * n + 1) 0) with hKc
+  set cfacOut : Complex := ((c0 : Real) : Complex) *
+    (Complex.I ^ (n + 1))⁻¹ with hcfacOut
+  set cfacIn : Complex := ((c0 : Real) : Complex) *
+    ((-Complex.I) ^ (n + 1))⁻¹ with hcfacIn
+  have hKcne : Kc ≠ 0 := by
+    rw [hKc]
+    refine mul_ne_zero (by simpa using ne_of_gt hmass) ?_
+    exact mul_ne_zero (brrsOddQuadraticLeadingCoefficient_ne_zero n)
+      (brrs_smoothEndpointProfile_zero_ne_zero (2 * n + 1))
+  have hcfacOutne : cfacOut ≠ 0 := by
+    rw [hcfacOut]
+    exact mul_ne_zero (by simpa using ne_of_gt hc0pos)
+      (inv_ne_zero (pow_ne_zero _ Complex.I_ne_zero))
+  have hcfacInne : cfacIn ≠ 0 := by
+    rw [hcfacIn]
+    exact mul_ne_zero (by simpa using ne_of_gt hc0pos)
+      (inv_ne_zero (pow_ne_zero _ (neg_ne_zero.mpr Complex.I_ne_zero)))
+  refine ⟨cfacOut * Kc, cfacIn * (starRingEnd Complex Kc),
+    2 * (c0 * C0) + C0 / G, by positivity, mul_ne_zero hcfacOutne hKcne,
+    mul_ne_zero hcfacInne (star_ne_zero.mpr hKcne), ?_⟩
+  intro u hu
+  have hu0 : 0 < u := lt_of_lt_of_le zero_lt_one hu
+  have hsqrtpos : 0 < Real.sqrt u := Real.sqrt_pos.mpr hu0
+  have hsne : ((Real.sqrt u : Real) : Complex) ≠ 0 := by
+    simpa using ne_of_gt hsqrtpos
+  have hune : ((u : Real) : Complex) ≠ 0 := by simpa using ne_of_gt hu0
+  have hGneC : ((G : Real) : Complex) ≠ 0 := by simpa using ne_of_gt hGpos
+  have hIne : (Complex.I ^ (n + 1)) ≠ 0 := pow_ne_zero _ Complex.I_ne_zero
+  have hnegIne : ((-Complex.I) ^ (n + 1)) ≠ 0 :=
+    pow_ne_zero _ (neg_ne_zero.mpr Complex.I_ne_zero)
+  have h2une : ((((2 * u) ^ (n + 1) : Real)) : Complex) ≠ 0 := by
+    have hpos : (0 : Real) < (2 * u) ^ (n + 1) := by positivity
+    simpa using ne_of_gt hpos
+  obtain ⟨e, he⟩ := exists_brrs_unit_vector (d := 2 * n + 3) (by omega)
+  set rho : Real := u / (2 * Real.pi) with hrho
+  have hrhopos : 0 < rho := by
+    rw [hrho]
+    positivity
+  have h2pirho : 2 * Real.pi * rho = u := by
+    rw [hrho]
+    field_simp
+  have hprod : (2 * Real.pi * ‖e‖) * rho = u := by
+    rw [he, mul_one]
+    exact h2pirho
+  have hne : (-rho) • e ≠ 0 := by
+    refine smul_ne_zero (by simpa using ne_of_gt hrhopos) ?_
+    intro hzero
+    rw [hzero, norm_zero] at he
+    exact absurd he (by norm_num)
+  have hnormsmul : ‖(-rho) • e‖ = rho := by
+    rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrhopos, he, mul_one]
+  obtain ⟨hdecomp, hout, hin, hmid⟩ :=
+    hdec e rho hrhopos (by rw [hprod]; exact hu)
+  rw [hprod] at hout hin hmid
+  -- the bridge
+  have hbridge := brrs_surfaceFourier_succ_eq_ordinaryBesselJ
+    (d := 2 * n + 2) hdd2 ((-rho) • e) hne
+  have hexp : ((((2 * n + 2 : Nat) : Real) - 1) / 2) =
+      (((2 * n + 1 : Nat) : Real) / 2) := by
+    push_cast
+    ring
+  rw [hnormsmul, hexp] at hbridge
+  have hpref : (Real.pi * rho) ^ (((2 * n + 1 : Nat) : Real) / 2) =
+      (u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) := by
+    rw [hrho]
+    have harg : Real.pi * (u / (2 * Real.pi)) = u / 2 := by
+      field_simp
+    rw [harg]
+  rw [hpref, h2pirho] at hbridge
+  -- phases
+  have hphase_out : brrsSurfaceWavePhase .outgoing ‖e‖ * rho = -u := by
+    unfold brrsSurfaceWavePhase
+    rw [he, ← h2pirho]
+    ring
+  have hphase_in : brrsSurfaceWavePhase .incoming ‖e‖ * rho = u := by
+    unfold brrsSurfaceWavePhase
+    rw [he, ← h2pirho]
+    ring
+  -- the weights, rescaled so that the packaging lemma applies
+  set Wodd : Complex := (((2 * u : Real) : Complex) * Complex.I) ^ (n + 1)
+    with hWodd
+  set Woddin : Complex :=
+    (-(((2 * u : Real) : Complex) * Complex.I)) ^ (n + 1) with hWoddin
+  have hWoddeq : Wodd = ((((2 * u) ^ (n + 1) : Real)) : Complex) *
+      Complex.I ^ (n + 1) := by
+    rw [hWodd, mul_pow]
+    push_cast
+    ring
+  have hWoddineq : Woddin = ((((2 * u) ^ (n + 1) : Real)) : Complex) *
+      (-Complex.I) ^ (n + 1) := by
+    rw [hWoddin, show -(((2 * u : Real) : Complex) * Complex.I) =
+      ((2 * u : Real) : Complex) * (-Complex.I) by ring, mul_pow]
+    push_cast
+    ring
+  set Wout : Complex := Wodd * (((Real.sqrt u : Real) : Complex))⁻¹ with hWout
+  set Win : Complex := Woddin * (((Real.sqrt u : Real) : Complex))⁻¹ with hWin
+  have hWoutne : Wout ≠ 0 := by
+    rw [hWout, hWoddeq]
+    exact mul_ne_zero (mul_ne_zero h2une hIne) (inv_ne_zero hsne)
+  have hWinne : Win ≠ 0 := by
+    rw [hWin, hWoddineq]
+    exact mul_ne_zero (mul_ne_zero h2une hnegIne) (inv_ne_zero hsne)
+  have hcancel : ((Real.sqrt u : Real) : Complex) * Wout = Wodd := by
+    rw [hWout]
+    field_simp
+  have hcancelin : ((Real.sqrt u : Real) : Complex) * Win = Woddin := by
+    rw [hWin]
+    field_simp
+  have hWoutnorm : ‖Wout‖ = (2 * u) ^ (n + 1) / Real.sqrt u := by
+    rw [hWout, norm_mul, norm_inv, Complex.norm_real,
+      Real.norm_of_nonneg hsqrtpos.le, hWodd, brrs_norm_evenWeight n hu0,
+      div_eq_mul_inv]
+  have hWinnorm : ‖Win‖ = (2 * u) ^ (n + 1) / Real.sqrt u := by
+    rw [hWin, norm_mul, norm_inv, Complex.norm_real,
+      Real.norm_of_nonneg hsqrtpos.le, hWoddin, norm_pow, norm_neg, norm_mul,
+      Complex.norm_I, mul_one, Complex.norm_real,
+      Real.norm_of_nonneg (by positivity : (0 : Real) ≤ 2 * u), div_eq_mul_inv]
+  set Aout : Complex :=
+    brrsSurfaceWaveAmplitude (2 * n + 3) .outgoing ‖e‖ rho with hAout
+  set Ain : Complex :=
+    brrsSurfaceWaveAmplitude (2 * n + 3) .incoming ‖e‖ rho with hAin
+  set Amid : Complex :=
+    brrsSurfaceWaveAmplitude (2 * n + 3) .middle ‖e‖ rho with hAmid
+  set emid : Complex :=
+    Complex.exp (((brrsSurfaceWavePhase .middle ‖e‖ * rho : Real) : Complex) *
+      Complex.I) with hemid
+  set P : Real := (u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) / G with hP
+  have hPpos : 0 < P := by
+    rw [hP]
+    have hnum : (0 : Real) < (u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) :=
+      Real.rpow_pos_of_pos (by positivity) _
+    positivity
+  -- the key real identity
+  have hPreal : P / (2 * u) ^ (n + 1) = c0 / Real.sqrt u := by
+    have h1 : (u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) =
+        u ^ (((2 * n + 1 : Nat) : Real) / 2) /
+          (2 : Real) ^ (((2 * n + 1 : Nat) : Real) / 2) :=
+      Real.div_rpow hu0.le (by norm_num : (0 : Real) ≤ 2)
+        (((2 * n + 1 : Nat) : Real) / 2)
+    have h2 : u ^ (((2 * n + 1 : Nat) : Real) / 2) =
+        u ^ (n + 1) / Real.sqrt u := by
+      rw [Real.sqrt_eq_rpow, ← Real.rpow_natCast u (n + 1), ← Real.rpow_sub hu0]
+      congr 1
+      push_cast
+      ring
+    have h2pow : (0 : Real) < (2 : Real) ^ (((2 * n + 1 : Nat) : Real) / 2) :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    rw [hP, hc0, h1, h2]
+    field_simp
+    ring
+  -- the packaging hypotheses
+  have hout' : ‖((Real.sqrt u : Real) : Complex) * Wout * Aout - Kc‖ ≤
+      C0 / u := by
+    rw [hcancel, hWodd, hKc, hAout]
+    exact hout
+  have hin' : ‖((Real.sqrt u : Real) : Complex) * Win * Ain -
+      starRingEnd Complex Kc‖ ≤ C0 / u := by
+    rw [hcancelin, hWoddin, hKc, hAin]
+    exact hin
+  have hmid' : ‖Amid‖ ≤ C0 / u ^ (n + 3) := by
+    rw [hAmid]
+    exact hmid
+  have hZ : ((Auto.RadialFourierTransform.ordinaryBesselJ
+      (((2 * n + 1 : Nat) : Real) / 2) u : Real) : Complex) =
+      ((P : Real) : Complex) *
+        (Aout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          Ain * Complex.exp (((u : Real) : Complex) * Complex.I) +
+          Amid * emid) := by
+    have hterms : brrsSurfaceWaveTerm (2 * n + 3) .outgoing ‖e‖ rho +
+        brrsSurfaceWaveTerm (2 * n + 3) .incoming ‖e‖ rho +
+        brrsSurfaceWaveTerm (2 * n + 3) .middle ‖e‖ rho =
+        Aout * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          Ain * Complex.exp (((u : Real) : Complex) * Complex.I) +
+          Amid * emid := by
+      unfold brrsSurfaceWaveTerm
+      rw [hphase_out, hphase_in, hAout, hAin, hAmid, hemid]
+    have hne1 : ((u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) : Real) ≠ 0 := by
+      have : (0 : Real) < (u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) :=
+        Real.rpow_pos_of_pos (by positivity) _
+      exact ne_of_gt this
+    have hreal : ((u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) / G) *
+        (G / (u / 2) ^ (((2 * n + 1 : Nat) : Real) / 2) *
+          Auto.RadialFourierTransform.ordinaryBesselJ
+            (((2 * n + 1 : Nat) : Real) / 2) u) =
+        Auto.RadialFourierTransform.ordinaryBesselJ
+          (((2 * n + 1 : Nat) : Real) / 2) u := by
+      field_simp
+    rw [← hterms, ← hdecomp, hbridge, ← hG, hP, ← Complex.ofReal_mul, hreal]
+  have hcout : ((P : Real) : Complex) *
+      ((((Real.sqrt u : Real) : Complex) * Wout)⁻¹ * Kc) =
+      (((Real.sqrt u : Real) : Complex))⁻¹ * (cfacOut * Kc) := by
+    rw [hcancel, hWoddeq, hcfacOut]
+    have hPeq : ((P : Real) : Complex) =
+        ((c0 / Real.sqrt u * (2 * u) ^ (n + 1) : Real) : Complex) := by
+      congr 1
+      rw [← hPreal]
+      field_simp
+    rw [hPeq]
+    push_cast
+    field_simp
+  have hcin : ((P : Real) : Complex) *
+      ((((Real.sqrt u : Real) : Complex) * Win)⁻¹ *
+        (starRingEnd Complex Kc)) =
+      (((Real.sqrt u : Real) : Complex))⁻¹ *
+        (cfacIn * (starRingEnd Complex Kc)) := by
+    rw [hcancelin, hWoddineq, hcfacIn]
+    have hPeq : ((P : Real) : Complex) =
+        ((c0 / Real.sqrt u * (2 * u) ^ (n + 1) : Real) : Complex) := by
+      congr 1
+      rw [← hPreal]
+      field_simp
+    rw [hPeq]
+    push_cast
+    field_simp
+  have hpack := brrs_twoWave_package hu0 hPpos hWoutne hWinne
+    (Complex.norm_exp_ofReal_mul_I (-u)) (Complex.norm_exp_ofReal_mul_I u)
+    (by rw [hemid]; exact Complex.norm_exp_ofReal_mul_I _)
+    hout' hin' hmid' hZ hcout hcin
+  refine le_trans hpack ?_
+  rw [hWoutnorm, hWinnorm]
+  -- the rate comparison
+  have hsqrtle : Real.sqrt u ≤ u := by
+    have h1s : (1 : Real) ≤ Real.sqrt u := by
+      rw [show (1 : Real) = Real.sqrt 1 by simp]
+      exact Real.sqrt_le_sqrt hu
+    have hsq := Real.sq_sqrt hu0.le
+    nlinarith [h1s, Real.sqrt_nonneg u]
+  have hbound1 : P * (C0 / (u * Real.sqrt u *
+      ((2 * u) ^ (n + 1) / Real.sqrt u))) = c0 * C0 / (u * Real.sqrt u) := by
+    have hval : u * Real.sqrt u * ((2 * u) ^ (n + 1) / Real.sqrt u) =
+        u * (2 * u) ^ (n + 1) := by
+      field_simp
+    rw [hval]
+    have hPval : P = c0 / Real.sqrt u * (2 * u) ^ (n + 1) := by
+      rw [← hPreal]
+      field_simp
+    rw [hPval]
+    field_simp
+  have hbound2 : P * (C0 / u ^ (n + 3)) ≤ C0 / G / (u * Real.sqrt u) := by
+    have hPle : P ≤ u ^ (((2 * n + 1 : Nat) : Real) / 2) / G := by
+      rw [hP]
+      refine div_le_div_of_nonneg_right ?_ hGpos.le
+      refine Real.rpow_le_rpow (by positivity) (by linarith) (by positivity)
+    have hupow : u ^ (((2 * n + 1 : Nat) : Real) / 2) ≤ u ^ (n + 1) := by
+      rw [← Real.rpow_natCast u (n + 1)]
+      refine Real.rpow_le_rpow_of_exponent_le hu ?_
+      push_cast
+      linarith
+    have hPle2 : P ≤ u ^ (n + 1) / G :=
+      le_trans hPle (div_le_div_of_nonneg_right hupow hGpos.le)
+    calc P * (C0 / u ^ (n + 3)) ≤ (u ^ (n + 1) / G) * (C0 / u ^ (n + 3)) :=
+          mul_le_mul_of_nonneg_right hPle2 (by positivity)
+      _ = C0 / G / u ^ 2 := by
+          rw [show (n + 3) = (n + 1) + 2 by omega, pow_add]
+          field_simp
+          ring
+      _ ≤ C0 / G / (u * Real.sqrt u) := by
+          refine div_le_div_of_nonneg_left (by positivity) (by positivity) ?_
+          nlinarith [hu0, hsqrtle]
+  calc
+    P * (C0 / (u * Real.sqrt u * ((2 * u) ^ (n + 1) / Real.sqrt u)) +
+        C0 / (u * Real.sqrt u * ((2 * u) ^ (n + 1) / Real.sqrt u)) +
+        C0 / u ^ (n + 3)) =
+        P * (C0 / (u * Real.sqrt u * ((2 * u) ^ (n + 1) / Real.sqrt u))) +
+          P * (C0 / (u * Real.sqrt u * ((2 * u) ^ (n + 1) / Real.sqrt u))) +
+          P * (C0 / u ^ (n + 3)) := by ring
+    _ ≤ c0 * C0 / (u * Real.sqrt u) + c0 * C0 / (u * Real.sqrt u) +
+          C0 / G / (u * Real.sqrt u) := by
+      exact add_le_add (add_le_add (le_of_eq hbound1) (le_of_eq hbound1)) hbound2
+    _ = (2 * (c0 * C0) + C0 / G) / (u * Real.sqrt u) := by
+      field_simp
+      ring
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.LittlewoodPaley
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-! ### (3.2): the packet-norm upper bound
+
+The Section 3 datum is the annular half-wave kernel back-propagated from the
+reference time, already identified with the paper's `g_I` by
+`brrsRadialHalfWaveTestPacket_eq_halfWaveKernel`.  What follows proves the
+printed bound for its `L^p` norm.  The route is the source one: the uniform
+two-wave form of (3.3) gives the sharp size away from the origin, the exact
+spherical Fubini form of the U3.R radial inversion gives boundedness near the
+origin, where the phase never vanishes, and Plancherel gives the square
+integral; the two are combined by the elementary square-root/sup-norm
+interpolation, which is exact at the sharp exponent. -/
+
+/-- Transport of the ordinary-Bessel two-wave display through an
+ordinary-Bessel bridge for the surface Fourier transform. -/
+theorem brrs_surfaceFourier_twoWave_of_bridge
+    {d : Nat} {A nu C0 : Real} {cplus cminus : Complex}
+    (hA : 0 < A) (hnu : nu = ((d : Real) - 2) / 2) (hC0 : 0 < C0)
+    (hcplus : cplus ≠ 0) (hcminus : cminus ≠ 0)
+    (hbridge : ∀ xi : Euclidean d, xi ≠ 0 →
+      surfaceFourier d xi =
+        ((A / (Real.pi * ‖xi‖) ^ nu *
+            Auto.RadialFourierTransform.ordinaryBesselJ nu
+              (2 * Real.pi * ‖xi‖) : Real) : Complex))
+    (htwo : ∀ u : Real, 1 ≤ u →
+      ‖((Auto.RadialFourierTransform.ordinaryBesselJ nu u : Real) : Complex) -
+          ((Real.sqrt u : Real) : Complex)⁻¹ *
+            (cplus * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+              cminus * Complex.exp (((u : Real) : Complex) * Complex.I))‖ ≤
+        C0 / (u * Real.sqrt u)) :
+    ∃ (cout cin : Complex) (C : Real), 0 < C ∧ cout ≠ 0 ∧ cin ≠ 0 ∧
+      ∀ xi : Euclidean d, 1 ≤ ‖xi‖ →
+        ‖surfaceFourier d xi -
+            ((‖xi‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+              (cout * Complex.exp (((-(2 * Real.pi * ‖xi‖) : Real) : Complex) *
+                  Complex.I) +
+                cin * Complex.exp (((2 * Real.pi * ‖xi‖ : Real) : Complex) *
+                  Complex.I))‖ ≤
+          C * ‖xi‖ ^ (-(((d : Real) + 1) / 2)) := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  set K : Real := A * Real.pi ^ (-nu) * (2 * Real.pi) ^ (-(1 / 2 : Real)) with hK
+  have hKpos : 0 < K := by
+    rw [hK]
+    have h1 : (0 : Real) < Real.pi ^ (-nu) := Real.rpow_pos_of_pos hpi _
+    have h2 : (0 : Real) < (2 * Real.pi) ^ (-(1 / 2 : Real)) :=
+      Real.rpow_pos_of_pos h2pi _
+    positivity
+  have hKneC : ((K : Real) : Complex) ≠ 0 := by simpa using ne_of_gt hKpos
+  refine ⟨(K : Complex) * cplus, (K : Complex) * cminus,
+    A * Real.pi ^ (-nu) * C0 * (2 * Real.pi) ^ (-(3 / 2 : Real)), by positivity,
+    mul_ne_zero hKneC hcplus, mul_ne_zero hKneC hcminus, ?_⟩
+  intro xi hxi
+  have hr : (0 : Real) < ‖xi‖ := lt_of_lt_of_le zero_lt_one hxi
+  have hxine : xi ≠ 0 := by
+    intro h
+    rw [h, norm_zero] at hr
+    exact absurd hr (lt_irrefl 0)
+  set r : Real := ‖xi‖ with hrdef
+  set u : Real := 2 * Real.pi * r with hu
+  have hupos : 0 < u := by
+    rw [hu]
+    positivity
+  have hu1 : 1 ≤ u := by
+    have hpi3 : (3 : Real) < Real.pi := Real.pi_gt_three
+    rw [hu]
+    nlinarith
+  have hpr : (Real.pi * r) ^ nu = Real.pi ^ nu * r ^ nu := Real.mul_rpow hpi.le hr.le
+  set P : Real := A / (Real.pi * r) ^ nu with hP
+  have hPpos : 0 < P := by
+    rw [hP, hpr]
+    have h1 : (0 : Real) < Real.pi ^ nu := Real.rpow_pos_of_pos hpi nu
+    have h2 : (0 : Real) < r ^ nu := Real.rpow_pos_of_pos hr nu
+    positivity
+  have hPeq : P = A * Real.pi ^ (-nu) * r ^ (-nu) := by
+    rw [hP, hpr, Real.rpow_neg hpi.le, Real.rpow_neg hr.le]
+    have h1 : (0 : Real) < Real.pi ^ nu := Real.rpow_pos_of_pos hpi nu
+    have h2 : (0 : Real) < r ^ nu := Real.rpow_pos_of_pos hr nu
+    field_simp
+  -- the leading coefficient identity
+  have hexp1 : r ^ (-(((d : Real) - 1) / 2)) = r ^ (-nu) * r ^ (-(1 / 2 : Real)) := by
+    rw [← Real.rpow_add hr]
+    congr 1
+    rw [hnu]
+    ring
+  have hsqrtinv : (Real.sqrt u)⁻¹ =
+      (2 * Real.pi) ^ (-(1 / 2 : Real)) * r ^ (-(1 / 2 : Real)) := by
+    rw [hu, Real.sqrt_eq_rpow, Real.mul_rpow h2pi.le hr.le,
+      Real.rpow_neg h2pi.le, Real.rpow_neg hr.le, mul_inv]
+  have hreal : r ^ (-(((d : Real) - 1) / 2)) * K = P * (Real.sqrt u)⁻¹ := by
+    rw [hexp1, hK, hPeq, hsqrtinv]
+    ring
+  -- the remainder identity
+  have husqrt : u * Real.sqrt u = (2 * Real.pi) ^ (3 / 2 : Real) * r ^ (3 / 2 : Real) := by
+    have h1 : u * Real.sqrt u = u ^ (3 / 2 : Real) := by
+      rw [Real.sqrt_eq_rpow,
+        show (3 / 2 : Real) = 1 + 1 / 2 by norm_num, Real.rpow_add hupos,
+        Real.rpow_one]
+    rw [h1, hu, Real.mul_rpow h2pi.le hr.le]
+  have hrem : P * (C0 / (u * Real.sqrt u)) =
+      A * Real.pi ^ (-nu) * C0 * (2 * Real.pi) ^ (-(3 / 2 : Real)) *
+        r ^ (-(((d : Real) + 1) / 2)) := by
+    have hexp2 : r ^ (-(((d : Real) + 1) / 2)) = r ^ (-nu) * r ^ (-(3 / 2 : Real)) := by
+      rw [← Real.rpow_add hr]
+      congr 1
+      rw [hnu]
+      ring
+    have h2pine : ((2 * Real.pi) ^ (3 / 2 : Real)) ≠ 0 :=
+      ne_of_gt (Real.rpow_pos_of_pos h2pi _)
+    have hrne : (r ^ (3 / 2 : Real)) ≠ 0 := ne_of_gt (Real.rpow_pos_of_pos hr _)
+    rw [hPeq, husqrt, hexp2, Real.rpow_neg h2pi.le, Real.rpow_neg hr.le]
+    field_simp
+    rw [← Real.rpow_add hr]
+    norm_num
+  -- assemble
+  have hbr := hbridge xi hxine
+  have htw := htwo u hu1
+  have hdiff : surfaceFourier d xi -
+      ((r ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+        ((K : Complex) * cplus *
+            Complex.exp (((-u : Real) : Complex) * Complex.I) +
+          (K : Complex) * cminus *
+            Complex.exp (((u : Real) : Complex) * Complex.I)) =
+      ((P : Real) : Complex) *
+        (((Auto.RadialFourierTransform.ordinaryBesselJ nu u : Real) : Complex) -
+          ((Real.sqrt u : Real) : Complex)⁻¹ *
+            (cplus * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+              cminus * Complex.exp (((u : Real) : Complex) * Complex.I))) := by
+    have hcoef : ((r ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) * (K : Complex) =
+        ((P : Real) : Complex) * ((Real.sqrt u : Real) : Complex)⁻¹ := by
+      rw [← Complex.ofReal_mul, hreal, Complex.ofReal_mul, Complex.ofReal_inv]
+    rw [hbr, ← hP, ← hu, Complex.ofReal_mul]
+    rw [show ((P : Real) : Complex) *
+        ((Auto.RadialFourierTransform.ordinaryBesselJ nu u : Real) : Complex) -
+        ((r ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+          ((K : Complex) * cplus *
+              Complex.exp (((-u : Real) : Complex) * Complex.I) +
+            (K : Complex) * cminus *
+              Complex.exp (((u : Real) : Complex) * Complex.I)) =
+        ((P : Real) : Complex) *
+          ((Auto.RadialFourierTransform.ordinaryBesselJ nu u : Real) : Complex) -
+        (((r ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) * (K : Complex)) *
+          (cplus * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+            cminus * Complex.exp (((u : Real) : Complex) * Complex.I)) from by ring,
+      hcoef]
+    ring
+  calc
+    ‖surfaceFourier d xi -
+        ((r ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+          ((K : Complex) * cplus *
+              Complex.exp (((-u : Real) : Complex) * Complex.I) +
+            (K : Complex) * cminus *
+              Complex.exp (((u : Real) : Complex) * Complex.I))‖ =
+        P * ‖((Auto.RadialFourierTransform.ordinaryBesselJ nu u : Real) : Complex) -
+          ((Real.sqrt u : Real) : Complex)⁻¹ *
+            (cplus * Complex.exp (((-u : Real) : Complex) * Complex.I) +
+              cminus * Complex.exp (((u : Real) : Complex) * Complex.I))‖ := by
+      rw [hdiff, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hPpos]
+    _ ≤ P * (C0 / (u * Real.sqrt u)) := by
+      exact mul_le_mul_of_nonneg_left htw hPpos.le
+    _ = A * Real.pi ^ (-nu) * C0 * (2 * Real.pi) ^ (-(3 / 2 : Real)) *
+        r ^ (-(((d : Real) + 1) / 2)) := hrem
+
+/-- The uniform two-wave surface-Fourier asymptotic of BRRS (3.3), in every
+dimension at least two. -/
+theorem exists_brrs_surfaceFourier_twoWave (d : Nat) (hd : 2 ≤ d) :
+    ∃ (cout cin : Complex) (C : Real), 0 < C ∧ cout ≠ 0 ∧ cin ≠ 0 ∧
+      ∀ xi : Euclidean d, 1 ≤ ‖xi‖ →
+        ‖surfaceFourier d xi -
+            ((‖xi‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+              (cout * Complex.exp (((-(2 * Real.pi * ‖xi‖) : Real) : Complex) *
+                  Complex.I) +
+                cin * Complex.exp (((2 * Real.pi * ‖xi‖ : Real) : Complex) *
+                  Complex.I))‖ ≤
+          C * ‖xi‖ ^ (-(((d : Real) + 1) / 2)) := by
+  have hpi := Real.pi_pos
+  rcases Nat.lt_or_ge d 3 with hlt | hge
+  · have hd2 : d = 2 := by omega
+    subst hd2
+    obtain ⟨cplus, cminus, C0, hC0, hcp, hcm, htwo⟩ :=
+      exists_brrs_ordinaryBesselJ_zero_twoWave
+    have hmass : (0 : Real) < surfaceMass 1 := surfaceMass_pos (by norm_num)
+    refine brrs_surfaceFourier_twoWave_of_bridge
+      (A := surfaceMass 1 * Real.pi) (nu := 0) (cplus := cplus) (cminus := cminus)
+      (C0 := C0) (by positivity) (by norm_num) hC0 hcp hcm ?_ htwo
+    intro xi hxi
+    rw [brrs_surfaceFourier_two_eq_ordinaryBesselJ xi hxi, Real.rpow_zero, div_one]
+    norm_num
+    ring
+  · obtain ⟨k, rfl⟩ : ∃ k, d = k + 3 := ⟨d - 3, by omega⟩
+    rcases Nat.even_or_odd k with ⟨m, rfl⟩ | ⟨m, rfl⟩
+    · -- odd ambient dimension `2m + 3`
+      obtain ⟨cplus, cminus, C0, hC0, hcp, hcm, htwo⟩ :=
+        exists_brrs_ordinaryBesselJ_odd_twoWave m
+      have hmass : (0 : Real) < surfaceMass (m + m + 2) := surfaceMass_pos (by omega)
+      have hgamma : (0 : Real) < Real.Gamma (((m + m + 2 : Nat) : Real) / 2) := by
+        apply Real.Gamma_pos_of_pos
+        have : (0 : Real) < ((m + m + 2 : Nat) : Real) := by positivity
+        linarith
+      have hord : ((((m + m + 2 : Nat) : Real) - 1) / 2) =
+          ((2 * m + 1 : Nat) : Real) / 2 := by
+        push_cast
+        ring
+      refine brrs_surfaceFourier_twoWave_of_bridge
+        (A := surfaceMass (m + m + 2) *
+          (Real.sqrt Real.pi * Real.Gamma (((m + m + 2 : Nat) : Real) / 2)))
+        (nu := ((2 * m + 1 : Nat) : Real) / 2)
+        (cplus := cplus) (cminus := cminus) (C0 := C0) ?_ ?_ hC0 hcp hcm ?_ htwo
+      · have hsq : (0 : Real) < Real.sqrt Real.pi := Real.sqrt_pos.mpr hpi
+        positivity
+      · push_cast
+        ring
+      · intro xi hxi
+        have hbr := brrs_surfaceFourier_succ_eq_ordinaryBesselJ
+          (d := m + m + 2) (by omega) xi hxi
+        rw [hord] at hbr
+        exact hbr
+    · -- even ambient dimension `2m + 4`
+      obtain ⟨cplus, cminus, C0, hC0, hcp, hcm, htwo⟩ :=
+        exists_brrs_ordinaryBesselJ_even_twoWave m
+      have hmass : (0 : Real) < surfaceMass (2 * m + 3) := surfaceMass_pos (by omega)
+      have hgamma : (0 : Real) < Real.Gamma (((2 * m + 3 : Nat) : Real) / 2) := by
+        apply Real.Gamma_pos_of_pos
+        have : (0 : Real) < ((2 * m + 3 : Nat) : Real) := by positivity
+        linarith
+      have hord : ((((2 * m + 3 : Nat) : Real) - 1) / 2) = (m : Real) + 1 := by
+        push_cast
+        ring
+      refine brrs_surfaceFourier_twoWave_of_bridge
+        (A := surfaceMass (2 * m + 3) *
+          (Real.sqrt Real.pi * Real.Gamma (((2 * m + 3 : Nat) : Real) / 2)))
+        (nu := (m : Real) + 1)
+        (cplus := cplus) (cminus := cminus) (C0 := C0) ?_ ?_ hC0 hcp hcm ?_ htwo
+      · have hsq : (0 : Real) < Real.sqrt Real.pi := Real.sqrt_pos.mpr hpi
+        positivity
+      · push_cast
+        ring
+      · intro xi hxi
+        have hbr := brrs_surfaceFourier_succ_eq_ordinaryBesselJ
+          (d := 2 * m + 3) (by omega) xi hxi
+        rw [hord] at hbr
+        exact hbr
+
+/-- A real power weight may be absorbed into an annular Schwartz profile:
+the weighted profile is again Schwartz, with the same annular support. -/
+theorem exists_brrs_weightedAnnularSchwartz (a : Real)
+    (Psi : SchwartzMap Real Complex)
+    (hsupp : tsupport (Psi : Real → Complex) ⊆ Ioo (1 / 4 : Real) 4) :
+    ∃ Theta : SchwartzMap Real Complex,
+      (∀ sigma : Real,
+        Theta sigma = ((sigma ^ a : Real) : Complex) * Psi sigma) ∧
+        tsupport (Theta : Real → Complex) ⊆ Ioo (1 / 4 : Real) 4 := by
+  classical
+  set f : Real → Complex :=
+    fun sigma => ((sigma ^ a : Real) : Complex) * Psi sigma with hf
+  have hzero : ∀ sigma : Real, sigma < 1 / 4 → (Psi : Real → Complex) sigma = 0 := by
+    intro sigma hsigma
+    by_contra hne
+    have hmem : sigma ∈ tsupport (Psi : Real → Complex) :=
+      subset_closure (by simpa [Function.mem_support] using hne)
+    exact absurd (hsupp hmem).1 (by linarith)
+  have hsupportf : Function.support f ⊆ Function.support (Psi : Real → Complex) := by
+    intro sigma hsigma
+    by_contra hne
+    have : (Psi : Real → Complex) sigma = 0 := by
+      simpa [Function.mem_support] using hne
+    rw [hf] at hsigma
+    simp only [Function.mem_support, this, mul_zero] at hsigma
+    exact hsigma rfl
+  have hcompact : HasCompactSupport f := by
+    apply HasCompactSupport.intro (isCompact_Icc (a := (1 / 4 : Real)) (b := 4))
+    intro sigma hsigma
+    by_contra hne
+    have hmem : sigma ∈ Function.support (Psi : Real → Complex) := by
+      apply hsupportf
+      simpa [Function.mem_support] using hne
+    have := hsupp (subset_closure hmem)
+    exact hsigma ⟨this.1.le, this.2.le⟩
+  have hsmooth : ContDiff Real (⊤ : ENat) f := by
+    rw [contDiff_iff_contDiffAt]
+    intro sigma
+    rcases eq_or_ne sigma 0 with hzero0 | hne
+    · subst hzero0
+      have hev : f =ᶠ[nhds (0 : Real)] fun _ => (0 : Complex) := by
+        filter_upwards [Iio_mem_nhds (show (0 : Real) < 1 / 4 by norm_num)] with y hy
+        rw [hf]
+        simp only []
+        rw [hzero y hy, mul_zero]
+      exact (contDiffAt_const (c := (0 : Complex))).congr_of_eventuallyEq hev
+    · have h1 : ContDiffAt Real (⊤ : ENat) (fun sigma : Real => ((sigma ^ a : Real) : Complex))
+          sigma := by
+        exact Complex.ofRealCLM.contDiff.comp_contDiffAt sigma
+          (Real.contDiffAt_rpow_const_of_ne hne)
+      have h2 : ContDiffAt Real (⊤ : ENat) (Psi : Real → Complex) sigma :=
+        (Psi.smooth (⊤ : ENat)).contDiffAt
+      exact h1.mul h2
+  refine ⟨hcompact.toSchwartzMap hsmooth, fun sigma => rfl, ?_⟩
+  exact (closure_mono hsupportf).trans hsupp
+
+/-- Rapid decay of the one-dimensional Fourier transform of a Schwartz
+profile, in the inverse-polynomial form used by the Section 3 packet. -/
+theorem exists_brrs_schwartzFourier_decay (Theta : SchwartzMap Real Complex)
+    (N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ v : Real,
+      ‖𝓕 ((Theta : Real → Complex)) v‖ ≤ C / (1 + |v|) ^ N := by
+  have hcoe : (𝓕 ((Theta : Real → Complex))) =
+      ((SchwartzMap.fourierTransformCLM Complex Theta : SchwartzMap Real Complex) :
+        Real → Complex) := by
+    rw [SchwartzMap.fourierTransformCLM_apply, SchwartzMap.fourier_coe]
+  set g : SchwartzMap Real Complex :=
+    SchwartzMap.fourierTransformCLM Complex Theta with hg
+  obtain ⟨C1, hC1, hC1b⟩ := g.decay N 0
+  obtain ⟨C2, hC2, hC2b⟩ := g.decay 0 0
+  refine ⟨2 ^ N * (C1 + C2), by positivity, ?_⟩
+  intro v
+  have hgv : ‖𝓕 ((Theta : Real → Complex)) v‖ = ‖g v‖ := by
+    rw [hcoe]
+  have h1 : |v| ^ N * ‖g v‖ ≤ C1 := by
+    have := hC1b v
+    rwa [norm_iteratedFDeriv_zero, Real.norm_eq_abs] at this
+  have h2 : ‖g v‖ ≤ C2 := by
+    have := hC2b v
+    rwa [norm_iteratedFDeriv_zero, pow_zero, one_mul] at this
+  have hpos : (0 : Real) < (1 + |v|) ^ N := by positivity
+  rw [hgv, le_div_iff₀ hpos]
+  have hbase : (1 + |v|) ^ N ≤ 2 ^ N * (1 + |v| ^ N) := by
+    have hmax : 1 + |v| ≤ 2 * max 1 |v| := by
+      rcases le_total (|v|) 1 with h | h
+      · rw [max_eq_left h]
+        linarith
+      · rw [max_eq_right h]
+        linarith [abs_nonneg v]
+    have h1 : (1 + |v|) ^ N ≤ (2 * max 1 |v|) ^ N :=
+      pow_le_pow_left₀ (by positivity) hmax N
+    have h3 : (max 1 |v|) ^ N ≤ 1 + |v| ^ N := by
+      rcases le_total (|v|) 1 with h | h
+      · rw [max_eq_left h, one_pow]
+        have : (0 : Real) ≤ |v| ^ N := by positivity
+        linarith
+      · rw [max_eq_right h]
+        linarith
+    calc
+      (1 + |v|) ^ N ≤ (2 * max 1 |v|) ^ N := h1
+      _ = 2 ^ N * (max 1 |v|) ^ N := by rw [mul_pow]
+      _ ≤ 2 ^ N * (1 + |v| ^ N) := by
+          apply mul_le_mul_of_nonneg_left h3 (by positivity)
+  calc
+    ‖g v‖ * (1 + |v|) ^ N ≤ ‖g v‖ * (2 ^ N * (1 + |v| ^ N)) := by
+      exact mul_le_mul_of_nonneg_left hbase (norm_nonneg _)
+    _ = 2 ^ N * (‖g v‖ + |v| ^ N * ‖g v‖) := by ring
+    _ ≤ 2 ^ N * (C2 + C1) := by
+      apply mul_le_mul_of_nonneg_left _ (by positivity)
+      linarith
+    _ = 2 ^ N * (C1 + C2) := by ring
+
+/-- The square-integral of the Section 3 packet is at most the frequency
+volume of its annulus: this is the Plancherel half of BRRS (3.2). -/
+theorem exists_brrs_integral_norm_sq_radialHalfWaveTestPacket_le
+    {d : Nat} (Φ : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (tI : Real),
+      (∫ x : BRRSSpace d, ‖(brrsRadialHalfWaveTestPacket Φ j tI :
+          BRRSSpace d → Complex) x‖ ^ 2) ≤
+        C * (2 : Real) ^ ((d : Real) * (j : Real)) := by
+  have hpi := Real.pi_pos
+  set M : Real := (SchwartzMap.seminorm Real 0 0) Φ.symbol with hM
+  have hM0 : 0 ≤ M := by
+    rw [hM]
+    exact apply_nonneg _ _
+  set V : Real := (volume (Metric.ball (0 : BRRSSpace d) 1)).toReal with hV
+  have hV0 : 0 ≤ V := ENNReal.toReal_nonneg
+  refine ⟨M ^ 2 * (2 / Real.pi) ^ d * V + 1, by positivity, ?_⟩
+  intro j tI
+  -- Plancherel
+  have hplan := Auto.Spherical.Auxiliary.integral_norm_sq_fourier_schwartz_eq
+    (brrsRadialHalfWaveTestPacket (d := d) Φ j tI)
+  rw [← hplan]
+  -- the frequency-side integrand
+  set R : Real := 4 * (brrsFrequencyScale j)⁻¹ with hR
+  have hscale : 0 < brrsFrequencyScale j := brrsFrequencyScale_pos j
+  have hRpos : 0 < R := by
+    rw [hR]
+    positivity
+  have hsymb : ∀ xi : BRRSSpace d,
+      ‖𝓕 (brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) xi‖ =
+        ‖Φ.symbol (brrsFrequencyScale j * ‖xi‖)‖ := by
+    intro xi
+    rw [brrsRadialHalfWaveTestPacket_fourier_apply, brrsDyadicHalfWaveSymbol]
+    rw [norm_mul, norm_halfWaveMultiplier_eq_one, one_mul,
+      brrsDyadicMultiplier_apply]
+  set F : BRRSSpace d → Real := fun xi => ‖Φ.symbol (brrsFrequencyScale j * ‖xi‖)‖ ^ 2
+    with hF
+  have hrw : (∫ xi : BRRSSpace d,
+      ‖𝓕 (brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) xi‖ ^ 2) =
+      ∫ xi : BRRSSpace d, F xi := by
+    apply integral_congr_ae
+    filter_upwards with xi
+    rw [hF, hsymb xi]
+  rw [hrw]
+  -- support and continuity
+  have hFzero : ∀ xi : BRRSSpace d, xi ∉ Metric.closedBall (0 : BRRSSpace d) R →
+      F xi = 0 := by
+    intro xi hxi
+    have hnorm : R ≤ ‖xi‖ := by
+      simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hxi
+      exact hxi.le
+    have hzero := brrsDyadicMultiplier_eq_zero_of_le_norm Φ j xi
+      (by rw [← hR]; exact hnorm)
+    rw [brrsDyadicMultiplier_apply] at hzero
+    show ‖Φ.symbol (brrsFrequencyScale j * ‖xi‖)‖ ^ 2 = 0
+    rw [hzero, norm_zero]
+    norm_num
+  have hFcont : Continuous F := by
+    rw [hF]
+    exact ((Φ.symbol.continuous.comp
+      (continuous_const.mul continuous_norm)).norm).pow 2
+  have hFcompact : HasCompactSupport F := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : BRRSSpace d) R)
+    exact hFzero
+  have hFint : Integrable F := hFcont.integrable_of_hasCompactSupport hFcompact
+  have hFnonneg : ∀ xi : BRRSSpace d, 0 ≤ F xi := by
+    intro xi
+    rw [hF]
+    positivity
+  have hFle : ∀ xi : BRRSSpace d, F xi ≤ M ^ 2 := by
+    intro xi
+    rw [hF]
+    have := SchwartzMap.norm_le_seminorm Real Φ.symbol (brrsFrequencyScale j * ‖xi‖)
+    rw [← hM] at this
+    exact pow_le_pow_left₀ (norm_nonneg _) this 2
+  -- restrict to the ball and bound by the constant
+  have hset : (∫ xi : BRRSSpace d, F xi) =
+      ∫ xi in Metric.closedBall (0 : BRRSSpace d) R, F xi :=
+    (setIntegral_eq_integral_of_forall_compl_eq_zero hFzero).symm
+  rw [hset]
+  have hballfin : volume (Metric.closedBall (0 : BRRSSpace d) R) ≠ ⊤ :=
+    (measure_closedBall_lt_top).ne
+  have hmono : (∫ xi in Metric.closedBall (0 : BRRSSpace d) R, F xi) ≤
+      ∫ _xi in Metric.closedBall (0 : BRRSSpace d) R, M ^ 2 := by
+    apply setIntegral_mono_on hFint.integrableOn
+      (integrableOn_const (C := M ^ 2) hballfin (by finiteness))
+      measurableSet_closedBall
+    intro xi _
+    exact hFle xi
+  refine hmono.trans ?_
+  rw [setIntegral_const]
+  have hballvol : volume (Metric.closedBall (0 : BRRSSpace d) R) =
+      ENNReal.ofReal (R ^ (Module.finrank Real (BRRSSpace d))) *
+        volume (Metric.ball (0 : BRRSSpace d) 1) :=
+    Measure.addHaar_closedBall volume 0 hRpos.le
+  have hfr : Module.finrank Real (BRRSSpace d) = d := finrank_euclideanSpace_fin
+  rw [hfr] at hballvol
+  have hreal : volume.real (Metric.closedBall (0 : BRRSSpace d) R) = R ^ d * V := by
+    rw [measureReal_def, hballvol, ENNReal.toReal_mul,
+      ENNReal.toReal_ofReal (by positivity), hV]
+  rw [hreal, smul_eq_mul, mul_comm (R ^ d * V) (M ^ 2)]
+  have hRval : R = 2 / Real.pi * (2 : Real) ^ j := by
+    rw [hR, brrsFrequencyScale]
+    field_simp
+    ring
+  have hRd : R ^ d = (2 / Real.pi) ^ d * ((2 : Real) ^ j) ^ d := by
+    rw [hRval, mul_pow]
+  have hpow : (((2 : Real) ^ j) ^ d) = (2 : Real) ^ ((d : Real) * (j : Real)) := by
+    rw [← Real.rpow_natCast ((2 : Real) ^ j) d, ← Real.rpow_natCast (2 : Real) j,
+      ← Real.rpow_mul (by norm_num)]
+    rw [mul_comm]
+  calc
+    M ^ 2 * (R ^ d * V) = M ^ 2 * (2 / Real.pi) ^ d * V *
+        (((2 : Real) ^ j) ^ d) := by
+      rw [hRd]
+      ring
+    _ ≤ (M ^ 2 * (2 / Real.pi) ^ d * V + 1) * (((2 : Real) ^ j) ^ d) := by
+      apply mul_le_mul_of_nonneg_right _ (by positivity)
+      linarith
+    _ = (M ^ 2 * (2 / Real.pi) ^ d * V + 1) *
+        (2 : Real) ^ ((d : Real) * (j : Real)) := by
+      rw [hpow]
+
+/-- An annular Schwartz profile vanishes off its prescribed annulus. -/
+theorem brrs_annularCutoff_symbol_eq_zero (Φ : BRRSAnnularCutoff) {u : Real}
+    (hu : u ∉ Ioo (1 / 4 : Real) 4) : Φ.symbol u = 0 := by
+  by_contra hne
+  exact hu (Φ.tsupport_subset (subset_closure (by simpa [Function.mem_support] using hne)))
+
+/-- The radial moments of an annular profile are finite, and they scale
+exactly like a power of the frequency scale. -/
+theorem exists_brrs_annularSymbol_moment_le (Φ : BRRSAnnularCutoff) (a : Real) :
+    ∃ K : Real, 0 < K ∧ ∀ c : Real, 0 < c →
+      IntegrableOn (fun rho : Real => rho ^ a * ‖Φ.symbol (c * rho)‖)
+          (Ioi (0 : Real)) volume ∧
+        (∫ rho in Ioi (0 : Real), rho ^ a * ‖Φ.symbol (c * rho)‖) ≤
+          K * c ^ (-(a + 1)) := by
+  classical
+  set h : Real → Real := fun u => u ^ a * ‖Φ.symbol u‖ with hh
+  have hzero : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → h u = 0 := by
+    intro u hu
+    have hnot : u ∉ Ioo (1 / 4 : Real) 4 := fun hmem => hu ⟨hmem.1.le, hmem.2.le⟩
+    show u ^ a * ‖Φ.symbol u‖ = 0
+    rw [brrs_annularCutoff_symbol_eq_zero Φ hnot, norm_zero, mul_zero]
+  have hcontOn : ContinuousOn h (Icc (1 / 4 : Real) 4) := by
+    apply ContinuousOn.mul
+    · intro u hu
+      exact (Real.continuousAt_rpow_const u a
+        (Or.inl (by have := hu.1; intro hu0; rw [hu0] at this; norm_num at this))).continuousWithinAt
+    · exact (Φ.symbol.continuous.norm).continuousOn
+  have hIntIcc : IntegrableOn h (Icc (1 / 4 : Real) 4) :=
+    hcontOn.integrableOn_compact isCompact_Icc
+  have hind : h = Set.indicator (Icc (1 / 4 : Real) 4) h := by
+    funext u
+    by_cases hu : u ∈ Icc (1 / 4 : Real) 4
+    · rw [Set.indicator_of_mem hu]
+    · rw [Set.indicator_of_notMem hu, hzero u hu]
+  have hInt : Integrable h := by
+    rw [hind]
+    exact (integrable_indicator_iff measurableSet_Icc).2 hIntIcc
+  have hnonneg : ∀ u : Real, 0 ≤ h u := by
+    intro u
+    by_cases hu : u ∈ Icc (1 / 4 : Real) 4
+    · show 0 ≤ u ^ a * ‖Φ.symbol u‖
+      have : (0 : Real) < u := lt_of_lt_of_le (by norm_num) hu.1
+      positivity
+    · rw [hzero u hu]
+  set K : Real := (∫ u : Real, h u) + 1 with hK
+  have hK0 : 0 < K := by
+    have : (0 : Real) ≤ ∫ u : Real, h u := integral_nonneg hnonneg
+    rw [hK]
+    linarith
+  refine ⟨K, hK0, ?_⟩
+  intro c hc
+  have hcne : c ≠ 0 := ne_of_gt hc
+  -- rewrite the integrand through the scaled profile
+  have hpoint : ∀ rho ∈ Ioi (0 : Real),
+      rho ^ a * ‖Φ.symbol (c * rho)‖ = c ^ (-a) * h (c * rho) := by
+    intro rho hrho
+    have hrho0 : (0 : Real) < rho := hrho
+    show rho ^ a * ‖Φ.symbol (c * rho)‖ =
+      c ^ (-a) * ((c * rho) ^ a * ‖Φ.symbol (c * rho)‖)
+    rw [Real.mul_rpow hc.le hrho0.le, Real.rpow_neg hc.le]
+    have hcpow : (0 : Real) < c ^ a := Real.rpow_pos_of_pos hc a
+    field_simp
+  have hstep1 : (∫ rho in Ioi (0 : Real), rho ^ a * ‖Φ.symbol (c * rho)‖) =
+      ∫ rho in Ioi (0 : Real), c ^ (-a) * h (c * rho) := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    exact hpoint
+  have hcompl : ∀ rho : Real, rho ∉ Ioi (0 : Real) → c ^ (-a) * h (c * rho) = 0 := by
+    intro rho hrho
+    have hle : rho ≤ 0 := by simpa using hrho
+    have hnot : c * rho ∉ Icc (1 / 4 : Real) 4 := by
+      intro hmem
+      have h1 : (0 : Real) < 1 / 4 := by norm_num
+      have : c * rho ≤ 0 := mul_nonpos_of_nonneg_of_nonpos hc.le hle
+      linarith [hmem.1]
+    rw [hzero _ hnot, mul_zero]
+  have hstep2 : (∫ rho in Ioi (0 : Real), c ^ (-a) * h (c * rho)) =
+      ∫ rho : Real, c ^ (-a) * h (c * rho) :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero hcompl
+  have hstep3 : (∫ rho : Real, c ^ (-a) * h (c * rho)) =
+      c ^ (-a) * (|c|⁻¹ * ∫ u : Real, h u) := by
+    rw [integral_const_mul, Measure.integral_comp_mul_left h c]
+    simp
+  have habs : |c| = c := abs_of_pos hc
+  have hfinal : c ^ (-a) * (|c|⁻¹ * ∫ u : Real, h u) ≤ K * c ^ (-(a + 1)) := by
+    rw [habs]
+    have hexp : c ^ (-(a + 1)) = c ^ (-a) * c⁻¹ := by
+      rw [show -(a + 1) = -a + (-1 : Real) by ring, Real.rpow_add hc,
+        Real.rpow_neg_one]
+    rw [hexp]
+    have hpos : (0 : Real) < c ^ (-a) * c⁻¹ := by
+      have := Real.rpow_pos_of_pos hc (-a)
+      positivity
+    have hle : (∫ u : Real, h u) ≤ K := by
+      rw [hK]
+      linarith
+    calc
+      c ^ (-a) * (c⁻¹ * ∫ u : Real, h u) =
+          (∫ u : Real, h u) * (c ^ (-a) * c⁻¹) := by ring
+      _ ≤ K * (c ^ (-a) * c⁻¹) := by
+        exact mul_le_mul_of_nonneg_right hle hpos.le
+  refine ⟨?_, ?_⟩
+  · have hcomp : Integrable (fun rho : Real => c ^ (-a) * h (c * rho)) :=
+      (hInt.comp_mul_left' hcne).const_mul _
+    apply (hcomp.integrableOn (s := Ioi (0 : Real))).congr_fun _ measurableSet_Ioi
+    intro rho hrho
+    exact (hpoint rho hrho).symm
+  · rw [hstep1, hstep2, hstep3]
+    exact hfinal
+/-- Negative real powers of the BRRS frequency scale in dyadic form. -/
+theorem brrs_frequencyScale_rpow_neg (j : Nat) (b : Real) :
+    (brrsFrequencyScale j) ^ (-b) =
+      (2 * Real.pi) ^ (-b) * (2 : Real) ^ ((j : Real) * b) := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  have hj : (0 : Real) < ((2 : Real) ^ j)⁻¹ := by positivity
+  rw [brrsFrequencyScale, Real.mul_rpow h2pi.le hj.le]
+  congr 1
+  rw [Real.inv_rpow (by positivity), Real.rpow_neg (by positivity), inv_inv,
+    ← Real.rpow_natCast (2 : Real) j, ← Real.rpow_mul (by norm_num)]
+
+/-- The Section 3 packet as an explicit scalar radial integral: this is the
+U3.R radial inversion in the form used for the pointwise estimates. -/
+theorem brrs_radialHalfWaveTestPacket_eq_radial_integral {d : Nat} (hd : 0 < d)
+    (Φ : BRRSAnnularCutoff) (j : Nat) (tI : Real) (x : BRRSSpace d) :
+    (brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x =
+      ∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) *
+          brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho) := by
+  rw [brrsRadialHalfWaveTestPacket_eq_halfWaveKernel,
+    brrsDyadicHalfWaveKernel_eq_surfaceFourier_integral hd Φ j (-tI) x]
+  exact Auto.Spherical.FractalDilations.Auxiliary.integral_volumeIoiPow_eq_setIntegral
+    (d - 1) (fun rho : Real => surfaceFourier d (-rho • x) *
+      brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)
+
+/-- The crude uniform size of the Section 3 packet: the full frequency mass
+of its annulus.  This is the bound used at the finitely many low frequency
+levels. -/
+theorem exists_brrs_norm_radialHalfWaveTestPacket_le_crude {d : Nat} (hd : 0 < d)
+    (Φ : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (tI : Real) (x : BRRSSpace d),
+      ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤
+        C * (2 : Real) ^ ((j : Real) * (d : Real)) := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  obtain ⟨K, hK, hmoment⟩ :=
+    exists_brrs_annularSymbol_moment_le Φ (((d - 1 : Nat) : Real))
+  have hmass : 0 < surfaceMass d := surfaceMass_pos hd
+  have hcast : ((d - 1 : Nat) : Real) + 1 = (d : Real) := by
+    have : (1 : Nat) ≤ d := hd
+    push_cast [Nat.cast_sub this]
+    ring
+  refine ⟨surfaceMass d * (K * (2 * Real.pi) ^ (-(d : Real))), by positivity, ?_⟩
+  intro j tI x
+  rw [brrs_radialHalfWaveTestPacket_eq_radial_integral hd Φ j tI x]
+  have hscale : 0 < brrsFrequencyScale j := brrsFrequencyScale_pos j
+  obtain ⟨hint, hle⟩ := hmoment (brrsFrequencyScale j) hscale
+  -- pointwise majorization of the integrand
+  have hpoint : ∀ rho ∈ Ioi (0 : Real),
+      ‖((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) *
+          brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)‖ ≤
+        surfaceMass d * (rho ^ ((d - 1 : Nat) : Real) *
+          ‖Φ.symbol (brrsFrequencyScale j * rho)‖) := by
+    intro rho hrho
+    have hrho0 : (0 : Real) < rho := hrho
+    rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (by positivity : (0 : Real) ≤ rho ^ (d - 1)),
+      brrsDyadicHalfWaveKernelRadialProfile, norm_mul,
+      Complex.norm_exp_ofReal_mul_I, one_mul]
+    have hrpow : rho ^ (d - 1) = rho ^ ((d - 1 : Nat) : Real) :=
+      (Real.rpow_natCast rho (d - 1)).symm
+    rw [hrpow]
+    have hSF : ‖surfaceFourier d (-rho • x)‖ ≤ surfaceMass d :=
+      norm_surfaceFourier_le_surfaceMass d _
+    have hnn : (0 : Real) ≤ rho ^ ((d - 1 : Nat) : Real) *
+        ‖Φ.symbol (brrsFrequencyScale j * rho)‖ := by positivity
+    calc
+      rho ^ ((d - 1 : Nat) : Real) *
+          (‖surfaceFourier d (-rho • x)‖ *
+            ‖Φ.symbol (2 * Real.pi * ((2 : Real) ^ j)⁻¹ * rho)‖) ≤
+          rho ^ ((d - 1 : Nat) : Real) *
+            (surfaceMass d * ‖Φ.symbol (brrsFrequencyScale j * rho)‖) := by
+        apply mul_le_mul_of_nonneg_left _ (by positivity)
+        apply mul_le_mul_of_nonneg_right hSF (norm_nonneg _)
+      _ = surfaceMass d * (rho ^ ((d - 1 : Nat) : Real) *
+            ‖Φ.symbol (brrsFrequencyScale j * rho)‖) := by ring
+  calc
+    ‖∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) *
+          brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)‖ ≤
+        ∫ rho in Ioi (0 : Real), ‖((rho ^ (d - 1) : Real) : Complex) *
+          (surfaceFourier d (-rho • x) *
+            brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)‖ :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ rho in Ioi (0 : Real), surfaceMass d *
+        (rho ^ ((d - 1 : Nat) : Real) *
+          ‖Φ.symbol (brrsFrequencyScale j * rho)‖) := by
+      apply integral_mono_of_nonneg
+      · filter_upwards with rho using norm_nonneg _
+      · exact hint.const_mul _
+      · filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with rho hrho
+        exact hpoint rho hrho
+    _ = surfaceMass d * ∫ rho in Ioi (0 : Real),
+        rho ^ ((d - 1 : Nat) : Real) *
+          ‖Φ.symbol (brrsFrequencyScale j * rho)‖ := integral_const_mul _ _
+    _ ≤ surfaceMass d * (K * (brrsFrequencyScale j) ^ (-((d : Real)))) := by
+      apply mul_le_mul_of_nonneg_left _ hmass.le
+      rw [← hcast]
+      exact hle
+    _ = surfaceMass d * (K * (2 * Real.pi) ^ (-(d : Real))) *
+        (2 : Real) ^ ((j : Real) * (d : Real)) := by
+      rw [brrs_frequencyScale_rpow_neg]
+      ring
+
+/-- The two-wave asymptotic in majorant form: away from the origin the
+surface Fourier transform is at most its leading size plus one further
+order. -/
+theorem brrs_norm_surfaceFourier_le_of_twoWave {d : Nat} {cout cin : Complex}
+    {C0 : Real}
+    (htwo : ∀ xi : Euclidean d, 1 ≤ ‖xi‖ →
+      ‖surfaceFourier d xi -
+          ((‖xi‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+            (cout * Complex.exp (((-(2 * Real.pi * ‖xi‖) : Real) : Complex) *
+                Complex.I) +
+              cin * Complex.exp (((2 * Real.pi * ‖xi‖ : Real) : Complex) *
+                Complex.I))‖ ≤
+        C0 * ‖xi‖ ^ (-(((d : Real) + 1) / 2)))
+    (xi : Euclidean d) (hxi : 1 ≤ ‖xi‖) :
+    ‖surfaceFourier d xi‖ ≤
+      (‖cout‖ + ‖cin‖) * ‖xi‖ ^ (-(((d : Real) - 1) / 2)) +
+        C0 * ‖xi‖ ^ (-(((d : Real) + 1) / 2)) := by
+  have hxpos : (0 : Real) < ‖xi‖ := lt_of_lt_of_le zero_lt_one hxi
+  set W : Complex := ((‖xi‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+    (cout * Complex.exp (((-(2 * Real.pi * ‖xi‖) : Real) : Complex) * Complex.I) +
+      cin * Complex.exp (((2 * Real.pi * ‖xi‖ : Real) : Complex) * Complex.I))
+    with hW
+  have hWnorm : ‖W‖ ≤ (‖cout‖ + ‖cin‖) * ‖xi‖ ^ (-(((d : Real) - 1) / 2)) := by
+    rw [hW, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (Real.rpow_nonneg hxpos.le _), mul_comm]
+    apply mul_le_mul_of_nonneg_right _ (Real.rpow_nonneg hxpos.le _)
+    calc
+      ‖cout * Complex.exp (((-(2 * Real.pi * ‖xi‖) : Real) : Complex) * Complex.I) +
+          cin * Complex.exp (((2 * Real.pi * ‖xi‖ : Real) : Complex) * Complex.I)‖ ≤
+          ‖cout * Complex.exp (((-(2 * Real.pi * ‖xi‖) : Real) : Complex) *
+              Complex.I)‖ +
+            ‖cin * Complex.exp (((2 * Real.pi * ‖xi‖ : Real) : Complex) *
+              Complex.I)‖ := norm_add_le _ _
+      _ = ‖cout‖ + ‖cin‖ := by
+        rw [norm_mul, norm_mul, Complex.norm_exp_ofReal_mul_I,
+          Complex.norm_exp_ofReal_mul_I, mul_one, mul_one]
+  calc
+    ‖surfaceFourier d xi‖ = ‖(surfaceFourier d xi - W) + W‖ := by ring_nf
+    _ ≤ ‖surfaceFourier d xi - W‖ + ‖W‖ := norm_add_le _ _
+    _ ≤ C0 * ‖xi‖ ^ (-(((d : Real) + 1) / 2)) +
+        (‖cout‖ + ‖cin‖) * ‖xi‖ ^ (-(((d : Real) - 1) / 2)) :=
+      add_le_add (htwo xi hxi) hWnorm
+    _ = (‖cout‖ + ‖cin‖) * ‖xi‖ ^ (-(((d : Real) - 1) / 2)) +
+        C0 * ‖xi‖ ^ (-(((d : Real) + 1) / 2)) := by ring
+
+/-- The sharp uniform size of the Section 3 packet away from the origin.
+This is the stationary-phase half of the sup-norm input to BRRS (3.2). -/
+theorem exists_brrs_norm_radialHalfWaveTestPacket_le_outer {d : Nat} (hd : 2 ≤ d)
+    (Φ : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ j : Nat, 16 * Real.pi ≤ (2 : Real) ^ j →
+      ∀ (tI : Real) (x : BRRSSpace d), 1 / 2 ≤ ‖x‖ →
+        ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤
+          C * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  have hdreal : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+  obtain ⟨cout, cin, C0, hC0, -, -, htwo⟩ :=
+    exists_brrs_surfaceFourier_twoWave d hd
+  obtain ⟨K1, hK1, hm1⟩ :=
+    exists_brrs_annularSymbol_moment_le Φ (((d : Real) - 1) / 2)
+  obtain ⟨K2, hK2, hm2⟩ :=
+    exists_brrs_annularSymbol_moment_le Φ (((d : Real) - 3) / 2)
+  refine ⟨(‖cout‖ + ‖cin‖) * (2 : Real) ^ (((d : Real) - 1) / 2) * K1 *
+      (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) +
+      C0 * (2 : Real) ^ (((d : Real) + 1) / 2) * K2 *
+        (2 * Real.pi) ^ (-(((d : Real) - 1) / 2)), by positivity, ?_⟩
+  intro j hj tI x hx
+  have hxpos : (0 : Real) < ‖x‖ := lt_of_lt_of_le (by norm_num) hx
+  set r : Real := ‖x‖ with hr
+  set c : Real := brrsFrequencyScale j with hc
+  have hcpos : 0 < c := brrsFrequencyScale_pos j
+  obtain ⟨hint1, hle1⟩ := hm1 c hcpos
+  obtain ⟨hint2, hle2⟩ := hm2 c hcpos
+  have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+    have h1 : (1 : Nat) ≤ d := by omega
+    push_cast [Nat.cast_sub h1]
+    ring
+  set maj : Real → Real := fun rho =>
+    (‖cout‖ + ‖cin‖) * r ^ (-(((d : Real) - 1) / 2)) *
+        (rho ^ (((d : Real) - 1) / 2) * ‖Φ.symbol (c * rho)‖) +
+      C0 * r ^ (-(((d : Real) + 1) / 2)) *
+        (rho ^ (((d : Real) - 3) / 2) * ‖Φ.symbol (c * rho)‖) with hmaj
+  have hmajint : IntegrableOn maj (Ioi (0 : Real)) volume := by
+    rw [hmaj]
+    exact (hint1.const_mul _).add (hint2.const_mul _)
+  have hpoint : ∀ rho ∈ Ioi (0 : Real),
+      ‖((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) *
+          brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)‖ ≤ maj rho := by
+    intro rho hrho
+    have hrho0 : (0 : Real) < rho := hrho
+    have hprofile : Φ.symbol (2 * Real.pi * ((2 : Real) ^ j)⁻¹ * rho) =
+        Φ.symbol (c * rho) := by
+      rw [hc]
+      rfl
+    rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (by positivity : (0 : Real) ≤ rho ^ (d - 1)),
+      brrsDyadicHalfWaveKernelRadialProfile, norm_mul,
+      Complex.norm_exp_ofReal_mul_I, one_mul, hprofile,
+      (Real.rpow_natCast rho (d - 1)).symm, hcast]
+    simp only [hmaj]
+    have hnormnn : (0 : Real) ≤ ‖Φ.symbol (c * rho)‖ := norm_nonneg _
+    by_cases hzero : Φ.symbol (c * rho) = 0
+    · rw [hzero, norm_zero, mul_zero, mul_zero, mul_zero, mul_zero, mul_zero]
+      norm_num
+    · have hmem : c * rho ∈ Ioo (1 / 4 : Real) 4 := by
+        by_contra hnot
+        exact hzero (brrs_annularCutoff_symbol_eq_zero Φ hnot)
+      have hnormxi : ‖-rho • x‖ = rho * r := by
+        rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrho0]
+      have h2j : (0 : Real) < (2 : Real) ^ j := by positivity
+      have hcval : c = 2 * Real.pi * ((2 : Real) ^ j)⁻¹ := hc
+      have hxige : 1 ≤ ‖-rho • x‖ := by
+        rw [hnormxi]
+        have hrhoge : 1 / (4 * c) < rho := by
+          have hm := hmem.1
+          rw [div_lt_iff₀ (by positivity)]
+          nlinarith
+        have hstep : 1 / (4 * c) * (1 / 2) ≤ rho * r :=
+          mul_le_mul hrhoge.le hx (by norm_num) hrho0.le
+        have height : 1 / (4 * c) * (1 / 2) = (2 : Real) ^ j / (16 * Real.pi) := by
+          rw [hcval]
+          field_simp
+          ring
+        have hone : (1 : Real) ≤ (2 : Real) ^ j / (16 * Real.pi) := by
+          rw [le_div_iff₀ (by positivity)]
+          linarith [hj]
+        rw [height] at hstep
+        linarith
+      have hSF := brrs_norm_surfaceFourier_le_of_twoWave htwo (-rho • x) hxige
+      rw [hnormxi] at hSF
+      have hprod1 : (rho * r) ^ (-(((d : Real) - 1) / 2)) =
+          rho ^ (-(((d : Real) - 1) / 2)) * r ^ (-(((d : Real) - 1) / 2)) :=
+        Real.mul_rpow hrho0.le hxpos.le
+      have hprod2 : (rho * r) ^ (-(((d : Real) + 1) / 2)) =
+          rho ^ (-(((d : Real) + 1) / 2)) * r ^ (-(((d : Real) + 1) / 2)) :=
+        Real.mul_rpow hrho0.le hxpos.le
+      have hrho1 : rho ^ ((d : Real) - 1) * rho ^ (-(((d : Real) - 1) / 2)) =
+          rho ^ (((d : Real) - 1) / 2) := by
+        rw [← Real.rpow_add hrho0]
+        congr 1
+        ring
+      have hrho2 : rho ^ ((d : Real) - 1) * rho ^ (-(((d : Real) + 1) / 2)) =
+          rho ^ (((d : Real) - 3) / 2) := by
+        rw [← Real.rpow_add hrho0]
+        congr 1
+        ring
+      calc
+        rho ^ ((d : Real) - 1) *
+            (‖surfaceFourier d (-rho • x)‖ * ‖Φ.symbol (c * rho)‖) ≤
+            rho ^ ((d : Real) - 1) *
+              (((‖cout‖ + ‖cin‖) * (rho * r) ^ (-(((d : Real) - 1) / 2)) +
+                C0 * (rho * r) ^ (-(((d : Real) + 1) / 2))) *
+                ‖Φ.symbol (c * rho)‖) := by
+          apply mul_le_mul_of_nonneg_left _ (by positivity)
+          exact mul_le_mul_of_nonneg_right hSF hnormnn
+        _ = (‖cout‖ + ‖cin‖) * r ^ (-(((d : Real) - 1) / 2)) *
+              ((rho ^ ((d : Real) - 1) * rho ^ (-(((d : Real) - 1) / 2))) *
+                ‖Φ.symbol (c * rho)‖) +
+            C0 * r ^ (-(((d : Real) + 1) / 2)) *
+              ((rho ^ ((d : Real) - 1) * rho ^ (-(((d : Real) + 1) / 2))) *
+                ‖Φ.symbol (c * rho)‖) := by
+          rw [hprod1, hprod2]
+          ring
+        _ = (‖cout‖ + ‖cin‖) * r ^ (-(((d : Real) - 1) / 2)) *
+              (rho ^ (((d : Real) - 1) / 2) * ‖Φ.symbol (c * rho)‖) +
+            C0 * r ^ (-(((d : Real) + 1) / 2)) *
+              (rho ^ (((d : Real) - 3) / 2) * ‖Φ.symbol (c * rho)‖) := by
+          rw [hrho1, hrho2]
+  have hrinv : r⁻¹ ≤ 2 := by
+    rw [inv_le_iff_one_le_mul₀ hxpos]
+    nlinarith [hx]
+  have hrle1 : r ^ (-(((d : Real) - 1) / 2)) ≤
+      (2 : Real) ^ (((d : Real) - 1) / 2) := by
+    rw [Real.rpow_neg hxpos.le, ← Real.inv_rpow hxpos.le]
+    exact Real.rpow_le_rpow (by positivity) hrinv (by linarith)
+  have hrle2 : r ^ (-(((d : Real) + 1) / 2)) ≤
+      (2 : Real) ^ (((d : Real) + 1) / 2) := by
+    rw [Real.rpow_neg hxpos.le, ← Real.inv_rpow hxpos.le]
+    exact Real.rpow_le_rpow (by positivity) hrinv (by linarith)
+  rw [brrs_radialHalfWaveTestPacket_eq_radial_integral (by omega) Φ j tI x]
+  calc
+    ‖∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) *
+          brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)‖ ≤
+        ∫ rho in Ioi (0 : Real), ‖((rho ^ (d - 1) : Real) : Complex) *
+          (surfaceFourier d (-rho • x) *
+            brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho)‖ :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ rho in Ioi (0 : Real), maj rho := by
+      apply integral_mono_of_nonneg
+      · filter_upwards with rho using norm_nonneg _
+      · exact hmajint
+      · filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with rho hrho
+        exact hpoint rho hrho
+    _ = (‖cout‖ + ‖cin‖) * r ^ (-(((d : Real) - 1) / 2)) *
+          (∫ rho in Ioi (0 : Real), rho ^ (((d : Real) - 1) / 2) *
+            ‖Φ.symbol (c * rho)‖) +
+        C0 * r ^ (-(((d : Real) + 1) / 2)) *
+          (∫ rho in Ioi (0 : Real), rho ^ (((d : Real) - 3) / 2) *
+            ‖Φ.symbol (c * rho)‖) := by
+      rw [hmaj, integral_add (hint1.const_mul _) (hint2.const_mul _),
+        integral_const_mul, integral_const_mul]
+    _ ≤ (‖cout‖ + ‖cin‖) * (2 : Real) ^ (((d : Real) - 1) / 2) *
+          (K1 * c ^ (-((((d : Real) - 1) / 2) + 1))) +
+        C0 * (2 : Real) ^ (((d : Real) + 1) / 2) *
+          (K2 * c ^ (-((((d : Real) - 3) / 2) + 1))) := by
+      apply add_le_add
+      · apply mul_le_mul _ hle1
+          (setIntegral_nonneg measurableSet_Ioi (fun rho hrho => by
+            have hrho0 : (0 : Real) < rho := hrho
+            positivity)) (by positivity)
+        exact mul_le_mul_of_nonneg_left hrle1 (by positivity)
+      · apply mul_le_mul _ hle2
+          (setIntegral_nonneg measurableSet_Ioi (fun rho hrho => by
+            have hrho0 : (0 : Real) < rho := hrho
+            positivity)) (by positivity)
+        exact mul_le_mul_of_nonneg_left hrle2 (by positivity)
+    _ ≤ ((‖cout‖ + ‖cin‖) * (2 : Real) ^ (((d : Real) - 1) / 2) * K1 *
+          (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) +
+        C0 * (2 : Real) ^ (((d : Real) + 1) / 2) * K2 *
+          (2 * Real.pi) ^ (-(((d : Real) - 1) / 2))) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+      have he1 : ((((d : Real) - 1) / 2) + 1) = ((d : Real) + 1) / 2 := by ring
+      have he2 : ((((d : Real) - 3) / 2) + 1) = ((d : Real) - 1) / 2 := by ring
+      rw [he1, he2, hc, brrs_frequencyScale_rpow_neg, brrs_frequencyScale_rpow_neg]
+      have hmono : (2 : Real) ^ ((j : Real) * (((d : Real) - 1) / 2)) ≤
+          (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+        apply Real.rpow_le_rpow_of_exponent_le (by norm_num)
+        have hjnn : (0 : Real) ≤ (j : Real) := Nat.cast_nonneg j
+        nlinarith
+      have hA : (0 : Real) ≤ (‖cout‖ + ‖cin‖) * (2 : Real) ^ (((d : Real) - 1) / 2) *
+          K1 * (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) := by positivity
+      have hB : (0 : Real) ≤ C0 * (2 : Real) ^ (((d : Real) + 1) / 2) * K2 *
+          (2 * Real.pi) ^ (-(((d : Real) - 1) / 2)) := by positivity
+      nlinarith [Real.rpow_pos_of_pos (show (0 : Real) < 2 by norm_num)
+        ((j : Real) * (((d : Real) + 1) / 2))]
+
+/-- The one-dimensional Fourier transform in explicit oscillatory form. -/
+theorem brrs_fourier_real_eq (f : Real → Complex) (v : Real) :
+    𝓕 f v = ∫ u : Real,
+      Complex.exp (((-(2 * Real.pi * (u * v)) : Real) : Complex) * Complex.I) * f u := by
+  rw [Real.fourier_eq' f v]
+  apply integral_congr_ae
+  filter_upwards with u
+  have hinner : (inner Real u v : Real) = u * v := by
+    simp [mul_comm]
+  rw [smul_eq_mul, hinner]
+  congr 2
+  push_cast
+  ring
+
+/-- The radial oscillatory integral of the Section 3 packet is the Fourier
+transform of the weighted annular profile at the rescaled phase. -/
+theorem brrs_annularOscillatory_eq_fourier {d : Nat} (Φ : BRRSAnnularCutoff)
+    (Theta : SchwartzMap Real Complex)
+    (hTheta : ∀ u : Real,
+      Theta u = ((u ^ (((d - 1 : Nat) : Real)) : Real) : Complex) * Φ.symbol u)
+    {c : Real} (hc : 0 < c) (v : Real) :
+    (∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        Φ.symbol (c * rho) *
+        Complex.exp (((-(2 * Real.pi * rho * v) : Real) : Complex) * Complex.I)) =
+      ((c ^ (-((((d - 1 : Nat) : Real)) + 1)) : Real) : Complex) *
+        𝓕 ((Theta : Real → Complex)) (v / c) := by
+  set a : Real := ((d - 1 : Nat) : Real) with ha
+  have hane : (0 : Real) < c ^ a := Real.rpow_pos_of_pos hc a
+  have hzeroProfile : ∀ rho : Real, rho ≤ 0 → Φ.symbol (c * rho) = 0 := by
+    intro rho hrho
+    apply brrs_annularCutoff_symbol_eq_zero
+    intro hmem
+    have hle : c * rho ≤ 0 := mul_nonpos_of_nonneg_of_nonpos hc.le hrho
+    have := hmem.1
+    linarith
+  -- pointwise rewriting of the integrand
+  have hpoint : ∀ rho : Real,
+      ((rho ^ (d - 1) : Real) : Complex) * Φ.symbol (c * rho) *
+          Complex.exp (((-(2 * Real.pi * rho * v) : Real) : Complex) * Complex.I) =
+        ((c ^ (-a) : Real) : Complex) * (Theta (c * rho) *
+          Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+            Complex.I)) := by
+    intro rho
+    have hphase : (-(2 * Real.pi * (c * rho) * (v / c)) : Real) =
+        (-(2 * Real.pi * rho * v) : Real) := by
+      field_simp
+    rcases le_or_gt rho 0 with hrho | hrho
+    · rw [hzeroProfile rho hrho, hTheta (c * rho), hzeroProfile rho hrho]
+      simp
+    · have hrpow : (rho ^ (d - 1) : Real) = rho ^ a := by
+        rw [ha, Real.rpow_natCast]
+      rw [hTheta (c * rho), hphase, hrpow, Real.mul_rpow hc.le hrho.le,
+        Real.rpow_neg hc.le]
+      have hcne : ((c ^ a : Real) : Complex) ≠ 0 := by
+        simp only [ne_eq, Complex.ofReal_eq_zero]
+        exact ne_of_gt hane
+      push_cast
+      field_simp
+  have hcongr : (∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+      Φ.symbol (c * rho) *
+      Complex.exp (((-(2 * Real.pi * rho * v) : Real) : Complex) * Complex.I)) =
+      ∫ rho in Ioi (0 : Real), ((c ^ (-a) : Real) : Complex) * (Theta (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+          Complex.I)) := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro rho _
+    exact hpoint rho
+  have hvanish : ∀ rho : Real, rho ∉ Ioi (0 : Real) →
+      ((c ^ (-a) : Real) : Complex) * (Theta (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+          Complex.I)) = 0 := by
+    intro rho hrho
+    have hle : rho ≤ 0 := by simpa using hrho
+    rw [hTheta (c * rho), hzeroProfile rho hle]
+    simp
+  have hfull : (∫ rho in Ioi (0 : Real), ((c ^ (-a) : Real) : Complex) *
+      (Theta (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+          Complex.I))) =
+      ∫ rho : Real, ((c ^ (-a) : Real) : Complex) * (Theta (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+          Complex.I)) :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero hvanish
+  have hscale : (∫ rho : Real, ((c ^ (-a) : Real) : Complex) * (Theta (c * rho) *
+      Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+        Complex.I))) =
+      ((c ^ (-a) : Real) : Complex) * (((|c⁻¹| : Real) : Complex) *
+        𝓕 ((Theta : Real → Complex)) (v / c)) := by
+    rw [integral_const_mul]
+    congr 1
+    rw [brrs_fourier_real_eq]
+    have hcomp := Measure.integral_comp_mul_left
+      (fun u : Real => Theta u *
+        Complex.exp (((-(2 * Real.pi * (u * (v / c))) : Real) : Complex) * Complex.I)) c
+    have hrewrite : (∫ rho : Real, Theta (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (v / c)) : Real) : Complex) *
+          Complex.I)) =
+        ∫ rho : Real, (fun u : Real => Theta u *
+          Complex.exp (((-(2 * Real.pi * (u * (v / c))) : Real) : Complex) *
+            Complex.I)) (c * rho) := by
+      apply integral_congr_ae
+      filter_upwards with rho
+      congr 2
+      push_cast
+      ring
+    rw [hrewrite, hcomp]
+    rw [show (∫ u : Real, Theta u *
+        Complex.exp (((-(2 * Real.pi * (u * (v / c))) : Real) : Complex) * Complex.I)) =
+        ∫ u : Real, Complex.exp (((-(2 * Real.pi * (u * (v / c))) : Real) : Complex) *
+          Complex.I) * Theta u from by
+      apply integral_congr_ae
+      filter_upwards with u
+      ring]
+    rw [Complex.real_smul]
+  rw [hcongr, hfull, hscale]
+  have habs : |c⁻¹| = c⁻¹ := abs_of_pos (by positivity)
+  rw [habs]
+  have hpow : (c ^ (-a) : Real) * c⁻¹ = c ^ (-(a + 1)) := by
+    rw [show -(a + 1) = -a + (-1 : Real) by ring, Real.rpow_add hc,
+      Real.rpow_neg_one]
+  rw [← mul_assoc, ← Complex.ofReal_mul, hpow]
+
+/-- The Section 3 packet is the spherical average of the one-dimensional
+annular oscillatory integrals along the directions of the sphere.  This is
+the exact Fubini form of the U3.R radial inversion. -/
+theorem brrs_radialHalfWaveTestPacket_eq_sphere_integral {d : Nat} (hd : 0 < d)
+    (Φ : BRRSAnnularCutoff) (j : Nat) (tI : Real) (x : BRRSSpace d) :
+    (brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x =
+      ∫ omega : Metric.sphere (0 : BRRSSpace d) 1,
+        (∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+            Φ.symbol (brrsFrequencyScale j * rho) *
+            Complex.exp (((-(2 * Real.pi * rho *
+                (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+              Complex.I)) ∂unitSurfaceMeasure d := by
+  classical
+  have hpi := Real.pi_pos
+  set c : Real := brrsFrequencyScale j with hc
+  have hcpos : 0 < c := brrsFrequencyScale_pos j
+  obtain ⟨K, hK, hmoment⟩ :=
+    exists_brrs_annularSymbol_moment_le Φ (((d - 1 : Nat) : Real))
+  obtain ⟨hint1, -⟩ := hmoment c hcpos
+  -- the pointwise identification of the radial integrand
+  have hstep : ∀ rho : Real,
+      ((rho ^ (d - 1) : Real) : Complex) *
+          (surfaceFourier d (-rho • x) *
+            brrsDyadicHalfWaveKernelRadialProfile Φ j (-tI) rho) =
+        ∫ omega : Metric.sphere (0 : BRRSSpace d) 1,
+          ((rho ^ (d - 1) : Real) : Complex) * Φ.symbol (c * rho) *
+            Complex.exp (((-(2 * Real.pi * rho *
+                (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+              Complex.I) ∂unitSurfaceMeasure d := by
+    intro rho
+    rw [surfaceFourier, ← integral_mul_const, ← integral_const_mul]
+    apply integral_congr_ae
+    filter_upwards with omega
+    rw [brrsDyadicHalfWaveKernelRadialProfile, surfacePhase]
+    have hinner : (inner Real (omega : BRRSSpace d) (-rho • x) : Real) =
+        -rho * inner Real (omega : BRRSSpace d) x := by
+      rw [real_inner_smul_right]
+    rw [hinner]
+    have hprofile : Φ.symbol (2 * Real.pi * ((2 : Real) ^ j)⁻¹ * rho) =
+        Φ.symbol (c * rho) := by
+      rw [hc]
+      rfl
+    rw [hprofile]
+    rw [show ((rho ^ (d - 1) : Real) : Complex) *
+        (Complex.exp (((-2 * Real.pi * (-rho * inner Real (omega : BRRSSpace d) x) :
+            Real) : Complex) * Complex.I) *
+          (Complex.exp (((2 * Real.pi * -tI * rho : Real) : Complex) * Complex.I) *
+            Φ.symbol (c * rho))) =
+        ((rho ^ (d - 1) : Real) : Complex) * Φ.symbol (c * rho) *
+          (Complex.exp (((-2 * Real.pi * (-rho * inner Real (omega : BRRSSpace d) x) :
+              Real) : Complex) * Complex.I) *
+            Complex.exp (((2 * Real.pi * -tI * rho : Real) : Complex) * Complex.I))
+        from by ring]
+    rw [← Complex.exp_add]
+    congr 2
+    push_cast
+    ring
+  -- integrability on the product for the Fubini interchange
+  have hmeas : AEStronglyMeasurable
+      (Function.uncurry (fun (rho : Real) (omega : Metric.sphere (0 : BRRSSpace d) 1) =>
+        ((rho ^ (d - 1) : Real) : Complex) * Φ.symbol (c * rho) *
+          Complex.exp (((-(2 * Real.pi * rho *
+              (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+            Complex.I)))
+      ((volume.restrict (Ioi (0 : Real))).prod (unitSurfaceMeasure d)) := by
+    apply Continuous.aestronglyMeasurable
+    apply Continuous.mul
+    · exact (Complex.continuous_ofReal.comp
+        ((continuous_pow (d - 1)).comp continuous_fst)).mul
+        (Φ.symbol.continuous.comp (continuous_const.mul continuous_fst))
+    · apply Complex.continuous_exp.comp
+      apply Continuous.mul _ continuous_const
+      apply Complex.continuous_ofReal.comp
+      apply Continuous.neg
+      exact (continuous_const.mul continuous_fst).mul
+        (continuous_const.sub
+          ((continuous_inner (E := BRRSSpace d)).comp
+            ((continuous_subtype_val.comp continuous_snd).prodMk continuous_const)))
+  have hmajor : Integrable
+      (fun p : Real × Metric.sphere (0 : BRRSSpace d) 1 =>
+        (p.1 ^ (((d - 1 : Nat) : Real)) * ‖Φ.symbol (c * p.1)‖) * (1 : Real))
+      ((volume.restrict (Ioi (0 : Real))).prod (unitSurfaceMeasure d)) :=
+    hint1.mul_prod (integrable_const (1 : Real))
+  have hint : Integrable
+      (Function.uncurry (fun (rho : Real) (omega : Metric.sphere (0 : BRRSSpace d) 1) =>
+        ((rho ^ (d - 1) : Real) : Complex) * Φ.symbol (c * rho) *
+          Complex.exp (((-(2 * Real.pi * rho *
+              (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+            Complex.I)))
+      ((volume.restrict (Ioi (0 : Real))).prod (unitSurfaceMeasure d)) := by
+    apply hmajor.mono hmeas
+    filter_upwards with p
+    rw [Function.uncurry_apply_pair]
+    rcases le_or_gt p.1 0 with hp | hp0
+    · have hzero : Φ.symbol (c * p.1) = 0 := by
+        apply brrs_annularCutoff_symbol_eq_zero
+        intro hmem
+        have hle : c * p.1 ≤ 0 := mul_nonpos_of_nonneg_of_nonpos hcpos.le hp
+        have := hmem.1
+        linarith
+      rw [hzero]
+      simp
+    · rw [norm_mul, norm_mul, Complex.norm_exp_ofReal_mul_I, mul_one,
+        Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (by positivity : (0 : Real) ≤ p.1 ^ (d - 1)),
+        Real.norm_eq_abs, mul_one,
+        abs_of_nonneg (by positivity : (0 : Real) ≤
+          p.1 ^ (((d - 1 : Nat) : Real)) * ‖Φ.symbol (c * p.1)‖),
+        (Real.rpow_natCast p.1 (d - 1)).symm]
+  rw [brrs_radialHalfWaveTestPacket_eq_radial_integral hd Φ j tI x,
+    setIntegral_congr_fun measurableSet_Ioi (fun rho _ => hstep rho)]
+  exact integral_integral_swap hint
+
+/-- Near the origin the Section 3 packet is uniformly bounded: the phase
+`t_I - \langle\omega,x\rangle` never vanishes there, so the rapid decay of the
+Fourier transform of the weighted annular profile beats the frequency
+volume. -/
+theorem exists_brrs_norm_radialHalfWaveTestPacket_le_inner {d : Nat} (hd : 0 < d)
+    (Φ : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (tI : Real), 1 ≤ tI →
+      ∀ x : BRRSSpace d, ‖x‖ ≤ 1 / 2 →
+        ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤ C := by
+  classical
+  have hpi := Real.pi_pos
+  obtain ⟨Theta, hTheta, -⟩ :=
+    exists_brrs_weightedAnnularSchwartz (((d - 1 : Nat) : Real)) Φ.symbol
+      Φ.tsupport_subset
+  obtain ⟨CN, hCN, hdecay⟩ := exists_brrs_schwartzFourier_decay Theta d
+  have hmass : 0 < surfaceMass d := surfaceMass_pos hd
+  refine ⟨surfaceMass d * (CN * (2 : Real) ^ d), by positivity, ?_⟩
+  intro j tI htI x hx
+  set c : Real := brrsFrequencyScale j with hc
+  have hcpos : 0 < c := brrsFrequencyScale_pos j
+  have hcast : ((d - 1 : Nat) : Real) + 1 = (d : Real) := by
+    have h1 : (1 : Nat) ≤ d := hd
+    push_cast [Nat.cast_sub h1]
+    ring
+  -- each spherical fibre is a rescaled Fourier transform of the weighted profile
+  have hfibre : ∀ omega : Metric.sphere (0 : BRRSSpace d) 1,
+      (∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+          Φ.symbol (c * rho) *
+          Complex.exp (((-(2 * Real.pi * rho *
+              (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+            Complex.I)) =
+        ((c ^ (-((d : Real))) : Real) : Complex) *
+          𝓕 ((Theta : Real → Complex))
+            ((tI - inner Real (omega : BRRSSpace d) x) / c) := by
+    intro omega
+    have h := brrs_annularOscillatory_eq_fourier Φ Theta hTheta hcpos
+      (tI - inner Real (omega : BRRSSpace d) x)
+    rw [h, hcast]
+  -- the fibrewise bound
+  have hfibrebound : ∀ omega : Metric.sphere (0 : BRRSSpace d) 1,
+      ‖((c ^ (-((d : Real))) : Real) : Complex) *
+          𝓕 ((Theta : Real → Complex))
+            ((tI - inner Real (omega : BRRSSpace d) x) / c)‖ ≤
+        CN * (2 : Real) ^ d := by
+    intro omega
+    set v : Real := tI - inner Real (omega : BRRSSpace d) x with hv
+    have hnormomega : ‖(omega : BRRSSpace d)‖ = 1 := by
+      simp
+    have hinnerle : |inner Real (omega : BRRSSpace d) x| ≤ ‖x‖ := by
+      have := abs_real_inner_le_norm (omega : BRRSSpace d) x
+      rw [hnormomega, one_mul] at this
+      exact this
+    have hvge : 1 / 2 ≤ v := by
+      rw [hv]
+      have h1 : inner Real (omega : BRRSSpace d) x ≤ ‖x‖ :=
+        le_trans (le_abs_self _) hinnerle
+      linarith
+    have hvpos : (0 : Real) < v := by linarith
+    have hwpos : (0 : Real) < v / c := by positivity
+    have hwge : 1 / (2 * c) ≤ v / c := by
+      rw [show (1 : Real) / (2 * c) = (1 / 2) / c by ring]
+      exact (div_le_div_iff_of_pos_right hcpos).mpr hvge
+    have hdec := hdecay (v / c)
+    have hbase : (1 / (2 * c)) ^ d ≤ (1 + |v / c|) ^ d := by
+      apply pow_le_pow_left₀ (by positivity)
+      rw [abs_of_pos hwpos]
+      linarith
+    have hbasepos : (0 : Real) < (1 / (2 * c)) ^ d := by positivity
+    have hdec2 : ‖𝓕 ((Theta : Real → Complex)) (v / c)‖ ≤
+        CN / (1 / (2 * c)) ^ d :=
+      le_trans hdec (div_le_div_of_nonneg_left hCN.le hbasepos hbase)
+    have hval : CN / (1 / (2 * c)) ^ d = CN * ((2 : Real) ^ d * c ^ d) := by
+      rw [div_pow, one_pow, mul_pow]
+      field_simp
+    have hcpow : (c ^ (-((d : Real))) : Real) = (c ^ d)⁻¹ := by
+      rw [Real.rpow_neg hcpos.le, Real.rpow_natCast]
+    have hcdpos : (0 : Real) < c ^ d := by positivity
+    calc
+      ‖((c ^ (-((d : Real))) : Real) : Complex) *
+          𝓕 ((Theta : Real → Complex)) (v / c)‖ =
+          (c ^ d)⁻¹ * ‖𝓕 ((Theta : Real → Complex)) (v / c)‖ := by
+        rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, hcpow,
+          abs_of_nonneg (by positivity : (0 : Real) ≤ (c ^ d)⁻¹)]
+      _ ≤ (c ^ d)⁻¹ * (CN * ((2 : Real) ^ d * c ^ d)) := by
+        apply mul_le_mul_of_nonneg_left _ (by positivity)
+        rw [← hval]
+        exact hdec2
+      _ = CN * (2 : Real) ^ d := by
+        field_simp
+  rw [brrs_radialHalfWaveTestPacket_eq_sphere_integral hd Φ j tI x]
+  calc
+    ‖∫ omega : Metric.sphere (0 : BRRSSpace d) 1,
+        (∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+            Φ.symbol (brrsFrequencyScale j * rho) *
+            Complex.exp (((-(2 * Real.pi * rho *
+                (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+              Complex.I)) ∂unitSurfaceMeasure d‖ ≤
+        ∫ omega : Metric.sphere (0 : BRRSSpace d) 1,
+          ‖(∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+              Φ.symbol (brrsFrequencyScale j * rho) *
+              Complex.exp (((-(2 * Real.pi * rho *
+                  (tI - inner Real (omega : BRRSSpace d) x)) : Real) : Complex) *
+                Complex.I))‖ ∂unitSurfaceMeasure d :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ _omega : Metric.sphere (0 : BRRSSpace d) 1, CN * (2 : Real) ^ d
+        ∂unitSurfaceMeasure d := by
+      apply integral_mono_of_nonneg
+      · filter_upwards with omega using norm_nonneg _
+      · exact integrable_const _
+      · filter_upwards with omega
+        rw [← hc, hfibre omega]
+        exact hfibrebound omega
+    _ = surfaceMass d * (CN * (2 : Real) ^ d) := by
+      rw [integral_const, smul_eq_mul, surfaceMass, measureReal_def]
+
+/-- The uniform size of the Section 3 packet: the sharp sup-norm bound
+`2^{j(d+1)/2}`, valid at every frequency level and every reference time in
+the source range. -/
+theorem exists_brrs_norm_radialHalfWaveTestPacket_le {d : Nat} (hd : 2 ≤ d)
+    (Φ : BRRSAnnularCutoff) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (tI : Real), 1 ≤ tI →
+      ∀ x : BRRSSpace d,
+        ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤
+          C * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+  have hd0 : 0 < d := by omega
+  obtain ⟨Ci, hCi, hinner⟩ :=
+    exists_brrs_norm_radialHalfWaveTestPacket_le_inner hd0 Φ
+  obtain ⟨Co, hCo, houter⟩ := exists_brrs_norm_radialHalfWaveTestPacket_le_outer hd Φ
+  obtain ⟨Cc, hCc, hcrude⟩ := exists_brrs_norm_radialHalfWaveTestPacket_le_crude hd0 Φ
+  refine ⟨Ci + Co + Cc * (2 : Real) ^ ((6 : Real) * (d : Real)), by positivity, ?_⟩
+  intro j tI htI x
+  have hdyad : (1 : Real) ≤ (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+    apply Real.one_le_rpow (by norm_num)
+    have hjnn : (0 : Real) ≤ (j : Real) := Nat.cast_nonneg j
+    have hdnn : (0 : Real) ≤ (d : Real) + 1 := by positivity
+    positivity
+  have hdyadpos : (0 : Real) < (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) :=
+    Real.rpow_pos_of_pos (by norm_num) _
+  rcases lt_or_ge j 6 with hjsmall | hjlarge
+  · -- low frequency levels: the crude bound is already a fixed constant
+    have hcrudebound := hcrude j tI x
+    have hjd : (2 : Real) ^ ((j : Real) * (d : Real)) ≤
+        (2 : Real) ^ ((6 : Real) * (d : Real)) := by
+      apply Real.rpow_le_rpow_of_exponent_le (by norm_num)
+      have hjle : (j : Real) ≤ 6 := by
+        have : (j : Real) < 6 := by exact_mod_cast hjsmall
+        linarith
+      have hdnn : (0 : Real) ≤ (d : Real) := Nat.cast_nonneg d
+      nlinarith
+    calc
+      ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤
+          Cc * (2 : Real) ^ ((j : Real) * (d : Real)) := hcrudebound
+      _ ≤ Cc * (2 : Real) ^ ((6 : Real) * (d : Real)) :=
+        mul_le_mul_of_nonneg_left hjd hCc.le
+      _ = Cc * (2 : Real) ^ ((6 : Real) * (d : Real)) * 1 := by ring
+      _ ≤ Cc * (2 : Real) ^ ((6 : Real) * (d : Real)) *
+          (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+        apply mul_le_mul_of_nonneg_left hdyad (by positivity)
+      _ ≤ (Ci + Co + Cc * (2 : Real) ^ ((6 : Real) * (d : Real))) *
+          (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+        apply mul_le_mul_of_nonneg_right _ hdyadpos.le
+        linarith
+  · -- high frequency levels: the annulus is beyond the two-wave threshold
+    have hthreshold : 16 * Real.pi ≤ (2 : Real) ^ j := by
+      have hpi : Real.pi < 4 := Real.pi_lt_four
+      have h64 : (2 : Real) ^ 6 ≤ (2 : Real) ^ j :=
+        pow_le_pow_right₀ (by norm_num) hjlarge
+      have hval : (2 : Real) ^ 6 = 64 := by norm_num
+      rw [hval] at h64
+      linarith
+    rcases le_or_gt (‖x‖) (1 / 2) with hxsmall | hxlarge
+    · have hb := hinner j tI htI x hxsmall
+      calc
+        ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤ Ci := hb
+        _ = Ci * 1 := by ring
+        _ ≤ Ci * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) :=
+          mul_le_mul_of_nonneg_left hdyad hCi.le
+        _ ≤ (Ci + Co + Cc * (2 : Real) ^ ((6 : Real) * (d : Real))) *
+            (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+          apply mul_le_mul_of_nonneg_right _ hdyadpos.le
+          have : (0 : Real) ≤ Co + Cc * (2 : Real) ^ ((6 : Real) * (d : Real)) := by
+            positivity
+          linarith
+    · have hb := houter j hthreshold tI x hxlarge.le
+      calc
+        ‖(brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) x‖ ≤
+            Co * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := hb
+        _ ≤ (Ci + Co + Cc * (2 : Real) ^ ((6 : Real) * (d : Real))) *
+            (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+          apply mul_le_mul_of_nonneg_right _ hdyadpos.le
+          have : (0 : Real) ≤ Ci + Cc * (2 : Real) ^ ((6 : Real) * (d : Real)) := by
+            positivity
+          linarith
+
+/-- Passage from a bound on the `p`-th power integral to the `L^p` seminorm. -/
+theorem brrs_eLpNorm_le_of_integral_rpow_le {d : Nat}
+    (f : BRRSSpace d → Complex) (hf : AEStronglyMeasurable f volume)
+    {p A : Real} (hp : 0 < p) (hA : 0 ≤ A)
+    (hint : Integrable (fun x : BRRSSpace d => ‖f x‖ ^ p))
+    (hle : (∫ x : BRRSSpace d, ‖f x‖ ^ p) ≤ A) :
+    eLpNorm f (ENNReal.ofReal p) volume ≤ ENNReal.ofReal (A ^ (1 / p)) := by
+  have hp0 : ENNReal.ofReal p ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero]
+    exact not_le.mpr hp
+  have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hp.le]
+  have hlint : (∫⁻ x : BRRSSpace d, ‖f x‖ₑ ^ p) =
+      ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
+    rw [ofReal_integral_eq_lintegral_ofReal hint
+      (Filter.Eventually.of_forall (fun x => Real.rpow_nonneg (norm_nonneg _) p))]
+    apply lintegral_congr
+    intro x
+    rw [← ofReal_norm (f x), ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp.le]
+  rw [hlint]
+  calc
+    (ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p)) ^ (1 / p) ≤
+        (ENNReal.ofReal A) ^ (1 / p) := by
+      apply ENNReal.rpow_le_rpow (ENNReal.ofReal_le_ofReal hle) (by positivity)
+    _ = ENNReal.ofReal (A ^ (1 / p)) :=
+      ENNReal.ofReal_rpow_of_nonneg hA (by positivity)
+
+/-- BRRS (3.2): the packet-norm upper bound.  For every exponent at least two
+the Section 3 packet at frequency `2^j` and reference time in `[1,2]` has
+`L^p` norm at most a constant times `2^{j((d+1)/2 - 1/p)}`. -/
+theorem exists_brrs_radialHalfWaveTestPacket_eLpNorm_le {d : Nat} (hd : 2 ≤ d)
+    (Φ : BRRSAnnularCutoff) {p : Real} (hp : 2 ≤ p) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (tI : Real), 1 ≤ tI →
+      eLpNorm (brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex)
+          (ENNReal.ofReal p) volume ≤
+        ENNReal.ofReal (C *
+          (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2 - 1 / p))) := by
+  have hp0 : (0 : Real) < p := by linarith
+  obtain ⟨Csup, hCsup, hsup⟩ := exists_brrs_norm_radialHalfWaveTestPacket_le hd Φ
+  obtain ⟨C2, hC2, hsq⟩ :=
+    exists_brrs_integral_norm_sq_radialHalfWaveTestPacket_le (d := d) Φ
+  refine ⟨(Csup ^ (p - 2) * C2) ^ (1 / p), by positivity, ?_⟩
+  intro j tI htI
+  set g : BRRSSpace d → Complex :=
+    (brrsRadialHalfWaveTestPacket Φ j tI : BRRSSpace d → Complex) with hg
+  set M : Real := Csup * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) with hM
+  have hMpos : 0 < M := by
+    rw [hM]
+    have := Real.rpow_pos_of_pos (show (0 : Real) < 2 by norm_num)
+      ((j : Real) * (((d : Real) + 1) / 2))
+    positivity
+  have hbound : ∀ x : BRRSSpace d, ‖g x‖ ≤ M := fun x => hsup j tI htI x
+  -- square integrability of the packet
+  have hmemLp : MemLp g 2 volume := by
+    rw [hg]
+    exact SchwartzMap.memLp (brrsRadialHalfWaveTestPacket Φ j tI) 2 volume
+  have hsqint : Integrable (fun x : BRRSSpace d => ‖g x‖ ^ (2 : Real)) := by
+    have h := hmemLp.integrable_norm_rpow (by norm_num) (by norm_num)
+    simpa using h
+  have hrpow2 : ∀ x : BRRSSpace d, ‖g x‖ ^ (2 : Real) = ‖g x‖ ^ 2 := by
+    intro x
+    rw [← Real.rpow_natCast (‖g x‖) 2]
+    norm_num
+  have hsqint' : Integrable (fun x : BRRSSpace d => ‖g x‖ ^ 2) := by
+    apply hsqint.congr
+    filter_upwards with x
+    exact hrpow2 x
+  -- pointwise comparison of the `p`-th and second powers
+  have hpoint : ∀ x : BRRSSpace d,
+      ‖g x‖ ^ p ≤ M ^ (p - 2) * ‖g x‖ ^ 2 := by
+    intro x
+    rcases eq_or_lt_of_le (norm_nonneg (g x)) with hzero | hpos
+    · rw [← hzero, Real.zero_rpow (by linarith)]
+      positivity
+    · have hsplit : ‖g x‖ ^ p = ‖g x‖ ^ (p - 2) * ‖g x‖ ^ (2 : Real) := by
+        rw [← Real.rpow_add hpos]
+        norm_num
+      have hmono : ‖g x‖ ^ (p - 2) ≤ M ^ (p - 2) :=
+        Real.rpow_le_rpow (norm_nonneg _) (hbound x) (by linarith)
+      rw [hsplit, hrpow2 x]
+      apply mul_le_mul_of_nonneg_right hmono (by positivity)
+  have hpint : Integrable (fun x : BRRSSpace d => ‖g x‖ ^ p) := by
+    apply Integrable.mono (hsqint'.const_mul (M ^ (p - 2)))
+      (by
+        apply Continuous.aestronglyMeasurable
+        rw [hg]
+        exact (Real.continuous_rpow_const (by linarith)).comp
+          (SchwartzMap.continuous _).norm)
+    filter_upwards with x
+    rw [Real.norm_eq_abs, Real.norm_eq_abs,
+      abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) p),
+      abs_of_nonneg (by positivity : (0 : Real) ≤ M ^ (p - 2) * ‖g x‖ ^ 2)]
+    exact hpoint x
+  -- the resulting bound on the `p`-th power integral
+  have hintle : (∫ x : BRRSSpace d, ‖g x‖ ^ p) ≤
+      Csup ^ (p - 2) * C2 *
+        (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1)) := by
+    have hstep1 : (∫ x : BRRSSpace d, ‖g x‖ ^ p) ≤
+        M ^ (p - 2) * ∫ x : BRRSSpace d, ‖g x‖ ^ 2 := by
+      rw [← integral_const_mul]
+      apply integral_mono hpint (hsqint'.const_mul _)
+      intro x
+      exact hpoint x
+    have hstep2 : M ^ (p - 2) * ∫ x : BRRSSpace d, ‖g x‖ ^ 2 ≤
+        M ^ (p - 2) * (C2 * (2 : Real) ^ ((d : Real) * (j : Real))) := by
+      apply mul_le_mul_of_nonneg_left _ (Real.rpow_nonneg hMpos.le _)
+      rw [hg]
+      exact hsq j tI
+    have hMpow : M ^ (p - 2) = Csup ^ (p - 2) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2) * (p - 2)) := by
+      rw [hM, Real.mul_rpow hCsup.le
+        (Real.rpow_nonneg (by norm_num) _), ← Real.rpow_mul (by norm_num)]
+    have hcombine : (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2) * (p - 2)) *
+        (2 : Real) ^ ((d : Real) * (j : Real)) =
+        (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1)) := by
+      rw [← Real.rpow_add (by norm_num)]
+      congr 1
+      ring
+    calc
+      (∫ x : BRRSSpace d, ‖g x‖ ^ p) ≤
+          M ^ (p - 2) * ∫ x : BRRSSpace d, ‖g x‖ ^ 2 := hstep1
+      _ ≤ M ^ (p - 2) * (C2 * (2 : Real) ^ ((d : Real) * (j : Real))) := hstep2
+      _ = Csup ^ (p - 2) * C2 *
+          ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2) * (p - 2)) *
+            (2 : Real) ^ ((d : Real) * (j : Real))) := by
+        rw [hMpow]
+        ring
+      _ = Csup ^ (p - 2) * C2 *
+          (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1)) := by
+        rw [hcombine]
+  -- convert to the `L^p` seminorm
+  have hAnn : (0 : Real) ≤ Csup ^ (p - 2) * C2 *
+      (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1)) := by
+    have := Real.rpow_pos_of_pos (show (0 : Real) < 2 by norm_num)
+      ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1))
+    positivity
+  have hmeas : AEStronglyMeasurable g volume := by
+    rw [hg]
+    exact (SchwartzMap.continuous _).aestronglyMeasurable
+  have hfinal := brrs_eLpNorm_le_of_integral_rpow_le g hmeas hp0 hAnn hpint hintle
+  refine hfinal.trans (le_of_eq ?_)
+  congr 1
+  have hsplit : (Csup ^ (p - 2) * C2 *
+      (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1))) ^ (1 / p) =
+      (Csup ^ (p - 2) * C2) ^ (1 / p) *
+        ((2 : Real) ^ ((j : Real) * ((((d : Real) + 1) * p) / 2 - 1))) ^ (1 / p) := by
+    apply Real.mul_rpow (by positivity)
+      (Real.rpow_nonneg (by norm_num) _)
+  rw [hsplit, ← Real.rpow_mul (by norm_num)]
+  congr 2
+  field_simp
+
+
+/-- The annular half-wave kernel as an explicit scalar radial integral, for an
+arbitrary annular cutoff and time.  This is the U3.R radial inversion in the
+form used by the Section 3 decomposition. -/
+theorem brrs_dyadicHalfWaveKernel_eq_radial_integral {d : Nat} (hd : 0 < d)
+    (Ψ : BRRSAnnularCutoff) (j : Nat) (s : Real) (x : BRRSSpace d) :
+    (brrsDyadicHalfWaveKernel Ψ j s : BRRSSpace d → Complex) x =
+      ∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) *
+          brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho) := by
+  rw [brrsDyadicHalfWaveKernel_eq_surfaceFourier_integral hd Ψ j s x]
+  exact Auto.Spherical.FractalDilations.Auxiliary.integral_volumeIoiPow_eq_setIntegral
+    (d - 1) (fun rho : Real => surfaceFourier d (-rho • x) *
+      brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho)
+
+/-- Integrability on the positive radial half-line for integrands dominated by
+an annular radial moment. -/
+theorem brrs_integrableOn_annular_dominated (Ψ : BRRSAnnularCutoff) (j : Nat)
+    (a B : Real) (hB : 0 ≤ B) (F : Real → Complex)
+    (hcont : ContinuousOn F (Ioi (0 : Real)))
+    (hdom : ∀ rho ∈ Ioi (0 : Real),
+      ‖F rho‖ ≤ B * (rho ^ a * ‖Ψ.symbol (brrsFrequencyScale j * rho)‖)) :
+    IntegrableOn F (Ioi (0 : Real)) volume := by
+  obtain ⟨K, hK, hm⟩ := exists_brrs_annularSymbol_moment_le Ψ a
+  obtain ⟨hint, -⟩ := hm (brrsFrequencyScale j) (brrsFrequencyScale_pos j)
+  apply Integrable.mono' (hint.const_mul B)
+    (hcont.aestronglyMeasurable measurableSet_Ioi)
+  filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with rho hrho
+  exact hdom rho hrho
+
+/-! ### (3.4): the three-term decomposition of the propagated packet
+
+The propagated Section 3 packet is the relative-time annular half-wave kernel
+for the positive `TT^*` cutoff, so the decomposition is proved here for the
+kernel of an arbitrary annular cutoff at an arbitrary time.  The two
+travelling terms are the source's `T_t^-` and `T_t^+`, carrying the phases
+`s - |x|` and `s + |x|`; the third term is the intrinsic remainder, namely the
+radial integral of the two-wave error of the surface Fourier transform.  The
+identity below is exact and holds for arbitrary leading constants; the
+constants of (3.3) enter only in the estimates (3.5)--(3.7). -/
+
+/-- The one-dimensional annular wave integral common to both travelling terms
+of the Section 3 decomposition. -/
+def brrsSectionThreeWaveIntegral (d : Nat) (Ψ : BRRSAnnularCutoff) (j : Nat)
+    (v : Real) : Complex :=
+  ∫ rho in Ioi (0 : Real), ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+    Ψ.symbol (brrsFrequencyScale j * rho) *
+    Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I)
+
+/-- The focusing travelling term `T_t^-` of BRRS (3.4): the wave whose phase
+`s - |x|` is stationary on the shell `|x| = s`. -/
+def brrsSectionThreeFocusingTerm (d : Nat) (Ψ : BRRSAnnularCutoff) (j : Nat)
+    (cout : Complex) (s : Real) (x : BRRSSpace d) : Complex :=
+  cout * ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+    brrsSectionThreeWaveIntegral d Ψ j (s - ‖x‖)
+
+/-- The spreading travelling term `T_t^+` of BRRS (3.4): the wave whose phase
+`s + |x|` has no stationary point in the relevant range. -/
+def brrsSectionThreeSpreadingTerm (d : Nat) (Ψ : BRRSAnnularCutoff) (j : Nat)
+    (cin : Complex) (s : Real) (x : BRRSSpace d) : Complex :=
+  cin * ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+    brrsSectionThreeWaveIntegral d Ψ j (s + ‖x‖)
+
+/-- The remainder term `T_t^{rem}` of BRRS (3.4): the radial integral of the
+two-wave error of the surface Fourier transform. -/
+def brrsSectionThreeRemainderTerm (d : Nat) (Ψ : BRRSAnnularCutoff) (j : Nat)
+    (cout cin : Complex) (s : Real) (x : BRRSSpace d) : Complex :=
+  ∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+    (surfaceFourier d (-rho • x) -
+      (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+        (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+            Complex.I) +
+          cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+            Complex.I))) *
+    brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho
+
+/-- Continuity of the annular travelling-wave integrand on the positive
+half-line. -/
+theorem brrs_continuousOn_sectionThreeWaveIntegrand (d : Nat)
+    (Ψ : BRRSAnnularCutoff) (j : Nat) (v : Real) :
+    ContinuousOn (fun rho : Real =>
+      ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        Ψ.symbol (brrsFrequencyScale j * rho) *
+        Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I))
+      (Ioi (0 : Real)) := by
+  apply ContinuousOn.mul
+  · apply ContinuousOn.mul
+    · intro rho hrho
+      have hrho0 : (0 : Real) < rho := hrho
+      exact (Complex.continuous_ofReal.continuousAt.comp
+        (Real.continuousAt_rpow_const rho (((d : Real) - 1) / 2)
+          (Or.inl (ne_of_gt hrho0)))).continuousWithinAt
+    · exact (Ψ.symbol.continuous.comp (continuous_const.mul continuous_id)).continuousOn
+  · exact (Complex.continuous_exp.comp
+      ((Complex.continuous_ofReal.comp
+        ((continuous_const.mul continuous_id).mul continuous_const)).mul
+          continuous_const)).continuousOn
+
+/-- The travelling-wave integrals of the Section 3 decomposition converge. -/
+theorem brrs_integrableOn_sectionThreeWaveIntegrand (d : Nat)
+    (Ψ : BRRSAnnularCutoff) (j : Nat) (v : Real) :
+    IntegrableOn (fun rho : Real =>
+      ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        Ψ.symbol (brrsFrequencyScale j * rho) *
+        Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I))
+      (Ioi (0 : Real)) volume := by
+  apply brrs_integrableOn_annular_dominated Ψ j (((d : Real) - 1) / 2) 1 zero_le_one
+    _ (brrs_continuousOn_sectionThreeWaveIntegrand d Ψ j v)
+  intro rho hrho
+  have hrho0 : (0 : Real) < rho := hrho
+  rw [norm_mul, norm_mul, Complex.norm_exp_ofReal_mul_I, mul_one,
+    Complex.norm_real, Real.norm_eq_abs,
+    abs_of_nonneg (Real.rpow_nonneg hrho0.le _), one_mul]
+
+/-- Continuity of the Section 3 remainder integrand on the positive
+half-line. -/
+theorem brrs_continuousOn_sectionThreeRemainderIntegrand {d : Nat}
+    (Ψ : BRRSAnnularCutoff) (j : Nat) (cout cin : Complex) (s : Real)
+    {x : BRRSSpace d} (hx : x ≠ 0) :
+    ContinuousOn (fun rho : Real => ((rho ^ (d - 1) : Real) : Complex) *
+      (surfaceFourier d (-rho • x) -
+        (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+          (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+              Complex.I) +
+            cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+              Complex.I))) *
+      brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho) (Ioi (0 : Real)) := by
+  have hr : (0 : Real) < ‖x‖ := norm_pos_iff.mpr hx
+  apply ContinuousOn.mul
+  · apply ContinuousOn.mul
+    · exact (Complex.continuous_ofReal.comp (continuous_pow (d - 1))).continuousOn
+    · apply ContinuousOn.sub
+      · exact ((continuous_surfaceFourier d).comp
+          ((continuous_neg.comp continuous_id).smul continuous_const)).continuousOn
+      · apply ContinuousOn.mul
+        · apply Complex.continuous_ofReal.comp_continuousOn
+          apply ContinuousOn.rpow_const
+            (f := fun rho : Real => rho * ‖x‖)
+            ((continuous_id.mul continuous_const).continuousOn)
+          intro rho hrho
+          have hrho0 : (0 : Real) < rho := hrho
+          exact Or.inl (ne_of_gt (by positivity))
+        · apply ContinuousOn.add
+          · exact (continuous_const.mul (Complex.continuous_exp.comp
+              ((Complex.continuous_ofReal.comp
+                ((continuous_const.mul
+                  (continuous_id.mul continuous_const)).neg)).mul
+                  continuous_const))).continuousOn
+          · exact (continuous_const.mul (Complex.continuous_exp.comp
+              ((Complex.continuous_ofReal.comp
+                (continuous_const.mul
+                  (continuous_id.mul continuous_const))).mul
+                  continuous_const))).continuousOn
+  · exact (((continuous_brrsDyadicHalfWaveKernelRadialProfile_uncurry Ψ j).comp
+      (continuous_const.prodMk continuous_id))).continuousOn
+
+/-- The Section 3 remainder integral converges. -/
+theorem brrs_integrableOn_sectionThreeRemainderIntegrand {d : Nat} (hd : 0 < d)
+    (Ψ : BRRSAnnularCutoff) (j : Nat) (cout cin : Complex) (s : Real)
+    {x : BRRSSpace d} (hx : x ≠ 0) :
+    IntegrableOn (fun rho : Real => ((rho ^ (d - 1) : Real) : Complex) *
+      (surfaceFourier d (-rho • x) -
+        (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+          (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+              Complex.I) +
+            cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+              Complex.I))) *
+      brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho)
+      (Ioi (0 : Real)) volume := by
+  have hr : (0 : Real) < ‖x‖ := norm_pos_iff.mpr hx
+  have hcpos : 0 < brrsFrequencyScale j := brrsFrequencyScale_pos j
+  have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+    have h1 : (1 : Nat) ≤ d := hd
+    push_cast [Nat.cast_sub h1]
+    ring
+  obtain ⟨K1, hK1, hm1⟩ :=
+    exists_brrs_annularSymbol_moment_le Ψ (((d - 1 : Nat) : Real))
+  obtain ⟨K2, hK2, hm2⟩ :=
+    exists_brrs_annularSymbol_moment_le Ψ (((d : Real) - 1) / 2)
+  obtain ⟨hint1, -⟩ := hm1 (brrsFrequencyScale j) hcpos
+  obtain ⟨hint2, -⟩ := hm2 (brrsFrequencyScale j) hcpos
+  apply Integrable.mono'
+    ((hint1.const_mul (surfaceMass d)).add
+      (hint2.const_mul ((‖cout‖ + ‖cin‖) * ‖x‖ ^ (-(((d : Real) - 1) / 2)))))
+    ((brrs_continuousOn_sectionThreeRemainderIntegrand Ψ j cout cin s hx).aestronglyMeasurable
+      measurableSet_Ioi)
+  filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with rho hrho
+  have hrho0 : (0 : Real) < rho := hrho
+  have hprofile : ‖brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho‖ =
+      ‖Ψ.symbol (brrsFrequencyScale j * rho)‖ := by
+    rw [brrsDyadicHalfWaveKernelRadialProfile, norm_mul,
+      Complex.norm_exp_ofReal_mul_I, one_mul]
+    rfl
+  have hnormxi : ‖-rho • x‖ = rho * ‖x‖ := by
+    rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrho0]
+  have hmain : ‖(((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+      (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+          Complex.I) +
+        cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+          Complex.I))‖ ≤
+      (rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) * (‖cout‖ + ‖cin‖) := by
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (Real.rpow_nonneg (by positivity) _)]
+    apply mul_le_mul_of_nonneg_left _ (Real.rpow_nonneg (by positivity) _)
+    calc
+      ‖cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+            Complex.I) +
+          cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+            Complex.I)‖ ≤
+          ‖cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+              Complex.I)‖ +
+            ‖cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+              Complex.I)‖ := norm_add_le _ _
+      _ = ‖cout‖ + ‖cin‖ := by
+        rw [norm_mul, norm_mul, Complex.norm_exp_ofReal_mul_I,
+          Complex.norm_exp_ofReal_mul_I, mul_one, mul_one]
+  have hsplitpow : (rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) =
+      rho ^ (-(((d : Real) - 1) / 2)) * ‖x‖ ^ (-(((d : Real) - 1) / 2)) :=
+    Real.mul_rpow hrho0.le hr.le
+  have hrhopow : rho ^ (((d - 1 : Nat) : Real)) * rho ^ (-(((d : Real) - 1) / 2)) =
+      rho ^ (((d : Real) - 1) / 2) := by
+    rw [← Real.rpow_add hrho0, hcast]
+    congr 1
+    ring
+  have hnpow : (rho ^ (d - 1) : Real) = rho ^ (((d - 1 : Nat) : Real)) :=
+    (Real.rpow_natCast rho (d - 1)).symm
+  rw [norm_mul, norm_mul, hprofile, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_nonneg (by positivity : (0 : Real) ≤ rho ^ (d - 1)), hnpow]
+  have hdiff : ‖surfaceFourier d (-rho • x) -
+      (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+        (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+            Complex.I) +
+          cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+            Complex.I))‖ ≤
+      surfaceMass d + (rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) * (‖cout‖ + ‖cin‖) := by
+    refine le_trans (norm_sub_le _ _) (add_le_add ?_ hmain)
+    exact norm_surfaceFourier_le_surfaceMass d _
+  have hnn : (0 : Real) ≤ ‖Ψ.symbol (brrsFrequencyScale j * rho)‖ := norm_nonneg _
+  calc
+    rho ^ (((d - 1 : Nat) : Real)) *
+        ‖surfaceFourier d (-rho • x) -
+          (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+            (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+                Complex.I) +
+              cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+                Complex.I))‖ *
+        ‖Ψ.symbol (brrsFrequencyScale j * rho)‖ ≤
+        rho ^ (((d - 1 : Nat) : Real)) *
+          (surfaceMass d +
+            (rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) * (‖cout‖ + ‖cin‖)) *
+          ‖Ψ.symbol (brrsFrequencyScale j * rho)‖ := by
+      apply mul_le_mul_of_nonneg_right _ hnn
+      exact mul_le_mul_of_nonneg_left hdiff (by positivity)
+    _ = surfaceMass d * (rho ^ (((d - 1 : Nat) : Real)) *
+          ‖Ψ.symbol (brrsFrequencyScale j * rho)‖) +
+        (‖cout‖ + ‖cin‖) * ‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          ((rho ^ (((d - 1 : Nat) : Real)) * rho ^ (-(((d : Real) - 1) / 2))) *
+            ‖Ψ.symbol (brrsFrequencyScale j * rho)‖) := by
+      rw [hsplitpow]
+      ring
+    _ = surfaceMass d * (rho ^ (((d - 1 : Nat) : Real)) *
+          ‖Ψ.symbol (brrsFrequencyScale j * rho)‖) +
+        (‖cout‖ + ‖cin‖) * ‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (rho ^ (((d : Real) - 1) / 2) *
+            ‖Ψ.symbol (brrsFrequencyScale j * rho)‖) := by
+      rw [hrhopow]
+
+/-- BRRS (3.4): the exact three-term decomposition of the annular half-wave
+kernel.  For every choice of leading constants the kernel is the sum of the
+two travelling terms and the intrinsic remainder. -/
+theorem brrs_dyadicHalfWaveKernel_threeTerm_decomposition {d : Nat} (hd : 0 < d)
+    (Ψ : BRRSAnnularCutoff) (j : Nat) (cout cin : Complex) (s : Real)
+    {x : BRRSSpace d} (hx : x ≠ 0) :
+    (brrsDyadicHalfWaveKernel Ψ j s : BRRSSpace d → Complex) x =
+      brrsSectionThreeFocusingTerm d Ψ j cout s x +
+        brrsSectionThreeSpreadingTerm d Ψ j cin s x +
+          brrsSectionThreeRemainderTerm d Ψ j cout cin s x := by
+  have hr : (0 : Real) < ‖x‖ := norm_pos_iff.mpr hx
+  have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+    have h1 : (1 : Nat) ≤ d := hd
+    push_cast [Nat.cast_sub h1]
+    ring
+  set A : Real → Complex := fun rho =>
+    cout * ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+      (((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        Ψ.symbol (brrsFrequencyScale j * rho) *
+        Complex.exp (((2 * Real.pi * rho * (s - ‖x‖) : Real) : Complex) *
+          Complex.I)) with hA
+  set B : Real → Complex := fun rho =>
+    cin * ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+      (((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        Ψ.symbol (brrsFrequencyScale j * rho) *
+        Complex.exp (((2 * Real.pi * rho * (s + ‖x‖) : Real) : Complex) *
+          Complex.I)) with hB
+  set C : Real → Complex := fun rho => ((rho ^ (d - 1) : Real) : Complex) *
+    (surfaceFourier d (-rho • x) -
+      (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+        (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+            Complex.I) +
+          cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+            Complex.I))) *
+    brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho with hC
+  have hAint : IntegrableOn A (Ioi (0 : Real)) volume := by
+    rw [hA]
+    exact (brrs_integrableOn_sectionThreeWaveIntegrand d Ψ j (s - ‖x‖)).const_mul _
+  have hBint : IntegrableOn B (Ioi (0 : Real)) volume := by
+    rw [hB]
+    exact (brrs_integrableOn_sectionThreeWaveIntegrand d Ψ j (s + ‖x‖)).const_mul _
+  have hCint : IntegrableOn C (Ioi (0 : Real)) volume := by
+    rw [hC]
+    exact brrs_integrableOn_sectionThreeRemainderIntegrand hd Ψ j cout cin s hx
+  have hpoint : ∀ rho ∈ Ioi (0 : Real),
+      ((rho ^ (d - 1) : Real) : Complex) *
+          (surfaceFourier d (-rho • x) *
+            brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho) =
+        (A rho + B rho) + C rho := by
+    intro rho hrho
+    have hrho0 : (0 : Real) < rho := hrho
+    have hprof : brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho =
+        Complex.exp (((2 * Real.pi * s * rho : Real) : Complex) * Complex.I) *
+          Ψ.symbol (brrsFrequencyScale j * rho) := rfl
+    have hE1s : Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+          Complex.I) *
+        Complex.exp (((2 * Real.pi * s * rho : Real) : Complex) * Complex.I) =
+        Complex.exp (((2 * Real.pi * rho * (s - ‖x‖) : Real) : Complex) *
+          Complex.I) := by
+      rw [← Complex.exp_add]
+      congr 1
+      push_cast
+      ring
+    have hE2s : Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+          Complex.I) *
+        Complex.exp (((2 * Real.pi * s * rho : Real) : Complex) * Complex.I) =
+        Complex.exp (((2 * Real.pi * rho * (s + ‖x‖) : Real) : Complex) *
+          Complex.I) := by
+      rw [← Complex.exp_add]
+      congr 1
+      push_cast
+      ring
+    have hnpow : (rho ^ (d - 1) : Real) = rho ^ (((d : Real) - 1)) := by
+      rw [← hcast, Real.rpow_natCast]
+    have hsplitpow : (rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) =
+        rho ^ (-(((d : Real) - 1) / 2)) * ‖x‖ ^ (-(((d : Real) - 1) / 2)) :=
+      Real.mul_rpow hrho0.le hr.le
+    have hrhopow : rho ^ (((d : Real) - 1)) * rho ^ (-(((d : Real) - 1) / 2)) =
+        rho ^ (((d : Real) - 1) / 2) := by
+      rw [← Real.rpow_add hrho0]
+      congr 1
+      ring
+    have hkey : ((rho ^ (d - 1) : Real) : Complex) *
+        (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) =
+        ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+          ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) := by
+      rw [← Complex.ofReal_mul, ← Complex.ofReal_mul]
+      congr 1
+      rw [hnpow, hsplitpow, ← mul_assoc, hrhopow]
+    simp only [hA, hB, hC]
+    rw [hprof]
+    linear_combination
+      (cout * Complex.exp (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+            Complex.I) *
+          Complex.exp (((2 * Real.pi * s * rho : Real) : Complex) * Complex.I) *
+          Ψ.symbol (brrsFrequencyScale j * rho) +
+        cin * Complex.exp (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+            Complex.I) *
+          Complex.exp (((2 * Real.pi * s * rho : Real) : Complex) * Complex.I) *
+          Ψ.symbol (brrsFrequencyScale j * rho)) * hkey +
+      (cout * ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+        Ψ.symbol (brrsFrequencyScale j * rho)) * hE1s +
+      (cin * ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        ((‖x‖ ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+        Ψ.symbol (brrsFrequencyScale j * rho)) * hE2s
+  calc
+    (brrsDyadicHalfWaveKernel Ψ j s : BRRSSpace d → Complex) x =
+        ∫ rho in Ioi (0 : Real), ((A rho + B rho) + C rho) := by
+      rw [brrs_dyadicHalfWaveKernel_eq_radial_integral hd Ψ j s x]
+      exact setIntegral_congr_fun measurableSet_Ioi hpoint
+    _ = (∫ rho in Ioi (0 : Real), (A rho + B rho)) +
+        ∫ rho in Ioi (0 : Real), C rho := integral_add (hAint.add hBint) hCint
+    _ = ((∫ rho in Ioi (0 : Real), A rho) + ∫ rho in Ioi (0 : Real), B rho) +
+        ∫ rho in Ioi (0 : Real), C rho :=
+      congrArg (fun z => z + ∫ rho in Ioi (0 : Real), C rho)
+        (integral_add hAint hBint)
+    _ = brrsSectionThreeFocusingTerm d Ψ j cout s x +
+        brrsSectionThreeSpreadingTerm d Ψ j cin s x +
+          brrsSectionThreeRemainderTerm d Ψ j cout cin s x := by
+      rw [brrsSectionThreeFocusingTerm, brrsSectionThreeSpreadingTerm,
+        brrsSectionThreeRemainderTerm, brrsSectionThreeWaveIntegral,
+        brrsSectionThreeWaveIntegral, hA, hB, hC]
+      rw [integral_const_mul, integral_const_mul]
+
+/-- BRRS (3.4) for the actual propagated Section 3 datum: the half-wave
+applied to the positive radial test packet decomposes into the two travelling
+terms and the remainder, at the relative time and for the positive `TT^*`
+cutoff. -/
+theorem brrs_dyadicHalfWave_positiveRadialTestPacket_threeTerm_decomposition
+    {d : Nat} (hd : 0 < d) (Φ : BRRSAnnularCutoff) (j : Nat)
+    (cout cin : Complex) (referenceTime t : Real) {x : BRRSSpace d}
+    (hx : x ≠ 0) :
+    brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x =
+      brrsSectionThreeFocusingTerm d (brrsTTStarAnnularCutoff Φ) j cout
+          (t - referenceTime) x +
+        brrsSectionThreeSpreadingTerm d (brrsTTStarAnnularCutoff Φ) j cin
+          (t - referenceTime) x +
+          brrsSectionThreeRemainderTerm d (brrsTTStarAnnularCutoff Φ) j cout cin
+            (t - referenceTime) x := by
+  rw [brrsDyadicHalfWave_positiveRadialTestPacket_eq_halfWaveKernelTTStarCutoff
+    Φ j referenceTime t]
+  exact brrs_dyadicHalfWaveKernel_threeTerm_decomposition hd
+    (brrsTTStarAnnularCutoff Φ) j cout cin (t - referenceTime) hx
+
+
+/-! ### (3.5): the main-term lower bound on the shell
+
+The positive `TT^*` cutoff makes the zero-phase wave integral an exact
+positive radial moment, so a first-order Taylor estimate in the phase gives
+the lower bound on the shell of half-width `2^{-j}/32`.  This is where the
+positivity of the propagated density is used, and where the nonvanishing of
+the two-wave leading constants of (3.3) enters. -/
+
+/-- Radial moments of an annular profile are integrable. -/
+theorem brrs_integrable_annular_moment {g : Real → Real} (hgcont : Continuous g)
+    (hgsupp : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → g u = 0) (a : Real) :
+    Integrable (fun u : Real => u ^ a * g u) := by
+  classical
+  set h : Real → Real := fun u => u ^ a * g u with hh
+  have hzero : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → h u = 0 := by
+    intro u hu
+    show u ^ a * g u = 0
+    rw [hgsupp u hu, mul_zero]
+  have hcontOn : ContinuousOn h (Icc (1 / 4 : Real) 4) := by
+    apply ContinuousOn.mul
+    · intro u hu
+      exact (Real.continuousAt_rpow_const u a
+        (Or.inl (by
+          have := hu.1
+          intro hu0
+          rw [hu0] at this
+          norm_num at this))).continuousWithinAt
+    · exact hgcont.continuousOn
+  have hIntIcc : IntegrableOn h (Icc (1 / 4 : Real) 4) :=
+    hcontOn.integrableOn_compact isCompact_Icc
+  have hind : h = Set.indicator (Icc (1 / 4 : Real) 4) h := by
+    funext u
+    by_cases hu : u ∈ Icc (1 / 4 : Real) 4
+    · rw [Set.indicator_of_mem hu]
+    · rw [Set.indicator_of_notMem hu, hzero u hu]
+  rw [hind]
+  exact (integrable_indicator_iff measurableSet_Icc).2 hIntIcc
+
+/-- Exact scaling of a radial annular moment. -/
+theorem brrs_annular_moment_scaling {g : Real → Real} (hgcont : Continuous g)
+    (hgsupp : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → g u = 0) (a : Real)
+    {c : Real} (hc : 0 < c) :
+    (∫ rho in Ioi (0 : Real), rho ^ a * g (c * rho)) =
+      c ^ (-(a + 1)) * ∫ u in Ioi (0 : Real), u ^ a * g u := by
+  classical
+  set h : Real → Real := fun u => u ^ a * g u with hh
+  have hzero : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → h u = 0 := by
+    intro u hu
+    show u ^ a * g u = 0
+    rw [hgsupp u hu, mul_zero]
+  have hInt : Integrable h := brrs_integrable_annular_moment hgcont hgsupp a
+  have hcne : c ≠ 0 := ne_of_gt hc
+  have hpoint : ∀ rho ∈ Ioi (0 : Real),
+      rho ^ a * g (c * rho) = c ^ (-a) * h (c * rho) := by
+    intro rho hrho
+    have hrho0 : (0 : Real) < rho := hrho
+    show rho ^ a * g (c * rho) = c ^ (-a) * ((c * rho) ^ a * g (c * rho))
+    rw [Real.mul_rpow hc.le hrho0.le, Real.rpow_neg hc.le]
+    have hcpow : (0 : Real) < c ^ a := Real.rpow_pos_of_pos hc a
+    field_simp
+  have hstep1 : (∫ rho in Ioi (0 : Real), rho ^ a * g (c * rho)) =
+      ∫ rho in Ioi (0 : Real), c ^ (-a) * h (c * rho) :=
+    setIntegral_congr_fun measurableSet_Ioi hpoint
+  have hcompl : ∀ rho : Real, rho ∉ Ioi (0 : Real) →
+      c ^ (-a) * h (c * rho) = 0 := by
+    intro rho hrho
+    have hle : rho ≤ 0 := by simpa using hrho
+    have hnot : c * rho ∉ Icc (1 / 4 : Real) 4 := by
+      intro hmem
+      have hle0 : c * rho ≤ 0 := mul_nonpos_of_nonneg_of_nonpos hc.le hle
+      have := hmem.1
+      linarith
+    rw [hzero _ hnot, mul_zero]
+  have hstep2 : (∫ rho in Ioi (0 : Real), c ^ (-a) * h (c * rho)) =
+      ∫ rho : Real, c ^ (-a) * h (c * rho) :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero hcompl
+  have hstep3 : (∫ rho : Real, c ^ (-a) * h (c * rho)) =
+      c ^ (-a) * (|c⁻¹| * ∫ u : Real, h u) := by
+    rw [integral_const_mul, Measure.integral_comp_mul_left h c]
+    simp
+  have hstep4 : (∫ u : Real, h u) = ∫ u in Ioi (0 : Real), h u := by
+    refine (setIntegral_eq_integral_of_forall_compl_eq_zero ?_).symm
+    intro u hu
+    have hle : u ≤ 0 := by simpa using hu
+    apply hzero
+    intro hmem
+    have := hmem.1
+    linarith
+  rw [hstep1, hstep2, hstep3, hstep4, abs_of_pos (by positivity : (0 : Real) < c⁻¹)]
+  have hpow : c ^ (-a) * c⁻¹ = c ^ (-(a + 1)) := by
+    rw [show -(a + 1) = -a + (-1 : Real) by ring, Real.rpow_add hc,
+      Real.rpow_neg_one]
+  rw [← mul_assoc, hpow]
+
+/-- Radial moments of a scaled annular profile are integrable on the positive
+half-line. -/
+theorem brrs_integrableOn_annular_moment_scaled {g : Real → Real}
+    (hgcont : Continuous g)
+    (hgsupp : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → g u = 0) (a : Real)
+    {c : Real} (hc : 0 < c) :
+    IntegrableOn (fun rho : Real => rho ^ a * g (c * rho))
+      (Ioi (0 : Real)) volume := by
+  have hInt : Integrable (fun u : Real => u ^ a * g u) :=
+    brrs_integrable_annular_moment hgcont hgsupp a
+  have hcne : c ≠ 0 := ne_of_gt hc
+  have hcomp : Integrable (fun rho : Real =>
+      c ^ (-a) * ((c * rho) ^ a * g (c * rho))) :=
+    (hInt.comp_mul_left' hcne).const_mul _
+  apply (hcomp.integrableOn (s := Ioi (0 : Real))).congr_fun _ measurableSet_Ioi
+  intro rho hrho
+  have hrho0 : (0 : Real) < rho := hrho
+  show c ^ (-a) * ((c * rho) ^ a * g (c * rho)) = rho ^ a * g (c * rho)
+  rw [Real.mul_rpow hc.le hrho0.le, Real.rpow_neg hc.le]
+  have hcpow : (0 : Real) < c ^ a := Real.rpow_pos_of_pos hc a
+  field_simp
+
+/-- The squared annular profile vanishes off the annulus. -/
+theorem brrs_annularSymbol_normSq_eq_zero (Φ : BRRSAnnularCutoff) {u : Real}
+    (hu : u ∉ Icc (1 / 4 : Real) 4) : ‖Φ.symbol u‖ ^ 2 = 0 := by
+  have hnot : u ∉ Ioo (1 / 4 : Real) 4 := fun hmem => hu ⟨hmem.1.le, hmem.2.le⟩
+  rw [brrs_annularCutoff_symbol_eq_zero Φ hnot, norm_zero]
+  norm_num
+
+/-- Every radial moment of the squared annular profile is strictly
+positive. -/
+theorem brrs_annularSymbol_normSq_moment_pos (Φ : BRRSAnnularCutoff) (a : Real) :
+    0 < ∫ u in Ioi (0 : Real), u ^ a * ‖Φ.symbol u‖ ^ 2 := by
+  classical
+  set F : Real → Real := fun u => u ^ a * ‖Φ.symbol u‖ ^ 2 with hF
+  have hgcont : Continuous fun u : Real => ‖Φ.symbol u‖ ^ 2 :=
+    (Φ.symbol.continuous.norm).pow 2
+  have hgsupp : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → ‖Φ.symbol u‖ ^ 2 = 0 :=
+    fun u hu => brrs_annularSymbol_normSq_eq_zero Φ hu
+  have hInt : Integrable F := brrs_integrable_annular_moment hgcont hgsupp a
+  obtain ⟨r0, hr0⟩ := Φ.nontrivial
+  have hr0mem : r0 ∈ Ioo (1 / 4 : Real) 4 :=
+    Φ.tsupport_subset (subset_closure (by simpa [Function.mem_support] using hr0))
+  have hr0pos : (0 : Real) < r0 := lt_trans (by norm_num) hr0mem.1
+  have hFr0 : 0 < F r0 := by
+    rw [hF]
+    have hnorm : 0 < ‖Φ.symbol r0‖ := norm_pos_iff.mpr hr0
+    have hrpow : (0 : Real) < r0 ^ a := Real.rpow_pos_of_pos hr0pos a
+    positivity
+  -- continuity gives a neighbourhood where `F` stays above half its value
+  have hFcont : ContinuousAt F r0 := by
+    rw [hF]
+    exact ((Real.continuousAt_rpow_const r0 a (Or.inl (ne_of_gt hr0pos))).mul
+      hgcont.continuousAt)
+  obtain ⟨eps, heps, hball⟩ :=
+    Metric.continuousAt_iff.mp hFcont (F r0 / 2) (by positivity)
+  set delta : Real := min (eps / 2) (r0 / 2) with hdelta
+  have hdeltapos : 0 < delta := by
+    rw [hdelta]
+    exact lt_min (by positivity) (by positivity)
+  have hlower : ∀ u ∈ Icc (r0 - delta) (r0 + delta), F r0 / 2 ≤ F u := by
+    intro u hu
+    have hdist : dist u r0 < eps := by
+      rw [Real.dist_eq, abs_lt]
+      have h1 : delta ≤ eps / 2 := min_le_left _ _
+      constructor <;> [linarith [hu.1, hu.2]; linarith [hu.1, hu.2]]
+    have := hball hdist
+    rw [Real.dist_eq, abs_lt] at this
+    linarith [this.1]
+  have hsubset : Icc (r0 - delta) (r0 + delta) ⊆ Ioi (0 : Real) := by
+    intro u hu
+    have hd2 : delta ≤ r0 / 2 := min_le_right _ _
+    have := hu.1
+    simp only [mem_Ioi]
+    linarith
+  have hnonneg : ∀ u ∈ Ioi (0 : Real), 0 ≤ F u := by
+    intro u hu
+    have hu0 : (0 : Real) < u := hu
+    rw [hF]
+    have : (0 : Real) < u ^ a := Real.rpow_pos_of_pos hu0 a
+    positivity
+  have hnonneg' : ∀ u : Real, 0 ≤ F u := by
+    intro u
+    rcases le_or_gt u 0 with hu | hu
+    · have hnot : u ∉ Icc (1 / 4 : Real) 4 := by
+        intro hmem
+        have := hmem.1
+        linarith
+      show (0 : Real) ≤ u ^ a * ‖Φ.symbol u‖ ^ 2
+      rw [hgsupp u hnot, mul_zero]
+    · show (0 : Real) ≤ u ^ a * ‖Φ.symbol u‖ ^ 2
+      have hpos : (0 : Real) < u ^ a := Real.rpow_pos_of_pos hu a
+      positivity
+  have hIccne : volume (Icc (r0 - delta) (r0 + delta)) ≠ ⊤ :=
+    (measure_Icc_lt_top).ne
+  calc
+    (0 : Real) < F r0 / 2 * (2 * delta) := by positivity
+    _ = ∫ _u in Icc (r0 - delta) (r0 + delta), F r0 / 2 := by
+      rw [setIntegral_const, smul_eq_mul, measureReal_def, Real.volume_Icc,
+        ENNReal.toReal_ofReal (by linarith)]
+      ring
+    _ ≤ ∫ u in Icc (r0 - delta) (r0 + delta), F u := by
+      apply setIntegral_mono_on
+        (integrableOn_const hIccne (by finiteness))
+        (hInt.integrableOn) measurableSet_Icc
+      exact hlower
+    _ ≤ ∫ u in Ioi (0 : Real), F u := by
+      apply setIntegral_mono_set hInt.integrableOn
+        (Filter.Eventually.of_forall hnonneg')
+        (HasSubset.Subset.eventuallyLE hsubset)
+
+/-- The positive `TT^*` annular profile is the squared modulus of the original
+profile. -/
+theorem brrs_ttStarAnnularCutoff_symbol_eq_normSq (Φ : BRRSAnnularCutoff)
+    (u : Real) :
+    (brrsTTStarAnnularCutoff Φ).symbol u = ((‖Φ.symbol u‖ ^ 2 : Real) : Complex) := by
+  rw [brrsTTStarAnnularCutoff_symbol_apply, Complex.mul_conj]
+  congr 1
+  rw [Complex.normSq_eq_norm_sq]
+
+/-- The norm of the positive `TT^*` annular profile. -/
+theorem brrs_norm_ttStarAnnularCutoff_symbol (Φ : BRRSAnnularCutoff) (u : Real) :
+    ‖(brrsTTStarAnnularCutoff Φ).symbol u‖ = ‖Φ.symbol u‖ ^ 2 := by
+  rw [brrs_ttStarAnnularCutoff_symbol_eq_normSq, Complex.norm_real,
+    Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+
+/-- Value of the Section 3 wave integral at zero phase, for the positive
+`TT^*` cutoff: the exact positive radial moment. -/
+theorem brrs_sectionThreeWaveIntegral_zero_eq (d : Nat) (Φ : BRRSAnnularCutoff)
+    (j : Nat) :
+    brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0 =
+      (((brrsFrequencyScale j) ^ (-((((d : Real) - 1) / 2) + 1)) *
+        ∫ u in Ioi (0 : Real), u ^ (((d : Real) - 1) / 2) *
+          ‖Φ.symbol u‖ ^ 2 : Real) : Complex) := by
+  have hcpos : 0 < brrsFrequencyScale j := brrsFrequencyScale_pos j
+  have hgcont : Continuous fun u : Real => ‖Φ.symbol u‖ ^ 2 :=
+    (Φ.symbol.continuous.norm).pow 2
+  have hgsupp : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → ‖Φ.symbol u‖ ^ 2 = 0 :=
+    fun u hu => brrs_annularSymbol_normSq_eq_zero Φ hu
+  have hstep : brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0 =
+      ((∫ rho in Ioi (0 : Real), rho ^ (((d : Real) - 1) / 2) *
+        ‖Φ.symbol (brrsFrequencyScale j * rho)‖ ^ 2 : Real) : Complex) := by
+    have hofReal : ((∫ rho in Ioi (0 : Real), rho ^ (((d : Real) - 1) / 2) *
+        ‖Φ.symbol (brrsFrequencyScale j * rho)‖ ^ 2 : Real) : Complex) =
+        ∫ rho in Ioi (0 : Real), ((rho ^ (((d : Real) - 1) / 2) *
+          ‖Φ.symbol (brrsFrequencyScale j * rho)‖ ^ 2 : Real) : Complex) :=
+      (integral_ofReal (𝕜 := Complex)).symm
+    rw [brrsSectionThreeWaveIntegral, hofReal]
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro rho hrho
+    show ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+        (brrsTTStarAnnularCutoff Φ).symbol (brrsFrequencyScale j * rho) *
+        Complex.exp (((2 * Real.pi * rho * 0 : Real) : Complex) * Complex.I) =
+      ((rho ^ (((d : Real) - 1) / 2) *
+        ‖Φ.symbol (brrsFrequencyScale j * rho)‖ ^ 2 : Real) : Complex)
+    rw [brrs_ttStarAnnularCutoff_symbol_eq_normSq]
+    push_cast
+    simp
+  rw [hstep, brrs_annular_moment_scaling hgcont hgsupp (((d : Real) - 1) / 2) hcpos]
+
+/-- BRRS (3.5): the main-term lower bound.  Near the focusing phase the
+Section 3 wave integral for the positive `TT^*` cutoff is bounded below by the
+full frequency moment. -/
+theorem exists_brrs_sectionThreeWaveIntegral_lower_bound (d : Nat)
+    (Φ : BRRSAnnularCutoff) :
+    ∃ c0 : Real, 0 < c0 ∧ ∀ (j : Nat) (v : Real),
+      |v| ≤ ((2 : Real) ^ j)⁻¹ / 32 →
+        c0 * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) ≤
+          ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v‖ := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  set gsq : Real → Real := fun u => ‖Φ.symbol u‖ ^ 2 with hgsq
+  have hgcont : Continuous gsq := by
+    rw [hgsq]
+    exact (Φ.symbol.continuous.norm).pow 2
+  have hgsupp : ∀ u : Real, u ∉ Icc (1 / 4 : Real) 4 → gsq u = 0 :=
+    fun u hu => brrs_annularSymbol_normSq_eq_zero Φ hu
+  set N0 : Real := ∫ u in Ioi (0 : Real), u ^ (((d : Real) - 1) / 2) * gsq u
+    with hN0
+  set N1 : Real := ∫ u in Ioi (0 : Real), u ^ (((d : Real) + 1) / 2) * gsq u
+    with hN1
+  have hN0pos : 0 < N0 := by
+    rw [hN0, hgsq]
+    exact brrs_annularSymbol_normSq_moment_pos Φ (((d : Real) - 1) / 2)
+  have hN1le : N1 ≤ 4 * N0 := by
+    rw [hN1, hN0, ← integral_const_mul]
+    apply setIntegral_mono_on
+      ((brrs_integrable_annular_moment hgcont hgsupp (((d : Real) + 1) / 2)).integrableOn)
+      (((brrs_integrable_annular_moment hgcont hgsupp
+        (((d : Real) - 1) / 2)).const_mul 4).integrableOn) measurableSet_Ioi
+    intro u hu
+    have hu0 : (0 : Real) < u := hu
+    rcases eq_or_ne (gsq u) 0 with hzero | hne
+    · rw [hzero]
+      simp
+    · have hmem : u ∈ Icc (1 / 4 : Real) 4 := by
+        by_contra hnot
+        exact hne (hgsupp u hnot)
+      have hgnn : 0 ≤ gsq u := by
+        rw [hgsq]
+        positivity
+      have hupow : u ^ (((d : Real) + 1) / 2) ≤ 4 * u ^ (((d : Real) - 1) / 2) := by
+        have hsplit : u ^ (((d : Real) + 1) / 2) =
+            u * u ^ (((d : Real) - 1) / 2) := by
+          rw [show (((d : Real) + 1) / 2) = 1 + ((d : Real) - 1) / 2 by ring,
+            Real.rpow_add hu0, Real.rpow_one]
+        rw [hsplit]
+        have hupos : (0 : Real) < u ^ (((d : Real) - 1) / 2) :=
+          Real.rpow_pos_of_pos hu0 _
+        have : u ≤ 4 := hmem.2
+        nlinarith
+      calc
+        u ^ (((d : Real) + 1) / 2) * gsq u ≤
+            (4 * u ^ (((d : Real) - 1) / 2)) * gsq u :=
+          mul_le_mul_of_nonneg_right hupow hgnn
+        _ = 4 * (u ^ (((d : Real) - 1) / 2) * gsq u) := by ring
+  refine ⟨3 / 4 * ((2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) * N0), by positivity, ?_⟩
+  intro j v hv
+  set c : Real := brrsFrequencyScale j with hc
+  have hcpos : 0 < c := brrsFrequencyScale_pos j
+  have hcval : c = 2 * Real.pi * ((2 : Real) ^ j)⁻¹ := hc
+  have h2j : (0 : Real) < (2 : Real) ^ j := by positivity
+  -- the value at zero phase
+  have hW0 : brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0 =
+      ((c ^ (-((((d : Real) - 1) / 2) + 1)) * N0 : Real) : Complex) := by
+    rw [brrs_sectionThreeWaveIntegral_zero_eq d Φ j]
+  have hexp1 : ((((d : Real) - 1) / 2) + 1) = (((d : Real) + 1) / 2) := by ring
+  have hcpow0 : (0 : Real) < c ^ (-(((d : Real) + 1) / 2)) :=
+    Real.rpow_pos_of_pos hcpos _
+  have hW0norm : ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ =
+      c ^ (-(((d : Real) + 1) / 2)) * N0 := by
+    rw [hW0, hexp1, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (by positivity)]
+  -- the difference estimate
+  have hdiff : ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v -
+      brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ ≤
+      4 * Real.pi * |v| * (c ^ (-(((d : Real) + 3) / 2)) * N1) := by
+    have hsub : brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v -
+        brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0 =
+        ∫ rho in Ioi (0 : Real),
+          (((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+              (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+              Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I) -
+            ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+              (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+              Complex.exp (((2 * Real.pi * rho * 0 : Real) : Complex) *
+                Complex.I)) := by
+      rw [brrsSectionThreeWaveIntegral, brrsSectionThreeWaveIntegral, ← hc]
+      exact (integral_sub
+        (brrs_integrableOn_sectionThreeWaveIntegrand d (brrsTTStarAnnularCutoff Φ) j v)
+        (brrs_integrableOn_sectionThreeWaveIntegrand d (brrsTTStarAnnularCutoff Φ)
+          j 0)).symm
+    have hmaj : ∀ rho ∈ Ioi (0 : Real),
+        ‖(((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+              (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+              Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I) -
+            ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+              (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+              Complex.exp (((2 * Real.pi * rho * 0 : Real) : Complex) *
+                Complex.I))‖ ≤
+          4 * Real.pi * |v| * (rho ^ (((d : Real) + 1) / 2) * gsq (c * rho)) := by
+      intro rho hrho
+      have hrho0 : (0 : Real) < rho := hrho
+      have hzeroexp : Complex.exp (((2 * Real.pi * rho * 0 : Real) : Complex) *
+          Complex.I) = 1 := by
+        rw [show (2 * Real.pi * rho * 0 : Real) = 0 by ring]
+        simp
+      rw [hzeroexp, mul_one, ← mul_sub_one]
+      rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (Real.rpow_nonneg hrho0.le _),
+        brrs_norm_ttStarAnnularCutoff_symbol]
+      rcases eq_or_ne (Φ.symbol (c * rho)) 0 with hzero | hne
+      · rw [hzero]
+        simp
+        positivity
+      · have hmem : c * rho ∈ Ioo (1 / 4 : Real) 4 := by
+          by_contra hnot
+          exact hne (brrs_annularCutoff_symbol_eq_zero Φ hnot)
+        have hrhoub : rho < 4 / c := by
+          have := hmem.2
+          rw [lt_div_iff₀ hcpos]
+          linarith [hmem.2]
+        have hvbound : 2 * Real.pi * rho * |v| ≤ 1 := by
+          have hcinv : (4 : Real) / c = 4 * (2 : Real) ^ j / (2 * Real.pi) := by
+            rw [hcval]
+            field_simp
+          have hvle : |v| ≤ ((2 : Real) ^ j)⁻¹ / 32 := hv
+          have hrholt : rho < 4 * (2 : Real) ^ j / (2 * Real.pi) := by
+            rw [← hcinv]
+            exact hrhoub
+          have hstep : 2 * Real.pi * rho * |v| ≤
+              2 * Real.pi * (4 * (2 : Real) ^ j / (2 * Real.pi)) *
+                (((2 : Real) ^ j)⁻¹ / 32) := by
+            apply mul_le_mul (by nlinarith [abs_nonneg v]) hvle (abs_nonneg v)
+              (by positivity)
+          have hval : 2 * Real.pi * (4 * (2 : Real) ^ j / (2 * Real.pi)) *
+              (((2 : Real) ^ j)⁻¹ / 32) = 1 / 8 := by
+            field_simp
+            norm_num
+          rw [hval] at hstep
+          linarith
+        have hzle : ‖((2 * Real.pi * rho * v : Real) : Complex) * Complex.I‖ ≤ 1 := by
+          rw [norm_mul, Complex.norm_I, mul_one, Complex.norm_real,
+            Real.norm_eq_abs, abs_mul, abs_of_nonneg (by positivity : (0:Real) ≤
+              2 * Real.pi * rho)]
+          exact hvbound
+        have hexpb := Complex.norm_exp_sub_one_le hzle
+        have hznorm : ‖((2 * Real.pi * rho * v : Real) : Complex) * Complex.I‖ =
+            2 * Real.pi * rho * |v| := by
+          rw [norm_mul, Complex.norm_I, mul_one, Complex.norm_real,
+            Real.norm_eq_abs, abs_mul, abs_of_nonneg (by positivity : (0:Real) ≤
+              2 * Real.pi * rho)]
+        rw [hznorm] at hexpb
+        have hgval : gsq (c * rho) = ‖Φ.symbol (c * rho)‖ ^ 2 := by rw [hgsq]
+        have hrhosplit : rho ^ (((d : Real) + 1) / 2) =
+            rho * rho ^ (((d : Real) - 1) / 2) := by
+          rw [show (((d : Real) + 1) / 2) = 1 + ((d : Real) - 1) / 2 by ring,
+            Real.rpow_add hrho0, Real.rpow_one]
+        have hnn : (0 : Real) ≤ ‖Φ.symbol (c * rho)‖ ^ 2 := by positivity
+        calc
+          rho ^ (((d : Real) - 1) / 2) * ‖Φ.symbol (c * rho)‖ ^ 2 *
+              ‖Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) *
+                Complex.I) - 1‖ ≤
+              rho ^ (((d : Real) - 1) / 2) * ‖Φ.symbol (c * rho)‖ ^ 2 *
+                (2 * (2 * Real.pi * rho * |v|)) := by
+            apply mul_le_mul_of_nonneg_left hexpb (by positivity)
+          _ = 4 * Real.pi * |v| * (rho ^ (((d : Real) + 1) / 2) *
+              ‖Φ.symbol (c * rho)‖ ^ 2) := by
+            rw [hrhosplit]
+            ring
+          _ = 4 * Real.pi * |v| * (rho ^ (((d : Real) + 1) / 2) * gsq (c * rho)) := by
+            rw [hgval]
+    have hmajint : IntegrableOn (fun rho : Real =>
+        4 * Real.pi * |v| * (rho ^ (((d : Real) + 1) / 2) * gsq (c * rho)))
+        (Ioi (0 : Real)) volume := by
+      have hbase : IntegrableOn (fun rho : Real =>
+          rho ^ (((d : Real) + 1) / 2) * gsq (c * rho)) (Ioi (0 : Real)) volume :=
+        brrs_integrableOn_annular_moment_scaled hgcont hgsupp
+          (((d : Real) + 1) / 2) hcpos
+      exact hbase.const_mul _
+    have hcalc : (∫ rho in Ioi (0 : Real),
+        4 * Real.pi * |v| * (rho ^ (((d : Real) + 1) / 2) * gsq (c * rho))) =
+        4 * Real.pi * |v| * (c ^ (-((((d : Real) + 1) / 2) + 1)) * N1) := by
+      rw [integral_const_mul,
+        brrs_annular_moment_scaling hgcont hgsupp (((d : Real) + 1) / 2) hcpos, hN1]
+    have hexp3 : ((((d : Real) + 1) / 2) + 1) = (((d : Real) + 3) / 2) := by ring
+    rw [hsub]
+    calc
+      ‖∫ rho in Ioi (0 : Real),
+          (((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+                (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+                Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) *
+                  Complex.I) -
+              ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+                (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+                Complex.exp (((2 * Real.pi * rho * 0 : Real) : Complex) *
+                  Complex.I))‖ ≤
+          ∫ rho in Ioi (0 : Real),
+            ‖(((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+                  (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+                  Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) *
+                    Complex.I) -
+                ((rho ^ (((d : Real) - 1) / 2) : Real) : Complex) *
+                  (brrsTTStarAnnularCutoff Φ).symbol (c * rho) *
+                  Complex.exp (((2 * Real.pi * rho * 0 : Real) : Complex) *
+                    Complex.I))‖ := norm_integral_le_integral_norm _
+      _ ≤ ∫ rho in Ioi (0 : Real),
+            4 * Real.pi * |v| * (rho ^ (((d : Real) + 1) / 2) * gsq (c * rho)) := by
+        apply integral_mono_of_nonneg
+        · filter_upwards with rho using norm_nonneg _
+        · exact hmajint
+        · filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with rho hrho
+          exact hmaj rho hrho
+      _ = 4 * Real.pi * |v| * (c ^ (-((((d : Real) + 1) / 2) + 1)) * N1) := hcalc
+      _ = 4 * Real.pi * |v| * (c ^ (-(((d : Real) + 3) / 2)) * N1) := by
+        rw [hexp3]
+  -- combine
+  have hsplitc : c ^ (-(((d : Real) + 3) / 2)) =
+      c ^ (-(((d : Real) + 1) / 2)) * c⁻¹ := by
+    rw [show -(((d : Real) + 3) / 2) = -(((d : Real) + 1) / 2) + (-1 : Real) by ring,
+      Real.rpow_add hcpos, Real.rpow_neg_one]
+  have hratio : 4 * Real.pi * |v| * (c⁻¹ * (4 * N0)) ≤ 1 / 4 * N0 := by
+    have hcinv : c⁻¹ = (2 : Real) ^ j / (2 * Real.pi) := by
+      rw [hcval]
+      field_simp
+    rw [hcinv]
+    have hvle : |v| ≤ ((2 : Real) ^ j)⁻¹ / 32 := hv
+    have hkey : 4 * Real.pi * |v| * ((2 : Real) ^ j / (2 * Real.pi) * 4) ≤ 1 / 4 := by
+      have hstep : 4 * Real.pi * |v| * ((2 : Real) ^ j / (2 * Real.pi) * 4) =
+          8 * ((2 : Real) ^ j * |v|) := by
+        field_simp
+        ring
+      rw [hstep]
+      have : (2 : Real) ^ j * |v| ≤ 1 / 32 := by
+        calc
+          (2 : Real) ^ j * |v| ≤ (2 : Real) ^ j * (((2 : Real) ^ j)⁻¹ / 32) :=
+            mul_le_mul_of_nonneg_left hvle (by positivity)
+          _ = 1 / 32 := by field_simp
+      linarith
+    nlinarith [hN0pos.le]
+  have htriangle : ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ -
+      ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v -
+        brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ ≤
+      ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v‖ := by
+    have := norm_sub_norm_le
+      (brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0)
+      (brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v)
+    have hsym : ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0 -
+        brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v‖ =
+        ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v -
+          brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ :=
+      norm_sub_rev _ _
+    rw [hsym] at this
+    linarith
+  have hmainvalue : 3 / 4 * ((2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) * N0) *
+      (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) =
+      3 / 4 * (c ^ (-(((d : Real) + 1) / 2)) * N0) := by
+    rw [hc, brrs_frequencyScale_rpow_neg]
+    ring
+  rw [hmainvalue]
+  have hfinal : 3 / 4 * (c ^ (-(((d : Real) + 1) / 2)) * N0) ≤
+      ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ -
+        ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v -
+          brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ := by
+    rw [hW0norm]
+    have hdiff2 : ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j v -
+        brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j 0‖ ≤
+        c ^ (-(((d : Real) + 1) / 2)) * (1 / 4 * N0) := by
+      refine hdiff.trans ?_
+      rw [hsplitc]
+      have hstep : 4 * Real.pi * |v| *
+          (c ^ (-(((d : Real) + 1) / 2)) * c⁻¹ * N1) =
+          c ^ (-(((d : Real) + 1) / 2)) * (4 * Real.pi * |v| * (c⁻¹ * N1)) := by
+        ring
+      rw [hstep]
+      apply mul_le_mul_of_nonneg_left _ hcpow0.le
+      calc
+        4 * Real.pi * |v| * (c⁻¹ * N1) ≤ 4 * Real.pi * |v| * (c⁻¹ * (4 * N0)) := by
+          apply mul_le_mul_of_nonneg_left _ (by positivity)
+          exact mul_le_mul_of_nonneg_left hN1le (by positivity)
+        _ ≤ 1 / 4 * N0 := hratio
+    nlinarith [hcpow0, hN0pos]
+  linarith [hfinal, htriangle]
+
+/-- On the Section 3 shell the focusing phase is small: this is the geometric
+input of (3.5). -/
+theorem brrs_sectionThree_shell_phase_le {d : Nat} {referenceTime t mesh : Real}
+    {x : BRRSSpace d}
+    (hx : x ∈ brrsSectionThreeSpatialShell d referenceTime t mesh)
+    (hs : referenceTime ≤ t) :
+    |(t - referenceTime) - ‖x‖| ≤ mesh / 32 := by
+  rw [mem_brrsSectionThreeSpatialShell_iff] at hx
+  have habs : |t - referenceTime| = t - referenceTime := abs_of_nonneg (by linarith)
+  rw [habs] at hx
+  rw [abs_le]
+  constructor <;> linarith [hx.1, hx.2]
+
+/-- The mirror-image geometric input, for the reflected choice of reference
+time. -/
+theorem brrs_sectionThree_shell_phase_le_of_le {d : Nat}
+    {referenceTime t mesh : Real} {x : BRRSSpace d}
+    (hx : x ∈ brrsSectionThreeSpatialShell d referenceTime t mesh)
+    (hs : t ≤ referenceTime) :
+    |(t - referenceTime) + ‖x‖| ≤ mesh / 32 := by
+  rw [mem_brrsSectionThreeSpatialShell_iff] at hx
+  have habs : |t - referenceTime| = referenceTime - t := by
+    rw [abs_of_nonpos (by linarith)]
+    ring
+  rw [habs] at hx
+  rw [abs_le]
+  constructor <;> linarith [hx.1, hx.2]
+
+
+/-! ### (3.5) in relative form, and (3.6), (3.7): the two error estimates
+
+The travelling terms and the remainder all carry the radial weight
+`|x|^{-(d-1)/2}` or `|x|^{-(d+1)/2}`, so the estimates are stated with that
+weight explicit; the weights then cancel exactly when the terms are compared,
+which is what (3.1) needs.  (3.6) is arbitrary polynomial decay in the
+rescaled nonstationary phase, obtained by writing the travelling wave integral
+as a rescaled Fourier transform of the weighted annular profile.  (3.7) is one
+power of the frequency better than the travelling terms, and needs only the
+two-wave remainder bound of (3.3) together with the annular moment of order
+`(d-3)/2`. -/
+
+/-- The Section 3 travelling-wave integral is a rescaled Fourier transform of
+the weighted annular profile. -/
+theorem brrs_annularOscillatory_realWeight_eq_fourier {a : Real}
+    (Ψ : BRRSAnnularCutoff) (Θ : SchwartzMap Real Complex)
+    (hΘ : ∀ u : Real, Θ u = ((u ^ a : Real) : Complex) * Ψ.symbol u)
+    {c : Real} (hc : 0 < c) (v : Real) :
+    (∫ rho in Ioi (0 : Real), ((rho ^ a : Real) : Complex) * Ψ.symbol (c * rho) *
+        Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I)) =
+      ((c ^ (-(a + 1)) : Real) : Complex) * 𝓕 ((Θ : Real → Complex)) (-(v / c)) := by
+  have hane : (0 : Real) < c ^ a := Real.rpow_pos_of_pos hc a
+  have hzeroProfile : ∀ rho : Real, rho ≤ 0 → Ψ.symbol (c * rho) = 0 := by
+    intro rho hrho
+    apply brrs_annularCutoff_symbol_eq_zero
+    intro hmem
+    have hle : c * rho ≤ 0 := mul_nonpos_of_nonneg_of_nonpos hc.le hrho
+    have := hmem.1
+    linarith
+  have hpoint : ∀ rho : Real,
+      ((rho ^ a : Real) : Complex) * Ψ.symbol (c * rho) *
+          Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I) =
+        ((c ^ (-a) : Real) : Complex) * (Θ (c * rho) *
+          Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+            Complex.I)) := by
+    intro rho
+    have hphase : (-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) =
+        (2 * Real.pi * rho * v : Real) := by
+      field_simp
+    rcases le_or_gt rho 0 with hrho | hrho
+    · rw [hzeroProfile rho hrho, hΘ (c * rho), hzeroProfile rho hrho]
+      simp
+    · rw [hΘ (c * rho), hphase, Real.mul_rpow hc.le hrho.le, Real.rpow_neg hc.le]
+      have hcne : ((c ^ a : Real) : Complex) ≠ 0 := by
+        simp only [ne_eq, Complex.ofReal_eq_zero]
+        exact ne_of_gt hane
+      push_cast
+      field_simp
+  have hcongr : (∫ rho in Ioi (0 : Real), ((rho ^ a : Real) : Complex) *
+      Ψ.symbol (c * rho) *
+      Complex.exp (((2 * Real.pi * rho * v : Real) : Complex) * Complex.I)) =
+      ∫ rho in Ioi (0 : Real), ((c ^ (-a) : Real) : Complex) * (Θ (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+          Complex.I)) := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro rho _
+    exact hpoint rho
+  have hvanish : ∀ rho : Real, rho ∉ Ioi (0 : Real) →
+      ((c ^ (-a) : Real) : Complex) * (Θ (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+          Complex.I)) = 0 := by
+    intro rho hrho
+    have hle : rho ≤ 0 := by simpa using hrho
+    rw [hΘ (c * rho), hzeroProfile rho hle]
+    simp
+  have hfull : (∫ rho in Ioi (0 : Real), ((c ^ (-a) : Real) : Complex) *
+      (Θ (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+          Complex.I))) =
+      ∫ rho : Real, ((c ^ (-a) : Real) : Complex) * (Θ (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+          Complex.I)) :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero hvanish
+  have hscale : (∫ rho : Real, ((c ^ (-a) : Real) : Complex) * (Θ (c * rho) *
+      Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+        Complex.I))) =
+      ((c ^ (-a) : Real) : Complex) * (((|c⁻¹| : Real) : Complex) *
+        𝓕 ((Θ : Real → Complex)) (-(v / c))) := by
+    rw [integral_const_mul]
+    congr 1
+    rw [brrs_fourier_real_eq]
+    have hcomp := Measure.integral_comp_mul_left
+      (fun u : Real => Θ u *
+        Complex.exp (((-(2 * Real.pi * (u * (-(v / c)))) : Real) : Complex) *
+          Complex.I)) c
+    have hrewrite : (∫ rho : Real, Θ (c * rho) *
+        Complex.exp (((-(2 * Real.pi * (c * rho) * (-(v / c))) : Real) : Complex) *
+          Complex.I)) =
+        ∫ rho : Real, (fun u : Real => Θ u *
+          Complex.exp (((-(2 * Real.pi * (u * (-(v / c)))) : Real) : Complex) *
+            Complex.I)) (c * rho) := by
+      apply integral_congr_ae
+      filter_upwards with rho
+      congr 2
+      push_cast
+      ring
+    rw [hrewrite, hcomp]
+    rw [show (∫ u : Real, Θ u *
+        Complex.exp (((-(2 * Real.pi * (u * (-(v / c)))) : Real) : Complex) *
+          Complex.I)) =
+        ∫ u : Real, Complex.exp (((-(2 * Real.pi * (u * (-(v / c)))) : Real) :
+            Complex) * Complex.I) * Θ u from by
+      apply integral_congr_ae
+      filter_upwards with u
+      ring]
+    rw [Complex.real_smul]
+  rw [hcongr, hfull, hscale]
+  have habs : |c⁻¹| = c⁻¹ := abs_of_pos (by positivity)
+  rw [habs]
+  have hpow : (c ^ (-a) : Real) * c⁻¹ = c ^ (-(a + 1)) := by
+    rw [show -(a + 1) = -a + (-1 : Real) by ring, Real.rpow_add hc,
+      Real.rpow_neg_one]
+  rw [← mul_assoc, ← Complex.ofReal_mul, hpow]
+
+/-- Rapid decay of the Section 3 travelling-wave integral in the rescaled
+phase.  This is the estimate behind BRRS (3.6). -/
+theorem exists_brrs_sectionThreeWaveIntegral_decay (d : Nat)
+    (Ψ : BRRSAnnularCutoff) (N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (v : Real),
+      ‖brrsSectionThreeWaveIntegral d Ψ j v‖ ≤
+        C * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+          (1 + (2 : Real) ^ j * |v|) ^ N := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  obtain ⟨Θ, hΘ, -⟩ :=
+    exists_brrs_weightedAnnularSchwartz (((d : Real) - 1) / 2) Ψ.symbol
+      Ψ.tsupport_subset
+  obtain ⟨CN, hCN, hdecay⟩ := exists_brrs_schwartzFourier_decay Θ N
+  refine ⟨(2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) * ((2 * Real.pi) ^ N * CN), by
+    have h1 : (0 : Real) < (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) :=
+      Real.rpow_pos_of_pos h2pi _
+    positivity, ?_⟩
+  intro j v
+  set c : Real := brrsFrequencyScale j with hc
+  have hcpos : 0 < c := brrsFrequencyScale_pos j
+  have hcval : c = 2 * Real.pi * ((2 : Real) ^ j)⁻¹ := hc
+  have h2j : (0 : Real) < (2 : Real) ^ j := by positivity
+  have hident : brrsSectionThreeWaveIntegral d Ψ j v =
+      ((c ^ (-((((d : Real) - 1) / 2) + 1)) : Real) : Complex) *
+        𝓕 ((Θ : Real → Complex)) (-(v / c)) := by
+    rw [brrsSectionThreeWaveIntegral, ← hc]
+    exact brrs_annularOscillatory_realWeight_eq_fourier Ψ Θ hΘ hcpos v
+  have hexp1 : ((((d : Real) - 1) / 2) + 1) = (((d : Real) + 1) / 2) := by ring
+  have hcpow : (c ^ (-(((d : Real) + 1) / 2)) : Real) =
+      (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+    rw [hc, brrs_frequencyScale_rpow_neg]
+  have hnormident : ‖brrsSectionThreeWaveIntegral d Ψ j v‖ =
+      (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) *
+        ‖𝓕 ((Θ : Real → Complex)) (-(v / c))‖ := by
+    rw [hident, hexp1, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (Real.rpow_nonneg hcpos.le _), hcpow]
+  -- the rescaled phase
+  have hphase : (1 + (2 : Real) ^ j * |v|) / (2 * Real.pi) ≤ 1 + |-(v / c)| := by
+    have habs : |-(v / c)| = |v| / c := by
+      rw [abs_neg, abs_div, abs_of_pos hcpos]
+    rw [habs, hcval]
+    rw [div_le_iff₀ h2pi]
+    have hstep : |v| / (2 * Real.pi * ((2 : Real) ^ j)⁻¹) =
+        (2 : Real) ^ j * |v| / (2 * Real.pi) := by
+      field_simp
+    rw [hstep]
+    have hpi1 : (1 : Real) ≤ 2 * Real.pi := by nlinarith [Real.pi_gt_three]
+    have hvnn : (0 : Real) ≤ (2 : Real) ^ j * |v| := by positivity
+    have : (2 : Real) ^ j * |v| / (2 * Real.pi) * (2 * Real.pi) =
+        (2 : Real) ^ j * |v| := by
+      field_simp
+    nlinarith [this]
+  have hpow : (1 + (2 : Real) ^ j * |v|) ^ N ≤
+      (2 * Real.pi) ^ N * (1 + |-(v / c)|) ^ N := by
+    have hbase : (0 : Real) ≤ (1 + (2 : Real) ^ j * |v|) / (2 * Real.pi) := by
+      positivity
+    have hmono := pow_le_pow_left₀ hbase hphase N
+    rw [div_pow] at hmono
+    have h2piN : (0 : Real) < (2 * Real.pi) ^ N := by positivity
+    rw [div_le_iff₀ h2piN] at hmono
+    linarith [hmono]
+  have hdecayv := hdecay (-(v / c))
+  have hden : (0 : Real) < (1 + |-(v / c)|) ^ N := by positivity
+  have hden2 : (0 : Real) < (1 + (2 : Real) ^ j * |v|) ^ N := by positivity
+  have hdyadpos : (0 : Real) < (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) :=
+    Real.rpow_pos_of_pos (by norm_num) _
+  have hcpi : (0 : Real) < (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) :=
+    Real.rpow_pos_of_pos h2pi _
+  rw [hnormident, le_div_iff₀ hden2]
+  calc
+    (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) *
+          (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) *
+          ‖𝓕 ((Θ : Real → Complex)) (-(v / c))‖ *
+          (1 + (2 : Real) ^ j * |v|) ^ N ≤
+        (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) *
+          (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) *
+          (CN / (1 + |-(v / c)|) ^ N) *
+          ((2 * Real.pi) ^ N * (1 + |-(v / c)|) ^ N) := by
+      apply mul_le_mul (by
+        apply mul_le_mul_of_nonneg_left hdecayv (by positivity)) hpow
+        (by positivity) (by positivity)
+    _ = (2 * Real.pi) ^ (-(((d : Real) + 1) / 2)) * ((2 * Real.pi) ^ N * CN) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+      field_simp
+
+/-- The norm of a Section 3 travelling term factors through the wave
+integral. -/
+theorem brrs_norm_sectionThreeFocusingTerm (d : Nat) (Ψ : BRRSAnnularCutoff)
+    (j : Nat) (cout : Complex) (s : Real) (x : BRRSSpace d) :
+    ‖brrsSectionThreeFocusingTerm d Ψ j cout s x‖ =
+      ‖cout‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ‖brrsSectionThreeWaveIntegral d Ψ j (s - ‖x‖)‖) := by
+  rw [brrsSectionThreeFocusingTerm, norm_mul, norm_mul, Complex.norm_real,
+    Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg x) _), mul_assoc]
+
+/-- The same factorization for the spreading term. -/
+theorem brrs_norm_sectionThreeSpreadingTerm (d : Nat) (Ψ : BRRSAnnularCutoff)
+    (j : Nat) (cin : Complex) (s : Real) (x : BRRSSpace d) :
+    ‖brrsSectionThreeSpreadingTerm d Ψ j cin s x‖ =
+      ‖cin‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ‖brrsSectionThreeWaveIntegral d Ψ j (s + ‖x‖)‖) := by
+  rw [brrsSectionThreeSpreadingTerm, norm_mul, norm_mul, Complex.norm_real,
+    Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg x) _), mul_assoc]
+
+/-- BRRS (3.5) for the focusing term, in the form that keeps the radial weight
+explicit: on the shell where the phase `s - |x|` is small the focusing term is
+bounded below by the full frequency size. -/
+theorem exists_brrs_sectionThreeFocusingTerm_lower_bound {d : Nat}
+    (Φ : BRRSAnnularCutoff) {cout : Complex} (hcout : cout ≠ 0) :
+    ∃ c1 : Real, 0 < c1 ∧ ∀ (j : Nat) (s : Real) (x : BRRSSpace d),
+      |s - ‖x‖| ≤ dyadicTimeScale j / 32 → 0 < ‖x‖ →
+        c1 * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+            (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) ≤
+          ‖brrsSectionThreeFocusingTerm d (brrsTTStarAnnularCutoff Φ) j cout s x‖ := by
+  obtain ⟨c0, hc0, hwave⟩ := exists_brrs_sectionThreeWaveIntegral_lower_bound d Φ
+  have hcoutpos : 0 < ‖cout‖ := norm_pos_iff.mpr hcout
+  refine ⟨‖cout‖ * c0, by positivity, ?_⟩
+  intro j s x hphase hxpos
+  have hbase : |s - ‖x‖| ≤ ((2 : Real) ^ j)⁻¹ / 32 := by
+    rw [dyadicTimeScale] at hphase
+    exact hphase
+  have hwavebound := hwave j (s - ‖x‖) hbase
+  rw [brrs_norm_sectionThreeFocusingTerm]
+  calc
+    ‖cout‖ * c0 * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) =
+        ‖cout‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (c0 * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)))) := by ring
+    _ ≤ ‖cout‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j
+          (s - ‖x‖)‖) := by
+      apply mul_le_mul_of_nonneg_left _ hcoutpos.le
+      exact mul_le_mul_of_nonneg_left hwavebound (Real.rpow_nonneg hxpos.le _)
+
+/-- BRRS (3.5) for the spreading term: the mirror statement, used when the
+reference time is the right endpoint of the interval. -/
+theorem exists_brrs_sectionThreeSpreadingTerm_lower_bound {d : Nat}
+    (Φ : BRRSAnnularCutoff) {cin : Complex} (hcin : cin ≠ 0) :
+    ∃ c1 : Real, 0 < c1 ∧ ∀ (j : Nat) (s : Real) (x : BRRSSpace d),
+      |s + ‖x‖| ≤ dyadicTimeScale j / 32 → 0 < ‖x‖ →
+        c1 * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+            (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) ≤
+          ‖brrsSectionThreeSpreadingTerm d (brrsTTStarAnnularCutoff Φ) j cin s x‖ := by
+  obtain ⟨c0, hc0, hwave⟩ := exists_brrs_sectionThreeWaveIntegral_lower_bound d Φ
+  have hcinpos : 0 < ‖cin‖ := norm_pos_iff.mpr hcin
+  refine ⟨‖cin‖ * c0, by positivity, ?_⟩
+  intro j s x hphase hxpos
+  have hbase : |s + ‖x‖| ≤ ((2 : Real) ^ j)⁻¹ / 32 := by
+    rw [dyadicTimeScale] at hphase
+    exact hphase
+  have hwavebound := hwave j (s + ‖x‖) hbase
+  rw [brrs_norm_sectionThreeSpreadingTerm]
+  calc
+    ‖cin‖ * c0 * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) =
+        ‖cin‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (c0 * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)))) := by ring
+    _ ≤ ‖cin‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ‖brrsSectionThreeWaveIntegral d (brrsTTStarAnnularCutoff Φ) j
+          (s + ‖x‖)‖) := by
+      apply mul_le_mul_of_nonneg_left _ hcinpos.le
+      exact mul_le_mul_of_nonneg_left hwavebound (Real.rpow_nonneg hxpos.le _)
+
+/-- BRRS (3.6): the spreading term is an error.  It obeys the same frequency
+size as the focusing term, with arbitrary polynomial decay in the rescaled
+nonstationary phase `2^j |s + |x||`. -/
+theorem exists_brrs_sectionThreeSpreadingTerm_upper_bound (d : Nat)
+    (Ψ : BRRSAnnularCutoff) (cin : Complex) (N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (s : Real) (x : BRRSSpace d),
+      ‖brrsSectionThreeSpreadingTerm d Ψ j cin s x‖ ≤
+        C * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N)) := by
+  obtain ⟨Cdec, hCdec, hdec⟩ := exists_brrs_sectionThreeWaveIntegral_decay d Ψ N
+  refine ⟨(‖cin‖ + 1) * Cdec, by positivity, ?_⟩
+  intro j s x
+  rw [brrs_norm_sectionThreeSpreadingTerm]
+  have hdenpos : (0 : Real) < (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N := by positivity
+  calc
+    ‖cin‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ‖brrsSectionThreeWaveIntegral d Ψ j (s + ‖x‖)‖) ≤
+        ‖cin‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (Cdec * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N)) := by
+      apply mul_le_mul_of_nonneg_left _ (norm_nonneg _)
+      exact mul_le_mul_of_nonneg_left (hdec j (s + ‖x‖))
+        (Real.rpow_nonneg (norm_nonneg x) _)
+    _ ≤ (‖cin‖ + 1) * Cdec * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+          (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N)) := by
+      have hxnn : (0 : Real) ≤ ‖x‖ ^ (-(((d : Real) - 1) / 2)) :=
+        Real.rpow_nonneg (norm_nonneg x) _
+      have hquot : (0 : Real) ≤ (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+          (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N := by positivity
+      have hcoef : ‖cin‖ * Cdec ≤ (‖cin‖ + 1) * Cdec := by nlinarith [hCdec.le]
+      have hfactor : ‖cin‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (Cdec * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N)) =
+          ‖cin‖ * Cdec * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+            ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+              (1 + (2 : Real) ^ j * |s + ‖x‖|) ^ N)) := by
+        field_simp
+      rw [hfactor]
+      exact mul_le_mul_of_nonneg_right hcoef (by positivity)
+
+/-- The same decay estimate for the focusing term, used off the shell. -/
+theorem exists_brrs_sectionThreeFocusingTerm_upper_bound (d : Nat)
+    (Ψ : BRRSAnnularCutoff) (cout : Complex) (N : Nat) :
+    ∃ C : Real, 0 < C ∧ ∀ (j : Nat) (s : Real) (x : BRRSSpace d),
+      ‖brrsSectionThreeFocusingTerm d Ψ j cout s x‖ ≤
+        C * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |s - ‖x‖|) ^ N)) := by
+  obtain ⟨Cdec, hCdec, hdec⟩ := exists_brrs_sectionThreeWaveIntegral_decay d Ψ N
+  refine ⟨(‖cout‖ + 1) * Cdec, by positivity, ?_⟩
+  intro j s x
+  rw [brrs_norm_sectionThreeFocusingTerm]
+  calc
+    ‖cout‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ‖brrsSectionThreeWaveIntegral d Ψ j (s - ‖x‖)‖) ≤
+        ‖cout‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (Cdec * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |s - ‖x‖|) ^ N)) := by
+      apply mul_le_mul_of_nonneg_left _ (norm_nonneg _)
+      exact mul_le_mul_of_nonneg_left (hdec j (s - ‖x‖))
+        (Real.rpow_nonneg (norm_nonneg x) _)
+    _ ≤ (‖cout‖ + 1) * Cdec * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+          (1 + (2 : Real) ^ j * |s - ‖x‖|) ^ N)) := by
+      have hcoef : ‖cout‖ * Cdec ≤ (‖cout‖ + 1) * Cdec := by nlinarith [hCdec.le]
+      have hfactor : ‖cout‖ * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (Cdec * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |s - ‖x‖|) ^ N)) =
+          ‖cout‖ * Cdec * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+            ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+              (1 + (2 : Real) ^ j * |s - ‖x‖|) ^ N)) := by
+        field_simp
+      rw [hfactor]
+      exact mul_le_mul_of_nonneg_right hcoef (by positivity)
+
+/-- BRRS (3.7): the remainder of the three-term decomposition is one order
+smaller than the travelling terms.  The constants are those of the two-wave
+asymptotic of (3.3), whose nonvanishing is carried along for use in (3.5). -/
+theorem exists_brrs_sectionThreeRemainderTerm_bound {d : Nat} (hd : 2 ≤ d)
+    (Ψ : BRRSAnnularCutoff) :
+    ∃ (cout cin : Complex) (C : Real), 0 < C ∧ cout ≠ 0 ∧ cin ≠ 0 ∧
+      ∀ (j : Nat) (s : Real) (x : BRRSSpace d), 0 < ‖x‖ →
+        8 * Real.pi ≤ (2 : Real) ^ j * ‖x‖ →
+          ‖brrsSectionThreeRemainderTerm d Ψ j cout cin s x‖ ≤
+            C * (‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+              (2 : Real) ^ ((j : Real) * (((d : Real) - 1) / 2))) := by
+  have hpi := Real.pi_pos
+  have h2pi : (0 : Real) < 2 * Real.pi := by positivity
+  obtain ⟨cout, cin, C0, hC0, hcout, hcin, htwo⟩ :=
+    exists_brrs_surfaceFourier_twoWave d hd
+  obtain ⟨K2, hK2, hm2⟩ :=
+    exists_brrs_annularSymbol_moment_le Ψ (((d : Real) - 3) / 2)
+  refine ⟨cout, cin, C0 * (K2 * (2 * Real.pi) ^ (-(((d : Real) - 1) / 2))), by
+    have h1 : (0 : Real) < (2 * Real.pi) ^ (-(((d : Real) - 1) / 2)) :=
+      Real.rpow_pos_of_pos h2pi _
+    positivity, hcout, hcin, ?_⟩
+  intro j s x hxpos hthreshold
+  have hd0 : 0 < d := by omega
+  set c : Real := brrsFrequencyScale j with hc
+  have hcpos : 0 < c := brrsFrequencyScale_pos j
+  have hcval : c = 2 * Real.pi * ((2 : Real) ^ j)⁻¹ := hc
+  have h2j : (0 : Real) < (2 : Real) ^ j := by positivity
+  obtain ⟨hint2, hle2⟩ := hm2 c hcpos
+  have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+    have h1 : (1 : Nat) ≤ d := hd0
+    push_cast [Nat.cast_sub h1]
+    ring
+  -- pointwise majorization of the remainder integrand
+  have hpoint : ∀ rho ∈ Ioi (0 : Real),
+      ‖((rho ^ (d - 1) : Real) : Complex) *
+          (surfaceFourier d (-rho • x) -
+            (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+              (cout * Complex.exp
+                  (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) * Complex.I) +
+                cin * Complex.exp
+                  (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) * Complex.I))) *
+          brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho‖ ≤
+        C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+          (rho ^ (((d : Real) - 3) / 2) * ‖Ψ.symbol (c * rho)‖) := by
+    intro rho hrho
+    have hrho0 : (0 : Real) < rho := hrho
+    have hprofile : ‖brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho‖ =
+        ‖Ψ.symbol (c * rho)‖ := by
+      rw [brrsDyadicHalfWaveKernelRadialProfile, norm_mul,
+        Complex.norm_exp_ofReal_mul_I, one_mul]
+      rfl
+    rw [norm_mul, norm_mul, hprofile, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (by positivity : (0 : Real) ≤ rho ^ (d - 1))]
+    rcases eq_or_ne (Ψ.symbol (c * rho)) 0 with hzero | hne
+    · rw [hzero]
+      simp
+    · -- on the support the two-wave asymptotic applies
+      have hmem : c * rho ∈ Ioo (1 / 4 : Real) 4 := by
+        by_contra hnot
+        exact hne (brrs_annularCutoff_symbol_eq_zero Ψ hnot)
+      have hnormxi : ‖-rho • x‖ = rho * ‖x‖ := by
+        rw [norm_smul, Real.norm_eq_abs, abs_neg, abs_of_pos hrho0]
+      have hrhoge : 1 / (4 * c) < rho := by
+        have hm := hmem.1
+        rw [div_lt_iff₀ (by positivity)]
+        nlinarith
+      have hxige : 1 ≤ ‖-rho • x‖ := by
+        rw [hnormxi]
+        have hstep : 1 / (4 * c) * ‖x‖ ≤ rho * ‖x‖ :=
+          mul_le_mul_of_nonneg_right hrhoge.le hxpos.le
+        have hval : 1 / (4 * c) * ‖x‖ = (2 : Real) ^ j * ‖x‖ / (8 * Real.pi) := by
+          rw [hcval]
+          field_simp
+          ring
+        have hone : (1 : Real) ≤ (2 : Real) ^ j * ‖x‖ / (8 * Real.pi) := by
+          rw [le_div_iff₀ (by positivity)]
+          linarith
+        rw [hval] at hstep
+        linarith
+      have htwoapp := htwo (-rho • x) hxige
+      rw [hnormxi] at htwoapp
+      have hrpownn : (0 : Real) ≤ (rho * ‖x‖) ^ (-(((d : Real) + 1) / 2)) :=
+        Real.rpow_nonneg (by positivity) _
+      have hsplitpow : (rho * ‖x‖) ^ (-(((d : Real) + 1) / 2)) =
+          rho ^ (-(((d : Real) + 1) / 2)) * ‖x‖ ^ (-(((d : Real) + 1) / 2)) :=
+        Real.mul_rpow hrho0.le hxpos.le
+      have hnpow : (rho ^ (d - 1) : Real) = rho ^ (((d : Real) - 1)) := by
+        rw [← hcast, Real.rpow_natCast]
+      have hrhopow : rho ^ (((d : Real) - 1)) * rho ^ (-(((d : Real) + 1) / 2)) =
+          rho ^ (((d : Real) - 3) / 2) := by
+        rw [← Real.rpow_add hrho0]
+        congr 1
+        ring
+      have hnn : (0 : Real) ≤ ‖Ψ.symbol (c * rho)‖ := norm_nonneg _
+      calc
+        (rho ^ (d - 1) : Real) *
+              ‖surfaceFourier d (-rho • x) -
+                (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+                  (cout * Complex.exp
+                      (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) *
+                        Complex.I) +
+                    cin * Complex.exp
+                      (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) *
+                        Complex.I))‖ *
+              ‖Ψ.symbol (c * rho)‖ ≤
+            (rho ^ (d - 1) : Real) *
+              (C0 * (rho * ‖x‖) ^ (-(((d : Real) + 1) / 2))) *
+              ‖Ψ.symbol (c * rho)‖ := by
+          apply mul_le_mul_of_nonneg_right _ hnn
+          exact mul_le_mul_of_nonneg_left htwoapp (by positivity)
+        _ = C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+            ((rho ^ (((d : Real) - 1)) * rho ^ (-(((d : Real) + 1) / 2))) *
+              ‖Ψ.symbol (c * rho)‖) := by
+          rw [hsplitpow, hnpow]
+          ring
+        _ = C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+            (rho ^ (((d : Real) - 3) / 2) * ‖Ψ.symbol (c * rho)‖) := by
+          rw [hrhopow]
+  have hmajint : IntegrableOn (fun rho : Real =>
+      C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+        (rho ^ (((d : Real) - 3) / 2) * ‖Ψ.symbol (c * rho)‖))
+      (Ioi (0 : Real)) volume := hint2.const_mul _
+  rw [brrsSectionThreeRemainderTerm]
+  calc
+    ‖∫ rho in Ioi (0 : Real), ((rho ^ (d - 1) : Real) : Complex) *
+        (surfaceFourier d (-rho • x) -
+          (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+            (cout * Complex.exp
+                (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) * Complex.I) +
+              cin * Complex.exp
+                (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) * Complex.I))) *
+        brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho‖ ≤
+        ∫ rho in Ioi (0 : Real), ‖((rho ^ (d - 1) : Real) : Complex) *
+          (surfaceFourier d (-rho • x) -
+            (((rho * ‖x‖) ^ (-(((d : Real) - 1) / 2)) : Real) : Complex) *
+              (cout * Complex.exp
+                  (((-(2 * Real.pi * (rho * ‖x‖)) : Real) : Complex) * Complex.I) +
+                cin * Complex.exp
+                  (((2 * Real.pi * (rho * ‖x‖) : Real) : Complex) * Complex.I))) *
+          brrsDyadicHalfWaveKernelRadialProfile Ψ j s rho‖ :=
+      norm_integral_le_integral_norm _
+    _ ≤ ∫ rho in Ioi (0 : Real), C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+        (rho ^ (((d : Real) - 3) / 2) * ‖Ψ.symbol (c * rho)‖) := by
+      apply integral_mono_of_nonneg
+      · filter_upwards with rho using norm_nonneg _
+      · exact hmajint
+      · filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with rho hrho
+        exact hpoint rho hrho
+    _ = C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+        ∫ rho in Ioi (0 : Real), rho ^ (((d : Real) - 3) / 2) *
+          ‖Ψ.symbol (c * rho)‖ := integral_const_mul _ _
+    _ ≤ C0 * ‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+        (K2 * c ^ (-((((d : Real) - 3) / 2) + 1))) := by
+      apply mul_le_mul_of_nonneg_left hle2
+      have : (0 : Real) ≤ ‖x‖ ^ (-(((d : Real) + 1) / 2)) :=
+        Real.rpow_nonneg hxpos.le _
+      positivity
+    _ = C0 * (K2 * (2 * Real.pi) ^ (-(((d : Real) - 1) / 2))) *
+        (‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+          (2 : Real) ^ ((j : Real) * (((d : Real) - 1) / 2))) := by
+      have hexp : ((((d : Real) - 3) / 2) + 1) = ((d : Real) - 1) / 2 := by ring
+      rw [hexp, hc, brrs_frequencyScale_rpow_neg]
+      ring
+
+
+/-! ### (3.1): the localized lower bound
+
+Once the interval length exceeds a fixed multiple of the mesh, the focusing
+term of (3.4) dominates the spreading term of (3.6) and the remainder of
+(3.7), so the pointwise lower bound of (3.5) survives on the whole shell.
+Integrating it against the shell volume and summing over the sampled times
+gives the localized lower bound.  No entropy is used here. -/
+
+/-- An elementary lower bound for a difference of powers. -/
+theorem brrs_pow_sub_pow_ge {x y : Real} (hy : 0 ≤ y) (hxy : y ≤ x) (m : Nat) :
+    y ^ m * (x - y) ≤ x ^ (m + 1) - y ^ (m + 1) := by
+  have hx : (0 : Real) ≤ x := le_trans hy hxy
+  have hstep : y ^ m * x ≤ x ^ m * x :=
+    mul_le_mul_of_nonneg_right (pow_le_pow_left₀ hy hxy m) hx
+  have hx1 : x ^ (m + 1) = x ^ m * x := by ring
+  have hy1 : y ^ (m + 1) = y ^ m * y := by ring
+  rw [hx1, hy1]
+  nlinarith [hstep]
+
+/-- The Section 3 shell is the difference of two balls. -/
+theorem brrs_sectionThreeSpatialShell_eq_diff {d : Nat}
+    (referenceTime t mesh : Real) :
+    brrsSectionThreeSpatialShell d referenceTime t mesh =
+      Metric.closedBall (0 : BRRSSpace d) (|t - referenceTime| + mesh / 32) \
+        Metric.ball (0 : BRRSSpace d) (|t - referenceTime| - mesh / 32) := by
+  ext x
+  rw [mem_brrsSectionThreeSpatialShell_iff]
+  simp only [Set.mem_diff, Metric.mem_closedBall, Metric.mem_ball, dist_zero_right,
+    not_lt]
+  exact ⟨fun h => ⟨h.2, h.1⟩, fun h => ⟨h.2, h.1⟩⟩
+
+/-- Lower bound for the volume of the Section 3 shell. -/
+theorem brrs_volume_real_sectionThreeSpatialShell_ge {d : Nat} (hd : 0 < d)
+    {referenceTime t mesh : Real} (hmesh : 0 ≤ mesh)
+    (hpos : mesh / 32 ≤ |t - referenceTime|) :
+    (|t - referenceTime| - mesh / 32) ^ (d - 1) * (2 * (mesh / 32)) *
+        (volume (Metric.ball (0 : BRRSSpace d) 1)).toReal ≤
+      (volume (brrsSectionThreeSpatialShell d referenceTime t mesh)).toReal := by
+  obtain ⟨m, rfl⟩ : ∃ m, d = m + 1 := ⟨d - 1, by omega⟩
+  set a : Real := |t - referenceTime| with ha
+  set w : Real := mesh / 32 with hw
+  have hw0 : 0 ≤ w := by
+    rw [hw]
+    positivity
+  have hlow : 0 ≤ a - w := by linarith
+  have hhigh : (0 : Real) ≤ a + w := by linarith
+  have hsub : Metric.ball (0 : BRRSSpace (m + 1)) (a - w) ⊆
+      Metric.closedBall (0 : BRRSSpace (m + 1)) (a + w) := by
+    intro x hx
+    simp only [Metric.mem_ball, dist_zero_right] at hx
+    simp only [Metric.mem_closedBall, dist_zero_right]
+    linarith
+  have hballfin : volume (Metric.ball (0 : BRRSSpace (m + 1)) (a - w)) ≠ ⊤ :=
+    (measure_ball_lt_top).ne
+  have hdiff : volume (brrsSectionThreeSpatialShell (m + 1) referenceTime t mesh) =
+      volume (Metric.closedBall (0 : BRRSSpace (m + 1)) (a + w)) -
+        volume (Metric.ball (0 : BRRSSpace (m + 1)) (a - w)) := by
+    rw [brrs_sectionThreeSpatialShell_eq_diff, ← ha, ← hw]
+    exact measure_diff hsub measurableSet_ball.nullMeasurableSet hballfin
+  have hfr : Module.finrank Real (BRRSSpace (m + 1)) = m + 1 :=
+    finrank_euclideanSpace_fin
+  have hclosed : volume (Metric.closedBall (0 : BRRSSpace (m + 1)) (a + w)) =
+      ENNReal.ofReal ((a + w) ^ (m + 1)) *
+        volume (Metric.ball (0 : BRRSSpace (m + 1)) 1) := by
+    have h := Measure.addHaar_closedBall (volume : Measure (BRRSSpace (m + 1)))
+      (0 : BRRSSpace (m + 1)) hhigh
+    rw [hfr] at h
+    exact h
+  have hopen : volume (Metric.ball (0 : BRRSSpace (m + 1)) (a - w)) =
+      ENNReal.ofReal ((a - w) ^ (m + 1)) *
+        volume (Metric.ball (0 : BRRSSpace (m + 1)) 1) := by
+    have h := Measure.addHaar_ball (volume : Measure (BRRSSpace (m + 1)))
+      (0 : BRRSSpace (m + 1)) hlow
+    rw [hfr] at h
+    exact h
+  set V : Real := (volume (Metric.ball (0 : BRRSSpace (m + 1)) 1)).toReal with hV
+  have hV0 : 0 ≤ V := ENNReal.toReal_nonneg
+  have hVfin : volume (Metric.ball (0 : BRRSSpace (m + 1)) 1) ≠ ⊤ :=
+    (measure_ball_lt_top).ne
+  have htoreal : (volume (brrsSectionThreeSpatialShell (m + 1) referenceTime t
+      mesh)).toReal = ((a + w) ^ (m + 1) - (a - w) ^ (m + 1)) * V := by
+    rw [hdiff, hclosed, hopen]
+    rw [ENNReal.toReal_sub_of_le (by
+      apply mul_le_mul' _ le_rfl
+      apply ENNReal.ofReal_le_ofReal
+      exact pow_le_pow_left₀ hlow (by linarith) _) (by
+      apply ENNReal.mul_ne_top
+      · exact ENNReal.ofReal_ne_top
+      · exact hVfin)]
+    rw [ENNReal.toReal_mul, ENNReal.toReal_mul, ENNReal.toReal_ofReal (by positivity),
+      ENNReal.toReal_ofReal (by positivity), ← hV]
+    ring
+  rw [htoreal]
+  have hpowbound : (a - w) ^ m * (2 * w) ≤ (a + w) ^ (m + 1) - (a - w) ^ (m + 1) := by
+    have h := brrs_pow_sub_pow_ge hlow (by linarith : a - w ≤ a + w) m
+    have heq : (a + w) - (a - w) = 2 * w := by ring
+    rw [heq] at h
+    exact h
+  have hnat : (m + 1 - 1 : Nat) = m := by omega
+  rw [hnat]
+  exact mul_le_mul_of_nonneg_right hpowbound hV0
+
+
+/-! ### The conjugated cutoff, and (3.1) for either reference endpoint
+
+U3.P supplies the reference time as one of the two endpoints of the interval,
+so the sampled times may lie to either side of it.  The pointwise lower bound
+is therefore proved from the hypothesis that the distance from the sampled
+time to the reference time is comparable to the interval length, with the
+focusing and spreading terms exchanging roles according to the side; the
+algebraic step is isolated as `brrs_norm_lower_of_threeTerm`.  The conjugated
+cutoff identifies the positive packet propagated in (3.1) with the ordinary
+packet of (3.2), so the two estimates apply to the same datum. -/
+
+/-- The conjugated annular cutoff.  Its symbol is the complex conjugate of the
+given one, so the adjoint half-wave symbol of one cutoff is the forward
+half-wave symbol of the other. -/
+noncomputable def brrsConjAnnularCutoff (Φ : BRRSAnnularCutoff) :
+    BRRSAnnularCutoff where
+  symbol := Φ.symbol.postcompCLM (𝕜 := Real)
+    (Complex.conjCLE : Complex →L[Real] Complex)
+  tsupport_subset := by
+    refine le_trans (closure_mono ?_) Φ.tsupport_subset
+    intro r hr
+    simp only [Function.mem_support] at hr ⊢
+    intro hzero
+    apply hr
+    change (Complex.conjCLE : Complex →L[Real] Complex) (Φ.symbol r) = 0
+    rw [hzero]
+    simp
+  nontrivial := by
+    rcases Φ.nontrivial with ⟨r, hr⟩
+    refine ⟨r, ?_⟩
+    change (Complex.conjCLE : Complex →L[Real] Complex) (Φ.symbol r) ≠ 0
+    intro hzero
+    apply hr
+    have := congrArg (fun z : Complex => starRingEnd Complex z) hzero
+    simpa [Complex.conjCLE_apply] using this
+
+/-- Pointwise form of the conjugated annular cutoff. -/
+theorem brrsConjAnnularCutoff_symbol_apply (Φ : BRRSAnnularCutoff) (r : Real) :
+    (brrsConjAnnularCutoff Φ).symbol r = starRingEnd Complex (Φ.symbol r) := by
+  change (Complex.conjCLE : Complex →L[Real] Complex) (Φ.symbol r) = _
+  exact (Complex.conjCLE_apply (Φ.symbol r)).trans
+    (congrFun Complex.star_def (Φ.symbol r)).symm
+
+/-- The positive radial Section 3 packet is the ordinary radial packet for the
+conjugated cutoff.  This is what lets the packet-norm bound (3.2) apply to the
+datum actually propagated in (3.1). -/
+theorem brrsPositiveRadialHalfWaveTestPacket_eq_conj {d : Nat}
+    (Φ : BRRSAnnularCutoff) (j : Nat) (referenceTime : Real) :
+    brrsPositiveRadialHalfWaveTestPacket (d := d) Φ j referenceTime =
+      brrsRadialHalfWaveTestPacket (d := d) (brrsConjAnnularCutoff Φ) j
+        referenceTime := by
+  have hsym : brrsDyadicHalfWaveSchwartzAdjointSymbol (d := d) Φ j referenceTime =
+      brrsDyadicHalfWaveSchwartzSymbol (d := d) (brrsConjAnnularCutoff Φ) j
+        (-referenceTime) := by
+    ext xi
+    rw [brrsDyadicHalfWaveSchwartzAdjointSymbol_apply,
+      brrsDyadicHalfWaveSchwartzSymbol_apply, brrsDyadicHalfWaveSymbol,
+      brrsDyadicHalfWaveSymbol, map_mul, star_halfWaveMultiplier,
+      brrsDyadicMultiplier_apply, brrsDyadicMultiplier_apply,
+      brrsConjAnnularCutoff_symbol_apply]
+  unfold brrsPositiveRadialHalfWaveTestPacket brrsRadialHalfWaveTestPacket
+  rw [hsym]
+
+/-- The algebraic core of the localized lower bound: if the norm of the main
+term dominates the two error coefficients, the sum inherits half the main
+lower bound. -/
+theorem brrs_norm_lower_of_threeTerm {A MAIN ERR REM : Complex}
+    {cm e2 e3 W : Real} (hdecomp : A = MAIN + ERR + REM) (hW : 0 ≤ W)
+    (hmain : cm * W ≤ ‖MAIN‖) (herr : ‖ERR‖ ≤ e2 * W)
+    (hrem : ‖REM‖ ≤ e3 * W) (hsum : e2 + e3 ≤ cm / 2) :
+    cm / 2 * W ≤ ‖A‖ := by
+  have hMAIN : MAIN = A - ERR - REM := by
+    rw [hdecomp]
+    ring
+  have h1 := norm_sub_le (A - ERR) REM
+  have h2 := norm_sub_le A ERR
+  have h3 : ‖MAIN‖ ≤ ‖A‖ + ‖ERR‖ + ‖REM‖ := by
+    rw [hMAIN]
+    linarith [h1, h2]
+  have h4 : (e2 + e3) * W ≤ cm / 2 * W := mul_le_mul_of_nonneg_right hsum hW
+  nlinarith [hmain, herr, hrem, h3, h4]
+
+/-- The pointwise lower bound of BRRS (3.1) on the Section 3 shell, in the
+form that covers both choices of the reference endpoint supplied by U3.P:
+the hypothesis is only that the distance from the sampled time to the
+reference time is comparable to the interval length. -/
+theorem exists_brrs_sectionThree_pointwise_lower_bound {d : Nat} (hd : 2 ≤ d)
+    (Φ : BRRSAnnularCutoff) :
+    ∃ (c K : Real), 0 < c ∧ 0 < K ∧
+      ∀ (j : Nat) (referenceTime t R : Real) (x : BRRSSpace d),
+        0 < R → K ≤ (2 : Real) ^ j * R →
+        R / 2 ≤ |t - referenceTime| → |t - referenceTime| ≤ R →
+        x ∈ brrsSectionThreeSpatialShell d referenceTime t (dyadicTimeScale j) →
+          c * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+              (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) ≤
+            ‖brrsDyadicHalfWave Φ j t
+              (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ := by
+  have hpi := Real.pi_pos
+  have hd0 : 0 < d := by omega
+  obtain ⟨cout, cin, C3, hC3, hcout, hcin, hrem⟩ :=
+    exists_brrs_sectionThreeRemainderTerm_bound hd (brrsTTStarAnnularCutoff Φ)
+  obtain ⟨c1, hc1, hmainF⟩ :=
+    exists_brrs_sectionThreeFocusingTerm_lower_bound Φ hcout
+  obtain ⟨c1', hc1', hmainS⟩ :=
+    exists_brrs_sectionThreeSpreadingTerm_lower_bound Φ hcin
+  obtain ⟨C2, hC2, herrS⟩ :=
+    exists_brrs_sectionThreeSpreadingTerm_upper_bound d
+      (brrsTTStarAnnularCutoff Φ) cin 1
+  obtain ⟨C2', hC2', herrF⟩ :=
+    exists_brrs_sectionThreeFocusingTerm_upper_bound d
+      (brrsTTStarAnnularCutoff Φ) cout 1
+  set cm : Real := min c1 c1' with hcm
+  have hcmpos : 0 < cm := lt_min hc1 hc1'
+  set Cerr : Real := max C2 C2' with hCerr
+  have hCerrpos : 0 < Cerr := lt_of_lt_of_le hC2 (le_max_left _ _)
+  refine ⟨cm / 2, 32 * Real.pi + 32 + (4 * Cerr + 8 * C3) / cm, by positivity, by
+    positivity, ?_⟩
+  intro j referenceTime t R x hR hKR hlow hhigh hshell
+  set K : Real := 32 * Real.pi + 32 + (4 * Cerr + 8 * C3) / cm with hK
+  set lam : Real := (2 : Real) ^ j with hlam
+  have hlampos : (0 : Real) < lam := by
+    rw [hlam]
+    positivity
+  set s : Real := t - referenceTime with hs
+  set a : Real := |t - referenceTime| with ha
+  have hshellmem := hshell
+  rw [mem_brrsSectionThreeSpatialShell_iff, ← ha] at hshellmem
+  have hdelta : dyadicTimeScale j = lam⁻¹ := by
+    rw [dyadicTimeScale, hlam]
+  rw [hdelta] at hshellmem
+  have hKpos : 0 < K := by
+    rw [hK]
+    positivity
+  have hK32 : 32 ≤ K := by
+    have h1 : (0 : Real) ≤ (4 * Cerr + 8 * C3) / cm := by positivity
+    have h2 : (0 : Real) < 32 * Real.pi := by positivity
+    rw [hK]
+    linarith
+  have hKlam : K ≤ lam * R := hKR
+  have hlamR : lam⁻¹ ≤ R := by
+    have h1 : (1 : Real) ≤ R * lam := by nlinarith [hKlam, hK32]
+    rw [inv_le_iff_one_le_mul₀ hlampos]
+    exact h1
+  have hsmall : lam⁻¹ / 32 ≤ R / 32 := by linarith
+  have hxlow : R / 4 ≤ ‖x‖ := by
+    have h1 : a - lam⁻¹ / 32 ≤ ‖x‖ := hshellmem.1
+    linarith [hlow, hsmall]
+  have hxpos : (0 : Real) < ‖x‖ := lt_of_lt_of_le (by positivity) hxlow
+  have hxne : x ≠ 0 := by
+    intro hzero
+    rw [hzero, norm_zero] at hxpos
+    exact absurd hxpos (lt_irrefl 0)
+  have hlamx : K / 4 ≤ lam * ‖x‖ := by
+    have h1 : lam * (R / 4) ≤ lam * ‖x‖ :=
+      mul_le_mul_of_nonneg_left hxlow hlampos.le
+    have h2 : K / 4 ≤ lam * (R / 4) := by
+      have heq : lam * (R / 4) = lam * R / 4 := by ring
+      rw [heq]
+      linarith
+    linarith
+  set W : Real := ‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+    (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) with hW
+  have hWpos : 0 < W := by
+    rw [hW]
+    have h1 : (0 : Real) < ‖x‖ ^ (-(((d : Real) - 1) / 2)) :=
+      Real.rpow_pos_of_pos hxpos _
+    have h2 : (0 : Real) < (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  -- the remainder estimate, common to both cases
+  have hthreshold : 8 * Real.pi ≤ (2 : Real) ^ j * ‖x‖ := by
+    have h1 : 32 * Real.pi ≤ K := by
+      have h2 : (0 : Real) ≤ (4 * Cerr + 8 * C3) / cm := by positivity
+      rw [hK]
+      linarith
+    rw [← hlam]
+    linarith [hlamx]
+  have hrembound := hrem j s x hxpos hthreshold
+  have hrem2 : ‖brrsSectionThreeRemainderTerm d (brrsTTStarAnnularCutoff Φ) j cout cin
+      s x‖ ≤ 4 * C3 / K * W := by
+    have hsplitx : ‖x‖ ^ (-(((d : Real) + 1) / 2)) =
+        ‖x‖ ^ (-(((d : Real) - 1) / 2)) * ‖x‖⁻¹ := by
+      rw [show -(((d : Real) + 1) / 2) = -(((d : Real) - 1) / 2) + (-1 : Real) by
+        ring, Real.rpow_add hxpos, Real.rpow_neg_one]
+    have hsplitlam : (2 : Real) ^ ((j : Real) * (((d : Real) - 1) / 2)) =
+        (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) * lam⁻¹ := by
+      rw [hlam, ← Real.rpow_natCast (2 : Real) j, ← Real.rpow_neg_one,
+        ← Real.rpow_mul (by norm_num), ← Real.rpow_add (by norm_num)]
+      congr 1
+      ring
+    have hratio : ‖x‖⁻¹ * lam⁻¹ ≤ 4 / K := by
+      have hinv : (lam * ‖x‖)⁻¹ ≤ (K / 4)⁻¹ := inv_anti₀ (by positivity) hlamx
+      have heq : ‖x‖⁻¹ * lam⁻¹ = (lam * ‖x‖)⁻¹ := by
+        field_simp
+      rw [heq]
+      calc
+        (lam * ‖x‖)⁻¹ ≤ (K / 4)⁻¹ := hinv
+        _ = 4 / K := by rw [inv_div]
+    calc
+      ‖brrsSectionThreeRemainderTerm d (brrsTTStarAnnularCutoff Φ) j cout cin s x‖ ≤
+          C3 * (‖x‖ ^ (-(((d : Real) + 1) / 2)) *
+            (2 : Real) ^ ((j : Real) * (((d : Real) - 1) / 2))) := hrembound
+      _ = C3 * (W * (‖x‖⁻¹ * lam⁻¹)) := by
+        rw [hsplitx, hsplitlam, hW]
+        ring
+      _ ≤ C3 * (W * (4 / K)) := by
+        apply mul_le_mul_of_nonneg_left _ hC3.le
+        exact mul_le_mul_of_nonneg_left hratio hWpos.le
+      _ = 4 * C3 / K * W := by ring
+  have hcoefbound : 2 * Cerr / K + 4 * C3 / K ≤ cm / 2 := by
+    have hKlarge : (4 * Cerr + 8 * C3) / cm ≤ K := by
+      have h1 : (0 : Real) < 32 * Real.pi := by positivity
+      rw [hK]
+      linarith
+    have hstep : 4 * Cerr + 8 * C3 ≤ K * cm := by
+      rw [div_le_iff₀ hcmpos] at hKlarge
+      exact hKlarge
+    have hsum : 2 * Cerr / K + 4 * C3 / K = (2 * Cerr + 4 * C3) / K := by ring
+    rw [hsum, div_le_iff₀ hKpos]
+    linarith
+  have hdecomp := brrs_dyadicHalfWave_positiveRadialTestPacket_threeTerm_decomposition
+    hd0 Φ j cout cin referenceTime t hxne
+  rw [← hs] at hdecomp
+  -- the phase bound for an error term whose phase is bounded below by `R / 2`
+  have herrgeneral : ∀ (v : Real) (Cv : Real) (T : Complex), 0 ≤ Cv →
+      R / 2 ≤ |v| →
+      ‖T‖ ≤ Cv * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+        ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+          (1 + (2 : Real) ^ j * |v|) ^ (1 : Nat))) →
+      ‖T‖ ≤ 2 * Cv / K * W := by
+    intro v Cv T hCv hvlow hTbound
+    have hden : K / 2 ≤ 1 + lam * |v| := by
+      have h1 : lam * (R / 2) ≤ lam * |v| :=
+        mul_le_mul_of_nonneg_left hvlow hlampos.le
+      have h2 : K / 2 ≤ lam * (R / 2) := by
+        have heq : lam * (R / 2) = lam * R / 2 := by ring
+        rw [heq]
+        linarith
+      linarith
+    have hquot : (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+        (1 + (2 : Real) ^ j * |v|) ^ (1 : Nat) ≤
+        2 / K * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+      rw [← hlam, pow_one, div_le_iff₀ (by linarith [hden, hKpos])]
+      have hdyad : (0 : Real) < (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) :=
+        Real.rpow_pos_of_pos (by norm_num) _
+      have hprod : 2 / K * ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) *
+          (K / 2) ≤ 2 / K *
+            ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) *
+            (1 + lam * |v|) :=
+        mul_le_mul_of_nonneg_left hden (by positivity)
+      have hval : 2 / K * ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2))) *
+          (K / 2) = (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) := by
+        field_simp
+      linarith [hprod, hval]
+    calc
+      ‖T‖ ≤ Cv * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          ((2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)) /
+            (1 + (2 : Real) ^ j * |v|) ^ (1 : Nat))) := hTbound
+      _ ≤ Cv * (‖x‖ ^ (-(((d : Real) - 1) / 2)) *
+          (2 / K * (2 : Real) ^ ((j : Real) * (((d : Real) + 1) / 2)))) := by
+        apply mul_le_mul_of_nonneg_left _ hCv
+        exact mul_le_mul_of_nonneg_left hquot (Real.rpow_nonneg hxpos.le _)
+      _ = 2 * Cv / K * W := by
+        rw [hW]
+        ring
+  rcases le_or_gt referenceTime t with href | href
+  · -- the sampled time is to the right: the focusing term is the main term
+    have habs : a = s := by
+      rw [ha, hs, abs_of_nonneg (by linarith)]
+    have hphase : |s - ‖x‖| ≤ dyadicTimeScale j / 32 := by
+      rw [hdelta, abs_le]
+      rw [habs] at hshellmem
+      constructor <;> linarith [hshellmem.1, hshellmem.2]
+    have hmainbound : cm * W ≤
+        ‖brrsSectionThreeFocusingTerm d (brrsTTStarAnnularCutoff Φ) j cout s x‖ := by
+      refine le_trans ?_ (hmainF j s x hphase hxpos)
+      rw [hW]
+      apply mul_le_mul_of_nonneg_right _ (by positivity)
+      rw [hcm]
+      exact min_le_left _ _
+    have herr2 : ‖brrsSectionThreeSpreadingTerm d (brrsTTStarAnnularCutoff Φ) j cin
+        s x‖ ≤ 2 * Cerr / K * W := by
+      refine herrgeneral (s + ‖x‖) Cerr _ hCerrpos.le ?_ ?_
+      · rw [abs_of_nonneg (by rw [← habs] at *; linarith [hlow, hxpos.le])]
+        rw [← habs] at *
+        linarith [hlow, hxpos.le]
+      · refine le_trans (herrS j s x) ?_
+        apply mul_le_mul_of_nonneg_right _ (by positivity)
+        rw [hCerr]
+        exact le_max_left _ _
+    exact brrs_norm_lower_of_threeTerm hdecomp hWpos.le hmainbound herr2 hrem2
+      hcoefbound
+  · -- the sampled time is to the left: the spreading term is the main term
+    have habs : a = -s := by
+      rw [ha, hs, abs_of_nonpos (by linarith)]
+    have hphase : |s + ‖x‖| ≤ dyadicTimeScale j / 32 := by
+      rw [hdelta, abs_le]
+      rw [habs] at hshellmem
+      constructor <;> linarith [hshellmem.1, hshellmem.2]
+    have hmainbound : cm * W ≤
+        ‖brrsSectionThreeSpreadingTerm d (brrsTTStarAnnularCutoff Φ) j cin s x‖ := by
+      refine le_trans ?_ (hmainS j s x hphase hxpos)
+      rw [hW]
+      apply mul_le_mul_of_nonneg_right _ (by positivity)
+      rw [hcm]
+      exact min_le_right _ _
+    have herr2 : ‖brrsSectionThreeFocusingTerm d (brrsTTStarAnnularCutoff Φ) j cout
+        s x‖ ≤ 2 * Cerr / K * W := by
+      refine herrgeneral (s - ‖x‖) Cerr _ hCerrpos.le ?_ ?_
+      · rw [abs_of_nonpos (by linarith [hxpos.le])]
+        rw [habs] at hlow
+        linarith [hxpos.le]
+      · refine le_trans (herrF j s x) ?_
+        apply mul_le_mul_of_nonneg_right _ (by positivity)
+        rw [hCerr]
+        exact le_max_right _ _
+    have hdecomp' : brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x =
+        brrsSectionThreeSpreadingTerm d (brrsTTStarAnnularCutoff Φ) j cin s x +
+          brrsSectionThreeFocusingTerm d (brrsTTStarAnnularCutoff Φ) j cout s x +
+          brrsSectionThreeRemainderTerm d (brrsTTStarAnnularCutoff Φ) j cout cin
+            s x := by
+      rw [hdecomp]
+      ring
+    exact brrs_norm_lower_of_threeTerm hdecomp' hWpos.le hmainbound herr2 hrem2
+      hcoefbound
+
+/-- BRRS (3.1): the localized lower bound.  On the Section 3 shell attached to
+a sampled time, the propagated packet is at least the focusing size, so the
+integral over the shell is at least the focusing size to the `p` times the
+shell volume. -/
+theorem exists_brrs_sectionThree_localized_lower_bound {d : Nat} (hd : 2 ≤ d)
+    (Φ : BRRSAnnularCutoff) {p : Real} (hp : 0 < p) :
+    ∃ (c K : Real), 0 < c ∧ 0 < K ∧
+      ∀ (j : Nat) (referenceTime t R : Real),
+        0 < R → K ≤ (2 : Real) ^ j * R →
+        R / 2 ≤ |t - referenceTime| → |t - referenceTime| ≤ R →
+          c * ((R ^ (-((((d : Real) - 1) / 2) * p)) *
+                (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+              (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹)) ≤
+            ∫ x in brrsSectionThreeSpatialShell d referenceTime t (dyadicTimeScale j),
+              ‖brrsDyadicHalfWave Φ j t
+                (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := by
+  obtain ⟨c0, K0, hc0, hK0, hpt⟩ :=
+    exists_brrs_sectionThree_pointwise_lower_bound hd Φ
+  have hd0 : 0 < d := by omega
+  set V : Real := (volume (Metric.ball (0 : BRRSSpace d) 1)).toReal with hV
+  have hVpos : 0 < V := by
+    rw [hV]
+    exact ENNReal.toReal_pos (Metric.measure_ball_pos volume 0 one_pos).ne'
+      measure_ball_lt_top.ne
+  have hrpowcont : Continuous fun y : Real => y ^ p := by
+    rw [continuous_iff_continuousAt]
+    intro y
+    exact Real.continuousAt_rpow_const y p (Or.inr hp.le)
+  refine ⟨c0 ^ p * (2 : Real) ^ (-((((d : Real) - 1) / 2) * p)) *
+      ((4 : Real) ^ (d - 1))⁻¹ / 16 * V, K0 + 32, by
+    have h1 : (0 : Real) < c0 ^ p := Real.rpow_pos_of_pos hc0 p
+    have h2 : (0 : Real) < (2 : Real) ^ (-((((d : Real) - 1) / 2) * p)) :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    positivity, by positivity, ?_⟩
+  intro j referenceTime t R hR hKR hlow hhigh
+  set lam : Real := (2 : Real) ^ j with hlam
+  have hlampos : (0 : Real) < lam := by
+    rw [hlam]
+    positivity
+  set a : Real := |t - referenceTime| with ha
+  set w : Real := dyadicTimeScale j / 32 with hw
+  have hdelta : dyadicTimeScale j = lam⁻¹ := by
+    rw [dyadicTimeScale, hlam]
+  have hwval : w = lam⁻¹ / 32 := by
+    rw [hw, hdelta]
+  have hw0 : 0 < w := by
+    rw [hwval]
+    positivity
+  have hKR0 : K0 ≤ lam * R := by linarith
+  have hK32 : (32 : Real) ≤ lam * R := by linarith
+  have hlamR : lam⁻¹ * 32 ≤ R := by
+    rw [inv_mul_eq_div, div_le_iff₀ hlampos]
+    linarith
+  have hwsmall : w ≤ R / 32 := by
+    rw [hwval]
+    rw [div_le_div_iff_of_pos_right (by norm_num : (0 : Real) < 32)]
+    linarith
+
+  -- the shell, its compactness and its measure
+  set S : Set (BRRSSpace d) :=
+    brrsSectionThreeSpatialShell d referenceTime t (dyadicTimeScale j) with hS
+  have hSeq : S = (fun x : BRRSSpace d => ‖x‖) ⁻¹' (Icc (a - w) (a + w)) := by
+    rw [hS]
+    ext x
+    rw [mem_brrsSectionThreeSpatialShell_iff, ← ha, ← hw]
+    exact ⟨fun h => ⟨h.1, h.2⟩, fun h => ⟨h.1, h.2⟩⟩
+  have hSclosed : IsClosed S := by
+    rw [hSeq]
+    exact isClosed_Icc.preimage continuous_norm
+  have hSsub : S ⊆ Metric.closedBall (0 : BRRSSpace d) (a + w) := by
+    intro x hx
+    rw [hSeq] at hx
+    simp only [Set.mem_preimage, mem_Icc] at hx
+    simp only [Metric.mem_closedBall, dist_zero_right]
+    exact hx.2
+  have hSbounded : Bornology.IsBounded S :=
+    (Metric.isBounded_closedBall).subset hSsub
+  have hScompact : IsCompact S :=
+    Metric.isCompact_of_isClosed_isBounded hSclosed hSbounded
+  have hSmeas : MeasurableSet S := hSclosed.measurableSet
+  have hSfin : volume S ≠ ⊤ :=
+    ne_top_of_le_ne_top (measure_closedBall_lt_top).ne (measure_mono hSsub)
+  -- the pointwise lower bound on the shell
+  have hcont : Continuous fun x : BRRSSpace d => brrsDyadicHalfWave Φ j t
+      (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x := by
+    rw [brrsDyadicHalfWave_positiveRadialTestPacket_eq_halfWaveKernelTTStarCutoff]
+    exact SchwartzMap.continuous _
+  have hintegrand : ContinuousOn (fun x : BRRSSpace d =>
+      ‖brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) S :=
+    (hrpowcont.comp hcont.norm).continuousOn
+  have hintOn : IntegrableOn (fun x : BRRSSpace d =>
+      ‖brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) S :=
+    hintegrand.integrableOn_compact hScompact
+  set E : Real := (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2))) with hE
+  have hEpos : 0 < E := by
+    rw [hE]
+    exact Real.rpow_pos_of_pos (by norm_num) _
+  set M : Real := c0 * ((2 * R) ^ (-((((d : Real) - 1) / 2))) * E) with hM
+  have h2Rpos : (0 : Real) < 2 * R := by linarith
+  have hMpos : 0 < M := by
+    rw [hM]
+    have h1 : (0 : Real) < (2 * R) ^ (-((((d : Real) - 1) / 2))) :=
+      Real.rpow_pos_of_pos h2Rpos _
+    positivity
+  have hpointwise : ∀ x ∈ S, M ^ p ≤
+      ‖brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := by
+    intro x hxS
+    have hxmem : x ∈ brrsSectionThreeSpatialShell d referenceTime t
+        (dyadicTimeScale j) := by
+      rw [hS] at hxS
+      exact hxS
+    have hbound := hpt j referenceTime t R x hR hKR0 hlow hhigh hxmem
+    have hxle : ‖x‖ ≤ 2 * R := by
+      rw [hSeq] at hxS
+      simp only [Set.mem_preimage, mem_Icc] at hxS
+      have := hxS.2
+      linarith [hwsmall, hhigh]
+    have hxpos : (0 : Real) < ‖x‖ := by
+      rw [hSeq] at hxS
+      simp only [Set.mem_preimage, mem_Icc] at hxS
+      have h1 := hxS.1
+      linarith [hlow, hwsmall]
+    have hweight : (2 * R) ^ (-((((d : Real) - 1) / 2))) ≤
+        ‖x‖ ^ (-((((d : Real) - 1) / 2))) := by
+      have hexp : (0 : Real) ≤ ((d : Real) - 1) / 2 := by
+        have : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+        linarith
+      have hmono : ‖x‖ ^ ((((d : Real) - 1) / 2)) ≤
+          (2 * R) ^ ((((d : Real) - 1) / 2)) :=
+        Real.rpow_le_rpow hxpos.le hxle hexp
+      have hxpow : (0 : Real) < ‖x‖ ^ ((((d : Real) - 1) / 2)) :=
+        Real.rpow_pos_of_pos hxpos _
+      rw [Real.rpow_neg h2Rpos.le, Real.rpow_neg hxpos.le]
+      exact inv_anti₀ hxpow hmono
+    have hMle : M ≤ c0 * (‖x‖ ^ (-((((d : Real) - 1) / 2))) * E) := by
+      rw [hM]
+      apply mul_le_mul_of_nonneg_left _ hc0.le
+      exact mul_le_mul_of_nonneg_right hweight hEpos.le
+    have hchain : M ≤ ‖brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ := by
+      refine hMle.trans ?_
+      rw [hE]
+      exact hbound
+    exact Real.rpow_le_rpow hMpos.le hchain hp.le
+  have hlowerint := setIntegral_ge_of_const_le hSmeas hSfin hpointwise hintOn
+  -- the volume of the shell
+  have hvol : (R / 4) ^ (d - 1) * (2 * w) * V ≤ (volume S).toReal := by
+    have hbase := brrs_volume_real_sectionThreeSpatialShell_ge (d := d) hd0
+      (referenceTime := referenceTime) (t := t) (mesh := dyadicTimeScale j)
+      (by rw [dyadicTimeScale]; positivity) (by
+        rw [← ha, ← hw]
+        linarith [hlow, hwsmall])
+    rw [← hS, ← hV] at hbase
+    have hstep : (R / 4) ^ (d - 1) ≤ (|t - referenceTime| - dyadicTimeScale j / 32)
+        ^ (d - 1) := by
+      apply pow_le_pow_left₀ (by positivity)
+      rw [← ha, ← hw]
+      linarith [hlow, hwsmall]
+    have hwR : (2 : Real) * w = 2 * (dyadicTimeScale j / 32) := by
+      rw [hw]
+    refine le_trans ?_ hbase
+    rw [hwR]
+    apply mul_le_mul_of_nonneg_right _ hVpos.le
+    apply mul_le_mul_of_nonneg_right hstep (by positivity)
+  -- algebraic identification of the two sides
+  have hMp : M ^ p = c0 ^ p * ((2 : Real) ^ (-((((d : Real) - 1) / 2) * p)) *
+      (R ^ (-((((d : Real) - 1) / 2) * p)) *
+        (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p)))) := by
+    have h2R : (2 * R) ^ (-((((d : Real) - 1) / 2))) =
+        (2 : Real) ^ (-((((d : Real) - 1) / 2))) *
+          R ^ (-((((d : Real) - 1) / 2))) :=
+      Real.mul_rpow (by norm_num) hR.le
+    rw [hM, h2R, hE]
+    rw [Real.mul_rpow hc0.le (by positivity),
+      Real.mul_rpow (by positivity) (by positivity),
+      Real.mul_rpow (Real.rpow_nonneg (by norm_num) _)
+        (Real.rpow_nonneg hR.le _)]
+    rw [← Real.rpow_mul (by norm_num), ← Real.rpow_mul hR.le,
+      ← Real.rpow_mul (by norm_num : (0 : Real) ≤ 2)]
+    ring_nf
+  have hvolval : (R / 4) ^ (d - 1) * (2 * w) * V =
+      ((4 : Real) ^ (d - 1))⁻¹ / 16 * V * (R ^ (d - 1) * lam⁻¹) := by
+    rw [hwval, div_pow]
+    field_simp
+    ring
+  have hMpnn : (0 : Real) ≤ M ^ p := (Real.rpow_pos_of_pos hMpos p).le
+  calc
+    c0 ^ p * (2 : Real) ^ (-((((d : Real) - 1) / 2) * p)) *
+          ((4 : Real) ^ (d - 1))⁻¹ / 16 * V *
+          ((R ^ (-((((d : Real) - 1) / 2) * p)) *
+              (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+            (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹)) =
+        ((R / 4) ^ (d - 1) * (2 * w) * V) * M ^ p := by
+      rw [hMp, hvolval, ← hlam]
+      ring
+    _ ≤ (volume S).toReal * M ^ p := mul_le_mul_of_nonneg_right hvol hMpnn
+    _ ≤ ∫ x in S, ‖brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := hlowerint
+
+/-- BRRS (3.1), summed over the separated sampled times: the total localized
+lower bound, with the cardinality of the sampled set in front. -/
+theorem exists_brrs_sectionThree_localized_lower_bound_sum {d : Nat}
+    (hd : 2 ≤ d) (Φ : BRRSAnnularCutoff) {p : Real} (hp : 0 < p) :
+    ∃ (c K : Real), 0 < c ∧ 0 < K ∧
+      ∀ (j : Nat) (referenceTime R : Real) (U : Finset Real),
+        0 < R → K ≤ (2 : Real) ^ j * R →
+        (∀ t ∈ U, R / 2 ≤ |t - referenceTime| ∧ |t - referenceTime| ≤ R) →
+          (U.card : Real) * (c * ((R ^ (-((((d : Real) - 1) / 2) * p)) *
+                (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+              (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹))) ≤
+            ∑ t ∈ U, ∫ x in brrsSectionThreeSpatialShell d referenceTime t
+                (dyadicTimeScale j),
+              ‖brrsDyadicHalfWave Φ j t
+                (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := by
+  obtain ⟨c, K, hc, hK, hlocal⟩ :=
+    exists_brrs_sectionThree_localized_lower_bound hd Φ hp
+  refine ⟨c, K, hc, hK, ?_⟩
+  intro j referenceTime R U hR hKR hU
+  have hterm : ∀ t ∈ U, c * ((R ^ (-((((d : Real) - 1) / 2) * p)) *
+        (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+      (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹)) ≤
+        ∫ x in brrsSectionThreeSpatialShell d referenceTime t (dyadicTimeScale j),
+          ‖brrsDyadicHalfWave Φ j t
+            (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := by
+    intro t htU
+    obtain ⟨hlow, hhigh⟩ := hU t htU
+    exact hlocal j referenceTime t R hR hKR hlow hhigh
+  have hsum := Finset.card_nsmul_le_sum U _ _ hterm
+  rw [nsmul_eq_mul] at hsum
+  exact hsum
+
+
+/-! ### U3.S: from (3.1) to the sharpness of (1.5)
+
+A hypothetical uniform estimate at an exponent `s` is tested on the Section 3
+packet: (3.1) bounds the discrete norm below, (3.2) bounds the packet norm
+above, and the two together force the weighted cardinality bound
+`#U <= C 2^{jps} R^{p s_p}` for every dyadically separated packet of sampled
+times whose interval is long compared with the mesh.  The weighted entropy
+witnesses of (1.4) violate that bound at every exponent below the critical
+one, once the interval is enlarged to a fixed multiple of the mesh and the
+reference time is placed to the right of it, where the packet-norm hypothesis
+`1 <= t_I` holds.  The degenerate case of a negative exponent needs no
+entropy: a single sampled time suffices. -/
+
+/-- The `p`-th power lower integral of an `L^p` function is the extended
+version of its real `p`-th power integral. -/
+theorem brrs_lintegral_ofReal_norm_rpow_eq {d : Nat} {p : Real} (hp : 0 < p)
+    {g : BRRSSpace d → Complex} (hg : MemLp g (ENNReal.ofReal p) volume) :
+    (∫⁻ x : BRRSSpace d, (ENNReal.ofReal ‖g x‖) ^ p) =
+      ENNReal.ofReal (∫ x : BRRSSpace d, ‖g x‖ ^ p) := by
+  have hpne : ENNReal.ofReal p ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero]
+    exact not_le.mpr hp
+  have hint : Integrable (fun x : BRRSSpace d => ‖g x‖ ^ p) := by
+    have h := hg.integrable_norm_rpow hpne ENNReal.ofReal_ne_top
+    rwa [ENNReal.toReal_ofReal hp.le] at h
+  rw [ofReal_integral_eq_lintegral_ofReal hint
+    (Filter.Eventually.of_forall (fun x => Real.rpow_nonneg (norm_nonneg _) p))]
+  apply lintegral_congr
+  intro x
+  rw [ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp.le]
+
+/-- A discrete `ell^p(L^p)` bound converts into the corresponding bound for
+the summed real `p`-th power integrals. -/
+theorem brrs_sum_integral_norm_rpow_le_of_discreteLpNorm_le {d : Nat} {p : Real}
+    (hp : 0 < p) (T : Finset Real) (u : Real → BRRSSpace d → Complex)
+    (f : BRRSSpace d → Complex)
+    (hu : ∀ t ∈ T, MemLp (u t) (ENNReal.ofReal p) volume)
+    (hf : MemLp f (ENNReal.ofReal p) volume) {C : Real} (hC : 0 ≤ C)
+    (hbound : discreteLpNorm p T u ≤
+      ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) volume) :
+    (∑ t ∈ T, ∫ x : BRRSSpace d, ‖u t x‖ ^ p) ≤
+      C ^ p * ∫ x : BRRSSpace d, ‖f x‖ ^ p := by
+  have hpow := ENNReal.rpow_le_rpow hbound hp.le
+  have hleft : (discreteLpNorm p T u) ^ p =
+      ENNReal.ofReal (∑ t ∈ T, ∫ x : BRRSSpace d, ‖u t x‖ ^ p) := by
+    rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T u]
+    rw [ENNReal.ofReal_sum_of_nonneg (fun t _ => integral_nonneg
+      (fun x => Real.rpow_nonneg (norm_nonneg _) p))]
+    apply Finset.sum_congr rfl
+    intro t ht
+    exact brrs_lintegral_ofReal_norm_rpow_eq hp (hu t ht)
+  have hright : (ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) volume) ^ p =
+      ENNReal.ofReal (C ^ p * ∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hp.le,
+      ENNReal.ofReal_rpow_of_nonneg hC hp.le]
+    have hnorm : (eLpNorm f (ENNReal.ofReal p) volume) ^ p =
+        ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
+      rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp f]
+      exact brrs_lintegral_ofReal_norm_rpow_eq hp hf
+    rw [hnorm, ← ENNReal.ofReal_mul (Real.rpow_nonneg hC p)]
+  rw [hleft, hright] at hpow
+  have hnn : (0 : Real) ≤ C ^ p * ∫ x : BRRSSpace d, ‖f x‖ ^ p := by
+    have h1 : (0 : Real) ≤ ∫ x : BRRSSpace d, ‖f x‖ ^ p :=
+      integral_nonneg (fun x => Real.rpow_nonneg (norm_nonneg _) p)
+    have h2 : (0 : Real) ≤ C ^ p := Real.rpow_nonneg hC p
+    positivity
+  exact (ENNReal.ofReal_le_ofReal_iff hnn).mp hpow
+
+/-- Cancellation of the common dyadic factor and the radial weight. -/
+theorem brrs_card_le_of_weighted_chain {X c A D B Z : Real} (hc : 0 < c)
+    (hA : 0 < A) (hD : 0 < D) (h : X * (c * (A⁻¹ * D)) ≤ B * (Z * D)) :
+    X ≤ B / c * (Z * A) := by
+  have h1 : X * (c * A⁻¹) ≤ B * Z := by
+    rw [show X * (c * (A⁻¹ * D)) = (X * (c * A⁻¹)) * D by ring,
+      show B * (Z * D) = (B * Z) * D by ring] at h
+    exact le_of_mul_le_mul_right h hD
+  have h2 : X * c ≤ B * Z * A := by
+    have hmul := mul_le_mul_of_nonneg_right h1 hA.le
+    rw [show X * (c * A⁻¹) * A = X * c * (A⁻¹ * A) by ring,
+      inv_mul_cancel₀ (ne_of_gt hA), mul_one] at hmul
+    exact hmul
+  rw [div_mul_eq_mul_div, le_div_iff₀ hc]
+  calc
+    X * c ≤ B * Z * A := h2
+    _ = B * (Z * A) := by ring
+
+/-- A hypothetical uniform estimate at exponent `s` forces the weighted
+cardinality bound on every dyadically separated packet of sampled times whose
+interval is long compared with the mesh.  This is the quantitative form in
+which (3.1) and (3.2) contradict a subcritical estimate. -/
+theorem exists_brrs_weighted_packet_card_upper_of_uniformEstimate {d : Nat}
+    (hd : 2 ≤ d) (Φ : BRRSAnnularCutoff) {E : Set Real}
+    (hE : E ⊆ Icc (1 : Real) 2) {p s : Real} (hp : 2 ≤ p)
+    (hUniform : UniformEstimateAtExponent Φ
+      (brrsLpHalfWaveExtension (d := d) Φ) E p s) :
+    ∃ (C K : Real), 0 < C ∧ 0 < K ∧
+      ∀ (j : Nat), 1 ≤ j → ∀ (referenceTime R : Real) (U : Finset Real),
+        0 < R → K ≤ (2 : Real) ^ j * R → 1 ≤ referenceTime →
+        (↑U : Set Real) ⊆ E → IsSeparated U (dyadicTimeScale j) →
+        (∀ t ∈ U, R / 2 ≤ |t - referenceTime| ∧ |t - referenceTime| ≤ R) →
+          (U.card : Real) ≤ C * ((2 : Real) ^ ((j : Real) * (p * s)) *
+            R ^ (p * sobolevExponent d p)) := by
+  have hp0 : (0 : Real) < p := by linarith
+  obtain ⟨c31, K31, hc31, hK31, h31⟩ :=
+    exists_brrs_sectionThree_localized_lower_bound_sum hd Φ hp0
+  obtain ⟨Cpack, hCpack, hpack⟩ :=
+    exists_brrs_radialHalfWaveTestPacket_eLpNorm_le hd (brrsConjAnnularCutoff Φ) hp
+  obtain ⟨Kest, hKest, hest⟩ := hUniform
+  refine ⟨(Kest * Cpack) ^ p / c31, K31, by
+    have h1 : (0 : Real) < (Kest * Cpack) ^ p :=
+      Real.rpow_pos_of_pos (by positivity) p
+    positivity, hK31, ?_⟩
+  intro j hj referenceTime R U hR hKR hrefone hUE hUsep hUgeom
+  set f : BRRSSpace d → Complex :=
+    (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime :
+      BRRSSpace d → Complex) with hf
+  have hfMem : MemLp f (ENNReal.ofReal p) volume := by
+    rw [hf]
+    exact brrsPositiveRadialHalfWaveTestPacket_memLp Φ j referenceTime _
+  have hfradial : IsAERadial f := by
+    rw [hf]
+    exact brrsPositiveRadialHalfWaveTestPacket_isAERadial Φ j referenceTime
+  obtain ⟨T, hT, hUT⟩ :=
+    exists_isDyadicDiscretization_superset_of_isSeparated hE j hUE hUsep
+  have hUTfinset : U ⊆ T := by
+    intro x hx
+    exact hUT (by simpa using hx)
+  have hCest : (0 : Real) ≤ Kest * (2 : Real) ^ ((j : Real) * s) :=
+    mul_nonneg hKest.le (Real.rpow_nonneg (by norm_num) _)
+  have hbound := hest j hj T hT f hfMem hfradial
+  have hmem : ∀ t ∈ T, MemLp
+      ((brrsLpHalfWaveExtension (d := d) Φ).apply j t f)
+      (ENNReal.ofReal p) volume := by
+    intro t ht
+    exact (brrsLpHalfWaveExtension (d := d) Φ).maps_memLp j t p (by linarith) hfMem
+  have hsum := brrs_sum_integral_norm_rpow_le_of_discreteLpNorm_le hp0 T
+    (fun t => (brrsLpHalfWaveExtension (d := d) Φ).apply j t f) f hmem hfMem
+    hCest hbound
+  have hae : ∀ t : Real,
+      (brrsLpHalfWaveExtension (d := d) Φ).apply j t f =ᵐ[volume]
+        (fun x : BRRSSpace d => brrsDyadicHalfWave Φ j t
+          (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x) := by
+    intro t
+    exact (brrsLpHalfWaveExtension (d := d) Φ).extends_schwartz j t
+      (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime)
+  have hreplace : ∀ t : Real,
+      (∫ x : BRRSSpace d,
+          ‖(brrsLpHalfWaveExtension (d := d) Φ).apply j t f x‖ ^ p) =
+        ∫ x : BRRSSpace d, ‖brrsDyadicHalfWave Φ j t
+          (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := by
+    intro t
+    apply integral_congr_ae
+    filter_upwards [hae t] with x hx
+    rw [hx]
+  have hlocal := h31 j referenceTime R U hR hKR hUgeom
+  have hintegrand : ∀ t : Real, Integrable (fun x : BRRSSpace d =>
+      ‖brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) := by
+    intro t
+    have hmemt : MemLp (fun x : BRRSSpace d => brrsDyadicHalfWave Φ j t
+        (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x)
+        (ENNReal.ofReal p) volume :=
+      ((brrsLpHalfWaveExtension (d := d) Φ).maps_memLp j t p
+        (by linarith) hfMem).ae_eq (hae t)
+    have hpne : ENNReal.ofReal p ≠ 0 := by
+      simp only [ne_eq, ENNReal.ofReal_eq_zero]
+      exact not_le.mpr hp0
+    have hI := hmemt.integrable_norm_rpow hpne ENNReal.ofReal_ne_top
+    rwa [ENNReal.toReal_ofReal hp0.le] at hI
+  have hshellle : ∀ t ∈ U,
+      (∫ x in brrsSectionThreeSpatialShell d referenceTime t (dyadicTimeScale j),
+        ‖brrsDyadicHalfWave Φ j t
+          (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) ≤
+        ∫ x : BRRSSpace d, ‖brrsDyadicHalfWave Φ j t
+          (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p := by
+    intro t htU
+    apply setIntegral_le_integral (hintegrand t)
+    exact Filter.Eventually.of_forall
+      (fun x => Real.rpow_nonneg (norm_nonneg _) p)
+  have hsumU : ∑ t ∈ U, (∫ x in brrsSectionThreeSpatialShell d referenceTime t
+        (dyadicTimeScale j), ‖brrsDyadicHalfWave Φ j t
+          (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) ≤
+      ∑ t ∈ T, ∫ x : BRRSSpace d,
+        ‖(brrsLpHalfWaveExtension (d := d) Φ).apply j t f x‖ ^ p := by
+    calc
+      ∑ t ∈ U, (∫ x in brrsSectionThreeSpatialShell d referenceTime t
+          (dyadicTimeScale j), ‖brrsDyadicHalfWave Φ j t
+            (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) ≤
+          ∑ t ∈ U, ∫ x : BRRSSpace d, ‖brrsDyadicHalfWave Φ j t
+            (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p :=
+        Finset.sum_le_sum hshellle
+      _ = ∑ t ∈ U, ∫ x : BRRSSpace d,
+          ‖(brrsLpHalfWaveExtension (d := d) Φ).apply j t f x‖ ^ p := by
+        apply Finset.sum_congr rfl
+        intro t ht
+        exact (hreplace t).symm
+      _ ≤ ∑ t ∈ T, ∫ x : BRRSSpace d,
+          ‖(brrsLpHalfWaveExtension (d := d) Φ).apply j t f x‖ ^ p := by
+        apply Finset.sum_le_sum_of_subset_of_nonneg hUTfinset
+        intro t ht htU
+        exact integral_nonneg (fun x => Real.rpow_nonneg (norm_nonneg _) p)
+  have hnn : (0 : Real) ≤ Cpack * (2 : Real) ^ ((j : Real) *
+      ((((d : Real) + 1) / 2 - 1 / p))) := by positivity
+  have hpackint : (∫ x : BRRSSpace d, ‖f x‖ ^ p) ≤
+      (Cpack * (2 : Real) ^ ((j : Real) *
+        ((((d : Real) + 1) / 2 - 1 / p)))) ^ p := by
+    have hpk' : eLpNorm f (ENNReal.ofReal p) volume ≤
+        ENNReal.ofReal (Cpack * (2 : Real) ^ ((j : Real) *
+          ((((d : Real) + 1) / 2 - 1 / p)))) := by
+      rw [hf, brrsPositiveRadialHalfWaveTestPacket_eq_conj]
+      exact hpack j referenceTime hrefone
+    have heq : (eLpNorm f (ENNReal.ofReal p) volume) ^ p =
+        ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
+      rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp0 f]
+      exact brrs_lintegral_ofReal_norm_rpow_eq hp0 hfMem
+    have hpow := ENNReal.rpow_le_rpow hpk' hp0.le
+    rw [heq, ENNReal.ofReal_rpow_of_nonneg hnn hp0.le] at hpow
+    exact (ENNReal.ofReal_le_ofReal_iff (Real.rpow_nonneg hnn p)).mp hpow
+  have hchain : (U.card : Real) * (c31 * ((R ^ (-((((d : Real) - 1) / 2) * p)) *
+        (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+      (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹))) ≤
+      (Kest * (2 : Real) ^ ((j : Real) * s)) ^ p *
+        (Cpack * (2 : Real) ^ ((j : Real) *
+          ((((d : Real) + 1) / 2 - 1 / p)))) ^ p := by
+    calc
+      (U.card : Real) * (c31 * ((R ^ (-((((d : Real) - 1) / 2) * p)) *
+            (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+          (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹))) ≤
+          ∑ t ∈ U, (∫ x in brrsSectionThreeSpatialShell d referenceTime t
+            (dyadicTimeScale j), ‖brrsDyadicHalfWave Φ j t
+              (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime) x‖ ^ p) :=
+        hlocal
+      _ ≤ ∑ t ∈ T, ∫ x : BRRSSpace d,
+          ‖(brrsLpHalfWaveExtension (d := d) Φ).apply j t f x‖ ^ p := hsumU
+      _ ≤ (Kest * (2 : Real) ^ ((j : Real) * s)) ^ p *
+          ∫ x : BRRSSpace d, ‖f x‖ ^ p := hsum
+      _ ≤ (Kest * (2 : Real) ^ ((j : Real) * s)) ^ p *
+          (Cpack * (2 : Real) ^ ((j : Real) *
+            ((((d : Real) + 1) / 2 - 1 / p)))) ^ p := by
+        apply mul_le_mul_of_nonneg_left hpackint
+        exact Real.rpow_nonneg hCest p
+  -- normalize both sides
+  set A : Real := R ^ (p * sobolevExponent d p) with hA
+  have hApos : 0 < A := by
+    rw [hA]
+    exact Real.rpow_pos_of_pos hR _
+  set D : Real := (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p) -
+    (j : Real)) with hD
+  have hDpos : 0 < D := by
+    rw [hD]
+    exact Real.rpow_pos_of_pos (by norm_num) _
+  have hleftform : (R ^ (-((((d : Real) - 1) / 2) * p)) *
+      (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+      (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹) = A⁻¹ * D := by
+    have hRpow : R ^ (d - 1) = R ^ ((d : Real) - 1) := by
+      have hcast : ((d - 1 : Nat) : Real) = (d : Real) - 1 := by
+        have h1 : (1 : Nat) ≤ d := by omega
+        push_cast [Nat.cast_sub h1]
+        ring
+      rw [← hcast, Real.rpow_natCast]
+    have hRcombine : R ^ (-((((d : Real) - 1) / 2) * p)) * R ^ ((d : Real) - 1) =
+        A⁻¹ := by
+      rw [← Real.rpow_add hR, hA, ← Real.rpow_neg hR.le, sobolevExponent]
+      congr 1
+      field_simp
+      ring
+    have htwoleft : (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p)) *
+        ((2 : Real) ^ j)⁻¹ = D := by
+      rw [hD, ← Real.rpow_natCast (2 : Real) j, ← Real.rpow_neg_one,
+        ← Real.rpow_mul (by norm_num), ← Real.rpow_add (by norm_num)]
+      congr 1
+      ring
+    calc
+      (R ^ (-((((d : Real) - 1) / 2) * p)) *
+          (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p))) *
+          (R ^ (d - 1) * ((2 : Real) ^ j)⁻¹) =
+          (R ^ (-((((d : Real) - 1) / 2) * p)) * R ^ ((d : Real) - 1)) *
+            ((2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p)) *
+              ((2 : Real) ^ j)⁻¹) := by
+        rw [hRpow]
+        ring
+      _ = A⁻¹ * D := by rw [hRcombine, htwoleft]
+  have hrightform : (Kest * (2 : Real) ^ ((j : Real) * s)) ^ p *
+      (Cpack * (2 : Real) ^ ((j : Real) *
+        ((((d : Real) + 1) / 2 - 1 / p)))) ^ p =
+      (Kest * Cpack) ^ p * ((2 : Real) ^ ((j : Real) * (p * s)) * D) := by
+    rw [Real.mul_rpow hKest.le (Real.rpow_nonneg (by norm_num) _),
+      Real.mul_rpow hCpack.le (Real.rpow_nonneg (by norm_num) _),
+      Real.mul_rpow hKest.le hCpack.le,
+      ← Real.rpow_mul (by norm_num), ← Real.rpow_mul (by norm_num), hD]
+    have hsplit : (2 : Real) ^ ((j : Real) * s * p) *
+        (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2 - 1 / p)) * p) =
+        (2 : Real) ^ ((j : Real) * (p * s)) *
+          (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p) - (j : Real)) := by
+      rw [← Real.rpow_add (by norm_num), ← Real.rpow_add (by norm_num)]
+      congr 1
+      field_simp
+    calc
+      Kest ^ p * (2 : Real) ^ ((j : Real) * s * p) *
+          (Cpack ^ p * (2 : Real) ^
+            ((j : Real) * ((((d : Real) + 1) / 2 - 1 / p)) * p)) =
+          Kest ^ p * Cpack ^ p * ((2 : Real) ^ ((j : Real) * s * p) *
+            (2 : Real) ^ ((j : Real) *
+              ((((d : Real) + 1) / 2 - 1 / p)) * p)) := by ring
+      _ = Kest ^ p * Cpack ^ p * ((2 : Real) ^ ((j : Real) * (p * s)) *
+          (2 : Real) ^ ((j : Real) * ((((d : Real) + 1) / 2) * p) -
+            (j : Real))) := by rw [hsplit]
+  rw [hleftform, hrightform] at hchain
+  exact brrs_card_le_of_weighted_chain hc31 hApos hDpos hchain
+
+/-- Real form of the weighted entropy lower bound. -/
+theorem brrs_inv_rpow_lt_weighted_card_toReal_of_lt {delta : NNReal}
+    (hdelta : 0 < delta) {q alpha : Real} {Rw : NNReal} (hRw : 0 < Rw)
+    {T : Finset Real}
+    (hcard : ((delta : ENNReal)⁻¹) ^ q <
+      (Rw : ENNReal) ^ (-alpha) * (T.card : ENNReal)) :
+    ((delta : Real)⁻¹) ^ q < (Rw : Real) ^ (-alpha) * (T.card : Real) := by
+  have hbase_zero : (delta : ENNReal)⁻¹ ≠ 0 :=
+    ENNReal.inv_ne_zero.mpr ENNReal.coe_ne_top
+  have hbase_top : (delta : ENNReal)⁻¹ ≠ ⊤ :=
+    ENNReal.inv_ne_top.mpr
+      (ENNReal.coe_ne_zero.mpr (by exact_mod_cast hdelta.ne'))
+  have hpow_top : ((delta : ENNReal)⁻¹) ^ q ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_ne_zero hbase_zero hbase_top
+  have hRzero : (Rw : ENNReal) ≠ 0 :=
+    ENNReal.coe_ne_zero.mpr (by exact_mod_cast hRw.ne')
+  have hRtop : (Rw : ENNReal) ≠ ⊤ := ENNReal.coe_ne_top
+  have hRpow_top : ((Rw : ENNReal) ^ (-alpha)) ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_ne_zero hRzero hRtop
+  have hrighttop : ((Rw : ENNReal) ^ (-alpha) * (T.card : ENNReal)) ≠ ⊤ :=
+    ENNReal.mul_ne_top hRpow_top (by simp)
+  have hreal := (ENNReal.toReal_lt_toReal hpow_top hrighttop).mpr hcard
+  have hleft : (((delta : ENNReal)⁻¹) ^ q).toReal = ((delta : Real)⁻¹) ^ q :=
+    toReal_inv_rpow_nnreal hdelta q
+  have hRw' : ((Rw : ENNReal) ^ (-alpha)).toReal = (Rw : Real) ^ (-alpha) := by
+    rw [← ENNReal.toReal_rpow]
+    simp
+  rw [hleft, ENNReal.toReal_mul, hRw', ENNReal.toReal_natCast] at hreal
+  exact hreal
+
+/-- U3.S: no exponent below the critical one admits a uniform estimate for
+the canonical realization of the BRRS annular half-wave.  This is the
+conversion of (3.1) into the sharpness of (1.5). -/
+theorem not_uniformEstimateAtExponent_of_lt {d : Nat} (Φ : BRRSAnnularCutoff)
+    (E : Set Real) (hd : 2 ≤ d) (hE : E ⊆ Icc (1 : Real) 2)
+    (hEnonempty : E.Nonempty) {p : Real} (hp : 2 ≤ p) {s : Real}
+    (hs : s < criticalExponent brrsLegendreAssouadFunction E d p) :
+    ¬ UniformEstimateAtExponent Φ (brrsLpHalfWaveExtension (d := d) Φ) E p s := by
+  intro hUniform
+  have hp0 : (0 : Real) < p := by linarith
+  obtain ⟨C, K, hC, hK, hcard⟩ :=
+    exists_brrs_weighted_packet_card_upper_of_uniformEstimate hd Φ hE hp hUniform
+  set alpha : Real := p * sobolevExponent d p with halphadef
+  have halpha : 0 ≤ alpha := by
+    have hd1 : (0 : Real) ≤ (d : Real) - 1 := by
+      have h2 : (2 : Real) ≤ (d : Real) := by exact_mod_cast hd
+      linarith
+    have hpinv : 1 / p ≤ 1 / 2 := one_div_le_one_div_of_le (by norm_num) hp
+    have hhalf : (0 : Real) ≤ 1 / 2 - 1 / p := by linarith
+    rw [halphadef, sobolevExponent]
+    positivity
+  have hps : p * s < brrsLegendreAssouadFunction E alpha := by
+    rw [criticalExponent] at hs
+    rw [halphadef]
+    calc
+      p * s < p * (brrsLegendreAssouadFunction E (p * sobolevExponent d p) / p) :=
+        mul_lt_mul_of_pos_left hs hp0
+      _ = brrsLegendreAssouadFunction E (p * sobolevExponent d p) := by
+        field_simp
+  rcases le_or_gt 0 (p * s) with hpsnonneg | hpsneg
+  · -- the entropy branch
+    set q : Real := (p * s + brrsLegendreAssouadFunction E alpha) / 2 with hqdef
+    have hpsq : p * s < q := by
+      rw [hqdef]
+      linarith
+    have hqnu : q < brrsLegendreAssouadFunction E alpha := by
+      rw [hqdef]
+      linarith
+    have hq0 : 0 ≤ q := by
+      rw [hqdef]
+      linarith
+    set C2 : Real := C * (4 * (1 + K)) ^ alpha with hC2def
+    have hC2 : 0 ≤ C2 := by
+      have h1 : (0 : Real) < (4 * (1 + K)) ^ alpha :=
+        Real.rpow_pos_of_pos (by positivity) alpha
+      rw [hC2def]
+      positivity
+    have hb : (0 : Real) < (4 : Real) ^ (-q) := Real.rpow_pos_of_pos (by norm_num) _
+    have hdom : ∀ᶠ j : Nat in atTop,
+        C2 * (2 : Real) ^ ((j : Real) * (p * s)) <
+          (4 : Real) ^ (-q) * (2 : Real) ^ ((j : Real) * q) :=
+      eventually_mul_two_rpow_lt_of_lt hC2 hb hpsq
+    obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hdom
+    -- a witness at a scale small enough to force `j ≥ N`
+    set eps : NNReal := ⟨2 * dyadicTimeScale (N + 1),
+      (mul_pos (by norm_num) (by
+        unfold dyadicTimeScale
+        positivity)).le⟩ with hepsdef
+    have heps : 0 < eps := by
+      change 0 < (2 * dyadicTimeScale (N + 1) : Real)
+      exact mul_pos (by norm_num) (by
+        unfold dyadicTimeScale
+        positivity)
+    have hsmall : ∀ᶠ delta : NNReal in nhdsWithin (0 : NNReal) (Ioi 0),
+        delta ∈ Ioo 0 eps :=
+      nhdsGT_basis 0 |>.mem_of_mem heps
+    have hfreq :=
+      frequently_exists_local_isSeparated_finset_weighted_card_lower_of_lt
+        hEnonempty hE halpha hqnu
+    obtain ⟨delta, hdelta, hdeltaeps⟩ := (hfreq.and_eventually hsmall).exists
+    rcases hdelta with ⟨hdeltaIoo, a, Rw, T, hTsub, hTsep, hTcard⟩
+    obtain ⟨j, hj, hjmesh, hdeltaj⟩ :=
+      exists_dyadicTimeScale_lt_half_and_delta_le_four_mul hdeltaIoo
+    -- the level is large
+    have hdeltaeps_real : (delta : Real) < 2 * dyadicTimeScale (N + 1) := by
+      have hlt : delta < eps := hdeltaeps.2
+      change (delta : Real) < 2 * dyadicTimeScale (N + 1) at hlt
+      exact hlt
+    have hscalejN : dyadicTimeScale j < dyadicTimeScale (N + 1) := by
+      calc
+        dyadicTimeScale j < (delta : Real) / 2 := hjmesh
+        _ < dyadicTimeScale (N + 1) := by linarith
+    have hNj : N ≤ j := by
+      have := lt_of_dyadicTimeScale_lt hscalejN
+      omega
+    -- the packet data
+    have hdeltapos : (0 : Real) < (delta : Real) := by exact_mod_cast hdeltaIoo.1
+    have hRwpos : (0 : Real) < (Rw.1 : Real) := by
+      have h := Rw.2.1
+      have : (delta : Real) ≤ (Rw.1 : Real) := by exact_mod_cast h
+      linarith
+    have hRwone : (Rw.1 : Real) ≤ 1 := by
+      have h := Rw.2.2
+      exact_mod_cast h
+    have hTsep_j : IsSeparated T (dyadicTimeScale j) := by
+      intro u hu v hv huv
+      exact hjmesh.le.trans (hTsep hu hv huv)
+    have hTE : (↑T : Set Real) ⊆ E := hTsub.trans inter_subset_left
+    have hTcardreal : ((delta : Real)⁻¹) ^ q <
+        (Rw.1 : Real) ^ (-alpha) * (T.card : Real) :=
+      brrs_inv_rpow_lt_weighted_card_toReal_of_lt hdeltaIoo.1 (by
+        have h := Rw.2.1
+        exact lt_of_lt_of_le hdeltaIoo.1 h) hTcard
+    -- the enlarged interval and the reference time to its right
+    set Rbig : Real := 4 * max (Rw.1 : Real) (K * dyadicTimeScale j) with hRbigdef
+    have hRbigpos : 0 < Rbig := by
+      rw [hRbigdef]
+      have h1 : (0 : Real) < max (Rw.1 : Real) (K * dyadicTimeScale j) :=
+        lt_of_lt_of_le hRwpos (le_max_left _ _)
+      positivity
+    have hKRbig : K ≤ (2 : Real) ^ j * Rbig := by
+      have h2j : (0 : Real) < (2 : Real) ^ j := by positivity
+      have hle : K * dyadicTimeScale j ≤ max (Rw.1 : Real) (K * dyadicTimeScale j) :=
+        le_max_right _ _
+      have h2 : 4 * (K * dyadicTimeScale j) ≤ Rbig := by
+        rw [hRbigdef]
+        linarith
+      have h3 : (2 : Real) ^ j * (4 * (K * dyadicTimeScale j)) = 4 * K := by
+        rw [dyadicTimeScale]
+        field_simp
+      calc
+        K ≤ 4 * K := by linarith [hK.le]
+        _ = (2 : Real) ^ j * (4 * (K * dyadicTimeScale j)) := h3.symm
+        _ ≤ (2 : Real) ^ j * Rbig := mul_le_mul_of_nonneg_left h2 h2j.le
+    have hRle : (Rw.1 : Real) ≤ Rbig / 4 := by
+      rw [hRbigdef]
+      have : (Rw.1 : Real) ≤ max (Rw.1 : Real) (K * dyadicTimeScale j) :=
+        le_max_left _ _
+      linarith
+    -- the interval contains a point of `E`
+    have hTnonempty : T.Nonempty := by
+      rcases Finset.eq_empty_or_nonempty T with hempty | hne
+      · rw [hempty] at hTcardreal
+        simp only [Finset.card_empty, Nat.cast_zero, mul_zero] at hTcardreal
+        have hpos : (0 : Real) < ((delta : Real)⁻¹) ^ q :=
+          Real.rpow_pos_of_pos (by positivity) q
+        linarith
+      · exact hne
+    obtain ⟨t0, ht0⟩ := hTnonempty
+    have ht0mem := hTsub ht0
+    have ht0E : t0 ∈ E := ht0mem.1
+    have ht0I : t0 ∈ Auto.Spherical.LegendreAssouad.brrsInterval a (Rw.1 : Real) :=
+      ht0mem.2
+    have ht0Icc : t0 ∈ Icc (1 : Real) 2 := hE ht0E
+    have haRw : (1 : Real) ≤ a + (Rw.1 : Real) := by
+      have h := ht0I
+      simp only [Auto.Spherical.LegendreAssouad.brrsInterval, mem_Icc] at h
+      linarith [ht0Icc.1, h.2]
+    set referenceTime : Real := (a + (Rw.1 : Real)) + 3 * Rbig / 4
+      with hrefdef
+    have hrefone : 1 ≤ referenceTime := by
+      rw [hrefdef]
+      have : (0 : Real) < 3 * Rbig / 4 := by positivity
+      linarith
+    have hgeom : ∀ t ∈ T, Rbig / 2 ≤ |t - referenceTime| ∧
+        |t - referenceTime| ≤ Rbig := by
+      intro t htT
+      have hmem := hTsub htT
+      have hI := hmem.2
+      simp only [Auto.Spherical.LegendreAssouad.brrsInterval, mem_Icc] at hI
+      have hup : t ≤ a + (Rw.1 : Real) := hI.2
+      have hlow : a ≤ t := hI.1
+      have hrefge : t ≤ referenceTime := by
+        rw [hrefdef]
+        have h3 : (0 : Real) < 3 * Rbig / 4 := by positivity
+        linarith [hup]
+      have habs : |t - referenceTime| = referenceTime - t := by
+        rw [abs_of_nonpos (by linarith), neg_sub]
+      rw [habs, hrefdef]
+      constructor
+      · linarith
+      · linarith [hRle]
+    -- the cardinality bound and the contradiction
+    have hcardbound := hcard j hj referenceTime Rbig T hRbigpos hKRbig hrefone
+      hTE hTsep_j hgeom
+    have hratio : Rbig ^ alpha ≤ (4 * (1 + K)) ^ alpha * (Rw.1 : Real) ^ alpha := by
+      have hRbigle : Rbig ≤ (4 * (1 + K)) * (Rw.1 : Real) := by
+        rw [hRbigdef]
+        rcases le_or_gt (K * dyadicTimeScale j) (Rw.1 : Real) with hcase | hcase
+        · rw [max_eq_left hcase]
+          nlinarith [hRwpos, hK.le]
+        · rw [max_eq_right hcase.le]
+          have hmesh : dyadicTimeScale j < (delta : Real) / 2 := hjmesh
+          have hdeltaRw : (delta : Real) ≤ (Rw.1 : Real) := by
+            have h := Rw.2.1
+            exact_mod_cast h
+          have hstep : K * dyadicTimeScale j ≤ K * ((Rw.1 : Real) / 2) := by
+            apply mul_le_mul_of_nonneg_left _ hK.le
+            linarith
+          nlinarith [hRwpos]
+      calc
+        Rbig ^ alpha ≤ ((4 * (1 + K)) * (Rw.1 : Real)) ^ alpha :=
+          Real.rpow_le_rpow hRbigpos.le hRbigle halpha
+        _ = (4 * (1 + K)) ^ alpha * (Rw.1 : Real) ^ alpha :=
+          Real.mul_rpow (by positivity) hRwpos.le
+    have hfinal : ((delta : Real)⁻¹) ^ q <
+        C2 * (2 : Real) ^ ((j : Real) * (p * s)) := by
+      have hRwinv : (0 : Real) < (Rw.1 : Real) ^ (-alpha) :=
+        Real.rpow_pos_of_pos hRwpos _
+      have hstep1 : (Rw.1 : Real) ^ (-alpha) * (T.card : Real) ≤
+          (Rw.1 : Real) ^ (-alpha) * (C * ((2 : Real) ^ ((j : Real) * (p * s)) *
+            Rbig ^ alpha)) := mul_le_mul_of_nonneg_left hcardbound hRwinv.le
+      have hstep2 : (Rw.1 : Real) ^ (-alpha) * (C * ((2 : Real) ^
+          ((j : Real) * (p * s)) * Rbig ^ alpha)) ≤
+          C2 * (2 : Real) ^ ((j : Real) * (p * s)) := by
+        have hcancel : (Rw.1 : Real) ^ (-alpha) * (Rw.1 : Real) ^ alpha = 1 := by
+          rw [← Real.rpow_add hRwpos]
+          simp
+        have h2 : (0 : Real) < (2 : Real) ^ ((j : Real) * (p * s)) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        calc
+          (Rw.1 : Real) ^ (-alpha) * (C * ((2 : Real) ^ ((j : Real) * (p * s)) *
+              Rbig ^ alpha)) ≤
+              (Rw.1 : Real) ^ (-alpha) * (C * ((2 : Real) ^
+                ((j : Real) * (p * s)) * ((4 * (1 + K)) ^ alpha *
+                  (Rw.1 : Real) ^ alpha))) := by
+            apply mul_le_mul_of_nonneg_left _ hRwinv.le
+            apply mul_le_mul_of_nonneg_left _ hC.le
+            exact mul_le_mul_of_nonneg_left hratio h2.le
+          _ = C2 * (2 : Real) ^ ((j : Real) * (p * s)) *
+              ((Rw.1 : Real) ^ (-alpha) * (Rw.1 : Real) ^ alpha) := by
+            rw [hC2def]
+            ring
+          _ = C2 * (2 : Real) ^ ((j : Real) * (p * s)) := by
+            rw [hcancel, mul_one]
+      exact lt_of_lt_of_le (lt_of_lt_of_le hTcardreal hstep1) hstep2
+    have hlowerpow : (4 : Real) ^ (-q) * (2 : Real) ^ ((j : Real) * q) ≤
+        ((delta : Real)⁻¹) ^ q :=
+      four_rpow_neg_mul_two_rpow_le_inv_rpow_of_le hdeltapos hdeltaj hq0
+    have hdomj := hN j hNj
+    exact absurd (lt_of_le_of_lt hlowerpow hfinal) (not_lt.mpr hdomj.le)
+  · -- the degenerate branch: a single sampled time already contradicts a
+    -- negative exponent
+    obtain ⟨t0, ht0⟩ := hEnonempty
+    set R0 : Real := max 1 K with hR0def
+    have hR0pos : 0 < R0 := by
+      rw [hR0def]
+      exact lt_of_lt_of_le zero_lt_one (le_max_left _ _)
+    set U : Finset Real := {t0} with hUdef
+    have hUE : (↑U : Set Real) ⊆ E := by
+      rw [hUdef]
+      intro x hx
+      simp only [Finset.coe_singleton, Set.mem_singleton_iff] at hx
+      rw [hx]
+      exact ht0
+    have hUsep : ∀ j : Nat, IsSeparated U (dyadicTimeScale j) := by
+      intro j u hu v hv huv
+      rw [hUdef] at hu hv
+      simp only [Finset.coe_singleton, Set.mem_singleton_iff] at hu hv
+      exact absurd (hu.trans hv.symm) huv
+    set referenceTime : Real := t0 + 3 * R0 / 4 with hrefdef
+    have ht0Icc : t0 ∈ Icc (1 : Real) 2 := hE ht0
+    have hrefone : 1 ≤ referenceTime := by
+      rw [hrefdef]
+      have : (0 : Real) < 3 * R0 / 4 := by positivity
+      linarith [ht0Icc.1]
+    have hgeom : ∀ t ∈ U, R0 / 2 ≤ |t - referenceTime| ∧
+        |t - referenceTime| ≤ R0 := by
+      intro t htU
+      rw [hUdef] at htU
+      simp only [Finset.mem_singleton] at htU
+      rw [htU, hrefdef]
+      have habs : |t0 - (t0 + 3 * R0 / 4)| = 3 * R0 / 4 := by
+        rw [show t0 - (t0 + 3 * R0 / 4) = -(3 * R0 / 4) by ring, abs_neg,
+          abs_of_nonneg (by positivity)]
+      rw [habs]
+      constructor <;> linarith
+    have hcardone : ∀ j : Nat, 1 ≤ j →
+        (1 : Real) ≤ C * ((2 : Real) ^ ((j : Real) * (p * s)) * R0 ^ alpha) := by
+      intro j hj
+      have hKR0 : K ≤ (2 : Real) ^ j * R0 := by
+        have h1 : K ≤ R0 := by
+          rw [hR0def]
+          exact le_max_right _ _
+        have h2 : (1 : Real) ≤ (2 : Real) ^ j := one_le_pow₀ (by norm_num)
+        nlinarith [hR0pos]
+      have h := hcard j hj referenceTime R0 U hR0pos hKR0 hrefone hUE (hUsep j) hgeom
+      rw [hUdef] at h
+      simpa using h
+    -- but the right-hand side tends to zero
+    have hdom : ∀ᶠ j : Nat in atTop,
+        (C * R0 ^ alpha) * (2 : Real) ^ ((j : Real) * (p * s)) <
+          1 * (2 : Real) ^ ((j : Real) * 0) := by
+      have hnn : (0 : Real) ≤ C * R0 ^ alpha := by
+        have h1 : (0 : Real) < R0 ^ alpha := Real.rpow_pos_of_pos hR0pos alpha
+        positivity
+      exact eventually_mul_two_rpow_lt_of_lt hnn (by norm_num) hpsneg
+    obtain ⟨j, hjdom, hj⟩ := (hdom.and (Filter.eventually_ge_atTop 1)).exists
+    have hone := hcardone j hj
+    have hrewrite : C * ((2 : Real) ^ ((j : Real) * (p * s)) * R0 ^ alpha) =
+        (C * R0 ^ alpha) * (2 : Real) ^ ((j : Real) * (p * s)) := by ring
+    rw [hrewrite] at hone
+    have hsimp : (1 : Real) * (2 : Real) ^ ((j : Real) * 0) = 1 := by
+      simp
+    rw [hsimp] at hjdom
+    linarith
+
+/-- The sharpness clause of BRRS Theorem 1.1 on the whole printed exponent
+range: for every `p` at least two, no exponent below the critical one admits a
+uniform estimate for the canonical realization. -/
+theorem brrsTheoremOneSharpnessStatement_of_two_le {d : Nat}
+    (Φ : BRRSAnnularCutoff) (E : Set Real) (hd : 2 ≤ d)
+    (hE : E ⊆ Icc (1 : Real) 2) {p : Real} (hp : 2 ≤ p) :
+    BRRSTheoremOneSharpnessStatement (brrsLpHalfWaveExtension (d := d) Φ) E p := by
+  unfold BRRSTheoremOneSharpnessStatement BRRSTheoremOneSharpnessStatementFor
+  intro hEnonempty s hs
+  exact not_uniformEstimateAtExponent_of_lt Φ E hd hE hEnonempty hp hs
+
+end
+
+end Auto.Spherical.FractalDilations.BRRS
+
+/-! ### Layer 13: BRRS Theorem 1.1
+
+The two halves of the paper's Theorem 1.1 have been established separately:
+the upper bound on the radial Schwartz core (BRRS (1.5)) and the sharpness
+construction of Section 3.  Promoting the first from the Schwartz core to
+arbitrary a.e.-radial `L^p` data needs two analytic inputs that the ambient
+Schwartz density theorem does not supply, because it does not respect the
+radial subspace: radial Schwartz functions must be shown to be dense in the
+a.e.-radial part of `L^p`, and the canonical convolution realization must be
+shown to be continuous along such approximations.
+
+Density is obtained by mollifying with a *radial* mollifier -- a
+one-dimensional bump composed with the squared norm, which is automatically
+smooth at the origin -- and then truncating with a radial smooth cutoff placed
+beyond the radius where the mollification has already been shown to be small.
+Continuity of the realization is the Young inequality for its Schwartz kernel.
+With both in hand the conditional transfer principle applies unconditionally,
+and Theorem 1.1 follows.
+-/
+
+namespace Auto.Spherical.FractalDilations.BRRS
+
+open Set Filter MeasureTheory FourierTransform
+open Auto.LittlewoodPaley
+open Auto.Spherical.SurfaceMeasureDecay
+open Auto.Spherical.FractalDilations.Auxiliary
+open scoped BigOperators Convolution ENNReal FourierTransform Topology
+
+noncomputable section
+
+/-- The fixed one-dimensional bump used to build radial cutoffs: it is one on
+`[-1/2, 1/2]` and vanishes outside `(-1, 1)`. -/
+noncomputable def brrsBaseBump : ContDiffBump (0 : Real) where
+  rIn := 1 / 2
+  rOut := 1
+  rIn_pos := by norm_num
+  rIn_lt_rOut := by norm_num
+
+/-- A radial smooth compactly supported profile at scale `delta`, obtained by
+composing the one-dimensional bump with the squared norm.  Using the squared
+norm keeps the composition smooth at the origin. -/
+noncomputable def brrsRadialBump (d : Nat) (delta : Real) :
+    BRRSSpace d → Real :=
+  fun x => brrsBaseBump (‖x‖ ^ 2 / delta ^ 2)
+
+theorem brrs_contDiff_radialBump (d : Nat) {delta : Real} (hdelta : 0 < delta) :
+    ContDiff Real (⊤ : ENat) (brrsRadialBump d delta) := by
+  have hsq : ContDiff Real (⊤ : ENat) fun x : BRRSSpace d => ‖x‖ ^ 2 :=
+    contDiff_norm_sq Real
+  have hscale : ContDiff Real (⊤ : ENat)
+      fun x : BRRSSpace d => ‖x‖ ^ 2 / delta ^ 2 := by
+    simpa [div_eq_mul_inv] using hsq.mul (contDiff_const
+      (c := (delta ^ 2)⁻¹) (n := (⊤ : ENat)))
+  exact (brrsBaseBump.contDiff (n := (⊤ : ENat))).comp hscale
+
+theorem brrs_radialBump_nonneg (d : Nat) (delta : Real) (x : BRRSSpace d) :
+    0 ≤ brrsRadialBump d delta x :=
+  brrsBaseBump.nonneg
+
+theorem brrs_radialBump_eq_zero_of_le (d : Nat) {delta : Real} (hdelta : 0 < delta)
+    {x : BRRSSpace d} (hx : delta ≤ ‖x‖) : brrsRadialBump d delta x = 0 := by
+  apply brrsBaseBump.zero_of_le_dist
+  have hsq : delta ^ 2 ≤ ‖x‖ ^ 2 := by
+    apply pow_le_pow_left₀ hdelta.le hx
+  have hpos : (0 : Real) < delta ^ 2 := by positivity
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg (by positivity)]
+  change brrsBaseBump.rOut ≤ ‖x‖ ^ 2 / delta ^ 2
+  change (1 : Real) ≤ ‖x‖ ^ 2 / delta ^ 2
+  rw [le_div_iff₀ hpos, one_mul]
+  exact hsq
+
+theorem brrs_radialBump_zero (d : Nat) {delta : Real} (hdelta : 0 < delta) :
+    brrsRadialBump d delta 0 = 1 := by
+  apply brrsBaseBump.one_of_mem_closedBall
+  rw [Metric.mem_closedBall, Real.dist_eq]
+  simp only [norm_zero]
+  change |(0 : Real) ^ 2 / delta ^ 2 - 0| ≤ brrsBaseBump.rIn
+  norm_num
+  change (0 : Real) ≤ 1 / 2
+  norm_num
+
+theorem brrs_hasCompactSupport_radialBump (d : Nat) {delta : Real}
+    (hdelta : 0 < delta) : HasCompactSupport (brrsRadialBump d delta) := by
+  apply HasCompactSupport.intro (isCompact_closedBall (0 : BRRSSpace d) delta)
+  intro x hx
+  apply brrs_radialBump_eq_zero_of_le d hdelta
+  simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+  exact hx.le
+
+theorem brrs_radialBump_isRadial (d : Nat) (delta : Real) {x y : BRRSSpace d}
+    (hxy : ‖x‖ = ‖y‖) : brrsRadialBump d delta x = brrsRadialBump d delta y := by
+  rw [brrsRadialBump, brrsRadialBump, hxy]
+
+theorem brrs_radialBump_eq_one_of_le (d : Nat) {delta : Real} (hdelta : 0 < delta)
+    {x : BRRSSpace d} (hx : ‖x‖ ≤ delta / 2) :
+    brrsRadialBump d delta x = 1 := by
+  apply brrsBaseBump.one_of_mem_closedBall
+  have hsq : ‖x‖ ^ 2 ≤ (delta / 2) ^ 2 := by
+    apply pow_le_pow_left₀ (norm_nonneg x) hx
+  have hpos : (0 : Real) < delta ^ 2 := by positivity
+  rw [Metric.mem_closedBall, Real.dist_eq, sub_zero,
+    abs_of_nonneg (by positivity)]
+  change ‖x‖ ^ 2 / delta ^ 2 ≤ 1 / 2
+  rw [div_le_iff₀ hpos]
+  nlinarith [hsq]
+
+theorem brrs_integral_radialBump_pos (d : Nat) {delta : Real} (hdelta : 0 < delta) :
+    0 < ∫ y : BRRSSpace d, brrsRadialBump d delta y := by
+  have hcont : Continuous (brrsRadialBump d delta) :=
+    (brrs_contDiff_radialBump d hdelta).continuous
+  have hInt : Integrable (brrsRadialBump d delta) :=
+    hcont.integrable_of_hasCompactSupport (brrs_hasCompactSupport_radialBump d hdelta)
+  have hnonneg : ∀ y : BRRSSpace d, 0 ≤ brrsRadialBump d delta y :=
+    brrs_radialBump_nonneg d delta
+  have hball : volume (Metric.closedBall (0 : BRRSSpace d) (delta / 2)) ≠ ⊤ :=
+    (measure_closedBall_lt_top).ne
+  have hballpos : 0 < volume.real (Metric.closedBall (0 : BRRSSpace d) (delta / 2)) := by
+    rw [measureReal_def]
+    refine ENNReal.toReal_pos ?_ hball
+    exact (Metric.measure_closedBall_pos volume 0 (by positivity)).ne'
+  have hlower : volume.real (Metric.closedBall (0 : BRRSSpace d) (delta / 2)) * 1 ≤
+      ∫ y in Metric.closedBall (0 : BRRSSpace d) (delta / 2),
+        brrsRadialBump d delta y := by
+    apply setIntegral_ge_of_const_le measurableSet_closedBall hball
+    · intro y hy
+      rw [brrs_radialBump_eq_one_of_le d hdelta (by
+        simpa only [Metric.mem_closedBall, dist_zero_right] using hy)]
+    · exact hInt.integrableOn
+  have hsub : (∫ y in Metric.closedBall (0 : BRRSSpace d) (delta / 2),
+      brrsRadialBump d delta y) ≤ ∫ y : BRRSSpace d, brrsRadialBump d delta y := by
+    apply setIntegral_le_integral hInt
+    exact Filter.Eventually.of_forall hnonneg
+  have : (0 : Real) < volume.real (Metric.closedBall (0 : BRRSSpace d) (delta / 2)) * 1 := by
+    simpa using hballpos
+  linarith [hlower, hsub]
+
+set_option maxHeartbeats 1000000 in
+/-- A radial Schwartz mollifier of unit mass supported in the ball of radius
+`delta`. -/
+theorem exists_brrs_radial_mollifier (d : Nat) {delta : Real} (hdelta : 0 < delta) :
+    ∃ (ψ : BRRSSchwartz d) (m : BRRSSpace d → Real),
+      (∀ x : BRRSSpace d, (ψ : BRRSSpace d → Complex) x = ((m x : Real) : Complex)) ∧
+        (∀ x : BRRSSpace d, 0 ≤ m x) ∧
+          (∀ x : BRRSSpace d, delta ≤ ‖x‖ → m x = 0) ∧
+            (∀ x y : BRRSSpace d, ‖x‖ = ‖y‖ → m x = m y) ∧
+              (∫ y : BRRSSpace d, m y) = 1 := by
+  have hIpos := brrs_integral_radialBump_pos d hdelta
+  have hIinv : (0 : Real) < (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ :=
+    inv_pos.mpr hIpos
+  have hsmoothReal : ContDiff Real (⊤ : ENat) (fun x : BRRSSpace d =>
+      (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ * brrsRadialBump d delta x) :=
+    (contDiff_const (c := (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹)
+      (n := (⊤ : ENat))).mul (brrs_contDiff_radialBump d hdelta)
+  have hsmooth : ContDiff Real (⊤ : ENat) (fun x : BRRSSpace d =>
+      (((∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ *
+        brrsRadialBump d delta x : Real) : Complex)) :=
+    Complex.ofRealCLM.contDiff.comp hsmoothReal
+  have hzeroFar : ∀ x : BRRSSpace d, delta ≤ ‖x‖ →
+      (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ *
+        brrsRadialBump d delta x = 0 := by
+    intro x hx
+    rw [brrs_radialBump_eq_zero_of_le d hdelta hx, mul_zero]
+  have hsupp : HasCompactSupport (fun x : BRRSSpace d =>
+      (((∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ *
+        brrsRadialBump d delta x : Real) : Complex)) := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : BRRSSpace d) delta)
+    intro x hx
+    have hfar : delta ≤ ‖x‖ := by
+      simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+      exact hx.le
+    rw [hzeroFar x hfar, Complex.ofReal_zero]
+  refine ⟨hsupp.toSchwartzMap hsmooth, fun x =>
+    (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ * brrsRadialBump d delta x,
+    fun x => HasCompactSupport.toSchwartzMap_toFun hsupp hsmooth x, ?_, hzeroFar,
+    ?_, ?_⟩
+  · intro x
+    exact mul_nonneg hIinv.le (brrs_radialBump_nonneg d delta x)
+  · intro x y hxy
+    show (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ * brrsRadialBump d delta x =
+      (∫ y : BRRSSpace d, brrsRadialBump d delta y)⁻¹ * brrsRadialBump d delta y
+    rw [brrs_radialBump_isRadial d delta hxy]
+  · rw [integral_const_mul]
+    exact inv_mul_cancel₀ (ne_of_gt hIpos)
+
+/-- A smooth compactly supported function is Lipschitz. -/
+theorem exists_brrs_lipschitz_of_contDiff_of_hasCompactSupport {d : Nat}
+    {g : BRRSSpace d → Complex} (hgs : ContDiff Real (⊤ : ENat) g)
+    (hgc : HasCompactSupport g) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x y : BRRSSpace d, ‖g x - g y‖ ≤ C * ‖x - y‖ := by
+  have hdiff : Differentiable Real g := hgs.differentiable (by simp)
+  have hcontf : Continuous fun x : BRRSSpace d => ‖fderiv Real g x‖ :=
+    (hgs.continuous_fderiv (by simp)).norm
+  have hcompactf : HasCompactSupport fun x : BRRSSpace d => ‖fderiv Real g x‖ :=
+    (hgc.fderiv Real).norm
+  obtain ⟨x₀, hx₀⟩ := hcontf.exists_forall_ge_of_hasCompactSupport hcompactf
+  set C : Real := ‖fderiv Real g x₀‖ with hC
+  have hC0 : 0 ≤ C := norm_nonneg _
+  refine ⟨C, hC0, ?_⟩
+  have hbound : ∀ x : BRRSSpace d, ‖fderiv Real g x‖₊ ≤ ⟨C, hC0⟩ := by
+    intro x
+    exact hx₀ x
+  have hlip : LipschitzWith ⟨C, hC0⟩ g := lipschitzWith_of_nnnorm_fderiv_le hdiff hbound
+  intro x y
+  have h := hlip.dist_le_mul x y
+  rw [dist_eq_norm, dist_eq_norm] at h
+  calc
+    ‖g x - g y‖ ≤ ((⟨C, hC0⟩ : NNReal) : Real) * ‖x - y‖ := h
+    _ = C * ‖x - y‖ := by norm_num
+
+/-- The real-scalar and complex-multiplication forms of the mollifying
+convolution agree. -/
+theorem brrs_convolution_lsmul_eq_mul {d : Nat} (m : BRRSSpace d → Real)
+    (g : BRRSSpace d → Complex) (x : BRRSSpace d) :
+    (m ⋆[ContinuousLinearMap.lsmul Real Real, volume] g) x =
+      ((fun y => ((m y : Real) : Complex)) ⋆[ContinuousLinearMap.mul Complex Complex,
+        volume] g) x := by
+  rw [convolution_def, convolution_def]
+  apply integral_congr_ae
+  filter_upwards with y
+  simp only [ContinuousLinearMap.lsmul_apply, ContinuousLinearMap.mul_apply']
+  rw [Complex.real_smul]
+
+/-- The pointwise mollification error of a Lipschitz function. -/
+theorem brrs_dist_mollify_le {d : Nat} {m : BRRSSpace d → Real} {delta : Real}
+    (hdelta : 0 < delta) (hm0 : ∀ x : BRRSSpace d, 0 ≤ m x)
+    (hmsupp : ∀ x : BRRSSpace d, delta ≤ ‖x‖ → m x = 0)
+    (hmass : (∫ y : BRRSSpace d, m y) = 1)
+    {g : BRRSSpace d → Complex} (hgc : Continuous g) {C : Real} (hC : 0 ≤ C)
+    (hlip : ∀ x y : BRRSSpace d, ‖g x - g y‖ ≤ C * ‖x - y‖) (x : BRRSSpace d) :
+    dist ((m ⋆[ContinuousLinearMap.lsmul Real Real, volume] g) x) (g x) ≤
+      C * delta := by
+  have hsupp : Function.support m ⊆ Metric.ball (0 : BRRSSpace d) delta := by
+    intro y hy
+    simp only [Metric.mem_ball, dist_zero_right]
+    by_contra hnot
+    exact hy (hmsupp y (not_lt.mp hnot))
+  refine dist_convolution_le (by positivity) hsupp hm0 hmass
+    hgc.aestronglyMeasurable ?_
+  intro z hz
+  simp only [Metric.mem_ball] at hz
+  rw [dist_eq_norm]
+  refine le_trans (hlip z x) ?_
+  have hzx : ‖z - x‖ ≤ delta := by
+    rw [← dist_eq_norm]
+    exact hz.le
+  exact mul_le_mul_of_nonneg_left hzx hC
+
+theorem brrs_radialBump_le_one (d : Nat) (delta : Real) (x : BRRSSpace d) :
+    brrsRadialBump d delta x ≤ 1 :=
+  brrsBaseBump.le_one
+
+/-- A uniformly small function supported in a set of finite measure has small
+`L^p` norm. -/
+theorem brrs_eLpNorm_le_of_bound_of_support {d : Nat} {p : Real} (hp : 0 < p)
+    {h : BRRSSpace d → Complex} {eta : Real} (heta : 0 ≤ eta)
+    {K : Set (BRRSSpace d)} (hKmeas : MeasurableSet K) (hKfin : volume K ≠ ⊤)
+    (hbound : ∀ x : BRRSSpace d, ‖h x‖ ≤ eta)
+    (hsupp : ∀ x : BRRSSpace d, x ∉ K → h x = 0) :
+    eLpNorm h (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (eta * (volume.real K) ^ (1 / p)) := by
+  have hp0 : ENNReal.ofReal p ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero]
+    exact not_le.mpr hp
+  have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hp.le]
+  have hpoint : ∀ x : BRRSSpace d, ‖h x‖ₑ ^ p ≤
+      K.indicator (fun _ => (ENNReal.ofReal eta) ^ p) x := by
+    intro x
+    by_cases hx : x ∈ K
+    · rw [Set.indicator_of_mem hx]
+      apply ENNReal.rpow_le_rpow _ hp.le
+      rw [← ofReal_norm]
+      exact ENNReal.ofReal_le_ofReal (hbound x)
+    · rw [Set.indicator_of_notMem hx, hsupp x hx]
+      simp only [enorm_zero]
+      rw [ENNReal.zero_rpow_of_pos hp]
+  have hint : (∫⁻ x : BRRSSpace d, ‖h x‖ₑ ^ p) ≤
+      (ENNReal.ofReal eta) ^ p * volume K := by
+    calc
+      (∫⁻ x : BRRSSpace d, ‖h x‖ₑ ^ p) ≤
+          ∫⁻ x : BRRSSpace d, K.indicator (fun _ => (ENNReal.ofReal eta) ^ p) x :=
+        lintegral_mono hpoint
+      _ = (ENNReal.ofReal eta) ^ p * volume K := by
+        rw [lintegral_indicator_const hKmeas]
+  have hfinal : ((ENNReal.ofReal eta) ^ p * volume K) ^ (1 / p) =
+      ENNReal.ofReal (eta * (volume.real K) ^ (1 / p)) := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul,
+      mul_one_div, div_self (ne_of_gt hp), ENNReal.rpow_one]
+    rw [ENNReal.ofReal_mul heta]
+    congr 1
+    rw [measureReal_def, ← ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg
+      (by positivity), ENNReal.ofReal_toReal hKfin]
+  calc
+    (∫⁻ x : BRRSSpace d, ‖h x‖ₑ ^ p) ^ (1 / p) ≤
+        ((ENNReal.ofReal eta) ^ p * volume K) ^ (1 / p) :=
+      ENNReal.rpow_le_rpow hint (by positivity)
+    _ = ENNReal.ofReal (eta * (volume.real K) ^ (1 / p)) := hfinal
+
+/-- The complex-bilinear and real-bilinear multiplication kernels give the
+same convolution. -/
+theorem brrs_convolution_mul_real_eq {d : Nat} (a b : BRRSSpace d → Complex) :
+    a ⋆[ContinuousLinearMap.mul Real Complex, volume] b =
+      a ⋆[ContinuousLinearMap.mul Complex Complex, volume] b := by
+  funext x
+  rw [convolution_def, convolution_def]
+  rfl
+
+/-- A three-step triangle inequality for `L^p` differences. -/
+theorem brrs_eLpNorm_sub_le_of_three {d : Nat} {p : Real}
+    (hp1 : (1 : ENNReal) ≤ ENNReal.ofReal p)
+    {f₀ f₁ f₂ f₃ : BRRSSpace d → Complex}
+    (h0 : AEStronglyMeasurable f₀ volume) (h1 : AEStronglyMeasurable f₁ volume)
+    (h2 : AEStronglyMeasurable f₂ volume) (h3 : AEStronglyMeasurable f₃ volume)
+    {a b c : Real} (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c)
+    (e1 : eLpNorm (f₀ - f₁) (ENNReal.ofReal p) volume ≤ ENNReal.ofReal a)
+    (e2 : eLpNorm (f₁ - f₂) (ENNReal.ofReal p) volume ≤ ENNReal.ofReal b)
+    (e3 : eLpNorm (f₂ - f₃) (ENNReal.ofReal p) volume ≤ ENNReal.ofReal c) :
+    eLpNorm (f₀ - f₃) (ENNReal.ofReal p) volume ≤ ENNReal.ofReal (a + b + c) := by
+  have hdecomp : f₀ - f₃ = ((f₀ - f₁) + (f₁ - f₂)) + (f₂ - f₃) := by
+    funext x
+    simp only [Pi.sub_apply, Pi.add_apply]
+    ring
+  rw [hdecomp]
+  have hstep1 : eLpNorm ((f₀ - f₁) + (f₁ - f₂)) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal a + ENNReal.ofReal b :=
+    le_trans (eLpNorm_add_le (h0.sub h1) (h1.sub h2) hp1) (add_le_add e1 e2)
+  refine le_trans (eLpNorm_add_le ((h0.sub h1).add (h1.sub h2)) (h2.sub h3) hp1) ?_
+  refine le_trans (add_le_add hstep1 e3) ?_
+  rw [← ENNReal.ofReal_add ha hb, ← ENNReal.ofReal_add (by positivity) hc]
+
+set_option maxHeartbeats 4000000 in
+/-- The radial mollification of an a.e.-radial `L^p` function is smooth,
+radial, close to the function in `L^p`, and outside a fixed radius it agrees
+with a function of small `L^p` norm.  This is the analytic core of radial
+Schwartz density. -/
+theorem exists_brrs_radial_mollified_close {d : Nat} {p : Real} (hp : 1 ≤ p)
+    {f : BRRSSpace d → Complex} (hf : MemLp f (ENNReal.ofReal p) volume)
+    (hfradial : IsAERadial f) {eps : Real} (heps : 0 < eps) :
+    ∃ (v w : BRRSSpace d → Complex) (Rv : Real),
+      ContDiff Real (⊤ : ENat) v ∧ IsRadial v ∧
+        MemLp v (ENNReal.ofReal p) volume ∧ 0 < Rv ∧
+          eLpNorm (f - v) (ENNReal.ofReal p) volume ≤
+              ENNReal.ofReal (eps / 4 + eps / 4 + eps / 4) ∧
+            eLpNorm w (ENNReal.ofReal p) volume ≤ ENNReal.ofReal (eps / 4) ∧
+              (∀ x : BRRSSpace d, Rv ≤ ‖x‖ → v x = w x) := by
+  have hp0 : (0 : Real) < p := lt_of_lt_of_le zero_lt_one hp
+  have hp1 : (1 : ENNReal) ≤ ENNReal.ofReal p := by
+    rw [ENNReal.one_le_ofReal]
+    exact hp
+  have heps4 : (0 : Real) < eps / 4 := by positivity
+  obtain ⟨g, hgcs, hgsmooth, hgclose⟩ :=
+    hf.exist_eLpNorm_sub_le ENNReal.ofReal_ne_top hp1 heps4
+  have hgmem : MemLp g (ENNReal.ofReal p) volume :=
+    hgsmooth.continuous.memLp_of_hasCompactSupport hgcs
+  obtain ⟨C, hC0, hlip⟩ :=
+    exists_brrs_lipschitz_of_contDiff_of_hasCompactSupport hgsmooth hgcs
+  obtain ⟨Rg, hRgpos, hgsupp⟩ : ∃ R : Real, 0 < R ∧
+      ∀ x : BRRSSpace d, R ≤ ‖x‖ → g x = 0 := by
+    obtain ⟨R, hR⟩ := (hgcs.isCompact.isBounded).subset_closedBall (0 : BRRSSpace d)
+    refine ⟨|R| + 1, by positivity, ?_⟩
+    intro x hx
+    by_contra hne
+    have hmem : x ∈ tsupport g :=
+      subset_closure (by simpa [Function.mem_support] using hne)
+    have hball := hR hmem
+    simp only [Metric.mem_closedBall, dist_zero_right] at hball
+    have habs : R ≤ |R| := le_abs_self R
+    linarith
+  have hKmeas : MeasurableSet (Metric.closedBall (0 : BRRSSpace d) (1 + Rg)) :=
+    measurableSet_closedBall
+  have hKfin : volume (Metric.closedBall (0 : BRRSSpace d) (1 + Rg)) ≠ ⊤ :=
+    (measure_closedBall_lt_top).ne
+  obtain ⟨VK, hVK0, hVKdef⟩ : ∃ V : Real, 0 ≤ V ∧
+      V = (volume.real (Metric.closedBall (0 : BRRSSpace d) (1 + Rg))) ^ (1 / p) :=
+    ⟨_, Real.rpow_nonneg ENNReal.toReal_nonneg _, rfl⟩
+  obtain ⟨delta, hdeltapos, hdeltaone, hdeltaerr⟩ : ∃ D : Real, 0 < D ∧ D ≤ 1 ∧
+      C * D * VK ≤ eps / 4 := by
+    refine ⟨min 1 (eps / (4 * (C + 1) * (VK + 1))), lt_min zero_lt_one (by positivity),
+      min_le_left _ _, ?_⟩
+    have hden : (0 : Real) < 4 * (C + 1) * (VK + 1) := by positivity
+    have hle : min 1 (eps / (4 * (C + 1) * (VK + 1))) ≤
+        eps / (4 * (C + 1) * (VK + 1)) := min_le_right _ _
+    have hpos : (0 : Real) < min 1 (eps / (4 * (C + 1) * (VK + 1))) :=
+      lt_min zero_lt_one (by positivity)
+    have hstep : min 1 (eps / (4 * (C + 1) * (VK + 1))) * (4 * (C + 1) * (VK + 1)) ≤
+        eps := by
+      rw [← le_div_iff₀ hden]
+      exact hle
+    nlinarith [hpos.le, hC0, hVK0]
+  obtain ⟨psi, m, hpsim, hm0, hmsupp, hmradial, hmass⟩ :=
+    exists_brrs_radial_mollifier d hdeltapos
+  have hpsiradial : IsRadial (psi : BRRSSpace d → Complex) := by
+    intro x y hxy
+    rw [hpsim x, hpsim y, hmradial x y hxy]
+  have hpsinorm : (∫ y : BRRSSpace d, ‖(psi : BRRSSpace d → Complex) y‖) = 1 := by
+    rw [← hmass]
+    apply integral_congr_ae
+    filter_upwards with y
+    rw [hpsim y, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (hm0 y)]
+  have hpsienorm : (∫⁻ y : BRRSSpace d, ‖(psi : BRRSSpace d → Complex) y‖ₑ) = 1 := by
+    rw [← ofReal_integral_norm_eq_lintegral_enorm psi.integrable, hpsinorm,
+      ENNReal.ofReal_one]
+  have hpsicompact : HasCompactSupport (psi : BRRSSpace d → Complex) := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : BRRSSpace d) delta)
+    intro x hx
+    have hfar : delta ≤ ‖x‖ := by
+      simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+      exact hx.le
+    rw [hpsim x, hmsupp x hfar, Complex.ofReal_zero]
+  have hpsimeq : (fun y : BRRSSpace d => ((m y : Real) : Complex)) =ᵐ[volume]
+      (psi : BRRSSpace d → Complex) :=
+    Filter.Eventually.of_forall fun y => (hpsim y).symm
+  -- the mollified function, its tail comparison partner, and the smooth core
+  obtain ⟨v, w, cg, hvdef, hwdef, hcgdef⟩ :
+      ∃ v w cg : BRRSSpace d → Complex,
+        v = (psi : BRRSSpace d → Complex)
+              ⋆[ContinuousLinearMap.mul Complex Complex, volume] f ∧
+          w = (psi : BRRSSpace d → Complex)
+                ⋆[ContinuousLinearMap.mul Complex Complex, volume] (f - g) ∧
+            cg = (psi : BRRSSpace d → Complex)
+                  ⋆[ContinuousLinearMap.mul Complex Complex, volume] g :=
+    ⟨_, _, _, rfl, rfl, rfl⟩
+  have hfloc : LocallyIntegrable f volume := hf.locallyIntegrable hp1
+  have hvsmooth : ContDiff Real (⊤ : ENat) v := by
+    rw [hvdef, ← brrs_convolution_mul_real_eq]
+    exact hpsicompact.contDiff_convolution_left
+      (ContinuousLinearMap.mul Real Complex) (psi.smooth _) hfloc
+  have hvradial : IsRadial v := by
+    rcases hfradial with ⟨g0, hg0radial, hfg0⟩
+    have heq : v = (psi : BRRSSpace d → Complex)
+        ⋆[ContinuousLinearMap.mul Complex Complex, volume] g0 := by
+      rw [hvdef]
+      exact convolution_congr (ContinuousLinearMap.mul Complex Complex)
+        Filter.EventuallyEq.rfl hfg0
+    rw [heq]
+    exact brrsConvolution_isRadial _ _ hpsiradial hg0radial
+  have hvmem : MemLp v (ENNReal.ofReal p) volume := by
+    rw [hvdef]
+    exact brrs_memLp_schwartz_convolution_of_memLp psi p hp hf
+  have hcgmem : MemLp cg (ENNReal.ofReal p) volume := by
+    rw [hcgdef]
+    exact brrs_memLp_schwartz_convolution_of_memLp psi p hp hgmem
+  -- the smooth core vanishes far away
+  have hcgzero : ∀ x : BRRSSpace d, 1 + Rg ≤ ‖x‖ → cg x = 0 := by
+    intro x hx
+    rw [hcgdef, convolution_def]
+    have hzero : ∀ y : BRRSSpace d,
+        (ContinuousLinearMap.mul Complex Complex) ((psi : BRRSSpace d → Complex) y)
+          (g (x - y)) = 0 := by
+      intro y
+      rcases le_or_gt delta ‖y‖ with hy | hy
+      · rw [hpsim y, hmsupp y hy]
+        simp
+      · have hxy : Rg ≤ ‖x - y‖ := by
+          have h1 : ‖x‖ - ‖y‖ ≤ ‖x - y‖ := by
+            have := norm_sub_norm_le x y
+            linarith
+          linarith [hy.le, hdeltaone]
+        rw [hgsupp (x - y) hxy]
+        simp
+    rw [integral_congr_ae (Filter.Eventually.of_forall hzero), integral_zero]
+  -- the decomposition of the mollified function
+  have hsplit : v = cg + w := by
+    have hdistrib := (brrs_convolutionExists_of_memLp psi p hp hgmem).distrib_add
+      (brrs_convolutionExists_of_memLp psi p hp (hf.sub hgmem))
+    have hgf : g + (f - g) = f := by
+      funext x
+      simp
+    rw [hgf] at hdistrib
+    rw [hvdef, hcgdef, hwdef]
+    exact hdistrib
+  have htail : ∀ x : BRRSSpace d, 1 + Rg ≤ ‖x‖ → v x = w x := by
+    intro x hx
+    have h : v x = cg x + w x := congrFun hsplit x
+    rw [h, hcgzero x hx, zero_add]
+  -- the small `L^p` norm of the tail function
+  have hwsmall : eLpNorm w (ENNReal.ofReal p) volume ≤ ENNReal.ofReal (eps / 4) := by
+    rw [hwdef]
+    calc
+      eLpNorm ((psi : BRRSSpace d → Complex)
+          ⋆[ContinuousLinearMap.mul Complex Complex, volume] (f - g))
+          (ENNReal.ofReal p) volume ≤
+          (∫⁻ y : BRRSSpace d, ‖(psi : BRRSSpace d → Complex) y‖ₑ) *
+            eLpNorm (f - g) (ENNReal.ofReal p) volume :=
+        brrs_eLpNorm_schwartz_convolution_le_of_memLp psi p hp (hf.sub hgmem)
+      _ = eLpNorm (f - g) (ENNReal.ofReal p) volume := by
+        rw [hpsienorm, one_mul]
+      _ ≤ ENNReal.ofReal (eps / 4) := hgclose
+  -- the mollification error
+  have hmollerr : eLpNorm (g - cg) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (eps / 4) := by
+    have hpointwise : ∀ x : BRRSSpace d, ‖(g - cg) x‖ ≤ C * delta := by
+      intro x
+      have hdist := brrs_dist_mollify_le hdeltapos hm0 hmsupp hmass
+        hgsmooth.continuous hC0 hlip x
+      rw [brrs_convolution_lsmul_eq_mul m g x] at hdist
+      have hcgeq : ((fun y : BRRSSpace d => ((m y : Real) : Complex))
+          ⋆[ContinuousLinearMap.mul Complex Complex, volume] g) x = cg x := by
+        rw [hcgdef]
+        exact congrFun (convolution_congr (ContinuousLinearMap.mul Complex Complex)
+          hpsimeq Filter.EventuallyEq.rfl) x
+      rw [hcgeq] at hdist
+      show ‖g x - cg x‖ ≤ C * delta
+      rw [← dist_eq_norm, dist_comm]
+      exact hdist
+    have hsupport : ∀ x : BRRSSpace d,
+        x ∉ Metric.closedBall (0 : BRRSSpace d) (1 + Rg) → (g - cg) x = 0 := by
+      intro x hx
+      have hfar : 1 + Rg ≤ ‖x‖ := by
+        simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+        exact hx.le
+      show g x - cg x = 0
+      rw [hgsupp x (by linarith), hcgzero x hfar, sub_zero]
+    refine le_trans (brrs_eLpNorm_le_of_bound_of_support hp0
+      (by positivity : (0 : Real) ≤ C * delta) hKmeas hKfin hpointwise hsupport) ?_
+    apply ENNReal.ofReal_le_ofReal
+    rw [← hVKdef]
+    exact hdeltaerr
+  -- the Young error
+  have hyoung : eLpNorm (cg - v) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (eps / 4) := by
+    have hcv : cg - v = -w := by
+      rw [hsplit]
+      funext x
+      simp
+    rw [hcv, eLpNorm_neg]
+    exact hwsmall
+  exact ⟨v, w, 1 + Rg, hvsmooth, hvradial, hvmem, by linarith,
+    brrs_eLpNorm_sub_le_of_three hp1 hf.aestronglyMeasurable
+      hgmem.aestronglyMeasurable hcgmem.aestronglyMeasurable hvmem.aestronglyMeasurable
+      heps4.le heps4.le heps4.le hgclose hmollerr hyoung,
+    hwsmall, htail⟩
+
+set_option maxHeartbeats 2000000 in
+/-- Radial Schwartz functions are dense in the a.e.-radial part of `L^p`:
+a radial mollification is smooth and radial, and a radial smooth cutoff at a
+radius where the mollification is already small restores compact support. -/
+theorem exists_brrs_radial_schwartz_eLpNorm_sub_le {d : Nat} {p : Real}
+    (hp : 1 ≤ p) {f : BRRSSpace d → Complex}
+    (hf : MemLp f (ENNReal.ofReal p) volume) (hfradial : IsAERadial f)
+    {eps : Real} (heps : 0 < eps) :
+    ∃ u : BRRSSchwartz d, IsRadial (u : BRRSSpace d → Complex) ∧
+      eLpNorm (f - (u : BRRSSpace d → Complex)) (ENNReal.ofReal p) volume ≤
+        ENNReal.ofReal eps := by
+  have hp1 : (1 : ENNReal) ≤ ENNReal.ofReal p := by
+    rw [ENNReal.one_le_ofReal]
+    exact hp
+  obtain ⟨v, w, Rv, hvsmooth, hvradial, hvmem, hRv, hfv, hwsmall, htail⟩ :=
+    exists_brrs_radial_mollified_close hp hf hfradial heps
+  have hdeltapos : (0 : Real) < 2 * Rv := by linarith
+  obtain ⟨u0, hu0⟩ : ∃ u0 : BRRSSpace d → Complex, ∀ x : BRRSSpace d,
+      u0 x = ((brrsRadialBump d (2 * Rv) x : Real) : Complex) * v x :=
+    ⟨_, fun _ => rfl⟩
+  have hu0eq : u0 = fun x : BRRSSpace d =>
+      ((brrsRadialBump d (2 * Rv) x : Real) : Complex) * v x := funext hu0
+  have hu0smooth : ContDiff Real (⊤ : ENat) u0 := by
+    rw [hu0eq]
+    exact (Complex.ofRealCLM.contDiff.comp
+      (brrs_contDiff_radialBump d hdeltapos)).mul hvsmooth
+  have hu0supp : HasCompactSupport u0 := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : BRRSSpace d) (2 * Rv))
+    intro x hx
+    have hfar : 2 * Rv ≤ ‖x‖ := by
+      simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+      exact hx.le
+    rw [hu0 x, brrs_radialBump_eq_zero_of_le d hdeltapos hfar]
+    simp
+  have hu0radial : IsRadial u0 := by
+    intro x y hxy
+    rw [hu0 x, hu0 y, brrs_radialBump_isRadial d (2 * Rv) hxy, hvradial x y hxy]
+  -- the truncation error is dominated pointwise by the small tail function
+  have hpt : ∀ x : BRRSSpace d, ‖(v - u0) x‖ ≤ ‖w x‖ := by
+    intro x
+    show ‖v x - u0 x‖ ≤ ‖w x‖
+    rcases le_or_gt ‖x‖ Rv with hx | hx
+    · have h1 : brrsRadialBump d (2 * Rv) x = 1 :=
+        brrs_radialBump_eq_one_of_le d hdeltapos (by linarith)
+      have hzero : v x - u0 x = 0 := by
+        rw [hu0 x, h1]
+        push_cast
+        ring
+      rw [hzero, norm_zero]
+      exact norm_nonneg _
+    · have hvw : v x = w x := htail x hx.le
+      have hchi0 : 0 ≤ brrsRadialBump d (2 * Rv) x := brrs_radialBump_nonneg d _ x
+      have hchi1 : brrsRadialBump d (2 * Rv) x ≤ 1 := brrs_radialBump_le_one d _ x
+      have heq : v x - u0 x =
+          ((1 - brrsRadialBump d (2 * Rv) x : Real) : Complex) * w x := by
+        rw [hu0 x, hvw]
+        push_cast
+        ring
+      rw [heq, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (by linarith : (0 : Real) ≤ 1 - brrsRadialBump d (2 * Rv) x)]
+      calc
+        (1 - brrsRadialBump d (2 * Rv) x) * ‖w x‖ ≤ 1 * ‖w x‖ :=
+          mul_le_mul_of_nonneg_right (by linarith) (norm_nonneg _)
+        _ = ‖w x‖ := one_mul _
+  have htrunc : eLpNorm (v - u0) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal (eps / 4) := le_trans (eLpNorm_mono hpt) hwsmall
+  refine ⟨hu0supp.toSchwartzMap hu0smooth, ?_, ?_⟩
+  · intro x y hxy
+    rw [HasCompactSupport.toSchwartzMap_toFun hu0supp hu0smooth x,
+      HasCompactSupport.toSchwartzMap_toFun hu0supp hu0smooth y]
+    exact hu0radial x y hxy
+  · have hcoe : ((hu0supp.toSchwartzMap hu0smooth : BRRSSchwartz d) :
+        BRRSSpace d → Complex) = u0 :=
+      funext fun x => HasCompactSupport.toSchwartzMap_toFun hu0supp hu0smooth x
+    rw [hcoe]
+    have hdecomp : f - u0 = (f - v) + (v - u0) := by
+      funext x
+      simp only [Pi.sub_apply, Pi.add_apply]
+      ring
+    rw [hdecomp]
+    have hvu0 : AEStronglyMeasurable (v - u0) volume :=
+      (hvsmooth.continuous.sub hu0smooth.continuous).aestronglyMeasurable
+    refine le_trans (eLpNorm_add_le
+      (hf.aestronglyMeasurable.sub hvmem.aestronglyMeasurable) hvu0 hp1) ?_
+    calc
+      eLpNorm (f - v) (ENNReal.ofReal p) volume +
+          eLpNorm (v - u0) (ENNReal.ofReal p) volume ≤
+          ENNReal.ofReal (eps / 4 + eps / 4 + eps / 4) +
+            ENNReal.ofReal (eps / 4) := add_le_add hfv htrunc
+      _ = ENNReal.ofReal eps := by
+        rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+        congr 1
+        ring
+
+/-- Radial Schwartz functions form a dense subspace of the a.e.-radial part of
+`L^p`: the approximation hypothesis of the transfer principle holds. -/
+theorem brrs_hasRadialSchwartzLpApproximation {d : Nat} {p : Real} (hp : 1 ≤ p)
+    [Fact (1 ≤ ENNReal.ofReal p)] :
+    HasRadialSchwartzLpApproximation (d := d) p := by
+  intro f hf hfradial
+  have hchoice : ∀ n : Nat, ∃ u : BRRSSchwartz d,
+      IsRadial (u : BRRSSpace d → Complex) ∧
+        eLpNorm (f - (u : BRRSSpace d → Complex)) (ENNReal.ofReal p) volume ≤
+          ENNReal.ofReal (1 / ((n : Real) + 1)) := fun n =>
+    exists_brrs_radial_schwartz_eLpNorm_sub_le hp hf hfradial (by positivity)
+  choose u hu1 hu2 using hchoice
+  refine ⟨u, hu1, ?_⟩
+  rw [Lp.tendsto_Lp_iff_tendsto_eLpNorm _ f hf]
+  have hcongr : ∀ n : Nat,
+      eLpNorm (((u n).toLp (ENNReal.ofReal p) volume : BRRSSpace d → Complex)
+          - f) (ENNReal.ofReal p) volume =
+        eLpNorm (f - (u n : BRRSSpace d → Complex)) (ENNReal.ofReal p) volume := by
+    intro n
+    have h1 : ((u n).toLp (ENNReal.ofReal p) volume : BRRSSpace d → Complex) - f
+        =ᵐ[volume] (u n : BRRSSpace d → Complex) - f :=
+      ((u n).coeFn_toLp (ENNReal.ofReal p) volume).sub Filter.EventuallyEq.rfl
+    rw [eLpNorm_congr_ae h1]
+    have h2 : (u n : BRRSSpace d → Complex) - f
+        = -(f - (u n : BRRSSpace d → Complex)) := by
+      funext x
+      simp
+    rw [h2, eLpNorm_neg]
+  have hzero : Filter.Tendsto
+      (fun n : Nat => ENNReal.ofReal (1 / ((n : Real) + 1))) atTop (𝓝 0) := by
+    have hreal : Filter.Tendsto (fun n : Nat => 1 / ((n : Real) + 1)) atTop (𝓝 0) :=
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    have h := ENNReal.tendsto_ofReal hreal
+    rwa [ENNReal.ofReal_zero] at h
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le
+    (g := fun _ : Nat => (0 : ENNReal))
+    (h := fun n : Nat => ENNReal.ofReal (1 / ((n : Real) + 1)))
+    tendsto_const_nhds hzero (fun _ => zero_le) ?_
+  intro n
+  exact (hcongr n).trans_le (hu2 n)
+
+/-- The canonical realization is `L^p`-continuous in its input: if the inputs
+converge in `L^p`, the outputs converge in `L^p`. -/
+theorem brrs_eLpNorm_apply_sub_le {d : Nat} (Φ : BRRSAnnularCutoff) {p : Real}
+    (hp : 1 ≤ p) (j : Nat) (t : Real) {f g : BRRSSpace d → Complex}
+    (hf : MemLp f (ENNReal.ofReal p) volume)
+    (hg : MemLp g (ENNReal.ofReal p) volume) {Cb : Real} (hCb : 0 ≤ Cb)
+    (hbound : ∀ h : BRRSSpace d → Complex, MemLp h (ENNReal.ofReal p) volume →
+      eLpNorm ((brrsLpHalfWaveExtension (d := d) Φ).apply j t h)
+          (ENNReal.ofReal p) volume ≤
+        ENNReal.ofReal Cb * eLpNorm h (ENNReal.ofReal p) volume) :
+    eLpNorm ((brrsLpHalfWaveExtension (d := d) Φ).apply j t f -
+        (brrsLpHalfWaveExtension (d := d) Φ).apply j t g) (ENNReal.ofReal p) volume ≤
+      ENNReal.ofReal Cb * eLpNorm (f - g) (ENNReal.ofReal p) volume := by
+  set W := brrsLpHalfWaveExtension (d := d) Φ with hW
+  have hsub : f - g = f + (-1 : Complex) • g := by
+    funext x
+    simp [sub_eq_add_neg]
+  have hgneg : MemLp ((-1 : Complex) • g) (ENNReal.ofReal p) volume := hg.const_smul _
+  have hae1 : W.apply j t (f + (-1 : Complex) • g) =ᵐ[volume]
+      (W.apply j t f + W.apply j t ((-1 : Complex) • g)) :=
+    W.map_add_ae j t p hp hf hgneg
+  have hae2 : W.apply j t ((-1 : Complex) • g) =ᵐ[volume]
+      ((-1 : Complex) • W.apply j t g) := W.map_smul_ae j t p hp (-1) hg
+  have haeall : W.apply j t (f - g) =ᵐ[volume]
+      (W.apply j t f - W.apply j t g) := by
+    rw [hsub]
+    filter_upwards [hae1, hae2] with x hx1 hx2
+    show W.apply j t (f + (-1 : Complex) • g) x =
+      (W.apply j t f - W.apply j t g) x
+    rw [hx1]
+    show W.apply j t f x + W.apply j t ((-1 : Complex) • g) x =
+      W.apply j t f x - W.apply j t g x
+    rw [hx2]
+    show W.apply j t f x + (-1 : Complex) * W.apply j t g x =
+      W.apply j t f x - W.apply j t g x
+    ring
+  have hfg : MemLp (f - g) (ENNReal.ofReal p) volume := hf.sub hg
+  calc
+    eLpNorm (W.apply j t f - W.apply j t g) (ENNReal.ofReal p) volume =
+        eLpNorm (W.apply j t (f - g)) (ENNReal.ofReal p) volume :=
+      (eLpNorm_congr_ae haeall).symm
+    _ ≤ ENNReal.ofReal Cb * eLpNorm (f - g) (ENNReal.ofReal p) volume :=
+      hbound (f - g) hfg
+
+/-- Per-time convergence of the output `L^p` norms along an `L^p`-convergent
+sequence of inputs. -/
+theorem brrs_tendsto_eLpNorm_apply {d : Nat} (Φ : BRRSAnnularCutoff) {p : Real}
+    (hp : 1 ≤ p) (j : Nat) (t : Real) {f : BRRSSpace d → Complex}
+    (hf : MemLp f (ENNReal.ofReal p) volume)
+    (v : Nat → BRRSSpace d → Complex)
+    (hv : ∀ n, MemLp (v n) (ENNReal.ofReal p) volume)
+    (hconv : Tendsto (fun n => eLpNorm (v n - f) (ENNReal.ofReal p) volume) atTop
+      (𝓝 0)) :
+    Tendsto (fun n => eLpNorm ((brrsLpHalfWaveExtension (d := d) Φ).apply j t (v n))
+        (ENNReal.ofReal p) volume) atTop
+      (𝓝 (eLpNorm ((brrsLpHalfWaveExtension (d := d) Φ).apply j t f)
+        (ENNReal.ofReal p) volume)) := by
+  set W := brrsLpHalfWaveExtension (d := d) Φ with hW
+  have hp1 : (1 : ENNReal) ≤ ENNReal.ofReal p := by
+    rw [ENNReal.one_le_ofReal]
+    exact hp
+  obtain ⟨Cb, hCb, hbound⟩ := W.bounded_on_Lp j t p hp
+  have hdiff : Tendsto (fun n => eLpNorm (W.apply j t (v n) - W.apply j t f)
+      (ENNReal.ofReal p) volume) atTop (𝓝 0) := by
+    have hle : ∀ n, eLpNorm (W.apply j t (v n) - W.apply j t f)
+        (ENNReal.ofReal p) volume ≤
+        ENNReal.ofReal Cb * eLpNorm (v n - f) (ENNReal.ofReal p) volume := by
+      intro n
+      exact brrs_eLpNorm_apply_sub_le Φ hp j t (hv n) hf hCb hbound
+    have hmul : Tendsto (fun n => ENNReal.ofReal Cb *
+        eLpNorm (v n - f) (ENNReal.ofReal p) volume) atTop (𝓝 0) := by
+      have h := ENNReal.Tendsto.const_mul (a := ENNReal.ofReal Cb) hconv
+        (Or.inr (ENNReal.ofReal_ne_top (r := Cb)))
+      simpa using h
+    exact tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hmul
+      (fun n => zero_le) hle
+  -- convert the difference bound into convergence of the norms
+  have hupper : ∀ n, eLpNorm (W.apply j t (v n)) (ENNReal.ofReal p) volume ≤
+      eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume +
+        eLpNorm (W.apply j t (v n) - W.apply j t f) (ENNReal.ofReal p) volume := by
+    intro n
+    have hmemn : MemLp (W.apply j t (v n)) (ENNReal.ofReal p) volume :=
+      W.maps_memLp j t p hp (hv n)
+    have hmemf : MemLp (W.apply j t f) (ENNReal.ofReal p) volume :=
+      W.maps_memLp j t p hp hf
+    have hsplit : W.apply j t (v n) =
+        W.apply j t f + (W.apply j t (v n) - W.apply j t f) := by
+      funext x
+      simp
+    nth_rewrite 1 [hsplit]
+    exact eLpNorm_add_le hmemf.aestronglyMeasurable
+      (hmemn.aestronglyMeasurable.sub hmemf.aestronglyMeasurable) hp1
+  have hlower : ∀ n, eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume ≤
+      eLpNorm (W.apply j t (v n)) (ENNReal.ofReal p) volume +
+        eLpNorm (W.apply j t (v n) - W.apply j t f) (ENNReal.ofReal p) volume := by
+    intro n
+    have hmemn : MemLp (W.apply j t (v n)) (ENNReal.ofReal p) volume :=
+      W.maps_memLp j t p hp (hv n)
+    have hmemf : MemLp (W.apply j t f) (ENNReal.ofReal p) volume :=
+      W.maps_memLp j t p hp hf
+    have hsplit : W.apply j t f =
+        W.apply j t (v n) + (-(W.apply j t (v n) - W.apply j t f)) := by
+      funext x
+      simp
+    nth_rewrite 1 [hsplit]
+    refine le_trans (eLpNorm_add_le hmemn.aestronglyMeasurable
+      ((hmemn.aestronglyMeasurable.sub hmemf.aestronglyMeasurable).neg) hp1) ?_
+    rw [eLpNorm_neg]
+  -- squeeze
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le
+    (g := fun n => eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume -
+      eLpNorm (W.apply j t (v n) - W.apply j t f) (ENNReal.ofReal p) volume)
+    (h := fun n => eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume +
+      eLpNorm (W.apply j t (v n) - W.apply j t f) (ENNReal.ofReal p) volume)
+    ?_ ?_ ?_ hupper
+  · have := ENNReal.Tendsto.sub (tendsto_const_nhds
+      (x := eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume) (f := atTop (α := Nat)))
+      hdiff (Or.inr ENNReal.zero_ne_top)
+    simpa using this
+  · have h := Filter.Tendsto.add (tendsto_const_nhds
+      (x := eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume) (f := atTop (α := Nat)))
+      hdiff
+    simpa using h
+  · intro n
+    exact tsub_le_iff_right.mpr (hlower n)
+
+/-- The canonical realization satisfies the finite-time output continuity
+required by the transfer principle: along any `L^p`-convergent sequence of
+radial Schwartz inputs, the discrete norms of the literal half-wave outputs
+converge to the discrete norm of the realized output. -/
+theorem brrs_hasRadialSchwartzCoreConvergence {d : Nat} (Φ : BRRSAnnularCutoff)
+    {p : Real} (hp : 1 ≤ p) [Fact (1 ≤ ENNReal.ofReal p)] :
+    HasRadialSchwartzCoreConvergence Φ (brrsLpHalfWaveExtension (d := d) Φ) p := by
+  intro j T f hf hfradial u hu htend
+  set W := brrsLpHalfWaveExtension (d := d) Φ with hW
+  have hconv : Tendsto (fun n => eLpNorm ((u n : BRRSSpace d → Complex) - f)
+      (ENNReal.ofReal p) volume) atTop (𝓝 0) := by
+    have h := (Lp.tendsto_Lp_iff_tendsto_eLpNorm
+      (fun n => (u n).toLp (ENNReal.ofReal p) volume) f hf).mp htend
+    refine h.congr ?_
+    intro n
+    exact eLpNorm_congr_ae
+      (((u n).coeFn_toLp (ENNReal.ofReal p) volume).sub EventuallyEq.rfl)
+  have hmemu : ∀ n : Nat, MemLp ((u n : BRRSSpace d → Complex))
+      (ENNReal.ofReal p) volume := fun n => (u n).memLp _ _
+  have hper : ∀ t : Real, Tendsto (fun n =>
+      eLpNorm (brrsDyadicHalfWave Φ j t (u n)) (ENNReal.ofReal p) volume) atTop
+      (𝓝 (eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume)) := by
+    intro t
+    have hbase := brrs_tendsto_eLpNorm_apply Φ hp j t hf
+      (fun n => (u n : BRRSSpace d → Complex)) hmemu hconv
+    refine hbase.congr ?_
+    intro n
+    exact eLpNorm_congr_ae (W.extends_schwartz j t (u n))
+  unfold discreteLpNorm
+  have hsum : Tendsto (fun n => ∑ t ∈ T,
+      (eLpNorm (brrsDyadicHalfWave Φ j t (u n)) (ENNReal.ofReal p) volume) ^ p)
+      atTop (𝓝 (∑ t ∈ T,
+        (eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume) ^ p)) := by
+    apply tendsto_finsetSum
+    intro t ht
+    exact (hper t).ennrpow_const p
+  exact hsum.ennrpow_const (p⁻¹)
+
+/-- **BRRS Theorem 1.1.**  For every dimension at least two, every time set
+contained in `[1,2]` and every exponent at least two, the canonical `L^p`
+realization of the frequency-localized half-wave satisfies the fractal local
+smoothing estimate at every exponent above the critical one
+`nu_E^sharp(p s_p)/p`, and the estimate fails below it.
+
+The upper bound is the Schwartz-core estimate of BRRS (1.5) transferred to
+arbitrary a.e.-radial `L^p` data by the radial Schwartz density theorem
+`brrs_hasRadialSchwartzLpApproximation` together with the output continuity
+`brrs_hasRadialSchwartzCoreConvergence`; the sharpness clause is the
+Section 3 focusing construction. -/
+theorem brrsTheoremOneWithSharpnessStatement_of_two_le {d : Nat} (hd : 2 ≤ d)
+    (Φ : BRRSAnnularCutoff) {E : Set Real} (hE : E ⊆ Icc (1 : Real) 2)
+    {p : Real} (hp : 2 ≤ p) :
+    BRRSTheoremOneWithSharpnessStatement d Φ E p := by
+  have hp1 : (1 : Real) ≤ p := le_trans one_le_two hp
+  haveI : Fact (1 ≤ ENNReal.ofReal p) := brrsFactOneLeOfReal hp1
+  unfold BRRSTheoremOneWithSharpnessStatement
+    BRRSTheoremOneWithSharpnessStatementFor
+  refine ⟨hd, hE, hp, brrsLpHalfWaveExtension (d := d) Φ, ?_, ?_⟩
+  · intro epsilon heps
+    have hcore :=
+      (brrsTheoremOneSchwartzCoreStatement_of_two_le hd Φ hE hp).2.2.2 epsilon heps
+    exact uniformEstimateAtExponent_of_schwartzCore_of_radialSchwartzApproximation
+      Φ (brrsLpHalfWaveExtension (d := d) Φ) E p _ hcore
+      (brrs_hasRadialSchwartzLpApproximation hp1)
+      (brrs_hasRadialSchwartzCoreConvergence Φ hp1)
+  · exact brrsTheoremOneSharpnessStatement_of_two_le Φ E hd hE hp
 
 end
 
