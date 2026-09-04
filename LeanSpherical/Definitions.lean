@@ -21,7 +21,7 @@ import LeanSpherical.Auto.Spherical.LegendreAssouad
 namespace Spherical
 
 open Filter MeasureTheory Set Topology ENNReal
-open scoped ENNReal NNReal Topology
+open scoped ENNReal NNReal Topology SchwartzMap
 
 noncomputable section
 
@@ -108,10 +108,14 @@ open RestrictedDilations
 def powerWeight (d : ℕ) (α : ℝ) : Measure (ℝ^d) :=
   volume.withDensity fun x ↦ (ENNReal.ofReal ‖x‖) ^ α
 
-/-- The weighted strong-type region, in coordinates `(1 / p, α / p)`. -/
+/-- The weighted strong-type region, in coordinates `(1 / p, α / p)`.
+
+**Implementation note:** We prefer to use a priori estimates on Schwartz functions
+for finite `p` and take a union with the point `(0, 0)` representing the (trivial) `L^∞` estimate.
+-/
 def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
-  {q | ∃ α : ℝ, ∃ p : ENNReal, 1 ≤ p ∧ q = (ENNReal.toReal p⁻¹, α * (ENNReal.toReal p⁻¹)) ∧
-    ∃ C : ℝ, 0 < C ∧ ∀ f : (ℝ^d) → ℂ, MemLp f p (powerWeight d α) →
+  {(0, 0)} ∪ {q | ∃ α : ℝ, ∃ p : ℝ≥0∞, 1 ≤ p ∧ q = (ENNReal.toReal p⁻¹, α * (ENNReal.toReal p⁻¹)) ∧
+    ∃ C : ℝ, 0 < C ∧ ∀ f : 𝓢(ℝ^d, ℂ), MemLp f p (powerWeight d α) →
       MemLp (M E f) p (powerWeight d α) ∧ eLpNorm (M E f) p (powerWeight d α)
         ≤ ENNReal.ofReal C * eLpNorm f p (powerWeight d α)}
 

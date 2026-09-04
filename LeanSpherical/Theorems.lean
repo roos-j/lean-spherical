@@ -87,7 +87,8 @@ namespace PowerWeights
 theorem closure_typeSet_eq
     {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
     closure (typeSet d E) = admissibleRegion d E :=
-  Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq hd hE hEpos
+  sorry
+  -- Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq hd hE hEpos
 
 end PowerWeights
 
