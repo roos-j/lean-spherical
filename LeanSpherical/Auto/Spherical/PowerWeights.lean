@@ -66307,6 +66307,213 @@ theorem memLp_restrictedSphericalMaximal_of_memLp_of_schwartz_bound
 
 end
 
+/-- Almost every sphere meets a fixed null set in surface measure zero.  This
+is a form of the maximal bound: the indicator of a null set has vanishing `L^q`
+norm, so its spherical maximal function vanishes almost everywhere. -/
+theorem ae_forall_measure_sphere_preimage_eq_zero_of_schwartz_bound
+    {d : ℕ} {E : Set ℝ} {q : ℝ≥0∞} (hq : 1 ≤ q) (hq0 : q ≠ 0) (hqtop : q ≠ ∞)
+    {C : ℝ}
+    (hstrong : ∀ φ : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M E (φ : (ℝ^d) → ℂ)) q volume ≤
+        ENNReal.ofReal C * eLpNorm (φ : (ℝ^d) → ℂ) q volume)
+    {N : Set (ℝ^d)} (hNmeas : MeasurableSet N) (hNnull : volume N = 0) :
+    ∀ᵐ x ∂volume, ∀ t ∈ E ∩ Ioi (0 : ℝ),
+      unitSphereMeasure d
+          {ω : Metric.sphere (0 : ℝ^d) 1 | x + t • (ω : ℝ^d) ∈ N} = 0 := by
+  letI : IsFiniteMeasure (unitSphereMeasure d) := by
+    unfold unitSphereMeasure
+    infer_instance
+  have hNae : ∀ᵐ x ∂volume, x ∉ N := measure_eq_zero_iff_ae_notMem.mp hNnull
+  set h : (ℝ^d) → ℂ := N.indicator (fun _ => (1 : ℂ)) with hhdef
+  have hhmeas : Measurable h := by
+    rw [hhdef]
+    exact measurable_const.indicator hNmeas
+  have hhae : h =ᵐ[volume] (0 : (ℝ^d) → ℂ) := by
+    filter_upwards [hNae] with x hx
+    rw [hhdef]
+    exact Set.indicator_of_notMem hx _
+  have hhzero : eLpNorm h q volume = 0 := by
+    rw [eLpNorm_congr_ae hhae]
+    exact eLpNorm_zero
+  have hhmem : MemLp h q volume :=
+    ⟨hhmeas.aestronglyMeasurable, by rw [hhzero]; exact ENNReal.zero_lt_top⟩
+  obtain ⟨hMhmem, hMhbound⟩ :=
+    memLp_restrictedSphericalMaximal_of_memLp_of_schwartz_bound hq hq0 hqtop
+      hstrong hhmem
+  have hMhzero : M E h =ᵐ[volume] 0 := by
+    refine (eLpNorm_eq_zero_iff hMhmem.1 hq0).mp (le_antisymm ?_ bot_le)
+    rw [hhzero, mul_zero] at hMhbound
+    exact hMhbound
+  filter_upwards [hMhzero] with x hxh
+  intro t ht
+  set S : Set (Metric.sphere (0 : ℝ^d) 1) :=
+    {ω : Metric.sphere (0 : ℝ^d) 1 | x + t • (ω : ℝ^d) ∈ N} with hSdef
+  have hmapmeas : Measurable
+      fun ω : Metric.sphere (0 : ℝ^d) 1 => x + t • (ω : ℝ^d) :=
+    ((continuous_const : Continuous fun _ : Metric.sphere (0 : ℝ^d) 1 => x).add
+      ((continuous_const :
+        Continuous fun _ : Metric.sphere (0 : ℝ^d) 1 => t).smul
+          continuous_subtype_val)).measurable
+  have hSmeas : MeasurableSet S := hmapmeas hNmeas
+  have hindicator : (fun ω : Metric.sphere (0 : ℝ^d) 1 => h (x + t • (ω : ℝ^d))) =
+      S.indicator (fun _ => (1 : ℂ)) := by
+    funext ω
+    by_cases hω : x + t • (ω : ℝ^d) ∈ N
+    · have hωS : ω ∈ S := hω
+      rw [hhdef, Set.indicator_of_mem hω, Set.indicator_of_mem hωS]
+    · have hωS : ω ∉ S := hω
+      rw [hhdef, Set.indicator_of_notMem hω, Set.indicator_of_notMem hωS]
+  have haverage : _root_.Spherical.sphericalAverage t h x =
+      ((unitSphereMeasure d).real S) • (1 : ℂ) := by
+    unfold _root_.Spherical.sphericalAverage
+    rw [hindicator, integral_indicator_const (1 : ℂ) hSmeas]
+  have hMle : ENNReal.ofReal ‖_root_.Spherical.sphericalAverage t h x‖ ≤ M E h x := by
+    unfold M _root_.Spherical.restrictedSphericalMaximal
+    exact le_iSup_of_le t (le_iSup_of_le ht le_rfl)
+  have hzero : _root_.Spherical.sphericalAverage t h x = 0 := by
+    have h0 : M E h x = 0 := hxh
+    have hle : ENNReal.ofReal ‖_root_.Spherical.sphericalAverage t h x‖ ≤ 0 :=
+      le_of_le_of_eq hMle h0
+    have hnorm : ‖_root_.Spherical.sphericalAverage t h x‖ ≤ 0 :=
+      ENNReal.ofReal_eq_zero.mp (le_antisymm hle bot_le)
+    exact norm_le_zero_iff.mp hnorm
+  rw [haverage] at hzero
+  have hreal : (unitSphereMeasure d).real S = 0 := by
+    simpa using hzero
+  rw [measureReal_def] at hreal
+  exact ((ENNReal.toReal_eq_zero_iff _).mp hreal).resolve_right
+    (measure_ne_top (unitSphereMeasure d) S)
+
+/-- The `L^∞` companion of the absolute-convergence statement below.  An
+essentially bounded function is bounded off a null set, and almost every
+sphere meets that null set in measure zero, so almost every spherical slice is
+bounded and hence integrable. -/
+theorem ae_forall_integrable_sphere_of_memLp_top_of_schwartz_bound
+    {d : ℕ} {E : Set ℝ} {q : ℝ≥0∞} (hq : 1 ≤ q) (hq0 : q ≠ 0) (hqtop : q ≠ ∞)
+    {C : ℝ}
+    (hstrong : ∀ φ : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M E (φ : (ℝ^d) → ℂ)) q volume ≤
+        ENNReal.ofReal C * eLpNorm (φ : (ℝ^d) → ℂ) q volume)
+    {f : (ℝ^d) → ℂ} (hf : MemLp f ∞ volume) :
+    ∀ᵐ x ∂volume, ∀ t ∈ E ∩ Ioi (0 : ℝ),
+      Integrable (fun ω : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (ω : ℝ^d)))
+        (unitSphereMeasure d) := by
+  letI : IsFiniteMeasure (unitSphereMeasure d) := by
+    unfold unitSphereMeasure
+    infer_instance
+  let g : (ℝ^d) → ℂ := AEStronglyMeasurable.mk f hf.1
+  have hfg : f =ᵐ[volume] g := hf.1.ae_eq_mk
+  have hgmeas : StronglyMeasurable g := hf.1.stronglyMeasurable_mk
+  set B : ℝ := (eLpNormEssSup f volume).toReal with hBdef
+  have hEssTop : eLpNormEssSup f volume ≠ ∞ := by
+    have hlt := hf.2
+    rw [eLpNorm_exponent_top] at hlt
+    exact hlt.ne
+  have hfbound : ∀ᵐ x ∂volume, ‖f x‖ ≤ B := by
+    filter_upwards [ae_le_eLpNormEssSup (f := f) (μ := volume)] with x hx
+    rw [hBdef]
+    have hx' : ENNReal.ofReal ‖f x‖ ≤ eLpNormEssSup f volume := by
+      rw [ofReal_norm]
+      exact hx
+    calc
+      ‖f x‖ = (ENNReal.ofReal ‖f x‖).toReal := by
+        rw [ENNReal.toReal_ofReal (norm_nonneg _)]
+      _ ≤ (eLpNormEssSup f volume).toReal :=
+        ENNReal.toReal_le_toReal ENNReal.ofReal_ne_top hEssTop |>.mpr hx'
+  have hgbound : ∀ᵐ x ∂volume, ‖g x‖ ≤ B := by
+    filter_upwards [hfbound, hfg] with x hx hxeq
+    rw [← hxeq]
+    exact hx
+  -- the exceptional set: where `f` and `g` differ, or `g` exceeds the bound
+  have hdiffnull : volume {x : ℝ^d | f x ≠ g x} = 0 := hfg
+  obtain ⟨N₀, hN₀sub, hN₀meas, hN₀null⟩ :=
+    exists_measurable_superset_of_null hdiffnull
+  have hbadnull : volume {x : ℝ^d | B < ‖g x‖} = 0 := by
+    have hae := hgbound
+    rw [ae_iff] at hae
+    exact measure_mono_null (fun x hx => not_le.mpr hx) hae
+  have hbadmeas : MeasurableSet {x : ℝ^d | B < ‖g x‖} :=
+    measurableSet_lt measurable_const hgmeas.norm.measurable
+  set N : Set (ℝ^d) := N₀ ∪ {x : ℝ^d | B < ‖g x‖} with hNdef
+  have hNmeas : MeasurableSet N := hN₀meas.union hbadmeas
+  have hNnull : volume N = 0 := by
+    rw [hNdef]
+    exact measure_union_null hN₀null hbadnull
+  filter_upwards [ae_forall_measure_sphere_preimage_eq_zero_of_schwartz_bound
+    hq hq0 hqtop hstrong hNmeas hNnull] with x hx
+  intro t ht
+  have hmapmeas : Measurable
+      fun ω : Metric.sphere (0 : ℝ^d) 1 => x + t • (ω : ℝ^d) :=
+    ((continuous_const : Continuous fun _ : Metric.sphere (0 : ℝ^d) 1 => x).add
+      ((continuous_const :
+        Continuous fun _ : Metric.sphere (0 : ℝ^d) 1 => t).smul
+          continuous_subtype_val)).measurable
+  have hoff : ∀ᵐ ω ∂(unitSphereMeasure d),
+      ω ∉ {ω : Metric.sphere (0 : ℝ^d) 1 | x + t • (ω : ℝ^d) ∈ N} :=
+    measure_eq_zero_iff_ae_notMem.mp (hx t ht)
+  have hgint : Integrable (fun ω : Metric.sphere (0 : ℝ^d) 1 =>
+      g (x + t • (ω : ℝ^d))) (unitSphereMeasure d) := by
+    refine Integrable.of_bound
+      (hgmeas.comp_measurable hmapmeas).aestronglyMeasurable B ?_
+    filter_upwards [hoff] with ω hω
+    by_contra hcon
+    exact hω (Or.inr (not_le.mp hcon))
+  refine hgint.congr ?_
+  filter_upwards [hoff] with ω hω
+  have hne : ¬ (f (x + t • (ω : ℝ^d)) ≠ g (x + t • (ω : ℝ^d))) :=
+    fun hne => hω (Or.inl (hN₀sub hne))
+  exact (not_not.mp hne).symm
+
+/-- With a Schwartz-core strong bound in hand, the spherical means of an `L^p`
+function converge absolutely at every admissible radius, for almost every
+center.  The exceptional set of centers does not depend on the radius: that is
+the quantifier order which makes the pointwise maximal function meaningful.
+
+The two ingredients are the truncation envelope, which handles a strongly
+measurable representative, and the fact that almost every sphere meets a null
+set in measure zero, which transfers the conclusion to the given function. -/
+theorem ae_forall_integrable_sphere_of_memLp_of_schwartz_bound
+    {d : ℕ} {E : Set ℝ} {p : ℝ≥0∞} (hp : 1 ≤ p) (hp0 : p ≠ 0) (hptop : p ≠ ∞)
+    {C : ℝ}
+    (hstrong : ∀ φ : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M E (φ : (ℝ^d) → ℂ)) p volume ≤
+        ENNReal.ofReal C * eLpNorm (φ : (ℝ^d) → ℂ) p volume)
+    {f : (ℝ^d) → ℂ} (hf : MemLp f p volume) :
+    ∀ᵐ x ∂volume, ∀ t ∈ E ∩ Ioi (0 : ℝ),
+      Integrable (fun ω : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (ω : ℝ^d)))
+        (unitSphereMeasure d) := by
+  -- a strongly measurable representative and its truncation envelope
+  let g : (ℝ^d) → ℂ := AEStronglyMeasurable.mk f hf.1
+  have hfg : f =ᵐ[volume] g := hf.1.ae_eq_mk
+  have hgmeas : StronglyMeasurable g := hf.1.stronglyMeasurable_mk
+  have hgmem : MemLp g p volume := MemLp.ae_eq hfg hf
+  obtain ⟨K, hKmeas, -, hKtrunc, hKbound⟩ :=
+    exists_measurable_raw_and_truncation_envelope_of_memLp hp0 hptop
+      ENNReal.ofReal_ne_top hstrong hgmem
+  have hKnorm : eLpNorm K p volume < ∞ :=
+    hKbound.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hgmem.eLpNorm_lt_top)
+  have hKfinite : ∀ᵐ x ∂volume, K x < ∞ :=
+    ae_lt_top_of_measurable_memLp hp0 hptop hKmeas
+      ⟨hKmeas.aestronglyMeasurable, hKnorm⟩
+  -- a measurable null set carrying the difference between `f` and `g`
+  have hdiffnull : volume {x : ℝ^d | f x ≠ g x} = 0 := hfg
+  obtain ⟨N, hNsub, hNmeas, hNnull⟩ := exists_measurable_superset_of_null hdiffnull
+  filter_upwards [hKfinite,
+    ae_forall_measure_sphere_preimage_eq_zero_of_schwartz_bound hp hp0 hptop
+      hstrong hNmeas hNnull] with x hxK hxN
+  intro t ht
+  have hgint : Integrable (fun ω : Metric.sphere (0 : ℝ^d) 1 =>
+      g (x + t • (ω : ℝ^d))) (unitSphereMeasure d) :=
+    integrable_sphere_of_truncation_max_bound hgmeas x ht (hKtrunc x) hxK
+  refine hgint.congr ?_
+  have hoff : ∀ᵐ ω ∂(unitSphereMeasure d),
+      ω ∉ {ω : Metric.sphere (0 : ℝ^d) 1 | x + t • (ω : ℝ^d) ∈ N} :=
+    measure_eq_zero_iff_ae_notMem.mp (hxN t ht)
+  filter_upwards [hoff] with ω hω
+  have hne : ¬ (f (x + t • (ω : ℝ^d)) ≠ g (x + t • (ω : ℝ^d))) :=
+    fun hne => hω (hNsub hne)
+  exact (not_not.mp hne).symm
+
 end FormerNamespace_131
 end Consolidated_RawLpLift
 

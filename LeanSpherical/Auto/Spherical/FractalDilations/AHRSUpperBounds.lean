@@ -1987,6 +1987,201 @@ theorem eLpNorm_lacunarySphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 2 �
   rw [criticalExponent_lacunary d]
   simpa using hp
 
+/-- The Seeger--Wainger--Wright bound in its a priori form on the Schwartz
+core. -/
+theorem eLpNorm_restrictedSphericalMaximal_le_schwartzMap {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
+    (hp : ENNReal.ofReal (criticalExponent d E) < p) :
+    ∃ C : ℝ, ∀ f : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M E (f : (ℝ^d) → ℂ)) p volume ≤
+        ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+  obtain ⟨C, hC⟩ := eLpNorm_restrictedSphericalMaximal_le hd hE hp
+  exact ⟨C, fun f => (hC (f : (ℝ^d) → ℂ) (f.memLp p volume)).2⟩
+
+/-- Stein's spherical maximal theorem in its a priori form on the Schwartz
+core. -/
+theorem eLpNorm_sphericalMaximal_le_schwartzMap {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
+    (hp : (d : ENNReal) / (d - 1) < p) :
+    ∃ C : ℝ, ∀ f : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M (Ioi (0 : ℝ)) (f : (ℝ^d) → ℂ)) p volume ≤
+        ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+  obtain ⟨C, hC⟩ := eLpNorm_sphericalMaximal_le hd hp
+  exact ⟨C, fun f => (hC (f : (ℝ^d) → ℂ) (f.memLp p volume)).2⟩
+
+/-- C. P. Calderón's lacunary bound in its a priori form on the Schwartz
+core. -/
+theorem eLpNorm_lacunarySphericalMaximal_le_schwartzMap {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) (hp : 1 < p) :
+    ∃ C : ℝ, ∀ f : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M {2 ^ k | k : ℤ} (f : (ℝ^d) → ℂ)) p volume ≤
+        ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+  obtain ⟨C, hC⟩ := eLpNorm_lacunarySphericalMaximal_le hd hp
+  exact ⟨C, fun f => (hC (f : (ℝ^d) → ℂ) (f.memLp p volume)).2⟩
+
+/-- Above the critical exponent the spherical means of an `L^p` function
+converge absolutely at every admissible radius, for almost every center.  The
+exceptional set of centers is independent of the radius. -/
+theorem ae_forall_integrable_sphere_restricted_of_memLp {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
+    (hp : ENNReal.ofReal (criticalExponent d E) < p)
+    {f : (ℝ^d) → ℂ} (hf : MemLp f p volume) :
+    ∀ᵐ x ∂volume, ∀ t ∈ E ∩ Ioi (0 : ℝ),
+      Integrable (fun y : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (y : ℝ^d)))
+        (_root_.Spherical.unitSphereMeasure d) := by
+  by_cases hEempty : E = ∅
+  · subst E
+    filter_upwards with x
+    intro t ht
+    exact absurd ht.1 (Set.notMem_empty t)
+  have hEnonempty : E.Nonempty := Set.nonempty_iff_ne_empty.mpr hEempty
+  have hbeta_nonneg : 0 ≤ upperMinkowskiExponent E := by
+    change 0 ≤ Auto.Spherical.LegendreAssouad.upperMinkowskiExponent E
+    rw [Auto.Spherical.LegendreAssouad.upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal E]
+    exact EReal.toReal_nonneg
+      (_root_.Auto.Spherical.LegendreAssouad.multiplicativeMinkowskiExponent_nonneg_of_nonempty_of_subset_Ioi
+        hEnonempty hE)
+  have hden : 0 < (d : ℝ) - 1 := by
+    have hd' : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
+    linarith
+  have hcritical : (1 : ℝ) ≤ criticalExponent d E := by
+    unfold criticalExponent
+    exact le_add_of_nonneg_right (div_nonneg hbeta_nonneg hden.le)
+  have hcritpos : (0 : ℝ) < criticalExponent d E + 1 := by linarith
+  -- an auxiliary finite exponent above the critical one
+  have hqlt : ENNReal.ofReal (criticalExponent d E) <
+      ENNReal.ofReal (criticalExponent d E + 1) :=
+    (ENNReal.ofReal_lt_ofReal_iff hcritpos).mpr (by linarith)
+  have hq1 : (1 : ℝ≥0∞) ≤ ENNReal.ofReal (criticalExponent d E + 1) := by
+    calc
+      (1 : ℝ≥0∞) = ENNReal.ofReal 1 := by norm_num
+      _ ≤ _ := ENNReal.ofReal_le_ofReal (by linarith)
+  have hq0 : ENNReal.ofReal (criticalExponent d E + 1) ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+    exact hcritpos
+  obtain ⟨Cq, hCq⟩ := eLpNorm_restrictedSphericalMaximal_le_schwartzMap hd hE hqlt
+  have hpone : (1 : ℝ≥0∞) ≤ p := by
+    calc
+      (1 : ℝ≥0∞) = ENNReal.ofReal 1 := by norm_num
+      _ ≤ ENNReal.ofReal (criticalExponent d E) := ENNReal.ofReal_le_ofReal hcritical
+      _ ≤ p := hp.le
+  have hp0 : p ≠ 0 := by
+    intro hzero
+    rw [hzero] at hpone
+    simp at hpone
+  by_cases hptop : p = ∞
+  · subst hptop
+    exact
+      _root_.Auto.Spherical.PowerWeights.ae_forall_integrable_sphere_of_memLp_top_of_schwartz_bound
+        hq1 hq0 ENNReal.ofReal_ne_top hCq hf
+  · obtain ⟨Cp, hCp⟩ := eLpNorm_restrictedSphericalMaximal_le_schwartzMap hd hE hp
+    exact
+      _root_.Auto.Spherical.PowerWeights.ae_forall_integrable_sphere_of_memLp_of_schwartz_bound
+        hpone hp0 hptop hCp hf
+
+/-- The Seeger--Wainger--Wright theorem together with the absolute convergence
+of the spherical means which defines the maximal function pointwise. -/
+theorem eLpNorm_restrictedSphericalMaximal_le_of_memLp {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
+    (hp : ENNReal.ofReal (criticalExponent d E) < p) :
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      ∀ᵐ x ∂volume, ∀ t ∈ E,
+        Integrable (fun y : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (y : ℝ^d)))
+            (_root_.Spherical.unitSphereMeasure d) ∧
+      MemLp (M E f) p volume ∧
+      eLpNorm (M E f) p volume ≤ ENNReal.ofReal C * eLpNorm f p volume := by
+  obtain ⟨C, hC⟩ := eLpNorm_restrictedSphericalMaximal_le hd hE hp
+  refine ⟨C, fun f hf => ?_⟩
+  obtain ⟨hmem, hbound⟩ := hC f hf
+  filter_upwards [ae_forall_integrable_sphere_restricted_of_memLp hd hE hp hf] with x hx
+  intro t ht
+  exact ⟨hx t ⟨ht, hE ht⟩, hmem, hbound⟩
+
+/-- Stein's spherical maximal theorem together with the absolute convergence of
+the spherical means which defines the maximal function pointwise. -/
+theorem eLpNorm_sphericalMaximal_le_of_memLp {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
+    (hp : (d : ENNReal) / (d - 1) < p) :
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      ∀ᵐ x ∂volume, ∀ t ∈ Ioi (0 : ℝ),
+        Integrable (fun y : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (y : ℝ^d)))
+            (_root_.Spherical.unitSphereMeasure d) ∧
+      MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
+      eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ ENNReal.ofReal C * eLpNorm f p volume := by
+  have hcrit : ENNReal.ofReal (criticalExponent d (Ioi (0 : ℝ))) < p := by
+    have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
+    have hden : (0 : ℝ) < (d : ℝ) - 1 := by linarith
+    have hsub : ENNReal.ofReal ((d : ℝ) - 1) = (d : ENNReal) - 1 := by
+      rw [ENNReal.ofReal_sub _ (by norm_num : (0 : ℝ) ≤ 1)]
+      norm_num
+    rw [criticalExponent_full d hd, ENNReal.ofReal_div_of_pos hden, hsub]
+    simpa using hp
+  exact eLpNorm_restrictedSphericalMaximal_le_of_memLp hd (fun x hx => hx) hcrit
+
+/-- Stein's example with a Schwartz witness: at and below the critical exponent
+the spherical maximal function of a smooth bump has infinite `L^p` size.  The
+bump is a one-dimensional `ContDiffBump` composed with the squared norm, which
+keeps it smooth at the origin, equal to one on the closed unit ball and
+supported in the ball of radius two. -/
+theorem eLpNorm_sphericalMaximal_eq_top_schwartzMap {d : ℕ} {p : ENNReal}
+    (hd : 2 ≤ d) (hp0 : 0 < p) (hp : p ≤ (d : ENNReal) / (d - 1)) :
+    ∃ f : SchwartzMap (ℝ^d) ℂ, 0 < eLpNorm (f : (ℝ^d) → ℂ) p volume ∧
+      eLpNorm (M (Ioi (0 : ℝ)) (f : (ℝ^d) → ℂ)) p volume = ∞ := by
+  let B : ContDiffBump (0 : ℝ) :=
+    { rIn := 1, rOut := 4, rIn_pos := one_pos, rIn_lt_rOut := by norm_num }
+  let g : (ℝ^d) → ℝ := fun y => B (‖y‖ ^ 2)
+  have hsq : ContDiff ℝ (⊤ : ENat) fun y : ℝ^d => ‖y‖ ^ 2 := contDiff_norm_sq ℝ
+  have hgsmooth : ContDiff ℝ (⊤ : ENat) g := (B.contDiff (n := (⊤ : ENat))).comp hsq
+  have hgnonneg : ∀ y : ℝ^d, 0 ≤ g y := fun _ => B.nonneg
+  have hgbound : ∀ y : ℝ^d, ‖g y‖ ≤ 1 := by
+    intro y
+    rw [Real.norm_eq_abs, abs_of_nonneg (hgnonneg y)]
+    exact B.le_one
+  have hg_one : ∀ y : ℝ^d, ‖y‖ ≤ 1 → g y = 1 := by
+    intro y hy
+    apply B.one_of_mem_closedBall
+    rw [Metric.mem_closedBall, Real.dist_eq, sub_zero,
+      abs_of_nonneg (by positivity : (0 : ℝ) ≤ ‖y‖ ^ 2)]
+    change ‖y‖ ^ 2 ≤ (1 : ℝ)
+    nlinarith [norm_nonneg y]
+  have hgzero : ∀ y : ℝ^d, 2 ≤ ‖y‖ → g y = 0 := by
+    intro y hy
+    apply B.zero_of_le_dist
+    rw [Real.dist_eq, sub_zero,
+      abs_of_nonneg (by positivity : (0 : ℝ) ≤ ‖y‖ ^ 2)]
+    change (4 : ℝ) ≤ ‖y‖ ^ 2
+    nlinarith [norm_nonneg y]
+  have hsmoothC : ContDiff ℝ (⊤ : ENat) fun y : ℝ^d => ((g y : ℝ) : ℂ) :=
+    Complex.ofRealCLM.contDiff.comp hgsmooth
+  have hcsupp : HasCompactSupport fun y : ℝ^d => ((g y : ℝ) : ℂ) := by
+    apply HasCompactSupport.intro (isCompact_closedBall (0 : ℝ^d) 2)
+    intro y hy
+    have h2 : (2 : ℝ) ≤ ‖y‖ := by
+      simp only [Metric.mem_closedBall, dist_zero_right, not_le] at hy
+      exact hy.le
+    rw [hgzero y h2, Complex.ofReal_zero]
+  have hfun : ((hcsupp.toSchwartzMap hsmoothC : SchwartzMap (ℝ^d) ℂ) :
+      (ℝ^d) → ℂ) = fun y => ((g y : ℝ) : ℂ) :=
+    funext fun y => HasCompactSupport.toSchwartzMap_toFun hcsupp hsmoothC y
+  refine ⟨hcsupp.toSchwartzMap hsmoothC, ?_, ?_⟩
+  · have hone : ((hcsupp.toSchwartzMap hsmoothC : SchwartzMap (ℝ^d) ℂ) :
+        (ℝ^d) → ℂ) 0 = 1 := by
+      rw [hfun]
+      change ((g 0 : ℝ) : ℂ) = 1
+      rw [hg_one 0 (by simp)]
+      norm_num
+    apply pos_iff_ne_zero.mpr
+    intro hzero
+    have hmem := (hcsupp.toSchwartzMap hsmoothC).memLp p volume
+    have hae := (eLpNorm_eq_zero_iff hmem.1 hp0.ne').mp hzero
+    have h0 := (Continuous.ae_eq_iff_eq volume
+      (hcsupp.toSchwartzMap hsmoothC).continuous continuous_zero).mp hae
+    rw [h0] at hone
+    simp at hone
+  · rw [hfun]
+    exact
+      _root_.Auto.Spherical.SphericalMaximal.stein_eLpNorm_sphericalMaximal_eq_top_of_one_on_closedBall
+        hd hp0 hp hgsmooth.continuous.measurable hgnonneg hgbound hg_one
+
+
 private theorem exists_raw_counterexample_of_not_strongType
     {d : ℕ} {E : Set ℝ} {p : ℝ≥0∞}
     (hp0 : 0 < p) (hptop : p ≠ ∞)
@@ -2019,6 +2214,46 @@ private theorem exists_raw_counterexample_of_not_strongType
       rw [hmax_zero, hnorm_zero] at hlarge
       simp at hlarge
     refine ⟨f, hf, hnorm_pos, ?_⟩
+    change eLpNorm (_root_.Spherical.restrictedSphericalMaximal E (f : (ℝ^d) → ℂ))
+        p volume ≥ ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume
+    rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal E f]
+    exact le_of_lt (lt_of_le_of_lt
+      (mul_le_mul_left (ENNReal.ofReal_le_ofReal (le_max_left _ _)) _) hlarge)
+  · apply False.elim
+    apply hnot
+    rw [hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_iff]
+    refine ⟨K, hK, ?_⟩
+    intro f hf
+    rw [hp_eq] at hf ⊢
+    have hbound :
+        eLpNorm (restrictedNormalizedSphericalMaximal d E (f : (ℝ^d) → ℂ)) p volume ≤
+          ENNReal.ofReal K * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+      exact le_of_not_gt fun h => hlarge ⟨f, h⟩
+    refine ⟨?_, hbound⟩
+    refine ⟨(measurable_restrictedNormalizedSphericalMaximal E
+      (f : (ℝ^d) → ℂ) f.continuous).aestronglyMeasurable, ?_⟩
+    exact hbound.trans_lt
+      (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top)
+
+/-- The counterexample produced by the failure of the weighted strong type is a
+Schwartz function.  This is the same argument as the raw version above, keeping
+the Schwartz witness instead of forgetting it. -/
+private theorem exists_schwartz_counterexample_of_not_strongType
+    {d : ℕ} {E : Set ℝ} {p : ℝ≥0∞}
+    (hp0 : 0 < p) (hptop : p ≠ ∞)
+    (hnot : ¬ HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p.toReal 0) :
+    ∀ C : ℝ, ∃ f : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M E (f : (ℝ^d) → ℂ)) p volume ≥
+        ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+  intro C
+  let K : ℝ := max C 1
+  have hK : 0 < K := lt_of_lt_of_le zero_lt_one (le_max_right _ _)
+  have hp_eq : ENNReal.ofReal p.toReal = p := ENNReal.ofReal_toReal hptop
+  by_cases hlarge : ∃ f : SchwartzMap (ℝ^d) ℂ,
+      ENNReal.ofReal K * eLpNorm (f : (ℝ^d) → ℂ) p volume <
+        eLpNorm (restrictedNormalizedSphericalMaximal d E (f : (ℝ^d) → ℂ)) p volume
+  · rcases hlarge with ⟨f, hlarge⟩
+    refine ⟨f, ?_⟩
     change eLpNorm (_root_.Spherical.restrictedSphericalMaximal E (f : (ℝ^d) → ℂ))
         p volume ≥ ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume
     rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal E f]
@@ -2783,6 +3018,25 @@ theorem eLpNorm_restrictedSphericalMaximal_ge_of_lt_criticalExponent
     · have hd3 : 3 ≤ d := by omega
       exact not_strongType_of_lt_critical_of_three_le hd3 hEne hE hp hp0
   exact exists_raw_counterexample_of_not_strongType hp0 hptop hnot
+
+/-- The sharpness counterexample below the critical exponent can be taken to be
+a Schwartz function: the raw counterexample produced above is already one. -/
+theorem eLpNorm_restricted_ge_schwartz
+    {d : ℕ} {p : ℝ≥0∞} (hd : 2 ≤ d) {E : Set ℝ}
+    (hEne : E.Nonempty) (hE : E ⊆ Ioi 0) (hp0 : 0 < p)
+    (hp : p < ENNReal.ofReal (criticalExponent d E)) :
+    ∀ C : ℝ, ∃ f : SchwartzMap (ℝ^d) ℂ,
+      eLpNorm (M E (f : (ℝ^d) → ℂ)) p volume ≥
+        ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+  have hptop := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hp.le
+  have hnot : ¬ HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType
+      d E p.toReal 0 := by
+    by_cases hd2 : d = 2
+    · subst d
+      exact not_strongType_of_lt_critical_of_two hEne hE hp hp0
+    · have hd3 : 3 ≤ d := by omega
+      exact not_strongType_of_lt_critical_of_three_le hd3 hEne hE hp hp0
+  exact exists_schwartz_counterexample_of_not_strongType hp0 hptop hnot
 
 end
 end Former_DiagonalTheorem
@@ -80581,10 +80835,11 @@ private theorem finite_basic_mem_internal_typeSet {d : ℕ} {E : Set ℝ}
     {q : ℝ × ℝ} {α : ℝ} {p : ENNReal} (hp : 1 ≤ p) (hptop : p ≠ ∞)
     (hq : q = (ENNReal.toReal p⁻¹, α * ENNReal.toReal p⁻¹))
     {C : ℝ} (hC : 0 < C)
-    (hbound : ∀ f : (ℝ^d) → ℂ, MemLp f p (powerWeight d α) →
-      MemLp (M E f) p (powerWeight d α) ∧
-        eLpNorm (M E f) p (powerWeight d α) ≤
-          ENNReal.ofReal C * eLpNorm f p (powerWeight d α)) :
+    (hbound : ∀ f : SchwartzMap (ℝ^d) ℂ,
+      MemLp (f : (ℝ^d) → ℂ) p (powerWeight d α) →
+      MemLp (M E (f : (ℝ^d) → ℂ)) p (powerWeight d α) ∧
+        eLpNorm (M E (f : (ℝ^d) → ℂ)) p (powerWeight d α) ≤
+          ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p (powerWeight d α)) :
     q ∈ restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E := by
   have hp_eq : ENNReal.ofReal p.toReal = p := ENNReal.ofReal_toReal hptop
   have hmeasure : powerWeight d α = powerWeightedVolume d α := rfl
@@ -80603,7 +80858,7 @@ private theorem finite_basic_mem_internal_typeSet {d : ℕ} {E : Set ℝ}
     have hfweight : MemLp (f : (ℝ^d) → ℂ) p (powerWeightedVolume d α) := by
       rw [← hp_eq]
       exact hf
-    obtain ⟨hM, hnorm⟩ := hbound (f : (ℝ^d) → ℂ) (by rw [hmeasure]; exact hfweight)
+    obtain ⟨hM, hnorm⟩ := hbound f (by rw [hmeasure]; exact hfweight)
     refine ⟨?_, ?_⟩
     · simpa only [hp_eq, ← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal,
         ← hmeasure] using hM
@@ -80615,6 +80870,9 @@ private theorem typeSet_subset_closure_internal {d : ℕ} (hd : 2 ≤ d)
     typeSet d E ⊆
       closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
   intro q hq
+  rcases hq with hq | hq
+  · rw [Set.mem_singleton_iff.mp hq]
+    exact Auto.Spherical.Bourgain.zero_zero_mem_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet hd E
   rcases hq with ⟨α, p, hp, hq, C, hC, hbound⟩
   by_cases hptop : p = ∞
   · subst p
@@ -80638,13 +80896,14 @@ private theorem internal_subset_typeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
   have hp0 : 0 < p := lt_of_lt_of_le zero_lt_one hp
   have hqeq : q = (p⁻¹, α / p) := Prod.ext hq1 hq2
   rw [hqeq]
+  refine Set.mem_union_right _ ?_
   refine ⟨α, ENNReal.ofReal p, ?_, ?_, C, hC, ?_⟩
   · rw [← ENNReal.ofReal_one]
     exact ENNReal.ofReal_le_ofReal hp
   · simp only [ENNReal.toReal_inv, ENNReal.toReal_ofReal hp0.le]
     ext <;> field_simp
   · intro f hfvol
-    exact hraw f hfvol
+    exact hraw (f : (ℝ^d) → ℂ) hfvol
 
 /-- **Theorem 1.1 of arXiv:2602.17613 in every dimension at least two.**
 

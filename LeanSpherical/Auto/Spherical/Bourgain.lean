@@ -24878,11 +24878,14 @@ private theorem finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeight
     (hp : 1 ≤ p) (hptop : p ≠ ∞)
     (hq : q = (ENNReal.toReal p⁻¹, α * ENNReal.toReal p⁻¹))
     {C : ℝ} (hC : 0 < C)
-    (hbound : ∀ f : (ℝ^d) → ℂ,
-      MemLp f p (_root_.Spherical.PowerWeights.powerWeight d α) →
-        MemLp (M E f) p (_root_.Spherical.PowerWeights.powerWeight d α) ∧
-          eLpNorm (M E f) p (_root_.Spherical.PowerWeights.powerWeight d α) ≤
-            ENNReal.ofReal C * eLpNorm f p (_root_.Spherical.PowerWeights.powerWeight d α)) :
+    (hbound : ∀ f : SchwartzMap (ℝ^d) ℂ,
+      MemLp (f : (ℝ^d) → ℂ) p (_root_.Spherical.PowerWeights.powerWeight d α) →
+        MemLp (M E (f : (ℝ^d) → ℂ)) p
+            (_root_.Spherical.PowerWeights.powerWeight d α) ∧
+          eLpNorm (M E (f : (ℝ^d) → ℂ)) p
+              (_root_.Spherical.PowerWeights.powerWeight d α) ≤
+            ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p
+              (_root_.Spherical.PowerWeights.powerWeight d α)) :
     q ∈ restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E := by
   have hp_eq : ENNReal.ofReal p.toReal = p := ENNReal.ofReal_toReal hptop
   have hmeasure : _root_.Spherical.PowerWeights.powerWeight d α = powerWeightedVolume d α := rfl
@@ -24901,7 +24904,7 @@ private theorem finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeight
     have hfweight : MemLp (f : (ℝ^d) → ℂ) p (powerWeightedVolume d α) := by
       rw [← hp_eq]
       exact hf
-    obtain ⟨hM, hnorm⟩ := hbound (f : (ℝ^d) → ℂ) (by
+    obtain ⟨hM, hnorm⟩ := hbound f (by
       rw [hmeasure]
       exact hfweight)
     constructor
@@ -24915,6 +24918,9 @@ private theorem typeSet_subset_closure_restrictedNormalizedSphericalMaximalPower
     _root_.Spherical.PowerWeights.typeSet d E ⊆
       closure (restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E) := by
   intro q hq
+  rcases hq with hq | hq
+  · rw [Set.mem_singleton_iff.mp hq]
+    exact zero_zero_mem_closure_restrictedNormalizedSphericalMaximalPowerWeightTypeSet hd E
   rcases hq with ⟨α, p, hp, hq, C, hC, hbound⟩
   by_cases hptop : p = ∞
   · subst p
@@ -24935,18 +24941,20 @@ private theorem restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_ty
   have hp0 : 0 < p := lt_of_lt_of_le zero_lt_one hp
   have hqeq : q = (p⁻¹, α / p) := Prod.ext hq1 hq2
   rw [hqeq]
+  refine Set.mem_union_right _ ?_
   refine ⟨α, ENNReal.ofReal p, ?_, ?_, C, hC, ?_⟩
   · rw [← ENNReal.ofReal_one]
     exact ENNReal.ofReal_le_ofReal hp
   · simp only [ENNReal.toReal_inv, ENNReal.toReal_ofReal hp0.le]
     ext <;> field_simp
   · intro f hfvol
-    change MemLp (_root_.Spherical.M E f) (ENNReal.ofReal p)
+    change MemLp (_root_.Spherical.M E (f : (ℝ^d) → ℂ)) (ENNReal.ofReal p)
         (powerWeightedVolume d α) ∧
-      eLpNorm (_root_.Spherical.M E f) (ENNReal.ofReal p)
+      eLpNorm (_root_.Spherical.M E (f : (ℝ^d) → ℂ)) (ENNReal.ofReal p)
         (powerWeightedVolume d α) ≤
-        ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α)
-    exact hraw f hfvol
+        ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) (ENNReal.ofReal p)
+          (powerWeightedVolume d α)
+    exact hraw (f : (ℝ^d) → ℂ) hfvol
 
 theorem powerWeightEntropyImplicitCondition_iff_real
     {d : ℕ} {E : Set ℝ} {p α : ℝ}

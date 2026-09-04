@@ -6151,64 +6151,25 @@ private theorem stein_eLpNorm_radialTail_eq_top
     nlinarith [hmul, hncast]
   exact (not_lt_of_ge hExpGe) hExpLt
 
-/-- Stein's ball example: the full spherical maximal function has infinite
-`L^p` size at and below the critical exponent. -/
-theorem eLpNorm_sphericalMaximal_ge_of_le_criticalExponent
+/-- Stein's example, general form: if a nonnegative bounded measurable
+function equals one on the closed unit ball, then at and below the critical
+exponent the full spherical maximal function of the associated complex
+function has infinite `L^p` size.  The pointwise minorant is the radial tail
+`|x|^{-(d-1)}` supplied by the inward spherical cap. -/
+theorem stein_eLpNorm_sphericalMaximal_eq_top_of_one_on_closedBall
     {d : ℕ} {p : ENNReal} (hd : 2 ≤ d) (hp0 : 0 < p)
-    (hp : p ≤ (d : ENNReal) / (d - 1)) :
-    ∀ C : ℝ, ∃ f : Euclidean d → ℂ, MemLp f p volume ∧ 0 < eLpNorm f p volume ∧
-      eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume ≥
-        ENNReal.ofReal C * eLpNorm f p volume := by
+    (hp : p ≤ (d : ENNReal) / (d - 1))
+    {g : Euclidean d → ℝ} (hgmeas : Measurable g)
+    (hgnonneg : ∀ y : Euclidean d, 0 ≤ g y)
+    (hgbound : ∀ y : Euclidean d, ‖g y‖ ≤ 1)
+    (hg_one : ∀ y : Euclidean d, ‖y‖ ≤ 1 → g y = 1) :
+    eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) (fun y => ((g y : ℝ) : ℂ))) p volume = ∞ := by
   have hcrit_top : (d : ENNReal) / (d - 1) ≠ ∞ := by
     apply ENNReal.div_ne_top
     · exact ENNReal.natCast_ne_top d
     · exact_mod_cast (show d - 1 ≠ 0 by omega)
   have hptop : p ≠ ∞ := ne_top_of_le_ne_top hcrit_top hp
-  let S : Set (Euclidean d) := closedBall (0 : Euclidean d) 1
-  let g : Euclidean d → ℝ := S.indicator (fun _ => (1 : ℝ))
   let f : Euclidean d → ℂ := fun y => (g y : ℂ)
-  have hSmeas : MeasurableSet S := by
-    dsimp [S]
-    exact measurableSet_closedBall
-  have hgmeas : Measurable g := by
-    dsimp [g]
-    exact measurable_const.indicator hSmeas
-  have hgnonneg : ∀ y : Euclidean d, 0 ≤ g y := by
-    intro y
-    by_cases hy : y ∈ S <;> simp [g, hy]
-  have hgbound : ∀ y : Euclidean d, ‖g y‖ ≤ 1 := by
-    intro y
-    by_cases hy : y ∈ S <;> simp [g, hy]
-  have hg_one : ∀ y : Euclidean d, ‖y‖ ≤ 1 → g y = 1 := by
-    intro y hy
-    have hyS : y ∈ S := by
-      dsimp [S]
-      simpa only [mem_closedBall, dist_zero_right] using hy
-    simp [g, hyS]
-  have hfIndicator : f = S.indicator (fun _ : Euclidean d => (1 : ℂ)) := by
-    funext y
-    by_cases hy : y ∈ S <;> simp [f, g, hy]
-  have hSpos : 0 < volume S := by
-    dsimp [S]
-    exact lt_of_lt_of_le
-      (Metric.measure_ball_pos volume (0 : Euclidean d) (by norm_num))
-      (measure_mono Metric.ball_subset_closedBall)
-  have hStop : volume S ≠ ∞ := by
-    dsimp [S]
-    exact (measure_closedBall_lt_top (μ := volume) (x := (0 : Euclidean d))
-      (r := (1 : ℝ))).ne
-  have hfnorm : eLpNorm f p volume = volume S ^ (1 / p.toReal) := by
-    rw [hfIndicator, eLpNorm_indicator_const hSmeas (ne_of_gt hp0) hptop]
-    simp
-  have hfmem : MemLp f p volume := by
-    refine ⟨?_, ?_⟩
-    · rw [hfIndicator]
-      exact (measurable_const.indicator hSmeas).aestronglyMeasurable
-    · rw [hfnorm]
-      exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hStop
-  have hfpos : 0 < eLpNorm f p volume := by
-    rw [hfnorm]
-    exact ENNReal.rpow_pos hSpos hStop
   let n : ℕ := d - 1
   have hnpos : 0 < n := by
     dsimp [n]
@@ -6337,9 +6298,72 @@ theorem eLpNorm_sphericalMaximal_ge_of_le_criticalExponent
   have hrawtop : eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume = ∞ := by
     rw [stein_sphericalMaximal_eq_normalizedSphericalMaximal f]
     exact hMtop
+  exact hrawtop
+
+/-- Stein's ball example: the full spherical maximal function has infinite
+`L^p` size at and below the critical exponent. -/
+theorem eLpNorm_sphericalMaximal_ge_of_le_criticalExponent
+    {d : ℕ} {p : ENNReal} (hd : 2 ≤ d) (hp0 : 0 < p)
+    (hp : p ≤ (d : ENNReal) / (d - 1)) :
+    ∀ C : ℝ, ∃ f : Euclidean d → ℂ, MemLp f p volume ∧ 0 < eLpNorm f p volume ∧
+      eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume ≥
+        ENNReal.ofReal C * eLpNorm f p volume := by
+  have hcrit_top : (d : ENNReal) / (d - 1) ≠ ∞ := by
+    apply ENNReal.div_ne_top
+    · exact ENNReal.natCast_ne_top d
+    · exact_mod_cast (show d - 1 ≠ 0 by omega)
+  have hptop : p ≠ ∞ := ne_top_of_le_ne_top hcrit_top hp
+  let S : Set (Euclidean d) := closedBall (0 : Euclidean d) 1
+  let g : Euclidean d → ℝ := S.indicator (fun _ => (1 : ℝ))
+  let f : Euclidean d → ℂ := fun y => (g y : ℂ)
+  have hSmeas : MeasurableSet S := by
+    dsimp [S]
+    exact measurableSet_closedBall
+  have hgmeas : Measurable g := by
+    dsimp [g]
+    exact measurable_const.indicator hSmeas
+  have hgnonneg : ∀ y : Euclidean d, 0 ≤ g y := by
+    intro y
+    by_cases hy : y ∈ S <;> simp [g, hy]
+  have hgbound : ∀ y : Euclidean d, ‖g y‖ ≤ 1 := by
+    intro y
+    by_cases hy : y ∈ S <;> simp [g, hy]
+  have hg_one : ∀ y : Euclidean d, ‖y‖ ≤ 1 → g y = 1 := by
+    intro y hy
+    have hyS : y ∈ S := by
+      dsimp [S]
+      simpa only [mem_closedBall, dist_zero_right] using hy
+    simp [g, hyS]
+  have hfIndicator : f = S.indicator (fun _ : Euclidean d => (1 : ℂ)) := by
+    funext y
+    by_cases hy : y ∈ S <;> simp [f, g, hy]
+  have hSpos : 0 < volume S := by
+    dsimp [S]
+    exact lt_of_lt_of_le
+      (Metric.measure_ball_pos volume (0 : Euclidean d) (by norm_num))
+      (measure_mono Metric.ball_subset_closedBall)
+  have hStop : volume S ≠ ∞ := by
+    dsimp [S]
+    exact (measure_closedBall_lt_top (μ := volume) (x := (0 : Euclidean d))
+      (r := (1 : ℝ))).ne
+  have hfnorm : eLpNorm f p volume = volume S ^ (1 / p.toReal) := by
+    rw [hfIndicator, eLpNorm_indicator_const hSmeas (ne_of_gt hp0) hptop]
+    simp
+  have hfmem : MemLp f p volume := by
+    refine ⟨?_, ?_⟩
+    · rw [hfIndicator]
+      exact (measurable_const.indicator hSmeas).aestronglyMeasurable
+    · rw [hfnorm]
+      exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hStop
+  have hfpos : 0 < eLpNorm f p volume := by
+    rw [hfnorm]
+    exact ENNReal.rpow_pos hSpos hStop
   intro C
   refine ⟨f, hfmem, hfpos, ?_⟩
-  rw [hrawtop]
+  have htop : eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume = ∞ :=
+    stein_eLpNorm_sphericalMaximal_eq_top_of_one_on_closedBall hd hp0 hp
+      hgmeas hgnonneg hgbound hg_one
+  rw [htop]
   exact le_top
 
 end
