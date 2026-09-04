@@ -15,15 +15,19 @@ complete | §1 L^p_rad and the radial type set 𝒯^rad_E | 2026-09-03T23:58:00-
 complete | §1 radial profile isometry L^p_rad ≅ L^p(s^{d-1} ds) | 2026-09-03T23:58:00-04:00
 complete | §1 vertices P₁, P₂,β, P₃,β^rad and triangle Δ_β | 2026-09-04T00:12:00-04:00
 complete | §1 vertices P₄,γ^rad, P₅,β,γ^rad and quadrangle 𝒬^rad_{β,γ} | 2026-09-04T00:34:00-04:00
-not started | §4 (4.1)–(4.2) radial spherical-average kernel representation | 2026-09-03T23:40:00-04:00
+complete | §4 (4.1)–(4.2) radial spherical-average kernel representation | 2026-09-04T01:26:00-04:00
 
 ## Section 1 — Theorem 1.1 (d ≥ 3)
 
-not started | §3 Lemma 3.1 test function f_k | 2026-09-03T23:40:00-04:00
-not started | §3 (3.1) lower bound for M_E f_k | 2026-09-03T23:40:00-04:00
-not started | §3 Lemma 3.1 necessity of p ≤ q | 2026-09-03T23:40:00-04:00
-not started | §3 Lemma 3.2(i) necessity of q ≤ pd | 2026-09-03T23:40:00-04:00
-not started | §3 (3.2) Lemma 3.2(ii) entropy lower bound | 2026-09-03T23:40:00-04:00
+complete | §3 Lemma 3.1 test function f_k | 2026-09-04T01:52:00-04:00
+complete | §3 annulus volume identity (prerequisite for (3.1)) | 2026-09-04T02:14:00-04:00
+complete | §3 (3.1) lower bound for M_E f_k | 2026-09-04T02:58:00-04:00
+complete | §3 Lemma 3.1 necessity of p ≤ q | 2026-09-04T03:22:00-04:00
+complete | §3 Lemma 3.2(i) thin shell test function | 2026-09-04T03:44:00-04:00
+complete | §3 Lemma 3.2(i) necessity of q ≤ pd | 2026-09-04T04:12:00-04:00
+complete | §3 (3.2) cap estimate for the origin-ball test function | 2026-09-04T04:52:00-04:00
+complete | §3 (3.2) Lemma 3.2(ii) in separated-set form | 2026-09-04T05:38:00-04:00
+not started | §3 card of a maximal δ-separated subset vs N(E,δ) | 2026-09-04T05:38:00-04:00
 not started | §3 Corollary 3.3 𝒯^rad_E ⊆ Δ_β | 2026-09-03T23:40:00-04:00
 not started | §3 Lemma 3.4 Stein-type test function g | 2026-09-03T23:40:00-04:00
 not started | §3 Lemma 3.4 β = 1 endpoint lower bound | 2026-09-03T23:40:00-04:00
@@ -45,6 +49,7 @@ not started | §1 Theorem 1.1 assembly 𝒯^rad_E = Δ_β | 2026-09-03T23:40:00-
 
 ## Section 2 — Theorem 1.2 (d = 2)
 
+not started | §5 (4.1)–(4.2) for d = 2 (ambient-two slice density) | 2026-09-04T01:26:00-04:00
 not started | §3 Lemma 3.5 test function g_δ | 2026-09-03T23:40:00-04:00
 not started | §3 (3.4) pointwise claim for A_t g_δ | 2026-09-03T23:40:00-04:00
 not started | §3 (3.5) interval constraint on |x − t(x)y| | 2026-09-03T23:40:00-04:00

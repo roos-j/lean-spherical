@@ -140,3 +140,28 @@ starting the next item.
 Done means: Theorem 1.1, Theorem 1.2, Corollary 1.3 and Theorem 1.4 are all
 fully proved in `BRSRadial.lean`, the project builds, and the axiom check
 above passes for each of them.
+
+## Current handoff
+
+Complete: all of Section 0, Lemma 3.1 (with (3.1) and its test function),
+Lemma 3.2(i) (with the thin-shell test function), and for (3.2) the cap
+estimate `le_sphericalAverage_ballProfile` plus the separated-annuli
+machinery `le_eLpNorm_of_const_le_on`, `pairwiseDisjoint_separated_annuli`,
+`volume_biUnion_separated_annuli_ge`.
+
+The active row is (3.2)/Lemma 3.2(ii).  State it in separated-set form: for
+`0 < δ ≤ 1` and every `δ`-separated `T ⊆ E`,
+
+`ofReal (c * (T.card)^{1/q} * δ^{d-1+1/q-d/p}) * ‖1_{B(0,δ)}‖_p ≤ ‖M_E 1_{B(0,δ)}‖_q`,
+
+with `c` depending on `d, p, q` only (so `p, q` must be bound *outside* the
+existential).  Relating `T.card` to `N(E,δ)` for a maximal separated set is a
+separate step; keep it as its own ledger row rather than folding it in.
+
+The assembly is pure exponent bookkeeping.  With `V` the unit ball volume:
+`‖1_{B(0,δ)}‖_p = (ofReal (δ^d) * V)^{1/p}` (via `radialAnnulusIcc_zero`,
+`eLpNorm_indicator_lift`, `volume_closedBall_eq`), and the right-hand side is
+at least `ofReal (c₀ δ^{d-1}) * (T.card * c₁ δ * V)^{1/q}` by the cap estimate
+fed into `le_eLpNorm_of_const_le_on` on the union of annuli.  The `δ^{-d/p}`
+cancels the `δ^{d/p}` from the norm, leaving the requirement
+`c V^{1/p} ≤ c₀ (c₁ V)^{1/q}`, so take `c := c₀ (c₁ V)^{1/q} / V^{1/p}`.
