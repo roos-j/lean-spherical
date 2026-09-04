@@ -11085,7 +11085,7 @@ theorem ofReal_lightRayKernel_le_tsum_canonicalReflectedSquareDyadicKernel
     ring
   have hterm_nonneg (j : Nat) : 0 ≤ term j := by
     rw [hterm_eq]
-    exact mul_nonneg (sq_nonneg _) 
+    exact mul_nonneg (sq_nonneg _)
       (canonicalBandlimitedDyadicCore_nonneg_coefficient N hc hr j u)
   have hterm_summable : Summable term := by
     rw [show term = fun j => (delta⁻¹) ^ 2 *
@@ -16870,9 +16870,6 @@ theorem sectorPartition_support_subset_chart (j : SectorIndex) :
       {xi : Euclidean 2 | 0 < sectorProjection j xi} := by
   intro xi hxi
   exact sectorPartition_ne_zero_imp_projection_pos hxi
-
-theorem sectorIndex_card : Fintype.card SectorIndex = 4 := by
-  native_decide
 
 /-- The four fixed local angular charts, centred at the coordinate axes. -/
 def sectorBaseAngle (j : SectorIndex) : Real :=
