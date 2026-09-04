@@ -30,8 +30,11 @@ scoped notation "ℝ^" d:arg => EuclideanSpace ℝ (Fin d)
 
 section SphericalMaximal
 
+/-- `d`-dimensional Euclidean unit sphere -/
+abbrev unitSphere (d : ℕ) := Metric.sphere (0 : ℝ^d) 1
+
 /-- Normalized surface measure on the Euclidean unit sphere. -/
-def unitSphereMeasure (d : ℕ) : Measure (Metric.sphere (0 : ℝ^d) 1) := by
+def unitSphereMeasure (d : ℕ) : Measure (unitSphere d) := by
   let μ : Measure (Metric.sphere (0 : ℝ^d) 1) := volume.toSphere
   exact (μ univ)⁻¹ • μ
 
