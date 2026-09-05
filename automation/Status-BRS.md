@@ -27,34 +27,49 @@ complete | §3 Lemma 3.2(i) thin shell test function | 2026-09-04T03:44:00-04:00
 complete | §3 Lemma 3.2(i) necessity of q ≤ pd | 2026-09-04T04:12:00-04:00
 complete | §3 (3.2) cap estimate for the origin-ball test function | 2026-09-04T04:52:00-04:00
 complete | §3 (3.2) Lemma 3.2(ii) in separated-set form | 2026-09-04T05:38:00-04:00
-not started | §3 card of a maximal δ-separated subset vs N(E,δ) | 2026-09-04T05:38:00-04:00
-not started | §3 Corollary 3.3 𝒯^rad_E ⊆ Δ_β | 2026-09-03T23:40:00-04:00
-not started | §3 Lemma 3.4 Stein-type test function g | 2026-09-03T23:40:00-04:00
-not started | §3 Lemma 3.4 β = 1 endpoint lower bound | 2026-09-03T23:40:00-04:00
-not started | §4 (4.3) definitions of 𝔐_p, R₁, R₂ | 2026-09-03T23:40:00-04:00
-not started | §4 Lemma 4.1 pointwise decomposition of M_E f | 2026-09-03T23:40:00-04:00
-not started | §4 Proposition 4.2 bound for R₁ | 2026-09-03T23:40:00-04:00
-not started | §4 (4.5) pointwise bound for R₂ | 2026-09-03T23:40:00-04:00
-not started | §4 Proposition 4.3 bound for R₂ | 2026-09-03T23:40:00-04:00
-not started | §4 Proposition 4.4 bound for 𝔐_p, p > p_d | 2026-09-03T23:40:00-04:00
-not started | §4 (4.6) dyadic annuli U_n, D_n | 2026-09-03T23:40:00-04:00
-not started | §4 Proposition 4.5 bound for 𝔐_p, p < p_d | 2026-09-03T23:40:00-04:00
-not started | §4 (4.8) measure bound for Ω_ℓ | 2026-09-03T23:40:00-04:00
-not started | §4 Proposition 4.6 endpoint bound for 𝔐_p at p_d | 2026-09-03T23:40:00-04:00
-not started | §4 (4.9) exponent bookkeeping for the case β < 1 | 2026-09-03T23:40:00-04:00
-not started | §4 Theorem 1.1(i) β < 1, sup δ^β N(E,δ) < ∞ | 2026-09-03T23:40:00-04:00
-not started | §4 Theorem 1.1(ii) β < 1, sup δ^β N(E,δ) = ∞ | 2026-09-03T23:40:00-04:00
-not started | §4 Theorem 1.1(iii) β = 1 | 2026-09-03T23:40:00-04:00
-not started | §1 Theorem 1.1 assembly 𝒯^rad_E = Δ_β | 2026-09-03T23:40:00-04:00
+complete | §3 card of a maximal δ-separated subset vs N(E,δ) | 2026-09-05T07:20:00-04:00
+complete | §3 Corollary 3.3 𝒯^rad_E ⊆ Δ_β | 2026-09-05T07:20:00-04:00
+complete | §3 Lemma 3.4 Stein-type test function g | 2026-09-05T07:20:00-04:00
+complete | §3 Lemma 3.4 β = 1 endpoint lower bound | 2026-09-05T07:20:00-04:00
+complete | §4 (4.3) definitions of 𝔐_p, R₁, R₂ | 2026-09-05T07:20:00-04:00
+complete | §4 Lemma 4.1 pointwise decomposition of M_E f | 2026-09-05T07:20:00-04:00
+complete | §4 Proposition 4.2 bound for R₁ | 2026-09-05T07:20:00-04:00
+complete | §4 (4.5) pointwise bound for R₂ | 2026-09-05T07:20:00-04:00
+complete | §4 Proposition 4.3 bound for R₂ | 2026-09-05T07:20:00-04:00
+complete | §4 Proposition 4.4 bound for 𝔐_p, p > p_d | 2026-09-05T07:20:00-04:00
+complete | §4 (4.6) dyadic annuli U_n, D_n | 2026-09-05T07:20:00-04:00
+complete | §4 Proposition 4.5 bound for 𝔐_p, p < p_d | 2026-09-05T07:20:00-04:00
+complete | §4 (4.8) measure bound for Ω_ℓ | 2026-09-05T07:20:00-04:00
+complete | §4 Proposition 4.6 endpoint bound for 𝔐_p at p_d | 2026-09-05T07:20:00-04:00
+complete | §4 (4.9) exponent bookkeeping for the case β < 1 | 2026-09-05T07:20:00-04:00
+complete | S4 Prop 4.3 proved for q < p*d only; endpoint q = p*d deferred (Marcinkiewicz interpolation absent from Mathlib) | 2026-09-05T07:20:00-04:00
+complete | S4 null closure of E from beta < 1 (volume_closure_eq_zero_of_minkowski) | 2026-09-05T07:20:00-04:00
+complete | S4 measurability of the main term and both remainders in the radius (countable dilation supremum) | 2026-09-05T07:20:00-04:00
+complete | S4 Lemma 4.1 with Props 4.2/4.3 and the main term combined (exists_combined_bound) | 2026-09-05T07:20:00-04:00
+complete | S4 radial lift of the decomposition to the ambient L^q norm (eLpNorm_M_lift_le) and the continuous-profile strong type (memLp_and_eLpNorm_M_lift_le) | 2026-09-05T08:10:00-04:00
+complete | §4 Theorem 1.1(i) β < 1, sup δ^β N(E,δ) < ∞ | 2026-09-05T08:10:00-04:00
+complete | §4 Theorem 1.1(ii) β < 1, sup δ^β N(E,δ) = ∞ | 2026-09-05T09:10:00-04:00
+complete | §4 Theorem 1.1(iii) β = 1 | 2026-09-05T08:10:00-04:00
+complete | S1 geometry of Delta_beta: the three half-planes and the strict inequalities at interior points | 2026-09-05T08:40:00-04:00
+complete | S4 exponential-beats-power growth lemma and the log-covering hypothesis of Prop 4.6 from beta < 1 | 2026-09-05T09:40:00-04:00
+complete | S1 Theorem 1.1 assembly: interior Delta_beta inside the continuous-profile radial type set, and the radial type set inside Delta_beta | 2026-09-05T10:10:00-04:00
 
 ## Section 2 — Theorem 1.2 (d = 2)
 
-not started | §5 (4.1)–(4.2) for d = 2 (ambient-two slice density) | 2026-09-04T01:26:00-04:00
-not started | §3 Lemma 3.5 test function g_δ | 2026-09-03T23:40:00-04:00
-not started | §3 (3.4) pointwise claim for A_t g_δ | 2026-09-03T23:40:00-04:00
-not started | §3 (3.5) interval constraint on |x − t(x)y| | 2026-09-03T23:40:00-04:00
-not started | §3 (3.3) ℭ_E(δ,J) lower bound | 2026-09-03T23:40:00-04:00
-not started | §3 Lemma 3.5 necessity of (1/q)ν♯((d−1)(q/2−1)) + 1/p − 1/q ≤ (d−1)/2 | 2026-09-03T23:40:00-04:00
+complete | S5 (4.1)-(4.2) for d = 2: planar slice identity, radial circular average, and the kernel substitution | 2026-09-05T11:00:00-04:00
+complete | S3 Lemma 3.5 test function g_delta (annulus indicator, norms and MemLp) | 2026-09-05T11:40:00-04:00
+complete | S3 (3.4) pointwise cap lower bound for A_t g_delta | 2026-09-05T11:40:00-04:00
+complete | S3 (3.5) interval constraint on the translated cap (mem_annulus_of_mem_inwardCap) | 2026-09-05T12:10:00-04:00
+complete | S3 volume of the thin annulus at radius a (>= delta a^{d-1}/5) and disjointness for separated radii | 2026-09-05T12:30:00-04:00
+complete | S3 (3.3) lower bound for the L^q norm of M_E g_delta over separated dilations | 2026-09-05T13:00:00-04:00
+complete | S3 Lemma 3.5 entropy bound: strong type forces sup of N^(1/q) |J|^(-(d-1)(1/2-1/q)) delta^((d-1)/2+1/q-1/p) < infinity | 2026-09-05T13:30:00-04:00
+complete | S3 monotonicity of the per-annulus contribution in the radius (q >= 2), removing the right-half restriction | 2026-09-05T14:00:00-04:00
+complete | S3 Lemma 3.5 necessity of (1/q) nu#((d-1)(q/2-1)) + 1/p - 1/q <= (d-1)/2 | 2026-09-05T15:00:00-04:00
+complete | S5 planar kernel split at the two endpoint singularities (left/right half-window bounds) | 2026-09-05T15:40:00-04:00
+complete | S5 operators M_p^{+-} of Lemma 5.1 and the kernel bound by their weights | 2026-09-05T16:00:00-04:00
+complete | S5 remainder operators R_1^{+-}, R_2^{+-} and the four kernel bounds for small and large dilations | 2026-09-05T16:30:00-04:00
+complete | S5 planar average as a kernel integral, and integrability of the inverse square-root weights | 2026-09-05T17:00:00-04:00
+complete | S5 main-range window bound: kernel integral dominated by M_p^- and M_p^+ | 2026-09-05T17:40:00-04:00
 not started | §5 Lemma 5.1 pointwise decomposition into 𝔐_p^±, R_i^± | 2026-09-03T23:40:00-04:00
 not started | §5 (5.1) dyadic decomposition of R₁^± | 2026-09-03T23:40:00-04:00
 not started | §5 Proposition 5.2 bound for R₁^± | 2026-09-03T23:40:00-04:00
