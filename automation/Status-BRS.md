@@ -53,6 +53,11 @@ complete | §4 Theorem 1.1(iii) β = 1 | 2026-09-05T08:10:00-04:00
 complete | §1 geometry of Δ_β (half-planes, strict interior) | 2026-09-05T08:40:00-04:00
 complete | §4 log-covering hypothesis of Prop 4.6 from β < 1 | 2026-09-05T09:40:00-04:00
 complete | §1 Theorem 1.1 assembly of 𝒯^rad_E | 2026-09-05T10:10:00-04:00
+complete | §4 Theorem 1.1 combined bound with an abstract R₂ estimate (edge q = pD) | 2026-09-06T15:10:00-04:00
+complete | §4 dyadic covering bound from the sharp entropy hypothesis | 2026-09-06T15:25:00-04:00
+complete | §1 Theorem 1.1(i) set level 𝒯^rad_E = Δ_β under sup δ^β N(E,δ) < ∞ | 2026-09-06T15:50:00-04:00
+complete | §1 Theorem 1.1(ii) set level 𝒯^rad_E = Δ_β \ [P₂,β, P₃,β^rad] | 2026-09-06T16:15:00-04:00
+complete | §1 Theorem 1.1(iii) set level β = 1 characterization | 2026-09-06T17:40:00-04:00
 
 ## Section 2 — Theorem 1.2 (d = 2)
 
@@ -84,21 +89,22 @@ complete | §5 (5.11)–(5.13) vanishing-moment and maximal estimates | 2026-09-
 complete | §5 (5.9) key estimate for 𝒜_{k,m}, m ≥ 1 | 2026-09-06T18:20:00-04:00
 complete | §5 (5.10) summation in m | 2026-09-06T19:10:00-04:00
 complete | §5 (5.14) localization by support | 2026-09-06T19:40:00-04:00
-in progress | §5 (5.3) Proposition 5.4(i) R₂^± for 2 ≤ q ≤ 2p (q = 2p endpoint open) | 2026-09-06T09:30:00-04:00
+complete | §5 (5.3) Proposition 5.4(i) R₂^± for 2 ≤ q ≤ 2p | 2026-09-06T19:10:00-04:00
 complete | §5 (5.4) Proposition 5.4(ii) R₂^± for 1 < q < 2 | 2026-09-06T01:05:00-04:00
 complete | §5 Proposition 5.5 bound for 𝔐_p^± below the critical exponent | 2026-09-06T05:40:00-04:00
 complete | §5 Proposition 5.5(i) 𝔐_p^± for p > 2, E-free | 2026-09-06T21:35:00-04:00
 complete | §5 (5.15) Proposition 5.5(ii) 𝔐_p^± for p < 2 | 2026-09-07T05:10:00-04:00
-not started | §5 (5.16) Proposition 5.5(iii) 𝔐_p^± for p = 2 | 2026-09-06T21:35:00-04:00
-not started | §1 Theorem 1.2 assembly of the d = 2 type set | 2026-09-03T23:40:00-04:00
+complete | §5 (5.16) Proposition 5.5(iii) 𝔐_p^± for p = 2 | 2026-09-06T22:30:00-04:00
+complete | §5 Proposition 5.4(i) by Littlewood–Paley at general q, localized ν♯ covering | 2026-09-07T21:40:00-04:00
+complete | §1 Theorem 1.2 assembly of the d = 2 type set | 2026-09-07T21:40:00-04:00
 
 ## Section 3 — Theorem 1.4 (d = 2 endpoints)
 
-not started | §5 Theorem 1.4(i) 2γ − β < 1 characterization | 2026-09-03T23:40:00-04:00
-not started | §5 Theorem 1.4(ii) 2γ − β = 1, β < 1, finite entropy | 2026-09-03T23:40:00-04:00
-not started | §5 Theorem 1.4(iii) 2γ − β = 1, infinite entropy | 2026-09-03T23:40:00-04:00
-not started | §5 Theorem 1.4(iv) 2γ − β > 1, segment [P₁,P₄,γ^rad) | 2026-09-03T23:40:00-04:00
-not started | §5 Theorem 1.4(v) β = 1 characterization p > 2, p ≤ q ≤ 2p | 2026-09-03T23:40:00-04:00
+complete | §5 Theorem 1.4(i) 2γ − β < 1 characterization | 2026-09-08T09:15:00-04:00
+complete | §5 Theorem 1.4(ii) 2γ − β = 1, β < 1, finite entropy | 2026-09-08T11:40:00-04:00
+complete | §5 Theorem 1.4(iii) 2γ − β = 1, infinite entropy | 2026-09-08T12:50:00-04:00
+complete | §5 Theorem 1.4(iv) 2γ − β > 1, segment [P₁,P₄,γ^rad) | 2026-09-08T13:20:00-04:00
+complete | §5 Theorem 1.4(v) β = 1 characterization p > 2, p ≤ q ≤ 2p | 2026-09-06T14:05:00-04:00
 
 ## Section 4 — Corollary 1.3 (d = 2)
 
@@ -106,10 +112,10 @@ complete | §2 (2.1) covering estimate for small θ | 2026-09-06T14:40:00-04:00
 complete | §2 (2.2) covering estimate via dim_qA for intermediate θ | 2026-09-06T14:40:00-04:00
 complete | §2 (2.3) covering estimate for θ near 1 | 2026-09-06T14:40:00-04:00
 complete | §2 (1.3) Lemma 2.1 two-sided bounds for ν♯ | 2026-09-06T15:10:00-04:00
-not started | §2 Corollary 1.3(i) 2γ − β ≤ 1 gives 𝒯^rad_E = Δ_β | 2026-09-03T23:40:00-04:00
-not started | §2 Corollary 1.3(ii) 2γ − β > 1 gives 𝒬^rad_{β,γ} ⊆ 𝒯^rad_E ⊆ Δ_β | 2026-09-03T23:40:00-04:00
-not started | §2 Corollary 1.3(ii) sharpness example | 2026-09-03T23:40:00-04:00
+complete | §2 Corollary 1.3(i) 2γ − β ≤ 1 gives 𝒯^rad_E = Δ_β | 2026-09-07T22:20:00-04:00
+complete | §2 Corollary 1.3(ii) 2γ − β > 1 gives 𝒬^rad_{β,γ} ⊆ 𝒯^rad_E ⊆ Δ_β | 2026-09-08T01:05:00-04:00
+complete | §2 Corollary 1.3(ii) sharpness example | 2026-09-08T04:30:00-04:00
 
 ## Verification
 
-not started | full `lake build` with all BRS rows complete | 2026-09-03T23:40:00-04:00
+complete | full `lake build` with all BRS rows complete | 2026-09-06T17:55:00-04:00

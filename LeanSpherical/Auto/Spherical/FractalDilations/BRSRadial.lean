@@ -9,6 +9,7 @@ import Mathlib.Algebra.Group.ForwardDiff
 import Mathlib.LinearAlgebra.Lagrange
 import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.BRRS
+import LeanSpherical.Auto.Spherical.FractalDilations.RSLowerBounds
 
 /-!
 # Beltran--Roos--Seeger: spherical maximal operators on radial functions
@@ -44532,11 +44533,12 @@ what lets the Littlewood--Paley half of the estimate (unweighted) and the
 layer-cake half (weighted) be added. -/
 
 /-- A continuous cutoff, `1` on `[1/3, 2]` and supported in `[1/4, 3]`. -/
-def brsLocCutoff (s : ℝ) : ℝ := max 0 (min 1 (min (12 * (s - 1 / 4)) (3 - s)))
+def brsLocCutoff (s : ℝ) : ℝ :=
+  max 0 (min 1 (min (12 * (s - 1 / 4)) (3 * (4 - s))))
 
 theorem continuous_brsLocCutoff : Continuous brsLocCutoff := by
   show Continuous fun s : ℝ =>
-    max 0 (min 1 (min (12 * (s - 1 / 4)) (3 - s)))
+    max 0 (min 1 (min (12 * (s - 1 / 4)) (3 * (4 - s))))
   fun_prop
 
 theorem brsLocCutoff_nonneg (s : ℝ) : 0 ≤ brsLocCutoff s := le_max_left _ _
@@ -44544,19 +44546,19 @@ theorem brsLocCutoff_nonneg (s : ℝ) : 0 ≤ brsLocCutoff s := le_max_left _ _
 theorem brsLocCutoff_le_one (s : ℝ) : brsLocCutoff s ≤ 1 :=
   max_le zero_le_one (le_trans (min_le_left _ _) le_rfl)
 
-theorem brsLocCutoff_eq_one {s : ℝ} (hs : s ∈ Icc (1 / 3 : ℝ) 2) :
+theorem brsLocCutoff_eq_one {s : ℝ} (hs : s ∈ Icc (1 / 3 : ℝ) (10 / 3)) :
     brsLocCutoff s = 1 := by
   obtain ⟨h1, h2⟩ := hs
   have ha : (1 : ℝ) ≤ 12 * (s - 1 / 4) := by linarith
-  have hb : (1 : ℝ) ≤ 3 - s := by linarith
+  have hb : (1 : ℝ) ≤ 3 * (4 - s) := by linarith
   rw [brsLocCutoff, min_eq_left (le_min ha hb), max_eq_right zero_le_one]
 
-theorem brsLocCutoff_eq_zero_of_notMem {s : ℝ} (hs : s ∉ Icc (1 / 4 : ℝ) 3) :
+theorem brsLocCutoff_eq_zero_of_notMem {s : ℝ} (hs : s ∉ Icc (1 / 4 : ℝ) 4) :
     brsLocCutoff s = 0 := by
   rw [brsLocCutoff, max_eq_left]
   rcases lt_or_ge s (1 / 4 : ℝ) with h | h
   · exact le_trans (min_le_right _ _) (le_trans (min_le_left _ _) (by linarith))
-  · have h3 : (3 : ℝ) < s := by
+  · have h3 : (4 : ℝ) < s := by
       by_contra hc
       exact hs ⟨h, le_of_not_gt hc⟩
     exact le_trans (min_le_right _ _) (le_trans (min_le_right _ _) (by linarith))
@@ -44578,13 +44580,14 @@ theorem brsLocalize_bounded {g : ℝ → ℂ} {Cg : ℝ} (hgbd : ∀ z : ℝ, �
     (z : ℝ) : ‖brsLocalize g z‖ ≤ Cg :=
   le_trans (norm_brsLocalize_le g z) (hgbd z)
 
-theorem brsLocalize_eq_of_mem {g : ℝ → ℂ} {s : ℝ} (hs : s ∈ Icc (1 / 3 : ℝ) 2) :
+theorem brsLocalize_eq_of_mem {g : ℝ → ℂ} {s : ℝ}
+    (hs : s ∈ Icc (1 / 3 : ℝ) (10 / 3)) :
     brsLocalize g s = g s := by
   rw [brsLocalize, brsLocCutoff_eq_one hs]
   norm_num
 
 theorem brsLocalize_eq_zero_of_notMem {g : ℝ → ℂ} {s : ℝ}
-    (hs : s ∉ Icc (1 / 4 : ℝ) 3) : brsLocalize g s = 0 := by
+    (hs : s ∉ Icc (1 / 4 : ℝ) 4) : brsLocalize g s = 0 := by
   rw [brsLocalize, brsLocCutoff_eq_zero_of_notMem hs]
   norm_num
 
@@ -44595,7 +44598,7 @@ theorem lintegral_enorm_brsLocalize_le {g : ℝ → ℂ} {p : ℝ} (hp : 0 < p) 
       ENNReal.ofReal 4 * ∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p := by
   rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
   refine lintegral_mono fun z => ?_
-  by_cases hz : z ∈ Icc (1 / 4 : ℝ) 3
+  by_cases hz : z ∈ Icc (1 / 4 : ℝ) 4
   · have hz4 : (1 : ℝ) ≤ 4 * z := by
       have := hz.1
       linarith
@@ -44635,7 +44638,7 @@ theorem brsRemTwoTwoLeft_brsLocalize {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
   have ht1 : (1 : ℝ) ≤ t := htI.1
   have ht2 : t ≤ 2 := htI.2
   have htr' : 3 * r / 2 ≤ t := htr
-  have hsub : ∀ s ∈ uIcc (t - r) t, s ∈ Icc (1 / 3 : ℝ) 2 := by
+  have hsub : ∀ s ∈ uIcc (t - r) t, s ∈ Icc (1 / 3 : ℝ) (10 / 3) := by
     intro s hs
     rw [uIcc_of_le (by linarith)] at hs
     exact ⟨by linarith [hs.1], by linarith [hs.2]⟩
@@ -44998,12 +45001,11 @@ what the Schwartz tail of the low-frequency profile requires. -/
 
 /-- The maximal average of `f₀` at scale `ρ`, over centres in `[1/3, 2]`. -/
 def brsRemTwoCent (f₀ : ℝ → ℂ) (ρ : ℝ) : ENNReal :=
-  ⨆ x ∈ Icc (1 / 3 : ℝ) 2,
-    ENNReal.ofReal (ρ⁻¹ * ‖∫ s in (x - ρ)..(x + ρ), f₀ s‖)
+  ⨆ x : ℝ, ENNReal.ofReal (ρ⁻¹ * ‖∫ s in (x - ρ)..(x + ρ), f₀ s‖)
 
 theorem brsRemTwoCent_eq_zero_of_nonpos {f₀ : ℝ → ℂ} {ρ : ℝ} (hρ : ρ ≤ 0) :
     brsRemTwoCent (absProfile f₀) ρ = 0 := by
-  refine le_antisymm (iSup₂_le fun x hx => ?_) (by simp)
+  refine le_antisymm (iSup_le fun x => ?_) (by simp)
   refine le_of_eq (ENNReal.ofReal_eq_zero.mpr ?_)
   exact mul_nonpos_of_nonpos_of_nonneg (inv_nonpos.mpr hρ) (norm_nonneg _)
 
@@ -45026,7 +45028,7 @@ theorem brsRemTwoCent_le_tail {d : ℕ} {f₀ : ℝ → ℂ} (hf₀ : Continuous
   have hTeq : T = ∫⁻ s, ENNReal.ofReal s ^ (d - 1) * g s := by
     rw [hT, brsTail]
     exact lintegral_brsWeightMeasure hgm
-  refine iSup₂_le fun x hx => ?_
+  refine iSup_le fun x => ?_
   have hab : x - ρ ≤ x + ρ := by linarith
   set H : ℝ → ENNReal := fun s =>
     ENNReal.ofReal ((4 : ℝ) ^ (d - 1)) * (ENNReal.ofReal s ^ (d - 1) * g s) +
@@ -45178,16 +45180,39 @@ theorem measure_brsRemTwoCent_gt_le {d : ℕ} (hd : 2 ≤ d) {f₀ : ℝ → ℂ
 
 /-! ## The centred average is measurable and finite -/
 
+theorem exists_rat_seq_tendsto (x : ℝ) :
+    ∃ b : ℕ → ℚ, Tendsto (fun n => ((b n : ℚ) : ℝ)) atTop (nhds x) := by
+  have hchoice : ∀ n : ℕ, ∃ q : ℚ, |((q : ℚ) : ℝ) - x| < 1 / ((n : ℝ) + 1) := by
+    intro n
+    have hpos : (0 : ℝ) < 1 / ((n : ℝ) + 1) := by positivity
+    obtain ⟨q, hq1, hq2⟩ :=
+      exists_rat_btwn (show x - 1 / ((n : ℝ) + 1) < x + 1 / ((n : ℝ) + 1) from
+        by linarith)
+    exact ⟨q, abs_lt.mpr ⟨by linarith, by linarith⟩⟩
+  choose b hb using hchoice
+  refine ⟨b, ?_⟩
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
+  refine ⟨N, fun n hn => ?_⟩
+  have hnN : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have hposn : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+  have hlt : 1 / ((n : ℝ) + 1) < ε := by
+    rw [div_lt_iff₀ hposn]
+    have h1 : (1 / ε) < (n : ℝ) := lt_of_lt_of_le hN hnN
+    rw [div_lt_iff₀ hε] at h1
+    nlinarith
+  exact lt_of_lt_of_le (lt_of_le_of_lt (le_of_eq (Real.dist_eq _ _)) (hb n))
+    hlt.le
+
 theorem brsRemTwoCent_eq_rat_iSup {f₀ : ℝ → ℂ} (hf₀ : Continuous f₀) (ρ : ℝ) :
     brsRemTwoCent f₀ ρ =
-      ⨆ b : ℚ, (if (1 / 3 : ℝ) ≤ (b : ℝ) ∧ (b : ℝ) ≤ 2 then
-        ENNReal.ofReal (ρ⁻¹ *
-          ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) else 0) := by
+      ⨆ b : ℚ, ENNReal.ofReal (ρ⁻¹ *
+        ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) := by
   refine le_antisymm ?_ ?_
   · rw [brsRemTwoCent]
-    refine iSup₂_le fun x hx => ?_
-    obtain ⟨hx1, hx2⟩ := hx
-    obtain ⟨b, hb1, hb2, hbtend⟩ := exists_rat_seq_ge hx2
+    refine iSup_le fun x => ?_
+    obtain ⟨b, hbtend⟩ := exists_rat_seq_tendsto x
     have hGcont : ContinuousAt
         (fun u : ℝ => ρ⁻¹ * ‖∫ s in (u - ρ)..(u + ρ), f₀ s‖) x := by
       have hwin : ContinuousAt
@@ -45202,78 +45227,48 @@ theorem brsRemTwoCent_eq_rat_iSup {f₀ : ℝ → ℂ} (hf₀ : Continuous f₀)
           (ρ⁻¹ * ‖∫ s in (x - ρ)..(x + ρ), f₀ s‖))) :=
       (ENNReal.continuous_ofReal.tendsto _).comp (hGcont.tendsto.comp hbtend)
     refine le_of_tendsto hlim (Filter.Eventually.of_forall fun n => ?_)
-    refine le_iSup_of_le (b n) ?_
-    rw [if_pos ⟨le_trans hx1 (hb2 n), hb1 n⟩]
+    exact le_iSup (fun c : ℚ => ENNReal.ofReal (ρ⁻¹ *
+      ‖∫ s in ((c : ℝ) - ρ)..((c : ℝ) + ρ), f₀ s‖)) (b n)
   · refine iSup_le fun b => ?_
-    by_cases hb : (1 / 3 : ℝ) ≤ (b : ℝ) ∧ (b : ℝ) ≤ 2
-    · rw [if_pos hb, brsRemTwoCent]
-      exact le_iSup₂_of_le (b : ℝ) ⟨hb.1, hb.2⟩ le_rfl
-    · rw [if_neg hb]
-      simp
+    rw [brsRemTwoCent]
+    exact le_iSup (fun x : ℝ => ENNReal.ofReal (ρ⁻¹ *
+      ‖∫ s in (x - ρ)..(x + ρ), f₀ s‖)) ((b : ℚ) : ℝ)
 
 theorem measurable_brsRemTwoCent {f₀ : ℝ → ℂ} (hf₀ : Continuous f₀) :
     Measurable (brsRemTwoCent f₀) := by
   have heq : brsRemTwoCent f₀ = fun ρ : ℝ =>
-      ⨆ b : ℚ, (if (1 / 3 : ℝ) ≤ (b : ℝ) ∧ (b : ℝ) ≤ 2 then
-        ENNReal.ofReal (ρ⁻¹ *
-          ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) else 0) :=
+      ⨆ b : ℚ, ENNReal.ofReal (ρ⁻¹ *
+        ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) :=
     funext (brsRemTwoCent_eq_rat_iSup hf₀)
   rw [heq]
   refine Measurable.iSup fun b => ?_
-  by_cases hb : (1 / 3 : ℝ) ≤ (b : ℝ) ∧ (b : ℝ) ≤ 2
-  · have hrw : (fun ρ : ℝ =>
-        (if (1 / 3 : ℝ) ≤ (b : ℝ) ∧ (b : ℝ) ≤ 2 then
-          ENNReal.ofReal (ρ⁻¹ *
-            ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) else 0)) =
-        fun ρ : ℝ => ENNReal.ofReal (ρ⁻¹ *
-          ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) := by
-      funext ρ
-      rw [if_pos hb]
-    rw [hrw]
-    refine ENNReal.measurable_ofReal.comp ?_
-    refine measurable_inv.mul ?_
-    exact (((continuous_window_integral hf₀).comp
-      (continuous_id.prodMk (continuous_const : Continuous fun _ : ℝ =>
-        (b : ℝ)))).norm).measurable
-  · have hrw : (fun ρ : ℝ =>
-        (if (1 / 3 : ℝ) ≤ (b : ℝ) ∧ (b : ℝ) ≤ 2 then
-          ENNReal.ofReal (ρ⁻¹ *
-            ‖∫ s in ((b : ℝ) - ρ)..((b : ℝ) + ρ), f₀ s‖) else 0)) =
-        fun _ : ℝ => (0 : ENNReal) := by
-      funext ρ
-      rw [if_neg hb]
-    rw [hrw]
-    exact measurable_const
+  refine ENNReal.measurable_ofReal.comp ?_
+  refine measurable_inv.mul ?_
+  exact (((continuous_window_integral hf₀).comp
+    (continuous_id.prodMk (continuous_const : Continuous fun _ : ℝ =>
+      (b : ℝ)))).norm).measurable
 
-theorem brsRemTwoCent_ne_top {f₀ : ℝ → ℂ} (hf₀ : Continuous f₀) {ρ : ℝ}
-    (hρ : 0 < ρ) : brsRemTwoCent (absProfile f₀) ρ ≠ ⊤ := by
-  obtain ⟨M, hM⟩ :=
-    (isCompact_Icc (a := 1 / 3 - ρ) (b := 2 + ρ)).exists_bound_of_continuousOn
-      (hf₀.norm.continuousOn)
+theorem brsRemTwoCent_ne_top {f₀ : ℝ → ℂ} {Cf : ℝ}
+    (hbd : ∀ z : ℝ, ‖f₀ z‖ ≤ Cf) {ρ : ℝ} (hρ : 0 < ρ) :
+    brsRemTwoCent (absProfile f₀) ρ ≠ ⊤ := by
   refine ne_top_of_le_ne_top
-    (b := ENNReal.ofReal (ρ⁻¹ * (M * |2 * ρ|))) ENNReal.ofReal_ne_top ?_
-  refine iSup₂_le fun x hx => ?_
-  obtain ⟨hx1, hx2⟩ := hx
-  refine ENNReal.ofReal_le_ofReal ?_
-  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
-  have hsub : uIoc (x - ρ) (x + ρ) ⊆ Icc (1 / 3 - ρ) (2 + ρ) := by
-    rw [uIoc_of_le (by linarith)]
-    exact Ioc_subset_Icc_self.trans
-      (Icc_subset_Icc (by linarith) (by linarith))
-  have hbd : ∀ y ∈ uIoc (x - ρ) (x + ρ), ‖absProfile f₀ y‖ ≤ M := by
-    intro y hy
+    (b := ENNReal.ofReal (ρ⁻¹ * (Cf * |2 * ρ|))) ENNReal.ofReal_ne_top ?_
+  refine iSup_le fun x => ?_
+  refine ENNReal.ofReal_le_ofReal
+    (mul_le_mul_of_nonneg_left ?_ (by positivity))
+  have hbd' : ∀ y ∈ uIoc (x - ρ) (x + ρ), ‖absProfile f₀ y‖ ≤ Cf := by
+    intro y _
     rw [norm_absProfile]
-    have hy' := hM y (hsub hy)
-    rwa [Real.norm_of_nonneg (norm_nonneg _)] at hy'
-  have h := intervalIntegral.norm_integral_le_of_norm_le_const hbd
-  refine le_trans h (le_of_eq ?_)
+    exact hbd y
+  refine le_trans (intervalIntegral.norm_integral_le_of_norm_le_const hbd')
+    (le_of_eq ?_)
   congr 2
   ring
 
 /-- **The endpoint estimate for the centred average.** -/
 theorem prop43_brsRemTwoCent_endpoint {p : ℝ} (hp : 1 < p) :
-    ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
-      (∀ s : ℝ, s < 1 / 4 → f₀ s = 0) →
+    ∃ C : ℝ, 0 < C ∧ ∀ (f₀ : ℝ → ℂ) (Cf : ℝ), Continuous f₀ →
+      (∀ z : ℝ, ‖f₀ z‖ ≤ Cf) → (∀ s : ℝ, s < 1 / 4 → f₀ s = 0) →
       (∫⁻ ρ, ENNReal.ofReal ρ *
           brsRemTwoCent (absProfile f₀) ρ ^ (2 * p)) ^ (1 / (2 * p)) ≤
         ENNReal.ofReal C *
@@ -45288,7 +45283,7 @@ theorem prop43_brsRemTwoCent_endpoint {p : ℝ} (hp : 1 < p) :
     have hnum : (0 : ℝ) < 2 * p * ((8 : ℝ) ^ (2 : ℕ) / (2 * (4 : ℝ) ^ (2 : ℕ))) *
         (2 * (p - 1))⁻¹ * (4 : ℝ) ^ (2 * p) := by positivity
     exact Real.rpow_pos_of_pos hnum _
-  refine ⟨Cst, hCpos, fun f₀ hf₀ hsupp => ?_⟩
+  refine ⟨Cst, hCpos, fun f₀ Cf hf₀ hfbd hsupp => ?_⟩
   have hlev : ∀ u : ℝ, 0 < u →
       brsWeightMeasure 2
           {ρ : ℝ | ENNReal.ofReal u < brsRemTwoCent (absProfile f₀) ρ} ≤
@@ -45306,7 +45301,7 @@ theorem prop43_brsRemTwoCent_endpoint {p : ℝ} (hp : 1 < p) :
       rcases le_or_gt ρ 0 with hr | hr
       · rw [brsRemTwoCent_eq_zero_of_nonpos hr]
         exact ENNReal.zero_ne_top
-      · exact brsRemTwoCent_ne_top hf₀ hr)
+      · exact brsRemTwoCent_ne_top hfbd hr)
     hlev
   simp only [Nat.cast_ofNat, show (2 : ℕ) - 1 = 1 from rfl, pow_one,
     ofReal_norm, show p * (2 : ℝ) = 2 * p from mul_comm p 2] at hmain
@@ -45787,7 +45782,7 @@ theorem brsNearMaxP_low_le_tsum_cent {k s : ℕ} {pf : ℝ → ℝ}
             ((t - r) + (2 : ℝ) ^ (n + 2) * r), ‖g u‖) ≤
         brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r) := by
       rw [brsRemTwoCent]
-      refine le_iSup₂_of_le (t - r) hx ?_
+      refine le_iSup_of_le (t - r) ?_
       rw [hRterm]
     calc ENNReal.ofReal (brsLowKernelBound k s Cp r n) *
           ENNReal.ofReal (∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
@@ -45842,8 +45837,8 @@ theorem tsum_ofReal_two_pow_inv {c : ℝ} (hc : 0 ≤ c) :
 /-- **The `m = 0` family at the endpoint.** -/
 theorem endpoint_tsum_brsRemTwoCent {p : ℝ} (hp : 1 < p) {Cp : ℝ}
     (hCppos : 0 < Cp) (s : ℕ) :
-    ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Continuous g →
-      (∀ z : ℝ, z < 1 / 4 → g z = 0) →
+    ∃ C : ℝ, 0 < C ∧ ∀ (g : ℝ → ℂ) (Cg : ℝ), Continuous g →
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) → (∀ z : ℝ, z < 1 / 4 → g z = 0) →
       (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ s / 2 ^ n) *
             brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
           ENNReal.ofReal r) ^ (1 / (2 * p)) ≤
@@ -45852,7 +45847,7 @@ theorem endpoint_tsum_brsRemTwoCent {p : ℝ} (hp : 1 < p) {Cp : ℝ}
   have hq0 : (0 : ℝ) < 2 * p := by linarith
   have hq1 : (1 : ℝ) ≤ 2 * p := by linarith
   obtain ⟨C0, hC0pos, hC0⟩ := prop43_brsRemTwoCent_endpoint hp
-  refine ⟨32 * Cp * 2 ^ s * C0, by positivity, fun g hg hsupp => ?_⟩
+  refine ⟨32 * Cp * 2 ^ s * C0, by positivity, fun g Cg hg hgbd hsupp => ?_⟩
   set W : ℝ → ENNReal := brsRemTwoCent (absProfile g) with hW
   have hWmeas : Measurable W :=
     measurable_brsRemTwoCent (continuous_absProfile hg)
@@ -45890,11 +45885,13739 @@ theorem endpoint_tsum_brsRemTwoCent {p : ℝ} (hp : 1 < p) {Cp : ℝ}
     rw [hZ]
     exact lintegral_congr fun ρ => mul_comm _ _
   rw [hZeq]
-  refine le_trans (mul_le_mul' le_rfl (hC0 g hg hsupp)) (le_of_eq ?_)
+  refine le_trans (mul_le_mul' le_rfl (hC0 g Cg hg hgbd hsupp)) (le_of_eq ?_)
   rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤
     2 * (16 * Cp * 2 ^ s))]
   congr 2
   ring
+
+/-! ## The `m = 0` piece, dominated by the centred averages
+
+With a Schwartz profile the low-frequency kernel is no longer compactly
+supported, but its dyadic tails are summable against the centred maximal
+averages at the dilated scales `2^{n+2} r`. -/
+
+/-- **The `m = 0` piece, dominated by the centred averages.** -/
+theorem brsNearMax_low_le_tsum_cent {k s : ℕ} {pf : ℝ → ℝ}
+    (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    {g : ℝ → ℂ} (hg : Continuous g) (E : Set ℝ) (r : ℝ) :
+    brsNearMax k (k + 1) (brsDilate pf (k + 1 + s)) g E r ≤
+      ∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ s / 2 ^ n) *
+        brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r) := by
+  rw [brsNearMax]
+  by_cases hr : r ∈ brsWindowExt k
+  swap
+  · rw [Set.indicator_of_notMem hr]
+    exact zero_le
+  rw [Set.indicator_of_mem hr]
+  have hr0 : 0 < r := brsWindowExt_pos hr
+  have hcut : (2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ)) ≤ r := brsCut_le_of_mem_windowExt hr
+  have hup : r ≤ 2 * (2 : ℝ) ^ (-(k : ℝ)) := brsWindowExt_le_two_mul k hr
+  have hρpos : ∀ n : ℕ, (0 : ℝ) < (2 : ℝ) ^ (n + 2) * r := fun n => by positivity
+  have hper : ∀ t ∈ E,
+      ‖brsRefl (fun z : ℝ => ∫ y : ℝ,
+        ((brsTruncConvReal (k + 1) (brsDilate pf (k + 1 + s)) y : ℝ) : ℂ) *
+          brsRefl g (z - y)) (t - r)‖ₑ ≤
+      ∑' n : ℕ, ENNReal.ofReal (brsLowKernelBound k s Cp r n *
+          ((2 : ℝ) ^ (n + 2) * r)) *
+        brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r) := by
+    intro t _
+    have hrefl : ‖brsRefl (fun z : ℝ => ∫ y : ℝ,
+        ((brsTruncConvReal (k + 1) (brsDilate pf (k + 1 + s)) y : ℝ) : ℂ) *
+          brsRefl g (z - y)) (t - r)‖ₑ =
+        ‖∫ y : ℝ,
+          ((brsTruncConvReal (k + 1) (brsDilate pf (k + 1 + s)) y : ℝ) : ℂ) *
+            g ((t - r) + y)‖ₑ := by
+      congr 1
+      show (∫ y : ℝ,
+        ((brsTruncConvReal (k + 1) (brsDilate pf (k + 1 + s)) y : ℝ) : ℂ) *
+          brsRefl g (-(t - r) - y)) = _
+      refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+      show ((brsTruncConvReal (k + 1) (brsDilate pf (k + 1 + s)) y : ℝ) : ℂ) *
+        g (-(-(t - r) - y)) = _
+      congr 2
+      ring
+    rw [hrefl]
+    refine le_trans (enorm_kernel_conv_le_tsum hg (fun n => (hρpos n).le)
+      (fun y => enorm_brsTruncConvReal_brsDilate_le_tsum hpf hCppos hCp0 hCp2
+        hr0 hcut y) (t - r)) ?_
+    refine ENNReal.tsum_le_tsum fun n => ?_
+    have hBnn : (0 : ℝ) ≤ brsLowKernelBound k s Cp r n :=
+      brsLowKernelBound_nonneg hCppos.le n
+    have hab : (t - r) - (2 : ℝ) ^ (n + 2) * r ≤
+        (t - r) + (2 : ℝ) ^ (n + 2) * r := by linarith [hρpos n]
+    have hRterm : ‖∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
+          ((t - r) + (2 : ℝ) ^ (n + 2) * r), absProfile g u‖ =
+        ∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
+          ((t - r) + (2 : ℝ) ^ (n + 2) * r), ‖g u‖ :=
+      norm_intervalIntegral_ofReal_nonneg hab _ fun u _ => norm_nonneg _
+    have hInn : (0 : ℝ) ≤ ∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
+        ((t - r) + (2 : ℝ) ^ (n + 2) * r), ‖g u‖ :=
+      intervalIntegral.integral_nonneg hab fun u _ => norm_nonneg _
+    have hle : ENNReal.ofReal (((2 : ℝ) ^ (n + 2) * r)⁻¹ *
+          ∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
+            ((t - r) + (2 : ℝ) ^ (n + 2) * r), ‖g u‖) ≤
+        brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r) := by
+      rw [brsRemTwoCent]
+      refine le_iSup_of_le (t - r) ?_
+      rw [hRterm]
+    calc ENNReal.ofReal (brsLowKernelBound k s Cp r n) *
+          ENNReal.ofReal (∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
+            ((t - r) + (2 : ℝ) ^ (n + 2) * r), ‖g u‖)
+        = ENNReal.ofReal (brsLowKernelBound k s Cp r n *
+              ((2 : ℝ) ^ (n + 2) * r)) *
+            ENNReal.ofReal (((2 : ℝ) ^ (n + 2) * r)⁻¹ *
+              ∫ u in ((t - r) - (2 : ℝ) ^ (n + 2) * r)..
+                ((t - r) + (2 : ℝ) ^ (n + 2) * r), ‖g u‖) := by
+          rw [← ENNReal.ofReal_mul hBnn,
+            ← ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤
+              brsLowKernelBound k s Cp r n * ((2 : ℝ) ^ (n + 2) * r))]
+          congr 1
+          field_simp
+      _ ≤ _ := mul_le_mul' le_rfl hle
+  have hmax : brsNearFullMax (k + 1) (brsDilate pf (k + 1 + s)) g E r ≤
+      ∑' n : ℕ, ENNReal.ofReal (brsLowKernelBound k s Cp r n *
+          ((2 : ℝ) ^ (n + 2) * r)) *
+        brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r) := by
+    rw [brsNearFullMax]
+    exact iSup₂_le hper
+  refine le_trans (mul_le_mul' le_rfl hmax) ?_
+  rw [← ENNReal.tsum_mul_left]
+  refine ENNReal.tsum_le_tsum fun n => ?_
+  rw [← mul_assoc, ← ENNReal.ofReal_mul (Real.rpow_nonneg hr0.le _)]
+  exact mul_le_mul' (ENNReal.ofReal_le_ofReal
+    (brsLowKernelBound_mul_le hCppos hr0 hcut hup)) le_rfl
+
+/-! ## `R₂^-` at the endpoint, as one family
+
+Far part, `m = 0` near part and `m ≥ 1` near parts are assembled into a single
+countable family of *measurable* functions dominating `R₂^-`, so that the
+radial Minkowski inequality applies without any measurability question about
+the maximal functions themselves. -/
+
+/-- **`R₂^-` at the endpoint, split into the three families.** -/
+theorem brsRemTwoTwoLeft_endpoint_family_le' {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hυcs : HasCompactSupport υ)
+    (hυint : Integrable υ volume) {Mυ : ℝ} (hυbd : ∀ z : ℝ, |υ z| ≤ Mυ)
+    {q : ℝ} (hq : 1 ≤ q) :
+    (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoLeft E g r ^ q) ^ (1 / q) ≤
+      (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+            brsRemainderTwo (absProfile g) r) ^ q * ENNReal.ofReal r) ^ (1 / q) +
+        ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+              brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+            brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+              (brsLPInput S (k + (4 + m)) g) E r ^ q *
+                ENNReal.ofReal r) ^ (1 / q)) := by
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  have hidx : ∀ k m : ℕ, k + 1 + 3 + m = k + (4 + m) := by
+    intro k m
+    omega
+  set B : ℕ → ℕ → ℝ → ENNReal := fun m k r =>
+    brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+      (brsLPInput S (k + (4 + m)) g) E r with hB
+  set H : ℕ → ℝ → ENNReal := fun m =>
+    match m with
+    | 0 => fun r => ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile g) r
+    | 1 => fun r => ∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r)
+    | (m + 2) => fun r => ∑' k : ℕ, B m k r with hH
+  have hBmeas : ∀ m k : ℕ, Measurable (B m k) := by
+    intro m k
+    exact measurable_brsNearMax k (k + 1) (contDiff_brsDilate hυ _)
+      (hasCompactSupport_brsDilate hυcs _)
+      (continuous_brsLPInput S (k + (4 + m)) hg hgbd) E
+  have hHmeas : ∀ m : ℕ, Measurable (H m) := by
+    intro m
+    match m with
+    | 0 =>
+        exact measurable_const.mul
+          (measurable_brsRemainderTwo (continuous_absProfile hg))
+    | 1 =>
+        refine Measurable.ennreal_tsum fun n => ?_
+        exact measurable_const.mul
+          ((measurable_brsRemTwoCent (continuous_absProfile hg)).comp
+            (measurable_const_mul _))
+    | (m + 2) => exact Measurable.ennreal_tsum fun k => hBmeas m k
+  -- the pointwise bound on the integrand
+  have hpt : ∀ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoLeft E g r ^ q ≤
+      (∑' m : ℕ, H m r) ^ q * ENNReal.ofReal r := by
+    intro r
+    rcases le_or_gt r 0 with hr | hr
+    · rw [ENNReal.ofReal_eq_zero.mpr hr, zero_mul, mul_zero]
+    have hsplit := brsRemTwoTwoLeft_le_window_sum hE hg hr
+    have hfar : brsFarWindowSum E g r ≤ H 0 r :=
+      brsFarWindowSum_le_brsRemainderTwo hE hg r
+    have hnear : (∑' k : ℕ, (brsWindowExt k).indicator
+        (brsANearLeftAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r) ≤
+        H 1 r + ∑' m : ℕ, H (m + 2) r := by
+      have hstep : ∀ k : ℕ, (brsWindowExt k).indicator
+          (brsANearLeftAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r ≤
+          brsNearMax k (k + 1) (brsDilate pf (k + 1 + 3)) g E r +
+            ∑' m : ℕ, B m k r := by
+        intro k
+        have h := brsANearWindow_le_tsum_lp (E := E) k 3 hg hgbd hpf
+          hpfint hCp0 hpfnorm hfac hυ.continuous hυint hυbd r
+        refine le_trans h (le_of_eq ?_)
+        congr 1
+        refine tsum_congr fun m => ?_
+        rw [hB, hidx k m]
+      refine le_trans (ENNReal.tsum_le_tsum hstep) ?_
+      rw [ENNReal.tsum_add]
+      refine add_le_add ?_ (le_of_eq ENNReal.tsum_comm)
+      refine tsum_window_le
+        (A := fun k r => brsNearMax k (k + 1) (brsDilate pf (k + 1 + 3)) g E r)
+        (V := fun r => ∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+          brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r))
+        (fun k r hr => brsNearMax_eq_zero_of_notMem hr) (fun k r => ?_) r
+      exact brsNearMax_low_le_tsum_cent hpf hCppos hCp0 hCp2 hg E r
+    have hle : brsRemTwoTwoLeft E g r ≤ ∑' m : ℕ, H m r := by
+      refine le_trans hsplit ?_
+      rw [ennreal_tsum_eq_zero_add (fun m : ℕ => H m r),
+        ennreal_tsum_eq_zero_add (fun m : ℕ => H (m + 1) r)]
+      rw [add_comm ((∑' k : ℕ, (brsWindowExt k).indicator
+        (brsANearLeftAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r))]
+      exact add_le_add hfar hnear
+    rw [mul_comm (ENNReal.ofReal r)]
+    exact mul_le_mul' (ENNReal.rpow_le_rpow hle hq0.le) le_rfl
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono hpt)
+    (by positivity)) ?_
+  refine le_trans (lintegral_radial_Lp_tsum_le hq hHmeas) (le_of_eq ?_)
+  rw [ennreal_tsum_eq_zero_add
+      (fun m : ℕ => (∫⁻ r : ℝ, H m r ^ q * ENNReal.ofReal r) ^ (1 / q)),
+    ennreal_tsum_eq_zero_add
+      (fun m : ℕ => (∫⁻ r : ℝ, H (m + 1) r ^ q * ENNReal.ofReal r) ^ (1 / q))]
+  congr 1
+  congr 1
+  refine tsum_congr fun m => ?_
+  congr 1
+  exact lintegral_tsum_window_rpow
+    (fun k r hr => brsNearMax_eq_zero_of_notMem hr) (fun k => hBmeas m k) hq0
+
+/-! ## Proposition 5.4(i) at the endpoint `q = 2p`, left half
+
+The three families are estimated separately — far part and `m = 0` near part by
+the layer cake, `m ≥ 1` near parts by Littlewood--Paley — and the profile is
+localized first so that all three land on the same weighted `L^p` norm. -/
+
+/-- **Proposition 5.4(i) at the endpoint `q = 2p` for `R₂^-`.** -/
+theorem prop54_brsRemTwoTwoLeft_endpoint_interior' {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p rr : ℝ} (hp : 1 < p) (hr : 1 < rr) (hrq : rr < 2 * p)
+    (hrel : 1 / p + 1 / rr = 1 + 1 / (2 * p))
+    (hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (2 * p / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (2 * p / p))
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoLeft E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ 2 * p := by linarith
+  have hq0 : (0 : ℝ) < 2 * p := by linarith
+  set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) with hY
+  -- localize
+  set h : ℝ → ℂ := brsLocalize g with hh
+  have hhc : Continuous h := continuous_brsLocalize hg
+  have hhbd : ∀ z : ℝ, ‖h z‖ ≤ Cg := fun z => brsLocalize_bounded hgbd z
+  have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ (2 * p)) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E h x ^ (2 * p) := by
+    refine lintegral_congr fun x => ?_
+    rcases le_or_gt x 0 with hx | hx
+    · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+    · rw [hh, brsRemTwoTwoLeft_brsLocalize hE g hx.le]
+  have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+    intro z hz
+    rw [hh]
+    exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+  -- the three families
+  have hfam := brsRemTwoTwoLeft_endpoint_family_le' hE hhc hhbd hpf hCppos hCp0
+    hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+  obtain ⟨C1, hC1pos, hC1⟩ := endpoint_const_mul_brsRemainderTwo hp
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := endpoint_tsum_brsRemTwoCent hp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_endpoint hE hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hhc hhbd hCγ hNloc hNbd hp hr hrq
+    (by linarith : p < 2 * p) hrel (le_refl (2 * p)) hA₀top
+    (fun offset => hA₀ offset (brsRefl h) Cg (continuous_brsRefl hhc)
+      (fun z => brsRefl_bounded hhbd z)) hgeom
+  -- the weighted and unweighted norms of the localized profile
+  have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+    rw [hY]
+    exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+      (by positivity)
+  have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+      ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+    refine le_trans (ENNReal.rpow_le_rpow
+      (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+    rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+      ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) h) E r ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p))) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans hC3 ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p)) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+              ENNReal.ofReal r) ^ (1 / (2 * p)) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) h) E r ^ (2 * p) *
+                  ENNReal.ofReal r) ^ (1 / (2 * p)))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y + C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) at the endpoint, with the data supplied
+
+The Calderón factorization provides the profile, the compactly supported bump
+with vanishing moments and the band-limited Schwartz factor; the exponent
+relation forces `(1/r - 1/2)·2p = p - 1`, so the `m`-sum converges exactly when
+`γ < p - 1`, i.e. `p > 1 + γ`. -/
+
+/-- **Proposition 5.4(i) at the endpoint `q = 2p` for `R₂^-`.** -/
+theorem prop54_brsRemTwoTwoLeft_endpoint {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p : ℝ} (hp : 1 < p) (hγ : γ < p - 1)
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoLeft E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hppq : p < 2 * p := by linarith
+  -- the Calderón factorization
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  -- the exponents
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hppq
+  have hSq : (1 / rr - 1 / 2) * (2 * p) = p - 1 := by
+    have hinv : 1 / rr = 1 + 1 / (2 * p) - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0 := by
+    rw [hSq]
+    exact div_neg_of_neg_of_pos (by linarith) (by linarith)
+  -- the Littlewood--Paley constant
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ 2 * p) (by linarith : p ≤ 2 * p)
+  exact prop54_brsRemTwoTwoLeft_endpoint_interior' hE hpf hCppos hCp0 hCp2
+    hpfint hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd'
+    le_rfl hA'nn hmom hmom' hCγ hNloc hNbd hp hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd) hg hgbd
+
+/-! ## The reflected resolution with the Littlewood--Paley factor
+
+The inner step of `brsANearLeftAt_le_pieces_lp`, isolated so that the
+right-endpoint half can use it on the reflected data. -/
+
+theorem enorm_brsRefl_conv_le_pieces_lp (k s : ℕ) {g : ℝ → ℂ}
+    (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) (hpfint : Integrable pf volume)
+    {Mpf : ℝ} (hpfbd : ∀ x : ℝ, |pf x| ≤ Mpf)
+    (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυcont : Continuous υ) (hυint : Integrable υ volume) {Mυ : ℝ}
+    (hυbd : ∀ z : ℝ, |υ z| ≤ Mυ) (a : ℝ) :
+    ‖brsRefl (fun z : ℝ => ∫ y : ℝ,
+        ((brsTruncKernel k y : ℝ) : ℂ) * brsRefl g (z - y)) a‖ₑ ≤
+      ‖brsRefl (fun z : ℝ => ∫ y : ℝ,
+          ((brsTruncConvReal k (brsDilate pf (k + s)) y : ℝ) : ℂ) *
+            brsRefl g (z - y)) a‖ₑ +
+        ∑' m : ℕ, ‖brsRefl (fun z : ℝ => ∫ y : ℝ,
+          ((brsTruncConvReal k (brsDilate υ (k + s + m)) y : ℝ) : ℂ) *
+            brsRefl (brsLPInput S (k + s + m) g) (z - y)) a‖ₑ := by
+  have hgrefl : Continuous (brsRefl g) := continuous_brsRefl hg
+  have hgreflbd : ∀ z : ℝ, ‖brsRefl g z‖ ≤ Cg := fun z => brsRefl_bounded hgbd z
+  set x : ℝ := -a with hx
+  have hres := brs_resolution_truncConv_int k s hpf hpfint hpfnorm hgrefl
+    hgreflbd (norm_brsTruncKernel_convolution_le k hgrefl hgreflbd) x
+  have hlow : (∫ y : ℝ, (brsDilate pf (k + s) y : ℂ) *
+      (brsTruncKernel k ⋆[(ContinuousLinearMap.lsmul ℝ ℝ :
+        ℝ →L[ℝ] ℂ →L[ℝ] ℂ), volume] brsRefl g) (x - y)) =
+      ∫ y : ℝ, ((brsTruncConvReal k (brsDilate pf (k + s)) y : ℝ) : ℂ) *
+        brsRefl g (x - y) :=
+    brs_piece_eq_int k (continuous_brsDilate hpf (k + s))
+      (integrable_brsDilate hpfint (k + s))
+      (fun z => abs_brsDilate_le hpfbd (k + s) z) hgrefl hgreflbd x
+  have hpiece : ∀ m : ℕ, (∫ y : ℝ, (brsLPKernel pf (k + s + m) y : ℂ) *
+      (brsTruncKernel k ⋆[(ContinuousLinearMap.lsmul ℝ ℝ :
+        ℝ →L[ℝ] ℂ →L[ℝ] ℂ), volume] brsRefl g) (x - y)) =
+      ∫ y : ℝ, ((brsTruncConvReal k (brsDilate υ (k + s + m)) y : ℝ) : ℂ) *
+        brsRefl (brsLPInput S (k + s + m) g) (x - y) := by
+    intro m
+    rw [brsRefl_brsLPInput]
+    exact brs_piece_eq_lp k (k + s + m) hfac hυcont hυint hυbd hgrefl hgreflbd x
+  rw [hlow] at hres
+  simp only [hpiece] at hres
+  have hlim : (brsTruncKernel k ⋆[(ContinuousLinearMap.lsmul ℝ ℝ :
+      ℝ →L[ℝ] ℂ →L[ℝ] ℂ), volume] brsRefl g) x =
+      ∫ y : ℝ, ((brsTruncKernel k y : ℝ) : ℂ) * brsRefl g (x - y) :=
+    convolution_eq_integral x
+  rw [hlim] at hres
+  exact enorm_le_tsum_of_tendsto hres
+
+/-- **The near part of `R_2^+`, decomposed with the Littlewood--Paley
+factor.** -/
+theorem brsANearRightAt_le_pieces_lp (k s : ℕ) {E : Set ℝ} {g : ℝ → ℂ}
+    (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) (hpfint : Integrable pf volume)
+    {Mpf : ℝ} (hpfbd : ∀ x : ℝ, |pf x| ≤ Mpf)
+    (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυcont : Continuous υ) (hυint : Integrable υ volume) {Mυ : ℝ}
+    (hυbd : ∀ z : ℝ, |υ z| ≤ Mυ) {r : ℝ}
+    (hcr : (2 : ℝ) ^ (-(k : ℝ)) ≤ r) :
+    brsANearRightAt ((2 : ℝ) ^ (-(k : ℝ))) E g r ≤
+      ENNReal.ofReal (r ^ (-(1 / 2) : ℝ)) *
+        (brsNearFullMax k (brsDilate pf (k + s)) (fun w : ℝ => g (3 - w))
+            ((fun x : ℝ => 3 - x) '' E) r +
+          ∑' m : ℕ, brsNearFullMax k (brsDilate υ (k + s + m))
+            (brsLPInput S (k + s + m) (fun w : ℝ => g (3 - w)))
+            ((fun x : ℝ => 3 - x) '' E) r) := by
+  have hc : (0 : ℝ) < (2 : ℝ) ^ (-(k : ℝ)) :=
+    Real.rpow_pos_of_pos (by norm_num) _
+  have hgt : Continuous fun w : ℝ => g (3 - w) :=
+    hg.comp (continuous_const.sub continuous_id)
+  have hgtbd : ∀ z : ℝ, ‖g (3 - z)‖ ≤ Cg := fun z => hgbd _
+  rw [brsANearRightAt_eq hc hg hcr]
+  refine mul_le_mul' le_rfl ?_
+  refine iSup₂_le fun t ht => ?_
+  have hmem : (3 - t) ∈ (fun x : ℝ => 3 - x) '' E := ⟨t, ht.1, rfl⟩
+  refine le_trans (enorm_brsRefl_conv_le_pieces_lp k s hgt hgtbd hpf hpfint
+    hpfbd hpfnorm hfac hυcont hυint hυbd (3 - t - r)) ?_
+  refine add_le_add (le_iSup₂_of_le (3 - t) hmem le_rfl) ?_
+  exact ENNReal.tsum_le_tsum fun m => le_iSup₂_of_le (3 - t) hmem le_rfl
+
+/-- **The near part of `R_2^+` on `I_k`, with the Littlewood--Paley
+factor.** -/
+theorem brsANearRightWindow_le_tsum_lp (k s : ℕ) {E : Set ℝ} {g : ℝ → ℂ}
+    (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) (hpfint : Integrable pf volume)
+    {Mpf : ℝ} (hpfbd : ∀ x : ℝ, |pf x| ≤ Mpf)
+    (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυcont : Continuous υ) (hυint : Integrable υ volume) {Mυ : ℝ}
+    (hυbd : ∀ z : ℝ, |υ z| ≤ Mυ) (r : ℝ) :
+    (brsWindowExt k).indicator
+        (brsANearRightAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r ≤
+      brsNearMax k (k + 1) (brsDilate pf (k + 1 + s)) (fun w : ℝ => g (3 - w))
+          ((fun x : ℝ => 3 - x) '' E) r +
+        ∑' m : ℕ, brsNearMax k (k + 1) (brsDilate υ (k + 1 + s + m))
+          (brsLPInput S (k + 1 + s + m) (fun w : ℝ => g (3 - w)))
+          ((fun x : ℝ => 3 - x) '' E) r := by
+  by_cases hr : r ∈ brsWindowExt k
+  · rw [Set.indicator_of_mem hr]
+    have hcr : (2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ)) ≤ r :=
+      brsCut_le_of_mem_windowExt hr
+    refine le_trans (brsANearRightAt_le_pieces_lp (k + 1) s hg hgbd hpf hpfint
+      hpfbd hpfnorm hfac hυcont hυint hυbd hcr) (le_of_eq ?_)
+    rw [mul_add, ← ENNReal.tsum_mul_left]
+    congr 1
+    · rw [brsNearMax, Set.indicator_of_mem hr]
+    · refine tsum_congr fun m => ?_
+      rw [brsNearMax, Set.indicator_of_mem hr]
+  · rw [Set.indicator_of_notMem hr]
+    exact zero_le
+
+/-! ## The far part of `R₂^+` at an arbitrary cutoff -/
+
+/-- **The far part of `R₂^+` at an arbitrary cutoff is dominated by `R₂`.** -/
+theorem brsBFarRightAt_le_brsRemainderTwo {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Continuous g) {r c : ℝ} (hr : 0 < r)
+    (hc : brsCutScale r ≤ c) :
+    brsBFarRightAt c E g r ≤
+      ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile g) r := by
+  have hcut : 0 < brsCutScale r := brsCutScale_pos hr
+  have hcpos : 0 < c := lt_of_lt_of_le hcut hc
+  rw [brsBFarRightAt]
+  refine iSup₂_le fun t ht => ?_
+  obtain ⟨htE, htr⟩ := ht
+  have htr' : 3 * r / 2 ≤ t := htr
+  have htI : t ∈ Icc (1 : ℝ) 2 := hE htE
+  have hab : t ≤ t + r := by linarith
+  have hab2 : t - r ≤ t + r := by linarith
+  have hRterm : ‖∫ s in (t - r)..(t + r), absProfile g s‖ =
+      ∫ s in (t - r)..(t + r), ‖g s‖ :=
+    norm_intervalIntegral_ofReal_nonneg hab2 _ fun s _ => norm_nonneg _
+  have hlow : ENNReal.ofReal (r⁻¹ * ∫ s in (t - r)..(t + r), ‖g s‖) ≤
+      brsRemainderTwo (absProfile g) r := by
+    refine le_iSup₂_of_le t ⟨htI, htr⟩ ?_
+    rw [hRterm]
+  have hHle : ∀ s ∈ Icc t (t + r),
+      ENNReal.ofReal ‖(Iic (t + r - c)).indicator
+          (fun s => ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) s‖ ≤
+        ENNReal.ofReal (c ^ (-(1 / 2) : ℝ)) * ‖g s‖ₑ := by
+    intro s hs
+    by_cases hmem : s ≤ t + r - c
+    · rw [Set.indicator_of_mem (show s ∈ Iic (t + r - c) from hmem),
+        norm_mul, Complex.norm_real,
+        Real.norm_of_nonneg (Real.rpow_nonneg (abs_nonneg _) _),
+        ENNReal.ofReal_mul (Real.rpow_nonneg (abs_nonneg _) _), ofReal_norm]
+      refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
+      rw [abs_of_nonneg (by linarith [hs.2] : (0 : ℝ) ≤ t + r - s)]
+      exact Real.rpow_le_rpow_of_nonpos hcpos (by linarith) (by norm_num)
+    · rw [Set.indicator_of_notMem
+        (show s ∉ Iic (t + r - c) from hmem)]
+      simp
+  have hupper := ofReal_norm_intervalIntegral_le_lintegral hab
+    ((Iic (t + r - c)).indicator
+      (fun s => ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s))
+    (fun s => ENNReal.ofReal (c ^ (-(1 / 2) : ℝ)) * ‖g s‖ₑ) hHle
+  have hint : IntegrableOn (fun s => ‖g s‖) (Icc (t - r) (t + r)) volume :=
+    hg.norm.integrableOn_Icc
+  have heq : (∫⁻ s in Icc (t - r) (t + r), ‖g s‖ₑ) =
+      ENNReal.ofReal (∫ s in (t - r)..(t + r), ‖g s‖) := by
+    rw [intervalIntegral.integral_of_le hab2, ← integral_Icc_eq_integral_Ioc,
+      ofReal_integral_eq_lintegral_ofReal hint
+        (Filter.Eventually.of_forall fun s => norm_nonneg _)]
+    exact lintegral_congr fun s => (ofReal_norm (g s)).symm
+  have hmass : (∫⁻ s in Icc t (t + r), ‖g s‖ₑ) ≤
+      ENNReal.ofReal (∫ s in (t - r)..(t + r), ‖g s‖) := by
+    rw [← heq]
+    exact lintegral_mono_set (Icc_subset_Icc (by linarith) le_rfl)
+  have hInn : (0 : ℝ) ≤ ∫ s in (t - r)..(t + r), ‖g s‖ :=
+    intervalIntegral.integral_nonneg hab2 fun s _ => norm_nonneg _
+  have hprod : ENNReal.ofReal (r ^ (-(1 / 2) : ℝ)) *
+      (ENNReal.ofReal (c ^ (-(1 / 2) : ℝ)) *
+        ENNReal.ofReal (∫ s in (t - r)..(t + r), ‖g s‖)) ≤
+      ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        ENNReal.ofReal (r⁻¹ * ∫ s in (t - r)..(t + r), ‖g s‖) := by
+    rw [← ENNReal.ofReal_mul (Real.rpow_nonneg hcpos.le _),
+      ← ENNReal.ofReal_mul (Real.rpow_nonneg hr.le _),
+      ← ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤ (2048 : ℝ) ^ (1 / 2 : ℝ))]
+    refine ENNReal.ofReal_le_ofReal ?_
+    rw [← mul_assoc, ← mul_assoc]
+    exact mul_le_mul_of_nonneg_right (cutScale_rpow_mul_le hr hc) hInn
+  calc ENNReal.ofReal (r ^ (-(1 / 2) : ℝ) *
+        ‖∫ s in t..(t + r), (Iic (t + r - c)).indicator
+          (fun s => ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) s‖)
+      = ENNReal.ofReal (r ^ (-(1 / 2) : ℝ)) *
+          ENNReal.ofReal ‖∫ s in t..(t + r),
+            (Iic (t + r - c)).indicator
+              (fun s => ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) s‖ :=
+        ENNReal.ofReal_mul (Real.rpow_nonneg hr.le _)
+    _ ≤ ENNReal.ofReal (r ^ (-(1 / 2) : ℝ)) *
+          (ENNReal.ofReal (c ^ (-(1 / 2) : ℝ)) *
+            ENNReal.ofReal (∫ s in (t - r)..(t + r), ‖g s‖)) := by
+        refine mul_le_mul' le_rfl (le_trans hupper ?_)
+        rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+        exact mul_le_mul' le_rfl hmass
+    _ ≤ ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+          ENNReal.ofReal (r⁻¹ * ∫ s in (t - r)..(t + r), ‖g s‖) := hprod
+    _ ≤ ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+          brsRemainderTwo (absProfile g) r := mul_le_mul' le_rfl hlow
+
+
+/-- **The far window sum of `R₂^+` is dominated by `R₂`.** -/
+theorem brsFarWindowSumRight_le_brsRemainderTwo {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {g : ℝ → ℂ} (hg : Continuous g) (r : ℝ) :
+    brsFarWindowSumRight E g r ≤
+      ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile g) r := by
+  rw [brsFarWindowSumRight]
+  refine tsum_window_le
+    (A := fun k r => (brsWindowExt k).indicator
+      (brsBFarRightAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r)
+    (V := fun r => ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+      brsRemainderTwo (absProfile g) r)
+    (fun k r hr => Set.indicator_of_notMem hr _) (fun k r => ?_) r
+  by_cases hr : r ∈ brsWindowExt k
+  · rw [Set.indicator_of_mem hr]
+    exact brsBFarRightAt_le_brsRemainderTwo hE hg (brsWindowExt_pos hr)
+      (brsCutScale_le_window_cut hr)
+  · rw [Set.indicator_of_notMem hr]
+    exact zero_le
+
+/-- **(5.6) at the endpoint `q = 2p`, for the far window sum of `R₂^+`.** -/
+theorem prop56_brsFarWindowSumRight_endpoint {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {p : ℝ} (hp : 1 < p) :
+    ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ r, ENNReal.ofReal r * brsFarWindowSumRight E g r ^ (2 * p)) ^
+          (1 / (2 * p)) ≤
+        ENNReal.ofReal C * (∫⁻ s, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨C, hCpos, hbound⟩ :=
+    prop43_brsRemainderTwo_endpoint (d := 2) (by norm_num) hp
+  have hKpos : (0 : ℝ) < (2048 : ℝ) ^ (1 / 2 : ℝ) :=
+    Real.rpow_pos_of_pos (by norm_num) _
+  refine ⟨(2048 : ℝ) ^ (1 / 2 : ℝ) * C, by positivity, ?_⟩
+  intro g hg
+  have hq0 : (0 : ℝ) < 2 * p := by linarith
+  set K : ℝ := (2048 : ℝ) ^ (1 / 2 : ℝ) with hK
+  have hb := hbound g hg
+  simp only [Nat.cast_ofNat, show (2 : ℕ) - 1 = 1 from rfl, pow_one,
+    ofReal_norm, show p * (2 : ℝ) = 2 * p from mul_comm p 2] at hb
+  have hdom : ∀ r : ℝ, ENNReal.ofReal r * brsFarWindowSumRight E g r ^ (2 * p) ≤
+      ENNReal.ofReal (K ^ (2 * p)) *
+        (ENNReal.ofReal r * brsRemainderTwo (absProfile g) r ^ (2 * p)) := by
+    intro r
+    have h := brsFarWindowSumRight_le_brsRemainderTwo hE hg r
+    calc ENNReal.ofReal r * brsFarWindowSumRight E g r ^ (2 * p)
+        ≤ ENNReal.ofReal r *
+            (ENNReal.ofReal K * brsRemainderTwo (absProfile g) r) ^ (2 * p) :=
+          mul_le_mul' le_rfl (ENNReal.rpow_le_rpow h hq0.le)
+      _ = ENNReal.ofReal (K ^ (2 * p)) *
+            (ENNReal.ofReal r *
+              brsRemainderTwo (absProfile g) r ^ (2 * p)) := by
+          rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le,
+            ENNReal.ofReal_rpow_of_pos hKpos]
+          ring
+  have hint : (∫⁻ r, ENNReal.ofReal r * brsFarWindowSumRight E g r ^ (2 * p)) ≤
+      ENNReal.ofReal (K ^ (2 * p)) *
+        ∫⁻ r, ENNReal.ofReal r *
+          brsRemainderTwo (absProfile g) r ^ (2 * p) := by
+    rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    exact lintegral_mono hdom
+  calc (∫⁻ r, ENNReal.ofReal r * brsFarWindowSumRight E g r ^ (2 * p)) ^
+        (1 / (2 * p))
+      ≤ (ENNReal.ofReal (K ^ (2 * p)) *
+          ∫⁻ r, ENNReal.ofReal r *
+            brsRemainderTwo (absProfile g) r ^ (2 * p)) ^ (1 / (2 * p)) :=
+        ENNReal.rpow_le_rpow hint (by positivity)
+    _ = ENNReal.ofReal K * (∫⁻ r, ENNReal.ofReal r *
+          brsRemainderTwo (absProfile g) r ^ (2 * p)) ^ (1 / (2 * p)) := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _
+            (by positivity : (0 : ℝ) ≤ 1 / (2 * p)),
+          ENNReal.ofReal_rpow_of_pos (by positivity : (0 : ℝ) < K ^ (2 * p)),
+          ← Real.rpow_mul hKpos.le,
+          show 2 * p * (1 / (2 * p)) = 1 from by field_simp, Real.rpow_one]
+    _ ≤ ENNReal.ofReal K *
+          (ENNReal.ofReal C *
+            (∫⁻ s, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) :=
+        mul_le_mul' le_rfl hb
+    _ = ENNReal.ofReal (K * C) *
+          (∫⁻ s, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+        rw [ENNReal.ofReal_mul hKpos.le, mul_assoc]
+
+/-! ## Reflecting the profile about `3/2`
+
+The centred maximal average and the unweighted `L^p` norm are both invariant
+under `s ↦ 3 - s`, so the right-endpoint half can be run on the reflected data
+and the estimates read back on the original profile. -/
+
+theorem brsRemTwoCent_three_sub (g : ℝ → ℂ) (ρ : ℝ) :
+    brsRemTwoCent (absProfile (fun w : ℝ => g (3 - w))) ρ =
+      brsRemTwoCent (absProfile g) ρ := by
+  have key : ∀ x : ℝ,
+      (∫ s in (x - ρ)..(x + ρ), absProfile (fun w : ℝ => g (3 - w)) s) =
+        ∫ v in ((3 - x) - ρ)..((3 - x) + ρ), absProfile g v := by
+    intro x
+    have h1 : (∫ s in (x - ρ)..(x + ρ),
+        absProfile (fun w : ℝ => g (3 - w)) s) =
+        ∫ s in (x - ρ)..(x + ρ), absProfile g (3 - s) := rfl
+    rw [h1, intervalIntegral.integral_comp_sub_left (fun v => absProfile g v) 3]
+    congr 1 <;> ring
+  refine le_antisymm ?_ ?_
+  · rw [brsRemTwoCent]
+    refine iSup_le fun x => ?_
+    rw [key x, brsRemTwoCent]
+    exact le_iSup (fun y : ℝ => ENNReal.ofReal (ρ⁻¹ *
+      ‖∫ v in (y - ρ)..(y + ρ), absProfile g v‖)) (3 - x)
+  · rw [brsRemTwoCent]
+    refine iSup_le fun x => ?_
+    rw [brsRemTwoCent]
+    refine le_iSup_of_le (3 - x) ?_
+    rw [key (3 - x), show (3 : ℝ) - (3 - x) = x from by ring]
+
+theorem lintegral_enorm_rpow_three_sub {F : ℝ → ℂ} (hF : Measurable F) (p : ℝ) :
+    (∫⁻ x : ℝ, ‖F (3 - x)‖ₑ ^ p) = ∫⁻ x : ℝ, ‖F x‖ₑ ^ p := by
+  have h1 : (∫⁻ x : ℝ, ‖F (3 - x)‖ₑ ^ p) =
+      ∫⁻ x : ℝ, ‖F (-(x - 3))‖ₑ ^ p := by
+    refine lintegral_congr fun x => ?_
+    congr 3
+    ring
+  rw [h1, lintegral_sub_right_eq_self (fun x : ℝ => ‖F (-x)‖ₑ ^ p) 3]
+  exact lintegral_enorm_rpow_neg hF p
+
+/-- **`R₂^+` does not see the localization.** -/
+theorem brsRemTwoTwoRight_brsLocalize {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (g : ℝ → ℂ) {r : ℝ} (hr : 0 ≤ r) :
+    brsRemTwoTwoRight E (brsLocalize g) r = brsRemTwoTwoRight E g r := by
+  rw [brsRemTwoTwoRight, brsRemTwoTwoRight]
+  refine iSup_congr fun t => ?_
+  refine iSup_congr fun ht => ?_
+  obtain ⟨htE, htr⟩ := ht
+  have htI : t ∈ Icc (1 : ℝ) 2 := hE htE
+  have ht1 : (1 : ℝ) ≤ t := htI.1
+  have ht2 : t ≤ 2 := htI.2
+  have htr' : 3 * r / 2 ≤ t := htr
+  have hsub : ∀ s ∈ uIcc t (t + r), s ∈ Icc (1 / 3 : ℝ) (10 / 3) := by
+    intro s hs
+    rw [uIcc_of_le (by linarith)] at hs
+    exact ⟨by linarith [hs.1], by linarith [hs.2]⟩
+  have hInt : (∫ s in t..(t + r),
+        ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * brsLocalize g s) =
+      ∫ s in t..(t + r),
+        ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s := by
+    refine intervalIntegral.integral_congr fun s hs => ?_
+    show ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * brsLocalize g s =
+      ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s
+    rw [brsLocalize_eq_of_mem (hsub s hs)]
+  rw [hInt]
+
+/-! ## `R₂^+` at the endpoint, as one family
+
+Far part, `m = 0` near part and `m ≥ 1` near parts are assembled into a single
+countable family of *measurable* functions dominating `R₂^-`, so that the
+radial Minkowski inequality applies without any measurability question about
+the maximal functions themselves. -/
+
+/-- **`R₂^+` at the endpoint, split into the three families.** -/
+theorem brsRemTwoTwoRight_endpoint_family_le {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hυcs : HasCompactSupport υ)
+    (hυint : Integrable υ volume) {Mυ : ℝ} (hυbd : ∀ z : ℝ, |υ z| ≤ Mυ)
+    {q : ℝ} (hq : 1 ≤ q) :
+    (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoRight E g r ^ q) ^ (1 / q) ≤
+      (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+            brsRemainderTwo (absProfile g) r) ^ q * ENNReal.ofReal r) ^ (1 / q) +
+        ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+              brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+            brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+              (brsLPInput S (k + (4 + m)) (fun w : ℝ => g (3 - w)))
+              ((fun x : ℝ => 3 - x) '' E) r ^ q *
+                ENNReal.ofReal r) ^ (1 / q)) := by
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  have hidx : ∀ k m : ℕ, k + 1 + 3 + m = k + (4 + m) := by
+    intro k m
+    omega
+  have hgt : Continuous fun w : ℝ => g (3 - w) :=
+    hg.comp (continuous_const.sub continuous_id)
+  have hgtbd : ∀ z : ℝ, ‖g (3 - z)‖ ≤ Cg := fun z => hgbd _
+  set B : ℕ → ℕ → ℝ → ENNReal := fun m k r =>
+    brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+      (brsLPInput S (k + (4 + m)) (fun w : ℝ => g (3 - w)))
+      ((fun x : ℝ => 3 - x) '' E) r with hB
+  set H : ℕ → ℝ → ENNReal := fun m =>
+    match m with
+    | 0 => fun r => ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile g) r
+    | 1 => fun r => ∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r)
+    | (m + 2) => fun r => ∑' k : ℕ, B m k r with hH
+  have hBmeas : ∀ m k : ℕ, Measurable (B m k) := by
+    intro m k
+    exact measurable_brsNearMax k (k + 1) (contDiff_brsDilate hυ _)
+      (hasCompactSupport_brsDilate hυcs _)
+      (continuous_brsLPInput S (k + (4 + m)) hgt hgtbd) _
+  have hHmeas : ∀ m : ℕ, Measurable (H m) := by
+    intro m
+    match m with
+    | 0 =>
+        exact measurable_const.mul
+          (measurable_brsRemainderTwo (continuous_absProfile hg))
+    | 1 =>
+        refine Measurable.ennreal_tsum fun n => ?_
+        exact measurable_const.mul
+          ((measurable_brsRemTwoCent (continuous_absProfile hg)).comp
+            (measurable_const_mul _))
+    | (m + 2) => exact Measurable.ennreal_tsum fun k => hBmeas m k
+  -- the pointwise bound on the integrand
+  have hpt : ∀ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoRight E g r ^ q ≤
+      (∑' m : ℕ, H m r) ^ q * ENNReal.ofReal r := by
+    intro r
+    rcases le_or_gt r 0 with hr | hr
+    · rw [ENNReal.ofReal_eq_zero.mpr hr, zero_mul, mul_zero]
+    have hsplit := brsRemTwoTwoRight_le_window_sum hE hg hr
+    have hfar : brsFarWindowSumRight E g r ≤ H 0 r :=
+      brsFarWindowSumRight_le_brsRemainderTwo hE hg r
+    have hnear : (∑' k : ℕ, (brsWindowExt k).indicator
+        (brsANearRightAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r) ≤
+        H 1 r + ∑' m : ℕ, H (m + 2) r := by
+      have hstep : ∀ k : ℕ, (brsWindowExt k).indicator
+          (brsANearRightAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r ≤
+          brsNearMax k (k + 1) (brsDilate pf (k + 1 + 3))
+              (fun w : ℝ => g (3 - w)) ((fun x : ℝ => 3 - x) '' E) r +
+            ∑' m : ℕ, B m k r := by
+        intro k
+        have h := brsANearRightWindow_le_tsum_lp (E := E) k 3 hg hgbd hpf
+          hpfint hCp0 hpfnorm hfac hυ.continuous hυint hυbd r
+        refine le_trans h (le_of_eq ?_)
+        congr 1
+        refine tsum_congr fun m => ?_
+        rw [hB, hidx k m]
+      refine le_trans (ENNReal.tsum_le_tsum hstep) ?_
+      rw [ENNReal.tsum_add]
+      refine add_le_add ?_ (le_of_eq ENNReal.tsum_comm)
+      refine tsum_window_le
+        (A := fun k r => brsNearMax k (k + 1) (brsDilate pf (k + 1 + 3))
+          (fun w : ℝ => g (3 - w)) ((fun x : ℝ => 3 - x) '' E) r)
+        (V := fun r => ∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+          brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r))
+        (fun k r hr => brsNearMax_eq_zero_of_notMem hr) (fun k r => ?_) r
+      refine le_trans (brsNearMax_low_le_tsum_cent hpf hCppos hCp0 hCp2 hgt
+        ((fun x : ℝ => 3 - x) '' E) r) (le_of_eq ?_)
+      exact tsum_congr fun n => by rw [brsRemTwoCent_three_sub]
+    have hle : brsRemTwoTwoRight E g r ≤ ∑' m : ℕ, H m r := by
+      refine le_trans hsplit ?_
+      rw [ennreal_tsum_eq_zero_add (fun m : ℕ => H m r),
+        ennreal_tsum_eq_zero_add (fun m : ℕ => H (m + 1) r)]
+      rw [add_comm ((∑' k : ℕ, (brsWindowExt k).indicator
+        (brsANearRightAt ((2 : ℝ) ^ (-((k + 1 : ℕ) : ℝ))) E g) r))]
+      exact add_le_add hfar hnear
+    rw [mul_comm (ENNReal.ofReal r)]
+    exact mul_le_mul' (ENNReal.rpow_le_rpow hle hq0.le) le_rfl
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono hpt)
+    (by positivity)) ?_
+  refine le_trans (lintegral_radial_Lp_tsum_le hq hHmeas) (le_of_eq ?_)
+  rw [ennreal_tsum_eq_zero_add
+      (fun m : ℕ => (∫⁻ r : ℝ, H m r ^ q * ENNReal.ofReal r) ^ (1 / q)),
+    ennreal_tsum_eq_zero_add
+      (fun m : ℕ => (∫⁻ r : ℝ, H (m + 1) r ^ q * ENNReal.ofReal r) ^ (1 / q))]
+  congr 1
+  congr 1
+  refine tsum_congr fun m => ?_
+  congr 1
+  exact lintegral_tsum_window_rpow
+    (fun k r hr => brsNearMax_eq_zero_of_notMem hr) (fun k => hBmeas m k) hq0
+
+/-! ## Proposition 5.4(i) at the endpoint `q = 2p`, right half
+
+The three families are estimated separately — far part and `m = 0` near part by
+the layer cake, `m ≥ 1` near parts by Littlewood--Paley — and the profile is
+localized first so that all three land on the same weighted `L^p` norm. -/
+
+/-- **Proposition 5.4(i) at the endpoint `q = 2p` for `R₂^+`.** -/
+theorem prop54_brsRemTwoTwoRight_endpoint_interior {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p rr : ℝ} (hp : 1 < p) (hr : 1 < rr) (hrq : rr < 2 * p)
+    (hrel : 1 / p + 1 / rr = 1 + 1 / (2 * p))
+    (hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (2 * p / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (2 * p / p))
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoRight E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ 2 * p := by linarith
+  have hq0 : (0 : ℝ) < 2 * p := by linarith
+  set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) with hY
+  -- localize
+  set h : ℝ → ℂ := brsLocalize g with hh
+  have hhc : Continuous h := continuous_brsLocalize hg
+  have hhbd : ∀ z : ℝ, ‖h z‖ ≤ Cg := fun z => brsLocalize_bounded hgbd z
+  have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ (2 * p)) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E h x ^ (2 * p) := by
+    refine lintegral_congr fun x => ?_
+    rcases le_or_gt x 0 with hx | hx
+    · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+    · rw [hh, brsRemTwoTwoRight_brsLocalize hE g hx.le]
+  have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+    intro z hz
+    rw [hh]
+    exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+  -- the three families
+  have hfam := brsRemTwoTwoRight_endpoint_family_le hE hhc hhbd hpf hCppos hCp0
+    hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+  have hht : Continuous fun w : ℝ => h (3 - w) :=
+    hhc.comp (continuous_const.sub continuous_id)
+  have hhtbd : ∀ z : ℝ, ‖h (3 - z)‖ ≤ Cg := fun z => hhbd _
+  obtain ⟨C1, hC1pos, hC1⟩ := endpoint_const_mul_brsRemainderTwo hp
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := endpoint_tsum_brsRemTwoCent hp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_endpoint
+    (image_three_sub_subset_Icc hE) hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hht hhtbd hCγ hNloc hNbd hp hr hrq
+    (by linarith : p < 2 * p) hrel (le_refl (2 * p)) hA₀top
+    (fun offset => hA₀ offset (brsRefl fun w : ℝ => h (3 - w)) Cg
+      (continuous_brsRefl hht) (fun z => brsRefl_bounded hhtbd z)) hgeom
+  rw [lintegral_enorm_rpow_three_sub hhc.measurable p] at hC3
+  -- the weighted and unweighted norms of the localized profile
+  have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+    rw [hY]
+    exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+      (by positivity)
+  have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+      ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+    refine le_trans (ENNReal.rpow_le_rpow
+      (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+    rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+      ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+          ((fun x : ℝ => 3 - x) '' E) r ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p))) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans hC3 ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p)) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+              ENNReal.ofReal r) ^ (1 / (2 * p)) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+                ((fun x : ℝ => 3 - x) '' E) r ^ (2 * p) *
+                  ENNReal.ofReal r) ^ (1 / (2 * p)))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y + C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) at the endpoint for `R₂^+`, with the data supplied
+
+The Calderón factorization provides the profile, the compactly supported bump
+with vanishing moments and the band-limited Schwartz factor; the exponent
+relation forces `(1/r - 1/2)·2p = p - 1`, so the `m`-sum converges exactly when
+`γ < p - 1`, i.e. `p > 1 + γ`. -/
+
+/-- **Proposition 5.4(i) at the endpoint `q = 2p` for `R₂^+`.** -/
+theorem prop54_brsRemTwoTwoRight_endpoint {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p : ℝ} (hp : 1 < p) (hγ : γ < p - 1)
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoRight E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hppq : p < 2 * p := by linarith
+  -- the Calderón factorization
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  -- the exponents
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hppq
+  have hSq : (1 / rr - 1 / 2) * (2 * p) = p - 1 := by
+    have hinv : 1 / rr = 1 + 1 / (2 * p) - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0 := by
+    rw [hSq]
+    exact div_neg_of_neg_of_pos (by linarith) (by linarith)
+  -- the Littlewood--Paley constant
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ 2 * p) (by linarith : p ≤ 2 * p)
+  exact prop54_brsRemTwoTwoRight_endpoint_interior hE hpf hCppos hCp0 hCp2
+    hpfint hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd'
+    le_rfl hA'nn hmom hmom' hCγ hNloc hNbd hp hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd) hg hgbd
+
+/-! ## The covering hypothesis at `p = 2`, with a scale-dependent constant
+
+At `p = 2` the exponent `1 - 2/p + 1/q` of the covering hypothesis degenerates
+to `1/q`, and a uniform constant no longer makes the sum over the outer index
+converge — this is BRS's logarithmic loss.  The hypothesis that does work
+lets the constant improve as the scale gets finer. -/
+
+/-- `N(E, δ)^{1/q} ≤ A_j δ^{-1/q}` for every `δ ≲ 2^{-j}`. -/
+def HasBRSCoveringSeq (E : Set ℝ) (q : ℝ) (A : ℕ → ℝ) : Prop :=
+  ∀ (j : ℕ) (δ : ℝ), 0 < δ → δ ≤ 6 * (1 / 2 : ℝ) ^ j →
+    (intervalCoveringNumber E δ : ENNReal) ^ (1 / q) ≤
+      ENNReal.ofReal (A j * δ ^ (-(1 / q)))
+
+/-- **The Hölder arm at `p = 2`.** -/
+theorem brs_holder_arm_le_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {q : ℝ} (hq0 : 0 < q) {A : ℕ → ℝ}
+    (hcov : HasBRSCoveringSeq E q A) (n : ℕ) :
+    volume (brsD E n) ^ (1 / q) ≤ ENNReal.ofReal ((7 : ℝ) ^ (1 / q) * A n) := by
+  set σ : ℝ := (2 : ℝ) ^ (-(n : ℤ)) with hσdef
+  have hσ0 : 0 < σ := by rw [hσdef]; positivity
+  have hσhalf : σ = (1 / 2 : ℝ) ^ n := by
+    rw [hσdef, zpow_neg, zpow_natCast, one_div, inv_pow]
+  have hσ6 : σ ≤ 6 * (1 / 2 : ℝ) ^ n := by
+    rw [hσhalf]
+    nlinarith [pow_pos (by norm_num : (0 : ℝ) < 1 / 2) n]
+  have hvol := volume_brsD_le hE hEne n
+  rw [← hσdef] at hvol
+  refine le_trans (ENNReal.rpow_le_rpow hvol (by positivity)) ?_
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity),
+    ENNReal.ofReal_rpow_of_pos (by positivity)]
+  refine le_trans (mul_le_mul' le_rfl (hcov n σ hσ0 hσ6)) (le_of_eq ?_)
+  rw [← ENNReal.ofReal_mul (by positivity)]
+  congr 1
+  rw [Real.mul_rpow (by norm_num) hσ0.le]
+  have hcancel : σ ^ (1 / q) * σ ^ (-(1 / q)) = 1 := by
+    rw [← Real.rpow_add hσ0]
+    norm_num
+  calc (7 : ℝ) ^ (1 / q) * σ ^ (1 / q) * (A n * σ ^ (-(1 / q)))
+      = (7 : ℝ) ^ (1 / q) * A n * (σ ^ (1 / q) * σ ^ (-(1 / q))) := by ring
+    _ = (7 : ℝ) ^ (1 / q) * A n := by rw [hcancel, mul_one]
+
+/-- **The covering arm at `p = 2`.** -/
+theorem brs_cover_arm_le_two {E : Set ℝ} {q : ℝ} (_hq0 : 0 < q) {A : ℕ → ℝ}
+    (hA0 : ∀ j : ℕ, 0 ≤ A j) (hcov : HasBRSCoveringSeq E q A) {Ablk : ℝ}
+    (hAblk : 0 < Ablk) {j m : ℕ}
+    (hu : Ablk * (1 / 2 : ℝ) ^ m ≤ 6 * (1 / 2 : ℝ) ^ j) :
+    ENNReal.ofReal (((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+        (Ablk / 2) ^ (-(1 / 2) : ℝ)) *
+      ((intervalCoveringNumber E (Ablk * (1 / 2) ^ m) : ENNReal) ^ (1 / q) *
+        (2 * ENNReal.ofReal (2 * (Ablk * (1 / 2) ^ m)) ^
+          ((1 : ℝ) - 1 / 2 + 1 / q))) ≤
+      ENNReal.ofReal ((2 : ℝ) ^ (5 / 2 + 1 / q) * A j) := by
+  set u : ℝ := Ablk * (1 / 2 : ℝ) ^ m with hudef
+  have hu0 : 0 < u := by rw [hudef]; positivity
+  have hcv := hcov j u hu0 hu
+  have hpow2 : ENNReal.ofReal (2 * u) ^ ((1 : ℝ) - 1 / 2 + 1 / q) =
+      ENNReal.ofReal ((2 * u) ^ ((1 : ℝ) - 1 / 2 + 1 / q)) :=
+    ENNReal.ofReal_rpow_of_pos (by positivity)
+  have hnn₁ : (0 : ℝ) ≤ ((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+      (Ablk / 2) ^ (-(1 / 2) : ℝ) :=
+    mul_nonneg (Real.rpow_nonneg (by positivity) _)
+      (Real.rpow_nonneg (by positivity) _)
+  rw [hpow2]
+  calc ENNReal.ofReal (((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+          (Ablk / 2) ^ (-(1 / 2) : ℝ)) *
+        ((intervalCoveringNumber E u : ENNReal) ^ (1 / q) *
+          (2 * ENNReal.ofReal ((2 * u) ^ ((1 : ℝ) - 1 / 2 + 1 / q))))
+      ≤ ENNReal.ofReal (((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+            (Ablk / 2) ^ (-(1 / 2) : ℝ)) *
+          (ENNReal.ofReal (A j * u ^ (-(1 / q))) *
+            (2 * ENNReal.ofReal ((2 * u) ^ ((1 : ℝ) - 1 / 2 + 1 / q)))) :=
+        mul_le_mul' le_rfl (mul_le_mul' hcv le_rfl)
+    _ = ENNReal.ofReal ((((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+          (Ablk / 2) ^ (-(1 / 2) : ℝ)) *
+          (A j * u ^ (-(1 / q)) *
+            (2 * (2 * u) ^ ((1 : ℝ) - 1 / 2 + 1 / q)))) := by
+        rw [show (2 : ENNReal) = ENNReal.ofReal 2 from by
+          rw [ENNReal.ofReal_ofNat]]
+        rw [← ENNReal.ofReal_mul (by positivity),
+          ← ENNReal.ofReal_mul
+            (mul_nonneg (hA0 j) (Real.rpow_nonneg hu0.le _)),
+          ← ENNReal.ofReal_mul hnn₁]
+    _ = ENNReal.ofReal ((2 : ℝ) ^ (5 / 2 + 1 / q) * A j) := by
+        congr 1
+        have hident := brs_arm_real_identity (A := Ablk) hAblk (p := 2) (q := q) m
+        have hexp : (-(1 - 2 / (2 : ℝ) + 1 / q)) = -(1 / q) := by norm_num
+        have hexp2 : ((1 : ℝ) - 1 / 2 + 1 / q) = 1 - 1 / (2 : ℝ) + 1 / q := by
+          norm_num
+        rw [hexp] at hident
+        calc (((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+              (Ablk / 2) ^ (-(1 / 2) : ℝ)) *
+              (A j * u ^ (-(1 / q)) *
+                (2 * (2 * u) ^ ((1 : ℝ) - 1 / 2 + 1 / q)))
+            = A j * ((((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+                (Ablk / 2) ^ (-(1 / (2 : ℝ)) : ℝ)) *
+                (u ^ (-(1 / q)) *
+                  (2 * (2 * u) ^ (1 - 1 / (2 : ℝ) + 1 / q)))) := by
+              rw [hexp2]
+              ring
+          _ = A j * ((2 : ℝ) ^ (5 / 2 + 1 / q) *
+                (2 : ℝ) ^ (-((m : ℝ) * (1 / (2 : ℝ) - 1 / 2)))) := by
+              rw [hudef] at *
+              rw [hident]
+          _ = (2 : ℝ) ^ (5 / 2 + 1 / q) * A j := by
+              rw [show (-((m : ℝ) * (1 / (2 : ℝ) - 1 / 2))) = 0 from by ring,
+                Real.rpow_zero]
+              ring
+
+/-! ## The shell estimate at `p = 2`
+
+The two arms are both constant in the inner index `m`, so the `m`-sum is split
+at `m = k`: the first `k+1` terms take the Hölder arm, the rest the covering
+arm.  That is where BRS's factor `1 + ℓ` comes from. -/
+
+theorem ennreal_tsum_split (f : ℕ → ENNReal) : ∀ k : ℕ,
+    (∑' m : ℕ, f m) = (∑ m ∈ Finset.range k, f m) + ∑' m : ℕ, f (m + k) := by
+  intro k
+  induction k with
+  | zero => simp
+  | succ k ih =>
+      rw [ih, ennreal_tsum_eq_zero_add (fun m : ℕ => f (m + k)),
+        Finset.sum_range_succ]
+      simp only [Nat.zero_add]
+      rw [← add_assoc]
+      congr 1
+      refine tsum_congr fun m => ?_
+      congr 1
+      omega
+
+/-- The constant of the `k`-th shell at `p = 2`. -/
+def brsSeqBlockConst (q : ℝ) (A : ℕ → ℝ) (k : ℕ) : ENNReal :=
+  ((k : ENNReal) + 1) * ENNReal.ofReal ((7 : ℝ) ^ (1 / q) * A k) +
+    ENNReal.ofReal ((2 : ℝ) ^ (5 / 2 + 1 / q)) *
+      ∑' j : ℕ, ENNReal.ofReal (A (k + 1 + j))
+
+/-- **The shell estimate at `p = 2`.** -/
+theorem lintegral_brsShellMaj_bound_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {q : ℝ} (hq2 : 2 ≤ q) {A : ℕ → ℝ}
+    (hA0 : ∀ j : ℕ, 0 ≤ A j) (hAmono : Antitone A)
+    (hcov : HasBRSCoveringSeq E q A) {g : ℝ → ℂ} (hg : Measurable g) (k i : ℕ) :
+    (∫⁻ r : ℝ, brsShellMaj E 2 q g k i r ^ q) ^ (1 / q) ≤
+      brsSeqBlockConst q A k *
+        (∫⁻ s in Ioc ((1 / 2 : ℝ) ^ i) (4 * (1 / 2 : ℝ) ^ i),
+          ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) := by
+  have hq0 : (0 : ℝ) < q := by linarith
+  set Ablk : ℝ := 2 * (1 / 2 : ℝ) ^ i with hAblk
+  have hAblk0 : (0 : ℝ) < Ablk := by rw [hAblk]; positivity
+  set GA : ENNReal := (∫⁻ s in Ioc (Ablk / 2) (2 * Ablk),
+    ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) with hGA
+  set T : ℕ → ENNReal := fun m =>
+    min (ENNReal.ofReal (((1 / 2 : ℝ) ^ (m + 1)) ^ ((1 : ℝ) / 2 - 1 / 2) *
+            (Ablk / 2) ^ ((1 : ℝ) - 2 / 2)) *
+          volume (brsD E (k + i)) ^ (1 / q))
+        (ENNReal.ofReal (((1 / 2 : ℝ) ^ (m + 1)) ^ (-(1 / 2) : ℝ) *
+            (Ablk / 2) ^ (-(1 / 2) : ℝ)) *
+          ((intervalCoveringNumber E (Ablk * (1 / 2) ^ m) : ENNReal) ^ (1 / q) *
+            (2 * ENNReal.ofReal (2 * (Ablk * (1 / 2) ^ m)) ^
+              ((1 : ℝ) - 1 / 2 + 1 / q)))) with hT
+  have hstart : (∫⁻ r : ℝ, brsShellMaj E 2 q g k i r ^ q) ^ (1 / q) ≤
+      (∑' m : ℕ, T m) * GA := by
+    have h := lintegral_brsBlockMaj_rpow_le (E := E) hE (p := 2) (q := q)
+      (by norm_num) (by norm_num) (by linarith) hg hAblk0 (k + i)
+    have hSM : ∀ r : ℝ, brsShellMaj E 2 q g k i r =
+        brsBlockMaj E 2 q g Ablk (k + i) r := fun r => rfl
+    simp only [hSM]
+    refine le_trans h (le_of_eq ?_)
+    rw [hT, hGA, ENNReal.tsum_mul_right]
+  refine le_trans hstart (mul_le_mul' ?_ ?_)
+  swap
+  · rw [hGA, hAblk, shell_window_eq i]
+  -- the first arm is trivial at `p = 2`
+  have hone : ∀ m : ℕ, ENNReal.ofReal (((1 / 2 : ℝ) ^ (m + 1)) ^
+      ((1 : ℝ) / 2 - 1 / 2) * (Ablk / 2) ^ ((1 : ℝ) - 2 / 2)) = 1 := by
+    intro m
+    rw [show ((1 : ℝ) / 2 - 1 / 2) = 0 from by norm_num,
+      show ((1 : ℝ) - 2 / 2) = 0 from by norm_num, Real.rpow_zero,
+      Real.rpow_zero, mul_one, ENNReal.ofReal_one]
+  have harm1 : ∀ m : ℕ, T m ≤ ENNReal.ofReal ((7 : ℝ) ^ (1 / q) * A k) := by
+    intro m
+    refine le_trans (min_le_left _ _) ?_
+    rw [hone m, one_mul]
+    refine le_trans (brs_holder_arm_le_two hE hEne hq0 hcov (k + i)) ?_
+    refine ENNReal.ofReal_le_ofReal ?_
+    refine mul_le_mul_of_nonneg_left (hAmono (by omega)) ?_
+    positivity
+  have harm2 : ∀ m : ℕ, T m ≤
+      ENNReal.ofReal ((2 : ℝ) ^ (5 / 2 + 1 / q)) *
+        ENNReal.ofReal (A (i + m)) := by
+    intro m
+    refine le_trans (min_le_right _ _) ?_
+    have hle : Ablk * (1 / 2 : ℝ) ^ m ≤ 6 * (1 / 2 : ℝ) ^ (i + m) := by
+      rw [hAblk, pow_add]
+      nlinarith [pow_pos (by norm_num : (0 : ℝ) < 1 / 2) i,
+        pow_pos (by norm_num : (0 : ℝ) < 1 / 2) m]
+    refine le_trans (brs_cover_arm_le_two hq0 hA0 hcov hAblk0 hle)
+      (le_of_eq ?_)
+    rw [← ENNReal.ofReal_mul (by positivity)]
+  -- split the `m`-sum at `k`
+  have hsplit : (∑' m : ℕ, T m) =
+      (∑ m ∈ Finset.range (k + 1), T m) + ∑' m : ℕ, T (m + (k + 1)) :=
+    ennreal_tsum_split T (k + 1)
+  rw [hsplit, brsSeqBlockConst]
+  refine add_le_add ?_ ?_
+  · refine le_trans (Finset.sum_le_sum fun m _ => harm1 m) (le_of_eq ?_)
+    rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+    congr 1
+    push_cast
+    ring
+  · rw [← ENNReal.tsum_mul_left]
+    refine ENNReal.tsum_le_tsum fun m => ?_
+    refine le_trans (harm2 (m + (k + 1))) ?_
+    refine mul_le_mul' le_rfl (ENNReal.ofReal_le_ofReal ?_)
+    exact hAmono (by omega)
+
+/-! ## The `(k, i)` sums at `p = 2` -/
+
+/-- **The inner sum over the shells, at `p = 2`.** -/
+theorem lintegral_tsum_brsShellMaj_bound_two {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {q : ℝ} (hq2 : 2 ≤ q)
+    {A : ℕ → ℝ} (hA0 : ∀ j : ℕ, 0 ≤ A j) (hAmono : Antitone A)
+    (hcov : HasBRSCoveringSeq E q A) {g : ℝ → ℂ} (hg : Measurable g) (k : ℕ) :
+    (∫⁻ r : ℝ, (∑' i : ℕ, brsShellMaj E 2 q g k i r) ^ q) ^ (1 / q) ≤
+      brsSeqBlockConst q A k *
+        (ENNReal.ofReal 2 * ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^
+          (1 / (2 : ℝ)) := by
+  have hq0 : (0 : ℝ) < q := by linarith
+  set K : ENNReal := brsSeqBlockConst q A k with hK
+  set GA : ℕ → ENNReal := fun i =>
+    (∫⁻ s in Ioc ((1 / 2 : ℝ) ^ i) (4 * (1 / 2 : ℝ) ^ i),
+      ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) with hGA
+  have hdisj : (∫⁻ r : ℝ, (∑' i : ℕ, brsShellMaj E 2 q g k i r) ^ q) =
+      ∑' i : ℕ, ∫⁻ r : ℝ, brsShellMaj E 2 q g k i r ^ q :=
+    lintegral_rpow_tsum_disjoint (fun i => measurableSet_brsD E (k + i))
+      (brsD_shift_disjoint E k) (fun i => measurable_brsShellMaj E 2 q hg k i)
+      (fun i r hr => brsShellMaj_eq_zero_of_notMem hr) hq0
+  rw [hdisj]
+  have hterm : ∀ i : ℕ, (∫⁻ r : ℝ, brsShellMaj E 2 q g k i r ^ q) ≤
+      K ^ q * GA i ^ q := by
+    intro i
+    have h := lintegral_brsShellMaj_bound_two hE hEne hq2 hA0 hAmono hcov hg k i
+    have h' := ENNReal.rpow_le_rpow h hq0.le
+    rw [← ENNReal.rpow_mul, one_div_mul_cancel hq0.ne', ENNReal.rpow_one] at h'
+    refine le_trans h' (le_of_eq ?_)
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le, hK, hGA]
+  refine le_trans (ENNReal.rpow_le_rpow (ENNReal.tsum_le_tsum hterm)
+    (by positivity : (0 : ℝ) ≤ 1 / q)) ?_
+  rw [ENNReal.tsum_mul_left]
+  have hsq : ∀ i : ℕ, GA i ^ q =
+      (∫⁻ s in Ioc ((1 / 2 : ℝ) ^ i) (4 * (1 / 2 : ℝ) ^ i),
+        ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (q / 2) := by
+    intro i
+    rw [hGA, ← ENNReal.rpow_mul]
+    congr 1
+    field_simp
+  have hoverlap : (∑' i : ℕ, GA i ^ q) ≤
+      (ENNReal.ofReal 2 * ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (q / 2) := by
+    have hqp : (1 : ℝ) ≤ q / 2 := by
+      rw [le_div_iff₀ (by norm_num : (0 : ℝ) < 2)]
+      linarith
+    calc (∑' i : ℕ, GA i ^ q)
+        = ∑' i : ℕ, (∫⁻ s in Ioc ((1 / 2 : ℝ) ^ i) (4 * (1 / 2 : ℝ) ^ i),
+            ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (q / 2) := tsum_congr hsq
+      _ ≤ (∑' i : ℕ, ∫⁻ s in Ioc ((1 / 2 : ℝ) ^ i) (4 * (1 / 2 : ℝ) ^ i),
+            ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (q / 2) := tsum_rpow_le_rpow_tsum hqp
+      _ ≤ (ENNReal.ofReal 2 * ∫⁻ s : ℝ,
+            ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (q / 2) := by
+          refine ENNReal.rpow_le_rpow ?_ (by positivity)
+          have h := tsum_lintegral_block_windows_le
+            (h := fun s => ENNReal.ofReal ‖g s‖ ^ (2 : ℝ))
+          rw [show ((2 : ENNReal)) = ENNReal.ofReal 2 from by
+            rw [ENNReal.ofReal_ofNat]] at h
+          exact h
+  refine le_trans (ENNReal.rpow_le_rpow (mul_le_mul' le_rfl hoverlap)
+    (by positivity : (0 : ℝ) ≤ 1 / q)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+    ← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+  congr 1
+  · rw [mul_one_div_cancel hq0.ne', ENNReal.rpow_one]
+  · congr 1
+    field_simp
+
+/-- **The total double sum at `p = 2`.** -/
+theorem lintegral_tsum_shellMaj_total_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {q : ℝ} (hq2 : 2 ≤ q) {A : ℕ → ℝ}
+    (hA0 : ∀ j : ℕ, 0 ≤ A j) (hAmono : Antitone A)
+    (hcov : HasBRSCoveringSeq E q A) {g : ℝ → ℂ} (hg : Measurable g) :
+    (∫⁻ r : ℝ, (∑' k : ℕ, ∑' i : ℕ, brsShellMaj E 2 q g k i r) ^ q) ^ (1 / q) ≤
+      (∑' k : ℕ, brsSeqBlockConst q A k) *
+        (ENNReal.ofReal 2 * ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^
+          (1 / (2 : ℝ)) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  set Gk : ℕ → ℝ → ENNReal := fun k r => ∑' i : ℕ, brsShellMaj E 2 q g k i r
+    with hGk
+  have hGkmeas : ∀ k : ℕ, Measurable (Gk k) := by
+    intro k
+    exact Measurable.tsum fun i => measurable_brsShellMaj E 2 q hg k i
+  have hstep : (∑' k : ℕ, (∫⁻ r : ℝ, Gk k r ^ q) ^ (1 / q)) ≤
+      (∑' k : ℕ, brsSeqBlockConst q A k) *
+        (ENNReal.ofReal 2 * ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^
+          (1 / (2 : ℝ)) := by
+    rw [← ENNReal.tsum_mul_right]
+    refine ENNReal.tsum_le_tsum fun k => ?_
+    rw [hGk]
+    exact lintegral_tsum_brsShellMaj_bound_two hE hEne hq2 hA0 hAmono hcov hg k
+  exact le_trans (lintegral_rpow_tsum_le hq1 hGkmeas) hstep
+
+/-! ## The endpoint shell decomposition, for an arbitrary majorant
+
+The Proposition 4.6 chain uses only three facts about the operator: that it
+vanishes off `U_0`, and the two pointwise bounds on `D_0` and on `Ω_ℓ`.  Stating
+those steps for an arbitrary `F` lets the same argument serve `𝔐_{p,∞}^±`. -/
+
+theorem lintegral_le_brsD_zero_add_tsum_brsOmega_of_maj {E : Set ℝ}
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {F : ℝ → ENNReal}
+    (hzero : ∀ r : ℝ, r ∉ brsU E 0 → F r = 0) :
+    (∫⁻ r : ℝ, F r) ≤
+      (∫⁻ r in brsD E 0, F r) + ∑' l : ℕ, ∫⁻ r in brsOmega E l, F r := by
+  have hcover : brsU E 0 ⊆ (brsD E 0 ∪ ⋃ l : ℕ, brsOmega E l) ∪ closure E := by
+    intro r hr
+    by_cases hmem : r ∈ ⋃ n : ℕ, brsD E n
+    · obtain ⟨n, hrn⟩ := Set.mem_iUnion.mp hmem
+      refine Or.inl ?_
+      rcases Nat.eq_zero_or_pos n with hn | hn
+      · exact Or.inl (hn ▸ hrn)
+      · obtain ⟨l, hl, hnl⟩ := exists_grouped_shell hn
+        refine Or.inr (Set.mem_iUnion.mpr ⟨l, ?_⟩)
+        rw [brsOmega]
+        exact Set.mem_iUnion₂.mpr ⟨n, hnl, hrn⟩
+    · refine Or.inr ?_
+      have hd0 := infDist_eq_zero_of_notMem_iUnion_brsD hr hmem
+      rwa [← Metric.mem_closure_iff_infDist_zero hEne] at hd0
+  calc (∫⁻ r : ℝ, F r) = ∫⁻ r in brsU E 0, F r := by
+        rw [← lintegral_indicator (measurableSet_brsU E 0)]
+        refine lintegral_congr fun r => ?_
+        by_cases hr : r ∈ brsU E 0
+        · rw [Set.indicator_of_mem hr]
+        · rw [Set.indicator_of_notMem hr, hzero r hr]
+    _ ≤ ∫⁻ r in (brsD E 0 ∪ ⋃ l : ℕ, brsOmega E l) ∪ closure E, F r :=
+        lintegral_mono_set hcover
+    _ ≤ (∫⁻ r in brsD E 0 ∪ ⋃ l : ℕ, brsOmega E l, F r) +
+          ∫⁻ r in closure E, F r := lintegral_union_le _ _ _
+    _ = ∫⁻ r in brsD E 0 ∪ ⋃ l : ℕ, brsOmega E l, F r := by
+        rw [setLIntegral_measure_zero _ _ hEnull, add_zero]
+    _ ≤ (∫⁻ r in brsD E 0, F r) + ∫⁻ r in ⋃ l : ℕ, brsOmega E l, F r :=
+        lintegral_union_le _ _ _
+    _ ≤ (∫⁻ r in brsD E 0, F r) + ∑' l : ℕ, ∫⁻ r in brsOmega E l, F r :=
+        add_le_add le_rfl (lintegral_iUnion_le _ _)
+
+theorem lintegral_brsD_zero_le_of_maj {d : ℕ} {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {q : ℝ} (hq : 0 < q)
+    {F : ℝ → ENNReal} {W : ENNReal} (hmaj : ∀ r ∈ brsD E 0, F r ≤ W) :
+    (∫⁻ r in brsD E 0, ENNReal.ofReal r ^ (d - 1) * F r ^ q) ≤
+      ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * W ^ q * ENNReal.ofReal 7 := by
+  set K : ENNReal := ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * W ^ q with hK
+  have hpoint : ∀ r ∈ brsD E 0,
+      ENNReal.ofReal r ^ (d - 1) * F r ^ q ≤ K := by
+    intro r hr
+    have hweight := weight_le_of_mem_brsU_zero (d := d) hE hEne hr.1
+    rw [hK]
+    exact mul_le_mul' hweight (ENNReal.rpow_le_rpow (hmaj r hr) hq.le)
+  calc (∫⁻ r in brsD E 0, ENNReal.ofReal r ^ (d - 1) * F r ^ q)
+      ≤ ∫⁻ _r in brsD E 0, K :=
+        setLIntegral_mono' (measurableSet_brsD E 0) hpoint
+    _ = K * volume (brsD E 0) := setLIntegral_const _ _
+    _ ≤ K * ENNReal.ofReal 7 := by
+        refine mul_le_mul' le_rfl ?_
+        refine le_trans (measure_mono ?_) (volume_brsU_zero_le hE hEne)
+        exact fun r hr => hr.1
+    _ = ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * W ^ q * ENNReal.ofReal 7 := by rw [hK]
+
+theorem lintegral_brsOmega_le_of_maj {d : ℕ} {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {q : ℝ} (hq : 0 < q)
+    {l : ℕ} (hl : 1 ≤ l) {F : ℝ → ENNReal} {W : ENNReal}
+    (hmaj : ∀ r ∈ brsOmega E l, F r ≤ W) :
+    (∫⁻ r in brsOmega E l, ENNReal.ofReal r ^ (d - 1) * F r ^ q) ≤
+      ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * W ^ q * volume (brsOmega E l) := by
+  set K : ENNReal := ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * W ^ q with hK
+  have hpoint : ∀ r ∈ brsOmega E l,
+      ENNReal.ofReal r ^ (d - 1) * F r ^ q ≤ K := by
+    intro r hr
+    have hrU0 : r ∈ brsU E 0 :=
+      brsU_subset_of_le E (Nat.zero_le (2 ^ (l - 1))) (brsOmega_subset_brsU hl hr)
+    have hweight := weight_le_of_mem_brsU_zero (d := d) hE hEne hrU0
+    rw [hK]
+    exact mul_le_mul' hweight (ENNReal.rpow_le_rpow (hmaj r hr) hq.le)
+  calc (∫⁻ r in brsOmega E l, ENNReal.ofReal r ^ (d - 1) * F r ^ q)
+      ≤ ∫⁻ _r in brsOmega E l, K :=
+        setLIntegral_mono' (measurableSet_brsOmega E l) hpoint
+    _ = K * volume (brsOmega E l) := setLIntegral_const _ _
+    _ = ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * W ^ q * volume (brsOmega E l) := by
+        rw [hK]
+
+/-! ## The Proposition 4.6 chain, for an arbitrary majorant -/
+
+theorem tsum_brsOmega_le_of_maj {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {q B : ℝ} (hq : 1 ≤ q)
+    (hB : 0 < B)
+    (hcov : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / (d : ℝ)))))
+    (g : ℝ → ℂ) {F : ℝ → ENNReal}
+    (hFO : ∀ l : ℕ, 1 ≤ l → ∀ r ∈ brsOmega E l, F r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+        ((∑' m : ℕ, brsLogWeight d l m * brsLogBlockNorm d g m) +
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g)) :
+    (∑' l : ℕ, ∫⁻ r in brsOmega E l, ENNReal.ofReal r ^ (d - 1) *
+        F r ^ q) ≤
+      ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+          ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) ^ q * 2 ^ q *
+        (ENNReal.ofReal (7 * B ^ q * (Real.log 2) ^ (-(q / (d : ℝ))) *
+              ((Real.log 2) ^ (1 / (d : ℝ)) /
+                ((2 : ℝ) ^ (1 / (d : ℝ)) - 1)) ^ (q - 1) *
+              ((2 : ℝ) ^ (1 / (d : ℝ))) ^ q) *
+            (ENNReal.ofReal ((Real.log 2) ^ (1 / (d : ℝ)) *
+                ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹) *
+              (1 - ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹)⁻¹) *
+            (∑' m : ℕ, brsLogBlockNorm d g m ^ q) +
+          ENNReal.ofReal 7 *
+            (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+              ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g) ^ q) := by
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  set A : ENNReal := ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) with hA
+  set T : ENNReal := ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+    ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g with hT
+  set S : ℕ → ENNReal := fun l =>
+    ∑' m : ℕ, brsLogWeight d l m * brsLogBlockNorm d g m with hS
+  set D : ENNReal := ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * A ^ q * 2 ^ q with hD
+  set cst : ℝ := 7 * B ^ q * (Real.log 2) ^ (-(q / (d : ℝ))) *
+    ((Real.log 2) ^ (1 / (d : ℝ)) / ((2 : ℝ) ^ (1 / (d : ℝ)) - 1)) ^ (q - 1) *
+    ((2 : ℝ) ^ (1 / (d : ℝ))) ^ q with hcst
+  set M : ENNReal := ENNReal.ofReal ((Real.log 2) ^ (1 / (d : ℝ)) *
+    ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹) * (1 - ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹)⁻¹
+    with hM
+  set z : ENNReal := ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹ with hz
+  -- the per-shell bound, split into the block sum and the top piece
+  have hper : ∀ l : ℕ,
+      (∫⁻ r in brsOmega E l, ENNReal.ofReal r ^ (d - 1) *
+        F r ^ q) ≤
+        D * (S l ^ q * volume (brsOmega E l) + T ^ q * volume (brsOmega E l)) := by
+    intro l
+    rcases Nat.eq_zero_or_pos l with hl | hl
+    · rw [hl, brsOmega_zero]
+      simp
+    · refine le_trans (lintegral_brsOmega_le_of_maj hE hEne hq0 hl
+        (hFO l hl)) ?_
+      have h1 : (A * (S l + T)) ^ q ≤ A ^ q * (2 ^ q * (S l ^ q + T ^ q)) := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le]
+        exact mul_le_mul' le_rfl (ennreal_rpow_add_le hq0.le)
+      calc ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) * (A * (S l + T)) ^ q *
+            volume (brsOmega E l)
+          ≤ ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+              (A ^ q * (2 ^ q * (S l ^ q + T ^ q))) * volume (brsOmega E l) :=
+            mul_le_mul' (mul_le_mul' le_rfl h1) le_rfl
+        _ = D * (S l ^ q * volume (brsOmega E l) +
+              T ^ q * volume (brsOmega E l)) := by
+            rw [hD]
+            ring
+  refine le_trans (ENNReal.tsum_le_tsum hper) ?_
+  rw [ENNReal.tsum_mul_left, hD]
+  refine mul_le_mul' le_rfl ?_
+  rw [ENNReal.tsum_add]
+  refine add_le_add ?_ ?_
+  · -- the block sums
+    have hshell : ∀ l : ℕ, S l ^ q * volume (brsOmega E l) ≤
+        ENNReal.ofReal cst *
+          (z ^ l * (∑' m : ℕ, brsLogWeight d l m * brsLogBlockNorm d g m ^ q)) := by
+      intro l
+      rcases Nat.eq_zero_or_pos l with hl | hl
+      · rw [hl, brsOmega_zero]
+        simp
+      · refine le_trans (logShell_term_le hd hE hEne hq hB hcov g hl) (le_of_eq ?_)
+        rw [hcst, hz]
+        ring
+    refine le_trans (ENNReal.tsum_le_tsum hshell) ?_
+    rw [ENNReal.tsum_mul_left]
+    calc ENNReal.ofReal cst *
+          (∑' l : ℕ, z ^ l *
+            ∑' m : ℕ, brsLogWeight d l m * brsLogBlockNorm d g m ^ q)
+        ≤ ENNReal.ofReal cst * (M * ∑' m : ℕ, brsLogBlockNorm d g m ^ q) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [hz, hM]
+          exact tsum_logShell_block_le hd g
+      _ = ENNReal.ofReal cst * M * ∑' m : ℕ, brsLogBlockNorm d g m ^ q :=
+          (mul_assoc _ _ _).symm
+  · -- the top piece
+    rw [ENNReal.tsum_mul_left]
+    rw [mul_comm]
+    exact mul_le_mul' (tsum_volume_brsOmega_le hE hEne) le_rfl
+
+
+theorem exists_endpoint_bound_of_maj {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) (hEnull : volume (closure E) = 0)
+    {q B : ℝ} (hpq : (d : ℝ) / ((d : ℝ) - 1) ≤ q) (hB : 0 < B)
+    (hcov : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / (d : ℝ))))) :
+    ∃ Λ : ENNReal, Λ ≠ ⊤ ∧ ∀ (g : ℝ → ℂ) (F : ℝ → ENNReal),
+      (∀ r : ℝ, r ∉ brsU E 0 → F r = 0) →
+      (∀ r ∈ brsD E 0, F r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+        (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+          ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g)) →
+      (∀ l : ℕ, 1 ≤ l → ∀ r ∈ brsOmega E l, F r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+        ((∑' m : ℕ, brsLogWeight d l m * brsLogBlockNorm d g m) +
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g)) →
+      (∫⁻ r, ENNReal.ofReal r ^ (d - 1) * F r ^ q) ≤
+        Λ * ((∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+          (((d : ℝ) - 1) / (d : ℝ))) ^ q := by
+  have hdR : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have hd1 : (0 : ℝ) < (d : ℝ) - 1 := by linarith
+  have hdpos : (0 : ℝ) < (d : ℝ) := by linarith
+  have hpd1 : (1 : ℝ) ≤ (d : ℝ) / ((d : ℝ) - 1) := by
+    rw [le_div_iff₀ hd1]
+    linarith
+  have hq : (1 : ℝ) ≤ q := le_trans hpd1 hpq
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  refine ⟨ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+        (ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / (d : ℝ)))) ^ q * ENNReal.ofReal 7 +
+      ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+          ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) ^ q * 2 ^ q *
+        (ENNReal.ofReal (7 * B ^ q * (Real.log 2) ^ (-(q / (d : ℝ))) *
+              ((Real.log 2) ^ (1 / (d : ℝ)) /
+                ((2 : ℝ) ^ (1 / (d : ℝ)) - 1)) ^ (q - 1) *
+              ((2 : ℝ) ^ (1 / (d : ℝ))) ^ q) *
+            (ENNReal.ofReal ((Real.log 2) ^ (1 / (d : ℝ)) *
+                ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹) *
+              (1 - ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹)⁻¹) +
+          ENNReal.ofReal 7 *
+            ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+              ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) ^ q), ?_, ?_⟩
+  · -- finiteness of the constant
+    have hy1 : 1 < (2 : ℝ) ^ (1 / (d : ℝ)) := one_lt_two_rpow_inv_d hd
+    have hypos : (0 : ℝ) < (2 : ℝ) ^ (1 / (d : ℝ)) := by positivity
+    have hzlt : ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹ < 1 := by
+      rw [ENNReal.ofReal_lt_one]
+      have h := (div_lt_one hypos).mpr hy1
+      simpa [one_div] using h
+    have hsub : (1 : ENNReal) - ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹ ≠ 0 := by
+      intro h
+      rw [tsub_eq_zero_iff_le] at h
+      exact absurd hzlt (not_lt.mpr h)
+    have hinv : ((1 : ENNReal) -
+        ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹)⁻¹ ≠ ⊤ :=
+      ENNReal.inv_ne_top.mpr hsub
+    refine ENNReal.add_ne_top.mpr ⟨?_, ?_⟩
+    · refine ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ?_)
+        ENNReal.ofReal_ne_top
+      exact ENNReal.rpow_ne_top_of_nonneg hq0.le
+        (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top)
+    · refine ENNReal.mul_ne_top (ENNReal.mul_ne_top (ENNReal.mul_ne_top
+        ENNReal.ofReal_ne_top (ENNReal.rpow_ne_top_of_nonneg hq0.le
+          ENNReal.ofReal_ne_top)) (ENNReal.rpow_ne_top_of_nonneg hq0.le
+            (by simp))) ?_
+      refine ENNReal.add_ne_top.mpr ⟨?_, ?_⟩
+      · exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+          (ENNReal.mul_ne_top ENNReal.ofReal_ne_top hinv)
+      · exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+          (ENNReal.rpow_ne_top_of_nonneg hq0.le ENNReal.ofReal_ne_top)
+  · intro g F hFzero hFD0 hFO
+    have hzeroF : ∀ r : ℝ, r ∉ brsU E 0 →
+        ENNReal.ofReal r ^ (d - 1) * F r ^ q = 0 := by
+      intro r hr
+      rw [hFzero r hr, ENNReal.zero_rpow_of_pos hq0, mul_zero]
+    have hNtop : brsTopNorm d g ≤
+        (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+          (((d : ℝ) - 1) / (d : ℝ)) := brsTopNorm_le hd g
+    have hblocks := tsum_brsLogBlockNorm_pow_le hd hpq g
+    refine le_trans (lintegral_le_brsD_zero_add_tsum_brsOmega_of_maj hEne hEnull
+      hzeroF) ?_
+    rw [add_mul]
+    refine add_le_add ?_ ?_
+    · -- the zeroth shell
+      refine le_trans (lintegral_brsD_zero_le_of_maj hE hEne hq0 hFD0) ?_
+      have hstep : (ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+          (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g)) ^ q ≤
+          (ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+            ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+              ((11 : ℝ) / 2) ^ (1 / (d : ℝ)))) ^ q *
+            ((∫⁻ s in Ioi (0 : ℝ),
+              (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+                (((d : ℝ) - 1) / (d : ℝ))) ^ q := by
+        rw [← mul_assoc, ENNReal.mul_rpow_of_nonneg _ _ hq0.le]
+        exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hNtop hq0.le)
+      calc ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+            (ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+              (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+                ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g)) ^ q *
+            ENNReal.ofReal 7
+          ≤ ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+              ((ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) *
+                ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+                  ((11 : ℝ) / 2) ^ (1 / (d : ℝ)))) ^ q *
+                ((∫⁻ s in Ioi (0 : ℝ),
+                  (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+                    (((d : ℝ) - 1) / (d : ℝ))) ^ q) * ENNReal.ofReal 7 :=
+            mul_le_mul' (mul_le_mul' le_rfl hstep) le_rfl
+        _ = _ := by ring
+    · -- the grouped shells
+      refine le_trans (tsum_brsOmega_le_of_maj hd hE hEne hq hB hcov g hFO) ?_
+      have htop : ENNReal.ofReal 7 *
+          (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g) ^ q ≤
+          ENNReal.ofReal 7 *
+            (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+              ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) ^ q *
+              ((∫⁻ s in Ioi (0 : ℝ),
+                (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+                  (((d : ℝ) - 1) / (d : ℝ))) ^ q) := by
+        refine mul_le_mul' le_rfl ?_
+        rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le]
+        exact mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hNtop hq0.le)
+      calc ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+            ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) ^ q * 2 ^ q *
+            (ENNReal.ofReal (7 * B ^ q * (Real.log 2) ^ (-(q / (d : ℝ))) *
+                  ((Real.log 2) ^ (1 / (d : ℝ)) /
+                    ((2 : ℝ) ^ (1 / (d : ℝ)) - 1)) ^ (q - 1) *
+                  ((2 : ℝ) ^ (1 / (d : ℝ))) ^ q) *
+                (ENNReal.ofReal ((Real.log 2) ^ (1 / (d : ℝ)) *
+                    ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹) *
+                  (1 - ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹)⁻¹) *
+                (∑' m : ℕ, brsLogBlockNorm d g m ^ q) +
+              ENNReal.ofReal 7 *
+                (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+                  ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) * brsTopNorm d g) ^ q)
+          ≤ ENNReal.ofReal ((5 : ℝ) ^ (d - 1)) *
+              ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (d : ℝ))) ^ q * 2 ^ q *
+              (ENNReal.ofReal (7 * B ^ q * (Real.log 2) ^ (-(q / (d : ℝ))) *
+                    ((Real.log 2) ^ (1 / (d : ℝ)) /
+                      ((2 : ℝ) ^ (1 / (d : ℝ)) - 1)) ^ (q - 1) *
+                    ((2 : ℝ) ^ (1 / (d : ℝ))) ^ q) *
+                  (ENNReal.ofReal ((Real.log 2) ^ (1 / (d : ℝ)) *
+                      ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹) *
+                    (1 - ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)))⁻¹)⁻¹) *
+                  ((∫⁻ s in Ioi (0 : ℝ),
+                    (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+                      (((d : ℝ) - 1) / (d : ℝ))) ^ q +
+                ENNReal.ofReal 7 *
+                  (ENNReal.ofReal ((2 : ℝ) ^ (1 / (d : ℝ)) *
+                    ((11 : ℝ) / 2) ^ (1 / (d : ℝ))) ^ q *
+                    ((∫⁻ s in Ioi (0 : ℝ),
+                      (ENNReal.ofReal ‖g s‖) ^ ((d : ℝ) / ((d : ℝ) - 1))) ^
+                        (((d : ℝ) - 1) / (d : ℝ))) ^ q)) :=
+            mul_le_mul' le_rfl (add_le_add (mul_le_mul' le_rfl hblocks) htop)
+        _ = _ := by ring
+
+/-! ## The far halves at `p = 2`, on the grouped shells
+
+At `p = 2` (which is `p_d` for `d = 2`) the shell majorant of `𝔐_{p,∞}^±` is
+literally the one the Proposition 4.6 chain consumes. -/
+
+theorem brsMainInf_exponent : ((((2 : ℕ) : ℝ) - 1) * (1 - 1 / (2 : ℝ)) - 1) =
+    -(1 / ((2 : ℕ) : ℝ)) := by
+  push_cast
+  ring
+
+theorem brsMainInfLeft_le_on_brsD_zero {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Measurable g) {r : ℝ} (hr : r ∈ brsD E 0) :
+    brsMainInfLeft E 2 g r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (((2 : ℕ) : ℝ)))) *
+        (ENNReal.ofReal ((2 : ℝ) ^ (1 / ((2 : ℕ) : ℝ)) *
+          ((11 : ℝ) / 2) ^ (1 / ((2 : ℕ) : ℝ))) * brsTopNorm 2 g) := by
+  have hcut := brsMainInfLeft_le_on_brsD (p := (2 : ℝ)) hE g hr
+  rw [brsMainInf_exponent] at hcut
+  refine le_trans hcut ?_
+  refine mul_le_mul' le_rfl ?_
+  have hwin : Icc ((2 : ℝ) ^ (-(0 : ℕ) : ℤ)) 6 ⊆ Icc (1 / 2 : ℝ) 6 := by
+    refine Icc_subset_Icc ?_ le_rfl
+    norm_num
+  refine le_trans (lintegral_mono_set hwin) ?_
+  rw [brsTopNorm]
+  exact lintegral_top_piece_le (d := 2) (by norm_num) hg
+
+theorem brsMainInfLeft_le_on_brsOmega {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Measurable g) {l : ℕ} (hl : 1 ≤ l) {r : ℝ}
+    (hr : r ∈ brsOmega E l) :
+    brsMainInfLeft E 2 g r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (((2 : ℕ) : ℝ)))) *
+        ((∑' m : ℕ, brsLogWeight 2 l m * brsLogBlockNorm 2 g m) +
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / ((2 : ℕ) : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / ((2 : ℕ) : ℝ))) * brsTopNorm 2 g) := by
+  obtain ⟨n, hn, hrn⟩ : ∃ n ∈ Finset.Ico (2 ^ (l - 1)) (2 ^ l), r ∈ brsD E n := by
+    rw [brsOmega] at hr
+    simpa only [Set.mem_iUnion, exists_prop] using hr
+  rw [Finset.mem_Ico] at hn
+  have hcut := brsMainInfLeft_le_on_brsD (p := (2 : ℝ)) hE g hrn
+  rw [brsMainInf_exponent] at hcut
+  refine le_trans hcut ?_
+  refine mul_le_mul' le_rfl ?_
+  have hwin : Icc ((2 : ℝ) ^ (-(n : ℤ))) 6 ⊆ Icc ((2 : ℝ) ^ (-(2 ^ l : ℤ))) 6 := by
+    refine Icc_subset_Icc ?_ le_rfl
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    have hcast : ((n : ℤ)) ≤ ((2 ^ l : ℕ) : ℤ) := by
+      exact_mod_cast le_of_lt hn.2
+    push_cast at hcast
+    omega
+  refine le_trans (lintegral_mono_set hwin) ?_
+  exact lintegral_window_le_logBlocks (d := 2) (by norm_num) hg hl
+
+theorem brsMainInfRight_le_on_brsD_zero {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Measurable g) {r : ℝ} (hr : r ∈ brsD E 0) :
+    brsMainInfRight E 2 g r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (((2 : ℕ) : ℝ)))) *
+        (ENNReal.ofReal ((2 : ℝ) ^ (1 / ((2 : ℕ) : ℝ)) *
+          ((11 : ℝ) / 2) ^ (1 / ((2 : ℕ) : ℝ))) * brsTopNorm 2 g) := by
+  have hcut := brsMainInfRight_le_on_brsD (p := (2 : ℝ)) hE g hr
+  rw [brsMainInf_exponent] at hcut
+  refine le_trans hcut ?_
+  refine mul_le_mul' le_rfl ?_
+  have hwin : Icc ((2 : ℝ) ^ (-(0 : ℕ) : ℤ)) 6 ⊆ Icc (1 / 2 : ℝ) 6 := by
+    refine Icc_subset_Icc ?_ le_rfl
+    norm_num
+  refine le_trans (lintegral_mono_set hwin) ?_
+  rw [brsTopNorm]
+  exact lintegral_top_piece_le (d := 2) (by norm_num) hg
+
+theorem brsMainInfRight_le_on_brsOmega {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {g : ℝ → ℂ} (hg : Measurable g) {l : ℕ} (hl : 1 ≤ l) {r : ℝ}
+    (hr : r ∈ brsOmega E l) :
+    brsMainInfRight E 2 g r ≤
+      ENNReal.ofReal ((2 / 3 : ℝ) ^ (1 - (((2 : ℕ) : ℝ)))) *
+        ((∑' m : ℕ, brsLogWeight 2 l m * brsLogBlockNorm 2 g m) +
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / ((2 : ℕ) : ℝ)) *
+            ((11 : ℝ) / 2) ^ (1 / ((2 : ℕ) : ℝ))) * brsTopNorm 2 g) := by
+  obtain ⟨n, hn, hrn⟩ : ∃ n ∈ Finset.Ico (2 ^ (l - 1)) (2 ^ l), r ∈ brsD E n := by
+    rw [brsOmega] at hr
+    simpa only [Set.mem_iUnion, exists_prop] using hr
+  rw [Finset.mem_Ico] at hn
+  have hcut := brsMainInfRight_le_on_brsD (p := (2 : ℝ)) hE g hrn
+  rw [brsMainInf_exponent] at hcut
+  refine le_trans hcut ?_
+  refine mul_le_mul' le_rfl ?_
+  have hwin : Icc ((2 : ℝ) ^ (-(n : ℤ))) 6 ⊆ Icc ((2 : ℝ) ^ (-(2 ^ l : ℤ))) 6 := by
+    refine Icc_subset_Icc ?_ le_rfl
+    refine zpow_le_zpow_right₀ (by norm_num) ?_
+    have hcast : ((n : ℤ)) ≤ ((2 ^ l : ℕ) : ℤ) := by
+      exact_mod_cast le_of_lt hn.2
+    push_cast at hcast
+    omega
+  refine le_trans (lintegral_mono_set hwin) ?_
+  exact lintegral_window_le_logBlocks (d := 2) (by norm_num) hg hl
+
+/-! ## The near majorant and the far halves at `p = 2` -/
+
+theorem lintegral_brsMainZeroMaj_bound_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {q : ℝ} (hq2 : 2 ≤ q) {A : ℕ → ℝ}
+    (hA0 : ∀ j : ℕ, 0 ≤ A j) (hAmono : Antitone A)
+    (hcov : HasBRSCoveringSeq E q A) {g : ℝ → ℂ}
+    (hg : Measurable g) :
+    (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainZeroMaj E 2 q g r ^ q) ^ (1 / q) ≤
+      ENNReal.ofReal ((5 : ℝ) ^ (1 / q) * (3 / 2)) *
+        ((∑' k : ℕ, brsSeqBlockConst q A k) *
+          (ENNReal.ofReal 2 * ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^
+            (1 / (2 : ℝ))) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  set S : ℝ → ENNReal := fun r => ∑' k : ℕ, ∑' i : ℕ, brsShellMaj E 2 q g k i r
+    with hS
+  -- the radial weight is at most `5` on the support
+  have hpt : ∀ r : ℝ, ENNReal.ofReal r * brsMainZeroMaj E 2 q g r ^ q ≤
+      ENNReal.ofReal ((5 : ℝ) * (3 / 2 : ℝ) ^ q) * S r ^ q := by
+    intro r
+    by_cases hr : r ∈ brsU E 0
+    · have hr5 : r ≤ 5 := le_five_of_mem_brsU_zero hE hEne hr
+      calc ENNReal.ofReal r * brsMainZeroMaj E 2 q g r ^ q
+          ≤ ENNReal.ofReal 5 * (ENNReal.ofReal (3 / 2) * S r) ^ q := by
+            refine mul_le_mul' (ENNReal.ofReal_le_ofReal hr5) ?_
+            rw [brsMainZeroMaj, hS]
+        _ = ENNReal.ofReal ((5 : ℝ) * (3 / 2 : ℝ) ^ q) * S r ^ q := by
+            rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le, ← mul_assoc,
+              ENNReal.ofReal_rpow_of_pos (by norm_num),
+              ← ENNReal.ofReal_mul (by norm_num)]
+    · rw [brsMainZeroMaj_eq_zero_of_notMem hr, ENNReal.zero_rpow_of_pos hq0,
+        mul_zero]
+      exact zero_le
+  have hmain : (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainZeroMaj E 2 q g r ^ q) ≤
+      ENNReal.ofReal ((5 : ℝ) * (3 / 2 : ℝ) ^ q) * ∫⁻ r : ℝ, S r ^ q := by
+    rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    exact lintegral_mono hpt
+  refine le_trans (ENNReal.rpow_le_rpow hmain (by positivity)) ?_
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity),
+    ENNReal.ofReal_rpow_of_pos (by positivity)]
+  refine mul_le_mul' (le_of_eq ?_) ?_
+  · congr 1
+    rw [Real.mul_rpow (by norm_num) (Real.rpow_nonneg (by norm_num) _),
+      ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 3 / 2),
+      mul_one_div_cancel hq0.ne', Real.rpow_one]
+  · rw [hS]
+    exact lintegral_tsum_shellMaj_total_two hE hEne hq2 hA0 hAmono hcov hg
+
+
+/-- **The far half `𝔐_{2,∞}^-` at the endpoint.** -/
+theorem prop55iii_brsMainInfLeft {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {q B : ℝ}
+    (hpq : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) ≤ q) (hB : 0 < B)
+    (hcov : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((2 : ℕ) : ℝ))))) :
+    ∃ Λ : ENNReal, Λ ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ ((2 : ℕ) - 1) *
+          brsMainInfLeft E 2 g r ^ q) ≤
+        Λ * ((∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^
+          (((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1))) ^
+            ((((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ))) ^ q := by
+  obtain ⟨Λ, hΛ, hkey⟩ := exists_endpoint_bound_of_maj (d := 2) (by norm_num)
+    hE hEne hEnull hpq hB hcov
+  refine ⟨Λ, hΛ, fun g hg => ?_⟩
+  exact hkey g (brsMainInfLeft E 2 g)
+    (fun r hr => brsMainInfLeft_eq_zero_of_notMem_brsU_zero hE g hr)
+    (fun r hr => brsMainInfLeft_le_on_brsD_zero hE hg hr)
+    (fun l hl r hr => brsMainInfLeft_le_on_brsOmega hE hg hl hr)
+
+/-- **The far half `𝔐_{2,∞}^+` at the endpoint.** -/
+theorem prop55iii_brsMainInfRight {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {q B : ℝ}
+    (hpq : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) ≤ q) (hB : 0 < B)
+    (hcov : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((2 : ℕ) : ℝ))))) :
+    ∃ Λ : ENNReal, Λ ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ ((2 : ℕ) - 1) *
+          brsMainInfRight E 2 g r ^ q) ≤
+        Λ * ((∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^
+          (((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1))) ^
+            ((((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ))) ^ q := by
+  obtain ⟨Λ, hΛ, hkey⟩ := exists_endpoint_bound_of_maj (d := 2) (by norm_num)
+    hE hEne hEnull hpq hB hcov
+  refine ⟨Λ, hΛ, fun g hg => ?_⟩
+  exact hkey g (brsMainInfRight E 2 g)
+    (fun r hr => brsMainInfRight_eq_zero_of_notMem_brsU_zero hE g hr)
+    (fun r hr => brsMainInfRight_le_on_brsD_zero hE hg hr)
+    (fun l hl r hr => brsMainInfRight_le_on_brsOmega hE hg hl hr)
+
+/-! ## Proposition 5.5(iii): `𝔐_2^±` at `p = 2`
+
+The near half is summed with the logarithmic loss of `brsSeqBlockConst`, the far
+half by Proposition 4.6 (which for `d = 2` is exactly the endpoint `p = p_d`). -/
+
+/-- **Proposition 5.5(iii) for `𝔐_2^-`.** -/
+theorem prop55iii_brsMainTwoLeft {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {q : ℝ} (hq2 : 2 ≤ q)
+    {A : ℕ → ℝ} (hA0 : ∀ j : ℕ, 0 ≤ A j) (hAmono : Antitone A)
+    (hcovA : HasBRSCoveringSeq E q A)
+    (hAfin : (∑' k : ℕ, brsSeqBlockConst q A k) ≠ ⊤) {B : ℝ} (hB : 0 < B)
+    (hcovB : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((2 : ℕ) : ℝ)))))
+    {g : ℝ → ℂ} (hg : Measurable g) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft E 2 g r ^ q) ^ (1 / q) ≤
+        C * ((ENNReal.ofReal 2 *
+              ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+            (1 / (2 : ℝ))) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hpq : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) ≤ q := by
+    norm_num
+    linarith
+  -- the two halves
+  have hnear := lintegral_brsMainZeroMaj_bound_two hE hEne hq2 hA0 hAmono hcovA hg
+  obtain ⟨Λ, hΛ, hkey⟩ := prop55iii_brsMainInfLeft hE hEne hEnull hpq hB hcovB
+  have hfar0 := hkey g hg
+  rw [show ((2 : ℕ) - 1) = 1 from by norm_num] at hfar0
+  simp only [pow_one, Nat.cast_ofNat, show ((2 : ℝ) - 1) = 1 from by norm_num,
+    div_one, one_div] at hfar0
+  have hfar := rpow_inv_of_le_mul_rpow hq0 hfar0
+  rw [show (2 : ℝ)⁻¹ = 1 / (2 : ℝ) from by norm_num] at hfar
+  -- the pointwise splitting
+  have hsplit : ∀ᵐ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft E 2 g r ^ q ≤
+      ENNReal.ofReal r *
+        (brsMainZeroMaj E 2 q g r +
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / 2 : ℝ)) * brsMainInfLeft E 2 g r) ^ q := by
+    have hnull : ∀ᵐ r : ℝ, r ∉ closure E := by
+      rw [ae_iff]
+      simpa using hEnull
+    filter_upwards [hnull] with r hr
+    by_cases hr0 : 0 < r
+    · refine mul_le_mul' le_rfl (ENNReal.rpow_le_rpow ?_ hq0.le)
+      refine le_trans (brsMainTwoLeft_le_split hr0) ?_
+      refine add_le_add ?_ le_rfl
+      rw [brsMainZeroMaj]
+      exact brsMainZeroLeft_le_tsum_shellMaj hE hEne (by norm_num) (by norm_num)
+        hq0 hg hr
+    · rw [ENNReal.ofReal_eq_zero.mpr (by linarith [not_lt.mp hr0]), zero_mul,
+        zero_mul]
+  refine ⟨(2 : ENNReal) ^ (1 - 1 / q) *
+    (ENNReal.ofReal ((5 : ℝ) ^ (1 / q) * (3 / 2)) *
+        (∑' k : ℕ, brsSeqBlockConst q A k) +
+      ENNReal.ofReal ((2 : ℝ) ^ (1 / 2 : ℝ)) * Λ ^ (1 / q)), ?_, ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg ?_ (by simp)) ?_
+    · have : 1 / q ≤ 1 := by
+        rw [div_le_one hq0]
+        exact hq1
+      linarith
+    · exact ENNReal.add_ne_top.mpr
+        ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top hAfin,
+          ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+            (ENNReal.rpow_ne_top_of_nonneg (by positivity) hΛ)⟩
+  · refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono_ae hsplit)
+      (by positivity)) ?_
+    refine le_trans (lintegral_radial_rpow_add_le
+      (measurable_brsMainZeroMaj E 2 q hg) ENNReal.ofReal_ne_top hq1) ?_
+    refine le_trans (mul_le_mul' le_rfl
+      (add_le_add hnear (mul_le_mul' le_rfl hfar))) ?_
+    refine le_trans (mul_le_mul' (le_refl ((2 : ENNReal) ^ (1 - 1 / q))) ?_)
+      (le_of_eq (mul_assoc _ _ _).symm)
+    refine le_trans (le_of_eq ?_) add_mul_le_add_mul_add
+    ring
+
+/-! ## The near half of `M_2^+` at `p = 2` -/
+
+theorem lintegral_brsMainZeroRightMaj_bound_two {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {q : ℝ} (hq2 : 2 ≤ q) {A : ℕ → ℝ}
+    (hA0 : ∀ j : ℕ, 0 ≤ A j) (hcov : HasBRSCoveringSeq E q A)
+    {g : ℝ → ℂ} (hg : Measurable g) :
+    (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainZeroRightMaj E 2 q g r ^ q) ^ (1 / q) ≤
+      ENNReal.ofReal ((4 : ℝ) ^ (1 / q) * (3 / 2)) *
+        ((∑' m : ℕ, ENNReal.ofReal (A (m + 1) * brsRightConst 2 q)) *
+          (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ))) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  set F : ℝ → ENNReal := fun s => ENNReal.ofReal ‖g s‖ with hF
+  have hFmeas : Measurable F := hg.norm.ennreal_ofReal
+  set Gp : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ))
+    with hGp
+  set T : ℕ → ℝ → ENNReal := fun m r =>
+    ENNReal.ofReal (brsRightWeight 2 m) *
+      brsCoverMajAdd E (6 * (1 / 2 : ℝ) ^ (m + 1)) ((1 / 2 : ℝ) ^ (m + 2))
+        (6 * (1 / 2 : ℝ) ^ (m + 1)) q F r with hT
+  have hTmeas : ∀ m : ℕ, Measurable (T m) := by
+    intro m
+    exact measurable_const.mul (measurable_brsCoverMajAdd _ _ _ _ _ hFmeas)
+  -- the radial weight is bounded on the support
+  have hpt : ∀ r : ℝ, ENNReal.ofReal r * brsMainZeroRightMaj E 2 q g r ^ q ≤
+      ENNReal.ofReal ((4 : ℝ) * (3 / 2 : ℝ) ^ q) * (∑' m : ℕ, T m r) ^ q := by
+    intro r
+    by_cases hr : r ∈ Ioo (2 / 3 : ℝ) 4
+    · rw [brsMainZeroRightMaj, Set.indicator_of_mem hr]
+      calc ENNReal.ofReal r * (ENNReal.ofReal (3 / 2) * ∑' m : ℕ, T m r) ^ q
+          ≤ ENNReal.ofReal 4 * (ENNReal.ofReal (3 / 2) * ∑' m : ℕ, T m r) ^ q :=
+            mul_le_mul' (ENNReal.ofReal_le_ofReal hr.2.le) le_rfl
+        _ = ENNReal.ofReal ((4 : ℝ) * (3 / 2 : ℝ) ^ q) *
+              (∑' m : ℕ, T m r) ^ q := by
+            rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le, ← mul_assoc,
+              ENNReal.ofReal_rpow_of_pos (by norm_num),
+              ← ENNReal.ofReal_mul (by norm_num)]
+    · rw [brsMainZeroRightMaj, Set.indicator_of_notMem hr,
+        ENNReal.zero_rpow_of_pos hq0, mul_zero]
+      exact zero_le
+  have hmain : (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainZeroRightMaj E 2 q g r ^ q) ≤
+      ENNReal.ofReal ((4 : ℝ) * (3 / 2 : ℝ) ^ q) *
+        ∫⁻ r : ℝ, (∑' m : ℕ, T m r) ^ q := by
+    rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    exact lintegral_mono hpt
+  refine le_trans (ENNReal.rpow_le_rpow hmain (by positivity)) ?_
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity),
+    ENNReal.ofReal_rpow_of_pos (by positivity)]
+  -- Minkowski over the piece index
+  have hmink : (∫⁻ r : ℝ, (∑' m : ℕ, T m r) ^ q) ^ (1 / q) ≤
+      ∑' m : ℕ, (∫⁻ r : ℝ, T m r ^ q) ^ (1 / q) :=
+    lintegral_rpow_tsum_le hq1 hTmeas
+  have hterm : ∀ m : ℕ, (∫⁻ r : ℝ, T m r ^ q) ^ (1 / q) ≤
+      ENNReal.ofReal (A (m + 1) * brsRightConst 2 q) * Gp := by
+    intro m
+    set δ : ℝ := 6 * (1 / 2 : ℝ) ^ (m + 1) with hδdef
+    have hδ0 : 0 < δ := by rw [hδdef]; positivity
+    have hδ6 : δ ≤ 6 := by
+      rw [hδdef]
+      have hpow : (1 / 2 : ℝ) ^ (m + 1) ≤ 1 :=
+        pow_le_one₀ (by norm_num) (by norm_num)
+      nlinarith
+    have hlen : δ - (1 / 2 : ℝ) ^ (m + 2) ≤ δ := by
+      have : (0 : ℝ) < (1 / 2 : ℝ) ^ (m + 2) := by positivity
+      linarith
+    have hcma := lintegral_brsCoverMajAdd_rpow_le hE hδ0 hlen hFmeas
+      (by norm_num : (1 : ℝ) ≤ 2) (by linarith : (2 : ℝ) ≤ q)
+    have hpull : (∫⁻ r : ℝ, T m r ^ q) ^ (1 / q) =
+        ENNReal.ofReal (brsRightWeight 2 m) *
+          (∫⁻ r : ℝ, brsCoverMajAdd E δ ((1 / 2 : ℝ) ^ (m + 2)) δ q F r ^ q) ^
+            (1 / q) := by
+      rw [hT]
+      simp only
+      rw [lintegral_congr (fun r => ENNReal.mul_rpow_of_nonneg _ _ hq0.le),
+        lintegral_const_mul' _ _
+          (ENNReal.rpow_ne_top_of_nonneg hq0.le ENNReal.ofReal_ne_top),
+        ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul,
+        mul_one_div_cancel hq0.ne', ENNReal.rpow_one]
+    rw [hpull]
+    refine le_trans (mul_le_mul' le_rfl hcma) ?_
+    have hFnorm : (∫⁻ s : ℝ, F s ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) = Gp := by
+      rw [hF, hGp]
+    rw [hFnorm]
+    have hδ6' : δ ≤ 6 * (1 / 2 : ℝ) ^ (m + 1) := by rw [hδdef]
+    have hN := hcov (m + 1) δ hδ0 hδ6'
+    rw [show (-(1 / q) : ℝ) = -((1 : ℝ) - 2 / 2 + 1 / q) from by norm_num] at hN
+    have hpow2 : ENNReal.ofReal (2 * δ) ^ ((1 : ℝ) - 1 / 2 + 1 / q) =
+        ENNReal.ofReal ((2 * δ) ^ ((1 : ℝ) - 1 / 2 + 1 / q)) :=
+      ENNReal.ofReal_rpow_of_pos (by positivity)
+    rw [hpow2]
+    calc ENNReal.ofReal (brsRightWeight 2 m) *
+          ((intervalCoveringNumber E δ : ENNReal) ^ (1 / q) *
+            ENNReal.ofReal ((2 * δ) ^ ((1 : ℝ) - 1 / 2 + 1 / q)) * Gp)
+        ≤ ENNReal.ofReal (brsRightWeight 2 m) *
+            (ENNReal.ofReal (A (m + 1) * δ ^ (-((1 : ℝ) - 2 / 2 + 1 / q))) *
+              ENNReal.ofReal ((2 * δ) ^ ((1 : ℝ) - 1 / 2 + 1 / q)) * Gp) :=
+          mul_le_mul' le_rfl (mul_le_mul' (mul_le_mul' hN le_rfl) le_rfl)
+      _ = ENNReal.ofReal (brsRightWeight 2 m *
+            (A (m + 1) * δ ^ (-((1 : ℝ) - 2 / 2 + 1 / q)) *
+              (2 * δ) ^ ((1 : ℝ) - 1 / 2 + 1 / q))) * Gp := by
+          rw [← ENNReal.ofReal_mul
+              (mul_nonneg (hA0 (m + 1)) (Real.rpow_nonneg hδ0.le _)),
+            ← mul_assoc,
+            ← ENNReal.ofReal_mul (brsRightWeight_nonneg 2 m)]
+      _ = ENNReal.ofReal (A (m + 1) * brsRightConst 2 q) * Gp := by
+          congr 2
+          rw [hδdef]
+          calc brsRightWeight 2 m *
+                (A (m + 1) *
+                    (6 * (1 / 2 : ℝ) ^ (m + 1)) ^
+                      (-((1 : ℝ) - 2 / 2 + 1 / q)) *
+                  (2 * (6 * (1 / 2 : ℝ) ^ (m + 1))) ^
+                    ((1 : ℝ) - 1 / 2 + 1 / q))
+              = A (m + 1) * (brsRightWeight 2 m *
+                  ((6 * (1 / 2 : ℝ) ^ (m + 1)) ^
+                      (-((1 : ℝ) - 2 / 2 + 1 / q)) *
+                    (2 * (6 * (1 / 2 : ℝ) ^ (m + 1))) ^
+                      ((1 : ℝ) - 1 / 2 + 1 / q))) := by
+                ring
+            _ = A (m + 1) * (brsRightConst 2 q *
+                  ((1 / 2 : ℝ) ^ (1 / (2 : ℝ) - 1 / 2)) ^ m) := by
+                rw [brs_right_term_identity]
+            _ = A (m + 1) * brsRightConst 2 q := by
+                rw [show ((1 : ℝ) / (2 : ℝ) - 1 / 2) = 0 from by norm_num,
+                  Real.rpow_zero, one_pow, mul_one]
+  refine le_trans (mul_le_mul' le_rfl (le_trans hmink
+    (ENNReal.tsum_le_tsum hterm))) ?_
+  rw [ENNReal.tsum_mul_right]
+  refine mul_le_mul' (le_of_eq ?_) le_rfl
+  congr 1
+  rw [Real.mul_rpow (by norm_num) (Real.rpow_nonneg (by norm_num) _),
+    ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 3 / 2),
+    mul_one_div_cancel hq0.ne', Real.rpow_one]
+
+/-! ## Proposition 5.5(iii) for `𝔐_2^+` -/
+
+/-- **Proposition 5.5(iii) for `𝔐_2^+`.** -/
+theorem prop55iii_brsMainTwoRight {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {q : ℝ} (hq2 : 2 ≤ q)
+    {A : ℕ → ℝ} (hA0 : ∀ j : ℕ, 0 ≤ A j) (hcovA : HasBRSCoveringSeq E q A)
+    (hAsum : (∑' m : ℕ, ENNReal.ofReal (A (m + 1) * brsRightConst 2 q)) ≠ ⊤)
+    {B : ℝ} (hB : 0 < B)
+    (hcovB : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((2 : ℕ) : ℝ)))))
+    {g : ℝ → ℂ} (hg : Measurable g) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight E 2 g r ^ q) ^ (1 / q) ≤
+        C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+            (1 / (2 : ℝ))) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hpq : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) ≤ q := by
+    norm_num
+    linarith
+  have hnear := lintegral_brsMainZeroRightMaj_bound_two hE hq2 hA0 hcovA hg
+  obtain ⟨Λ, hΛ, hkey⟩ := prop55iii_brsMainInfRight hE hEne hEnull hpq hB hcovB
+  have hfar0 := hkey g hg
+  rw [show ((2 : ℕ) - 1) = 1 from by norm_num] at hfar0
+  simp only [pow_one, Nat.cast_ofNat, show ((2 : ℝ) - 1) = 1 from by norm_num,
+    div_one, one_div] at hfar0
+  have hfar := rpow_inv_of_le_mul_rpow hq0 hfar0
+  rw [show (2 : ℝ)⁻¹ = 1 / (2 : ℝ) from by norm_num] at hfar
+  have hsplit : ∀ r : ℝ, ENNReal.ofReal r * brsMainTwoRight E 2 g r ^ q ≤
+      ENNReal.ofReal r *
+        (brsMainZeroRightMaj E 2 q g r + 1 * brsMainInfRight E 2 g r) ^ q := by
+    intro r
+    by_cases hr0 : 0 < r
+    · refine mul_le_mul' le_rfl (ENNReal.rpow_le_rpow ?_ hq0.le)
+      refine le_trans (brsMainTwoRight_le_split hr0) ?_
+      rw [one_mul]
+      exact add_le_add (brsMainZeroRight_le_maj hE (by norm_num) (by norm_num)
+        hq0 r) le_rfl
+    · rw [ENNReal.ofReal_eq_zero.mpr (by linarith [not_lt.mp hr0]), zero_mul,
+        zero_mul]
+  refine ⟨(2 : ENNReal) ^ (1 - 1 / q) *
+    (ENNReal.ofReal ((4 : ℝ) ^ (1 / q) * (3 / 2)) *
+        (∑' m : ℕ, ENNReal.ofReal (A (m + 1) * brsRightConst 2 q)) +
+      Λ ^ (1 / q)), ?_, ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg ?_ (by simp)) ?_
+    · have : 1 / q ≤ 1 := by
+        rw [div_le_one hq0]
+        exact hq1
+      linarith
+    · exact ENNReal.add_ne_top.mpr
+        ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top hAsum,
+          ENNReal.rpow_ne_top_of_nonneg (by positivity) hΛ⟩
+  · refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono hsplit)
+      (by positivity)) ?_
+    refine le_trans (lintegral_radial_rpow_add_le
+      (measurable_brsMainZeroRightMaj E 2 q hg) (by simp) hq1) ?_
+    refine le_trans (mul_le_mul' le_rfl
+      (add_le_add hnear (le_trans (le_of_eq (one_mul _)) hfar))) ?_
+    refine le_trans (mul_le_mul' (le_refl ((2 : ENNReal) ^ (1 - 1 / q))) ?_)
+      (le_of_eq (mul_assoc _ _ _).symm)
+    refine le_trans (le_of_eq ?_) add_mul_le_add_mul_add
+    ring
+
+/-! ## Normalizing the six profile bounds
+
+The six terms of `le_brsDecompositionTwo` come with three different right-hand
+sides: the main terms carry the *unweighted* `L^p` norm of the substituted
+profile, `R₁^±` the weighted norm, and `R₂^±` either.  Two elementary
+observations reconcile them: the main terms only see the profile on `(0, ∞)`,
+and `R₂^±` only sees it on `[1/3, 10/3]`. -/
+
+theorem brsMainTwoLeft_congr_pos {E : Set ℝ} {p : ℝ} {g h : ℝ → ℂ}
+    (hgh : ∀ s : ℝ, 0 < s → g s = h s) (r : ℝ) :
+    brsMainTwoLeft E p g r = brsMainTwoLeft E p h r := by
+  rw [brsMainTwoLeft, brsMainTwoLeft]
+  refine iSup_congr fun t => iSup_congr fun ht => ?_
+  obtain ⟨htE, htlo, hthi⟩ := ht
+  have hr0 : (0 : ℝ) < r := by linarith
+  have ht0 : (0 : ℝ) < t := by linarith
+  have hab : |r - t| ≤ r + t := by
+    rw [abs_le]
+    constructor <;> linarith
+  have hInt : (∫ s in |r - t|..(r + t),
+        ((s ^ (1 / 2 - 1 / p) * (s - |r - t|) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) =
+      ∫ s in |r - t|..(r + t),
+        ((s ^ (1 / 2 - 1 / p) * (s - |r - t|) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * h s := by
+    refine intervalIntegral.integral_congr_ae
+      (Filter.Eventually.of_forall fun s hs => ?_)
+    rw [uIoc_of_le hab] at hs
+    have hs0 : (0 : ℝ) < s := lt_of_le_of_lt (abs_nonneg _) hs.1
+    rw [hgh s hs0]
+  rw [hInt]
+
+theorem brsMainTwoRight_congr_pos {E : Set ℝ} {p : ℝ} {g h : ℝ → ℂ}
+    (hgh : ∀ s : ℝ, 0 < s → g s = h s) (r : ℝ) :
+    brsMainTwoRight E p g r = brsMainTwoRight E p h r := by
+  rw [brsMainTwoRight, brsMainTwoRight]
+  refine iSup_congr fun t => iSup_congr fun ht => ?_
+  obtain ⟨htE, htlo, hthi⟩ := ht
+  have hr0 : (0 : ℝ) < r := by linarith
+  have ht0 : (0 : ℝ) < t := by linarith
+  have hab : |r - t| ≤ r + t := by
+    rw [abs_le]
+    constructor <;> linarith
+  have hInt : (∫ s in |r - t|..(r + t),
+        ((s ^ (1 / 2 - 1 / p) * (r + t - s) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) =
+      ∫ s in |r - t|..(r + t),
+        ((s ^ (1 / 2 - 1 / p) * (r + t - s) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * h s := by
+    refine intervalIntegral.integral_congr_ae
+      (Filter.Eventually.of_forall fun s hs => ?_)
+    rw [uIoc_of_le hab] at hs
+    have hs0 : (0 : ℝ) < s := lt_of_le_of_lt (abs_nonneg _) hs.1
+    rw [hgh s hs0]
+  rw [hInt]
+
+/-- The profile substituted and cut to `(0, ∞)`. -/
+def brsProfilePos (p : ℝ) (f₀ : ℝ → ℂ) : ℝ → ℂ :=
+  (Ioi (0 : ℝ)).indicator (brsProfileSub 2 p (absProfile f₀))
+
+theorem brsProfilePos_eq_of_pos {p : ℝ} {f₀ : ℝ → ℂ} {s : ℝ} (hs : 0 < s) :
+    brsProfilePos p f₀ s = brsProfileSub 2 p (absProfile f₀) s :=
+  Set.indicator_of_mem hs _
+
+theorem brsProfilePos_eq_zero {p : ℝ} {f₀ : ℝ → ℂ} {s : ℝ} (hs : s ≤ 0) :
+    brsProfilePos p f₀ s = 0 :=
+  Set.indicator_of_notMem (by simpa using hs) _
+
+theorem measurable_brsProfilePos {p : ℝ} (hp : 0 < p) {f₀ : ℝ → ℂ}
+    (hf₀ : Continuous f₀) : Measurable (brsProfilePos p f₀) := by
+  rw [brsProfilePos]
+  exact ((continuous_brsProfileSub (by norm_num) hp
+    (continuous_absProfile hf₀)).measurable).indicator measurableSet_Ioi
+
+/-- **The `L^p` norm of the cut substituted profile is the weighted norm.** -/
+theorem lintegral_brsProfilePos_eq {p : ℝ} (hp : 0 < p) (f₀ : ℝ → ℂ) :
+    (∫⁻ s : ℝ, ENNReal.ofReal ‖brsProfilePos p f₀ s‖ ^ p) =
+      ∫⁻ s : ℝ, ENNReal.ofReal s * (ENNReal.ofReal ‖f₀ s‖) ^ p := by
+  have hind : ∀ s : ℝ, ENNReal.ofReal ‖brsProfilePos p f₀ s‖ ^ p =
+      (Ioi (0 : ℝ)).indicator
+        (fun s => ENNReal.ofReal ‖brsProfileSub 2 p (absProfile f₀) s‖ ^ p) s := by
+    intro s
+    by_cases hs : s ∈ Ioi (0 : ℝ)
+    · rw [Set.indicator_of_mem hs, brsProfilePos_eq_of_pos hs]
+    · rw [Set.indicator_of_notMem hs, brsProfilePos_eq_zero (by simpa using hs)]
+      simp [ENNReal.zero_rpow_of_pos hp]
+  rw [lintegral_congr hind, lintegral_indicator measurableSet_Ioi,
+    lintegral_profileSub_eq (D := 2) (by norm_num) hp f₀]
+  refine lintegral_congr fun s => ?_
+  rw [show ((2 : ℕ) - 1) = 1 from by norm_num, pow_one]
+
+theorem hasCompactSupport_brsLocalize {g : ℝ → ℂ} :
+    HasCompactSupport (brsLocalize g) := by
+  refine HasCompactSupport.intro (isCompact_Icc (a := (1 / 4 : ℝ)) (b := 4))
+    fun z hz => ?_
+  exact brsLocalize_eq_zero_of_notMem hz
+
+theorem exists_bound_brsLocalize {g : ℝ → ℂ} (hg : Continuous g) :
+    ∃ C : ℝ, ∀ z : ℝ, ‖brsLocalize g z‖ ≤ C := by
+  obtain ⟨C, hC⟩ := hasCompactSupport_brsLocalize.exists_bound_of_continuous
+    (continuous_brsLocalize hg)
+  exact ⟨C, hC⟩
+
+/-! ## Proposition 5.4 for `p < q < 2p`, in the weighted form
+
+The `p < q < 2p` case of Proposition 5.4 is proved with the *unweighted* `L^p`
+norm on the right, because the Littlewood–Paley step needs it.  Localizing the
+profile — which `R₂^±` does not see — converts it into the weighted norm the
+assembly uses, at the cost of a factor `4^{1/p}`. -/
+
+theorem prop54_brsRemTwoTwoLeft_pq_weighted {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {g : ℝ → ℂ} (hg : Continuous g)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q < 2 * p)
+    (hhalf : 1 / p - 1 / q < 1 / 2) (hK : q / p < 2 - β)
+    (hM : q / p < 1 + q / 2 - β) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  obtain ⟨Cg, hgbd⟩ := exists_bound_brsLocalize hg
+  obtain ⟨C, hC0, hbd⟩ := prop54_brsRemTwoTwoLeft_pq hE hCβ hN
+    (continuous_brsLocalize hg) hgbd hp1 hpq hq2p hhalf hK hM
+  refine ⟨C * (4 : ℝ) ^ (1 / p), by positivity, ?_⟩
+  have hLHS : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x *
+        brsRemTwoTwoLeft E (brsLocalize g) x ^ q := by
+    refine lintegral_congr fun x => ?_
+    by_cases hx : 0 ≤ x
+    · rw [brsRemTwoTwoLeft_brsLocalize hE g hx]
+    · rw [ENNReal.ofReal_eq_zero.mpr (le_of_not_ge hx), zero_mul, zero_mul]
+  rw [hLHS]
+  refine le_trans hbd ?_
+  rw [ENNReal.ofReal_mul hC0, mul_assoc]
+  refine mul_le_mul' le_rfl ?_
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_enorm_brsLocalize_le hp0)
+    (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+    ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+
+theorem prop54_brsRemTwoTwoRight_pq_weighted {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' E)
+        ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {g : ℝ → ℂ} (hg : Continuous g)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q < 2 * p)
+    (hhalf : 1 / p - 1 / q < 1 / 2) (hK : q / p < 2 - β)
+    (hM : q / p < 1 + q / 2 - β) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  obtain ⟨Cg, hgbd⟩ := exists_bound_brsLocalize hg
+  obtain ⟨C, hC0, hbd⟩ := prop54_brsRemTwoTwoRight_pq hE hCβ hN
+    (continuous_brsLocalize hg) hgbd hp1 hpq hq2p hhalf hK hM
+  refine ⟨C * (4 : ℝ) ^ (1 / p), by positivity, ?_⟩
+  have hLHS : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x *
+        brsRemTwoTwoRight E (brsLocalize g) x ^ q := by
+    refine lintegral_congr fun x => ?_
+    by_cases hx : 0 ≤ x
+    · rw [brsRemTwoTwoRight_brsLocalize hE g hx]
+    · rw [ENNReal.ofReal_eq_zero.mpr (le_of_not_ge hx), zero_mul, zero_mul]
+  rw [hLHS]
+  refine le_trans hbd ?_
+  rw [ENNReal.ofReal_mul hC0, mul_assoc]
+  refine mul_le_mul' le_rfl ?_
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_enorm_brsLocalize_le hp0)
+    (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+    ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+
+/-! ## Measurability of the six planar operators
+
+The six operators of `le_brsDecompositionTwo` are suprema over `t ∈ E`, so
+they need not be measurable for a general `E`.  Since the maximal operator of a
+continuous datum only sees a dense set of dilations
+(`restrictedSphericalMaximal_eq_of_subset_closure`), the decomposition may
+always be applied with `E` replaced by a *countable* dense subset, and then
+each operator is a countable supremum.  What remains is the measurability of a
+single term in the radius, which follows from the joint measurability of the
+kernel by Fubini. -/
+
+/-- **A parametrized interval integral is measurable in the parameter.** -/
+theorem measurable_intervalIntegral_param {a b : ℝ → ℝ} (ha : Measurable a)
+    (hb : Measurable b) {K : ℝ → ℝ → ℂ} (hK : Measurable (Function.uncurry K)) :
+    Measurable fun r : ℝ => ∫ s in (a r)..(b r), K r s := by
+  have hIoc : ∀ u v : ℝ → ℝ, Measurable u → Measurable v →
+      Measurable fun r : ℝ => ∫ s in Ioc (u r) (v r), K r s := by
+    intro u v hu hv
+    set S : Set (ℝ × ℝ) := {z : ℝ × ℝ | u z.1 < z.2 ∧ z.2 ≤ v z.1} with hS
+    have hSmeas : MeasurableSet S := by
+      rw [hS]
+      exact (measurableSet_lt (hu.comp measurable_fst) measurable_snd).inter
+        (measurableSet_le measurable_snd (hv.comp measurable_fst))
+    have hF : Measurable (S.indicator (Function.uncurry K)) :=
+      hK.indicator hSmeas
+    have hint := (hF.stronglyMeasurable).integral_prod_right' (ν := volume)
+    have hval : ∀ r : ℝ,
+        (∫ s : ℝ, S.indicator (Function.uncurry K) (r, s)) =
+          ∫ s in Ioc (u r) (v r), K r s := by
+      intro r
+      have hpt : (fun s : ℝ => S.indicator (Function.uncurry K) (r, s)) =
+          (Ioc (u r) (v r)).indicator (K r) := by
+        funext s
+        by_cases hs : s ∈ Ioc (u r) (v r)
+        · rw [Set.indicator_of_mem hs]
+          refine Set.indicator_of_mem ?_ _
+          show u (r, s).1 < (r, s).2 ∧ (r, s).2 ≤ v (r, s).1
+          exact ⟨hs.1, hs.2⟩
+        · rw [Set.indicator_of_notMem hs]
+          refine Set.indicator_of_notMem ?_ _
+          intro hc
+          exact hs ⟨hc.1, hc.2⟩
+      rw [hpt, integral_indicator measurableSet_Ioc]
+    have := hint.measurable
+    simpa only [hval] using this
+  have hsplit : (fun r : ℝ => ∫ s in (a r)..(b r), K r s) =
+      fun r : ℝ => (∫ s in Ioc (a r) (b r), K r s) -
+        ∫ s in Ioc (b r) (a r), K r s := by
+    funext r
+    rw [intervalIntegral]
+  rw [hsplit]
+  exact (hIoc a b ha hb).sub (hIoc b a hb ha)
+
+/-- **A countable supremum over a moving index set is measurable.** -/
+theorem measurable_biSup_moving {T : Set ℝ} (hT : T.Countable) {S : ℝ → Set ℝ}
+    (hS : ∀ t : ℝ, MeasurableSet {r : ℝ | t ∈ S r})
+    {Θ : ℝ → ℝ → ENNReal} (hΘ : ∀ t : ℝ, Measurable (Θ t)) :
+    Measurable fun r : ℝ => ⨆ t ∈ T ∩ S r, Θ t r := by
+  have hrw : ∀ r : ℝ, (⨆ t ∈ T ∩ S r, Θ t r) =
+      ⨆ t ∈ T, Set.indicator {r' : ℝ | t ∈ S r'} (Θ t) r := by
+    intro r
+    refine iSup_congr fun t => ?_
+    by_cases htT : t ∈ T
+    · by_cases htS : t ∈ S r
+      · rw [Set.indicator_of_mem (show r ∈ {r' : ℝ | t ∈ S r'} from htS)]
+        simp only [Set.mem_inter_iff, htT, htS, and_self, iSup_pos]
+      · rw [Set.indicator_of_notMem (show r ∉ {r' : ℝ | t ∈ S r'} from htS)]
+        simp only [Set.mem_inter_iff, htS, and_false, iSup_false, htT, iSup_pos]
+        rfl
+    · simp only [Set.mem_inter_iff, htT, false_and, iSup_false]
+  simp only [hrw]
+  exact Measurable.biSup T hT fun t _ => (hΘ t).indicator (hS t)
+
+/-! ### The six kernels are jointly measurable -/
+
+theorem measurable_rpow_const_uncurry {c : ℝ} {u : ℝ × ℝ → ℝ}
+    (hu : Measurable u) : Measurable fun z : ℝ × ℝ => (u z) ^ c :=
+  hu.pow_const c
+
+theorem measurable_uncurry_remOneLeft {t : ℝ} {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) :
+    Measurable (Function.uncurry fun r s : ℝ =>
+      ((|s - (r - t)| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s) := by
+  refine Measurable.mul ?_ (hf₀.comp measurable_snd)
+  refine Complex.measurable_ofReal.comp ?_
+  exact Measurable.pow_const (continuous_abs.measurable.comp
+    (measurable_snd.sub (measurable_fst.sub measurable_const))) _
+
+theorem measurable_uncurry_remOneRight {t : ℝ} {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) :
+    Measurable (Function.uncurry fun r s : ℝ =>
+      ((|r + t - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s) := by
+  refine Measurable.mul ?_ (hf₀.comp measurable_snd)
+  refine Complex.measurable_ofReal.comp ?_
+  exact Measurable.pow_const (continuous_abs.measurable.comp
+    ((measurable_fst.add_const t).sub measurable_snd)) _
+
+theorem measurable_uncurry_remTwoLeft {t : ℝ} {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) :
+    Measurable (Function.uncurry fun r s : ℝ =>
+      ((|s - (t - r)| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s) := by
+  refine Measurable.mul ?_ (hf₀.comp measurable_snd)
+  refine Complex.measurable_ofReal.comp ?_
+  exact Measurable.pow_const (continuous_abs.measurable.comp
+    (measurable_snd.sub (measurable_const.sub measurable_fst))) _
+
+theorem measurable_uncurry_remTwoRight {t : ℝ} {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) :
+    Measurable (Function.uncurry fun r s : ℝ =>
+      ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s) := by
+  refine Measurable.mul ?_ (hf₀.comp measurable_snd)
+  refine Complex.measurable_ofReal.comp ?_
+  exact Measurable.pow_const (continuous_abs.measurable.comp
+    ((measurable_fst.const_add t).sub measurable_snd)) _
+
+theorem measurable_uncurry_mainLeft {t p : ℝ} {g : ℝ → ℂ}
+    (hg : Measurable g) :
+    Measurable (Function.uncurry fun r s : ℝ =>
+      ((s ^ (1 / 2 - 1 / p) * (s - |r - t|) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) := by
+  refine Measurable.mul ?_ (hg.comp measurable_snd)
+  refine Complex.measurable_ofReal.comp ?_
+  refine Measurable.mul (measurable_snd.pow_const _) ?_
+  exact Measurable.pow_const (measurable_snd.sub
+    (continuous_abs.measurable.comp (measurable_fst.sub measurable_const))) _
+
+theorem measurable_uncurry_mainRight {t p : ℝ} {g : ℝ → ℂ}
+    (hg : Measurable g) :
+    Measurable (Function.uncurry fun r s : ℝ =>
+      ((s ^ (1 / 2 - 1 / p) * (r + t - s) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s) := by
+  refine Measurable.mul ?_ (hg.comp measurable_snd)
+  refine Complex.measurable_ofReal.comp ?_
+  refine Measurable.mul (measurable_snd.pow_const _) ?_
+  exact ((measurable_fst.add_const t).sub measurable_snd).pow_const _
+
+/-! ### The six operators over a countable dilation set -/
+
+theorem measurableSet_smallDil (t : ℝ) :
+    MeasurableSet {r : ℝ | t ∈ Iic (r / 2)} :=
+  measurableSet_le measurable_const (measurable_id.div_const 2)
+
+theorem measurableSet_largeDil (t : ℝ) :
+    MeasurableSet {r : ℝ | t ∈ Ici (3 * r / 2)} :=
+  measurableSet_le ((measurable_const.mul measurable_id).div_const 2)
+    measurable_const
+
+theorem measurableSet_midDil (t : ℝ) :
+    MeasurableSet {r : ℝ | t ∈ Ioo (r / 2) (3 * r / 2)} :=
+  MeasurableSet.inter
+    (measurableSet_lt (measurable_id.div_const 2) measurable_const)
+    (measurableSet_lt measurable_const
+      ((measurable_const.mul measurable_id).div_const 2))
+
+theorem measurable_brsRemTwoOneLeft {T : Set ℝ} (hT : T.Countable) {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) : Measurable (brsRemTwoOneLeft T f₀) := by
+  show Measurable fun r : ℝ => ⨆ t ∈ T ∩ Iic (r / 2),
+    ENNReal.ofReal (t ^ (-(1 / 2) : ℝ) * ‖∫ s in (r - t)..r,
+      ((|s - (r - t)| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s‖)
+  refine measurable_biSup_moving hT measurableSet_smallDil fun t => ?_
+  refine ENNReal.measurable_ofReal.comp (measurable_const.mul ?_)
+  exact (measurable_intervalIntegral_param
+    (measurable_id.sub measurable_const) measurable_id
+    (measurable_uncurry_remOneLeft hf₀)).norm
+
+theorem measurable_brsRemTwoOneRight {T : Set ℝ} (hT : T.Countable) {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) : Measurable (brsRemTwoOneRight T f₀) := by
+  show Measurable fun r : ℝ => ⨆ t ∈ T ∩ Iic (r / 2),
+    ENNReal.ofReal (t ^ (-(1 / 2) : ℝ) * ‖∫ s in r..(r + t),
+      ((|r + t - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s‖)
+  refine measurable_biSup_moving hT measurableSet_smallDil fun t => ?_
+  refine ENNReal.measurable_ofReal.comp (measurable_const.mul ?_)
+  exact (measurable_intervalIntegral_param measurable_id
+    (measurable_id.add_const t) (measurable_uncurry_remOneRight hf₀)).norm
+
+theorem measurable_brsRemTwoTwoLeft {T : Set ℝ} (hT : T.Countable) {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) : Measurable (brsRemTwoTwoLeft T f₀) := by
+  show Measurable fun r : ℝ => ⨆ t ∈ T ∩ Ici (3 * r / 2),
+    ENNReal.ofReal (r ^ (-(1 / 2) : ℝ) * ‖∫ s in (t - r)..t,
+      ((|s - (t - r)| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s‖)
+  refine measurable_biSup_moving hT measurableSet_largeDil fun t => ?_
+  refine ENNReal.measurable_ofReal.comp
+    ((measurable_id.pow_const _).mul ?_)
+  exact (measurable_intervalIntegral_param
+    (measurable_const.sub measurable_id) measurable_const
+    (measurable_uncurry_remTwoLeft hf₀)).norm
+
+theorem measurable_brsRemTwoTwoRight {T : Set ℝ} (hT : T.Countable) {f₀ : ℝ → ℂ}
+    (hf₀ : Measurable f₀) : Measurable (brsRemTwoTwoRight T f₀) := by
+  show Measurable fun r : ℝ => ⨆ t ∈ T ∩ Ici (3 * r / 2),
+    ENNReal.ofReal (r ^ (-(1 / 2) : ℝ) * ‖∫ s in t..(t + r),
+      ((|t + r - s| ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * f₀ s‖)
+  refine measurable_biSup_moving hT measurableSet_largeDil fun t => ?_
+  refine ENNReal.measurable_ofReal.comp
+    ((measurable_id.pow_const _).mul ?_)
+  exact (measurable_intervalIntegral_param measurable_const
+    (measurable_const.add measurable_id)
+    (measurable_uncurry_remTwoRight hf₀)).norm
+
+theorem measurable_brsMainTwoLeft {T : Set ℝ} (hT : T.Countable) (p : ℝ)
+    {g : ℝ → ℂ} (hg : Measurable g) : Measurable (brsMainTwoLeft T p g) := by
+  show Measurable fun r : ℝ => ⨆ t ∈ T ∩ Ioo (r / 2) (3 * r / 2),
+    ENNReal.ofReal (r⁻¹ * ‖∫ s in |r - t|..(r + t),
+      ((s ^ (1 / 2 - 1 / p) * (s - |r - t|) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s‖)
+  refine measurable_biSup_moving hT measurableSet_midDil fun t => ?_
+  refine ENNReal.measurable_ofReal.comp (measurable_id.inv.mul ?_)
+  exact (measurable_intervalIntegral_param
+    (continuous_abs.measurable.comp (measurable_id.sub measurable_const))
+    (measurable_id.add_const t) (measurable_uncurry_mainLeft hg)).norm
+
+theorem measurable_brsMainTwoRight {T : Set ℝ} (hT : T.Countable) (p : ℝ)
+    {g : ℝ → ℂ} (hg : Measurable g) : Measurable (brsMainTwoRight T p g) := by
+  show Measurable fun r : ℝ => ⨆ t ∈ T ∩ Ioo (r / 2) (3 * r / 2),
+    ENNReal.ofReal (r⁻¹ * ‖∫ s in |r - t|..(r + t),
+      ((s ^ (1 / 2 - 1 / p) * (r + t - s) ^ (-(1 / 2) : ℝ) : ℝ) : ℂ) * g s‖)
+  refine measurable_biSup_moving hT measurableSet_midDil fun t => ?_
+  refine ENNReal.measurable_ofReal.comp (measurable_id.inv.mul ?_)
+  exact (measurable_intervalIntegral_param
+    (continuous_abs.measurable.comp (measurable_id.sub measurable_const))
+    (measurable_id.add_const t) (measurable_uncurry_mainRight hg)).norm
+
+/-! ## Minkowski's inequality for the radial weight
+
+Absorbing the weight `r` into the function turns the weighted `L^q(r\,dr)`
+quasi-norm into an honest `L^q` norm, so the triangle inequality holds with no
+loss. -/
+
+theorem lintegral_radial_add_le {A B : ℝ → ENNReal} (hA : Measurable A)
+    (hB : Measurable B) {q : ℝ} (hq : 1 ≤ q) :
+    (∫⁻ r : ℝ, ENNReal.ofReal r * (A r + B r) ^ q) ^ (1 / q) ≤
+      (∫⁻ r : ℝ, ENNReal.ofReal r * A r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r * B r ^ q) ^ (1 / q) := by
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  set w : ℝ → ENNReal := fun r => ENNReal.ofReal r ^ (1 / q) with hw
+  have hwmeas : Measurable w :=
+    ENNReal.continuous_rpow_const.measurable.comp ENNReal.measurable_ofReal
+  have hwq : ∀ r : ℝ, w r ^ q = ENNReal.ofReal r := by
+    intro r
+    show (ENNReal.ofReal r ^ (1 / q)) ^ q = _
+    rw [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
+  have hkey : ∀ F : ℝ → ENNReal, (∫⁻ r : ℝ, ENNReal.ofReal r * F r ^ q) =
+      ∫⁻ r : ℝ, (w r * F r) ^ q := by
+    intro F
+    refine lintegral_congr fun r => ?_
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le, hwq r]
+  have hsum : (∫⁻ r : ℝ, ENNReal.ofReal r * (A r + B r) ^ q) =
+      ∫⁻ r : ℝ, ((fun r : ℝ => w r * A r) + fun r : ℝ => w r * B r) r ^ q := by
+    refine lintegral_congr fun r => ?_
+    show _ = (w r * A r + w r * B r) ^ q
+    rw [← mul_add, ENNReal.mul_rpow_of_nonneg _ _ hq0.le, hwq r]
+  rw [hkey A, hkey B, hsum]
+  exact ENNReal.lintegral_Lp_add_le (hwmeas.mul hA).aemeasurable
+    (hwmeas.mul hB).aemeasurable hq
+
+theorem lintegral_radial_add_six_le {A₁ A₂ A₃ A₄ A₅ A₆ : ℝ → ENNReal}
+    (h₁ : Measurable A₁) (h₂ : Measurable A₂) (h₃ : Measurable A₃)
+    (h₄ : Measurable A₄) (h₅ : Measurable A₅) (h₆ : Measurable A₆)
+    {q : ℝ} (hq : 1 ≤ q) :
+    (∫⁻ r : ℝ, ENNReal.ofReal r *
+        (A₁ r + A₂ r + A₃ r + A₄ r + A₅ r + A₆ r) ^ q) ^ (1 / q) ≤
+      (∫⁻ r : ℝ, ENNReal.ofReal r * A₁ r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r * A₂ r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r * A₃ r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r * A₄ r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r * A₅ r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r * A₆ r ^ q) ^ (1 / q) := by
+  have s2 : Measurable fun r => A₁ r + A₂ r := h₁.add h₂
+  have s3 : Measurable fun r => A₁ r + A₂ r + A₃ r := s2.add h₃
+  have s4 : Measurable fun r => A₁ r + A₂ r + A₃ r + A₄ r := s3.add h₄
+  have s5 : Measurable fun r => A₁ r + A₂ r + A₃ r + A₄ r + A₅ r := s4.add h₅
+  refine le_trans (lintegral_radial_add_le s5 h₆ hq) ?_
+  refine add_le_add ?_ le_rfl
+  refine le_trans (lintegral_radial_add_le s4 h₅ hq) ?_
+  refine add_le_add ?_ le_rfl
+  refine le_trans (lintegral_radial_add_le s3 h₄ hq) ?_
+  refine add_le_add ?_ le_rfl
+  refine le_trans (lintegral_radial_add_le s2 h₃ hq) ?_
+  refine add_le_add ?_ le_rfl
+  exact lintegral_radial_add_le h₁ h₂ hq
+
+/-! ## The six planar pieces, combined
+
+Over a countable dilation set every one of the six operators of Lemma 5.1 is
+measurable, so the weighted Minkowski inequality assembles the six bounds with
+no loss. -/
+
+theorem enorm_absProfile (f₀ : ℝ → ℂ) (s : ℝ) :
+    ‖absProfile f₀ s‖ₑ = ENNReal.ofReal ‖f₀ s‖ := by
+  rw [← ofReal_norm, absProfile]
+  simp only [Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)]
+
+/-- **The six pieces of Lemma 5.1 combined.**  Over a countable dilation set
+all six operators are measurable, so Minkowski's inequality assembles them with
+no loss. -/
+theorem exists_combined_bound_two {T : Set ℝ} (hT : T.Countable) {p q : ℝ}
+    (hp : 1 ≤ p) (hpq : p ≤ q) {C₁ C₂ C₃ C₄ C₅ C₆ : ENNReal}
+    (hC₁ : C₁ ≠ ⊤) (hC₂ : C₂ ≠ ⊤) (hC₃ : C₃ ≠ ⊤) (hC₄ : C₄ ≠ ⊤)
+    (hC₅ : C₅ ≠ ⊤) (hC₆ : C₆ ≠ ⊤)
+    (hML : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft T p g r ^ q) ^ (1 / q) ≤
+        C₁ * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)))
+    (hMR : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight T p g r ^ q) ^ (1 / q) ≤
+        C₂ * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)))
+    (hR1L : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoOneLeft T g r ^ q) ^ (1 / q) ≤
+        C₃ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p))
+    (hR1R : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoOneRight T g r ^ q) ^ (1 / q) ≤
+        C₄ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p))
+    (hR2L : ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoLeft T g r ^ q) ^ (1 / q) ≤
+        C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p))
+    (hR2R : ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoRight T g r ^ q) ^ (1 / q) ≤
+        C₆ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      (∫⁻ r : ℝ, ENNReal.ofReal r *
+          (brsMainTwoLeft T p (brsProfileSub 2 p (absProfile f₀)) r +
+            brsMainTwoRight T p (brsProfileSub 2 p (absProfile f₀)) r +
+            brsRemTwoOneLeft T (absProfile f₀) r +
+            brsRemTwoOneRight T (absProfile f₀) r +
+            brsRemTwoTwoLeft T (absProfile f₀) r +
+            brsRemTwoTwoRight T (absProfile f₀) r) ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ,
+          ENNReal.ofReal s * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp hpq
+  refine ⟨2 * C₁ + 2 * C₂ + C₃ + C₄ + C₅ + C₆, ?_, fun f₀ hf₀ => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.add_ne_top.mpr
+      ⟨ENNReal.add_ne_top.mpr ⟨ENNReal.add_ne_top.mpr
+        ⟨ENNReal.add_ne_top.mpr ⟨ENNReal.mul_ne_top (by simp) hC₁,
+          ENNReal.mul_ne_top (by simp) hC₂⟩, hC₃⟩, hC₄⟩, hC₅⟩, hC₆⟩
+  set Np : ENNReal :=
+    (∫⁻ s : ℝ, ENNReal.ofReal s * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p)
+    with hNp
+  have hcont : Continuous (absProfile f₀) := continuous_absProfile hf₀
+  have hmeasProf : Measurable (brsProfileSub 2 p (absProfile f₀)) :=
+    (continuous_brsProfileSub (by norm_num) hp0 hcont).measurable
+  have hmeasPos : Measurable (brsProfilePos p f₀) :=
+    measurable_brsProfilePos hp0 hf₀
+  have hcongL : ∀ r : ℝ,
+      brsMainTwoLeft T p (brsProfileSub 2 p (absProfile f₀)) r =
+        brsMainTwoLeft T p (brsProfilePos p f₀) r := fun r =>
+    brsMainTwoLeft_congr_pos
+      (fun s hs => (brsProfilePos_eq_of_pos hs).symm) r
+  have hcongR : ∀ r : ℝ,
+      brsMainTwoRight T p (brsProfileSub 2 p (absProfile f₀)) r =
+        brsMainTwoRight T p (brsProfilePos p f₀) r := fun r =>
+    brsMainTwoRight_congr_pos
+      (fun s hs => (brsProfilePos_eq_of_pos hs).symm) r
+  have hposNorm : (∫⁻ s : ℝ,
+      ENNReal.ofReal ‖brsProfilePos p f₀ s‖ ^ p) ^ (1 / p) = Np := by
+    rw [hNp, lintegral_brsProfilePos_eq hp0]
+  have hposIoi : (∫⁻ s in Ioi (0 : ℝ),
+      (ENNReal.ofReal ‖brsProfilePos p f₀ s‖) ^ p) ^ (1 / p) ≤ Np := by
+    rw [← hposNorm]
+    refine ENNReal.rpow_le_rpow ?_ (by positivity)
+    exact lintegral_mono' Measure.restrict_le_self fun _ => le_rfl
+  have hweight : (∫⁻ s : ℝ,
+      ENNReal.ofReal s * ‖absProfile f₀ s‖ₑ ^ p) ^ (1 / p) = Np := by
+    rw [hNp]
+    congr 1
+    exact lintegral_congr fun s => by rw [enorm_absProfile]
+  have b₁ : (∫⁻ r : ℝ, ENNReal.ofReal r *
+      brsMainTwoLeft T p (brsProfileSub 2 p (absProfile f₀)) r ^ q) ^ (1 / q) ≤
+      2 * C₁ * Np := by
+    simp only [hcongL]
+    refine le_trans (hML _ hmeasPos) ?_
+    rw [mul_comm (2 : ENNReal) C₁, mul_assoc]
+    refine mul_le_mul' le_rfl ?_
+    calc (∫⁻ s : ℝ, ENNReal.ofReal ‖brsProfilePos p f₀ s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ),
+            (ENNReal.ofReal ‖brsProfilePos p f₀ s‖) ^ p) ^ (1 / p)
+        ≤ Np + Np := add_le_add (le_of_eq hposNorm) hposIoi
+      _ = 2 * Np := by rw [two_mul]
+  have b₂ : (∫⁻ r : ℝ, ENNReal.ofReal r *
+      brsMainTwoRight T p (brsProfileSub 2 p (absProfile f₀)) r ^ q) ^ (1 / q) ≤
+      2 * C₂ * Np := by
+    simp only [hcongR]
+    refine le_trans (hMR _ hmeasPos) ?_
+    rw [mul_comm (2 : ENNReal) C₂, mul_assoc]
+    refine mul_le_mul' le_rfl ?_
+    calc (∫⁻ s : ℝ, ENNReal.ofReal ‖brsProfilePos p f₀ s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ),
+            (ENNReal.ofReal ‖brsProfilePos p f₀ s‖) ^ p) ^ (1 / p)
+        ≤ Np + Np := add_le_add (le_of_eq hposNorm) hposIoi
+      _ = 2 * Np := by rw [two_mul]
+  have b₃ : (∫⁻ r : ℝ, ENNReal.ofReal r *
+      brsRemTwoOneLeft T (absProfile f₀) r ^ q) ^ (1 / q) ≤ C₃ * Np := by
+    rw [← hweight]
+    exact hR1L _ hcont.measurable
+  have b₄ : (∫⁻ r : ℝ, ENNReal.ofReal r *
+      brsRemTwoOneRight T (absProfile f₀) r ^ q) ^ (1 / q) ≤ C₄ * Np := by
+    rw [← hweight]
+    exact hR1R _ hcont.measurable
+  have b₅ : (∫⁻ r : ℝ, ENNReal.ofReal r *
+      brsRemTwoTwoLeft T (absProfile f₀) r ^ q) ^ (1 / q) ≤ C₅ * Np := by
+    rw [← hweight]
+    exact hR2L _ hcont
+  have b₆ : (∫⁻ r : ℝ, ENNReal.ofReal r *
+      brsRemTwoTwoRight T (absProfile f₀) r ^ q) ^ (1 / q) ≤ C₆ * Np := by
+    rw [← hweight]
+    exact hR2R _ hcont
+  refine le_trans (lintegral_radial_add_six_le
+    (measurable_brsMainTwoLeft hT p hmeasProf)
+    (measurable_brsMainTwoRight hT p hmeasProf)
+    (measurable_brsRemTwoOneLeft hT hcont.measurable)
+    (measurable_brsRemTwoOneRight hT hcont.measurable)
+    (measurable_brsRemTwoTwoLeft hT hcont.measurable)
+    (measurable_brsRemTwoTwoRight hT hcont.measurable) hq1) ?_
+  calc (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsMainTwoLeft T p (brsProfileSub 2 p (absProfile f₀)) r ^ q) ^
+            (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsMainTwoRight T p (brsProfileSub 2 p (absProfile f₀)) r ^ q) ^
+            (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsRemTwoOneLeft T (absProfile f₀) r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsRemTwoOneRight T (absProfile f₀) r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsRemTwoTwoLeft T (absProfile f₀) r ^ q) ^ (1 / q) +
+        (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsRemTwoTwoRight T (absProfile f₀) r ^ q) ^ (1 / q)
+      ≤ 2 * C₁ * Np + 2 * C₂ * Np + C₃ * Np + C₄ * Np + C₅ * Np + C₆ * Np :=
+        add_le_add (add_le_add (add_le_add (add_le_add (add_le_add b₁ b₂) b₃) b₄)
+          b₅) b₆
+    _ = (2 * C₁ + 2 * C₂ + C₃ + C₄ + C₅ + C₆) * Np := by ring
+
+/-! ## The planar lift
+
+`le_brsDecompositionTwo` is a pointwise bound on the profile side; combined
+with the six `L^q(r\,dr)` bounds it gives the ambient `L^p_rad → L^q` estimate.
+The dilation set may always be shrunk to a countable dense subset, because the
+maximal operator of a continuous datum does not see the difference. -/
+
+/-- The constant of the planar pointwise decomposition. -/
+def brsPlanarConst : ℝ := ((surfaceMass 2)⁻¹ * surfaceMass 1) * 8
+
+theorem brsPlanarConst_pos : 0 < brsPlanarConst := by
+  have h1 : 0 < surfaceMass 1 := surfaceMass_pos (by norm_num)
+  have h2 : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  rw [brsPlanarConst]
+  positivity
+
+/-- **The planar radial strong bound for continuous profiles.** -/
+theorem eLpNorm_M_lift_le_two {E T : Set ℝ} (hTE : T ⊆ E) (hET : E ⊆ closure T)
+    (hT2 : T ⊆ Icc (1 : ℝ) 2) (hTc : T.Countable) {p q : ℝ} (hp : 1 ≤ p)
+    (hpq : p ≤ q) {C : ENNReal}
+    (hcomb : ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      (∫⁻ r : ℝ, ENNReal.ofReal r *
+          (brsMainTwoLeft T p (brsProfileSub 2 p (absProfile f₀)) r +
+            brsMainTwoRight T p (brsProfileSub 2 p (absProfile f₀)) r +
+            brsRemTwoOneLeft T (absProfile f₀) r +
+            brsRemTwoOneRight T (absProfile f₀) r +
+            brsRemTwoTwoLeft T (absProfile f₀) r +
+            brsRemTwoTwoRight T (absProfile f₀) r) ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ,
+          ENNReal.ofReal s * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p))
+    (f₀ : ℝ → ℂ) (hf₀ : Continuous f₀) :
+    eLpNorm (M E (fun y : Euclidean 2 => f₀ ‖y‖)) (ENNReal.ofReal q) volume ≤
+      ENNReal.ofReal (brsPlanarConst * surfaceMass 2 ^ (1 / q - 1 / p)) * C *
+        eLpNorm (fun x : Euclidean 2 => f₀ ‖x‖) (ENNReal.ofReal p) volume := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp hpq
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  have hsm : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  have hC₀ : 0 < brsPlanarConst := brsPlanarConst_pos
+  have hcont : Continuous (absProfile f₀) := continuous_absProfile hf₀
+  have hmeasProf : Measurable (brsProfileSub 2 p (absProfile f₀)) :=
+    (continuous_brsProfileSub (by norm_num) hp0 hcont).measurable
+  set S : ℝ → ENNReal := fun r =>
+    brsMainTwoLeft T p (brsProfileSub 2 p (absProfile f₀)) r +
+      brsMainTwoRight T p (brsProfileSub 2 p (absProfile f₀)) r +
+      brsRemTwoOneLeft T (absProfile f₀) r +
+      brsRemTwoOneRight T (absProfile f₀) r +
+      brsRemTwoTwoLeft T (absProfile f₀) r +
+      brsRemTwoTwoRight T (absProfile f₀) r with hS
+  set Np : ENNReal :=
+    (∫⁻ s : ℝ, ENNReal.ofReal s * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p)
+    with hNp
+  have hSmeas : Measurable fun r : ℝ => S r ^ q := by
+    refine ENNReal.continuous_rpow_const.measurable.comp ?_
+    rw [hS]
+    exact ((((((measurable_brsMainTwoLeft hTc p hmeasProf).add
+      (measurable_brsMainTwoRight hTc p hmeasProf)).add
+      (measurable_brsRemTwoOneLeft hTc hcont.measurable)).add
+      (measurable_brsRemTwoOneRight hTc hcont.measurable)).add
+      (measurable_brsRemTwoTwoLeft hTc hcont.measurable)).add
+      (measurable_brsRemTwoTwoRight hTc hcont.measurable))
+  -- the pointwise decomposition, away from the origin
+  have hEqT : ∀ x : Euclidean 2,
+      M E (fun y : Euclidean 2 => f₀ ‖y‖) x =
+        M T (fun y : Euclidean 2 => f₀ ‖y‖) x := fun x =>
+    Auto.Spherical.FractalDilations.AHRSUpperBounds.restrictedSphericalMaximal_eq_of_subset_closure
+      hTE hET (hf₀.comp continuous_norm) x
+  have hae : ∀ᵐ x : Euclidean 2 ∂volume,
+      ‖M E (fun y : Euclidean 2 => f₀ ‖y‖) x‖ₑ ^ q ≤
+        (ENNReal.ofReal brsPlanarConst * S ‖x‖) ^ q := by
+    have hnull : ∀ᵐ x : Euclidean 2 ∂volume, x ≠ 0 := by
+      have h : volume ({(0 : Euclidean 2)} : Set (Euclidean 2)) = 0 := by simp
+      rw [← compl_mem_ae_iff] at h
+      filter_upwards [h] with x hx
+      simpa using hx
+    filter_upwards [hnull] with x hx
+    refine ENNReal.rpow_le_rpow ?_ hq0.le
+    have hpt := le_brsDecompositionTwo hT2 hp0 hf₀ hx
+    rw [hEqT x, hS]
+    simpa [brsPlanarConst] using hpt
+  -- the radial integral
+  have hbound : (∫⁻ x : Euclidean 2,
+      ‖M E (fun y : Euclidean 2 => f₀ ‖y‖) x‖ₑ ^ q) ≤
+      ENNReal.ofReal brsPlanarConst ^ q * ENNReal.ofReal (surfaceMass 2) *
+        (C * Np) ^ q := by
+    have hstep1 : (∫⁻ x : Euclidean 2,
+        ‖M E (fun y : Euclidean 2 => f₀ ‖y‖) x‖ₑ ^ q) ≤
+        ∫⁻ x : Euclidean 2, ENNReal.ofReal brsPlanarConst ^ q * (S ‖x‖) ^ q := by
+      refine lintegral_mono_ae ?_
+      filter_upwards [hae] with x hx
+      rw [← ENNReal.mul_rpow_of_nonneg _ _ hq0.le]
+      exact hx
+    have hstep2 : (∫⁻ x : Euclidean 2,
+        ENNReal.ofReal brsPlanarConst ^ q * (S ‖x‖) ^ q) =
+        ENNReal.ofReal brsPlanarConst ^ q * (ENNReal.ofReal (surfaceMass 2) *
+          ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r ^ (2 - 1) * S r ^ q) := by
+      rw [lintegral_const_mul' _ _
+        (ENNReal.rpow_ne_top_of_nonneg hq0.le ENNReal.ofReal_ne_top),
+        lintegral_euclidean_radial (by norm_num : 0 < 2)
+          (fun r => S r ^ q) hSmeas]
+    have hstep3 : (∫⁻ r in Ioi (0 : ℝ),
+        ENNReal.ofReal r ^ (2 - 1) * S r ^ q) ≤ (C * Np) ^ q := by
+      have hone : ∀ r : ℝ, ENNReal.ofReal r ^ (2 - 1) * S r ^ q =
+          ENNReal.ofReal r * S r ^ q := by
+        intro r
+        rw [show ((2 : ℕ) - 1) = 1 from by norm_num, pow_one]
+      simp only [hone]
+      have hfull : (∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * S r ^ q) ≤
+          ∫⁻ r : ℝ, ENNReal.ofReal r * S r ^ q :=
+        lintegral_mono' Measure.restrict_le_self fun _ => le_rfl
+      refine le_trans hfull ?_
+      have hraise : (∫⁻ r : ℝ, ENNReal.ofReal r * S r ^ q) =
+          ((∫⁻ r : ℝ, ENNReal.ofReal r * S r ^ q) ^ (1 / q)) ^ q := by
+        rw [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
+      rw [hraise]
+      refine ENNReal.rpow_le_rpow ?_ hq0.le
+      rw [hS, hNp]
+      exact hcomb f₀ hf₀
+    calc (∫⁻ x : Euclidean 2, ‖M E (fun y : Euclidean 2 => f₀ ‖y‖) x‖ₑ ^ q)
+        ≤ ∫⁻ x : Euclidean 2,
+            ENNReal.ofReal brsPlanarConst ^ q * (S ‖x‖) ^ q := hstep1
+      _ = ENNReal.ofReal brsPlanarConst ^ q * (ENNReal.ofReal (surfaceMass 2) *
+            ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r ^ (2 - 1) * S r ^ q) := hstep2
+      _ ≤ ENNReal.ofReal brsPlanarConst ^ q * (ENNReal.ofReal (surfaceMass 2) *
+            (C * Np) ^ q) := mul_le_mul' le_rfl (mul_le_mul' le_rfl hstep3)
+      _ = ENNReal.ofReal brsPlanarConst ^ q * ENNReal.ofReal (surfaceMass 2) *
+            (C * Np) ^ q := by ring
+  -- take `q`-th roots and rewrite both norms
+  have hq0' : ENNReal.ofReal q ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero]
+    exact not_le.mpr hq0
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top,
+    ENNReal.toReal_ofReal hq0.le,
+    eLpNorm_lift_eq (by norm_num : 2 ≤ 2) hp0 hf₀]
+  have hNp' : (∫⁻ s : ℝ, ENNReal.ofReal s ^ (2 - 1) *
+      (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p) = Np := by
+    rw [hNp]
+    congr 1
+    refine lintegral_congr fun s => ?_
+    rw [show ((2 : ℕ) - 1) = 1 from by norm_num, pow_one]
+  rw [hNp']
+  refine le_trans (ENNReal.rpow_le_rpow hbound (by positivity)) (le_of_eq ?_)
+  have hinv : (0 : ℝ) ≤ 1 / q := by positivity
+  have hsplit : (ENNReal.ofReal brsPlanarConst ^ q *
+        ENNReal.ofReal (surfaceMass 2) * (C * Np) ^ q) ^ (1 / q) =
+      (ENNReal.ofReal brsPlanarConst *
+        ENNReal.ofReal (surfaceMass 2) ^ (1 / q) * C) * Np := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hinv, ENNReal.mul_rpow_of_nonneg _ _ hinv,
+      ← ENNReal.rpow_mul, ← ENNReal.rpow_mul, mul_one_div_cancel hq0.ne']
+    simp only [ENNReal.rpow_one]
+    ring
+  have hscalar : ENNReal.ofReal brsPlanarConst *
+        ENNReal.ofReal (surfaceMass 2) ^ (1 / q) * C =
+      ENNReal.ofReal (brsPlanarConst * surfaceMass 2 ^ (1 / q - 1 / p)) * C *
+        ENNReal.ofReal (surfaceMass 2) ^ (1 / p) := by
+    rw [ENNReal.ofReal_rpow_of_pos hsm, ENNReal.ofReal_rpow_of_pos hsm,
+      ← ENNReal.ofReal_mul hC₀.le,
+      mul_right_comm
+        (ENNReal.ofReal (brsPlanarConst * surfaceMass 2 ^ (1 / q - 1 / p))) C
+        (ENNReal.ofReal (surfaceMass 2 ^ (1 / p))),
+      ← ENNReal.ofReal_mul (by positivity)]
+    congr 2
+    rw [mul_assoc, ← Real.rpow_add hsm,
+      show (1 / q - 1 / p + 1 / p : ℝ) = 1 / q from by ring]
+  rw [hsplit, hscalar, mul_assoc]
+
+/-! ## From the six bounds to the planar type set -/
+
+/-- A countable dense subset of the dilation set, which the maximal operator of
+a continuous datum cannot distinguish from the set itself. -/
+theorem exists_countable_dense_dilations (E : Set ℝ) :
+    ∃ T : Set ℝ, T ⊆ E ∧ T.Countable ∧ E ⊆ closure T := by
+  obtain ⟨T, hTE, hTcount, hTdense⟩ :=
+    (TopologicalSpace.IsSeparable.of_separableSpace E).exists_countable_dense_subset
+  exact ⟨T, hTE, hTcount, hTdense⟩
+
+/-- **The six bounds give a point of the planar radial type set.** -/
+theorem hasRadialStrongTypeCont_two_of_bounds {E T : Set ℝ} (hTE : T ⊆ E)
+    (hET : E ⊆ closure T) (hT2 : T ⊆ Icc (1 : ℝ) 2) (hTc : T.Countable)
+    {p q : ℝ} (hp : 1 ≤ p) (hpq : p ≤ q) {C₁ C₂ C₃ C₄ C₅ C₆ : ENNReal}
+    (hC₁ : C₁ ≠ ⊤) (hC₂ : C₂ ≠ ⊤) (hC₃ : C₃ ≠ ⊤) (hC₄ : C₄ ≠ ⊤)
+    (hC₅ : C₅ ≠ ⊤) (hC₆ : C₆ ≠ ⊤)
+    (hML : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft T p g r ^ q) ^ (1 / q) ≤
+        C₁ * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)))
+    (hMR : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight T p g r ^ q) ^ (1 / q) ≤
+        C₂ * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)))
+    (hR1L : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoOneLeft T g r ^ q) ^ (1 / q) ≤
+        C₃ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p))
+    (hR1R : ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoOneRight T g r ^ q) ^ (1 / q) ≤
+        C₄ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p))
+    (hR2L : ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoLeft T g r ^ q) ^ (1 / q) ≤
+        C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p))
+    (hR2R : ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsRemTwoTwoRight T g r ^ q) ^ (1 / q) ≤
+        C₆ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp hpq
+  have hsm : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  have hC₀ : 0 < brsPlanarConst := brsPlanarConst_pos
+  obtain ⟨C, hC, hcomb⟩ := exists_combined_bound_two hTc hp hpq hC₁ hC₂ hC₃ hC₄
+    hC₅ hC₆ hML hMR hR1L hR1R hR2L hR2R
+  set A : ℝ := brsPlanarConst * surfaceMass 2 ^ (1 / q - 1 / p) with hA
+  have hA0 : 0 < A := by
+    rw [hA]
+    have : (0 : ℝ) < surfaceMass 2 ^ (1 / q - 1 / p) := Real.rpow_pos_of_pos hsm _
+    positivity
+  refine ⟨A * C.toReal + 1, by positivity, fun f₀ hf₀ hmem => ?_⟩
+  have hle := eLpNorm_M_lift_le_two hTE hET hT2 hTc hp hpq hcomb f₀ hf₀
+  have hconst : ENNReal.ofReal A * C ≤ ENNReal.ofReal (A * C.toReal + 1) := by
+    have hCeq : ENNReal.ofReal C.toReal = C := ENNReal.ofReal_toReal hC
+    calc ENNReal.ofReal A * C = ENNReal.ofReal A * ENNReal.ofReal C.toReal := by
+          rw [hCeq]
+      _ = ENNReal.ofReal (A * C.toReal) := (ENNReal.ofReal_mul hA0.le).symm
+      _ ≤ ENNReal.ofReal (A * C.toReal + 1) :=
+          ENNReal.ofReal_le_ofReal (by linarith)
+  have hfinal :
+      eLpNorm (M E (fun x : Euclidean 2 => f₀ ‖x‖)) (ENNReal.ofReal q) volume ≤
+        ENNReal.ofReal (A * C.toReal + 1) *
+          eLpNorm (fun x : Euclidean 2 => f₀ ‖x‖) (ENNReal.ofReal p) volume :=
+    le_trans hle (mul_le_mul' hconst le_rfl)
+  refine ⟨⟨(measurable_M_lift E hf₀).aestronglyMeasurable, ?_⟩, hfinal⟩
+  exact lt_of_le_of_lt hfinal (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.2)
+
+/-! ## The coefficient series of Proposition 5.2 is finite
+
+The `m`-th coefficient of Proposition 5.2 carries the factor
+`2^{m/2} N(E, 2^{-m})^{1/q} 2^{-m(1 - 1/p + 1/q)}`, which under the Minkowski
+bound `N(E, 2^{-m}) ≤ C 2^{βm}` is geometric with ratio
+`2^{1/p - 1/q + β/q - 1/2}`.  So `R₁^±` is bounded exactly when
+`1/p - 1/q + β/q < 1/2`, which for `d = 2` is subdominant to the constraints
+defining `Δ_β`. -/
+
+theorem brsProp52Coeff_le {E : Set ℝ} {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p q : ℝ} (hq : 0 < q) (m : ℕ) :
+    brsProp52Coeff E p q m ≤
+      ENNReal.ofReal
+        ((2 * Cβ * 3 ^ (q * (1 - 1 / p) + 1)) ^ (1 / q) *
+          (2 : ℝ) ^ ((1 / 2 + (β - (q * (1 - 1 / p) + 1)) / q) * (m : ℝ))) := by
+  set e : ℝ := q * (1 - 1 / p) + 1 with he
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  have hdm : brsDyadic m = (2 : ℝ) ^ (-(m : ℝ)) := brsDyadic_eq_rpow m
+  have hdpos : (0 : ℝ) < brsDyadic m := brsDyadic_pos m
+  have h3e : (0 : ℝ) ≤ (3 : ℝ) ^ e := Real.rpow_nonneg (by norm_num) _
+  have hCm : (0 : ℝ) ≤ Cβ * (2 : ℝ) ^ (β * (m : ℝ)) :=
+    mul_nonneg hCβ (Real.rpow_nonneg h2.le _)
+  have hker0 : (0 : ℝ) ≤ 2 * (3 * brsDyadic m) ^ e :=
+    mul_nonneg (by norm_num) (Real.rpow_nonneg (by positivity) _)
+  have hcst : (0 : ℝ) ≤ 2 * Cβ * 3 ^ e :=
+    mul_nonneg (mul_nonneg (by norm_num) hCβ) h3e
+  -- the covering factor
+  have hcov : (intervalCoveringNumber E (brsDyadic m) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (m : ℝ))) := by
+    rw [hdm]
+    exact hN m
+  have hker : (2 : ENNReal) * ENNReal.ofReal (3 * brsDyadic m) ^ e =
+      ENNReal.ofReal (2 * (3 * brsDyadic m) ^ e) := by
+    rw [ENNReal.ofReal_rpow_of_pos (by positivity),
+      ← ENNReal.ofReal_ofNat 2, ← ENNReal.ofReal_mul (by norm_num)]
+  have hprod : (intervalCoveringNumber E (brsDyadic m) : ENNReal) *
+      ((2 : ENNReal) * ENNReal.ofReal (3 * brsDyadic m) ^ e) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (m : ℝ)) *
+        (2 * (3 * brsDyadic m) ^ e)) := by
+    rw [hker]
+    refine le_trans (mul_le_mul' hcov le_rfl) ?_
+    rw [← ENNReal.ofReal_mul hCm]
+  refine le_trans (mul_le_mul' (le_refl
+    (ENNReal.ofReal (brsDyadic m ^ (-(1 / 2) : ℝ))))
+    (ENNReal.rpow_le_rpow hprod (by positivity))) ?_
+  rw [ENNReal.ofReal_rpow_of_nonneg (mul_nonneg hCm hker0) (by positivity),
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg hdpos.le _)]
+  refine ENNReal.ofReal_le_ofReal (le_of_eq ?_)
+  -- the real identity
+  have hsplit : (3 * brsDyadic m) ^ e = 3 ^ e * (2 : ℝ) ^ (-(m : ℝ) * e) := by
+    rw [hdm, Real.mul_rpow (by norm_num) (Real.rpow_nonneg h2.le _),
+      ← Real.rpow_mul h2.le]
+  have hinner : Cβ * (2 : ℝ) ^ (β * (m : ℝ)) * (2 * (3 * brsDyadic m) ^ e) =
+      (2 * Cβ * 3 ^ e) * (2 : ℝ) ^ ((β - e) * (m : ℝ)) := by
+    rw [hsplit, show Cβ * (2 : ℝ) ^ (β * (m : ℝ)) *
+          (2 * ((3 : ℝ) ^ e * (2 : ℝ) ^ (-(m : ℝ) * e))) =
+        (2 * Cβ * 3 ^ e) *
+          ((2 : ℝ) ^ (β * (m : ℝ)) * (2 : ℝ) ^ (-(m : ℝ) * e)) from by ring,
+      ← Real.rpow_add h2,
+      show β * (m : ℝ) + -(m : ℝ) * e = (β - e) * (m : ℝ) from by ring]
+  rw [hinner, Real.mul_rpow hcst (Real.rpow_nonneg h2.le _),
+    ← Real.rpow_mul h2.le, hdm, ← Real.rpow_mul h2.le,
+    show (2 : ℝ) ^ (-(m : ℝ) * -(1 / 2 : ℝ)) *
+        ((2 * Cβ * 3 ^ e) ^ (1 / q) *
+          (2 : ℝ) ^ ((β - e) * (m : ℝ) * (1 / q))) =
+      (2 * Cβ * 3 ^ e) ^ (1 / q) *
+        ((2 : ℝ) ^ (-(m : ℝ) * -(1 / 2 : ℝ)) *
+          (2 : ℝ) ^ ((β - e) * (m : ℝ) * (1 / q))) from by ring,
+    ← Real.rpow_add h2,
+    show -(m : ℝ) * -(1 / 2 : ℝ) + (β - e) * (m : ℝ) * (1 / q) =
+      (1 / 2 + (β - e) / q) * (m : ℝ) from by ring]
+
+theorem tsum_brsProp52Coeff_ne_top {E : Set ℝ} {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p q : ℝ} (hp : 0 < p) (hq : 0 < q)
+    (hsum : 1 / p - 1 / q + β / q < 1 / 2) :
+    (∑' m : ℕ, brsProp52Coeff E p q m) ≠ ⊤ := by
+  set e : ℝ := q * (1 - 1 / p) + 1 with he
+  set b : ℝ := 1 / 2 + (β - e) / q with hb
+  have hbneg : b < 0 := by
+    have hq' : q ≠ 0 := ne_of_gt hq
+    have hid : (β - e) / q = β / q - 1 + 1 / p - 1 / q := by
+      rw [he]
+      field_simp
+      ring
+    rw [hb, hid]
+    linarith
+  set c : ℝ := (2 * Cβ * 3 ^ e) ^ (1 / q) with hc
+  have hc0 : 0 ≤ c := Real.rpow_nonneg (by
+    exact mul_nonneg (mul_nonneg (by norm_num) hCβ)
+      (Real.rpow_nonneg (by norm_num) _)) _
+  have hle : (∑' m : ℕ, brsProp52Coeff E p q m) ≤
+      ∑' m : ℕ, ENNReal.ofReal (c * (2 : ℝ) ^ (b * (m : ℝ))) :=
+    ENNReal.tsum_le_tsum fun m => brsProp52Coeff_le hCβ hN hq m
+  refine ne_top_of_le_ne_top ?_ hle
+  rw [tsum_ofReal_geometric hc0 hbneg]
+  exact ENNReal.ofReal_ne_top
+
+/-! ## The planar exponent region
+
+For `d = 2` the triangle `Δ_β` is BRS (5.19):
+`Δ_β = {(1/p,1/q) ∈ [0,1]² : 1/(2p) ≤ 1/q ≤ 1/p, (1-β)/q ≥ 2/p - 1}`.
+The three half-planes are recorded separately, since each is used on its own in
+the branch analysis. -/
+
+theorem convex_exponent_halfplane (c₁ c₂ c₃ : ℝ) :
+    Convex ℝ {z : ExponentPoint | c₁ * z.1 + c₂ * z.2 ≤ c₃} := by
+  intro x hx y hy a b ha hb hab
+  simp only [Set.mem_setOf_eq, Prod.fst_add, Prod.snd_add, Prod.smul_fst,
+    Prod.smul_snd, smul_eq_mul] at hx hy ⊢
+  have h1 : a * (c₁ * x.1 + c₂ * x.2) ≤ a * c₃ :=
+    mul_le_mul_of_nonneg_left hx ha
+  have h2 : b * (c₁ * y.1 + c₂ * y.2) ≤ b * c₃ :=
+    mul_le_mul_of_nonneg_left hy hb
+  have heq : c₁ * (a * x.1 + b * y.1) + c₂ * (a * x.2 + b * y.2) =
+      a * (c₁ * x.1 + c₂ * x.2) + b * (c₁ * y.1 + c₂ * y.2) := by ring
+  rw [heq]
+  have hsum : a * c₃ + b * c₃ = c₃ := by
+    rw [← add_mul, hab, one_mul]
+  linarith
+
+theorem Q2_two (beta : ℝ) : Q2 2 beta = (1 / (1 + beta), 1 / (1 + beta)) := by
+  unfold Q2
+  norm_num
+
+theorem Delta_two_subset_halfplane {beta c₁ c₂ c₃ : ℝ}
+    (h1 : c₁ * (Q1 : ExponentPoint).1 + c₂ * (Q1 : ExponentPoint).2 ≤ c₃)
+    (h2 : c₁ * (Q2 2 beta).1 + c₂ * (Q2 2 beta).2 ≤ c₃)
+    (h3 : c₁ * (P3rad 2 beta).1 + c₂ * (P3rad 2 beta).2 ≤ c₃) :
+    Delta 2 beta ⊆ {z : ExponentPoint | c₁ * z.1 + c₂ * z.2 ≤ c₃} := by
+  rw [Delta]
+  refine convexHull_min ?_ (convex_exponent_halfplane c₁ c₂ c₃)
+  intro z hz
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hz
+  rcases hz with h | h | h <;> (rw [h]; assumption)
+
+/-- `Δ_β ⊆ {1/q ≤ 1/p}`, i.e. `p ≤ q`. -/
+theorem Delta_two_le_diag {beta : ℝ} (hβ0 : 0 ≤ beta) :
+    Delta 2 beta ⊆ {z : ExponentPoint | z.2 ≤ z.1} := by
+  have hA : (0 : ℝ) < 1 + beta := by linarith
+  have hB : (0 : ℝ) < 3 + beta := by linarith
+  refine subset_trans (Delta_two_subset_halfplane
+    (c₁ := -1) (c₂ := 1) (c₃ := 0) ?_ ?_ ?_) ?_
+  · rw [Q1]; norm_num
+  · rw [Q2_two]; norm_num
+  · rw [P3rad_two]
+    simp only []
+    rw [show (-1 : ℝ) * (2 / (3 + beta)) + 1 * (1 / (3 + beta)) =
+      -(1 / (3 + beta)) from by ring]
+    have : (0 : ℝ) < 1 / (3 + beta) := by positivity
+    linarith
+  · intro z hz
+    simp only [Set.mem_setOf_eq] at hz ⊢
+    linarith
+
+/-- `Δ_β ⊆ {1/p ≤ 2/q}`, i.e. `q ≤ 2p`. -/
+theorem Delta_two_le_half {beta : ℝ} (hβ0 : 0 ≤ beta) :
+    Delta 2 beta ⊆ {z : ExponentPoint | z.1 ≤ 2 * z.2} := by
+  have hA : (0 : ℝ) < 1 + beta := by linarith
+  have hB : (0 : ℝ) < 3 + beta := by linarith
+  refine subset_trans (Delta_two_subset_halfplane
+    (c₁ := 1) (c₂ := -2) (c₃ := 0) ?_ ?_ ?_) ?_
+  · rw [Q1]; norm_num
+  · rw [Q2_two]
+    simp only []
+    rw [show (1 : ℝ) * (1 / (1 + beta)) + (-2) * (1 / (1 + beta)) =
+      -(1 / (1 + beta)) from by ring]
+    have : (0 : ℝ) < 1 / (1 + beta) := by positivity
+    linarith
+  · rw [P3rad_two]
+    simp only []
+    rw [show (1 : ℝ) * (2 / (3 + beta)) + (-2) * (1 / (3 + beta)) = 0 from by
+      ring]
+  · intro z hz
+    simp only [Set.mem_setOf_eq] at hz ⊢
+    linarith
+
+/-- `Δ_β ⊆ {(1-β)/q ≥ 2/p - 1}`. -/
+theorem Delta_two_minkowski {beta : ℝ} (hβ0 : 0 ≤ beta) :
+    Delta 2 beta ⊆
+      {z : ExponentPoint | 2 * z.1 + (beta - 1) * z.2 ≤ 1} := by
+  have hA : (0 : ℝ) < 1 + beta := by linarith
+  have hB : (0 : ℝ) < 3 + beta := by linarith
+  refine Delta_two_subset_halfplane (c₁ := 2) (c₂ := beta - 1) (c₃ := 1) ?_ ?_ ?_
+  · rw [Q1]; norm_num
+  · rw [Q2_two]
+    simp only []
+    rw [show (2 : ℝ) * (1 / (1 + beta)) + (beta - 1) * (1 / (1 + beta)) =
+      (1 + beta) / (1 + beta) from by ring, div_self (ne_of_gt hA)]
+  · rw [P3rad_two]
+    simp only []
+    rw [show (2 : ℝ) * (2 / (3 + beta)) + (beta - 1) * (1 / (3 + beta)) =
+      (3 + beta) / (3 + beta) from by ring, div_self (ne_of_gt hB)]
+
+/-! ## The `ν♯` constraint of Theorem 1.2
+
+BRS's condition is `ν♯(q/2−1)/q + 1/p − 1/q ≤ 1/2`.  It is recorded here for
+`2 ≤ q < ∞` only: for `q < 2` the argument `q/2 − 1` is negative, where `ν♯`
+is flat and equals the upper Minkowski dimension `β`
+(`brrsLegendreAssouadFunction_eq_zero_of_nonpos`), and the resulting condition
+`β/q + 1/p − 1/q ≤ 1/2` is already implied by the Minkowski half-plane of
+`Δ_β`; and for `q = ∞` the wedge `Δ_β ⊆ {1/q ≤ 1/p ≤ 2/q}` forces
+`(1/p, 1/q) = (0,0)`.  So on `Δ_β` the guarded and unguarded conditions cut out
+the same set. -/
+def brsNuConstraint (E : Set ℝ) : Set ExponentPoint :=
+  {z : ExponentPoint | 0 < z.2 → z.2 ≤ 1 / 2 →
+    z.2 * _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+        (1 / (2 * z.2) - 1) + z.1 - z.2 ≤ 1 / 2}
+
+/-- **Theorem 1.2, the necessity half.** -/
+theorem radialTypeSet_two_subset_region {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hdim : upperMinkowskiDimension E = β) :
+    radialTypeSet 2 E ⊆ Delta 2 β ∩ brsNuConstraint E := by
+  intro z hz
+  have hΔ : z ∈ Delta 2 β :=
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim hz
+  refine ⟨hΔ, ?_⟩
+  intro hz2pos hz2half
+  obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hz
+  have hz1 : z.2 ≤ z.1 := Delta_two_le_diag hβ0 hΔ
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos hz1
+  have hz1eq : z.1 = (P⁻¹).toReal := by rw [hzeq]
+  have hz2eq : z.2 = (Q⁻¹).toReal := by rw [hzeq]
+  have hPtop : P ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz1eq
+    simp at hz1eq
+    exact absurd hz1eq (ne_of_gt hz1pos)
+  have hQtop : Q ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz2eq
+    simp at hz2eq
+    exact absurd hz2eq (ne_of_gt hz2pos)
+  have hp1 : (1 : ℝ) ≤ P.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+  have hq1 : (1 : ℝ) ≤ Q.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+  have hp0 : (0 : ℝ) < P.toReal := lt_of_lt_of_le zero_lt_one hp1
+  have hq0 : (0 : ℝ) < Q.toReal := lt_of_lt_of_le zero_lt_one hq1
+  have hz1p : z.1 = 1 / P.toReal := by
+    rw [hz1eq, ENNReal.toReal_inv, one_div]
+  have hz2q : z.2 = 1 / Q.toReal := by
+    rw [hz2eq, ENNReal.toReal_inv, one_div]
+  have hq2 : (2 : ℝ) ≤ Q.toReal := by
+    rw [hz2q] at hz2half
+    rw [div_le_div_iff₀ hq0 (by norm_num)] at hz2half
+    linarith
+  have hstrong' : HasRadialStrongType 2 E (ENNReal.ofReal P.toReal)
+      (ENNReal.ofReal Q.toReal) := by
+    rw [ENNReal.ofReal_toReal hPtop, ENNReal.ofReal_toReal hQtop]
+    exact hstrong
+  have hkey := legendreAssouad_condition_of_hasRadialStrongType
+    (d := 2) (by norm_num) hE hEne hp0 hq2 hstrong'
+  simp only [Nat.cast_ofNat, show ((2 : ℝ) - 1) = 1 from by norm_num,
+    one_mul] at hkey
+  rw [hz1p, hz2q, show 1 / (2 * (1 / Q.toReal)) - 1 = Q.toReal / 2 - 1 from by
+    field_simp]
+  linarith [hkey]
+
+/-! ## The covering hypothesis of Proposition 5.5(ii)
+
+`HasBRSCoveringBound E p q AE` asks for `N(E,δ)^{1/q} ≤ AE δ^{-(1-2/p+1/q)}`
+on the whole range `0 < δ ≤ 6`.  Under the Minkowski bound it holds exactly
+when `1 - 2/p + (1-β)/q > 0`, which for `d = 2` is the Minkowski half-plane of
+`Δ_β`. -/
+
+theorem intervalCoveringNumber_le_one_of_one_le {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {δ : ℝ} (hδ : 1 ≤ δ) :
+    intervalCoveringNumber E δ ≤ 1 := by
+  have hcov : IsIntervalCover E δ {(3 / 2 : ℝ)} := by
+    intro x hx
+    obtain ⟨h1, h2⟩ := hE hx
+    refine Set.mem_iUnion₂.mpr ⟨3 / 2, Finset.mem_singleton_self _, ?_⟩
+    constructor <;> [linarith; linarith]
+  simpa using intervalCoveringNumber_le_card hcov
+
+/-- **The covering hypothesis of Proposition 5.5(ii), from the Minkowski
+dimension.** -/
+theorem exists_brsCoveringBound_of_minkowski {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hM : HasUpperMinkowskiExponent E β) {p q : ℝ} (hp0 : 0 < p) (hq0 : 0 < q)
+    (hexp : 0 < 1 - 2 / p + (1 - β) / q) :
+    ∃ AE : ℝ, 0 < AE ∧ HasBRSCoveringBound E p q AE := by
+  set S : ℝ := 1 - 2 / p + (1 - β) / q with hS
+  set ε : ℝ := q * S / 2 with hε
+  have hεpos : 0 < ε := by
+    rw [hε]
+    positivity
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM hεpos
+  set σ : ℝ := 1 - 2 / p + 1 / q with hσ
+  have hqne : q ≠ 0 := ne_of_gt hq0
+  have hσeq : σ - (β + ε) / q = S / 2 := by
+    have h1 : (β + ε) / q = β / q + S / 2 := by
+      rw [hε]
+      field_simp
+    rw [hσ, h1, hS]
+    field_simp
+    ring
+  have hσpos : 0 < σ := by
+    have h1 : (0 : ℝ) ≤ (β + ε) / q := by positivity
+    have h2 : 0 < S / 2 := by rw [hS] at hexp ⊢; linarith
+    linarith [hσeq]
+  set AE : ℝ := max (C ^ (1 / q)) ((6 : ℝ) ^ σ) with hAE
+  have hAEpos : 0 < AE := lt_of_lt_of_le (Real.rpow_pos_of_pos hC _)
+    (le_max_left _ _)
+  refine ⟨AE, hAEpos, fun δ hδ hδ6 => ?_⟩
+  rcases lt_or_ge δ 1 with hδ1 | hδ1
+  · -- the Minkowski range
+    have hNr : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ C * δ ^ (-(β + ε)) := by
+      have h := hbound δ hδ hδ1 Set.univ
+      rwa [Set.inter_univ] at h
+    have hNe : ((intervalCoveringNumber E δ : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (C * δ ^ (-(β + ε))) := by
+      rw [← ENNReal.ofReal_natCast]
+      exact ENNReal.ofReal_le_ofReal hNr
+    refine le_trans (ENNReal.rpow_le_rpow hNe (by positivity)) ?_
+    rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by positivity)]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have hstep : (C * δ ^ (-(β + ε))) ^ (1 / q) =
+        C ^ (1 / q) * δ ^ (-((β + ε) / q)) := by
+      rw [Real.mul_rpow hC.le (Real.rpow_nonneg hδ.le _),
+        ← Real.rpow_mul hδ.le]
+      congr 1
+      field_simp
+    rw [hstep]
+    have hmono : δ ^ (-((β + ε) / q)) ≤ AE / C ^ (1 / q) * δ ^ (-σ) := by
+      have hCq : (0 : ℝ) < C ^ (1 / q) := Real.rpow_pos_of_pos hC _
+      have hratio : C ^ (1 / q) ≤ AE := le_max_left _ _
+      have hone : (1 : ℝ) ≤ AE / C ^ (1 / q) := by
+        rw [le_div_iff₀ hCq, one_mul]
+        exact hratio
+      have hpow : δ ^ (-((β + ε) / q)) ≤ δ ^ (-σ) := by
+        refine Real.rpow_le_rpow_of_exponent_ge hδ hδ1.le ?_
+        have : σ - (β + ε) / q = S / 2 := hσeq
+        have hS2 : 0 < S / 2 := by rw [hS] at hexp ⊢; linarith
+        linarith
+      calc δ ^ (-((β + ε) / q)) ≤ δ ^ (-σ) := hpow
+        _ = 1 * δ ^ (-σ) := (one_mul _).symm
+        _ ≤ AE / C ^ (1 / q) * δ ^ (-σ) :=
+            mul_le_mul_of_nonneg_right hone (Real.rpow_nonneg hδ.le _)
+    have hCq : (0 : ℝ) < C ^ (1 / q) := Real.rpow_pos_of_pos hC _
+    calc C ^ (1 / q) * δ ^ (-((β + ε) / q))
+        ≤ C ^ (1 / q) * (AE / C ^ (1 / q) * δ ^ (-σ)) :=
+          mul_le_mul_of_nonneg_left hmono hCq.le
+      _ = AE * δ ^ (-σ) := by field_simp
+  · -- the trivial range
+    have hNe : ((intervalCoveringNumber E δ : ℕ) : ENNReal) ≤ 1 := by
+      have h := intervalCoveringNumber_le_one_of_one_le hE hδ1
+      exact_mod_cast h
+    refine le_trans (ENNReal.rpow_le_rpow hNe (by positivity)) ?_
+    rw [ENNReal.one_rpow]
+    have hgoal : (1 : ℝ) ≤ AE * δ ^ (-σ) := by
+      have hsix : (6 : ℝ) ^ σ ≤ AE := le_max_right _ _
+      have hpow : (6 : ℝ) ^ (-σ) ≤ δ ^ (-σ) :=
+        Real.rpow_le_rpow_of_nonpos hδ hδ6 (by linarith)
+      have hsixpos : (0 : ℝ) < (6 : ℝ) ^ σ := Real.rpow_pos_of_pos (by norm_num) _
+      have hid : (6 : ℝ) ^ σ * (6 : ℝ) ^ (-σ) = 1 := by
+        rw [← Real.rpow_add (by norm_num)]
+        simp
+      calc (1 : ℝ) = (6 : ℝ) ^ σ * (6 : ℝ) ^ (-σ) := hid.symm
+        _ ≤ AE * (6 : ℝ) ^ (-σ) :=
+            mul_le_mul_of_nonneg_right hsix
+              (Real.rpow_nonneg (by norm_num) _)
+        _ ≤ AE * δ ^ (-σ) := mul_le_mul_of_nonneg_left hpow hAEpos.le
+    calc (1 : ENNReal) = ENNReal.ofReal 1 := by simp
+      _ ≤ ENNReal.ofReal (AE * δ ^ (-σ)) := ENNReal.ofReal_le_ofReal hgoal
+
+/-! ## The logarithmic block constant of a geometric covering sequence
+
+For a geometric `A j = a ρ^j` the block constant `brsSeqBlockConst` is
+`≍ (k+1) ρ^k + ρ^{k+1}/(1-ρ)`, and `Σ_k (k+1) ρ^k < ∞`: this is BRS's
+`Σ_ℓ (1+ℓ) sup_{n ≥ ℓ} N(E,2^{-n})^{1/q} 2^{-n/q}`, finite whenever the
+Minkowski dimension is `< 1`. -/
+
+theorem summable_succ_mul_geometric {ρ : ℝ} (hρ0 : 0 ≤ ρ) (hρ1 : ρ < 1) :
+    Summable fun k : ℕ => ((k : ℝ) + 1) * ρ ^ k := by
+  have hnorm : ‖ρ‖ < 1 := by
+    rw [Real.norm_of_nonneg hρ0]
+    exact hρ1
+  have h1 : Summable fun k : ℕ => (k : ℝ) ^ 1 * ρ ^ k :=
+    summable_pow_mul_geometric_of_norm_lt_one 1 hnorm
+  have h2 : Summable fun k : ℕ => ρ ^ k :=
+    summable_geometric_of_lt_one hρ0 hρ1
+  refine (h1.add h2).congr fun k => ?_
+  rw [pow_one]
+  ring
+
+theorem tsum_geometric_shift_pow {a ρ : ℝ} (hρ0 : 0 ≤ ρ) (hρ1 : ρ < 1) (k : ℕ) :
+    (∑' j : ℕ, a * ρ ^ (k + 1 + j)) = a * ρ ^ (k + 1) * (1 - ρ)⁻¹ := by
+  have hgeom : Summable fun j : ℕ => ρ ^ j :=
+    summable_geometric_of_lt_one hρ0 hρ1
+  have hcongr : ∀ j : ℕ, a * ρ ^ (k + 1 + j) = (a * ρ ^ (k + 1)) * ρ ^ j := by
+    intro j
+    rw [pow_add]
+    ring
+  rw [tsum_congr hcongr, tsum_mul_left, tsum_geometric_of_lt_one hρ0 hρ1]
+
+theorem tsum_ofReal_geometric_shift_ne_top {a ρ c : ℝ} (ha : 0 ≤ a)
+    (hρ0 : 0 ≤ ρ) (hρ1 : ρ < 1) (hc : 0 ≤ c) :
+    (∑' m : ℕ, ENNReal.ofReal (a * ρ ^ (m + 1) * c)) ≠ ⊤ := by
+  have hsum : Summable fun m : ℕ => a * ρ ^ (m + 1) * c := by
+    have hgeom : Summable fun m : ℕ => ρ ^ m :=
+      summable_geometric_of_lt_one hρ0 hρ1
+    refine (hgeom.mul_left (a * ρ * c)).congr fun m => ?_
+    rw [pow_succ]
+    ring
+  have hnn : ∀ m : ℕ, 0 ≤ a * ρ ^ (m + 1) * c := fun m => by
+    have : (0 : ℝ) ≤ ρ ^ (m + 1) := pow_nonneg hρ0 _
+    positivity
+  rw [← ENNReal.ofReal_tsum_of_nonneg hnn hsum]
+  exact ENNReal.ofReal_ne_top
+
+/-- **The logarithmic block sum of a geometric covering sequence is
+finite.** -/
+theorem tsum_brsSeqBlockConst_ne_top_of_geometric {q a ρ : ℝ} (ha : 0 ≤ a)
+    (hρ0 : 0 < ρ) (hρ1 : ρ < 1) :
+    (∑' k : ℕ, brsSeqBlockConst q (fun j => a * ρ ^ j) k) ≠ ⊤ := by
+  set A : ℕ → ℝ := fun j => a * ρ ^ j with hA
+  have hAnn : ∀ j : ℕ, 0 ≤ A j := fun j => by
+    rw [hA]
+    exact mul_nonneg ha (pow_nonneg hρ0.le _)
+  have hinv : (0 : ℝ) < (1 - ρ)⁻¹ := by
+    refine inv_pos.mpr ?_
+    linarith
+  set g : ℕ → ℝ := fun k =>
+    ((k : ℝ) + 1) * ((7 : ℝ) ^ (1 / q) * A k) +
+      (2 : ℝ) ^ (5 / 2 + 1 / q) * (a * ρ ^ (k + 1) * (1 - ρ)⁻¹) with hg
+  have hgnn : ∀ k : ℕ, 0 ≤ g k := by
+    intro k
+    have h1 : (0 : ℝ) ≤ (7 : ℝ) ^ (1 / q) := Real.rpow_nonneg (by norm_num) _
+    have h2 : (0 : ℝ) ≤ (2 : ℝ) ^ (5 / 2 + 1 / q) :=
+      Real.rpow_nonneg (by norm_num) _
+    have h3 : (0 : ℝ) ≤ a * ρ ^ (k + 1) * (1 - ρ)⁻¹ :=
+      mul_nonneg (mul_nonneg ha (pow_nonneg hρ0.le _)) hinv.le
+    have h4 : (0 : ℝ) ≤ ((k : ℝ) + 1) * ((7 : ℝ) ^ (1 / q) * A k) := by
+      have : (0 : ℝ) ≤ (7 : ℝ) ^ (1 / q) * A k := mul_nonneg h1 (hAnn k)
+      positivity
+    rw [hg]
+    exact add_nonneg h4 (mul_nonneg h2 h3)
+  have hgsum : Summable g := by
+    have h1 : Summable fun k : ℕ =>
+        ((k : ℝ) + 1) * ((7 : ℝ) ^ (1 / q) * A k) := by
+      refine ((summable_succ_mul_geometric hρ0.le hρ1).mul_left
+        ((7 : ℝ) ^ (1 / q) * a)).congr fun k => ?_
+      rw [hA]
+      ring
+    have h2 : Summable fun k : ℕ =>
+        (2 : ℝ) ^ (5 / 2 + 1 / q) * (a * ρ ^ (k + 1) * (1 - ρ)⁻¹) := by
+      refine ((summable_geometric_of_lt_one hρ0.le hρ1).mul_left
+        ((2 : ℝ) ^ (5 / 2 + 1 / q) * (a * ρ * (1 - ρ)⁻¹))).congr fun k => ?_
+      rw [pow_succ]
+      ring
+    exact h1.add h2
+  have hterm : ∀ k : ℕ,
+      brsSeqBlockConst q A k = ENNReal.ofReal (g k) := by
+    intro k
+    have hshift : (∑' j : ℕ, ENNReal.ofReal (A (k + 1 + j))) =
+        ENNReal.ofReal (a * ρ ^ (k + 1) * (1 - ρ)⁻¹) := by
+      have hs : Summable fun j : ℕ => A (k + 1 + j) := by
+        refine ((summable_geometric_of_lt_one hρ0.le hρ1).mul_left
+          (a * ρ ^ (k + 1))).congr fun j => ?_
+        rw [hA, pow_add]
+        ring
+      rw [← ENNReal.ofReal_tsum_of_nonneg (fun j => hAnn _) hs]
+      congr 1
+      rw [hA]
+      exact tsum_geometric_shift_pow hρ0.le hρ1 k
+    have hfirst : ((k : ENNReal) + 1) *
+        ENNReal.ofReal ((7 : ℝ) ^ (1 / q) * A k) =
+        ENNReal.ofReal (((k : ℝ) + 1) * ((7 : ℝ) ^ (1 / q) * A k)) := by
+      rw [← ENNReal.ofReal_natCast k, ← ENNReal.ofReal_one,
+        ← ENNReal.ofReal_add (by positivity) (by norm_num),
+        ← ENNReal.ofReal_mul (by positivity)]
+    rw [brsSeqBlockConst, hshift, hfirst, hg,
+      ← ENNReal.ofReal_mul (Real.rpow_nonneg (by norm_num) _),
+      ← ENNReal.ofReal_add (by
+        have h1 : (0 : ℝ) ≤ (7 : ℝ) ^ (1 / q) := Real.rpow_nonneg (by norm_num) _
+        have : (0 : ℝ) ≤ (7 : ℝ) ^ (1 / q) * A k := mul_nonneg h1 (hAnn k)
+        positivity) (by
+        have h2 : (0 : ℝ) ≤ (2 : ℝ) ^ (5 / 2 + 1 / q) :=
+          Real.rpow_nonneg (by norm_num) _
+        have h3 : (0 : ℝ) ≤ a * ρ ^ (k + 1) * (1 - ρ)⁻¹ :=
+          mul_nonneg (mul_nonneg ha (pow_nonneg hρ0.le _)) hinv.le
+        exact mul_nonneg h2 h3)]
+  rw [tsum_congr hterm, ← ENNReal.ofReal_tsum_of_nonneg hgnn hgsum]
+  exact ENNReal.ofReal_ne_top
+
+/-! ## The covering sequence of Proposition 5.5(iii)
+
+`HasBRSCoveringSeq E q A` asks for `N(E,δ)^{1/q} ≤ A j δ^{-1/q}` on
+`0 < δ ≤ 6·2^{-j}`.  Under the Minkowski bound with exponent `β + ε < 1` the
+choice `A j = C^{1/q} (6·2^{-j})^{ε/q}` works, and it is geometric with ratio
+`2^{-ε/q} < 1`, so the logarithmic block sum converges. -/
+
+theorem pow_rpow_natCast_comm {x : ℝ} (hx : 0 ≤ x) (j : ℕ) (θ : ℝ) :
+    (x ^ j) ^ θ = (x ^ θ) ^ j := by
+  rw [← Real.rpow_natCast x j, ← Real.rpow_natCast (x ^ θ) j,
+    ← Real.rpow_mul hx, ← Real.rpow_mul hx]
+  congr 1
+  ring
+
+/-- **The covering sequence of Proposition 5.5(iii), from the Minkowski
+dimension.** -/
+theorem exists_brsCoveringSeq_of_minkowski {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β) {q : ℝ} (hq0 : 0 < q) :
+    ∃ a ρ : ℝ, 0 < a ∧ 0 < ρ ∧ ρ < 1 ∧
+      HasBRSCoveringSeq E q (fun j => a * ρ ^ j) := by
+  set ε : ℝ := (1 - β) / 2 with hεdef
+  have hεpos : 0 < ε := by rw [hεdef]; linarith
+  have hbe0 : (0 : ℝ) ≤ β + ε := by linarith
+  have hεid : 1 - β - ε = ε := by rw [hεdef]; ring
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM hεpos
+  set θ : ℝ := ε / q with hθdef
+  have hθpos : 0 < θ := by rw [hθdef]; positivity
+  set C₁ : ℝ := max C ((6 : ℝ) ^ (β + ε)) with hC₁def
+  have hC₁pos : 0 < C₁ := lt_of_lt_of_le hC (le_max_left _ _)
+  set c₀ : ℝ := C₁ ^ (1 / q) with hc₀def
+  have hc₀pos : 0 < c₀ := Real.rpow_pos_of_pos hC₁pos _
+  set ρ : ℝ := (1 / 2 : ℝ) ^ θ with hρdef
+  have hρpos : 0 < ρ := Real.rpow_pos_of_pos (by norm_num) _
+  have hρ1 : ρ < 1 := by
+    rw [hρdef]
+    exact Real.rpow_lt_one (by norm_num) (by norm_num) hθpos
+  set a : ℝ := c₀ * (6 : ℝ) ^ θ with hadef
+  have hapos : 0 < a := by
+    have : (0 : ℝ) < (6 : ℝ) ^ θ := Real.rpow_pos_of_pos (by norm_num) _
+    rw [hadef]
+    positivity
+  -- the exponent identity `θ - 1/q = -(β+ε)/q`
+  have hexpid : θ - 1 / q = -((β + ε) / q) := by
+    rw [hθdef, hεdef]
+    field_simp
+    ring
+  refine ⟨a, ρ, hapos, hρpos, hρ1, fun j δ hδ hδD => ?_⟩
+  show (intervalCoveringNumber E δ : ENNReal) ^ (1 / q) ≤
+    ENNReal.ofReal (a * ρ ^ j * δ ^ (-(1 / q)))
+  set D : ℝ := 6 * (1 / 2 : ℝ) ^ j with hDdef
+  have hD0 : 0 < D := by
+    rw [hDdef]
+    positivity
+  have hD6 : D ≤ 6 := by
+    rw [hDdef]
+    have h1 : (1 / 2 : ℝ) ^ j ≤ 1 := pow_le_one₀ (by norm_num) (by norm_num)
+    nlinarith
+  have hAj : a * ρ ^ j = c₀ * D ^ θ := by
+    rw [hadef, hρdef, hDdef,
+      Real.mul_rpow (by norm_num) (pow_nonneg (by norm_num) _),
+      pow_rpow_natCast_comm (by norm_num : (0 : ℝ) ≤ 1 / 2) j θ]
+    ring
+  rw [hAj]
+  rcases lt_or_ge δ 1 with hδ1 | hδ1
+  · -- the Minkowski range
+    have hNr : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤
+        C₁ * δ ^ (-(β + ε)) := by
+      have h := hbound δ hδ hδ1 Set.univ
+      rw [Set.inter_univ] at h
+      refine le_trans h ?_
+      exact mul_le_mul_of_nonneg_right (le_max_left _ _)
+        (Real.rpow_nonneg hδ.le _)
+    have hNe : ((intervalCoveringNumber E δ : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (C₁ * δ ^ (-(β + ε))) := by
+      rw [← ENNReal.ofReal_natCast]
+      exact ENNReal.ofReal_le_ofReal hNr
+    refine le_trans (ENNReal.rpow_le_rpow hNe (by positivity)) ?_
+    rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by positivity)]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have hstep : (C₁ * δ ^ (-(β + ε))) ^ (1 / q) =
+        c₀ * δ ^ (-((β + ε) / q)) := by
+      rw [hc₀def, Real.mul_rpow hC₁pos.le (Real.rpow_nonneg hδ.le _),
+        ← Real.rpow_mul hδ.le]
+      congr 1
+      field_simp
+    rw [hstep, ← hexpid, Real.rpow_sub hδ]
+    have hpow : δ ^ θ ≤ D ^ θ := Real.rpow_le_rpow hδ.le hδD hθpos.le
+    have hδq : (0 : ℝ) < δ ^ (1 / q) := Real.rpow_pos_of_pos hδ _
+    rw [Real.rpow_neg hδ.le, div_eq_mul_inv]
+    have hinvpos : (0 : ℝ) ≤ (δ ^ (1 / q))⁻¹ := by positivity
+    calc c₀ * (δ ^ θ * (δ ^ (1 / q))⁻¹)
+        = c₀ * δ ^ θ * (δ ^ (1 / q))⁻¹ := by ring
+      _ ≤ c₀ * D ^ θ * (δ ^ (1 / q))⁻¹ :=
+          mul_le_mul_of_nonneg_right
+            (mul_le_mul_of_nonneg_left hpow hc₀pos.le) hinvpos
+  · -- the trivial range
+    have hNe : ((intervalCoveringNumber E δ : ℕ) : ENNReal) ≤ 1 := by
+      have h := intervalCoveringNumber_le_one_of_one_le hE hδ1
+      exact_mod_cast h
+    refine le_trans (ENNReal.rpow_le_rpow hNe (by positivity)) ?_
+    rw [ENNReal.one_rpow]
+    have hD1 : (1 : ℝ) ≤ D := le_trans hδ1 hδD
+    have hgoal : (1 : ℝ) ≤ c₀ * D ^ θ * δ ^ (-(1 / q)) := by
+      have hstep1 : D ^ (-(1 / q)) ≤ δ ^ (-(1 / q)) :=
+        Real.rpow_le_rpow_of_nonpos hδ hδD (neg_nonpos.mpr (by positivity))
+      have hstep2 : c₀ * D ^ θ * D ^ (-(1 / q)) =
+          c₀ * D ^ (-((β + ε) / q)) := by
+        rw [mul_assoc, ← Real.rpow_add hD0,
+          show θ + -(1 / q) = -((β + ε) / q) from by rw [← hexpid]; ring]
+      have hstep3 : (6 : ℝ) ^ (-((β + ε) / q)) ≤ D ^ (-((β + ε) / q)) :=
+        Real.rpow_le_rpow_of_nonpos hD0 hD6 (neg_nonpos.mpr (by positivity))
+      have hstep4 : (1 : ℝ) ≤ c₀ * (6 : ℝ) ^ (-((β + ε) / q)) := by
+        have hbase : (6 : ℝ) ^ ((β + ε) / q) ≤ c₀ := by
+          rw [hc₀def]
+          have h1 : ((6 : ℝ) ^ (β + ε)) ^ (1 / q) ≤ C₁ ^ (1 / q) :=
+            Real.rpow_le_rpow (Real.rpow_nonneg (by norm_num) _)
+              (le_max_right _ _) (by positivity)
+          refine le_trans (le_of_eq ?_) h1
+          rw [← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 6)]
+          congr 1
+          field_simp
+        have hpos6 : (0 : ℝ) < (6 : ℝ) ^ ((β + ε) / q) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        have hid : (6 : ℝ) ^ ((β + ε) / q) * (6 : ℝ) ^ (-((β + ε) / q)) = 1 := by
+          rw [← Real.rpow_add (by norm_num)]
+          simp
+        calc (1 : ℝ) = (6 : ℝ) ^ ((β + ε) / q) * (6 : ℝ) ^ (-((β + ε) / q)) :=
+              hid.symm
+          _ ≤ c₀ * (6 : ℝ) ^ (-((β + ε) / q)) :=
+              mul_le_mul_of_nonneg_right hbase
+                (Real.rpow_nonneg (by norm_num) _)
+      calc (1 : ℝ) ≤ c₀ * (6 : ℝ) ^ (-((β + ε) / q)) := hstep4
+        _ ≤ c₀ * D ^ (-((β + ε) / q)) :=
+            mul_le_mul_of_nonneg_left hstep3 hc₀pos.le
+        _ = c₀ * D ^ θ * D ^ (-(1 / q)) := hstep2.symm
+        _ ≤ c₀ * D ^ θ * δ ^ (-(1 / q)) :=
+            mul_le_mul_of_nonneg_left hstep1
+              (mul_nonneg hc₀pos.le (Real.rpow_nonneg hD0.le _))
+    calc (1 : ENNReal) = ENNReal.ofReal 1 := by simp
+      _ ≤ ENNReal.ofReal (c₀ * D ^ θ * δ ^ (-(1 / q))) :=
+          ENNReal.ofReal_le_ofReal hgoal
+
+/-! ## Proposition 5.4(i) with the constant uniform in the profile
+
+The assembly of Theorem 1.2 needs a *single* constant valid for every profile,
+because the ambient constant of `HasRadialStrongTypeCont` must not depend on
+the datum.  The constants of `prop54_brsRemTwoTwo*_interior` are already
+profile-independent — they are built from the covering exponent, the resolution
+data and the two geometric series — so the statements are simply restated with
+the profile quantified inside. -/
+
+theorem prop54_brsRemTwoTwoLeft_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {φ : ℝ → ℝ} (hφ : ContDiff ℝ 1 φ) (hφcs : HasCompactSupport φ)
+    (hφnorm : (∫ x : ℝ, φ x) = 1)
+    (hφd : ContDiff ℝ 1 (deriv φ)) (hφdcs : HasCompactSupport (deriv φ))
+    {Aφ Aφ' : ℝ} (hAφ : (∫ y : ℝ, |φ y|) ≤ Aφ)
+    (hAφ' : (∫ y : ℝ, |deriv φ y|) ≤ Aφ')
+    {υ : ℝ → ℝ} (hυeq : ∀ j : ℕ, brsLPKernel φ j = brsDilate υ j)
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hA : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {p q r : ℝ} (hp1 : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q) (hr2 : r < 2) (hq2p : q < 2 * p)
+    {Cs : ℝ} (hCs : 0 ≤ Cs)
+    (hCslow : (Aφ + Aφ') * ((1 - r / 2) ^ (-(1 / r)) *
+      (2 : ℝ) ^ (3 * (1 / r - 1 / 2))) ≤ Cs)
+    (hCsLP : brsKernelConst Mu A N r ^ (1 / r) +
+      brsKernelConst Mu' A' N r ^ (1 / r) ≤ Cs)
+    (hK : brsSumExpK β (1 / r - 1 / 2) q < 0)
+    (hM : brsSumExpM β (1 / r - 1 / 2) q < 0) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp : (1 : ℝ) ≤ p := hp1.le
+  have hq1 : (1 : ℝ) ≤ q := le_of_lt (lt_trans hr hrq)
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  obtain ⟨CF, hCFpos, hFbound⟩ := prop56_brsBFarWindow' hE hp1 hq0 hq2p
+  set CN : ℝ := (((2 : ℝ) ^ |1 - q / 2| * Cβ * Cs ^ q) /
+      (1 - (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q)) ^ (1 / q) /
+    (1 - (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q)) with hCNdef
+  have hKden : (0 : ℝ) < 1 - (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q := by
+    have h : (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q < 1 :=
+      calc (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q < (2 : ℝ) ^ (0 : ℝ) :=
+            Real.rpow_lt_rpow_of_exponent_lt (by norm_num) hK
+        _ = 1 := Real.rpow_zero 2
+    linarith
+  have hMden : (0 : ℝ) <
+      1 - (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q) := by
+    have hneg : brsSumExpM β (1 / r - 1 / 2) q / q < 0 :=
+      div_neg_of_neg_of_pos hM hq0
+    have h : (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q) < 1 :=
+      calc (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q) < (2 : ℝ) ^ (0 : ℝ) :=
+            Real.rpow_lt_rpow_of_exponent_lt (by norm_num) hneg
+        _ = 1 := Real.rpow_zero 2
+    linarith
+  have hCNnn : 0 ≤ CN := by
+    rw [hCNdef]
+    have hnum : (0 : ℝ) ≤ (((2 : ℝ) ^ |1 - q / 2| * Cβ * Cs ^ q) /
+        (1 - (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q)) ^ (1 / q) := by
+      refine Real.rpow_nonneg ?_ _
+      have h1 : (0 : ℝ) < (2 : ℝ) ^ |1 - q / 2| :=
+        Real.rpow_pos_of_pos (by norm_num) _
+      have h2 : (0 : ℝ) ≤ Cs ^ q := Real.rpow_nonneg hCs _
+      positivity
+    positivity
+  refine ⟨(2 : ℝ) ^ ((q - 1) / q) * (CN + CF), by positivity,
+    fun g hg Cg hgbd => ?_⟩
+  have hFb := hFbound g hg.measurable
+  have hNb0 := brs_near_interior_family hE hCβ hN hφ hφcs hφnorm hφd hφdcs hAφ
+    hAφ' hυeq hυ hcs hR hυ' hcs' hR' hbd hA hAnn hbd' hA' hA'nn hmom hmom' hg
+    hgbd hp hr hrq hpq hrel hr2 hCs hCslow hCsLP hK hM
+  have hswap : (∫⁻ x : ℝ, ENNReal.ofReal x *
+      (∑' m : ℕ, ∑' k : ℕ, brsNearFamily 3 φ g E m k x) ^ q) =
+      ∫⁻ x : ℝ, (∑' m : ℕ, ∑' k : ℕ,
+        brsNearFamily 3 φ g E m k x) ^ q * ENNReal.ofReal x :=
+    lintegral_congr fun x => mul_comm _ _
+  have hNb : (∫⁻ x : ℝ, ENNReal.ofReal x *
+      (∑' m : ℕ, ∑' k : ℕ, brsNearFamily 3 φ g E m k x) ^ q) ^ (1 / q) ≤
+      ENNReal.ofReal CN * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+    rw [hswap]
+    exact hNb0
+  have hNmeas : Measurable fun x : ℝ => ENNReal.ofReal x *
+      (∑' m : ℕ, ∑' k : ℕ, brsNearFamily 3 φ g E m k x) ^ q := by
+    refine ENNReal.measurable_ofReal.mul (Measurable.pow_const ?_ q)
+    exact Measurable.ennreal_tsum fun m => Measurable.ennreal_tsum fun k =>
+      measurable_brsNearFamily 3 hφ hφcs hg E m k
+  exact lintegral_rpow_le_of_two_bounds hq1 hNmeas
+    (fun x => brsRemTwoTwoLeft_rpow_le hE hφ.continuous hφcs hφnorm hg hgbd hq1 x)
+    hCNnn hCFpos.le hNb hFb
+
+theorem prop54_brsRemTwoTwoRight_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' E)
+        ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {φ : ℝ → ℝ} (hφ : ContDiff ℝ 1 φ) (hφcs : HasCompactSupport φ)
+    (hφnorm : (∫ x : ℝ, φ x) = 1)
+    (hφd : ContDiff ℝ 1 (deriv φ)) (hφdcs : HasCompactSupport (deriv φ))
+    {Aφ Aφ' : ℝ} (hAφ : (∫ y : ℝ, |φ y|) ≤ Aφ)
+    (hAφ' : (∫ y : ℝ, |deriv φ y|) ≤ Aφ')
+    {υ : ℝ → ℝ} (hυeq : ∀ j : ℕ, brsLPKernel φ j = brsDilate υ j)
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hA : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {p q r : ℝ} (hp1 : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q) (hr2 : r < 2) (hq2p : q < 2 * p)
+    {Cs : ℝ} (hCs : 0 ≤ Cs)
+    (hCslow : (Aφ + Aφ') * ((1 - r / 2) ^ (-(1 / r)) *
+      (2 : ℝ) ^ (3 * (1 / r - 1 / 2))) ≤ Cs)
+    (hCsLP : brsKernelConst Mu A N r ^ (1 / r) +
+      brsKernelConst Mu' A' N r ^ (1 / r) ≤ Cs)
+    (hK : brsSumExpK β (1 / r - 1 / 2) q < 0)
+    (hM : brsSumExpM β (1 / r - 1 / 2) q < 0) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp : (1 : ℝ) ≤ p := hp1.le
+  have hq1 : (1 : ℝ) ≤ q := le_of_lt (lt_trans hr hrq)
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  obtain ⟨CF, hCFpos, hFbound⟩ := prop56_brsBFarWindowRight' hE hp1 hq0 hq2p
+  set CN : ℝ := (((2 : ℝ) ^ |1 - q / 2| * Cβ * Cs ^ q) /
+      (1 - (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q)) ^ (1 / q) /
+    (1 - (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q)) with hCNdef
+  have hKden : (0 : ℝ) < 1 - (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q := by
+    have h : (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q < 1 :=
+      calc (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q < (2 : ℝ) ^ (0 : ℝ) :=
+            Real.rpow_lt_rpow_of_exponent_lt (by norm_num) hK
+        _ = 1 := Real.rpow_zero 2
+    linarith
+  have hMden : (0 : ℝ) <
+      1 - (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q) := by
+    have hneg : brsSumExpM β (1 / r - 1 / 2) q / q < 0 :=
+      div_neg_of_neg_of_pos hM hq0
+    have h : (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q) < 1 :=
+      calc (2 : ℝ) ^ (brsSumExpM β (1 / r - 1 / 2) q / q) < (2 : ℝ) ^ (0 : ℝ) :=
+            Real.rpow_lt_rpow_of_exponent_lt (by norm_num) hneg
+        _ = 1 := Real.rpow_zero 2
+    linarith
+  have hCNnn : 0 ≤ CN := by
+    rw [hCNdef]
+    have hnum : (0 : ℝ) ≤ (((2 : ℝ) ^ |1 - q / 2| * Cβ * Cs ^ q) /
+        (1 - (2 : ℝ) ^ brsSumExpK β (1 / r - 1 / 2) q)) ^ (1 / q) := by
+      refine Real.rpow_nonneg ?_ _
+      have h1 : (0 : ℝ) < (2 : ℝ) ^ |1 - q / 2| :=
+        Real.rpow_pos_of_pos (by norm_num) _
+      have h2 : (0 : ℝ) ≤ Cs ^ q := Real.rpow_nonneg hCs _
+      positivity
+    positivity
+  refine ⟨(2 : ℝ) ^ ((q - 1) / q) * (CN + CF), by positivity,
+    fun g hg Cg hgbd => ?_⟩
+  have hFb := hFbound g hg.measurable
+  have hgt : Continuous fun w : ℝ => g (3 - w) :=
+    hg.comp (continuous_const.sub continuous_id)
+  have hgtbd : ∀ z : ℝ, ‖g (3 - z)‖ ≤ Cg := fun z => hgbd _
+  have hNb0 := brs_near_interior_family (image_three_sub_subset_Icc hE) hCβ hN
+    hφ hφcs hφnorm hφd hφdcs hAφ hAφ' hυeq hυ hcs hR hυ' hcs' hR' hbd hA hAnn
+    hbd' hA' hA'nn hmom hmom' hgt hgtbd hp hr hrq hpq hrel hr2 hCs hCslow hCsLP
+    hK hM
+  rw [lintegral_enorm_comp_three_sub g p] at hNb0
+  have hswap : (∫⁻ x : ℝ, ENNReal.ofReal x *
+      (∑' m : ℕ, ∑' k : ℕ, brsNearFamily 3 φ (fun w : ℝ => g (3 - w))
+        ((fun y : ℝ => 3 - y) '' E) m k x) ^ q) =
+      ∫⁻ x : ℝ, (∑' m : ℕ, ∑' k : ℕ,
+        brsNearFamily 3 φ (fun w : ℝ => g (3 - w))
+          ((fun y : ℝ => 3 - y) '' E) m k x) ^ q * ENNReal.ofReal x :=
+    lintegral_congr fun x => mul_comm _ _
+  have hNb : (∫⁻ x : ℝ, ENNReal.ofReal x *
+      (∑' m : ℕ, ∑' k : ℕ, brsNearFamily 3 φ (fun w : ℝ => g (3 - w))
+        ((fun y : ℝ => 3 - y) '' E) m k x) ^ q) ^ (1 / q) ≤
+      ENNReal.ofReal CN * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+    rw [hswap]
+    exact hNb0
+  have hNmeas : Measurable fun x : ℝ => ENNReal.ofReal x *
+      (∑' m : ℕ, ∑' k : ℕ, brsNearFamily 3 φ (fun w : ℝ => g (3 - w))
+        ((fun y : ℝ => 3 - y) '' E) m k x) ^ q := by
+    refine ENNReal.measurable_ofReal.mul (Measurable.pow_const ?_ q)
+    exact Measurable.ennreal_tsum fun m => Measurable.ennreal_tsum fun k =>
+      measurable_brsNearFamily 3 hφ hφcs hgt ((fun y : ℝ => 3 - y) '' E) m k
+  exact lintegral_rpow_le_of_two_bounds hq1 hNmeas
+    (fun x => brsRemTwoTwoRight_rpow_le hE hφ.continuous hφcs hφnorm hg hgbd
+      hq1 x)
+    hCNnn hCFpos.le hNb hFb
+
+/-! ## Proposition 5.4 in terms of `p`, `q`, `β`, with a uniform constant -/
+
+theorem prop54_brsRemTwoTwoLeft_pq_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q < 2 * p)
+    (hhalf : 1 / p - 1 / q < 1 / 2) (hK : q / p < 2 - β)
+    (hM : q / p < 1 + q / 2 - β) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  obtain ⟨r, hr1, hrq, hrel, hr2imp, hexp⟩ := brs_exponent_data hp1 hpq
+  obtain ⟨hKeq, hMeq⟩ := hexp β
+  obtain ⟨φ, υ, Aφ, Aφ', Mu, A, Mu', A', Cs, hφ, hφcs, hφnorm, hφd, hφdcs,
+    hAφ, hAφ', hυeq, hυ, hcs, hR, hυ', hcs', hR', hbd, hA, hAnn, hbd', hA',
+    hA'nn, hmom, hmom', hCs, hCslow, hCsLP⟩ :=
+    exists_brsResolutionData hr1 (hr2imp hhalf)
+  refine prop54_brsRemTwoTwoLeft_interior_unif hE hCβ hN hφ hφcs hφnorm hφd
+    hφdcs hAφ hAφ' hυeq hυ hcs hR hυ' hcs' hR' hbd hA hAnn hbd' hA' hA'nn hmom
+    hmom' hp1 hr1 hrq hpq hrel (hr2imp hhalf) hq2p hCs hCslow hCsLP ?_ ?_
+  · rw [hKeq]
+    linarith
+  · rw [hMeq]
+    linarith
+
+theorem prop54_brsRemTwoTwoRight_pq_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' E)
+        ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q < 2 * p)
+    (hhalf : 1 / p - 1 / q < 1 / 2) (hK : q / p < 2 - β)
+    (hM : q / p < 1 + q / 2 - β) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  obtain ⟨r, hr1, hrq, hrel, hr2imp, hexp⟩ := brs_exponent_data hp1 hpq
+  obtain ⟨hKeq, hMeq⟩ := hexp β
+  obtain ⟨φ, υ, Aφ, Aφ', Mu, A, Mu', A', Cs, hφ, hφcs, hφnorm, hφd, hφdcs,
+    hAφ, hAφ', hυeq, hυ, hcs, hR, hυ', hcs', hR', hbd, hA, hAnn, hbd', hA',
+    hA'nn, hmom, hmom', hCs, hCslow, hCsLP⟩ :=
+    exists_brsResolutionData hr1 (hr2imp hhalf)
+  refine prop54_brsRemTwoTwoRight_interior_unif hE hCβ hN hφ hφcs hφnorm hφd
+    hφdcs hAφ hAφ' hυeq hυ hcs hR hυ' hcs' hR' hbd hA hAnn hbd' hA' hA'nn hmom
+    hmom' hp1 hr1 hrq hpq hrel (hr2imp hhalf) hq2p hCs hCslow hCsLP ?_ ?_
+  · rw [hKeq]
+    linarith
+  · rw [hMeq]
+    linarith
+
+/-! ## `R₂^±` for `p < q < 2p` in weighted form, uniformly in the profile -/
+
+theorem prop54_brsRemTwoTwoLeft_pq_weighted_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q < 2 * p)
+    (hhalf : 1 / p - 1 / q < 1 / 2) (hK : q / p < 2 - β)
+    (hM : q / p < 1 + q / 2 - β) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  obtain ⟨C, hC0, hbd⟩ := prop54_brsRemTwoTwoLeft_pq_unif hE hCβ hN hp1 hpq
+    hq2p hhalf hK hM
+  refine ⟨C * (4 : ℝ) ^ (1 / p), by positivity, fun g hg => ?_⟩
+  obtain ⟨Cg, hgbd⟩ := exists_bound_brsLocalize hg
+  have hLHS : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x *
+        brsRemTwoTwoLeft E (brsLocalize g) x ^ q := by
+    refine lintegral_congr fun x => ?_
+    by_cases hx : 0 ≤ x
+    · rw [brsRemTwoTwoLeft_brsLocalize hE g hx]
+    · rw [ENNReal.ofReal_eq_zero.mpr (le_of_not_ge hx), zero_mul, zero_mul]
+  rw [hLHS]
+  refine le_trans (hbd (brsLocalize g) (continuous_brsLocalize hg) Cg hgbd) ?_
+  rw [ENNReal.ofReal_mul hC0, mul_assoc]
+  refine mul_le_mul' le_rfl ?_
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_enorm_brsLocalize_le hp0)
+    (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+    ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+
+theorem prop54_brsRemTwoTwoRight_pq_weighted_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' E)
+        ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q < 2 * p)
+    (hhalf : 1 / p - 1 / q < 1 / 2) (hK : q / p < 2 - β)
+    (hM : q / p < 1 + q / 2 - β) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  obtain ⟨C, hC0, hbd⟩ := prop54_brsRemTwoTwoRight_pq_unif hE hCβ hN hp1 hpq
+    hq2p hhalf hK hM
+  refine ⟨C * (4 : ℝ) ^ (1 / p), by positivity, fun g hg => ?_⟩
+  obtain ⟨Cg, hgbd⟩ := exists_bound_brsLocalize hg
+  have hLHS : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x *
+        brsRemTwoTwoRight E (brsLocalize g) x ^ q := by
+    refine lintegral_congr fun x => ?_
+    by_cases hx : 0 ≤ x
+    · rw [brsRemTwoTwoRight_brsLocalize hE g hx]
+    · rw [ENNReal.ofReal_eq_zero.mpr (le_of_not_ge hx), zero_mul, zero_mul]
+  rw [hLHS]
+  refine le_trans (hbd (brsLocalize g) (continuous_brsLocalize hg) Cg hgbd) ?_
+  rw [ENNReal.ofReal_mul hC0, mul_assoc]
+  refine mul_le_mul' le_rfl ?_
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_enorm_brsLocalize_le hp0)
+    (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+    ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+
+/-! ## Proposition 5.5(ii) with the constant uniform in the profile -/
+
+theorem prop55ii_brsMainTwoLeft_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0)
+    {p q AE : ℝ} (hp1 : 1 ≤ p) (hp2 : p < 2) (hpq : p ≤ q) (hAE : 0 < AE)
+    (hcov : HasBRSCoveringBound E p q AE) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft E p g r ^ q) ^ (1 / q) ≤
+        C * ((ENNReal.ofReal 2 * ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp1
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp1 hpq
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  set a : ℝ := 1 - 2 / p with hadef
+  have ha : a < 0 := by
+    rw [hadef]
+    have : 1 < 2 / p := by
+      rw [lt_div_iff₀ hp0]
+      linarith
+    linarith
+  have hae : ((((2 : ℕ) : ℝ) - 1) * (1 - 1 / p) - 1) + 1 - 1 / p = a := by
+    rw [hadef]
+    push_cast
+    ring
+  have hdyad := hasBRSCoveringBound_dyadic (E := E) (p := p) (q := q) (AE := AE)
+    hq0 hAE.le hcov (a := a) hadef.symm
+  refine ⟨(2 : ENNReal) ^ (1 - 1 / q) *
+    (ENNReal.ofReal ((5 : ℝ) ^ (1 / q) * (3 / 2)) *
+        ENNReal.ofReal (AE * brsBlockConst p q *
+          ((1 / 2 : ℝ) ^ ((1 / p - 1 / 2) / 2) /
+            (1 - (1 / 2 : ℝ) ^ ((1 / p - 1 / 2) / 2)))) +
+      ENNReal.ofReal ((2 : ℝ) ^ (1 / 2 : ℝ)) *
+        ENNReal.ofReal ((shellConst 2 p q a AE *
+          (blockConstBase ((((2 : ℕ) : ℝ) - 1) * (1 - 1 / p) - 1) p *
+            ((2 : ℝ) ^ (-a)) ^ (2 : ℕ) * (1 - ((2 : ℝ) ^ (-a))⁻¹)⁻¹)) ^ (1 / q))),
+    ?_, fun g hg => ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg ?_ (by simp)) ?_
+    · have : 1 / q ≤ 1 := by
+        rw [div_le_one hq0]
+        exact hq1
+      linarith
+    · exact ENNReal.add_ne_top.mpr
+        ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top,
+          ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top⟩
+  · have hnear := lintegral_brsMainZeroMaj_bound hE hEne hp1 hp2 hpq hAE.le hcov hg
+    have hfar := prop55ii_brsMainInfLeft hE hEne hEnull hp1 hq1 hpq hae ha
+      (by positivity : (0 : ℝ) < AE) hdyad hg
+    rw [show ((2 : ℕ) - 1) = 1 from by norm_num] at hfar
+    simp only [pow_one] at hfar
+    have hsplit : ∀ᵐ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft E p g r ^ q ≤
+        ENNReal.ofReal r *
+          (brsMainZeroMaj E p q g r +
+            ENNReal.ofReal ((2 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsMainInfLeft E p g r) ^ q := by
+      have hnull : ∀ᵐ r : ℝ, r ∉ closure E := by
+        rw [ae_iff]
+        simpa using hEnull
+      filter_upwards [hnull] with r hr
+      by_cases hr0 : 0 < r
+      · refine mul_le_mul' le_rfl (ENNReal.rpow_le_rpow ?_ hq0.le)
+        refine le_trans (brsMainTwoLeft_le_split hr0) ?_
+        refine add_le_add ?_ le_rfl
+        rw [brsMainZeroMaj]
+        exact brsMainZeroLeft_le_tsum_shellMaj hE hEne hp1 hp2.le hq0 hg hr
+      · rw [ENNReal.ofReal_eq_zero.mpr (by linarith [not_lt.mp hr0]), zero_mul,
+          zero_mul]
+    refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono_ae hsplit)
+      (by positivity)) ?_
+    refine le_trans (lintegral_radial_rpow_add_le
+      (measurable_brsMainZeroMaj E p q hg) ENNReal.ofReal_ne_top hq1) ?_
+    refine le_trans (mul_le_mul' le_rfl
+      (add_le_add hnear (mul_le_mul' le_rfl hfar))) ?_
+    refine le_trans (mul_le_mul' (le_refl ((2 : ENNReal) ^ (1 - 1 / q))) ?_)
+      (le_of_eq (mul_assoc _ _ _).symm)
+    refine le_trans (le_of_eq ?_) add_mul_le_add_mul_add
+    ring
+
+theorem prop55ii_brsMainTwoRight_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0)
+    {p q AE : ℝ} (hp1 : 1 ≤ p) (hp2 : p < 2) (hpq : p ≤ q) (hAE : 0 < AE)
+    (hcov : HasBRSCoveringBound E p q AE) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight E p g r ^ q) ^ (1 / q) ≤
+        C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp1
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp1 hpq
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  set a : ℝ := 1 - 2 / p with hadef
+  have ha : a < 0 := by
+    rw [hadef]
+    have : 1 < 2 / p := by
+      rw [lt_div_iff₀ hp0]
+      linarith
+    linarith
+  have hae : ((((2 : ℕ) : ℝ) - 1) * (1 - 1 / p) - 1) + 1 - 1 / p = a := by
+    rw [hadef]
+    push_cast
+    ring
+  have hdyad := hasBRSCoveringBound_dyadic (E := E) (p := p) (q := q) (AE := AE)
+    hq0 hAE.le hcov (a := a) hadef.symm
+  refine ⟨(2 : ENNReal) ^ (1 - 1 / q) *
+    (ENNReal.ofReal (brsMainZeroRightTotalConst p q * AE) +
+      ENNReal.ofReal ((shellConst 2 p q a AE *
+        (blockConstBase ((((2 : ℕ) : ℝ) - 1) * (1 - 1 / p) - 1) p *
+          ((2 : ℝ) ^ (-a)) ^ (2 : ℕ) * (1 - ((2 : ℝ) ^ (-a))⁻¹)⁻¹)) ^ (1 / q))),
+    ?_, fun g hg => ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg ?_ (by simp)) ?_
+    · have : 1 / q ≤ 1 := by
+        rw [div_le_one hq0]
+        exact hq1
+      linarith
+    · exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ENNReal.ofReal_ne_top⟩
+  · have hnear :=
+      lintegral_brsMainZeroRightMaj_bound hE hp1 hp2 hpq hAE.le hcov hg
+    have hfar := prop55ii_brsMainInfRight hE hEne hEnull hp1 hq1 hpq hae ha
+      (by positivity : (0 : ℝ) < AE) hdyad hg
+    rw [show ((2 : ℕ) - 1) = 1 from by norm_num] at hfar
+    simp only [pow_one] at hfar
+    have hsplit : ∀ r : ℝ, ENNReal.ofReal r * brsMainTwoRight E p g r ^ q ≤
+        ENNReal.ofReal r *
+          (brsMainZeroRightMaj E p q g r + 1 * brsMainInfRight E p g r) ^ q := by
+      intro r
+      by_cases hr0 : 0 < r
+      · refine mul_le_mul' le_rfl (ENNReal.rpow_le_rpow ?_ hq0.le)
+        refine le_trans (brsMainTwoRight_le_split hr0) ?_
+        rw [one_mul]
+        exact add_le_add (brsMainZeroRight_le_maj hE hp1 hp2.le hq0 r) le_rfl
+      · rw [ENNReal.ofReal_eq_zero.mpr (by linarith [not_lt.mp hr0]), zero_mul,
+          zero_mul]
+    refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono hsplit)
+      (by positivity)) ?_
+    refine le_trans (lintegral_radial_rpow_add_le
+      (measurable_brsMainZeroRightMaj E p q hg) (by simp) hq1) ?_
+    refine le_trans (mul_le_mul' le_rfl
+      (add_le_add hnear (le_trans (le_of_eq (one_mul _)) hfar))) ?_
+    refine le_trans (mul_le_mul' (le_refl ((2 : ENNReal) ^ (1 - 1 / q))) ?_)
+      (le_of_eq (mul_assoc _ _ _).symm)
+    refine le_trans (le_of_eq ?_) add_mul_le_add_mul_add
+    ring
+
+/-! ## Proposition 5.5(iii) with the constant uniform in the profile -/
+
+/-- **Proposition 5.5(iii) for `𝔐_2^-`.** -/
+theorem prop55iii_brsMainTwoLeft_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {q : ℝ} (hq2 : 2 ≤ q)
+    {A : ℕ → ℝ} (hA0 : ∀ j : ℕ, 0 ≤ A j) (hAmono : Antitone A)
+    (hcovA : HasBRSCoveringSeq E q A)
+    (hAfin : (∑' k : ℕ, brsSeqBlockConst q A k) ≠ ⊤) {B : ℝ} (hB : 0 < B)
+    (hcovB : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((2 : ℕ) : ℝ)))))
+    :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft E 2 g r ^ q) ^ (1 / q) ≤
+        C * ((ENNReal.ofReal 2 *
+              ∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+            (1 / (2 : ℝ))) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hpq : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) ≤ q := by
+    norm_num
+    linarith
+  obtain ⟨Λ, hΛ, hkey⟩ := prop55iii_brsMainInfLeft hE hEne hEnull hpq hB hcovB
+  refine ⟨(2 : ENNReal) ^ (1 - 1 / q) *
+    (ENNReal.ofReal ((5 : ℝ) ^ (1 / q) * (3 / 2)) *
+        (∑' k : ℕ, brsSeqBlockConst q A k) +
+      ENNReal.ofReal ((2 : ℝ) ^ (1 / 2 : ℝ)) * Λ ^ (1 / q)), ?_, fun g hg => ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg ?_ (by simp)) ?_
+    · have : 1 / q ≤ 1 := by
+        rw [div_le_one hq0]
+        exact hq1
+      linarith
+    · exact ENNReal.add_ne_top.mpr
+        ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top hAfin,
+          ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+            (ENNReal.rpow_ne_top_of_nonneg (by positivity) hΛ)⟩
+  have hnear := lintegral_brsMainZeroMaj_bound_two hE hEne hq2 hA0 hAmono hcovA hg
+  have hfar0 := hkey g hg
+  rw [show ((2 : ℕ) - 1) = 1 from by norm_num] at hfar0
+  simp only [pow_one, Nat.cast_ofNat, show ((2 : ℝ) - 1) = 1 from by norm_num,
+    div_one, one_div] at hfar0
+  have hfar := rpow_inv_of_le_mul_rpow hq0 hfar0
+  rw [show (2 : ℝ)⁻¹ = 1 / (2 : ℝ) from by norm_num] at hfar
+  have hsplit : ∀ᵐ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft E 2 g r ^ q ≤
+      ENNReal.ofReal r *
+        (brsMainZeroMaj E 2 q g r +
+          ENNReal.ofReal ((2 : ℝ) ^ (1 / 2 : ℝ)) * brsMainInfLeft E 2 g r) ^ q := by
+    have hnull : ∀ᵐ r : ℝ, r ∉ closure E := by
+      rw [ae_iff]
+      simpa using hEnull
+    filter_upwards [hnull] with r hr
+    by_cases hr0 : 0 < r
+    · refine mul_le_mul' le_rfl (ENNReal.rpow_le_rpow ?_ hq0.le)
+      refine le_trans (brsMainTwoLeft_le_split hr0) ?_
+      refine add_le_add ?_ le_rfl
+      rw [brsMainZeroMaj]
+      exact brsMainZeroLeft_le_tsum_shellMaj hE hEne (by norm_num) (by norm_num)
+        hq0 hg hr
+    · rw [ENNReal.ofReal_eq_zero.mpr (by linarith [not_lt.mp hr0]), zero_mul,
+        zero_mul]
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono_ae hsplit)
+    (by positivity)) ?_
+  refine le_trans (lintegral_radial_rpow_add_le
+    (measurable_brsMainZeroMaj E 2 q hg) ENNReal.ofReal_ne_top hq1) ?_
+  refine le_trans (mul_le_mul' le_rfl
+    (add_le_add hnear (mul_le_mul' le_rfl hfar))) ?_
+  refine le_trans (mul_le_mul' (le_refl ((2 : ENNReal) ^ (1 - 1 / q))) ?_)
+    (le_of_eq (mul_assoc _ _ _).symm)
+  refine le_trans (le_of_eq ?_) add_mul_le_add_mul_add
+  ring
+
+
+/-- **Proposition 5.5(iii) for `𝔐_2^+`.** -/
+theorem prop55iii_brsMainTwoRight_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hEnull : volume (closure E) = 0) {q : ℝ} (hq2 : 2 ≤ q)
+    {A : ℕ → ℝ} (hA0 : ∀ j : ℕ, 0 ≤ A j) (hcovA : HasBRSCoveringSeq E q A)
+    (hAsum : (∑' m : ℕ, ENNReal.ofReal (A (m + 1) * brsRightConst 2 q)) ≠ ⊤)
+    {B : ℝ} (hB : 0 < B)
+    (hcovB : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((2 : ℕ) : ℝ)))))
+    :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight E 2 g r ^ q) ^ (1 / q) ≤
+        C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+            (1 / (2 : ℝ))) := by
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hpq : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) ≤ q := by
+    norm_num
+    linarith
+  obtain ⟨Λ, hΛ, hkey⟩ := prop55iii_brsMainInfRight hE hEne hEnull hpq hB hcovB
+  refine ⟨(2 : ENNReal) ^ (1 - 1 / q) *
+    (ENNReal.ofReal ((4 : ℝ) ^ (1 / q) * (3 / 2)) *
+        (∑' m : ℕ, ENNReal.ofReal (A (m + 1) * brsRightConst 2 q)) +
+      Λ ^ (1 / q)), ?_, fun g hg => ?_⟩
+  · refine ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg ?_ (by simp)) ?_
+    · have : 1 / q ≤ 1 := by
+        rw [div_le_one hq0]
+        exact hq1
+      linarith
+    · exact ENNReal.add_ne_top.mpr
+        ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top hAsum,
+          ENNReal.rpow_ne_top_of_nonneg (by positivity) hΛ⟩
+  have hnear := lintegral_brsMainZeroRightMaj_bound_two hE hq2 hA0 hcovA hg
+  have hfar0 := hkey g hg
+  rw [show ((2 : ℕ) - 1) = 1 from by norm_num] at hfar0
+  simp only [pow_one, Nat.cast_ofNat, show ((2 : ℝ) - 1) = 1 from by norm_num,
+    div_one, one_div] at hfar0
+  have hfar := rpow_inv_of_le_mul_rpow hq0 hfar0
+  rw [show (2 : ℝ)⁻¹ = 1 / (2 : ℝ) from by norm_num] at hfar
+  have hsplit : ∀ r : ℝ, ENNReal.ofReal r * brsMainTwoRight E 2 g r ^ q ≤
+      ENNReal.ofReal r *
+        (brsMainZeroRightMaj E 2 q g r + 1 * brsMainInfRight E 2 g r) ^ q := by
+    intro r
+    by_cases hr0 : 0 < r
+    · refine mul_le_mul' le_rfl (ENNReal.rpow_le_rpow ?_ hq0.le)
+      refine le_trans (brsMainTwoRight_le_split hr0) ?_
+      rw [one_mul]
+      exact add_le_add (brsMainZeroRight_le_maj hE (by norm_num) (by norm_num)
+        hq0 r) le_rfl
+    · rw [ENNReal.ofReal_eq_zero.mpr (by linarith [not_lt.mp hr0]), zero_mul,
+        zero_mul]
+  refine le_trans (ENNReal.rpow_le_rpow (lintegral_mono hsplit)
+    (by positivity)) ?_
+  refine le_trans (lintegral_radial_rpow_add_le
+    (measurable_brsMainZeroRightMaj E 2 q hg) (by simp) hq1) ?_
+  refine le_trans (mul_le_mul' le_rfl
+    (add_le_add hnear (le_trans (le_of_eq (one_mul _)) hfar))) ?_
+  refine le_trans (mul_le_mul' (le_refl ((2 : ENNReal) ^ (1 - 1 / q))) ?_)
+    (le_of_eq (mul_assoc _ _ _).symm)
+  refine le_trans (le_of_eq ?_) add_mul_le_add_mul_add
+  ring
+
+/-! ## The main terms `𝔐_p^±` on the interior of `Δ_β`
+
+The three parts of Proposition 5.5 are dispatched on `p ≶ 2`.  For `p < 2` the
+covering hypothesis is `1 - 2/p + (1-β)/q > 0`, which is exactly the Minkowski
+half-plane of `Δ_β`; for `p = 2` the logarithmic covering sequence of
+Proposition 5.5(iii) is geometric because `β < 1`; for `p > 2` no hypothesis on
+`E` is needed. -/
+
+theorem ennreal_two_mul_rpow_le (X : ENNReal) {p : ℝ} (hp : 1 ≤ p) :
+    (ENNReal.ofReal 2 * X) ^ (1 / p) ≤ 2 * X ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p)]
+  refine mul_le_mul' ?_ le_rfl
+  rw [show ENNReal.ofReal 2 = (2 : ENNReal) from by simp]
+  calc (2 : ENNReal) ^ (1 / p) ≤ (2 : ENNReal) ^ (1 : ℝ) :=
+        ENNReal.rpow_le_rpow_of_exponent_le (by norm_num)
+          (by rw [div_le_one hp0]; exact hp)
+    _ = 2 := ENNReal.rpow_one 2
+
+/-- **The two main terms, with a uniform constant, on the interior of
+`Δ_β`.** -/
+theorem exists_brsMainTwoBounds {T : Set ℝ} (hT2 : T ⊆ Icc (1 : ℝ) 2)
+    (hTne : T.Nonempty) (hTnull : volume (closure T) = 0)
+    {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent T β)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q)
+    (hexp : 0 < 1 - 2 / p + (1 - β) / q) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  rcases lt_trichotomy p 2 with hp2 | hp2 | hp2
+  · -- `p < 2`
+    obtain ⟨AE, hAEpos, hcov⟩ :=
+      exists_brsCoveringBound_of_minkowski hT2 hβ0 hM hp0 hq0 hexp
+    obtain ⟨CL, hCLtop, hCL⟩ := prop55ii_brsMainTwoLeft_unif hT2 hTne hTnull
+      hp1.le hp2 hpq.le hAEpos hcov
+    obtain ⟨CR, hCRtop, hCR⟩ := prop55ii_brsMainTwoRight_unif hT2 hTne hTnull
+      hp1.le hp2 hpq.le hAEpos hcov
+    refine ⟨2 * CL + CR, ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (by simp) hCLtop, hCRtop⟩, fun g hg => ?_,
+      fun g hg => ?_⟩
+    · refine le_trans (hCL g hg) ?_
+      refine le_trans (mul_le_mul' le_rfl
+        (add_le_add (ennreal_two_mul_rpow_le _ hp1.le) le_rfl)) ?_
+      have hstep : CL * (2 * (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) ≤
+          2 * CL * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) := by
+        rw [mul_add, mul_add]
+        refine add_le_add (le_of_eq (by ring)) ?_
+        calc CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)
+            = 1 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) := by
+              rw [one_mul]
+          _ ≤ 2 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) :=
+              mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+      exact le_trans hstep (mul_le_mul' le_self_add le_rfl)
+    · exact le_trans (hCR g hg) (mul_le_mul' le_add_self le_rfl)
+  · -- `p = 2`
+    subst hp2
+    have hq2 : (2 : ℝ) ≤ q := hpq.le
+    obtain ⟨a, ρ, hapos, hρpos, hρ1, hcovA⟩ :=
+      exists_brsCoveringSeq_of_minkowski hT2 hβ0 hβ1 hM hq0
+    have hA0 : ∀ j : ℕ, 0 ≤ a * ρ ^ j := fun j =>
+      mul_nonneg hapos.le (pow_nonneg hρpos.le _)
+    have hAmono : Antitone fun j : ℕ => a * ρ ^ j := by
+      intro i j hij
+      refine mul_le_mul_of_nonneg_left ?_ hapos.le
+      obtain ⟨k, hk⟩ := Nat.exists_eq_add_of_le hij
+      rw [hk, pow_add]
+      calc ρ ^ i * ρ ^ k ≤ ρ ^ i * 1 :=
+            mul_le_mul_of_nonneg_left (pow_le_one₀ hρpos.le hρ1.le)
+              (pow_nonneg hρpos.le i)
+        _ = ρ ^ i := mul_one _
+    have hAfin : (∑' k : ℕ, brsSeqBlockConst q (fun j => a * ρ ^ j) k) ≠ ⊤ :=
+      tsum_brsSeqBlockConst_ne_top_of_geometric hapos.le hρpos hρ1
+    have hAsum : (∑' m : ℕ,
+        ENNReal.ofReal ((fun j : ℕ => a * ρ ^ j) (m + 1) *
+          brsRightConst 2 q)) ≠ ⊤ :=
+      tsum_ofReal_geometric_shift_ne_top hapos.le hρpos.le hρ1
+        (brsRightConst_nonneg 2 q)
+    obtain ⟨B, hB, hcovB⟩ :=
+      exists_logcov_bound_of_minkowski hβ0 hβ1 hM hq0 (D := 2) (by norm_num)
+    obtain ⟨CL, hCLtop, hCL⟩ := prop55iii_brsMainTwoLeft_unif hT2 hTne hTnull
+      hq2 hA0 hAmono hcovA hAfin hB hcovB
+    obtain ⟨CR, hCRtop, hCR⟩ := prop55iii_brsMainTwoRight_unif hT2 hTne hTnull
+      hq2 hA0 hcovA hAsum hB hcovB
+    refine ⟨2 * CL + CR, ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (by simp) hCLtop, hCRtop⟩, fun g hg => ?_,
+      fun g hg => ?_⟩
+    · refine le_trans (hCL g hg) ?_
+      refine le_trans (mul_le_mul' le_rfl
+        (add_le_add (ennreal_two_mul_rpow_le _ (by norm_num)) le_rfl)) ?_
+      have hstep : CL *
+            (2 * (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ))) ≤
+          2 * CL *
+            ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ))) := by
+        rw [mul_add, mul_add]
+        refine add_le_add (le_of_eq (by ring)) ?_
+        calc CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+              (1 / (2 : ℝ))
+            = 1 * CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ)) := by rw [one_mul]
+          _ ≤ 2 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                  (1 / (2 : ℝ)) :=
+              mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+      exact le_trans hstep (mul_le_mul' le_self_add le_rfl)
+    · exact le_trans (hCR g hg) (mul_le_mul' le_add_self le_rfl)
+  · -- `p > 2`
+    refine ⟨ENNReal.ofReal (brsMainTotalBoundLeft p) * ENNReal.ofReal 14 ^ (1 / q) +
+      ENNReal.ofReal (brsMainTotalBoundRight p) * ENNReal.ofReal 14 ^ (1 / q),
+      ?_, fun g hg => ?_, fun g hg => ?_⟩
+    · refine ENNReal.add_ne_top.mpr ⟨?_, ?_⟩ <;>
+        exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+          (ENNReal.rpow_ne_top_of_nonneg (by positivity) ENNReal.ofReal_ne_top)
+    · exact le_trans (prop55i_brsMainTwoLeft hT2 hp2 hq0 hg)
+        (mul_le_mul' le_self_add le_self_add)
+    · exact le_trans (prop55i_brsMainTwoRight hT2 hp2 hq0 hg)
+        (mul_le_mul' le_add_self le_self_add)
+
+/-! ## Reflecting the dilation set
+
+`R₂^+` is `R₂^-` for the reflected set `3 - E`, whose covering numbers agree
+with those of `E` because `x ↦ 3 - x` is an isometry. -/
+
+theorem intervalCoveringNumber_image_three_sub_le {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {δ : ℝ} (hδ : 0 < δ) :
+    intervalCoveringNumber ((fun x : ℝ => 3 - x) '' E) δ ≤
+      intervalCoveringNumber E δ := by
+  classical
+  obtain ⟨ι, hι, hcard⟩ :=
+    exists_intervalCover_card_eq_intervalCoveringNumber hE hδ
+  have hcov : IsIntervalCover ((fun x : ℝ => 3 - x) '' E) δ
+      (ι.image fun a : ℝ => 3 - a) := by
+    rintro y ⟨x, hxE, rfl⟩
+    obtain ⟨a, ha, hxa⟩ := Set.mem_iUnion₂.mp (hι hxE)
+    refine Set.mem_iUnion₂.mpr ⟨3 - a, Finset.mem_image.mpr ⟨a, ha, rfl⟩, ?_⟩
+    obtain ⟨h1, h2⟩ := hxa
+    exact ⟨by linarith, by linarith⟩
+  calc intervalCoveringNumber ((fun x : ℝ => 3 - x) '' E) δ
+      ≤ (ι.image fun a : ℝ => 3 - a).card := intervalCoveringNumber_le_card hcov
+    _ ≤ ι.card := Finset.card_image_le
+    _ = intervalCoveringNumber E δ := hcard
+
+/-! ## Theorem 1.2, the sufficiency half
+
+For `(1/p, 1/q)` in the interior of `Δ_β` all three parts of Proposition 5.5
+and Proposition 5.2 apply, with the `ε`-loss of the Minkowski dimension
+absorbed into the strict inequalities.  The extra constraint `q/p < 2 - β` is
+what the available form of Proposition 5.4 needs: it sums the scale series
+geometrically with the *global* covering number instead of closing it by
+Littlewood--Paley, which costs the condition `brsSumExpK < 0`. -/
+
+/-- **The planar radial strong type on the interior of `Δ_β`, under the
+Proposition 5.4 constraint `q/p < 2 - β`.** -/
+theorem hasRadialStrongTypeCont_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β) {p q : ℝ} (hp1 : 1 < p) (hpq : p < q)
+    (hq2p : q < 2 * p) (hexp : 0 < 1 - 2 / p + (1 - β) / q)
+    (hK : q / p < 2 - β) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  -- a countable dense dilation set
+  obtain ⟨T, hTE, hTc, hET⟩ := exists_countable_dense_dilations E
+  have hT2 : T ⊆ Icc (1 : ℝ) 2 := hTE.trans hE
+  have hTne : T.Nonempty := by
+    rcases Set.eq_empty_or_nonempty T with hTempty | hTne
+    · exfalso
+      rw [hTempty, closure_empty] at hET
+      exact absurd (Set.subset_empty_iff.mp hET) (Set.nonempty_iff_ne_empty.mp hEne)
+    · exact hTne
+  have hM' : HasUpperMinkowskiExponent T β := hM.mono hTE
+  have hTnull : volume (closure T) = 0 :=
+    volume_closure_eq_zero_of_minkowski hT2 hβ0 hβ1 hM'
+  -- the two derived exponent inequalities
+  have hqp : q / p < (q + 1 - β) / 2 := by
+    rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)]
+    have hmul : 0 < (1 - 2 / p + (1 - β) / q) * (p * q) := by positivity
+    have hid : (1 - 2 / p + (1 - β) / q) * (p * q) =
+        p * q - 2 * q + (1 - β) * p := by
+      field_simp
+    rw [hid] at hmul
+    nlinarith [hmul]
+  have heps2 : 0 < 1 + q / 2 - β - q / p := by linarith [hqp]
+  -- the `ε`-loss
+  set ε : ℝ := min (2 - β - q / p) (1 + q / 2 - β - q / p) / 2 with hεdef
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    have h1 : 0 < 2 - β - q / p := by linarith
+    have h2 : 0 < 1 + q / 2 - β - q / p := heps2
+    have := lt_min h1 h2
+    linarith
+  have hε1 : ε < 2 - β - q / p := by
+    rw [hεdef]
+    have h1 : 0 < 2 - β - q / p := by linarith
+    have hmin : min (2 - β - q / p) (1 + q / 2 - β - q / p) ≤ 2 - β - q / p :=
+      min_le_left _ _
+    linarith
+  have hε2 : ε < 1 + q / 2 - β - q / p := by
+    rw [hεdef]
+    have h2 : 0 < 1 + q / 2 - β - q / p := heps2
+    have hmin : min (2 - β - q / p) (1 + q / 2 - β - q / p) ≤
+        1 + q / 2 - β - q / p := min_le_right _ _
+    linarith
+  set β' : ℝ := β + ε with hβ'def
+  have hβ'0 : 0 ≤ β' := by rw [hβ'def]; linarith
+  -- the dyadic covering bounds
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM' hεpos
+  have hbound' : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      (intervalCoveringNumber T δ : ℝ) ≤ C * δ ^ (-β') := by
+    intro δ hδ hδ1
+    have h := hbound δ hδ hδ1 Set.univ
+    rwa [Set.inter_univ] at h
+  have hN : ∀ j : ℕ,
+      (intervalCoveringNumber T ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) :=
+    brs_cover_dyadic_of_bound hT2 hC hβ'0 hbound'
+  have hNr : ∀ j : ℕ,
+      (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' T)
+          ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) := by
+    intro j
+    refine le_trans ?_ (hN j)
+    have h := intervalCoveringNumber_image_three_sub_le hT2
+      (δ := (2 : ℝ) ^ (-(j : ℝ))) (Real.rpow_pos_of_pos (by norm_num) _)
+    exact_mod_cast h
+  have hCmax : (0 : ℝ) ≤ max C 1 := le_trans (by norm_num) (le_max_right C 1)
+  -- the exponent hypotheses of Propositions 5.2 and 5.4
+  have hR1cond : 1 / p - 1 / q + β' / q < 1 / 2 := by
+    have hid : 1 / p - 1 / q + (β + ε) / q = (q / p - 1 + (β + ε)) / q := by
+      field_simp
+    rw [hβ'def, hid, div_lt_iff₀ hq0]
+    linarith [hε2]
+  have hKcond : q / p < 2 - β' := by rw [hβ'def]; linarith
+  have hMcond : q / p < 1 + q / 2 - β' := by rw [hβ'def]; linarith
+  have hhalf : 1 / p - 1 / q < 1 / 2 := by
+    have : (0 : ℝ) ≤ β' / q := by positivity
+    linarith [hR1cond]
+  -- the six bounds
+  obtain ⟨CM, hCMtop, hML, hMR⟩ := exists_brsMainTwoBounds hT2 hTne hTnull hβ0
+    hβ1 hM' hp1 hpq hexp
+  have hR1top : (∑' m : ℕ, brsProp52Coeff T p q m) ≠ ⊤ :=
+    tsum_brsProp52Coeff_ne_top hCmax hN hp0 hq0 hR1cond
+  obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_pq_weighted_unif hT2 hCmax
+    hN hp1 hpq hq2p hhalf hKcond hMcond
+  obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_pq_weighted_unif hT2 hCmax
+    hNr hp1 hpq hq2p hhalf hKcond hMcond
+  exact hasRadialStrongTypeCont_two_of_bounds hTE hET hT2 hTc hp1.le hpq.le
+    hCMtop hCMtop hR1top hR1top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top
+    hML hMR (fun g hg => prop52_brsRemTwoOneLeft hT2 hp1 hpq.le hg)
+    (fun g hg => prop52_brsRemTwoOneRight hT2 hp1 hpq.le hg) hR2L hR2R
+
+/-! ## Theorem 1.2 for `d = 2`
+
+The constraint `q/p < 2 - β`, in the coordinates `(1/p, 1/q)` the half-plane
+`1/p < (2-β)/q`, is what the available form of BRS Proposition 5.4(i) needs:
+that form sums the scale series geometrically against the *global* covering
+number, whereas BRS close the scale sum by Littlewood--Paley against the
+localized quantity `ω_m^{p,q}(E,k)`, which leaves only the `ν♯` condition.  On
+`int(Δ_β)` the constraint is implied by the `ν♯` condition whenever
+`ν♯(q/2-1) ≤ q/2 - 1 + β` (Lemma 2.1), so it cuts out a genuinely smaller
+region only near the edge `[P₁, P₃,β^rad]`. -/
+
+/-- The auxiliary Proposition 5.4 constraint `q/p < 2 - β`. -/
+def brsR2Constraint (β : ℝ) : Set ExponentPoint := {z | z.1 < (2 - β) * z.2}
+
+/-- **Theorem 1.2, the sufficiency half, on `int(Δ_β) ∩ {q/p < 2 - β}`.** -/
+theorem interior_Delta_two_inter_subset_radialTypeSetCont {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β) :
+    interior (Delta 2 β) ∩ brsR2Constraint β ⊆ radialTypeSetCont 2 E := by
+  rintro z ⟨hz, hzK⟩
+  obtain ⟨h1, h2, h3⟩ := interior_Delta_strict (by omega : 2 ≤ 2) hβ0 hz
+  obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+    Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0 hβ1.le (interior_subset hz)
+  have hzK' : z.1 < (2 - β) * z.2 := hzK
+  push_cast at h2 h3
+  have hz2pos : 0 < z.2 := by
+    rcases eq_or_lt_of_le hz20 with h | h
+    · exfalso
+      rw [← h] at h1 h2
+      linarith
+    · exact h
+  have hz1pos : 0 < z.1 := lt_trans hz2pos h1
+  have hz1lt : z.1 < 1 := by nlinarith
+  set p : ℝ := 1 / z.1 with hpdef
+  set q : ℝ := 1 / z.2 with hqdef
+  have hp1 : 1 < p := by
+    rw [hpdef, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hq1 : (1 : ℝ) ≤ q := by
+    rw [hqdef, le_div_iff₀ hz2pos, one_mul]
+    exact hz21
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  have hzp : z.1 = 1 / p := by rw [hpdef, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hqdef, one_div_one_div]
+  have hpq : p < q := by
+    rw [hpdef, hqdef]
+    exact one_div_lt_one_div_of_lt hz2pos h1
+  have hq2p : q < 2 * p := by
+    rw [hpdef, hqdef]
+    rw [show (2 : ℝ) * (1 / z.1) = 2 / z.1 from by ring,
+      div_lt_div_iff₀ hz2pos hz1pos, one_mul]
+    linarith
+  have hexp : 0 < 1 - 2 / p + (1 - β) / q := by
+    rw [hpdef, hqdef]
+    rw [show (2 : ℝ) / (1 / z.1) = 2 * z.1 from by field_simp,
+      show (1 - β) / (1 / z.2) = (1 - β) * z.2 from by field_simp]
+    linarith
+  have hK : q / p < 2 - β := by
+    rw [hpdef, hqdef]
+    rw [show (1 / z.2) / (1 / z.1) = z.1 / z.2 from by field_simp,
+      div_lt_iff₀ hz2pos]
+    linarith
+  refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+  · rw [← hzp, ← hzq]
+  · exact hasRadialStrongTypeCont_two hE hEne hβ0 hβ1 hM hp1 hpq hq2p hexp hK
+
+/-- **Theorem 1.2 of BRS, both inclusions.**  The sufficiency half is proved on
+`int(Δ_β) ∩ {q/p < 2 - β}`; the necessity half is BRS's full statement, the
+triangle intersected with the `ν♯` half-plane. -/
+theorem thm12_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β) :
+    interior (Delta 2 β) ∩ brsR2Constraint β ⊆ radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆ Delta 2 β ∩ brsNuConstraint E :=
+  ⟨interior_Delta_two_inter_subset_radialTypeSetCont hE hEne hβ0 hβ1 hM,
+    radialTypeSet_two_subset_region hE hEne hβ0 hdim⟩
+
+/-! ## The `k`-sum with the localized covering exponent of BRS (5.20)
+
+BRS bound the near part at scale `k` by the localized quantity
+`ω_m^{p,q}(E,k) = sup_{|J| = 2^{-k}} 2^{-k(2/q - 1/p)} N(E ∩ J, 2^{-m-k})^{1/q}`
+and close the `k`-sum by Littlewood--Paley.  Their (5.20) says that for
+`ν > ν♯(q/2-1)`,
+
+    |J|^{1-q/2} N(E ∩ J, δ) ≲ δ^{-ν}   for |J| = 2^{-k}, δ ≤ 2^{-k},
+
+which for `δ = 2^{-(k+a)}` reads `N ≤ C 2^{ν(k+a)} 2^{k(1-q/2)}`.  With the
+covering bound in that shape the whole `k`-dependence of one term cancels: the
+factor `2^{-k(1-q/2)}` coming from the window, the covering factor and the
+kernel factor `2^{-(k+a)(1/r - 1/2)q}` combine to `2^{(k+a)(ν - Sq)}`, which is
+largest at `k = 0`. -/
+
+theorem brs_lp_factor_le {q S0 ν Cν KC : ℝ} (hCν : 0 ≤ Cν) (hKC : 0 ≤ KC)
+    (hgeom : ν - S0 * q < 0) (k a : ℕ) :
+    (2 : ℝ) ^ |1 - q / 2| * ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+        (Cν * (2 : ℝ) ^ (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+        (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ S0) ^ q ≤
+      (2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q *
+        (2 : ℝ) ^ ((a : ℝ) * (ν - S0 * q)) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  have hka : ((k + a : ℕ) : ℝ) = (k : ℝ) + (a : ℝ) := by push_cast; ring
+  have e1 : ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) =
+      (2 : ℝ) ^ (-(k : ℝ) * (1 - q / 2)) := (Real.rpow_mul h2.le _ _).symm
+  have e2 : (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ S0) ^ q =
+      KC ^ q * (2 : ℝ) ^ (-((k : ℝ) + (a : ℝ)) * S0 * q) := by
+    rw [Real.mul_rpow hKC (Real.rpow_nonneg (Real.rpow_nonneg h2.le _) _),
+      ← Real.rpow_mul h2.le, ← Real.rpow_mul h2.le, hka]
+  have hpow : (2 : ℝ) ^ (-(k : ℝ) * (1 - q / 2)) *
+        (2 : ℝ) ^ (ν * ((k : ℝ) + (a : ℝ)) + (1 - q / 2) * (k : ℝ)) *
+        (2 : ℝ) ^ (-((k : ℝ) + (a : ℝ)) * S0 * q) =
+      (2 : ℝ) ^ (((k : ℝ) + (a : ℝ)) * (ν - S0 * q)) := by
+    rw [← Real.rpow_add h2, ← Real.rpow_add h2]
+    congr 1
+    ring
+  have hkneg : (k : ℝ) * (ν - S0 * q) ≤ 0 := by
+    have h := mul_le_mul_of_nonneg_left hgeom.le
+      (Nat.cast_nonneg (α := ℝ) k)
+    rwa [mul_zero] at h
+  calc (2 : ℝ) ^ |1 - q / 2| * ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+          (Cν * (2 : ℝ) ^ (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+          (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ S0) ^ q
+      = ((2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q) *
+          ((2 : ℝ) ^ (-(k : ℝ) * (1 - q / 2)) *
+            (2 : ℝ) ^ (ν * ((k : ℝ) + (a : ℝ)) + (1 - q / 2) * (k : ℝ)) *
+            (2 : ℝ) ^ (-((k : ℝ) + (a : ℝ)) * S0 * q)) := by
+        rw [e1, e2, hka]
+        ring
+    _ = ((2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q) *
+          (2 : ℝ) ^ (((k : ℝ) + (a : ℝ)) * (ν - S0 * q)) := by rw [hpow]
+    _ ≤ ((2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q) *
+          (2 : ℝ) ^ ((a : ℝ) * (ν - S0 * q)) := by
+        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+        refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+        nlinarith [hkneg]
+    _ = (2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q *
+          (2 : ℝ) ^ ((a : ℝ) * (ν - S0 * q)) := by ring
+
+/-! ## The `k`-sum with the localized covering exponent
+
+The variant of `tsum_brsNearMax_lp_le` in which the covering bound is BRS
+(5.20): a bound on `|J|^{1-q/2} N(E ∩ J, δ)` rather than on `N(E ∩ J, δ)`
+alone.  The covering data may then depend on the scale `k`, and the whole
+`k`-dependence cancels. -/
+
+theorem tsum_brsNearMax_lp_le' {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {a : ℕ} (ha : 4 ≤ a)
+    {υ : ℝ → ℝ} (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {S : SchwartzMap ℝ ℂ} {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ}
+    (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {Nloc : ℕ → ℕ} (hNloc : ∀ k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ≤ Nloc k)
+    {p q r : ℝ} (hp : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν)
+    (hNbd : ∀ k : ℕ, ((Nloc k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hgeom : ν - (1 / r - 1 / 2) * q < 0)
+    {A₀ : ENNReal}
+    (hA₀ : (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+        (brsSchwartzDilate S (k + a) : ℝ → ℂ) y *
+          brsRefl g (x - y)‖ₑ ^ p) ^ (q / p)) ≤
+      A₀ * (∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p) ^ (q / p)) :
+    (∑' k : ℕ, ∫⁻ x : ℝ, brsNearMax k (k + 1) (brsDilate υ (k + a))
+        (brsLPInput S (k + a) g) E x ^ q * ENNReal.ofReal x) ≤
+      (ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| * Cν *
+            (brsKernelConst Mu A N r ^ (1 / r) +
+              brsKernelConst Mu' A' N r ^ (1 / r)) ^ q *
+            (2 : ℝ) ^ ((a : ℝ) * (ν - (1 / r - 1 / 2) * q))) *
+          (9 : ENNReal) ^ (q / p)) *
+        (A₀ * (∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p) ^ (q / p)) := by
+  have hp1 : (1 : ℝ) ≤ p := hp.le
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := lt_trans (lt_trans zero_lt_one hr) hrq
+  have hMunn : (0 : ℝ) ≤ Mu := le_trans (abs_nonneg (υ 0)) (hbd 0)
+  have hMu'nn : (0 : ℝ) ≤ Mu' := le_trans (abs_nonneg (deriv υ 0)) (hbd' 0)
+  set KC : ℝ := brsKernelConst Mu A N r ^ (1 / r) +
+    brsKernelConst Mu' A' N r ^ (1 / r) with hKCdef
+  have hKCnn : (0 : ℝ) ≤ KC := by
+    rw [hKCdef]
+    have h1 : (0 : ℝ) ≤ brsKernelConst Mu A N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMunn hAnn N hr.le) _
+    have h2 : (0 : ℝ) ≤ brsKernelConst Mu' A' N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMu'nn hA'nn N hr.le) _
+    linarith
+  set Sv : ℝ := 1 / r - 1 / 2 with hSvdef
+  set Const : ENNReal := ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q *
+      (2 : ℝ) ^ ((a : ℝ) * (ν - Sv * q))) * (9 : ENNReal) ^ (q / p)
+    with hConstdef
+  have hper : ∀ k : ℕ, (∫⁻ x : ℝ, brsNearMax k (k + 1) (brsDilate υ (k + a))
+      (brsLPInput S (k + a) g) E x ^ q * ENNReal.ofReal x) ≤
+      Const * (∫⁻ z : ℝ, ‖brsLPInput S (k + a) g z‖ₑ ^ p) ^ (q / p) := by
+    intro k
+    have h := brs_5_9_near_covering_local hE (kw := k) (kt := k + 1)
+      (j := k + a) (by omega) (by omega) hυ hcs hR hυ' hcs' hR'
+      hbd hAι hAnn hbd' hA' hA'nn hmom hmom'
+      (continuous_brsLPInput S (k + a) hg hgbd) hp1 hr hrq hpq hrel
+      (brs_five_two_pow_le ha k) (hNloc k)
+    refine le_trans h ?_
+    set X : ENNReal := ∫⁻ z : ℝ, ‖brsLPInput S (k + a) g z‖ₑ ^ p with hX
+    have hker0 : (0 : ℝ) ≤ KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv :=
+      mul_nonneg hKCnn (Real.rpow_nonneg (Real.rpow_nonneg (by norm_num) _) _)
+    have hcov0 : (0 : ℝ) ≤ Cν * (2 : ℝ) ^
+        (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ)) :=
+      mul_nonneg hCν (Real.rpow_nonneg (by norm_num) _)
+    have hwt0 : (0 : ℝ) ≤ (2 : ℝ) ^ |1 - q / 2| *
+        ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) := by positivity
+    have hkerpow : (ENNReal.ofReal (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv))
+        ^ q = ENNReal.ofReal ((KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q) :=
+      ENNReal.ofReal_rpow_of_nonneg hker0 hq0.le
+    have hnine : ((9 : ENNReal) * X) ^ (q / p) =
+        (9 : ENNReal) ^ (q / p) * X ^ (q / p) :=
+      ENNReal.mul_rpow_of_nonneg _ _ (by positivity)
+    have hcombine : ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+          ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+        (ENNReal.ofReal (Cν * (2 : ℝ) ^
+              (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+          ENNReal.ofReal ((KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q)) =
+        ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+          ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+          (Cν * (2 : ℝ) ^ (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+          (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q) := by
+      rw [← ENNReal.ofReal_mul hcov0, ← ENNReal.ofReal_mul hwt0, mul_assoc]
+      congr 1
+      ring
+    calc ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+              ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+            ((Nloc k : ENNReal) *
+              (ENNReal.ofReal (KC *
+                ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv)) ^ q *
+              ((9 : ENNReal) * X) ^ (q / p))
+        ≤ ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+              ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+            ((ENNReal.ofReal (Cν * (2 : ℝ) ^
+                  (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+                ENNReal.ofReal ((KC *
+                  ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q)) *
+              ((9 : ENNReal) ^ (q / p) * X ^ (q / p))) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [hkerpow, hnine]
+          exact mul_le_mul' (mul_le_mul' (hNbd k) le_rfl) le_rfl
+      _ = (ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+              ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+            (ENNReal.ofReal (Cν * (2 : ℝ) ^
+                  (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+              ENNReal.ofReal ((KC *
+                ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q))) *
+            ((9 : ENNReal) ^ (q / p) * X ^ (q / p)) := by ring
+      _ = ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+            ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+            (Cν * (2 : ℝ) ^ (ν * ((k + a : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))) *
+            (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q) *
+            ((9 : ENNReal) ^ (q / p) * X ^ (q / p)) := by rw [hcombine]
+      _ ≤ ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q *
+            (2 : ℝ) ^ ((a : ℝ) * (ν - Sv * q))) *
+            ((9 : ENNReal) ^ (q / p) * X ^ (q / p)) :=
+          mul_le_mul' (ENNReal.ofReal_le_ofReal
+            (brs_lp_factor_le hCν hKCnn hgeom k a)) le_rfl
+      _ = Const * X ^ (q / p) := by
+          rw [hConstdef]
+          ring
+  refine le_trans (ENNReal.tsum_le_tsum hper) ?_
+  rw [ENNReal.tsum_mul_left]
+  refine mul_le_mul' le_rfl ?_
+  refine le_trans (le_of_eq (tsum_congr fun k => ?_)) hA₀
+  rw [lintegral_enorm_brsLPInput_eq S (k + a) hg hgbd p]
+
+/-! ## The centred maximal average, by Hölder
+
+For a profile supported in `[1/4, 4]` the centred average over a window of
+half-width `ρ` obeys `ρ^{-1} ∫_W |g| ≤ ρ^{-1} · 4^{1/p} |W|^{1-1/p} ‖g‖_{L^p(s ds)}`,
+because `s ≥ 1/4` on the window.  Taking `|W| ≤ 2ρ` gives the decay `ρ^{-1/p}`
+useful for small `ρ`, and `|W| ≤ 15/4` the decay `ρ^{-1}` useful for large `ρ`.
+Both are needed: the first makes the weight integral converge at the origin,
+the second at infinity. -/
+
+theorem brsRemTwoCent_le_holder {p : ℝ} (hp : 1 ≤ p) {g : ℝ → ℂ}
+    (hg : Continuous g) (hs1 : ∀ z : ℝ, z < 1 / 4 → g z = 0)
+    (hs2 : ∀ z : ℝ, 4 < z → g z = 0) {ρ L : ℝ} (hρ : 0 < ρ) (hL : 0 < L)
+    (hL1 : 2 * ρ ≤ L ∨ (15 : ℝ) / 4 ≤ L) :
+    brsRemTwoCent (absProfile g) ρ ≤
+      ENNReal.ofReal (ρ⁻¹ * (4 : ℝ) ^ (1 / p) * L ^ (1 - 1 / p)) *
+        (∫⁻ z : ℝ, ENNReal.ofReal z * ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hexp1 : (0 : ℝ) ≤ 1 - 1 / p := by
+    have h1p : 1 / p ≤ 1 := by
+      rw [div_le_one hp0]
+      exact hp
+    linarith
+  set X : ENNReal := ∫⁻ z : ℝ, ENNReal.ofReal z * ‖g z‖ₑ ^ p with hX
+  rw [brsRemTwoCent]
+  refine iSup_le fun x => ?_
+  have hab : x - ρ ≤ x + ρ := by linarith
+  set A : Set ℝ := Icc (x - ρ) (x + ρ) with hA
+  set W : Set ℝ := A ∩ Icc (1 / 4 : ℝ) 4 with hW
+  have hWmeas : MeasurableSet W := (measurableSet_Icc).inter measurableSet_Icc
+  -- the window integral as a set lintegral
+  have hRterm : ‖∫ s in (x - ρ)..(x + ρ), absProfile g s‖ =
+      ∫ s in (x - ρ)..(x + ρ), ‖g s‖ := by
+    have h : (fun s : ℝ => absProfile g s) = fun s : ℝ => ((‖g s‖ : ℝ) : ℂ) := rfl
+    rw [h]
+    exact norm_intervalIntegral_ofReal_nonneg hab _ fun s _ => norm_nonneg _
+  have hconv : ENNReal.ofReal (∫ s in (x - ρ)..(x + ρ), ‖g s‖) =
+      ∫⁻ s in A, ENNReal.ofReal ‖g s‖ := by
+    rw [intervalIntegral.integral_of_le hab,
+      ← MeasureTheory.integral_Icc_eq_integral_Ioc]
+    refine ofReal_integral_eq_lintegral_ofReal ?_ ?_
+    · exact (hg.norm.continuousOn).integrableOn_Icc
+    · exact ae_of_all _ fun s => norm_nonneg _
+  -- restrict to the support
+  have hrestr : (∫⁻ s in A, ENNReal.ofReal ‖g s‖) =
+      ∫⁻ s in W, ENNReal.ofReal ‖g s‖ := by
+    have hpt : ∀ s : ℝ, ENNReal.ofReal ‖g s‖ =
+        (Icc (1 / 4 : ℝ) 4).indicator (fun s => ENNReal.ofReal ‖g s‖) s := by
+      intro s
+      by_cases hs : s ∈ Icc (1 / 4 : ℝ) 4
+      · rw [Set.indicator_of_mem hs]
+      · rw [Set.indicator_of_notMem hs]
+        rcases not_and_or.mp hs with h | h
+        · rw [hs1 s (lt_of_not_ge h)]
+          simp
+        · rw [hs2 s (lt_of_not_ge h)]
+          simp
+    calc (∫⁻ s in A, ENNReal.ofReal ‖g s‖)
+        = ∫⁻ s in A, (Icc (1 / 4 : ℝ) 4).indicator
+            (fun s => ENNReal.ofReal ‖g s‖) s := by
+          exact lintegral_congr fun s => hpt s
+      _ = ∫⁻ s in W, ENNReal.ofReal ‖g s‖ := by
+          rw [lintegral_indicator measurableSet_Icc, Measure.restrict_restrict
+            measurableSet_Icc, Set.inter_comm (Icc (1 / 4 : ℝ) 4) A, hW]
+  -- Hölder on the window
+  have hholder := lintegral_le_rpow_mul_measure_univ
+    (μ := volume.restrict W) (Φ := fun s => ENNReal.ofReal ‖g s‖)
+    hg.norm.measurable.ennreal_ofReal hp
+  rw [Measure.restrict_apply_univ] at hholder
+  -- the measure of the window
+  have hWA : W ⊆ A := Set.inter_subset_left
+  have hWI : W ⊆ Icc (1 / 4 : ℝ) 4 := Set.inter_subset_right
+  have hvol : volume W ≤ ENNReal.ofReal L := by
+    rcases hL1 with h | h
+    · have h1 : volume W ≤ volume A := measure_mono hWA
+      have h2 : volume A = ENNReal.ofReal (2 * ρ) := by
+        rw [hA, Real.volume_Icc]
+        congr 1
+        ring
+      rw [h2] at h1
+      exact le_trans h1 (ENNReal.ofReal_le_ofReal h)
+    · have h1 : volume W ≤ volume (Icc (1 / 4 : ℝ) 4) := measure_mono hWI
+      have h2 : volume (Icc (1 / 4 : ℝ) 4) = ENNReal.ofReal (15 / 4) := by
+        rw [Real.volume_Icc]
+        congr 1
+        norm_num
+      rw [h2] at h1
+      exact le_trans h1 (ENNReal.ofReal_le_ofReal h)
+  -- the weight is comparable to one on the window
+  have hweight : (∫⁻ s in W, (ENNReal.ofReal ‖g s‖) ^ p) ≤
+      ENNReal.ofReal 4 * X := by
+    calc (∫⁻ s in W, (ENNReal.ofReal ‖g s‖) ^ p)
+        ≤ ∫⁻ s in W, ENNReal.ofReal 4 *
+            (ENNReal.ofReal s * (ENNReal.ofReal ‖g s‖) ^ p) := by
+          refine setLIntegral_mono' hWmeas ?_
+          intro s hs
+          have hs4 : (1 : ℝ) / 4 ≤ s := hs.2.1
+          have hone : (1 : ENNReal) ≤ ENNReal.ofReal 4 * ENNReal.ofReal s := by
+            rw [← ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 4),
+              ENNReal.one_le_ofReal]
+            linarith
+          calc (ENNReal.ofReal ‖g s‖) ^ p
+              = 1 * (ENNReal.ofReal ‖g s‖) ^ p := (one_mul _).symm
+            _ ≤ (ENNReal.ofReal 4 * ENNReal.ofReal s) *
+                  (ENNReal.ofReal ‖g s‖) ^ p := mul_le_mul' hone le_rfl
+            _ = ENNReal.ofReal 4 *
+                  (ENNReal.ofReal s * (ENNReal.ofReal ‖g s‖) ^ p) := by ring
+      _ = ENNReal.ofReal 4 *
+            ∫⁻ s in W, ENNReal.ofReal s * (ENNReal.ofReal ‖g s‖) ^ p :=
+          lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+      _ ≤ ENNReal.ofReal 4 * X := by
+          refine mul_le_mul' le_rfl ?_
+          rw [hX]
+          refine le_trans (lintegral_mono' Measure.restrict_le_self
+            fun _ => le_rfl) (le_of_eq (lintegral_congr fun z => ?_))
+          rw [← ofReal_norm (g z)]
+  -- assemble
+  have hstep : ENNReal.ofReal (ρ⁻¹ * ‖∫ s in (x - ρ)..(x + ρ), absProfile g s‖) =
+      ENNReal.ofReal ρ⁻¹ * ∫⁻ s in W, ENNReal.ofReal ‖g s‖ := by
+    rw [hRterm, ENNReal.ofReal_mul (by positivity), hconv, hrestr]
+  rw [hstep]
+  calc ENNReal.ofReal ρ⁻¹ * ∫⁻ s in W, ENNReal.ofReal ‖g s‖
+      ≤ ENNReal.ofReal ρ⁻¹ *
+          ((∫⁻ s in W, (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) *
+            volume W ^ (1 - 1 / p)) := mul_le_mul' le_rfl hholder
+    _ ≤ ENNReal.ofReal ρ⁻¹ *
+          ((ENNReal.ofReal 4 * X) ^ (1 / p) *
+            (ENNReal.ofReal L) ^ (1 - 1 / p)) :=
+        mul_le_mul' le_rfl
+          (mul_le_mul' (ENNReal.rpow_le_rpow hweight (by positivity))
+            (ENNReal.rpow_le_rpow hvol hexp1))
+    _ = ENNReal.ofReal (ρ⁻¹ * (4 : ℝ) ^ (1 / p) * L ^ (1 - 1 / p)) *
+          X ^ (1 / p) := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+          ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4),
+          ENNReal.ofReal_rpow_of_pos hL,
+          ENNReal.ofReal_mul
+            (by positivity : (0 : ℝ) ≤ ρ⁻¹ * (4 : ℝ) ^ (1 / p)),
+          ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤ ρ⁻¹)]
+        ring
+
+/-! ## The `m = 0` family at a general exponent
+
+The dyadic family `Σ_n c 2^{-n} W(2^{n+2} r)` inherits whatever power decay
+`W(ρ) ≲ ρ^{-θ}` holds, with the geometric constant `(1 - 2^{-(1+θ)})^{-1}`. -/
+
+theorem lintegral_rpow_Ioi_lt_top {a : ℝ} (ha : a < -1) :
+    (∫⁻ r in Ioi (1 : ℝ), ENNReal.ofReal (r ^ a)) < ⊤ := by
+  have hint : IntegrableOn (fun r : ℝ => r ^ a) (Ioi 1) volume :=
+    integrableOn_Ioi_rpow_of_lt ha one_pos
+  have hval : ENNReal.ofReal (∫ r in Ioi (1 : ℝ), r ^ a) =
+      ∫⁻ r in Ioi (1 : ℝ), ENNReal.ofReal (r ^ a) := by
+    refine ofReal_integral_eq_lintegral_ofReal hint ?_
+    filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with r hr
+    exact Real.rpow_nonneg (le_of_lt (lt_trans zero_lt_one hr)) _
+  rw [← hval]
+  exact ENNReal.ofReal_lt_top
+
+/-- **The dyadic family of a power-decaying kernel.** -/
+theorem tsum_dyadic_pow_le {M θ c r : ℝ} (hM : 0 ≤ M) (hc : 0 ≤ c) (hr : 0 < r)
+    (hθ : 0 < θ) {W : ℝ → ENNReal} {Y : ENNReal}
+    (hWbd : ∀ ρ : ℝ, 0 < ρ → W ρ ≤ ENNReal.ofReal (M * ρ ^ (-θ)) * Y) :
+    (∑' n : ℕ, ENNReal.ofReal (c / 2 ^ n) * W ((2 : ℝ) ^ (n + 2) * r)) ≤
+      ENNReal.ofReal (c * M * (4 : ℝ) ^ (-θ) / (1 - (2 : ℝ) ^ (-(1 + θ))) *
+        r ^ (-θ)) * Y := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  have hterm : ∀ n : ℕ,
+      ENNReal.ofReal (c / 2 ^ n) * W ((2 : ℝ) ^ (n + 2) * r) ≤
+        ENNReal.ofReal ((c * M * (4 : ℝ) ^ (-θ) * r ^ (-θ)) *
+          (2 : ℝ) ^ (-(1 + θ) * (n : ℝ))) * Y := by
+    intro n
+    have hρ : (0 : ℝ) < (2 : ℝ) ^ (n + 2) * r := by positivity
+    refine le_trans (mul_le_mul' le_rfl (hWbd _ hρ)) ?_
+    rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity)]
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal (le_of_eq ?_)) le_rfl
+    have hsplit : ((2 : ℝ) ^ (n + 2) * r) ^ (-θ) =
+        ((2 : ℝ) ^ (n + 2)) ^ (-θ) * r ^ (-θ) :=
+      Real.mul_rpow (by positivity) hr.le
+    have hpow : ((2 : ℝ) ^ (n + 2)) ^ (-θ) =
+        (2 : ℝ) ^ (-θ * ((n : ℝ) + 2)) := by
+      rw [← Real.rpow_natCast (2 : ℝ) (n + 2), ← Real.rpow_mul h2.le]
+      congr 1
+      push_cast
+      ring
+    have hn : c / 2 ^ n = c * (2 : ℝ) ^ (-(n : ℝ)) := by
+      rw [Real.rpow_neg h2.le, Real.rpow_natCast, div_eq_mul_inv]
+    have hfour : (2 : ℝ) ^ (-θ * ((n : ℝ) + 2)) =
+        (4 : ℝ) ^ (-θ) * (2 : ℝ) ^ (-θ * (n : ℝ)) := by
+      rw [show (4 : ℝ) = (2 : ℝ) ^ (2 : ℝ) from by
+          rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) from by norm_num, Real.rpow_natCast]
+          norm_num,
+        ← Real.rpow_mul h2.le, ← Real.rpow_add h2]
+      congr 1
+      ring
+    rw [hn, hsplit, hpow, hfour,
+      show (2 : ℝ) ^ (-(1 + θ) * (n : ℝ)) =
+        (2 : ℝ) ^ (-(n : ℝ)) * (2 : ℝ) ^ (-θ * (n : ℝ)) from by
+        rw [← Real.rpow_add h2]
+        congr 1
+        ring]
+    ring
+  refine le_trans (ENNReal.tsum_le_tsum hterm) (le_of_eq ?_)
+  rw [ENNReal.tsum_mul_right,
+    tsum_ofReal_geometric (by positivity) (by linarith : -(1 + θ) < 0)]
+  congr 2
+  ring
+
+/-! ## The two power bounds for the centred average -/
+
+theorem brsRemTwoCent_le_pow_small {p : ℝ} (hp : 1 < p) {g : ℝ → ℂ}
+    (hg : Continuous g) (hs1 : ∀ z : ℝ, z < 1 / 4 → g z = 0)
+    (hs2 : ∀ z : ℝ, 4 < z → g z = 0) {ρ : ℝ} (hρ : 0 < ρ) :
+    brsRemTwoCent (absProfile g) ρ ≤
+      ENNReal.ofReal (((4 : ℝ) ^ (1 / p) * (2 : ℝ) ^ (1 - 1 / p)) *
+          ρ ^ (-(1 / p))) *
+        (∫⁻ z : ℝ, ENNReal.ofReal z * ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have h := brsRemTwoCent_le_holder hp.le hg hs1 hs2 hρ
+    (L := 2 * ρ) (by positivity) (Or.inl le_rfl)
+  refine le_trans h (le_of_eq ?_)
+  congr 2
+  rw [Real.mul_rpow (by norm_num) hρ.le, ← Real.rpow_neg_one ρ,
+    show ρ ^ (-1 : ℝ) * (4 : ℝ) ^ (1 / p) *
+        ((2 : ℝ) ^ (1 - 1 / p) * ρ ^ (1 - 1 / p)) =
+      ((4 : ℝ) ^ (1 / p) * (2 : ℝ) ^ (1 - 1 / p)) *
+        (ρ ^ (-1 : ℝ) * ρ ^ (1 - 1 / p)) from by ring,
+    ← Real.rpow_add hρ]
+  congr 2
+  ring
+
+theorem brsRemTwoCent_le_pow_large {p : ℝ} (hp : 1 < p) {g : ℝ → ℂ}
+    (hg : Continuous g) (hs1 : ∀ z : ℝ, z < 1 / 4 → g z = 0)
+    (hs2 : ∀ z : ℝ, 4 < z → g z = 0) {ρ : ℝ} (hρ : 0 < ρ) :
+    brsRemTwoCent (absProfile g) ρ ≤
+      ENNReal.ofReal (((4 : ℝ) ^ (1 / p) * ((15 : ℝ) / 4) ^ (1 - 1 / p)) *
+          ρ ^ (-(1 : ℝ))) *
+        (∫⁻ z : ℝ, ENNReal.ofReal z * ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have h := brsRemTwoCent_le_holder hp.le hg hs1 hs2 hρ
+    (L := (15 : ℝ) / 4) (by norm_num) (Or.inr le_rfl)
+  refine le_trans h (le_of_eq ?_)
+  congr 2
+  rw [← Real.rpow_neg_one ρ]
+  ring
+
+/-! ## The `m = 0` family of `R₂^-`, at a general exponent
+
+The centred averages decay like `ρ^{-1/p}` for small `ρ` and like `ρ^{-1}` for
+large `ρ`; the first makes the weight integral `∫ r^{1-q/p} dr` converge at the
+origin (`q < 2p`), the second makes `∫ r^{1-q} dr` converge at infinity
+(`q > 2`).  Both hold on the region that the geometric form of Proposition
+5.4(i) leaves open, where `q ≥ 3 - β > 2`. -/
+
+theorem real_weight_pow {B r θ q : ℝ} (hB : 0 ≤ B) (hr : 0 < r) :
+    r * (B * r ^ (-θ)) ^ q = B ^ q * r ^ (1 - θ * q) := by
+  rw [Real.mul_rpow hB (Real.rpow_nonneg hr.le _), ← Real.rpow_mul hr.le,
+    show r * (B ^ q * r ^ (-θ * q)) =
+      B ^ q * (r ^ (1 : ℝ) * r ^ (-θ * q)) from by
+      rw [Real.rpow_one]; ring,
+    ← Real.rpow_add hr]
+  congr 2
+  ring
+
+/-- **The `m = 0` family of `R₂^-` in `L^q(r dr)`, for `2 < q < 2p`.** -/
+theorem tsum_brsRemTwoCent_general {p q : ℝ} (hp : 1 < p) (hq2 : 2 < q)
+    (hqp : q / p < 2) {Cp : ℝ} (hCppos : 0 < Cp) (s : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (g : ℝ → ℂ) (Cg : ℝ), Continuous g →
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) → (∀ z : ℝ, z < 1 / 4 → g z = 0) →
+      (∀ z : ℝ, 4 < z → g z = 0) →
+      (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ s / 2 ^ n) *
+            brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ z : ℝ, ENNReal.ofReal z * ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  set c : ℝ := 16 * Cp * 2 ^ s with hcdef
+  have hc : 0 < c := by rw [hcdef]; positivity
+  set θ₁ : ℝ := 1 / p with hθ₁
+  have hθ₁0 : 0 < θ₁ := by rw [hθ₁]; positivity
+  set M₁ : ℝ := (4 : ℝ) ^ (1 / p) * (2 : ℝ) ^ (1 - 1 / p) with hM₁
+  set M₂ : ℝ := (4 : ℝ) ^ (1 / p) * ((15 : ℝ) / 4) ^ (1 - 1 / p) with hM₂
+  have hM₁0 : 0 < M₁ := by rw [hM₁]; positivity
+  have hM₂0 : 0 < M₂ := by rw [hM₂]; positivity
+  have hden : ∀ θ : ℝ, 0 < θ → 0 < 1 - (2 : ℝ) ^ (-(1 + θ)) := by
+    intro θ hθ
+    have h : (2 : ℝ) ^ (-(1 + θ)) < 1 := by
+      refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+      linarith
+    linarith
+  set B₁ : ℝ := c * M₁ * (4 : ℝ) ^ (-θ₁) / (1 - (2 : ℝ) ^ (-(1 + θ₁)))
+    with hB₁def
+  set B₂ : ℝ := c * M₂ * (4 : ℝ) ^ (-(1 : ℝ)) /
+    (1 - (2 : ℝ) ^ (-(1 + (1 : ℝ)))) with hB₂def
+  have hB₁0 : 0 < B₁ := by
+    rw [hB₁def]
+    have h1 : (0 : ℝ) < (4 : ℝ) ^ (-θ₁) := Real.rpow_pos_of_pos (by norm_num) _
+    have h2 := hden θ₁ hθ₁0
+    positivity
+  have hB₂0 : 0 < B₂ := by
+    rw [hB₂def]
+    have h1 : (0 : ℝ) < (4 : ℝ) ^ (-(1 : ℝ)) :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    have h2 := hden 1 one_pos
+    positivity
+  set K₁ : ENNReal := ∫⁻ r in Ioc (0 : ℝ) 1,
+    ENNReal.ofReal (r ^ (1 - q / p)) with hK₁def
+  set K₂ : ENNReal := ∫⁻ r in Ioi (1 : ℝ),
+    ENNReal.ofReal (r ^ (1 - q)) with hK₂def
+  have hK₁top : K₁ ≠ ⊤ :=
+    (lintegral_rpow_Ioc_lt_top one_pos (by linarith : (-1 : ℝ) < 1 - q / p)).ne
+  have hK₂top : K₂ ≠ ⊤ :=
+    (lintegral_rpow_Ioi_lt_top (by linarith : (1 : ℝ) - q < -1)).ne
+  have hbase : 0 < B₁ ^ q * K₁.toReal + B₂ ^ q * K₂.toReal + 1 := by
+    have h1 : (0 : ℝ) ≤ B₁ ^ q * K₁.toReal :=
+      mul_nonneg (Real.rpow_nonneg hB₁0.le _) ENNReal.toReal_nonneg
+    have h2 : (0 : ℝ) ≤ B₂ ^ q * K₂.toReal :=
+      mul_nonneg (Real.rpow_nonneg hB₂0.le _) ENNReal.toReal_nonneg
+    linarith
+  refine ⟨(B₁ ^ q * K₁.toReal + B₂ ^ q * K₂.toReal + 1) ^ (1 / q),
+    Real.rpow_pos_of_pos hbase _, fun g Cg hg hgbd hs1 hs2 => ?_⟩
+  set Xw : ENNReal := ∫⁻ z : ℝ, ENNReal.ofReal z * ‖g z‖ₑ ^ p with hXw
+  by_cases hXtop : Xw = ⊤
+  · rw [hXtop, ENNReal.top_rpow_of_pos (by positivity : (0 : ℝ) < 1 / p),
+      ENNReal.mul_top (by
+        simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+        exact Real.rpow_pos_of_pos hbase _)]
+    exact le_top
+  set Y : ENNReal := Xw ^ (1 / p) with hYdef
+  have hYtop : Y ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_nonneg (by positivity) hXtop
+  have hYqtop : Y ^ q ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg hq0.le hYtop
+  set F : ℝ → ENNReal := fun r => ∑' n : ℕ,
+    ENNReal.ofReal (16 * Cp * 2 ^ s / 2 ^ n) *
+      brsRemTwoCent (absProfile g) ((2 : ℝ) ^ (n + 2) * r) with hFdef
+  have hF1 : ∀ r : ℝ, 0 < r → F r ≤ ENNReal.ofReal (B₁ * r ^ (-θ₁)) * Y := by
+    intro r hr
+    rw [hFdef, hB₁def]
+    exact tsum_dyadic_pow_le hM₁0.le hc.le hr hθ₁0
+      (fun ρ hρ => brsRemTwoCent_le_pow_small hp hg hs1 hs2 hρ)
+  have hF2 : ∀ r : ℝ, 0 < r →
+      F r ≤ ENNReal.ofReal (B₂ * r ^ (-(1 : ℝ))) * Y := by
+    intro r hr
+    rw [hFdef, hB₂def]
+    exact tsum_dyadic_pow_le hM₂0.le hc.le hr one_pos
+      (fun ρ hρ => brsRemTwoCent_le_pow_large hp hg hs1 hs2 hρ)
+  -- the pointwise bound, split at `r = 1`
+  have hpt : ∀ r : ℝ, ENNReal.ofReal r * F r ^ q ≤
+      (Ioc (0 : ℝ) 1).indicator
+          (fun r => ENNReal.ofReal (B₁ ^ q * r ^ (1 - q / p)) * Y ^ q) r +
+        (Ioi (1 : ℝ)).indicator
+          (fun r => ENNReal.ofReal (B₂ ^ q * r ^ (1 - q)) * Y ^ q) r := by
+    intro r
+    rcases le_or_gt r 0 with hr | hr
+    · rw [ENNReal.ofReal_eq_zero.mpr hr, zero_mul]
+      exact zero_le
+    rcases le_or_gt r 1 with hr1 | hr1
+    · rw [Set.indicator_of_mem (show r ∈ Ioc (0 : ℝ) 1 from ⟨hr, hr1⟩),
+        Set.indicator_of_notMem (show r ∉ Ioi (1 : ℝ) from not_lt.mpr hr1),
+        add_zero]
+      calc ENNReal.ofReal r * F r ^ q
+          ≤ ENNReal.ofReal r *
+              (ENNReal.ofReal (B₁ * r ^ (-θ₁)) * Y) ^ q :=
+            mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hF1 r hr) hq0.le)
+        _ = ENNReal.ofReal (B₁ ^ q * r ^ (1 - q / p)) * Y ^ q := by
+            rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le,
+              ENNReal.ofReal_rpow_of_pos (by positivity), ← mul_assoc,
+              ← ENNReal.ofReal_mul hr.le]
+            congr 2
+            rw [real_weight_pow hB₁0.le hr, hθ₁]
+            congr 2
+            field_simp
+    · rw [Set.indicator_of_notMem
+          (show r ∉ Ioc (0 : ℝ) 1 from fun hc => absurd hc.2 (not_le.mpr hr1)),
+        Set.indicator_of_mem (show r ∈ Ioi (1 : ℝ) from hr1), zero_add]
+      calc ENNReal.ofReal r * F r ^ q
+          ≤ ENNReal.ofReal r *
+              (ENNReal.ofReal (B₂ * r ^ (-(1 : ℝ))) * Y) ^ q :=
+            mul_le_mul' le_rfl (ENNReal.rpow_le_rpow (hF2 r hr) hq0.le)
+        _ = ENNReal.ofReal (B₂ ^ q * r ^ (1 - q)) * Y ^ q := by
+            rw [ENNReal.mul_rpow_of_nonneg _ _ hq0.le,
+              ENNReal.ofReal_rpow_of_pos (by positivity), ← mul_assoc,
+              ← ENNReal.ofReal_mul hr.le]
+            congr 2
+            rw [real_weight_pow hB₂0.le hr]
+            congr 2
+            ring
+  -- integrate
+  have hmeas1 : Measurable ((Ioc (0 : ℝ) 1).indicator
+      (fun r => ENNReal.ofReal (B₁ ^ q * r ^ (1 - q / p)) * Y ^ q)) := by
+    refine Measurable.indicator ?_ measurableSet_Ioc
+    exact (ENNReal.measurable_ofReal.comp
+      (measurable_const.mul (Measurable.pow_const measurable_id _))).mul_const _
+  have hsplit1 : (∫⁻ r : ℝ, (Ioc (0 : ℝ) 1).indicator
+      (fun r => ENNReal.ofReal (B₁ ^ q * r ^ (1 - q / p)) * Y ^ q) r) =
+      ENNReal.ofReal (B₁ ^ q) * K₁ * Y ^ q := by
+    rw [lintegral_indicator measurableSet_Ioc]
+    have hcongr : ∀ r : ℝ, ENNReal.ofReal (B₁ ^ q * r ^ (1 - q / p)) * Y ^ q =
+        ENNReal.ofReal (B₁ ^ q) * (ENNReal.ofReal (r ^ (1 - q / p)) * Y ^ q) := by
+      intro r
+      rw [ENNReal.ofReal_mul (Real.rpow_nonneg hB₁0.le _)]
+      ring
+    rw [lintegral_congr hcongr, lintegral_const_mul' _ _ ENNReal.ofReal_ne_top,
+      lintegral_mul_const' _ _ hYqtop, hK₁def, mul_assoc]
+  have hsplit2 : (∫⁻ r : ℝ, (Ioi (1 : ℝ)).indicator
+      (fun r => ENNReal.ofReal (B₂ ^ q * r ^ (1 - q)) * Y ^ q) r) =
+      ENNReal.ofReal (B₂ ^ q) * K₂ * Y ^ q := by
+    rw [lintegral_indicator measurableSet_Ioi]
+    have hcongr : ∀ r : ℝ, ENNReal.ofReal (B₂ ^ q * r ^ (1 - q)) * Y ^ q =
+        ENNReal.ofReal (B₂ ^ q) * (ENNReal.ofReal (r ^ (1 - q)) * Y ^ q) := by
+      intro r
+      rw [ENNReal.ofReal_mul (Real.rpow_nonneg hB₂0.le _)]
+      ring
+    rw [lintegral_congr hcongr, lintegral_const_mul' _ _ ENNReal.ofReal_ne_top,
+      lintegral_mul_const' _ _ hYqtop, hK₂def, mul_assoc]
+  have hint : (∫⁻ r : ℝ, ENNReal.ofReal r * F r ^ q) ≤
+      ENNReal.ofReal (B₁ ^ q * K₁.toReal + B₂ ^ q * K₂.toReal + 1) * Y ^ q := by
+    refine le_trans (lintegral_mono hpt) ?_
+    rw [lintegral_add_left' hmeas1.aemeasurable, hsplit1, hsplit2]
+    have hk1 : ENNReal.ofReal (B₁ ^ q) * K₁ =
+        ENNReal.ofReal (B₁ ^ q * K₁.toReal) := by
+      rw [ENNReal.ofReal_mul (Real.rpow_nonneg hB₁0.le _),
+        ENNReal.ofReal_toReal hK₁top]
+    have hk2 : ENNReal.ofReal (B₂ ^ q) * K₂ =
+        ENNReal.ofReal (B₂ ^ q * K₂.toReal) := by
+      rw [ENNReal.ofReal_mul (Real.rpow_nonneg hB₂0.le _),
+        ENNReal.ofReal_toReal hK₂top]
+    rw [hk1, hk2, ← add_mul]
+    refine mul_le_mul' ?_ le_rfl
+    rw [← ENNReal.ofReal_add (mul_nonneg (Real.rpow_nonneg hB₁0.le _)
+      ENNReal.toReal_nonneg) (mul_nonneg (Real.rpow_nonneg hB₂0.le _)
+      ENNReal.toReal_nonneg)]
+    exact ENNReal.ofReal_le_ofReal (by linarith)
+  -- take the `q`-th root
+  have hswap : (∫⁻ r : ℝ, F r ^ q * ENNReal.ofReal r) =
+      ∫⁻ r : ℝ, ENNReal.ofReal r * F r ^ q :=
+    lintegral_congr fun r => mul_comm _ _
+  refine le_trans (ENNReal.rpow_le_rpow (le_trans (le_of_eq hswap) hint)
+    (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+    ENNReal.ofReal_rpow_of_pos hbase, ← ENNReal.rpow_mul, hYdef,
+    mul_one_div_cancel hq0.ne', ENNReal.rpow_one]
+
+/-! ## The `m`-sum with the localized covering exponent
+
+Once the covering factor and the kernel factor are merged into the single
+geometric factor `2^{(4+n)(ν - Sq)}` the `m`-sum is one geometric series. -/
+
+theorem tsum_lp_m_le {q e D : ℝ} (hq0 : 0 < q) (hD : 0 ≤ D) (he : e < 0)
+    {Z : ENNReal} {T : ℕ → ENNReal}
+    (hT : ∀ n : ℕ,
+      T n ≤ ENNReal.ofReal (D * (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) * Z) :
+    (∑' n : ℕ, T n ^ (1 / q)) ≤
+      ENNReal.ofReal (D ^ (1 / q) * (2 : ℝ) ^ (4 * (e / q)) /
+          (1 - (2 : ℝ) ^ (e / q))) * Z ^ (1 / q) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  have heq : e / q < 0 := div_neg_of_neg_of_pos he hq0
+  have hterm : ∀ n : ℕ, T n ^ (1 / q) ≤
+      ENNReal.ofReal ((D ^ (1 / q) * (2 : ℝ) ^ (4 * (e / q))) *
+        (2 : ℝ) ^ ((e / q) * (n : ℝ))) * Z ^ (1 / q) := by
+    intro n
+    refine le_trans (ENNReal.rpow_le_rpow (hT n) (by positivity)) ?_
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+      ENNReal.ofReal_rpow_of_nonneg (by positivity) (by positivity)]
+    refine mul_le_mul' (ENNReal.ofReal_le_ofReal (le_of_eq ?_)) le_rfl
+    have hsplit : (D * (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) ^ (1 / q) =
+        D ^ (1 / q) * ((2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) ^ (1 / q) :=
+      Real.mul_rpow hD (Real.rpow_nonneg h2.le _)
+    have hpow : ((2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) ^ (1 / q) =
+        (2 : ℝ) ^ (4 * (e / q)) * (2 : ℝ) ^ ((e / q) * (n : ℝ)) := by
+      rw [← Real.rpow_mul h2.le, ← Real.rpow_add h2]
+      congr 1
+      push_cast
+      field_simp
+    rw [hsplit, hpow]
+    ring
+  refine le_trans (ENNReal.tsum_le_tsum hterm) (le_of_eq ?_)
+  rw [ENNReal.tsum_mul_right, tsum_ofReal_geometric (by positivity) heq]
+
+/-! ## The `m ≥ 1` near parts, with the localized covering exponent -/
+
+theorem tsum_near_high_lp {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {υ : ℝ → ℝ} (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {S : SchwartzMap ℝ ℂ} {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ}
+    (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {p q r : ℝ} (hp : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hgeom : ν - (1 / r - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ offset : ℕ, (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+        (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y *
+          brsRefl g (x - y)‖ₑ ^ p) ^ (q / p)) ≤
+      A₀ * (∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∑' m : ℕ, (∑' k : ℕ, ∫⁻ x : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) g) E x ^ q *
+            ENNReal.ofReal x) ^ (1 / q)) ≤
+        C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := lt_trans (lt_trans zero_lt_one hr) hrq
+  have hMunn : (0 : ℝ) ≤ Mu := le_trans (abs_nonneg (υ 0)) (hbd 0)
+  have hMu'nn : (0 : ℝ) ≤ Mu' := le_trans (abs_nonneg (deriv υ 0)) (hbd' 0)
+  set KC : ℝ := brsKernelConst Mu A N r ^ (1 / r) +
+    brsKernelConst Mu' A' N r ^ (1 / r) with hKCdef
+  have hKCnn : (0 : ℝ) ≤ KC := by
+    rw [hKCdef]
+    have h1 : (0 : ℝ) ≤ brsKernelConst Mu A N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMunn hAnn N hr.le) _
+    have h2 : (0 : ℝ) ≤ brsKernelConst Mu' A' N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMu'nn hA'nn N hr.le) _
+    linarith
+  set e : ℝ := ν - (1 / r - 1 / 2) * q with hedef
+  set D : ℝ := (2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q with hDdef
+  have hD : (0 : ℝ) ≤ D := by
+    rw [hDdef]
+    have h1 : (0 : ℝ) < (2 : ℝ) ^ |1 - q / 2| :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0 : ℝ) ≤ KC ^ q := Real.rpow_nonneg hKCnn _
+    positivity
+  set X : ENNReal := ∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p with hXdef
+  set Z : ENNReal := (9 : ENNReal) ^ (q / p) * (A₀ * X ^ (q / p)) with hZdef
+  set T : ℕ → ENNReal := fun m => ∑' k : ℕ, ∫⁻ x : ℝ,
+    brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+      (brsLPInput S (k + (4 + m)) g) E x ^ q * ENNReal.ofReal x with hT
+  have hTle : ∀ n : ℕ,
+      T n ≤ ENNReal.ofReal (D * (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) * Z := by
+    intro n
+    have h := tsum_brsNearMax_lp_le' (a := 4 + n) hE (by omega) hυ hcs hR hυ'
+      hcs' hR' hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hg hgbd (hNloc n) hp hr
+      hrq hpq hrel
+      hCν (hNbd n) hgeom (hA₀ (4 + n))
+    refine le_trans h (le_of_eq ?_)
+    rw [hZdef, hXdef, hDdef, hedef, hKCdef]
+    ring
+  obtain ⟨Ccst, hCcst⟩ : ∃ Ccst : ENNReal, Ccst =
+      ENNReal.ofReal (D ^ (1 / q) * (2 : ℝ) ^ (4 * (e / q)) /
+          (1 - (2 : ℝ) ^ (e / q))) *
+        ((9 : ENNReal) ^ (1 / p) * A₀ ^ (1 / q)) := ⟨_, rfl⟩
+  refine ⟨Ccst, ?_, ?_⟩
+  · rw [hCcst]
+    refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.mul_ne_top ?_ ?_)
+    · exact ENNReal.rpow_ne_top_of_nonneg (by positivity) (by norm_num)
+    · exact ENNReal.rpow_ne_top_of_nonneg (by positivity) hA₀top
+  · have hmain := tsum_lp_m_le hq0 hD (by rw [hedef]; exact hgeom) hTle
+    have hexpid : q / p * (1 / q) = 1 / p := by field_simp
+    have hZpow : Z ^ (1 / q) =
+        (9 : ENNReal) ^ (1 / p) * (A₀ ^ (1 / q) * X ^ (1 / p)) := by
+      rw [hZdef, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+        ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul, hexpid]
+    rw [hCcst]
+    refine le_trans hmain (le_of_eq ?_)
+    rw [hZpow, hXdef, lintegral_enorm_rpow_brsRefl hg.measurable p]
+    ring
+
+/-! ## Proposition 5.4(i) by Littlewood–Paley, at a general exponent -/
+
+theorem general_const_mul_brsRemainderTwo {p q : ℝ} (hp : 1 ≤ p) (hq0 : 0 < q)
+    (hq2p : q < 2 * p) {K : ℝ} (hK : 0 < K) :
+    ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ r : ℝ, (ENNReal.ofReal K * brsRemainderTwo (absProfile g) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  obtain ⟨C, hCpos, hbound⟩ := prop43_brsRemainderTwo (d := 2) (by norm_num) hp
+    hq0 (by linarith : q < p * 2)
+  refine ⟨K * C, by positivity, fun g hg => ?_⟩
+  have hb := hbound g hg
+  simp only [Nat.cast_ofNat, show (2 : ℕ) - 1 = 1 from rfl, pow_one,
+    ofReal_norm] at hb
+  rw [lintegral_const_mul_rpow_weight hK hq0, rpow_inv_const_mul hK hq0]
+  calc ENNReal.ofReal K *
+        (∫⁻ r : ℝ, ENNReal.ofReal r *
+          brsRemainderTwo (absProfile g) r ^ q) ^ (1 / q)
+      ≤ ENNReal.ofReal K * (ENNReal.ofReal C *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) :=
+        mul_le_mul' le_rfl hb
+    _ = ENNReal.ofReal (K * C) *
+          (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+        rw [ENNReal.ofReal_mul hK.le, mul_assoc]
+
+/-- **Proposition 5.4(i) for `R₂^-`, by Littlewood--Paley, `2 < q < 2p`.** -/
+theorem prop54_brsRemTwoTwoLeft_lp_interior {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    {p q rr : ℝ}
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hr : 1 < rr) (hrq : rr < q) (hrel : 1 / p + 1 / rr = 1 + 1 / q)
+    (hgeom : ν - (1 / rr - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p))
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hqp : q / p < 2 := by
+    rw [div_lt_iff₀ hp0]
+    linarith
+  set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) with hY
+  set h : ℝ → ℂ := brsLocalize g with hh
+  have hhc : Continuous h := continuous_brsLocalize hg
+  have hhbd : ∀ z : ℝ, ‖h z‖ ≤ Cg := fun z => brsLocalize_bounded hgbd z
+  have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E h x ^ q := by
+    refine lintegral_congr fun x => ?_
+    rcases le_or_gt x 0 with hx | hx
+    · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+    · rw [hh, brsRemTwoTwoLeft_brsLocalize hE g hx.le]
+  have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+    intro z hz
+    rw [hh]
+    exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+  have hhsupp2 : ∀ z : ℝ, 4 < z → h z = 0 := by
+    intro z hz
+    rw [hh]
+    exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.2 (by linarith))
+  -- the three families
+  have hfam := brsRemTwoTwoLeft_endpoint_family_le' hE hhc hhbd hpf hCppos hCp0
+    hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+  obtain ⟨C1, hC1pos, hC1⟩ := general_const_mul_brsRemainderTwo hp.le hq0 hq2p
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := tsum_brsRemTwoCent_general hp hq2 hqp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_lp hE hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hhc hhbd hp hr hrq hpq hrel hCν
+    hNloc hNbd hgeom hA₀top
+    (fun offset => hA₀ offset (brsRefl h) Cg (continuous_brsRefl hhc)
+      (fun z => brsRefl_bounded hhbd z))
+  -- the weighted and unweighted norms of the localized profile
+  have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+    rw [hY]
+    exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+      (by positivity)
+  have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+      ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+    refine le_trans (ENNReal.rpow_le_rpow
+      (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+    rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+      ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp hhsupp2) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) h) E r ^ q *
+            ENNReal.ofReal r) ^ (1 / q)) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans hC3 ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+              ENNReal.ofReal r) ^ (1 / q) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) h) E r ^ q *
+                  ENNReal.ofReal r) ^ (1 / q))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y +
+              C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) by Littlewood–Paley, right half -/
+
+theorem prop54_brsRemTwoTwoRight_lp_interior {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    {p q rr : ℝ}
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hr : 1 < rr) (hrq : rr < q) (hrel : 1 / p + 1 / rr = 1 + 1 / q)
+    (hgeom : ν - (1 / rr - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p))
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hqp : q / p < 2 := by
+    rw [div_lt_iff₀ hp0]
+    linarith
+  set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) with hY
+  set h : ℝ → ℂ := brsLocalize g with hh
+  have hhc : Continuous h := continuous_brsLocalize hg
+  have hhbd : ∀ z : ℝ, ‖h z‖ ≤ Cg := fun z => brsLocalize_bounded hgbd z
+  have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) =
+      ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E h x ^ q := by
+    refine lintegral_congr fun x => ?_
+    rcases le_or_gt x 0 with hx | hx
+    · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+    · rw [hh, brsRemTwoTwoRight_brsLocalize hE g hx.le]
+  have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+    intro z hz
+    rw [hh]
+    exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+  have hhsupp2 : ∀ z : ℝ, 4 < z → h z = 0 := by
+    intro z hz
+    rw [hh]
+    exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.2 (by linarith))
+  have hfam := brsRemTwoTwoRight_endpoint_family_le hE hhc hhbd hpf hCppos hCp0
+    hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+  have hht : Continuous fun w : ℝ => h (3 - w) :=
+    hhc.comp (continuous_const.sub continuous_id)
+  have hhtbd : ∀ z : ℝ, ‖h (3 - z)‖ ≤ Cg := fun z => hhbd _
+  obtain ⟨C1, hC1pos, hC1⟩ := general_const_mul_brsRemainderTwo hp.le hq0 hq2p
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := tsum_brsRemTwoCent_general hp hq2 hqp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_lp
+    (image_three_sub_subset_Icc hE) hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hht hhtbd hp hr hrq hpq hrel hCν
+    hNloc hNbd hgeom hA₀top
+    (fun offset => hA₀ offset (brsRefl fun w : ℝ => h (3 - w)) Cg
+      (continuous_brsRefl hht) (fun z => brsRefl_bounded hhtbd z))
+  rw [lintegral_enorm_rpow_three_sub hhc.measurable p] at hC3
+  have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+    rw [hY]
+    exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+      (by positivity)
+  have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+      ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+    refine le_trans (ENNReal.rpow_le_rpow
+      (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+    rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+      ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp hhsupp2) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+          ((fun x : ℝ => 3 - x) '' E) r ^ q *
+            ENNReal.ofReal r) ^ (1 / q)) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans hC3 ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+              ENNReal.ofReal r) ^ (1 / q) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+                ((fun x : ℝ => 3 - x) '' E) r ^ q *
+                  ENNReal.ofReal r) ^ (1 / q))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y +
+              C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i), with the resolution data supplied
+
+The exponent relation gives `(1/r - 1/2)·q = q/2 + 1 - q/p`, so the `m`-sum
+converges exactly under BRS's condition `q/p < 1 + q/2 - ν`, i.e.
+`1/p - 1/2 < (1 - ν)/q`. -/
+
+theorem prop54_brsRemTwoTwoLeft_lp {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ} {p q : ℝ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hnu : ν < q / 2 + 1 - q / p)
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| := integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hpq
+  have hSq : (1 / rr - 1 / 2) * q = q / 2 + 1 - q / p := by
+    have hinv : 1 / rr = 1 + 1 / q - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : ν - (1 / rr - 1 / 2) * q < 0 := by
+    rw [hSq]
+    linarith
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ q) hpq.le
+  exact prop54_brsRemTwoTwoLeft_lp_interior hE hpf hCppos hCp0 hCp2 hpfint
+    hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd' le_rfl
+    hA'nn hmom hmom' hCν hNloc hNbd hp hq2 hpq hq2p hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd) hg hgbd
+
+theorem prop54_brsRemTwoTwoRight_lp {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ} {p q : ℝ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hnu : ν < q / 2 + 1 - q / p)
+    {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ} (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| := integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hpq
+  have hSq : (1 / rr - 1 / 2) * q = q / 2 + 1 - q / p := by
+    have hinv : 1 / rr = 1 + 1 / q - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : ν - (1 / rr - 1 / 2) * q < 0 := by
+    rw [hSq]
+    linarith
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ q) hpq.le
+  exact prop54_brsRemTwoTwoRight_lp_interior hE hpf hCppos hCp0 hCp2 hpfint
+    hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd' le_rfl
+    hA'nn hmom hmom' hCν hNloc hNbd hp hq2 hpq hq2p hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd) hg hgbd
+
+/-! ## From the BRRS entropy number to the interval covering number
+
+`brrsEntropyNumber S δ` is the minimal number of `δ/2`-balls covering `S`, and
+a `δ/2`-ball of `ℝ` is an interval of length `δ`, so an entropy bound gives an
+interval-cover bound at the same scale.  This is the bridge between the
+`ν♯` machinery of `LegendreAssouad` and the covering hypotheses of §5. -/
+
+theorem exists_isCover_of_externalCoveringNumber_le {S : Set ℝ} {ε : ℝ≥0}
+    {n : ℕ} (h : Metric.externalCoveringNumber ε S ≤ (n : ℕ∞)) :
+    ∃ C : Set ℝ, Metric.IsCover ε S C ∧ C.encard ≤ (n : ℕ∞) := by
+  by_contra hc
+  push_neg at hc
+  have hle : ((n : ℕ∞) + 1) ≤ Metric.externalCoveringNumber ε S := by
+    rw [Metric.externalCoveringNumber]
+    refine le_iInf fun C => le_iInf fun hC => ?_
+    have := hc C hC
+    exact Order.add_one_le_of_lt this
+  have hlt : ((n : ℕ∞) + 1) ≤ (n : ℕ∞) := le_trans hle h
+  have hn : n + 1 ≤ n := by exact_mod_cast hlt
+  omega
+
+theorem intervalCoveringNumber_le_of_brrsEntropyNumber_le {S : Set ℝ}
+    {δ : ℝ≥0} (hδ : 0 < δ) {n : ℕ}
+    (h : _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber S δ ≤
+      (n : ℝ≥0∞)) :
+    intervalCoveringNumber S (δ : ℝ) ≤ n := by
+  classical
+  have hext : Metric.externalCoveringNumber (δ / 2) S ≤ (n : ℕ∞) := by
+    rw [_root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber] at h
+    exact_mod_cast h
+  obtain ⟨C, hC, hCcard⟩ := exists_isCover_of_externalCoveringNumber_le hext
+  have hCfin : C.Finite := Set.finite_of_encard_le_coe hCcard
+  set ι : Finset ℝ := hCfin.toFinset with hι
+  have hcov : IsIntervalCover S (δ : ℝ) ι := by
+    intro x hx
+    obtain ⟨c, hcC, hdist⟩ := hC hx
+    have hdist' : edist x c ≤ ((δ / 2 : ℝ≥0) : ℝ≥0∞) := hdist
+    have hd : dist x c ≤ ((δ / 2 : ℝ≥0) : ℝ) := by
+      rw [edist_dist] at hdist'
+      replace hdist := hdist'
+      rw [← ENNReal.ofReal_coe_nnreal] at hdist
+      exact (ENNReal.ofReal_le_ofReal_iff (by positivity)).mp hdist
+    have hd' : |x - c| ≤ (δ : ℝ) / 2 := by
+      rw [Real.dist_eq] at hd
+      have hval : ((δ / 2 : ℝ≥0) : ℝ) = (δ : ℝ) / 2 := by push_cast; ring
+      rwa [hval] at hd
+    have hb := abs_le.mp hd'
+    refine Set.mem_iUnion₂.mpr ⟨c, ?_, ?_⟩
+    · rw [hι]
+      exact hCfin.mem_toFinset.mpr hcC
+    · exact ⟨by linarith [hb.1], by linarith [hb.2]⟩
+  refine le_trans (intervalCoveringNumber_le_card hcov) ?_
+  have hcard : (ι.card : ℕ∞) ≤ (n : ℕ∞) := by
+    rw [hι, ← Set.encard_coe_eq_coe_finsetCard]
+    refine le_trans (le_of_eq ?_) hCcard
+    congr 1
+    exact hCfin.coe_toFinset
+  exact_mod_cast hcard
+
+/-! ## BRS (5.20): a power bound for the Legendre–Assouad profile
+
+`ν♯(α)` is a `limsup`, so `ν♯(α) < ν` gives the profile bound
+`sup_{|J| ≥ δ} |J|^{-α} N(E ∩ J, δ) ≤ M δ^{-ν}` for all small `δ`; the trivial
+bound `≤ 4 δ^{-(α+1)}` extends it to every `δ ∈ (0,1)` at the cost of a larger
+constant.  This is exactly BRS (5.20). -/
+
+theorem exists_brrsProfile_power_bound_of_lt {E : Set ℝ} (hE : E.Nonempty)
+    {α ν : ℝ} (hα : 0 ≤ α) (hν : 0 < ν)
+    (h : _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E α
+      < ν) :
+    ∃ M : ℝ, 0 < M ∧ ∀ δ : ℝ≥0, 0 < δ → (δ : ℝ) < 1 →
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadProfile E α δ ≤
+        ENNReal.ofReal (M * (δ : ℝ) ^ (-ν)) := by
+  -- the exponent is finite, so the real inequality lifts to `EReal`
+  have hbot :=
+    _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadExponent_ne_bot_of_nonempty
+      hE α
+  have htop :=
+    _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadExponent_ne_top_of_nonneg
+      E hα
+  have hlt : _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadExponent E α
+      < (ν : EReal) := by
+    rw [← EReal.coe_toReal htop hbot]
+    refine EReal.coe_lt_coe_iff.mpr ?_
+    rw [← _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction_eq_exponent_toReal]
+    exact h
+  have hev : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
+      _root_.Auto.Spherical.LegendreAssouad.entropyLogQuotient
+        (_root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadProfile E α δ)
+        δ < (ν : EReal) :=
+    Filter.eventually_lt_of_limsup_lt hlt
+  have hsmall : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0), δ ∈ Ioo (0 : ℝ≥0) 1 :=
+    Ioo_mem_nhdsGT (by norm_num)
+  have hev2 : ∀ᶠ δ : ℝ≥0 in 𝓝[>] (0 : ℝ≥0),
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadProfile E α δ ≤
+        ((δ : ℝ≥0∞)⁻¹) ^ ν := by
+    filter_upwards [hev, hsmall] with δ hq hmem
+    exact _root_.Auto.Spherical.LegendreAssouad.le_inv_rpow_of_entropyLogQuotient_lt
+      hmem.1 hmem.2 hq
+  obtain ⟨δ₀, hδ₀pos, hmain⟩ :=
+    ((nhdsGT_basis (0 : ℝ≥0)).eventually_iff).mp hev2
+  set δ₁ : ℝ≥0 := min δ₀ 1 with hδ₁
+  have hδ₁pos : (0 : ℝ) < (δ₁ : ℝ) := by
+    have : (0 : ℝ≥0) < δ₁ := lt_min hδ₀pos (by norm_num)
+    exact_mod_cast this
+  set M : ℝ := max 1 (4 * (δ₁ : ℝ) ^ (-(α + 1))) with hM
+  have hM1 : (1 : ℝ) ≤ M := le_max_left _ _
+  refine ⟨M, lt_of_lt_of_le zero_lt_one hM1, fun δ hδpos hδ1 => ?_⟩
+  have hδR : (0 : ℝ) < (δ : ℝ) := by exact_mod_cast hδpos
+  have hpowpos : (0 : ℝ) < (δ : ℝ) ^ (-ν) := Real.rpow_pos_of_pos hδR _
+  have hpowge : (1 : ℝ) ≤ (δ : ℝ) ^ (-ν) := by
+    rw [Real.rpow_neg hδR.le]
+    rw [one_le_inv_iff₀]
+    exact ⟨Real.rpow_pos_of_pos hδR _, Real.rpow_le_one hδR.le hδ1.le hν.le⟩
+  rcases lt_or_ge δ δ₀ with hlt0 | hge0
+  · have hb := hmain (show δ ∈ Ioo (0 : ℝ≥0) δ₀ from ⟨hδpos, hlt0⟩)
+    have heq : (((δ : ℝ≥0∞))⁻¹) ^ ν = ENNReal.ofReal ((δ : ℝ) ^ (-ν)) := by
+      rw [← ENNReal.ofReal_coe_nnreal, ← ENNReal.ofReal_inv_of_pos hδR,
+        ENNReal.ofReal_rpow_of_pos (by positivity : (0 : ℝ) < (δ : ℝ)⁻¹)]
+      congr 1
+      rw [Real.inv_rpow hδR.le, ← Real.rpow_neg hδR.le]
+    rw [heq] at hb
+    refine le_trans hb (ENNReal.ofReal_le_ofReal ?_)
+    calc (δ : ℝ) ^ (-ν) = 1 * (δ : ℝ) ^ (-ν) := (one_mul _).symm
+      _ ≤ M * (δ : ℝ) ^ (-ν) :=
+          mul_le_mul_of_nonneg_right hM1 hpowpos.le
+  · have htriv :=
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadProfile_le_four_mul_inv_rpow_add_one
+        E hα hδpos (by exact_mod_cast hδ1.le)
+    refine le_trans htriv ?_
+    have hval : (4 : ℝ≥0∞) * (δ : ℝ≥0∞) ^ (-(α + 1)) =
+        ENNReal.ofReal (4 * (δ : ℝ) ^ (-(α + 1))) := by
+      rw [← ENNReal.ofReal_coe_nnreal, ENNReal.ofReal_rpow_of_pos hδR,
+        ← ENNReal.ofReal_ofNat 4,
+        ← ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 4)]
+    rw [hval]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have hδδ₁ : (δ₁ : ℝ) ≤ (δ : ℝ) := by
+      have : δ₁ ≤ δ := le_trans (min_le_left _ _) hge0
+      exact_mod_cast this
+    have hmono : (δ : ℝ) ^ (-(α + 1)) ≤ (δ₁ : ℝ) ^ (-(α + 1)) :=
+      Real.rpow_le_rpow_of_nonpos hδ₁pos hδδ₁ (by linarith)
+    calc 4 * (δ : ℝ) ^ (-(α + 1)) ≤ 4 * (δ₁ : ℝ) ^ (-(α + 1)) :=
+          mul_le_mul_of_nonneg_left hmono (by norm_num)
+      _ ≤ M := le_max_right _ _
+      _ = M * 1 := (mul_one _).symm
+      _ ≤ M * (δ : ℝ) ^ (-ν) :=
+          mul_le_mul_of_nonneg_left hpowge (by linarith)
+
+/-! ## The localized covering data of BRS (5.20)
+
+The dyadic block `brsDilBlock k i` is the BRRS testing interval of length
+`2^{-k}` based at `1 + i 2^{-k}`, so the profile bound of (5.20) is exactly the
+covering hypothesis that the Littlewood--Paley form of Proposition 5.4(i)
+consumes. -/
+
+theorem brsDilBlock_eq_brrsInterval (k i : ℕ) :
+    brsDilBlock k i =
+      _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+        (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ))) ((2 : ℝ) ^ (-(k : ℝ))) := by
+  rw [brsDilBlock, _root_.Auto.Spherical.LegendreAssouad.brrsInterval]
+  congr 1
+  ring
+
+/-- **BRS (5.20) as the covering data of Proposition 5.4(i).** -/
+theorem exists_localized_covering_of_nu {E : Set ℝ} (hEne : E.Nonempty)
+    {q ν : ℝ} (hq2 : 2 < q)
+    (h : _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+      (q / 2 - 1) < ν) :
+    ∃ (Cν : ℝ) (Nloc : ℕ → ℕ → ℕ), 0 ≤ Cν ∧
+      (∀ (n k : ℕ) (a : ℝ), intervalCoveringNumber
+        (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a
+          ((2 : ℝ) ^ (-(k : ℝ))))
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k) ∧
+      (∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (Cν * (2 : ℝ) ^
+          (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ)))) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  set α : ℝ := q / 2 - 1 with hαdef
+  have hα : (0 : ℝ) < α := by rw [hαdef]; linarith
+  have hαν : α < ν := by
+    refine lt_of_le_of_lt ?_ h
+    exact _root_.Auto.Spherical.LegendreAssouad.le_brrsLegendreAssouadFunction_of_nonempty
+      hEne hα.le
+  have hν : (0 : ℝ) < ν := lt_trans hα hαν
+  obtain ⟨M, hMpos, hMbound⟩ :=
+    exists_brrsProfile_power_bound_of_lt hEne hα.le hν h
+  set bound : ℕ → ℕ → ℝ := fun n k =>
+    M * (2 : ℝ) ^ (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))
+    with hbound
+  have hboundpos : ∀ n k : ℕ, 0 < bound n k := by
+    intro n k
+    rw [hbound]
+    have : (0 : ℝ) < (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ)) :=
+      Real.rpow_pos_of_pos h2 _
+    positivity
+  have hexppos : ∀ n k : ℕ,
+      (1 : ℝ) ≤ (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ)) := by
+    intro n k
+    refine Real.one_le_rpow (by norm_num) ?_
+    have hk : (0 : ℝ) ≤ (k : ℝ) := Nat.cast_nonneg k
+    have hkn : (0 : ℝ) ≤ ((k + (4 + n) : ℕ) : ℝ) := Nat.cast_nonneg _
+    have h1 : 0 ≤ ν * ((k + (4 + n) : ℕ) : ℝ) := mul_nonneg hν.le hkn
+    have h2' : 0 ≤ (1 - q / 2) * (k : ℝ) + ν * (k : ℝ) := by
+      have : 0 ≤ (1 - q / 2 + ν) := by rw [hαdef] at hαν; linarith
+      nlinarith
+    have hsplit : ((k + (4 + n) : ℕ) : ℝ) = (k : ℝ) + ((4 + n : ℕ) : ℝ) := by
+      push_cast
+      ring
+    rw [hsplit]
+    have h3 : 0 ≤ ν * ((4 + n : ℕ) : ℝ) :=
+      mul_nonneg hν.le (Nat.cast_nonneg _)
+    nlinarith
+  -- the covering bound for one block
+  have hkey : ∀ (n k : ℕ) (a : ℝ),
+      _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber
+          (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a
+            ((2 : ℝ) ^ (-(k : ℝ))))
+          (Real.toNNReal ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)))) ≤
+        ENNReal.ofReal (bound n k) := by
+    intro n k a
+    set δR : ℝ := (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) with hδR
+    have hδRpos : 0 < δR := Real.rpow_pos_of_pos h2 _
+    set δ : ℝ≥0 := Real.toNNReal δR with hδ
+    have hδval : (δ : ℝ) = δR := Real.coe_toNNReal _ hδRpos.le
+    have hδpos : 0 < δ := by
+      rw [← NNReal.coe_pos, hδval]
+      exact hδRpos
+    have hδ1 : (δ : ℝ) < 1 := by
+      rw [hδval, hδR]
+      refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+      have : (0 : ℝ) < ((k + (4 + n) : ℕ) : ℝ) := by
+        have : (0 : ℕ) < k + (4 + n) := by omega
+        exact_mod_cast this
+      linarith
+    set RR : ℝ := (2 : ℝ) ^ (-(k : ℝ)) with hRR
+    have hRRpos : 0 < RR := Real.rpow_pos_of_pos h2 _
+    set R : ℝ≥0 := Real.toNNReal RR with hR
+    have hRval : (R : ℝ) = RR := Real.coe_toNNReal _ hRRpos.le
+    have hδRle : δ ≤ R := by
+      rw [← NNReal.coe_le_coe, hδval, hRval, hδR, hRR]
+      refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+      have : (k : ℝ) ≤ ((k + (4 + n) : ℕ) : ℝ) := by
+        push_cast
+        linarith [Nat.cast_nonneg (α := ℝ) n]
+      linarith
+    have hR1 : R ≤ 1 := by
+      rw [← NNReal.coe_le_coe, hRval, hRR, NNReal.coe_one]
+      refine Real.rpow_le_one_of_one_le_of_nonpos (by norm_num) ?_
+      simp [Nat.cast_nonneg]
+    have hprof := hMbound δ hδpos hδ1
+    have hle : ((R : ℝ≥0∞)) ^ (-α) *
+        _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber
+          (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+            a (R : ℝ)) δ ≤
+        ENNReal.ofReal (M * (δ : ℝ) ^ (-ν)) := by
+      refine le_trans ?_ hprof
+      rw [_root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadProfile]
+      exact le_iSup_of_le a
+        (le_iSup_of_le ⟨R, hδRle, hR1⟩ le_rfl)
+    rw [← hRval]
+    -- divide by the weight
+    have hRne : ((R : ℝ≥0∞)) ≠ 0 := by
+      simp only [ne_eq, ENNReal.coe_eq_zero]
+      rw [← NNReal.coe_eq_zero, hRval]
+      exact ne_of_gt hRRpos
+    have hRtop : ((R : ℝ≥0∞)) ≠ ⊤ := ENNReal.coe_ne_top
+    have hcancel : ((R : ℝ≥0∞)) ^ α * ((R : ℝ≥0∞)) ^ (-α) = 1 := by
+      rw [← ENNReal.rpow_add _ _ hRne hRtop]
+      simp
+    have hstep : _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber
+        (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+          a (R : ℝ)) δ ≤
+        ((R : ℝ≥0∞)) ^ α * ENNReal.ofReal (M * (δ : ℝ) ^ (-ν)) := by
+      calc _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber
+              (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+                a (R : ℝ)) δ
+          = (((R : ℝ≥0∞)) ^ α * ((R : ℝ≥0∞)) ^ (-α)) *
+              _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber
+                (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+                  a (R : ℝ)) δ := by
+            rw [hcancel, one_mul]
+        _ = ((R : ℝ≥0∞)) ^ α * (((R : ℝ≥0∞)) ^ (-α) *
+              _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber
+                (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+                  a (R : ℝ)) δ) := by ring
+        _ ≤ ((R : ℝ≥0∞)) ^ α * ENNReal.ofReal (M * (δ : ℝ) ^ (-ν)) :=
+            mul_le_mul' le_rfl hle
+    refine le_trans hstep (le_of_eq ?_)
+    rw [← ENNReal.ofReal_coe_nnreal, ENNReal.ofReal_rpow_of_pos (by
+        rw [hRval]; exact hRRpos),
+      ← ENNReal.ofReal_mul (Real.rpow_nonneg (by rw [hRval]; exact hRRpos.le) _)]
+    congr 1
+    rw [hRval, hδval, hRR, hδR, hbound, ← Real.rpow_mul h2.le,
+      ← Real.rpow_mul h2.le,
+      show (2 : ℝ) ^ (-(k : ℝ) * α) *
+          (M * (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ) * -ν)) =
+        M * ((2 : ℝ) ^ (-(k : ℝ) * α) *
+          (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ) * -ν)) from by ring,
+      ← Real.rpow_add h2]
+    congr 2
+    rw [hαdef]
+    ring
+  -- the covering data
+  refine ⟨M + 1, fun n k => ⌈bound n k⌉₊, by linarith, fun n k a => ?_,
+    fun n k => ?_⟩
+  · have hδRpos : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+      Real.rpow_pos_of_pos h2 _
+    have hval : ((Real.toNNReal ((2 : ℝ) ^
+        (-((k + (4 + n) : ℕ) : ℝ))) : ℝ≥0) : ℝ) =
+        (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+      Real.coe_toNNReal _ hδRpos.le
+    have hpos : 0 < Real.toNNReal ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) := by
+      rw [← NNReal.coe_pos, hval]
+      exact hδRpos
+    have hb := hkey n k a
+    have hceil : ENNReal.ofReal (bound n k) ≤ ((⌈bound n k⌉₊ : ℕ) : ℝ≥0∞) := by
+      rw [← ENNReal.ofReal_natCast]
+      exact ENNReal.ofReal_le_ofReal (Nat.le_ceil _)
+    have hfin := intervalCoveringNumber_le_of_brrsEntropyNumber_le hpos
+      (le_trans hb hceil)
+    rwa [hval] at hfin
+  · rw [← ENNReal.ofReal_natCast]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have hc : (⌈bound n k⌉₊ : ℝ) ≤ bound n k + 1 :=
+      le_of_lt (Nat.ceil_lt_add_one (hboundpos n k).le)
+    have hone := hexppos n k
+    rw [hbound] at hc ⊢
+    nlinarith [hc, hone]
+
+/-! ## The `m ≥ 1` near parts, uniformly in the profile -/
+
+theorem tsum_near_high_lp_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {υ : ℝ → ℝ} (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {S : SchwartzMap ℝ ℂ}
+    {p q r : ℝ} (hp : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hgeom : ν - (1 / r - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∑' m : ℕ, (∑' k : ℕ, ∫⁻ x : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) g) E x ^ q *
+            ENNReal.ofReal x) ^ (1 / q)) ≤
+        C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := lt_trans (lt_trans zero_lt_one hr) hrq
+  have hMunn : (0 : ℝ) ≤ Mu := le_trans (abs_nonneg (υ 0)) (hbd 0)
+  have hMu'nn : (0 : ℝ) ≤ Mu' := le_trans (abs_nonneg (deriv υ 0)) (hbd' 0)
+  set KC : ℝ := brsKernelConst Mu A N r ^ (1 / r) +
+    brsKernelConst Mu' A' N r ^ (1 / r) with hKCdef
+  have hKCnn : (0 : ℝ) ≤ KC := by
+    rw [hKCdef]
+    have h1 : (0 : ℝ) ≤ brsKernelConst Mu A N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMunn hAnn N hr.le) _
+    have h2 : (0 : ℝ) ≤ brsKernelConst Mu' A' N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMu'nn hA'nn N hr.le) _
+    linarith
+  set e : ℝ := ν - (1 / r - 1 / 2) * q with hedef
+  set D : ℝ := (2 : ℝ) ^ |1 - q / 2| * Cν * KC ^ q with hDdef
+  have hD : (0 : ℝ) ≤ D := by
+    rw [hDdef]
+    have h1 : (0 : ℝ) < (2 : ℝ) ^ |1 - q / 2| :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0 : ℝ) ≤ KC ^ q := Real.rpow_nonneg hKCnn _
+    positivity
+  obtain ⟨Ccst, hCcst⟩ : ∃ Ccst : ENNReal, Ccst =
+      ENNReal.ofReal (D ^ (1 / q) * (2 : ℝ) ^ (4 * (e / q)) /
+          (1 - (2 : ℝ) ^ (e / q))) *
+        ((9 : ENNReal) ^ (1 / p) * A₀ ^ (1 / q)) := ⟨_, rfl⟩
+  refine ⟨Ccst, ?_, fun g hg Cg hgbd => ?_⟩
+  · rw [hCcst]
+    refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.mul_ne_top ?_ ?_)
+    · exact ENNReal.rpow_ne_top_of_nonneg (by positivity) (by norm_num)
+    · exact ENNReal.rpow_ne_top_of_nonneg (by positivity) hA₀top
+  · set X : ENNReal := ∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p with hXdef
+    set Z : ENNReal := (9 : ENNReal) ^ (q / p) * (A₀ * X ^ (q / p)) with hZdef
+    set T : ℕ → ENNReal := fun m => ∑' k : ℕ, ∫⁻ x : ℝ,
+      brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+        (brsLPInput S (k + (4 + m)) g) E x ^ q * ENNReal.ofReal x with hT
+    have hTle : ∀ n : ℕ,
+        T n ≤ ENNReal.ofReal (D * (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) * Z := by
+      intro n
+      have h := tsum_brsNearMax_lp_le' (a := 4 + n) hE (by omega) hυ hcs hR hυ'
+        hcs' hR' hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hg hgbd (hNloc n) hp hr
+        hrq hpq hrel hCν (hNbd n) hgeom
+        (hA₀ (4 + n) (brsRefl g) Cg (continuous_brsRefl hg)
+          (fun z => brsRefl_bounded hgbd z))
+      refine le_trans h (le_of_eq ?_)
+      rw [hZdef, hXdef, hDdef, hedef, hKCdef]
+      ring
+    have hmain := tsum_lp_m_le hq0 hD (by rw [hedef]; exact hgeom) hTle
+    have hexpid : q / p * (1 / q) = 1 / p := by field_simp
+    have hZpow : Z ^ (1 / q) =
+        (9 : ENNReal) ^ (1 / p) * (A₀ ^ (1 / q) * X ^ (1 / p)) := by
+      rw [hZdef, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+        ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul, hexpid]
+    rw [hCcst]
+    refine le_trans hmain (le_of_eq ?_)
+    rw [hZpow, hXdef, lintegral_enorm_rpow_brsRefl hg.measurable p]
+    ring
+
+/-! ## Proposition 5.4(i) by Littlewood–Paley, uniformly in the profile
+
+The profile is localized inside the proof, and a localized profile is bounded
+because it is continuous with compact support, so no boundedness hypothesis on
+the profile is needed. -/
+
+theorem prop54_brsRemTwoTwoLeft_lp_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    {p q rr : ℝ}
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hr : 1 < rr) (hrq : rr < q) (hrel : 1 / p + 1 / rr = 1 + 1 / q)
+    (hgeom : ν - (1 / rr - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hqp : q / p < 2 := by
+    rw [div_lt_iff₀ hp0]
+    linarith
+  obtain ⟨C1, hC1pos, hC1⟩ := general_const_mul_brsRemainderTwo hp.le hq0 hq2p
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := tsum_brsRemTwoCent_general hp hq2 hqp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_lp_unif hE hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hp hr hrq hpq hrel hCν
+    hNloc hNbd hgeom hA₀top hA₀
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)
+      with hY
+    set h : ℝ → ℂ := brsLocalize g with hh
+    have hhc : Continuous h := continuous_brsLocalize hg
+    obtain ⟨Cg, hhbd⟩ : ∃ C : ℝ, ∀ z : ℝ, ‖h z‖ ≤ C := by
+      obtain ⟨C, hC⟩ := exists_bound_brsLocalize hg
+      exact ⟨C, fun z => by rw [hh]; exact hC z⟩
+    have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) =
+        ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E h x ^ q := by
+      refine lintegral_congr fun x => ?_
+      rcases le_or_gt x 0 with hx | hx
+      · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+      · rw [hh, brsRemTwoTwoLeft_brsLocalize hE g hx.le]
+    have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+    have hhsupp2 : ∀ z : ℝ, 4 < z → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.2 (by linarith))
+    have hfam := brsRemTwoTwoLeft_endpoint_family_le' hE hhc hhbd hpf hCppos
+      hCp0 hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+    have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+      rw [hY]
+      exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+        (by positivity)
+    have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (ENNReal.rpow_le_rpow
+        (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+      rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+        ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+    rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp hhsupp2) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) h) E r ^ q *
+            ENNReal.ofReal r) ^ (1 / q)) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (hC3 h hhc Cg hhbd) ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+              ENNReal.ofReal r) ^ (1 / q) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) h) E r ^ q *
+                  ENNReal.ofReal r) ^ (1 / q))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y +
+              C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) by Littlewood–Paley, right half, uniformly -/
+
+theorem prop54_brsRemTwoTwoRight_lp_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    {p q rr : ℝ}
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hr : 1 < rr) (hrq : rr < q) (hrel : 1 / p + 1 / rr = 1 + 1 / q)
+    (hgeom : ν - (1 / rr - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hqp : q / p < 2 := by
+    rw [div_lt_iff₀ hp0]
+    linarith
+  obtain ⟨C1, hC1pos, hC1⟩ := general_const_mul_brsRemainderTwo hp.le hq0 hq2p
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := tsum_brsRemTwoCent_general hp hq2 hqp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_lp_unif
+    (image_three_sub_subset_Icc hE) hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hp hr hrq hpq hrel hCν
+    hNloc hNbd hgeom hA₀top hA₀
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)
+      with hY
+    set h : ℝ → ℂ := brsLocalize g with hh
+    have hhc : Continuous h := continuous_brsLocalize hg
+    obtain ⟨Cg, hhbd⟩ : ∃ C : ℝ, ∀ z : ℝ, ‖h z‖ ≤ C := by
+      obtain ⟨C, hC⟩ := exists_bound_brsLocalize hg
+      exact ⟨C, fun z => by rw [hh]; exact hC z⟩
+    have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) =
+        ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E h x ^ q := by
+      refine lintegral_congr fun x => ?_
+      rcases le_or_gt x 0 with hx | hx
+      · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+      · rw [hh, brsRemTwoTwoRight_brsLocalize hE g hx.le]
+    have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+    have hhsupp2 : ∀ z : ℝ, 4 < z → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.2 (by linarith))
+    have hfam := brsRemTwoTwoRight_endpoint_family_le hE hhc hhbd hpf hCppos
+      hCp0 hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+    have hht : Continuous fun w : ℝ => h (3 - w) :=
+      hhc.comp (continuous_const.sub continuous_id)
+    have hhtbd : ∀ z : ℝ, ‖h (3 - z)‖ ≤ Cg := fun z => hhbd _
+    have hC3' := hC3 (fun w : ℝ => h (3 - w)) hht Cg hhtbd
+    rw [lintegral_enorm_rpow_three_sub hhc.measurable p] at hC3'
+    have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+      rw [hY]
+      exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+        (by positivity)
+    have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (ENNReal.rpow_le_rpow
+        (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+      rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+        ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+    rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp hhsupp2) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+          ((fun x : ℝ => 3 - x) '' E) r ^ q *
+            ENNReal.ofReal r) ^ (1 / q)) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans hC3' ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+              ENNReal.ofReal r) ^ (1 / q) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+                ((fun x : ℝ => 3 - x) '' E) r ^ q *
+                  ENNReal.ofReal r) ^ (1 / q))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y +
+              C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i), with the resolution data supplied, uniformly
+
+The exponent relation gives `(1/r - 1/2)·q = q/2 + 1 - q/p`, so the `m`-sum
+converges exactly under BRS's condition `q/p < 1 + q/2 - ν`, i.e.
+`1/p - 1/2 < (1 - ν)/q`. -/
+
+theorem prop54_brsRemTwoTwoLeft_lp_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ} {p q : ℝ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hnu : ν < q / 2 + 1 - q / p) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| := integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hpq
+  have hSq : (1 / rr - 1 / 2) * q = q / 2 + 1 - q / p := by
+    have hinv : 1 / rr = 1 + 1 / q - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : ν - (1 / rr - 1 / 2) * q < 0 := by
+    rw [hSq]
+    linarith
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ q) hpq.le
+  exact prop54_brsRemTwoTwoLeft_lp_interior_unif hE hpf hCppos hCp0 hCp2 hpfint
+    hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd' le_rfl
+    hA'nn hmom hmom' hCν hNloc hNbd hp hq2 hpq hq2p hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd)
+
+theorem prop54_brsRemTwoTwoRight_lp_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cν ν : ℝ} (hCν : 0 ≤ Cν) {Nloc : ℕ → ℕ → ℕ} {p q : ℝ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cν * (2 : ℝ) ^
+        (ν * ((k + (4 + n) : ℕ) : ℝ) + (1 - q / 2) * (k : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hnu : ν < q / 2 + 1 - q / p) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| := integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hpq
+  have hSq : (1 / rr - 1 / 2) * q = q / 2 + 1 - q / p := by
+    have hinv : 1 / rr = 1 + 1 / q - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : ν - (1 / rr - 1 / 2) * q < 0 := by
+    rw [hSq]
+    linarith
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ q) hpq.le
+  exact prop54_brsRemTwoTwoRight_lp_interior_unif hE hpf hCppos hCp0 hCp2 hpfint
+    hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd' le_rfl
+    hA'nn hmom hmom' hCν hNloc hNbd hp hq2 hpq hq2p hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd)
+
+/-! ## The reflected blocks
+
+`R₂^+` is `R₂^-` for the reflected dilation set, and a reflected dyadic block
+is again an interval of the same length, so the localized covering data of BRS
+(5.20) — which is a supremum over *all* base points — serves both halves. -/
+
+theorem image_three_sub_inter_brsDilBlock (E : Set ℝ) (k i : ℕ) :
+    ((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i =
+      (fun x : ℝ => 3 - x) '' (E ∩
+        _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+          (2 - ((i : ℝ) + 1) * (2 : ℝ) ^ (-(k : ℝ))) ((2 : ℝ) ^ (-(k : ℝ)))) := by
+  rw [brsDilBlock, _root_.Auto.Spherical.LegendreAssouad.brrsInterval]
+  ext y
+  constructor
+  · rintro ⟨⟨x, hxE, rfl⟩, hy1, hy2⟩
+    exact ⟨x, ⟨hxE, by constructor <;> [linarith; linarith]⟩, rfl⟩
+  · rintro ⟨x, ⟨hxE, hx1, hx2⟩, rfl⟩
+    exact ⟨⟨x, hxE, rfl⟩, by constructor <;> [linarith; linarith]⟩
+
+/-! ## Theorem 1.2, the sufficiency half, with BRS's `ν♯` condition -/
+
+/-- **The planar radial strong type on the interior of `Δ_β`, under BRS's
+`ν♯` condition.** -/
+theorem hasRadialStrongTypeCont_two_nu {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β) {p q : ℝ} (hp1 : 1 < p) (hpq : p < q)
+    (hq2p : q < 2 * p) (hexp : 0 < 1 - 2 / p + (1 - β) / q)
+    (hnu : 2 < q →
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+        (q / 2 - 1) < q / 2 + 1 - q / p) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  obtain ⟨T, hTE, hTc, hET⟩ := exists_countable_dense_dilations E
+  have hT2 : T ⊆ Icc (1 : ℝ) 2 := hTE.trans hE
+  have hTne : T.Nonempty := by
+    rcases Set.eq_empty_or_nonempty T with hTempty | hTne
+    · exfalso
+      rw [hTempty, closure_empty] at hET
+      exact absurd (Set.subset_empty_iff.mp hET)
+        (Set.nonempty_iff_ne_empty.mp hEne)
+    · exact hTne
+  have hM' : HasUpperMinkowskiExponent T β := hM.mono hTE
+  have hTnull : volume (closure T) = 0 :=
+    volume_closure_eq_zero_of_minkowski hT2 hβ0 hβ1 hM'
+  have hqp : q / p < (q + 1 - β) / 2 := by
+    rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)]
+    have hmul : 0 < (1 - 2 / p + (1 - β) / q) * (p * q) := by positivity
+    have hid : (1 - 2 / p + (1 - β) / q) * (p * q) =
+        p * q - 2 * q + (1 - β) * p := by
+      field_simp
+    rw [hid] at hmul
+    nlinarith [hmul]
+  have heps2 : 0 < 1 + q / 2 - β - q / p := by linarith [hqp]
+  set ε : ℝ := (1 + q / 2 - β - q / p) / 2 with hεdef
+  have hεpos : 0 < ε := by rw [hεdef]; linarith
+  have hε2 : ε < 1 + q / 2 - β - q / p := by rw [hεdef]; linarith
+  set β' : ℝ := β + ε with hβ'def
+  have hβ'0 : 0 ≤ β' := by rw [hβ'def]; linarith
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM' hεpos
+  have hbound' : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      (intervalCoveringNumber T δ : ℝ) ≤ C * δ ^ (-β') := by
+    intro δ hδ hδ1
+    have h := hbound δ hδ hδ1 Set.univ
+    rwa [Set.inter_univ] at h
+  have hN : ∀ j : ℕ,
+      (intervalCoveringNumber T ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) :=
+    brs_cover_dyadic_of_bound hT2 hC hβ'0 hbound'
+  have hNr : ∀ j : ℕ,
+      (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' T)
+          ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) := by
+    intro j
+    refine le_trans ?_ (hN j)
+    have h := intervalCoveringNumber_image_three_sub_le hT2
+      (δ := (2 : ℝ) ^ (-(j : ℝ))) (Real.rpow_pos_of_pos (by norm_num) _)
+    exact_mod_cast h
+  have hCmax : (0 : ℝ) ≤ max C 1 := le_trans (by norm_num) (le_max_right C 1)
+  have hR1cond : 1 / p - 1 / q + β' / q < 1 / 2 := by
+    have hid : 1 / p - 1 / q + (β + ε) / q = (q / p - 1 + (β + ε)) / q := by
+      field_simp
+    rw [hβ'def, hid, div_lt_iff₀ hq0]
+    linarith [hε2]
+  have hMcond : q / p < 1 + q / 2 - β' := by rw [hβ'def]; linarith
+  have hhalf : 1 / p - 1 / q < 1 / 2 := by
+    have : (0 : ℝ) ≤ β' / q := by positivity
+    linarith [hR1cond]
+  -- the two main terms
+  obtain ⟨CM, hCMtop, hML, hMR⟩ := exists_brsMainTwoBounds hT2 hTne hTnull hβ0
+    hβ1 hM' hp1 hpq hexp
+  have hR1top : (∑' m : ℕ, brsProp52Coeff T p q m) ≠ ⊤ :=
+    tsum_brsProp52Coeff_ne_top hCmax hN hp0 hq0 hR1cond
+  -- the two `R₂` terms, by cases on `q`
+  have hR2 : ∃ C₅ : ENNReal, C₅ ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) := by
+    rcases le_or_gt q 2 with hq2 | hq2
+    · -- the geometric form of Proposition 5.4 applies
+      have hKcond : q / p < 2 - β' := by
+        rw [hβ'def, hεdef]
+        nlinarith [hqp]
+      obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_pq_weighted_unif hT2
+        hCmax hN hp1 hpq hq2p hhalf hKcond hMcond
+      obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_pq_weighted_unif hT2
+        hCmax hNr hp1 hpq hq2p hhalf hKcond hMcond
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    · -- the Littlewood--Paley form, with the `ν♯` covering data
+      set νs : ℝ :=
+        _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+          (q / 2 - 1) with hνs
+      set ν : ℝ := (νs + (q / 2 + 1 - q / p)) / 2 with hνdef
+      have hν1 : νs < ν := by
+        rw [hνdef]
+        have := hnu hq2
+        linarith
+      have hν2 : ν < q / 2 + 1 - q / p := by
+        rw [hνdef]
+        have := hnu hq2
+        linarith
+      obtain ⟨Cν, Nloc, hCν, hNloc, hNbd⟩ :=
+        exists_localized_covering_of_nu hEne hq2 hν1
+      have hNlocT : ∀ n k i : ℕ,
+          intervalCoveringNumber (T ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k := by
+        intro n k i
+        refine le_trans ?_ (hNloc n k (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ))))
+        refine intervalCoveringNumber_mono_set ?_ ?_
+          (Real.rpow_pos_of_pos (by norm_num) _)
+        · rw [brsDilBlock_eq_brrsInterval]
+          exact Set.inter_subset_inter_left _ hTE
+        · exact Set.inter_subset_left.trans hE
+      have hNlocR : ∀ n k i : ℕ,
+          intervalCoveringNumber (((fun x : ℝ => 3 - x) '' T) ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k := by
+        intro n k i
+        have hδ : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        rw [image_three_sub_inter_brsDilBlock]
+        refine le_trans (intervalCoveringNumber_image_three_sub_le
+          (Set.inter_subset_left.trans hT2) hδ) ?_
+        refine le_trans ?_
+          (hNloc n k (2 - ((i : ℝ) + 1) * (2 : ℝ) ^ (-(k : ℝ))))
+        exact intervalCoveringNumber_mono_set
+          (Set.inter_subset_inter_left _ hTE)
+          (Set.inter_subset_left.trans hE) hδ
+      obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_lp_unif hT2 hCν hNlocT
+        hNbd hp1 hq2 hpq hq2p hν2
+      obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_lp_unif hT2 hCν hNlocR
+        hNbd hp1 hq2 hpq hq2p hν2
+      refine ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · exact le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl)
+      · exact le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)
+  obtain ⟨C₅, hC₅, hR2L, hR2R⟩ := hR2
+  exact hasRadialStrongTypeCont_two_of_bounds hTE hET hT2 hTc hp1.le hpq.le
+    hCMtop hCMtop hR1top hR1top hC₅ hC₅
+    hML hMR (fun g hg => prop52_brsRemTwoOneLeft hT2 hp1 hpq.le hg)
+    (fun g hg => prop52_brsRemTwoOneRight hT2 hp1 hpq.le hg) hR2L hR2R
+
+/-! ## Theorem 1.2 of BRS
+
+The sufficiency half is proved on the interior of `Δ_β` intersected with the
+*strict* `ν♯` half-plane, which is the region BRS's argument covers: their
+(5.20) needs an exponent strictly above `ν♯(q/2-1)`.  The necessity half is
+their full statement. -/
+
+/-- BRS's condition `ν♯(q/2−1)/q + 1/p − 1/q < 1/2`, in strict form and
+imposed only for `2 < q < ∞`, where `ν♯` is active. -/
+def brsNuConstraintStrict (E : Set ℝ) : Set ExponentPoint :=
+  {z : ExponentPoint | 0 < z.2 → z.2 < 1 / 2 →
+    z.2 * _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+        (1 / (2 * z.2) - 1) + z.1 - z.2 < 1 / 2}
+
+/-- **Theorem 1.2, the sufficiency half.** -/
+theorem interior_Delta_two_inter_nu_subset_radialTypeSetCont {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β) :
+    interior (Delta 2 β) ∩ brsNuConstraintStrict E ⊆ radialTypeSetCont 2 E := by
+  rintro z ⟨hz, hzν⟩
+  obtain ⟨h1, h2, h3⟩ := interior_Delta_strict (by omega : 2 ≤ 2) hβ0 hz
+  obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+    Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0 hβ1.le (interior_subset hz)
+  push_cast at h2 h3
+  have hz2pos : 0 < z.2 := by
+    rcases eq_or_lt_of_le hz20 with h | h
+    · exfalso
+      rw [← h] at h1 h2
+      linarith
+    · exact h
+  have hz1pos : 0 < z.1 := lt_trans hz2pos h1
+  have hz1lt : z.1 < 1 := by nlinarith
+  set p : ℝ := 1 / z.1 with hpdef
+  set q : ℝ := 1 / z.2 with hqdef
+  have hp1 : 1 < p := by
+    rw [hpdef, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hq1 : (1 : ℝ) ≤ q := by
+    rw [hqdef, le_div_iff₀ hz2pos, one_mul]
+    exact hz21
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq1
+  have hzp : z.1 = 1 / p := by rw [hpdef, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hqdef, one_div_one_div]
+  have hpq : p < q := by
+    rw [hpdef, hqdef]
+    exact one_div_lt_one_div_of_lt hz2pos h1
+  have hq2p : q < 2 * p := by
+    rw [hpdef, hqdef,
+      show (2 : ℝ) * (1 / z.1) = 2 / z.1 from by ring,
+      div_lt_div_iff₀ hz2pos hz1pos, one_mul]
+    linarith
+  have hexp : 0 < 1 - 2 / p + (1 - β) / q := by
+    rw [hpdef, hqdef,
+      show (2 : ℝ) / (1 / z.1) = 2 * z.1 from by field_simp,
+      show (1 - β) / (1 / z.2) = (1 - β) * z.2 from by field_simp]
+    linarith
+  have hnu : 2 < q →
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+        (q / 2 - 1) < q / 2 + 1 - q / p := by
+    intro hq2
+    have hz2half : z.2 < 1 / 2 := by
+      rw [hzq, div_lt_div_iff₀ hq0 (by norm_num : (0 : ℝ) < 2), one_mul]
+      linarith
+    have hmem := hzν hz2pos hz2half
+    rw [hzp, hzq, show 1 / (2 * (1 / q)) - 1 = q / 2 - 1 from by
+      field_simp] at hmem
+    have hqmul := mul_lt_mul_of_pos_left hmem hq0
+    have hid : q * (1 / q *
+        _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+          (q / 2 - 1) + 1 / p - 1 / q) =
+        _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+          (q / 2 - 1) + q / p - 1 := by
+      field_simp
+    rw [hid, show q * (1 / 2 : ℝ) = q / 2 from by ring] at hqmul
+    linarith
+  refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+  · rw [← hzp, ← hzq]
+  · exact hasRadialStrongTypeCont_two_nu hE hEne hβ0 hβ1 hM hp1 hpq hq2p hexp
+      hnu
+
+/-- **Theorem 1.2 of BRS, both inclusions.** -/
+theorem thm12_radialTypeSet_nu {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β) :
+    interior (Delta 2 β) ∩ brsNuConstraintStrict E ⊆ radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆ Delta 2 β ∩ brsNuConstraint E :=
+  ⟨interior_Delta_two_inter_nu_subset_radialTypeSetCont hE hEne hβ0 hβ1 hM,
+    radialTypeSet_two_subset_region hE hEne hβ0 hdim⟩
+
+/-! ## Corollary 1.3(i)
+
+When `2γ − β ≤ 1` Lemma 2.1's upper bound `ν♯(α) ≤ max(α, (1 − β/γ)α + β)` is
+weak enough that the `ν♯` constraint of Theorem 1.2 is implied by the two
+constraints already defining `Δ_β`, so the type set fills the whole triangle. -/
+
+/-- The exponent inequality behind Corollary 1.3(i): with `t = q/2 − 1` and
+`x = q/p`, the two constraints `x < 2` and `x < t + (3−β)/2` of `Δ_β` force
+`max(t, (1 − β/γ)t + β) < t + 2 − x` as soon as `2γ ≤ 1 + β`. -/
+theorem cor13_nu_bound {β γ x t : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hγ0 : 0 < γ)
+    (h2γβ : 2 * γ - β ≤ 1) (ht : 0 < t) (hx2 : x < 2)
+    (hxt : x < t + (3 - β) / 2) :
+    max t ((1 - β / γ) * t + β) < t + 2 - x := by
+  refine max_lt (by linarith) ?_
+  have hexp : γ * ((1 - β / γ) * t + β) = γ * t - β * t + γ * β := by
+    field_simp
+  refine lt_of_mul_lt_mul_left ?_ hγ0.le
+  rw [hexp]
+  rcases le_or_gt t ((1 + β) / 2) with hA | hB
+  · have hinner : γ * t - β * t + γ * β ≤ γ * ((1 + β) / 2) := by
+      have hkey : t * (γ - β) ≤ γ * (1 - β) / 2 := by
+        rcases le_or_gt γ β with hγβ | hγβ
+        · have h1 : t * (γ - β) ≤ 0 :=
+            mul_nonpos_of_nonneg_of_nonpos ht.le (by linarith)
+          have h2 : (0 : ℝ) ≤ γ * (1 - β) / 2 := by positivity
+          linarith
+        · have h1 : t * (γ - β) ≤ ((1 + β) / 2) * (γ - β) :=
+            mul_le_mul_of_nonneg_right hA (by linarith)
+          have h2 : β * (2 * γ - 1 - β) ≤ 0 :=
+            mul_nonpos_of_nonneg_of_nonpos hβ0 (by linarith)
+          nlinarith [h1, h2]
+      nlinarith [hkey]
+    have hlow : γ * ((1 + β) / 2) < γ * (t + 2 - x) := by
+      refine mul_lt_mul_of_pos_left ?_ hγ0
+      linarith
+    linarith
+  · have hγt : γ < t := by linarith
+    have hbt : 0 ≤ β * (t - γ) := mul_nonneg hβ0 (by linarith)
+    have hx : γ * x < γ * 2 := mul_lt_mul_of_pos_left hx2 hγ0
+    nlinarith [hbt, hx]
+
+/-- **Corollary 1.3(i), the `ν♯` constraint is vacuous.** -/
+theorem interior_Delta_two_subset_nu {E : Set ℝ} (hEne : E.Nonempty)
+    {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hγ0 : 0 < γ)
+    (hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ)
+    (hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ β)
+    (hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ)
+    (h2γβ : 2 * γ - β ≤ 1) :
+    interior (Delta 2 β) ⊆ brsNuConstraintStrict E := by
+  intro z hz hz2pos hz2half
+  obtain ⟨h1, h2, h3⟩ := interior_Delta_strict (by omega : 2 ≤ 2) hβ0 hz
+  push_cast at h2 h3
+  have hz1pos : 0 < z.1 := lt_trans hz2pos h1
+  set t : ℝ := 1 / (2 * z.2) - 1 with htdef
+  have ht : 0 < t := by
+    rw [htdef, sub_pos, lt_div_iff₀ (by linarith : (0 : ℝ) < 2 * z.2), one_mul]
+    linarith
+  set x : ℝ := z.1 / z.2 with hxdef
+  have hx2 : x < 2 := by
+    rw [hxdef, div_lt_iff₀ hz2pos]
+    linarith
+  have hxt : x < t + (3 - β) / 2 := by
+    rw [hxdef, htdef, div_lt_iff₀ hz2pos]
+    have hid : (1 / (2 * z.2) - 1 + (3 - β) / 2) * z.2 =
+        1 / 2 - z.2 + (3 - β) / 2 * z.2 := by
+      field_simp
+    rw [hid]
+    linarith
+  have hnu := (lemma21_brs hEne ht.le hβ0 hγ0 hσ0 hMink hQA).2
+  have hkey := cor13_nu_bound hβ0 hβ1 hγ0 h2γβ ht hx2 hxt
+  have hlt : Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E t <
+      t + 2 - x := lt_of_le_of_lt hnu hkey
+  -- transfer back to the `(1/p, 1/q)` coordinates
+  have hmul := mul_lt_mul_of_pos_left hlt hz2pos
+  have hid : z.2 * (t + 2 - x) = 1 / 2 + z.2 - z.1 := by
+    rw [htdef, hxdef]
+    field_simp
+    ring
+  rw [hid] at hmul
+  linarith
+
+/-- **Corollary 1.3(i) of BRS.**  For `2γ − β ≤ 1` the radial type set fills
+`Δ_β`: every interior point is a point of radial strong type on the
+continuous-profile core, and every point of the type set lies in `Δ_β`. -/
+theorem cor13i_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hγ0 : 0 < γ)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    (hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ)
+    (hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ β)
+    (hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ)
+    (h2γβ : 2 * γ - β ≤ 1) :
+    interior (Delta 2 β) ⊆ radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆ Delta 2 β := by
+  refine ⟨fun z hz => ?_, radialTypeSet_subset_Delta (by omega) hE hEne hdim⟩
+  exact interior_Delta_two_inter_nu_subset_radialTypeSetCont hE hEne hβ0 hβ1 hM
+    ⟨hz, interior_Delta_two_subset_nu hEne hβ0 hβ1 hγ0 hσ0 hMink hQA h2γβ hz⟩
+
+/-! ## Corollary 1.3(ii): the quadrangle `𝒬^rad_{β,γ}`
+
+For `2γ − β > 1` the `ν♯` constraint of Theorem 1.2 is no longer vacuous, but
+Lemma 2.1 replaces it by the two *affine* constraints
+
+* `1/p ≤ 2/q` — already one of the three sides of `Δ_β`, and
+* `1/p ≤ β/(2γ) + (2 − β/γ − β)/q`,
+
+whose intersection is convex.  The quadrangle `𝒬^rad_{β,γ}` is exactly the part
+of `Δ_β` cut out by the second one: its two new vertices `P₄,γ^rad` and
+`P₅,β,γ^rad` both lie *on* that line, `P₄` on the side `[P₁, P₃,β^rad]` and `P₅`
+on the side `[P₂,β, P₃,β^rad]`. -/
+
+/-- `P₄,γ^rad` lies on the side `[P₁, P₃,β^rad]` of `Δ_β`, at the parameter
+`(3+β)/(2(1+γ))`, which is at most `1` precisely when `2γ − β ≥ 1`. -/
+theorem P4rad_mem_Delta_two {β γ : ℝ} (hβ0 : 0 ≤ β) (hγ0 : 0 < γ)
+    (h2γβ : 1 ≤ 2 * γ - β) : P4rad γ ∈ Delta 2 β := by
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  have hγ1 : (0 : ℝ) < 1 + γ := by linarith
+  set lam : ℝ := (3 + β) / (2 * (1 + γ)) with hlam
+  have hlam0 : 0 ≤ lam := by rw [hlam]; positivity
+  have hlam1 : lam ≤ 1 := by
+    rw [hlam, div_le_one (by positivity)]
+    linarith
+  rw [Delta]
+  refine (convex_convexHull ℝ _).segment_subset (x := Q1) (y := P3rad 2 β)
+    (subset_convexHull ℝ _ (by simp)) (subset_convexHull ℝ _ (by simp)) ?_
+  refine ⟨1 - lam, lam, by linarith, hlam0, by ring, ?_⟩
+  rw [Q1, P3rad_two, P4rad]
+  simp only [Prod.smul_mk, smul_eq_mul, Prod.mk_add_mk, Prod.mk.injEq]
+  constructor
+  · rw [hlam]
+    field_simp
+    ring
+  · rw [hlam]
+    field_simp
+    ring
+
+/-- `P₅,β,γ^rad` lies on the side `[P₂,β, P₃,β^rad]` of `Δ_β`. -/
+theorem P5rad_mem_Delta_two {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β) :
+    P5rad β γ ∈ Delta 2 β := by
+  have hβ1' : (0 : ℝ) < 1 + β := by linarith
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  have hβγ : β < γ := by linarith
+  set u : ℝ := β / γ with hu
+  have hu0 : 0 ≤ u := by rw [hu]; positivity
+  have hu1 : u < 1 := by
+    rw [hu, div_lt_one hγ0]
+    exact hβγ
+  have hD : (0 : ℝ) < (1 - β) + 2 * (1 - u) := by linarith
+  set mu : ℝ := (1 + β) * ((1 - u) * (1 + β) - (1 - β)) /
+    (2 * ((1 - β) + 2 * (1 - u))) with hmu
+  have hnum : (1 - u) * (1 + β) - (1 - β) = 2 * β - u * (1 + β) := by ring
+  have hmu0 : 0 ≤ mu := by
+    rw [hmu]
+    refine div_nonneg (mul_nonneg (by linarith) ?_) (by linarith)
+    rw [hnum, hu, sub_nonneg, div_mul_eq_mul_div, div_le_iff₀ hγ0]
+    nlinarith
+  have hmu1 : mu ≤ 1 := by
+    rw [hmu, div_le_one (by linarith)]
+    have hprod : (0 : ℝ) ≤ (1 - β) * (3 + β) := by nlinarith
+    have hkey : u * ((1 - β) * (3 + β)) ≤ 2 * ((1 - β) * (3 + β)) :=
+      mul_le_mul_of_nonneg_right (by linarith) hprod
+    nlinarith [hkey]
+  rw [Delta]
+  refine (convex_convexHull ℝ _).segment_subset (x := Q2 2 β)
+    (y := P3rad 2 β)
+    (subset_convexHull ℝ _ (by simp)) (subset_convexHull ℝ _ (by simp)) ?_
+  refine ⟨mu, 1 - mu, hmu0, by linarith, by ring, ?_⟩
+  rw [Q2_two, P3rad_two, P5rad]
+  simp only [Prod.smul_mk, smul_eq_mul, Prod.mk_add_mk, Prod.mk.injEq]
+  have hDne : ((1 - β) + 2 * (1 - u)) ≠ 0 := ne_of_gt hD
+  have hDne2 : (3 : ℝ) - β - u * 2 ≠ 0 := fun h => hDne (by linarith)
+  have hDrw : (1 - β) + 2 * (1 - u) = 3 - β - u * 2 := by ring
+  constructor
+  · rw [hmu, ← hu, hDrw]
+    field_simp
+    ring
+  · rw [hmu, ← hu, hDrw]
+    field_simp
+    ring
+
+/-- **The quadrangle sits inside the triangle.** -/
+theorem Qrad_subset_Delta_two {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β) :
+    Qrad β γ ⊆ Delta 2 β := by
+  rw [Qrad]
+  refine convexHull_min ?_ (convex_convexHull ℝ _)
+  intro z hz
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hz
+  rcases hz with h | h | h | h
+  · rw [h, Delta]
+    exact subset_convexHull ℝ _ (by simp)
+  · rw [h, Delta]
+    exact subset_convexHull ℝ _ (by simp)
+  · rw [h]
+    exact P4rad_mem_Delta_two hβ0 hγ0 h2γβ.le
+  · rw [h]
+    exact P5rad_mem_Delta_two hβ0 hβ1 hγ0 h2γβ
+
+/-- **The quadrangle lies below the line through `P₄,γ^rad` and `P₅,β,γ^rad`.**
+This is the half-plane `1/p ≤ β/(2γ) + (2 − β/γ − β)/q` produced by the second
+branch of Lemma 2.1. -/
+theorem Qrad_subset_nuHalfplane {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β) :
+    Qrad β γ ⊆
+      {z : ExponentPoint |
+        (1 : ℝ) * z.1 + (-(2 - β / γ - β)) * z.2 ≤ β / (2 * γ)} := by
+  have hβ1' : (0 : ℝ) < 1 + β := by linarith
+  have hβγ : β < γ := by linarith
+  have hγ1' : (0 : ℝ) < 1 + γ := by linarith
+  set u : ℝ := β / γ with hu
+  have hu0 : 0 ≤ u := by rw [hu]; positivity
+  have hu1 : u < 1 := by
+    rw [hu, div_lt_one hγ0]
+    exact hβγ
+  have huγ : u * γ = β := by
+    rw [hu]
+    field_simp
+  have hD : (0 : ℝ) < (1 - β) + 2 * (1 - u) := by linarith
+  have hDne : ((1 - β) + 2 * (1 - u)) ≠ 0 := ne_of_gt hD
+  rw [Qrad]
+  refine convexHull_min ?_ (convex_exponent_halfplane _ _ _)
+  intro z hz
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hz
+  simp only [Set.mem_setOf_eq]
+  rcases hz with h | h | h | h
+  · rw [h, Q1]
+    show (1 : ℝ) * (0 : ℝ) + (-(2 - β / γ - β)) * (0 : ℝ) ≤ β / (2 * γ)
+    have : (0 : ℝ) ≤ β / (2 * γ) := by positivity
+    linarith
+  · rw [h, Q2_two]
+    show (1 : ℝ) * (1 / (1 + β)) + (-(2 - β / γ - β)) * (1 / (1 + β)) ≤
+      β / (2 * γ)
+    rw [← hu]
+    have hbg : β / (2 * γ) = u / 2 := by rw [hu]; ring
+    have hid : (1 : ℝ) * (1 / (1 + β)) + (-(2 - u - β)) * (1 / (1 + β)) =
+        (u + β - 1) / (1 + β) := by
+      field_simp
+      ring
+    rw [hid, hbg, div_le_div_iff₀ hβ1' (by norm_num : (0 : ℝ) < 2)]
+    nlinarith [hu1, hβ1, hβ0]
+  · rw [h, P4rad]
+    show (1 : ℝ) * (1 / (1 + γ)) + (-(2 - β / γ - β)) * (1 / (2 * (1 + γ))) ≤
+      β / (2 * γ)
+    have hid : (1 : ℝ) * (1 / (1 + γ)) +
+        (-(2 - β / γ - β)) * (1 / (2 * (1 + γ))) = β / (2 * γ) := by
+      field_simp
+      ring
+    rw [hid]
+  · rw [h, P5rad]
+    show (1 : ℝ) *
+        (((1 - β) * (2 - β / γ) + 2 * (1 - β / γ)) /
+          (2 * ((1 - β) + 2 * (1 - β / γ)))) +
+        (-(2 - β / γ - β)) *
+          ((1 - β / γ) / ((1 - β) + 2 * (1 - β / γ))) ≤ β / (2 * γ)
+    rw [← hu]
+    have hid : (1 : ℝ) *
+        (((1 - β) * (2 - u) + 2 * (1 - u)) / (2 * ((1 - β) + 2 * (1 - u)))) +
+        (-(2 - u - β)) * ((1 - u) / ((1 - β) + 2 * (1 - u))) = u / 2 := by
+      field_simp
+      ring
+    rw [hid]
+    exact le_of_eq (by rw [hu]; ring)
+
+/-- Interior points of a set contained in a closed half-plane with positive
+first coefficient satisfy the corresponding strict inequality. -/
+theorem interior_subset_halfplane_strict {S : Set ExponentPoint} {c₁ c₂ c₃ : ℝ}
+    (hS : S ⊆ {z : ExponentPoint | c₁ * z.1 + c₂ * z.2 ≤ c₃}) (hc₁ : 0 < c₁)
+    {z : ExponentPoint} (hz : z ∈ interior S) : c₁ * z.1 + c₂ * z.2 < c₃ := by
+  obtain ⟨ε, hε, hball⟩ := Metric.isOpen_iff.mp isOpen_interior z hz
+  have hmem : (z.1 + ε / 2, z.2) ∈ Metric.ball z ε := by
+    rw [Metric.mem_ball, Prod.dist_eq]
+    refine max_lt ?_ ?_
+    · rw [Real.dist_eq, show z.1 + ε / 2 - z.1 = ε / 2 from by ring,
+        abs_of_nonneg (by linarith)]
+      linarith
+    · simpa using hε
+  have h := hS (interior_subset (hball hmem))
+  simp only [Set.mem_setOf_eq] at h
+  have h' : c₁ * (z.1 + ε / 2) + c₂ * z.2 ≤ c₃ := h
+  nlinarith
+
+/-- **Corollary 1.3(ii): the `ν♯` constraint on the interior of the
+quadrangle.** -/
+theorem interior_Qrad_subset_nu {E : Set ℝ} (hEne : E.Nonempty)
+    {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hγ0 : 0 < γ)
+    (hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ)
+    (hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ β)
+    (hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ)
+    (h2γβ : 1 < 2 * γ - β) :
+    interior (Qrad β γ) ⊆ brsNuConstraintStrict E := by
+  intro z hz hz2pos hz2half
+  have hzΔ : z ∈ interior (Delta 2 β) :=
+    interior_mono (Qrad_subset_Delta_two hβ0 hβ1 hγ0 h2γβ) hz
+  obtain ⟨-, hhalf, -⟩ := interior_Delta_strict (by omega : 2 ≤ 2) hβ0 hzΔ
+  push_cast at hhalf
+  have hnuhp := interior_subset_halfplane_strict
+    (Qrad_subset_nuHalfplane hβ0 hβ1 hγ0 h2γβ) (by norm_num : (0 : ℝ) < 1) hz
+  set u : ℝ := β / γ with hu
+  have hstrict : z.1 < u / 2 + (2 - u - β) * z.2 := by
+    have h2γ : (0 : ℝ) < 2 * γ := by linarith
+    have hid : β / (2 * γ) = u / 2 := by
+      rw [hu]
+      field_simp
+    rw [hid] at hnuhp
+    linarith [hnuhp]
+  set t : ℝ := 1 / (2 * z.2) - 1 with htdef
+  have ht : 0 < t := by
+    rw [htdef, sub_pos, lt_div_iff₀ (by linarith : (0 : ℝ) < 2 * z.2), one_mul]
+    linarith
+  have hzt : z.2 * t = 1 / 2 - z.2 := by
+    rw [htdef]
+    field_simp
+  have hnu := (lemma21_brs hEne ht.le hβ0 hγ0 hσ0 hMink hQA).2
+  rw [← hu] at hnu
+  have hmax : z.2 * max t ((1 - u) * t + β) + z.1 - z.2 < 1 / 2 := by
+    rcases max_cases t ((1 - u) * t + β) with ⟨heq, -⟩ | ⟨heq, -⟩ <;> rw [heq]
+    · linarith [hzt]
+    · have hexp : z.2 * ((1 - u) * t + β) =
+          (1 - u) * (1 / 2 - z.2) + β * z.2 := by
+        rw [show z.2 * ((1 - u) * t + β) = (1 - u) * (z.2 * t) + β * z.2 from by
+          ring, hzt]
+      rw [hexp]
+      linarith [hstrict]
+  have hmono : z.2 *
+      Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E t ≤
+      z.2 * max t ((1 - u) * t + β) :=
+    mul_le_mul_of_nonneg_left hnu hz2pos.le
+  linarith
+
+/-- **Corollary 1.3(ii) of BRS.**  For `2γ − β > 1` the radial type set contains
+the quadrangle `𝒬^rad_{β,γ}` and is contained in the triangle `Δ_β`. -/
+theorem cor13ii_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β γ : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hγ0 : 0 < γ)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    (hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ)
+    (hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ β)
+    (hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ)
+    (h2γβ : 1 < 2 * γ - β) :
+    interior (Qrad β γ) ⊆ radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆ Delta 2 β := by
+  refine ⟨fun z hz => ?_, radialTypeSet_subset_Delta (by omega) hE hEne hdim⟩
+  refine interior_Delta_two_inter_nu_subset_radialTypeSetCont hE hEne hβ0 hβ1 hM
+    ⟨interior_mono (Qrad_subset_Delta_two hβ0 hβ1 hγ0 h2γβ) hz,
+      interior_Qrad_subset_nu hEne hβ0 hβ1 hγ0 hσ0 hMink hQA h2γβ hz⟩
+
+/-! ## The line through `P₄,γ^rad` and `P₅,β,γ^rad` cuts `Δ_β` into `𝒬^rad_{β,γ}`
+
+The two new vertices sit in the interiors of two sides of the triangle, so the
+half-plane of the previous section slices `Δ_β` along a chord and the piece
+containing `P₁` and `P₂,β` is exactly the quadrangle.  The proof is barycentric:
+writing a point of `Δ_β` as `a P₁ + b P₂,β + c P₃,β^rad` and pushing the
+`P₃,β^rad` mass out along the two sides through `P₄,γ^rad` and `P₅,β,γ^rad` is
+possible precisely when the half-plane inequality holds. -/
+
+/-- Barycentric coordinates on the triangle `Δ_β`. -/
+theorem exists_barycentric_Delta_two {β : ℝ} {z : ExponentPoint}
+    (hz : z ∈ Delta 2 β) :
+    ∃ a b c : ℝ, 0 ≤ a ∧ 0 ≤ b ∧ 0 ≤ c ∧ a + b + c = 1 ∧
+      z = a • (Q1 : ExponentPoint) + b • Q2 2 β + c • P3rad 2 β := by
+  have hconv : Convex ℝ {w : ExponentPoint | ∃ a b c : ℝ,
+      0 ≤ a ∧ 0 ≤ b ∧ 0 ≤ c ∧ a + b + c = 1 ∧
+        w = a • (Q1 : ExponentPoint) + b • Q2 2 β + c • P3rad 2 β} := by
+    rintro x ⟨a, b, c, ha, hb, hc, habc, hx⟩ y ⟨a', b', c', ha', hb', hc',
+      habc', hy⟩ s s' hs hs' hss
+    refine ⟨s * a + s' * a', s * b + s' * b', s * c + s' * c',
+      by positivity, by positivity, by positivity, ?_, ?_⟩
+    · have hid : s * a + s' * a' + (s * b + s' * b') + (s * c + s' * c') =
+          s * (a + b + c) + s' * (a' + b' + c') := by ring
+      rw [hid, habc, habc', mul_one, mul_one]
+      exact hss
+    · rw [hx, hy]
+      refine Prod.ext ?_ ?_ <;>
+        simp only [Prod.fst_add, Prod.snd_add, Prod.smul_fst, Prod.smul_snd,
+          smul_eq_mul] <;> ring
+  refine convexHull_min ?_ hconv hz
+  intro w hw
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hw
+  simp only [Set.mem_setOf_eq]
+  rcases hw with h | h | h
+  · exact ⟨1, 0, 0, by norm_num, le_rfl, le_rfl, by norm_num, by
+      rw [h]; refine Prod.ext ?_ ?_ <;>
+        simp only [Prod.fst_add, Prod.snd_add, Prod.smul_fst, Prod.smul_snd,
+          smul_eq_mul] <;> ring⟩
+  · exact ⟨0, 1, 0, le_rfl, by norm_num, le_rfl, by norm_num, by
+      rw [h]; refine Prod.ext ?_ ?_ <;>
+        simp only [Prod.fst_add, Prod.snd_add, Prod.smul_fst, Prod.smul_snd,
+          smul_eq_mul, Q1] <;> ring⟩
+  · exact ⟨0, 0, 1, le_rfl, le_rfl, by norm_num, by norm_num, by
+      rw [h]; refine Prod.ext ?_ ?_ <;>
+        simp only [Prod.fst_add, Prod.snd_add, Prod.smul_fst, Prod.smul_snd,
+          smul_eq_mul, Q1] <;> ring⟩
+
+/-- `P₄,γ^rad` is an interior point of the side `[P₁, P₃,β^rad]`. -/
+theorem exists_P4rad_segment {β γ : ℝ} (hβ0 : 0 ≤ β) (hγ0 : 0 < γ)
+    (h2γβ : 1 < 2 * γ - β) :
+    ∃ lam : ℝ, 0 < lam ∧ lam < 1 ∧
+      P4rad γ = (1 - lam) • (Q1 : ExponentPoint) + lam • P3rad 2 β := by
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  have hγ1 : (0 : ℝ) < 1 + γ := by linarith
+  refine ⟨(3 + β) / (2 * (1 + γ)), by positivity, ?_, ?_⟩
+  · rw [div_lt_one (by positivity)]
+    linarith
+  · rw [Q1, P3rad_two, P4rad]
+    simp only [Prod.smul_mk, smul_eq_mul, Prod.mk_add_mk, Prod.mk.injEq]
+    constructor
+    · field_simp
+      ring
+    · field_simp
+      ring
+
+/-- `P₅,β,γ^rad` is an interior point of the side `[P₂,β, P₃,β^rad]`. -/
+theorem exists_P5rad_segment {β γ : ℝ} (hβ0 : 0 < β) (hβ1 : β < 1)
+    (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β) :
+    ∃ mu : ℝ, 0 < mu ∧ mu < 1 ∧
+      P5rad β γ = mu • Q2 2 β + (1 - mu) • P3rad 2 β := by
+  have hβ1' : (0 : ℝ) < 1 + β := by linarith
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  have hβ1n : (1 : ℝ) + β ≠ 0 := ne_of_gt hβ1'
+  have hβ3n : (3 : ℝ) + β ≠ 0 := ne_of_gt hβ3
+  have hβγ : β < γ := by linarith
+  obtain ⟨u, hu⟩ : ∃ u : ℝ, u = β / γ := ⟨_, rfl⟩
+  have hu0 : 0 < u := by rw [hu]; positivity
+  have hu1 : u < 1 := by
+    rw [hu, div_lt_one hγ0]
+    exact hβγ
+  obtain ⟨D, hD⟩ : ∃ D : ℝ, D = 3 - β - u * 2 := ⟨_, rfl⟩
+  have hDpos : 0 < D := by rw [hD]; linarith
+  have hDn : D ≠ 0 := ne_of_gt hDpos
+  have hDrw : (1 : ℝ) - β + 2 * (1 - u) = D := by rw [hD]; ring
+  have hkey : 0 < 2 * β - u * (1 + β) := by
+    have hid : 2 * β - β / γ * (1 + β) = β * (2 * γ - 1 - β) / γ := by
+      field_simp
+      ring
+    rw [hu, hid]
+    have hpos : 0 < β * (2 * γ - 1 - β) := mul_pos hβ0 (by linarith)
+    positivity
+  refine ⟨(1 + β) * (2 * β - u * (1 + β)) / (2 * D),
+    div_pos (mul_pos hβ1' hkey) (by linarith), ?_, ?_⟩
+  · rw [div_lt_one (by linarith), hD]
+    have hprod : (0 : ℝ) < (1 - β) * (3 + β) := by nlinarith
+    have hlt : u * ((1 - β) * (3 + β)) < 2 * ((1 - β) * (3 + β)) :=
+      mul_lt_mul_of_pos_right (by linarith) hprod
+    nlinarith [hlt]
+  · rw [Q2_two, P3rad_two, P5rad, ← hu, hDrw]
+    simp only [Prod.smul_mk, smul_eq_mul, Prod.mk_add_mk, Prod.mk.injEq]
+    constructor
+    · field_simp
+      subst hD
+      ring
+    · field_simp
+      subst hD
+      ring
+
+set_option maxHeartbeats 1000000 in
+/-- **The chord cuts off exactly the quadrangle.**  A point of `Δ_β` obeying
+the half-plane inequality `1/p ≤ β/(2γ) + (2 − β/γ − β)/q` lies in
+`𝒬^rad_{β,γ}`. -/
+theorem Delta_two_inter_nuHalfplane_subset_Qrad {β γ : ℝ} (hβ0 : 0 < β)
+    (hβ1 : β < 1) (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β) :
+    Delta 2 β ∩
+        {z : ExponentPoint |
+          (1 : ℝ) * z.1 + (-(2 - β / γ - β)) * z.2 ≤ β / (2 * γ)} ⊆
+      Qrad β γ := by
+  have hβ1' : (0 : ℝ) < 1 + β := by linarith
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  have hβ1n : (1 : ℝ) + β ≠ 0 := ne_of_gt hβ1'
+  have hβ3n : (3 : ℝ) + β ≠ 0 := ne_of_gt hβ3
+  have hγ1 : (0 : ℝ) < 1 + γ := by linarith
+  have hγ1n : (1 : ℝ) + γ ≠ 0 := ne_of_gt hγ1
+  have hβγ : β < γ := by linarith
+  obtain ⟨u, hu⟩ : ∃ u : ℝ, u = β / γ := ⟨_, rfl⟩
+  have hu0 : 0 < u := by rw [hu]; positivity
+  have hu1 : u < 1 := by
+    rw [hu, div_lt_one hγ0]
+    exact hβγ
+  have huγ : u * γ = β := by
+    rw [hu]
+    field_simp
+  have hDne2 : ((1 : ℝ) - β) + 2 * (1 - u) ≠ 0 := by
+    intro h
+    linarith
+  have huhalf : β / (2 * γ) = u / 2 := by
+    rw [hu]
+    ring
+  have hkey : 0 < 2 * β - u * (1 + β) := by
+    have hid : 2 * β - β / γ * (1 + β) = β * (2 * γ - 1 - β) / γ := by
+      field_simp
+      ring
+    rw [hu, hid]
+    have hpos : 0 < β * (2 * γ - 1 - β) := mul_pos hβ0 (by linarith)
+    positivity
+  obtain ⟨F1, hF1⟩ : ∃ x : ℝ, x = -(u / 2) := ⟨_, rfl⟩
+  obtain ⟨F2, hF2⟩ : ∃ x : ℝ,
+      x = (1 : ℝ) * (1 / (1 + β)) + (-(2 - u - β)) * (1 / (1 + β)) - u / 2 :=
+    ⟨_, rfl⟩
+  obtain ⟨F3, hF3⟩ : ∃ x : ℝ,
+      x = (1 : ℝ) * (2 / (3 + β)) + (-(2 - u - β)) * (1 / (3 + β)) - u / 2 :=
+    ⟨_, rfl⟩
+  have hF3pos : 0 < F3 := by
+    have hid : (1 : ℝ) * (2 / (3 + β)) + (-(2 - u - β)) * (1 / (3 + β)) -
+        u / 2 = (2 * β - u * (1 + β)) / (2 * (3 + β)) := by
+      field_simp
+      ring
+    rw [hF3, hid]
+    positivity
+  obtain ⟨lam, hlam0, hlam1, hlam⟩ := exists_P4rad_segment hβ0.le hγ0 h2γβ
+  obtain ⟨mu, hmu0, hmu1, hmu⟩ := exists_P5rad_segment hβ0 hβ1 hγ0 h2γβ
+  have hlam0n : lam ≠ 0 := ne_of_gt hlam0
+  have hlamne : (1 : ℝ) - lam ≠ 0 := by intro h; linarith
+  have hmune : mu ≠ 0 := ne_of_gt hmu0
+  have hmu1n : (1 : ℝ) - mu ≠ 0 := by intro h; linarith
+  -- the affine functional vanishes at the two new vertices
+  have hval4 : (1 : ℝ) * (P4rad γ).1 + (-(2 - u - β)) * (P4rad γ).2 -
+      u / 2 = 0 := by
+    rw [P4rad]
+    show (1 : ℝ) * (1 / (1 + γ)) +
+      (-(2 - u - β)) * (1 / (2 * (1 + γ))) - u / 2 = 0
+    have hid : (1 : ℝ) * (1 / (1 + γ)) +
+        (-(2 - u - β)) * (1 / (2 * (1 + γ))) - u / 2 =
+          (β - u * γ) / (2 * (1 + γ)) := by
+      field_simp
+      ring
+    rw [hid, ← huγ, sub_self, zero_div]
+  have hval5 : (1 : ℝ) * (P5rad β γ).1 + (-(2 - u - β)) * (P5rad β γ).2 -
+      u / 2 = 0 := by
+    rw [P5rad]
+    show (1 : ℝ) *
+        (((1 - β) * (2 - β / γ) + 2 * (1 - β / γ)) /
+          (2 * ((1 - β) + 2 * (1 - β / γ)))) +
+        (-(2 - u - β)) *
+          ((1 - β / γ) / ((1 - β) + 2 * (1 - β / γ))) - u / 2 = 0
+    rw [← hu]
+    have hid : (1 : ℝ) *
+        (((1 - β) * (2 - u) + 2 * (1 - u)) / (2 * ((1 - β) + 2 * (1 - u)))) +
+        (-(2 - u - β)) * ((1 - u) / ((1 - β) + 2 * (1 - u))) = u / 2 := by
+      field_simp
+      ring
+    rw [hid, sub_self]
+  have hP4 : (1 - lam) * F1 + lam * F3 = 0 := by
+    have hexpand : (1 - lam) * F1 + lam * F3 =
+        (1 : ℝ) * (P4rad γ).1 + (-(2 - u - β)) * (P4rad γ).2 - u / 2 := by
+      rw [hlam, hF1, hF3, Q1, P3rad_two]
+      simp only [Prod.fst_add, Prod.snd_add, Prod.smul_fst, Prod.smul_snd,
+        smul_eq_mul]
+      ring
+    rw [hexpand]
+    exact hval4
+  have hP5 : mu * F2 + (1 - mu) * F3 = 0 := by
+    have hexpand : mu * F2 + (1 - mu) * F3 =
+        (1 : ℝ) * (P5rad β γ).1 + (-(2 - u - β)) * (P5rad β γ).2 - u / 2 := by
+      rw [hmu, hF2, hF3, Q2_two, P3rad_two]
+      simp only [Prod.fst_add, Prod.snd_add, Prod.smul_fst, Prod.smul_snd,
+        smul_eq_mul]
+      ring
+    rw [hexpand]
+    exact hval5
+  -- the barycentric argument
+  rintro z ⟨hzΔ, hzH⟩
+  simp only [Set.mem_setOf_eq, ← hu, huhalf] at hzH
+  obtain ⟨a, b, c, ha, hb, hc, habc, hzeq⟩ := exists_barycentric_Delta_two hzΔ
+  have hz1 : z.1 = b * (1 / (1 + β)) + c * (2 / (3 + β)) := by
+    rw [hzeq, Q1, Q2_two, P3rad_two]
+    simp only [Prod.fst_add, Prod.smul_fst, smul_eq_mul]
+    ring
+  have hz2 : z.2 = b * (1 / (1 + β)) + c * (1 / (3 + β)) := by
+    rw [hzeq, Q1, Q2_two, P3rad_two]
+    simp only [Prod.snd_add, Prod.smul_snd, smul_eq_mul]
+    ring
+  have hbary : a * F1 + b * F2 + c * F3 ≤ 0 := by
+    have hid : a * F1 + b * F2 + c * F3 =
+        (1 : ℝ) * (b * (1 / (1 + β)) + c * (2 / (3 + β))) +
+          (-(2 - u - β)) * (b * (1 / (1 + β)) + c * (1 / (3 + β))) -
+            (a + b + c) * (u / 2) := by
+      rw [hF1, hF2, hF3]
+      ring
+    rw [hid, habc, ← hz1, ← hz2]
+    linarith
+  -- the two side ratios
+  obtain ⟨A, hA⟩ : ∃ x : ℝ, x = a * lam / (1 - lam) := ⟨_, rfl⟩
+  obtain ⟨B, hB⟩ : ∃ x : ℝ, x = b * (1 - mu) / mu := ⟨_, rfl⟩
+  have hAnn : 0 ≤ A := by
+    rw [hA]
+    exact div_nonneg (mul_nonneg ha hlam0.le) (by linarith)
+  have hBnn : 0 ≤ B := by
+    rw [hB]
+    exact div_nonneg (mul_nonneg hb (by linarith)) hmu0.le
+  have hcAB : c ≤ A + B := by
+    have hlampos : (0 : ℝ) < 1 - lam := by linarith
+    have hF1lin : F1 * (1 - lam) = -(lam * F3) := by linarith [hP4]
+    have hF2lin : F2 * mu = -((1 - mu) * F3) := by linarith [hP5]
+    have hAlam : A * (1 - lam) = a * lam := by
+      rw [hA]
+      field_simp
+    have hBmu : B * mu = b * (1 - mu) := by
+      rw [hB]
+      field_simp
+    have h1 : a * F1 = -(A * F3) :=
+      mul_right_cancel₀ (ne_of_gt hlampos)
+        (by linear_combination a * hF1lin + F3 * hAlam)
+    have h2 : b * F2 = -(B * F3) :=
+      mul_right_cancel₀ hmune
+        (by linear_combination b * hF2lin + F3 * hBmu)
+    rw [h1, h2] at hbary
+    by_contra hcon
+    rw [not_le] at hcon
+    nlinarith [mul_pos (sub_pos.mpr hcon) hF3pos, hbary]
+  -- the splitting parameter
+  obtain ⟨t, ht⟩ : ∃ x : ℝ, x = min 1 (A / c) := ⟨_, rfl⟩
+  have ht0 : 0 ≤ t := by
+    rw [ht]
+    exact le_min (by norm_num) (div_nonneg hAnn hc)
+  have ht1 : t ≤ 1 := by rw [ht]; exact min_le_left _ _
+  have hleft : c * t * (1 - lam) / lam ≤ a := by
+    rcases eq_or_lt_of_le hc with hc0 | hcpos
+    · rw [← hc0]
+      simp only [zero_mul, zero_div]
+      exact ha
+    · have htA : c * t ≤ A := by
+        have hle : t ≤ A / c := by rw [ht]; exact min_le_right _ _
+        calc c * t ≤ c * (A / c) := mul_le_mul_of_nonneg_left hle hcpos.le
+          _ = A := by field_simp
+      have hAlam : A * (1 - lam) = a * lam := by
+        rw [hA]
+        field_simp
+      rw [div_le_iff₀ hlam0]
+      nlinarith [htA, hlam1, hlam0, hAlam]
+  have hright : c * (1 - t) * mu / (1 - mu) ≤ b := by
+    rcases eq_or_lt_of_le hc with hc0 | hcpos
+    · rw [← hc0]
+      simp only [zero_mul, zero_div]
+      exact hb
+    · have htB : c * (1 - t) ≤ B := by
+        rcases le_or_gt 1 (A / c) with hcase | hcase
+        · have hteq : t = 1 := by rw [ht]; exact min_eq_left hcase
+          rw [hteq]
+          simpa using hBnn
+        · have hteq : t = A / c := by rw [ht]; exact min_eq_right hcase.le
+          rw [hteq, show c * (1 - A / c) = c - A from by field_simp]
+          linarith
+      have hBmu : B * mu = b * (1 - mu) := by
+        rw [hB]
+        field_simp
+      rw [div_le_iff₀ (by linarith : (0 : ℝ) < 1 - mu)]
+      nlinarith [htB, hmu0, hmu1, hBmu]
+  -- assemble the convex combination on the four vertices
+  have hconv : Convex ℝ (Qrad β γ) := convex_convexHull ℝ _
+  have hwnn : ∀ i ∈ (Finset.univ : Finset (Fin 4)), (0 : ℝ) ≤
+      ![a - c * t * (1 - lam) / lam, b - c * (1 - t) * mu / (1 - mu),
+        c * t / lam, c * (1 - t) / (1 - mu)] i := by
+    intro i _
+    fin_cases i
+    · simpa using sub_nonneg.mpr hleft
+    · simpa using sub_nonneg.mpr hright
+    · simpa using div_nonneg (mul_nonneg hc ht0) hlam0.le
+    · simpa using div_nonneg (mul_nonneg hc (by linarith : (0 : ℝ) ≤ 1 - t))
+        (by linarith : (0 : ℝ) ≤ 1 - mu)
+  have hwsum : ∑ i : Fin 4,
+      ![a - c * t * (1 - lam) / lam, b - c * (1 - t) * mu / (1 - mu),
+        c * t / lam, c * (1 - t) / (1 - mu)] i = 1 := by
+    rw [Fin.sum_univ_four]
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+      Matrix.cons_val_two, Matrix.cons_val_three, Matrix.tail_cons]
+    have e1 : c * t / lam - c * t * (1 - lam) / lam = c * t := by
+      field_simp
+      ring
+    have e2 : c * (1 - t) / (1 - mu) - c * (1 - t) * mu / (1 - mu) =
+        c * (1 - t) := by
+      field_simp
+    linarith [e1, e2, habc]
+  have hvmem : ∀ i ∈ (Finset.univ : Finset (Fin 4)),
+      ![(Q1 : ExponentPoint), Q2 2 β, P4rad γ, P5rad β γ] i ∈ Qrad β γ := by
+    intro i _
+    have hmem : (![(Q1 : ExponentPoint), Q2 2 β, P4rad γ, P5rad β γ] i) ∈
+        ({Q1, Q2 2 β, P4rad γ, P5rad β γ} : Set ExponentPoint) := by
+      fin_cases i <;> simp
+    rw [Qrad]
+    exact subset_convexHull ℝ _ hmem
+  have hsum := hconv.sum_mem hwnn hwsum hvmem
+  rw [Fin.sum_univ_four] at hsum
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+    Matrix.cons_val_two, Matrix.cons_val_three, Matrix.tail_cons] at hsum
+  have hzsum : (a - c * t * (1 - lam) / lam) • (Q1 : ExponentPoint) +
+      (b - c * (1 - t) * mu / (1 - mu)) • Q2 2 β +
+      (c * t / lam) • P4rad γ + (c * (1 - t) / (1 - mu)) • P5rad β γ = z := by
+    rw [hlam, hmu, Q1, Q2_two, P3rad_two]
+    refine Prod.ext ?_ ?_
+    · simp only [Prod.fst_add, Prod.smul_fst, Prod.smul_mk, smul_eq_mul]
+      rw [hz1]
+      field_simp
+      ring
+    · simp only [Prod.snd_add, Prod.smul_snd, Prod.smul_mk, smul_eq_mul]
+      rw [hz2]
+      field_simp
+      ring
+  rwa [hzsum] at hsum
+
+/-! ## Sharpness of the inclusion in Corollary 1.3(ii)
+
+BRS observe that the inclusion `𝒬^rad_{β,γ} ⊆ closure 𝒯^rad_E` is an equality
+whenever the upper bound of Lemma 2.1 is attained, i.e. whenever
+
+`ν♯(α) = max(α, (1 − β/γ)α + β)` for all `α ≥ 0`.
+
+Under that hypothesis the region of Theorem 1.2 is *exactly* the quadrangle:
+the `ν♯` constraint becomes the conjunction of the two affine constraints
+`1/p ≤ 2/q` and `1/p ≤ β/(2γ) + (2 − β/γ − β)/q`, the first of which is already
+one of the sides of `Δ_β`, while the second cuts `Δ_β` along the chord
+`[P₄,γ^rad, P₅,β,γ^rad]`. -/
+
+/-- The extremal case of Lemma 2.1: `ν♯` attains the upper bound
+`max(α, (1 − β/γ)α + β)` for every `α ≥ 0`. -/
+def HasExtremalLegendreAssouad (E : Set ℝ) (β γ : ℝ) : Prop :=
+  ∀ α : ℝ, 0 ≤ α →
+    _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E α =
+      max α ((1 - β / γ) * α + β)
+
+/-- Under the extremal hypothesis the quadrangle satisfies the `ν♯`
+constraint. -/
+theorem Qrad_subset_brsNuConstraint {E : Set ℝ} {β γ : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β)
+    (hext : HasExtremalLegendreAssouad E β γ) :
+    Qrad β γ ⊆ brsNuConstraint E := by
+  intro z hz hz2pos hz2half
+  have hhalf : z.1 ≤ 2 * z.2 :=
+    Delta_two_le_half hβ0 (Qrad_subset_Delta_two hβ0 hβ1 hγ0 h2γβ hz)
+  have hnu := Qrad_subset_nuHalfplane hβ0 hβ1 hγ0 h2γβ hz
+  simp only [Set.mem_setOf_eq] at hnu
+  set u : ℝ := β / γ with hu
+  have hstrict : z.1 ≤ u / 2 + (2 - u - β) * z.2 := by
+    have hid : β / (2 * γ) = u / 2 := by
+      rw [hu]
+      ring
+    rw [hid] at hnu
+    linarith [hnu]
+  set t : ℝ := 1 / (2 * z.2) - 1 with htdef
+  have ht : 0 ≤ t := by
+    rw [htdef, sub_nonneg, le_div_iff₀ (by linarith : (0 : ℝ) < 2 * z.2),
+      one_mul]
+    linarith
+  have hzt : z.2 * t = 1 / 2 - z.2 := by
+    rw [htdef]
+    field_simp
+  rw [hext t ht, ← hu]
+  rcases max_cases t ((1 - u) * t + β) with ⟨heq, -⟩ | ⟨heq, -⟩ <;> rw [heq]
+  · linarith [hzt]
+  · have hexp : z.2 * ((1 - u) * t + β) =
+        (1 - u) * (1 / 2 - z.2) + β * z.2 := by
+      rw [show z.2 * ((1 - u) * t + β) = (1 - u) * (z.2 * t) + β * z.2 from by
+        ring, hzt]
+    rw [hexp]
+    linarith [hstrict]
+
+/-- Under the extremal hypothesis the region of Theorem 1.2 is contained in the
+quadrangle. -/
+theorem Delta_two_inter_brsNuConstraint_subset_Qrad {E : Set ℝ} {β γ : ℝ}
+    (hβ0 : 0 < β) (hβ1 : β < 1) (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β)
+    (hext : HasExtremalLegendreAssouad E β γ) :
+    Delta 2 β ∩ brsNuConstraint E ⊆ Qrad β γ := by
+  have hβγ : β < γ := by linarith
+  set u : ℝ := β / γ with hu
+  have hu0 : 0 < u := by rw [hu]; positivity
+  have hu1 : u < 1 := by
+    rw [hu, div_lt_one hγ0]
+    exact hβγ
+  have huhalf : β / (2 * γ) = u / 2 := by
+    rw [hu]
+    ring
+  rintro z ⟨hzΔ, hzν⟩
+  refine Delta_two_inter_nuHalfplane_subset_Qrad hβ0 hβ1 hγ0 h2γβ ⟨hzΔ, ?_⟩
+  simp only [Set.mem_setOf_eq, ← hu, huhalf]
+  obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+    Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0.le hβ1.le hzΔ
+  rcases eq_or_lt_of_le hz20 with hz2zero | hz2pos
+  · -- `1/q = 0` forces `1/p = 0`
+    have hhalf : z.1 ≤ 2 * z.2 := Delta_two_le_half hβ0.le hzΔ
+    have : z.1 = 0 := by
+      rw [← hz2zero] at hhalf
+      linarith
+    rw [this, ← hz2zero]
+    have : (0 : ℝ) < u / 2 := by positivity
+    linarith
+  rcases le_or_gt z.2 (1 / 2) with hz2half | hz2big
+  · -- the `ν♯` constraint is active
+    set t : ℝ := 1 / (2 * z.2) - 1 with htdef
+    have ht : 0 ≤ t := by
+      rw [htdef, sub_nonneg, le_div_iff₀ (by linarith : (0 : ℝ) < 2 * z.2),
+        one_mul]
+      linarith
+    have hzt : z.2 * t = 1 / 2 - z.2 := by
+      rw [htdef]
+      field_simp
+    have hmem := hzν hz2pos hz2half
+    rw [hext t ht, ← hu] at hmem
+    have hbranch : (1 - u) * t + β ≤ max t ((1 - u) * t + β) :=
+      le_max_right _ _
+    have hmul : z.2 * ((1 - u) * t + β) ≤ z.2 * max t ((1 - u) * t + β) :=
+      mul_le_mul_of_nonneg_left hbranch hz2pos.le
+    have hexp : z.2 * ((1 - u) * t + β) =
+        (1 - u) * (1 / 2 - z.2) + β * z.2 := by
+      rw [show z.2 * ((1 - u) * t + β) = (1 - u) * (z.2 * t) + β * z.2 from by
+        ring, hzt]
+    rw [hexp] at hmul
+    linarith
+  · -- above the line `1/q = 1/2` the chord inequality is automatic
+    have hmink : 2 * z.1 + (β - 1) * z.2 ≤ 1 := Delta_two_minkowski hβ0.le hzΔ
+    nlinarith [hmink, hz2big, hu1, hu0, hβ1, hβ0]
+
+/-- **The Theorem 1.2 region is exactly the quadrangle when `ν♯` is
+extremal.** -/
+theorem Delta_two_inter_brsNuConstraint_eq_Qrad {E : Set ℝ} {β γ : ℝ}
+    (hβ0 : 0 < β) (hβ1 : β < 1) (hγ0 : 0 < γ) (h2γβ : 1 < 2 * γ - β)
+    (hext : HasExtremalLegendreAssouad E β γ) :
+    Delta 2 β ∩ brsNuConstraint E = Qrad β γ := by
+  refine Set.Subset.antisymm
+    (Delta_two_inter_brsNuConstraint_subset_Qrad hβ0 hβ1 hγ0 h2γβ hext) ?_
+  intro z hz
+  exact ⟨Qrad_subset_Delta_two hβ0.le hβ1 hγ0 h2γβ hz,
+    Qrad_subset_brsNuConstraint hβ0.le hβ1 hγ0 h2γβ hext hz⟩
+
+/-- **Sharpness in Corollary 1.3(ii) of BRS.**  If `ν♯` attains the Lemma 2.1
+upper bound then the type set is squeezed between the interior and the closure
+of the quadrangle, so the inclusion `𝒬^rad_{β,γ} ⊆ 𝒯^rad_E` of Corollary
+1.3(ii) cannot be improved. -/
+theorem cor13ii_sharp {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β γ : ℝ} (hβ0 : 0 < β) (hβ1 : β < 1) (hγ0 : 0 < γ)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    (hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ)
+    (hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ β)
+    (hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ)
+    (h2γβ : 1 < 2 * γ - β)
+    (hext : HasExtremalLegendreAssouad E β γ) :
+    interior (Qrad β γ) ⊆ radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆ Qrad β γ := by
+  refine ⟨(cor13ii_radialTypeSet hE hEne hβ0.le hβ1 hγ0 hM hdim hσ0 hMink hQA
+    h2γβ).1, ?_⟩
+  rw [← Delta_two_inter_brsNuConstraint_eq_Qrad hβ0 hβ1 hγ0 h2γβ hext]
+  exact radialTypeSet_two_subset_region hE hEne hβ0.le hdim
+
+section BRSOffDiag
+open Auto.Spherical.FractalDilations.RSLowerBounds
+
+/-! ## A separated family bounds the BRRS entropy number from below -/
+
+/-- A `δ`-separated subset of `A` forces at least that many `δ/2`-balls. -/
+theorem encard_le_brrsEntropyNumber {A S : Set ℝ} (hSA : S ⊆ A) {δ : ℝ≥0}
+    (hsep : ∀ x ∈ S, ∀ y ∈ S, x ≠ y → (δ : ℝ) < |x - y|) :
+    (S.encard : ℝ≥0∞) ≤
+      _root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber A δ := by
+  have hsep' : Metric.IsSeparated ((δ : ℝ≥0∞)) S := by
+    intro x hx y hy hxy
+    have h := hsep x hx y hy hxy
+    rw [edist_dist, Real.dist_eq]
+    calc ((δ : ℝ≥0) : ℝ≥0∞) = ENNReal.ofReal ((δ : ℝ)) := by
+          simp [ENNReal.ofReal_coe_nnreal]
+      _ < ENNReal.ofReal |x - y| :=
+          (ENNReal.ofReal_lt_ofReal_iff_of_nonneg δ.coe_nonneg).mpr h
+  have hpack : S.encard ≤ Metric.packingNumber δ A :=
+    hsep'.encard_le_packingNumber hSA
+  have htwo : (2 : ℝ≥0) * (δ / 2) = δ := by
+    rw [mul_div_cancel₀]
+    norm_num
+  have hcomp : Metric.packingNumber δ A ≤
+      Metric.externalCoveringNumber (δ / 2) A := by
+    have h := Metric.packingNumber_two_mul_le_externalCoveringNumber (δ / 2) A
+    rwa [htwo] at h
+  have hfin : S.encard ≤ Metric.externalCoveringNumber (δ / 2) A :=
+    le_trans hpack hcomp
+  rw [_root_.Auto.Spherical.LegendreAssouad.brrsEntropyNumber]
+  exact_mod_cast hfin
+
+/-! ## The exact-scale spectrum of the off-diagonal example
+
+The `j`-th piece of `offDiagSet β γ k₀` is a `2^{k₀j}`-point Cantor set of
+diameter `Lⱼ = 4⁻¹(4σⱼ)^{1-β/γ}` whose gaps are `σⱼ`.  Taking `δ = Lⱼ^{γ/(γ-β)}`
+makes `δ^{1-β/γ}` equal to `Lⱼ` *exactly*, so the whole piece sits in a single
+interval of the length the BRRS convention prescribes, while `δ < σⱼ` keeps its
+points separated.  That witnesses `dim_{A,1-β/γ}E ≥ γ` in the exact-scale
+convention, which is what the Legendre transform needs. -/
+
+set_option maxHeartbeats 1000000 in
+/-- No exponent below `γ` is admissible for the off-diagonal example at the
+threshold parameter `1 − β/γ`, in the exact-scale BRRS convention. -/
+theorem not_hasBRRSAssouadSpectrumExponent_offDiagSet {beta gam : ℝ}
+    (hbeta : 0 < beta) (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ}
+    (hk0pos : 1 ≤ k0) {gam' : ℝ} (hgam'0 : 0 < gam') (hlt : gam' < gam) :
+    ¬ _root_.Auto.Spherical.LegendreAssouad.HasBRRSAssouadSpectrumExponent
+      (offDiagSet beta gam k0) (1 - beta / gam) gam' := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hmu : 0 < cantorRatio gam := cantorRatio_pos gam
+  have hmu2 : cantorRatio gam ≤ 1 / 2 := cantorRatio_le_half hgam hgam1
+  obtain ⟨θ, hθdef⟩ : ∃ θ : ℝ, θ = 1 - beta / gam := ⟨_, rfl⟩
+  have hθ0 : 0 < θ := by
+    rw [hθdef, sub_pos, div_lt_one hgam]
+    exact hbg
+  have hθ1 : θ < 1 := by
+    rw [hθdef]
+    have hpos : 0 < beta / gam := by positivity
+    linarith
+  have hinvθ : 1 < 1 / θ := by
+    rw [lt_div_iff₀ hθ0, one_mul]
+    exact hθ1
+  obtain ⟨c, hc⟩ : ∃ c : ℝ, c = ((1 : ℝ) / 4) ^ (1 / θ) := ⟨_, rfl⟩
+  have hcpos : 0 < c := by
+    rw [hc]
+    exact Real.rpow_pos_of_pos (by norm_num) _
+  have hcsmall : c < 1 / 4 := by
+    rw [hc]
+    calc ((1 : ℝ) / 4) ^ (1 / θ) < ((1 : ℝ) / 4) ^ (1 : ℝ) :=
+          Real.rpow_lt_rpow_of_exponent_gt (by norm_num) (by norm_num) hinvθ
+      _ = 1 / 4 := Real.rpow_one _
+  rw [← hθdef]
+  rintro ⟨C, hC, hbound⟩
+  obtain ⟨K, hK⟩ : ∃ K : ℝ, K = C * (1 / (4 * c)) ^ gam' := ⟨_, rfl⟩
+  have hexp0 : 0 < 1 - gam' / gam := by
+    rw [sub_pos, div_lt_one hgam]
+    exact hlt
+  have hbase : (1 : ℝ) < (2 : ℝ) ^ (1 - gam' / gam) :=
+    Real.one_lt_rpow_iff_of_pos (by norm_num) |>.mpr (Or.inl ⟨by norm_num, hexp0⟩)
+  obtain ⟨j, hj⟩ : ∃ j : ℕ, K < ((2 : ℝ) ^ (1 - gam' / gam)) ^ j :=
+    pow_unbounded_of_one_lt K hbase
+  -- the `j`-th piece
+  obtain ⟨s, hs⟩ : ∃ s : ℝ, s = 4 * offDiagSep beta gam k0 j := ⟨_, rfl⟩
+  have hσpos : 0 < offDiagSep beta gam k0 j := offDiagSep_pos k0 j
+  have hspos : 0 < s := by rw [hs]; linarith
+  have hLpos : 0 < offDiagLen beta gam k0 j := offDiagLen_pos k0 j
+  have hσL : offDiagSep beta gam k0 j ≤ offDiagLen beta gam k0 j := by
+    rw [offDiagSep]
+    have hpow : (cantorRatio gam) ^ (k0 * j) ≤ 1 :=
+      pow_le_one₀ hmu.le (le_trans hmu2 (by norm_num))
+    nlinarith [hpow, hLpos]
+  have hLquarter : offDiagLen beta gam k0 j ≤ 1 / 4 :=
+    offDiagLen_le_quarter hbeta hbg k0 j
+  have hcount : s ^ (-beta) = (2 : ℝ) ^ (k0 * j) := by
+    rw [hs]
+    exact offDiagCount_eq hbeta hgam k0 j
+  have hLs : offDiagLen beta gam k0 j = (1 / 4) * s ^ θ := by
+    rw [offDiagLen_eq_pow, ← pow_mul, hs, hθdef,
+      offDiagRatioPow_eq hbeta hgam k0 j]
+  -- the witness scale
+  obtain ⟨d, hd⟩ : ∃ d : ℝ, d = (offDiagLen beta gam k0 j) ^ (1 / θ) := ⟨_, rfl⟩
+  have hdpos : 0 < d := by
+    rw [hd]
+    exact Real.rpow_pos_of_pos hLpos _
+  have hdcs : d = c * s := by
+    rw [hd, hLs, hc,
+      Real.mul_rpow (by norm_num) (Real.rpow_nonneg hspos.le _),
+      ← Real.rpow_mul hspos.le, show θ * (1 / θ) = 1 from by field_simp,
+      Real.rpow_one]
+  have hdσ : d < offDiagSep beta gam k0 j := by
+    rw [hdcs, hs]
+    nlinarith [hσpos, hcsmall, hcpos]
+  have hd1 : d < 1 := by
+    have hq : offDiagSep beta gam k0 j ≤ 1 / 4 := le_trans hσL hLquarter
+    linarith
+  have hdθ : d ^ θ = offDiagLen beta gam k0 j := by
+    rw [hd, ← Real.rpow_mul hLpos.le,
+      show (1 / θ) * θ = 1 from by field_simp, Real.rpow_one]
+  -- transfer the scale to `ℝ≥0`
+  obtain ⟨δ, hδ⟩ : ∃ δ : ℝ≥0, (δ : ℝ) = d := ⟨⟨d, hdpos.le⟩, rfl⟩
+  have hδpos : 0 < δ := by
+    rw [← NNReal.coe_pos, hδ]
+    exact hdpos
+  have hδ1 : δ < 1 := by
+    rw [← NNReal.coe_lt_coe, NNReal.coe_one, hδ]
+    exact hd1
+  have hkey := hbound δ hδpos hδ1 (1 + 2 * offDiagLen beta gam k0 j)
+  rw [hδ, hdθ] at hkey
+  -- the separated family inside the prescribed interval
+  have hSsub : (↑(offDiagPiece beta gam k0 j) : Set ℝ) ⊆
+      offDiagSet beta gam k0 ∩
+        _root_.Auto.Spherical.LegendreAssouad.brrsInterval
+          (1 + 2 * offDiagLen beta gam k0 j)
+          (offDiagLen beta gam k0 j) := by
+    intro x hx
+    rw [Finset.mem_coe] at hx
+    obtain ⟨h1, h2⟩ := offDiagPiece_subset_Icc hgam hgam1 k0 j x hx
+    refine ⟨Set.mem_iUnion.mpr ⟨j, hx⟩, ?_⟩
+    rw [_root_.Auto.Spherical.LegendreAssouad.brrsInterval, Set.mem_Icc]
+    constructor
+    · exact h1
+    · linarith
+  have hsep : ∀ x ∈ (↑(offDiagPiece beta gam k0 j) : Set ℝ),
+      ∀ y ∈ (↑(offDiagPiece beta gam k0 j) : Set ℝ), x ≠ y →
+        (δ : ℝ) < |x - y| := by
+    intro x hx y hy hxy
+    rw [Finset.mem_coe] at hx hy
+    have hsp := cantorMid_separated hmu hmu2 (k0 * j) hLpos.le hx hy hxy
+    have hσeq : offDiagSep beta gam k0 j
+        = (cantorRatio gam) ^ (k0 * j) * offDiagLen beta gam k0 j := rfl
+    rw [hδ]
+    calc d < offDiagSep beta gam k0 j := hdσ
+      _ = (cantorRatio gam) ^ (k0 * j) * offDiagLen beta gam k0 j := hσeq
+      _ ≤ |x - y| := hsp
+  have hlow := encard_le_brrsEntropyNumber hSsub hsep
+  have hcard : (↑(offDiagPiece beta gam k0 j) : Set ℝ).encard
+      = ((2 ^ (k0 * j) : ℕ) : ℕ∞) := by
+    rw [Set.encard_coe_eq_coe_finsetCard, offDiagPiece_card hgam hgam1 k0 j]
+  rw [hcard] at hlow
+  -- the numerical contradiction
+  have hchain := le_trans hlow hkey
+  have hreal : ((2 : ℝ) ^ (k0 * j)) ≤
+      C * ((offDiagLen beta gam k0 j / d) ^ gam') := by
+    have hnn : (0 : ℝ) ≤ C * ((offDiagLen beta gam k0 j / d) ^ gam') := by
+      have : (0 : ℝ) ≤ (offDiagLen beta gam k0 j / d) ^ gam' :=
+        Real.rpow_nonneg (by positivity) _
+      positivity
+    have hcast : (((2 ^ (k0 * j) : ℕ) : ℕ∞) : ℝ≥0∞)
+        = ENNReal.ofReal ((2 : ℝ) ^ (k0 * j)) := by
+      rw [show ((2 : ℝ) ^ (k0 * j)) = ((2 ^ (k0 * j) : ℕ) : ℝ) from by push_cast; ring,
+        ENNReal.ofReal_natCast]
+      simp
+    rw [hcast] at hchain
+    exact (ENNReal.ofReal_le_ofReal_iff hnn).mp hchain
+  -- evaluate the right-hand side
+  obtain ⟨N, hN⟩ : ∃ N : ℝ, N = (2 : ℝ) ^ (k0 * j) := ⟨_, rfl⟩
+  have hNpos : 0 < N := by rw [hN]; positivity
+  have hratio : offDiagLen beta gam k0 j / d = (1 / (4 * c)) * N ^ (1 / gam) := by
+    have h1 : offDiagLen beta gam k0 j / d = (1 / (4 * c)) * s ^ (θ - 1) := by
+      rw [hLs, hdcs, Real.rpow_sub hspos, Real.rpow_one]
+      field_simp
+    have h2 : s ^ (θ - 1) = N ^ (1 / gam) := by
+      rw [hN, ← hcount, ← Real.rpow_mul hspos.le]
+      congr 1
+      rw [hθdef]
+      field_simp
+      ring
+    rw [h1, h2]
+  have hrhs : C * ((offDiagLen beta gam k0 j / d) ^ gam') = K * N ^ (gam' / gam) := by
+    rw [hratio, hK,
+      Real.mul_rpow (by positivity) (Real.rpow_nonneg hNpos.le _),
+      ← Real.rpow_mul hNpos.le]
+    ring_nf
+  rw [hrhs, ← hN] at hreal
+  -- but `K * N ^ (γ'/γ) < N`
+  have hsplit : N ^ (1 - gam' / gam) * N ^ (gam' / gam) = N := by
+    rw [← Real.rpow_add hNpos]
+    simp
+  have hNge : ((2 : ℝ) ^ j) ≤ N := by
+    rw [hN]
+    exact pow_le_pow_right₀ (by norm_num) (Nat.le_mul_of_pos_left j hk0pos)
+  have hpowlift : ((2 : ℝ) ^ (1 - gam' / gam)) ^ j
+      = ((2 : ℝ) ^ j) ^ (1 - gam' / gam) :=
+    rpow_pow_comm' (by norm_num) (1 - gam' / gam) j
+  have hstep : ((2 : ℝ) ^ (1 - gam' / gam)) ^ j ≤ N ^ (1 - gam' / gam) := by
+    rw [hpowlift]
+    exact Real.rpow_le_rpow (by positivity) hNge hexp0.le
+  have hKlt : K < N ^ (1 - gam' / gam) := lt_of_lt_of_le hj hstep
+  have hNe : 0 < N ^ (gam' / gam) := Real.rpow_pos_of_pos hNpos _
+  have hcontra : K * N ^ (gam' / gam) < N := by
+    calc K * N ^ (gam' / gam) < N ^ (1 - gam' / gam) * N ^ (gam' / gam) :=
+          mul_lt_mul_of_pos_right hKlt hNe
+      _ = N := hsplit
+  linarith
+
+/-! ## The off-diagonal example has extremal `ν♯`
+
+Combining the exact-scale lower bound with the quasi-Assouad upper bound pins
+the BRRS spectrum of `offDiagSet β γ k₀` at the threshold parameter, and the
+Legendre transform then reproduces Lemma 2.1's upper bound exactly. -/
+
+set_option maxHeartbeats 2000000 in
+theorem brrsAssouadSpectrum_offDiagSet_threshold {beta gam : ℝ}
+    (hbeta : 0 < beta) (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ}
+    (hk0pos : 1 ≤ k0) (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) :
+    _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+      (offDiagSet beta gam k0) (1 - beta / gam) = gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hE : offDiagSet beta gam k0 ⊆ Icc (1 : ℝ) 2 :=
+    offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0
+  have hθ0 : (0 : ℝ) ≤ 1 - beta / gam := by
+    have h : beta / gam ≤ 1 := by
+      rw [div_le_one hgam]
+      exact hbg.le
+    linarith
+  have hθ1 : (1 : ℝ) - beta / gam < 1 := by
+    have h : 0 < beta / gam := by positivity
+    linarith
+  refine le_antisymm ?_ ?_
+  · calc _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+          (offDiagSet beta gam k0) (1 - beta / gam)
+        ≤ quasiAssouadDimension (offDiagSet beta gam k0) :=
+          _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_quasiAssouadDimension
+            hE hθ0 hθ1
+      _ = gam := quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0
+  · by_contra hnot
+    rw [not_le] at hnot
+    obtain ⟨g, hg⟩ : ∃ g : ℝ, g = max ((_root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+      (offDiagSet beta gam k0) (1 - beta / gam) + gam) / 2) (gam / 2) := ⟨_, rfl⟩
+    have hglt : g < gam := by
+      rw [hg]
+      exact max_lt (by linarith) (by linarith)
+    have hgpos : 0 < g := by
+      rw [hg]
+      exact lt_of_lt_of_le (by linarith) (le_max_right _ _)
+    have hgabove : _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+        (offDiagSet beta gam k0) (1 - beta / gam) < g := by
+      rw [hg]
+      exact lt_of_lt_of_le (by linarith) (le_max_left _ _)
+    have hle := _root_.Auto.Spherical.LegendreAssouad.le_brrsAssouadSpectrum_of_not_has
+      (offDiagSet beta gam k0) (by linarith : (1 : ℝ) - beta / gam ≤ 1)
+      (not_hasBRRSAssouadSpectrumExponent_offDiagSet hbeta hbg hgam1 hk0pos
+        hgpos hglt)
+    linarith
+
+set_option maxHeartbeats 2000000 in
+/-- **The off-diagonal example realizes the upper bound of Lemma 2.1.** -/
+theorem hasExtremalLegendreAssouad_offDiagSet {beta gam : ℝ}
+    (hbeta : 0 < beta) (hbg : beta < gam) (hgam1 : gam ≤ 1) {k0 : ℕ}
+    (hk0pos : 1 ≤ k0) (hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3) :
+    HasExtremalLegendreAssouad (offDiagSet beta gam k0) beta gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hE : offDiagSet beta gam k0 ⊆ Icc (1 : ℝ) 2 :=
+    offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0
+  have hEne : (offDiagSet beta gam k0).Nonempty := offDiagSet_nonempty k0
+  have hdim : upperMinkowskiDimension (offDiagSet beta gam k0) = beta :=
+    upperMinkowskiDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0
+  have hqA : quasiAssouadDimension (offDiagSet beta gam k0) = gam :=
+    quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0
+  have hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+        (offDiagSet beta gam k0) θ := fun θ _ hθ1 =>
+    _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_nonneg _ hθ1.le
+  have hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+        (offDiagSet beta gam k0) θ ≤ gam := by
+    intro θ hθ0 hθ1
+    have h := _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_quasiAssouadDimension
+      hE hθ0 hθ1
+    rwa [hqA] at h
+  have hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+        (offDiagSet beta gam k0) θ ≤ beta := by
+    intro θ hθ0 hθ1
+    have hpos : (0 : ℝ) < 1 - θ := by linarith
+    have h1 : _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+        (offDiagSet beta gam k0) θ ≤ upperAssouadSpectrum (offDiagSet beta gam k0) θ :=
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_upperAssouadSpectrum
+        hE hθ0 hθ1.le
+    have h2 : upperAssouadSpectrum (offDiagSet beta gam k0) θ ≤ beta / (1 - θ) :=
+      upperAssouadSpectrum_le_minkowski_ratio_of_upperMinkowskiDimension_eq hE hdim
+        hθ0 hθ1
+    have h3 : (1 - θ) * (beta / (1 - θ)) = beta := by
+      field_simp
+    calc (1 - θ) * _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+          (offDiagSet beta gam k0) θ
+        ≤ (1 - θ) * (beta / (1 - θ)) :=
+          mul_le_mul_of_nonneg_left (le_trans h1 h2) hpos.le
+      _ = beta := h3
+  -- the threshold parameter
+  have hθ0 : (0 : ℝ) < 1 - beta / gam := by
+    rw [sub_pos, div_lt_one hgam]
+    exact hbg
+  have hθ1 : (1 : ℝ) - beta / gam < 1 := by
+    have h : 0 < beta / gam := by positivity
+    linarith
+  have hspec : _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+      (offDiagSet beta gam k0) (1 - beta / gam) = gam :=
+    brrsAssouadSpectrum_offDiagSet_threshold hbeta hbg hgam1 hk0pos hk0
+  intro α hα
+  refine le_antisymm ?_ ?_
+  · exact (lemma21_brs hEne hα hbeta.le hgam hσ0 hMink hQA).2
+  · refine max_le ?_ ?_
+    · exact _root_.Auto.Spherical.LegendreAssouad.le_brrsLegendreAssouadFunction_of_nonempty
+        hEne hα
+    · have haff := _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_affine_le_brrsLegendreAssouadFunction_of_nonempty
+        hEne (theta := 1 - beta / gam) hθ0.le hθ1.le hα
+      rw [hspec] at haff
+      have hid : (1 - beta / gam) * α + (1 - (1 - beta / gam)) * gam =
+          (1 - beta / gam) * α + beta := by
+        field_simp
+        ring
+      rw [hid] at haff
+      exact haff
+
+set_option maxHeartbeats 2000000 in
+/-- **The sharpness example of Corollary 1.3(ii).**  For `0 < β < γ ≤ 1` with
+`2γ − β > 1` there is a set `E ⊆ [1,2]` with `dim_M E = β`, `dim_qA E = γ`
+whose radial type set is squeezed between the interior and the closure of
+`𝒬^rad_{β,γ}`, so the inclusion of Corollary 1.3(ii) is an equality. -/
+theorem exists_cor13ii_sharp {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
+    (hgam1 : gam ≤ 1) (h2γβ : 1 < 2 * gam - beta) :
+    ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
+      upperMinkowskiDimension E = beta ∧ quasiAssouadDimension E = gam ∧
+      interior (Qrad beta gam) ⊆ radialTypeSetCont 2 E ∧
+        radialTypeSet 2 E ⊆ Qrad beta gam := by
+  have hgam : 0 < gam := lt_trans hbeta hbg
+  have hbeta1 : beta < 1 := lt_of_lt_of_le hbg hgam1
+  have hr0 : 0 < offDiagRatio beta gam := offDiagRatio_pos beta gam
+  have hr1 : offDiagRatio beta gam < 1 := offDiagRatio_lt_one hbeta hbg
+  obtain ⟨k0, hk0lt⟩ :=
+    exists_pow_lt_of_lt_one (by norm_num : (0 : ℝ) < 1 / 3) hr1
+  have hk0pos : 1 ≤ k0 := by
+    rcases Nat.eq_zero_or_pos k0 with h0 | h
+    · rw [h0] at hk0lt
+      simp only [pow_zero] at hk0lt
+      linarith
+    · exact h
+  have hk0 : (offDiagRatio beta gam) ^ k0 ≤ 1 / 3 := hk0lt.le
+  refine ⟨offDiagSet beta gam k0, offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0,
+    offDiagSet_nonempty k0,
+    upperMinkowskiDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0,
+    quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0, ?_, ?_⟩ <;>
+  · have hres := cor13ii_sharp (offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0)
+      (offDiagSet_nonempty k0) hbeta hbeta1 hgam
+      (hasUpperMinkowskiExponent_offDiagSet hbeta hbg hgam1 hk0pos hk0)
+      (upperMinkowskiDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0)
+      (fun θ _ hθ1 =>
+        _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_nonneg _ hθ1.le)
+      (by
+        intro θ hθ0 hθ1
+        have hpos : (0 : ℝ) < 1 - θ := by linarith
+        have h1 := _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_upperAssouadSpectrum
+          (offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0) hθ0 hθ1.le
+        have h2 := upperAssouadSpectrum_le_minkowski_ratio_of_upperMinkowskiDimension_eq
+          (offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0)
+          (upperMinkowskiDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0) hθ0 hθ1
+        have h3 : (1 - θ) * (beta / (1 - θ)) = beta := by field_simp
+        calc (1 - θ) * _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
+              (offDiagSet beta gam k0) θ
+            ≤ (1 - θ) * (beta / (1 - θ)) :=
+              mul_le_mul_of_nonneg_left (le_trans h1 h2) hpos.le
+          _ = beta := h3)
+      (by
+        intro θ hθ0 hθ1
+        have h := _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_quasiAssouadDimension
+          (offDiagSet_subset_Icc hbeta hbg hgam hgam1 k0) hθ0 hθ1
+        rwa [quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0] at h)
+      h2γβ (hasExtremalLegendreAssouad_offDiagSet hbeta hbg hgam1 hk0pos hk0)
+    first
+      | exact hres.1
+      | exact hres.2
+
+/-! ## The Assouad dimension
+
+Theorem 1.4 of BRS is stated with `γ = dim_A E`, the *full* Assouad dimension:
+the covering estimate `N(E ∩ J, δ) ≲ (|J|/δ)^γ` is required for every interval
+`J` and every `δ ≤ |J|`, with no restriction tying `|J|` to a power of `δ`.
+That is strictly more than the quasi-Assouad dimension already in the
+repository, which only constrains `|J| ≥ δ^θ` for `θ < 1`; the endpoint
+estimates of §5 need the unrestricted form. -/
+
+/-- The Assouad covering condition at exponent `γ`. -/
+def HasAssouadExponent (E : Set ℝ) (γ : ℝ) : Prop :=
+  ∃ C : ℝ, 0 < C ∧ ∀ δ a b : ℝ, 0 < δ → δ < 1 → 1 ≤ a → a ≤ b → b ≤ 2 →
+    δ ≤ b - a →
+    (intervalCoveringNumber (E ∩ Icc a b) δ : ℝ) ≤ C * ((b - a) / δ) ^ γ
+
+theorem hasAssouadExponent_mono {E : Set ℝ} {γ γ' : ℝ} (hγ : γ ≤ γ')
+    (h : HasAssouadExponent E γ) : HasAssouadExponent E γ' := by
+  obtain ⟨C, hC, hbound⟩ := h
+  refine ⟨C, hC, fun δ a b hδ hδ1 ha hab hb hscale => ?_⟩
+  refine le_trans (hbound δ a b hδ hδ1 ha hab hb hscale) ?_
+  refine mul_le_mul_of_nonneg_left ?_ hC.le
+  refine Real.rpow_le_rpow_of_exponent_le ?_ hγ
+  rw [le_div_iff₀ hδ, one_mul]
+  exact hscale
+
+/-- The trivial covering bound gives the exponent `1`. -/
+theorem hasAssouadExponent_one (E : Set ℝ) : HasAssouadExponent E 1 := by
+  refine ⟨4, by norm_num, fun δ a b hδ hδ1 ha hab hb hscale => ?_⟩
+  have hratio : (1 : ℝ) ≤ (b - a) / δ := by
+    rw [le_div_iff₀ hδ, one_mul]
+    exact hscale
+  have htriv := brs_cover_bound_trivial (E := E) hδ hab
+  rw [Real.rpow_one]
+  linarith [htriv, hratio]
+
+/-- The Assouad dimension of `E`. -/
+noncomputable def assouadDimension (E : Set ℝ) : ℝ :=
+  sInf {γ : ℝ | 0 ≤ γ ∧ HasAssouadExponent E γ}
+
+theorem assouadAdmissible_nonempty (E : Set ℝ) :
+    {γ : ℝ | 0 ≤ γ ∧ HasAssouadExponent E γ}.Nonempty :=
+  ⟨1, by norm_num, hasAssouadExponent_one E⟩
+
+theorem assouadAdmissible_bddBelow (E : Set ℝ) :
+    BddBelow {γ : ℝ | 0 ≤ γ ∧ HasAssouadExponent E γ} :=
+  ⟨0, fun _ hγ => hγ.1⟩
+
+theorem assouadDimension_nonneg (E : Set ℝ) : 0 ≤ assouadDimension E :=
+  le_csInf (assouadAdmissible_nonempty E) fun _ hγ => hγ.1
+
+theorem assouadDimension_le_one (E : Set ℝ) : assouadDimension E ≤ 1 :=
+  csInf_le (assouadAdmissible_bddBelow E) ⟨by norm_num, hasAssouadExponent_one E⟩
+
+/-- Every exponent strictly above the Assouad dimension is admissible. -/
+theorem hasAssouadExponent_of_assouadDimension_lt {E : Set ℝ} {γ : ℝ}
+    (h : assouadDimension E < γ) : HasAssouadExponent E γ := by
+  obtain ⟨γ₀, hγ₀, hlt⟩ :=
+    exists_lt_of_csInf_lt (assouadAdmissible_nonempty E) h
+  exact hasAssouadExponent_mono hlt.le hγ₀.2
+
+/-- The Assouad covering bound on an *arbitrary* interval, after clamping to
+`[1,2]`.  Only `E ⊆ [1,2]` is used, so the clamped interval carries the same
+intersection with `E`. -/
+theorem assouad_cover_bound_interval {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (h : HasAssouadExponent E γ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (δ L a : ℝ), 0 < δ → δ < 1 → δ ≤ L → L ≤ 1 →
+      (intervalCoveringNumber
+        (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a L) δ : ℝ) ≤
+          C * (L / δ) ^ γ := by
+  obtain ⟨C, hC, hbound⟩ := h
+  refine ⟨C + 4, by linarith, fun δ L a hδ hδ1 hδL hL1 => ?_⟩
+  have hL0 : (0 : ℝ) ≤ L := le_trans hδ.le hδL
+  have hratio : (1 : ℝ) ≤ L / δ := by
+    rw [le_div_iff₀ hδ, one_mul]
+    exact hδL
+  have hpow : (1 : ℝ) ≤ (L / δ) ^ γ := Real.one_le_rpow hratio hγ0
+  obtain ⟨a', ha'⟩ : ∃ x : ℝ, x = min (max a 1) 2 := ⟨_, rfl⟩
+  obtain ⟨b', hb'⟩ : ∃ x : ℝ, x = max a' (min (a + L) 2) := ⟨_, rfl⟩
+  have ha1 : (1 : ℝ) ≤ a' := by
+    rw [ha']
+    exact le_min (le_max_right _ _) (by norm_num)
+  have ha2 : a' ≤ 2 := by rw [ha']; exact min_le_right _ _
+  have hab : a' ≤ b' := by rw [hb']; exact le_max_left _ _
+  have hb2 : b' ≤ 2 := by
+    rw [hb']
+    exact max_le ha2 (min_le_right _ _)
+  have hlen : b' - a' ≤ L := by
+    have hkey : min (a + L) 2 ≤ a' + L := by
+      rw [ha']
+      rcases le_total (max a 1) 2 with hcase | hcase
+      · rw [min_eq_left hcase]
+        have h1 : a ≤ max a 1 := le_max_left _ _
+        have h2 : min (a + L) 2 ≤ a + L := min_le_left _ _
+        linarith
+      · rw [min_eq_right hcase]
+        have h2 : min (a + L) 2 ≤ 2 := min_le_right _ _
+        linarith
+    have hb : b' ≤ a' + L := by
+      rw [hb']
+      exact max_le (by linarith) hkey
+    linarith
+  have hEsub : E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a L ⊆
+      E ∩ Icc a' b' := by
+    rintro x ⟨hxE, hx1, hx2⟩
+    obtain ⟨hE1, hE2⟩ := hE hxE
+    refine ⟨hxE, ?_, ?_⟩
+    · rw [ha']
+      exact min_le_of_left_le (max_le hx1 hE1)
+    · rw [hb']
+      exact le_max_of_le_right (le_min hx2 hE2)
+  have hmono : (intervalCoveringNumber
+      (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a L) δ : ℝ) ≤
+      (intervalCoveringNumber (E ∩ Icc a' b') δ : ℝ) := by
+    have hstep := intervalCoveringNumber_mono_set (E := E ∩ Icc a' b')
+      (F := E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a L) hEsub
+      (Set.inter_subset_left.trans hE) hδ
+    exact_mod_cast hstep
+  refine le_trans hmono ?_
+  rcases le_or_gt δ (b' - a') with hδb | hδb
+  · refine le_trans (hbound δ a' b' hδ hδ1 ha1 hab hb2 hδb) ?_
+    have hstep : ((b' - a') / δ) ^ γ ≤ (L / δ) ^ γ := by
+      refine Real.rpow_le_rpow (by positivity) ?_ hγ0
+      gcongr
+    nlinarith [hstep, hC, hpow]
+  · have hcov : (intervalCoveringNumber (E ∩ Icc a' b') δ : ℝ) ≤
+        (b' - a') / δ + 3 := brs_cover_bound_trivial hδ hab
+    have hsmall : (b' - a') / δ ≤ 1 := by
+      rw [div_le_one hδ]
+      exact hδb.le
+    calc (intervalCoveringNumber (E ∩ Icc a' b') δ : ℝ) ≤ (b' - a') / δ + 3 :=
+          hcov
+      _ ≤ 4 := by linarith
+      _ ≤ (C + 4) * (L / δ) ^ γ := by nlinarith [hpow, hC]
+
+/-! ## Localized covering data from the Assouad dimension
+
+BRS's (5.20) normalizes the local covering number against `|J|^{q/2-1}`, which
+is exactly what `ν♯` measures; at the edge `q = 2p` that normalization is
+borderline and gives no decay.  The Assouad dimension instead bounds
+`N(E ∩ J, δ)` by `(|J|/δ)^γ` with *no* dependence on `|J|` itself, and it is
+that `k`-uniform form which produces the geometric decay in the separation
+index at `q = 2p`. -/
+
+theorem exists_localized_covering_of_assouad {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (h : HasAssouadExponent E γ) :
+    ∃ (Cω : ℝ) (Nloc : ℕ → ℕ → ℕ), 0 ≤ Cω ∧
+      (∀ (n k : ℕ) (a : ℝ), intervalCoveringNumber
+        (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a
+          ((2 : ℝ) ^ (-(k : ℝ))))
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k) ∧
+      (∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (Cω * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)))) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  obtain ⟨C, hC, hbound⟩ := assouad_cover_bound_interval hE hγ0 h
+  refine ⟨C + 1, fun n _ => Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))),
+    by linarith, ?_, ?_⟩
+  · intro n k a
+    have hL : (2 : ℝ) ^ (-(k : ℝ)) ≤ 1 := by
+      refine Real.rpow_le_one_of_one_le_of_nonpos (by norm_num) ?_
+      simp only [neg_nonpos]
+      exact Nat.cast_nonneg k
+    have hδpos : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+      Real.rpow_pos_of_pos h2 _
+    have hcast : ((k + (4 + n) : ℕ) : ℝ) = (k : ℝ) + ((4 + n : ℕ) : ℝ) := by
+      push_cast
+      ring
+    have hδ1 : (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) < 1 := by
+      refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+      rw [neg_lt, neg_zero, hcast]
+      have : (4 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := by
+        have : (4 : ℕ) ≤ 4 + n := by omega
+        exact_mod_cast this
+      have hk : (0 : ℝ) ≤ (k : ℝ) := Nat.cast_nonneg k
+      linarith
+    have hδL : (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) ≤ (2 : ℝ) ^ (-(k : ℝ)) := by
+      refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+      rw [hcast]
+      have : (0 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := Nat.cast_nonneg _
+      linarith
+    have hratio : (2 : ℝ) ^ (-(k : ℝ)) / (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) =
+        (2 : ℝ) ^ ((4 + n : ℕ) : ℝ) := by
+      rw [← Real.rpow_sub h2, hcast]
+      congr 1
+      ring
+    have hkey := hbound ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)))
+      ((2 : ℝ) ^ (-(k : ℝ))) a hδpos hδ1 hδL hL
+    rw [hratio, ← Real.rpow_mul (by norm_num)] at hkey
+    have hcomm : (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * γ) =
+        (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      congr 1
+      ring
+    rw [hcomm] at hkey
+    exact_mod_cast le_trans hkey (Nat.le_ceil _)
+  · intro n k
+    have hpow : (1 : ℝ) ≤ (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      refine Real.one_le_rpow (by norm_num) ?_
+      have : (0 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := Nat.cast_nonneg _
+      positivity
+    have hceil : (Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))) : ℝ) ≤
+        (C + 1) * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      have h1 : (Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))) : ℝ) ≤
+          C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) + 1 :=
+        (Nat.ceil_lt_add_one (by positivity)).le
+      nlinarith [hpow]
+    rw [← ENNReal.ofReal_natCast]
+    exact ENNReal.ofReal_le_ofReal hceil
+
+/-! ## The Assouad form of the Littlewood–Paley scale factor
+
+With a covering bound that does not depend on the frequency index `k`, the
+per-scale factor of the Littlewood–Paley estimate carries `2^{-k(2 - q/p)}`,
+which is at most one exactly when `q ≤ 2p`.  The decay in the separation index
+`a` is then governed by `γ - (1/r - 1/2)q`, and at `q = 2p` that is `γ - (p-1)`:
+negative precisely when `p > 1 + γ`. -/
+
+theorem brs_lp_factor_le_assouad {q S0 ω Cω KC : ℝ} (hCω : 0 ≤ Cω)
+    (hKC : 0 ≤ KC) (hq2p : 0 ≤ 1 - q / 2 + S0 * q) (k a : ℕ) :
+    (2 : ℝ) ^ |1 - q / 2| * ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+        (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+        (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ S0) ^ q ≤
+      (2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q *
+        (2 : ℝ) ^ ((a : ℝ) * (ω - S0 * q)) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  have hka : ((k + a : ℕ) : ℝ) = (k : ℝ) + (a : ℝ) := by push_cast; ring
+  have e1 : ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) =
+      (2 : ℝ) ^ (-(k : ℝ) * (1 - q / 2)) := (Real.rpow_mul h2.le _ _).symm
+  have e2 : (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ S0) ^ q =
+      KC ^ q * (2 : ℝ) ^ (-((k : ℝ) + (a : ℝ)) * S0 * q) := by
+    rw [Real.mul_rpow hKC (Real.rpow_nonneg (Real.rpow_nonneg h2.le _) _),
+      ← Real.rpow_mul h2.le, ← Real.rpow_mul h2.le, hka]
+  have hpow : (2 : ℝ) ^ (-(k : ℝ) * (1 - q / 2)) *
+        (2 : ℝ) ^ (ω * (a : ℝ)) *
+        (2 : ℝ) ^ (-((k : ℝ) + (a : ℝ)) * S0 * q) =
+      (2 : ℝ) ^ ((a : ℝ) * (ω - S0 * q) - (k : ℝ) * (1 - q / 2 + S0 * q)) := by
+    rw [← Real.rpow_add h2, ← Real.rpow_add h2]
+    congr 1
+    ring
+  have hknn : (0 : ℝ) ≤ (k : ℝ) := Nat.cast_nonneg k
+  have hkey : (k : ℝ) * (1 - q / 2 + S0 * q) ≥ 0 := mul_nonneg hknn hq2p
+  calc (2 : ℝ) ^ |1 - q / 2| * ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+          (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+          (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ S0) ^ q
+      = ((2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q) *
+          ((2 : ℝ) ^ (-(k : ℝ) * (1 - q / 2)) *
+            (2 : ℝ) ^ (ω * (a : ℝ)) *
+            (2 : ℝ) ^ (-((k : ℝ) + (a : ℝ)) * S0 * q)) := by
+        rw [e1, e2]
+        ring
+    _ = ((2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q) *
+          (2 : ℝ) ^ ((a : ℝ) * (ω - S0 * q) -
+            (k : ℝ) * (1 - q / 2 + S0 * q)) := by rw [hpow]
+    _ ≤ ((2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q) *
+          (2 : ℝ) ^ ((a : ℝ) * (ω - S0 * q)) := by
+        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+        refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+        linarith
+    _ = (2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q *
+          (2 : ℝ) ^ ((a : ℝ) * (ω - S0 * q)) := by ring
+
+/-! ## The Littlewood-Paley scale sum with Assouad covering data
+
+The only change from the `nu-sharp` version is the shape of the covering
+hypothesis: a bound that does not see the frequency index at all.  The
+per-scale factor then carries `2^{-k(2 - q/p)}`, harmless for `q <= 2p`, and
+the geometric decay in the separation index is governed by `omega`. -/
+
+set_option maxHeartbeats 1000000 in
+theorem tsum_brsNearMax_lp_assouad {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {a : ℕ} (ha : 4 ≤ a)
+    {υ : ℝ → ℝ} (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {S : SchwartzMap ℝ ℂ} {g : ℝ → ℂ} (hg : Continuous g) {Cg : ℝ}
+    (hgbd : ∀ z : ℝ, ‖g z‖ ≤ Cg)
+    {Nloc : ℕ → ℕ} (hNloc : ∀ k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ≤ Nloc k)
+    {p q r : ℝ} (hp : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q)
+    {Cω ω : ℝ} (hCω : 0 ≤ Cω)
+    (hNbd : ∀ k : ℕ, ((Nloc k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cω * (2 : ℝ) ^ (ω * (a : ℝ))))
+    (hq2p : q ≤ 2 * p)
+    {A₀ : ENNReal}
+    (hA₀ : (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+        (brsSchwartzDilate S (k + a) : ℝ → ℂ) y *
+          brsRefl g (x - y)‖ₑ ^ p) ^ (q / p)) ≤
+      A₀ * (∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p) ^ (q / p)) :
+    (∑' k : ℕ, ∫⁻ x : ℝ, brsNearMax k (k + 1) (brsDilate υ (k + a))
+        (brsLPInput S (k + a) g) E x ^ q * ENNReal.ofReal x) ≤
+      (ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| * Cω *
+            (brsKernelConst Mu A N r ^ (1 / r) +
+              brsKernelConst Mu' A' N r ^ (1 / r)) ^ q *
+            (2 : ℝ) ^ ((a : ℝ) * (ω - (1 / r - 1 / 2) * q))) *
+          (9 : ENNReal) ^ (q / p)) *
+        (A₀ * (∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p) ^ (q / p)) := by
+  have hp1 : (1 : ℝ) ≤ p := hp.le
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := lt_trans (lt_trans zero_lt_one hr) hrq
+  have hMunn : (0 : ℝ) ≤ Mu := le_trans (abs_nonneg (υ 0)) (hbd 0)
+  have hMu'nn : (0 : ℝ) ≤ Mu' := le_trans (abs_nonneg (deriv υ 0)) (hbd' 0)
+  set KC : ℝ := brsKernelConst Mu A N r ^ (1 / r) +
+    brsKernelConst Mu' A' N r ^ (1 / r) with hKCdef
+  have hKCnn : (0 : ℝ) ≤ KC := by
+    rw [hKCdef]
+    have h1 : (0 : ℝ) ≤ brsKernelConst Mu A N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMunn hAnn N hr.le) _
+    have h2 : (0 : ℝ) ≤ brsKernelConst Mu' A' N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMu'nn hA'nn N hr.le) _
+    linarith
+  set Sv : ℝ := 1 / r - 1 / 2 with hSvdef
+  have hSv : 0 ≤ 1 - q / 2 + Sv * q := by
+    have hrinv : 1 / r = 1 + 1 / q - 1 / p := by linarith [hrel]
+    have hid : 1 - q / 2 + (1 / r - 1 / 2) * q = 2 - q / p := by
+      rw [hrinv]
+      field_simp
+      ring
+    rw [hSvdef, hid, sub_nonneg, div_le_iff₀ hp0]
+    linarith
+  set Const : ENNReal := ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q *
+      (2 : ℝ) ^ ((a : ℝ) * (ω - Sv * q))) * (9 : ENNReal) ^ (q / p)
+    with hConstdef
+  have hper : ∀ k : ℕ, (∫⁻ x : ℝ, brsNearMax k (k + 1) (brsDilate υ (k + a))
+      (brsLPInput S (k + a) g) E x ^ q * ENNReal.ofReal x) ≤
+      Const * (∫⁻ z : ℝ, ‖brsLPInput S (k + a) g z‖ₑ ^ p) ^ (q / p) := by
+    intro k
+    have h := brs_5_9_near_covering_local hE (kw := k) (kt := k + 1)
+      (j := k + a) (by omega) (by omega) hυ hcs hR hυ' hcs' hR'
+      hbd hAι hAnn hbd' hA' hA'nn hmom hmom'
+      (continuous_brsLPInput S (k + a) hg hgbd) hp1 hr hrq hpq hrel
+      (brs_five_two_pow_le ha k) (hNloc k)
+    refine le_trans h ?_
+    set X : ENNReal := ∫⁻ z : ℝ, ‖brsLPInput S (k + a) g z‖ₑ ^ p with hX
+    have hker0 : (0 : ℝ) ≤ KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv :=
+      mul_nonneg hKCnn (Real.rpow_nonneg (Real.rpow_nonneg (by norm_num) _) _)
+    have hcov0 : (0 : ℝ) ≤ Cω * (2 : ℝ) ^ (ω * (a : ℝ)) :=
+      mul_nonneg hCω (Real.rpow_nonneg (by norm_num) _)
+    have hwt0 : (0 : ℝ) ≤ (2 : ℝ) ^ |1 - q / 2| *
+        ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) := by positivity
+    have hkerpow : (ENNReal.ofReal (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv))
+        ^ q = ENNReal.ofReal ((KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q) :=
+      ENNReal.ofReal_rpow_of_nonneg hker0 hq0.le
+    have hnine : ((9 : ENNReal) * X) ^ (q / p) =
+        (9 : ENNReal) ^ (q / p) * X ^ (q / p) :=
+      ENNReal.mul_rpow_of_nonneg _ _ (by positivity)
+    have hcombine : ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+          ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+        (ENNReal.ofReal (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+          ENNReal.ofReal ((KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q)) =
+        ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+          ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+          (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+          (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q) := by
+      rw [← ENNReal.ofReal_mul hcov0, ← ENNReal.ofReal_mul hwt0, mul_assoc]
+      congr 1
+      ring
+    calc ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+              ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+            ((Nloc k : ENNReal) *
+              (ENNReal.ofReal (KC *
+                ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv)) ^ q *
+              ((9 : ENNReal) * X) ^ (q / p))
+        ≤ ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+              ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+            ((ENNReal.ofReal (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+                ENNReal.ofReal ((KC *
+                  ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q)) *
+              ((9 : ENNReal) ^ (q / p) * X ^ (q / p))) := by
+          refine mul_le_mul' le_rfl ?_
+          rw [hkerpow, hnine]
+          exact mul_le_mul' (mul_le_mul' (hNbd k) le_rfl) le_rfl
+      _ = (ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+              ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2)) *
+            (ENNReal.ofReal (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+              ENNReal.ofReal ((KC *
+                ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q))) *
+            ((9 : ENNReal) ^ (q / p) * X ^ (q / p)) := by ring
+      _ = ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| *
+            ((2 : ℝ) ^ (-(k : ℝ))) ^ (1 - q / 2) *
+            (Cω * (2 : ℝ) ^ (ω * (a : ℝ))) *
+            (KC * ((2 : ℝ) ^ (-((k + a : ℕ) : ℝ))) ^ Sv) ^ q) *
+            ((9 : ENNReal) ^ (q / p) * X ^ (q / p)) := by rw [hcombine]
+      _ ≤ ENNReal.ofReal ((2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q *
+            (2 : ℝ) ^ ((a : ℝ) * (ω - Sv * q))) *
+            ((9 : ENNReal) ^ (q / p) * X ^ (q / p)) :=
+          mul_le_mul' (ENNReal.ofReal_le_ofReal
+            (brs_lp_factor_le_assouad hCω hKCnn hSv k a)) le_rfl
+      _ = Const * X ^ (q / p) := by
+          rw [hConstdef]
+          ring
+  refine le_trans (ENNReal.tsum_le_tsum hper) ?_
+  rw [ENNReal.tsum_mul_left]
+  refine mul_le_mul' le_rfl ?_
+  refine le_trans (le_of_eq (tsum_congr fun k => ?_)) hA₀
+  rw [lintegral_enorm_brsLPInput_eq S (k + a) hg hgbd p]
+
+/-! ## Summing the separation index with Assouad covering data -/
+
+set_option maxHeartbeats 1000000 in
+theorem tsum_near_high_lp_assouad {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {υ : ℝ → ℝ} (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {S : SchwartzMap ℝ ℂ}
+    {p q r : ℝ} (hp : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q)
+    {Cω ω : ℝ} (hCω : 0 ≤ Cω) {Nloc : ℕ → ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k)
+    (hNbd : ∀ n k : ℕ, ((Nloc n k : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cω * (2 : ℝ) ^ (ω * ((4 + n : ℕ) : ℝ))))
+    (hq2p : q ≤ 2 * p)
+    (hgeom : ω - (1 / r - 1 / 2) * q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∑' m : ℕ, (∑' k : ℕ, ∫⁻ x : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) g) E x ^ q *
+            ENNReal.ofReal x) ^ (1 / q)) ≤
+        C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := lt_trans (lt_trans zero_lt_one hr) hrq
+  have hMunn : (0 : ℝ) ≤ Mu := le_trans (abs_nonneg (υ 0)) (hbd 0)
+  have hMu'nn : (0 : ℝ) ≤ Mu' := le_trans (abs_nonneg (deriv υ 0)) (hbd' 0)
+  set KC : ℝ := brsKernelConst Mu A N r ^ (1 / r) +
+    brsKernelConst Mu' A' N r ^ (1 / r) with hKCdef
+  have hKCnn : (0 : ℝ) ≤ KC := by
+    rw [hKCdef]
+    have h1 : (0 : ℝ) ≤ brsKernelConst Mu A N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMunn hAnn N hr.le) _
+    have h2 : (0 : ℝ) ≤ brsKernelConst Mu' A' N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMu'nn hA'nn N hr.le) _
+    linarith
+  set e : ℝ := ω - (1 / r - 1 / 2) * q with hedef
+  set D : ℝ := (2 : ℝ) ^ |1 - q / 2| * Cω * KC ^ q with hDdef
+  have hD : (0 : ℝ) ≤ D := by
+    rw [hDdef]
+    have h1 : (0 : ℝ) < (2 : ℝ) ^ |1 - q / 2| :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0 : ℝ) ≤ KC ^ q := Real.rpow_nonneg hKCnn _
+    positivity
+  obtain ⟨Ccst, hCcst⟩ : ∃ Ccst : ENNReal, Ccst =
+      ENNReal.ofReal (D ^ (1 / q) * (2 : ℝ) ^ (4 * (e / q)) /
+          (1 - (2 : ℝ) ^ (e / q))) *
+        ((9 : ENNReal) ^ (1 / p) * A₀ ^ (1 / q)) := ⟨_, rfl⟩
+  refine ⟨Ccst, ?_, fun g hg Cg hgbd => ?_⟩
+  · rw [hCcst]
+    refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.mul_ne_top ?_ ?_)
+    · exact ENNReal.rpow_ne_top_of_nonneg (by positivity) (by norm_num)
+    · exact ENNReal.rpow_ne_top_of_nonneg (by positivity) hA₀top
+  · set X : ENNReal := ∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p with hXdef
+    set Z : ENNReal := (9 : ENNReal) ^ (q / p) * (A₀ * X ^ (q / p)) with hZdef
+    set T : ℕ → ENNReal := fun m => ∑' k : ℕ, ∫⁻ x : ℝ,
+      brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+        (brsLPInput S (k + (4 + m)) g) E x ^ q * ENNReal.ofReal x with hT
+    have hTle : ∀ n : ℕ,
+        T n ≤ ENNReal.ofReal (D * (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * e)) * Z := by
+      intro n
+      have h := tsum_brsNearMax_lp_assouad (a := 4 + n) hE (by omega) hυ hcs hR
+        hυ' hcs' hR' hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hg hgbd (hNloc n) hp
+        hr hrq hpq hrel hCω (hNbd n) hq2p
+        (hA₀ (4 + n) (brsRefl g) Cg (continuous_brsRefl hg)
+          (fun z => brsRefl_bounded hgbd z))
+      refine le_trans h (le_of_eq ?_)
+      rw [hZdef, hXdef, hDdef, hedef, hKCdef]
+      ring
+    have hmain := tsum_lp_m_le hq0 hD (by rw [hedef]; exact hgeom) hTle
+    have hexpid : q / p * (1 / q) = 1 / p := by field_simp
+    have hZpow : Z ^ (1 / q) =
+        (9 : ENNReal) ^ (1 / p) * (A₀ ^ (1 / q) * X ^ (1 / p)) := by
+      rw [hZdef, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+        ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / q),
+        ← ENNReal.rpow_mul, ← ENNReal.rpow_mul, hexpid]
+    rw [hCcst]
+    refine le_trans hmain (le_of_eq ?_)
+    rw [hZpow, hXdef, lintegral_enorm_rpow_brsRefl hg.measurable p]
+    ring
+
+/-! ## The endpoint separation sum, uniformly in the profile -/
+
+set_option maxHeartbeats 1000000 in
+theorem tsum_near_high_endpoint_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {υ : ℝ → ℝ} (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {S : SchwartzMap ℝ ℂ}
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p q r : ℝ} (hp : 1 < p) (hr : 1 < r) (hrq : r < q) (hpq : p < q)
+    (hrel : 1 / p + 1 / r = 1 + 1 / q) (hq2p : q ≤ 2 * p)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p))
+    (hgeom : (γ - (1 / r - 1 / 2) * q) / q < 0) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ (g : ℝ → ℂ), Continuous g → ∀ Cg : ℝ,
+      (∀ z : ℝ, ‖g z‖ ≤ Cg) →
+      (∑' m : ℕ, (∑' k : ℕ, ∫⁻ x : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) g) E x ^ q *
+            ENNReal.ofReal x) ^ (1 / q)) ≤
+        C * (∫⁻ z : ℝ, ‖g z‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := lt_trans (lt_trans zero_lt_one hr) hrq
+  have hMunn : (0 : ℝ) ≤ Mu := le_trans (abs_nonneg (υ 0)) (hbd 0)
+  have hMu'nn : (0 : ℝ) ≤ Mu' := le_trans (abs_nonneg (deriv υ 0)) (hbd' 0)
+  set E1 : ℝ := (2 : ℝ) ^ |1 - q / 2| with hE1def
+  have hE1nn : (0 : ℝ) ≤ E1 := by
+    rw [hE1def]
+    positivity
+  set KC : ℝ := brsKernelConst Mu A N r ^ (1 / r) +
+    brsKernelConst Mu' A' N r ^ (1 / r) with hKCdef
+  have hKCnn : (0 : ℝ) ≤ KC := by
+    rw [hKCdef]
+    have h1 : (0 : ℝ) ≤ brsKernelConst Mu A N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMunn hAnn N hr.le) _
+    have h2 : (0 : ℝ) ≤ brsKernelConst Mu' A' N r ^ (1 / r) :=
+      Real.rpow_nonneg (brsKernelConst_nonneg hMu'nn hA'nn N hr.le) _
+    linarith
+  set Sv : ℝ := 1 / r - 1 / 2 with hSvdef
+  set B : ENNReal := (9 : ENNReal) ^ (q / p) * A₀ with hBdef
+  have hBtop : B ≠ ⊤ := by
+    refine ENNReal.mul_ne_top ?_ hA₀top
+    exact ENNReal.rpow_ne_top_of_nonneg (by positivity) (by norm_num)
+  obtain ⟨Ccst, hCcst⟩ : ∃ Ccst : ENNReal, Ccst =
+      (ENNReal.ofReal ((E1 * Cγ * KC ^ q) ^ (1 / q)) * B ^ (1 / q) *
+          ENNReal.ofReal ((2 : ℝ) ^ (((γ - Sv * q) / q) * 4))) *
+        ENNReal.ofReal (1 / (1 - (2 : ℝ) ^ ((γ - Sv * q) / q))) := ⟨_, rfl⟩
+  refine ⟨Ccst, ?_, fun g hg Cg hgbd => ?_⟩
+  · rw [hCcst]
+    refine ENNReal.mul_ne_top (ENNReal.mul_ne_top (ENNReal.mul_ne_top
+      ENNReal.ofReal_ne_top ?_) ENNReal.ofReal_ne_top) ENNReal.ofReal_ne_top
+    exact ENNReal.rpow_ne_top_of_nonneg (by positivity) hBtop
+  · set X : ENNReal := ∫⁻ x : ℝ, ‖brsRefl g x‖ₑ ^ p with hX
+    set T : ℕ → ENNReal := fun m => ∑' k : ℕ, ∫⁻ x : ℝ,
+      brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+        (brsLPInput S (k + (4 + m)) g) E x ^ q * ENNReal.ofReal x with hT
+    have hTle : ∀ n : ℕ, T n ≤ (ENNReal.ofReal E1 * ((Nloc n : ℕ) : ENNReal) *
+        (ENNReal.ofReal (KC * ((2 : ℝ) ^ (-((4 + n : ℕ) : ℝ))) ^ Sv)) ^ q * B) *
+        X ^ (q / p) := by
+      intro n
+      have h := tsum_brsNearMax_lp_le (a := 4 + n) hE (by omega) hυ hcs hR hυ'
+        hcs' hR' hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hg hgbd (hNloc n) hp hr
+        hrq hpq hrel hq2p
+        (hA₀ (4 + n) (brsRefl g) Cg (continuous_brsRefl hg)
+          (fun z => brsRefl_bounded hgbd z))
+      refine le_trans h (le_of_eq ?_)
+      rw [hBdef, hX]
+      ring
+    have hmain := tsum_endpoint_m_le (p := p) (q := q) hp0 hq0 hE1nn hKCnn hCγ
+      hgeom (Nloc := fun n => ((Nloc n : ℕ) : ENNReal)) hNbd (B := B) (X := X)
+      (T := T) hTle
+    rw [hCcst]
+    refine le_trans hmain (le_of_eq ?_)
+    rw [hX, lintegral_enorm_rpow_brsRefl hg.measurable p]
+
+/-! ## Proposition 5.4(i) at the endpoint, uniformly in the profile -/
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoLeft_endpoint_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p rr : ℝ} (hp : 1 < p) (hr : 1 < rr) (hrq : rr < 2 * p)
+    (hrel : 1 / p + 1 / rr = 1 + 1 / (2 * p))
+    (hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (2 * p / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (2 * p / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoLeft E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ 2 * p := by linarith
+  have hq0 : (0 : ℝ) < 2 * p := by linarith
+  obtain ⟨C1, hC1pos, hC1⟩ := endpoint_const_mul_brsRemainderTwo hp
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := endpoint_tsum_brsRemTwoCent hp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_endpoint_unif hE hυ hcs hR hυ'
+    hcs' hR' hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hCγ hNloc hNbd hp hr hrq
+    (by linarith : p < 2 * p) hrel (le_refl (2 * p)) hA₀top hA₀ hgeom
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) with hY
+    -- localize
+    set h : ℝ → ℂ := brsLocalize g with hh
+    have hhc : Continuous h := continuous_brsLocalize hg
+    obtain ⟨Cg, hhbd⟩ : ∃ C : ℝ, ∀ z : ℝ, ‖h z‖ ≤ C := by
+      obtain ⟨C, hC⟩ := exists_bound_brsLocalize hg
+      exact ⟨C, fun z => by rw [hh]; exact hC z⟩
+    have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ (2 * p)) =
+        ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E h x ^ (2 * p) := by
+      refine lintegral_congr fun x => ?_
+      rcases le_or_gt x 0 with hx | hx
+      · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+      · rw [hh, brsRemTwoTwoLeft_brsLocalize hE g hx.le]
+    have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+    -- the three families
+    have hfam := brsRemTwoTwoLeft_endpoint_family_le' hE hhc hhbd hpf hCppos hCp0
+      hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+    -- the weighted and unweighted norms of the localized profile
+    have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+      rw [hY]
+      exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+        (by positivity)
+    have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (ENNReal.rpow_le_rpow
+        (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+      rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+        ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+    rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) h) E r ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p))) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (hC3 h hhc Cg hhbd) ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p)) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+              ENNReal.ofReal r) ^ (1 / (2 * p)) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) h) E r ^ (2 * p) *
+                  ENNReal.ofReal r) ^ (1 / (2 * p)))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y + C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) at the endpoint, with the data supplied
+
+The Calderón factorization provides the profile, the compactly supported bump
+with vanishing moments and the band-limited Schwartz factor; the exponent
+relation forces `(1/r - 1/2)·2p = p - 1`, so the `m`-sum converges exactly when
+`γ < p - 1`, i.e. `p > 1 + γ`. -/
+
+/-! ## Proposition 5.4(i) at the endpoint for `R_2^+`, uniformly in the profile -/
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoRight_endpoint_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p rr : ℝ} (hp : 1 < p) (hr : 1 < rr) (hrq : rr < 2 * p)
+    (hrel : 1 / p + 1 / rr = 1 + 1 / (2 * p))
+    (hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (2 * p / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (2 * p / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoRight E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq1 : (1 : ℝ) ≤ 2 * p := by linarith
+  have hq0 : (0 : ℝ) < 2 * p := by linarith
+  obtain ⟨C1, hC1pos, hC1⟩ := endpoint_const_mul_brsRemainderTwo hp
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := endpoint_tsum_brsRemTwoCent hp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_endpoint_unif
+    (image_three_sub_subset_Icc hE) hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hCγ hNloc hNbd hp hr hrq
+    (by linarith : p < 2 * p) hrel (le_refl (2 * p)) hA₀top hA₀ hgeom
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) with hY
+    -- localize
+    set h : ℝ → ℂ := brsLocalize g with hh
+    have hhc : Continuous h := continuous_brsLocalize hg
+    obtain ⟨Cg, hhbd⟩ : ∃ C : ℝ, ∀ z : ℝ, ‖h z‖ ≤ C := by
+      obtain ⟨C, hC⟩ := exists_bound_brsLocalize hg
+      exact ⟨C, fun z => by rw [hh]; exact hC z⟩
+    have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ (2 * p)) =
+        ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E h x ^ (2 * p) := by
+      refine lintegral_congr fun x => ?_
+      rcases le_or_gt x 0 with hx | hx
+      · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+      · rw [hh, brsRemTwoTwoRight_brsLocalize hE g hx.le]
+    have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+    -- the three families
+    have hfam := brsRemTwoTwoRight_endpoint_family_le hE hhc hhbd hpf hCppos hCp0
+      hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+    have hht : Continuous fun w : ℝ => h (3 - w) :=
+      hhc.comp (continuous_const.sub continuous_id)
+    have hhtbd : ∀ z : ℝ, ‖h (3 - z)‖ ≤ Cg := fun z => hhbd _
+    -- the weighted and unweighted norms of the localized profile
+    have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+      rw [hY]
+      exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+        (by positivity)
+    have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (ENNReal.rpow_le_rpow
+        (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+      rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+        ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+    rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+          ENNReal.ofReal r) ^ (1 / (2 * p)) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+          ((fun x : ℝ => 3 - x) '' E) r ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p))) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      have hC3' := hC3 (fun w : ℝ => h (3 - w)) hht Cg hhtbd
+      rw [lintegral_enorm_rpow_three_sub hhc.measurable p] at hC3'
+      refine le_trans hC3' ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ (2 * p) *
+            ENNReal.ofReal r) ^ (1 / (2 * p)) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ (2 * p) *
+              ENNReal.ofReal r) ^ (1 / (2 * p)) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+                ((fun x : ℝ => 3 - x) '' E) r ^ (2 * p) *
+                  ENNReal.ofReal r) ^ (1 / (2 * p)))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y + C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) at the endpoint `q = 2p`, uniformly in the profile -/
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoLeft_endpoint_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p : ℝ} (hp : 1 < p) (hγ : γ < p - 1) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoLeft E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hppq : p < 2 * p := by linarith
+  -- the Calderón factorization
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  -- the exponents
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hppq
+  have hSq : (1 / rr - 1 / 2) * (2 * p) = p - 1 := by
+    have hinv : 1 / rr = 1 + 1 / (2 * p) - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0 := by
+    rw [hSq]
+    exact div_neg_of_neg_of_pos (by linarith) (by linarith)
+  -- the Littlewood--Paley constant
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ 2 * p) (by linarith : p ≤ 2 * p)
+  exact prop54_brsRemTwoTwoLeft_endpoint_interior_unif hE hpf hCppos hCp0 hCp2
+    hpfint hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd'
+    le_rfl hA'nn hmom hmom' hCγ hNloc hNbd hp hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd)
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoRight_endpoint_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    {p : ℝ} (hp : 1 < p) (hγ : γ < p - 1) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x *
+          brsRemTwoTwoRight E g x ^ (2 * p)) ^ (1 / (2 * p)) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hppq : p < 2 * p := by linarith
+  -- the Calderón factorization
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  -- the exponents
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hppq
+  have hSq : (1 / rr - 1 / 2) * (2 * p) = p - 1 := by
+    have hinv : 1 / rr = 1 + 1 / (2 * p) - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : (γ - (1 / rr - 1 / 2) * (2 * p)) / (2 * p) < 0 := by
+    rw [hSq]
+    exact div_neg_of_neg_of_pos (by linarith) (by linarith)
+  -- the Littlewood--Paley constant
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ 2 * p) (by linarith : p ≤ 2 * p)
+  exact prop54_brsRemTwoTwoRight_endpoint_interior_unif hE hpf hCppos hCp0 hCp2
+    hpfint hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd'
+    le_rfl hA'nn hmom hmom' hCγ hNloc hNbd hp hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd)
+
+/-! ## The covering datum of `𝔐_p^±` under a sharp entropy bound
+
+The Minkowski definition only gives `N(E,δ) ≲_ε δ^{-β-ε}`, and absorbing the
+loss `ε` forces the *strict* inequality `1 - 2/p + (1-β)/q > 0`, i.e. an
+interior point of `Δ_β`.  BRS's Theorem 1.4 instead assumes
+`sup_{δ<1} δ^β N(E,δ) < ∞`, which is the loss-free bound and therefore reaches
+the closed condition — in particular the whole critical segment
+`[P₂,β, P₃,β^rad]`. -/
+
+/-- The sharp entropy hypothesis of Theorem 1.4. -/
+def HasSharpEntropyBound (E : Set ℝ) (β : ℝ) : Prop :=
+  ∃ A : ℝ, 0 < A ∧ ∀ δ : ℝ, 0 < δ → δ < 1 →
+    (intervalCoveringNumber E δ : ℝ) ≤ A * δ ^ (-β)
+
+theorem HasSharpEntropyBound.mono {E F : Set ℝ} (hFE : F ⊆ E)
+    (hE : E ⊆ Icc (1 : ℝ) 2) {β : ℝ} (h : HasSharpEntropyBound E β) :
+    HasSharpEntropyBound F β := by
+  obtain ⟨A, hA, hbound⟩ := h
+  refine ⟨A, hA, fun δ hδ hδ1 => ?_⟩
+  refine le_trans ?_ (hbound δ hδ hδ1)
+  exact_mod_cast intervalCoveringNumber_mono_set hFE hE hδ
+
+theorem exists_brsCoveringBound_of_entropy {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hent : HasSharpEntropyBound E β) {p q : ℝ} (hq0 : 0 < q)
+    (hexp : 0 ≤ 1 - 2 / p + (1 - β) / q) :
+    ∃ AE : ℝ, 0 < AE ∧ HasBRSCoveringBound E p q AE := by
+  obtain ⟨A, hA, hbound⟩ := hent
+  set σ : ℝ := 1 - 2 / p + 1 / q with hσ
+  have hσβ : β / q ≤ σ := by
+    have hid : σ - β / q = 1 - 2 / p + (1 - β) / q := by
+      rw [hσ]
+      field_simp
+      ring
+    linarith [hid, hexp]
+  have hσ0 : 0 ≤ σ := by
+    have : (0 : ℝ) ≤ β / q := by positivity
+    linarith
+  set AE : ℝ := max (A ^ (1 / q)) ((6 : ℝ) ^ σ) with hAE
+  have hAEpos : 0 < AE :=
+    lt_of_lt_of_le (Real.rpow_pos_of_pos hA _) (le_max_left _ _)
+  refine ⟨AE, hAEpos, fun δ hδ hδ6 => ?_⟩
+  rcases lt_or_ge δ 1 with hδ1 | hδ1
+  · have hNr : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A * δ ^ (-β) :=
+      hbound δ hδ hδ1
+    have hNe : ((intervalCoveringNumber E δ : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (A * δ ^ (-β)) := by
+      rw [← ENNReal.ofReal_natCast]
+      exact ENNReal.ofReal_le_ofReal hNr
+    refine le_trans (ENNReal.rpow_le_rpow hNe (by positivity)) ?_
+    rw [ENNReal.ofReal_rpow_of_nonneg (by positivity) (by positivity)]
+    refine ENNReal.ofReal_le_ofReal ?_
+    have hstep : (A * δ ^ (-β)) ^ (1 / q) = A ^ (1 / q) * δ ^ (-(β / q)) := by
+      rw [Real.mul_rpow hA.le (Real.rpow_nonneg hδ.le _), ← Real.rpow_mul hδ.le]
+      congr 1
+      field_simp
+    rw [hstep]
+    have hpow : δ ^ (-(β / q)) ≤ δ ^ (-σ) :=
+      Real.rpow_le_rpow_of_exponent_ge hδ hδ1.le (by linarith)
+    have hAq : A ^ (1 / q) ≤ AE := le_max_left _ _
+    have hApos : (0 : ℝ) < A ^ (1 / q) := Real.rpow_pos_of_pos hA _
+    calc A ^ (1 / q) * δ ^ (-(β / q)) ≤ A ^ (1 / q) * δ ^ (-σ) :=
+          mul_le_mul_of_nonneg_left hpow hApos.le
+      _ ≤ AE * δ ^ (-σ) :=
+          mul_le_mul_of_nonneg_right hAq (Real.rpow_nonneg hδ.le _)
+  · have hNe : ((intervalCoveringNumber E δ : ℕ) : ENNReal) ≤ 1 := by
+      have h := intervalCoveringNumber_le_one_of_one_le hE hδ1
+      exact_mod_cast h
+    refine le_trans (ENNReal.rpow_le_rpow hNe (by positivity)) ?_
+    rw [ENNReal.one_rpow]
+    have hgoal : (1 : ℝ) ≤ AE * δ ^ (-σ) := by
+      have hsix : (6 : ℝ) ^ σ ≤ AE := le_max_right _ _
+      have hpow : (6 : ℝ) ^ (-σ) ≤ δ ^ (-σ) :=
+        Real.rpow_le_rpow_of_nonpos hδ hδ6 (by linarith)
+      have hid : (6 : ℝ) ^ σ * (6 : ℝ) ^ (-σ) = 1 := by
+        rw [← Real.rpow_add (by norm_num)]
+        simp
+      have hsixpos : (0 : ℝ) < (6 : ℝ) ^ σ := Real.rpow_pos_of_pos (by norm_num) _
+      calc (1 : ℝ) = (6 : ℝ) ^ σ * (6 : ℝ) ^ (-σ) := hid.symm
+        _ ≤ (6 : ℝ) ^ σ * δ ^ (-σ) := mul_le_mul_of_nonneg_left hpow hsixpos.le
+        _ ≤ AE * δ ^ (-σ) :=
+            mul_le_mul_of_nonneg_right hsix (Real.rpow_nonneg hδ.le _)
+    exact le_trans (le_of_eq ENNReal.ofReal_one.symm)
+      (ENNReal.ofReal_le_ofReal hgoal)
+
+/-! ## The two main terms on the closed triangle
+
+Only the branch `p < 2` sees the covering datum, and there the sharp entropy
+bound replaces the lossy Minkowski one, so the strict exponent condition can be
+relaxed to the closed one. -/
+
+set_option maxHeartbeats 1000000 in
+theorem exists_brsMainTwoBounds_entropy {T : Set ℝ} (hT2 : T ⊆ Icc (1 : ℝ) 2)
+    (hTne : T.Nonempty) (hTnull : volume (closure T) = 0)
+    {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent T β)
+    (hent : HasSharpEntropyBound T β)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q)
+    (hexp : 0 ≤ 1 - 2 / p + (1 - β) / q) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  rcases lt_trichotomy p 2 with hp2 | hp2 | hp2
+  · -- `p < 2`
+    obtain ⟨AE, hAEpos, hcov⟩ :=
+      exists_brsCoveringBound_of_entropy hT2 hβ0 hent hq0 hexp
+    obtain ⟨CL, hCLtop, hCL⟩ := prop55ii_brsMainTwoLeft_unif hT2 hTne hTnull
+      hp1.le hp2 hpq.le hAEpos hcov
+    obtain ⟨CR, hCRtop, hCR⟩ := prop55ii_brsMainTwoRight_unif hT2 hTne hTnull
+      hp1.le hp2 hpq.le hAEpos hcov
+    refine ⟨2 * CL + CR, ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (by simp) hCLtop, hCRtop⟩, fun g hg => ?_,
+      fun g hg => ?_⟩
+    · refine le_trans (hCL g hg) ?_
+      refine le_trans (mul_le_mul' le_rfl
+        (add_le_add (ennreal_two_mul_rpow_le _ hp1.le) le_rfl)) ?_
+      have hstep : CL * (2 * (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) ≤
+          2 * CL * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) := by
+        rw [mul_add, mul_add]
+        refine add_le_add (le_of_eq (by ring)) ?_
+        calc CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)
+            = 1 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) := by
+              rw [one_mul]
+          _ ≤ 2 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) :=
+              mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+      exact le_trans hstep (mul_le_mul' le_self_add le_rfl)
+    · exact le_trans (hCR g hg) (mul_le_mul' le_add_self le_rfl)
+  · -- `p = 2`
+    subst hp2
+    have hq2 : (2 : ℝ) ≤ q := hpq.le
+    obtain ⟨a, ρ, hapos, hρpos, hρ1, hcovA⟩ :=
+      exists_brsCoveringSeq_of_minkowski hT2 hβ0 hβ1 hM hq0
+    have hA0 : ∀ j : ℕ, 0 ≤ a * ρ ^ j := fun j =>
+      mul_nonneg hapos.le (pow_nonneg hρpos.le _)
+    have hAmono : Antitone fun j : ℕ => a * ρ ^ j := by
+      intro i j hij
+      refine mul_le_mul_of_nonneg_left ?_ hapos.le
+      obtain ⟨k, hk⟩ := Nat.exists_eq_add_of_le hij
+      rw [hk, pow_add]
+      calc ρ ^ i * ρ ^ k ≤ ρ ^ i * 1 :=
+            mul_le_mul_of_nonneg_left (pow_le_one₀ hρpos.le hρ1.le)
+              (pow_nonneg hρpos.le i)
+        _ = ρ ^ i := mul_one _
+    have hAfin : (∑' k : ℕ, brsSeqBlockConst q (fun j => a * ρ ^ j) k) ≠ ⊤ :=
+      tsum_brsSeqBlockConst_ne_top_of_geometric hapos.le hρpos hρ1
+    have hAsum : (∑' m : ℕ,
+        ENNReal.ofReal ((fun j : ℕ => a * ρ ^ j) (m + 1) *
+          brsRightConst 2 q)) ≠ ⊤ :=
+      tsum_ofReal_geometric_shift_ne_top hapos.le hρpos.le hρ1
+        (brsRightConst_nonneg 2 q)
+    obtain ⟨B, hB, hcovB⟩ :=
+      exists_logcov_bound_of_minkowski hβ0 hβ1 hM hq0 (D := 2) (by norm_num)
+    obtain ⟨CL, hCLtop, hCL⟩ := prop55iii_brsMainTwoLeft_unif hT2 hTne hTnull
+      hq2 hA0 hAmono hcovA hAfin hB hcovB
+    obtain ⟨CR, hCRtop, hCR⟩ := prop55iii_brsMainTwoRight_unif hT2 hTne hTnull
+      hq2 hA0 hcovA hAsum hB hcovB
+    refine ⟨2 * CL + CR, ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (by simp) hCLtop, hCRtop⟩, fun g hg => ?_,
+      fun g hg => ?_⟩
+    · refine le_trans (hCL g hg) ?_
+      refine le_trans (mul_le_mul' le_rfl
+        (add_le_add (ennreal_two_mul_rpow_le _ (by norm_num)) le_rfl)) ?_
+      have hstep : CL *
+            (2 * (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ))) ≤
+          2 * CL *
+            ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ))) := by
+        rw [mul_add, mul_add]
+        refine add_le_add (le_of_eq (by ring)) ?_
+        calc CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+              (1 / (2 : ℝ))
+            = 1 * CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ)) := by rw [one_mul]
+          _ ≤ 2 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                  (1 / (2 : ℝ)) :=
+              mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+      exact le_trans hstep (mul_le_mul' le_self_add le_rfl)
+    · exact le_trans (hCR g hg) (mul_le_mul' le_add_self le_rfl)
+  · -- `p > 2`
+    refine ⟨ENNReal.ofReal (brsMainTotalBoundLeft p) * ENNReal.ofReal 14 ^ (1 / q) +
+      ENNReal.ofReal (brsMainTotalBoundRight p) * ENNReal.ofReal 14 ^ (1 / q),
+      ?_, fun g hg => ?_, fun g hg => ?_⟩
+    · refine ENNReal.add_ne_top.mpr ⟨?_, ?_⟩ <;>
+        exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+          (ENNReal.rpow_ne_top_of_nonneg (by positivity) ENNReal.ofReal_ne_top)
+    · exact le_trans (prop55i_brsMainTwoLeft hT2 hp2 hq0 hg)
+        (mul_le_mul' le_self_add le_self_add)
+    · exact le_trans (prop55i_brsMainTwoRight hT2 hp2 hq0 hg)
+        (mul_le_mul' le_add_self le_self_add)
+
+/-! ## The dyadic-block covering data supplied by the Assouad dimension
+
+The endpoint form of Proposition 5.4(i) wants the covering numbers of
+`E ∩ (dyadic block of length 2^{-k})` at scale `2^{-(k+4+n)}`, bounded by a
+quantity depending on the separation index `n` alone.  That is exactly what the
+Assouad condition provides, since the ratio of the two scales is `2^{4+n}`
+regardless of `k`. -/
+
+theorem exists_dilBlock_covering_of_assouad {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {γ : ℝ} (hγ0 : 0 ≤ γ)
+    (h : HasAssouadExponent E γ) :
+    ∃ (Cγ : ℝ) (Nloc : ℕ → ℕ), 0 ≤ Cγ ∧
+      (∀ n k i : ℕ, intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n) ∧
+      (∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)))) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  obtain ⟨C, hC, hbound⟩ := assouad_cover_bound_interval hE hγ0 h
+  refine ⟨C + 1, fun n => Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))),
+    by linarith, ?_, ?_⟩
+  · intro n k i
+    have hL : (2 : ℝ) ^ (-(k : ℝ)) ≤ 1 := by
+      refine Real.rpow_le_one_of_one_le_of_nonpos (by norm_num) ?_
+      simp only [neg_nonpos]
+      exact Nat.cast_nonneg k
+    have hδpos : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+      Real.rpow_pos_of_pos h2 _
+    have hcast : ((k + (4 + n) : ℕ) : ℝ) = (k : ℝ) + ((4 + n : ℕ) : ℝ) := by
+      push_cast
+      ring
+    have hfour : (4 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := by
+      have hn : (4 : ℕ) ≤ 4 + n := by omega
+      exact_mod_cast hn
+    have hδ1 : (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) < 1 := by
+      refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+      rw [neg_lt, neg_zero, hcast]
+      have hk : (0 : ℝ) ≤ (k : ℝ) := Nat.cast_nonneg k
+      linarith
+    have hδL : (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) ≤ (2 : ℝ) ^ (-(k : ℝ)) := by
+      refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+      rw [hcast]
+      have hnn : (0 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := Nat.cast_nonneg _
+      linarith
+    have hratio : (2 : ℝ) ^ (-(k : ℝ)) / (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) =
+        (2 : ℝ) ^ ((4 + n : ℕ) : ℝ) := by
+      rw [← Real.rpow_sub h2, hcast]
+      congr 1
+      ring
+    have hkey := hbound ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)))
+      ((2 : ℝ) ^ (-(k : ℝ))) (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ)))
+      hδpos hδ1 hδL hL
+    rw [hratio, ← Real.rpow_mul (by norm_num)] at hkey
+    have hcomm : (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * γ) =
+        (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      congr 1
+      ring
+    rw [hcomm, ← brsDilBlock_eq_brrsInterval] at hkey
+    exact_mod_cast le_trans hkey (Nat.le_ceil _)
+  · intro n
+    have hpow : (1 : ℝ) ≤ (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      refine Real.one_le_rpow (by norm_num) ?_
+      have hnn : (0 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := Nat.cast_nonneg _
+      positivity
+    have hceil : (Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))) : ℝ) ≤
+        (C + 1) * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      have h1 : (Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))) : ℝ) ≤
+          C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) + 1 :=
+        (Nat.ceil_lt_add_one (by positivity)).le
+      nlinarith [hpow]
+    rw [← ENNReal.ofReal_natCast]
+    exact ENNReal.ofReal_le_ofReal hceil
+
+/-! ## Proposition 5.4(i) with Assouad covering data, `2 < q < 2p` -/
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoLeft_assouad_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    {p q rr : ℝ}
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hr : 1 < rr) (hrq : rr < q) (hrel : 1 / p + 1 / rr = 1 + 1 / q)
+    (hgeom : (γ - (1 / rr - 1 / 2) * q) / q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hqp : q / p < 2 := by
+    rw [div_lt_iff₀ hp0]
+    linarith
+  obtain ⟨C1, hC1pos, hC1⟩ := general_const_mul_brsRemainderTwo hp.le hq0 hq2p
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := tsum_brsRemTwoCent_general hp hq2 hqp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_endpoint_unif hE hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hCγ hNloc hNbd hp hr hrq hpq hrel
+    hq2p.le hA₀top hA₀ hgeom
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)
+      with hY
+    set h : ℝ → ℂ := brsLocalize g with hh
+    have hhc : Continuous h := continuous_brsLocalize hg
+    obtain ⟨Cg, hhbd⟩ : ∃ C : ℝ, ∀ z : ℝ, ‖h z‖ ≤ C := by
+      obtain ⟨C, hC⟩ := exists_bound_brsLocalize hg
+      exact ⟨C, fun z => by rw [hh]; exact hC z⟩
+    have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) =
+        ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E h x ^ q := by
+      refine lintegral_congr fun x => ?_
+      rcases le_or_gt x 0 with hx | hx
+      · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+      · rw [hh, brsRemTwoTwoLeft_brsLocalize hE g hx.le]
+    have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+    have hhsupp2 : ∀ z : ℝ, 4 < z → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.2 (by linarith))
+    have hfam := brsRemTwoTwoLeft_endpoint_family_le' hE hhc hhbd hpf hCppos
+      hCp0 hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+    have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+      rw [hY]
+      exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+        (by positivity)
+    have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (ENNReal.rpow_le_rpow
+        (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+      rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+        ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+    rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp hhsupp2) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) h) E r ^ q *
+            ENNReal.ofReal r) ^ (1 / q)) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (hC3 h hhc Cg hhbd) ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+              ENNReal.ofReal r) ^ (1 / q) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) h) E r ^ q *
+                  ENNReal.ofReal r) ^ (1 / q))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y +
+              C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i) by Littlewood–Paley, right half, uniformly -/
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoRight_assouad_interior_unif {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    {pf : ℝ → ℝ} (hpf : Continuous pf) {Cp : ℝ} (hCppos : 0 < Cp)
+    (hCp0 : ∀ x : ℝ, |pf x| ≤ Cp) (hCp2 : ∀ x : ℝ, x ^ 2 * |pf x| ≤ Cp)
+    (hpfint : Integrable pf volume) (hpfnorm : (∫ x : ℝ, pf x) = 1)
+    {υ : ℝ → ℝ} {S : SchwartzMap ℝ ℂ}
+    (hfac : ((fun y : ℝ => (υ y : ℂ)) ⋆[ContinuousLinearMap.mul ℂ ℂ]
+      (S : ℝ → ℂ)) = fun x : ℝ => ((brsLPKernel pf 0 x : ℝ) : ℂ))
+    (hυ : ContDiff ℝ 1 υ) (hcs : HasCompactSupport υ)
+    (hR : tsupport υ ⊆ Metric.closedBall 0 1)
+    (hυ' : ContDiff ℝ 1 (deriv υ)) (hcs' : HasCompactSupport (deriv υ))
+    (hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1)
+    (hυint : Integrable υ volume)
+    {Mu A Mu' A' : ℝ} (hbd : ∀ x : ℝ, |υ x| ≤ Mu) (hAι : (∫ y : ℝ, |υ y|) ≤ A)
+    (hAnn : 0 ≤ A) (hbd' : ∀ x : ℝ, |deriv υ x| ≤ Mu')
+    (hA' : (∫ y : ℝ, |deriv υ y|) ≤ A') (hA'nn : 0 ≤ A')
+    {N : ℕ} (hmom : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * υ y) = 0)
+    (hmom' : ∀ i : ℕ, i < N + 1 → (∫ y : ℝ, y ^ i * deriv υ y) = 0)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    {p q rr : ℝ}
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hr : 1 < rr) (hrq : rr < q) (hrel : 1 / p + 1 / rr = 1 + 1 / q)
+    (hgeom : (γ - (1 / rr - 1 / 2) * q) / q < 0)
+    {A₀ : ENNReal} (hA₀top : A₀ ≠ ⊤)
+    (hA₀ : ∀ (offset : ℕ) (h : ℝ → ℂ) (Ch : ℝ), Continuous h →
+      (∀ z : ℝ, ‖h z‖ ≤ Ch) →
+      (∑' k : ℕ, (∫⁻ x : ℝ, ‖∫ y : ℝ,
+          (brsSchwartzDilate S (k + offset) : ℝ → ℂ) y * h (x - y)‖ₑ ^ p) ^
+            (q / p)) ≤
+        A₀ * (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p)) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hq0 : (0 : ℝ) < q := by linarith
+  have hq1 : (1 : ℝ) ≤ q := by linarith
+  have hqp : q / p < 2 := by
+    rw [div_lt_iff₀ hp0]
+    linarith
+  obtain ⟨C1, hC1pos, hC1⟩ := general_const_mul_brsRemainderTwo hp.le hq0 hq2p
+    (K := (2048 : ℝ) ^ (1 / 2 : ℝ)) (Real.rpow_pos_of_pos (by norm_num) _)
+  obtain ⟨C2, hC2pos, hC2⟩ := tsum_brsRemTwoCent_general hp hq2 hqp hCppos 3
+  obtain ⟨C3, hC3top, hC3⟩ := tsum_near_high_endpoint_unif
+    (image_three_sub_subset_Icc hE) hυ hcs hR hυ' hcs' hR'
+    hbd hAι hAnn hbd' hA' hA'nn hmom hmom' hCγ hNloc hNbd hp hr hrq hpq hrel
+    hq2p.le hA₀top hA₀ hgeom
+  refine ⟨ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+    C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p))), ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ?_⟩
+    exact ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top,
+      ENNReal.mul_ne_top hC3top ENNReal.ofReal_ne_top⟩
+  · set Y : ENNReal := (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)
+      with hY
+    set h : ℝ → ℂ := brsLocalize g with hh
+    have hhc : Continuous h := continuous_brsLocalize hg
+    obtain ⟨Cg, hhbd⟩ : ∃ C : ℝ, ∀ z : ℝ, ‖h z‖ ≤ C := by
+      obtain ⟨C, hC⟩ := exists_bound_brsLocalize hg
+      exact ⟨C, fun z => by rw [hh]; exact hC z⟩
+    have hloc : (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) =
+        ∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E h x ^ q := by
+      refine lintegral_congr fun x => ?_
+      rcases le_or_gt x 0 with hx | hx
+      · rw [ENNReal.ofReal_eq_zero.mpr hx, zero_mul, zero_mul]
+      · rw [hh, brsRemTwoTwoRight_brsLocalize hE g hx.le]
+    have hhsupp : ∀ z : ℝ, z < 1 / 4 → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.1 (by linarith))
+    have hhsupp2 : ∀ z : ℝ, 4 < z → h z = 0 := by
+      intro z hz
+      rw [hh]
+      exact brsLocalize_eq_zero_of_notMem (fun hc => absurd hc.2 (by linarith))
+    have hfam := brsRemTwoTwoRight_endpoint_family_le hE hhc hhbd hpf hCppos
+      hCp0 hCp2 hpfint hpfnorm hfac hυ hcs hυint hbd hq1
+    have hht : Continuous fun w : ℝ => h (3 - w) :=
+      hhc.comp (continuous_const.sub continuous_id)
+    have hhtbd : ∀ z : ℝ, ‖h (3 - z)‖ ≤ Cg := fun z => hhbd _
+    have hC3' := hC3 (fun w : ℝ => h (3 - w)) hht Cg hhtbd
+    rw [lintegral_enorm_rpow_three_sub hhc.measurable p] at hC3'
+    have hw : (∫⁻ s : ℝ, ENNReal.ofReal s * ‖h s‖ₑ ^ p) ^ (1 / p) ≤ Y := by
+      rw [hY]
+      exact ENNReal.rpow_le_rpow (lintegral_weighted_brsLocalize_le hp0)
+        (by positivity)
+    have hu : (∫⁻ z : ℝ, ‖h z‖ₑ ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans (ENNReal.rpow_le_rpow
+        (lintegral_enorm_brsLocalize_le (g := g) hp0) (by positivity)) ?_
+      rw [hY, ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
+        ENNReal.ofReal_rpow_of_pos (by norm_num : (0 : ℝ) < 4)]
+    rw [hloc]
+    refine le_trans hfam ?_
+    have h1 : (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+        brsRemainderTwo (absProfile h) r) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C1 * Y :=
+      le_trans (hC1 h hhc) (mul_le_mul' le_rfl hw)
+    have h2 : (∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+        brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+          ENNReal.ofReal r) ^ (1 / q) ≤ ENNReal.ofReal C2 * Y :=
+      le_trans (hC2 h Cg hhc hhbd hhsupp hhsupp2) (mul_le_mul' le_rfl hw)
+    have h3 : (∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+        brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+          (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+          ((fun x : ℝ => 3 - x) '' E) r ^ q *
+            ENNReal.ofReal r) ^ (1 / q)) ≤
+        C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y := by
+      refine le_trans hC3' ?_
+      rw [mul_assoc]
+      exact mul_le_mul' le_rfl hu
+    calc (∫⁻ r : ℝ, (ENNReal.ofReal ((2048 : ℝ) ^ (1 / 2 : ℝ)) *
+              brsRemainderTwo (absProfile h) r) ^ q *
+            ENNReal.ofReal r) ^ (1 / q) +
+          ((∫⁻ r : ℝ, (∑' n : ℕ, ENNReal.ofReal (16 * Cp * 2 ^ 3 / 2 ^ n) *
+                brsRemTwoCent (absProfile h) ((2 : ℝ) ^ (n + 2) * r)) ^ q *
+              ENNReal.ofReal r) ^ (1 / q) +
+            ∑' m : ℕ, (∑' k : ℕ, ∫⁻ r : ℝ,
+              brsNearMax k (k + 1) (brsDilate υ (k + (4 + m)))
+                (brsLPInput S (k + (4 + m)) (fun w : ℝ => h (3 - w)))
+                ((fun x : ℝ => 3 - x) '' E) r ^ q *
+                  ENNReal.ofReal r) ^ (1 / q))
+        ≤ ENNReal.ofReal C1 * Y +
+            (ENNReal.ofReal C2 * Y +
+              C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)) * Y) :=
+          add_le_add h1 (add_le_add h2 h3)
+      _ = (ENNReal.ofReal C1 + (ENNReal.ofReal C2 +
+            C3 * ENNReal.ofReal ((4 : ℝ) ^ (1 / p)))) * Y := by ring
+
+/-! ## Proposition 5.4(i), with the resolution data supplied, uniformly
+
+The exponent relation gives `(1/r - 1/2)·q = q/2 + 1 - q/p`, so the `m`-sum
+converges exactly under BRS's condition `q/p < 1 + q/2 - ν`, i.e.
+`1/p - 1/2 < (1 - ν)/q`. -/
+
+/-! ## Proposition 5.4(i) with Assouad covering data, the outer wrappers -/
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoLeft_assouad_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ} {p q : ℝ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (E ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hnu : γ < q / 2 + 1 - q / p) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| := integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hpq
+  have hSq : (1 / rr - 1 / 2) * q = q / 2 + 1 - q / p := by
+    have hinv : 1 / rr = 1 + 1 / q - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : (γ - (1 / rr - 1 / 2) * q) / q < 0 := by
+    rw [hSq]
+    exact div_neg_of_neg_of_pos (by linarith) (by linarith)
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ q) hpq.le
+  exact prop54_brsRemTwoTwoLeft_assouad_interior_unif hE hpf hCppos hCp0 hCp2 hpfint
+    hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd' le_rfl
+    hA'nn hmom hmom' hCγ hNloc hNbd hp hq2 hpq hq2p hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd)
+
+set_option maxHeartbeats 1000000 in
+theorem prop54_brsRemTwoTwoRight_assouad_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cγ γ : ℝ} (hCγ : 0 ≤ Cγ) {Nloc : ℕ → ℕ} {p q : ℝ}
+    (hNloc : ∀ n k i : ℕ,
+      intervalCoveringNumber (((fun x : ℝ => 3 - x) '' E) ∩ brsDilBlock k i)
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n)
+    (hNbd : ∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+      ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))))
+    (hp : 1 < p) (hq2 : 2 < q) (hpq : p < q) (hq2p : q < 2 * p)
+    (hnu : γ < q / 2 + 1 - q / p) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ g : ℝ → ℂ, Continuous g →
+      (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight E g x ^ q) ^ (1 / q) ≤
+        C * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  obtain ⟨pf, υ, S, Cp, hpfC, hpfint, hpfnorm, hCppos, hCp0, hCp2, hυC, hυcs,
+    hυball, hmom, hmom', hSsupp, hfac⟩ := exists_brsCalderonFactorization 1
+  have hpf : Continuous pf := hpfC.continuous
+  have hυ : ContDiff ℝ 1 υ := hυC.of_le (by exact_mod_cast le_top)
+  have hυC' : ContDiff ℝ (⊤ : ℕ∞) (deriv υ) := (contDiff_infty_iff_deriv.mp hυC).2
+  have hυ' : ContDiff ℝ 1 (deriv υ) := hυC'.of_le (by exact_mod_cast le_top)
+  have hcs' : HasCompactSupport (deriv υ) := hυcs.deriv
+  have hR' : tsupport (deriv υ) ⊆ Metric.closedBall 0 1 :=
+    tsupport_deriv_subset.trans hυball
+  have hυint : Integrable υ volume :=
+    hυC.continuous.integrable_of_hasCompactSupport hυcs
+  obtain ⟨Mu, hbd⟩ : ∃ M : ℝ, ∀ x : ℝ, |υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hυcs.exists_bound_of_continuous hυC.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  obtain ⟨Mu', hbd'⟩ : ∃ M : ℝ, ∀ x : ℝ, |deriv υ x| ≤ M := by
+    obtain ⟨C, hC⟩ := hcs'.exists_bound_of_continuous hυC'.continuous
+    exact ⟨C, fun x => by simpa [Real.norm_eq_abs] using hC x⟩
+  have hAnn : (0 : ℝ) ≤ ∫ y : ℝ, |υ y| := integral_nonneg fun y => abs_nonneg _
+  have hA'nn : (0 : ℝ) ≤ ∫ y : ℝ, |deriv υ y| :=
+    integral_nonneg fun y => abs_nonneg _
+  obtain ⟨rr, hrr, hrrq, hrel, hrr2, hexp⟩ := brs_exponent_data hp hpq
+  have hSq : (1 / rr - 1 / 2) * q = q / 2 + 1 - q / p := by
+    have hinv : 1 / rr = 1 + 1 / q - 1 / p := by linarith
+    rw [hinv]
+    field_simp
+    ring
+  have hgeom : (γ - (1 / rr - 1 / 2) * q) / q < 0 := by
+    rw [hSq]
+    exact div_neg_of_neg_of_pos (by linarith) (by linarith)
+  obtain ⟨CLP⟩ := Auto.LittlewoodPaley.exists_lpCutoffs 1
+  obtain ⟨A₀, hA₀top, hA₀main⟩ :=
+    tsum_lintegral_psiDilate_conv_le_bdd CLP hSsupp hp
+      (by linarith : (2 : ℝ) ≤ q) hpq.le
+  exact prop54_brsRemTwoTwoRight_assouad_interior_unif hE hpf hCppos hCp0 hCp2 hpfint
+    hpfnorm hfac hυ hυcs hυball hυ' hcs' hR' hυint hbd le_rfl hAnn hbd' le_rfl
+    hA'nn hmom hmom' hCγ hNloc hNbd hp hq2 hpq hq2p hrr hrrq hrel hgeom hA₀top
+    (fun offset h Ch hhc hhbd => hA₀main offset h Ch hhc hhbd)
+
+/-! ## Assouad data for a subset and for an arbitrary base point -/
+
+theorem HasAssouadExponent.mono {E F : Set ℝ} (hFE : F ⊆ E)
+    (hE : E ⊆ Icc (1 : ℝ) 2) {γ : ℝ} (h : HasAssouadExponent E γ) :
+    HasAssouadExponent F γ := by
+  obtain ⟨C, hC, hbound⟩ := h
+  refine ⟨C, hC, fun δ a b hδ hδ1 ha hab hb hscale => ?_⟩
+  refine le_trans ?_ (hbound δ a b hδ hδ1 ha hab hb hscale)
+  have hstep := intervalCoveringNumber_mono_set
+    (E := E ∩ Icc a b) (F := F ∩ Icc a b)
+    (Set.inter_subset_inter_left _ hFE) (Set.inter_subset_left.trans hE) hδ
+  exact_mod_cast hstep
+
+/-- The localized covering data of the Assouad condition, indexed by the
+separation index alone and valid at every base point.  This is the form the
+endpoint estimate wants for both `R₂^-` and its reflection. -/
+theorem exists_localized_covering_of_assouad_single {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {γ : ℝ} (hγ0 : 0 ≤ γ)
+    (h : HasAssouadExponent E γ) :
+    ∃ (Cγ : ℝ) (Nloc : ℕ → ℕ), 0 ≤ Cγ ∧
+      (∀ (n k : ℕ) (a : ℝ), intervalCoveringNumber
+        (E ∩ _root_.Auto.Spherical.LegendreAssouad.brrsInterval a
+          ((2 : ℝ) ^ (-(k : ℝ))))
+        ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n) ∧
+      (∀ n : ℕ, ((Nloc n : ℕ) : ENNReal) ≤
+        ENNReal.ofReal (Cγ * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)))) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  obtain ⟨C, hC, hbound⟩ := assouad_cover_bound_interval hE hγ0 h
+  refine ⟨C + 1, fun n => Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))),
+    by linarith, ?_, ?_⟩
+  · intro n k a
+    have hL : (2 : ℝ) ^ (-(k : ℝ)) ≤ 1 := by
+      refine Real.rpow_le_one_of_one_le_of_nonpos (by norm_num) ?_
+      simp only [neg_nonpos]
+      exact Nat.cast_nonneg k
+    have hδpos : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+      Real.rpow_pos_of_pos h2 _
+    have hcast : ((k + (4 + n) : ℕ) : ℝ) = (k : ℝ) + ((4 + n : ℕ) : ℝ) := by
+      push_cast
+      ring
+    have hfour : (4 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := by
+      have hn : (4 : ℕ) ≤ 4 + n := by omega
+      exact_mod_cast hn
+    have hδ1 : (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) < 1 := by
+      refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+      rw [neg_lt, neg_zero, hcast]
+      have hk : (0 : ℝ) ≤ (k : ℝ) := Nat.cast_nonneg k
+      linarith
+    have hδL : (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) ≤ (2 : ℝ) ^ (-(k : ℝ)) := by
+      refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+      rw [hcast]
+      have hnn : (0 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := Nat.cast_nonneg _
+      linarith
+    have hratio : (2 : ℝ) ^ (-(k : ℝ)) / (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) =
+        (2 : ℝ) ^ ((4 + n : ℕ) : ℝ) := by
+      rw [← Real.rpow_sub h2, hcast]
+      congr 1
+      ring
+    have hkey := hbound ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)))
+      ((2 : ℝ) ^ (-(k : ℝ))) a hδpos hδ1 hδL hL
+    rw [hratio, ← Real.rpow_mul (by norm_num)] at hkey
+    have hcomm : (2 : ℝ) ^ (((4 + n : ℕ) : ℝ) * γ) =
+        (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      congr 1
+      ring
+    rw [hcomm] at hkey
+    exact_mod_cast le_trans hkey (Nat.le_ceil _)
+  · intro n
+    have hpow : (1 : ℝ) ≤ (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      refine Real.one_le_rpow (by norm_num) ?_
+      have hnn : (0 : ℝ) ≤ ((4 + n : ℕ) : ℝ) := Nat.cast_nonneg _
+      positivity
+    have hceil : (Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))) : ℝ) ≤
+        (C + 1) * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) := by
+      have h1 : (Nat.ceil (C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ))) : ℝ) ≤
+          C * (2 : ℝ) ^ (γ * ((4 + n : ℕ) : ℝ)) + 1 :=
+        (Nat.ceil_lt_add_one (by positivity)).le
+      nlinarith [hpow]
+    rw [← ENNReal.ofReal_natCast]
+    exact ENNReal.ofReal_le_ofReal hceil
+
+/-! ## The planar radial strong type on the *closed* triangle
+
+Three ingredients replace the interior hypotheses of Theorem 1.2:
+
+* the sharp entropy bound gives `𝔐_p^±` at the closed exponent condition
+  `1 - 2/p + (1-β)/q ≥ 0`, hence on the critical segment;
+* `R₁^±` needs no new input, because its condition
+  `1/p - 1/q + β/q < 1/2` is strict on the whole of `Δ_β` once `β < 1`;
+* `R₂^±` is run from the Assouad covering data rather than from `ν♯`, which is
+  what reaches the edge `q = 2p` — there the `ν♯` normalization is exactly
+  borderline. -/
+
+set_option maxHeartbeats 1000000 in
+theorem hasRadialStrongTypeCont_two_assouad {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β) (hent : HasSharpEntropyBound E β)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (hAss : HasAssouadExponent E γ)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p < q) (hq2p : q ≤ 2 * p)
+    (hexp : 0 ≤ 1 - 2 / p + (1 - β) / q)
+    (hγlt : γ < q / 2 + 1 - q / p) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_trans hp0 hpq
+  have hqinv : 0 < 1 / q := by positivity
+  obtain ⟨T, hTE, hTc, hET⟩ := exists_countable_dense_dilations E
+  have hT2 : T ⊆ Icc (1 : ℝ) 2 := hTE.trans hE
+  have hTne : T.Nonempty := by
+    rcases Set.eq_empty_or_nonempty T with hTempty | hTne
+    · exfalso
+      rw [hTempty, closure_empty] at hET
+      exact absurd (Set.subset_empty_iff.mp hET)
+        (Set.nonempty_iff_ne_empty.mp hEne)
+    · exact hTne
+  have hM' : HasUpperMinkowskiExponent T β := hM.mono hTE
+  have hent' : HasSharpEntropyBound T β := hent.mono hTE hE
+  have hAss' : HasAssouadExponent T γ := hAss.mono hTE hE
+  have hTnull : volume (closure T) = 0 :=
+    volume_closure_eq_zero_of_minkowski hT2 hβ0 hβ1 hM'
+  -- the room available to `R₁`
+  have hd : 0 < 1 / 2 - (1 / p - 1 / q + β / q) := by
+    have h2p : (2 : ℝ) / p = 2 * (1 / p) := by ring
+    have hbq : (1 - β) / q = (1 - β) * (1 / q) := by ring
+    have hb2 : β / q = β * (1 / q) := by ring
+    rw [h2p, hbq] at hexp
+    rw [hb2, show (1 : ℝ) / p = 1 * (1 / p) from by ring,
+      show (1 : ℝ) / q = 1 * (1 / q) from by ring]
+    nlinarith [hexp, hqinv, hβ1]
+  obtain ⟨ε, hεdef⟩ : ∃ x : ℝ,
+      x = min (q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2) ((1 - β) / 4) :=
+    ⟨_, rfl⟩
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    exact lt_min (by positivity) (by linarith)
+  have hε1 : ε ≤ q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+    rw [hεdef]; exact min_le_left _ _
+  have hε2 : ε ≤ (1 - β) / 4 := by rw [hεdef]; exact min_le_right _ _
+  obtain ⟨β', hβ'def⟩ : ∃ x : ℝ, x = β + ε := ⟨_, rfl⟩
+  have hβ'0 : 0 ≤ β' := by rw [hβ'def]; linarith
+  have hβ'half : β' < (1 + β) / 2 := by
+    rw [hβ'def]
+    linarith
+  have hR1cond : 1 / p - 1 / q + β' / q < 1 / 2 := by
+    have hεq : ε / q ≤ (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+      rw [div_le_iff₀ hq0]
+      have := hε1
+      nlinarith [hq0, hd]
+    have hsplit : β' / q = β / q + ε / q := by
+      rw [hβ'def]
+      ring
+    rw [hsplit]
+    linarith
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM' hεpos
+  have hbound' : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      (intervalCoveringNumber T δ : ℝ) ≤ C * δ ^ (-β') := by
+    intro δ hδ hδ1
+    have h := hbound δ hδ hδ1 Set.univ
+    rw [Set.inter_univ] at h
+    rw [hβ'def]
+    exact h
+  have hN : ∀ j : ℕ,
+      (intervalCoveringNumber T ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) :=
+    brs_cover_dyadic_of_bound hT2 hC hβ'0 hbound'
+  have hNr : ∀ j : ℕ,
+      (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' T)
+          ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) := by
+    intro j
+    refine le_trans ?_ (hN j)
+    have h := intervalCoveringNumber_image_three_sub_le hT2
+      (δ := (2 : ℝ) ^ (-(j : ℝ))) (Real.rpow_pos_of_pos (by norm_num) _)
+    exact_mod_cast h
+  have hCmax : (0 : ℝ) ≤ max C 1 := le_trans (by norm_num) (le_max_right C 1)
+  -- the two main terms and the `R₁` tail
+  obtain ⟨CM, hCMtop, hML, hMR⟩ := exists_brsMainTwoBounds_entropy hT2 hTne
+    hTnull hβ0 hβ1 hM' hent' hp1 hpq hexp
+  have hR1top : (∑' m : ℕ, brsProp52Coeff T p q m) ≠ ⊤ :=
+    tsum_brsProp52Coeff_ne_top hCmax hN hp0 hq0 hR1cond
+  -- the two `R₂` terms
+  have hR2 : ∃ C₅ : ENNReal, C₅ ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) := by
+    have hmulq : q / p - 1 + β' < q / 2 := by
+      have h := mul_lt_mul_of_pos_left hR1cond hq0
+      have hid : q * (1 / p - 1 / q + β' / q) = q / p - 1 + β' := by
+        field_simp
+      rw [hid, show q * (1 / 2 : ℝ) = q / 2 from by ring] at h
+      exact h
+    have hMcond : q / p < 1 + q / 2 - β' := by linarith
+    have hhalf : 1 / p - 1 / q < 1 / 2 := by
+      have : (0 : ℝ) ≤ β' / q := by positivity
+      linarith [hR1cond]
+    rcases le_or_gt q 2 with hq2 | hq2
+    · have hq2plt : q < 2 * p := by linarith
+      have hqp2 : q / p ≤ q / 2 + (1 - β) / 2 := by
+        have hqq : q * (1 / q) = 1 := by field_simp
+        have h2p : (2 : ℝ) / p = 2 * (1 / p) := by ring
+        have hbq : (1 - β) / q = (1 - β) * (1 / q) := by ring
+        rw [h2p, hbq] at hexp
+        have hstep : 0 ≤ (q / 2) * (1 - 2 * (1 / p) + (1 - β) * (1 / q)) :=
+          mul_nonneg (by positivity) hexp
+        have hid : (q / 2) * (1 - 2 * (1 / p) + (1 - β) * (1 / q)) =
+            q / 2 - q * (1 / p) + (1 - β) * (q * (1 / q)) / 2 := by ring
+        rw [hid, hqq] at hstep
+        rw [div_eq_mul_one_div q p]
+        linarith
+      have hKcond : q / p < 2 - β' := by
+        have : q / 2 ≤ 1 := by linarith
+        linarith [hqp2, hβ'half]
+      obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_pq_weighted_unif hT2
+        hCmax hN hp1 hpq hq2plt hhalf hKcond hMcond
+      obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_pq_weighted_unif hT2
+        hCmax hNr hp1 hpq hq2plt hhalf hKcond hMcond
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    · obtain ⟨Cγ, Nloc, hCγ, hNlocGen, hNbd⟩ :=
+        exists_localized_covering_of_assouad_single hT2 hγ0 hAss'
+      have hNlocT : ∀ n k i : ℕ,
+          intervalCoveringNumber (T ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n := by
+        intro n k i
+        rw [brsDilBlock_eq_brrsInterval]
+        exact hNlocGen n k (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ)))
+      have hNlocR : ∀ n k i : ℕ,
+          intervalCoveringNumber (((fun x : ℝ => 3 - x) '' T) ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n := by
+        intro n k i
+        have hδ : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        rw [image_three_sub_inter_brsDilBlock]
+        refine le_trans (intervalCoveringNumber_image_three_sub_le
+          (Set.inter_subset_left.trans hT2) hδ) ?_
+        exact hNlocGen n k (2 - ((i : ℝ) + 1) * (2 : ℝ) ^ (-(k : ℝ)))
+      rcases lt_or_eq_of_le hq2p with hq2plt | hq2peq
+      · obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_assouad_unif hT2 hCγ
+          hNlocT hNbd hp1 hq2 hpq hq2plt hγlt
+        obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_assouad_unif hT2 hCγ
+          hNlocR hNbd hp1 hq2 hpq hq2plt hγlt
+        exact ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩,
+          fun g hg => le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl),
+          fun g hg => le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)⟩
+      · subst hq2peq
+        have hγp : γ < p - 1 := by
+          have hid : 2 * p / 2 + 1 - 2 * p / p = p - 1 := by
+            field_simp
+            ring
+          rw [hid] at hγlt
+          exact hγlt
+        obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_endpoint_unif hT2 hCγ
+          hNlocT hNbd hp1 hγp
+        obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_endpoint_unif hT2 hCγ
+          hNlocR hNbd hp1 hγp
+        exact ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩,
+          fun g hg => le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl),
+          fun g hg => le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)⟩
+  obtain ⟨C₅, hC₅, hR2L, hR2R⟩ := hR2
+  exact hasRadialStrongTypeCont_two_of_bounds hTE hET hT2 hTc hp1.le hpq.le
+    hCMtop hCMtop hR1top hR1top hC₅ hC₅
+    hML hMR (fun g hg => prop52_brsRemTwoOneLeft hT2 hp1 hpq.le hg)
+    (fun g hg => prop52_brsRemTwoOneRight hT2 hp1 hpq.le hg) hR2L hR2R
+
+/-! ## The main terms and the diagonal remainder, up to the diagonal
+
+Proposition 5.5 never needed `p < q`, so the two main terms extend to `p = q`;
+and on the diagonal `R₂^±` is Lemma 5.3, whose constant is already independent
+of the datum once the case split on `p ≤ 2` is made first. -/
+
+set_option maxHeartbeats 1000000 in
+theorem exists_brsMainTwoBounds_entropy_le {T : Set ℝ} (hT2 : T ⊆ Icc (1 : ℝ) 2)
+    (hTne : T.Nonempty) (hTnull : volume (closure T) = 0)
+    {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent T β)
+    (hent : HasSharpEntropyBound T β)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p ≤ q)
+    (hexp : 0 ≤ 1 - 2 / p + (1 - β) / q) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le hp0 hpq
+  rcases lt_trichotomy p 2 with hp2 | hp2 | hp2
+  · -- `p < 2`
+    obtain ⟨AE, hAEpos, hcov⟩ :=
+      exists_brsCoveringBound_of_entropy hT2 hβ0 hent hq0 hexp
+    obtain ⟨CL, hCLtop, hCL⟩ := prop55ii_brsMainTwoLeft_unif hT2 hTne hTnull
+      hp1.le hp2 hpq hAEpos hcov
+    obtain ⟨CR, hCRtop, hCR⟩ := prop55ii_brsMainTwoRight_unif hT2 hTne hTnull
+      hp1.le hp2 hpq hAEpos hcov
+    refine ⟨2 * CL + CR, ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (by simp) hCLtop, hCRtop⟩, fun g hg => ?_,
+      fun g hg => ?_⟩
+    · refine le_trans (hCL g hg) ?_
+      refine le_trans (mul_le_mul' le_rfl
+        (add_le_add (ennreal_two_mul_rpow_le _ hp1.le) le_rfl)) ?_
+      have hstep : CL * (2 * (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) ≤
+          2 * CL * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) := by
+        rw [mul_add, mul_add]
+        refine add_le_add (le_of_eq (by ring)) ?_
+        calc CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)
+            = 1 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) := by
+              rw [one_mul]
+          _ ≤ 2 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p) :=
+              mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+      exact le_trans hstep (mul_le_mul' le_self_add le_rfl)
+    · exact le_trans (hCR g hg) (mul_le_mul' le_add_self le_rfl)
+  · -- `p = 2`
+    subst hp2
+    have hq2 : (2 : ℝ) ≤ q := hpq
+    obtain ⟨a, ρ, hapos, hρpos, hρ1, hcovA⟩ :=
+      exists_brsCoveringSeq_of_minkowski hT2 hβ0 hβ1 hM hq0
+    have hA0 : ∀ j : ℕ, 0 ≤ a * ρ ^ j := fun j =>
+      mul_nonneg hapos.le (pow_nonneg hρpos.le _)
+    have hAmono : Antitone fun j : ℕ => a * ρ ^ j := by
+      intro i j hij
+      refine mul_le_mul_of_nonneg_left ?_ hapos.le
+      obtain ⟨k, hk⟩ := Nat.exists_eq_add_of_le hij
+      rw [hk, pow_add]
+      calc ρ ^ i * ρ ^ k ≤ ρ ^ i * 1 :=
+            mul_le_mul_of_nonneg_left (pow_le_one₀ hρpos.le hρ1.le)
+              (pow_nonneg hρpos.le i)
+        _ = ρ ^ i := mul_one _
+    have hAfin : (∑' k : ℕ, brsSeqBlockConst q (fun j => a * ρ ^ j) k) ≠ ⊤ :=
+      tsum_brsSeqBlockConst_ne_top_of_geometric hapos.le hρpos hρ1
+    have hAsum : (∑' m : ℕ,
+        ENNReal.ofReal ((fun j : ℕ => a * ρ ^ j) (m + 1) *
+          brsRightConst 2 q)) ≠ ⊤ :=
+      tsum_ofReal_geometric_shift_ne_top hapos.le hρpos.le hρ1
+        (brsRightConst_nonneg 2 q)
+    obtain ⟨B, hB, hcovB⟩ :=
+      exists_logcov_bound_of_minkowski hβ0 hβ1 hM hq0 (D := 2) (by norm_num)
+    obtain ⟨CL, hCLtop, hCL⟩ := prop55iii_brsMainTwoLeft_unif hT2 hTne hTnull
+      hq2 hA0 hAmono hcovA hAfin hB hcovB
+    obtain ⟨CR, hCRtop, hCR⟩ := prop55iii_brsMainTwoRight_unif hT2 hTne hTnull
+      hq2 hA0 hcovA hAsum hB hcovB
+    refine ⟨2 * CL + CR, ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top (by simp) hCLtop, hCRtop⟩, fun g hg => ?_,
+      fun g hg => ?_⟩
+    · refine le_trans (hCL g hg) ?_
+      refine le_trans (mul_le_mul' le_rfl
+        (add_le_add (ennreal_two_mul_rpow_le _ (by norm_num)) le_rfl)) ?_
+      have hstep : CL *
+            (2 * (∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ))) ≤
+          2 * CL *
+            ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ (2 : ℝ)) ^ (1 / (2 : ℝ)) +
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ))) := by
+        rw [mul_add, mul_add]
+        refine add_le_add (le_of_eq (by ring)) ?_
+        calc CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+              (1 / (2 : ℝ))
+            = 1 * CL * (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                (1 / (2 : ℝ)) := by rw [one_mul]
+          _ ≤ 2 * CL *
+                (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ (2 : ℝ)) ^
+                  (1 / (2 : ℝ)) :=
+              mul_le_mul' (mul_le_mul' (by norm_num) le_rfl) le_rfl
+      exact le_trans hstep (mul_le_mul' le_self_add le_rfl)
+    · exact le_trans (hCR g hg) (mul_le_mul' le_add_self le_rfl)
+  · -- `p > 2`
+    refine ⟨ENNReal.ofReal (brsMainTotalBoundLeft p) * ENNReal.ofReal 14 ^ (1 / q) +
+      ENNReal.ofReal (brsMainTotalBoundRight p) * ENNReal.ofReal 14 ^ (1 / q),
+      ?_, fun g hg => ?_, fun g hg => ?_⟩
+    · refine ENNReal.add_ne_top.mpr ⟨?_, ?_⟩ <;>
+        exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+          (ENNReal.rpow_ne_top_of_nonneg (by positivity) ENNReal.ofReal_ne_top)
+    · exact le_trans (prop55i_brsMainTwoLeft hT2 hp2 hq0 hg)
+        (mul_le_mul' le_self_add le_self_add)
+    · exact le_trans (prop55i_brsMainTwoRight hT2 hp2 hq0 hg)
+        (mul_le_mul' le_add_self le_self_add)
+
+/-- **Proposition 5.4 on the diagonal for `R₂^-`, uniformly in the datum.** -/
+theorem prop54_brsRemTwoTwoLeft_diag_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p : ℝ} (hp1 : 1 < p) (hβ : β < p / 2) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r * brsRemTwoTwoLeft E g r ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal C * (∫⁻ s, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  rcases le_or_gt p 2 with hp2 | hp2
+  · have hsum := tsum_brsLemma53Coeff_ne_top hCβ hN hp0 hβ
+    refine ⟨(∑' m : ℕ, brsLemma53Coeff E p m).toReal, ENNReal.toReal_nonneg,
+      fun g hg => ?_⟩
+    rw [ENNReal.ofReal_toReal hsum]
+    exact lemma53_brsRemTwoTwoLeft hE hp1.le hp2 hg
+  · have hC := brsR2LargeConst_pos hp2
+    refine ⟨(4 : ℝ) ^ (1 / p) * brsR2LargeConst p,
+      mul_nonneg (Real.rpow_nonneg (by norm_num) _) hC.le, fun g hg => ?_⟩
+    exact lemma53_brsRemTwoTwoLeft_of_two_lt hE hp2 hg
+
+/-- **Proposition 5.4 on the diagonal for `R₂^+`, uniformly in the datum.** -/
+theorem prop54_brsRemTwoTwoRight_diag_unif {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {Cβ β : ℝ} (hCβ : 0 ≤ Cβ)
+    (hN : ∀ j : ℕ, (intervalCoveringNumber E ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+      ENNReal.ofReal (Cβ * (2 : ℝ) ^ (β * (j : ℝ))))
+    {p : ℝ} (hp1 : 1 < p) (hβ : β < p / 2) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r * brsRemTwoTwoRight E g r ^ p) ^ (1 / p) ≤
+        ENNReal.ofReal C * (∫⁻ s, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  rcases le_or_gt p 2 with hp2 | hp2
+  · have hsum := tsum_brsLemma53Coeff_ne_top hCβ hN hp0 hβ
+    refine ⟨(∑' m : ℕ, brsLemma53Coeff E p m).toReal, ENNReal.toReal_nonneg,
+      fun g hg => ?_⟩
+    rw [ENNReal.ofReal_toReal hsum]
+    exact lemma53_brsRemTwoTwoRight hE hp1.le hp2 hg
+  · have hC := brsR2LargeConst_pos hp2
+    refine ⟨(4 : ℝ) ^ (1 / p) * brsR2LargeConst p,
+      mul_nonneg (Real.rpow_nonneg (by norm_num) _) hC.le, fun g hg => ?_⟩
+    exact lemma53_brsRemTwoTwoRight_of_two_lt hE hp2 hg
+
+/-! ## The planar radial strong type on the *closed* triangle
+
+Three ingredients replace the interior hypotheses of Theorem 1.2:
+
+* the sharp entropy bound gives `𝔐_p^±` at the closed exponent condition
+  `1 - 2/p + (1-β)/q ≥ 0`, hence on the critical segment;
+* `R₁^±` needs no new input, because its condition
+  `1/p - 1/q + β/q < 1/2` is strict on the whole of `Δ_β` once `β < 1`;
+* `R₂^±` is run from the Assouad covering data rather than from `ν♯`, which is
+  what reaches the edge `q = 2p` — there the `ν♯` normalization is exactly
+  borderline. -/
+
+set_option maxHeartbeats 1000000 in
+theorem hasRadialStrongTypeCont_two_assouad_le {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β) (hent : HasSharpEntropyBound E β)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (hAss : HasAssouadExponent E γ)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p ≤ q) (hq2p : q ≤ 2 * p)
+    (hexp : 0 ≤ 1 - 2 / p + (1 - β) / q)
+    (hγlt : γ < q / 2 + 1 - q / p) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le hp0 hpq
+  have hqinv : 0 < 1 / q := by positivity
+  obtain ⟨T, hTE, hTc, hET⟩ := exists_countable_dense_dilations E
+  have hT2 : T ⊆ Icc (1 : ℝ) 2 := hTE.trans hE
+  have hTne : T.Nonempty := by
+    rcases Set.eq_empty_or_nonempty T with hTempty | hTne
+    · exfalso
+      rw [hTempty, closure_empty] at hET
+      exact absurd (Set.subset_empty_iff.mp hET)
+        (Set.nonempty_iff_ne_empty.mp hEne)
+    · exact hTne
+  have hM' : HasUpperMinkowskiExponent T β := hM.mono hTE
+  have hent' : HasSharpEntropyBound T β := hent.mono hTE hE
+  have hAss' : HasAssouadExponent T γ := hAss.mono hTE hE
+  have hTnull : volume (closure T) = 0 :=
+    volume_closure_eq_zero_of_minkowski hT2 hβ0 hβ1 hM'
+  -- the room available to `R₁`
+  have hd : 0 < 1 / 2 - (1 / p - 1 / q + β / q) := by
+    have h2p : (2 : ℝ) / p = 2 * (1 / p) := by ring
+    have hbq : (1 - β) / q = (1 - β) * (1 / q) := by ring
+    have hb2 : β / q = β * (1 / q) := by ring
+    rw [h2p, hbq] at hexp
+    rw [hb2, show (1 : ℝ) / p = 1 * (1 / p) from by ring,
+      show (1 : ℝ) / q = 1 * (1 / q) from by ring]
+    nlinarith [hexp, hqinv, hβ1]
+  obtain ⟨ε, hεdef⟩ : ∃ x : ℝ,
+      x = min (q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2) ((1 - β) / 4) :=
+    ⟨_, rfl⟩
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    exact lt_min (by positivity) (by linarith)
+  have hε1 : ε ≤ q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+    rw [hεdef]; exact min_le_left _ _
+  have hε2 : ε ≤ (1 - β) / 4 := by rw [hεdef]; exact min_le_right _ _
+  obtain ⟨β', hβ'def⟩ : ∃ x : ℝ, x = β + ε := ⟨_, rfl⟩
+  have hβ'0 : 0 ≤ β' := by rw [hβ'def]; linarith
+  have hβ'half : β' < (1 + β) / 2 := by
+    rw [hβ'def]
+    linarith
+  have hR1cond : 1 / p - 1 / q + β' / q < 1 / 2 := by
+    have hεq : ε / q ≤ (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+      rw [div_le_iff₀ hq0]
+      have := hε1
+      nlinarith [hq0, hd]
+    have hsplit : β' / q = β / q + ε / q := by
+      rw [hβ'def]
+      ring
+    rw [hsplit]
+    linarith
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM' hεpos
+  have hbound' : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      (intervalCoveringNumber T δ : ℝ) ≤ C * δ ^ (-β') := by
+    intro δ hδ hδ1
+    have h := hbound δ hδ hδ1 Set.univ
+    rw [Set.inter_univ] at h
+    rw [hβ'def]
+    exact h
+  have hN : ∀ j : ℕ,
+      (intervalCoveringNumber T ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) :=
+    brs_cover_dyadic_of_bound hT2 hC hβ'0 hbound'
+  have hNr : ∀ j : ℕ,
+      (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' T)
+          ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) := by
+    intro j
+    refine le_trans ?_ (hN j)
+    have h := intervalCoveringNumber_image_three_sub_le hT2
+      (δ := (2 : ℝ) ^ (-(j : ℝ))) (Real.rpow_pos_of_pos (by norm_num) _)
+    exact_mod_cast h
+  have hCmax : (0 : ℝ) ≤ max C 1 := le_trans (by norm_num) (le_max_right C 1)
+  -- the two main terms and the `R₁` tail
+  obtain ⟨CM, hCMtop, hML, hMR⟩ := exists_brsMainTwoBounds_entropy_le hT2 hTne
+    hTnull hβ0 hβ1 hM' hent' hp1 hpq hexp
+  have hR1top : (∑' m : ℕ, brsProp52Coeff T p q m) ≠ ⊤ :=
+    tsum_brsProp52Coeff_ne_top hCmax hN hp0 hq0 hR1cond
+  -- the two `R₂` terms
+  have hR2 : ∃ C₅ : ENNReal, C₅ ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) := by
+    have hmulq : q / p - 1 + β' < q / 2 := by
+      have h := mul_lt_mul_of_pos_left hR1cond hq0
+      have hid : q * (1 / p - 1 / q + β' / q) = q / p - 1 + β' := by
+        field_simp
+      rw [hid, show q * (1 / 2 : ℝ) = q / 2 from by ring] at h
+      exact h
+    have hMcond : q / p < 1 + q / 2 - β' := by linarith
+    have hhalf : 1 / p - 1 / q < 1 / 2 := by
+      have : (0 : ℝ) ≤ β' / q := by positivity
+      linarith [hR1cond]
+    rcases eq_or_lt_of_le hpq with hpqeq | hpqlt
+    · subst hpqeq
+      have hβp : β' < p / 2 := by
+        have hbp : β' / p < 1 / 2 := by
+          have : (1 : ℝ) / p - 1 / p = 0 := by ring
+          linarith [hR1cond]
+        rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)] at hbp
+        linarith
+      obtain ⟨C5, hC5, hR2L⟩ :=
+        prop54_brsRemTwoTwoLeft_diag_unif hT2 hCmax hN hp1 hβp
+      obtain ⟨C6, hC6, hR2R⟩ :=
+        prop54_brsRemTwoTwoRight_diag_unif hT2 hCmax hN hp1 hβp
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg.measurable) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg.measurable) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    rcases le_or_gt q 2 with hq2 | hq2
+    · have hq2plt : q < 2 * p := by linarith
+      have hqp2 : q / p ≤ q / 2 + (1 - β) / 2 := by
+        have hqq : q * (1 / q) = 1 := by field_simp
+        have h2p : (2 : ℝ) / p = 2 * (1 / p) := by ring
+        have hbq : (1 - β) / q = (1 - β) * (1 / q) := by ring
+        rw [h2p, hbq] at hexp
+        have hstep : 0 ≤ (q / 2) * (1 - 2 * (1 / p) + (1 - β) * (1 / q)) :=
+          mul_nonneg (by positivity) hexp
+        have hid : (q / 2) * (1 - 2 * (1 / p) + (1 - β) * (1 / q)) =
+            q / 2 - q * (1 / p) + (1 - β) * (q * (1 / q)) / 2 := by ring
+        rw [hid, hqq] at hstep
+        rw [div_eq_mul_one_div q p]
+        linarith
+      have hKcond : q / p < 2 - β' := by
+        have : q / 2 ≤ 1 := by linarith
+        linarith [hqp2, hβ'half]
+      obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_pq_weighted_unif hT2
+        hCmax hN hp1 hpqlt hq2plt hhalf hKcond hMcond
+      obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_pq_weighted_unif hT2
+        hCmax hNr hp1 hpqlt hq2plt hhalf hKcond hMcond
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    · obtain ⟨Cγ, Nloc, hCγ, hNlocGen, hNbd⟩ :=
+        exists_localized_covering_of_assouad_single hT2 hγ0 hAss'
+      have hNlocT : ∀ n k i : ℕ,
+          intervalCoveringNumber (T ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n := by
+        intro n k i
+        rw [brsDilBlock_eq_brrsInterval]
+        exact hNlocGen n k (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ)))
+      have hNlocR : ∀ n k i : ℕ,
+          intervalCoveringNumber (((fun x : ℝ => 3 - x) '' T) ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n := by
+        intro n k i
+        have hδ : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        rw [image_three_sub_inter_brsDilBlock]
+        refine le_trans (intervalCoveringNumber_image_three_sub_le
+          (Set.inter_subset_left.trans hT2) hδ) ?_
+        exact hNlocGen n k (2 - ((i : ℝ) + 1) * (2 : ℝ) ^ (-(k : ℝ)))
+      rcases lt_or_eq_of_le hq2p with hq2plt | hq2peq
+      · obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_assouad_unif hT2 hCγ
+          hNlocT hNbd hp1 hq2 hpqlt hq2plt hγlt
+        obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_assouad_unif hT2 hCγ
+          hNlocR hNbd hp1 hq2 hpqlt hq2plt hγlt
+        exact ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩,
+          fun g hg => le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl),
+          fun g hg => le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)⟩
+      · subst hq2peq
+        have hγp : γ < p - 1 := by
+          have hid : 2 * p / 2 + 1 - 2 * p / p = p - 1 := by
+            field_simp
+            ring
+          rw [hid] at hγlt
+          exact hγlt
+        obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_endpoint_unif hT2 hCγ
+          hNlocT hNbd hp1 hγp
+        obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_endpoint_unif hT2 hCγ
+          hNlocR hNbd hp1 hγp
+        exact ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩,
+          fun g hg => le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl),
+          fun g hg => le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)⟩
+  obtain ⟨C₅, hC₅, hR2L, hR2R⟩ := hR2
+  exact hasRadialStrongTypeCont_two_of_bounds hTE hET hT2 hTc hp1.le hpq
+    hCMtop hCMtop hR1top hR1top hC₅ hC₅
+    hML hMR (fun g hg => prop52_brsRemTwoOneLeft hT2 hp1 hpq hg)
+    (fun g hg => prop52_brsRemTwoOneRight hT2 hp1 hpq hg) hR2L hR2R
+
+/-! ## Theorem 1.4(i), the sufficiency half
+
+The two exponent conditions of `hasRadialStrongTypeCont_two_assouad_le` are
+read off the closed triangle: the Minkowski side of `Δ_β` is exactly
+`1 - 2/p + (1-β)/q ≥ 0`, and it also forces
+`q/2 + 1 - q/p ≥ (1+β)/(2·(1/q))`, so the Assouad condition
+`γ < q/2 + 1 - q/p` follows from `2γ − β < 1` alone.
+
+The point `P₁` is excluded because it is the ideal point `p = q = ∞`, which the
+real-exponent type set cannot name; for `β = 0` the diagonal endpoint
+`P₂,0 = (1,1)` is excluded as well, since `p = 1` is below the range of
+Proposition 5.2. -/
+
+set_option maxHeartbeats 1000000 in
+theorem Delta_two_subset_radialTypeSetCont_of_entropy {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β)
+    (hent : HasSharpEntropyBound E β)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (hAss : HasAssouadExponent E γ)
+    (h2γβ : 2 * γ - β < 1) :
+    Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1} ⊆
+      radialTypeSetCont 2 E := by
+  rintro z ⟨hzΔ, hz2pos, hz1lt⟩
+  have hdiag : z.2 ≤ z.1 := Delta_two_le_diag hβ0 hzΔ
+  have hhalf : z.1 ≤ 2 * z.2 := Delta_two_le_half hβ0 hzΔ
+  have hmink : 2 * z.1 + (β - 1) * z.2 ≤ 1 := Delta_two_minkowski hβ0 hzΔ
+  obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+    Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0 hβ1.le hzΔ
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos hdiag
+  obtain ⟨p, hp⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+  obtain ⟨q, hq⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+  have hp1 : 1 < p := by
+    rw [hp, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hq1 : (1 : ℝ) ≤ q := by
+    rw [hq, le_div_iff₀ hz2pos, one_mul]
+    exact hz21
+  have hq0 : 0 < q := lt_of_lt_of_le zero_lt_one hq1
+  have hzp : z.1 = 1 / p := by rw [hp, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hq, one_div_one_div]
+  have hpq : p ≤ q := by
+    rw [hp, hq]
+    exact one_div_le_one_div_of_le hz2pos hdiag
+  have hq2p : q ≤ 2 * p := by
+    rw [hp, hq, show (2 : ℝ) * (1 / z.1) = 2 / z.1 from by ring,
+      div_le_div_iff₀ hz2pos hz1pos, one_mul]
+    linarith
+  have hexp : 0 ≤ 1 - 2 / p + (1 - β) / q := by
+    rw [hp, hq, show (2 : ℝ) / (1 / z.1) = 2 * z.1 from by field_simp,
+      show (1 - β) / (1 / z.2) = (1 - β) * z.2 from by field_simp]
+    linarith
+  have hγlt : γ < q / 2 + 1 - q / p := by
+    have hid : q / 2 + 1 - q / p = (1 / 2 + z.2 - z.1) / z.2 := by
+      rw [hp, hq]
+      field_simp
+    rw [hid, lt_div_iff₀ hz2pos]
+    have hstep : (1 + β) / 2 * z.2 ≤ 1 / 2 + z.2 - z.1 := by nlinarith [hmink]
+    have hγhalf : γ < (1 + β) / 2 := by linarith
+    nlinarith [hstep, hγhalf, hz2pos]
+  refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+  · rw [← hzp, ← hzq]
+  · exact hasRadialStrongTypeCont_two_assouad_le hE hEne hβ0 hβ1 hM hent hγ0
+      hAss hp1 hpq hq2p hexp hγlt
+
+/-! ## Theorem 1.4(i), the necessity half
+
+The diagonal vertex `P₂,β = (1/(1+β), 1/(1+β))` lies on the critical line
+`(1-β)/q = 2/p - 1`, where Lemma 3.2(ii) turns an `L^p_rad → L^q` bound into
+the loss-free entropy estimate `sup_{δ<1} δ^β N(E,δ) < ∞`. -/
+
+theorem hasSharpEntropyBound_of_Q2_mem {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {β : ℝ} (hβ0 : 0 ≤ β) (hmem : Q2 2 β ∈ radialTypeSet 2 E) :
+    HasSharpEntropyBound E β := by
+  have hβ1' : (0 : ℝ) < 1 + β := by linarith
+  have hne : (1 : ℝ) + β ≠ 0 := ne_of_gt hβ1'
+  have hinvpos : (0 : ℝ) < 1 / (1 + β) := by positivity
+  obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hmem
+  rw [Q2_two, Prod.mk.injEq] at hzeq
+  obtain ⟨h1, h2⟩ := hzeq
+  have hPtop : P ≠ ⊤ := by
+    intro hc
+    rw [hc] at h1
+    simp only [ENNReal.inv_top, ENNReal.toReal_zero] at h1
+    linarith [h1]
+  have hQtop : Q ≠ ⊤ := by
+    intro hc
+    rw [hc] at h2
+    simp only [ENNReal.inv_top, ENNReal.toReal_zero] at h2
+    linarith [h2]
+  have hPr : P.toReal = 1 + β := by
+    have hinv : (P⁻¹).toReal = 1 / P.toReal := by
+      rw [ENNReal.toReal_inv, one_div]
+    rw [hinv] at h1
+    have hPr1 : (1 : ℝ) ≤ P.toReal := by
+      rw [← ENNReal.toReal_one]
+      exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+    have hPr0 : (0 : ℝ) < P.toReal := by linarith
+    field_simp at h1
+    linarith [h1]
+  have hQr : Q.toReal = 1 + β := by
+    have hinv : (Q⁻¹).toReal = 1 / Q.toReal := by
+      rw [ENNReal.toReal_inv, one_div]
+    rw [hinv] at h2
+    have hQr1 : (1 : ℝ) ≤ Q.toReal := by
+      rw [← ENNReal.toReal_one]
+      exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+    have hQr0 : (0 : ℝ) < Q.toReal := by linarith
+    field_simp at h2
+    linarith [h2]
+  have hPQ : P = Q := by
+    rw [← ENNReal.ofReal_toReal hPtop, ← ENNReal.ofReal_toReal hQtop, hPr, hQr]
+  have hPe : ENNReal.ofReal (1 + β) = P := by
+    rw [← hPr, ENNReal.ofReal_toReal hPtop]
+  have hstrong' : HasRadialStrongType 2 E (ENNReal.ofReal (1 + β))
+      (ENNReal.ofReal (1 + β)) := by
+    rw [← hPQ] at hstrong
+    rw [hPe]
+    exact hstrong
+  have hcrit : (1 - β) / (1 + β) + ((2 : ℕ) : ℝ) - 1 -
+      ((2 : ℕ) : ℝ) / (1 + β) = 0 := by
+    push_cast
+    field_simp
+    ring
+  obtain ⟨A, hA, hbound⟩ := sup_finite_of_hasRadialStrongType_critical
+    (d := 2) (by norm_num) hE hβ1' hβ1' hcrit hstrong'
+  refine ⟨A, hA, fun δ hδ hδ1 => ?_⟩
+  have hpow : (0 : ℝ) < δ ^ β := Real.rpow_pos_of_pos hδ _
+  have hb := hbound δ hδ (by linarith)
+  have hstep : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := by
+    rw [le_div_iff₀ hpow]
+    linarith [hb]
+  rw [Real.rpow_neg hδ.le]
+  calc ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := hstep
+    _ = A * (δ ^ β)⁻¹ := div_eq_mul_inv _ _
+
+/-! ## Theorem 1.4(i) of BRS
+
+For `2 dim_A E − β < 1` the radial type set fills the closed triangle exactly
+when the entropy bound `sup_{δ<1} δ^β N(E,δ)` is finite.
+
+As everywhere in this development the sufficiency half is stated on the
+continuous-profile core, and the ideal vertex `P₁` (that is `p = q = ∞`) is
+excluded because the real-exponent type set cannot name it; for `β = 0` the
+diagonal vertex `P₂,0 = (1,1)` is excluded as well, `p = 1` being below the
+range of Proposition 5.2. -/
+
+theorem thm14i_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (hAss : HasAssouadExponent E γ)
+    (h2γβ : 2 * γ - β < 1) :
+    (HasSharpEntropyBound E β →
+        Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1} ⊆
+          radialTypeSetCont 2 E) ∧
+      (Delta 2 β ⊆ radialTypeSet 2 E → HasSharpEntropyBound E β) ∧
+      radialTypeSet 2 E ⊆ Delta 2 β := by
+  refine ⟨fun hent => Delta_two_subset_radialTypeSetCont_of_entropy hE hEne hβ0
+      hβ1 hM hent hγ0 hAss h2γβ, fun hsub => ?_,
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim⟩
+  refine hasSharpEntropyBound_of_Q2_mem hE hβ0 (hsub ?_)
+  rw [Delta]
+  exact subset_convexHull ℝ _ (by simp)
+
+/-- **Theorem 1.4(i) of BRS**, with the hypothesis in the form `2 dim_A E − β
+< 1` used in the paper. -/
+theorem thm14i_radialTypeSet_of_dim {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    {γ : ℝ} (hA : assouadDimension E = γ) (h2γβ : 2 * γ - β < 1) :
+    (HasSharpEntropyBound E β →
+        Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1} ⊆
+          radialTypeSetCont 2 E) ∧
+      (Delta 2 β ⊆ radialTypeSet 2 E → HasSharpEntropyBound E β) ∧
+      radialTypeSet 2 E ⊆ Delta 2 β := by
+  have hγ0 : 0 ≤ γ := by
+    rw [← hA]
+    exact assouadDimension_nonneg E
+  obtain ⟨γ', hγ'⟩ : ∃ x : ℝ, x = (γ + (1 + β) / 2) / 2 := ⟨_, rfl⟩
+  have hγγ' : γ < γ' := by
+    rw [hγ']
+    linarith
+  have hγ'0 : 0 ≤ γ' := by linarith
+  have h2γ'β : 2 * γ' - β < 1 := by
+    rw [hγ']
+    linarith
+  have hAss : HasAssouadExponent E γ' := by
+    refine hasAssouadExponent_of_assouadDimension_lt ?_
+    rw [hA]
+    exact hγγ'
+  exact thm14i_radialTypeSet hE hEne hβ0 hβ1 hM hdim hγ'0 hAss h2γ'β
+
+/-! ## The closed triangle below the edge `q = 2p`, by the `ν♯` route
+
+Off the edge `q = 2p` the `ν♯` condition is available with room to spare, so
+the sharp entropy bound is the only new ingredient needed to reach the closed
+Minkowski side of `Δ_β`. -/
+
+/-! ## The planar radial strong type on the *closed* triangle
+
+Three ingredients replace the interior hypotheses of Theorem 1.2:
+
+* the sharp entropy bound gives `𝔐_p^±` at the closed exponent condition
+  `1 - 2/p + (1-β)/q ≥ 0`, hence on the critical segment;
+* `R₁^±` needs no new input, because its condition
+  `1/p - 1/q + β/q < 1/2` is strict on the whole of `Δ_β` once `β < 1`;
+* `R₂^±` is run from the Assouad covering data rather than from `ν♯`, which is
+  what reaches the edge `q = 2p` — there the `ν♯` normalization is exactly
+  borderline. -/
+
+set_option maxHeartbeats 1000000 in
+theorem hasRadialStrongTypeCont_two_nu_closed {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β) (hent : HasSharpEntropyBound E β)
+    {p q : ℝ} (hp1 : 1 < p) (hpq : p ≤ q) (hq2plt : q < 2 * p)
+    (hexp : 0 ≤ 1 - 2 / p + (1 - β) / q)
+    (hnu : 2 < q →
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+        (q / 2 - 1) < q / 2 + 1 - q / p) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le hp0 hpq
+  have hqinv : 0 < 1 / q := by positivity
+  obtain ⟨T, hTE, hTc, hET⟩ := exists_countable_dense_dilations E
+  have hT2 : T ⊆ Icc (1 : ℝ) 2 := hTE.trans hE
+  have hTne : T.Nonempty := by
+    rcases Set.eq_empty_or_nonempty T with hTempty | hTne
+    · exfalso
+      rw [hTempty, closure_empty] at hET
+      exact absurd (Set.subset_empty_iff.mp hET)
+        (Set.nonempty_iff_ne_empty.mp hEne)
+    · exact hTne
+  have hM' : HasUpperMinkowskiExponent T β := hM.mono hTE
+  have hent' : HasSharpEntropyBound T β := hent.mono hTE hE
+  have hTnull : volume (closure T) = 0 :=
+    volume_closure_eq_zero_of_minkowski hT2 hβ0 hβ1 hM'
+  -- the room available to `R₁`
+  have hd : 0 < 1 / 2 - (1 / p - 1 / q + β / q) := by
+    have h2p : (2 : ℝ) / p = 2 * (1 / p) := by ring
+    have hbq : (1 - β) / q = (1 - β) * (1 / q) := by ring
+    have hb2 : β / q = β * (1 / q) := by ring
+    rw [h2p, hbq] at hexp
+    rw [hb2, show (1 : ℝ) / p = 1 * (1 / p) from by ring,
+      show (1 : ℝ) / q = 1 * (1 / q) from by ring]
+    nlinarith [hexp, hqinv, hβ1]
+  obtain ⟨ε, hεdef⟩ : ∃ x : ℝ,
+      x = min (q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2) ((1 - β) / 4) :=
+    ⟨_, rfl⟩
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    exact lt_min (by positivity) (by linarith)
+  have hε1 : ε ≤ q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+    rw [hεdef]; exact min_le_left _ _
+  have hε2 : ε ≤ (1 - β) / 4 := by rw [hεdef]; exact min_le_right _ _
+  obtain ⟨β', hβ'def⟩ : ∃ x : ℝ, x = β + ε := ⟨_, rfl⟩
+  have hβ'0 : 0 ≤ β' := by rw [hβ'def]; linarith
+  have hβ'half : β' < (1 + β) / 2 := by
+    rw [hβ'def]
+    linarith
+  have hR1cond : 1 / p - 1 / q + β' / q < 1 / 2 := by
+    have hεq : ε / q ≤ (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+      rw [div_le_iff₀ hq0]
+      have := hε1
+      nlinarith [hq0, hd]
+    have hsplit : β' / q = β / q + ε / q := by
+      rw [hβ'def]
+      ring
+    rw [hsplit]
+    linarith
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM' hεpos
+  have hbound' : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      (intervalCoveringNumber T δ : ℝ) ≤ C * δ ^ (-β') := by
+    intro δ hδ hδ1
+    have h := hbound δ hδ hδ1 Set.univ
+    rw [Set.inter_univ] at h
+    rw [hβ'def]
+    exact h
+  have hN : ∀ j : ℕ,
+      (intervalCoveringNumber T ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) :=
+    brs_cover_dyadic_of_bound hT2 hC hβ'0 hbound'
+  have hNr : ∀ j : ℕ,
+      (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' T)
+          ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) := by
+    intro j
+    refine le_trans ?_ (hN j)
+    have h := intervalCoveringNumber_image_three_sub_le hT2
+      (δ := (2 : ℝ) ^ (-(j : ℝ))) (Real.rpow_pos_of_pos (by norm_num) _)
+    exact_mod_cast h
+  have hCmax : (0 : ℝ) ≤ max C 1 := le_trans (by norm_num) (le_max_right C 1)
+  -- the two main terms and the `R₁` tail
+  obtain ⟨CM, hCMtop, hML, hMR⟩ := exists_brsMainTwoBounds_entropy_le hT2 hTne
+    hTnull hβ0 hβ1 hM' hent' hp1 hpq hexp
+  have hR1top : (∑' m : ℕ, brsProp52Coeff T p q m) ≠ ⊤ :=
+    tsum_brsProp52Coeff_ne_top hCmax hN hp0 hq0 hR1cond
+  -- the two `R₂` terms
+  have hR2 : ∃ C₅ : ENNReal, C₅ ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) := by
+    have hmulq : q / p - 1 + β' < q / 2 := by
+      have h := mul_lt_mul_of_pos_left hR1cond hq0
+      have hid : q * (1 / p - 1 / q + β' / q) = q / p - 1 + β' := by
+        field_simp
+      rw [hid, show q * (1 / 2 : ℝ) = q / 2 from by ring] at h
+      exact h
+    have hMcond : q / p < 1 + q / 2 - β' := by linarith
+    have hhalf : 1 / p - 1 / q < 1 / 2 := by
+      have : (0 : ℝ) ≤ β' / q := by positivity
+      linarith [hR1cond]
+    rcases eq_or_lt_of_le hpq with hpqeq | hpqlt
+    · subst hpqeq
+      have hβp : β' < p / 2 := by
+        have hbp : β' / p < 1 / 2 := by
+          have : (1 : ℝ) / p - 1 / p = 0 := by ring
+          linarith [hR1cond]
+        rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)] at hbp
+        linarith
+      obtain ⟨C5, hC5, hR2L⟩ :=
+        prop54_brsRemTwoTwoLeft_diag_unif hT2 hCmax hN hp1 hβp
+      obtain ⟨C6, hC6, hR2R⟩ :=
+        prop54_brsRemTwoTwoRight_diag_unif hT2 hCmax hN hp1 hβp
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg.measurable) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg.measurable) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    rcases le_or_gt q 2 with hq2 | hq2
+    · have hqp2 : q / p ≤ q / 2 + (1 - β) / 2 := by
+        have hqq : q * (1 / q) = 1 := by field_simp
+        have h2p : (2 : ℝ) / p = 2 * (1 / p) := by ring
+        have hbq : (1 - β) / q = (1 - β) * (1 / q) := by ring
+        rw [h2p, hbq] at hexp
+        have hstep : 0 ≤ (q / 2) * (1 - 2 * (1 / p) + (1 - β) * (1 / q)) :=
+          mul_nonneg (by positivity) hexp
+        have hid : (q / 2) * (1 - 2 * (1 / p) + (1 - β) * (1 / q)) =
+            q / 2 - q * (1 / p) + (1 - β) * (q * (1 / q)) / 2 := by ring
+        rw [hid, hqq] at hstep
+        rw [div_eq_mul_one_div q p]
+        linarith
+      have hKcond : q / p < 2 - β' := by
+        have : q / 2 ≤ 1 := by linarith
+        linarith [hqp2, hβ'half]
+      obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_pq_weighted_unif hT2
+        hCmax hN hp1 hpqlt hq2plt hhalf hKcond hMcond
+      obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_pq_weighted_unif hT2
+        hCmax hNr hp1 hpqlt hq2plt hhalf hKcond hMcond
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    · -- the Littlewood--Paley form, with the `ν♯` covering data
+      set νs : ℝ :=
+        _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+          (q / 2 - 1) with hνs
+      set ν : ℝ := (νs + (q / 2 + 1 - q / p)) / 2 with hνdef
+      have hν1 : νs < ν := by
+        rw [hνdef]
+        have := hnu hq2
+        linarith
+      have hν2 : ν < q / 2 + 1 - q / p := by
+        rw [hνdef]
+        have := hnu hq2
+        linarith
+      obtain ⟨Cν, Nloc, hCν, hNloc, hNbd⟩ :=
+        exists_localized_covering_of_nu hEne hq2 hν1
+      have hNlocT : ∀ n k i : ℕ,
+          intervalCoveringNumber (T ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k := by
+        intro n k i
+        refine le_trans ?_ (hNloc n k (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ))))
+        refine intervalCoveringNumber_mono_set ?_ ?_
+          (Real.rpow_pos_of_pos (by norm_num) _)
+        · rw [brsDilBlock_eq_brrsInterval]
+          exact Set.inter_subset_inter_left _ hTE
+        · exact Set.inter_subset_left.trans hE
+      have hNlocR : ∀ n k i : ℕ,
+          intervalCoveringNumber (((fun x : ℝ => 3 - x) '' T) ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n k := by
+        intro n k i
+        have hδ : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        rw [image_three_sub_inter_brsDilBlock]
+        refine le_trans (intervalCoveringNumber_image_three_sub_le
+          (Set.inter_subset_left.trans hT2) hδ) ?_
+        refine le_trans ?_
+          (hNloc n k (2 - ((i : ℝ) + 1) * (2 : ℝ) ^ (-(k : ℝ))))
+        exact intervalCoveringNumber_mono_set
+          (Set.inter_subset_inter_left _ hTE)
+          (Set.inter_subset_left.trans hE) hδ
+      obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_lp_unif hT2 hCν hNlocT
+        hNbd hp1 hq2 hpqlt hq2plt hν2
+      obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_lp_unif hT2 hCν hNlocR
+        hNbd hp1 hq2 hpqlt hq2plt hν2
+      refine ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · exact le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl)
+      · exact le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)
+  obtain ⟨C₅, hC₅, hR2L, hR2R⟩ := hR2
+  exact hasRadialStrongTypeCont_two_of_bounds hTE hET hT2 hTc hp1.le hpq
+    hCMtop hCMtop hR1top hR1top hC₅ hC₅
+    hML hMR (fun g hg => prop52_brsRemTwoOneLeft hT2 hp1 hpq hg)
+    (fun g hg => prop52_brsRemTwoOneRight hT2 hp1 hpq hg) hR2L hR2R
+
+/-! ## The Assouad condition dominates the quasi-Assouad dimension
+
+The Assouad covering estimate is required for every `δ ≤ |J|`, which is more
+than the upper spectrum at any `θ ≤ 1` asks for, since `δ ≤ δ^θ`. -/
+
+theorem hasUpperAssouadSpectrumExponent_of_hasAssouadExponent {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {γ θ : ℝ} (hθ1 : θ ≤ 1)
+    (h : HasAssouadExponent E γ) : HasUpperAssouadSpectrumExponent E θ γ := by
+  obtain ⟨C, hC, hbound⟩ := h
+  refine ⟨C, hC, fun δ a b hδ hδ1 ha hab hb hscale => ?_⟩
+  have hδθ : δ ≤ δ ^ θ := by
+    have h1 : δ ^ (1 : ℝ) ≤ δ ^ θ :=
+      Real.rpow_le_rpow_of_exponent_ge hδ hδ1.le hθ1
+    rwa [Real.rpow_one] at h1
+  have hδab : δ ≤ b - a := le_trans hδθ hscale
+  obtain ⟨ι, hι, hcard⟩ := exists_intervalCover_card_eq_intervalCoveringNumber
+    (E := E ∩ Icc a b) (Set.inter_subset_left.trans hE) hδ
+  refine ⟨ι, hι, ?_⟩
+  rw [hcard]
+  exact hbound δ a b hδ hδ1 ha hab hb hδab
+
+theorem quasiAssouadDimension_le_of_hasAssouadExponent {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {γ : ℝ} (hγ0 : 0 ≤ γ)
+    (h : HasAssouadExponent E γ) : quasiAssouadDimension E ≤ γ := by
+  refine csSup_le ⟨upperAssouadSpectrum E 0, ⟨0, ⟨le_rfl, by norm_num⟩, rfl⟩⟩ ?_
+  rintro b ⟨θ, hθ, rfl⟩
+  refine csInf_le (upperAssouadAdmissibleExponents_bddBelow E θ) ?_
+  exact ⟨hγ0, hasUpperAssouadSpectrumExponent_of_hasAssouadExponent hE
+    (le_of_lt hθ.2) h⟩
+
+/-! ## The `ν♯` condition on the closed triangle
+
+With `t = q/2 − 1` and `x = q/p`, the closed Minkowski side of `Δ_β` is
+`x ≤ t + (3−β)/2` and the edge condition is `x ≤ 2`.  As soon as `2γ − β ≤ 1`
+the Lemma 2.1 bound is strictly below `t + 2 − x` whenever `x < 2`, i.e.
+everywhere on `Δ_β` off the edge `q = 2p`. -/
+
+theorem closed_nu_bound {β g x t : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hg0 : 0 < g)
+    (h2gβ : 2 * g - β ≤ 1) (ht : 0 < t) (hx2 : x < 2)
+    (hxt : x ≤ t + (3 - β) / 2) :
+    max t ((1 - β / g) * t + β) < t + 2 - x := by
+  refine max_lt (by linarith) ?_
+  rcases le_or_gt g β with hgβ | hgβ
+  · have hcoef : 1 - β / g ≤ 0 := by
+      have : (1 : ℝ) ≤ β / g := by
+        rw [le_div_iff₀ hg0]
+        linarith
+      linarith
+    have hterm : (1 - β / g) * t ≤ 0 := mul_nonpos_of_nonpos_of_nonneg hcoef ht.le
+    linarith
+  · -- `g > β`; the claim is `x < (β/g)t + 2 - β`
+    have hβg : β / g * g = β := div_mul_cancel₀ β (ne_of_gt hg0)
+    have hden : (0 : ℝ) < 1 + β := by linarith
+    have hkey : x < β / g * t + 2 - β := by
+      rcases eq_or_lt_of_le hβ0 with hβeq | hβpos
+      · rw [← hβeq]
+        simpa using hx2
+      have hgle : g ≤ (1 + β) / 2 := by linarith
+      have h1 : 2 * β / (1 + β) ≤ β / g := by
+        rw [div_le_div_iff₀ hden hg0]
+        nlinarith [hgle, hβpos]
+      have h3 : 2 * β / (1 + β) * t ≤ β / g * t :=
+        mul_le_mul_of_nonneg_right h1 ht.le
+      rcases le_or_gt ((1 + β) / 2) t with hcase | hcase
+      · have h2 : β ≤ 2 * β / (1 + β) * t := by
+          rw [div_mul_eq_mul_div, le_div_iff₀ hden]
+          nlinarith [hcase, hβpos]
+        linarith
+      · have h2 : t + (3 - β) / 2 < 2 * β / (1 + β) * t + 2 - β := by
+          rw [div_mul_eq_mul_div, ← sub_pos]
+          have hid : 2 * β * t / (1 + β) + 2 - β - (t + (3 - β) / 2) =
+              ((1 + β) * (1 - β) / 2 - t * (1 - β)) / (1 + β) := by
+            field_simp
+            ring
+          rw [hid]
+          refine div_pos ?_ hden
+          nlinarith [mul_pos (sub_pos.mpr hβ1) (sub_pos.mpr hcase)]
+        linarith
+    have hexp : (1 - β / g) * t + β = t - β / g * t + β := by ring
+    rw [hexp]
+    linarith
+
+/-! ## The closed triangle off the edge `q = 2p`
+
+Under `2γ − β ≤ 1` the `ν♯` condition holds with strict inequality at every
+point of `Δ_β` with `q < 2p`, including the whole critical segment.  That is
+what makes Theorem 1.4(ii) reachable without an interpolation step: the only
+point where both the `ν♯` route and the Assouad route degenerate is
+`P₃,β^rad`, which is exactly the point the theorem excludes. -/
+
+set_option maxHeartbeats 1000000 in
+theorem Delta_two_off_edge_subset_radialTypeSetCont {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β) (hent : HasSharpEntropyBound E β)
+    {γ : ℝ} (hγ0 : 0 < γ) (hAss : HasAssouadExponent E γ)
+    (h2γβ : 2 * γ - β ≤ 1) :
+    Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1 ∧ z.1 < 2 * z.2} ⊆
+      radialTypeSetCont 2 E := by
+  have hqA : quasiAssouadDimension E ≤ γ :=
+    quasiAssouadDimension_le_of_hasAssouadExponent hE hγ0.le hAss
+  have hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ :=
+    fun θ _ hθ1 =>
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_nonneg _ hθ1.le
+  have hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ := by
+    intro θ hθ0 hθ1
+    exact le_trans
+      (_root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_quasiAssouadDimension
+        hE hθ0 hθ1) hqA
+  have hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤
+        β := by
+    intro θ hθ0 hθ1
+    have hpos : (0 : ℝ) < 1 - θ := by linarith
+    have h1 :=
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_upperAssouadSpectrum
+        hE hθ0 hθ1.le
+    have h2 := upperAssouadSpectrum_le_minkowski_ratio_of_upperMinkowskiDimension_eq
+      hE hdim hθ0 hθ1
+    have h3 : (1 - θ) * (β / (1 - θ)) = β := by field_simp
+    calc (1 - θ) *
+          _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ
+        ≤ (1 - θ) * (β / (1 - θ)) :=
+          mul_le_mul_of_nonneg_left (le_trans h1 h2) hpos.le
+      _ = β := h3
+  rintro z ⟨hzΔ, hz2pos, hz1lt, hzedge⟩
+  have hdiag : z.2 ≤ z.1 := Delta_two_le_diag hβ0 hzΔ
+  have hmink : 2 * z.1 + (β - 1) * z.2 ≤ 1 := Delta_two_minkowski hβ0 hzΔ
+  obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+    Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0 hβ1.le hzΔ
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos hdiag
+  obtain ⟨p, hp⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+  obtain ⟨q, hq⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+  have hp1 : 1 < p := by
+    rw [hp, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hq1 : (1 : ℝ) ≤ q := by
+    rw [hq, le_div_iff₀ hz2pos, one_mul]
+    exact hz21
+  have hq0 : 0 < q := lt_of_lt_of_le zero_lt_one hq1
+  have hzp : z.1 = 1 / p := by rw [hp, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hq, one_div_one_div]
+  have hpq : p ≤ q := by
+    rw [hp, hq]
+    exact one_div_le_one_div_of_le hz2pos hdiag
+  have hq2plt : q < 2 * p := by
+    rw [hp, hq, show (2 : ℝ) * (1 / z.1) = 2 / z.1 from by ring,
+      div_lt_div_iff₀ hz2pos hz1pos, one_mul]
+    linarith
+  have hexp : 0 ≤ 1 - 2 / p + (1 - β) / q := by
+    rw [hp, hq, show (2 : ℝ) / (1 / z.1) = 2 * z.1 from by field_simp,
+      show (1 - β) / (1 / z.2) = (1 - β) * z.2 from by field_simp]
+    linarith
+  have hnu : 2 < q →
+      _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+        (q / 2 - 1) < q / 2 + 1 - q / p := by
+    intro hq2
+    have ht : 0 < q / 2 - 1 := by linarith
+    have hx2 : q / p < 2 := by
+      rw [div_lt_iff₀ hp0]
+      linarith
+    have hxt : q / p ≤ (q / 2 - 1) + (3 - β) / 2 := by
+      have hstep : 0 ≤ (q / 2) * (1 - 2 / p + (1 - β) / q) :=
+        mul_nonneg (by positivity) hexp
+      have hqq : q * (1 / q) = 1 := by field_simp
+      have hid : (q / 2) * (1 - 2 / p + (1 - β) / q) =
+          q / 2 - q / p + (1 - β) * (q * (1 / q)) / 2 := by
+        field_simp
+      rw [hid, hqq] at hstep
+      linarith
+    have hle := (lemma21_brs hEne ht.le hβ0 hγ0 hσ0 hMink hQA).2
+    have hlt := closed_nu_bound hβ0 hβ1 hγ0 h2γβ ht hx2 hxt
+    have hid2 : (q / 2 - 1) + 2 - q / p = q / 2 + 1 - q / p := by ring
+    rw [hid2] at hlt
+    exact lt_of_le_of_lt hle hlt
+  refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+  · rw [← hzp, ← hzq]
+  · exact hasRadialStrongTypeCont_two_nu_closed hE hEne hβ0 hβ1 hM hent hp1 hpq
+      hq2plt hexp hnu
+
+/-! ## Theorem 1.4(ii) of BRS
+
+For `2 dim_A E − β = 1`, `β < 1` and a finite entropy bound the radial type set
+contains all of `Δ_β` except the vertex `P₃,β^rad`.  Off the edge `q = 2p` this
+is the `ν♯` route, which stays strict on the whole critical segment because
+`2γ − β ≤ 1`; on the edge it is the Assouad route, whose condition `γ < p − 1`
+holds precisely beyond `P₃,β^rad`. -/
+
+theorem thm14ii_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β) (hent : HasSharpEntropyBound E β)
+    {γ : ℝ} (hγ0 : 0 < γ) (hAss : HasAssouadExponent E γ)
+    (h2γβ : 2 * γ - β = 1) :
+    (Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1}) \ {P3rad 2 β} ⊆
+        radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆ Delta 2 β := by
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  refine ⟨?_, radialTypeSet_subset_Delta (by omega) hE hEne hdim⟩
+  rintro z ⟨⟨hzΔ, hz2pos, hz1lt⟩, hzne⟩
+  have hhalf : z.1 ≤ 2 * z.2 := Delta_two_le_half hβ0 hzΔ
+  rcases lt_or_eq_of_le hhalf with hlt | heq
+  · exact Delta_two_off_edge_subset_radialTypeSetCont hE hEne hβ0 hβ1 hM hdim
+      hent hγ0 hAss (le_of_eq h2γβ) ⟨hzΔ, hz2pos, hz1lt, hlt⟩
+  · -- the edge `q = 2p`
+    have hdiag : z.2 ≤ z.1 := Delta_two_le_diag hβ0 hzΔ
+    have hmink : 2 * z.1 + (β - 1) * z.2 ≤ 1 := Delta_two_minkowski hβ0 hzΔ
+    obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+      Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0 hβ1.le hzΔ
+    have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos hdiag
+    have hz2eq : z.2 = z.1 / 2 := by linarith
+    have hbound : z.1 * (3 + β) ≤ 2 := by
+      rw [hz2eq] at hmink
+      linarith
+    have hstrict : z.1 * (3 + β) < 2 := by
+      rcases lt_or_eq_of_le hbound with h | h
+      · exact h
+      · exfalso
+        refine hzne ?_
+        have h1 : z.1 = 2 / (3 + β) := by
+          rw [eq_div_iff (ne_of_gt hβ3)]
+          exact h
+        have h2 : z.2 = 1 / (3 + β) := by
+          rw [hz2eq, h1]
+          field_simp
+        rw [Set.mem_singleton_iff, P3rad_two, Prod.ext_iff]
+        exact ⟨h1, h2⟩
+    obtain ⟨p, hp⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+    obtain ⟨q, hq⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+    have hp1 : 1 < p := by
+      rw [hp, lt_div_iff₀ hz1pos, one_mul]
+      exact hz1lt
+    have hp0 : 0 < p := lt_trans zero_lt_one hp1
+    have hq1 : (1 : ℝ) ≤ q := by
+      rw [hq, le_div_iff₀ hz2pos, one_mul]
+      exact hz21
+    have hq0 : 0 < q := lt_of_lt_of_le zero_lt_one hq1
+    have hzp : z.1 = 1 / p := by rw [hp, one_div_one_div]
+    have hzq : z.2 = 1 / q := by rw [hq, one_div_one_div]
+    have hqp : q = 2 * p := by
+      rw [hp, hq, hz2eq]
+      field_simp
+    have hpq : p ≤ q := by rw [hqp]; linarith
+    have hq2p : q ≤ 2 * p := le_of_eq hqp
+    have hexp : 0 ≤ 1 - 2 / p + (1 - β) / q := by
+      rw [hp, hq, show (2 : ℝ) / (1 / z.1) = 2 * z.1 from by field_simp,
+        show (1 - β) / (1 / z.2) = (1 - β) * z.2 from by field_simp]
+      linarith
+    have hpbig : (3 + β) / 2 < p := by
+      rw [hp, lt_div_iff₀ hz1pos]
+      linarith
+    have hγp : γ < p - 1 := by
+      have hγval : γ = (1 + β) / 2 := by linarith
+      rw [hγval]
+      linarith
+    obtain ⟨γ', hγ'⟩ : ∃ x : ℝ, x = (γ + (p - 1)) / 2 := ⟨_, rfl⟩
+    have hγγ' : γ ≤ γ' := by rw [hγ']; linarith
+    have hγ'0 : 0 ≤ γ' := le_trans hγ0.le hγγ'
+    have hγ'p : γ' < p - 1 := by rw [hγ']; linarith
+    have hAss' : HasAssouadExponent E γ' := hasAssouadExponent_mono hγγ' hAss
+    have hγlt : γ' < q / 2 + 1 - q / p := by
+      have hid : q / 2 + 1 - q / p = p - 1 := by
+        rw [hqp]
+        field_simp
+        ring
+      rw [hid]
+      exact hγ'p
+    refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+    · rw [← hzp, ← hzq]
+    · exact hasRadialStrongTypeCont_two_assouad_le hE hEne hβ0 hβ1 hM hent hγ'0
+        hAss' hp1 hpq hq2p hexp hγlt
+
+/-! ## Trading a strict exponent condition for a sharp entropy bound
+
+Off the critical segment the Minkowski loss `ε` can be absorbed, and the
+Minkowski definition then *is* a sharp entropy bound at the inflated exponent
+`β + ε`.  That is how Theorem 1.4(iii), which has no entropy hypothesis at all,
+still feeds the closed-triangle machinery. -/
+
+theorem HasUpperMinkowskiExponent.mono_exponent {F : Set ℝ} {β β' : ℝ}
+    (hle : β ≤ β') (h : HasUpperMinkowskiExponent F β) :
+    HasUpperMinkowskiExponent F β' := by
+  intro ε hε
+  obtain ⟨C, hC, hbound⟩ := h ε hε
+  refine ⟨C, hC, fun δ hδ hδ1 => ?_⟩
+  obtain ⟨ι, hι, hcard⟩ := hbound δ hδ hδ1
+  refine ⟨ι, hι, le_trans hcard ?_⟩
+  refine mul_le_mul_of_nonneg_left ?_ hC.le
+  exact Real.rpow_le_rpow_of_exponent_ge hδ hδ1.le (by linarith)
+
+theorem hasSharpEntropyBound_of_minkowski {E : Set ℝ} {β ε : ℝ}
+    (hM : HasUpperMinkowskiExponent E β) (hε : 0 < ε) :
+    HasSharpEntropyBound E (β + ε) := by
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM hε
+  refine ⟨C, hC, fun δ hδ hδ1 => ?_⟩
+  have h := hbound δ hδ hδ1 Set.univ
+  rw [Set.inter_univ] at h
+  exact h
+
+/-! ## No point of the critical segment is of radial strong type
+
+If the entropy bound fails then Lemma 3.2(ii) rules out every exponent pair on
+the line `(1-β)/q = 2/p - 1`, which is the segment `[P₂,β, P₃,β^rad]`. -/
+
+theorem not_mem_radialTypeSet_of_critical {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hdim : upperMinkowskiDimension E = β)
+    (hinf : ¬ HasSharpEntropyBound E β) {z : ExponentPoint}
+    (hz : z ∈ radialTypeSet 2 E) : 2 * z.1 + (β - 1) * z.2 ≠ 1 := by
+  intro hcrit
+  have hΔ : z ∈ Delta 2 β :=
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim hz
+  have hdiag : z.2 ≤ z.1 := Delta_two_le_diag hβ0 hΔ
+  have hhalf : z.1 ≤ 2 * z.2 := Delta_two_le_half hβ0 hΔ
+  have hz2pos : 0 < z.2 := by
+    have hkey : 1 ≤ (3 + β) * z.2 := by nlinarith [hcrit, hhalf]
+    nlinarith [hkey, hβ0]
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos hdiag
+  obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hz
+  have hz1eq : z.1 = (P⁻¹).toReal := by rw [hzeq]
+  have hz2eq : z.2 = (Q⁻¹).toReal := by rw [hzeq]
+  have hPtop : P ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz1eq
+    simp at hz1eq
+    exact absurd hz1eq (ne_of_gt hz1pos)
+  have hQtop : Q ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz2eq
+    simp at hz2eq
+    exact absurd hz2eq (ne_of_gt hz2pos)
+  have hp1 : (1 : ℝ) ≤ P.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+  have hq1 : (1 : ℝ) ≤ Q.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+  have hp0 : (0 : ℝ) < P.toReal := lt_of_lt_of_le zero_lt_one hp1
+  have hq0 : (0 : ℝ) < Q.toReal := lt_of_lt_of_le zero_lt_one hq1
+  have hz1p : z.1 = 1 / P.toReal := by
+    rw [hz1eq, ENNReal.toReal_inv, one_div]
+  have hz2q : z.2 = 1 / Q.toReal := by
+    rw [hz2eq, ENNReal.toReal_inv, one_div]
+  have hstrong' : HasRadialStrongType 2 E (ENNReal.ofReal P.toReal)
+      (ENNReal.ofReal Q.toReal) := by
+    rw [ENNReal.ofReal_toReal hPtop, ENNReal.ofReal_toReal hQtop]
+    exact hstrong
+  have hcrit' : (1 - β) / Q.toReal + ((2 : ℕ) : ℝ) - 1 -
+      ((2 : ℕ) : ℝ) / P.toReal = 0 := by
+    rw [hz1p, hz2q] at hcrit
+    push_cast
+    field_simp at hcrit ⊢
+    linarith [hcrit]
+  obtain ⟨A, hA, hbound⟩ := sup_finite_of_hasRadialStrongType_critical
+    (d := 2) (by norm_num) hE hp0 hq0 hcrit' hstrong'
+  refine hinf ⟨A, hA, fun δ hδ hδ1 => ?_⟩
+  have hpow : (0 : ℝ) < δ ^ β := Real.rpow_pos_of_pos hδ _
+  have hb := hbound δ hδ (by linarith)
+  have hstep : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := by
+    rw [le_div_iff₀ hpow]
+    linarith [hb]
+  rw [Real.rpow_neg hδ.le]
+  calc ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := hstep
+    _ = A * (δ ^ β)⁻¹ := div_eq_mul_inv _ _
+
+/-! ## Theorem 1.4(iii) of BRS
+
+For `2 dim_A E − β = 1` with an infinite entropy sum the radial type set is
+exactly `Δ_β` minus the critical segment `[P₂,β, P₃,β^rad]`.
+
+The inclusion `⊇` needs no entropy hypothesis: off the critical segment the
+Minkowski loss `ε` can be absorbed, and the Minkowski definition then supplies
+a sharp entropy bound at the inflated exponent `β + ε`, which is all the
+closed-triangle machinery asks for.  The inclusion `⊆` is Lemma 3.2(ii). -/
+
+set_option maxHeartbeats 1000000 in
+theorem thm14iii_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    {γ : ℝ} (hγ0 : 0 < γ) (hAss : HasAssouadExponent E γ)
+    (h2γβ : 2 * γ - β = 1) (hinf : ¬ HasSharpEntropyBound E β) :
+    (Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1 ∧
+          2 * z.1 + (β - 1) * z.2 < 1} ⊆ radialTypeSetCont 2 E) ∧
+      radialTypeSet 2 E ⊆
+        Delta 2 β ∩ {z : ExponentPoint | 2 * z.1 + (β - 1) * z.2 ≠ 1} := by
+  have hβ3 : (0 : ℝ) < 3 + β := by linarith
+  have hqA : quasiAssouadDimension E ≤ γ :=
+    quasiAssouadDimension_le_of_hasAssouadExponent hE hγ0.le hAss
+  have hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      0 ≤ _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ :=
+    fun θ _ hθ1 =>
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_nonneg _ hθ1.le
+  have hQA : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤ γ := by
+    intro θ hθ0 hθ1
+    exact le_trans
+      (_root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_quasiAssouadDimension
+        hE hθ0 hθ1) hqA
+  have hMink : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      (1 - θ) * _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ ≤
+        β := by
+    intro θ hθ0 hθ1
+    have hpos : (0 : ℝ) < 1 - θ := by linarith
+    have h1 :=
+      _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_upperAssouadSpectrum
+        hE hθ0 hθ1.le
+    have h2 := upperAssouadSpectrum_le_minkowski_ratio_of_upperMinkowskiDimension_eq
+      hE hdim hθ0 hθ1
+    have h3 : (1 - θ) * (β / (1 - θ)) = β := by field_simp
+    calc (1 - θ) *
+          _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ
+        ≤ (1 - θ) * (β / (1 - θ)) :=
+          mul_le_mul_of_nonneg_left (le_trans h1 h2) hpos.le
+      _ = β := h3
+  refine ⟨?_, fun z hz => ⟨radialTypeSet_subset_Delta (by omega) hE hEne hdim hz,
+    not_mem_radialTypeSet_of_critical hE hEne hβ0 hdim hinf hz⟩⟩
+  rintro z ⟨hzΔ, hz2pos, hz1lt, hstrict⟩
+  have hdiag : z.2 ≤ z.1 := Delta_two_le_diag hβ0 hzΔ
+  have hhalf : z.1 ≤ 2 * z.2 := Delta_two_le_half hβ0 hzΔ
+  obtain ⟨⟨hz10, hz11⟩, ⟨hz20, hz21⟩⟩ :=
+    Delta_subset_unitSquare (by omega : 2 ≤ 2) hβ0 hβ1.le hzΔ
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos hdiag
+  obtain ⟨p, hp⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+  obtain ⟨q, hq⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+  have hp1 : 1 < p := by
+    rw [hp, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hq1 : (1 : ℝ) ≤ q := by
+    rw [hq, le_div_iff₀ hz2pos, one_mul]
+    exact hz21
+  have hq0 : 0 < q := lt_of_lt_of_le zero_lt_one hq1
+  have hzp : z.1 = 1 / p := by rw [hp, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hq, one_div_one_div]
+  have hpq : p ≤ q := by
+    rw [hp, hq]
+    exact one_div_le_one_div_of_le hz2pos hdiag
+  have hexpS : 0 < 1 - 2 / p + (1 - β) / q := by
+    rw [hp, hq, show (2 : ℝ) / (1 / z.1) = 2 * z.1 from by field_simp,
+      show (1 - β) / (1 / z.2) = (1 - β) * z.2 from by field_simp]
+    linarith
+  -- the inflated Minkowski exponent
+  obtain ⟨ε, hεdef⟩ : ∃ x : ℝ,
+      x = min ((1 - β) / 2) (q * (1 - 2 / p + (1 - β) / q) / 2) := ⟨_, rfl⟩
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    exact lt_min (by linarith) (by positivity)
+  have hε1 : ε ≤ (1 - β) / 2 := by rw [hεdef]; exact min_le_left _ _
+  have hε2 : ε ≤ q * (1 - 2 / p + (1 - β) / q) / 2 := by
+    rw [hεdef]; exact min_le_right _ _
+  have hβ0' : (0 : ℝ) ≤ β + ε := by linarith
+  have hβ1' : β + ε < 1 := by linarith
+  have hM' : HasUpperMinkowskiExponent E (β + ε) :=
+    HasUpperMinkowskiExponent.mono_exponent (by linarith : β ≤ β + ε) hM
+  have hent' : HasSharpEntropyBound E (β + ε) :=
+    hasSharpEntropyBound_of_minkowski hM hεpos
+  have hexp' : 0 ≤ 1 - 2 / p + (1 - (β + ε)) / q := by
+    have hid : (1 - (β + ε)) / q = (1 - β) / q - ε / q := by
+      field_simp
+      ring
+    have hεq : ε / q ≤ (1 - 2 / p + (1 - β) / q) / 2 := by
+      rw [div_le_iff₀ hq0]
+      nlinarith [hε2, hq0, hexpS]
+    rw [hid]
+    linarith
+  rcases lt_or_eq_of_le hhalf with hlt | heq
+  · -- off the edge `q = 2p`
+    have hq2plt : q < 2 * p := by
+      rw [hp, hq, show (2 : ℝ) * (1 / z.1) = 2 / z.1 from by ring,
+        div_lt_div_iff₀ hz2pos hz1pos, one_mul]
+      linarith
+    have hnu : 2 < q →
+        _root_.Auto.Spherical.LegendreAssouad.brrsLegendreAssouadFunction E
+          (q / 2 - 1) < q / 2 + 1 - q / p := by
+      intro hq2
+      have ht : 0 < q / 2 - 1 := by linarith
+      have hx2 : q / p < 2 := by
+        rw [div_lt_iff₀ hp0]
+        linarith
+      have hxt : q / p ≤ (q / 2 - 1) + (3 - β) / 2 := by
+        have hstep : 0 ≤ (q / 2) * (1 - 2 / p + (1 - β) / q) :=
+          mul_nonneg (by positivity) hexpS.le
+        have hqq : q * (1 / q) = 1 := by field_simp
+        have hid : (q / 2) * (1 - 2 / p + (1 - β) / q) =
+            q / 2 - q / p + (1 - β) * (q * (1 / q)) / 2 := by
+          field_simp
+        rw [hid, hqq] at hstep
+        linarith
+      have hle := (lemma21_brs hEne ht.le hβ0 hγ0 hσ0 hMink hQA).2
+      have hlt2 := closed_nu_bound hβ0 hβ1 hγ0 (le_of_eq h2γβ) ht hx2 hxt
+      have hid2 : (q / 2 - 1) + 2 - q / p = q / 2 + 1 - q / p := by ring
+      rw [hid2] at hlt2
+      exact lt_of_le_of_lt hle hlt2
+    refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+    · rw [← hzp, ← hzq]
+    · exact hasRadialStrongTypeCont_two_nu_closed hE hEne hβ0' hβ1' hM' hent'
+        hp1 hpq hq2plt hexp' hnu
+  · -- the edge `q = 2p`
+    have hz2eq : z.2 = z.1 / 2 := by linarith
+    have hz1small : z.1 * (3 + β) < 2 := by
+      rw [hz2eq] at hstrict
+      linarith
+    have hqp : q = 2 * p := by
+      rw [hp, hq, hz2eq]
+      field_simp
+    have hq2p : q ≤ 2 * p := le_of_eq hqp
+    have hpbig : (3 + β) / 2 < p := by
+      rw [hp, lt_div_iff₀ hz1pos]
+      linarith
+    have hγp : γ < p - 1 := by
+      have hγval : γ = (1 + β) / 2 := by linarith
+      rw [hγval]
+      linarith
+    obtain ⟨γ', hγ'⟩ : ∃ x : ℝ, x = (γ + (p - 1)) / 2 := ⟨_, rfl⟩
+    have hγγ' : γ ≤ γ' := by rw [hγ']; linarith
+    have hγ'0 : 0 ≤ γ' := le_trans hγ0.le hγγ'
+    have hγ'p : γ' < p - 1 := by rw [hγ']; linarith
+    have hAss' : HasAssouadExponent E γ' := hasAssouadExponent_mono hγγ' hAss
+    have hγlt : γ' < q / 2 + 1 - q / p := by
+      have hid : q / 2 + 1 - q / p = p - 1 := by
+        rw [hqp]
+        field_simp
+        ring
+      rw [hid]
+      exact hγ'p
+    refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+    · rw [← hzp, ← hzq]
+    · exact hasRadialStrongTypeCont_two_assouad_le hE hEne hβ0' hβ1' hM' hent'
+        hγ'0 hAss' hp1 hpq hq2p hexp' hγlt
+
+/-! ## Theorem 1.4(iv) of BRS
+
+For `2 dim_A E - β > 1` the half-open segment `[P_1, P_4)` lies in the radial
+type set.  Every point of it has `q = 2p` with `p > 1 + γ`, so the Assouad
+condition `γ < p - 1` of the endpoint estimate holds, and `1 + γ > (3+β)/2`
+makes the Minkowski condition strict — hence no entropy hypothesis is needed,
+the inflated exponent `β + ε` doing the work.
+
+The endpoint `P_1` itself is the ideal point `p = q = ∞`, which the
+real-exponent type set cannot name, so it is omitted. -/
+
+set_option maxHeartbeats 1000000 in
+theorem thm14iv_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β) (hβ1 : β < 1)
+    (hM : HasUpperMinkowskiExponent E β)
+    {γ : ℝ} (hγ0 : 0 < γ) (hAss : HasAssouadExponent E γ)
+    (h2γβ : 1 < 2 * γ - β) :
+    {z : ExponentPoint | ∃ p : ℝ, 1 + γ < p ∧ z = (1 / p, 1 / (2 * p))} ⊆
+      radialTypeSetCont 2 E := by
+  rintro z ⟨p, hp, rfl⟩
+  have hp1 : 1 < p := by linarith
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hpbig : (3 + β) / 2 < p := by linarith
+  obtain ⟨q, hq⟩ : ∃ x : ℝ, x = 2 * p := ⟨_, rfl⟩
+  have hq0 : 0 < q := by rw [hq]; linarith
+  have hq1 : (1 : ℝ) ≤ q := by rw [hq]; linarith
+  have hpq : p ≤ q := by rw [hq]; linarith
+  have hq2p : q ≤ 2 * p := le_of_eq hq
+  have hexpS : 0 < 1 - 2 / p + (1 - β) / q := by
+    rw [hq]
+    have hid : 1 - 2 / p + (1 - β) / (2 * p) = (2 * p - (3 + β)) / (2 * p) := by
+      field_simp
+      ring
+    rw [hid]
+    apply div_pos (by linarith) (by linarith)
+  obtain ⟨ε, hεdef⟩ : ∃ x : ℝ,
+      x = min ((1 - β) / 2) (q * (1 - 2 / p + (1 - β) / q) / 2) := ⟨_, rfl⟩
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    exact lt_min (by linarith) (by positivity)
+  have hε1 : ε ≤ (1 - β) / 2 := by rw [hεdef]; exact min_le_left _ _
+  have hε2 : ε ≤ q * (1 - 2 / p + (1 - β) / q) / 2 := by
+    rw [hεdef]; exact min_le_right _ _
+  have hβ0' : (0 : ℝ) ≤ β + ε := by linarith
+  have hβ1' : β + ε < 1 := by linarith
+  have hM' : HasUpperMinkowskiExponent E (β + ε) :=
+    HasUpperMinkowskiExponent.mono_exponent (by linarith : β ≤ β + ε) hM
+  have hent' : HasSharpEntropyBound E (β + ε) :=
+    hasSharpEntropyBound_of_minkowski hM hεpos
+  have hexp' : 0 ≤ 1 - 2 / p + (1 - (β + ε)) / q := by
+    have hid : (1 - (β + ε)) / q = (1 - β) / q - ε / q := by
+      field_simp
+      ring
+    have hεq : ε / q ≤ (1 - 2 / p + (1 - β) / q) / 2 := by
+      rw [div_le_iff₀ hq0]
+      nlinarith [hε2, hq0, hexpS]
+    rw [hid]
+    linarith
+  have hγp : γ < p - 1 := by linarith
+  obtain ⟨γ', hγ'⟩ : ∃ x : ℝ, x = (γ + (p - 1)) / 2 := ⟨_, rfl⟩
+  have hγγ' : γ ≤ γ' := by rw [hγ']; linarith
+  have hγ'0 : 0 ≤ γ' := le_trans hγ0.le hγγ'
+  have hγ'p : γ' < p - 1 := by rw [hγ']; linarith
+  have hAss' : HasAssouadExponent E γ' := hasAssouadExponent_mono hγγ' hAss
+  have hγlt : γ' < q / 2 + 1 - q / p := by
+    have hid : q / 2 + 1 - q / p = p - 1 := by
+      rw [hq]
+      field_simp
+      ring
+    rw [hid]
+    exact hγ'p
+  refine ⟨p, q, hp1.le, hq1, ?_, ?_⟩
+  · rw [hq]
+  · exact hasRadialStrongTypeCont_two_assouad_le hE hEne hβ0' hβ1' hM' hent'
+      hγ'0 hAss' hp1 hpq hq2p hexp' hγlt
+
+/-! ## The main terms above the critical exponent
+
+Proposition 5.5(i) is `E`-free, so for `p > 2` the two main terms need neither
+a covering hypothesis nor the null-closure of the dilation set.  That is what
+makes the case `β = 1` of Theorem 1.4(v) accessible: there `Δ_β` forces
+`p ≥ 2`, and the interior of the relevant range is `p > 2`. -/
+
+theorem exists_brsMainTwoBounds_large_p {T : Set ℝ} (hT2 : T ⊆ Icc (1 : ℝ) 2)
+    {p q : ℝ} (hp2 : 2 < p) (hq0 : 0 < q) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoLeft T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) ∧
+      (∀ g : ℝ → ℂ, Measurable g →
+        (∫⁻ r : ℝ, ENNReal.ofReal r * brsMainTwoRight T p g r ^ q) ^ (1 / q) ≤
+          C * ((∫⁻ s : ℝ, ENNReal.ofReal ‖g s‖ ^ p) ^ (1 / p) +
+            (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p))) := by
+  refine ⟨ENNReal.ofReal (brsMainTotalBoundLeft p) * ENNReal.ofReal 14 ^ (1 / q) +
+    ENNReal.ofReal (brsMainTotalBoundRight p) * ENNReal.ofReal 14 ^ (1 / q),
+    ?_, fun g hg => ?_, fun g hg => ?_⟩
+  · refine ENNReal.add_ne_top.mpr ⟨?_, ?_⟩ <;>
+      exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+        (ENNReal.rpow_ne_top_of_nonneg (by positivity) ENNReal.ofReal_ne_top)
+  · exact le_trans (prop55i_brsMainTwoLeft hT2 hp2 hq0 hg)
+      (mul_le_mul' le_self_add le_self_add)
+  · exact le_trans (prop55i_brsMainTwoRight hT2 hp2 hq0 hg)
+      (mul_le_mul' le_add_self le_self_add)
+
+/-! ## The planar radial strong type above the critical exponent
+
+For `p > 2` neither the null-closure of `E` nor `β < 1` is needed: the main
+terms come from the `E`-free Proposition 5.5(i), and `R₁^±`, `R₂^±` only see
+the Minkowski and Assouad covering data.  This is the form Theorem 1.4(v)
+requires, where `β = 1`. -/
+
+set_option maxHeartbeats 1000000 in
+theorem hasRadialStrongTypeCont_two_large_p {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hM : HasUpperMinkowskiExponent E β)
+    {γ : ℝ} (hγ0 : 0 ≤ γ) (hAss : HasAssouadExponent E γ)
+    {p q : ℝ} (hp2 : 2 < p) (hpq : p ≤ q) (hq2p : q ≤ 2 * p)
+    (hR1 : 1 / p - 1 / q + β / q < 1 / 2)
+    (hγlt : γ < q / 2 + 1 - q / p) :
+    HasRadialStrongTypeCont 2 E p q := by
+  have hp1 : (1 : ℝ) < p := by linarith
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp1
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le hp0 hpq
+  have hqinv : 0 < 1 / q := by positivity
+  obtain ⟨T, hTE, hTc, hET⟩ := exists_countable_dense_dilations E
+  have hT2 : T ⊆ Icc (1 : ℝ) 2 := hTE.trans hE
+  have hTne : T.Nonempty := by
+    rcases Set.eq_empty_or_nonempty T with hTempty | hTne
+    · exfalso
+      rw [hTempty, closure_empty] at hET
+      exact absurd (Set.subset_empty_iff.mp hET)
+        (Set.nonempty_iff_ne_empty.mp hEne)
+    · exact hTne
+  have hM' : HasUpperMinkowskiExponent T β := hM.mono hTE
+  have hAss' : HasAssouadExponent T γ := hAss.mono hTE hE
+  -- the room available to `R₁`
+  have hd : 0 < 1 / 2 - (1 / p - 1 / q + β / q) := by linarith
+  obtain ⟨ε, hεdef⟩ : ∃ x : ℝ,
+      x = q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := ⟨_, rfl⟩
+  have hεpos : 0 < ε := by
+    rw [hεdef]
+    positivity
+  have hε1 : ε ≤ q * (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := le_of_eq hεdef
+  obtain ⟨β', hβ'def⟩ : ∃ x : ℝ, x = β + ε := ⟨_, rfl⟩
+  have hβ'0 : 0 ≤ β' := by rw [hβ'def]; linarith
+  have hR1cond : 1 / p - 1 / q + β' / q < 1 / 2 := by
+    have hεq : ε / q ≤ (1 / 2 - (1 / p - 1 / q + β / q)) / 2 := by
+      rw [div_le_iff₀ hq0]
+      have := hε1
+      nlinarith [hq0, hd]
+    have hsplit : β' / q = β / q + ε / q := by
+      rw [hβ'def]
+      ring
+    rw [hsplit]
+    linarith
+  obtain ⟨C, hC, hbound⟩ := brs_cover_bound_minkowski hM' hεpos
+  have hbound' : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      (intervalCoveringNumber T δ : ℝ) ≤ C * δ ^ (-β') := by
+    intro δ hδ hδ1
+    have h := hbound δ hδ hδ1 Set.univ
+    rw [Set.inter_univ] at h
+    rw [hβ'def]
+    exact h
+  have hN : ∀ j : ℕ,
+      (intervalCoveringNumber T ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) :=
+    brs_cover_dyadic_of_bound hT2 hC hβ'0 hbound'
+  have hNr : ∀ j : ℕ,
+      (intervalCoveringNumber ((fun x : ℝ => 3 - x) '' T)
+          ((2 : ℝ) ^ (-(j : ℝ))) : ENNReal) ≤
+        ENNReal.ofReal (max C 1 * (2 : ℝ) ^ (β' * (j : ℝ))) := by
+    intro j
+    refine le_trans ?_ (hN j)
+    have h := intervalCoveringNumber_image_three_sub_le hT2
+      (δ := (2 : ℝ) ^ (-(j : ℝ))) (Real.rpow_pos_of_pos (by norm_num) _)
+    exact_mod_cast h
+  have hCmax : (0 : ℝ) ≤ max C 1 := le_trans (by norm_num) (le_max_right C 1)
+  -- the two main terms and the `R₁` tail
+  obtain ⟨CM, hCMtop, hML, hMR⟩ := exists_brsMainTwoBounds_large_p hT2 hp2 hq0
+  have hR1top : (∑' m : ℕ, brsProp52Coeff T p q m) ≠ ⊤ :=
+    tsum_brsProp52Coeff_ne_top hCmax hN hp0 hq0 hR1cond
+  -- the two `R₂` terms
+  have hR2 : ∃ C₅ : ENNReal, C₅ ≠ ⊤ ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoLeft T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) ∧
+      (∀ g : ℝ → ℂ, Continuous g →
+        (∫⁻ x : ℝ, ENNReal.ofReal x * brsRemTwoTwoRight T g x ^ q) ^ (1 / q) ≤
+          C₅ * (∫⁻ s : ℝ, ENNReal.ofReal s * ‖g s‖ₑ ^ p) ^ (1 / p)) := by
+    have hmulq : q / p - 1 + β' < q / 2 := by
+      have h := mul_lt_mul_of_pos_left hR1cond hq0
+      have hid : q * (1 / p - 1 / q + β' / q) = q / p - 1 + β' := by
+        field_simp
+      rw [hid, show q * (1 / 2 : ℝ) = q / 2 from by ring] at h
+      exact h
+    have hMcond : q / p < 1 + q / 2 - β' := by linarith
+    have hhalf : 1 / p - 1 / q < 1 / 2 := by
+      have : (0 : ℝ) ≤ β' / q := by positivity
+      linarith [hR1cond]
+    rcases eq_or_lt_of_le hpq with hpqeq | hpqlt
+    · subst hpqeq
+      have hβp : β' < p / 2 := by
+        have hbp : β' / p < 1 / 2 := by
+          have : (1 : ℝ) / p - 1 / p = 0 := by ring
+          linarith [hR1cond]
+        rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)] at hbp
+        linarith
+      obtain ⟨C5, hC5, hR2L⟩ :=
+        prop54_brsRemTwoTwoLeft_diag_unif hT2 hCmax hN hp1 hβp
+      obtain ⟨C6, hC6, hR2R⟩ :=
+        prop54_brsRemTwoTwoRight_diag_unif hT2 hCmax hN hp1 hβp
+      refine ⟨ENNReal.ofReal (C5 + C6), ENNReal.ofReal_ne_top, fun g hg => ?_,
+        fun g hg => ?_⟩
+      · refine le_trans (hR2L g hg.measurable) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+      · refine le_trans (hR2R g hg.measurable) (mul_le_mul' ?_ le_rfl)
+        exact ENNReal.ofReal_le_ofReal (by linarith)
+    rcases le_or_gt q 2 with hq2 | hq2
+    · exact absurd hq2 (by linarith)
+    · obtain ⟨Cγ, Nloc, hCγ, hNlocGen, hNbd⟩ :=
+        exists_localized_covering_of_assouad_single hT2 hγ0 hAss'
+      have hNlocT : ∀ n k i : ℕ,
+          intervalCoveringNumber (T ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n := by
+        intro n k i
+        rw [brsDilBlock_eq_brrsInterval]
+        exact hNlocGen n k (1 + (i : ℝ) * (2 : ℝ) ^ (-(k : ℝ)))
+      have hNlocR : ∀ n k i : ℕ,
+          intervalCoveringNumber (((fun x : ℝ => 3 - x) '' T) ∩ brsDilBlock k i)
+            ((2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ))) ≤ Nloc n := by
+        intro n k i
+        have hδ : (0 : ℝ) < (2 : ℝ) ^ (-((k + (4 + n) : ℕ) : ℝ)) :=
+          Real.rpow_pos_of_pos (by norm_num) _
+        rw [image_three_sub_inter_brsDilBlock]
+        refine le_trans (intervalCoveringNumber_image_three_sub_le
+          (Set.inter_subset_left.trans hT2) hδ) ?_
+        exact hNlocGen n k (2 - ((i : ℝ) + 1) * (2 : ℝ) ^ (-(k : ℝ)))
+      rcases lt_or_eq_of_le hq2p with hq2plt | hq2peq
+      · obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_assouad_unif hT2 hCγ
+          hNlocT hNbd hp1 hq2 hpqlt hq2plt hγlt
+        obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_assouad_unif hT2 hCγ
+          hNlocR hNbd hp1 hq2 hpqlt hq2plt hγlt
+        exact ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩,
+          fun g hg => le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl),
+          fun g hg => le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)⟩
+      · subst hq2peq
+        have hγp : γ < p - 1 := by
+          have hid : 2 * p / 2 + 1 - 2 * p / p = p - 1 := by
+            field_simp
+            ring
+          rw [hid] at hγlt
+          exact hγlt
+        obtain ⟨C5, hC5, hR2L⟩ := prop54_brsRemTwoTwoLeft_endpoint_unif hT2 hCγ
+          hNlocT hNbd hp1 hγp
+        obtain ⟨C6, hC6, hR2R⟩ := prop54_brsRemTwoTwoRight_endpoint_unif hT2 hCγ
+          hNlocR hNbd hp1 hγp
+        exact ⟨C5 + C6, ENNReal.add_ne_top.mpr ⟨hC5, hC6⟩,
+          fun g hg => le_trans (hR2L g hg) (mul_le_mul' le_self_add le_rfl),
+          fun g hg => le_trans (hR2R g hg) (mul_le_mul' le_add_self le_rfl)⟩
+  obtain ⟨C₅, hC₅, hR2L, hR2R⟩ := hR2
+  exact hasRadialStrongTypeCont_two_of_bounds hTE hET hT2 hTc hp1.le hpq
+    hCMtop hCMtop hR1top hR1top hC₅ hC₅
+    hML hMR (fun g hg => prop52_brsRemTwoOneLeft hT2 hp1 hpq hg)
+    (fun g hg => prop52_brsRemTwoOneRight hT2 hp1 hpq hg) hR2L hR2R
+
+/-! ## The unconditional planar bounds for `p > 2`
+
+Every `E ⊆ [1,2]` has upper Minkowski exponent `1` and Assouad exponent `1`,
+so for `p > 2` the exponent conditions of the closed-triangle machinery hold
+for trivial reasons: `1/p - 1/q + 1/q < 1/2` is `p > 2`, and
+`1 < q/2 + 1 - q/p` is `p > 2` again.  This is the sufficiency half of
+Theorem 1.4(v), and it needs no hypothesis on `E` beyond `E ⊆ [1,2]`. -/
+
+theorem hasUpperMinkowskiExponent_one {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) :
+    HasUpperMinkowskiExponent E 1 := by
+  intro ε hε
+  refine ⟨4, by norm_num, fun δ hδ hδ1 => ?_⟩
+  obtain ⟨ι, hι, hcard⟩ :=
+    exists_intervalCover_card_eq_intervalCoveringNumber hE hδ
+  refine ⟨ι, hι, ?_⟩
+  rw [hcard]
+  have hEeq : E ∩ Icc (1 : ℝ) 2 = E := Set.inter_eq_self_of_subset_left hE
+  have htriv : (intervalCoveringNumber E δ : ℝ) ≤ 1 / δ + 3 := by
+    have h := brs_cover_bound_trivial (E := E) (δ := δ) (a := 1) (b := 2) hδ
+      (by norm_num)
+    rw [hEeq] at h
+    calc (intervalCoveringNumber E δ : ℝ) ≤ (2 - 1) / δ + 3 := h
+      _ = 1 / δ + 3 := by norm_num
+  have hstep : (1 : ℝ) / δ + 3 ≤ 4 * (1 / δ) := by
+    have hone : (1 : ℝ) ≤ 1 / δ := by
+      rw [le_div_iff₀ hδ, one_mul]
+      exact hδ1.le
+    linarith
+  have hpow : (1 : ℝ) / δ ≤ δ ^ (-(1 + ε)) := by
+    have hid : (1 : ℝ) / δ = δ ^ (-1 : ℝ) := by
+      rw [Real.rpow_neg_one, one_div]
+    rw [hid]
+    exact Real.rpow_le_rpow_of_exponent_ge hδ hδ1.le (by linarith)
+  calc (intervalCoveringNumber E δ : ℝ) ≤ 1 / δ + 3 := htriv
+    _ ≤ 4 * (1 / δ) := hstep
+    _ ≤ 4 * δ ^ (-(1 + ε)) := by
+        exact mul_le_mul_of_nonneg_left hpow (by norm_num)
+
+/-- **The planar radial strong type for `2 < p ≤ q ≤ 2p`, unconditionally.** -/
+theorem hasRadialStrongTypeCont_two_of_two_lt {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {p q : ℝ} (hp2 : 2 < p)
+    (hpq : p ≤ q) (hq2p : q ≤ 2 * p) : HasRadialStrongTypeCont 2 E p q := by
+  have hp0 : (0 : ℝ) < p := by linarith
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le hp0 hpq
+  have hR1 : 1 / p - 1 / q + (1 : ℝ) / q < 1 / 2 := by
+    have hid : 1 / p - 1 / q + (1 : ℝ) / q = 1 / p := by ring
+    rw [hid, div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)]
+    linarith
+  have hγlt : (1 : ℝ) < q / 2 + 1 - q / p := by
+    have hkey : q / p < q / 2 := by
+      rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : ℝ) < 2)]
+      nlinarith [hq0, hp2]
+    linarith
+  exact hasRadialStrongTypeCont_two_large_p hE hEne (by norm_num)
+    (hasUpperMinkowskiExponent_one hE) (by norm_num)
+    (hasAssouadExponent_one E) hp2 hpq hq2p hR1 hγlt
+
+/-! ## Theorem 1.4(v): the exponent range for `β = 1`
+
+Sufficiency is `hasRadialStrongTypeCont_two_of_two_lt`, which needs nothing
+beyond `E ⊆ [1,2]`.  Necessity of `p ≤ q ≤ 2p` and `p ≥ 2` is Corollary 3.3,
+i.e. the three sides of `Δ_1`.  Excluding the remaining line `p = 2` is BRS's
+Lemma 3.4, whose planar case is not yet available here. -/
+
+theorem thm14v_necessity {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hdim : upperMinkowskiDimension E = 1) :
+    radialTypeSet 2 E ⊆
+      {z : ExponentPoint | z.2 ≤ z.1 ∧ z.1 ≤ 2 * z.2 ∧ 2 * z.1 ≤ 1} := by
+  intro z hz
+  have hΔ : z ∈ Delta 2 1 :=
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim hz
+  have h1 : z.2 ≤ z.1 := Delta_two_le_diag (by norm_num) hΔ
+  have h2 : z.1 ≤ 2 * z.2 := Delta_two_le_half (by norm_num) hΔ
+  have h3 : 2 * z.1 + ((1 : ℝ) - 1) * z.2 ≤ 1 := Delta_two_minkowski (by norm_num) hΔ
+  exact ⟨h1, h2, by linarith⟩
+
+/-- **Theorem 1.4(v), the sufficiency half in exponent form.** -/
+theorem thm14v_sufficiency {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) :
+    {z : ExponentPoint | ∃ p q : ℝ, 2 < p ∧ p ≤ q ∧ q ≤ 2 * p ∧
+        z = (1 / p, 1 / q)} ⊆ radialTypeSetCont 2 E := by
+  rintro z ⟨p, q, hp2, hpq, hq2p, rfl⟩
+  have hp0 : (0 : ℝ) < p := by linarith
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le hp0 hpq
+  refine ⟨p, q, by linarith, by linarith, rfl, ?_⟩
+  exact hasRadialStrongTypeCont_two_of_two_lt hE hEne hp2 hpq hq2p
+
+/-! ## The planar kernel on the plateau of the Stein profile
+
+In the plane the kernel of (4.2) is `s / (√((r+t)²-s²)·√(s²-(r-t)²))`, and both
+square roots are *at most* their obvious bounds `r+t` and `s`; so the kernel is
+bounded below by `1/(r+t)` alone, with no dimensional loss.  That is what makes
+the planar case of Lemma 3.4 work with the same profile as in dimension `≥ 3`. -/
+
+theorem brsKernelTwo_nonneg {t r s : ℝ} (hs : 0 ≤ s) : 0 ≤ brsKernelTwo t r s := by
+  rw [brsKernelTwo]
+  positivity
+
+/-- **The planar kernel is bounded below by `1/(r+t)`.** -/
+theorem one_div_le_brsKernelTwo {t r s : ℝ} (hrt : |r - t| < s) (ht : 0 < t)
+    (hr : 0 < r) (hs1 : s < r + t) : 1 / (r + t) ≤ brsKernelTwo t r s := by
+  have hspos : 0 < s := lt_of_le_of_lt (abs_nonneg _) hrt
+  have hsum : 0 < r + t := by linarith
+  have hA : 0 < s ^ 2 - (r - t) ^ 2 := by
+    have h := abs_lt.mp hrt
+    nlinarith [h.1, h.2]
+  have hB : 0 < (r + t) ^ 2 - s ^ 2 := by nlinarith [hs1, hsum, hspos]
+  have hAle : Real.sqrt (s ^ 2 - (r - t) ^ 2) ≤ s := by
+    have h1 : Real.sqrt (s ^ 2 - (r - t) ^ 2) ≤ Real.sqrt (s ^ 2) :=
+      Real.sqrt_le_sqrt (by nlinarith [sq_nonneg (r - t)])
+    rwa [Real.sqrt_sq hspos.le] at h1
+  have hBle : Real.sqrt ((r + t) ^ 2 - s ^ 2) ≤ r + t := by
+    have h1 : Real.sqrt ((r + t) ^ 2 - s ^ 2) ≤ Real.sqrt ((r + t) ^ 2) :=
+      Real.sqrt_le_sqrt (by nlinarith [sq_nonneg s])
+    rwa [Real.sqrt_sq hsum.le] at h1
+  have hApos : 0 < Real.sqrt (s ^ 2 - (r - t) ^ 2) := Real.sqrt_pos.mpr hA
+  have hBpos : 0 < Real.sqrt ((r + t) ^ 2 - s ^ 2) := Real.sqrt_pos.mpr hB
+  rw [brsKernelTwo, div_le_div_iff₀ hsum (by positivity), one_mul]
+  calc Real.sqrt ((r + t) ^ 2 - s ^ 2) * Real.sqrt (s ^ 2 - (r - t) ^ 2)
+      ≤ (r + t) * s := mul_le_mul hBle hAle hApos.le hsum.le
+    _ = s * (r + t) := by ring
+
+/-- **The planar kernel is bounded above on the support of the profile.** -/
+theorem brsKernelTwo_le_two {t r s : ℝ} (hrt : 2 * |r - t| ≤ s) (hs1 : s ≤ 1)
+    (hsum : 7 / 4 ≤ r + t) (hspos : 0 < s) : brsKernelTwo t r s ≤ 2 := by
+  have hA : (s / 2) ^ 2 ≤ s ^ 2 - (r - t) ^ 2 := by
+    have habs : |r - t| ≤ s / 2 := by linarith
+    have hsq : (r - t) ^ 2 ≤ (s / 2) ^ 2 := by
+      have := abs_le.mp habs
+      nlinarith [this.1, this.2]
+    nlinarith
+  have hAge : s / 2 ≤ Real.sqrt (s ^ 2 - (r - t) ^ 2) := by
+    have h1 : Real.sqrt ((s / 2) ^ 2) ≤ Real.sqrt (s ^ 2 - (r - t) ^ 2) :=
+      Real.sqrt_le_sqrt hA
+    rwa [Real.sqrt_sq (by positivity : (0:ℝ) ≤ s / 2)] at h1
+  have hB : (1 : ℝ) ≤ (r + t) ^ 2 - s ^ 2 := by nlinarith [hsum, hs1, hspos]
+  have hBge : (1 : ℝ) ≤ Real.sqrt ((r + t) ^ 2 - s ^ 2) := by
+    have h1 : Real.sqrt 1 ≤ Real.sqrt ((r + t) ^ 2 - s ^ 2) :=
+      Real.sqrt_le_sqrt hB
+    rwa [Real.sqrt_one] at h1
+  have hApos : 0 < Real.sqrt (s ^ 2 - (r - t) ^ 2) := by linarith
+  have hprod : s / 2 ≤ Real.sqrt ((r + t) ^ 2 - s ^ 2) *
+      Real.sqrt (s ^ 2 - (r - t) ^ 2) := by
+    calc s / 2 = 1 * (s / 2) := (one_mul _).symm
+      _ ≤ Real.sqrt ((r + t) ^ 2 - s ^ 2) * Real.sqrt (s ^ 2 - (r - t) ^ 2) :=
+          mul_le_mul hBge hAge (by positivity) (by linarith)
+  rw [brsKernelTwo, div_le_iff₀ (by linarith)]
+  linarith [hprod, hspos]
+
+/-! ## The planar kernel integral of the Stein profile
+
+The profile is supported in `[δ^{1/2}, δ^{1/4}]`, on which the planar kernel is
+continuous and bounded below by `1/(r+t)`; so the whole kernel integral reduces
+to the plateau integral, where `le_integral_stein_weight` supplies the
+logarithmic gain. -/
+
+set_option maxHeartbeats 1000000 in
+theorem le_setIntegral_kernelTwo_steinBump {δ : ℝ} (hδ : 0 < δ)
+    (hL : 12 ≤ Real.log (1 / δ)) {t r : ℝ} (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    (hrt : |r - t| ≤ steinLower δ / 2) :
+    Real.log (1 / δ) ^ (1 / 2 : ℝ) / 20 ≤
+      ∫ s in Ioo (|r - t|) (r + t), 2 * brsKernelTwo t r s * steinBump 2 δ s := by
+  have hδ1 : δ < 1 := delta_lt_one_of_log hδ hL
+  have hlow : 0 < steinLower δ := steinLower_pos hδ
+  have hup : 0 < steinUpper δ := steinUpper_pos hδ
+  have hlowhalf : steinLower δ ≤ 1 / 2 := steinLower_le_half hδ hL
+  have hplateau : 2 * steinLower δ ≤ steinUpper δ / 2 := stein_plateau_le hδ hL
+  have hupsmall : steinUpper δ / 2 ≤ 1 / 2 := stein_plateau_lt_one hδ hL
+  have hup1 : steinUpper δ ≤ 1 := by linarith
+  have habs := abs_le.mp hrt
+  have hr1 : 3 / 4 ≤ r := by linarith [habs.1]
+  have hr2 : r ≤ 9 / 4 := by linarith [habs.2]
+  have hrpos : 0 < r := by linarith
+  have htpos : 0 < t := by linarith
+  have hsum : 7 / 4 ≤ r + t := by linarith
+  have hsum2 : r + t ≤ 5 := by linarith
+  have hrtlow : |r - t| < steinLower δ := by linarith
+  -- the support of the profile sits strictly inside the kernel window
+  have hsub : Icc (steinLower δ) (steinUpper δ) ⊆ Ioo (|r - t|) (r + t) := by
+    intro s hs
+    exact ⟨lt_of_lt_of_le hrtlow hs.1, by linarith [hs.2]⟩
+  have hzero : ∀ s : ℝ, s ∉ Icc (steinLower δ) (steinUpper δ) →
+      2 * brsKernelTwo t r s * steinBump 2 δ s = 0 := by
+    intro s hs
+    have hb : steinBump 2 δ s = 0 := by
+      rcases lt_or_ge s (steinLower δ) with h | h
+      · rw [steinBump, trapezoid_eq_zero_of_le hlow h.le, zero_mul]
+      · have h2 : steinUpper δ < s := by
+          by_contra hc
+          exact hs ⟨h, le_of_not_gt hc⟩
+        rw [steinBump, trapezoid_eq_zero_of_ge hup h2.le, zero_mul]
+    rw [hb, mul_zero]
+  -- continuity of the kernel on the support
+  have hcontKer : ContinuousOn (fun s : ℝ => brsKernelTwo t r s)
+      (Icc (steinLower δ) (steinUpper δ)) := by
+    have hden : ∀ s ∈ Icc (steinLower δ) (steinUpper δ),
+        Real.sqrt ((r + t) ^ 2 - s ^ 2) * Real.sqrt (s ^ 2 - (r - t) ^ 2) ≠ 0 := by
+      intro s hs
+      have hspos : 0 < s := lt_of_lt_of_le hlow hs.1
+      have hs1 : s ≤ 1 := le_trans hs.2 hup1
+      have hA : 0 < s ^ 2 - (r - t) ^ 2 := by
+        have hlt : |r - t| < s := lt_of_lt_of_le hrtlow hs.1
+        have h := abs_lt.mp hlt
+        nlinarith [h.1, h.2]
+      have hB : 0 < (r + t) ^ 2 - s ^ 2 := by nlinarith
+      exact ne_of_gt (mul_pos (Real.sqrt_pos.mpr hB) (Real.sqrt_pos.mpr hA))
+    refine ContinuousOn.div continuousOn_id ?_ hden
+    exact (Real.continuous_sqrt.comp (by fun_prop)).continuousOn.mul
+      (Real.continuous_sqrt.comp (by fun_prop)).continuousOn
+  have hcontOn : ContinuousOn
+      (fun s : ℝ => 2 * brsKernelTwo t r s * steinBump 2 δ s)
+      (Icc (steinLower δ) (steinUpper δ)) :=
+    (continuousOn_const.mul hcontKer).mul (continuous_steinBump 2 hδ).continuousOn
+  have hintOn : IntegrableOn
+      (fun s : ℝ => 2 * brsKernelTwo t r s * steinBump 2 δ s)
+      (Icc (steinLower δ) (steinUpper δ)) :=
+    hcontOn.integrableOn_Icc
+  -- nonnegativity
+  have hnonneg : ∀ s : ℝ, 0 ≤ s →
+      0 ≤ 2 * brsKernelTwo t r s * steinBump 2 δ s := fun s hs =>
+    mul_nonneg (by
+      have := brsKernelTwo_nonneg (t := t) (r := r) hs
+      linarith) (steinBump_nonneg 2 hδ s)
+  -- the window integral is the support integral
+  have hIooeq : (∫ s in Ioo (|r - t|) (r + t),
+        2 * brsKernelTwo t r s * steinBump 2 δ s) =
+      ∫ s in Icc (steinLower δ) (steinUpper δ),
+        2 * brsKernelTwo t r s * steinBump 2 δ s := by
+    have h1 : (∫ s in Ioo (|r - t|) (r + t),
+          2 * brsKernelTwo t r s * steinBump 2 δ s) =
+        ∫ s in Ioo (|r - t|) (r + t),
+          (Icc (steinLower δ) (steinUpper δ)).indicator
+            (fun s : ℝ => 2 * brsKernelTwo t r s * steinBump 2 δ s) s := by
+      refine setIntegral_congr_fun measurableSet_Ioo ?_
+      intro s _
+      by_cases hmem : s ∈ Icc (steinLower δ) (steinUpper δ)
+      · rw [Set.indicator_of_mem hmem]
+      · rw [Set.indicator_of_notMem hmem]
+        exact hzero s hmem
+    rw [h1, MeasureTheory.setIntegral_indicator measurableSet_Icc,
+      Set.inter_eq_self_of_subset_right hsub]
+  -- restrict further to the plateau
+  have hplsub : Ioc (2 * steinLower δ) (steinUpper δ / 2) ⊆
+      Icc (steinLower δ) (steinUpper δ) := by
+    intro s hs
+    exact ⟨by linarith [hs.1], by linarith [hs.2]⟩
+  have hIccge : (∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+        2 * brsKernelTwo t r s * steinBump 2 δ s) ≤
+      ∫ s in Icc (steinLower δ) (steinUpper δ),
+        2 * brsKernelTwo t r s * steinBump 2 δ s := by
+    refine setIntegral_mono_set hintOn ?_ (HasSubset.Subset.eventuallyLE hplsub)
+    filter_upwards [self_mem_ae_restrict measurableSet_Icc] with s hs
+    exact hnonneg s (le_trans hlow.le hs.1)
+  -- the plateau bound
+  have hweightcont : ContinuousOn
+      (fun s : ℝ => s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))))
+      (Icc (2 * steinLower δ) (steinUpper δ / 2)) := by
+    have hpos : ∀ x ∈ Icc (2 * steinLower δ) (steinUpper δ / 2), 0 < x := by
+      intro x hx
+      exact lt_of_lt_of_le (by linarith) hx.1
+    refine ContinuousOn.mul (ContinuousOn.inv₀ continuousOn_id
+      fun x hx => (hpos x hx).ne') ?_
+    refine ContinuousOn.rpow_const ?_ ?_
+    · refine ContinuousOn.log (ContinuousOn.div continuousOn_const continuousOn_id
+        fun x hx => (hpos x hx).ne') ?_
+      intro x hx
+      exact (div_pos one_pos (hpos x hx)).ne'
+    · intro x hx
+      left
+      have hxpos := hpos x hx
+      have h3 := three_le_log_of_mem_plateau hδ hL hx.2 hxpos
+      exact (by linarith : (0 : ℝ) < Real.log (1 / x)).ne'
+  have hweightint : IntegrableOn
+      (fun s : ℝ => s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))))
+      (Ioc (2 * steinLower δ) (steinUpper δ / 2)) :=
+    hweightcont.integrableOn_Icc.mono_set Ioc_subset_Icc_self
+  have hptwise : ∀ s ∈ Ioc (2 * steinLower δ) (steinUpper δ / 2),
+      2 / (r + t) * (s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ)))) ≤
+        2 * brsKernelTwo t r s * steinBump 2 δ s := by
+    intro s hs
+    have hspos : 0 < s := lt_trans (by linarith) hs.1
+    have hs1 : s ≤ 1 := by linarith [hs.2]
+    have hlt : |r - t| < s := by linarith [hs.1]
+    have hker := one_div_le_brsKernelTwo hlt htpos hrpos (by linarith)
+    have hlog3 := three_le_log_of_mem_plateau hδ hL hs.2 hspos
+    have hlog1 : (1 : ℝ) ≤ Real.log (1 / s) := by linarith
+    have hbump := steinBump_eq_of_mem_plateau (d := 2) hδ hδ1 hs.1.le hs.2 hlog1
+    have hexp : ((1 : ℝ) - (2 : ℕ)) = -1 := by norm_num
+    have hbump' : steinBump 2 δ s =
+        s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))) := by
+      rw [hbump]
+      congr 1
+      · rw [show ((1 : ℝ) - ((2 : ℕ) : ℝ)) = -1 from by norm_num,
+          Real.rpow_neg_one]
+      · congr 1
+        norm_num
+    have hwpos : 0 ≤ s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))) := by
+      have : (0 : ℝ) ≤ Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))) :=
+        Real.rpow_nonneg (by linarith) _
+      positivity
+    rw [hbump']
+    refine mul_le_mul_of_nonneg_right ?_ hwpos
+    have h2 : 2 * (1 / (r + t)) ≤ 2 * brsKernelTwo t r s := by linarith
+    calc 2 / (r + t) = 2 * (1 / (r + t)) := by ring
+      _ ≤ 2 * brsKernelTwo t r s := h2
+  have hmono : (∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+        2 / (r + t) *
+          (s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))))) ≤
+      ∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+        2 * brsKernelTwo t r s * steinBump 2 δ s := by
+    refine setIntegral_mono_on (hweightint.const_mul _)
+      (hintOn.mono_set hplsub) measurableSet_Ioc hptwise
+  have hgain := le_integral_stein_weight (d := 2) (by norm_num) hδ hL
+  rw [intervalIntegral.integral_of_le hplateau] at hgain
+  have hconst : (∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+        2 / (r + t) *
+          (s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))))) =
+      2 / (r + t) * ∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+        s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))) :=
+    MeasureTheory.integral_const_mul _ _
+  have hcast : ((2 : ℕ) : ℝ) = 2 := by norm_num
+  rw [hcast] at hgain
+  have hfrac : (2 : ℝ) / 5 ≤ 2 / (r + t) := by
+    rw [div_le_div_iff₀ (by norm_num) (by linarith)]
+    linarith
+  have hgainpos : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / (2 : ℝ)) / 8 := by
+    have : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / (2 : ℝ)) :=
+      Real.rpow_nonneg (by linarith) _
+    linarith
+  rw [hIooeq]
+  calc Real.log (1 / δ) ^ (1 / 2 : ℝ) / 20
+      = 2 / 5 * (Real.log (1 / δ) ^ (1 / (2 : ℝ)) / 8) := by ring
+    _ ≤ 2 / (r + t) * (Real.log (1 / δ) ^ (1 / (2 : ℝ)) / 8) :=
+        mul_le_mul_of_nonneg_right hfrac hgainpos
+    _ ≤ 2 / (r + t) * ∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+          s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ))) :=
+        mul_le_mul_of_nonneg_left hgain (by positivity)
+    _ = ∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+          2 / (r + t) *
+            (s⁻¹ * Real.log (1 / s) ^ (-(((2 : ℝ) - 1) / (2 : ℝ)))) := hconst.symm
+    _ ≤ ∫ s in Ioc (2 * steinLower δ) (steinUpper δ / 2),
+          2 * brsKernelTwo t r s * steinBump 2 δ s := hmono
+    _ ≤ ∫ s in Icc (steinLower δ) (steinUpper δ),
+          2 * brsKernelTwo t r s * steinBump 2 δ s := hIccge
+
+/-! ## The planar Lemma 3.4 lower bound for a single dilation -/
+
+/-- The constant of the planar Lemma 3.4 lower bound. -/
+def steinTwoConst : ℝ := (surfaceMass 2)⁻¹ * surfaceMass 1 / 20
+
+theorem steinTwoConst_pos : 0 < steinTwoConst := by
+  have h1 : 0 < surfaceMass 1 := surfaceMass_pos (by norm_num)
+  have h2 : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  rw [steinTwoConst]
+  positivity
+
+set_option maxHeartbeats 1000000 in
+theorem le_norm_sphericalAverage_steinFun_two {δ : ℝ} (hδ : 0 < δ)
+    (hL : 12 ≤ Real.log (1 / δ)) {t : ℝ} (ht1 : 1 ≤ t) (ht2 : t ≤ 2)
+    {x : Euclidean 2} (hx : |‖x‖ - t| ≤ steinLower δ / 2) :
+    steinTwoConst * Real.log (1 / δ) ^ (1 / 2 : ℝ) ≤
+      ‖_root_.Spherical.sphericalAverage t (fun y => steinFun 2 δ ‖y‖) x‖ := by
+  have hlowhalf : steinLower δ ≤ 1 / 2 := steinLower_le_half hδ hL
+  have habs := abs_le.mp hx
+  have hnormpos : 0 < ‖x‖ := by linarith [habs.1]
+  have hx0 : x ≠ 0 := norm_pos_iff.mp hnormpos
+  have htpos : 0 < t := lt_of_lt_of_le zero_lt_one ht1
+  have hm1 : 0 < surfaceMass 1 := surfaceMass_pos (by norm_num)
+  have hm2 : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  have hC : 0 < (surfaceMass 2)⁻¹ * surfaceMass 1 := by positivity
+  have hbound := le_setIntegral_kernelTwo_steinBump hδ hL ht1 ht2 (r := ‖x‖) hx
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  have hgain : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / 2 : ℝ) :=
+    Real.rpow_nonneg hLpos.le _
+  have hIpos : (0 : ℝ) ≤ ∫ s in Ioo (|‖x‖ - t|) (‖x‖ + t),
+      2 * brsKernelTwo t ‖x‖ s * steinBump 2 δ s := by
+    refine le_trans ?_ hbound
+    positivity
+  have hintegrand : ∀ s : ℝ,
+      (2 * brsKernelTwo t ‖x‖ s) • steinFun 2 δ s =
+        ((2 * brsKernelTwo t ‖x‖ s * steinBump 2 δ s : ℝ) : ℂ) := by
+    intro s
+    rw [steinFun, Complex.real_smul]
+    push_cast
+    ring
+  rw [sphericalAverage_two_eq_kernel_integral (continuous_steinFun 2 hδ) hx0 htpos]
+  simp only [hintegrand]
+  rw [_root_.integral_complex_ofReal, ← Complex.ofReal_mul, Complex.norm_real,
+    Real.norm_of_nonneg (by positivity)]
+  calc steinTwoConst * Real.log (1 / δ) ^ (1 / 2 : ℝ)
+      = ((surfaceMass 2)⁻¹ * surfaceMass 1) *
+          (Real.log (1 / δ) ^ (1 / 2 : ℝ) / 20) := by
+        rw [steinTwoConst]
+        ring
+    _ ≤ ((surfaceMass 2)⁻¹ * surfaceMass 1) *
+          ∫ s in Ioo (|‖x‖ - t|) (‖x‖ + t),
+            2 * brsKernelTwo t ‖x‖ s * steinBump 2 δ s :=
+        mul_le_mul_of_nonneg_left hbound hC.le
+
+/-! ## BRS Lemma 3.4 in the plane
+
+The Stein test function is `L^2`-normalized up to a constant, so the planar
+Lemma 3.4 can be stated with the test-function norm folded into the constant:
+for every `δ`-separated `T ⊆ E` the `L^q` norm of `M_E` applied to the Stein
+function is at least `c (card T)^{1/q} δ^{1/q} [log(1/δ)]^{1/2}`. -/
+
+set_option maxHeartbeats 1000000 in
+theorem le_eLpNorm_maximal_stein_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {q : ℝ} (hq : 0 < q) :
+    ∃ c : ℝ, 0 < c ∧ ∀ δ : ℝ, 0 < δ → 12 ≤ Real.log (1 / δ) → ∀ T : Finset ℝ,
+      (↑T : Set ℝ) ⊆ E → (∀ t ∈ T, ∀ s ∈ T, t ≠ s → δ ≤ |t - s|) →
+        ENNReal.ofReal (c * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+            Real.log (1 / δ) ^ (1 / 2 : ℝ)) ≤
+          eLpNorm (M E (fun y : Euclidean 2 => steinFun 2 δ ‖y‖))
+            (ENNReal.ofReal q) volume := by
+  haveI : Nonempty (Fin 2) := ⟨⟨0, by omega⟩⟩
+  have hqinv : (0 : ℝ) ≤ 1 / q := le_of_lt (div_pos one_pos hq)
+  set V : ℝ := (volume (Metric.ball (0 : Euclidean 2) 1)).toReal with hV
+  have hVtop : volume (Metric.ball (0 : Euclidean 2) 1) ≠ ⊤ :=
+    ((measure_mono Metric.ball_subset_closedBall).trans_lt
+      measure_closedBall_lt_top).ne
+  have hVpos : 0 < V :=
+    ENNReal.toReal_pos
+      (ne_of_gt (Metric.measure_ball_pos volume (0 : Euclidean 2) one_pos)) hVtop
+  have hVeq : volume (Metric.ball (0 : Euclidean 2) 1) = ENNReal.ofReal V := by
+    rw [hV, ENNReal.ofReal_toReal hVtop]
+  have hKpos : 0 < steinTwoConst := steinTwoConst_pos
+  refine ⟨steinTwoConst * ((3 / 8 : ℝ) * V) ^ (1 / q),
+    mul_pos hKpos (Real.rpow_pos_of_pos (by positivity) _), ?_⟩
+  intro δ hδ hL T hTE hsep
+  have hδ1 : δ < 1 := delta_lt_one_of_log hδ hL
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  have hcard : (0 : ℝ) ≤ (T.card : ℝ) := Nat.cast_nonneg _
+  set f : Euclidean 2 → ℂ := fun y => steinFun 2 δ ‖y‖ with hf
+  set S : Set (Euclidean 2) :=
+    ⋃ t ∈ T, radialAnnulusIcc 2 (t - δ / 4) (t + δ / 4) with hS
+  have hSmeas : MeasurableSet S := by
+    rw [hS]
+    exact Finset.measurableSet_biUnion _ fun t _ =>
+      measurableSet_radialAnnulusIcc 2 _ _
+  have hlarge : ∀ x ∈ S,
+      ENNReal.ofReal (steinTwoConst * Real.log (1 / δ) ^ (1 / 2 : ℝ)) ≤ M E f x := by
+    intro x hx
+    obtain ⟨t, htT, hxt⟩ : ∃ t ∈ T,
+        x ∈ radialAnnulusIcc 2 (t - δ / 4) (t + δ / 4) := by
+      rw [hS] at hx
+      simpa only [Set.mem_iUnion, exists_prop] using hx
+    have htE : t ∈ E := hTE htT
+    have htIcc : t ∈ Icc (1 : ℝ) 2 := hE htE
+    have htpos : (0 : ℝ) < t := lt_of_lt_of_le zero_lt_one htIcc.1
+    have hclose : |‖x‖ - t| ≤ steinLower δ / 2 := by
+      have hhalf : |‖x‖ - t| ≤ δ / 2 := by
+        rw [radialAnnulusIcc, mem_setOf_eq, mem_Icc] at hxt
+        rw [abs_le]
+        exact ⟨by linarith [hxt.1], by linarith [hxt.2]⟩
+      have := delta_le_steinLower hδ hδ1.le
+      linarith
+    have havg := le_norm_sphericalAverage_steinFun_two hδ hL htIcc.1 htIcc.2 hclose
+    unfold M _root_.Spherical.restrictedSphericalMaximal
+    refine le_iSup_of_le t (le_iSup_of_le ⟨htE, htpos⟩ ?_)
+    exact ENNReal.ofReal_le_ofReal havg
+  have hlow : ENNReal.ofReal (steinTwoConst * Real.log (1 / δ) ^ (1 / 2 : ℝ)) *
+      volume S ^ (1 / q) ≤ eLpNorm (M E f) (ENNReal.ofReal q) volume :=
+    le_eLpNorm_of_const_le_on hSmeas
+      (mul_nonneg hKpos.le (Real.rpow_nonneg hLpos.le _)) hlarge hq
+  have hvol : ENNReal.ofReal ((T.card : ℝ) * ((3 / 8 : ℝ) * δ) * V) ≤ volume S := by
+    have hnum : ((3 : ℝ) / 4) ^ (2 - 1) * (δ / 2) = (3 / 8 : ℝ) * δ := by
+      rw [show (2 - 1 : ℕ) = 1 from rfl, pow_one]
+      ring
+    have hkey : ENNReal.ofReal ((T.card : ℝ) * ((3 / 8 : ℝ) * δ) * V) =
+        (T.card : ENNReal) *
+          (ENNReal.ofReal ((3 / 4 : ℝ) ^ (2 - 1) * (δ / 2)) *
+            ENNReal.ofReal V) := by
+      rw [hnum, ENNReal.ofReal_mul (mul_nonneg hcard (by positivity)),
+        ENNReal.ofReal_mul hcard, ENNReal.ofReal_natCast, mul_assoc]
+    rw [hkey, ← hVeq, hS]
+    exact volume_biUnion_separated_annuli_ge (by omega) hδ hδ1.le
+      (fun t ht => hE (hTE ht)) hsep
+  have hsplit : ((T.card : ℝ) * ((3 / 8 : ℝ) * δ) * V) ^ (1 / q) =
+      (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) * ((3 / 8 : ℝ) * V) ^ (1 / q) := by
+    rw [show (T.card : ℝ) * ((3 / 8 : ℝ) * δ) * V =
+        ((T.card : ℝ) * δ) * ((3 / 8 : ℝ) * V) by ring,
+      Real.mul_rpow (mul_nonneg hcard hδ.le) (by positivity),
+      Real.mul_rpow hcard hδ.le]
+  have hprod : steinTwoConst * ((3 / 8 : ℝ) * V) ^ (1 / q) *
+        (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) * Real.log (1 / δ) ^ (1 / 2 : ℝ) =
+      (steinTwoConst * Real.log (1 / δ) ^ (1 / 2 : ℝ)) *
+        (((T.card : ℝ) * ((3 / 8 : ℝ) * δ) * V) ^ (1 / q)) := by
+    rw [hsplit]
+    ring
+  rw [hprod, ENNReal.ofReal_mul (mul_nonneg hKpos.le (Real.rpow_nonneg hLpos.le _)),
+    ← ENNReal.ofReal_rpow_of_nonneg
+      (x := (T.card : ℝ) * ((3 / 8 : ℝ) * δ) * V)
+      (mul_nonneg (mul_nonneg hcard (by linarith : (0 : ℝ) ≤ (3 / 8 : ℝ) * δ))
+        hVpos.le) hqinv]
+  exact le_trans (mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hvol hqinv)) hlow
+
+/-! ## The scalar form of the planar Lemma 3.4
+
+Testing an `L^2_rad → L^q` bound against the Stein function turns the
+separated-set form into a bound on `N(E,2δ)^{1/q} δ^{1/q} [log(1/δ)]^{1/2}`. -/
+
+set_option maxHeartbeats 1000000 in
+theorem coveringNumber_stein_bound_of_hasRadialStrongType_two {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {q : ℝ} (hq : 0 < q)
+    (h : HasRadialStrongType 2 E (ENNReal.ofReal 2) (ENNReal.ofReal q)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ δ : ℝ, 0 < δ → 12 ≤ Real.log (1 / δ) →
+      ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+        Real.log (1 / δ) ^ (1 / 2 : ℝ) ≤ K := by
+  obtain ⟨C, hC, hbound⟩ := h
+  obtain ⟨c, hc, h34⟩ := le_eLpNorm_maximal_stein_two hE hq
+  have hSm : 0 < surfaceMass 2 := surfaceMass_pos (by norm_num)
+  have hexp : (0 : ℝ) ≤ (((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ) := by norm_num
+  have hcast : ((2 : ℕ) : ℝ) / (((2 : ℕ) : ℝ) - 1) = 2 := by norm_num
+  have hSmpow : (0 : ℝ) <
+      surfaceMass 2 ^ ((((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ)) :=
+    Real.rpow_pos_of_pos hSm _
+  refine ⟨C * surfaceMass 2 ^ ((((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ)) / c,
+    div_pos (mul_pos hC hSmpow) hc, ?_⟩
+  intro δ hδ hL
+  have hδ1 : δ < 1 := delta_lt_one_of_log hδ hL
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  obtain ⟨T, hT⟩ := exists_isMaximalSeparatedSubset hE hδ
+  have hsep : ∀ t ∈ T, ∀ s ∈ T, t ≠ s → δ ≤ |t - s| := by
+    intro t ht s hs hts
+    exact hT.2.1 (by simpa using ht) (by simpa using hs) hts
+  have hmem : MemLp (fun y : Euclidean 2 => steinFun 2 δ ‖y‖)
+      (ENNReal.ofReal 2) volume := by
+    have hm := memLp_steinFun_lift (d := 2) (by omega) hδ hδ1
+    rwa [hcast] at hm
+  have hnormle : eLpNorm (fun y : Euclidean 2 => steinFun 2 δ ‖y‖)
+      (ENNReal.ofReal 2) volume ≤
+        ENNReal.ofReal
+          (surfaceMass 2 ^ ((((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ))) := by
+    have hb := eLpNorm_steinFun_lift_le (d := 2) (by omega) hδ hδ1
+    rw [hcast] at hb
+    rwa [ENNReal.ofReal_rpow_of_nonneg hSm.le hexp] at hb
+  have hrad := isNormRadial_steinFun_lift 2 δ
+  have hchain :
+      ENNReal.ofReal (c * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+          Real.log (1 / δ) ^ (1 / 2 : ℝ)) ≤
+        ENNReal.ofReal
+          (C * surfaceMass 2 ^ ((((2 : ℕ) : ℝ) - 1) / ((2 : ℕ) : ℝ))) := by
+    refine le_trans (h34 δ hδ hL T hT.1 hsep) ?_
+    refine le_trans (hbound _ hmem hrad).2 ?_
+    rw [ENNReal.ofReal_mul hC.le]
+    exact mul_le_mul' le_rfl hnormle
+  have hreal := (ENNReal.ofReal_le_ofReal_iff
+    (mul_nonneg hC.le hSmpow.le)).mp hchain
+  have hcov : ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ≤ (T.card : ℝ) := by
+    exact_mod_cast intervalCoveringNumber_le_card_of_isMaximalSeparatedSubset hδ hT
+  have hmono : ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ^ (1 / q) ≤
+      (T.card : ℝ) ^ (1 / q) :=
+    Real.rpow_le_rpow (Nat.cast_nonneg _) hcov (by positivity)
+  have hδpow : (0 : ℝ) ≤ δ ^ (1 / q) := Real.rpow_nonneg hδ.le _
+  have hLpow : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / 2 : ℝ) :=
+    Real.rpow_nonneg hLpos.le _
+  rw [le_div_iff₀ hc]
+  calc ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+        Real.log (1 / δ) ^ (1 / 2 : ℝ) * c
+      ≤ (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+          Real.log (1 / δ) ^ (1 / 2 : ℝ) * c := by
+        have hs1 := mul_le_mul_of_nonneg_right hmono hδpow
+        have hs2 := mul_le_mul_of_nonneg_right hs1 hLpow
+        exact mul_le_mul_of_nonneg_right hs2 hc.le
+    _ = c * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+          Real.log (1 / δ) ^ (1 / 2 : ℝ) := by ring
+    _ ≤ _ := hreal
+
+/-! ## Unboundedness of `δ log(1/δ) N(E,δ)` happens at small scales
+
+At scales `δ ≥ e^{-12}` the quantity `δ log(1/δ) N(E,δ)` is bounded by
+`12 N(E,e^{-12})`, so if it is unbounded on `(0,1)` it is already unbounded
+on the range where the Stein example applies. -/
+
+theorem exists_small_delta_of_log_sup_infinite {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hsup : ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) * ((intervalCoveringNumber E δ : ℕ) : ℝ))
+    (A : ℝ) : ∃ δ : ℝ, 0 < δ ∧ 12 ≤ Real.log (1 / δ) ∧
+      A < δ * Real.log (1 / δ) * ((intervalCoveringNumber E δ : ℕ) : ℝ) := by
+  obtain ⟨e, he⟩ : ∃ x : ℝ, x = Real.exp (-12) := ⟨_, rfl⟩
+  have hepos : 0 < e := by rw [he]; exact Real.exp_pos _
+  obtain ⟨N0, hN0⟩ : ∃ x : ℝ, x = ((intervalCoveringNumber E e : ℕ) : ℝ) := ⟨_, rfl⟩
+  have hN0nn : 0 ≤ N0 := by rw [hN0]; exact Nat.cast_nonneg _
+  obtain ⟨δ, hδ, hδ1, hlt⟩ := hsup (max A (12 * N0))
+  refine ⟨δ, hδ, ?_, lt_of_le_of_lt (le_max_left _ _) hlt⟩
+  by_contra hcon
+  push Not at hcon
+  -- `log(1/δ) < 12` forces `δ > e^{-12}`
+  have hinvpos : (0 : ℝ) < 1 / δ := by positivity
+  have hexp12 : 1 / δ < Real.exp 12 := by
+    have h := Real.exp_lt_exp.mpr hcon
+    rwa [Real.exp_log hinvpos] at h
+  have hδe : e ≤ δ := by
+    rw [he, Real.exp_neg]
+    rw [div_lt_iff₀ hδ] at hexp12
+    rw [inv_le_iff_one_le_mul₀ (Real.exp_pos 12)]
+    nlinarith [hexp12, Real.exp_pos (12 : ℝ)]
+  have hNle : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ N0 := by
+    rw [hN0]
+    exact_mod_cast intervalCoveringNumber_mono_scale hE hepos hδe
+  have hlogpos : 0 < Real.log (1 / δ) := by
+    refine Real.log_pos ?_
+    rw [lt_div_iff₀ hδ, one_mul]
+    exact hδ1
+  have hNnn : (0 : ℝ) ≤ ((intervalCoveringNumber E δ : ℕ) : ℝ) := Nat.cast_nonneg _
+  have hle : δ * Real.log (1 / δ) * ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤
+      12 * N0 := by
+    have h1 : δ * Real.log (1 / δ) ≤ 12 := by nlinarith [hδ1, hcon, hlogpos, hδ]
+    nlinarith [h1, hNle, hNnn, hlogpos, hδ]
+  exact absurd (lt_of_le_of_lt (le_max_right A (12 * N0)) hlt) (not_lt.mpr hle)
+
+/-! ## Theorem 1.4(v): the failure at `p = 2`
+
+The planar Lemma 3.4 forces `δ log(1/δ) N(E,δ)` to stay bounded whenever
+`M_E` is `L^2_rad → L^q` bounded with `q ≥ 2`. -/
+
+theorem not_hasRadialStrongType_two_of_log_sup_infinite {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {q : ℝ} (hq2 : 2 ≤ q)
+    (hsup : ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) * ((intervalCoveringNumber E δ : ℕ) : ℝ)) :
+    ¬ HasRadialStrongType 2 E (ENNReal.ofReal 2) (ENNReal.ofReal q) := by
+  intro h
+  have hq : 0 < q := by linarith
+  obtain ⟨K, hK, hbound⟩ :=
+    coveringNumber_stein_bound_of_hasRadialStrongType_two hE hq h
+  obtain ⟨δ', hδ', hlog, hlt⟩ :=
+    exists_small_delta_of_log_sup_infinite hE hsup (2 * K ^ q)
+  obtain ⟨δ, hδdef⟩ : ∃ x : ℝ, x = δ' / 2 := ⟨_, rfl⟩
+  have hδpos : 0 < δ := by rw [hδdef]; linarith
+  have hδle : δ ≤ δ' := by rw [hδdef]; linarith
+  have hloglt : Real.log (1 / δ') ≤ Real.log (1 / δ) := by
+    refine Real.log_le_log (by positivity) ?_
+    exact one_div_le_one_div_of_le hδpos hδle
+  have hlogδ : 12 ≤ Real.log (1 / δ) := le_trans hlog hloglt
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  have hb := hbound δ hδpos hlogδ
+  have h2δ : 2 * δ = δ' := by rw [hδdef]; ring
+  rw [h2δ] at hb
+  obtain ⟨N, hN⟩ : ∃ x : ℝ, x = ((intervalCoveringNumber E δ' : ℕ) : ℝ) := ⟨_, rfl⟩
+  have hNnn : (0 : ℝ) ≤ N := by rw [hN]; exact Nat.cast_nonneg _
+  rw [← hN] at hb
+  have hlhs : (0 : ℝ) ≤ N ^ (1 / q) * δ ^ (1 / q) *
+      Real.log (1 / δ) ^ (1 / 2 : ℝ) := by
+    have h1 : (0 : ℝ) ≤ N ^ (1 / q) := Real.rpow_nonneg hNnn _
+    have h2 : (0 : ℝ) ≤ δ ^ (1 / q) := Real.rpow_nonneg hδpos.le _
+    have h3 : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / 2 : ℝ) :=
+      Real.rpow_nonneg hLpos.le _
+    positivity
+  have hpow := Real.rpow_le_rpow hlhs hb hq.le
+  have hexpand : (N ^ (1 / q) * δ ^ (1 / q) * Real.log (1 / δ) ^ (1 / 2 : ℝ)) ^ q =
+      N * δ * Real.log (1 / δ) ^ ((1 / 2 : ℝ) * q) := by
+    rw [Real.mul_rpow (mul_nonneg (Real.rpow_nonneg hNnn _)
+        (Real.rpow_nonneg hδpos.le _)) (Real.rpow_nonneg hLpos.le _),
+      Real.mul_rpow (Real.rpow_nonneg hNnn _) (Real.rpow_nonneg hδpos.le _),
+      ← Real.rpow_mul hNnn, ← Real.rpow_mul hδpos.le, ← Real.rpow_mul hLpos.le,
+      one_div, inv_mul_cancel₀ hq.ne', Real.rpow_one, Real.rpow_one]
+  rw [hexpand] at hpow
+  have hLone : Real.log (1 / δ) ≤ Real.log (1 / δ) ^ ((1 / 2 : ℝ) * q) := by
+    have hbase : (1 : ℝ) ≤ Real.log (1 / δ) := by linarith
+    have hle : (1 : ℝ) ≤ (1 / 2 : ℝ) * q := by linarith
+    have h := Real.rpow_le_rpow_of_exponent_le hbase hle
+    rwa [Real.rpow_one] at h
+  have hchain : N * δ * Real.log (1 / δ') ≤ K ^ q := by
+    have hstep : N * δ * Real.log (1 / δ') ≤
+        N * δ * Real.log (1 / δ) ^ ((1 / 2 : ℝ) * q) := by
+      refine mul_le_mul_of_nonneg_left (le_trans hloglt hLone) ?_
+      exact mul_nonneg hNnn hδpos.le
+    linarith [hstep, hpow]
+  have hfinal : δ' * Real.log (1 / δ') * N ≤ 2 * K ^ q := by
+    have hid : δ' * Real.log (1 / δ') * N = 2 * (N * δ * Real.log (1 / δ')) := by
+      rw [hδdef]; ring
+    rw [hid]
+    linarith [hchain]
+  rw [← hN] at hlt
+  exact absurd hlt (not_lt.mpr hfinal)
+
+/-! ## Theorem 1.4(v) of BRS
+
+For `β = 1` the vertical line `p = 2` carries the segment `[P₂, P₃^rad]` of
+`Δ_1`, and the planar Lemma 3.4 removes it: an `L^2_rad → L^q` bound would
+force `δ log(1/δ) N(E,δ)` to stay bounded.  The remaining three sides of
+`Δ_1` are Corollary 3.3, and the sufficiency is the `p > 2` bound, which needs
+no hypothesis on `E` at all. -/
+
+theorem thm14v_not_p_eq_two {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hdim : upperMinkowskiDimension E = 1)
+    (hsup : ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) * ((intervalCoveringNumber E δ : ℕ) : ℝ))
+    {z : ExponentPoint} (hz : z ∈ radialTypeSet 2 E) : 2 * z.1 ≠ 1 := by
+  intro hcrit
+  have hΔ : z ∈ Delta 2 1 :=
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim hz
+  have hdiag : z.2 ≤ z.1 := Delta_two_le_diag (by norm_num) hΔ
+  have hhalf : z.1 ≤ 2 * z.2 := Delta_two_le_half (by norm_num) hΔ
+  have hz1 : z.1 = 1 / 2 := by linarith
+  have hz2pos : 0 < z.2 := by linarith
+  obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hz
+  have hz1eq : z.1 = (P⁻¹).toReal := by rw [hzeq]
+  have hz2eq : z.2 = (Q⁻¹).toReal := by rw [hzeq]
+  have hPtop : P ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz1eq
+    simp at hz1eq
+    rw [hz1eq] at hz1
+    norm_num at hz1
+  have hQtop : Q ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz2eq
+    simp at hz2eq
+    exact absurd hz2eq (ne_of_gt hz2pos)
+  have hp1 : (1 : ℝ) ≤ P.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+  have hq1 : (1 : ℝ) ≤ Q.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+  have hp0 : (0 : ℝ) < P.toReal := lt_of_lt_of_le zero_lt_one hp1
+  have hq0 : (0 : ℝ) < Q.toReal := lt_of_lt_of_le zero_lt_one hq1
+  have hpne : P.toReal ≠ 0 := hp0.ne'
+  have hz1p : z.1 = 1 / P.toReal := by
+    rw [hz1eq, ENNReal.toReal_inv, one_div]
+  have hz2q : z.2 = 1 / Q.toReal := by
+    rw [hz2eq, ENNReal.toReal_inv, one_div]
+  have hPval : P.toReal = 2 := by
+    have h : (1 : ℝ) / P.toReal = 1 / 2 := by rw [← hz1p]; exact hz1
+    field_simp at h
+    linarith
+  have hq2 : (2 : ℝ) ≤ Q.toReal := by
+    have h : (1 : ℝ) / Q.toReal ≤ 1 / 2 := by
+      rw [← hz2q, ← hz1]
+      exact hdiag
+    rw [div_le_div_iff₀ hq0 (by norm_num : (0 : ℝ) < 2)] at h
+    linarith
+  have hstrong' : HasRadialStrongType 2 E (ENNReal.ofReal 2)
+      (ENNReal.ofReal Q.toReal) := by
+    rw [← hPval, ENNReal.ofReal_toReal hPtop, ENNReal.ofReal_toReal hQtop]
+    exact hstrong
+  exact not_hasRadialStrongType_two_of_log_sup_infinite hE hq2 hsup hstrong'
+
+/-- **Theorem 1.4(v) of BRS.**  If `dim_M E = 1` and `δ log(1/δ) N(E,δ)` is
+unbounded, then `M_E : L^p_rad → L^q` is bounded exactly when `p > 2` and
+`p ≤ q ≤ 2p`. -/
+theorem thm14v_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    (hEne : E.Nonempty) (hdim : upperMinkowskiDimension E = 1)
+    (hsup : ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) * ((intervalCoveringNumber E δ : ℕ) : ℝ)) :
+    {z : ExponentPoint | ∃ p q : ℝ, 2 < p ∧ p ≤ q ∧ q ≤ 2 * p ∧
+        z = (1 / p, 1 / q)} ⊆ radialTypeSetCont 2 E ∧
+      radialTypeSet 2 E ⊆
+        {z : ExponentPoint | z.2 ≤ z.1 ∧ z.1 ≤ 2 * z.2 ∧ 2 * z.1 < 1} := by
+  refine ⟨thm14v_sufficiency hE hEne, ?_⟩
+  intro z hz
+  obtain ⟨h1, h2, h3⟩ := thm14v_necessity hE hEne hdim hz
+  exact ⟨h1, h2, lt_of_le_of_ne h3 (thm14v_not_p_eq_two hE hEne hdim hsup hz)⟩
+
+/-! ## Lemma 4.1 combined, with the `R₂` estimate supplied abstractly
+
+`exists_combined_bound` hard-codes `prop43_brsRemainderTwo`, which needs the
+strict inequality `q < pD`.  On the edge `q = pD` of `Δ_β` the endpoint form
+`prop43_brsRemainderTwo_endpoint` is the one that applies, so the combination
+is restated with the `R₂` bound as a hypothesis. -/
+
+set_option maxHeartbeats 1000000 in
+theorem exists_combined_bound_of_remTwo {D : ℕ} (hD : 2 ≤ D) {E : Set ℝ}
+    {p q : ℝ} (hp : 1 ≤ p) (hpq : p ≤ q)
+    (hrem : ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      (∫⁻ r, ENNReal.ofReal r ^ (D - 1) *
+          brsRemainderTwo (absProfile f₀) r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s, ENNReal.ofReal s ^ (D - 1) *
+            (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p))
+    (hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ (D - 1) * brsMainMaximal D E p g r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      (∫⁻ r, ENNReal.ofReal r ^ (D - 1) *
+          (brsMainMaximal D E p (brsProfileSub D p (absProfile f₀)) r +
+            brsRemainderOne (absProfile f₀) r +
+            brsRemainderTwo (absProfile f₀) r) ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s, ENNReal.ofReal s ^ (D - 1) * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^
+            (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hq : (1 : ℝ) ≤ q := le_trans hp hpq
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  obtain ⟨C₁, hC₁, hmainb⟩ := hmain
+  obtain ⟨C₃, hC₃, hR₂⟩ := hrem
+  set C₂ : ℝ := ((4 : ℝ) ^ ((1 - 1 / p) * (q - p)) *
+    ((2 : ℝ) ^ (D - 1) * (4 : ℝ) ^ p)) ^ (1 / q) with hC₂
+  have hC₂pos : 0 < C₂ := by
+    rw [hC₂]
+    have h1 : (0 : ℝ) < (4 : ℝ) ^ ((1 - 1 / p) * (q - p)) :=
+      Real.rpow_pos_of_pos (by norm_num) _
+    have h2 : (0 : ℝ) < (4 : ℝ) ^ p := Real.rpow_pos_of_pos (by norm_num) _
+    positivity
+  refine ⟨12 * (C₁ + C₂ + C₃), by positivity, fun f₀ hf₀ => ?_⟩
+  have hcont : Continuous (absProfile f₀) := continuous_absProfile hf₀
+  set Np : ENNReal :=
+    (∫⁻ s, ENNReal.ofReal s ^ (D - 1) * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p)
+    with hNp
+  set X : ℝ → ENNReal := fun r =>
+    brsMainMaximal D E p (brsProfileSub D p (absProfile f₀)) r with hX
+  set Y : ℝ → ENNReal := fun r => brsRemainderOne (absProfile f₀) r with hY
+  set Z : ℝ → ENNReal := fun r => brsRemainderTwo (absProfile f₀) r with hZ
+  set w : ℝ → ENNReal := fun r => ENNReal.ofReal r ^ (D - 1) with hw
+  have hwmeas : Measurable w := by
+    rw [hw]
+    exact ENNReal.measurable_ofReal.pow_const _
+  have hYmeas : Measurable (fun r => w r * Y r ^ q) := by
+    refine hwmeas.mul ?_
+    rw [hY]
+    exact ENNReal.continuous_rpow_const.measurable.comp
+      (measurable_brsRemainderOne hcont)
+  have hZmeas : Measurable (fun r => w r * Z r ^ q) := by
+    refine hwmeas.mul ?_
+    rw [hZ]
+    exact ENNReal.continuous_rpow_const.measurable.comp
+      (measurable_brsRemainderTwo hcont)
+  -- the three individual bounds
+  set a : ENNReal := (∫⁻ r, w r * X r ^ q) ^ (1 / q) with ha
+  set b : ENNReal := (∫⁻ r, w r * Y r ^ q) ^ (1 / q) with hb
+  set c : ENNReal := (∫⁻ r, w r * Z r ^ q) ^ (1 / q) with hc
+  have hbX : a ≤ ENNReal.ofReal C₁ * Np := by
+    have hmeas : Measurable (brsProfileSub D p (absProfile f₀)) :=
+      (continuous_brsProfileSub hD hp0 hcont).measurable
+    refine le_trans (hmainb _ hmeas) ?_
+    rw [hNp, lintegral_profileSub_eq hD hp0]
+  have hbY : b ≤ ENNReal.ofReal C₂ * Np := by
+    rw [hb, hC₂, hNp, hw, hY]
+    exact prop42_brsRemainderOne hD hp hpq hf₀
+  have hbZ : c ≤ ENNReal.ofReal C₃ * Np := by
+    rw [hc, hNp, hw, hZ]
+    exact hR₂ f₀ hf₀
+  have haq : a ^ q = ∫⁻ r, w r * X r ^ q := by
+    rw [ha, ← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
+  have hbq : b ^ q = ∫⁻ r, w r * Y r ^ q := by
+    rw [hb, ← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
+  have hcq : c ^ q = ∫⁻ r, w r * Z r ^ q := by
+    rw [hc, ← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
+  have hpoint : ∀ r : ℝ, w r * (X r + Y r + Z r) ^ q ≤
+      4 ^ q * (w r * X r ^ q + w r * Y r ^ q + w r * Z r ^ q) := by
+    intro r
+    calc w r * (X r + Y r + Z r) ^ q
+        ≤ w r * (4 ^ q * (X r ^ q + Y r ^ q + Z r ^ q)) :=
+          mul_le_mul' le_rfl (ennreal_rpow_add_three_le hq)
+      _ = 4 ^ q * (w r * X r ^ q + w r * Y r ^ q + w r * Z r ^ q) := by ring
+  have h4top : (4 : ENNReal) ^ q ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_nonneg hq0.le (by norm_num)
+  have hsplit : (∫⁻ r, 4 ^ q * (w r * X r ^ q + w r * Y r ^ q + w r * Z r ^ q)) =
+      4 ^ q * (a ^ q + b ^ q + c ^ q) := by
+    rw [lintegral_const_mul' _ _ h4top,
+      lintegral_add_right' _ hZmeas.aemeasurable,
+      lintegral_add_right' _ hYmeas.aemeasurable, haq, hbq, hcq]
+  calc (∫⁻ r, w r * (X r + Y r + Z r) ^ q) ^ (1 / q)
+      ≤ (∫⁻ r, 4 ^ q * (w r * X r ^ q + w r * Y r ^ q + w r * Z r ^ q)) ^ (1 / q) :=
+        ENNReal.rpow_le_rpow (lintegral_mono hpoint) (by positivity)
+    _ = (4 ^ q * (a ^ q + b ^ q + c ^ q)) ^ (1 / q) := by rw [hsplit]
+    _ = 4 * (a ^ q + b ^ q + c ^ q) ^ (1 / q) := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), ← ENNReal.rpow_mul,
+          mul_one_div_cancel hq0.ne', ENNReal.rpow_one]
+    _ ≤ 4 * (3 * (a + b + c)) :=
+        mul_le_mul' le_rfl (ennreal_rpow_sum_three_le hq)
+    _ ≤ 4 * (3 * (ENNReal.ofReal C₁ * Np + ENNReal.ofReal C₂ * Np +
+          ENNReal.ofReal C₃ * Np)) :=
+        mul_le_mul' le_rfl (mul_le_mul' le_rfl
+          (add_le_add (add_le_add hbX hbY) hbZ))
+    _ = ENNReal.ofReal (12 * (C₁ + C₂ + C₃)) * Np := by
+        rw [ENNReal.ofReal_mul (by norm_num),
+          ENNReal.ofReal_add (by positivity) hC₃.le,
+          ENNReal.ofReal_add hC₁.le hC₂pos.le]
+        rw [show ENNReal.ofReal (12 : ℝ) = (12 : ENNReal) by
+          rw [show (12 : ℝ) = ((12 : ℕ) : ℝ) by norm_num,
+            ENNReal.ofReal_natCast]
+          norm_num]
+        ring
+
+set_option maxHeartbeats 1000000 in
+theorem eLpNorm_M_lift_le_of_remTwo {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {p q : ℝ} (hp : 1 ≤ p) (hpq : p ≤ q)
+    (hrem : ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+          brsRemainderTwo (absProfile f₀) r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s, ENNReal.ofReal s ^ (d + 1 - 1) *
+            (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p))
+    (hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+          brsMainMaximal (d + 1) E p g r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      eLpNorm (M E (fun y : Euclidean (d + 1) => f₀ ‖y‖)) (ENNReal.ofReal q)
+          volume ≤
+        ENNReal.ofReal C *
+          eLpNorm (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p)
+            volume := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hq : (1 : ℝ) ≤ q := le_trans hp hpq
+  have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
+  have hsm : 0 < surfaceMass (d + 1) := surfaceMass_pos (by omega)
+  obtain ⟨C₀, hC₀, hdecomp⟩ := le_brsDecomposition hd hE hp0
+  obtain ⟨K, hK, hcomb⟩ := exists_combined_bound_of_remTwo hD (E := E) hp hpq hrem hmain
+  refine ⟨C₀ * K * surfaceMass (d + 1) ^ (1 / q - 1 / p), ?_, fun f₀ hf₀ => ?_⟩
+  · have h1 : (0 : ℝ) < surfaceMass (d + 1) ^ (1 / q - 1 / p) :=
+      Real.rpow_pos_of_pos hsm _
+    positivity
+  set S : ℝ → ENNReal := fun r =>
+    brsMainMaximal (d + 1) E p (brsProfileSub (d + 1) p (absProfile f₀)) r +
+      brsRemainderOne (absProfile f₀) r +
+      brsRemainderTwo (absProfile f₀) r with hS
+  set Np : ENNReal :=
+    (∫⁻ s, ENNReal.ofReal s ^ (d + 1 - 1) * (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p)
+    with hNp
+  have hcont : Continuous (absProfile f₀) := continuous_absProfile hf₀
+  have hSmeas : Measurable (fun r : ℝ => S r ^ q) := by
+    refine ENNReal.continuous_rpow_const.measurable.comp ?_
+    rw [hS]
+    exact ((measurable_brsMainMaximal hD E hp0 hf₀).add
+      (measurable_brsRemainderOne hcont)).add (measurable_brsRemainderTwo hcont)
+  -- the pointwise decomposition, away from the origin
+  have hae : ∀ᵐ x : Euclidean (d + 1) ∂volume,
+      ‖M E (fun y : Euclidean (d + 1) => f₀ ‖y‖) x‖ₑ ^ q ≤
+        (ENNReal.ofReal C₀ * S ‖x‖) ^ q := by
+    have hnull : ∀ᵐ x : Euclidean (d + 1) ∂volume, x ≠ 0 := by
+      have h : volume ({(0 : Euclidean (d + 1))} : Set (Euclidean (d + 1))) = 0 := by
+        simp
+      rw [← compl_mem_ae_iff] at h
+      filter_upwards [h] with x hx
+      simpa using hx
+    filter_upwards [hnull] with x hx
+    refine ENNReal.rpow_le_rpow ?_ hq0.le
+    have hpt := hdecomp f₀ hf₀ x hx
+    rw [hS]
+    simpa using hpt
+  -- the radial integral
+  have hbound : (∫⁻ x : Euclidean (d + 1),
+      ‖M E (fun y : Euclidean (d + 1) => f₀ ‖y‖) x‖ₑ ^ q) ≤
+      ENNReal.ofReal C₀ ^ q * ENNReal.ofReal (surfaceMass (d + 1)) *
+        (ENNReal.ofReal K * Np) ^ q := by
+    have hstep1 : (∫⁻ x : Euclidean (d + 1),
+        ‖M E (fun y : Euclidean (d + 1) => f₀ ‖y‖) x‖ₑ ^ q) ≤
+        ∫⁻ x : Euclidean (d + 1), ENNReal.ofReal C₀ ^ q * (S ‖x‖) ^ q := by
+      refine lintegral_mono_ae ?_
+      filter_upwards [hae] with x hx
+      rw [← ENNReal.mul_rpow_of_nonneg _ _ hq0.le]
+      exact hx
+    have hstep2 : (∫⁻ x : Euclidean (d + 1),
+        ENNReal.ofReal C₀ ^ q * (S ‖x‖) ^ q) =
+        ENNReal.ofReal C₀ ^ q * (ENNReal.ofReal (surfaceMass (d + 1)) *
+          ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q) := by
+      rw [lintegral_const_mul' _ _
+        (ENNReal.rpow_ne_top_of_nonneg hq0.le ENNReal.ofReal_ne_top),
+        lintegral_euclidean_radial (by omega : 0 < d + 1)
+          (fun r => S r ^ q) hSmeas]
+    have hstep3 : (∫⁻ r in Ioi (0 : ℝ),
+        ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q) ≤ (ENNReal.ofReal K * Np) ^ q := by
+      have hfull : (∫⁻ r in Ioi (0 : ℝ),
+          ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q) ≤
+          ∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q :=
+        lintegral_mono' Measure.restrict_le_self fun _ => le_rfl
+      refine le_trans hfull ?_
+      have hcb := hcomb f₀ hf₀
+      have hraise : (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q) =
+          ((∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q) ^ (1 / q)) ^ q := by
+        rw [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
+      rw [hraise]
+      refine ENNReal.rpow_le_rpow ?_ hq0.le
+      rw [hS, hNp] at *
+      exact hcb
+    calc (∫⁻ x : Euclidean (d + 1),
+        ‖M E (fun y : Euclidean (d + 1) => f₀ ‖y‖) x‖ₑ ^ q)
+        ≤ ∫⁻ x : Euclidean (d + 1), ENNReal.ofReal C₀ ^ q * (S ‖x‖) ^ q := hstep1
+      _ = ENNReal.ofReal C₀ ^ q * (ENNReal.ofReal (surfaceMass (d + 1)) *
+            ∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r ^ (d + 1 - 1) * S r ^ q) :=
+          hstep2
+      _ ≤ ENNReal.ofReal C₀ ^ q * (ENNReal.ofReal (surfaceMass (d + 1)) *
+            (ENNReal.ofReal K * Np) ^ q) :=
+          mul_le_mul' le_rfl (mul_le_mul' le_rfl hstep3)
+      _ = ENNReal.ofReal C₀ ^ q * ENNReal.ofReal (surfaceMass (d + 1)) *
+            (ENNReal.ofReal K * Np) ^ q := by ring
+  -- take `q`-th roots and rewrite both norms
+  have hq0' : ENNReal.ofReal q ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero]
+    exact not_le.mpr hq0
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top,
+    ENNReal.toReal_ofReal hq0.le, eLpNorm_lift_eq hD hp0 hf₀, ← hNp]
+  refine le_trans (ENNReal.rpow_le_rpow hbound (by positivity)) (le_of_eq ?_)
+  have hinv : (0 : ℝ) ≤ 1 / q := by positivity
+  have hsplit : (ENNReal.ofReal C₀ ^ q * ENNReal.ofReal (surfaceMass (d + 1)) *
+        (ENNReal.ofReal K * Np) ^ q) ^ (1 / q) =
+      (ENNReal.ofReal C₀ * ENNReal.ofReal (surfaceMass (d + 1)) ^ (1 / q) *
+        ENNReal.ofReal K) * Np := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hinv, ENNReal.mul_rpow_of_nonneg _ _ hinv,
+      ← ENNReal.rpow_mul, ← ENNReal.rpow_mul, mul_one_div_cancel hq0.ne']
+    simp only [ENNReal.rpow_one]
+    ring
+  have hscalar : ENNReal.ofReal C₀ *
+        ENNReal.ofReal (surfaceMass (d + 1)) ^ (1 / q) * ENNReal.ofReal K =
+      ENNReal.ofReal (C₀ * K * surfaceMass (d + 1) ^ (1 / q - 1 / p)) *
+        ENNReal.ofReal (surfaceMass (d + 1)) ^ (1 / p) := by
+    rw [ENNReal.ofReal_rpow_of_pos hsm, ENNReal.ofReal_rpow_of_pos hsm,
+      ← ENNReal.ofReal_mul hC₀.le, ← ENNReal.ofReal_mul (by positivity),
+      ← ENNReal.ofReal_mul (by positivity)]
+    congr 1
+    rw [show C₀ * K * surfaceMass (d + 1) ^ (1 / q - 1 / p) *
+          surfaceMass (d + 1) ^ (1 / p) =
+        C₀ * K * (surfaceMass (d + 1) ^ (1 / q - 1 / p) *
+          surfaceMass (d + 1) ^ (1 / p)) by ring,
+      ← Real.rpow_add hsm, show (1 / q - 1 / p) + 1 / p = 1 / q by ring]
+    ring
+  rw [hsplit, hscalar, mul_assoc]
+
+set_option maxHeartbeats 1000000 in
+theorem memLp_and_eLpNorm_M_lift_le_of_remTwo {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {p q : ℝ} (hp : 1 ≤ p) (hpq : p ≤ q)
+    (hrem : ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+          brsRemainderTwo (absProfile f₀) r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s, ENNReal.ofReal s ^ (d + 1 - 1) *
+            (ENNReal.ofReal ‖f₀ s‖) ^ p) ^ (1 / p))
+    (hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+          brsMainMaximal (d + 1) E p g r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      MemLp (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p) volume →
+        MemLp (M E (fun x : Euclidean (d + 1) => f₀ ‖x‖)) (ENNReal.ofReal q)
+            volume ∧
+          eLpNorm (M E (fun x : Euclidean (d + 1) => f₀ ‖x‖))
+              (ENNReal.ofReal q) volume ≤
+            ENNReal.ofReal C *
+              eLpNorm (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p)
+                volume := by
+  obtain ⟨C, hC, hbound⟩ := eLpNorm_M_lift_le_of_remTwo hd hE hp hpq hrem hmain
+  refine ⟨C, hC, fun f₀ hf₀ hmem => ⟨⟨?_, ?_⟩, hbound f₀ hf₀⟩⟩
+  · exact (measurable_M_lift E hf₀).aestronglyMeasurable
+  · refine lt_of_le_of_lt (hbound f₀ hf₀) ?_
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.2
+
+/-! ## The radial strong type up to and including the edge `q = pD`
+
+Below the edge `R₂` is handled by `prop43_brsRemainderTwo`, on the edge by
+`prop43_brsRemainderTwo_endpoint`; everything else in Lemma 4.1 is insensitive
+to the difference. -/
+
+theorem memLp_and_eLpNorm_M_lift_le_edge {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {p q : ℝ} (hp : 1 < p) (hpq : p ≤ q)
+    (hqpd : q ≤ p * ((d + 1 : ℕ) : ℝ))
+    (hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+          brsMainMaximal (d + 1) E p g r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^ p) ^ (1 / p)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ f₀ : ℝ → ℂ, Continuous f₀ →
+      MemLp (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p) volume →
+        MemLp (M E (fun x : Euclidean (d + 1) => f₀ ‖x‖)) (ENNReal.ofReal q)
+            volume ∧
+          eLpNorm (M E (fun x : Euclidean (d + 1) => f₀ ‖x‖))
+              (ENNReal.ofReal q) volume ≤
+            ENNReal.ofReal C *
+              eLpNorm (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p)
+                volume := by
+  rcases lt_or_eq_of_le hqpd with hlt | heq
+  · exact memLp_and_eLpNorm_M_lift_le hd hE hp.le hpq hlt hmain
+  · refine memLp_and_eLpNorm_M_lift_le_of_remTwo hd hE hp.le hpq ?_ hmain
+    have hrem := prop43_brsRemainderTwo_endpoint (d := d + 1) (by omega) hp
+    rwa [← heq] at hrem
+
+/-! ## The dyadic covering bound from the sharp entropy hypothesis
+
+`exists_cov_bound_of_minkowski` needs the *strict* inequality `β < qa + 1`,
+which fails exactly on the critical edge `[P₂,β, P₃,β^rad]`.  The sharp
+entropy hypothesis `sup δ^β N(E,δ) < ∞` supplies the same dyadic bound under
+the closed condition `β ≤ qa + 1`. -/
+
+theorem exists_cov_bound_of_entropy {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {β : ℝ} (hβ0 : 0 ≤ β) (hent : HasSharpEntropyBound E β) {q a : ℝ}
+    (hq : 0 < q) (hle : β ≤ q * a + 1) :
+    ∃ S : ℝ, 0 < S ∧ ∀ n : ℕ,
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(n : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (S ^ q * ((2 : ℝ) ^ (-(n : ℤ))) ^ (-(q * a + 1))) := by
+  obtain ⟨C, hC, hbound⟩ := hent
+  have htwo : (1 : ℝ) ≤ (2 : ℝ) ^ β := Real.one_le_rpow (by norm_num) hβ0
+  set A : ℝ := C * (2 : ℝ) ^ β with hA
+  have hApos : 0 < A := by
+    rw [hA]
+    positivity
+  refine ⟨A ^ (1 / q), Real.rpow_pos_of_pos hApos _, fun n => ?_⟩
+  have hAq : (A ^ (1 / q)) ^ q = A := by
+    rw [← Real.rpow_mul hApos.le, one_div, inv_mul_cancel₀ hq.ne', Real.rpow_one]
+  rw [hAq]
+  have hδ : (2 : ℝ) ^ (-(n : ℤ)) = (2 : ℝ) ^ (-(n : ℝ)) := two_zpow_eq_rpow n
+  have hδpos : (0 : ℝ) < (2 : ℝ) ^ (-(n : ℤ)) := by positivity
+  have hkey : ((intervalCoveringNumber E ((2 : ℝ) ^ (-(n : ℤ))) : ℕ) : ℝ) ≤
+      A * ((2 : ℝ) ^ (-(n : ℤ))) ^ (-(q * a + 1)) := by
+    rcases Nat.eq_zero_or_pos n with hn | hn
+    · subst hn
+      have hhalf : (2 : ℝ) ^ (-(1 : ℝ)) ≤ (2 : ℝ) ^ (-((0 : ℕ) : ℤ)) := by
+        norm_num
+      have hmono := intervalCoveringNumber_mono_scale hE
+        (δ := (2 : ℝ) ^ (-(1 : ℝ))) (by positivity) hhalf
+      have hcov := hbound ((2 : ℝ) ^ (-(1 : ℝ))) (by positivity)
+        (Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by norm_num))
+      have hcast : ((intervalCoveringNumber E ((2 : ℝ) ^ (-((0 : ℕ) : ℤ))) : ℕ) : ℝ) ≤
+          ((intervalCoveringNumber E ((2 : ℝ) ^ (-(1 : ℝ))) : ℕ) : ℝ) := by
+        exact_mod_cast hmono
+      have hval : C * ((2 : ℝ) ^ (-(1 : ℝ))) ^ (-β) = A := by
+        rw [hA, two_rpow_rpow, show (-(1 : ℝ)) * (-β) = β by ring]
+      have hone : ((2 : ℝ) ^ (-((0 : ℕ) : ℤ))) ^ (-(q * a + 1)) = 1 := by
+        norm_num
+      rw [hone, mul_one]
+      exact le_trans hcast (le_trans hcov (le_of_eq hval))
+    · have hlt1 : (2 : ℝ) ^ (-(n : ℤ)) < 1 := by
+        rw [hδ]
+        refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+        have : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+        linarith
+      refine le_trans (hbound _ hδpos hlt1) ?_
+      have hmono : ((2 : ℝ) ^ (-(n : ℤ))) ^ (-β) ≤
+          ((2 : ℝ) ^ (-(n : ℤ))) ^ (-(q * a + 1)) := by
+        refine Real.rpow_le_rpow_of_exponent_ge hδpos hlt1.le ?_
+        linarith
+      calc C * ((2 : ℝ) ^ (-(n : ℤ))) ^ (-β)
+          ≤ C * ((2 : ℝ) ^ (-(n : ℤ))) ^ (-(q * a + 1)) :=
+            mul_le_mul_of_nonneg_left hmono hC.le
+        _ ≤ A * ((2 : ℝ) ^ (-(n : ℤ))) ^ (-(q * a + 1)) := by
+            refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+            rw [hA]
+            nlinarith
+  calc ((intervalCoveringNumber E ((2 : ℝ) ^ (-(n : ℤ))) : ℕ) : ℝ≥0∞)
+      = ENNReal.ofReal ((intervalCoveringNumber E ((2 : ℝ) ^ (-(n : ℤ))) : ℕ) : ℝ) := by
+        rw [ENNReal.ofReal_natCast]
+    _ ≤ ENNReal.ofReal (A * ((2 : ℝ) ^ (-(n : ℤ))) ^ (-(q * a + 1))) :=
+        ENNReal.ofReal_le_ofReal hkey
+
+/-! ## The closed triangle for `d ≥ 3`
+
+Three ingredients upgrade `interior_Delta_subset_radialTypeSetCont` to the
+closed triangle: the edge `q = pD` is reached by
+`memLp_and_eLpNorm_M_lift_le_edge`, the critical edge `[P₂,β, P₃,β^rad]` by
+`exists_cov_bound_of_entropy`, and the diagonal `p = q` needs nothing new. -/
+
+set_option maxHeartbeats 1000000 in
+theorem Delta_subset_radialTypeSetCont_of_entropy {d : ℕ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ}
+    (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β)
+    (hent : HasSharpEntropyBound E β) :
+    Delta (d + 1) β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1} ⊆
+      radialTypeSetCont (d + 1) E := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDcast : ((d + 1 : ℕ) : ℝ) = (d : ℝ) + 1 := by push_cast; ring
+  have hdpos : (0 : ℝ) < (d : ℝ) := by
+    have h : (0 : ℕ) < d := by omega
+    exact_mod_cast h
+  have hEnull : volume (closure E) = 0 :=
+    volume_closure_eq_zero_of_minkowski hE hβ0 hβ1 hM
+  rintro z ⟨hzΔ, hz2pos, hz1lt⟩
+  obtain ⟨h1, h2, h3⟩ := Delta_subset_halfplanes hD hβ0 hzΔ
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos h1
+  obtain ⟨p, hpdef⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+  obtain ⟨q, hqdef⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+  have hp1 : 1 < p := by
+    rw [hpdef, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hq0 : 0 < q := by
+    rw [hqdef]
+    positivity
+  have hpne : p ≠ 0 := hp0.ne'
+  have hqne : q ≠ 0 := hq0.ne'
+  have hzp : z.1 = 1 / p := by rw [hpdef, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hqdef, one_div_one_div]
+  have hpq : p ≤ q := by
+    rw [hpdef, hqdef]
+    exact one_div_le_one_div_of_le hz2pos h1
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp1.le hpq
+  have hqpd : q ≤ p * ((d + 1 : ℕ) : ℝ) := by
+    have h2' : 1 / p ≤ ((d + 1 : ℕ) : ℝ) * (1 / q) := by
+      rw [← hzp, ← hzq]; exact h2
+    rw [mul_one_div, div_le_div_iff₀ hp0 hq0, one_mul] at h2'
+    linarith [h2', mul_comm ((d + 1 : ℕ) : ℝ) p]
+  have hbeta : β ≤ q * ((d : ℝ) - ((d : ℝ) + 1) / p) + 1 := by
+    have h3' : 0 ≤ (1 - β) * (1 / q) + (((d : ℝ) + 1) - 1) -
+        ((d : ℝ) + 1) * (1 / p) := by
+      rw [← hzp, ← hzq, ← hDcast]; exact h3
+    have hkey : 0 ≤ q * ((1 - β) * (1 / q) + (((d : ℝ) + 1) - 1) -
+        ((d : ℝ) + 1) * (1 / p)) := mul_nonneg hq0.le h3'
+    have hexpand : q * ((1 - β) * (1 / q) + (((d : ℝ) + 1) - 1) -
+        ((d : ℝ) + 1) * (1 / p)) =
+        (1 - β) + q * ((d : ℝ) - ((d : ℝ) + 1) / p) := by
+      field_simp
+      ring
+    rw [hexpand] at hkey
+    linarith
+  refine ⟨p, q, hp1.le, hq1, by rw [← hzp, ← hzq], ?_⟩
+  by_cases hcase : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) < p
+  · exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd
+      (prop44_brsMainMaximal (d := d + 1) hD hE hcase hq0)
+  · rcases eq_or_lt_of_le (not_lt.mp hcase) with hEq | hlt
+    · -- the endpoint `p = p_D`
+      obtain ⟨B, hB, hcov⟩ :=
+        exists_logcov_bound_of_minkowski hβ0 hβ1 hM hq0 (D := d + 1) hD
+      have hpq' : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) ≤ q := by
+        rw [← hEq]; exact hpq
+      obtain ⟨C, hC, hb⟩ :=
+        prop46_brsMainMaximal (d := d + 1) hD hE hEne hEnull hpq' hB hcov
+      have hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+          (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+              brsMainMaximal (d + 1) E
+                (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)) g r ^ q) ^ (1 / q) ≤
+            ENNReal.ofReal C *
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^
+                (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) ^
+                  (1 / (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) := by
+        refine ⟨C, hC, fun g hg => ?_⟩
+        rw [one_div_div]
+        exact hb g hg
+      rw [← hEq] at hmain
+      exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd hmain
+    · -- below the endpoint
+      obtain ⟨a, hadef⟩ : ∃ x : ℝ, x = (d : ℝ) - ((d : ℝ) + 1) / p := ⟨_, rfl⟩
+      have hlt' : p < ((d : ℝ) + 1) / (d : ℝ) := by
+        rw [hDcast, show ((d : ℝ) + 1 - 1) = (d : ℝ) by ring] at hlt
+        exact hlt
+      have hpd' : p * (d : ℝ) < (d : ℝ) + 1 := by
+        rw [lt_div_iff₀ hdpos] at hlt'
+        exact hlt'
+      have ha : a < 0 := by
+        rw [hadef, sub_neg, lt_div_iff₀ hp0]
+        linarith [hpd', mul_comm p (d : ℝ)]
+      have hbeta' : β ≤ q * a + 1 := by rw [hadef]; exact hbeta
+      obtain ⟨S, hS, hcov⟩ := exists_cov_bound_of_entropy hE hβ0 hent hq0 hbeta'
+      have hmain := prop45_brsMainMaximal (d := d + 1) hD hE hEne hEnull hp1.le
+        hq1 hpq (brs_exponent_form hp0 hadef.symm) ha hS hcov
+      exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd hmain
+
+/-! ## Theorem 1.1(i), the necessity half in ambient dimension `D = d + 1`
+
+The diagonal vertex `P₂,β = Q₂` lies on the critical line
+`(1-β)/q + D - 1 - D/p = 0`, where Lemma 3.2(ii) turns an `L^p_rad → L^q`
+bound into the loss-free entropy estimate `sup_{δ<1} δ^β N(E,δ) < ∞`. -/
+
+theorem hasSharpEntropyBound_of_Q2_mem_succ {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hmem : Q2 (d + 1) β ∈ radialTypeSet (d + 1) E) :
+    HasSharpEntropyBound E β := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDR : (2 : ℝ) ≤ ((d + 1 : ℕ) : ℝ) := by exact_mod_cast hD
+  have hD1 : (0 : ℝ) < ((d + 1 : ℕ) : ℝ) - 1 := by linarith
+  have hDb : (0 : ℝ) < ((d + 1 : ℕ) : ℝ) - 1 + β := by linarith
+  obtain ⟨v, hv⟩ : ∃ x : ℝ,
+      x = (((d + 1 : ℕ) : ℝ) - 1 + β) / (((d + 1 : ℕ) : ℝ) - 1) := ⟨_, rfl⟩
+  have hv0 : 0 < v := by rw [hv]; positivity
+  have hvne : v ≠ 0 := hv0.ne'
+  have hv1 : (1 : ℝ) ≤ v := by
+    rw [hv, le_div_iff₀ hD1, one_mul]
+    linarith
+  have hvinv : (0 : ℝ) < 1 / v := by positivity
+  have hQ2 : Q2 (d + 1) β = (1 / v, 1 / v) := by
+    unfold Q2
+    rw [hv, one_div_div]
+  obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hmem
+  rw [hQ2, Prod.mk.injEq] at hzeq
+  obtain ⟨h1, h2⟩ := hzeq
+  have hPtop : P ≠ ⊤ := by
+    intro hc
+    rw [hc] at h1
+    simp only [ENNReal.inv_top, ENNReal.toReal_zero] at h1
+    linarith [h1]
+  have hQtop : Q ≠ ⊤ := by
+    intro hc
+    rw [hc] at h2
+    simp only [ENNReal.inv_top, ENNReal.toReal_zero] at h2
+    linarith [h2]
+  have hPr : P.toReal = v := by
+    have hinv : (P⁻¹).toReal = 1 / P.toReal := by
+      rw [ENNReal.toReal_inv, one_div]
+    rw [hinv] at h1
+    have hPr1 : (1 : ℝ) ≤ P.toReal := by
+      rw [← ENNReal.toReal_one]
+      exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+    have hPr0 : (0 : ℝ) < P.toReal := by linarith
+    field_simp at h1
+    linarith [h1]
+  have hQr : Q.toReal = v := by
+    have hinv : (Q⁻¹).toReal = 1 / Q.toReal := by
+      rw [ENNReal.toReal_inv, one_div]
+    rw [hinv] at h2
+    have hQr1 : (1 : ℝ) ≤ Q.toReal := by
+      rw [← ENNReal.toReal_one]
+      exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+    have hQr0 : (0 : ℝ) < Q.toReal := by linarith
+    field_simp at h2
+    linarith [h2]
+  have hPQ : P = Q := by
+    rw [← ENNReal.ofReal_toReal hPtop, ← ENNReal.ofReal_toReal hQtop, hPr, hQr]
+  have hPe : ENNReal.ofReal v = P := by
+    rw [← hPr, ENNReal.ofReal_toReal hPtop]
+  have hstrong' : HasRadialStrongType (d + 1) E (ENNReal.ofReal v)
+      (ENNReal.ofReal v) := by
+    rw [← hPQ] at hstrong
+    rw [hPe]
+    exact hstrong
+  have hcrit : (1 - β) / v + ((d + 1 : ℕ) : ℝ) - 1 - ((d + 1 : ℕ) : ℝ) / v = 0 := by
+    rw [hv]
+    field_simp
+    ring
+  obtain ⟨A, hA, hbound⟩ := sup_finite_of_hasRadialStrongType_critical
+    (d := d + 1) (by omega) hE hv0 hv0 hcrit hstrong'
+  refine ⟨A, hA, fun δ hδ hδ1 => ?_⟩
+  have hpow : (0 : ℝ) < δ ^ β := Real.rpow_pos_of_pos hδ _
+  have hb := hbound δ hδ (by linarith)
+  have hstep : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := by
+    rw [le_div_iff₀ hpow]
+    linarith [hb]
+  rw [Real.rpow_neg hδ.le]
+  calc ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := hstep
+    _ = A * (δ ^ β)⁻¹ := div_eq_mul_inv _ _
+
+/-! ## Theorem 1.1(i) of BRS
+
+For `β < 1` the radial type set fills the closed triangle exactly when the
+entropy bound `sup_{δ<1} δ^β N(E,δ)` is finite.
+
+As everywhere in this development the sufficiency half is stated on the
+continuous-profile core, and the ideal vertex `P₁` (that is `p = q = ∞`) is
+excluded because the real-exponent type set cannot name it; for `β = 0` the
+diagonal vertex `Q₂ = (1,1)` is excluded as well, `p = 1` being below the
+range of Proposition 4.3. -/
+
+theorem thm11i_radialTypeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β) :
+    (HasSharpEntropyBound E β →
+        Delta (d + 1) β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1} ⊆
+          radialTypeSetCont (d + 1) E) ∧
+      (Delta (d + 1) β ⊆ radialTypeSet (d + 1) E → HasSharpEntropyBound E β) ∧
+      radialTypeSet (d + 1) E ⊆ Delta (d + 1) β := by
+  refine ⟨fun hent => Delta_subset_radialTypeSetCont_of_entropy hd hE hEne hβ0
+      hβ1 hM hent, fun hsub => ?_,
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim⟩
+  refine hasSharpEntropyBound_of_Q2_mem_succ hd hE hβ0 (hsub ?_)
+  rw [Delta]
+  exact subset_convexHull ℝ _ (by simp)
+
+/-! ## The closed triangle off the critical edge
+
+Strictly inside the Minkowski half-plane no entropy hypothesis is needed: the
+upper Minkowski exponent alone supplies the dyadic covering bound of
+Proposition 4.5, and the two other edges of `Δ_β` are reached exactly as in
+`Delta_subset_radialTypeSetCont_of_entropy`. -/
+
+set_option maxHeartbeats 1000000 in
+theorem Delta_strict_subset_radialTypeSetCont {d : ℕ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ}
+    (hβ0 : 0 ≤ β) (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β) :
+    Delta (d + 1) β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1 ∧
+        0 < (1 - β) * z.2 + (((d : ℝ) + 1) - 1) - ((d : ℝ) + 1) * z.1} ⊆
+      radialTypeSetCont (d + 1) E := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDcast : ((d + 1 : ℕ) : ℝ) = (d : ℝ) + 1 := by push_cast; ring
+  have hdpos : (0 : ℝ) < (d : ℝ) := by
+    have h : (0 : ℕ) < d := by omega
+    exact_mod_cast h
+  have hEnull : volume (closure E) = 0 :=
+    volume_closure_eq_zero_of_minkowski hE hβ0 hβ1 hM
+  rintro z ⟨hzΔ, hz2pos, hz1lt, hstrict⟩
+  obtain ⟨h1, h2, -⟩ := Delta_subset_halfplanes hD hβ0 hzΔ
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos h1
+  obtain ⟨p, hpdef⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+  obtain ⟨q, hqdef⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+  have hp1 : 1 < p := by
+    rw [hpdef, lt_div_iff₀ hz1pos, one_mul]
+    exact hz1lt
+  have hp0 : 0 < p := lt_trans zero_lt_one hp1
+  have hq0 : 0 < q := by
+    rw [hqdef]
+    positivity
+  have hpne : p ≠ 0 := hp0.ne'
+  have hqne : q ≠ 0 := hq0.ne'
+  have hzp : z.1 = 1 / p := by rw [hpdef, one_div_one_div]
+  have hzq : z.2 = 1 / q := by rw [hqdef, one_div_one_div]
+  have hpq : p ≤ q := by
+    rw [hpdef, hqdef]
+    exact one_div_le_one_div_of_le hz2pos h1
+  have hq1 : (1 : ℝ) ≤ q := le_trans hp1.le hpq
+  have hqpd : q ≤ p * ((d + 1 : ℕ) : ℝ) := by
+    have h2' : 1 / p ≤ ((d + 1 : ℕ) : ℝ) * (1 / q) := by
+      rw [← hzp, ← hzq]; exact h2
+    rw [mul_one_div, div_le_div_iff₀ hp0 hq0, one_mul] at h2'
+    linarith [h2', mul_comm ((d + 1 : ℕ) : ℝ) p]
+  have hbeta : β < q * ((d : ℝ) - ((d : ℝ) + 1) / p) + 1 := by
+    have h3' : 0 < (1 - β) * (1 / q) + (((d : ℝ) + 1) - 1) -
+        ((d : ℝ) + 1) * (1 / p) := by
+      rw [← hzp, ← hzq]; exact hstrict
+    have hkey : 0 < q * ((1 - β) * (1 / q) + (((d : ℝ) + 1) - 1) -
+        ((d : ℝ) + 1) * (1 / p)) := mul_pos hq0 h3'
+    have hexpand : q * ((1 - β) * (1 / q) + (((d : ℝ) + 1) - 1) -
+        ((d : ℝ) + 1) * (1 / p)) =
+        (1 - β) + q * ((d : ℝ) - ((d : ℝ) + 1) / p) := by
+      field_simp
+      ring
+    rw [hexpand] at hkey
+    linarith
+  refine ⟨p, q, hp1.le, hq1, by rw [← hzp, ← hzq], ?_⟩
+  by_cases hcase : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) < p
+  · exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd
+      (prop44_brsMainMaximal (d := d + 1) hD hE hcase hq0)
+  · rcases eq_or_lt_of_le (not_lt.mp hcase) with hEq | hlt
+    · obtain ⟨B, hB, hcov⟩ :=
+        exists_logcov_bound_of_minkowski hβ0 hβ1 hM hq0 (D := d + 1) hD
+      have hpq' : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) ≤ q := by
+        rw [← hEq]; exact hpq
+      obtain ⟨C, hC, hb⟩ :=
+        prop46_brsMainMaximal (d := d + 1) hD hE hEne hEnull hpq' hB hcov
+      have hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+          (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+              brsMainMaximal (d + 1) E
+                (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)) g r ^ q) ^ (1 / q) ≤
+            ENNReal.ofReal C *
+              (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^
+                (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) ^
+                  (1 / (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) := by
+        refine ⟨C, hC, fun g hg => ?_⟩
+        rw [one_div_div]
+        exact hb g hg
+      rw [← hEq] at hmain
+      exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd hmain
+    · obtain ⟨a, hadef⟩ : ∃ x : ℝ, x = (d : ℝ) - ((d : ℝ) + 1) / p := ⟨_, rfl⟩
+      have hlt' : p < ((d : ℝ) + 1) / (d : ℝ) := by
+        rw [hDcast, show ((d : ℝ) + 1 - 1) = (d : ℝ) by ring] at hlt
+        exact hlt
+      have hpd' : p * (d : ℝ) < (d : ℝ) + 1 := by
+        rw [lt_div_iff₀ hdpos] at hlt'
+        exact hlt'
+      have ha : a < 0 := by
+        rw [hadef, sub_neg, lt_div_iff₀ hp0]
+        linarith [hpd', mul_comm p (d : ℝ)]
+      have hbeta' : β < q * a + 1 := by rw [hadef]; exact hbeta
+      obtain ⟨S, hS, hcov⟩ := exists_cov_bound_of_minkowski hE hβ0 hM hq0 hbeta'
+      have hmain := prop45_brsMainMaximal (d := d + 1) hD hE hEne hEnull hp1.le
+        hq1 hpq (brs_exponent_form hp0 hadef.symm) ha hS hcov
+      exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd hmain
+
+/-! ## No point of the critical edge is of radial strong type
+
+If `sup δ^β N(E,δ) = ∞` then Lemma 3.2(ii) rules out the whole segment
+`[P₂,β, P₃,β^rad]`, which is where the Minkowski half-plane is tight. -/
+
+theorem not_mem_radialTypeSet_of_critical_succ {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hdim : upperMinkowskiDimension E = β)
+    (hinf : ¬ HasSharpEntropyBound E β) {z : ExponentPoint}
+    (hz : z ∈ radialTypeSet (d + 1) E) :
+    (1 - β) * z.2 + (((d : ℝ) + 1) - 1) - ((d : ℝ) + 1) * z.1 ≠ 0 := by
+  intro hcrit
+  have hD : 2 ≤ d + 1 := by omega
+  have hDcast : ((d + 1 : ℕ) : ℝ) = (d : ℝ) + 1 := by push_cast; ring
+  have hDR : (3 : ℝ) ≤ (d : ℝ) + 1 := by
+    have h : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+    linarith
+  have hΔ : z ∈ Delta (d + 1) β :=
+    radialTypeSet_subset_Delta (by omega) hE hEne hdim hz
+  obtain ⟨h1, h2, -⟩ := Delta_subset_halfplanes hD hβ0 hΔ
+  rw [hDcast] at h2
+  have hz2pos : 0 < z.2 := by
+    have hkey : ((d : ℝ) + 1) - 1 ≤ (((d : ℝ) + 1) ^ 2 - 1 + β) * z.2 := by
+      nlinarith [hcrit, h2, hDR]
+    nlinarith [hkey, hβ0, hDR]
+  have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos h1
+  obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hz
+  have hz1eq : z.1 = (P⁻¹).toReal := by rw [hzeq]
+  have hz2eq : z.2 = (Q⁻¹).toReal := by rw [hzeq]
+  have hPtop : P ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz1eq
+    simp at hz1eq
+    exact absurd hz1eq (ne_of_gt hz1pos)
+  have hQtop : Q ≠ ⊤ := by
+    intro hc
+    rw [hc] at hz2eq
+    simp at hz2eq
+    exact absurd hz2eq (ne_of_gt hz2pos)
+  have hp1 : (1 : ℝ) ≤ P.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+  have hq1 : (1 : ℝ) ≤ Q.toReal := by
+    rw [← ENNReal.toReal_one]
+    exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+  have hp0 : (0 : ℝ) < P.toReal := lt_of_lt_of_le zero_lt_one hp1
+  have hq0 : (0 : ℝ) < Q.toReal := lt_of_lt_of_le zero_lt_one hq1
+  have hz1p : z.1 = 1 / P.toReal := by
+    rw [hz1eq, ENNReal.toReal_inv, one_div]
+  have hz2q : z.2 = 1 / Q.toReal := by
+    rw [hz2eq, ENNReal.toReal_inv, one_div]
+  have hstrong' : HasRadialStrongType (d + 1) E (ENNReal.ofReal P.toReal)
+      (ENNReal.ofReal Q.toReal) := by
+    rw [ENNReal.ofReal_toReal hPtop, ENNReal.ofReal_toReal hQtop]
+    exact hstrong
+  have hcrit' : (1 - β) / Q.toReal + ((d + 1 : ℕ) : ℝ) - 1 -
+      ((d + 1 : ℕ) : ℝ) / P.toReal = 0 := by
+    rw [hz1p, hz2q] at hcrit
+    rw [hDcast]
+    field_simp at hcrit ⊢
+    linarith [hcrit]
+  obtain ⟨A, hA, hbound⟩ := sup_finite_of_hasRadialStrongType_critical
+    (d := d + 1) (by omega) hE hp0 hq0 hcrit' hstrong'
+  refine hinf ⟨A, hA, fun δ hδ hδ1 => ?_⟩
+  have hpow : (0 : ℝ) < δ ^ β := Real.rpow_pos_of_pos hδ _
+  have hb := hbound δ hδ (by linarith)
+  have hstep : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := by
+    rw [le_div_iff₀ hpow]
+    linarith [hb]
+  rw [Real.rpow_neg hδ.le]
+  calc ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A / δ ^ β := hstep
+    _ = A * (δ ^ β)⁻¹ := div_eq_mul_inv _ _
+
+/-! ## Theorem 1.1(ii) of BRS
+
+For `β < 1` with an infinite entropy sum the radial type set is exactly `Δ_β`
+minus the critical segment `[P₂,β, P₃,β^rad]`. -/
+
+theorem thm11ii_radialTypeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty) {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ1 : β < 1) (hM : HasUpperMinkowskiExponent E β)
+    (hdim : upperMinkowskiDimension E = β)
+    (hinf : ¬ HasSharpEntropyBound E β) :
+    (Delta (d + 1) β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1 ∧
+        0 < (1 - β) * z.2 + (((d : ℝ) + 1) - 1) - ((d : ℝ) + 1) * z.1} ⊆
+          radialTypeSetCont (d + 1) E) ∧
+      radialTypeSet (d + 1) E ⊆ Delta (d + 1) β ∩
+        {z : ExponentPoint |
+          (1 - β) * z.2 + (((d : ℝ) + 1) - 1) - ((d : ℝ) + 1) * z.1 ≠ 0} :=
+  ⟨Delta_strict_subset_radialTypeSetCont hd hE hEne hβ0 hβ1 hM,
+    fun z hz => ⟨radialTypeSet_subset_Delta (by omega) hE hEne hdim hz,
+      not_mem_radialTypeSet_of_critical_succ hd hE hEne hβ0 hdim hinf hz⟩⟩
+
+/-! ## BRS Lemma 3.4 in absolute form
+
+`le_eLpNorm_ratio_stein` carries the test-function norm on the left.  For the
+`β = 1` endpoint it is more convenient to fold that norm into the constant, so
+that no positivity of `‖g‖_{p_D}` is ever needed. -/
+
+set_option maxHeartbeats 1000000 in
+theorem le_eLpNorm_maximal_stein {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {q : ℝ} (hq : 0 < q) :
+    ∃ c : ℝ, 0 < c ∧ ∀ δ : ℝ, 0 < δ → 12 ≤ Real.log (1 / δ) → ∀ T : Finset ℝ,
+      (↑T : Set ℝ) ⊆ E → (∀ t ∈ T, ∀ s ∈ T, t ≠ s → δ ≤ |t - s|) →
+        ENNReal.ofReal (c * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+            Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1))) ≤
+          eLpNorm (M E (fun y : Euclidean (d + 1) => steinFun (d + 1) δ ‖y‖))
+            (ENNReal.ofReal q) volume := by
+  have hd1 : 0 < d + 1 := by omega
+  haveI : Nonempty (Fin (d + 1)) := ⟨⟨0, hd1⟩⟩
+  have hqinv : (0 : ℝ) ≤ 1 / q := le_of_lt (div_pos one_pos hq)
+  set V : ℝ := (volume (Metric.ball (0 : Euclidean (d + 1)) 1)).toReal with hV
+  have hVtop : volume (Metric.ball (0 : Euclidean (d + 1)) 1) ≠ ⊤ :=
+    ((measure_mono Metric.ball_subset_closedBall).trans_lt
+      measure_closedBall_lt_top).ne
+  have hVpos : 0 < V :=
+    ENNReal.toReal_pos
+      (ne_of_gt (Metric.measure_ball_pos volume (0 : Euclidean (d + 1)) one_pos))
+      hVtop
+  have hVeq : volume (Metric.ball (0 : Euclidean (d + 1)) 1) = ENNReal.ofReal V := by
+    rw [hV, ENNReal.ofReal_toReal hVtop]
+  obtain ⟨c1, hc1⟩ : ∃ x : ℝ, x = (3 / 4 : ℝ) ^ d / 2 := ⟨_, rfl⟩
+  have hc1pos : 0 < c1 := by rw [hc1]; positivity
+  obtain ⟨K, hKdef⟩ : ∃ x : ℝ, x = steinLowerConst d := ⟨_, rfl⟩
+  have hKpos : 0 < K := by rw [hKdef]; exact steinLowerConst_pos hd
+  refine ⟨K * (c1 * V) ^ (1 / q),
+    mul_pos hKpos (Real.rpow_pos_of_pos (mul_pos hc1pos hVpos) _), ?_⟩
+  intro δ hδ hL T hTE hsep
+  have hδ1 : δ < 1 := delta_lt_one_of_log hδ hL
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  have hcard : (0 : ℝ) ≤ (T.card : ℝ) := Nat.cast_nonneg _
+  set f : Euclidean (d + 1) → ℂ := fun y => steinFun (d + 1) δ ‖y‖ with hf
+  set S : Set (Euclidean (d + 1)) :=
+    ⋃ t ∈ T, radialAnnulusIcc (d + 1) (t - δ / 4) (t + δ / 4) with hS
+  have hSmeas : MeasurableSet S := by
+    rw [hS]
+    exact Finset.measurableSet_biUnion _ fun t _ =>
+      measurableSet_radialAnnulusIcc (d + 1) _ _
+  have hlarge : ∀ x ∈ S,
+      ENNReal.ofReal (K * Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1))) ≤ M E f x := by
+    intro x hx
+    obtain ⟨t, htT, hxt⟩ : ∃ t ∈ T,
+        x ∈ radialAnnulusIcc (d + 1) (t - δ / 4) (t + δ / 4) := by
+      rw [hS] at hx
+      simpa only [Set.mem_iUnion, exists_prop] using hx
+    have htE : t ∈ E := hTE htT
+    have htIcc : t ∈ Icc (1 : ℝ) 2 := hE htE
+    have htpos : (0 : ℝ) < t := lt_of_lt_of_le zero_lt_one htIcc.1
+    have hclose : |‖x‖ - t| ≤ steinLower δ := by
+      have hhalf : |‖x‖ - t| ≤ δ / 2 := by
+        rw [radialAnnulusIcc, mem_setOf_eq, mem_Icc] at hxt
+        rw [abs_le]
+        exact ⟨by linarith [hxt.1], by linarith [hxt.2]⟩
+      have := delta_le_steinLower hδ hδ1.le
+      linarith
+    have havg := le_norm_sphericalAverage_steinFun hd hδ hL htIcc.1 htIcc.2 hclose
+    rw [hKdef]
+    unfold M _root_.Spherical.restrictedSphericalMaximal
+    refine le_iSup_of_le t (le_iSup_of_le ⟨htE, htpos⟩ ?_)
+    exact ENNReal.ofReal_le_ofReal havg
+  have hlow : ENNReal.ofReal (K * Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1))) *
+      volume S ^ (1 / q) ≤ eLpNorm (M E f) (ENNReal.ofReal q) volume :=
+    le_eLpNorm_of_const_le_on hSmeas
+      (mul_nonneg hKpos.le (Real.rpow_nonneg hLpos.le _)) hlarge hq
+  have hvol : ENNReal.ofReal ((T.card : ℝ) * (c1 * δ) * V) ≤ volume S := by
+    have hkey : ENNReal.ofReal ((T.card : ℝ) * (c1 * δ) * V) =
+        (T.card : ENNReal) *
+          (ENNReal.ofReal ((3 / 4 : ℝ) ^ (d + 1 - 1) * (δ / 2)) *
+            ENNReal.ofReal V) := by
+      rw [ENNReal.ofReal_mul (mul_nonneg hcard (mul_nonneg hc1pos.le hδ.le)),
+        ENNReal.ofReal_mul hcard, ENNReal.ofReal_natCast, mul_assoc]
+      congr 2
+      rw [hc1, show d + 1 - 1 = d by omega]
+      ring
+    rw [hkey, ← hVeq, hS]
+    exact volume_biUnion_separated_annuli_ge hd1 hδ hδ1.le
+      (fun t ht => hE (hTE ht)) hsep
+  have hsplit : ((T.card : ℝ) * (c1 * δ) * V) ^ (1 / q) =
+      (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) * (c1 * V) ^ (1 / q) := by
+    rw [show (T.card : ℝ) * (c1 * δ) * V = ((T.card : ℝ) * δ) * (c1 * V) by ring,
+      Real.mul_rpow (mul_nonneg hcard hδ.le) (mul_nonneg hc1pos.le hVpos.le),
+      Real.mul_rpow hcard hδ.le]
+  have hprod : K * (c1 * V) ^ (1 / q) * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+        Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) =
+      (K * Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1))) *
+        (((T.card : ℝ) * (c1 * δ) * V) ^ (1 / q)) := by
+    rw [hsplit]
+    ring
+  rw [hprod, ENNReal.ofReal_mul (mul_nonneg hKpos.le (Real.rpow_nonneg hLpos.le _)),
+    ← ENNReal.ofReal_rpow_of_nonneg
+      (x := (T.card : ℝ) * (c1 * δ) * V)
+      (mul_nonneg (mul_nonneg hcard (mul_nonneg hc1pos.le hδ.le)) hVpos.le)
+      hqinv]
+  exact le_trans (mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hvol hqinv)) hlow
+
+/-! ## The scalar form of Lemma 3.4 at the endpoint `p = p_D` -/
+
+set_option maxHeartbeats 1000000 in
+theorem coveringNumber_stein_bound_of_hasRadialStrongType_pd {d : ℕ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {q : ℝ} (hq : 0 < q)
+    (h : HasRadialStrongType (d + 1) E
+      (ENNReal.ofReal (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)))
+      (ENNReal.ofReal q)) :
+    ∃ K : ℝ, 0 < K ∧ ∀ δ : ℝ, 0 < δ → 12 ≤ Real.log (1 / δ) →
+      ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+        Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) ≤ K := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDR : (2 : ℝ) ≤ ((d + 1 : ℕ) : ℝ) := by exact_mod_cast hD
+  obtain ⟨C, hC, hbound⟩ := h
+  obtain ⟨c, hc, h34⟩ := le_eLpNorm_maximal_stein hd hE hq
+  have hSm : 0 < surfaceMass (d + 1) := surfaceMass_pos (by omega)
+  have hexp : (0 : ℝ) ≤ (((d + 1 : ℕ) : ℝ) - 1) / ((d + 1 : ℕ) : ℝ) := by
+    apply div_nonneg <;> linarith
+  have hSmpow : (0 : ℝ) <
+      surfaceMass (d + 1) ^ ((((d + 1 : ℕ) : ℝ) - 1) / ((d + 1 : ℕ) : ℝ)) :=
+    Real.rpow_pos_of_pos hSm _
+  refine ⟨C * surfaceMass (d + 1) ^
+      ((((d + 1 : ℕ) : ℝ) - 1) / ((d + 1 : ℕ) : ℝ)) / c,
+    div_pos (mul_pos hC hSmpow) hc, ?_⟩
+  intro δ hδ hL
+  have hδ1 : δ < 1 := delta_lt_one_of_log hδ hL
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  obtain ⟨T, hT⟩ := exists_isMaximalSeparatedSubset hE hδ
+  have hsep : ∀ t ∈ T, ∀ s ∈ T, t ≠ s → δ ≤ |t - s| := by
+    intro t ht s hs hts
+    exact hT.2.1 (by simpa using ht) (by simpa using hs) hts
+  have hmem : MemLp (fun y : Euclidean (d + 1) => steinFun (d + 1) δ ‖y‖)
+      (ENNReal.ofReal (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) volume :=
+    memLp_steinFun_lift (d := d + 1) hD hδ hδ1
+  have hnormle : eLpNorm (fun y : Euclidean (d + 1) => steinFun (d + 1) δ ‖y‖)
+      (ENNReal.ofReal (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) volume ≤
+        ENNReal.ofReal
+          (surfaceMass (d + 1) ^
+            ((((d + 1 : ℕ) : ℝ) - 1) / ((d + 1 : ℕ) : ℝ))) := by
+    have hb := eLpNorm_steinFun_lift_le (d := d + 1) hD hδ hδ1
+    rwa [ENNReal.ofReal_rpow_of_nonneg hSm.le hexp] at hb
+  have hrad := isNormRadial_steinFun_lift (d + 1) δ
+  have hchain :
+      ENNReal.ofReal (c * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+          Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1))) ≤
+        ENNReal.ofReal (C * surfaceMass (d + 1) ^
+          ((((d + 1 : ℕ) : ℝ) - 1) / ((d + 1 : ℕ) : ℝ))) := by
+    refine le_trans (h34 δ hδ hL T hT.1 hsep) ?_
+    refine le_trans (hbound _ hmem hrad).2 ?_
+    rw [ENNReal.ofReal_mul hC.le]
+    exact mul_le_mul' le_rfl hnormle
+  have hreal := (ENNReal.ofReal_le_ofReal_iff
+    (mul_nonneg hC.le hSmpow.le)).mp hchain
+  have hcov : ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ≤ (T.card : ℝ) := by
+    exact_mod_cast intervalCoveringNumber_le_card_of_isMaximalSeparatedSubset hδ hT
+  have hmono : ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ^ (1 / q) ≤
+      (T.card : ℝ) ^ (1 / q) :=
+    Real.rpow_le_rpow (Nat.cast_nonneg _) hcov (by positivity)
+  have hδpow : (0 : ℝ) ≤ δ ^ (1 / q) := Real.rpow_nonneg hδ.le _
+  have hLpow : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) :=
+    Real.rpow_nonneg hLpos.le _
+  rw [le_div_iff₀ hc]
+  calc ((intervalCoveringNumber E (2 * δ) : ℕ) : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+        Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) * c
+      ≤ (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+          Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) * c := by
+        have hs1 := mul_le_mul_of_nonneg_right hmono hδpow
+        have hs2 := mul_le_mul_of_nonneg_right hs1 hLpow
+        exact mul_le_mul_of_nonneg_right hs2 hc.le
+    _ = c * (T.card : ℝ) ^ (1 / q) * δ ^ (1 / q) *
+          Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) := by ring
+    _ ≤ _ := hreal
+
+/-! ## The weighted entropy quantity is unbounded already at small scales -/
+
+theorem exists_small_delta_of_logpow_sup_infinite {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {u : ℝ} (hu : 0 ≤ u)
+    (hsup : ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) ^ u * ((intervalCoveringNumber E δ : ℕ) : ℝ))
+    (A : ℝ) : ∃ δ : ℝ, 0 < δ ∧ 12 ≤ Real.log (1 / δ) ∧
+      A < δ * Real.log (1 / δ) ^ u * ((intervalCoveringNumber E δ : ℕ) : ℝ) := by
+  obtain ⟨e, he⟩ : ∃ x : ℝ, x = Real.exp (-12) := ⟨_, rfl⟩
+  have hepos : 0 < e := by rw [he]; exact Real.exp_pos _
+  obtain ⟨N0, hN0⟩ : ∃ x : ℝ, x = ((intervalCoveringNumber E e : ℕ) : ℝ) := ⟨_, rfl⟩
+  have hN0nn : 0 ≤ N0 := by rw [hN0]; exact Nat.cast_nonneg _
+  obtain ⟨M, hM⟩ : ∃ x : ℝ, x = (12 : ℝ) ^ u * N0 := ⟨_, rfl⟩
+  obtain ⟨δ, hδ, hδ1, hlt⟩ := hsup (max A M)
+  refine ⟨δ, hδ, ?_, lt_of_le_of_lt (le_max_left _ _) hlt⟩
+  by_contra hcon
+  push Not at hcon
+  have hinvpos : (0 : ℝ) < 1 / δ := by positivity
+  have hexp12 : 1 / δ < Real.exp 12 := by
+    have h := Real.exp_lt_exp.mpr hcon
+    rwa [Real.exp_log hinvpos] at h
+  have hδe : e ≤ δ := by
+    rw [he, Real.exp_neg]
+    rw [div_lt_iff₀ hδ] at hexp12
+    rw [inv_le_iff_one_le_mul₀ (Real.exp_pos 12)]
+    nlinarith [hexp12, Real.exp_pos (12 : ℝ)]
+  have hNle : ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ N0 := by
+    rw [hN0]
+    exact_mod_cast intervalCoveringNumber_mono_scale hE hepos hδe
+  have hlogpos : 0 < Real.log (1 / δ) := by
+    refine Real.log_pos ?_
+    rw [lt_div_iff₀ hδ, one_mul]
+    exact hδ1
+  have hNnn : (0 : ℝ) ≤ ((intervalCoveringNumber E δ : ℕ) : ℝ) := Nat.cast_nonneg _
+  have hpow : Real.log (1 / δ) ^ u ≤ (12 : ℝ) ^ u :=
+    Real.rpow_le_rpow hlogpos.le hcon.le hu
+  have hpownn : (0 : ℝ) ≤ Real.log (1 / δ) ^ u := Real.rpow_nonneg hlogpos.le _
+  have h12 : (0 : ℝ) ≤ (12 : ℝ) ^ u := Real.rpow_nonneg (by norm_num) _
+  have hle : δ * Real.log (1 / δ) ^ u *
+      ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ M := by
+    rw [hM]
+    have h1 : δ * Real.log (1 / δ) ^ u ≤ (12 : ℝ) ^ u := by
+      nlinarith [hpow, hδ1, hδ, hpownn]
+    nlinarith [h1, hNle, hNnn, h12]
+  exact absurd (lt_of_le_of_lt (le_max_right A M) hlt) (not_lt.mpr hle)
+
+/-! ## Theorem 1.1(iii), the failure at `p = p_D` -/
+
+theorem not_hasRadialStrongType_pd_of_logpow_sup_infinite {d : ℕ} (hd : 2 ≤ d)
+    {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2) {q : ℝ} (hq : 0 < q)
+    (hsup : ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) ^ (q / ((d : ℝ) + 1)) *
+        ((intervalCoveringNumber E δ : ℕ) : ℝ)) :
+    ¬ HasRadialStrongType (d + 1) E
+      (ENNReal.ofReal (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)))
+      (ENNReal.ofReal q) := by
+  intro h
+  have hdpos : (0 : ℝ) < (d : ℝ) + 1 := by positivity
+  have hunn : (0 : ℝ) ≤ q / ((d : ℝ) + 1) := by positivity
+  obtain ⟨K, hK, hbound⟩ :=
+    coveringNumber_stein_bound_of_hasRadialStrongType_pd hd hE hq h
+  obtain ⟨δ', hδ', hlog, hlt⟩ :=
+    exists_small_delta_of_logpow_sup_infinite hE hunn hsup (2 * K ^ q)
+  obtain ⟨δ, hδdef⟩ : ∃ x : ℝ, x = δ' / 2 := ⟨_, rfl⟩
+  have hδpos : 0 < δ := by rw [hδdef]; linarith
+  have hδle : δ ≤ δ' := by rw [hδdef]; linarith
+  have hloglt : Real.log (1 / δ') ≤ Real.log (1 / δ) := by
+    refine Real.log_le_log (by positivity) ?_
+    exact one_div_le_one_div_of_le hδpos hδle
+  have hlogδ : 12 ≤ Real.log (1 / δ) := le_trans hlog hloglt
+  have hLpos : 0 < Real.log (1 / δ) := by linarith
+  have hlogδ' : 0 < Real.log (1 / δ') := by
+    refine Real.log_pos ?_
+    rw [lt_div_iff₀ hδ', one_mul]
+    exact delta_lt_one_of_log hδ' hlog
+  have hb := hbound δ hδpos hlogδ
+  have h2δ : 2 * δ = δ' := by rw [hδdef]; ring
+  rw [h2δ] at hb
+  obtain ⟨N, hN⟩ : ∃ x : ℝ, x = ((intervalCoveringNumber E δ' : ℕ) : ℝ) := ⟨_, rfl⟩
+  have hNnn : (0 : ℝ) ≤ N := by rw [hN]; exact Nat.cast_nonneg _
+  rw [← hN] at hb
+  have hlhs : (0 : ℝ) ≤ N ^ (1 / q) * δ ^ (1 / q) *
+      Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) := by
+    have h1 : (0 : ℝ) ≤ N ^ (1 / q) := Real.rpow_nonneg hNnn _
+    have h2 : (0 : ℝ) ≤ δ ^ (1 / q) := Real.rpow_nonneg hδpos.le _
+    have h3 : (0 : ℝ) ≤ Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1)) :=
+      Real.rpow_nonneg hLpos.le _
+    positivity
+  have hpow := Real.rpow_le_rpow hlhs hb hq.le
+  have hexpand : (N ^ (1 / q) * δ ^ (1 / q) *
+      Real.log (1 / δ) ^ (1 / ((d : ℝ) + 1))) ^ q =
+      N * δ * Real.log (1 / δ) ^ (q / ((d : ℝ) + 1)) := by
+    rw [Real.mul_rpow (mul_nonneg (Real.rpow_nonneg hNnn _)
+        (Real.rpow_nonneg hδpos.le _)) (Real.rpow_nonneg hLpos.le _),
+      Real.mul_rpow (Real.rpow_nonneg hNnn _) (Real.rpow_nonneg hδpos.le _),
+      ← Real.rpow_mul hNnn, ← Real.rpow_mul hδpos.le, ← Real.rpow_mul hLpos.le,
+      one_div, inv_mul_cancel₀ hq.ne', Real.rpow_one, Real.rpow_one,
+      show (1 : ℝ) / ((d : ℝ) + 1) * q = q / ((d : ℝ) + 1) by ring]
+  rw [hexpand] at hpow
+  have hLmono : Real.log (1 / δ') ^ (q / ((d : ℝ) + 1)) ≤
+      Real.log (1 / δ) ^ (q / ((d : ℝ) + 1)) :=
+    Real.rpow_le_rpow hlogδ'.le hloglt hunn
+  have hchain : N * δ * Real.log (1 / δ') ^ (q / ((d : ℝ) + 1)) ≤ K ^ q := by
+    have hstep : N * δ * Real.log (1 / δ') ^ (q / ((d : ℝ) + 1)) ≤
+        N * δ * Real.log (1 / δ) ^ (q / ((d : ℝ) + 1)) :=
+      mul_le_mul_of_nonneg_left hLmono (mul_nonneg hNnn hδpos.le)
+    linarith [hstep, hpow]
+  have hfinal : δ' * Real.log (1 / δ') ^ (q / ((d : ℝ) + 1)) * N ≤ 2 * K ^ q := by
+    have hid : δ' * Real.log (1 / δ') ^ (q / ((d : ℝ) + 1)) * N =
+        2 * (N * δ * Real.log (1 / δ') ^ (q / ((d : ℝ) + 1))) := by
+      rw [hδdef]; ring
+    rw [hid]
+    linarith [hchain]
+  rw [← hN] at hlt
+  exact absurd hlt (not_lt.mpr hfinal)
+
+/-! ## The logarithmic covering hypothesis of Proposition 4.6 at `β = 1`
+
+For `β < 1` the covering bound of Proposition 4.6 comes for free from the
+Minkowski exponent.  At `β = 1` it is exactly the hypothesis
+`sup_{δ<1} δ (log 1/δ)^{q/D} N(E,δ) < ∞` of Theorem 1.1(iii). -/
+
+theorem exists_logcov_bound_of_logpow_sup {E : Set ℝ} {q : ℝ} (hq : 0 < q)
+    {D : ℕ} (hD : 2 ≤ D) {A : ℝ} (hA : 0 < A)
+    (hfin : ∀ δ : ℝ, 0 < δ → δ < 1 →
+      δ * Real.log (1 / δ) ^ (q / (D : ℝ)) *
+        ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A) :
+    ∃ B : ℝ, 0 < B ∧ ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / (D : ℝ)))) := by
+  have hDR : (2 : ℝ) ≤ (D : ℝ) := by exact_mod_cast hD
+  have hDpos : (0 : ℝ) < (D : ℝ) := by linarith
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  refine ⟨A ^ (1 / q), Real.rpow_pos_of_pos hA _, ?_⟩
+  intro l hl
+  obtain ⟨m, hm⟩ : ∃ x : ℝ, x = (2 : ℝ) ^ (l - 1) := ⟨_, rfl⟩
+  have hm1 : (1 : ℝ) ≤ m := by
+    rw [hm]
+    exact one_le_pow₀ (by norm_num)
+  have hmpos : (0 : ℝ) < m := lt_of_lt_of_le zero_lt_one hm1
+  have hδeq : (2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ)) = (2 : ℝ) ^ (-m) := by
+    rw [hm, ← Real.rpow_intCast (2 : ℝ) (-(2 ^ (l - 1) : ℤ))]
+    congr 1
+    push_cast
+    ring
+  have hmpow : (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) = (2 : ℝ) ^ m := by
+    rw [hm, ← Real.rpow_intCast (2 : ℝ) ((2 ^ (l - 1) : ℤ))]
+    congr 1
+    push_cast
+    ring
+  have hδpos : (0 : ℝ) < (2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ)) := by positivity
+  have hδlt : (2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ)) < 1 := by
+    rw [hδeq]
+    refine Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) ?_
+    linarith
+  have hinv : 1 / ((2 : ℝ) ^ (-m)) = (2 : ℝ) ^ m := by
+    rw [Real.rpow_neg (by norm_num), one_div, inv_inv]
+  have hloginv : Real.log (1 / ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ)))) =
+      m * Real.log 2 := by
+    rw [hδeq, hinv, Real.log_rpow (by norm_num)]
+  obtain ⟨w, hw⟩ : ∃ x : ℝ, x = (m * Real.log 2) ^ (q / (D : ℝ)) := ⟨_, rfl⟩
+  have hwpos : (0 : ℝ) < w := by
+    rw [hw]
+    exact Real.rpow_pos_of_pos (by positivity) _
+  obtain ⟨Nv, hNv⟩ : ∃ x : ℝ,
+      x = ((intervalCoveringNumber E ((2 : ℝ) ^ (-m)) : ℕ) : ℝ) := ⟨_, rfl⟩
+  have hNvnn : (0 : ℝ) ≤ Nv := by rw [hNv]; exact Nat.cast_nonneg _
+  have hb := hfin _ hδpos hδlt
+  rw [hloginv, hδeq, ← hw, ← hNv] at hb
+  have h2pos : (0 : ℝ) < (2 : ℝ) ^ m := Real.rpow_pos_of_pos (by norm_num) _
+  have hcancel : (2 : ℝ) ^ m * (2 : ℝ) ^ (-m) = 1 := by
+    rw [← Real.rpow_add (by norm_num)]
+    simp
+  have hNw : Nv * w ≤ A * (2 : ℝ) ^ m := by
+    have hmul := mul_le_mul_of_nonneg_left hb h2pos.le
+    have hsimp : (2 : ℝ) ^ m * ((2 : ℝ) ^ (-m) * w * Nv) =
+        ((2 : ℝ) ^ m * (2 : ℝ) ^ (-m)) * (w * Nv) := by ring
+    rw [hsimp, hcancel, one_mul] at hmul
+    linarith [hmul]
+  have hNle : Nv ≤ A * (2 : ℝ) ^ m * (m * Real.log 2) ^ (-(q / (D : ℝ))) := by
+    have hwinv : (m * Real.log 2) ^ (-(q / (D : ℝ))) = w⁻¹ := by
+      rw [hw, ← Real.rpow_neg_one, ← Real.rpow_mul (by positivity)]
+      congr 1
+      ring
+    rw [hwinv, ← div_eq_mul_inv, le_div_iff₀ hwpos]
+    exact hNw
+  have hAq : (A ^ (1 / q)) ^ q = A := by
+    rw [← Real.rpow_mul hA.le, one_div, inv_mul_cancel₀ hq.ne', Real.rpow_one]
+  calc ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞)
+      = ENNReal.ofReal
+          ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ) := by
+        rw [ENNReal.ofReal_natCast]
+    _ ≤ ENNReal.ofReal ((A ^ (1 / q)) ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / (D : ℝ)))) := by
+        refine ENNReal.ofReal_le_ofReal ?_
+        rw [hAq, hmpow, ← hm, hδeq, ← hNv]
+        exact hNle
+
+/-! ## The two branches of `Δ_1`
+
+For `p > p_D` no hypothesis on `E` is needed, and for `p = p_D` the
+logarithmic covering bound is the only input. -/
+
+theorem hasRadialStrongTypeCont_large_p {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) {p q : ℝ}
+    (hpd : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) < p) (hpq : p ≤ q)
+    (hqpd : q ≤ p * ((d + 1 : ℕ) : ℝ)) :
+    HasRadialStrongTypeCont (d + 1) E p q := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDR : (2 : ℝ) ≤ ((d + 1 : ℕ) : ℝ) := by exact_mod_cast hD
+  have hpd1 : (1 : ℝ) < ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) := by
+    rw [lt_div_iff₀ (by linarith)]
+    linarith
+  have hp1 : 1 < p := lt_trans hpd1 hpd
+  have hq0 : 0 < q := lt_of_lt_of_le (lt_trans zero_lt_one hp1) hpq
+  exact memLp_and_eLpNorm_M_lift_le_edge hd hE hp1 hpq hqpd
+    (prop44_brsMainMaximal (d := d + 1) hD hE hpd hq0)
+
+theorem hasRadialStrongTypeCont_endpoint {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    (hEnull : volume (closure E) = 0) {q B : ℝ} (hB : 0 < B)
+    (hpq : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) ≤ q)
+    (hqpd : q ≤ (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)) * ((d + 1 : ℕ) : ℝ))
+    (hcov : ∀ l : ℕ, 1 ≤ l →
+      ((intervalCoveringNumber E ((2 : ℝ) ^ (-(2 ^ (l - 1) : ℤ))) : ℕ) : ℝ≥0∞) ≤
+        ENNReal.ofReal (B ^ q * (2 : ℝ) ^ ((2 ^ (l - 1) : ℤ)) *
+          (((2 : ℝ) ^ (l - 1)) * Real.log 2) ^ (-(q / ((d + 1 : ℕ) : ℝ))))) :
+    HasRadialStrongTypeCont (d + 1) E
+      (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)) q := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDR : (2 : ℝ) ≤ ((d + 1 : ℕ) : ℝ) := by exact_mod_cast hD
+  have hpd1 : (1 : ℝ) < ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) := by
+    rw [lt_div_iff₀ (by linarith)]
+    linarith
+  have hq0 : 0 < q := lt_of_lt_of_le (lt_trans zero_lt_one hpd1) hpq
+  obtain ⟨C, hC, hb⟩ :=
+    prop46_brsMainMaximal (d := d + 1) hD hE hEne hEnull hpq hB hcov
+  have hmain : ∃ C : ℝ, 0 < C ∧ ∀ g : ℝ → ℂ, Measurable g →
+      (∫⁻ r, ENNReal.ofReal r ^ (d + 1 - 1) *
+          brsMainMaximal (d + 1) E
+            (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)) g r ^ q) ^ (1 / q) ≤
+        ENNReal.ofReal C *
+          (∫⁻ s in Ioi (0 : ℝ), (ENNReal.ofReal ‖g s‖) ^
+            (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) ^
+              (1 / (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1))) := by
+    refine ⟨C, hC, fun g hg => ?_⟩
+    rw [one_div_div]
+    exact hb g hg
+  exact memLp_and_eLpNorm_M_lift_le_edge hd hE hpd1 hpq hqpd hmain
+
+/-! ## The `β = 1` endpoint hypothesis
+
+At `β = 1` the endpoint bound at `p = p_D` is governed by the finiteness of
+`sup_{δ<1} δ (log 1/δ)^{q/D} N(E,δ)`, which depends on `q`, unlike the
+`q`-independent entropy hypothesis of Theorem 1.1(i). -/
+
+/-- `sup_{0<δ<1} δ (log 1/δ)^u N(E,δ) < ∞`. -/
+def HasLogEntropyBound (E : Set ℝ) (u : ℝ) : Prop :=
+  ∃ A : ℝ, 0 < A ∧ ∀ δ : ℝ, 0 < δ → δ < 1 →
+    δ * Real.log (1 / δ) ^ u * ((intervalCoveringNumber E δ : ℕ) : ℝ) ≤ A
+
+theorem sup_infinite_of_not_hasLogEntropyBound {E : Set ℝ} {u : ℝ}
+    (h : ¬ HasLogEntropyBound E u) :
+    ∀ A : ℝ, ∃ δ : ℝ, 0 < δ ∧ δ < 1 ∧
+      A < δ * Real.log (1 / δ) ^ u * ((intervalCoveringNumber E δ : ℕ) : ℝ) := by
+  intro A
+  by_contra hcon
+  push Not at hcon
+  exact h ⟨max A 1, lt_of_lt_of_le zero_lt_one (le_max_right _ _),
+    fun δ hδ hδ1 => le_trans (hcon δ hδ hδ1) (le_max_left _ _)⟩
+
+/-- A finite weighted entropy sum forces the closure of `E` to be null, which
+is what Proposition 4.6 needs to cover the zeroth shell. -/
+theorem volume_closure_eq_zero_of_logEntropy {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
+    {u : ℝ} (hu : 0 < u) (hent : HasLogEntropyBound E u) :
+    volume (closure E) = 0 := by
+  obtain ⟨A, hA, hbound⟩ := hent
+  have hstep : ∀ n : ℕ, volume (closure E) ≤
+      ENNReal.ofReal (A / ((n : ℝ) + 1) ^ u) := by
+    intro n
+    have hn0 : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
+    obtain ⟨δ, hδdef⟩ : ∃ x : ℝ, x = Real.exp (-((n : ℝ) + 1)) := ⟨_, rfl⟩
+    have hδpos : 0 < δ := by rw [hδdef]; exact Real.exp_pos _
+    have hδ1 : δ < 1 := by
+      rw [hδdef]
+      have h := Real.exp_lt_exp.mpr (show -((n : ℝ) + 1) < 0 by linarith)
+      rwa [Real.exp_zero] at h
+    have hlog : Real.log (1 / δ) = (n : ℝ) + 1 := by
+      rw [hδdef, one_div, ← Real.exp_neg, Real.log_exp]
+      ring
+    have h1 := volume_closure_le_coveringNumber_mul hE hδpos
+    have hb := hbound δ hδpos hδ1
+    rw [hlog] at hb
+    have hpowpos : (0 : ℝ) < ((n : ℝ) + 1) ^ u :=
+      Real.rpow_pos_of_pos (by linarith) _
+    have h2 : ((intervalCoveringNumber E δ : ℕ) : ℝ) * δ ≤
+        A / ((n : ℝ) + 1) ^ u := by
+      rw [le_div_iff₀ hpowpos]
+      nlinarith [hb]
+    exact le_trans h1 (ENNReal.ofReal_le_ofReal h2)
+  have hten : Tendsto (fun n : ℕ => A / ((n : ℝ) + 1) ^ u) atTop (nhds 0) := by
+    have h1 : Tendsto (fun n : ℕ => ((n : ℝ) + 1)) atTop atTop :=
+      tendsto_atTop_add_const_right _ 1 tendsto_natCast_atTop_atTop
+    have h2 : Tendsto (fun n : ℕ => ((n : ℝ) + 1) ^ u) atTop atTop :=
+      (_root_.tendsto_rpow_atTop hu).comp h1
+    have h3 := h2.inv_tendsto_atTop
+    have h4 := h3.const_mul A
+    simpa [div_eq_mul_inv] using h4
+  have hlim : Tendsto (fun n : ℕ =>
+      ENNReal.ofReal (A / ((n : ℝ) + 1) ^ u)) atTop (nhds 0) := by
+    have h := (ENNReal.continuous_ofReal.tendsto 0).comp hten
+    simpa [Function.comp_def] using h
+  have hle : volume (closure E) ≤ 0 :=
+    ge_of_tendsto hlim (Filter.Eventually.of_forall hstep)
+  exact le_antisymm hle (by simp)
+
+/-! ## Theorem 1.1(iii) of BRS
+
+At `β = 1` the triangle `Δ_1` lies in `p ≥ p_D`.  Strictly beyond `p_D` the
+main term needs no hypothesis on `E` at all, and the whole segment up to the
+edge `q = pD` is reached.  On the vertical line `p = p_D` the bound holds
+exactly when `sup_{δ<1} δ (log 1/δ)^{q/D} N(E,δ) < ∞`: sufficiency is
+Proposition 4.6 and necessity is Lemma 3.4. -/
+
+set_option maxHeartbeats 1000000 in
+theorem thm11iii_radialTypeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E ⊆ Icc (1 : ℝ) 2) (hEne : E.Nonempty)
+    (hdim : upperMinkowskiDimension E = 1) :
+    (Delta (d + 1) 1 ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1 ∧
+          (z.1 < (d : ℝ) / ((d : ℝ) + 1) ∨
+            HasLogEntropyBound E ((1 / z.2) / ((d : ℝ) + 1)))} ⊆
+        radialTypeSetCont (d + 1) E) ∧
+      radialTypeSet (d + 1) E ⊆ Delta (d + 1) 1 ∧
+      (∀ z ∈ radialTypeSet (d + 1) E, z.1 = (d : ℝ) / ((d : ℝ) + 1) →
+        HasLogEntropyBound E ((1 / z.2) / ((d : ℝ) + 1))) := by
+  have hD : 2 ≤ d + 1 := by omega
+  have hDcast : ((d + 1 : ℕ) : ℝ) = (d : ℝ) + 1 := by push_cast; ring
+  have hdpos : (0 : ℝ) < (d : ℝ) := by
+    have h : (0 : ℕ) < d := by omega
+    exact_mod_cast h
+  have hd1pos : (0 : ℝ) < (d : ℝ) + 1 := by linarith
+  have hpDeq : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) =
+      ((d : ℝ) + 1) / (d : ℝ) := by
+    rw [hDcast, show ((d : ℝ) + 1 - 1) = (d : ℝ) by ring]
+  refine ⟨?_, radialTypeSet_subset_Delta (by omega) hE hEne hdim, ?_⟩
+  · rintro z ⟨hzΔ, hz2pos, hz1lt, hcase⟩
+    obtain ⟨h1, h2, h3⟩ := Delta_subset_halfplanes hD (by norm_num : (0 : ℝ) ≤ 1) hzΔ
+    rw [hDcast] at h2 h3
+    have hz1pos : 0 < z.1 := lt_of_lt_of_le hz2pos h1
+    obtain ⟨p, hpdef⟩ : ∃ x : ℝ, x = 1 / z.1 := ⟨_, rfl⟩
+    obtain ⟨q, hqdef⟩ : ∃ x : ℝ, x = 1 / z.2 := ⟨_, rfl⟩
+    have hp1 : 1 < p := by
+      rw [hpdef, lt_div_iff₀ hz1pos, one_mul]
+      exact hz1lt
+    have hp0 : 0 < p := lt_trans zero_lt_one hp1
+    have hq0 : 0 < q := by
+      rw [hqdef]
+      positivity
+    have hzp : z.1 = 1 / p := by rw [hpdef, one_div_one_div]
+    have hzq : z.2 = 1 / q := by rw [hqdef, one_div_one_div]
+    have hpq : p ≤ q := by
+      rw [hpdef, hqdef]
+      exact one_div_le_one_div_of_le hz2pos h1
+    have hq1 : (1 : ℝ) ≤ q := le_trans hp1.le hpq
+    have hqpd : q ≤ p * ((d + 1 : ℕ) : ℝ) := by
+      have h2' : 1 / p ≤ ((d + 1 : ℕ) : ℝ) * (1 / q) := by
+        rw [← hzp, ← hzq, hDcast]; exact h2
+      rw [mul_one_div, div_le_div_iff₀ hp0 hq0, one_mul] at h2'
+      linarith [h2', mul_comm ((d + 1 : ℕ) : ℝ) p]
+    have hz1le : z.1 ≤ (d : ℝ) / ((d : ℝ) + 1) := by
+      rw [le_div_iff₀ hd1pos]
+      nlinarith [h3]
+    refine ⟨p, q, hp1.le, hq1, by rw [← hzp, ← hzq], ?_⟩
+    rcases lt_or_eq_of_le hz1le with hlt | heq
+    · have hpd : ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) < p := by
+        rw [hpDeq, div_lt_iff₀ hdpos]
+        have hlt' : 1 / p < (d : ℝ) / ((d : ℝ) + 1) := by rw [← hzp]; exact hlt
+        rw [div_lt_div_iff₀ hp0 hd1pos, one_mul] at hlt'
+        linarith [hlt', mul_comm (d : ℝ) p]
+      exact hasRadialStrongTypeCont_large_p hd hE hpd hpq hqpd
+    · have hpeq : p = ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) := by
+        rw [hpDeq, hpdef, heq, one_div_div]
+      rcases hcase with hc | hent
+      · rw [heq] at hc
+        exact absurd hc (lt_irrefl _)
+      · have hu : (0 : ℝ) < q / ((d : ℝ) + 1) := by positivity
+        have hz2 : 1 / z.2 = q := by rw [hzq, one_div_one_div]
+        rw [hz2] at hent
+        have hEnull := volume_closure_eq_zero_of_logEntropy hE hu hent
+        obtain ⟨A, hA, hfin⟩ := hent
+        rw [← hDcast] at hfin
+        obtain ⟨B, hB, hcov⟩ :=
+          exists_logcov_bound_of_logpow_sup (E := E) (D := d + 1) hq0 hD hA hfin
+        have hres := hasRadialStrongTypeCont_endpoint hd hE hEne hEnull hB
+          (by rw [← hpeq]; exact hpq) (by rw [← hpeq]; exact hqpd) hcov
+        rw [← hpeq] at hres
+        exact hres
+  · intro z hz hz1
+    by_contra hcon
+    have hΔ : z ∈ Delta (d + 1) 1 :=
+      radialTypeSet_subset_Delta (by omega) hE hEne hdim hz
+    obtain ⟨h1, h2, -⟩ :=
+      Delta_subset_halfplanes hD (by norm_num : (0 : ℝ) ≤ 1) hΔ
+    rw [hDcast] at h2
+    have hz1pos : 0 < z.1 := by
+      rw [hz1]
+      positivity
+    have hz2pos : 0 < z.2 := by nlinarith [h2, hz1pos, hd1pos]
+    obtain ⟨P, Q, hP1, hQ1, hzeq, hstrong⟩ := hz
+    have hz1eq : z.1 = (P⁻¹).toReal := by rw [hzeq]
+    have hz2eq : z.2 = (Q⁻¹).toReal := by rw [hzeq]
+    have hPtop : P ≠ ⊤ := by
+      intro hc
+      rw [hc] at hz1eq
+      simp at hz1eq
+      exact absurd hz1eq (ne_of_gt hz1pos)
+    have hQtop : Q ≠ ⊤ := by
+      intro hc
+      rw [hc] at hz2eq
+      simp at hz2eq
+      exact absurd hz2eq (ne_of_gt hz2pos)
+    have hpp1 : (1 : ℝ) ≤ P.toReal := by
+      rw [← ENNReal.toReal_one]
+      exact (ENNReal.toReal_le_toReal (by simp) hPtop).mpr hP1
+    have hqq1 : (1 : ℝ) ≤ Q.toReal := by
+      rw [← ENNReal.toReal_one]
+      exact (ENNReal.toReal_le_toReal (by simp) hQtop).mpr hQ1
+    have hp0 : (0 : ℝ) < P.toReal := lt_of_lt_of_le zero_lt_one hpp1
+    have hq0 : (0 : ℝ) < Q.toReal := lt_of_lt_of_le zero_lt_one hqq1
+    have hz1p : z.1 = 1 / P.toReal := by
+      rw [hz1eq, ENNReal.toReal_inv, one_div]
+    have hz2q : z.2 = 1 / Q.toReal := by
+      rw [hz2eq, ENNReal.toReal_inv, one_div]
+    have hPval : P.toReal = ((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1) := by
+      rw [hpDeq]
+      have h : (1 : ℝ) / P.toReal = (d : ℝ) / ((d : ℝ) + 1) := by
+        rw [← hz1p]; exact hz1
+      rw [div_eq_div_iff hp0.ne' hd1pos.ne'] at h
+      rw [eq_div_iff hdpos.ne']
+      linarith [h, mul_comm (d : ℝ) P.toReal]
+    have hqval : 1 / z.2 = Q.toReal := by rw [hz2q, one_div_one_div]
+    rw [hqval] at hcon
+    have hstrong' : HasRadialStrongType (d + 1) E
+        (ENNReal.ofReal (((d + 1 : ℕ) : ℝ) / (((d + 1 : ℕ) : ℝ) - 1)))
+        (ENNReal.ofReal Q.toReal) := by
+      rw [← hPval, ENNReal.ofReal_toReal hPtop, ENNReal.ofReal_toReal hQtop]
+      exact hstrong
+    exact not_hasRadialStrongType_pd_of_logpow_sup_infinite hd hE hq0
+      (sup_infinite_of_not_hasLogEntropyBound hcon) hstrong'
+
+end BRSOffDiag
 
 end Prop46
 

@@ -3536,3 +3536,736 @@ together with:
 * an *abstract* layer-cake lemma taking the level-set bound as a hypothesis, so
   that the Proposition 4.3 argument is written once and used for both
   `brsRemTwoWide` and `brsRemTwoCent`.
+
+## Row 87: the left endpoint is proved (2026-09-06)
+
+`prop54_brsRemTwoTwoLeft_endpoint` is complete, with axioms
+`propext / Classical.choice / Quot.sound` only:
+
+    E ⊆ [1,2], 0 ≤ Cγ, N(E ∩ J, 2^{-(k+4+n)}) ≤ Nloc n for every block J at
+    scale 2^{-k}, Nloc n ≤ Cγ 2^{γ(4+n)}, 1 < p, γ < p − 1
+      ⟹  ‖R₂^- g‖_{L^{2p}(r dr)} ≲ ‖g‖_{L^p(s ds)}.
+
+The condition `γ < p − 1` is exactly BRS's `p > 1 + γ`; it comes out of the
+exponent relation, which forces `(1/r − 1/2)·2p = p − 1`.
+
+Chain, bottom up:
+
+* `prop43_abstract_endpoint` — the layer cake with the level-set bound
+  abstracted into `(A, B)`.
+* `brsRemTwoCent f₀ ρ := ⨆_{x} ofReal(ρ⁻¹‖∫_{x-ρ}^{x+ρ} f₀‖)` — the centred
+  maximal average, with **no restriction on the centre**, so the same object
+  serves `R₂^-` and `R₂^+`.  Its layer cake (`brsRemTwoCent_le_tail`,
+  `measure_brsRemTwoCent_gt_le`, `prop43_brsRemTwoCent_endpoint`) needs only
+  that the profile vanishes below `1/4`.
+* `abs_brsTruncConvReal_le_far`, `abs_brsDilate_far`,
+  `abs_brsTruncConvReal_brsDilate_far` — the Schwartz decay of the profile,
+  transported through `h_k ∗ ·`.
+* `enorm_brsTruncConvReal_brsDilate_le_tsum` — the kernel is below
+  `Σ_n B_n 1_{[-2^{n+2}r, 2^{n+2}r]}` (via `Nat.find` on the least admissible
+  block).
+* `enorm_kernel_conv_le_tsum` — such a kernel convolves into a series of
+  interval averages.
+* `brsLowKernelBound_mul_le` — the weighted constants are `≤ 16 C_p 2^s 2^{-n}`,
+  uniformly in `k`; all the `k`-dependence cancels between `r^{-1/2}`,
+  `2^{-(k+1)/2}` and `2^{k+1+s}`.
+* `brsNearMaxP_low_le_tsum_cent`, `endpoint_tsum_brsRemTwoCent` — the `m = 0`
+  family and its `L^{2p}` bound (`lintegral_scaled_weight_le` makes each
+  rescaled copy free).
+* `brsRemTwoTwoLeft_endpoint_family_le'` — `R₂^-` below one countable family of
+  *measurable* functions: far part (`ofReal K · brsRemainderTwo`), `m = 0`
+  (the `brsRemTwoCent` series), and the `m ≥ 1` Littlewood--Paley terms.
+* `brsLocalize` — the cutoff that reconciles the weighted (layer-cake) and
+  unweighted (Littlewood--Paley) right-hand sides.
+* `prop54_brsRemTwoTwoLeft_endpoint_interior'` and the wrapper
+  `prop54_brsRemTwoTwoLeft_endpoint`, which draws the profile, the bump and the
+  band-limited factor from `exists_brsCalderonFactorization` (now also
+  returning the profile's decay `x²|p x| ≤ C_p` and the annulus support of
+  `𝓕ψ`).
+
+Remaining for row 87: the mirror for `R₂^+`.  `brsRemTwoCent` is already
+centre-free, and `brsRemainderTwo` is symmetric, so both layer-cake halves
+transfer unchanged; what has to be duplicated is the near-part chain
+(`brsANearRightAt_le_pieces_lp`, `brsNearMaxP` on the reflected data, and the
+family assembly), for which the reflection `x ↦ 3 − x` of the existing
+`brsANearRightAt_le_pieces` is the template.
+
+## Row 87 is complete (2026-09-06)
+
+`prop54_brsRemTwoTwoLeft_endpoint` and `prop54_brsRemTwoTwoRight_endpoint`,
+both axiom-clean.  The right half cost far less than the left because two
+simplifications appeared while assembling it:
+
+1. **The `t ≥ 3r/2` constraint is not needed for the `m = 0` term.**  Once
+   `brsRemTwoCent` sups over *all* centres, the low-frequency piece is dominated
+   without any restriction on `t`, so `brsNearMax` (the full supremum, which is
+   measurable and already used everywhere) can be kept, and the `brsNearMaxP`
+   detour is unnecessary.  `brsNearMax_low_le_tsum_cent` is the version used.
+2. **`brsRemTwoCent` and the unweighted `L^p` norm are invariant under
+   `s ↦ 3 − s`** (`brsRemTwoCent_three_sub`,
+   `lintegral_enorm_rpow_three_sub`), so the right half runs the entire
+   near-part chain on the reflected data — exactly as the repo's existing
+   `brsANearRightAt_le_pieces` does — and reads the answer back on the original
+   profile.  The far half needs no reflection at all, because
+   `brsRemainderTwo` is already symmetric about `t`.
+
+New right-side lemmas: `enorm_brsRefl_conv_le_pieces_lp`,
+`brsANearRightAt_le_pieces_lp`, `brsANearRightWindow_le_tsum_lp`,
+`brsBFarRightAt_le_brsRemainderTwo`, `brsFarWindowSumRight_le_brsRemainderTwo`,
+`prop56_brsFarWindowSumRight_endpoint`, `brsRemTwoTwoRight_brsLocalize`,
+`brsRemTwoTwoRight_endpoint_family_le`,
+`prop54_brsRemTwoTwoRight_endpoint_interior`.
+
+The localization cutoff was widened to be `1` on `[1/3, 10/3]` and supported in
+`[1/4, 4]`, so that it is transparent for both `R₂^-` (which sees `[1/3,2]`) and
+`R₂^+` (which sees `[1, 10/3]`).
+
+## Row 92 (Proposition 5.5(iii), `p = 2`): what it needs
+
+Scoped, not yet started.  The `p < 2` chain (rows 90-91) already carries almost
+everything; the *only* place `p < 2` is used essentially is the geometric
+summation in the outer index `k`:
+
+    lintegral_brsShellMaj_bound  gives
+      ‖shellMaj E p q g k i‖_{L^q} ≤ AE · brsBlockConst p q ·
+        ((1/2)^{(1/p - 1/2)/2})^{k+1} · ‖g‖_{L^p(window i)},
+
+whose ratio `(1/2)^{(1/p-1/2)/2}` is `< 1` exactly when `p < 2` and equals `1`
+at `p = 2`.  `brsBlockConst p q` itself contains
+`(1 - 2^{-(1/p-1/2)/2})⁻¹`, which blows up as `p → 2`.
+
+Everything upstream of that is already stated for `p ≤ 2`:
+`brsMainZeroLeft_le_tsum_shellMaj` has hypothesis `hp2 : p ≤ 2`.
+
+BRS's fix at `p = 2` (their (5.18)) is to keep the `ℓ`-sum unsummed and to use
+a covering bound that improves with `ℓ`:
+
+    ‖𝔐_2 g‖_{L^q(r dr)} ≲ Σ_ℓ (1+ℓ) · sup_{n ≥ ℓ} N(E,2^{-n})^{1/q} 2^{-n/q} · ‖g‖_2.
+
+Translated to the repo's `(k, i)` indexing (`n = k + i`, `ℓ = k`), the plan is:
+
+1. a sequence-valued covering hypothesis
+   `HasBRSCoveringSeq E q (A : ℕ → ℝ)` :
+   `∀ k, ∀ δ ≤ 2^{-k}, N(E,δ)^{1/q} ≤ A k · δ^{-1/q}`, together with
+   `Σ_k (1+k) · A k ≠ ⊤`;
+2. `lintegral_brsShellMaj_bound` re-proved at `p = 2` with `AE` replaced by
+   `A k` and the `k`-decay dropped (the constant `brsBlockConst` must be
+   restated without the `(1 - 2^{-β/2})⁻¹` factor — at `p = 2` the inner
+   `i`-sum is what supplies the `(1+k)`, since only `i ≤ k+1` contributes);
+3. the `(k,i)` double sum then produces `Σ_k (1+k) A k` in place of the
+   geometric series, and the rest of `prop55ii_brsMainZeroLeft` /
+   `prop55ii_brsMainTwoLeft` carries over verbatim;
+4. the far half `𝔐_{p,∞}` at `p = 2` comes from Proposition 4.6, which the
+   repo has as the `prop55ii_brsMainInf*` inputs — check whether those are
+   already stated for `p ≤ 2` or need the same treatment.
+
+## Row 92 is complete (2026-09-06)
+
+`prop55iii_brsMainTwoLeft` and `prop55iii_brsMainTwoRight`, both axiom-clean.
+
+The `p < 2` chain carried over almost entirely; the two things that had to be
+redone are exactly the two places where `1/p − 1/2` degenerates at `p = 2`:
+
+* **the covering hypothesis.**  `HasBRSCoveringSeq E q A` says
+  `N(E,δ)^{1/q} ≤ A_j δ^{-1/q}` for every `δ ≤ 6·2^{-j}` — the `p = 2` exponent
+  with a constant that improves as the scale gets finer.  `A` is required
+  nonnegative and antitone.
+* **the `m`-sum inside the block estimate.**  Both arms of the `min` are
+  constant in `m` at `p = 2` (`brs_holder_arm_le_two` gives `7^{1/q} A_{k+i}`,
+  `brs_cover_arm_le_two` gives `2^{5/2+1/q} A_{i+m}`), so the sum is split at
+  `m = k`: the first `k+1` terms take the Hölder arm, the rest the covering
+  arm.  That produces
+
+      brsSeqBlockConst q A k = (k+1)·7^{1/q}·A_k
+        + 2^{5/2+1/q}·Σ_{j>k} A_j,
+
+  which is BRS's factor `1 + ℓ` — and `Σ_k brsSeqBlockConst q A k` is exactly
+  their `Σ_ℓ (1+ℓ) sup_{n≥ℓ} N(E,2^{-n})^{1/q}2^{-n/q}` up to the reindexing
+  `Σ_k Σ_{j>k} A_j = Σ_j j A_j`.  Its finiteness is taken as a hypothesis, so
+  the reindexing never has to be formalized.
+
+Everything upstream (`brsMainZeroLeft_le_tsum_shellMaj`,
+`lintegral_brsBlockMaj_rpow_le`, the shell disjointness and the window overlap)
+was already stated for `p ≤ 2` and is reused verbatim.
+
+**The far halves** `𝔐_{2,∞}^±` come from Proposition 4.6, which for `d = 2` is
+precisely the endpoint `p = p_d = 2`.  They could not be obtained by dominating
+`𝔐_{2,∞}^±` pointwise by `brsMainMaximal 2 E 2 (absProfile g)` — that would need
+the Bochner integral of `s^{-1/2}|g|` to exist, which fails for `L²` data near
+`|r−t| = 0`.  Instead the Proposition 4.6 chain was refactored to take an
+abstract majorant: `lintegral_le_brsD_zero_add_tsum_brsOmega_of_maj`,
+`lintegral_brsD_zero_le_of_maj`, `lintegral_brsOmega_le_of_maj`,
+`tsum_brsOmega_le_of_maj`, `exists_endpoint_bound_of_maj`.  The only inputs are
+that the operator vanishes off `U_0` and the two pointwise bounds on `D_0` and
+`Ω_ℓ`, and `brsMainInf{Left,Right}_le_on_brsD` already supplies exactly the
+majorant `brsMainMaximal_le_on_brsD` does at `p = p_d`.
+
+## Row 93 (Theorem 1.2, the `d = 2` type set): the plan
+
+Every prerequisite is now `complete`, so what remains is the assembly.  The
+model is the `d ≥ 3` assembly, which is worth reading first:
+
+* `interior_Delta_subset_radialTypeSetCont` — turns an interior point of the
+  region into exponents `p = 1/z.1`, `q = 1/z.2` and dispatches on
+  `p ≶ p_D`;
+* `thm11_core_small_p` / `_large_p` / `_endpoint` — the three branches, each
+  ending in `memLp_and_eLpNorm_M_lift_le`, which lifts a *profile-level* bound
+  for the main term to the ambient `L^p → L^q` statement;
+* `thm11_radialTypeSet` — packages the two inclusions.
+
+For `d = 2` the pieces are:
+
+1. **the pointwise decomposition** `le_brsDecompositionTwo`: on radial data,
+   `M_E f ≲ 𝔐_p^- + 𝔐_p^+ + R₁^- + R₁^+ + R₂^- + R₂^+`, all evaluated on the
+   profile (`brsProfileSub 2 p (absProfile f₀)` for the main terms,
+   `absProfile f₀` for the remainders).
+2. **a planar lift** `memLp_and_eLpNorm_M_lift_le_two`, the analogue of
+   `memLp_and_eLpNorm_M_lift_le` built on (1) instead of on
+   `brsMainMaximal_le` — it must accept the six profile-level bounds and
+   produce the ambient conclusion.  `eLpNorm_lift_eq` is the polar-coordinate
+   identity it needs.
+3. **the branches.**  For `(1/p, 1/q)` in the interior of
+   `Δ_β ∩ {(1/p,1/q) : ν♯(q/2−1)/q + 1/p − 1/q ≤ 1/2}`:
+   * `R₁^±` from `prop52_brsRemTwoOneLeft/Right` (no case split);
+   * `R₂^±` from `prop54_brsRemTwoTwoLeft/Right_diag` when `p = q`,
+     `..._pq` when `p < q < 2p`, and `prop54_brsRemTwoTwo{Left,Right}_endpoint`
+     when `q = 2p` (row 87).  The `ν♯` hypothesis enters here: BRS's
+     `1/p − 1/2 < (1/q)(1 − ν♯(q/2−1))` is what feeds `hK`/`hM` of
+     `prop54_..._pq`, and `γ < p − 1` is what feeds the endpoint;
+   * `𝔐_p^±` from `prop55i_brsMainTwoLeft/Right` when `p > 2`,
+     `prop55ii_brsMainTwoLeft/Right` when `p < 2`, and
+     `prop55iii_brsMainTwoLeft/Right` when `p = 2` (row 92).
+4. **necessity** is already available: `radialTypeSet_subset_Delta` and
+   `legendreAssouad_condition_of_hasRadialStrongType` (the `ν♯` half, from
+   Lemma 3.5).
+
+So row 93 is exponent bookkeeping plus the planar lift; no new analysis.
+
+## Row 93, addendum: what the assembly actually needs
+
+The plan above understated the work.  Three things had to be built before any
+branch analysis could start, and one genuine gap in the `§5` material was
+uncovered.
+
+**(1) Measurability of the six planar operators.**  `le_brsDecompositionTwo`
+produces a sum of six suprema over `t ∈ E`, and splitting the `L^q(r dr)`
+integral of a sum needs all but one summand measurable (`lintegral_add_left'`).
+None of the six is measurable for a general `E`.  The fix is to shrink the
+dilation set: `restrictedSphericalMaximal_eq_of_subset_closure` (in
+`AHRSUpperBounds`) says a *continuous* datum's maximal function only sees a
+dense set of dilations, so the decomposition may always be applied with `E`
+replaced by a countable dense `T ⊆ E`, and every covering hypothesis is
+inherited by `T` (monotonicity of `intervalCoveringNumber`), while
+`closure T = closure E`.  Over a countable `T` each operator is a countable
+supremum, and measurability reduces to measurability *in `r` for one fixed
+`t`* — which follows from joint measurability of the kernel by Fubini
+(`measurable_intervalIntegral_param`, built on
+`StronglyMeasurable.integral_prod_right'`).  New:
+`measurable_intervalIntegral_param`, `measurable_biSup_moving`, the six
+`measurable_uncurry_*` kernels and the six
+`measurable_brs{MainTwo,RemTwoOne,RemTwoTwo}{Left,Right}`.
+
+**(2) Weighted Minkowski.**  Absorbing the weight into the function
+(`w r = (ofReal r)^{1/q}`) turns `L^q(r dr)` into an honest `L^q`, so
+`ENNReal.lintegral_Lp_add_le` gives the triangle inequality with *no* loss:
+`lintegral_radial_add_le`, iterated to `lintegral_radial_add_six_le`.  This
+replaces the `4^q`-style constants of `exists_combined_bound`.
+
+**(3) Normalizing the six right-hand sides.**  The main terms only see the
+profile on `(0, ∞)` (`brsMainTwoLeft_congr_pos`), so they may be applied to
+`brsProfilePos p f₀ = 1_{(0,∞)} · brsProfileSub 2 p (absProfile f₀)`, whose
+unweighted `L^p` norm *is* the weighted norm of `f₀`
+(`lintegral_brsProfilePos_eq`).  `R₂^±` only sees `[1/3, 10/3]`, so
+`brsRemTwoTwo*_brsLocalize` + `lintegral_enorm_brsLocalize_le` convert the
+unweighted right-hand side of `prop54_..._pq` into the weighted one
+(`prop54_brsRemTwoTwo{Left,Right}_pq_weighted`).
+
+With these, `exists_combined_bound_two`, `eLpNorm_M_lift_le_two` and
+`hasRadialStrongTypeCont_two_of_bounds` reduce Theorem 1.2's sufficiency to the
+six profile-level bounds for a countable `T ⊆ E`.
+
+**The region.**  `Delta_two_le_diag`, `Delta_two_le_half`,
+`Delta_two_minkowski` are BRS (5.19) as three half-planes
+(`q ≥ p`, `q ≤ 2p`, `(1-β)/q ≥ 2/p - 1`); `brsNuConstraint` is the `ν♯`
+condition, guarded by `0 < 1/q ≤ 1/2`.  The guard is harmless on `Δ_β`: for
+`q < 2` the argument of `ν♯` is negative, `ν♯` is flat there
+(`brrsLegendreAssouadFunction_eq_zero_of_nonpos`) and equals `β`, and the
+resulting condition is implied by `Delta_two_minkowski` whenever `β ≤ 1`; for
+`q = ∞` the wedge forces `(1/p,1/q) = (0,0)`.  Necessity is
+`radialTypeSet_two_subset_region`, from `radialTypeSet_subset_Delta` and
+`legendreAssouad_condition_of_hasRadialStrongType`.
+
+**`R₁^±`.** `prop52_brsRemTwoOne{Left,Right}` has the coefficient
+`∑' m brsProp52Coeff E p q m`, geometric with ratio
+`2^{1/p - 1/q + β/q - 1/2}`; `tsum_brsProp52Coeff_ne_top` is its finiteness.
+The condition `1/p - 1/q + β/q < 1/2` follows from `Delta_two_minkowski`
+(`q/p ≤ (q+1-β)/2`) together with `β < 1`, exactly as BRS say ("subdominant").
+
+**The gap in `R₂^±`.**  BRS prove Proposition 5.4(i) with the *localized*
+quantity `ω_m^{p,q}(E,k) = sup_{|J| = 2^{-k}} 2^{-k(2/q - 1/p)}
+N(E ∩ J, 2^{-m-k})^{1/q}` and close the `k`-sum by Littlewood--Paley, which
+leaves the single condition `1/p - 1/2 < (1 - ν♯(q/2-1))/q`.  Two chains exist
+in this file:
+
+* `prop54_brsRemTwoTwo{Left,Right}_pq` (and `_diag`) sum the `k`-series
+  geometrically using the *global* covering number, so they carry two
+  conditions, `q/p < 2 - β` (`brsSumExpK < 0`) and `q/p < 1 + q/2 - β`
+  (`brsSumExpM < 0`).  The second is BRS's condition with `ν♯` replaced by `β`
+  and is implied by `Δ_β` (for `β < 1`); the first is *not* implied — it holds
+  only when `q < 3 - β`.
+* the row-87 chain (`tsum_brsNearMax_lp_le` → `prop54_..._endpoint`) does use
+  Littlewood--Paley in `k` and is already general in `q` (`hq2p : q ≤ 2*p`),
+  but its covering hypothesis `Nloc` is uniform in `k` (a quasi-Assouad ratio
+  bound), and the wrapper is specialized to `q = 2p`.
+
+So the region `int(Δ_β) ∩ {q ≥ 3 - β}` is not yet covered.  The route is to
+generalize the row-87 chain:
+
+* make `Nloc : ℕ → ℕ` depend on `k` and replace `hNbd` by BRS's normalization
+  `Nloc k ≤ Cν · 2^{ν(k+a)} · 2^{k(1 - q/2)}`; in `tsum_brsNearMax_lp_le` the
+  only step that touches it is `hper`, where the product
+  `2^{-k(1-q/2)} · Nloc k · (KC 2^{-(k+a)S})^q` then collapses to the
+  `k`-independent `Cν KC^q 2^{a(ν - Sq)}` (using `ν - Sq < 0` and `k ≥ 0`);
+* generalize the `q = 2p` wrappers (`prop43_*_endpoint`,
+  `prop54_..._endpoint_interior'`, `prop54_..._endpoint`) to `p < q ≤ 2p`.
+  For the layer-cake pieces this is free: `brsRemTwoTwoLeft E g r = 0` for
+  `r > 4/3` (as `t ≥ 3r/2` and `t ≤ 2`), so Hölder on the finite measure
+  `r dr ↾ (0, 4/3]` lowers the exponent from `2p` to any `q ≤ 2p`;
+* the Littlewood--Paley hypothesis `hA₀` is needed at exponent `q/p ≥ 2`,
+  which follows from the `ℓ²` bound by `ℓ^q ⊆ ℓ²`;
+* finally feed `ν = ν♯(q/2-1) + ε` into `Nloc k` from
+  `brrsLegendreAssouadFunction`'s defining `limsup`.
+
+## Row 93: what is proved, and what is left
+
+`thm12_radialTypeSet` is in the file and `#print axioms` on it (and on each of
+its two halves) shows only `propext / Classical.choice / Quot.sound`.  It says
+
+* `interior (Delta 2 β) ∩ brsR2Constraint β ⊆ radialTypeSetCont 2 E`, where
+  `brsR2Constraint β = {z | z.1 < (2-β) z.2}` is `q/p < 2 - β`;
+* `radialTypeSet 2 E ⊆ Delta 2 β ∩ brsNuConstraint E` — BRS's full necessity.
+
+The chain of the sufficiency half is
+`hasRadialStrongTypeCont_two` → `hasRadialStrongTypeCont_two_of_bounds` →
+`eLpNorm_M_lift_le_two` + `exists_combined_bound_two`, fed by
+
+* `exists_brsMainTwoBounds` (Proposition 5.5, three branches on `p ≶ 2`), which
+  uses `exists_brsCoveringBound_of_minkowski` for `p < 2` and
+  `exists_brsCoveringSeq_of_minkowski` + `tsum_brsSeqBlockConst_ne_top_of_geometric`
+  for `p = 2`;
+* `prop52_brsRemTwoOne{Left,Right}` with `tsum_brsProp52Coeff_ne_top`;
+* `prop54_brsRemTwoTwo{Left,Right}_pq_weighted_unif`.
+
+Because the ambient constant of `HasRadialStrongTypeCont` must not depend on
+the datum, every proposition whose statement had the constant *inside* the
+profile binder was restated with the profile quantified inside the existential:
+`prop54_brsRemTwoTwo{Left,Right}_interior_unif`, `..._pq_unif`,
+`..._pq_weighted_unif`, `prop55ii_brsMainTwo{Left,Right}_unif`,
+`prop55iii_brsMainTwo{Left,Right}_unif`.  In every case the constant was
+already profile-independent, so the proofs are the originals with the binder
+moved.
+
+**What is left** is the row inserted before row 93: BRS's Proposition 5.4(i)
+proved by Littlewood--Paley in the scale variable, against the localized
+quantity `ω_m^{p,q}(E,k)`.  Concretely:
+
+1. `tsum_brsNearMax_lp_le` is already general in `q` (`hq2p : q ≤ 2*p`) but its
+   covering hypothesis `Nloc : ℕ → ℕ` is indexed only by the scale ratio.  Make
+   it `Nloc : ℕ → ℕ` indexed by `k` as well and replace `hNbd` by
+   `Nloc k ≤ Cν 2^{ν(k+a)} 2^{k(1-q/2)}`; only the `hper` step changes, and
+   there the product `2^{-k(1-q/2)} · Nloc k · (KC 2^{-(k+a)S})^q` collapses to
+   the `k`-free `Cν KC^q 2^{a(ν-Sq)}` because `ν - Sq < 0` and `k ≥ 0`.
+2. Generalize the `q = 2p` wrappers.  The family decomposition
+   `brsRemTwoTwoLeft_endpoint_family_le'` is already general in `q`.  Of its
+   three families, the far one can be replaced outright by
+   `prop43_brsRemainderTwo` (already general, `q < p·d`).  The `m = 0` family
+   (`endpoint_tsum_brsRemTwoCent`) is the one that must be redone: the model is
+   `prop43_brsRemainderTwo`, which avoids the layer cake entirely by the
+   pointwise bound `brsRemainderTwo ≤ C (r^{-1} X)^{1/p}` supported in
+   `(0, 4/3]`.  For the centred averages the analogous pointwise bounds are
+   `brsRemTwoCent(g,ρ) ≤ C ρ^{-1/p} X^{1/p}` for `ρ ≤ 2` and
+   `≤ C ρ^{-1} X^{1/p}` for `ρ ≥ 2` (Hölder against `s ds` on `[1/4,4]`, where
+   the localized profile lives), which give a convergent weight integral for
+   `2 < q < 2p` — and `q > 2` is automatic in the missing region, since
+   `q/p < 2 - β` already covers everything with `q < 3 - β`.
+3. `hA₀` is needed at exponent `q/p ≥ 2`; it follows from the `ℓ²`
+   Littlewood--Paley bound by `ℓ^{q/p} ⊆ ℓ²`.
+4. Finally feed `ν = ν♯(q/2-1) + ε` into `Nloc k` from the `limsup` defining
+   `brrsLegendreAssouadFunction`: `brrsLegendreAssouadProfile E α δ` is
+   literally `sup_{|J| ≥ δ} |J|^{-α} N(E ∩ J, δ)` with `α = q/2 - 1`, so
+   `limsup < ν` gives `profile ≤ C δ^{-ν}` for small `δ`.
+
+## The `ν♯` gap in Proposition 5.4(i), closed
+
+The row inserted before row 93 is now `complete`, and `thm12_radialTypeSet_nu`
+is BRS's Theorem 1.2 with their own condition — no auxiliary `q/p < 2 - β`.
+The chain that closed it:
+
+1. `tsum_brsNearMax_lp_le'` — the `k`-sum of the near part with a covering
+   bound in BRS's (5.20) normalization, `Nloc k ≤ Cν 2^{ν(k+a)} 2^{k(1-q/2)}`.
+   The window factor `2^{-k(1-q/2)}`, the covering factor and the kernel factor
+   `2^{-(k+a)Sq}` collapse to `2^{(k+a)(ν-Sq)}`, largest at `k = 0`
+   (`brs_lp_factor_le`); `hq2p` is then not even needed.
+2. `tsum_lp_m_le` — the `m`-sum is one geometric series in `2^{(4+n)(ν-Sq)/q}`.
+3. `tsum_brsRemTwoCent_general` — the `m = 0` family at a general exponent.
+   `endpoint_tsum_brsRemTwoCent` was tied to `q = 2p` by the layer cake; the
+   general-`q` proof instead follows `prop43_brsRemainderTwo` and uses two
+   *pointwise* Hölder bounds for the centred average of a profile supported in
+   `[1/4,4]` (`brsRemTwoCent_le_holder`): `ρ^{-1/p}` from `|W| ≤ 2ρ` and
+   `ρ^{-1}` from `|W| ≤ 15/4`.  The first makes `∫_0^1 r^{1-q/p} dr` converge
+   (`q < 2p`), the second `∫_1^∞ r^{1-q} dr` (`q > 2`), and `q > 2` is free
+   because the geometric form already covers `q < 3 - β`.
+4. `general_const_mul_brsRemainderTwo` — the far family at a general exponent,
+   straight from `prop43_brsRemainderTwo`.
+5. `prop54_brsRemTwoTwo{Left,Right}_lp_interior_unif` and `..._lp_unif` — the
+   assembly, with the profile quantified inside so the constant is uniform (the
+   localized profile is bounded automatically, so no boundedness hypothesis on
+   the profile is needed any more).
+6. `exists_brrsProfile_power_bound_of_lt` — BRS (5.20) itself: `ν♯(α) < ν`
+   makes the `limsup` defining `ν♯` eventually `< ν`, and
+   `le_inv_rpow_of_entropyLogQuotient_lt` converts that into
+   `profile ≤ δ^{-ν}`; the trivial bound `≤ 4 δ^{-(α+1)}` extends it to all
+   `δ ∈ (0,1)`.
+7. `intervalCoveringNumber_le_of_brrsEntropyNumber_le` — the bridge from the
+   BRRS entropy number (external covering at `δ/2`) to the interval covering
+   number at `δ`, since a `δ/2`-ball of `ℝ` is an interval of length `δ`.
+8. `exists_localized_covering_of_nu` — the covering data itself, using
+   `brsDilBlock k i = brrsInterval (1 + i 2^{-k}) (2^{-k})` and
+   `Nloc n k = ⌈M 2^{ν(k+4+n)+(1-q/2)k}⌉₊`; the ceiling costs `Cν = M + 1`
+   because the exponent is positive.  The supremum over *all* base points in
+   the profile is what lets the same data serve `R₂^+`, whose blocks are the
+   reflections `image_three_sub_inter_brsDilBlock`.
+
+`hasRadialStrongTypeCont_two_nu` dispatches on `q`: `q ≤ 2` uses the geometric
+form (its `q/p < 2 - β'` is then automatic), `q > 2` the Littlewood--Paley form
+with `ν` the midpoint of `(ν♯(q/2-1), q/2+1-q/p)`.  The sufficiency region is
+`interior (Delta 2 β) ∩ brsNuConstraintStrict E`; the strictness is what BRS
+need too, since (5.20) holds only for exponents strictly above `ν♯`.
+
+## Corollary 1.3, complete (both parts and the sharpness example)
+
+**1.3(i)** (`cor13i_radialTypeSet`).  With `t = q/2 − 1` and `x = q/p`, Lemma 2.1
+plus the two `Δ_β` constraints `x < 2` and `x < t + (3−β)/2` force
+`max(t, (1−β/γ)t + β) < t + 2 − x` whenever `2γ ≤ 1 + β`, so the `ν♯` condition
+of Theorem 1.2 is vacuous on `interior (Delta 2 β)` (`cor13_nu_bound`,
+`interior_Delta_two_subset_nu`).
+
+**1.3(ii)** (`cor13ii_radialTypeSet`).  Lemma 2.1 replaces the `ν♯` condition by
+two *affine* half-planes, hence by a convex region checkable at vertices:
+
+* `H1 : 1/p ≤ 2/q` — already a side of `Δ_β` (`Delta_two_le_half`);
+* `H2 : 1/p ≤ β/(2γ) + (2 − β/γ − β)/q`.
+
+`Qrad_subset_Delta_two` puts the quadrangle inside the triangle: `P₄,γ^rad` sits
+on the side `[P₁,P₃,β^rad]` at parameter `(3+β)/(2(1+γ))` (`≤ 1` iff
+`2γ − β ≥ 1`), and `P₅,β,γ^rad` sits on `[P₂,β,P₃,β^rad]` at parameter
+`(1+β)(2β − (β/γ)(1+β))/(2((1−β)+2(1−β/γ)))`, whose positivity is exactly
+`β(2γ − 1 − β) ≥ 0`.  `Qrad_subset_nuHalfplane` checks `H2` at the four vertices:
+`Q1` is strict, `Q2` reduces to `(1−β)(β−2γ) ≤ 0`, and `P₄`, `P₅` give equality.
+`interior_subset_halfplane_strict` upgrades a closed half-plane containing a set
+to the open one on the interior, and `interior_Qrad_subset_nu` then feeds
+`interior_Delta_two_inter_nu_subset_radialTypeSetCont`.
+
+Note `γ ≤ 1` is *not* needed anywhere: `β < 1` and `2γ − β > 1` already give
+`β < γ`, hence `β/γ < 1`.
+
+**The chord cuts `Δ_β` exactly** (`Delta_two_inter_nuHalfplane_subset_Qrad`).
+Write `z = a P₁ + b P₂,β + c P₃,β^rad` (`exists_barycentric_Delta_two`, proved by
+`convexHull_min` into the explicit set of barycentric combinations, since
+`Mathlib.Analysis.Convex.Join` is not imported here).  Let `f` be the affine
+functional of `H2`, with values `F1, F2, F3` at the three vertices; `f(P₄)=0` and
+`f(P₅)=0` give `F1 = −λF3/(1−λ)` and `F2 = −(1−μ)F3/μ`, so `f(z) ≤ 0` is
+literally `c ≤ aλ/(1−λ) + b(1−μ)/μ`.  Splitting the `P₃` mass with
+`t = min 1 (A/c)` (`A = aλ/(1−λ)`, `B = b(1−μ)/μ`) produces nonnegative weights
+on `{P₁,P₂,β,P₄,P₅}`; `Convex.sum_mem` over `Fin 4` finishes.  `F3 > 0` needs
+`β > 0` — for `β = 0` the point `P₃` is *on* the chord and `Qrad = Δ_β`.
+
+**Sharpness** (`cor13ii_sharp`, `exists_cor13ii_sharp`).  Define
+`HasExtremalLegendreAssouad E β γ : ν♯(α) = max(α, (1−β/γ)α+β)` for `α ≥ 0`.
+Under it, `Delta 2 β ∩ brsNuConstraint E = Qrad β γ`
+(`Delta_two_inter_brsNuConstraint_eq_Qrad`): the `ν♯` condition is active only on
+`0 < 1/q ≤ 1/2`, and the part of `Δ_β` above `1/q = 1/2` satisfies `H2` for free
+by `Delta_two_minkowski` since `β < 1`.
+
+The concrete example is the repo's `offDiagSet β γ k₀` (already `⊆ [1,2]`, with
+`dim_M = β`, `dim_qA = γ`).  The one missing ingredient was a lower bound for the
+*exact-scale* BRRS spectrum, and it lands at the threshold parameter with no
+sub-block surgery: `offDiagRatioPow_eq` says `Lⱼ = 4⁻¹(4σⱼ)^{1−β/γ}`, so with
+`θ = 1 − β/γ` and `δ = Lⱼ^{1/θ}` one gets `δ^θ = Lⱼ` *exactly* and
+`δ = 4(1/4)^{1/θ}σⱼ < σⱼ`.  The whole `j`-th piece then sits inside the single
+interval `brrsInterval (1+2Lⱼ) (δ^θ)` of `offDiagPiece_subset_Icc`, its `2^{k₀j}`
+points are `δ`-separated, and `encard_le_brrsEntropyNumber` (via Mathlib's
+`packingNumber_two_mul_le_externalCoveringNumber`) turns that into the lower
+bound; `offDiagCount_eq` converts `(4σⱼ)^{−β} = 2^{k₀j}` so the required
+inequality is `2^{k₀j} > C c^{−γ'} (2^{k₀j})^{γ'/γ}`, true for large `j`.
+That is `not_hasBRRSAssouadSpectrumExponent_offDiagSet`; with
+`brrsAssouadSpectrum_le_quasiAssouadDimension` it pins
+`brrsAssouadSpectrum (offDiagSet β γ k₀) (1−β/γ) = γ`, and
+`brrsAssouadSpectrum_affine_le_brrsLegendreAssouadFunction_of_nonempty` at that
+`θ` yields the missing lower bound `(1−β/γ)α + β ≤ ν♯(α)`.
+
+Two mechanical notes that cost time:
+* `RSLowerBounds` was not imported by `BRSRadial`; it is now (no cycle), and the
+  off-diagonal material lives in `section BRSOffDiag` which opens that namespace.
+  `splice.py` inserts before `end BRSOffDiag` from now on.
+* `rw [← hqA]` where `hqA : quasiAssouadDimension (offDiagSet β γ k₀) = γ`
+  rewrites the `γ` *inside* `offDiagSet` and blows up elaboration; always rewrite
+  forwards in a hypothesis instead.
+
+## Theorem 1.4: the plan, and what is already in place
+
+BRS's Theorem 1.4 is entirely a *boundary* statement, whereas the repository's
+Theorems 1.1 and 1.2 are stated as `interior Δ_β ⊆ 𝒯 ⊆ Δ_β`.  So 1.4 needs the
+closed triangle, and its `γ` is the **Assouad** dimension, not the quasi-Assouad
+one already present.
+
+**Where the closed triangle is hard.**  Write `f(p,q) = q/2 + 1 - q/p`, the
+right-hand side of the `ν♯` condition.  On `Δ_β`, `f ≥ (1+β)/2` with equality
+exactly on the critical segment `[P₂,β, P₃,β^rad]`; on the edge `q = 2p`,
+`f = p - 1`.  Consequently:
+
+* `R₁^±` (Prop 5.2) needs `(1-β)/q + 1/2 - 1/p > 0`, which is *strict* on all of
+  `Δ_β \ {P₁}` when `β < 1` (on the critical line it equals `1/p - 1/2 > 0`
+  because `p < 2` there), so the ordinary Minkowski `β + ε` suffices.
+* `𝔐_p^±` (Prop 5.5) needs `1 - 2/p + (1-β)/q > 0`, which *fails* on the
+  critical line.  This is exactly where BRS's `sup_δ δ^β N(E,δ) < ∞` enters;
+  `HasSharpEntropyBound` and `exists_brsCoveringBound_of_entropy` now supply the
+  loss-free covering datum, which reaches the closed condition `≥ 0`.
+* `R₂^±` needs `ν♯(q/2−1) < f(p,q)`, impossible on `q = 2p` since `ν♯(α) ≥ α`.
+  The edge `q = 2p` is instead covered by the repository's *endpoint* form of
+  Proposition 5.4(i), whose hypothesis is the Assouad-shaped, frequency-uniform
+  covering bound `N(E ∩ J, δ) ≤ Cγ (|J|/δ)^γ` together with `γ < p − 1`; and
+  `p ≥ (3+β)/2 > 1 + γ` on that edge is *precisely* `2γ − β < 1`.
+  Off that edge the `ν♯` route works on the closed triangle: on the critical
+  line `f = (1+β)/2`, and Lemma 2.1 gives `ν♯(q/2−1) < (1+β)/2` from
+  `2γ − β < 1`, strictly except at `P₃,β^rad` — which lies on `q = 2p`.
+
+So **no interpolation is needed for part (i)**, contrary to the route BRS take.
+
+**Added so far** (all `lake build`-clean):
+* `HasAssouadExponent`, `assouadDimension`, monotonicity, `dim_A ≤ 1`,
+  `hasAssouadExponent_of_assouadDimension_lt`, and
+  `assouad_cover_bound_interval` (clamping an arbitrary interval to `[1,2]`).
+* `exists_localized_covering_of_assouad`: the localized covering data in the
+  frequency-uniform shape the endpoint estimate wants.
+* `brs_lp_factor_le_assouad`, `tsum_brsNearMax_lp_assouad`,
+  `tsum_near_high_lp_assouad`: the Littlewood–Paley scale sum with
+  frequency-uniform covering data, valid for all `q ≤ 2p` (the `ν♯`
+  normalization is borderline at `q = 2p` and gives no decay there).
+* `tsum_near_high_endpoint_unif`,
+  `prop54_brsRemTwoTwo{Left,Right}_endpoint_interior_unif`,
+  `prop54_brsRemTwoTwo{Left,Right}_endpoint_unif`: the profile-uniform form of
+  the `q = 2p` endpoint, which is what `HasRadialStrongTypeCont` needs (its
+  constant may not depend on the datum).
+* `HasSharpEntropyBound`, `HasSharpEntropyBound.mono`,
+  `exists_brsCoveringBound_of_entropy`.
+
+**Still to do for 1.4(i)**: an entropy version of `exists_brsMainTwoBounds`
+(only its `p < 2` branch uses the covering datum), the assembly of the closed
+triangle through `hasRadialStrongTypeCont_two_of_bounds`, and the two
+implications of 1.4(i) — the necessity half is already available as
+`sup_finite_of_hasRadialStrongType_critical`.
+
+Parts (ii), (iii) and (v) additionally need boundedness on the critical line
+when `2γ − β = 1`, where the `ν♯` route is no longer strict; BRS obtain it by
+interpolating the `L^{1+β}` diagonal bound (Lemma 5.3, present) against the
+`q = 2p` edge, so those parts will need an interpolation step that the
+repository does not yet have.
+
+## Theorem 1.4(i)–(iv): done, and done without interpolation
+
+BRS reach the closed triangle by interpolating the `L^{1+β}` diagonal bound
+against the edge `q = 2p`.  That would need Marcinkiewicz interpolation for
+sublinear operators, which this repository does not have — and it turns out not
+to be needed.  Writing `f(p,q) = q/2 + 1 − q/p` (the right-hand side of the
+`ν♯` condition), `f ≥ (1+β)/2` on `Δ_β` with equality exactly on the critical
+segment `[P₂,β, P₃,β^rad]`, and `f = p − 1` on the edge `q = 2p`.  Hence:
+
+* **off the edge** (`q < 2p`), `closed_nu_bound` shows the Lemma 2.1 bound is
+  *strictly* below `f` for every `2γ − β ≤ 1`, with no upper bound on
+  `t = q/2 − 1` — split on `t ≥ (1+β)/2`, where `x < 2` alone suffices, versus
+  `t < (1+β)/2`, where the closed Minkowski bound `x ≤ t + (3−β)/2` does.  So
+  the whole critical segment is covered;
+* **on the edge**, the repository's endpoint form of Proposition 5.4(i) applies,
+  with condition `γ_A < p − 1`; on `q = 2p` inside `Δ_β` that says
+  `p > 1 + γ_A`, i.e. strictly beyond `P₃,β^rad` when `2γ_A − β = 1` and
+  everywhere when `2γ_A − β < 1`.
+
+So `P₃,β^rad` is the unique point where both routes degenerate — exactly the
+point 1.4(ii) and 1.4(iii) exclude, and no exclusion at all in 1.4(i).
+
+Three further ingredients:
+
+* the diagonal `p = q` needed no new analysis: Proposition 5.5 never used
+  `p < q` (`exists_brsMainTwoBounds_entropy_le`), and there `R₂^±` is Lemma 5.3,
+  whose constant is datum-independent once the `p ≤ 2` split is made first
+  (`prop54_brsRemTwoTwo{Left,Right}_diag_unif`).  Its condition `β' < p/2` is
+  literally the `R₁` condition at `q = p`;
+* `𝔐_p^±` is the only operator that genuinely needs the entropy hypothesis, and
+  only on the critical segment; `exists_brsCoveringBound_of_entropy` supplies
+  the loss-free datum;
+* where there is *no* entropy hypothesis (1.4(iii), 1.4(iv)) the strict
+  Minkowski condition lets one inflate the exponent: `HasUpperMinkowskiExponent`
+  at `β` *is* `HasSharpEntropyBound` at `β + ε`
+  (`hasSharpEntropyBound_of_minkowski`), and `β + ε` still satisfies every
+  closed condition.  `HasUpperMinkowskiExponent.mono_exponent` carries the
+  Minkowski hypothesis up.
+
+## Theorem 1.4(v): what is done and what is missing
+
+`hasRadialStrongTypeCont_two_of_two_lt` gives the sufficiency half
+unconditionally: for **any** nonempty `E ⊆ [1,2]` and `2 < p ≤ q ≤ 2p`, the
+operator is of radial strong type.  The reason is that every `E ⊆ [1,2]` has
+`HasUpperMinkowskiExponent E 1` and `HasAssouadExponent E 1`, and at those
+values both exponent conditions of the closed-triangle machinery reduce to
+`p > 2`.  This needed `exists_brsMainTwoBounds_large_p` (Proposition 5.5(i) is
+`E`-free, so for `p > 2` neither the null closure of `E` nor `β < 1` is used)
+and `hasRadialStrongTypeCont_two_large_p`.
+
+`thm14v_necessity` gives `p ≤ q ≤ 2p` and `p ≥ 2` from the three sides of
+`Δ_1`.
+
+**The gap** is the single line `p = 2`.  Excluding it is BRS's Lemma 3.4, and
+the repository has that Stein-type example only in ambient dimension `≥ 3`
+(`le_eLpNorm_ratio_stein`, which rests on `le_kernel_mul_steinBump` with
+`3 ≤ D`).  The planar kernel is genuinely different — `brsKernel 2` is not the
+planar kernel, since the exponent `D - 3` truncates in `ℕ` — so the planar
+Stein example has to be built.  The plan: the planar cap bound
+`le_sphericalAverage_annulusTest` already holds for every `d ≥ 1`, so the
+route is to realize the Stein profile as a superposition of annulus indicators
+over dyadic scales and sum the cap bounds, the logarithmic gain coming from the
+scale sum rather than from a kernel integral.  Note that Lemma 3.2(ii) as
+already formalized (`entropy_bound_of_hasRadialStrongType`) only excludes
+`p = 2` under the *unweighted* hypothesis `sup δ N(E,δ) = ∞`; the logarithmic
+refinement is what Theorem 1.4(v) assumes and needs.
+
+## Theorem 1.4(v): closing the line `p = 2` with the planar Lemma 3.4
+
+The sufficiency half of 1.4(v) was already in place (`thm14v_sufficiency`,
+resting on `hasRadialStrongTypeCont_two_of_two_lt`, which needs no hypothesis
+on `E` beyond `E ⊆ [1,2]`).  Corollary 3.3 gives the three sides of `Δ_1`,
+i.e. `q ≤ p`, `p ≤ q ≤ 2p` and `p ≥ 2` (`thm14v_necessity`).  What was missing
+was the *strict* inequality `p > 2`: the segment `[P₂, P₃^rad]` of `Δ_1` is the
+whole vertical line `p = 2`, and excluding it is BRS's Lemma 3.4.
+
+The repository had the Stein-type example only in ambient dimension `≥ 3`
+(`le_kernel_mul_steinBump` assumes `3 ≤ D`, because the kernel of (4.2) there
+carries a factor `s^{D-3}` that is estimated from below by `(s/36)^{D-3}`).
+In the plane the kernel is `s / (√((r+t)²−s²) · √(s²−(r−t)²))`, which is a
+different formula — `brsKernel 2` is *not* `brsKernelTwo`, since `D − 3`
+truncates in `ℕ`.  So the planar case had to be built from scratch:
+
+* `one_div_le_brsKernelTwo`: both square roots are at most their obvious
+  bounds `r+t` and `s`, so the planar kernel is `≥ 1/(r+t)` on the whole
+  window `|r−t| < s < r+t`.  There is no dimensional loss at all — this is
+  what lets the *same* Stein profile work in the plane.
+* `le_setIntegral_kernelTwo_steinBump`: on the plateau
+  `(2 δ^{1/2}, δ^{1/4}/2]` of the bump the profile is untouched, and
+  `le_integral_stein_weight (d := 2)` supplies `[log(1/δ)]^{1/2}/8`; the
+  kernel contributes `2/(r+t) ≥ 2/5`.
+* `le_norm_sphericalAverage_steinFun_two`: rewrite the spherical average by
+  `sphericalAverage_two_eq_kernel_integral` and pull the real integral out of
+  `ℂ` with `_root_.integral_complex_ofReal` (note: `integral_ofReal` is stated
+  for `RCLike`, and its coercion does *not* match `Complex.ofReal`
+  syntactically, so the `Complex`-specific alias is the one that rewrites).
+* `le_eLpNorm_maximal_stein_two`: the separated-set form.  Unlike the `d ≥ 3`
+  version it folds the test-function norm into the constant and states an
+  absolute lower bound `c (card T)^{1/q} δ^{1/q} [log(1/δ)]^{1/2} ≤
+  ‖M_E f‖_q`; this avoids ever needing `‖f‖_2 > 0`.
+* `coveringNumber_stein_bound_of_hasRadialStrongType_two`: testing an
+  `L²_rad → L^q` bound against the Stein function, with `T` a maximal
+  `δ`-separated subset, gives
+  `N(E,2δ)^{1/q} δ^{1/q} [log(1/δ)]^{1/2} ≤ K` for `δ ≤ e^{-12}`.
+* `exists_small_delta_of_log_sup_infinite`: for `δ ≥ e^{-12}` the quantity
+  `δ log(1/δ) N(E,δ)` is at most `12 N(E,e^{-12})`, so unboundedness on
+  `(0,1)` is already unboundedness on the small scales the Stein example
+  needs.  This keeps the hypothesis of 1.4(v) in the form BRS states it.
+* `not_hasRadialStrongType_two_of_log_sup_infinite`: raise the covering bound
+  to the `q`-th power at `δ = δ'/2`.  Since `log(1/δ) ≥ 12 ≥ 1` and `q ≥ 2`,
+  `[log(1/δ)]^{q/2} ≥ log(1/δ) ≥ log(1/δ')`, so
+  `δ' log(1/δ') N(E,δ') ≤ 2K^q` — contradicting the hypothesis.
+
+`thm14v_not_p_eq_two` then rules out `2 z.1 = 1` for every point of the radial
+type set: on that line `Δ_1` forces `q ≥ 2`, which is exactly the range where
+the previous lemma applies.  `thm14v_radialTypeSet` packages the two halves.
+
+The necessity half is stated as the inequalities
+`z.2 ≤ z.1 ∧ z.1 ≤ 2 z.2 ∧ 2 z.1 < 1` rather than as an equality of sets,
+because `radialTypeSet` also carries the point `p = q = ∞`, i.e. `(0,0)`,
+which no parametrization by *real* `p, q` reaches.  In inequality form the
+statement covers it.
+
+## Theorem 1.1(i)–(iii) at set level, for `d ≥ 3`
+
+An earlier session recorded Theorem 1.1 as finished with `thm11_radialTypeSet`,
+which proves the two inclusions `interior Δ_β ⊆ 𝒯^rad,cont_E ⊆ Δ_β` — that is,
+the paper's headline display `closure 𝒯^rad_E = Δ_β`.  The refinements (i),
+(ii), (iii) of the introduction, which name the *exact* type set, had been
+scoped out with the note "the endpoint cases … are needed only for the
+refinements (i)-(iii) … Mathlib has no Marcinkiewicz interpolation".  That
+scoping turned out to be too pessimistic: by the time the `d = 2` endpoint
+work was done, every ingredient for `d ≥ 3` existed.  Three observations close
+the gap without any interpolation.
+
+**1. The edge `q = pD` only needs a different `R₂`.**  In
+`exists_combined_bound` the hypothesis `q < pD` is used *only* to invoke
+`prop43_brsRemainderTwo`; `prop42_brsRemainderOne` and the main term are
+insensitive to it.  Since `prop43_brsRemainderTwo_endpoint` (already proved,
+for `p > 1`) covers `q = pD`, restating the combination with the `R₂` estimate
+as a hypothesis — `exists_combined_bound_of_remTwo`, `eLpNorm_M_lift_le_of_remTwo`,
+`memLp_and_eLpNorm_M_lift_le_of_remTwo` — and then dispatching on
+`q < pD` versus `q = pD` in `memLp_and_eLpNorm_M_lift_le_edge` puts the whole
+closed range `p ≤ q ≤ pD` in reach.
+
+**2. The critical edge only needs a weaker covering input.**
+`exists_cov_bound_of_minkowski` asks for `β < qa + 1`, which is exactly what
+fails on `[P₂,β, P₃,β^rad]`.  `exists_cov_bound_of_entropy` supplies the same
+dyadic bound from `sup δ^β N(E,δ) < ∞` under the closed condition
+`β ≤ qa + 1`, because `δ^{-β} ≤ δ^{-(qa+1)}` for `δ ≤ 1`.  Nothing else in
+Proposition 4.5 changes.
+
+**3. The diagonal `p = q` needs nothing.**  It is already covered by whichever
+of Propositions 4.4/4.5/4.6 applies at that `p`.
+
+`Delta_subset_radialTypeSetCont_of_entropy` therefore reaches the closed
+triangle by the same three-way split on `p ≶ p_D` as the interior version, and
+`hasSharpEntropyBound_of_Q2_mem_succ` (Lemma 3.2(ii) at the diagonal vertex
+`Q₂ = P₂,β`, which lies on the critical line) gives the converse.  Together
+these are `thm11i_radialTypeSet`.
+
+For **(ii)** the entropy hypothesis is absent, so the closed triangle is
+replaced by its intersection with the *open* Minkowski half-plane
+(`Delta_strict_subset_radialTypeSetCont`, which reverts to
+`exists_cov_bound_of_minkowski`), and `not_mem_radialTypeSet_of_critical_succ`
+removes the critical edge.
+
+For **(iii)**, `β = 1` makes `Δ_1` lie in `p ≥ p_D`, so there are only two
+regimes.  Beyond `p_D` Proposition 4.4 needs no hypothesis on `E` at all
+(`hasRadialStrongTypeCont_large_p`).  On the line `p = p_D` the input is
+Proposition 4.6, whose logarithmic covering hypothesis is *exactly*
+`sup_{δ<1} δ (log 1/δ)^{q/D} N(E,δ) < ∞` — see
+`exists_logcov_bound_of_logpow_sup`, where the dyadic scales
+`δ_l = 2^{-2^{l-1}}` have `log(1/δ_l) = 2^{l-1} log 2`, so the two shapes match
+term by term.  Proposition 4.6 also wants `volume (closure E) = 0`, which for
+`β = 1` no longer comes from the Minkowski exponent; it follows from the same
+finiteness hypothesis, since `N(E,δ) δ ≤ A (log 1/δ)^{-q/D} → 0`
+(`volume_closure_eq_zero_of_logEntropy`).
+
+The necessity half of (iii) is the first use of Lemma 3.4 for `d ≥ 3`.
+`le_eLpNorm_ratio_stein` carries `‖g‖_{p_D}` on the left, so using it would
+require a lower bound on that norm; `le_eLpNorm_maximal_stein` restates it with
+the norm folded into the constant, exactly as the planar
+`le_eLpNorm_maximal_stein_two` does.  Testing an `L^{p_D}_rad → L^q` bound
+against the Stein function on a maximal `δ`-separated set then gives
+`N(E,2δ)^{1/q} δ^{1/q} (log 1/δ)^{1/D} ≤ K`, and raising to the `q`-th power at
+`δ = δ'/2` contradicts the infinite supremum.  As in the planar case,
+`exists_small_delta_of_logpow_sup_infinite` first moves the supremum down to
+the scales `δ ≤ e^{-12}` where the Stein example lives, so the hypothesis can
+stay in the form BRS states it.
+
+Statement conventions, unchanged from the rest of the file: the sufficiency
+halves are on the continuous-profile core `radialTypeSetCont`; the ideal vertex
+`P₁` (`p = q = ∞`) is excluded from the sufficiency sets because a real
+exponent pair cannot name it, as is `z.1 = 1` (`p = 1`).  Part (iii)'s
+"only if" is stated as: every point of the radial type set on the line
+`1/p = (D-1)/D` satisfies `HasLogEntropyBound E (q/D)`.
