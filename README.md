@@ -6,8 +6,8 @@ This repository contains formalizations for some of the basic Lebesgue space the
 
 The purpose of this branch is to provide the necessary comparator files and metadata
 for submission to Palomar of the main theorem on power weights, specifically, Theorem 1.1 from the paper ["Power weight
-inequalities for spherical maximal functions"](https://doi.org/10.1007/s00209-026-04106-4) by M. Fraccaroli, J. Roos,
-and A. Seeger, Math. Z. 314, article 4 (2026), arXiv:2602.17613.
+inequalities for spherical maximal functions"](https://doi.org/10.1007/s00209-026-04106-4) by Marco Fraccaroli, Joris Roos,
+and Andreas Seeger, Math. Z. 314, article 4 (2026), arXiv:2602.17613.
 
 Spherical maximal functions with arbitrary sets of positive dilation radii
 are studied on Lebesgue spaces with radial power weights. The allowable
