@@ -1,7 +1,7 @@
 name = "lean-spherical"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["LeanSpherical"]
+defaultTargets = ["LeanSpherical", "Challenge", "Solution"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -16,3 +16,9 @@ rev = "v4.33.0-rc1"
 
 [[lean_lib]]
 name = "LeanSpherical"
+
+[[lean_lib]]
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"
