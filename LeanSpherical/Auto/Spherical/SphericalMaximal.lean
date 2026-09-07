@@ -5826,7 +5826,7 @@ private theorem stein_cap_volume_div_radialCoefficient_le_unitSurfaceMeasure
   · exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top
 
 /-- Uniform power lower bound for a small cap about an arbitrary unit vector. -/
-private theorem exists_stein_unitSurfaceMeasure_cap_ge_power
+theorem exists_stein_unitSurfaceMeasure_cap_ge_power
     (n : ℕ) :
     ∃ c : ENNReal, 0 < c ∧ c ≠ ∞ ∧ ∀ v : Euclidean (n + 1), ‖v‖ = 1 →
       ∀ ε : ℝ, 0 < ε → ε ≤ 1 / 2 →
@@ -5910,7 +5910,7 @@ private theorem exists_stein_unitSurfaceMeasure_cap_ge_power
 
 /-- Bounded measurable real data are integrable after restricting to a
 sampling sphere. -/
-private theorem stein_integrable_sphere_comp_of_bounded_measurable
+theorem stein_integrable_sphere_comp_of_bounded_measurable
     {d : ℕ} {g : Euclidean d → ℝ} (hg : Measurable g) {B : ℝ}
     (hbound : ∀ y, ‖g y‖ ≤ B) (t : ℝ) (x : Euclidean d) :
     Integrable (fun ω : sphere (0 : Euclidean d) 1 =>
@@ -5930,7 +5930,7 @@ private theorem stein_integrable_sphere_comp_of_bounded_measurable
 
 /-- A nonnegative real input equal to one on a measurable portion of a
 sampling sphere contributes at least that portion's normalized mass. -/
-private theorem stein_cap_fraction_le_ennreal_norm_normalizedSphericalAverage
+theorem stein_cap_fraction_le_ennreal_norm_normalizedSphericalAverage
     {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℝ) (r : ℝ) (x : Euclidean d)
     (A : Set (sphere (0 : Euclidean d) 1)) (hA : MeasurableSet A)
     (hgi : Integrable (fun ω : sphere (0 : Euclidean d) 1 =>
@@ -5998,10 +5998,10 @@ private theorem stein_cap_fraction_le_ennreal_norm_normalizedSphericalAverage
   exact hof
 
 /-- The inward unit direction from a nonzero point towards the origin. -/
-private def steinInwardRadialDirection {d : ℕ} (x : Euclidean d) : Euclidean d :=
+def steinInwardRadialDirection {d : ℕ} (x : Euclidean d) : Euclidean d :=
   -(‖x‖⁻¹ • x)
 
-private theorem norm_steinInwardRadialDirection {d : ℕ} {x : Euclidean d}
+theorem norm_steinInwardRadialDirection {d : ℕ} {x : Euclidean d}
     (hx : 0 < ‖x‖) : ‖steinInwardRadialDirection x‖ = 1 := by
   unfold steinInwardRadialDirection
   rw [norm_neg, norm_smul, Real.norm_eq_abs, abs_inv, abs_of_pos hx,
@@ -6009,7 +6009,7 @@ private theorem norm_steinInwardRadialDirection {d : ℕ} {x : Euclidean d}
 
 /-- At radius `‖x‖`, a cap around the inward direction lands in a small ball
 about the origin. -/
-private theorem stein_inward_cap_translate_subset_ball
+theorem stein_inward_cap_translate_subset_ball
     {d : ℕ} {x : Euclidean d} (hx : 0 < ‖x‖)
     {w : sphere (0 : Euclidean d) 1} {h : ℝ}
     (hw : w ∈ steinSphericalCap d (steinInwardRadialDirection x) h) :

@@ -5,6 +5,7 @@ import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
 import LeanSpherical.Auto.Spherical.FractalDilations.RSTypeSetCharacterization
 import LeanSpherical.Auto.Spherical.LegendreAssouad
 import LeanSpherical.Auto.Spherical.FractalDilations.BRRS
+import LeanSpherical.Auto.Spherical.FractalDilations.BRSRadial
 
 #check Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq
 #print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq
