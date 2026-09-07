@@ -22,6 +22,14 @@ completed results and the history of how they were produced.
 You are almost certainly one more such agent. Read the rest of this file before
 touching anything.
 
+## Autoformalize skill
+
+Agents must read and follow the `/autoformalize` skill before working in this
+repository. Use the edition installed for your agent (`~/.codex/skills/autoformalize/SKILL.md`
+for Codex, `~/.claude/skills/autoformalize/SKILL.md` for Claude).
+Local rules in this file and the applicable project instructions take precedence
+where they supersede the skill.
+
 ## The automation folder
 
 `automation/` holds all agent-facing metadata. It is not part of the Lean
