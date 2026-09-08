@@ -60,7 +60,7 @@ def logDilationSet (E : Set ℝ) : Set ℝ :=
 def logBall (c : Ioi (0 : ℝ)) (r : ℝ≥0) : Set ℝ :=
   {t | 0 < t ∧ |Real.log t / Real.log 2 - Real.log c.1 / Real.log 2| ≤ r}
 
-/-- The minimum number of logarithmic intervals of diameter `δ` needed to cover `E`. -/
+/-- The minimum number of logarithmic balls of radius `δ` needed to cover `E`. -/
 def entropyNumber (E : Set ℝ) (δ : ℝ≥0) : ENat :=
   Metric.externalCoveringNumber δ (logDilationSet E)
 
@@ -72,6 +72,21 @@ def upperMinkowskiExponent (E : Set ℝ) : ℝ :=
   limsup (fun r : NNReal ↦ ENNReal.log (⨆ c : Ioi (0 : ℝ),
       N (E ∩ (logBall c 1)) r) / (Real.log ((r : ℝ)⁻¹) : EReal))
     (𝓝[>] 0) |>.toReal
+
+/-- The upper Assouad spectrum at `θ`.
+
+**Implementation note:** This is only intended to be used for `θ : Ico 0 1`
+but totalized as usual to all real numbers.
+-/
+def upperAssouadSpectrum (E : Set ℝ) (θ : ℝ) : ℝ :=
+  limsup (fun r : NNReal ↦ ⨆ c : Ioi (0 : ℝ), ⨆ R : Icc (r ^ θ) 1,
+      ENNReal.log (N (E ∩ (logBall c R)) r) /
+        (Real.log ((R.1 : ℝ) / (r : ℝ)) : EReal))
+    (𝓝[>] 0) |>.toReal
+
+/-- The quasi-Assouad dimension of a dilation set. -/
+def quasiAssouadDimension (E : Set ℝ) : ℝ :=
+  limsup (upperAssouadSpectrum E) (𝓝[<] 1)
 
 @[inherit_doc upperMinkowskiExponent]
 abbrev β (E : Set ℝ) : ℝ := upperMinkowskiExponent E
