@@ -53834,7 +53834,7 @@ theorem brrsAssouadSpectrum_offDiagSet_threshold {beta gam : ℝ}
   refine le_antisymm ?_ ?_
   · calc _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
           (offDiagSet beta gam k0) (1 - beta / gam)
-        ≤ quasiAssouadDimension (offDiagSet beta gam k0) :=
+        ≤ Auto.FractalDimensions.quasiAssouadDimension (offDiagSet beta gam k0) :=
           _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_quasiAssouadDimension
             hE hθ0 hθ1
       _ = gam := quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0
@@ -53870,7 +53870,7 @@ theorem hasExtremalLegendreAssouad_offDiagSet {beta gam : ℝ}
   have hEne : (offDiagSet beta gam k0).Nonempty := offDiagSet_nonempty k0
   have hdim : upperMinkowskiDimension (offDiagSet beta gam k0) = beta :=
     upperMinkowskiDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0
-  have hqA : quasiAssouadDimension (offDiagSet beta gam k0) = gam :=
+  have hqA : Auto.FractalDimensions.quasiAssouadDimension (offDiagSet beta gam k0) = gam :=
     quasiAssouadDimension_offDiagSet hbeta hbg hgam1 hk0pos hk0
   have hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
       0 ≤ _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
@@ -53889,10 +53889,11 @@ theorem hasExtremalLegendreAssouad_offDiagSet {beta gam : ℝ}
     intro θ hθ0 hθ1
     have hpos : (0 : ℝ) < 1 - θ := by linarith
     have h1 : _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum
-        (offDiagSet beta gam k0) θ ≤ upperAssouadSpectrum (offDiagSet beta gam k0) θ :=
+        (offDiagSet beta gam k0) θ ≤
+          Auto.FractalDimensions.upperAssouadSpectrum (offDiagSet beta gam k0) θ :=
       _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum_le_upperAssouadSpectrum
         hE hθ0 hθ1.le
-    have h2 : upperAssouadSpectrum (offDiagSet beta gam k0) θ ≤ beta / (1 - θ) :=
+    have h2 : Auto.FractalDimensions.upperAssouadSpectrum (offDiagSet beta gam k0) θ ≤ beta / (1 - θ) :=
       upperAssouadSpectrum_le_minkowski_ratio_of_upperMinkowskiDimension_eq hE hdim
         hθ0 hθ1
     have h3 : (1 - θ) * (beta / (1 - θ)) = beta := by
@@ -53936,7 +53937,7 @@ whose radial type set is squeezed between the interior and the closure of
 theorem exists_cor13ii_sharp {beta gam : ℝ} (hbeta : 0 < beta) (hbg : beta < gam)
     (hgam1 : gam ≤ 1) (h2γβ : 1 < 2 * gam - beta) :
     ∃ E : Set ℝ, E ⊆ Icc (1 : ℝ) 2 ∧ E.Nonempty ∧
-      upperMinkowskiDimension E = beta ∧ quasiAssouadDimension E = gam ∧
+      upperMinkowskiDimension E = beta ∧ Auto.FractalDimensions.quasiAssouadDimension E = gam ∧
       interior (Qrad beta gam) ⊆ radialTypeSetCont 2 E ∧
         radialTypeSet 2 E ⊆ Qrad beta gam := by
   have hgam : 0 < gam := lt_trans hbeta hbg
@@ -56670,8 +56671,8 @@ theorem hasUpperAssouadSpectrumExponent_of_hasAssouadExponent {E : Set ℝ}
 
 theorem quasiAssouadDimension_le_of_hasAssouadExponent {E : Set ℝ}
     (hE : E ⊆ Icc (1 : ℝ) 2) {γ : ℝ} (hγ0 : 0 ≤ γ)
-    (h : HasAssouadExponent E γ) : quasiAssouadDimension E ≤ γ := by
-  refine csSup_le ⟨upperAssouadSpectrum E 0, ⟨0, ⟨le_rfl, by norm_num⟩, rfl⟩⟩ ?_
+    (h : HasAssouadExponent E γ) : Auto.FractalDimensions.quasiAssouadDimension E ≤ γ := by
+  refine csSup_le ⟨Auto.FractalDimensions.upperAssouadSpectrum E 0, ⟨0, ⟨le_rfl, by norm_num⟩, rfl⟩⟩ ?_
   rintro b ⟨θ, hθ, rfl⟩
   refine csInf_le (upperAssouadAdmissibleExponents_bddBelow E θ) ?_
   exact ⟨hγ0, hasUpperAssouadSpectrumExponent_of_hasAssouadExponent hE
@@ -56746,7 +56747,7 @@ theorem Delta_two_off_edge_subset_radialTypeSetCont {E : Set ℝ}
     (h2γβ : 2 * γ - β ≤ 1) :
     Delta 2 β ∩ {z : ExponentPoint | 0 < z.2 ∧ z.1 < 1 ∧ z.1 < 2 * z.2} ⊆
       radialTypeSetCont 2 E := by
-  have hqA : quasiAssouadDimension E ≤ γ :=
+  have hqA : Auto.FractalDimensions.quasiAssouadDimension E ≤ γ :=
     quasiAssouadDimension_le_of_hasAssouadExponent hE hγ0.le hAss
   have hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
       0 ≤ _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ :=
@@ -57037,7 +57038,7 @@ theorem thm14iii_radialTypeSet {E : Set ℝ} (hE : E ⊆ Icc (1 : ℝ) 2)
       radialTypeSet 2 E ⊆
         Delta 2 β ∩ {z : ExponentPoint | 2 * z.1 + (β - 1) * z.2 ≠ 1} := by
   have hβ3 : (0 : ℝ) < 3 + β := by linarith
-  have hqA : quasiAssouadDimension E ≤ γ :=
+  have hqA : Auto.FractalDimensions.quasiAssouadDimension E ≤ γ :=
     quasiAssouadDimension_le_of_hasAssouadExponent hE hγ0.le hAss
   have hσ0 : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
       0 ≤ _root_.Auto.Spherical.LegendreAssouad.brrsAssouadSpectrum E θ :=
