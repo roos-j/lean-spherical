@@ -1,0 +1,14 @@
+{
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
+  "theorem_names": [
+    "Spherical.RestrictedDilations.strongTypeRegion_subset_typeSet",
+    "Spherical.RestrictedDilations.exists_closure_typeSet_eq_iff",
+    "Spherical.RestrictedDilations.β_eq_and_γ_eq"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound"
+  ]
+}

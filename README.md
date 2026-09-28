@@ -1,8 +1,24 @@
-## Formalization of spherical maximal functions
+## Formalization of type set characterization for spherical maximal functions with fractal dilation sets
 
 [![Lean](https://github.com/roos-j/lean-spherical/actions/workflows/lean_action_ci.yml/badge.svg?branch=master)](https://github.com/roos-j/lean-spherical/actions/workflows/lean_action_ci.yml)
 
 This repository contains formalizations for some of the basic Lebesgue space theory of spherical maximal functions with an emphasis on restricted dilation sets, as well as related results. It includes in particular a formalization of Bourgain's circular maximal theorem.
+
+### This branch: Roos-Seeger type set theorems
+
+The purpose of this branch is to provide the necessary comparator files and metadata for submission to Palomar of
+Theorems 1.1 and 1.2 from the paper ["Spherical maximal functions and fractal dimensions of dilation sets"](https://doi.org/10.1353/ajm.2023.a902955)
+by Joris Roos and Andreas Seeger, Amer. J. Math. 145 (2023), no. 4, 1077-1110, [arXiv:2004.00984](https://arxiv.org/abs/2004.00984).
+
+The statement surface is [`Challenge.lean`](Challenge.lean); the selected declarations are
+
+* `Spherical.RestrictedDilations.strongTypeRegion_subset_typeSet` (Theorem 1.1),
+* `Spherical.RestrictedDilations.exists_closure_typeSet_eq_iff` (Theorem 1.2 (i)),
+* `Spherical.RestrictedDilations.β_eq_and_γ_eq` (Theorem 1.2 (ii)),
+
+stated in [`LeanSpherical/Theorems.lean`](LeanSpherical/Theorems.lean) and proved in
+[`LeanSpherical/Auto/Spherical/FractalDilations/RSTypeSetCharacterization.lean`](LeanSpherical/Auto/Spherical/FractalDilations/RSTypeSetCharacterization.lean)
+and the modules it imports.
 
 Completed:
 
