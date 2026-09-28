@@ -4,12 +4,83 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Joris Roos
 -/
 
-import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
-import Mathlib.Analysis.SpecialFunctions.Log.ENNRealLog
-import Mathlib.MeasureTheory.Constructions.HaarToSphere
-import Mathlib.MeasureTheory.Function.LpSeminorm.Defs
-import Mathlib.MeasureTheory.Measure.WithDensity
-import Mathlib.Topology.MetricSpace.CoveringNumbers
+module
+
+public import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
+public import Mathlib.Analysis.SpecialFunctions.Log.ENNRealLog
+public import Mathlib.MeasureTheory.Constructions.HaarToSphere
+public import Mathlib.MeasureTheory.Function.LpSeminorm.Defs
+public import Mathlib.MeasureTheory.Measure.WithDensity
+public import Mathlib.Topology.MetricSpace.CoveringNumbers
+-- Modules re-exported to keep the pre-module-system import visibility.
+public import Aesop.Constants
+public import Aesop.Exception
+public import Aesop.Forward.State.ApplyGoalDiff
+public import Aesop.Forward.State.Initial
+public import Aesop.Script.OptimizeSyntax
+public import Aesop.Script.StructureDynamic
+public import Aesop.Script.StructureStatic
+public import Aesop.Script.UScriptToSScript
+public import Aesop.Script.Util
+public import Aesop.Search.Expansion.Basic
+public import Aesop.Search.Expansion.Simp
+public import Aesop.Search.Queue
+public import Aesop.Tree.Free
+public import Aesop.Tree.Stats
+public import Aesop.Util.EqualUpToIds
+public import Aesop.Util.Tactic
+public import Aesop.Util.Tactic.Unfold
+public import Aesop.Util.UnionFind
+public import Batteries.Data.UInt
+public import Batteries.Lean.HashSet
+public import Batteries.Lean.Meta.DiscrTree
+public import Batteries.Lean.Meta.Inaccessible
+public import Batteries.Lean.PersistentHashSet
+public import ImportGraph.Imports.ImportGraph
+public import ImportGraph.Lean.Environment
+public import Init.Control.Option
+public import Init.Control.Reader
+public import Init.Control.State
+public import Init.Control.StateRef
+public import Lean.Compiler.IR.CompilerM
+public import Lean.Meta.CollectMVars
+public import Lean.Meta.DiscrTree.Main
+public import Lean.Meta.SynthInstance
+public import Lean.Meta.Tactic.Simp.Rewrite
+public import Lean.Meta.Tactic.Split
+public import Lean.Meta.WHNF
+public import Lean.Parser.Term.Basic
+public import Mathlib.Algebra.FiniteSupport.Basic
+public import Mathlib.Algebra.Group.TypeTags.Pointwise
+public import Mathlib.Algebra.Order.Group.Pointwise.CompleteLattice
+public import Mathlib.Algebra.Order.Interval.Set.Group
+public import Mathlib.Algebra.Order.Monoid.Canonical.Basic
+public import Mathlib.Algebra.Order.Ring.Interval
+public import Mathlib.Analysis.CStarAlgebra.ContinuousFunctionalCalculus.Commute
+public import Mathlib.Analysis.CStarAlgebra.ContinuousFunctionalCalculus.Continuity
+public import Mathlib.Analysis.Calculus.ContDiff.Bounds
+public import Mathlib.Analysis.Calculus.FDeriv.OfCompLeft
+public import Mathlib.Analysis.Matrix.Order
+public import Mathlib.Analysis.Normed.Lp.SmoothApprox
+public import Mathlib.Analysis.SpecialFunctions.Complex.LogDeriv
+public import Mathlib.Analysis.SpecialFunctions.ContinuousFunctionalCalculus.Rpow.Isometric
+public import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
+public import Mathlib.Data.List.Enum
+public import Mathlib.Geometry.Manifold.SmoothApprox
+public import Mathlib.LinearAlgebra.GeneralLinearGroup.AlgEquiv
+public import Mathlib.MeasureTheory.Function.ContinuousMapDense
+public import Mathlib.MeasureTheory.Integral.Layercake
+public import Mathlib.RingTheory.Finiteness.Lattice
+public import Mathlib.RingTheory.SimpleRing.Matrix
+public import Mathlib.SetTheory.Cardinal.ENNReal
+public import Mathlib.SetTheory.Cardinal.Ordinal
+public import Mathlib.SetTheory.Ordinal.FundamentalSequence
+public import Mathlib.Tactic.DSimpPercent
+public import Mathlib.Topology.Algebra.IsUniformGroup.Order
+public import Mathlib.Topology.Order.AtTopBotIxx
+public import Mathlib.Topology.WithTopology
+
+@[expose] public section
 
 /-!
 

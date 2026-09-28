@@ -11,25 +11,29 @@ This file is the single source consolidation of the formerly scratch-local
 Kakeya proof closure. Its only dependency on the MSS development is the
 cycle-free implementation module `MSSBase`.
 -/
-import LeanSpherical.Auto.Spherical.MSSBase
-import Mathlib.Analysis.Normed.Lp.SmoothApprox
-import Mathlib.MeasureTheory.Function.UniformIntegrable
-import Mathlib.Topology.ContinuousMap.StoneWeierstrass
-import Mathlib.Topology.ContinuousMap.Algebra
-import Mathlib.Topology.UniformSpace.ProdApproximation
-import Mathlib.LinearAlgebra.TensorProduct.Prod
-import Mathlib.Topology.Separation.CompletelyRegular
-import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
-import Mathlib.Geometry.Manifold.SmoothApprox
-import Mathlib.Analysis.Complex.Tietze
-import Mathlib.Analysis.Fourier.LpSpace
-import Mathlib.Analysis.Calculus.BumpFunction.Normed
-import Mathlib.Analysis.SpecialFunctions.Log.Base
-import LeanSpherical.Auto.LittlewoodPaley
-import LeanSpherical.Auto.OneDimStationaryPhase
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
-import LeanSpherical.Auto.Spherical.Auxiliary
-import Mathlib.Order.Interval.Set.Union
+module
+
+public import LeanSpherical.Auto.Spherical.MSSBase
+public import Mathlib.Analysis.Normed.Lp.SmoothApprox
+public import Mathlib.MeasureTheory.Function.UniformIntegrable
+public import Mathlib.Topology.ContinuousMap.StoneWeierstrass
+public import Mathlib.Topology.ContinuousMap.Algebra
+public import Mathlib.Topology.UniformSpace.ProdApproximation
+public import Mathlib.LinearAlgebra.TensorProduct.Prod
+public import Mathlib.Topology.Separation.CompletelyRegular
+public import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
+public import Mathlib.Geometry.Manifold.SmoothApprox
+public import Mathlib.Analysis.Complex.Tietze
+public import Mathlib.Analysis.Fourier.LpSpace
+public import Mathlib.Analysis.Calculus.BumpFunction.Normed
+public import Mathlib.Analysis.SpecialFunctions.Log.Base
+public import LeanSpherical.Auto.LittlewoodPaley
+public import LeanSpherical.Auto.OneDimStationaryPhase
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
+public import LeanSpherical.Auto.Spherical.Auxiliary
+public import Mathlib.Order.Interval.Set.Union
+
+@[expose] public section
 
 namespace Auto.Spherical.MSSKakeya
 
@@ -1588,9 +1592,9 @@ section Auto.Spherical.MSSKakeya
 
 noncomputable section
 
-private noncomputable def slabCenter : Real := 3 / 2
+noncomputable def slabCenter : Real := 3 / 2
 
-private noncomputable def slabBump (r R : Real) (hr : 0 < r) (hrR : r < R) :
+noncomputable def slabBump (r R : Real) (hr : 0 < r) (hrR : r < R) :
     ContDiffBump slabCenter := ⟨r, R, hr, hrR⟩
 
 noncomputable def applyInnerSlabCutoff
@@ -1781,10 +1785,10 @@ theorem exists_spatial_closedBall_support
   rw [Metric.mem_closedBall, dist_zero_right] at hzR ⊢
   exact (norm_fst_le z).trans hzR
 
-private theorem innerRadius_pos {η : Real} (hη : 0 < η) (hηhalf : η < 1 / 2) :
+theorem innerRadius_pos {η : Real} (hη : 0 < η) (hηhalf : η < 1 / 2) :
     0 < 1 - η := by linarith
 
-private theorem innerRadius_lt_outerRadius {η : Real} (hη : 0 < η) :
+theorem innerRadius_lt_outerRadius {η : Real} (hη : 0 < η) :
     1 - η < 1 - η / 2 := by linarith
 
 private theorem outerRadius_lt_one {η : Real} (hη : 0 < η) :
@@ -2289,6 +2293,7 @@ theorem tensorAlgHom_exists_finite_sum (X Y : Type*) [TopologicalSpace X] [Topol
       have h : tensorAlgHom X Y (x ⊗ₜ[Real] y) = ContinuousMap.prodMul x y := by
         apply ContinuousMap.ext
         intro p
+        rw [ContinuousMap.prodMul_apply]
         exact congrFun (tensorAlgHom_tmul X Y x y) p
       simpa using h
   | add x y hx hy =>
@@ -8047,7 +8052,7 @@ noncomputable def scratch_tubeTimePhase
   fun xi => (FourierTransform.fourier a : SchwartzMap Real Complex)
     (inner Real omega xi)
 
-private theorem scratch_tubeTimePhase_smooth
+theorem scratch_tubeTimePhase_smooth
     (a : SchwartzMap Real Complex) (omega : Euclidean 2) :
     ContDiff Real (⊤ : ℕ∞) (scratch_tubeTimePhase a omega) := by
   unfold scratch_tubeTimePhase
@@ -33004,7 +33009,7 @@ open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
 
-private noncomputable def finiteTensorTimeSchwartz
+noncomputable def finiteTensorTimeSchwartz
     {ι : Type*} (s : Finset ι)
     (q : ι → SchwartzMap (Euclidean 2) Complex)
     (a : ι → SchwartzMap Real Complex) (xi : Euclidean 2) :

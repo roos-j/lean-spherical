@@ -4,9 +4,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Joris Roos
 -/
 
-import LeanSpherical.Definitions
-import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
-import LeanSpherical.Auto.Spherical.FractalDilations.RSTypeSetCharacterization
+module
+
+public import LeanSpherical.Definitions
+public import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
+public import LeanSpherical.Auto.Spherical.FractalDilations.RSTypeSetCharacterization
+
+@[expose] public section
 
 namespace Spherical
 

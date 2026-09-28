@@ -12,13 +12,67 @@ quasi-Assouad, and covering-number definitions and facts used by the
 fractal-dilation theory. All declarations use this file's canonical namespace.
 -/
 
-import Mathlib.Algebra.Order.Floor.Extended
-import Mathlib.Algebra.Order.ToIntervalMod
-import Mathlib.Analysis.Asymptotics.ExpGrowth
-import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Data.Int.Interval
-import Mathlib.Topology.MetricSpace.CoveringNumbers
+module
+
+public import Mathlib.Algebra.Order.Floor.Extended
+public import Mathlib.Algebra.Order.ToIntervalMod
+public import Mathlib.Analysis.Asymptotics.ExpGrowth
+public import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+public import Mathlib.Data.Int.Interval
+public import Mathlib.Topology.MetricSpace.CoveringNumbers
+-- Modules re-exported to keep the pre-module-system import visibility.
+public import Aesop.Constants
+public import Aesop.Exception
+public import Aesop.Forward.State.ApplyGoalDiff
+public import Aesop.Forward.State.Initial
+public import Aesop.Script.OptimizeSyntax
+public import Aesop.Script.StructureDynamic
+public import Aesop.Script.StructureStatic
+public import Aesop.Script.UScriptToSScript
+public import Aesop.Script.Util
+public import Aesop.Search.Expansion.Basic
+public import Aesop.Search.Expansion.Simp
+public import Aesop.Search.Queue
+public import Aesop.Tree.Free
+public import Aesop.Tree.Stats
+public import Aesop.Util.EqualUpToIds
+public import Aesop.Util.Tactic
+public import Aesop.Util.Tactic.Unfold
+public import Aesop.Util.UnionFind
+public import Batteries.Data.UInt
+public import Batteries.Lean.HashSet
+public import Batteries.Lean.Meta.DiscrTree
+public import Batteries.Lean.Meta.Inaccessible
+public import Batteries.Lean.PersistentHashSet
+public import ImportGraph.Imports.ImportGraph
+public import ImportGraph.Lean.Environment
+public import Init.Control.Option
+public import Init.Control.Reader
+public import Init.Control.State
+public import Init.Control.StateRef
+public import Lean.Meta.CollectMVars
+public import Lean.Meta.DiscrTree.Main
+public import Lean.Meta.SynthInstance
+public import Lean.Meta.Tactic.Simp.Attr
+public import Lean.Meta.Tactic.Simp.Rewrite
+public import Lean.Meta.Tactic.Split
+public import Lean.Meta.WHNF
+public import Lean.Parser.Term.Basic
+public import Mathlib.Algebra.FiniteSupport.Basic
+public import Mathlib.Algebra.Order.Group.Pointwise.CompleteLattice
+public import Mathlib.Algebra.Order.Interval.Set.Group
+public import Mathlib.Algebra.Order.Monoid.Submonoid
+public import Mathlib.Algebra.Order.Ring.Interval
+public import Mathlib.Algebra.Ring.Hom.InjSurj
+public import Mathlib.Data.Fintype.Order
+public import Mathlib.Data.List.Enum
+public import Mathlib.GroupTheory.QuotientGroup.ModEq
+public import Mathlib.Tactic.DSimpPercent
+public import Mathlib.Topology.Order.AtTopBotIxx
+public import Mathlib.Topology.WithTopology
+
+@[expose] public section
 
 namespace Auto.FractalDimensions
 
