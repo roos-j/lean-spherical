@@ -11,30 +11,34 @@ This module intentionally sits above the foundational FractalDilations,
 Spherical, Bourgain, and PowerWeights layers.
 -/
 
-import LeanSpherical.Auto.Spherical.Auxiliary
-import LeanSpherical.Auto.Spherical.Bourgain
-import LeanSpherical.Auto.Spherical.PowerWeights
-import LeanSpherical.Auto.RadialFourierTransform
-import LeanSpherical.Auto.Spherical.SphericalMaximal
-import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
-import LeanSpherical.Auto.SteinInterpolation
-import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
-import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
-import LeanSpherical.Auto.FractalDimensions
-import LeanSpherical.Auto.Spherical.LegendreAssouad
-import LeanSpherical.Definitions
-import Mathlib.Algebra.Order.Field.GeomSum
-import Mathlib.Analysis.Calculus.BumpFunction.SmoothApprox
-import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
-import Mathlib.Analysis.Distribution.AEEqOfIntegralContDiff
-import Mathlib.Analysis.Distribution.FourierMultiplier
-import Mathlib.Analysis.Fourier.Convolution
-import Mathlib.Analysis.Normed.Operator.Banach
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.MeasureTheory.Function.Holder
-import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
-import Mathlib.MeasureTheory.Integral.Prod
-import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
+module
+
+public import LeanSpherical.Auto.Spherical.Auxiliary
+public import LeanSpherical.Auto.Spherical.Bourgain
+public import LeanSpherical.Auto.Spherical.PowerWeights
+public import LeanSpherical.Auto.RadialFourierTransform
+public import LeanSpherical.Auto.Spherical.SphericalMaximal
+public import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
+public import LeanSpherical.Auto.SteinInterpolation
+public import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
+public import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
+public import LeanSpherical.Auto.FractalDimensions
+public import LeanSpherical.Auto.Spherical.LegendreAssouad
+public import LeanSpherical.Definitions
+public import Mathlib.Algebra.Order.Field.GeomSum
+public import Mathlib.Analysis.Calculus.BumpFunction.SmoothApprox
+public import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
+public import Mathlib.Analysis.Distribution.AEEqOfIntegralContDiff
+public import Mathlib.Analysis.Distribution.FourierMultiplier
+public import Mathlib.Analysis.Fourier.Convolution
+public import Mathlib.Analysis.Normed.Operator.Banach
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+public import Mathlib.MeasureTheory.Function.Holder
+public import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
+public import Mathlib.MeasureTheory.Integral.Prod
+public import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
+
+@[expose] public section
 
 
 namespace Auto.Spherical.FractalDilations.AHRSUpperBounds

@@ -10,17 +10,21 @@ All declarations use this file's canonical namespace.
 -/
 
 
-import LeanSpherical.Auto.Spherical.Auxiliary
-import LeanSpherical.Auto.FractalDimensions
-import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
-import Mathlib.Algebra.Order.Chebyshev
-import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
-import Mathlib.Analysis.Calculus.ContDiff.Deriv
-import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
-import Mathlib.Analysis.Calculus.ParametricIntervalIntegral
-import Mathlib.Analysis.Convex.Topology
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+module
+
+public import LeanSpherical.Auto.Spherical.Auxiliary
+public import LeanSpherical.Auto.FractalDimensions
+public import LeanSpherical.Auto.HardyLittlewoodMaximal
+public import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
+public import Mathlib.Algebra.Order.Chebyshev
+public import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
+public import Mathlib.Analysis.Calculus.ContDiff.Deriv
+public import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
+public import Mathlib.Analysis.Calculus.ParametricIntervalIntegral
+public import Mathlib.Analysis.Convex.Topology
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+
+@[expose] public section
 
 namespace Auto.Spherical.FractalDilations.Auxiliary
 

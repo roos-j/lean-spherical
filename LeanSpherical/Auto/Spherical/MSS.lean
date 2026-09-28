@@ -11,12 +11,18 @@ The implementation lives in `MSSBase`; the Kakeya proof of the light-ray
 maximal estimate is consolidated in `MSSKakeya`.
 -/
 
-import LeanSpherical.Auto.Spherical.MSSBase
-import LeanSpherical.Auto.Spherical.MSSKakeya
-import Mathlib.Analysis.Fourier.AddCircleMulti
-import Mathlib.Analysis.Normed.Module.Normalize
-import Mathlib.Algebra.Module.ZLattice.Summable
-import Mathlib.LinearAlgebra.Basis.Submodule
+module
+
+public import LeanSpherical.Auto.Spherical.MSSBase
+public import LeanSpherical.Auto.Spherical.MSSKakeya
+public import Mathlib.Analysis.Fourier.AddCircleMulti
+public import Mathlib.Analysis.Normed.Module.Normalize
+public import Mathlib.Algebra.Module.ZLattice.Summable
+public import Mathlib.LinearAlgebra.Basis.Submodule
+-- Modules re-exported to keep the pre-module-system import visibility.
+public import Mathlib.Analysis.Asymptotics.SpecificAsymptotics
+
+@[expose] public section
 
 namespace Auto.Spherical.MSS
 
@@ -1999,7 +2005,7 @@ theorem latticeCubeScale_pos {spacing scale : Real} (hspacing : 0 < spacing)
 
 /-- A compactly supported smooth one-dimensional lattice synthesis piece.
 Its integer translates telescope to one. -/
-private def mssUnitLatticeTransitionPiece (t : Real) : Real :=
+def mssUnitLatticeTransitionPiece (t : Real) : Real :=
   Real.smoothTransition (t + 1) - Real.smoothTransition t
 
 private theorem mssUnitLatticeTransitionPiece_contDiff :
@@ -4655,7 +4661,7 @@ private theorem mssFineCubeSymbol_zero_near_zero
 /-- Smoothness of the literal fine-cube multiplier, including the origin.
 The only singular-looking factor is the half-wave phase, and the preceding
 central-annulus vanishing handles that point. -/
-private theorem mssFineCubeSymbol_contDiff
+theorem mssFineCubeSymbol_contDiff
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
     {scale : Real} (hscale : 2 ≤ scale) (n nu : Int)
     (cube : Fin (cubes.cubeCount scale)) (z : WaveSpaceTime) :
@@ -4679,7 +4685,7 @@ private theorem mssFineCubeSymbol_contDiff
 
 /-- Compactness of the literal fine-cube multiplier is inherited from the
 compact radial--time amplitude. -/
-private theorem mssFineCubeSymbol_hasCompactSupport
+theorem mssFineCubeSymbol_hasCompactSupport
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
     {scale : Real} (hscale : 2 ≤ scale) (n nu : Int)
     (cube : Fin (cubes.cubeCount scale)) (z : WaveSpaceTime) :
@@ -4737,7 +4743,7 @@ theorem hasCompactSupport_mssFineCubeSchwartzSymbol
 /-- Modulating a compact frequency symbol by the plane wave that removes a
 candidate light-ray translation.  This generic helper is kept private; the
 public specialization below is the literal MSS residual symbol. -/
-private noncomputable def mssFinePlaneWaveResidualSymbol
+noncomputable def mssFinePlaneWaveResidualSymbol
     (q : SchwartzMap (Euclidean 2) Complex)
     (hqcompact : HasCompactSupport (q : Euclidean 2 → Complex))
     (t : Real) (omega : Euclidean 2) :
@@ -11641,7 +11647,7 @@ theorem mssAnnularNormCutoff_compact :
   change HasCompactSupport Auto.Spherical.MSSKakeya.sectorAnnularCutoff
   exact Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff
 
-private theorem mssAnnularNormCutoff_eq_zero_near_zero
+theorem mssAnnularNormCutoff_eq_zero_near_zero
     (xi : Euclidean 2) (hxi : ‖xi‖ < 1 / 4) :
     mssAnnularNormCutoff xi = 0 := by
   rw [mssAnnularNormCutoff_apply]
@@ -11665,11 +11671,11 @@ theorem mssAnnularNormExtension_eq_norm {xi : Euclidean 2}
 /-- A single smooth sine transition gives a compactly supported square
 partition of unity under integer translation.  On adjacent unit intervals it
 is respectively a sine and a complementary cosine. -/
-private noncomputable def mssCanonicalVerticalReal (s : Real) : Real :=
+noncomputable def mssCanonicalVerticalReal (s : Real) : Real :=
   Real.sin ((Real.pi / 2) *
     (Real.smoothTransition (s + 1) - Real.smoothTransition s))
 
-private theorem mssCanonicalVerticalReal_contDiff :
+theorem mssCanonicalVerticalReal_contDiff :
     ContDiff Real (⊤ : ℕ∞) mssCanonicalVerticalReal := by
   unfold mssCanonicalVerticalReal
   apply Real.contDiff_sin.comp
@@ -11708,7 +11714,7 @@ private theorem mssCanonicalVerticalReal_support_subset :
     have h' : 1 ≤ s := by linarith
     exact hs (mssCanonicalVerticalReal_zero_right h')
 
-private theorem mssCanonicalVerticalReal_compact :
+theorem mssCanonicalVerticalReal_compact :
     HasCompactSupport mssCanonicalVerticalReal := by
   apply HasCompactSupport.of_support_subset_isCompact
     (isCompact_Icc : IsCompact (Icc (-1 : Real) 1))
@@ -11936,7 +11942,7 @@ the boundary `projection ≤ 3/16` and is one from `projection = 1/4` onward.
 The resulting four ordered weights still cover the unit annulus, while their
 strict buffer permits genuine angular cutoffs and enlarged angular cutoffs
 later in the MSS packet construction. -/
-private def mssP4SourceChartBump (q : Fin 4) (xi : Euclidean 2) : Real :=
+def mssP4SourceChartBump (q : Fin 4) (xi : Euclidean 2) : Real :=
   Real.smoothTransition
     (16 * Auto.Spherical.MSSKakeya.sectorProjection
       (Auto.Spherical.MSSKakeya.chartSectorIndex q) xi - 3)
@@ -11972,7 +11978,7 @@ private theorem mssP4SourceChartBump_ne_zero_imp_three_sixteenths_lt_projection
 
 /-- The ordered source weights use the buffered source bumps rather than the
 unbuffered four-chart weights. -/
-private def mssP4SourceChartOrderedWeight (q : Fin 4) (xi : Euclidean 2) : Real :=
+def mssP4SourceChartOrderedWeight (q : Fin 4) (xi : Euclidean 2) : Real :=
   if q = 0 then mssP4SourceChartBump 0 xi else
   if q = 1 then (1 - mssP4SourceChartBump 0 xi) * mssP4SourceChartBump 1 xi else
   if q = 2 then (1 - mssP4SourceChartBump 0 xi) *
@@ -12048,18 +12054,18 @@ private theorem exists_mssP4SourceChartBump_eq_one_of_norm_half_le
       (q := (2 : Fin 4)) (xi := xi) (by simpa using hq)
 
 /-- The compact annular source multiplier for a buffered coarse chart. -/
-private noncomputable def mssP4SourceChartMultiplier (q : Fin 4)
+noncomputable def mssP4SourceChartMultiplier (q : Fin 4)
     (xi : Euclidean 2) : Complex :=
   (Auto.Spherical.MSSKakeya.sectorAnnularCutoff xi : Complex) *
     (mssP4SourceChartOrderedWeight q xi : Complex)
 
-private theorem mssP4SourceChartMultiplier_contDiff (q : Fin 4) :
+theorem mssP4SourceChartMultiplier_contDiff (q : Fin 4) :
     ContDiff Real (⊤ : ℕ∞) (mssP4SourceChartMultiplier q) := by
   unfold mssP4SourceChartMultiplier
   exact Auto.Spherical.MSSKakeya.contDiff_sectorAnnularCutoff_complex.mul
     (Complex.ofRealCLM.contDiff.comp (mssP4SourceChartOrderedWeight_contDiff q))
 
-private theorem mssP4SourceChartMultiplier_compact (q : Fin 4) :
+theorem mssP4SourceChartMultiplier_compact (q : Fin 4) :
     HasCompactSupport (mssP4SourceChartMultiplier q) := by
   unfold mssP4SourceChartMultiplier
   exact Auto.Spherical.MSSKakeya.hasCompactSupport_sectorAnnularCutoff_complex.mul_right

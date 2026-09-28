@@ -9,7 +9,11 @@ Roos--Seeger lower-bound constructions used for Theorem 1.2.
 All declarations use `Auto.Spherical.FractalDilations.RSLowerBounds`.
 -/
 
-import LeanSpherical.Auto.Spherical.FractalDilations.RSUpperBounds
+module
+
+public import LeanSpherical.Auto.Spherical.FractalDilations.RSUpperBounds
+
+@[expose] public section
 
 namespace Auto.Spherical.FractalDilations.RSLowerBounds
 open Auto.Spherical.FractalDilations.RSUpperBounds

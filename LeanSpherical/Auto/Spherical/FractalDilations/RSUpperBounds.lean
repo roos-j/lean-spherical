@@ -9,24 +9,28 @@ Roos--Seeger Theorem 1.1: planar and higher-dimensional upper-bound work.
 All declarations use `Auto.Spherical.FractalDilations.RSUpperBounds`.
 -/
 
-import LeanSpherical.Auto.CalderonVaillancourt
-import LeanSpherical.Auto.HardyLittlewoodSobolev
-import LeanSpherical.Auto.Spherical.Auxiliary
-import LeanSpherical.Auto.Spherical.Bourgain
-import LeanSpherical.Auto.Spherical.MSSBase
-import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
-import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
-import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
-import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
-import LeanSpherical.Auto.FractalDimensions
-import Mathlib.Analysis.Calculus.Deriv.Star
-import Mathlib.Analysis.Complex.ExponentialBounds
-import Mathlib.Analysis.Complex.HasPrimitives
-import Mathlib.Analysis.Complex.PhragmenLindelof
-import Mathlib.Analysis.Fourier.Convolution
-import Mathlib.Analysis.Real.Pi.Bounds
-import Mathlib.Analysis.SpecialFunctions.ImproperIntegrals
-import Mathlib.Geometry.Euclidean.Angle.Unoriented.Basic
+module
+
+public import LeanSpherical.Auto.CalderonVaillancourt
+public import LeanSpherical.Auto.HardyLittlewoodSobolev
+public import LeanSpherical.Auto.Spherical.Auxiliary
+public import LeanSpherical.Auto.Spherical.Bourgain
+public import LeanSpherical.Auto.Spherical.MSSBase
+public import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
+public import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
+public import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
+public import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
+public import LeanSpherical.Auto.FractalDimensions
+public import Mathlib.Analysis.Calculus.Deriv.Star
+public import Mathlib.Analysis.Complex.ExponentialBounds
+public import Mathlib.Analysis.Complex.HasPrimitives
+public import Mathlib.Analysis.Complex.PhragmenLindelof
+public import Mathlib.Analysis.Fourier.Convolution
+public import Mathlib.Analysis.Real.Pi.Bounds
+public import Mathlib.Analysis.SpecialFunctions.ImproperIntegrals
+public import Mathlib.Geometry.Euclidean.Angle.Unoriented.Basic
+
+@[expose] public section
 
 namespace Auto.Spherical.FractalDilations.RSUpperBounds
 open MeasureTheory Metric Set

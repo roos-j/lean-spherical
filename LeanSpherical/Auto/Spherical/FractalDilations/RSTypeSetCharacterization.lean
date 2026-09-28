@@ -9,8 +9,12 @@ Roos--Seeger type-set characterization and Theorem 1.2 work.
 All declarations use `Auto.Spherical.FractalDilations.RSTypeSetCharacterization`.
 -/
 
-import LeanSpherical.Auto.Spherical.FractalDilations.RSLowerBounds
-import LeanSpherical.Auto.Spherical.FractalDilations.RSUpperBounds
+module
+
+public import LeanSpherical.Auto.Spherical.FractalDilations.RSLowerBounds
+public import LeanSpherical.Auto.Spherical.FractalDilations.RSUpperBounds
+
+@[expose] public section
 
 namespace Auto.Spherical.FractalDilations.RSTypeSetCharacterization
 open Auto.Spherical.FractalDilations.RSUpperBounds

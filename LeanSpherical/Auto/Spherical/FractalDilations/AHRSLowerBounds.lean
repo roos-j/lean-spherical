@@ -11,12 +11,16 @@ This consolidated module uses its canonical file namespace and remains
 independent of PowerWeights and Bourgain.
 -/
 
-import LeanSpherical.Auto.Spherical.Auxiliary
-import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
-import LeanSpherical.Auto.FractalDimensions
-import LeanSpherical.Auto.Spherical.SphericalMaximal
-import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
-import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+module
+
+public import LeanSpherical.Auto.Spherical.Auxiliary
+public import LeanSpherical.Auto.Spherical.FractalDilations.Auxiliary
+public import LeanSpherical.Auto.FractalDimensions
+public import LeanSpherical.Auto.Spherical.SphericalMaximal
+public import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
+public import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+
+@[expose] public section
 
 
 namespace Auto.Spherical.FractalDilations.AHRSLowerBounds

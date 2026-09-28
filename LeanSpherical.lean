@@ -1,11 +1,15 @@
-import LeanSpherical.Auto.ConvexDuality
-import LeanSpherical.Auto.RadialFourierTransform
-import LeanSpherical.Auto.Spherical.SphericalMaximal
-import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
-import LeanSpherical.Auto.Spherical.FractalDilations.RSTypeSetCharacterization
-import LeanSpherical.Auto.Spherical.LegendreAssouad
-import LeanSpherical.Auto.Spherical.FractalDilations.BRRS
-import LeanSpherical.Auto.Spherical.FractalDilations.BRSRadial
+module
+
+public import LeanSpherical.Auto.ConvexDuality
+public import LeanSpherical.Auto.RadialFourierTransform
+public import LeanSpherical.Auto.Spherical.SphericalMaximal
+public import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
+public import LeanSpherical.Auto.Spherical.FractalDilations.RSTypeSetCharacterization
+public import LeanSpherical.Auto.Spherical.LegendreAssouad
+public import LeanSpherical.Auto.Spherical.FractalDilations.BRRS
+public import LeanSpherical.Auto.Spherical.FractalDilations.BRSRadial
+
+@[expose] public section
 
 #check Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq
 #print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.closure_typeSet_eq

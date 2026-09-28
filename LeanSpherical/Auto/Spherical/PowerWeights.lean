@@ -13,34 +13,38 @@ planar/AHRS-dependent tail, which are staged in their original source chunks
 for later modules. Original declaration namespaces are preserved. Sections
 labelled "Fractal-dimension" are staged for `FractalDimensions.lean`.
 -/
-import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
-import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
-import LeanSpherical.Auto.FractalDimensions
-import LeanSpherical.Auto.Spherical.LegendreAssouad
-import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.Auxiliary
-import LeanSpherical.Auto.Spherical.SphericalMaximal
-import LeanSpherical.Definitions
-import Mathlib.Algebra.Order.Floor.Extended
-import Mathlib.Analysis.Asymptotics.ExpGrowth
-import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
-import Mathlib.Analysis.Calculus.BumpFunction.SmoothApprox
-import Mathlib.Analysis.Complex.ExponentialBounds
-import Mathlib.Analysis.Distribution.TemperateGrowth
-import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
-import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
-import Mathlib.Analysis.SpecialFunctions.Pow.Integral
-import Mathlib.MeasureTheory.Covering.Vitali
-import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
-import Mathlib.MeasureTheory.Function.LpSpace.InfiniteSum
-import Mathlib.MeasureTheory.Group.Prod
-import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
-import Mathlib.MeasureTheory.Integral.IntervalIntegral.DistLEIntegral
-import Mathlib.MeasureTheory.Integral.Layercake
-import Mathlib.MeasureTheory.Integral.Lebesgue.Add
-import Mathlib.MeasureTheory.Integral.Prod
-import Mathlib.Topology.MetricSpace.CoveringNumbers
-import Mathlib.Topology.Sequences
+module
+
+public import LeanSpherical.Auto.Spherical.SurfaceMeasureDecay
+public import LeanSpherical.Auto.Spherical.FractalDilations.AHRSLowerBounds
+public import LeanSpherical.Auto.FractalDimensions
+public import LeanSpherical.Auto.Spherical.LegendreAssouad
+public import LeanSpherical.Auto.HardyLittlewoodMaximal
+public import LeanSpherical.Auto.Spherical.Auxiliary
+public import LeanSpherical.Auto.Spherical.SphericalMaximal
+public import LeanSpherical.Definitions
+public import Mathlib.Algebra.Order.Floor.Extended
+public import Mathlib.Analysis.Asymptotics.ExpGrowth
+public import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
+public import Mathlib.Analysis.Calculus.BumpFunction.SmoothApprox
+public import Mathlib.Analysis.Complex.ExponentialBounds
+public import Mathlib.Analysis.Distribution.TemperateGrowth
+public import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
+public import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+public import Mathlib.Analysis.SpecialFunctions.Pow.Integral
+public import Mathlib.MeasureTheory.Covering.Vitali
+public import Mathlib.MeasureTheory.Function.LpSeminorm.LpNorm
+public import Mathlib.MeasureTheory.Function.LpSpace.InfiniteSum
+public import Mathlib.MeasureTheory.Group.Prod
+public import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
+public import Mathlib.MeasureTheory.Integral.IntervalIntegral.DistLEIntegral
+public import Mathlib.MeasureTheory.Integral.Layercake
+public import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+public import Mathlib.MeasureTheory.Integral.Prod
+public import Mathlib.Topology.MetricSpace.CoveringNumbers
+public import Mathlib.Topology.Sequences
+
+@[expose] public section
 
 namespace Auto.Spherical.PowerWeights
 
@@ -44691,7 +44695,7 @@ private theorem hasDerivAt_lacunaryRelativeBandpassPhysicalKernel
   simpa only [H, normalizedPhysicalDilation] using
     lacunaryRelativeBandpassPhysicalKernel_dilate psi j hs x
 
-private def lacunaryRelativeBandpassPhysicalKernelRadiusDerivative
+def lacunaryRelativeBandpassPhysicalKernelRadiusDerivative
     {d : Nat} (psi : SchwartzMap (Euclidean d) ℂ) (j : Nat)
     (r : ℝ) (x : Euclidean d) : ℂ :=
   ((r⁻¹ ^ d : ℝ) •
@@ -70251,7 +70255,7 @@ open scoped BigOperators
 
 noncomputable section
 
-private theorem thinRadialBufferedPartition_scale_pos
+theorem thinRadialBufferedPartition_scale_pos
     {k : Nat} (s : Real) (hs : s = ((2 : Real) ^ k)⁻¹) :
     0 < s := by
   rw [hs]
