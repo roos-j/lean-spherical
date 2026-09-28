@@ -77,6 +77,30 @@ theorem eLpNorm_lacunarySphericalMaximal_le_schwartzMap {d : ℕ} {p : ℝ≥0�
   Auto.Spherical.FractalDilations.AHRSUpperBounds.eLpNorm_lacunarySphericalMaximal_le_schwartzMap
     hd hp
 
+/-- Thm. 1.1 of Roos-Seeger, arXiv:2004.00984 -/
+theorem strongTypeRegion_subset_typeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Icc 1 2) :
+    strongTypeRegion d (β E) (γ E) ⊆ typeSet d E :=
+  Auto.Spherical.FractalDilations.RSTypeSetCharacterization.strongTypeRegion_subset_typeSet hd hE
+
+/-- **Typeset characterization theorem**.
+Thm. 1.2 (i) of Roos-Seeger, arXiv:2004.00984. -/
+theorem exists_closure_typeSet_eq_iff {d : ℕ} (hd : 2 ≤ d) (W : Set (ℝ × ℝ)) :
+    (∃ E ⊆ Icc (1 : ℝ) 2, E.Nonempty ∧ closure (typeSet d E) = W) ↔
+      IsClosed W ∧ Convex ℝ W ∧ ∃ b g : ℝ, 0 ≤ b ∧ b ≤ g ∧ g ≤ 1 ∧
+        quadrilateral d b g ⊆ W ∧ W ⊆ quadrilateral d b b :=
+  Auto.Spherical.FractalDilations.RSTypeSetCharacterization.exists_closure_typeSet_eq_iff hd W
+
+/-- Thm. 1.2 (ii) of Roos-Seeger, arXiv:2004.00984 -/
+theorem β_eq_and_γ_eq {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Icc 1 2)
+    {b g : ℝ} (hb : 0 ≤ b) (hbg : b ≤ g) (hg : g ≤ 1)
+    (hlow : quadrilateral d b g ⊆ closure (typeSet d E))
+    (hupp : closure (typeSet d E) ⊆ quadrilateral d b b) :
+    β E = b ∧
+      ((∀ g' : ℝ, b ≤ g' → g' ≤ 1 → quadrilateral d b g' ⊆ closure (typeSet d E) → g ≤ g') →
+        γ E = g) :=
+  Auto.Spherical.FractalDilations.RSTypeSetCharacterization.β_eq_and_γ_eq
+    hd hE hb hbg hg hlow hupp
+
 end RestrictedDilations
 
 namespace PowerWeights

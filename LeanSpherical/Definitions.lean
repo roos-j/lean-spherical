@@ -73,6 +73,9 @@ def upperMinkowskiExponent (E : Set ℝ) : ℝ :=
       N (E ∩ (logBall c 1)) r) / (Real.log ((r : ℝ)⁻¹) : EReal))
     (𝓝[>] 0) |>.toReal
 
+@[inherit_doc upperMinkowskiExponent]
+abbrev β (E : Set ℝ) : ℝ := upperMinkowskiExponent E
+
 /-- The upper Assouad spectrum at `θ`.
 
 **Implementation note:** This is only intended to be used for `θ : Ico 0 1`
@@ -88,8 +91,8 @@ def upperAssouadSpectrum (E : Set ℝ) (θ : ℝ) : ℝ :=
 def quasiAssouadDimension (E : Set ℝ) : ℝ :=
   limsup (upperAssouadSpectrum E) (𝓝[<] 1)
 
-@[inherit_doc upperMinkowskiExponent]
-abbrev β (E : Set ℝ) : ℝ := upperMinkowskiExponent E
+@[inherit_doc quasiAssouadDimension]
+abbrev γ (E : Set ℝ) : ℝ := quasiAssouadDimension E
 
 /-- The Legendre--Assouad function `ν♯` of a dilation set. -/
 def legendreAssouadFunction (E : Set ℝ) (ρ : ℝ) : ℝ :=
@@ -112,6 +115,38 @@ namespace RestrictedDilations
 
 /-- The critical exponent `p_β = 1 + β / (d - 1)`. -/
 def criticalExponent (d : ℕ) (E : Set ℝ) : ℝ := 1 + β E / ((d : ℝ) - 1)
+
+/-- The vertex `Q₁ = (0, 0)`, representing the (trivial) `L^∞` estimate. -/
+def Q₁ : ℝ × ℝ := (0, 0)
+
+/-- The vertex `Q₂(β)` on the diagonal. -/
+def Q₂ (d : ℕ) (β : ℝ) : ℝ × ℝ :=
+  ((d - 1) / (d - 1 + β), (d - 1) / (d - 1 + β))
+
+/-- The vertex `Q₃(β)`. -/
+def Q₃ (d : ℕ) (β : ℝ) : ℝ × ℝ :=
+  ((d - β) / (d - β + 1), 1 / (d - β + 1))
+
+/-- The vertex `Q₄(γ)`. -/
+def Q₄ (d : ℕ) (γ : ℝ) : ℝ × ℝ :=
+  (d * (d - 1) / (d ^ 2 + 2 * γ - 1), (d - 1) / (d ^ 2 + 2 * γ - 1))
+
+/-- The closed quadrilateral `Q(β, γ)`, the convex hull of `Q₁, Q₂(β), Q₃(β), Q₄(γ)`. -/
+def quadrilateral (d : ℕ) (β γ : ℝ) : Set (ℝ × ℝ) :=
+  convexHull ℝ {Q₁, Q₂ d β, Q₃ d β, Q₄ d γ}
+
+/-- The region `R(β, γ)` in Thm. 1.1, arXiv:2004.00984: the interior of `Q(β, γ)` together with
+the half-open segment `[Q₁, Q₂(β))`. -/
+def strongTypeRegion (d : ℕ) (β γ : ℝ) : Set (ℝ × ℝ) :=
+  (segment ℝ Q₁ (Q₂ d β) \ {Q₂ d β}) ∪ interior (quadrilateral d β γ)
+
+/-- The strong-type region of `M E`, in coordinates `(1 / p, 1 / q)`.
+**Implementation note:** We prefer to use a priori estimates on Schwartz functions.
+-/
+def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
+  {z | ∃ p q : ℝ≥0∞, 1 ≤ p ∧ 1 ≤ q ∧ z = (ENNReal.toReal p⁻¹, ENNReal.toReal q⁻¹) ∧
+    ∃ C : ℝ, 0 < C ∧ ∀ f : 𝓢(ℝ^d, ℂ),
+      MemLp (M E f) q volume ∧ eLpNorm (M E f) q volume ≤ ENNReal.ofReal C * eLpNorm f p volume}
 
 end RestrictedDilations
 
