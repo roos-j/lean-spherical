@@ -576,6 +576,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory Metric Set FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.MSS
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
@@ -1053,7 +1054,7 @@ theorem scratch_integrable_sq_timeAverage
   rw [Real.norm_of_nonneg (sq_nonneg _),
     Real.norm_of_nonneg (mul_nonneg measureReal_nonneg
       (integral_nonneg fun _ => sq_nonneg _))]
-  exact Auto.Spherical.Auxiliary.norm_integral_sq_le_measureReal_mul_integral_norm_sq
+  exact Auto.Spherical.SphericalMaximalL2.norm_integral_sq_le_measureReal_mul_integral_norm_sq
     mu (F y) (hslice y)
 
 /-- Both broad-width averages are pointwise nonnegative for the positive

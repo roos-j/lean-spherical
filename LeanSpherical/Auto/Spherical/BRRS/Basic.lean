@@ -52,6 +52,47 @@ physical-speed-one half-wave below has multiplier `exp (2 pi i t |xi|)`.
 
 namespace Auto.Spherical.BRRS
 
+/-! ## Material moved from `Spherical/Auxiliary.lean` -/
+
+noncomputable section
+open Auto.MarcinkiewiczInterpolation Filter MeasureTheory Set ENNReal Auto.Spherical.Auxiliary
+  Auto.Spherical.SurfaceMeasureDecay
+
+section FormerNamespace_4
+
+open MeasureTheory FourierTransform
+open scoped FourierTransform
+
+noncomputable section
+
+/-- The `L²` inverse Fourier transform of Schwartz data agrees almost
+everywhere with its literal inverse Fourier integral. -/
+theorem ae_eq_fourierInv_toLp_schwartz
+    {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E]
+    [MeasurableSpace E] [BorelSpace E] [FiniteDimensional ℝ E]
+    (g : SchwartzMap E ℂ) :
+    ((𝓕⁻ (g.toLp 2) : Lp ℂ 2 (volume : Measure E)) : E → ℂ) =ᵐ[volume]
+      (𝓕⁻ (g : E → ℂ)) := by
+  rw [SchwartzMap.toLp_fourierInv_eq]
+  simpa only [SchwartzMap.fourierInv_coe] using
+    (SchwartzMap.coeFn_toLp (𝓕⁻ g) 2 volume)
+
+/-- The literal inverse Fourier integral of Schwartz data is continuous. -/
+theorem continuous_fourierInv_schwartz
+    {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E]
+    [MeasurableSpace E] [BorelSpace E] [FiniteDimensional ℝ E]
+    (g : SchwartzMap E ℂ) :
+    Continuous (𝓕⁻ (g : E → ℂ)) := by
+  rw [← SchwartzMap.fourierInv_coe]
+  exact (𝓕⁻ g).continuous
+
+end
+
+end FormerNamespace_4
+
+end
+
+
 open Set Filter MeasureTheory FourierTransform
 open Auto.LittlewoodPaley
 open Auto.Spherical.SurfaceMeasureDecay
@@ -3395,7 +3436,7 @@ theorem brrsDyadicHalfWave_memLp_two {d : Nat}
   refine (memLp_two_iff_integrable_sq_norm ?_).mpr ?_
   · rw [hhalf]
     exact
-      (Auto.Spherical.Auxiliary.continuous_fourierInv_schwartz g).aestronglyMeasurable
+      (Auto.Spherical.BRRS.continuous_fourierInv_schwartz g).aestronglyMeasurable
   · rw [hhalf, hg]
     exact Auto.Spherical.Auxiliary.integrable_norm_sq_fourierInv_schwartz_multiplier
       (brrsDyadicHalfWaveSchwartzSymbol Φ j t) (𝓕 f)

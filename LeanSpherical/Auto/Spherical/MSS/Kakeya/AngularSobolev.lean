@@ -3083,6 +3083,7 @@ open Filter MeasureTheory Set
 open Auto.Spherical.MSS
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open scoped BigOperators ENNReal
 
 noncomputable section
@@ -3659,6 +3660,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory FourierTransform Set
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open scoped BigOperators Convolution FourierTransform EuclideanSpace
 
 noncomputable section

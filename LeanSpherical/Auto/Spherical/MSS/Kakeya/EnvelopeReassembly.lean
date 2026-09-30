@@ -1508,6 +1508,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory Metric FourierTransform Set
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal FourierTransform EuclideanSpace
 
@@ -2269,6 +2270,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory Metric Set FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.LittlewoodPaley
 open scoped BigOperators ENNReal FourierTransform EuclideanSpace
 

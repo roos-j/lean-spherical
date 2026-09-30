@@ -4367,6 +4367,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory FourierTransform Set
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -5094,7 +5095,7 @@ theorem scratch_integral_sq_timeAverage_le
   have hpoint (y : Euclidean 2) :
       ‖∫ t, F y t ∂mu‖ ^ 2 ≤
         mu.real univ * ∫ t, ‖F y t‖ ^ 2 ∂mu :=
-    Auto.Spherical.Auxiliary.norm_integral_sq_le_measureReal_mul_integral_norm_sq
+    Auto.Spherical.SphericalMaximalL2.norm_integral_sq_le_measureReal_mul_integral_norm_sq
       mu (F y) (hslice y)
   have hleft : Integrable (fun y : Euclidean 2 =>
       ‖∫ t, F y t ∂mu‖ ^ 2) volume := by
@@ -6617,6 +6618,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory FourierTransform Set
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 
 noncomputable section
@@ -6875,6 +6877,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory Set FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 

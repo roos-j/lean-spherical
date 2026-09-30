@@ -40,9 +40,11 @@ section FormerNamespace_1
 open _root_.Spherical
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.PowerWeights
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open MeasureTheory Set Filter
 open scoped Convolution ENNReal FourierTransform
 noncomputable section
@@ -3300,13 +3302,13 @@ theorem aux_memLp_two_and_integral_norm_sq_iSup_circleMiddleWaveContribution_le_
       · exact intervalIntegral.integral_nonneg (by norm_num) fun t _ =>
           integral_nonneg fun _ => sq_nonneg _
   have hsq :=
-    _root_.Auto.Spherical.Auxiliary.memLp_two_toReal_sqrt_of_measurable_lintegral
+    _root_.Auto.Spherical.SphericalMaximalL2.memLp_two_toReal_sqrt_of_measurable_lintegral
       Q hQmeas' hK hQbound'
   have hjoint := aux_continuous_and_hasDerivAt_circleMiddleWaveContribution C j f
   have hFcont : Continuous (Function.uncurry F) := by
     simpa only [F] using hjoint.1
   have hordinary :=
-    _root_.Auto.Spherical.Auxiliary.memLp_two_iSup_ennreal_norm_of_memLp_sqrt_iSup_ennreal_norm_sq
+    SphericalMaximalL2.memLp_two_iSup_ennreal_norm_of_memLp_sqrt_iSup_ennreal_norm_sq
       (F := F) (a := (1 : Real)) (b := 2) (by norm_num) hFcont hsq.1 hsq.2
   simpa only [F, K] using hordinary
 
@@ -3586,13 +3588,13 @@ theorem aux_exists_memLp_two_and_integral_norm_sq_iSup_circMidWvContribution_le_
       exact zpow_nonneg (by norm_num) _))
       (integral_nonneg fun _ => sq_nonneg _)
   have hsq :=
-    _root_.Auto.Spherical.Auxiliary.memLp_two_toReal_sqrt_of_measurable_lintegral
+    _root_.Auto.Spherical.SphericalMaximalL2.memLp_two_toReal_sqrt_of_measurable_lintegral
       Q hQmeas' hK hQbound'
   have hjoint := aux_continuous_and_hasDerivAt_circleMiddleWaveContribution C j f
   have hFcont : Continuous (Function.uncurry F) := by
     simpa only [F] using hjoint.1
   have hordinary :=
-    _root_.Auto.Spherical.Auxiliary.memLp_two_iSup_ennreal_norm_of_memLp_sqrt_iSup_ennreal_norm_sq
+    SphericalMaximalL2.memLp_two_iSup_ennreal_norm_of_memLp_sqrt_iSup_ennreal_norm_sq
       (F := F) (a := (1 : Real)) (b := 2) (by norm_num) hFcont hsq.1 hsq.2
   simpa only [F, K] using hordinary
 

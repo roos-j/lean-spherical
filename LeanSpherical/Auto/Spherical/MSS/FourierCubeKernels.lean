@@ -43,6 +43,138 @@ This file contains the following parts:
 
 @[expose] public section
 namespace Auto.Spherical.MSS
+
+/-! ## Material moved from `Spherical/Auxiliary.lean` -/
+
+noncomputable section
+open Auto.MarcinkiewiczInterpolation Filter MeasureTheory Set ENNReal Auto.Spherical.Auxiliary
+  Auto.Spherical.SurfaceMeasureDecay Metric FourierTransform
+open scoped FourierTransform
+
+section FormerNamespace_24
+
+open MeasureTheory
+
+noncomputable section
+
+/-- The literal translation and isotropic dilation of a Schwartz prototype.
+For positive `radius`, its value at `xi` is the fixed prototype evaluated at
+`radius⁻¹ • (xi - center)`.  This is the concrete cutoff construction used
+for scaled frequency cubes; no localization predicate is built into the
+definition. -/
+def translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center : Euclidean d) (radius : Real) (hradius : radius ≠ 0) :
+    SchwartzMap (Euclidean d) Complex :=
+  let A : Euclidean d ≃L[Real] Euclidean d :=
+    ContinuousLinearEquiv.smulLeft
+      (Units.mk0 radius⁻¹ (inv_ne_zero hradius))
+  ((SchwartzMap.compCLMOfContinuousLinearEquiv Complex A) prototype).compSubConstCLM
+    Complex center
+
+/-- Pointwise normal form of `translatedDilatedSchwartzCutoff`. -/
+theorem translatedDilatedSchwartzCutoff_apply {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center xi : Euclidean d) (radius : Real) (hradius : radius ≠ 0) :
+    translatedDilatedSchwartzCutoff prototype center radius hradius xi =
+      prototype (radius⁻¹ • (xi - center)) := by
+  simp [translatedDilatedSchwartzCutoff]
+
+/-- Every iterated derivative of the translated/dilated cutoff has its exact
+chain-rule scaling.  The translation costs no derivative factor, while the
+order-`n` derivative contributes `radius⁻¹ ^ n`. -/
+theorem iteratedFDeriv_translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center xi : Euclidean d) (radius : Real) (hradius : radius ≠ 0) (n : Nat) :
+    iteratedFDeriv Real n
+      (translatedDilatedSchwartzCutoff prototype center radius hradius) xi =
+        (radius⁻¹) ^ n •
+          iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center)) := by
+  change iteratedFDeriv Real n
+      (fun z : Euclidean d => prototype (radius⁻¹ • (z - center))) xi = _
+  rw [iteratedFDeriv_comp_sub
+    (f := fun y : Euclidean d => prototype (radius⁻¹ • y)) n center xi]
+  have hscale := congrFun
+    (iteratedFDeriv_comp_const_smul
+      (f := (prototype : Euclidean d → Complex)) radius⁻¹
+      (prototype.smooth (n : ℕ∞)))
+    (xi - center)
+  exact hscale
+
+/-- Pointwise norm form of the derivative scaling for a positive radius. -/
+theorem norm_iteratedFDeriv_translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex)
+    (center xi : Euclidean d) {radius : Real} (hradius : 0 < radius) (n : Nat) :
+    ‖iteratedFDeriv Real n
+      (translatedDilatedSchwartzCutoff prototype center radius hradius.ne') xi‖ =
+      (radius⁻¹) ^ n *
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ := by
+  rw [iteratedFDeriv_translatedDilatedSchwartzCutoff]
+  rw [norm_smul]
+  rw [Real.norm_eq_abs,
+    abs_of_nonneg (pow_nonneg (inv_nonneg.mpr hradius.le) _)]
+
+/-- Exact all-order `L¹` scaling for derivatives of the concrete cutoff.
+The factor is `radius ^ d * radius⁻¹ ^ n`, i.e. the usual
+`radius^(d-n)` when interpreted with real exponents. -/
+theorem integral_norm_iteratedFDeriv_translatedDilatedSchwartzCutoff {d : Nat}
+    (prototype : SchwartzMap (Euclidean d) Complex) (center : Euclidean d)
+    {radius : Real} (hradius : 0 < radius) (n : Nat) :
+    ∫ xi : Euclidean d,
+      ‖iteratedFDeriv Real n
+        (translatedDilatedSchwartzCutoff prototype center radius hradius.ne') xi‖ =
+      radius ^ Module.finrank Real (Euclidean d) * (radius⁻¹) ^ n *
+        ∫ eta : Euclidean d, ‖iteratedFDeriv Real n prototype eta‖ := by
+  have htranslate :
+      ∫ xi : Euclidean d,
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ =
+      ∫ eta : Euclidean d,
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖ := by
+    simpa [sub_eq_add_neg] using
+      (MeasureTheory.integral_add_right_eq_self
+        (μ := volume)
+        (fun eta : Euclidean d =>
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖)
+        (-center))
+  have hscale :
+      ∫ eta : Euclidean d,
+        ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖ =
+      radius ^ Module.finrank Real (Euclidean d) •
+        ∫ eta : Euclidean d, ‖iteratedFDeriv Real n prototype eta‖ :=
+    Measure.integral_comp_inv_smul_of_nonneg volume
+      (fun eta : Euclidean d => ‖iteratedFDeriv Real n prototype eta‖)
+      hradius.le
+  calc
+    ∫ xi : Euclidean d,
+        ‖iteratedFDeriv Real n
+          (translatedDilatedSchwartzCutoff prototype center radius hradius.ne') xi‖ =
+      ∫ xi : Euclidean d,
+        (radius⁻¹) ^ n *
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ := by
+      apply integral_congr_ae
+      filter_upwards with xi
+      exact norm_iteratedFDeriv_translatedDilatedSchwartzCutoff
+        prototype center xi hradius n
+    _ = (radius⁻¹) ^ n *
+        ∫ xi : Euclidean d,
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • (xi - center))‖ := by
+      rw [integral_const_mul]
+    _ = (radius⁻¹) ^ n *
+        ∫ eta : Euclidean d,
+          ‖iteratedFDeriv Real n prototype (radius⁻¹ • eta)‖ := by
+      rw [htranslate]
+    _ = radius ^ Module.finrank Real (Euclidean d) * (radius⁻¹) ^ n *
+        ∫ eta : Euclidean d, ‖iteratedFDeriv Real n prototype eta‖ := by
+      rw [hscale]
+      simp only [smul_eq_mul]
+      ring
+
+end
+
+end FormerNamespace_24
+
+end
+
 section Auto.Spherical.MSS
 open Auto.LittlewoodPaley
 open Auto.Spherical.Auxiliary

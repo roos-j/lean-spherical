@@ -53,6 +53,7 @@ open Auto.Spherical.AHRS
 open Auto.Spherical.PowerWeights
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open MeasureTheory Set Filter
 open scoped Convolution ENNReal FourierTransform
 
@@ -773,7 +774,7 @@ theorem timeSobolevL2_spacetime
     (∫ x : Euclidean d, ‖F r x‖ ^ 2) ≤
       2 * (∫ x : Euclidean d, ‖F a x‖ ^ 2) +
         2 * (b - a) * (∫ t in a..b, ∫ x : Euclidean d, ‖F' t x‖ ^ 2) :=
-  _root_.Auto.Spherical.Auxiliary.integral_norm_sq_radius_le_of_hasDerivAt
+  _root_.Auto.Spherical.SphericalMaximalL2.integral_norm_sq_radius_le_of_hasDerivAt
     hr hFr_meas hF'_cont hderiv hFa hF'
 
 /-- Spatially integrated `L⁴` time Sobolev control on the unit slab.  This

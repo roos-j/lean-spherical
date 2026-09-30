@@ -2414,6 +2414,7 @@ section Auto.Spherical.MSS
 open Filter MeasureTheory FourierTransform Set
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.LittlewoodPaley
 open scoped BigOperators Convolution FourierTransform ENNReal EuclideanSpace Pointwise
 

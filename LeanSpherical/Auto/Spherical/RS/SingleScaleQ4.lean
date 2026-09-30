@@ -55,10 +55,13 @@ open Auto.Spherical.SurfaceMeasureDecay
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.OscillatoryIntegralAux Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.OscillatoryIntegralAux Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.OscillatoryIntegralAux Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open scoped ENNReal NNReal Real FourierTransform Convolution
 noncomputable section
 section KernelPlates

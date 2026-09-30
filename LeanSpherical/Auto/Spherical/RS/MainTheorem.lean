@@ -57,16 +57,21 @@ open Auto.Spherical.SurfaceMeasureDecay
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open scoped ENNReal NNReal Real FourierTransform Convolution
 noncomputable section
 
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 /-! ## The off-diagonal two-pair interpolation
 
@@ -514,6 +519,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
 /-! ### The two-pair interpolation of dyadic rates -/
 
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 /-- Exchanging a natural power and a real power. -/
@@ -1644,6 +1650,7 @@ theorem strongType_of_hasDyRate
 
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 set_option maxHeartbeats 1000000 in
@@ -2015,6 +2022,7 @@ theorem rs_eLpNorm_convolution_le
       rw [← ENNReal.rpow_mul, mul_inv_cancel₀ hp0.ne', ENNReal.rpow_one]
 
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 
 /-! ### The band projection is bounded on `Lᵖ`, uniformly in the band index -/
 

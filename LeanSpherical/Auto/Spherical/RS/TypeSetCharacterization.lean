@@ -35,15 +35,20 @@ open Auto.Spherical.RS
 open MeasureTheory Metric Set
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open scoped ENNReal NNReal Real FourierTransform Convolution
 
@@ -753,6 +758,7 @@ theorem exists_closure_fractalTypeSet_eq_biInter {d : ℕ} {ι : Type*}
     exact hQs j hj
 
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 /-! ### The trivial necessary condition `p ≤ q` -/
 
 /-- A strong type point of the fractal spherical maximal operator has `p ≤ q`.  This is the
@@ -1699,23 +1705,29 @@ open MeasureTheory Set ENNReal
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open MeasureTheory Set
 
@@ -3057,8 +3069,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 /-! ### Radius sets inside a single band cell -/
@@ -3150,11 +3164,14 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 
 
 
@@ -3246,8 +3263,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -3402,8 +3421,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -3577,8 +3598,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -3655,8 +3678,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -3702,8 +3727,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -3878,8 +3905,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -3950,8 +3979,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -4004,8 +4035,10 @@ open MeasureTheory Set ENNReal Metric FourierTransform
 open scoped FourierTransform
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -4537,6 +4570,7 @@ theorem isQuasiAssouadRegular_image_affine {E : Set ℝ} {c s beta gam : ℝ} (h
 open MeasureTheory Set ENNReal
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -4686,6 +4720,7 @@ theorem absolute_off_diagonal_reassembly_of_summable
 open MeasureTheory Set ENNReal
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -4933,6 +4968,7 @@ theorem sum_double_geometric_le {Cs rhos : ℕ → ℝ} {L : ℕ → ℕ} (hCs :
 open MeasureTheory Set ENNReal
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -5529,6 +5565,7 @@ theorem exists_regular_subset_in_small_interval {beta gam : ℝ} (hbeta : 0 ≤ 
 open MeasureTheory Set ENNReal
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -5608,10 +5645,13 @@ theorem exists_common_depth {n : ℕ} (C rho : ℕ → ℝ) (hC : ∀ k, 0 < C k
 open MeasureTheory Set ENNReal
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.AHRS
 
 
@@ -5857,6 +5897,7 @@ theorem exists_iUnion_type_points {d : ℕ} (hd : 2 ≤ d)
 
 open MeasureTheory Set ENNReal
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 
 
 
@@ -6124,6 +6165,7 @@ theorem exists_pair_separating {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
 
 open MeasureTheory Set ENNReal
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 
 
 
@@ -6181,6 +6223,7 @@ theorem exists_countable_family_iInter {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ}
 
 open MeasureTheory Set ENNReal
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 /-! ### A countable dense sequence in the interior -/
 
@@ -6279,6 +6322,7 @@ theorem exists_closure_fractalTypeSet_eq_of_sandwich_pos {d : ℕ} (hd : 2 ≤ d
 
 open MeasureTheory Set ENNReal
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 open Auto.Spherical.AHRS
 
@@ -6459,6 +6503,7 @@ theorem quasiAssouadDimension_eq_of_sandwich_minimal {d : ℕ} (hd : 2 ≤ d) {E
 
 open MeasureTheory Set ENNReal
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.FractalDimensions
 
 

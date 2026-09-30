@@ -2147,6 +2147,7 @@ section Consolidated_LocalizedUpper
 
 open Auto.Spherical.PowerWeights
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.SurfaceMeasureDecay
 
 
@@ -3564,6 +3565,7 @@ section Consolidated_GlobalToLocal
 
 open Auto.Spherical.PowerWeights
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.SurfaceMeasureDecay
 
 

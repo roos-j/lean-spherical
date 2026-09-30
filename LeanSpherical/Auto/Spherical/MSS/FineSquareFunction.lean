@@ -1471,13 +1471,13 @@ theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
           ∫ xi : Euclidean 2,
             ‖iteratedFDeriv Real j (q : Euclidean 2 → Complex) xi‖ := by
   let qR : SchwartzMap (Euclidean 2) Complex :=
-    Auto.Spherical.Auxiliary.translatedDilatedSchwartzCutoff
+    Auto.Spherical.MSS.translatedDilatedSchwartzCutoff
       q 0 R⁻¹ (inv_ne_zero hR.ne')
   let S : Real := ∑ j ∈ Finset.range (N + 1),
     ∫ eta : Euclidean 2, ‖iteratedFDeriv Real j (qR : Euclidean 2 → Complex) eta‖
   have hqR (xi : Euclidean 2) : qR xi = q (R • xi) := by
     dsimp [qR]
-    rw [Auto.Spherical.Auxiliary.translatedDilatedSchwartzCutoff_apply]
+    rw [Auto.Spherical.MSS.translatedDilatedSchwartzCutoff_apply]
     simp
   have hqRfun : (qR : Euclidean 2 → Complex) = fun xi => q (R • xi) := by
     funext xi
@@ -1512,7 +1512,7 @@ theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
             ‖iteratedFDeriv Real j (q : Euclidean 2 → Complex) xi‖ := by
     dsimp [qR]
     simpa only [finrank_euclideanSpace_fin, inv_inv] using
-      Auto.Spherical.Auxiliary.integral_norm_iteratedFDeriv_translatedDilatedSchwartzCutoff
+      Auto.Spherical.MSS.integral_norm_iteratedFDeriv_translatedDilatedSchwartzCutoff
         q 0 (inv_pos.mpr hR) j
   have hS : S = (R⁻¹) ^ 2 *
       ∑ j ∈ Finset.range (N + 1), R ^ j *

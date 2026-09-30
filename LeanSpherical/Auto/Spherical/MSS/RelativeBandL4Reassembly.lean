@@ -41,9 +41,11 @@ section FormerNamespace_1
 open _root_.Spherical
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.Auxiliary Auto.Spherical.AHRS
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.PowerWeights
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open MeasureTheory Set Filter
 open scoped Convolution ENNReal FourierTransform
 
@@ -252,6 +254,7 @@ theorem circleRelativeBandFatUnitSlabOutput_eq_sum_five_dyadic
 
 open Auto.LittlewoodPaley
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.PowerWeights
 open FourierTransform
 

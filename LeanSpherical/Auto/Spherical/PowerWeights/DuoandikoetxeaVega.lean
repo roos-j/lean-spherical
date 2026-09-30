@@ -73,8 +73,10 @@ open scoped Spherical ENNReal NNReal Topology
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.LittlewoodPaley
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.MikhlinHormander
 open Auto.Spherical.Auxiliary
+open Auto.Spherical.SphericalMaximalL2
 open Auto.Spherical.SurfaceMeasureDecay
 open Auto.Spherical.OscillatoryIntegralAux Auto.Spherical.AHRS
 open Auto.Spherical.AHRS
@@ -6788,7 +6790,7 @@ theorem dvShellBound {phi : SchwartzMap (Euclidean 2) ℂ}
             phi ((((2 : ℝ) ^ j)⁻¹) • (u • ξ))) t) *
       dvFreqCut phi j ξ * 𝓕 (f : Euclidean 2 → ℂ) ξ) y with hDDdef
   have hrepo :=
-    Auto.Spherical.Auxiliary.continuous_and_hasDerivAt_fourierInv_relative_dyadic_bandpass
+    Auto.Spherical.SphericalMaximalL2.continuous_and_hasDerivAt_fourierInv_relative_dyadic_bandpass
       phi (dvFreqCut phi j) f (hasCompactSupport_dvFreqCut hzero j) j
   have hFc : Continuous (Function.uncurry FF) := hrepo.1
   have hDc : Continuous (Function.uncurry DD) := hrepo.2.1
@@ -8747,7 +8749,7 @@ theorem continuousAt_dvSlice {phi : SchwartzMap (Euclidean 2) ℂ}
       (phi ((((2 : ℝ) ^ (j + 1))⁻¹) • (t • ξ)) - phi ((((2 : ℝ) ^ j)⁻¹) • (t • ξ))) *
       dvFreqCut phi j ξ * 𝓕 (f : Euclidean 2 → ℂ) ξ) y with hFFdef
   have hrepo :=
-    Auto.Spherical.Auxiliary.continuous_and_hasDerivAt_fourierInv_relative_dyadic_bandpass
+    Auto.Spherical.SphericalMaximalL2.continuous_and_hasDerivAt_fourierInv_relative_dyadic_bandpass
       phi (dvFreqCut phi j) f (hasCompactSupport_dvFreqCut hzero j) j
   exact continuousAt_dvSlice_aux hone hzero hrad j f x hr FF (fun t y => rfl) hrepo.1
 
