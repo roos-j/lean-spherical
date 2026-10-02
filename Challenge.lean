@@ -47,6 +47,8 @@ The definitions below are faithful copies of `LeanSpherical/Definitions.lean`. P
 * In Theorem 1.2 (i) the nonemptiness of $E$, implicit in the paper, is an explicit hypothesis,
   and $W$ ranges over all subsets of $\mathbb R^2$ rather than of $[0,1]^2$; the two
   formulations are equivalent since every closed type set lies in $[0,1]^2$.
+* In Theorem 1.2 (ii) the minimality of the parameter $g$, which identifies $\gamma(E)$, is stated
+  as an explicit hypothesis.
 -/
 
 @[expose] public section

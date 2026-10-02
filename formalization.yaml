@@ -3,7 +3,14 @@
 version: v0.4
 project:
   name: Formalization of type set characterization for spherical maximal functions with fractal dilation sets
-  description: ""
+  description: >-
+    This is a Lean 4 formalization of the main theorems of the paper
+    "Spherical maximal functions and fractal dimensions of dilation sets"
+    by Joris Roos and Andreas Seeger, Amer. J. Math. 145, no. 4, 1077-1110 (2023).
+    The theorems describe type sets of Lebesgue exponents for spherical maximal functions
+    where the supremum is taken over a given set of dilations. In particular, a characterization
+    is given for the possible closures of type sets of such operators in terms of fractal dimensions
+    associated with the dilation set.
   authors: [Joris Roos]
   responsible_maintainers: [Joris Roos]
   license: Apache-2.0
@@ -14,7 +21,7 @@ sources:
       American Journal of Mathematics 145 (2023), no. 4, 1077-1110.
       https://doi.org/10.1353/ajm.2023.a902955.
       arXiv:2004.00984v4, https://arxiv.org/abs/2004.00984v4.
-    type: article
+    type: paper
     location: Theorem 1.1, Theorem 1.2 (i) and (ii)
     relationship: formalizes
     note: >-
