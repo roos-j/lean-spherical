@@ -14,6 +14,6 @@ The selected declarations `Spherical.RestrictedDilations.strongTypeRegion_subset
 `Spherical.RestrictedDilations.exists_closure_typeSet_eq_iff` and
 `Spherical.RestrictedDilations.β_eq_and_γ_eq` are stated in `LeanSpherical/Theorems.lean`,
 with their definitions in `LeanSpherical/Definitions.lean`. Their proofs are in
-`LeanSpherical/Auto/Spherical/FractalDilations/RSTypeSetCharacterization.lean` and the modules it
+`LeanSpherical/Auto/Spherical/RS/TypeSetCharacterization.lean` and the modules it
 imports.
 -/

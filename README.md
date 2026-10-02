@@ -17,7 +17,7 @@ The statement surface is [`Challenge.lean`](Challenge.lean); the selected declar
 * `Spherical.RestrictedDilations.β_eq_and_γ_eq` (Theorem 1.2 (ii)),
 
 stated in [`LeanSpherical/Theorems.lean`](LeanSpherical/Theorems.lean) and proved in
-[`LeanSpherical/Auto/Spherical/FractalDilations/RSTypeSetCharacterization.lean`](LeanSpherical/Auto/Spherical/FractalDilations/RSTypeSetCharacterization.lean)
+[`LeanSpherical/Auto/Spherical/RS/TypeSetCharacterization.lean`](LeanSpherical/Auto/Spherical/RS/TypeSetCharacterization.lean)
 and the modules it imports.
 
 Completed:
