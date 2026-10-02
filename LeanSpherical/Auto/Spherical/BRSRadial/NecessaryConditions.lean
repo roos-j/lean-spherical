@@ -84,7 +84,8 @@ theorem eLpNorm_of_isNormRadial {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 0 < p)
     simp only [ne_eq, ENNReal.ofReal_eq_zero]
     exact not_le.mpr hp
   have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hp.le]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hfm.aestronglyMeasurable,
+    ENNReal.toReal_ofReal hp.le]
   have hnorm : ∀ x : (ℝ^d), ‖f x‖ₑ = ENNReal.ofReal ‖f x‖ := fun x => (ofReal_norm _).symm
   simp only [hnorm]
   rw [brrs_lintegral_radial_norm_rpow_eq_polar hd f hf hfm p w hw,
@@ -655,7 +656,7 @@ theorem eLpNorm_testProfile_lift (d k : ℕ) {p : ℝ} (hp : 0 < p) :
     eLpNorm (fun x : Euclidean d => testProfile k ‖x‖) (ENNReal.ofReal p) volume =
       volume (testStarSet d k) ^ (1 / p) := by
   rw [testProfile_lift_eq_indicator,
-    eLpNorm_indicator_const (measurableSet_testStarSet d k)
+    eLpNorm_indicator_const (measurableSet_testStarSet d k).nullMeasurableSet
       (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; exact hp)
       ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hp.le]
   simp
@@ -697,12 +698,13 @@ theorem le_eLpNorm_M_testProfile_lift {d k : ℕ} (hd : 0 < d) {E : Set ℝ}
       simp
   have heq : eLpNorm ((testCoreSet d k).indicator (fun _ => (1 : ℂ)))
       (ENNReal.ofReal q) volume = volume (testCoreSet d k) ^ (1 / q) := by
-    rw [eLpNorm_indicator_const (measurableSet_testCoreSet d k)
+    rw [eLpNorm_indicator_const (measurableSet_testCoreSet d k).nullMeasurableSet
       (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; exact hq)
       ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
     simp
   rw [← heq]
-  exact eLpNorm_mono_enorm hpoint
+  exact eLpNorm_mono_enorm
+    (aestronglyMeasurable_const.indicator (measurableSet_testCoreSet d k)) hpoint
 
 /-- All the fattened annuli lie between the radii `2^k` and `2^{k+1}`. -/
 theorem testStarSet_subset_shell {d k : ℕ} (hk : 4 ≤ k) :
@@ -1009,7 +1011,7 @@ theorem volume_testStarSet_pos {d k : ℕ} (hd : 0 < d) : 0 < volume (testStarSe
 theorem memLp_testProfile_lift {d k : ℕ} (hd : 0 < d) (hk : 4 ≤ k) {p : ℝ}
     (hp : 0 < p) :
     MemLp (fun x : Euclidean d => testProfile k ‖x‖) (ENNReal.ofReal p) volume := by
-  refine ⟨(measurable_testProfile_lift d k).aestronglyMeasurable, ?_⟩
+  unfold MemLp
   rw [eLpNorm_testProfile_lift d k hp]
   exact ENNReal.rpow_lt_top_of_nonneg (by positivity)
     (volume_testStarSet_lt_top hd hk).ne
@@ -1119,7 +1121,7 @@ theorem eLpNorm_indicator_lift (d : ℕ) (a b : ℝ) {p : ℝ} (hp : 0 < p) :
         (ENNReal.ofReal p) volume =
       volume (radialAnnulusIcc d a b) ^ (1 / p) := by
   rw [indicator_lift_eq,
-    eLpNorm_indicator_const (measurableSet_radialAnnulusIcc d a b)
+    eLpNorm_indicator_const (measurableSet_radialAnnulusIcc d a b).nullMeasurableSet
       (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; exact hp)
       ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hp.le]
   simp
@@ -1177,12 +1179,12 @@ theorem le_eLpNorm_of_one_le_on {d : ℕ} {E : Set ℝ} {f : Euclidean d → ℂ
       simp
   have heq : eLpNorm (S.indicator (fun _ => (1 : ℂ))) (ENNReal.ofReal q) volume =
       volume S ^ (1 / q) := by
-    rw [eLpNorm_indicator_const hS
+    rw [eLpNorm_indicator_const hS.nullMeasurableSet
       (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; exact hq)
       ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
     simp
   rw [← heq]
-  exact eLpNorm_mono_enorm hpoint
+  exact eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hS) hpoint
 
 /-- The volume of a ball, in the normalized form used below. -/
 theorem volume_closedBall_eq {d : ℕ} (_hd : 0 < d) {δ : ℝ} (hδ : 0 ≤ δ) :
@@ -1263,7 +1265,7 @@ theorem shell_test_inequality {d : ℕ} (hd : 0 < d) {E : Set ℝ}
       volume (radialAnnulusIcc d (t₀ - δ) (t₀ + δ)) ^ (1 / p) :=
     eLpNorm_indicator_lift d _ _ hp
   have hmem : MemLp f (ENNReal.ofReal p) volume := by
-    refine ⟨(measurable_indicator_lift d _ _).aestronglyMeasurable, ?_⟩
+    unfold MemLp
     rw [hnormf]
     refine ENNReal.rpow_lt_top_of_nonneg (by positivity) ?_
     exact (lt_of_le_of_lt hannvol ENNReal.ofReal_lt_top).ne
@@ -1527,13 +1529,13 @@ theorem le_eLpNorm_of_const_le_on {d : ℕ} {E : Set ℝ} {f : Euclidean d → �
       simp
   have heq : eLpNorm (S.indicator (fun _ => (c : ℂ))) (ENNReal.ofReal q) volume =
       ENNReal.ofReal c * volume S ^ (1 / q) := by
-    rw [eLpNorm_indicator_const hS
+    rw [eLpNorm_indicator_const hS.nullMeasurableSet
       (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; exact hq)
       ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
     congr 1
     rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hc]
   rw [← heq]
-  exact eLpNorm_mono_enorm hpoint
+  exact eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hS) hpoint
 
 /-- The annuli attached to a `δ`-separated family of radii are pairwise
 disjoint. -/
@@ -1874,7 +1876,7 @@ theorem coveringNumber_test_bound_of_hasRadialStrongType {d : ℕ} (hd : 0 < d)
     rw [hnormf]
     exact (ENNReal.rpow_lt_top_of_nonneg (by positivity) hvoltop).ne
   have hmem : MemLp f (ENNReal.ofReal p) volume := by
-    refine ⟨(measurable_indicator_lift d _ _).aestronglyMeasurable, ?_⟩
+    unfold MemLp
     rw [hnormf]
     exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hvoltop
   have hrad := isNormRadial_indicator_lift d 0 δ
@@ -2109,9 +2111,18 @@ theorem le_eLpNorm_top_of_one_le_on {d : ℕ} {E : Set ℝ} {f : Euclidean d →
         _ ≤ M E f x := hone x hx
     · rw [Set.indicator_of_notMem hx]
       simp
-  have h := eLpNorm_mono_enorm (p := ⊤) (μ := (volume : Measure (Euclidean d))) hpoint
-  rwa [eLpNorm_exponent_top, eLpNormEssSup_indicator_const_eq S (1 : ℂ) hS,
-    enorm_one] at h
+  by_contra hlt
+  push_neg at hlt
+  by_cases hm : AEStronglyMeasurable (M E f) volume
+  · rw [eLpNorm_exponent_top hm] at hlt
+    apply hS
+    apply measure_mono_null _ (meas_eLpNormEssSup_lt (f := M E f) (μ := volume))
+    intro x hx
+    have h1 := hpoint x
+    rw [Set.indicator_of_mem hx, enorm_one] at h1
+    exact lt_of_lt_of_le hlt h1
+  · rw [eLpNorm_of_not_aestronglyMeasurable hm] at hlt
+    exact absurd hlt (not_lt.mpr le_top)
 
 /-- There is no radial `L^p → L^∞` bound for a nonempty set of dilations:
 the thin shell test function has small `L^p` norm but its maximal function is
@@ -2154,7 +2165,7 @@ theorem not_hasRadialStrongType_top_right {d : ℕ} (hd : 0 < d) {E : Set ℝ}
       volume (radialAnnulusIcc d (t₀ - δ) (t₀ + δ)) ^ (1 / p) :=
     eLpNorm_indicator_lift d _ _ hp
   have hmem : MemLp f (ENNReal.ofReal p) volume := by
-    refine ⟨(measurable_indicator_lift d _ _).aestronglyMeasurable, ?_⟩
+    unfold MemLp
     rw [hnormf]
     refine ENNReal.rpow_lt_top_of_nonneg (by positivity) ?_
     exact (lt_of_le_of_lt hannvol ENNReal.ofReal_lt_top).ne
@@ -2235,13 +2246,15 @@ theorem not_hasRadialStrongType_top_left {d : ℕ} (hd : 0 < d) {E : Set ℝ}
   have hRpos : (0 : ℝ) < R := lt_of_lt_of_le one_pos hR1
   set f : Euclidean d → ℂ := fun y =>
     (Icc (t₀ - R) (t₀ + R)).indicator (fun _ => (1 : ℂ)) ‖y‖ with hf
+  have hfm : AEStronglyMeasurable f volume :=
+    (measurable_indicator_lift d _ _).aestronglyMeasurable
   have hnormle : eLpNorm f ⊤ volume ≤ 1 := by
-    rw [hf, eLpNorm_exponent_top, indicator_lift_eq]
+    rw [eLpNorm_exponent_top hfm, hf, indicator_lift_eq]
     simpa using
       eLpNormEssSup_indicator_const_le (μ := (volume : Measure (Euclidean d)))
         (radialAnnulusIcc d (t₀ - R) (t₀ + R)) (1 : ℂ)
   have hmem : MemLp f ⊤ volume := by
-    refine ⟨(measurable_indicator_lift d _ _).aestronglyMeasurable, ?_⟩
+    unfold MemLp
     exact lt_of_le_of_lt hnormle ENNReal.one_lt_top
   have hrad := isNormRadial_indicator_lift d (t₀ - R) (t₀ + R)
   have hone : ∀ x ∈ Metric.closedBall (0 : Euclidean d) R, (1 : ENNReal) ≤ M E f x := by
@@ -2579,7 +2592,7 @@ theorem memLp_steinProfile_lift {d : ℕ} (hd : 2 ≤ d) {δ : ℝ} (hδ : 0 < �
   have hdR : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
   have hexp : (0 : ℝ) ≤ ((d : ℝ) - 1) / (d : ℝ) := by
     apply div_nonneg <;> linarith
-  refine ⟨(measurable_steinProfile_lift d δ).aestronglyMeasurable, ?_⟩
+  unfold MemLp
   refine lt_of_le_of_lt (eLpNorm_steinProfile_lift_le hd hδ hδ1) ?_
   exact ENNReal.rpow_lt_top_of_nonneg hexp ENNReal.ofReal_ne_top
 
@@ -2757,7 +2770,8 @@ theorem eLpNorm_steinFun_lift_le {d : ℕ} (hd : 2 ≤ d) {δ : ℝ} (hδ : 0 < 
     eLpNorm (fun x : Euclidean d => steinFun d δ ‖x‖)
         (ENNReal.ofReal ((d : ℝ) / ((d : ℝ) - 1))) volume ≤
       (ENNReal.ofReal (surfaceMass d)) ^ (((d : ℝ) - 1) / (d : ℝ)) := by
-  refine le_trans (eLpNorm_mono_enorm ?_) (eLpNorm_steinProfile_lift_le hd hδ hδ1)
+  refine le_trans (eLpNorm_mono_enorm (measurable_steinFun_lift d hδ).aestronglyMeasurable ?_)
+    (eLpNorm_steinProfile_lift_le hd hδ hδ1)
   intro x
   rw [← ofReal_norm, ← ofReal_norm]
   exact ENNReal.ofReal_le_ofReal
@@ -2770,7 +2784,7 @@ theorem memLp_steinFun_lift {d : ℕ} (hd : 2 ≤ d) {δ : ℝ} (hδ : 0 < δ)
   have hdR : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
   have hexp : (0 : ℝ) ≤ ((d : ℝ) - 1) / (d : ℝ) := by
     apply div_nonneg <;> linarith
-  refine ⟨(measurable_steinFun_lift d hδ).aestronglyMeasurable, ?_⟩
+  unfold MemLp
   refine lt_of_le_of_lt (eLpNorm_steinFun_lift_le hd hδ hδ1) ?_
   exact ENNReal.rpow_lt_top_of_nonneg hexp ENNReal.ofReal_ne_top
 

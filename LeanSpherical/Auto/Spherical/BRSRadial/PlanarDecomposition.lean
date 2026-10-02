@@ -331,7 +331,7 @@ theorem eLpNorm_brsAnnulusTest (d : ℕ) (tL δ : ℝ) {p : ℝ} (hp : 0 < p) :
 theorem memLp_brsAnnulusTest {d : ℕ} (hd : 0 < d) {tL δ : ℝ} (htL : 1 ≤ tL)
     (htL2 : tL ≤ 2) (hδ : 0 < δ) (hδ1 : δ ≤ 1) {p : ℝ} (hp : 0 < p) :
     MemLp (brsAnnulusTest d tL δ) (ENNReal.ofReal p) volume := by
-  refine ⟨(measurable_brsAnnulusTest d tL δ).aestronglyMeasurable, ?_⟩
+  unfold MemLp
   rw [eLpNorm_brsAnnulusTest d tL δ hp]
   refine ENNReal.rpow_lt_top_of_nonneg (by positivity) ?_
   have hvol := volume_thin_shell_le hd htL htL2 hδ hδ1
@@ -1155,12 +1155,17 @@ theorem le_eLpNorm_M_annulusTest_general {d : ℕ} (hd : 0 < d) {E : Set ℝ}
       congr 1
       ring
     exact radialAnnulus_disjoint_of_separated (d := d) hδ (by rw [habs]; exact hsepts)
+  -- a non-measurable maximal function has infinite norm
+  by_cases hFm : ¬AEStronglyMeasurable F volume
+  · rw [eLpNorm_of_not_aestronglyMeasurable hFm, ENNReal.top_rpow_of_pos hq0]
+    exact le_top
+  push_neg at hFm
   -- the norm as an integral
   have hnorm : eLpNorm F (ENNReal.ofReal q) volume ^ q = ∫⁻ x, ‖F x‖ₑ ^ q := by
     have hq0' : ENNReal.ofReal q ≠ 0 := by
       simp only [ne_eq, ENNReal.ofReal_eq_zero]
       exact not_le.mpr hq0
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top,
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top hFm,
       ENNReal.toReal_ofReal hq0.le, ← ENNReal.rpow_mul, one_div,
       inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one]
   rw [hnorm]

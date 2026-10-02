@@ -1973,6 +1973,7 @@ theorem crossed_schwartz_memLp_and_eLpNorm_of_lone_weak_ls
       (hT_nonneg f) hq0 (lt_of_le_of_lt hmomentM hMtop)
   · change eLpNorm (T f) (ENNReal.ofReal q) volume ≤ M ^ q⁻¹
     exact eLpNorm_le_of_nonnegative_moment T f hq0 (hT_nonneg f) M hmomentM
+      (hT_meas f).aestronglyMeasurable
 
 /-- The preceding crossed estimate with its weak diagonal hypothesis
 obtained from a genuine diagonal strong estimate.  This is the exact
@@ -2064,6 +2065,7 @@ theorem memLp_and_eLpNorm_of_nonnegative_moment_le
   · exact memLp_of_lintegral_ofReal_rpow_lt_top (T f) (hT_meas f)
       (hT_nonneg f) hq hmomentTop
   · exact eLpNorm_le_of_nonnegative_moment T f hq (hT_nonneg f) M hmoment
+      (hT_meas f).aestronglyMeasurable
 
 end
 end Former_CrossedLsMarcinkiewicz
@@ -2182,7 +2184,9 @@ theorem eLpNorm_norm_q4SelectedKernelTTStarShell_le_sum_levelShells
     {q : ENNReal} (hq : 1 ≤ q)
     (hmeas : ∀ n ∈ levels, AEStronglyMeasurable
       (fun x => ‖q4SelectedKernelTTStarShell μ s
-        (q4LevelShellRelation R level n) K rho g x‖) μ) :
+        (q4LevelShellRelation R level n) K rho g x‖) μ)
+    (hmeasR : AEStronglyMeasurable
+      (fun x => ‖q4SelectedKernelTTStarShell μ s R K rho g x‖) μ) :
     eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s R K rho g x‖) q μ ≤
       ∑ n ∈ levels, eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s
         (q4LevelShellRelation R level n) K rho g x‖) q μ := by
@@ -2191,7 +2195,7 @@ theorem eLpNorm_norm_q4SelectedKernelTTStarShell_le_sum_levelShells
   calc
     eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s R K rho g x‖) q μ ≤
         eLpNorm (fun x => ∑ n ∈ levels, T n x) q μ := by
-      apply eLpNorm_mono_real
+      apply eLpNorm_mono_real hmeasR
       intro x
       rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
       simpa only [T] using
@@ -2202,8 +2206,7 @@ theorem eLpNorm_norm_q4SelectedKernelTTStarShell_le_sum_levelShells
       filter_upwards with x
       simp only [Finset.sum_apply]
     _ ≤ ∑ n ∈ levels, eLpNorm (T n) q μ :=
-      eLpNorm_sum_le (f := T) (s := levels) (fun n hn => by
-        simpa only [T] using hmeas n hn) hq
+      eLpNorm_sum_le hq
     _ = ∑ n ∈ levels, eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s
         (q4LevelShellRelation R level n) K rho g x‖) q μ := by
       apply Finset.sum_congr rfl
@@ -2226,7 +2229,9 @@ theorem eLpNorm_norm_q4SelectedKernelTTStarShell_le_geometric_levelShells
         (q4LevelShellRelation R level n) K rho g x‖) μ)
     (C r : ENNReal)
     (hshell : ∀ n, eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s
-      (q4LevelShellRelation R level n) K rho g x‖) q μ ≤ C * r ^ n) :
+      (q4LevelShellRelation R level n) K rho g x‖) q μ ≤ C * r ^ n)
+    (hmeasR : AEStronglyMeasurable
+      (fun x => ‖q4SelectedKernelTTStarShell μ s R K rho g x‖) μ) :
     eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s R K rho g x‖) q μ ≤
       C * (1 - r)⁻¹ := by
   let T : ℕ → X → ℝ := fun n x => ‖q4SelectedKernelTTStarShell μ s
@@ -2234,7 +2239,7 @@ theorem eLpNorm_norm_q4SelectedKernelTTStarShell_le_geometric_levelShells
   calc
     eLpNorm (fun x => ‖q4SelectedKernelTTStarShell μ s R K rho g x‖) q μ ≤
         eLpNorm (fun x => ∑ n ∈ Finset.range N, T n x) q μ := by
-      apply eLpNorm_mono_real
+      apply eLpNorm_mono_real hmeasR
       intro x
       rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
       simpa only [T] using
@@ -3568,7 +3573,9 @@ theorem eLpNorm_norm_q4FiniteProductKernelShell_le_sum_levelShells
     {q : ENNReal} (hq : 1 ≤ q)
     (hmeas : ∀ n ∈ levels, AEStronglyMeasurable
       (fun z => ‖q4FiniteProductKernelShell μ s
-        (q4LevelShellRelation R level n) K g z‖) ν) :
+        (q4LevelShellRelation R level n) K g z‖) ν)
+    (hmeasR : AEStronglyMeasurable
+      (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖) ν) :
     eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖) q ν ≤
       ∑ n ∈ levels, eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s
         (q4LevelShellRelation R level n) K g z‖) q ν := by
@@ -3577,7 +3584,7 @@ theorem eLpNorm_norm_q4FiniteProductKernelShell_le_sum_levelShells
   calc
     eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖) q ν ≤
         eLpNorm (fun z => ∑ n ∈ levels, S n z) q ν := by
-      apply eLpNorm_mono_real
+      apply eLpNorm_mono_real hmeasR
       intro z
       rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
       simpa only [S] using
@@ -3588,8 +3595,7 @@ theorem eLpNorm_norm_q4FiniteProductKernelShell_le_sum_levelShells
       filter_upwards with z
       simp only [Finset.sum_apply]
     _ ≤ ∑ n ∈ levels, eLpNorm (S n) q ν :=
-      eLpNorm_sum_le (f := S) (s := levels)
-        (fun n hn => by simpa only [S] using hmeas n hn) hq
+      eLpNorm_sum_le hq
     _ = ∑ n ∈ levels, eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s
         (q4LevelShellRelation R level n) K g z‖) q ν := by
       apply Finset.sum_congr rfl
@@ -3613,7 +3619,9 @@ theorem eLpNorm_norm_q4FiniteProductKernelShell_le_geometric_levelShells
         (q4LevelShellRelation R level n) K g z‖) ν)
     (A r : ENNReal)
     (hshell : ∀ n, eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s
-      (q4LevelShellRelation R level n) K g z‖) q ν ≤ A * r ^ n) :
+      (q4LevelShellRelation R level n) K g z‖) q ν ≤ A * r ^ n)
+    (hmeasR : AEStronglyMeasurable
+      (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖) ν) :
     eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖) q ν ≤
       A * (1 - r)⁻¹ := by
   let S : ℕ → X × {i // i ∈ s} → ℝ := fun n z =>
@@ -3621,7 +3629,7 @@ theorem eLpNorm_norm_q4FiniteProductKernelShell_le_geometric_levelShells
   calc
     eLpNorm (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖) q ν ≤
         eLpNorm (fun z => ∑ n ∈ Finset.range N, S n z) q ν := by
-      apply eLpNorm_mono_real
+      apply eLpNorm_mono_real hmeasR
       intro z
       rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
       simpa only [S] using
@@ -5475,7 +5483,8 @@ theorem q4FiniteProductCountingMeasure_eLpNorm_pow_eq_fibreLpMoment
     (g : X × {i // i ∈ s} → ℂ) {q : ℝ} (hq : 0 < q)
     (hmeas : Measurable (fun z => ENNReal.ofReal (‖g z‖ ^ q)))
     (hfib : ∀ i ∈ s,
-      Integrable (fun x => ‖q4FiniteProductToFibres s g i x‖ ^ q) μ) :
+      Integrable (fun x => ‖q4FiniteProductToFibres s g i x‖ ^ q) μ)
+    (hgm : AEStronglyMeasurable g (q4FiniteProductCountingMeasure μ s)) :
     (eLpNorm g (ENNReal.ofReal q) (q4FiniteProductCountingMeasure μ s)) ^ q =
       ENNReal.ofReal
         (q4FibreLpMoment μ s q (q4FiniteProductToFibres s g)) := by
@@ -5485,9 +5494,9 @@ theorem q4FiniteProductCountingMeasure_eLpNorm_pow_eq_fibreLpMoment
           (q4FiniteProductCountingMeasure μ s) := by
       simpa using
         (eLpNorm_norm_rpow (μ := q4FiniteProductCountingMeasure μ s)
-          (p := (1 : ENNReal)) g hq).symm
+          (p := (1 : ENNReal)) g hgm hq).symm
     _ = ∫⁻ z, ‖‖g z‖ ^ q‖ₑ ∂q4FiniteProductCountingMeasure μ s :=
-      eLpNorm_one_eq_lintegral_enorm
+      eLpNorm_one_eq_lintegral_enorm (hgm.norm.aemeasurable.pow_const q).aestronglyMeasurable
     _ = ∫⁻ z, ENNReal.ofReal (‖g z‖ ^ q)
           ∂q4FiniteProductCountingMeasure μ s := by
       apply lintegral_congr
@@ -7932,8 +7941,7 @@ theorem q4ActiveDyadicFullProduct_eLpNorm_le_of_planar_critical_level_bounds
         funext z
         simp [Finset.sum_apply]
       rw [hfun]
-      exact eLpNorm_sum_le (f := F) (s := Finset.range (j + 3))
-        (fun n hn => hmeas n) hq
+      exact eLpNorm_sum_le hq
     _ ≤ ∑ n ∈ Finset.range (j + 3), ENNReal.ofReal
         (C * (2 : ℝ) ^
           (q4FrequencyExponent 2 theta * (j : ℝ) +
@@ -8047,8 +8055,7 @@ theorem q4ActiveDyFullProd_eLpNorm_le_of_plan_critical_level_bounds_with_subpowe
         funext z
         simp [Finset.sum_apply]
       rw [hfun]
-      exact eLpNorm_sum_le (f := F) (s := Finset.range (j + 3))
-        (fun n hn => hmeas n) hq
+      exact eLpNorm_sum_le hq
     _ ≤ ∑ n ∈ Finset.range (j + 3), ENNReal.ofReal
         (C * (2 : ℝ) ^
           (q4FrequencyExponentWithSubpowerLoss 2 theta eta * (j : ℝ) +

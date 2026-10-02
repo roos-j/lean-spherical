@@ -262,7 +262,7 @@ theorem weak_two_of_memLp_toLp_bound
   have hTgint : Integrable (fun x => (T g x) ^ (2 : ℕ)) μ :=
     integrable_sq_of_memLp_two_nonneg (T g) hTg (hTnonneg g)
   have hgint : Integrable (fun x => ‖g x‖ ^ (2 : ℕ)) μ :=
-    (memLp_two_iff_integrable_sq_norm hg.1).1 hg
+    (memLp_two_iff_integrable_sq_norm hg.aestronglyMeasurable).1 hg
   have hTg_nonneg : 0 ≤ ∫ x, (T g x) ^ (2 : ℕ) ∂μ :=
     integral_nonneg fun _ => sq_nonneg _
   have hg_nonneg : 0 ≤ ∫ x, ‖g x‖ ^ (2 : ℕ) ∂μ :=
@@ -308,7 +308,7 @@ theorem weak_two_of_memLp_toLp_bound
       mul_le_mul_of_nonneg_left (measure_mono hsub) (by positivity)
     _ ≤ ∫⁻ x, ENNReal.ofReal ((T g x) ^ (2 : ℕ)) ∂μ :=
       mul_meas_ge_le_lintegral₀
-        (hTg.1.aemeasurable.pow_const 2).ennreal_ofReal
+        (hTg.aestronglyMeasurable.aemeasurable.pow_const 2).ennreal_ofReal
         (ENNReal.ofReal (s ^ (2 : ℕ)))
     _ ≤ _ := hlin
 

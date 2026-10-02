@@ -6990,12 +6990,13 @@ The density argument that carries the Littlewood--Paley sum from Schwartz data
 to the `L^p` functions of the chain runs through Minkowski's inequality, which
 Mathlib states for `eLpNorm`.  These are the translations. -/
 
-theorem eLpNorm_ofReal_eq (f : ℝ → ℂ) {p : ℝ} (hp : 0 < p) :
+theorem eLpNorm_ofReal_eq (f : ℝ → ℂ) {p : ℝ} (hp : 0 < p)
+    (hf : AEStronglyMeasurable f volume) :
     eLpNorm f (ENNReal.ofReal p) volume =
       (∫⁻ x : ℝ, ‖f x‖ₑ ^ p) ^ (1 / p) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
     (by simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]; exact hp)
-    ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hp.le]
+    ENNReal.ofReal_ne_top hf, ENNReal.toReal_ofReal hp.le]
 
 /-- **Young's inequality, in `eLpNorm` form.** -/
 theorem eLpNorm_convolution_le {p : ℝ} (hp : 1 ≤ p) {K : ℝ → ℂ}
@@ -7005,7 +7006,11 @@ theorem eLpNorm_convolution_le {p : ℝ} (hp : 1 ≤ p) {K : ℝ → ℂ}
         volume ≤
       (∫⁻ y : ℝ, ‖K y‖ₑ) * eLpNorm g (ENNReal.ofReal p) volume := by
   have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
-  rw [eLpNorm_ofReal_eq _ hp0, eLpNorm_ofReal_eq _ hp0]
+  have hjoint : Measurable (fun z : ℝ × ℝ => K z.2 * g (z.1 - z.2)) :=
+    (hK.comp measurable_snd).mul (hg.comp (measurable_fst.sub measurable_snd))
+  rw [eLpNorm_ofReal_eq (fun x : ℝ => ∫ y : ℝ, K y * g (x - y)) hp0
+      (hjoint.stronglyMeasurable.integral_prod_right' (ν := volume)).aestronglyMeasurable,
+    eLpNorm_ofReal_eq _ hp0 hg.aestronglyMeasurable]
   have h := lintegral_convolution_rpow_le_complex hp hK hA hg
   refine le_trans (ENNReal.rpow_le_rpow h (by positivity)) (le_of_eq ?_)
   rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
@@ -7087,11 +7092,11 @@ theorem sum_eLpNorm_psiDilate_conv_schwartz
     intro j
     funext x
     exact (convolution_mul_apply _ _ x).symm
-  have hpow : ∀ (h : ℝ → ℂ),
+  have hpow : ∀ (h : ℝ → ℂ), AEStronglyMeasurable h volume →
       (eLpNorm h (ENNReal.ofReal p) volume) ^ q =
         (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p) := by
-    intro h
-    rw [eLpNorm_ofReal_eq h hp0, ← ENNReal.rpow_mul]
+    intro h hh
+    rw [eLpNorm_ofReal_eq h hp0 hh, ← ENNReal.rpow_mul]
     congr 1
     field_simp
   calc (∑ j ∈ J, (eLpNorm (fun x : ℝ => ∫ y : ℝ,
@@ -7100,10 +7105,11 @@ theorem sum_eLpNorm_psiDilate_conv_schwartz
       = ∑ j ∈ J, (∫⁻ x : ℝ, ‖((brsSchwartzDilate ψ j : ℝ → ℂ)
           ⋆[ContinuousLinearMap.mul ℂ ℂ] (G : ℝ → ℂ)) x‖ₑ ^ p) ^ (q / p) := by
         refine Finset.sum_congr rfl fun j _ => ?_
-        rw [hconv j, hpow]
+        rw [hconv j, hpow _ ((brsSchwartzDilate ψ j).continuous.aestronglyMeasurable.convolution
+          _ G.continuous.aestronglyMeasurable)]
     _ ≤ A * (∫⁻ x : ℝ, ‖(G : ℝ → ℂ) x‖ₑ ^ p) ^ (q / p) := hmain J G
     _ = A * (eLpNorm (G : ℝ → ℂ) (ENNReal.ofReal p) volume) ^ q := by
-        rw [hpow]
+        rw [hpow _ G.continuous.aestronglyMeasurable]
 
 /-! ## The Littlewood--Paley sum for the chain's input
 
@@ -7166,7 +7172,7 @@ theorem sum_eLpNorm_psiDilate_conv_le_bdd
     rw [ENNReal.mul_top (by simp : (A₁ + 1) ≠ 0)]
     exact le_top
   · have hmem : MemLp g P volume :=
-      ⟨hgc.aestronglyMeasurable, lt_top_iff_ne_top.mpr hNtop⟩
+      lt_top_iff_ne_top.mpr hNtop
     -- the ε-approximation bound
     have hkey : ∀ ε : ℝ, 0 < ε →
         (∑ j ∈ J, (eLpNorm (Φ j g) P volume) ^ q) ^ (1 / q) ≤
@@ -7198,10 +7204,7 @@ theorem sum_eLpNorm_psiDilate_conv_le_bdd
             eLpNorm (Φ j G) P volume + L * ENNReal.ofReal ε := by
         intro j
         rw [hsplit j]
-        refine le_trans (eLpNorm_add_le
-          (continuous_kernel_conv_bdd (hKint j) hGsm.continuous hCG).aestronglyMeasurable
-          (continuous_kernel_conv_bdd (hKint j) hdiffcont hdiffbd).aestronglyMeasurable
-          hP1) ?_
+        refine le_trans (eLpNorm_add_le hP1) ?_
         refine add_le_add le_rfl ?_
         refine le_trans (eLpNorm_convolution_le hp.le (hKmeas j)
           (by rw [hKnorm j]; exact hLtop) hdiffcont.measurable) ?_
@@ -7226,8 +7229,7 @@ theorem sum_eLpNorm_psiDilate_conv_le_bdd
           change G z = g z - (g z - G z)
           ring
         rw [hGG]
-        refine le_trans (eLpNorm_sub_le hgc.aestronglyMeasurable
-          hdiffcont.aestronglyMeasurable hP1) ?_
+        refine le_trans (eLpNorm_sub_le hP1) ?_
         exact add_le_add le_rfl hGapp
       have hSchG : (∑ j ∈ J, (eLpNorm (Φ j G) P volume) ^ q) ^ (1 / q) ≤
           A₁ ^ (1 / q) * (N + ENNReal.ofReal ε) := by
@@ -7294,17 +7296,18 @@ theorem sum_lintegral_psiDilate_conv_le_bdd
   have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
   obtain ⟨A, hA, hmain⟩ := sum_eLpNorm_psiDilate_conv_le_bdd C hψsupp hp hq hpq
   refine ⟨A, hA, fun J g Cg hgc hgbd => ?_⟩
-  have hpow : ∀ h : ℝ → ℂ,
+  have hpow : ∀ h : ℝ → ℂ, AEStronglyMeasurable h volume →
       (eLpNorm h (ENNReal.ofReal p) volume) ^ q =
         (∫⁻ x : ℝ, ‖h x‖ₑ ^ p) ^ (q / p) := by
-    intro h
-    rw [eLpNorm_ofReal_eq h hp0, ← ENNReal.rpow_mul]
+    intro h hh
+    rw [eLpNorm_ofReal_eq h hp0 hh, ← ENNReal.rpow_mul]
     congr 1
     field_simp
   have h := hmain J g Cg hgc hgbd
-  rw [hpow g] at h
+  rw [hpow g hgc.aestronglyMeasurable] at h
   refine le_trans (le_of_eq (Finset.sum_congr rfl fun j _ => ?_)) h
-  rw [hpow]
+  rw [hpow _ (continuous_kernel_conv_bdd (brsSchwartzDilate ψ j).integrable hgc
+    hgbd).aestronglyMeasurable]
 
 /-! ## Associativity of the complex convolution
 

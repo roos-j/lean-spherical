@@ -385,7 +385,7 @@ theorem marcinkiewicz_one_two_on_additive_split_real
       ENNReal.ofReal p *
         (4 * ENNReal.ofReal c₂ * A₂ + 2 * ENNReal.ofReal c₁ * A₁) := by
   apply marcinkiewicz_one_two_on_additive_split D eval T hT_nonneg hT_subadd
-    (fun g hg => (hmem_one g hg).1.aemeasurable) (ENNReal.ofReal c₁) (ENNReal.ofReal c₂)
+    (fun g hg => (hmem_one g hg).aestronglyMeasurable.aemeasurable) (ENNReal.ofReal c₁) (ENNReal.ofReal c₂)
     ?_ ?_ hp1 hp2 f hTf low high hlow_mem hhigh_mem hsplit hlowI_meas hhighI_meas A₂ A₁
     hlow_tail hhigh_tail
   · intro g hg
@@ -521,8 +521,7 @@ theorem memLp_of_lintegral_ofReal_rpow_lt_top
     MemLp g (ENNReal.ofReal p) μ := by
   have hp0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
   have hpt : ENNReal.ofReal p ≠ ∞ := ENNReal.ofReal_ne_top
-  refine ⟨hg.aestronglyMeasurable, ?_⟩
-  apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hp0 hpt).mpr
+  apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hp0 hpt hg.aestronglyMeasurable).mpr
   calc
     (∫⁻ x, ‖g x‖ₑ ^ (ENNReal.ofReal p).toReal ∂μ) =
         ∫⁻ x, (ENNReal.ofReal (g x)) ^ p ∂μ := by
@@ -1163,7 +1162,7 @@ theorem eLpNorm_sum_range_le_geometric
           filter_upwards with x
           simp
     _ ≤ ∑ n ∈ Finset.range N, eLpNorm (f n) p μ :=
-      eLpNorm_sum_le (f := f) (s := Finset.range N) (fun n _ => hf n) hp
+      eLpNorm_sum_le (f := f) (s := Finset.range N) hp
     _ ≤ ∑ n ∈ Finset.range N, C * ρ ^ n := by
       exact Finset.sum_le_sum fun n _ => hpiece n
     _ = C * ∑ n ∈ Finset.range N, ρ ^ n := by
@@ -1249,7 +1248,7 @@ theorem norm_fourierInv_bounded_multiplier_fourier_le
   have hmLp_ae : (mLp : E → ℂ) =ᵐ[volume] m := by
     exact MemLp.coeFn_toLp _
   have hmLp : ‖mLp‖ ≤ C := by
-    rw [Lp.norm_def, eLpNorm_congr_ae hmLp_ae, eLpNorm_exponent_top]
+    rw [Lp.norm_def, eLpNorm_congr_ae hmLp_ae, eLpNorm_exponent_top hm]
     exact ENNReal.toReal_le_of_le_ofReal hC
       (eLpNormEssSup_le_of_ae_bound (Filter.Eventually.of_forall hmC))
   change ‖𝓕⁻ (mLp • 𝓕 f)‖ ≤ C * ‖f‖
@@ -1469,7 +1468,7 @@ theorem integral_norm_sq_fourierInv_schwartz_multiplier_le
   have hmLp_ae : (mLp : E → ℂ) =ᵐ[volume] m := by
     exact MemLp.coeFn_toLp _
   have hmLp : ‖mLp‖ ≤ C := by
-    rw [Lp.norm_def, eLpNorm_congr_ae hmLp_ae, eLpNorm_exponent_top]
+    rw [Lp.norm_def, eLpNorm_congr_ae hmLp_ae, eLpNorm_exponent_top m.continuous.aestronglyMeasurable]
     exact ENNReal.toReal_le_of_le_ofReal hC
       (eLpNormEssSup_le_of_ae_bound (Filter.Eventually.of_forall hmC))
   have hmul : h.toLp 2 = mLp • g.toLp 2 := by

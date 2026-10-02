@@ -499,7 +499,7 @@ theorem eLpNorm_nonnegative_ball_cutoff_le
         (powerWeightedVolume d α) ≤
       eLpNorm (D.indicator (fun _ : Euclidean d => (1 : ℂ)))
         (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono f.continuous.aestronglyMeasurable
       intro y
       by_cases hy : y ∈ D
       · rw [indicator_of_mem hy, hfg]
@@ -513,7 +513,7 @@ theorem eLpNorm_nonnegative_ball_cutoff_le
         norm_num
     _ = (powerWeightedVolume d α D) ^
         (1 / (ENNReal.ofReal p).toReal) := by
-      rw [eLpNorm_indicator_const hD hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hD.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       norm_num [enorm]
     _ = (powerWeightedVolume d α (closedBall (0 : Euclidean d) (2 * R))) ^
         (1 / (ENNReal.ofReal p).toReal) := by rfl
@@ -572,7 +572,6 @@ theorem restrictedStrongType_ballOrigin_finite_lower_of_bound
     positivity
   have hf : MemLp (f : Euclidean (n + 1) → ℂ) (ENNReal.ofReal p)
       (powerWeightedVolume (n + 1) α) := by
-    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
     refine lt_of_le_of_lt hinput ?_
     exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
   have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
@@ -1654,7 +1653,6 @@ private theorem planar_ballOrigin_finite_lower_of_bound
     positivity
   have hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
       (powerWeightedVolume 2 α) := by
-    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
     refine lt_of_le_of_lt hinput ?_
     exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
   have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
@@ -2553,7 +2551,7 @@ theorem exists_unitSurfaceMeasure_inverse_power_lintegral_le
       (ENNReal.ofReal ‖(ω : Euclidean d) - z‖) ^ (-a) ≤ (b ^ (n + 1)) ^ (-a) := hinv
       _ = coeff n := hcoeff
       _ = F n ω := by simp [F, hmem]
-      _ ≤ ∑' n : ℕ, F n ω := ENNReal.le_tsum n
+      _ ≤ ∑' n : ℕ, F n ω := ENNReal.le_tsum (f := fun n => F n ω) n
       _ ≤ 1 + ∑' n : ℕ, F n ω := le_add_of_nonneg_left bot_le
   have hF_lintegral (n : ℕ) :
       ∫⁻ ω : sphere (0 : Euclidean d) 1, F n ω ∂unitSurfaceMeasure d ≤ D * q ^ n := by
@@ -2710,6 +2708,8 @@ theorem eLpNorm_restrictedNormalizedSphericalMaximalReal_schwartz_eq
       q μ =
       eLpNorm (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ)) q μ := by
   apply eLpNorm_congr_enorm_ae
+    (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).ennreal_toReal.aestronglyMeasurable
+    (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).aestronglyMeasurable
   filter_upwards with x
   rw [Real.enorm_eq_ofReal_abs, abs_of_nonneg ENNReal.toReal_nonneg,
     ENNReal.ofReal_toReal
@@ -2729,7 +2729,7 @@ theorem memLp_restrictedNormalizedSphericalMaximalReal_schwartz
   have hmeas : Measurable (fun x : Euclidean d =>
       (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) x).toReal) :=
     (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).ennreal_toReal
-  refine ⟨hmeas.aestronglyMeasurable, ?_⟩
+  unfold MemLp
   rw [eLpNorm_restrictedNormalizedSphericalMaximalReal_schwartz_eq hd0 E f q μ]
   exact hM.eLpNorm_lt_top
 
@@ -2996,6 +2996,7 @@ private theorem weak_two_of_eLpNorm_two
         ∫⁻ x, ENNReal.ofReal (‖f x‖ ^ (2 : ℕ)) ∂μ := by
   have hmoment := lintegral_enorm_rpow_le_of_eLpNorm_le μ (p := (2 : ℝ))
     (by norm_num) (ENNReal.ofReal C) (T f) (f : Euclidean d → ℂ) (hstrong f)
+    (hTmeas f) f.continuous.aestronglyMeasurable
   have hmoment' :
       (∫⁻ x, ENNReal.ofReal ((T f x) ^ (2 : ℕ)) ∂μ) ≤
         ENNReal.ofReal (C ^ (2 : ℕ)) *
@@ -3064,6 +3065,7 @@ private theorem weak_q_of_eLpNorm
         ∫⁻ x, ‖f x‖ₑ ^ q ∂μ := by
   have hmoment := lintegral_enorm_rpow_le_of_eLpNorm_le μ hq
     (ENNReal.ofReal C) (T f) (f : Euclidean d → ℂ) (hstrong f)
+    (hTmeas f) f.continuous.aestronglyMeasurable
   calc
     (ENNReal.ofReal s) ^ q * μ {x | s < T f x} ≤
         (ENNReal.ofReal s) ^ q *
@@ -3289,8 +3291,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_t
   have hMmem :
       MemLp (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ))
         (ENNReal.ofReal p) μ := by
-    refine ⟨(measurable_restrictedNormalizedSphericalMaximal_schwartz E f).aestronglyMeasurable,
-      ?_⟩
+    unfold MemLp
     rw [← eLpNorm_restrictedNormalizedSphericalMaximalReal_schwartz_eq hd0 E f]
     exact hTmem.eLpNorm_lt_top
   have hfint : Integrable (fun x : Euclidean d => ‖f x‖ ^ p) μ := by
@@ -3316,7 +3317,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_t
       eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) μ =
           (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ p⁻¹ := by
             rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-              (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+              (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
             simp only [ENNReal.toReal_ofReal hp.le, one_div]
       _ = (∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ) ^ p⁻¹ := by
             congr 1
@@ -3337,7 +3338,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_t
       eLpNorm T (ENNReal.ofReal p) μ ≤
           (ENNReal.ofReal (B * J)) ^ p⁻¹ :=
         eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le μ T hp hTnonneg
-          (by simpa only [T, J, μ] using hlin)
+          (by simpa only [T, J, μ] using hlin) hTmeas
       _ = _ := hroot_eq
   refine ⟨by simpa only [μ] using hMmem, ?_⟩
   rw [← eLpNorm_restrictedNormalizedSphericalMaximalReal_schwartz_eq hd0 E f]
@@ -3492,6 +3493,7 @@ private theorem conjugated_weak_q_of_eLpNorm
         ∫⁻ x, ‖f x‖ₑ ^ q ∂μ := by
   have hmoment := lintegral_enorm_rpow_le_of_eLpNorm_le μ hq
     (ENNReal.ofReal C) (T f) (f : Euclidean d → ℂ) (hstrong f)
+    (hTmeas f) f.continuous.aestronglyMeasurable
   calc
     (ENNReal.ofReal s) ^ q * μ {x | s < T f x} ≤
         (ENNReal.ofReal s) ^ q *
@@ -3645,7 +3647,7 @@ theorem conjugated_schwartz_strong_type_of_q_and_top_with_constant
       eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) μ =
           (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ p⁻¹ := by
             rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-              (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+              (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
             simp only [ENNReal.toReal_ofReal hp.le, one_div]
       _ = (∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ) ^ p⁻¹ := by
             congr 1
@@ -3665,7 +3667,7 @@ theorem conjugated_schwartz_strong_type_of_q_and_top_with_constant
     calc
       eLpNorm TT (ENNReal.ofReal p) μ ≤ (ENNReal.ofReal (B * J)) ^ p⁻¹ :=
         eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le μ TT hp hTTnonneg
-          (by simpa only [TT] using hlin)
+          (by simpa only [TT] using hlin) hTTmeas
       _ = _ := hroot_eq
   simpa only [D, B, Atail] using
     ⟨by simpa only [TT] using hTTmem, by simpa only [TT] using hTTnorm⟩
@@ -4543,6 +4545,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_
       M (f : Euclidean d → ℂ) (by
         dsimp [M]
         exact hscaled (besselLimitScale n) (besselLimitScale_pos n) f)
+      hMMeas.aestronglyMeasurable f.continuous.aestronglyMeasurable
     simpa only [enorm_eq_self] using h
   have hscaledMomentEq (n : ℕ) (g : Euclidean d → ENNReal)
       (hg : Measurable g) :
@@ -4581,7 +4584,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_
     rw [hFinEq 0]
     simpa only [hpToReal] using
       (lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
-        (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top (hfscaled 0).2).ne
+        (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top (hfscaled 0)).ne
   have hOutNormZero : eLpNorm M (ENNReal.ofReal p)
       (scaledBesselWeightedVolume (besselLimitScale 0) a) < ∞ := by
     calc
@@ -4591,7 +4594,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_
             (scaledBesselWeightedVolume (besselLimitScale 0) a) := by
               dsimp [M]
               exact hscaled (besselLimitScale 0) (besselLimitScale_pos 0) f
-      _ < ∞ := ENNReal.mul_lt_top ENNReal.ofReal_lt_top (hfscaled 0).2
+      _ < ∞ := ENNReal.mul_lt_top ENNReal.ofReal_lt_top (hfscaled 0)
   have hOutZeroFinite : (∫⁻ x, Fout 0 x ∂volume) ≠ ∞ := by
     rw [hFoutEq 0]
     simpa only [hpToReal, enorm_eq_self] using
@@ -4662,26 +4665,26 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_uniform_
     by
       simpa only [hpToReal] using
         (lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
-          (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf.2)
+          (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf)
   have hOutputMomentFinite :
       (∫⁻ x, (M x) ^ p ∂powerWeightedVolume d a) < ∞ :=
     hMoment.trans_lt (ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr hCpowTop) hInputMomentFinite)
   have hMmem : MemLp M (ENNReal.ofReal p) (powerWeightedVolume d a) := by
-    refine ⟨hMMeas.aestronglyMeasurable, ?_⟩
+    unfold MemLp
     rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hMMeas.aestronglyMeasurable]
     simpa only [hpToReal, enorm_eq_self] using hOutputMomentFinite
   refine ⟨by simpa only [M] using hMmem, ?_⟩
   have hMNorm : eLpNorm M (ENNReal.ofReal p) (powerWeightedVolume d a) =
       (∫⁻ x, (M x) ^ p ∂powerWeightedVolume d a) ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hMMeas.aestronglyMeasurable]
     simp only [hpToReal, enorm_eq_self, one_div]
   have hfNorm : eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p)
       (powerWeightedVolume d a) =
       (∫⁻ x, ‖f x‖ₑ ^ p ∂powerWeightedVolume d a) ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [hpToReal, one_div]
   calc
     eLpNorm (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ))
@@ -4833,8 +4836,9 @@ theorem eLpNorm_besselSchwartzMultiplier_eq
       (besselSchwartzMultiplier a f).continuous.enorm.measurable
   have hright_meas : Measurable (fun x : Euclidean d => ‖f x‖ₑ ^ p) :=
     ENNReal.continuous_rpow_const.measurable.comp f.continuous.enorm.measurable
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top
+      (besselSchwartzMultiplier a f).continuous.aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp.le]
   congr 1
   unfold besselWeightedVolume
@@ -4883,8 +4887,9 @@ theorem eLpNorm_bessel_weighted_real_mul_eq
       ((measurable_besselPowerWeight a).mul hg).enorm
   have hright_meas : Measurable (fun x : Euclidean d => ‖g x‖ₑ ^ p) :=
     ENNReal.continuous_rpow_const.measurable.comp hg.enorm
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (f := fun x => besselPowerWeight a x * g x)
+      hp0 ENNReal.ofReal_ne_top ((measurable_besselPowerWeight a).mul hg).aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top hg.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp.le]
   congr 1
   unfold besselWeightedVolume

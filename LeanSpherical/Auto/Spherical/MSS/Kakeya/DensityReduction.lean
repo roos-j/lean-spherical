@@ -357,7 +357,8 @@ theorem scratch_eLpNorm_lightRayTimeRestriction_le
     eLpNorm (scratch_lightRayTimeRestriction g) 2 volume <= eLpNorm g 2 volume :=
   by
     simpa only [scratch_lightRayTimeRestriction] using
-      (eLpNorm_indicator_le (s := {z : WaveSpaceTime | z.2 ∈ lightRayTimeInterval}) g)
+      (eLpNorm_indicator_le (s := {z : WaveSpaceTime | z.2 ∈ lightRayTimeInterval}) g
+        scratch_measurableSet_lightRayTimeSlab)
 
 theorem scratch_lightRayMaximal_eq_lightRayTimeRestriction
     {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N)
@@ -435,9 +436,17 @@ theorem scratch_eLpNorm_ofReal_eq_of_nonneg
     {X : Type*} [MeasurableSpace X] (mu : Measure X) (p : ENNReal)
     (F : X -> Real) (hF : forall x, 0 <= F x) :
     eLpNorm (fun x => ENNReal.ofReal (F x)) p mu = eLpNorm F p mu := by
-  apply eLpNorm_congr_enorm_ae
-  filter_upwards with x
-  rw [enorm_eq_self, Real.enorm_eq_ofReal (hF x)]
+  by_cases hFm : AEStronglyMeasurable F mu
+  · apply eLpNorm_congr_enorm_ae hFm.aemeasurable.ennreal_ofReal.aestronglyMeasurable hFm
+    filter_upwards with x
+    rw [enorm_eq_self, Real.enorm_eq_ofReal (hF x)]
+  · have hG : ¬ AEStronglyMeasurable (fun x => ENNReal.ofReal (F x)) mu := by
+      intro hG
+      apply hFm
+      refine (hG.aemeasurable.ennreal_toReal.congr
+        (Filter.Eventually.of_forall fun x => ?_)).aestronglyMeasurable
+      exact ENNReal.toReal_ofReal (hF x)
+    rw [eLpNorm_of_not_aestronglyMeasurable hFm, eLpNorm_of_not_aestronglyMeasurable hG]
 
 /-- A compact Fatou package for raw nonnegative envelopes.  The sequence is
 kept explicit so a later light-ray argument can provide its own genuine
@@ -450,7 +459,8 @@ theorem scratch_eLpNorm_liminf_le_of_uniform
     (hbound : forall n, eLpNorm (F n) p mu ≤ K) :
     eLpNorm (fun x => atTop.liminf (fun n => F n x)) p mu ≤ K := by
   have hq : 0 < p.toReal := ENNReal.toReal_pos hp0 hptop
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop
+    (Measurable.liminf hmeas).aestronglyMeasurable]
   have hpow_liminf (x : X) :
       (atTop.liminf (fun n => F n x)) ^ p.toReal =
         atTop.liminf (fun n => (F n x) ^ p.toReal) := by
@@ -475,7 +485,8 @@ theorem scratch_eLpNorm_liminf_le_of_uniform
         intro b hb
         obtain ⟨n, hn⟩ := hb.exists
         have hn' := hbound n
-        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop] at hn'
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop
+          (hmeas n).aestronglyMeasurable] at hn'
         have hpow := ENNReal.rpow_le_rpow hn' hq.le
         rw [show 1 / p.toReal = (p.toReal)⁻¹ by ring] at hpow
         rw [ENNReal.rpow_inv_rpow hq.ne'] at hpow
@@ -494,12 +505,13 @@ theorem scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     {F : X -> ENNReal} {G : Nat -> X -> ENNReal} {K : ENNReal}
     (hle : ∀ᵐ x ∂mu, F x ≤ atTop.liminf (fun n => G n x))
     (hmeas : forall n, Measurable (G n))
-    (hbound : forall n, eLpNorm (G n) p mu ≤ K) :
+    (hbound : forall n, eLpNorm (G n) p mu ≤ K)
+    (hF : AEStronglyMeasurable F mu) :
     eLpNorm F p mu ≤ K := by
   calc
     eLpNorm F p mu ≤
         eLpNorm (fun x => atTop.liminf (fun n => G n x)) p mu :=
-      eLpNorm_mono_enorm_ae (hle.mono fun x hx => by
+      eLpNorm_mono_enorm_ae hF (hle.mono fun x hx => by
         simpa only [enorm_eq_self] using hx)
     _ ≤ K := scratch_eLpNorm_liminf_le_of_uniform hp0 hptop hmeas hbound
 
@@ -580,7 +592,7 @@ theorem scratch_ae_tendsto_of_tsum_eLpNorm_sub_ne_top
     (hg.sub (hcoreMem n)).aestronglyMeasurable
   have hpoint : ∀ᵐ z : WaveSpaceTime ∂volume,
       Summable (fun n => norm ((g - core n) z)) :=
-    summable_norm_of_tsum_eLpNorm_ne_top (by norm_num) hmeas hsum
+    summable_norm_of_tsum_eLpNorm_ne_top (by norm_num) hsum
   filter_upwards [hpoint] with z hz
   apply tendsto_iff_norm_sub_tendsto_zero.mpr
   simpa only [Pi.sub_apply, norm_sub_rev] using hz.tendsto_atTop_zero
@@ -692,7 +704,7 @@ theorem scratch_core_eLpNorm_le_two_of_scaled_approximation
       funext z
       simp
     _ <= eLpNorm g 2 volume + eLpNorm (g - core n) 2 volume :=
-      eLpNorm_sub_le hg.aestronglyMeasurable hsubMem.aestronglyMeasurable (by norm_num)
+      eLpNorm_sub_le (by norm_num)
     _ <= eLpNorm g 2 volume +
         eLpNorm g 2 volume * ENNReal.ofReal ((2 : Real)⁻¹ ^ n) :=
       add_le_add_right (hcore n) _
@@ -724,7 +736,7 @@ theorem scratch_jointSchwartzRaw_eLpNorm_le_two_of_scaled_approximation
       simp
     _ <= eLpNorm g 2 volume +
         eLpNorm (g - jointSchwartzRaw (psi n)) 2 volume :=
-      eLpNorm_sub_le hg.aestronglyMeasurable hsubMem.aestronglyMeasurable (by norm_num)
+      eLpNorm_sub_le (by norm_num)
     _ <= eLpNorm g 2 volume +
         eLpNorm g 2 volume * ENNReal.ofReal ((2 : Real)⁻¹ ^ n) :=
       add_le_add_right (hpsi n) _
@@ -922,6 +934,7 @@ theorem scratch_lightRayMaximal_bound_of_liminf_core
   rw [<- hmainEq]
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     (p := (2 : ENNReal)) (by norm_num) (by norm_num) hfatou
+    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g hg).ennreal_ofReal.aestronglyMeasurable)
   · intro n
     exact (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN
       (core n) (hcoreMem n)).ennreal_ofReal
@@ -1027,7 +1040,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_jointSchwartzStrong
   let A : ENNReal := ENNReal.ofReal (C * L)
   by_cases hgnonzero : eLpNorm g 2 volume = 0
   · have hgae : g =ᵐ[volume] (fun _ : WaveSpaceTime => (0 : Complex)) :=
-      (eLpNorm_eq_zero_iff hg.aestronglyMeasurable (by norm_num)).mp hgnonzero
+      (eLpNorm_eq_zero_iff (by norm_num)).mp hgnonzero
     have hMzero : lightRayMaximal delta N g = 0 := by
       calc
         lightRayMaximal delta N g =
@@ -1106,7 +1119,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_slabDenseCore
   let A : ENNReal := ENNReal.ofReal (C * L)
   by_cases hhnonzero : eLpNorm h 2 volume = 0
   · have hhae : h =ᵐ[volume] (fun _ : WaveSpaceTime => (0 : Complex)) :=
-      (eLpNorm_eq_zero_iff hh.aestronglyMeasurable (by norm_num)).mp hhnonzero
+      (eLpNorm_eq_zero_iff (by norm_num)).mp hhnonzero
     have hMhzero : lightRayMaximal delta N h = 0 := by
       calc
         lightRayMaximal delta N h =
@@ -1212,6 +1225,7 @@ theorem scratch_lightRayMaximal_bound_of_liminf_jointSchwartzCore
   rw [<- hmainEq]
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     (p := (2 : ENNReal)) (by norm_num) (by norm_num) hfatou
+    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g hg).ennreal_ofReal.aestronglyMeasurable)
   · intro n
     let core : WaveSpaceTime -> Complex := jointSchwartzRaw (psi n)
     have hcore : MemLp core 2 volume :=
@@ -1311,6 +1325,7 @@ theorem scratch_lightRayMaximal_bound_of_signedCore_liminf
   rw [<- hmainEq]
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     (p := (2 : ENNReal)) (by norm_num) (by norm_num) hfatou hPmeas
+    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g hg).ennreal_ofReal.aestronglyMeasurable)
   intro n
   calc
     eLpNorm (P (core n)) 2 volume <= A * eLpNorm (core n) 2 volume :=
@@ -1336,7 +1351,7 @@ restricted to that slab. -/
 theorem scratch_eLpNorm_positiveSlab_eq
     (h : WaveSpaceTime -> Complex)
     (hslab : h = scratch_lightRayTimeRestriction h)
-    (p : ENNReal) :
+    (p : ENNReal) (hhm : AEStronglyMeasurable h volume) :
     eLpNorm
         (scratch_lightRayTimeRestriction (fun z => (‖h z‖ : Complex))) p volume =
       eLpNorm h p volume := by
@@ -1351,6 +1366,7 @@ theorem scratch_eLpNorm_positiveSlab_eq
       simp [scratch_lightRayTimeRestriction, hz, hz0]
   rw [hpos]
   apply eLpNorm_congr_norm_ae
+    (Complex.ofRealCLM.continuous.comp_aestronglyMeasurable hhm.norm) hhm
   filter_upwards with z
   simp
 
@@ -1419,7 +1435,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_slabDenseSignedCore
       (scratch_memLp_complex_of_norm h hh)
   have hFnorm : eLpNorm F 2 volume = eLpNorm h 2 volume := by
     dsimp only [F]
-    exact scratch_eLpNorm_positiveSlab_eq h hslab 2
+    exact scratch_eLpNorm_positiveSlab_eq h hslab 2 hh.aestronglyMeasurable
   have hM : lightRayMaximal delta N g = lightRayMaximal delta N h := by
     simpa only [h] using
       scratch_lightRayMaximal_eq_lightRayTimeRestriction hdelta N (by omega) g hg
@@ -1427,7 +1443,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_slabDenseSignedCore
   let A : ENNReal := ENNReal.ofReal (C * L)
   by_cases hhnonzero : eLpNorm h 2 volume = 0
   · have hhae : h =ᵐ[volume] (fun _ : WaveSpaceTime => (0 : Complex)) :=
-      (eLpNorm_eq_zero_iff hh.aestronglyMeasurable (by norm_num)).mp hhnonzero
+      (eLpNorm_eq_zero_iff (by norm_num)).mp hhnonzero
     have hMhzero : lightRayMaximal delta N h = 0 := by
       calc
         lightRayMaximal delta N h =
@@ -1776,13 +1792,20 @@ theorem exists_slabBoundary_eLpNorm_small
     ∃ η : Real, 0 < η ∧ η < 1 / 2 ∧
       eLpNorm ((slabBoundary B η).indicator f) 2 volume ≤ ENNReal.ofReal ε := by
   obtain ⟨δ, hδpos, hδ⟩ :=
-    hf.eLpNorm_indicator_le (by norm_num : 1 ≤ (2 : ENNReal)) (by norm_num) hε
+    hf.eLpNorm_indicator_le (by norm_num : 1 ≤ (2 : ENNReal)) (by norm_num)
+      (ENNReal.ofReal_pos.mpr hε)
+  have hδtop : min δ 1 ≠ (⊤ : ENNReal) :=
+    ne_top_of_le_ne_top ENNReal.one_ne_top (min_le_right _ _)
+  have hδr : 0 < (min δ 1).toReal :=
+    ENNReal.toReal_pos (ne_of_gt (lt_min hδpos one_pos)) hδtop
   obtain ⟨η, hηpos, hηhalf, hηvol⟩ :=
-    exists_small_slab_width (volume B) hBfinite hδpos
+    exists_small_slab_width (volume B) hBfinite hδr
   refine ⟨η, hηpos, hηhalf, ?_⟩
   apply hδ
   · exact measurableSet_slabBoundary B η hB
-  · exact (volume_slabBoundary_le B η hB hηpos.le).trans hηvol
+  · refine (volume_slabBoundary_le B η hB hηpos.le).trans (hηvol.trans ?_)
+    rw [ENNReal.ofReal_toReal hδtop]
+    exact min_le_left _ _
 
 theorem exists_spatial_closedBall_support
     (f : WaveSpaceTime → Complex) (hf : HasCompactSupport f) :
@@ -1939,26 +1962,39 @@ theorem eLpNorm_sub_applyInnerSlabCutoff_le
     eLpNorm (u - applyInnerSlabCutoff (1 - η) (1 - η / 2)
         (innerRadius_pos hη hηhalf) (innerRadius_lt_outerRadius hη) u) 2 volume
         ≤ eLpNorm (outsideTimeSlab.indicator u + (slabBoundary B η).indicator u) 2 volume := by
-          apply eLpNorm_mono
+          apply eLpNorm_mono (by
+            unfold applyInnerSlabCutoff
+            exact hu.sub (((Complex.continuous_ofReal.comp
+              ((slabBump _ _ _ _).continuous.comp continuous_snd)).aestronglyMeasurable).mul hu))
           intro z
           exact norm_sub_applyInnerSlabCutoff_le_indicators B u huB hη hηhalf z
     _ ≤ eLpNorm (outsideTimeSlab.indicator u) 2 volume +
         eLpNorm ((slabBoundary B η).indicator u) 2 volume :=
-      eLpNorm_add_le (hu.indicator measurableSet_outsideTimeSlab)
-        (hu.indicator (measurableSet_slabBoundary B η hB)) (by norm_num)
+      eLpNorm_add_le (by norm_num)
 
 theorem eLpNorm_outsideTimeSlab_indicator_le_sub
     (h u : WaveSpaceTime → Complex)
     (hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab → h z = 0) :
     eLpNorm (outsideTimeSlab.indicator u) 2 volume ≤ eLpNorm (h - u) 2 volume := by
-  apply eLpNorm_mono
-  intro z
-  by_cases hz : z ∈ outsideTimeSlab
-  · rw [Set.indicator_of_mem hz]
-    simp only [Pi.sub_apply, hzero z hz]
-    simp
-  · rw [Set.indicator_of_notMem hz]
-    simp
+  by_cases hhu : AEStronglyMeasurable (h - u) volume
+  · have hind : outsideTimeSlab.indicator u =
+        -(outsideTimeSlab.indicator (h - u)) := by
+      funext z
+      by_cases hz : z ∈ outsideTimeSlab
+      · simp [Set.indicator_of_mem hz, hzero z hz]
+      · simp [Set.indicator_of_notMem hz]
+    apply eLpNorm_mono (by
+      rw [hind]
+      exact (hhu.indicator measurableSet_outsideTimeSlab).neg)
+    intro z
+    by_cases hz : z ∈ outsideTimeSlab
+    · rw [Set.indicator_of_mem hz]
+      simp only [Pi.sub_apply, hzero z hz]
+      simp
+    · rw [Set.indicator_of_notMem hz]
+      simp
+  · rw [eLpNorm_of_not_aestronglyMeasurable hhu]
+    exact le_top
 
 theorem exists_innerSlab_smoothCompact_eLpNorm_sub_lt_with_radius
     (h : WaveSpaceTime → Complex) (hh : MemLp h 2 volume)
@@ -2010,8 +2046,7 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_sub_lt_with_radius
       simp only [Pi.sub_apply, Pi.add_apply]
       ring
     rw [heq]
-    exact eLpNorm_add_le (hh.aestronglyMeasurable.sub hvMem.aestronglyMeasurable)
-      (hvMem.aestronglyMeasurable.sub husmooth.continuous.aestronglyMeasurable) (by norm_num)
+    exact eLpNorm_add_le (by norm_num)
   have hquarter_nonneg : 0 ≤ ε / 4 := hquarter.le
   calc
     eLpNorm (h - u) 2 volume ≤ eLpNorm (h - v) 2 volume + eLpNorm (v - u) 2 volume := hsum
@@ -2060,13 +2095,20 @@ theorem exists_slabBoundary_eLpNorm_four_small
     ∃ η : Real, 0 < η ∧ η < 1 / 2 ∧
       eLpNorm ((slabBoundary B η).indicator f) 4 volume ≤ ENNReal.ofReal ε := by
   obtain ⟨δ, hδpos, hδ⟩ :=
-    hf.eLpNorm_indicator_le (by norm_num : 1 ≤ (4 : ENNReal)) (by norm_num) hε
+    hf.eLpNorm_indicator_le (by norm_num : 1 ≤ (4 : ENNReal)) (by norm_num)
+      (ENNReal.ofReal_pos.mpr hε)
+  have hδtop : min δ 1 ≠ (⊤ : ENNReal) :=
+    ne_top_of_le_ne_top ENNReal.one_ne_top (min_le_right _ _)
+  have hδr : 0 < (min δ 1).toReal :=
+    ENNReal.toReal_pos (ne_of_gt (lt_min hδpos one_pos)) hδtop
   obtain ⟨η, hηpos, hηhalf, hηvol⟩ :=
-    exists_small_slab_width (volume B) hBfinite hδpos
+    exists_small_slab_width (volume B) hBfinite hδr
   refine ⟨η, hηpos, hηhalf, ?_⟩
   apply hδ
   · exact measurableSet_slabBoundary B η hB
-  · exact (volume_slabBoundary_le B η hB hηpos.le).trans hηvol
+  · refine (volume_slabBoundary_le B η hB hηpos.le).trans (hηvol.trans ?_)
+    rw [ENNReal.ofReal_toReal hδtop]
+    exact min_le_left _ _
 
 theorem eLpNorm_four_sub_applyInnerSlabCutoff_le
     (B : Set (Euclidean 2)) (hB : MeasurableSet B)
@@ -2082,26 +2124,39 @@ theorem eLpNorm_four_sub_applyInnerSlabCutoff_le
     eLpNorm (u - applyInnerSlabCutoff (1 - η) (1 - η / 2)
         (innerRadius_pos hη hηhalf) (innerRadius_lt_outerRadius hη) u) 4 volume
         ≤ eLpNorm (outsideTimeSlab.indicator u + (slabBoundary B η).indicator u) 4 volume := by
-          apply eLpNorm_mono
+          apply eLpNorm_mono (by
+            unfold applyInnerSlabCutoff
+            exact hu.sub (((Complex.continuous_ofReal.comp
+              ((slabBump _ _ _ _).continuous.comp continuous_snd)).aestronglyMeasurable).mul hu))
           intro z
           exact norm_sub_applyInnerSlabCutoff_le_indicators B u huB hη hηhalf z
     _ ≤ eLpNorm (outsideTimeSlab.indicator u) 4 volume +
         eLpNorm ((slabBoundary B η).indicator u) 4 volume :=
-      eLpNorm_add_le (hu.indicator measurableSet_outsideTimeSlab)
-        (hu.indicator (measurableSet_slabBoundary B η hB)) (by norm_num)
+      eLpNorm_add_le (by norm_num)
 
 theorem eLpNorm_four_outsideTimeSlab_indicator_le_sub
     (h u : WaveSpaceTime → Complex)
     (hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab → h z = 0) :
     eLpNorm (outsideTimeSlab.indicator u) 4 volume ≤ eLpNorm (h - u) 4 volume := by
-  apply eLpNorm_mono
-  intro z
-  by_cases hz : z ∈ outsideTimeSlab
-  · rw [Set.indicator_of_mem hz]
-    simp only [Pi.sub_apply, hzero z hz]
-    simp
-  · rw [Set.indicator_of_notMem hz]
-    simp
+  by_cases hhu : AEStronglyMeasurable (h - u) volume
+  · have hind : outsideTimeSlab.indicator u =
+        -(outsideTimeSlab.indicator (h - u)) := by
+      funext z
+      by_cases hz : z ∈ outsideTimeSlab
+      · simp [Set.indicator_of_mem hz, hzero z hz]
+      · simp [Set.indicator_of_notMem hz]
+    apply eLpNorm_mono (by
+      rw [hind]
+      exact (hhu.indicator measurableSet_outsideTimeSlab).neg)
+    intro z
+    by_cases hz : z ∈ outsideTimeSlab
+    · rw [Set.indicator_of_mem hz]
+      simp only [Pi.sub_apply, hzero z hz]
+      simp
+    · rw [Set.indicator_of_notMem hz]
+      simp
+  · rw [eLpNorm_of_not_aestronglyMeasurable hhu]
+    exact le_top
 
 /-- Inner-slab `C_c^∞` density at `L⁴`, retaining a strict common time
 margin.  This is the square-root stage of positive-core density. -/
@@ -2155,8 +2210,7 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
       simp only [Pi.sub_apply, Pi.add_apply]
       ring
     rw [heq]
-    exact eLpNorm_add_le (hh.aestronglyMeasurable.sub hvMem.aestronglyMeasurable)
-      (hvMem.aestronglyMeasurable.sub husmooth.continuous.aestronglyMeasurable) (by norm_num)
+    exact eLpNorm_add_le (by norm_num)
   have hquarter_nonneg : 0 ≤ ε / 4 := hquarter.le
   calc
     eLpNorm (h - u) 4 volume ≤ eLpNorm (h - v) 4 volume + eLpNorm (v - u) 4 volume := hsum
@@ -2760,7 +2814,8 @@ theorem eLpNorm_two_sub_le_of_support_subset_and_uniform
     (f g : X → Real)
     (hfsupp : Function.support f ⊆ S)
     (hgsupp : Function.support g ⊆ S)
-    {epsilon : Real} (huniform : ∀ x, dist (g x) (f x) ≤ epsilon) :
+    {epsilon : Real} (huniform : ∀ x, dist (g x) (f x) ≤ epsilon)
+    (hgf : AEStronglyMeasurable (g - f) μ) :
     eLpNorm (g - f) 2 μ ≤
       (μ S) ^ ((2 : ENNReal).toReal)⁻¹ * ENNReal.ofReal epsilon := by
   have hsubsupp : Function.support (g - f) ⊆ S := by
@@ -2769,12 +2824,12 @@ theorem eLpNorm_two_sub_le_of_support_subset_and_uniform
     have hfzero : f x = 0 := eq_zero_of_support_subset f hfsupp hxS
     have hgzero : g x = 0 := eq_zero_of_support_subset g hgsupp hxS
     exact hx (by simp [hfzero, hgzero])
-  rw [← eLpNorm_restrict_eq_of_support_subset hsubsupp]
+  rw [← eLpNorm_restrict_eq_of_support_subset hgf hsubsupp]
   have hbound : ∀ᵐ x ∂μ.restrict S, ‖(g - f) x‖ ≤ epsilon := by
     filter_upwards [ae_restrict_mem hSmeas] with x hx
     simpa only [Pi.sub_apply, dist_eq_norm] using huniform x
   simpa only [Measure.restrict_apply_univ, Set.univ_inter] using
-    (eLpNorm_le_of_ae_bound (μ := μ.restrict S) (p := (2 : ENNReal)) hbound)
+    (eLpNorm_le_of_ae_bound (μ := μ.restrict S) (p := (2 : ENNReal)) hgf.restrict hbound)
 
 /-- Complex-valued version of the compact separated smooth tensor theorem.
 It is obtained by applying the real theorem to real and imaginary parts and
@@ -3021,9 +3076,10 @@ theorem eLpNorm_two_prod_mul_eq
     (hf : AEStronglyMeasurable f μ) (hg : AEStronglyMeasurable g ν) :
     eLpNorm (fun z : α × β => f z.1 * g z.2) 2 (μ.prod ν) =
       eLpNorm f 2 μ * eLpNorm g 2 ν := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (f := fun z : α × β => f z.1 * g z.2)
+      two_ne_zero ENNReal.ofNat_ne_top (hf.comp_fst.mul hg.comp_snd),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top hf,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top hg]
   simp only [ENNReal.toReal_ofNat, one_div]
   have hpow : (fun z : α × β => ‖f z.1 * g z.2‖ₑ ^ (2 : Real)) =
       (fun z : α × β =>
@@ -3108,9 +3164,7 @@ theorem eLpNorm_compactFrequencyTensor_sub_smoothSpatialTensor_le
       eLpNorm (fun z : WaveSpaceTime => ∑ i, d i z.1 * a i z.2) 2 volume =
           eLpNorm (∑ i, b i) 2 volume := by rw [hbsum]
       _ ≤ ∑ i, eLpNorm (b i) 2 volume :=
-        eLpNorm_sum_le (μ := volume) (p := (2 : ENNReal))
-          (s := Finset.univ) (f := b)
-          (fun i _ => hbmeas i) (by norm_num)
+        eLpNorm_sum_le (by norm_num)
       _ = ∑ i, eLpNorm (fun z : WaveSpaceTime => d i z.1 * a i z.2) 2 volume := by
         rfl
   calc
@@ -3374,8 +3428,6 @@ theorem memLp_compactFrequencyTensor
       (FourierTransform.fourierInv (q i)).memLp 2 volume
     have hamem : MemLp (a i : Real → Complex) 2 volume :=
       (a i).memLp 2 volume
-    refine ⟨((FourierTransform.fourierInv (q i)).continuous.comp continuous_fst).mul
-      ((a i).continuous.comp continuous_snd) |>.aestronglyMeasurable, ?_⟩
     calc
       eLpNorm (b i) 2 volume =
           eLpNorm
@@ -3391,7 +3443,7 @@ theorem memLp_compactFrequencyTensor
                   (a i : Real → Complex)
                   (FourierTransform.fourierInv (q i)).continuous.aestronglyMeasurable
                   (a i).continuous.aestronglyMeasurable
-      _ < (⊤ : ENNReal) := ENNReal.mul_lt_top hqmem.2 hamem.2
+      _ < (⊤ : ENNReal) := ENNReal.mul_lt_top hqmem.eLpNorm_lt_top hamem.eLpNorm_lt_top
   have hsum : MemLp (∑ i, b i) 2 volume :=
     memLp_finsetSum' Finset.univ (fun i _ => hb i)
   have hbsum : (∑ i, b i) =
@@ -3491,8 +3543,7 @@ theorem hasL2DenseCoreAfter_of_smoothSeparatedSlabDensity
           abel
     _ ≤ eLpNorm (R g - smoothSpatialTensor U a) 2 volume +
           eLpNorm (f - smoothSpatialTensor U a) 2 volume :=
-      eLpNorm_sub_le hfirstMem.aestronglyMeasurable hsecondMem.aestronglyMeasurable
-        (by norm_num)
+      eLpNorm_sub_le (by norm_num)
     _ < ENNReal.ofReal (epsilon / 2) + ENNReal.ofReal (epsilon / 2) :=
       ENNReal.add_lt_add hsmoothErr (by
         simpa only [f] using hqerr)
@@ -3598,8 +3649,7 @@ theorem hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDen
           abel
     _ ≤ eLpNorm (R g - smoothSpatialTensor U a) 2 volume +
           eLpNorm (f - smoothSpatialTensor U a) 2 volume :=
-      eLpNorm_sub_le hfirstMem.aestronglyMeasurable hsecondMem.aestronglyMeasurable
-        (by norm_num)
+      eLpNorm_sub_le (by norm_num)
     _ < ENNReal.ofReal (epsilon / 2) + ENNReal.ofReal (epsilon / 2) :=
       ENNReal.add_lt_add hsmoothErr (by
         simpa only [f] using hqerr)
@@ -3634,7 +3684,8 @@ theorem eLpNorm_two_sub_le_of_support_subset_and_uniform_complex
     (f g : X → Complex)
     (hfsupp : Function.support f ⊆ S)
     (hgsupp : Function.support g ⊆ S)
-    {epsilon : Real} (huniform : ∀ x, dist (g x) (f x) ≤ epsilon) :
+    {epsilon : Real} (huniform : ∀ x, dist (g x) (f x) ≤ epsilon)
+    (hgf : AEStronglyMeasurable (g - f) μ) :
     eLpNorm (g - f) 2 μ ≤
       (μ S) ^ ((2 : ENNReal).toReal)⁻¹ * ENNReal.ofReal epsilon := by
   have hsubsupp : Function.support (g - f) ⊆ S := by
@@ -3651,12 +3702,12 @@ theorem eLpNorm_two_sub_le_of_support_subset_and_uniform_complex
       apply hgsupp
       rwa [Function.mem_support]
     exact hx (by simp [hfzero, hgzero])
-  rw [← eLpNorm_restrict_eq_of_support_subset hsubsupp]
+  rw [← eLpNorm_restrict_eq_of_support_subset hgf hsubsupp]
   have hbound : ∀ᵐ x ∂μ.restrict S, ‖(g - f) x‖ ≤ epsilon := by
     filter_upwards [ae_restrict_mem hSmeas] with x hx
     simpa only [Pi.sub_apply, dist_eq_norm] using huniform x
   simpa only [Measure.restrict_apply_univ, Set.univ_inter] using
-    (eLpNorm_le_of_ae_bound (μ := μ.restrict S) (p := (2 : ENNReal)) hbound)
+    (eLpNorm_le_of_ae_bound (μ := μ.restrict S) (p := (2 : ENNReal)) hgf.restrict hbound)
 
 theorem support_smoothSpatialTensor_subset_prod
     {ι : Type*} [Fintype ι]
@@ -3803,6 +3854,9 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
   have hL2le := eLpNorm_two_sub_le_of_support_subset_and_uniform_complex
     volume S hSmeas hSfinite u (smoothSpatialTensor U a)
     huSupportS hvSupport huniform'
+    ((continuous_smoothSpatialTensor U a
+      (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)).sub
+        hucont).aestronglyMeasurable
   have hcont : Continuous (smoothSpatialTensor U a) :=
     continuous_smoothSpatialTensor U a
       (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)
@@ -3907,8 +3961,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_lightRayTimeRestriction
               abel
       _ ≤ eLpNorm (h - u) 2 volume +
           eLpNorm (u - smoothSpatialTensor U a) 2 volume :=
-        eLpNorm_add_le hfirstMem.aestronglyMeasurable hsecondMem.aestronglyMeasurable
-          (by norm_num)
+        eLpNorm_add_le (by norm_num)
       _ < ENNReal.ofReal (epsilon / 2) + ENNReal.ofReal (epsilon / 2) :=
         ENNReal.add_lt_add huerr hverr
       _ = ENNReal.ofReal epsilon := by

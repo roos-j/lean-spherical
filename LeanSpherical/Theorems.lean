@@ -12,6 +12,14 @@ public import LeanSpherical.Auto.Spherical.SWW
 public import LeanSpherical.Auto.Spherical.PowerWeights.PlanarClosure
 public import LeanSpherical.Auto.Spherical.RS.TypeSetCharacterization
 
+/-!
+# Main theorems
+
+Human-readable statements of the main results of the project, in terms of the definitions in
+`LeanSpherical.Definitions`. Each proof is a single application of the corresponding `Auto`
+declaration.
+-/
+
 @[expose] public section
 
 namespace Spherical

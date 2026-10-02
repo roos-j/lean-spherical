@@ -1961,7 +1961,8 @@ theorem offDiagonal_eLpNorm_le_of_nonnegative_moment
     {α F : Type*} [MeasurableSpace α] {μ : Measure α}
     (T : F → α → ℝ) (f : F) {q : ℝ} (hq : 0 < q)
     (hT_nonneg : ∀ x, 0 ≤ T f x) (C : ℝ≥0∞)
-    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤ C) :
+    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂μ) ≤ C)
+    (hTf : AEStronglyMeasurable (T f) μ) :
     eLpNorm (T f) (ENNReal.ofReal q) μ ≤ C ^ q⁻¹ := by
   have hqE0 : ENNReal.ofReal q ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hq
   have hqET : ENNReal.ofReal q ≠ ∞ := ENNReal.ofReal_ne_top
@@ -1975,7 +1976,7 @@ theorem offDiagonal_eLpNorm_le_of_nonnegative_moment
             rw [Real.enorm_eq_ofReal (hT_nonneg x),
               ENNReal.ofReal_rpow_of_nonneg (hT_nonneg x) hq.le]
       _ ≤ C := hmoment
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET hTf,
     ENNReal.toReal_ofReal hq.le, hqinv]
   exact ENNReal.rpow_le_rpow hmoment' (by positivity)
 
@@ -1998,8 +1999,8 @@ theorem strong_eLpNorm_of_two_nearby_weak_distributions
           (ENNReal.ofReal t) ^ (q - q₀ - 1)) +
         A₁ * (∫⁻ t in Ioi (1 : ℝ),
           (ENNReal.ofReal t) ^ (q - q₁ - 1)))) ^ q⁻¹ := by
-  apply offDiagonal_eLpNorm_le_of_nonnegative_moment T f
-    (lt_of_le_of_lt hq₀ hq₀q) hT_nonneg
+  refine offDiagonal_eLpNorm_le_of_nonnegative_moment T f
+    (lt_of_le_of_lt hq₀ hq₀q) hT_nonneg _ ?_ hTf.aestronglyMeasurable
   exact strong_moment_of_two_nearby_weak_distributions T f hT_nonneg hTf
     hq₀ hq₀q hqq₁ A₀ A₁ hweak₀ hweak₁
 
@@ -2087,7 +2088,7 @@ theorem offDiagonal_weak_distribution_of_eLpNorm
     change ENNReal.ofReal t ≤ ‖u x‖ₑ
     rw [Real.enorm_eq_ofReal hux]
     exact ENNReal.ofReal_le_ofReal hx.le
-  have hcheb := mul_meas_ge_le_pow_eLpNorm' μ hrE0 hrET hu
+  have hcheb := mul_meas_ge_le_pow_eLpNorm' μ hrE0 hrET (f := u)
     (ENNReal.ofReal t)
   have hcheb' :
       (ENNReal.ofReal t) ^ r * μ {x | ENNReal.ofReal t ≤ ‖u x‖ₑ} ≤
@@ -3721,7 +3722,7 @@ theorem eLpNorm_schwartz_of_two_nearby_strong_outputs
     eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume
   have hinputTop : inputNorm < ∞ := by
     dsimp [inputNorm]
-    exact (f.memLp (ENNReal.ofReal p) volume).2
+    exact f.memLp (ENNReal.ofReal p) volume
   by_cases hinputZero : inputNorm = 0
   · have houtputZero : eLpNorm (T f) (ENNReal.ofReal q0) volume = 0 := by
       apply le_antisymm
@@ -3731,7 +3732,7 @@ theorem eLpNorm_schwartz_of_two_nearby_strong_outputs
           _ = 0 := by rw [hinputZero, mul_zero]
       · exact bot_le
     have hTfZero : T f =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (hTmeas f)
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr hq0)).mp houtputZero
     rw [eLpNorm_eq_zero_of_ae_zero hTfZero]
     exact bot_le
@@ -3790,7 +3791,7 @@ theorem eLpNorm_le_rpow_mul_rpow_of_weighted_outputs
     (hg.norm.aemeasurable.pow_const (1 - lam)).aestronglyMeasurable
   have hholder := eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm
     (p := ENNReal.ofReal (q0 / lam)) (q := ENNReal.ofReal (q1 / (1 - lam)))
-    (r := ENNReal.ofReal q) hnorm0 hnorm1 (fun u v : Real => u * v) 1 (by
+    (r := ENNReal.ofReal q) (fun u v : Real => u * v) 1 continuous_mul hnorm0 hnorm1 (by
       filter_upwards with x
       simp only [nnnorm_mul, one_mul]
       exact le_rfl)
@@ -3805,11 +3806,11 @@ theorem eLpNorm_le_rpow_mul_rpow_of_weighted_outputs
           lt_of_le_of_ne (norm_nonneg _) (Ne.symm hx)
         rw [← Real.rpow_add hpos]
         simp
-    rw [hfun, eLpNorm_norm]
+    rw [hfun, eLpNorm_norm g hg]
   have hfactor0 : eLpNorm (fun x => ‖g x‖ ^ lam)
       (ENNReal.ofReal (q0 / lam)) μ =
       (eLpNorm g (ENNReal.ofReal q0) μ) ^ lam := by
-    rw [eLpNorm_norm_rpow g hlam0]
+    rw [eLpNorm_norm_rpow g hg hlam0]
     congr 2
     rw [← ENNReal.ofReal_mul hq0lam.le]
     congr 1
@@ -3817,7 +3818,7 @@ theorem eLpNorm_le_rpow_mul_rpow_of_weighted_outputs
   have hfactor1 : eLpNorm (fun x => ‖g x‖ ^ (1 - lam))
       (ENNReal.ofReal (q1 / (1 - lam))) μ =
       (eLpNorm g (ENNReal.ofReal q1) μ) ^ (1 - lam) := by
-    rw [eLpNorm_norm_rpow g hmu]
+    rw [eLpNorm_norm_rpow g hg hmu]
     congr 2
     rw [← ENNReal.ofReal_mul hq1mu.le]
     congr 1
@@ -3873,7 +3874,7 @@ theorem memLp_and_eLpNorm_schwartz_of_weighted_output_dyadic_rates
     eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume with hX
   have hXtop : X < ⊤ := by
     rw [hX]
-    exact (f.memLp (ENNReal.ofReal p) volume).2
+    exact f.memLp (ENNReal.ofReal p) volume
   have hbase := eLpNorm_le_rpow_mul_rpow_of_weighted_outputs
     (g := T j f) (μ := volume) (hTmeas j f) hq0 hq1 hq hlam0 hlam1 hexp
   have hstep0 : (eLpNorm (T j f) (ENNReal.ofReal q0) volume) ^ lam ≤
@@ -3916,7 +3917,7 @@ theorem memLp_and_eLpNorm_schwartz_of_weighted_output_dyadic_rates
       _ ≤ (C0 * rho0 ^ j * X) ^ lam * (C1 * rho1 ^ j * X) ^ (1 - lam) :=
         mul_le_mul' hstep0 hstep1
       _ = _ := hfinal
-  refine ⟨⟨hTmeas j f, lt_of_le_of_lt hle ?_⟩, hle⟩
+  refine ⟨lt_of_le_of_lt hle ?_, hle⟩
   apply ENNReal.mul_lt_top _ hXtop
   apply ENNReal.mul_lt_top
   · exact ENNReal.mul_lt_top
@@ -5878,7 +5879,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
         Real.zero_rpow (inv_ne_zero hpnz)] at hscale
       simpa using hscale
     have hfzeroAE : (f : Euclidean d → Complex) =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr hp)).mp hfnorm
     have hfzeroFun : (f : Euclidean d → Complex) = 0 :=
       (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzeroAE
@@ -5960,7 +5961,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
   calc
     eLpNorm (T f) (ENNReal.ofReal q) volume ≤
         eLpNorm (T (low t) + T (high t)) (ENNReal.ofReal q) volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono (hTmeas f)
       intro x
       change ‖T f x‖ ≤ ‖T (low t) x + T (high t) x‖
       rw [Real.norm_eq_abs, abs_of_nonneg (hTnonneg f x),
@@ -5972,7 +5973,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_inputs_same_output
       exact hTsub (low t) (high t) x
     _ ≤ eLpNorm (T (low t)) (ENNReal.ofReal q) volume +
           eLpNorm (T (high t)) (ENNReal.ofReal q) volume :=
-      eLpNorm_add_le hTlow.1.1 hThigh.1.1 hqENN
+      eLpNorm_add_le hqENN
     _ ≤ A1 * eLpNorm (low t : Euclidean d → Complex) (ENNReal.ofReal r1) volume +
           A0 * eLpNorm (high t : Euclidean d → Complex) (ENNReal.ofReal r0) volume :=
       add_le_add hTlow.2 hThigh.2
@@ -6050,7 +6051,7 @@ private theorem absolute_finite_geometric_band_sum
         simp only [Finset.sum_range_succ, Pi.add_apply]
   · apply eLpNorm_sum_range_le_geometric volume q hq T
     · intro j
-      exact (hTmem j).1
+      exact (hTmem j).aestronglyMeasurable
     · exact hTnorm
 
 private theorem absolute_finite_reassembly_eLpNorm
@@ -6088,14 +6089,14 @@ private theorem absolute_finite_reassembly_eLpNorm
   refine ⟨hPmem, ?_⟩
   calc
     eLpNorm P q volume ≤ eLpNorm (R + S) q volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono hPmeas
       intro x
       change ‖P x‖ ≤ ‖R x + S x‖
       rw [Real.norm_eq_abs, abs_of_nonneg (hP0 x), Real.norm_eq_abs,
         abs_of_nonneg (hsum0 x)]
       simpa only [S] using hpointwise x
     _ ≤ eLpNorm R q volume + eLpNorm S q volume :=
-      eLpNorm_add_le hRmem.1 hSmem.1 hq
+      eLpNorm_add_le hq
     _ ≤ CR * hroot + (CT * hroot) * (1 - ρ)⁻¹ :=
       add_le_add hRnorm hSnorm
     _ = (CR + CT * (1 - ρ)⁻¹) * hroot := by ring
@@ -6236,7 +6237,8 @@ private theorem absolute_eLpNorm_le_of_bandpass_moment_bound
     (hg0 : ∀ x, 0 ≤ g x) (hA : 0 ≤ A) (_hI : 0 ≤ I) (j : ℕ)
     (hbound : (∫⁻ x : Euclidean d, ENNReal.ofReal (g x ^ p)) ≤
       ENNReal.ofReal (A * (2 : ℝ) ^ (-ε * j)) *
-        ∫⁻ x : Euclidean d, (ENNReal.ofReal ‖f x‖) ^ p) :
+        ∫⁻ x : Euclidean d, (ENNReal.ofReal ‖f x‖) ^ p)
+    (hgm : AEStronglyMeasurable g volume) :
     eLpNorm g (ENNReal.ofReal p) volume ≤
       (ENNReal.ofReal (A ^ p⁻¹) *
         eLpNorm f (ENNReal.ofReal p) volume) *
@@ -6246,7 +6248,7 @@ private theorem absolute_eLpNorm_le_of_bandpass_moment_bound
         ENNReal.ofReal (A * (2 : ℝ) ^ (-ε * j)) ^ p⁻¹ *
           eLpNorm f (ENNReal.ofReal p) volume :=
       eLpNorm_le_of_lintegral_real_rpow_bound hp0 g f hg0
-        (ENNReal.ofReal (A * (2 : ℝ) ^ (-ε * j))) hbound
+        (ENNReal.ofReal (A * (2 : ℝ) ^ (-ε * j))) hbound hgm
     _ = (ENNReal.ofReal (A ^ p⁻¹) *
           eLpNorm f (ENNReal.ofReal p) volume) *
           ENNReal.ofReal ((2 : ℝ) ^ (-ε / p)) ^ j := by
@@ -6504,7 +6506,7 @@ theorem absolute_reassembly_limit
     have hmeas : AEMeasurable (fun x : Euclidean d =>
         (ENNReal.ofReal (fractalAbsoluteCutoffMaximal d E φ N f x)) ^ p) volume :=
       ENNReal.continuous_rpow_const.measurable.comp_aemeasurable
-        ((hfinite N f).1.1.aemeasurable.ennreal_ofReal)
+        ((hfinite N f).1.aestronglyMeasurable.aemeasurable.ennreal_ofReal)
     convert hmeas using 1
     funext x
     exact (ENNReal.ofReal_rpow_of_nonneg

@@ -554,9 +554,9 @@ theorem eLpNorm_fourier_schwartz (F : SchwartzMap Pl2 ℂ) :
     exact MeasureTheory.Lp.norm_fourier_eq _
   rw [SchwartzMap.norm_toLp, SchwartzMap.norm_toLp] at hnorm
   have h1 : eLpNorm ((𝓕 F : SchwartzMap Pl2 ℂ) : Pl2 → ℂ) 2 (volume : Measure Pl2) ≠ ⊤ :=
-    ((𝓕 F : SchwartzMap Pl2 ℂ).memLp 2 (volume : Measure Pl2)).2.ne
+    ((𝓕 F : SchwartzMap Pl2 ℂ).memLp 2 (volume : Measure Pl2)).eLpNorm_ne_top
   have h2 : eLpNorm ((F : Pl2 → ℂ)) 2 (volume : Measure Pl2) ≠ ⊤ :=
-    (F.memLp 2 (volume : Measure Pl2)).2.ne
+    (F.memLp 2 (volume : Measure Pl2)).eLpNorm_ne_top
   have heq : eLpNorm ((𝓕 F : SchwartzMap Pl2 ℂ) : Pl2 → ℂ) 2 (volume : Measure Pl2)
       = eLpNorm ((F : Pl2 → ℂ)) 2 (volume : Measure Pl2) :=
     (ENNReal.toReal_eq_toReal_iff' h1 h2).mp hnorm
@@ -567,9 +567,11 @@ theorem lintegral_enorm_sq_fourier_schwartz (F : SchwartzMap Pl2 ℂ) :
     (∫⁻ x : Pl2, ‖𝓕 (F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ))
       = ∫⁻ x : Pl2, ‖(F : Pl2 → ℂ) x‖ₑ ^ (2 : ℝ) := by
   have h1 := Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow
-    (volume : Measure Pl2) (𝓕 (F : Pl2 → ℂ))
+    (volume : Measure Pl2) (𝓕 (F : Pl2 → ℂ)) (by
+      rw [← SchwartzMap.fourier_coe F]
+      exact (𝓕 F : SchwartzMap Pl2 ℂ).continuous.aestronglyMeasurable)
   have h2 := Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow
-    (volume : Measure Pl2) ((F : Pl2 → ℂ))
+    (volume : Measure Pl2) ((F : Pl2 → ℂ)) F.continuous.aestronglyMeasurable
   rw [Auto.CalderonVaillancourt.sqMass] at h1 h2
   rw [h1, h2, eLpNorm_fourier_schwartz]
 
@@ -1856,8 +1858,9 @@ theorem Kern_eq_zero (hb : IsAdapted j m b) (ε t : ℝ) (ξ η : Pl)
 theorem memLp_Kern (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (_hB : 0 ≤ B)
     (ε t : ℝ) (ξ : Pl) : MemLp (Kern ε b t ξ) 2 (volume : Measure Pl) := by
   classical
-  refine ⟨(measurable_Kern hb ε t ξ).aestronglyMeasurable, ?_⟩
-  rw [Auto.CalderonVaillancourt.eLpNorm_two_eq_sqMass_rpow]
+  unfold MemLp
+  rw [Auto.CalderonVaillancourt.eLpNorm_two_eq_sqMass_rpow _ _
+    (measurable_Kern hb ε t ξ).aestronglyMeasurable]
   refine ENNReal.rpow_lt_top_of_nonneg (by norm_num) ?_
   rw [Auto.CalderonVaillancourt.sqMass]
   have hmono : ∀ η : Pl, ‖Kern ε b t ξ η‖ₑ ^ (2 : ℝ)
@@ -1879,13 +1882,15 @@ theorem memLp_conj_Kern (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η�
     (ε t : ℝ) (ξ : Pl) :
     MemLp (fun η => (starRingEnd ℂ) (Kern ε b t ξ η)) 2 (volume : Measure Pl) := by
   have h := memLp_Kern hb hbB hB ε t ξ
-  refine ⟨(Complex.continuous_conj.comp_aestronglyMeasurable h.1), ?_⟩
+  unfold MemLp
   have heq : eLpNorm (fun η => (starRingEnd ℂ) (Kern ε b t ξ η)) 2 (volume : Measure Pl)
       = eLpNorm (Kern ε b t ξ) 2 (volume : Measure Pl) := by
-    refine eLpNorm_congr_norm_ae (Filter.Eventually.of_forall fun η => ?_)
+    refine eLpNorm_congr_norm_ae
+      (Complex.continuous_conj.comp_aestronglyMeasurable h.aestronglyMeasurable)
+      h.aestronglyMeasurable (Filter.Eventually.of_forall fun η => ?_)
     rw [RCLike.norm_conj]
   rw [heq]
-  exact h.2
+  exact h
 
 /-- The inner product of the conjugate kernel against a fixed `L²` function is the operator. -/
 theorem inner_conj_Kern_toLp (hb : IsAdapted j m b) (hbB : ∀ t ξ η, ‖b t ξ η‖ ≤ B) (hB : 0 ≤ B)
@@ -2001,11 +2006,12 @@ theorem sum_enorm_sq_SopK_pointwise (hb : IsAdapted j m b) (hbB : ∀ t ξ η, �
   · rw [htop, ENNReal.mul_top hA0]
     exact le_top
   · have hlp : MemLp H 2 (volume : Measure Pl) := by
-      refine ⟨hHmeas.aestronglyMeasurable, ?_⟩
-      rw [Auto.CalderonVaillancourt.eLpNorm_two_eq_sqMass_rpow]
+      unfold MemLp
+      rw [Auto.CalderonVaillancourt.eLpNorm_two_eq_sqMass_rpow _ _
+        hHmeas.aestronglyMeasurable]
       exact ENNReal.rpow_lt_top_of_nonneg (by norm_num) (by rw [hmass]; exact htop)
     have hreal := sum_sq_SopK_pointwise hb hbB hB ε Efin hApos.le ξ hA hlp
-    have hfin : eLpNorm H 2 (volume : Measure Pl) ≠ ⊤ := hlp.2.ne
+    have hfin : eLpNorm H 2 (volume : Measure Pl) ≠ ⊤ := hlp.eLpNorm_ne_top
     -- rewrite the left side
     have hL : (∑ t ∈ Efin, ‖SopK ε b G ξ t‖ₑ ^ (2 : ℝ))
         = ENNReal.ofReal (∑ t ∈ Efin, ‖SopK ε b G ξ t‖ ^ 2) := by
@@ -2015,7 +2021,8 @@ theorem sum_enorm_sq_SopK_pointwise (hb : IsAdapted j m b) (hbB : ∀ t ξ η, �
     -- rewrite the right side
     have hR : (∫⁻ η : Pl, ‖H η‖ₑ ^ (2 : ℝ))
         = ENNReal.ofReal ((eLpNorm H 2 (volume : Measure Pl)).toReal ^ 2) := by
-      rw [← hmass, Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow]
+      rw [← hmass, Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow _ _
+        hHmeas.aestronglyMeasurable]
       exact enn_rpow_two_eq _ hfin
     rw [hL, hR, ← ENNReal.ofReal_mul hApos.le]
     exact ENNReal.ofReal_le_ofReal hreal

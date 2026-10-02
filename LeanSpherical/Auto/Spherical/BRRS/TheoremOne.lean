@@ -301,14 +301,15 @@ theorem brrs_eLpNorm_le_of_bound_of_support {d : Nat} {p : Real} (hp : 0 < p)
     {h : BRRSSpace d → Complex} {eta : Real} (heta : 0 ≤ eta)
     {K : Set (BRRSSpace d)} (hKmeas : MeasurableSet K) (hKfin : volume K ≠ ⊤)
     (hbound : ∀ x : BRRSSpace d, ‖h x‖ ≤ eta)
-    (hsupp : ∀ x : BRRSSpace d, x ∉ K → h x = 0) :
+    (hsupp : ∀ x : BRRSSpace d, x ∉ K → h x = 0)
+    (hhm : AEStronglyMeasurable h volume) :
     eLpNorm h (ENNReal.ofReal p) volume ≤
       ENNReal.ofReal (eta * (volume.real K) ^ (1 / p)) := by
   have hp0 : ENNReal.ofReal p ≠ 0 := by
     simp only [ne_eq, ENNReal.ofReal_eq_zero]
     exact not_le.mpr hp
   have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hp.le]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hhm, ENNReal.toReal_ofReal hp.le]
   have hpoint : ∀ x : BRRSSpace d, ‖h x‖ₑ ^ p ≤
       K.indicator (fun _ => (ENNReal.ofReal eta) ^ p) x := by
     intro x
@@ -369,8 +370,8 @@ theorem brrs_eLpNorm_sub_le_of_three {d : Nat} {p : Real}
   rw [hdecomp]
   have hstep1 : eLpNorm ((f₀ - f₁) + (f₁ - f₂)) (ENNReal.ofReal p) volume ≤
       ENNReal.ofReal a + ENNReal.ofReal b :=
-    le_trans (eLpNorm_add_le (h0.sub h1) (h1.sub h2) hp1) (add_le_add e1 e2)
-  refine le_trans (eLpNorm_add_le ((h0.sub h1).add (h1.sub h2)) (h2.sub h3) hp1) ?_
+    le_trans (eLpNorm_add_le hp1) (add_le_add e1 e2)
+  refine le_trans (eLpNorm_add_le hp1) ?_
   refine le_trans (add_le_add hstep1 e3) ?_
   rw [← ENNReal.ofReal_add ha hb, ← ENNReal.ofReal_add (by positivity) hc]
 
@@ -559,7 +560,8 @@ theorem exists_brrs_radial_mollified_close {d : Nat} {p : Real} (hp : 1 ≤ p)
       change g x - cg x = 0
       rw [hgsupp x (by linarith), hcgzero x hfar, sub_zero]
     refine le_trans (brrs_eLpNorm_le_of_bound_of_support hp0
-      (by positivity : (0 : Real) ≤ C * delta) hKmeas hKfin hpointwise hsupport) ?_
+      (by positivity : (0 : Real) ≤ C * delta) hKmeas hKfin hpointwise hsupport
+      (hgsmooth.continuous.aestronglyMeasurable.sub hcgmem.aestronglyMeasurable)) ?_
     apply ENNReal.ofReal_le_ofReal
     rw [← hVKdef]
     exact hdeltaerr
@@ -644,7 +646,9 @@ theorem exists_brrs_radial_schwartz_eLpNorm_sub_le {d : Nat} {p : Real}
           mul_le_mul_of_nonneg_right (by linarith) (norm_nonneg _)
         _ = ‖w x‖ := one_mul _
   have htrunc : eLpNorm (v - u0) (ENNReal.ofReal p) volume ≤
-      ENNReal.ofReal (eps / 4) := le_trans (eLpNorm_mono hpt) hwsmall
+      ENNReal.ofReal (eps / 4) :=
+    le_trans (eLpNorm_mono (hvmem.aestronglyMeasurable.sub
+      hu0smooth.continuous.aestronglyMeasurable) hpt) hwsmall
   refine ⟨hu0supp.toSchwartzMap hu0smooth, ?_, ?_⟩
   · intro x y hxy
     rw [HasCompactSupport.toSchwartzMap_toFun hu0supp hu0smooth x,
@@ -661,8 +665,7 @@ theorem exists_brrs_radial_schwartz_eLpNorm_sub_le {d : Nat} {p : Real}
     rw [hdecomp]
     have hvu0 : AEStronglyMeasurable (v - u0) volume :=
       (hvsmooth.continuous.sub hu0smooth.continuous).aestronglyMeasurable
-    refine le_trans (eLpNorm_add_le
-      (hf.aestronglyMeasurable.sub hvmem.aestronglyMeasurable) hvu0 hp1) ?_
+    refine le_trans (eLpNorm_add_le hp1) ?_
     calc
       eLpNorm (f - v) (ENNReal.ofReal p) volume +
           eLpNorm (v - u0) (ENNReal.ofReal p) volume ≤
@@ -804,8 +807,7 @@ theorem brrs_tendsto_eLpNorm_apply {d : Nat} (Φ : BRRSAnnularCutoff) {p : Real}
       funext x
       simp
     nth_rewrite 1 [hsplit]
-    exact eLpNorm_add_le hmemf.aestronglyMeasurable
-      (hmemn.aestronglyMeasurable.sub hmemf.aestronglyMeasurable) hp1
+    exact eLpNorm_add_le hp1
   have hlower : ∀ n, eLpNorm (W.apply j t f) (ENNReal.ofReal p) volume ≤
       eLpNorm (W.apply j t (v n)) (ENNReal.ofReal p) volume +
         eLpNorm (W.apply j t (v n) - W.apply j t f) (ENNReal.ofReal p) volume := by
@@ -819,8 +821,7 @@ theorem brrs_tendsto_eLpNorm_apply {d : Nat} (Φ : BRRSAnnularCutoff) {p : Real}
       funext x
       simp
     nth_rewrite 1 [hsplit]
-    refine le_trans (eLpNorm_add_le hmemn.aestronglyMeasurable
-      ((hmemn.aestronglyMeasurable.sub hmemf.aestronglyMeasurable).neg) hp1) ?_
+    refine le_trans (eLpNorm_add_le hp1) ?_
     rw [eLpNorm_neg]
   -- squeeze
   refine tendsto_of_tendsto_of_tendsto_of_le_of_le

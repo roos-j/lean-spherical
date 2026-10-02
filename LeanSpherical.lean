@@ -11,6 +11,13 @@ public import LeanSpherical.Auto.Spherical.LegendreAssouad
 public import LeanSpherical.Auto.Spherical.BRRS.TheoremOne
 public import LeanSpherical.Auto.Spherical.BRSRadial.MainTheorems
 
+/-!
+# LeanSpherical
+
+Root module of the project. It imports the main `Auto` entry points and checks the axioms of the
+headline results with `#print axioms`.
+-/
+
 @[expose] public section
 
 #check Auto.Spherical.PowerWeights.closure_typeSet_eq

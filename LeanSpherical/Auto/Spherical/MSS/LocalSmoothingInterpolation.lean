@@ -604,7 +604,7 @@ private theorem aux_integrable_temporal_schwartz_convolution_pairing_integrand
         (volume.prod volume)
     exact (Complex.conjCLE : Complex →L[Real] Complex).integrable_comp hbase
   convert hstar.mul_of_top_right (aux_memLp_top_temporal_schwartz_comp_fst h)
-    using 1; rfl
+    using 1
 
 private theorem aux_integral_schwartz_mul_star_temporal_convolution_eq
     (K g : Real → Complex) (h : SchwartzMap Real Complex)
@@ -2265,9 +2265,12 @@ private theorem aux_eLpNorm_finiteTemporalCommonKernelOutput_four_le
       _ ≤ M := by
         simpa only [K, κ, Btop, M, finiteTemporalCoreTopCoefficient,
           finiteTemporalCoreFourthMomentBound] using hraw
+  have hOutMeas : AEStronglyMeasurable (finiteTemporalCommonKernelOutput K g) volume :=
+    aux_finiteTemporalCommonKernelOutput_aestronglyMeasurable_of_mem K
+      (fun i => aux_finiteTemporalCoreKernel_integrable indices m i) hg.2
   have hbound := sourceOutput_eLpNorm_le_of_nonnegative_moment
-    T g (by norm_num : 0 < (4 : Real)) hTnonneg M hmoment
-  rw [← eLpNorm_norm]
+    T g (by norm_num : 0 < (4 : Real)) hTnonneg M hmoment hOutMeas.norm
+  rw [← eLpNorm_norm _ hOutMeas]
   simpa only [K, T, M] using hbound
 
 private theorem aux_finiteTemporalCoreFourthMomentBound_lt_top
@@ -2294,7 +2297,7 @@ private theorem aux_finiteTemporalCoreFourthMomentBound_lt_top
   have hI : I < ∞ := by
     dsimp [I]
     rw [Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-      (by norm_num : (0 : Real) < 4) g]
+      (by norm_num : (0 : Real) < 4) g hg.1.aestronglyMeasurable]
     exact ENNReal.rpow_lt_top_of_nonneg (by norm_num) hgfour_top
   have hBfour : (ENNReal.ofReal Btop) ^ (4 : Real) < ∞ :=
     ENNReal.rpow_lt_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
@@ -2570,9 +2573,14 @@ private theorem aux_eLpNorm_four_commonSpatialTensor
     (hF : AEMeasurable F volume) (hH : AEMeasurable H volume) :
     eLpNorm (fun z : WaveSpaceTime => H z.2 * F z.1) (4 : ENNReal) volume =
       eLpNorm F (4 : ENNReal) volume * eLpNorm H (4 : ENNReal) volume := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  have hprodMeas : AEStronglyMeasurable (fun z : WaveSpaceTime => H z.2 * F z.1) volume := by
+    rw [Measure.volume_eq_prod]
+    exact hH.aestronglyMeasurable.comp_snd.mul hF.aestronglyMeasurable.comp_fst
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hprodMeas]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+    hF.aestronglyMeasurable]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+    hH.aestronglyMeasurable]
   norm_num
   rw [Measure.volume_eq_prod]
   have hFfour : AEMeasurable (fun x : Euclidean 2 => ‖F x‖ₑ ^ (4 : Nat)) volume :=
@@ -2620,16 +2628,15 @@ private theorem aux_memLp_four_and_eLpNorm_commonSpatialTensor_of_temporal
   have hmeas : AEStronglyMeasurable
       (fun z : Euclidean 2 × Real => H z.2 * F z.1)
         ((volume : Measure (Euclidean 2)).prod volume) :=
-    hH.1.comp_snd.mul (F.continuous.aestronglyMeasurable.comp_fst)
+    hH.aestronglyMeasurable.comp_snd.mul (F.continuous.aestronglyMeasurable.comp_fst)
   have heq := aux_eLpNorm_four_commonSpatialTensor (F : Euclidean 2 → Complex) H
-    F.continuous.aestronglyMeasurable.aemeasurable hH.1.aemeasurable
+    F.continuous.aestronglyMeasurable.aemeasurable hH.aestronglyMeasurable.aemeasurable
   have htop : eLpNorm (fun z : WaveSpaceTime => H z.2 * F z.1)
       (4 : ENNReal) volume < ∞ := by
     rw [heq]
     exact ENNReal.mul_lt_top hF.eLpNorm_lt_top hH.eLpNorm_lt_top
   refine ⟨?_, ?_⟩
-  · rw [Measure.volume_eq_prod]
-    exact ⟨hmeas, htop⟩
+  · exact htop
   · rw [heq]
     exact mul_le_mul_of_nonneg_left hbound bot_le
 
@@ -2778,8 +2785,7 @@ theorem memLp_four_and_eLpNorm_verticalSchwartzCoreRecombined_of_overlap
         funext z
         simp only [Finset.sum_apply]
       _ ≤ ∑ n ∈ indices, eLpNorm (T n) (4 : ENNReal) volume :=
-        eLpNorm_sum_le (p := (4 : ENNReal)) (f := T) (s := indices)
-          (fun n hn => (hpiece n hn).1.aestronglyMeasurable) (by norm_num)
+        eLpNorm_sum_le (by norm_num)
       _ ≤ _ := Finset.sum_le_sum fun n hn => (hpiece n hn).2
   rw [hdecomp]
   simpa only [ENNReal.ofReal_ofNat] using ⟨hsumMem, hsumBound⟩
@@ -3000,7 +3006,8 @@ private theorem aux_eLpNorm_four_verticalSchwartzCoreRecombined_le_of_overlap
         (eLpNorm P (4 : ENNReal) volume) ^ (4 : Real) := by
     simpa only [ENNReal.ofReal_ofNat] using
       (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num : (0 : Real) < 4) P)
+        (by norm_num : (0 : Real) < 4) P
+        (aux_continuous_verticalSchwartzCoreRecombined indices m F g).aestronglyMeasurable)
   have hSmoment :
       (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)) =
         (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
@@ -3014,7 +3021,9 @@ private theorem aux_eLpNorm_four_verticalSchwartzCoreRecombined_le_of_overlap
       _ = (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
         simpa only [ENNReal.ofReal_ofNat] using
           (Auto.LpSpaceFacts.lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
-            (by norm_num : (0 : Real) < 4) S hSnonneg)
+            (by norm_num : (0 : Real) < 4) S hSnonneg
+            (aux_continuous_verticalSquareFunction_verticalSeparablePackets
+              indices F g).aestronglyMeasurable)
   change eLpNorm P (4 : ENNReal) volume ≤
     (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
       eLpNorm S (4 : ENNReal) volume
@@ -3340,7 +3349,8 @@ private theorem aux_eLpNorm_four_finiteRankVerticalSchwartzCore_le_of_overlap
         (eLpNorm P (4 : ENNReal) volume) ^ (4 : Real) := by
     simpa only [ENNReal.ofReal_ofNat] using
       (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num : (0 : Real) < 4) P)
+        (by norm_num : (0 : Real) < 4) P
+        (aux_continuous_finiteRankVerticalSchwartzCore indices m ranks F g).aestronglyMeasurable)
   have hSmoment :
       (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (4 : Real)) =
         (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
@@ -3354,7 +3364,9 @@ private theorem aux_eLpNorm_four_finiteRankVerticalSchwartzCore_le_of_overlap
       _ = (eLpNorm S (4 : ENNReal) volume) ^ (4 : Real) := by
         simpa only [ENNReal.ofReal_ofNat] using
           (Auto.LpSpaceFacts.lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
-            (by norm_num : (0 : Real) < 4) S hSnonneg)
+            (by norm_num : (0 : Real) < 4) S hSnonneg
+            (aux_continuous_finiteRankVerticalSquareFunction
+              indices ranks F g).aestronglyMeasurable)
   change eLpNorm P (4 : ENNReal) volume ≤
     (finiteTemporalCoreFourthMomentCoefficient C indices m) ^ ((4 : Real)⁻¹) *
       eLpNorm S (4 : ENNReal) volume
@@ -3912,7 +3924,7 @@ theorem mss_two_four_coefficient
           eLpNorm (dyadicHalfWaveSpaceTime C.cutoff σ j g)
             (ENNReal.ofReal 2) localSmoothingMeasure := by
             rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j g),
-              eLpNorm_norm]
+              eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j g)]
       _ ≤ ENNReal.ofReal 2 * eLpNorm (g : Euclidean 2 → Complex)
           (ENNReal.ofReal 2) volume := localL2Endpoint_proof C j g σ
       _ = ENNReal.ofReal 2 * eLpNorm (eval g) (ENNReal.ofReal 2) volume := rfl
@@ -3925,7 +3937,7 @@ theorem mss_two_four_coefficient
           eLpNorm (dyadicHalfWaveSpaceTime C.cutoff σ j g)
             (ENNReal.ofReal 4) localSmoothingMeasure := by
             rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j g),
-              eLpNorm_norm]
+              eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j g)]
       _ ≤ B4 * eLpNorm (g : Euclidean 2 → Complex) (ENNReal.ofReal 4) volume :=
         hstrong4 g
       _ = B4 * eLpNorm (eval g) (ENNReal.ofReal 4) volume := rfl
@@ -3945,7 +3957,8 @@ theorem mss_two_four_coefficient
       (eLpNorm (eval (low t)) (ENNReal.ofReal 4) volume) ^ (4 : Real)) =
       fun t => ∫⁻ x, (ENNReal.ofReal ‖low t x‖) ^ (4 : Real) by
       funext t
-      exact (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (low t)).symm]
+      exact (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (low t)
+        (low t).continuous.aestronglyMeasurable).symm]
     exact hlowI_raw
   have hhighI_meas : Measurable (fun t =>
       (eLpNorm (eval (high t)) (ENNReal.ofReal 2) volume) ^ (2 : Real)) := by
@@ -3953,7 +3966,8 @@ theorem mss_two_four_coefficient
       (eLpNorm (eval (high t)) (ENNReal.ofReal 2) volume) ^ (2 : Real)) =
       fun t => ∫⁻ x, (ENNReal.ofReal ‖high t x‖) ^ (2 : Real) by
       funext t
-      exact (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (high t)).symm]
+      exact (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (high t)
+        (high t).continuous.aestronglyMeasurable).symm]
     exact hhighI_raw
   have hhighTailRaw := smooth_bump_schwartz_high_q_weighted_tail f low high hlow hhigh
     (q := 2) (p := p) (by norm_num) hp2
@@ -3973,10 +3987,12 @@ theorem mss_two_four_coefficient
           apply lintegral_congr
           intro t
           exact congrArg (fun a => a * (ENNReal.ofReal t) ^ (p - 2 - 1))
-            (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (high t)).symm
+            (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (high t)
+        (high t).continuous.aestronglyMeasurable).symm
       _ ≤ ((ENNReal.ofReal (p - 2))⁻¹ * (ENNReal.ofReal 4) ^ (p - 2)) *
           ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p := hhighTailRaw
-      _ = _ := by rw [lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (lt_trans (by norm_num) hp2) f]
+      _ = _ := by rw [lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (lt_trans (by norm_num) hp2) f
+        f.continuous.aestronglyMeasurable]
   have hlowTailRaw := smooth_bump_schwartz_low_q_weighted_tail f low high hlow hhigh
     (p := p) (q := 4) (lt_trans (by norm_num) hp2) hp4
   have hlow_tail :
@@ -3996,11 +4012,13 @@ theorem mss_two_four_coefficient
           apply lintegral_congr
           intro t
           exact congrArg (fun a => a * (ENNReal.ofReal t) ^ (p - 4 - 1))
-            (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (low t)).symm
+            (lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (low t)
+        (low t).continuous.aestronglyMeasurable).symm
       _ ≤ ((ENNReal.ofReal 2) ^ (-(4 : Real)) * (ENNReal.ofReal p)⁻¹ +
           (ENNReal.ofReal (4 - p))⁻¹) *
           ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p := hlowTailRaw
-      _ = _ := by rw [lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (lt_trans (by norm_num) hp2) f]
+      _ = _ := by rw [lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (lt_trans (by norm_num) hp2) f
+        f.continuous.aestronglyMeasurable]
   exact sourceOutput_two_pair_eLpNorm_le_of_scaled_strong_endpoints_and_split_tails
     D eval T hTnonneg hTsub hTmeas (by norm_num) (by norm_num)
     (lt_trans (by norm_num) hp2) (ENNReal.ofReal 2) B4 hstrong2 hstrong4' f hTf low high
@@ -4079,7 +4097,7 @@ theorem mss_four_top_coefficient
                   eLpNorm (dyadicHalfWaveSpaceTime C.cutoff σ j g)
                     (ENNReal.ofReal 4) localSmoothingMeasure := by
                     rw [eLpNorm_congr_ae
-                      (localDyadicHalfWaveMagnitude_ae_eq C σ j g), eLpNorm_norm]
+                      (localDyadicHalfWaveMagnitude_ae_eq C σ j g), eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j g)]
               _ ≤ B4 * eLpNorm (g : Euclidean 2 → Complex) (ENNReal.ofReal 4) volume :=
                 hstrong4 g
               _ = B4 * eLpNorm (eval g) (ENNReal.ofReal 4) volume := rfl
@@ -4108,7 +4126,8 @@ theorem mss_four_top_coefficient
           (eLpNorm (eval g) (ENNReal.ofReal 4) volume) ^ (4 : Real) := by
             rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
       _ = _ := by
-            rw [← lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (eval g)]
+            rw [← lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (by norm_num) (eval g)
+              g.continuous.aestronglyMeasurable]
   have hStop : ∀ g, g ∈ D → ∀ a : Real, 0 ≤ a →
       (∀ x, ‖eval g x‖ ≤ a) → ∀ z, S g z ≤ a := by
     intro g _ a ha hga z
@@ -4150,10 +4169,11 @@ theorem mss_four_top_coefficient
     simpa only [mul_assoc] using hSmoment
   have hSbound := sourceOutput_eLpNorm_le_of_nonnegative_moment S f
     (lt_trans (by norm_num) hp4) (hSnonneg f)
-    (K * ∫⁻ x, (ENNReal.ofReal ‖eval f x‖) ^ p) hSmoment'
+    (K * ∫⁻ x, (ENNReal.ofReal ‖eval f x‖) ^ p) hSmoment' (hSmeas f (by simp [D]))
   have hin : (∫⁻ x, (ENNReal.ofReal ‖eval f x‖) ^ p) =
       (eLpNorm (eval f) (ENNReal.ofReal p) volume) ^ p :=
     lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow (lt_trans (by norm_num) hp4) (eval f)
+      f.continuous.aestronglyMeasurable
   rw [hin] at hSbound
   have hSbound' : eLpNorm (S f) (ENNReal.ofReal p) localSmoothingMeasure ≤
       K ^ p⁻¹ * eLpNorm (eval f) (ENNReal.ofReal p) volume := by
@@ -4421,7 +4441,7 @@ theorem p4LocalSmoothing_to_localSmoothing_two_four
         localSmoothingMeasure =
         eLpNorm (localDyadicHalfWaveMagnitude C σ j f) (ENNReal.ofReal p)
           localSmoothingMeasure := by
-            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f), eLpNorm_norm]
+            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f), eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f)]
     _ ≤ (sourceOutputTwoPairMarcinkiewiczMomentCoefficient p 2 4
           ((ENNReal.ofReal 2) ^ (2 : Real)) ((ENNReal.ofReal b) ^ (4 : Real))
           ((ENNReal.ofReal (b⁻¹ * b⁻¹)) ^ ((2 : Real) - p) * H)
@@ -4611,7 +4631,7 @@ theorem p4LocalSmoothing_to_localSmoothing_four_top
         localSmoothingMeasure =
         eLpNorm (localDyadicHalfWaveMagnitude C σ j f) (ENNReal.ofReal p)
           localSmoothingMeasure := by
-            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f), eLpNorm_norm]
+            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f), eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f)]
     _ ≤ ENNReal.ofReal btop *
         (ENNReal.ofReal p * ((ENNReal.ofReal 2) ^ (4 : Real) *
           (ENNReal.ofReal b4 * (ENNReal.ofReal btop)⁻¹) ^ (4 : Real) * H)) ^ p⁻¹ *

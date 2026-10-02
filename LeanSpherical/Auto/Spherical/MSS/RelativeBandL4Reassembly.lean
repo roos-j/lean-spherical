@@ -3092,7 +3092,7 @@ private theorem aux_memLp_and_eLpNorm_sum_range_le
               simp only [Finset.sum_range_succ, Pi.add_apply]
         _ ≤ eLpNorm (fun x => ∑ i ∈ Finset.range n, F i x) 4 μ +
             eLpNorm (F n) 4 μ :=
-              eLpNorm_add_le hmem.1 (hF n).1 (by norm_num)
+              eLpNorm_add_le (by norm_num)
         _ ≤ (∑ i ∈ Finset.range n, eLpNorm (F i) 4 μ) +
             eLpNorm (F n) 4 μ := add_le_add hn.2 le_rfl
         _ = ∑ i ∈ Finset.range (n + 1), eLpNorm (F i) 4 μ := by
@@ -3123,13 +3123,11 @@ private theorem aux_memLp_and_eLpNorm_five_triples_le
       eLpNorm (H i) 4 μ ≤
           eLpNorm (Eminus i + Eplus i) 4 μ + eLpNorm (Middle i) 4 μ := by
             dsimp [H]
-            exact eLpNorm_add_le ((hminus i).1.add (hplus i).1).1
-              (hmiddle i).1.1 (by norm_num)
+            exact eLpNorm_add_le (by norm_num)
       _ ≤ (eLpNorm (Eminus i) 4 μ + eLpNorm (Eplus i) 4 μ) +
           eLpNorm (Middle i) 4 μ := by
             exact add_le_add
-              (eLpNorm_add_le (hminus i).1.1 (hplus i).1.1
-                (show (1 : ENNReal) ≤ 4 by norm_num)) le_rfl
+              (eLpNorm_add_le (show (1 : ENNReal) ≤ 4 by norm_num)) le_rfl
       _ ≤ (ENNReal.ofReal Ae + ENNReal.ofReal Ae) + ENNReal.ofReal Am := by
             exact add_le_add (add_le_add (hminus i).2 (hplus i).2) (hmiddle i).2
       _ = ENNReal.ofReal (2 * Ae + Am) := by

@@ -256,9 +256,9 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_of_ste
     rw [hMfun]
     exact eLpNorm_ofReal R (Filter.Eventually.of_forall fun x => hR_nonneg x)
   have hMmem : MemLp M (ENNReal.ofReal p) volume := by
-    refine ⟨hMeas, ?_⟩
+    unfold MemLp
     rw [hMLpEq]
-    exact hRreal.2
+    exact hRreal.eLpNorm_lt_top
   have hI_R_nonneg : 0 ≤ ∫ x : Euclidean d, R x ^ p :=
     integral_nonneg fun x => Real.rpow_nonneg (hR_nonneg x) p
   have hI_f_nonneg : 0 ≤ ∫ x : Euclidean d, ‖f x‖ ^ p :=
@@ -1570,7 +1570,7 @@ theorem eLpNorm_northRadialCap_cutoff_le
         (powerWeightedVolume (n + 1) α) ≤
       eLpNorm (D.indicator (fun _ : Euclidean (n + 1) => (1 : ℂ)))
         (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) := by
-          apply eLpNorm_mono
+          apply eLpNorm_mono f.continuous.aestronglyMeasurable
           intro y
           by_cases hy : y ∈ D
           · rw [indicator_of_mem hy, hfg]
@@ -1580,7 +1580,7 @@ theorem eLpNorm_northRadialCap_cutoff_le
             norm_num
     _ = (powerWeightedVolume (n + 1) α D) ^
           (1 / (ENNReal.ofReal p).toReal) := by
-      rw [eLpNorm_indicator_const hD hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hD.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       norm_num [enorm]
     _ = (powerWeightedVolume (n + 1) α (northRadialCapOuter n a s δ)) ^
           (1 / (ENNReal.ofReal p).toReal) := by rfl

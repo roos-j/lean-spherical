@@ -978,10 +978,7 @@ private theorem auxiliaryDyadicHalfWave_memLp_four_spaceTime_of_gain
       ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) * (1 / 2 - 1 / 4 - rho))) *
         eLpNorm (f : BRRSSpace 2 → Complex) (ENNReal.ofReal (4 : Real)) volume < ∞ :=
     ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfmem.eLpNorm_lt_top
-  refine ⟨(Auto.Spherical.MSS.aestronglyMeasurable_dyadicHalfWaveSpaceTime
-    C .plus j f).congr ?_, hmain'.trans_lt hright⟩
-  filter_upwards with z
-  exact (congrFun (auxiliaryDyadicHalfWaveSpaceTime_eq_mss C j f) z).symm
+  exact hmain'.trans_lt hright
 
 private theorem auxiliaryDyadicHalfWave_integrable_norm_pow_four_prod_of_gain
     (C : lpCutoffs 2) {rho : Real}
@@ -2789,9 +2786,10 @@ theorem brrs_eLpNorm_convolution_le {d : Nat}
         brrs_lintegral_spatial_p_young p p.conjExponent hpq
           (fun y => ‖K y‖ₑ) (fun x => ‖f x‖ₑ) hK.enorm hf.enorm
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top
+    (hK.aestronglyMeasurable.convolution _ hf.aestronglyMeasurable)]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hf.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp0.le, one_div]
   have hstep := ENNReal.rpow_le_rpow hmoment (by positivity : (0 : Real) ≤ p⁻¹)
   calc
@@ -2839,8 +2837,9 @@ theorem brrs_eLpNorm_convolution_one_le {d : Nat}
     (K f : BRRSSpace d → Complex) (hK : Measurable K) (hf : Measurable f) :
     eLpNorm (K ⋆[ContinuousLinearMap.mul Complex Complex, volume] f) 1 volume ≤
       (∫⁻ y : BRRSSpace d, ‖K y‖ₑ) * eLpNorm f 1 volume := by
-  rw [eLpNorm_one_eq_lintegral_enorm]
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (hK.aestronglyMeasurable.convolution _ hf.aestronglyMeasurable)]
+  rw [eLpNorm_one_eq_lintegral_enorm hf.aestronglyMeasurable]
   have hpoint (x : BRRSSpace d) :
       ‖(K ⋆[ContinuousLinearMap.mul Complex Complex, volume] f) x‖ₑ ≤
         ∫⁻ y : BRRSSpace d, ‖K y‖ₑ * ‖f (x - y)‖ₑ := by
@@ -2960,7 +2959,6 @@ theorem brrs_memLp_schwartz_convolution_of_memLp {d : Nat}
   have hmass : (∫⁻ y : BRRSSpace d, ‖K y‖ₑ) < ∞ := by
     rw [← ofReal_integral_norm_eq_lintegral_enorm K.integrable]
     exact ENNReal.ofReal_lt_top
-  refine ⟨brrs_aestronglyMeasurable_schwartz_convolution K hf.aestronglyMeasurable, ?_⟩
   exact (brrs_eLpNorm_schwartz_convolution_le_of_memLp K p hp hf).trans_lt
     (ENNReal.mul_lt_top hmass hf.eLpNorm_lt_top)
 
@@ -3154,7 +3152,8 @@ the spatial `p`-moments.  This is the measure-theoretic conversion used when
 the radial interval argument first produces a bound for those moments. -/
 theorem discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow
     {d : Nat} {p : Real} (hp : 0 < p) (T : Finset Real)
-    (u : Real → BRRSSpace d → Complex) :
+    (u : Real → BRRSSpace d → Complex)
+    (hu : ∀ t ∈ T, AEStronglyMeasurable (u t) volume) :
     (discreteLpNorm p T u) ^ p =
       ∑ t ∈ T, ∫⁻ x : BRRSSpace d, (ENNReal.ofReal ‖u t x‖) ^ p := by
   unfold discreteLpNorm
@@ -3167,7 +3166,8 @@ theorem discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow
     _ = ∑ t ∈ T, ∫⁻ x : BRRSSpace d, (ENNReal.ofReal ‖u t x‖) ^ p := by
       apply Finset.sum_congr rfl
       intro t ht
-      exact (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp (u t)).symm
+      exact (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp (u t)
+        (hu t ht)).symm
 
 /-- A bound for the summed spatial `p`-moments converts directly to the
 corresponding BRRS `ell^p(L^p)` bound. -/
@@ -3175,10 +3175,11 @@ theorem discreteLpNorm_le_of_sum_lintegral_ofReal_norm_rpow_le
     {d : Nat} {p : Real} (hp : 0 < p) (T : Finset Real)
     (u : Real → BRRSSpace d → Complex) {A : ENNReal}
     (hMoment : ∑ t ∈ T, ∫⁻ x : BRRSSpace d,
-      (ENNReal.ofReal ‖u t x‖) ^ p ≤ A ^ p) :
+      (ENNReal.ofReal ‖u t x‖) ^ p ≤ A ^ p)
+    (hu : ∀ t ∈ T, AEStronglyMeasurable (u t) volume) :
     discreteLpNorm p T u ≤ A := by
   apply (ENNReal.rpow_le_rpow_iff hp).mp
-  rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp]
+  rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T u hu]
   exact hMoment
 
 /-- A finite real fourth-moment estimate gives the corresponding literal
@@ -3188,10 +3189,11 @@ theorem discreteLpNorm_four_le_of_sum_integral_norm_pow_four_le
     {d : Nat} (T : Finset Real) (u : Real → BRRSSpace d → Complex) {K : Real}
     (hK : 0 ≤ K)
     (hint : ∀ t ∈ T, Integrable (fun x : BRRSSpace d => ‖u t x‖ ^ 4) volume)
-    (hbound : (∑ t ∈ T, ∫ x : BRRSSpace d, ‖u t x‖ ^ 4) ≤ K) :
+    (hbound : (∑ t ∈ T, ∫ x : BRRSSpace d, ‖u t x‖ ^ 4) ≤ K)
+    (hu : ∀ t ∈ T, AEStronglyMeasurable (u t) volume) :
     discreteLpNorm 4 T u ≤ ENNReal.ofReal (K ^ ((4 : Real)⁻¹)) := by
-  apply discreteLpNorm_le_of_sum_lintegral_ofReal_norm_rpow_le
-    (by norm_num : (0 : Real) < 4) T u
+  refine discreteLpNorm_le_of_sum_lintegral_ofReal_norm_rpow_le
+    (by norm_num : (0 : Real) < 4) T u ?_ hu
   have hlin (t : Real) (ht : t ∈ T) :
       (∫⁻ x : BRRSSpace d, (ENNReal.ofReal ‖u t x‖) ^ (4 : Real)) =
         ENNReal.ofReal (∫ x : BRRSSpace d, ‖u t x‖ ^ 4) := by
@@ -3304,6 +3306,10 @@ theorem exists_auxiliaryDyadicHalfWave_discreteLpNorm_four_source_bound
   exact discreteLpNorm_four_le_of_sum_integral_norm_pow_four_le T
     (fun t => dyadicHalfWave C j t f) hK
     (fun t _ => auxiliaryDyadicHalfWave_integrable_norm_pow_four C j t f) hmoment
+    (fun t _ => by
+      rw [auxiliaryDyadicHalfWave_eq_mss]
+      exact ((Auto.Spherical.MSS.continuous_dyadicHalfWaveSpaceTime C .plus j f).comp
+        (continuous_id.prodMk continuous_const)).aestronglyMeasurable)
 
 /-- The clean `ell⁴(L⁴)` rate corresponding to
 `exists_auxiliaryDyadicHalfWave_separatedSamplingFour_rate`.  Its fourth
@@ -3344,6 +3350,10 @@ theorem exists_auxiliaryDyadicHalfWave_discreteLpNorm_four_rate
     (fun t => dyadicHalfWave C j t f)
     (mul_nonneg (mul_nonneg hK.le hS) hE)
     (fun t _ => auxiliaryDyadicHalfWave_integrable_norm_pow_four C j t f) hbound
+    (fun t _ => by
+      rw [auxiliaryDyadicHalfWave_eq_mss]
+      exact ((Auto.Spherical.MSS.continuous_dyadicHalfWaveSpaceTime C .plus j f).comp
+        (continuous_id.prodMk continuous_const)).aestronglyMeasurable)
 
 /-- At `p = 2`, squaring the `L²` seminorm recovers the ordinary real
 energy integral. -/
@@ -6566,6 +6576,9 @@ theorem exists_sum_positiveRadialTestPacket_pMass_le_of_uniformEstimateAtExponen
           BRRSSpace d → Complex))) ^ p := by
       symm
       exact discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T _
+        (fun t _ => (brrsDyadicHalfWave_memLp_two Φ j t
+          (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime)).aestronglyMeasurable.congr
+          (W.extends_schwartz j t _).symm)
     _ ≤ (ENNReal.ofReal (K * (2 : Real) ^ ((j : Real) * s)) *
         eLpNorm (brrsPositiveRadialHalfWaveTestPacket Φ j referenceTime :
           BRRSSpace d → Complex) (ENNReal.ofReal p) volume) ^ p :=

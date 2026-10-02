@@ -536,8 +536,9 @@ theorem iSup_enorm_TopS_le {j : ℕ} {m mdot : ℝ → Pl → ℂ} {m2 m2' : ℝ
     rw [hcongr, ← lintegral_Ioc_shift t' (fun u => derTr hmt f u x) (-δ) δ]
     exact lintegral_mono_set hsub
   refine le_trans (enorm_TopS_le_add_lintegral hm hmt hmd hmdc f x t.1 t') (add_le_add ?_ ?_)
-  · exact le_ellq hq ht'mem
-  · exact le_trans hstep (le_ellq hq ht'mem)
+  · exact le_ellq (a := fun u => ‖(TopS hm ε u f : Pl → ℂ) x‖ₑ) hq ht'mem
+  · exact le_trans hstep
+      (le_ellq (a := fun u => ∫⁻ s in Set.Ioc (-δ) δ, derTr hmt f (u + s) x) hq ht'mem)
 
 set_option maxHeartbeats 2000000 in
 -- the elaboration of this long proof exceeds the default heartbeat limit
@@ -6811,14 +6812,14 @@ theorem exists_waveMid_single_scale_clean (φ : SchwartzMap Pl ℂ)
 /-! ### Theorem 2.5: the single-scale `Q₄` estimate for the dyadic maximal operator -/
 
 theorem eLpNorm_ofReal_eq {d : ℕ} {α : Type*} [NormedAddCommGroup α] {g : (Euclidean d) → α} {r : ℝ}
-    (hr : 0 < r) :
+    (hr : 0 < r) (hg : AEStronglyMeasurable g volume) :
     eLpNorm g (ENNReal.ofReal r) (volume : Measure (Euclidean d)) =
         (∫⁻ x : (Euclidean d), ‖g x‖ₑ ^ r) ^ (1 / r) := by
   have hne : ENNReal.ofReal r ≠ 0 := by
     simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
     exact hr
   have htop : ENNReal.ofReal r ≠ ⊤ := ENNReal.ofReal_ne_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop, ENNReal.toReal_ofReal hr.le]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop hg, ENNReal.toReal_ofReal hr.le]
 
 theorem lintegral_rpow_add3_le {a b c : Pl → ℝ≥0∞} (ha : AEMeasurable a (volume : Measure Pl))
     (hb : AEMeasurable b (volume : Measure Pl)) (hc : AEMeasurable c (volume : Measure Pl))
@@ -6904,8 +6905,11 @@ theorem exists_q4_single_scale (φ : SchwartzMap Pl ℂ)
       = (∫⁻ x : Pl, ‖fractalDyadicBandpassMaximal 2 E
           (absoluteDyadicBandpass φ hφone hφzero j) f x‖ₑ ^ (2 * p)) ^ (1 / (2 * p)) :=
     eLpNorm_ofReal_eq hq0
+      (measurable_fractalDyadicBandpassMaximal E
+        (absoluteDyadicBandpass φ hφone hφzero j) f).aestronglyMeasurable
   have hrhs : eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) (volume : Measure Pl)
-      = (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) := eLpNorm_ofReal_eq hppos
+      = (∫⁻ x : Pl, ‖(f : Pl → ℂ) x‖ₑ ^ p) ^ (1 / p) :=
+    eLpNorm_ofReal_eq hppos f.continuous.aestronglyMeasurable
   rw [hlhs, hrhs]
   have hmono : (∫⁻ x : Pl, ‖fractalDyadicBandpassMaximal 2 E
         (absoluteDyadicBandpass φ hφone hφzero j) f x‖ₑ ^ (2 * p)) ^ (1 / (2 * p))

@@ -447,7 +447,7 @@ the `m > ℓ` half of BRS Proposition 5.5(ii)–(iii). -/
 theorem iSup_le_rpow_tsum {ι : Type*} {X : ι → ENNReal} {q : ℝ} (hq0 : 0 < q) :
     (⨆ i, X i) ≤ (∑' i, X i ^ q) ^ (1 / q) := by
   refine iSup_le fun i => ?_
-  have h1 : X i ^ q ≤ ∑' j, X j ^ q := ENNReal.le_tsum i
+  have h1 : X i ^ q ≤ ∑' j, X j ^ q := ENNReal.le_tsum (f := fun j => X j ^ q) i
   calc X i = (X i ^ q) ^ (1 / q) := by
         rw [← ENNReal.rpow_mul, mul_one_div_cancel hq0.ne', ENNReal.rpow_one]
     _ ≤ (∑' j, X j ^ q) ^ (1 / q) := ENNReal.rpow_le_rpow h1 (by positivity)

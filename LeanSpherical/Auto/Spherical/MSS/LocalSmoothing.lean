@@ -544,11 +544,12 @@ private theorem mssRecombination_norm_le_angularRadialSquareFunction
 private theorem mssRecombination_eLpNorm_component_le_angularRadialSquareFunction
     (radialIndices angularIndices : Finset Int)
     (H : Int → Int → WaveSpaceTime → Complex)
-    {n nu : Int} (hn : n ∈ radialIndices) (hnu : nu ∈ angularIndices) :
+    {n nu : Int} (hn : n ∈ radialIndices) (hnu : nu ∈ angularIndices)
+    (hH : AEStronglyMeasurable (H n nu) volume) :
     eLpNorm (H n nu) (4 : ENNReal) volume ≤
       eLpNorm (angularRadialSquareFunction radialIndices angularIndices H)
         (4 : ENNReal) volume := by
-  apply eLpNorm_mono
+  apply eLpNorm_mono hH
   intro z
   rw [Real.norm_eq_abs]
   have hnonneg : 0 ≤ angularRadialSquareFunction radialIndices angularIndices H z := by
@@ -600,7 +601,9 @@ private theorem mssRecombination_eLpNorm_angularSquare_sub_le_pairCard_mul
     (E : ENNReal)
     (hE : eLpNorm
       (angularRadialSquareFunction radialIndices angularIndices tail)
-        (4 : ENNReal) volume ≤ E) :
+        (4 : ENNReal) volume ≤ E)
+    (hmainMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (main n nu) volume) :
     eLpNorm
         (angularRadialSquareFunction radialIndices angularIndices full -
           angularRadialSquareFunction radialIndices angularIndices main)
@@ -610,7 +613,7 @@ private theorem mssRecombination_eLpNorm_angularSquare_sub_le_pairCard_mul
       eLpNorm (tail n nu) (4 : ENNReal) volume ≤ E := by
     intro n hn nu hnu
     exact (mssRecombination_eLpNorm_component_le_angularRadialSquareFunction
-      radialIndices angularIndices tail hn hnu).trans hE
+      radialIndices angularIndices tail hn hnu (htailMeas n hn nu hnu)).trans hE
   calc
     eLpNorm
         (angularRadialSquareFunction radialIndices angularIndices full -
@@ -619,7 +622,7 @@ private theorem mssRecombination_eLpNorm_angularSquare_sub_le_pairCard_mul
       ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E :=
         eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
           radialIndices angularIndices full main tail hdecomp htailMeas
-          (fun _ _ => E) (fun n hn nu hnu => hcomponent n hn nu hnu)
+          (fun _ _ => E) (fun n hn nu hnu => hcomponent n hn nu hnu) hmainMeas
     _ = ((radialIndices.card * angularIndices.card : Nat) : ENNReal) * E := by
       simp [Nat.cast_mul, mul_assoc]
 
@@ -633,7 +636,9 @@ private theorem mssRecombination_eLpNorm_auxSquare_sub_le_pairCard_mul
     (E : ENNReal)
     (hE : eLpNorm
       (angularRadialSquareFunction radialIndices angularIndices tail)
-        (4 : ENNReal) volume ≤ E) :
+        (4 : ENNReal) volume ≤ E)
+    (hmainMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (main n nu) volume) :
     eLpNorm
         (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
           aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
@@ -643,7 +648,7 @@ private theorem mssRecombination_eLpNorm_auxSquare_sub_le_pairCard_mul
       eLpNorm (tail n nu) (4 : ENNReal) volume ≤ E := by
     intro n hn nu hnu
     exact (mssRecombination_eLpNorm_component_le_angularRadialSquareFunction
-      radialIndices angularIndices tail hn hnu).trans hE
+      radialIndices angularIndices tail hn hnu (htailMeas n hn nu hnu)).trans hE
   calc
     eLpNorm
         (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
@@ -652,7 +657,7 @@ private theorem mssRecombination_eLpNorm_auxSquare_sub_le_pairCard_mul
       ∑ n ∈ radialIndices, ∑ nu ∈ angularIndices, E :=
         eLpNorm_four_aux_angRadialRecombSquareFn_sub_le_sum_of_eq_add_of_tail_bounds
           radialIndices angularIndices full main tail hdecomp htailMeas
-          (fun _ _ => E) (fun n hn nu hnu => hcomponent n hn nu hnu)
+          (fun _ _ => E) (fun n hn nu hnu => hcomponent n hn nu hnu) hmainMeas
     _ = ((radialIndices.card * angularIndices.card : Nat) : ENNReal) * E := by
       simp [Nat.cast_mul, mul_assoc]
 
@@ -672,7 +677,7 @@ private theorem mssRecombination_eLpNorm_right_le_left_add_difference
           ring
     _ ≤ eLpNorm left (4 : ENNReal) volume +
           eLpNorm (left - right) (4 : ENNReal) volume :=
-      eLpNorm_sub_le hleft (hleft.sub hright) (by norm_num)
+      eLpNorm_sub_le (by norm_num)
 
 private noncomputable def mssRecombinationFiniteSquare
     {ι : Type*} [DecidableEq ι] (indices : Finset ι)
@@ -826,14 +831,17 @@ private theorem mssRecombination_eLpNorm_angularSquare_sub_le_tail
     (radialIndices angularIndices : Finset Int)
     (full main tail : Int → Int → WaveSpaceTime → Complex)
     (hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
-      full n nu z = main n nu z + tail n nu z) :
+      full n nu z = main n nu z + tail n nu z)
+    (hdiff : AEStronglyMeasurable
+      (angularRadialSquareFunction radialIndices angularIndices full -
+        angularRadialSquareFunction radialIndices angularIndices main) volume) :
     eLpNorm
         (angularRadialSquareFunction radialIndices angularIndices full -
           angularRadialSquareFunction radialIndices angularIndices main)
         (4 : ENNReal) volume ≤
       eLpNorm (angularRadialSquareFunction radialIndices angularIndices tail)
         (4 : ENNReal) volume := by
-  apply eLpNorm_mono
+  apply eLpNorm_mono hdiff
   intro z
   have hnonneg : 0 ≤ angularRadialSquareFunction radialIndices angularIndices tail z :=
     Real.sqrt_nonneg _
@@ -853,14 +861,17 @@ private theorem mssRecombination_eLpNorm_auxSquare_sub_le_tail
     (radialIndices angularIndices : Finset Int)
     (full main tail : Int → Int → WaveSpaceTime → Complex)
     (hdecomp : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices, ∀ z,
-      full n nu z = main n nu z + tail n nu z) :
+      full n nu z = main n nu z + tail n nu z)
+    (hdiff : AEStronglyMeasurable
+      (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
+        aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main) volume) :
     eLpNorm
         (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
           aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
         (4 : ENNReal) volume ≤
       eLpNorm (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices tail)
         (4 : ENNReal) volume := by
-  apply eLpNorm_mono
+  apply eLpNorm_mono hdiff
   intro z
   have hnonneg : 0 ≤ aux_angularRadialRecombinedSquareFunction
       radialIndices angularIndices tail z :=
@@ -1455,7 +1466,7 @@ private theorem mssRecombination_aux_bound
           (4 : ENNReal) volume ≤
         eLpNorm (angularRadialSquareFunction I J Tail) (4 : ENNReal) volume := by
     exact mssRecombination_eLpNorm_angularSquare_sub_le_tail
-      I J Raw W Tail hdecomp
+      I J Raw W Tail hdecomp (hRawSquareMeas.sub hWSquareMeas)
   have hSquareError :
       eLpNorm
           (angularRadialSquareFunction I J Raw -
@@ -1477,7 +1488,7 @@ private theorem mssRecombination_aux_bound
       _ ≤ eLpNorm (angularRadialSquareFunction I J Raw) (4 : ENNReal) volume +
             errorBudget := add_le_add_right hSquareError _
   have hAuxDiff := mssRecombination_eLpNorm_auxSquare_sub_le_pairCard_mul
-    I J Raw W Tail hdecomp hTailMeas errorBudget herrorAt
+    I J Raw W Tail hdecomp hTailMeas errorBudget herrorAt hWMeas
   have hpair : ((I.card * J.card : Nat) : ENNReal) ≤
       ENNReal.ofReal (Cpair * scale) := by
     simpa only [I, J, Cpair] using
@@ -1862,7 +1873,7 @@ theorem mssRecombination_of_structuredData
             (D.radialTime.time : Real → Complex) (f : Euclidean 2 → Complex))
           (4 : ENNReal) volume := by
     rw [hconic]
-    exact eLpNorm_add_le houterMeas hresidualMeas (by norm_num)
+    exact eLpNorm_add_le (by norm_num)
   have hfineCoeff :
       ENNReal.ofReal (Cv * scale ^ (1 / 8 : Real)) *
           ENNReal.ofReal (Ca * scale ^ eta) ≤
@@ -5882,8 +5893,7 @@ private theorem mssP4PositiveL4AtConicScale
     calc
       eLpNorm (∑ i : I, u i) (4 : ENNReal) localSmoothingMeasure ≤
           ∑ i : I, eLpNorm (u i) (4 : ENNReal) localSmoothingMeasure :=
-        eLpNorm_sum_le (s := Finset.univ) (f := u)
-          (fun i _ => hu i) (by norm_num)
+        eLpNorm_sum_le (by norm_num)
       _ ≤ ∑ i : I, ENNReal.ofReal (K i.1 i.2 * S) * F :=
         Finset.sum_le_sum (fun i _ => hpiece i)
       _ = ENNReal.ofReal (Ktot * S) * F := by

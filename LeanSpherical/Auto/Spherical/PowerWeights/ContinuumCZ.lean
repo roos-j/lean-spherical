@@ -1940,7 +1940,7 @@ theorem integral_norm_fderiv_lacunaryRelativeBandpassPhysicalKernelRadiusGenerat
         -((d : ℝ) • fderiv ℝ H x + fderiv ℝ R x) := by
     rw [hGfun, hRfd]
     have hGderiv := (((hHderiv x).const_smul (d : ℝ)).add (hRderiv x)).neg
-    convert hGderiv.fderiv using 1; ext; simp; abel
+    convert hGderiv.fderiv using 1
   have hGpoint (x : Euclidean d) :
       ‖fderiv ℝ (G : Euclidean d → ℂ) x‖ ≤
         ((d : ℝ) + 1) * ‖fderiv ℝ H x‖ + ‖x‖ * ‖J2 x‖ := by
@@ -3768,7 +3768,7 @@ private theorem lintegral_ennreal_norm_sq_eq_of_memLp_two
     (∫⁻ x, ENNReal.ofReal (‖u x‖ ^ 2)) =
       ENNReal.ofReal (‖hu.toLp u‖ ^ 2) := by
   have hint : Integrable (fun x : Euclidean d => ‖u x‖ ^ 2) volume :=
-    (memLp_two_iff_integrable_sq_norm hu.1).1 hu
+    (memLp_two_iff_integrable_sq_norm hu.aestronglyMeasurable).1 hu
   have hnon : ∀ᵐ x : Euclidean d ∂volume, 0 ≤ ‖u x‖ ^ 2 :=
     Filter.Eventually.of_forall fun _ => sq_nonneg _
   rw [← ofReal_integral_eq_lintegral_ofReal hint hnon]

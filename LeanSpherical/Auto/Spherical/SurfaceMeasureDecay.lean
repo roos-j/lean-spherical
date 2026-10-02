@@ -952,8 +952,6 @@ theorem integrable_dilate
   have hcomp : Integrable (fun x : Euclidean d => k (R • x)) :=
     Integrable.comp_smul hk hR.ne'
   convert Integrable.smul (R ^ d : ℝ) hcomp using 1
-  ext x
-  rfl
 
 /-- The total derivative of a Euclidean dilation has the expected extra
 factor of the dilation scale. -/

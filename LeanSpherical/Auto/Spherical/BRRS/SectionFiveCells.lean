@@ -2687,7 +2687,8 @@ theorem exists_eLpNorm_top_brrsPositiveRadialHalfWaveTestPacket_halfDensityScale
     exists_norm_brrsPositiveRadialHalfWaveTestPacket_halfDensityScale_le hd Phi
   refine ⟨C, hC, ?_⟩
   intro j referenceTime hj href
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top
+    (brrsPositiveRadialHalfWaveTestPacket Phi j referenceTime).continuous.aestronglyMeasurable]
   apply eLpNormEssSup_le_of_ae_bound
   exact Filter.Eventually.of_forall fun x => hpoint j referenceTime x hj href
 
@@ -2825,13 +2826,14 @@ theorem exists_eLpNorm_rpow_brrsPositiveRadialHalfWaveTestPacket_halfDensityScal
         (eLpNorm f (ENNReal.ofReal p) volume) ^ p := by
     dsimp only [F]
     exact Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp0 f
+      hfcont.aestronglyMeasurable
   have hmomenttwo :
       (∫⁻ x : BRRSSpace d, F x ^ (2 : Real)) =
         (eLpNorm f 2 volume) ^ (2 : Real) := by
     dsimp only [F]
     simpa only [ENNReal.ofReal_ofNat] using
       (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num : (0 : Real) < 2) f)
+        (by norm_num : (0 : Real) < 2) f hfcont.aestronglyMeasurable)
   have henergy : (eLpNorm f 2 volume) ^ (2 : Real) =
       ENNReal.ofReal
         (((2 : Real) ^ j) ^ d *
@@ -3096,6 +3098,7 @@ theorem brrsPositiveRadialTestPacket_eLpNorm_rpow_lower_of_shell_pointwise
       setLIntegral_le_lintegral _ _
     _ = (eLpNorm F (ENNReal.ofReal p) volume) ^ p := by
       exact Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp F
+        (continuous_brrsDyadicHalfWave Phi j t _).aestronglyMeasurable
 
 /-- The preceding shell-moment bridge specialized through the exact `TT*`
 identity for the positive radial packet.  Its hypothesis is deliberately a

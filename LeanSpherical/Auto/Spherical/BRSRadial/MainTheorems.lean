@@ -4918,7 +4918,8 @@ theorem eLpNorm_M_lift_le_of_remTwo {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
   have hq0' : ENNReal.ofReal q ≠ 0 := by
     simp only [ne_eq, ENNReal.ofReal_eq_zero]
     exact not_le.mpr hq0
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top
+      (measurable_M_lift E hf₀).aestronglyMeasurable,
     ENNReal.toReal_ofReal hq0.le, eLpNorm_lift_eq hD hp0 hf₀, ← hNp]
   refine le_trans (ENNReal.rpow_le_rpow hbound (by positivity)) (le_of_eq ?_)
   have hinv : (0 : ℝ) ≤ 1 / q := by positivity
@@ -4971,10 +4972,9 @@ theorem memLp_and_eLpNorm_M_lift_le_of_remTwo {d : ℕ} (hd : 2 ≤ d) {E : Set 
               eLpNorm (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p)
                 volume := by
   obtain ⟨C, hC, hbound⟩ := eLpNorm_M_lift_le_of_remTwo hd hE hp hpq hrem hmain
-  refine ⟨C, hC, fun f₀ hf₀ hmem => ⟨⟨?_, ?_⟩, hbound f₀ hf₀⟩⟩
-  · exact (measurable_M_lift E hf₀).aestronglyMeasurable
-  · refine lt_of_le_of_lt (hbound f₀ hf₀) ?_
-    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.2
+  refine ⟨C, hC, fun f₀ hf₀ hmem => ⟨?_, hbound f₀ hf₀⟩⟩
+  refine lt_of_le_of_lt (hbound f₀ hf₀) ?_
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.eLpNorm_lt_top
 
 /-! ## The radial strong type up to and including the edge `q = pD`
 

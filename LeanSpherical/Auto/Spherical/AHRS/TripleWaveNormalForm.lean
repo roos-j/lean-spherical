@@ -494,7 +494,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
     eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume
   have hinputTop : inputNorm < ⊤ := by
     dsimp only [inputNorm]
-    exact (f.memLp (ENNReal.ofReal p) volume).2
+    exact f.memLp (ENNReal.ofReal p) volume
   by_cases hinputZero : inputNorm = 0
   · have houtputZero :
         eLpNorm (T j f) (ENNReal.ofReal q0) volume = 0 := by
@@ -506,13 +506,14 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
           _ = 0 := by rw [hinputZero, mul_zero]
       · exact bot_le
     have hTfzero : T j f =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (hTmeas j f)
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr hq0)).mp houtputZero
     have htargetZero :
         eLpNorm (T j f) (ENNReal.ofReal q) volume = 0 :=
       eLpNorm_eq_zero_of_ae_zero hTfzero
-    refine ⟨⟨hTmeas j f, ?_⟩, ?_⟩
-    · rw [htargetZero]
+    refine ⟨?_, ?_⟩
+    · unfold MemLp
+      rw [htargetZero]
       exact bot_lt_top
     · rw [htargetZero]
       simp
@@ -581,7 +582,7 @@ theorem memLp_and_eLpNorm_schwartz_of_two_strong_output_dyadic_rates
     have hboundTop :
         eLpNorm (T j f) (ENNReal.ofReal q) volume < ⊤ :=
       lt_of_le_of_lt hbound (ENNReal.mul_lt_top hfactorTop hinputTop)
-    refine ⟨⟨hTmeas j f, hboundTop⟩, ?_⟩
+    refine ⟨hboundTop, ?_⟩
     simpa only [inputNorm] using hbound
 
 end
@@ -1713,7 +1714,7 @@ theorem absolute_reassembly_limit_off_diagonal
     have hmeas : AEMeasurable (fun x : Euclidean d =>
         (ENNReal.ofReal (fractalAbsoluteCutoffMaximal d E φ N f x)) ^ q) volume :=
       ENNReal.continuous_rpow_const.measurable.comp_aemeasurable
-        ((hfinite N f).1.1.aemeasurable.ennreal_ofReal)
+        ((hfinite N f).1.aestronglyMeasurable.aemeasurable.ennreal_ofReal)
     convert hmeas using 1
     funext x
     exact (ENNReal.ofReal_rpow_of_nonneg
@@ -2764,7 +2765,7 @@ theorem finite_geometric_output_sum
         simp only [Finset.sum_range_succ, Pi.add_apply]
   · apply eLpNorm_sum_range_le_geometric volume q hq T
     · intro j
-      exact (hTmem j).1
+      exact (hTmem j).aestronglyMeasurable
     · exact hTnorm
 
 /-- Reassemble a finite absolute-frequency cutoff from a low-frequency term
@@ -2853,14 +2854,14 @@ theorem finite_absolute_off_diagonal_reassembly_eLpNorm
     (CR + CT * (1 - ρ)⁻¹) * hroot
   calc
     eLpNorm P (ENNReal.ofReal q) volume ≤ eLpNorm (R + S) (ENNReal.ofReal q) volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono hPmeas
       intro x
       change ‖P x‖ ≤ ‖R x + S x‖
       rw [Real.norm_eq_abs, abs_of_nonneg (hP0 x), Real.norm_eq_abs,
         abs_of_nonneg (hRS0 x)]
       exact hpoint x
     _ ≤ eLpNorm R (ENNReal.ofReal q) volume + eLpNorm S (ENNReal.ofReal q) volume :=
-      eLpNorm_add_le hRmem.1 hSmem.1 hqENN
+      eLpNorm_add_le hqENN
     _ ≤ CR * hroot + (CT * hroot) * (1 - ρ)⁻¹ :=
       add_le_add hRnorm hSnorm
     _ = (CR + CT * (1 - ρ)⁻¹) * hroot := by ring
@@ -3323,7 +3324,8 @@ private theorem fractalSphericalMaximalReal_weak_of_strong
   have hf_pow :
       eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal q) volume ^ q =
         ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ q := by
-    rw [eLpNorm_eq_eLpNorm' hqE0 hqET, ENNReal.toReal_ofReal hq.le]
+    rw [eLpNorm_eq_eLpNorm' hqE0 hqET f.continuous.aestronglyMeasurable,
+      ENNReal.toReal_ofReal hq.le]
     simpa only [ofReal_norm] using
       (lintegral_rpow_enorm_eq_rpow_eLpNorm' (μ := volume)
         (f := (f : Euclidean d → ℂ)) hq).symm
@@ -3342,7 +3344,8 @@ private theorem fractalSphericalMaximalReal_weak_of_strong
     _ ≤ eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume ^ q :=
       by
         simpa only [ENNReal.toReal_ofReal hq.le] using
-          (mul_meas_ge_le_pow_eLpNorm' volume hqE0 hqET hmem.aestronglyMeasurable
+          (mul_meas_ge_le_pow_eLpNorm' volume hqE0 hqET
+            (f := fractalSphericalMaximalReal d E f)
             (ENNReal.ofReal s))
     _ ≤ (ENNReal.ofReal C *
           eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal q) volume) ^ q :=
@@ -3462,7 +3465,7 @@ private theorem fractalSphericalStrongType_of_diagonal_and_top
     exact hlin
   have hnorm := eLpNorm_le_of_lintegral_real_rpow_bound hp0
     (fractalSphericalMaximalReal d E f) f (fun _ => ENNReal.toReal_nonneg)
-    (ENNReal.ofReal A) hlin'
+    (ENNReal.ofReal A) hlin' hmem.aestronglyMeasurable
   simpa only [ENNReal.ofReal_rpow_of_pos hA] using hnorm
 
 /-- The non-endpoint diagonal Minkowski estimate in the plane, conditional
@@ -4046,7 +4049,8 @@ theorem schwartz_operator_weak_of_diagonal
   have hf_pow :
       eLpNorm (f : Euclidean d -> Complex) (ENNReal.ofReal r) volume ^ r =
         ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ r := by
-    rw [eLpNorm_eq_eLpNorm' hrE0 hrET, ENNReal.toReal_ofReal hr.le]
+    rw [eLpNorm_eq_eLpNorm' hrE0 hrET f.continuous.aestronglyMeasurable,
+      ENNReal.toReal_ofReal hr.le]
     simpa only [ofReal_norm] using
       (lintegral_rpow_enorm_eq_rpow_eLpNorm' (μ := volume)
         (f := (f : Euclidean d -> Complex)) hr).symm
@@ -4062,7 +4066,7 @@ theorem schwartz_operator_weak_of_diagonal
       exact ENNReal.ofReal_le_ofReal (hx.le.trans (le_abs_self _))
     _ <= eLpNorm (T f) (ENNReal.ofReal r) volume ^ r := by
       simpa only [enorm_eq_nnnorm, ENNReal.toReal_ofReal hr.le] using
-        (mul_meas_ge_le_pow_eLpNorm' volume hrE0 hrET hmem.aestronglyMeasurable
+        (mul_meas_ge_le_pow_eLpNorm' volume hrE0 hrET (f := T f)
           (ENNReal.ofReal s))
     _ <= (ENNReal.ofReal C *
           eLpNorm (f : Euclidean d -> Complex) (ENNReal.ofReal r) volume) ^ r :=
@@ -4203,7 +4207,7 @@ theorem schwartz_operator_strong_above_of_diagonal_top_with_constant
     rw [hinput, ← ENNReal.ofReal_mul hA.le]
     exact hlin
   have hnorm := eLpNorm_le_of_lintegral_real_rpow_bound hp0
-    (T f) f (hTnonneg f) (ENNReal.ofReal A) hlin'
+    (T f) f (hTnonneg f) (ENNReal.ofReal A) hlin' (hTmeas f)
   simpa only [A, Atail, ENNReal.ofReal_rpow_of_pos hA] using hnorm
 
 /-- Existential form of
@@ -6102,7 +6106,7 @@ theorem abs_signed_triple_phase_ge_quarter_gap
   have hminus : |r - r'| / 4 <= |r - r' - u| := by
     have h := abs_radiusDifference_add_ge_quarter_gap
       (r := r) (r' := r') (z := -u) (by simpa [abs_of_nonneg hu] using hucone)
-    convert h using 1; ring
+    convert h using 1
   have hsumplus : |r - r'| / 4 <= |r + r' + u| :=
     abs_radiusSum_add_ge_quarter_gap hr hr'
       (by simpa [abs_of_nonneg hu] using hucone)
@@ -6110,7 +6114,7 @@ theorem abs_signed_triple_phase_ge_quarter_gap
     have h := abs_radiusSum_add_ge_quarter_gap
       (r := r) (r' := r') (z := -u) hr hr'
         (by simpa [abs_of_nonneg hu] using hucone)
-    convert h using 1; ring
+    convert h using 1
   rcases hex with rfl | rfl <;> rcases her with rfl | rfl <;>
     rcases her' with rfl | rfl
   · convert hplus using 1; ring

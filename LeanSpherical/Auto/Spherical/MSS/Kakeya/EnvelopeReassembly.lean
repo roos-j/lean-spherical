@@ -631,11 +631,11 @@ to a directional `iSup` of squared absolute values. -/
 theorem eLpNorm_two_rpow_half_le_of_lintegral_le
     {X : Type*} [MeasurableSpace X] {mu : Measure X}
     (Q : X → ENNReal) {B : ENNReal}
-    (hQ : (∫⁻ x, Q x ∂mu) ≤ B) :
+    (hQ : (∫⁻ x, Q x ∂mu) ≤ B) (hQm : AEStronglyMeasurable Q mu) :
     eLpNorm (fun x => Q x ^ ((2 : Real)⁻¹)) 2 mu ≤
       B ^ ((2 : Real)⁻¹) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num)
-    ENNReal.ofNat_ne_top]
+    ENNReal.ofNat_ne_top (ENNReal.continuous_rpow_const.comp_aestronglyMeasurable hQm)]
   have hident :
       (∫⁻ x, ‖Q x ^ ((2 : Real)⁻¹)‖ₑ ^ (2 : ENNReal).toReal ∂mu) =
         ∫⁻ x, Q x ∂mu := by
@@ -656,6 +656,19 @@ noncomputable def kakeyaRadialPhysicalSquareEnvelope
     (x : Euclidean 2) : ENNReal :=
   ⨆ theta : Theta, ENNReal.ofReal
     (‖kakeyaRadialPhysicalField m theta x‖ ^ 2)
+
+private theorem aestronglyMeasurable_kakeyaRadialPhysicalSquareEnvelope
+    {Theta : Type*} (m : Theta → SchwartzMap (Euclidean 2) Complex) :
+    AEStronglyMeasurable (kakeyaRadialPhysicalSquareEnvelope m) volume := by
+  apply Measurable.aestronglyMeasurable
+  apply LowerSemicontinuous.measurable
+  unfold kakeyaRadialPhysicalSquareEnvelope
+  apply lowerSemicontinuous_iSup
+  intro theta
+  apply Continuous.lowerSemicontinuous
+  unfold kakeyaRadialPhysicalField
+  exact ENNReal.continuous_ofReal.comp
+    ((FourierTransform.fourierInv (m theta)).continuous.norm.pow 2)
 
 /-- The literal square-root envelope whose `L²` seminorm is controlled by
 the maximal-square energy. -/
@@ -693,6 +706,7 @@ theorem eLpNorm_kakeyaRadialPhysicalEnvelope_le_lowpass_and_band_bounds
         (B0 + ∑ i ∈ Finset.range (kakeyaRadialBandLevel rho), Bband i)) ^
           ((2 : Real)⁻¹)) := by
   apply eLpNorm_two_rpow_half_le_of_lintegral_le
+    (hQm := aestronglyMeasurable_kakeyaRadialPhysicalSquareEnvelope m)
   change (∫⁻ x : Euclidean 2, ⨆ theta : Theta, ENNReal.ofReal
     (‖kakeyaRadialPhysicalField m theta x‖ ^ 2)) ≤ _
   exact lintegral_iSup_sq_kakeyaRadialPhysicalField_le_lowpass_and_band_bounds
@@ -730,6 +744,7 @@ theorem eLpNorm_kakeyaRadialPhysicalEnvelope_le_of_summed_energy
       ((((kakeyaRadialBandLevel rho + 1 : Nat) : ENNReal) ^ 3 * E) ^
         ((2 : Real)⁻¹)) := by
   apply eLpNorm_two_rpow_half_le_of_lintegral_le
+    (hQm := aestronglyMeasurable_kakeyaRadialPhysicalSquareEnvelope m)
   let L : ENNReal := ((kakeyaRadialBandLevel rho + 1 : Nat) : ENNReal)
   calc
     (∫⁻ x : Euclidean 2, ⨆ theta : Theta, ENNReal.ofReal
@@ -2227,7 +2242,9 @@ theorem eLpNorm_sq_innerSlabCompactFrequencyTensor_eq_frequencyTimeEnergy
       change (eLpNorm f 2 (volume.prod volume)) ^ 2 = _
       convert
         (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-          (μ := volume.prod volume) (by norm_num : (0 : Real) < 2) f).symm using 1;
+          (μ := volume.prod volume) (by norm_num : (0 : Real) < 2) f
+          (continuous_scratch_innerSlabCompactFrequencyTensor q a).aestronglyMeasurable).symm
+          using 1;
         norm_num
     _ = ∫⁻ z : Euclidean 2 × Real,
         ENNReal.ofReal (‖f z‖ ^ 2) ∂(volume.prod volume) := by

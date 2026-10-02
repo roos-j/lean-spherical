@@ -2298,7 +2298,7 @@ theorem tsum_rpow_le_tsum_rpow (G : ℕ → ENNReal) {p q : ℝ} (hp : 0 < p)
     rw [hS, ← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hp.ne', ENNReal.rpow_one]
   have hle : ∀ k, G k ≤ S := by
     intro k
-    have h1 : G k ^ p ≤ ∑' k, G k ^ p := ENNReal.le_tsum k
+    have h1 : G k ^ p ≤ ∑' k, G k ^ p := ENNReal.le_tsum (f := fun k => G k ^ p) k
     calc G k = (G k ^ p) ^ (1 / p) := by
           rw [← ENNReal.rpow_mul, one_div, mul_inv_cancel₀ hp.ne', ENNReal.rpow_one]
       _ ≤ S := by
@@ -5490,7 +5490,8 @@ theorem eLpNorm_lift_eq {D : ℕ} (hD : 2 ≤ D) {p : ℝ} (hp : 0 < p) {f₀ : 
     rw [hG]
     exact ENNReal.continuous_rpow_const.measurable.comp
       (hf₀.norm.measurable.ennreal_ofReal)
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hp.le]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop
+    (by exact (hf₀.comp continuous_norm).aestronglyMeasurable), ENNReal.toReal_ofReal hp.le]
   have hcongr : (∫⁻ x : Euclidean D, ‖f₀ ‖x‖‖ₑ ^ p) = ∫⁻ x : Euclidean D, G ‖x‖ := by
     refine lintegral_congr fun x => ?_
     rw [hG]
@@ -5499,6 +5500,18 @@ theorem eLpNorm_lift_eq {D : ℕ} (hD : 2 ≤ D) {p : ℝ} (hp : 0 < p) {f₀ : 
   rw [hcongr, lintegral_euclidean_radial (by omega : 0 < D) G hGmeas,
     ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0 : ℝ) ≤ 1 / p),
     ← lintegral_radial_weight_Ioi hD G, hG]
+
+open Auto.Spherical.PowerWeights in
+/-- The maximal function of a continuous radial datum is measurable. -/
+theorem measurable_M_lift {D : ℕ} (E : Set ℝ) {f₀ : ℝ → ℂ} (hf₀ : Continuous f₀) :
+    Measurable (M E (fun y : Euclidean D => f₀ ‖y‖)) := by
+  have hcont : Continuous (fun y : Euclidean D => f₀ ‖y‖) :=
+    hf₀.comp continuous_norm
+  change Measurable (_root_.Spherical.restrictedSphericalMaximal E
+    (fun y : Euclidean D => f₀ ‖y‖))
+  rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
+  exact Auto.Spherical.PowerWeights.measurable_restrictedNormalizedSphericalMaximal
+    E _ hcont
 
 /-- **The radial strong bound for continuous profiles.**  Lemma 4.1 plus the
 propositions of §4, transported to the ambient Euclidean norm. -/
@@ -5605,7 +5618,8 @@ theorem eLpNorm_M_lift_le {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
   have hq0' : ENNReal.ofReal q ≠ 0 := by
     simp only [ne_eq, ENNReal.ofReal_eq_zero]
     exact not_le.mpr hq0
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top
+      (measurable_M_lift E hf₀).aestronglyMeasurable,
     ENNReal.toReal_ofReal hq0.le, eLpNorm_lift_eq hD hp0 hf₀, ← hNp]
   refine le_trans (ENNReal.rpow_le_rpow hbound (by positivity)) (le_of_eq ?_)
   have hinv : (0 : ℝ) ≤ 1 / q := by positivity
@@ -5633,18 +5647,6 @@ theorem eLpNorm_M_lift_le {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
     ring
   rw [hsplit, hscalar, mul_assoc]
 
-open Auto.Spherical.PowerWeights in
-/-- The maximal function of a continuous radial datum is measurable. -/
-theorem measurable_M_lift {D : ℕ} (E : Set ℝ) {f₀ : ℝ → ℂ} (hf₀ : Continuous f₀) :
-    Measurable (M E (fun y : Euclidean D => f₀ ‖y‖)) := by
-  have hcont : Continuous (fun y : Euclidean D => f₀ ‖y‖) :=
-    hf₀.comp continuous_norm
-  change Measurable (_root_.Spherical.restrictedSphericalMaximal E
-    (fun y : Euclidean D => f₀ ‖y‖))
-  rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
-  exact Auto.Spherical.PowerWeights.measurable_restrictedNormalizedSphericalMaximal
-    E _ hcont
-
 /-- **The radial strong type on the continuous-profile core.**  This is the
 `§4` upper bound in its final form: given the main-term estimate in the range
 under consideration, the spherical maximal operator maps radial data with a
@@ -5667,10 +5669,9 @@ theorem memLp_and_eLpNorm_M_lift_le {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
               eLpNorm (fun x : Euclidean (d + 1) => f₀ ‖x‖) (ENNReal.ofReal p)
                 volume := by
   obtain ⟨C, hC, hbound⟩ := eLpNorm_M_lift_le hd hE hp hpq hqpd hmain
-  refine ⟨C, hC, fun f₀ hf₀ hmem => ⟨⟨?_, ?_⟩, hbound f₀ hf₀⟩⟩
-  · exact (measurable_M_lift E hf₀).aestronglyMeasurable
-  · refine lt_of_le_of_lt (hbound f₀ hf₀) ?_
-    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.2
+  refine ⟨C, hC, fun f₀ hf₀ hmem => ⟨?_, hbound f₀ hf₀⟩⟩
+  refine lt_of_le_of_lt (hbound f₀ hf₀) ?_
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.eLpNorm_lt_top
 
 /-- The exponent `a = D - 1 - D/p` of the radial main term, in the form
 required by Proposition 4.5. -/

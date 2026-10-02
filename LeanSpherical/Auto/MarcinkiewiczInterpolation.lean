@@ -694,7 +694,7 @@ unproved extension of the half-wave operator to all measurable functions.
 arguments. -/
 theorem sourceOutput_weak_distribution_of_eLpNorm
     {β : Type*} [MeasurableSpace β] {ν : Measure β}
-    (u : β → Real) (hu : AEStronglyMeasurable u ν)
+    (u : β → Real) (_hu : AEStronglyMeasurable u ν)
     {r t : Real} (hr : 0 < r) (ht : 0 < t) (L : ENNReal)
     (hL : eLpNorm u (ENNReal.ofReal r) ν ≤ L) :
     ν {x | t < u x} * (ENNReal.ofReal t) ^ r ≤ L ^ r := by
@@ -706,7 +706,7 @@ theorem sourceOutput_weak_distribution_of_eLpNorm
     change ENNReal.ofReal t ≤ ‖u x‖ₑ
     rw [Real.enorm_eq_ofReal hux]
     exact ENNReal.ofReal_le_ofReal hx.le
-  have hcheb := mul_meas_ge_le_pow_eLpNorm' ν hrE0 hrET hu
+  have hcheb := mul_meas_ge_le_pow_eLpNorm' ν hrE0 hrET (f := u)
     (ENNReal.ofReal t)
   have hcheb' :
       (ENNReal.ofReal t) ^ r * ν {x | ENNReal.ofReal t ≤ ‖u x‖ₑ} ≤
@@ -1189,7 +1189,8 @@ theorem sourceOutput_eLpNorm_le_of_nonnegative_moment
     {β F : Type*} [MeasurableSpace β] {ν : Measure β}
     (T : F → β → Real) (f : F) {q : Real} (hq : 0 < q)
     (hTnonneg : ∀ x, 0 ≤ T f x) (M : ENNReal)
-    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂ν) ≤ M) :
+    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂ν) ≤ M)
+    (hTf : AEStronglyMeasurable (T f) ν) :
     eLpNorm (T f) (ENNReal.ofReal q) ν ≤ M ^ q⁻¹ := by
   have hqE0 : ENNReal.ofReal q ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hq
   have hqET : ENNReal.ofReal q ≠ ⊤ := ENNReal.ofReal_ne_top
@@ -1203,7 +1204,7 @@ theorem sourceOutput_eLpNorm_le_of_nonnegative_moment
             rw [Real.enorm_eq_ofReal (hTnonneg x),
               ENNReal.ofReal_rpow_of_nonneg (hTnonneg x) hq.le]
       _ ≤ M := hmoment
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET hTf,
     ENNReal.toReal_ofReal hq.le, hqinv]
   exact ENNReal.rpow_le_rpow hmoment' (by positivity)
 
@@ -1294,7 +1295,7 @@ theorem sourceOutput_two_pair_eLpNorm_le_of_scaled_strong_endpoints_and_split_ta
   have hmoment' : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂ν) ≤ K * I := by
     rwa [hfactor] at hmoment
   have hout := sourceOutput_eLpNorm_le_of_nonnegative_moment T f hq
-    (hTnonneg f) (K * I) hmoment'
+    (hTnonneg f) (K * I) hmoment' hTf.aestronglyMeasurable
   have hroot : (K * I) ^ q⁻¹ =
       K ^ q⁻¹ * eLpNorm (eval f) (ENNReal.ofReal q) μ := by
     rw [ENNReal.mul_rpow_of_nonneg _ _ (inv_nonneg.mpr hq.le)]
@@ -2649,7 +2650,7 @@ theorem eLpNorm_truncHigh_rpow {μ : Measure α} {f : α → E} (hf : StronglyMe
     (eLpNorm (truncHigh f l) (ENNReal.ofReal p) μ) ^ q =
       (∫⁻ x in {x | l ≤ ‖f x‖}, (ENNReal.ofReal ‖f x‖) ^ p ∂μ) ^ (q / p) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_ne_zero_iff.mpr hp)
-      ENNReal.ofReal_ne_top,
+      ENNReal.ofReal_ne_top (stronglyMeasurable_truncHigh hf l).aestronglyMeasurable,
     ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul]
   have hset : MeasurableSet {x | l ≤ ‖f x‖} :=
     measurableSet_le measurable_const hf.norm.measurable
@@ -2667,11 +2668,12 @@ theorem eLpNorm_truncHigh_rpow {μ : Measure α} {f : α → E} (hf : StronglyMe
   field_simp
 
 /-- `‖f‖_{p}^{q}` for the low truncation. -/
-theorem eLpNorm_truncLow_rpow {μ : Measure α} (f : α → E) {p q : ℝ} (hp : 0 < p) (l : ℝ) :
+theorem eLpNorm_truncLow_rpow {μ : Measure α} (f : α → E) (hf : StronglyMeasurable f)
+    {p q : ℝ} (hp : 0 < p) (l : ℝ) :
     (eLpNorm (truncLow f l) (ENNReal.ofReal p) μ) ^ q =
       (∫⁻ x, (ENNReal.ofReal ‖truncLow f l x‖) ^ p ∂μ) ^ (q / p) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_ne_zero_iff.mpr hp)
-      ENNReal.ofReal_ne_top,
+      ENNReal.ofReal_ne_top (stronglyMeasurable_truncLow hf l).aestronglyMeasurable,
     ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul]
   simp_rw [ofReal_norm]
   congr 1
@@ -2680,7 +2682,20 @@ theorem eLpNorm_truncLow_rpow {μ : Measure α} (f : α → E) {p q : ℝ} (hp :
 theorem antitone_eLpNorm_truncHigh {μ : Measure α} (f : α → E) (p : ENNReal) :
     Antitone fun l : ℝ => eLpNorm (truncHigh f l) p μ := by
   intro l l' hll'
-  refine eLpNorm_mono_enorm fun x => ?_
+  change eLpNorm (truncHigh f l') p μ ≤ eLpNorm (truncHigh f l) p μ
+  by_cases hmeas : AEStronglyMeasurable (truncHigh f l) μ
+  swap
+  · rw [eLpNorm_of_not_aestronglyMeasurable hmeas]
+    exact le_top
+  have heq : truncHigh f l' = {x | l' ≤ ‖truncHigh f l x‖}.indicator (truncHigh f l) := by
+    funext x
+    by_cases h1 : l ≤ ‖f x‖ <;> by_cases h2 : l' ≤ ‖f x‖ <;>
+      simp [truncHigh, Set.indicator, h1, h2]
+    exact absurd (hll'.trans h2) h1
+  have hmeas' : AEStronglyMeasurable (truncHigh f l') μ := by
+    rw [heq]
+    exact hmeas.indicator₀ (nullMeasurableSet_le aemeasurable_const hmeas.norm.aemeasurable)
+  refine eLpNorm_mono_enorm hmeas' fun x => ?_
   unfold truncHigh
   by_cases hx : l' ≤ ‖f x‖
   · rw [Set.indicator_of_mem (by exact hx), Set.indicator_of_mem (by exact hll'.trans hx)]
@@ -2690,7 +2705,20 @@ theorem antitone_eLpNorm_truncHigh {μ : Measure α} (f : α → E) (p : ENNReal
 theorem monotone_eLpNorm_truncLow {μ : Measure α} (f : α → E) (p : ENNReal) :
     Monotone fun l : ℝ => eLpNorm (truncLow f l) p μ := by
   intro l l' hll'
-  refine eLpNorm_mono_enorm fun x => ?_
+  change eLpNorm (truncLow f l) p μ ≤ eLpNorm (truncLow f l') p μ
+  by_cases hmeas : AEStronglyMeasurable (truncLow f l') μ
+  swap
+  · rw [eLpNorm_of_not_aestronglyMeasurable hmeas]
+    exact le_top
+  have heq : truncLow f l = {x | ‖truncLow f l' x‖ < l}.indicator (truncLow f l') := by
+    funext x
+    by_cases h1 : ‖f x‖ < l <;> by_cases h2 : ‖f x‖ < l' <;>
+      simp [truncLow, Set.indicator, h1, h2]
+    exact absurd (h1.trans_le hll') h2
+  have hmeas' : AEStronglyMeasurable (truncLow f l) μ := by
+    rw [heq]
+    exact hmeas.indicator₀ (nullMeasurableSet_lt hmeas.norm.aemeasurable aemeasurable_const)
+  refine eLpNorm_mono_enorm hmeas' fun x => ?_
   unfold truncLow
   by_cases hx : ‖f x‖ < l
   · rw [Set.indicator_of_mem (by exact hx), Set.indicator_of_mem (by exact hx.trans_le hll')]
@@ -2730,7 +2758,7 @@ theorem lintegral_truncLow_tail_le {μ : Measure α} [SFinite μ] {f : α → E}
   have hp1 : 0 < p1 := hp.trans hpp1
   have hr1 : 1 ≤ q1 / p1 := (one_le_div hp1).mpr hpq1
   have hexp : q - q1 - 1 = m * (p - p1) * (q1 / p1) - 1 := by linarith
-  simp_rw [eLpNorm_truncLow_rpow f hp1, hexp]
+  simp_rw [eLpNorm_truncLow_rpow f hf hp1, hexp]
   have hg1 : ∀ t x, 0 < t → ‖truncLow f (c * t ^ m) x‖ ≤ ‖f x‖ :=
     fun t x _ => norm_truncLow_le f _ x
   have hg2 : ∀ t x, 0 < t → ‖truncLow f (c * t ^ m) x‖ ≤ c * t ^ m :=
@@ -2847,12 +2875,12 @@ theorem hasStrongType_of_hasWeakType_of_slope {μ : Measure α} {ν : Measure β
   set JE : ℝ≥0∞ := ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ with hJEdef
   have hfp : eLpNorm f (ENNReal.ofReal p) μ = JE ^ (1 / p) := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_ne_zero_iff.mpr hp)
-      ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hp.le, hJEdef]
+      ENNReal.ofReal_ne_top hf.aestronglyMeasurable, ENNReal.toReal_ofReal hp.le, hJEdef]
     simp_rw [ofReal_norm]
   have hTq : eLpNorm (fun x => ‖T f x‖) (ENNReal.ofReal q) ν =
       (∫⁻ x, ENNReal.ofReal (‖T f x‖ ^ q) ∂ν) ^ (1 / q) := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_ne_zero_iff.mpr hq)
-      ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
+      ENNReal.ofReal_ne_top (hmeas f hf).aestronglyMeasurable, ENNReal.toReal_ofReal hq.le]
     congr 1
     refine lintegral_congr fun x => ?_
     rw [← ofReal_norm, norm_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hq.le]

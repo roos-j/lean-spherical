@@ -145,11 +145,19 @@ private theorem aux_relativeInterpolation_eLpNorm_ennreal_eq_eLpNorm_toReal_of_f
     {X : Type*} [MeasurableSpace X] (F : X → ENNReal) (q : ENNReal)
     (μ : Measure X) (hF : ∀ x, F x ≠ ∞) :
     eLpNorm F q μ = eLpNorm (fun x => (F x).toReal) q μ := by
-  apply eLpNorm_congr_enorm_ae
-  filter_upwards with x
-  rw [enorm_eq_self, ← ofReal_norm]
-  simpa only [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg] using
-    (ENNReal.ofReal_toReal (hF x)).symm
+  by_cases hm : AEStronglyMeasurable F μ
+  · apply eLpNorm_congr_enorm_ae hm hm.aemeasurable.ennreal_toReal.aestronglyMeasurable
+    filter_upwards with x
+    rw [enorm_eq_self, ← ofReal_norm]
+    simpa only [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg] using
+      (ENNReal.ofReal_toReal (hF x)).symm
+  · have hg : ¬ AEStronglyMeasurable (fun x => (F x).toReal) μ := by
+      intro hg
+      apply hm
+      refine (hg.aemeasurable.ennreal_ofReal.congr
+        (Filter.Eventually.of_forall fun x => ?_)).aestronglyMeasurable
+      exact ENNReal.ofReal_toReal (hF x)
+    rw [eLpNorm_of_not_aestronglyMeasurable hm, eLpNorm_of_not_aestronglyMeasurable hg]
 
 private theorem aux_relativeInterpolation_memLp_ennreal_of_memLp_toReal
     {X : Type*} [MeasurableSpace X] (F : X → ENNReal) {q : ENNReal}
@@ -261,7 +269,7 @@ private theorem aux_relativeInterpolation_two_four_smooth_interpolation
       fun t => ∫⁻ x, (ENNReal.ofReal ‖low t x‖) ^ (4 : Real) by
       funext t
       exact (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num) (low t)).symm]
+        (by norm_num) (low t) (low t).continuous.aestronglyMeasurable).symm]
     exact hlowI_raw
   have hhighI_meas : Measurable (fun t =>
       (eLpNorm (eval (high t)) (ENNReal.ofReal 2) volume) ^ (2 : Real)) := by
@@ -270,7 +278,7 @@ private theorem aux_relativeInterpolation_two_four_smooth_interpolation
       fun t => ∫⁻ x, (ENNReal.ofReal ‖high t x‖) ^ (2 : Real) by
       funext t
       exact (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num) (high t)).symm]
+        (by norm_num) (high t) (high t).continuous.aestronglyMeasurable).symm]
     exact hhighI_raw
   have hhighTailRaw := smooth_bump_schwartz_high_q_weighted_tail f low high hlow hhigh
     (q := 2) (p := p) (by norm_num) hp2
@@ -291,12 +299,12 @@ private theorem aux_relativeInterpolation_two_four_smooth_interpolation
             intro t
             exact congrArg (fun a => a * (ENNReal.ofReal t) ^ (p - 2 - 1))
               (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-                (by norm_num) (high t)).symm
+                (by norm_num) (high t) (high t).continuous.aestronglyMeasurable).symm
       _ ≤ ((ENNReal.ofReal (p - 2))⁻¹ * (ENNReal.ofReal 4) ^ (p - 2)) *
           ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p := hhighTailRaw
       _ = _ := by
         rw [Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-          (lt_trans (by norm_num) hp2) f]
+          (lt_trans (by norm_num) hp2) f f.continuous.aestronglyMeasurable]
   have hlowTailRaw := Auto.Spherical.MSS.smooth_bump_schwartz_low_q_weighted_tail
     f low high hlow hhigh (p := p) (q := 4) (lt_trans (by norm_num) hp2) hp4
   have hlow_tail :
@@ -317,13 +325,13 @@ private theorem aux_relativeInterpolation_two_four_smooth_interpolation
             intro t
             exact congrArg (fun a => a * (ENNReal.ofReal t) ^ (p - 4 - 1))
               (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-                (by norm_num) (low t)).symm
+                (by norm_num) (low t) (low t).continuous.aestronglyMeasurable).symm
       _ ≤ ((ENNReal.ofReal 2) ^ (-(4 : Real)) * (ENNReal.ofReal p)⁻¹ +
           (ENNReal.ofReal (4 - p))⁻¹) *
           ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p := hlowTailRaw
       _ = _ := by
         rw [Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-          (lt_trans (by norm_num) hp2) f]
+          (lt_trans (by norm_num) hp2) f f.continuous.aestronglyMeasurable]
   exact sourceOutput_two_pair_eLpNorm_le_of_scaled_strong_endpoints_and_split_tails
     D eval T hTnonneg
     (by
@@ -847,7 +855,7 @@ private theorem aux_relativeInterpolation_four_top_smooth_interpolation
         rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
       _ = _ := by
         rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-          (by norm_num) (eval g)]
+          (by norm_num) (eval g) g.continuous.aestronglyMeasurable]
   have hStop : ∀ g, g ∈ D → ∀ a : Real, 0 ≤ a →
       (∀ x, ‖eval g x‖ ≤ a) → ∀ x, S g x ≤ a := by
     intro g _ a ha hga x
@@ -890,11 +898,11 @@ private theorem aux_relativeInterpolation_four_top_smooth_interpolation
     simpa only [mul_assoc] using hSmoment
   have hSbound := Auto.MarcinkiewiczInterpolation.sourceOutput_eLpNorm_le_of_nonnegative_moment S f
     (lt_trans (by norm_num) hp4) (hSnonneg f)
-    (K * ∫⁻ x, (ENNReal.ofReal ‖eval f x‖) ^ p) hSmoment'
+    (K * ∫⁻ x, (ENNReal.ofReal ‖eval f x‖) ^ p) hSmoment' (hSmeas f (by simp [D]))
   have hin : (∫⁻ x, (ENNReal.ofReal ‖eval f x‖) ^ p) =
       (eLpNorm (eval f) (ENNReal.ofReal p) volume) ^ p :=
     Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-      (lt_trans (by norm_num) hp4) (eval f)
+      (lt_trans (by norm_num) hp4) (eval f) f.continuous.aestronglyMeasurable
   rw [hin] at hSbound
   have hSbound' : eLpNorm (S f) (ENNReal.ofReal p) volume ≤
       K ^ p⁻¹ * eLpNorm (eval f) (ENNReal.ofReal p) volume := by

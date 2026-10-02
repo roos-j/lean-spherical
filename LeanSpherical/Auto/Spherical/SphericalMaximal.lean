@@ -1868,7 +1868,7 @@ theorem lintegral_iSup_finset_Icc_sq_le
       (∫⁻ x, ENNReal.ofReal ((v n x) ^ 2) ∂μ) ≤ ENNReal.ofReal B := by
     have hv_mem := (hbound (K n) (hKnonempty n)).1
     have hv_int : Integrable (fun x => (v n x) ^ 2) μ := by
-      have h := (memLp_two_iff_integrable_sq_norm hv_mem.1).1 hv_mem
+      have h := (memLp_two_iff_integrable_sq_norm hv_mem.aestronglyMeasurable).1 hv_mem
       convert h using 1
       funext x
       change (v n x) ^ 2 =
@@ -2133,9 +2133,9 @@ theorem memLp_two_toReal_iSup_ennreal_norm_of_sq_lintegral
       _ = G x := ENNReal.toReal_ofReal (hGnonneg x)
   have hTmem : MemLp T 2 μ := hG.1.mono' hTmeas'.aestronglyMeasurable hTG
   have hTint : Integrable (fun x => ‖T x‖ ^ 2) μ :=
-    (memLp_two_iff_integrable_sq_norm hTmem.1).1 hTmem
+    (memLp_two_iff_integrable_sq_norm hTmem.aestronglyMeasurable).1 hTmem
   have hGint : Integrable (fun x => ‖G x‖ ^ 2) μ :=
-    (memLp_two_iff_integrable_sq_norm hG.1.1).1 hG.1
+    (memLp_two_iff_integrable_sq_norm hG.1.aestronglyMeasurable).1 hG.1
   refine ⟨?_, ?_⟩
   · simpa only [T] using hTmem
   · have hpow : ∀ᵐ x ∂μ, ‖T x‖ ^ 2 ≤ ‖G x‖ ^ 2 := by
@@ -4426,7 +4426,7 @@ private theorem finite_geometric_band_sum
       simp only [Finset.sum_range_succ, Pi.add_apply]
   · apply eLpNorm_sum_range_le_geometric volume q hq T
     · intro j
-      exact (hTmem j).1
+      exact (hTmem j).aestronglyMeasurable
     · exact hTnorm
 
 /- Combine a regular maximal term with a geometrically summable collection of
@@ -4467,14 +4467,14 @@ private theorem finite_reassembly_eLpNorm
   refine ⟨hPmem, ?_⟩
   calc
     eLpNorm P q volume ≤ eLpNorm (R + S) q volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono hPmeas
       intro x
       change ‖P x‖ ≤ ‖R x + S x‖
       rw [Real.norm_eq_abs, abs_of_nonneg (hP0 x), Real.norm_eq_abs,
         abs_of_nonneg (hsum0 x)]
       simpa only [S] using hpointwise x
     _ ≤ eLpNorm R q volume + eLpNorm S q volume :=
-      eLpNorm_add_le hRmem.1 hSmem.1 hq
+      eLpNorm_add_le hq
     _ ≤ CR * hroot + (CT * hroot) * (1 - ρ)⁻¹ :=
       add_le_add hRnorm hSnorm
     _ = (CR + CT * (1 - ρ)⁻¹) * hroot := by ring
@@ -5097,7 +5097,7 @@ private theorem relative_reassembly_lintegral_bound
     have hmeas : AEMeasurable (fun x : Euclidean d =>
         (ENNReal.ofReal (relativeCutoffMaximal d φ N f x)) ^ p) volume :=
       ENNReal.continuous_rpow_const.measurable.comp_aemeasurable
-        ((hfinite N f).1.1.aemeasurable.ennreal_ofReal)
+        ((hfinite N f).1.aestronglyMeasurable.aemeasurable.ennreal_ofReal)
     convert hmeas using 1
     funext x
     exact (ENNReal.ofReal_rpow_of_nonneg ENNReal.toReal_nonneg hpNN).symm
@@ -6122,7 +6122,7 @@ private theorem stein_eLpNorm_radialTail_eq_top
   change eLpNorm q p volume = ∞
   by_contra hqtop
   have hqlt : eLpNorm q p volume < ∞ := lt_top_iff_ne_top.mpr hqtop
-  have hqmem : MemLp q p volume := ⟨hqmeas.aestronglyMeasurable, hqlt⟩
+  have hqmem : MemLp q p volume := hqlt
   have hqpow : Integrable (fun x : Euclidean d => ‖q x‖ ^ p.toReal) volume :=
     hqmem.integrable_norm_rpow (ne_of_gt hp0) hptop
   have hradial : Integrable (fun x : Euclidean d => (T ‖x‖) ^ p.toReal) volume := by
@@ -6302,10 +6302,13 @@ theorem stein_eLpNorm_sphericalMaximal_eq_top_of_one_on_closedBall
         ENNReal.ofReal_mul ha.le, haof]
       exact hlow.trans
         (normalizedSphericalAverage_le_normalizedSphericalMaximal d f ‖x‖ hxpos x)
+  have hqsmul_meas : AEStronglyMeasurable (a • q) volume :=
+    ((((by fun_prop : Measurable fun r : ℝ => (max r 2) ^ (-((n : ℝ)))).indicator
+      measurableSet_Ici).comp measurable_norm).const_smul a).aestronglyMeasurable
   have hMtop : eLpNorm (normalizedSphericalMaximal d f) p volume = ∞ := by
     apply top_unique
     rw [← hscaledtop]
-    exact eLpNorm_mono_enorm hpoint
+    exact eLpNorm_mono_enorm hqsmul_meas hpoint
   have hrawtop : eLpNorm (_root_.Spherical.M (Ioi (0 : ℝ)) f) p volume = ∞ := by
     rw [stein_sphericalMaximal_eq_normalizedSphericalMaximal f]
     exact hMtop
@@ -6358,14 +6361,12 @@ theorem eLpNorm_sphericalMaximal_ge_of_le_criticalExponent
     exact (measure_closedBall_lt_top (μ := volume) (x := (0 : Euclidean d))
       (r := (1 : ℝ))).ne
   have hfnorm : eLpNorm f p volume = volume S ^ (1 / p.toReal) := by
-    rw [hfIndicator, eLpNorm_indicator_const hSmeas (ne_of_gt hp0) hptop]
+    rw [hfIndicator, eLpNorm_indicator_const hSmeas.nullMeasurableSet (ne_of_gt hp0) hptop]
     simp
   have hfmem : MemLp f p volume := by
-    refine ⟨?_, ?_⟩
-    · rw [hfIndicator]
-      exact (measurable_const.indicator hSmeas).aestronglyMeasurable
-    · rw [hfnorm]
-      exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hStop
+    show eLpNorm f p volume < ∞
+    rw [hfnorm]
+    exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hStop
   have hfpos : 0 < eLpNorm f p volume := by
     rw [hfnorm]
     exact ENNReal.rpow_pos hSpos hStop

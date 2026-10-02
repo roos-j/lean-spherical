@@ -5895,6 +5895,11 @@ private theorem overlap_eLpNorm_four_le_of_integral_pow_four_le
       ENNReal.ofReal (C ^ (1 / 4 : Real)) * eLpNorm g (4 : ENNReal) mu := by
   have hmomentF := overlap_lintegral_ofReal_pow_four_eq_of_integrable f hf hfnn
   have hmomentG := overlap_lintegral_ofReal_pow_four_eq_of_integrable g hg hgnn
+  have hroot_meas (u : X → Real) (hu : Integrable (fun x => u x ^ (4 : Nat)) mu)
+      (hunn : ∀ x, 0 ≤ u x) : AEStronglyMeasurable u mu := by
+    have h := hu.aestronglyMeasurable.aemeasurable.pow_const ((4 : ℕ) : Real)⁻¹
+    refine (h.congr (Filter.Eventually.of_forall fun x => ?_)).aestronglyMeasurable
+    exact Real.pow_rpow_inv_natCast (hunn x) (by norm_num)
   have hmoment :
       (∫⁻ x, (ENNReal.ofReal (f x)) ^ (4 : Real) ∂mu) ≤
         ENNReal.ofReal C *
@@ -5914,13 +5919,13 @@ private theorem overlap_eLpNorm_four_le_of_integral_pow_four_le
         (eLpNorm f (4 : ENNReal) mu) ^ (4 : Real) := by
     simpa using
       (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num : (0 : Real) < 4) f)
+        (by norm_num : (0 : Real) < 4) f (hroot_meas f hf hfnn))
   have hgLp :
       (∫⁻ x, (ENNReal.ofReal ‖g x‖) ^ (4 : Real) ∂mu) =
         (eLpNorm g (4 : ENNReal) mu) ^ (4 : Real) := by
     simpa using
       (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num : (0 : Real) < 4) g)
+        (by norm_num : (0 : Real) < 4) g (hroot_meas g hg hgnn))
   have hmomentNorm :
       (eLpNorm f (4 : ENNReal) mu) ^ (4 : Real) ≤
         ENNReal.ofReal C * (eLpNorm g (4 : ENNReal) mu) ^ (4 : Real) := by
@@ -6541,7 +6546,7 @@ private theorem aux_eLpNorm_four_recombined_le_rawSquare_add_scaled_tail
         simp only [Pi.sub_apply]
         abel
       _ ≤ eLpNorm raw 4 volume + eLpNorm (raw - fullProjected) 4 volume :=
-        eLpNorm_sub_le hrawMeas hdifferenceMeas (by norm_num)
+        eLpNorm_sub_le (by norm_num)
       _ ≤ eLpNorm raw 4 volume + tailBudget :=
         add_le_add_right hrawDifference _
   calc
@@ -6659,7 +6664,7 @@ theorem exists_regularAngPiece_recomb_square_bd_of_overlap_plus_nmlTails_on_rawS
   have hraw := eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
     radialIndices angularIndices A P T hdecomp hTmeas
     (fun n nu => eLpNorm (T n nu) 4 volume)
-    (by intro n hn nu hnu; rfl)
+    (by intro n hn nu hnu; rfl) hPmeas
   obtain ⟨C, hC, hrec₀⟩ :=
     exists_regularAngularPiece_recombined_square_bound_of_overlap_plus_normalTails
       maxLevel angularConstant sectorRadius spacingLower spacingUpper hoverlap hangular
@@ -6790,7 +6795,7 @@ private theorem aux_regularAngularPiece_recombined_square_bound_of_projection_bo
   have hraw := eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
     radialIndices angularIndices A P T hdecomp hTmeas
     (fun n nu => eLpNorm (T n nu) 4 volume)
-    (by intro n hn nu hnu; rfl)
+    (by intro n hn nu hnu; rfl) hPmeas
   exact aux_eLpNorm_four_recombined_le_rawSquare_add_scaled_tail
     (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices A)
     (angularRadialSquareFunction radialIndices angularIndices A)

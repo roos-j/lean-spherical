@@ -119,10 +119,11 @@ theorem measurable_smooth_low_profile_lintegrals {d : ℕ} (f : SchwartzMap (Euc
     (measurable_smooth_low_family f).norm.ennreal_ofReal
 
 /-- The `k`-th power of an `L^r` norm as a power of a lower integral. -/
-theorem eLpNorm_rpow_eq {d : ℕ} {g : (Euclidean d) → ℂ} {r k : ℝ} (hr : 0 < r) :
+theorem eLpNorm_rpow_eq {d : ℕ} {g : (Euclidean d) → ℂ} {r k : ℝ} (hr : 0 < r)
+    (hg : AEStronglyMeasurable g volume) :
     (eLpNorm g (ENNReal.ofReal r) (volume : Measure (Euclidean d))) ^ k
       = (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖g x‖) ^ r) ^ (k / r) := by
-  rw [eLpNorm_ofReal_eq hr, ← ENNReal.rpow_mul]
+  rw [eLpNorm_ofReal_eq hr hg, ← ENNReal.rpow_mul]
   congr 1
   · refine lintegral_congr fun x => ?_
     rw [← ofReal_norm]
@@ -178,7 +179,7 @@ theorem twoPair_high_tail_le {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
         * (ENNReal.ofReal t) ^ (q - q0 - 1)
       = (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high (t ^ m) x‖) ^ p0) ^ r0
           * (ENNReal.ofReal t) ^ (q - q0 - 1) := by
-        rw [eLpNorm_rpow_eq hp0, hr0def]
+        rw [eLpNorm_rpow_eq hp0 (high (t ^ m)).continuous.aestronglyMeasurable, hr0def]
     _ ≤ (∫⁻ x in {x | (1 / 4 : ℝ) * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0) ^ r0
           * (ENNReal.ofReal t) ^ (m * (p - p0) * r0 - 1) := by
         rw [show q - q0 - 1 = m * (p - p0) * r0 - 1 by rw [← hweight]]
@@ -213,7 +214,7 @@ theorem twoPair_low_tail_le {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
     hp hpp1 hm (by norm_num) hr1 hJ0 hJ
   refine le_trans (lintegral_mono_ae ?_) hmain
   filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
-  rw [eLpNorm_rpow_eq hp1, ← hr1def,
+  rw [eLpNorm_rpow_eq hp1 (low (t ^ m)).continuous.aestronglyMeasurable, ← hr1def,
     show q - q1 - 1 = m * (p - p1) * r1 - 1 by rw [← hweight]]
 
 
@@ -348,7 +349,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
     · exact hpos
   have hfnorm : eLpNorm ((f : (Euclidean d) → ℂ)) (ENNReal.ofReal p) volume
       = ENNReal.ofReal (J ^ p⁻¹) := by
-    rw [eLpNorm_ofReal_eq hp]
+    rw [eLpNorm_ofReal_eq hp f.continuous.aestronglyMeasurable]
     have h1 : (∫⁻ x : (Euclidean d), ‖(f : (Euclidean d) → ℂ) x‖ₑ ^ p) = ENNReal.ofReal J := by
       rw [← hJeq]
       refine lintegral_congr fun x => ?_
@@ -387,7 +388,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
           q0)
           = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high t x‖) ^ p0) ^ (q0 / p0) := by
         funext t
-        exact eLpNorm_rpow_eq hp0
+        exact eLpNorm_rpow_eq hp0 (high t).continuous.aestronglyMeasurable
       rw [heq]
       exact ENNReal.continuous_rpow_const.measurable.comp
         (measurable_smooth_high_profile_lintegrals f low high hlow hhigh p0)
@@ -400,7 +401,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
           q1)
           = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖low t x‖) ^ p1) ^ (q1 / p1) := by
         funext t
-        exact eLpNorm_rpow_eq hp1
+        exact eLpNorm_rpow_eq hp1 (low t).continuous.aestronglyMeasurable
       rw [heq]
       exact ENNReal.continuous_rpow_const.measurable.comp
         (measurable_smooth_low_profile_lintegrals f low hlow p1)
@@ -490,7 +491,7 @@ theorem exists_twoPair_interpolation_const {d : ℕ}
   rw [hexp] at hmoment
   -- take the q-th root
   have hfinal := Auto.MarcinkiewiczInterpolation.sourceOutput_eLpNorm_le_of_nonnegative_moment
-    T f hq (hTnonneg f) _ hmoment
+    T f hq (hTnonneg f) _ hmoment (hTmeas f)
   refine hfinal.trans (le_of_eq ?_)
   have hJqp : (0:ℝ) < J ^ (q / p) := Real.rpow_pos_of_pos hJpos _
   rw [ENNReal.ofReal_rpow_of_pos (by positivity :
@@ -1638,13 +1639,11 @@ theorem strongType_of_hasDyRate
     rw [ENNReal.ofReal_mul hC.le, ← ENNReal.ofReal_pow hrho.le]
   rw [hconv] at h
   refine ⟨?_, h⟩
-  refine ⟨(measurable_fractalDyadicBandpassMaximal E
-    (absoluteDyadicBandpass φ hφone hφzero j) f).aestronglyMeasurable, ?_⟩
   refine lt_of_le_of_lt h ?_
   exact ENNReal.mul_lt_top
     (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
       (ENNReal.pow_lt_top ENNReal.ofReal_lt_top))
-    (f.memLp (ENNReal.ofReal (1 / a)) volume).2
+    (f.memLp (ENNReal.ofReal (1 / a)) volume)
 
 /-! ## Assembly of Theorem 1.1 in the plane -/
 
@@ -2008,9 +2007,11 @@ theorem rs_eLpNorm_convolution_le
         rs_lintegral_spatial_p_young p p.conjExponent hpq
           (fun y => ‖K y‖ₑ) (fun x => ‖f x‖ₑ) hK.enorm hf.enorm
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top
+    (hK.aestronglyMeasurable.convolution (L := ContinuousLinearMap.mul ℂ ℂ)
+      hf.aestronglyMeasurable)]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hf.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp0.le, one_div]
   have hstep := ENNReal.rpow_le_rpow hmoment (by positivity : (0:ℝ) ≤ p⁻¹)
   calc
@@ -2158,7 +2159,7 @@ theorem rs_eLpNorm_absoluteDyadicBandpassProjection_le
     eLpNorm ((AS : Pl → ℂ) - (BS : Pl → ℂ)) (ENNReal.ofReal p) volume ≤
         eLpNorm ((AS : Pl → ℂ)) (ENNReal.ofReal p) volume +
           eLpNorm ((BS : Pl → ℂ)) (ENNReal.ofReal p) volume :=
-      eLpNorm_sub_le hAmeas hBmeas hpone
+      eLpNorm_sub_le hpone
     _ ≤ ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume +
         ENNReal.ofReal (lowpassMass φ) * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume :=
       add_le_add hA hB
@@ -2460,9 +2461,11 @@ theorem rs_eLpNorm_enn_add_le {p : ℝ} (hp : 1 ≤ p) (F G : Pl → ENNReal)
       eLpNorm F (ENNReal.ofReal p) volume + eLpNorm G (ENNReal.ofReal p) volume := by
   have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
   have hne : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top
+      (show AEStronglyMeasurable (fun x => F x + G x) volume from
+        (hF.add hG).aestronglyMeasurable),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top hF.aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top hG.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp0.le, enorm_eq_self]
   exact ENNReal.lintegral_Lp_add_le hF hG hp
 
@@ -2473,8 +2476,16 @@ theorem rs_eLpNorm_enn_const_mul_le {p : ℝ} (hp : 0 < p) {c : ENNReal} (hc : c
     eLpNorm (fun x => c * F x) (ENNReal.ofReal p) volume ≤
       c * eLpNorm F (ENNReal.ofReal p) volume := by
   have hne : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top]
+  by_cases hFm : AEStronglyMeasurable F volume
+  swap
+  · by_cases hc0 : c = 0
+    · subst hc0
+      simp
+    · rw [eLpNorm_of_not_aestronglyMeasurable hFm, ENNReal.mul_top hc0]
+      exact le_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top
+      (hFm.aemeasurable.const_mul c).aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne ENNReal.ofReal_ne_top hFm]
   simp only [ENNReal.toReal_ofReal hp.le, enorm_eq_self]
   have hmul : (∫⁻ x : Pl, (c * F x) ^ p) = c ^ p * ∫⁻ x : Pl, (F x) ^ p := by
     rw [← lintegral_const_mul' (c ^ p) _ (by
@@ -2545,12 +2556,13 @@ theorem rs_hasDiagGains_one
     restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) C0.cutoff k g with hRBdef
   have hRBmeas (k : ℕ) : AEMeasurable (RB k) volume := by
     have h := (hbound k g).1
-    exact h.1.aemeasurable
+    exact h.aestronglyMeasurable.aemeasurable
   -- Step 1: pass to the `ENNReal`-valued maximal operator
   have hstep1 : eLpNorm (Mdy (E := E) φ hφone hφzero (m + 1) f)
         (ENNReal.ofReal (1 / s)) volume ≤
       eLpNorm (fractalSphericalMaximal 2 E ((g : Pl → ℂ))) (ENNReal.ofReal (1 / s)) volume := by
-    apply eLpNorm_mono_enorm
+    apply eLpNorm_mono_enorm (by
+      exact (measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable)
     intro x
     simp only [enorm_eq_self]
     have hval : Mdy (E := E) φ hφone hφzero (m + 1) f x =
@@ -2567,7 +2579,8 @@ theorem rs_hasDiagGains_one
       eLpNorm (fun x => ENNReal.ofReal ((surfaceMass 2)⁻¹) *
         (RB m x + RB (m + 1) x + RB (m + 2) x + RB (m + 3) x))
         (ENNReal.ofReal (1 / s)) volume := by
-    apply eLpNorm_mono_enorm
+    apply eLpNorm_mono_enorm (by
+      exact (measurable_fractalSphericalMaximal E (g : Pl → ℂ) g.continuous).aestronglyMeasurable)
     intro x
     simp only [enorm_eq_self]
     exact rs_fractalDyadicBandpass_maximal_le_relative C0 φ hφone hφzero hE m f x
@@ -2774,7 +2787,7 @@ theorem rs_strongType_bourgain_diagonal
   have hnorm : eLpNorm (fractalSphericalMaximalReal 2 E f) (ENNReal.ofReal p) volume ≤
       ENNReal.ofReal C * eLpNorm ((f : Pl → ℂ)) (ENNReal.ofReal p) volume := by
     refine le_trans ?_ (hbound f)
-    apply eLpNorm_mono_enorm
+    apply eLpNorm_mono_enorm (measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable
     intro x
     simp only [enorm_eq_self]
     calc ‖fractalSphericalMaximalReal 2 E f x‖ₑ =
@@ -2784,9 +2797,8 @@ theorem rs_strongType_bourgain_diagonal
       _ ≤ fractalSphericalMaximal 2 E ((f : Pl → ℂ)) x := ENNReal.ofReal_toReal_le
       _ ≤ Auto.Spherical.MSS.fullCircularMaximal ((f : Pl → ℂ)) x := hpoint x
   refine ⟨?_, hnorm⟩
-  refine ⟨(measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable, ?_⟩
   refine lt_of_le_of_lt hnorm ?_
-  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp (ENNReal.ofReal p) volume).2
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp (ENNReal.ofReal p) volume)
 
 /-! ### The Stein segment in the plane, for every `β ≤ 1` -/
 

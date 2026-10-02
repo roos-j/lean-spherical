@@ -109,9 +109,9 @@ theorem eLpNorm_brrsConvolution_le_kernelMass_mul_top {d : Nat}
     have h := enorm_ae_le_eLpNormEssSup u volume
     filter_upwards [h] with y hy
     apply (ENNReal.ofReal_le_iff_le_toReal hu_top).mp
-    rw [ofReal_norm, eLpNorm_exponent_top]
+    rw [ofReal_norm, eLpNorm_exponent_top hu.aestronglyMeasurable]
     exact hy
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top (hk.aestronglyMeasurable.convolution _ hu.aestronglyMeasurable)]
   refine (eLpNormEssSup_le_of_ae_bound (Filter.Eventually.of_forall fun x =>
     norm_brrsConvolution_le_of_ae_bound k u hk hubound x)).trans ?_
   rw [ENNReal.ofReal_mul (integral_nonneg fun _ => norm_nonneg _),
@@ -349,9 +349,10 @@ theorem brrsFiniteTimeHalfWaveOutput_top_bound_of_kernelL1
     have h := enorm_ae_le_eLpNormEssSup (f : BRRSSpace d → Complex) volume
     filter_upwards [h] with x hx
     apply (ENNReal.ofReal_le_iff_le_toReal hfTop_ne).mp
-    rw [ofReal_norm, eLpNorm_exponent_top]
+    rw [ofReal_norm, eLpNorm_exponent_top f.aestronglyMeasurable]
     exact hx
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top
+    (measurable_brrsFiniteTimeHalfWaveOutput Phi j T f _hf).aestronglyMeasurable]
   have hess : eLpNormEssSup
       (brrsFiniteTimeHalfWaveOutput Phi j T (f : BRRSSpace d → Complex))
       (Measure.count.prod (volume : Measure (BRRSSpace d))) ≤
@@ -411,12 +412,13 @@ theorem exists_brrsFiniteTimeHalfWaveOutput_top_bound_dim_ge_three
     have h := enorm_ae_le_eLpNormEssSup (f : BRRSSpace d → Complex) volume
     filter_upwards [h] with x hx
     apply (ENNReal.ofReal_le_iff_le_toReal hfTop_ne).mp
-    rw [ofReal_norm, eLpNorm_exponent_top]
+    rw [ofReal_norm, eLpNorm_exponent_top f.aestronglyMeasurable]
     exact hx
   have hrate_nonneg : 0 ≤ B * ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2) := by
     apply mul_nonneg hB.le
     exact Real.rpow_nonneg (by positivity) _
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top
+    (measurable_brrsFiniteTimeHalfWaveOutput Phi j T f _hf).aestronglyMeasurable]
   have hess : eLpNormEssSup
       (brrsFiniteTimeHalfWaveOutput Phi j T (f : BRRSSpace d → Complex))
       (Measure.count.prod (volume : Measure (BRRSSpace d))) ≤

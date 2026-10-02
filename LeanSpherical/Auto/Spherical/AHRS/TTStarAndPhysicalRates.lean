@@ -215,7 +215,7 @@ theorem q4ActiveDyadicScaledNormalizedDerivativePairKernel_memLp_two_and_lpNorm_
         (eLpNorm (q4PairwiseKernelApply volume
           (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) i l g)
           2 volume).toReal :=
-      (toReal_eLpNorm hphysicalMem.aestronglyMeasurable).symm
+      (toReal_eLpNorm).symm
     _ = (eLpNorm (fun x : Euclidean d =>
         (T : Euclidean d -> Complex) x) 2 volume).toReal := by
       rw [eLpNorm_congr_ae hphysical]
@@ -223,7 +223,7 @@ theorem q4ActiveDyadicScaledNormalizedDerivativePairKernel_memLp_two_and_lpNorm_
       exact (Lp.norm_def T).symm
     _ <= B * ‖hg2.toLp g‖ := hTbound
     _ = B * lpNorm g 2 volume := by
-      rw [Lp.norm_toLp, toReal_eLpNorm hg2.aestronglyMeasurable]
+      rw [Lp.norm_toLp, toReal_eLpNorm]
 
 /-- Restricting a pair kernel away from the finite active index set changes
 nothing in an active finite product.  It lets a Fourier multiplier bound be
@@ -470,6 +470,13 @@ theorem q4ActiveDyScNormdDerivFullProductPairShell_eLpNorm_le_levelSum_of_active
     exact (aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound
       (activeDyadicIndices E j) (q4LevelShellRelation R level n) K H g
       (hdomain n)).norm
+  have hmeasR : AEStronglyMeasurable (fun z =>
+      ‖q4FiniteProductKernelShell volume (activeDyadicIndices E j) R K g z‖)
+      (q4ActiveDyadicProductCountingMeasure d E j) :=
+    (aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound
+      (activeDyadicIndices E j) R K H g
+      (mem_q4FiniteProductCutoffStableDomain_activeDyScNormdDerivRestr_of_regular
+        E j u R (fun i l hil => hil) psi hpsiCompact g hgmeas hgint hgsq hfib)).norm
   have hreassembly := eLpNorm_norm_q4FiniteProductKernelShell_le_sum_levelShells
     volume (activeDyadicIndices E j) (q4ActiveDyadicProductCountingMeasure d E j)
     R level (Finset.range (j + 3))
@@ -477,7 +484,7 @@ theorem q4ActiveDyScNormdDerivFullProductPairShell_eLpNorm_le_levelSum_of_active
       intro i l hactive
       exact activeDyadicGapLevel_mem_range_add_three hj hE hactive.1 hactive.2)
     K g hqone
-    (fun n hn => hmeas n)
+    (fun n hn => hmeas n) hmeasR
   have hlevels : ∀ n ∈ Finset.range (j + 3),
       eLpNorm (fun z => ‖q4FiniteProductKernelShell volume
         (activeDyadicIndices E j) (q4LevelShellRelation R level n) K g z‖)
@@ -505,7 +512,9 @@ theorem q4ActiveDyScNormdDerivFullProductPairShell_eLpNorm_le_levelSum_of_active
       change eLpNorm (fun z => ‖q4FiniteProductKernelShell volume
         (activeDyadicIndices E j) (q4LevelShellRelation R level 0) K g z‖)
         (ENNReal.ofReal q) (q4ActiveDyadicProductCountingMeasure d E j) <= _
-      simpa only [hHB, A, q4ActiveDyadicLevelStrongConstant, if_true, eLpNorm_norm,
+      simpa only [hHB, A, q4ActiveDyadicLevelStrongConstant, if_true, eLpNorm_norm _
+        (aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound
+          (activeDyadicIndices E j) _ K H g (hdomain 0)),
         q4ActiveDyadicDiagonalStrongConstant,
         q4ActiveDyadicDiagonalSquareConstant, mul_one] using
         q4ActiveDyadicProductLevel_strong_of_literal_endpoints
@@ -555,7 +564,9 @@ theorem q4ActiveDyScNormdDerivFullProductPairShell_eLpNorm_le_levelSum_of_active
       change eLpNorm (fun z => ‖q4FiniteProductKernelShell volume
         (activeDyadicIndices E j) (q4LevelShellRelation R level n) K g z‖)
         (ENNReal.ofReal q) (q4ActiveDyadicProductCountingMeasure d E j) <= _
-      simpa only [hHB, A, D, q4ActiveDyadicLevelStrongConstant, eLpNorm_norm, if_neg hnzero,
+      simpa only [hHB, A, D, q4ActiveDyadicLevelStrongConstant, eLpNorm_norm _
+        (aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound
+          (activeDyadicIndices E j) _ K H g (hdomain n)), if_neg hnzero,
         q4ActiveDyadicPositiveGapStrongConstant,
         q4ActiveDyadicPositiveGapSquareConstant] using
         q4ActiveDyadicProductLevel_strong_of_literal_endpoints
@@ -1180,7 +1191,10 @@ theorem q4ActiveDyScaledNormdDerivCanonicalFullProduct_rootMoment_le_of_active_m
       (∑ n ∈ Finset.range (j + 3),
         q4ActiveDyadicLevelStrongConstant d gamma eta Ccover Ckernel B j n q)
       (q4ActiveDyadicLevelStrongConstant_sum_ne_top hqgtwo) f (by
-        simpa only [G, eLpNorm_norm] using hfull)
+        rw [← eLpNorm_norm _
+          (aestronglyMeasurable_q4ActiveDyadicScaledNormdDerivFullKernelPowerDualProduct
+            E j psi hpsiCompact u q hqtwo f)]
+        simpa only [G] using hfull)
 
 end
 end Former_Q4DerivativeActiveFullProduct
@@ -1425,6 +1439,8 @@ theorem q3_rational_schwartz_crossed_eLpNorm_of_physical_lone_ltwo
       (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
     (f : Euclidean (n + 1) → Complex) hp hqpos
     (q3PhysicalCrossedConstant (surfaceMass (n + 1) * D * R) B q) hmoment_norm
+    (measurable_unnormalizedFractalDyadicBandpassMaximal E
+      (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable
 
 /-- The same physical crossed estimate without a positivity side condition
 on the input moment.  The zero-moment branch is discharged directly from the
@@ -1524,6 +1540,8 @@ theorem q3_rational_schwartz_crossed_eLpNorm_of_physical_lone_ltwo_homogeneous
       (f : Euclidean (n + 1) → Complex) hp hqpos
       (q3PhysicalCrossedConstant (surfaceMass (n + 1) * D * R) B q) (by
         simpa only [J] using hmoment_norm)
+      (measurable_unnormalizedFractalDyadicBandpassMaximal E
+        (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable
 
 /-- The all-literal `Q₃` fixed-dyadic estimate.  The cover supplies the
 square coefficient and the physical shell argument supplies the `D * R`
@@ -2306,16 +2324,6 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
       q4ActDyScNormdDerivFullProdPairShell_eLpNorm_le_levelSum_of_act_mult_homogeneous
         hd hj hE hcover hCcover hgamma hdeltaone u hu psi hpsiCompact hCkernel hdecay hpsiFam hB
         hmultiplier hp1 hp2 hq Gproduct hGmeas hGint hGsq hGfib hGpower rfl
-  have hfull' : eLpNorm
-      (q4FiniteProductKernelShell volume s (fun _ _ => True)
-        (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) Gproduct)
-      (ENNReal.ofReal q) (q4FiniteProductCountingMeasure volume s) <=
-      L * eLpNorm Gproduct (ENNReal.ofReal p)
-        (q4FiniteProductCountingMeasure volume s) := by
-    simpa only [eLpNorm_norm,
-      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
-      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
-      q4PowerDualTest] using hfull
   have houtmeas : AEStronglyMeasurable
       (q4FiniteProductKernelShell volume s (fun _ _ => True)
         (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) Gproduct)
@@ -2326,6 +2334,17 @@ theorem q4ActiveDyadicScaledNormalizedDerivative_analysis_rootMoment_le_of_activ
       q4PowerDualTest] using
       aestronglyMeasurable_q4ActiveDyadicScaledNormdDerivFullKernelPowerDualProduct
         E j psi hpsiCompact u q hqtwo f
+  have hfull' : eLpNorm
+      (q4FiniteProductKernelShell volume s (fun _ _ => True)
+        (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) Gproduct)
+      (ENNReal.ofReal q) (q4FiniteProductCountingMeasure volume s) <=
+      L * eLpNorm Gproduct (ENNReal.ofReal p)
+        (q4FiniteProductCountingMeasure volume s) := by
+    rw [← eLpNorm_norm _ houtmeas]
+    simpa only [
+      q4ActiveDyadicScaledNormalizedDerivativeSchwartzAnalysisField_eq,
+      q4ActiveDyadicScaledNormalizedDerivativePowerDualProductField,
+      q4PowerDualTest] using hfull
   have hout : ∀ i ∈ s, MemLp
       (q4FiniteProductToFibres s
         (q4FiniteProductKernelShell volume s (fun _ _ => True)
@@ -3368,7 +3387,14 @@ theorem q4MeasurableActiveDyadicEndpointPiece_eLpNorm_le_of_active_multiplier
   have hnorm := eLpNorm_le_of_rpow_root_moment volume
     (fun x => ‖q4MeasurableActiveDyadicEndpointPiece E j hs psi f x‖)
     hqpos hmem (by simpa only [norm_norm] using hroot)
-  simpa only [eLpNorm_norm] using hnorm
+  have hpiece : AEStronglyMeasurable (q4MeasurableActiveDyadicEndpointPiece E j hs psi f)
+      volume :=
+    ((measurable_from_prod_countable_right
+      (f := fun z : Int × Euclidean d => q4DyadicSurfacePiece psi f (dyadicLeft j z.1) z.2)
+      fun i => (continuous_q4DyadicSurfacePiece psi f (dyadicLeft j i)).measurable).comp
+      ((measurable_measurableActiveDyadicQ4EndpointSelector E j hs psi f).prodMk
+        measurable_id)).aestronglyMeasurable
+  rwa [eLpNorm_norm _ hpiece] at hnorm
 
 end
 end Former_Q4ActualEndpointTTStar
@@ -3960,16 +3986,14 @@ theorem q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimension_eq
   have hinputTop :
       eLpNorm (f : Euclidean (n + 1) → Complex)
         (ENNReal.ofReal p) volume < ∞ :=
-    (f.memLp (ENNReal.ofReal p) volume).2
+    f.memLp (ENNReal.ofReal p) volume
   have hnormTop :
       eLpNorm (fractalDyadicBandpassMaximal (n + 1) E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
         (ENNReal.ofReal q) volume < ∞ :=
     lt_of_le_of_lt hnorm' (ENNReal.mul_lt_top hfactorTop hinputTop)
   refine ⟨?_, hnorm'⟩
-  exact ⟨(measurable_fractalDyadicBandpassMaximal E
-    (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable,
-    hnormTop⟩
+  exact hnormTop
 
 end
 end Former_MinkowskiQ3PhysicalRate
@@ -5142,16 +5166,14 @@ theorem circle_q3_physical_strict_normalized_dyadic_rate_of_upperMinkowskiDimens
     ENNReal.mul_lt_top hCtop (ENNReal.pow_lt_top hrhotop)
   have hinputTop :
       eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume < ∞ :=
-    (f.memLp (ENNReal.ofReal p) volume).2
+    f.memLp (ENNReal.ofReal p) volume
   have hnormTop :
       eLpNorm (fractalDyadicBandpassMaximal 2 E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
         (ENNReal.ofReal q) volume < ∞ :=
     lt_of_le_of_lt hnorm (ENNReal.mul_lt_top hfactorTop hinputTop)
   refine ⟨?_, hnorm⟩
-  exact ⟨(measurable_fractalDyadicBandpassMaximal E
-    (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable,
-    hnormTop⟩
+  exact hnormTop
 
 end
 end Former_CircleQ3PhysicalRate

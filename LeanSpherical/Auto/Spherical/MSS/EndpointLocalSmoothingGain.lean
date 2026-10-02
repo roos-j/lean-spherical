@@ -3246,8 +3246,7 @@ private theorem aux_memLp_four_dyadicHalfWaveSpaceTime_of_gain
       ENNReal.ofReal (A * (2 : Real) ^ ((j : Real) * (1 / 2 - 1 / 4 - ρ))) *
         eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal (4 : Real)) volume < ∞ :=
     ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfmem.eLpNorm_lt_top
-  refine ⟨_root_.Auto.Spherical.MSS.aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f,
-    hmain.trans_lt hright⟩
+  exact hmain.trans_lt hright
 
 private theorem aux_integrable_norm_pow_four_dyadicHalfWaveSpaceTime_of_gain
     (C : _root_.Auto.LittlewoodPaley.lpCutoffs 2)

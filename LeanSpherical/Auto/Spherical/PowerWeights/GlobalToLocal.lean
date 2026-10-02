@@ -400,20 +400,20 @@ theorem neg_dim_lt_alpha_of_restrictedStrongType
       ((Metric.closedBall (0 : Euclidean d) ε).indicator
         (fun _ : Euclidean d => (1 : ENNReal)))
       (ENNReal.ofReal p) (powerWeightedVolume d α) = ∞ := by
-    rw [eLpNorm_indicator_const measurableSet_closedBall hpnz ENNReal.ofReal_ne_top,
+    rw [eLpNorm_indicator_const measurableSet_closedBall.nullMeasurableSet hpnz ENNReal.ofReal_ne_top,
       hμball, ENNReal.top_rpow_of_pos hpexp]
     simp
   have hlower : ∞ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d E
       (f : Euclidean d → ℂ)) (ENNReal.ofReal p) (powerWeightedVolume d α) := by
     rw [← hindicator]
-    apply eLpNorm_mono_enorm
+    apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator measurableSet_closedBall)
     intro x
     by_cases hx : x ∈ Metric.closedBall (0 : Euclidean d) ε
     · rw [Set.indicator_of_mem hx]
       exact hMf x hx
     · rw [Set.indicator_of_notMem hx]
       simp
-  exact (not_lt_of_ge hlower hMmem.2)
+  exact (not_lt_of_ge hlower hMmem)
 
 /-- The exact testing inequality used by the sharp Knapp construction.
 
@@ -445,11 +445,11 @@ theorem restrictedStrongType_knapp_test_bound
     a * (powerWeightedVolume d α A) ^ (1 / (ENNReal.ofReal p).toReal) =
         eLpNorm (A.indicator (fun _ : Euclidean d => a))
           (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      rw [eLpNorm_indicator_const hAmeas hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hAmeas.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       simp
     _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d E
         (f : Euclidean d → ℂ)) (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hAmeas)
       intro x
       by_cases hx : x ∈ A
       · rw [Set.indicator_of_mem hx]
@@ -539,11 +539,11 @@ theorem restrictedStrongType_knapp_entropy_test_bound_of_bound
         mul_le_mul_left (ENNReal.rpow_le_rpow hvolume hq) a
     _ = eLpNorm (A.indicator (fun _ : Euclidean d => a))
         (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      rw [eLpNorm_indicator_const hAmeas hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hAmeas.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       simp
     _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d E
         (f : Euclidean d → ℂ)) (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hAmeas)
       intro x
       by_cases hx : x ∈ A
       · rw [Set.indicator_of_mem hx]
@@ -777,7 +777,7 @@ theorem eLpNorm_schwartz_shell_le
     eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) (powerWeightedVolume d α) ≤
         eLpNorm (A.indicator (fun _ : Euclidean d => (2 : ℂ)))
           (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono f.continuous.aestronglyMeasurable
       intro x
       by_cases hx : x ∈ A
       · rw [Set.indicator_of_mem hx]
@@ -797,7 +797,7 @@ theorem eLpNorm_schwartz_shell_le
           simp [hf_outer x hnorm]
     _ = 2 * (powerWeightedVolume d α A) ^
           (1 / (ENNReal.ofReal p).toReal) := by
-      rw [eLpNorm_indicator_const hAmeas hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hAmeas.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       norm_num [enorm]
     _ = 2 * (powerWeightedVolume d α
         (euclideanAnnulus d (r - 2 * ε) (r + 2 * ε))) ^
@@ -845,11 +845,11 @@ theorem strongType_bound_forces_ball_le_shell
           eLpNorm ((Metric.closedBall (0 : Euclidean d) ε).indicator
             (fun _ : Euclidean d => (1 : ENNReal)))
             (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-        rw [eLpNorm_indicator_const measurableSet_closedBall hp0 ENNReal.ofReal_ne_top]
+        rw [eLpNorm_indicator_const measurableSet_closedBall.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
         simp
       _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d E
           (f : Euclidean d → ℂ)) (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-        apply eLpNorm_mono_enorm
+        apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator measurableSet_closedBall)
         intro x
         by_cases hx : x ∈ Metric.closedBall (0 : Euclidean d) ε
         · rw [Set.indicator_of_mem hx]
@@ -1719,14 +1719,15 @@ theorem HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType.union
         eLpNorm (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) +
           restrictedNormalizedSphericalMaximal d F (f : Euclidean d → ℂ))
           (ENNReal.ofReal p) (powerWeightedVolume d α) :=
-      eLpNorm_mono_enorm fun x => by
+      eLpNorm_mono_enorm
+        (measurable_restrictedNormalizedSphericalMaximal (E ∪ F) _ f.continuous).aestronglyMeasurable fun x => by
         simpa using restrictedNormalizedSphericalMaximal_union_le E F
           (f : Euclidean d → ℂ) x
     _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ))
           (ENNReal.ofReal p) (powerWeightedVolume d α) +
         eLpNorm (restrictedNormalizedSphericalMaximal d F (f : Euclidean d → ℂ))
           (ENNReal.ofReal p) (powerWeightedVolume d α) :=
-      eLpNorm_add_le hME.1 hMF.1 hpENN
+      eLpNorm_add_le hpENN
     _ ≤ ENNReal.ofReal CE * eLpNorm (f : Euclidean d → ℂ)
           (ENNReal.ofReal p) (powerWeightedVolume d α) +
         ENNReal.ofReal CF * eLpNorm (f : Euclidean d → ℂ)
@@ -1838,14 +1839,14 @@ theorem eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
     {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (g : X → ℝ) {p : ℝ} (hp : 0 < p) (hg : ∀ x, 0 ≤ g x)
     {Q : ENNReal}
-    (hQ : (∫⁻ x, ENNReal.ofReal ((g x) ^ p) ∂μ) ≤ Q) :
+    (hQ : (∫⁻ x, ENNReal.ofReal ((g x) ^ p) ∂μ) ≤ Q) (hgm : AEStronglyMeasurable g μ) :
     eLpNorm g (ENNReal.ofReal p) μ ≤ Q ^ p⁻¹ := by
   have hp0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
   have hptop : ENNReal.ofReal p ≠ ∞ := ENNReal.ofReal_ne_top
   have heq :
       eLpNorm g (ENNReal.ofReal p) μ =
         (∫⁻ x, ENNReal.ofReal ((g x) ^ p) ∂μ) ^ p⁻¹ := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hgm]
     simp only [ENNReal.toReal_ofReal hp.le, one_div]
     congr 1
     apply lintegral_congr
@@ -1879,12 +1880,12 @@ theorem eLpNorm_finset_sum_real_nonneg_le_of_lintegral_bounds
           filter_upwards with x
           simp
     _ ≤ ∑ i ∈ S, eLpNorm (g i) (ENNReal.ofReal p) μ :=
-      eLpNorm_sum_le (f := g) (s := S) (fun i _ => hgmeas i) hpENN
+      eLpNorm_sum_le (f := g) (s := S) hpENN
     _ ≤ ∑ i ∈ S, (Q i) ^ p⁻¹ := by
       apply Finset.sum_le_sum
       intro i hi
       exact eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
-        μ (g i) hp0 (hgnonneg i) (hQ i)
+        μ (g i) hp0 (hgnonneg i) (hQ i) (hgmeas i)
 
 /-- The finite Minkowski reassembly in the form used for a tail of dyadic
 frequencies: estimates are required only at the indices which occur in the
@@ -1909,12 +1910,12 @@ theorem eLpNorm_finset_sum_real_nonneg_le_of_lintegral_bounds_on
           filter_upwards with x
           simp
     _ ≤ ∑ i ∈ S, eLpNorm (g i) (ENNReal.ofReal p) μ :=
-      eLpNorm_sum_le (f := g) (s := S) hgmeas hpENN
+      eLpNorm_sum_le (f := g) (s := S) hpENN
     _ ≤ ∑ i ∈ S, (Q i) ^ p⁻¹ := by
       apply Finset.sum_le_sum
       intro i hi
       exact eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
-        μ (g i) hp0 (hgnonneg i hi) (hQ i hi)
+        μ (g i) hp0 (hgnonneg i hi) (hQ i hi) (hgmeas i hi)
 
 /-- One literal annular smooth-dyadic piece, with the radius set restricted
 to a single multiplicative interval.  The hypothesis is the local form of
@@ -2907,11 +2908,11 @@ theorem eLpNorm_restrictedRelativeCutoff_le_lowpass_add_band_sum
   refine ⟨hPmem, ?_⟩
   calc
     eLpNorm P (ENNReal.ofReal p) μ ≤ eLpNorm (L + S) (ENNReal.ofReal p) μ := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm hPmeas
       intro x
       simpa only [enorm_eq_self, Pi.add_apply] using hpoint x
     _ ≤ eLpNorm L (ENNReal.ofReal p) μ + eLpNorm S (ENNReal.ofReal p) μ :=
-      eLpNorm_add_le (by simpa only [L] using hlow.1) hSmem.1 hpENN
+      eLpNorm_add_le hpENN
     _ ≤ eLpNorm L (ENNReal.ofReal p) μ +
         ∑ j ∈ Finset.range N, eLpNorm (B j) (ENNReal.ofReal p) μ := by
       apply add_le_add_right
@@ -2922,8 +2923,7 @@ theorem eLpNorm_restrictedRelativeCutoff_le_lowpass_add_band_sum
               filter_upwards with x
               simp only [S, Finset.sum_apply]
         _ ≤ ∑ j ∈ Finset.range N, eLpNorm (B j) (ENNReal.ofReal p) μ :=
-          eLpNorm_sum_le (f := B) (s := Finset.range N)
-            (fun j hj => (hband j hj).1) hpENN
+          eLpNorm_sum_le (f := B) (s := Finset.range N) hpENN
 
 /-- A finite relative cutoff has the expected moment estimate once the
 literal lowpass term and its literal smooth dyadic bands have been bounded.
@@ -2972,12 +2972,12 @@ theorem restrictedRelativeCutoff_lintegral_rpow_le_of_lowpass_and_band_bounds
       hphi_compact N f hlow.1 (fun j hj => (hband j hj).1)
   have hPnorm : eLpNorm P (ENNReal.ofReal p) μ = J ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hPmem.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, enorm_eq_self, J]
     rw [one_div]
   have hfnorm : eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) μ = I ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm, I]
     rw [one_div]
   have hnorm : eLpNorm P (ENNReal.ofReal p) μ ≤
@@ -3002,7 +3002,7 @@ theorem restrictedRelativeCutoff_lintegral_rpow_le_of_lowpass_and_band_bounds
           rw [add_mul, Finset.sum_mul]
   refine ⟨?_, ?_⟩
   · exact ENNReal.continuous_rpow_const.aemeasurable.comp_aemeasurable
-      hPmem.1.aemeasurable
+      hPmem.aestronglyMeasurable.aemeasurable
   · have hroot : J ^ p⁻¹ ≤ K * I ^ p⁻¹ := by
       simpa only [hPnorm, hfnorm] using hnorm
     calc
@@ -3512,13 +3512,14 @@ theorem hasRestrictedNormdSphericalMaximalPowerWeightStrongType_of_uniform_relCu
   have hMnorm : eLpNorm M (ENNReal.ofReal p) μ =
       (∫⁻ x : Euclidean d, (M x) ^ p ∂μ) ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top
+      (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, enorm_eq_self]
     rw [one_div]
   have hInorm : eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) μ = I ^ p⁻¹ := by
     dsimp only [I]
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm]
     rw [one_div]
   have hnormD : eLpNorm M (ENNReal.ofReal p) μ ≤
@@ -3550,7 +3551,7 @@ theorem hasRestrictedNormdSphericalMaximalPowerWeightStrongType_of_uniform_relCu
   have hMmeas : AEStronglyMeasurable M μ := by
     dsimp only [M]
     exact (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).aestronglyMeasurable
-  exact ⟨⟨hMmeas, hMtop⟩, hnorm⟩
+  exact ⟨hMtop, hnorm⟩
 
 end
 
@@ -3834,11 +3835,23 @@ theorem eLpNorm_ennreal_eq_eLpNorm_toReal_complex_of_forall_ne_top
     {X : Type*} [MeasurableSpace X] (F : X → ENNReal) (q : ENNReal)
     (μ : Measure X) (hF : ∀ x, F x ≠ ∞) :
     eLpNorm F q μ = eLpNorm (fun x => ((F x).toReal : ℂ)) q μ := by
-  apply eLpNorm_congr_enorm_ae
-  filter_upwards with x
-  rw [enorm_eq_self, ← ofReal_norm]
-  simpa only [Complex.norm_real, Real.norm_eq_abs,
-    abs_of_nonneg ENNReal.toReal_nonneg] using (ENNReal.ofReal_toReal (hF x)).symm
+  by_cases hm : AEStronglyMeasurable F μ
+  · apply eLpNorm_congr_enorm_ae hm
+      (Complex.measurable_ofReal.comp_aemeasurable
+        hm.aemeasurable.ennreal_toReal).aestronglyMeasurable
+    filter_upwards with x
+    rw [enorm_eq_self, ← ofReal_norm]
+    simpa only [Function.comp_apply, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg ENNReal.toReal_nonneg] using (ENNReal.ofReal_toReal (hF x)).symm
+  · have hg : ¬ AEStronglyMeasurable (fun x => ((F x).toReal : ℂ)) μ := by
+      intro hg
+      apply hm
+      have hre : AEMeasurable
+          (fun x => ENNReal.ofReal (((F x).toReal : ℂ)).re) μ :=
+        (Complex.measurable_re.comp_aemeasurable hg.aemeasurable).ennreal_ofReal
+      refine (hre.congr (Filter.Eventually.of_forall fun x => ?_)).aestronglyMeasurable
+      simp only [Complex.ofReal_re, ENNReal.ofReal_toReal (hF x)]
+    rw [eLpNorm_of_not_aestronglyMeasurable hm, eLpNorm_of_not_aestronglyMeasurable hg]
 
 /-- The finite `ENNReal`/complex conversion also preserves `MemLp` when the
 original function is measurable. -/
@@ -4322,7 +4335,7 @@ theorem restrictedNormalizedSphericalMaximal_memLp_and_eLpNorm_le_tsum_dyadic_bl
     calc
       eLpNorm (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ)) q μ ≤
           eLpNorm (H : Euclidean d → ℂ) q μ :=
-        eLpNorm_mono_enorm_ae hMleH
+        eLpNorm_mono_enorm_ae hMmeas hMleH
       _ = ENNReal.ofReal ‖H‖ := by
         rw [Lp.norm_def H]
         exact (ENNReal.ofReal_toReal hHmem.eLpNorm_ne_top).symm
@@ -4357,7 +4370,7 @@ theorem lintegral_iSup_rpow_le_tsum_lintegral_rpow
           symm
           rw [← ENNReal.rpow_mul, mul_one_div_cancel hp.ne', ENNReal.rpow_one]
         _ ≤ (∑' l : ℤ, (B l x) ^ p) ^ (1 / p) :=
-          ENNReal.rpow_le_rpow (ENNReal.le_tsum k) (one_div_nonneg.mpr hp.le)
+          ENNReal.rpow_le_rpow (ENNReal.le_tsum (f := fun l => (B l x) ^ p) k) (one_div_nonneg.mpr hp.le)
     calc
       (⨆ k : ℤ, B k x) ^ p ≤ ((∑' k : ℤ, (B k x) ^ p) ^ (1 / p)) ^ p :=
         ENNReal.rpow_le_rpow hroot hp.le
@@ -4374,11 +4387,11 @@ theorem lintegral_iSup_rpow_le_tsum_lintegral_rpow
 range is its usual `p`-moment raised to `1 / p`. -/
 theorem eLpNorm_ennreal_eq_lintegral_rpow
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (B : X → ENNReal)
-    (p : ℝ) (hp : 0 < p) :
+    (p : ℝ) (hp : 0 < p) (hB : AEStronglyMeasurable B μ) :
     eLpNorm B (ENNReal.ofReal p) μ =
       (∫⁻ x, (B x) ^ p ∂μ) ^ (1 / p) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hB]
   simp only [ENNReal.toReal_ofReal hp.le, enorm_eq_self]
 
 /-- Raising a finite-exponent strong-type estimate to the `p`-th power gives
@@ -4386,10 +4399,11 @@ the corresponding nonnegative `p`-moment estimate.  Keeping this elementary
 conversion in ENNReal form avoids choosing real representatives of maximal
 functions during the spatial-shell argument. -/
 theorem lintegral_enorm_rpow_le_of_eLpNorm_le
-    {X E F : Type*} [MeasurableSpace X] [ENorm E] [ENorm F]
+    {X E F : Type*} [MeasurableSpace X] [ENorm E] [ENorm F] [TopologicalSpace E] [TopologicalSpace F]
     (μ : Measure X) {p : ℝ} (hp : 0 < p) (A : ENNReal)
     (u : X → E) (v : X → F)
-    (h : eLpNorm u (ENNReal.ofReal p) μ ≤ A * eLpNorm v (ENNReal.ofReal p) μ) :
+    (h : eLpNorm u (ENNReal.ofReal p) μ ≤ A * eLpNorm v (ENNReal.ofReal p) μ)
+    (hum : AEStronglyMeasurable u μ) (hvm : AEStronglyMeasurable v μ) :
     (∫⁻ x, ‖u x‖ₑ ^ p ∂μ) ≤
       A ^ p * (∫⁻ x, ‖v x‖ₑ ^ p ∂μ) := by
   have hp0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
@@ -4397,7 +4411,7 @@ theorem lintegral_enorm_rpow_le_of_eLpNorm_le
   have hu :
       (∫⁻ x, ‖u x‖ₑ ^ p ∂μ) =
         (eLpNorm u (ENNReal.ofReal p) μ) ^ p := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hum]
     simp only [ENNReal.toReal_ofReal hp.le]
     rw [← ENNReal.rpow_mul]
     field_simp
@@ -4406,7 +4420,7 @@ theorem lintegral_enorm_rpow_le_of_eLpNorm_le
       (A * eLpNorm v (ENNReal.ofReal p) μ) ^ p =
         A ^ p * (∫⁻ x, ‖v x‖ₑ ^ p ∂μ) := by
     rw [ENNReal.mul_rpow_of_nonneg _ _ hp.le,
-      eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+      eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hvm]
     simp only [ENNReal.toReal_ofReal hp.le]
     rw [← ENNReal.rpow_mul]
     field_simp
@@ -5716,7 +5730,10 @@ private theorem dyadicSpatialInner_shell_bound {d : ℕ} (E : Set ℝ) {p α : �
     simpa only [M, enorm_eq_self] using
       (lintegral_enorm_rpow_le_of_eLpNorm_le volume hp U
         (restrictedNormalizedSphericalMaximal d E (g : Euclidean d → ℂ))
-        (g : Euclidean d → ℂ) (hU g))
+        (g : Euclidean d → ℂ) (hU g)
+        (measurable_restrictedNormalizedSphericalMaximal E
+          (g : Euclidean d → ℂ) g.continuous).aestronglyMeasurable
+        g.continuous.aestronglyMeasurable)
   have hR : 0 < (2 : ℝ) ^ j := zpow_pos (by norm_num) _
   have hann : MeasurableSet
       (euclideanAnnulus d ((2 : ℝ) ^ j) ((2 : ℝ) ^ (j + 1))) :=
@@ -5805,7 +5822,10 @@ private theorem tsum_physicalBlock_moments_le {d : ℕ} (E : Set ℝ) {p : ℝ}
           (restrictedNormalizedSphericalMaximal d
             (E ∩ Icc ((2 : ℝ) ^ k) ((2 : ℝ) ^ (k + 1)))
             (g k : Euclidean d → ℂ))
-          (g k : Euclidean d → ℂ) (hblock k (g k) (hgsupport k) (hg k)))
+          (g k : Euclidean d → ℂ) (hblock k (g k) (hgsupport k) (hg k))
+          (measurable_restrictedNormalizedSphericalMaximal _
+            (g k : Euclidean d → ℂ) (g k).continuous).aestronglyMeasurable
+          (g k).continuous.aestronglyMeasurable)
     _ = A ^ p * (∑' k : ℤ, ∫⁻ x, ‖g k x‖ₑ ^ p ∂μ) :=
       ENNReal.tsum_mul_left
 
@@ -6425,7 +6445,7 @@ private theorem hasStrongType_of_moment_bound_globalToLocal
   have hIlt : I < ∞ := by
     have h := lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
       (μ := μ) (f := (f : Euclidean d → ℂ))
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hf.2
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hf
     simpa only [I, ENNReal.toReal_ofReal hp0.le] using h
   have hJle : J ≤ K * I := by
     simpa only [J, I, M, μ] using hmoment f hf
@@ -6436,19 +6456,18 @@ private theorem hasStrongType_of_moment_bound_globalToLocal
     exact measurable_restrictedNormalizedSphericalMaximal E
       (f : Euclidean d → ℂ) f.continuous
   have hMmem : MemLp M (ENNReal.ofReal p) μ := by
-    refine ⟨hMmeas.aestronglyMeasurable, ?_⟩
     apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top
       (μ := μ) (f := M) (ENNReal.ofReal_ne_zero_iff.mpr hp0)
-      ENNReal.ofReal_ne_top).mpr
+      ENNReal.ofReal_ne_top hMmeas.aestronglyMeasurable).mpr
     simpa only [ENNReal.toReal_ofReal hp0.le, enorm_eq_self] using hJlt
   have hfNorm : eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) μ =
       I ^ (1 / p) := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hp0.le, I]
   have hMnorm : eLpNorm M (ENNReal.ofReal p) μ ≤
       L * eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) μ := by
-    rw [eLpNorm_ennreal_eq_lintegral_rpow μ M p hp0]
+    rw [eLpNorm_ennreal_eq_lintegral_rpow μ M p hp0 hMmeas.aestronglyMeasurable]
     calc
       J ^ (1 / p) ≤ (K * I) ^ (1 / p) :=
         ENNReal.rpow_le_rpow hJle (one_div_nonneg.mpr hp0.le)
@@ -6604,13 +6623,15 @@ theorem hasRestrNormdSphMaxPowWtStrType_of_unif_normd_buffered_relCutoff_and_unw
     have hMnorm : eLpNorm M (ENNReal.ofReal p) μ =
         (∫⁻ x : Euclidean d, (M x) ^ p ∂μ) ^ p⁻¹ := by
       rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top
+        (measurable_restrictedNormalizedSphericalMaximal_schwartz
+          (normalizedRadiusBlock E R) g).aestronglyMeasurable]
       simp only [ENNReal.toReal_ofReal hpNN, enorm_eq_self]
       rw [one_div]
     have hInorm : eLpNorm (g : Euclidean d → ℂ) (ENNReal.ofReal p) μ = I ^ p⁻¹ := by
       dsimp only [I]
       rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top g.continuous.aestronglyMeasurable]
       simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm]
       rw [one_div]
     have hnormD : eLpNorm M (ENNReal.ofReal p) μ ≤
@@ -6645,7 +6666,7 @@ theorem hasRestrNormdSphMaxPowWtStrType_of_unif_normd_buffered_relCutoff_and_unw
       exact
         (measurable_restrictedNormalizedSphericalMaximal_schwartz
           (normalizedRadiusBlock E R) g).aestronglyMeasurable
-    exact ⟨⟨hMmeas, hMtop⟩, hnorm⟩
+    exact ⟨hMtop, hnorm⟩
   have hUbound (g : SchwartzMap (Euclidean d) ℂ) :
       eLpNorm (restrictedNormalizedSphericalMaximal d E (g : Euclidean d → ℂ))
         (ENNReal.ofReal p) volume ≤
@@ -6742,13 +6763,15 @@ theorem hasRestrNormdSphMaxPowWtStrType_of_unif_normd_buffered_raw_moment_and_un
     have hMnorm : eLpNorm M (ENNReal.ofReal p) μ =
         (∫⁻ x : Euclidean d, (M x) ^ p ∂μ) ^ p⁻¹ := by
       rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top
+        (measurable_restrictedNormalizedSphericalMaximal_schwartz
+          (normalizedRadiusBlock E R) g).aestronglyMeasurable]
       simp only [ENNReal.toReal_ofReal hpNN, enorm_eq_self]
       rw [one_div]
     have hInorm : eLpNorm (g : Euclidean d → ℂ) (ENNReal.ofReal p) μ = I ^ p⁻¹ := by
       dsimp only [I]
       rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+        (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top g.continuous.aestronglyMeasurable]
       simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm]
       rw [one_div]
     have hnormD : eLpNorm M (ENNReal.ofReal p) μ ≤
@@ -6782,7 +6805,7 @@ theorem hasRestrNormdSphMaxPowWtStrType_of_unif_normd_buffered_raw_moment_and_un
       exact
         (measurable_restrictedNormalizedSphericalMaximal_schwartz
           (normalizedRadiusBlock E R) g).aestronglyMeasurable
-    exact ⟨⟨hMmeas, hMtop⟩, hnorm⟩
+    exact ⟨hMtop, hnorm⟩
   have hUbound (g : SchwartzMap (Euclidean d) ℂ) :
       eLpNorm (restrictedNormalizedSphericalMaximal d E (g : Euclidean d → ℂ))
         (ENNReal.ofReal p) volume ≤

@@ -654,7 +654,7 @@ theorem q4_schwartzConvolution_ae_eq_l2FourierMultiplier
   have hh : MemLp h 2 volume := by
     change MemLp ((m : Euclidean d -> Complex) • Fg) 2 volume
     simpa only [Pi.smul_apply, smul_eq_mul] using
-      (MemLp.smul hFgTop (m.memLp 2 volume))
+      (MemLp.smul (m.memLp 2 volume) hFgTop)
   have hproductLp :
       ((m.toLp 2 volume) • (hFgTop.toLp Fg) :
         Lp Complex 2 (volume : Measure (Euclidean d))) = hh.toLp h := by
@@ -4216,36 +4216,18 @@ theorem q4FibreLpMoment_root_le_of_product_eLpNorm
       Integrable (fun x => ‖q4FiniteProductToFibres s inn i x‖ ^ qdual) mu)
     (hstrong : eLpNorm out (ENNReal.ofReal q) (q4FiniteProductCountingMeasure mu s) ≤
       ENNReal.ofReal D *
-        eLpNorm inn (ENNReal.ofReal qdual) (q4FiniteProductCountingMeasure mu s)) :
+        eLpNorm inn (ENNReal.ofReal qdual) (q4FiniteProductCountingMeasure mu s))
+    (hinnm : AEStronglyMeasurable inn (q4FiniteProductCountingMeasure mu s)) :
     (q4FibreLpMoment mu s q (q4FiniteProductToFibres s out)) ^ (1 / q) ≤
       D * (q4FibreLpMoment mu s qdual (q4FiniteProductToFibres s inn)) ^ (1 / qdual) := by
-  have houtpow := q4FiniteProductCountingMeasure_eLpNorm_pow_eq_fibreLpMoment
-    mu s out hq houtmeas houtfib
   have hinpow := q4FiniteProductCountingMeasure_eLpNorm_pow_eq_fibreLpMoment
-    mu s inn hqdual hinmeas hinfib
+    mu s inn hqdual hinmeas hinfib hinnm
   have houtnonneg : 0 ≤ q4FibreLpMoment mu s q
       (q4FiniteProductToFibres s out) :=
     q4FibreLpMoment_nonneg mu s q _
   have hinnonneg : 0 ≤ q4FibreLpMoment mu s qdual
       (q4FiniteProductToFibres s inn) :=
     q4FibreLpMoment_nonneg mu s qdual _
-  have hrootout :
-      ENNReal.ofReal
-        ((q4FibreLpMoment mu s q (q4FiniteProductToFibres s out)) ^ (1 / q)) =
-        eLpNorm out (ENNReal.ofReal q) (q4FiniteProductCountingMeasure mu s) := by
-    calc
-      ENNReal.ofReal
-          ((q4FibreLpMoment mu s q (q4FiniteProductToFibres s out)) ^ (1 / q)) =
-          (ENNReal.ofReal
-            (q4FibreLpMoment mu s q (q4FiniteProductToFibres s out))) ^ (1 / q) :=
-        (ENNReal.ofReal_rpow_of_nonneg houtnonneg (by positivity)).symm
-      _ =
-          ((eLpNorm out (ENNReal.ofReal q)
-            (q4FiniteProductCountingMeasure mu s)) ^ q) ^ (1 / q) := by
-        rw [houtpow]
-      _ = eLpNorm out (ENNReal.ofReal q) (q4FiniteProductCountingMeasure mu s) := by
-        rw [← ENNReal.rpow_mul, show q * (1 / q) = 1 by field_simp [hq.ne'],
-          ENNReal.rpow_one]
   have hrootin :
       ENNReal.ofReal
         ((q4FibreLpMoment mu s qdual (q4FiniteProductToFibres s inn)) ^ (1 / qdual)) =
@@ -4263,6 +4245,30 @@ theorem q4FibreLpMoment_root_le_of_product_eLpNorm
         rw [hinpow]
       _ = eLpNorm inn (ENNReal.ofReal qdual) (q4FiniteProductCountingMeasure mu s) := by
         rw [← ENNReal.rpow_mul, show qdual * (1 / qdual) = 1 by field_simp [hqdual.ne'],
+          ENNReal.rpow_one]
+  by_cases houtm : AEStronglyMeasurable out (q4FiniteProductCountingMeasure mu s)
+  swap
+  · rw [eLpNorm_of_not_aestronglyMeasurable houtm, ← hrootin,
+      ← ENNReal.ofReal_mul hD, top_le_iff] at hstrong
+    exact absurd hstrong ENNReal.ofReal_ne_top
+  have houtpow := q4FiniteProductCountingMeasure_eLpNorm_pow_eq_fibreLpMoment
+    mu s out hq houtmeas houtfib houtm
+  have hrootout :
+      ENNReal.ofReal
+        ((q4FibreLpMoment mu s q (q4FiniteProductToFibres s out)) ^ (1 / q)) =
+        eLpNorm out (ENNReal.ofReal q) (q4FiniteProductCountingMeasure mu s) := by
+    calc
+      ENNReal.ofReal
+          ((q4FibreLpMoment mu s q (q4FiniteProductToFibres s out)) ^ (1 / q)) =
+          (ENNReal.ofReal
+            (q4FibreLpMoment mu s q (q4FiniteProductToFibres s out))) ^ (1 / q) :=
+        (ENNReal.ofReal_rpow_of_nonneg houtnonneg (by positivity)).symm
+      _ =
+          ((eLpNorm out (ENNReal.ofReal q)
+            (q4FiniteProductCountingMeasure mu s)) ^ q) ^ (1 / q) := by
+        rw [houtpow]
+      _ = eLpNorm out (ENNReal.ofReal q) (q4FiniteProductCountingMeasure mu s) := by
+        rw [← ENNReal.rpow_mul, show q * (1 / q) = 1 by field_simp [hq.ne'],
           ENNReal.rpow_one]
   have hstrong' :
       ENNReal.ofReal
@@ -4318,18 +4324,19 @@ theorem q4ActiveDyadicFullProduct_moment_le_of_stationary_geometric_level_bounds
           (q4ActiveDyadicPairKernel (psi j) j) g)
         (ENNReal.ofReal q) (q4ActiveDyadicProductCountingMeasure d E j) ≤
         C * rho ^ n * eLpNorm g (ENNReal.ofReal qdual)
-          (q4ActiveDyadicProductCountingMeasure d E j)) :
+          (q4ActiveDyadicProductCountingMeasure d E j))
+    (hgm : AEStronglyMeasurable g (q4ActiveDyadicProductCountingMeasure d E j)) :
     (q4FibreLpMoment volume (activeDyadicIndices E j) q
       (q4FiniteProductToFibres (activeDyadicIndices E j)
         (q4FiniteProductKernelShell volume (activeDyadicIndices E j) (fun _ _ => True)
           (q4ActiveDyadicPairKernel (psi j) j) g))) ^ (1 / q) ≤
       D * (q4FibreLpMoment volume (activeDyadicIndices E j) qdual
         (q4FiniteProductToFibres (activeDyadicIndices E j) g)) ^ (1 / qdual) := by
-  apply q4FibreLpMoment_root_le_of_product_eLpNorm
+  refine q4FibreLpMoment_root_le_of_product_eLpNorm
     volume (activeDyadicIndices E j)
     (q4FiniteProductKernelShell volume (activeDyadicIndices E j) (fun _ _ => True)
       (q4ActiveDyadicPairKernel (psi j) j) g) g
-    (lt_trans zero_lt_one hq) hqdual hD houtmeas hinmeas houtfib hinfib
+    (lt_trans zero_lt_one hq) hqdual hD houtmeas hinmeas houtfib hinfib ?_ hgm
   have hfull := q4ActiveDyadicFullProduct_eLpNorm_le_of_stationary_geometric_level_bounds
     hd hj hE psi hCstationary hstationary g
     (q := ENNReal.ofReal q) (p := ENNReal.ofReal qdual)
@@ -4667,7 +4674,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_endpointMoment
   calc
     eLpNorm (fractalDyadicBandpassMaximal d E psi f) (ENNReal.ofReal q) volume <=
         eLpNorm majorant (ENNReal.ofReal q) volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono hmax_mem.aestronglyMeasurable
       intro x
       change ‖fractalDyadicBandpassMaximal d E psi f x‖ <= ‖majorant x‖
       rw [Real.norm_eq_abs,
@@ -4677,8 +4684,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_endpointMoment
     _ <= eLpNorm (fun x => c * endpoint x) (ENNReal.ofReal q) volume +
         eLpNorm variation (ENNReal.ofReal q) volume := by
       change eLpNorm ((fun x => c * endpoint x) + variation) (ENNReal.ofReal q) volume <= _
-      exact eLpNorm_add_le (hendpoint_mem.const_mul c).1
-        (by simpa only [variation] using hvariation.1.1) hqENN
+      exact eLpNorm_add_le hqENN
     _ <= ENNReal.ofReal ‖(surfaceMass d : Complex)⁻¹‖ * ENNReal.ofReal A + B := by
       apply add_le_add hscaled_norm
       simpa only [variation] using hvariation.2
@@ -5170,6 +5176,18 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_stationary_geometric_TTStar
     filter_upwards with x
     rw [q4FiniteProductToFibres_fibresToProduct_apply
       (activeDyadicIndices E j) g0 i hi x]
+  have hgm : AEStronglyMeasurable g (q4ActiveDyadicProductCountingMeasure d E j) := by
+    let gm : {i // i ∈ activeDyadicIndices E j} → Euclidean d → Complex := fun i =>
+      (hinput_mem i.1 i.2).aestronglyMeasurable.mk (g0 i.1)
+    refine ⟨fun z => gm z.2 z.1, ?_, ?_⟩
+    · exact (measurable_from_prod_countable_left fun i =>
+        ((hinput_mem i.1 i.2).aestronglyMeasurable.stronglyMeasurable_mk).measurable)
+        |>.stronglyMeasurable
+    · have hall : ∀ᵐ x ∂(volume : Measure (Euclidean d)),
+          ∀ i : {i // i ∈ activeDyadicIndices E j}, g0 i.1 x = gm i x :=
+        ae_all_iff.mpr fun i => (hinput_mem i.1 i.2).aestronglyMeasurable.ae_eq_mk
+      filter_upwards [Measure.quasiMeasurePreserving_fst.ae hall] with z hz
+      exact hz z.2
   have hfullraw :=
     q4ActiveDyadicFullProduct_moment_le_of_stationary_geometric_level_bounds
       hd hj hE psi hCstationary (hstationary hpsiRadial) g
@@ -5179,7 +5197,7 @@ theorem fractalDyadicBandpassMaximal_eLpNorm_le_of_stationary_geometric_TTStar
       (by simpa only [g, g0] using houtmeas)
       hinfib houtfib
       (by simpa only [g, g0] using hmeas)
-      (by simpa only [g, g0] using hlevel)
+      (by simpa only [g, g0] using hlevel) hgm
   have hfullmoment :
       (q4FibreLpMoment volume (activeDyadicIndices E j) q
         (q4FiniteProductToFibres (activeDyadicIndices E j)
@@ -5258,7 +5276,8 @@ theorem q4_eLpNorm_le_of_crossed_power_moment
     (C : ENNReal)
     (hbound :
       (∫⁻ x, ENNReal.ofReal (‖T x‖ ^ q) ∂μ) ≤
-        C * (∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ) ^ (q / p)) :
+        C * (∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p ∂μ) ^ (q / p))
+    (hTm : AEStronglyMeasurable T μ) :
     eLpNorm T (ENNReal.ofReal q) μ ≤
       C ^ q⁻¹ * eLpNorm f (ENNReal.ofReal p) μ := by
   have hpE0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
@@ -5269,10 +5288,15 @@ theorem q4_eLpNorm_le_of_crossed_power_moment
   have hpinv : (1 : ℝ) / p = p⁻¹ := by field_simp
   have hpow : (q / p) * q⁻¹ = p⁻¹ := by
     field_simp [hp.ne', hq.ne']
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET,
-    ENNReal.toReal_ofReal hq.le, ENNReal.toReal_ofReal hp.le,
-    hqinv, hpinv]
+  have hfle : (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ p⁻¹ ≤ eLpNorm f (ENNReal.ofReal p) μ := by
+    by_cases hfm : AEStronglyMeasurable f μ
+    · rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET hfm,
+        ENNReal.toReal_ofReal hp.le, hpinv]
+    · rw [eLpNorm_of_not_aestronglyMeasurable hfm]
+      exact le_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET hTm,
+    ENNReal.toReal_ofReal hq.le, hqinv]
+  refine le_trans ?_ (mul_le_mul_right hfle _)
   have hTfun : (fun x => ‖T x‖ₑ ^ q) = fun x => ENNReal.ofReal (‖T x‖ ^ q) := by
     funext x
     rw [← ofReal_norm (T x), ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hq.le]
@@ -7134,6 +7158,9 @@ structure Q4FiniteProductCrossedEndpoints
         (fun y => K i l (x - y) * q4FiniteProductToFibres s g l y) μ
   B : ℝ
   hB : 0 ≤ B
+  hDoutputMeas : ∀ g : X × {i // i ∈ s} → ℂ,
+    g ∈ q4FiniteProductShellDomain μ s R K →
+      Measurable (q4FiniteProductKernelShell μ s R K g)
   hDoutput : ∀ g : X × {i // i ∈ s} → ℂ,
     g ∈ q4FiniteProductShellDomain μ s R K →
       Integrable (fun z => ‖q4FiniteProductKernelShell μ s R K g z‖ ^ (2 : ℕ))
@@ -7199,6 +7226,7 @@ theorem q4FiniteProductKernelShell_strong_offDiagonal_of_pairwise_endpoints
     (ENNReal.ofReal q *
       (4 * ENNReal.ofReal H.B * ((ENNReal.ofReal (q - 2))⁻¹ *
         (ENNReal.ofReal (2 * H.A)) ^ (q - 2)))) hmoment
+    (H.hDoutputMeas f hfD).aestronglyMeasurable
 
 /-- The preceding strict-interior estimate specialized to an actual active
 dyadic gap relation.  This short wrapper fixes both the physical measure and
@@ -7379,6 +7407,7 @@ noncomputable def Q4ActiveDyadicGapPairwiseEndpoints.toCrossedEndpoints
       hDpairmeas := H.hDpairmeas
       B := q4ActiveDyadicGapEnergyConstant γ η C H.B j n
       hB := sq_nonneg _
+      hDoutputMeas := H.hDoutputMeas
       hDoutput := H.hDoutput
       hDinput := H.hDinput
       henergy := ?_ }

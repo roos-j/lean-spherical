@@ -431,7 +431,7 @@ theorem eLpNorm_mul_le_four_four_two
       simpa using
         (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm
           (p := (4 : ENNReal)) (q := (4 : ENNReal)) (r := (2 : ENNReal))
-          hf hg (fun x y : Complex => x * y) 1
+          (fun x y : Complex => x * y) 1 continuous_mul hf hg
           (Filter.Eventually.of_forall fun x => by simp))
     _ = eLpNorm f 4 μ * eLpNorm g 4 μ := by simp
 
@@ -452,10 +452,7 @@ theorem eLpNorm_pointwiseNormSquare_sub_le
     eLpNorm ((u - v) * star u + v * star (u - v)) 2 μ ≤
         eLpNorm ((u - v) * star u) 2 μ +
           eLpNorm (v * star (u - v)) 2 μ :=
-      eLpNorm_add_le
-        (huv.aestronglyMeasurable.mul hstaru.aestronglyMeasurable)
-        (hv.aestronglyMeasurable.mul hstaruv.aestronglyMeasurable)
-        (by norm_num)
+      eLpNorm_add_le (by norm_num)
     _ ≤ eLpNorm (u - v) 4 μ * eLpNorm (star u) 4 μ +
           eLpNorm v 4 μ * eLpNorm (star (u - v)) 4 μ := by
       gcongr
@@ -1383,7 +1380,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope
       (scratch_memLp_complex_of_norm h hh)
   have hFnorm : eLpNorm F 2 volume = eLpNorm h 2 volume := by
     dsimp only [F]
-    exact scratch_eLpNorm_positiveSlab_eq h hslab 2
+    exact scratch_eLpNorm_positiveSlab_eq h hslab 2 hh.aestronglyMeasurable
   have hM : lightRayMaximal delta N g = lightRayMaximal delta N h := by
     simpa only [h] using
       scratch_lightRayMaximal_eq_lightRayTimeRestriction hdelta N (by omega) g hg
@@ -1391,7 +1388,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope
   let A : ENNReal := ENNReal.ofReal (C * L)
   by_cases hhnonzero : eLpNorm h 2 volume = 0
   · have hhae : h =ᵐ[volume] (fun _ : WaveSpaceTime => (0 : Complex)) :=
-      (eLpNorm_eq_zero_iff hh.aestronglyMeasurable (by norm_num)).mp hhnonzero
+      (eLpNorm_eq_zero_iff (by norm_num)).mp hhnonzero
     have hMhzero : lightRayMaximal delta N h = 0 := by
       calc
         lightRayMaximal delta N h =
@@ -1606,8 +1603,7 @@ theorem eLpNorm_pointwiseNormSquare_sub_le_linear_of_error_le_one
         change u x = (u x - v x) + v x
         abel
       _ <= eLpNorm (u - v) 4 μ + eLpNorm v 4 μ :=
-        eLpNorm_add_le (hu.sub hv).aestronglyMeasurable hv.aestronglyMeasurable
-          (by norm_num)
+        eLpNorm_add_le (by norm_num)
       _ = e + V := by rfl
   have hbase := eLpNorm_pointwiseNormSquare_sub_le u v hu hv
   change eLpNorm (pointwiseNormSquare u - pointwiseNormSquare v) 2 μ <=
@@ -1652,7 +1648,8 @@ theorem eLpNorm_four_sub_le_of_support_subset_and_uniform_complex
     (f g : X -> Complex)
     (hfsupp : Function.support f ⊆ S)
     (hgsupp : Function.support g ⊆ S)
-    {epsilon : Real} (huniform : ∀ x, dist (g x) (f x) ≤ epsilon) :
+    {epsilon : Real} (huniform : ∀ x, dist (g x) (f x) ≤ epsilon)
+    (hgf : AEStronglyMeasurable (g - f) μ) :
     eLpNorm (g - f) 4 μ ≤
       (μ S) ^ ((4 : ENNReal).toReal)⁻¹ * ENNReal.ofReal epsilon := by
   have hsubsupp : Function.support (g - f) ⊆ S := by
@@ -1669,12 +1666,12 @@ theorem eLpNorm_four_sub_le_of_support_subset_and_uniform_complex
       apply hgsupp
       rwa [Function.mem_support]
     exact hx (by simp [hfzero, hgzero])
-  rw [← eLpNorm_restrict_eq_of_support_subset hsubsupp]
+  rw [← eLpNorm_restrict_eq_of_support_subset hgf hsubsupp]
   have hbound : ∀ᵐ x ∂μ.restrict S, ‖(g - f) x‖ ≤ epsilon := by
     filter_upwards [ae_restrict_mem hSmeas] with x hx
     simpa only [Pi.sub_apply, dist_eq_norm] using huniform x
   simpa only [Measure.restrict_apply_univ, Set.univ_inter] using
-    (eLpNorm_le_of_ae_bound (μ := μ.restrict S) (p := (4 : ENNReal)) hbound)
+    (eLpNorm_le_of_ae_bound (μ := μ.restrict S) (p := (4 : ENNReal)) hgf.restrict hbound)
 
 /-- Allocate a positive uniform error whose finite-measure `L⁴` cost is
 below a prescribed tolerance. -/
@@ -1776,6 +1773,9 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
   have hL4le := eLpNorm_four_sub_le_of_support_subset_and_uniform_complex
     volume S hSmeas hSfinite u (smoothSpatialTensor U a)
     huSupportS hvSupport huniform'
+    ((continuous_smoothSpatialTensor U a
+      (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)).sub
+        hucont).aestronglyMeasurable
   have hcont : Continuous (smoothSpatialTensor U a) :=
     continuous_smoothSpatialTensor U a
       (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)
@@ -1870,8 +1870,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
               abel
       _ ≤ eLpNorm (v - u) 4 volume +
           eLpNorm (u - smoothSpatialTensor U a) 4 volume :=
-        eLpNorm_add_le hfirstMem.aestronglyMeasurable hsecondMem.aestronglyMeasurable
-          (by norm_num)
+        eLpNorm_add_le (by norm_num)
       _ < ENNReal.ofReal (epsilon / 2) + ENNReal.ofReal (epsilon / 2) :=
         ENNReal.add_lt_add huerr hverr
       _ = ENNReal.ofReal epsilon := by
@@ -1929,9 +1928,6 @@ theorem memLp_two_pointwiseNormSquare
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
     (u : X → Complex) (hu : MemLp u 4 μ) :
     MemLp (pointwiseNormSquare u) 2 μ := by
-  refine ⟨?_, ?_⟩
-  · unfold pointwiseNormSquare
-    exact hu.aestronglyMeasurable.mul hu.star.aestronglyMeasurable
   · unfold pointwiseNormSquare
     calc
       eLpNorm (u * star u) 2 μ ≤ eLpNorm u 4 μ * eLpNorm (star u) 4 μ :=
@@ -2279,10 +2275,11 @@ theorem scratch_eLpNorm_rawEnvelope_le_of_uniform_finiteEnvelope
     (hdom : ∀ j d x, ∫⁻ z, K j d x z * G z ∂muZ ≤ P j x)
     (hmeasP : ∀ M, Measurable (fun x => ∑ j ∈ Finset.range M, P j x))
     (hbound : ∀ M,
-      eLpNorm (fun x => ∑ j ∈ Finset.range M, P j x) 2 muX ≤ B) :
+      eLpNorm (fun x => ∑ j ∈ Finset.range M, P j x) 2 muX ≤ B)
+    (hrawMeas : AEStronglyMeasurable raw muX) :
     eLpNorm raw 2 muX ≤ B := by
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
-    (p := (2 : ENNReal)) (by norm_num) (by norm_num)
+    (p := (2 : ENNReal)) (by norm_num) (by norm_num) (hF := hrawMeas)
   · filter_upwards with x
     exact scratch_rawEnvelope_le_liminf_finiteEnvelope
       muZ K G raw directional P hmeasK hraw hdir hdom x
@@ -4238,7 +4235,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit
       (scratch_memLp_complex_of_norm h hh)
   have hFnorm : eLpNorm F 2 volume = eLpNorm h 2 volume := by
     dsimp only [F]
-    exact scratch_eLpNorm_positiveSlab_eq h hslab 2
+    exact scratch_eLpNorm_positiveSlab_eq h hslab 2 hh.aestronglyMeasurable
   have hM : lightRayMaximal delta N g = lightRayMaximal delta N h := by
     simpa only [h] using
       scratch_lightRayMaximal_eq_lightRayTimeRestriction hdelta N (by omega) g hg
@@ -4246,7 +4243,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit
   let A : ENNReal := ENNReal.ofReal (C * L)
   by_cases hhnonzero : eLpNorm h 2 volume = 0
   · have hhae : h =ᵐ[volume] (fun _ : WaveSpaceTime => (0 : Complex)) :=
-      (eLpNorm_eq_zero_iff hh.aestronglyMeasurable (by norm_num)).mp hhnonzero
+      (eLpNorm_eq_zero_iff (by norm_num)).mp hhnonzero
     have hMhzero : lightRayMaximal delta N h = 0 := by
       calc
         lightRayMaximal delta N h =
@@ -4750,9 +4747,7 @@ theorem eLpNorm_canonicalReflectedUnitFiniteEnvelope_le_of_weightedScaleBounds
           ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j) *
             canonicalReflectedUnitScaleEnvelope w.S delta N f j y) 2 volume := by
           apply eLpNorm_sum_le
-          · intro j hj
-            exact (measurable_const.mul (w.hScaleMeas delta N f j hf)).aestronglyMeasurable
-          · norm_num
+          norm_num
     _ <= ∑ j ∈ Finset.range M,
         ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j * cost j) *
           eLpNorm f 2 volume := by
@@ -5065,11 +5060,12 @@ theorem eLpNorm_ennreal_le_ofReal_mul_real
     {X : Type*} [MeasurableSpace X] (mu : Measure X)
     (F : X -> ENNReal) (Z : X -> Real) (C : Real)
     (hC : 0 <= C) (hZ : forall x, 0 <= Z x)
-    (hpoint : forall x, F x <= ENNReal.ofReal (C * Z x)) :
+    (hpoint : forall x, F x <= ENNReal.ofReal (C * Z x))
+    (hF : AEStronglyMeasurable F mu) :
     eLpNorm F 2 mu <= ENNReal.ofReal C * eLpNorm Z 2 mu := by
   calc
     eLpNorm F 2 mu <= eLpNorm (fun x => C * Z x) 2 mu := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm hF
       intro x
       simp only [enorm_eq_self, enorm_eq_nnnorm]
       rw [Real.nnnorm_of_nonneg (mul_nonneg hC (hZ x))]
@@ -5101,11 +5097,12 @@ theorem eLpNorm_canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise_real
     (delta : Real) (N : Nat) (f : WaveSpaceTime -> Complex) (j : Nat)
     (Z : canonicalAbsoluteBroadE2 -> Real) (C : Real) (hC : 0 <= C) (hZ : forall y, 0 <= Z y)
     (hpoint : forall (omega : aux_lightRayDirection) y,
-      ENNReal.ofReal ‖S delta N f j omega.1 y‖ <= ENNReal.ofReal (C * Z y)) :
+      ENNReal.ofReal ‖S delta N f j omega.1 y‖ <= ENNReal.ofReal (C * Z y))
+    (hmeas : AEStronglyMeasurable (canonicalReflectedUnitScaleEnvelope S delta N f j) volume) :
     eLpNorm (canonicalReflectedUnitScaleEnvelope S delta N f j) 2 volume <=
       ENNReal.ofReal C * eLpNorm Z 2 volume := by
   apply eLpNorm_ennreal_le_ofReal_mul_real volume
-    (canonicalReflectedUnitScaleEnvelope S delta N f j) Z C hC hZ
+    (canonicalReflectedUnitScaleEnvelope S delta N f j) Z C hC hZ (hF := hmeas)
   intro y
   apply canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise
   intro omega

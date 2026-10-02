@@ -1300,19 +1300,22 @@ theorem lintegral_enorm_le_sqrt {ρ : ℝ} {h : Pl2 → ℂ} (hm : Measurable h)
 theorem lintegral_enorm_sq_le_of_eLpNorm {h : Pl2 → ℂ} {c : ℝ≥0∞}
     (hc : eLpNorm h 2 (volume : Measure Pl2) ≤ c) :
     (∫⁻ q : Pl2, ‖h q‖ₑ ^ (2 : ℝ)) ≤ c ^ (2 : ℝ) := by
-  have h1 : eLpNorm h 2 (volume : Measure Pl2)
-      = (∫⁻ q : Pl2, ‖h q‖ₑ ^ (2 : ℝ)) ^ ((1 : ℝ) / 2) := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
-    norm_num
-  rw [h1] at hc
+  have h1 : (∫⁻ q : Pl2, ‖h q‖ₑ ^ (2 : ℝ)) ^ ((1 : ℝ) / 2) ≤
+      eLpNorm h 2 (volume : Measure Pl2) := by
+    by_cases hm : AEStronglyMeasurable h volume
+    · rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hm]
+      norm_num
+    · rw [eLpNorm_of_not_aestronglyMeasurable hm]
+      exact le_top
+  replace hc := h1.trans hc
   have h2 := ENNReal.rpow_le_rpow hc (by norm_num : (0 : ℝ) ≤ (2 : ℝ))
   rw [← ENNReal.rpow_mul, show (1 : ℝ) / 2 * 2 = 1 by norm_num, ENNReal.rpow_one] at h2
   exact h2
 
-theorem eLpNorm_two_eq_rpow (h : Pl2 → ℂ) :
+theorem eLpNorm_two_eq_rpow (h : Pl2 → ℂ) (hh : AEStronglyMeasurable h volume) :
     eLpNorm h 2 (volume : Measure Pl2)
       = (∫⁻ q : Pl2, ‖h q‖ₑ ^ (2 : ℝ)) ^ ((1 : ℝ) / 2) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hh]
   norm_num
 
 set_option maxHeartbeats 4000000 in
@@ -1387,7 +1390,8 @@ theorem prop31_Top2_away {j : ℕ} {m : ℝ → Pl → ℂ} {m2 : ℝ → Pl →
   have hgtcl : ∀ n, eLpNorm (fun q => gt n q - G q) 2 (volume : Measure Pl2)
       ≤ ENNReal.ofReal (1 / ((n : ℝ) + 1)) := by
     intro n
-    refine le_trans (eLpNorm_mono (g := fun q => (G - g n) q) (fun q => ?_)) (hgcl n)
+    refine le_trans (eLpNorm_mono (g := fun q => (G - g n) q)
+      (by exact ((hgtmeas n).sub hGm).aestronglyMeasurable) (fun q => ?_)) (hgcl n)
     rw [hdiff n q]
     calc ‖cutBoth δ R q * (g n q - G q)‖ = ‖cutBoth δ R q‖ * ‖g n q - G q‖ := norm_mul _ _
       _ ≤ 1 * ‖g n q - G q‖ :=
@@ -1449,7 +1453,7 @@ theorem prop31_Top2_away {j : ℕ} {m : ℝ → Pl → ℂ} {m2 : ℝ → Pl →
       have h1 := lintegral_enorm_le_sqrt (ρ := 2 * R)
         (h := fun q => gt n q - G q) ((hgtmeas n).sub hGm) (fun q hq => hdsupp2 n q hq)
       refine le_trans h1 (mul_le_mul' ?_ (le_refl _))
-      rw [← eLpNorm_two_eq_rpow]
+      rw [← eLpNorm_two_eq_rpow (fun q => gt n q - G q) ((hgtmeas n).sub hGm).aestronglyMeasurable]
       exact hgtcl n
     have hzero : Filter.Tendsto (fun n : ℕ => ENNReal.ofReal (1 / ((n : ℝ) + 1))
         * (volume (Metric.closedBall (0 : Pl2) (2 * R))) ^ ((1 : ℝ) / 2)) Filter.atTop

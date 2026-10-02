@@ -4158,7 +4158,7 @@ theorem memLp_and_eLpNorm_restrictedRelativeBandpass_of_global_lintegral_rpow_le
   have hIlt : I < ⊤ := by
     have h := lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
       (μ := mu) (f := (f : Euclidean (n + 1) → ℂ))
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf.2
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf
     simpa only [I, ENNReal.toReal_ofReal hpNN, ofReal_norm] using h
   have hJle : J ≤ A * I := by
     simpa only [J, I, M, mu] using hbound
@@ -4177,7 +4177,7 @@ theorem memLp_and_eLpNorm_restrictedRelativeBandpass_of_global_lintegral_rpow_le
       I ^ p⁻¹ := by
     dsimp only [I]
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm]
     rw [one_div]
   constructor
@@ -4190,6 +4190,7 @@ theorem memLp_and_eLpNorm_restrictedRelativeBandpass_of_global_lintegral_rpow_le
           eLpNorm M (ENNReal.ofReal p) mu := by rfl
       _ ≤ (A * I) ^ p⁻¹ :=
         eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le mu M hp hMnonneg hJle
+          hMmeas.aestronglyMeasurable
       _ = A ^ p⁻¹ * eLpNorm (f : Euclidean (n + 1) → ℂ)
           (ENNReal.ofReal p) mu := by
         rw [ENNReal.mul_rpow_of_nonneg _ _ hpInvNN, ← hInorm]
@@ -4297,6 +4298,8 @@ theorem eLpNorm_finite_annular_shell_relativeBandpass_sum_le_of_moments
       (ENNReal.ofReal p) μ ≤
       eLpNorm (fun x => ∑ ij ∈ S, g ij x) (ENNReal.ofReal p) μ := by
     apply eLpNorm_mono
+      (by exact ((Finset.measurable_fun_sum J fun j hj => hband_meas j hj).indicator
+        (Finset.measurableSet_biUnion K fun k hk => hAmeas k hk)).aestronglyMeasurable)
     intro x
     rw [Real.norm_eq_abs,
       abs_of_nonneg (by
@@ -5832,7 +5835,7 @@ theorem memLp_and_eLpNorm_ennreal_of_toReal_lintegral_rpow_le
   have hInorm : eLpNorm f (ENNReal.ofReal p) mu = I ^ p⁻¹ := by
     dsimp only [I]
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hp_nonneg, ofReal_norm]
     rw [one_div]
   have hTnorm : eLpNorm T (ENNReal.ofReal p) mu ≤
@@ -5840,6 +5843,7 @@ theorem memLp_and_eLpNorm_ennreal_of_toReal_lintegral_rpow_le
     calc
       eLpNorm T (ENNReal.ofReal p) mu ≤ (A * I) ^ p⁻¹ :=
         eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le mu T hp hTnonneg hJle
+          hTmeas.aestronglyMeasurable
       _ = A ^ p⁻¹ * eLpNorm f (ENNReal.ofReal p) mu := by
         rw [ENNReal.mul_rpow_of_nonneg _ _ hp_inv_nonneg, ← hInorm]
   have hpoint : ∀ᵐ x ∂mu,
@@ -5858,7 +5862,7 @@ theorem memLp_and_eLpNorm_ennreal_of_toReal_lintegral_rpow_le
       eLpNorm M (ENNReal.ofReal p) mu ≤
           ((1 : NNReal) : ENNReal) * eLpNorm T (ENNReal.ofReal p) mu :=
         eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' (ENNReal.ofReal p)
-          hTmem.aestronglyMeasurable hpoint
+          hMmeas.aestronglyMeasurable hpoint
       _ = eLpNorm T (ENNReal.ofReal p) mu := by norm_num
   exact ⟨hMmem, hMnorm.trans hTnorm⟩
 
@@ -5870,8 +5874,8 @@ theorem ae_ne_top_ennreal_of_memLp_two
     (hM : MemLp M 2 mu) :
     ∀ᵐ x ∂mu, M x ≠ ⊤ := by
   have hlin : (∫⁻ x, M x ^ (2 : ℝ) ∂mu) < ⊤ := by
-    have h := (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top
-      (p := (2 : ENNReal)) (by norm_num) (by norm_num)).mp hM.eLpNorm_lt_top
+    have h := (lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
+      (p := (2 : ENNReal)) (by norm_num) (by norm_num) hM.eLpNorm_lt_top)
     simpa only [enorm_eq_self, ENNReal.toReal_ofNat] using h
   filter_upwards [ae_lt_top'
     (hM.aestronglyMeasurable.aemeasurable.pow_const (2 : ℝ)) hlin.ne] with x hx

@@ -541,7 +541,7 @@ theorem hasFractalSphericalStrongType_union
     have hstep1 : eLpNorm (fractalSphericalMaximalReal d (E ∪ F) f) (ENNReal.ofReal q) volume ≤
         eLpNorm (fractalSphericalMaximalReal d E f + fractalSphericalMaximalReal d F f)
           (ENNReal.ofReal q) volume := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm hmeasU
       intro x
       have hpoint := fractalSphericalMaximalReal_union_le hd hEpos hFpos f x
       have h1 : 0 ≤ fractalSphericalMaximalReal d E f x := ENNReal.toReal_nonneg
@@ -551,7 +551,8 @@ theorem hasFractalSphericalStrongType_union
         abs_of_nonneg (by simpa [Pi.add_apply] using add_nonneg h1 h2 :
           (0:ℝ) ≤ (fractalSphericalMaximalReal d E f + fractalSphericalMaximalReal d F f) x)]
       exact ENNReal.ofReal_le_ofReal (by simpa [Pi.add_apply] using hpoint)
-    have hstep2 := eLpNorm_add_le hmeas1 hmeas2 hqone
+    have hstep2 := eLpNorm_add_le (f := fractalSphericalMaximalReal d E f)
+      (g := fractalSphericalMaximalReal d F f) (μ := volume) hqone
     have hstep3 : eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume +
           eLpNorm (fractalSphericalMaximalReal d F f) (ENNReal.ofReal q) volume ≤
         ENNReal.ofReal (C1 + C2) *
@@ -567,9 +568,9 @@ theorem hasFractalSphericalStrongType_union
             eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume := by
           rw [ENNReal.ofReal_add hC1.le hC2.le, add_mul]
     exact le_trans hstep1 (le_trans hstep2 hstep3)
-  refine ⟨⟨hmeasU, ?_⟩, hbound⟩
+  refine ⟨?_, hbound⟩
   refine lt_of_le_of_lt hbound ?_
-  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp (ENNReal.ofReal p) volume).2
+  exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp (ENNReal.ofReal p) volume)
 
 /-- Strong type is inherited by finite unions indexed by a `Finset`. -/
 theorem hasFractalSphericalStrongType_biUnion
@@ -854,7 +855,8 @@ theorem eLpNorm_le_rpow_mul_rpow_of_inv_eq {d : ℕ} {g : Euclidean d → ℝ}
   have hmain : (∫⁻ x : Euclidean d, ‖g x‖ₑ ^ q) ^ q⁻¹
       ≤ (A ^ (1 / u) * B ^ (1 / v)) ^ q⁻¹ :=
     ENNReal.rpow_le_rpow hholder (by positivity)
-  rw [eLpNorm_ofReal_eq hq, eLpNorm_ofReal_eq hq0, eLpNorm_ofReal_eq hq1, ← hAdef, ← hBdef,
+  rw [eLpNorm_ofReal_eq hq hg.aestronglyMeasurable, eLpNorm_ofReal_eq hq0 hg.aestronglyMeasurable,
+    eLpNorm_ofReal_eq hq1 hg.aestronglyMeasurable, ← hAdef, ← hBdef,
     one_div q]
   refine hmain.trans (le_of_eq ?_)
   have he0 : (1 / u) * q⁻¹ = (1 / q0) * (1 - lam) := by
@@ -889,7 +891,7 @@ theorem hasFractalSphericalStrongType_interp_same_input {d : ℕ} {E : Set ℝ}
   obtain ⟨hmem0, hbound0⟩ := hb0 f
   obtain ⟨hmem1, hbound1⟩ := hb1 f
   have hmeas : AEMeasurable (fractalSphericalMaximalReal d E f)
-      (volume : Measure (Euclidean d)) := hmem0.1.aemeasurable
+      (volume : Measure (Euclidean d)) := hmem0.aestronglyMeasurable.aemeasurable
   have hlyap := eLpNorm_le_rpow_mul_rpow_of_inv_eq (g := fractalSphericalMaximalReal d E f)
     hmeas hq0 hq1 hq hlam0 hlam1 hrel
   -- the interpolated bound
@@ -920,15 +922,15 @@ theorem hasFractalSphericalStrongType_interp_same_input {d : ℕ} {E : Set ℝ}
       _ = (ENNReal.ofReal C0 ^ (1 - lam) * ENNReal.ofReal C1 ^ lam)
           * (Y ^ (1 - lam) * Y ^ lam) := by ring
       _ = ENNReal.ofReal (C0 ^ (1 - lam) * C1 ^ lam) * Y := by rw [hC, hY]
-  refine ⟨⟨hmem0.1, ?_⟩, hbound⟩
+  refine ⟨?_, hbound⟩
   -- finiteness of the interpolated norm
   refine lt_of_le_of_lt hlyap ?_
   have h0top : (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q0) volume)
       ^ (1 - lam) ≠ ⊤ :=
-    ENNReal.rpow_ne_top_of_nonneg hlam1'.le (ne_of_lt hmem0.2)
+    ENNReal.rpow_ne_top_of_nonneg hlam1'.le (ne_of_lt hmem0)
   have h1top : (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q1) volume)
       ^ lam ≠ ⊤ :=
-    ENNReal.rpow_ne_top_of_nonneg hlam0.le (ne_of_lt hmem1.2)
+    ENNReal.rpow_ne_top_of_nonneg hlam0.le (ne_of_lt hmem1)
   exact ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr h0top) (lt_top_iff_ne_top.mpr h1top)
 
 theorem twoPair_high_tail_le_of_neg {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
@@ -979,7 +981,7 @@ theorem twoPair_high_tail_le_of_neg {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ
         * (ENNReal.ofReal t) ^ (q - q0 - 1)
       = (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high (t ^ m) x‖) ^ p0) ^ r0
           * (ENNReal.ofReal t) ^ (q - q0 - 1) := by
-        rw [eLpNorm_rpow_eq hp0, hr0def]
+        rw [eLpNorm_rpow_eq hp0 (high (t ^ m)).continuous.aestronglyMeasurable, hr0def]
     _ ≤ (∫⁻ x in {x | (1 / 4 : ℝ) * t ^ m ≤ u x}, (ENNReal.ofReal (u x)) ^ p0) ^ r0
           * (ENNReal.ofReal t) ^ (m * (p - p0) * r0 - 1) := by
         rw [show q - q0 - 1 = m * (p - p0) * r0 - 1 by rw [← hweight]]
@@ -1013,7 +1015,7 @@ theorem twoPair_low_tail_le_of_neg {d : ℕ} (f : SchwartzMap (Euclidean d) ℂ)
     hp hpp1 hm (by norm_num) hr1 hJ0 hJ
   refine le_trans (lintegral_mono_ae ?_) hmain
   filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
-  rw [eLpNorm_rpow_eq hp1, ← hr1def,
+  rw [eLpNorm_rpow_eq hp1 (low (t ^ m)).continuous.aestronglyMeasurable, ← hr1def,
     show q - q1 - 1 = m * (p - p1) * r1 - 1 by rw [← hweight]]
 
 /-! ### Two-pair interpolation along a segment of negative slope -/
@@ -1122,7 +1124,7 @@ theorem exists_twoPair_interpolation_const_of_neg {d : ℕ}
     · exact hpos
   have hfnorm : eLpNorm ((f : (Euclidean d) → ℂ)) (ENNReal.ofReal p) volume
       = ENNReal.ofReal (J ^ p⁻¹) := by
-    rw [eLpNorm_ofReal_eq hp]
+    rw [eLpNorm_ofReal_eq hp f.continuous.aestronglyMeasurable]
     have h1 : (∫⁻ x : (Euclidean d), ‖(f : (Euclidean d) → ℂ) x‖ₑ ^ p) = ENNReal.ofReal J := by
       rw [← hJeq]
       refine lintegral_congr fun x => ?_
@@ -1161,7 +1163,7 @@ theorem exists_twoPair_interpolation_const_of_neg {d : ℕ}
           q0)
           = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖high t x‖) ^ p0) ^ (q0 / p0) := by
         funext t
-        exact eLpNorm_rpow_eq hp0
+        exact eLpNorm_rpow_eq hp0 (high t).continuous.aestronglyMeasurable
       rw [heq]
       exact ENNReal.continuous_rpow_const.measurable.comp
         (measurable_smooth_high_profile_lintegrals f low high hlow hhigh p0)
@@ -1174,7 +1176,7 @@ theorem exists_twoPair_interpolation_const_of_neg {d : ℕ}
           q1)
           = fun t : ℝ => (∫⁻ x : (Euclidean d), (ENNReal.ofReal ‖low t x‖) ^ p1) ^ (q1 / p1) := by
         funext t
-        exact eLpNorm_rpow_eq hp1
+        exact eLpNorm_rpow_eq hp1 (low t).continuous.aestronglyMeasurable
       rw [heq]
       exact ENNReal.continuous_rpow_const.measurable.comp
         (measurable_smooth_low_profile_lintegrals f low hlow p1)
@@ -1283,7 +1285,7 @@ theorem exists_twoPair_interpolation_const_of_neg {d : ℕ}
   rw [hexp] at hmoment
   -- take the q-th root
   have hfinal := Auto.MarcinkiewiczInterpolation.sourceOutput_eLpNorm_le_of_nonnegative_moment
-    T f hq (hTnonneg f) _ hmoment
+    T f hq (hTnonneg f) _ hmoment (hTmeas f)
   refine hfinal.trans (le_of_eq ?_)
   have hJqp : (0:ℝ) < J ^ (q / p) := Real.rpow_pos_of_pos hJpos _
   rw [ENNReal.ofReal_rpow_of_pos (by positivity :
@@ -1315,7 +1317,7 @@ theorem eLpNorm_schwartz_ne_top {d : ℕ} {p : ℝ} (hp : 0 < p)
     eLpNorm ((f : Euclidean d → ℂ)) (ENNReal.ofReal p) volume ≠ ⊤ := by
   have hJint : Integrable (fun x : Euclidean d => ‖f x‖ ^ p) volume :=
     Auto.Spherical.AHRS.q4_schwartz_integrable_norm_rpow f hp
-  rw [eLpNorm_ofReal_eq hp]
+  rw [eLpNorm_ofReal_eq hp f.continuous.aestronglyMeasurable]
   have hconv : (∫⁻ x : Euclidean d, ‖(f : Euclidean d → ℂ) x‖ₑ ^ p)
       = ENNReal.ofReal (∫ x : Euclidean d, ‖f x‖ ^ p) := by
     rw [ofReal_integral_eq_lintegral_ofReal hJint
@@ -1387,7 +1389,7 @@ theorem hasFractalSphericalStrongType_interp_twoPair {d : ℕ} {E : Set ℝ}
     (fun g => (measurable_fractalSphericalMaximalReal E g).aestronglyMeasurable)
     (fun x => Auto.Spherical.AHRS.fractalSphericalMaximalReal_zero E x)
     C0 C1 hC0 hC1 (fun g => (hb0 g).2) (fun g => (hb1 g).2) f
-  refine ⟨⟨(hb0 f).1.1, ?_⟩, hbd⟩
+  refine ⟨?_, hbd⟩
   refine lt_of_le_of_lt hbd ?_
   exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
     (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp f))
@@ -1418,7 +1420,7 @@ theorem hasFractalSphericalStrongType_interp_twoPair_neg {d : ℕ} {E : Set ℝ}
     (fun g => (measurable_fractalSphericalMaximalReal E g).aestronglyMeasurable)
     (fun x => Auto.Spherical.AHRS.fractalSphericalMaximalReal_zero E x)
     C0 C1 hC0 hC1 (fun g => (hb0 g).2) (fun g => (hb1 g).2) f
-  refine ⟨⟨(hb0 f).1.1, ?_⟩, hbd⟩
+  refine ⟨?_, hbd⟩
   refine lt_of_le_of_lt hbd ?_
   exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
     (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp f))
@@ -2642,7 +2644,7 @@ theorem hasAbsoluteBandRate_empty {d : Nat} (phi : SchwartzMap (Euclidean d) Com
     simp
   rw [hzero]
   refine ⟨?_, ?_⟩
-  · exact ⟨aestronglyMeasurable_const, by simp⟩
+  · exact MemLp.zero'
   · simp
 
 /-! ### The band-rate dispatcher for the repository skeleton -/
@@ -2796,13 +2798,11 @@ theorem hasAbsoluteBandRate_of_hasDyRate
     rw [ENNReal.ofReal_mul hC.le, ← ENNReal.ofReal_pow hrho.le]
   rw [hconv] at h
   refine ⟨?_, h⟩
-  refine ⟨(measurable_fractalDyadicBandpassMaximal E
-    (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable, ?_⟩
   refine lt_of_le_of_lt h ?_
   exact ENNReal.mul_lt_top
     (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
       (ENNReal.pow_lt_top ENNReal.ofReal_lt_top))
-    (f.memLp (ENNReal.ofReal (1 / a)) volume).2
+    (f.memLp (ENNReal.ofReal (1 / a)) volume)
 
 /-! ### The planar band rate above the conjugate line -/
 
@@ -3654,7 +3654,7 @@ theorem oneCell_diagonal_bandRate_above {d : ℕ} (hd : 0 < d)
           eLpNorm ((g : Euclidean d → ℂ)) (ENNReal.ofReal r) volume := by
     intro g
     have hbd := hbound j hj hE hEne hEab hlen g
-    refine ⟨⟨hTmeas g, ?_⟩, hbd⟩
+    refine ⟨?_, hbd⟩
     refine lt_of_le_of_lt hbd ?_
     exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top
       (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hr g))
@@ -4610,7 +4610,7 @@ theorem finite_output_sum_of_bounds {d : ℕ} {q : ENNReal} (hq : (1 : ENNReal) 
         rw [hsplit x]
         rfl
       rw [hrw, Finset.sum_range_succ]
-      refine le_trans (eLpNorm_add_le hmem.1 (hTmem N).1 hq) ?_
+      refine le_trans (eLpNorm_add_le hq) ?_
       exact add_le_add hnorm (hTnorm N)
 
 set_option maxHeartbeats 1000000 in
@@ -4697,14 +4697,14 @@ theorem absolute_off_diagonal_reassembly_of_summable
   have hPnorm : eLpNorm P (ENNReal.ofReal q) volume ≤ D * hroot := by
     calc eLpNorm P (ENNReal.ofReal q) volume
         ≤ eLpNorm (R + S) (ENNReal.ofReal q) volume := by
-          refine eLpNorm_mono ?_
+          refine eLpNorm_mono hPmeas ?_
           intro x
           change ‖P x‖ ≤ ‖R x + S x‖
           rw [Real.norm_eq_abs, abs_of_nonneg (hP0 x), Real.norm_eq_abs,
             abs_of_nonneg (hRS0 x)]
           exact hpoint x
       _ ≤ eLpNorm R (ENNReal.ofReal q) volume + eLpNorm S (ENNReal.ofReal q) volume :=
-          eLpNorm_add_le hRmem.1 hSmem.1 hqENN
+          eLpNorm_add_le hqENN
       _ ≤ CR * hroot + A * hroot := add_le_add hRnorm hSbound
       _ = D * hroot := by rw [hDdef]; ring
   refine ⟨hPmem, ?_⟩
@@ -4841,7 +4841,7 @@ theorem eLpNorm_bandMaximal_iUnion_le {d : ℕ} (hd : 0 < d) {q : ℝ} (hq : 1 �
     exact (measurable_fractalDyadicBandpassMaximal (Es n) psi f).aestronglyMeasurable
   calc eLpNorm (fractalDyadicBandpassMaximal d U psi f) (ENNReal.ofReal q) volume
       ≤ eLpNorm (G + fractalDyadicBandpassMaximal d V psi f) (ENNReal.ofReal q) volume := by
-        refine eLpNorm_mono ?_
+        refine eLpNorm_mono (measurable_fractalDyadicBandpassMaximal U psi f).aestronglyMeasurable ?_
         intro x
         have h0 : 0 ≤ fractalDyadicBandpassMaximal d U psi f x :=
           fractalDyadicBandpassMaximal_nonneg U psi f x
@@ -4855,14 +4855,13 @@ theorem eLpNorm_bandMaximal_iUnion_le {d : ℕ} (hd : 0 < d) {q : ℝ} (hq : 1 �
         exact hpoint x
     _ ≤ eLpNorm G (ENNReal.ofReal q) volume
         + eLpNorm (fractalDyadicBandpassMaximal d V psi f) (ENNReal.ofReal q) volume :=
-        eLpNorm_add_le hmeasS hmeasV hqENN
+        eLpNorm_add_le hqENN
     _ ≤ (∑ n ∈ S, eLpNorm (fractalDyadicBandpassMaximal d (Es n) psi f)
           (ENNReal.ofReal q) volume)
         + eLpNorm (fractalDyadicBandpassMaximal d V psi f) (ENNReal.ofReal q) volume := by
         refine add_le_add_left ?_ _
         rw [hGdef]
-        exact eLpNorm_sum_le (fun n _ =>
-          (measurable_fractalDyadicBandpassMaximal (Es n) psi f).aestronglyMeasurable) hqENN
+        exact eLpNorm_sum_le hqENN
 
 open MeasureTheory Set ENNReal
 
@@ -5095,7 +5094,7 @@ theorem hasFractalSphericalStrongType_iUnion_of_bandRates {d : ℕ} (hd : 2 ≤ 
           have := hCs n
           have := hrhos n
           positivity) (by positivity)]
-      refine ⟨⟨(measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable, ?_⟩, hfinal⟩
+      refine ⟨?_, hfinal⟩
       refine lt_of_le_of_lt hfinal ?_
       refine ENNReal.mul_lt_top ?_
         (lt_top_iff_ne_top.mpr (eLpNorm_schwartz_ne_top hp0 f))
@@ -5585,7 +5584,7 @@ theorem hasAbsoluteBandRate_mono {d : ℕ} (hd : 0 < d) {E F : Set ℝ} (hEF : E
       (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume
       ≤ eLpNorm (fractalDyadicBandpassMaximal d F
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f) (ENNReal.ofReal q) volume := by
-    refine eLpNorm_mono ?_
+    refine eLpNorm_mono (measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable ?_
     intro x
     have h1 : 0 ≤ fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
@@ -5596,7 +5595,7 @@ theorem hasAbsoluteBandRate_mono {d : ℕ} (hd : 0 < d) {E F : Set ℝ} (hEF : E
     rw [Real.norm_eq_abs, abs_of_nonneg h1, Real.norm_eq_abs, abs_of_nonneg h2]
     exact fractalDyadicBandpassMaximal_mono hd hEF hF _ f x
   have hfinal := hmono.trans (hbound j hj f).2
-  refine ⟨⟨(measurable_fractalDyadicBandpassMaximal E _ f).aestronglyMeasurable, ?_⟩, hfinal⟩
+  refine ⟨?_, hfinal⟩
   refine lt_of_le_of_lt hfinal ?_
   exact ENNReal.mul_lt_top
     (ENNReal.mul_lt_top hCtop (ENNReal.pow_lt_top (lt_of_lt_of_le hrho le_top)))
@@ -5812,7 +5811,7 @@ theorem exists_iUnion_type_points {d : ℕ} (hd : 2 ≤ d)
           * eLpNorm ((f : Euclidean (n0 + 1) → ℂ)) (ENNReal.ofReal (p k)) volume := by
     intro n j hj f
     refine le_trans ?_ (hbound n k j hj f)
-    refine eLpNorm_mono ?_
+    refine eLpNorm_mono (measurable_fractalDyadicBandpassMaximal (G n) _ f).aestronglyMeasurable ?_
     intro x
     have h1 : 0 ≤ fractalDyadicBandpassMaximal (n0 + 1) (G n)
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f x :=
@@ -6624,6 +6623,8 @@ theorem eLpNorm_M_eq {d : ℕ} (hd : 0 < d) {E : Set ℝ} (hE : E ⊆ Ioi (0 : �
       eLpNorm (fractalSphericalMaximalReal d E f) s volume := by
   rw [M_eq_ofReal_fractalSphericalMaximalReal hd hE]
   apply eLpNorm_congr_enorm_ae
+    (measurable_fractalSphericalMaximalReal E f).ennreal_ofReal.aestronglyMeasurable
+    (measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable
   filter_upwards with x
   rw [Real.enorm_of_nonneg (fractalSphericalMaximalReal_nonneg' E f x)]
   rfl
@@ -6632,27 +6633,8 @@ theorem memLp_M_iff {d : ℕ} (hd : 0 < d) {E : Set ℝ} (hE : E ⊆ Ioi (0 : �
     (f : SchwartzMap (Euclidean d) ℂ) (s : ℝ≥0∞) :
     MemLp (_root_.Spherical.M E (f : Euclidean d → ℂ)) s volume ↔
       MemLp (fractalSphericalMaximalReal d E f) s volume := by
-  have hM := M_eq_ofReal_fractalSphericalMaximalReal hd hE f
-  constructor
-  · intro h
-    refine ⟨?_, ?_⟩
-    · have hmeas : AEMeasurable (fun x => (_root_.Spherical.M E (f : Euclidean d → ℂ) x).toReal)
-          volume := ENNReal.measurable_toReal.comp_aemeasurable h.1.aemeasurable
-      have heq : (fun x => (_root_.Spherical.M E (f : Euclidean d → ℂ) x).toReal) =
-          fractalSphericalMaximalReal d E f := by
-        rw [hM]
-        funext x
-        exact ENNReal.toReal_ofReal (fractalSphericalMaximalReal_nonneg' E f x)
-      rw [← heq]
-      exact hmeas.aestronglyMeasurable
-    · rw [← eLpNorm_M_eq hd hE f s]
-      exact h.2
-  · intro h
-    refine ⟨?_, ?_⟩
-    · rw [hM]
-      exact (ENNReal.measurable_ofReal.comp_aemeasurable h.1.aemeasurable).aestronglyMeasurable
-    · rw [eLpNorm_M_eq hd hE f s]
-      exact h.2
+  unfold MemLp
+  rw [eLpNorm_M_eq hd hE f s]
 
 /-- Coordinate bounds for points of `Q(β,γ)`. -/
 theorem Q_coords {d : ℕ} (hd : 2 ≤ d) {beta gam : ℝ} (hb : 0 ≤ beta) (hb1 : beta ≤ 1)
@@ -6768,7 +6750,7 @@ theorem not_typeSet_bound_top_left {d : ℕ} (hd : 0 < d) {E : Set ℝ}
     (s := T) (by rw [abs_of_nonneg (by linarith [(hE hr).1])]; linarith [(hE hr).2]) hq'pos
   rw [hq'def, ENNReal.ofReal_toReal hq, ← eLpNorm_M_eq hd hEpos f] at hlow
   have hfinf : eLpNorm (f : Euclidean d → ℂ) ⊤ volume ≤ 1 := by
-    rw [eLpNorm_exponent_top]
+    rw [eLpNorm_exponent_top f.continuous.aestronglyMeasurable]
     simpa using eLpNormEssSup_le_of_ae_bound (μ := volume) (C := 1)
       (Filter.Eventually.of_forall hfb)
   have hup : volume (ball (0 : Euclidean d) T) ^ q'⁻¹ ≤ ENNReal.ofReal C := by
@@ -6823,10 +6805,10 @@ theorem not_typeSet_bound_top_right {d : ℕ} (hd : 0 < d) {E : Set ℝ}
   have hlow : (1 : ℝ≥0∞) ≤ eLpNorm (fractalSphericalMaximalReal d E f) ⊤ volume := by
     have hind : eLpNorm ((ball (0 : Euclidean d) (δ / 8)).indicator fun _ => (1 : ℝ)) ⊤ volume
         = 1 := by
-      rw [eLpNorm_indicator_const' measurableSet_ball hball0 (by simp)]
+      rw [eLpNorm_indicator_const' measurableSet_ball.nullMeasurableSet hball0 (by simp)]
       simp
     rw [← hind]
-    apply eLpNorm_mono
+    apply eLpNorm_mono (aestronglyMeasurable_const.indicator measurableSet_ball)
     intro x
     by_cases hx : x ∈ ball (0 : Euclidean d) (δ / 8)
     · rw [Set.indicator_of_mem hx, norm_one,

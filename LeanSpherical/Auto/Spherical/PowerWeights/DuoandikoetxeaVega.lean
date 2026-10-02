@@ -132,9 +132,10 @@ theorem restrictedSphericalMaximal_mono {d : ℕ} {E F : Set ℝ} (hEF : E ⊆ F
 /-- The weighted `eLpNorm` of a restricted maximal function is monotone in
 the radius set.  Blueprint: `eLpNorm_restrictedSphericalMaximal_mono`. -/
 theorem eLpNorm_restrictedSphericalMaximal_mono {d : ℕ} {E F : Set ℝ}
-    {p : ENNReal} {μ : Measure (ℝ^d)} (hEF : E ⊆ F) (f : ℝ^d → ℂ) :
+    {p : ENNReal} {μ : Measure (ℝ^d)} (hEF : E ⊆ F) (f : ℝ^d → ℂ)
+    (hm : AEStronglyMeasurable (M E f) μ) :
     eLpNorm (M E f) p μ ≤ eLpNorm (M F f) p μ := by
-  refine eLpNorm_mono_enorm fun x => ?_
+  refine eLpNorm_mono_enorm hm fun x => ?_
   simpa using restrictedSphericalMaximal_mono hEF f x
 
 /-- `MemLp` for a restricted maximal function descends to smaller radius
@@ -384,8 +385,10 @@ theorem lintegral_rpow_band_le_of_geometricDecay {p : ℝ} (hp : 0 < p)
   have hp0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
   have hptoReal : (ENNReal.ofReal p).toReal = p := ENNReal.toReal_ofReal hp.le
   have hstep := (hbound j f).2
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top
+      (hbound j f).1.aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 ENNReal.ofReal_ne_top
+      f.continuous.aestronglyMeasurable,
     hptoReal] at hstep
   have hG : ∀ x : Euclidean 2,
       ‖restrictedRelativeBandpassSphericalMaximal 2 (Ioi (0 : ℝ)) phi j f x‖ₑ =
@@ -7572,11 +7575,13 @@ theorem enorm_convolution_le_l2 (κ u : Euclidean 2 → ℂ)
     simpa [one_div] using h
   have hnorm1 : eLpNorm κ 2 volume =
       (∫⁻ t : Euclidean 2, ‖κ t‖ₑ ^ (2 : ℝ)) ^ ((2 : ℝ)⁻¹) := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+      hκ.aestronglyMeasurable]
     norm_num
   have hnorm2 : eLpNorm u 2 volume =
       (∫⁻ y : Euclidean 2, ‖u y‖ₑ ^ (2 : ℝ)) ^ ((2 : ℝ)⁻¹) := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+      hu.aestronglyMeasurable]
     norm_num
   calc ‖(κ ⋆[ContinuousLinearMap.mul ℂ ℂ, volume] u) x‖ₑ
       = ‖∫ t : Euclidean 2, κ t * u (x - t)‖ₑ := by rw [hcong]
@@ -7879,7 +7884,8 @@ theorem dvT_eLpNorm_top (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fin
     {S : ℝ → Set (Euclidean 2)}
     (hdisj : ∀ r ∈ R, ∀ r' ∈ R, r ≠ r' → Disjoint (S r) (S r'))
     (ν : Measure (Euclidean 2)) {C : ℝ} (hC0 : 0 < C)
-    (hC : surfaceMass 2 * dvPsiL1 phi ≤ C) (u : Euclidean 2 → ℂ) :
+    (hC : surfaceMass 2 * dvPsiL1 phi ≤ C) (u : Euclidean 2 → ℂ)
+    (hTm : AEStronglyMeasurable (dvT phi j R S u) ν) :
     eLpNorm (dvT phi j R S u) ⊤ ν ≤
       ENNReal.ofReal C * eLpNorm u ⊤ volume := by
   by_cases htop : eLpNorm u ⊤ volume = ⊤
@@ -7887,11 +7893,14 @@ theorem dvT_eLpNorm_top (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fin
     exact le_top
   · set M : ℝ := (eLpNorm u ⊤ volume).toReal with hMdef
     have hM0 : 0 ≤ M := ENNReal.toReal_nonneg
+    have hum : AEStronglyMeasurable u volume := by
+      by_contra hnm
+      exact htop (eLpNorm_of_not_aestronglyMeasurable hnm)
     have hMae : ∀ᵐ y : Euclidean 2, ‖u y‖ ≤ M := by
       have h := ae_le_eLpNormEssSup (f := u) (μ := volume)
       filter_upwards [h] with y hy
       have hy' : ‖u y‖ₑ ≤ eLpNorm u ⊤ volume := by
-        simpa [eLpNorm_exponent_top] using hy
+        simpa [eLpNorm_exponent_top hum] using hy
       have := ENNReal.toReal_le_toReal (by simp) htop |>.mpr hy'
       simpa [hMdef] using this
     have hpt : ∀ x : Euclidean 2, ‖dvT phi j R S u x‖ₑ ≤
@@ -7913,7 +7922,7 @@ theorem dvT_eLpNorm_top (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fin
         _ ≤ ENNReal.ofReal (C * M) := ENNReal.ofReal_le_ofReal hbound
         _ = ENNReal.ofReal C * ENNReal.ofReal M := ENNReal.ofReal_mul hC0.le
         _ = ENNReal.ofReal C * eLpNorm u ⊤ volume := by rw [hMeq]
-    rw [eLpNorm_exponent_top, eLpNormEssSup]
+    rw [eLpNorm_exponent_top hTm, eLpNormEssSup]
     exact essSup_le_of_ae_le _ (Filter.Eventually.of_forall hpt)
 
 /-- A uniform `L²` bound for the finitely many band kernels. -/
@@ -8014,9 +8023,9 @@ theorem dvNu_lintegral (g : Euclidean 2 → ℝ≥0∞) (hg : Measurable g) :
     lintegral_withDensity_eq_lintegral_mul _ (measurable_radialPowerWeight 2 (-1)) hg]
   rfl
 
-theorem dvL2sq (g : Euclidean 2 → ℂ) :
+theorem dvL2sq (g : Euclidean 2 → ℂ) (hg : AEStronglyMeasurable g volume) :
     (∫⁻ x : Euclidean 2, ‖g x‖ₑ ^ 2) = (eLpNorm g 2 volume) ^ 2 := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hg]
   have h1 : (2 : ℝ≥0∞).toReal = 2 := by norm_num
   rw [h1]
   have h2 : (∫⁻ x : Euclidean 2, ‖g x‖ₑ ^ (2 : ℝ)) = ∫⁻ x : Euclidean 2, ‖g x‖ₑ ^ 2 := by
@@ -8138,14 +8147,13 @@ theorem dvT_l2_general (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fins
         L * (A + ENNReal.ofReal (1 / ((n : ℝ) + 1))) ^ 2 := by
     intro n
     refine le_trans (hschwartz (F n)) ?_
-    rw [dvL2sq]
+    rw [dvL2sq _ (F n).continuous.aestronglyMeasurable]
     refine mul_le_mul' le_rfl (pow_le_pow_left' ?_ 2)
     have htri : eLpNorm (F n : Euclidean 2 → ℂ) 2 volume ≤
         eLpNorm u 2 volume + eLpNorm ((F n : Euclidean 2 → ℂ) - u) 2 volume := by
       have h0 : eLpNorm (u + ((F n : Euclidean 2 → ℂ) - u)) 2 volume ≤
           eLpNorm u 2 volume + eLpNorm ((F n : Euclidean 2 → ℂ) - u) 2 volume :=
-        eLpNorm_add_le (p := 2) (μ := volume) hmu.aestronglyMeasurable
-          (((F n).continuous.measurable.sub hmu).aestronglyMeasurable) (by norm_num)
+        eLpNorm_add_le (by norm_num)
       have h1 : (u + ((F n : Euclidean 2 → ℂ) - u)) = (F n : Euclidean 2 → ℂ) := by
         funext y; simp
       rwa [h1] at h0
@@ -8175,7 +8183,7 @@ theorem dvT_l2_general (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fins
       L * A ^ 2 := by
     rw [← hrhs.liminf_eq]
     exact Filter.liminf_le_liminf (Filter.Eventually.of_forall hFbound)
-  rw [dvL2sq u]
+  rw [dvL2sq u hu2.aestronglyMeasurable]
   exact hliminf
 
 /-- Riesz--Thorin interpolation for the linearized band operator. -/
@@ -8238,23 +8246,31 @@ theorem dvT_lp_simple (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Finse
   exact (hres u hu).2
 /-! ### Phase E: the finite-radius weighted `L^p` estimate -/
 
-theorem dvLpPow (g : Euclidean 2 → ℂ) (ν : Measure (Euclidean 2)) {p : ℝ} (hp : 0 < p) :
+theorem dvLpPow (g : Euclidean 2 → ℂ) (ν : Measure (Euclidean 2)) {p : ℝ} (hp : 0 < p)
+    (hg : AEStronglyMeasurable g ν) :
     (∫⁻ x, ‖g x‖ₑ ^ p ∂ν) = (eLpNorm g (ENNReal.ofReal p) ν) ^ p := by
   have hne : ENNReal.ofReal p ≠ 0 := by
     simp [ENNReal.ofReal_eq_zero]
     linarith
   have htop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
   have htoReal : (ENNReal.ofReal p).toReal = p := ENNReal.toReal_ofReal hp.le
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop, htoReal,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop hg, htoReal,
     ← ENNReal.rpow_mul]
   rw [one_div, inv_mul_cancel₀ hp.ne', ENNReal.rpow_one]
 
 /-- Turn an `eLpNorm` bound into a bound between the corresponding integrals. -/
 theorem dvLp_lintegral_of_eLpNorm {g h : Euclidean 2 → ℂ}
     {μ ν : Measure (Euclidean 2)} {p : ℝ} (hp : 0 < p) {M : ℝ≥0∞}
-    (hbd : eLpNorm g (ENNReal.ofReal p) ν ≤ M * eLpNorm h (ENNReal.ofReal p) μ) :
+    (hbd : eLpNorm g (ENNReal.ofReal p) ν ≤ M * eLpNorm h (ENNReal.ofReal p) μ)
+    (hh : AEStronglyMeasurable h μ) :
     (∫⁻ x, ‖g x‖ₑ ^ p ∂ν) ≤ M ^ p * ∫⁻ x, ‖h x‖ₑ ^ p ∂μ := by
-  rw [dvLpPow g ν hp, dvLpPow h μ hp]
+  have hgle : (∫⁻ x, ‖g x‖ₑ ^ p ∂ν) ≤ (eLpNorm g (ENNReal.ofReal p) ν) ^ p := by
+    by_cases hg : AEStronglyMeasurable g ν
+    · exact (dvLpPow g ν hp hg).le
+    · rw [eLpNorm_of_not_aestronglyMeasurable hg, ENNReal.top_rpow_of_pos hp]
+      exact le_top
+  rw [dvLpPow h μ hp hh]
+  refine hgle.trans ?_
   calc (eLpNorm g (ENNReal.ofReal p) ν) ^ p
       ≤ (M * eLpNorm h (ENNReal.ofReal p) μ) ^ p :=
         ENNReal.rpow_le_rpow hbd hp.le
@@ -8369,14 +8385,12 @@ theorem dvT_lp_schwartz (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fin
     intro n
     refine le_trans (hsimple (u n) (hint n)) ?_
     refine mul_le_mul' le_rfl ?_
-    rw [dvLpPow _ _ hp0]
+    rw [dvLpPow _ _ hp0 (u n).aestronglyMeasurable]
     refine ENNReal.rpow_le_rpow ?_ hp0.le
     have h0 : eLpNorm ((f : Euclidean 2 → ℂ) +
         (((u n : SimpleFunc (Euclidean 2) ℂ) : Euclidean 2 → ℂ) -
           (f : Euclidean 2 → ℂ))) (ENNReal.ofReal p) volume ≤ A + d n :=
-      eLpNorm_add_le (p := ENNReal.ofReal p) (μ := volume)
-        hfmeas.aestronglyMeasurable
-        (((hmu n).sub hfmeas).aestronglyMeasurable) hpone
+      eLpNorm_add_le hpone
     have h1 : ((f : Euclidean 2 → ℂ) +
         (((u n : SimpleFunc (Euclidean 2) ℂ) : Euclidean 2 → ℂ) -
           (f : Euclidean 2 → ℂ))) =
@@ -8395,12 +8409,13 @@ theorem dvT_lp_schwartz (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R : Fin
       Filter.atTop ≤ M * A ^ p := by
     rw [← hrhs.liminf_eq]
     exact Filter.liminf_le_liminf (Filter.Eventually.of_forall hbd)
-  rw [dvLpPow _ _ hp0]
+  rw [dvLpPow _ _ hp0 f.continuous.aestronglyMeasurable]
   exact hlim
 
-theorem dvL2sqM (g : Euclidean 2 → ℂ) (ν : Measure (Euclidean 2)) :
+theorem dvL2sqM (g : Euclidean 2 → ℂ) (ν : Measure (Euclidean 2))
+    (hg : AEStronglyMeasurable g ν) :
     (∫⁻ x, ‖g x‖ₑ ^ 2 ∂ν) = (eLpNorm g 2 ν) ^ 2 := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hg]
   have h1 : (2 : ℝ≥0∞).toReal = 2 := by norm_num
   rw [h1]
   have h2 : (∫⁻ x, ‖g x‖ₑ ^ (2 : ℝ) ∂ν) = ∫⁻ x, ‖g x‖ₑ ^ 2 ∂ν := by
@@ -8413,9 +8428,16 @@ theorem dvL2sqM (g : Euclidean 2 → ℂ) (ν : Measure (Euclidean 2)) :
 
 /-- Convert an `L²` lintegral bound into an `eLpNorm` bound. -/
 theorem dvEL2_of_lintegral {g h : Euclidean 2 → ℂ} {μ ν : Measure (Euclidean 2)}
-    {L : ℝ≥0∞} (hbd : (∫⁻ x, ‖g x‖ₑ ^ 2 ∂ν) ≤ L * ∫⁻ x, ‖h x‖ₑ ^ 2 ∂μ) :
+    {L : ℝ≥0∞} (hbd : (∫⁻ x, ‖g x‖ₑ ^ 2 ∂ν) ≤ L * ∫⁻ x, ‖h x‖ₑ ^ 2 ∂μ)
+    (hg : AEStronglyMeasurable g ν) :
     eLpNorm g 2 ν ≤ L ^ ((2 : ℝ)⁻¹) * eLpNorm h 2 μ := by
-  rw [dvL2sqM, dvL2sqM] at hbd
+  have hhle : (∫⁻ x, ‖h x‖ₑ ^ 2 ∂μ) ≤ (eLpNorm h 2 μ) ^ 2 := by
+    by_cases hh : AEStronglyMeasurable h μ
+    · exact (dvL2sqM h μ hh).le
+    · rw [eLpNorm_of_not_aestronglyMeasurable hh]
+      simp
+  rw [dvL2sqM g ν hg] at hbd
+  replace hbd := hbd.trans (mul_le_mul' le_rfl hhle)
   set a : ℝ≥0∞ := eLpNorm g 2 ν with ha
   set b : ℝ≥0∞ := eLpNorm h 2 μ with hb
   have hstep : a = (a ^ 2) ^ ((2 : ℝ)⁻¹) := by
@@ -8468,6 +8490,7 @@ theorem dvMaximal_finset_lp (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R :
       intro g
       exact dvT_l2_schwartz phi j R hR hSmeas hdisj _ g (hcore g)
     have hres := dvEL2_of_lintegral hlin
+      (measurable_dvT phi j R hSmeas hu).aestronglyMeasurable
     have hcast : (ENNReal.ofReal (A₀ ^ 2)) ^ ((2 : ℝ)⁻¹) = ENNReal.ofReal A₀ := by
       rw [ENNReal.ofReal_rpow_of_pos (by positivity)]
       congr 1
@@ -8478,8 +8501,9 @@ theorem dvMaximal_finset_lp (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R :
   have h1 : ∀ u : SimpleFunc (Euclidean 2) ℂ, Integrable (u : Euclidean 2 → ℂ) volume →
       eLpNorm (dvT phi j R S (u : Euclidean 2 → ℂ)) ⊤ dvNu ≤
         ENNReal.ofReal A₁ * eLpNorm (u : Euclidean 2 → ℂ) ⊤ volume := by
-    intro u _
+    intro u hu
     exact dvT_eLpNorm_top phi j R hdisj dvNu hA₁ hA₁' _
+      (measurable_dvT phi j R hSmeas hu).aestronglyMeasurable
   -- Riesz--Thorin, in lintegral form
   have hM : ENNReal.ofReal (A₀ ^ 2 * A₁ ^ (p - 2)) =
       (ENNReal.ofReal (Real.rpow A₀ (1 - (1 - 2 / p)) *
@@ -8508,7 +8532,7 @@ theorem dvMaximal_finset_lp (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) (R :
           ∫⁻ x : Euclidean 2, ‖(u : Euclidean 2 → ℂ) x‖ₑ ^ p := by
     intro u hu
     have hrt := dvT_lp_simple phi j R hSmeas hp hA₀ hA₁ h0 h1 u hu
-    have := dvLp_lintegral_of_eLpNorm hp0 hrt
+    have := dvLp_lintegral_of_eLpNorm hp0 hrt u.aestronglyMeasurable
     rwa [← hM] at this
   -- pass to Schwartz data
   have hschw := dvT_lp_schwartz phi j R hSmeas hdisj hp
@@ -8923,7 +8947,7 @@ theorem eLpNorm_dvKerS_le (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) {r : �
   have hL20 : 0 ≤ L2 := integral_nonneg fun _ => by positivity
   have hsq : (eLpNorm (dvKerS phi j r : Euclidean 2 → ℂ) 2 volume) ^ 2 =
       ENNReal.ofReal ((a⁻¹) ^ 2 * L2) := by
-    rw [← dvL2sqM]
+    rw [← dvL2sqM _ _ (dvKerS phi j r).continuous.aestronglyMeasurable]
     have hc : (∫⁻ x : Euclidean 2, ‖(dvKerS phi j r : Euclidean 2 → ℂ) x‖ₑ ^ 2) =
         ∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖(dvKerS phi j r) x‖) ^ 2 := by
       refine lintegral_congr fun x => ?_
@@ -9035,7 +9059,7 @@ theorem dvCrudeL2Core (phi : SchwartzMap (Euclidean 2) ℂ) (j : ℕ) {E : Set �
       ENNReal.ofReal (Nf ^ 2) := by
     have h1 : (∫⁻ x : Euclidean 2, (ENNReal.ofReal ‖(f : Euclidean 2 → ℂ) x‖) ^ 2) =
         (eLpNorm (f : Euclidean 2 → ℂ) 2 volume) ^ 2 := by
-      rw [← dvL2sqM]
+      rw [← dvL2sqM _ _ f.continuous.aestronglyMeasurable]
       refine lintegral_congr fun x => ?_
       rw [ofReal_norm]
     rw [h1, hNf, ENNReal.ofReal_pow ENNReal.toReal_nonneg,

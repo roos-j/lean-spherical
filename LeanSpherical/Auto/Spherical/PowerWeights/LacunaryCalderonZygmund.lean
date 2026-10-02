@@ -5293,7 +5293,7 @@ private theorem integrable_schwartz_convolution_pairing_integrand
     change Integrable (fun p : Euclidean d × Euclidean d =>
       (Complex.conjCLE : ℂ →L[ℝ] ℂ) (g p.2 * K (p.1 - p.2))) (volume.prod volume)
     exact (Complex.conjCLE : ℂ →L[ℝ] ℂ).integrable_comp hbase
-  convert hstar.mul_of_top_right (memLp_top_schwartz_comp_fst h) using 1; rfl
+  convert hstar.mul_of_top_right (memLp_top_schwartz_comp_fst h) using 1
 
 /-- Fubini identity which identifies the literal physical convolution against
 Schwartz test functions.  The only integrability input is `L¹` for the kernel
