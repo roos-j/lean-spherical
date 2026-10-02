@@ -47,19 +47,19 @@ status:
       file: LeanSpherical/Theorems.lean
       sorry_count: 0
       axioms: [propext, Classical.choice, Quot.sound]
-      comparator_config: comparator.json
+      comparator_config: comparator-rs.json
       literature_dependencies: []
     - declaration: Spherical.RestrictedDilations.exists_closure_typeSet_eq_iff
       file: LeanSpherical/Theorems.lean
       sorry_count: 0
       axioms: [propext, Classical.choice, Quot.sound]
-      comparator_config: comparator.json
+      comparator_config: comparator-rs.json
       literature_dependencies: []
     - declaration: Spherical.RestrictedDilations.β_eq_and_γ_eq
       file: LeanSpherical/Theorems.lean
       sorry_count: 0
       axioms: [propext, Classical.choice, Quot.sound]
-      comparator_config: comparator.json
+      comparator_config: comparator-rs.json
       literature_dependencies: []
 automation:
   methods:
