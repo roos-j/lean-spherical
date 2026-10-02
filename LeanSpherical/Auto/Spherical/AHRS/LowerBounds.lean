@@ -740,7 +740,7 @@ theorem eLpNorm_ball_indicator_le_eLpNorm_fractalSphericalMaximalReal
     eLpNorm ((ball (0 : Euclidean d) s).indicator fun _ : Euclidean d => (1 : ℝ))
         (ENNReal.ofReal q) volume ≤
       eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume := by
-  apply eLpNorm_mono
+  apply eLpNorm_mono (aestronglyMeasurable_const.indicator measurableSet_ball)
   intro x
   by_cases hx : x ∈ ball (0 : Euclidean d) s
   · rw [Set.indicator_of_mem hx, norm_one]
@@ -762,7 +762,7 @@ theorem eLpNorm_ball_indicator_one
     eLpNorm ((ball (0 : Euclidean d) s).indicator fun _ : Euclidean d => (1 : ℝ))
         (ENNReal.ofReal q) volume =
       volume (ball (0 : Euclidean d) s) ^ q⁻¹ := by
-  rw [eLpNorm_indicator_const isOpen_ball.measurableSet
+  rw [eLpNorm_indicator_const isOpen_ball.measurableSet.nullMeasurableSet
     (ENNReal.ofReal_ne_zero_iff.mpr hq) ENNReal.ofReal_ne_top]
   simp only [enorm_one, one_mul, ENNReal.toReal_ofReal hq.le, one_div]
 
@@ -853,7 +853,7 @@ theorem eLpNorm_ball_indicator_one_complex
     eLpNorm ((ball (0 : Euclidean d) s).indicator fun _ : Euclidean d => (1 : ℂ))
         (ENNReal.ofReal p) volume =
       volume (ball (0 : Euclidean d) s) ^ p⁻¹ := by
-  rw [eLpNorm_indicator_const isOpen_ball.measurableSet
+  rw [eLpNorm_indicator_const isOpen_ball.measurableSet.nullMeasurableSet
     (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
   simp only [enorm_one, one_mul, ENNReal.toReal_ofReal hp.le, one_div]
 
@@ -867,7 +867,7 @@ theorem eLpNorm_schwartz_ball_test_le_volume_ball
     eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume ≤
       volume (ball (0 : Euclidean d) (2 * R)) ^ p⁻¹ := by
   rw [← eLpNorm_ball_indicator_one_complex (2 * R) p hp]
-  apply eLpNorm_mono
+  apply eLpNorm_mono f.continuous.aestronglyMeasurable
   intro x
   by_cases hx : x ∈ ball (0 : Euclidean d) (2 * R)
   · rw [Set.indicator_of_mem hx, norm_one]
@@ -1400,14 +1400,14 @@ theorem ennreal_ofReal_mul_volume_rpow_le_eLpNorm_of_lower_bound
   have hindicator :
       eLpNorm (S.indicator fun _ : Euclidean d => a) (ENNReal.ofReal q) volume ≤
         eLpNorm g (ENNReal.ofReal q) volume := by
-    apply eLpNorm_mono_real
+    apply eLpNorm_mono_real (aestronglyMeasurable_const.indicator hS)
     intro x
     by_cases hx : x ∈ S
     · rw [Set.indicator_of_mem hx, Real.norm_of_nonneg ha]
       exact hlower x hx
     · rw [Set.indicator_of_notMem hx]
       simpa using hg x
-  rw [eLpNorm_indicator_const hS
+  rw [eLpNorm_indicator_const hS.nullMeasurableSet
     (ENNReal.ofReal_ne_zero_iff.mpr hq) ENNReal.ofReal_ne_top, hnorm,
     ENNReal.toReal_ofReal hq.le] at hindicator
   exact hindicator
@@ -1775,7 +1775,7 @@ theorem volume_ball_rpow_le_eLpNorm_fractalSphericalMaximalReal_of_squared_shell
     volume (ball (0 : Euclidean d) (δ / 8)) ^ q⁻¹ ≤
       eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume := by
   rw [← eLpNorm_ball_indicator_one (δ / 8) q hq]
-  apply eLpNorm_mono
+  apply eLpNorm_mono (aestronglyMeasurable_const.indicator measurableSet_ball)
   intro x
   by_cases hx : x ∈ ball (0 : Euclidean d) (δ / 8)
   · rw [Set.indicator_of_mem hx, norm_one]
@@ -2104,7 +2104,7 @@ theorem eLpNorm_schwartz_horizontalSlab_le
     eLpNorm (f : Euclidean (n + 1) → ℂ) (ENNReal.ofReal p) volume ≤
         eLpNorm (A.indicator fun _ : Euclidean (n + 1) => (1 : ℂ))
           (ENNReal.ofReal p) volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono f.continuous.aestronglyMeasurable
       intro x
       by_cases hx : x ∈ A
       · rw [Set.indicator_of_mem hx, norm_one]
@@ -2112,7 +2112,7 @@ theorem eLpNorm_schwartz_horizontalSlab_le
       · rw [Set.indicator_of_notMem hx]
         rw [hzero x hx]
     _ = volume A ^ p⁻¹ := by
-      rw [eLpNorm_indicator_const hAmeas
+      rw [eLpNorm_indicator_const hAmeas.nullMeasurableSet
         (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
       simp only [enorm_one, one_mul, ENNReal.toReal_ofReal hp.le, one_div]
 
@@ -3161,14 +3161,14 @@ theorem eLpNorm_schwartz_sphericalCapTube_le
     eLpNorm (f : Euclidean (n + 1) → ℂ) (ENNReal.ofReal p) volume ≤
         eLpNorm (A.indicator fun _ : Euclidean (n + 1) => (1 : ℂ))
           (ENNReal.ofReal p) volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono f.continuous.aestronglyMeasurable
       intro y
       by_cases hy : y ∈ A
       · rw [Set.indicator_of_mem hy, norm_one]
         exact hbound y
       · rw [Set.indicator_of_notMem hy, hzero y hy]
     _ = volume A ^ p⁻¹ := by
-      rw [eLpNorm_indicator_const hAmeas
+      rw [eLpNorm_indicator_const hAmeas.nullMeasurableSet
         (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
       simp only [enorm_one, one_mul, ENNReal.toReal_ofReal hp.le, one_div]
 
@@ -3262,7 +3262,7 @@ theorem eLpNorm_squared_shell_test_le_annulus
   calc
     eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume ≤
         eLpNorm (A.indicator fun _ : Euclidean d => (1 : ℂ)) (ENNReal.ofReal p) volume := by
-      apply eLpNorm_mono
+      apply eLpNorm_mono f.continuous.aestronglyMeasurable
       intro y
       by_cases hy : y ∈ A
       · rw [Set.indicator_of_mem hy, norm_one]
@@ -3273,7 +3273,7 @@ theorem eLpNorm_squared_shell_test_le_annulus
           exact hy (squared_shell_subset_thin_annulus hrone hδ hstrip)
         rw [hzero y (le_of_not_gt hnot)]
     _ = volume A ^ p⁻¹ := by
-      rw [eLpNorm_indicator_const hAmeas
+      rw [eLpNorm_indicator_const hAmeas.nullMeasurableSet
         (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
       simp only [enorm_one, one_mul, ENNReal.toReal_ofReal hp.le, one_div]
 
@@ -3480,8 +3480,8 @@ theorem eLpNorm_one_le_eLpNorm_of_support_subset
     exact ENNReal.ofReal_le_ofReal hq
   have hcompare := eLpNorm_le_eLpNorm_mul_rpow_measure_univ
     (μ := μ.restrict S) (f := g) hpq (hg.restrict)
-  rw [eLpNorm_restrict_eq_of_support_subset (p := (1 : ENNReal)) hsupport,
-    eLpNorm_restrict_eq_of_support_subset (p := ENNReal.ofReal q) hsupport] at hcompare
+  rw [eLpNorm_restrict_eq_of_support_subset (p := (1 : ENNReal)) hg hsupport,
+    eLpNorm_restrict_eq_of_support_subset (p := ENNReal.ofReal q) hg hsupport] at hcompare
   simpa [Measure.restrict_apply_univ, ENNReal.toReal_ofReal
     (le_trans zero_le_one hq),
     one_div, inv_one] using hcompare
@@ -5141,7 +5141,7 @@ theorem eLpNorm_one_annulusAverageSum_eq_ofReal_card_mul_integral
   calc
     eLpNorm (annulusAverageSum d (f : Euclidean d → ℂ) s) 1 volume =
         ∫⁻ x : Euclidean d, ‖annulusAverageSum d (f : Euclidean d → ℂ) s x‖ₑ :=
-      eLpNorm_one_eq_lintegral_enorm
+      eLpNorm_one_eq_lintegral_enorm hsum_integrable.aestronglyMeasurable
     _ = ∫⁻ x : Euclidean d,
         ENNReal.ofReal (annulusAverageSum d (f : Euclidean d → ℂ) s x) := by
       congr with x
@@ -5191,7 +5191,7 @@ theorem ofReal_card_mul_integral_le_eLpNorm_fractalSphericalMaximal_mul_annuli
   have hH_norm_le :
       eLpNorm H (ENNReal.ofReal q) volume ≤
         eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume := by
-    apply eLpNorm_mono
+    apply eLpNorm_mono hH_integrable.aestronglyMeasurable
     intro x
     rw [Real.norm_of_nonneg (hH_nonneg x),
       Real.norm_of_nonneg (hmax_nonneg x)]

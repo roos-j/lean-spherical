@@ -2374,14 +2374,22 @@ private theorem rv_eLpNorm_four_le_of_lintegral
     (mu : Measure X) (f g : X → E) (A : ENNReal)
     (hmoment :
       (∫⁻ x : X, ‖f x‖ₑ ^ (4 : Real) ∂mu) ≤
-        A ^ (4 : Real) * ∫⁻ x : X, ‖g x‖ₑ ^ (4 : Real) ∂mu) :
+        A ^ (4 : Real) * ∫⁻ x : X, ‖g x‖ₑ ^ (4 : Real) ∂mu)
+    (hf : AEStronglyMeasurable f mu) :
     eLpNorm f (4 : ENNReal) mu ≤ A * eLpNorm g (4 : ENNReal) mu := by
   have hroot := ENNReal.rpow_le_rpow hmoment
     (by norm_num : (0 : Real) ≤ 1 / 4)
+  have hg : (∫⁻ x : X, ‖g x‖ₑ ^ (4 : Real) ∂mu) ^ (1 / 4 : Real) ≤
+      eLpNorm g (4 : ENNReal) mu := by
+    by_cases hgm : AEStronglyMeasurable g mu
+    · rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hgm]
+      norm_num
+    · rw [eLpNorm_of_not_aestronglyMeasurable hgm]
+      exact le_top
   calc
     eLpNorm f (4 : ENNReal) mu =
         (∫⁻ x : X, ‖f x‖ₑ ^ (4 : Real) ∂mu) ^ (1 / 4 : Real) := by
-      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hf]
       norm_num
     _ ≤ (A ^ (4 : Real) * ∫⁻ x : X, ‖g x‖ₑ ^ (4 : Real) ∂mu) ^
         (1 / 4 : Real) := hroot
@@ -2389,9 +2397,8 @@ private theorem rv_eLpNorm_four_le_of_lintegral
       rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : Real) ≤ 1 / 4),
         ← ENNReal.rpow_mul]
       norm_num
-    _ = A * eLpNorm g (4 : ENNReal) mu := by
-      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
-      norm_num
+    _ ≤ A * eLpNorm g (4 : ENNReal) mu := by
+      gcongr
 
 /-- The affine time-integrand of a joint-Schwartz vertical projection is integrable. -/
 private theorem rv_integrable_affine_vertical_time_integrand
@@ -2617,6 +2624,36 @@ theorem removeVerticalProjections_of_schwartz_core
     simpa only [V, W, a, G] using
       rv_verticalProjection_bundle_eq_affine_integral beta scale
         radialIndices angularIndices hscale0 H
+  have hUcont : Continuous U := by
+    dsimp only [U, G]
+    unfold jointSchwartzRaw
+    exact (PiLp.continuous_toLp 2 _).comp
+      (continuous_pi fun i => (H i.1.1 i.1.2).continuous.comp
+        (WithLp.prod_continuous_toLp 2 (Euclidean 2) Real))
+  have hWmeas : AEStronglyMeasurable W volume := by
+    have hcomp : ∀ i, Measurable (fun z : WaveSpaceTime =>
+        ∫ y : Real, a i y * G i (z.1, z.2 - y)) := by
+      intro i
+      have ha : Continuous (a i) := by
+        dsimp only [a]
+        rw [← SchwartzMap.fourierInv_coe]
+        exact (FourierTransform.fourierInv
+          (affineVerticalProfile beta scale i.1.1 hscale0 :
+            SchwartzMap Real Complex)).continuous
+      have hGc : Continuous (G i) := by
+        dsimp only [G]
+        unfold jointSchwartzRaw
+        exact (H i.1.1 i.1.2).continuous.comp
+          (WithLp.prod_continuous_toLp 2 (Euclidean 2) Real)
+      have hjoint : Continuous (fun q : WaveSpaceTime × Real =>
+          a i q.2 * G i (q.1.1, q.1.2 - q.2)) :=
+        (ha.comp continuous_snd).mul (hGc.comp
+          ((continuous_fst.comp continuous_fst).prodMk
+            ((continuous_snd.comp continuous_fst).sub continuous_snd)))
+      exact hjoint.stronglyMeasurable.integral_prod_right'.measurable
+    exact ((PiLp.continuous_toLp 2 _).measurable.comp
+      (measurable_pi_iff.mpr hcomp)).aestronglyMeasurable
+  have hVmeas : AEStronglyMeasurable V volume := hVW ▸ hWmeas
   have hmoment :
       (∫⁻ z : WaveSpaceTime, ‖W z‖ₑ ^ (4 : Real)) ≤
         (∫⁻ y : Real, ENNReal.ofReal (K y)) ^ (4 : Real) *
@@ -2628,7 +2665,7 @@ theorem removeVerticalProjections_of_schwartz_core
         (∫⁻ y : Real, ENNReal.ofReal (K y)) *
           eLpNorm U (4 : ENNReal) volume :=
     rv_eLpNorm_four_le_of_lintegral volume W U
-      (∫⁻ y : Real, ENNReal.ofReal (K y)) hmoment
+      (∫⁻ y : Real, ENNReal.ofReal (K y)) hmoment hWmeas
   have hmass : (∫⁻ y : Real, ENNReal.ofReal (K y)) = ENNReal.ofReal B := by
     simpa only [K, B] using
       rv_lintegral_affine_kernel_majorant_eq beta scale hscale0
@@ -2666,12 +2703,12 @@ theorem removeVerticalProjections_of_schwartz_core
           (fun n nu => verticalProjection (beta : Real → Complex) scale n
             (jointSchwartzRaw (H n nu))))
         (4 : ENNReal) volume = eLpNorm V (4 : ENNReal) volume := by
-      rw [hprojected, eLpNorm_norm]
+      rw [hprojected, eLpNorm_norm _ hVmeas]
     _ ≤ ENNReal.ofReal (1 + B) * eLpNorm U (4 : ENNReal) volume := hfour'
     _ = ENNReal.ofReal (1 + B) *
         eLpNorm (angularRadialSquareFunction radialIndices angularIndices
           (fun n nu => jointSchwartzRaw (H n nu))) (4 : ENNReal) volume := by
-      rw [hraw, eLpNorm_norm]
+      rw [hraw, eLpNorm_norm _ hUcont.aestronglyMeasurable]
 
 private theorem norm_verticalRecombined_jointSchwartzRaw_le_commonKernelTop
     (beta : SchwartzMap Real Complex) (scale : Real) (indices : Finset Int)
@@ -3189,6 +3226,8 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_le_finite_source
     (K * ∫⁻ ζ : JointWaveSpaceTime,
       (ENNReal.ofReal ‖jointVerticalRecombinedSourceEval indices H ζ‖) ^ p)
     hmoment
+    (((continuous_verticalRecombined_jointSchwartzRaw B.cutoff scale indices hscale
+      H).norm.div_const _).aestronglyMeasurable)
   have hin :
       (∫⁻ ζ : JointWaveSpaceTime,
         (ENNReal.ofReal ‖jointVerticalRecombinedSourceEval indices H ζ‖) ^ p) =
@@ -3196,6 +3235,13 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_le_finite_source
           (ENNReal.ofReal p) volume) ^ p :=
     Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
       (lt_trans (by norm_num) hp) (jointVerticalRecombinedSourceEval indices H)
+      (by
+        unfold jointVerticalRecombinedSourceEval
+        apply Continuous.aestronglyMeasurable
+        apply (PiLp.continuous_toLp 2 (fun _ : (↥indices) => Complex)).comp
+        apply continuous_pi
+        intro i
+        exact (H (i : Int)).continuous)
   rw [hin] at hbound
   have hbound' :
       eLpNorm (normalizedJointVerticalRecombinedOutput B.cutoff scale indices H)
@@ -3229,7 +3275,8 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_le_finite_source
         (ENNReal.ofReal p) volume =
         eLpNorm (jointVerticalRecombinedOutput B.cutoff scale indices H)
           (ENNReal.ofReal p) volume := by
-            rw [← eLpNorm_norm]
+            rw [← eLpNorm_norm _ (continuous_verticalRecombined_jointSchwartzRaw B.cutoff
+              scale indices hscale H).aestronglyMeasurable]
             rfl
     _ = ENNReal.ofReal btop *
         eLpNorm (normalizedJointVerticalRecombinedOutput B.cutoff scale indices H)
@@ -3278,7 +3325,9 @@ private theorem eLpNorm_jointVerticalRecombinedSourceEval_eq_verticalSquareFunct
           · exact hpres
     _ = eLpNorm (fun z : WaveSpaceTime =>
         ‖jointVerticalRecombinedSourceEval indices H (e z)‖) p volume := by
-          rw [eLpNorm_norm]
+          rw [eLpNorm_norm (fun z => jointVerticalRecombinedSourceEval indices H (e z))
+            ((continuous_jointVerticalRecombinedSourceEval indices H).comp
+            (WithLp.prod_continuous_toLp 2 (Euclidean 2) Real)).aestronglyMeasurable]
           rfl
     _ = eLpNorm (verticalSquareFunction indices
         (fun n => jointSchwartzRaw (H n))) p volume := by
@@ -3534,12 +3583,22 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_le_two
       _ = ENNReal.ofReal C *
           ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (2 : Real) := by
         rw [hmomentS]
+  have hScont : Continuous S := by
+    have hEq : S = fun z => ‖jointVerticalRecombinedEval indices H z‖ := by
+      funext z
+      dsimp only [S]
+      rw [verticalSquareFunction_eq_norm_piLp]
+      rfl
+    rw [hEq]
+    exact (continuous_jointVerticalRecombinedEval indices H).norm
   have hOlp :
       (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖O z‖) ^ (2 : Real)) =
         (eLpNorm O (2 : ENNReal) volume) ^ (2 : Real) := by
     simpa using
       (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-        (by norm_num : (0 : Real) < 2) O)
+        (by norm_num : (0 : Real) < 2) O
+        (continuous_verticalRecombined_jointSchwartzRaw B.cutoff scale indices hscale
+          H).aestronglyMeasurable)
   have hSlp :
       (∫⁻ z : WaveSpaceTime, (ENNReal.ofReal (S z)) ^ (2 : Real)) =
         (eLpNorm S (2 : ENNReal) volume) ^ (2 : Real) := by
@@ -3553,7 +3612,7 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_le_two
       _ = (eLpNorm S (2 : ENNReal) volume) ^ (2 : Real) := by
         simpa using
           (Auto.LpSpaceFacts.lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
-            (by norm_num : (0 : Real) < 2) S hSnonneg)
+            (by norm_num : (0 : Real) < 2) S hSnonneg hScont.aestronglyMeasurable)
   have hmomentNorm :
       (eLpNorm O (2 : ENNReal) volume) ^ (2 : Real) ≤
         ENNReal.ofReal C * (eLpNorm S (2 : ENNReal) volume) ^ (2 : Real) := by
@@ -3627,9 +3686,10 @@ private theorem jointVertical_eLpNorm_top_le_of_continuous_global_bound
     (hScont : Continuous S) {B : Real} (hB : 0 < B)
     (hTnonneg : ∀ z, 0 ≤ T z)
     (hglobal : ∀ (a : Real), 0 ≤ a →
-      (∀ z : WaveSpaceTime, ‖S z‖ ≤ a) → ∀ z, T z ≤ B * a) :
+      (∀ z : WaveSpaceTime, ‖S z‖ ≤ a) → ∀ z, T z ≤ B * a)
+    (hT : AEStronglyMeasurable T volume) :
     eLpNorm T ⊤ volume ≤ ENNReal.ofReal B * eLpNorm S ⊤ volume := by
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top hT]
   by_cases hStop : eLpNorm S ⊤ volume = ⊤
   · rw [hStop, ENNReal.mul_top (ne_of_gt (ENNReal.ofReal_pos.mpr hB))]
     exact le_top
@@ -3640,7 +3700,7 @@ private theorem jointVertical_eLpNorm_top_le_of_continuous_global_bound
     exact ENNReal.ofReal_toReal hStop
   have hSaeEnorm : ∀ᵐ z : WaveSpaceTime ∂volume,
       ‖S z‖ₑ ≤ ENNReal.ofReal A := by
-    simpa only [hA, eLpNorm_exponent_top] using
+    simpa only [hA, eLpNorm_exponent_top hScont.aestronglyMeasurable] using
       (enorm_ae_le_eLpNormEssSup S volume)
   have hSae : ∀ᵐ z : WaveSpaceTime ∂volume, ‖S z‖ ≤ A := by
     filter_upwards [hSaeEnorm] with z hz
@@ -3704,6 +3764,8 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_top_of_global_commonKer
       (jointVerticalRecombinedOutput beta scale indices H)
       (continuous_jointVerticalRecombinedEval indices H) hbtop
       (jointVerticalRecombinedOutput_nonneg beta scale indices H)
+      (hT := (continuous_verticalRecombined_jointSchwartzRaw beta scale indices hscale_pos
+        H).norm.aestronglyMeasurable)
     intro a ha hbound z
     calc
       jointVerticalRecombinedOutput beta scale indices H z ≤
@@ -3723,14 +3785,16 @@ private theorem eLpNorm_verticalRecombined_jointSchwartz_top_of_global_commonKer
       eLpNorm (verticalRecombined (beta : Real → Complex) scale indices
           (fun n => jointSchwartzRaw (H n))) ⊤ volume =
           eLpNorm (jointVerticalRecombinedOutput beta scale indices H) ⊤ volume := by
-            rw [← eLpNorm_norm]
+            rw [← eLpNorm_norm _ (continuous_verticalRecombined_jointSchwartzRaw beta scale
+              indices hscale_pos H).aestronglyMeasurable]
             rfl
       _ ≤ ENNReal.ofReal btop *
           eLpNorm (jointVerticalRecombinedEval indices H) ⊤ volume := htop
       _ = ENNReal.ofReal btop *
           eLpNorm (verticalSquareFunction indices
             (fun n => jointSchwartzRaw (H n))) ⊤ volume := by
-            rw [eLpNorm_verticalSquareFunction_eq_eLpNorm_piLp]
+            rw [eLpNorm_verticalSquareFunction_eq_eLpNorm_piLp _ _ _
+              (continuous_jointVerticalRecombinedEval indices H).aestronglyMeasurable]
             rfl
   have hcoef : ENNReal.ofReal btop ≤
       ENNReal.ofReal

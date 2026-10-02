@@ -929,6 +929,19 @@ private theorem aux_eLpNorm_jointSchwartzRaw_eq
     eLpNorm (Q : JointWaveSpaceTime → Complex) p volume
   exact eLpNorm_comp_measurePreserving (Q.memLp p volume).aestronglyMeasurable hpres
 
+private theorem aux_aestronglyMeasurable_spaceTimeFourier_jointSchwartzRaw
+    (G : SchwartzMap JointWaveSpaceTime Complex) :
+    AEStronglyMeasurable (spaceTimeFourier (jointSchwartzRaw G)) volume := by
+  have hfun : spaceTimeFourier (jointSchwartzRaw G) =
+      fun ζ : WaveSpaceTime =>
+        (FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex)
+          (WithLp.toLp 2 ζ) := by
+    funext ζ
+    exact spaceTimeFourier_jointSchwartzRaw G ζ
+  rw [hfun]
+  exact ((FourierTransform.fourier G).continuous.comp
+    (WithLp.prod_continuous_toLp 2 _ _)).aestronglyMeasurable
+
 private theorem aux_eLpNorm_weighted_normalTail_le_sheared_envelope
     (B u : SchwartzMap (Auto.Spherical.SurfaceMeasureDecay.Euclidean 2) Complex)
     (vartheta beta : SchwartzMap Real Complex)
@@ -972,7 +985,8 @@ private theorem aux_eLpNorm_weighted_normalTail_le_sheared_envelope
       eLpNorm (T • spaceTimeFourier
           (temporalSchwartzAnnularNormalTail B u vartheta beta rho)) 2 volume ≤
         eLpNorm (D • jointSchwartzRaw G) 2 volume :=
-    eLpNorm_mono hnorm
+    eLpNorm_mono ((aux_aestronglyMeasurable_spaceTimeFourier_jointSchwartzRaw _).const_smul T)
+      hnorm
   calc
     ENNReal.ofReal ((1 + R) ^ N) *
         eLpNorm (temporalSchwartzAnnularNormalTail B u vartheta beta rho) 2 volume =
@@ -1043,7 +1057,7 @@ private theorem aux_eLpNorm_top_jointSchwartzRaw_fourierInv_le
     (P : SchwartzMap JointWaveSpaceTime Complex) :
     eLpNorm (jointSchwartzRaw (FourierTransform.fourierInv P)) ⊤ volume ≤
       ENNReal.ofReal ‖P.toLp 1 volume‖ := by
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top (aux_aestronglyMeasurable_jointSchwartzRaw _)]
   apply eLpNormEssSup_le_of_ae_bound
   filter_upwards with z
   change ‖(FourierTransform.fourierInv P : SchwartzMap JointWaveSpaceTime Complex)
@@ -1245,7 +1259,7 @@ private theorem aux_eLpNorm_one_spaceTimeFourier_temporalSchwartzAnnularNormalTa
           ((M : Complex) •
             jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho))
           1 volume :=
-      eLpNorm_mono
+      eLpNorm_mono (aux_aestronglyMeasurable_spaceTimeFourier_jointSchwartzRaw _)
         (aux_tailFourier_norm_le_smul_profile B u vartheta beta rho M hM hu hbeta)
     _ = ‖(M : Complex)‖ₑ *
           eLpNorm (jointSchwartzRaw (jointSchwartzModulatedAnnularProfile B vartheta rho))
@@ -1478,9 +1492,7 @@ theorem eLpNorm_four_finset_sum_sub_le_sum_of_eq_add_of_tail_bounds
     eLpNorm (∑ i ∈ indices, tail i) 4 volume ≤
         ∑ i ∈ indices, eLpNorm (tail i) 4 volume := by
       apply eLpNorm_sum_le
-      · intro i hi
-        exact htailMeas i hi
-      · norm_num
+      norm_num
     _ ≤ ∑ i ∈ indices, E i := by
       apply Finset.sum_le_sum
       intro i hi
@@ -1912,10 +1924,27 @@ private theorem aux_eLpNorm_four_finiteSquareFunction_sub_le_sum_of_eq_add_of_ta
     (hdecomp : ∀ i ∈ indices, ∀ z, full i z = main i z + tail i z)
     (htailMeas : ∀ i ∈ indices, AEStronglyMeasurable (tail i) volume)
     (E : ι → ENNReal)
-    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i) :
+    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i)
+    (hmainMeas : ∀ i ∈ indices, AEStronglyMeasurable (main i) volume) :
     eLpNorm (aux_finiteSquareFunction indices full -
       aux_finiteSquareFunction indices main) 4 volume ≤
         ∑ i ∈ indices, E i := by
+  have hsq (H : ι → WaveSpaceTime → Complex)
+      (hH : ∀ i ∈ indices, AEStronglyMeasurable (H i) volume) :
+      AEStronglyMeasurable (aux_finiteSquareFunction indices H) volume := by
+    unfold aux_finiteSquareFunction
+    apply Real.continuous_sqrt.comp_aestronglyMeasurable
+    apply Finset.aestronglyMeasurable_fun_sum indices
+    intro i hi
+    exact ((hH i hi).norm).pow 2
+  have hfullMeas : ∀ i ∈ indices, AEStronglyMeasurable (full i) volume := by
+    intro i hi
+    have hfi : full i = main i + tail i := funext (hdecomp i hi)
+    rw [hfi]
+    exact (hmainMeas i hi).add (htailMeas i hi)
+  have hdiffMeas : AEStronglyMeasurable
+      (aux_finiteSquareFunction indices full - aux_finiteSquareFunction indices main) volume :=
+    (hsq full hfullMeas).sub (hsq main hmainMeas)
   let G : WaveSpaceTime → Real := fun z => ∑ i ∈ indices, ‖tail i z‖
   have hGnonneg (z : WaveSpaceTime) : 0 ≤ G z := by
     exact Finset.sum_nonneg fun _ _ => norm_nonneg _
@@ -1930,7 +1959,7 @@ private theorem aux_eLpNorm_four_finiteSquareFunction_sub_le_sum_of_eq_add_of_ta
   calc
     eLpNorm (aux_finiteSquareFunction indices full -
         aux_finiteSquareFunction indices main) 4 volume ≤ eLpNorm G 4 volume :=
-      eLpNorm_mono hmono
+      eLpNorm_mono hdiffMeas hmono
     _ = eLpNorm (fun z => ∑ i ∈ indices, ‖tail i z‖) 4 volume := rfl
     _ = eLpNorm (∑ i ∈ indices, fun z => ‖tail i z‖) 4 volume := by
       congr 1
@@ -1938,13 +1967,11 @@ private theorem aux_eLpNorm_four_finiteSquareFunction_sub_le_sum_of_eq_add_of_ta
       simp only [Finset.sum_apply]
     _ ≤ ∑ i ∈ indices, eLpNorm (fun z => ‖tail i z‖) 4 volume := by
       apply eLpNorm_sum_le
-      · intro i hi
-        exact (htailMeas i hi).norm
-      · norm_num
+      norm_num
     _ = ∑ i ∈ indices, eLpNorm (tail i) 4 volume := by
       apply Finset.sum_congr rfl
       intro i hi
-      exact eLpNorm_norm (tail i)
+      exact eLpNorm_norm (tail i) (htailMeas i hi)
     _ ≤ ∑ i ∈ indices, E i := by
       apply Finset.sum_le_sum
       intro i hi
@@ -1974,7 +2001,9 @@ theorem eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bo
       AEStronglyMeasurable (tail n nu) volume)
     (E : Int → Int → ENNReal)
     (hE : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
-      eLpNorm (tail n nu) 4 volume ≤ E n nu) :
+      eLpNorm (tail n nu) 4 volume ≤ E n nu)
+    (hmainMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (main n nu) volume) :
     eLpNorm
         (angularRadialSquareFunction radialIndices angularIndices full -
           angularRadialSquareFunction radialIndices angularIndices main)
@@ -1999,8 +2028,14 @@ theorem eLpNorm_four_angularRadialSquareFunction_sub_le_sum_of_eq_add_of_tail_bo
     intro i hi
     obtain ⟨hn, hnu⟩ := Finset.mem_product.mp hi
     exact hE i.1 hn i.2 hnu
+  have hmainMeas' : ∀ i ∈ radialIndices.product angularIndices,
+      AEStronglyMeasurable (main' i) volume := by
+    intro i hi
+    obtain ⟨hn, hnu⟩ := Finset.mem_product.mp hi
+    exact hmainMeas i.1 hn i.2 hnu
   have hfinite := aux_eLpNorm_four_finiteSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
     (radialIndices.product angularIndices) full' main' tail' hdecomp' htailMeas' E' hE'
+    hmainMeas'
   have hfull : angularRadialSquareFunction radialIndices angularIndices full =
       aux_finiteSquareFunction (radialIndices.product angularIndices) full' := by
     dsimp only [full']
@@ -2058,7 +2093,9 @@ theorem eLpNorm_four_aux_angRadialRecombSquareFn_sub_le_sum_of_eq_add_of_tail_bo
       AEStronglyMeasurable (tail n nu) volume)
     (E : Int → Int → ENNReal)
     (hE : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
-      eLpNorm (tail n nu) 4 volume ≤ E n nu) :
+      eLpNorm (tail n nu) 4 volume ≤ E n nu)
+    (hmainMeas : ∀ n ∈ radialIndices, ∀ nu ∈ angularIndices,
+      AEStronglyMeasurable (main n nu) volume) :
     eLpNorm
         (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full -
           aux_angularRadialRecombinedSquareFunction radialIndices angularIndices main)
@@ -2094,15 +2131,19 @@ theorem eLpNorm_four_aux_angRadialRecombSquareFn_sub_le_sum_of_eq_add_of_tail_bo
       eLpNorm (∑ nu ∈ angularIndices, tail n nu) 4 volume ≤
           ∑ nu ∈ angularIndices, eLpNorm (tail n nu) 4 volume := by
         apply eLpNorm_sum_le
-        · intro nu hnu
-          exact htailMeas n hn nu hnu
-        · norm_num
+        norm_num
       _ ≤ ∑ nu ∈ angularIndices, E n nu := by
         apply Finset.sum_le_sum
         intro nu hnu
         exact hE n hn nu hnu
+  have hmainMeas' : ∀ n ∈ radialIndices, AEStronglyMeasurable (main' n) volume := by
+    intro n hn
+    dsimp [main']
+    apply Finset.aestronglyMeasurable_fun_sum angularIndices
+    intro nu hnu
+    exact hmainMeas n hn nu hnu
   have hvertical := eLpNorm_four_verticalSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
-    radialIndices full' main' tail' hdecomp' htailMeas' E' hE'
+    radialIndices full' main' tail' hdecomp' htailMeas' E' hE' hmainMeas'
   have hfull : aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full =
       verticalSquareFunction radialIndices full' := by
     rfl
@@ -2180,7 +2221,7 @@ theorem aux_eLpNorm_aux_angularRadialRecombinedSquareFunction_full_le_main_add_s
           funext z
           simp only [Pi.sub_apply, Pi.add_apply]
           abel
-      _ ≤ _ := eLpNorm_add_le (hfullRec.sub hmainRec) hmainRec (by norm_num)
+      _ ≤ _ := eLpNorm_add_le (by norm_num)
   calc
     eLpNorm
         (aux_angularRadialRecombinedSquareFunction radialIndices angularIndices full)
@@ -2198,7 +2239,7 @@ theorem aux_eLpNorm_aux_angularRadialRecombinedSquareFunction_full_le_main_add_s
           4 volume := by
       gcongr
       exact eLpNorm_four_aux_angRadialRecombSquareFn_sub_le_sum_of_eq_add_of_tail_bounds
-        radialIndices angularIndices full main tail hdecomp htailMeas E hE
+        radialIndices angularIndices full main tail hdecomp htailMeas E hE hmainMeas
     _ = _ := add_comm _ _
 
 /-- The vector-valued estimate removing vertical projections from a finite
@@ -3718,10 +3759,13 @@ private theorem scratch_wavefront_complex_spatial_convolution_p_young
           ‖(K ⋆[ContinuousLinearMap.mul Complex Complex] f) x‖ₑ ^ p) ≤ L ^ p * J := by
     simpa only [L, J] using
       scratch_wavefront_complex_spatial_convolution_p_moment p hp K f hK hf
+  have hconv : AEStronglyMeasurable
+      (K ⋆[ContinuousLinearMap.mul Complex Complex] f) volume :=
+    hK.aestronglyMeasurable.convolution _ hf.aestronglyMeasurable
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hconv]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hf.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp0.le]
   have hroot : (∫⁻ x : Euclidean 2,
           ‖(K ⋆[ContinuousLinearMap.mul Complex Complex] f) x‖ₑ ^ p) ^ p⁻¹ ≤
@@ -3784,9 +3828,7 @@ private theorem scratch_wavefront_mixed_p_lift_of_slice_moment
         simpa only [F, J] using hpoint t
       _ = (∫⁻ t : Real, A t) * J := lintegral_mul_const J hA
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hG.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp.le]
   have hroot : (∫⁻ z : WaveSpaceTime, F z) ^ p⁻¹ ≤
       (∫⁻ t : Real, A t) ^ p⁻¹ * J ^ p⁻¹ := by
@@ -3796,7 +3838,20 @@ private theorem scratch_wavefront_mixed_p_lift_of_slice_moment
         ENNReal.rpow_le_rpow hmoment (inv_nonneg.mpr hp.le)
       _ = (∫⁻ t : Real, A t) ^ p⁻¹ * J ^ p⁻¹ :=
         ENNReal.mul_rpow_of_nonneg _ _ (inv_nonneg.mpr hp.le)
-  convert hroot using 1 <;> simp only [F, J, one_div]
+  have hJf : J ^ p⁻¹ ≤ eLpNorm f (ENNReal.ofReal p) volume := by
+    by_cases hfm : AEStronglyMeasurable f volume
+    · rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
+        (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hfm]
+      simp only [ENNReal.toReal_ofReal hp.le, one_div]
+      exact le_rfl
+    · rw [eLpNorm_of_not_aestronglyMeasurable hfm]
+      exact le_top
+  calc
+    (∫⁻ z : WaveSpaceTime, ‖G z‖ₑ ^ p) ^ (1 / p) =
+        (∫⁻ z : WaveSpaceTime, F z) ^ p⁻¹ := by simp only [F, one_div]
+    _ ≤ (∫⁻ t : Real, A t) ^ p⁻¹ * J ^ p⁻¹ := hroot
+    _ ≤ (∫⁻ t : Real, A t) ^ p⁻¹ * eLpNorm f (ENNReal.ofReal p) volume := by
+      gcongr
 
 /-- Literal mixed Young at the one exponent used by the wave-front lemma.
 The left side is the actual space--time convolution of a kernel with spatial
@@ -3840,7 +3895,8 @@ private theorem scratch_wavefront_mixed_spatial_convolution_four_young
     G A f hG hA hpoint
   have hcoef : (∫⁻ t : Real, S t ^ (4 : Real)) ^ (4 : Real)⁻¹ =
       eLpNorm S 4 volume := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by simp)]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by simp)
+      hA0.aestronglyMeasurable]
     simp only [enorm_eq_self, ENNReal.toReal_ofNat, one_div]
   rw [show (∫⁻ t : Real, A t) ^ (4 : Real)⁻¹ = eLpNorm S 4 volume by
     simpa only [A] using hcoef] at hmain
@@ -3988,6 +4044,7 @@ private theorem scratch_wavefront_fourierInv_seminorm_le_derivativeIntegrals
         subst k
         simpa using SchwartzMap.integrable_pow_mul_iteratedFDeriv volume Q 0 n)
       (k := 0) (n := N) (by simp) (by simp) (-x)
+    rw [Finset.sum_product, Finset.sum_range_one] at h
     simpa [Real.fourierInv_eq_fourier_neg] using h
 
 /-- The honest analytic input left after the cutoff algebra: all finite
@@ -4252,14 +4309,15 @@ private theorem scratch_wavefront_tailWeight_eLpNorm_lt_top
     (p : ENNReal) (hp : 1 ≤ p) :
     eLpNorm scratch_wavefront_tailWeight p volume < ∞ := by
   by_cases htop : p = ∞
-  · rw [htop, eLpNorm_exponent_top]
+  · rw [htop, eLpNorm_exponent_top scratch_wavefront_tailWeight_continuous.aestronglyMeasurable]
     exact eLpNormEssSup_lt_top_of_ae_bound
       (Eventually.of_forall fun t => by
         rw [Real.norm_eq_abs, abs_of_nonneg (scratch_wavefront_tailWeight_nonneg t)]
         exact scratch_wavefront_tailWeight_le_one t)
   · have hp0 : p ≠ 0 := by
       exact ne_of_gt (lt_of_lt_of_le zero_lt_one hp)
-    apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hp0 htop).mpr
+    apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hp0 htop
+      scratch_wavefront_tailWeight_continuous.aestronglyMeasurable).mpr
     have hpow := scratch_wavefront_tailWeight_rpow_integrable p hp htop
     have hfin :
         (∫⁻ t : Real, ‖scratch_wavefront_tailWeight t ^ p.toReal‖ₑ) < ∞ :=
@@ -4273,10 +4331,10 @@ private theorem scratch_wavefront_tailWeight_eLpNorm_lt_top
 private theorem scratch_wavefront_eLpNorm_sliceMass_le_tailWeight
     (p : ENNReal) (S : Real → ENNReal) (c : ENNReal)
     (hS : ∀ t : Real,
-      S t ≤ c * ENNReal.ofReal (scratch_wavefront_tailWeight t)) :
+      S t ≤ c * ENNReal.ofReal (scratch_wavefront_tailWeight t))
+    (hSm : AEStronglyMeasurable S volume) :
     eLpNorm S p volume ≤ c * eLpNorm scratch_wavefront_tailWeight p volume := by
-  apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' p
-    scratch_wavefront_tailWeight_continuous.aestronglyMeasurable
+  apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' p hSm
   filter_upwards with t
   simpa [Real.enorm_of_nonneg (scratch_wavefront_tailWeight_nonneg t)] using hS t
 
@@ -4298,6 +4356,7 @@ private theorem scratch_wavefront_exists_eLpNorm_sliceMass_four_decay
       (∀ t : Real,
         S t ≤ ENNReal.ofReal
           (A * (scale⁻¹) ^ N * ((1 + |t|)⁻¹) ^ (2 : Nat))) →
+      AEStronglyMeasurable S volume →
       eLpNorm S 4 volume ≤ ENNReal.ofReal (C * (scale⁻¹) ^ N) := by
   let W : ENNReal := eLpNorm scratch_wavefront_tailWeight 4 volume
   let B : Real := W.toReal
@@ -4306,7 +4365,7 @@ private theorem scratch_wavefront_exists_eLpNorm_sliceMass_four_decay
   refine ⟨A * B + 1, ?_, ?_⟩
   · have hAB : 0 ≤ A * B := mul_nonneg hA ENNReal.toReal_nonneg
     linarith
-  · intro scale hscale S hS
+  · intro scale hscale S hS hSm
     have hsnonneg : 0 ≤ (scale⁻¹) ^ N :=
       pow_nonneg (inv_nonneg.mpr hscale.le) _
     have hAsnonneg : 0 ≤ A * (scale⁻¹) ^ N :=
@@ -4321,7 +4380,7 @@ private theorem scratch_wavefront_exists_eLpNorm_sliceMass_four_decay
       gcongr
       exact scratch_wavefront_absTail_le_tailWeight t
     have hcoeff := scratch_wavefront_eLpNorm_sliceMass_le_tailWeight 4 S
-      (ENNReal.ofReal (A * (scale⁻¹) ^ N)) htail
+      (ENNReal.ofReal (A * (scale⁻¹) ^ N)) htail hSm
     calc
       eLpNorm S 4 volume ≤ ENNReal.ofReal (A * (scale⁻¹) ^ N) * W := hcoeff
       _ = ENNReal.ofReal ((A * B) * (scale⁻¹) ^ N) := by
@@ -4449,7 +4508,11 @@ private theorem scratchWavefrontRapidMultiplierBounds.exists_packet_L4_rapid_bou
     rw [ENNReal.ofReal_mul (mul_nonneg hA
       (pow_nonneg (inv_nonneg.mpr hscale.le) _))]
     exact hslice
-  have hSbound := hCbound scale hscale S hS
+  have hSmeas : AEStronglyMeasurable S volume := by
+    have hKswap : Measurable (fun z : Real × Euclidean 2 => ‖K z.swap‖ₑ) :=
+      hKcont.measurable.enorm.comp measurable_swap
+    exact hKswap.lintegral_prod_right.aestronglyMeasurable
+  have hSbound := hCbound scale hscale S hS hSmeas
   have hYoung := scratch_wavefront_mixed_spatial_convolution_four_young
     K (f : Euclidean 2 → Complex) hKcont f.continuous
   have hres : scratchWavefrontPacketResidual D scale hscale n nu f =
@@ -6258,7 +6321,7 @@ private theorem scratch_eLpNorm_four_angularRadialSquareFunction_le_sum_of_bound
     (by
       intro n hn nu hnu z
       simp)
-    htailMeas E hE
+    htailMeas E hE (fun _ _ _ _ => aestronglyMeasurable_const)
   have hzero : angularRadialSquareFunction radialIndices angularIndices
       (fun _ _ _ => 0) = 0 := by
     funext z

@@ -392,7 +392,7 @@ theorem hasFiniteConvolutionKernelGoodL2Bound_of_schwartz_core
         g y * K (x - y)‖)‖ =
         ‖hP.toLp (fun x : Euclidean d => ∫ y : Euclidean d,
           g y * K (x - y))‖ := by
-      rw [Lp.norm_toLp, Lp.norm_toLp, eLpNorm_norm]
+      rw [Lp.norm_toLp, Lp.norm_toLp, eLpNorm_norm _ hP.aestronglyMeasurable]
     _ = ‖Tbar (hg₂.toLp g)‖ := by rw [hphysical]
     _ ≤ C * ‖hg₂.toLp g‖ := hTbarBound (hg₂.toLp g)
 
@@ -2885,7 +2885,7 @@ private theorem rawFiniteMikhlin_convolution_ae_eq_aux_multiplierL2_of_fourier
     exact (FourierTransform.fourier f).memLp 2 volume
   have hh : MemLp h 2 volume := by
     change MemLp (ψ • Ff) 2 volume
-    simpa only [Pi.smul_apply, smul_eq_mul] using MemLp.smul hFfTwo hψTop
+    simpa only [Pi.smul_apply, smul_eq_mul] using MemLp.smul hψTop hFfTwo
   have hproductLp :
       ((hψTop.toLp ψ • FourierTransform.fourier (f.toLp 2 volume) :
         Lp Complex 2 (volume : Measure (Euclidean d)))) = hh.toLp h := by
@@ -4439,6 +4439,7 @@ private theorem schwartz_integral_norm_rpow_eq_eLpNorm_toReal_rpow
   have hlin : (∫⁻ x : Euclidean d, (ENNReal.ofReal ‖f x‖) ^ p) =
       (eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) ^ p :=
     lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp (f : Euclidean d → Complex)
+      f.continuous.aestronglyMeasurable
   have hof : (∫⁻ x : Euclidean d, (ENNReal.ofReal ‖f x‖) ^ p) =
       ENNReal.ofReal (∫ x : Euclidean d, ‖f x‖ ^ p) := by
     calc
@@ -4585,7 +4586,7 @@ private theorem lpNorm_rawCoreOutput_le_of_formalAdjoint_lower
     let hsv : MemLp (fun x : Euclidean d => starRingEnd Complex (v x))
         (ENNReal.ofReal p.conjExponent) volume :=
       hv.congr_norm
-        (Complex.continuous_conj.comp_aestronglyMeasurable hv.1)
+        (Complex.continuous_conj.comp_aestronglyMeasurable hv.aestronglyMeasurable)
         (Filter.Eventually.of_forall fun x => (Complex.norm_conj (v x)).symm)
     have henorm := enorm_integral_mul_le_eLpNorm_p_pconj_mul
       hp1 (u : Euclidean d → Complex) (fun x => starRingEnd Complex (v x)) hu hsv
@@ -4593,18 +4594,18 @@ private theorem lpNorm_rawCoreOutput_le_of_formalAdjoint_lower
         eLpNorm (u : Euclidean d → Complex) (ENNReal.ofReal p) volume *
           eLpNorm (fun x => starRingEnd Complex (v x))
             (ENNReal.ofReal p.conjExponent) volume ≠ ∞ :=
-      ENNReal.mul_ne_top hu.2.ne hsv.2.ne
+      ENNReal.mul_ne_top hu.eLpNorm_ne_top hsv.eLpNorm_ne_top
     have hreal := (ENNReal.toReal_le_toReal ENNReal.coe_ne_top hright).mpr henorm
     change ‖∫ x : Euclidean d, u x * starRingEnd Complex (v x)‖ ≤ _ at hreal
-    rw [ENNReal.toReal_mul, toReal_eLpNorm hu.1,
-      toReal_eLpNorm hsv.1] at hreal
+    rw [ENNReal.toReal_mul, toReal_eLpNorm,
+      toReal_eLpNorm] at hreal
     have hstar_norm :
         lpNorm (fun x : Euclidean d => starRingEnd Complex (v x))
           (ENNReal.ofReal p.conjExponent) volume =
         lpNorm v (ENNReal.ofReal p.conjExponent) volume := by
-      rw [← toReal_eLpNorm hsv.1, ← toReal_eLpNorm hv.1]
+      rw [← toReal_eLpNorm, ← toReal_eLpNorm]
       apply congrArg ENNReal.toReal
-      apply eLpNorm_congr_norm_ae
+      apply eLpNorm_congr_norm_ae hsv.aestronglyMeasurable hv.aestronglyMeasurable
       exact Filter.Eventually.of_forall fun x => Complex.norm_conj (v x)
     simpa only [hstar_norm] using hreal
   let y : Euclidean d → Complex := T f
@@ -4619,17 +4620,18 @@ private theorem lpNorm_rawCoreOutput_le_of_formalAdjoint_lower
           (ENNReal.ofReal p.conjExponent) volume =
         lpNorm (g : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume := by
-    rw [← toReal_eLpNorm (conjugateSchwartz g).continuous.aestronglyMeasurable,
-      ← toReal_eLpNorm g.continuous.aestronglyMeasurable]
+    rw [← toReal_eLpNorm,
+      ← toReal_eLpNorm]
     congr 1
-    apply eLpNorm_congr_norm_ae
+    apply eLpNorm_congr_norm_ae (conjugateSchwartz g).continuous.aestronglyMeasurable
+      g.continuous.aestronglyMeasurable
     exact Filter.Eventually.of_forall fun x => by
       rw [conjugateSchwartz_apply, Complex.norm_conj]
   have hnorm_toLp (g : SchwartzMap (Euclidean d) Complex) :
       ‖g.toLp (ENNReal.ofReal p.conjExponent) volume‖ =
         lpNorm (g : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume := by
-    rw [SchwartzMap.norm_toLp, toReal_eLpNorm g.continuous.aestronglyMeasurable]
+    rw [SchwartzMap.norm_toLp, toReal_eLpNorm]
   have hΦ_schwartz (g : SchwartzMap (Euclidean d) Complex) :
       ‖Φ (g.toLp (ENNReal.ofReal p.conjExponent) volume)‖ ≤
         (A * lpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) *
@@ -4731,10 +4733,10 @@ theorem eLpNorm_rawCoreOutput_le_of_formalAdjoint_lower
     have hright : ENNReal.ofReal A *
         eLpNorm (g : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume ≠ ∞ :=
-      ENNReal.mul_ne_top ENNReal.ofReal_ne_top hg.2.ne
-    have hreal := (ENNReal.toReal_le_toReal hTg.2.ne hright).mpr (hTstar g)
+      ENNReal.mul_ne_top ENNReal.ofReal_ne_top hg.eLpNorm_ne_top
+    have hreal := (ENNReal.toReal_le_toReal hTg.eLpNorm_ne_top hright).mpr (hTstar g)
     rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hA,
-      toReal_eLpNorm hTg.1, toReal_eLpNorm hg.1] at hreal
+      toReal_eLpNorm, toReal_eLpNorm] at hreal
     exact hreal
   have hreal := lpNorm_rawCoreOutput_le_of_formalAdjoint_lower hp hA T Tstar
     hTmem hTstarmem hpair hTstar_real f
@@ -4743,10 +4745,10 @@ theorem eLpNorm_rawCoreOutput_le_of_formalAdjoint_lower
   let hTf : MemLp (T f) (ENNReal.ofReal p) volume := hTmem f
   have hright : ENNReal.ofReal A *
       eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume ≠ ∞ :=
-    ENNReal.mul_ne_top ENNReal.ofReal_ne_top hf.2.ne
-  apply (ENNReal.toReal_le_toReal hTf.2.ne hright).mp
+    ENNReal.mul_ne_top ENNReal.ofReal_ne_top hf.eLpNorm_ne_top
+  apply (ENNReal.toReal_le_toReal hTf.eLpNorm_ne_top hright).mp
   rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hA,
-    toReal_eLpNorm hTf.1, toReal_eLpNorm hf.1]
+    toReal_eLpNorm, toReal_eLpNorm]
   exact hreal
 
 /-- The lower half of the raw finite-kernel multiplier argument.  The

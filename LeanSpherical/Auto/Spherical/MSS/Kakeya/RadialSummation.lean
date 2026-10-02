@@ -1935,9 +1935,10 @@ theorem canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
 /-- A low-elaboration `eLpNorm` monotonicity wrapper for `ENNReal`-valued
 envelopes. -/
 theorem eLpNorm_mono_ennreal
-    {f g : radialUnitEnvelopeBridgeE2 → ENNReal} (hfg : ∀ y, f y ≤ g y) :
+    {f g : radialUnitEnvelopeBridgeE2 → ENNReal} (hfg : ∀ y, f y ≤ g y)
+    (hf : AEStronglyMeasurable f volume) :
     eLpNorm f 2 volume ≤ eLpNorm g 2 volume := by
-  apply eLpNorm_mono_enorm
+  apply eLpNorm_mono_enorm hf
   intro y
   simpa only [enorm_eq_self] using hfg y
 
@@ -1954,8 +1955,26 @@ theorem eLpNorm_canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope
       2 volume ≤
       eLpNorm (kakeyaRadialPhysicalEnvelope
         (finiteTensorCircleRadialMultiplier s q hqcompact a)) 2 volume := by
+  have hmeas : AEStronglyMeasurable (fun y : radialUnitEnvelopeBridgeE2 =>
+      ⨆ omega : aux_lightRayDirection,
+        ENNReal.ofReal ‖scratch_finiteTensorTubeBand s q hqcompact a omega.1 y‖) volume := by
+    apply Measurable.aestronglyMeasurable
+    apply LowerSemicontinuous.measurable
+    apply lowerSemicontinuous_iSup
+    intro omega
+    apply Continuous.lowerSemicontinuous
+    have hfun : (fun y => scratch_finiteTensorTubeBand s q hqcompact a omega.1 y) =
+        ⇑(FourierTransform.fourierInv
+          (scratch_finiteTensorTubeMultiplier s q hqcompact a omega.1)) := by
+      funext y
+      rw [scratch_finiteTensorTubeBand_eq_fourierInv, ← SchwartzMap.fourierInv_coe]
+    have hc : Continuous (fun y => scratch_finiteTensorTubeBand s q hqcompact a omega.1 y) := by
+      rw [hfun]
+      exact (FourierTransform.fourierInv
+        (scratch_finiteTensorTubeMultiplier s q hqcompact a omega.1)).continuous
+    exact ENNReal.continuous_ofReal.comp hc.norm
   exact eLpNorm_mono_ennreal (fun y =>
-    canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope s q hqcompact a y)
+    canonical_unitEnvelope_le_kakeyaRadialPhysicalEnvelope s q hqcompact a y) hmeas
 
 end
 
@@ -2580,7 +2599,8 @@ theorem hasCanonicalDyadicUnitNarrowScaleCostGT_of_rawPostProfileRadial
         ENNReal.ofReal coeff *
           eLpNorm (canonicalReflectedUnitScaleEnvelope (canonicalTubeSignedScale r hr)
             delta N (scratch_innerSlabCompactFrequencyTensor q a) j) 2 volume := by
-    apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' 2 henvMeas.aestronglyMeasurable
+    apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' 2
+      (by exact (measurable_const.mul henvMeas).aestronglyMeasurable)
     filter_upwards [] with y
     simpa only [enorm_eq_self] using
       (le_refl (ENNReal.ofReal coeff *
@@ -2996,7 +3016,7 @@ theorem lightRayMaximal_sq_integral_le_of_finalHasLightRayMaximalEstimate
     lt_of_le_of_lt hmaxBound
       (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hg.eLpNorm_lt_top)
   have hmaxMem : MemLp (lightRayMaximal δ N g) 2 volume :=
-    ⟨hmaxMeas, hmaxTop⟩
+    hmaxTop
   have hmaxTwo : Integrable (fun y : Euclidean 2 => lightRayMaximal δ N g y ^ 2) volume :=
     (memLp_two_iff_integrable_sq hmaxMeas).mp hmaxMem
   let Iout : Real := ∫ y : Euclidean 2, lightRayMaximal δ N g y ^ 2

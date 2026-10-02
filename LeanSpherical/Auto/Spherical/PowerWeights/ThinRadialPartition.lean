@@ -1058,7 +1058,7 @@ theorem eLpNorm_indicator_const_mul_eLpNorm_one
       eLpNorm (f : Euclidean d → Complex) 1 volume))
       (ENNReal.ofReal p) μ =
       A * eLpNorm (f : Euclidean d → Complex) 1 volume * (μ B) ^ p⁻¹ := by
-  rw [eLpNorm_indicator_const hB
+  rw [eLpNorm_indicator_const hB.nullMeasurableSet
     (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
   rw [enorm_eq_self, ENNReal.toReal_ofReal hp.le]
   rw [one_div]
@@ -1683,7 +1683,7 @@ theorem sum_lintegral_enorm_thinRadialPartition_piece_le_eLpNorm_one
       ENNReal.ofReal ‖(SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) f
         (thinRadialPartition d s hs m)) y‖) ≤
       4 * eLpNorm (f : Euclidean d → ℂ) 1 volume := by
-  simpa only [eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
+  simpa only [eLpNorm_one_eq_lintegral_enorm f.continuous.aestronglyMeasurable, ofReal_norm] using
     sum_lintegral_enorm_thinRadialPartition_piece_le hs f M hM
 
 /-- A finite family of thin radial pieces satisfying lower radial gaps has

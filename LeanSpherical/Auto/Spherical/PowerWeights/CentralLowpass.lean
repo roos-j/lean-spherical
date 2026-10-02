@@ -492,34 +492,32 @@ theorem exists_dyadicBallMaximal_central_annulus_power_weighted_bound
       intro y hy
       apply hfinner y
       simpa only [Metric.mem_ball, dist_zero_right] using hy
-    simpa only [Mr, A, L₁, eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
+    simpa only [Mr, A, L₁, eLpNorm_one_eq_lintegral_enorm f.continuous.aestronglyMeasurable,
+      ofReal_norm] using
       dyadicBallMaximalRaw_le_global_lintegral_of_support_away
         (a := (1 / 2 : ℝ)) (b := (1 / 2 : ℝ)) (by norm_num) (by norm_num)
         (f : Euclidean d → ℂ) (by simpa only [add_halves] using hzero) hx
+  have hMmeas0 : AEStronglyMeasurable M μ :=
+    ((dyadic_hardy_littlewood_maximal_strong_type_schwartz hd0 hp).choose_spec.2 f
+      |>.1).aestronglyMeasurable.mono_ac
+      (withDensity_absolutelyContinuous volume (radialPowerWeight d α))
   have hnear : eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤
       A * L₁ * V₁ ^ p⁻¹ := by
     calc
       eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤
-          eLpNorm (B.indicator Mr) (ENNReal.ofReal p) μ := by
-        apply eLpNorm_mono_enorm
+          eLpNorm (B.indicator (fun _ : Euclidean d => A * L₁))
+          (ENNReal.ofReal p) μ := by
+        apply eLpNorm_mono_enorm (hMmeas0.indicator hBmeas)
         intro x
         by_cases hx : x ∈ B
         · rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx]
           change ‖(dyadicBallMaximalRaw d (f : Euclidean d → ℂ) x).toReal‖ₑ ≤
-            ‖dyadicBallMaximalRaw d (f : Euclidean d → ℂ) x‖ₑ
+            ‖A * L₁‖ₑ
           rw [Real.enorm_eq_ofReal ENNReal.toReal_nonneg, enorm_eq_self]
-          exact ENNReal.ofReal_toReal_le
-        · simp [hx]
-      _ ≤ eLpNorm (B.indicator (fun _ : Euclidean d => A * L₁))
-          (ENNReal.ofReal p) μ := by
-        apply eLpNorm_mono_enorm
-        intro x
-        by_cases hx : x ∈ B
-        · simp only [Set.indicator_of_mem hx, enorm_eq_self]
-          exact hrawnear x hx
+          exact ENNReal.ofReal_toReal_le.trans (hrawnear x hx)
         · simp [hx]
       _ = A * L₁ * V₁ ^ p⁻¹ := by
-        rw [eLpNorm_indicator_const hBmeas
+        rw [eLpNorm_indicator_const hBmeas.nullMeasurableSet
           (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
         dsimp only [V₁]
         simp only [ENNReal.toReal_ofReal hp0.le, enorm_eq_self, one_div]
@@ -621,8 +619,7 @@ theorem exists_dyadicBallMaximal_central_annulus_power_weighted_bound
         rw [← hsplit]
       _ ≤ eLpNorm (B.indicator M) (ENNReal.ofReal p) μ +
           eLpNorm (U.indicator M) (ENNReal.ofReal p) μ :=
-        eLpNorm_add_le hBmem.aestronglyMeasurable hUmem.aestronglyMeasurable
-          (by
+        eLpNorm_add_le (by
             rw [← ENNReal.ofReal_one]
             exact ENNReal.ofReal_le_ofReal hp.le)
       _ ≤ Knear * W + Kouter * W := add_le_add hnearW houterW
@@ -705,7 +702,7 @@ theorem exists_relativeLowpassMaximal_central_annulus_power_weighted_bound
         (powerWeightedVolume d α) ≤
         ENNReal.ofReal K * eLpNorm (dyadicBallMaximal d (f : Euclidean d → ℂ))
           (ENNReal.ofReal p) (powerWeightedVolume d α) :=
-      eLpNorm_le_mul_eLpNorm_of_ae_le_mul
+      eLpNorm_le_mul_eLpNorm_of_ae_le_mul hRmeas
         (Filter.Eventually.of_forall hpoint) (ENNReal.ofReal p)
     _ ≤ ENNReal.ofReal K *
         (ENNReal.ofReal D * eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p)
@@ -915,7 +912,7 @@ theorem restrictedRelativeBandpassSphericalMaximal_memLp_two_global_of_sharp
       Real.norm_of_nonneg ENNReal.toReal_nonneg]
     exact pow_le_pow_left₀ ENNReal.toReal_nonneg hle 2
   have hMint : Integrable (fun x : Euclidean (m + 1) => ‖M x‖ ^ 2) volume :=
-    (memLp_two_iff_integrable_sq_norm hMmem.1).1 hMmem
+    (memLp_two_iff_integrable_sq_norm hMmem.aestronglyMeasurable).1 hMmem
   have hRint : Integrable (fun x : Euclidean (m + 1) => ‖(R x).toReal‖ ^ 2) volume := by
     refine hMint.mono' (hRrealmeas.norm.pow 2) ?_
     filter_upwards [hRpow_bound] with x hx
@@ -1014,7 +1011,7 @@ theorem exists_restrictedRelativeLowpass_unweighted_strong_type
   have hLnorm : eLpNorm L (ENNReal.ofReal p) volume ≤
       (k : ENNReal) * eLpNorm M (ENNReal.ofReal p) volume := by
     exact eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' (p := ENNReal.ofReal p)
-      hMmem.1 (Filter.Eventually.of_forall hpoint_enorm)
+      hLmeas (Filter.Eventually.of_forall hpoint_enorm)
   have hMnorm : eLpNorm M (ENNReal.ofReal p) volume ≤
       ENNReal.ofReal A * eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume := by
     simpa only [M, A] using dyadicBallMaximal_eLpNorm_volume_le hd hp f
@@ -1196,35 +1193,33 @@ theorem exists_relativeLowpassMaximal_buffered_centralBall_power_weighted_bound
       have hyball : ‖y‖ < 1 / 4 := by
         simpa only [Metric.mem_ball, dist_zero_right] using hy
       exact (not_le_of_gt hyball) hylower
-    simpa only [Mr, A, L₁, eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
+    simpa only [Mr, A, L₁, eLpNorm_one_eq_lintegral_enorm f.continuous.aestronglyMeasurable,
+      ofReal_norm] using
       dyadicBallMaximalRaw_le_global_lintegral_of_support_away
         (a := (1 / 8 : Real)) (b := (1 / 8 : Real)) (by norm_num) (by norm_num)
         (f : Euclidean d → Complex) (by
           convert hzero using 1; norm_num) hx
+  have hMmeas0 : AEStronglyMeasurable M μ :=
+    ((dyadic_hardy_littlewood_maximal_strong_type_schwartz hd0 hp).choose_spec.2 f
+      |>.1).aestronglyMeasurable.mono_ac
+      (withDensity_absolutelyContinuous volume (radialPowerWeight d α))
   have hnear : eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤
       A * L₁ * V₁ ^ p⁻¹ := by
     calc
       eLpNorm (B.indicator M) (ENNReal.ofReal p) μ ≤
-          eLpNorm (B.indicator Mr) (ENNReal.ofReal p) μ := by
-        apply eLpNorm_mono_enorm
+          eLpNorm (B.indicator (fun _ : Euclidean d => A * L₁))
+          (ENNReal.ofReal p) μ := by
+        apply eLpNorm_mono_enorm (hMmeas0.indicator hBmeas)
         intro x
         by_cases hx : x ∈ B
         · rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx]
           change ‖(dyadicBallMaximalRaw d (f : Euclidean d → Complex) x).toReal‖ₑ ≤
-            ‖dyadicBallMaximalRaw d (f : Euclidean d → Complex) x‖ₑ
+            ‖A * L₁‖ₑ
           rw [Real.enorm_eq_ofReal ENNReal.toReal_nonneg, enorm_eq_self]
-          exact ENNReal.ofReal_toReal_le
-        · simp [hx]
-      _ ≤ eLpNorm (B.indicator (fun _ : Euclidean d => A * L₁))
-          (ENNReal.ofReal p) μ := by
-        apply eLpNorm_mono_enorm
-        intro x
-        by_cases hx : x ∈ B
-        · simp only [Set.indicator_of_mem hx, enorm_eq_self]
-          exact hrawnear x hx
+          exact ENNReal.ofReal_toReal_le.trans (hrawnear x hx)
         · simp [hx]
       _ = A * L₁ * V₁ ^ p⁻¹ := by
-        rw [eLpNorm_indicator_const hBmeas
+        rw [eLpNorm_indicator_const hBmeas.nullMeasurableSet
           (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
         dsimp only [V₁]
         simp only [ENNReal.toReal_ofReal hp0.le, enorm_eq_self, one_div]
@@ -1300,7 +1295,7 @@ theorem exists_relativeLowpassMaximal_buffered_centralBall_power_weighted_bound
         · simp [hx])
   have hRnorm : eLpNorm (B.indicator R) (ENNReal.ofReal p) μ ≤
       ENNReal.ofReal K * eLpNorm (B.indicator M) (ENNReal.ofReal p) μ := by
-    apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul
+    apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul (hRmeas.indicator hBmeas)
     filter_upwards with x
     by_cases hx : x ∈ B
     · simp only [Set.indicator_of_mem hx]
@@ -1434,7 +1429,7 @@ theorem exists_restrRelLowpass_buffered_centralBall_one_thirty_second_power_wtd_
   have hLnorm : eLpNorm L (ENNReal.ofReal p) μ ≤
       ((1 : NNReal) : ENNReal) * eLpNorm M (ENNReal.ofReal p) μ :=
     eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' (p := ENNReal.ofReal p)
-      hMmem.1 (Filter.Eventually.of_forall hpoint_enorm)
+      hLmeas (Filter.Eventually.of_forall hpoint_enorm)
   constructor
   · simpa only [L, μ] using hLmem
   · change eLpNorm L (ENNReal.ofReal p) μ ≤
@@ -1557,11 +1552,11 @@ theorem restrictedRelativeCutoff_lintegral_rpow_restrict_le_of_lowpass_and_band_
     calc
       eLpNorm P (ENNReal.ofReal p) μB ≤
           eLpNorm (L + S) (ENNReal.ofReal p) μB := by
-        apply eLpNorm_mono_enorm
+        apply eLpNorm_mono_enorm hPmeas
         intro x
         simpa only [enorm_eq_self, Pi.add_apply] using hpoint x
       _ ≤ eLpNorm L (ENNReal.ofReal p) μB + eLpNorm S (ENNReal.ofReal p) μB :=
-        eLpNorm_add_le hLmem.1 hSmem.1 hpENN
+        eLpNorm_add_le hpENN
       _ ≤ eLpNorm L (ENNReal.ofReal p) μB +
           ∑ j ∈ Finset.range N, eLpNorm (D j) (ENNReal.ofReal p) μB := by
         apply add_le_add_right
@@ -1572,9 +1567,7 @@ theorem restrictedRelativeCutoff_lintegral_rpow_restrict_le_of_lowpass_and_band_
             filter_upwards with x
             simp only [S, Finset.sum_apply]
           _ ≤ ∑ j ∈ Finset.range N, eLpNorm (D j) (ENNReal.ofReal p) μB :=
-            eLpNorm_sum_le (f := D) (s := Finset.range N)
-              (fun j hj => by
-                simpa only [D, μB] using (hband j hj).1.aestronglyMeasurable) hpENN
+            eLpNorm_sum_le hpENN
   have hnorm : eLpNorm P (ENNReal.ofReal p) μB ≤
       K * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) μB := by
     calc
@@ -1595,17 +1588,17 @@ theorem restrictedRelativeCutoff_lintegral_rpow_restrict_le_of_lowpass_and_band_
           rw [add_mul, Finset.sum_mul]
   have hPnorm : eLpNorm P (ENNReal.ofReal p) μB = J ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hPmeas]
     simp only [ENNReal.toReal_ofReal hpNN, enorm_eq_self, J]
     rw [one_div]
   have hfnorm : eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) μB =
       I ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm, I]
     rw [one_div]
   constructor
-  · exact ENNReal.continuous_rpow_const.aemeasurable.comp_aemeasurable hPmem.1.aemeasurable
+  · exact ENNReal.continuous_rpow_const.aemeasurable.comp_aemeasurable hPmem.aestronglyMeasurable.aemeasurable
   · have hroot : J ^ p⁻¹ ≤ K * I ^ p⁻¹ := by
       simpa only [hPnorm, hfnorm] using hnorm
     change J ≤ K ^ p * I
@@ -1725,11 +1718,11 @@ theorem restrRelCutoff_lintegral_rpow_restrict_le_of_lowpass_and_band_global_bou
     calc
       eLpNorm P (ENNReal.ofReal p) μB ≤
           eLpNorm (L + S) (ENNReal.ofReal p) μB := by
-        apply eLpNorm_mono_enorm
+        apply eLpNorm_mono_enorm hPmeas
         intro x
         simpa only [enorm_eq_self, Pi.add_apply] using hpoint x
       _ ≤ eLpNorm L (ENNReal.ofReal p) μB + eLpNorm S (ENNReal.ofReal p) μB :=
-        eLpNorm_add_le hLmem.1 hSmem.1 hpENN
+        eLpNorm_add_le hpENN
       _ ≤ eLpNorm L (ENNReal.ofReal p) μB +
           ∑ j ∈ Finset.range N, eLpNorm (D j) (ENNReal.ofReal p) μB := by
         apply add_le_add_right
@@ -1740,8 +1733,7 @@ theorem restrRelCutoff_lintegral_rpow_restrict_le_of_lowpass_and_band_global_bou
             filter_upwards with x
             simp only [S, Finset.sum_apply]
           _ ≤ ∑ j ∈ Finset.range N, eLpNorm (D j) (ENNReal.ofReal p) μB :=
-            eLpNorm_sum_le (f := D) (s := Finset.range N)
-              (fun j hj => (hband j hj).1.aestronglyMeasurable) hpENN
+            eLpNorm_sum_le hpENN
   have hnorm : eLpNorm P (ENNReal.ofReal p) μB ≤
       K * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) mu := by
     calc
@@ -1762,17 +1754,17 @@ theorem restrRelCutoff_lintegral_rpow_restrict_le_of_lowpass_and_band_global_bou
         rw [add_mul, Finset.sum_mul]
   have hPnorm : eLpNorm P (ENNReal.ofReal p) μB = J ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hPmeas]
     simp only [ENNReal.toReal_ofReal hpNN, enorm_eq_self, J]
     rw [one_div]
   have hfnorm : eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) mu =
       I ^ p⁻¹ := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpNN, ofReal_norm, I]
     rw [one_div]
   constructor
-  · exact ENNReal.continuous_rpow_const.aemeasurable.comp_aemeasurable hPmem.1.aemeasurable
+  · exact ENNReal.continuous_rpow_const.aemeasurable.comp_aemeasurable hPmem.aestronglyMeasurable.aemeasurable
   · have hroot : J ^ p⁻¹ ≤ K * I ^ p⁻¹ := by
       simpa only [hPnorm, hfnorm] using hnorm
     change J ≤ K ^ p * I

@@ -3468,7 +3468,16 @@ theorem discreteLpNorm_eq_eLpNorm_finset_counting_product
       u (z.1 : Real) z.2) (ENNReal.ofReal p) (Measure.count.prod volume)) ^ p
   have hdisc : (discreteLpNorm p T u) ^ p =
       ∑ t ∈ T, ∫⁻ x : BRRSSpace d, (ENNReal.ofReal ‖u t x‖) ^ p := by
-    exact discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T u
+    have hu : ∀ t ∈ T, AEStronglyMeasurable (u t) volume := by
+      intro t ht
+      have hslice := Measure.ae_ae_of_ae_prod hprod.ae_eq_mk
+      rw [Measure.ae_count_iff] at hslice
+      have hmk : AEMeasurable (u t) volume :=
+        ⟨fun x => hprod.mk _ (⟨t, ht⟩, x),
+          hprod.measurable_mk.comp (measurable_const.prodMk measurable_id),
+          hslice ⟨t, ht⟩⟩
+      exact hmk.aestronglyMeasurable
+    exact discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T u hu
   have hprodPow : AEMeasurable
       (fun z : ({t : Real // t ∈ (T : Set Real)}) × BRRSSpace d =>
         (ENNReal.ofReal ‖u (z.1 : Real) z.2‖) ^ p)
@@ -3488,7 +3497,8 @@ theorem discreteLpNorm_eq_eLpNorm_finset_counting_product
       (Measure.count.prod volume)
     exact ENNReal.continuous_rpow_const.measurable.comp_aemeasurable hprod.enorm
   rw [hdisc]
-  rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp]
+  rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp _
+    hprod.aestronglyMeasurable]
   rw [MeasureTheory.lintegral_prod _ hprodPow]
   rw [MeasureTheory.lintegral_count, tsum_fintype]
   exact (Finset.sum_subtype T (fun t => by

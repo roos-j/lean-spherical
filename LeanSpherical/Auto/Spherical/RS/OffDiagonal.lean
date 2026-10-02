@@ -121,9 +121,9 @@ theorem eLpNorm_fourier_schwartz_Pl (F : SchwartzMap Pl ℂ) :
     exact MeasureTheory.Lp.norm_fourier_eq _
   rw [SchwartzMap.norm_toLp, SchwartzMap.norm_toLp] at hnorm
   have h1 : eLpNorm ((𝓕 F : SchwartzMap Pl ℂ) : Pl → ℂ) 2 (volume : Measure Pl) ≠ ⊤ :=
-    ((𝓕 F : SchwartzMap Pl ℂ).memLp 2 (volume : Measure Pl)).2.ne
+    ((𝓕 F : SchwartzMap Pl ℂ).memLp 2 (volume : Measure Pl)).eLpNorm_ne_top
   have h2 : eLpNorm ((F : Pl → ℂ)) 2 (volume : Measure Pl) ≠ ⊤ :=
-    (F.memLp 2 (volume : Measure Pl)).2.ne
+    (F.memLp 2 (volume : Measure Pl)).eLpNorm_ne_top
   have heq : eLpNorm ((𝓕 F : SchwartzMap Pl ℂ) : Pl → ℂ) 2 (volume : Measure Pl)
       = eLpNorm ((F : Pl → ℂ)) 2 (volume : Measure Pl) :=
     (ENNReal.toReal_eq_toReal_iff' h1 h2).mp hnorm
@@ -135,8 +135,9 @@ theorem lintegral_enorm_sq_fourier_schwartz_Pl (F : SchwartzMap Pl ℂ) :
       = ∫⁻ x : Pl, ‖(F : Pl → ℂ) x‖ₑ ^ (2 : ℝ) := by
   have h1 := Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow
     (volume : Measure Pl) (𝓕 (F : Pl → ℂ))
+    (by rw [← SchwartzMap.fourier_coe F]; exact (𝓕 F).continuous.aestronglyMeasurable)
   have h2 := Auto.CalderonVaillancourt.sqMass_eq_eLpNorm_rpow
-    (volume : Measure Pl) ((F : Pl → ℂ))
+    (volume : Measure Pl) ((F : Pl → ℂ)) F.continuous.aestronglyMeasurable
   rw [Auto.CalderonVaillancourt.sqMass] at h1 h2
   rw [h1, h2, eLpNorm_fourier_schwartz_Pl]
 

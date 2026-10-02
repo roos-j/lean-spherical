@@ -380,10 +380,10 @@ theorem dyadic_hardy_littlewood_weak_one
 /-- The weak `(1,1)` endpoint specialized to `L¹` input. -/
 theorem dyadic_hardy_littlewood_weak_one_memLp
     {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℂ)
-    (_hf : MemLp g 1 volume) {s : ℝ} (hs : 0 < s) :
+    (hf : MemLp g 1 volume) {s : ℝ} (hs : 0 < s) :
     ENNReal.ofReal s * volume {x | ENNReal.ofReal s < dyadicBallMaximalRaw d g x} ≤
       (ENNReal.ofReal (4 : ℝ)) ^ d * eLpNorm g 1 volume := by
-  simpa only [eLpNorm_one_eq_lintegral_enorm, ofReal_norm] using
+  simpa only [eLpNorm_one_eq_lintegral_enorm hf.aestronglyMeasurable, ofReal_norm] using
     dyadic_hardy_littlewood_weak_one hd g hs
 
 /-- The centered dyadic-ball maximal function satisfies the literal weak

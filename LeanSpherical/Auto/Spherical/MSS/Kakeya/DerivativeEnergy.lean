@@ -3531,7 +3531,7 @@ theorem shiftedStationaryPreweightProfile_nonneg_le_one (n : Nat) (v : Real) :
   · apply Finset.prod_nonneg
     intro m hm
     exact (hfactor m hm).1
-  · apply Finset.prod_le_one
+  · apply Finset.prod_le_one₀
     · intro m hm
       exact (hfactor m hm).1
     · intro m hm

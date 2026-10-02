@@ -1887,8 +1887,6 @@ theorem integrable_norm_sq_dyadicHalfWaveSpaceTime (C : lpCutoffs 2)
   have hFmeas : AEStronglyMeasurable F ((volume : Measure (Euclidean 2)).prod ν) := by
     change AEStronglyMeasurable F localSmoothingMeasure
     convert (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f).norm.pow 2 using 1
-    funext z
-    simp only [F, Pi.pow_apply]
   have hsliceInt (t : Real) : Integrable (fun x : Euclidean 2 => F (x, t)) := by
     simpa only [F, dyadicHalfWaveSpaceTime] using
       integrable_norm_sq_dyadicHalfWave C σ j t f
@@ -1937,8 +1935,6 @@ theorem integral_norm_sq_dyadicHalfWaveSpaceTime_le_four (C : lpCutoffs 2)
   have hFmeas : AEStronglyMeasurable F ((volume : Measure (Euclidean 2)).prod ν) := by
     change AEStronglyMeasurable F localSmoothingMeasure
     convert (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f).norm.pow 2 using 1
-    funext z
-    simp only [F, Pi.pow_apply]
   have hsliceInt (t : Real) : Integrable (fun x : Euclidean 2 => F (x, t)) := by
     simpa only [F, dyadicHalfWaveSpaceTime] using
       integrable_norm_sq_dyadicHalfWave C σ j t f

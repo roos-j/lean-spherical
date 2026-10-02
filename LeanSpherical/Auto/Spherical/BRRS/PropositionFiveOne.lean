@@ -5903,7 +5903,7 @@ theorem brrs_lintegral_brrsRadialProfileWeightENN_rpow_eq
       ∫⁻ s : Real, ‖F s‖ₑ ^ p ∂(brrsRadialProfileMeasure d) := by
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
       (by simpa using (ENNReal.ofReal_pos.mpr hp).ne')
-      (by simp), ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul,
+      (by simp) hF.aestronglyMeasurable, ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul,
       one_div, inv_mul_cancel₀ hp.ne', ENNReal.rpow_one]
   rw [hnorm, hmap, hpolar', hleft]
 
@@ -6033,7 +6033,7 @@ theorem brrsRadialKernelAbsOutput_entropy_eLpNorm_rpow_le
   have hbridge := discreteLpNorm_eq_eLpNorm_finset_counting_product_of_measurable
     hp0 T (brrsRadialKernelAbsFibre Phi v j F) hfibremeas
   have hexpand := discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp0 T
-    (brrsRadialKernelAbsFibre Phi v j F)
+    (brrsRadialKernelAbsFibre Phi v j F) (fun t ht => (hfibremeas t ht).aestronglyMeasurable)
   -- pointwise domination and polar reduction on each fibre
   have hfibre : ∀ t : Real,
       (∫⁻ x : BRRSSpace d,
@@ -6282,7 +6282,7 @@ theorem brrsRadialKernelAbsOutput_top_eLpNorm_le
   have hac := brrs_volume_restrict_Ioi_absolutelyContinuous_radialProfileMeasure
     (d := d) hdpos v hv
   have haeprof : ∀ᵐ s : Real ∂(brrsRadialProfileMeasure d), ‖F s‖ₑ ≤ M := by
-    rw [hM, eLpNorm_exponent_top]
+    rw [hM, eLpNorm_exponent_top hF.aestronglyMeasurable]
     exact enorm_ae_le_eLpNormEssSup F (brrsRadialProfileMeasure d)
   have haeleb : ∀ᵐ s : Real ∂(volume.restrict (Ioi (0 : Real))),
       ‖F s‖ₑ ≤ M := hac.ae_le haeprof
@@ -6327,7 +6327,8 @@ theorem brrsRadialKernelAbsOutput_top_eLpNorm_le
       _ = ENNReal.ofReal ((Cst.toReal + 1) *
             ((2 : Real) ^ j) ^ (((d : Real) - 1) / 2)) * M := by
         rw [← ENNReal.ofReal_mul (by positivity)]
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top
+    (measurable_brrsRadialKernelAbsOutput Phi v j T hF).aestronglyMeasurable]
   exact eLpNormEssSup_le_of_ae_enorm_bound (Filter.Eventually.of_forall hptbound)
 
 end
@@ -6977,10 +6978,10 @@ theorem brrs_iSup_rpow {a : Nat → ENNReal} {p : Real} (hp : 0 < p) :
 
 /-- The `p`-th power of an `L^p` seminorm as a lower integral. -/
 theorem brrs_eLpNorm_rpow_eq {α : Type*} [MeasurableSpace α] {μ : Measure α}
-    {p : Real} (hp : 0 < p) (u : α → Complex) :
+    {p : Real} (hp : 0 < p) (u : α → Complex) (hu : AEStronglyMeasurable u μ) :
     (eLpNorm u (ENNReal.ofReal p) μ) ^ p = ∫⁻ a : α, ‖u a‖ₑ ^ p ∂μ := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (by simpa using (ENNReal.ofReal_pos.mpr hp).ne') (by simp),
+    (by simpa using (ENNReal.ofReal_pos.mpr hp).ne') (by simp) hu,
     ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul, one_div,
     inv_mul_cancel₀ hp.ne', ENNReal.rpow_one]
 
@@ -7146,8 +7147,11 @@ theorem brrsRadialKernelPosOutput_highExponent_le
     have hn := hsimple j hj T hT hTicc v hv (brrsProfileApprox G n)
       (brrs_integrable_profileApprox d G n)
     have hraise := ENNReal.rpow_le_rpow hn hppos.le
-    rw [brrs_eLpNorm_rpow_eq hppos, ENNReal.mul_rpow_of_nonneg _ _ hppos.le,
-      brrs_eLpNorm_rpow_eq hppos] at hraise
+    rw [brrs_eLpNorm_rpow_eq hppos _
+        (measurable_brrsRadialKernelAbsOutput Phi v j T
+          (brrsProfileApprox G n).measurable).aestronglyMeasurable,
+      ENNReal.mul_rpow_of_nonneg _ _ hppos.le,
+      brrs_eLpNorm_rpow_eq hppos _ (brrsProfileApprox G n).aestronglyMeasurable] at hraise
     have hinput : (∫⁻ s : Real,
         ‖(brrsProfileApprox G n : Real → Complex) s‖ₑ ^ p
           ∂(brrsRadialProfileMeasure d)) ≤ S := by
@@ -7265,7 +7269,7 @@ theorem brrs_lintegral_radialProfile_rpow_eq {d : Nat} (_hd : 0 < d)
     intro x
     refine hf (‖x‖ • w) x ?_
     rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (norm_nonneg x), hw, mul_one]
-  rw [hmap, brrs_eLpNorm_rpow_eq hp]
+  rw [hmap, brrs_eLpNorm_rpow_eq hp _ hcont.aestronglyMeasurable]
   refine lintegral_congr fun x => ?_
   rw [hradial x]
 
@@ -7345,7 +7349,8 @@ theorem brrs_discreteLpNorm_highExponent_le
       (fun t => brrsDyadicHalfWave Phi j t f)) ^ p ≤
       (C * eLpNorm (f : BRRSSpace d → Complex)
         (ENNReal.ofReal p) volume) ^ p := by
-    rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hppos,
+    rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hppos T _
+        (fun t _ => (continuous_brrsDyadicHalfWave Phi j t f).aestronglyMeasurable),
       ENNReal.mul_rpow_of_nonneg _ _ hppos.le]
     calc
       (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
@@ -7695,7 +7700,7 @@ theorem brrs_lintegral_brrsSectionFiveRadialProfile_rpow_eq {d : Nat}
     (f.continuous.comp (continuous_id.smul continuous_const)).measurable
   rw [brrsSectionFiveRadialProfile_eq_weightENN hp w f,
     brrs_lintegral_brrsRadialProfileWeightENN_rpow_eq hd hp hFmeas v hv,
-    brrs_eLpNorm_rpow_eq hp,
+    brrs_eLpNorm_rpow_eq hp _ hFmeas.aestronglyMeasurable,
     brrs_lintegral_radialProfile_rpow_eq hd hp f hf w hw]
 
 set_option maxHeartbeats 1000000 in
@@ -7760,7 +7765,8 @@ theorem brrs_schwartzCoreUniformEstimate_subcritical
     have hpow : (discreteLpNorm p T
         (fun t => brrsDyadicHalfWave Phi j t f)) ^ p ≤
         Kc * (2 : ENNReal) ^ ((j : Real) * (q + p * epsilon / 2)) * Z ^ p := by
-      rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp0]
+      rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp0 T _
+        (fun t _ => (continuous_brrsDyadicHalfWave Phi j t f).aestronglyMeasurable)]
       have hsum : (∑ t ∈ T, ∫⁻ x : BRRSSpace d,
           (ENNReal.ofReal ‖brrsDyadicHalfWave Phi j t f x‖) ^ p) =
           ∑ t ∈ T, ∫⁻ x : BRRSSpace d,

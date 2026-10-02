@@ -1099,7 +1099,7 @@ theorem HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType.of_subset
   refine ⟨?_, ?_⟩
   · refine hMF.mono'_enorm hMEmeas (Filter.Eventually.of_forall fun x => ?_)
     simpa using hpoint x
-  · refine (eLpNorm_mono_enorm fun x => ?_).trans hbound
+  · refine (eLpNorm_mono_enorm hMEmeas fun x => ?_).trans hbound
     simpa using hpoint x
 
 /-- The finite-exponent type set in coordinates `(1 / p, α / p)`. -/
@@ -1368,7 +1368,8 @@ theorem lower_test_inequality_of_strongType
     (hf : MemLp (f : Euclidean d → ℂ) (ENNReal.ofReal p) (powerWeightedVolume d α))
     (A : Set (Euclidean d))
     (hA : ∀ x ∈ A,
-      1 ≤ restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) x) :
+      1 ≤ restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) x)
+    (hAmeas : MeasurableSet A) :
     ∃ C : ℝ, 0 < C ∧
       eLpNorm (A.indicator (fun _ : Euclidean d => (1 : ENNReal)))
           (ENNReal.ofReal p) (powerWeightedVolume d α) ≤
@@ -1381,7 +1382,7 @@ theorem lower_test_inequality_of_strongType
         (ENNReal.ofReal p) (powerWeightedVolume d α) ≤
         eLpNorm (restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ))
           (ENNReal.ofReal p) (powerWeightedVolume d α) := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hAmeas)
       intro x
       by_cases hx : x ∈ A
       · rw [indicator_of_mem hx]
@@ -2041,7 +2042,7 @@ theorem eLpNorm_horizontalSlab_cutoff_le (n : ℕ) {p α A B a : ℝ}
         (powerWeightedVolume (n + 1) α) ≤
       eLpNorm (D.indicator (fun _ : Euclidean (n + 1) => (1 : ℂ)))
         (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) := by
-          apply eLpNorm_mono
+          apply eLpNorm_mono f.continuous.aestronglyMeasurable
           intro y
           by_cases hy : y ∈ D
           · rw [indicator_of_mem hy, hfg]
@@ -2052,7 +2053,7 @@ theorem eLpNorm_horizontalSlab_cutoff_le (n : ℕ) {p α A B a : ℝ}
             norm_num
     _ = (powerWeightedVolume (n + 1) α D) ^
           (1 / (ENNReal.ofReal p).toReal) := by
-      rw [eLpNorm_indicator_const hD hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hD.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       norm_num [enorm]
     _ = (powerWeightedVolume (n + 1) α
         (horizontalSlab n (2 * A) (a - 2 * B) (a + 2 * B))) ^
@@ -2910,7 +2911,6 @@ theorem restrictedStrongType_graphTube_finite_lower_of_bound
     positivity
   have hf : MemLp (f : Euclidean (n + 1) → ℂ) (ENNReal.ofReal p)
       (powerWeightedVolume (n + 1) α) := by
-    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
     refine lt_of_le_of_lt hinput ?_
     exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
   have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
@@ -2986,12 +2986,12 @@ theorem restrictedStrongType_graphTube_finite_lower_of_bound
           ((ENNReal.ofReal (h / 2)) ^ (n - 2) * ENNReal.ofReal (h ^ 2 / 4))) /
           ENNReal.ofReal (surfaceMass (n + 1))))
         (ENNReal.ofReal p) (powerWeightedVolume (n + 1) α) := by
-      rw [eLpNorm_indicator_const hVmeas hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hVmeas.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       simp
     _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal (n + 1) E
         (f : Euclidean (n + 1) → ℂ)) (ENNReal.ofReal p)
           (powerWeightedVolume (n + 1) α) := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hVmeas)
       intro x
       by_cases hx : x ∈ V
       · rw [Set.indicator_of_mem hx]
@@ -3479,7 +3479,6 @@ theorem restrictedStrongType_graphTube_finite_lower_planar_of_bound
     positivity
   have hf : MemLp (f : Euclidean 2 → ℂ) (ENNReal.ofReal p)
       (powerWeightedVolume 2 α) := by
-    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
     refine lt_of_le_of_lt hinput ?_
     exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
   have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by
@@ -3544,11 +3543,11 @@ theorem restrictedStrongType_graphTube_finite_lower_planar_of_bound
     _ = eLpNorm (V.indicator (fun _ : Euclidean 2 =>
         κ * ENNReal.ofReal h / ENNReal.ofReal (surfaceMass 2)))
         (ENNReal.ofReal p) (powerWeightedVolume 2 α) := by
-      rw [eLpNorm_indicator_const hVmeas hp0 ENNReal.ofReal_ne_top]
+      rw [eLpNorm_indicator_const hVmeas.nullMeasurableSet hp0 ENNReal.ofReal_ne_top]
       simp
     _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal 2 E
         (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p) (powerWeightedVolume 2 α) := by
-      apply eLpNorm_mono_enorm
+      apply eLpNorm_mono_enorm (aestronglyMeasurable_const.indicator hVmeas)
       intro x
       by_cases hx : x ∈ V
       · rw [Set.indicator_of_mem hx]
@@ -4205,7 +4204,7 @@ theorem exists_smoothDyadic_piece_near_origin_weighted_bound
   have hM : M = ENNReal.ofReal (D * (2 : ℝ) ^ j) *
       ENNReal.ofReal (∫ y : Euclidean d, ‖f y‖) := by
     dsimp [M]
-    rw [eLpNorm_one_eq_lintegral_enorm,
+    rw [eLpNorm_one_eq_lintegral_enorm f.continuous.aestronglyMeasurable,
       ← ofReal_integral_norm_eq_lintegral_enorm f.integrable]
   have hpoint (x : Euclidean d) :
       (⨆ r : ↥(E ∩ Ioi (0 : ℝ)), ENNReal.ofReal
@@ -4222,6 +4221,29 @@ theorem exists_smoothDyadic_piece_near_origin_weighted_bound
           ENNReal.ofReal (D * (2 : ℝ) ^ j * ∫ y : Euclidean d, ‖f y‖) :=
         hendpoint j psi hpsi E hE f x
       _ = M := by rw [hM, ← ENNReal.ofReal_mul hDpow]
+  have hsupmeas : Measurable
+      (fun x : Euclidean d => ⨆ r : ↥(E ∩ Ioi (0 : ℝ)), ENNReal.ofReal
+        ‖sphericalAverage d
+          ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
+            (psi : Euclidean d → ℂ) (𝓕 f)) : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x‖) := by
+    have hG := Auto.Spherical.Auxiliary.continuous_sphericalAverage
+      ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
+        (psi : Euclidean d → ℂ) (𝓕 f)) : SchwartzMap (Euclidean d) ℂ) :
+        Euclidean d → ℂ) (SchwartzMap.continuous _)
+    have hMeas := measurable_iSup_of_lowerSemicontinuous
+      (f := fun (r : ↥(E ∩ Ioi (0 : ℝ))) (x : Euclidean d) => ENNReal.ofReal
+        ‖sphericalAverage d
+          ((𝓕⁻ (SchwartzMap.smulLeftCLM ℂ
+            (psi : Euclidean d → ℂ) (𝓕 f)) : SchwartzMap (Euclidean d) ℂ) :
+            Euclidean d → ℂ) r.1 x‖)
+      (fun r => (ENNReal.continuous_ofReal.comp
+        ((hG.comp (continuous_const.prodMk continuous_id)).norm)).measurable)
+      (fun x => (ENNReal.continuous_ofReal.comp
+        ((hG.comp (continuous_subtype_val.prodMk continuous_const)).norm)).lowerSemicontinuous)
+    convert hMeas using 1
+    funext x
+    rw [iSup_apply]
   have hout :
       eLpNorm (B.indicator
         (fun x : Euclidean d => ⨆ r : ↥(E ∩ Ioi (0 : ℝ)), ENNReal.ofReal
@@ -4240,6 +4262,7 @@ theorem exists_smoothDyadic_piece_near_origin_weighted_bound
           (ENNReal.ofReal p) μ ≤
         eLpNorm (B.indicator (fun _ : Euclidean d => M)) (ENNReal.ofReal p) μ := by
           apply eLpNorm_mono_enorm
+            (by exact (hsupmeas.indicator measurableSet_closedBall).aestronglyMeasurable)
           intro x
           by_cases hx : x ∈ B
           · simp only [Set.indicator_of_mem hx, enorm_eq_self]
@@ -4247,7 +4270,7 @@ theorem exists_smoothDyadic_piece_near_origin_weighted_bound
           · simp only [Set.indicator_of_notMem hx, enorm_zero]
             exact bot_le
       _ = M * (μ B) ^ p⁻¹ := by
-        rw [eLpNorm_indicator_const measurableSet_closedBall
+        rw [eLpNorm_indicator_const measurableSet_closedBall.nullMeasurableSet
           (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
         dsimp [B]
         simp [ENNReal.toReal_ofReal hp0.le, one_div]
@@ -5555,7 +5578,7 @@ theorem lintegral_enorm_rpow_le_annulus_volume_mul_powerWeighted_of_annular_supp
   have hholder' : I ≤
       eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume *
         V ^ (1 - p⁻¹) := by
-    simpa only [I, V, A, eLpNorm_one_eq_lintegral_enorm] using hholder
+    simpa only [I, V, A, eLpNorm_one_eq_lintegral_enorm f.continuous.aestronglyMeasurable] using hholder
   have hGmeas : Measurable (fun x : Euclidean d => ‖f x‖ₑ ^ p) :=
     ENNReal.continuous_rpow_const.measurable.comp f.continuous.enorm.measurable
   have hGsupport : ∀ x : Euclidean d, x ∉ A → ‖f x‖ₑ ^ p = 0 := by
@@ -5569,7 +5592,7 @@ theorem lintegral_enorm_rpow_le_annulus_volume_mul_powerWeighted_of_annular_supp
       (eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) ^ p = J := by
     dsimp only [J]
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top f.continuous.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hpnn]
     rw [← ENNReal.rpow_mul]
     field_simp

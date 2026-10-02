@@ -3720,7 +3720,7 @@ theorem exists_memLp_two_and_eLpNorm_sum_circleMiddleWaveMaximal_le
   have hTmem (j : Nat) : MemLp (T j) 2 volume := by
     dsimp only [T]
     exact (hpiece j f).1
-  have hTmeas (j : Nat) : AEStronglyMeasurable (T j) volume := (hTmem j).1
+  have hTmeas (j : Nat) : AEStronglyMeasurable (T j) volume := (hTmem j).aestronglyMeasurable
   have hsum_mem : MemLp (fun x : Euclidean 2 => ∑ j ∈ Finset.range N, T j x)
       2 volume := by
     induction N with

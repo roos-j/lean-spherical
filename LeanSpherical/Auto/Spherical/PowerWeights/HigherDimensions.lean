@@ -142,8 +142,7 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_planar
       _root_.Auto.Spherical.MSS.circularMaximal] using hbourgain f
   have hmem : MemLp (restrictedNormalizedSphericalMaximal 2 (Ioi (0 : ℝ))
       (f : Euclidean 2 → ℂ)) (ENNReal.ofReal p) volume := by
-    refine ⟨(measurable_restrictedNormalizedSphericalMaximal_schwartz
-      (Ioi (0 : ℝ)) f).aestronglyMeasurable, hbound.trans_lt ?_⟩
+    refine hbound.trans_lt ?_
     exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfvolume.eLpNorm_lt_top
   refine ⟨?_, ?_⟩
   · simpa only [powerWeightedVolume_zero] using hmem
@@ -987,10 +986,6 @@ theorem power_weight_spherical_maximal
       refine ⟨p, α, hp, hq1, hq2, C, hC, ?_⟩
       intro f hf
       refine ⟨?_, hbound f⟩
-      have hmeas :=
-        Auto.Spherical.PowerWeights.measurable_restrictedNormalizedSphericalMaximal_schwartz
-          E f
-      refine ⟨hmeas.aestronglyMeasurable, ?_⟩
       exact (hbound f).trans_lt
         (ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr ENNReal.ofReal_ne_top) hf.eLpNorm_lt_top)
     · rintro ⟨p, α, hp, hq1, hq2, C, hC, hstrong⟩
@@ -1001,7 +996,7 @@ theorem power_weight_spherical_maximal
       · have hfmeas : AEStronglyMeasurable f (powerWeightedVolume d α) :=
           f.continuous.aestronglyMeasurable
         have hftop : eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α) = ∞ :=
-          not_lt_top_iff.mp fun hfin => hf ⟨hfmeas, hfin⟩
+          not_lt_top_iff.mp fun hfin => hf hfin
         rw [hftop, ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr hC)]
         exact le_top
   rw [htype]

@@ -2174,6 +2174,7 @@ theorem angularDyadicCubeResidualSymbol_fourierInv_seminorm_le_derivativeIntegra
         simpa using SchwartzMap.integrable_pow_mul_iteratedFDeriv volume
           (angularDyadicCubeResidualSymbol C σ j t direction χ m) 0 n)
       (k := 0) (n := N) (by simp) (by simp) (-x)
+    rw [Finset.sum_product, Finset.sum_range_one] at h
     simpa [Real.fourierInv_eq_fourier_neg] using h
 
 /-- Explicit residual Schwartz-seminorm bounds give literal light-ray decay

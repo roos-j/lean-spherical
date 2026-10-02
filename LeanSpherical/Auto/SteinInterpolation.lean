@@ -2992,8 +2992,8 @@ private theorem integrable_pairing_of_memLp
   have hg_mem : MemLp (g : Y → ℂ) q.conjExponent ν :=
     g.memLp_of_finite_measure_preimage q.conjExponent
       (fun y hy ↦ hg_fin.meas_preimage_singleton_ne_zero hy)
-  have hmul : MemLp (fun y ↦ g y * u y) 1 ν := hu.mul' hg_mem
-  simpa [mul_comm] using memLp_one_iff_integrable.mp hmul
+  have hmul : MemLp (fun y ↦ u y * g y) 1 ν := hu.fun_mul hg_mem
+  exact memLp_one_iff_integrable.mp hmul
 
 private theorem memLp_simpleFunc_of_integrable
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {p : ENNReal}
@@ -3005,7 +3005,7 @@ private theorem memLp_simpleFunc_of_integrable
 private theorem memLp_of_measurable_of_eLpNorm_le
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {p A : ENNReal} {u : X → ℂ}
     (hu : Measurable u) (hbound : eLpNorm u p μ ≤ A) (hA : A < ⊤) : MemLp u p μ :=
-  ⟨hu.aestronglyMeasurable, hbound.trans_lt hA⟩
+  hbound.trans_lt hA
 
 /-- An endpoint estimate on the integrable-simple-function core supplies the `MemLp` fact
 needed for subsequent duality arguments. -/
@@ -3021,7 +3021,6 @@ private theorem output_memLp_of_bound
     MemLp (T f) q ν := by
   have hfLp : MemLp (f : X → ℂ) p μ :=
     f.memLp_of_finite_measure_preimage p (SimpleFunc.integrable_iff.mp hf)
-  refine ⟨(hT_measurable f hf).aestronglyMeasurable, ?_⟩
   exact (hbound f hf).trans_lt
     (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfLp.eLpNorm_lt_top)
 
@@ -3172,7 +3171,9 @@ private theorem tendsto_eLpNorm_restrict_approxBounded
     (s.indicator fun _ ↦ (ENNReal.ofReal A) ^ q.toReal) (fun n ↦ by
       exact ENNReal.continuous_rpow_const.measurable.comp (gₙ n).measurable.enorm) ?_ ?_ ?_
   · change Tendsto (fun n ↦ eLpNorm (gₙ n : Y → ℂ) q ν) atTop (𝓝 (eLpNorm g q ν))
-    simp_rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0 hqtop]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0 hqtop hg.aestronglyMeasurable]
+    simp_rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0 hqtop
+      (SimpleFunc.aestronglyMeasurable _)]
     convert (ENNReal.continuous_rpow_const (y := 1 / q.toReal)).tendsto _ |>.comp hlin using 1 ;
       rfl
   · intro n
@@ -3214,7 +3215,7 @@ private theorem pairing_bound_of_bounded_support
   have hmem : MemLp g q (ν.restrict s) :=
     MemLp.of_bound hg.aestronglyMeasurable A (Eventually.of_forall hgbound)
   have hgfin : eLpNorm g q ν ≠ ∞ := by
-    rw [← eLpNorm_restrict_eq_of_support_subset hsupport]
+    rw [← eLpNorm_restrict_eq_of_support_subset hg.aestronglyMeasurable hsupport]
     exact hmem.eLpNorm_lt_top.ne
   apply pairing_bound_of_tendsto_simple gₙ hbound
   · simpa only [gₙ] using
@@ -3248,7 +3249,7 @@ private theorem pairing_bound_top_of_bounded_support
     · simp [gₙ, SimpleFunc.restrict_apply, hs, hys]
   have hgₙLp : ∀ n, eLpNorm (gₙ n : Y → ℂ) ∞ ν ≤ 1 := by
     intro n
-    rw [eLpNorm_exponent_top]
+    rw [eLpNorm_exponent_top (SimpleFunc.aestronglyMeasurable _)]
     simpa using eLpNormEssSup_le_of_ae_bound (Eventually.of_forall (hgₙ_bound n))
   have hlim := tendsto_pairing_restrict_approxBounded hs zero_le_one hu hus hg hgsupp hgbound
   apply le_of_tendsto hlim.norm
@@ -3321,9 +3322,17 @@ private theorem setLIntegral_enorm_le_of_phase_pairing
     · simp only [g, Set.indicator_of_mem hys]
       simpa using norm_phase_le_one (u y)
     · simp [g, hys]
+  have hg_meas : AEStronglyMeasurable g ν := by
+    have hw := hus.aemeasurable
+    have hg_eq : g = fun y ↦ star (s.indicator u y) / (‖s.indicator u y‖ : ℂ) := by
+      funext y
+      by_cases hys : y ∈ s <;> simp [g, hys]
+    rw [hg_eq]
+    exact (by fun_prop : AEMeasurable
+      (fun y ↦ star (s.indicator u y) / (‖s.indicator u y‖ : ℂ)) ν).aestronglyMeasurable
   have hgLp : eLpNorm g 1 ν ≤ ν s := by
-    refine (eLpNorm_mono_ae (Eventually.of_forall hg_bound)).trans_eq ?_
-    rw [eLpNorm_indicator_const hs (by norm_num) (by norm_num)]
+    refine (eLpNorm_mono_ae hg_meas (Eventually.of_forall hg_bound)).trans_eq ?_
+    rw [eLpNorm_indicator_const hs.nullMeasurableSet (by norm_num) (by norm_num)]
     simp
   have hreal : (∫ y, v y ∂ν) ≤ C * (ν s).toReal := by
     calc
@@ -3370,9 +3379,9 @@ private theorem memLp_top_of_phase_tests
   have hae : (fun y ↦ ‖u y‖ₑ) ≤ᵐ[ν] fun _y ↦ ENNReal.ofReal C :=
     MeasureTheory.ae_le_of_forall_setLIntegral_le_of_sigmaFinite hu.enorm hlocal'
   have hnorm : eLpNorm u ∞ ν ≤ ENNReal.ofReal C := by
-    rw [eLpNorm_exponent_top]
+    rw [eLpNorm_exponent_top hu.aestronglyMeasurable]
     exact eLpNormEssSup_le_of_ae_enorm_bound hae
-  exact ⟨⟨hu.aestronglyMeasurable, hnorm.trans_lt ENNReal.ofReal_lt_top⟩, hnorm⟩
+  exact ⟨hnorm.trans_lt ENNReal.ofReal_lt_top, hnorm⟩
 
 private theorem ofReal_norm_integral_phase_eq_setLIntegral_enorm
     {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} {u : Y → ℂ}
@@ -3455,9 +3464,9 @@ private theorem memLp_one_of_setLIntegral_le
     rw [lintegral_indicator (measurableSet_spanningSets ν n)]
     exact hlocal _ (measurableSet_spanningSets ν n) (measure_spanningSets_lt_top ν n)
   have hnorm : eLpNorm u 1 ν ≤ ENNReal.ofReal C := by
-    rw [eLpNorm_one_eq_lintegral_enorm]
+    rw [eLpNorm_one_eq_lintegral_enorm hu.aestronglyMeasurable]
     exact hlin
-  exact ⟨⟨hu.aestronglyMeasurable, hnorm.trans_lt ENNReal.ofReal_lt_top⟩, hnorm⟩
+  exact ⟨hnorm.trans_lt ENNReal.ofReal_lt_top, hnorm⟩
 
 /-- The `L¹` endpoint of the complex phase-test argument. -/
 private theorem memLp_one_of_phase_tests
@@ -3582,7 +3591,7 @@ private theorem ofReal_norm_integral_phase_power_eq_setLIntegral_enorm_rpow
 
 private theorem eLpNorm_phase_power
     {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} {u : Y → ℂ}
-    {s : Set Y} {r : ℝ} {q' : ENNReal} (hs : MeasurableSet s)
+    {s : Set Y} {r : ℝ} {q' : ENNReal} (hs : MeasurableSet s) (hu : Measurable u)
     (hr : 1 < r) (hq'0 : q' ≠ 0) (hq'top : q' ≠ ∞)
     (hq' : q'.toReal = r / (r - 1)) :
     eLpNorm (s.indicator (fun y ↦
@@ -3604,7 +3613,10 @@ private theorem eLpNorm_phase_power
     · simp [g, hys, ENNReal.toReal_pos hq'0 hq'top]
   rw [show (s.indicator (fun y ↦
       (star (u y) / (‖u y‖ : ℂ)) * ((‖u y‖ ^ (r - 1) : ℝ) : ℂ))) = g by rfl,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hq'0 hq'top]
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hq'0 hq'top
+      (((by fun_prop : Measurable (fun y ↦
+        (star (u y) / (‖u y‖ : ℂ)) * ((‖u y‖ ^ (r - 1) : ℝ) : ℂ))).indicator
+        hs).aestronglyMeasurable)]
   rw [show (fun y ↦ ‖g y‖ₑ ^ q'.toReal) =
       s.indicator (fun y ↦ ‖u y‖ₑ ^ r) by funext y; exact hpow y]
   rw [lintegral_indicator hs]
@@ -3631,10 +3643,10 @@ private theorem rpow_inv_le_of_le_mul_rpow
 
 private theorem eLpNorm_indicator_eq_setLIntegral_enorm_rpow
     {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} {u : Y → ℂ}
-    {s : Set Y} {r : ℝ} (hs : MeasurableSet s) (hr : 0 < r) :
+    {s : Set Y} {r : ℝ} (hs : MeasurableSet s) (hu : Measurable u) (hr : 0 < r) :
     eLpNorm (s.indicator u) (ENNReal.ofReal r) ν =
       (∫⁻ y in s, ‖u y‖ₑ ^ r ∂ν) ^ (1 / r) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (hf := (hu.indicator hs).aestronglyMeasurable)]
   · rw [ENNReal.toReal_ofReal hr.le]
     rw [show (fun y ↦ ‖s.indicator u y‖ₑ ^ r) =
         s.indicator (fun y ↦ ‖u y‖ₑ ^ r) by
@@ -3685,7 +3697,7 @@ private theorem eLpNorm_indicator_le_of_phase_power_pairing
   have htestnorm : eLpNorm (s.indicator (fun y ↦
       (star (u y) / (‖u y‖ : ℂ)) * ((‖u y‖ ^ (r - 1) : ℝ) : ℂ))) q' ν =
       I ^ (1 / q'.toReal) := by
-    exact eLpNorm_phase_power hs hr hq'0 hq'top hq'real
+    exact eLpNorm_phase_power hs hu hr hq'0 hq'top hq'real
   have htestfin : eLpNorm (s.indicator (fun y ↦
       (star (u y) / (‖u y‖ : ℂ)) * ((‖u y‖ ^ (r - 1) : ℝ) : ℂ))) q' ν ≠ ∞ := by
     rw [htestnorm]
@@ -3722,6 +3734,7 @@ private theorem eLpNorm_indicator_le_of_phase_power_pairing
     exact hroot
   · exact ne_of_gt ((ENNReal.ofReal_pos).mpr hrpos)
   · exact ENNReal.ofReal_ne_top
+  · exact (hu.indicator hs).aestronglyMeasurable
 
 private theorem memLp_of_local_eLpNorm_indicator_le
     {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} [SigmaFinite ν]
@@ -3795,7 +3808,7 @@ private theorem memLp_of_local_eLpNorm_indicator_le
       intro y hy
       exact hy.2
     have hnorm := hlocal (s n) (n : ℝ) (hsmeas n) (hsfin n) (by positivity) hbound
-    rw [eLpNorm_indicator_eq_setLIntegral_enorm_rpow (hsmeas n) hrpos] at hnorm
+    rw [eLpNorm_indicator_eq_setLIntegral_enorm_rpow (hsmeas n) hu hrpos] at hnorm
     apply (ENNReal.rpow_inv_le_iff hrpos).mp
     simpa only [one_div] using hnorm
   have hnorm : eLpNorm u (ENNReal.ofReal r) ν ≤ ENNReal.ofReal C := by
@@ -3804,7 +3817,8 @@ private theorem memLp_of_local_eLpNorm_indicator_le
       simpa only [one_div] using (ENNReal.rpow_inv_le_iff hrpos).mpr hlin
     · exact ne_of_gt ((ENNReal.ofReal_pos).mpr hrpos)
     · exact ENNReal.ofReal_ne_top
-  exact ⟨⟨hu.aestronglyMeasurable, hnorm.trans_lt ENNReal.ofReal_lt_top⟩, hnorm⟩
+    · exact hu.aestronglyMeasurable
+  exact ⟨hnorm.trans_lt ENNReal.ofReal_lt_top, hnorm⟩
 
 /-- Finite-exponent `Lᵖ` norming by simple functions. -/
 private theorem memLp_of_pairing_bounds_finite
@@ -4022,7 +4036,7 @@ private theorem integral_mul_simpleFunc_eq_zero_of_eLpNorm_eq_zero
   have hgLp : MemLp (g : Y → ℂ) q.conjExponent ν :=
     g.memLp_of_finite_measure_preimage _ (SimpleFunc.integrable_iff.mp hg)
   have hzeroae : (g : Y → ℂ) =ᵐ[ν] 0 :=
-    (eLpNorm_eq_zero_iff hgLp.1 hq').mp hzero
+    (eLpNorm_eq_zero_iff hq').mp hzero
   apply integral_eq_zero_of_ae
   filter_upwards [hzeroae] with y hy
   simp [hy]
@@ -4215,15 +4229,17 @@ private theorem norm_integral_mul_le_eLpNorm_mul
       eLpNorm (fun y ↦ u y * g y) 1 ν ≤
         eLpNorm u q ν * eLpNorm g q.conjExponent ν := by
     simpa using
-      (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm hu.1 hg.1 (fun x y : ℂ ↦ x * y)
-        1 (Eventually.of_forall fun _ ↦ by simp))
+      (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm (fun x y : ℂ ↦ x * y) 1 continuous_mul
+        hu.aestronglyMeasurable hg.aestronglyMeasurable (Eventually.of_forall fun _ ↦ by simp))
   calc
     ‖∫ y, u y * g y ∂ν‖ ≤ ∫ y, ‖u y * g y‖ ∂ν :=
       norm_integral_le_integral_norm _
     _ = (∫⁻ y, ‖u y * g y‖ₑ ∂ν).toReal :=
-      integral_norm_eq_lintegral_enorm (hu.1.mul hg.1)
+      integral_norm_eq_lintegral_enorm
+        (hu.aestronglyMeasurable.mul hg.aestronglyMeasurable)
     _ = (eLpNorm (fun y ↦ u y * g y) 1 ν).toReal := by
-      rw [eLpNorm_one_eq_lintegral_enorm]
+      rw [eLpNorm_one_eq_lintegral_enorm (f := fun y ↦ u y * g y)
+        (hu.aestronglyMeasurable.mul hg.aestronglyMeasurable)]
     _ ≤ (eLpNorm u q ν * eLpNorm g q.conjExponent ν).toReal :=
       ENNReal.toReal_mono
         (ENNReal.mul_ne_top hu.eLpNorm_lt_top.ne hg.eLpNorm_lt_top.ne) hprod
@@ -4251,7 +4267,6 @@ private theorem endpoint_pairing_bound_normalized
       _ ≤ ENNReal.ofReal M * 1 := mul_le_mul' le_rfl hfnorm
       _ = ENNReal.ofReal M := mul_one _
   have hTmem : MemLp (T f) q ν := by
-    refine ⟨(hT_measurable f hf).aestronglyMeasurable, ?_⟩
     exact hTnorm.trans_lt ENNReal.ofReal_lt_top
   have hgmem : MemLp (g : Y → ℂ) q.conjExponent ν :=
     g.memLp_of_finite_measure_preimage _ (SimpleFunc.integrable_iff.mp hg)
@@ -4513,8 +4528,10 @@ private theorem eLpNorm_simpleFunc_map_of_norm_rpow
       field_simp [hr.ne', hs.ne']
     · exact ne_of_gt ((ENNReal.ofReal_pos).mpr hr)
     · exact ENNReal.ofReal_ne_top
+    · exact SimpleFunc.aestronglyMeasurable _
   · exact ne_of_gt ((ENNReal.ofReal_pos).mpr hs)
   · exact ENNReal.ofReal_ne_top
+  · exact SimpleFunc.aestronglyMeasurable _
 
 /-- Converts an interpolation equation of extended exponents to one of real reciprocal
 exponents. -/
@@ -4617,7 +4634,7 @@ private theorem eLpNorm_input_deformation_left_coeff_top
       c / (‖c‖ : ℂ) * Complex.exp
         ((((a₁ - a₀ : ℝ) : ℂ) * ((t : ℂ) * Complex.I) +
           (a₀ : ℂ)) * ((Real.log ‖c‖ : ℝ) : ℂ))): X → ℂ) ∞ μ ≤ 1 := by
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top (SimpleFunc.aestronglyMeasurable _)]
   convert eLpNormEssSup_le_of_ae_bound (μ := μ)
     (f := (f.map (fun c ↦ if c = 0 then 0 else
       c / (‖c‖ : ℂ) * Complex.exp
@@ -4634,7 +4651,7 @@ private theorem eLpNorm_input_deformation_right_coeff_top
       c / (‖c‖ : ℂ) * Complex.exp
         ((((a₁ - a₀ : ℝ) : ℂ) * (1 + (t : ℂ) * Complex.I) +
           (a₀ : ℂ)) * ((Real.log ‖c‖ : ℝ) : ℂ))): X → ℂ) ∞ μ ≤ 1 := by
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top (SimpleFunc.aestronglyMeasurable _)]
   convert eLpNormEssSup_le_of_ae_bound (μ := μ)
     (f := (f.map (fun c ↦ if c = 0 then 0 else
       c / (‖c‖ : ℂ) * Complex.exp
@@ -6280,8 +6297,6 @@ private theorem analyticOnNhd_radial_discToStrip
   have hscale : AnalyticOnNhd ℂ (fun z : ℂ ↦ (r : ℂ) * z) (closedBall 0 1) := by
     convert ((analyticOnNhd_id (𝕜 := ℂ) (E := ℂ)).const_smul (c := (r : ℂ))).mono
       (Set.subset_univ _) using 1
-    ext z
-    simp
   have hscale_map : MapsTo (fun z : ℂ ↦ (r : ℂ) * z) (closedBall 0 1) (ball 0 1) := by
     intro z hz
     rw [mem_closedBall, dist_zero_right] at hz

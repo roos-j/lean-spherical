@@ -181,24 +181,35 @@ theorem sqMass_kernelApply_le' {μ : Measure α} [SFinite μ] {K : α → α →
   rw [kernelApply_congr_ae K hg, sqMass_congr_ae hg, mul_assoc]
   exact sqMass_kernelApply_le hK h₁ h₂ hgmeas
 
-theorem eLpNorm_two_eq_sqMass_rpow (μ : Measure α) (f : α → ℂ) :
+theorem eLpNorm_two_eq_sqMass_rpow (μ : Measure α) (f : α → ℂ)
+    (hf : AEStronglyMeasurable f μ) :
     eLpNorm f 2 μ = (sqMass μ f) ^ (2⁻¹ : ℝ) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num), sqMass]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hf, sqMass]
   norm_num
 
-theorem sqMass_eq_eLpNorm_rpow (μ : Measure α) (f : α → ℂ) :
+theorem sqMass_eq_eLpNorm_rpow (μ : Measure α) (f : α → ℂ)
+    (hf : AEStronglyMeasurable f μ) :
     sqMass μ f = (eLpNorm f 2 μ) ^ (2 : ℝ) := by
-  rw [eLpNorm_two_eq_sqMass_rpow, ← ENNReal.rpow_mul]
+  rw [eLpNorm_two_eq_sqMass_rpow μ f hf, ← ENNReal.rpow_mul]
   norm_num
 
 theorem sqMass_ne_top_of_memLp {μ : Measure α} {f : α → ℂ} (hf : MemLp f 2 μ) :
     sqMass μ f ≠ ⊤ := by
-  rw [sqMass_eq_eLpNorm_rpow]
-  exact ENNReal.rpow_ne_top_of_nonneg (by norm_num) hf.2.ne
+  rw [sqMass_eq_eLpNorm_rpow μ f hf.aestronglyMeasurable]
+  exact ENNReal.rpow_ne_top_of_nonneg (by norm_num) hf.eLpNorm_ne_top
 
 theorem rpow_half_mul_self (C : ℝ≥0∞) : (C * C) ^ (2⁻¹ : ℝ) = C := by
   rw [← pow_two, ← ENNReal.rpow_natCast C 2, ← ENNReal.rpow_mul]
   norm_num
+
+theorem aestronglyMeasurable_kernelApply {μ : Measure α} [SFinite μ] {K : α → α → ℂ}
+    (hK : Measurable (Function.uncurry K)) {f : α → ℂ} (hf : AEStronglyMeasurable f μ) :
+    AEStronglyMeasurable (kernelApply μ K f) μ := by
+  obtain ⟨g, hgmeas, hg⟩ := hf
+  rw [kernelApply_congr_ae K hg]
+  have hprod : StronglyMeasurable (fun p : α × α => K p.1 p.2 * g p.2) :=
+    (hK.stronglyMeasurable).mul (hgmeas.comp_measurable measurable_snd)
+  exact (hprod.integral_prod_right').aestronglyMeasurable
 
 theorem eLpNorm_kernelApply_le {μ : Measure α} [SFinite μ] {K : α → α → ℂ} {C : ℝ≥0∞}
     (hK : Measurable (Function.uncurry K))
@@ -206,7 +217,9 @@ theorem eLpNorm_kernelApply_le {μ : Measure α} [SFinite μ] {K : α → α →
     (h₂ : ∀ y, ∫⁻ x, ‖K x y‖ₑ ∂μ ≤ C)
     {f : α → ℂ} (hf : AEMeasurable f μ) :
     eLpNorm (kernelApply μ K f) 2 μ ≤ C * eLpNorm f 2 μ := by
-  rw [eLpNorm_two_eq_sqMass_rpow, eLpNorm_two_eq_sqMass_rpow]
+  rw [eLpNorm_two_eq_sqMass_rpow _ _
+      (aestronglyMeasurable_kernelApply hK hf.aestronglyMeasurable),
+    eLpNorm_two_eq_sqMass_rpow _ _ hf.aestronglyMeasurable]
   have hbound := sqMass_kernelApply_le' hK h₁ h₂ hf
   have hstep := ENNReal.rpow_le_rpow hbound (by norm_num : (0 : ℝ) ≤ 2⁻¹)
   refine le_trans hstep (le_of_eq ?_)
@@ -254,24 +267,15 @@ theorem kernelApply_smul {μ : Measure α} (K : α → α → ℂ) (c : ℂ) (f 
     funext y; ring]
   exact integral_const_mul c _
 
-theorem aestronglyMeasurable_kernelApply {μ : Measure α} [SFinite μ] {K : α → α → ℂ}
-    (hK : Measurable (Function.uncurry K)) {f : α → ℂ} (hf : AEStronglyMeasurable f μ) :
-    AEStronglyMeasurable (kernelApply μ K f) μ := by
-  obtain ⟨g, hgmeas, hg⟩ := hf
-  rw [kernelApply_congr_ae K hg]
-  have hprod : StronglyMeasurable (fun p : α × α => K p.1 p.2 * g p.2) :=
-    (hK.stronglyMeasurable).mul (hgmeas.comp_measurable measurable_snd)
-  exact (hprod.integral_prod_right').aestronglyMeasurable
-
 theorem memLp_kernelApply {μ : Measure α} [SFinite μ] {K : α → α → ℂ} {C : ℝ≥0∞}
     (hK : Measurable (Function.uncurry K)) (hC : C ≠ ⊤)
     (h₁ : ∀ x, ∫⁻ y, ‖K x y‖ₑ ∂μ ≤ C)
     (h₂ : ∀ y, ∫⁻ x, ‖K x y‖ₑ ∂μ ≤ C)
     {f : α → ℂ} (hf : MemLp f 2 μ) :
     MemLp (kernelApply μ K f) 2 μ := by
-  refine ⟨aestronglyMeasurable_kernelApply hK hf.1, ?_⟩
-  refine lt_of_le_of_lt (eLpNorm_kernelApply_le hK h₁ h₂ hf.1.aemeasurable) ?_
-  exact ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr hC) hf.2
+  refine lt_of_le_of_lt
+    (eLpNorm_kernelApply_le hK h₁ h₂ hf.aestronglyMeasurable.aemeasurable) ?_
+  exact ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr hC) hf.eLpNorm_lt_top
 
 /-! ### Good kernels
 
@@ -382,8 +386,8 @@ def goodLinearMap (hK : IsGoodKernel μ K) : Lp ℂ 2 μ →ₗ[ℂ] Lp ℂ 2 μ
       _ = kernelApply μ K ((F : α → ℂ) + (G : α → ℂ)) := kernelApply_congr_ae K hc
       _ = kernelApply μ K (F : α → ℂ) + kernelApply μ K (G : α → ℂ) :=
           kernelApply_add (fun x => (row_meas hK x).aestronglyMeasurable)
-            (sqMass_row_ne_top hK) (Lp.memLp F).1 (sqMass_ne_top_of_memLp (Lp.memLp F))
-            (Lp.memLp G).1 (sqMass_ne_top_of_memLp (Lp.memLp G))
+            (sqMass_row_ne_top hK) (Lp.memLp F).aestronglyMeasurable (sqMass_ne_top_of_memLp (Lp.memLp F))
+            (Lp.memLp G).aestronglyMeasurable (sqMass_ne_top_of_memLp (Lp.memLp G))
       _ =ᵐ[μ]
           ((MemLp.toLp _ (memLp_kernelApply_of_good hK (Lp.memLp F)) : Lp ℂ 2 μ) : α → ℂ) +
           ((MemLp.toLp _ (memLp_kernelApply_of_good hK (Lp.memLp G)) : Lp ℂ 2 μ) : α → ℂ) :=
@@ -414,9 +418,9 @@ theorem norm_goodLinearMap_apply_le (hK : IsGoodKernel μ K) {C : ℝ≥0∞} (h
     (h₁ : ∀ x, ∫⁻ y, ‖K x y‖ₑ ∂μ ≤ C) (h₂ : ∀ y, ∫⁻ x, ‖K x y‖ₑ ∂μ ≤ C) (F : Lp ℂ 2 μ) :
     ‖goodLinearMap μ K hK F‖ ≤ C.toReal * ‖F‖ := by
   rw [Lp.norm_def, Lp.norm_def, eLpNorm_congr_ae (coeFn_goodLinearMap μ K hK F)]
-  have hb := eLpNorm_kernelApply_le hK.meas h₁ h₂ (Lp.memLp F).1.aemeasurable
+  have hb := eLpNorm_kernelApply_le hK.meas h₁ h₂ (Lp.memLp F).aestronglyMeasurable.aemeasurable
   have hfin : C * eLpNorm (F : α → ℂ) 2 μ ≠ ⊤ :=
-    (ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr hC) (Lp.memLp F).2).ne
+    (ENNReal.mul_lt_top (lt_top_iff_ne_top.mpr hC) (Lp.memLp F).eLpNorm_lt_top).ne
   calc (eLpNorm (kernelApply μ K (F : α → ℂ)) 2 μ).toReal
       ≤ (C * eLpNorm (F : α → ℂ) 2 μ).toReal :=
         ENNReal.toReal_le_toReal (lt_of_le_of_lt hb (lt_top_iff_ne_top.mpr hfin)).ne hfin |>.mpr hb
@@ -557,8 +561,8 @@ theorem adjoint_goodCLM {μ : Measure α} [SFinite μ] {K : α → α → ℂ} (
   intro u v
   have hu2 := sqMass_ne_top_of_memLp (Lp.memLp u)
   have hv2 := sqMass_ne_top_of_memLp (Lp.memLp v)
-  have hum := (Lp.memLp u).1
-  have hvm := (Lp.memLp v).1
+  have hum := (Lp.memLp u).aestronglyMeasurable
+  have hvm := (Lp.memLp v).aestronglyMeasurable
   have hleft : (inner ℂ (goodCLM μ (adjKernel K) (isGoodKernel_adjKernel hK) u) v)
       = ∫ x, ∫ y, K y x * (starRingEnd ℂ) ((u : α → ℂ) y) * (v : α → ℂ) x ∂μ ∂μ := by
     rw [MeasureTheory.L2.inner_def]
@@ -691,7 +695,7 @@ theorem goodCLM_comp {μ : Measure α} [SFinite μ] {K₁ K₂ : α → α → �
     exact Filter.Eventually.of_forall (fun x => by
       rw [kernelApply_congr_ae K₁ (coeFn_goodCLM μ K₂ h₂ F)])
   refine hstep.trans ?_
-  rw [kernelApply_comp h₁ h₂ (Lp.memLp F).1 (sqMass_ne_top_of_memLp (Lp.memLp F))]
+  rw [kernelApply_comp h₁ h₂ (Lp.memLp F).aestronglyMeasurable (sqMass_ne_top_of_memLp (Lp.memLp F))]
   exact (coeFn_goodCLM μ (compKernel μ K₁ K₂) (isGoodKernel_compKernel h₁ h₂) F).symm
 
 end Kernel
@@ -811,7 +815,7 @@ theorem contDiff_bumpD (d : ℕ) : ContDiff ℝ (↑(⊤ : ℕ∞)) (bumpD d) :=
 theorem abs_bumpD_le_one (d : ℕ) (x : EuclideanSpace ℝ (Fin d)) : |bumpD d x| ≤ 1 := by
   rw [bumpD, Finset.abs_prod]
   calc ∏ i, |bump1 (x i)| ≤ ∏ _i : Fin d, (1 : ℝ) :=
-        Finset.prod_le_prod (fun i _ => abs_nonneg _) (fun i _ => abs_bump1_le_one _)
+        Finset.prod_le_prod₀ (fun i _ => abs_nonneg _) (fun i _ => abs_bump1_le_one _)
     _ = 1 := by simp
 
 theorem bumpD_eq_zero_of_norm_lt {d : ℕ} {x : EuclideanSpace ℝ (Fin d)}
@@ -1078,7 +1082,7 @@ theorem sum_lattice_inv_pow_le (d : ℕ) (s : Finset (Fin d → ℤ)) :
     have hprodle : (∏ i, ((1 : ℝ) + |((m i : ℤ) : ℝ)|)) ≤ ((1 : ℝ) + ‖latt d m‖) ^ d := by
       calc (∏ i, ((1 : ℝ) + |((m i : ℤ) : ℝ)|))
           ≤ ∏ _i : Fin d, ((1 : ℝ) + ‖latt d m‖) := by
-            refine Finset.prod_le_prod (fun i _ => by positivity) (fun i _ => ?_)
+            refine Finset.prod_le_prod₀ (fun i _ => by positivity) (fun i _ => ?_)
             have := abs_apply_le_norm (latt d m) i
             rw [latt_apply] at this
             linarith
@@ -1121,7 +1125,7 @@ theorem sum_lattice_inv_pow_le (d : ℕ) (s : Finset (Fin d → ℤ)) :
     (fun (_ : Fin d) (n : ℤ) => (((1 : ℝ) + |(n : ℝ)|) ^ 2)⁻¹)]
   calc (∏ _i : Fin d, ∑ n ∈ Finset.Icc (-(M : ℤ)) (M : ℤ), (((1 : ℝ) + |(n : ℝ)|) ^ 2)⁻¹)
       ≤ ∏ _i : Fin d, (3 : ℝ) := by
-        refine Finset.prod_le_prod (fun i _ => Finset.sum_nonneg (fun n _ => by positivity))
+        refine Finset.prod_le_prod₀ (fun i _ => Finset.sum_nonneg (fun n _ => by positivity))
           (fun i _ => sum_finset_int_inv_sq_le _)
     _ = 3 ^ d := by rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
 
@@ -1265,7 +1269,7 @@ theorem integral_cvChar_mul_eq_fourier {V : Type*} [NormedAddCommGroup V]
   congr 2
   rw [inner_neg_right, cvChar]
   push_cast
-  ring
+  ring_nf
 
 /-- The symbol class `S⁰_{0,0}`: all pure derivatives in each variable separately are bounded
 by `A`. -/
@@ -2231,7 +2235,7 @@ theorem eLpNorm_cvOp_le (ha : IsCVSymbol d N a A)
       _ = sqMass volume ((G : Lp ℂ 2 volume) : EuclideanSpace ℝ (Fin d) → ℂ) :=
           (sqMass_congr_ae hGcoe).symm
       _ = (eLpNorm ((G : Lp ℂ 2 volume) : EuclideanSpace ℝ (Fin d) → ℂ) 2 volume) ^ (2 : ℝ) :=
-          sqMass_eq_eLpNorm_rpow _ _
+          sqMass_eq_eLpNorm_rpow _ _ (Lp.aestronglyMeasurable G)
       _ ≤ B ^ (2 : ℝ) := by
           refine ENNReal.rpow_le_rpow ?_ (by norm_num)
           have hGle : ‖G‖ ≤ ACS * ‖F‖ := by
@@ -2240,11 +2244,11 @@ theorem eLpNorm_cvOp_le (ha : IsCVSymbol d N a A)
             exact mul_le_mul_of_nonneg_right (norm_sum_cvT_le ha hCφb hCφ hN s) (norm_nonneg _)
           have hEq : eLpNorm ((G : Lp ℂ 2 volume) : EuclideanSpace ℝ (Fin d) → ℂ) 2 volume
               = ENNReal.ofReal ‖G‖ := by
-            rw [Lp.norm_def, ENNReal.ofReal_toReal (Lp.memLp G).2.ne]
+            rw [Lp.norm_def, ENNReal.ofReal_toReal (Lp.memLp G).eLpNorm_ne_top]
           rw [hEq, hBdef]
           refine le_trans (ENNReal.ofReal_le_ofReal hGle) (le_of_eq ?_)
           rw [ENNReal.ofReal_mul hACS, hFnorm,
-            ENNReal.ofReal_toReal (hfL2.2.ne)]
+            ENNReal.ofReal_toReal (hfL2.eLpNorm_ne_top)]
   -- pass to the limit
   have hmeasg : Measurable (fun x => ‖cvOp a f x‖ₑ ^ (2 : ℝ)) :=
     ((measurable_cvOp ha hfm).enorm).pow_const _
@@ -2284,7 +2288,7 @@ theorem eLpNorm_cvOp_le (ha : IsCVSymbol d N a A)
     refine iSup_le fun M => ?_
     rw [lintegral_indicator Metric.isClosed_closedBall.measurableSet]
     exact htrunc (M + M₀) (by omega)
-  rw [eLpNorm_two_eq_sqMass_rpow]
+  rw [eLpNorm_two_eq_sqMass_rpow _ _ (measurable_cvOp ha hfm).aestronglyMeasurable]
   refine le_trans (ENNReal.rpow_le_rpow hsq (by norm_num)) (le_of_eq ?_)
   rw [← ENNReal.rpow_mul, hBdef]
   norm_num
@@ -2360,8 +2364,18 @@ theorem sqMass_comp_const_smul (F : EuclideanSpace ℝ (Fin d) → ℂ) {r : ℝ
 theorem eLpNorm_comp_const_smul (F : EuclideanSpace ℝ (Fin d) → ℂ) {r : ℝ} (hr : 0 < r) :
     eLpNorm (fun x => F (r • x)) 2 volume
       = ENNReal.ofReal ((r ^ d)⁻¹) ^ (2⁻¹ : ℝ) * eLpNorm F 2 volume := by
-  rw [eLpNorm_two_eq_sqMass_rpow, eLpNorm_two_eq_sqMass_rpow, sqMass_comp_const_smul F hr,
-    ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
+  by_cases hF : AEStronglyMeasurable F volume
+  · have hFr : AEStronglyMeasurable (fun x => F (r • x)) volume :=
+      hF.comp_quasiMeasurePreserving (Measure.quasiMeasurePreserving_smul volume hr.ne')
+    rw [eLpNorm_two_eq_sqMass_rpow _ _ hFr, eLpNorm_two_eq_sqMass_rpow _ _ hF,
+      sqMass_comp_const_smul F hr, ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
+  · have hFr : ¬ AEStronglyMeasurable (fun x => F (r • x)) volume := fun h => hF (by
+      have := h.comp_quasiMeasurePreserving
+        (Measure.quasiMeasurePreserving_smul volume (inv_ne_zero hr.ne'))
+      simpa [Function.comp_def, smul_smul, mul_inv_cancel₀ hr.ne'] using this)
+    rw [eLpNorm_of_not_aestronglyMeasurable hFr, eLpNorm_of_not_aestronglyMeasurable hF,
+      ENNReal.mul_top]
+    exact (ENNReal.rpow_pos (ENNReal.ofReal_pos.2 (by positivity)) ENNReal.ofReal_ne_top).ne'
 
 /-- Anisotropic symbol class: `‖∂_x^n a(·, ξ)‖ ≤ A σ ^ n` and `‖∂_ξ^n a(x, ·)‖ ≤ A τ ^ n`
 for `n ≤ N`.  Only pure derivatives in each of the two variables separately are required. -/

@@ -565,7 +565,7 @@ theorem minkowski_t123_physical_crossed_dyadic_rate_of_hasUpperMinkowskiExponent
       rw [Real.zero_rpow (inv_ne_zero hp0.ne')] at hscale
       simpa using hscale
     have hfzero : (f : Euclidean (n + 1) → Complex) =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr hp0)).mp hfnorm
     have hf_eq_fun : (f : Euclidean (n + 1) → Complex) = 0 :=
       (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzero
@@ -773,7 +773,7 @@ theorem minkowski_t123_physical_crossed_planar_dyadic_rate_of_hasUpperMinkowskiE
       rw [Real.zero_rpow (inv_ne_zero hp0.ne')] at hscale
       simpa using hscale
     have hfzero : (f : Euclidean 2 → Complex) =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr hp0)).mp hfnorm
     have hf_eq_fun : (f : Euclidean 2 → Complex) = 0 :=
       (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzero
@@ -3417,9 +3417,7 @@ theorem q4_upper_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
     have hmem : MemLp (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
         (ENNReal.ofReal q) volume :=
-      ⟨(measurable_fractalDyadicBandpassMaximal E
-        (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable,
-        hboundTop⟩
+      hboundTop
     refine ⟨hmem, ?_⟩
     rw [eLpNorm_schwartz_eq_q4LowerInputScale (by linarith) f hI]
     exact hboundScale
@@ -3433,7 +3431,7 @@ theorem q4_upper_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
         Real.zero_rpow (inv_ne_zero hpnz)] at hscale
       simpa using hscale
     have hfzero : (f : Euclidean d → Complex) =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr (by linarith))).mp hfnorm
     have hf_eq_fun : (f : Euclidean d → Complex) = 0 :=
       (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzero
@@ -4268,9 +4266,7 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
     have hmem : MemLp (fractalDyadicBandpassMaximal d E
         (absoluteDyadicBandpass phi hphiOne hphiZero j) f)
         (ENNReal.ofReal q) volume :=
-      ⟨(measurable_fractalDyadicBandpassMaximal E
-        (absoluteDyadicBandpass phi hphiOne hphiZero j) f).aestronglyMeasurable,
-        hboundTop⟩
+      hboundTop
     refine ⟨hmem, ?_⟩
     rw [eLpNorm_schwartz_eq_q4LowerInputScale (by linarith) f hI]
     exact hboundScale
@@ -4284,7 +4280,7 @@ theorem q4_lower_activeDyadic_memLp_and_eLpNorm_of_fixed_ltwo_rates
         Real.zero_rpow (inv_ne_zero hpnz)] at hscale
       simpa using hscale
     have hfzero : (f : Euclidean d → Complex) =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (f.memLp (ENNReal.ofReal p) volume).1
+      (eLpNorm_eq_zero_iff
         (ENNReal.ofReal_ne_zero_iff.mpr (by linarith))).mp hfnorm
     have hf_eq_fun : (f : Euclidean d → Complex) = 0 :=
       (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hfzero
@@ -5260,9 +5256,8 @@ theorem hasFractalSphericalStrongType_output_interpolate
     calc K = ENNReal.ofReal K.toReal := (ENNReal.ofReal_toReal hKtop.ne).symm
       _ ≤ ENNReal.ofReal (K.toReal + 1) := ENNReal.ofReal_le_ofReal (by linarith)
   refine ⟨?_, hle⟩
-  exact ⟨(measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable,
-    hle.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
-      (f.memLp (ENNReal.ofReal p) volume).2)⟩
+  exact hle.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      (f.memLp (ENNReal.ofReal p) volume))
 
 /-! ### The `Q4` sector rates in the form used by the interior assembly -/
 

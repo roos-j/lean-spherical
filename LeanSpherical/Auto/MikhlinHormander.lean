@@ -121,7 +121,7 @@ theorem norm_continuousMultilinearMap_le_of_basis_coordinates
         (∏ i, ‖v i‖) * B := by
       refine Finset.sum_le_sum fun σ hσ => ?_
       have hprod : (∏ i, ‖(b.repr (v i)) (σ i)‖) ≤ ∏ i, ‖v i‖ :=
-        Finset.prod_le_prod
+        Finset.prod_le_prod₀
           (fun i hi => norm_nonneg _)
           (fun i hi =>
             (PiLp.norm_apply_le (b.repr (v i)) (σ i)).trans_eq (b.repr.norm_map _))
@@ -591,6 +591,7 @@ theorem pow_norm_fourierInv_le_compactFourierIBPConstant
       subst k
       simpa using hψ_int n (by simpa using hn))
     (k := 0) (n := N) (by simp) (by simp) (-x)
+  rw [Finset.sum_product, Finset.sum_range_one] at h
   simpa [compactFourierIBPConstant, Real.fourierInv_eq_fourier_neg] using h
 
 /-- Compact support turns finite `Cᴺ` regularity into the derivative
@@ -4176,14 +4177,19 @@ theorem eLpNorm_mikhlinMultiplier_le_of_uniform_finiteSymmetricMikhlinTruncation
     (hfinite : ∀ n : Nat,
       eLpNorm (finiteSymmetricMikhlinTruncation C m n f) p volume ≤ B) :
     eLpNorm (mikhlinMultiplier m f) p volume ≤ B := by
-  refine Lp.eLpNorm_le_of_ae_tendsto
+  have hmeasn : ∀ n : Nat,
+      AEStronglyMeasurable (finiteSymmetricMikhlinTruncation C m n f) volume := fun n =>
+    (continuous_finiteSymmetricMikhlinTruncation C m hm hA hmA n f).aestronglyMeasurable
+  have htend : ∀ᵐ x ∂volume, Filter.Tendsto
+      (fun n : Nat => finiteSymmetricMikhlinTruncation C m n f x) Filter.atTop
+      (nhds (mikhlinMultiplier m f x)) := by
+    filter_upwards with x
+    exact tendsto_finiteSymmetricMikhlinTruncation C m hm hA hmA f x
+  exact Lp.eLpNorm_le_of_ae_tendsto
     (u := Filter.atTop) (f := fun n : Nat => finiteSymmetricMikhlinTruncation C m n f)
     (g := mikhlinMultiplier m f) (C := B)
-    (Filter.Eventually.of_forall hfinite) ?_ ?_
-  · intro n
-    exact (continuous_finiteSymmetricMikhlinTruncation C m hm hA hmA n f).aestronglyMeasurable
-  · filter_upwards with x
-    exact tendsto_finiteSymmetricMikhlinTruncation C m hm hA hmA f x
+    (Filter.Eventually.of_forall hfinite) hmeasn
+    (aestronglyMeasurable_of_tendsto_ae Filter.atTop hmeasn htend) htend
 
 /-- A cardinality-independent finite-truncation strong bound transfers to the
 literal multiplier with the same finite constant. -/
@@ -5020,6 +5026,7 @@ theorem lowerLp_of_schwartz_additive_weak_one_square
       (∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p) =
         (eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) ^ p :=
     lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp (f : Euclidean d → Complex)
+      f.continuous.aestronglyMeasurable
   have hinput_fin : (∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p) < ∞ := by
     rw [hinput_eq]
     exact ENNReal.rpow_lt_top_of_nonneg hp.le
@@ -5036,10 +5043,11 @@ theorem lowerLp_of_schwartz_additive_weak_one_square
   calc
     eLpNorm (S f) (ENNReal.ofReal p) volume =
         eLpNorm (fun x : Euclidean d => ‖S f x‖) (ENNReal.ofReal p) volume :=
-      (eLpNorm_norm _).symm
+      (eLpNorm_norm _ (hSmeas f)).symm
     _ ≤ (A * ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ p) ^ p⁻¹ :=
       Auto.LpSpaceFacts.eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le volume
         (fun x : Euclidean d => ‖S f x‖) hp (fun _ => norm_nonneg _) hmoment
+        (hSmeas f).norm
     _ = A ^ p⁻¹ * eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume := by
       rw [hinput_eq, ENNReal.mul_rpow_of_nonneg _ _ (inv_nonneg.mpr hp.le),
         ← ENNReal.rpow_mul]
@@ -5094,19 +5102,19 @@ private theorem lpNorm_schwartzCore_le_of_formalAdjoint_lower
         eLpNorm (u : Euclidean d → Complex) (ENNReal.ofReal p) volume *
           eLpNorm (fun x => starRingEnd Complex (v x))
             (ENNReal.ofReal p.conjExponent) volume ≠ ∞ :=
-      ENNReal.mul_ne_top hu.2.ne hsv.2.ne
+      ENNReal.mul_ne_top hu.eLpNorm_ne_top hsv.eLpNorm_ne_top
     have hreal := (ENNReal.toReal_le_toReal ENNReal.coe_ne_top hright).mpr henorm
     change ‖∫ x : Euclidean d, u x * starRingEnd Complex (v x)‖ ≤ _ at hreal
-    rw [ENNReal.toReal_mul, toReal_eLpNorm hu.1,
-      toReal_eLpNorm hsv.1] at hreal
+    rw [ENNReal.toReal_mul, toReal_eLpNorm,
+      toReal_eLpNorm] at hreal
     have hstar_norm :
         lpNorm (fun x : Euclidean d => starRingEnd Complex (v x))
           (ENNReal.ofReal p.conjExponent) volume =
         lpNorm (v : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume := by
-      rw [← toReal_eLpNorm hsv.1, ← toReal_eLpNorm hv.1]
+      rw [← toReal_eLpNorm, ← toReal_eLpNorm]
       apply congrArg ENNReal.toReal
-      apply eLpNorm_congr_norm_ae
+      apply eLpNorm_congr_norm_ae hsv.aestronglyMeasurable hv.aestronglyMeasurable
       exact Filter.Eventually.of_forall fun x => Complex.norm_conj (v x)
     simpa only [hstar_norm] using hreal
   let y : SchwartzMap (Euclidean d) Complex := T f
@@ -5122,17 +5130,18 @@ private theorem lpNorm_schwartzCore_le_of_formalAdjoint_lower
           (ENNReal.ofReal p.conjExponent) volume =
         lpNorm (g : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume := by
-    rw [← toReal_eLpNorm (conjugateSchwartz g).continuous.aestronglyMeasurable,
-      ← toReal_eLpNorm g.continuous.aestronglyMeasurable]
+    rw [← toReal_eLpNorm,
+      ← toReal_eLpNorm]
     congr 1
-    apply eLpNorm_congr_norm_ae
+    apply eLpNorm_congr_norm_ae (conjugateSchwartz g).continuous.aestronglyMeasurable
+      g.continuous.aestronglyMeasurable
     exact Filter.Eventually.of_forall fun x => by
       rw [conjugateSchwartz_apply, Complex.norm_conj]
   have hnorm_toLp (g : SchwartzMap (Euclidean d) Complex) :
       ‖g.toLp (ENNReal.ofReal p.conjExponent) volume‖ =
         lpNorm (g : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume := by
-    rw [SchwartzMap.norm_toLp, toReal_eLpNorm g.continuous.aestronglyMeasurable]
+    rw [SchwartzMap.norm_toLp, toReal_eLpNorm]
   have hPhi_schwartz (g : SchwartzMap (Euclidean d) Complex) :
       ‖Φ (g.toLp (ENNReal.ofReal p.conjExponent) volume)‖ ≤
         (A * lpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume) *
@@ -5234,10 +5243,10 @@ theorem eLpNorm_schwartzCore_le_of_formalAdjoint_lower
     have hright : ENNReal.ofReal A *
         eLpNorm (g : Euclidean d → Complex)
           (ENNReal.ofReal p.conjExponent) volume ≠ ∞ :=
-      ENNReal.mul_ne_top ENNReal.ofReal_ne_top hg.2.ne
-    have hreal := (ENNReal.toReal_le_toReal hTg.2.ne hright).mpr (hTstar g)
+      ENNReal.mul_ne_top ENNReal.ofReal_ne_top hg.eLpNorm_ne_top
+    have hreal := (ENNReal.toReal_le_toReal hTg.eLpNorm_ne_top hright).mpr (hTstar g)
     rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hA,
-      toReal_eLpNorm hTg.1, toReal_eLpNorm hg.1] at hreal
+      toReal_eLpNorm, toReal_eLpNorm] at hreal
     exact hreal
   have hreal := lpNorm_schwartzCore_le_of_formalAdjoint_lower hp hA T Tstar hpair
     hTstar_real f
@@ -5247,10 +5256,10 @@ theorem eLpNorm_schwartzCore_le_of_formalAdjoint_lower
     (T f).memLp _ volume
   have hright : ENNReal.ofReal A *
       eLpNorm (f : Euclidean d → Complex) (ENNReal.ofReal p) volume ≠ ∞ :=
-    ENNReal.mul_ne_top ENNReal.ofReal_ne_top hf.2.ne
-  apply (ENNReal.toReal_le_toReal hTf.2.ne hright).mp
+    ENNReal.mul_ne_top ENNReal.ofReal_ne_top hf.eLpNorm_ne_top
+  apply (ENNReal.toReal_le_toReal hTf.eLpNorm_ne_top hright).mp
   rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hA,
-    toReal_eLpNorm hTf.1, toReal_eLpNorm hf.1]
+    toReal_eLpNorm, toReal_eLpNorm]
   exact hreal
 
 

@@ -777,7 +777,8 @@ theorem eLpNorm_M_lift_le_two {E T : Set ℝ} (hTE : T ⊆ E) (hET : E ⊆ closu
   have hq0' : ENNReal.ofReal q ≠ 0 := by
     simp only [ne_eq, ENNReal.ofReal_eq_zero]
     exact not_le.mpr hq0
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hq0' ENNReal.ofReal_ne_top
+      (measurable_M_lift E hf₀).aestronglyMeasurable,
     ENNReal.toReal_ofReal hq0.le,
     eLpNorm_lift_eq (by norm_num : 2 ≤ 2) hp0 hf₀]
   have hNp' : (∫⁻ s : ℝ, ENNReal.ofReal s ^ (2 - 1) *
@@ -874,8 +875,8 @@ theorem hasRadialStrongTypeCont_two_of_bounds {E T : Set ℝ} (hTE : T ⊆ E)
         ENNReal.ofReal (A * C.toReal + 1) *
           eLpNorm (fun x : Euclidean 2 => f₀ ‖x‖) (ENNReal.ofReal p) volume :=
     le_trans hle (mul_le_mul' hconst le_rfl)
-  refine ⟨⟨(measurable_M_lift E hf₀).aestronglyMeasurable, ?_⟩, hfinal⟩
-  exact lt_of_le_of_lt hfinal (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.2)
+  refine ⟨?_, hfinal⟩
+  exact lt_of_le_of_lt hfinal (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hmem.eLpNorm_lt_top)
 
 /-! ## The coefficient series of Proposition 5.2 is finite
 

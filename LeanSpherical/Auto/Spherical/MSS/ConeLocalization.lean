@@ -4826,6 +4826,7 @@ private theorem rta_fourierInv_jointSchwartz_seminorm_le_derivativeIntegrals
         subst k
         simpa using SchwartzMap.integrable_pow_mul_iteratedFDeriv volume Q 0 n)
       (k := 0) (n := N) (by simp) (by simp) (-x)
+    rw [Finset.sum_product, Finset.sum_range_one] at h
     simpa [Real.fourierInv_eq_fourier_neg] using h
 /-- The literal active radial--time residual is the spatial convolution by
 the inverse joint transform of its f-independent residual multiplier.  This
@@ -5330,14 +5331,15 @@ private theorem rta_scratch_tailWeight_eLpNorm_lt_top
     (p : ENNReal) (hp : 1 ≤ p) :
     eLpNorm rta_scratch_tailWeight p volume < ∞ := by
   by_cases htop : p = ∞
-  · rw [htop, eLpNorm_exponent_top]
+  · rw [htop, eLpNorm_exponent_top rta_scratch_tailWeight_continuous.aestronglyMeasurable]
     exact eLpNormEssSup_lt_top_of_ae_bound
       (Eventually.of_forall fun t => by
         rw [Real.norm_eq_abs, abs_of_nonneg (rta_scratch_tailWeight_nonneg t)]
         exact rta_scratch_tailWeight_le_one t)
   · have hp0 : p ≠ 0 := by
       exact ne_of_gt (lt_of_lt_of_le zero_lt_one hp)
-    apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hp0 htop).mpr
+    apply (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hp0 htop
+      rta_scratch_tailWeight_continuous.aestronglyMeasurable).mpr
     have hpow := rta_scratch_tailWeight_rpow_integrable p hp htop
     have hfin :
         (∫⁻ t : Real, ‖rta_scratch_tailWeight t ^ p.toReal‖ₑ) < ∞ :=
@@ -5353,10 +5355,10 @@ needed here, so this includes `p = ∞`. -/
 private theorem rta_scratch_eLpNorm_sliceMass_le_tailWeight
     (p : ENNReal) (S : Real → ENNReal) (c : ENNReal)
     (hS : ∀ t : Real,
-      S t ≤ c * ENNReal.ofReal (rta_scratch_tailWeight t)) :
+      S t ≤ c * ENNReal.ofReal (rta_scratch_tailWeight t))
+    (hSm : AEStronglyMeasurable S volume) :
     eLpNorm S p volume ≤ c * eLpNorm rta_scratch_tailWeight p volume := by
-  apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' p
-    rta_scratch_tailWeight_continuous.aestronglyMeasurable
+  apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' p hSm
   filter_upwards with t
   simpa [Real.enorm_of_nonneg (rta_scratch_tailWeight_nonneg t)] using hS t
 
@@ -5379,6 +5381,7 @@ private theorem rta_scratch_eLpNorm_sliceMass_decay_all_p_of_real_bound_uniform
       (∀ t : Real,
         S t ≤ ENNReal.ofReal
           (A * (scale⁻¹) ^ N * ((1 + |t|)⁻¹) ^ (2 : Nat))) →
+      AEStronglyMeasurable S volume →
       eLpNorm S p volume ≤ ENNReal.ofReal (C * (scale⁻¹) ^ N) := by
   let W : ENNReal := eLpNorm rta_scratch_tailWeight p volume
   let B : Real := W.toReal
@@ -5387,7 +5390,7 @@ private theorem rta_scratch_eLpNorm_sliceMass_decay_all_p_of_real_bound_uniform
   refine ⟨A * B + 1, ?_, ?_⟩
   · have hAB : 0 ≤ A * B := mul_nonneg hA ENNReal.toReal_nonneg
     linarith
-  · intro scale hscale S hS
+  · intro scale hscale S hS hSm
     have hsnonneg : 0 ≤ (scale⁻¹) ^ N := by
       exact pow_nonneg (inv_nonneg.mpr hscale.le) _
     have hAsnonneg : 0 ≤ A * (scale⁻¹) ^ N :=
@@ -5402,7 +5405,7 @@ private theorem rta_scratch_eLpNorm_sliceMass_decay_all_p_of_real_bound_uniform
       gcongr
       exact rta_scratch_absTail_le_tailWeight t
     have hcoeff := rta_scratch_eLpNorm_sliceMass_le_tailWeight p S
-      (ENNReal.ofReal (A * (scale⁻¹) ^ N)) htail
+      (ENNReal.ofReal (A * (scale⁻¹) ^ N)) htail hSm
     calc
       eLpNorm S p volume ≤ ENNReal.ofReal (A * (scale⁻¹) ^ N) * W := hcoeff
       _ = ENNReal.ofReal ((A * B) * (scale⁻¹) ^ N) := by
@@ -5619,10 +5622,13 @@ private theorem rta_scratch_complex_spatial_convolution_p_young
       (∫⁻ x : Euclidean 2,
           ‖(K ⋆[ContinuousLinearMap.mul Complex Complex] f) x‖ₑ ^ p) ≤ L ^ p * J := by
     simpa only [L, J] using rta_scratch_complex_spatial_convolution_p_moment p hp K f hK hf
+  have hconv : AEStronglyMeasurable
+      (K ⋆[ContinuousLinearMap.mul Complex Complex] f) volume :=
+    hK.aestronglyMeasurable.convolution _ hf.aestronglyMeasurable
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hconv]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top hf.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp0.le]
   have hroot :
       (∫⁻ x : Euclidean 2,
@@ -5671,8 +5677,9 @@ private theorem rta_scratch_complex_spatial_convolution_one_young
     (hK : Measurable K) (hf : Measurable f) :
     eLpNorm (K ⋆[ContinuousLinearMap.mul Complex Complex] f) (1 : ENNReal) volume ≤
       (∫⁻ y : Euclidean 2, ‖K y‖ₑ) * eLpNorm f (1 : ENNReal) volume := by
-  rw [eLpNorm_one_eq_lintegral_enorm]
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (hK.aestronglyMeasurable.convolution _ hf.aestronglyMeasurable)]
+  rw [eLpNorm_one_eq_lintegral_enorm hf.aestronglyMeasurable]
   have hpoint (x : Euclidean 2) :
       ‖(K ⋆[ContinuousLinearMap.mul Complex Complex] f) x‖ₑ ≤
         ∫⁻ y : Euclidean 2, ‖K y‖ₑ * ‖f (x - y)‖ₑ := by
@@ -5701,11 +5708,25 @@ private theorem rta_scratch_complex_spatial_convolution_top_young
     (hK : Measurable K) :
     eLpNorm (K ⋆[ContinuousLinearMap.mul Complex Complex] f) ∞ volume ≤
       (∫⁻ y : Euclidean 2, ‖K y‖ₑ) * eLpNorm f ∞ volume := by
-  rw [eLpNorm_exponent_top]
+  by_cases hL0 : (∫⁻ y : Euclidean 2, ‖K y‖ₑ) = 0
+  · have hconv0 : (K ⋆[ContinuousLinearMap.mul Complex Complex] f) = 0 := by
+      funext x
+      change ∫ y : Euclidean 2, K y * f (x - y) = 0
+      apply integral_eq_zero_of_ae
+      filter_upwards [(lintegral_eq_zero_iff hK.enorm).mp hL0] with y hy
+      simp only [Pi.zero_apply, enorm_eq_zero] at hy
+      simp [hy]
+    rw [hconv0, eLpNorm_zero]
+    exact bot_le
+  by_cases hfm : AEStronglyMeasurable f volume
+  swap
+  · rw [eLpNorm_of_not_aestronglyMeasurable hfm, ENNReal.mul_top hL0]
+    exact le_top
+  rw [eLpNorm_exponent_top (hK.aestronglyMeasurable.convolution _ hfm)]
   let L : ENNReal := ∫⁻ y : Euclidean 2, ‖K y‖ₑ
   let C : ENNReal := eLpNorm f ∞ volume
   have hfess : ∀ᵐ z : Euclidean 2 ∂volume, ‖f z‖ₑ ≤ C := by
-    simpa only [C, eLpNorm_exponent_top] using
+    simpa only [C, eLpNorm_exponent_top hfm] using
       (enorm_ae_le_eLpNormEssSup f volume)
   apply eLpNormEssSup_le_of_ae_enorm_bound
   apply Eventually.of_forall
@@ -5778,9 +5799,7 @@ private theorem rta_scratch_mixed_p_lift_of_slice_moment
         simpa only [F, J] using hpoint t
       _ = (∫⁻ t : Real, A t) * J := lintegral_mul_const J hA
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hG.aestronglyMeasurable]
   simp only [ENNReal.toReal_ofReal hp.le]
   have hroot : (∫⁻ z : WaveSpaceTime, F z) ^ p⁻¹ ≤
       (∫⁻ t : Real, A t) ^ p⁻¹ * J ^ p⁻¹ := by
@@ -5790,7 +5809,20 @@ private theorem rta_scratch_mixed_p_lift_of_slice_moment
         ENNReal.rpow_le_rpow hmoment (inv_nonneg.mpr hp.le)
       _ = (∫⁻ t : Real, A t) ^ p⁻¹ * J ^ p⁻¹ :=
         ENNReal.mul_rpow_of_nonneg _ _ (inv_nonneg.mpr hp.le)
-  convert hroot using 1 <;> simp only [F, J, one_div]
+  have hJf : J ^ p⁻¹ ≤ eLpNorm f (ENNReal.ofReal p) volume := by
+    by_cases hfm : AEStronglyMeasurable f volume
+    · rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
+        (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hfm]
+      simp only [ENNReal.toReal_ofReal hp.le, one_div]
+      exact le_rfl
+    · rw [eLpNorm_of_not_aestronglyMeasurable hfm]
+      exact le_top
+  calc
+    (∫⁻ z : WaveSpaceTime, ‖G z‖ₑ ^ p) ^ (1 / p) =
+        (∫⁻ z : WaveSpaceTime, F z) ^ p⁻¹ := by simp only [F, one_div]
+    _ ≤ (∫⁻ t : Real, A t) ^ p⁻¹ * J ^ p⁻¹ := hroot
+    _ ≤ (∫⁻ t : Real, A t) ^ p⁻¹ * eLpNorm f (ENNReal.ofReal p) volume := by
+      gcongr
 
 private theorem rta_scratch_complex_spatial_convolution_one_moment
     (K f : Euclidean 2 → Complex)
@@ -5799,7 +5831,9 @@ private theorem rta_scratch_complex_spatial_convolution_one_moment
         ‖(K ⋆[ContinuousLinearMap.mul Complex Complex] f) x‖ₑ ≤
       (∫⁻ y : Euclidean 2, ‖K y‖ₑ) *
         ∫⁻ x : Euclidean 2, ‖f x‖ₑ := by
-  simpa only [eLpNorm_one_eq_lintegral_enorm] using
+  simpa only [eLpNorm_one_eq_lintegral_enorm
+      (hK.aestronglyMeasurable.convolution _ hf.aestronglyMeasurable),
+    eLpNorm_one_eq_lintegral_enorm hf.aestronglyMeasurable] using
     rta_scratch_complex_spatial_convolution_one_young K f hK hf
 
 private theorem rta_scratch_mixed_spatial_convolution_one_young
@@ -5878,15 +5912,49 @@ private theorem rta_scratch_mixed_spatial_convolution_top_young
     hK.enorm.comp measurable_swap
   have hA : Measurable A := by
     exact hKswap.lintegral_prod_right
-  have hfess : ∀ᵐ y : Euclidean 2 ∂volume, ‖f y‖ₑ ≤ C := by
-    simpa only [C, eLpNorm_exponent_top] using
-      (enorm_ae_le_eLpNormEssSup f volume)
   have hAess : ∀ᵐ t : Real ∂volume, A t ≤ B := by
-    simpa only [A, B, eLpNorm_exponent_top, enorm_eq_self] using
+    simpa only [A, B, eLpNorm_exponent_top hA.aestronglyMeasurable, enorm_eq_self] using
       (enorm_ae_le_eLpNormEssSup A volume)
   have hAprod : ∀ᵐ z : WaveSpaceTime ∂volume, A z.2 ≤ B := by
     rw [Measure.volume_eq_prod (Euclidean 2) Real]
     exact Measure.quasiMeasurePreserving_snd.ae hAess
+  change eLpNorm G ∞ volume ≤ eLpNorm A ∞ volume * eLpNorm f ∞ volume
+  by_cases hfm : AEStronglyMeasurable f volume
+  swap
+  · by_cases hB0 : B = 0
+    · have hG0 : G =ᵐ[volume] 0 := by
+        filter_upwards [hAprod] with z hz
+        have hAz : A z.2 = 0 := le_antisymm (hz.trans_eq hB0) bot_le
+        have hKz := (lintegral_eq_zero_iff
+          (hK.comp (measurable_id.prodMk measurable_const)).enorm).mp hAz
+        change ∫ y : Euclidean 2, K (y, z.2) * f (z.1 - y) = 0
+        apply integral_eq_zero_of_ae
+        filter_upwards [hKz] with y hy
+        simp only [Pi.zero_apply, enorm_eq_zero, Function.comp_apply, id_eq] at hy
+        simp [hy]
+      rw [eLpNorm_congr_ae hG0, eLpNorm_zero]
+      exact bot_le
+    · rw [eLpNorm_of_not_aestronglyMeasurable hfm]
+      exact le_top.trans_eq (ENNReal.mul_top hB0).symm
+  let g : Euclidean 2 → Complex := hfm.mk f
+  have hGg : G = fun z : WaveSpaceTime => ∫ y : Euclidean 2, K (y, z.2) * g (z.1 - y) := by
+    funext z
+    apply integral_congr_ae
+    filter_upwards [(volume.measurePreserving_sub_left z.1).quasiMeasurePreserving.ae_eq_comp
+      hfm.ae_eq_mk] with y hy
+    simp only [Function.comp_apply] at hy
+    rw [hy]
+  have hGm : AEStronglyMeasurable G volume := by
+    rw [hGg]
+    have hjoint : StronglyMeasurable (fun zy : WaveSpaceTime × Euclidean 2 =>
+        K (zy.2, zy.1.2) * g (zy.1.1 - zy.2)) :=
+      ((hK.comp (measurable_snd.prodMk measurable_fst.snd)).mul
+        (hfm.stronglyMeasurable_mk.measurable.comp
+          (measurable_fst.fst.sub measurable_snd))).stronglyMeasurable
+    exact hjoint.integral_prod_right'.aestronglyMeasurable
+  have hfess : ∀ᵐ y : Euclidean 2 ∂volume, ‖f y‖ₑ ≤ C := by
+    simpa only [C, eLpNorm_exponent_top hfm] using
+      (enorm_ae_le_eLpNormEssSup f volume)
   have hfixed (x : Euclidean 2) (t : Real) : ‖G (x, t)‖ₑ ≤ A t * C := by
     have hshift : ∀ᵐ y : Euclidean 2 ∂volume, ‖f (x - y)‖ₑ ≤ C := by
       exact (volume.measurePreserving_sub_left x).quasiMeasurePreserving.ae hfess
@@ -5909,8 +5977,7 @@ private theorem rta_scratch_mixed_spatial_convolution_top_young
       _ = A t * C := by
         exact lintegral_mul_const C
           ((hK.comp (measurable_id.prodMk measurable_const)).enorm)
-  change eLpNorm G ∞ volume ≤ eLpNorm A ∞ volume * eLpNorm f ∞ volume
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top hGm]
   change eLpNormEssSup G volume ≤ B * C
   apply eLpNormEssSup_le_of_ae_enorm_bound
   filter_upwards [hAprod] with z hz
@@ -5929,13 +5996,17 @@ private theorem rta_scratch_mixed_spatial_convolution_young
   let G : WaveSpaceTime → Complex :=
     fun z => ∫ y : Euclidean 2, K (y, z.2) * f (z.1 - y)
   let A : Real → ENNReal := fun t => ∫⁻ x : Euclidean 2, ‖K (x, t)‖ₑ
+  have hKswap : Measurable (fun z : Real × Euclidean 2 => ‖K z.swap‖ₑ) :=
+    hK.enorm.comp measurable_swap
+  have hA : Measurable A := hKswap.lintegral_prod_right
   change eLpNorm G p volume ≤ eLpNorm A p volume * eLpNorm f p volume
   by_cases htop : p = ∞
   · subst p
     simpa only [G, A] using rta_scratch_mixed_spatial_convolution_top_young K f hK
   by_cases hone : p = 1
   · subst p
-    simpa only [G, A, eLpNorm_one_eq_lintegral_enorm, enorm_eq_self] using
+    simpa only [G, A, eLpNorm_one_eq_lintegral_enorm hA.aestronglyMeasurable,
+      enorm_eq_self] using
       rta_scratch_mixed_spatial_convolution_one_young K f hK hf hG
   have hpone : 1 < p := lt_of_le_of_ne hp (Ne.symm hone)
   have hpreal : 1 < p.toReal := by
@@ -5944,7 +6015,7 @@ private theorem rta_scratch_mixed_spatial_convolution_young
   have hpof : ENNReal.ofReal p.toReal = p := ENNReal.ofReal_toReal htop
   have hcoef :
       (∫⁻ t : Real, A t ^ p.toReal) ^ p.toReal⁻¹ = eLpNorm A p volume := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpzero htop]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpzero htop hA.aestronglyMeasurable]
     simp only [enorm_eq_self, one_div]
   have hreal :
       eLpNorm G (ENNReal.ofReal p.toReal) volume ≤
@@ -6030,7 +6101,11 @@ private theorem rta_radialTimeLocalization_of_MSSRadialTimeCutoffs_aux
     rw [ENNReal.ofReal_mul (mul_nonneg hA
       (pow_nonneg (inv_nonneg.mpr hscale.le) _))]
     exact hslice
-  have hSbound := hCbound scale hscale S hS
+  have hSmeas : AEStronglyMeasurable S volume := by
+    have hKswap : Measurable (fun z : Real × Euclidean 2 => ‖K z.swap‖ₑ) :=
+      hKcont.measurable.enorm.comp measurable_swap
+    exact hKswap.lintegral_prod_right.aestronglyMeasurable
+  have hSbound := hCbound scale hscale S hS hSmeas
   have hYoung := rta_scratch_mixed_spatial_convolution_young_of_continuous
     p hp K (f : Euclidean 2 → Complex) hKcont f.continuous
   have hres :

@@ -3657,7 +3657,7 @@ theorem memLp_and_eLpNorm_ennreal_of_toReal_lintegral_rpow_le_of_input_measure
   have hInorm : eLpNorm f (ENNReal.ofReal p) muIn = I ^ p⁻¹ := by
     dsimp only [I]
     rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top]
+      (ENNReal.ofReal_ne_zero_iff.mpr hp) ENNReal.ofReal_ne_top hf.aestronglyMeasurable]
     simp only [ENNReal.toReal_ofReal hp_nonneg, ofReal_norm]
     rw [one_div]
   have hTnorm : eLpNorm T (ENNReal.ofReal p) muOut ≤
@@ -3665,6 +3665,7 @@ theorem memLp_and_eLpNorm_ennreal_of_toReal_lintegral_rpow_le_of_input_measure
     calc
       eLpNorm T (ENNReal.ofReal p) muOut ≤ (A * I) ^ p⁻¹ :=
         eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le muOut T hp hTnonneg hJle
+          hTmeas.aestronglyMeasurable
       _ = A ^ p⁻¹ * eLpNorm f (ENNReal.ofReal p) muIn := by
         rw [ENNReal.mul_rpow_of_nonneg _ _ hp_inv_nonneg, <- hInorm]
   have hpoint : ∀ᵐ x ∂muOut,
@@ -3685,7 +3686,7 @@ theorem memLp_and_eLpNorm_ennreal_of_toReal_lintegral_rpow_le_of_input_measure
       eLpNorm M (ENNReal.ofReal p) muOut ≤
           ((1 : NNReal) : ENNReal) * eLpNorm T (ENNReal.ofReal p) muOut :=
         eLpNorm_le_mul_eLpNorm_of_ae_le_mul'' (ENNReal.ofReal p)
-          hTmem.aestronglyMeasurable hpoint
+          hMmeas.aestronglyMeasurable hpoint
       _ = eLpNorm T (ENNReal.ofReal p) muOut := by norm_num
   exact ⟨hMmem, hMnorm.trans hTnorm⟩
 
@@ -7967,7 +7968,8 @@ theorem hasRestrNormdSphMaxPowWtStrType_of_unif_buffered_summable_rawBands_and_u
         ENNReal.ofReal C * eLpNorm (f : Euclidean d → Complex)
           (ENNReal.ofReal p) volume := by
     obtain ⟨_hMem, hDilate⟩ := hUdilateVolume f (f.memLp (ENNReal.ofReal p) volume)
-    refine (eLpNorm_mono_enorm fun x => ?_).trans hDilate
+    refine (eLpNorm_mono_enorm
+      (measurable_restrictedNormalizedSphericalMaximal _ _ f.continuous).aestronglyMeasurable fun x => ?_).trans hDilate
     simpa using
       (restrictedNormalizedSphericalMaximal_mono
         (normalizedRadiusBlock_subset_dilateRadiusSet E)

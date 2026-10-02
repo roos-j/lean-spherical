@@ -585,7 +585,7 @@ light-ray kernel in the terminal and space-time variables. -/
 theorem aestronglyMeasurable_lightRayKernel_joint_of_aestronglyMeasurable_direction
     (δ : Real) (N : Nat) (direction : Euclidean 2 → Euclidean 2)
     (hdirection : AEStronglyMeasurable direction volume)
-    (μ : Measure WaveSpaceTime) :
+    (μ : Measure WaveSpaceTime) [SFinite μ] :
     AEStronglyMeasurable
       (fun p : Euclidean 2 × WaveSpaceTime =>
         lightRayKernel δ N (direction p.1) p.1 p.2)
@@ -657,7 +657,7 @@ measurable as soon as the terminal direction selector is measurable. -/
 theorem aestronglyMeasurable_lightRayTTStarIntegrand_of_aestronglyMeasurable_direction
     (δ : Real) (N : Nat) (direction : Euclidean 2 → Euclidean 2)
     (hdirection : AEStronglyMeasurable direction volume)
-    (μ : Measure WaveSpaceTime) :
+    (μ : Measure WaveSpaceTime) [SFinite μ] :
     AEStronglyMeasurable
       (fun p : (Euclidean 2 × Euclidean 2) × WaveSpaceTime =>
         lightRayKernel δ N (direction p.1.1) p.1.1 p.2 *
@@ -1238,12 +1238,13 @@ the literal light-ray maximal function with its explicit `(1 + ε)` loss. -/
 theorem aux_eLpNorm_lightRayMaximal_le_one_add_mul_linearized
     {δ : Real} (hδ : 0 < δ) (N : Nat) (g : WaveSpaceTime → Complex)
     (hcont : aux_HasContinuousLightRayDirections δ N g)
-    (ε : Real) (hε : 0 < ε) :
+    (ε : Real) (hε : 0 < ε)
+    (hmaxMeas : AEStronglyMeasurable (lightRayMaximal δ N g) volume) :
     eLpNorm (lightRayMaximal δ N g) 2 volume ≤
       ENNReal.ofReal (1 + ε) *
         eLpNorm (aux_lightRayLinearizedAverage δ N
           (aux_lightRayMultiplicativeDirection hδ N g hcont ε hε) g) 2 volume := by
-  apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul
+  apply eLpNorm_le_mul_eLpNorm_of_ae_le_mul hmaxMeas
     (Filter.Eventually.of_forall fun y => ?_) 2
   have hmaxnonneg : 0 ≤ lightRayMaximal δ N g y :=
     aux_lightRayMaximal_nonneg hδ N g
@@ -1265,10 +1266,11 @@ theorem aux_eLpNorm_lightRayMaximal_le_one_add_mul_of_selected_bound
     (hcont : aux_HasContinuousLightRayDirections δ N g)
     (ε : Real) (hε : 0 < ε) (A : ENNReal)
     (hbound : eLpNorm (aux_lightRayLinearizedAverage δ N
-      (aux_lightRayMultiplicativeDirection hδ N g hcont ε hε) g) 2 volume ≤ A) :
+      (aux_lightRayMultiplicativeDirection hδ N g hcont ε hε) g) 2 volume ≤ A)
+    (hmaxMeas : AEStronglyMeasurable (lightRayMaximal δ N g) volume) :
     eLpNorm (lightRayMaximal δ N g) 2 volume ≤ ENNReal.ofReal (1 + ε) * A := by
   refine (aux_eLpNorm_lightRayMaximal_le_one_add_mul_linearized
-    hδ N g hcont ε hε).trans ?_
+    hδ N g hcont ε hε hmaxMeas).trans ?_
   simpa only [mul_comm] using mul_le_mul_left hbound (ENNReal.ofReal (1 + ε))
 
 /-- A chosen direction realizes the directional supremum when it supplies
@@ -1709,7 +1711,8 @@ theorem aux_eLpNorm_lightRayLinearizedAverage_le_of_energy
       ENNReal.ofReal (Real.sqrt B) * eLpNorm g 2 volume := by
   have hgnorm : MemLp (fun z => ‖g z‖) 2 volume := by
     simpa using hg.norm
-  simpa only [aux_lightRayLinearizedAverage_eq_operator_norm, eLpNorm_norm] using
+  simpa only [aux_lightRayLinearizedAverage_eq_operator_norm,
+    eLpNorm_norm g hg.aestronglyMeasurable] using
     (aux_eLpNorm_lightRayLinearizedOperator_le_of_energy δ N direction B hB
       (fun z => ‖g z‖) hgnorm
       (by simpa only [aux_lightRayLinearizedAverage_eq_operator_norm] using hout)

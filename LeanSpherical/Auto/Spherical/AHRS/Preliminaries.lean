@@ -527,7 +527,8 @@ theorem HasFractalSphericalStrongType.mono_radii
           _ ≤ fractalSphericalMaximalReal d F f x := hpoint x
           _ = ‖fractalSphericalMaximalReal d F f x‖ :=
             (Real.norm_of_nonneg (hF_nonneg x)).symm)
-  refine ⟨hmemE, (eLpNorm_mono fun x => ?_).trans hnorm⟩
+  refine ⟨hmemE, (eLpNorm_mono
+    (measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable fun x => ?_).trans hnorm⟩
   calc
     ‖fractalSphericalMaximalReal d E f x‖ =
         fractalSphericalMaximalReal d E f x := Real.norm_of_nonneg (hE_nonneg x)
@@ -866,7 +867,8 @@ theorem eLpNorm_le_of_lintegral_real_rpow_bound
     (g : Euclidean d → ℝ) (f : Euclidean d → ℂ)
     (hgnonneg : ∀ x, 0 ≤ g x) (K : ENNReal)
     (hbound : (∫⁻ x : Euclidean d, ENNReal.ofReal (g x ^ p)) ≤
-      K * ∫⁻ x : Euclidean d, ENNReal.ofReal ‖f x‖ ^ p) :
+      K * ∫⁻ x : Euclidean d, ENNReal.ofReal ‖f x‖ ^ p)
+    (hgm : AEStronglyMeasurable g volume) :
     eLpNorm g (ENNReal.ofReal p) volume ≤
       K ^ p⁻¹ * eLpNorm f (ENNReal.ofReal p) volume := by
   have hpE0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0
@@ -881,9 +883,16 @@ theorem eLpNorm_le_of_lintegral_real_rpow_bound
     funext x
     rw [ofReal_norm]
   have hinv : (1 : ℝ) / p = p⁻¹ := by field_simp
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET,
-    ENNReal.toReal_ofReal hp0.le, hgpow, hfpow]
+  have hfle : (∫⁻ x : Euclidean d, ENNReal.ofReal ‖f x‖ ^ p) ^ (1 / p) ≤
+      eLpNorm f (ENNReal.ofReal p) volume := by
+    by_cases hfm : AEStronglyMeasurable f volume
+    · rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET hfm,
+        ENNReal.toReal_ofReal hp0.le, hfpow]
+    · rw [eLpNorm_of_not_aestronglyMeasurable hfm]
+      exact le_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpE0 hpET hgm,
+    ENNReal.toReal_ofReal hp0.le, hgpow]
+  refine le_trans ?_ (mul_le_mul_right hfle _)
   calc
     (∫⁻ x : Euclidean d, ENNReal.ofReal (g x ^ p)) ^ (1 / p) ≤
         (K * ∫⁻ x : Euclidean d, ENNReal.ofReal ‖f x‖ ^ p) ^ (1 / p) :=
@@ -2235,7 +2244,7 @@ theorem weak_distribution_of_eLpNorm
     change ENNReal.ofReal t ≤ ‖u x‖ₑ
     rw [Real.enorm_eq_ofReal hux]
     exact ENNReal.ofReal_le_ofReal hx.le
-  have hcheb := mul_meas_ge_le_pow_eLpNorm' nu hrE0 hrET hu
+  have hcheb := mul_meas_ge_le_pow_eLpNorm' nu hrE0 hrET (f := u)
     (ENNReal.ofReal t)
   have hcheb' :
       (ENNReal.ofReal t) ^ r * nu {x | ENNReal.ofReal t ≤ ‖u x‖ₑ} ≤
@@ -2255,7 +2264,8 @@ theorem eLpNorm_le_of_nonnegative_moment
     {beta F : Type*} [MeasurableSpace beta] {nu : Measure beta}
     (T : F → beta → Real) (f : F) {q : Real} (hq : 0 < q)
     (hTnonneg : ∀ x, 0 ≤ T f x) (M : ENNReal)
-    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂nu) ≤ M) :
+    (hmoment : (∫⁻ x, ENNReal.ofReal ((T f x) ^ q) ∂nu) ≤ M)
+    (hTf : AEStronglyMeasurable (T f) nu) :
     eLpNorm (T f) (ENNReal.ofReal q) nu ≤ M ^ q⁻¹ := by
   have hqE0 : ENNReal.ofReal q ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hq
   have hqET : ENNReal.ofReal q ≠ ∞ := ENNReal.ofReal_ne_top
@@ -2269,7 +2279,7 @@ theorem eLpNorm_le_of_nonnegative_moment
             rw [Real.enorm_eq_ofReal (hTnonneg x),
               ENNReal.ofReal_rpow_of_nonneg (hTnonneg x) hq.le]
       _ ≤ M := hmoment
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqE0 hqET hTf,
     ENNReal.toReal_ofReal hq.le, hqinv]
   exact ENNReal.rpow_le_rpow hmoment' (by positivity)
 
@@ -2609,7 +2619,8 @@ theorem eLpNorm_fractalSphericalMaximalReal_le_sum_intervalCover
         eLpNorm (fun x => ∑ c ∈ ι,
           fractalSphericalMaximalReal d
             (Icc (c - δ / 2) (c + δ / 2)) f x) (ENNReal.ofReal q) volume :=
-      eLpNorm_mono_real fun x => by
+      eLpNorm_mono_real
+        (measurable_fractalSphericalMaximalReal E f).aestronglyMeasurable fun x => by
         rw [Real.norm_of_nonneg]
         · exact hpoint x
         · exact ENNReal.toReal_nonneg
@@ -2622,13 +2633,7 @@ theorem eLpNorm_fractalSphericalMaximalReal_le_sum_intervalCover
     _ ≤ ∑ c ∈ ι,
         eLpNorm (fractalSphericalMaximalReal d
           (Icc (c - δ / 2) (c + δ / 2)) f) (ENNReal.ofReal q) volume :=
-      eLpNorm_sum_le (f := fun c =>
-        fractalSphericalMaximalReal d (Icc (c - δ / 2) (c + δ / 2)) f)
-        (s := ι)
-        (fun c _ =>
-          (measurable_fractalSphericalMaximalReal
-            (Icc (c - δ / 2) (c + δ / 2)) f).aestronglyMeasurable)
-        hq
+      eLpNorm_sum_le hq
 
 /-- The uniform form of the finite-cover reduction.  If every member of a
 cover has the same `L^p → L^q` norm bound `C`, the cover costs exactly its
@@ -4442,8 +4447,8 @@ private theorem fractalSphericalMaximalSchwartzLp_norm_le
     (eLpNorm (fractalSphericalMaximalReal d E f) (ENNReal.ofReal q) volume).toReal ≤
         (ENNReal.ofReal C *
           eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume).toReal :=
-      (ENNReal.toReal_le_toReal (hmem f).2.ne
-        (ENNReal.mul_ne_top ENNReal.ofReal_ne_top hfmem.2.ne)).mpr (hbound f)
+      (ENNReal.toReal_le_toReal (hmem f).eLpNorm_ne_top
+        (ENNReal.mul_ne_top ENNReal.ofReal_ne_top hfmem.eLpNorm_ne_top)).mpr (hbound f)
     _ = C * (eLpNorm (f : Euclidean d → ℂ) (ENNReal.ofReal p) volume).toReal := by
       rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal hC]
 

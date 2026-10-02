@@ -135,7 +135,8 @@ theorem brrs_eLpNorm_rpow_radial_eq_polar
       ENNReal.ofReal (surfaceMass d) *
         ∫⁻ r : Ioi (0 : Real), brrsRadialLpProfile p f w r.1
           ∂Measure.volumeIoiPow (d - 1) := by
-  rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp f]
+  rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp f
+    hfm.aestronglyMeasurable]
   exact brrs_lintegral_radial_norm_rpow_eq_polar hd f hf hfm p w hw
 
 /-- A Schwartz radial datum has the polar `L^p` identity without a separate

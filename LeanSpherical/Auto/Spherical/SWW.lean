@@ -523,17 +523,23 @@ private theorem ofReal_le_liminf_of_nonneg
 private theorem eLpNorm_complex_of_real_eq
     {d : ℕ} (G : (ℝ^d) → ℝ) (p : ℝ≥0∞) :
     eLpNorm (fun x => (G x : ℂ)) p volume = eLpNorm G p volume := by
-  apply eLpNorm_congr_enorm_ae
-  filter_upwards with x
-  rw [enorm_eq_nnnorm, enorm_eq_nnnorm, Complex.nnnorm_real]
+  by_cases hG : AEStronglyMeasurable G volume
+  · apply eLpNorm_congr_enorm_ae
+      (Complex.continuous_ofReal.comp_aestronglyMeasurable hG) hG
+    filter_upwards with x
+    rw [enorm_eq_nnnorm, enorm_eq_nnnorm, Complex.nnnorm_real]
+  · have hGc : ¬ AEStronglyMeasurable (fun x => (G x : ℂ)) volume := fun h =>
+      hG (by simpa using Complex.continuous_re.comp_aestronglyMeasurable h)
+    rw [eLpNorm_of_not_aestronglyMeasurable hG, eLpNorm_of_not_aestronglyMeasurable hGc]
 
 private theorem eLpNorm_real_le_of_lintegral_rpow_le
     {d : ℕ} {p : ℝ≥0∞} (hp0 : p ≠ 0) (hptop : p ≠ ∞)
     {G : (ℝ^d) → ℝ} (hG0 : ∀ x, 0 ≤ G x) {A : ℝ≥0∞}
-    (hA : (∫⁻ x, ENNReal.ofReal (G x ^ p.toReal) ∂volume) ≤ A) :
+    (hA : (∫⁻ x, ENNReal.ofReal (G x ^ p.toReal) ∂volume) ≤ A)
+    (hGm : AEStronglyMeasurable G volume) :
     eLpNorm (fun x => (G x : ℂ)) p volume ≤ A ^ (p.toReal)⁻¹ := by
   rw [eLpNorm_complex_of_real_eq,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hGm]
   rw [show 1 / p.toReal = (p.toReal)⁻¹ by ring]
   apply ENNReal.rpow_le_rpow ?_ (by positivity)
   calc
@@ -600,7 +606,8 @@ private theorem eLpNorm_liminf_le_of_uniform {α : Type*} [MeasurableSpace α]
     (hbound : ∀ n, eLpNorm (F n) p μ ≤ K) :
     eLpNorm (fun x => atTop.liminf (fun n => F n x)) p μ ≤ K := by
   have hq : 0 < p.toReal := ENNReal.toReal_pos hp0 hptop
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop
+    (Measurable.liminf hmeas).aestronglyMeasurable]
   have hpow_liminf (x : α) :
       (atTop.liminf (fun n => F n x)) ^ p.toReal =
         atTop.liminf (fun n => (F n x) ^ p.toReal) := by
@@ -624,7 +631,8 @@ private theorem eLpNorm_liminf_le_of_uniform {α : Type*} [MeasurableSpace α]
         intro b hb
         obtain ⟨n, hn⟩ := hb.exists
         have hn' := hbound n
-        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop] at hn'
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop
+          (hmeas n).aestronglyMeasurable] at hn'
         have hpow := ENNReal.rpow_le_rpow hn' hq.le
         rw [show 1 / p.toReal = (p.toReal)⁻¹ by ring] at hpow
         rw [ENNReal.rpow_inv_rpow hq.ne'] at hpow
@@ -645,7 +653,8 @@ private theorem eLpNorm_liminf_le_liminf
     eLpNorm (fun x => atTop.liminf (fun n => F n x)) p μ ≤
       atTop.liminf (fun n => eLpNorm (F n) p μ) := by
   have hq : 0 < p.toReal := ENNReal.toReal_pos hp0 hptop
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop
+    (Measurable.liminf hmeas).aestronglyMeasurable]
   have hpow_liminf (x : α) :
       (atTop.liminf (fun n => F n x)) ^ p.toReal =
         atTop.liminf (fun n => (F n x) ^ p.toReal) := by
@@ -680,7 +689,7 @@ private theorem eLpNorm_liminf_le_liminf
     _ = atTop.liminf (fun n => eLpNorm (F n) p μ) := by
       congr 1
       funext n
-      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop (hmeas n).aestronglyMeasurable]
       simp only [enorm_eq_self]
 
 private theorem eLpNorm_le_of_ae_le_liminf_of_uniform {α : Type*} [MeasurableSpace α]
@@ -688,11 +697,11 @@ private theorem eLpNorm_le_of_ae_le_liminf_of_uniform {α : Type*} [MeasurableSp
     {F : α → ℝ≥0∞} {G : ℕ → α → ℝ≥0∞} {K : ℝ≥0∞}
     (hle : ∀ᵐ x ∂μ, F x ≤ atTop.liminf (fun n => G n x))
     (hmeas : ∀ n, Measurable (G n))
-    (hbound : ∀ n, eLpNorm (G n) p μ ≤ K) :
+    (hbound : ∀ n, eLpNorm (G n) p μ ≤ K) (hF : AEStronglyMeasurable F μ) :
     eLpNorm F p μ ≤ K := by
   calc
     eLpNorm F p μ ≤ eLpNorm (fun x => atTop.liminf (fun n => G n x)) p μ :=
-      eLpNorm_mono_enorm_ae (hle.mono fun x hx => by
+      eLpNorm_mono_enorm_ae hF (hle.mono fun x hx => by
         simpa only [enorm_eq_self] using hx)
     _ ≤ K := eLpNorm_liminf_le_of_uniform hp0 hptop hmeas hbound
 
@@ -1043,7 +1052,7 @@ private theorem exists_measurable_envelope_of_bounded_lsc
   have hψnorm (n : ℕ) :
       eLpNorm (ψ n : (ℝ^d) → ℂ) p volume ≤
         eLpNorm (fun y => (G y : ℂ)) p volume := by
-    apply eLpNorm_mono
+    apply eLpNorm_mono (ψ n).continuous.aestronglyMeasurable
     intro y
     calc
       ‖ψ n y‖ = ‖((ψ n y).re : ℂ)‖ := congrArg norm (hreal n y)
@@ -1067,9 +1076,10 @@ private theorem exists_measurable_envelope_of_bounded_lsc
 private theorem endpoint_of_ae_maximal_null
     {d : ℕ} (hd0 : 0 < d) {E : Set ℝ} {f g : (ℝ^d) → ℂ} {K : ℝ}
     (hgmeas : StronglyMeasurable g) (hgbound : ∀ x, ‖g x‖ ≤ K)
-    (hzero : M E (f - g) =ᵐ[volume] 0) :
+    (hzero : M E (f - g) =ᵐ[volume] 0)
+    (hMmeas : AEStronglyMeasurable (M E f) volume) :
     eLpNorm (M E f) ∞ volume ≤ ENNReal.ofReal K := by
-  rw [eLpNorm_exponent_top]
+  rw [eLpNorm_exponent_top hMmeas]
   apply eLpNormEssSup_le_of_ae_enorm_bound
   filter_upwards [hzero] with x hx
   have hx' : M E (f - g) x = 0 := by simpa using hx
@@ -1146,13 +1156,14 @@ private theorem endpoint_of_ae_maximal_null
 private theorem endpoint_of_raw_null
     {d : ℕ} (hd0 : 0 < d) {E : Set ℝ}
     (hraw_null : ∀ h : (ℝ^d) → ℂ, h =ᵐ[volume] 0 → M E h =ᵐ[volume] 0)
-    {f : (ℝ^d) → ℂ} (hf : MemLp f ∞ volume) :
+    {f : (ℝ^d) → ℂ} (hf : MemLp f ∞ volume)
+    (hMmeas : AEStronglyMeasurable (M E f) volume) :
     eLpNorm (M E f) ∞ volume ≤ eLpNorm f ∞ volume := by
   let K : ℝ := lpNorm f ∞ volume
-  let f0 : (ℝ^d) → ℂ := AEStronglyMeasurable.mk f hf.1
+  let f0 : (ℝ^d) → ℂ := AEStronglyMeasurable.mk f hf.aestronglyMeasurable
   let S : Set (ℝ^d) := {x | ‖f0 x‖ ≤ K}
   let g : (ℝ^d) → ℂ := S.indicator f0
-  have hf0meas : StronglyMeasurable f0 := hf.1.stronglyMeasurable_mk
+  have hf0meas : StronglyMeasurable f0 := hf.aestronglyMeasurable.stronglyMeasurable_mk
   have hS : MeasurableSet S := by
     exact hf0meas.norm.measurableSet_le stronglyMeasurable_const
   have hgmeas : StronglyMeasurable g := hf0meas.indicator hS
@@ -1166,7 +1177,7 @@ private theorem endpoint_of_raw_null
       rw [Set.indicator_of_notMem hx, norm_zero]
       exact lpNorm_nonneg
   have hfg : f =ᵐ[volume] g := by
-    filter_upwards [hf.1.ae_eq_mk, ae_le_lpNorm_exponent_top hf] with x hfx hx
+    filter_upwards [hf.aestronglyMeasurable.ae_eq_mk, ae_le_lpNorm_exponent_top hf] with x hfx hx
     have hxS : x ∈ S := by
       change ‖f0 x‖ ≤ K
       simpa [hfx] using hx
@@ -1179,7 +1190,7 @@ private theorem endpoint_of_raw_null
   have hzero := hraw_null (f - g) hsubzero
   calc
     eLpNorm (M E f) ∞ volume ≤ ENNReal.ofReal K :=
-      endpoint_of_ae_maximal_null hd0 hgmeas hgbound hzero
+      endpoint_of_ae_maximal_null hd0 hgmeas hgbound hzero hMmeas
     _ = eLpNorm f ∞ volume := ofReal_lpNorm hf
 
 private theorem raw_null_of_measurable_envelope
@@ -1199,7 +1210,7 @@ private theorem raw_null_of_measurable_envelope
     · simpa [hnormh] using hJbound
     · exact bot_le
   have hJzero : J =ᵐ[volume] 0 :=
-    (eLpNorm_eq_zero_iff hJmeas.aestronglyMeasurable hq0).mp hnormJ
+    (eLpNorm_eq_zero_iff hq0).mp hnormJ
   filter_upwards [hJzero] with x hx
   apply le_antisymm
   · simpa [hx] using hdom x
@@ -1210,7 +1221,8 @@ private theorem top_strong_of_finite_envelope
     (hfinite : ∃ A : ℝ≥0∞, ∀ h : (ℝ^d) → ℂ, MemLp h q volume →
       ∃ J : (ℝ^d) → ℝ≥0∞, Measurable J ∧
         (∀ x, M E h x ≤ J x) ∧
-        eLpNorm J q volume ≤ A * eLpNorm h q volume) :
+        eLpNorm J q volume ≤ A * eLpNorm h q volume)
+    (hmeas : ∀ f : (ℝ^d) → ℂ, MemLp f ∞ volume → AEStronglyMeasurable (M E f) volume) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f ∞ volume →
       eLpNorm (M E f) ∞ volume ≤ ENNReal.ofReal C * eLpNorm f ∞ volume := by
   obtain ⟨A, hlift⟩ := hfinite
@@ -1219,7 +1231,7 @@ private theorem top_strong_of_finite_envelope
   have hraw_null : ∀ h : (ℝ^d) → ℂ, h =ᵐ[volume] 0 → M E h =ᵐ[volume] 0 := by
     intro h hh
     exact raw_null_of_measurable_envelope (q := q) (A := A) hq0 hlift h hh
-  have htop := endpoint_of_raw_null (E := E) hd0 hraw_null hf
+  have htop := endpoint_of_raw_null (E := E) hd0 hraw_null hf (hmeas f hf)
   simpa using htop
 
 private theorem restrictedSphericalMaximal_mono_local
@@ -1240,13 +1252,13 @@ private theorem memLp_indicator_closedBall_of_memLp_top
   · apply HasCompactSupport.intro (isCompact_closedBall (0 : ℝ^d) R)
     intro x hx
     exact Set.indicator_of_notMem hx f
-  · exact hf.1.indicator Metric.isClosed_closedBall.measurableSet
+  · exact hf.aestronglyMeasurable.indicator Metric.isClosed_closedBall.measurableSet
   · filter_upwards [enorm_ae_le_eLpNormEssSup f volume] with x hx
-    rw [eLpNorm_exponent_top]
+    rw [eLpNorm_exponent_top hf.aestronglyMeasurable]
     by_cases h : x ∈ Metric.closedBall (0 : ℝ^d) R
     · simp [Set.indicator_of_mem h, hx]
     · simp [Set.indicator_of_notMem h]
-  · exact ne_of_lt hf.2
+  · exact hf.eLpNorm_ne_top
 
 private theorem restrictedSphericalMaximal_local_eq
     {d : ℕ} {E : Set ℝ} (f : (ℝ^d) → ℂ) (m n : ℕ) {x : ℝ^d}
@@ -1327,7 +1339,14 @@ private theorem aemeasurable_restrictedSphericalMaximal_of_memLp_top
       have hnorm :
           eLpNorm (M (E ∩ Iic (m : ℝ)) (φ : (ℝ^d) → ℂ)) q volume ≤
             eLpNorm (M E (φ : (ℝ^d) → ℂ)) q volume :=
-        eLpNorm_mono_enorm fun x => by
+        eLpNorm_mono_enorm (by
+            have h : Measurable (M (E ∩ Iic (m : ℝ)) (φ : (ℝ^d) → ℂ)) := by
+              change Measurable (restrictedSphericalMaximal (E ∩ Iic (m : ℝ))
+                (φ : (ℝ^d) → ℂ))
+              rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
+              exact measurable_restrictedNormalizedSphericalMaximal_schwartz
+                (E ∩ Iic (m : ℝ)) φ
+            exact h.aestronglyMeasurable) fun x => by
           simpa only [enorm_eq_self] using hmono x
       exact hnorm.trans (hstrong φ)
     · exact memLp_indicator_closedBall_of_memLp_top (q := q) hf _
@@ -1338,7 +1357,7 @@ private theorem aemeasurable_restrictedSphericalMaximal_of_memLp_top
         (Metric.closedBall (0 : ℝ^d) (n : ℝ)) := fun x hx =>
       restrictedSphericalMaximal_local_eq f m n hx
     have h := AEMeasurable.iUnion (fun n : ℕ =>
-      ((hrestricted m n).1.aemeasurable.mono_measure Measure.restrict_le_self).congr
+      ((hrestricted m n).aestronglyMeasurable.aemeasurable.mono_measure Measure.restrict_le_self).congr
         ((heq n).aeEq_restrict Metric.isClosed_closedBall.measurableSet).symm)
     rw [Metric.iUnion_closedBall_nat] at h
     simpa using h
@@ -1520,7 +1539,8 @@ private theorem exists_measurable_raw_envelope_at_eps
       hJbound n
     _ ≤ C * ((∫⁻ x, ‖f x‖ₑ ^ p.toReal ∂volume) + ε) ^ (p.toReal)⁻¹ := by
       exact mul_le_mul_of_nonneg_left
-        (eLpNorm_real_le_of_lintegral_rpow_le hp0 hptop (hG0 n) (hGint n)) bot_le
+        (eLpNorm_real_le_of_lintegral_rpow_le hp0 hptop (hG0 n) (hGint n)
+          (hGlsc n).measurable.aestronglyMeasurable) bot_le
 
 private theorem exists_measurable_raw_envelope_of_memLp
     {d : ℕ} {E : Set ℝ} {p : ℝ≥0∞} (hp0 : p ≠ 0) (hptop : p ≠ ∞)
@@ -1581,7 +1601,7 @@ private theorem exists_measurable_raw_envelope_of_memLp
     _ = C * (∫⁻ x, ‖f x‖ₑ ^ p.toReal ∂volume) ^ (p.toReal)⁻¹ :=
       hKlim.liminf_eq
     _ = C * eLpNorm f p volume := by
-      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hf.aestronglyMeasurable]
       rw [show 1 / p.toReal = (p.toReal)⁻¹ by ring]
 
 /-- A finite-exponent Bourgain bound on the Schwartz core lifts directly to
@@ -1630,13 +1650,13 @@ theorem aux_bourgain_full_top_eLpNorm
     ⟨ENNReal.ofReal C, fun f hf =>
       exists_measurable_raw_envelope_of_memLp (p := ENNReal.ofReal (3 : ℝ))
         (by norm_num) (by norm_num) ENNReal.ofReal_ne_top hraw hf⟩
+    (fun f hf => (aemeasurable_restrictedSphericalMaximal_of_memLp_top
+      (q := ENNReal.ofReal (3 : ℝ))
+      (by norm_num) (by norm_num) (by norm_num) hraw hf).aestronglyMeasurable)
   refine ⟨Ctop, ?_⟩
   intro f hf
-  refine ⟨⟨(aemeasurable_restrictedSphericalMaximal_of_memLp_top
-    (q := ENNReal.ofReal (3 : ℝ))
-    (by norm_num) (by norm_num) (by norm_num) hraw hf).aestronglyMeasurable,
-    ?_⟩, htop f hf⟩
-  exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
+  refine ⟨?_, htop f hf⟩
+  exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top)
 
 /-- The completed planar Bourgain theorem supplies the all-radii diagonal
 estimate in dimension two, including the raw finite- and top-exponent lifts. -/
@@ -1702,13 +1722,13 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
         ⟨ENNReal.ofReal C, fun f hf =>
           exists_measurable_raw_envelope_of_memLp (p := (3 : ℝ≥0∞))
             (by norm_num) (by norm_num) ENNReal.ofReal_ne_top hschwartz hf⟩
+        (fun f hf => (aemeasurable_restrictedSphericalMaximal_of_memLp_top
+          (q := (3 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz
+            hf).aestronglyMeasurable)
       refine ⟨Ctop, ?_⟩
       intro f hf
-      refine ⟨⟨(aemeasurable_restrictedSphericalMaximal_of_memLp_top
-        (q := (3 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz
-            hf).aestronglyMeasurable,
-        ?_⟩, htop f hf⟩
-      exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
+      refine ⟨?_, htop f hf⟩
+      exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top)
     · have hd3 : 3 ≤ d := by omega
       obtain ⟨C, _hC, hbound⟩ :=
         (hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_zero_iff d E 2).mp
@@ -1728,13 +1748,13 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
         ⟨ENNReal.ofReal C, fun f hf =>
           exists_measurable_raw_envelope_of_memLp (p := (2 : ℝ≥0∞))
             (by norm_num) (by norm_num) ENNReal.ofReal_ne_top hschwartz hf⟩
+        (fun f hf => (aemeasurable_restrictedSphericalMaximal_of_memLp_top
+          (q := (2 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz
+            hf).aestronglyMeasurable)
       refine ⟨Ctop, ?_⟩
       intro f hf
-      refine ⟨⟨(aemeasurable_restrictedSphericalMaximal_of_memLp_top
-        (q := (2 : ℝ≥0∞)) (by norm_num) (by norm_num) (by norm_num) hschwartz
-            hf).aestronglyMeasurable,
-        ?_⟩, htop f hf⟩
-      exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.2)
+      refine ⟨?_, htop f hf⟩
+      exact (htop f hf).trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top)
   · have hp0 : p ≠ 0 := by
       apply ne_of_gt
       exact lt_of_le_of_lt bot_le hp
@@ -2063,7 +2083,7 @@ theorem eLpNorm_sphericalMaximal_eq_top_schwartzMap {d : ℕ} {p : ENNReal}
     apply pos_iff_ne_zero.mpr
     intro hzero
     have hmem := (hcsupp.toSchwartzMap hsmoothC).memLp p volume
-    have hae := (eLpNorm_eq_zero_iff hmem.1 hp0.ne').mp hzero
+    have hae := (eLpNorm_eq_zero_iff hp0.ne').mp hzero
     have h0 := (Continuous.ae_eq_iff_eq volume
       (hcsupp.toSchwartzMap hsmoothC).continuous continuous_zero).mp hae
     rw [h0] at hone
@@ -2093,7 +2113,7 @@ private theorem exists_raw_counterexample_of_not_strongType
       apply pos_iff_ne_zero.mpr
       intro hnorm_zero
       have hzero_ae : (f : (ℝ^d) → ℂ) =ᵐ[volume] 0 :=
-        (eLpNorm_eq_zero_iff hf.1 hp0.ne').mp hnorm_zero
+        (eLpNorm_eq_zero_iff hp0.ne').mp hnorm_zero
       have hzero : (f : (ℝ^d) → ℂ) = 0 :=
         (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hzero_ae
       have hmax_zero :
@@ -2122,8 +2142,6 @@ private theorem exists_raw_counterexample_of_not_strongType
           ENNReal.ofReal K * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
       exact le_of_not_gt fun h => hlarge ⟨f, h⟩
     refine ⟨?_, hbound⟩
-    refine ⟨(measurable_restrictedNormalizedSphericalMaximal E
-      (f : (ℝ^d) → ℂ) f.continuous).aestronglyMeasurable, ?_⟩
     exact hbound.trans_lt
       (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top)
 
@@ -2162,8 +2180,6 @@ private theorem exists_schwartz_counterexample_of_not_strongType
           ENNReal.ofReal K * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
       exact le_of_not_gt fun h => hlarge ⟨f, h⟩
     refine ⟨?_, hbound⟩
-    refine ⟨(measurable_restrictedNormalizedSphericalMaximal E
-      (f : (ℝ^d) → ℂ) f.continuous).aestronglyMeasurable, ?_⟩
     exact hbound.trans_lt
       (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top)
 
@@ -2382,7 +2398,6 @@ private theorem circle_finite_knapp_bound_of_bound
     positivity
   have hf : MemLp (f : (ℝ^2) → ℂ) (ENNReal.ofReal p)
       (powerWeightedVolume 2 0) := by
-    refine ⟨f.continuous.aestronglyMeasurable, ?_⟩
     refine lt_of_le_of_lt hinput ?_
     exact ENNReal.rpow_lt_top_of_nonneg hq (by simpa only [D] using hDfinite)
   have hUmeas : ∀ r ∈ T, MeasurableSet (U r) := by

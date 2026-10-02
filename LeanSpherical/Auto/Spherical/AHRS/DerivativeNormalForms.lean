@@ -565,6 +565,8 @@ theorem q4SelectedKernelTTStarShell_strong_offDiagonal_of_cutoffStableDomain
       (4 * ENNReal.ofReal ((H.B * D) ^ 2) *
         ((ENNReal.ofReal (q - 2))⁻¹ * (ENNReal.ofReal (2 * A)) ^ (q - 2))))
     hmoment
+    (memLp_two_q4SelectedKernelTTStarShell_of_pairwise_bound
+      s R K rho hrho hrhoMeas H f hfD).aestronglyMeasurable
   simpa only [q4CrossedStrongShellConstant] using hfinal
 
 end
@@ -902,7 +904,7 @@ noncomputable def q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
           (q4ActiveDyadicPairKernel psi j) i l g) 2 volume =
           (eLpNorm (q4PairwiseKernelApply volume
             (q4ActiveDyadicPairKernel psi j) i l g) 2 volume).toReal :=
-        (toReal_eLpNorm hphysicalMem.aestronglyMeasurable).symm
+        (toReal_eLpNorm).symm
       _ = (eLpNorm (fun x : Euclidean d =>
           (T : Euclidean d -> Complex) x) 2 volume).toReal := by
         rw [eLpNorm_congr_ae hphysical]
@@ -910,7 +912,7 @@ noncomputable def q4ActiveDyadicPairwiseL2OperatorBound_of_multiplier_bound
         exact (Lp.norm_def T).symm
       _ <= B * ‖hg2.toLp g‖ := hTbound
       _ = B * lpNorm g 2 volume := by
-        rw [Lp.norm_toLp, toReal_eLpNorm hg2.aestronglyMeasurable]
+        rw [Lp.norm_toLp, toReal_eLpNorm]
 
 /-- Ordinary measurable `L¹ ∩ L²` data belong to every literal selected
 active-dyadic shell domain.  Pairwise Bochner integrability is not an extra
@@ -1368,7 +1370,7 @@ noncomputable def
           (eLpNorm (q4PairwiseKernelApply volume
             (q4ActiveDyadicScaledNormalizedDerivativePairKernel psi j u) i l g)
             2 volume).toReal :=
-        (toReal_eLpNorm hphysicalMem.aestronglyMeasurable).symm
+        (toReal_eLpNorm).symm
       _ = (eLpNorm (fun x : Euclidean d =>
           (T : Euclidean d -> Complex) x) 2 volume).toReal := by
         rw [eLpNorm_congr_ae hphysical]
@@ -1376,7 +1378,7 @@ noncomputable def
         exact (Lp.norm_def T).symm
       _ ≤ B * ‖hg2.toLp g‖ := hTbound
       _ = B * lpNorm g 2 volume := by
-        rw [Lp.norm_toLp, toReal_eLpNorm hg2.aestronglyMeasurable]
+        rw [Lp.norm_toLp, toReal_eLpNorm]
 
 end
 end Former_Q4DerivativePhysicalL2
@@ -3718,6 +3720,7 @@ theorem q4FiniteProductKernelShell_strong_offDiagonal_of_cutoffStableDomain
       (4 * ENNReal.ofReal ((H.B * D) ^ 2) *
         ((ENNReal.ofReal (q - 2))⁻¹ * (ENNReal.ofReal (2 * A)) ^ (q - 2))))
     hmoment
+    (aestronglyMeasurable_q4FiniteProductKernelShell_of_pairwise_bound s R K H f hfD)
   simpa only [q4CrossedStrongShellConstant] using hfinal
 
 /-- A compactly localized active-dyadic pair kernel maps any physical
@@ -6715,13 +6718,20 @@ theorem q4ActiveDyadicFullSelectedPairShell_eLpNorm_le_levelSum
     exact (memLp_two_q4SelectedKernelTTStarShell_of_pairwise_bound
       (activeDyadicIndices E j) (q4LevelShellRelation R level n) K rho hrho
       hrhoMeas H f (hdomain n)).aestronglyMeasurable.norm
+  have hmeasR : AEStronglyMeasurable (fun x =>
+      ‖q4SelectedKernelTTStarShell volume (activeDyadicIndices E j) R K rho f x‖) volume :=
+    (memLp_two_q4SelectedKernelTTStarShell_of_pairwise_bound
+      (activeDyadicIndices E j) R K rho hrho hrhoMeas H f
+      (mem_q4SelectedCutoffStableDomain_activeDyadic_of_regular
+        E j R (Psi j) hpsiCompact rho hrhoMeas f
+        hfmeas hfint hfL2)).aestronglyMeasurable.norm
   have hreassembly := eLpNorm_norm_q4SelectedKernelTTStarShell_le_sum_levelShells
     volume (activeDyadicIndices E j) R level (Finset.range (j + 3))
     (by
       intro i l hactive
       exact activeDyadicGapLevel_mem_range_add_three hj hE hactive.1 hactive.2)
     K rho f hqone
-    (fun n hn => hmeas n)
+    (fun n hn => hmeas n) hmeasR
   have hlevels : ∀ n ∈ Finset.range (j + 3),
       eLpNorm (fun x => ‖q4SelectedKernelTTStarShell volume
         (activeDyadicIndices E j) (q4LevelShellRelation R level n) K rho f x‖)
@@ -6731,12 +6741,18 @@ theorem q4ActiveDyadicFullSelectedPairShell_eLpNorm_le_levelSum
     intro n hn
     by_cases hnzero : n = 0
     · subst n
-      rw [q4ActiveDyadicLevelStrongConstant, if_pos rfl, eLpNorm_norm]
+      rw [q4ActiveDyadicLevelStrongConstant, if_pos rfl, eLpNorm_norm _
+        (memLp_two_q4SelectedKernelTTStarShell_of_pairwise_bound
+          (activeDyadicIndices E j) _ K rho hrho hrhoMeas H f
+          (hdomain 0)).aestronglyMeasurable]
       exact q4ActiveDyadicDiagonalSelectedPairShell_strong_offDiagonal
         hj hE Psi hpsiCompact hCkernel hdecay hB hmultiplier rho hrho hrhoMeas
         hp1 hp2 hq f (hdomain 0) hfp hI0 hI0pos
     · have hnpos : 0 < n := Nat.pos_of_ne_zero hnzero
-      rw [q4ActiveDyadicLevelStrongConstant, if_neg hnzero, eLpNorm_norm]
+      rw [q4ActiveDyadicLevelStrongConstant, if_neg hnzero, eLpNorm_norm _
+        (memLp_two_q4SelectedKernelTTStarShell_of_pairwise_bound
+          (activeDyadicIndices E j) _ K rho hrho hrhoMeas H f
+          (hdomain n)).aestronglyMeasurable]
       exact q4ActiveDyadicPositiveSelectedPairShell_strong_offDiagonal
         hd hj hE hcover hCcover hgamma hdeltaone hnpos
         Psi hpsiCompact hCkernel hdecay hB hmultiplier rho hrho hrhoMeas

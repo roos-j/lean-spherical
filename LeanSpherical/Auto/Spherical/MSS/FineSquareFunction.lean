@@ -1428,6 +1428,7 @@ theorem mssFineCubeResidualSymbol_fourierInv_seminorm_le_derivativeIntegrals
         simpa using SchwartzMap.integrable_pow_mul_iteratedFDeriv volume
           (mssFineCubeResidualSymbol D cubes hscale n nu cube z) 0 j)
       (k := 0) (n := N) (by simp) (by simp) (-x)
+    rw [Finset.sum_product, Finset.sum_range_one] at h
     simpa [Real.fourierInv_eq_fourier_neg] using h
 
 /-- The generic unscaled Fourier integration-by-parts bound.  It is kept
@@ -1456,6 +1457,7 @@ private theorem fourierInv_seminorm_le_derivativeIntegrals
         subst k
         simpa using SchwartzMap.integrable_pow_mul_iteratedFDeriv volume q 0 j)
       (k := 0) (n := N) (by simp) (by simp) (-x)
+    rw [Finset.sum_product, Finset.sum_range_one] at h
     simpa [Real.fourierInv_eq_fourier_neg] using h
 
 /-- Rescaling the frequency variable before Fourier integration by parts
@@ -2583,7 +2585,7 @@ theorem exists_uniform_lightRayMaximal_sq_bound_on_boundedCompactTests
     lt_of_le_of_lt hmaxBound
       (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hg.memLp_two.eLpNorm_lt_top)
   have hmaxMem : MemLp (lightRayMaximal δ N g) 2 volume :=
-    ⟨hmaxMeas, hmaxTop⟩
+    hmaxTop
   have hmaxTwo : Integrable (fun y : Euclidean 2 => lightRayMaximal δ N g y ^ 2) volume :=
     (memLp_two_iff_integrable_sq hmaxMeas).mp hmaxMem
   let Iout : Real := ∫ y : Euclidean 2, lightRayMaximal δ N g y ^ 2
@@ -4630,12 +4632,17 @@ theorem mssFineSquareFunctionEstimate_of_uniform_packet_fourthMoment
   refine ⟨C, hC, ?_⟩
   intro scale hscale f
   have hmoment := hfourth scale hscale f
+  have hSmeas : AEStronglyMeasurable (mssFineCubePacketSquareFunction D cubes scale f) volume := by
+    have h := Real.continuous_sqrt.comp
+      (continuous_sq_mssFineCubePacketSquareFunction D cubes scale f)
+    refine h.aestronglyMeasurable.congr (Filter.Eventually.of_forall fun z => ?_)
+    exact Real.sqrt_sq (Real.sqrt_nonneg _)
   rw [Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
         (μ := volume) (q := (4 : Real)) (by norm_num)
-        (mssFineCubePacketSquareFunction D cubes scale f),
+        (mssFineCubePacketSquareFunction D cubes scale f) hSmeas,
       Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
         (μ := volume) (q := (4 : Real)) (by norm_num)
-        (f : Euclidean 2 → Complex)] at hmoment
+        (f : Euclidean 2 → Complex) f.continuous.aestronglyMeasurable] at hmoment
   norm_num at hmoment
   have hpacket :
       eLpNorm (mssFineCubePacketSquareFunction D cubes scale f)

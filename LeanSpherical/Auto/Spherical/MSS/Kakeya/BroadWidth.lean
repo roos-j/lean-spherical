@@ -1485,6 +1485,11 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
     filter_upwards with y
     change Z y ^ 2 = scratch_zeroDirectionLightRayEnvelope rho N y f ^ 2
     rfl
+  have hZmeas : AEStronglyMeasurable Z volume := by
+    have h := Real.continuous_sqrt.measurable.comp_aemeasurable
+      hZsq.aestronglyMeasurable.aemeasurable
+    refine (h.congr (Filter.Eventually.of_forall fun y => ?_)).aestronglyMeasurable
+    exact Real.sqrt_sq (hZnonneg y)
   have hZident :
       (∫ y : canonicalSignedBroadScaleE2, Z y ^ 2) =
         ∫ y : canonicalSignedBroadScaleE2, ‖scratch_zeroDirectionLightRayComplexEnvelope rho N y f‖
@@ -1516,20 +1521,25 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
       _ ≤ 2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 *
           ∫ z : WaveSpaceTime, ‖f z‖ ^ 2 :=
         mul_le_mul_of_nonneg_left hslab (by positivity)
-  have hinputEq : ENNReal.ofReal (∫ z : WaveSpaceTime, ‖f z‖ ^ 2) =
+  have hinputEq : ENNReal.ofReal (∫ z : WaveSpaceTime, ‖f z‖ ^ 2) ≤
       (eLpNorm f 2 volume) ^ (2 : Real) := by
-    rw [ofReal_integral_eq_lintegral_ofReal hfull
-      (Filter.Eventually.of_forall fun z => sq_nonneg _)]
-    calc
-      (∫⁻ z : WaveSpaceTime, ENNReal.ofReal (‖f z‖ ^ 2)) =
-          ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖f z‖) ^ (2 : Real) := by
-            apply lintegral_congr
-            intro z
-            rw [ENNReal.ofReal_pow (norm_nonneg _) 2, ENNReal.rpow_two]
-      _ = (eLpNorm f 2 volume) ^ (2 : Real) := by
-        simpa only [ENNReal.ofReal_ofNat] using
-          (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
-            (μ := volume) (q := (2 : Real)) (by norm_num) f)
+    by_cases hfm : AEStronglyMeasurable f volume
+    · refine le_of_eq ?_
+      rw [ofReal_integral_eq_lintegral_ofReal hfull
+        (Filter.Eventually.of_forall fun z => sq_nonneg _)]
+      calc
+        (∫⁻ z : WaveSpaceTime, ENNReal.ofReal (‖f z‖ ^ 2)) =
+            ∫⁻ z : WaveSpaceTime, (ENNReal.ofReal ‖f z‖) ^ (2 : Real) := by
+              apply lintegral_congr
+              intro z
+              rw [ENNReal.ofReal_pow (norm_nonneg _) 2, ENNReal.rpow_two]
+        _ = (eLpNorm f 2 volume) ^ (2 : Real) := by
+          simpa only [ENNReal.ofReal_ofNat] using
+            (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+              (μ := volume) (q := (2 : Real)) (by norm_num) f hfm)
+    · rw [eLpNorm_of_not_aestronglyMeasurable hfm,
+        ENNReal.top_rpow_of_pos (by norm_num)]
+      exact le_top
   have hD : 0 ≤ D := by
     dsimp only [D]
     exact canonicalZeroDirectionL2Constant_nonneg N
@@ -1549,22 +1559,19 @@ theorem eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
           (2 * (∫ u : canonicalSignedBroadScaleE2, lightRayDecayProfile N u) ^ 2 *
             ∫ z : WaveSpaceTime, ‖f z‖ ^ 2) :=
         ENNReal.ofReal_le_ofReal hrawZ
-      _ = (ENNReal.ofReal D * eLpNorm f 2 volume) ^ (2 : Real) := by
+      _ ≤ (ENNReal.ofReal D * eLpNorm f 2 volume) ^ (2 : Real) := by
         rw [← hDsq]
         rw [ENNReal.ofReal_mul (sq_nonneg D)]
         rw [ENNReal.ofReal_pow hD 2]
-        rw [hinputEq]
-        rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
-        exact congrArg (fun x : ENNReal =>
-          x * eLpNorm f 2 volume ^ (2 : Real))
-          (ENNReal.rpow_natCast (ENNReal.ofReal D) 2).symm
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), ENNReal.rpow_two (ENNReal.ofReal D)]
+        exact mul_le_mul_right hinputEq _
   calc
     eLpNorm Z 2 volume ≤
         ((ENNReal.ofReal D * eLpNorm f 2 volume) ^ (2 : Real)) ^
           ((2 : Real)⁻¹) := by
       simpa only [ENNReal.ofReal_ofNat] using
         (Auto.LpSpaceFacts.eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
-          volume Z (by norm_num) hZnonneg hmoment)
+          volume Z (by norm_num) hZnonneg hmoment hZmeas)
     _ = ENNReal.ofReal D * eLpNorm f 2 volume := by
       rw [← ENNReal.rpow_mul]
       norm_num
@@ -1663,6 +1670,7 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_of_canonicalTube
       ENNReal.ofReal C * eLpNorm Z 2 volume :=
     eLpNorm_canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise_real
       w.S delta N f j Z C hC hZ hscalePoint
+      (w.hScaleMeas delta N f j hf).aestronglyMeasurable
   have hZbound : eLpNorm Z 2 volume ≤
       ENNReal.ofReal (D N) * eLpNorm f 2 volume := by
     simpa only [Z] using hzeroN rho hrho f hf
@@ -1693,6 +1701,7 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_of_canonicalTube
       (fun y => ENNReal.ofReal coeff *
         canonicalReflectedUnitScaleEnvelope w.S delta N f j y)
       Z (coeff * C)
+      (hF := (measurable_const.mul (w.hScaleMeas delta N f j hf)).aestronglyMeasurable)
     · exact mul_nonneg hcoeff hC
     · exact hZ
     · intro y
@@ -3148,7 +3157,7 @@ theorem tendsto_positiveNormLightRayLinear_of_geometric_L2
     calc
       eLpNorm (R n) 2 scratchLightRayMeasure ≤
           eLpNorm (F - core n) 2 scratchLightRayMeasure := by
-            apply eLpNorm_mono_ae
+            apply eLpNorm_mono_ae (hRmem n).aestronglyMeasurable
             filter_upwards with z
             dsimp only [R]
             simp only [Complex.norm_real, Real.norm_eq_abs, Pi.sub_apply]
@@ -3281,7 +3290,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit_gt
       (scratch_memLp_complex_of_norm h hh)
   have hFnorm : eLpNorm F 2 volume = eLpNorm h 2 volume := by
     dsimp only [F]
-    exact scratch_eLpNorm_positiveSlab_eq h hslab 2
+    exact scratch_eLpNorm_positiveSlab_eq h hslab 2 hh.aestronglyMeasurable
   have hM : lightRayMaximal delta N g = lightRayMaximal delta N h := by
     simpa only [h] using
       scratch_lightRayMaximal_eq_lightRayTimeRestriction hdelta N (by omega) g hg
@@ -3289,7 +3298,7 @@ theorem hasLightRayMaximalEstimate_of_positiveSlabDenseSignedEnvelope_unit_gt
   let A : ENNReal := ENNReal.ofReal (C * L)
   by_cases hhnonzero : eLpNorm h 2 volume = 0
   · have hhae : h =ᵐ[volume] (fun _ : WaveSpaceTime => (0 : Complex)) :=
-      (eLpNorm_eq_zero_iff hh.aestronglyMeasurable (by norm_num)).mp hhnonzero
+      (eLpNorm_eq_zero_iff (by norm_num)).mp hhnonzero
     have hMhzero : lightRayMaximal delta N h = 0 := by
       calc
         lightRayMaximal delta N h =
@@ -4862,6 +4871,8 @@ theorem hasCanonicalTubeSignedScaleBroadCost
       2 volume ≤ ENNReal.ofReal C * eLpNorm Z 2 volume :=
     eLpNorm_canonicalReflectedUnitScaleEnvelope_le_of_unit_pointwise_real
       (canonicalTubeSignedScale r hr) delta N f j Z C hC hZ hscalePoint
+      (measurable_canonicalReflectedUnitScaleEnvelope_canonicalTubeSignedScale
+        hr delta N f j hf).aestronglyMeasurable
   have hZbound : eLpNorm Z 2 volume ≤
       ENNReal.ofReal (canonicalZeroDirectionL2Constant N) * eLpNorm f 2 volume := by
     simpa only [Z] using hzeroN rho hrho f hf
@@ -4895,6 +4906,9 @@ theorem hasCanonicalTubeSignedScaleBroadCost
       (fun y => ENNReal.ofReal coeff *
         canonicalReflectedUnitScaleEnvelope (canonicalTubeSignedScale r hr) delta N f j y)
       Z (coeff * C)
+      (hF := (measurable_const.mul
+        (measurable_canonicalReflectedUnitScaleEnvelope_canonicalTubeSignedScale
+          hr delta N f j hf)).aestronglyMeasurable)
     · exact mul_nonneg hcoeff hC
     · exact hZ
     · intro y
@@ -5007,9 +5021,7 @@ theorem eLpNorm_canonicalReflectedUnitFiniteEnvelope_le_of_weightedScaleBounds_g
           ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j) *
             canonicalReflectedUnitScaleEnvelope w.S delta N f j y) 2 volume := by
           apply eLpNorm_sum_le
-          · intro j hj
-            exact (measurable_const.mul (w.hScaleMeas delta N f j hf)).aestronglyMeasurable
-          · norm_num
+          norm_num
     _ ≤ ∑ j ∈ Finset.range M,
         ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j * cost j) *
           eLpNorm f 2 volume := by

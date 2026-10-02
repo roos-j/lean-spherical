@@ -104,8 +104,9 @@ theorem eLpNorm_four_rpow_two_le_two_mul_top
     {μ : Measure α} (f : α → E) (hf : AEStronglyMeasurable f μ) :
     (eLpNorm f (4 : ENNReal) μ) ^ (2 : Real) ≤
       eLpNorm f (2 : ENNReal) μ * eLpNorm f ⊤ μ := by
-  have hholder := eLpNorm_le_eLpNorm_mul_eLpNorm_top (p := (2 : ENNReal)) hf.norm
-    (fun x => ‖f x‖) (fun a b : Real => a * b) 1 (by
+  have hholder := eLpNorm_le_eLpNorm_mul_eLpNorm_top (p := (2 : ENNReal))
+    (f := fun x => ‖f x‖) (g := fun x => ‖f x‖) (fun a b : Real => a * b) 1
+    continuous_mul hf.norm (by
       filter_upwards with x
       simp only [nnnorm_mul, one_mul]
       exact le_rfl)
@@ -118,11 +119,11 @@ theorem eLpNorm_four_rpow_two_le_two_mul_top
       _ = ‖f x‖ ^ (2 : Real) := (Real.rpow_two _).symm
   have hnorm : eLpNorm (fun x => ‖f x‖ ^ (2 : Real)) (2 : ENNReal) μ =
       (eLpNorm f (4 : ENNReal) μ) ^ (2 : Real) := by
-    convert @eLpNorm_norm_rpow α E _ (2 : ENNReal) 2 μ _ f
+    convert @eLpNorm_norm_rpow α E _ (2 : ENNReal) 2 μ _ f hf
       (by norm_num : (0 : Real) < 2) using 1
     all_goals norm_num
   rw [hsq, hnorm] at hholder
-  simpa only [ENNReal.coe_one, one_mul, eLpNorm_norm] using hholder
+  simpa only [ENNReal.coe_one, one_mul, eLpNorm_norm f hf] using hholder
 
 /-- The square-root form of `eLpNorm_four_rpow_two_le_two_mul_top`. -/
 theorem eLpNorm_four_le_geometricMean_two_top
@@ -146,7 +147,7 @@ theorem memLp_four_of_two_and_top
     (hftop : MemLp f ⊤ μ) :
     MemLp f (4 : ENNReal) μ := by
   have hmul : MemLp (fun x => ‖f x‖ * ‖f x‖) (2 : ENNReal) μ :=
-    hf2.norm.mul' hftop.norm
+    hf2.norm.fun_mul hftop.norm
   have hpow : MemLp (fun x => ‖f x‖ ^ (2 : Real)) (2 : ENNReal) μ := by
     apply hmul.ae_eq
     filter_upwards with x
@@ -158,7 +159,7 @@ theorem memLp_four_of_two_and_top
     have htwoT : (2 : ENNReal) ≠ ⊤ := ENNReal.ofNat_ne_top
     rw [show (4 : ENNReal) = 2 * 2 by norm_num]
     rw [div_eq_mul_inv, mul_assoc, ENNReal.mul_inv_cancel htwo0 htwoT, mul_one]
-  apply (memLp_norm_rpow_iff (p := (4 : ENNReal)) (q := (2 : ENNReal)) hf2.1
+  apply (memLp_norm_rpow_iff (p := (4 : ENNReal)) (q := (2 : ENNReal)) hf2.aestronglyMeasurable
     (by norm_num) (by norm_num)).mp
   simpa [hfour_div_two] using hpow
 
@@ -175,7 +176,7 @@ theorem eLpNorm_power_interpolation_of_holder
   have hpow : AEStronglyMeasurable (fun x => ‖f x‖ ^ a) μ :=
     (hf.norm.aemeasurable.pow_const a).aestronglyMeasurable
   have hholder := eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm
-    (p := p) (q := q) (r := r) hpow hpow (fun u v : Real => u * v) 1 (by
+    (p := p) (q := q) (r := r) (fun u v : Real => u * v) 1 continuous_mul hpow hpow (by
       filter_upwards with x
       simp only [nnnorm_mul, one_mul]
       exact le_rfl)
@@ -197,8 +198,8 @@ theorem eLpNorm_power_interpolation_of_holder
         _ = ‖f x‖ ^ (2 * a) := by
           congr 1
           ring
-  rw [hprod, eLpNorm_norm_rpow f (by positivity : 0 < 2 * a),
-    eLpNorm_norm_rpow f ha, eLpNorm_norm_rpow f ha] at hholder
+  rw [hprod, eLpNorm_norm_rpow f hf (by positivity : 0 < 2 * a),
+    eLpNorm_norm_rpow f hf ha, eLpNorm_norm_rpow f hf ha] at hholder
   simpa only [ENNReal.coe_one, one_mul] using hholder
 
 /-- Finiteness companion to `eLpNorm_power_interpolation_of_holder`. -/
@@ -220,7 +221,7 @@ theorem memLp_power_interpolation_of_holder
     simpa only [ENNReal.toReal_ofReal ha.le,
       ENNReal.mul_div_cancel_right hA0 ENNReal.ofReal_ne_top] using hgq0
   have hmul : MemLp (fun x => (‖f x‖ ^ a) * (‖f x‖ ^ a)) r μ :=
-    hgp.mul' hgq
+    hgp.fun_mul hgq
   have hpow : MemLp (fun x => ‖f x‖ ^ (2 * a)) r μ := by
     apply hmul.ae_eq
     filter_upwards with x
@@ -242,7 +243,7 @@ theorem memLp_power_interpolation_of_holder
   have hA20 : ENNReal.ofReal (2 * a) ≠ 0 :=
     ne_of_gt (ENNReal.ofReal_pos.mpr htwoa)
   apply (memLp_norm_rpow_iff (p := r * ENNReal.ofReal (2 * a))
-    (q := ENNReal.ofReal (2 * a)) hfp.1 hA20 ENNReal.ofReal_ne_top).mp
+    (q := ENNReal.ofReal (2 * a)) hfp.aestronglyMeasurable hA20 ENNReal.ofReal_ne_top).mp
   simpa only [ENNReal.toReal_ofReal htwoa.le,
     ENNReal.mul_div_cancel_right hA20 ENNReal.ofReal_ne_top] using hpow
 
@@ -252,11 +253,11 @@ theorem eLpNorm_three_rpow_two_le_two_mul_six
     {μ : Measure α} (f : α → E) (hf : AEStronglyMeasurable f μ) :
     (eLpNorm f (3 : ENNReal) μ) ^ (2 : Real) ≤
       eLpNorm f (2 : ENNReal) μ * eLpNorm f (6 : ENNReal) μ := by
-  letI : ENNReal.HolderTriple (2 : ENNReal) (6 : ENNReal) ((3 : ENNReal) / 2) :=
+  let _ : ENNReal.HolderTriple (2 : ENNReal) (6 : ENNReal) ((3 : ENNReal) / 2) :=
     ENNReal.HolderTriple.of_toReal (by constructor <;> norm_num)
   have hholder := eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm
     (p := (2 : ENNReal)) (q := (6 : ENNReal)) (r := (3 : ENNReal) / 2)
-    hf.norm hf.norm (fun a b : Real => a * b) 1 (by
+    (fun a b : Real => a * b) 1 continuous_mul hf.norm hf.norm (by
       filter_upwards with x
       simp only [nnnorm_mul, one_mul]
       exact le_rfl)
@@ -269,14 +270,14 @@ theorem eLpNorm_three_rpow_two_le_two_mul_six
       _ = ‖f x‖ ^ (2 : Real) := (Real.rpow_two _).symm
   have hnorm : eLpNorm (fun x => ‖f x‖ ^ (2 : Real)) ((3 : ENNReal) / 2) μ =
       (eLpNorm f (3 : ENNReal) μ) ^ (2 : Real) := by
-    convert @eLpNorm_norm_rpow α E _ ((3 : ENNReal) / 2) 2 μ _ f
+    convert @eLpNorm_norm_rpow α E _ ((3 : ENNReal) / 2) 2 μ _ f hf
       (by norm_num : (0 : Real) < 2) using 1
     rw [show ((3 : ENNReal) / 2) * ENNReal.ofReal 2 = 3 by
       rw [ENNReal.ofReal_ofNat]
       exact ENNReal.div_mul_cancel (a := (2 : ENNReal)) (b := (3 : ENNReal))
         (by norm_num) ENNReal.ofNat_ne_top]
   rw [hsq, hnorm] at hholder
-  simpa only [ENNReal.coe_one, one_mul, eLpNorm_norm] using hholder
+  simpa only [ENNReal.coe_one, one_mul, eLpNorm_norm f hf] using hholder
 
 /-- Square-root form of `eLpNorm_three_rpow_two_le_two_mul_six`. -/
 theorem eLpNorm_three_le_geometricMean_two_six
@@ -299,17 +300,17 @@ theorem memLp_three_of_two_and_six
     {μ : Measure α} (f : α → E) (hf2 : MemLp f (2 : ENNReal) μ)
     (hf6 : MemLp f (6 : ENNReal) μ) :
     MemLp f (3 : ENNReal) μ := by
-  letI : ENNReal.HolderTriple (2 : ENNReal) (6 : ENNReal) ((3 : ENNReal) / 2) :=
+  let _ : ENNReal.HolderTriple (2 : ENNReal) (6 : ENNReal) ((3 : ENNReal) / 2) :=
     ENNReal.HolderTriple.of_toReal (by constructor <;> norm_num)
   have hmul : MemLp (fun x => ‖f x‖ * ‖f x‖) ((3 : ENNReal) / 2) μ :=
-    hf2.norm.mul' hf6.norm
+    hf2.norm.fun_mul hf6.norm
   have hpow : MemLp (fun x => ‖f x‖ ^ (2 : Real)) ((3 : ENNReal) / 2) μ := by
     apply hmul.ae_eq
     filter_upwards with x
     calc
       ‖f x‖ * ‖f x‖ = ‖f x‖ ^ (2 : ℕ) := by ring
       _ = ‖f x‖ ^ (2 : Real) := (Real.rpow_two _).symm
-  apply (memLp_norm_rpow_iff (p := (3 : ENNReal)) (q := (2 : ENNReal)) hf2.1
+  apply (memLp_norm_rpow_iff (p := (3 : ENNReal)) (q := (2 : ENNReal)) hf2.aestronglyMeasurable
     (by norm_num) (by norm_num)).mp
   simpa using hpow
 
@@ -318,7 +319,10 @@ theorem eLpNorm_top_le_eLpNorm_two_count
     {ι E : Type*} [MeasurableSpace ι] [MeasurableSingletonClass ι]
     [NormedAddCommGroup E] (f : ι → E) :
     eLpNorm f ⊤ Measure.count ≤ eLpNorm f (2 : ENNReal) Measure.count := by
-  rw [eLpNorm_exponent_top, eLpNormEssSup_count]
+  by_cases hf : AEStronglyMeasurable f Measure.count
+  swap
+  · simp [eLpNorm_of_not_aestronglyMeasurable hf]
+  rw [eLpNorm_exponent_top hf, eLpNormEssSup_count]
   exact iSup_le fun i =>
     enorm_le_eLpNorm_count f i (by norm_num : (2 : ENNReal) ≠ 0)
 
@@ -328,14 +332,14 @@ theorem eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
     {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (g : X → Real) {p : Real} (hp : 0 < p) (hg : ∀ x, 0 ≤ g x)
     {Q : ENNReal}
-    (hQ : (∫⁻ x, ENNReal.ofReal ((g x) ^ p) ∂μ) ≤ Q) :
+    (hQ : (∫⁻ x, ENNReal.ofReal ((g x) ^ p) ∂μ) ≤ Q) (hgm : AEStronglyMeasurable g μ) :
     eLpNorm g (ENNReal.ofReal p) μ ≤ Q ^ p⁻¹ := by
   have hp0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp
   have hptop : ENNReal.ofReal p ≠ ∞ := ENNReal.ofReal_ne_top
   have heq :
       eLpNorm g (ENNReal.ofReal p) μ =
         (∫⁻ x, ENNReal.ofReal ((g x) ^ p) ∂μ) ^ p⁻¹ := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop]
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop hgm]
     simp only [ENNReal.toReal_ofReal hp.le, one_div]
     congr 1
     apply lintegral_congr
@@ -350,7 +354,7 @@ theorem eLpNorm_real_nonneg_le_of_lintegral_ofReal_rpow_le
 seminorm. -/
 theorem lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
     {X E : Type*} [MeasurableSpace X] [NormedAddCommGroup E]
-    {μ : Measure X} {q : Real} (hq : 0 < q) (g : X → E) :
+    {μ : Measure X} {q : Real} (hq : 0 < q) (g : X → E) (hgm : AEStronglyMeasurable g μ) :
     (∫⁻ x, (ENNReal.ofReal ‖g x‖) ^ q ∂μ) =
       (eLpNorm g (ENNReal.ofReal q) μ) ^ q := by
   calc
@@ -361,7 +365,7 @@ theorem lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
       lintegral_rpow_enorm_eq_rpow_eLpNorm' hq
     _ = (eLpNorm g (ENNReal.ofReal q) μ) ^ q := by
       rw [eLpNorm_eq_eLpNorm'
-        (ENNReal.ofReal_ne_zero_iff.mpr hq) ENNReal.ofReal_ne_top]
+        (ENNReal.ofReal_ne_zero_iff.mpr hq) ENNReal.ofReal_ne_top hgm]
       simp only [ENNReal.toReal_ofReal hq.le]
 
 /-- The real-valued version of
@@ -369,7 +373,8 @@ theorem lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
 function. -/
 theorem lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
-    {q : Real} (hq : 0 < q) (g : X → Real) (hg : ∀ x, 0 ≤ g x) :
+    {q : Real} (hq : 0 < q) (g : X → Real) (hg : ∀ x, 0 ≤ g x)
+    (hgm : AEStronglyMeasurable g μ) :
     (∫⁻ x, ENNReal.ofReal ((g x) ^ q) ∂μ) =
       (eLpNorm g (ENNReal.ofReal q) μ) ^ q := by
   calc
@@ -379,7 +384,7 @@ theorem lintegral_ofReal_rpow_eq_eLpNorm_rpow_of_nonneg
       intro x
       rw [Real.norm_of_nonneg (hg x)]
       exact (ENNReal.ofReal_rpow_of_nonneg (hg x) hq.le).symm
-    _ = _ := lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hq g
+    _ = _ := lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hq g hgm
 
 /-! ## Duality pairings and exponent interpolation
 
@@ -464,10 +469,11 @@ theorem enorm_integral_mul_le_eLpNorm_two_mul {β : Type*} [MeasurableSpace β]
     ‖∫ y, F y * G y ∂ν‖ₑ ≤ ∫⁻ y, ‖F y * G y‖ₑ ∂ν :=
       enorm_integral_le_lintegral_enorm _
     _ = eLpNorm (fun y => F y * G y) 1 ν := by
-      rw [eLpNorm_one_eq_lintegral_enorm]
+      rw [eLpNorm_one_eq_lintegral_enorm
+        (hF.aestronglyMeasurable.fun_mul hG.aestronglyMeasurable)]
     _ ≤ eLpNorm F 2 ν * eLpNorm G 2 ν := by
       simpa using eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm (p := 2) (q := 2) (r := 1)
-        hF.1 hG.1 (fun x y => x * y) 1
+        (fun x y => x * y) 1 continuous_mul hF.aestronglyMeasurable hG.aestronglyMeasurable
         (Filter.Eventually.of_forall fun x => by simp)
 
 /-- An `eLpNorm` upper bound by a finite quantity, together with strong
@@ -477,7 +483,7 @@ theorem memLp_of_aestronglyMeasurable_of_eLpNorm_le
     {ν : Measure β} {p C : ENNReal} {h : β → F}
     (hmeas : AEStronglyMeasurable h ν) (hbound : eLpNorm h p ν ≤ C)
     (hC : C < ⊤) : MemLp h p ν :=
-  ⟨hmeas, hbound.trans_lt hC⟩
+  hbound.trans_lt hC
 
 /-- Zero-safe `L^p` norming dual test: at `y = 0` it is zero. -/
 def pRawDualTest {β : Type*} (p : Real) (y : β → Complex) : β → Complex :=
@@ -566,7 +572,7 @@ theorem memLp_pRawDualTest {β : Type*} [MeasurableSpace β]
     ENNReal.toReal_ofReal (sub_nonneg.mpr hp.le)
   simp only [htoReal] at hbase
   rw [ofReal_p_div_sub_one p hp] at hbase
-  refine hbase.congr_norm (aestronglyMeasurable_pRawDualTest hp hy.1) ?_
+  refine hbase.congr_norm (aestronglyMeasurable_pRawDualTest hp hy.aestronglyMeasurable) ?_
   filter_upwards with x
   rw [norm_pRawDualTest hp]
   simp only [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
@@ -576,16 +582,56 @@ theorem eLpNorm_pRawDualTest {β : Type*} [MeasurableSpace β]
     {ν : Measure β} {p : Real} (hp : 1 < p) (y : β → Complex) :
     eLpNorm (pRawDualTest p y) (ENNReal.ofReal p.conjExponent) ν =
       eLpNorm y (ENNReal.ofReal p) ν ^ (p - 1) := by
+  by_cases hy : AEStronglyMeasurable y ν
+  swap
+  · -- A non-measurable `y` gives a non-measurable test, since `y` is recovered
+    -- from its test by a measurable map; both sides are then `∞`.
+    have hp1 : 0 < p - 1 := sub_pos.mpr hp
+    have hrec : ∀ z : Complex,
+        (((‖pRawDualTest p (fun _ : Unit => z) ()‖ ^ (p - 1)⁻¹ : Real) : Complex) *
+          finiteAtomicPhase (pRawDualTest p (fun _ : Unit => z) ())) = z := by
+      intro z
+      rw [norm_pRawDualTest hp]
+      by_cases hz : z = 0
+      · simp [hz, pRawDualTest, finiteAtomicPhase]
+      · have hn : 0 < ‖z‖ := norm_pos_iff.mpr hz
+        have hpow : (‖z‖ ^ (p - 1)) ^ (p - 1)⁻¹ = ‖z‖ := by
+          rw [← Real.rpow_mul hn.le, mul_inv_cancel₀ hp1.ne', Real.rpow_one]
+        have hnc : ((‖z‖ : Real) : Complex) ≠ 0 := Complex.ofReal_ne_zero.mpr hn.ne'
+        have hpc : ((‖z‖ ^ (p - 1) : Real) : Complex) ≠ 0 :=
+          Complex.ofReal_ne_zero.mpr (Real.rpow_pos_of_pos hn _).ne'
+        rw [hpow]
+        unfold finiteAtomicPhase pRawDualTest
+        rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg (Real.rpow_nonneg hn.le _)]
+        unfold finiteAtomicPhase
+        rw [norm_div, Complex.norm_conj, Complex.norm_real, Real.norm_of_nonneg hn.le,
+          div_self hn.ne', mul_one]
+        simp only [map_mul, map_div₀, Complex.conj_ofReal, Complex.conj_conj]
+        field_simp
+    have hmeas : Measurable fun z : Complex =>
+        (((‖z‖ ^ (p - 1)⁻¹ : Real) : Complex) * finiteAtomicPhase z) := by
+      unfold finiteAtomicPhase
+      fun_prop
+    have hT : ¬ AEStronglyMeasurable (pRawDualTest p y) ν := by
+      intro hT
+      apply hy
+      refine ((hmeas.comp_aemeasurable hT.aemeasurable).aestronglyMeasurable).congr ?_
+      filter_upwards with x
+      exact hrec (y x)
+    rw [eLpNorm_of_not_aestronglyMeasurable hT, eLpNorm_of_not_aestronglyMeasurable hy,
+      ENNReal.top_rpow_of_pos hp1]
   calc
     eLpNorm (pRawDualTest p y) (ENNReal.ofReal p.conjExponent) ν =
         eLpNorm (fun x => ‖y x‖ ^ (p - 1)) (ENNReal.ofReal p.conjExponent) ν := by
-          apply eLpNorm_congr_norm_ae
+          apply eLpNorm_congr_norm_ae (aestronglyMeasurable_pRawDualTest hp hy)
+            ((Real.continuous_rpow_const (sub_nonneg.mpr hp.le)).comp_aestronglyMeasurable
+              hy.norm)
           filter_upwards with x
           rw [norm_pRawDualTest hp]
           simp only [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
     _ = eLpNorm y
           (ENNReal.ofReal p.conjExponent * ENNReal.ofReal (p - 1)) ν ^ (p - 1) := by
-          rw [eLpNorm_norm_rpow _ (sub_pos.mpr hp)]
+          rw [eLpNorm_norm_rpow _ hy (sub_pos.mpr hp)]
     _ = eLpNorm y (ENNReal.ofReal p) ν ^ (p - 1) := by
           rw [ofReal_pconj_mul_sub_one p hp]
 
@@ -607,7 +653,7 @@ theorem lpNorm_p_pow_eq_integral_norm_rpow {β : Type*} [MeasurableSpace β]
   have hp_pos : 0 < p := lt_trans zero_lt_one hp
   have hform := lpNorm_eq_integral_norm_rpow_toReal
     (f := y) (μ := ν) (p := ENNReal.ofReal p)
-    (ne_of_gt (ENNReal.ofReal_pos.mpr hp_pos)) (by simp) hy.1
+    (ne_of_gt (ENNReal.ofReal_pos.mpr hp_pos)) (by simp) hy.aestronglyMeasurable
   have hnonneg : 0 ≤ ∫ x, ‖y x‖ ^ p ∂ν :=
     integral_nonneg fun x => Real.rpow_nonneg (norm_nonneg _) _
   rw [ENNReal.toReal_ofReal hp_pos.le] at hform
@@ -648,17 +694,18 @@ theorem enorm_integral_mul_le_eLpNorm_p_pconj_mul
     ‖∫ x, F x * G x ∂ν‖ₑ ≤
       eLpNorm F (ENNReal.ofReal p) ν *
         eLpNorm G (ENNReal.ofReal p.conjExponent) ν := by
-  letI : ENNReal.HolderConjugate (ENNReal.ofReal p)
+  let _ : ENNReal.HolderConjugate (ENNReal.ofReal p)
       (ENNReal.ofReal p.conjExponent) := ofReal_holderConjugate p hp
   calc
     ‖∫ x, F x * G x ∂ν‖ₑ ≤ ∫⁻ x, ‖F x * G x‖ₑ ∂ν :=
       enorm_integral_le_lintegral_enorm _
     _ = eLpNorm (fun x => F x * G x) 1 ν := by
-      rw [eLpNorm_one_eq_lintegral_enorm]
+      rw [eLpNorm_one_eq_lintegral_enorm
+        (hF.aestronglyMeasurable.fun_mul hG.aestronglyMeasurable)]
     _ ≤ eLpNorm F (ENNReal.ofReal p) ν *
         eLpNorm G (ENNReal.ofReal p.conjExponent) ν := by
       simpa using eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm
-        hF.1 hG.1 (fun x y => x * y) 1
+        (fun x y => x * y) 1 continuous_mul hF.aestronglyMeasurable hG.aestronglyMeasurable
         (Filter.Eventually.of_forall fun x => by simp)
 
 /-- A bound on a dense subspace of scalar `Lp` tests extends to every
@@ -719,13 +766,13 @@ theorem lpNorm_le_of_simple_test_pairing_bound
       ‖∫ x, y x * (g : Lp Complex (ENNReal.ofReal p.conjExponent) ν) x ∂ν‖ ≤
         K * ‖(g : Lp Complex (ENNReal.ofReal p.conjExponent) ν)‖) :
     lpNorm y (ENNReal.ofReal p) ν ≤ K := by
-  letI : Fact (1 ≤ ENNReal.ofReal p) :=
+  let _ : Fact (1 ≤ ENNReal.ofReal p) :=
     ⟨by
       rw [← ENNReal.ofReal_one]
       exact ENNReal.ofReal_le_ofReal hp.le⟩
-  letI : Fact (1 ≤ ENNReal.ofReal p.conjExponent) :=
+  let _ : Fact (1 ≤ ENNReal.ofReal p.conjExponent) :=
     ⟨one_le_ofReal_conjExponent p hp⟩
-  letI : ENNReal.HolderConjugate (ENNReal.ofReal p)
+  let _ : ENNReal.HolderConjugate (ENNReal.ofReal p)
       (ENNReal.ofReal p.conjExponent) := ofReal_holderConjugate p hp
   let Φ : Lp Complex (ENNReal.ofReal p.conjExponent) ν →L[Complex] Complex :=
     (ContinuousLinearMap.lpPairing ν (ENNReal.ofReal p)
@@ -799,9 +846,9 @@ theorem memLp_of_power_interpolation
     simpa only [q₁, ENNReal.toReal_ofReal hθnonneg] using
       hy₁.norm_rpow_div (ENNReal.ofReal θ)
   let r : ENNReal := (q₀⁻¹ + q₁⁻¹)⁻¹
-  letI : ENNReal.HolderTriple q₀ q₁ r := ENNReal.HolderTriple.of q₀ q₁
+  let _ : ENNReal.HolderTriple q₀ q₁ r := ENNReal.HolderTriple.of q₀ q₁
   have huv : MemLp (fun x => ‖y x‖ ^ (1 - θ) * ‖y x‖ ^ θ) r μ :=
-    hv.mul' hu
+    hu.fun_mul hv
   have hpow : MemLp (fun x => ‖y x‖) r μ := by
     apply huv.ae_eq
     filter_upwards with x
@@ -817,7 +864,7 @@ theorem memLp_of_power_interpolation
     apply inv_injective
     simpa only [r, inv_inv, q₀, q₁] using hrecip
   rw [hrP] at hpow
-  exact (memLp_norm_iff hy₀.1).mp hpow
+  exact (memLp_norm_iff hy₀.aestronglyMeasurable).mp hpow
 
 end
 

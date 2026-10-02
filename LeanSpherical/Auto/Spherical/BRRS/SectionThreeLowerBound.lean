@@ -3515,7 +3515,7 @@ theorem brrs_eLpNorm_le_of_integral_rpow_le {d : Nat}
     simp only [ne_eq, ENNReal.ofReal_eq_zero]
     exact not_le.mpr hp
   have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hp.le]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop _hf, ENNReal.toReal_ofReal hp.le]
   have hlint : (∫⁻ x : BRRSSpace d, ‖f x‖ₑ ^ p) =
       ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
     rw [ofReal_integral_eq_lintegral_ofReal hint
@@ -5869,7 +5869,8 @@ theorem brrs_sum_integral_norm_rpow_le_of_discreteLpNorm_le {d : Nat} {p : Real}
   have hpow := ENNReal.rpow_le_rpow hbound hp.le
   have hleft : (discreteLpNorm p T u) ^ p =
       ENNReal.ofReal (∑ t ∈ T, ∫ x : BRRSSpace d, ‖u t x‖ ^ p) := by
-    rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T u]
+    rw [discreteLpNorm_rpow_eq_sum_lintegral_ofReal_norm_rpow hp T u
+      (fun t ht => (hu t ht).aestronglyMeasurable)]
     rw [ENNReal.ofReal_sum_of_nonneg (fun t _ => integral_nonneg
       (fun x => Real.rpow_nonneg (norm_nonneg _) p))]
     apply Finset.sum_congr rfl
@@ -5881,7 +5882,8 @@ theorem brrs_sum_integral_norm_rpow_le_of_discreteLpNorm_le {d : Nat} {p : Real}
       ENNReal.ofReal_rpow_of_nonneg hC hp.le]
     have hnorm : (eLpNorm f (ENNReal.ofReal p) volume) ^ p =
         ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
-      rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp f]
+      rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp f
+        hf.aestronglyMeasurable]
       exact brrs_lintegral_ofReal_norm_rpow_eq hp hf
     rw [hnorm, ← ENNReal.ofReal_mul (Real.rpow_nonneg hC p)]
   rw [hleft, hright] at hpow
@@ -6037,7 +6039,8 @@ theorem exists_brrs_weighted_packet_card_upper_of_uniformEstimate {d : Nat}
       exact hpack j referenceTime hrefone
     have heq : (eLpNorm f (ENNReal.ofReal p) volume) ^ p =
         ENNReal.ofReal (∫ x : BRRSSpace d, ‖f x‖ ^ p) := by
-      rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp0 f]
+      rw [← Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow hp0 f
+        hfMem.aestronglyMeasurable]
       exact brrs_lintegral_ofReal_norm_rpow_eq hp0 hfMem
     have hpow := ENNReal.rpow_le_rpow hpk' hp0.le
     rw [heq, ENNReal.ofReal_rpow_of_nonneg hnn hp0.le] at hpow

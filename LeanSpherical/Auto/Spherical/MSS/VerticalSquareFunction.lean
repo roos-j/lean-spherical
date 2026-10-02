@@ -83,17 +83,24 @@ finite-dimensional input norm identity, not an `Lᵖ` estimate for vertical
 recombination. -/
 theorem eLpNorm_verticalSquareFunction_eq_eLpNorm_piLp
     (indices : Finset Int) (H : Int → WaveSpaceTime → Complex)
-    (p : ENNReal) :
+    (p : ENNReal)
+    (hH : AEStronglyMeasurable
+      (fun z : WaveSpaceTime =>
+        (WithLp.toLp 2 (fun n : (↥indices) => H n z) :
+          PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) volume) :
     eLpNorm (verticalSquareFunction indices H) p volume =
       eLpNorm
         (fun z : WaveSpaceTime =>
           (WithLp.toLp 2 (fun n : (↥indices) => H n z) :
             PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)))
         p volume := by
-  apply eLpNorm_congr_norm_ae
-  filter_upwards with z
-  rw [Real.norm_of_nonneg (verticalSquareFunction_nonneg indices H z),
-    verticalSquareFunction_eq_norm_piLp]
+  have hfun : verticalSquareFunction indices H = fun z : WaveSpaceTime =>
+      ‖(WithLp.toLp 2 (fun n : (↥indices) => H n z) :
+        PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖ := by
+    funext z
+    exact verticalSquareFunction_eq_norm_piLp indices H z
+  rw [hfun]
+  exact eLpNorm_norm _ hH
 
 private theorem aux_verticalSquareFunction_sub_le_sum_norm_tail
     (indices : Finset Int)
@@ -144,9 +151,26 @@ theorem eLpNorm_four_verticalSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
     (hdecomp : ∀ i ∈ indices, ∀ z, full i z = main i z + tail i z)
     (htailMeas : ∀ i ∈ indices, AEStronglyMeasurable (tail i) volume)
     (E : Int → ENNReal)
-    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i) :
+    (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i)
+    (hmainMeas : ∀ i ∈ indices, AEStronglyMeasurable (main i) volume) :
     eLpNorm (verticalSquareFunction indices full - verticalSquareFunction indices main)
         4 volume ≤ ∑ i ∈ indices, E i := by
+  have hsq (H : Int → WaveSpaceTime → Complex)
+      (hH : ∀ i ∈ indices, AEStronglyMeasurable (H i) volume) :
+      AEStronglyMeasurable (verticalSquareFunction indices H) volume := by
+    unfold verticalSquareFunction
+    apply Real.continuous_sqrt.comp_aestronglyMeasurable
+    apply Finset.aestronglyMeasurable_fun_sum indices
+    intro i hi
+    exact ((hH i hi).norm).pow 2
+  have hfullMeas : ∀ i ∈ indices, AEStronglyMeasurable (full i) volume := by
+    intro i hi
+    have hfi : full i = main i + tail i := funext (hdecomp i hi)
+    rw [hfi]
+    exact (hmainMeas i hi).add (htailMeas i hi)
+  have hdiffMeas : AEStronglyMeasurable
+      (verticalSquareFunction indices full - verticalSquareFunction indices main) volume :=
+    (hsq full hfullMeas).sub (hsq main hmainMeas)
   let G : WaveSpaceTime → Real := fun z => ∑ i ∈ indices, ‖tail i z‖
   have hGnonneg (z : WaveSpaceTime) : 0 ≤ G z := by
     exact Finset.sum_nonneg fun i hi => norm_nonneg _
@@ -159,7 +183,7 @@ theorem eLpNorm_four_verticalSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
     exact aux_verticalSquareFunction_sub_le_sum_norm_tail indices full main tail hdecomp z
   calc
     eLpNorm (verticalSquareFunction indices full - verticalSquareFunction indices main)
-        4 volume ≤ eLpNorm G 4 volume := eLpNorm_mono hmono
+        4 volume ≤ eLpNorm G 4 volume := eLpNorm_mono hdiffMeas hmono
     _ = eLpNorm (fun z => ∑ i ∈ indices, ‖tail i z‖) 4 volume := rfl
     _ = eLpNorm (∑ i ∈ indices, fun z => ‖tail i z‖) 4 volume := by
       congr 1
@@ -167,13 +191,11 @@ theorem eLpNorm_four_verticalSquareFunction_sub_le_sum_of_eq_add_of_tail_bounds
       simp only [Finset.sum_apply]
     _ ≤ ∑ i ∈ indices, eLpNorm (fun z => ‖tail i z‖) 4 volume := by
       apply eLpNorm_sum_le
-      · intro i hi
-        exact (htailMeas i hi).norm
-      · norm_num
+      norm_num
     _ = ∑ i ∈ indices, eLpNorm (tail i) 4 volume := by
       apply Finset.sum_congr rfl
       intro i hi
-      exact eLpNorm_norm (tail i)
+      exact eLpNorm_norm (tail i) (htailMeas i hi)
     _ ≤ ∑ i ∈ indices, E i := by
       apply Finset.sum_le_sum
       intro i hi
@@ -428,19 +450,24 @@ theorem verticalTemporalSquareFunction_eq_norm_piLp
 `eLpNorm` at every exponent. -/
 theorem eLpNorm_verticalTemporalSquareFunction_eq_eLpNorm_piLp
     (indices : Finset Int) (g : Int → Real → Complex)
-    (p : ENNReal) :
+    (p : ENNReal)
+    (hg : AEStronglyMeasurable
+      (fun t : Real =>
+        (WithLp.toLp 2 (fun n : (↥indices) => g n t) :
+          PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))) volume) :
     eLpNorm (verticalTemporalSquareFunction indices g) p volume =
       eLpNorm
         (fun t : Real =>
           (WithLp.toLp 2 (fun n : (↥indices) => g n t) :
             PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex)))
         p volume := by
-  apply eLpNorm_congr_norm_ae
-  filter_upwards with t
-  change ‖Real.sqrt (∑ n ∈ indices, ‖g n t‖ ^ (2 : Nat))‖ = _
-  rw [Real.norm_of_nonneg (Real.sqrt_nonneg _)]
-  simpa [verticalTemporalSquareFunction] using
-    verticalTemporalSquareFunction_eq_norm_piLp indices g t
+  have hfun : verticalTemporalSquareFunction indices g = fun t : Real =>
+      ‖(WithLp.toLp 2 (fun n : (↥indices) => g n t) :
+        PiLp (2 : ENNReal) (fun _ : (↥indices) => Complex))‖ := by
+    funext t
+    exact verticalTemporalSquareFunction_eq_norm_piLp indices g t
+  rw [hfun]
+  exact eLpNorm_norm _ hg
 
 private theorem aux_norm_le_temporal_square
     (indices : Finset Int) (g : Int → SchwartzMap Real Complex)
@@ -1037,7 +1064,7 @@ private theorem aux_integrable_norm_sq_verticalRecombined_verticalSeparablePacke
       fun z : WaveSpaceTime => ‖∑ n ∈ indices, h n z.2 * F n z.1‖ ^ (2 : ℕ) by
         funext z
         rw [houtput z]]
-  exact (memLp_two_iff_integrable_sq_norm hsum_memLp.1).mp hsum_memLp
+  exact (memLp_two_iff_integrable_sq_norm hsum_memLp.aestronglyMeasurable).mp hsum_memLp
 
 private theorem aux_integral_norm_sq_verticalSeparablePacket_eq_product
     (F : SchwartzMap (Euclidean 2) Complex) (g : SchwartzMap Real Complex) :
@@ -1565,7 +1592,7 @@ theorem eLpNorm_four_rpow_two_vertRecomb_vertSepblPkts_le_of_schw_profs_commTime
         · norm_num
       _ ≤ Real.sqrt (C * E) := Real.sqrt_le_sqrt hraw
   have htop : eLpNorm out ⊤ volume ≤ ENNReal.ofReal L := by
-    rw [eLpNorm_exponent_top]
+    rw [eLpNorm_exponent_top houtmem.aestronglyMeasurable]
     apply eLpNormEssSup_le_of_ae_bound
     filter_upwards with z
     dsimp only [out, L]
@@ -1607,8 +1634,7 @@ theorem eLpNorm_verticalRecombined_le_sum
       filter_upwards with z
       simp [verticalRecombined]
     _ ≤ ∑ n ∈ indices, eLpNorm (verticalProjection verticalCutoff scale n (H n)) p volume :=
-      eLpNorm_sum_le (f := fun n => verticalProjection verticalCutoff scale n (H n))
-        (s := indices) hmeas hp
+      eLpNorm_sum_le hp
 
 /-- If every vertical projection has a common `Lᵖ` bound, finite
 recombination costs at most the cardinality of its index family. -/
@@ -1781,8 +1807,7 @@ theorem eLpNorm_verticalRecombined_le_of_tendsto_eLpNorm
               (4 : ENNReal) volume +
             eLpNorm (verticalRecombined verticalCutoff scale indices (packets k))
               (4 : ENNReal) volume :=
-          eLpNorm_add_le (houtput_meas.sub (hpacket_output_meas k))
-            (hpacket_output_meas k) hp
+          eLpNorm_add_le hp
         _ = eLpNorm
               (verticalRecombined verticalCutoff scale indices (packets k) -
                 verticalRecombined verticalCutoff scale indices H)
@@ -1841,7 +1866,7 @@ theorem eLpNorm_verticalRecombined_le_of_tendsto_eLpNorm
                   (verticalSquareFunction indices (packets k) - verticalSquareFunction indices H)
                   (4 : ENNReal) volume +
                 eLpNorm (verticalSquareFunction indices H) (4 : ENNReal) volume :=
-              eLpNorm_add_le ((hpacket_square_meas k).sub hsquare_meas) hsquare_meas hp
+              eLpNorm_add_le hp
         exact hsquare_triangle
   have heout : Tendsto eout atTop (𝓝 0) := by
     simpa only [eout] using houtput_tendsto
