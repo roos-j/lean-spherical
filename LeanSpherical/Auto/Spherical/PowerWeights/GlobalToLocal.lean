@@ -6422,7 +6422,7 @@ private theorem globalToLocalMomentConstant_ne_top {p α : ℝ} {U A : ENNReal}
   finiteness [globalToLocalHardyConstant_ne_top hα,
     globalToLocalOuterMomentConstant_ne_top hp hA]
 
-private theorem hasStrongType_of_moment_bound_globalToLocal
+theorem hasStrongType_of_moment_bound_globalToLocal
     {d : ℕ} (E : Set ℝ) {p α : ℝ} (hp : 1 ≤ p) (K : ENNReal)
     (hK : K ≠ ∞)
     (hmoment : ∀ f : SchwartzMap (Euclidean d) ℂ,

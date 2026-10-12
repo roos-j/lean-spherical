@@ -10,3 +10,5 @@ Scratch*
 *.pdf
 Check*
 /.agents
+/automation/blueprints/fllrs.tex
+/automation/raw.md

@@ -489,7 +489,7 @@ theorem exists_iSup_relative_surface_scaled_schwartz_multiplier_weak_one
       dsimp [A, V]
 
 /- The raw `ENNReal` dyadic-ball supremum is finite on bounded inputs. -/
-private theorem dyadic_ball_maximal_raw_le_of_norm_le
+theorem dyadic_ball_maximal_raw_le_of_norm_le
     {d : ℕ} (g : Euclidean d → ℂ) (a : ℝ) (_ha : 0 ≤ a)
     (hg : ∀ y, ‖g y‖ ≤ a) (x : Euclidean d) :
     (⨆ n : ℤ,
@@ -893,9 +893,10 @@ theorem exists_relative_lowpass_kernel_majorant
 
 /- Marcinkiewicz interpolation applied to the dyadic-ball maximal function,
 kept at the lower-integral level for a later real-integral conversion. -/
-private theorem dyadic_ball_maximal_lintegral_bound
+theorem dyadic_ball_maximal_lintegral_bound_of_bounded
     {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p)
-    (f : SchwartzMap (Euclidean d) ℂ) :
+    (f : Euclidean d → ℂ) (hf : Measurable f)
+    (hfbounded : ∃ a : ℝ, 0 ≤ a ∧ ∀ x, ‖f x‖ ≤ a) :
     (∫⁻ x : Euclidean d,
       ENNReal.ofReal (dyadicBallMaximal d (f : Euclidean d → ℂ) x ^ p)) ≤
       ENNReal.ofReal p *
@@ -923,16 +924,23 @@ private theorem dyadic_ball_maximal_lintegral_bound
       (∀ x, ‖g x‖ ≤ a) → ∀ x, dyadicBallMaximal d g x ≤ a := by
     intro g a ha hga x
     exact dyadic_ball_maximal_top_bound g a ha hga x
-  have hfbounded : ∃ a : ℝ, 0 ≤ a ∧ ∀ x, ‖(f : Euclidean d → ℂ) x‖ ≤ a := by
-    refine ⟨‖f.toBoundedContinuousFunction‖, norm_nonneg _, ?_⟩
-    intro x
-    change ‖f.toBoundedContinuousFunction x‖ ≤ ‖f.toBoundedContinuousFunction‖
-    exact BoundedContinuousFunction.norm_coe_le_norm _ _
   simpa only [D] using
     (marcinkiewicz_weak_one_top (dyadicBallMaximal d) hnonneg hsub D hweak htop
-      hp (f : Euclidean d → ℂ) f.continuous.measurable hfbounded
-      (dyadic_ball_maximal_aemeasurable hd (f : Euclidean d → ℂ)
-        f.continuous.measurable))
+      hp f hf hfbounded (dyadic_ball_maximal_aemeasurable hd f hf))
+
+private theorem dyadic_ball_maximal_lintegral_bound
+    {d : ℕ} (hd : 0 < d) {p : ℝ} (hp : 1 < p)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    (∫⁻ x : Euclidean d,
+      ENNReal.ofReal (dyadicBallMaximal d (f : Euclidean d → ℂ) x ^ p)) ≤
+      ENNReal.ofReal p *
+        (2 * (ENNReal.ofReal (4 : ℝ)) ^ d * (ENNReal.ofReal (p - 1))⁻¹ *
+          (ENNReal.ofReal (2 : ℝ)) ^ (p - 1) *
+          ∫⁻ x : Euclidean d, (ENNReal.ofReal ‖(f : Euclidean d → ℂ) x‖) ^ p) := by
+  apply dyadic_ball_maximal_lintegral_bound_of_bounded hd hp f f.continuous.measurable
+  refine ⟨‖f.toBoundedContinuousFunction‖, norm_nonneg _, ?_⟩
+  intro x
+  exact BoundedContinuousFunction.norm_coe_le_norm f.toBoundedContinuousFunction x
 
 /-- A Schwartz input has matching real and extended-real `p`-moment
 integrals. -/

@@ -3238,9 +3238,9 @@ private theorem restrictedNormalizedSphericalMaximalReal_lintegral_rpow_of_stron
 /-- A weighted restricted maximal estimate at one positive exponent lifts to
 every larger exponent.  The proof is the literal weak--top interpolation
 above, with no appeal to an external maximal theorem. -/
-theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_type_lt
+theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_type_lt_integrable
     {d : ℕ} {E : Set ℝ} {α q p : ℝ}
-    (hd : 1 ≤ d) (hα : 1 - (d : ℝ) < α) (hq : 1 < q) (hqp : q < p)
+    (hd : 1 ≤ d) (hα : -(d : ℝ) < α) (hq : 1 < q) (hqp : q < p)
     (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E q α) :
     HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α := by
   have hα' : -(d : ℝ) < α := by linarith
@@ -3343,6 +3343,16 @@ theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_t
   refine ⟨by simpa only [μ] using hMmem, ?_⟩
   rw [← eLpNorm_restrictedNormalizedSphericalMaximalReal_schwartz_eq hd0 E f]
   exact hTnorm
+
+/-- The original strict-weight interface, retained as a specialization of
+the exponent-raising theorem for every locally integrable power weight. -/
+theorem hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_type_lt
+    {d : ℕ} {E : Set ℝ} {α q p : ℝ}
+    (hd : 1 ≤ d) (hα : 1 - (d : ℝ) < α) (hq : 1 < q) (hqp : q < p)
+    (hstrong : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E q α) :
+    HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α :=
+  hasRestrictedNormalizedSphericalMaximalPowerWeightStrongType_of_strong_type_lt_integrable
+    hd (by linarith) hq hqp hstrong
 
 end
 

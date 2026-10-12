@@ -10,6 +10,7 @@ public import LeanSpherical.Auto.Spherical.RS.TypeSetCharacterization
 public import LeanSpherical.Auto.Spherical.LegendreAssouad
 public import LeanSpherical.Auto.Spherical.BRRS.TheoremOne
 public import LeanSpherical.Auto.Spherical.BRSRadial.MainTheorems
+public import LeanSpherical.Auto.Spherical.FLLRS.MainTheorems
 
 /-!
 # LeanSpherical

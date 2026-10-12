@@ -1354,7 +1354,7 @@ private theorem rademacher_fourth_moment_upper {I : Type*} [DecidableEq I]
 /-- The finite Paley--Zygmund lower moment estimate for complex Rademacher
 signs.  The numerical constant is deliberately crude but independent of the
 cardinality of `s`. -/
-private theorem rademacher_lower_moment {I : Type*} [DecidableEq I]
+theorem rademacher_lower_moment {I : Type*} [DecidableEq I]
     (s : Finset I) (z : I → Complex) {p : Real} (hp : 0 ≤ p) :
     (s.powerset.card : Real) / 12 *
         ((∑ i ∈ s, ‖z i‖ ^ (2 : Nat)) / 2) ^ (p / 2) ≤
