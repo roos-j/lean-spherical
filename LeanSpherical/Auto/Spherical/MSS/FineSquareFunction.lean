@@ -26,6 +26,11 @@ public import Mathlib.Algebra.Module.ZLattice.Summable
 public import Mathlib.LinearAlgebra.Basis.Submodule
 public import Mathlib.Analysis.Asymptotics.SpecificAsymptotics
 public import LeanSpherical.Auto.Spherical.MSS.FourierCubeLattice
+public import Mathlib.Analysis.Calculus.TaylorIntegral
+public import Mathlib.Analysis.Calculus.MeanValue
+public import Mathlib.Analysis.Distribution.SchwartzSpace.Fourier
+public import Mathlib.Analysis.InnerProductSpace.Dual
+public import Mathlib.Analysis.InnerProductSpace.ProdL2
 
 /-!
 # MSS: Fine Square Function
@@ -2052,7 +2057,7 @@ theorem mssFineCubeKernelLocalization_of_lightRayDominance
 
 /-- The canonical fine cubes therefore satisfy the literal light-ray kernel
 localization interface, with no residual-kernel estimate assumed as data. -/
-private theorem exists_mssCanonicalFineCubeKernelLocalization
+theorem exists_mssCanonicalFineCubeKernelLocalization
     (D : MSSWavefrontKernelData)
     (H : MSSFineAngularData D.toMSSWavefrontCutoffData)
     (uniform : MSSFineSpatialProfileUniformRegularity D)
@@ -4543,7 +4548,7 @@ private theorem exists_uniform_mssFineCubePacketSquareFunction_fourthMoment_of_a
 
 /-- The same uniform fourth-moment package can use the proved direct lattice
 `L⁴` square-function bound, rather than the older averaged-sign hypothesis. -/
-private theorem exists_uniform_mssFineCubePacketSquareFunction_fourthMoment_of_analysis_L4_slab
+theorem exists_uniform_mssFineCubePacketSquareFunction_fourthMoment_of_analysis_L4_slab
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
     (N : Nat) (kernelConstant massConstant : Real)
     (localization : MSSFineCubeKernelLocalization D cubes N kernelConstant massConstant)
@@ -4862,6 +4867,4639 @@ theorem mssFineSquareFunctionEstimate_of_canonicalData
     _ = (ENNReal.ofReal (C * scale ^ eta)) ^ (4 : Real) *
         ∫⁻ y : Euclidean 2,
           (ENNReal.ofReal ‖(f : Euclidean 2 → Complex) y‖) ^ (4 : Real) := hRhs.symm
+
+
+
+
+/-! ## Actual normalized packet Taylor amplitudes
+
+The following dimension-generic estimates use the literal nonlinear Taylor
+remainder and fixed Schwartz source/output profiles. They prove uniform
+Fourier decay from finite true phase and cutoff derivative budgets. Their
+actual circular-family consumers must still establish the exact rescaled
+kernel representation and the source/ray geometry.
+-/
+
+open scoped ContDiff FourierTransform
+
+
+/-- The literal source Taylor error after subtracting the source covector. -/
+def sourcePacketTaylorRemainder
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ : Real) (w : E) : Real :=
+  P (y + δ • w) - P y - δ * fderiv Real P y w
+
+/-- The source Taylor error has a division-free Hessian integral formula. -/
+theorem sourcePacketTaylorRemainder_eq_integral
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) (w : E) :
+    sourcePacketTaylorRemainder P y δ w =
+      ∫ t in (0 : Real)..1, (1 - t) *
+        iteratedFDeriv Real 2 P (y + t • (δ • w)) (fun _ => δ • w) := by
+  have ht := map_add_eq_sum_add_integral_iteratedFDeriv
+    (f := P) (x := y) (y := δ • w) (n := 1)
+    (fun t _ => hP.contDiffAt.of_le (by simp))
+  simp only [Nat.reduceAdd, Finset.sum_range_succ, Finset.range_one,
+    Finset.sum_singleton, Nat.factorial_zero, Nat.factorial_one, Nat.cast_one,
+    inv_one, iteratedFDeriv_zero_apply, iteratedFDeriv_one_apply,
+    map_smul, smul_eq_mul, pow_one] at ht
+  dsimp [sourcePacketTaylorRemainder]
+  linarith
+
+/-- A uniform Hessian bound controls the actual source Taylor error at the
+parabolic packet scale, with no loss depending on the packet center. -/
+theorem sourcePacketTaylorRemainder_abs_le
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (M : Real) (_hM : 0 ≤ M)
+    (hbound : ∀ z, ‖iteratedFDeriv Real 2 P z‖ ≤ M)
+    (y : E) (δ : Real) (w : E) :
+    |sourcePacketTaylorRemainder P y δ w| ≤ M * δ ^ 2 * ‖w‖ ^ 2 := by
+  rw [sourcePacketTaylorRemainder_eq_integral P hP]
+  have hb : ∀ t ∈ Set.uIoc (0 : Real) 1,
+      ‖(1 - t) * iteratedFDeriv Real 2 P
+        (y + t • (δ • w)) (fun _ => δ • w)‖ ≤ M * δ ^ 2 * ‖w‖ ^ 2 := by
+    intro t ht
+    rw [Set.uIoc_of_le (by norm_num : (0 : Real) ≤ 1)] at ht
+    have htl := ht.1
+    have htr := ht.2
+    have habs : |1 - t| ≤ 1 := by
+      rw [abs_of_nonneg (by linarith : 0 ≤ 1 - t)]
+      linarith
+    have hop := (iteratedFDeriv Real 2 P (y + t • (δ • w))).le_opNorm
+      (fun _ => δ • w)
+    simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin,
+      norm_smul, Real.norm_eq_abs] at hop
+    calc
+      _ = |1 - t| * ‖iteratedFDeriv Real 2 P
+          (y + t • (δ • w)) (fun _ => δ • w)‖ := by rw [norm_mul, Real.norm_eq_abs]
+      _ ≤ 1 * (M * (|δ| * ‖w‖) ^ 2) := mul_le_mul habs
+        (hop.trans (mul_le_mul_of_nonneg_right (hbound _) (by positivity)))
+          (norm_nonneg _) (by positivity)
+      _ = _ := by rw [one_mul, mul_pow, sq_abs]; ring
+  simpa only [Real.norm_eq_abs, sub_zero, abs_one, mul_one] using
+    intervalIntegral.norm_integral_le_of_norm_le_const hb
+
+/-- The true first source derivative of the Taylor error. -/
+theorem sourcePacketTaylorRemainder_fderiv
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) (w : E) :
+    fderiv Real (sourcePacketTaylorRemainder P y δ) w =
+      δ • (fderiv Real P (y + δ • w) - fderiv Real P y) := by
+  have hp := hP.differentiable (by simp)
+  have hs : HasFDerivAt (fun z : E => y + δ • z)
+      (δ • ContinuousLinearMap.id Real E) w := by
+    simpa using ((hasFDerivAt_id w).const_smul δ).const_add y
+  have he := ((hp (y + δ • w)).hasFDerivAt.comp w hs).sub_const (P y)
+  have hl := ((fderiv Real P y).hasFDerivAt (x := w)).const_smul δ
+  have hh := he.sub hl
+  have hh' : HasFDerivAt (sourcePacketTaylorRemainder P y δ)
+      (fderiv Real P (y + δ • w) ∘L (δ • ContinuousLinearMap.id Real E) -
+        δ • fderiv Real P y) w := by
+    convert hh using 1
+    funext z
+    simp [sourcePacketTaylorRemainder, smul_eq_mul]
+  rw [hh'.fderiv]
+  ext v
+  simp only [sub_apply, ContinuousLinearMap.comp_apply,
+    smul_apply, ContinuousLinearMap.id_apply, map_smul,
+    smul_eq_mul]
+  ring
+
+/-- The true first source derivative has the same quadratic scale factor
+as the error itself. -/
+theorem sourcePacketTaylorRemainder_fderiv_norm_le
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (M : Real) (_hM : 0 ≤ M)
+    (hbound : ∀ z, ‖iteratedFDeriv Real 2 P z‖ ≤ M)
+    (y : E) (δ : Real) (w : E) :
+    ‖fderiv Real (sourcePacketTaylorRemainder P y δ) w‖ ≤
+      M * δ ^ 2 * ‖w‖ := by
+  have hh : ‖fderiv Real P (y + δ • w) - fderiv Real P y‖ ≤ M * ‖δ • w‖ := by
+    have hdiff : ∀ z ∈ (Set.univ : Set E),
+        DifferentiableAt Real (fderiv Real P) z :=
+      fun z _ => (hP.fderiv_right (m := (⊤ : ℕ∞)) (by simp)).differentiable (by simp) z
+    have hbd : ∀ z ∈ (Set.univ : Set E),
+        ‖fderiv Real (fderiv Real P) z‖ ≤ M := by
+      intro z _
+      have hn := norm_iteratedFDeriv_fderiv (𝕜 := Real) (f := P) (n := 1) (x := z)
+      simpa only [norm_iteratedFDeriv_one] using hn.le.trans (hbound z)
+    simpa only [add_sub_cancel_left] using
+      (convex_univ : Convex Real (Set.univ : Set E)).norm_image_sub_le_of_norm_fderiv_le
+        hdiff hbd (Set.mem_univ y) (Set.mem_univ (y + δ • w))
+  rw [sourcePacketTaylorRemainder_fderiv P hP, norm_smul, Real.norm_eq_abs]
+  calc
+    _ ≤ |δ| * (M * ‖δ • w‖) := mul_le_mul_of_nonneg_left hh (abs_nonneg δ)
+    _ = _ := by rw [norm_smul, Real.norm_eq_abs]; calc
+      |δ| * (M * (|δ| * ‖w‖)) = M * |δ| ^ 2 * ‖w‖ := by ring
+      _ = _ := by rw [sq_abs]
+
+
+/-- Exact higher derivative scaling of an affine source pullback. -/
+theorem sourcePacket_iteratedFDeriv_affine
+    {E F : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup F] [NormedSpace Real F]
+    (P : E → F) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) (w : E) (n : Nat) :
+    iteratedFDeriv Real n (fun z : E => P (y + δ • z)) w =
+      δ ^ n • iteratedFDeriv Real n P (y + δ • w) := by
+  have ht : ContDiff Real (⊤ : ℕ∞) (fun z : E => P (y + z)) :=
+    hP.comp (contDiff_const.add contDiff_id)
+  have hs := congrFun (iteratedFDeriv_comp_const_smul δ
+    (ht.of_le (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp))) w
+  simpa only [iteratedFDeriv_comp_add_left] using hs
+
+/-- Every higher derivative of the literal Taylor error keeps its full
+parabolic scaling factor. -/
+theorem sourcePacketTaylorRemainder_higher_norm
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) (w : E) (k : Nat) :
+    ‖iteratedFDeriv Real (k + 2) (sourcePacketTaylorRemainder P y δ) w‖ =
+      |δ| ^ (k + 2) * ‖iteratedFDeriv Real (k + 2) P (y + δ • w)‖ := by
+  have hDP : ContDiff Real (⊤ : ℕ∞) (fderiv Real P) :=
+    hP.fderiv_right (m := (⊤ : ℕ∞)) (by simp)
+  have hfun : fderiv Real (sourcePacketTaylorRemainder P y δ) =
+      fun z => δ • (fderiv Real P (y + δ • z) - fderiv Real P y) :=
+    funext (sourcePacketTaylorRemainder_fderiv P hP y δ)
+  have hcomp : ContDiff Real (⊤ : ℕ∞)
+      (fun z : E => fderiv Real P (y + δ • z) - fderiv Real P y) := by
+    apply (hDP.comp (contDiff_const.add (contDiff_id.const_smul δ))).sub contDiff_const
+  rw [show k + 2 = (k + 1) + 1 by omega, ← norm_iteratedFDeriv_fderiv,
+    hfun, iteratedFDeriv_const_smul_apply' (hcomp.contDiffAt.of_le (by simp)),
+    norm_smul, Real.norm_eq_abs]
+  have he0 := iteratedFDeriv_sub_apply (x := w) (i := k + 1)
+    (f := fun z : E => fderiv Real P (y + δ • z))
+    (g := fun _ : E => fderiv Real P y)
+    ((hDP.comp (contDiff_const.add (contDiff_id.const_smul δ))).contDiffAt.of_le
+      (show ((k + 1 : Nat) : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp))
+    (contDiffAt_const (c := fderiv Real P y))
+  have he : iteratedFDeriv Real (k + 1)
+      (fun z : E => fderiv Real P (y + δ • z) - fderiv Real P y) w =
+      iteratedFDeriv Real (k + 1) (fun z : E => fderiv Real P (y + δ • z)) w -
+        iteratedFDeriv Real (k + 1) (fun _ : E => fderiv Real P y) w := by
+    convert he0 using 1
+  rw [he, iteratedFDeriv_const_of_ne (by omega : k + 1 ≠ 0), Pi.zero_apply, sub_zero,
+    sourcePacket_iteratedFDeriv_affine (fderiv Real P) hDP,
+    norm_smul, Real.norm_eq_abs, abs_pow, norm_iteratedFDeriv_fderiv]
+  simp only [pow_succ, Nat.add_assoc]
+  ring
+
+/-- Uniform higher source derivative bounds for the normalized Taylor
+error when the packet scale is at most one. -/
+theorem sourcePacketTaylorRemainder_higher_norm_le
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (M : Real) (_hM : 0 ≤ M)
+    (y : E) (δ : Real) (w : E) (k : Nat)
+    (hδ : |δ| ≤ 1)
+    (hbound : ∀ z, ‖iteratedFDeriv Real (k + 2) P z‖ ≤ M) :
+    ‖iteratedFDeriv Real (k + 2) (sourcePacketTaylorRemainder P y δ) w‖ ≤
+      M * δ ^ 2 := by
+  rw [sourcePacketTaylorRemainder_higher_norm P hP]
+  have hp : |δ| ^ (k + 2) ≤ δ ^ 2 := by
+    calc
+      _ = |δ| ^ k * |δ| ^ 2 := by rw [pow_add]
+      _ ≤ 1 * |δ| ^ 2 := mul_le_mul_of_nonneg_right
+        (pow_le_one₀ (abs_nonneg δ) hδ) (by positivity)
+      _ = _ := by rw [one_mul, sq_abs]
+  calc
+    _ ≤ |δ| ^ (k + 2) * M := mul_le_mul_of_nonneg_left (hbound _) (by positivity)
+    _ ≤ δ ^ 2 * M := mul_le_mul_of_nonneg_right hp _hM
+    _ = _ := by ring
+
+
+/-- Source Taylor error in parabolically normalized variables. -/
+def sourcePacketNormalizedTaylor
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ : Real) : E → Real :=
+  fun w => (δ ^ 2)⁻¹ * sourcePacketTaylorRemainder P y δ w
+
+/-- The normalized first source difference in the radial frequency variable. -/
+def sourcePacketNormalizedDifference
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ : Real) : E → Real :=
+  fun w => δ⁻¹ * (P (y + δ • w) - P y)
+
+theorem sourcePacketTaylorRemainder_contDiff
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) :
+    ContDiff Real (⊤ : ℕ∞) (sourcePacketTaylorRemainder P y δ) := by
+  change ContDiff Real (⊤ : ℕ∞)
+    (fun w : E => P (y + δ • w) - P y - δ * fderiv Real P y w)
+  exact ((hP.comp (contDiff_const.add (contDiff_id.const_smul δ))).sub
+    contDiff_const).sub ((fderiv Real P y).contDiff.const_smul δ)
+
+theorem sourcePacketNormalizedTaylor_contDiff
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) :
+    ContDiff Real (⊤ : ℕ∞) (sourcePacketNormalizedTaylor P y δ) :=
+  by
+  unfold sourcePacketNormalizedTaylor
+  simpa only [smul_eq_mul] using
+    (sourcePacketTaylorRemainder_contDiff P hP y δ).const_smul ((δ ^ 2)⁻¹)
+
+theorem sourcePacketNormalizedDifference_contDiff
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ : Real) :
+    ContDiff Real (⊤ : ℕ∞) (sourcePacketNormalizedDifference P y δ) :=
+  by
+  unfold sourcePacketNormalizedDifference
+  have hc : ContDiff Real (⊤ : ℕ∞) (fun w : E => P (y + δ • w) - P y) :=
+    (hP.comp (contDiff_const.add (contDiff_id.const_smul δ))).sub contDiff_const
+  simpa only [smul_eq_mul] using hc.const_smul δ⁻¹
+
+/-- Uniform polynomial bounds for every derivative of the normalized Taylor
+error. The bound is independent of the source center and the packet scale. -/
+theorem sourcePacketNormalizedTaylor_uniform_derivatives
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (N : Nat) (M : Real) (hM : 0 ≤ M)
+    (hbound : ∀ n ≤ max N 2, ∀ z, ‖iteratedFDeriv Real n P z‖ ≤ M)
+    (y : E) (δ : Real) (hδ : 0 < δ) (hδone : δ ≤ 1) :
+    ∀ n ≤ N, ∀ w,
+      ‖iteratedFDeriv Real n (sourcePacketNormalizedTaylor P y δ) w‖ ≤
+        M * (1 + ‖w‖) ^ 2 := by
+  intro n hn w
+  have hδsq : δ ^ 2 ≠ 0 := pow_ne_zero _ hδ.ne'
+  have hnorm : ‖iteratedFDeriv Real n (sourcePacketNormalizedTaylor P y δ) w‖ =
+      (δ ^ 2)⁻¹ * ‖iteratedFDeriv Real n (sourcePacketTaylorRemainder P y δ) w‖ := by
+    unfold sourcePacketNormalizedTaylor
+    rw [show (fun w => (δ ^ 2)⁻¹ * sourcePacketTaylorRemainder P y δ w) =
+      (fun w => (δ ^ 2)⁻¹ • sourcePacketTaylorRemainder P y δ w) by rfl,
+      iteratedFDeriv_const_smul_apply'
+        ((sourcePacketTaylorRemainder_contDiff P hP y δ).contDiffAt.of_le (by simp)),
+      norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 0 < (δ ^ 2)⁻¹)]
+  rw [hnorm]
+  rcases n with _ | (_ | k)
+  · rw [norm_iteratedFDeriv_zero, Real.norm_eq_abs]
+    calc
+      _ ≤ (δ ^ 2)⁻¹ * (M * δ ^ 2 * ‖w‖ ^ 2) :=
+        mul_le_mul_of_nonneg_left
+          (sourcePacketTaylorRemainder_abs_le P hP M hM (hbound 2 (le_max_right _ _)) y δ w)
+          (by positivity)
+      _ = M * ‖w‖ ^ 2 := by field_simp
+      _ ≤ _ := by gcongr; nlinarith [norm_nonneg w]
+  · rw [norm_iteratedFDeriv_one]
+    calc
+      _ ≤ (δ ^ 2)⁻¹ * (M * δ ^ 2 * ‖w‖) :=
+        mul_le_mul_of_nonneg_left
+          (sourcePacketTaylorRemainder_fderiv_norm_le P hP M hM
+            (hbound 2 (le_max_right _ _)) y δ w) (by positivity)
+      _ = M * ‖w‖ := by field_simp
+      _ ≤ _ := by gcongr; nlinarith [sq_nonneg ‖w‖, norm_nonneg w]
+  · have hn' : k + 2 ≤ max N 2 := by omega
+    calc
+      _ ≤ (δ ^ 2)⁻¹ * (M * δ ^ 2) :=
+        mul_le_mul_of_nonneg_left
+          (sourcePacketTaylorRemainder_higher_norm_le P hP M hM y δ w k
+            (by rwa [abs_of_pos hδ]) (hbound (k + 2) hn')) (by positivity)
+      _ = M := by field_simp
+      _ ≤ _ := by
+        simpa only [mul_one] using mul_le_mul_of_nonneg_left
+          (by nlinarith [norm_nonneg w, sq_nonneg ‖w‖] : (1 : Real) ≤ (1 + ‖w‖) ^ 2) hM
+
+/-- Uniform polynomial bounds for the normalized first source difference. -/
+theorem sourcePacketNormalizedDifference_uniform_derivatives
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (N : Nat) (M : Real) (hM : 0 ≤ M)
+    (hbound : ∀ n ≤ max N 1, ∀ z, ‖iteratedFDeriv Real n P z‖ ≤ M)
+    (y : E) (δ : Real) (hδ : 0 < δ) (hδone : δ ≤ 1) :
+    ∀ n ≤ N, ∀ w,
+      ‖iteratedFDeriv Real n (sourcePacketNormalizedDifference P y δ) w‖ ≤
+        M * (1 + ‖w‖) := by
+  intro n hn w
+  have hcomp : ContDiff Real (⊤ : ℕ∞) (fun z : E => P (y + δ • z) - P y) :=
+    (hP.comp (contDiff_const.add (contDiff_id.const_smul δ))).sub contDiff_const
+  have hnorm : ‖iteratedFDeriv Real n (sourcePacketNormalizedDifference P y δ) w‖ =
+      δ⁻¹ * ‖iteratedFDeriv Real n (fun z : E => P (y + δ • z) - P y) w‖ := by
+    unfold sourcePacketNormalizedDifference
+    rw [show (fun w => δ⁻¹ * (P (y + δ • w) - P y)) =
+      (fun w => δ⁻¹ • (P (y + δ • w) - P y)) by rfl,
+      iteratedFDeriv_const_smul_apply'
+        (hcomp.contDiffAt.of_le (by simp)),
+      norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hδ)]
+  rw [hnorm]
+  cases n with
+  | zero =>
+    rw [norm_iteratedFDeriv_zero]
+    have hdiff : ‖P (y + δ • w) - P y‖ ≤ M * ‖δ • w‖ := by
+      have hb : ∀ z ∈ (Set.univ : Set E), ‖fderiv Real P z‖ ≤ M := by
+        intro z _
+        simpa only [norm_iteratedFDeriv_one] using hbound 1 (le_max_right _ _) z
+      simpa only [add_sub_cancel_left] using
+        (convex_univ : Convex Real (Set.univ : Set E)).norm_image_sub_le_of_norm_fderiv_le
+          (fun z _ => hP.differentiable (by simp) z) hb
+          (Set.mem_univ y) (Set.mem_univ (y + δ • w))
+    calc
+      _ ≤ δ⁻¹ * (M * ‖δ • w‖) := mul_le_mul_of_nonneg_left hdiff (by positivity)
+      _ = M * ‖w‖ := by rw [norm_smul, Real.norm_eq_abs, abs_of_pos hδ]; field_simp
+      _ ≤ _ := by nlinarith
+  | succ k =>
+    have he0 := iteratedFDeriv_sub_apply (x := w) (i := k + 1)
+      (f := fun z : E => P (y + δ • z)) (g := fun _ : E => P y)
+      ((hP.comp (contDiff_const.add (contDiff_id.const_smul δ))).contDiffAt.of_le (by simp))
+      contDiffAt_const
+    have he : iteratedFDeriv Real (k + 1) (fun z : E => P (y + δ • z) - P y) w =
+        iteratedFDeriv Real (k + 1) (fun z : E => P (y + δ • z)) w -
+          iteratedFDeriv Real (k + 1) (fun _ : E => P y) w := by convert he0 using 1
+    rw [he, iteratedFDeriv_const_of_ne (by omega : k + 1 ≠ 0), Pi.zero_apply,
+      sub_zero, sourcePacket_iteratedFDeriv_affine P hP, norm_smul,
+      Real.norm_eq_abs, abs_pow, abs_of_pos hδ]
+    have hp : δ⁻¹ * δ ^ (k + 1) ≤ 1 := by
+      calc
+        _ = δ ^ k := by rw [pow_succ]; field_simp
+        _ ≤ 1 := pow_le_one₀ hδ.le hδone
+    calc
+      _ ≤ δ⁻¹ * (δ ^ (k + 1) * M) := by gcongr; exact hbound (k + 1) (by omega) _
+      _ = (δ⁻¹ * δ ^ (k + 1)) * M := by ring
+      _ ≤ 1 * M := mul_le_mul_of_nonneg_right hp hM
+      _ ≤ _ := by nlinarith [norm_nonneg w]
+
+
+/-- A contractive linear pullback does not enlarge an iterated derivative.
+This general form is used for both coordinates of the normalized packet. -/
+theorem sourcePacket_norm_iteratedFDeriv_comp_contraction
+    {D E F : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup F] [NormedSpace Real F]
+    (L : D →L[Real] E) (hL : ‖L‖ ≤ 1)
+    (P : E → F) (hP : ContDiff Real (⊤ : ℕ∞) P) (x : D) (n : Nat) :
+    ‖iteratedFDeriv Real n (P ∘ L) x‖ ≤
+      ‖iteratedFDeriv Real n P (L x)‖ := by
+  rw [L.iteratedFDeriv_comp_right hP x (by simp)]
+  calc
+    _ ≤ ‖iteratedFDeriv Real n P (L x)‖ * ∏ _ : Fin n, ‖L‖ :=
+      ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _
+    _ ≤ ‖iteratedFDeriv Real n P (L x)‖ * ∏ _ : Fin n, (1 : Real) := by
+      gcongr
+    _ = _ := by simp
+
+/-- All derivatives of a contractive linear coordinate have a uniform
+linear growth bound. -/
+theorem sourcePacket_linear_coordinate_derivatives
+    {D : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    (L : D →L[Real] Real) (hL : ‖L‖ ≤ 1) (x : D) (n : Nat) :
+    ‖iteratedFDeriv Real n (L : D → Real) x‖ ≤ 1 + ‖x‖ := by
+  rcases n with _ | (_ | k)
+  · rw [norm_iteratedFDeriv_zero]
+    calc
+      _ ≤ ‖L‖ * ‖x‖ := L.le_opNorm x
+      _ ≤ 1 * ‖x‖ := mul_le_mul_of_nonneg_right hL (norm_nonneg x)
+      _ ≤ _ := by linarith
+  · rw [norm_iteratedFDeriv_one, L.fderiv]
+    exact hL.trans (by linarith [norm_nonneg x])
+  · have he : fderiv Real (L : D → Real) = fun _ => L := funext (fun _ => L.fderiv)
+    rw [show k + 2 = (k + 1) + 1 by omega, ← norm_iteratedFDeriv_fderiv,
+      he, iteratedFDeriv_const_of_ne (by omega : k + 1 ≠ 0), Pi.zero_apply, norm_zero]
+    positivity
+
+/-- The literal nonlinear phase left after extracting the linear dual
+mismatch in normalized packet coordinates. -/
+def sourcePacketNormalizedRemainder
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ a : Real)
+    (L : D →L[Real] E) (S : D →L[Real] Real) : D → Real :=
+  fun x => a * sourcePacketNormalizedTaylor P y δ (L x) +
+    S x * sourcePacketNormalizedDifference P y δ (L x)
+
+theorem sourcePacketNormalizedRemainder_contDiff
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (y : E) (δ a : Real) (L : D →L[Real] E) (S : D →L[Real] Real) :
+    ContDiff Real (⊤ : ℕ∞) (sourcePacketNormalizedRemainder P y δ a L S) := by
+  unfold sourcePacketNormalizedRemainder
+  exact (((sourcePacketNormalizedTaylor_contDiff P hP y δ).comp L.contDiff).const_smul a).add
+    (S.contDiff.mul ((sourcePacketNormalizedDifference_contDiff P hP y δ).comp L.contDiff))
+
+/-- Finite source derivative budgets give a uniform quadratic polynomial bound
+for every joint derivative of the normalized nonlinear packet phase.
+No bound on the packet center or inverse scale is needed. -/
+theorem sourcePacketNormalizedRemainder_uniform_derivatives
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : ContDiff Real (⊤ : ℕ∞) P)
+    (N : Nat) (M : Real) (hM : 0 ≤ M)
+    (hbound : ∀ n ≤ max N 2, ∀ z, ‖iteratedFDeriv Real n P z‖ ≤ M)
+    (y : E) (δ a A : Real) (hδ : 0 < δ) (hδone : δ ≤ 1)
+    (hA : 0 ≤ A) (ha : |a| ≤ A)
+    (L : D →L[Real] E) (hL : ‖L‖ ≤ 1)
+    (S : D →L[Real] Real) (hS : ‖S‖ ≤ 1) :
+    ∀ n ≤ N, ∀ x,
+      ‖iteratedFDeriv Real n (sourcePacketNormalizedRemainder P y δ a L S) x‖ ≤
+        (A + 2 ^ N) * M * (1 + ‖x‖) ^ 2 := by
+  intro n hn x
+  let F : D → Real := sourcePacketNormalizedTaylor P y δ ∘ L
+  let G : D → Real := sourcePacketNormalizedDifference P y δ ∘ L
+  have hF : ContDiff Real (⊤ : ℕ∞) F :=
+    (sourcePacketNormalizedTaylor_contDiff P hP y δ).comp L.contDiff
+  have hG : ContDiff Real (⊤ : ℕ∞) G :=
+    (sourcePacketNormalizedDifference_contDiff P hP y δ).comp L.contDiff
+  have hLx : ‖L x‖ ≤ ‖x‖ :=
+    (L.le_opNorm x).trans (by nlinarith [norm_nonneg x])
+  have hbF : ∀ i ≤ n, ‖iteratedFDeriv Real i F x‖ ≤ M * (1 + ‖x‖) ^ 2 := by
+    intro i hi
+    calc
+      _ ≤ ‖iteratedFDeriv Real i (sourcePacketNormalizedTaylor P y δ) (L x)‖ :=
+        sourcePacket_norm_iteratedFDeriv_comp_contraction L hL _
+          (sourcePacketNormalizedTaylor_contDiff P hP y δ) x i
+      _ ≤ M * (1 + ‖L x‖) ^ 2 :=
+        sourcePacketNormalizedTaylor_uniform_derivatives P hP N M hM hbound y δ hδ hδone i
+          (hi.trans hn) _
+      _ ≤ _ := by gcongr
+  have hbG : ∀ i ≤ n, ‖iteratedFDeriv Real i G x‖ ≤ M * (1 + ‖x‖) := by
+    intro i hi
+    calc
+      _ ≤ ‖iteratedFDeriv Real i (sourcePacketNormalizedDifference P y δ) (L x)‖ :=
+        sourcePacket_norm_iteratedFDeriv_comp_contraction L hL _
+          (sourcePacketNormalizedDifference_contDiff P hP y δ) x i
+      _ ≤ M * (1 + ‖L x‖) :=
+        sourcePacketNormalizedDifference_uniform_derivatives P hP N M hM
+          (fun j hj z => hbound j (by omega) z) y δ hδ hδone i (hi.trans hn) _
+      _ ≤ _ := by gcongr
+  have hmul := norm_iteratedFDeriv_mul_le S.contDiff hG x
+    (n := n) (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp)
+  have hmul' : ‖iteratedFDeriv Real n (fun z : D => S z * G z) x‖ ≤
+      2 ^ N * M * (1 + ‖x‖) ^ 2 := by
+    calc
+      _ ≤ ∑ i ∈ Finset.range (n + 1),
+          (n.choose i : Real) * ‖iteratedFDeriv Real i (S : D → Real) x‖ *
+            ‖iteratedFDeriv Real (n - i) G x‖ := hmul
+      _ ≤ ∑ i ∈ Finset.range (n + 1),
+          (n.choose i : Real) * (1 + ‖x‖) * (M * (1 + ‖x‖)) := by
+        apply Finset.sum_le_sum
+        intro i hi
+        gcongr
+        · exact sourcePacket_linear_coordinate_derivatives S hS x i
+        · exact hbG (n - i) (Nat.sub_le _ _)
+      _ = 2 ^ n * M * (1 + ‖x‖) ^ 2 := by
+        simp_rw [show ∀ i, (n.choose i : Real) * (1 + ‖x‖) * (M * (1 + ‖x‖)) =
+          (n.choose i : Real) * (M * (1 + ‖x‖) ^ 2) by intro; ring]
+        rw [← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose, Nat.cast_pow, Nat.cast_ofNat]
+        ring
+      _ ≤ _ := by gcongr; norm_num
+  have hadd := iteratedFDeriv_add_apply (x := x) (i := n)
+    (f := fun z : D => a • F z) (g := fun z : D => S z * G z)
+    ((hF.const_smul a).contDiffAt.of_le (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp))
+    ((S.contDiff.mul hG).contDiffAt.of_le (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp))
+  have he : iteratedFDeriv Real n (sourcePacketNormalizedRemainder P y δ a L S) x =
+      a • iteratedFDeriv Real n F x +
+        iteratedFDeriv Real n (fun z : D => S z * G z) x := by
+    convert hadd using 1
+    · congr 1
+    · rw [iteratedFDeriv_const_smul_apply' (f := F) (a := a) (x := x) (i := n)
+        (hF.contDiffAt.of_le (by simp))]
+  rw [he]
+  calc
+    _ ≤ ‖a • iteratedFDeriv Real n F x‖ +
+        ‖iteratedFDeriv Real n (fun z : D => S z * G z) x‖ := norm_add_le _ _
+    _ ≤ A * (M * (1 + ‖x‖) ^ 2) + 2 ^ N * M * (1 + ‖x‖) ^ 2 := by
+      rw [norm_smul, Real.norm_eq_abs]
+      exact add_le_add (mul_le_mul ha (hbF n le_rfl) (norm_nonneg _) (by positivity)) hmul'
+    _ = (A + 2 ^ N) * M * (1 + ‖x‖) ^ 2 := by ring
+
+
+theorem sourcePacketNormalizedRemainder_hasTemperateGrowth
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : Function.HasTemperateGrowth P)
+    (y : E) (δ a : Real) (L : D →L[Real] E) (S : D →L[Real] Real) :
+    Function.HasTemperateGrowth (sourcePacketNormalizedRemainder P y δ a L S) := by
+  unfold sourcePacketNormalizedRemainder sourcePacketNormalizedTaylor
+    sourcePacketNormalizedDifference sourcePacketTaylorRemainder
+  fun_prop
+
+/-- The actual oscillatory normalized remainder multiplied by a fixed
+Schwartz packet profile. -/
+def sourcePacketNormalizedAmplitude
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ a : Real)
+    (L : D →L[Real] E) (S : D →L[Real] Real)
+    (Φ : SchwartzMap D Complex) : SchwartzMap D Complex :=
+  SchwartzMap.smulLeftCLM Complex
+    (fun x => Complex.exp (((sourcePacketNormalizedRemainder P y δ a L S x : Real) : Complex) *
+      Complex.I)) Φ
+
+theorem sourcePacketNormalizedAmplitude_apply
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : Function.HasTemperateGrowth P)
+    (y : E) (δ a : Real) (L : D →L[Real] E) (S : D →L[Real] Real)
+    (Φ : SchwartzMap D Complex) (x : D) :
+    sourcePacketNormalizedAmplitude P y δ a L S Φ x =
+      Complex.exp (((sourcePacketNormalizedRemainder P y δ a L S x : Real) : Complex) *
+        Complex.I) * Φ x := by
+  have hg : Function.HasTemperateGrowth
+      (fun z => Complex.exp (((sourcePacketNormalizedRemainder P y δ a L S z : Real) : Complex) *
+        Complex.I)) :=
+    Complex.hasTemperateGrowth_exp_mul_I.comp
+      (sourcePacketNormalizedRemainder_hasTemperateGrowth P hP y δ a L S)
+  unfold sourcePacketNormalizedAmplitude
+  rw [SchwartzMap.smulLeftCLM_apply_apply hg, smul_eq_mul]
+
+
+/-- Uniform polynomial derivative bounds survive the purely imaginary
+exponential. The constants depend only on the derivative budget, not the
+individual nonlinear phase. -/
+theorem sourcePacket_phaseExponential_uniform_derivatives
+    {D : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    (N : Nat) (B : Real) (hB : 0 ≤ B) :
+    ∃ l : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ R : D → Real, ContDiff Real (⊤ : ℕ∞) R →
+      (∀ i ≤ N, ∀ x, ‖iteratedFDeriv Real i R x‖ ≤ B * (1 + ‖x‖) ^ 2) →
+      ∀ n ≤ N, ∀ x,
+      ‖iteratedFDeriv Real n (fun z => Complex.exp ((R z : Complex) * Complex.I)) x‖ ≤
+        C * (1 + ‖x‖) ^ l := by
+  let E : Real → Complex := fun t => Complex.exp ((t : Complex) * Complex.I)
+  have hE : Function.HasTemperateGrowth E := Complex.hasTemperateGrowth_exp_mul_I
+  obtain ⟨k, C₀, hC₀, houter⟩ := hE.norm_iteratedFDeriv_le_uniform N
+  refine ⟨2 * (k + N), (N.factorial : Real) * C₀ * (1 + B) ^ (k + N),
+    by positivity, ?_⟩
+  intro R hR hbudget n hn x
+  let q : Real := 1 + ‖x‖
+  have hq : 1 ≤ q := by dsimp [q]; linarith [norm_nonneg x]
+  have hqpos : 0 < q := lt_of_lt_of_le zero_lt_one hq
+  have hD : 1 ≤ (1 + B) * q ^ 2 :=
+    one_le_mul_of_one_le_of_one_le (by linarith) (one_le_pow₀ hq)
+  have hinner : ∀ i, 1 ≤ i → i ≤ n →
+      ‖iteratedFDeriv Real i R x‖ ≤ ((1 + B) * q ^ 2) ^ i := by
+    intro i hi hin
+    calc
+      _ ≤ B * q ^ 2 := hbudget i (hin.trans hn) x
+      _ ≤ (1 + B) * q ^ 2 := by gcongr; linarith
+      _ ≤ _ := le_self_pow₀ hD (by omega)
+  have hRvalue : |R x| ≤ B * q ^ 2 := by
+    simpa only [norm_iteratedFDeriv_zero, Real.norm_eq_abs] using hbudget 0 (by omega) x
+  have hvalue : 1 + |R x| ≤ (1 + B) * q ^ 2 := by
+    have hq2 := one_le_pow₀ (n := 2) hq
+    nlinarith
+  have houter' : ∀ i, i ≤ n → ‖iteratedFDeriv Real i E (R x)‖ ≤
+      C₀ * (1 + B) ^ k * q ^ (2 * k) := by
+    intro i hi
+    calc
+      _ ≤ C₀ * (1 + ‖R x‖) ^ k := houter i (hi.trans hn) (R x)
+      _ ≤ C₀ * ((1 + B) * q ^ 2) ^ k := by rw [Real.norm_eq_abs]; gcongr
+      _ = _ := by rw [mul_pow, ← pow_mul]; ring
+  have hc := norm_iteratedFDeriv_comp_le hE.1 hR
+    (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp) x houter' hinner
+  change ‖iteratedFDeriv Real n (E ∘ R) x‖ ≤ _
+  calc
+    _ ≤ (n.factorial : Real) * (C₀ * (1 + B) ^ k * q ^ (2 * k)) *
+        ((1 + B) * q ^ 2) ^ n := hc
+    _ = (n.factorial : Real) * C₀ * (1 + B) ^ (k + n) * q ^ (2 * (k + n)) := by
+      rw [mul_pow, ← pow_mul, pow_add, show 2 * (k + n) = 2 * k + 2 * n by omega, pow_add]
+      ring
+    _ ≤ (N.factorial : Real) * C₀ * (1 + B) ^ (k + N) * q ^ (2 * (k + N)) := by
+      gcongr
+      linarith
+    _ = _ := rfl
+
+
+/-- A uniform polynomial derivative budget for a multiplier gives a uniform
+Schwartz seminorm budget after multiplication by a fixed packet profile. -/
+theorem sourcePacket_multiplier_seminorm_le
+    {D : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    (g : D → Complex) (hg : Function.HasTemperateGrowth g)
+    (Φ : SchwartzMap D Complex) (k n l : Nat) (C : Real) (hC : 0 ≤ C)
+    (hbudget : ∀ i ≤ n, ∀ x, ‖iteratedFDeriv Real i g x‖ ≤ C * (1 + ‖x‖) ^ l) :
+    SchwartzMap.seminorm Complex k n (SchwartzMap.smulLeftCLM Complex g Φ) ≤
+      C * 2 ^ (n + l + k) *
+        (Finset.Iic (l + k, n)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  let U : Real := (Finset.Iic (l + k, n)).sup
+    (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  have hm : (SchwartzMap.smulLeftCLM Complex g Φ : D → Complex) = fun x => Φ x * g x := by
+    funext x
+    rw [SchwartzMap.smulLeftCLM_apply_apply hg, smul_eq_mul, mul_comm]
+  refine SchwartzMap.seminorm_le_bound Complex k n _
+    (mul_nonneg (mul_nonneg hC (by positivity)) hU) ?_
+  intro x
+  rw [hm]
+  have hmul := norm_iteratedFDeriv_mul_le (Φ.smooth (⊤ : ℕ∞)) hg.1 x
+    (n := n) (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp)
+  calc
+    _ ≤ ‖x‖ ^ k * ∑ i ∈ Finset.range (n + 1),
+        (n.choose i : Real) * ‖iteratedFDeriv Real i (Φ : D → Complex) x‖ *
+          ‖iteratedFDeriv Real (n - i) g x‖ := mul_le_mul_of_nonneg_left hmul (by positivity)
+    _ ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : Real) * (C * 2 ^ (l + k) * U) := by
+      rw [Finset.mul_sum]
+      apply Finset.sum_le_sum
+      intro i hi
+      have hin : i ≤ n := by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hi
+      have hPhi : (1 + ‖x‖) ^ (l + k) * ‖iteratedFDeriv Real i (Φ : D → Complex) x‖ ≤
+          2 ^ (l + k) * U :=
+        Φ.one_add_le_sup_seminorm_apply (𝕜 := Complex) (m := (l + k, n)) le_rfl hin x
+      have hweight : ‖x‖ ^ k * (1 + ‖x‖) ^ l *
+          ‖iteratedFDeriv Real i (Φ : D → Complex) x‖ ≤ 2 ^ (l + k) * U := by
+        apply le_trans _ hPhi
+        have hp : ‖x‖ ^ k ≤ (1 + ‖x‖) ^ k := by
+          gcongr
+          linarith [norm_nonneg x]
+        calc
+          _ ≤ (1 + ‖x‖) ^ k * (1 + ‖x‖) ^ l *
+              ‖iteratedFDeriv Real i (Φ : D → Complex) x‖ := by gcongr
+          _ = _ := by rw [pow_add]; ring
+      calc
+        _ ≤ ‖x‖ ^ k * ((n.choose i : Real) *
+            ‖iteratedFDeriv Real i (Φ : D → Complex) x‖ *
+              (C * (1 + ‖x‖) ^ l)) := by
+          gcongr
+          exact hbudget (n - i) (Nat.sub_le _ _) x
+        _ = (n.choose i : Real) * C * (‖x‖ ^ k * (1 + ‖x‖) ^ l *
+            ‖iteratedFDeriv Real i (Φ : D → Complex) x‖) := by ring
+        _ ≤ (n.choose i : Real) * C * (2 ^ (l + k) * U) :=
+          mul_le_mul_of_nonneg_left hweight (by positivity)
+        _ = _ := by ring
+    _ = C * 2 ^ (n + l + k) * U := by
+      rw [← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose, Nat.cast_pow, Nat.cast_ofNat]
+      rw [show n + l + k = n + (l + k) by omega, pow_add]
+      ring
+
+
+/-- The normalized oscillatory amplitude has uniformly bounded Schwartz
+seminorms. This proves the seminorm budget from the actual Taylor remainder,
+rather than postulating a packet localization estimate. -/
+theorem sourcePacketNormalizedAmplitude_uniform_seminorm
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (k n : Nat) (M A : Real) (hM : 0 ≤ M) (hA : 0 ≤ A) :
+    ∃ l : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ P : E → Real, Function.HasTemperateGrowth P →
+      (∀ j ≤ max n 2, ∀ z, ‖iteratedFDeriv Real j P z‖ ≤ M) →
+      ∀ y δ a, 0 < δ → δ ≤ 1 → |a| ≤ A →
+      ∀ L : D →L[Real] E, ‖L‖ ≤ 1 →
+      ∀ S : D →L[Real] Real, ‖S‖ ≤ 1 →
+      ∀ Φ : SchwartzMap D Complex,
+      SchwartzMap.seminorm Complex k n
+        (sourcePacketNormalizedAmplitude P y δ a L S Φ) ≤
+      C * (Finset.Iic (l + k, n)).sup
+        (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  let B : Real := (A + 2 ^ n) * M
+  have hB : 0 ≤ B := by dsimp [B]; positivity
+  obtain ⟨l, C₀, hC₀, hexp⟩ :=
+    sourcePacket_phaseExponential_uniform_derivatives (D := D) n B hB
+  refine ⟨l, C₀ * 2 ^ (n + l + k), by positivity, ?_⟩
+  intro P hP hbound y δ a hδ hδone ha L hL S hS Φ
+  let R : D → Real := sourcePacketNormalizedRemainder P y δ a L S
+  let g : D → Complex := fun x => Complex.exp ((R x : Complex) * Complex.I)
+  have hR : Function.HasTemperateGrowth R :=
+    sourcePacketNormalizedRemainder_hasTemperateGrowth P hP y δ a L S
+  have hg : Function.HasTemperateGrowth g := Complex.hasTemperateGrowth_exp_mul_I.comp hR
+  have hbudgetR : ∀ i ≤ n, ∀ x, ‖iteratedFDeriv Real i R x‖ ≤ B * (1 + ‖x‖) ^ 2 :=
+    sourcePacketNormalizedRemainder_uniform_derivatives P hP.1 n M hM hbound
+      y δ a A hδ hδone hA ha L hL S hS
+  have hbudgetg := hexp R hR.1 hbudgetR
+  exact sourcePacket_multiplier_seminorm_le g hg Φ k n l C₀ hC₀
+    (fun i hi x => hbudgetg i hi x)
+
+
+/-- A fixed normalized Schwartz profile has a uniform finite rectangle of
+amplitude seminorms, over all scales and source centers. -/
+theorem sourcePacketNormalizedAmplitude_uniform_rectangle
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (K N : Nat) (M A : Real) (hM : 0 ≤ M) (hA : 0 ≤ A) :
+    ∃ l : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Φ : SchwartzMap D Complex,
+      ∀ P : E → Real, Function.HasTemperateGrowth P →
+      (∀ j ≤ max N 2, ∀ z, ‖iteratedFDeriv Real j P z‖ ≤ M) →
+      ∀ y δ a, 0 < δ → δ ≤ 1 → |a| ≤ A →
+      ∀ L : D →L[Real] E, ‖L‖ ≤ 1 →
+      ∀ S : D →L[Real] Real, ‖S‖ ≤ 1 →
+      ∀ k ≤ K, ∀ n ≤ N,
+      SchwartzMap.seminorm Complex k n
+        (sourcePacketNormalizedAmplitude P y δ a L S Φ) ≤
+        C * (Finset.Iic (l + K, N)).sup
+          (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  let B : Real := (A + 2 ^ N) * M
+  have hB : 0 ≤ B := by dsimp [B]; positivity
+  obtain ⟨l, C₀, hC₀, hexp⟩ :=
+    sourcePacket_phaseExponential_uniform_derivatives (D := D) N B hB
+  refine ⟨l, C₀ * 2 ^ (N + l + K), by positivity, ?_⟩
+  intro Φ P hP hbound y δ a hδ hδone ha L hL S hS k hk n hn
+  let U : Real := (Finset.Iic (l + K, N)).sup
+    (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  let R : D → Real := sourcePacketNormalizedRemainder P y δ a L S
+  let g : D → Complex := fun x => Complex.exp ((R x : Complex) * Complex.I)
+  have hR : Function.HasTemperateGrowth R :=
+    sourcePacketNormalizedRemainder_hasTemperateGrowth P hP y δ a L S
+  have hg : Function.HasTemperateGrowth g := Complex.hasTemperateGrowth_exp_mul_I.comp hR
+  have hbudgetR : ∀ i ≤ N, ∀ x, ‖iteratedFDeriv Real i R x‖ ≤ B * (1 + ‖x‖) ^ 2 :=
+    sourcePacketNormalizedRemainder_uniform_derivatives P hP.1 N M hM hbound
+      y δ a A hδ hδone hA ha L hL S hS
+  have hbudgetg := hexp R hR.1 hbudgetR
+  have hb := sourcePacket_multiplier_seminorm_le g hg Φ k n l C₀ hC₀
+    (fun i hi x => hbudgetg i (hi.trans hn) x)
+  have hs : Finset.Iic (l + k, n) ⊆ Finset.Iic (l + K, N) := by
+    intro p hp
+    simp only [Finset.mem_Iic, Prod.le_def] at hp ⊢
+    exact ⟨hp.1.trans (by omega), hp.2.trans hn⟩
+  have hsup : (Finset.Iic (l + k, n)).sup
+      (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ ≤ U :=
+    Seminorm.le_def.mp (Finset.sup_mono hs) Φ
+  calc
+    _ ≤ C₀ * 2 ^ (n + l + k) *
+      (Finset.Iic (l + k, n)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := hb
+    _ ≤ _ := by gcongr; norm_num
+
+
+/-- Every polynomial Fourier tail of the normalized amplitude has a uniform
+budget. The finite phase derivative order is produced by continuity of the
+Fourier transform on Schwartz space. -/
+theorem sourcePacketNormalizedAmplitude_uniform_fourier_decay
+    {D E : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D]
+    [FiniteDimensional Real D] [MeasurableSpace D] [BorelSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (J : Nat) :
+    ∃ N : Nat, ∀ M A : Real, 0 ≤ M → 0 ≤ A →
+      ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Φ : SchwartzMap D Complex,
+      ∀ P : E → Real, Function.HasTemperateGrowth P →
+      (∀ j ≤ max N 2, ∀ z, ‖iteratedFDeriv Real j P z‖ ≤ M) →
+      ∀ y δ a, 0 < δ → δ ≤ 1 → |a| ≤ A →
+      ∀ L : D →L[Real] E, ‖L‖ ≤ 1 →
+      ∀ S : D →L[Real] Real, ‖S‖ ≤ 1 →
+      ∀ ξ : D,
+      (1 + ‖ξ‖) ^ J *
+        ‖𝓕 (sourcePacketNormalizedAmplitude P y δ a L S Φ) ξ‖ ≤
+        C * (Finset.Iic (K, N)).sup
+          (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  classical
+  let p : Nat × Nat → Seminorm Complex (SchwartzMap D Complex) :=
+    fun q => SchwartzMap.seminorm Complex q.1 q.2
+  let Q : Seminorm Complex (SchwartzMap D Complex) := (Finset.Iic (J, 0)).sup p
+  let F : SchwartzMap D Complex →L[Complex] SchwartzMap D Complex :=
+    FourierTransform.fourierCLM Complex (SchwartzMap D Complex)
+  have hQ : Continuous Q := Seminorm.continuous_finsetSup
+    (fun q _ => (schwartz_withSeminorms Complex D Complex).continuous_seminorm q)
+  have hQF : Continuous (Q.comp F.toLinearMap) := hQ.comp F.continuous
+  obtain ⟨s, C₁, _hC₁, hC₁⟩ :=
+    Seminorm.bound_of_continuous (schwartz_withSeminorms Complex D Complex)
+      (Q.comp F.toLinearMap) hQF
+  let K : Nat := s.sup Prod.fst
+  let N : Nat := s.sup Prod.snd
+  refine ⟨N, ?_⟩
+  intro M A hM hA
+  obtain ⟨l, C₀, hC₀, hrect⟩ :=
+    sourcePacketNormalizedAmplitude_uniform_rectangle (D := D) (E := E) K N M A hM hA
+  refine ⟨l + K, 2 ^ J * (C₁ : Real) * C₀, by positivity, ?_⟩
+  intro Φ P hP hbound y δ a hδ hδone ha L hL S hS ξ
+  let H : SchwartzMap D Complex := sourcePacketNormalizedAmplitude P y δ a L S Φ
+  let U : Real := (Finset.Iic (l + K, N)).sup
+    (fun q => SchwartzMap.seminorm Complex q.1 q.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  have hsmall : ∀ q ∈ s, p q H ≤ C₀ * U := by
+    intro q hq
+    exact hrect Φ P hP hbound y δ a hδ hδone ha L hL S hS q.1
+      (Finset.le_sup (f := Prod.fst) hq) q.2 (Finset.le_sup (f := Prod.snd) hq)
+  have hs : s.sup p H ≤ C₀ * U := Seminorm.finset_sup_apply_le (mul_nonneg hC₀ hU) hsmall
+  have hQB : Q (𝓕 H) ≤ (C₁ : Real) * (C₀ * U) := by
+    have hb := Seminorm.le_def.mp hC₁ H
+    change Q (F H) ≤ _
+    exact hb.trans (mul_le_mul_of_nonneg_left hs C₁.coe_nonneg)
+  have hf := (𝓕 H : SchwartzMap D Complex).one_add_le_sup_seminorm_apply
+    (𝕜 := Complex) (m := (J, 0)) le_rfl le_rfl ξ
+  simp only [norm_iteratedFDeriv_zero] at hf
+  calc
+    _ ≤ 2 ^ J * Q (𝓕 H) := hf
+    _ ≤ 2 ^ J * ((C₁ : Real) * (C₀ * U)) :=
+      mul_le_mul_of_nonneg_left hQB (by positivity)
+    _ = _ := by ring
+
+
+/-- Uniformly bounded derivatives of a true cutoff amplitude remain
+uniformly bounded after the source/output parabolic change of variables. -/
+theorem sourcePacket_affine_amplitude_uniform_derivatives
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (A : E → Complex) (hA : Function.HasTemperateGrowth A)
+    (N : Nat) (M : Real) (_hM : 0 ≤ M)
+    (hbound : ∀ n ≤ N, ∀ y, ‖iteratedFDeriv Real n A y‖ ≤ M)
+    (y : E) (δ : Real) (hδ : 0 ≤ δ) (hδone : δ ≤ 1)
+    (L : D →L[Real] E) (hL : ‖L‖ ≤ 1) :
+    ∀ n ≤ N, ∀ x,
+      ‖iteratedFDeriv Real n (fun z => A (y + δ • L z)) x‖ ≤ M := by
+  intro n hn x
+  have hc : ContDiff Real (⊤ : ℕ∞) (fun z : E => A (y + δ • z)) :=
+    hA.1.comp (contDiff_const.add (contDiff_id.const_smul δ))
+  have hb := sourcePacket_norm_iteratedFDeriv_comp_contraction L hL
+    (fun z : E => A (y + δ • z)) hc x n
+  calc
+    _ ≤ ‖iteratedFDeriv Real n (fun z : E => A (y + δ • z)) (L x)‖ := hb
+    _ = δ ^ n * ‖iteratedFDeriv Real n A (y + δ • L x)‖ := by
+      rw [sourcePacket_iteratedFDeriv_affine A hA.1, norm_smul, Real.norm_eq_abs,
+        abs_of_nonneg (pow_nonneg hδ _)]
+    _ ≤ 1 * M := mul_le_mul (pow_le_one₀ hδ hδone) (hbound n hn _)
+      (norm_nonneg _) (by norm_num)
+    _ = _ := one_mul _
+
+/-- Actual shifted cutoff amplitudes give a uniform Schwartz profile
+rectangle. This is the profile input to normalized Fourier decay. -/
+theorem sourcePacket_affine_amplitude_uniform_rectangle
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (A : E → Complex) (hA : Function.HasTemperateGrowth A)
+    (K N : Nat) (M : Real) (hM : 0 ≤ M)
+    (hbound : ∀ n ≤ N, ∀ y, ‖iteratedFDeriv Real n A y‖ ≤ M)
+    (y : E) (δ : Real) (hδ : 0 ≤ δ) (hδone : δ ≤ 1)
+    (L : D →L[Real] E) (hL : ‖L‖ ≤ 1)
+    (Φ : SchwartzMap D Complex) :
+    ∀ k ≤ K, ∀ n ≤ N,
+      SchwartzMap.seminorm Complex k n
+        (SchwartzMap.smulLeftCLM Complex (fun z => A (y + δ • L z)) Φ) ≤
+      M * 2 ^ (N + K) * (Finset.Iic (K, N)).sup
+        (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  intro k hk n hn
+  have hg : Function.HasTemperateGrowth (fun z => A (y + δ • L z)) := by fun_prop
+  have hb := sourcePacket_multiplier_seminorm_le (fun z => A (y + δ • L z)) hg Φ k n 0 M hM
+    (fun i hi z => by
+      simpa only [pow_zero, mul_one] using
+        sourcePacket_affine_amplitude_uniform_derivatives A hA N M hM hbound y δ hδ hδone
+          L hL i (hi.trans hn) z)
+  have hs : Finset.Iic (k, n) ⊆ Finset.Iic (K, N) := by
+    intro p hp
+    simp only [Finset.mem_Iic, Prod.le_def] at hp ⊢
+    exact ⟨hp.1.trans hk, hp.2.trans hn⟩
+  have hsup : (Finset.Iic (k, n)).sup
+      (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ ≤
+      (Finset.Iic (K, N)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ :=
+    Seminorm.le_def.mp (Finset.sup_mono hs) Φ
+  simp only [Nat.add_zero, Nat.zero_add] at hb
+  exact hb.trans
+    (mul_le_mul (by gcongr; norm_num) hsup (apply_nonneg _ _) (by positivity))
+
+
+/-- Exact extraction of the constant phase and both linear dual mismatches
+from the actual phase, at the natural source/output packet scale. -/
+theorem sourcePacket_phase_split
+    {D E : Type*} [NormedAddCommGroup D] [NormedSpace Real D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ ρ₀ T : Real) (hδ : δ ≠ 0)
+    (L : D →L[Real] E) (S : D →L[Real] Real)
+    (η : E →L[Real] Real) (x : D) :
+    (ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) - η (y + δ • L x) =
+      ρ₀ * (P y - T) - η y +
+      δ * (ρ₀ * fderiv Real P y (L x) - η (L x)) +
+      δ⁻¹ * S x * (P y - T) +
+      sourcePacketNormalizedRemainder P y δ (ρ₀ * δ ^ 2) L S x := by
+  dsimp [sourcePacketNormalizedRemainder, sourcePacketNormalizedTaylor,
+    sourcePacketNormalizedDifference, sourcePacketTaylorRemainder]
+  rw [map_add, map_smul, smul_eq_mul]
+  field_simp
+  ring
+
+
+/-- Exact Fourier representation after the true nonlinear Taylor error has
+been put into the normalized amplitude. The displayed condition merely
+identifies the linear dual covector with its Euclidean representative. -/
+theorem sourcePacket_normalized_oscillatory_integral_eq
+    {D E : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D]
+    [FiniteDimensional Real D] [MeasurableSpace D] [BorelSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (hP : Function.HasTemperateGrowth P)
+    (y : E) (δ ρ₀ T : Real) (hδ : δ ≠ 0)
+    (L : D →L[Real] E) (S : D →L[Real] Real)
+    (η : E →L[Real] Real) (ξ : D)
+    (hξ : ∀ x, 2 * Real.pi * inner Real x ξ =
+      δ * (ρ₀ * fderiv Real P y (L x) - η (L x)) +
+        δ⁻¹ * S x * (P y - T))
+    (Φ : SchwartzMap D Complex) :
+    (∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+      η (y + δ • L x)) : Real) : Complex) * Complex.I) * Φ x) =
+      Complex.exp (((ρ₀ * (P y - T) - η y : Real) : Complex) * Complex.I) *
+        (𝓕⁻ (sourcePacketNormalizedAmplitude P y δ (ρ₀ * δ ^ 2) L S Φ)
+          : SchwartzMap D Complex) ξ := by
+  let H : SchwartzMap D Complex :=
+    sourcePacketNormalizedAmplitude P y δ (ρ₀ * δ ^ 2) L S Φ
+  have hfourier : (𝓕⁻ H : SchwartzMap D Complex) ξ =
+      ∫ x : D, Complex.exp (((2 * Real.pi * inner Real x ξ : Real) : Complex) * Complex.I) *
+        Complex.exp (((sourcePacketNormalizedRemainder P y δ (ρ₀ * δ ^ 2) L S x
+          : Real) : Complex) * Complex.I) * Φ x := by
+    rw [SchwartzMap.fourierInv_coe, Real.fourierInv_eq']
+    apply integral_congr_ae
+    filter_upwards with x
+    rw [sourcePacketNormalizedAmplitude_apply P hP, smul_eq_mul]
+    ring
+  rw [hfourier, ← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards with x
+  have hphase := sourcePacket_phase_split P y δ ρ₀ T hδ L S η x
+  have hphase' :
+      (ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) - η (y + δ • L x) =
+      (ρ₀ * (P y - T) - η y) + 2 * Real.pi * inner Real x ξ +
+        sourcePacketNormalizedRemainder P y δ (ρ₀ * δ ^ 2) L S x := by
+    rw [hξ]
+    linarith
+  rw [hphase']
+  simp only [Complex.ofReal_add, add_mul, Complex.exp_add]
+  ring
+
+
+/-- The literal normalized source/output oscillatory kernel has polynomial
+decay in the joint dual mismatch, with a finite true phase derivative budget. -/
+theorem sourcePacket_normalized_oscillatory_integral_decay
+    {D E : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D]
+    [FiniteDimensional Real D] [MeasurableSpace D] [BorelSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E] (J : Nat) :
+    ∃ N : Nat, ∀ M A : Real, 0 ≤ M → 0 ≤ A →
+      ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Φ : SchwartzMap D Complex, ∀ P : E → Real, Function.HasTemperateGrowth P →
+      (∀ j ≤ max N 2, ∀ z, ‖iteratedFDeriv Real j P z‖ ≤ M) →
+      ∀ y δ ρ₀ T, 0 < δ → δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ A →
+      ∀ L : D →L[Real] E, ‖L‖ ≤ 1 →
+      ∀ S : D →L[Real] Real, ‖S‖ ≤ 1 →
+      ∀ η : E →L[Real] Real, ∀ ξ : D,
+      (∀ x, 2 * Real.pi * inner Real x ξ =
+        δ * (ρ₀ * fderiv Real P y (L x) - η (L x)) +
+          δ⁻¹ * S x * (P y - T)) →
+      (1 + ‖ξ‖) ^ J *
+        ‖∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+          η (y + δ • L x)) : Real) : Complex) * Complex.I) * Φ x‖ ≤
+      C * (Finset.Iic (K, N)).sup
+        (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  obtain ⟨N, hN⟩ := sourcePacketNormalizedAmplitude_uniform_fourier_decay (D := D) (E := E) J
+  refine ⟨N, ?_⟩
+  intro M A hM hA
+  obtain ⟨K, C, hC, hdecay⟩ := hN M A hM hA
+  refine ⟨K, C, hC, ?_⟩
+  intro Φ P hP hbound y δ ρ₀ T hδ hδone hρ₀ L hL S hS η ξ hξ
+  rw [sourcePacket_normalized_oscillatory_integral_eq P hP y δ ρ₀ T hδ.ne' L S η ξ hξ Φ,
+    norm_mul, Complex.norm_exp_ofReal_mul_I, one_mul]
+  let H : SchwartzMap D Complex :=
+    sourcePacketNormalizedAmplitude P y δ (ρ₀ * δ ^ 2) L S Φ
+  have hi : ‖(𝓕⁻ H : SchwartzMap D Complex) ξ‖ =
+      ‖(𝓕 H : SchwartzMap D Complex) (-ξ)‖ := by
+    rw [SchwartzMap.fourierInv_coe, Real.fourierInv_eq_fourier_neg, SchwartzMap.fourier_coe]
+  rw [hi]
+  simpa only [norm_neg] using
+    hdecay Φ P hP hbound y δ (ρ₀ * δ ^ 2) hδ hδone hρ₀ L hL S hS (-ξ)
+
+
+#print axioms sourcePacketNormalizedRemainder_uniform_derivatives
+#print axioms sourcePacketNormalizedAmplitude_uniform_fourier_decay
+#print axioms sourcePacket_affine_amplitude_uniform_rectangle
+#print axioms sourcePacket_normalized_oscillatory_integral_decay
+
+
+
+/-- The literal tensor product of two fixed packet profiles in Hilbert
+product coordinates. It is used for the output cube, source cube, and
+radial conormal profiles of an actual normalized packet. -/
+def sourcePacketSchwartzExternalProduct
+    {E F : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup F] [NormedSpace Real F]
+    (A : SchwartzMap E Complex) (B : SchwartzMap F Complex) :
+    SchwartzMap (WithLp 2 (E × F)) Complex where
+  toFun z := A z.fst * B z.snd
+  smooth' := by
+    have ha : ContDiff Real (⊤ : ℕ∞) (fun z : WithLp 2 (E × F) => A z.fst) :=
+      A.smooth (⊤ : ℕ∞) |>.comp (WithLp.fstL 2 Real E F).contDiff
+    have hb : ContDiff Real (⊤ : ℕ∞) (fun z : WithLp 2 (E × F) => B z.snd) :=
+      B.smooth (⊤ : ℕ∞) |>.comp (WithLp.sndL 2 Real E F).contDiff
+    exact ha.mul hb
+  decay' k n := by
+    let a : WithLp 2 (E × F) → Complex := fun z => A z.fst
+    let b : WithLp 2 (E × F) → Complex := fun z => B z.snd
+    have ha : ContDiff Real (⊤ : ℕ∞) a :=
+      A.smooth (⊤ : ℕ∞) |>.comp (WithLp.fstL 2 Real E F).contDiff
+    have hb : ContDiff Real (⊤ : ℕ∞) b :=
+      B.smooth (⊤ : ℕ∞) |>.comp (WithLp.sndL 2 Real E F).contDiff
+    have hLf : ‖WithLp.fstL 2 Real E F‖ ≤ 1 := by
+      apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+      intro z
+      simpa using WithLp.norm_fst_le (p := 2) E z
+    have hLs : ‖WithLp.sndL 2 Real E F‖ ≤ 1 := by
+      apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+      intro z
+      simpa using WithLp.norm_snd_le (p := 2) E z
+    let CA : Real := 2 ^ k * (Finset.Iic (k, n)).sup
+      (fun q => SchwartzMap.seminorm Complex q.1 q.2) A
+    let CB : Real := 2 ^ k * (Finset.Iic (k, n)).sup
+      (fun q => SchwartzMap.seminorm Complex q.1 q.2) B
+    have hCA : 0 ≤ CA := mul_nonneg (by positivity) (apply_nonneg _ _)
+    have hCB : 0 ≤ CB := mul_nonneg (by positivity) (apply_nonneg _ _)
+    refine ⟨2 ^ n * CA * CB, fun z => ?_⟩
+    have hcoord : ‖z‖ ≤ ‖z.fst‖ + ‖z.snd‖ := by
+      have he : z = WithLp.idemFst z + WithLp.idemSnd z :=
+        (DFunLike.congr_fun (WithLp.idemFst_add_idemSnd
+          (p := 2) (α := E) (β := F)) z).symm
+      calc
+        _ = ‖WithLp.idemFst z + WithLp.idemSnd z‖ := congrArg norm he
+        _ ≤ ‖WithLp.idemFst z‖ + ‖WithLp.idemSnd z‖ := norm_add_le _ _
+        _ = _ := by
+          simp only [WithLp.idemFst_apply, WithLp.idemSnd_apply,
+            WithLp.norm_toLp_fst, WithLp.norm_toLp_snd]
+    have hw : ‖z‖ ^ k ≤ (1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k := by
+      rw [← mul_pow]
+      apply pow_le_pow_left₀ (norm_nonneg _) _ _
+      nlinarith [mul_nonneg (norm_nonneg z.fst) (norm_nonneg z.snd)]
+    have hba : ∀ i ≤ n, (1 + ‖z.fst‖) ^ k * ‖iteratedFDeriv Real i a z‖ ≤ CA := by
+      intro i hi
+      exact (mul_le_mul_of_nonneg_left
+        (sourcePacket_norm_iteratedFDeriv_comp_contraction (WithLp.fstL 2 Real E F)
+          hLf A (A.smooth (⊤ : ℕ∞)) z i) (by positivity)).trans
+        (A.one_add_le_sup_seminorm_apply (𝕜 := Complex) (m := (k, n)) le_rfl hi z.fst)
+    have hbb : ∀ i ≤ n, (1 + ‖z.snd‖) ^ k * ‖iteratedFDeriv Real i b z‖ ≤ CB := by
+      intro i hi
+      exact (mul_le_mul_of_nonneg_left
+        (sourcePacket_norm_iteratedFDeriv_comp_contraction (WithLp.sndL 2 Real E F)
+          hLs B (B.smooth (⊤ : ℕ∞)) z i) (by positivity)).trans
+        (B.one_add_le_sup_seminorm_apply (𝕜 := Complex) (m := (k, n)) le_rfl hi z.snd)
+    have hmul := norm_iteratedFDeriv_mul_le ha hb z
+      (n := n) (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp)
+    calc
+      _ ≤ ‖z‖ ^ k * ∑ i ∈ Finset.range (n + 1),
+          (n.choose i : Real) * ‖iteratedFDeriv Real i a z‖ *
+            ‖iteratedFDeriv Real (n - i) b z‖ :=
+        mul_le_mul_of_nonneg_left hmul (by positivity)
+      _ ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : Real) * (CA * CB) := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_le_sum
+        intro i hi
+        have hin : i ≤ n := by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hi
+        calc
+          _ ≤ ((1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k) *
+              ((n.choose i : Real) * ‖iteratedFDeriv Real i a z‖ *
+                ‖iteratedFDeriv Real (n - i) b z‖) :=
+            mul_le_mul_of_nonneg_right hw (by positivity)
+          _ = (n.choose i : Real) *
+              (((1 + ‖z.fst‖) ^ k * ‖iteratedFDeriv Real i a z‖) *
+                ((1 + ‖z.snd‖) ^ k * ‖iteratedFDeriv Real (n - i) b z‖)) := by ring
+          _ ≤ _ := mul_le_mul_of_nonneg_left
+            (mul_le_mul (hba i hin) (hbb (n - i) (Nat.sub_le _ _)) (by positivity) hCA)
+              (by positivity)
+      _ = _ := by
+        rw [← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose, Nat.cast_pow, Nat.cast_ofNat]
+        ring
+
+theorem sourcePacketSchwartzExternalProduct_apply
+    {E F : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup F] [NormedSpace Real F]
+    (A : SchwartzMap E Complex) (B : SchwartzMap F Complex) (z : E × F) :
+    sourcePacketSchwartzExternalProduct A B (WithLp.toLp 2 z) = A z.1 * B z.2 := rfl
+
+theorem sourcePacketSchwartzExternalProduct_seminorm_le
+    {E F : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup F] [NormedSpace Real F]
+    (A : SchwartzMap E Complex) (B : SchwartzMap F Complex) (k n : Nat) :
+    SchwartzMap.seminorm Complex k n (sourcePacketSchwartzExternalProduct A B) ≤
+      2 ^ n * (2 ^ k * (Finset.Iic (k,n)).sup
+        (fun p => SchwartzMap.seminorm Complex p.1 p.2) A) *
+      (2 ^ k * (Finset.Iic (k,n)).sup
+        (fun p => SchwartzMap.seminorm Complex p.1 p.2) B) := by
+  let a : WithLp 2 (E × F) → Complex := fun z => A z.fst
+  let b : WithLp 2 (E × F) → Complex := fun z => B z.snd
+  have ha : ContDiff Real (⊤ : ℕ∞) a :=
+    A.smooth (⊤ : ℕ∞) |>.comp (WithLp.fstL 2 Real E F).contDiff
+  have hb : ContDiff Real (⊤ : ℕ∞) b :=
+    B.smooth (⊤ : ℕ∞) |>.comp (WithLp.sndL 2 Real E F).contDiff
+  have hLf : ‖WithLp.fstL 2 Real E F‖ ≤ 1 := by
+    apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+    intro z
+    simpa using WithLp.norm_fst_le (p := 2) E z
+  have hLs : ‖WithLp.sndL 2 Real E F‖ ≤ 1 := by
+    apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+    intro z
+    simpa using WithLp.norm_snd_le (p := 2) E z
+  let CA : Real := 2 ^ k * (Finset.Iic (k, n)).sup
+    (fun q => SchwartzMap.seminorm Complex q.1 q.2) A
+  let CB : Real := 2 ^ k * (Finset.Iic (k, n)).sup
+    (fun q => SchwartzMap.seminorm Complex q.1 q.2) B
+  have hCA : 0 ≤ CA := mul_nonneg (by positivity) (apply_nonneg _ _)
+  have hCB : 0 ≤ CB := mul_nonneg (by positivity) (apply_nonneg _ _)
+  apply SchwartzMap.seminorm_le_bound Complex k n _ (by positivity)
+  intro z
+  change ‖z‖ ^ k * ‖iteratedFDeriv Real n
+    (fun z : WithLp 2 (E × F) => A z.fst * B z.snd) z‖ ≤ _
+  have hcoord : ‖z‖ ≤ ‖z.fst‖ + ‖z.snd‖ := by
+    have he : z = WithLp.idemFst z + WithLp.idemSnd z :=
+      (DFunLike.congr_fun (WithLp.idemFst_add_idemSnd
+        (p := 2) (α := E) (β := F)) z).symm
+    calc
+      _ = ‖WithLp.idemFst z + WithLp.idemSnd z‖ := congrArg norm he
+      _ ≤ ‖WithLp.idemFst z‖ + ‖WithLp.idemSnd z‖ := norm_add_le _ _
+      _ = _ := by
+        simp only [WithLp.idemFst_apply, WithLp.idemSnd_apply,
+          WithLp.norm_toLp_fst, WithLp.norm_toLp_snd]
+  have hw : ‖z‖ ^ k ≤ (1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k := by
+    rw [← mul_pow]
+    apply pow_le_pow_left₀ (norm_nonneg _) _ _
+    nlinarith [mul_nonneg (norm_nonneg z.fst) (norm_nonneg z.snd)]
+  have hba : ∀ i ≤ n, (1 + ‖z.fst‖) ^ k * ‖iteratedFDeriv Real i a z‖ ≤ CA := by
+    intro i hi
+    exact (mul_le_mul_of_nonneg_left
+      (sourcePacket_norm_iteratedFDeriv_comp_contraction (WithLp.fstL 2 Real E F)
+        hLf A (A.smooth (⊤ : ℕ∞)) z i) (by positivity)).trans
+      (A.one_add_le_sup_seminorm_apply (𝕜 := Complex) (m := (k, n)) le_rfl hi z.fst)
+  have hbb : ∀ i ≤ n, (1 + ‖z.snd‖) ^ k * ‖iteratedFDeriv Real i b z‖ ≤ CB := by
+    intro i hi
+    exact (mul_le_mul_of_nonneg_left
+      (sourcePacket_norm_iteratedFDeriv_comp_contraction (WithLp.sndL 2 Real E F)
+        hLs B (B.smooth (⊤ : ℕ∞)) z i) (by positivity)).trans
+      (B.one_add_le_sup_seminorm_apply (𝕜 := Complex) (m := (k, n)) le_rfl hi z.snd)
+  have hmul := norm_iteratedFDeriv_mul_le ha hb z
+    (n := n) (show (n : ℕ∞ω) ≤ (⊤ : ℕ∞) by simp)
+  calc
+    _ ≤ ‖z‖ ^ k * ∑ i ∈ Finset.range (n + 1),
+        (n.choose i : Real) * ‖iteratedFDeriv Real i a z‖ *
+          ‖iteratedFDeriv Real (n - i) b z‖ :=
+      mul_le_mul_of_nonneg_left hmul (by positivity)
+    _ ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : Real) * (CA * CB) := by
+      rw [Finset.mul_sum]
+      apply Finset.sum_le_sum
+      intro i hi
+      have hin : i ≤ n := by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hi
+      calc
+        _ ≤ ((1 + ‖z.fst‖) ^ k * (1 + ‖z.snd‖) ^ k) *
+            ((n.choose i : Real) * ‖iteratedFDeriv Real i a z‖ *
+              ‖iteratedFDeriv Real (n - i) b z‖) :=
+          mul_le_mul_of_nonneg_right hw (by positivity)
+        _ = (n.choose i : Real) *
+            (((1 + ‖z.fst‖) ^ k * ‖iteratedFDeriv Real i a z‖) *
+              ((1 + ‖z.snd‖) ^ k * ‖iteratedFDeriv Real (n - i) b z‖)) := by ring
+        _ ≤ _ := mul_le_mul_of_nonneg_left
+          (mul_le_mul (hba i hin) (hbb (n - i) (Nat.sub_le _ _)) (by positivity) hCA)
+            (by positivity)
+    _ = _ := by
+      rw [← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose, Nat.cast_pow, Nat.cast_ofNat]
+      ring
+
+
+/-- A fixed real Schwartz phase and a fixed Schwartz cutoff amplitude give
+uniform joint-dual decay of the literal normalized packet integral. The
+source/output center and inverse packet scale are unrestricted; all
+derivative budgets are derived from the actual two Schwartz functions. -/
+theorem sourcePacket_schwartz_oscillatory_integral_decay
+    {D E V : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D]
+    [FiniteDimensional Real D] [MeasurableSpace D] [BorelSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup V] [NormedSpace Real V]
+    (P : SchwartzMap E Real) (A : SchwartzMap V Complex)
+    (Φ : SchwartzMap D Complex) (J : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧
+      ∀ y : E, ∀ z : V, ∀ δ ρ₀ T, 0 < δ → δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ L : D →L[Real] E, ‖L‖ ≤ 1 →
+      ∀ S : D →L[Real] Real, ‖S‖ ≤ 1 →
+      ∀ W : D →L[Real] V, ‖W‖ ≤ 1 →
+      ∀ η : E →L[Real] Real, ∀ ξ : D,
+      (∀ x, 2 * Real.pi * inner Real x ξ =
+        δ * (ρ₀ * fderiv Real P y (L x) - η (L x)) +
+          δ⁻¹ * S x * (P y - T)) →
+      (1 + ‖ξ‖) ^ J *
+        ‖∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+          η (y + δ • L x)) : Real) : Complex) * Complex.I) *
+          A (z + δ • W x) * Φ x‖ ≤ C := by
+  classical
+  obtain ⟨N, hN⟩ := sourcePacket_normalized_oscillatory_integral_decay (D := D) (E := E) J
+  let M : Real := ∑ j ∈ Finset.range (max N 2 + 1), SchwartzMap.seminorm Real 0 j P
+  have hM : 0 ≤ M := Finset.sum_nonneg (fun j _ => apply_nonneg _ _)
+  have hPb : ∀ j ≤ max N 2, ∀ v, ‖iteratedFDeriv Real j (P : E → Real) v‖ ≤ M := by
+    intro j hj v
+    calc
+      _ ≤ SchwartzMap.seminorm Real 0 j P := P.norm_iteratedFDeriv_le_seminorm Real j v
+      _ ≤ M := Finset.single_le_sum (fun i _ => apply_nonneg (SchwartzMap.seminorm Real 0 i) P)
+        (by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hj)
+  obtain ⟨K, C₀, hC₀, hdecay⟩ := hN M R hM hR
+  let MA : Real := ∑ j ∈ Finset.range (N + 1), SchwartzMap.seminorm Complex 0 j A
+  have hMA : 0 ≤ MA := Finset.sum_nonneg (fun j _ => apply_nonneg _ _)
+  have hAb : ∀ j ≤ N, ∀ v, ‖iteratedFDeriv Real j (A : V → Complex) v‖ ≤ MA := by
+    intro j hj v
+    calc
+      _ ≤ SchwartzMap.seminorm Complex 0 j A := A.norm_iteratedFDeriv_le_seminorm Complex j v
+      _ ≤ MA := Finset.single_le_sum (fun i _ => apply_nonneg (SchwartzMap.seminorm Complex 0 i) A)
+        (by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hj)
+  let U : Real := (Finset.Iic (K, N)).sup
+    (fun q => SchwartzMap.seminorm Complex q.1 q.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  refine ⟨C₀ * (MA * 2 ^ (N + K) * U), by positivity, ?_⟩
+  intro y z δ ρ₀ T hδ hδone hρ₀ L hL S hS W hW η ξ hξ
+  let g : D → Complex := fun x => A (z + δ • W x)
+  have hg : Function.HasTemperateGrowth g := by dsimp [g]; fun_prop
+  let H : SchwartzMap D Complex := SchwartzMap.smulLeftCLM Complex g Φ
+  have hprof : (Finset.Iic (K, N)).sup
+      (fun q => SchwartzMap.seminorm Complex q.1 q.2) H ≤ MA * 2 ^ (N + K) * U := by
+    apply Seminorm.finset_sup_apply_le (by positivity)
+    intro q hq
+    have hq' : q.1 ≤ K ∧ q.2 ≤ N := by simpa only [Finset.mem_Iic, Prod.le_def] using hq
+    exact sourcePacket_affine_amplitude_uniform_rectangle A A.hasTemperateGrowth
+      K N MA hMA hAb z δ hδ.le hδone W hW Φ q.1 hq'.1 q.2 hq'.2
+  have hd := hdecay H P P.hasTemperateGrowth hPb y δ ρ₀ T hδ hδone hρ₀ L hL S hS η ξ hξ
+  have heq : (∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+      η (y + δ • L x)) : Real) : Complex) * Complex.I) * H x) =
+      ∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+      η (y + δ • L x)) : Real) : Complex) * Complex.I) * A (z + δ • W x) * Φ x := by
+    apply integral_congr_ae
+    filter_upwards with x
+    dsimp [H]
+    rw [SchwartzMap.smulLeftCLM_apply_apply hg, smul_eq_mul]
+    dsimp [g]
+    ring
+  rw [heq] at hd
+  exact hd.trans (mul_le_mul_of_nonneg_left hprof hC₀)
+
+
+#print axioms sourcePacketSchwartzExternalProduct_apply
+#print axioms sourcePacket_schwartz_oscillatory_integral_decay
+
+
+
+/-- The exact Euclidean representative of all three linear mismatches left
+by the normalized Taylor expansion. The Fourier normalization is retained. -/
+def sourcePacketDualMismatch
+    {D E : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D] [CompleteSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ ρ₀ T : Real)
+    (L : D →L[Real] E) (S : D →L[Real] Real) (η : E →L[Real] Real) : D :=
+  (InnerProductSpace.toDual Real D).symm
+    ((2 * Real.pi)⁻¹ •
+      (δ • ((ρ₀ • fderiv Real P y - η).comp L) +
+        (δ⁻¹ * (P y - T)) • S))
+
+theorem sourcePacketDualMismatch_inner
+    {D E : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D] [CompleteSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    (P : E → Real) (y : E) (δ ρ₀ T : Real)
+    (L : D →L[Real] E) (S : D →L[Real] Real) (η : E →L[Real] Real) (x : D) :
+    2 * Real.pi * inner Real x (sourcePacketDualMismatch P y δ ρ₀ T L S η) =
+      δ * (ρ₀ * fderiv Real P y (L x) - η (L x)) +
+        δ⁻¹ * S x * (P y - T) := by
+  rw [real_inner_comm, sourcePacketDualMismatch, InnerProductSpace.toDual_symm_apply]
+  simp only [smul_apply, add_apply, sub_apply, ContinuousLinearMap.comp_apply, smul_eq_mul]
+  field_simp
+
+
+/-- Hilbert integration coordinates for the three output shifts, two source
+shifts, and one normalized radial-frequency variable. -/
+abbrev NormalizedCircleFinePacketSpace :=
+  WithLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real))
+
+def normalizedCircleFinePacketOutput :
+    NormalizedCircleFinePacketSpace →L[Real] JointWaveSpaceTime :=
+  WithLp.fstL 2 Real JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
+
+def normalizedCircleFinePacketSourceRadial :
+    NormalizedCircleFinePacketSpace →L[Real] WithLp 2 (Euclidean 2 × Real) :=
+  WithLp.sndL 2 Real JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
+
+def normalizedCircleFinePacketSource :
+    NormalizedCircleFinePacketSpace →L[Real] Euclidean 2 :=
+  (WithLp.fstL 2 Real (Euclidean 2) Real).comp normalizedCircleFinePacketSourceRadial
+
+def normalizedCircleFinePacketRadial :
+    NormalizedCircleFinePacketSpace →L[Real] Real :=
+  (WithLp.sndL 2 Real (Euclidean 2) Real).comp normalizedCircleFinePacketSourceRadial
+
+/-- Epsilon stays fixed, output coordinates are shifted negatively by
+convolution, and source coordinates positively by the source cube kernel. -/
+def normalizedCircleFinePacketShift :
+    NormalizedCircleFinePacketSpace →L[Real] (Real × (WaveSpaceTime × Euclidean 2)) :=
+  (0 : NormalizedCircleFinePacketSpace →L[Real] Real).prod
+    (((-((WithLp.fstL 2 Real (Euclidean 2) Real).prod
+      (WithLp.sndL 2 Real (Euclidean 2) Real))).comp normalizedCircleFinePacketOutput).prod
+        normalizedCircleFinePacketSource)
+
+theorem normalizedCircleFinePacketShift_apply (z : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketShift z = (0, ((-z.fst.fst, -z.fst.snd), z.snd.fst)) := rfl
+
+theorem normalizedCircleFinePacketRadial_apply (z : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketRadial z = z.snd.snd := rfl
+
+theorem normalizedCircleFinePacketShift_norm_le :
+    ‖normalizedCircleFinePacketShift‖ ≤ 1 := by
+  apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+  intro z
+  have hO : ‖z.fst‖ ≤ ‖z‖ :=
+    WithLp.norm_fst_le (p := 2) JointWaveSpaceTime z
+  have hR : ‖z.snd‖ ≤ ‖z‖ :=
+    WithLp.norm_snd_le (p := 2) JointWaveSpaceTime z
+  have hX : ‖z.fst.fst‖ ≤ ‖z‖ :=
+    (WithLp.norm_fst_le (p := 2) (Euclidean 2) z.fst).trans hO
+  have hT : ‖z.fst.snd‖ ≤ ‖z‖ :=
+    (WithLp.norm_snd_le (p := 2) (Euclidean 2) z.fst).trans hO
+  have hW : ‖z.snd.fst‖ ≤ ‖z‖ :=
+    (WithLp.norm_fst_le (p := 2) (Euclidean 2) z.snd).trans hR
+  rw [normalizedCircleFinePacketShift_apply]
+  simp only [Prod.norm_def, norm_zero, norm_neg, one_mul, max_le_iff]
+  exact ⟨norm_nonneg z, ⟨⟨hX, hT⟩, hW⟩⟩
+
+theorem normalizedCircleFinePacketRadial_norm_le :
+    ‖normalizedCircleFinePacketRadial‖ ≤ 1 := by
+  apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+  intro z
+  have hR : ‖z.snd‖ ≤ ‖z‖ :=
+    WithLp.norm_snd_le (p := 2) JointWaveSpaceTime z
+  simpa only [normalizedCircleFinePacketRadial_apply, one_mul] using
+    (WithLp.norm_snd_le (p := 2) (Euclidean 2) z.snd).trans hR
+
+
+/-- Add the normalized global conormal-frequency argument to the true
+source/output amplitude parameters. -/
+abbrev NormalizedCircleFineAmplitudeParameters :=
+  WithLp 2 ((Real × (WaveSpaceTime × Euclidean 2)) × Real)
+
+def normalizedCircleFinePacketAmplitudeShift :
+    NormalizedCircleFinePacketSpace →L[Real] NormalizedCircleFineAmplitudeParameters :=
+  (WithLp.prodContinuousLinearEquiv 2 Real (Real × (WaveSpaceTime × Euclidean 2)) Real).symm.toContinuousLinearMap.comp
+    (normalizedCircleFinePacketShift.prod normalizedCircleFinePacketRadial)
+
+theorem normalizedCircleFinePacketAmplitudeShift_apply (z : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketAmplitudeShift z =
+      WithLp.toLp 2 ((0, ((-z.fst.fst, -z.fst.snd), z.snd.fst)), z.snd.snd) := rfl
+
+theorem normalizedCircleFinePacketAmplitudeShift_norm_le :
+    ‖normalizedCircleFinePacketAmplitudeShift‖ ≤ 1 := by
+  apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+  intro z
+  let o : Real := ‖z.fst‖
+  let w : Real := ‖z.snd.fst‖
+  have ho : 0 ≤ o := norm_nonneg _
+  have hw : 0 ≤ w := norm_nonneg _
+  have hO : ‖(-z.fst.fst, -z.fst.snd)‖ ≤ o := by
+    simp only [Prod.norm_def, norm_neg, max_le_iff]
+    exact ⟨WithLp.norm_fst_le (p := 2) (Euclidean 2) z.fst,
+      WithLp.norm_snd_le (p := 2) (Euclidean 2) z.fst⟩
+  have hL : ‖normalizedCircleFinePacketShift z‖ ≤ max o w := by
+    rw [normalizedCircleFinePacketShift_apply]
+    simp only [Prod.norm_def, norm_zero]
+    exact max_le (le_trans (by positivity) (le_max_left _ _))
+      (max_le (hO.trans (le_max_left _ _)) (le_max_right _ _))
+  have hLsq : ‖normalizedCircleFinePacketShift z‖ ^ 2 ≤ o ^ 2 + w ^ 2 := by
+    have hh : (max o w) ^ 2 ≤ o ^ 2 + w ^ 2 := by
+      rcases le_total o w with h | h
+      · rw [max_eq_right h]
+        nlinarith [sq_nonneg o]
+      · rw [max_eq_left h]
+        nlinarith [sq_nonneg w]
+    exact (pow_le_pow_left₀ (norm_nonneg _) hL 2).trans hh
+  have hW := WithLp.prod_norm_sq_eq_of_L2 (normalizedCircleFinePacketAmplitudeShift z)
+  have hZ := WithLp.prod_norm_sq_eq_of_L2 z
+  have hR := WithLp.prod_norm_sq_eq_of_L2 z.snd
+  have hcoord : (normalizedCircleFinePacketAmplitudeShift z).fst =
+      normalizedCircleFinePacketShift z ∧
+      (normalizedCircleFinePacketAmplitudeShift z).snd =
+        normalizedCircleFinePacketRadial z := ⟨rfl, rfl⟩
+  rw [hcoord.1, hcoord.2, normalizedCircleFinePacketRadial_apply] at hW
+  dsimp [o, w] at hLsq
+  have hnorm : ‖normalizedCircleFinePacketAmplitudeShift z‖ ≤ ‖z‖ := by
+    nlinarith [norm_nonneg (normalizedCircleFinePacketAmplitudeShift z), norm_nonneg z]
+  simpa only [one_mul] using hnorm
+
+
+def normalizedCircleFullOutputCoordinate :
+    NormalizedCircleFullPhaseDomain →L[Real] WaveSpaceTime :=
+  (ContinuousLinearMap.fst Real WaveSpaceTime (Euclidean 2)).comp
+    (ContinuousLinearMap.snd Real Real (WaveSpaceTime × Euclidean 2))
+def normalizedCircleFullSourceCoordinate :
+    NormalizedCircleFullPhaseDomain →L[Real] Euclidean 2 :=
+  (ContinuousLinearMap.snd Real WaveSpaceTime (Euclidean 2)).comp
+    (ContinuousLinearMap.snd Real Real (WaveSpaceTime × Euclidean 2))
+
+/-- The true output/source cutoffs multiplied by the actual compact
+Jacobian carrier. Its plateau is used only where both true cutoffs survive. -/
+def normalizedCircleTrueCutoffAmplitude
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex) :
+    SchwartzMap NormalizedCircleFullPhaseDomain Complex :=
+  SchwartzMap.smulLeftCLM Complex
+    (fun q : NormalizedCircleFullPhaseDomain => χout q.2.1 * χsrc q.2.2)
+    normalizedCircleFullJacobianAmplitudeSchwartz
+
+theorem normalizedCircleTrueCutoffAmplitude_apply
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (q : NormalizedCircleFullPhaseDomain) :
+    normalizedCircleTrueCutoffAmplitude χout χsrc q =
+      χout q.2.1 * χsrc q.2.2 * normalizedCircleFullJacobianAmplitudeSchwartz q := by
+  have hg : Function.HasTemperateGrowth
+      (fun p : NormalizedCircleFullPhaseDomain => χout p.2.1 * χsrc p.2.2) := by
+    exact (χout.hasTemperateGrowth.comp normalizedCircleFullOutputCoordinate.hasTemperateGrowth).mul
+      (χsrc.hasTemperateGrowth.comp normalizedCircleFullSourceCoordinate.hasTemperateGrowth)
+  unfold normalizedCircleTrueCutoffAmplitude
+  rw [SchwartzMap.smulLeftCLM_apply_apply hg, smul_eq_mul]
+
+/-- Exact substitution of the compact phase is valid after the true
+cutoffs have been retained. The transition region of the shielding function
+does not create a different normalized operator. -/
+theorem normalizedCircle_trueCutoff_phase_substitution
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 2 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 4)
+    (q : NormalizedCircleFullPhaseDomain) (hε : |q.1| ≤ 1 / 64) (ρ : Real) :
+    Complex.exp (((ρ * normalizedCircleCompactFullPhaseSchwartz q : Real) : Complex) *
+        Complex.I) * normalizedCircleTrueCutoffAmplitude χout χsrc q =
+      Complex.exp (((ρ *
+        (normalizedCircleIncidence q.1 q.2.1.1 (circleDirection (q.2.2 0)) (q.2.2 1) -
+          q.2.1.2) : Real) : Complex) * Complex.I) *
+        (χout q.2.1 * χsrc q.2.2 *
+          (((1 + q.1 * (q.2.2 1)) / (1 + q.1 * q.2.1.2) : Real) : Complex)) := by
+  rw [normalizedCircleTrueCutoffAmplitude_apply]
+  by_cases ho : χout q.2.1 = 0
+  · simp only [ho, zero_mul, mul_zero]
+  by_cases hi : χsrc q.2.2 = 0
+  · simp only [hi, zero_mul, mul_zero]
+  obtain ⟨hX, hT⟩ := hχout q.2.1 ho
+  obtain ⟨hθ, hu⟩ := hχsrc q.2.2 hi
+  rw [normalizedCircleCompactFullPhaseSchwartz_eq_actual q hε (by linarith [hX]) hT hθ (by linarith [hu]),
+    normalizedCircleFullJacobianAmplitudeSchwartz_eq_actual q hε (by linarith [hX]) hT hθ (by linarith [hu])]
+
+
+#print axioms sourcePacketDualMismatch_inner
+#print axioms normalizedCircleFinePacketAmplitudeShift_norm_le
+#print axioms normalizedCircle_trueCutoff_phase_substitution
+
+/-! ## Literal normalized source/output/conormal packets
+
+The actual inverse projection kernels are changed to natural-width shifts
+and the original radial frequency is partitioned by its literal profile.
+The true source/output cutoffs remain in the amplitude; the auxiliary
+compact phase is used only after an exact substitution on their supports.
+The resulting joint integrand is a Schwartz function, so the six-dimensional
+Fubini identity has no unproved integrability hypothesis. The canonical
+Riesz mismatch retains source, output and incidence localization together.
+-/
+/-- Exact substitution of the compact phase is valid after the true
+cutoffs have been retained. The transition region of the shielding function
+does not create a different normalized operator. -/
+theorem normalizedCircle_trueCutoff_phase_substitution_on_analysis_core
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (q : NormalizedCircleFullPhaseDomain) (hε : |q.1| ≤ 1 / 64) (ρ : Real) :
+    Complex.exp (((ρ * normalizedCircleCompactFullPhaseSchwartz q : Real) : Complex) *
+        Complex.I) * normalizedCircleTrueCutoffAmplitude χout χsrc q =
+      Complex.exp (((ρ *
+        (normalizedCircleIncidence q.1 q.2.1.1 (circleDirection (q.2.2 0)) (q.2.2 1) -
+          q.2.1.2) : Real) : Complex) * Complex.I) *
+        (χout q.2.1 * χsrc q.2.2 *
+          (((1 + q.1 * (q.2.2 1)) / (1 + q.1 * q.2.1.2) : Real) : Complex)) := by
+  rw [normalizedCircleTrueCutoffAmplitude_apply]
+  by_cases ho : χout q.2.1 = 0
+  · simp only [ho, zero_mul, mul_zero]
+  by_cases hi : χsrc q.2.2 = 0
+  · simp only [hi, zero_mul, mul_zero]
+  obtain ⟨hX, hT⟩ := hχout q.2.1 ho
+  obtain ⟨hθ, hu⟩ := hχsrc q.2.2 hi
+  rw [normalizedCircleCompactFullPhaseSchwartz_eq_actual_on_analysis_core q hε hX hT hθ hu,
+    normalizedCircleFullJacobianAmplitudeSchwartz_eq_actual_on_analysis_core q hε hX hT hθ hu]
+
+
+def normalizedCircleFinePacketFrequencyCovector
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2) :
+    NormalizedCircleFullPhaseDomain →L[Real] Real :=
+  (2 * Real.pi) •
+    (((innerSL Real ζ).comp
+      ((WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.toContinuousLinearMap.comp
+        normalizedCircleFullOutputCoordinate)) -
+      (innerSL Real η).comp normalizedCircleFullSourceCoordinate)
+
+theorem normalizedCircleFinePacketFrequencyCovector_apply
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2) (q : NormalizedCircleFullPhaseDomain) :
+    normalizedCircleFinePacketFrequencyCovector ζ η q =
+      2 * Real.pi * (inner Real ζ (WithLp.toLp 2 q.2.1) - inner Real η q.2.2) := rfl
+
+def normalizedCircleFinePacketProfile
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (Γ : SchwartzMap Real Complex) :
+    SchwartzMap NormalizedCircleFinePacketSpace Complex :=
+  sourcePacketSchwartzExternalProduct (𝓕⁻ q)
+    (sourcePacketSchwartzExternalProduct (𝓕⁻ m) Γ)
+
+def normalizedCircleFinePacketBandAmplitude
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b : SchwartzMap Real Complex) :
+    SchwartzMap NormalizedCircleFineAmplitudeParameters Complex :=
+  sourcePacketSchwartzExternalProduct (normalizedCircleTrueCutoffAmplitude χout χsrc) b
+
+def normalizedCircleFinePacketCompactPhase :
+    SchwartzMap NormalizedCircleFullPhaseDomain Real :=
+  -(2 * Real.pi) • normalizedCircleCompactFullPhaseSchwartz
+
+/-- The literal conormal/source/output cube packet kernel in angular source
+coordinates. Both projection kernels and the original normalized Jacobian
+and phase occur in the definition. -/
+def normalizedCircleFinePacketKernel
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real) (hδ : 0 < δ)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) : Complex :=
+  ∫ Z : JointWaveSpaceTime,
+    (𝓕⁻ (mssTranslatedDilatedCutoff q ζ δ⁻¹ (inv_ne_zero hδ.ne'))
+      : SchwartzMap JointWaveSpaceTime Complex) (o - Z) * χout (Z.fst, Z.snd) *
+    ∫ v : Euclidean 2,
+      (𝓕⁻ (mssTranslatedDilatedCutoff m η δ⁻¹ (inv_ne_zero hδ.ne'))
+        : SchwartzMap (Euclidean 2) Complex) (v - y) * χsrc v *
+      (((1 + ε * v 1) / (1 + ε * Z.snd) : Real) : Complex) *
+      ∫ ρ : Real, b (δ ^ 2 * ρ) * Γ (δ * (ρ - ρ₀)) *
+        Complex.exp (((2 * Real.pi * ρ *
+          (Z.snd - normalizedCircleIncidence ε Z.fst (circleDirection (v 0)) (v 1))
+            : Real) : Complex) * Complex.I)
+
+/-- The same packet after the output/source parabolic shift and normalized
+radial frequency change; the sole Jacobian factor is the radial delta inverse. -/
+def normalizedCircleFinePacketNormalizedKernel
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) : Complex :=
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let ν := normalizedCircleFinePacketFrequencyCovector ζ η
+  δ⁻¹ * Complex.exp ((ν c : Complex) * Complex.I) *
+    ∫ x : NormalizedCircleFinePacketSpace,
+      Complex.exp ((((ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial x) *
+          normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift x) -
+        ν (c + δ • normalizedCircleFinePacketShift x) : Real) : Complex) * Complex.I) *
+      normalizedCircleFinePacketBandAmplitude χout χsrc b
+        (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift x) *
+      normalizedCircleFinePacketProfile q m Γ x
+
+
+def normalizedCircleFinePacketIntegrandSchwartz
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    SchwartzMap NormalizedCircleFinePacketSpace Complex :=
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let ν := normalizedCircleFinePacketFrequencyCovector ζ η
+  SchwartzMap.smulLeftCLM Complex
+    (fun x : NormalizedCircleFinePacketSpace =>
+      Complex.exp ((((ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial x) *
+          normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift x) -
+        ν (c + δ • normalizedCircleFinePacketShift x) : Real) : Complex) * Complex.I))
+    (SchwartzMap.smulLeftCLM Complex
+      (fun x : NormalizedCircleFinePacketSpace =>
+        normalizedCircleFinePacketBandAmplitude χout χsrc b
+          (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift x))
+      (normalizedCircleFinePacketProfile q m Γ))
+
+theorem normalizedCircleFinePacketIntegrandSchwartz_apply
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (x : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y x =
+      let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+      let ν := normalizedCircleFinePacketFrequencyCovector ζ η
+      Complex.exp ((((ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial x) *
+          normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift x) -
+        ν (c + δ • normalizedCircleFinePacketShift x) : Real) : Complex) * Complex.I) *
+      normalizedCircleFinePacketBandAmplitude χout χsrc b
+        (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift x) *
+      normalizedCircleFinePacketProfile q m Γ x := by
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let ν := normalizedCircleFinePacketFrequencyCovector ζ η
+  have hshift : Function.HasTemperateGrowth
+      (fun z : NormalizedCircleFinePacketSpace => c + δ • normalizedCircleFinePacketShift z) := by
+    fun_prop
+  have hband : Function.HasTemperateGrowth
+      (fun z : NormalizedCircleFinePacketSpace =>
+        normalizedCircleFinePacketBandAmplitude χout χsrc b
+          (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift z)) := by
+    have ha := (normalizedCircleFinePacketBandAmplitude χout χsrc b).hasTemperateGrowth
+    fun_prop
+  have hphase : Function.HasTemperateGrowth
+      (fun z : NormalizedCircleFinePacketSpace =>
+        (ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial z) *
+          normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift z) -
+          ν (c + δ • normalizedCircleFinePacketShift z)) := by
+    have hP := normalizedCircleFinePacketCompactPhase.hasTemperateGrowth.comp hshift
+    have hν := ν.hasTemperateGrowth.comp hshift
+    fun_prop
+  have he : Function.HasTemperateGrowth
+      (fun z : NormalizedCircleFinePacketSpace =>
+        Complex.exp (((((ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial z) *
+          normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift z) -
+          ν (c + δ • normalizedCircleFinePacketShift z)) : Real) : Complex) * Complex.I)) :=
+    Complex.hasTemperateGrowth_exp_mul_I.comp hphase
+  change (SchwartzMap.smulLeftCLM Complex _ (SchwartzMap.smulLeftCLM Complex _ _) : _) x = _
+  rw [SchwartzMap.smulLeftCLM_apply_apply he, SchwartzMap.smulLeftCLM_apply_apply hband,
+    smul_eq_mul, smul_eq_mul]
+  dsimp
+  ring
+
+theorem normalizedCircleFinePacketNormalizedKernel_eq_integral
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ₀ ζ η o y =
+      (δ⁻¹ : Real) * Complex.exp
+        (((normalizedCircleFinePacketFrequencyCovector ζ η (ε, (o.fst, o.snd), y)
+          : Real) : Complex) * Complex.I) *
+        ∫ x : NormalizedCircleFinePacketSpace,
+          normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y x := by
+  dsimp only [normalizedCircleFinePacketNormalizedKernel]
+  congr 1
+  apply integral_congr_ae
+  filter_upwards with x
+  exact (normalizedCircleFinePacketIntegrandSchwartz_apply χout χsrc b Γ q m
+    ε δ ρ₀ ζ η o y x).symm
+
+
+theorem normalizedCircleFinePacketDual_shift
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (x : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketFrequencyCovector ζ η
+      (normalizedCircleFinePacketShift x) =
+      -(2 * Real.pi) *
+        (inner Real ζ x.fst + inner Real η x.snd.fst) := by
+  rw [normalizedCircleFinePacketFrequencyCovector_apply,
+    normalizedCircleFinePacketShift_apply]
+  have ho : WithLp.toLp 2 (-x.fst.fst, -x.fst.snd) = -x.fst := rfl
+  rw [ho, inner_neg_right]
+  ring
+
+theorem normalizedCircleFinePacketProfile_apply
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (x : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketProfile q m Γ x =
+      (𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst *
+        ((𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst * Γ x.snd.snd) := rfl
+
+theorem normalizedCircleFinePacketBandAmplitude_apply
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (c : NormalizedCircleFullPhaseDomain) (δ ρ₀ : Real)
+    (x : NormalizedCircleFinePacketSpace) :
+    normalizedCircleFinePacketBandAmplitude χout χsrc b
+      (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift x) =
+    normalizedCircleTrueCutoffAmplitude χout χsrc
+      (c + δ • normalizedCircleFinePacketShift x) * b (ρ₀ * δ ^ 2 + δ * x.snd.snd) := rfl
+
+theorem normalizedCircleFinePacket_exponential_split
+    (P ν : NormalizedCircleFullPhaseDomain → Real)
+    (hν : ∀ c δ x, ν (c + δ • normalizedCircleFinePacketShift x) =
+      ν c + δ * ν (normalizedCircleFinePacketShift x))
+    (c : NormalizedCircleFullPhaseDomain) (δ ρ₀ : Real)
+    (x : NormalizedCircleFinePacketSpace) :
+    Complex.exp ((ν c : Complex) * Complex.I) *
+      Complex.exp (((((ρ₀ + δ⁻¹ * x.snd.snd) *
+        P (c + δ • normalizedCircleFinePacketShift x) -
+        ν (c + δ • normalizedCircleFinePacketShift x)) : Real) : Complex) * Complex.I) =
+    Complex.exp ((((-δ * ν (normalizedCircleFinePacketShift x)) : Real) : Complex) *
+      Complex.I) *
+      Complex.exp (((((ρ₀ + δ⁻¹ * x.snd.snd) *
+        P (c + δ • normalizedCircleFinePacketShift x)) : Real) : Complex) * Complex.I) := by
+  rw [← Complex.exp_add, ← Complex.exp_add, hν c δ x]
+  congr 1
+  push_cast
+  ring
+
+
+/-- Pointwise physical normalized packet integrand. The angular source
+phase and the radial Jacobian are the original ones. -/
+def normalizedCircleFinePacketPhysicalIntegrand
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (x : NormalizedCircleFinePacketSpace) : Complex :=
+  let Z := o - δ • x.fst
+  let v := y + δ • x.snd.fst
+  let ρ := ρ₀ + δ⁻¹ * x.snd.snd
+  (Real.fourierChar (inner Real ζ (δ • x.fst)) : Complex) *
+    (Real.fourierChar (inner Real η (δ • x.snd.fst)) : Complex) *
+    (𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst *
+    (𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst *
+    χout (Z.fst, Z.snd) * χsrc v *
+    (((1 + ε * v 1) / (1 + ε * Z.snd) : Real) : Complex) *
+    b (ρ₀ * δ ^ 2 + δ * x.snd.snd) * Γ x.snd.snd *
+    Complex.exp (((2 * Real.pi * ρ *
+      (Z.snd - normalizedCircleIncidence ε Z.fst (circleDirection (v 0)) (v 1))
+        : Real) : Complex) * Complex.I)
+
+theorem normalizedCircleFinePacket_characters
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2) (δ : Real)
+    (x : NormalizedCircleFinePacketSpace) :
+    Complex.exp ((((-δ * normalizedCircleFinePacketFrequencyCovector ζ η
+        (normalizedCircleFinePacketShift x)) : Real) : Complex) * Complex.I) =
+      (Real.fourierChar (inner Real ζ (δ • x.fst)) : Complex) *
+        (Real.fourierChar (inner Real η (δ • x.snd.fst)) : Complex) := by
+  rw [normalizedCircleFinePacketDual_shift]
+  simp only [Real.fourierChar_apply, inner_smul_right]
+  rw [← Complex.exp_add]
+  congr 1
+  push_cast
+  ring
+
+theorem normalizedCircle_trueCutoff_packetPhase_substitution
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (c : NormalizedCircleFullPhaseDomain) (hε : |c.1| ≤ 1 / 64) (ρ : Real) :
+    Complex.exp (((ρ * normalizedCircleFinePacketCompactPhase c : Real) : Complex) *
+        Complex.I) * normalizedCircleTrueCutoffAmplitude χout χsrc c =
+      Complex.exp (((2 * Real.pi * ρ *
+        (c.2.1.2 - normalizedCircleIncidence c.1 c.2.1.1
+          (circleDirection (c.2.2 0)) (c.2.2 1)) : Real) : Complex) * Complex.I) *
+        (χout c.2.1 * χsrc c.2.2 *
+          (((1 + c.1 * (c.2.2 1)) / (1 + c.1 * c.2.1.2) : Real) : Complex)) := by
+  have h := normalizedCircle_trueCutoff_phase_substitution_on_analysis_core χout χsrc hχout hχsrc c hε
+    (-(2 * Real.pi) * ρ)
+  have hP : ρ * normalizedCircleFinePacketCompactPhase c =
+      (-(2 * Real.pi) * ρ) * normalizedCircleCompactFullPhaseSchwartz c := by
+    simp only [normalizedCircleFinePacketCompactPhase, smul_apply, smul_eq_mul]
+    ring
+  have hρ : (-(2 * Real.pi) * ρ) *
+      (normalizedCircleIncidence c.1 c.2.1.1 (circleDirection (c.2.2 0)) (c.2.2 1) -
+        c.2.1.2) =
+      2 * Real.pi * ρ * (c.2.1.2 -
+        normalizedCircleIncidence c.1 c.2.1.1 (circleDirection (c.2.2 0)) (c.2.2 1)) := by ring
+  rw [hP, ← hρ]
+  exact h
+
+theorem normalizedCircleFinePacket_integrand_eq_physical
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real) (hε : |ε| ≤ 1 / 64)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (x : NormalizedCircleFinePacketSpace) :
+    Complex.exp (((normalizedCircleFinePacketFrequencyCovector ζ η
+      (ε, (o.fst, o.snd), y) : Real) : Complex) * Complex.I) *
+      normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y x =
+      normalizedCircleFinePacketPhysicalIntegrand χout χsrc b Γ q m ε δ ρ₀ ζ η o y x := by
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let ν := normalizedCircleFinePacketFrequencyCovector ζ η
+  let d := c + δ • normalizedCircleFinePacketShift x
+  have hd : d = (ε, ((o - δ • x.fst).fst, (o - δ • x.fst).snd),
+      y + δ • x.snd.fst) := by
+    simp [d, c, normalizedCircleFinePacketShift_apply, sub_eq_add_neg]
+  have hs := normalizedCircleFinePacket_exponential_split
+    normalizedCircleFinePacketCompactPhase ν
+    (fun c δ x => by simp only [map_add, map_smul, smul_eq_mul]) c δ ρ₀ x
+  have hp := normalizedCircle_trueCutoff_packetPhase_substitution χout χsrc hχout hχsrc d
+    (by simpa only [hd] using hε) (ρ₀ + δ⁻¹ * x.snd.snd)
+  rw [normalizedCircleFinePacketIntegrandSchwartz_apply]
+  dsimp only
+  rw [normalizedCircleFinePacketBandAmplitude_apply,
+    normalizedCircleFinePacketProfile_apply]
+  change Complex.exp ((ν c : Complex) * Complex.I) *
+    (Complex.exp (((((ρ₀ + δ⁻¹ * x.snd.snd) *
+      normalizedCircleFinePacketCompactPhase d - ν d) : Real) : Complex) * Complex.I) *
+      (normalizedCircleTrueCutoffAmplitude χout χsrc d * b (ρ₀ * δ ^ 2 + δ * x.snd.snd)) *
+      ((𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst *
+        ((𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst * Γ x.snd.snd))) = _
+  calc
+    _ = (Complex.exp ((ν c : Complex) * Complex.I) *
+        Complex.exp (((((ρ₀ + δ⁻¹ * x.snd.snd) *
+          normalizedCircleFinePacketCompactPhase d - ν d) : Real) : Complex) * Complex.I)) *
+        normalizedCircleTrueCutoffAmplitude χout χsrc d *
+        b (ρ₀ * δ ^ 2 + δ * x.snd.snd) *
+        (𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst *
+        (𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst * Γ x.snd.snd := by ring
+    _ = _ := by
+      rw [hs, normalizedCircleFinePacket_characters]
+      rw [mul_assoc _ _ (normalizedCircleTrueCutoffAmplitude χout χsrc d), hp]
+      rw [hd]
+      dsimp [normalizedCircleFinePacketPhysicalIntegrand]
+      ring
+
+
+/-- Exact change to a natural-width conormal frequency packet, without any
+integrability or localization assumption on the scalar integrand. -/
+theorem normalizedCircleFinePacket_radial_affine_integral
+    (F : Real → Complex) (δ ρ₀ : Real) (hδ : 0 < δ) :
+    (∫ ρ : Real, F ρ) = (δ⁻¹ : Real) *
+      ∫ s : Real, F (ρ₀ + δ⁻¹ * s) := by
+  have hs := Measure.integral_comp_inv_smul volume (fun r : Real => F (ρ₀ + r)) δ
+  simp only [Module.finrank_self, pow_one, abs_of_pos hδ, smul_eq_mul] at hs
+  rw [integral_add_left_eq_self] at hs
+  rw [hs]
+  rw [Complex.real_smul, ← mul_assoc, ← Complex.ofReal_mul,
+    inv_mul_cancel₀ hδ.ne', Complex.ofReal_one, one_mul]
+
+theorem normalizedCircleFinePacket_radial_reparametrization
+    (b Γ : SchwartzMap Real Complex) (δ ρ₀ φ : Real) (hδ : 0 < δ) :
+    (∫ ρ : Real, b (δ ^ 2 * ρ) * Γ (δ * (ρ - ρ₀)) *
+      Complex.exp (((2 * Real.pi * ρ * φ : Real) : Complex) * Complex.I)) =
+    (δ⁻¹ : Real) * ∫ s : Real, b (ρ₀ * δ ^ 2 + δ * s) * Γ s *
+      Complex.exp (((2 * Real.pi * (ρ₀ + δ⁻¹ * s) * φ : Real) : Complex) * Complex.I) := by
+  rw [normalizedCircleFinePacket_radial_affine_integral _ δ ρ₀ hδ]
+  congr 1
+  apply integral_congr_ae
+  filter_upwards with s
+  have hbs : δ ^ 2 * (ρ₀ + δ⁻¹ * s) = ρ₀ * δ ^ 2 + δ * s := by field_simp
+  have hΓs : δ * (ρ₀ + δ⁻¹ * s - ρ₀) = s := by field_simp; ring
+  rw [hbs, hΓs]
+
+
+theorem normalizedCircleFinePacketKernel_eq_shifted
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real) (hδ : 0 < δ)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y =
+      (δ⁻¹ : Real) * ∫ v : JointWaveSpaceTime, ∫ w : Euclidean 2, ∫ s : Real,
+        normalizedCircleFinePacketPhysicalIntegrand χout χsrc b Γ q m ε δ ρ₀ ζ η o y
+          (WithLp.toLp 2 (v, WithLp.toLp 2 (w, s))) := by
+  unfold normalizedCircleFinePacketKernel
+  simp_rw [mul_assoc]
+  rw [mssTranslatedDilatedCutoff_raw_convolution_sub q _ ζ o δ⁻¹ (inv_pos.mpr hδ)]
+  simp only [inv_inv, Circle.smul_def, smul_eq_mul]
+  rw [← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards with v
+  rw [mssTranslatedDilatedCutoff_raw_convolution_add m _ η y δ⁻¹ (inv_pos.mpr hδ)]
+  simp only [inv_inv, Circle.smul_def, smul_eq_mul]
+  have hr (w : Euclidean 2) := normalizedCircleFinePacket_radial_reparametrization
+    b Γ δ ρ₀ ((o - δ • v).snd - normalizedCircleIncidence ε (o - δ • v).fst
+      (circleDirection ((y + δ • w) 0)) ((y + δ • w) 1)) hδ
+  simp only [mul_assoc] at hr
+  simp_rw [hr]
+  simp_rw [← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards with w
+  apply integral_congr_ae
+  filter_upwards with s
+  dsimp [normalizedCircleFinePacketPhysicalIntegrand]
+  ring
+
+
+/-- Exact Fubini passage from the joint six-dimensional Hilbert packet
+coordinates to the three output, two source, and one radial coordinates. -/
+theorem normalizedCircleFinePacket_integral_coordinates
+    (F : NormalizedCircleFinePacketSpace → Complex) (hF : Integrable F volume) :
+    (∫ x : NormalizedCircleFinePacketSpace, F x) =
+      ∫ v : JointWaveSpaceTime, ∫ w : Euclidean 2, ∫ s : Real,
+        F (WithLp.toLp 2 (v, WithLp.toLp 2 (w, s))) := by
+  have hO : MeasurePreserving
+      (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real)))
+      volume volume :=
+    WithLp.volume_preserving_toLp JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
+  have hI : MeasurePreserving (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)) volume volume :=
+    WithLp.volume_preserving_toLp (Euclidean 2) Real
+  let G : JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real) → Complex :=
+    fun p => F (WithLp.toLp 2 p)
+  have hG : Integrable G (volume.prod volume) := hO.integrable_comp_of_integrable hF
+  have htransport :
+      (∫ x : NormalizedCircleFinePacketSpace, F x) =
+        ∫ p : JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real), G p :=
+    (hO.integral_comp' F).symm
+  rw [htransport, Measure.volume_eq_prod, integral_prod G hG]
+  apply integral_congr_ae
+  filter_upwards [hG.prod_right_ae] with v hv
+  have hi : Integrable (fun p : Euclidean 2 × Real => G (v, WithLp.toLp 2 p))
+      (volume.prod volume) := hI.integrable_comp_of_integrable hv
+  calc
+    _ = ∫ p : Euclidean 2 × Real, G (v, WithLp.toLp 2 p) :=
+      (hI.integral_comp' (fun r => G (v, r))).symm
+    _ = _ := by rw [Measure.volume_eq_prod]; exact integral_prod _ hi
+
+
+/-- Simultaneous actual packet dual mismatch: output cube, source cube
+and conormal incidence are all retained in the six-dimensional covector. -/
+def normalizedCircleFinePacketDualMismatch
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) : NormalizedCircleFinePacketSpace :=
+  sourcePacketDualMismatch normalizedCircleFinePacketCompactPhase
+    (ε, (o.fst, o.snd), y) δ ρ₀ 0
+    normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
+    (normalizedCircleFinePacketFrequencyCovector ζ η)
+
+/-- Uniform joint covector decay of the normalized kernel, with the true
+source/output cutoffs and radial band amplitude. No derivative or
+localization estimate is assumed in this consumer. -/
+theorem normalizedCircleFinePacketNormalizedKernel_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (J : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real,
+      0 < δ → δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖) ^ J *
+        ‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ₀ ζ η o y‖ ≤
+        C * δ⁻¹ := by
+  obtain ⟨C, hC, hdecay⟩ := sourcePacket_schwartz_oscillatory_integral_decay
+    normalizedCircleFinePacketCompactPhase
+    (normalizedCircleFinePacketBandAmplitude χout χsrc b)
+    (normalizedCircleFinePacketProfile q m Γ) J R hR
+  refine ⟨C, hC, ?_⟩
+  intro ε δ ρ₀ hδ hδone hρ₀ ζ η o y
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let ξ := normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y
+  have hξ := sourcePacketDualMismatch_inner normalizedCircleFinePacketCompactPhase
+    c δ ρ₀ 0 normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
+    (normalizedCircleFinePacketFrequencyCovector ζ η)
+  have hd := hdecay c (WithLp.toLp 2 (c, ρ₀ * δ ^ 2)) δ ρ₀ 0 hδ hδone hρ₀
+    normalizedCircleFinePacketShift normalizedCircleFinePacketShift_norm_le
+    normalizedCircleFinePacketRadial normalizedCircleFinePacketRadial_norm_le
+    normalizedCircleFinePacketAmplitudeShift normalizedCircleFinePacketAmplitudeShift_norm_le
+    (normalizedCircleFinePacketFrequencyCovector ζ η) ξ
+    (by intro x; simpa only [sub_zero, ξ, normalizedCircleFinePacketDualMismatch, c] using hξ x)
+  simp only [sub_zero] at hd
+  dsimp only [normalizedCircleFinePacketNormalizedKernel]
+  rw [norm_mul, norm_mul, Complex.norm_exp_ofReal_mul_I, mul_one,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hδ)]
+  have he : (1 + ‖ξ‖) ^ J * (δ⁻¹ *
+      ‖∫ x : NormalizedCircleFinePacketSpace,
+        Complex.exp ((((ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial x) *
+            normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift x) -
+          normalizedCircleFinePacketFrequencyCovector ζ η
+            (c + δ • normalizedCircleFinePacketShift x) : Real) : Complex) * Complex.I) *
+        normalizedCircleFinePacketBandAmplitude χout χsrc b
+          (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift x) *
+        normalizedCircleFinePacketProfile q m Γ x‖) ≤ C * δ⁻¹ := by
+    nlinarith [mul_le_mul_of_nonneg_left hd (le_of_lt (inv_pos.mpr hδ))]
+  exact he
+
+
+/-- Exact source/output/radial packet identity for the original normalized
+circle family, including epsilon zero. The joint integrability needed for
+Fubini is supplied by the actual fixed compact amplitude and packet
+profiles; it is not an additional hypothesis. -/
+theorem normalizedCircleFinePacketKernel_eq_normalized
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ₀ : Real) (hε : |ε| ≤ 1 / 64) (hδ : 0 < δ)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y =
+      normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ₀ ζ η o y := by
+  rw [normalizedCircleFinePacketKernel_eq_shifted]
+  have hp : ∀ x : NormalizedCircleFinePacketSpace,
+      normalizedCircleFinePacketPhysicalIntegrand χout χsrc b Γ q m ε δ ρ₀ ζ η o y x =
+        Complex.exp (((normalizedCircleFinePacketFrequencyCovector ζ η
+          (ε, (o.fst, o.snd), y) : Real) : Complex) * Complex.I) *
+          normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y x := by
+    intro x
+    exact (normalizedCircleFinePacket_integrand_eq_physical χout χsrc hχout hχsrc
+      b Γ q m ε δ ρ₀ hε ζ η o y x).symm
+  simp_rw [hp, integral_const_mul]
+  rw [← normalizedCircleFinePacket_integral_coordinates _
+    (normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m
+      ε δ ρ₀ ζ η o y).integrable]
+  rw [normalizedCircleFinePacketNormalizedKernel_eq_integral]
+  ring
+
+/-- Uniform decay of the literal packet kernel in its source, output,
+and incidence mismatches, derived from the actual normalized family. -/
+theorem normalizedCircleFinePacketKernel_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (J : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real,
+      |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖) ^ J *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+        C * δ⁻¹ := by
+  obtain ⟨C, hC, hd⟩ := normalizedCircleFinePacketNormalizedKernel_decay
+    χout χsrc b Γ q m J R hR
+  refine ⟨C, hC, ?_⟩
+  intro ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y
+  rw [normalizedCircleFinePacketKernel_eq_normalized χout χsrc hχout hχsrc
+    b Γ q m ε δ ρ₀ hε hδ ζ η o y]
+  exact hd ε δ ρ₀ hδ hδone hρ₀ ζ η o y
+
+#print axioms normalizedCircleFinePacketKernel_eq_normalized
+#print axioms normalizedCircleFinePacketKernel_decay
+
+/-! ## Exact actual packet covectors on the analysis core
+
+The three components of the canonical joint mismatch are computed from
+true directional derivatives of the normalized incidence. The output and
+source signs are those of the original cyclic-frequency shell, and the
+factorized estimate retains every lattice and incidence weight.
+-/
+
+def normalizedCircleFullOutputInsertion :
+    JointWaveSpaceTime →L[Real] NormalizedCircleFullPhaseDomain :=
+  (0 : JointWaveSpaceTime →L[Real] Real).prod
+    ((((WithLp.fstL 2 Real (Euclidean 2) Real).prod
+      (WithLp.sndL 2 Real (Euclidean 2) Real))).prod
+        (0 : JointWaveSpaceTime →L[Real] Euclidean 2))
+
+def normalizedCircleFullSourceInsertion :
+    (Euclidean 2) →L[Real] NormalizedCircleFullPhaseDomain :=
+  (0 : (Euclidean 2) →L[Real] Real).prod
+    ((0 : (Euclidean 2) →L[Real] WaveSpaceTime).prod
+      (ContinuousLinearMap.id Real (Euclidean 2)))
+
+def normalizedCircleFinePacketOutputGradient (c : NormalizedCircleFullPhaseDomain) :
+    JointWaveSpaceTime :=
+  (InnerProductSpace.toDual Real JointWaveSpaceTime).symm
+    ((fderiv Real normalizedCircleFinePacketCompactPhase c).comp
+      normalizedCircleFullOutputInsertion)
+
+def normalizedCircleFinePacketSourceGradient (c : NormalizedCircleFullPhaseDomain) :
+    Euclidean 2 :=
+  (InnerProductSpace.toDual Real (Euclidean 2)).symm
+    ((fderiv Real normalizedCircleFinePacketCompactPhase c).comp
+      normalizedCircleFullSourceInsertion)
+
+theorem normalizedCircleFinePacketDualMismatch_inner_output
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) (v : JointWaveSpaceTime) :
+    2 * Real.pi * inner Real v
+      (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst =
+      δ * (-ρ₀ *
+        (fderiv Real normalizedCircleFinePacketCompactPhase (ε, (o.fst, o.snd), y))
+          (normalizedCircleFullOutputInsertion v) + 2 * Real.pi * inner Real ζ v) := by
+  have h := sourcePacketDualMismatch_inner normalizedCircleFinePacketCompactPhase
+    (ε, (o.fst, o.snd), y) δ ρ₀ 0
+    normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
+    (normalizedCircleFinePacketFrequencyCovector ζ η)
+    (WithLp.toLp 2 (v, (0 : WithLp 2 (Euclidean 2 × Real))))
+  have hshift : normalizedCircleFinePacketShift
+      (WithLp.toLp 2 (v, (0 : WithLp 2 (Euclidean 2 × Real)))) =
+      -normalizedCircleFullOutputInsertion v := by
+    simp [normalizedCircleFinePacketShift_apply, normalizedCircleFullOutputInsertion]
+  rw [normalizedCircleFinePacketDual_shift, hshift, map_neg] at h
+  simp [WithLp.prod_inner_apply, normalizedCircleFinePacketRadial_apply] at h
+  change 2 * Real.pi * inner Real v
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst = _ at h
+  simp only [WithLp.prod_inner_apply, Real.inner_apply, WithLp.ofLp_fst,
+    WithLp.ofLp_snd] at h ⊢
+  nlinarith [h]
+
+theorem normalizedCircleFinePacketDualMismatch_inner_source
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) (w : Euclidean 2) :
+    2 * Real.pi * inner Real w
+      (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst =
+      δ * (ρ₀ *
+        (fderiv Real normalizedCircleFinePacketCompactPhase (ε, (o.fst, o.snd), y))
+          (normalizedCircleFullSourceInsertion w) + 2 * Real.pi * inner Real η w) := by
+  have h := sourcePacketDualMismatch_inner normalizedCircleFinePacketCompactPhase
+    (ε, (o.fst, o.snd), y) δ ρ₀ 0
+    normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
+    (normalizedCircleFinePacketFrequencyCovector ζ η)
+    (WithLp.toLp 2 ((0 : JointWaveSpaceTime), WithLp.toLp 2 (w, (0 : Real))))
+  have hshift : normalizedCircleFinePacketShift
+      (WithLp.toLp 2 ((0 : JointWaveSpaceTime), WithLp.toLp 2 (w, (0 : Real)))) =
+      normalizedCircleFullSourceInsertion w := by
+    simp [normalizedCircleFinePacketShift_apply, normalizedCircleFullSourceInsertion]
+  rw [hshift] at h
+  have hν : normalizedCircleFinePacketFrequencyCovector ζ η
+      (normalizedCircleFullSourceInsertion w) = -(2 * Real.pi) * inner Real η w := by
+    rw [normalizedCircleFinePacketFrequencyCovector_apply]
+    simp [normalizedCircleFullSourceInsertion]
+  rw [hν] at h
+  simp [WithLp.prod_inner_apply, normalizedCircleFinePacketRadial_apply] at h
+  change 2 * Real.pi * inner Real w
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst = _ at h
+  linarith
+
+theorem normalizedCircleFinePacketDualMismatch_radial
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.snd =
+      δ⁻¹ * normalizedCircleFinePacketCompactPhase (ε, (o.fst, o.snd), y) /
+        (2 * Real.pi) := by
+  have h := sourcePacketDualMismatch_inner normalizedCircleFinePacketCompactPhase
+    (ε, (o.fst, o.snd), y) δ ρ₀ 0
+    normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
+    (normalizedCircleFinePacketFrequencyCovector ζ η)
+    (WithLp.toLp 2 ((0 : JointWaveSpaceTime), WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real))))
+  have hshift : normalizedCircleFinePacketShift
+      (WithLp.toLp 2 ((0 : JointWaveSpaceTime), WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real)))) =
+      0 := by simp [normalizedCircleFinePacketShift_apply]
+  rw [hshift, map_zero, map_zero] at h
+  simp [WithLp.prod_inner_apply, normalizedCircleFinePacketRadial_apply] at h
+  change 2 * Real.pi *
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.snd = _ at h
+  exact (eq_div_iff (by positivity : (2 * Real.pi : Real) ≠ 0)).mpr (by linarith)
+
+theorem normalizedCircleFinePacketDualMismatch_output
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst =
+      δ • (ζ - (ρ₀ / (2 * Real.pi)) •
+        normalizedCircleFinePacketOutputGradient (ε, (o.fst, o.snd), y)) := by
+  apply ext_inner_left Real
+  intro v
+  have h := normalizedCircleFinePacketDualMismatch_inner_output ε δ ρ₀ ζ η o y v
+  have hg : inner Real v
+      (normalizedCircleFinePacketOutputGradient (ε, (o.fst, o.snd), y)) =
+      (fderiv Real normalizedCircleFinePacketCompactPhase (ε, (o.fst, o.snd), y))
+        (normalizedCircleFullOutputInsertion v) := by
+    rw [real_inner_comm, normalizedCircleFinePacketOutputGradient,
+      InnerProductSpace.toDual_symm_apply]
+    rfl
+  rw [inner_smul_right, inner_sub_right, inner_smul_right, hg]
+  rw [real_inner_comm v ζ] at h
+  field_simp
+  linarith
+
+theorem normalizedCircleFinePacketDualMismatch_source
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2) :
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst =
+      δ • (η + (ρ₀ / (2 * Real.pi)) •
+        normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y)) := by
+  apply ext_inner_left Real
+  intro w
+  have h := normalizedCircleFinePacketDualMismatch_inner_source ε δ ρ₀ ζ η o y w
+  have hg : inner Real w
+      (normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y)) =
+      (fderiv Real normalizedCircleFinePacketCompactPhase (ε, (o.fst, o.snd), y))
+        (normalizedCircleFullSourceInsertion w) := by
+    rw [real_inner_comm, normalizedCircleFinePacketSourceGradient,
+      InnerProductSpace.toDual_symm_apply]
+    rfl
+  rw [inner_smul_right, inner_add_right, inner_smul_right, hg]
+  rw [real_inner_comm w η] at h
+  field_simp
+  linarith
+
+
+theorem normalizedCircleFinePacketOutputGradient_actual
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    normalizedCircleFinePacketOutputGradient (ε, (o.fst, o.snd), y) =
+      (2 * Real.pi) • WithLp.toLp 2
+        (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1), (1 : Real)) := by
+  apply ext_inner_left Real
+  intro v
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let j : Real → NormalizedCircleFullPhaseSpace :=
+    fun a => ((o.fst + a • v.fst, o.snd + a * v.snd), y)
+  have hjt : Filter.Tendsto j (nhds 0) (nhds ((o.fst, o.snd), y)) := by
+    have hc : Continuous j := by dsimp [j]; fun_prop
+    simpa [j] using hc.continuousAt.tendsto (x := (0 : Real))
+  have heq := (normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual_on_analysis_core
+    ε ((o.fst, o.snd), y) hε hX hT hθ hu).comp_tendsto hjt
+  have heqP :
+      (fun a : Real => normalizedCircleFinePacketCompactPhase
+        (c + a • normalizedCircleFullOutputInsertion v)) =ᶠ[nhds 0]
+      (fun a : Real => (-(2 * Real.pi)) *
+        (normalizedCircleIncidence ε (o.fst + a • v.fst) (circleDirection (y 0)) (y 1) -
+          (o.snd + a * v.snd))) := by
+    filter_upwards [heq] with a ha
+    have hc : c + a • normalizedCircleFullOutputInsertion v = (ε, j a) := by
+      simp [c, j, normalizedCircleFullOutputInsertion]
+    rw [hc]
+    simp only [normalizedCircleFinePacketCompactPhase, smul_apply, smul_eq_mul]
+    exact congrArg (fun r : Real => -(2 * Real.pi) * r) ha
+  have hsmall : |ε| * (|y 1| + ‖o.fst‖) ≤ 1 / 2 := by
+    calc
+      _ ≤ (1 / 64 : Real) * (|y 1| + ‖o.fst‖) :=
+        mul_le_mul_of_nonneg_right hε (by positivity)
+      _ ≤ 1 / 2 := by linarith
+  have hp := (normalizedCircle_phase_hasDerivAt_spacetime ε o.fst v.fst
+    (circleDirection (y 0)) (y 1) o.snd v.snd (-(2 * Real.pi))
+    (norm_circleDirection (y 0)) hsmall).congr_of_eventuallyEq heqP
+  have hline : HasDerivAt
+      (fun a : Real => c + a • normalizedCircleFullOutputInsertion v)
+      (normalizedCircleFullOutputInsertion v) 0 := by
+    simpa using ((hasDerivAt_id (0 : Real)).smul_const
+      (normalizedCircleFullOutputInsertion v)).const_add c
+  have hd := (normalizedCircleFinePacketCompactPhase.differentiableAt (x := c)).hasFDerivAt.comp_hasDerivAt_of_eq
+    (0 : Real) hline (by simp)
+  have hderiv := hd.unique hp
+  rw [real_inner_comm, normalizedCircleFinePacketOutputGradient,
+    InnerProductSpace.toDual_symm_apply]
+  change (fderiv Real normalizedCircleFinePacketCompactPhase c)
+    (normalizedCircleFullOutputInsertion v) = _
+  rw [hderiv]
+  simp only [inner_smul_right, WithLp.prod_inner_apply,
+    WithLp.ofLp_fst, WithLp.ofLp_snd, inner_smul_left, RCLike.conj_to_real,
+    Real.inner_apply, mul_one]
+  rw [real_inner_comm]
+  ring
+
+
+theorem normalizedCircleFinePacketSourceGradient_hasDerivAt
+    (c : NormalizedCircleFullPhaseDomain) (w : Euclidean 2) :
+    HasDerivAt (fun a : Real => normalizedCircleFinePacketCompactPhase
+      (c + a • normalizedCircleFullSourceInsertion w))
+      (inner Real w (normalizedCircleFinePacketSourceGradient c)) 0 := by
+  have hline : HasDerivAt
+      (fun a : Real => c + a • normalizedCircleFullSourceInsertion w)
+      (normalizedCircleFullSourceInsertion w) 0 := by
+    simpa using ((hasDerivAt_id (0 : Real)).smul_const
+      (normalizedCircleFullSourceInsertion w)).const_add c
+  have hd := (normalizedCircleFinePacketCompactPhase.differentiableAt (x := c)).hasFDerivAt.comp_hasDerivAt_of_eq
+    (0 : Real) hline (by simp)
+  have he : inner Real w (normalizedCircleFinePacketSourceGradient c) =
+      (fderiv Real normalizedCircleFinePacketCompactPhase c)
+        (normalizedCircleFullSourceInsertion w) := by
+    rw [real_inner_comm, normalizedCircleFinePacketSourceGradient,
+      InnerProductSpace.toDual_symm_apply]
+    rfl
+  rw [he]
+  exact hd
+
+theorem normalizedCircleFinePacket_source_line_eventually_actual
+    (ε : Real) (o : JointWaveSpaceTime) (y w : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    (fun a : Real => normalizedCircleFinePacketCompactPhase
+      ((ε, (o.fst, o.snd), y) + a • normalizedCircleFullSourceInsertion w)) =ᶠ[nhds 0]
+      (fun a : Real => -(2 * Real.pi) *
+        (normalizedCircleIncidence ε o.fst
+          (circleDirection ((y + a • w) 0)) ((y + a • w) 1) - o.snd)) := by
+  let j : Real → NormalizedCircleFullPhaseSpace :=
+    fun a => ((o.fst, o.snd), y + a • w)
+  have hjt : Filter.Tendsto j (nhds 0) (nhds ((o.fst, o.snd), y)) := by
+    have hc : Continuous j := by dsimp [j]; fun_prop
+    simpa [j] using hc.continuousAt.tendsto (x := (0 : Real))
+  have heq := (normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual_on_analysis_core
+    ε ((o.fst, o.snd), y) hε hX hT hθ hu).comp_tendsto hjt
+  filter_upwards [heq] with a ha
+  have hc : (ε, (o.fst, o.snd), y) + a • normalizedCircleFullSourceInsertion w = (ε, j a) := by
+    simp [j, normalizedCircleFullSourceInsertion]
+  rw [hc]
+  simp only [normalizedCircleFinePacketCompactPhase, smul_apply, smul_eq_mul]
+  exact congrArg (fun r : Real => -(2 * Real.pi) * r) ha
+
+theorem normalizedCircleFinePacketSourceGradient_angle
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) 0 =
+      2 * Real.pi * (1 + ε * y 1) *
+        inner Real o.fst (circleDirectionDeriv (y 0)) /
+        ‖circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst)‖ := by
+  let w : Euclidean 2 := EuclideanSpace.basisFun (Fin 2) Real 0
+  have hsmall : |ε| * (|y 1| + ‖o.fst‖) ≤ 1 / 2 := by
+    calc
+      _ ≤ (1 / 64 : Real) * (|y 1| + ‖o.fst‖) :=
+        mul_le_mul_of_nonneg_right hε (by positivity)
+      _ ≤ 1 / 2 := by linarith
+  have hsep : circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst) ≠ 0 := by
+    have hh := normalizedCircleIncidence_separation ε o.fst (circleDirection (y 0)) (y 1)
+      (norm_circleDirection (y 0)) hsmall
+    exact norm_pos_iff.mp (by linarith)
+  have ha := ((normalizedCircleIncidence_hasDerivAt_angle ε o.fst (y 0) (y 1) hsep).comp_of_eq
+    (0 : Real) (by simpa using (hasDerivAt_id (0 : Real)).const_add (y 0))
+      (by simp)).sub_const o.snd
+  have hp : HasDerivAt (fun a : Real => -(2 * Real.pi) *
+      (normalizedCircleIncidence ε o.fst
+        (circleDirection ((y + a • w) 0)) ((y + a • w) 1) - o.snd))
+      (-(2 * Real.pi) * (-(1 + ε * y 1) * inner Real o.fst (circleDirectionDeriv (y 0)) /
+        ‖circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst)‖)) 0 := by
+    convert ha.const_mul (-(2 * Real.pi)) using 1 <;>
+      simp [w, EuclideanSpace.basisFun_apply]
+  have hd := normalizedCircleFinePacketSourceGradient_hasDerivAt (ε, (o.fst, o.snd), y) w
+  have he := normalizedCircleFinePacket_source_line_eventually_actual ε o y w hε hX hT hθ hu
+  have huq := hd.unique (hp.congr_of_eventuallyEq he)
+  have hw : inner Real w (normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y)) =
+      normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) 0 :=
+    EuclideanSpace.basisFun_inner (Fin 2) Real _ 0
+  rw [hw] at huq
+  rw [huq]
+  ring
+
+theorem normalizedCircleFinePacketSourceGradient_radial
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) 1 =
+      -(2 * Real.pi) *
+        inner Real (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1))
+          (circleDirection (y 0)) := by
+  let w : Euclidean 2 := EuclideanSpace.basisFun (Fin 2) Real 1
+  have hsmall : |ε| * (|y 1| + ‖o.fst‖) ≤ 1 / 2 := by
+    calc
+      _ ≤ (1 / 64 : Real) * (|y 1| + ‖o.fst‖) :=
+        mul_le_mul_of_nonneg_right hε (by positivity)
+      _ ≤ 1 / 2 := by linarith
+  have hsep : circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst) ≠ 0 := by
+    have hh := normalizedCircleIncidence_separation ε o.fst (circleDirection (y 0)) (y 1)
+      (norm_circleDirection (y 0)) hsmall
+    exact norm_pos_iff.mp (by linarith)
+  have ha := ((normalizedCircleIncidence_hasDerivAt_radial ε o.fst (circleDirection (y 0))
+    (y 1) (norm_circleDirection (y 0)) hsep).comp_of_eq
+    (0 : Real) (by simpa using (hasDerivAt_id (0 : Real)).const_add (y 1))
+      (by simp)).sub_const o.snd
+  have hp : HasDerivAt (fun a : Real => -(2 * Real.pi) *
+      (normalizedCircleIncidence ε o.fst
+        (circleDirection ((y + a • w) 0)) ((y + a • w) 1) - o.snd))
+      (-(2 * Real.pi) *
+        inner Real (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1))
+          (circleDirection (y 0))) 0 := by
+    convert ha.const_mul (-(2 * Real.pi)) using 1 <;>
+      simp [w, EuclideanSpace.basisFun_apply]
+  have hd := normalizedCircleFinePacketSourceGradient_hasDerivAt (ε, (o.fst, o.snd), y) w
+  have he := normalizedCircleFinePacket_source_line_eventually_actual ε o y w hε hX hT hθ hu
+  have huq := hd.unique (hp.congr_of_eventuallyEq he)
+  have hw : inner Real w (normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y)) =
+      normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) 1 :=
+    EuclideanSpace.basisFun_inner (Fin 2) Real _ 1
+  rw [hw] at huq
+  exact huq
+
+
+def normalizedCircleFinePacketActualInputGradient
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2) : Euclidean 2 :=
+  WithLp.toLp 2 ![
+    -(1 + ε * y 1) * inner Real o.fst (circleDirectionDeriv (y 0)) /
+      ‖circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst)‖,
+    inner Real (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1))
+      (circleDirection (y 0))]
+
+theorem normalizedCircleFinePacketSourceGradient_actual
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) =
+      -(2 * Real.pi) • normalizedCircleFinePacketActualInputGradient ε o y := by
+  ext i
+  fin_cases i
+  · change normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) 0 = _
+    rw [normalizedCircleFinePacketSourceGradient_angle ε o y hε hX hT hθ hu]
+    simp [normalizedCircleFinePacketActualInputGradient]
+    ring
+  · change normalizedCircleFinePacketSourceGradient (ε, (o.fst, o.snd), y) 1 = _
+    rw [normalizedCircleFinePacketSourceGradient_radial ε o y hε hX hT hθ hu]
+    simp [normalizedCircleFinePacketActualInputGradient]
+
+theorem normalizedCircleFinePacketDualMismatch_actual_output
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst =
+      δ • (ζ - ρ₀ • WithLp.toLp 2
+        (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1), (1 : Real))) := by
+  rw [normalizedCircleFinePacketDualMismatch_output,
+    normalizedCircleFinePacketOutputGradient_actual ε o y hε hX hT hθ hu, smul_smul]
+  have hρ : ρ₀ / (2 * Real.pi) * (2 * Real.pi) = ρ₀ :=
+    div_mul_cancel₀ _ (by positivity)
+  rw [hρ]
+
+theorem normalizedCircleFinePacketDualMismatch_actual_source
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst =
+      δ • (η - ρ₀ • normalizedCircleFinePacketActualInputGradient ε o y) := by
+  rw [normalizedCircleFinePacketDualMismatch_source,
+    normalizedCircleFinePacketSourceGradient_actual ε o y hε hX hT hθ hu, smul_smul]
+  have hρ : ρ₀ / (2 * Real.pi) * -(2 * Real.pi) = -ρ₀ := by
+    field_simp
+  rw [hρ, neg_smul, ← sub_eq_add_neg]
+
+theorem normalizedCircleFinePacketDualMismatch_actual_radial
+    (ε δ ρ₀ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ < 3) (hT : |o.snd| < 2)
+    (hθ : |y 0| < 4) (hu : |y 1| < 5) :
+    (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.snd =
+      -δ⁻¹ * (normalizedCircleIncidence ε o.fst (circleDirection (y 0)) (y 1) - o.snd) := by
+  rw [normalizedCircleFinePacketDualMismatch_radial]
+  simp only [normalizedCircleFinePacketCompactPhase, smul_apply, smul_eq_mul]
+  rw [normalizedCircleCompactFullPhaseSchwartz_eq_actual_on_analysis_core
+    (ε, (o.fst, o.snd), y) hε hX.le hT.le hθ.le hu.le]
+  field_simp
+
+
+theorem normalizedCircleFinePacket_joint_weight_le
+    (x : NormalizedCircleFinePacketSpace) (N : Nat) :
+    (1 + ‖x.fst‖) ^ N * (1 + ‖x.snd.fst‖) ^ N *
+      (1 + |x.snd.snd|) ^ N ≤ (1 + ‖x‖) ^ (3 * N) := by
+  have hO : ‖x.fst‖ ≤ ‖x‖ :=
+    WithLp.norm_fst_le (p := 2) JointWaveSpaceTime x
+  have hS : ‖x.snd.fst‖ ≤ ‖x‖ :=
+    (WithLp.norm_fst_le (p := 2) (Euclidean 2) x.snd).trans
+      (WithLp.norm_snd_le (p := 2) JointWaveSpaceTime x)
+  have hR : |x.snd.snd| ≤ ‖x‖ := by
+    simpa only [Real.norm_eq_abs] using
+      (WithLp.norm_snd_le (p := 2) (Euclidean 2) x.snd).trans
+        (WithLp.norm_snd_le (p := 2) JointWaveSpaceTime x)
+  calc
+    _ ≤ (1 + ‖x‖) ^ N * (1 + ‖x‖) ^ N * (1 + ‖x‖) ^ N := by
+      gcongr
+    _ = _ := by rw [← pow_add, ← pow_add]; congr 1; omega
+
+/-- Factorized localization of the literal normalized packet on the actual
+analysis core. The spectral centers have the cyclic Fourier signs of the
+original shell kernel: output rho*(N,1), source rho*(Ptheta,Pu). -/
+theorem normalizedCircleFinePacketKernel_actual_product_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real,
+      |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      ‖o.fst‖ < 3 → |o.snd| < 2 → |y 0| < 4 → |y 1| < 5 →
+      (1 + ‖δ • (ζ - ρ₀ • WithLp.toLp 2
+        (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1), (1 : Real)))‖) ^ N *
+      (1 + ‖δ • (η - ρ₀ • normalizedCircleFinePacketActualInputGradient ε o y)‖) ^ N *
+      (1 + δ⁻¹ * |normalizedCircleIncidence ε o.fst (circleDirection (y 0)) (y 1) - o.snd|) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+        C * δ⁻¹ := by
+  obtain ⟨C, hC, hd⟩ := normalizedCircleFinePacketKernel_decay
+    χout χsrc hχout hχsrc b Γ q m (3 * N) R hR
+  refine ⟨C, hC, ?_⟩
+  intro ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y hX hT hθ hu
+  let x := normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y
+  have hw := normalizedCircleFinePacket_joint_weight_le x N
+  have hxo := normalizedCircleFinePacketDualMismatch_actual_output ε δ ρ₀ ζ η o y hε hX hT hθ hu
+  have hxs := normalizedCircleFinePacketDualMismatch_actual_source ε δ ρ₀ ζ η o y hε hX hT hθ hu
+  have hxr := normalizedCircleFinePacketDualMismatch_actual_radial ε δ ρ₀ ζ η o y hε hX hT hθ hu
+  change (1 + ‖(normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst‖) ^ N *
+    (1 + ‖(normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst‖) ^ N *
+    (1 + |(normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.snd|) ^ N ≤
+      (1 + ‖x‖) ^ (3 * N) at hw
+  rw [hxo, hxs, hxr, abs_mul, abs_neg, abs_of_pos (inv_pos.mpr hδ)] at hw
+  exact (mul_le_mul_of_nonneg_right hw (norm_nonneg _)).trans
+    (hd ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y)
+
+#print axioms normalizedCircleFinePacketDualMismatch_actual_output
+#print axioms normalizedCircleFinePacketDualMismatch_actual_source
+#print axioms normalizedCircleFinePacketDualMismatch_actual_radial
+#print axioms normalizedCircleFinePacketKernel_actual_product_decay
+
+/-- The actual compact source and output cutoffs give physical packet tails.
+These estimates retain the genuine inverse Fourier kernels outside the phase
+shield and do not apply ray geometry to the artificial phase extension. -/
+
+theorem normalizedCircleFineSource_box_norm
+    (z : Euclidean 2) (hθ : |z 0| ≤ 7 / 2) (hu : |z 1| ≤ 9 / 2) :
+    ‖z‖ ≤ 6 := by
+  have hs : ‖z‖ ^ 2 = |z 0| ^ 2 + |z 1| ^ 2 := by
+    simp [EuclideanSpace.norm_sq_eq, Fin.sum_univ_two, Real.norm_eq_abs]
+  nlinarith [pow_le_pow_left₀ (abs_nonneg (z 0)) hθ 2,
+    pow_le_pow_left₀ (abs_nonneg (z 1)) hu 2, norm_nonneg z]
+
+theorem normalizedCircleFineSource_box_margin
+    (y z : Euclidean 2) (hθ : |z 0| ≤ 7 / 2) (hu : |z 1| ≤ 9 / 2)
+    (hy : 4 ≤ |y 0| ∨ 5 ≤ |y 1|) :
+    1 / 2 ≤ ‖y - z‖ := by
+  have hcoord (i : Fin 2) : |y i - z i| ≤ ‖y - z‖ := by
+    simpa only [Real.norm_eq_abs, PiLp.sub_apply] using PiLp.norm_apply_le (y - z) i
+  have htri (i : Fin 2) : |y i| ≤ |y i - z i| + |z i| := by
+    calc
+      _ = |(y i - z i) + z i| := by rw [sub_add_cancel]
+      _ ≤ _ := abs_add_le _ _
+  rcases hy with hy | hy
+  · linarith [hcoord 0, htri 0]
+  · linarith [hcoord 1, htri 1]
+
+theorem normalizedCircleFineSource_tail_weight
+    (χ : SchwartzMap (Euclidean 2) Complex)
+    (hχ : ∀ z, χ z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
+    (δ : Real) (hδ : 0 ≤ δ) (y w : Euclidean 2)
+    (hy : 4 ≤ |y 0| ∨ 5 ≤ |y 1|) (N : Nat) :
+    (1 + ‖y‖) ^ N * ‖χ (y + δ • w)‖ ≤
+      15 ^ N * δ ^ N * (1 + ‖w‖) ^ N * SchwartzMap.seminorm Complex 0 0 χ := by
+  by_cases hz : χ (y + δ • w) = 0
+  · simp only [hz, norm_zero, mul_zero]
+    positivity
+  obtain ⟨hθ, hu⟩ := hχ (y + δ • w) hz
+  have hdist := normalizedCircleFineSource_box_margin y (y + δ • w) hθ hu hy
+  have hzn := normalizedCircleFineSource_box_norm (y + δ • w) hθ hu
+  have he : y - (y + δ • w) = -(δ • w) := by abel
+  rw [he, norm_neg, norm_smul, Real.norm_eq_abs, abs_of_nonneg hδ] at hdist
+  have hnorm : ‖y‖ ≤ 6 + δ * ‖w‖ := by
+    calc
+      _ ≤ ‖y + δ • w‖ + ‖y - (y + δ • w)‖ := by
+        calc
+          _ = ‖(y + δ • w) + (y - (y + δ • w))‖ := by congr 1; abel
+          _ ≤ _ := norm_add_le _ _
+      _ ≤ _ := by simpa [he, norm_smul, abs_of_nonneg hδ] using add_le_add_right hzn ‖y - (y + δ • w)‖
+  have hbase : 1 + ‖y‖ ≤ 15 * δ * (1 + ‖w‖) := by nlinarith [norm_nonneg w]
+  have hp : (1 + ‖y‖) ^ N ≤ 15 ^ N * δ ^ N * (1 + ‖w‖) ^ N := by
+    simpa only [mul_pow] using pow_le_pow_left₀ (by positivity) hbase N
+  exact mul_le_mul hp (χ.norm_le_seminorm Complex _)
+    (norm_nonneg _) (by positivity)
+
+theorem sourcePacket_schwartz_weighted_norm_integrable
+    {E : Type*} [NormedAddCommGroup E] [InnerProductSpace Real E]
+    [FiniteDimensional Real E] [MeasurableSpace E] [BorelSpace E]
+    (f : SchwartzMap E Complex) (N : Nat) :
+    Integrable (fun w : E => (1 + ‖w‖) ^ N * ‖f w‖) volume := by
+  have hb (r : Real) (hr : 0 ≤ r) :
+      (1 + r) ^ N ≤ 2 ^ N * (1 + r ^ N) := by
+    rcases le_total r 1 with h | h
+    · calc
+        _ ≤ (2 : Real) ^ N := by gcongr; linarith
+        _ ≤ _ := by
+          calc
+            _ = (2 : Real) ^ N * 1 := by ring
+            _ ≤ _ := mul_le_mul_of_nonneg_left (by linarith [pow_nonneg hr N]) (by positivity)
+    · calc
+        _ ≤ (2 * r) ^ N := by gcongr; linarith
+        _ = 2 ^ N * r ^ N := by rw [mul_pow]
+        _ ≤ _ := mul_le_mul_of_nonneg_left (by linarith) (by positivity)
+  have hmaj : Integrable
+      (fun w : E => (2 : Real) ^ N * (‖f w‖ + ‖w‖ ^ N * ‖f w‖)) volume :=
+    (f.integrable.norm.add (f.integrable_pow_mul volume N)).const_mul _
+  refine hmaj.mono' (by fun_prop) ?_
+  filter_upwards with w
+  rw [Real.norm_of_nonneg (by positivity)]
+  have h := mul_le_mul_of_nonneg_right (hb ‖w‖ (norm_nonneg w)) (norm_nonneg (f w))
+  nlinarith
+
+
+def normalizedCircleFinePacketSourceTailEnvelope
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (N : Nat) (x : NormalizedCircleFinePacketSpace) : Real :=
+  ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+    (((1 + ‖x.snd.fst‖) ^ N *
+      ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖) * ‖Γ x.snd.snd‖)
+
+theorem normalizedCircleFinePacketSourceTailEnvelope_nonneg
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (N : Nat) (x : NormalizedCircleFinePacketSpace) :
+    0 ≤ normalizedCircleFinePacketSourceTailEnvelope q m Γ N x := by
+  dsimp [normalizedCircleFinePacketSourceTailEnvelope]
+  positivity
+
+theorem normalizedCircleFinePacketSourceTailEnvelope_integrable
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (N : Nat) :
+    Integrable (normalizedCircleFinePacketSourceTailEnvelope q m Γ N) volume := by
+  have hI : MeasurePreserving (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)) volume volume :=
+    WithLp.volume_preserving_toLp (Euclidean 2) Real
+  let H : WithLp 2 (Euclidean 2 × Real) → Real := fun z =>
+    ((1 + ‖z.fst‖) ^ N * ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.fst‖) *
+      ‖Γ z.snd‖
+  have hHI : Integrable H volume := by
+    apply (hI.integrable_comp_emb (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)).measurableEmbedding).mp
+    change Integrable (fun z : Euclidean 2 × Real =>
+      ((1 + ‖z.1‖) ^ N * ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.1‖) * ‖Γ z.2‖) volume
+    rw [Measure.volume_eq_prod]
+    exact (sourcePacket_schwartz_weighted_norm_integrable (𝓕⁻ m) N).mul_prod Γ.integrable.norm
+  have hO : MeasurePreserving
+      (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real)))
+      volume volume :=
+    WithLp.volume_preserving_toLp JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
+  apply (hO.integrable_comp_emb
+    (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real))).measurableEmbedding).mp
+  change Integrable (fun z : JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real) =>
+    ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) z.1‖ * H z.2) volume
+  rw [Measure.volume_eq_prod]
+  exact (𝓕⁻ q).integrable.norm.mul_prod hHI
+
+
+def normalizedCircleFinePacketSourceTailCoefficient
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (N : Nat) : Real :=
+  15 ^ N * SchwartzMap.seminorm Complex 0 0 χsrc *
+    SchwartzMap.seminorm Complex 0 0 χout *
+    SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz *
+    SchwartzMap.seminorm Complex 0 0 b
+
+theorem normalizedCircleFinePacket_integrand_source_tail
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat)
+    (ε δ ρ₀ : Real) (hδ : 0 ≤ δ)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hy : 4 ≤ |y 0| ∨ 5 ≤ |y 1|) (x : NormalizedCircleFinePacketSpace) :
+    (1 + ‖y‖) ^ N *
+      ‖normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y x‖ ≤
+    normalizedCircleFinePacketSourceTailCoefficient χout χsrc b N * δ ^ N *
+      normalizedCircleFinePacketSourceTailEnvelope q m Γ N x := by
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let d := c + δ • normalizedCircleFinePacketShift x
+  have hs := normalizedCircleFineSource_tail_weight χsrc hχsrc δ hδ y x.snd.fst hy N
+  have ho := χout.norm_le_seminorm Complex d.2.1
+  have hj := normalizedCircleFullJacobianAmplitudeSchwartz.norm_le_seminorm Complex d
+  have hb := b.norm_le_seminorm Complex (ρ₀ * δ ^ 2 + δ * x.snd.snd)
+  rw [normalizedCircleFinePacketIntegrandSchwartz_apply]
+  dsimp only
+  rw [normalizedCircleFinePacketBandAmplitude_apply,
+    normalizedCircleTrueCutoffAmplitude_apply, normalizedCircleFinePacketProfile_apply]
+  simp only [norm_mul, Complex.norm_exp_ofReal_mul_I, one_mul]
+  change (1 + ‖y‖) ^ N *
+      ((‖χout d.2.1‖ * ‖χsrc (y + δ • x.snd.fst)‖ *
+        ‖normalizedCircleFullJacobianAmplitudeSchwartz d‖ *
+        ‖b (ρ₀ * δ ^ 2 + δ * x.snd.snd)‖) *
+        (‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+          (‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖))) ≤ _
+  calc
+    _ = (‖χout d.2.1‖ * ‖normalizedCircleFullJacobianAmplitudeSchwartz d‖ *
+        ‖b (ρ₀ * δ ^ 2 + δ * x.snd.snd)‖) *
+      ((1 + ‖y‖) ^ N * ‖χsrc (y + δ • x.snd.fst)‖) *
+      ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+      ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖ := by ring
+    _ ≤ (SchwartzMap.seminorm Complex 0 0 χout *
+      SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz *
+      SchwartzMap.seminorm Complex 0 0 b) *
+      (15 ^ N * δ ^ N * (1 + ‖x.snd.fst‖) ^ N * SchwartzMap.seminorm Complex 0 0 χsrc) *
+      ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+      ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖ := by
+        gcongr
+    _ = _ := by
+      dsimp [normalizedCircleFinePacketSourceTailCoefficient,
+        normalizedCircleFinePacketSourceTailEnvelope]
+      ring
+
+/-- Rapid physical-source decay of the normalized packet outside the
+enlarged analysis chart. This is independent of the central phase and hence
+remains valid in the artificial shielding region. -/
+theorem normalizedCircleFinePacketNormalizedKernel_source_tail
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, ∀ hδ : 0 < δ,
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+      (1 + ‖y‖) ^ N *
+        ‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ₀ ζ η o y‖ ≤
+      C * δ⁻¹ * δ ^ N := by
+  let C₀ := normalizedCircleFinePacketSourceTailCoefficient χout χsrc b N
+  have hC₀ : 0 ≤ C₀ := by dsimp [C₀, normalizedCircleFinePacketSourceTailCoefficient]; positivity
+  let M := ∫ x, normalizedCircleFinePacketSourceTailEnvelope q m Γ N x
+  have hM : 0 ≤ M :=
+    integral_nonneg (normalizedCircleFinePacketSourceTailEnvelope_nonneg q m Γ N)
+  refine ⟨C₀ * M, mul_nonneg hC₀ hM, ?_⟩
+  intro ε δ ρ₀ hδ ζ η o y hy
+  let I := normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y
+  have hint := normalizedCircleFinePacketSourceTailEnvelope_integrable q m Γ N
+  have hn : (1 + ‖y‖) ^ N * ‖∫ x, I x‖ ≤ C₀ * δ ^ N * M := by
+    have hh := norm_integral_le_of_norm_le
+      (hint.const_mul (C₀ * δ ^ N))
+      (f := fun x => (((1 + ‖y‖) ^ N : Real) : Complex) * I x)
+      (by
+        filter_upwards with x
+        simpa only [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+          abs_of_nonneg (by positivity : 0 ≤ (1 + ‖y‖) ^ N)] using
+          normalizedCircleFinePacket_integrand_source_tail χout χsrc hχsrc b Γ q m N
+            ε δ ρ₀ hδ.le ζ η o y hy x)
+    simpa only [integral_const_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (by positivity : 0 ≤ (1 + ‖y‖) ^ N)] using hh
+  rw [normalizedCircleFinePacketNormalizedKernel_eq_integral, norm_mul, norm_mul,
+    Complex.norm_exp_ofReal_mul_I, mul_one, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos (inv_pos.mpr hδ)]
+  change (1 + ‖y‖) ^ N * (δ⁻¹ * ‖∫ x, I x‖) ≤ C₀ * M * δ⁻¹ * δ ^ N
+  nlinarith [mul_le_mul_of_nonneg_left hn (le_of_lt (inv_pos.mpr hδ))]
+
+theorem normalizedCircleFinePacketKernel_source_tail
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ,
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+      (1 + ‖y‖) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+      C * δ⁻¹ * δ ^ N := by
+  obtain ⟨C, hC, hd⟩ := normalizedCircleFinePacketNormalizedKernel_source_tail
+    χout χsrc hχsrc b Γ q m N
+  refine ⟨C, hC, ?_⟩
+  intro ε δ ρ₀ hε hδ ζ η o y hy
+  have hs : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5 := by
+    intro z hz
+    obtain ⟨hθ, hu⟩ := hχsrc z hz
+    constructor <;> linarith
+  rw [normalizedCircleFinePacketKernel_eq_normalized χout χsrc hχout hs
+    b Γ q m ε δ ρ₀ hε hδ ζ η o y]
+  exact hd ε δ ρ₀ hδ ζ η o y hy
+
+
+theorem normalizedCircleFineOutput_box_norm
+    (z : JointWaveSpaceTime) (hX : ‖z.fst‖ ≤ 5 / 2) (hT : |z.snd| ≤ 3 / 2) :
+    ‖z‖ ≤ 3 := by
+  have hs := WithLp.prod_norm_sq_eq_of_L2 z
+  have hXsq := pow_le_pow_left₀ (norm_nonneg z.fst) hX 2
+  have hTsq := pow_le_pow_left₀ (abs_nonneg z.snd) hT 2
+  rw [Real.norm_eq_abs] at hs
+  nlinarith [norm_nonneg z]
+
+theorem normalizedCircleFineOutput_box_margin
+    (o z : JointWaveSpaceTime) (hX : ‖z.fst‖ ≤ 5 / 2) (hT : |z.snd| ≤ 3 / 2)
+    (ho : 3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) :
+    1 / 2 ≤ ‖o - z‖ := by
+  have hspace : ‖o.fst - z.fst‖ ≤ ‖o - z‖ := by
+    simpa only [WithLp.sub_fst] using WithLp.norm_fst_le (p := 2) (Euclidean 2) (o - z)
+  have htime : |o.snd - z.snd| ≤ ‖o - z‖ := by
+    simpa only [WithLp.sub_snd, Real.norm_eq_abs] using
+      WithLp.norm_snd_le (p := 2) (Euclidean 2) (o - z)
+  rcases ho with ho | ho
+  · have htri : ‖o.fst‖ ≤ ‖o.fst - z.fst‖ + ‖z.fst‖ := by
+      calc
+        _ = ‖(o.fst - z.fst) + z.fst‖ := by rw [sub_add_cancel]
+        _ ≤ _ := norm_add_le _ _
+    linarith
+  · have htri : |o.snd| ≤ |o.snd - z.snd| + |z.snd| := by
+      calc
+        _ = |(o.snd - z.snd) + z.snd| := by rw [sub_add_cancel]
+        _ ≤ _ := abs_add_le _ _
+    linarith
+
+theorem normalizedCircleFineOutput_tail_weight
+    (χ : SchwartzMap WaveSpaceTime Complex)
+    (hχ : ∀ z, χ z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (δ : Real) (hδ : 0 ≤ δ) (o v : JointWaveSpaceTime)
+    (ho : 3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) (N : Nat) :
+    (1 + ‖o‖) ^ N * ‖χ ((o - δ • v).fst, (o - δ • v).snd)‖ ≤
+      9 ^ N * δ ^ N * (1 + ‖v‖) ^ N * SchwartzMap.seminorm Complex 0 0 χ := by
+  by_cases hz : χ ((o - δ • v).fst, (o - δ • v).snd) = 0
+  · simp only [hz, norm_zero, mul_zero]
+    positivity
+  obtain ⟨hX, hT⟩ := hχ ((o - δ • v).fst, (o - δ • v).snd) hz
+  have hdist := normalizedCircleFineOutput_box_margin o (o - δ • v) hX hT ho
+  have hzn := normalizedCircleFineOutput_box_norm (o - δ • v) hX hT
+  have he : o - (o - δ • v) = δ • v := by abel
+  rw [he, norm_smul, Real.norm_eq_abs, abs_of_nonneg hδ] at hdist
+  have hnorm : ‖o‖ ≤ 3 + δ * ‖v‖ := by
+    calc
+      _ ≤ ‖o - δ • v‖ + ‖o - (o - δ • v)‖ := by
+        calc
+          _ = ‖(o - δ • v) + (o - (o - δ • v))‖ := by congr 1; abel
+          _ ≤ _ := norm_add_le _ _
+      _ ≤ _ := by simpa [he, norm_smul, abs_of_nonneg hδ] using add_le_add_right hzn ‖o - (o - δ • v)‖
+  have hbase : 1 + ‖o‖ ≤ 9 * δ * (1 + ‖v‖) := by nlinarith [norm_nonneg v]
+  have hp : (1 + ‖o‖) ^ N ≤ 9 ^ N * δ ^ N * (1 + ‖v‖) ^ N := by
+    simpa only [mul_pow] using pow_le_pow_left₀ (by positivity) hbase N
+  exact mul_le_mul hp (χ.norm_le_seminorm Complex _)
+    (norm_nonneg _) (by positivity)
+
+def normalizedCircleFinePacketOutputTailEnvelope
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (N : Nat) (x : NormalizedCircleFinePacketSpace) : Real :=
+  ((1 + ‖x.fst‖) ^ N * ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖) *
+    (‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖)
+
+theorem normalizedCircleFinePacketOutputTailEnvelope_nonneg
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (N : Nat) (x : NormalizedCircleFinePacketSpace) :
+    0 ≤ normalizedCircleFinePacketOutputTailEnvelope q m Γ N x := by
+  dsimp [normalizedCircleFinePacketOutputTailEnvelope]
+  positivity
+
+theorem normalizedCircleFinePacketOutputTailEnvelope_integrable
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
+    (N : Nat) :
+    Integrable (normalizedCircleFinePacketOutputTailEnvelope q m Γ N) volume := by
+  have hI : MeasurePreserving (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)) volume volume :=
+    WithLp.volume_preserving_toLp (Euclidean 2) Real
+  let H : WithLp 2 (Euclidean 2 × Real) → Real := fun z =>
+    ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.fst‖ * ‖Γ z.snd‖
+  have hHI : Integrable H volume := by
+    apply (hI.integrable_comp_emb (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)).measurableEmbedding).mp
+    change Integrable (fun z : Euclidean 2 × Real =>
+      ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.1‖ * ‖Γ z.2‖) volume
+    rw [Measure.volume_eq_prod]
+    exact (𝓕⁻ m).integrable.norm.mul_prod Γ.integrable.norm
+  have hO : MeasurePreserving
+      (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real)))
+      volume volume :=
+    WithLp.volume_preserving_toLp JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
+  apply (hO.integrable_comp_emb
+    (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real))).measurableEmbedding).mp
+  change Integrable (fun z : JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real) =>
+    ((1 + ‖z.1‖) ^ N * ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) z.1‖) * H z.2) volume
+  rw [Measure.volume_eq_prod]
+  exact (sourcePacket_schwartz_weighted_norm_integrable (𝓕⁻ q) N).mul_prod hHI
+
+
+def normalizedCircleFinePacketOutputTailCoefficient
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (N : Nat) : Real :=
+  9 ^ N * SchwartzMap.seminorm Complex 0 0 χout *
+    SchwartzMap.seminorm Complex 0 0 χsrc *
+    SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz *
+    SchwartzMap.seminorm Complex 0 0 b
+
+theorem normalizedCircleFinePacket_integrand_output_tail
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat)
+    (ε δ ρ₀ : Real) (hδ : 0 ≤ δ)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2)
+    (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (ho : 3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) (x : NormalizedCircleFinePacketSpace) :
+    (1 + ‖o‖) ^ N *
+      ‖normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y x‖ ≤
+    normalizedCircleFinePacketOutputTailCoefficient χout χsrc b N * δ ^ N *
+      normalizedCircleFinePacketOutputTailEnvelope q m Γ N x := by
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let d := c + δ • normalizedCircleFinePacketShift x
+  have hs := normalizedCircleFineOutput_tail_weight χout hχout δ hδ o x.fst ho N
+  have hi := χsrc.norm_le_seminorm Complex d.2.2
+  have hj := normalizedCircleFullJacobianAmplitudeSchwartz.norm_le_seminorm Complex d
+  have hb := b.norm_le_seminorm Complex (ρ₀ * δ ^ 2 + δ * x.snd.snd)
+  have he : d.2.1 = ((o - δ • x.fst).fst, (o - δ • x.fst).snd) := by
+    simp [d, c, normalizedCircleFinePacketShift_apply, sub_eq_add_neg]
+  rw [← he] at hs
+  rw [normalizedCircleFinePacketIntegrandSchwartz_apply]
+  dsimp only
+  rw [normalizedCircleFinePacketBandAmplitude_apply,
+    normalizedCircleTrueCutoffAmplitude_apply, normalizedCircleFinePacketProfile_apply]
+  simp only [norm_mul, Complex.norm_exp_ofReal_mul_I, one_mul]
+  change (1 + ‖o‖) ^ N *
+      ((‖χout d.2.1‖ * ‖χsrc d.2.2‖ *
+        ‖normalizedCircleFullJacobianAmplitudeSchwartz d‖ *
+        ‖b (ρ₀ * δ ^ 2 + δ * x.snd.snd)‖) *
+        (‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+          (‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖))) ≤ _
+  calc
+    _ = (‖χsrc d.2.2‖ * ‖normalizedCircleFullJacobianAmplitudeSchwartz d‖ *
+        ‖b (ρ₀ * δ ^ 2 + δ * x.snd.snd)‖) *
+      ((1 + ‖o‖) ^ N * ‖χout d.2.1‖) *
+      ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+      ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖ := by ring
+    _ ≤ (SchwartzMap.seminorm Complex 0 0 χsrc *
+      SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz *
+      SchwartzMap.seminorm Complex 0 0 b) *
+      (9 ^ N * δ ^ N * (1 + ‖x.fst‖) ^ N * SchwartzMap.seminorm Complex 0 0 χout) *
+      ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+      ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖ := by
+        gcongr
+    _ = _ := by
+      dsimp [normalizedCircleFinePacketOutputTailCoefficient,
+        normalizedCircleFinePacketOutputTailEnvelope]
+      ring
+
+theorem normalizedCircleFinePacketNormalizedKernel_output_tail
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, ∀ hδ : 0 < δ,
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+      (1 + ‖o‖) ^ N *
+        ‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ₀ ζ η o y‖ ≤
+      C * δ⁻¹ * δ ^ N := by
+  let C₀ := normalizedCircleFinePacketOutputTailCoefficient χout χsrc b N
+  have hC₀ : 0 ≤ C₀ := by dsimp [C₀, normalizedCircleFinePacketOutputTailCoefficient]; positivity
+  let M := ∫ x, normalizedCircleFinePacketOutputTailEnvelope q m Γ N x
+  have hM : 0 ≤ M :=
+    integral_nonneg (normalizedCircleFinePacketOutputTailEnvelope_nonneg q m Γ N)
+  refine ⟨C₀ * M, mul_nonneg hC₀ hM, ?_⟩
+  intro ε δ ρ₀ hδ ζ η o y ho
+  let I := normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ₀ ζ η o y
+  have hint := normalizedCircleFinePacketOutputTailEnvelope_integrable q m Γ N
+  have hn : (1 + ‖o‖) ^ N * ‖∫ x, I x‖ ≤ C₀ * δ ^ N * M := by
+    have hh := norm_integral_le_of_norm_le
+      (hint.const_mul (C₀ * δ ^ N))
+      (f := fun x => (((1 + ‖o‖) ^ N : Real) : Complex) * I x)
+      (by
+        filter_upwards with x
+        simpa only [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+          abs_of_nonneg (by positivity : 0 ≤ (1 + ‖o‖) ^ N)] using
+          normalizedCircleFinePacket_integrand_output_tail χout χsrc hχout b Γ q m N
+            ε δ ρ₀ hδ.le ζ η o y ho x)
+    simpa only [integral_const_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (by positivity : 0 ≤ (1 + ‖o‖) ^ N)] using hh
+  rw [normalizedCircleFinePacketNormalizedKernel_eq_integral, norm_mul, norm_mul,
+    Complex.norm_exp_ofReal_mul_I, mul_one, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos (inv_pos.mpr hδ)]
+  change (1 + ‖o‖) ^ N * (δ⁻¹ * ‖∫ x, I x‖) ≤ C₀ * M * δ⁻¹ * δ ^ N
+  nlinarith [mul_le_mul_of_nonneg_left hn (le_of_lt (inv_pos.mpr hδ))]
+
+theorem normalizedCircleFinePacketKernel_output_tail
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ,
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+      (1 + ‖o‖) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+      C * δ⁻¹ * δ ^ N := by
+  obtain ⟨C, hC, hd⟩ := normalizedCircleFinePacketNormalizedKernel_output_tail
+    χout χsrc hχout b Γ q m N
+  refine ⟨C, hC, ?_⟩
+  intro ε δ ρ₀ hε hδ ζ η o y ho
+  have hs : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2 := by
+    intro z hz
+    obtain ⟨hX, hT⟩ := hχout z hz
+    constructor <;> linarith
+  rw [normalizedCircleFinePacketKernel_eq_normalized χout χsrc hs hχsrc
+    b Γ q m ε δ ρ₀ hε hδ ζ η o y]
+  exact hd ε δ ρ₀ hδ ζ η o y ho
+
+
+theorem sourcePacket_weighted_geometric_mean_tail
+    (a b k L δ CA CB : Real) (N M : Nat)
+    (ha : 0 ≤ a) (hb : 1 ≤ b) (hk : 0 ≤ k) (hL : 0 ≤ L)
+    (hδ : 0 ≤ δ) (hδone : δ ≤ 1) (hCA : 0 ≤ CA) (hCB : 0 ≤ CB)
+    (hA : a ^ (2 * N) * k ≤ CA * L)
+    (hB : b ^ (2 * (N + M)) * k ≤ CB * L * δ ^ (2 * (N + M))) :
+    a ^ N * b ^ N * k ≤ (CA + CB + 1) * L * δ ^ M := by
+  have hb0 : 0 ≤ b := by linarith
+  have hbb : b ^ (2 * N) ≤ b ^ (2 * (N + M)) := by
+    calc
+      _ = b ^ (2 * N) * 1 := by ring
+      _ ≤ b ^ (2 * N) * b ^ (2 * M) :=
+        mul_le_mul_of_nonneg_left (one_le_pow₀ hb) (by positivity)
+      _ = _ := by rw [← pow_add]; congr 1; omega
+  have hdd : δ ^ (2 * (N + M)) ≤ δ ^ (2 * M) := by
+    calc
+      _ = δ ^ (2 * N) * δ ^ (2 * M) := by rw [← pow_add]; congr 1; omega
+      _ ≤ 1 * δ ^ (2 * M) :=
+        mul_le_mul_of_nonneg_right (pow_le_one₀ hδ hδone) (by positivity)
+      _ = _ := one_mul _
+  have hB' : b ^ (2 * N) * k ≤ CB * L * δ ^ (2 * M) :=
+    ((mul_le_mul_of_nonneg_right hbb hk).trans hB).trans
+      (mul_le_mul_of_nonneg_left hdd (by positivity))
+  have hp := mul_le_mul hA hB' (by positivity) (by positivity)
+  have haa : a ^ (2 * N) = (a ^ N) ^ 2 := by rw [← pow_mul]; congr 1; omega
+  have hba : b ^ (2 * N) = (b ^ N) ^ 2 := by rw [← pow_mul]; congr 1; omega
+  have hda : δ ^ (2 * M) = (δ ^ M) ^ 2 := by rw [← pow_mul]; congr 1; omega
+  rw [haa, hba, hda] at hp
+  have hs : (a ^ N * b ^ N * k) ^ 2 ≤ (CA * CB) * (L * δ ^ M) ^ 2 := by
+    convert hp using 1 <;> ring
+  have hc : CA * CB ≤ (CA + CB + 1) ^ 2 := by nlinarith [sq_nonneg (CA - CB)]
+  have hs' : (a ^ N * b ^ N * k) ^ 2 ≤ ((CA + CB + 1) * L * δ ^ M) ^ 2 := by
+    calc
+      _ ≤ (CA * CB) * (L * δ ^ M) ^ 2 := hs
+      _ ≤ (CA + CB + 1) ^ 2 * (L * δ ^ M) ^ 2 :=
+        mul_le_mul_of_nonneg_right hc (sq_nonneg _)
+      _ = _ := by ring
+  exact (sq_le_sq₀ (by positivity) (by positivity)).mp hs'
+
+
+/-- Joint Fourier-covector and physical-source decay outside the true
+analysis core. Its constants are uniform in every spectral center; the
+artificial compact phase is not used for source geometry here. -/
+theorem normalizedCircleFinePacketKernel_source_tail_with_dual_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (N M : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real,
+      |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖) ^ N *
+      (1 + ‖y‖) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+      C * δ⁻¹ * δ ^ M := by
+  have hs : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5 := by
+    intro z hz
+    obtain ⟨hθ, hu⟩ := hχsrc z hz
+    constructor <;> linarith
+  obtain ⟨CA, hCA, hA⟩ := normalizedCircleFinePacketKernel_decay
+    χout χsrc hχout hs b Γ q m (2 * N) R hR
+  obtain ⟨CB, hCB, hB⟩ := normalizedCircleFinePacketKernel_source_tail
+    χout χsrc hχout hχsrc b Γ q m (2 * (N + M))
+  refine ⟨CA + CB + 1, by positivity, ?_⟩
+  intro ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y hy
+  exact sourcePacket_weighted_geometric_mean_tail
+    (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖)
+    (1 + ‖y‖)
+    ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖
+    δ⁻¹ δ CA CB N M
+    (by positivity) (by have := norm_nonneg y; linarith) (norm_nonneg _)
+    (inv_nonneg.mpr hδ.le) hδ.le hδone hCA hCB
+    (hA ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y)
+    (hB ε δ ρ₀ hε hδ ζ η o y hy)
+
+
+/-- Joint Fourier-covector and physical-output decay outside the true
+analysis core. Its constants are uniform in every spectral center; the
+artificial compact phase is not used for output geometry here. -/
+theorem normalizedCircleFinePacketKernel_output_tail_with_dual_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (N M : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real,
+      |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖) ^ N *
+      (1 + ‖o‖) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+      C * δ⁻¹ * δ ^ M := by
+  have hs : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2 := by
+    intro z hz
+    obtain ⟨hX, hT⟩ := hχout z hz
+    constructor <;> linarith
+  obtain ⟨CA, hCA, hA⟩ := normalizedCircleFinePacketKernel_decay
+    χout χsrc hs hχsrc b Γ q m (2 * N) R hR
+  obtain ⟨CB, hCB, hB⟩ := normalizedCircleFinePacketKernel_output_tail
+    χout χsrc hχout hχsrc b Γ q m (2 * (N + M))
+  refine ⟨CA + CB + 1, by positivity, ?_⟩
+  intro ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y hy
+  exact sourcePacket_weighted_geometric_mean_tail
+    (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖)
+    (1 + ‖o‖)
+    ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖
+    δ⁻¹ δ CA CB N M
+    (by positivity) (by have := norm_nonneg o; linarith) (norm_nonneg _)
+    (inv_nonneg.mpr hδ.le) hδ.le hδone hCA hCB
+    (hA ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y)
+    (hB ε δ ρ₀ hε hδ ζ η o y hy)
+
+
+theorem sourcePacket_ray_sum_vector
+    {E : Type*} [AddCommGroup E] [Module Real E]
+    (X Z p n ν : E) (T S : Real) :
+    X + T • ν - p =
+      ((X - Z) + (T - S) • n) +
+        (Z + S • ν - p) + (T - S) • (ν - n) := by module
+
+theorem sourcePacket_bounded_time_ray_weight
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (X Z p n ν : E) (T S L A : Real)
+    (hL : 0 ≤ L) (hA : 0 ≤ A) (ht : |T - S| ≤ A) :
+    1 + L * ‖X + T • ν - p‖ ≤
+      (1 + L * ‖(X - Z) + (T - S) • n‖) *
+      (1 + L * ‖Z + S • ν - p‖) *
+      (1 + A * L * ‖ν - n‖) := by
+  have htri : ‖X + T • ν - p‖ ≤
+      ‖(X - Z) + (T - S) • n‖ + ‖Z + S • ν - p‖ +
+        A * ‖ν - n‖ := by
+    rw [sourcePacket_ray_sum_vector]
+    calc
+      _ ≤ ‖(X - Z) + (T - S) • n‖ + ‖Z + S • ν - p‖ +
+        ‖(T - S) • (ν - n)‖ :=
+          (norm_add_le _ _).trans (add_le_add (norm_add_le _ _) le_rfl)
+      _ ≤ _ := by
+        rw [norm_smul, Real.norm_eq_abs]
+        gcongr
+  have hs := mul_le_mul_of_nonneg_left htri hL
+  have ha0 : 0 ≤ L * ‖(X - Z) + (T - S) • n‖ := mul_nonneg hL (norm_nonneg _)
+  have hb0 : 0 ≤ L * ‖Z + S • ν - p‖ := mul_nonneg hL (norm_nonneg _)
+  have hc0 : 0 ≤ A * L * ‖ν - n‖ := mul_nonneg (mul_nonneg hA hL) (norm_nonneg _)
+  nlinarith [mul_nonneg ha0 hb0, mul_nonneg ha0 hc0, mul_nonneg hb0 hc0,
+    mul_nonneg (mul_nonneg ha0 hb0) hc0]
+
+
+theorem sourcePacket_inverse_ray_weight
+    (a b c r : Real) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 0 ≤ c) (hr : 0 ≤ r)
+    (h : r ≤ a * b * c) (N : Nat) :
+    r ^ N * (a⁻¹) ^ (2 * N) * (b⁻¹) ^ (2 * N) ≤ c ^ N * (b⁻¹) ^ N := by
+  have ha0 : 0 < a := by linarith
+  have hb0 : 0 < b := by linarith
+  have he (t : Real) (ht : 0 < t) : t ^ N * (t⁻¹) ^ (2 * N) = (t⁻¹) ^ N := by
+    rw [show 2 * N = N + N by omega, pow_add, ← mul_assoc, ← mul_pow,
+      mul_inv_cancel₀ ht.ne', one_pow, one_mul]
+  calc
+    _ ≤ (a * b * c) ^ N * (a⁻¹) ^ (2 * N) * (b⁻¹) ^ (2 * N) :=
+      mul_le_mul_of_nonneg_right
+        (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ hr h N) (by positivity)) (by positivity)
+    _ = c ^ N * (a⁻¹) ^ N * (b⁻¹) ^ N := by
+      rw [mul_pow, mul_pow]
+      calc
+        _ = c ^ N * (a ^ N * (a⁻¹) ^ (2 * N)) *
+          (b ^ N * (b⁻¹) ^ (2 * N)) := by ring
+        _ = _ := by rw [he a ha0, he b hb0]
+    _ ≤ c ^ N * 1 * (b⁻¹) ^ N :=
+      mul_le_mul_of_nonneg_right
+        (mul_le_mul_of_nonneg_left
+          (pow_le_one₀ (inv_nonneg.mpr ha0.le) (inv_le_one_of_one_le₀ ha)) (by positivity))
+        (by positivity)
+    _ = _ := by ring
+
+
+def sourcePacketPlanarDecay (N : Nat) (X : Euclidean 2) : Real :=
+  ((1 + ‖X‖)⁻¹) ^ N
+
+theorem sourcePacketPlanarDecay_integrable (N : Nat) (hN : 2 < N) :
+    Integrable (sourcePacketPlanarDecay N) volume := by
+  have hr : (Module.finrank Real (Euclidean 2) : Real) < (N : Real) := by
+    simpa using (show (2 : Real) < (N : Real) by exact_mod_cast hN)
+  have hi := integrable_one_add_norm (E := Euclidean 2) (μ := volume) hr
+  convert hi using 1
+  funext X
+  dsimp [sourcePacketPlanarDecay]
+  rw [Real.rpow_neg (by positivity), Real.rpow_natCast, inv_pow]
+
+theorem sourcePacketPlanarDecay_scaled_mass
+    (N : Nat) (L : Real) (hL : 0 < L) (p : Euclidean 2) :
+    (∫ Z : Euclidean 2, L ^ 2 * sourcePacketPlanarDecay N (L • (Z + p))) =
+      ∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z := by
+  rw [integral_const_mul]
+  have htr : (∫ Z : Euclidean 2, sourcePacketPlanarDecay N (L • (Z + p))) =
+      ∫ Z : Euclidean 2, sourcePacketPlanarDecay N (L • Z) :=
+    integral_add_right_eq_self (fun Z : Euclidean 2 => sourcePacketPlanarDecay N (L • Z)) p
+  rw [htr]
+  rw [Measure.integral_comp_smul_of_nonneg volume (sourcePacketPlanarDecay N) L
+    (hR := hL.le)]
+  simp only [finrank_euclideanSpace, Fintype.card_fin, smul_eq_mul]
+  rw [← mul_assoc, mul_inv_cancel₀ (pow_ne_zero 2 hL.ne'), one_mul]
+
+set_option maxHeartbeats 500000 in
+/-- Positive spatial convolution of two rapidly decaying ray profiles. A
+bounded time shift permits distinct directions, with the exact mismatch
+factor retained for absorption into the packet's spectral decay. -/
+theorem sourcePacket_bounded_time_ray_convolution
+    (N : Nat) (hN : 2 < N)
+    (X p n ν : Euclidean 2) (T S L A : Real)
+    (hL : 0 < L) (hA : 0 ≤ A) (ht : |T - S| ≤ A) :
+    (1 + L * ‖X + T • ν - p‖) ^ N *
+      (∫ Z : Euclidean 2, L ^ 2 *
+        ((1 + L * ‖(X - Z) + (T - S) • n‖)⁻¹) ^ (2 * N) *
+        ((1 + L * ‖Z + S • ν - p‖)⁻¹) ^ (2 * N)) ≤
+      (∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z) *
+        (1 + A * L * ‖ν - n‖) ^ N := by
+  let R := 1 + L * ‖X + T • ν - p‖
+  let C := (1 + A * L * ‖ν - n‖) ^ N
+  let F : Euclidean 2 → Real := fun Z => L ^ 2 *
+    ((1 + L * ‖(X - Z) + (T - S) • n‖)⁻¹) ^ (2 * N) *
+    ((1 + L * ‖Z + S • ν - p‖)⁻¹) ^ (2 * N)
+  let G : Euclidean 2 → Real := fun Z =>
+    C * (L ^ 2 * sourcePacketPlanarDecay N (L • (Z + (S • ν - p))))
+  have hG : Integrable G volume := by
+    have hi := ((sourcePacketPlanarDecay_integrable N hN).comp_smul hL.ne').comp_add_right
+      (S • ν - p)
+    exact (hi.const_mul (L ^ 2)).const_mul C
+  have hpoint (Z : Euclidean 2) : R ^ N * F Z ≤ G Z := by
+    have hh := sourcePacket_bounded_time_ray_weight X Z p n ν T S L A hL.le hA ht
+    have hw := sourcePacket_inverse_ray_weight
+      (1 + L * ‖(X - Z) + (T - S) • n‖)
+      (1 + L * ‖Z + S • ν - p‖)
+      (1 + A * L * ‖ν - n‖) R
+      (by have := mul_nonneg hL.le (norm_nonneg ((X - Z) + (T - S) • n)); linarith)
+      (by have := mul_nonneg hL.le (norm_nonneg (Z + S • ν - p)); linarith)
+      (by positivity) (by dsimp [R]; positivity) hh N
+    have hm := mul_le_mul_of_nonneg_left hw (sq_nonneg L)
+    calc
+      _ = L ^ 2 * ((1 + L * ‖X + T • ν - p‖) ^ N *
+          ((1 + L * ‖(X - Z) + (T - S) • n‖)⁻¹) ^ (2 * N) *
+          ((1 + L * ‖Z + S • ν - p‖)⁻¹) ^ (2 * N)) := by dsimp [R, F]; ring
+      _ ≤ L ^ 2 * (C * ((1 + L * ‖Z + S • ν - p‖)⁻¹) ^ N) := hm
+      _ = _ := by
+        dsimp [G, sourcePacketPlanarDecay]
+        rw [norm_smul, Real.norm_eq_abs, abs_of_pos hL, ← add_sub_assoc]
+        ring
+  have hR : 1 ≤ R := by dsimp [R]; have := mul_nonneg hL.le (norm_nonneg (X + T • ν - p)); linarith
+  have hF : Integrable F volume := by
+    refine hG.mono' (by dsimp [F]; fun_prop) ?_
+    filter_upwards with Z
+    rw [Real.norm_of_nonneg (by dsimp [F]; positivity)]
+    calc
+      _ ≤ R ^ N * F Z := by
+        simpa using mul_le_mul_of_nonneg_right (one_le_pow₀ hR)
+          (show 0 ≤ F Z by dsimp [F]; positivity)
+      _ ≤ _ := hpoint Z
+  have hwint := integral_mono (hF.const_mul (R ^ N)) hG hpoint
+  rw [integral_const_mul] at hwint
+  have hmass : (∫ Z : Euclidean 2, G Z) =
+      C * ∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z := by
+    dsimp [G]
+    rw [integral_const_mul, sourcePacketPlanarDecay_scaled_mass N L hL (S • ν - p)]
+  rw [hmass] at hwint
+  change R ^ N * (∫ Z : Euclidean 2, F Z) ≤
+    (∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z) * C
+  simpa only [mul_comm C (∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z)] using hwint
+
+#print axioms normalizedCircleFinePacketKernel_source_tail_with_dual_decay
+#print axioms normalizedCircleFinePacketKernel_output_tail_with_dual_decay
+#print axioms sourcePacket_bounded_time_ray_convolution
+
+theorem sourcePacket_shared_weight_geometric_mean
+    (a b c k H CA CB : Real) (N : Nat)
+    (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c) (hk : 0 ≤ k)
+    (hH : 0 ≤ H) (hCA : 0 ≤ CA) (hCB : 0 ≤ CB)
+    (hA : a ^ (2*N) * b ^ (2*N) * k ≤ CA * H)
+    (hB : a ^ (2*N) * c ^ (2*N) * k ≤ CB * H) :
+    a ^ (2*N) * b ^ N * c ^ N * k ≤ (CA + CB + 1) * H := by
+  have hp := mul_le_mul hA hB (by positivity) (by positivity)
+  have hpow (x : Real) : x ^ (2*N) = (x^N)^2 := by
+    rw [← pow_mul]; congr 1; omega
+  rw [hpow a, hpow b, hpow c] at hp
+  have hs : (a ^ (2*N) * b ^ N * c ^ N * k)^2 ≤ CA * CB * H^2 := by
+    rw [hpow a]
+    convert hp using 1 <;> ring
+  have hconst : CA * CB ≤ (CA+CB+1)^2 := by nlinarith [sq_nonneg (CA-CB)]
+  apply (sq_le_sq₀ (by positivity) (by positivity)).mp
+  calc
+    _ ≤ CA * CB * H^2 := hs
+    _ ≤ (CA+CB+1)^2 * H^2 :=
+      mul_le_mul_of_nonneg_right hconst (sq_nonneg H)
+    _ = _ := by ring
+
+theorem normalizedCircleFinePacketKernel_joint_physical_tail_with_dual_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (N M : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ : Real,
+      |ε| ≤ 1/64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ * δ^2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+      (4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖) ^ (2*N) *
+      (1 + ‖y‖) ^ N * (1 + ‖o‖) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖ ≤
+          C * δ⁻¹ * δ ^ M := by
+  have hs : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5 := by
+    intro z hz; obtain ⟨h0,h1⟩ := hχsrc z hz; constructor <;> linarith
+  have ho : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2 := by
+    intro z hz; obtain ⟨h0,h1⟩ := hχout z hz; constructor <;> linarith
+  obtain ⟨CA,hCA,hA⟩ := normalizedCircleFinePacketKernel_source_tail_with_dual_decay
+    χout χsrc ho hχsrc b Γ q m (2*N) M R hR
+  obtain ⟨CB,hCB,hB⟩ := normalizedCircleFinePacketKernel_output_tail_with_dual_decay
+    χout χsrc hχout hs b Γ q m (2*N) M R hR
+  refine ⟨CA+CB+1, by positivity, ?_⟩
+  intro ε δ ρ hε hδ hδone hρ ζ η o y hout hsource
+  have h := sourcePacket_shared_weight_geometric_mean
+    (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖)
+    (1 + ‖y‖) (1 + ‖o‖)
+    ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖
+    (δ⁻¹ * δ^M) CA CB N (by positivity) (by positivity) (by positivity)
+    (norm_nonneg _) (by positivity) hCA hCB
+    (by simpa only [mul_assoc] using hA ε δ ρ hε hδ hδone hρ ζ η o y hsource)
+    (by simpa only [mul_assoc] using hB ε δ ρ hε hδ hδone hρ ζ η o y hout)
+  simpa only [mul_assoc] using h
+
+#print axioms normalizedCircleFinePacketKernel_joint_physical_tail_with_dual_decay
+
+
+theorem normalizedCircleFinePacketActualInputGradient_inverse_ray
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ ≤ 3) (hu : |y 1| ≤ 5) :
+    let B := inner Real o.fst (circleDirectionDeriv (y 0)) /
+      ‖circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst)‖
+    normalizedCircleFinePacketActualInputGradient ε o y =
+      WithLp.toLp 2 ![-(1 + ε * y 1) * B, normalizedCircleRayCos ε B] := by
+  let omega := circleDirection (y 0)
+  let V := circleDirectionDeriv (y 0)
+  let B := inner Real o.fst V / ‖omega + ε • (y 1 • omega - o.fst)‖
+  let s := normalizedCircleIncidence ε o.fst omega (y 1)
+  have homega : ‖omega‖ = 1 := norm_circleDirection _
+  have hV : ‖V‖ = 1 := norm_circleDirectionDeriv _
+  have ho : inner Real omega V = 0 := inner_circleDirection_circleDirectionDeriv _
+  have hc := normalizedCircleRay_actual_chart_bounds ε (y 1) o.fst omega V hε hu hX homega hV ho
+  change |B| ≤ 8 ∧ |ε * B| ≤ 1/2 ∧ |s| ≤ 8 ∧
+    1/2 ≤ 1 + ε * y 1 ∧ |ε| ≤ 1 + ε * y 1 ∧
+      o.fst = normalizedCircleRayTerminal ε (y 1) B omega V -
+        s • normalizedCircleRayNormal ε B omega V at hc
+  have hs : 0 < 1 + ε * s := by
+    have hh : |ε * s| ≤ 1/8 := by
+      rw [abs_mul]
+      have hp := mul_le_mul hε hc.2.2.1 (abs_nonneg s) (by norm_num : (0:Real) ≤ 1/64)
+      nlinarith
+    linarith [(abs_le.mp hh).1]
+  have hn : normalizedCircleNormal ε o.fst omega (y 1) =
+      normalizedCircleRayNormal ε B omega V := by
+    rw [hc.2.2.2.2.2]
+    exact normalizedCircleRayNormal_on_ray ε (y 1) B s omega V hc.2.1 hs homega hV ho
+  have hi : inner Real (normalizedCircleNormal ε o.fst omega (y 1)) omega =
+      normalizedCircleRayCos ε B := by
+    rw [hn]
+    simp only [normalizedCircleRayNormal, inner_sub_left, real_inner_smul_left,
+      real_inner_self_eq_norm_sq, homega, one_pow, mul_one,
+      show inner Real V omega = 0 by rw [real_inner_comm]; exact ho, mul_zero, sub_zero]
+  ext i
+  fin_cases i
+  · change -(1 + ε * y 1) * inner Real o.fst V /
+      ‖omega + ε • (y 1 • omega - o.fst)‖ = -(1 + ε * y 1) * B
+    dsimp [B]
+    ring
+  · exact hi
+
+#print axioms normalizedCircleFinePacketActualInputGradient_inverse_ray
+
+
+theorem normalizedCircleFinePacketActualNormal_inverse_ray
+    (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
+    (hε : |ε| ≤ 1/64) (hX : ‖o.fst‖ ≤ 3) (hu : |y 1| ≤ 5) :
+    let B := inner Real o.fst (circleDirectionDeriv (y 0)) /
+      ‖circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst)‖
+    normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1) =
+      normalizedCircleRayNormal ε B (circleDirection (y 0)) (circleDirectionDeriv (y 0)) := by
+  let omega := circleDirection (y 0)
+  let V := circleDirectionDeriv (y 0)
+  let B := inner Real o.fst V / ‖omega + ε • (y 1 • omega - o.fst)‖
+  let s := normalizedCircleIncidence ε o.fst omega (y 1)
+  have homega : ‖omega‖ = 1 := norm_circleDirection _
+  have hV : ‖V‖ = 1 := norm_circleDirectionDeriv _
+  have ho : inner Real omega V = 0 := inner_circleDirection_circleDirectionDeriv _
+  have hc := normalizedCircleRay_actual_chart_bounds ε (y 1) o.fst omega V hε hu hX homega hV ho
+  change |B| ≤ 8 ∧ |ε*B| ≤ 1/2 ∧ |s| ≤ 8 ∧
+    1/2 ≤ 1+ε*y 1 ∧ |ε| ≤ 1+ε*y 1 ∧
+    o.fst = normalizedCircleRayTerminal ε (y 1) B omega V -
+      s • normalizedCircleRayNormal ε B omega V at hc
+  have hs : 0 < 1+ε*s := by
+    have hp := mul_le_mul hε hc.2.2.1 (abs_nonneg s) (by norm_num : (0:Real) ≤ 1/64)
+    have hh := neg_abs_le (ε*s)
+    rw [abs_mul] at hh
+    nlinarith
+  change normalizedCircleNormal ε o.fst omega (y 1) = normalizedCircleRayNormal ε B omega V
+  rw [hc.2.2.2.2.2]
+  exact normalizedCircleRayNormal_on_ray ε (y 1) B s omega V hc.2.1 hs homega hV ho
+
+#print axioms normalizedCircleFinePacketActualNormal_inverse_ray
+
+
+def normalizedCircleFinePacketRayInputGradient (ε a B : Real) : Euclidean 2 :=
+  WithLp.toLp 2 ![-a * B, normalizedCircleRayCos ε B]
+
+theorem normalizedCircleFinePacketRayInputGradient_gap_coordinates
+    (ε a ρ B : Real) (η : Euclidean 2) :
+    |η 0 + a * ρ * B| + |η 1 - ρ * normalizedCircleRayCos ε B| ≤
+      2 * ‖η - ρ • normalizedCircleFinePacketRayInputGradient ε a B‖ := by
+  have h0 := PiLp.norm_apply_le (η - ρ • normalizedCircleFinePacketRayInputGradient ε a B) 0
+  have h1 := PiLp.norm_apply_le (η - ρ • normalizedCircleFinePacketRayInputGradient ε a B) 1
+  have h0' : |η 0 + a * ρ * B| ≤
+      ‖η - ρ • normalizedCircleFinePacketRayInputGradient ε a B‖ := by
+    convert h0 using 1
+    simp [normalizedCircleFinePacketRayInputGradient, Real.norm_eq_abs]
+    congr 1
+    ring
+  have h1' : |η 1 - ρ * normalizedCircleRayCos ε B| ≤
+      ‖η - ρ • normalizedCircleFinePacketRayInputGradient ε a B‖ := by
+    simpa [normalizedCircleFinePacketRayInputGradient, Real.norm_eq_abs] using h1
+  linarith
+
+theorem normalizedCircleFinePacketSource_closest_anchor
+    (ε a lower upper R : Real) (η : Euclidean 2)
+    (hlower : 0 < lower) (hupper : lower ≤ upper) (hR : 0 ≤ R) :
+    ∃ ρA BA : Real, lower ≤ |ρA| ∧ |ρA| ≤ upper ∧ |BA| ≤ R ∧
+      ∀ ρ B : Real, lower ≤ |ρ| → |ρ| ≤ upper → |B| ≤ R →
+      |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+        |a * (ρ * B - ρA * BA)| ≤
+          4 * ‖η - ρ • normalizedCircleFinePacketRayInputGradient ε a B‖ := by
+  obtain ⟨ρA, BA, hAlo, hAhi, hAB, hgap⟩ :=
+    normalizedCircleSourceCovector_closest_anchor
+      ε a (η 0) (η 1) lower upper R hlower hupper hR
+  refine ⟨ρA, BA, hAlo, hAhi, hAB, ?_⟩
+  intro ρ B hlo hhi hB
+  have h := hgap ρ B hlo hhi hB
+  have hcoord := normalizedCircleFinePacketRayInputGradient_gap_coordinates ε a ρ B η
+  linarith
+
+#print axioms normalizedCircleFinePacketSource_closest_anchor
+
+
+theorem normalizedCircleFinePacket_quarter_band_ray_gaps
+    (ε a ρ ρA B BA L u s T : Real) (omega V : Euclidean 2)
+    (haε : |ε| ≤ a) (ha : 1 / 2 ≤ a)
+    (hB : |B| ≤ 8) (hb : |ε * B| ≤ 1 / 2) (hbA : |ε * BA| ≤ 1 / 2)
+    (hL : 0 < L) (hρA : L ^ 2 / 4 ≤ |ρA|)
+    (hε : |ε| ≤ 1 / 64) (hs : |s| ≤ 8)
+    (homega : ‖omega‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real omega V = 0) :
+    let E := |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+      |a * (ρ * B - ρA * BA)|
+    |ρ - ρA| + L ^ 2 * |B - BA| ≤ 74 * E ∧
+    L * ‖(normalizedCircleRayTerminal ε u B omega V -
+          s • normalizedCircleRayNormal ε B omega V) -
+        (normalizedCircleRayTerminal ε u BA omega V -
+          T • normalizedCircleRayNormal ε BA omega V)‖ ≤
+      216 * (E / L) + L * |s - T| := by
+  let E := |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+    |a * (ρ * B - ρA * BA)|
+  have hE : 0 ≤ E := add_nonneg (abs_nonneg _) (abs_nonneg _)
+  have hrad := normalizedCircleRay_covector_radial_gap ε a ρ ρA B BA omega V
+    haε hb hbA homega hV horth
+  have htrans := normalizedCircleRay_covector_transverse_gap ε a ρ ρA B BA (L^2/2)
+    omega V haε ha hb hbA hB (by convert hρA using 1 <;> ring) homega hV horth
+  change |ρ - ρA| ≤ 2 * E at hrad
+  change L^2/2 * |B - BA| ≤ 36 * E at htrans
+  have htr : L^2 * |B - BA| ≤ 72 * E := by nlinarith
+  refine ⟨by change |ρ-ρA| + L^2 * |B-BA| ≤ 74*E; linarith, ?_⟩
+  have hscaled : L * |B - BA| ≤ 72 * (E / L) := by
+    rw [← mul_div_assoc]
+    apply (le_div_iff₀ hL).mpr
+    nlinarith
+  have hd := normalizedCircleRay_distance_le ε u B BA s T omega V hb hbA homega hV horth
+  have hp := mul_le_mul hε hs (abs_nonneg s) (by norm_num : (0:Real) ≤ 1/64)
+  have hc : 2 + 2 * |ε| * |s| ≤ 3 := by nlinarith
+  have hh : ‖(normalizedCircleRayTerminal ε u B omega V -
+          s • normalizedCircleRayNormal ε B omega V) -
+        (normalizedCircleRayTerminal ε u BA omega V -
+          T • normalizedCircleRayNormal ε BA omega V)‖ ≤
+      3 * |B - BA| + |s - T| := hd.trans (by gcongr)
+  have h := mul_le_mul_of_nonneg_left hh hL.le
+  change L * _ ≤ 216 * (E / L) + L * |s - T|
+  nlinarith
+
+#print axioms normalizedCircleFinePacket_quarter_band_ray_gaps
+
+
+theorem normalizedCircleFinePacket_anchor_radial_ray_weights
+    (ε a ρ ρA B BA L u s T : Real) (omega V : Euclidean 2) (g : Real)
+    (haε : |ε| ≤ a) (ha : 1 / 2 ≤ a)
+    (hB : |B| ≤ 8) (hb : |ε * B| ≤ 1 / 2) (hbA : |ε * BA| ≤ 1 / 2)
+    (hL : 0 < L) (hρA : L ^ 2 / 4 ≤ |ρA|)
+    (hε : |ε| ≤ 1 / 64) (hs : |s| ≤ 8)
+    (homega : ‖omega‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real omega V = 0)
+    (hg : 0 ≤ g)
+    (hgap : |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+      |a * (ρ * B - ρA * BA)| ≤ 4 * g) :
+    1 + |ρ - ρA| / L ≤ 9 * (1 + g / L) ∧
+    1 + L * ‖(normalizedCircleRayTerminal ε u B omega V -
+          s • normalizedCircleRayNormal ε B omega V) -
+        (normalizedCircleRayTerminal ε u BA omega V -
+          T • normalizedCircleRayNormal ε BA omega V)‖ ≤
+      865 * (1 + g / L) * (1 + L * |s - T|) := by
+  let E := |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+    |a * (ρ * B - ρA * BA)|
+  have hrad := normalizedCircleRay_covector_radial_gap ε a ρ ρA B BA omega V
+    haε hb hbA homega hV horth
+  have hgap' : E ≤ 4 * g := hgap
+  change |ρ - ρA| ≤ 2 * E at hrad
+  have hrg : |ρ - ρA| ≤ 8 * g := by linarith
+  have hrd := div_le_div_of_nonneg_right hrg hL.le
+  have hquarter := normalizedCircleFinePacket_quarter_band_ray_gaps ε a ρ ρA B BA
+    L u s T omega V haε ha hB hb hbA hL hρA hε hs homega hV horth
+  have hEg := div_le_div_of_nonneg_right hgap' hL.le
+  have hdist := hquarter.2
+  change L * _ ≤ 216 * (E / L) + L * |s - T| at hdist
+  simp only [mul_div_assoc] at hrd hEg
+  have hgd : 0 ≤ g / L := div_nonneg hg hL.le
+  have hsd : 0 ≤ L * |s - T| := mul_nonneg hL.le (abs_nonneg _)
+  constructor
+  · nlinarith
+  · nlinarith [mul_nonneg hgd hsd]
+
+theorem sourcePacket_product_weight_trade
+    (a b c r t k C L cr ct : Real) (N : Nat)
+    (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c)
+    (hr : 0 ≤ r) (ht : 0 ≤ t) (hk : 0 ≤ k)
+    (hcr : 0 ≤ cr) (hct : 0 ≤ ct)
+    (hR : r ≤ cr * b) (hT : t ≤ ct * b * c)
+    (hK : a ^ (5 * N) * b ^ (5 * N) * c ^ (5 * N) * k ≤ C * L) :
+    a ^ (2 * N) * b ^ (2 * N) * r ^ N * t ^ (2 * N) * k ≤
+      cr ^ N * ct ^ (2 * N) * C * L := by
+  have hrp := pow_le_pow_left₀ hr hR N
+  have htp := pow_le_pow_left₀ ht hT (2 * N)
+  have hA : a ^ (2 * N) ≤ a ^ (5 * N) :=
+    pow_le_pow_right₀ ha (by omega)
+  have hC : c ^ (2 * N) ≤ c ^ (5 * N) :=
+    pow_le_pow_right₀ hc (by omega)
+  calc
+    _ ≤ a ^ (2 * N) * b ^ (2 * N) * (cr * b) ^ N *
+          (ct * b * c) ^ (2 * N) * k := by
+      gcongr
+    _ = cr ^ N * ct ^ (2 * N) *
+          (a ^ (2 * N) * b ^ (5 * N) * c ^ (2 * N) * k) := by
+      simp only [mul_pow, pow_mul]
+      ring
+    _ ≤ cr ^ N * ct ^ (2 * N) *
+          (a ^ (5 * N) * b ^ (5 * N) * c ^ (5 * N) * k) := by
+      gcongr
+    _ ≤ cr ^ N * ct ^ (2 * N) * (C * L) :=
+      mul_le_mul_of_nonneg_left hK (by positivity)
+    _ = _ := by ring
+
+#print axioms normalizedCircleFinePacket_anchor_radial_ray_weights
+#print axioms sourcePacket_product_weight_trade
+
+/-- A fixed real Schwartz phase and a fixed Schwartz cutoff amplitude give
+uniform joint-dual decay of the literal normalized packet integral. The
+source/output center and inverse packet scale are unrestricted; all
+derivative budgets are derived from the actual two Schwartz functions. -/
+theorem sourcePacket_schwartz_oscillatory_integral_profile_control
+    {D E V : Type*} [NormedAddCommGroup D] [InnerProductSpace Real D]
+    [FiniteDimensional Real D] [MeasurableSpace D] [BorelSpace D]
+    [NormedAddCommGroup E] [NormedSpace Real E]
+    [NormedAddCommGroup V] [NormedSpace Real V]
+    (P : SchwartzMap E Real) (A : SchwartzMap V Complex)
+    (J : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ K N : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Φ : SchwartzMap D Complex, ∀ y : E, ∀ z : V, ∀ δ ρ₀ T, 0 < δ → δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ L : D →L[Real] E, ‖L‖ ≤ 1 →
+      ∀ S : D →L[Real] Real, ‖S‖ ≤ 1 →
+      ∀ W : D →L[Real] V, ‖W‖ ≤ 1 →
+      ∀ η : E →L[Real] Real, ∀ ξ : D,
+      (∀ x, 2 * Real.pi * inner Real x ξ =
+        δ * (ρ₀ * fderiv Real P y (L x) - η (L x)) +
+          δ⁻¹ * S x * (P y - T)) →
+      (1 + ‖ξ‖) ^ J *
+        ‖∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+          η (y + δ • L x)) : Real) : Complex) * Complex.I) *
+          A (z + δ • W x) * Φ x‖ ≤
+        C * (Finset.Iic (K,N)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  classical
+  obtain ⟨N, hN⟩ := sourcePacket_normalized_oscillatory_integral_decay (D := D) (E := E) J
+  let M : Real := ∑ j ∈ Finset.range (max N 2 + 1), SchwartzMap.seminorm Real 0 j P
+  have hM : 0 ≤ M := Finset.sum_nonneg (fun j _ => apply_nonneg _ _)
+  have hPb : ∀ j ≤ max N 2, ∀ v, ‖iteratedFDeriv Real j (P : E → Real) v‖ ≤ M := by
+    intro j hj v
+    calc
+      _ ≤ SchwartzMap.seminorm Real 0 j P := P.norm_iteratedFDeriv_le_seminorm Real j v
+      _ ≤ M := Finset.single_le_sum (fun i _ => apply_nonneg (SchwartzMap.seminorm Real 0 i) P)
+        (by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hj)
+  obtain ⟨K, C₀, hC₀, hdecay⟩ := hN M R hM hR
+  let MA : Real := ∑ j ∈ Finset.range (N + 1), SchwartzMap.seminorm Complex 0 j A
+  have hMA : 0 ≤ MA := Finset.sum_nonneg (fun j _ => apply_nonneg _ _)
+  have hAb : ∀ j ≤ N, ∀ v, ‖iteratedFDeriv Real j (A : V → Complex) v‖ ≤ MA := by
+    intro j hj v
+    calc
+      _ ≤ SchwartzMap.seminorm Complex 0 j A := A.norm_iteratedFDeriv_le_seminorm Complex j v
+      _ ≤ MA := Finset.single_le_sum (fun i _ => apply_nonneg (SchwartzMap.seminorm Complex 0 i) A)
+        (by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hj)
+  refine ⟨K, N, C₀ * (MA * 2 ^ (N + K)), by positivity, ?_⟩
+  intro Φ y z δ ρ₀ T hδ hδone hρ₀ L hL S hS W hW η ξ hξ
+  let U : Real := (Finset.Iic (K, N)).sup
+    (fun q => SchwartzMap.seminorm Complex q.1 q.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  let g : D → Complex := fun x => A (z + δ • W x)
+  have hg : Function.HasTemperateGrowth g := by dsimp [g]; fun_prop
+  let H : SchwartzMap D Complex := SchwartzMap.smulLeftCLM Complex g Φ
+  have hprof : (Finset.Iic (K, N)).sup
+      (fun q => SchwartzMap.seminorm Complex q.1 q.2) H ≤ MA * 2 ^ (N + K) * U := by
+    apply Seminorm.finset_sup_apply_le (by positivity)
+    intro q hq
+    have hq' : q.1 ≤ K ∧ q.2 ≤ N := by simpa only [Finset.mem_Iic, Prod.le_def] using hq
+    exact sourcePacket_affine_amplitude_uniform_rectangle A A.hasTemperateGrowth
+      K N MA hMA hAb z δ hδ.le hδone W hW Φ q.1 hq'.1 q.2 hq'.2
+  have hd := hdecay H P P.hasTemperateGrowth hPb y δ ρ₀ T hδ hδone hρ₀ L hL S hS η ξ hξ
+  have heq : (∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+      η (y + δ • L x)) : Real) : Complex) * Complex.I) * H x) =
+      ∫ x : D, Complex.exp (((((ρ₀ + δ⁻¹ * S x) * (P (y + δ • L x) - T) -
+      η (y + δ • L x)) : Real) : Complex) * Complex.I) * A (z + δ • W x) * Φ x := by
+    apply integral_congr_ae
+    filter_upwards with x
+    dsimp [H]
+    rw [SchwartzMap.smulLeftCLM_apply_apply hg, smul_eq_mul]
+    dsimp [g]
+    ring
+  rw [heq] at hd
+  convert hd.trans (mul_le_mul_of_nonneg_left hprof hC₀) using 1 <;> ring
+
+#print axioms sourcePacket_schwartz_oscillatory_integral_profile_control
+
+/-- Uniform joint covector decay of the normalized kernel, with the true
+source/output cutoffs and radial band amplitude. No derivative or
+localization estimate is assumed in this consumer. -/
+theorem normalizedCircleFinePacketNormalizedKernel_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b : SchwartzMap Real Complex)
+    (J : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ K N : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ₀ : Real,
+      0 < δ → δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖) ^ J *
+        ‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ₀ ζ η o y‖ ≤
+        C * δ⁻¹ * (Finset.Iic (K,N)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+          (normalizedCircleFinePacketProfile q m Γ) := by
+  obtain ⟨K, N, C, hC, hdecay⟩ := sourcePacket_schwartz_oscillatory_integral_profile_control
+    (D := NormalizedCircleFinePacketSpace)
+    normalizedCircleFinePacketCompactPhase
+    (normalizedCircleFinePacketBandAmplitude χout χsrc b)
+    J R hR
+  refine ⟨K, N, C, hC, ?_⟩
+  intro Γ q m ε δ ρ₀ hδ hδone hρ₀ ζ η o y
+  let c : NormalizedCircleFullPhaseDomain := (ε, (o.fst, o.snd), y)
+  let ξ := normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y
+  have hξ := sourcePacketDualMismatch_inner normalizedCircleFinePacketCompactPhase
+    c δ ρ₀ 0 normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
+    (normalizedCircleFinePacketFrequencyCovector ζ η)
+  have hd := hdecay (normalizedCircleFinePacketProfile q m Γ) c (WithLp.toLp 2 (c, ρ₀ * δ ^ 2)) δ ρ₀ 0 hδ hδone hρ₀
+    normalizedCircleFinePacketShift normalizedCircleFinePacketShift_norm_le
+    normalizedCircleFinePacketRadial normalizedCircleFinePacketRadial_norm_le
+    normalizedCircleFinePacketAmplitudeShift normalizedCircleFinePacketAmplitudeShift_norm_le
+    (normalizedCircleFinePacketFrequencyCovector ζ η) ξ
+    (by intro x; simpa only [sub_zero, ξ, normalizedCircleFinePacketDualMismatch, c] using hξ x)
+  simp only [sub_zero] at hd
+  dsimp only [normalizedCircleFinePacketNormalizedKernel]
+  rw [norm_mul, norm_mul, Complex.norm_exp_ofReal_mul_I, mul_one,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hδ)]
+  have he : (1 + ‖ξ‖) ^ J * (δ⁻¹ *
+      ‖∫ x : NormalizedCircleFinePacketSpace,
+        Complex.exp ((((ρ₀ + δ⁻¹ * normalizedCircleFinePacketRadial x) *
+            normalizedCircleFinePacketCompactPhase (c + δ • normalizedCircleFinePacketShift x) -
+          normalizedCircleFinePacketFrequencyCovector ζ η
+            (c + δ • normalizedCircleFinePacketShift x) : Real) : Complex) * Complex.I) *
+        normalizedCircleFinePacketBandAmplitude χout χsrc b
+          (WithLp.toLp 2 (c, ρ₀ * δ ^ 2) + δ • normalizedCircleFinePacketAmplitudeShift x) *
+        normalizedCircleFinePacketProfile q m Γ x‖) ≤
+      C * δ⁻¹ * (Finset.Iic (K,N)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+        (normalizedCircleFinePacketProfile q m Γ) := by
+    convert mul_le_mul_of_nonneg_left hd (le_of_lt (inv_pos.mpr hδ)) using 1 <;> ring
+  exact he
+
+#print axioms normalizedCircleFinePacketNormalizedKernel_profile_control
+
+/-- Uniform decay of the literal packet kernel in its source, output,
+and incidence mismatches, derived from the actual normalized family. -/
+theorem normalizedCircleFinePacketKernel_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b : SchwartzMap Real Complex)
+    (J : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ K N : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ₀ : Real,
+      |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      (1 + ‖normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y‖) ^ J *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+        C * δ⁻¹ * (Finset.Iic (K,N)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+          (normalizedCircleFinePacketProfile q m Γ) := by
+  obtain ⟨K, N, C, hC, hd⟩ := normalizedCircleFinePacketNormalizedKernel_profile_control
+    χout χsrc b J R hR
+  refine ⟨K, N, C, hC, ?_⟩
+  intro Γ q m ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y
+  rw [normalizedCircleFinePacketKernel_eq_normalized χout χsrc hχout hχsrc
+    b Γ q m ε δ ρ₀ hε hδ ζ η o y]
+  exact hd Γ q m ε δ ρ₀ hδ hδone hρ₀ ζ η o y
+
+#print axioms normalizedCircleFinePacketKernel_profile_control
+
+/-- Factorized localization of the literal normalized packet on the actual
+analysis core. The spectral centers have the cyclic Fourier signs of the
+original shell kernel: output rho*(N,1), source rho*(Ptheta,Pu). -/
+theorem normalizedCircleFinePacketKernel_actual_product_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b : SchwartzMap Real Complex)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ K B : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ₀ : Real,
+      |ε| ≤ 1 / 64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ₀ * δ ^ 2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      ‖o.fst‖ < 3 → |o.snd| < 2 → |y 0| < 4 → |y 1| < 5 →
+      (1 + ‖δ • (ζ - ρ₀ • WithLp.toLp 2
+        (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1), (1 : Real)))‖) ^ N *
+      (1 + ‖δ • (η - ρ₀ • normalizedCircleFinePacketActualInputGradient ε o y)‖) ^ N *
+      (1 + δ⁻¹ * |normalizedCircleIncidence ε o.fst (circleDirection (y 0)) (y 1) - o.snd|) ^ N *
+        ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ₀ hδ ζ η o y‖ ≤
+        C * δ⁻¹ * (Finset.Iic (K,B)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+          (normalizedCircleFinePacketProfile q m Γ) := by
+  obtain ⟨K, B, C, hC, hd⟩ := normalizedCircleFinePacketKernel_profile_control
+    χout χsrc hχout hχsrc b (3 * N) R hR
+  refine ⟨K, B, C, hC, ?_⟩
+  intro Γ q m ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y hX hT hθ hu
+  let x := normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y
+  have hw := normalizedCircleFinePacket_joint_weight_le x N
+  have hxo := normalizedCircleFinePacketDualMismatch_actual_output ε δ ρ₀ ζ η o y hε hX hT hθ hu
+  have hxs := normalizedCircleFinePacketDualMismatch_actual_source ε δ ρ₀ ζ η o y hε hX hT hθ hu
+  have hxr := normalizedCircleFinePacketDualMismatch_actual_radial ε δ ρ₀ ζ η o y hε hX hT hθ hu
+  change (1 + ‖(normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst‖) ^ N *
+    (1 + ‖(normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst‖) ^ N *
+    (1 + |(normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.snd|) ^ N ≤
+      (1 + ‖x‖) ^ (3 * N) at hw
+  rw [hxo, hxs, hxr, abs_mul, abs_neg, abs_of_pos (inv_pos.mpr hδ)] at hw
+  exact (mul_le_mul_of_nonneg_right hw (norm_nonneg _)).trans
+    (hd Γ q m ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y)
+
+#print axioms normalizedCircleFinePacketKernel_actual_product_profile_control
+
+
+/-- Every analysis-source covector has one actual compact ray anchor that
+works for all literal output packets and all signed conormal labels. -/
+theorem normalizedCircleFinePacketKernel_anchored_product_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (N : Nat) (R : Real) (hR : 1 ≤ R) :
+    ∃ K S : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ ε L : Real, |ε| ≤ 1 / 64 → ∀ hL : 1 ≤ L,
+      ∀ η y : Euclidean 2, |y 0| < 4 → |y 1| < 5 →
+      ∃ ρA BA : Real, L ^ 2 / 4 ≤ |ρA| ∧ |ρA| ≤ R * L ^ 2 ∧ |BA| ≤ 4 ∧
+      (∀ ρ B : Real, L^2/4 ≤ |ρ| → |ρ| ≤ R*L^2 → |B| ≤ 4 →
+        |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+          |(1+ε*y 1) * (ρ*B-ρA*BA)| ≤
+          4 * ‖η - ρ • normalizedCircleFinePacketRayInputGradient ε (1+ε*y 1) B‖) ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ρ : Real, L ^ 2 / 4 ≤ |ρ| → |ρ| ≤ R * L ^ 2 →
+      ∀ ζ o : JointWaveSpaceTime, ‖o.fst‖ < 3 → |o.snd| < 2 →
+      (1 + ‖L⁻¹ • (ζ - ρ • WithLp.toLp 2
+        (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1), (1 : Real)))‖) ^ (2 * N) *
+      (1 + ‖L⁻¹ • (η - ρ • normalizedCircleFinePacketActualInputGradient ε o y)‖) ^ (2 * N) *
+      (1 + |ρ - ρA| / L) ^ N *
+      (1 + L * ‖o.fst + o.snd • normalizedCircleRayNormal ε BA
+        (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
+        normalizedCircleRayTerminal ε (y 1) BA
+          (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖) ^ (2 * N) *
+      ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε L⁻¹ ρ
+        (by exact inv_pos.mpr (lt_of_lt_of_le (by norm_num) hL)) ζ η o y‖ ≤
+        C * L * (Finset.Iic (K,S)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+          (normalizedCircleFinePacketProfile q m Γ) := by
+  obtain ⟨K, S, C₀, hC₀, hdec⟩ := normalizedCircleFinePacketKernel_actual_product_profile_control
+    χout χsrc hχout hχsrc b (5 * N) R (by linarith)
+  refine ⟨K, S, 9 ^ N * 865 ^ (2 * N) * C₀, by positivity, ?_⟩
+  intro ε L hε hL η y hθ hu
+  have hLp : 0 < L := by linarith
+  have hlo : 0 < L ^ 2 / 4 := by positivity
+  have hhi : L ^ 2 / 4 ≤ R * L ^ 2 := by nlinarith [sq_nonneg L]
+  let a := 1 + ε * y 1
+  obtain ⟨ρA, BA, hAlo, hAhi, hBA, hgap⟩ :=
+    normalizedCircleFinePacketSource_closest_anchor ε a (L^2/4) (R*L^2) 4 η
+      hlo hhi (by norm_num)
+  refine ⟨ρA, BA, hAlo, hAhi, hBA, hgap, ?_⟩
+  intro Γ q m ρ hρlo hρhi ζ o hX hT
+  let omega := circleDirection (y 0)
+  let V := circleDirectionDeriv (y 0)
+  let B := inner Real o.fst V / ‖omega + ε • (y 1 • omega - o.fst)‖
+  let s := normalizedCircleIncidence ε o.fst omega (y 1)
+  let g := ‖η - ρ • normalizedCircleFinePacketActualInputGradient ε o y‖
+  have homega : ‖omega‖ = 1 := norm_circleDirection _
+  have hV : ‖V‖ = 1 := norm_circleDirectionDeriv _
+  have horth : inner Real omega V = 0 := inner_circleDirection_circleDirectionDeriv _
+  have hc := normalizedCircleRay_actual_chart_bounds ε (y 1) o.fst omega V
+    hε hu.le hX.le homega hV horth
+  change |B| ≤ 8 ∧ |ε * B| ≤ 1/2 ∧ |s| ≤ 8 ∧
+    1/2 ≤ a ∧ |ε| ≤ a ∧
+      o.fst = normalizedCircleRayTerminal ε (y 1) B omega V -
+        s • normalizedCircleRayNormal ε B omega V at hc
+  have hB4 : |B| ≤ 4 := normalizedCircleRay_actual_transverse_bound_four
+    ε (y 1) o.fst omega V hε hu.le hX.le homega hV
+  have hbA : |ε * BA| ≤ 1/2 := by
+    rw [abs_mul]
+    have hh := mul_le_mul hε hBA (abs_nonneg BA) (by norm_num : (0:Real) ≤ 1/64)
+    linarith
+  have hG : normalizedCircleFinePacketActualInputGradient ε o y =
+      normalizedCircleFinePacketRayInputGradient ε a B := by
+    exact normalizedCircleFinePacketActualInputGradient_inverse_ray ε o y hε hX.le hu.le
+  have hg := hgap ρ B hρlo hρhi hB4
+  rw [← hG] at hg
+  change _ ≤ 4 * g at hg
+  have hw := normalizedCircleFinePacket_anchor_radial_ray_weights
+    ε a ρ ρA B BA L (y 1) s o.snd omega V g hc.2.2.2.2.1 hc.2.2.2.1
+    hc.1 hc.2.1 hbA hLp hAlo hε hc.2.2.1 homega hV horth (norm_nonneg _) hg
+  rw [← hc.2.2.2.2.2] at hw
+  have heq : o.fst - (normalizedCircleRayTerminal ε (y 1) BA omega V -
+        o.snd • normalizedCircleRayNormal ε BA omega V) =
+      o.fst + o.snd • normalizedCircleRayNormal ε BA omega V -
+        normalizedCircleRayTerminal ε (y 1) BA omega V := by module
+  rw [heq] at hw
+  have hδ : 0 < L⁻¹ := inv_pos.mpr hLp
+  have hδone : L⁻¹ ≤ 1 := inv_le_one_of_one_le₀ hL
+  have hscale : |ρ * (L⁻¹)^2| ≤ R := by
+    calc
+      _ = |ρ| * (L⁻¹)^2 := by rw [abs_mul, abs_of_nonneg (sq_nonneg (L⁻¹))]
+      _ ≤ (R * L^2) * (L⁻¹)^2 := mul_le_mul_of_nonneg_right hρhi (sq_nonneg _)
+      _ = R := by field_simp
+  have hk := hdec Γ q m ε L⁻¹ ρ hε hδ hδone hscale ζ η o y hX hT hθ hu
+  let A := 1 + ‖L⁻¹ • (ζ - ρ • WithLp.toLp 2
+    (normalizedCircleNormal ε o.fst omega (y 1), (1 : Real)))‖
+  let G := 1 + ‖L⁻¹ • (η - ρ • normalizedCircleFinePacketActualInputGradient ε o y)‖
+  let H := 1 + L * |s - o.snd|
+  have hGeq : G = 1 + g / L := by
+    simp only [G, g, norm_smul, Real.norm_eq_abs, abs_of_pos hδ, div_eq_mul_inv]
+    ring
+  rw [← hGeq] at hw
+  let U : Real := (Finset.Iic (K,S)).sup
+    (fun p => SchwartzMap.seminorm Complex p.1 p.2) (normalizedCircleFinePacketProfile q m Γ)
+  simp only [inv_inv] at hk
+  change A ^ (5*N) * G ^ (5*N) * H ^ (5*N) *
+    ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε L⁻¹ ρ hδ ζ η o y‖ ≤ C₀ * L * U at hk
+  convert sourcePacket_product_weight_trade A G H _ _
+    ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε L⁻¹ ρ hδ ζ η o y‖
+    (C₀ * U) L 9 865 N
+    (by dsimp [A]; linarith [norm_nonneg (L⁻¹ • (ζ - ρ • WithLp.toLp 2
+      (normalizedCircleNormal ε o.fst omega (y 1), (1:Real))))])
+    (by dsimp [G]; linarith [norm_nonneg (L⁻¹ • (η -
+      ρ • normalizedCircleFinePacketActualInputGradient ε o y))])
+    (by dsimp [H]; have hh := mul_nonneg hLp.le (abs_nonneg (s-o.snd)); linarith)
+    (by positivity) (by positivity) (norm_nonneg _) (by norm_num) (by norm_num)
+    hw.1 hw.2 (by convert hk using 1 <;> ring) using 1 <;> ring
+
+#print axioms normalizedCircleFinePacketKernel_anchored_product_profile_control
+
+
+/-- Every analysis-source covector has one actual compact ray anchor that
+works for all literal output packets and all signed conormal labels. -/
+theorem normalizedCircleFinePacketKernel_anchored_product_decay
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) (R : Real) (hR : 1 ≤ R) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε L : Real, |ε| ≤ 1 / 64 → ∀ hL : 1 ≤ L,
+      ∀ η y : Euclidean 2, |y 0| < 4 → |y 1| < 5 →
+      ∃ ρA BA : Real, L ^ 2 / 4 ≤ |ρA| ∧ |ρA| ≤ R * L ^ 2 ∧ |BA| ≤ 4 ∧
+      ∀ ρ : Real, L ^ 2 / 4 ≤ |ρ| → |ρ| ≤ R * L ^ 2 →
+      ∀ ζ o : JointWaveSpaceTime, ‖o.fst‖ < 3 → |o.snd| < 2 →
+      (1 + ‖L⁻¹ • (ζ - ρ • WithLp.toLp 2
+        (normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1), (1 : Real)))‖) ^ (2 * N) *
+      (1 + ‖L⁻¹ • (η - ρ • normalizedCircleFinePacketActualInputGradient ε o y)‖) ^ (2 * N) *
+      (1 + |ρ - ρA| / L) ^ N *
+      (1 + L * ‖o.fst + o.snd • normalizedCircleRayNormal ε BA
+        (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
+        normalizedCircleRayTerminal ε (y 1) BA
+          (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖) ^ (2 * N) *
+      ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε L⁻¹ ρ
+        (by exact inv_pos.mpr (lt_of_lt_of_le (by norm_num) hL)) ζ η o y‖ ≤ C * L := by
+  obtain ⟨K,S,C,hC,hdec⟩ := normalizedCircleFinePacketKernel_anchored_product_profile_control
+    χout χsrc hχout hχsrc b N R hR
+  let U : Real := (Finset.Iic (K,S)).sup
+    (fun p => SchwartzMap.seminorm Complex p.1 p.2) (normalizedCircleFinePacketProfile q m Γ)
+  have hU : 0 ≤ U := apply_nonneg _ _
+  refine ⟨C*U, by positivity, ?_⟩
+  intro ε L hε hL η y hθ hu
+  obtain ⟨ρA,BA,hAlo,hAhi,hBA,hcanonical,hpacket⟩ := hdec ε L hε hL η y hθ hu
+  refine ⟨ρA,BA,hAlo,hAhi,hBA,?_⟩
+  intro ρ hlo hhi ζ o hX hT
+  convert hpacket Γ q m ρ hlo hhi ζ o hX hT using 1 <;> ring
+
+#print axioms normalizedCircleFinePacketKernel_anchored_product_decay
+
+
+theorem normalizedCircleFinePacket_anchor_normal_gap
+    (ε a ρ ρA B BA L : Real) (omega V : Euclidean 2)
+    (haε : |ε| ≤ a) (hb : |ε * B| ≤ 1 / 2) (hbA : |ε * BA| ≤ 1 / 2)
+    (hL : 0 < L) (hρ : L ^ 2 / 4 ≤ |ρ|)
+    (homega : ‖omega‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real omega V = 0) :
+    let E := |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+      |a * (ρ * B - ρA * BA)|
+    L * ‖normalizedCircleRayNormal ε B omega V -
+      normalizedCircleRayNormal ε BA omega V‖ ≤ 12 * (E / L) := by
+  let E := |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+    |a * (ρ * B - ρA * BA)|
+  let n := normalizedCircleRayNormal ε B omega V
+  let nA := normalizedCircleRayNormal ε BA omega V
+  have hnorm := normalizedCircleRay_covector_norm_gap ε a ρ ρA B BA omega V haε homega hV
+  have hrad := normalizedCircleRay_covector_radial_gap ε a ρ ρA B BA omega V
+    haε hb hbA homega hV horth
+  change ‖ρ • n - ρA • nA‖ ≤ E at hnorm
+  change |ρ - ρA| ≤ 2 * E at hrad
+  have hnA : ‖nA‖ = 1 := norm_normalizedCircleRayNormal ε BA omega V hbA homega hV horth
+  have hid : ρ • (n - nA) = (ρ • n - ρA • nA) - (ρ - ρA) • nA := by module
+  have hdiff : |ρ| * ‖n - nA‖ ≤ 3 * E := by
+    have hh := norm_sub_le (ρ • n - ρA • nA) ((ρ - ρA) • nA)
+    rw [← hid, norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, hnA, mul_one] at hh
+    linarith
+  have hlow := mul_le_mul_of_nonneg_right hρ (norm_nonneg (n - nA))
+  change L * ‖n - nA‖ ≤ 12 * (E / L)
+  rw [← mul_div_assoc]
+  apply (le_div_iff₀ hL).mpr
+  nlinarith
+
+theorem sourcePacket_output_center_normal_gap
+    (ζ : JointWaveSpaceTime) (n ν : Euclidean 2)
+    (ρ ρout L D : Real) (hν : ‖ν‖ = 1)
+    (hcenter : ζ.fst = ρout • ν)
+    (hL : 0 < L) (hρ : L ^ 2 / 4 ≤ |ρ|)
+    (hD : |ρout - ζ.snd| ≤ D * L) :
+    L * ‖ν - n‖ ≤
+      8 * (‖ζ - ρ • WithLp.toLp 2 (n, (1 : Real))‖ / L) + 4 * D := by
+  let G := ‖ζ - ρ • WithLp.toLp 2 (n, (1 : Real))‖
+  have hx : ‖ζ.fst - ρ • n‖ ≤ G := by
+    simpa using WithLp.norm_fst_le (Euclidean 2) (ζ - ρ • WithLp.toLp 2 (n, (1 : Real)))
+  have ht : |ζ.snd - ρ| ≤ G := by
+    simpa [Real.norm_eq_abs] using WithLp.norm_snd_le (Euclidean 2)
+      (ζ - ρ • WithLp.toLp 2 (n, (1 : Real)))
+  have hrad : |ρout - ρ| ≤ D * L + G :=
+    (abs_sub_le ρout ζ.snd ρ).trans (add_le_add hD ht)
+  have hid : ρ • (ν - n) = (ζ.fst - ρ • n) - (ρout - ρ) • ν := by
+    rw [hcenter]
+    module
+  have hh := norm_sub_le (ζ.fst - ρ • n) ((ρout - ρ) • ν)
+  rw [← hid, norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, hν, mul_one] at hh
+  have hhigh : |ρ| * ‖ν - n‖ ≤ 2 * G + D * L := by linarith
+  have hlow := mul_le_mul_of_nonneg_right hρ (norm_nonneg (ν - n))
+  change L * ‖ν - n‖ ≤ 8 * (G / L) + 4 * D
+  have hmul : (L * ‖ν - n‖) * L ≤ (8 * (G / L) + 4 * D) * L := by
+    field_simp
+    nlinarith
+  apply (mul_le_mul_iff_right₀ hL).mp
+  convert hmul using 1 <;> ring
+
+#print axioms normalizedCircleFinePacket_anchor_normal_gap
+#print axioms sourcePacket_output_center_normal_gap
+
+
+theorem normalizedCircleFinePacket_projector_direction_weight
+    (ε a ρ ρA B BA L D A g : Real) (omega V ν : Euclidean 2)
+    (ζ : JointWaveSpaceTime) (ρout : Real)
+    (haε : |ε| ≤ a) (hb : |ε * B| ≤ 1/2) (hbA : |ε * BA| ≤ 1/2)
+    (hL : 0 < L) (hρ : L^2/4 ≤ |ρ|)
+    (homega : ‖omega‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real omega V = 0)
+    (hν : ‖ν‖ = 1) (hcenter : ζ.fst = ρout • ν)
+    (hD : |ρout - ζ.snd| ≤ D * L) (hD0 : 0 ≤ D) (hA : 0 ≤ A)
+    (hg : 0 ≤ g)
+    (hgap : |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+      |a * (ρ * B - ρA * BA)| ≤ 4 * g) :
+    1 + A * L * ‖ν - normalizedCircleRayNormal ε BA omega V‖ ≤
+      (1 + A * (4 * D + 56)) *
+      (1 + ‖ζ - ρ • WithLp.toLp 2
+        (normalizedCircleRayNormal ε B omega V, (1:Real))‖ / L) *
+      (1 + g / L) := by
+  let n := normalizedCircleRayNormal ε B omega V
+  let nA := normalizedCircleRayNormal ε BA omega V
+  let E := |ρ * normalizedCircleRayCos ε B - ρA * normalizedCircleRayCos ε BA| +
+    |a * (ρ * B - ρA * BA)|
+  let G := ‖ζ - ρ • WithLp.toLp 2 (n, (1:Real))‖
+  have hinput := normalizedCircleFinePacket_anchor_normal_gap
+    ε a ρ ρA B BA L omega V haε hb hbA hL hρ homega hV horth
+  change L * ‖n - nA‖ ≤ 12 * (E / L) at hinput
+  have houtput := sourcePacket_output_center_normal_gap ζ n ν ρ ρout L D
+    hν hcenter hL hρ hD
+  change L * ‖ν - n‖ ≤ 8 * (G / L) + 4 * D at houtput
+  have hEg := div_le_div_of_nonneg_right hgap hL.le
+  change E / L ≤ 4 * g / L at hEg
+  simp only [mul_div_assoc] at hEg
+  have hsum := mul_le_mul_of_nonneg_left (norm_sub_le ν nA) hL.le
+  have htri : L * ‖ν - nA‖ ≤ L * ‖ν - n‖ + L * ‖n - nA‖ := by
+    have he : ν - nA = (ν - n) + (n - nA) := by module
+    rw [he]
+    exact (mul_le_mul_of_nonneg_left (norm_add_le _ _) hL.le).trans_eq (by ring)
+  have hbound : L * ‖ν - nA‖ ≤ 4 * D + 8 * (G/L) + 48 * (g/L) := by linarith
+  have hscaled := mul_le_mul_of_nonneg_left hbound hA
+  have hGG : 0 ≤ G / L := div_nonneg (norm_nonneg _) hL.le
+  have hgg : 0 ≤ g / L := div_nonneg hg hL.le
+  change 1 + A * L * ‖ν - nA‖ ≤ (1 + A * (4*D+56)) * (1+G/L) * (1+g/L)
+  have hc : 0 ≤ 1 + A * (4*D+56) := by positivity
+  nlinarith [mul_nonneg hGG hgg, mul_nonneg hA hGG, mul_nonneg hA hgg,
+    mul_nonneg (mul_nonneg hA hD0) hGG, mul_nonneg (mul_nonneg hA hD0) hgg,
+    mul_nonneg hc (mul_nonneg hGG hgg)]
+
+#print axioms normalizedCircleFinePacket_projector_direction_weight
+
+
+theorem sourcePacket_ray_projection_weight_trade
+    (a b r t u w k C L c : Real) (N : Nat)
+    (ha : 1 ≤ a) (hb : 1 ≤ b) (hr : 1 ≤ r)
+    (ht : 1 ≤ t) (hu : 1 ≤ u) (hw : 0 ≤ w)
+    (hk : 0 ≤ k) (hc : 0 ≤ c)
+    (hW : w ≤ u * t * (c * a * b))
+    (hK : a ^ (2 * N) * b ^ (2 * N) * r ^ N * t ^ (2 * N) * k ≤ C * L) :
+    w ^ N * u⁻¹ ^ (2 * N) * k ≤
+      c ^ N * C * L * a⁻¹ ^ N * b⁻¹ ^ N * r⁻¹ ^ N * t⁻¹ ^ N := by
+  have ha0 : 0 < a := by linarith
+  have hb0 : 0 < b := by linarith
+  have hr0 : 0 < r := by linarith
+  have ht0 : 0 < t := by linarith
+  have hu0 : 0 < u := by linarith
+  have hup : u ^ N * u⁻¹ ^ (2 * N) ≤ 1 := by
+    calc
+      _ = u⁻¹ ^ N := by
+        rw [show 2*N = N+N by omega, pow_add]
+        have hi : u^N * u⁻¹^N = 1 := by
+          rw [← mul_pow, mul_inv_cancel₀ hu0.ne', one_pow]
+        rw [← mul_assoc, hi, one_mul]
+      _ ≤ 1 := pow_le_one₀ (inv_nonneg.mpr hu0.le) (inv_le_one_of_one_le₀ hu)
+  have hwp := pow_le_pow_left₀ hw hW N
+  have hweighted :
+      (w ^ N * u⁻¹ ^ (2 * N) * k) * (a ^ N * b ^ N * r ^ N * t ^ N) ≤
+        c ^ N * C * L := by
+    calc
+      _ ≤ ((u * t * (c * a * b)) ^ N * u⁻¹ ^ (2*N) * k) *
+          (a ^ N * b ^ N * r ^ N * t ^ N) := by gcongr
+      _ = (u ^ N * u⁻¹ ^ (2*N)) * c ^ N *
+          (a ^ (2*N) * b ^ (2*N) * r ^ N * t ^ (2*N) * k) := by
+        simp only [mul_pow, pow_mul]
+        ring
+      _ ≤ 1 * c ^ N *
+          (a ^ (2*N) * b ^ (2*N) * r ^ N * t ^ (2*N) * k) := by
+        gcongr
+      _ ≤ 1 * c ^ N * (C * L) := mul_le_mul_of_nonneg_left hK (by positivity)
+      _ = _ := by ring
+  have hD : 0 < a ^ N * b ^ N * r ^ N * t ^ N := by positivity
+  have hh := (le_div_iff₀ hD).mpr hweighted
+  convert hh using 1
+  rw [div_eq_mul_inv, mul_inv, mul_inv, mul_inv, inv_pow, inv_pow, inv_pow, inv_pow]
+  ring
+
+#print axioms sourcePacket_ray_projection_weight_trade
+
+
+theorem sourcePacket_radial_output_lattice_sum_uniform
+    {ι E : Type*} [Fintype ι] [NormedAddCommGroup E] [NormedSpace Real E]
+    [FiniteDimensional Real E]
+    (b : Module.Basis ι Real E) (N : Nat) (hdim : Module.finrank Real E < N)
+    (hN : 2 < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ t : Real, ∀ x : Int → E,
+      ∀ {κ : Type*}, ∀ z : κ → Submodule.span Int (Set.range b),
+      Function.Injective z → ∀ I : Finset Int, ∀ J : Finset κ,
+      (∑ n ∈ I, ∑ j ∈ J,
+        (1 + |(n:Real)-t|)⁻¹ ^ N * (1 + ‖(z j : E) + x n‖)⁻¹ ^ N) ≤ C := by
+  classical
+  obtain ⟨Cr,hCr,hrad⟩ := mss_integer_decay_finite_sum_uniform N hN
+  obtain ⟨Co,hCo,hout⟩ := mss_basis_lattice_decay_finite_sum_uniform b N hdim
+  refine ⟨Cr * Co, by positivity, ?_⟩
+  intro t x κ z hz I J
+  calc
+    _ = ∑ n ∈ I, (1 + |(n:Real)-t|)⁻¹ ^ N *
+        (∑ j ∈ J, (1 + ‖(z j : E)+x n‖)⁻¹ ^ N) := by
+      apply Finset.sum_congr rfl
+      intro n hn
+      rw [Finset.mul_sum]
+    _ ≤ ∑ n ∈ I, (1 + |(n:Real)-t|)⁻¹ ^ N * Co := by
+      apply Finset.sum_le_sum
+      intro n hn
+      exact mul_le_mul_of_nonneg_left (hout (x n) z hz J) (by positivity)
+    _ = (∑ n ∈ I, (1 + |(n:Real)-t|)⁻¹ ^ N) * Co := by rw [Finset.sum_mul]
+    _ ≤ Cr * Co := mul_le_mul_of_nonneg_right (hrad t I) hCo
+
+#print axioms sourcePacket_radial_output_lattice_sum_uniform
+
+
+theorem sourcePacket_drop_extra_positive_weights
+    (a b r t k H : Real) (N : Nat)
+    (ha : 1 ≤ a) (hb : 1 ≤ b) (hr : 1 ≤ r) (ht : 1 ≤ t) (hk : 0 ≤ k)
+    (hK : a ^ (2*N) * b ^ (2*N) * r ^ N * t ^ (2*N) * k ≤ H) :
+    k ≤ H * a⁻¹ ^ N * r⁻¹ ^ N * t⁻¹ ^ N := by
+  have ha0 : 0 < a := by linarith
+  have hr0 : 0 < r := by linarith
+  have ht0 : 0 < t := by linarith
+  have hA : a^N ≤ a^(2*N) := pow_le_pow_right₀ ha (by omega)
+  have hB : (1:Real) ≤ b^(2*N) := one_le_pow₀ hb
+  have hT : t^N ≤ t^(2*N) := pow_le_pow_right₀ ht (by omega)
+  have hweighted : (a ^ N * r ^ N * t ^ N) * k ≤ H := by
+    apply le_trans _ hK
+    calc
+      _ = a ^ N * 1 * r ^ N * t ^ N * k := by ring
+      _ ≤ a ^ (2*N) * b ^ (2*N) * r ^ N * t ^ (2*N) * k := by
+        gcongr
+  have hD : 0 < a^N * r^N * t^N := by positivity
+  have hh : k ≤ H / (a^N * r^N * t^N) :=
+    (le_div_iff₀ hD).mpr (by convert hweighted using 1 <;> ring)
+  convert hh using 1
+  rw [div_eq_mul_inv, mul_inv, mul_inv, inv_pow, inv_pow, inv_pow]
+  ring
+#print axioms sourcePacket_drop_extra_positive_weights
+
+open Module in
+theorem normalizedCircleQuarterTurn_circleDirection (theta : Real) :
+    normalizedCircleQuarterTurn (circleDirection theta) = circleDirectionDeriv theta := by
+  letI : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
+  apply ext_inner_right Real
+  intro y
+  change inner Real ((EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.rightAngleRotation
+    (circleDirection theta)) y = _
+  rw [Orientation.inner_rightAngleRotation_left,
+    Orientation.areaForm_to_volumeForm,
+    (EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.volumeForm_robust
+      (EuclideanSpace.basisFun (Fin 2) Real) rfl]
+  simp only [Basis.det_apply, Matrix.det_fin_two, Basis.toMatrix_apply,
+    Matrix.cons_val_zero, Matrix.cons_val_one,
+    OrthonormalBasis.coe_toBasis_repr_apply, EuclideanSpace.basisFun_repr]
+  simp [circleDirection, circleDirectionDeriv, inner_add_left,
+    real_inner_smul_left, EuclideanSpace.inner_single_left]
+  ring
+
+#print axioms normalizedCircleQuarterTurn_circleDirection
+
+
+/-- Weighted L1 moments are controlled by a finite genuine Schwartz
+seminorm rectangle, uniformly across a varying packet-profile family. -/
+theorem sourcePacket_schwartz_weighted_L1_rectangle
+    {E : Type*} [NormedAddCommGroup E] [InnerProductSpace Real E]
+    [FiniteDimensional Real E] [MeasurableSpace E] [BorelSpace E]
+    (N : Nat) :
+    ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧ ∀ Φ : SchwartzMap E Complex,
+      (∫ x : E, (1+‖x‖)^N * ‖Φ x‖) ≤
+        C*(Finset.Iic (K,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  classical
+  let P := (volume : Measure E).integrablePower
+  let J : Real := ∫ x : E, (1+‖x‖)^(-(P:Real))
+  let c₀ : Real := (2:Real)^P*J
+  have hJ : 0 ≤ J := integral_nonneg (fun x => by positivity)
+  have hc₀ : 0 ≤ c₀ := by dsimp [c₀]; positivity
+  refine ⟨N+P, (2:Real)^N*(4*c₀),by positivity,?_⟩
+  intro Φ
+  let U : Real := (Finset.Iic (N+P,0)).sup
+    (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  have hs (k : Nat) (hk : k ≤ N+P) : SchwartzMap.seminorm Complex k 0 Φ ≤ U :=
+    Seminorm.le_def.mp (Finset.le_sup (b := (k,0)) (s := Finset.Iic (N+P,0))
+      (f := fun p => SchwartzMap.seminorm Complex p.1 p.2)
+      (Finset.mem_Iic.mpr (by change k ≤ N+P ∧ (0:Nat) ≤ 0; exact ⟨hk,le_rfl⟩))) Φ
+  have hbase : (∫ x : E, ‖Φ x‖) ≤ 2*c₀*U := by
+    have hh := Φ.integral_pow_mul_iteratedFDeriv_le Complex volume 0 0
+    simp only [pow_zero,one_mul,norm_iteratedFDeriv_zero,zero_add] at hh
+    change (∫ x : E, ‖Φ x‖) ≤ c₀*
+      (SchwartzMap.seminorm Complex 0 0 Φ + SchwartzMap.seminorm Complex P 0 Φ) at hh
+    exact hh.trans (by nlinarith [hs 0 (by omega),hs P (by omega)])
+  have hpow : (∫ x : E, ‖x‖^N*‖Φ x‖) ≤ 2*c₀*U := by
+    have hh := Φ.integral_pow_mul_iteratedFDeriv_le Complex volume N 0
+    simp only [norm_iteratedFDeriv_zero] at hh
+    change (∫ x : E, ‖x‖^N*‖Φ x‖) ≤ c₀*
+      (SchwartzMap.seminorm Complex 0 0 Φ + SchwartzMap.seminorm Complex (N+P) 0 Φ) at hh
+    exact hh.trans (by nlinarith [hs 0 (by omega),hs (N+P) le_rfl])
+  have hb (r : Real) (hr : 0 ≤ r) : (1+r)^N ≤ (2:Real)^N*(1+r^N) := by
+    rcases le_total r 1 with h | h
+    · calc
+        _ ≤ (2:Real)^N := by gcongr; linarith
+        _ ≤ _ := by
+          exact (le_add_of_nonneg_right (mul_nonneg (by positivity : (0:Real) ≤ 2^N) (pow_nonneg hr N))).trans_eq (by ring)
+    · calc
+        _ ≤ (2*r)^N := by gcongr; linarith
+        _ = 2^N*r^N := by rw [mul_pow]
+        _ ≤ _ := by
+          exact (le_add_of_nonneg_left (by positivity : (0:Real) ≤ 2^N)).trans_eq (by ring)
+  calc
+    _ ≤ ∫ x : E, (2:Real)^N*(‖Φ x‖+‖x‖^N*‖Φ x‖) := by
+      apply integral_mono (sourcePacket_schwartz_weighted_norm_integrable Φ N)
+        ((Φ.integrable.norm.add (Φ.integrable_pow_mul volume N)).const_mul _)
+      intro x
+      have hh := mul_le_mul_of_nonneg_right (hb ‖x‖ (norm_nonneg x)) (norm_nonneg (Φ x))
+      change (1+‖x‖)^N*‖Φ x‖ ≤ (2:Real)^N*(‖Φ x‖+‖x‖^N*‖Φ x‖)
+      convert hh using 1 <;> ring
+    _ = (2:Real)^N*((∫ x : E, ‖Φ x‖)+(∫ x : E, ‖x‖^N*‖Φ x‖)) := by
+      rw [integral_const_mul,integral_add Φ.integrable.norm (Φ.integrable_pow_mul volume N)]
+    _ ≤ (2:Real)^N*(4*c₀*U) := by gcongr; linarith
+    _ = _ := by ring
+#print axioms sourcePacket_schwartz_weighted_L1_rectangle
+
+/-- The source and output shielding errors have uniform physical decay
+controlled by the actual joint packet-profile seminorms. -/
+theorem normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (b : SchwartzMap Real Complex) (N : Nat) :
+    ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real, ∀ hδ : 0 < δ,
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      ((4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+        (1+‖y‖)^N*‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ ζ η o y‖ ≤
+          C*δ⁻¹*δ^N*(Finset.Iic (K,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+            (normalizedCircleFinePacketProfile q m Γ)) ∧
+      ((3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+        (1+‖o‖)^N*‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ ζ η o y‖ ≤
+          C*δ⁻¹*δ^N*(Finset.Iic (K,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+            (normalizedCircleFinePacketProfile q m Γ)) := by
+  obtain ⟨K,C₀,hC₀,hL1⟩ := sourcePacket_schwartz_weighted_L1_rectangle
+    (E := NormalizedCircleFinePacketSpace) N
+  let Cs := normalizedCircleFinePacketSourceTailCoefficient χout χsrc b N
+  let Co := normalizedCircleFinePacketOutputTailCoefficient χout χsrc b N
+  have hCs : 0 ≤ Cs := by dsimp [Cs,normalizedCircleFinePacketSourceTailCoefficient]; positivity
+  have hCo : 0 ≤ Co := by dsimp [Co,normalizedCircleFinePacketOutputTailCoefficient]; positivity
+  refine ⟨K,(Cs+Co)*C₀,by positivity,?_⟩
+  intro Γ q m ε δ ρ hδ ζ η o y
+  let Φ := normalizedCircleFinePacketProfile q m Γ
+  let U : Real := (Finset.Iic (K,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  let I := normalizedCircleFinePacketIntegrandSchwartz χout χsrc b Γ q m ε δ ρ ζ η o y
+  have hsenv (x : NormalizedCircleFinePacketSpace) :
+      normalizedCircleFinePacketSourceTailEnvelope q m Γ N x ≤ (1+‖x‖)^N*‖Φ x‖ := by
+    have hx : ‖x.snd.fst‖ ≤ ‖x‖ :=
+      (WithLp.norm_fst_le (Euclidean 2) x.snd).trans
+        (WithLp.norm_snd_le JointWaveSpaceTime x)
+    dsimp [normalizedCircleFinePacketSourceTailEnvelope,Φ]
+    rw [normalizedCircleFinePacketProfile_apply]
+    simp only [norm_mul]
+    calc
+      _ = (1+‖x.snd.fst‖)^N *
+        (‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+          (‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖)) := by ring
+      _ ≤ _ := by gcongr
+  have hoenv (x : NormalizedCircleFinePacketSpace) :
+      normalizedCircleFinePacketOutputTailEnvelope q m Γ N x ≤ (1+‖x‖)^N*‖Φ x‖ := by
+    have hx : ‖x.fst‖ ≤ ‖x‖ := WithLp.norm_fst_le JointWaveSpaceTime x
+    dsimp [normalizedCircleFinePacketOutputTailEnvelope,Φ]
+    rw [normalizedCircleFinePacketProfile_apply]
+    simp only [norm_mul]
+    calc
+      _ = (1+‖x.fst‖)^N *
+        (‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) x.fst‖ *
+          (‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) x.snd.fst‖ * ‖Γ x.snd.snd‖)) := by ring
+      _ ≤ _ := by gcongr
+  have hbound (w D : Real) (hw : 0 ≤ w) (hD : 0 ≤ D)
+      (hp : ∀ x, w*‖I x‖ ≤ D*δ^N*((1+‖x‖)^N*‖Φ x‖)) :
+      w*‖normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ ζ η o y‖ ≤
+        D*C₀*δ⁻¹*δ^N*U := by
+    have hh := norm_integral_le_of_norm_le
+      ((sourcePacket_schwartz_weighted_norm_integrable Φ N).const_mul (D*δ^N))
+      (f := fun x : NormalizedCircleFinePacketSpace => (w:Complex)*I x)
+      (by filter_upwards with x
+          simpa only [norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hw] using hp x)
+    have hI : w*‖∫ x, I x‖ ≤ D*δ^N*(∫ x, (1+‖x‖)^N*‖Φ x‖) := by
+      simpa only [integral_const_mul,norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hw] using hh
+    have hi := hI.trans (mul_le_mul_of_nonneg_left (hL1 Φ) (by positivity : 0 ≤ D*δ^N))
+    rw [normalizedCircleFinePacketNormalizedKernel_eq_integral,norm_mul,norm_mul,
+      Complex.norm_exp_ofReal_mul_I,mul_one,Complex.norm_real,Real.norm_eq_abs,
+      abs_of_pos (inv_pos.mpr hδ)]
+    convert mul_le_mul_of_nonneg_left hi (by positivity : 0 ≤ δ⁻¹) using 1 <;> ring
+  constructor
+  · intro hy
+    have hh := hbound ((1+‖y‖)^N) Cs (by positivity) hCs (fun x =>
+      (normalizedCircleFinePacket_integrand_source_tail χout χsrc hχsrc b Γ q m N
+        ε δ ρ hδ.le ζ η o y hy x).trans
+          (mul_le_mul_of_nonneg_left (hsenv x) (by positivity : 0 ≤ Cs*δ^N)))
+    exact hh.trans (by gcongr; exact le_add_of_nonneg_right hCo)
+  · intro ho
+    have hh := hbound ((1+‖o‖)^N) Co (by positivity) hCo (fun x =>
+      (normalizedCircleFinePacket_integrand_output_tail χout χsrc hχout b Γ q m N
+        ε δ ρ hδ.le ζ η o y ho x).trans
+          (mul_le_mul_of_nonneg_left (hoenv x) (by positivity : 0 ≤ Co*δ^N)))
+    exact hh.trans (by gcongr; exact le_add_of_nonneg_left hCs)
+#print axioms normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_control
+
+theorem sourcePacket_profile_rectangle_mono
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    (Φ : SchwartzMap E Complex)
+    {K₀ N₀ K₁ N₁ : Nat} (hK : K₀ ≤ K₁) (hN : N₀ ≤ N₁) :
+    (Finset.Iic (K₀,N₀)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ ≤
+      (Finset.Iic (K₁,N₁)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ := by
+  classical
+  apply Seminorm.finset_sup_apply_le (apply_nonneg _ _)
+  intro p hp
+  have hp' : p.1 ≤ K₀ ∧ p.2 ≤ N₀ := by simpa only [Finset.mem_Iic,Prod.le_def] using hp
+  exact Seminorm.le_def.mp (Finset.le_sup (b := p) (s := Finset.Iic (K₁,N₁))
+    (f := fun r => SchwartzMap.seminorm Complex r.1 r.2)
+    (Finset.mem_Iic.mpr (by change p.1 ≤ K₁ ∧ p.2 ≤ N₁; exact ⟨hp'.1.trans hK,hp'.2.trans hN⟩))) Φ
+
+theorem normalizedCircleFinePacketKernel_physical_tails_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (b : SchwartzMap Real Complex) (N : Nat) :
+    ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real, |ε| ≤ 1/64 → ∀ hδ : 0 < δ,
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      ((4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+        (1+‖y‖)^N*‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖ ≤
+          C*δ⁻¹*δ^N*(Finset.Iic (K,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+            (normalizedCircleFinePacketProfile q m Γ)) ∧
+      ((3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+        (1+‖o‖)^N*‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖ ≤
+          C*δ⁻¹*δ^N*(Finset.Iic (K,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+            (normalizedCircleFinePacketProfile q m Γ)) := by
+  obtain ⟨K,C,hC,htail⟩ := normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_control
+    χout χsrc hχout hχsrc b N
+  have ho : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2 := by
+    intro z hz; obtain ⟨hX,hT⟩ := hχout z hz; constructor <;> linarith
+  have hs : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5 := by
+    intro z hz; obtain ⟨hθ,hu⟩ := hχsrc z hz; constructor <;> linarith
+  refine ⟨K,C,hC,?_⟩
+  intro Γ q m ε δ ρ hε hδ ζ η o y
+  rw [normalizedCircleFinePacketKernel_eq_normalized χout χsrc ho hs b Γ q m ε δ ρ hε hδ ζ η o y]
+  exact htail Γ q m ε δ ρ hδ ζ η o y
+
+/-- Simultaneous dual-frequency and physical shielding tails with one
+finite Schwartz rectangle. This is uniform across the actual output-profile
+family, rather than using separate constants for each spectral packet. -/
+theorem normalizedCircleFinePacketKernel_mixed_tails_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (b : SchwartzMap Real Complex)
+    (N M : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ K S : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real,
+      |ε| ≤ 1/64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ*δ^2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      ((4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
+        (1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖)^N *
+          (1+‖y‖)^N*‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖ ≤
+          C*δ⁻¹*δ^M*(Finset.Iic (K,S)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+            (normalizedCircleFinePacketProfile q m Γ)) ∧
+      ((3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
+        (1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖)^N *
+          (1+‖o‖)^N*‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖ ≤
+          C*δ⁻¹*δ^M*(Finset.Iic (K,S)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+            (normalizedCircleFinePacketProfile q m Γ)) := by
+  have ho : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2 := by
+    intro z hz; obtain ⟨hX,hT⟩ := hχout z hz; constructor <;> linarith
+  have hs : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5 := by
+    intro z hz; obtain ⟨hθ,hu⟩ := hχsrc z hz; constructor <;> linarith
+  obtain ⟨Ka,Sa,CA,hCA,hfreq⟩ := normalizedCircleFinePacketKernel_profile_control
+    χout χsrc ho hs b (2*N) R hR
+  obtain ⟨Kb,CB,hCB,hphys⟩ := normalizedCircleFinePacketKernel_physical_tails_profile_control
+    χout χsrc hχout hχsrc b (2*(N+M))
+  refine ⟨max Ka Kb,Sa,CA+CB+1,by positivity,?_⟩
+  intro Γ q m ε δ ρ hε hδ hδone hρ ζ η o y
+  let Φ := normalizedCircleFinePacketProfile q m Γ
+  let U : Real := (Finset.Iic (max Ka Kb,Sa)).sup
+    (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ
+  have hU : 0 ≤ U := apply_nonneg _ _
+  have hUa := sourcePacket_profile_rectangle_mono Φ (Nat.le_max_left Ka Kb) (le_refl Sa)
+  have hUb := sourcePacket_profile_rectangle_mono Φ (Nat.le_max_right Ka Kb) (Nat.zero_le Sa)
+  let k := ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖
+  let a := 1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖
+  have hA : a^(2*N)*k ≤ CA*(δ⁻¹*U) := by
+    have hh := (hfreq Γ q m ε δ ρ hε hδ hδone hρ ζ η o y).trans
+      (mul_le_mul_of_nonneg_left hUa (by positivity : 0 ≤ CA*δ⁻¹))
+    convert hh using 1 <;> ring
+  have ht := hphys Γ q m ε δ ρ hε hδ ζ η o y
+  have htail (v : Real) (hv : 1 ≤ v)
+      (htv : v^(2*(N+M))*k ≤ CB*δ⁻¹*δ^(2*(N+M))*
+        (Finset.Iic (Kb,0)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2) Φ) :
+      a^N*v^N*k ≤ (CA+CB+1)*δ⁻¹*δ^M*U := by
+    have hB : v^(2*(N+M))*k ≤ CB*(δ⁻¹*U)*δ^(2*(N+M)) := by
+      have hh := htv.trans (mul_le_mul_of_nonneg_left hUb
+        (by positivity : 0 ≤ CB*δ⁻¹*δ^(2*(N+M))))
+      convert hh using 1 <;> ring
+    have hh := sourcePacket_weighted_geometric_mean_tail a v k (δ⁻¹*U) δ CA CB N M
+      (show (0:Real) ≤ 1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖ by positivity) hv
+      (norm_nonneg (normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y)) (by positivity) hδ.le hδone hCA hCB hA hB
+    convert hh using 1 <;> ring
+  constructor
+  · intro hy
+    exact htail (1+‖y‖) (le_add_of_nonneg_right (norm_nonneg _)) (ht.1 hy)
+  · intro ho'
+    exact htail (1+‖o‖) (le_add_of_nonneg_right (norm_nonneg _)) (ht.2 ho')
+#print axioms normalizedCircleFinePacketKernel_mixed_tails_profile_control
+
+/-- Joint source/output measurability of the actual packet follows from
+the proved normalized integral representation, including the zero-epsilon sheet. -/
+theorem normalizedCircleFinePacketNormalizedKernel_measurable
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ : Real) (ζ : JointWaveSpaceTime) (η : Euclidean 2) :
+    Measurable (fun oy : JointWaveSpaceTime × Euclidean 2 =>
+      normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ ζ η oy.1 oy.2) := by
+  let c : JointWaveSpaceTime × Euclidean 2 → NormalizedCircleFullPhaseDomain :=
+    fun oy => (ε,(oy.1.fst,oy.1.snd),oy.2)
+  let ν := normalizedCircleFinePacketFrequencyCovector ζ η
+  let F : (JointWaveSpaceTime × Euclidean 2) × NormalizedCircleFinePacketSpace → Complex :=
+    fun z =>
+      Complex.exp ((((ρ+δ⁻¹*normalizedCircleFinePacketRadial z.2) *
+        normalizedCircleFinePacketCompactPhase (c z.1+δ•normalizedCircleFinePacketShift z.2) -
+        ν (c z.1+δ•normalizedCircleFinePacketShift z.2) : Real) : Complex) * Complex.I) *
+      normalizedCircleFinePacketBandAmplitude χout χsrc b
+        (WithLp.toLp 2 (c z.1,ρ*δ^2)+δ•normalizedCircleFinePacketAmplitudeShift z.2) *
+      normalizedCircleFinePacketProfile q m Γ z.2
+  have hF : Continuous F := by dsimp [F,c,ν]; fun_prop
+  have hI : Measurable (fun oy => ∫ x : NormalizedCircleFinePacketSpace, F (oy,x)) :=
+    hF.measurable.stronglyMeasurable.integral_prod_right'.measurable
+  have hC : Continuous (fun oy : JointWaveSpaceTime × Euclidean 2 =>
+      (δ⁻¹:Complex)*Complex.exp ((ν (c oy):Complex)*Complex.I)) := by
+    dsimp [ν,c]
+    fun_prop
+  convert hC.measurable.mul hI using 1
+  funext oy
+  simp only [normalizedCircleFinePacketNormalizedKernel, F, c, ν, Pi.mul_apply,
+    Complex.ofReal_inv]
+
+theorem normalizedCircleFinePacketKernel_measurable
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 4 ∧ |z 1| ≤ 5)
+    (b Γ : SchwartzMap Real Complex)
+    (q : SchwartzMap JointWaveSpaceTime Complex)
+    (m : SchwartzMap (Euclidean 2) Complex)
+    (ε δ ρ : Real) (hε : |ε| ≤ 1/64) (hδ : 0 < δ)
+    (ζ : JointWaveSpaceTime) (η : Euclidean 2) :
+    Measurable (fun oy : JointWaveSpaceTime × Euclidean 2 =>
+      normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η oy.1 oy.2) := by
+  have heq : (fun oy : JointWaveSpaceTime × Euclidean 2 =>
+      normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η oy.1 oy.2) =
+      (fun oy : JointWaveSpaceTime × Euclidean 2 =>
+        normalizedCircleFinePacketNormalizedKernel χout χsrc b Γ q m ε δ ρ ζ η oy.1 oy.2) := by
+    funext oy
+    exact normalizedCircleFinePacketKernel_eq_normalized χout χsrc hχout hχsrc
+      b Γ q m ε δ ρ hε hδ ζ η oy.1 oy.2
+  rw [heq]
+  exact normalizedCircleFinePacketNormalizedKernel_measurable χout χsrc b Γ q m ε δ ρ ζ η
+
+#print axioms normalizedCircleFinePacketKernel_measurable
+
+/-- The actual coordinate norms controlling the bounded shielding core. -/
+theorem sourcePacket_joint_norm_le_coordinates (o : JointWaveSpaceTime) :
+    ‖o‖ ≤ ‖o.fst‖+|o.snd| := by
+  have ho : o = WithLp.idemFst o+WithLp.idemSnd o := by
+    have he := DFunLike.congr_fun
+      (WithLp.idemFst_add_idemSnd (p := 2) (α := Euclidean 2) (β := Real)) o
+    change WithLp.idemFst o+WithLp.idemSnd o = o at he
+    exact he.symm
+  calc
+    ‖o‖ = ‖WithLp.idemFst o+WithLp.idemSnd o‖ := congrArg norm ho
+    _ ≤ ‖WithLp.idemFst o‖+‖WithLp.idemSnd o‖ := norm_add_le _ _
+    _ = _ := by
+      simp only [WithLp.idemFst_apply,WithLp.idemSnd_apply,
+        WithLp.norm_toLp_fst,WithLp.norm_toLp_snd,Real.norm_eq_abs]
+
+theorem sourcePacket_source_norm_le_coordinates (y : Euclidean 2) :
+    ‖y‖ ≤ |y 0|+|y 1| := by
+  have hs : ‖y‖^2 = (y 0)^2+(y 1)^2 := by
+    simpa only [Fin.sum_univ_two] using EuclideanSpace.real_norm_sq_eq y
+  have hc : ‖y‖^2 ≤ (|y 0|+|y 1|)^2 := by
+    nlinarith [sq_abs (y 0),sq_abs (y 1),
+      mul_nonneg (abs_nonneg (y 0)) (abs_nonneg (y 1))]
+  exact (sq_le_sq₀ (norm_nonneg y) (add_nonneg (abs_nonneg _) (abs_nonneg _))).mp hc
+
+theorem sourcePacket_output_core_weight_le_six (o : JointWaveSpaceTime)
+    (hX : ‖o.fst‖ ≤ 3) (hT : |o.snd| ≤ 2) :
+    1+‖o‖ ≤ 6 := by
+  have hn := sourcePacket_joint_norm_le_coordinates o
+  linarith
+
+theorem sourcePacket_source_core_weight_le_ten (y : Euclidean 2)
+    (htheta : |y 0| ≤ 4) (hu : |y 1| ≤ 5) :
+    1+‖y‖ ≤ 10 := by
+  have hn := sourcePacket_source_norm_le_coordinates y
+  linarith
+#print axioms sourcePacket_joint_norm_le_coordinates
+#print axioms sourcePacket_source_norm_le_coordinates
+
+/-- Genuine physical decay in both analysis variables retains the frequency mismatch decay even when only one variable is outside its core. -/
+theorem sourcePacket_three_weight_physical_tail
+    (a v w k H C : Real) (N : Nat)
+    (ha : 1 ≤ a) (hv : 1 ≤ v) (hw : 1 ≤ w)
+    (hk : 0 ≤ k) (hH : 0 ≤ H) (hC : 0 ≤ C)
+    (S O : Prop) (hOutside : S ∨ O)
+    (hSource : S → a^(2*N)*v^(2*N)*k ≤ C*H)
+    (hOutput : O → a^(2*N)*w^(2*N)*k ≤ C*H)
+    (hvs : ¬S → v ≤ 10) (hwo : ¬O → w ≤ 6) :
+    a^N*v^N*w^N*k ≤ ((10^N+6^N+2)*C+1)*H := by
+  have hap : a^N ≤ a^(2*N) := pow_le_pow_right₀ ha (by omega)
+  have hvp : v^N ≤ v^(2*N) := pow_le_pow_right₀ hv (by omega)
+  have hwp : w^N ≤ w^(2*N) := pow_le_pow_right₀ hw (by omega)
+  by_cases hs : S
+  · by_cases ho : O
+    · have hh := sourcePacket_shared_weight_geometric_mean a v w k H C C N
+        (by linarith) (by linarith) (by linarith) hk hH hC hC (hSource hs) (hOutput ho)
+      calc
+        _ ≤ a^(2*N)*v^N*w^N*k := by gcongr
+        _ ≤ (C+C+1)*H := hh
+        _ ≤ _ := by
+          gcongr
+          nlinarith [mul_nonneg (show (0:Real) ≤ 10^N by positivity) hC,
+            mul_nonneg (show (0:Real) ≤ 6^N by positivity) hC]
+    · have hwb : w^N ≤ (6:Real)^N := pow_le_pow_left₀ (by linarith) (hwo ho) N
+      calc
+        _ ≤ a^(2*N)*v^(2*N)*6^N*k := by gcongr
+        _ = 6^N*(a^(2*N)*v^(2*N)*k) := by ring
+        _ ≤ 6^N*(C*H) := mul_le_mul_of_nonneg_left (hSource hs) (by positivity)
+        _ ≤ _ := by
+          have hc : (6:Real)^N*C ≤ (10^N+6^N+2)*C+1 := by
+            nlinarith [mul_nonneg (show (0:Real) ≤ 10^N by positivity) hC]
+          simpa only [mul_assoc] using mul_le_mul_of_nonneg_right hc hH
+  · have ho : O := hOutside.resolve_left hs
+    have hvb : v^N ≤ (10:Real)^N := pow_le_pow_left₀ (by linarith) (hvs hs) N
+    calc
+      _ ≤ a^(2*N)*10^N*w^(2*N)*k := by gcongr
+      _ = 10^N*(a^(2*N)*w^(2*N)*k) := by ring
+      _ ≤ 10^N*(C*H) := mul_le_mul_of_nonneg_left (hOutput ho) (by positivity)
+      _ ≤ _ := by
+        have hc : (10:Real)^N*C ≤ (10^N+6^N+2)*C+1 := by
+          nlinarith [mul_nonneg (show (0:Real) ≤ 6^N by positivity) hC]
+        simpa only [mul_assoc] using mul_le_mul_of_nonneg_right hc hH
+#print axioms sourcePacket_three_weight_physical_tail
+
+/-- Outside either genuine analysis core, the literal normalized kernel
+has simultaneous summable source/output physical decay and retained joint
+covector decay. The fixed cutoff margins supply every inverse scale power. -/
+theorem normalizedCircleFinePacketKernel_analysis_error_profile_control
+    (χout : SchwartzMap WaveSpaceTime Complex)
+    (χsrc : SchwartzMap (Euclidean 2) Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (b : SchwartzMap Real Complex) (N M : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ K S : Nat, ∃ C : Real, 0 ≤ C ∧
+      ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real,
+      |ε| ≤ 1/64 → ∀ hδ : 0 < δ, δ ≤ 1 → |ρ*δ^2| ≤ R →
+      ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
+      ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
+      ((4 ≤ |y 0| ∨ 5 ≤ |y 1|) ∨ (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|)) →
+        (1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖)^N *
+          (1+‖y‖)^N*(1+‖o‖)^N*
+          ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖ ≤
+            C*δ⁻¹*δ^M*(Finset.Iic (K,S)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+              (normalizedCircleFinePacketProfile q m Γ) := by
+  classical
+  obtain ⟨K,S,C,hC,htail⟩ := normalizedCircleFinePacketKernel_mixed_tails_profile_control
+    χout χsrc hχout hχsrc b (2*N) M R hR
+  refine ⟨K,S,((10:Real)^N+6^N+2)*C+1,by positivity,?_⟩
+  intro Γ q m ε δ ρ hε hδ hδone hρ ζ η o y hout
+  let U : Real := (Finset.Iic (K,S)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
+    (normalizedCircleFinePacketProfile q m Γ)
+  have hU : 0 ≤ U := apply_nonneg _ _
+  let a : Real := 1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖
+  let v : Real := 1+‖y‖
+  let w : Real := 1+‖o‖
+  let k : Real := ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y‖
+  let H : Real := δ⁻¹*δ^M*U
+  have ht := htail Γ q m ε δ ρ hε hδ hδone hρ ζ η o y
+  have hSource : (4 ≤ |y 0| ∨ 5 ≤ |y 1|) → a^(2*N)*v^(2*N)*k ≤ C*H := by
+    intro hy
+    convert ht.1 hy using 1; dsimp [a,v,k,H,U]; ring
+  have hOutput : (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) → a^(2*N)*w^(2*N)*k ≤ C*H := by
+    intro ho
+    convert ht.2 ho using 1; dsimp [a,w,k,H,U]; ring
+  have hvbound : ¬(4 ≤ |y 0| ∨ 5 ≤ |y 1|) → v ≤ 10 := by
+    intro hy
+    push Not at hy
+    exact sourcePacket_source_core_weight_le_ten y hy.1.le hy.2.le
+  have hwbound : ¬(3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) → w ≤ 6 := by
+    intro ho
+    push Not at ho
+    exact sourcePacket_output_core_weight_le_six o ho.1.le ho.2.le
+  have hb := sourcePacket_three_weight_physical_tail a v w k H C N
+    (by dsimp [a]; exact le_add_of_nonneg_right (norm_nonneg _))
+    (by dsimp [v]; exact le_add_of_nonneg_right (norm_nonneg _))
+    (by dsimp [w]; exact le_add_of_nonneg_right (norm_nonneg _))
+    (norm_nonneg _) (by dsimp [H]; positivity) hC _ _ hout hSource hOutput hvbound hwbound
+  convert hb using 1; dsimp [a,v,w,k,H,U]; ring
+#print axioms normalizedCircleFinePacketKernel_analysis_error_profile_control
+
+
+
+
+
+
+
 
 
 end

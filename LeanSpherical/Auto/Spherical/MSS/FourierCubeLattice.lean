@@ -764,8 +764,140 @@ private theorem aux_weighted_factor_two (a b : ENNReal) :
         (by positivity : 0 ≤ (2 : Real)⁻¹)]
     _ = a ^ (2 : Real)⁻¹ * (a ^ (2 : Real)⁻¹ * b) := by ring
 
+/-- Weighted Cauchy on an arbitrary source measure. The joint cube/source version avoids a global cardinality bound on the cubes assigned to an output packet. -/
+theorem aux_lintegral_weighted_cauchy_two_measure
+    {α : Type*} [MeasurableSpace α] (μ : Measure α) (A B : α → ENNReal)
+    (hA : AEMeasurable A μ) (hB : AEMeasurable B μ) :
+    (∫⁻ y, A y * B y ∂μ) ^ (2 : Real) ≤
+      (∫⁻ y, A y ∂μ) * ∫⁻ y, A y * B y ^ (2 : Real) ∂μ := by
+  let a : α → ENNReal := fun y => A y ^ (2 : Real)⁻¹
+  let b : α → ENNReal := fun y => (A y * B y ^ (2 : Real)) ^ (2 : Real)⁻¹
+  have ha : AEMeasurable a μ := hA.pow_const _
+  have hb : AEMeasurable b μ := (hA.mul (hB.pow_const _)).pow_const _
+  have hholder := ENNReal.lintegral_mul_le_Lp_mul_Lq μ
+    Real.HolderConjugate.two_two ha hb
+  have hleft : (∫⁻ y, (a * b) y ∂μ) = ∫⁻ y, A y * B y ∂μ := by
+    apply lintegral_congr
+    intro y
+    simp only [a,b,Pi.mul_apply]
+    exact (aux_weighted_factor_two (A y) (B y)).symm
+  have hfirst : (∫⁻ y, a y ^ (2 : Real) ∂μ) = ∫⁻ y, A y ∂μ := by
+    apply lintegral_congr
+    intro y
+    simp only [a]
+    rw [← ENNReal.rpow_mul, inv_mul_cancel₀ (by norm_num : (2:Real) ≠ 0),
+      ENNReal.rpow_one]
+  have hsecond : (∫⁻ y, b y ^ (2 : Real) ∂μ) =
+      ∫⁻ y, A y * B y ^ (2 : Real) ∂μ := by
+    apply lintegral_congr
+    intro y
+    simp only [b]
+    rw [← ENNReal.rpow_mul, inv_mul_cancel₀ (by norm_num : (2:Real) ≠ 0),
+      ENNReal.rpow_one]
+  have hh : (∫⁻ y, A y * B y ∂μ) ≤
+      (∫⁻ y, A y ∂μ) ^ (2 : Real)⁻¹ *
+        (∫⁻ y, A y * B y ^ (2 : Real) ∂μ) ^ (2 : Real)⁻¹ := by
+    rw [hleft,hfirst,hsecond] at hholder
+    simpa only [one_div] using hholder
+  have hp := ENNReal.rpow_le_rpow hh (by positivity : (0:Real) ≤ 2)
+  convert hp using 1
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:Real) ≤ 2),
+    ← ENNReal.rpow_mul, ← ENNReal.rpow_mul,
+    inv_mul_cancel₀ (by norm_num : (2:Real) ≠ 0), ENNReal.rpow_one]
+  simp only [ENNReal.rpow_one]
+
+
+/-- Cauchy over the literal joint finite-cube/source measure. The first factor is the total source mass of all the kernels, rather than the number of cubes. -/
+theorem finiteKernelIntegral_sum_cauchy
+    {ι α : Type*} [MeasurableSpace ι] [MeasurableSingletonClass ι] [Fintype ι]
+    [MeasurableSpace α] (μ : Measure α) [SFinite μ]
+    (K f : ι × α → Complex)
+    (hK : AEMeasurable K (Measure.count.prod μ))
+    (hf : AEMeasurable f (Measure.count.prod μ)) :
+    ‖∑ i, ∫ y, K (i,y) * f (i,y) ∂μ‖ₑ ^ (2 : Real) ≤
+      (∑ i, ∫⁻ y, ‖K (i,y)‖ₑ ∂μ) *
+        (∑ i, ∫⁻ y, ‖K (i,y)‖ₑ * ‖f (i,y)‖ₑ ^ (2 : Real) ∂μ) := by
+  have hsum (F : ι × α → ENNReal) (hF : AEMeasurable F (Measure.count.prod μ)) :
+      (∫⁻ z, F z ∂Measure.count.prod μ) = ∑ i, ∫⁻ y, F (i,y) ∂μ := by
+    rw [lintegral_prod _ hF, lintegral_count, tsum_fintype]
+  have hprod := hK.enorm.mul hf.enorm
+  have hnorm : ‖∑ i, ∫ y, K (i,y) * f (i,y) ∂μ‖ₑ ≤
+      ∫⁻ z, ‖K z‖ₑ * ‖f z‖ₑ ∂Measure.count.prod μ := by
+    calc
+      _ ≤ ∑ i, ‖∫ y, K (i,y) * f (i,y) ∂μ‖ₑ := enorm_sum_le _ _
+      _ ≤ ∑ i, ∫⁻ y, ‖K (i,y) * f (i,y)‖ₑ ∂μ :=
+        Finset.sum_le_sum (fun i _ => enorm_integral_le_lintegral_enorm _)
+      _ = _ := by
+        rw [hsum (fun z => ‖K z‖ₑ * ‖f z‖ₑ) hprod]
+        simp only [enorm_mul]
+  have hc := aux_lintegral_weighted_cauchy_two_measure (Measure.count.prod μ)
+    (fun z => ‖K z‖ₑ) (fun z => ‖f z‖ₑ) hK.enorm hf.enorm
+  have hm := hsum (fun z => ‖K z‖ₑ) hK.enorm
+  have he := hsum (fun z => ‖K z‖ₑ * ‖f z‖ₑ ^ (2 : Real))
+    (hK.enorm.mul (hf.enorm.pow_const _))
+  exact (ENNReal.rpow_le_rpow hnorm (by norm_num : (0:Real) ≤ 2)).trans
+    (by simpa only [hm, he] using hc)
+#print axioms finiteKernelIntegral_sum_cauchy
+
+/-- Weighted square pairing for a genuine nonnegative kernel on two fixed measures. Both finite cube indices and output packet indices can be included in these measures. Only total kernel mass and the reverse tested kernel are used; no cube-cardinality bound is imposed. -/
+theorem weightedKernel_square_pairing_le
+    {α β : Type*} [MeasurableSpace α] [MeasurableSpace β]
+    (μ : Measure α) (ν : Measure β) [SFinite μ] [SFinite ν]
+    (K : β × α → ENNReal) (F : α → ENNReal)
+    (T g : β → ENNReal) (H : α → ENNReal) (M : ENNReal)
+    (hK : Measurable K) (hF : Measurable F) (hg : Measurable g)
+    (hDom : ∀ x, T x ≤ ∫⁻ y, K (x,y) * F y ∂μ)
+    (hMass : ∀ x, (∫⁻ y, K (x,y) ∂μ) ≤ M)
+    (hReverse : ∀ y, (∫⁻ x, K (x,y) * g x ∂ν) ≤ H y) :
+    (∫⁻ x, T x ^ (2 : Real) * g x ∂ν) ≤
+      M * ∫⁻ y, F y ^ (2 : Real) * H y ∂μ := by
+  let W : β × α → ENNReal := fun z => K z * F z.2 ^ (2 : Real) * g z.1
+  have hW : Measurable W := (hK.mul ((hF.comp measurable_snd).pow_const _)).mul
+    (hg.comp measurable_fst)
+  have hpoint (x : β) :
+      T x ^ (2 : Real) * g x ≤ M * ∫⁻ y, W (x,y) ∂μ := by
+    have hKx : Measurable (fun y => K (x,y)) :=
+      hK.comp (measurable_const.prodMk measurable_id)
+    have hc := aux_lintegral_weighted_cauchy_two_measure μ (fun y => K (x,y)) F
+      hKx.aemeasurable hF.aemeasurable
+    have hh := (ENNReal.rpow_le_rpow (hDom x) (by norm_num : (0:Real) ≤ 2)).trans
+      (hc.trans (mul_le_mul_left (hMass x) _))
+    have heq : (∫⁻ y, K (x,y) * F y ^ (2 : Real) ∂μ) * g x =
+        ∫⁻ y, W (x,y) ∂μ := by
+      exact (lintegral_mul_const (μ := μ) (g x)
+        (hKx.mul (hF.pow_const (2 : Real)))).symm
+    calc
+      _ ≤ (M * ∫⁻ y, K (x,y) * F y ^ (2 : Real) ∂μ) * g x :=
+        mul_le_mul_left hh _
+      _ = _ := by rw [mul_assoc, heq]
+  calc
+    _ ≤ ∫⁻ x, M * (∫⁻ y, W (x,y) ∂μ) ∂ν := lintegral_mono hpoint
+    _ = M * ∫⁻ x, ∫⁻ y, W (x,y) ∂μ ∂ν := by
+      rw [lintegral_const_mul _ hW.lintegral_prod_right']
+    _ = M * ∫⁻ y, ∫⁻ x, W (x,y) ∂ν ∂μ := by
+      rw [lintegral_lintegral_swap hW.aemeasurable]
+    _ ≤ _ := by
+      apply mul_le_mul_right
+      apply lintegral_mono
+      intro y
+      have hKy : Measurable (fun x => K (x,y) * g x) :=
+        (hK.comp (measurable_id.prodMk measurable_const)).mul hg
+      have heq : (∫⁻ x, W (x,y) ∂ν) =
+          F y ^ (2 : Real) * ∫⁻ x, K (x,y) * g x ∂ν := by
+        calc
+          _ = ∫⁻ x, F y ^ (2 : Real) * (K (x,y) * g x) ∂ν := by
+            apply lintegral_congr
+            intro x
+            dsimp [W]
+            ring
+          _ = _ := lintegral_const_mul _ hKy
+      change (∫⁻ x, W (x,y) ∂ν) ≤ F y ^ (2 : Real) * H y
+      rw [heq]
+      exact mul_le_mul_right (hReverse y) _
+#print axioms weightedKernel_square_pairing_le
+
 /-- Weighted Cauchy--Schwarz for a nonnegative Euclidean integral. -/
-private theorem aux_lintegral_weighted_cauchy_two
+theorem aux_lintegral_weighted_cauchy_two
     (A B : Euclidean 2 → ENNReal)
     (hA : AEMeasurable A volume) (hB : AEMeasurable B volume) :
     (∫⁻ y : Euclidean 2, A y * B y) ^ (2 : Real) ≤
@@ -1059,6 +1191,408 @@ private theorem aux_exists_summable_uniform_lattice_majorant
       mul_le_mul_of_nonneg_left (hinvp.trans
         (mul_le_mul_of_nonneg_left hbase (pow_nonneg hq.le N))) hC
     _ = u z := by simp [u, mul_assoc]
+
+/-- Translate any actual lattice periodization into its bounded fundamental cell. A single summable cell majorant therefore controls every physical covector shift. -/
+theorem uniform_lattice_periodization_of_cell_majorant
+    {ι E : Type*} [Fintype ι] [NormedAddCommGroup E] [NormedSpace Real E]
+    (b : Module.Basis ι Real E) (K : E → Real)
+    (u : (Submodule.span Int (Set.range b)) → Real) (hu : Summable u)
+    (hBound : ∀ z : Submodule.span Int (Set.range b),
+      ∀ v ∈ ZSpan.fundamentalDomain b, ‖K ((z:E)+v)‖ ≤ u z) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : E,
+      Summable (fun z : Submodule.span Int (Set.range b) => K ((z:E)+x)) ∧
+        (∑' z : Submodule.span Int (Set.range b), K ((z:E)+x)) ≤ C := by
+  classical
+  refine ⟨max (∑' z, u z) 0, le_max_right _ _, ?_⟩
+  intro x
+  let L := Submodule.span Int (Set.range b)
+  let t : L := ZSpan.floor b x
+  let v := ZSpan.fract b x
+  let e : L ≃ L := Equiv.addRight t
+  have hv : v ∈ ZSpan.fundamentalDomain b := ZSpan.fract_mem_fundamentalDomain b x
+  have hs : Summable (fun z : L => K ((z:E)+v)) :=
+    hu.of_norm_bounded (fun z => hBound z v hv)
+  have hpoint (z : L) : K ((z:E)+x) = K (((e z : L):E)+v) := by
+    apply congrArg K
+    change (z:E)+x = ((z+t:L):E)+(x-(t:E))
+    simp only [Submodule.coe_add]
+    abel
+  constructor
+  · convert hs.comp_injective e.injective using 1
+    funext z
+    exact hpoint z
+  · calc
+      _ = ∑' z : L, K (((e z : L):E)+v) := tsum_congr hpoint
+      _ = ∑' z : L, K ((z:E)+v) := e.tsum_eq (fun z : L => K ((z:E)+v))
+      _ ≤ ∑' z : L, u z :=
+        hs.tsum_le_tsum (fun z => (le_abs_self (K ((z:E)+v))).trans
+          (by simpa only [Real.norm_eq_abs] using hBound z v hv)) hu
+      _ ≤ _ := le_max_left _ _
+
+
+
+
+/-- Every fixed real basis has a genuine uniform summable integer-lattice
+decay bound. This includes the literal WithLp spacetime output basis. -/
+theorem mss_basis_lattice_decay_periodization_uniform
+    {ι E : Type*} [Fintype ι] [NormedAddCommGroup E] [NormedSpace Real E]
+    [FiniteDimensional Real E]
+    (b : Module.Basis ι Real E) (N : Nat) (hN : Module.finrank Real E < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : E,
+      Summable (fun z : Submodule.span Int (Set.range b) =>
+        (1 + ‖(z:E)+x‖)⁻¹ ^ N) ∧
+      (∑' z : Submodule.span Int (Set.range b),
+        (1 + ‖(z:E)+x‖)⁻¹ ^ N) ≤ C := by
+  classical
+  let L := Submodule.span Int (Set.range b)
+  let U := ZSpan.fundamentalDomain b
+  let K : E → Real := fun y => (1+‖y‖)⁻¹ ^ N
+  have hdim : Module.finrank Int L = Module.finrank Real E := by
+    dsimp [L]
+    rw [ZLattice.rank Real]
+  obtain ⟨R₀,hR₀⟩ := (ZSpan.fundamentalDomain_isBounded b).subset_closedBall (0 : E)
+  have hR : ∀ v ∈ U, ‖v‖ ≤ max R₀ 0 := by
+    intro v hv
+    have hh := hR₀ hv
+    rw [Metric.mem_closedBall, dist_zero_right] at hh
+    exact hh.trans (le_max_left _ _)
+  have hDecay : ∀ y, ‖K y‖ ≤ 1 * (1+‖y‖)⁻¹ ^ N := by
+    intro y
+    dsimp [K]
+    rw [abs_of_nonneg (by positivity)]
+    simp
+  obtain ⟨u,hu,hBound⟩ := aux_exists_summable_uniform_lattice_majorant
+    L K U (max R₀ 0) 1 N (by rw [hdim]; exact hN)
+    (le_max_right _ _) (by norm_num) hR hDecay
+  exact uniform_lattice_periodization_of_cell_majorant b K u hu hBound
+
+/-- The actual finite label sum is bounded for any injective fixed-basis
+integer centers, without a coordinate-isometry assumption. -/
+theorem mss_basis_lattice_decay_finite_sum_uniform
+    {ι E : Type*} [Fintype ι] [NormedAddCommGroup E] [NormedSpace Real E]
+    [FiniteDimensional Real E]
+    (b : Module.Basis ι Real E) (N : Nat) (hN : Module.finrank Real E < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : E, ∀ {κ : Type*},
+      ∀ z : κ → Submodule.span Int (Set.range b), Function.Injective z →
+        ∀ s : Finset κ, (∑ i ∈ s, (1+‖(z i : E)+x‖)⁻¹ ^ N) ≤ C := by
+  classical
+  obtain ⟨C,hC,hUniform⟩ := mss_basis_lattice_decay_periodization_uniform b N hN
+  refine ⟨C,hC,?_⟩
+  intro x κ z hz s
+  let K : Submodule.span Int (Set.range b) → Real := fun q => (1+‖(q:E)+x‖)⁻¹ ^ N
+  have hk : Summable K := (hUniform x).1
+  have hnonneg : ∀ q, 0 ≤ K q := by intro q; dsimp [K]; positivity
+  have hs : Summable (fun i => K (z i)) := hk.comp_injective hz
+  calc
+    _ ≤ ∑' i, K (z i) := hs.sum_le_tsum s (fun i _ => hnonneg _)
+    _ ≤ ∑' q, K q := tsum_comp_le_tsum_of_inj hk hnonneg hz
+    _ ≤ C := (hUniform x).2
+#print axioms mss_basis_lattice_decay_finite_sum_uniform
+
+
+/-- Actual standard integer Fourier centers in any fixed Euclidean dimension. -/
+def standardLatticePointND (d : Nat) (q : Fin d → Int) : Euclidean d :=
+  WithLp.toLp 2 (fun i => (q i : Real))
+private def aux_standardLatticePointND (d : Nat) (q : Fin d → Int) :
+    Submodule.span Int (Set.range (PiLp.basisFun 2 Real (Fin d))) :=
+  ⟨standardLatticePointND d q, by
+    rw [Module.Basis.mem_span_iff_repr_mem]
+    intro i
+    refine ⟨q i, ?_⟩
+    simp [standardLatticePointND]⟩
+
+/-- Uniform summable decay over actual integer centers, including the three-dimensional output covector lattice. -/
+theorem mss_integer_lattice_decay_periodization_uniform
+    (d N : Nat) (hN : d < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Euclidean d,
+      Summable (fun z : Submodule.span Int (Set.range (PiLp.basisFun 2 Real (Fin d))) =>
+        (1 + ‖(z:Euclidean d)+x‖)⁻¹ ^ N) ∧
+      (∑' z : Submodule.span Int (Set.range (PiLp.basisFun 2 Real (Fin d))),
+        (1 + ‖(z:Euclidean d)+x‖)⁻¹ ^ N) ≤ C := by
+  classical
+  let b := PiLp.basisFun 2 Real (Fin d)
+  let L := Submodule.span Int (Set.range b)
+  let U := ZSpan.fundamentalDomain b
+  let K : Euclidean d → Real := fun y => (1+‖y‖)⁻¹ ^ N
+  have hdim : Module.finrank Int L = d := by
+    dsimp [L,b]
+    rw [ZLattice.rank Real]
+    exact finrank_euclideanSpace_fin
+  obtain ⟨R₀,hR₀⟩ := (ZSpan.fundamentalDomain_isBounded b).subset_closedBall
+    (0 : Euclidean d)
+  have hR : ∀ v ∈ U, ‖v‖ ≤ max R₀ 0 := by
+    intro v hv
+    have hh := hR₀ hv
+    rw [Metric.mem_closedBall, dist_zero_right] at hh
+    exact hh.trans (le_max_left _ _)
+  have hDecay : ∀ y, ‖K y‖ ≤ 1 * (1+‖y‖)⁻¹ ^ N := by
+    intro y
+    dsimp [K]
+    rw [abs_of_nonneg (by positivity)]
+    simp
+  obtain ⟨u,hu,hBound⟩ := aux_exists_summable_uniform_lattice_majorant
+    L K U (max R₀ 0) 1 N (by rw [hdim]; exact hN)
+    (le_max_right _ _) (by norm_num) hR hDecay
+  exact uniform_lattice_periodization_of_cell_majorant b K u hu hBound
+
+/-- Every finite family of input or output integer Fourier centers has the same uniform decay sum, independently of its size. -/
+theorem mss_integer_lattice_decay_finite_sum_uniform
+    (d N : Nat) (hN : d < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Euclidean d, ∀ s : Finset (Fin d → Int),
+      (∑ q ∈ s, (1 + ‖standardLatticePointND d q + x‖)⁻¹ ^ N) ≤ C := by
+  classical
+  obtain ⟨C,hC,hUniform⟩ := mss_integer_lattice_decay_periodization_uniform d N hN
+  refine ⟨C,hC,?_⟩
+  intro x s
+  have hinj : Function.Injective (aux_standardLatticePointND d) := by
+    intro q q' h
+    funext i
+    have hh := congrArg (fun z : Submodule.span Int
+      (Set.range (PiLp.basisFun 2 Real (Fin d))) => (z : Euclidean d) i) h
+    change (q i : Real) = (q' i : Real) at hh
+    exact_mod_cast hh
+  let K : Submodule.span Int (Set.range (PiLp.basisFun 2 Real (Fin d))) → Real :=
+    fun z => (1 + ‖(z:Euclidean d)+x‖)⁻¹ ^ N
+  have hk : Summable K := (hUniform x).1
+  have hnonneg : ∀ z, 0 ≤ K z := by intro z; dsimp [K]; positivity
+  have hs : Summable (fun q => K (aux_standardLatticePointND d q)) := hk.comp_injective hinj
+  calc
+    _ = ∑ q ∈ s, K (aux_standardLatticePointND d q) := rfl
+    _ ≤ ∑' q, K (aux_standardLatticePointND d q) :=
+      hs.sum_le_tsum s (fun q _ => hnonneg _)
+    _ ≤ ∑' z, K z := tsum_comp_le_tsum_of_inj hk hnonneg hinj
+    _ ≤ C := (hUniform x).2
+
+/-- Extended nonnegative form of the genuine input/output lattice decay sum. -/
+theorem mss_integer_lattice_decay_finite_sum_ennreal_uniform
+    (d N : Nat) (hN : d < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Euclidean d, ∀ s : Finset (Fin d → Int),
+      (∑ q ∈ s, ENNReal.ofReal ((1 + ‖standardLatticePointND d q + x‖)⁻¹ ^ N)) ≤
+        ENNReal.ofReal C := by
+  obtain ⟨C,hC,hBound⟩ := mss_integer_lattice_decay_finite_sum_uniform d N hN
+  refine ⟨C,hC,?_⟩
+  intro x s
+  rw [← ENNReal.ofReal_sum_of_nonneg (fun q _ => by positivity)]
+  exact ENNReal.ofReal_le_ofReal (hBound x s)
+#print axioms mss_integer_lattice_decay_finite_sum_ennreal_uniform
+
+
+/-- Genuine global integer-lattice decay bound, uniform in the covector center. This derives the summable packet weights needed by joint source/cube Cauchy, rather than assuming a bounded number of cubes per output cap. -/
+theorem mss_standard_lattice_decay_periodization_uniform
+    (N : Nat) (hN : 2 < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Euclidean 2,
+      Summable (fun z : Submodule.span Int (Set.range (PiLp.basisFun 2 Real (Fin 2))) =>
+        (1 + ‖(z:Euclidean 2)+x‖)⁻¹ ^ N) ∧
+      (∑' z : Submodule.span Int (Set.range (PiLp.basisFun 2 Real (Fin 2))),
+        (1 + ‖(z:Euclidean 2)+x‖)⁻¹ ^ N) ≤ C := by
+  classical
+  let b := PiLp.basisFun 2 Real (Fin 2)
+  let L := Submodule.span Int (Set.range b)
+  let U := ZSpan.fundamentalDomain b
+  let K : Euclidean 2 → Real := fun y => (1+‖y‖)⁻¹ ^ N
+  have hdim : Module.finrank Int L = 2 := by
+    dsimp [L,b]
+    rw [ZLattice.rank Real]
+    exact finrank_euclideanSpace_fin
+  obtain ⟨R₀,hR₀⟩ := (ZSpan.fundamentalDomain_isBounded b).subset_closedBall
+    (0 : Euclidean 2)
+  have hR : ∀ v ∈ U, ‖v‖ ≤ max R₀ 0 := by
+    intro v hv
+    have hh := hR₀ hv
+    rw [Metric.mem_closedBall, dist_zero_right] at hh
+    exact hh.trans (le_max_left _ _)
+  have hDecay : ∀ y, ‖K y‖ ≤ 1 * (1+‖y‖)⁻¹ ^ N := by
+    intro y
+    dsimp [K]
+    rw [abs_of_nonneg (by positivity)]
+    simp
+  obtain ⟨u,hu,hBound⟩ := aux_exists_summable_uniform_lattice_majorant
+    L K U (max R₀ 0) 1 N (by rw [hdim]; exact hN)
+    (le_max_right _ _) (by norm_num) hR hDecay
+  exact uniform_lattice_periodization_of_cell_majorant b K u hu hBound
+
+/-- Every finite family of actual integer Fourier-cube centers has a uniform rapidly decaying weight sum, independently of the number of centers. -/
+theorem mss_standard_lattice_decay_finite_sum_uniform
+    (N : Nat) (hN : 2 < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Euclidean 2, ∀ s : Finset (Fin 2 → Int),
+      (∑ q ∈ s, (1 + ‖standardLatticePoint q + x‖)⁻¹ ^ N) ≤ C := by
+  classical
+  obtain ⟨C,hC,hUniform⟩ := mss_standard_lattice_decay_periodization_uniform N hN
+  refine ⟨C,hC,?_⟩
+  intro x s
+  have hinj : Function.Injective aux_intVec2LatticePoint := by
+    intro n m h
+    funext i
+    have hh := congrArg (fun z : aux_standardLattice => (z : Euclidean 2) i) h
+    change (n i : Real) = (m i : Real) at hh
+    exact_mod_cast hh
+  let K : aux_standardLattice → Real := fun z => (1 + ‖(z:Euclidean 2)+x‖)⁻¹ ^ N
+  have hk : Summable K := (hUniform x).1
+  have hnonneg : ∀ z : aux_standardLattice, 0 ≤ K z := by intro z; dsimp [K]; positivity
+  have hs : Summable (fun q => K (aux_intVec2LatticePoint q)) := hk.comp_injective hinj
+  calc
+    _ = ∑ q ∈ s, K (aux_intVec2LatticePoint q) := rfl
+    _ ≤ ∑' q, K (aux_intVec2LatticePoint q) :=
+      hs.sum_le_tsum s (fun q _ => hnonneg _)
+    _ ≤ ∑' z, K z := tsum_comp_le_tsum_of_inj hk hnonneg hinj
+    _ ≤ C := (hUniform x).2
+
+/-- The actual finite lattice-weight bound in the nonnegative extended form used by the packet kernel source-mass integral. -/
+theorem mss_standard_lattice_decay_finite_sum_ennreal_uniform
+    (N : Nat) (hN : 2 < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Euclidean 2, ∀ s : Finset (Fin 2 → Int),
+      (∑ q ∈ s, ENNReal.ofReal ((1 + ‖standardLatticePoint q + x‖)⁻¹ ^ N)) ≤
+        ENNReal.ofReal C := by
+  obtain ⟨C,hC,hBound⟩ := mss_standard_lattice_decay_finite_sum_uniform N hN
+  refine ⟨C,hC,?_⟩
+  intro x s
+  rw [← ENNReal.ofReal_sum_of_nonneg (fun q _ => by positivity)]
+  exact ENNReal.ofReal_le_ofReal (hBound x s)
+#print axioms mss_standard_lattice_decay_finite_sum_ennreal_uniform
+
+#print axioms mss_standard_lattice_decay_finite_sum_uniform
+
+#print axioms mss_standard_lattice_decay_periodization_uniform
+
+/-- Rapid joint decay separates the radial-label error from the transverse
+strip error without counting the number of frequency labels. -/
+theorem mss_rapid_envelope_split (x y : Real) (hx : 0 ≤ x) (hy : 0 ≤ y)
+    (N : Nat) :
+    (1 + x + y)⁻¹ ^ (2 * N) ≤ (1 + x)⁻¹ ^ N * (1 + y)⁻¹ ^ N := by
+  have hden : (1 + x) * (1 + y) ≤ (1 + x + y) ^ 2 := by
+    nlinarith [sq_nonneg x, sq_nonneg y, mul_nonneg hx hy]
+  have hbase : ((1 + x + y)⁻¹) ^ 2 ≤ (1 + x)⁻¹ * (1 + y)⁻¹ := by
+    rw [inv_pow, ← mul_inv]
+    exact (inv_le_inv₀ (by positivity) (by positivity)).mpr hden
+  calc
+    _ = (((1 + x + y)⁻¹) ^ 2) ^ N := by rw [pow_mul]
+    _ ≤ ((1 + x)⁻¹ * (1 + y)⁻¹) ^ N :=
+      pow_le_pow_left₀ (by positivity) hbase N
+    _ = _ := by rw [mul_pow]
+
+/-- Integer radial labels inherit the genuine planar lattice periodization
+bound by embedding n as (n,0). The finite set may be arbitrarily large. -/
+theorem mss_integer_decay_finite_sum_uniform (N : Nat) (hN : 2 < N) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ x : Real, ∀ s : Finset Int,
+      (∑ n ∈ s, (1 + |(n : Real) - x|)⁻¹ ^ N) ≤ C := by
+  classical
+  obtain ⟨C, hC, hsum⟩ := mss_standard_lattice_decay_finite_sum_uniform N hN
+  refine ⟨C, hC, ?_⟩
+  intro x s
+  let e : Int → Fin 2 → Int := fun n i => if i = 0 then n else 0
+  let b : Euclidean 2 := (PiLp.basisFun 2 Real (Fin 2)) 0
+  have he : Function.Injective e := by
+    intro n m h
+    have hh := congrFun h 0
+    simpa only [e, ite_eq_left rfl] using hh
+  have hb : ‖b‖ = 1 := by simp [b]
+  have hp (n : Int) :
+      standardLatticePoint (e n) + (-x) • b = ((n : Real) - x) • b := by
+    ext i
+    fin_cases i <;> simp [standardLatticePoint, e, b, sub_eq_add_neg]
+  have hnorm (n : Int) :
+      ‖standardLatticePoint (e n) + (-x) • b‖ = |(n : Real) - x| := by
+    rw [hp, norm_smul, Real.norm_eq_abs, hb, mul_one]
+  have hh := hsum ((-x) • b) (s.image e)
+  rw [Finset.sum_image (fun n hn m hm h => he h)] at hh
+  simpa only [hnorm] using hh
+
+/-- Quantitative reverse covector localization yields a uniform radial-label
+sum times an actual transverse-strip envelope. The constants are independent
+of the size of the finite radial-label set. -/
+theorem mss_reverse_radial_label_sum_uniform
+    (N : Nat) (hN : 2 < N) (c : Real) (hc : 1 ≤ c) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ s : Finset Int, ∀ t y : Real, 0 ≤ y →
+      ∀ E : Int → Real, (∀ n ∈ s, 0 ≤ E n) →
+      (∀ n ∈ s, |(n : Real) - t| + y ≤ c * E n) →
+      (∑ n ∈ s, (1 + E n)⁻¹ ^ (2 * N)) ≤
+        C * (1 + y)⁻¹ ^ N := by
+  classical
+  obtain ⟨C₀, hC₀, hsum⟩ := mss_integer_decay_finite_sum_uniform N hN
+  refine ⟨c ^ (2 * N) * C₀, by positivity, ?_⟩
+  intro s t y hy E hE hgap
+  have hpoint (n : Int) (hn : n ∈ s) :
+      (1 + E n)⁻¹ ^ (2 * N) ≤
+        c ^ (2 * N) * ((1 + |(n : Real) - t|)⁻¹ ^ N * (1 + y)⁻¹ ^ N) := by
+    have hEn : 0 ≤ E n := hE n hn
+    have hden : 1 + |(n : Real) - t| + y ≤ c * (1 + E n) := by
+      nlinarith [hgap n hn]
+    have hinv : (1 + E n)⁻¹ ≤
+        c * (1 + |(n : Real) - t| + y)⁻¹ := by
+      rw [← div_eq_mul_inv]
+      apply (le_div_iff₀ (by positivity : 0 < 1 + |(n : Real) - t| + y)).mpr
+      rw [inv_mul_le_iff₀ (by positivity : 0 < 1 + E n)]
+      simpa only [mul_comm] using hden
+    calc
+      _ ≤ (c * (1 + |(n : Real) - t| + y)⁻¹) ^ (2 * N) :=
+        pow_le_pow_left₀ (by positivity) hinv _
+      _ = c ^ (2 * N) * ((1 + |(n : Real) - t| + y)⁻¹ ^ (2 * N)) := by
+        rw [mul_pow]
+      _ ≤ _ := mul_le_mul_of_nonneg_left
+        (mss_rapid_envelope_split _ y (abs_nonneg _) hy N) (by positivity)
+  calc
+    _ ≤ ∑ n ∈ s, c ^ (2 * N) *
+        ((1 + |(n : Real) - t|)⁻¹ ^ N * (1 + y)⁻¹ ^ N) :=
+      Finset.sum_le_sum hpoint
+    _ = c ^ (2 * N) * (∑ n ∈ s, (1 + |(n : Real) - t|)⁻¹ ^ N) *
+        (1 + y)⁻¹ ^ N := by rw [← Finset.mul_sum, ← Finset.sum_mul]; ring
+    _ ≤ _ := by gcongr; exact hsum t s
+
+#print axioms mss_rapid_envelope_split
+#print axioms mss_integer_decay_finite_sum_uniform
+#print axioms mss_reverse_radial_label_sum_uniform
+
+/-- The reverse radial-label estimate in normalized packet coordinates.
+The retained strip has width lambda inverse and the frequency labels have
+spacing lambda. -/
+theorem mss_reverse_radial_label_scaled_sum_uniform
+    (N : Nat) (hN : 2 < N) (c : Real) (hc : 1 ≤ c) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ s : Finset Int, ∀ lambda rho₀ B B₀ : Real,
+      0 < lambda → ∀ E : Int → Real, (∀ n ∈ s, 0 ≤ E n) →
+      (∀ n ∈ s, |lambda * (n : Real) - rho₀| + lambda ^ 2 * |B - B₀| ≤ c * E n) →
+      (∑ n ∈ s, (1 + lambda⁻¹ * E n)⁻¹ ^ (2 * N)) ≤
+        C * (1 + lambda * |B - B₀|)⁻¹ ^ N := by
+  obtain ⟨C, hC, hsum⟩ := mss_reverse_radial_label_sum_uniform N hN c hc
+  refine ⟨C, hC, ?_⟩
+  intro s lambda rho₀ B B₀ hlambda E hE hgap
+  have hrad (n : Int) :
+      |(n : Real) - rho₀ / lambda| = lambda⁻¹ * |lambda * (n : Real) - rho₀| := by
+    calc
+      _ = |lambda⁻¹ * (lambda * (n : Real) - rho₀)| := by
+        congr 1
+        field_simp
+      _ = _ := by rw [abs_mul, abs_of_pos (inv_pos.mpr hlambda)]
+  apply hsum s (rho₀ / lambda) (lambda * |B - B₀|) (by positivity)
+    (fun n => lambda⁻¹ * E n)
+  · intro n hn
+    exact mul_nonneg (inv_nonneg.mpr hlambda.le) (hE n hn)
+  · intro n hn
+    rw [hrad]
+    have hh := mul_le_mul_of_nonneg_left (hgap n hn) (inv_nonneg.mpr hlambda.le)
+    convert hh using 1 <;> field_simp
+
+/-- Extended-integral form of the genuine finite radial-label decay bound. -/
+theorem mss_reverse_radial_label_scaled_sum_ennreal_uniform
+    (N : Nat) (hN : 2 < N) (c : Real) (hc : 1 ≤ c) :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ s : Finset Int, ∀ lambda rho₀ B B₀ : Real,
+      0 < lambda → ∀ E : Int → Real, (∀ n ∈ s, 0 ≤ E n) →
+      (∀ n ∈ s, |lambda * (n : Real) - rho₀| + lambda ^ 2 * |B - B₀| ≤ c * E n) →
+      (∑ n ∈ s, ENNReal.ofReal ((1 + lambda⁻¹ * E n)⁻¹ ^ (2 * N))) ≤
+        C * ENNReal.ofReal ((1 + lambda * |B - B₀|)⁻¹ ^ N) := by
+  obtain ⟨C, hC, hsum⟩ := mss_reverse_radial_label_scaled_sum_uniform N hN c hc
+  refine ⟨ENNReal.ofReal C, ENNReal.ofReal_ne_top, ?_⟩
+  intro s lambda rho₀ B B₀ hlambda E hE hgap
+  have hnonneg (n : Int) (hn : n ∈ s) :
+      0 ≤ (1 + lambda⁻¹ * E n)⁻¹ ^ (2 * N) := by
+    have hh := hE n hn
+    positivity
+  rw [← ENNReal.ofReal_sum_of_nonneg hnonneg,
+    ← ENNReal.ofReal_mul hC]
+  exact ENNReal.ofReal_le_ofReal (hsum s lambda rho₀ B B₀ hlambda E hE hgap)
+
+#print axioms mss_reverse_radial_label_scaled_sum_uniform
+#print axioms mss_reverse_radial_label_scaled_sum_ennreal_uniform
+
 
 /-- Every Schwartz kernel has polynomial Japanese-bracket decay of arbitrary
 integer order. -/
@@ -2008,6 +2542,56 @@ theorem latticeFourierCubeSquareFunction_lintegral_four
             ∫⁻ x : Euclidean 2, ENNReal.ofReal (‖f x‖ ^ (4 : Nat)) := by
   simpa only [aux_intVec2] using
     aux_lattice_fourierCubeSquareFunction_lintegral_four φ
+
+/-- The pointwise positive-convolution bound underlying the lattice square
+function. Retaining this bound permits weighted applications before the
+unweighted fourth-moment closure. -/
+theorem latticeFourierCubeProjection_energy_le
+    (φ : SchwartzMap (Euclidean 2) Complex) :
+    ∃ A : Real, 0 ≤ A ∧ ∀ (f : SchwartzMap (Euclidean 2) Complex)
+      (R : Real) (hR : 0 < R) (s : Finset (Fin 2 → Int)) (x : Euclidean 2),
+      ENNReal.ofReal (∑ k ∈ s,
+        ‖fourierCubeProjection
+          (translatedDilatedSchwartzCutoff φ
+            (R • standardLatticePoint k) R hR.ne') f x‖ ^ 2) ≤
+        ENNReal.ofReal A * ∫⁻ v : Euclidean 2,
+          ENNReal.ofReal ‖(FourierTransform.fourierInv φ) (-v)‖ *
+            ENNReal.ofReal (‖f (x + R⁻¹ • v)‖ ^ 2) := by
+  obtain ⟨A, hA, henergy⟩ :=
+    aux_latticePeriodizedTorus_energy_lintegral_le (FourierTransform.fourierInv φ)
+  refine ⟨A, hA, ?_⟩
+  intro f R hR s x
+  exact (aux_lattice_fourierCubeProjection_finite_bessel_ennreal φ f x R hR s).trans
+    (henergy f x R)
+
+#print axioms latticeFourierCubeProjection_energy_le
+
+/-- Weighted lattice energy with no regularity restriction on the
+nonnegative weight. All scale and lattice-family dependence remains inside
+the displayed positive convolution. -/
+theorem latticeFourierCubeProjection_weighted_energy_le
+    (φ : SchwartzMap (Euclidean 2) Complex) :
+    ∃ A : Real, 0 ≤ A ∧ ∀ (f : SchwartzMap (Euclidean 2) Complex)
+      (R : Real) (hR : 0 < R) (s : Finset (Fin 2 → Int))
+      (w : Euclidean 2 → ENNReal),
+      (∫⁻ x : Euclidean 2, w x * ENNReal.ofReal (∑ k ∈ s,
+        ‖fourierCubeProjection
+          (translatedDilatedSchwartzCutoff φ
+            (R • standardLatticePoint k) R hR.ne') f x‖ ^ 2)) ≤
+        ENNReal.ofReal A * ∫⁻ x : Euclidean 2, w x *
+          ∫⁻ v : Euclidean 2,
+            ENNReal.ofReal ‖(FourierTransform.fourierInv φ) (-v)‖ *
+              ENNReal.ofReal (‖f (x + R⁻¹ • v)‖ ^ 2) := by
+  obtain ⟨A, hA, henergy⟩ := latticeFourierCubeProjection_energy_le φ
+  refine ⟨A, hA, ?_⟩
+  intro f R hR s w
+  rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  apply lintegral_mono
+  intro x
+  simpa only [mul_left_comm, mul_comm, mul_assoc] using
+    mul_le_mul_left (henergy f R hR s x) (w x)
+
+#print axioms latticeFourierCubeProjection_weighted_energy_le
 
 /-- The positive frequency scale of a fixed lattice of MSS analysis cubes. -/
 def latticeCubeScale (spacing scale : Real) : Real :=
@@ -4571,4 +5155,3626 @@ private theorem aux_fourierCubeProjection_translate
 
 end
 end Auto.Spherical.MSS
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The fixed temporal lattice transition used with the existing planar synthesis prototype. -/
+def mssJointLatticeTemporalPrototype : SchwartzMap Real Complex :=
+  (mssUnitLatticeTransitionPiece_hasCompactSupport.comp_left
+    (show (Complex.ofReal : Real → Complex) 0 = 0 by simp)).toSchwartzMap
+      (Complex.ofRealCLM.contDiff.comp mssUnitLatticeTransitionPiece_contDiff)
+
+theorem mssJointLatticeTemporalPrototype_apply (t : Real) :
+    mssJointLatticeTemporalPrototype t = (mssUnitLatticeTransitionPiece t : Complex) := rfl
+
+/-- A fixed joint-frequency tensor cube, with no wavefront or angular assumptions. -/
+def mssJointLatticeSynthesisPrototype : SchwartzMap JointWaveSpaceTime Complex :=
+  jointSchwartzExternalProduct mssLatticeSynthesisPrototype mssJointLatticeTemporalPrototype
+
+theorem mssJointLatticeSynthesisPrototype_apply (v : JointWaveSpaceTime) :
+    mssJointLatticeSynthesisPrototype v =
+      (mssUnitLatticeTransitionPiece (v.fst 0) : Complex) *
+        (mssUnitLatticeTransitionPiece (v.fst 1) : Complex) *
+          (mssUnitLatticeTransitionPiece v.snd : Complex) := by
+  change (mssLatticeSynthesisPrototype v.fst) *
+      mssJointLatticeTemporalPrototype v.snd = _
+  rw [mssJointLatticeTemporalPrototype_apply]
+  change ((mssUnitLatticeTransitionPiece (v.fst 0) *
+    mssUnitLatticeTransitionPiece (v.fst 1) : Real) : Complex) * _ = _
+  rw [Complex.ofReal_mul]
+
+/-- Integer-indexed form of the actual one-dimensional smooth lattice partition. -/
+theorem mss_unitLatticeTransition_integer_partition
+    (N : Nat) {t : Real} (ht : |t| ≤ (N : Real)) :
+    (∑ j ∈ Finset.Icc (-(N : Int)) (N : Int),
+      mssUnitLatticeTransitionPiece (t - (j : Real))) = 1 := by
+  have heq :
+      (∑ a ∈ Finset.range (2*N+1),
+        mssUnitLatticeTransitionPiece (t+(N:Real)-(a:Real))) =
+      ∑ j ∈ Finset.Icc (-(N : Int)) (N : Int),
+        mssUnitLatticeTransitionPiece (t-(j:Real)) := by
+    apply Finset.sum_bij (fun (a : Nat) _ => (a:Int)-(N:Int))
+    · intro a ha
+      rw [Finset.mem_range] at ha
+      rw [Finset.mem_Icc]
+      constructor <;> omega
+    · intro a ha b hb hab
+      omega
+    · intro j hj
+      rw [Finset.mem_Icc] at hj
+      refine ⟨(j+(N:Int)).toNat, ?_, ?_⟩
+      · rw [Finset.mem_range]
+        omega
+      · omega
+    · intro a ha
+      congr 1
+      push_cast
+      ring
+  rw [← heq]
+  exact mss_finite_unitLatticeTransition_partition N ht
+
+abbrev MSSJointLatticeLabel := (Int × Int) × Int
+
+/-- A finite rectangular subfamily of the genuine joint integer lattice. -/
+def mssJointLatticeLabels (N : Nat) : Finset MSSJointLatticeLabel :=
+  ((Finset.Icc (-(N:Int)) (N:Int)).product
+    (Finset.Icc (-(N:Int)) (N:Int))).product (Finset.Icc (-(N:Int)) (N:Int))
+
+/-- The actual spatial and temporal integer point attached to a tensor label. -/
+def mssJointLatticePoint (j : MSSJointLatticeLabel) : JointWaveSpaceTime :=
+  WithLp.toLp 2 (standardLatticePoint
+    (fun i : Fin 2 => if i = 0 then j.1.1 else j.1.2), (j.2 : Real))
+
+theorem mssJointLatticePoint_coordinates (j : MSSJointLatticeLabel) :
+    (mssJointLatticePoint j).fst 0 = j.1.1 ∧
+      (mssJointLatticePoint j).fst 1 = j.1.2 ∧
+        (mssJointLatticePoint j).snd = j.2 := by
+  simp [mssJointLatticePoint,standardLatticePoint]
+
+/-- The true translated tensor cutoff at common joint frequency width lambda. -/
+def mssJointLatticeCutoff (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) : SchwartzMap JointWaveSpaceTime Complex :=
+  mssTranslatedDilatedCutoff mssJointLatticeSynthesisPrototype
+    (lambda • mssJointLatticePoint j) lambda hlambda
+
+theorem mssJointLatticeCutoff_apply
+    (lambda : Real) (hlambda : lambda ≠ 0) (j : MSSJointLatticeLabel)
+    (v : JointWaveSpaceTime) :
+    mssJointLatticeCutoff lambda hlambda j v =
+      (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 0-j.1.1) : Complex) *
+        (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 1-j.1.2) : Complex) *
+          (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.snd-j.2) : Complex) := by
+  rw [mssJointLatticeCutoff,mssTranslatedDilatedCutoff_apply,
+    mssJointLatticeSynthesisPrototype_apply]
+  simp only [mssJointLatticePoint, WithLp.smul_fst, WithLp.smul_snd,
+    WithLp.sub_fst,WithLp.sub_snd,WithLp.toLp_fst,WithLp.toLp_snd,
+    PiLp.smul_apply,PiLp.sub_apply,standardLatticePoint]
+  norm_num [smul_eq_mul, show (1 : Fin 2) ≠ 0 by decide]
+  simp only [mul_sub, ← mul_assoc, inv_mul_cancel₀ hlambda, one_mul]
+
+
+/-- The fixed joint tensor cutoffs form an exact partition on each finite coordinate window. -/
+theorem mssJointLatticeCutoff_partition
+    (lambda : Real) (hlambda : lambda ≠ 0) (N : Nat) (v : JointWaveSpaceTime)
+    (hx0 : |lambda⁻¹*v.fst 0| ≤ (N:Real))
+    (hx1 : |lambda⁻¹*v.fst 1| ≤ (N:Real))
+    (ht : |lambda⁻¹*v.snd| ≤ (N:Real)) :
+    (∑ j ∈ mssJointLatticeLabels N, mssJointLatticeCutoff lambda hlambda j v) = 1 := by
+  simp_rw [mssJointLatticeCutoff_apply]
+  unfold mssJointLatticeLabels
+  change (∑ j ∈ (((Finset.Icc (-(N:Int)) (N:Int)) ×ˢ
+      (Finset.Icc (-(N:Int)) (N:Int))) ×ˢ (Finset.Icc (-(N:Int)) (N:Int))),
+    (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 0-j.1.1) : Complex) *
+      (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 1-j.1.2) : Complex) *
+        (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.snd-j.2) : Complex)) = 1
+  rw [Finset.sum_product]
+  simp_rw [Finset.sum_product]
+  have h0 : (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+      (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 0-j) : Complex)) = 1 := by
+    exact_mod_cast mss_unitLatticeTransition_integer_partition N hx0
+  have h1 : (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+      (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 1-j) : Complex)) = 1 := by
+    exact_mod_cast mss_unitLatticeTransition_integer_partition N hx1
+  have h2 : (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+      (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.snd-j) : Complex)) = 1 := by
+    exact_mod_cast mss_unitLatticeTransition_integer_partition N ht
+  calc
+    _ = (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+        (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 0-j) : Complex)) *
+      (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+        (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.fst 1-j) : Complex)) *
+      (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+        (mssUnitLatticeTransitionPiece (lambda⁻¹ * v.snd-j) : Complex)) := by
+      simp_rw [mul_assoc, ← Finset.mul_sum, ← Finset.sum_mul]
+    _ = 1 := by rw [h0,h1,h2]; norm_num
+
+#print axioms mssJointLatticeCutoff_partition
+/-- Compact joint spectra have a finite common-width integer cube cover.
+The bound is deduced from their genuine compact support, not from an
+annular or wavefront localization assumption. -/
+theorem exists_mssJointLatticeCutoff_partition_on_support
+    (lambda : Real) (hlambda : 0 < lambda)
+    (S : SchwartzMap JointWaveSpaceTime Complex)
+    (hS : HasCompactSupport (S : JointWaveSpaceTime → Complex)) :
+    ∃ N : Nat, ∀ v : JointWaveSpaceTime, S v ≠ 0 →
+      (∑ j ∈ mssJointLatticeLabels N,
+        mssJointLatticeCutoff lambda hlambda.ne' j v) = 1 := by
+  have hc : Continuous (fun v : JointWaveSpaceTime => lambda⁻¹ • v) := by fun_prop
+  rcases (hS.isCompact.image hc).isBounded.exists_pos_norm_le with ⟨R,hR,hbound⟩
+  obtain ⟨N,hN⟩ := exists_nat_ge R
+  refine ⟨N, fun v hv => ?_⟩
+  have hnorm : ‖lambda⁻¹ • v‖ ≤ (N : Real) :=
+    (hbound _ ⟨v,subset_tsupport _ hv,rfl⟩).trans hN
+  apply mssJointLatticeCutoff_partition
+  · calc
+      |lambda⁻¹ * v.fst 0| = ‖(lambda⁻¹ • v).fst 0‖ := by simp
+      _ ≤ ‖(lambda⁻¹ • v).fst‖ := PiLp.norm_apply_le _ _
+      _ ≤ ‖lambda⁻¹ • v‖ := WithLp.norm_fst_le _ _
+      _ ≤ (N:Real) := hnorm
+  · calc
+      |lambda⁻¹ * v.fst 1| = ‖(lambda⁻¹ • v).fst 1‖ := by simp
+      _ ≤ ‖(lambda⁻¹ • v).fst‖ := PiLp.norm_apply_le _ _
+      _ ≤ ‖lambda⁻¹ • v‖ := WithLp.norm_fst_le _ _
+      _ ≤ (N:Real) := hnorm
+  · calc
+      |lambda⁻¹ * v.snd| = ‖(lambda⁻¹ • v).snd‖ := by simp
+      _ ≤ ‖lambda⁻¹ • v‖ := WithLp.norm_snd_le _ _
+      _ ≤ (N:Real) := hnorm
+
+/-- The actual joint tensor cube piece multiplies the given spectrum by its
+translated fixed synthesis cutoff. -/
+def mssJointLatticeSpectrumPiece (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) (S : SchwartzMap JointWaveSpaceTime Complex) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  SchwartzMap.smulLeftCLM Complex
+    (mssJointLatticeCutoff lambda hlambda j : JointWaveSpaceTime → Complex) S
+
+theorem mssJointLatticeSpectrumPiece_apply (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) (S : SchwartzMap JointWaveSpaceTime Complex)
+    (v : JointWaveSpaceTime) :
+    mssJointLatticeSpectrumPiece lambda hlambda j S v =
+      mssJointLatticeCutoff lambda hlambda j v * S v := by
+  rw [mssJointLatticeSpectrumPiece, SchwartzMap.smulLeftCLM_apply_apply
+    (mssJointLatticeCutoff lambda hlambda j).hasTemperateGrowth, smul_eq_mul]
+
+/-- A literal fixed-cube partition on the nonzero spectrum reconstructs the
+spectrum itself, including the zero set. -/
+theorem mssJointLatticeSpectrumPiece_sum_eq
+    (lambda : Real) (hlambda : lambda ≠ 0) (N : Nat)
+    (S : SchwartzMap JointWaveSpaceTime Complex)
+    (hpartition : ∀ v, S v ≠ 0 → (∑ j ∈ mssJointLatticeLabels N,
+      mssJointLatticeCutoff lambda hlambda j v) = 1) :
+    (∑ j ∈ mssJointLatticeLabels N,
+      mssJointLatticeSpectrumPiece lambda hlambda j S) = S := by
+  ext v
+  rw [sum_apply]
+  simp_rw [mssJointLatticeSpectrumPiece_apply]
+  rw [← Finset.sum_mul]
+  by_cases hv : S v = 0
+  · simp [hv]
+  · rw [hpartition v hv,one_mul]
+
+/-- Exact inverse spectral reconstruction for the actual iterated
+space-time Fourier convention used by the circle operator. -/
+theorem mssJointLatticeSpectrumPiece_inverse_sum_eq
+    (lambda : Real) (hlambda : lambda ≠ 0) (N : Nat)
+    (S : SchwartzMap JointWaveSpaceTime Complex)
+    (hpartition : ∀ v, S v ≠ 0 → (∑ j ∈ mssJointLatticeLabels N,
+      mssJointLatticeCutoff lambda hlambda j v) = 1) (z : WaveSpaceTime) :
+    (∑ j ∈ mssJointLatticeLabels N,
+      spaceTimeFourierInv
+        (jointSchwartzRaw (mssJointLatticeSpectrumPiece lambda hlambda j S)) z) =
+      spaceTimeFourierInv (jointSchwartzRaw S) z := by
+  have heq := mssJointLatticeSpectrumPiece_sum_eq lambda hlambda N S hpartition
+  have hinv := congrArg (fun P : SchwartzMap JointWaveSpaceTime Complex =>
+    (FourierTransform.fourierInv P : SchwartzMap JointWaveSpaceTime Complex)) heq
+  rw [FourierTransform.fourierInv_sum] at hinv
+  have happ := congrArg (fun P : SchwartzMap JointWaveSpaceTime Complex =>
+    P (WithLp.toLp 2 z)) hinv
+  simpa only [sum_apply,SchwartzMap.fourierInv_coe,
+    spaceTimeFourierInv_jointSchwartzRaw] using happ
+
+/-- Every compact joint spectrum admits a finite integer tensor cube
+partition and exact inverse reconstruction at every positive common width. -/
+theorem exists_mssJointLatticeSpectrum_reconstruction
+    (lambda : Real) (hlambda : 0 < lambda)
+    (S : SchwartzMap JointWaveSpaceTime Complex)
+    (hS : HasCompactSupport (S : JointWaveSpaceTime → Complex)) :
+    ∃ N : Nat,
+      (∀ v, S v ≠ 0 → (∑ j ∈ mssJointLatticeLabels N,
+        mssJointLatticeCutoff lambda hlambda.ne' j v) = 1) ∧
+      (∑ j ∈ mssJointLatticeLabels N,
+        mssJointLatticeSpectrumPiece lambda hlambda.ne' j S) = S ∧
+      ∀ z : WaveSpaceTime,
+        (∑ j ∈ mssJointLatticeLabels N,
+          spaceTimeFourierInv (jointSchwartzRaw
+            (mssJointLatticeSpectrumPiece lambda hlambda.ne' j S)) z) =
+          spaceTimeFourierInv (jointSchwartzRaw S) z := by
+  obtain ⟨N,hN⟩ := exists_mssJointLatticeCutoff_partition_on_support lambda hlambda S hS
+  exact ⟨N,hN,mssJointLatticeSpectrumPiece_sum_eq lambda hlambda.ne' N S hN,
+    mssJointLatticeSpectrumPiece_inverse_sum_eq lambda hlambda.ne' N S hN⟩
+#print axioms exists_mssJointLatticeSpectrum_reconstruction
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+/-- Reverse Schur only needs its common source weight off a single null
+set. This retains the actual kernel mass inequality while permitting the
+real weak ray weight obtained from a finite measurable square majorant. -/
+theorem weightedKernel_square_pairing_le_of_ae_reverse
+    {α β : Type*} [MeasurableSpace α] [MeasurableSpace β]
+    (μ : Measure α) (ν : Measure β) [SFinite μ] [SFinite ν]
+    (K : β × α → ENNReal) (F : α → ENNReal)
+    (T g : β → ENNReal) (H : α → ENNReal) (M : ENNReal)
+    (hK : Measurable K) (hF : Measurable F) (hg : Measurable g)
+    (hDom : ∀ x,T x ≤ ∫⁻ y,K (x,y)*F y ∂μ)
+    (hMass : ∀ x,(∫⁻ y,K (x,y) ∂μ) ≤ M)
+    (hReverse : ∀ᵐ y ∂μ,(∫⁻ x,K (x,y)*g x ∂ν) ≤ H y) :
+    (∫⁻ x,T x ^ (2:Real)*g x ∂ν) ≤
+      M * ∫⁻ y,F y ^ (2:Real)*H y ∂μ := by
+  let R : α → ENNReal := fun y => ∫⁻ x,K (x,y)*g x ∂ν
+  have hbase := weightedKernel_square_pairing_le μ ν K F T g R M
+    hK hF hg hDom hMass (fun y => le_rfl)
+  refine hbase.trans (mul_le_mul_of_nonneg_left ?_ (by positivity))
+  apply lintegral_mono_ae
+  filter_upwards [hReverse] with y hy
+  exact mul_le_mul_of_nonneg_left hy (by positivity)
+#print axioms weightedKernel_square_pairing_le_of_ae_reverse
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+/-- The literal finite output/input Schur pairing with one common source
+weight. Radial labels have already been aggregated in the kernel, so the
+input square energy appears exactly once for each input label. -/
+theorem finite_family_kernel_square_pairing_le_of_ae_reverse
+    {I J X Y : Type*} [Fintype I] [Fintype J]
+    [MeasurableSpace I] [MeasurableSingletonClass I]
+    [MeasurableSpace J] [MeasurableSingletonClass J]
+    [MeasurableSpace X] [MeasurableSpace Y]
+    (μ : Measure Y) (ν : Measure X) [SFinite μ] [SFinite ν]
+    (K : J → I → X → Y → ENNReal)
+    (hK : ∀ j i,Measurable (Function.uncurry (K j i)))
+    (f : I → Y → Complex) (hf : ∀ i,Measurable (f i))
+    (T : J → X → Complex) (hT : ∀ j,Measurable (T j))
+    (g : X → ENNReal) (hg : Measurable g)
+    (w : Y → ENNReal) (hw : Measurable w) (a b : ENNReal)
+    (hDom : ∀ j x,‖T j x‖ₑ ≤ ∑ i,∫⁻ y,K j i x y*‖f i y‖ₑ ∂μ)
+    (hMass : ∀ j x,(∑ i,∫⁻ y,K j i x y ∂μ) ≤ a)
+    (hReverse : ∀ᵐ y ∂μ,∀ i,(∑ j,∫⁻ x,K j i x y*g x ∂ν) ≤ b*w y) :
+    (∑ j,∫⁻ x,‖T j x‖ₑ^2*g x ∂ν) ≤
+      a*b*∫⁻ y,(∑ i,‖f i y‖ₑ^2)*w y ∂μ := by
+  let μI : Measure (I × Y) := Measure.count.prod μ
+  let νJ : Measure (J × X) := Measure.count.prod ν
+  let KK : (J × X) × (I × Y) → ENNReal := fun q =>
+    K q.1.1 q.2.1 q.1.2 q.2.2
+  let FF : I × Y → ENNReal := fun q => ‖f q.1 q.2‖ₑ
+  let TT : J × X → ENNReal := fun q => ‖T q.1 q.2‖ₑ
+  let GG : J × X → ENNReal := fun q => g q.2
+  let HH : I × Y → ENNReal := fun q => b*w q.2
+  have hfamily : Measurable (fun q : (J × I) × (X × Y) =>
+      K q.1.1 q.1.2 q.2.1 q.2.2) :=
+    measurable_from_prod_countable_right (fun ji => hK ji.1 ji.2)
+  let M : (J × X) × (I × Y) → (J × I) × (X × Y) := fun q =>
+    ((q.1.1,q.2.1),(q.1.2,q.2.2))
+  have hM : Measurable M := by dsimp [M]; fun_prop
+  have hKK : Measurable KK := hfamily.comp hM
+  have hFF : Measurable FF := measurable_from_prod_countable_right (fun i => (hf i).enorm)
+  have hTT : Measurable TT := measurable_from_prod_countable_right (fun j => (hT j).enorm)
+  have hGG : Measurable GG := hg.comp measurable_snd
+  have hHH : Measurable HH := measurable_const.mul (hw.comp measurable_snd)
+  have hcountI (A : I × Y → ENNReal) (hA : Measurable A) :
+      (∫⁻ q,A q ∂μI) = ∑ i,∫⁻ y,A (i,y) ∂μ := by
+    rw [lintegral_prod _ hA.aemeasurable,lintegral_count,tsum_fintype]
+  have hcountJ (A : J × X → ENNReal) (hA : Measurable A) :
+      (∫⁻ q,A q ∂νJ) = ∑ j,∫⁻ x,A (j,x) ∂ν := by
+    rw [lintegral_prod _ hA.aemeasurable,lintegral_count,tsum_fintype]
+  have hDom' (q : J × X) : TT q ≤ ∫⁻ r,KK (q,r)*FF r ∂μI := by
+    rw [hcountI (fun r => KK (q,r)*FF r)
+      ((hKK.comp (measurable_const.prodMk measurable_id)).mul hFF)]
+    exact hDom q.1 q.2
+  have hMass' (q : J × X) : (∫⁻ r,KK (q,r) ∂μI) ≤ a := by
+    rw [hcountI (fun r => KK (q,r))
+      (hKK.comp (measurable_const.prodMk measurable_id))]
+    exact hMass q.1 q.2
+  have hR : Measurable (fun r : I × Y => ∫⁻ q,KK (q,r)*GG q ∂νJ) := by
+    have hm : Measurable (Function.uncurry (fun q : J × X => fun r : I × Y =>
+        KK (q,r)*GG q)) := hKK.mul (hGG.comp measurable_fst)
+    exact hm.lintegral_prod_left
+  have hPred : MeasurableSet {r : I × Y |
+      (∫⁻ q,KK (q,r)*GG q ∂νJ) ≤ HH r} :=
+    measurableSet_le hR hHH
+  have hReverse' : ∀ᵐ r ∂μI,(∫⁻ q,KK (q,r)*GG q ∂νJ) ≤ HH r := by
+    apply (Measure.ae_prod_iff_ae_ae hPred).mpr
+    exact Filter.Eventually.of_forall (fun i => hReverse.mono (fun y hy => by
+      rw [hcountJ (fun q => KK (q,(i,y))*GG q)
+        ((hKK.comp (measurable_id.prodMk measurable_const)).mul hGG)]
+      exact hy i))
+  have hbase := weightedKernel_square_pairing_le_of_ae_reverse μI νJ KK FF TT GG HH a
+    hKK hFF hGG hDom' hMass' hReverse'
+  have hleft :
+      (∫⁻ q,TT q^(2:Real)*GG q ∂νJ) =
+        ∑ j,∫⁻ x,‖T j x‖ₑ^2*g x ∂ν := by
+    rw [hcountJ (fun q => TT q^(2:Real)*GG q) ((hTT.pow_const _).mul hGG)]
+    simp only [TT,GG,ENNReal.rpow_two]
+  have hQw : Measurable (fun y : Y => (∑ i,‖f i y‖ₑ^2)*w y) :=
+    (Finset.measurable_sum Finset.univ (fun i hi => (hf i).enorm.pow_const 2)).mul hw
+  have hright :
+      (∫⁻ r,FF r^(2:Real)*HH r ∂μI) =
+        b*∫⁻ y,(∑ i,‖f i y‖ₑ^2)*w y ∂μ := by
+    rw [hcountI (fun r => FF r^(2:Real)*HH r) ((hFF.pow_const _).mul hHH)]
+    simp only [FF,HH,ENNReal.rpow_two]
+    calc
+      _ = ∫⁻ y,∑ i,‖f i y‖ₑ^2*(b*w y) ∂μ := by
+        symm
+        exact lintegral_finsetSum Finset.univ (fun i hi =>
+          ((hf i).enorm.pow_const 2).mul (measurable_const.mul hw))
+      _ = ∫⁻ y,b*((∑ i,‖f i y‖ₑ^2)*w y) ∂μ := by
+        apply lintegral_congr
+        intro y
+        rw [← Finset.sum_mul]
+        ring
+      _ = _ := lintegral_const_mul _ hQw
+  rw [hleft,hright] at hbase
+  simpa only [mul_assoc] using hbase
+#print axioms finite_family_kernel_square_pairing_le_of_ae_reverse
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+/-- The genuine Schur pairing for arbitrary actual finite label sets.
+Discrete measurable structures are installed only on the labels; no global
+countability, cardinality bound, or radial repetition of input energy is used. -/
+theorem finite_finset_kernel_square_pairing_le_of_ae_reverse
+    {I J X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
+    (inputs : Finset I) (outputs : Finset J)
+    (μ : Measure Y) (ν : Measure X) [SFinite μ] [SFinite ν]
+    (K : J → I → X → Y → ENNReal)
+    (hK : ∀ j ∈ outputs,∀ i ∈ inputs,Measurable (Function.uncurry (K j i)))
+    (f : I → Y → Complex) (hf : ∀ i ∈ inputs,Measurable (f i))
+    (T : J → X → Complex) (hT : ∀ j ∈ outputs,Measurable (T j))
+    (g : X → ENNReal) (hg : Measurable g)
+    (w : Y → ENNReal) (hw : Measurable w) (a b : ENNReal)
+    (hDom : ∀ j ∈ outputs,∀ x,
+      ‖T j x‖ₑ ≤ ∑ i ∈ inputs,∫⁻ y,K j i x y*‖f i y‖ₑ ∂μ)
+    (hMass : ∀ j ∈ outputs,∀ x,(∑ i ∈ inputs,∫⁻ y,K j i x y ∂μ) ≤ a)
+    (hReverse : ∀ᵐ y ∂μ,∀ i ∈ inputs,
+      (∑ j ∈ outputs,∫⁻ x,K j i x y*g x ∂ν) ≤ b*w y) :
+    (∑ j ∈ outputs,∫⁻ x,‖T j x‖ₑ^2*g x ∂ν) ≤
+      a*b*∫⁻ y,(∑ i ∈ inputs,‖f i y‖ₑ^2)*w y ∂μ := by
+  classical
+  let _ : MeasurableSpace I := ⊤
+  let _ : MeasurableSpace J := ⊤
+  have _ : MeasurableSingletonClass I := ⟨fun _ => by trivial⟩
+  have _ : MeasurableSingletonClass J := ⟨fun _ => by trivial⟩
+  have hR : ∀ᵐ y ∂μ,∀ i : inputs,
+      (∑ j : outputs,∫⁻ x,K j.1 i.1 x y*g x ∂ν) ≤ b*w y :=
+    hReverse.mono (fun y hy i => by
+      rw [Finset.sum_coe_sort outputs (fun j => ∫⁻ x,K j i.1 x y*g x ∂ν)]
+      exact hy i.1 i.2)
+  have hb := finite_family_kernel_square_pairing_le_of_ae_reverse
+    (I := inputs) (J := outputs) μ ν (fun j i => K j.1 i.1)
+    (fun j i => hK j.1 j.2 i.1 i.2) (fun i => f i.1) (fun i => hf i.1 i.2)
+    (fun j => T j.1) (fun j => hT j.1 j.2) g hg w hw a b
+    (fun j x => by
+      rw [Finset.sum_coe_sort inputs (fun i => ∫⁻ y,K j.1 i x y*‖f i y‖ₑ ∂μ)]
+      exact hDom j.1 j.2 x)
+    (fun j x => by
+      rw [Finset.sum_coe_sort inputs (fun i => ∫⁻ y,K j.1 i x y ∂μ)]
+      exact hMass j.1 j.2 x) hR
+  have hinput (y : Y) : (∑ i : inputs,‖f i.1 y‖ₑ^2) =
+      ∑ i ∈ inputs,‖f i y‖ₑ^2 :=
+    Finset.sum_coe_sort inputs (fun i => ‖f i y‖ₑ^2)
+  rw [Finset.sum_coe_sort outputs (fun j => ∫⁻ x,‖T j x‖ₑ^2*g x ∂ν)] at hb
+  simpa only [hinput] using hb
+#print axioms finite_finset_kernel_square_pairing_le_of_ae_reverse
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Genuine tensor cube localization of each nonzero translated cutoff. -/
+theorem mssJointLatticeCutoff_nonzero_coordinate_bounds
+    (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) (v : JointWaveSpaceTime)
+    (h : mssJointLatticeCutoff lambda hlambda j v ≠ 0) :
+    |lambda⁻¹ * v.fst 0-j.1.1| ≤ 1 ∧
+      |lambda⁻¹ * v.fst 1-j.1.2| ≤ 1 ∧
+        |lambda⁻¹ * v.snd-j.2| ≤ 1 := by
+  rw [mssJointLatticeCutoff_apply] at h
+  rcases mul_ne_zero_iff.mp h with ⟨h01,h2⟩
+  rcases mul_ne_zero_iff.mp h01 with ⟨h0,h1⟩
+  have hr0 : mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 0-j.1.1) ≠ 0 := by
+    intro hh
+    exact h0 (by rw [hh]; simp)
+  have hr1 : mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j.1.2) ≠ 0 := by
+    intro hh
+    exact h1 (by rw [hh]; simp)
+  have hr2 : mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j.2) ≠ 0 := by
+    intro hh
+    exact h2 (by rw [hh]; simp)
+  exact ⟨abs_le.mpr (mssUnitLatticeTransitionPiece_support_subset hr0),
+    abs_le.mpr (mssUnitLatticeTransitionPiece_support_subset hr1),
+    abs_le.mpr (mssUnitLatticeTransitionPiece_support_subset hr2)⟩
+
+/-- Each actual spectrum piece stays in the original spectral support and
+in its literal spatial-temporal tensor cube. -/
+theorem mssJointLatticeSpectrumPiece_nonzero_localization
+    (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) (S : SchwartzMap JointWaveSpaceTime Complex)
+    (v : JointWaveSpaceTime)
+    (h : mssJointLatticeSpectrumPiece lambda hlambda j S v ≠ 0) :
+    S v ≠ 0 ∧ |lambda⁻¹ * v.fst 0-j.1.1| ≤ 1 ∧
+      |lambda⁻¹ * v.fst 1-j.1.2| ≤ 1 ∧ |lambda⁻¹ * v.snd-j.2| ≤ 1 := by
+  rw [mssJointLatticeSpectrumPiece_apply] at h
+  have hn := mul_ne_zero_iff.mp h
+  exact ⟨hn.2,mssJointLatticeCutoff_nonzero_coordinate_bounds lambda hlambda j v hn.1⟩
+
+/-- The integer tensor labels really are distinct points of the joint
+lattice, so finite reconstruction has no repeated center labels. -/
+theorem mssJointLatticePoint_injective :
+    Function.Injective mssJointLatticePoint := by
+  intro j k h
+  have h0 := congrArg (fun v : JointWaveSpaceTime => v.fst 0) h
+  have h1 := congrArg (fun v : JointWaveSpaceTime => v.fst 1) h
+  have h2 := congrArg (fun v : JointWaveSpaceTime => v.snd) h
+  rw [(mssJointLatticePoint_coordinates j).1,
+    (mssJointLatticePoint_coordinates k).1] at h0
+  rw [(mssJointLatticePoint_coordinates j).2.1,
+    (mssJointLatticePoint_coordinates k).2.1] at h1
+  rw [(mssJointLatticePoint_coordinates j).2.2,
+    (mssJointLatticePoint_coordinates k).2.2] at h2
+  have hj0 : j.1.1 = k.1.1 := Int.cast_injective (α := Real) h0
+  have hj1 : j.1.2 = k.1.2 := Int.cast_injective (α := Real) h1
+  have hj2 : j.2 = k.2 := Int.cast_injective (α := Real) h2
+  exact Prod.ext (Prod.ext hj0 hj1) hj2
+
+#print axioms mssJointLatticeSpectrumPiece_nonzero_localization
+#print axioms mssJointLatticePoint_injective
+
+/-- Every finite integer interval of lattice transition pieces has total
+mass at most one, including points outside its reconstruction window. -/
+theorem mss_unitLatticeTransition_integer_mass_le_one
+    (N : Nat) (t : Real) :
+    (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+      mssUnitLatticeTransitionPiece (t-j)) ≤ 1 := by
+  obtain ⟨M,hM⟩ := exists_nat_ge |t|
+  let K := max N M
+  have hKN : N ≤ K := Nat.le_max_left _ _
+  have hKM : M ≤ K := Nat.le_max_right _ _
+  have hK : |t| ≤ (K:Real) := hM.trans (by exact_mod_cast hKM)
+  have hs : Finset.Icc (-(N:Int)) (N:Int) ⊆ Finset.Icc (-(K:Int)) (K:Int) := by
+    intro j hj
+    rw [Finset.mem_Icc] at hj ⊢
+    have hh : (N:Int) ≤ (K:Int) := by exact_mod_cast hKN
+    constructor <;> omega
+  calc
+    _ ≤ ∑ j ∈ Finset.Icc (-(K:Int)) (K:Int),
+        mssUnitLatticeTransitionPiece (t-j) :=
+      Finset.sum_le_sum_of_subset_of_nonneg hs (by
+        intro j hj hnot
+        exact mssUnitLatticeTransitionPiece_nonneg _)
+    _ = 1 := mss_unitLatticeTransition_integer_partition K hK
+
+theorem mssJointLatticeCutoff_norm
+    (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) (v : JointWaveSpaceTime) :
+    ‖mssJointLatticeCutoff lambda hlambda j v‖ =
+      mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 0-j.1.1) *
+        mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j.1.2) *
+          mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j.2) := by
+  rw [mssJointLatticeCutoff_apply]
+  simp only [norm_mul,Complex.norm_real,Real.norm_eq_abs,
+    abs_of_nonneg (mssUnitLatticeTransitionPiece_nonneg _)]
+
+theorem mssJointLatticeCutoff_norm_le_one
+    (lambda : Real) (hlambda : lambda ≠ 0)
+    (j : MSSJointLatticeLabel) (v : JointWaveSpaceTime) :
+    ‖mssJointLatticeCutoff lambda hlambda j v‖ ≤ 1 := by
+  rw [mssJointLatticeCutoff_norm]
+  have h0 := mssUnitLatticeTransitionPiece_le_one (lambda⁻¹*v.fst 0-j.1.1)
+  have h1 := mssUnitLatticeTransitionPiece_le_one (lambda⁻¹*v.fst 1-j.1.2)
+  have h2 := mssUnitLatticeTransitionPiece_le_one (lambda⁻¹*v.snd-j.2)
+  have h01 : mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 0-j.1.1) *
+      mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j.1.2) ≤ 1 := by
+    calc
+      _ ≤ 1*mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j.1.2) :=
+        mul_le_mul_of_nonneg_right h0 (mssUnitLatticeTransitionPiece_nonneg _)
+      _ ≤ 1 := by simpa using h1
+  calc
+    _ ≤ 1*mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j.2) :=
+      mul_le_mul_of_nonneg_right h01 (mssUnitLatticeTransitionPiece_nonneg _)
+    _ ≤ 1 := by simpa using h2
+
+/-- The finite tensor integer family has unit total cutoff mass everywhere,
+uniformly in both its radius and its nonzero common frequency width. -/
+theorem mssJointLatticeCutoff_mass_le_one
+    (lambda : Real) (hlambda : lambda ≠ 0) (N : Nat) (v : JointWaveSpaceTime) :
+    (∑ j ∈ mssJointLatticeLabels N,‖mssJointLatticeCutoff lambda hlambda j v‖) ≤ 1 := by
+  simp_rw [mssJointLatticeCutoff_norm]
+  unfold mssJointLatticeLabels
+  change (∑ j ∈ (((Finset.Icc (-(N:Int)) (N:Int)) ×ˢ
+      (Finset.Icc (-(N:Int)) (N:Int))) ×ˢ (Finset.Icc (-(N:Int)) (N:Int))),
+    mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 0-j.1.1) *
+      mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j.1.2) *
+        mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j.2)) ≤ 1
+  rw [Finset.sum_product]
+  simp_rw [Finset.sum_product]
+  have h0 := mss_unitLatticeTransition_integer_mass_le_one N (lambda⁻¹*v.fst 0)
+  have h1 := mss_unitLatticeTransition_integer_mass_le_one N (lambda⁻¹*v.fst 1)
+  have h2 := mss_unitLatticeTransition_integer_mass_le_one N (lambda⁻¹*v.snd)
+  have h1n : 0 ≤ ∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+      mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j) :=
+    Finset.sum_nonneg (fun j hj => mssUnitLatticeTransitionPiece_nonneg _)
+  have h2n : 0 ≤ ∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+      mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j) :=
+    Finset.sum_nonneg (fun j hj => mssUnitLatticeTransitionPiece_nonneg _)
+  calc
+    _ = (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+        mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 0-j)) *
+      (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+        mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j)) *
+      (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+        mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j)) := by
+      simp_rw [mul_assoc,← Finset.mul_sum,← Finset.sum_mul]
+    _ ≤ 1 := by
+      have h01 : (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+          mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 0-j)) *
+        (∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+          mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j)) ≤ 1 := by
+        calc
+          _ ≤ 1*(∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+              mssUnitLatticeTransitionPiece (lambda⁻¹*v.fst 1-j)) :=
+            mul_le_mul_of_nonneg_right h0 h1n
+          _ ≤ 1 := by simpa using h1
+      calc
+        _ ≤ 1*(∑ j ∈ Finset.Icc (-(N:Int)) (N:Int),
+            mssUnitLatticeTransitionPiece (lambda⁻¹*v.snd-j)) :=
+          mul_le_mul_of_nonneg_right h01 h2n
+        _ ≤ 1 := by simpa using h2
+
+/-- The actual tensor cube multipliers have unit square overlap globally;
+no coordinate-covering or conic support hypothesis is needed. -/
+theorem mssJointLatticeCutoff_square_overlap_le_one
+    (lambda : Real) (hlambda : lambda ≠ 0) (N : Nat) (v : JointWaveSpaceTime) :
+    (∑ j ∈ mssJointLatticeLabels N,‖mssJointLatticeCutoff lambda hlambda j v‖^2) ≤ 1 := by
+  calc
+    _ ≤ ∑ j ∈ mssJointLatticeLabels N,‖mssJointLatticeCutoff lambda hlambda j v‖ := by
+      apply Finset.sum_le_sum
+      intro j hj
+      have hh := mssJointLatticeCutoff_norm_le_one lambda hlambda j v
+      have hn := norm_nonneg (mssJointLatticeCutoff lambda hlambda j v)
+      nlinarith
+    _ ≤ 1 := mssJointLatticeCutoff_mass_le_one lambda hlambda N v
+#print axioms mssJointLatticeCutoff_square_overlap_le_one
+
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+open Auto.Spherical.Auxiliary
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
+  [MeasurableSpace V] [BorelSpace V] [FiniteDimensional Real V]
+
+/-- Section 5 finite-lattice density: the literal inverse Fourier integral has the uniform bound supplied by its true frequency L1 mass. -/
+theorem norm_fourierInv_schwartz_le_integral_norm (F : SchwartzMap V Complex) (x : V) :
+    ‖(FourierTransform.fourierInv F : SchwartzMap V Complex) x‖ ≤ ∫ xi : V,‖F xi‖ := by
+  rw [SchwartzMap.fourierInv_coe]
+  change ‖VectorFourier.fourierIntegral Real.fourierChar volume (-(innerₗ V))
+    (F : V → Complex) x‖ ≤ _
+  exact VectorFourier.norm_fourierIntegral_le_integral_norm _ _ _ _ _
+
+/-- Exact Plancherel for the inverse Schwartz transform in the dimension-generic density preparation of Section 5. -/
+theorem integral_norm_sq_fourierInv_schwartz_eq_generic (F : SchwartzMap V Complex) :
+    (∫ x : V,‖(FourierTransform.fourierInv F : SchwartzMap V Complex) x‖^2) =
+      ∫ xi : V,‖F xi‖^2 := by
+  have h := integral_norm_sq_fourier_schwartz_eq (FourierTransform.fourierInv F)
+  have he (xi : V) : FourierTransform.fourier
+      ((FourierTransform.fourierInv F : SchwartzMap V Complex) : V → Complex) xi = F xi := by
+    rw [← SchwartzMap.fourier_coe]
+    exact congrArg (fun Q : SchwartzMap V Complex => Q xi)
+      (FourierTransform.fourier_fourierInv_eq F)
+  simpa only [he] using h.symm
+
+/-- Actual inverse spectral errors obey a fourth-moment bound by their
+frequency L1 and L2 errors. This supplies global L4 density for finite
+spectral lattice reconstruction, without simultaneous physical and spectral
+compact-support assumptions. -/
+theorem integral_norm_four_fourierInv_schwartz_le (F : SchwartzMap V Complex) :
+    (∫ x : V,‖(FourierTransform.fourierInv F : SchwartzMap V Complex) x‖^4) ≤
+      (∫ xi : V,‖F xi‖)^2 * (∫ xi : V,‖F xi‖^2) := by
+  let G := (FourierTransform.fourierInv F : SchwartzMap V Complex)
+  have hG4 : Integrable (fun x : V => ‖G x‖^4) :=
+    (G.memLp 4 volume).integrable_norm_pow (by norm_num)
+  have hG2 : Integrable (fun x : V => ‖G x‖^2) :=
+    (G.memLp 2 volume).integrable_norm_pow (by norm_num)
+  calc
+    _ ≤ ∫ x : V,(∫ xi : V,‖F xi‖)^2*‖G x‖^2 := by
+      apply integral_mono hG4 (hG2.const_mul _)
+      intro x
+      have h := norm_fourierInv_schwartz_le_integral_norm F x
+      have hb : 0 ≤ ∫ xi : V,‖F xi‖ := integral_nonneg (fun _ => norm_nonneg _)
+      have hn : 0 ≤ ‖G x‖ := norm_nonneg _
+      have hs : ‖G x‖^2 ≤ (∫ xi : V,‖F xi‖)^2 := sq_le_sq₀ hn hb |>.mpr h
+      calc
+        _ = ‖G x‖^2*‖G x‖^2 := by ring
+        _ ≤ _ := mul_le_mul_of_nonneg_right hs (sq_nonneg _)
+    _ = _ := by
+      rw [integral_const_mul,integral_norm_sq_fourierInv_schwartz_eq_generic]
+
+/-- Genuine dominated frequency convergence in both L1 and L2 gives the
+ordinary global fourth-moment convergence of the actual inverse transforms. -/
+theorem tendsto_integral_norm_four_fourierInv_schwartz_of_dominated
+    (F : Nat → SchwartzMap V Complex)
+    (B : V → Real) (hB : Integrable B) (hB2 : Integrable (fun xi => B xi^2))
+    (hBnonneg : ∀ xi,0 ≤ B xi)
+    (hbound : ∀ n xi,‖F n xi‖ ≤ B xi)
+    (hzero : ∀ xi,Tendsto (fun n => F n xi) atTop (nhds 0)) :
+    Tendsto (fun n => ∫ x : V,‖(FourierTransform.fourierInv (F n) :
+      SchwartzMap V Complex) x‖^4) atTop (nhds 0) := by
+  have h1 : Tendsto (fun n => ∫ xi : V,‖F n xi‖) atTop (nhds 0) := by
+    have h := tendsto_integral_of_dominated_convergence B
+      (fun n => (F n).continuous.norm.aestronglyMeasurable) hB
+      (fun n => Filter.Eventually.of_forall (fun xi => by
+        simpa only [Real.norm_eq_abs,abs_of_nonneg (norm_nonneg _)] using hbound n xi))
+      (Filter.Eventually.of_forall (fun xi => by simpa using (hzero xi).norm))
+    simpa only [integral_zero,Pi.pow_apply] using h
+  have h2 : Tendsto (fun n => ∫ xi : V,‖F n xi‖^2) atTop (nhds 0) := by
+    have h := tendsto_integral_of_dominated_convergence (fun xi => B xi^2)
+      (fun n => ((F n).continuous.norm.pow 2).aestronglyMeasurable) hB2
+      (fun n => Filter.Eventually.of_forall (fun xi => by
+        rw [Real.norm_eq_abs,abs_of_nonneg (sq_nonneg _)]
+        exact (sq_le_sq₀ (norm_nonneg _) (hBnonneg xi)).mpr (hbound n xi)))
+      (Filter.Eventually.of_forall (fun xi => by simpa using (hzero xi).norm.pow 2))
+    simpa only [integral_zero,Pi.pow_apply] using h
+  have hupper : Tendsto
+      (fun n => (∫ xi : V,‖F n xi‖)^2*(∫ xi : V,‖F n xi‖^2)) atTop (nhds 0) := by
+    simpa using (h1.pow 2).mul h2
+  exact squeeze_zero
+    (fun n => integral_nonneg (fun x => pow_nonneg (norm_nonneg _) 4))
+    (fun n => integral_norm_four_fourierInv_schwartz_le (F n)) hupper
+
+#print axioms integral_norm_four_fourierInv_schwartz_le
+#print axioms tendsto_integral_norm_four_fourierInv_schwartz_of_dominated
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter Metric
+open Auto.Spherical.Auxiliary
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
+  [MeasurableSpace V] [BorelSpace V] [FiniteDimensional Real V]
+  [HasContDiffBump V]
+
+/-- A genuine sequence of compactly frequency-supported Schwartz inputs
+whose actual inverse Fourier transforms approximate any Schwartz datum in
+the ordinary global fourth moment. -/
+theorem exists_compactFrequencySchwartz_sequence_fourth_moment
+    (f : SchwartzMap V Complex) :
+    ∃ Q : Nat → SchwartzMap V Complex,
+      (∀ n,HasCompactSupport (Q n : V → Complex)) ∧
+      Tendsto (fun n => ∫ x : V,
+        ‖(FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) x-f x‖^4)
+        atTop (nhds 0) := by
+  let F : SchwartzMap V Complex := FourierTransform.fourier f
+  let b : Nat → ContDiffBump (0:V) := fun n => {
+    rIn := (n:Real)+1
+    rOut := (n:Real)+2
+    rIn_pos := by positivity
+    rIn_lt_rOut := by linarith
+  }
+  let chi : Nat → SchwartzMap V Complex := fun n =>
+    ((b n).hasCompactSupport.comp_left (show (Complex.ofReal : Real → Complex) 0 = 0 by simp))
+      |>.toSchwartzMap (Complex.ofRealCLM.contDiff.comp (b n).contDiff)
+  let Q : Nat → SchwartzMap V Complex := fun n =>
+    SchwartzMap.smulLeftCLM Complex (chi n : V → Complex) F
+  have hQ (n : Nat) (xi : V) : Q n xi = (b n xi:Complex)*F xi := by
+    rw [SchwartzMap.smulLeftCLM_apply_apply (chi n).hasTemperateGrowth,smul_eq_mul]
+    rfl
+  have hcompact (n : Nat) : HasCompactSupport (Q n : V → Complex) := by
+    have hchi : HasCompactSupport (fun xi : V => (b n xi:Complex)) :=
+      (b n).hasCompactSupport.comp_left (show (Complex.ofReal : Real → Complex) 0 = 0 by simp)
+    have hp : HasCompactSupport (fun xi : V => (b n xi:Complex)*F xi) := hchi.mul_right
+    convert hp using 1
+    funext xi
+    exact hQ n xi
+  let E : Nat → SchwartzMap V Complex := fun n => Q n-F
+  have hbound (n : Nat) (xi : V) : ‖E n xi‖ ≤ 2*‖F xi‖ := by
+    have hq : ‖Q n xi‖ ≤ ‖F xi‖ := by
+      rw [hQ,norm_mul,Complex.norm_real,Real.norm_eq_abs,
+        abs_of_nonneg (b n).nonneg]
+      simpa only [one_mul] using
+        mul_le_mul_of_nonneg_right (b n).le_one (norm_nonneg (F xi))
+    exact (norm_sub_le _ _).trans (by linarith)
+  have hzero (xi : V) : Tendsto (fun n => E n xi) atTop (nhds 0) := by
+    obtain ⟨N,hN⟩ := exists_nat_ge ‖xi‖
+    have he : ∀ᶠ n in atTop,E n xi = 0 := by
+      filter_upwards [eventually_ge_atTop N] with n hn
+      have hh : xi ∈ closedBall (0:V) (b n).rIn := by
+        rw [mem_closedBall,dist_zero_right]
+        change ‖xi‖ ≤ (n:Real)+1
+        have hh : (N:Real) ≤ (n:Real) := by exact_mod_cast hn
+        linarith
+      change Q n xi-F xi = 0
+      rw [hQ,(b n).one_of_mem_closedBall hh]
+      simp
+    exact tendsto_const_nhds.congr' (he.mono (fun n hn => hn.symm))
+  have hB : Integrable (fun xi : V => 2*‖F xi‖) := F.integrable.norm.const_mul 2
+  have hB2 : Integrable (fun xi : V => (2*‖F xi‖)^2) := by
+    convert ((F.memLp 2 volume).integrable_norm_pow (by norm_num)).const_mul 4 using 1
+    funext xi
+    ring
+  have ht := tendsto_integral_norm_four_fourierInv_schwartz_of_dominated E
+    (fun xi => 2*‖F xi‖) hB hB2 (fun xi => by positivity) hbound hzero
+  refine ⟨Q,hcompact,?_⟩
+  convert ht using 1
+  funext n
+  apply integral_congr_ae
+  apply Filter.Eventually.of_forall
+  intro x
+  have heq : FourierTransform.fourierInv (E n) =
+      FourierTransform.fourierInv (Q n)-f := by
+    dsimp only [E,F]
+    rw [sub_eq_add_neg,FourierTransform.fourierInv_add,FourierTransform.fourierInv_neg,
+      FourierTransform.fourierInv_fourier_eq]
+    rfl
+  rw [heq]
+  rfl
+
+#print axioms exists_compactFrequencySchwartz_sequence_fourth_moment
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter Metric
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
+  [MeasurableSpace V] [BorelSpace V] [FiniteDimensional Real V]
+  [HasContDiffBump V]
+
+/-- Section 5 finite spectral reconstruction: actual compact-frequency
+Schwartz inverse transforms converge to each Schwartz datum in L4. -/
+theorem exists_compactFrequencySchwartz_sequence_eLpNorm_four
+    (f : SchwartzMap V Complex) :
+    ∃ Q : Nat → SchwartzMap V Complex,
+      (∀ n, HasCompactSupport (Q n : V → Complex)) ∧
+      Tendsto (fun n => eLpNorm (fun x : V =>
+        (FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) x - f x) 4 volume)
+        atTop (nhds 0) := by
+  obtain ⟨Q, hQ, ht⟩ := exists_compactFrequencySchwartz_sequence_fourth_moment f
+  refine ⟨Q, hQ, ?_⟩
+  have heq (n : Nat) : eLpNorm (fun x : V =>
+        (FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) x - f x) 4 volume =
+      ENNReal.ofReal ((∫ x : V,
+        ‖(FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) x - f x‖^4) ^
+          (4 : Real)⁻¹) := by
+    have hm := ((FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) - f).memLp 4 volume
+    have hh := hm.eLpNorm_eq_integral_rpow_norm (by norm_num) (by norm_num)
+    have hcoe : (((FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) - f :
+        SchwartzMap V Complex) : V → Complex) = (fun x : V =>
+        (FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) x - f x) := by
+      funext x
+      simp only [sub_apply]
+    rw [hcoe] at hh
+    simpa only [ENNReal.toReal_ofNat, Real.rpow_ofNat] using hh
+  have hr := (Real.continuous_rpow_const (q := (4 : Real)⁻¹) (by positivity)).tendsto 0
+  have he := (ENNReal.continuous_ofReal.tendsto ((0 : Real)^(4 : Real)⁻¹)).comp
+    (hr.comp ht)
+  simpa only [heq, Function.comp_def,
+    Real.zero_rpow (by positivity : (4 : Real)⁻¹ ≠ 0), ENNReal.ofReal_zero] using he
+
+/-- Genuine compact-frequency inverse Schwartz approximation of any L4
+input. The approximation is in the original physical function, with no
+physical compact-support restriction on the approximating inverse data. -/
+theorem exists_compactFrequencySchwartz_eLpNorm_four_sub_le
+    (f : V → Complex) (hf : MemLp f 4 volume) {ε : Real} (hε : 0 < ε) :
+    ∃ Q : SchwartzMap V Complex, HasCompactSupport (Q : V → Complex) ∧
+      eLpNorm (fun x : V =>
+        (FourierTransform.fourierInv Q : SchwartzMap V Complex) x - f x) 4 volume ≤
+        ENNReal.ofReal ε := by
+  obtain ⟨g, hgcompact, hgsmooth, hgclose⟩ :=
+    hf.exist_eLpNorm_sub_le (by norm_num) (by norm_num)
+      (show 0 < ε / 2 by positivity)
+  let G : SchwartzMap V Complex := hgcompact.toSchwartzMap hgsmooth
+  obtain ⟨Q, hQ, hQtendsto⟩ := exists_compactFrequencySchwartz_sequence_eLpNorm_four G
+  have hhalf : 0 < ENNReal.ofReal (ε / 2) := by positivity
+  obtain ⟨n, hn⟩ := (ENNReal.tendsto_nhds_zero.mp hQtendsto _ hhalf).exists
+  refine ⟨Q n, hQ n, ?_⟩
+  let H : V → Complex := (FourierTransform.fourierInv (Q n) : SchwartzMap V Complex)
+  have hsplit : (fun x : V => H x - f x) =
+      (fun x : V => H x - G x) + (fun x : V => G x - f x) := by
+    funext x
+    simp only [Pi.add_apply]
+    ring
+  rw [hsplit]
+  calc
+    _ ≤ eLpNorm (fun x : V => H x - G x) 4 volume +
+        eLpNorm (fun x : V => G x - f x) 4 volume := eLpNorm_add_le (by norm_num)
+    _ ≤ ENNReal.ofReal (ε / 2) + ENNReal.ofReal (ε / 2) := by
+      apply add_le_add hn
+      change eLpNorm (g - f) 4 volume ≤ ENNReal.ofReal (ε / 2)
+      rw [eLpNorm_sub_comm]
+      exact hgclose
+    _ = ENNReal.ofReal ε := by
+      rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+      congr 1
+      ring
+
+/-- The L4 closure sequence for the actual finite source lattice estimate:
+all spectra are compact and the inverse transforms converge to the given
+unrestricted L4 input in the genuine eLpNorm. -/
+theorem exists_compactFrequencySchwartz_sequence_eLpNorm_four_of_memLp
+    (f : V → Complex) (hf : MemLp f 4 volume) :
+    ∃ Q : Nat → SchwartzMap V Complex,
+      (∀ n, HasCompactSupport (Q n : V → Complex)) ∧
+      Tendsto (fun n => eLpNorm (fun x : V =>
+        (FourierTransform.fourierInv (Q n) : SchwartzMap V Complex) x - f x) 4 volume)
+        atTop (nhds 0) := by
+  have hex (n : Nat) := exists_compactFrequencySchwartz_eLpNorm_four_sub_le f hf
+    (ε := 1 / ((n : Real) + 1)) (by positivity)
+  choose Q hQ hQclose using hex
+  refine ⟨Q, hQ, ?_⟩
+  have heps : Tendsto (fun n : Nat => ENNReal.ofReal (1 / ((n : Real) + 1)))
+      atTop (nhds 0) := by
+    simpa only [Function.comp_def, ENNReal.ofReal_zero] using
+      ENNReal.continuous_ofReal.tendsto 0 |>.comp
+        (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := Real))
+  exact tendsto_of_tendsto_of_tendsto_of_le_of_le
+    tendsto_const_nhds heps (fun n => bot_le) hQclose
+
+#print axioms exists_compactFrequencySchwartz_sequence_eLpNorm_four
+#print axioms exists_compactFrequencySchwartz_eLpNorm_four_sub_le
+#print axioms exists_compactFrequencySchwartz_sequence_eLpNorm_four_of_memLp
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+variable {S Z : Type*} [MeasurableSpace S]
+
+/-- On the finite source window in Section 5, genuine L4 approximation
+also converges in L1, with the true finite source mass retained. -/
+theorem tendsto_eLpNorm_one_of_tendsto_eLpNorm_four
+    (μ : Measure S) [IsFiniteMeasure μ]
+    (h : S → Complex) (H : Nat → S → Complex)
+    (hh : MemLp h 4 μ) (hH : ∀ n, MemLp (H n) 4 μ)
+    (ht : Tendsto (fun n => eLpNorm (H n-h) 4 μ) atTop (nhds 0)) :
+    Tendsto (fun n => eLpNorm (H n-h) 1 μ) atTop (nhds 0) := by
+  let C : ENNReal := μ Set.univ ^ (1-1/(4:Real))
+  have hC : C ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by norm_num)
+    (measure_ne_top μ Set.univ)
+  have hupper := ENNReal.Tendsto.mul_const ht (Or.inr hC)
+  simp only [zero_mul] at hupper
+  apply tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hupper
+    (fun n => bot_le)
+  intro n
+  simpa only [C,ENNReal.toReal_one,ENNReal.toReal_ofNat,div_one] using
+    (eLpNorm_le_eLpNorm_mul_rpow_measure_univ (p := 1) (q := 4) (by norm_num)
+      ((hH n).aestronglyMeasurable.sub hh.aestronglyMeasurable))
+
+variable [TopologicalSpace S] [BorelSpace S] [TopologicalSpace Z]
+
+/-- Genuine compact-source passage from finite spectral input data to
+the original L4 input in Section 5. Every literal source pairing is
+integrable, and convergence holds at every output point; the pointwise
+kernel bounds are derived from compactness, without an operator estimate. -/
+theorem compactSource_pairing_integrable_and_tendsto_of_eLpNorm_four
+    (μ : Measure S) [IsFiniteMeasure μ]
+    (K : Set S) (hK : IsCompact K) (hμK : ∀ᵐ s ∂μ, s ∈ K)
+    (k : S × Z → Complex) (hk : Continuous k)
+    (h : S → Complex) (H : Nat → S → Complex)
+    (hh : MemLp h 4 μ) (hH : ∀ n, MemLp (H n) 4 μ)
+    (ht : Tendsto (fun n => eLpNorm (H n-h) 4 μ) atTop (nhds 0)) :
+    (∀ z, Integrable (fun s => k (s,z)*h s) μ) ∧
+    (∀ n z, Integrable (fun s => k (s,z)*H n s) μ) ∧
+    (∀ z, Tendsto (fun n => ∫ s, k (s,z)*H n s ∂μ) atTop
+      (nhds (∫ s, k (s,z)*h s ∂μ))) := by
+  have hkc (z : Z) : Continuous (fun s : S => k (s,z)) :=
+    hk.comp (continuous_id.prodMk continuous_const)
+  have hbound (z : Z) : ∃ C : NNReal, ∀ᵐ s ∂μ, ‖k (s,z)‖ ≤ C := by
+    obtain ⟨C,hC⟩ := hK.exists_bound_of_continuousOn (hkc z).continuousOn
+    refine ⟨⟨|C|,abs_nonneg C⟩,?_⟩
+    filter_upwards [hμK] with s hs
+    exact (hC s hs).trans (le_abs_self C)
+  have hpair (g : S → Complex) (hg : MemLp g 4 μ) (z : Z) :
+      Integrable (fun s => k (s,z)*g s) μ := by
+    obtain ⟨C,hC⟩ := hbound z
+    exact (hg.integrable (by norm_num)).bdd_mul (hkc z).aestronglyMeasurable hC
+  refine ⟨hpair h hh,fun n => hpair (H n) (hH n),?_⟩
+  intro z
+  obtain ⟨C,hC⟩ := hbound z
+  have hL1 := tendsto_eLpNorm_one_of_tendsto_eLpNorm_four μ h H hh hH ht
+  have hupper := ENNReal.Tendsto.const_mul (a := (C:ENNReal)) hL1
+    (Or.inr ENNReal.coe_ne_top)
+  simp only [mul_zero] at hupper
+  have hprod : Tendsto (fun n =>
+      eLpNorm ((fun s => k (s,z)*H n s)-(fun s => k (s,z)*h s)) 1 μ)
+      atTop (nhds 0) := by
+    apply tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hupper
+      (fun n => bot_le)
+    intro n
+    have hmeas : AEStronglyMeasurable
+        ((fun s => k (s,z)*H n s)-(fun s => k (s,z)*h s)) μ :=
+      (hpair (H n) (hH n) z).aestronglyMeasurable.sub
+        (hpair h hh z).aestronglyMeasurable
+    have hle := eLpNorm_le_nnreal_smul_eLpNorm_of_ae_le_mul
+      (g := H n-h) (c := C) hmeas (p := 1) ?_
+    · simpa only [ENNReal.smul_def,smul_eq_mul] using hle
+    · filter_upwards [hC] with s hs
+      apply NNReal.coe_le_coe.mp
+      change ‖k (s,z)*H n s-k (s,z)*h s‖ ≤ (C:Real)*‖H n s-h s‖
+      rw [← mul_sub,norm_mul]
+      exact mul_le_mul_of_nonneg_right hs (norm_nonneg _)
+  exact tendsto_integral_of_L1' (fun s => k (s,z)*h s)
+    (Eventually.of_forall (fun n => hpair (H n) (hH n) z)) hprod
+
+#print axioms tendsto_eLpNorm_one_of_tendsto_eLpNorm_four
+#print axioms compactSource_pairing_integrable_and_tendsto_of_eLpNorm_four
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+
+/-- Genuine continuity of a literal compact-source integral from joint
+kernel continuity. Local domination is derived by compactness, rather than
+assumed as an independent output estimate. -/
+theorem continuous_source_integral_of_joint_continuous_compact
+    {S Z : Type*} [TopologicalSpace S] [MeasurableSpace S] [BorelSpace S]
+    [NormedAddCommGroup Z] [ProperSpace Z]
+    (μ : Measure S)
+    (K : Set S) (hK : IsCompact K) (hμK : ∀ᵐ s ∂μ,s ∈ K)
+    (k : S × Z → Complex) (hk : Continuous k)
+    (h : S → Complex) (hh : Integrable h μ) :
+    (∀ z,Integrable (fun s => k (s,z)*h s) μ) ∧
+      Continuous (fun z => ∫ s,k (s,z)*h s ∂μ) := by
+  have hmeas (z : Z) : AEStronglyMeasurable (fun s => k (s,z)*h s) μ :=
+    (hk.comp (continuous_id.prodMk continuous_const)).aestronglyMeasurable.mul
+      hh.aestronglyMeasurable
+  have hlocal (z0 : Z) : ∃ M : Real,0 < M ∧
+      ∀ s ∈ K,∀ z ∈ closedBall z0 1,‖k (s,z)‖ ≤ M := by
+    obtain ⟨M,hM,hb⟩ := ((hK.prod (isCompact_closedBall z0 1)).image hk).isBounded.exists_pos_norm_le
+    exact ⟨M,hM,fun s hs z hz => hb _ ⟨(s,z),⟨hs,hz⟩,rfl⟩⟩
+  constructor
+  · intro z
+    obtain ⟨M,hM,hb⟩ := hlocal z
+    apply (hh.norm.const_mul M).mono' (hmeas z)
+    filter_upwards [hμK] with s hs
+    rw [norm_mul]
+    apply mul_le_mul_of_nonneg_right (hb s hs z (by simp)) (norm_nonneg _)
+  · rw [continuous_iff_continuousAt]
+    intro z0
+    obtain ⟨M,hM,hb⟩ := hlocal z0
+    apply continuousAt_of_dominated
+      (Filter.Eventually.of_forall hmeas) ?_ (hh.norm.const_mul M)
+      (Filter.Eventually.of_forall (fun s =>
+        ((hk.comp (continuous_const.prodMk continuous_id)).mul continuous_const).continuousAt))
+    filter_upwards [closedBall_mem_nhds z0 zero_lt_one] with z hz
+    filter_upwards [hμK] with s hs
+    rw [norm_mul]
+    exact mul_le_mul_of_nonneg_right (hb s hs z hz) (norm_nonneg _)
+
+#print axioms continuous_source_integral_of_joint_continuous_compact
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
+  [MeasurableSpace V] [BorelSpace V] [FiniteDimensional Real V]
+
+/-- Section 5 spectral remainder preparation: an actual finite-volume
+frequency support converts true Fourier L2 energy into the ordinary global
+fourth moment of its literal inverse transform. -/
+theorem integral_norm_four_fourierInv_schwartz_le_volume_mul_sq
+    (H : SchwartzMap V Complex) (A : Set V) (_hA : MeasurableSet A)
+    (hAfin : volume A < ⊤)
+    (hsupp : Function.support (H : V → Complex) ⊆ A) :
+    (∫ x : V, ‖(FourierTransform.fourierInv H : SchwartzMap V Complex) x‖^4) ≤
+      (volume A).toReal * (∫ xi : V, ‖H xi‖^2)^2 := by
+  let : IsFiniteMeasure (volume.restrict A) :=
+    ⟨by simpa only [Measure.restrict_apply_univ] using hAfin⟩
+  have hz (xi : V) (hxi : xi ∉ A) : H xi = 0 := by
+    by_contra hh
+    exact hxi (hsupp (Function.mem_support.mpr hh))
+  have h1 : (∫ xi in A, ‖H xi‖) = ∫ xi : V, ‖H xi‖ :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero (fun xi hxi => by
+      rw [hz xi hxi, norm_zero])
+  have h2 : (∫ xi in A, ‖H xi‖^2) = ∫ xi : V, ‖H xi‖^2 :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero (fun xi hxi => by
+      rw [hz xi hxi, norm_zero]
+      simp)
+  have hc := integral_norm_mul_norm_le_sqrt_mul_integral_norm_sq
+    (volume.restrict A) (H : V → Complex) (fun _ => (1 : Complex))
+    ((H.memLp 2 volume).restrict A) (memLp_const (1 : Complex))
+  have hmass : (∫ xi in A, ‖(1 : Complex)‖^2) = (volume A).toReal := by
+    simp [Measure.real]
+  rw [hmass] at hc
+  simp only [norm_one, mul_one] at hc
+  rw [h1, h2] at hc
+  have hE : 0 ≤ ∫ xi : V, ‖H xi‖^2 :=
+    integral_nonneg (fun _ => sq_nonneg _)
+  have hs := (sq_le_sq₀ (integral_nonneg (fun _ => norm_nonneg _))
+    (mul_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _))).mpr hc
+  rw [mul_pow, Real.sq_sqrt hE, Real.sq_sqrt ENNReal.toReal_nonneg] at hs
+  calc
+    _ ≤ (∫ xi : V, ‖H xi‖)^2 * (∫ xi : V, ‖H xi‖^2) :=
+      integral_norm_four_fourierInv_schwartz_le H
+    _ ≤ ((∫ xi : V, ‖H xi‖^2) * (volume A).toReal) *
+        (∫ xi : V, ‖H xi‖^2) :=
+      mul_le_mul_of_nonneg_right hs hE
+    _ = _ := by ring
+
+/-- Section 5 genuine normal-frequency remainder: the actual Schwartz
+multiplier outside the cone has a global fourth moment controlled by its
+true iterated wave residual and finite frequency support. No local-smoothing
+estimate is assumed in this passage from the existing Fourier L2 tail. -/
+theorem integral_norm_four_fourierInv_normalGapMultiplier_le
+    (m F : SchwartzMap JointWaveSpaceTime Complex)
+    (A E : Set JointWaveSpaceTime) (hA : MeasurableSet A) (hE : MeasurableSet E)
+    (hAfin : volume A < ⊤)
+    (B : Real) (hB : 0 ≤ B) (hm : ∀ xi, ‖m xi‖ ≤ B)
+    (hsupp : Function.support (m : JointWaveSpaceTime → Complex) ⊆ A ∩ E)
+    (N : Nat) (mu g : Real) (hmu : 0 < mu) (hg : 0 < g)
+    (hsize : ∀ xi ∈ E, mu ≤ |xi.snd| + ‖xi.fst‖)
+    (hgap : ∀ xi ∈ E, g ≤ |(|xi.snd| - ‖xi.fst‖)|) :
+    (∫ x : JointWaveSpaceTime,
+      ‖(FourierTransform.fourierInv
+        (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+          (FourierTransform.fourier F)) : SchwartzMap JointWaveSpaceTime Complex) x‖^4) ≤
+      (volume A).toReal * B^4 * ((((2 * Real.pi)^2 * mu * g)^N)⁻¹)^4 *
+        (∫ x : JointWaveSpaceTime,
+          ‖((normalizedCircleSchwartzWaveOperator^[N]) F) x‖^2)^2 := by
+  let H : SchwartzMap JointWaveSpaceTime Complex :=
+    SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+      (FourierTransform.fourier F)
+  have hH (xi : JointWaveSpaceTime) :
+      H xi = m xi * (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) xi := by
+    dsimp only [H]
+    rw [SchwartzMap.smulLeftCLM_apply_apply m.hasTemperateGrowth, smul_eq_mul]
+  have hHA : Function.support (H : JointWaveSpaceTime → Complex) ⊆ A := by
+    intro xi hxi
+    have hh : m xi ≠ 0 := by
+      intro hh
+      exact (Function.mem_support.mp hxi) (by rw [hH, hh, zero_mul])
+    exact (hsupp (Function.mem_support.mpr hh)).1
+  have hHE : Function.support (H : JointWaveSpaceTime → Complex) ⊆ E := by
+    intro xi hxi
+    have hh : m xi ≠ 0 := by
+      intro hh
+      exact (Function.mem_support.mp hxi) (by rw [hH, hh, zero_mul])
+    exact (hsupp (Function.mem_support.mpr hh)).2
+  have hHeq : (∫ xi in E, ‖H xi‖^2) =
+      ∫ xi : JointWaveSpaceTime, ‖H xi‖^2 :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero (fun xi hxi => by
+      have hh : H xi = 0 := by
+        by_contra hh
+        exact hxi (hHE (Function.mem_support.mpr hh))
+      rw [hh, norm_zero]
+      simp)
+  have hH2 : (∫ xi : JointWaveSpaceTime, ‖H xi‖^2) ≤
+      B^2 * (∫ xi in E,
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) xi‖^2) := by
+    rw [← hHeq, ← integral_const_mul]
+    have hFi : Integrable (fun xi : JointWaveSpaceTime =>
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) xi‖^2) :=
+      ((FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex).memLp 2 volume).integrable_norm_pow (by norm_num)
+    apply integral_mono
+      ((H.memLp 2 volume).integrable_norm_pow (by norm_num)).integrableOn
+      (hFi.const_mul (B^2)).integrableOn
+    intro xi
+    change ‖H xi‖^2 ≤ B^2 *
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) xi‖^2
+    rw [hH, norm_mul, mul_pow]
+    exact mul_le_mul_of_nonneg_right
+      ((sq_le_sq₀ (norm_nonneg _) hB).mpr (hm xi)) (sq_nonneg _)
+  have ht :=
+    normalizedCircle_normal_gap_fourier_L2_tail N F E hE mu g hmu hg hsize hgap
+  have henergy : (∫ xi : JointWaveSpaceTime, ‖H xi‖^2) ≤
+      B^2 * (((((2 * Real.pi)^2 * mu * g)^N)⁻¹)^2 *
+        (∫ x : JointWaveSpaceTime,
+          ‖((normalizedCircleSchwartzWaveOperator^[N]) F) x‖^2)) :=
+    hH2.trans (mul_le_mul_of_nonneg_left ht (sq_nonneg B))
+  have hs := (sq_le_sq₀ (integral_nonneg (fun _ => sq_nonneg _))
+    (by positivity)).mpr henergy
+  have hbase :=
+    integral_norm_four_fourierInv_schwartz_le_volume_mul_sq H A hA hAfin hHA
+  apply hbase.trans
+  calc
+    _ ≤ (volume A).toReal *
+        (B^2 * (((((2 * Real.pi)^2 * mu * g)^N)⁻¹)^2 *
+          (∫ x : JointWaveSpaceTime,
+            ‖((normalizedCircleSchwartzWaveOperator^[N]) F) x‖^2)))^2 :=
+      mul_le_mul_of_nonneg_left hs ENNReal.toReal_nonneg
+    _ = _ := by ring
+
+#print axioms integral_norm_four_fourierInv_schwartz_le_volume_mul_sq
+#print axioms integral_norm_four_fourierInv_normalGapMultiplier_le
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
+  [MeasurableSpace V] [BorelSpace V] [FiniteDimensional Real V]
+
+/-- Section 5 unbounded temporal-frequency remainder: genuine weighted
+frequency L2 factors control the global fourth moment of the actual inverse
+Schwartz transform, without assuming finite frequency support. -/
+theorem integral_norm_four_fourierInv_schwartz_le_weighted_l2_product
+    (H : SchwartzMap V Complex) (U D : V → Complex)
+    (hU : MemLp U 2 volume) (hD : MemLp D 2 volume)
+    (hfactor : ∀ᵐ xi ∂volume, ‖H xi‖ = ‖U xi‖ * ‖D xi‖) :
+    (∫ x : V, ‖(FourierTransform.fourierInv H : SchwartzMap V Complex) x‖^4) ≤
+      (∫ xi : V, ‖D xi‖^2) * (∫ xi : V, ‖U xi‖^2) *
+        (∫ xi : V, ‖H xi‖^2) := by
+  have hL1 : (∫ xi : V, ‖H xi‖) =
+      ∫ xi : V, ‖U xi‖ * ‖D xi‖ := integral_congr_ae hfactor
+  have hc := integral_norm_mul_norm_le_sqrt_mul_integral_norm_sq volume U D hU hD
+  rw [← hL1] at hc
+  have hEU : 0 ≤ ∫ xi : V, ‖U xi‖^2 :=
+    integral_nonneg (fun _ => sq_nonneg _)
+  have hED : 0 ≤ ∫ xi : V, ‖D xi‖^2 :=
+    integral_nonneg (fun _ => sq_nonneg _)
+  have hEH : 0 ≤ ∫ xi : V, ‖H xi‖^2 :=
+    integral_nonneg (fun _ => sq_nonneg _)
+  have hs := (sq_le_sq₀ (integral_nonneg (fun _ => norm_nonneg _))
+    (mul_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _))).mpr hc
+  rw [mul_pow, Real.sq_sqrt hEU, Real.sq_sqrt hED] at hs
+  calc
+    _ ≤ (∫ xi : V, ‖H xi‖)^2 * (∫ xi : V, ‖H xi‖^2) :=
+      integral_norm_four_fourierInv_schwartz_le H
+    _ ≤ ((∫ xi : V, ‖U xi‖^2) * (∫ xi : V, ‖D xi‖^2)) *
+        (∫ xi : V, ‖H xi‖^2) :=
+      mul_le_mul_of_nonneg_right hs hEH
+    _ = _ := by ring
+
+#print axioms integral_norm_four_fourierInv_schwartz_le_weighted_l2_product
+end
+end Auto.Spherical.MSS
+
+/-!
+## Genuine finite-spectrum L4 closure
+
+The source input approximation below preserves its actual fourth moment.
+Pointwise convergence of the literal output pairings and Fatou then yield
+both the global output L4 membership and its original energy budget.
+-/
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+
+/-- Genuine L4 approximation preserves the actual input fourth moments, so
+dense finite-spectrum estimates retain the exact original source energy. -/
+theorem tendsto_fourth_moment_of_tendsto_eLpNorm_four_sub
+    {V : Type*} [MeasurableSpace V] (μ : Measure V)
+    (f : Nat → V → Complex) (g : V → Complex)
+    (hf : ∀ n, MemLp (f n) 4 μ) (hg : MemLp g 4 μ)
+    (ht : Tendsto (fun n => eLpNorm (f n-g) 4 μ) atTop (nhds 0)) :
+    Tendsto (fun n => ∫ x, ‖f n x‖^4 ∂μ) atTop
+      (nhds (∫ x, ‖g x‖^4 ∂μ)) := by
+  let : Fact ((1 : ENNReal) ≤ 4) := ⟨by norm_num⟩
+  have hLp := (Lp.tendsto_Lp_iff_tendsto_eLpNorm'' f hf g hg).mpr ht
+  have hnorm := (continuous_norm.tendsto (hg.toLp g)).comp hLp
+  have heq (u : V → Complex) (hu : MemLp u 4 μ) :
+      ENNReal.ofReal ‖hu.toLp u‖ = eLpNorm u 4 μ := by
+    rw [Lp.norm_toLp,ENNReal.ofReal_toReal hu.eLpNorm_ne_top]
+  have hn := (ENNReal.continuous_ofReal.tendsto ‖hg.toLp g‖).comp hnorm
+  have heLp : Tendsto (fun n => eLpNorm (f n) 4 μ) atTop (nhds (eLpNorm g 4 μ)) := by
+    simpa only [Function.comp_def,heq] using hn
+  have hmoment (u : V → Complex) (hu : MemLp u 4 μ) :
+      ENNReal.ofReal (∫ x, ‖u x‖^4 ∂μ) = (eLpNorm u 4 μ)^4 := by
+    rw [ofReal_integral_eq_lintegral_ofReal (hu.integrable_norm_pow (by norm_num))
+      (Filter.Eventually.of_forall (fun x => pow_nonneg (norm_nonneg _) _))]
+    have hh := Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+      (by norm_num : (0 : Real) < 4) u hu.aestronglyMeasurable
+    simp_rw [ENNReal.ofReal_pow (norm_nonneg _)]
+    simpa only [ENNReal.ofReal_ofNat,ENNReal.rpow_ofNat] using hh
+  have hp := (ENNReal.continuous_pow 4).tendsto (eLpNorm g 4 μ) |>.comp heLp
+  have htop : (eLpNorm g 4 μ)^4 ≠ ⊤ := ENNReal.pow_ne_top hg.eLpNorm_ne_top
+  have htoreal := (ENNReal.continuousAt_toReal htop).tendsto.comp hp
+  have hge : 0 ≤ ∫ x, ‖g x‖^4 ∂μ :=
+    integral_nonneg (fun x => pow_nonneg (norm_nonneg _) _)
+  have hfe (n : Nat) : 0 ≤ ∫ x, ‖f n x‖^4 ∂μ :=
+    integral_nonneg (fun x => pow_nonneg (norm_nonneg _) _)
+  change Tendsto (fun n => ((eLpNorm (f n) 4 μ)^4).toReal) atTop
+    (nhds (((eLpNorm g 4 μ)^4).toReal)) at htoreal
+  have hval (u : V → Complex) (hu : MemLp u 4 μ) :
+      ((eLpNorm u 4 μ)^4).toReal = ∫ x, ‖u x‖^4 ∂μ := by
+    rw [← hmoment u hu,ENNReal.toReal_ofReal (integral_nonneg
+      (fun x => pow_nonneg (norm_nonneg _) _))]
+  simpa only [hval g hg,hval _ (hf _)] using htoreal
+
+#print axioms tendsto_fourth_moment_of_tendsto_eLpNorm_four_sub
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+
+/-- Dense input L4 estimates extend to the actual pointwise output limit.
+Both finite approximants and the original input carry genuine L4 memberships;
+Fatou produces the output membership instead of assuming it. -/
+theorem fourth_moment_bound_of_actual_dense_input_limit
+    {S Z : Type*} [MeasurableSpace S] [MeasurableSpace Z]
+    (μ : Measure S) (ν : Measure Z)
+    (f : Nat → S → Complex) (g : S → Complex)
+    (hf : ∀ n,MemLp (f n) 4 μ) (hg : MemLp g 4 μ)
+    (ht : Tendsto (fun n => eLpNorm (f n-g) 4 μ) atTop (nhds 0))
+    (U : Nat → Z → Complex) (G : Z → Complex)
+    (hU : ∀ n,MemLp (U n) 4 ν) (hG : AEStronglyMeasurable G ν)
+    (hconv : ∀ᵐ z ∂ν,Tendsto (fun n => U n z) atTop (nhds (G z)))
+    (C : Real) (hC : 0 ≤ C)
+    (hb : ∀ n,(∫ z,‖U n z‖^4 ∂ν) ≤ C*(∫ s,‖f n s‖^4 ∂μ)) :
+    MemLp G 4 ν ∧ (∫ z,‖G z‖^4 ∂ν) ≤ C*(∫ s,‖g s‖^4 ∂μ) := by
+  have hbudget := ENNReal.tendsto_ofReal
+    ((tendsto_fourth_moment_of_tendsto_eLpNorm_four_sub μ f g hf hg ht).const_mul C)
+  have hnn (n : Nat) : (∫⁻ z,ENNReal.ofReal (‖U n z‖^4) ∂ν) ≤
+      ENNReal.ofReal (C*(∫ s,‖f n s‖^4 ∂μ)) := by
+    rw [← ofReal_integral_eq_lintegral_ofReal
+      ((hU n).integrable_norm_pow (by norm_num))
+      (Filter.Eventually.of_forall (fun z => pow_nonneg (norm_nonneg _) _))]
+    exact ENNReal.ofReal_le_ofReal (hb n)
+  have hFatou : (∫⁻ z,ENNReal.ofReal (‖G z‖^4) ∂ν) ≤
+      ENNReal.ofReal (C*(∫ s,‖g s‖^4 ∂μ)) := by
+    have hpoint : (fun z => ENNReal.ofReal (‖G z‖^4)) =ᵐ[ν]
+        fun z => atTop.liminf (fun n => ENNReal.ofReal (‖U n z‖^4)) := by
+      filter_upwards [hconv] with z hz
+      exact (ENNReal.tendsto_ofReal (hz.norm.pow 4)).liminf_eq.symm
+    rw [lintegral_congr_ae hpoint]
+    calc
+      _ ≤ atTop.liminf (fun n => ∫⁻ z,ENNReal.ofReal (‖U n z‖^4) ∂ν) :=
+        lintegral_liminf_le' (fun n => (hU n).aestronglyMeasurable.norm.pow 4 |>.aemeasurable.ennreal_ofReal)
+      _ ≤ atTop.liminf (fun n => ENNReal.ofReal (C*(∫ s,‖f n s‖^4 ∂μ))) :=
+        Filter.liminf_le_liminf (Filter.Eventually.of_forall hnn)
+          (by isBoundedDefault) (by isBoundedDefault)
+      _ = _ := hbudget.liminf_eq
+  have hNN : (∫⁻ z,‖G z‖ₑ^4 ∂ν) < ⊤ := by
+    calc
+      _ = ∫⁻ z,ENNReal.ofReal (‖G z‖^4) ∂ν := by
+        simp_rw [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+      _ ≤ _ := hFatou
+      _ < ⊤ := ENNReal.ofReal_lt_top
+  have hm : MemLp G 4 ν := by
+    rw [memLp_iff,eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top
+      (by norm_num) (by norm_num) hG]
+    simpa only [ENNReal.toReal_ofNat,ENNReal.rpow_ofNat] using hNN
+  have he : ENNReal.ofReal (∫ z,‖G z‖^4 ∂ν) =
+      ∫⁻ z,ENNReal.ofReal (‖G z‖^4) ∂ν :=
+    ofReal_integral_eq_lintegral_ofReal (hm.integrable_norm_pow (by norm_num))
+      (Filter.Eventually.of_forall (fun z => pow_nonneg (norm_nonneg _) _))
+  refine ⟨hm,?_⟩
+  have hR : 0 ≤ C*(∫ s,‖g s‖^4 ∂μ) :=
+    mul_nonneg hC (integral_nonneg (fun s => pow_nonneg (norm_nonneg _) _))
+  exact (ENNReal.ofReal_le_ofReal_iff hR).mp (he.trans_le hFatou)
+
+#print axioms fourth_moment_bound_of_actual_dense_input_limit
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter
+
+/-- The actual compact-source integral extends its dense finite-spectrum L4
+estimate to the original input. The literal pairing is integrable at every
+output, continuous, and genuinely L4; the final energy retains the exact input
+fourth moment by the norm convergence and Fatou bridges. -/
+theorem compactSource_integral_fourth_moment_bound_of_dense_inputs
+    {S Z : Type*} [TopologicalSpace S] [MeasurableSpace S] [BorelSpace S]
+    [NormedAddCommGroup Z] [ProperSpace Z] [MeasurableSpace Z] [BorelSpace Z]
+    (μ : Measure S) [IsFiniteMeasure μ] (ν : Measure Z)
+    (K : Set S) (hK : IsCompact K) (hμK : ∀ᵐ s ∂μ,s ∈ K)
+    (k : S × Z → Complex) (hk : Continuous k)
+    (f : Nat → S → Complex) (g : S → Complex)
+    (hf : ∀ n,MemLp (f n) 4 μ) (hg : MemLp g 4 μ)
+    (ht : Tendsto (fun n => eLpNorm (f n-g) 4 μ) atTop (nhds 0))
+    (hOutput : ∀ n,MemLp (fun z => ∫ s,k (s,z)*f n s ∂μ) 4 ν)
+    (C : Real) (hC : 0 ≤ C)
+    (hb : ∀ n,(∫ z,‖∫ s,k (s,z)*f n s ∂μ‖^4 ∂ν) ≤
+      C*(∫ s,‖f n s‖^4 ∂μ)) :
+    (∀ z,Integrable (fun s => k (s,z)*g s) μ) ∧
+    Continuous (fun z => ∫ s,k (s,z)*g s ∂μ) ∧
+    MemLp (fun z => ∫ s,k (s,z)*g s ∂μ) 4 ν ∧
+      (∫ z,‖∫ s,k (s,z)*g s ∂μ‖^4 ∂ν) ≤ C*(∫ s,‖g s‖^4 ∂μ) := by
+  obtain ⟨hpair,_,hconv⟩ := compactSource_pairing_integrable_and_tendsto_of_eLpNorm_four
+    μ K hK hμK k hk g f hg hf ht
+  have hcontinuous := (continuous_source_integral_of_joint_continuous_compact
+    μ K hK hμK k hk g (hg.integrable (by norm_num))).2
+  obtain ⟨hm,he⟩ := fourth_moment_bound_of_actual_dense_input_limit μ ν f g hf hg ht
+    (fun n z => ∫ s,k (s,z)*f n s ∂μ) (fun z => ∫ s,k (s,z)*g s ∂μ)
+    hOutput hcontinuous.aestronglyMeasurable (Filter.Eventually.of_forall hconv) C hC hb
+  exact ⟨hpair,hcontinuous,hm,he⟩
+
+#print axioms compactSource_integral_fourth_moment_bound_of_dense_inputs
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+
+/-- The actual bounded signed radial frequency window gives an honest
+polynomial interval count, without a bound on angular lattice labels. -/
+theorem sourcePacket_signed_radial_label_card_le
+    (I : Finset Int) (L R : Real) (hL : 1 ≤ L) (hR : 0 ≤ R)
+    (hband : ∀ n ∈ I, |L*(n:Real)| ≤ R*L^2) :
+    (I.card : Real) ≤ (2*R+3)*L := by
+  classical
+  have hLp : 0 < L := by linarith
+  let c : Int := Int.ceil (R*L)
+  have hc : 0 ≤ c := Int.ceil_nonneg (mul_nonneg hR hLp.le)
+  have hceil : R*L ≤ (c:Real) := Int.le_ceil _
+  have hceilUpper : (c:Real) < R*L+1 := Int.ceil_lt_add_one _
+  have hs : I ⊆ Finset.Icc (-c) c := by
+    intro n hn
+    have hb := hband n hn
+    rw [abs_mul,abs_of_pos hLp] at hb
+    have hab : |(n:Real)| ≤ R*L := by nlinarith
+    have hr := abs_le.mp hab
+    apply Finset.mem_Icc.mpr
+    constructor
+    · exact_mod_cast (show -(c:Real) ≤ (n:Real) by linarith)
+    · exact_mod_cast (show (n:Real) ≤ (c:Real) by linarith)
+  have hcast : ((Finset.Icc (-c) c).card : Real) = 2*(c:Real)+1 := by
+    rw [Int.card_Icc]
+    have hn : 0 ≤ c+1-(-c) := by omega
+    have he := Int.toNat_of_nonneg hn
+    have he' : ((c+1-(-c)).toNat : Int) = 2*c+1 := by omega
+    exact_mod_cast he'
+  have hcard : (I.card:Real) ≤ ((Finset.Icc (-c) c).card:Real) := by
+    exact_mod_cast Finset.card_le_card hs
+  rw [hcast] at hcard
+  nlinarith
+#print axioms sourcePacket_signed_radial_label_card_le
+
+/-- A genuine fixed-basis lattice sum and the actual bounded signed
+radial interval control a finite weighted family. Only the radial
+frequency window contributes a polynomial count. -/
+theorem sourcePacket_finite_radial_lattice_weighted_sum
+    {ι E : Type*} [Fintype ι] [NormedAddCommGroup E] [NormedSpace Real E]
+    [FiniteDimensional Real E]
+    (basis : Module.Basis ι Real E) (N : Nat) (hN : Module.finrank Real E < N) :
+    ∃ C : Real, 0 ≤ C ∧
+      ∀ (I : Finset Int) {κ : Type*} (z : κ → Submodule.span Int (Set.range basis)),
+        Function.Injective z → ∀ J : Finset κ, ∀ L R : Real, 1 ≤ L → 0 ≤ R →
+      (∀ n ∈ I, |L*(n:Real)| ≤ R*L^2) →
+      ∀ (x : Int → E) (A H : Real), 0 ≤ H → ∀ F : Int → κ → Real,
+      (∀ n ∈ I, ∀ j ∈ J, (1+‖(z j:E)+x n‖)^N*(A*F n j) ≤ H) →
+        A*(∑ n ∈ I, ∑ j ∈ J,F n j) ≤ C*(2*R+3)*L*H := by
+  classical
+  obtain ⟨C,hC,hlattice⟩ := mss_basis_lattice_decay_finite_sum_uniform basis N hN
+  refine ⟨C,hC,?_⟩
+  intro I κ z hz J L R hL hR hband x A H hH F hpoint
+  have hone (n : Int) (hn : n ∈ I) :
+      A*(∑ j ∈ J,F n j) ≤ H*C := by
+    have hp (j : κ) (hj : j ∈ J) :
+        A*F n j ≤ H*(1+‖(z j:E)+x n‖)⁻¹^N := by
+      have hh : A*F n j ≤ H/(1+‖(z j:E)+x n‖)^N :=
+        (le_div_iff₀ (by positivity)).mpr (by simpa only [mul_comm] using hpoint n hn j hj)
+      simpa only [div_eq_mul_inv,inv_pow] using hh
+    calc
+      _ = ∑ j ∈ J,A*F n j := Finset.mul_sum J _ _
+      _ ≤ ∑ j ∈ J,H*(1+‖(z j:E)+x n‖)⁻¹^N := Finset.sum_le_sum hp
+      _ = H*(∑ j ∈ J,(1+‖(z j:E)+x n‖)⁻¹^N) := (Finset.mul_sum J _ _).symm
+      _ ≤ H*C := mul_le_mul_of_nonneg_left (hlattice (x n) z hz J) hH
+  calc
+    _ = ∑ n ∈ I,A*(∑ j ∈ J,F n j) := Finset.mul_sum I _ _
+    _ ≤ ∑ n ∈ I,H*C := Finset.sum_le_sum hone
+    _ = (I.card:Real)*(H*C) := by simp only [Finset.sum_const,nsmul_eq_mul]
+    _ ≤ ((2*R+3)*L)*(H*C) :=
+      mul_le_mul_of_nonneg_right (sourcePacket_signed_radial_label_card_le I L R hL hR hband)
+        (mul_nonneg hH hC)
+    _ = _ := by ring
+#print axioms sourcePacket_finite_radial_lattice_weighted_sum
+
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Filter Set
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The true compactly supported incidence phase has uniform fourth
+moments after every genuine compact normal-gap multiplier. The existing
+wave residual bound is proved from the actual phase and amplitude. -/
+theorem normalizedCircleSupportedPhase_uniform_normal_gap_fourth_moment
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1•(p.2.2•p.2.1-z.1)‖)
+    (N : Nat) (a : Real) (ha : 0 ≤ a) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ p ∈ K,∀ mu : Real,1 ≤ mu → ∀ rho : Real,|rho| ≤ a*mu →
+      ∀ F : SchwartzMap JointWaveSpaceTime Complex,
+        jointSchwartzRaw F =
+          (fun w => normalizedCircleParameterPhase p rho w*A.val (p,w)) →
+      ∀ m : SchwartzMap JointWaveSpaceTime Complex,
+      ∀ U E : Set JointWaveSpaceTime,MeasurableSet U → MeasurableSet E → volume U < ⊤ →
+      ∀ B : Real,0 ≤ B → (∀ xi,‖m xi‖ ≤ B) →
+      Function.support (m : JointWaveSpaceTime → Complex) ⊆ U ∩ E →
+      ∀ g : Real,0 < g →
+      (∀ xi ∈ E,mu/4 ≤ |xi.snd|+‖xi.fst‖) →
+      (∀ xi ∈ E,g ≤ |(|xi.snd|-‖xi.fst‖)|) →
+      (∫ x : JointWaveSpaceTime,
+        ‖(FourierTransform.fourierInv
+          (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+            (FourierTransform.fourier F)) : SchwartzMap JointWaveSpaceTime Complex) x‖^4) ≤
+        C*(volume U).toReal*B^4*(g^(4*N))⁻¹ := by
+  obtain ⟨D,hD,hres⟩ := normalizedCircleSchwartzWaveOperator_uniform_residual_moment
+    S hS K hK A homega hsep N a ha
+  let c : Real := (2*Real.pi)^2/4
+  have hc : 0 < c := by dsimp [c]; positivity
+  refine ⟨D^2*(c^(4*N))⁻¹,by positivity,?_⟩
+  intro p hp mu hmu rho hrho F hF m U E hU hE hUfin B hB hm hsupp g hg hsize hgap
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  have henergy := hres p hp mu hmu rho hrho F hF
+  have henergy2 : (∫ x : JointWaveSpaceTime,
+      ‖((normalizedCircleSchwartzWaveOperator^[N]) F) x‖^2)^2 ≤
+      (D*mu^(2*N))^2 :=
+    (sq_le_sq₀ (integral_nonneg (fun _ => sq_nonneg _)) (by positivity)).mpr henergy
+  have hscale :
+      ((((c*mu*g)^N)⁻¹)^4)*(D*mu^(2*N))^2 =
+        D^2*(c^(4*N))⁻¹*(g^(4*N))⁻¹ := by
+    simp only [mul_pow,mul_inv_rev,← inv_pow,← pow_mul]
+    have he1 : N*4 = 4*N := by omega
+    have he2 : (2*N)*2 = 4*N := by omega
+    rw [he1,he2]
+    have hinv : (mu⁻¹)^(4*N)*mu^(4*N) = 1 := by
+      rw [← mul_pow,inv_mul_cancel₀ hmup.ne',one_pow]
+    calc
+      _ = D^2*(c⁻¹)^(4*N)*(g⁻¹)^(4*N)*((mu⁻¹)^(4*N)*mu^(4*N)) := by ring
+      _ = _ := by rw [hinv]; ring
+  calc
+    _ ≤ (volume U).toReal*B^4*((((c*mu*g)^N)⁻¹)^4)*
+        (∫ x : JointWaveSpaceTime,
+          ‖((normalizedCircleSchwartzWaveOperator^[N]) F) x‖^2)^2 := by
+      have hcscale : (2*Real.pi)^2*(mu/4)*g = c*mu*g := by dsimp [c]; ring
+      have ht := integral_norm_four_fourierInv_normalGapMultiplier_le m F U E hU hE hUfin
+        B hB hm hsupp N (mu/4) g (by positivity) hg hsize hgap
+      simpa only [hcscale] using ht
+    _ ≤ (volume U).toReal*B^4*((((c*mu*g)^N)⁻¹)^4)*(D*mu^(2*N))^2 :=
+      mul_le_mul_of_nonneg_left henergy2 (by positivity)
+    _ = _ := by
+      rw [mul_assoc,mul_assoc,hscale]
+      ring
+
+#print axioms normalizedCircleSupportedPhase_uniform_normal_gap_fourth_moment
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped Topology
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal spatial band and temporal compact cutoff retain the
+complement of both actual signed cone-normal plateaus. -/
+def normalizedCircleCompactBothSheetNormalDefect
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (z : JointWaveSpaceTime) : Complex :=
+  a (mu⁻¹•z.fst)*t (mu⁻¹*z.snd)*
+    (1-beta (h⁻¹*(z.snd-‖z.fst‖)))*
+    (1-beta (h⁻¹*(z.snd+‖z.fst‖)))
+
+theorem normalizedCircleCompactBothSheetNormalDefect_contDiff
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖) :
+    ContDiff Real (⊤ : ℕ∞)
+      (normalizedCircleCompactBothSheetNormalDefect a t beta mu h) := by
+  rw [contDiff_iff_contDiffAt]
+  intro z
+  by_cases hz : z.fst = 0
+  · have hn : {w : JointWaveSpaceTime | ‖mu⁻¹•w.fst‖ < (1/4:Real)} ∈ nhds z := by
+      apply (isOpen_lt (by fun_prop) continuous_const).mem_nhds
+      change ‖mu⁻¹•z.fst‖ < (1/4:Real)
+      simp only [hz,smul_zero,norm_zero]
+      norm_num
+    have he : normalizedCircleCompactBothSheetNormalDefect a t beta mu h =ᶠ[nhds z]
+        (fun _ => 0) := by
+      filter_upwards [hn] with w hw
+      have haw : a (mu⁻¹•w.fst) = 0 := by
+        by_contra hne
+        have hh := ha _ hne
+        linarith
+      simp only [normalizedCircleCompactBothSheetNormalDefect,haw,zero_mul]
+    exact contDiffAt_const.congr_of_eventuallyEq he
+  · have hf : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => w.fst) z :=
+      (WithLp.fstL 2 Real (Euclidean 2) Real).contDiff.contDiffAt
+    have ht : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => w.snd) z :=
+      (WithLp.sndL 2 Real (Euclidean 2) Real).contDiff.contDiffAt
+    have hn := hf.norm Real hz
+    have h1 : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => a (mu⁻¹•w.fst)) z :=
+      a.smooth'.contDiffAt.comp z (ContDiffAt.const_smul mu⁻¹ hf)
+    have h2 : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => t (mu⁻¹*w.snd)) z :=
+      t.smooth'.contDiffAt.comp z (contDiffAt_const.mul ht)
+    have h3 : ContDiffAt Real (⊤ : ℕ∞)
+        (fun w : JointWaveSpaceTime => (1:Complex)-beta (h⁻¹*(w.snd-‖w.fst‖))) z :=
+      contDiffAt_const.sub (beta.smooth'.contDiffAt.comp z
+      (contDiffAt_const.mul (ht.sub hn)))
+    have h4 : ContDiffAt Real (⊤ : ℕ∞)
+        (fun w : JointWaveSpaceTime => (1:Complex)-beta (h⁻¹*(w.snd+‖w.fst‖))) z :=
+      contDiffAt_const.sub (beta.smooth'.contDiffAt.comp z
+      (contDiffAt_const.mul (ht.add hn)))
+    exact ((h1.mul h2).mul h3).mul h4
+
+theorem normalizedCircleCompactBothSheetNormalDefect_norm_le
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (z : JointWaveSpaceTime) :
+    ‖normalizedCircleCompactBothSheetNormalDefect a t beta mu h z‖ ≤
+      SchwartzMap.seminorm Complex 0 0 a*SchwartzMap.seminorm Complex 0 0 t*
+        (1+SchwartzMap.seminorm Complex 0 0 beta)^2 := by
+  have hb (s : Real) : ‖(1:Complex)-beta s‖ ≤ 1+SchwartzMap.seminorm Complex 0 0 beta := by
+    calc
+      _ ≤ ‖(1:Complex)‖+‖beta s‖ := norm_sub_le _ _
+      _ ≤ _ := by
+        rw [norm_one]
+        exact add_le_add_right (beta.norm_le_seminorm Complex s) 1
+  unfold normalizedCircleCompactBothSheetNormalDefect
+  simp only [norm_mul]
+  calc
+    _ ≤ SchwartzMap.seminorm Complex 0 0 a*SchwartzMap.seminorm Complex 0 0 t*
+        (1+SchwartzMap.seminorm Complex 0 0 beta)*
+        (1+SchwartzMap.seminorm Complex 0 0 beta) := by
+      gcongr
+      · exact a.norm_le_seminorm Complex _
+      · exact t.norm_le_seminorm Complex _
+      · exact hb _
+      · exact hb _
+    _ = _ := by ring
+
+theorem normalizedCircleCompactBothSheetNormalDefect_support_geometry
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (z : JointWaveSpaceTime)
+    (hz : normalizedCircleCompactBothSheetNormalDefect a t beta mu h z ≠ 0) :
+    mu/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ 4*mu ∧
+      h ≤ |(|z.snd|-‖z.fst‖)| := by
+  have haz : a (mu⁻¹•z.fst) ≠ 0 := by
+    intro haz
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,haz,zero_mul])
+  have htz : t (mu⁻¹*z.snd) ≠ 0 := by
+    intro htz
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,htz,mul_zero,zero_mul])
+  obtain ⟨hal,hau⟩ := ha _ haz
+  have htu := ht _ htz
+  simp only [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos hmu] at hal hau
+  have hlow : mu/4 ≤ ‖z.fst‖ := by
+    have hm := mul_le_mul_of_nonneg_left hal hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,div_eq_mul_inv] using hm
+  have hupp : ‖z.fst‖ ≤ 4*mu := by
+    have hm := mul_le_mul_of_nonneg_left hau hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,mul_comm] using hm
+  have htupp : |z.snd| ≤ 4*mu := by
+    rw [abs_mul,abs_inv,abs_of_pos hmu] at htu
+    have hm := mul_le_mul_of_nonneg_left htu hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,mul_comm] using hm
+  have hminus : h ≤ |z.snd-‖z.fst‖| := by
+    by_contra hm
+    have hinput : |h⁻¹*(z.snd-‖z.fst‖)| ≤ 1 := by
+      rw [abs_mul,abs_inv,abs_of_pos hh]
+      have hb : |z.snd-‖z.fst‖| ≤ h := (lt_of_not_ge hm).le
+      calc
+        _ ≤ h⁻¹*h := mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hh.le)
+        _ = _ := inv_mul_cancel₀ hh.ne'
+    have hb := hbeta _ hinput
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,hb,sub_self,mul_zero,zero_mul])
+  have hplus : h ≤ |z.snd+‖z.fst‖| := by
+    by_contra hm
+    have hinput : |h⁻¹*(z.snd+‖z.fst‖)| ≤ 1 := by
+      rw [abs_mul,abs_inv,abs_of_pos hh]
+      have hb : |z.snd+‖z.fst‖| ≤ h := (lt_of_not_ge hm).le
+      calc
+        _ ≤ h⁻¹*h := mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hh.le)
+        _ = _ := inv_mul_cancel₀ hh.ne'
+    have hb := hbeta _ hinput
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,hb,sub_self,mul_zero])
+  refine ⟨hlow,hupp,htupp,?_⟩
+  by_cases hT : 0 ≤ z.snd
+  · simpa only [abs_of_nonneg hT] using hminus
+  · have hTn : z.snd < 0 := lt_of_not_ge hT
+    have he : |(|z.snd|-‖z.fst‖)| = |z.snd+‖z.fst‖| := by
+      rw [abs_of_neg hTn]
+      rw [show -z.snd-‖z.fst‖ = -(z.snd+‖z.fst‖) by ring,abs_neg]
+    rw [he]
+    exact hplus
+
+#print axioms normalizedCircleCompactBothSheetNormalDefect_contDiff
+#print axioms normalizedCircleCompactBothSheetNormalDefect_support_geometry
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1) :
+    HasCompactSupport (normalizedCircleCompactBothSheetNormalDefect a t beta mu h) := by
+  apply (isCompact_closedBall (0:JointWaveSpaceTime) (8*mu)).of_isClosed_subset
+    (isClosed_tsupport _)
+  apply closure_minimal ?_ isClosed_closedBall
+  intro z hz
+  obtain ⟨_,hX,hT,_⟩ := normalizedCircleCompactBothSheetNormalDefect_support_geometry
+    a t beta mu h hmu hh ha ht hbeta z hz
+  have hXs : ‖z.fst‖^2 ≤ (4*mu)^2 := (sq_le_sq₀ (norm_nonneg _) (by positivity)).mpr hX
+  have hTs : |z.snd|^2 ≤ (4*mu)^2 := (sq_le_sq₀ (abs_nonneg _) (by positivity)).mpr hT
+  have hn := WithLp.prod_norm_sq_eq_of_L2 z
+  rw [Real.norm_eq_abs] at hn
+  have hb : ‖z‖ ≤ 8*mu := by nlinarith [norm_nonneg z]
+  simpa only [mem_closedBall,dist_zero_right] using hb
+
+/-- A genuine Schwartz multiplier of the literal two-sheet normal
+defect. Its compact temporal cutoff is an explicit factor of the symbol. -/
+def normalizedCircleCompactBothSheetNormalDefectSchwartz
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  (normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport
+    a t beta mu h hmu hh ha ht hbeta).toSchwartzMap
+    (normalizedCircleCompactBothSheetNormalDefect_contDiff a t beta mu h
+      (fun xi hxi => (ha xi hxi).1))
+
+theorem normalizedCircleCompactBothSheetNormalDefectSchwartz_apply
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1) (z : JointWaveSpaceTime) :
+    normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h hmu hh ha ht hbeta z =
+      normalizedCircleCompactBothSheetNormalDefect a t beta mu h z := rfl
+
+theorem normalizedCircle_joint_frequency_ball_volume
+    (mu : Real) (hmu : 0 < mu) :
+    (volume (closedBall (0:JointWaveSpaceTime) (8*mu))).toReal =
+      (512*(volume (ball (0:JointWaveSpaceTime) 1)).toReal)*mu^3 := by
+  have hd : Module.finrank Real JointWaveSpaceTime = 3 := by
+    rw [(WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).toLinearEquiv.finrank_eq]
+    simp [Module.finrank_prod,Euclidean]
+  rw [Measure.addHaar_closedBall volume (0:JointWaveSpaceTime) (by positivity),
+    hd,ENNReal.toReal_mul,ENNReal.toReal_ofReal (by positivity)]
+  ring
+
+#print axioms normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport
+#print axioms normalizedCircle_joint_frequency_ball_volume
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Literal compactly output-cutoff actual circular incidence phase,
+including its actual radial Jacobian on the full source/output window. -/
+def normalizedCircleRawJacobianPhaseSchwartz
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : normalizedCircleRawJacobianParameterRegion) (rho : Real) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  normalizedCircleSupportedPhaseFamily (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut) normalizedCircleRawJacobianParameterRegion
+    (by
+      intro q hq z hz hzero
+      have hn := normalizedCircleRawJacobianParameterRegion_separation chiOut hchi q hq z hz
+      rw [hzero,norm_zero] at hn
+      norm_num at hn) (p,rho)
+
+theorem normalizedCircleRawJacobianPhaseSchwartz_apply
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : normalizedCircleRawJacobianParameterRegion) (rho : Real) (z : JointWaveSpaceTime) :
+    normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p rho z =
+      normalizedCircleParameterPhase p.val rho (z.fst,z.snd)*chiOut (z.fst,z.snd)*
+        (((1+p.val.1*p.val.2.2)/(1+p.val.1*z.snd):Real):Complex) := by
+  change normalizedCircleParameterPhase p.val rho (z.fst,z.snd)*
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut).val (p.val,(z.fst,z.snd)) = _
+  obtain ⟨heps,_,hu⟩ := normalizedCircleRawJacobianParameterRegion_bounds p.val p.property
+  rw [normalizedCircleRawJacobianSupportedAmplitude_eq_actual chiOut hchi p.val heps hu]
+  ring
+
+theorem normalizedCircleRawJacobianPhaseSchwartz_measurable
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2) :
+    Measurable (fun q : (normalizedCircleRawJacobianParameterRegion × Real) × JointWaveSpaceTime =>
+      normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi q.1.1 q.1.2 q.2) :=
+  normalizedCircleSupportedPhaseFamily_measurable _ _ _ _ _
+
+/-- Uniform fourth normal-defect moment of the literal actual Jacobian
+phase. Compact temporal support remains an actual cutoff of the multiplier,
+and no residual or localization estimate is assumed. -/
+theorem normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ (mu : Real) (hmu : 1 ≤ mu),∀ rho : Real,|rho| ≤ R*mu → ∀ (h : Real) (hh : 0 < h),
+      (∫ x : JointWaveSpaceTime,
+        ‖(FourierTransform.fourierInv
+          (SchwartzMap.smulLeftCLM Complex
+            (normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h
+              (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta :
+              JointWaveSpaceTime → Complex)
+            (FourierTransform.fourier
+              (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p rho))) :
+          SchwartzMap JointWaveSpaceTime Complex) x‖^4) ≤
+        C*mu^3*(h^(4*N))⁻¹ := by
+  obtain ⟨D,hD,hfour⟩ := normalizedCircleSupportedPhase_uniform_normal_gap_fourth_moment
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    normalizedCircleRawJacobianParameterRegion normalizedCircleRawJacobianParameterRegion_isCompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut)
+    (fun p hp => (normalizedCircleRawJacobianParameterRegion_bounds p hp).2.1)
+    (normalizedCircleRawJacobianParameterRegion_separation chiOut hchi) N R hR
+  let B : Real := SchwartzMap.seminorm Complex 0 0 a*SchwartzMap.seminorm Complex 0 0 t*
+    (1+SchwartzMap.seminorm Complex 0 0 beta)^2
+  have hB : 0 ≤ B := by dsimp [B]; positivity
+  refine ⟨D*(512*(volume (ball (0:JointWaveSpaceTime) 1)).toReal)*B^4,by positivity,?_⟩
+  intro p mu hmu rho hrho h hh
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  let m := normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h hmup hh ha ht hbeta
+  let F := normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p rho
+  let U := closedBall (0:JointWaveSpaceTime) (8*mu)
+  let E : Set JointWaveSpaceTime := {z |
+    mu/4 ≤ |z.snd|+‖z.fst‖ ∧ h ≤ |(|z.snd|-‖z.fst‖)|}
+  have hE : MeasurableSet E := by
+    have h1 : Continuous (fun z : JointWaveSpaceTime => |z.snd|+‖z.fst‖) := by fun_prop
+    have h2 : Continuous (fun z : JointWaveSpaceTime => |(|z.snd|-‖z.fst‖)|) := by fun_prop
+    exact ((isClosed_le continuous_const h1).inter
+      (isClosed_le continuous_const h2)).measurableSet
+  have hme (z : JointWaveSpaceTime) (hz : m z ≠ 0) :
+      mu/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ 4*mu ∧ h ≤ |(|z.snd|-‖z.fst‖)| :=
+    normalizedCircleCompactBothSheetNormalDefect_support_geometry a t beta mu h hmup hh ha ht hbeta z hz
+  have hsupp : Function.support (m : JointWaveSpaceTime → Complex) ⊆ U ∩ E := by
+    intro z hz
+    have hb := hme z hz
+    refine ⟨?_,⟨by linarith [abs_nonneg z.snd],hb.2.2.2⟩⟩
+    have hx2 : ‖z.fst‖^2 ≤ (4*mu)^2 := (sq_le_sq₀ (norm_nonneg _) (by positivity)).mpr hb.2.1
+    have ht2 : |z.snd|^2 ≤ (4*mu)^2 := (sq_le_sq₀ (abs_nonneg _) (by positivity)).mpr hb.2.2.1
+    have hn := WithLp.prod_norm_sq_eq_of_L2 z
+    rw [Real.norm_eq_abs] at hn
+    change z ∈ closedBall 0 (8*mu)
+    rw [mem_closedBall,dist_zero_right]
+    nlinarith [norm_nonneg z]
+  have hF : jointSchwartzRaw F =
+      (fun w => normalizedCircleParameterPhase p.val rho w*
+        (normalizedCircleRawJacobianSupportedAmplitude chiOut).val (p.val,w)) := by
+    funext w
+    rfl
+  have htail := hfour p.val p.property mu hmu rho hrho F hF m U E isClosed_closedBall.measurableSet
+    hE (isCompact_closedBall (0:JointWaveSpaceTime) (8*mu)).measure_lt_top
+    B hB (normalizedCircleCompactBothSheetNormalDefect_norm_le a t beta mu h) hsupp h hh
+    (fun z hz => hz.1) (fun z hz => hz.2)
+  have hvol := normalizedCircle_joint_frequency_ball_volume mu hmup
+  calc
+    _ ≤ D*(volume U).toReal*B^4*(h^(4*N))⁻¹ := htail
+    _ = _ := by dsimp only [U]; rw [hvol]; ring
+
+#print axioms normalizedCircleRawJacobianPhaseSchwartz_apply
+#print axioms normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+
+/-- The fourth-power finite-source Jensen bound for a literal Bochner
+integral. This extended inequality does not silently assume integrability;
+the genuine source integrability is supplied by the kernel consumer below. -/
+theorem integral_source_enorm_pow_four_le
+    {S : Type*} [MeasurableSpace S] (μ : Measure S)
+    (f : S → Complex) (hf : Measurable f) :
+    ‖∫ s, f s ∂μ‖ₑ^4 ≤ (μ univ)^3 * ∫⁻ s, ‖f s‖ₑ^4 ∂μ := by
+  have hpq : Real.HolderConjugate 4 (4/3) := by
+    rw [Real.holderConjugate_iff]
+    norm_num
+  have hh := ENNReal.lintegral_mul_le_Lp_mul_Lq μ hpq
+    hf.enorm.aemeasurable (aemeasurable_const : AEMeasurable (fun _ : S => (1:ENNReal)) μ)
+  simp only [Pi.mul_apply,mul_one,ENNReal.one_rpow,lintegral_const,mul_one] at hh
+  have hi := (enorm_integral_le_lintegral_enorm f).trans hh
+  have hi4 := pow_le_pow_left' hi 4
+  rw [mul_pow] at hi4
+  simp only [← ENNReal.rpow_natCast,← ENNReal.rpow_mul] at hi4
+  norm_num at hi4
+  simpa only [ENNReal.rpow_natCast,mul_comm] using hi4
+
+/-- A jointly measurable true kernel with uniform fourth output moments
+transfers its bound to the actual source-integral operator. All constants
+are explicit: the finite-source mass enters to the third power. -/
+theorem source_kernel_fourth_moment_transfer_lintegral
+    {S Z : Type*} [MeasurableSpace S] [MeasurableSpace Z]
+    (μ : Measure S) (ν : Measure Z) [SFinite μ] [SFinite ν]
+    (K : S → Z → Complex) (hK : Measurable (Function.uncurry K))
+    (h : S → Complex) (hh : Measurable h) (L : ENNReal)
+    (hKm : ∀ᵐ s ∂μ, (∫⁻ z, ‖K s z‖ₑ^4 ∂ν) ≤ L) :
+    (∫⁻ z, ‖∫ s, K s z*h s ∂μ‖ₑ^4 ∂ν) ≤
+      (μ univ)^3 * L * ∫⁻ s, ‖h s‖ₑ^4 ∂μ := by
+  have hprod : Measurable (fun q : S × Z => K q.1 q.2*h q.1) :=
+    hK.mul (hh.comp measurable_fst)
+  have hpow : Measurable (fun q : S × Z => ‖K q.1 q.2*h q.1‖ₑ^4) := hprod.enorm.pow_const 4
+  calc
+    _ ≤ ∫⁻ z, (μ univ)^3*(∫⁻ s, ‖K s z*h s‖ₑ^4 ∂μ) ∂ν := by
+      apply lintegral_mono
+      intro z
+      exact integral_source_enorm_pow_four_le μ _ (hprod.comp
+        (measurable_id.prodMk measurable_const))
+    _ = (μ univ)^3*(∫⁻ z, ∫⁻ s, ‖K s z*h s‖ₑ^4 ∂μ ∂ν) := by
+      exact lintegral_const_mul _ hpow.lintegral_prod_left
+    _ = (μ univ)^3*(∫⁻ s, ∫⁻ z, ‖K s z*h s‖ₑ^4 ∂ν ∂μ) := by
+      rw [← lintegral_lintegral_swap hpow.aemeasurable]
+    _ = (μ univ)^3*(∫⁻ s, (∫⁻ z, ‖K s z‖ₑ^4 ∂ν)*‖h s‖ₑ^4 ∂μ) := by
+      congr 1
+      apply lintegral_congr
+      intro s
+      simp only [enorm_mul,mul_pow]
+      exact lintegral_mul_const _ ((hK.comp
+        (measurable_const.prodMk measurable_id)).enorm.pow_const 4)
+    _ ≤ (μ univ)^3*(∫⁻ s, L*‖h s‖ₑ^4 ∂μ) := by
+      apply mul_le_mul_of_nonneg_left
+      · apply lintegral_mono_ae
+        filter_upwards [hKm] with s hs
+        exact mul_le_mul_of_nonneg_right hs (by positivity)
+      · positivity
+    _ = _ := by rw [lintegral_const_mul _ (hh.enorm.pow_const 4)]; ring
+#print axioms integral_source_enorm_pow_four_le
+#print axioms source_kernel_fourth_moment_transfer_lintegral
+/-- The uniform true kernel moments bound the joint weighted fourth
+energy; this also proves the source/output Fubini integrability required
+for genuine source pairings. -/
+theorem source_kernel_product_fourth_lintegral_le
+    {S Z : Type*} [MeasurableSpace S] [MeasurableSpace Z]
+    (μ : Measure S) (ν : Measure Z) [SFinite μ] [SFinite ν]
+    (K : S → Z → Complex) (hK : Measurable (Function.uncurry K))
+    (h : S → Complex) (hh : Measurable h) (L : ENNReal)
+    (hKm : ∀ᵐ s ∂μ, (∫⁻ z, ‖K s z‖ₑ^4 ∂ν) ≤ L) :
+    (∫⁻ q : S × Z, ‖K q.1 q.2*h q.1‖ₑ^4 ∂(μ.prod ν)) ≤
+      L*(∫⁻ s, ‖h s‖ₑ^4 ∂μ) := by
+  have hm : Measurable (fun q : S × Z => ‖K q.1 q.2*h q.1‖ₑ^4) :=
+    (hK.mul (hh.comp measurable_fst)).enorm.pow_const 4
+  rw [lintegral_prod _ hm.aemeasurable]
+  calc
+    _ = ∫⁻ s, (∫⁻ z, ‖K s z‖ₑ^4 ∂ν)*‖h s‖ₑ^4 ∂μ := by
+      apply lintegral_congr
+      intro s
+      simp only [enorm_mul,mul_pow]
+      exact lintegral_mul_const _ ((hK.comp
+        (measurable_const.prodMk measurable_id)).enorm.pow_const 4)
+    _ ≤ ∫⁻ s, L*‖h s‖ₑ^4 ∂μ := by
+      apply lintegral_mono_ae
+      filter_upwards [hKm] with s hs
+      exact mul_le_mul_of_nonneg_right hs (by positivity)
+    _ = _ := lintegral_const_mul _ (hh.enorm.pow_const 4)
+
+/-- True fourth kernel moments on a finite source measure give genuine
+a.e. source integrals and an L4 output operator. The real fourth moment
+has exactly sourceMass^3*L times the input fourth moment. -/
+theorem source_kernel_fourth_moment_transfer
+    {S Z : Type*} [MeasurableSpace S] [MeasurableSpace Z]
+    (μ : Measure S) (ν : Measure Z) [IsFiniteMeasure μ] [SFinite ν]
+    (K : S → Z → Complex) (hK : Measurable (Function.uncurry K))
+    (h : S → Complex) (hh : Measurable h) (hh4 : MemLp h 4 μ)
+    (L : Real) (hL : 0 ≤ L)
+    (hKm : ∀ᵐ s ∂μ, (∫⁻ z, ‖K s z‖ₑ^4 ∂ν) ≤ ENNReal.ofReal L) :
+    (∀ᵐ z ∂ν, Integrable (fun s => K s z*h s) μ) ∧
+    MemLp (fun z => ∫ s, K s z*h s ∂μ) 4 ν ∧
+    (∫ z, ‖∫ s, K s z*h s ∂μ‖^4 ∂ν) ≤
+      (μ univ).toReal^3*L*(∫ s, ‖h s‖^4 ∂μ) := by
+  let F : S × Z → Complex := fun q => K q.1 q.2*h q.1
+  let O : Z → Complex := fun z => ∫ s, K s z*h s ∂μ
+  have hF : Measurable F := hK.mul (hh.comp measurable_fst)
+  have hFs : StronglyMeasurable (Function.uncurry (fun z s => K s z*h s)) :=
+    (hF.comp measurable_swap).stronglyMeasurable
+  have hO : StronglyMeasurable O := hFs.integral_prod_right
+  have hp4 (a : ENNReal) : a^(4:Real) = a^(4:Nat) := ENNReal.rpow_natCast a 4
+  have hr4 (a : Real) : a^(4:Real) = a^(4:Nat) := Real.rpow_natCast a 4
+  have hhNN : (∫⁻ s, ‖h s‖ₑ^4 ∂μ) < ⊤ := by
+    simpa only [ENNReal.toReal_ofNat,hp4] using
+      lintegral_rpow_enorm_lt_top_of_eLpNorm_lt_top
+        (p := (4:ENNReal)) (by norm_num) (by norm_num) hh4.eLpNorm_lt_top
+  have hFNN : (∫⁻ q, ‖F q‖ₑ^4 ∂(μ.prod ν)) < ⊤ :=
+    (source_kernel_product_fourth_lintegral_le μ ν K hK h hh (ENNReal.ofReal L) hKm).trans_lt
+      (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hhNN)
+  have hF4 : MemLp F 4 (μ.prod ν) := by
+    rw [memLp_iff,eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top
+      (by norm_num) (by norm_num) hF.aestronglyMeasurable]
+    simpa only [ENNReal.toReal_ofNat,hp4] using hFNN
+  have hFint : Integrable (fun q => ‖F q‖^4) (μ.prod ν) :=
+    hF4.integrable_norm_pow (by norm_num : (4:Nat) ≠ 0)
+  have hsource : ∀ᵐ z ∂ν, Integrable (fun s => K s z*h s) μ := by
+    filter_upwards [hFint.prod_left_ae] with z hz
+    have hfz : AEStronglyMeasurable (fun s => F (s,z)) μ :=
+      (hF.comp (measurable_id.prodMk measurable_const)).aestronglyMeasurable
+    have hmem : MemLp (fun s => F (s,z)) 4 μ := by
+      apply (integrable_norm_rpow_iff hfz (by norm_num : (4:ENNReal) ≠ 0)
+        (by norm_num : (4:ENNReal) ≠ ⊤)).mp
+      simpa only [ENNReal.toReal_ofNat,hr4] using hz
+    exact hmem.integrable (by norm_num : (1:ENNReal) ≤ 4)
+  have hNN := source_kernel_fourth_moment_transfer_lintegral μ ν K hK h hh
+    (ENNReal.ofReal L) hKm
+  have hONN : (∫⁻ z, ‖O z‖ₑ^4 ∂ν) < ⊤ := hNN.trans_lt
+    (ENNReal.mul_lt_top
+      (ENNReal.mul_lt_top (ENNReal.pow_lt_top (measure_lt_top μ univ))
+        ENNReal.ofReal_lt_top) hhNN)
+  have hO4 : MemLp O 4 ν := by
+    rw [memLp_iff,eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top
+      (by norm_num) (by norm_num) hO.aestronglyMeasurable]
+    simpa only [ENNReal.toReal_ofNat,hp4] using hONN
+  refine ⟨hsource,hO4,?_⟩
+  have hOI := hO4.integrable_norm_pow (by norm_num : (4:Nat) ≠ 0)
+  have hhI := hh4.integrable_norm_pow (by norm_num : (4:Nat) ≠ 0)
+  have hOeq : ENNReal.ofReal (∫ z, ‖O z‖^4 ∂ν) =
+      ∫⁻ z, ‖O z‖ₑ^4 ∂ν := by
+    rw [ofReal_integral_eq_lintegral_ofReal hOI
+      (Filter.Eventually.of_forall (fun z => pow_nonneg (norm_nonneg _) _))]
+    simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+  have hheq : ENNReal.ofReal (∫ s, ‖h s‖^4 ∂μ) =
+      ∫⁻ s, ‖h s‖ₑ^4 ∂μ := by
+    rw [ofReal_integral_eq_lintegral_ofReal hhI
+      (Filter.Eventually.of_forall (fun s => pow_nonneg (norm_nonneg _) _))]
+    simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+  have hr : 0 ≤ (μ univ).toReal^3*L*(∫ s, ‖h s‖^4 ∂μ) :=
+    mul_nonneg (mul_nonneg (pow_nonneg ENNReal.toReal_nonneg _) hL)
+      (integral_nonneg (fun s => pow_nonneg (norm_nonneg _) _))
+  apply (ENNReal.ofReal_le_ofReal_iff hr).mp
+  rw [hOeq,ENNReal.ofReal_mul
+    (mul_nonneg (pow_nonneg ENNReal.toReal_nonneg _) hL),
+    ENNReal.ofReal_mul (pow_nonneg ENNReal.toReal_nonneg _),
+    ENNReal.ofReal_pow ENNReal.toReal_nonneg,
+    ENNReal.ofReal_toReal (measure_ne_top μ univ),hheq]
+  exact hNN
+#print axioms source_kernel_fourth_moment_transfer
+/-- Real kernel-moment consumer. Kernel fourth-power integrability is
+explicit, so the numerical real-moment hypothesis is a genuine moment
+bound rather than a bound on a possibly undefined Bochner integral. -/
+theorem source_kernel_fourth_moment_transfer_of_integral
+    {S Z : Type*} [MeasurableSpace S] [MeasurableSpace Z]
+    (μ : Measure S) (ν : Measure Z) [IsFiniteMeasure μ] [SFinite ν]
+    (K : S → Z → Complex) (hK : Measurable (Function.uncurry K))
+    (h : S → Complex) (hh : Measurable h) (hh4 : MemLp h 4 μ)
+    (L : Real) (hL : 0 ≤ L)
+    (hKi : ∀ᵐ s ∂μ, Integrable (fun z => ‖K s z‖^4) ν)
+    (hKm : ∀ᵐ s ∂μ, (∫ z, ‖K s z‖^4 ∂ν) ≤ L) :
+    (∀ᵐ z ∂ν, Integrable (fun s => K s z*h s) μ) ∧
+    MemLp (fun z => ∫ s, K s z*h s ∂μ) 4 ν ∧
+    (∫ z, ‖∫ s, K s z*h s ∂μ‖^4 ∂ν) ≤
+      (μ univ).toReal^3*L*(∫ s, ‖h s‖^4 ∂μ) := by
+  apply source_kernel_fourth_moment_transfer μ ν K hK h hh hh4 L hL
+  filter_upwards [hKi,hKm] with s hsi hsm
+  have heq : ENNReal.ofReal (∫ z, ‖K s z‖^4 ∂ν) =
+      ∫⁻ z, ‖K s z‖ₑ^4 ∂ν := by
+    rw [ofReal_integral_eq_lintegral_ofReal hsi
+      (Filter.Eventually.of_forall (fun z => pow_nonneg (norm_nonneg _) _))]
+    simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+  rw [← heq]
+  exact ENNReal.ofReal_le_ofReal hsm
+#print axioms source_kernel_fourth_moment_transfer_of_integral
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal finite-source normal-defect operator. The original
+conormal dilation prefactor mu is retained inside the source integral. -/
+def normalizedCircleBothSheetNormalDefectSourceOperator
+    {S : Type*} [MeasurableSpace S] (nu : Measure S)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (v : S → Real)
+    (f : S → Complex) (x : JointWaveSpaceTime) : Complex :=
+  ∫ s,(FourierTransform.fourierInv
+    (SchwartzMap.smulLeftCLM Complex
+      (normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h hmu hh ha ht hbeta :
+        JointWaveSpaceTime → Complex)
+      (FourierTransform.fourier
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s)
+          (-2*Real.pi*mu*v s)))) : SchwartzMap JointWaveSpaceTime Complex) x*
+    ((mu:Complex)*f s) ∂nu
+
+/-- The actual finite-source normal-defect operator has genuine a.e.
+source pairings and an L4 output. Its fourth moment retains mu^4 from the
+original conormal prefactor and mu^3 from the true output-frequency volume. -/
+theorem normalizedCircleBothSheetNormalDefectSourceOperator_uniform_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ {S : Type*} [MeasurableSpace S] (nu : Measure S) [IsFiniteMeasure nu],
+      ∀ (mu : Real) (hmu : 1 ≤ mu) (h : Real) (hh : 0 < h),
+      ∀ p : S → normalizedCircleRawJacobianParameterRegion,Measurable p →
+      ∀ v : S → Real,Measurable v → (∀ s,|v s| ≤ R) →
+      ∀ f : S → Complex,Measurable f → MemLp f 4 nu →
+      let O := normalizedCircleBothSheetNormalDefectSourceOperator nu chiOut hcompact hchi
+        a t beta mu h (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta p v f
+      (∀ᵐ x : JointWaveSpaceTime ∂volume,Integrable (fun s =>
+        (FourierTransform.fourierInv
+          (SchwartzMap.smulLeftCLM Complex
+            (normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h
+              (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta : JointWaveSpaceTime → Complex)
+            (FourierTransform.fourier
+              (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s)
+                (-2*Real.pi*mu*v s)))) : SchwartzMap JointWaveSpaceTime Complex) x*
+          ((mu:Complex)*f s)) nu) ∧
+      MemLp O 4 volume ∧
+      (∫ x : JointWaveSpaceTime,‖O x‖^4) ≤
+        C*(nu univ).toReal^3*mu^7*(h^(4*N))⁻¹*(∫ s,‖f s‖^4 ∂nu) := by
+  obtain ⟨C,hC,hkernel⟩ := normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth
+    chiOut hcompact hchi a t beta ha ht hbeta N (2*Real.pi*R) (by positivity)
+  refine ⟨C,hC,?_⟩
+  intro S _ nu _ mu hmu h hh p hp v hv hvr f hf hf4
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  let m := normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h hmup hh ha ht hbeta
+  let F : S → SchwartzMap JointWaveSpaceTime Complex := fun s =>
+    normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (-2*Real.pi*mu*v s)
+  let K : S → JointWaveSpaceTime → Complex := fun s x =>
+    (FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+        (FourierTransform.fourier (F s))) : SchwartzMap JointWaveSpaceTime Complex) x
+  have hpar : Measurable (fun s : S => (p s,-2*Real.pi*mu*v s)) :=
+    hp.prodMk (hv.const_mul _)
+  have hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2) := by
+    have hmap : Measurable (fun q : S × JointWaveSpaceTime =>
+        ((p q.1,-2*Real.pi*mu*v q.1),q.2)) :=
+      (hpar.comp measurable_fst).prodMk measurable_snd
+    simpa only [F,Function.comp_def] using
+      (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp hmap
+  have hK : Measurable (Function.uncurry K) := by
+    change Measurable (fun q : S × JointWaveSpaceTime => K q.1 q.2)
+    simpa only [K] using
+      measurable_spectralProjection_schwartz_family (m : JointWaveSpaceTime → Complex)
+        m.hasTemperateGrowth F hF
+  have hbound (s : S) : |(-2*Real.pi*mu*v s)| ≤ (2*Real.pi*R)*mu := by
+    rw [abs_mul,abs_mul,abs_mul,abs_of_neg (by norm_num : (-2:Real) < 0),
+      abs_of_pos Real.pi_pos,abs_of_pos hmup]
+    have hvb := mul_le_mul_of_nonneg_left (hvr s) (by positivity : 0 ≤ 2*Real.pi*mu)
+    nlinarith
+  have hKi : ∀ᵐ s ∂nu,Integrable (fun x : JointWaveSpaceTime => ‖K s x‖^4) volume := by
+    apply Filter.Eventually.of_forall
+    intro s
+    exact ((FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+        (FourierTransform.fourier (F s))) : SchwartzMap JointWaveSpaceTime Complex).memLp 4 volume).integrable_norm_pow (by norm_num)
+  have hKm : ∀ᵐ s ∂nu,(∫ x : JointWaveSpaceTime,‖K s x‖^4) ≤ C*mu^3*(h^(4*N))⁻¹ :=
+    Filter.Eventually.of_forall (fun s => hkernel (p s) mu hmu _ (hbound s) h hh)
+  obtain ⟨hpair,hmem,hfour⟩ := source_kernel_fourth_moment_transfer_of_integral nu volume K hK
+    (fun s => (mu:Complex)*f s) (hf.const_mul _) (hf4.const_mul _)
+    (C*mu^3*(h^(4*N))⁻¹) (by positivity) hKi hKm
+  have hinput : (∫ s,‖(mu:Complex)*f s‖^4 ∂nu) =
+      mu^4*(∫ s,‖f s‖^4 ∂nu) := by
+    simp only [norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_pos hmup,mul_pow]
+    exact integral_const_mul _ _
+  refine ⟨hpair,hmem,?_⟩
+  calc
+    _ ≤ (nu univ).toReal^3*(C*mu^3*(h^(4*N))⁻¹)*(∫ s,‖(mu:Complex)*f s‖^4 ∂nu) := hfour
+    _ = _ := by rw [hinput]; ring
+
+#print axioms normalizedCircleBothSheetNormalDefectSourceOperator_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped Topology
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal signed principal normal band has no temporal cutoff. -/
+def normalizedCircleSignedNormalBand
+    (a : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (mu h sigma : Real) (z : JointWaveSpaceTime) : Complex :=
+  a (mu⁻¹•z.fst)*beta (h⁻¹*(z.snd-sigma*‖z.fst‖))
+
+theorem normalizedCircleSignedNormalBand_contDiff
+    (a : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (mu h sigma : Real) (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖) :
+    ContDiff Real (⊤ : ℕ∞) (normalizedCircleSignedNormalBand a beta mu h sigma) := by
+  rw [contDiff_iff_contDiffAt]
+  intro z
+  by_cases hz : z.fst = 0
+  · have hn : {w : JointWaveSpaceTime | ‖mu⁻¹•w.fst‖ < (1/4:Real)} ∈ nhds z := by
+      apply (isOpen_lt (by fun_prop) continuous_const).mem_nhds
+      change ‖mu⁻¹•z.fst‖ < (1/4:Real)
+      simp only [hz,smul_zero,norm_zero]
+      norm_num
+    have he : normalizedCircleSignedNormalBand a beta mu h sigma =ᶠ[nhds z] (fun _ => 0) := by
+      filter_upwards [hn] with w hw
+      have haw : a (mu⁻¹•w.fst) = 0 := by
+        by_contra hne
+        have hh := ha _ hne
+        linarith
+      simp only [normalizedCircleSignedNormalBand,haw,zero_mul]
+    exact contDiffAt_const.congr_of_eventuallyEq he
+  · have hf : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => w.fst) z :=
+      (WithLp.fstL 2 Real (Euclidean 2) Real).contDiff.contDiffAt
+    have ht : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => w.snd) z :=
+      (WithLp.sndL 2 Real (Euclidean 2) Real).contDiff.contDiffAt
+    have hn := hf.norm Real hz
+    have h1 : ContDiffAt Real (⊤ : ℕ∞) (fun w : JointWaveSpaceTime => a (mu⁻¹•w.fst)) z :=
+      a.smooth'.contDiffAt.comp z (ContDiffAt.const_smul mu⁻¹ hf)
+    have h2 : ContDiffAt Real (⊤ : ℕ∞)
+        (fun w : JointWaveSpaceTime => beta (h⁻¹*(w.snd-sigma*‖w.fst‖))) z :=
+      beta.smooth'.contDiffAt.comp z (contDiffAt_const.mul (ht.sub (contDiffAt_const.mul hn)))
+    exact h1.mul h2
+
+theorem normalizedCircleSignedNormalBand_support_geometry
+    (a : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (mu h sigma : Real) (hmu : 0 < mu) (hh : 0 < h) (hsigma : |sigma| = 1)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2)
+    (z : JointWaveSpaceTime) (hz : normalizedCircleSignedNormalBand a beta mu h sigma z ≠ 0) :
+    mu/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*mu ∧ |z.snd-sigma*‖z.fst‖| ≤ 2*h ∧
+      |z.snd| ≤ 4*mu+2*h ∧ ‖z‖ ≤ 8*mu+2*h := by
+  obtain ⟨haz,hbz⟩ := mul_ne_zero_iff.mp hz
+  obtain ⟨hal,hau⟩ := ha _ haz
+  have hbn := hbeta _ hbz
+  simp only [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos hmu] at hal hau
+  have hlow : mu/4 ≤ ‖z.fst‖ := by
+    have hm := mul_le_mul_of_nonneg_left hal hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,div_eq_mul_inv] using hm
+  have hupp : ‖z.fst‖ ≤ 4*mu := by
+    have hm := mul_le_mul_of_nonneg_left hau hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,mul_comm] using hm
+  have hnormal : |z.snd-sigma*‖z.fst‖| ≤ 2*h := by
+    rw [abs_mul,abs_inv,abs_of_pos hh] at hbn
+    have hm := mul_le_mul_of_nonneg_left hbn hh.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hh.ne',one_mul,mul_comm] using hm
+  have hT : |z.snd| ≤ 4*mu+2*h := by
+    have hn := abs_add_le (z.snd-sigma*‖z.fst‖) (sigma*‖z.fst‖)
+    simp only [sub_add_cancel,abs_mul,hsigma,abs_of_nonneg (norm_nonneg _),one_mul] at hn
+    linarith
+  have hsum : ‖z‖ ≤ ‖z.fst‖+|z.snd| := by
+    have hn := WithLp.prod_norm_sq_eq_of_L2 z
+    rw [Real.norm_eq_abs] at hn
+    nlinarith [norm_nonneg z,norm_nonneg z.fst,abs_nonneg z.snd,
+      mul_nonneg (norm_nonneg z.fst) (abs_nonneg z.snd)]
+  exact ⟨hlow,hupp,hnormal,hT,by linarith⟩
+
+theorem normalizedCircleSignedNormalBand_hasCompactSupport
+    (a : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (mu h sigma : Real) (hmu : 0 < mu) (hh : 0 < h) (hsigma : |sigma| = 1)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2) :
+    HasCompactSupport (normalizedCircleSignedNormalBand a beta mu h sigma) := by
+  apply (isCompact_closedBall (0:JointWaveSpaceTime) (8*mu+2*h)).of_isClosed_subset (isClosed_tsupport _)
+  apply closure_minimal ?_ isClosed_closedBall
+  intro z hz
+  exact (mem_closedBall_zero_iff.mpr
+    (normalizedCircleSignedNormalBand_support_geometry a beta mu h sigma hmu hh hsigma ha hbeta z hz).2.2.2.2)
+
+def normalizedCircleSignedNormalBandSchwartz
+    (a : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (mu h sigma : Real) (hmu : 0 < mu) (hh : 0 < h) (hsigma : |sigma| = 1)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2) : SchwartzMap JointWaveSpaceTime Complex :=
+  (normalizedCircleSignedNormalBand_hasCompactSupport a beta mu h sigma hmu hh hsigma ha hbeta).toSchwartzMap (normalizedCircleSignedNormalBand_contDiff a beta mu h sigma (fun xi hxi => (ha xi hxi).1))
+
+theorem normalizedCircleSignedNormalBandSchwartz_apply
+    (a : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (mu h sigma : Real) (hmu : 0 < mu) (hh : 0 < h) (hsigma : |sigma| = 1)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2) (z : JointWaveSpaceTime) :
+    normalizedCircleSignedNormalBandSchwartz a beta mu h sigma hmu hh hsigma ha hbeta z =
+      a (mu⁻¹•z.fst)*beta (h⁻¹*(z.snd-sigma*‖z.fst‖)) := rfl
+
+#print axioms normalizedCircleSignedNormalBand_contDiff
+#print axioms normalizedCircleSignedNormalBand_support_geometry
+#print axioms normalizedCircleSignedNormalBand_hasCompactSupport
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+/-- Every positive normal-width exponent gives arbitrary inverse-mu
+decay after retaining the true mu^7 fourth-moment prefactor. -/
+theorem exists_normalizedCircleBothSheetNormalDefectOrder
+    (gamma : Real) (hgamma : 0 < gamma) (A : Real) :
+    ∃ N : Nat,∀ mu : Real,1 ≤ mu →
+      mu^(7:Nat)*((mu^gamma)^(4*N))⁻¹ ≤ mu^(-A:Real) := by
+  obtain ⟨N,hN⟩ := exists_nat_gt ((7+A)/(4*gamma))
+  refine ⟨N,?_⟩
+  intro mu hmu
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  have hlarge : 7+A < (N:Real)*(4*gamma) :=
+    (div_lt_iff₀ (by positivity : 0 < 4*gamma)).mp hN
+  have hexp : (7:Real)+(-gamma)*((4*N:Nat):Real) ≤ -A := by
+    push_cast
+    nlinarith
+  have he : ((mu^gamma)^(4*N))⁻¹ = mu^((-gamma)*((4*N:Nat):Real)) := by
+    rw [← inv_pow,← Real.rpow_neg hmup.le,← Real.rpow_natCast,← Real.rpow_mul hmup.le]
+  have hseven : mu^(7:Nat) = mu^(7:Real) := by simp
+  rw [hseven,he,← Real.rpow_add hmup]
+  exact Real.rpow_le_rpow_of_exponent_le hmu hexp
+#print axioms exists_normalizedCircleBothSheetNormalDefectOrder
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal finite-source normal-defect operator. The original
+conormal dilation prefactor conormal is retained inside the source integral. -/
+def normalizedCircleBothSheetNormalDefectConormalSourceOperator
+    {S : Type*} [MeasurableSpace S] (nu : Measure S)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu conormal h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (v : S → Real)
+    (f : S → Complex) (x : JointWaveSpaceTime) : Complex :=
+  ∫ s,(FourierTransform.fourierInv
+    (SchwartzMap.smulLeftCLM Complex
+      (normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h hmu hh ha ht hbeta :
+        JointWaveSpaceTime → Complex)
+      (FourierTransform.fourier
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s)
+          (-2*Real.pi*conormal*v s)))) : SchwartzMap JointWaveSpaceTime Complex) x*
+    ((conormal:Complex)*f s) ∂nu
+
+/-- The actual finite-source normal-defect operator has genuine a.e.
+source pairings and an L4 output. Its fourth moment retains conormal^4 from the
+original conormal prefactor and mu^3 from the true output-frequency volume. -/
+theorem normalizedCircleBothSheetNormalDefectConormalSourceOperator_uniform_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ 4)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) (D : Real) (hD : 0 ≤ D) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ {S : Type*} [MeasurableSpace S] (nu : Measure S) [IsFiniteMeasure nu],
+      ∀ (mu : Real) (hmu : 1 ≤ mu) (conormal : Real),0 ≤ conormal → conormal ≤ D*mu →
+      ∀ (h : Real) (hh : 0 < h),
+      ∀ p : S → normalizedCircleRawJacobianParameterRegion,Measurable p →
+      ∀ v : S → Real,Measurable v → (∀ s,|v s| ≤ R) →
+      ∀ f : S → Complex,Measurable f → MemLp f 4 nu →
+      let O := normalizedCircleBothSheetNormalDefectConormalSourceOperator nu chiOut hcompact hchi
+        a t beta mu conormal h (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta p v f
+      (∀ᵐ x : JointWaveSpaceTime ∂volume,Integrable (fun s =>
+        (FourierTransform.fourierInv
+          (SchwartzMap.smulLeftCLM Complex
+            (normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h
+              (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta : JointWaveSpaceTime → Complex)
+            (FourierTransform.fourier
+              (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s)
+                (-2*Real.pi*conormal*v s)))) : SchwartzMap JointWaveSpaceTime Complex) x*
+          ((conormal:Complex)*f s)) nu) ∧
+      MemLp O 4 volume ∧
+      (∫ x : JointWaveSpaceTime,‖O x‖^4) ≤
+        C*(nu univ).toReal^3*conormal^4*mu^3*(h^(4*N))⁻¹*(∫ s,‖f s‖^4 ∂nu) := by
+  obtain ⟨C,hC,hkernel⟩ := normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth
+    chiOut hcompact hchi a t beta ha ht hbeta N (2*Real.pi*D*R) (by positivity)
+  refine ⟨C,hC,?_⟩
+  intro S _ nu _ mu hmu conormal hconormal hratio h hh p hp v hv hvr f hf hf4
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  let m := normalizedCircleCompactBothSheetNormalDefectSchwartz a t beta mu h hmup hh ha ht hbeta
+  let F : S → SchwartzMap JointWaveSpaceTime Complex := fun s =>
+    normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (-2*Real.pi*conormal*v s)
+  let K : S → JointWaveSpaceTime → Complex := fun s x =>
+    (FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+        (FourierTransform.fourier (F s))) : SchwartzMap JointWaveSpaceTime Complex) x
+  have hpar : Measurable (fun s : S => (p s,-2*Real.pi*conormal*v s)) :=
+    hp.prodMk (hv.const_mul _)
+  have hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2) := by
+    have hmap : Measurable (fun q : S × JointWaveSpaceTime =>
+        ((p q.1,-2*Real.pi*conormal*v q.1),q.2)) :=
+      (hpar.comp measurable_fst).prodMk measurable_snd
+    simpa only [F,Function.comp_def] using
+      (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp hmap
+  have hK : Measurable (Function.uncurry K) := by
+    change Measurable (fun q : S × JointWaveSpaceTime => K q.1 q.2)
+    simpa only [K] using
+      measurable_spectralProjection_schwartz_family (m : JointWaveSpaceTime → Complex)
+        m.hasTemperateGrowth F hF
+  have hbound (s : S) : |(-2*Real.pi*conormal*v s)| ≤ (2*Real.pi*D*R)*mu := by
+    rw [abs_mul,abs_mul,abs_mul,abs_of_neg (by norm_num : (-2:Real) < 0),
+      abs_of_pos Real.pi_pos,abs_of_nonneg hconormal]
+    simp only [neg_neg]
+    calc
+      _ ≤ (2*Real.pi*conormal)*R :=
+        mul_le_mul_of_nonneg_left (hvr s) (by positivity)
+      _ = (2*Real.pi*R)*conormal := by ring
+      _ ≤ (2*Real.pi*R)*(D*mu) :=
+        mul_le_mul_of_nonneg_left hratio (by positivity)
+      _ = _ := by ring
+  have hKi : ∀ᵐ s ∂nu,Integrable (fun x : JointWaveSpaceTime => ‖K s x‖^4) volume := by
+    apply Filter.Eventually.of_forall
+    intro s
+    exact ((FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+        (FourierTransform.fourier (F s))) : SchwartzMap JointWaveSpaceTime Complex).memLp 4 volume).integrable_norm_pow (by norm_num)
+  have hKm : ∀ᵐ s ∂nu,(∫ x : JointWaveSpaceTime,‖K s x‖^4) ≤ C*mu^3*(h^(4*N))⁻¹ :=
+    Filter.Eventually.of_forall (fun s => hkernel (p s) mu hmu _ (hbound s) h hh)
+  obtain ⟨hpair,hmem,hfour⟩ := source_kernel_fourth_moment_transfer_of_integral nu volume K hK
+    (fun s => (conormal:Complex)*f s) (hf.const_mul _) (hf4.const_mul _)
+    (C*mu^3*(h^(4*N))⁻¹) (by positivity) hKi hKm
+  have hinput : (∫ s,‖(conormal:Complex)*f s‖^4 ∂nu) =
+      conormal^4*(∫ s,‖f s‖^4 ∂nu) := by
+    simp only [norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hconormal,mul_pow]
+    exact integral_const_mul _ _
+  refine ⟨hpair,hmem,?_⟩
+  calc
+    _ ≤ (nu univ).toReal^3*(C*mu^3*(h^(4*N))⁻¹)*(∫ s,‖(conormal:Complex)*f s‖^4 ∂nu) := hfour
+    _ = _ := by rw [hinput]; ring
+
+#print axioms normalizedCircleBothSheetNormalDefectConormalSourceOperator_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The genuine fixed Jacobian carrier gives a uniform integrable output
+majorant for every actual source parameter and every conormal frequency. -/
+theorem normalizedCircleRawJacobianPhaseSchwartz_norm_le
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : normalizedCircleRawJacobianParameterRegion) (rho : Real) (z : JointWaveSpaceTime) :
+    ‖normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p rho z‖ ≤
+      SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz*
+        ‖chiOut (z.fst,z.snd)‖ := by
+  change ‖normalizedCircleParameterPhase p.val rho (z.fst,z.snd)*
+      (chiOut (z.fst,z.snd)*normalizedCircleFullJacobianAmplitudeSchwartz
+        (p.val.1,((z.fst,z.snd),p.val.2.2•EuclideanSpace.basisFun (Fin 2) Real 1)))‖ ≤ _
+  rw [norm_mul,normalizedCircleParameterPhase_norm,one_mul,norm_mul]
+  calc
+    _ ≤ ‖chiOut (z.fst,z.snd)‖*
+        SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz :=
+      mul_le_mul_of_nonneg_left
+        (normalizedCircleFullJacobianAmplitudeSchwartz.norm_le_seminorm Complex _) (norm_nonneg _)
+    _ = _ := mul_comm _ _
+
+/-- Spectral projection commutes with the literal true Jac/incidence
+source integral. Genuine joint L1 follows from the actual common compact
+output majorant; no source or Fourier interchange is assumed. -/
+theorem normalizedCircleRawJacobianPhase_source_projection_fubini
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [SFinite nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (hp : Measurable p)
+    (rho : S → Real) (hrho : Measurable rho)
+    (f : S → Complex) (hf : Measurable f) (hfi : Integrable f nu)
+    (lambda : Real) (m : SchwartzMap JointWaveSpaceTime Complex) (x : JointWaveSpaceTime) :
+    let F := fun s => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)
+    let G := fun z : JointWaveSpaceTime => ∫ s,F s z*((lambda:Complex)*f s) ∂nu
+    Integrable G volume ∧
+    (∀ z : JointWaveSpaceTime,Integrable (fun s => F s z*((lambda:Complex)*f s)) nu) ∧
+    Integrable (fun s => (mssSchwartzSpectralProjection m (F s)) x*((lambda:Complex)*f s)) nu ∧
+    Integrable (fun z : JointWaveSpaceTime => (FourierTransform.fourierInv m :
+      SchwartzMap JointWaveSpaceTime Complex) (x-z)*G z) volume ∧
+    (∫ s,(mssSchwartzSpectralProjection m (F s)) x*((lambda:Complex)*f s) ∂nu) =
+      ∫ z : JointWaveSpaceTime,(FourierTransform.fourierInv m :
+        SchwartzMap JointWaveSpaceTime Complex) (x-z)*G z := by
+  let F := fun s => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)
+  let G := fun z : JointWaveSpaceTime => ∫ s,F s z*((lambda:Complex)*f s) ∂nu
+  let C : Real := SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz
+  have hC : 0 ≤ C := by dsimp [C]; positivity
+  have hcut : Integrable (fun z : JointWaveSpaceTime => chiOut (z.fst,z.snd)) volume := by
+    have hraw : Integrable (chiOut : WaveSpaceTime → Complex) (volume.prod volume) := chiOut.integrable
+    have hcanon : Integrable (chiOut : WaveSpaceTime → Complex) volume := by
+      simpa only [Measure.volume_eq_prod] using hraw
+    have hc := (WithLp.volume_preserving_ofLp (Euclidean 2) Real).integrable_comp_of_integrable hcanon
+    exact hc.congr (Filter.Eventually.of_forall (fun _ => rfl))
+  have hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2) := by
+    have hmap : Measurable (fun q : S × JointWaveSpaceTime => ((p q.1,rho q.1),q.2)) :=
+      ((hp.prodMk hrho).comp measurable_fst).prodMk measurable_snd
+    simpa only [F,Function.comp_def] using
+      (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp hmap
+  let I : S × JointWaveSpaceTime → Complex := fun q => F q.1 q.2*((lambda:Complex)*f q.1)
+  have hI : Measurable I := by
+    simpa only [I,Pi.mul_def,Function.comp_def] using hF.mul ((hf.const_mul _).comp measurable_fst)
+  have hbound (s : S) (z : JointWaveSpaceTime) :
+      ‖I (s,z)‖ ≤ C*|lambda| *(‖f s‖*‖chiOut (z.fst,z.snd)‖) := by
+    dsimp only [I]
+    rw [norm_mul,norm_mul,Complex.norm_real,Real.norm_eq_abs]
+    have hn := normalizedCircleRawJacobianPhaseSchwartz_norm_le chiOut hcompact hchi (p s) (rho s) z
+    calc
+      _ ≤ (C*‖chiOut (z.fst,z.snd)‖)*(|lambda| * ‖f s‖) :=
+        mul_le_mul_of_nonneg_right hn (by positivity)
+      _ = _ := by ring
+  have hi : Integrable I (nu.prod volume) := by
+    apply ((hfi.norm.mul_prod hcut.norm).const_mul (C*|lambda|)).mono' hI.aestronglyMeasurable
+    exact Filter.Eventually.of_forall (fun q => hbound q.1 q.2)
+  have hsingle (z : JointWaveSpaceTime) :
+      Integrable (fun s => F s z*((lambda:Complex)*f s)) nu := by
+    apply (hfi.norm.const_mul (C*|lambda| * ‖chiOut (z.fst,z.snd)‖)).mono'
+      ((hI.comp (measurable_id.prodMk measurable_const)).aestronglyMeasurable)
+    exact Filter.Eventually.of_forall (fun s => (hbound s z).trans_eq (by ring))
+  let J : S × JointWaveSpaceTime → Complex := fun q =>
+    (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex) (x-q.2)*I q
+  have hj : Integrable J (nu.prod volume) := by
+    apply hi.bdd_mul (by
+      have hc : Measurable (fun q : S × JointWaveSpaceTime =>
+        (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex) (x-q.2)) :=
+        (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex).continuous.measurable.comp
+          (measurable_const.sub measurable_snd)
+      exact hc.aestronglyMeasurable)
+    exact Filter.Eventually.of_forall (fun q =>
+      (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex).norm_le_seminorm Complex (x-q.2))
+  have hproj (s : S) :
+      (mssSchwartzSpectralProjection m (F s)) x*((lambda:Complex)*f s) =
+        ∫ z : JointWaveSpaceTime,J (s,z) := by
+    rw [mssSchwartzSpectralProjection_apply,← integral_mul_const]
+    apply integral_congr_ae
+    exact Filter.Eventually.of_forall (fun z => by dsimp only [J,I]; ring)
+  have hout (z : JointWaveSpaceTime) :
+      (∫ s,J (s,z) ∂nu) =
+        (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex) (x-z)*G z := by
+    rw [← integral_const_mul]
+  refine ⟨hi.integral_prod_right,hsingle,?_,?_,?_⟩
+  · exact hj.integral_prod_left.congr (Filter.Eventually.of_forall (fun s => (hproj s).symm))
+  · exact hj.integral_prod_right.congr (Filter.Eventually.of_forall hout)
+  · calc
+      _ = ∫ s,(∫ z : JointWaveSpaceTime,J (s,z)) ∂nu :=
+        integral_congr_ae (Filter.Eventually.of_forall hproj)
+      _ = ∫ z : JointWaveSpaceTime,(∫ s,J (s,z) ∂nu) := integral_integral_swap hj
+      _ = _ := integral_congr_ae (Filter.Eventually.of_forall hout)
+
+#print axioms normalizedCircleRawJacobianPhaseSchwartz_norm_le
+#print axioms normalizedCircleRawJacobianPhase_source_projection_fubini
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+theorem normalizedCircleCompactBothSheetNormalDefect_support_geometry_wide
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h Q : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (z : JointWaveSpaceTime)
+    (hz : normalizedCircleCompactBothSheetNormalDefect a t beta mu h z ≠ 0) :
+    mu/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ Q*mu ∧
+      h ≤ |(|z.snd|-‖z.fst‖)| := by
+  have haz : a (mu⁻¹•z.fst) ≠ 0 := by
+    intro haz
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,haz,zero_mul])
+  have htz : t (mu⁻¹*z.snd) ≠ 0 := by
+    intro htz
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,htz,mul_zero,zero_mul])
+  obtain ⟨hal,hau⟩ := ha _ haz
+  have htu := ht _ htz
+  simp only [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos hmu] at hal hau
+  have hlow : mu/4 ≤ ‖z.fst‖ := by
+    have hm := mul_le_mul_of_nonneg_left hal hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,div_eq_mul_inv] using hm
+  have hupp : ‖z.fst‖ ≤ 4*mu := by
+    have hm := mul_le_mul_of_nonneg_left hau hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,mul_comm] using hm
+  have htupp : |z.snd| ≤ Q*mu := by
+    rw [abs_mul,abs_inv,abs_of_pos hmu] at htu
+    have hm := mul_le_mul_of_nonneg_left htu hmu.le
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul,mul_comm] using hm
+  have hminus : h ≤ |z.snd-‖z.fst‖| := by
+    by_contra hm
+    have hinput : |h⁻¹*(z.snd-‖z.fst‖)| ≤ 1 := by
+      rw [abs_mul,abs_inv,abs_of_pos hh]
+      have hb : |z.snd-‖z.fst‖| ≤ h := (lt_of_not_ge hm).le
+      calc
+        _ ≤ h⁻¹*h := mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hh.le)
+        _ = _ := inv_mul_cancel₀ hh.ne'
+    have hb := hbeta _ hinput
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,hb,sub_self,mul_zero,zero_mul])
+  have hplus : h ≤ |z.snd+‖z.fst‖| := by
+    by_contra hm
+    have hinput : |h⁻¹*(z.snd+‖z.fst‖)| ≤ 1 := by
+      rw [abs_mul,abs_inv,abs_of_pos hh]
+      have hb : |z.snd+‖z.fst‖| ≤ h := (lt_of_not_ge hm).le
+      calc
+        _ ≤ h⁻¹*h := mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hh.le)
+        _ = _ := inv_mul_cancel₀ hh.ne'
+    have hb := hbeta _ hinput
+    exact hz (by simp only [normalizedCircleCompactBothSheetNormalDefect,hb,sub_self,mul_zero])
+  refine ⟨hlow,hupp,htupp,?_⟩
+  by_cases hT : 0 ≤ z.snd
+  · simpa only [abs_of_nonneg hT] using hminus
+  · have hTn : z.snd < 0 := lt_of_not_ge hT
+    have he : |(|z.snd|-‖z.fst‖)| = |z.snd+‖z.fst‖| := by
+      rw [abs_of_neg hTn]
+      rw [show -z.snd-‖z.fst‖ = -(z.snd+‖z.fst‖) by ring,abs_neg]
+    rw [he]
+    exact hplus
+
+
+theorem normalizedCircleJointNorm_le_space_add_time (z : JointWaveSpaceTime) :
+    ‖z‖ ≤ ‖z.fst‖+|z.snd| := by
+  have hn := WithLp.prod_norm_sq_eq_of_L2 z
+  rw [Real.norm_eq_abs] at hn
+  nlinarith [norm_nonneg z,norm_nonneg z.fst,abs_nonneg z.snd,
+    mul_nonneg (norm_nonneg z.fst) (abs_nonneg z.snd)]
+
+theorem normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport_wide
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h Q : Real) (hmu : 0 < mu) (hh : 0 < h) (_hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1) :
+    HasCompactSupport (normalizedCircleCompactBothSheetNormalDefect a t beta mu h) := by
+  apply (isCompact_closedBall (0:JointWaveSpaceTime) ((4+Q)*mu)).of_isClosed_subset
+    (isClosed_tsupport _)
+  apply closure_minimal ?_ isClosed_closedBall
+  intro z hz
+  obtain ⟨_,hX,hT,_⟩ := normalizedCircleCompactBothSheetNormalDefect_support_geometry_wide
+    a t beta mu h Q hmu hh ha ht hbeta z hz
+  have hb : ‖z‖ ≤ (4+Q)*mu := (normalizedCircleJointNorm_le_space_add_time z).trans (by linarith)
+  simpa only [mem_closedBall,dist_zero_right] using hb
+
+/-- Genuine Schwartz data for the actual two-sheet normal complement
+with any fixed compact outer temporal radius. -/
+def normalizedCircleCompactBothSheetNormalDefectWideSchwartz
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h Q : Real) (hmu : 0 < mu) (hh : 0 < h) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  (normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport_wide
+    a t beta mu h Q hmu hh hQ ha ht hbeta).toSchwartzMap
+    (normalizedCircleCompactBothSheetNormalDefect_contDiff a t beta mu h
+      (fun xi hxi => (ha xi hxi).1))
+
+theorem normalizedCircle_joint_frequency_ball_volume_radius
+    (r mu : Real) (hr : 0 ≤ r) (hmu : 0 < mu) :
+    (volume (closedBall (0:JointWaveSpaceTime) (r*mu))).toReal =
+      (r^3*(volume (ball (0:JointWaveSpaceTime) 1)).toReal)*mu^3 := by
+  have hd : Module.finrank Real JointWaveSpaceTime = 3 := by
+    rw [(WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).toLinearEquiv.finrank_eq]
+    simp [Module.finrank_prod,Euclidean]
+  rw [Measure.addHaar_closedBall volume (0:JointWaveSpaceTime) (by positivity),
+    hd,ENNReal.toReal_mul,ENNReal.toReal_ofReal (by positivity)]
+  ring
+
+#print axioms normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport_wide
+#print axioms normalizedCircle_joint_frequency_ball_volume_radius
+
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+/-- Uniform fourth normal-defect moment of the literal actual Jacobian
+phase. Compact temporal support remains an actual cutoff of the multiplier,
+and no residual or localization estimate is assumed. -/
+theorem normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth_wide
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (Q : Real) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ (mu : Real) (hmu : 1 ≤ mu),∀ rho : Real,|rho| ≤ R*mu → ∀ (h : Real) (hh : 0 < h),
+      (∫ x : JointWaveSpaceTime,
+        ‖(FourierTransform.fourierInv
+          (SchwartzMap.smulLeftCLM Complex
+            (normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q
+              (lt_of_lt_of_le zero_lt_one hmu) hh hQ ha ht hbeta :
+              JointWaveSpaceTime → Complex)
+            (FourierTransform.fourier
+              (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p rho))) :
+          SchwartzMap JointWaveSpaceTime Complex) x‖^4) ≤
+        C*mu^3*(h^(4*N))⁻¹ := by
+  obtain ⟨D,hD,hfour⟩ := normalizedCircleSupportedPhase_uniform_normal_gap_fourth_moment
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    normalizedCircleRawJacobianParameterRegion normalizedCircleRawJacobianParameterRegion_isCompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut)
+    (fun p hp => (normalizedCircleRawJacobianParameterRegion_bounds p hp).2.1)
+    (normalizedCircleRawJacobianParameterRegion_separation chiOut hchi) N R hR
+  let B : Real := SchwartzMap.seminorm Complex 0 0 a*SchwartzMap.seminorm Complex 0 0 t*
+    (1+SchwartzMap.seminorm Complex 0 0 beta)^2
+  have hB : 0 ≤ B := by dsimp [B]; positivity
+  refine ⟨D*((4+Q)^3*(volume (ball (0:JointWaveSpaceTime) 1)).toReal)*B^4,by positivity,?_⟩
+  intro p mu hmu rho hrho h hh
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q hmup hh hQ ha ht hbeta
+  let F := normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p rho
+  let U := closedBall (0:JointWaveSpaceTime) ((4+Q)*mu)
+  let E : Set JointWaveSpaceTime := {z |
+    mu/4 ≤ |z.snd|+‖z.fst‖ ∧ h ≤ |(|z.snd|-‖z.fst‖)|}
+  have hE : MeasurableSet E := by
+    have h1 : Continuous (fun z : JointWaveSpaceTime => |z.snd|+‖z.fst‖) := by fun_prop
+    have h2 : Continuous (fun z : JointWaveSpaceTime => |(|z.snd|-‖z.fst‖)|) := by fun_prop
+    exact ((isClosed_le continuous_const h1).inter
+      (isClosed_le continuous_const h2)).measurableSet
+  have hme (z : JointWaveSpaceTime) (hz : m z ≠ 0) :
+      mu/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ Q*mu ∧ h ≤ |(|z.snd|-‖z.fst‖)| :=
+    normalizedCircleCompactBothSheetNormalDefect_support_geometry_wide a t beta mu h Q hmup hh ha ht hbeta z hz
+  have hsupp : Function.support (m : JointWaveSpaceTime → Complex) ⊆ U ∩ E := by
+    intro z hz
+    have hb := hme z hz
+    refine ⟨?_,⟨by linarith [abs_nonneg z.snd],hb.2.2.2⟩⟩
+    change z ∈ closedBall 0 ((4+Q)*mu)
+    rw [mem_closedBall,dist_zero_right]
+    have hn := normalizedCircleJointNorm_le_space_add_time z
+    nlinarith [hb.2.1,hb.2.2.1]
+  have hF : jointSchwartzRaw F =
+      (fun w => normalizedCircleParameterPhase p.val rho w*
+        (normalizedCircleRawJacobianSupportedAmplitude chiOut).val (p.val,w)) := by
+    funext w
+    rfl
+  have htail := hfour p.val p.property mu hmu rho hrho F hF m U E isClosed_closedBall.measurableSet
+    hE (isCompact_closedBall (0:JointWaveSpaceTime) ((4+Q)*mu)).measure_lt_top
+    B hB (normalizedCircleCompactBothSheetNormalDefect_norm_le a t beta mu h) hsupp h hh
+    (fun z hz => hz.1) (fun z hz => hz.2)
+  have hvol := normalizedCircle_joint_frequency_ball_volume_radius (4+Q) mu (by positivity) hmup
+  calc
+    _ ≤ D*(volume U).toReal*B^4*(h^(4*N))⁻¹ := htail
+    _ = _ := by dsimp only [U]; rw [hvol]; ring
+
+#print axioms normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth_wide
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal finite-source normal-defect operator. The original
+conormal dilation prefactor conormal is retained inside the source integral. -/
+def normalizedCircleBothSheetNormalDefectConormalSourceWideOperator
+    {S : Type*} [MeasurableSpace S] (nu : Measure S)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (Q : Real) (hQ : 0 ≤ Q)
+    (mu conormal h : Real) (hmu : 0 < mu) (hh : 0 < h)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (v : S → Real)
+    (f : S → Complex) (x : JointWaveSpaceTime) : Complex :=
+  ∫ s,(FourierTransform.fourierInv
+    (SchwartzMap.smulLeftCLM Complex
+      (normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q hmu hh hQ ha ht hbeta :
+        JointWaveSpaceTime → Complex)
+      (FourierTransform.fourier
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s)
+          (-2*Real.pi*conormal*v s)))) : SchwartzMap JointWaveSpaceTime Complex) x*
+    ((conormal:Complex)*f s) ∂nu
+
+/-- The actual finite-source normal-defect operator has genuine a.e.
+source pairings and an L4 output. Its fourth moment retains conormal^4 from the
+original conormal prefactor and mu^3 from the true output-frequency volume. -/
+theorem normalizedCircleBothSheetNormalDefectConormalSourceWideOperator_uniform_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (Q : Real) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (N : Nat) (R : Real) (hR : 0 ≤ R) (D : Real) (hD : 0 ≤ D) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ {S : Type*} [MeasurableSpace S] (nu : Measure S) [IsFiniteMeasure nu],
+      ∀ (mu : Real) (hmu : 1 ≤ mu) (conormal : Real),0 ≤ conormal → conormal ≤ D*mu →
+      ∀ (h : Real) (hh : 0 < h),
+      ∀ p : S → normalizedCircleRawJacobianParameterRegion,Measurable p →
+      ∀ v : S → Real,Measurable v → (∀ s,|v s| ≤ R) →
+      ∀ f : S → Complex,Measurable f → MemLp f 4 nu →
+      let O := normalizedCircleBothSheetNormalDefectConormalSourceWideOperator nu chiOut hcompact hchi
+        a t beta Q hQ mu conormal h (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta p v f
+      (∀ᵐ x : JointWaveSpaceTime ∂volume,Integrable (fun s =>
+        (FourierTransform.fourierInv
+          (SchwartzMap.smulLeftCLM Complex
+            (normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q
+              (lt_of_lt_of_le zero_lt_one hmu) hh hQ ha ht hbeta : JointWaveSpaceTime → Complex)
+            (FourierTransform.fourier
+              (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s)
+                (-2*Real.pi*conormal*v s)))) : SchwartzMap JointWaveSpaceTime Complex) x*
+          ((conormal:Complex)*f s)) nu) ∧
+      MemLp O 4 volume ∧
+      (∫ x : JointWaveSpaceTime,‖O x‖^4) ≤
+        C*(nu univ).toReal^3*conormal^4*mu^3*(h^(4*N))⁻¹*(∫ s,‖f s‖^4 ∂nu) := by
+  obtain ⟨C,hC,hkernel⟩ := normalizedCircleRawJacobianPhase_uniform_both_sheet_normal_defect_fourth_wide
+    chiOut hcompact hchi a t beta Q hQ ha ht hbeta N (2*Real.pi*D*R) (by positivity)
+  refine ⟨C,hC,?_⟩
+  intro S _ nu _ mu hmu conormal hconormal hratio h hh p hp v hv hvr f hf hf4
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q hmup hh hQ ha ht hbeta
+  let F : S → SchwartzMap JointWaveSpaceTime Complex := fun s =>
+    normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (-2*Real.pi*conormal*v s)
+  let K : S → JointWaveSpaceTime → Complex := fun s x =>
+    (FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+        (FourierTransform.fourier (F s))) : SchwartzMap JointWaveSpaceTime Complex) x
+  have hpar : Measurable (fun s : S => (p s,-2*Real.pi*conormal*v s)) :=
+    hp.prodMk (hv.const_mul _)
+  have hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2) := by
+    have hmap : Measurable (fun q : S × JointWaveSpaceTime =>
+        ((p q.1,-2*Real.pi*conormal*v q.1),q.2)) :=
+      (hpar.comp measurable_fst).prodMk measurable_snd
+    simpa only [F,Function.comp_def] using
+      (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp hmap
+  have hK : Measurable (Function.uncurry K) := by
+    change Measurable (fun q : S × JointWaveSpaceTime => K q.1 q.2)
+    simpa only [K] using
+      measurable_spectralProjection_schwartz_family (m : JointWaveSpaceTime → Complex)
+        m.hasTemperateGrowth F hF
+  have hbound (s : S) : |(-2*Real.pi*conormal*v s)| ≤ (2*Real.pi*D*R)*mu := by
+    rw [abs_mul,abs_mul,abs_mul,abs_of_neg (by norm_num : (-2:Real) < 0),
+      abs_of_pos Real.pi_pos,abs_of_nonneg hconormal]
+    simp only [neg_neg]
+    calc
+      _ ≤ (2*Real.pi*conormal)*R :=
+        mul_le_mul_of_nonneg_left (hvr s) (by positivity)
+      _ = (2*Real.pi*R)*conormal := by ring
+      _ ≤ (2*Real.pi*R)*(D*mu) :=
+        mul_le_mul_of_nonneg_left hratio (by positivity)
+      _ = _ := by ring
+  have hKi : ∀ᵐ s ∂nu,Integrable (fun x : JointWaveSpaceTime => ‖K s x‖^4) volume := by
+    apply Filter.Eventually.of_forall
+    intro s
+    exact ((FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : JointWaveSpaceTime → Complex)
+        (FourierTransform.fourier (F s))) : SchwartzMap JointWaveSpaceTime Complex).memLp 4 volume).integrable_norm_pow (by norm_num)
+  have hKm : ∀ᵐ s ∂nu,(∫ x : JointWaveSpaceTime,‖K s x‖^4) ≤ C*mu^3*(h^(4*N))⁻¹ :=
+    Filter.Eventually.of_forall (fun s => hkernel (p s) mu hmu _ (hbound s) h hh)
+  obtain ⟨hpair,hmem,hfour⟩ := source_kernel_fourth_moment_transfer_of_integral nu volume K hK
+    (fun s => (conormal:Complex)*f s) (hf.const_mul _) (hf4.const_mul _)
+    (C*mu^3*(h^(4*N))⁻¹) (by positivity) hKi hKm
+  have hinput : (∫ s,‖(conormal:Complex)*f s‖^4 ∂nu) =
+      conormal^4*(∫ s,‖f s‖^4 ∂nu) := by
+    simp only [norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hconormal,mul_pow]
+    exact integral_const_mul _ _
+  refine ⟨hpair,hmem,?_⟩
+  calc
+    _ ≤ (nu univ).toReal^3*(C*mu^3*(h^(4*N))⁻¹)*(∫ s,‖(conormal:Complex)*f s‖^4 ∂nu) := hfour
+    _ = _ := by rw [hinput]; ring
+
+#print axioms normalizedCircleBothSheetNormalDefectConormalSourceWideOperator_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- The actual joint tensor grid of mesh 1/64 is the integer lattice
+of this fixed real basis. -/
+def mssTinyJointLatticeBasis : Module.Basis (Fin 2 ⊕ Unit) Real JointWaveSpaceTime :=
+  ((((EuclideanSpace.basisFun (Fin 2) Real).toBasis.prod (Module.Basis.singleton Unit Real)).map
+    (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.toLinearEquiv).unitsSMul
+      (fun _ => Units.mk0 (1/64:Real) (by norm_num)))
+
+theorem mssTinyJointLatticeBasis_integer_combination (j : MSSJointLatticeLabel) :
+    (1/64:Real) • mssJointLatticePoint j =
+      j.1.1 • mssTinyJointLatticeBasis (Sum.inl 0)+
+        j.1.2 • mssTinyJointLatticeBasis (Sum.inl 1)+
+        j.2 • mssTinyJointLatticeBasis (Sum.inr ()) := by
+  apply (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).injective
+  ext i
+  · fin_cases i <;>
+      simp [mssTinyJointLatticeBasis,Module.Basis.unitsSMul_apply,
+        mssJointLatticePoint,standardLatticePoint,Module.Basis.map_apply,
+        Module.Basis.prod_apply,Units.smul_def] <;> ring
+  · simp [mssTinyJointLatticeBasis,Module.Basis.unitsSMul_apply,
+      mssJointLatticePoint,Module.Basis.map_apply,Module.Basis.prod_apply,Units.smul_def]
+    ring
+
+/-- A tiny joint cube label is a genuine point of the fixed-basis integer
+lattice, with its literal unmasked centre. -/
+def mssTinyJointLatticePoint (j : MSSJointLatticeLabel) :
+    Submodule.span Int (Set.range mssTinyJointLatticeBasis) :=
+  ⟨(1/64:Real) • mssJointLatticePoint j,by
+    rw [mssTinyJointLatticeBasis_integer_combination]
+    apply Submodule.add_mem
+    · apply Submodule.add_mem
+      · exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨Sum.inl 0,rfl⟩)
+      · exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨Sum.inl 1,rfl⟩)
+    · exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨Sum.inr (),rfl⟩)⟩
+
+theorem mssTinyJointLatticePoint_coe (j : MSSJointLatticeLabel) :
+    (mssTinyJointLatticePoint j : JointWaveSpaceTime) = (1/64:Real) • mssJointLatticePoint j := rfl
+
+theorem mssTinyJointLatticePoint_injective : Function.Injective mssTinyJointLatticePoint := by
+  intro j k h
+  apply mssJointLatticePoint_injective
+  exact smul_right_injective JointWaveSpaceTime (by norm_num : (1/64:Real) ≠ 0)
+    (congrArg Subtype.val h)
+
+#print axioms mssTinyJointLatticeBasis_integer_combination
+#print axioms mssTinyJointLatticePoint_injective
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Spatial convolution at a fixed time commutes with the literal true
+Jac/incidence source field. Actual joint L1 is derived from the uniform
+compact amplitude and the genuine spatial Schwartz kernel. -/
+theorem normalizedCircleRawJacobianPhase_source_spatial_convolution_fubini
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [SFinite nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (hp : Measurable p)
+    (rho : S → Real) (hrho : Measurable rho)
+    (f : S → Complex) (hf : Measurable f) (hfi : Integrable f nu)
+    (lambda : Real) (a : SchwartzMap (Euclidean 2) Complex) (X : Euclidean 2) (T : Real) :
+    let F := fun s => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)
+    let G := fun z : JointWaveSpaceTime => ∫ s,F s z*((lambda:Complex)*f s) ∂nu
+    (∀ s,Integrable (fun Y : Euclidean 2 =>
+      (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex) (X-Y)*
+        F s (WithLp.toLp 2 (Y,T))) volume) ∧
+    Integrable (fun s =>
+      (∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) (X-Y)*F s (WithLp.toLp 2 (Y,T)))*
+        ((lambda:Complex)*f s)) nu ∧
+    Integrable (fun Y : Euclidean 2 =>
+      (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex) (X-Y)*
+        G (WithLp.toLp 2 (Y,T))) volume ∧
+    (∫ s,(∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+      SchwartzMap (Euclidean 2) Complex) (X-Y)*F s (WithLp.toLp 2 (Y,T)))*
+        ((lambda:Complex)*f s) ∂nu) =
+      ∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) (X-Y)*G (WithLp.toLp 2 (Y,T)) := by
+  intro F G
+  let C : Real := SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz*
+    SchwartzMap.seminorm Complex 0 0 chiOut
+  have hC : 0 ≤ C := by dsimp [C]; positivity
+  have hF : Measurable (fun q : S × Euclidean 2 => F q.1 (WithLp.toLp 2 (q.2,T))) := by
+    have hmap : Measurable (fun q : S × Euclidean 2 =>
+        ((p q.1,rho q.1),WithLp.toLp 2 (q.2,T))) :=
+      ((hp.prodMk hrho).comp measurable_fst).prodMk (by fun_prop)
+    simpa only [F,Function.comp_def] using
+      (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp hmap
+  have hbound (s : S) (Y : Euclidean 2) : ‖F s (WithLp.toLp 2 (Y,T))‖ ≤ C :=
+    (normalizedCircleRawJacobianPhaseSchwartz_norm_le chiOut hcompact hchi (p s) (rho s) _).trans
+      (mul_le_mul_of_nonneg_left (chiOut.norm_le_seminorm Complex _)
+        (apply_nonneg _ _))
+  let k : Euclidean 2 → Complex := fun Y =>
+    (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex) (X-Y)
+  have hk : Integrable k volume := (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex).integrable.comp_sub_left X
+  have hkm : Measurable k := by dsimp [k]; fun_prop
+  let J : S × Euclidean 2 → Complex := fun q =>
+    k q.2*F q.1 (WithLp.toLp 2 (q.2,T))*((lambda:Complex)*f q.1)
+  have hJm : Measurable J := by
+    exact ((hkm.comp measurable_snd).mul hF).mul ((hf.const_mul _).comp measurable_fst)
+  have hJ : Integrable J (nu.prod volume) := by
+    apply ((hfi.norm.mul_prod hk.norm).const_mul (C*|lambda|)).mono' hJm.aestronglyMeasurable
+    apply Filter.Eventually.of_forall
+    intro q
+    dsimp only [J]
+    rw [norm_mul,norm_mul,norm_mul,Complex.norm_real,Real.norm_eq_abs]
+    calc
+      _ ≤ (‖k q.2‖*C)*(|lambda| * ‖f q.1‖) := by gcongr;exact hbound q.1 q.2
+      _ = _ := by ring
+  have hsingle (s : S) : Integrable (fun Y : Euclidean 2 =>
+      k Y*F s (WithLp.toLp 2 (Y,T))) volume := by
+    apply (hk.norm.const_mul C).mono'
+      ((hkm.mul (hF.comp (measurable_const.prodMk measurable_id))).aestronglyMeasurable)
+    apply Filter.Eventually.of_forall
+    intro Y
+    change ‖k Y*F s (WithLp.toLp 2 (Y,T))‖ ≤ C*‖k Y‖
+    rw [norm_mul]
+    exact (mul_le_mul_of_nonneg_left (hbound s Y) (norm_nonneg _)).trans_eq (mul_comm _ _)
+  have hleft (s : S) :
+      (∫ Y : Euclidean 2,k Y*F s (WithLp.toLp 2 (Y,T)))*((lambda:Complex)*f s) =
+        ∫ Y : Euclidean 2,J (s,Y) := by
+    rw [← integral_mul_const]
+  have hright (Y : Euclidean 2) :
+      (∫ s,J (s,Y) ∂nu) = k Y*G (WithLp.toLp 2 (Y,T)) := by
+    rw [← integral_const_mul]
+    apply integral_congr_ae
+    exact Filter.Eventually.of_forall (fun s => by dsimp [J];ring)
+  refine ⟨hsingle,?_,?_,?_⟩
+  · exact hJ.integral_prod_left.congr (Filter.Eventually.of_forall (fun s => (hleft s).symm))
+  · exact hJ.integral_prod_right.congr (Filter.Eventually.of_forall hright)
+  · calc
+      _ = ∫ s,(∫ Y : Euclidean 2,J (s,Y)) ∂nu :=
+        integral_congr_ae (Filter.Eventually.of_forall hleft)
+      _ = ∫ Y : Euclidean 2,(∫ s,J (s,Y) ∂nu) := integral_integral_swap hJ
+      _ = _ := integral_congr_ae (Filter.Eventually.of_forall hright)
+
+#print axioms normalizedCircleRawJacobianPhase_source_spatial_convolution_fubini
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- The actual spatial Fourier projection of a joint Schwartz field. -/
+def mssSchwartzSpatialProjection (a : SchwartzMap (Euclidean 2) Complex)
+    (F : SchwartzMap JointWaveSpaceTime Complex) : SchwartzMap JointWaveSpaceTime Complex :=
+  FourierTransform.fourierInv (SchwartzMap.smulLeftCLM Complex
+    (fun z : JointWaveSpaceTime => a z.fst) (FourierTransform.fourier F))
+
+/-- Spatial spectral multiplication is literally convolution along the
+spatial translation subgroup. Expanding only the spatial multiplier makes
+the Fourier Fubini integral absolutely convergent in all variables. -/
+theorem mssSchwartzSpatialProjection_apply_translation
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    mssSchwartzSpatialProjection a F z =
+      ∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) Y*F (z-WithLp.toLp 2 (Y,(0:Real))) := by
+  let k : SchwartzMap (Euclidean 2) Complex := FourierTransform.fourierInv a
+  let P : SchwartzMap JointWaveSpaceTime Complex := FourierTransform.fourier F
+  have ha : (fun w : JointWaveSpaceTime => a w.fst).HasTemperateGrowth := by
+    exact a.hasTemperateGrowth.comp (WithLp.fstL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  let J : JointWaveSpaceTime × Euclidean 2 → Complex := fun q =>
+    (Real.fourierChar (inner Real q.1 z):Complex)*k q.2*
+      (Real.fourierChar (-inner Real q.2 q.1.fst):Complex)*P q.1
+  have hJc : Continuous J := by
+    simp only [J,Real.fourierChar_apply]
+    fun_prop
+  have hJ : Integrable J (volume.prod volume) := by
+    apply (P.integrable.norm.mul_prod k.integrable.norm).mono' hJc.aestronglyMeasurable
+    apply Filter.Eventually.of_forall
+    intro q
+    dsimp only [J]
+    simp only [norm_mul,Circle.norm_coe,one_mul,mul_one]
+    exact le_of_eq (mul_comm _ _)
+  have hchar (xi : JointWaveSpaceTime) (Y : Euclidean 2) :
+      (Real.fourierChar (inner Real xi z):Complex)*
+        (Real.fourierChar (-inner Real Y xi.fst):Complex) =
+      (Real.fourierChar (inner Real xi (z-WithLp.toLp 2 (Y,(0:Real)))):Complex) := by
+    simp only [Real.fourierChar_apply]
+    rw [← Complex.exp_add]
+    congr 1
+    have he : inner Real xi (WithLp.toLp 2 (Y,(0:Real))) = inner Real Y xi.fst := by
+      simp [WithLp.prod_inner_apply,real_inner_comm]
+    rw [inner_sub_right,he]
+    push_cast
+    ring
+  have hak (xi : Euclidean 2) : a xi = FourierTransform.fourier (k : Euclidean 2 → Complex) xi := by
+    rw [← SchwartzMap.fourier_coe]
+    simp only [k,FourierTransform.fourier_fourierInv_eq]
+  calc
+    _ = ∫ xi : JointWaveSpaceTime,(Real.fourierChar (inner Real xi z):Complex)*
+        (a xi.fst*P xi) := by
+      rw [mssSchwartzSpatialProjection,SchwartzMap.fourierInv_coe,Real.fourierInv_eq]
+      simp only [Circle.smul_def,smul_eq_mul,SchwartzMap.smulLeftCLM_apply_apply ha,P]
+    _ = ∫ xi : JointWaveSpaceTime,∫ Y : Euclidean 2,J (xi,Y) := by
+      apply integral_congr_ae
+      apply Filter.Eventually.of_forall
+      intro xi
+      change (Real.fourierChar (inner Real xi z):Complex)*(a xi.fst*P xi) = ∫ Y : Euclidean 2,J (xi,Y)
+      rw [hak,Real.fourier_eq]
+      simp only [Circle.smul_def,smul_eq_mul]
+      rw [← integral_mul_const,← integral_const_mul]
+      apply integral_congr_ae
+      exact Filter.Eventually.of_forall (fun Y => by dsimp [J];ring)
+    _ = ∫ Y : Euclidean 2,∫ xi : JointWaveSpaceTime,J (xi,Y) := integral_integral_swap hJ
+    _ = _ := by
+      apply integral_congr_ae
+      apply Filter.Eventually.of_forall
+      intro Y
+      change (∫ xi : JointWaveSpaceTime,J (xi,Y)) = k Y*F (z-WithLp.toLp 2 (Y,(0:Real)))
+      have hF : F (z-WithLp.toLp 2 (Y,(0:Real))) =
+          FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+            (z-WithLp.toLp 2 (Y,(0:Real))) := by
+        rw [← SchwartzMap.fourierInv_coe]
+        simp only [P,FourierTransform.fourierInv_fourier_eq]
+      rw [hF,Real.fourierInv_eq,← integral_const_mul]
+      simp only [Circle.smul_def,smul_eq_mul]
+      apply integral_congr_ae
+      apply Filter.Eventually.of_forall
+      intro xi
+      calc
+        _ = k Y*((Real.fourierChar (inner Real xi z):Complex)*
+          (Real.fourierChar (-inner Real Y xi.fst):Complex))*P xi := by dsimp [J];ring
+        _ = _ := by rw [hchar];ring
+
+/-- The literal fixed-time spatial convolution formula for the actual
+joint Schwartz spectral projection. -/
+theorem mssSchwartzSpatialProjection_apply
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (F : SchwartzMap JointWaveSpaceTime Complex) (X : Euclidean 2) (T : Real) :
+    mssSchwartzSpatialProjection a F (WithLp.toLp 2 (X,T)) =
+      ∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) (X-Y)*F (WithLp.toLp 2 (Y,T)) := by
+  rw [mssSchwartzSpatialProjection_apply_translation]
+  rw [← integral_sub_left_eq_self (fun Y : Euclidean 2 =>
+    (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex) Y*
+      F (WithLp.toLp 2 (X,T)-WithLp.toLp 2 (Y,(0:Real)))) volume X]
+  apply integral_congr_ae
+  apply Filter.Eventually.of_forall
+  intro Y
+  have he : WithLp.toLp 2 (X,T)-WithLp.toLp 2 (X-Y,(0:Real)) =
+      WithLp.toLp 2 (Y,T) := by
+    apply (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).injective
+    simp
+  simp only
+  rw [he]
+
+#print axioms mssSchwartzSpatialProjection_apply_translation
+#print axioms mssSchwartzSpatialProjection_apply
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- Genuine source Fubini for the actual spatial spectral projection. -/
+theorem normalizedCircleRawJacobianPhase_source_spatial_projection_fubini
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [SFinite nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (hp : Measurable p)
+    (rho : S → Real) (hrho : Measurable rho)
+    (f : S → Complex) (hf : Measurable f) (hfi : Integrable f nu)
+    (lambda : Real) (a : SchwartzMap (Euclidean 2) Complex) (X : Euclidean 2) (T : Real) :
+    let F := fun s => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)
+    let G := fun z : JointWaveSpaceTime => ∫ s,F s z*((lambda:Complex)*f s) ∂nu
+    Integrable (fun s => mssSchwartzSpatialProjection a (F s) (WithLp.toLp 2 (X,T))*
+      ((lambda:Complex)*f s)) nu ∧
+    (∫ s,mssSchwartzSpatialProjection a (F s) (WithLp.toLp 2 (X,T))*
+      ((lambda:Complex)*f s) ∂nu) =
+      ∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) (X-Y)*G (WithLp.toLp 2 (Y,T)) := by
+  intro F G
+  have hs := normalizedCircleRawJacobianPhase_source_spatial_convolution_fubini
+    nu chiOut hcompact hchi p hp rho hrho f hf hfi lambda a X T
+  simpa only [mssSchwartzSpatialProjection_apply] using ⟨hs.2.1,hs.2.2.2⟩
+
+/-- The genuine unbounded temporal complement of a spatially projected
+Schwartz field. It is an actual Schwartz map, without compact temporal
+frequency support. -/
+def mssSchwartzTemporalComplementProjection
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (F : SchwartzMap JointWaveSpaceTime Complex) : SchwartzMap JointWaveSpaceTime Complex :=
+  mssSchwartzSpatialProjection a F-
+    mssSchwartzSpectralProjection (jointSchwartzExternalProduct a t) F
+
+theorem mssSchwartzTemporalComplementProjection_eq_spectral
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (F : SchwartzMap JointWaveSpaceTime Complex) :
+    mssSchwartzTemporalComplementProjection a t F =
+      FourierTransform.fourierInv (SchwartzMap.smulLeftCLM Complex
+        (fun z : JointWaveSpaceTime => a z.fst*(1-t z.snd)) (FourierTransform.fourier F)) := by
+  have ha : (fun z : JointWaveSpaceTime => a z.fst).HasTemperateGrowth :=
+    a.hasTemperateGrowth.comp (WithLp.fstL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  have ht : (fun z : JointWaveSpaceTime => t z.snd).HasTemperateGrowth :=
+    t.hasTemperateGrowth.comp (WithLp.sndL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  have hm : (fun z : JointWaveSpaceTime => a z.fst*(1-t z.snd)).HasTemperateGrowth :=
+    ha.mul (Function.HasTemperateGrowth.const 1 |>.sub ht)
+  rw [mssSchwartzTemporalComplementProjection,mssSchwartzSpatialProjection,
+    mssSchwartzSpectralProjection,sub_eq_add_neg,
+    ← FourierTransform.fourierInv_neg,← FourierTransform.fourierInv_add]
+  congr 1
+  ext z
+  simp only [add_apply,neg_apply,SchwartzMap.smulLeftCLM_apply_apply ha,
+    SchwartzMap.smulLeftCLM_apply_apply (jointSchwartzExternalProduct a t).hasTemperateGrowth,
+    SchwartzMap.smulLeftCLM_apply_apply hm]
+  change a z.fst*(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z-
+    (a z.fst*t z.snd)*(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z =
+    a z.fst*(1-t z.snd)*(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z
+  ring
+
+/-- The unbounded temporal complement commutes with the actual conormal
+source field as a literal spatial-convolution minus compact joint-convolution
+identity. No global Schwartz regularity of the source integral is assumed. -/
+theorem normalizedCircleRawJacobianPhase_source_temporal_complement_fubini
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [SFinite nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (hp : Measurable p)
+    (rho : S → Real) (hrho : Measurable rho)
+    (f : S → Complex) (hf : Measurable f) (hfi : Integrable f nu)
+    (lambda : Real) (a : SchwartzMap (Euclidean 2) Complex)
+    (t : SchwartzMap Real Complex) (X : Euclidean 2) (T : Real) :
+    let F := fun s => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)
+    let G := fun z : JointWaveSpaceTime => ∫ s,F s z*((lambda:Complex)*f s) ∂nu
+    Integrable (fun s => mssSchwartzTemporalComplementProjection a t (F s)
+      (WithLp.toLp 2 (X,T))*((lambda:Complex)*f s)) nu ∧
+    (∫ s,mssSchwartzTemporalComplementProjection a t (F s)
+      (WithLp.toLp 2 (X,T))*((lambda:Complex)*f s) ∂nu) =
+      (∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) (X-Y)*G (WithLp.toLp 2 (Y,T)))-
+      (∫ z : JointWaveSpaceTime,(FourierTransform.fourierInv (jointSchwartzExternalProduct a t) :
+        SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 (X,T)-z)*G z) := by
+  intro F G
+  have hs := normalizedCircleRawJacobianPhase_source_spatial_projection_fubini
+    nu chiOut hcompact hchi p hp rho hrho f hf hfi lambda a X T
+  have hj := normalizedCircleRawJacobianPhase_source_projection_fubini
+    nu chiOut hcompact hchi p hp rho hrho f hf hfi lambda
+      (jointSchwartzExternalProduct a t) (WithLp.toLp 2 (X,T))
+  have he (s : S) :
+      mssSchwartzTemporalComplementProjection a t (F s) (WithLp.toLp 2 (X,T))*
+        ((lambda:Complex)*f s) =
+      mssSchwartzSpatialProjection a (F s) (WithLp.toLp 2 (X,T))*((lambda:Complex)*f s)-
+        mssSchwartzSpectralProjection (jointSchwartzExternalProduct a t) (F s)
+          (WithLp.toLp 2 (X,T))*((lambda:Complex)*f s) := by
+    simp only [mssSchwartzTemporalComplementProjection,sub_apply,sub_mul]
+  refine ⟨(hs.1.sub hj.2.2.1).congr (Filter.Eventually.of_forall (fun s => (he s).symm)),?_⟩
+  simp_rw [he]
+  rw [integral_sub hs.1 hj.2.2.1,hs.2,hj.2.2.2.2]
+
+#print axioms mssSchwartzTemporalComplementProjection_eq_spectral
+#print axioms normalizedCircleRawJacobianPhase_source_spatial_projection_fubini
+#print axioms normalizedCircleRawJacobianPhase_source_temporal_complement_fubini
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+
+/-- Honest finite-source fourth-moment transfer for a compact-time
+supremum. The source supremum stays inside the positive Tonelli integral;
+there is no exchange of supremum and ordinary source integration. -/
+theorem source_kernel_timeMax_fourth_moment_transfer_lintegral
+    {S X I : Type*} [MeasurableSpace S] [MeasurableSpace X]
+    (mu : Measure S) (nu : Measure X) [SFinite mu] [SFinite nu]
+    (K : S → X → I → Complex)
+    (hK : ∀ x i,Measurable (fun s => K s x i))
+    (hW : Measurable (fun q : S × X => ⨆ i : I,‖K q.1 q.2 i‖ₑ^4))
+    (f : S → Complex) (hf : Measurable f) (L : ENNReal)
+    (hKm : ∀ᵐ s ∂mu,(∫⁻ x,⨆ i : I,‖K s x i‖ₑ^4 ∂nu) ≤ L) :
+    (∫⁻ x,⨆ i : I,‖∫ s,K s x i*f s ∂mu‖ₑ^4 ∂nu) ≤
+      (mu univ)^3*L*(∫⁻ s,‖f s‖ₑ^4 ∂mu) := by
+  let W : S × X → ENNReal := fun q => ⨆ i : I,‖K q.1 q.2 i‖ₑ^4
+  have hprod : Measurable (fun q : S × X => W q*‖f q.1‖ₑ^4) :=
+    hW.mul ((hf.enorm.pow_const 4).comp measurable_fst)
+  have hpoint (x : X) :
+      (⨆ i : I,‖∫ s,K s x i*f s ∂mu‖ₑ^4) ≤
+        (mu univ)^3*(∫⁻ s,W (s,x)*‖f s‖ₑ^4 ∂mu) := by
+    apply iSup_le
+    intro i
+    apply (integral_source_enorm_pow_four_le mu _ ((hK x i).mul hf)).trans
+    apply mul_le_mul_of_nonneg_left
+    · apply lintegral_mono
+      intro s
+      change ‖K s x i*f s‖ₑ^4 ≤ W (s,x)*‖f s‖ₑ^4
+      rw [enorm_mul,mul_pow]
+      exact mul_le_mul_of_nonneg_right (le_iSup (fun i : I => ‖K s x i‖ₑ^4) i) (by positivity)
+    · positivity
+  calc
+    _ ≤ ∫⁻ x,(mu univ)^3*(∫⁻ s,W (s,x)*‖f s‖ₑ^4 ∂mu) ∂nu :=
+      lintegral_mono hpoint
+    _ = (mu univ)^3*(∫⁻ x,∫⁻ s,W (s,x)*‖f s‖ₑ^4 ∂mu ∂nu) :=
+      lintegral_const_mul _ hprod.lintegral_prod_left
+    _ = (mu univ)^3*(∫⁻ s,∫⁻ x,W (s,x)*‖f s‖ₑ^4 ∂nu ∂mu) := by
+      rw [← lintegral_lintegral_swap hprod.aemeasurable]
+    _ = (mu univ)^3*(∫⁻ s,(∫⁻ x,W (s,x) ∂nu)*‖f s‖ₑ^4 ∂mu) := by
+      congr 1
+      apply lintegral_congr
+      intro s
+      exact lintegral_mul_const _ (hW.comp (measurable_const.prodMk measurable_id))
+    _ ≤ (mu univ)^3*(∫⁻ s,L*‖f s‖ₑ^4 ∂mu) := by
+      apply mul_le_mul_of_nonneg_left
+      · apply lintegral_mono_ae
+        filter_upwards [hKm] with s hs
+        exact mul_le_mul_of_nonneg_right hs (by positivity)
+      · positivity
+    _ = _ := by rw [lintegral_const_mul _ (hf.enorm.pow_const 4)];ring
+
+/-- Parameter measurability and true time continuity give a measurable
+compact-time kernel maximum, including the source variable. -/
+theorem source_kernel_compactTime_fourth_max_measurable
+    {S : Type*} [MeasurableSpace S]
+    (K : S → Real → Complex)
+    (hK : ∀ T,Measurable (fun s => K s T))
+    (hcont : ∀ s,Continuous (K s)) :
+    Measurable (fun s => ⨆ r : Icc (-2:Real) 2,‖K s r.1‖ₑ^4) := by
+  have hh : Measurable (⨆ r : Icc (-2:Real) 2,fun s => ‖K s r.1‖ₑ^4) := by
+    apply measurable_iSup_of_lowerSemicontinuous
+    · intro r
+      exact (hK r.1).enorm.pow_const 4
+    · intro s
+      have hc : Continuous (fun r : Icc (-2:Real) 2 => ENNReal.ofReal (‖K s r.1‖^4)) :=
+        ENNReal.continuous_ofReal.comp (((hcont s).comp continuous_subtype_val).norm.pow 4)
+      simpa only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm] using hc.lowerSemicontinuous
+  convert hh using 1
+  funext s
+  exact (iSup_apply (f := fun r : Icc (-2:Real) 2 => fun s => ‖K s r.1‖ₑ^4) (a := s)).symm
+
+#print axioms source_kernel_timeMax_fourth_moment_transfer_lintegral
+#print axioms source_kernel_compactTime_fourth_max_measurable
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The true spatial convolution kernel gives a uniform sup bound. -/
+theorem mssSchwartzSpatialProjection_norm_le
+    (a : SchwartzMap (Euclidean 2) Complex) (F : SchwartzMap JointWaveSpaceTime Complex)
+    (M : Real) (hF : ∀ z,‖F z‖ ≤ M) (z : JointWaveSpaceTime) :
+    ‖mssSchwartzSpatialProjection a F z‖ ≤
+      M*(∫ Y : Euclidean 2,‖(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) Y‖) := by
+  rw [mssSchwartzSpatialProjection_apply_translation]
+  have hk : Integrable (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex) volume :=
+    (FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex).integrable
+  have hb := norm_integral_le_of_norm_le
+    (hk.norm.const_mul M)
+    (f := fun Y : Euclidean 2 => (FourierTransform.fourierInv a :
+      SchwartzMap (Euclidean 2) Complex) Y*F (z-WithLp.toLp 2 (Y,(0:Real))))
+    (Filter.Eventually.of_forall (fun Y => by
+      rw [norm_mul]
+      exact (mul_le_mul_of_nonneg_left (hF _) (norm_nonneg _)).trans_eq (mul_comm _ _)))
+  simpa only [integral_const_mul] using hb
+
+theorem mssSchwartzSpectralProjection_norm_le
+    (m F : SchwartzMap JointWaveSpaceTime Complex)
+    (M : Real) (hF : ∀ z,‖F z‖ ≤ M) (z : JointWaveSpaceTime) :
+    ‖mssSchwartzSpectralProjection m F z‖ ≤
+      M*(∫ Y : JointWaveSpaceTime,‖(FourierTransform.fourierInv m :
+        SchwartzMap JointWaveSpaceTime Complex) Y‖) := by
+  rw [mssSchwartzSpectralProjection_apply]
+  have hk : Integrable (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex) volume :=
+    (FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex).integrable
+  have hb := norm_integral_le_of_norm_le
+    ((hk.comp_sub_left z).norm.const_mul M)
+    (f := fun Y : JointWaveSpaceTime => (FourierTransform.fourierInv m :
+      SchwartzMap JointWaveSpaceTime Complex) (z-Y)*F Y)
+    (Filter.Eventually.of_forall (fun Y => by
+      rw [norm_mul]
+      exact (mul_le_mul_of_nonneg_left (hF _) (norm_nonneg _)).trans_eq (mul_comm _ _)))
+  have hshift : (∫ Y : JointWaveSpaceTime,‖(FourierTransform.fourierInv m :
+      SchwartzMap JointWaveSpaceTime Complex) (z-Y)‖) =
+      ∫ Y : JointWaveSpaceTime,‖(FourierTransform.fourierInv m :
+        SchwartzMap JointWaveSpaceTime Complex) Y‖ :=
+    integral_sub_left_eq_self (fun Y : JointWaveSpaceTime =>
+      ‖(FourierTransform.fourierInv m : SchwartzMap JointWaveSpaceTime Complex) Y‖) volume z
+  simpa only [integral_const_mul,hshift] using hb
+
+theorem mssSchwartzTemporalComplementProjection_norm_le
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (F : SchwartzMap JointWaveSpaceTime Complex)
+    (M : Real) (hF : ∀ z,‖F z‖ ≤ M) (z : JointWaveSpaceTime) :
+    ‖mssSchwartzTemporalComplementProjection a t F z‖ ≤ M*
+      ((∫ Y : Euclidean 2,‖(FourierTransform.fourierInv a :
+        SchwartzMap (Euclidean 2) Complex) Y‖)+
+      (∫ Y : JointWaveSpaceTime,‖(FourierTransform.fourierInv (jointSchwartzExternalProduct a t) :
+        SchwartzMap JointWaveSpaceTime Complex) Y‖)) := by
+  apply (norm_sub_le _ _).trans
+  apply (add_le_add (mssSchwartzSpatialProjection_norm_le a F M hF z)
+    (mssSchwartzSpectralProjection_norm_le (jointSchwartzExternalProduct a t) F M hF z)).trans_eq
+  ring
+
+/-- The actual source-integrated temporal complement is continuous, even
+for merely measurable L1 inputs. The integrable source majorant is proved
+from the genuine convolution kernel masses and the actual compact amplitude. -/
+theorem normalizedCircleRawJacobianPhase_source_temporal_complement_continuous
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [SFinite nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : S → normalizedCircleRawJacobianParameterRegion) (hp : Measurable p)
+    (rho : S → Real) (hrho : Measurable rho)
+    (f : S → Complex) (hf : Measurable f) (hfi : Integrable f nu)
+    (lambda : Real) (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex) :
+    Continuous (fun z : JointWaveSpaceTime => ∫ s,
+      mssSchwartzTemporalComplementProjection a t
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)) z*
+        ((lambda:Complex)*f s) ∂nu) := by
+  let F : S → SchwartzMap JointWaveSpaceTime Complex := fun s => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi (p s) (rho s)
+  let M : Real := SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz*
+    SchwartzMap.seminorm Complex 0 0 chiOut
+  let B : Real := M*((∫ Y : Euclidean 2,‖(FourierTransform.fourierInv a :
+    SchwartzMap (Euclidean 2) Complex) Y‖)+
+    (∫ Y : JointWaveSpaceTime,‖(FourierTransform.fourierInv (jointSchwartzExternalProduct a t) :
+      SchwartzMap JointWaveSpaceTime Complex) Y‖))
+  have hbound (s : S) (z : JointWaveSpaceTime) :
+      ‖mssSchwartzTemporalComplementProjection a t (F s) z‖ ≤ B := by
+    apply mssSchwartzTemporalComplementProjection_norm_le a t (F s) M ?_ z
+    intro w
+    exact (normalizedCircleRawJacobianPhaseSchwartz_norm_le chiOut hcompact hchi (p s) (rho s) w).trans
+      (mul_le_mul_of_nonneg_left (chiOut.norm_le_seminorm Complex _) (apply_nonneg _ _))
+  have hFm : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2) := by
+    have hmap : Measurable (fun q : S × JointWaveSpaceTime => ((p q.1,rho q.1),q.2)) :=
+      ((hp.prodMk hrho).comp measurable_fst).prodMk measurable_snd
+    simpa only [F,Function.comp_def] using
+      (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp hmap
+  have ha : (fun z : JointWaveSpaceTime => a z.fst).HasTemperateGrowth :=
+    a.hasTemperateGrowth.comp (WithLp.fstL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  have ht : (fun z : JointWaveSpaceTime => t z.snd).HasTemperateGrowth :=
+    t.hasTemperateGrowth.comp (WithLp.sndL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  have hm : (fun z : JointWaveSpaceTime => a z.fst*(1-t z.snd)).HasTemperateGrowth :=
+    ha.mul (Function.HasTemperateGrowth.const 1 |>.sub ht)
+  have hKm : Measurable (fun q : S × JointWaveSpaceTime =>
+      mssSchwartzTemporalComplementProjection a t (F q.1) q.2) := by
+    simp_rw [mssSchwartzTemporalComplementProjection_eq_spectral]
+    exact measurable_spectralProjection_schwartz_family _ hm F hFm
+  change Continuous (fun z : JointWaveSpaceTime => ∫ s,
+    mssSchwartzTemporalComplementProjection a t (F s) z*((lambda:Complex)*f s) ∂nu)
+  apply continuous_of_dominated
+    (bound := fun s : S => B*|lambda| * ‖f s‖)
+  · intro z
+    exact (((hKm.comp (measurable_id.prodMk measurable_const)).mul (hf.const_mul _))).aestronglyMeasurable
+  · intro z
+    apply Filter.Eventually.of_forall
+    intro s
+    rw [norm_mul,norm_mul,Complex.norm_real,Real.norm_eq_abs]
+    calc
+      _ ≤ B*(|lambda| * ‖f s‖) := mul_le_mul_of_nonneg_right (hbound s z) (by positivity)
+      _ = _ := by ring
+  · exact hfi.norm.const_mul _
+  · apply Filter.Eventually.of_forall
+    intro s
+    exact (mssSchwartzTemporalComplementProjection a t (F s)).continuous.mul continuous_const
+
+#print axioms mssSchwartzTemporalComplementProjection_norm_le
+#print axioms normalizedCircleRawJacobianPhase_source_temporal_complement_continuous
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+/-- Joint measurability of a genuine Schwartz family gives the measurable
+compact-time fourth maximum jointly in source and spatial coordinates. -/
+theorem sourcePacket_schwartz_family_timeMax_fourth_measurable
+    {S : Type*} [MeasurableSpace S]
+    (F : S → SchwartzMap JointWaveSpaceTime Complex)
+    (hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2)) :
+    Measurable (fun q : S × Euclidean 2 => ⨆ r : Icc (-2:Real) 2,
+      ‖F q.1 (WithLp.toLp 2 (q.2,r.1))‖ₑ^4) := by
+  let W : S × Euclidean 2 → Real → Complex := fun q T => F q.1 (WithLp.toLp 2 (q.2,T))
+  have hm (T : Real) : Measurable (fun q : S × Euclidean 2 => W q T) := by
+    exact hF.comp (show Measurable (fun q : S × Euclidean 2 => (q.1,WithLp.toLp 2 (q.2,T))) by fun_prop)
+  have hc (q : S × Euclidean 2) : Continuous (W q) :=
+    (F q.1).continuous.comp (by fun_prop)
+  exact source_kernel_compactTime_fourth_max_measurable W hm hc
+#print axioms sourcePacket_schwartz_family_timeMax_fourth_measurable
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+/-- Compact-time maximal fourth moments pass through a genuine measurable
+Schwartz source family by finite-source Holder and positive Tonelli. -/
+theorem sourcePacket_schwartz_family_timeMax_fourth_transfer
+    {S : Type*} [MeasurableSpace S] (mu : Measure S) [SFinite mu]
+    (F : S → SchwartzMap JointWaveSpaceTime Complex)
+    (hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2))
+    (f : S → Complex) (hf : Measurable f)
+    (hO : Continuous (fun z : JointWaveSpaceTime => ∫ s,F s z*f s ∂mu))
+    (L : ENNReal)
+    (hKm : ∀ᵐ s ∂mu,(∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+      ‖F s (WithLp.toLp 2 (X,r.1))‖ₑ^4) ≤ L) :
+    Measurable (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,
+      ‖∫ s,F s (WithLp.toLp 2 (X,r.1))*f s ∂mu‖ₑ^4) ∧
+    (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+      ‖∫ s,F s (WithLp.toLp 2 (X,r.1))*f s ∂mu‖ₑ^4) ≤
+      (mu univ)^3*L*(∫⁻ s,‖f s‖ₑ^4 ∂mu) := by
+  have hW := sourcePacket_schwartz_family_timeMax_fourth_measurable F hF
+  have hpoint (X : Euclidean 2) (r : Icc (-2:Real) 2) :
+      Measurable (fun s => F s (WithLp.toLp 2 (X,r.1))) :=
+    hF.comp (measurable_id.prodMk measurable_const)
+  have hm := source_kernel_compactTime_fourth_max_measurable
+    (fun X : Euclidean 2 => fun T : Real => ∫ s,F s (WithLp.toLp 2 (X,T))*f s ∂mu)
+    (fun T => (hO.comp (by fun_prop : Continuous (fun X : Euclidean 2 => WithLp.toLp 2 (X,T)))).measurable)
+    (fun X => hO.comp (by fun_prop : Continuous (fun T : Real => WithLp.toLp 2 (X,T))))
+  exact ⟨hm,source_kernel_timeMax_fourth_moment_transfer_lintegral mu volume
+    (fun s X (r : Icc (-2:Real) 2) => F s (WithLp.toLp 2 (X,r.1)))
+    hpoint hW f hf L hKm⟩
+#print axioms sourcePacket_schwartz_family_timeMax_fourth_transfer
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+/-- Genuine fourth-power maximal Fatou closure for pointwise convergent
+actual fields. The uniform core bound may vary along the approximating
+sequence, provided its numerical bound has the stated limit. -/
+theorem sourcePacket_lintegral_iSup_four_le_of_pointwise_limit
+    {Y B : Type*} [MeasurableSpace Y] (mu : Measure Y)
+    (Q : B → Y → Complex) (QSeq : Nat → B → Y → Complex)
+    (hConv : ∀ b y,Tendsto (fun j => QSeq j b y) atTop (nhds (Q b y)))
+    (hMeas : ∀ j,AEMeasurable
+      (fun y => ⨆ b,ENNReal.ofReal (‖QSeq j b y‖^4)) mu)
+    (RSeq : Nat → ENNReal) (R : ENNReal) (hR : Tendsto RSeq atTop (nhds R))
+    (hBound : ∀ j,(∫⁻ y,⨆ b,ENNReal.ofReal (‖QSeq j b y‖^4) ∂mu) ≤ RSeq j) :
+    (∫⁻ y,⨆ b,ENNReal.ofReal (‖Q b y‖^4) ∂mu) ≤ R := by
+  have hpoint (y : Y) :
+      (⨆ b,ENNReal.ofReal (‖Q b y‖^4)) ≤
+        atTop.liminf (fun j => ⨆ b,ENNReal.ofReal (‖QSeq j b y‖^4)) := by
+    apply iSup_le
+    intro b
+    have ht := ENNReal.tendsto_ofReal ((hConv b y).norm.pow 4)
+    calc
+      _ = atTop.liminf (fun j => ENNReal.ofReal (‖QSeq j b y‖^4)) := ht.liminf_eq.symm
+      _ ≤ _ := Filter.liminf_le_liminf
+        (Filter.Eventually.of_forall (fun j => le_iSup
+          (fun b => ENNReal.ofReal (‖QSeq j b y‖^4)) b))
+        (by isBoundedDefault) (by isBoundedDefault)
+  calc
+    _ ≤ ∫⁻ y,atTop.liminf (fun j => ⨆ b,ENNReal.ofReal (‖QSeq j b y‖^4)) ∂mu :=
+      lintegral_mono hpoint
+    _ ≤ atTop.liminf (fun j => ∫⁻ y,⨆ b,ENNReal.ofReal (‖QSeq j b y‖^4) ∂mu) :=
+      lintegral_liminf_le' hMeas
+    _ ≤ atTop.liminf RSeq := Filter.liminf_le_liminf (Filter.Eventually.of_forall hBound)
+      (by isBoundedDefault) (by isBoundedDefault)
+    _ = R := hR.liminf_eq
+#print axioms sourcePacket_lintegral_iSup_four_le_of_pointwise_limit
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+/-- Genuine L1 convergence gives convergence of every actual bounded-kernel
+source pairing. The source bounds may depend on the output and do not
+require continuity of the source parameterization. -/
+theorem sourcePacket_bounded_source_pairing_integrable_and_tendsto_of_eLpNorm_one
+    {S Z : Type*} [MeasurableSpace S]
+    (mu : Measure S)
+    (k : S → Z → Complex)
+    (hk : ∀ z,AEStronglyMeasurable (fun s => k s z) mu)
+    (hbound : ∀ z,∃ C : NNReal,∀ᵐ s ∂mu,‖k s z‖ ≤ C)
+    (h : S → Complex) (H : Nat → S → Complex)
+    (hh : Integrable h mu) (hH : ∀ n,Integrable (H n) mu)
+    (ht : Tendsto (fun n => eLpNorm (H n-h) 1 mu) atTop (nhds 0)) :
+    (∀ z,Integrable (fun s => k s z*h s) mu) ∧
+    (∀ n z,Integrable (fun s => k s z*H n s) mu) ∧
+    (∀ z,Tendsto (fun n => ∫ s,k s z*H n s ∂mu) atTop
+      (nhds (∫ s,k s z*h s ∂mu))) := by
+  have hpair (g : S → Complex) (hg : Integrable g mu) (z : Z) :
+      Integrable (fun s => k s z*g s) mu := by
+    obtain ⟨C,hC⟩ := hbound z
+    exact hg.bdd_mul (hk z) hC
+  refine ⟨hpair h hh,fun n => hpair (H n) (hH n),?_⟩
+  intro z
+  obtain ⟨C,hC⟩ := hbound z
+  have hupper := ENNReal.Tendsto.const_mul (a := (C:ENNReal)) ht
+    (Or.inr ENNReal.coe_ne_top)
+  simp only [mul_zero] at hupper
+  have hprod : Tendsto (fun n =>
+      eLpNorm ((fun s => k s z*H n s)-(fun s => k s z*h s)) 1 mu)
+      atTop (nhds 0) := by
+    apply tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hupper
+      (fun n => bot_le)
+    intro n
+    have hmeas : AEStronglyMeasurable
+        ((fun s => k s z*H n s)-(fun s => k s z*h s)) mu :=
+      (hpair (H n) (hH n) z).aestronglyMeasurable.sub
+        (hpair h hh z).aestronglyMeasurable
+    have hle := eLpNorm_le_nnreal_smul_eLpNorm_of_ae_le_mul
+      (g := H n-h) (c := C) hmeas (p := 1) ?_
+    · simpa only [ENNReal.smul_def,smul_eq_mul] using hle
+    · filter_upwards [hC] with s hs
+      apply NNReal.coe_le_coe.mp
+      change ‖k s z*H n s-k s z*h s‖ ≤ (C:Real)*‖H n s-h s‖
+      rw [← mul_sub,norm_mul]
+      exact mul_le_mul_of_nonneg_right hs (norm_nonneg _)
+  exact tendsto_integral_of_L1' (fun s => k s z*h s)
+    (Eventually.of_forall (fun n => hpair (H n) (hH n) z)) hprod
+#print axioms sourcePacket_bounded_source_pairing_integrable_and_tendsto_of_eLpNorm_one
+end
 end Auto.Spherical.MSS

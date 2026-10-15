@@ -3167,3 +3167,5894 @@ end
 -- END ScratchKakeyaLightRayMaximalFinal
 
 end Auto.Spherical.MSS
+
+/-!
+## Weak incidence ray maximal bound, one spatial band
+
+This is the finite separated Schwartz-tensor consumer for the repair note,
+Sections 3--5, estimate (9). The full source change of variables, averaged
+ray square energy, actual transverse derivative and one-dimensional source
+Sobolev estimate are applied to the normalized circle incidence family.
+The squared source maximal moment grows by sqrt(lambda). The following
+recombination helpers avoid a logarithmic loss when summing spatial bands.
+Density extension and the positive dyadic profile remain separate steps.
+-/
+
+namespace Auto.Spherical.MSS
+theorem sourceCotangent_band_sobolev_scaling
+    {C D lambda E : Real} (hC : 0 ≤ C) (hD : 0 ≤ D)
+    (hlambda : 0 < lambda) (hE : 0 ≤ E) :
+    2 * Real.sqrt ((C / Real.sqrt lambda * E) *
+      (D * lambda ^ 2 / Real.sqrt lambda * E)) =
+      (2 * Real.sqrt (C * D)) * Real.sqrt lambda * E := by
+  have hs := Real.sq_sqrt hlambda.le
+  have hn : Real.sqrt lambda ≠ 0 := ne_of_gt (Real.sqrt_pos.mpr hlambda)
+  have heq : (C / Real.sqrt lambda * E) * (D * lambda ^ 2 / Real.sqrt lambda * E) =
+      (C * D) * lambda * E ^ 2 := by
+    field_simp
+    rw [hs]
+    ring
+  rw [heq, Real.sqrt_mul (mul_nonneg (mul_nonneg hC hD) hlambda.le),
+    Real.sqrt_sq hE, Real.sqrt_mul (mul_nonneg hC hD)]
+  ring
+#print axioms sourceCotangent_band_sobolev_scaling
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+
+theorem measurable_sourceCotangent_reindex
+    {X : Type*} [MeasurableSpace X] {Y : Type*} [MeasurableSpace Y]
+    (F : Real → X × Real → Y) (hF : Measurable (Function.uncurry F)) :
+    Measurable (fun z : X × (Real × Real) => F z.2.2 (z.1,z.2.1)) := by
+  exact hF.comp (measurable_snd.snd.prodMk (measurable_fst.prodMk measurable_snd.fst))
+
+theorem ofReal_two_mul (r : Real) :
+    ENNReal.ofReal (2*r) = 2 * ENNReal.ofReal r := by
+  rw [ENNReal.ofReal_mul (by norm_num : (0 : Real) ≤ 2), ENNReal.ofReal_ofNat]
+
+theorem norm_sq_add_le_two_sq {V : Type*} [NormedAddCommGroup V] (v w : V) :
+    ‖v+w‖ ^ 2 ≤ 2 * ‖v‖ ^ 2 + 2 * ‖w‖ ^ 2 := by
+  have h := pow_le_pow_left₀ (norm_nonneg (v+w)) (norm_add_le v w) 2
+  nlinarith [sq_nonneg (‖v‖ - ‖w‖)]
+
+theorem cutoffNormalizedCircleFiniteTensorRay_norm_sq_le
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) (eps : Real) (chi : Real → Real)
+    {B : Real} (hchi : |chi B| ≤ 1) (x : sphere (0 : Euclidean 2) 1 × Real) :
+    ‖cutoffNormalizedCircleFiniteTensorRay s q a eps chi B x‖ ^ 2 ≤
+      ‖normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)‖ ^ 2 := by
+  unfold cutoffNormalizedCircleFiniteTensorRay
+  rw [norm_smul, Real.norm_eq_abs, mul_pow]
+  have h := pow_le_pow_left₀ (abs_nonneg (chi B)) hchi 2
+  nlinarith [mul_le_mul_of_nonneg_right h (sq_nonneg
+    (‖normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)‖))]
+
+theorem cutoffNormalizedCircleFiniteTensorRayDeriv_norm_sq_le
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) (eps : Real) (chi chiPrime : Real → Real)
+    {B A : Real} (hchi : |chi B| ≤ 1) (hchiPrime : |chiPrime B| ≤ A)
+    (x : sphere (0 : Euclidean 2) 1 × Real) :
+    ‖cutoffNormalizedCircleFiniteTensorRayDeriv s q a eps chi chiPrime B x‖ ^ 2 ≤
+      2 * A ^ 2 * ‖normalizedCircleFiniteTensorRay s q a eps x.2 B x.1
+        (normalizedCircleQuarterTurn x.1)‖ ^ 2 +
+      2 * ‖normalizedCircleFiniteTensorRayDeriv s q a eps x.2 B x.1
+        (normalizedCircleQuarterTurn x.1)‖ ^ 2 := by
+  rw [cutoffNormalizedCircleFiniteTensorRayDeriv_eq]
+  apply (norm_sq_add_le_two_sq _ _).trans
+  simp only [norm_smul, Real.norm_eq_abs, mul_pow]
+  have h1 := pow_le_pow_left₀ (abs_nonneg (chiPrime B)) hchiPrime 2
+  have h2 := pow_le_pow_left₀ (abs_nonneg (chi B)) hchi 2
+  nlinarith [mul_le_mul_of_nonneg_right h1 (sq_nonneg
+    (‖normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)‖)),
+    mul_le_mul_of_nonneg_right h2 (sq_nonneg
+    (‖normalizedCircleFiniteTensorRayDeriv s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)‖))]
+
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+set_option maxHeartbeats 1000000 in
+/-- One spatial frequency band of the actual normalized incidence ray field,
+using the repair note's source coordinates. The finite tensor and centered time
+hypotheses are explicit; this is not the general smoothed-test maximal bound. -/
+theorem exists_normalizedCircle_finiteTensor_band_maximal
+    (A : Real) (_hA : 0 ≤ A) :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ eps lambda : Real, |eps| ≤ 1/32 → 1 ≤ lambda →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆
+        {ξ | lambda ≤ ‖ξ‖ ∧ ‖ξ‖ ≤ 4*lambda}) →
+      ∀ chi chiPrime : Real → Real, Continuous chi → Continuous chiPrime →
+      (∀ B, HasDerivAt chi (chiPrime B) B) →
+      (∀ B, |chi B| ≤ 1) → (∀ B, |chiPrime B| ≤ A) →
+      (∀ B, chi B ≠ 0 → |B| ≤ 6) → (∀ B, |B| ≤ 4 → chi B = 1) →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖ ^ 2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-4 : Real) 4)))) ≤
+        ENNReal.ofReal (C * Real.sqrt lambda *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖ ^ 2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb0⟩ := exists_normalizedCircle_source_ray_energy_decay_centered
+  obtain ⟨C1,hC1,hb1⟩ := exists_normalizedCircle_source_ray_derivative_energy_decay_centered
+  let Dcoef := 2*A^2*C0 + 32*C1
+  refine ⟨2*Real.sqrt (C0*Dcoef), by dsimp [Dcoef]; positivity, ?_⟩
+  intro ι s q hqcompact a ha eps lambda heps hlambda hq chi chiPrime hchi hchiPrime
+    hchiDeriv hchiBound hchiPrimeBound hchiSupp hchiOne
+  have hlam : 0 < lambda := by linarith
+  have hepsHalf : |eps| ≤ 1/2 := by linarith
+  have hql : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {ξ | lambda ≤ ‖ξ‖} :=
+    fun i hi ξ hξ => (hq i hi hξ).1
+  have hqu : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {ξ | ‖ξ‖ ≤ 4*lambda} :=
+    fun i hi ξ hξ => (hq i hi hξ).2
+  let mu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-4 : Real) 4))
+  let nu := (volume.restrict (Icc (-8 : Real) 8)).prod mu
+  let E := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖ ^ 2 ∂(volume.prod volume)
+  let E0 := C0 / Real.sqrt lambda * E
+  let E1 := Dcoef * lambda^2 / Real.sqrt lambda * E
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have hDcoef : 0 < Dcoef := by dsimp [Dcoef]; positivity
+  have hE0 : 0 ≤ E0 := by dsimp [E0]; positivity
+  have hE1 : 0 ≤ E1 := by dsimp [E1]; positivity
+  let Q : Real → sphere (0 : Euclidean 2) 1 × Real → Complex :=
+    fun B x => normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)
+  let QD : Real → sphere (0 : Euclidean 2) 1 × Real → Complex :=
+    fun B x => normalizedCircleFiniteTensorRayDeriv s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)
+  let F := cutoffNormalizedCircleFiniteTensorRay s q a eps chi
+  let FD := cutoffNormalizedCircleFiniteTensorRayDeriv s q a eps chi chiPrime
+  have hQ : Continuous (Function.uncurry Q) := by
+    convert continuous_cutoffNormalizedCircleFiniteTensorRay s q hqcompact a ha eps
+      (chi := fun _ => 1) continuous_const using 1
+    funext z
+    simp only [Function.uncurry, cutoffNormalizedCircleFiniteTensorRay, Q, one_smul]
+  have hQD : Measurable (Function.uncurry QD) :=
+    measurable_normalizedCircleFiniteTensorRayDeriv s q a ha eps
+  have hQnorm : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      ENNReal.ofReal (‖Q z.1 z.2‖^2)) :=
+    (ENNReal.continuous_ofReal.comp (hQ.norm.pow 2)).measurable
+  have hQDnorm : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      ENNReal.ofReal (‖QD z.1 z.2‖^2)) :=
+    ENNReal.continuous_ofReal.measurable.comp (hQD.norm.pow_const 2)
+  have hKQ := measurable_sourceCotangent_reindex
+    (fun B x => ENNReal.ofReal (‖Q B x‖^2)) hQnorm
+  have hKQD := measurable_sourceCotangent_reindex
+    (fun B x => ENNReal.ofReal (‖QD B x‖^2)) hQDnorm
+  have heQ : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖Q z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal E0 :=
+    (sourceCotangent_rectangle_product_lintegral_le_regime (unitSurfaceMeasure 2) eps heps
+      (fun omega z => ENNReal.ofReal (‖Q z.2 (omega,z.1)‖^2)) hKQ).trans
+      (hb0 ι s q hqcompact a ha eps lambda hlam hql)
+  have heQD : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖QD z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal (16*C1*lambda^2 / Real.sqrt lambda * E) := by
+    apply (sourceCotangent_rectangle_product_lintegral_le_regime (unitSurfaceMeasure 2) eps heps
+      (fun omega z => ENNReal.ofReal (‖QD z.2 (omega,z.1)‖^2)) hKQD).trans
+    convert hb1 ι s q hqcompact a ha eps lambda (4*lambda) hepsHalf hlam (by positivity) hql hqu using 1
+    congr 1
+    ring
+  have hF := continuous_cutoffNormalizedCircleFiniteTensorRay s q hqcompact a ha eps hchi
+  have hFD := continuous_cutoffNormalizedCircleFiniteTensorRayDeriv s q hqcompact a ha heps hchi hchiPrime hchiSupp
+  have heF : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖F z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal E0 :=
+    (lintegral_mono (μ := nu) (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) => ENNReal.ofReal_le_ofReal
+      (cutoffNormalizedCircleFiniteTensorRay_norm_sq_le s q a eps chi (hchiBound z.1) z.2))).trans heQ
+  have heFD : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖FD z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal E1 := by
+    calc
+      _ ≤ ∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+          ENNReal.ofReal (2*A^2*‖Q z.1 z.2‖^2 + 2*‖QD z.1 z.2‖^2) ∂nu :=
+        lintegral_mono (μ := nu) (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) => ENNReal.ofReal_le_ofReal
+          (cutoffNormalizedCircleFiniteTensorRayDeriv_norm_sq_le s q a eps chi chiPrime
+            (hchiBound z.1) (hchiPrimeBound z.1) z.2))
+      _ = ENNReal.ofReal (2*A^2) * (∫⁻ z, ENNReal.ofReal (‖Q z.1 z.2‖^2) ∂nu) +
+          2 * ∫⁻ z, ENNReal.ofReal (‖QD z.1 z.2‖^2) ∂nu := by
+        have heq (z : Real × (sphere (0 : Euclidean 2) 1 × Real)) :
+            ENNReal.ofReal (2*A^2*‖Q z.1 z.2‖^2 + 2*‖QD z.1 z.2‖^2) =
+            ENNReal.ofReal (2*A^2) * ENNReal.ofReal (‖Q z.1 z.2‖^2) +
+              2 * ENNReal.ofReal (‖QD z.1 z.2‖^2) := by
+          rw [ENNReal.ofReal_add (by positivity : 0 ≤ 2*A^2*‖Q z.1 z.2‖^2)
+            (by positivity : 0 ≤ 2*‖QD z.1 z.2‖^2),
+            ENNReal.ofReal_mul (by positivity : 0 ≤ 2*A^2),
+            ofReal_two_mul]
+          simp only [ofReal_two_mul]
+        simp_rw [heq]
+        have hm : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+            ENNReal.ofReal (2*A^2) * ENNReal.ofReal (‖Q z.1 z.2‖^2)) := measurable_const.mul hQnorm
+        rw [lintegral_add_left (μ := nu) hm
+            (fun z => 2 * ENNReal.ofReal (‖QD z.1 z.2‖^2)),
+          lintegral_const_mul' _ _ ENNReal.ofReal_ne_top,
+          lintegral_const_mul' _ _ (by norm_num)]
+      _ ≤ ENNReal.ofReal (2*A^2) * ENNReal.ofReal E0 +
+          2 * ENNReal.ofReal (16*C1*lambda^2 / Real.sqrt lambda * E) :=
+        add_le_add (mul_le_mul_of_nonneg_left heQ (by positivity)) (mul_le_mul_of_nonneg_left heQD (by positivity))
+      _ ≤ _ := by
+        have hnum : 2*A^2*E0 + 2*(16*C1*lambda^2 / Real.sqrt lambda * E) ≤ E1 := by
+          have hsq : 1 ≤ lambda^2 := by nlinarith
+          have hx := mul_le_mul_of_nonneg_left hsq
+            (by positivity : 0 ≤ 2*A^2*C0 / Real.sqrt lambda * E)
+          calc
+            _ = (2*A^2*C0 / Real.sqrt lambda * E) +
+                32*C1*lambda^2 / Real.sqrt lambda * E := by dsimp [E0]; ring
+            _ ≤ (2*A^2*C0 / Real.sqrt lambda * E) * lambda^2 +
+                32*C1*lambda^2 / Real.sqrt lambda * E := by
+              exact add_le_add (by simpa only [mul_one] using hx) le_rfl
+            _ = _ := by dsimp [E1,Dcoef]; ring
+        calc
+          _ = ENNReal.ofReal (2*A^2*E0 + 2*(16*C1*lambda^2 / Real.sqrt lambda * E)) := by
+            rw [ENNReal.ofReal_add (by positivity : 0 ≤ 2*A^2*E0)
+                (by positivity : 0 ≤ 2*(16*C1*lambda^2 / Real.sqrt lambda * E)),
+              ENNReal.ofReal_mul (by positivity : 0 ≤ 2*A^2),
+              ofReal_two_mul]
+            simp only [ofReal_two_mul]
+          _ ≤ _ := ENNReal.ofReal_le_ofReal hnum
+  obtain ⟨hmax,hbmax⟩ := sourceCotangent_productSobolev_of_lintegral_energy mu (by norm_num : (-8 : Real) ≤ 8)
+    hF hFD (cutoffNormalizedCircleFiniteTensorRay_hasDerivAt s q a heps hchiDeriv hchiSupp)
+    (by intro x; have hz : chi (-8) = 0 := by
+          by_contra hz; have h := hchiSupp (-8) hz; norm_num at h
+        simp only [cutoffNormalizedCircleFiniteTensorRay,hz,zero_smul])
+    hE0 hE1 heF heFD
+  calc
+    _ ≤ ∫⁻ x, ⨆ B : Icc (-8 : Real) 8, ENNReal.ofReal (‖F B.1 x‖^2) ∂mu := by
+      apply lintegral_mono
+      intro x
+      apply iSup_le
+      intro B
+      have hB4 : |B.1| ≤ 4 := abs_le.mpr B.2
+      have hB8 : B.1 ∈ Icc (-8 : Real) 8 := by constructor <;> linarith [B.2.1,B.2.2]
+      apply le_trans _ (le_iSup_of_le ⟨B.1,hB8⟩ le_rfl)
+      simp only [F,cutoffNormalizedCircleFiniteTensorRay,hchiOne B.1 hB4,one_smul]
+      exact le_rfl
+    _ ≤ ENNReal.ofReal (2*Real.sqrt (E0*E1)) := hbmax
+    _ = _ := by
+      congr 1
+      exact sourceCotangent_band_sobolev_scaling hC0.le hDcoef.le hlam hE
+#print axioms exists_normalizedCircle_finiteTensor_band_maximal
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped ContDiff
+
+theorem exists_sourceCotangent_smooth_cutoff :
+    ∃ (chi chiPrime : Real → Real) (A : Real), 0 ≤ A ∧
+      Continuous chi ∧ Continuous chiPrime ∧
+      (∀ B, HasDerivAt chi (chiPrime B) B) ∧
+      (∀ B, |chi B| ≤ 1) ∧ (∀ B, |chiPrime B| ≤ A) ∧
+      (∀ B, chi B ≠ 0 → |B| ≤ 6) ∧ (∀ B, |B| ≤ 4 → chi B = 1) := by
+  let b : ContDiffBump (0 : Real) := ⟨4,6,by norm_num,by norm_num⟩
+  have hcd : ContDiff Real ∞ (b : Real → Real) := b.contDiff
+  have hderiv : Continuous (deriv (b : Real → Real)) := hcd.continuous_deriv (by norm_num)
+  obtain ⟨A,hA⟩ := b.hasCompactSupport.deriv.exists_bound_of_continuous hderiv
+  refine ⟨b,deriv (b : Real → Real),max 0 A,le_max_left _ _,b.continuous,hderiv,?_,?_,?_,?_,?_⟩
+  · intro B
+    exact (hcd.differentiable (by simp) B).hasDerivAt
+  · intro B
+    rw [abs_of_nonneg (b.nonneg)]
+    exact b.le_one
+  · intro B
+    exact (show |deriv (b : Real → Real) B| ≤ A from by simpa only [Real.norm_eq_abs] using hA B).trans (le_max_right _ _)
+  · intro B hB
+    have hb : B ∈ ball (0 : Real) b.rOut := by
+      rw [← b.support_eq]
+      exact hB
+    have hlt : |B| < 6 := by simpa only [mem_ball,dist_zero_right,Real.norm_eq_abs,b] using hb
+    exact hlt.le
+  · intro B hB
+    apply b.one_of_mem_closedBall
+    simpa only [mem_closedBall,dist_zero_right,Real.norm_eq_abs,b] using hB
+
+/-- The actual incidence-indexed ray maximal bound on one smooth spatial band.
+All constants are uniform in the normalized circle parameter and in the
+finite separated Schwartz tensor. Extension to general positive smoothing and
+summation of the spatial frequency bands are separate consumers. -/
+theorem exists_normalizedCircle_finiteTensor_singleBand_maximal :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ eps lambda : Real, |eps| ≤ 1/32 → 1 ≤ lambda →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆
+        {ξ | lambda ≤ ‖ξ‖ ∧ ‖ξ‖ ≤ 4*lambda}) →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖ ^ 2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-4 : Real) 4)))) ≤
+        ENNReal.ofReal (C * Real.sqrt lambda *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖ ^ 2
+            ∂(volume.prod volume)) := by
+  obtain ⟨chi,chiPrime,A,hA,hchi,hchiPrime,hchiDeriv,hchiBound,hchiPrimeBound,hchiSupp,hchiOne⟩ :=
+    exists_sourceCotangent_smooth_cutoff
+  obtain ⟨C,hC,hb⟩ := exists_normalizedCircle_finiteTensor_band_maximal A hA
+  refine ⟨C,hC,?_⟩
+  intro ι s q hqcompact a ha eps lambda heps hlambda hq
+  exact hb ι s q hqcompact a ha eps lambda heps hlambda hq chi chiPrime hchi hchiPrime
+    hchiDeriv hchiBound hchiPrimeBound hchiSupp hchiOne
+#print axioms exists_sourceCotangent_smooth_cutoff
+#print axioms exists_normalizedCircle_finiteTensor_singleBand_maximal
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+open scoped BigOperators
+theorem norm_sum_sq_le_weighted_sum
+    {ι V : Type*} [NormedAddCommGroup V] (s : Finset ι)
+    (w : ι → Real) (hw : ∀ i ∈ s, 0 < w i) (F : ι → V) :
+    ‖∑ i ∈ s, F i‖ ^ 2 ≤ (∑ i ∈ s, w i) * ∑ i ∈ s, (w i)⁻¹ * ‖F i‖ ^ 2 := by
+  have hcs := Finset.sum_sq_le_sum_mul_sum_of_sq_le_mul s
+    (r := fun i => ‖F i‖) (f := w) (g := fun i => (w i)⁻¹ * ‖F i‖ ^ 2)
+    (fun i hi => (hw i hi).le)
+    (fun i hi => mul_nonneg (inv_nonneg.mpr (hw i hi).le) (sq_nonneg _))
+    (fun i hi => by rw [← mul_assoc, mul_inv_cancel₀ (ne_of_gt (hw i hi)), one_mul])
+  exact (pow_le_pow_left₀ (norm_nonneg _) (norm_sum_le _ _) 2).trans hcs
+
+theorem lintegral_iSup_norm_sq_sum_le_weighted
+    {X B ι : Type*} [MeasurableSpace X] (mu : Measure X)
+    (s : Finset ι) (w : ι → Real) (hw : ∀ i ∈ s, 0 < w i)
+    (F : ι → B → X → Complex)
+    (hF : ∀ i ∈ s, Measurable (fun x => ⨆ b : B, ENNReal.ofReal (‖F i b x‖ ^ 2))) :
+    (∫⁻ x, ⨆ b : B, ENNReal.ofReal (‖∑ i ∈ s, F i b x‖ ^ 2) ∂mu) ≤
+      ENNReal.ofReal (∑ i ∈ s, w i) *
+      ∑ i ∈ s, ENNReal.ofReal ((w i)⁻¹) *
+        ∫⁻ x, ⨆ b : B, ENNReal.ofReal (‖F i b x‖ ^ 2) ∂mu := by
+  have hn : 0 ≤ ∑ i ∈ s, w i := Finset.sum_nonneg (fun i hi => (hw i hi).le)
+  have hp (x : X) :
+      (⨆ b : B, ENNReal.ofReal (‖∑ i ∈ s, F i b x‖ ^ 2)) ≤
+        ENNReal.ofReal (∑ i ∈ s, w i) *
+          ∑ i ∈ s, ENNReal.ofReal ((w i)⁻¹) * ⨆ b : B, ENNReal.ofReal (‖F i b x‖ ^ 2) := by
+    apply iSup_le
+    intro b
+    calc
+      _ ≤ ENNReal.ofReal ((∑ i ∈ s, w i) * ∑ i ∈ s, (w i)⁻¹ * ‖F i b x‖ ^ 2) :=
+        ENNReal.ofReal_le_ofReal (norm_sum_sq_le_weighted_sum s w hw (fun i => F i b x))
+      _ = ENNReal.ofReal (∑ i ∈ s, w i) *
+          ∑ i ∈ s, ENNReal.ofReal ((w i)⁻¹) * ENNReal.ofReal (‖F i b x‖ ^ 2) := by
+        rw [ENNReal.ofReal_mul hn, ENNReal.ofReal_sum_of_nonneg
+          (fun i hi => mul_nonneg (inv_nonneg.mpr (hw i hi).le) (sq_nonneg _))]
+        apply congrArg
+        apply Finset.sum_congr rfl
+        intro i hi
+        exact ENNReal.ofReal_mul (inv_nonneg.mpr (hw i hi).le)
+      _ ≤ _ := mul_le_mul_of_nonneg_left (Finset.sum_le_sum (fun i hi =>
+        mul_le_mul_of_nonneg_left (le_iSup_of_le b le_rfl) (by positivity))) (by positivity)
+  calc
+    _ ≤ ∫⁻ x, ENNReal.ofReal (∑ i ∈ s, w i) *
+        ∑ i ∈ s, ENNReal.ofReal ((w i)⁻¹) * ⨆ b : B, ENNReal.ofReal (‖F i b x‖ ^ 2) ∂mu :=
+      lintegral_mono hp
+    _ = _ := by
+      rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top, lintegral_finsetSum]
+      · congr 1
+        apply Finset.sum_congr rfl
+        intro i hi
+        exact lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+      · intro i hi
+        exact measurable_const.mul (hF i hi)
+#print axioms norm_sum_sq_le_weighted_sum
+#print axioms lintegral_iSup_norm_sq_sum_le_weighted
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+theorem measurable_iSup_norm_sq_of_joint_continuous
+    {X B : Type*} [MeasurableSpace X] [TopologicalSpace X] [BorelSpace X]
+    [TopologicalSpace B] [SecondCountableTopology B]
+    (F : B → X → Complex) (hF : Continuous (Function.uncurry F)) :
+    Measurable (fun x : X => ⨆ b : B, ENNReal.ofReal (‖F b x‖^2)) := by
+  have hm : Measurable (⨆ b : B, fun x : X => ENNReal.ofReal (‖F b x‖^2)) := by
+    apply measurable_iSup_of_lowerSemicontinuous
+    · intro b
+      exact (ENNReal.continuous_ofReal.comp
+        ((hF.comp (continuous_const.prodMk continuous_id)).norm.pow 2)).measurable
+    · intro x
+      exact (ENNReal.continuous_ofReal.comp
+        ((hF.comp (continuous_id.prodMk continuous_const)).norm.pow 2)).lowerSemicontinuous
+  have heq : (fun x : X => ⨆ b : B, ENNReal.ofReal (‖F b x‖^2)) =
+      ⨆ b : B, fun x : X => ENNReal.ofReal (‖F b x‖^2) := by
+    funext x
+    exact (iSup_apply (f := fun b : B => fun x : X => ENNReal.ofReal (‖F b x‖^2)) (a := x)).symm
+  rw [heq]
+  exact hm
+#print axioms measurable_iSup_norm_sq_of_joint_continuous
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+open scoped BigOperators
+theorem sqrt_two_pow (j : Nat) : Real.sqrt ((2 : Real)^j) = (Real.sqrt 2)^j := by
+  induction j with
+  | zero => norm_num
+  | succ j ih =>
+    rw [pow_succ,Real.sqrt_mul (pow_nonneg (by norm_num : (0 : Real) ≤ 2) j),ih,pow_succ]
+
+theorem sum_sqrt_two_pow_le (N : Nat) :
+    (∑ j ∈ Finset.range N, Real.sqrt ((2 : Real)^j)) ≤ 4*Real.sqrt ((2 : Real)^N) := by
+  have hroot : (5 : Real) ≤ 4*Real.sqrt 2 := by
+    nlinarith [Real.sq_sqrt (show (0 : Real) ≤ 2 by norm_num),Real.sqrt_nonneg 2]
+  simp only [sqrt_two_pow]
+  induction N with
+  | zero => norm_num
+  | succ N ih =>
+    rw [Finset.sum_range_succ,pow_succ]
+    have h := mul_le_mul_of_nonneg_right hroot
+      (pow_nonneg (Real.sqrt_nonneg 2) N)
+    calc
+      _ ≤ 4*(Real.sqrt 2)^N + (Real.sqrt 2)^N := add_le_add ih le_rfl
+      _ ≤ _ := by nlinarith
+#print axioms sqrt_two_pow
+#print axioms sum_sqrt_two_pow_le
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+theorem two_pow_natCeil_logb_le_two_mul
+    {v : Real} (hv : 1 ≤ v) :
+    (2 : Real) ^ (⌈Real.logb 2 v⌉₊) ≤ 2*v := by
+  have hlog : 0 ≤ Real.logb 2 v := Real.logb_nonneg (by norm_num : (1 : Real) < 2) hv
+  have hceil := (Nat.ceil_lt_add_one hlog).le
+  calc
+    _ = (2 : Real) ^ (⌈Real.logb 2 v⌉₊ : Real) := (Real.rpow_natCast _ _).symm
+    _ ≤ (2 : Real) ^ (Real.logb 2 v + 1) :=
+      Real.rpow_le_rpow_of_exponent_le (by norm_num) hceil
+    _ = 2*v := by
+      rw [Real.rpow_add (by norm_num : (0 : Real) < 2),
+        Real.rpow_logb (by norm_num : (0 : Real) < 2) (by norm_num : (2 : Real) ≠ 1)
+          (by linarith : 0 < v),Real.rpow_one]
+      ring
+#print axioms two_pow_natCeil_logb_le_two_mul
+end Auto.Spherical.MSS
+
+/-!
+The spatial Littlewood--Paley factors commute with the complete finite time
+tensor. These identities preserve every temporal cross term. The uniform
+square-energy bound uses the actual two-band frequency overlap, rather than
+the number of dyadic scales, for the weak incidence maximal summation.
+-/
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+theorem finiteTensorRadialBandProfiles_timeData_eq
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) (j : Nat) (xi : Euclidean 2) (t : Real) :
+    scratch_finiteTensorTimeData s (finiteTensorRadialBandProfiles C q j) a xi t =
+      intDyadicBandpassMultiplier C.cutoff (j : Int) xi * scratch_finiteTensorTimeData s q a xi t := by
+  simp only [scratch_finiteTensorTimeData,finiteTensorRadialBandProfiles_apply,Int.zero_add,Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i hi
+  ring
+
+theorem finiteTensorRadialBandProfiles_support_singleBand
+    {ι : Type*} (C : lpCutoffs 2) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (j : Nat) (i : ι) :
+    Function.support (finiteTensorRadialBandProfiles C q j i : Euclidean 2 → Complex) ⊆
+      {xi | (2 : Real)^j ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4*(2 : Real)^j} := by
+  intro xi hxi
+  have hn : intDyadicBandpassMultiplier C.cutoff (j : Int) xi ≠ 0 := by
+    intro hz
+    exact hxi (by rw [finiteTensorRadialBandProfiles_apply,Int.zero_add,hz,zero_mul])
+  have h := intDyadicBandpass_norm_bounds_of_ne_zero C hn
+  constructor
+  · simpa only [zpow_natCast] using h.1.le
+  · have hp : (2 : Real)^((j : Int)+2) = 4*(2 : Real)^j := by
+      rw [zpow_add₀ (by norm_num : (2 : Real) ≠ 0),zpow_natCast]
+      norm_num
+      ring
+    simpa only [hp] using h.2.le
+
+theorem finiteTensorRadialBandProfiles_squareEnergy_le
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) (J : Finset Nat) :
+    (∑ j ∈ J, ∫ z : Euclidean 2 × Real,
+      ‖finiteTensorPhysicalTimeData s (finiteTensorRadialBandProfiles C q j) a z‖^2 ∂(volume.prod volume)) ≤
+      8 * ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume) := by
+  classical
+  have hm (xi : Euclidean 2) :
+      (∑ j ∈ J, ‖intDyadicBandpassMultiplier C.cutoff (j : Int) xi‖^2) ≤ 8 := by
+    have h := intDyadicBandpass_square_overlap C (J.image (fun j : Nat => (j : Int))) xi
+    rw [Finset.sum_image] at h
+    · exact h
+    · intro i hi j hj hij
+      change (i : Int) = (j : Int) at hij
+      exact_mod_cast hij
+  have hband (j : Nat) : Integrable (fun z : Euclidean 2 × Real =>
+      ‖scratch_finiteTensorTimeData s (finiteTensorRadialBandProfiles C q j) a z.1 z.2‖^2)
+      (volume.prod volume) :=
+    integrable_sq_scratch_finiteTensorTimeData_product s (finiteTensorRadialBandProfiles C q j) a
+  have hraw := integrable_sq_scratch_finiteTensorTimeData_product s q a
+  have hp (z : Euclidean 2 × Real) :
+      (∑ j ∈ J, ‖scratch_finiteTensorTimeData s (finiteTensorRadialBandProfiles C q j) a z.1 z.2‖^2) ≤
+        8 * ‖scratch_finiteTensorTimeData s q a z.1 z.2‖^2 := by
+    simp only [finiteTensorRadialBandProfiles_timeData_eq,norm_mul,mul_pow,← Finset.sum_mul]
+    exact mul_le_mul_of_nonneg_right (hm z.1) (sq_nonneg _)
+  simp only [← finiteTensorFrequencyTimeEnergy_eq_integral_norm_sq_physical,finiteTensorFrequencyTimeEnergy]
+  rw [← integral_finsetSum J (fun j hj => hband j),← integral_const_mul]
+  exact integral_mono (integrable_finsetSum J (fun j hj => hband j)) (hraw.const_mul 8) hp
+#print axioms finiteTensorRadialBandProfiles_timeData_eq
+#print axioms finiteTensorRadialBandProfiles_support_singleBand
+#print axioms finiteTensorRadialBandProfiles_squareEnergy_le
+end
+end Auto.Spherical.MSS
+
+/-!
+## Enlarged source window for the actual packet analysis
+
+The repair's source cutoff and its fixed neighborhood require the radial
+window |u| <= 6. The preceding |u| <= 4 consumers remain available. Restriction
+from the full admissible incidence regime gives the same numerical energy
+constants on every source half-width U <= 8. The actual translated kernel
+square energy also supplies the direct lowpass and large-width estimate.
+-/
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+theorem rectangle_lintegral_le_normalizedCircle_radius_regime
+    {X : Type*} [MeasurableSpace X] (mu : Measure X) [SFinite mu]
+    (U : Real) (_hU : 0 ≤ U) (hUmax : U ≤ 8)
+    (eps : Real) (heps : |eps| ≤ 1 / 32)
+    (K : X → Real × Real → ENNReal) (hK : Measurable (Function.uncurry K)) :
+    (∫⁻ B in Icc (-8 : Real) 8, ∫⁻ x,
+      (∫⁻ u in Icc (-U) U, K x (u,B)) ∂mu) ≤
+    ∫⁻ x, (∫⁻ z in {z : Real × Real |
+      |eps * z.1| ≤ 1 / 2 ∧ |eps * z.2| ≤ 1 / 2}, K x z) ∂mu := by
+  have hperm : Measurable (fun z : (Real × X) × Real => K z.1.2 (z.2,z.1.1)) :=
+    hK.comp (measurable_fst.snd.prodMk (measurable_snd.prodMk measurable_fst.fst))
+  have hF : Measurable (fun z : Real × X => ∫⁻ u in Icc (-U) U, K z.2 (u,z.1)) :=
+    Measurable.lintegral_prod_right (ν := volume.restrict (Icc (-U) U)) hperm
+  have hswap := lintegral_lintegral_swap
+    (μ := volume.restrict (Icc (-8 : Real) 8)) (ν := mu)
+    (f := fun B x => ∫⁻ u in Icc (-U) U, K x (u,B)) hF.aemeasurable
+  rw [hswap]
+  apply lintegral_mono
+  intro x
+  calc
+    _ = ∫⁻ z in Icc (-U) U ×ˢ Icc (-8 : Real) 8, K x z := by
+      exact (setLIntegral_prod_symm (K x) hK.of_uncurry_left.aemeasurable).symm
+    _ ≤ _ := by
+      apply lintegral_mono_set
+      intro z hz
+      have hu : |z.1| ≤ U := abs_le.mpr hz.1
+      have hb : |z.2| ≤ 8 := abs_le.mpr hz.2
+      have h1 := mul_le_mul heps hu (abs_nonneg z.1) (by norm_num : (0 : Real) ≤ 1/32)
+      have h2 := mul_le_mul heps hb (abs_nonneg z.2) (by norm_num : (0 : Real) ≤ 1/32)
+      constructor <;> rw [abs_mul] <;> nlinarith
+#print axioms rectangle_lintegral_le_normalizedCircle_radius_regime
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+theorem sourceCotangent_radius_product_lintegral_le_regime
+    {X : Type*} [MeasurableSpace X] (mu : Measure X) [SFinite mu]
+    (U : Real) (hU : 0 ≤ U) (hUmax : U ≤ 8)
+    (eps : Real) (heps : |eps| ≤ 1 / 32)
+    (K : X → Real × Real → ENNReal) (hK : Measurable (Function.uncurry K)) :
+    (∫⁻ z : Real × (X × Real), K z.2.1 (z.2.2,z.1)
+      ∂((volume.restrict (Icc (-8 : Real) 8)).prod
+        (mu.prod (volume.restrict (Icc (-U) U))))) ≤
+    ∫⁻ x, (∫⁻ z in {z : Real × Real |
+      |eps * z.1| ≤ 1 / 2 ∧ |eps * z.2| ≤ 1 / 2}, K x z) ∂mu := by
+  have hperm : Measurable (fun z : Real × (X × Real) => K z.2.1 (z.2.2,z.1)) :=
+    hK.comp (measurable_snd.fst.prodMk (measurable_snd.snd.prodMk measurable_fst))
+  rw [lintegral_prod _ hperm.aemeasurable]
+  have heq (B : Real) : (∫⁻ z : X × Real, K z.1 (z.2,B) ∂mu.prod (volume.restrict (Icc (-U) U))) =
+      ∫⁻ x, (∫⁻ u in Icc (-U) U, K x (u,B)) ∂mu :=
+    lintegral_prod _ (hK.comp (measurable_fst.prodMk (measurable_snd.prodMk measurable_const))).aemeasurable
+  simp only [heq]
+  exact rectangle_lintegral_le_normalizedCircle_radius_regime mu U hU hUmax eps heps K hK
+
+
+#print axioms sourceCotangent_radius_product_lintegral_le_regime
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+set_option maxHeartbeats 1000000 in
+/-- One spatial frequency band of the actual normalized incidence ray field,
+using the repair note's source coordinates. The finite tensor and centered time
+hypotheses are explicit; this is not the general smoothed-test maximal bound. -/
+theorem exists_normalizedCircle_finiteTensor_radius_band_maximal
+    (U : Real) (hU : 0 ≤ U) (hUmax : U ≤ 8) (A : Real) (_hA : 0 ≤ A) :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ eps lambda : Real, |eps| ≤ 1/32 → 1 ≤ lambda →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆
+        {ξ | lambda ≤ ‖ξ‖ ∧ ‖ξ‖ ≤ 4*lambda}) →
+      ∀ chi chiPrime : Real → Real, Continuous chi → Continuous chiPrime →
+      (∀ B, HasDerivAt chi (chiPrime B) B) →
+      (∀ B, |chi B| ≤ 1) → (∀ B, |chiPrime B| ≤ A) →
+      (∀ B, chi B ≠ 0 → |B| ≤ 6) → (∀ B, |B| ≤ 4 → chi B = 1) →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖ ^ 2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-U) U)))) ≤
+        ENNReal.ofReal (C * Real.sqrt lambda *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖ ^ 2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb0⟩ := exists_normalizedCircle_source_ray_energy_decay_centered
+  obtain ⟨C1,hC1,hb1⟩ := exists_normalizedCircle_source_ray_derivative_energy_decay_centered
+  let Dcoef := 2*A^2*C0 + 32*C1
+  refine ⟨2*Real.sqrt (C0*Dcoef), by dsimp [Dcoef]; positivity, ?_⟩
+  intro ι s q hqcompact a ha eps lambda heps hlambda hq chi chiPrime hchi hchiPrime
+    hchiDeriv hchiBound hchiPrimeBound hchiSupp hchiOne
+  have hlam : 0 < lambda := by linarith
+  have hepsHalf : |eps| ≤ 1/2 := by linarith
+  have hql : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {ξ | lambda ≤ ‖ξ‖} :=
+    fun i hi ξ hξ => (hq i hi hξ).1
+  have hqu : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {ξ | ‖ξ‖ ≤ 4*lambda} :=
+    fun i hi ξ hξ => (hq i hi hξ).2
+  let mu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-U) U))
+  let nu := (volume.restrict (Icc (-8 : Real) 8)).prod mu
+  let E := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖ ^ 2 ∂(volume.prod volume)
+  let E0 := C0 / Real.sqrt lambda * E
+  let E1 := Dcoef * lambda^2 / Real.sqrt lambda * E
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have hDcoef : 0 < Dcoef := by dsimp [Dcoef]; positivity
+  have hE0 : 0 ≤ E0 := by dsimp [E0]; positivity
+  have hE1 : 0 ≤ E1 := by dsimp [E1]; positivity
+  let Q : Real → sphere (0 : Euclidean 2) 1 × Real → Complex :=
+    fun B x => normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)
+  let QD : Real → sphere (0 : Euclidean 2) 1 × Real → Complex :=
+    fun B x => normalizedCircleFiniteTensorRayDeriv s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)
+  let F := cutoffNormalizedCircleFiniteTensorRay s q a eps chi
+  let FD := cutoffNormalizedCircleFiniteTensorRayDeriv s q a eps chi chiPrime
+  have hQ : Continuous (Function.uncurry Q) := by
+    convert continuous_cutoffNormalizedCircleFiniteTensorRay s q hqcompact a ha eps
+      (chi := fun _ => 1) continuous_const using 1
+    funext z
+    simp only [Function.uncurry, cutoffNormalizedCircleFiniteTensorRay, Q, one_smul]
+  have hQD : Measurable (Function.uncurry QD) :=
+    measurable_normalizedCircleFiniteTensorRayDeriv s q a ha eps
+  have hQnorm : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      ENNReal.ofReal (‖Q z.1 z.2‖^2)) :=
+    (ENNReal.continuous_ofReal.comp (hQ.norm.pow 2)).measurable
+  have hQDnorm : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      ENNReal.ofReal (‖QD z.1 z.2‖^2)) :=
+    ENNReal.continuous_ofReal.measurable.comp (hQD.norm.pow_const 2)
+  have hKQ := measurable_sourceCotangent_reindex
+    (fun B x => ENNReal.ofReal (‖Q B x‖^2)) hQnorm
+  have hKQD := measurable_sourceCotangent_reindex
+    (fun B x => ENNReal.ofReal (‖QD B x‖^2)) hQDnorm
+  have heQ : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖Q z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal E0 :=
+    (sourceCotangent_radius_product_lintegral_le_regime (unitSurfaceMeasure 2) U hU hUmax eps heps
+      (fun omega z => ENNReal.ofReal (‖Q z.2 (omega,z.1)‖^2)) hKQ).trans
+      (hb0 ι s q hqcompact a ha eps lambda hlam hql)
+  have heQD : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖QD z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal (16*C1*lambda^2 / Real.sqrt lambda * E) := by
+    apply (sourceCotangent_radius_product_lintegral_le_regime (unitSurfaceMeasure 2) U hU hUmax eps heps
+      (fun omega z => ENNReal.ofReal (‖QD z.2 (omega,z.1)‖^2)) hKQD).trans
+    convert hb1 ι s q hqcompact a ha eps lambda (4*lambda) hepsHalf hlam (by positivity) hql hqu using 1
+    congr 1
+    ring
+  have hF := continuous_cutoffNormalizedCircleFiniteTensorRay s q hqcompact a ha eps hchi
+  have hFD := continuous_cutoffNormalizedCircleFiniteTensorRayDeriv s q hqcompact a ha heps hchi hchiPrime hchiSupp
+  have heF : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖F z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal E0 :=
+    (lintegral_mono (μ := nu) (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) => ENNReal.ofReal_le_ofReal
+      (cutoffNormalizedCircleFiniteTensorRay_norm_sq_le s q a eps chi (hchiBound z.1) z.2))).trans heQ
+  have heFD : (∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+      ENNReal.ofReal (‖FD z.1 z.2‖^2) ∂nu) ≤ ENNReal.ofReal E1 := by
+    calc
+      _ ≤ ∫⁻ z : Real × (sphere (0 : Euclidean 2) 1 × Real),
+          ENNReal.ofReal (2*A^2*‖Q z.1 z.2‖^2 + 2*‖QD z.1 z.2‖^2) ∂nu :=
+        lintegral_mono (μ := nu) (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) => ENNReal.ofReal_le_ofReal
+          (cutoffNormalizedCircleFiniteTensorRayDeriv_norm_sq_le s q a eps chi chiPrime
+            (hchiBound z.1) (hchiPrimeBound z.1) z.2))
+      _ = ENNReal.ofReal (2*A^2) * (∫⁻ z, ENNReal.ofReal (‖Q z.1 z.2‖^2) ∂nu) +
+          2 * ∫⁻ z, ENNReal.ofReal (‖QD z.1 z.2‖^2) ∂nu := by
+        have heq (z : Real × (sphere (0 : Euclidean 2) 1 × Real)) :
+            ENNReal.ofReal (2*A^2*‖Q z.1 z.2‖^2 + 2*‖QD z.1 z.2‖^2) =
+            ENNReal.ofReal (2*A^2) * ENNReal.ofReal (‖Q z.1 z.2‖^2) +
+              2 * ENNReal.ofReal (‖QD z.1 z.2‖^2) := by
+          rw [ENNReal.ofReal_add (by positivity : 0 ≤ 2*A^2*‖Q z.1 z.2‖^2)
+            (by positivity : 0 ≤ 2*‖QD z.1 z.2‖^2),
+            ENNReal.ofReal_mul (by positivity : 0 ≤ 2*A^2),
+            ofReal_two_mul]
+          simp only [ofReal_two_mul]
+        simp_rw [heq]
+        have hm : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+            ENNReal.ofReal (2*A^2) * ENNReal.ofReal (‖Q z.1 z.2‖^2)) := measurable_const.mul hQnorm
+        rw [lintegral_add_left (μ := nu) hm
+            (fun z => 2 * ENNReal.ofReal (‖QD z.1 z.2‖^2)),
+          lintegral_const_mul' _ _ ENNReal.ofReal_ne_top,
+          lintegral_const_mul' _ _ (by norm_num)]
+      _ ≤ ENNReal.ofReal (2*A^2) * ENNReal.ofReal E0 +
+          2 * ENNReal.ofReal (16*C1*lambda^2 / Real.sqrt lambda * E) :=
+        add_le_add (mul_le_mul_of_nonneg_left heQ (by positivity)) (mul_le_mul_of_nonneg_left heQD (by positivity))
+      _ ≤ _ := by
+        have hnum : 2*A^2*E0 + 2*(16*C1*lambda^2 / Real.sqrt lambda * E) ≤ E1 := by
+          have hsq : 1 ≤ lambda^2 := by nlinarith
+          have hx := mul_le_mul_of_nonneg_left hsq
+            (by positivity : 0 ≤ 2*A^2*C0 / Real.sqrt lambda * E)
+          calc
+            _ = (2*A^2*C0 / Real.sqrt lambda * E) +
+                32*C1*lambda^2 / Real.sqrt lambda * E := by dsimp [E0]; ring
+            _ ≤ (2*A^2*C0 / Real.sqrt lambda * E) * lambda^2 +
+                32*C1*lambda^2 / Real.sqrt lambda * E := by
+              exact add_le_add (by simpa only [mul_one] using hx) le_rfl
+            _ = _ := by dsimp [E1,Dcoef]; ring
+        calc
+          _ = ENNReal.ofReal (2*A^2*E0 + 2*(16*C1*lambda^2 / Real.sqrt lambda * E)) := by
+            rw [ENNReal.ofReal_add (by positivity : 0 ≤ 2*A^2*E0)
+                (by positivity : 0 ≤ 2*(16*C1*lambda^2 / Real.sqrt lambda * E)),
+              ENNReal.ofReal_mul (by positivity : 0 ≤ 2*A^2),
+              ofReal_two_mul]
+            simp only [ofReal_two_mul]
+          _ ≤ _ := ENNReal.ofReal_le_ofReal hnum
+  obtain ⟨hmax,hbmax⟩ := sourceCotangent_productSobolev_of_lintegral_energy mu (by norm_num : (-8 : Real) ≤ 8)
+    hF hFD (cutoffNormalizedCircleFiniteTensorRay_hasDerivAt s q a heps hchiDeriv hchiSupp)
+    (by intro x; have hz : chi (-8) = 0 := by
+          by_contra hz; have h := hchiSupp (-8) hz; norm_num at h
+        simp only [cutoffNormalizedCircleFiniteTensorRay,hz,zero_smul])
+    hE0 hE1 heF heFD
+  calc
+    _ ≤ ∫⁻ x, ⨆ B : Icc (-8 : Real) 8, ENNReal.ofReal (‖F B.1 x‖^2) ∂mu := by
+      apply lintegral_mono
+      intro x
+      apply iSup_le
+      intro B
+      have hB4 : |B.1| ≤ 4 := abs_le.mpr B.2
+      have hB8 : B.1 ∈ Icc (-8 : Real) 8 := by constructor <;> linarith [B.2.1,B.2.2]
+      apply le_trans _ (le_iSup_of_le ⟨B.1,hB8⟩ le_rfl)
+      simp only [F,cutoffNormalizedCircleFiniteTensorRay,hchiOne B.1 hB4,one_smul]
+      exact le_rfl
+    _ ≤ ENNReal.ofReal (2*Real.sqrt (E0*E1)) := hbmax
+    _ = _ := by
+      congr 1
+      exact sourceCotangent_band_sobolev_scaling hC0.le hDcoef.le hlam hE
+#print axioms exists_normalizedCircle_finiteTensor_radius_band_maximal
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+/-- The actual incidence-indexed ray maximal bound on one smooth spatial band.
+All constants are uniform in the normalized circle parameter and in the
+finite separated Schwartz tensor. Extension to general positive smoothing and
+summation of the spatial frequency bands are separate consumers. -/
+theorem exists_normalizedCircle_finiteTensor_singleBand_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ eps lambda : Real, |eps| ≤ 1/32 → 1 ≤ lambda →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆
+        {ξ | lambda ≤ ‖ξ‖ ∧ ‖ξ‖ ≤ 4*lambda}) →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖ ^ 2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C * Real.sqrt lambda *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖ ^ 2
+            ∂(volume.prod volume)) := by
+  obtain ⟨chi,chiPrime,A,hA,hchi,hchiPrime,hchiDeriv,hchiBound,hchiPrimeBound,hchiSupp,hchiOne⟩ :=
+    exists_sourceCotangent_smooth_cutoff
+  obtain ⟨C,hC,hb⟩ := exists_normalizedCircle_finiteTensor_radius_band_maximal 6 (by norm_num) (by norm_num) A hA
+  refine ⟨C,hC,?_⟩
+  intro ι s q hqcompact a ha eps lambda heps hlambda hq
+  exact hb ι s q hqcompact a ha eps lambda heps hlambda hq chi chiPrime hchi hchiPrime
+    hchiDeriv hchiBound hchiPrimeBound hchiSupp hchiOne
+#print axioms exists_normalizedCircle_finiteTensor_singleBand_maximal_six
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+open Auto.Spherical.SurfaceMeasureDecay
+
+theorem translatedRayTestKernel_real_square_energy
+    (mu : Measure Real) [SFinite mu]
+    (a : Real → Complex) (kappa : Euclidean 2 → Complex)
+    (ha : Measurable a) (hkappa : Measurable kappa)
+    (ha2 : MemLp a 2 mu) (hkappa2 : MemLp kappa 2 volume)
+    (p n : Euclidean 2) :
+    (∫ z, ‖translatedRayTestKernel a kappa p n z‖^2 ∂(volume.prod mu)) =
+      (∫ t, ‖a t‖^2 ∂mu) * ∫ x : Euclidean 2, ‖kappa x‖^2 := by
+  have hK := translatedRayTestKernel_memLp_two mu a kappa ha hkappa ha2 hkappa2 p n
+  have hKi := (memLp_two_iff_integrable_sq_norm hK.aestronglyMeasurable).mp hK
+  have hai := (memLp_two_iff_integrable_sq_norm ha2.aestronglyMeasurable).mp ha2
+  have hki := (memLp_two_iff_integrable_sq_norm hkappa2.aestronglyMeasurable).mp hkappa2
+  have hnn := translatedRayTestKernel_lintegral_sq mu a kappa ha hkappa p n
+  have he (z : Complex) : ‖z‖ₑ ^ (2 : Real) = ENNReal.ofReal (‖z‖^2) := by
+    change ‖z‖ₑ ^ ((2 : Nat) : Real) = ENNReal.ofReal (‖z‖^2)
+    rw [ENNReal.rpow_natCast,← ofReal_norm]
+    exact (ENNReal.ofReal_pow (norm_nonneg z) 2).symm
+  simp only [he] at hnn
+  rw [← ofReal_integral_eq_lintegral_ofReal hKi (Filter.Eventually.of_forall (fun z => sq_nonneg _)),
+    ← ofReal_integral_eq_lintegral_ofReal hai (Filter.Eventually.of_forall (fun t => sq_nonneg _)),
+    ← ofReal_integral_eq_lintegral_ofReal hki (Filter.Eventually.of_forall (fun x => sq_nonneg _)),
+    ← ENNReal.ofReal_mul (integral_nonneg (fun t => sq_nonneg _))] at hnn
+  have hreal := congrArg ENNReal.toReal hnn
+  simpa only [ENNReal.toReal_ofReal (integral_nonneg (fun z => sq_nonneg _)),
+    ENNReal.toReal_ofReal (mul_nonneg (integral_nonneg (fun t => sq_nonneg _))
+      (integral_nonneg (fun x => sq_nonneg _)))] using hreal
+
+theorem translatedRayPairing_norm_sq_le_product_energies
+    (mu : Measure Real) [SFinite mu]
+    (a : Real → Complex) (kappa : Euclidean 2 → Complex)
+    (ha : Measurable a) (hkappa : Measurable kappa)
+    (ha2 : MemLp a 2 mu) (hkappa2 : MemLp kappa 2 volume)
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod mu))
+    (p n : Euclidean 2) :
+    ‖translatedRayPairing mu a kappa g p n‖^2 ≤
+      ((∫ t, ‖a t‖^2 ∂mu) * ∫ x : Euclidean 2, ‖kappa x‖^2) *
+        ∫ z, ‖g z‖^2 ∂(volume.prod mu) := by
+  let K := translatedRayTestKernel a kappa p n
+  have hK := translatedRayTestKernel_memLp_two mu a kappa ha hkappa ha2 hkappa2 p n
+  have hCs := integral_norm_mul_norm_le_sqrt_mul_integral_norm_sq (volume.prod mu) K g hK hg
+  have hnorm : ‖translatedRayPairing mu a kappa g p n‖ ≤
+      Real.sqrt (∫ z, ‖K z‖^2 ∂(volume.prod mu)) *
+        Real.sqrt (∫ z, ‖g z‖^2 ∂(volume.prod mu)) := by
+    apply le_trans (norm_integral_le_integral_norm _)
+    simpa only [K,translatedRayPairing,norm_mul] using hCs
+  have hs := pow_le_pow_left₀ (norm_nonneg _) hnorm 2
+  rw [mul_pow,Real.sq_sqrt (integral_nonneg (fun z => sq_nonneg _)),
+    Real.sq_sqrt (integral_nonneg (fun z => sq_nonneg _))] at hs
+  simpa only [K,translatedRayTestKernel_real_square_energy mu a kappa ha hkappa ha2 hkappa2 p n] using hs
+#print axioms translatedRayTestKernel_real_square_energy
+#print axioms translatedRayPairing_norm_sq_le_product_energies
+end
+end Auto.Spherical.MSS
+
+/-!
+## Actual lowpass ray field and its source maximum
+
+The inverse-frequency plateau reproduces the complete finite tensor on the
+ball of radius four. Fubini identifies its circle ray field with the literal
+translated test-kernel pairing. The exact kernel square energy then controls
+the full source maximum on |u| <= 6, uniformly in the geometric parameter.
+This also supplies the bounded-frequency part of the positive smoothing
+argument; the density extension is not part of this finite-tensor result.
+-/
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators ContDiff
+
+theorem translatedRayPairing_max_square_lintegral_le
+    {X B : Type*} [MeasurableSpace X] (nu : Measure X)
+    (mu : Measure Real) [SFinite mu]
+    (a : Real → Complex) (kappa : Euclidean 2 → Complex)
+    (ha : Measurable a) (hkappa : Measurable kappa)
+    (ha2 : MemLp a 2 mu) (hkappa2 : MemLp kappa 2 volume)
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod mu))
+    (p n : B → X → Euclidean 2) :
+    (∫⁻ x, ⨆ b : B, ENNReal.ofReal (‖translatedRayPairing mu a kappa g (p b x) (n b x)‖^2) ∂nu) ≤
+      nu univ * ENNReal.ofReal
+        (((∫ t, ‖a t‖^2 ∂mu) * ∫ z : Euclidean 2, ‖kappa z‖^2) *
+          ∫ z, ‖g z‖^2 ∂(volume.prod mu)) := by
+  have hp (x : X) :
+      (⨆ b : B, ENNReal.ofReal (‖translatedRayPairing mu a kappa g (p b x) (n b x)‖^2)) ≤
+      ENNReal.ofReal
+        (((∫ t, ‖a t‖^2 ∂mu) * ∫ z : Euclidean 2, ‖kappa z‖^2) *
+          ∫ z, ‖g z‖^2 ∂(volume.prod mu)) := by
+    apply iSup_le
+    intro b
+    exact ENNReal.ofReal_le_ofReal
+      (translatedRayPairing_norm_sq_le_product_energies mu a kappa ha hkappa ha2 hkappa2 g hg (p b x) (n b x))
+  calc
+    _ ≤ ∫⁻ x : X, ENNReal.ofReal
+        (((∫ t, ‖a t‖^2 ∂mu) * ∫ z : Euclidean 2, ‖kappa z‖^2) *
+          ∫ z, ‖g z‖^2 ∂(volume.prod mu)) ∂nu := lintegral_mono hp
+    _ = _ := by rw [lintegral_const,mul_comm]
+
+theorem exists_centeredSchwartz_timePlateau :
+    ∃ a0 : SchwartzMap Real Complex, ∀ t, |t| ≤ 2 → a0 t = 1 := by
+  let b : ContDiffBump (0 : Real) := ⟨2,3,by norm_num,by norm_num⟩
+  let f : Real → Complex := Complex.ofRealCLM ∘ b
+  have hf : HasCompactSupport f := b.hasCompactSupport.comp_left (by rfl)
+  have hdiff : ContDiff Real ∞ f := Complex.ofRealCLM.contDiff.comp b.contDiff
+  refine ⟨hf.toSchwartzMap hdiff,?_⟩
+  intro t ht
+  change (b t : Complex) = 1
+  have hmem : t ∈ closedBall (0 : Real) b.rIn := by
+    simpa only [mem_closedBall,dist_zero_right,Real.norm_eq_abs,b] using ht
+  rw [b.one_of_mem_closedBall hmem]
+  norm_num
+
+theorem memLp_two_finiteTensorPhysicalTimeData
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) :
+    MemLp (finiteTensorPhysicalTimeData s q a) 2 (volume.prod volume) := by
+  have hc : Continuous (finiteTensorPhysicalTimeData s q a) := by
+    unfold finiteTensorPhysicalTimeData
+    apply continuous_finsetSum
+    intro i hi
+    exact ((FourierTransform.fourierInv (q i) : SchwartzMap (Euclidean 2) Complex).continuous.comp
+      continuous_fst).mul ((a i).continuous.comp continuous_snd)
+  exact (memLp_two_iff_integrable_sq_norm hc.aestronglyMeasurable).mpr
+    (integrable_sq_finiteTensorPhysicalTimeData s q a)
+
+theorem normalizedCircleFiniteTensorRay_eq_actual_physical_ray_integral
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex) (eps u B : Real) (omega V : Euclidean 2) :
+    normalizedCircleFiniteTensorRay s q a eps u B omega V =
+      ∫ t, finiteTensorPhysicalTimeData s q a
+        (normalizedCircleRayTerminal eps u B omega V - t • normalizedCircleRayNormal eps B omega V,t) := by
+  rw [normalizedCircleFiniteTensorRay_eq_smoothTube s q hqcompact a,
+    scratch_finiteTensorTubeBand_eq_actual_ray_integral s q hqcompact a]
+
+theorem finiteTensorPhysicalTimeData_lowpass_convolution_eq
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex)
+    (hq : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4})
+    (x : Euclidean 2) (t : Real) :
+    (∫ y : Euclidean 2,
+      (FourierTransform.fourierInv (dyadicLowpassMultiplier C.cutoff 2) :
+        SchwartzMap (Euclidean 2) Complex) (x-y) * finiteTensorPhysicalTimeData s q a (y,t)) =
+      finiteTensorPhysicalTimeData s q a (x,t) := by
+  let P : SchwartzMap (Euclidean 2) Complex := ∑ i ∈ s, a i t • q i
+  have hP (y : Euclidean 2) :
+      (FourierTransform.fourierInv P : SchwartzMap (Euclidean 2) Complex) y =
+        finiteTensorPhysicalTimeData s q a (y,t) := by
+    simp only [P,FourierTransform.fourierInv_sum,FourierTransform.fourierInv_smul,
+      sum_apply,smul_apply,smul_eq_mul,finiteTensorPhysicalTimeData]
+    apply Finset.sum_congr rfl
+    intro i hi
+    ring
+  have hm : ∀ xi : Euclidean 2, P xi ≠ 0 → dyadicLowpassMultiplier C.cutoff 2 xi = 1 := by
+    intro xi hxi
+    have hxi2 : ‖xi‖ ≤ 4 := by
+      by_contra hxi2
+      have hiq (i : ι) (hi : i ∈ s) : q i xi = 0 := by
+        by_contra hiq
+        exact hxi2 (hq i hi hiq)
+      apply hxi
+      simp only [P,sum_apply,smul_apply,smul_eq_mul]
+      apply Finset.sum_eq_zero
+      intro i hi
+      rw [hiq i hi,mul_zero]
+    rw [dyadicLowpassMultiplier_apply]
+    apply C.cutoff_one
+    rw [norm_smul,Real.norm_eq_abs]
+    norm_num
+    linarith
+  calc
+    _ = ∫ y : Euclidean 2,
+        (FourierTransform.fourierInv (dyadicLowpassMultiplier C.cutoff 2) :
+          SchwartzMap (Euclidean 2) Complex) (x-y) *
+          (FourierTransform.fourierInv P : SchwartzMap (Euclidean 2) Complex) y := by
+      apply integral_congr_ae
+      filter_upwards [] with y
+      rw [hP]
+    _ = (FourierTransform.fourierInv P : SchwartzMap (Euclidean 2) Complex) x :=
+      mssSchwartz_inverse_kernel_convolution_fourierInv (dyadicLowpassMultiplier C.cutoff 2) P hm x
+    _ = _ := hP x
+
+theorem normalizedCircleFiniteTensorRay_lowpass_eq_pairing
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex)
+    (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2)
+    (hq : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4})
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 2 → a0 t = 1)
+    (eps u B : Real) (omega V : Euclidean 2) :
+    normalizedCircleFiniteTensorRay s q a eps u B omega V =
+      translatedRayPairing volume a0
+        (FourierTransform.fourierInv (dyadicLowpassMultiplier C.cutoff 2) : SchwartzMap (Euclidean 2) Complex)
+        (finiteTensorPhysicalTimeData s q a)
+        (normalizedCircleRayTerminal eps u B omega V) (normalizedCircleRayNormal eps B omega V) := by
+  let kappa : SchwartzMap (Euclidean 2) Complex := FourierTransform.fourierInv (dyadicLowpassMultiplier C.cutoff 2)
+  rw [translatedRayPairing_eq_iterated volume a0 kappa a0.continuous.measurable kappa.continuous.measurable
+    (a0.memLp 2 volume) (kappa.memLp 2 volume) (finiteTensorPhysicalTimeData s q a)
+    (memLp_two_finiteTensorPhysicalTimeData s q a)]
+  simp only [kappa,finiteTensorPhysicalTimeData_lowpass_convolution_eq C s q a hq]
+  rw [normalizedCircleFiniteTensorRay_eq_actual_physical_ray_integral s q hqcompact]
+  apply integral_congr_ae
+  filter_upwards [] with t
+  by_cases ht : t ∈ Icc (-2 : Real) 2
+  · rw [ha0 t (abs_le.mpr ht),one_mul]
+  · have hzero (x : Euclidean 2) : finiteTensorPhysicalTimeData s q a (x,t) = 0 := by
+      unfold finiteTensorPhysicalTimeData
+      apply Finset.sum_eq_zero
+      intro i hi
+      have hai : a i t = 0 := by
+        by_contra hai
+        exact ht (ha i hai)
+      rw [hai,mul_zero]
+    rw [hzero,mul_zero]
+
+#print axioms translatedRayPairing_max_square_lintegral_le
+#print axioms exists_centeredSchwartz_timePlateau
+#print axioms normalizedCircleFiniteTensorRay_eq_actual_physical_ray_integral
+#print axioms finiteTensorPhysicalTimeData_lowpass_convolution_eq
+#print axioms normalizedCircleFiniteTensorRay_lowpass_eq_pairing
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+
+/-- The fixed spatial lowpass of the actual incidence ray field is bounded
+uniformly on the enlarged source window, including the full transverse
+maximum. This uses its literal kernel pairing and translation-invariant L2
+kernel energy, with no incidence maximal estimate as a hypothesis. -/
+theorem exists_normalizedCircle_finiteTensor_lowpass_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4}) →
+      ∀ eps : Real,
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  let C0 : lpCutoffs 2 := Classical.choice (exists_lpCutoffs 2)
+  obtain ⟨a0,ha0⟩ := exists_centeredSchwartz_timePlateau
+  let kappa : SchwartzMap (Euclidean 2) Complex := FourierTransform.fourierInv (dyadicLowpassMultiplier C0.cutoff 2)
+  let nu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6))
+  let EK := (∫ t : Real, ‖a0 t‖^2) * ∫ x : Euclidean 2, ‖kappa x‖^2
+  have hEK : 0 ≤ EK := mul_nonneg (integral_nonneg (fun t => sq_nonneg _)) (integral_nonneg (fun x => sq_nonneg _))
+  refine ⟨(nu univ).toReal*EK+1,by positivity,?_⟩
+  intro ι s q hqcompact a ha hq eps
+  let E := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume)
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have heq (B : Icc (-4 : Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+      normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1) =
+      translatedRayPairing volume a0 kappa (finiteTensorPhysicalTimeData s q a)
+        (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+        (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)) :=
+    normalizedCircleFiniteTensorRay_lowpass_eq_pairing C0 s q hqcompact a ha hq a0 ha0 eps x.2 B.1
+      x.1 (normalizedCircleQuarterTurn x.1)
+  calc
+    _ = ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖translatedRayPairing volume a0 kappa (finiteTensorPhysicalTimeData s q a)
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2) ∂nu := by
+      apply lintegral_congr
+      intro x
+      apply iSup_congr
+      intro B
+      rw [heq]
+    _ ≤ nu univ * ENNReal.ofReal (EK*E) :=
+      translatedRayPairing_max_square_lintegral_le nu volume a0 kappa
+        a0.continuous.measurable kappa.continuous.measurable (a0.memLp 2 volume) (kappa.memLp 2 volume)
+        (finiteTensorPhysicalTimeData s q a) (memLp_two_finiteTensorPhysicalTimeData s q a) _ _
+    _ ≤ _ := by
+      have hnu : nu univ ≠ ⊤ := measure_ne_top nu univ
+      have heqNN : nu univ * ENNReal.ofReal (EK*E) =
+          ENNReal.ofReal ((nu univ).toReal*(EK*E)) := by
+        calc
+          _ = ENNReal.ofReal (nu univ).toReal * ENNReal.ofReal (EK*E) :=
+            congrArg (fun c : ENNReal => c * ENNReal.ofReal (EK*E))
+              (ENNReal.ofReal_toReal hnu).symm
+          _ = _ := (ENNReal.ofReal_mul ENNReal.toReal_nonneg).symm
+      rw [heqNN]
+      apply ENNReal.ofReal_le_ofReal
+      change (nu univ).toReal*(EK*E) ≤ ((nu univ).toReal*EK+1)*E
+      nlinarith
+#print axioms exists_normalizedCircle_finiteTensor_lowpass_maximal_six
+end
+end Auto.Spherical.MSS
+
+/-!
+## Complete spatial-band weak maximum and centered density
+
+The actual source-indexed ray field retains its lowpass contribution. Weighted
+Cauchy sums the genuine spatial Littlewood--Paley bands with no logarithmic
+loss, giving the inverse-width quarter-power loss in the L2 norm. These
+finite-tensor results preserve the incidence-dependent spatial basepoint.
+
+The centered density core below uses a fixed smooth cutoff equal to one on
+|T| <= 2 and supported in |T| <= 3, then separates inside the wider window
+|T| <= 4. The subsequent smoothing and actual pairing density extension remain
+separate obligations; no general test-field maximal estimate is asserted here.
+-/
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+theorem measurable_Icc_norm_sq_max_of_joint_continuous
+    {X : Type*} [MeasurableSpace X] [TopologicalSpace X] [BorelSpace X]
+    (F : Real → X → Complex) (hF : Continuous (Function.uncurry F)) (lo hi : Real) :
+    Measurable (fun x : X => ⨆ B : Icc lo hi, ENNReal.ofReal (‖F B.1 x‖^2)) := by
+  have hB : Continuous (fun z : Icc lo hi × X => (z.1 : Real)) :=
+    continuous_subtype_val.comp continuous_fst
+  have hp : Continuous (fun z : Icc lo hi × X => ((z.1 : Real),z.2)) :=
+    hB.prodMk continuous_snd
+  exact measurable_iSup_norm_sq_of_joint_continuous
+    (fun B : Icc lo hi => fun x : X => F B.1 x) (hF.comp hp)
+#print axioms measurable_Icc_norm_sq_max_of_joint_continuous
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem continuous_normalizedCircleFiniteTensorRay_source
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex)
+    (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) (eps : Real) :
+    Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1)) := by
+  convert continuous_cutoffNormalizedCircleFiniteTensorRay s q hqcompact a ha eps
+    (chi := fun _ => 1) continuous_const using 1
+  funext z
+  simp only [Function.uncurry,cutoffNormalizedCircleFiniteTensorRay,one_smul]
+
+set_option maxHeartbeats 1000000 in
+theorem measurable_normalizedCircleFiniteTensorRay_max
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex)
+    (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) (eps : Real) :
+    Measurable (fun x : sphere (0 : Euclidean 2) 1 × Real =>
+      ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+        (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2)) := by
+  let F : Real → (sphere (0 : Euclidean 2) 1 × Real) → Complex :=
+    fun B x => normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)
+  have hF : Continuous (Function.uncurry F) :=
+    continuous_normalizedCircleFiniteTensorRay_source s q hqcompact a ha eps
+  exact measurable_Icc_norm_sq_max_of_joint_continuous F hF (-4) 4
+
+set_option maxHeartbeats 1000000 in
+/-- Spatial band summation for the literal normalized incidence ray field.
+Weighted Cauchy and the uniform Littlewood--Paley square overlap give the
+square-root top-frequency loss without a logarithm of the number of bands. -/
+theorem exists_normalizedCircle_finiteTensor_radialBand_sum_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ (Ccut : lpCutoffs 2) (eps : Real) (N : Nat), |eps| ≤ 1/32 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖∑ j ∈ Finset.range N, normalizedCircleFiniteTensorRay s
+            (finiteTensorRadialBandProfiles Ccut q j) a eps x.2 B.1 x.1
+              (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C * Real.sqrt ((2 : Real)^N) *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb⟩ := exists_normalizedCircle_finiteTensor_singleBand_maximal_six
+  refine ⟨32*C0,by positivity,?_⟩
+  intro ι s q hqcompact a ha Ccut eps N heps
+  let J := Finset.range N
+  let mu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6))
+  let w : Nat → Real := fun j => Real.sqrt ((2 : Real)^j)
+  let E : Nat → Real := fun j => ∫ z : Euclidean 2 × Real,
+    ‖finiteTensorPhysicalTimeData s (finiteTensorRadialBandProfiles Ccut q j) a z‖^2 ∂(volume.prod volume)
+  let Eraw := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume)
+  let F : Nat → Icc (-4 : Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → Complex :=
+    fun j B x => normalizedCircleFiniteTensorRay s (finiteTensorRadialBandProfiles Ccut q j)
+      a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)
+  have hw (j : Nat) : 0 < w j := Real.sqrt_pos.mpr (pow_pos (by norm_num : (0 : Real) < 2) j)
+  have hE (j : Nat) : 0 ≤ E j := integral_nonneg (fun z => sq_nonneg _)
+  have hEr : 0 ≤ Eraw := integral_nonneg (fun z => sq_nonneg _)
+  have hm (j : Nat) : Measurable (fun x => ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F j B x‖^2)) :=
+    measurable_normalizedCircleFiniteTensorRay_max s (finiteTensorRadialBandProfiles Ccut q j)
+      (finiteTensorRadialBandProfiles_compact Ccut q hqcompact j) a ha eps
+  have hband (j : Nat) :
+      (∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F j B x‖^2) ∂mu) ≤
+        ENNReal.ofReal (C0*w j*E j) :=
+    hb ι s (finiteTensorRadialBandProfiles Ccut q j)
+      (finiteTensorRadialBandProfiles_compact Ccut q hqcompact j) a ha eps ((2 : Real)^j) heps
+      (one_le_pow₀ (by norm_num : (1 : Real) ≤ 2))
+      (fun i hi => finiteTensorRadialBandProfiles_support_singleBand Ccut q j i)
+  have hcoeff (j : Nat) :
+      ENNReal.ofReal ((w j)⁻¹) * ENNReal.ofReal (C0*w j*E j) = ENNReal.ofReal (C0*E j) := by
+    rw [← ENNReal.ofReal_mul (inv_nonneg.mpr (hw j).le)]
+    congr 1
+    have hne : w j ≠ 0 := ne_of_gt (hw j)
+    field_simp
+  have hws : 0 ≤ ∑ j ∈ J,w j := Finset.sum_nonneg (fun j hj => (hw j).le)
+  have hsE : 0 ≤ ∑ j ∈ J,E j := Finset.sum_nonneg (fun j hj => hE j)
+  have hsEbound : (∑ j ∈ J,E j) ≤ 8*Eraw :=
+    finiteTensorRadialBandProfiles_squareEnergy_le Ccut s q a J
+  calc
+    _ ≤ ENNReal.ofReal (∑ j ∈ J,w j) *
+        ∑ j ∈ J, ENNReal.ofReal ((w j)⁻¹) *
+          ∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F j B x‖^2) ∂mu :=
+      lintegral_iSup_norm_sq_sum_le_weighted mu J w (fun j hj => hw j) F (fun j hj => hm j)
+    _ ≤ ENNReal.ofReal (∑ j ∈ J,w j) *
+        ∑ j ∈ J, ENNReal.ofReal ((w j)⁻¹) * ENNReal.ofReal (C0*w j*E j) :=
+      mul_le_mul_of_nonneg_left (Finset.sum_le_sum (fun j hj =>
+        mul_le_mul_of_nonneg_left (hband j) (by positivity))) (by positivity)
+    _ = ENNReal.ofReal ((∑ j ∈ J,w j) * (C0 * ∑ j ∈ J,E j)) := by
+      simp_rw [hcoeff]
+      rw [← ENNReal.ofReal_sum_of_nonneg (fun j hj => mul_nonneg hC0.le (hE j)),
+        ← Finset.mul_sum,← ENNReal.ofReal_mul hws]
+    _ ≤ _ := by
+      apply ENNReal.ofReal_le_ofReal
+      have hsum := sum_sqrt_two_pow_le N
+      have hbound := mul_le_mul hsum
+        (mul_le_mul_of_nonneg_left hsEbound hC0.le)
+        (mul_nonneg hC0.le hsE) (by positivity : 0 ≤ 4*Real.sqrt ((2 : Real)^N))
+      calc
+        _ ≤ 4*Real.sqrt ((2 : Real)^N) * (C0*(8*Eraw)) := hbound
+        _ = _ := by ring
+#print axioms measurable_normalizedCircleFiniteTensorRay_max
+#print axioms exists_normalizedCircle_finiteTensor_radialBand_sum_maximal_six
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+def finiteTensorRadialLowpassProfiles
+    {ι : Type*} (C : lpCutoffs 2) (q : ι → SchwartzMap (Euclidean 2) Complex) :
+    ι → SchwartzMap (Euclidean 2) Complex :=
+  fun i => kakeyaRadialLowpassPiece C (q i)
+
+theorem finiteTensorRadialLowpassProfiles_apply
+    {ι : Type*} (C : lpCutoffs 2) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (i : ι) (xi : Euclidean 2) :
+    finiteTensorRadialLowpassProfiles C q i xi =
+      intDyadicLowpassMultiplier C.cutoff 0 xi * q i xi :=
+  kakeyaRadialLowpassPiece_apply C (q i) xi
+
+theorem finiteTensorRadialLowpassProfiles_compact
+    {ι : Type*} (C : lpCutoffs 2) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex)) :
+    ∀ i, HasCompactSupport (finiteTensorRadialLowpassProfiles C q i : Euclidean 2 → Complex) := by
+  intro i
+  rw [show (finiteTensorRadialLowpassProfiles C q i : Euclidean 2 → Complex) =
+    fun xi => intDyadicLowpassMultiplier C.cutoff 0 xi * q i xi by
+      funext xi; exact finiteTensorRadialLowpassProfiles_apply C q i xi]
+  exact (hqcompact i).mul_left
+
+theorem finiteTensorRadialLowpassProfiles_support
+    {ι : Type*} (C : lpCutoffs 2) (q : ι → SchwartzMap (Euclidean 2) Complex) (i : ι) :
+    Function.support (finiteTensorRadialLowpassProfiles C q i : Euclidean 2 → Complex) ⊆
+      {xi | ‖xi‖ ≤ 4} := by
+  intro xi hxi
+  have h := support_kakeyaRadialLowpassPiece_subset_closedBall_two C (q i) hxi
+  rw [mem_closedBall,dist_zero_right] at h
+  change ‖xi‖ ≤ 4
+  linarith
+
+theorem finiteTensorRadialLowpassProfiles_timeData_eq
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex)
+    (xi : Euclidean 2) (t : Real) :
+    scratch_finiteTensorTimeData s (finiteTensorRadialLowpassProfiles C q) a xi t =
+      intDyadicLowpassMultiplier C.cutoff 0 xi * scratch_finiteTensorTimeData s q a xi t := by
+  simp only [scratch_finiteTensorTimeData,finiteTensorRadialLowpassProfiles_apply,Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i hi
+  ring
+
+/-- The actual spatial lowpass preserves all temporal cross terms and cannot
+increase the literal space-time square energy. -/
+theorem finiteTensorRadialLowpassProfiles_squareEnergy_le
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex) :
+    (∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s
+      (finiteTensorRadialLowpassProfiles C q) a z‖^2 ∂(volume.prod volume)) ≤
+      ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume) := by
+  simp only [← finiteTensorFrequencyTimeEnergy_eq_integral_norm_sq_physical,finiteTensorFrequencyTimeEnergy]
+  apply integral_mono
+    (integrable_sq_scratch_finiteTensorTimeData_product s (finiteTensorRadialLowpassProfiles C q) a)
+    (integrable_sq_scratch_finiteTensorTimeData_product s q a)
+  intro z
+  dsimp only
+  rw [finiteTensorRadialLowpassProfiles_timeData_eq,norm_mul,mul_pow]
+  have h := norm_intDyadicLowpassMultiplier_zero_le_one C z.1
+  have hsq : ‖intDyadicLowpassMultiplier C.cutoff 0 z.1‖^2 ≤ 1 := by nlinarith [norm_nonneg (intDyadicLowpassMultiplier C.cutoff 0 z.1)]
+  simpa only [one_mul] using mul_le_mul_of_nonneg_right hsq
+    (sq_nonneg ‖scratch_finiteTensorTimeData s q a z.1 z.2‖)
+
+theorem scratch_finiteTensorTubeMultiplier_radialLowpass_eq
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex) (n : Euclidean 2) :
+    scratch_finiteTensorTubeMultiplier s (finiteTensorRadialLowpassProfiles C q)
+      (finiteTensorRadialLowpassProfiles_compact C q hqcompact) a n =
+      kakeyaRadialLowpassPiece C (scratch_finiteTensorTubeMultiplier s q hqcompact a n) := by
+  ext xi
+  rw [scratch_finiteTensorTubeMultiplier_apply,kakeyaRadialLowpassPiece_apply,
+    scratch_finiteTensorTubeMultiplier_apply,Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i hi
+  rw [finiteTensorRadialLowpassProfiles_apply]
+  ring
+
+/-- Exact radial reassembly of the actual incidence-indexed field, using its
+literal Fourier multiplier at the source-dependent ray normal. -/
+theorem normalizedCircleFiniteTensorRay_radial_reassembly
+    {ι : Type*} (C : lpCutoffs 2) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex) {rho : Real} (hrho : 0 < rho)
+    (hq : ∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho})
+    (eps u B : Real) (omega V : Euclidean 2) :
+    normalizedCircleFiniteTensorRay s q a eps u B omega V =
+      normalizedCircleFiniteTensorRay s (finiteTensorRadialLowpassProfiles C q) a eps u B omega V +
+        ∑ j ∈ Finset.range (kakeyaRadialBandLevel rho),
+          normalizedCircleFiniteTensorRay s (finiteTensorRadialBandProfiles C q j) a eps u B omega V := by
+  let n := normalizedCircleRayNormal eps B omega V
+  let p := normalizedCircleRayTerminal eps u B omega V
+  have hs : Function.support (scratch_finiteTensorTubeMultiplier s q hqcompact a n :
+      Euclidean 2 → Complex) ⊆ closedBall 0 (4/rho) := by
+    intro xi hxi
+    rw [mem_closedBall,dist_zero_right]
+    exact fullCircle_finiteTensor_multiplier_support_upper s q hqcompact a n hq hxi
+  have h := kakeyaRadialPhysical_reassembly C
+    (scratch_finiteTensorTubeMultiplier s q hqcompact a n) hrho hs p
+  rw [← scratch_finiteTensorTubeMultiplier_radialLowpass_eq C s q hqcompact a n] at h
+  simp_rw [← scratch_finiteTensorTubeMultiplier_radialBand_eq C s q hqcompact a] at h
+  rw [normalizedCircleFiniteTensorRay_eq_smoothTube s q hqcompact a,
+    scratch_finiteTensorTubeBand_eq_fourierInv,← SchwartzMap.fourierInv_coe]
+  rw [normalizedCircleFiniteTensorRay_eq_smoothTube s (finiteTensorRadialLowpassProfiles C q)
+    (finiteTensorRadialLowpassProfiles_compact C q hqcompact) a,
+    scratch_finiteTensorTubeBand_eq_fourierInv,← SchwartzMap.fourierInv_coe]
+  simp_rw [normalizedCircleFiniteTensorRay_eq_smoothTube s (finiteTensorRadialBandProfiles C q _)
+    (finiteTensorRadialBandProfiles_compact C q hqcompact _) a,
+    scratch_finiteTensorTubeBand_eq_fourierInv,← SchwartzMap.fourierInv_coe]
+  exact h
+#print axioms finiteTensorRadialLowpassProfiles_squareEnergy_le
+#print axioms normalizedCircleFiniteTensorRay_radial_reassembly
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem lintegral_iSup_norm_sq_add_le
+    {X B : Type*} [MeasurableSpace X] (mu : Measure X)
+    (F G : B → X → Complex)
+    (hF : Measurable (fun x => ⨆ b : B, ENNReal.ofReal (‖F b x‖^2))) :
+    (∫⁻ x, ⨆ b : B, ENNReal.ofReal (‖F b x + G b x‖^2) ∂mu) ≤
+      2*(∫⁻ x, ⨆ b : B, ENNReal.ofReal (‖F b x‖^2) ∂mu) +
+      2*(∫⁻ x, ⨆ b : B, ENNReal.ofReal (‖G b x‖^2) ∂mu) := by
+  have hp (x : X) : (⨆ b : B, ENNReal.ofReal (‖F b x+G b x‖^2)) ≤
+      2*(⨆ b : B, ENNReal.ofReal (‖F b x‖^2)) +
+      2*(⨆ b : B, ENNReal.ofReal (‖G b x‖^2)) := by
+    apply iSup_le
+    intro b
+    calc
+      _ ≤ ENNReal.ofReal (2*‖F b x‖^2 + 2*‖G b x‖^2) :=
+        ENNReal.ofReal_le_ofReal (norm_sq_add_le_two_sq _ _)
+      _ = 2*ENNReal.ofReal (‖F b x‖^2)+2*ENNReal.ofReal (‖G b x‖^2) := by
+        rw [ENNReal.ofReal_add (by positivity) (by positivity)]
+        simp only [ENNReal.ofReal_mul (by norm_num : (0 : Real) ≤ 2),ENNReal.ofReal_ofNat]
+      _ ≤ _ := add_le_add
+        (mul_le_mul_of_nonneg_left (le_iSup_of_le b le_rfl) (by positivity))
+        (mul_le_mul_of_nonneg_left (le_iSup_of_le b le_rfl) (by positivity))
+  calc
+    _ ≤ ∫⁻ x, 2*(⨆ b : B, ENNReal.ofReal (‖F b x‖^2)) +
+      2*(⨆ b : B, ENNReal.ofReal (‖G b x‖^2)) ∂mu := lintegral_mono hp
+    _ = _ := by
+      rw [lintegral_add_left (hF.const_mul 2),
+        lintegral_const_mul' _ _ (by simp),lintegral_const_mul' _ _ (by simp)]
+
+
+theorem measurable_Icc_norm_sq_sum_of_joint_continuous
+    {X ι : Type*} [MeasurableSpace X] [TopologicalSpace X] [BorelSpace X]
+    (J : Finset ι) (F : ι → Real → X → Complex)
+    (hF : ∀ j ∈ J, Continuous (Function.uncurry (F j))) (lo hi : Real) :
+    Measurable (fun x : X => ⨆ B : Icc lo hi, ENNReal.ofReal
+      (‖∑ j ∈ J, F j B.1 x‖^2)) := by
+  apply measurable_Icc_norm_sq_max_of_joint_continuous (fun B x => ∑ j ∈ J, F j B x)
+  change Continuous (fun z : Real × X => ∑ j ∈ J, F j z.1 z.2)
+  exact continuous_finsetSum J hF
+
+set_option maxHeartbeats 1000000 in
+/-- Finite spatial Fourier support gives a weak maximal bound for the actual
+incidence ray field on the enlarged source window. The constant is independent
+of the number of Littlewood--Paley bands; the proof uses exact reassembly. -/
+theorem exists_normalizedCircle_finiteTensor_bandlimited_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ (rho : Real), 0 < rho →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho}) →
+      ∀ eps : Real, |eps| ≤ 1/32 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C*Real.sqrt ((2 : Real)^(kakeyaRadialBandLevel rho)) *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨CL,hCL,hL⟩ := exists_normalizedCircle_finiteTensor_lowpass_maximal_six
+  obtain ⟨CB,hCB,hBand⟩ := exists_normalizedCircle_finiteTensor_radialBand_sum_maximal_six
+  refine ⟨2*(CL+CB),by positivity,?_⟩
+  intro ι s q hqcompact a ha rho hrho hq eps heps
+  let Ccut : lpCutoffs 2 := Classical.choice (exists_lpCutoffs 2)
+  let N := kakeyaRadialBandLevel rho
+  let nu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6))
+  let E := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume)
+  let EL := ∫ z : Euclidean 2 × Real,
+    ‖finiteTensorPhysicalTimeData s (finiteTensorRadialLowpassProfiles Ccut q) a z‖^2 ∂(volume.prod volume)
+  let w := Real.sqrt ((2 : Real)^N)
+  let F : Icc (-4 : Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → Complex :=
+    fun B x => normalizedCircleFiniteTensorRay s (finiteTensorRadialLowpassProfiles Ccut q)
+      a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)
+  let G : Icc (-4 : Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → Complex :=
+    fun B x => ∑ j ∈ Finset.range N, normalizedCircleFiniteTensorRay s
+      (finiteTensorRadialBandProfiles Ccut q j) a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have hEL : EL ≤ E := finiteTensorRadialLowpassProfiles_squareEnergy_le Ccut s q a
+  have hw : 1 ≤ w := by
+    dsimp only [w]
+    exact Real.one_le_sqrt.mpr (one_le_pow₀ (by norm_num : (1 : Real) ≤ 2))
+  have hFm : Measurable (fun x => ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F B x‖^2)) :=
+    measurable_normalizedCircleFiniteTensorRay_max s (finiteTensorRadialLowpassProfiles Ccut q)
+      (finiteTensorRadialLowpassProfiles_compact Ccut q hqcompact) a ha eps
+  have hFL : (∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F B x‖^2) ∂nu) ≤ ENNReal.ofReal (CL*E) := by
+    apply (hL ι s (finiteTensorRadialLowpassProfiles Ccut q)
+      (finiteTensorRadialLowpassProfiles_compact Ccut q hqcompact) a ha
+      (fun i hi => finiteTensorRadialLowpassProfiles_support Ccut q i) eps).trans
+    exact ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_left hEL hCL.le)
+  have hGB : (∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖G B x‖^2) ∂nu) ≤ ENNReal.ofReal (CB*w*E) :=
+    hBand ι s q hqcompact a ha Ccut eps N heps
+  have heq (B : Icc (-4 : Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+      normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1) =
+      F B x + G B x :=
+    normalizedCircleFiniteTensorRay_radial_reassembly Ccut s q hqcompact a hrho hq eps x.2 B.1
+      x.1 (normalizedCircleQuarterTurn x.1)
+  calc
+    _ = ∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F B x+G B x‖^2) ∂nu := by
+      apply lintegral_congr
+      intro x
+      apply iSup_congr
+      intro B
+      rw [heq]
+    _ ≤ 2*(∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖F B x‖^2) ∂nu) +
+      2*(∫⁻ x, ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal (‖G B x‖^2) ∂nu) :=
+      lintegral_iSup_norm_sq_add_le nu F G hFm
+    _ ≤ 2*ENNReal.ofReal (CL*E)+2*ENNReal.ofReal (CB*w*E) :=
+      add_le_add (mul_le_mul_of_nonneg_left hFL (by positivity))
+        (mul_le_mul_of_nonneg_left hGB (by positivity))
+    _ = ENNReal.ofReal (2*(CL*E)+2*(CB*w*E)) := by
+      rw [ENNReal.ofReal_add (by positivity) (by positivity)]
+      simp only [ENNReal.ofReal_mul (by norm_num : (0 : Real) ≤ 2),ENNReal.ofReal_ofNat]
+    _ ≤ _ := by
+      apply ENNReal.ofReal_le_ofReal
+      change 2*(CL*E)+2*(CB*w*E) ≤ 2*(CL+CB)*w*E
+      have h := mul_le_mul_of_nonneg_right hw (mul_nonneg hCL.le hE)
+      nlinarith
+#print axioms lintegral_iSup_norm_sq_add_le
+#print axioms exists_normalizedCircle_finiteTensor_bandlimited_maximal_six
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open scoped ContDiff BigOperators
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+theorem exists_finite_smooth_separated_centered_eLpNorm_sub_lt
+    {rE RE r RF : Real}
+    (hrE : 0 < rE) (hrERE : rE < RE)
+    (hr : 0 < r) (hrRF : r < RF)
+    (u : WaveSpaceTime → Complex) (hucont : Continuous u)
+    (husupport : Function.support u ⊆
+      Metric.closedBall (0 : Euclidean 2) rE ×ˢ
+        Metric.closedBall (0 : Real) r)
+    {epsilon : Real} (hepsilon : 0 < epsilon) :
+    ∃ (ι : Type) (_ : Fintype ι)
+      (U : ι → Euclidean 2 → Complex) (a : ι → Real → Complex),
+      (∀ i, HasCompactSupport (U i) ∧ ContDiff Real ∞ (U i)) ∧
+      (∀ i, HasCompactSupport (a i) ∧ ContDiff Real ∞ (a i) ∧
+        Function.support (a i) ⊆ Metric.closedBall (0 : Real) RF) ∧
+      MemLp (smoothSpatialTensor U a) 2 volume ∧
+      eLpNorm (u - smoothSpatialTensor U a) 2 volume <
+        ENNReal.ofReal epsilon := by
+  let S : Set WaveSpaceTime :=
+    Metric.closedBall (0 : Euclidean 2) RE ×ˢ
+      Metric.closedBall (0 : Real) RF
+  have hScompact : IsCompact S := by
+    dsimp only [S]
+    apply IsCompact.prod
+    · exact isCompact_closedBall _ _
+    · exact isCompact_closedBall _ _
+  have hSmeas : MeasurableSet S := by
+    dsimp only [S]
+    exact (Metric.isClosed_closedBall.measurableSet.prod
+      Metric.isClosed_closedBall.measurableSet)
+  have hSfinite : volume S ≠ (⊤ : ENNReal) := hScompact.measure_ne_top
+  obtain ⟨alpha, halphapos, halpha⟩ :=
+    exists_uniform_l2_budget S hSfinite hepsilon
+  obtain ⟨ι, hι, U, a, hU, ha, huniform⟩ :=
+    exists_finite_smooth_compact_separated_uniform_close_complex
+      (Euclidean 2) Real (0 : Euclidean 2) (0 : Real)
+      hrE hrERE hr hrRF u hucont husupport halphapos
+  let : Fintype ι := hι
+  have hUSupport : ∀ i, Function.support (U i) ⊆
+      Metric.closedBall (0 : Euclidean 2) RE := fun i => (hU i).2.2
+  have haSupport : ∀ i, Function.support (a i) ⊆
+      Metric.closedBall (0 : Real) RF := fun i => (ha i).2.2
+  have hvSupport : Function.support (smoothSpatialTensor U a) ⊆ S := by
+    simpa only [S] using support_smoothSpatialTensor_subset_prod U a
+      (Metric.closedBall (0 : Euclidean 2) RE)
+      (Metric.closedBall (0 : Real) RF) hUSupport haSupport
+  have huSupportS : Function.support u ⊆ S := by
+    intro z hz
+    have hz' := husupport hz
+    exact ⟨Metric.closedBall_subset_closedBall hrERE.le hz'.1,
+      Metric.closedBall_subset_closedBall hrRF.le hz'.2⟩
+  have huniform' : ∀ z : WaveSpaceTime,
+      dist (smoothSpatialTensor U a z) (u z) ≤ alpha := by
+    intro z
+    exact (huniform z).le
+  have hL2le := eLpNorm_two_sub_le_of_support_subset_and_uniform_complex
+    volume S hSmeas hSfinite u (smoothSpatialTensor U a)
+    huSupportS hvSupport huniform'
+    ((continuous_smoothSpatialTensor U a
+      (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)).sub
+        hucont).aestronglyMeasurable
+  have hcont : Continuous (smoothSpatialTensor U a) :=
+    continuous_smoothSpatialTensor U a
+      (fun i => (hU i).1.continuous) (fun i => (ha i).1.continuous)
+  have hvcompact : HasCompactSupport (smoothSpatialTensor U a) :=
+    HasCompactSupport.of_support_subset_isCompact hScompact hvSupport
+  refine ⟨ι, inferInstance, U, a, ?_, ?_,
+    hcont.memLp_of_hasCompactSupport hvcompact, ?_⟩
+  · intro i
+    exact ⟨(hU i).2.1, (hU i).1⟩
+  · intro i
+    exact ⟨(ha i).2.1, (ha i).1, (ha i).2.2⟩
+  · simpa only [eLpNorm_sub_comm] using hL2le.trans_lt halpha
+
+
+
+
+/-- Actual L2 density by finite compact-frequency tensors with smooth time
+profiles on the larger centered time window. The extra margin is supplied by
+one fixed cutoff, so no boundary approximation of the datum is required. -/
+theorem exists_centered_compactFrequencyTensor_eLpNorm_sub_lt
+    (g : WaveSpaceTime → Complex) (hg : MemLp g 2 volume)
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    {epsilon : Real} (hepsilon : 0 < epsilon) :
+    ∃ (ι : Type) (_ : Fintype ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex),
+      (∀ i, HasCompactSupport (q i : Euclidean 2 → Complex)) ∧
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4 : Real) 4) ∧
+      MemLp (compactFrequencyTensor q fun i => (a i : Real → Complex)) 2 volume ∧
+      eLpNorm (g - compactFrequencyTensor q fun i => (a i : Real → Complex)) 2 volume <
+        ENNReal.ofReal epsilon := by
+  have hthird : 0 < epsilon/3 := by positivity
+  obtain ⟨v,hvcompact,hvdiff,hverr⟩ :=
+    hg.exist_eLpNorm_sub_le (by norm_num) (by norm_num) hthird
+  let b : ContDiffBump (0 : Real) := ⟨2,3,by norm_num,by norm_num⟩
+  let bc : WaveSpaceTime → Complex := fun z => (b z.2 : Complex)
+  let u : WaveSpaceTime → Complex := fun z => bc z * v z
+  have hbc : ContDiff Real ∞ bc := by
+    exact Complex.ofRealCLM.contDiff.comp (b.contDiff.comp contDiff_snd)
+  have hudiff : ContDiff Real ∞ u := hbc.mul hvdiff
+  have hucompact : HasCompactSupport u := hvcompact.mul_left
+  have huMem : MemLp u 2 volume := hudiff.continuous.memLp_of_hasCompactSupport hucompact
+  have hub : eLpNorm (g-u) 2 volume ≤ eLpNorm (g-v) 2 volume := by
+    apply eLpNorm_mono (hg.aestronglyMeasurable.sub hudiff.continuous.aestronglyMeasurable)
+    intro z
+    have hb : ‖bc z‖ ≤ 1 := by
+      dsimp only [bc]
+      rw [Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg b.nonneg]
+      exact b.le_one
+    have hgf : bc z * g z = g z := by
+      by_cases hz : g z = 0
+      · rw [hz,mul_zero]
+      · have ht : |z.2| ≤ 2 := hgsupp hz
+        have hm : z.2 ∈ closedBall (0 : Real) b.rIn := by
+          simpa only [mem_closedBall,dist_zero_right,Real.norm_eq_abs,b] using ht
+        dsimp only [bc]
+        rw [b.one_of_mem_closedBall hm]
+        simp
+    have heq : (g-u) z = bc z * (g-v) z := by
+      dsimp only [Pi.sub_apply,u]
+      rw [mul_sub,hgf]
+    rw [heq,norm_mul]
+    exact (mul_le_mul_of_nonneg_right hb (norm_nonneg _)).trans_eq (one_mul _)
+  obtain ⟨R,hR⟩ := exists_spatial_closedBall_support u hucompact
+  let rE := |R|+1
+  have hrE : 0 < rE := by dsimp [rE]; positivity
+  have hsupp : Function.support u ⊆ closedBall (0 : Euclidean 2) rE ×ˢ
+      closedBall (0 : Real) 3 := by
+    intro z hz
+    refine ⟨?_,?_⟩
+    · have h : z.1 ∈ closedBall 0 R := hR hz
+      rw [mem_closedBall,dist_zero_right] at h ⊢
+      change ‖z.1‖ ≤ |R|+1
+      linarith [le_abs_self R]
+    · rw [mem_closedBall,dist_zero_right,Real.norm_eq_abs]
+      by_contra ht
+      have hbt : b z.2 = 0 := b.zero_of_le_dist (by
+        simpa only [b,dist_zero_right,Real.norm_eq_abs] using (le_of_not_ge ht))
+      apply hz
+      dsimp only [u,bc]
+      rw [hbt]
+      simp
+  obtain ⟨ι,hι,U,a,hU,ha,hm,her⟩ :=
+    exists_finite_smooth_separated_centered_eLpNorm_sub_lt hrE
+      (show rE < rE+1 by linarith) (by norm_num : (0:Real)<3)
+      (by norm_num : (3:Real)<4) u hudiff.continuous hsupp hthird
+  let : Fintype ι := hι
+  have haMem (i : ι) : MemLp (a i) 2 volume :=
+    (ha i).2.1.continuous.memLp_of_hasCompactSupport (ha i).1
+  obtain ⟨q,hqcompact,hqr⟩ := exists_compactFrequencyTensor_eLpNorm_sub_lt_smoothSpatialTensor
+    U a (fun i => (hU i).1) (fun i => (hU i).2)
+    (fun i => (ha i).2.1.continuous) haMem hthird
+  let aTime : ι → SchwartzMap Real Complex := fun i => (ha i).1.toSchwartzMap (ha i).2.1
+  have hat (i : ι) : (aTime i : Real → Complex) = a i := rfl
+  refine ⟨ι,inferInstance,q,aTime,hqcompact,?_,memLp_compactFrequencyTensor q aTime,?_⟩
+  · intro i t ht
+    have h := (ha i).2.2 ht
+    rw [mem_closedBall,dist_zero_right,Real.norm_eq_abs] at h
+    exact abs_le.mp h
+  · have herr : eLpNorm (g-compactFrequencyTensor q a) 2 volume ≤
+        eLpNorm (g-u) 2 volume + eLpNorm (u-smoothSpatialTensor U a) 2 volume +
+          eLpNorm (smoothSpatialTensor U a-compactFrequencyTensor q a) 2 volume := by
+      have heq : g-compactFrequencyTensor q a =
+          ((g-u)+(u-smoothSpatialTensor U a))+
+            (smoothSpatialTensor U a-compactFrequencyTensor q a) := by
+        funext z
+        simp only [Pi.sub_apply,Pi.add_apply]
+        abel
+      rw [heq]
+      exact (eLpNorm_add_le (by norm_num)).trans
+        (add_le_add (eLpNorm_add_le (by norm_num)) le_rfl)
+    have hsmall : eLpNorm (g-compactFrequencyTensor q a) 2 volume <
+        ENNReal.ofReal epsilon := by
+      apply lt_of_le_of_lt herr
+      calc
+        _ ≤ ENNReal.ofReal (epsilon/3) + eLpNorm (u-smoothSpatialTensor U a) 2 volume +
+            eLpNorm (smoothSpatialTensor U a-compactFrequencyTensor q a) 2 volume :=
+          add_le_add (add_le_add (hub.trans hverr) le_rfl) le_rfl
+        _ < ENNReal.ofReal (epsilon/3) + ENNReal.ofReal (epsilon/3) + ENNReal.ofReal (epsilon/3) :=
+          ENNReal.add_lt_add (ENNReal.add_lt_add_of_le_of_lt ENNReal.ofReal_ne_top le_rfl her)
+            (by simpa only [eLpNorm_sub_comm] using hqr)
+        _ = _ := by
+          rw [← ENNReal.ofReal_add hthird.le hthird.le,
+            ← ENNReal.ofReal_add (by positivity : 0 ≤ epsilon/3+epsilon/3) hthird.le]
+          congr 1
+          ring
+    simpa only [hat] using hsmall
+#print axioms exists_centered_compactFrequencyTensor_eLpNorm_sub_lt
+
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+
+theorem sqrt_two_pow_kakeyaRadialBandLevel_le
+    {rho : Real} (hrho : 0 < rho) (hrhoOne : rho ≤ 1) :
+    Real.sqrt ((2 : Real)^(kakeyaRadialBandLevel rho)) ≤ 4/Real.sqrt rho := by
+  have hv : 1 ≤ 8/rho := (le_div_iff₀ hrho).mpr (by linarith)
+  have h := two_pow_natCeil_logb_le_two_mul hv
+  change (2 : Real)^(kakeyaRadialBandLevel rho) ≤ 2*(8/rho) at h
+  have hn : (2 : Real)^(kakeyaRadialBandLevel rho) ≤ 16/rho := by
+    convert h using 1
+    ring
+  calc
+    _ ≤ Real.sqrt (16/rho) := Real.sqrt_le_sqrt hn
+    _ = 4/Real.sqrt rho := by
+      rw [Real.sqrt_div (by norm_num : (0 : Real) ≤ 16)]
+      rw [show (16 : Real) = (4 : Real)^2 by norm_num,Real.sqrt_sq_eq_abs]
+      norm_num
+
+/-- The finite-tensor weak incidence bound has exactly the square-root inverse
+width loss in its squared L2 moment, including the retained lowpass. -/
+theorem exists_normalizedCircle_finiteTensor_narrow_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ (rho : Real), 0 < rho → rho ≤ 1 →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho}) →
+      ∀ eps : Real, |eps| ≤ 1/32 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C/Real.sqrt rho *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb⟩ := exists_normalizedCircle_finiteTensor_bandlimited_maximal_six
+  refine ⟨4*C0,by positivity,?_⟩
+  intro ι s q hqcompact a ha rho hrho hrhoOne hq eps heps
+  apply (hb ι s q hqcompact a ha rho hrho hq eps heps).trans
+  apply ENNReal.ofReal_le_ofReal
+  have hE : 0 ≤ ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume) :=
+    integral_nonneg (fun z => sq_nonneg _)
+  have h := mul_le_mul_of_nonneg_right
+    (mul_le_mul_of_nonneg_left (sqrt_two_pow_kakeyaRadialBandLevel_le hrho hrhoOne) hC0.le) hE
+  calc
+    _ ≤ C0*(4/Real.sqrt rho)*_ := h
+    _ = _ := by ring
+
+/-- Broad positive smoothing widths only need the fixed lowpass estimate. -/
+theorem exists_normalizedCircle_finiteTensor_broad_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ (rho : Real), 1 ≤ rho →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho}) →
+      ∀ eps : Real,
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb⟩ := exists_normalizedCircle_finiteTensor_lowpass_maximal_six
+  refine ⟨C0,hC0,?_⟩
+  intro ι s q hqcompact a ha rho hrhoOne hq eps
+  apply hb ι s q hqcompact a ha _ eps
+  intro i hi xi hxi
+  have h := hq i hi hxi
+  have h4 : 4/rho ≤ 4 := (div_le_iff₀ (by linarith : 0 < rho)).mpr (by linarith)
+  exact h.trans h4
+#print axioms sqrt_two_pow_kakeyaRadialBandLevel_le
+#print axioms exists_normalizedCircle_finiteTensor_narrow_maximal_six
+#print axioms exists_normalizedCircle_finiteTensor_broad_maximal_six
+end
+end Auto.Spherical.MSS
+
+
+/-!
+## Actual positive smoothing and its centered density core
+
+Exact geometric and tensor dilation retains the larger time margin needed by
+arbitrary bounded compact tests. A fixed positive bandlimited Schwartz core
+then satisfies the actual source maximal estimate for every finite tensor,
+with all spatial bands assembled. The genuine L2 sequence and positive
+infinite weighted Cauchy prerequisites below prepare its density extension and
+polynomial-profile majorant; those final joins remain separate obligations.
+-/
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+theorem lintegral_Icc_six_half_le
+    (f : Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ u in Icc (-6 : Real) 6, f (u/2)) ≤
+      2*(∫⁻ u in Icc (-6 : Real) 6, f u) := by
+  let h : Real → ENNReal := (Icc (-3 : Real) 3).indicator f
+  have hh : Measurable h := hf.indicator measurableSet_Icc
+  have hpoint (u : Real) :
+      (Icc (-6 : Real) 6).indicator (fun u => f (u/2)) u = h ((1/2)*u) := by
+    by_cases hu : u ∈ Icc (-6 : Real) 6
+    · have hu3 : (1/2:Real)*u ∈ Icc (-3 : Real) 3 := by
+        rcases hu with ⟨hl,hr⟩
+        constructor <;> linarith
+      simp only [indicator_of_mem hu,h,indicator_of_mem hu3]
+      congr 1
+      ring
+    · have hu3 : (1/2:Real)*u ∉ Icc (-3 : Real) 3 := by
+        intro hh
+        apply hu
+        rcases hh with ⟨hl,hr⟩
+        constructor <;> linarith
+      simp only [indicator_of_notMem hu,h,indicator_of_notMem hu3]
+  calc
+    _ = ∫⁻ u : Real, h ((1/2)*u) := by
+      rw [← lintegral_indicator measurableSet_Icc]
+      exact lintegral_congr hpoint
+    _ = ∫⁻ u : Real, h u ∂Measure.map (fun u : Real => (1/2)*u) volume :=
+      (lintegral_map hh (by fun_prop)).symm
+    _ = 2*(∫⁻ u in Icc (-3 : Real) 3, f u) := by
+      rw [Real.map_volume_mul_left (by norm_num : (1/2:Real) ≠ 0),lintegral_smul_measure]
+      norm_num
+      rw [lintegral_indicator measurableSet_Icc]
+    _ ≤ _ := mul_le_mul_of_nonneg_left
+      (lintegral_mono_set (by intro u hu; rcases hu with ⟨hl,hr⟩; constructor <;> linarith))
+      (by positivity)
+#print axioms lintegral_Icc_six_half_le
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+theorem integral_norm_sq_spaceTime_double
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex) :
+    (∫ z : EuclideanSpace Real (Fin 2) × Real, ‖g ((2:Real)•z.1,2*z.2)‖^2 ∂(volume.prod volume)) =
+      (1/8:Real)*(∫ z, ‖g z‖^2 ∂(volume.prod volume)) := by
+  have h := Measure.integral_comp_smul_of_nonneg
+    (volume.prod volume : Measure (EuclideanSpace Real (Fin 2) × Real)) (fun z => ‖g z‖^2) 2
+      (hR := by norm_num)
+  have heq (z : EuclideanSpace Real (Fin 2) × Real) : (2:Real)•z = ((2:Real)•z.1,2*z.2) := rfl
+  simp_rw [heq] at h
+  simpa only [smul_eq_mul,
+    Module.finrank_prod,finrank_euclideanSpace,Module.finrank_self, Fintype.card_fin,
+    show ((2 : Real)^(2+1))⁻¹ = (1/8:Real) by norm_num] using h
+#print axioms integral_norm_sq_spaceTime_double
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+def circleRaySpatialDouble (q : SchwartzMap (Euclidean 2) Complex) : SchwartzMap (Euclidean 2) Complex :=
+  (1/4 : Complex) • mssTranslatedDilatedCutoff q 0 2 (by norm_num)
+
+def circleRayTimeDouble (a : SchwartzMap Real Complex) : SchwartzMap Real Complex :=
+  mssTranslatedDilatedCutoff a 0 (1/2) (by norm_num)
+
+theorem circleRayTimeDouble_apply (a : SchwartzMap Real Complex) (t : Real) :
+    circleRayTimeDouble a t = a (2*t) := by
+  rw [circleRayTimeDouble,mssTranslatedDilatedCutoff_apply]
+  norm_num [smul_eq_mul]
+
+theorem circleRaySpatialDouble_apply (q : SchwartzMap (Euclidean 2) Complex) (xi : Euclidean 2) :
+    circleRaySpatialDouble q xi = (1/4 : Complex)*q ((1/2 : Real)•xi) := by
+  rw [circleRaySpatialDouble,smul_apply,mssTranslatedDilatedCutoff_apply]
+  norm_num [smul_eq_mul]
+
+theorem circleRaySpatialDouble_fourierInv (q : SchwartzMap (Euclidean 2) Complex) (x : Euclidean 2) :
+    (FourierTransform.fourierInv (circleRaySpatialDouble q) : SchwartzMap (Euclidean 2) Complex) x =
+      (FourierTransform.fourierInv q : SchwartzMap (Euclidean 2) Complex) ((2:Real)•x) := by
+  rw [circleRaySpatialDouble,FourierTransform.fourierInv_smul,smul_apply,
+    mssTranslatedDilatedCutoff_fourierInv q 0 x 2 (by norm_num)]
+  simp only [finrank_euclideanSpace,Fintype.card_fin,inner_zero_left,
+    Complex.real_smul,smul_eq_mul]
+  norm_num
+  ring
+
+theorem circleRaySpatialDouble_compact
+    (q : SchwartzMap (Euclidean 2) Complex) (hq : HasCompactSupport (q : Euclidean 2 → Complex)) :
+    HasCompactSupport (circleRaySpatialDouble q : Euclidean 2 → Complex) := by
+  let L : Euclidean 2 ≃L[Real] Euclidean 2 :=
+    ContinuousLinearEquiv.smulLeft (Units.mk0 (1/2 : Real) (by norm_num))
+  have hc : HasCompactSupport (fun xi => q ((1/2:Real)•xi)) := by
+    convert hq.comp_homeomorph L.toHomeomorph using 1
+    funext xi
+    rfl
+  rw [show (circleRaySpatialDouble q : Euclidean 2 → Complex) =
+      fun xi => (1/4 : Complex)*q ((1/2:Real)•xi) by
+        funext xi; exact circleRaySpatialDouble_apply q xi]
+  exact hc.mul_left
+
+theorem circleRaySpatialDouble_support
+    (q : SchwartzMap (Euclidean 2) Complex) {rho : Real} (_hrho : 0 < rho)
+    (hq : Function.support (q : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho}) :
+    Function.support (circleRaySpatialDouble q : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/(rho/2)} := by
+  intro xi hxi
+  rw [Function.mem_support,circleRaySpatialDouble_apply] at hxi
+  have h : ‖(1/2:Real)•xi‖ ≤ 4/rho := hq (mul_ne_zero_iff.mp hxi).2
+  rw [norm_smul,Real.norm_eq_abs] at h
+  norm_num at h
+  change ‖xi‖ ≤ 4/(rho/2)
+  have heq : 4/(rho/2) = 2*(4/rho) := by field_simp
+  rw [heq]
+  linarith
+
+theorem circleRayTimeDouble_support
+    (a : SchwartzMap Real Complex)
+    (ha : Function.support (a : Real → Complex) ⊆ Icc (-4 : Real) 4) :
+    Function.support (circleRayTimeDouble a : Real → Complex) ⊆ Icc (-2 : Real) 2 := by
+  intro t ht
+  rw [Function.mem_support,circleRayTimeDouble_apply] at ht
+  rcases ha ht with ⟨hl,hr⟩
+  constructor <;> linarith
+
+theorem finiteTensorPhysicalTimeData_double
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) (z : Euclidean 2 × Real) :
+    finiteTensorPhysicalTimeData s (fun i => circleRaySpatialDouble (q i))
+      (fun i => circleRayTimeDouble (a i)) z =
+      finiteTensorPhysicalTimeData s q a ((2:Real)•z.1,2*z.2) := by
+  simp only [finiteTensorPhysicalTimeData,circleRaySpatialDouble_fourierInv,circleRayTimeDouble_apply]
+
+theorem normalizedCircleFiniteTensorRay_double_half
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex) (eps u B : Real) (omega V : Euclidean 2) :
+    normalizedCircleFiniteTensorRay s (fun i => circleRaySpatialDouble (q i))
+      (fun i => circleRayTimeDouble (a i)) (2*eps) (u/2) (B/2) omega V =
+      (1/2 : Complex)*normalizedCircleFiniteTensorRay s q a eps u B omega V := by
+  unfold normalizedCircleFiniteTensorRay
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i hi
+  unfold normalizedCircleSingleTensorRay
+  simp only [circleRaySpatialDouble_fourierInv,circleRayTimeDouble_apply,
+    normalizedCircleRayTerminal_double_half,normalizedCircleRayNormal_double_half]
+  let f : Real → Complex := fun t => a i t *
+    (FourierTransform.fourierInv (q i) : SchwartzMap (Euclidean 2) Complex)
+      (normalizedCircleRayTerminal eps u B omega V-t•normalizedCircleRayNormal eps B omega V)
+  have hp (t : Real) : (2:Real) • ((1/2:Real)•normalizedCircleRayTerminal eps u B omega V -
+      t•normalizedCircleRayNormal eps B omega V) =
+      normalizedCircleRayTerminal eps u B omega V - (2*t)•normalizedCircleRayNormal eps B omega V := by
+    module
+  simp_rw [hp]
+  have h := Measure.integral_comp_smul_of_nonneg volume f 2 (hR := by norm_num)
+  simpa only [Module.finrank_self,pow_one,smul_eq_mul,Complex.real_smul,Complex.ofReal_inv,Complex.ofReal_div,
+    Complex.ofReal_ofNat,Complex.ofReal_one,inv_eq_one_div,f] using h
+#print axioms circleRaySpatialDouble_fourierInv
+#print axioms normalizedCircleFiniteTensorRay_double_half
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem source_Icc_six_half_lintegral_le
+    {X : Type*} [MeasurableSpace X] (mu : Measure X) [SFinite mu]
+    (f : X × Real → ENNReal) (hf : Measurable f) :
+    (∫⁻ z : X × Real, f (z.1,z.2/2) ∂(mu.prod (volume.restrict (Icc (-6:Real) 6)))) ≤
+      2*(∫⁻ z : X × Real, f z ∂(mu.prod (volume.restrict (Icc (-6:Real) 6)))) := by
+  have hc : Measurable (fun z : X × Real => f (z.1,z.2/2)) :=
+    hf.comp (measurable_fst.prodMk (measurable_snd.div_const 2))
+  calc
+    _ = ∫⁻ x, (∫⁻ u in Icc (-6:Real) 6, f (x,u/2) ∂volume) ∂mu :=
+      lintegral_prod _ hc.aemeasurable
+    _ ≤ ∫⁻ x, 2*(∫⁻ u in Icc (-6:Real) 6, f (x,u) ∂volume) ∂mu :=
+      lintegral_mono (fun x => lintegral_Icc_six_half_le
+        (fun u => f (x,u)) (hf.comp (measurable_const.prodMk measurable_id)))
+    _ = _ := by
+      rw [lintegral_const_mul' _ _ (by simp)]
+      rw [lintegral_prod _ hf.aemeasurable]
+
+theorem continuous_normalizedCircleFiniteTensorRay_source_four
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex)
+    (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4 : Real) 4) (eps : Real) :
+    Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1)) := by
+  let qD := fun i => circleRaySpatialDouble (q i)
+  let aD := fun i => circleRayTimeDouble (a i)
+  have hqD : ∀ i, HasCompactSupport (qD i : Euclidean 2 → Complex) :=
+    fun i => circleRaySpatialDouble_compact (q i) (hqcompact i)
+  have haD : ∀ i, Function.support (aD i : Real → Complex) ⊆ Icc (-2:Real) 2 :=
+    fun i => circleRayTimeDouble_support (a i) (ha i)
+  have hc := continuous_normalizedCircleFiniteTensorRay_source s qD hqD aD haD (2*eps)
+  have hp : Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      (z.1/2,(z.2.1,z.2.2/2))) := by fun_prop
+  convert continuous_const.mul (hc.comp hp) using 1
+  funext z
+  change normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1) =
+    (2:Complex)*normalizedCircleFiniteTensorRay s qD aD (2*eps) (z.2.2/2) (z.1/2) z.2.1 (normalizedCircleQuarterTurn z.2.1)
+  dsimp only [qD,aD]
+  rw [normalizedCircleFiniteTensorRay_double_half]
+  ring
+
+set_option maxHeartbeats 1000000 in
+theorem measurable_normalizedCircleFiniteTensorRay_max_four
+    {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+    (a : ι → SchwartzMap Real Complex)
+    (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4 : Real) 4) (eps : Real) :
+    Measurable (fun x : sphere (0 : Euclidean 2) 1 × Real =>
+      ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+        (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2)) := by
+
+  let F : Real → (sphere (0 : Euclidean 2) 1 × Real) → Complex :=
+    fun B x => normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1)
+  have hF : Continuous (Function.uncurry F) :=
+    continuous_normalizedCircleFiniteTensorRay_source_four s q hqcompact a ha eps
+  exact measurable_Icc_norm_sq_max_of_joint_continuous F hF (-4) 4
+
+theorem exists_normalizedCircle_finiteTensor_allWidth_maximal_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) →
+      ∀ (rho : Real), 0 < rho →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho}) →
+      ∀ eps : Real, |eps| ≤ 1/32 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C*(1+1/Real.sqrt rho) *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨CN,hCN,hN⟩ := exists_normalizedCircle_finiteTensor_narrow_maximal_six
+  obtain ⟨CB,hCB,hB⟩ := exists_normalizedCircle_finiteTensor_broad_maximal_six
+  refine ⟨CN+CB,by positivity,?_⟩
+  intro ι s q hqcompact a ha rho hrho hq eps heps
+  let E := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume)
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have hs : 0 ≤ 1/Real.sqrt rho := by positivity
+  by_cases hrhoOne : rho ≤ 1
+  · apply (hN ι s q hqcompact a ha rho hrho hrhoOne hq eps heps).trans
+    apply ENNReal.ofReal_le_ofReal
+    change CN/Real.sqrt rho * E ≤ (CN+CB)*(1+1/Real.sqrt rho)*E
+    apply mul_le_mul_of_nonneg_right _ hE
+    rw [div_eq_mul_inv,one_div]
+    rw [one_div] at hs
+    nlinarith
+  · apply (hB ι s q hqcompact a ha rho (le_of_not_ge hrhoOne) hq eps).trans
+    apply ENNReal.ofReal_le_ofReal
+    change CB*E ≤ (CN+CB)*(1+1/Real.sqrt rho)*E
+    apply mul_le_mul_of_nonneg_right _ hE
+    nlinarith
+#print axioms source_Icc_six_half_lintegral_le
+#print axioms continuous_normalizedCircleFiniteTensorRay_source_four
+#print axioms measurable_normalizedCircleFiniteTensorRay_max_four
+#print axioms exists_normalizedCircle_finiteTensor_allWidth_maximal_six
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem inverse_sqrt_half_le_two {rho : Real} (hrho : 0 < rho) :
+    1/Real.sqrt (rho/2) ≤ 2/Real.sqrt rho := by
+  have hsr : Real.sqrt rho ≠ 0 := ne_of_gt (Real.sqrt_pos.mpr hrho)
+  have hs2 : Real.sqrt (2:Real) ≠ 0 := ne_of_gt (Real.sqrt_pos.mpr (by norm_num))
+  have heq : 1/Real.sqrt (rho/2) = Real.sqrt 2/Real.sqrt rho := by
+    rw [Real.sqrt_div hrho.le]
+    field_simp
+  rw [heq]
+  apply div_le_div_of_nonneg_right _ (Real.sqrt_nonneg _)
+  nlinarith [Real.sq_sqrt (by norm_num : (0:Real) ≤ 2),Real.sqrt_nonneg (2:Real)]
+
+set_option maxHeartbeats 1000000 in
+/-- The actual weak incidence maximum extends to time profiles supported in
+|T| <= 4. Exact dilation doubles epsilon, halves the source coordinates, and
+cancels the source, ray-average, and physical-energy Jacobians. -/
+theorem exists_normalizedCircle_finiteTensor_allWidth_maximal_timeFour_six :
+    ∃ C : Real, 0 < C ∧ ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex)
+      (_hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
+      (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4 : Real) 4) →
+      ∀ (rho : Real), 0 < rho →
+      (∀ i ∈ s, Function.support (q i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho}) →
+      ∀ eps : Real, |eps| ≤ 1/64 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1
+            (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C*(1+1/Real.sqrt rho) *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb⟩ := exists_normalizedCircle_finiteTensor_allWidth_maximal_six
+  refine ⟨2*C0,by positivity,?_⟩
+  intro ι s q hqcompact a ha rho hrho hq eps heps
+  let qD := fun i => circleRaySpatialDouble (q i)
+  let aD := fun i => circleRayTimeDouble (a i)
+  let nu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))
+  let E := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume)
+  let ED := ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s qD aD z‖^2 ∂(volume.prod volume)
+  let F : (sphere (0 : Euclidean 2) 1 × Real) → ENNReal := fun x =>
+    ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+      (‖normalizedCircleFiniteTensorRay s qD aD (2*eps) x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2)
+  have hqD : ∀ i, HasCompactSupport (qD i : Euclidean 2 → Complex) :=
+    fun i => circleRaySpatialDouble_compact (q i) (hqcompact i)
+  have haD : ∀ i, Function.support (aD i : Real → Complex) ⊆ Icc (-2:Real) 2 :=
+    fun i => circleRayTimeDouble_support (a i) (ha i)
+  have hED : ED = (1/8:Real)*E := by
+    simp only [ED,qD,aD,E,finiteTensorPhysicalTimeData_double]
+    exact integral_norm_sq_spaceTime_double (finiteTensorPhysicalTimeData s q a)
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have hFm : Measurable F := measurable_normalizedCircleFiniteTensorRay_max s qD hqD aD haD (2*eps)
+  have h2eps : |2*eps| ≤ 1/32 := by rw [abs_mul]; norm_num; linarith
+  have hband : (∫⁻ x,F x ∂nu) ≤ ENNReal.ofReal (C0*(1+1/Real.sqrt (rho/2))*ED) :=
+    hb ι s qD hqD aD haD (rho/2) (by positivity)
+      (fun i hi => circleRaySpatialDouble_support (q i) hrho (hq i hi)) (2*eps) h2eps
+  have hp (x : sphere (0 : Euclidean 2) 1 × Real) :
+      (⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+        (‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2)) ≤
+      4*F (x.1,x.2/2) := by
+    apply iSup_le
+    intro B
+    let BH : Icc (-4:Real) 4 := ⟨B.1/2,by rcases B.2 with ⟨hl,hr⟩; constructor <;> linarith⟩
+    have hQ := normalizedCircleFiniteTensorRay_double_half s q a eps x.2 B.1 x.1
+      (normalizedCircleQuarterTurn x.1)
+    have heq : normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1) =
+        (2:Complex)*normalizedCircleFiniteTensorRay s qD aD (2*eps) (x.2/2) BH.1 x.1
+          (normalizedCircleQuarterTurn x.1) := by
+      rw [hQ]
+      ring
+    have hn : ‖normalizedCircleFiniteTensorRay s q a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2 =
+        4*‖normalizedCircleFiniteTensorRay s qD aD (2*eps) (x.2/2) BH.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2 := by
+      rw [heq,norm_mul,mul_pow]
+      norm_num
+    rw [hn,ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4),ENNReal.ofReal_ofNat]
+    exact mul_le_mul_of_nonneg_left (le_iSup_of_le BH le_rfl) (by positivity)
+  calc
+    _ ≤ ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real, 4*F (x.1,x.2/2) ∂nu := lintegral_mono hp
+    _ = 4*(∫⁻ x : sphere (0 : Euclidean 2) 1 × Real, F (x.1,x.2/2) ∂nu) :=
+      lintegral_const_mul' _ _ (by simp)
+    _ ≤ 4*(2*∫⁻ x,F x ∂nu) :=
+      mul_le_mul_of_nonneg_left (source_Icc_six_half_lintegral_le (unitSurfaceMeasure 2) F hFm) (by positivity)
+    _ ≤ 4*(2*ENNReal.ofReal (C0*(1+1/Real.sqrt (rho/2))*ED)) :=
+      mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hband (by positivity)) (by positivity)
+    _ = ENNReal.ofReal (C0*(1+1/Real.sqrt (rho/2))*E) := by
+      rw [hED]
+      have hmul : 4*(2*ENNReal.ofReal (C0*(1+1/Real.sqrt (rho/2))*((1/8)*E))) =
+          ENNReal.ofReal (4*(2*(C0*(1+1/Real.sqrt (rho/2))*((1/8)*E)))) := by
+        rw [ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4),
+          ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 2)]
+        norm_num only [ENNReal.ofReal_ofNat]
+      rw [hmul]
+      congr 1
+      ring
+    _ ≤ _ := by
+      apply ENNReal.ofReal_le_ofReal
+      change C0*(1+1/Real.sqrt (rho/2))*E ≤ 2*C0*(1+1/Real.sqrt rho)*E
+      apply mul_le_mul_of_nonneg_right _ hE
+      have h := inverse_sqrt_half_le_two hrho
+      have hs : 0 ≤ 1/Real.sqrt rho := by positivity
+      simp only [div_eq_mul_inv,one_mul] at h hs ⊢
+      nlinarith
+#print axioms exists_normalizedCircle_finiteTensor_allWidth_maximal_timeFour_six
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+/-- The same spatial smoothing multiplier is applied to every actual tensor
+profile, leaving its time factors and their cross terms unchanged. -/
+def finiteTensorSpatialMultiplierProfiles
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) : ι → SchwartzMap (Euclidean 2) Complex :=
+  fun i => SchwartzMap.smulLeftCLM Complex (m : Euclidean 2 → Complex) (q i)
+
+theorem finiteTensorSpatialMultiplierProfiles_apply
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (i : ι) (xi : Euclidean 2) :
+    finiteTensorSpatialMultiplierProfiles m q i xi = m xi*q i xi := by
+  unfold finiteTensorSpatialMultiplierProfiles
+  rw [SchwartzMap.smulLeftCLM_apply_apply m.hasTemperateGrowth]
+  simp only [smul_eq_mul]
+
+theorem finiteTensorSpatialMultiplierProfiles_compact
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (hm : HasCompactSupport (m : Euclidean 2 → Complex)) :
+    ∀ i, HasCompactSupport (finiteTensorSpatialMultiplierProfiles m q i : Euclidean 2 → Complex) := by
+  intro i
+  rw [show (finiteTensorSpatialMultiplierProfiles m q i : Euclidean 2 → Complex) =
+      fun xi => m xi*q i xi by funext xi; exact finiteTensorSpatialMultiplierProfiles_apply m q i xi]
+  exact hm.mul_right
+
+theorem finiteTensorSpatialMultiplierProfiles_support
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (i : ι) :
+    Function.support (finiteTensorSpatialMultiplierProfiles m q i : Euclidean 2 → Complex) ⊆
+      Function.support (m : Euclidean 2 → Complex) := by
+  intro xi hxi
+  rw [Function.mem_support,finiteTensorSpatialMultiplierProfiles_apply] at hxi
+  exact (mul_ne_zero_iff.mp hxi).1
+
+theorem finiteTensorSpatialMultiplierProfiles_timeData_eq
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex)
+    (xi : Euclidean 2) (t : Real) :
+    scratch_finiteTensorTimeData s (finiteTensorSpatialMultiplierProfiles m q) a xi t =
+      m xi*scratch_finiteTensorTimeData s q a xi t := by
+  simp only [scratch_finiteTensorTimeData,finiteTensorSpatialMultiplierProfiles_apply,Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i hi
+  ring
+
+/-- A bounded spatial multiplier controls the complete physical tensor energy;
+the estimate does not replace the temporal sum by a sum of separate energies. -/
+theorem finiteTensorSpatialMultiplierProfiles_squareEnergy_le
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex)
+    {A : Real} (_hA : 0 ≤ A) (hm : ∀ xi, ‖m xi‖ ≤ A) :
+    (∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s
+      (finiteTensorSpatialMultiplierProfiles m q) a z‖^2 ∂(volume.prod volume)) ≤
+      A^2*∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume) := by
+  simp only [← finiteTensorFrequencyTimeEnergy_eq_integral_norm_sq_physical,finiteTensorFrequencyTimeEnergy]
+  rw [← integral_const_mul]
+  apply integral_mono
+    (integrable_sq_scratch_finiteTensorTimeData_product s (finiteTensorSpatialMultiplierProfiles m q) a)
+    ((integrable_sq_scratch_finiteTensorTimeData_product s q a).const_mul (A^2))
+  intro z
+  dsimp only
+  rw [finiteTensorSpatialMultiplierProfiles_timeData_eq,norm_mul,mul_pow]
+  exact mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (norm_nonneg _) (hm z.1) 2) (sq_nonneg _)
+
+theorem mssSchwartzSpatialMultiplier_convolution_fourierInv
+    (m q : SchwartzMap (Euclidean 2) Complex) (x : Euclidean 2) :
+    (∫ y : Euclidean 2, (FourierTransform.fourierInv m : SchwartzMap (Euclidean 2) Complex) (x-y) *
+      (FourierTransform.fourierInv q : SchwartzMap (Euclidean 2) Complex) y) =
+      (FourierTransform.fourierInv (SchwartzMap.smulLeftCLM Complex
+        (m : Euclidean 2 → Complex) q) : SchwartzMap (Euclidean 2) Complex) x := by
+  rw [← mssSchwartzSpectralProjection_apply,mssSchwartzSpectralProjection,
+    FourierTransform.fourier_fourierInv_eq]
+
+/-- Literal spatial convolution identity for the smoothed tensor at every
+time; it identifies the actual translated-ray pairing used in density. -/
+theorem finiteTensorSpatialMultiplierProfiles_convolution_eq
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex)
+    (x : Euclidean 2) (t : Real) :
+    (∫ y : Euclidean 2, (FourierTransform.fourierInv m : SchwartzMap (Euclidean 2) Complex) (x-y) *
+      finiteTensorPhysicalTimeData s q a (y,t)) =
+      finiteTensorPhysicalTimeData s (finiteTensorSpatialMultiplierProfiles m q) a (x,t) := by
+  let P : SchwartzMap (Euclidean 2) Complex := ∑ i ∈ s, a i t • q i
+  have hP (y : Euclidean 2) : (FourierTransform.fourierInv P : SchwartzMap (Euclidean 2) Complex) y =
+      finiteTensorPhysicalTimeData s q a (y,t) := by
+    simp only [P,FourierTransform.fourierInv_sum,FourierTransform.fourierInv_smul,
+      sum_apply,smul_apply,smul_eq_mul,finiteTensorPhysicalTimeData]
+    apply Finset.sum_congr rfl
+    intro i hi
+    ring
+  have hProd (y : Euclidean 2) : (FourierTransform.fourierInv
+      (SchwartzMap.smulLeftCLM Complex (m : Euclidean 2 → Complex) P) :
+        SchwartzMap (Euclidean 2) Complex) y =
+      finiteTensorPhysicalTimeData s (finiteTensorSpatialMultiplierProfiles m q) a (y,t) := by
+    simp only [P,map_sum,map_smul,FourierTransform.fourierInv_sum,FourierTransform.fourierInv_smul,
+      sum_apply,smul_apply,smul_eq_mul,finiteTensorPhysicalTimeData,finiteTensorSpatialMultiplierProfiles]
+    apply Finset.sum_congr rfl
+    intro i hi
+    ring
+  calc
+    _ = ∫ y : Euclidean 2, (FourierTransform.fourierInv m : SchwartzMap (Euclidean 2) Complex) (x-y) *
+        (FourierTransform.fourierInv P : SchwartzMap (Euclidean 2) Complex) y := by
+      apply integral_congr_ae
+      filter_upwards [] with y
+      rw [hP]
+    _ = _ := (mssSchwartzSpatialMultiplier_convolution_fourierInv m P x).trans (hProd x)
+#print axioms finiteTensorSpatialMultiplierProfiles_squareEnergy_le
+#print axioms finiteTensorSpatialMultiplierProfiles_convolution_eq
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators ContDiff
+
+theorem exists_centeredSchwartz_timePlateau_four :
+    ∃ a0 : SchwartzMap Real Complex, ∀ t, |t| ≤ 4 → a0 t = 1 := by
+  let b : ContDiffBump (0 : Real) := ⟨4,5,by norm_num,by norm_num⟩
+  let f : Real → Complex := Complex.ofRealCLM ∘ b
+  have hf : HasCompactSupport f := b.hasCompactSupport.comp_left (by rfl)
+  have hdiff : ContDiff Real ∞ f := Complex.ofRealCLM.contDiff.comp b.contDiff
+  refine ⟨hf.toSchwartzMap hdiff,?_⟩
+  intro t ht
+  change (b t : Complex) = 1
+  have hmem : t ∈ closedBall (0 : Real) b.rIn := by
+    simpa only [mem_closedBall,dist_zero_right,Real.norm_eq_abs,b] using ht
+  rw [b.one_of_mem_closedBall hmem]
+  norm_num
+
+/-- The actual spatially smoothed ray field equals the literal translated
+kernel pairing of the original complete tensor, with a fixed time plateau. -/
+theorem normalizedCircleFiniteTensorRay_spatialSmoothing_eq_pairing
+    {ι : Type*} (m : SchwartzMap (Euclidean 2) Complex)
+    (hm : HasCompactSupport (m : Euclidean 2 → Complex)) (s : Finset ι)
+    (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex)
+    (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4 : Real) 4)
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    (eps u B : Real) (omega V : Euclidean 2) :
+    normalizedCircleFiniteTensorRay s (finiteTensorSpatialMultiplierProfiles m q) a eps u B omega V =
+      translatedRayPairing volume a0
+        (FourierTransform.fourierInv m : SchwartzMap (Euclidean 2) Complex)
+        (finiteTensorPhysicalTimeData s q a)
+        (normalizedCircleRayTerminal eps u B omega V) (normalizedCircleRayNormal eps B omega V) := by
+  let kappa : SchwartzMap (Euclidean 2) Complex := FourierTransform.fourierInv m
+  rw [translatedRayPairing_eq_iterated volume a0 kappa a0.continuous.measurable kappa.continuous.measurable
+    (a0.memLp 2 volume) (kappa.memLp 2 volume) (finiteTensorPhysicalTimeData s q a)
+    (memLp_two_finiteTensorPhysicalTimeData s q a)]
+  simp only [kappa,finiteTensorSpatialMultiplierProfiles_convolution_eq m s q a]
+  rw [normalizedCircleFiniteTensorRay_eq_actual_physical_ray_integral s
+    (finiteTensorSpatialMultiplierProfiles m q) (finiteTensorSpatialMultiplierProfiles_compact m q hm)]
+  apply integral_congr_ae
+  filter_upwards [] with t
+  by_cases ht : t ∈ Icc (-4:Real) 4
+  · rw [ha0 t (abs_le.mpr ht),one_mul]
+  · have hzero (x : Euclidean 2) : finiteTensorPhysicalTimeData s
+        (finiteTensorSpatialMultiplierProfiles m q) a (x,t) = 0 := by
+      unfold finiteTensorPhysicalTimeData
+      apply Finset.sum_eq_zero
+      intro i hi
+      have hai : a i t = 0 := by
+        by_contra hai
+        exact ht (ha i hai)
+      rw [hai,mul_zero]
+    rw [hzero,mul_zero]
+
+theorem canonicalTubeMultiplierUniformBound_nonneg :
+    0 ≤ canonicalTubeMultiplierUniformBound := by
+  exact (norm_nonneg (scratch_canonicalBandlimitedTubeMultiplier 1 (by norm_num) 0)).trans
+    (norm_scratch_canonicalBandlimitedTubeMultiplier_le_uniformBound (by norm_num) 0)
+
+set_option maxHeartbeats 1000000 in
+/-- The positive canonical Schwartz spatial smoother has the weak incidence
+maximal bound on actual finite tensors, including every spatial frequency band.
+The retained time plateau permits the ensuing genuine L2 density passage. -/
+theorem exists_normalizedCircle_canonicalSmoothing_finiteTensor_maximal :
+    ∃ (C : Real) (a0 : SchwartzMap Real Complex), 0 < C ∧
+      (∀ t, |t| ≤ 4 → a0 t = 1) ∧
+      ∀ (ι : Type*) (s : Finset ι)
+      (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex),
+      (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4 : Real) 4) →
+      ∀ (rho : Real) (hrho : 0 < rho) (eps : Real), |eps| ≤ 1/64 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho)
+            (finiteTensorPhysicalTimeData s q a)
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C*(1+1/Real.sqrt rho) *
+          ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2
+            ∂(volume.prod volume)) := by
+  obtain ⟨C0,hC0,hb⟩ := exists_normalizedCircle_finiteTensor_allWidth_maximal_timeFour_six
+  obtain ⟨a0,ha0⟩ := exists_centeredSchwartz_timePlateau_four
+  let A := canonicalTubeMultiplierUniformBound
+  refine ⟨C0*(A^2+1),a0,by positivity,ha0,?_⟩
+  intro ι s q a ha rho hrho eps heps
+  let m := scratch_canonicalBandlimitedTubeMultiplier rho hrho
+  have hmSupp : Function.support (m : Euclidean 2 → Complex) ⊆ closedBall 0 (4/rho) :=
+    support_scratch_canonicalBandlimitedTubeMultiplier_subset hrho
+  have hmCompact : HasCompactSupport (m : Euclidean 2 → Complex) :=
+    HasCompactSupport.of_support_subset_isCompact (isCompact_closedBall _ _) hmSupp
+  let qM := finiteTensorSpatialMultiplierProfiles m q
+  have hqM : ∀ i, HasCompactSupport (qM i : Euclidean 2 → Complex) :=
+    finiteTensorSpatialMultiplierProfiles_compact m q hmCompact
+  have hqSupp (i : ι) (hi : i ∈ s) :
+      Function.support (qM i : Euclidean 2 → Complex) ⊆ {xi | ‖xi‖ ≤ 4/rho} := by
+    intro xi hxi
+    have h := hmSupp (finiteTensorSpatialMultiplierProfiles_support m q i hxi)
+    rwa [mem_closedBall,dist_zero_right] at h
+  have henergy := finiteTensorSpatialMultiplierProfiles_squareEnergy_le m s q a
+    canonicalTubeMultiplierUniformBound_nonneg
+      (norm_scratch_canonicalBandlimitedTubeMultiplier_le_uniformBound hrho)
+  have heq (B : Icc (-4:Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+      translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho)
+        (finiteTensorPhysicalTimeData s q a)
+        (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+        (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)) =
+      normalizedCircleFiniteTensorRay s qM a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1) :=
+    (normalizedCircleFiniteTensorRay_spatialSmoothing_eq_pairing m hmCompact s q a ha a0 ha0 eps x.2 B.1
+      x.1 (normalizedCircleQuarterTurn x.1)).symm
+  calc
+    _ = ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+          (‖normalizedCircleFiniteTensorRay s qM a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6))) := by
+      apply lintegral_congr
+      intro x
+      apply iSup_congr
+      intro B
+      rw [heq]
+    _ ≤ ENNReal.ofReal (C0*(1+1/Real.sqrt rho)*
+        ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s qM a z‖^2 ∂(volume.prod volume)) :=
+      hb ι s qM hqM a ha rho hrho hqSupp eps heps
+    _ ≤ _ := by
+      apply ENNReal.ofReal_le_ofReal
+      have h0 : 0 ≤ C0*(1+1/Real.sqrt rho) := by positivity
+      have hE : 0 ≤ ∫ z : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a z‖^2 ∂(volume.prod volume) :=
+        integral_nonneg (fun z => sq_nonneg _)
+      calc
+        _ ≤ C0*(1+1/Real.sqrt rho)*(A^2*_) := mul_le_mul_of_nonneg_left henergy h0
+        _ ≤ _ := by nlinarith
+#print axioms normalizedCircleFiniteTensorRay_spatialSmoothing_eq_pairing
+#print axioms exists_normalizedCircle_canonicalSmoothing_finiteTensor_maximal
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators Topology
+
+/-- The concrete centered dense core consists of actual finite spatial
+compact-frequency/Schwartz-time tensors, with temporal support |T| <= 4. -/
+def CenteredCompactFrequencyTensorCore (f : Euclidean 2 × Real → Complex) : Prop :=
+  ∃ (ι : Type) (hι : Fintype ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
+    (a : ι → SchwartzMap Real Complex),
+    (∀ i, HasCompactSupport (q i : Euclidean 2 → Complex)) ∧
+    (∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-4:Real) 4) ∧
+    f = @finiteTensorPhysicalTimeData ι (@Finset.univ ι hι) q a
+
+/-- Actual centered tensors approximate a nonzero L2 datum with vanishing
+errors bounded by its own L2 norm. This is the energy-controlled core needed
+by the literal translated-ray density bridge. -/
+theorem exists_centered_tensorSequence_L2
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod volume))
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    (hzero : eLpNorm g 2 (volume.prod volume) ≠ 0) :
+    ∃ f : Nat → Euclidean 2 × Real → Complex,
+      (∀ j, CenteredCompactFrequencyTensorCore (f j)) ∧
+      (∀ j, MemLp (f j) 2 (volume.prod volume)) ∧
+      (∀ j, eLpNorm (f j-g) 2 (volume.prod volume) ≤ eLpNorm g 2 (volume.prod volume)) ∧
+      Tendsto (fun j => eLpNorm (f j-g) 2 (volume.prod volume)) atTop (𝓝 0) := by
+  let e := (eLpNorm g 2 (volume.prod volume)).toReal
+  have he : 0 < e := ENNReal.toReal_pos hzero hg.eLpNorm_ne_top
+  have heq : ENNReal.ofReal e = eLpNorm g 2 (volume.prod volume) := ENNReal.ofReal_toReal hg.eLpNorm_ne_top
+  have hgV : MemLp g 2 volume := by rwa [Measure.volume_eq_prod]
+  have hApprox (j : Nat) : ∃ f : Euclidean 2 × Real → Complex,
+      CenteredCompactFrequencyTensorCore f ∧ MemLp f 2 (volume.prod volume) ∧
+      eLpNorm (f-g) 2 (volume.prod volume) < ENNReal.ofReal (e/((j:Real)+1)) := by
+    have hpos : 0 < e/((j:Real)+1) := by positivity
+    obtain ⟨ι,hι,q,a,hq,ha,hmem,herr⟩ :=
+      exists_centered_compactFrequencyTensor_eLpNorm_sub_lt g hgV hgsupp hpos
+    let : Fintype ι := hι
+    let f := finiteTensorPhysicalTimeData Finset.univ q a
+    have hEq : f = compactFrequencyTensor q (fun i => (a i : Real → Complex)) := rfl
+    refine ⟨f,⟨ι,hι,q,a,hq,ha,rfl⟩,?_,?_⟩
+    · rw [hEq]
+      rwa [Measure.volume_eq_prod] at hmem
+    · rw [hEq,eLpNorm_sub_comm]
+      rwa [Measure.volume_eq_prod] at herr
+  choose f hCore hMem hErr using hApprox
+  refine ⟨f,hCore,hMem,?_,?_⟩
+  · intro j
+    apply (hErr j).le.trans
+    rw [← heq]
+    apply ENNReal.ofReal_le_ofReal
+    exact div_le_self he.le (by have hj : 0 ≤ (j:Real) := Nat.cast_nonneg j; linarith)
+  · have ht : Tendsto (fun j : Nat => e/((j:Real)+1)) atTop (𝓝 0) := by
+      have h := (tendsto_one_div_add_atTop_nhds_zero_nat :
+        Tendsto (fun j : Nat => (1:Real)/((j:Real)+1)) atTop (𝓝 0)).const_mul e
+      simpa only [mul_zero,mul_one_div] using h
+    have htNN : Tendsto (fun j : Nat => ENNReal.ofReal (e/((j:Real)+1))) atTop (𝓝 0) := by
+      simpa only [ENNReal.ofReal_zero] using ENNReal.tendsto_ofReal ht
+    exact tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds htNN
+      (fun j => zero_le) (fun j => (hErr j).le)
+#print axioms exists_centered_tensorSequence_L2
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+open scoped BigOperators
+theorem ennreal_weighted_tsum_square_le
+    (w f : Nat → ENNReal) :
+    (∑' j, w j*f j)^2 ≤ (∑' j,w j)*(∑' j,w j*(f j)^2) := by
+  have hs (v : ENNReal) : (v^(1/2:Real))^(2:Nat) = v := by
+    rw [← ENNReal.rpow_natCast,← ENNReal.rpow_mul]
+    norm_num
+  let a := fun j => (w j)^(1/2:Real)
+  let b := fun j => (w j)^(1/2:Real)*f j
+  have h := ENNReal.lintegral_mul_le_Lp_mul_Lq
+    (Measure.count : Measure Nat) Real.HolderConjugate.two_two
+    (measurable_of_countable a).aemeasurable (measurable_of_countable b).aemeasurable
+  simp only [lintegral_count,Pi.mul_apply,a,b] at h
+  have hleft (j : Nat) : w j^(1/2:Real)*(w j^(1/2:Real)*f j) = w j*f j := by
+    rw [← mul_assoc,← pow_two,hs]
+  have hsq (j : Nat) : (w j^(1/2:Real)*f j)^(2:Real) = w j*(f j)^2 := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num),← ENNReal.rpow_mul]
+    norm_num
+  have hasq (j : Nat) : (w j^(1/2:Real))^(2:Real) = w j := by
+    rw [← ENNReal.rpow_mul]
+    norm_num
+  simp_rw [hleft,hasq,hsq] at h
+  have hp := pow_le_pow_left₀ (by positivity : 0 ≤ ∑' j,w j*f j) h 2
+  rw [mul_pow,hs,hs] at hp
+  exact hp
+#print axioms ennreal_weighted_tsum_square_le
+end
+end Auto.Spherical.MSS
+
+
+/-!
+## Genuine L2 smoothing closure and polynomial-profile prerequisites
+
+The actual translated-ray kernel identifies the same positive spatial
+smoother on every centered dense tensor. Its uniform L2 continuity and Fatou
+extend the source maximum to arbitrary centered L2 inputs, and also prove
+source continuity and maximal measurability. Exact positive dyadic kernels
+and weighted infinite Cauchy prepare the literal polynomial ray average.
+-/
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators Topology
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The actual canonical smoothed ray field is measurable on the compact
+cotangent interval for each genuine centered finite tensor in the dense core. -/
+theorem measurable_canonicalSmoothing_core_max
+    (f : Euclidean 2 × Real → Complex) (hf : CenteredCompactFrequencyTensorCore f)
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    (rho : Real) (hrho : 0 < rho) (eps : Real) :
+    Measurable (fun x : sphere (0 : Euclidean 2) 1 × Real =>
+      ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+        (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) f
+          (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+          (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2)) := by
+  rcases hf with ⟨ι,hι,q,a,hq,ha,hfEq⟩
+  let : Fintype ι := hι
+  let m := scratch_canonicalBandlimitedTubeMultiplier rho hrho
+  have hm : HasCompactSupport (m : Euclidean 2 → Complex) :=
+    hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho
+  let qM := finiteTensorSpatialMultiplierProfiles m q
+  have hqM : ∀ i, HasCompactSupport (qM i : Euclidean 2 → Complex) :=
+    finiteTensorSpatialMultiplierProfiles_compact m q hm
+  have heq (B : Icc (-4:Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+      translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) f
+        (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+        (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)) =
+      normalizedCircleFiniteTensorRay Finset.univ qM a eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1) := by
+    rw [hfEq]
+    exact (normalizedCircleFiniteTensorRay_spatialSmoothing_eq_pairing m hm Finset.univ q a ha
+      a0 ha0 eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)).symm
+  convert measurable_normalizedCircleFiniteTensorRay_max_four Finset.univ qM hqM a ha eps using 1
+  funext x
+  apply iSup_congr
+  intro B
+  rw [heq]
+
+set_option maxHeartbeats 1000000 in
+/-- Genuine L2 closure of the actual positive Schwartz smoothing estimate.
+The centered dense tensors keep the same spatial smoother, and the literal
+translated-kernel Cauchy estimate gives uniform convergence in every source
+and cotangent parameter. Fatou passes the uncountable cotangent maximum. -/
+theorem exists_normalizedCircle_canonicalSmoothing_L2_maximal :
+    ∃ (C : Real) (a0 : SchwartzMap Real Complex), 0 < C ∧
+      (∀ t, |t| ≤ 4 → a0 t = 1) ∧
+      ∀ g : Euclidean 2 × Real → Complex,
+      MemLp g 2 (volume.prod volume) →
+      Function.support g ⊆ {z | |z.2| ≤ 2} →
+      ∀ (rho : Real) (hrho : 0 < rho) (eps : Real), |eps| ≤ 1/64 →
+      (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4 : Real) 4, ENNReal.ofReal
+          (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) g
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2)
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6 : Real) 6)))) ≤
+        ENNReal.ofReal (C*(1+1/Real.sqrt rho) *
+          ∫ z : Euclidean 2 × Real, ‖g z‖^2 ∂(volume.prod volume)) := by
+  obtain ⟨C0,a0,hC0,ha0,hb⟩ := exists_normalizedCircle_canonicalSmoothing_finiteTensor_maximal
+  refine ⟨4*C0,a0,by positivity,ha0,?_⟩
+  intro g hg hgsupp rho hrho eps heps
+  let kappa := scratch_canonicalBandlimitedTubePhysicalCore rho hrho
+  let nu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))
+  let E := ∫ z : Euclidean 2 × Real, ‖g z‖^2 ∂(volume.prod volume)
+  let p : Icc (-4:Real) 4 × (sphere (0 : Euclidean 2) 1 × Real) → Euclidean 2 :=
+    fun y => normalizedCircleRayTerminal eps y.2.2 y.1.1 y.2.1 (normalizedCircleQuarterTurn y.2.1)
+  let n : Icc (-4:Real) 4 × (sphere (0 : Euclidean 2) 1 × Real) → Euclidean 2 :=
+    fun y => normalizedCircleRayNormal eps y.1.1 y.2.1 (normalizedCircleQuarterTurn y.2.1)
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  by_cases hzero : eLpNorm g 2 (volume.prod volume) = 0
+  · have hQ (B : Icc (-4:Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+        translatedRayPairing volume a0 kappa g (p (B,x)) (n (B,x)) = 0 :=
+      translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero volume a0 kappa
+        a0.continuous.measurable kappa.continuous.measurable g hg.aestronglyMeasurable hzero _ _
+    change (∫⁻ x, ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+      (‖translatedRayPairing volume a0 kappa g (p (B,x)) (n (B,x))‖^2) ∂nu) ≤ _
+    simp_rw [hQ,norm_zero,zero_pow (by norm_num : (2:Nat) ≠ 0),ENNReal.ofReal_zero]
+    simp
+  · obtain ⟨f,hCore,hMem,hErr,hConv⟩ := exists_centered_tensorSequence_L2 g hg hgsupp hzero
+    have hu := translatedRayPairing_tendstoUniformly_of_L2 volume a0 kappa
+      a0.continuous.measurable kappa.continuous.measurable (a0.memLp 2 volume)
+      (kappa.memLp 2 volume) g f hg hMem hConv p n
+    let Q := fun B x => translatedRayPairing volume a0 kappa g (p (B,x)) (n (B,x))
+    let QS := fun j B x => translatedRayPairing volume a0 kappa (f j) (p (B,x)) (n (B,x))
+    have hPoint (B : Icc (-4:Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+        Tendsto (fun j => QS j B x) atTop (𝓝 (Q B x)) := hu.tendsto_at (B,x)
+    have hMeas (j : Nat) : AEMeasurable (fun x => ⨆ B : Icc (-4:Real) 4,
+        ENNReal.ofReal (‖QS j B x‖^2)) nu :=
+      (measurable_canonicalSmoothing_core_max (f j) (hCore j) a0 ha0 rho hrho eps).aemeasurable
+    have hBound (j : Nat) : (∫⁻ x, ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal (‖QS j B x‖^2) ∂nu) ≤
+        ENNReal.ofReal (4*C0*(1+1/Real.sqrt rho)*E) := by
+      rcases hCore j with ⟨ι,hι,q,a,hq,ha,hfEq⟩
+      let : Fintype ι := hι
+      have he := memLp_two_integral_sq_le_four_of_error_le
+        (volume.prod volume) (f j) g (hMem j) hg (hErr j)
+      have hbTensor := hb ι Finset.univ q a ha rho hrho eps heps
+      change (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+          (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) (f j)
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2) ∂nu) ≤ _
+      have hBase : (∫⁻ x, ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+          (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) (f j)
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2) ∂nu) ≤
+          ENNReal.ofReal (C0*(1+1/Real.sqrt rho)*∫ z : Euclidean 2 × Real, ‖f j z‖^2 ∂(volume.prod volume)) := by
+        rw [hfEq]
+        exact hbTensor
+      apply hBase.trans
+      apply ENNReal.ofReal_le_ofReal
+      calc
+        _ ≤ C0*(1+1/Real.sqrt rho)*(4*E) :=
+          mul_le_mul_of_nonneg_left he (by positivity)
+        _ = _ := by ring
+    exact lintegral_iSup_sq_le_of_pointwise_limit nu Q QS hPoint hMeas
+      (ENNReal.ofReal (4*C0*(1+1/Real.sqrt rho)*E)) hBound
+#print axioms measurable_canonicalSmoothing_core_max
+#print axioms exists_normalizedCircle_canonicalSmoothing_L2_maximal
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators Topology
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem continuous_canonicalSmoothing_core_source
+    (f : Euclidean 2 × Real → Complex) (hf : CenteredCompactFrequencyTensorCore f)
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    (rho : Real) (hrho : 0 < rho) (eps : Real) :
+    Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) f
+        (normalizedCircleRayTerminal eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1))
+        (normalizedCircleRayNormal eps z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1))) := by
+  rcases hf with ⟨ι,hι,q,a,hq,ha,hfEq⟩
+  let : Fintype ι := hι
+  let m := scratch_canonicalBandlimitedTubeMultiplier rho hrho
+  have hm : HasCompactSupport (m : Euclidean 2 → Complex) :=
+    hasCompactSupport_scratch_canonicalBandlimitedTubeMultiplier hrho
+  let qM := finiteTensorSpatialMultiplierProfiles m q
+  have hqM : ∀ i, HasCompactSupport (qM i : Euclidean 2 → Complex) :=
+    finiteTensorSpatialMultiplierProfiles_compact m q hm
+  convert continuous_normalizedCircleFiniteTensorRay_source_four Finset.univ qM hqM a ha eps using 1
+  funext z
+  rw [hfEq]
+  exact (normalizedCircleFiniteTensorRay_spatialSmoothing_eq_pairing m hm Finset.univ q a ha a0 ha0
+    eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1)).symm
+
+/-- Uniform literal kernel-pairing convergence makes the actual smoothed
+incidence field continuous in all source and transverse parameters. -/
+theorem continuous_canonicalSmoothing_L2_source
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod volume))
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    (rho : Real) (hrho : 0 < rho) (eps : Real) :
+    Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
+      translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) g
+        (normalizedCircleRayTerminal eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1))
+        (normalizedCircleRayNormal eps z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1))) := by
+  let kappa := scratch_canonicalBandlimitedTubePhysicalCore rho hrho
+  let p : Real × (sphere (0 : Euclidean 2) 1 × Real) → Euclidean 2 :=
+    fun y => normalizedCircleRayTerminal eps y.2.2 y.1 y.2.1 (normalizedCircleQuarterTurn y.2.1)
+  let n : Real × (sphere (0 : Euclidean 2) 1 × Real) → Euclidean 2 :=
+    fun y => normalizedCircleRayNormal eps y.1 y.2.1 (normalizedCircleQuarterTurn y.2.1)
+  by_cases hzero : eLpNorm g 2 (volume.prod volume) = 0
+  · have hQ (y : Real × (sphere (0 : Euclidean 2) 1 × Real)) :
+        translatedRayPairing volume a0 kappa g (p y) (n y) = 0 :=
+      translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero volume a0 kappa
+        a0.continuous.measurable kappa.continuous.measurable g hg.aestronglyMeasurable hzero _ _
+    convert (continuous_const : Continuous (fun _ : Real × (sphere (0 : Euclidean 2) 1 × Real) => (0:Complex))) using 1
+    funext y
+    exact hQ y
+  · obtain ⟨f,hCore,hMem,hErr,hConv⟩ := exists_centered_tensorSequence_L2 g hg hgsupp hzero
+    have hu := translatedRayPairing_tendstoUniformly_of_L2 volume a0 kappa
+      a0.continuous.measurable kappa.continuous.measurable (a0.memLp 2 volume)
+      (kappa.memLp 2 volume) g f hg hMem hConv p n
+    exact hu.continuous (Frequently.of_forall (fun j =>
+      continuous_canonicalSmoothing_core_source (f j) (hCore j) a0 ha0 rho hrho eps))
+
+set_option maxHeartbeats 1000000 in
+/-- The genuine smoothed L2 field has a measurable uncountable compact
+cotangent maximum, as needed before the positive majorant's Tonelli step. -/
+theorem measurable_canonicalSmoothing_L2_max
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod volume))
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    (rho : Real) (hrho : 0 < rho) (eps : Real) :
+    Measurable (fun x : sphere (0 : Euclidean 2) 1 × Real =>
+      ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+        (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) g
+          (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+          (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))‖^2)) := by
+  let F : Real → (sphere (0 : Euclidean 2) 1 × Real) → Complex := fun B x =>
+    translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) g
+      (normalizedCircleRayTerminal eps x.2 B x.1 (normalizedCircleQuarterTurn x.1))
+      (normalizedCircleRayNormal eps B x.1 (normalizedCircleQuarterTurn x.1))
+  have hF : Continuous (Function.uncurry F) :=
+    continuous_canonicalSmoothing_L2_source g hg hgsupp a0 ha0 rho hrho eps
+  exact measurable_Icc_norm_sq_max_of_joint_continuous F hF (-4) 4
+#print axioms continuous_canonicalSmoothing_L2_source
+#print axioms measurable_canonicalSmoothing_L2_max
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+open scoped BigOperators
+
+theorem lintegral_iSup_weighted_tsum_sq_le
+    {X B : Type*} [MeasurableSpace X] (mu : Measure X)
+    (w : Nat → ENNReal) (hw : (∑' j,w j) ≠ ⊤)
+    (F : Nat → B → X → ENNReal)
+    (hF : ∀ j, AEMeasurable (fun x => ⨆ b : B,(F j b x)^2) mu) :
+    (∫⁻ x, ⨆ b : B,(∑' j,w j*F j b x)^2 ∂mu) ≤
+      (∑' j,w j)*(∑' j,w j*(∫⁻ x, ⨆ b : B,(F j b x)^2 ∂mu)) := by
+  have hwt (j : Nat) : w j ≠ ⊤ := by
+    intro hj
+    apply hw
+    exact top_le_iff.mp (hj ▸ ENNReal.le_tsum j)
+  have hp (x : X) : (⨆ b : B,(∑' j,w j*F j b x)^2) ≤
+      (∑' j,w j)*(∑' j,w j*(⨆ b : B,(F j b x)^2)) := by
+    apply iSup_le
+    intro b
+    apply (ennreal_weighted_tsum_square_le w (fun j => F j b x)).trans
+    exact mul_le_mul_of_nonneg_left
+      (ENNReal.tsum_le_tsum (fun j => mul_le_mul_of_nonneg_left
+        (le_iSup_of_le b le_rfl) (by positivity))) (by positivity)
+  calc
+    _ ≤ ∫⁻ x,(∑' j,w j)*(∑' j,w j*(⨆ b : B,(F j b x)^2)) ∂mu :=
+      lintegral_mono hp
+    _ = _ := by
+      rw [lintegral_const_mul' _ _ hw,lintegral_tsum]
+      · congr 1
+        apply tsum_congr
+        intro j
+        exact lintegral_const_mul' _ _ (hwt j)
+      · intro j
+        exact (hF j).const_mul (w j)
+#print axioms lintegral_iSup_weighted_tsum_sq_le
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+def complexNormLift {X : Type*} (g : X → Complex) : X → Complex :=
+  fun x => (‖g x‖ : Complex)
+
+theorem memLp_complexNormLift
+    {X : Type*} [MeasurableSpace X] (mu : Measure X) (g : X → Complex)
+    (hg : MemLp g 2 mu) : MemLp (complexNormLift g) 2 mu := by
+  apply hg.congr_norm (Complex.continuous_ofReal.comp_aestronglyMeasurable hg.aestronglyMeasurable.norm)
+  filter_upwards [] with x
+  simp only [Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg (norm_nonneg _)]
+
+theorem complexNormLift_support_subset {X : Type*} (g : X → Complex) :
+    Function.support (complexNormLift g) ⊆ Function.support g := by
+  intro x hx
+  by_contra hg
+  have hg0 : g x = 0 := by
+    by_contra hne
+    exact hg hne
+  exact hx (by simp [complexNormLift,hg0])
+
+theorem complexNormLift_square_energy
+    {X : Type*} [MeasurableSpace X] (mu : Measure X) (g : X → Complex) :
+    (∫ x, ‖complexNormLift g x‖^2 ∂mu) = ∫ x, ‖g x‖^2 ∂mu := by
+  simp only [complexNormLift,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg (norm_nonneg _)]
+
+theorem canonicalTubePhysicalCore_re_nonneg
+    (rho : Real) (hrho : 0 < rho) (v : Euclidean 2) :
+    0 ≤ (scratch_canonicalBandlimitedTubePhysicalCore rho hrho v).re := by
+  rw [scratch_canonicalBandlimitedTubePhysicalCore_re_eq]
+  exact mul_nonneg (sq_nonneg _) (canonicalPositiveCore_re_nonneg _)
+
+/-- The actual positive canonical core average is bounded by the norm of
+the literal smoothed pairing of the complex norm lift. The time plateau is
+removed only where the given datum vanishes, preserving the actual kernel. -/
+theorem positive_canonicalCore_lintegral_le_pairing_norm
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod volume))
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    (rho : Real) (hrho : 0 < rho) (p n : Euclidean 2) :
+    (∫⁻ z : Euclidean 2 × Real,
+      ENNReal.ofReal ((scratch_canonicalBandlimitedTubePhysicalCore rho hrho
+        (p-z.2•n-z.1)).re) * ENNReal.ofReal ‖g z‖ ∂(volume.prod volume)) ≤
+      ENNReal.ofReal ‖translatedRayPairing volume a0
+        (scratch_canonicalBandlimitedTubePhysicalCore rho hrho) (complexNormLift g) p n‖ := by
+  let kappa := scratch_canonicalBandlimitedTubePhysicalCore rho hrho
+  let H := fun z : Euclidean 2 × Real =>
+    translatedRayTestKernel a0 kappa p n z*complexNormLift g z
+  let R := fun z : Euclidean 2 × Real => kappa (p-z.2•n-z.1)*(‖g z‖:Complex)
+  have hK := translatedRayTestKernel_memLp_two volume a0 kappa
+    a0.continuous.measurable kappa.continuous.measurable (a0.memLp 2 volume) (kappa.memLp 2 volume) p n
+  have hH : Integrable H (volume.prod volume) := memLp_one_iff_integrable.mp (hK.mul (memLp_complexNormLift _ g hg))
+  have heq (z : Euclidean 2 × Real) : H z = R z := by
+    by_cases hz : g z = 0
+    · simp only [H,R,complexNormLift,hz,norm_zero,Complex.ofReal_zero,mul_zero]
+    · have ht : |z.2| ≤ 2 := hgsupp hz
+      dsimp only [H,R,translatedRayTestKernel,complexNormLift]
+      rw [ha0 z.2 (by linarith),one_mul]
+  have hR : Integrable R (volume.prod volume) := hH.congr (Filter.Eventually.of_forall heq)
+  have hRre : Integrable (fun z => (kappa (p-z.2•n-z.1)).re*‖g z‖) (volume.prod volume) := by
+    have hr : Integrable (fun z : Euclidean 2 × Real => (R z).re) (volume.prod volume) := hR.re
+    simpa only [R,Complex.mul_re,Complex.ofReal_re,Complex.ofReal_im,mul_zero,sub_zero] using hr
+  have hn (z : Euclidean 2 × Real) : 0 ≤ (kappa (p-z.2•n-z.1)).re*‖g z‖ :=
+    mul_nonneg (canonicalTubePhysicalCore_re_nonneg rho hrho _) (norm_nonneg _)
+  have hPair : translatedRayPairing volume a0 kappa (complexNormLift g) p n = ∫ z,R z ∂(volume.prod volume) := by
+    unfold translatedRayPairing
+    exact integral_congr_ae (Filter.Eventually.of_forall heq)
+  calc
+    _ = ∫⁻ z : Euclidean 2 × Real, ENNReal.ofReal ((kappa (p-z.2•n-z.1)).re*‖g z‖) ∂(volume.prod volume) := by
+      apply lintegral_congr
+      intro z
+      exact (ENNReal.ofReal_mul (canonicalTubePhysicalCore_re_nonneg rho hrho _)).symm
+    _ = ENNReal.ofReal (∫ z : Euclidean 2 × Real, (kappa (p-z.2•n-z.1)).re*‖g z‖ ∂(volume.prod volume)) :=
+      (ofReal_integral_eq_lintegral_ofReal hRre (Filter.Eventually.of_forall hn)).symm
+    _ = ENNReal.ofReal (translatedRayPairing volume a0 kappa (complexNormLift g) p n).re := by
+      have hi : (∫ z,R z ∂(volume.prod volume)).re =
+          ∫ z : Euclidean 2 × Real,(R z).re ∂(volume.prod volume) :=
+        (Complex.reCLM.integral_comp_comm hR).symm
+      rw [hPair,hi]
+      congr 1
+      apply integral_congr_ae
+      filter_upwards [] with z
+      simp only [R,Complex.mul_re,Complex.ofReal_re,Complex.ofReal_im,mul_zero,sub_zero]
+    _ ≤ _ := ENNReal.ofReal_le_ofReal (Complex.re_le_norm _)
+#print axioms positive_canonicalCore_lintegral_le_pairing_norm
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+theorem scaled_dyadicCore_eq_canonicalPhysical_re
+    {delta r : Real} (hdelta : 0 < delta) (hr : 0 < r) (j : Nat) (v : Euclidean 2) :
+    (delta⁻¹)^2*canonicalBandlimitedDyadicCore r j (delta⁻¹•v) =
+      (scratch_canonicalBandlimitedTubePhysicalCore
+        (delta/canonicalBandlimitedDyadicScale r j)
+        (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)) v).re := by
+  rw [scratch_canonicalBandlimitedTubePhysicalCore_re_eq]
+  have h := scratch_rescaledCanonicalDyadicCore_eq_smoothTubeCore
+    hdelta hr j (0 : Euclidean 2) (0 : Euclidean 2) (v,0)
+  simpa only [scratch_smoothTubeCore,zero_smul,add_zero,sub_zero] using h
+
+/-- Literal polynomial decay is majorized by normalized positive cores at
+their actual broader widths. The coefficients retain the spatial mass factor. -/
+theorem polynomial_ray_profile_le_canonicalCore_tsum
+    {delta c r : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
+    (hc : 0 < c) (hr : 0 < r)
+    (hcore : ∀ v : Euclidean 2, ‖v‖ ≤ r → c ≤ (canonicalPositiveCore v).re)
+    (v : Euclidean 2) :
+    ENNReal.ofReal ((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•v)) ≤
+      ∑' j : Nat, ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j) *
+        ENNReal.ofReal ((scratch_canonicalBandlimitedTubePhysicalCore
+          (delta/canonicalBandlimitedDyadicScale r j)
+          (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)) v).re) := by
+  let u := delta⁻¹•v
+  let term := fun j : Nat => (delta⁻¹)^2*
+    (canonicalBandlimitedDyadicCoefficient N c r j*canonicalBandlimitedDyadicCore r j u)
+  have ht : Summable term := (summable_canonicalBandlimitedDyadicTerm N hN hc hr u).mul_left _
+  have hn (j : Nat) : 0 ≤ term j :=
+    mul_nonneg (sq_nonneg _) (canonicalBandlimitedDyadicCore_nonneg_coefficient N hc hr j u)
+  have hcoef (j : Nat) : 0 ≤ canonicalBandlimitedDyadicCoefficient N c r j := by
+    unfold canonicalBandlimitedDyadicCoefficient
+    positivity
+  calc
+    _ ≤ ENNReal.ofReal ((delta⁻¹)^2*∑' j : Nat,
+        canonicalBandlimitedDyadicCoefficient N c r j*canonicalBandlimitedDyadicCore r j u) :=
+      ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_left
+        (lightRayDecayProfile_le_tsum_canonicalBandlimitedDyadicCore N hN hc hr hcore u) (sq_nonneg _))
+    _ = ENNReal.ofReal (∑' j : Nat,term j) := by rw [tsum_mul_left]
+    _ = ∑' j : Nat,ENNReal.ofReal (term j) := ENNReal.ofReal_tsum_of_nonneg hn ht
+    _ = _ := by
+      apply tsum_congr
+      intro j
+      have he : term j = canonicalBandlimitedDyadicCoefficient N c r j *
+          ((delta⁻¹)^2*canonicalBandlimitedDyadicCore r j (delta⁻¹•v)) := by dsimp only [term,u]; ring
+      rw [he,scaled_dyadicCore_eq_canonicalPhysical_re hdelta hr j v,
+        ENNReal.ofReal_mul (hcoef j)]
+
+theorem canonicalCore_width_cost_le_uniform_narrow
+    {delta r : Real} (hdelta : 0 < delta) (hdeltaOne : delta ≤ 1)
+    (hr : 0 < r) (j : Nat) :
+    1+1/Real.sqrt (delta/canonicalBandlimitedDyadicScale r j) ≤
+      (1+Real.sqrt (r/2))/Real.sqrt delta := by
+  let s := canonicalBandlimitedDyadicScale r j
+  have hs : 0 < s := canonicalBandlimitedDyadicScale_pos hr j
+  have hd : 0 < Real.sqrt delta := Real.sqrt_pos.mpr hdelta
+  have hsr : Real.sqrt s ≠ 0 := ne_of_gt (Real.sqrt_pos.mpr hs)
+  have hde : Real.sqrt delta ≠ 0 := ne_of_gt hd
+  have heq : 1/Real.sqrt (delta/s) = Real.sqrt s/Real.sqrt delta := by
+    rw [Real.sqrt_div hdelta.le]
+    field_simp
+  have hsmall : 1 ≤ 1/Real.sqrt delta :=
+    (le_div_iff₀ hd).mpr (by
+      simpa only [one_mul] using (Real.sqrt_le_one.mpr hdeltaOne))
+  have hwidth : 1/Real.sqrt (delta/s) ≤ Real.sqrt (r/2)/Real.sqrt delta := by
+    rw [heq]
+    exact div_le_div_of_nonneg_right
+      (Real.sqrt_le_sqrt (canonicalBandlimitedDyadicScale_le_half_radius hr j)) hd.le
+  calc
+    _ ≤ 1/Real.sqrt delta+Real.sqrt (r/2)/Real.sqrt delta := add_le_add hsmall hwidth
+    _ = _ := by ring
+#print axioms polynomial_ray_profile_le_canonicalCore_tsum
+#print axioms canonicalCore_width_cost_le_uniform_narrow
+end
+end Auto.Spherical.MSS
+
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+
+/-- Literal positive polynomial-profile ray average, with the test value
+taken at its original space-time point and the actual ray intercept/normal. -/
+def polynomialRayPositiveField
+    (delta : Real) (N : Nat) (g : Euclidean 2 × Real → Complex) (p n : Euclidean 2) : ENNReal :=
+  ∫⁻ z : Euclidean 2 × Real,
+    ENNReal.ofReal ((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•(p-z.2•n-z.1))) *
+      ENNReal.ofReal ‖g z‖ ∂(volume.prod volume)
+
+theorem polynomialRayPositiveField_le_canonicalPairing_tsum
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod volume))
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    (a0 : SchwartzMap Real Complex) (ha0 : ∀ t, |t| ≤ 4 → a0 t = 1)
+    {delta c r : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
+    (hc : 0 < c) (hr : 0 < r)
+    (hcore : ∀ v : Euclidean 2, ‖v‖ ≤ r → c ≤ (canonicalPositiveCore v).re)
+    (p n : Euclidean 2) :
+    polynomialRayPositiveField delta N g p n ≤
+      ∑' j : Nat, ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j) *
+        ENNReal.ofReal ‖translatedRayPairing volume a0
+          (scratch_canonicalBandlimitedTubePhysicalCore
+            (delta/canonicalBandlimitedDyadicScale r j)
+            (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)))
+          (complexNormLift g) p n‖ := by
+  let w := fun j : Nat => ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j)
+  let K := fun j : Nat => fun z : Euclidean 2 × Real =>
+    ENNReal.ofReal ((scratch_canonicalBandlimitedTubePhysicalCore
+      (delta/canonicalBandlimitedDyadicScale r j)
+      (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))) (p-z.2•n-z.1)).re
+  let G := fun z : Euclidean 2 × Real => ENNReal.ofReal ‖g z‖
+  have hG : AEMeasurable G (volume.prod volume) :=
+    ENNReal.continuous_ofReal.measurable.comp_aemeasurable hg.aestronglyMeasurable.norm.aemeasurable
+  have hK (j : Nat) : Measurable (K j) := by
+    apply ENNReal.continuous_ofReal.measurable.comp
+    exact (Complex.continuous_re.comp
+      ((scratch_canonicalBandlimitedTubePhysicalCore
+        (delta/canonicalBandlimitedDyadicScale r j)
+        (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))).continuous.comp
+          (show Continuous (fun z : Euclidean 2 × Real => p-z.2•n-z.1) by fun_prop))).measurable
+  calc
+    _ ≤ ∫⁻ z : Euclidean 2 × Real,(∑' j : Nat,w j*K j z)*G z ∂(volume.prod volume) :=
+      lintegral_mono (fun z => mul_le_mul_of_nonneg_right
+        (polynomial_ray_profile_le_canonicalCore_tsum hdelta N hN hc hr hcore _) (by positivity))
+    _ = ∫⁻ z : Euclidean 2 × Real,∑' j : Nat,w j*(K j z*G z) ∂(volume.prod volume) := by
+      apply lintegral_congr
+      intro z
+      rw [← ENNReal.tsum_mul_right]
+      apply tsum_congr
+      intro j
+      ring
+    _ = ∑' j : Nat,∫⁻ z : Euclidean 2 × Real,w j*(K j z*G z) ∂(volume.prod volume) :=
+      lintegral_tsum (fun j => aemeasurable_const.mul ((hK j).aemeasurable.mul hG))
+    _ = ∑' j : Nat,w j*(∫⁻ z : Euclidean 2 × Real,K j z*G z ∂(volume.prod volume)) := by
+      apply tsum_congr
+      intro j
+      exact lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ _ := ENNReal.tsum_le_tsum (fun j => mul_le_mul_of_nonneg_left
+      (positive_canonicalCore_lintegral_le_pairing_norm g hg hgsupp a0 ha0
+        (delta/canonicalBandlimitedDyadicScale r j)
+        (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)) p n) (by positivity))
+#print axioms polynomialRayPositiveField_le_canonicalPairing_tsum
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+set_option maxHeartbeats 1500000 in
+/-- A genuine measurable square-energy majorant for the actual positive
+polynomial ray average. It controls every source-dependent cotangent ray and
+has the inverse-width half-power square moment, hence the required
+quarter-power L2 norm loss. This is the weight used by reverse Schur. -/
+theorem exists_normalizedCircle_polynomialRayPositive_square_majorant :
+    ∀ N : Nat, 2 < N → ∃ C : Real, 0 < C ∧
+      ∀ g : Euclidean 2 × Real → Complex,
+      MemLp g 2 (volume.prod volume) →
+      Function.support g ⊆ {z | |z.2| ≤ 2} →
+      ∀ (delta : Real), 0 < delta → delta ≤ 1 →
+      ∀ eps : Real, |eps| ≤ 1/64 →
+      ∃ W : (sphere (0 : Euclidean 2) 1 × Real) → ENNReal,
+        Measurable W ∧
+        (∀ x : sphere (0 : Euclidean 2) 1 × Real, ∀ B : Icc (-4:Real) 4,
+          (polynomialRayPositiveField delta N g
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)))^2 ≤ W x) ∧
+        (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,W x
+          ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6)))) ≤
+          ENNReal.ofReal (C/Real.sqrt delta *
+            ∫ z : Euclidean 2 × Real, ‖g z‖^2 ∂(volume.prod volume)) := by
+  intro N hN
+  obtain ⟨c,r,hc,hr,hcore⟩ := exists_canonicalPositiveCore_lower_closedBall
+  obtain ⟨C0,a0,hC0,ha0,hmax⟩ := exists_normalizedCircle_canonicalSmoothing_L2_maximal
+  let S := ∑' j : Nat,canonicalBandlimitedDyadicCoefficient N c r j
+  let D := 1+Real.sqrt (r/2)
+  have hcoef (j : Nat) : 0 ≤ canonicalBandlimitedDyadicCoefficient N c r j := by
+    unfold canonicalBandlimitedDyadicCoefficient
+    positivity
+  have hcs : Summable (canonicalBandlimitedDyadicCoefficient N c r) :=
+    summable_canonicalBandlimitedDyadicCoefficient N hN c r
+  have hS : 0 ≤ S := tsum_nonneg hcoef
+  have hD : 0 < D := by dsimp only [D]; positivity
+  refine ⟨C0*D*S^2+1,by positivity,?_⟩
+  intro g hg hgsupp delta hdelta hdeltaOne eps heps
+  let nu := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))
+  let E := ∫ z : Euclidean 2 × Real, ‖g z‖^2 ∂(volume.prod volume)
+  let gn := complexNormLift g
+  let w := fun j : Nat => ENNReal.ofReal (canonicalBandlimitedDyadicCoefficient N c r j)
+  let rho := fun j : Nat => delta/canonicalBandlimitedDyadicScale r j
+  have hrho (j : Nat) : 0 < rho j := div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
+  let p : Icc (-4:Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → Euclidean 2 :=
+    fun B x => normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1)
+  let n : Icc (-4:Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → Euclidean 2 :=
+    fun B x => normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)
+  let F : Nat → Icc (-4:Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → ENNReal :=
+    fun j B x => ENNReal.ofReal ‖translatedRayPairing volume a0
+      (scratch_canonicalBandlimitedTubePhysicalCore (rho j) (hrho j)) gn (p B x) (n B x)‖
+  have hgn : MemLp gn 2 (volume.prod volume) := memLp_complexNormLift _ g hg
+  have hgnSupp : Function.support gn ⊆ {z | |z.2| ≤ 2} :=
+    (complexNormLift_support_subset g).trans hgsupp
+  have hE : 0 ≤ E := integral_nonneg (fun z => sq_nonneg _)
+  have hSNN : (∑' j : Nat,w j) = ENNReal.ofReal S :=
+    (ENNReal.ofReal_tsum_of_nonneg hcoef hcs).symm
+  have hw : (∑' j : Nat,w j) ≠ ⊤ := by rw [hSNN]; exact ENNReal.ofReal_ne_top
+  have hFpoint (j : Nat) (B : Icc (-4:Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+      (F j B x)^2 = ENNReal.ofReal
+        (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore (rho j) (hrho j))
+          gn (p B x) (n B x)‖^2) :=
+    (ENNReal.ofReal_pow (norm_nonneg _) 2).symm
+  have hFm (j : Nat) : Measurable (fun x => ⨆ B : Icc (-4:Real) 4,(F j B x)^2) := by
+    have hm := measurable_canonicalSmoothing_L2_max gn hgn hgnSupp a0 ha0 (rho j) (hrho j) eps
+    convert hm using 1
+    funext x
+    apply iSup_congr
+    intro B
+    exact hFpoint j B x
+  have hBand (j : Nat) : (∫⁻ x, ⨆ B : Icc (-4:Real) 4,(F j B x)^2 ∂nu) ≤
+      ENNReal.ofReal (C0*D/Real.sqrt delta*E) := by
+    have hb := hmax gn hgn hgnSupp (rho j) (hrho j) eps heps
+    have henergy : (∫ z : Euclidean 2 × Real, ‖gn z‖^2 ∂(volume.prod volume)) = E :=
+      complexNormLift_square_energy (volume.prod volume) g
+    calc
+      _ = ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,
+        ⨆ B : Icc (-4:Real) 4, ENNReal.ofReal
+          (‖translatedRayPairing volume a0 (scratch_canonicalBandlimitedTubePhysicalCore (rho j) (hrho j))
+            gn (p B x) (n B x)‖^2) ∂nu := by
+        apply lintegral_congr
+        intro x
+        apply iSup_congr
+        intro B
+        exact hFpoint j B x
+      _ ≤ ENNReal.ofReal (C0*(1+1/Real.sqrt (rho j))*E) := by
+        rw [← henergy]
+        exact hb
+      _ ≤ _ := by
+        apply ENNReal.ofReal_le_ofReal
+        have hcst := canonicalCore_width_cost_le_uniform_narrow hdelta hdeltaOne hr j
+        have h := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hcst hC0.le) hE
+        convert h using 1
+        ring
+  have hraw (B : Icc (-4:Real) 4) (x : sphere (0 : Euclidean 2) 1 × Real) :
+      polynomialRayPositiveField delta N g (p B x) (n B x) ≤ ∑' j : Nat,w j*F j B x :=
+    polynomialRayPositiveField_le_canonicalPairing_tsum g hg hgsupp a0 ha0 hdelta N hN hc hr hcore (p B x) (n B x)
+  let W := fun x : sphere (0 : Euclidean 2) 1 × Real =>
+    (∑' j : Nat,w j)*(∑' j : Nat,w j*(⨆ B : Icc (-4:Real) 4,(F j B x)^2))
+  have hWm : Measurable W :=
+    (Measurable.tsum (fun j => (hFm j).const_mul (w j))).const_mul (∑' j : Nat,w j)
+  refine ⟨W,hWm,?_,?_⟩
+  · intro x B
+    apply (pow_le_pow_left₀ (by positivity) (hraw B x) 2).trans
+    apply (ennreal_weighted_tsum_square_le w (fun j => F j B x)).trans
+    exact mul_le_mul_of_nonneg_left
+      (ENNReal.tsum_le_tsum (fun j => mul_le_mul_of_nonneg_left
+        (le_iSup_of_le B le_rfl) (by positivity))) (by positivity)
+  · calc
+    _ = (∑' j : Nat,w j)*(∑' j : Nat,w j*(∫⁻ x, ⨆ B : Icc (-4:Real) 4,(F j B x)^2 ∂nu)) := by
+      rw [lintegral_const_mul' _ _ hw,lintegral_tsum]
+      · congr 1
+        apply tsum_congr
+        intro j
+        exact lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+      · intro j
+        exact (hFm j).aemeasurable.const_mul (w j)
+    _ ≤ (∑' j : Nat,w j)*(∑' j : Nat,w j*ENNReal.ofReal (C0*D/Real.sqrt delta*E)) :=
+      mul_le_mul_of_nonneg_left (ENNReal.tsum_le_tsum (fun j =>
+        mul_le_mul_of_nonneg_left (hBand j) (by positivity))) (by positivity)
+    _ = ENNReal.ofReal (C0*D*S^2/Real.sqrt delta*E) := by
+      rw [ENNReal.tsum_mul_right,hSNN,
+        ← ENNReal.ofReal_mul hS,← ENNReal.ofReal_mul hS]
+      congr 1
+      ring
+    _ ≤ _ := by
+      apply ENNReal.ofReal_le_ofReal
+      apply mul_le_mul_of_nonneg_right _ hE
+      exact div_le_div_of_nonneg_right (le_add_of_nonneg_right (by norm_num : (0:Real) ≤ 1))
+        (Real.sqrt_nonneg _)
+#print axioms exists_normalizedCircle_polynomialRayPositive_square_majorant
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+
+/-- A finite measurable nonnegative square majorant gives a genuine real
+L2 weight. Its single exceptional null set is independent of the transverse
+index, so every ray is controlled simultaneously on the source measure. -/
+theorem real_L2_weight_of_ennreal_square_majorant
+    {X B : Type*} [MeasurableSpace X] (mu : Measure X)
+    (W : X → ENNReal) (hW : Measurable W) {A : Real} (hA : 0 ≤ A)
+    (hBound : (∫⁻ x,W x ∂mu) ≤ ENNReal.ofReal A)
+    (F : B → X → ENNReal) (hF : ∀ b x,(F b x)^2 ≤ W x) :
+    ∃ w : X → Real, Measurable w ∧ (∀ x,0 ≤ w x) ∧ MemLp w 2 mu ∧
+      (∀ᵐ x ∂mu, ∀ b,F b x ≤ ENNReal.ofReal (w x)) ∧
+      (∫ x,(w x)^2 ∂mu) ≤ A := by
+  let w := fun x : X => Real.sqrt (W x).toReal
+  have hwm : Measurable w :=
+    Real.continuous_sqrt.measurable.comp (ENNReal.measurable_toReal.comp hW)
+  have hwn (x : X) : 0 ≤ w x := Real.sqrt_nonneg _
+  have hfinite : (∫⁻ x,W x ∂mu) ≠ ⊤ :=
+    ne_of_lt (hBound.trans_lt ENNReal.ofReal_lt_top)
+  have htop := ae_lt_top hW hfinite
+  have heq : ∀ᵐ x ∂mu,ENNReal.ofReal ((w x)^2) = W x := by
+    filter_upwards [htop] with x hx
+    rw [Real.sq_sqrt ENNReal.toReal_nonneg]
+    exact ENNReal.ofReal_toReal hx.ne
+  let wc := fun x : X => (w x : Complex)
+  have hwc : AEStronglyMeasurable wc mu :=
+    (Complex.continuous_ofReal.measurable.comp hwm).aestronglyMeasurable
+  have hbc : (∫⁻ x,ENNReal.ofReal (‖wc x‖^2) ∂mu) ≤ ENNReal.ofReal A := by
+    calc
+      _ = ∫⁻ x,W x ∂mu := by
+        apply lintegral_congr_ae
+        filter_upwards [heq] with x hx
+        simpa only [wc,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg (hwn x)] using hx
+      _ ≤ _ := hBound
+  obtain ⟨hmc,hic⟩ := memLp_two_and_integral_le_of_lintegral_sq_le mu hwc hA hbc
+  have hmr : MemLp w 2 mu := hmc.congr_norm hwm.aestronglyMeasurable
+    (Filter.Eventually.of_forall (fun x => by simp only [wc,Complex.norm_real]))
+  refine ⟨w,hwm,hwn,hmr,?_,?_⟩
+  · filter_upwards [heq] with x hx
+    intro b
+    have hh : (F b x)^2 ≤ (ENNReal.ofReal (w x))^2 := by
+      rw [← ENNReal.ofReal_pow (hwn x),hx]
+      exact hF b x
+    rw [← ENNReal.rpow_natCast,← ENNReal.rpow_natCast] at hh
+    exact (ENNReal.rpow_le_rpow_iff (by norm_num : (0:Real) < 2)).mp hh
+  · simpa only [wc,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg (hwn _)] using hic
+#print axioms real_L2_weight_of_ennreal_square_majorant
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+
+/-- Reverse Schur may use a genuine measurable nonnegative real source
+weight with inverse-width quarter-power L2 loss. It controls all actual
+cotangent rays on one source-null-set complement, including polynomial tails. -/
+theorem exists_normalizedCircle_polynomialRayPositive_real_weight :
+    ∀ N : Nat, 2 < N → ∃ C : Real, 0 < C ∧
+      ∀ g : Euclidean 2 × Real → Complex,
+      MemLp g 2 (volume.prod volume) →
+      Function.support g ⊆ {z | |z.2| ≤ 2} →
+      ∀ (delta : Real), 0 < delta → delta ≤ 1 →
+      ∀ eps : Real, |eps| ≤ 1/64 →
+      ∃ w : (sphere (0 : Euclidean 2) 1 × Real) → Real,
+        Measurable w ∧ (∀ x,0 ≤ w x) ∧
+        MemLp w 2 ((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))) ∧
+        (∀ᵐ x ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))),
+          ∀ B : Icc (-4:Real) 4,
+          polynomialRayPositiveField delta N g
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)) ≤
+              ENNReal.ofReal (w x)) ∧
+        (∫ x : sphere (0 : Euclidean 2) 1 × Real,(w x)^2
+          ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6)))) ≤
+          C/Real.sqrt delta * ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume) := by
+  intro N hN
+  obtain ⟨C,hC,hb⟩ := exists_normalizedCircle_polynomialRayPositive_square_majorant N hN
+  refine ⟨C,hC,?_⟩
+  intro g hg hgsupp delta hdelta hdeltaOne eps heps
+  obtain ⟨W,hW,hp,hint⟩ := hb g hg hgsupp delta hdelta hdeltaOne eps heps
+  let F : Icc (-4:Real) 4 → (sphere (0 : Euclidean 2) 1 × Real) → ENNReal := fun B x =>
+    polynomialRayPositiveField delta N g
+      (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+      (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1))
+  exact real_L2_weight_of_ennreal_square_majorant
+    ((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6)))
+    W hW (by positivity) hint F (fun B x => hp x B)
+#print axioms exists_normalizedCircle_polynomialRayPositive_real_weight
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+def polynomialRaySpatialKernel (delta : Real) (N : Nat) (v : Euclidean 2) : Complex :=
+  (((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•v)) : Real)
+
+theorem polynomialRaySpatialKernel_continuous (delta : Real) (N : Nat) :
+    Continuous (polynomialRaySpatialKernel delta N) := by
+  unfold polynomialRaySpatialKernel lightRayDecayProfile
+  apply Complex.continuous_ofReal.comp
+  have hs : Continuous (fun v : Euclidean 2 => delta⁻¹•v) := by fun_prop
+  have hn : Continuous (fun v : Euclidean 2 => 1+‖delta⁻¹•v‖) := continuous_const.add hs.norm
+  exact continuous_const.mul ((continuous_const.div hn (by intro v; positivity)).pow N)
+
+theorem polynomialRaySpatialKernel_memLp_two
+    {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N) :
+    MemLp (polynomialRaySpatialKernel delta N) 2 volume := by
+  apply (memLp_two_iff_integrable_sq_norm
+    (polynomialRaySpatialKernel_continuous delta N).aestronglyMeasurable).mpr
+  have heq (v : Euclidean 2) :
+      polynomialRaySpatialKernel delta N v = (lightRayKernel delta N 0 0 (v,0) : Complex) := by
+    rw [lightRayKernel_eq_scaled_decayProfile hdelta]
+    simp only [polynomialRaySpatialKernel,zero_smul,add_zero,sub_zero]
+  have hs := integrable_sq_lightRayKernel_spatial hdelta N hN (0 : Euclidean 2) (0 : Euclidean 2) 0
+  convert hs using 1
+  funext v
+  rw [heq,Complex.norm_real,Real.norm_eq_abs,sq_abs]
+
+/-- The literal nonnegative polynomial ray integral is genuine for every
+centered L2 input, and its ofReal value is exactly the positive NN ray field. -/
+theorem polynomialRayPositiveField_eq_ofReal_integral
+    (g : Euclidean 2 × Real → Complex) (hg : MemLp g 2 (volume.prod volume))
+    (hgsupp : Function.support g ⊆ {z | |z.2| ≤ 2})
+    {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 1 < N) (p n : Euclidean 2) :
+    Integrable (fun z : Euclidean 2 × Real =>
+      ((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•(p-z.2•n-z.1)))*‖g z‖) (volume.prod volume) ∧
+    polynomialRayPositiveField delta N g p n =
+      ENNReal.ofReal (∫ z : Euclidean 2 × Real,
+        ((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•(p-z.2•n-z.1)))*‖g z‖ ∂(volume.prod volume)) := by
+  obtain ⟨a0,ha0⟩ := exists_centeredSchwartz_timePlateau_four
+  let kappa := polynomialRaySpatialKernel delta N
+  let H := fun z : Euclidean 2 × Real =>
+    translatedRayTestKernel a0 kappa p n z*complexNormLift g z
+  let R := fun z : Euclidean 2 × Real =>
+    ((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•(p-z.2•n-z.1)))*‖g z‖
+  have hkm : Measurable kappa := (polynomialRaySpatialKernel_continuous delta N).measurable
+  have hk2 : MemLp kappa 2 volume := polynomialRaySpatialKernel_memLp_two hdelta N hN
+  have hK := translatedRayTestKernel_memLp_two volume a0 kappa
+    a0.continuous.measurable hkm (a0.memLp 2 volume) hk2 p n
+  have hH : Integrable H (volume.prod volume) :=
+    memLp_one_iff_integrable.mp (hK.mul (memLp_complexNormLift _ g hg))
+  have heq (z : Euclidean 2 × Real) : H z = (R z : Complex) := by
+    by_cases hz : g z = 0
+    · simp only [H,R,complexNormLift,hz,norm_zero,Complex.ofReal_zero,mul_zero]
+    · have ht : |z.2| ≤ 2 := hgsupp hz
+      dsimp only [H,R,translatedRayTestKernel,complexNormLift,kappa,polynomialRaySpatialKernel]
+      rw [ha0 z.2 (by linarith),one_mul]
+      simp only [Complex.ofReal_mul]
+  have hRc : Integrable (fun z : Euclidean 2 × Real => (R z : Complex)) (volume.prod volume) :=
+    hH.congr (Filter.Eventually.of_forall heq)
+  have hR : Integrable R (volume.prod volume) := by
+    have hh : Integrable (fun z : Euclidean 2 × Real => (R z : Complex).re) (volume.prod volume) := hRc.re
+    simpa only [Complex.ofReal_re] using hh
+  have hkNonneg (v : Euclidean 2) : 0 ≤ (delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•v) := by
+    unfold lightRayDecayProfile
+    positivity
+  refine ⟨hR,?_⟩
+  calc
+    _ = ∫⁻ z : Euclidean 2 × Real,ENNReal.ofReal (R z) ∂(volume.prod volume) := by
+      apply lintegral_congr
+      intro z
+      exact (ENNReal.ofReal_mul (hkNonneg _)).symm
+    _ = _ := (ofReal_integral_eq_lintegral_ofReal hR
+      (Filter.Eventually.of_forall (fun z => mul_nonneg (hkNonneg _) (norm_nonneg _)))).symm
+#print axioms polynomialRaySpatialKernel_memLp_two
+#print axioms polynomialRayPositiveField_eq_ofReal_integral
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The genuine reverse packet kernel profile has amplitude L, whereas
+the positive width L^-1 ray average has amplitude L^2. The exact C/L
+conversion needs only a pointwise core bound, with no measurability
+assumption on the raw kernel or test function. -/
+theorem outputCore_polynomial_kernel_lintegral_le_rayPositiveField
+    (L C : Real) (hL : 0 < L) (hC : 0 ≤ C) (N : Nat)
+    (F : Euclidean 2 × Real → Real) (g : Euclidean 2 × Real → Complex)
+    (p n : Euclidean 2)
+    (hF : ∀ z : Euclidean 2 × Real, ‖z.1‖ < 3 → |z.2| < 2 →
+      F z ≤ C*L*(1/(1+L*‖z.1+z.2•n-p‖))^N) :
+    (∫⁻ z : Euclidean 2 × Real,
+      {z : Euclidean 2 × Real | ‖z.1‖ < 3 ∧ |z.2| < 2}.indicator
+        (fun z => ENNReal.ofReal (F z)*ENNReal.ofReal ‖g z‖) z
+          ∂(volume.prod volume)) ≤
+      ENNReal.ofReal (C/L)*polynomialRayPositiveField (L⁻¹) N g p n := by
+  have hprofile (z : Euclidean 2 × Real) :
+      lightRayDecayProfile N ((L⁻¹)⁻¹•(p-z.2•n-z.1)) =
+        (1/(1+L*‖z.1+z.2•n-p‖))^N := by
+    have hz : z.1+z.2•n-p = -(p-z.2•n-z.1) := by module
+    rw [hz,norm_neg]
+    unfold lightRayDecayProfile
+    rw [inv_inv,norm_smul,Real.norm_eq_abs,abs_of_pos hL]
+  have hnorm (z : Euclidean 2 × Real) :
+      C*L*(1/(1+L*‖z.1+z.2•n-p‖))^N =
+        (C/L)*((L⁻¹)⁻¹)^2*lightRayDecayProfile N ((L⁻¹)⁻¹•(p-z.2•n-z.1)) := by
+    rw [hprofile,inv_inv]
+    field_simp
+  unfold polynomialRayPositiveField
+  calc
+    _ ≤ ∫⁻ z : Euclidean 2 × Real,
+        ENNReal.ofReal (C/L) *
+          (ENNReal.ofReal (((L⁻¹)⁻¹)^2*
+            lightRayDecayProfile N ((L⁻¹)⁻¹•(p-z.2•n-z.1))) *
+              ENNReal.ofReal ‖g z‖) ∂(volume.prod volume) := by
+      apply lintegral_mono
+      intro z
+      by_cases hz : ‖z.1‖ < 3 ∧ |z.2| < 2
+      · rw [Set.indicator_of_mem (show z ∈ {z : Euclidean 2 × Real | ‖z.1‖ < 3 ∧ |z.2| < 2} from hz)]
+        have hh := ENNReal.ofReal_le_ofReal (hF z hz.1 hz.2)
+        rw [hnorm z, mul_assoc, ENNReal.ofReal_mul (div_nonneg hC hL.le)] at hh
+        calc
+          _ ≤ (ENNReal.ofReal (C/L) *
+              ENNReal.ofReal (((L⁻¹)⁻¹)^2*
+                lightRayDecayProfile N ((L⁻¹)⁻¹•(p-z.2•n-z.1)))) *
+                  ENNReal.ofReal ‖g z‖ :=
+            mul_le_mul_of_nonneg_right hh (by positivity)
+          _ = _ := by ring
+      · rw [Set.indicator_of_notMem (show z ∉ {z : Euclidean 2 × Real | ‖z.1‖ < 3 ∧ |z.2| < 2} from hz)]
+        exact bot_le
+    _ = _ := lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+#print axioms outputCore_polynomial_kernel_lintegral_le_rayPositiveField
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The actual positive normalized polynomial ray kernel has fixed spatial
+mass, independent of terminal point, direction, time and positive width. -/
+theorem lightRayKernel_spatial_lintegral_eq_profile
+    {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
+    (n p : Euclidean 2) (t : Real) :
+    (∫⁻ Z : Euclidean 2, ENNReal.ofReal (lightRayKernel delta N n p (Z,t))) =
+      ENNReal.ofReal (∫ Z : Euclidean 2, lightRayDecayProfile N Z) := by
+  rw [← ofReal_integral_eq_lintegral_ofReal
+    (integrable_lightRayKernel_spatial hdelta N hN n p t)
+    (Filter.Eventually.of_forall (fun Z => lightRayKernel_nonneg hdelta N n p (Z,t)))]
+  rw [integral_lightRayKernel_spatial_eq_decayProfile hdelta]
+
+/-- Restricting the actual spatial ray kernel to the output core and to
+the centered time interval cannot increase its total mass beyond four
+times the fixed planar profile mass. -/
+theorem lightRayKernel_output_core_lintegral_le
+    {delta : Real} (hdelta : 0 < delta) (N : Nat) (hN : 2 < N)
+    (n p : Euclidean 2) :
+    (∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2 in ball 0 3,
+      ENNReal.ofReal (lightRayKernel delta N n p (Z,S))) ≤
+      4*ENNReal.ofReal (∫ Z : Euclidean 2, lightRayDecayProfile N Z) := by
+  calc
+    _ ≤ ∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2,
+        ENNReal.ofReal (lightRayKernel delta N n p (Z,S)) := by
+      apply lintegral_mono
+      intro S
+      simpa only [Measure.restrict_univ] using
+        (lintegral_mono_set (f := fun Z : Euclidean 2 =>
+          ENNReal.ofReal (lightRayKernel delta N n p (Z,S))) (subset_univ (ball (0 : Euclidean 2) 3)))
+    _ = _ := by
+      simp_rw [lightRayKernel_spatial_lintegral_eq_profile hdelta N hN]
+      rw [lintegral_const,Measure.restrict_apply_univ,Real.volume_Ioo]
+      norm_num [mul_comm]
+
+/-- The common weighted reverse-convolution envelope integrates to the
+same anchored output ray envelope with amplitude h*L. Only its pointwise
+summed bound is required; the raw integrand need not be measurable. -/
+theorem reverse_convolution_output_core_lintegral_le
+    (L C h : Real) (hL : 0 < L) (hC : 0 ≤ C) (hh : 0 ≤ h)
+    (N : Nat) (hN : 2 < N) (X p n : Euclidean 2) (T : Real)
+    (F : Euclidean 2 × Real → Real)
+    (hF : ∀ Z : Euclidean 2, ‖Z‖ < 3 → ∀ S : Real, |S| < 2 →
+      (1+L*‖X+T•n-p‖)^N*F (Z,S) ≤
+        C*h*L^3*(1/(1+L*‖Z+S•n-p‖))^N) :
+    (∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2 in ball 0 3,
+      ENNReal.ofReal (F (Z,S))) ≤
+      ENNReal.ofReal (4*(∫ Z : Euclidean 2, lightRayDecayProfile N Z)*C*h*L*
+        (1/(1+L*‖X+T•n-p‖))^N) := by
+  let A : Real := 1+L*‖X+T•n-p‖
+  have hA : 0 < A := by dsimp [A]; positivity
+  let D : Real := C*h*L*(1/A)^N
+  have hD : 0 ≤ D := by dsimp [D]; positivity
+  have hpoint (Z : Euclidean 2) (hZ : ‖Z‖ < 3) (S : Real) (hS : |S| < 2) :
+      F (Z,S) ≤ D*lightRayKernel (L⁻¹) N n p (Z,S) := by
+    have hp := hF Z hZ S hS
+    have hd : F (Z,S) ≤ C*h*L^3*(1/(1+L*‖Z+S•n-p‖))^N/A^N :=
+      (le_div_iff₀ (pow_pos hA N)).mpr (by
+        simpa only [A,mul_comm] using hp)
+    rw [lightRayKernel_eq_scaled_decayProfile (inv_pos.mpr hL),inv_inv]
+    unfold lightRayDecayProfile
+    rw [norm_smul,Real.norm_eq_abs,abs_of_pos hL]
+    convert hd using 1
+    dsimp [D]
+    rw [div_eq_mul_inv,one_div,inv_pow]
+    ring
+  calc
+    _ ≤ ∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2 in ball 0 3,
+        ENNReal.ofReal D * ENNReal.ofReal (lightRayKernel (L⁻¹) N n p (Z,S)) := by
+      apply lintegral_mono_ae
+      filter_upwards [ae_restrict_mem measurableSet_Ioo] with S hS
+      apply lintegral_mono_ae
+      filter_upwards [ae_restrict_mem measurableSet_ball] with Z hZ
+      have hZ' : ‖Z‖ < 3 := by simpa only [mem_ball,dist_zero_right] using hZ
+      have hS' : |S| < 2 := abs_lt.mpr ⟨hS.1,hS.2⟩
+      rw [← ENNReal.ofReal_mul hD]
+      exact ENNReal.ofReal_le_ofReal (hpoint Z hZ' S hS')
+    _ = ENNReal.ofReal D *
+        (∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2 in ball 0 3,
+          ENNReal.ofReal (lightRayKernel (L⁻¹) N n p (Z,S))) := by
+      simp_rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    _ ≤ ENNReal.ofReal D *
+        (4*ENNReal.ofReal (∫ Z : Euclidean 2, lightRayDecayProfile N Z)) :=
+      mul_le_mul_of_nonneg_left (lightRayKernel_output_core_lintegral_le
+        (inv_pos.mpr hL) N hN n p) (by positivity)
+    _ = _ := by
+      rw [← ENNReal.ofReal_ofNat 4,← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4),
+        ← ENNReal.ofReal_mul hD]
+      congr 1
+      dsimp [D,A]
+      ring
+#print axioms reverse_convolution_output_core_lintegral_le
+/-- Genuine finite-family interchange for the iterated NN integral over
+the actual output core. Joint measurability is sufficient; integrability
+of the individual kernels is not assumed. -/
+theorem finite_family_output_core_lintegral_sum
+    {A B : Type*} (I : Finset A) (J : Finset B)
+    (F : A → B → Euclidean 2 × Real → ENNReal)
+    (hF : ∀ i ∈ I, ∀ j ∈ J, Measurable (F i j)) :
+    (∑ i ∈ I, ∑ j ∈ J, ∫⁻ S : Real in Ioo (-2) 2,
+      ∫⁻ Z : Euclidean 2 in ball 0 3, F i j (Z,S)) =
+      ∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2 in ball 0 3,
+        ∑ i ∈ I, ∑ j ∈ J, F i j (Z,S) := by
+  have hsingle (i : A) (hi : i ∈ I) (j : B) (hj : j ∈ J) :
+      Measurable (Function.uncurry (fun Z : Euclidean 2 => fun S : Real => F i j (Z,S))) :=
+    (hF i hi j hj).comp (measurable_fst.prodMk measurable_snd)
+  have hji (i : A) (hi : i ∈ I) :
+      Measurable (fun z : Euclidean 2 × Real => ∑ j ∈ J,F i j z) :=
+    Finset.measurable_sum J (fun j hj => hF i hi j hj)
+  have houter (i : A) (hi : i ∈ I) :
+      Measurable (fun S : Real => ∫⁻ Z : Euclidean 2 in ball 0 3,
+        ∑ j ∈ J,F i j (Z,S)) := (hji i hi).lintegral_prod_left
+  symm
+  calc
+    _ = ∫⁻ S : Real in Ioo (-2) 2,
+        ∑ i ∈ I, ∫⁻ Z : Euclidean 2 in ball 0 3, ∑ j ∈ J,F i j (Z,S) := by
+      apply lintegral_congr
+      intro S
+      exact lintegral_finsetSum I (fun i hi =>
+        (hji i hi).comp (measurable_id.prodMk measurable_const))
+    _ = ∑ i ∈ I, ∫⁻ S : Real in Ioo (-2) 2,
+        ∫⁻ Z : Euclidean 2 in ball 0 3, ∑ j ∈ J,F i j (Z,S) :=
+      lintegral_finsetSum I houter
+    _ = _ := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      calc
+        _ = ∫⁻ S : Real in Ioo (-2) 2,
+            ∑ j ∈ J, ∫⁻ Z : Euclidean 2 in ball 0 3, F i j (Z,S) := by
+          apply lintegral_congr
+          intro S
+          exact lintegral_finsetSum J (fun j hj =>
+            (hF i hi j hj).comp (measurable_id.prodMk measurable_const))
+        _ = _ := lintegral_finsetSum J (fun j hj => (hsingle i hi j hj).lintegral_prod_left)
+
+#print axioms finite_family_output_core_lintegral_sum
+/-- Finite-family form of the genuine reverse-convolution envelope. The
+sum stays over the actual two finite label sets; only measurability and
+nonnegativity are needed to interchange the positive integrals. -/
+theorem reverse_convolution_finite_family_output_core_lintegral_le
+    {A B : Type*} (I : Finset A) (J : Finset B)
+    (L C h : Real) (hL : 0 < L) (hC : 0 ≤ C) (hh : 0 ≤ h)
+    (N : Nat) (hN : 2 < N) (X p n : Euclidean 2) (T : Real)
+    (F : A → B → Euclidean 2 × Real → Real)
+    (hFm : ∀ i ∈ I, ∀ j ∈ J, Measurable (F i j))
+    (hFn : ∀ i ∈ I, ∀ j ∈ J, ∀ z, 0 ≤ F i j z)
+    (hF : ∀ Z : Euclidean 2, ‖Z‖ < 3 → ∀ S : Real, |S| < 2 →
+      (1+L*‖X+T•n-p‖)^N*(∑ i ∈ I,∑ j ∈ J,F i j (Z,S)) ≤
+        C*h*L^3*(1/(1+L*‖Z+S•n-p‖))^N) :
+    (∑ i ∈ I, ∑ j ∈ J, ∫⁻ S : Real in Ioo (-2) 2,
+      ∫⁻ Z : Euclidean 2 in ball 0 3, ENNReal.ofReal (F i j (Z,S))) ≤
+      ENNReal.ofReal (4*(∫ Z : Euclidean 2, lightRayDecayProfile N Z)*C*h*L*
+        (1/(1+L*‖X+T•n-p‖))^N) := by
+  rw [finite_family_output_core_lintegral_sum I J
+    (fun i j z => ENNReal.ofReal (F i j z))
+    (fun i hi j hj => ENNReal.measurable_ofReal.comp (hFm i hi j hj))]
+  have hsum (z : Euclidean 2 × Real) :
+      (∑ i ∈ I, ∑ j ∈ J, ENNReal.ofReal (F i j z)) =
+        ENNReal.ofReal (∑ i ∈ I, ∑ j ∈ J,F i j z) := by
+    rw [ENNReal.ofReal_sum_of_nonneg (fun i hi =>
+      Finset.sum_nonneg (fun j hj => hFn i hi j hj z))]
+    apply Finset.sum_congr rfl
+    intro i hi
+    exact (ENNReal.ofReal_sum_of_nonneg (fun j hj => hFn i hi j hj z)).symm
+  simp_rw [hsum]
+  exact reverse_convolution_output_core_lintegral_le L C h hL hC hh N hN X p n T
+    (fun z => ∑ i ∈ I,∑ j ∈ J,F i j z) hF
+#print axioms reverse_convolution_finite_family_output_core_lintegral_le
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal MSS angular direction is the volume-compatible source
+circle parametrization already used by the raw circle mass theorem. -/
+theorem circleDirection_eq_normalizedCirclePolarDirection (theta : Real) :
+    circleDirection theta = normalizedCirclePolarDirection theta := by
+  ext i
+  fin_cases i <;>
+    simp [circleDirection,normalizedCirclePolarDirection,
+      normalizedCircleCartesianMeasurableEquiv,EuclideanSpace.basisFun_apply]
+
+def normalizedCircleSourceSchurEnvelope
+    (eps : Real) (X : Euclidean 2) (T L : Real) (nu omega : Euclidean 2)
+    (u : Real) : ENNReal :=
+  ENNReal.ofReal ((1+L*|normalizedCircleIncidence eps X omega u-T|)⁻¹^4) *
+    ENNReal.ofReal ((1+L*‖normalizedCircleNormal eps X omega u-nu‖)⁻¹^2)
+
+theorem normalizedCircleSourceSchurEnvelope_measurable
+    (eps : Real) (X : Euclidean 2) (T L : Real) (nu : Euclidean 2) :
+    Measurable (Function.uncurry (normalizedCircleSourceSchurEnvelope eps X T L nu)) := by
+  unfold normalizedCircleSourceSchurEnvelope normalizedCircleIncidence normalizedCircleNormal
+  fun_prop
+
+/-- Genuine source row Schur mass in the actual angular chart. The
+enlarged theta window has bounded raw-circle multiplicity, and the radial
+analysis window sits inside the proved source window [-6,6]. -/
+theorem normalizedCircle_source_packet_chart_schur_mass :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ eps : Real, 0 ≤ eps → eps ≤ 1/64 →
+      ∀ X : Euclidean 2, ∀ T : Real, |T| ≤ 2 →
+      ∀ L : Real, 1 ≤ L → ∀ nu : Euclidean 2,
+      ENNReal.ofReal L *
+        (∫⁻ theta : Real in Icc (-4) 4, ∫⁻ u : Real in Icc (-5) 5,
+          normalizedCircleSourceSchurEnvelope eps X T L nu (circleDirection theta) u) ≤
+        C*ENNReal.ofReal L⁻¹ := by
+  obtain ⟨C,hC,hbound⟩ := normalizedCircle_source_packet_schur_mass
+  refine ⟨3*C,ENNReal.mul_ne_top (by norm_num) hC,?_⟩
+  intro eps heps hepsSmall X T hT L hL nu
+  let E := normalizedCircleSourceSchurEnvelope eps X T L nu
+  let G : Euclidean 2 → ENNReal := fun omega => ∫⁻ u : Real in Icc (-5) 5,E omega u
+  have hE : Measurable (Function.uncurry E) :=
+    normalizedCircleSourceSchurEnvelope_measurable eps X T L nu
+  have hG : Measurable G := hE.lintegral_prod_right
+  have hchart := normalizedCircle_unitSurface_lintegral_chart_window_le G hG
+  have hu : (Icc (-5:Real) 5) ⊆ Icc (-6:Real) 6 := by
+    intro u hu
+    constructor <;> linarith [hu.1,hu.2]
+  have hrad :
+      (∫⁻ omega : sphere (0 : Euclidean 2) 1, G omega ∂unitSurfaceMeasure 2) ≤
+        ∫⁻ omega : sphere (0 : Euclidean 2) 1,
+          ∫⁻ u in Icc (-6:Real) 6,E omega u ∂volume ∂unitSurfaceMeasure 2 := by
+    apply lintegral_mono
+    intro omega
+    exact lintegral_mono_set hu
+  have hraw :
+      ENNReal.ofReal L *
+        (∫⁻ omega : sphere (0 : Euclidean 2) 1,
+          ∫⁻ u in Icc (-6:Real) 6,E omega u ∂volume ∂unitSurfaceMeasure 2) ≤
+        C*ENNReal.ofReal L⁻¹ := hbound eps heps hepsSmall X T hT L hL nu
+  calc
+    _ ≤ ENNReal.ofReal L *
+        (3*(∫⁻ omega : sphere (0 : Euclidean 2) 1,G omega ∂unitSurfaceMeasure 2)) := by
+      simp_rw [circleDirection_eq_normalizedCirclePolarDirection]
+      exact mul_le_mul_of_nonneg_left hchart (by positivity)
+    _ ≤ ENNReal.ofReal L *
+        (3*(∫⁻ omega : sphere (0 : Euclidean 2) 1,
+          ∫⁻ u in Icc (-6:Real) 6,E omega u ∂volume ∂unitSurfaceMeasure 2)) :=
+      mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hrad (by positivity)) (by positivity)
+    _ = 3*(ENNReal.ofReal L*
+        (∫⁻ omega : sphere (0 : Euclidean 2) 1,
+          ∫⁻ u in Icc (-6:Real) 6,E omega u ∂volume ∂unitSurfaceMeasure 2)) := by ring
+    _ ≤ 3*(C*ENNReal.ofReal L⁻¹) := mul_le_mul_of_nonneg_left hraw (by positivity)
+    _ = _ := by ring
+#print axioms normalizedCircle_source_packet_chart_schur_mass
+/-- The raw Cartesian rectangle chart preserves actual planar volume,
+so source row Schur estimates may be used on the real input chart y. -/
+theorem normalizedCircle_cartesian_rectangle_lintegral
+    (a b : Real) (G : Real × Real → ENNReal) (hG : Measurable G) :
+    (∫⁻ y : Euclidean 2 in {y | y 0 ∈ Icc (-a) a ∧ y 1 ∈ Icc (-b) b},
+      G (y 0,y 1)) =
+        ∫⁻ theta : Real in Icc (-a) a, ∫⁻ u : Real in Icc (-b) b,G (theta,u) := by
+  let e := normalizedCircleCartesianMeasurableEquiv
+  have hp : MeasurePreserving e (volume : Measure (Real × Real))
+      (volume : Measure (Euclidean 2)) :=
+    (PiLp.volume_preserving_toLp (Fin 2)).comp
+      ((volume_preserving_finTwoArrow Real).symm MeasurableEquiv.finTwoArrow)
+  have he (q : Real × Real) : (e q) 0 = q.1 ∧ (e q) 1 = q.2 := by
+    simp [e,normalizedCircleCartesianMeasurableEquiv]
+  let R : Set (Euclidean 2) := {y | y 0 ∈ Icc (-a) a ∧ y 1 ∈ Icc (-b) b}
+  have hR : MeasurableSet R := by
+    exact (measurableSet_Icc.preimage (by fun_prop)).inter
+      (measurableSet_Icc.preimage (by fun_prop))
+  let F : Euclidean 2 → ENNReal := R.indicator (fun y => G (y 0,y 1))
+  have hcomp :
+      (fun q : Real × Real => F (e q)) =
+        (Icc (-a) a ×ˢ Icc (-b) b).indicator G := by
+    funext q
+    simp only [F,R,Set.indicator_apply,Set.mem_ofPred_eq,Set.mem_prod,he q]
+  calc
+    _ = ∫⁻ y : Euclidean 2,F y := (lintegral_indicator hR _).symm
+    _ = ∫⁻ q : Real × Real,F (e q) :=
+      (hp.lintegral_comp_emb e.measurableEmbedding F).symm
+    _ = ∫⁻ q : Real × Real,(Icc (-a) a ×ˢ Icc (-b) b).indicator G q := by rw [hcomp]
+    _ = ∫⁻ q : Real × Real in Icc (-a) a ×ˢ Icc (-b) b,G q :=
+      lintegral_indicator (measurableSet_Icc.prod measurableSet_Icc) _
+    _ = _ := by
+      rw [Measure.volume_eq_prod,← Measure.prod_restrict]
+      exact lintegral_prod _ hG.aemeasurable
+
+/-- Genuine planar input-chart row envelope for the actual normalized
+circle phase. The Cartesian measure transport and angular multiplicity
+are explicit; the constants are uniform for every output center X. -/
+theorem normalizedCircle_source_packet_cartesian_schur_mass :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ eps : Real, 0 ≤ eps → eps ≤ 1/64 →
+      ∀ X : Euclidean 2, ∀ T : Real, |T| ≤ 2 →
+      ∀ L : Real, 1 ≤ L → ∀ nu : Euclidean 2,
+      ENNReal.ofReal L *
+        (∫⁻ y : Euclidean 2 in {y | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5},
+          normalizedCircleSourceSchurEnvelope eps X T L nu (circleDirection (y 0)) (y 1)) ≤
+        C*ENNReal.ofReal L⁻¹ := by
+  obtain ⟨C,hC,hb⟩ := normalizedCircle_source_packet_chart_schur_mass
+  refine ⟨C,hC,?_⟩
+  intro eps heps hepsSmall X T hT L hL nu
+  let G : Real × Real → ENNReal := fun q =>
+    normalizedCircleSourceSchurEnvelope eps X T L nu (circleDirection q.1) q.2
+  have hG : Measurable G := by
+    have hdir : circleDirection = normalizedCirclePolarDirection :=
+      funext circleDirection_eq_normalizedCirclePolarDirection
+    have hd : Continuous circleDirection := by rw [hdir]; exact normalizedCirclePolarDirection_continuous
+    have hgraph : Measurable (fun q : Real × Real => (circleDirection q.1,q.2)) :=
+      (hd.measurable.comp measurable_fst).prodMk measurable_snd
+    have hm : Measurable (Function.uncurry
+        (normalizedCircleSourceSchurEnvelope eps X T L nu) ∘
+          (fun q : Real × Real => (circleDirection q.1,q.2))) :=
+      (normalizedCircleSourceSchurEnvelope_measurable eps X T L nu).comp hgraph
+    change Measurable (fun q : Real × Real =>
+      normalizedCircleSourceSchurEnvelope eps X T L nu (circleDirection q.1) q.2)
+    simpa only [Function.comp_def,Function.uncurry] using hm
+  have heq := normalizedCircle_cartesian_rectangle_lintegral 4 5 G hG
+  calc
+    _ = ENNReal.ofReal L *
+      (∫⁻ theta : Real in Icc (-4) 4, ∫⁻ u : Real in Icc (-5) 5,G (theta,u)) :=
+        congrArg (fun r : ENNReal => ENNReal.ofReal L*r) heq
+    _ ≤ _ := hb eps heps hepsSmall X T hT L hL nu
+#print axioms normalizedCircle_cartesian_rectangle_lintegral
+#print axioms normalizedCircle_source_packet_cartesian_schur_mass
+/-- The actual strict input chart core inherits the same genuine row
+Schur mass bound from the closed rectangle, including its exact volume. -/
+theorem normalizedCircle_source_packet_cartesian_open_schur_mass :
+    ∃ C : ENNReal, C ≠ ⊤ ∧ ∀ eps : Real, 0 ≤ eps → eps ≤ 1/64 →
+      ∀ X : Euclidean 2, ∀ T : Real, |T| ≤ 2 →
+      ∀ L : Real, 1 ≤ L → ∀ nu : Euclidean 2,
+      ENNReal.ofReal L *
+        (∫⁻ y : Euclidean 2 in {y | |y 0| < 4 ∧ |y 1| < 5},
+          normalizedCircleSourceSchurEnvelope eps X T L nu (circleDirection (y 0)) (y 1)) ≤
+        C*ENNReal.ofReal L⁻¹ := by
+  obtain ⟨C,hC,hb⟩ := normalizedCircle_source_packet_cartesian_schur_mass
+  refine ⟨C,hC,?_⟩
+  intro eps heps hepsSmall X T hT L hL nu
+  have hs : {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5} ⊆
+      {y : Euclidean 2 | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5} := by
+    intro y hy
+    exact ⟨abs_le.mp hy.1.le,abs_le.mp hy.2.le⟩
+  exact (mul_le_mul_of_nonneg_left (lintegral_mono_set hs) (by positivity)).trans
+    (hb eps heps hepsSmall X T hT L hL nu)
+
+/-- Real finite constant form of the true strict input-chart row mass,
+suited to the positive actual input-lattice source-kernel consumer. -/
+theorem normalizedCircle_source_packet_cartesian_open_schur_mass_real :
+    ∃ C : Real, 0 < C ∧ ∀ eps : Real, 0 ≤ eps → eps ≤ 1/64 →
+      ∀ X : Euclidean 2, ∀ T : Real, |T| ≤ 2 →
+      ∀ L : Real, 1 ≤ L → ∀ nu : Euclidean 2,
+      ENNReal.ofReal L *
+        (∫⁻ y : Euclidean 2 in {y | |y 0| < 4 ∧ |y 1| < 5},
+          normalizedCircleSourceSchurEnvelope eps X T L nu (circleDirection (y 0)) (y 1)) ≤
+        ENNReal.ofReal (C/L) := by
+  obtain ⟨C,hC,hb⟩ := normalizedCircle_source_packet_cartesian_open_schur_mass
+  have hc : 0 < C.toReal+1 := by positivity
+  refine ⟨C.toReal+1,hc,?_⟩
+  intro eps heps hepsSmall X T hT L hL nu
+  have hCC : C ≤ ENNReal.ofReal (C.toReal+1) := by
+    calc
+      C = ENNReal.ofReal C.toReal := (ENNReal.ofReal_toReal hC).symm
+      _ ≤ ENNReal.ofReal (C.toReal+1) := ENNReal.ofReal_le_ofReal (by linarith)
+  calc
+    _ ≤ C*ENNReal.ofReal L⁻¹ := hb eps heps hepsSmall X T hT L hL nu
+    _ ≤ ENNReal.ofReal (C.toReal+1)*ENNReal.ofReal L⁻¹ :=
+      mul_le_mul_of_nonneg_right hCC (by positivity)
+    _ = _ := by rw [← ENNReal.ofReal_mul hc.le,div_eq_mul_inv]
+#print axioms normalizedCircle_source_packet_cartesian_open_schur_mass_real
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The actual unit-circle input direction in the Cartesian source chart. -/
+def normalizedCircleChartSphereDirection (theta : Real) : sphere (0 : Euclidean 2) 1 :=
+  ⟨circleDirection theta,by simpa only [mem_sphere_zero_iff_norm] using norm_circleDirection theta⟩
+
+theorem normalizedCircleChartSphereDirection_measurable :
+    Measurable normalizedCircleChartSphereDirection := by
+  apply Measurable.subtype_mk
+  have he : circleDirection = normalizedCirclePolarDirection :=
+    funext circleDirection_eq_normalizedCirclePolarDirection
+  rw [he]
+  exact normalizedCirclePolarDirection_continuous.measurable
+
+/-- A measurable common ray majorant transfers to the true Cartesian source
+window with the actual bounded multiplicity of its circle chart. -/
+theorem normalizedCircle_cartesian_source_majorant_lintegral_le
+    (W : sphere (0 : Euclidean 2) 1 × Real → ENNReal) (hW : Measurable W) :
+    (∫⁻ y : Euclidean 2 in {y | |y 0| < 4 ∧ |y 1| < 5},
+      W (normalizedCircleChartSphereDirection (y 0),y 1)) ≤
+      3 * ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,W x
+        ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))) := by
+  let e : sphere (0 : Euclidean 2) 1 × Real → Euclidean 2 × Real :=
+    Prod.map Subtype.val id
+  have he : MeasurableEmbedding e :=
+    (MeasurableEmbedding.subtype_coe isClosed_sphere.measurableSet).prodMap MeasurableEmbedding.id
+  obtain ⟨G,hG,hGW⟩ := he.exists_measurable_extend hW (fun _ => inferInstance)
+  have hEq (omega : sphere (0 : Euclidean 2) 1) (u : Real) :
+      G ((omega : Euclidean 2),u) = W (omega,u) := congrFun hGW (omega,u)
+  let F : Real × Real → ENNReal := fun q => G (circleDirection q.1,q.2)
+  have hF : Measurable F := by
+    have hdir : Measurable circleDirection := by
+      rw [show circleDirection = normalizedCirclePolarDirection from
+        funext circleDirection_eq_normalizedCirclePolarDirection]
+      exact normalizedCirclePolarDirection_continuous.measurable
+    exact hG.comp ((hdir.comp measurable_fst).prodMk measurable_snd)
+  have hS : {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5} ⊆
+      {y | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5} := by
+    intro y hy
+    exact ⟨⟨by linarith [(abs_lt.mp hy.1).1],by linarith [(abs_lt.mp hy.1).2]⟩,
+      ⟨by linarith [(abs_lt.mp hy.2).1],by linarith [(abs_lt.mp hy.2).2]⟩⟩
+  have hambient : Measurable (fun omega : Euclidean 2 =>
+      ∫⁻ u in Icc (-5:Real) 5,G (omega,u)) := by
+    have hg0 : Measurable (Function.uncurry (fun omega : Euclidean 2 => fun u : Real =>
+        G (omega,u))) := hG
+    exact hg0.lintegral_prod_right
+  have hchart := normalizedCircle_unitSurface_lintegral_chart_window_le
+    (fun omega => ∫⁻ u in Icc (-5:Real) 5,G (omega,u)) hambient
+  have hrad :
+      (∫⁻ omega : sphere (0 : Euclidean 2) 1,
+        ∫⁻ u in Icc (-5:Real) 5,W (omega,u) ∂volume ∂unitSurfaceMeasure 2) ≤
+      ∫⁻ omega : sphere (0 : Euclidean 2) 1,
+        ∫⁻ u in Icc (-6:Real) 6,W (omega,u) ∂volume ∂unitSurfaceMeasure 2 := by
+    apply lintegral_mono
+    intro omega
+    apply lintegral_mono_set
+    intro u hu
+    constructor <;> linarith [hu.1,hu.2]
+  calc
+    _ = ∫⁻ y : Euclidean 2 in {y | |y 0| < 4 ∧ |y 1| < 5},F (y 0,y 1) := by
+      apply lintegral_congr
+      intro y
+      exact (hEq (normalizedCircleChartSphereDirection (y 0)) (y 1)).symm
+    _ ≤ ∫⁻ y : Euclidean 2 in
+        {y | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5},F (y 0,y 1) :=
+      lintegral_mono_set hS
+    _ = ∫⁻ theta : Real in Icc (-4) 4,∫⁻ u : Real in Icc (-5) 5,F (theta,u) :=
+      normalizedCircle_cartesian_rectangle_lintegral 4 5 F hF
+    _ ≤ 3 * ∫⁻ omega : sphere (0 : Euclidean 2) 1,
+        ∫⁻ u in Icc (-5:Real) 5,W (omega,u) ∂volume ∂unitSurfaceMeasure 2 := by
+      simpa only [F,circleDirection_eq_normalizedCirclePolarDirection,hEq] using hchart
+    _ ≤ 3 * ∫⁻ omega : sphere (0 : Euclidean 2) 1,
+        ∫⁻ u in Icc (-6:Real) 6,W (omega,u) ∂volume ∂unitSurfaceMeasure 2 :=
+      mul_le_mul_of_nonneg_left hrad (by positivity)
+    _ = _ := by rw [lintegral_prod _ hW.aemeasurable]
+#print axioms normalizedCircle_cartesian_source_majorant_lintegral_le
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The genuine common weak ray weight on the actual Cartesian analysis
+source. The source null set controls every transverse parameter at once. -/
+theorem exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight :
+    ∀ N : Nat, 2 < N → ∃ C : Real, 0 < C ∧
+      ∀ g : Euclidean 2 × Real → Complex,
+      MemLp g 2 (volume.prod volume) →
+      Function.support g ⊆ {z | |z.2| ≤ 2} →
+      ∀ (delta : Real), 0 < delta → delta ≤ 1 →
+      ∀ eps : Real, |eps| ≤ 1/64 →
+      ∃ w : Euclidean 2 → Real,
+        Measurable w ∧ (∀ y,0 ≤ w y) ∧
+        MemLp w 2 (volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5}) ∧
+        (∀ᵐ y ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5}),
+          ∀ B : Icc (-4:Real) 4,
+          polynomialRayPositiveField delta N g
+            (normalizedCircleRayTerminal eps (y 1) B.1 (circleDirection (y 0))
+              (normalizedCircleQuarterTurn (circleDirection (y 0))))
+            (normalizedCircleRayNormal eps B.1 (circleDirection (y 0))
+              (normalizedCircleQuarterTurn (circleDirection (y 0)))) ≤
+              ENNReal.ofReal (w y)) ∧
+        (∫ y : Euclidean 2,(w y)^2
+          ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) ≤
+          C/Real.sqrt delta * ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume) := by
+  intro N hN
+  obtain ⟨C,hC,hb⟩ := exists_normalizedCircle_polynomialRayPositive_square_majorant N hN
+  refine ⟨3*C,by positivity,?_⟩
+  intro g hg hgsupp delta hdelta hdeltaOne eps heps
+  obtain ⟨W,hW,hp,hint⟩ := hb g hg hgsupp delta hdelta hdeltaOne eps heps
+  let source : Euclidean 2 → sphere (0 : Euclidean 2) 1 × Real :=
+    fun y => (normalizedCircleChartSphereDirection (y 0),y 1)
+  have hsource : Measurable source :=
+    (normalizedCircleChartSphereDirection_measurable.comp (by fun_prop)).prodMk (by fun_prop)
+  let Wc := W ∘ source
+  have hWc : Measurable Wc := hW.comp hsource
+  have hbound :
+      (∫⁻ y : Euclidean 2 in {y | |y 0| < 4 ∧ |y 1| < 5},Wc y) ≤
+      ENNReal.ofReal (3*C/Real.sqrt delta *
+        ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume)) := by
+    calc
+      _ ≤ 3 * ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,W x
+          ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))) :=
+        normalizedCircle_cartesian_source_majorant_lintegral_le W hW
+      _ ≤ 3 * ENNReal.ofReal (C/Real.sqrt delta *
+          ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume)) :=
+        mul_le_mul_of_nonneg_left hint (by positivity)
+      _ = _ := by
+        rw [show (3 : ENNReal) = ENNReal.ofReal (3:Real) by norm_num,
+          ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 3)]
+        congr 1
+        ring
+  let F : Icc (-4:Real) 4 → Euclidean 2 → ENNReal := fun B y =>
+    polynomialRayPositiveField delta N g
+      (normalizedCircleRayTerminal eps (y 1) B.1 (circleDirection (y 0))
+        (normalizedCircleQuarterTurn (circleDirection (y 0))))
+      (normalizedCircleRayNormal eps B.1 (circleDirection (y 0))
+        (normalizedCircleQuarterTurn (circleDirection (y 0))))
+  exact real_L2_weight_of_ennreal_square_majorant
+    (volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})
+    Wc hWc (by positivity) hbound F (fun B y => hp (source y) B)
+#print axioms exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+/-- Positive convolution retains an actual finite family's source-row
+mass. All finite-label and source/output interchanges are Tonelli identities;
+no Bochner integrability or label count enters the estimate. -/
+theorem finite_family_positive_convolution_row_mass_le
+    {I J Z Y : Type*} [MeasurableSpace Z] [MeasurableSpace Y]
+    (P : Finset I) (Q : Finset J) (μ : Measure Y) (ν : Measure Z)
+    [SFinite μ] [SFinite ν]
+    (K : I → J → Z → Y → ENNReal)
+    (hK : ∀ i ∈ P,∀ j ∈ Q,
+      Measurable (Function.uncurry (K i j)))
+    (A : Z → ENNReal) (hA : Measurable A) (M : ENNReal)
+    (hMass : ∀ᵐ z ∂ν,(∑ i ∈ P,∑ j ∈ Q,∫⁻ y,K i j z y ∂μ) ≤ M) :
+    (∑ i ∈ P,∑ j ∈ Q,∫⁻ y,∫⁻ z,A z*K i j z y ∂ν ∂μ) ≤
+      M * ∫⁻ z,A z ∂ν := by
+  let F : I → J → Z → ENNReal := fun i j z => ∫⁻ y,A z*K i j z y ∂μ
+  have hF (i : I) (hi : i ∈ P) (j : J) (hj : j ∈ Q) : Measurable (F i j) := by
+    have hm : Measurable (Function.uncurry (fun z : Z => fun y : Y => A z*K i j z y)) :=
+      (hA.comp measurable_fst).mul (hK i hi j hj)
+    exact hm.lintegral_prod_right
+  have hswap (i : I) (hi : i ∈ P) (j : J) (hj : j ∈ Q) :
+      (∫⁻ y,∫⁻ z,A z*K i j z y ∂ν ∂μ) = ∫⁻ z,F i j z ∂ν := by
+    have hm : Measurable (Function.uncurry (fun y : Y => fun z : Z => A z*K i j z y)) :=
+      (hA.comp measurable_snd).mul ((hK i hi j hj).comp measurable_swap)
+    exact lintegral_lintegral_swap hm.aemeasurable
+  have hinner (i : I) (hi : i ∈ P) :
+      Measurable (fun z : Z => ∑ j ∈ Q,F i j z) :=
+    Finset.measurable_sum Q (fun j hj => hF i hi j hj)
+  have hsum :
+      (∑ i ∈ P,∑ j ∈ Q,∫⁻ z,F i j z ∂ν) =
+        ∫⁻ z,∑ i ∈ P,∑ j ∈ Q,F i j z ∂ν := by
+    symm
+    calc
+      _ = ∑ i ∈ P,∫⁻ z,∑ j ∈ Q,F i j z ∂ν := lintegral_finsetSum P hinner
+      _ = _ := by
+        apply Finset.sum_congr rfl
+        intro i hi
+        exact lintegral_finsetSum Q (fun j hj => hF i hi j hj)
+  have hpoint (z : Z) :
+      (∑ i ∈ P,∑ j ∈ Q,F i j z) =
+        A z*(∑ i ∈ P,∑ j ∈ Q,∫⁻ y,K i j z y ∂μ) := by
+    simp only [F]
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro i hi
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    exact lintegral_const_mul _
+      ((hK i hi j hj).comp (measurable_const.prodMk measurable_id))
+  calc
+    _ = ∑ i ∈ P,∑ j ∈ Q,∫⁻ z,F i j z ∂ν := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      apply Finset.sum_congr rfl
+      intro j hj
+      exact hswap i hi j hj
+    _ = ∫⁻ z,∑ i ∈ P,∑ j ∈ Q,F i j z ∂ν := hsum
+    _ = ∫⁻ z,A z*(∑ i ∈ P,∑ j ∈ Q,∫⁻ y,K i j z y ∂μ) ∂ν :=
+      lintegral_congr hpoint
+    _ ≤ ∫⁻ z,A z*M ∂ν := by
+      apply lintegral_mono_ae
+      filter_upwards [hMass] with z hz
+      exact mul_le_mul_of_nonneg_left hz (by positivity)
+    _ = _ := by rw [lintegral_mul_const _ hA,mul_comm]
+#print axioms finite_family_positive_convolution_row_mass_le
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators
+/-- Literal planar source/output core specialization of positive
+convolution row Schur mass, retaining both finite actual label sets. -/
+theorem finite_family_positive_convolution_output_core_row_mass_le
+    {I J Y : Type*} [MeasurableSpace Y]
+    (P : Finset I) (Q : Finset J) (μ : Measure Y) [SFinite μ]
+    (K : I → J → (Euclidean 2 × Real) → Y → ENNReal)
+    (hK : ∀ i ∈ P,∀ j ∈ Q,Measurable (Function.uncurry (K i j)))
+    (A : Euclidean 2 × Real → ENNReal) (hA : Measurable A)
+    (M : ENNReal)
+    (hMass : ∀ Z ∈ ball (0:Euclidean 2) 3,∀ S ∈ Ioo (-2:Real) 2,
+      (∑ i ∈ P,∑ j ∈ Q,∫⁻ y,K i j (Z,S) y ∂μ) ≤ M)
+    (X : Euclidean 2) (T : Real) :
+    (∑ i ∈ P,∑ j ∈ Q,∫⁻ y,(∫⁻ S : Real in Ioo (-2) 2,
+      ∫⁻ Z : Euclidean 2 in ball 0 3,A (X-Z,T-S)*K i j (Z,S) y) ∂μ) ≤
+      M * ∫⁻ S : Real,∫⁻ Z : Euclidean 2,A (X-Z,T-S) := by
+  let ν : Measure (Euclidean 2 × Real) :=
+    (volume.restrict (ball 0 3)).prod (volume.restrict (Ioo (-2) 2))
+  let B : Euclidean 2 × Real → ENNReal := fun z => A (X-z.1,T-z.2)
+  have hB : Measurable B := hA.comp (by fun_prop)
+  have hcore : ∀ᵐ z ∂ν,z ∈ ball (0:Euclidean 2) 3 ×ˢ Ioo (-2:Real) 2 := by
+    dsimp only [ν]
+    rw [Measure.prod_restrict]
+    exact ae_restrict_mem (measurableSet_ball.prod measurableSet_Ioo)
+  have hrow : ∀ᵐ z ∂ν,(∑ i ∈ P,∑ j ∈ Q,∫⁻ y,K i j z y ∂μ) ≤ M := by
+    filter_upwards [hcore] with z hz
+    exact hMass z.1 hz.1 z.2 hz.2
+  have hb := finite_family_positive_convolution_row_mass_le P Q μ ν K hK B hB M hrow
+  have hsingle (i : I) (hi : i ∈ P) (j : J) (hj : j ∈ Q) (y : Y) :
+      (∫⁻ z,B z*K i j z y ∂ν) =
+        ∫⁻ S : Real in Ioo (-2) 2,
+          ∫⁻ Z : Euclidean 2 in ball 0 3,A (X-Z,T-S)*K i j (Z,S) y := by
+    have hm : Measurable (fun z : Euclidean 2 × Real => B z*K i j z y) :=
+      hB.mul ((hK i hi j hj).comp (measurable_id.prodMk measurable_const))
+    exact lintegral_prod_symm _ hm.aemeasurable
+  have hlhs :
+      (∑ i ∈ P,∑ j ∈ Q,∫⁻ y,(∫⁻ S : Real in Ioo (-2) 2,
+        ∫⁻ Z : Euclidean 2 in ball 0 3,A (X-Z,T-S)*K i j (Z,S) y) ∂μ) =
+      ∑ i ∈ P,∑ j ∈ Q,∫⁻ y,∫⁻ z,B z*K i j z y ∂ν ∂μ := by
+    apply Finset.sum_congr rfl
+    intro i hi
+    apply Finset.sum_congr rfl
+    intro j hj
+    apply lintegral_congr
+    intro y
+    exact (hsingle i hi j hj y).symm
+  have hν : ν ≤ (volume : Measure (Euclidean 2)).prod (volume : Measure Real) :=
+    Measure.prod_mono Measure.restrict_le_self Measure.restrict_le_self
+  calc
+    _ = ∑ i ∈ P,∑ j ∈ Q,∫⁻ y,∫⁻ z,B z*K i j z y ∂ν ∂μ := hlhs
+    _ ≤ M*∫⁻ z,B z ∂ν := hb
+    _ ≤ M*∫⁻ z,B z ∂((volume : Measure (Euclidean 2)).prod (volume : Measure Real)) :=
+      mul_le_mul_of_nonneg_left (lintegral_mono' hν le_rfl) (by positivity)
+    _ = _ := by
+      congr 1
+      exact lintegral_prod_symm _ hB.aemeasurable
+#print axioms finite_family_positive_convolution_output_core_row_mass_le
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+/-- Choosing the actual output square energy as the Schur test closes its
+fourth moment. Finite-core boundedness is used only to provide genuine L2
+membership; the displayed estimate contains no label count. -/
+theorem positive_schur_square_energy_le
+    {Y Z : Type*} [MeasurableSpace Y] [MeasurableSpace Z]
+    (μ : Measure Y) (ν : Measure Z)
+    (Q w : Y → Real) (E : Z → Real)
+    (hQ : MemLp Q 2 μ) (hw : MemLp w 2 μ)
+    (hQn : ∀ y,0 ≤ Q y) (hwn : ∀ y,0 ≤ w y)
+    (a b c : Real) (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c)
+    (hRaw : (∫ z,E z^2 ∂ν) ≤ a*b*(∫ y,Q y*w y ∂μ))
+    (hWeight : (∫ y,w y^2 ∂μ) ≤ c*(∫ z,E z^2 ∂ν)) :
+    (∫ z,E z^2 ∂ν) ≤ a^2*b^2*c*(∫ y,Q y^2 ∂μ) := by
+  have hQp : MemLp Q (ENNReal.ofReal 2) μ := by norm_num; exact hQ
+  have hwp : MemLp w (ENNReal.ofReal 2) μ := by norm_num; exact hw
+  have hholder :
+      (∫ y,Q y*w y ∂μ) ≤
+        Real.sqrt (∫ y,Q y^2 ∂μ)*Real.sqrt (∫ y,w y^2 ∂μ) := by
+    have hh := integral_mul_le_Lp_mul_Lq_of_nonneg Real.HolderConjugate.two_two
+      (Filter.Eventually.of_forall hQn) (Filter.Eventually.of_forall hwn) hQp hwp
+    simpa only [Real.rpow_two,← Real.sqrt_eq_rpow] using hh
+  let I := ∫ z,E z^2 ∂ν
+  let J := ∫ y,Q y^2 ∂μ
+  let A := a*b*Real.sqrt J*Real.sqrt c
+  have hI : 0 ≤ I := integral_nonneg (fun z => sq_nonneg _)
+  have hJ : 0 ≤ J := integral_nonneg (fun y => sq_nonneg _)
+  have hroot : Real.sqrt (∫ y,w y^2 ∂μ) ≤ Real.sqrt c*Real.sqrt I := by
+    calc
+      _ ≤ Real.sqrt (c*I) := Real.sqrt_le_sqrt hWeight
+      _ = _ := Real.sqrt_mul hc I
+  have hbound : I ≤ A*Real.sqrt I := by
+    calc
+      _ ≤ a*b*(∫ y,Q y*w y ∂μ) := hRaw
+      _ ≤ a*b*(Real.sqrt J*Real.sqrt (∫ y,w y^2 ∂μ)) :=
+        mul_le_mul_of_nonneg_left hholder (mul_nonneg ha hb)
+      _ ≤ a*b*(Real.sqrt J*(Real.sqrt c*Real.sqrt I)) :=
+        mul_le_mul_of_nonneg_left
+          (mul_le_mul_of_nonneg_left hroot (Real.sqrt_nonneg J)) (mul_nonneg ha hb)
+      _ = _ := by dsimp only [A]; ring
+  have hAI : I ≤ A^2 := by
+    have hs := Real.sq_sqrt hI
+    nlinarith [sq_nonneg (Real.sqrt I-A)]
+  calc
+    _ ≤ A^2 := hAI
+    _ = _ := by
+      change A^2 = a^2*b^2*c*J
+      dsimp only [A]
+      rw [mul_pow,mul_pow,mul_pow,Real.sq_sqrt hJ,Real.sq_sqrt hc]
+      ring
+
+/-- Genuine nonnegative-integral version of the same fourth-moment
+closure, ready for the actual kernel Schur pairing on restricted core measures. -/
+theorem positive_schur_square_energy_le_of_lintegral
+    {Y Z : Type*} [MeasurableSpace Y] [MeasurableSpace Z]
+    (μ : Measure Y) (ν : Measure Z)
+    (Q w : Y → Real) (E : Z → Real)
+    (hQ : MemLp Q 2 μ) (hw : MemLp w 2 μ) (hE : MemLp E 2 ν)
+    (hQn : ∀ y,0 ≤ Q y) (hwn : ∀ y,0 ≤ w y)
+    (a b c : Real) (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c)
+    (hRaw : (∫⁻ z,ENNReal.ofReal (E z^2) ∂ν) ≤
+      ENNReal.ofReal (a*b)*(∫⁻ y,ENNReal.ofReal (Q y*w y) ∂μ))
+    (hWeight : (∫ y,w y^2 ∂μ) ≤ c*(∫ z,E z^2 ∂ν)) :
+    (∫ z,E z^2 ∂ν) ≤ a^2*b^2*c*(∫ y,Q y^2 ∂μ) := by
+  have hEi : Integrable (fun z => E z^2) ν :=
+    (memLp_two_iff_integrable_sq hE.aestronglyMeasurable).mp hE
+  have hQi : Integrable (fun y => Q y*w y) μ := hQ.integrable_mul hw
+  have hEq : ENNReal.ofReal (∫ z,E z^2 ∂ν) =
+      ∫⁻ z,ENNReal.ofReal (E z^2) ∂ν :=
+    ofReal_integral_eq_lintegral_ofReal hEi (Filter.Eventually.of_forall (fun z => sq_nonneg _))
+  have hQq : ENNReal.ofReal (∫ y,Q y*w y ∂μ) =
+      ∫⁻ y,ENNReal.ofReal (Q y*w y) ∂μ :=
+    ofReal_integral_eq_lintegral_ofReal hQi
+      (Filter.Eventually.of_forall (fun y => mul_nonneg (hQn y) (hwn y)))
+  have hR : (∫ z,E z^2 ∂ν) ≤ a*b*(∫ y,Q y*w y ∂μ) := by
+    apply (ENNReal.ofReal_le_ofReal_iff (by
+      exact mul_nonneg (mul_nonneg ha hb) (integral_nonneg (fun y =>
+        mul_nonneg (hQn y) (hwn y))))).mp
+    rw [ENNReal.ofReal_mul (mul_nonneg ha hb),hEq,hQq]
+    exact hRaw
+  exact positive_schur_square_energy_le μ ν Q w E hQ hw hQn hwn a b c ha hb hc hR hWeight
+#print axioms positive_schur_square_energy_le
+#print axioms positive_schur_square_energy_le_of_lintegral
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+/-- The true Cartesian source rectangle has literal planar volume 80. -/
+theorem normalizedCircle_cartesian_source_rectangle_volume :
+    volume {y : Euclidean 2 | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5} = 80 := by
+  have he := normalizedCircle_cartesian_rectangle_lintegral 4 5 (fun _ => (1:ENNReal)) measurable_const
+  norm_num [lintegral_const,Real.volume_Icc] at he
+  exact he
+/-- Actual source-core finiteness, for membership arguments only. -/
+theorem normalizedCircle_cartesian_source_core_isFiniteMeasure :
+    IsFiniteMeasure (volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5}) := by
+  have hs : {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5} ⊆
+      {y : Euclidean 2 | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5} := by
+    intro y hy
+    exact ⟨abs_le.mp hy.1.le,abs_le.mp hy.2.le⟩
+  constructor
+  rw [Measure.restrict_apply_univ]
+  exact (measure_mono hs).trans_lt (by
+    rw [normalizedCircle_cartesian_source_rectangle_volume]
+    norm_num)
+#print axioms normalizedCircle_cartesian_source_core_isFiniteMeasure
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Section 5 reverse-Schur preparation: literal spacetime doubling preserves L2 membership. -/
+theorem memLp_spaceTime_double
+    (g : Euclidean 2 × Real → Complex)
+    (hg : MemLp g 2 (volume.prod volume)) :
+    MemLp (fun z : Euclidean 2 × Real => g ((2:Real)•z.1,2*z.2)) 2
+      (volume.prod volume) := by
+  have hm : MemLp g 2 (Measure.map (fun z : Euclidean 2 × Real => (2:Real)•z)
+      (volume.prod volume)) := by
+    rw [Measure.map_addHaar_smul (volume.prod volume) (by norm_num : (2:Real) ≠ 0)]
+    exact hg.smul_measure ENNReal.ofReal_ne_top
+  exact hm.comp_of_map (by fun_prop)
+
+/-- The exact three-dimensional Jacobian for the dilation used to enlarge the Section 5 output time margin. -/
+theorem lintegral_spaceTime_double
+    (f : Euclidean 2 × Real → ENNReal) :
+    (∫⁻ z : Euclidean 2 × Real, f ((2:Real)•z.1,2*z.2) ∂(volume.prod volume)) =
+      (1/8:ENNReal) * ∫⁻ z, f z ∂(volume.prod volume) := by
+  let e := (Homeomorph.smul (isUnit_iff_ne_zero.mpr (by norm_num : (2:Real) ≠ 0)).unit :
+    (Euclidean 2 × Real) ≃ₜ (Euclidean 2 × Real)).toMeasurableEquiv
+  calc
+    _ = ∫⁻ z, f z ∂Measure.map (fun z : Euclidean 2 × Real => (2:Real)•z)
+        (volume.prod volume) := (lintegral_map_equiv f e).symm
+    _ = _ := by
+      rw [Measure.map_addHaar_smul (volume.prod volume) (by norm_num : (2:Real) ≠ 0),
+        lintegral_smul_measure]
+      norm_num [Module.finrank_prod,finrank_euclideanSpace,Module.finrank_self,Fintype.card_fin,
+        ENNReal.ofReal_div_of_pos (by norm_num : (0:Real) < 8)]
+
+/-- Section 5 reverse-ray preparation: the literal positive polynomial ray field respects simultaneous spacetime and width dilation. -/
+theorem polynomialRayPositiveField_double_half
+    (delta : Real) (hdelta : 0 < delta) (N : Nat)
+    (g : Euclidean 2 × Real → Complex) (p n : Euclidean 2) :
+    polynomialRayPositiveField (delta/2) N (fun z => g ((2:Real)•z.1,2*z.2))
+      ((1/2:Real)•p) n = (1/2:ENNReal) * polynomialRayPositiveField delta N g p n := by
+  let f : Euclidean 2 × Real → ENNReal := fun z =>
+    ENNReal.ofReal ((delta⁻¹)^2*lightRayDecayProfile N (delta⁻¹•(p-z.2•n-z.1))) *
+      ENNReal.ofReal ‖g z‖
+  have hp (z : Euclidean 2 × Real) :
+      (delta/2)⁻¹•((1/2:Real)•p-z.2•n-z.1) =
+        delta⁻¹•(p-(2*z.2)•n-(2:Real)•z.1) := by
+    rw [show (delta/2)⁻¹ = 2*delta⁻¹ by field_simp]
+    module
+  have hs : ((delta/2)⁻¹)^2 = 4*(delta⁻¹)^2 := by
+    rw [show (delta/2)⁻¹ = 2*delta⁻¹ by field_simp]
+    ring
+  calc
+    _ = ∫⁻ z : Euclidean 2 × Real, (4:ENNReal)*f ((2:Real)•z.1,2*z.2)
+        ∂(volume.prod volume) := by
+      unfold polynomialRayPositiveField
+      apply lintegral_congr
+      intro z
+      rw [hp,hs]
+      dsimp [f]
+      rw [show (4*(delta⁻¹)^2)*lightRayDecayProfile N
+          (delta⁻¹•(p-(2*z.2)•n-(2:Real)•z.1)) =
+          4*((delta⁻¹)^2*lightRayDecayProfile N
+          (delta⁻¹•(p-(2*z.2)•n-(2:Real)•z.1))) by ring,
+        ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4)]
+      norm_num only [ENNReal.ofReal_ofNat]
+      ring
+    _ = 4*((1/8:ENNReal)*∫⁻ z, f z ∂(volume.prod volume)) := by
+      rw [lintegral_const_mul' _ _ (by norm_num),lintegral_spaceTime_double]
+    _ = _ := by
+      change 4*((1/8:ENNReal)*polynomialRayPositiveField delta N g p n) = _
+      rw [← mul_assoc]
+      congr 1
+      rw [show (4:ENNReal) = ENNReal.ofReal (4:Real) by norm_num,
+        show (1/8:ENNReal) = ENNReal.ofReal (1/8:Real) by
+          rw [ENNReal.ofReal_div_of_pos (by norm_num : (0:Real) < 8)]; norm_num,
+        show (1/2:ENNReal) = ENNReal.ofReal (1/2:Real) by
+          rw [ENNReal.ofReal_div_of_pos (by norm_num : (0:Real) < 2)]; norm_num,
+        ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4)]
+      norm_num
+
+#print axioms memLp_spaceTime_double
+#print axioms lintegral_spaceTime_double
+#print axioms polynomialRayPositiveField_double_half
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The reverse form of the exact positive-ray dilation identity used in the Section 5 common-weight transfer. -/
+theorem polynomialRayPositiveField_eq_two_double_half
+    (delta : Real) (hdelta : 0 < delta) (N : Nat)
+    (g : Euclidean 2 × Real → Complex) (p n : Euclidean 2) :
+    polynomialRayPositiveField delta N g p n =
+      2*polynomialRayPositiveField (delta/2) N (fun z => g ((2:Real)•z.1,2*z.2))
+        ((1/2:Real)•p) n := by
+  rw [polynomialRayPositiveField_double_half delta hdelta N g p n,← mul_assoc]
+  have hcoef : (2:ENNReal)*(1/2) = 1 := by
+    norm_num only [one_div]
+    exact ENNReal.mul_inv_cancel (by norm_num) (by simp)
+  rw [hcoef,one_mul]
+
+/-- Exact spacetime dilation extends the common ray square majorant to
+tests supported in the larger time margin. No source-dependent null set is
+introduced: the square majorant controls all transverse parameters pointwise. -/
+theorem exists_normalizedCircle_polynomialRayPositive_square_majorant_four :
+    ∀ N : Nat, 2 < N → ∃ C : Real, 0 < C ∧
+      ∀ g : Euclidean 2 × Real → Complex,
+      MemLp g 2 (volume.prod volume) →
+      Function.support g ⊆ {z | |z.2| ≤ 4} →
+      ∀ (delta : Real), 0 < delta → delta ≤ 1 →
+      ∀ eps : Real, |eps| ≤ 1/128 →
+      ∃ W : (sphere (0 : Euclidean 2) 1 × Real) → ENNReal,
+        Measurable W ∧
+        (∀ x : sphere (0 : Euclidean 2) 1 × Real, ∀ B : Icc (-4:Real) 4,
+          (polynomialRayPositiveField delta N g
+            (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+            (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)))^2 ≤ W x) ∧
+        (∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,W x
+          ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6)))) ≤
+          ENNReal.ofReal (C/Real.sqrt delta *
+            ∫ z : Euclidean 2 × Real, ‖g z‖^2 ∂(volume.prod volume)) := by
+  intro N hN
+  obtain ⟨C,hC,hb⟩ := exists_normalizedCircle_polynomialRayPositive_square_majorant N hN
+  refine ⟨Real.sqrt 2*C,by positivity,?_⟩
+  intro g hg hgsupp delta hdelta hdeltaOne eps heps
+  let gD : Euclidean 2 × Real → Complex := fun z => g ((2:Real)•z.1,2*z.2)
+  have hgD : MemLp gD 2 (volume.prod volume) := memLp_spaceTime_double g hg
+  have hgDsupp : Function.support gD ⊆ {z | |z.2| ≤ 2} := by
+    intro z hz
+    have hh := hgsupp hz
+    change |2*z.2| ≤ 4 at hh
+    rw [abs_mul] at hh
+    norm_num at hh
+    change |z.2| ≤ 2
+    linarith
+  have hd : 0 < delta/2 := by positivity
+  have hd1 : delta/2 ≤ 1 := by linarith
+  have he : |2*eps| ≤ 1/64 := by
+    rw [abs_mul]
+    norm_num
+    linarith
+  obtain ⟨W,hW,hp,hint⟩ := hb gD hgD hgDsupp (delta/2) hd hd1 (2*eps) he
+  let W4 : sphere (0 : Euclidean 2) 1 × Real → ENNReal :=
+    fun x => 4*W (x.1,x.2/2)
+  have hW4 : Measurable W4 :=
+    measurable_const.mul (hW.comp (measurable_fst.prodMk (measurable_snd.div_const 2)))
+  refine ⟨W4,hW4,?_,?_⟩
+  · intro x B
+    let BD : Icc (-4:Real) 4 := ⟨B.1/2,by
+      rcases B.2 with ⟨hl,hr⟩
+      constructor <;> linarith⟩
+    have hh := hp (x.1,x.2/2) BD
+    dsimp only [BD] at hh
+    rw [normalizedCircleRayTerminal_double_half,normalizedCircleRayNormal_double_half,
+      polynomialRayPositiveField_double_half delta hdelta] at hh
+    have hn := mul_le_mul_of_nonneg_left hh (by norm_num : (0:ENNReal) ≤ 4)
+    calc
+      _ = 4*((1/2:ENNReal)*polynomialRayPositiveField delta N g
+          (normalizedCircleRayTerminal eps x.2 B.1 x.1 (normalizedCircleQuarterTurn x.1))
+          (normalizedCircleRayNormal eps B.1 x.1 (normalizedCircleQuarterTurn x.1)))^2 := by
+        rw [mul_pow,← mul_assoc]
+        have hc : (4:ENNReal)*(1/2)^2 = 1 := by
+          rw [one_div]
+          have ht : (2:ENNReal)*(2⁻¹) = 1 :=
+            ENNReal.mul_inv_cancel (by norm_num) (by simp)
+          have h4 : (4:ENNReal) = (2:ENNReal)^2 := by norm_num
+          rw [h4,← mul_pow,ht,one_pow]
+        rw [hc,one_mul]
+      _ ≤ _ := hn
+  · let ν := (unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))
+    have hE : (∫ z : Euclidean 2 × Real,‖gD z‖^2 ∂(volume.prod volume)) =
+        (1/8:Real)*(∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume)) :=
+      integral_norm_sq_spaceTime_double g
+    calc
+      _ = 4*(∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,W (x.1,x.2/2) ∂ν) :=
+        lintegral_const_mul' _ _ (by norm_num)
+      _ ≤ 4*(2*(∫⁻ x,W x ∂ν)) :=
+        mul_le_mul_of_nonneg_left (source_Icc_six_half_lintegral_le (unitSurfaceMeasure 2) W hW)
+          (by positivity)
+      _ ≤ 8*ENNReal.ofReal (C/Real.sqrt (delta/2)*
+          (1/8:Real)*(∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume))) := by
+        have hh := mul_le_mul_of_nonneg_left hint (by norm_num : (0:ENNReal) ≤ 8)
+        rw [hE] at hh
+        calc
+          _ = 8*(∫⁻ x,W x ∂ν) := by ring
+          _ ≤ 8*ENNReal.ofReal (C/Real.sqrt (delta/2)*
+              ((1/8:Real)*(∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume)))) := hh
+          _ = _ := by congr 2; ring
+      _ = _ := by
+        rw [show (8:ENNReal) = ENNReal.ofReal (8:Real) by norm_num,
+          ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 8)]
+        congr 1
+        rw [Real.sqrt_div hdelta.le]
+        have hs : 0 < Real.sqrt delta := Real.sqrt_pos.mpr hdelta
+        have ht : 0 < Real.sqrt 2 := Real.sqrt_pos.mpr (by norm_num)
+        field_simp
+
+#print axioms polynomialRayPositiveField_eq_two_double_half
+#print axioms exists_normalizedCircle_polynomialRayPositive_square_majorant_four
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.LittlewoodPaley
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+/-- The actual Cartesian common weak ray weight for tests supported in the larger time margin [-4,4]. One common source null set controls every B in [-4,4]. -/
+theorem exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight_four :
+    ∀ N : Nat, 2 < N → ∃ C : Real, 0 < C ∧
+      ∀ g : Euclidean 2 × Real → Complex,
+      MemLp g 2 (volume.prod volume) →
+      Function.support g ⊆ {z | |z.2| ≤ 4} →
+      ∀ (delta : Real), 0 < delta → delta ≤ 1 →
+      ∀ eps : Real, |eps| ≤ 1/128 →
+      ∃ w : Euclidean 2 → Real,
+        Measurable w ∧ (∀ y,0 ≤ w y) ∧
+        MemLp w 2 (volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5}) ∧
+        (∀ᵐ y ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5}),
+          ∀ B : Icc (-4:Real) 4,
+          polynomialRayPositiveField delta N g
+            (normalizedCircleRayTerminal eps (y 1) B.1 (circleDirection (y 0))
+              (normalizedCircleQuarterTurn (circleDirection (y 0))))
+            (normalizedCircleRayNormal eps B.1 (circleDirection (y 0))
+              (normalizedCircleQuarterTurn (circleDirection (y 0)))) ≤
+              ENNReal.ofReal (w y)) ∧
+        (∫ y : Euclidean 2,(w y)^2
+          ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) ≤
+          C/Real.sqrt delta * ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume) := by
+  intro N hN
+  obtain ⟨C,hC,hb⟩ := exists_normalizedCircle_polynomialRayPositive_square_majorant_four N hN
+  refine ⟨3*C,by positivity,?_⟩
+  intro g hg hgsupp delta hdelta hdeltaOne eps heps
+  obtain ⟨W,hW,hp,hint⟩ := hb g hg hgsupp delta hdelta hdeltaOne eps heps
+  let source : Euclidean 2 → sphere (0 : Euclidean 2) 1 × Real :=
+    fun y => (normalizedCircleChartSphereDirection (y 0),y 1)
+  have hsource : Measurable source :=
+    (normalizedCircleChartSphereDirection_measurable.comp (by fun_prop)).prodMk (by fun_prop)
+  let Wc := W ∘ source
+  have hWc : Measurable Wc := hW.comp hsource
+  have hbound :
+      (∫⁻ y : Euclidean 2 in {y | |y 0| < 4 ∧ |y 1| < 5},Wc y) ≤
+      ENNReal.ofReal (3*C/Real.sqrt delta *
+        ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume)) := by
+    calc
+      _ ≤ 3 * ∫⁻ x : sphere (0 : Euclidean 2) 1 × Real,W x
+          ∂((unitSurfaceMeasure 2).prod (volume.restrict (Icc (-6:Real) 6))) :=
+        normalizedCircle_cartesian_source_majorant_lintegral_le W hW
+      _ ≤ 3 * ENNReal.ofReal (C/Real.sqrt delta *
+          ∫ z : Euclidean 2 × Real,‖g z‖^2 ∂(volume.prod volume)) :=
+        mul_le_mul_of_nonneg_left hint (by positivity)
+      _ = _ := by
+        rw [show (3 : ENNReal) = ENNReal.ofReal (3:Real) by norm_num,
+          ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 3)]
+        congr 1
+        ring
+  let F : Icc (-4:Real) 4 → Euclidean 2 → ENNReal := fun B y =>
+    polynomialRayPositiveField delta N g
+      (normalizedCircleRayTerminal eps (y 1) B.1 (circleDirection (y 0))
+        (normalizedCircleQuarterTurn (circleDirection (y 0))))
+      (normalizedCircleRayNormal eps B.1 (circleDirection (y 0))
+        (normalizedCircleQuarterTurn (circleDirection (y 0))))
+  exact real_L2_weight_of_ennreal_square_majorant
+    (volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})
+    Wc hWc (by positivity) hbound F (fun B y => hp (source y) B)
+#print axioms exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight_four
+
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+
+/-- Section 5 global output assembly: increasing spatial balls exactly exhaust a fixed time slab in the genuine nonnegative integral, without requiring measurability of the integrand. -/
+theorem spatial_ball_exhaustion_time_slab_lintegral
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V]
+    (μ : Measure (V × Real)) (a : Real) (F : V × Real → ENNReal) :
+    (∫⁻ z in {z : V × Real | |z.2| < a},F z ∂μ) =
+      ⨆ n : Nat,∫⁻ z in {z : V × Real | ‖z.1‖ < (n:Real) ∧ |z.2| < a},F z ∂μ := by
+  let A : Nat → Set (V × Real) := fun n => {z | ‖z.1‖ < (n:Real) ∧ |z.2| < a}
+  have hu : (⋃ n : Nat,A n) = {z : V × Real | |z.2| < a} := by
+    ext z
+    constructor
+    · intro hz
+      obtain ⟨n,hn⟩ := mem_iUnion.mp hz
+      exact hn.2
+    · intro hz
+      obtain ⟨n,hn⟩ := exists_nat_gt ‖z.1‖
+      exact mem_iUnion.mpr ⟨n,hn,hz⟩
+  have hd : Directed (fun x y : Set (V × Real) => x ⊆ y) A := by
+    intro m n
+    refine ⟨max m n,?_,?_⟩
+    · intro z hz
+      exact ⟨hz.1.trans_le (by exact_mod_cast Nat.le_max_left m n),hz.2⟩
+    · intro z hz
+      exact ⟨hz.1.trans_le (by exact_mod_cast Nat.le_max_right m n),hz.2⟩
+  rw [← hu]
+  exact setLIntegral_iUnion_of_directed F hd
+
+/-- Uniform finite-ball nonnegative square moments give genuine global spatial L2 membership and its ordinary square-energy bound on the time slab. -/
+theorem memLp_two_time_slab_of_uniform_ball_lintegral
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V]
+    (μ : Measure (V × Real)) (a : Real)
+    (E : V × Real → Real) (hE : Measurable E)
+    (C : Real) (hC : 0 ≤ C)
+    (hb : ∀ n : Nat,
+      (∫⁻ z in {z : V × Real | ‖z.1‖ < (n:Real) ∧ |z.2| < a},
+        ENNReal.ofReal ((E z)^2) ∂μ) ≤ ENNReal.ofReal C) :
+    MemLp E 2 (μ.restrict {z : V × Real | |z.2| < a}) ∧
+      (∫ z,(E z)^2 ∂(μ.restrict {z : V × Real | |z.2| < a})) ≤ C := by
+  have htotal : (∫⁻ z in {z : V × Real | |z.2| < a},
+      ENNReal.ofReal ((E z)^2) ∂μ) ≤ ENNReal.ofReal C := by
+    rw [spatial_ball_exhaustion_time_slab_lintegral]
+    exact iSup_le hb
+  let ν := μ.restrict {z : V × Real | |z.2| < a}
+  have hEc : AEStronglyMeasurable (fun z => (E z:Complex)) ν :=
+    (Complex.continuous_ofReal.measurable.comp hE).aestronglyMeasurable
+  have hbc : (∫⁻ z,ENNReal.ofReal (‖(E z:Complex)‖^2) ∂ν) ≤ ENNReal.ofReal C := by
+    simpa only [Complex.norm_real,Real.norm_eq_abs,sq_abs] using htotal
+  obtain ⟨hm,hi⟩ := memLp_two_and_integral_le_of_lintegral_sq_le ν hEc hC hbc
+  constructor
+  · apply hm.congr_norm hE.aestronglyMeasurable
+    exact Filter.Eventually.of_forall (fun z => by rw [Complex.norm_real])
+  · simpa only [Complex.norm_real,Real.norm_eq_abs,sq_abs] using hi
+
+/-- The ordinary-energy version retains the genuine finite-ball L2 memberships; no totalized nonintegrable Bochner integral is used in the spatial exhaustion. -/
+theorem memLp_two_time_slab_of_uniform_ball_integral
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V]
+    (μ : Measure (V × Real)) (a : Real)
+    (E : V × Real → Real) (hE : Measurable E)
+    (C : Real) (hC : 0 ≤ C)
+    (hm : ∀ n : Nat,MemLp E 2
+      (μ.restrict {z : V × Real | ‖z.1‖ < (n:Real) ∧ |z.2| < a}))
+    (hb : ∀ n : Nat,
+      (∫ z,(E z)^2 ∂(μ.restrict {z : V × Real | ‖z.1‖ < (n:Real) ∧ |z.2| < a})) ≤ C) :
+    MemLp E 2 (μ.restrict {z : V × Real | |z.2| < a}) ∧
+      (∫ z,(E z)^2 ∂(μ.restrict {z : V × Real | |z.2| < a})) ≤ C := by
+  apply memLp_two_time_slab_of_uniform_ball_lintegral μ a E hE C hC
+  intro n
+  have hi : Integrable (fun z => (E z)^2)
+      (μ.restrict {z : V × Real | ‖z.1‖ < (n:Real) ∧ |z.2| < a}) :=
+    (memLp_two_iff_integrable_sq hE.aestronglyMeasurable).mp (hm n)
+  rw [← ofReal_integral_eq_lintegral_ofReal hi
+    (Filter.Eventually.of_forall (fun z => sq_nonneg (E z)))]
+  exact ENNReal.ofReal_le_ofReal (hb n)
+
+#print axioms spatial_ball_exhaustion_time_slab_lintegral
+#print axioms memLp_two_time_slab_of_uniform_ball_lintegral
+#print axioms memLp_two_time_slab_of_uniform_ball_integral
+end
+end Auto.Spherical.MSS
+
+/-!
+## Actual signed thin-projector exterior square energy
+
+For the supplied repair note, Section 5, the exact normal-frequency
+projector must be estimated outside the compact physical time window.
+The following estimates use literal inverse Fourier kernels. Spatial
+Plancherel makes the L2 bound independent of the carrier and packet labels;
+the genuine shifted temporal tails supply arbitrary powers of the width.
+-/
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+
+theorem thinNormalTemporalInverse_norm_le_scaled_seminorm
+    (beta : SchwartzMap Real Complex) (h : Real) (hh : 1 ≤ h) (t : Real) :
+    ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+      (by linarith : h ≠ 0)) : SchwartzMap Real Complex) t‖ ≤
+      h*SchwartzMap.seminorm Complex 0 0
+        (FourierTransform.fourierInv beta : SchwartzMap Real Complex) := by
+  have hp : 0 < h := by linarith
+  rw [normalizedCircleThinNormalFrequencyProfile_inverse beta h hp t,norm_mul,
+    Complex.norm_real,Real.norm_eq_abs,abs_of_pos hp]
+  exact mul_le_mul_of_nonneg_left
+    (SchwartzMap.norm_le_seminorm Complex (FourierTransform.fourierInv beta) (h*t)) hp.le
+
+theorem thinNormalTemporalInverse_weighted_square_integrable
+    (beta : SchwartzMap Real Complex) (h : Real) (hh : 1 ≤ h) (D : Nat) :
+    Integrable (fun t : Real => (1+|t|)^D*
+      ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        (by linarith : h ≠ 0)) : SchwartzMap Real Complex) t‖^2) := by
+  let f := (FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+    (by linarith : h ≠ 0)) : SchwartzMap Real Complex)
+  let C := h*SchwartzMap.seminorm Complex 0 0
+    (FourierTransform.fourierInv beta : SchwartzMap Real Complex)
+  have hf := normalizedCircle_temporal_schwartz_weight_integrable f D
+  apply (hf.const_mul C).mono'
+    (show AEStronglyMeasurable (fun t : Real => (1+|t|)^D*‖f t‖^2) volume from by
+      exact (show Continuous (fun t : Real => (1+|t|)^D*‖f t‖^2) by fun_prop).aestronglyMeasurable)
+  apply Filter.Eventually.of_forall
+  intro t
+  rw [Real.norm_eq_abs,abs_of_nonneg (by positivity : 0 ≤ (1+|t|)^D*‖f t‖^2)]
+  have hs := thinNormalTemporalInverse_norm_le_scaled_seminorm beta h hh t
+  change (1+|t|)^D*‖f t‖^2 ≤ C*((1+|t|)^D*‖f t‖)
+  dsimp only [f,C] at hs ⊢
+  have hm := mul_le_mul_of_nonneg_right hs
+    (by positivity : 0 ≤ (1+|t|)^D*‖f t‖)
+  nlinarith
+
+theorem thinNormalTemporalInverse_weighted_square_tail
+    (beta : SchwartzMap Real Complex) (h : Real) (hh : 1 ≤ h) (D J : Nat) :
+    h^(2*J)*(∫ t : Real in {t | 1 ≤ |t|},(1+|t|)^D*
+      ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        (by linarith : h ≠ 0)) : SchwartzMap Real Complex) t‖^2) ≤
+      SchwartzMap.seminorm Complex 0 0
+        (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+      ∫ t : Real,(1+|t|)^(2*J+1+D)*
+        ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖ := by
+  let f := (FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+    (by linarith : h ≠ 0)) : SchwartzMap Real Complex)
+  let C := SchwartzMap.seminorm Complex 0 0
+    (FourierTransform.fourierInv beta : SchwartzMap Real Complex)
+  have hC : 0 ≤ C := apply_nonneg _ _
+  have hp : 0 < h := by linarith
+  have hI2 := thinNormalTemporalInverse_weighted_square_integrable beta h hh D
+  have hI1 := normalizedCircle_temporal_schwartz_weight_integrable f D
+  have hbound :
+      (∫ t : Real in {t | 1 ≤ |t|},(1+|t|)^D*‖f t‖^2) ≤
+        (h*C)*(∫ t : Real in {t | 1 ≤ |t|},(1+|t|)^D*‖f t‖) := by
+    rw [← integral_const_mul]
+    apply integral_mono hI2.integrableOn (hI1.const_mul (h*C)).integrableOn
+    intro t
+    have hs := thinNormalTemporalInverse_norm_le_scaled_seminorm beta h hh t
+    change (1+|t|)^D*‖f t‖^2 ≤ (h*C)*((1+|t|)^D*‖f t‖)
+    have hm := mul_le_mul_of_nonneg_right hs
+      (by positivity : 0 ≤ (1+|t|)^D*‖f t‖)
+    nlinarith
+  calc
+    _ ≤ h^(2*J)*((h*C)*(∫ t : Real in {t | 1 ≤ |t|},(1+|t|)^D*‖f t‖)) :=
+      mul_le_mul_of_nonneg_left hbound (by positivity)
+    _ = C*(h^(2*J+1)*(∫ t : Real in {t | 1 ≤ |t|},(1+|t|)^D*‖f t‖)) := by
+      rw [pow_succ]
+      ring
+    _ ≤ _ := mul_le_mul_of_nonneg_left
+      (normalizedCircleThinNormalProjector_temporal_tail_mass_le beta D (2*J+1) h hh) hC
+
+#print axioms thinNormalTemporalInverse_norm_le_scaled_seminorm
+#print axioms thinNormalTemporalInverse_weighted_square_integrable
+#print axioms thinNormalTemporalInverse_weighted_square_tail
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+
+theorem thinNormalTemporalInverse_shifted_weighted_square_integrable
+    (beta : SchwartzMap Real Complex) (h : Real) (hh : 1 ≤ h)
+    (S : Real) (hS : |S| ≤ 2) (D : Nat) :
+    Integrable (fun t : Real => (1+|t|)^D*
+      ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        (by linarith : h ≠ 0)) : SchwartzMap Real Complex) (t-S)‖^2) := by
+  let f := (FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+    (by linarith : h ≠ 0)) : SchwartzMap Real Complex)
+  have hi := (thinNormalTemporalInverse_weighted_square_integrable beta h hh D).comp_sub_right S
+  apply (hi.const_mul (3^D)).mono'
+    (show AEStronglyMeasurable (fun t : Real => (1+|t|)^D*‖f (t-S)‖^2) volume from
+      (show Continuous (fun t : Real => (1+|t|)^D*‖f (t-S)‖^2) by fun_prop).aestronglyMeasurable)
+  apply Filter.Eventually.of_forall
+  intro t
+  rw [Real.norm_eq_abs,abs_of_nonneg (by positivity : 0 ≤ (1+|t|)^D*‖f (t-S)‖^2)]
+  have ht : 1+|t| ≤ 3*(1+|t-S|) := by
+    have h := abs_add_le (t-S) S
+    rw [sub_add_cancel] at h
+    linarith [abs_nonneg (t-S)]
+  have hw := mul_le_mul_of_nonneg_right
+    (pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+|t|) ht D)
+      (sq_nonneg ‖f (t-S)‖)
+  rw [mul_pow] at hw
+  convert hw using 1
+  ring
+
+theorem thinNormalTemporalInverse_shifted_weighted_square_tail
+    (beta : SchwartzMap Real Complex) (h : Real) (hh : 1 ≤ h)
+    (S : Real) (hS : |S| ≤ 2) (D J : Nat) :
+    h^(2*J)*(∫ t : Real in {t | 4 ≤ |t|},(1+|t|)^D*
+      ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        (by linarith : h ≠ 0)) : SchwartzMap Real Complex) (t-S)‖^2) ≤
+      3^D*SchwartzMap.seminorm Complex 0 0
+        (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+      ∫ t : Real,(1+|t|)^(2*J+1+D)*
+        ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖ := by
+  let f := (FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+    (by linarith : h ≠ 0)) : SchwartzMap Real Complex)
+  let W : Real → Real := fun t => (1+|t|)^D*‖f t‖^2
+  let A : Set Real := {t | 1 ≤ |t|}
+  let B : Set Real := {t | 4 ≤ |t|}
+  have hA : MeasurableSet A := measurableSet_le measurable_const continuous_abs.measurable
+  have hB : MeasurableSet B := measurableSet_le measurable_const continuous_abs.measurable
+  have hi : Integrable W := thinNormalTemporalInverse_weighted_square_integrable beta h hh D
+  let Q := A.indicator W
+  have hQ : Integrable Q := hi.indicator hA
+  have hq : Integrable (fun t : Real => (3^D:Real)*Q (t-S)) :=
+    (hQ.comp_sub_right S).const_mul (3^D)
+  have hshift := thinNormalTemporalInverse_shifted_weighted_square_integrable beta h hh S hS D
+  have hbound :
+      (∫ t in B,(1+|t|)^D*‖f (t-S)‖^2) ≤
+        3^D*(∫ t in A,W t) := by
+    calc
+      _ ≤ ∫ t in B,(3^D:Real)*Q (t-S) := by
+        apply setIntegral_mono_on hshift.integrableOn hq.integrableOn hB
+        intro t ht
+        have hd : 1 ≤ |t-S| := by
+          have hp := abs_add_le (t-S) S
+          rw [sub_add_cancel] at hp
+          change 4 ≤ |t| at ht
+          linarith
+        rw [show Q (t-S) = W (t-S) by
+          have hmem : t-S ∈ A := hd
+          exact indicator_of_mem hmem W]
+        have hw : 1+|t| ≤ 3*(1+|t-S|) := by
+          have hp := abs_add_le (t-S) S
+          rw [sub_add_cancel] at hp
+          linarith [abs_nonneg (t-S)]
+        have hh := mul_le_mul_of_nonneg_right
+          (pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+|t|) hw D)
+            (sq_nonneg ‖f (t-S)‖)
+        rw [mul_pow] at hh
+        convert hh using 1
+        ring
+      _ ≤ ∫ t : Real,(3^D:Real)*Q (t-S) := by
+        apply setIntegral_le_integral hq
+        apply Filter.Eventually.of_forall
+        intro t
+        have hn : 0 ≤ Q (t-S) := by
+          exact indicator_nonneg (fun t ht => by dsimp [W]; positivity) _
+        positivity
+      _ = _ := by
+        rw [integral_const_mul,integral_sub_right_eq_self,integral_indicator hA]
+  calc
+    _ ≤ h^(2*J)*(3^D*(∫ t in A,W t)) :=
+      mul_le_mul_of_nonneg_left hbound (by positivity)
+    _ = 3^D*(h^(2*J)*(∫ t in A,W t)) := by ring
+    _ ≤ _ := by
+      have hb := mul_le_mul_of_nonneg_left
+        (thinNormalTemporalInverse_weighted_square_tail beta h hh D J)
+          (by positivity : (0:Real) ≤ 3^D)
+      convert hb using 1
+      ring
+
+#print axioms thinNormalTemporalInverse_shifted_weighted_square_integrable
+#print axioms thinNormalTemporalInverse_shifted_weighted_square_tail
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem spatialSchwartzCarrier_modulation_inverse_square_energy
+    (B : SchwartzMap (Euclidean 2) Complex) (rho : SchwartzMap (Euclidean 2) Real)
+    (t : Real) (Z : Euclidean 2) :
+    (∫ X : Euclidean 2,‖FourierTransform.fourierInv
+      (fun xi : Euclidean 2 => B xi*(Real.fourierChar (rho xi*t):Complex)) (X-Z)‖^2) =
+      ∫ xi : Euclidean 2,‖B xi‖^2 := by
+  let phase : Euclidean 2 → Real := fun xi => 2*Real.pi*(rho xi*t)
+  have hp : Function.HasTemperateGrowth phase :=
+    (Function.HasTemperateGrowth.const (2*Real.pi)).mul
+      (rho.hasTemperateGrowth.mul (Function.HasTemperateGrowth.const t))
+  let E : Euclidean 2 → Complex := fun xi => Complex.exp ((phase xi:Complex)*Complex.I)
+  have hE : Function.HasTemperateGrowth E := Complex.hasTemperateGrowth_exp_mul_I.comp hp
+  let F : SchwartzMap (Euclidean 2) Complex := SchwartzMap.smulLeftCLM Complex E B
+  have hF (xi : Euclidean 2) : F xi = B xi*(Real.fourierChar (rho xi*t):Complex) := by
+    rw [SchwartzMap.smulLeftCLM_apply_apply hE,smul_eq_mul,Real.fourierChar_apply]
+    dsimp [E,phase]
+    push_cast
+    ring
+  have hfun : (F : Euclidean 2 → Complex) =
+      fun xi => B xi*(Real.fourierChar (rho xi*t):Complex) := funext hF
+  rw [← hfun]
+  rw [integral_sub_right_eq_self
+    (fun X : Euclidean 2 => ‖FourierTransform.fourierInv (F : Euclidean 2 → Complex) X‖^2) Z]
+  rw [← SchwartzMap.fourierInv_coe]
+  have hpl := SchwartzMap.integral_norm_sq_fourier
+    (FourierTransform.fourierInv F : SchwartzMap (Euclidean 2) Complex)
+  rw [FourierTransform.fourier_fourierInv_eq] at hpl
+  rw [← hpl]
+  apply integral_congr_ae
+  apply Filter.Eventually.of_forall
+  intro xi
+  change ‖F xi‖^2 = ‖B xi‖^2
+  rw [hF,norm_mul]
+  simp only [Circle.norm_coe,mul_one]
+
+#print axioms spatialSchwartzCarrier_modulation_inverse_square_energy
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem mssTranslatedDilatedCutoff_spatial_square_energy
+    (phi : SchwartzMap (Euclidean 2) Complex) (center : Euclidean 2)
+    (L : Real) (hL : 0 < L) :
+    (∫ xi : Euclidean 2,
+      ‖mssTranslatedDilatedCutoff phi center L hL.ne' xi‖^2) =
+      L^2*(∫ xi : Euclidean 2,‖phi xi‖^2) := by
+  simp_rw [mssTranslatedDilatedCutoff_apply]
+  rw [integral_sub_right_eq_self
+    (fun xi : Euclidean 2 => ‖phi (L⁻¹•xi)‖^2) center]
+  have hs := Measure.integral_comp_inv_smul_of_nonneg volume
+    (fun xi : Euclidean 2 => ‖phi xi‖^2) hL.le
+  simpa only [finrank_euclideanSpace,Fintype.card_fin,smul_eq_mul] using hs
+
+theorem thinNormalProjector_shifted_spatial_square_energy
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S t : Real) :
+    (∫ X : Euclidean 2,
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h (by linarith : h ≠ 0)))
+          (X-Z,t-S)‖^2) =
+      ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        (by linarith : h ≠ 0)) : SchwartzMap Real Complex) (t-S)‖^2 *
+      ∫ xi : Euclidean 2,‖B xi‖^2 := by
+  simp only [normalizedCircleThinNormalProjectorSymbol,
+    spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile,norm_mul,mul_pow]
+  rw [integral_const_mul,spatialSchwartzCarrier_modulation_inverse_square_energy]
+
+theorem thinNormalProjector_shifted_iterated_weighted_square_tail
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S : Real) (hS : |S| ≤ 2) (D J : Nat) :
+    h^(2*J)*(∫ t : Real in {t | 4 ≤ |t|},(1+|t|)^D*
+      (∫ X : Euclidean 2,
+        ‖spaceTimeFourierInv (jointSchwartzRaw
+          (normalizedCircleThinNormalProjectorSymbol B beta rho h (by linarith : h ≠ 0)))
+            (X-Z,t-S)‖^2)) ≤
+      (∫ xi : Euclidean 2,‖B xi‖^2) *
+      (3^D*SchwartzMap.seminorm Complex 0 0
+        (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+        ∫ t : Real,(1+|t|)^(2*J+1+D)*
+          ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖) := by
+  simp_rw [thinNormalProjector_shifted_spatial_square_energy B beta rho h hh Z S]
+  have he : (fun t : Real => (1+|t|)^D*
+      (‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        (by linarith : h ≠ 0)) : SchwartzMap Real Complex) (t-S)‖^2 *
+        ∫ xi : Euclidean 2,‖B xi‖^2)) =
+      (fun t : Real => ((1+|t|)^D*
+        ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+          (by linarith : h ≠ 0)) : SchwartzMap Real Complex) (t-S)‖^2) *
+          (∫ xi : Euclidean 2,‖B xi‖^2)) := by funext t; ring
+  rw [he,integral_mul_const]
+  have hb := mul_le_mul_of_nonneg_left
+    (thinNormalTemporalInverse_shifted_weighted_square_tail beta h hh S hS D J)
+      (integral_nonneg (μ := volume) (fun xi : Euclidean 2 => sq_nonneg ‖B xi‖))
+  convert hb using 1
+  ring
+
+#print axioms mssTranslatedDilatedCutoff_spatial_square_energy
+#print axioms thinNormalProjector_shifted_spatial_square_energy
+#print axioms thinNormalProjector_shifted_iterated_weighted_square_tail
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal inverse thin normal projector is a genuine raw-space L2 function:
+the Schwartz inverse on the Hilbert product is transferred by the exact raw chart. -/
+theorem thinNormalProjector_inverse_memLp_two
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h) :
+    MemLp (spaceTimeFourierInv (jointSchwartzRaw
+      (normalizedCircleThinNormalProjectorSymbol B beta rho h
+        (by linarith : h ≠ 0)))) 2 volume := by
+  let P := normalizedCircleThinNormalProjectorSymbol B beta rho h
+    (by linarith : h ≠ 0)
+  have he : spaceTimeFourierInv (jointSchwartzRaw P) =
+      jointSchwartzRaw (FourierTransform.fourierInv P) := by
+    funext z
+    rw [spaceTimeFourierInv_jointSchwartzRaw]
+    exact congrFun (SchwartzMap.fourierInv_coe P).symm (WithLp.toLp 2 z)
+  rw [he]
+  exact scratch_jointSchwartzRaw_memLp_two _
+
+/-- Translation of the actual inverse projector retains genuine L2 membership,
+including on the physical exterior time region. -/
+theorem thinNormalProjector_shifted_exterior_memLp_two
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S : Real) :
+    MemLp (fun z : WaveSpaceTime =>
+      spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h
+          (by linarith : h ≠ 0))) (z.1-Z,z.2-S)) 2
+      (volume.restrict {z : WaveSpaceTime | 4 ≤ |z.2|}) := by
+  let P := normalizedCircleThinNormalProjectorSymbol B beta rho h
+    (by linarith : h ≠ 0)
+  let Q : SchwartzMap JointWaveSpaceTime Complex := FourierTransform.fourierInv P
+  have hQ := (Q.memLp 2 volume).comp_measurePreserving
+    (measurePreserving_sub_right (volume : Measure JointWaveSpaceTime)
+      (WithLp.toLp 2 (Z,S)))
+  have hm0 := hQ.comp_measurePreserving
+    (WithLp.volume_preserving_toLp (Euclidean 2) Real)
+  have hm : MemLp (fun z : WaveSpaceTime =>
+      spaceTimeFourierInv (jointSchwartzRaw P) (z.1-Z,z.2-S)) 2 volume := by
+    convert hm0 using 1
+    funext z
+    rw [spaceTimeFourierInv_jointSchwartzRaw]
+    change FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+      (WithLp.toLp 2 (z.1-Z,z.2-S)) = Q (WithLp.toLp 2 z - WithLp.toLp 2 (Z,S))
+    rw [← SchwartzMap.fourierInv_coe]
+    rfl
+  exact hm.restrict _
+
+/-- Genuine Fubini identifies the actual exterior projector square energy with
+the iterated temporal-spatial energy. The integrability comes from the Schwartz
+inverse, rather than from a totalized iterated integral. -/
+theorem thinNormalProjector_shifted_exterior_square_energy_eq_iterated
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S : Real) :
+    (∫ z : WaveSpaceTime in {z : WaveSpaceTime | 4 ≤ |z.2|},
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h
+          (by linarith : h ≠ 0))) (z.1-Z,z.2-S)‖^2) =
+      ∫ t : Real in {t | 4 ≤ |t|}, ∫ X : Euclidean 2,
+        ‖spaceTimeFourierInv (jointSchwartzRaw
+          (normalizedCircleThinNormalProjectorSymbol B beta rho h
+            (by linarith : h ≠ 0))) (X-Z,t-S)‖^2 := by
+  let K : WaveSpaceTime → Complex := spaceTimeFourierInv (jointSchwartzRaw
+    (normalizedCircleThinNormalProjectorSymbol B beta rho h
+      (by linarith : h ≠ 0)))
+  let A : Set WaveSpaceTime := {z | 4 ≤ |z.2|}
+  let At : Set Real := {t | 4 ≤ |t|}
+  have hA : MeasurableSet A := by
+    exact measurableSet_le measurable_const (continuous_abs.measurable.comp measurable_snd)
+  have ht : MeasurableSet At := by
+    exact measurableSet_le measurable_const continuous_abs.measurable
+  let P := normalizedCircleThinNormalProjectorSymbol B beta rho h
+    (by linarith : h ≠ 0)
+  let Q : SchwartzMap JointWaveSpaceTime Complex := FourierTransform.fourierInv P
+  have hQ := (Q.memLp 2 volume).comp_measurePreserving
+    (measurePreserving_sub_right (volume : Measure JointWaveSpaceTime)
+      (WithLp.toLp 2 (Z,S)))
+  have hm0 := hQ.comp_measurePreserving
+    (WithLp.volume_preserving_toLp (Euclidean 2) Real)
+  have hm : MemLp (fun z : WaveSpaceTime =>
+      spaceTimeFourierInv (jointSchwartzRaw P) (z.1-Z,z.2-S)) 2 volume := by
+    convert hm0 using 1
+    funext z
+    rw [spaceTimeFourierInv_jointSchwartzRaw]
+    change FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+      (WithLp.toLp 2 (z.1-Z,z.2-S)) = Q (WithLp.toLp 2 z - WithLp.toLp 2 (Z,S))
+    rw [← SchwartzMap.fourierInv_coe]
+    rfl
+  have hi : Integrable (fun z : WaveSpaceTime => ‖K (z-(Z,S))‖^2) volume :=
+    (memLp_two_iff_integrable_sq_norm hm.aestronglyMeasurable).mp hm
+  have hprod : Integrable (A.indicator (fun z : WaveSpaceTime => ‖K (z-(Z,S))‖^2))
+      (volume.prod volume) := by
+    simpa only [Measure.volume_eq_prod] using hi.indicator hA
+  change (∫ z in A, ‖K (z-(Z,S))‖^2) =
+    ∫ t in At, ∫ X : Euclidean 2, ‖K ((X,t)-(Z,S))‖^2
+  rw [← integral_indicator hA, Measure.volume_eq_prod, integral_prod_symm _ hprod]
+  have he : (fun t : Real => ∫ X : Euclidean 2,
+      A.indicator (fun z : WaveSpaceTime => ‖K (z-(Z,S))‖^2) (X,t)) =
+      At.indicator (fun t : Real => ∫ X : Euclidean 2, ‖K ((X,t)-(Z,S))‖^2) := by
+    funext t
+    by_cases htA : t ∈ At
+    · have hXt : ∀ X : Euclidean 2, (X,t) ∈ A := fun _ => htA
+      simp only [indicator_of_mem htA]
+      apply integral_congr_ae
+      filter_upwards [] with X
+      exact indicator_of_mem (hXt X) _
+    · have hXt : ∀ X : Euclidean 2, (X,t) ∉ A := fun _ => htA
+      simp only [indicator_of_notMem htA]
+      simp only [indicator_of_notMem (hXt _), integral_zero]
+  rw [he,integral_indicator ht]
+
+/-- Uniform shifted exterior square energy of the actual signed thin normal
+projector. The temporal width may be any h ≥ 1; the spatial carrier is arbitrary,
+so the estimate is uniform in packet centers, directions, and both conormal signs. -/
+theorem thinNormalProjector_shifted_exterior_square_tail
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S : Real) (hS : |S| ≤ 2) (J : Nat) :
+    h^(2*J)*(∫ z : WaveSpaceTime in {z : WaveSpaceTime | 4 ≤ |z.2|},
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h
+          (by linarith : h ≠ 0))) (z.1-Z,z.2-S)‖^2) ≤
+      (∫ xi : Euclidean 2, ‖B xi‖^2) *
+      (SchwartzMap.seminorm Complex 0 0
+        (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+        ∫ t : Real, (1+|t|)^(2*J+1)*
+          ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖) := by
+  rw [thinNormalProjector_shifted_exterior_square_energy_eq_iterated B beta rho h hh Z S]
+  simpa only [pow_zero,one_mul,pow_zero,mul_one,Nat.add_zero] using
+    thinNormalProjector_shifted_iterated_weighted_square_tail B beta rho h hh Z S hS 0 J
+
+/-- At the genuine translated spatial cube scale, the exterior projector energy
+is bounded by L2 h^(-2J) times fixed Schwartz seminorms, with no lattice cardinality
+or coarse angular envelope. -/
+theorem thinNormalProjector_translatedCube_shifted_exterior_square_tail
+    (phi : SchwartzMap (Euclidean 2) Complex) (center : Euclidean 2)
+    (L : Real) (hL : 0 < L) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S : Real) (hS : |S| ≤ 2) (J : Nat) :
+    h^(2*J)*(∫ z : WaveSpaceTime in {z : WaveSpaceTime | 4 ≤ |z.2|},
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol
+          (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h
+          (by linarith : h ≠ 0))) (z.1-Z,z.2-S)‖^2) ≤
+      L^2*(∫ xi : Euclidean 2, ‖phi xi‖^2) *
+      (SchwartzMap.seminorm Complex 0 0
+        (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+        ∫ t : Real, (1+|t|)^(2*J+1)*
+          ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖) := by
+  have hb := thinNormalProjector_shifted_exterior_square_tail
+    (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh Z S hS J
+  rwa [mssTranslatedDilatedCutoff_spatial_square_energy phi center L hL] at hb
+
+#print axioms thinNormalProjector_inverse_memLp_two
+#print axioms thinNormalProjector_shifted_exterior_memLp_two
+#print axioms thinNormalProjector_shifted_exterior_square_energy_eq_iterated
+#print axioms thinNormalProjector_shifted_exterior_square_tail
+#print axioms thinNormalProjector_translatedCube_shifted_exterior_square_tail
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+
+/-- Genuine nonnegative integrals on any physical target set are exhausted by
+norm balls, including the full spatial-temporal exterior region. -/
+theorem norm_ball_exhaustion_set_lintegral
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V]
+    (μ : Measure V) (A : Set V) (F : V → ENNReal) :
+    (∫⁻ z in A,F z ∂μ) =
+      ⨆ n : Nat,∫⁻ z in {z : V | ‖z‖ < (n:Real) ∧ z ∈ A},F z ∂μ := by
+  let B : Nat → Set V := fun n => {z | ‖z‖ < (n:Real) ∧ z ∈ A}
+  have hu : (⋃ n : Nat,B n) = A := by
+    ext z
+    constructor
+    · intro hz
+      obtain ⟨n,hn⟩ := mem_iUnion.mp hz
+      exact hn.2
+    · intro hz
+      obtain ⟨n,hn⟩ := exists_nat_gt ‖z‖
+      exact mem_iUnion.mpr ⟨n,hn,hz⟩
+  have hd : Directed (fun x y : Set V => x ⊆ y) B := by
+    intro m n
+    refine ⟨max m n,?_,?_⟩
+    · intro z hz
+      exact ⟨hz.1.trans_le (by exact_mod_cast Nat.le_max_left m n),hz.2⟩
+    · intro z hz
+      exact ⟨hz.1.trans_le (by exact_mod_cast Nat.le_max_right m n),hz.2⟩
+  conv_lhs => rw [← hu]
+  exact setLIntegral_iUnion_of_directed F hd
+
+/-- Uniform bounded-target square moments imply genuine L2 membership and its
+ordinary moment on an arbitrary global target, without assuming the conclusion. -/
+theorem memLp_two_set_of_uniform_norm_ball_lintegral
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V]
+    (μ : Measure V) (A : Set V) (E : V → Real) (hE : Measurable E)
+    (C : Real) (hC : 0 ≤ C)
+    (hb : ∀ n : Nat,
+      (∫⁻ z in {z : V | ‖z‖ < (n:Real) ∧ z ∈ A},
+        ENNReal.ofReal ((E z)^2) ∂μ) ≤ ENNReal.ofReal C) :
+    MemLp E 2 (μ.restrict A) ∧
+      (∫ z,(E z)^2 ∂(μ.restrict A)) ≤ C := by
+  have htotal : (∫⁻ z in A,ENNReal.ofReal ((E z)^2) ∂μ) ≤ ENNReal.ofReal C := by
+    rw [norm_ball_exhaustion_set_lintegral]
+    exact iSup_le hb
+  have hEc : AEStronglyMeasurable (fun z => (E z:Complex)) (μ.restrict A) :=
+    (Complex.continuous_ofReal.measurable.comp hE).aestronglyMeasurable
+  have hbc : (∫⁻ z,ENNReal.ofReal (‖(E z:Complex)‖^2) ∂(μ.restrict A)) ≤
+      ENNReal.ofReal C := by
+    simpa only [Complex.norm_real,Real.norm_eq_abs,sq_abs] using htotal
+  obtain ⟨hm,hi⟩ := memLp_two_and_integral_le_of_lintegral_sq_le
+    (μ.restrict A) hEc hC hbc
+  constructor
+  · apply hm.congr_norm hE.aestronglyMeasurable
+    exact Filter.Eventually.of_forall (fun z => by rw [Complex.norm_real])
+  · simpa only [Complex.norm_real,Real.norm_eq_abs,sq_abs] using hi
+
+/-- Ordinary finite-target energy estimates extend only together with their
+genuine L2 memberships; totalized nonintegrable energies are not used. -/
+theorem memLp_two_set_of_uniform_norm_ball_integral
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V]
+    (μ : Measure V) (A : Set V) (E : V → Real) (hE : Measurable E)
+    (C : Real) (hC : 0 ≤ C)
+    (hm : ∀ n : Nat,MemLp E 2
+      (μ.restrict {z : V | ‖z‖ < (n:Real) ∧ z ∈ A}))
+    (hb : ∀ n : Nat,
+      (∫ z,(E z)^2 ∂(μ.restrict {z : V | ‖z‖ < (n:Real) ∧ z ∈ A})) ≤ C) :
+    MemLp E 2 (μ.restrict A) ∧
+      (∫ z,(E z)^2 ∂(μ.restrict A)) ≤ C := by
+  apply memLp_two_set_of_uniform_norm_ball_lintegral μ A E hE C hC
+  intro n
+  have hi : Integrable (fun z => (E z)^2)
+      (μ.restrict {z : V | ‖z‖ < (n:Real) ∧ z ∈ A}) :=
+    (memLp_two_iff_integrable_sq hE.aestronglyMeasurable).mp (hm n)
+  rw [← ofReal_integral_eq_lintegral_ofReal hi
+    (Filter.Eventually.of_forall (fun z => sq_nonneg (E z)))]
+  exact ENNReal.ofReal_le_ofReal (hb n)
+
+#print axioms norm_ball_exhaustion_set_lintegral
+#print axioms memLp_two_set_of_uniform_norm_ball_lintegral
+#print axioms memLp_two_set_of_uniform_norm_ball_integral
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Actual positive testing of a shifted signed thin projector on the full time
+exterior. The normal width supplies any power, and the spatial cube costs only
+its Plancherel scale L. All pairings are genuinely integrable. -/
+theorem thinNormalProjector_translatedCube_shifted_exterior_pairing
+    (phi : SchwartzMap (Euclidean 2) Complex) (center : Euclidean 2)
+    (L : Real) (hL : 0 < L) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+    (Z : Euclidean 2) (S : Real) (hS : |S| ≤ 2) (J : Nat)
+    (g : WaveSpaceTime → Complex)
+    (hg : MemLp g 2 (volume.restrict {z : WaveSpaceTime | 4 ≤ |z.2|})) :
+    Integrable (fun z : WaveSpaceTime =>
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol
+          (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h
+          (by linarith : h ≠ 0))) (z.1-Z,z.2-S)‖ * ‖g z‖)
+        (volume.restrict {z : WaveSpaceTime | 4 ≤ |z.2|}) ∧
+    h^J*(∫ z : WaveSpaceTime in {z : WaveSpaceTime | 4 ≤ |z.2|},
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol
+          (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h
+          (by linarith : h ≠ 0))) (z.1-Z,z.2-S)‖ * ‖g z‖) ≤
+      L*Real.sqrt ((∫ xi : Euclidean 2, ‖phi xi‖^2) *
+        (SchwartzMap.seminorm Complex 0 0
+          (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+          ∫ t : Real, (1+|t|)^(2*J+1)*
+            ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖)) *
+      Real.sqrt (∫ z : WaveSpaceTime in {z : WaveSpaceTime | 4 ≤ |z.2|}, ‖g z‖^2) := by
+  let μ : Measure WaveSpaceTime := volume.restrict {z : WaveSpaceTime | 4 ≤ |z.2|}
+  let K : WaveSpaceTime → Complex := fun z =>
+    spaceTimeFourierInv (jointSchwartzRaw
+      (normalizedCircleThinNormalProjectorSymbol
+        (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h
+        (by linarith : h ≠ 0))) (z.1-Z,z.2-S)
+  let C : Real := (∫ xi : Euclidean 2, ‖phi xi‖^2) *
+    (SchwartzMap.seminorm Complex 0 0
+      (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+      ∫ t : Real, (1+|t|)^(2*J+1)*
+        ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖)
+  have hK : MemLp K 2 μ := thinNormalProjector_shifted_exterior_memLp_two
+    (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh Z S
+  have htail : h^(2*J)*(∫ z, ‖K z‖^2 ∂μ) ≤ L^2*C := by
+    have ht := thinNormalProjector_translatedCube_shifted_exterior_square_tail
+      phi center L hL beta rho h hh Z S hS J
+    change h^(2*J)*(∫ z, ‖K z‖^2 ∂μ) ≤ _ at ht
+    convert ht using 1
+    dsimp only [C]
+    ring
+  have hE : 0 ≤ ∫ z, ‖K z‖^2 ∂μ := integral_nonneg (fun _ => sq_nonneg _)
+  have ha : 0 ≤ h^J := pow_nonneg (by linarith : 0 ≤ h) _
+  have heq : h^(2*J) = (h^J)^2 := by rw [Nat.mul_comm,pow_mul]
+  have hroot : h^J*Real.sqrt (∫ z, ‖K z‖^2 ∂μ) ≤ L*Real.sqrt C := by
+    have hr := Real.sqrt_le_sqrt htail
+    rw [heq,Real.sqrt_mul (sq_nonneg _),Real.sqrt_sq_eq_abs,abs_of_nonneg ha,
+      Real.sqrt_mul (sq_nonneg L),Real.sqrt_sq_eq_abs,abs_of_pos hL] at hr
+    exact hr
+  constructor
+  · exact integrable_norm_mul_norm_of_memLp_two μ K g hK hg
+  · have hcs := integral_norm_mul_norm_le_sqrt_mul_integral_norm_sq μ K g hK hg
+    change h^J*(∫ z, ‖K z‖*‖g z‖ ∂μ) ≤
+      L*Real.sqrt C*Real.sqrt (∫ z, ‖g z‖^2 ∂μ)
+    calc
+      _ ≤ h^J*(Real.sqrt (∫ z, ‖K z‖^2 ∂μ)*
+        Real.sqrt (∫ z, ‖g z‖^2 ∂μ)) := mul_le_mul_of_nonneg_left hcs ha
+      _ = (h^J*Real.sqrt (∫ z, ‖K z‖^2 ∂μ))*
+        Real.sqrt (∫ z, ‖g z‖^2 ∂μ) := by ring
+      _ ≤ _ := mul_le_mul_of_nonneg_right hroot (Real.sqrt_nonneg _)
+
+#print axioms thinNormalProjector_translatedCube_shifted_exterior_pairing
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Genuine positive NN testing of actual shifted signed thin projectors on the
+physical time exterior. One fixed Schwartz constant is uniform in every packet
+label, spatial cube scale, carrier, normal width, and compact analysis basepoint. -/
+theorem exists_thinNormalProjector_translatedCube_exterior_test_constant
+    (phi : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (J : Nat) :
+    ∃ C : Real, 0 ≤ C ∧
+      ∀ (center : Euclidean 2) (L : Real) (hL : 0 < L)
+        (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 1 ≤ h)
+        (Z : Euclidean 2) (S : Real), |S| ≤ 2 →
+      ∀ (g : WaveSpaceTime → Complex), MemLp g 2 (volume.prod volume) →
+        (∫⁻ z : WaveSpaceTime in {z : WaveSpaceTime | 4 ≤ |z.2|},
+          ENNReal.ofReal (‖spaceTimeFourierInv (jointSchwartzRaw
+            (normalizedCircleThinNormalProjectorSymbol
+              (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h
+              (by linarith : h ≠ 0))) (z.1-Z,z.2-S)‖) *
+            ENNReal.ofReal ‖g z‖ ∂(volume.prod volume)) ≤
+          ENNReal.ofReal (C*L*(h⁻¹)^J*
+            Real.sqrt (∫ z : WaveSpaceTime, ‖g z‖^2 ∂(volume.prod volume))) := by
+  let C : Real := Real.sqrt ((∫ xi : Euclidean 2, ‖phi xi‖^2) *
+    (SchwartzMap.seminorm Complex 0 0
+      (FourierTransform.fourierInv beta : SchwartzMap Real Complex) *
+      ∫ t : Real, (1+|t|)^(2*J+1)*
+        ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖))
+  refine ⟨C,Real.sqrt_nonneg _,?_⟩
+  intro center L hL rho h hh Z S hS g hg
+  have hpos : 0 < h := by linarith
+  have hgraw : MemLp g 2 volume := by
+    simpa only [Measure.volume_eq_prod] using hg
+  have ⟨hi,hpair⟩ := thinNormalProjector_translatedCube_shifted_exterior_pairing
+    phi center L hL beta rho h hh Z S hS J g (hgraw.restrict _)
+  let K : WaveSpaceTime → Complex := fun z =>
+    spaceTimeFourierInv (jointSchwartzRaw
+      (normalizedCircleThinNormalProjectorSymbol
+        (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h
+        (by linarith : h ≠ 0))) (z.1-Z,z.2-S)
+  let μ : Measure WaveSpaceTime := volume.restrict {z : WaveSpaceTime | 4 ≤ |z.2|}
+  have hge : (∫ z, ‖g z‖^2 ∂μ) ≤ ∫ z : WaveSpaceTime, ‖g z‖^2 := by
+    apply setIntegral_le_integral
+      ((memLp_two_iff_integrable_sq_norm hgraw.aestronglyMeasurable).mp hgraw)
+    exact Filter.Eventually.of_forall (fun z => sq_nonneg ‖g z‖)
+  have hglobal : h^J*(∫ z, ‖K z‖*‖g z‖ ∂μ) ≤
+      L*C*Real.sqrt (∫ z : WaveSpaceTime, ‖g z‖^2) := by
+    change h^J*(∫ z, ‖K z‖*‖g z‖ ∂μ) ≤
+      L*C*Real.sqrt (∫ z, ‖g z‖^2 ∂μ) at hpair
+    exact hpair.trans (mul_le_mul_of_nonneg_left
+      (Real.sqrt_le_sqrt hge) (mul_nonneg hL.le (Real.sqrt_nonneg _)))
+  have hcancel : h^J*(h⁻¹)^J = 1 := by
+    rw [← mul_pow,mul_inv_cancel₀ hpos.ne',one_pow]
+  have hreal : (∫ z, ‖K z‖*‖g z‖ ∂μ) ≤
+      C*L*(h⁻¹)^J*Real.sqrt (∫ z : WaveSpaceTime, ‖g z‖^2) := by
+    apply (mul_le_mul_iff_right₀ (pow_pos hpos J)).mp
+    refine hglobal.trans_eq ?_
+    calc
+      L*C*Real.sqrt (∫ z : WaveSpaceTime, ‖g z‖^2) =
+        (h^J*(h⁻¹)^J)*(C*L*Real.sqrt (∫ z : WaveSpaceTime, ‖g z‖^2)) := by
+          rw [hcancel]
+          ring
+      _ = _ := by ring
+  have hnn : (∫⁻ z, ENNReal.ofReal ‖K z‖*ENNReal.ofReal ‖g z‖ ∂μ) =
+      ENNReal.ofReal (∫ z, ‖K z‖*‖g z‖ ∂μ) := by
+    simp_rw [← ENNReal.ofReal_mul (norm_nonneg _)]
+    exact (ofReal_integral_eq_lintegral_ofReal hi
+      (Filter.Eventually.of_forall (fun z => mul_nonneg (norm_nonneg _) (norm_nonneg _)))).symm
+  change (∫⁻ z, ENNReal.ofReal ‖K z‖*ENNReal.ofReal ‖g z‖
+    ∂((volume.prod volume).restrict {z : WaveSpaceTime | 4 ≤ |z.2|})) ≤ _
+  change (∫⁻ z, ENNReal.ofReal ‖K z‖*ENNReal.ofReal ‖g z‖ ∂μ) ≤
+    ENNReal.ofReal (C*L*(h⁻¹)^J*Real.sqrt (∫ z : WaveSpaceTime, ‖g z‖^2))
+  rw [hnn]
+  exact ENNReal.ofReal_le_ofReal hreal
+
+#print axioms exists_thinNormalProjector_translatedCube_exterior_test_constant
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+
+/-- Genuine local L2 memberships and square moments on complementary measurable
+targets assemble into global membership and the sum of the two energy budgets. -/
+theorem memLp_two_square_energy_le_of_complementary_targets
+    {V : Type*} [MeasurableSpace V] (μ : Measure V)
+    (A : Set V) (hA : MeasurableSet A) (E : V → Real) (hE : Measurable E)
+    (CA CB : Real) (hmA : MemLp E 2 (μ.restrict A))
+    (hmB : MemLp E 2 (μ.restrict Aᶜ))
+    (hbA : (∫ z, (E z)^2 ∂(μ.restrict A)) ≤ CA)
+    (hbB : (∫ z, (E z)^2 ∂(μ.restrict Aᶜ)) ≤ CB) :
+    MemLp E 2 μ ∧ (∫ z,(E z)^2 ∂μ) ≤ CA+CB := by
+  have hiA : Integrable (fun z => (E z)^2) (μ.restrict A) :=
+    (memLp_two_iff_integrable_sq hE.aestronglyMeasurable).mp hmA
+  have hiB : Integrable (fun z => (E z)^2) (μ.restrict Aᶜ) :=
+    (memLp_two_iff_integrable_sq hE.aestronglyMeasurable).mp hmB
+  have hi : Integrable (fun z => (E z)^2) μ := by
+    have hs := hiA.add_measure hiB
+    rwa [Measure.restrict_add_restrict_compl hA] at hs
+  constructor
+  · exact (memLp_two_iff_integrable_sq hE.aestronglyMeasurable).mpr hi
+  · rw [← Measure.restrict_add_restrict_compl (μ := μ) hA,
+      integral_add_measure hiA hiB]
+    exact add_le_add hbA hbB
+
+/-- The actual centered-time core and whole-time exterior cover physical
+space-time exactly, so their genuine square-energy estimates give the global
+fourth moment of the output square field. -/
+theorem memLp_two_square_energy_le_of_time_core_and_exterior
+    {V : Type*} [NormedAddCommGroup V] [MeasurableSpace V] [BorelSpace V]
+    (μ : Measure (V × Real)) (a : Real) (E : V × Real → Real) (hE : Measurable E)
+    (Ccore Cext : Real)
+    (hmcore : MemLp E 2 (μ.restrict {z : V × Real | |z.2| < a}))
+    (hmext : MemLp E 2 (μ.restrict {z : V × Real | a ≤ |z.2|}))
+    (hbcore : (∫ z,(E z)^2 ∂(μ.restrict {z : V × Real | |z.2| < a})) ≤ Ccore)
+    (hbext : (∫ z,(E z)^2 ∂(μ.restrict {z : V × Real | a ≤ |z.2|})) ≤ Cext) :
+    MemLp E 2 μ ∧ (∫ z,(E z)^2 ∂μ) ≤ Ccore+Cext := by
+  let A : Set (V × Real) := {z | |z.2| < a}
+  have hA : MeasurableSet A :=
+    measurableSet_lt (continuous_abs.measurable.comp measurable_snd) measurable_const
+  have he : Aᶜ = {z : V × Real | a ≤ |z.2|} := by
+    ext z
+    simp only [A,mem_compl_iff,mem_ofPred_eq,not_lt]
+  apply memLp_two_square_energy_le_of_complementary_targets μ A hA E hE
+    Ccore Cext hmcore
+  · simpa only [he] using hmext
+  · exact hbcore
+  · simpa only [he] using hbext
+
+#print axioms memLp_two_square_energy_le_of_complementary_targets
+#print axioms memLp_two_square_energy_le_of_time_core_and_exterior
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+
+/-- A true constant source-core square weight for the whole-time exterior
+Schur estimate. The literal Cartesian rectangle volume is used only for
+membership and the fixed weight energy; no packet count enters the bound. -/
+theorem normalizedCircle_source_core_constant_square_weight
+    (E : Real) (hE : 0 ≤ E) :
+    Measurable (fun _ : Euclidean 2 => Real.sqrt E) ∧
+    (∀ y : Euclidean 2,0 ≤ (fun _ : Euclidean 2 => Real.sqrt E) y) ∧
+    MemLp (fun _ : Euclidean 2 => Real.sqrt E) 2
+      (volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5}) ∧
+    (∫ y : Euclidean 2,((fun _ : Euclidean 2 => Real.sqrt E) y)^2
+      ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) ≤ 80*E := by
+  let A : Set (Euclidean 2) := {y | |y 0| < 4 ∧ |y 1| < 5}
+  let μ : Measure (Euclidean 2) := volume.restrict A
+  let : IsFiniteMeasure μ := normalizedCircle_cartesian_source_core_isFiniteMeasure
+  have hs : A ⊆ {y : Euclidean 2 | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5} := by
+    intro y hy
+    exact ⟨abs_le.mp hy.1.le,abs_le.mp hy.2.le⟩
+  have hm : volume A ≤ 80 := by
+    calc
+      _ ≤ volume {y : Euclidean 2 | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5} := measure_mono hs
+      _ = 80 := normalizedCircle_cartesian_source_rectangle_volume
+  have hreal : μ.real univ ≤ 80 := by
+    change (μ univ).toReal ≤ 80
+    rw [Measure.restrict_apply_univ]
+    exact ENNReal.toReal_le_of_le_ofReal (by norm_num : (0:Real) ≤ 80)
+      (by simpa only [ENNReal.ofReal_ofNat] using hm)
+  refine ⟨measurable_const,fun _ => Real.sqrt_nonneg E,memLp_const _,?_⟩
+  change (∫ _ : Euclidean 2,(Real.sqrt E)^2 ∂μ) ≤ 80*E
+  rw [integral_const,smul_eq_mul,Real.sq_sqrt hE]
+  exact mul_le_mul_of_nonneg_right hreal hE
+
+#print axioms normalizedCircle_source_core_constant_square_weight
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Exact global temporal square energy of the actual normal-frequency
+inverse profile at every positive width, with the one-dimensional Haar
+Jacobian included. -/
+theorem thinNormalTemporalInverse_global_square_energy
+    (beta : SchwartzMap Real Complex) (h : Real) (hh : 0 < h) :
+    (∫ t : Real,‖(FourierTransform.fourierInv
+      (normalizedCircleThinNormalFrequencyProfile beta h hh.ne') :
+        SchwartzMap Real Complex) t‖^2) =
+      h*(∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2) := by
+  simp_rw [normalizedCircleThinNormalFrequencyProfile_inverse beta h hh,norm_mul,
+    Complex.norm_real,Real.norm_eq_abs,abs_of_pos hh,mul_pow]
+  rw [integral_const_mul]
+  have hs : (∫ t : Real,
+      ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) (h*t)‖^2) =
+      h⁻¹*(∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2) := by
+    simpa only [smul_eq_mul,Module.finrank_self,pow_one] using
+      (Measure.integral_comp_smul_of_nonneg volume
+        (fun t : Real => ‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2)
+          h (hR := hh.le))
+  rw [hs]
+  field_simp
+
+/-- Every translated literal thin projector is genuinely global L2 at any
+positive width. This uses the exact Hilbert raw-coordinate transport. -/
+theorem thinNormalProjector_global_shifted_memLp_two
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 0 < h)
+    (Z : Euclidean 2) (S : Real) :
+    MemLp (fun z : WaveSpaceTime =>
+      spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h hh.ne'))
+          (z.1-Z,z.2-S)) 2 (volume.prod volume) := by
+  let P := normalizedCircleThinNormalProjectorSymbol B beta rho h hh.ne'
+  let Q : SchwartzMap JointWaveSpaceTime Complex := FourierTransform.fourierInv P
+  have hQ := (Q.memLp 2 volume).comp_measurePreserving
+    (measurePreserving_sub_right (volume : Measure JointWaveSpaceTime)
+      (WithLp.toLp 2 (Z,S)))
+  have hm0 := hQ.comp_measurePreserving
+    (WithLp.volume_preserving_toLp (Euclidean 2) Real)
+  have hm : MemLp (fun z : WaveSpaceTime =>
+      spaceTimeFourierInv (jointSchwartzRaw P) (z.1-Z,z.2-S)) 2 volume := by
+    convert hm0 using 1
+    funext z
+    rw [spaceTimeFourierInv_jointSchwartzRaw]
+    change FourierTransform.fourierInv (P : JointWaveSpaceTime → Complex)
+      (WithLp.toLp 2 (z.1-Z,z.2-S)) = Q (WithLp.toLp 2 z-WithLp.toLp 2 (Z,S))
+    rw [← SchwartzMap.fourierInv_coe]
+    rfl
+  simpa only [Measure.volume_eq_prod] using hm
+
+/-- The true spatial Plancherel slice of the arbitrary signed carrier at a
+positive width; no target or analysis coordinate restriction is imposed. -/
+theorem thinNormalProjector_global_spatial_slice_square_energy
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 0 < h)
+    (Z : Euclidean 2) (S t : Real) :
+    (∫ X : Euclidean 2,
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h hh.ne'))
+          (X-Z,t-S)‖^2) =
+      ‖(FourierTransform.fourierInv (normalizedCircleThinNormalFrequencyProfile beta h
+        hh.ne') : SchwartzMap Real Complex) (t-S)‖^2 *
+      ∫ xi : Euclidean 2,‖B xi‖^2 := by
+  simp only [normalizedCircleThinNormalProjectorSymbol,
+    spaceTimeFourierInv_jointSchwartzModulatedAnnularProfile,norm_mul,mul_pow]
+  rw [integral_const_mul,spatialSchwartzCarrier_modulation_inverse_square_energy]
+
+/-- Genuine Fubini and Plancherel give the exact global square energy of
+the translated literal thin projector. It is independent of the real
+Schwartz carrier and every physical shift. -/
+theorem thinNormalProjector_global_shifted_square_energy
+    (B : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 0 < h)
+    (Z : Euclidean 2) (S : Real) :
+    (∫ z : WaveSpaceTime,
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol B beta rho h hh.ne'))
+          (z.1-Z,z.2-S)‖^2 ∂(volume.prod volume)) =
+      h*(∫ xi : Euclidean 2,‖B xi‖^2)*
+        (∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2) := by
+  have hm := thinNormalProjector_global_shifted_memLp_two B beta rho h hh Z S
+  have hi := (memLp_two_iff_integrable_sq_norm hm.aestronglyMeasurable).mp hm
+  rw [integral_prod_symm _ hi]
+  simp_rw [thinNormalProjector_global_spatial_slice_square_energy B beta rho h hh Z S]
+  rw [integral_mul_const,integral_sub_right_eq_self
+    (fun t : Real => ‖(FourierTransform.fourierInv
+      (normalizedCircleThinNormalFrequencyProfile beta h hh.ne') :
+        SchwartzMap Real Complex) t‖^2) S,
+    thinNormalTemporalInverse_global_square_energy beta h hh]
+  ring
+
+/-- At the genuine translated spatial cube scale the exact global square
+energy is L squared times h times fixed spatial and temporal L2 energies. -/
+theorem thinNormalProjector_translatedCube_global_shifted_square_energy
+    (phi : SchwartzMap (Euclidean 2) Complex) (center : Euclidean 2)
+    (L : Real) (hL : 0 < L) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 0 < h)
+    (Z : Euclidean 2) (S : Real) :
+    (∫ z : WaveSpaceTime,
+      ‖spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol
+          (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh.ne'))
+          (z.1-Z,z.2-S)‖^2 ∂(volume.prod volume)) =
+      L^2*h*((∫ xi : Euclidean 2,‖phi xi‖^2)*
+        (∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2)) := by
+  rw [thinNormalProjector_global_shifted_square_energy
+    (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh Z S,
+    mssTranslatedDilatedCutoff_spatial_square_energy phi center L hL]
+  ring
+
+/-- The actual global L2 norm of every translated signed thin projector
+has exactly the scale L times sqrt(h), uniformly in all packet labels. -/
+theorem thinNormalProjector_translatedCube_global_eLpNorm_two_eq
+    (phi : SchwartzMap (Euclidean 2) Complex) (center : Euclidean 2)
+    (L : Real) (hL : 0 < L) (beta : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 0 < h)
+    (Z : Euclidean 2) (S : Real) :
+    eLpNorm (fun z : WaveSpaceTime =>
+      spaceTimeFourierInv (jointSchwartzRaw
+        (normalizedCircleThinNormalProjectorSymbol
+          (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh.ne'))
+          (z.1-Z,z.2-S)) 2 (volume.prod volume) =
+      ENNReal.ofReal (L*Real.sqrt h*Real.sqrt
+        ((∫ xi : Euclidean 2,‖phi xi‖^2)*
+          (∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2))) := by
+  have hm := thinNormalProjector_global_shifted_memLp_two
+    (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh Z S
+  have hn := hm.eLpNorm_eq_integral_rpow_norm (by norm_num) (by norm_num)
+  simp only [ENNReal.toReal_ofNat,Real.rpow_ofNat] at hn
+  rw [show (2:Real)⁻¹ = 1/2 by norm_num,← Real.sqrt_eq_rpow] at hn
+  rw [hn,thinNormalProjector_translatedCube_global_shifted_square_energy
+    phi center L hL beta rho h hh Z S]
+  congr 1
+  rw [mul_assoc,Real.sqrt_mul (sq_nonneg L),Real.sqrt_sq_eq_abs,abs_of_pos hL,
+    Real.sqrt_mul hh.le]
+  ring
+
+/-- One genuine fixed constant gives global positive NN testing of every
+translated signed thin projector against arbitrary physical L2 data. The
+scale is exactly L times sqrt(h), without coarse profile or label counts. -/
+theorem exists_thinNormalProjector_translatedCube_global_test_constant
+    (phi : SchwartzMap (Euclidean 2) Complex) (beta : SchwartzMap Real Complex) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ (center : Euclidean 2) (L : Real) (hL : 0 < L)
+        (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : 0 < h)
+        (Z : Euclidean 2) (S : Real) (g : WaveSpaceTime → Complex),
+      MemLp g 2 (volume.prod volume) →
+        (∫⁻ z : WaveSpaceTime,
+          ENNReal.ofReal (‖spaceTimeFourierInv (jointSchwartzRaw
+            (normalizedCircleThinNormalProjectorSymbol
+              (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh.ne'))
+              (z.1-Z,z.2-S)‖) * ENNReal.ofReal ‖g z‖ ∂(volume.prod volume)) ≤
+          ENNReal.ofReal (C*L*Real.sqrt h*
+            Real.sqrt (∫ z : WaveSpaceTime,‖g z‖^2 ∂(volume.prod volume))) := by
+  let C : Real := Real.sqrt ((∫ xi : Euclidean 2,‖phi xi‖^2)*
+    (∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2))
+  refine ⟨C,Real.sqrt_nonneg _,?_⟩
+  intro center L hL rho h hh Z S g hg
+  let K : WaveSpaceTime → Complex := fun z =>
+    spaceTimeFourierInv (jointSchwartzRaw
+      (normalizedCircleThinNormalProjectorSymbol
+        (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh.ne'))
+          (z.1-Z,z.2-S)
+  have hm : MemLp K 2 (volume.prod volume) :=
+    thinNormalProjector_global_shifted_memLp_two
+      (mssTranslatedDilatedCutoff phi center L hL.ne') beta rho h hh Z S
+  have hi := integrable_norm_mul_norm_of_memLp_two (volume.prod volume) K g hm hg
+  have hs := integral_norm_mul_norm_le_sqrt_mul_integral_norm_sq
+    (volume.prod volume) K g hm hg
+  have he : (∫ z,‖K z‖^2 ∂(volume.prod volume)) =
+      L^2*h*((∫ xi : Euclidean 2,‖phi xi‖^2)*
+        (∫ t : Real,‖(FourierTransform.fourierInv beta : SchwartzMap Real Complex) t‖^2)) :=
+    thinNormalProjector_translatedCube_global_shifted_square_energy
+      phi center L hL beta rho h hh Z S
+  rw [he,mul_assoc,Real.sqrt_mul (sq_nonneg L),Real.sqrt_sq_eq_abs,abs_of_pos hL,
+    Real.sqrt_mul hh.le] at hs
+  have hreal : (∫ z,‖K z‖*‖g z‖ ∂(volume.prod volume)) ≤
+      C*L*Real.sqrt h*Real.sqrt (∫ z,‖g z‖^2 ∂(volume.prod volume)) := by
+    convert hs using 1
+    dsimp only [C]
+    ring
+  change (∫⁻ z,ENNReal.ofReal ‖K z‖*ENNReal.ofReal ‖g z‖ ∂(volume.prod volume)) ≤ _
+  simp_rw [← ENNReal.ofReal_mul (norm_nonneg _)]
+  rw [← ofReal_integral_eq_lintegral_ofReal hi
+    (Filter.Eventually.of_forall (fun z => mul_nonneg (norm_nonneg _) (norm_nonneg _)))]
+  exact ENNReal.ofReal_le_ofReal hreal
+
+#print axioms thinNormalTemporalInverse_global_square_energy
+#print axioms thinNormalProjector_global_shifted_memLp_two
+#print axioms thinNormalProjector_global_spatial_slice_square_energy
+#print axioms thinNormalProjector_global_shifted_square_energy
+#print axioms thinNormalProjector_translatedCube_global_shifted_square_energy
+#print axioms thinNormalProjector_translatedCube_global_eLpNorm_two_eq
+#print axioms exists_thinNormalProjector_translatedCube_global_test_constant
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- A genuine global polynomial source square weight for physical analysis
+errors. The fixed finite constant is the literal planar polynomial moment,
+derived from dimension two integrability, rather than a packet count. -/
+theorem exists_sourcePacket_polynomial_square_weight_constant
+    (N : Nat) (hN : 1 < N) :
+    ∃ C : Real,0 ≤ C ∧ ∀ E : Real,0 ≤ E →
+      Measurable (fun y : Euclidean 2 => Real.sqrt E*(1+‖y‖)^(-(N:Real))) ∧
+      (∀ y : Euclidean 2,0 ≤ Real.sqrt E*(1+‖y‖)^(-(N:Real))) ∧
+      MemLp (fun y : Euclidean 2 => Real.sqrt E*(1+‖y‖)^(-(N:Real))) 2 volume ∧
+      (∫ y : Euclidean 2,(Real.sqrt E*(1+‖y‖)^(-(N:Real)))^2) ≤ C*E := by
+  let C : Real := ∫ y : Euclidean 2,(1+‖y‖)^(-(2*(N:Real)))
+  have hC : 0 ≤ C := integral_nonneg (fun y => Real.rpow_nonneg (by positivity) _)
+  have hdim : (Module.finrank Real (Euclidean 2):Real) < 2*(N:Real) := by
+    norm_num only [finrank_euclideanSpace,Fintype.card_fin]
+    have hnr : (1:Real) < (N:Real) := by exact_mod_cast hN
+    linarith
+  have hi : Integrable (fun y : Euclidean 2 => (1+‖y‖)^(-(2*(N:Real)))) volume :=
+    integrable_one_add_norm hdim
+  have hbase : Continuous (fun y : Euclidean 2 => (1:Real)+‖y‖) :=
+    continuous_const.add continuous_norm
+  have hc : Continuous (fun y : Euclidean 2 => (1+‖y‖)^(-(N:Real))) :=
+    hbase.rpow_const (fun y => Or.inl (ne_of_gt (by positivity : (0:Real) < 1+‖y‖)))
+  refine ⟨C,hC,?_⟩
+  intro E hE
+  have he (y : Euclidean 2) :
+      (Real.sqrt E*(1+‖y‖)^(-(N:Real)))^2 =
+        E*(1+‖y‖)^(-(2*(N:Real))) := by
+    rw [mul_pow,Real.sq_sqrt hE,← Real.rpow_natCast,← Real.rpow_mul (by positivity : 0 ≤ 1+‖y‖)]
+    congr 1
+    congr 1
+    ring
+  have hweight : Continuous (fun y : Euclidean 2 =>
+      Real.sqrt E*(1+‖y‖)^(-(N:Real))) := hc.const_mul _
+  have hIsq : Integrable (fun y : Euclidean 2 =>
+      (Real.sqrt E*(1+‖y‖)^(-(N:Real)))^2) volume := by
+    apply (hi.const_mul E).congr
+    exact Filter.Eventually.of_forall (fun y => (he y).symm)
+  refine ⟨hweight.measurable,fun y => mul_nonneg (Real.sqrt_nonneg E)
+    (Real.rpow_nonneg (by positivity) _),
+    (memLp_two_iff_integrable_sq hweight.aestronglyMeasurable).mpr hIsq,?_⟩
+  simp_rw [he]
+  rw [integral_const_mul]
+  change E*C ≤ C*E
+  exact le_of_eq (mul_comm _ _)
+
+#print axioms exists_sourcePacket_polynomial_square_weight_constant
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+
+/-- Polynomial reciprocal decay has a genuine finite moment over any
+finite-dimensional real Haar space once the exponent exceeds the dimension. -/
+theorem sourcePacket_polynomial_decay_mass
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
+    [FiniteDimensional Real E] [MeasurableSpace E] [BorelSpace E]
+    (μ : Measure E) [μ.IsAddHaarMeasure] (N : Nat)
+    (hN : Module.finrank Real E < N) :
+    Measurable (fun z : E => (1+‖z‖)⁻¹^N) ∧
+    (∀ z : E,0 ≤ (1+‖z‖)⁻¹^N) ∧
+    Integrable (fun z : E => (1+‖z‖)⁻¹^N) μ ∧
+    (∫⁻ z : E,ENNReal.ofReal ((1+‖z‖)⁻¹^N) ∂μ) =
+      ENNReal.ofReal (∫ z : E,(1+‖z‖)⁻¹^N ∂μ) ∧
+    (∫⁻ z : E,ENNReal.ofReal ((1+‖z‖)⁻¹^N) ∂μ) < ⊤ := by
+  have hc : Continuous (fun z : E => (1:Real)+‖z‖) := continuous_const.add continuous_norm
+  have hD : Continuous (fun z : E => (1+‖z‖)⁻¹^N) :=
+    (hc.inv₀ (fun z => by positivity)).pow N
+  have hp (z : E) : 0 ≤ (1+‖z‖)⁻¹^N := by positivity
+  have he (z : E) : (1+‖z‖)⁻¹^N = (1+‖z‖)^(-(N:Real)) := by
+    rw [inv_pow,← Real.rpow_natCast,← Real.rpow_neg (by positivity : 0 ≤ 1+‖z‖)]
+  have hnr : (Module.finrank Real E:Real) < (N:Real) := by exact_mod_cast hN
+  have hi : Integrable (fun z : E => (1+‖z‖)⁻¹^N) μ :=
+    (integrable_one_add_norm hnr).congr (Filter.Eventually.of_forall (fun z => (he z).symm))
+  have hn := (ofReal_integral_eq_lintegral_ofReal hi
+    (Filter.Eventually.of_forall hp)).symm
+  refine ⟨hD.measurable,hp,hi,hn,?_⟩
+  rw [hn]
+  exact ENNReal.ofReal_lt_top
+
+/-- The actual raw physical product volume is a Haar measure for its
+normed additive structure, transferred from the Hilbert chart rather than
+assumed through a conflicting product instance. -/
+theorem sourcePacket_rawSpaceTime_volume_isAddHaarMeasure :
+    (volume : Measure WaveSpaceTime).IsAddHaarMeasure := by
+  let e : JointWaveSpaceTime ≃L[Real] WaveSpaceTime :=
+    WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real
+  have hm : (Measure.map e (volume : Measure JointWaveSpaceTime)).IsAddHaarMeasure :=
+    e.isAddHaarMeasure_map volume
+  have he : Measure.map e (volume : Measure JointWaveSpaceTime) =
+      (volume : Measure WaveSpaceTime) := by
+    exact (WithLp.volume_preserving_ofLp (Euclidean 2) Real).map_eq
+  rwa [he] at hm
+
+/-- The raw max-product norm is bounded by the actual Hilbert norm.
+Consequently actual joint polynomial decay is no larger than raw decay. -/
+theorem sourcePacket_raw_norm_le_joint_norm (z : WaveSpaceTime) :
+    ‖z‖ ≤ ‖(WithLp.toLp 2 z : JointWaveSpaceTime)‖ := by
+  rw [Prod.norm_def]
+  apply max_le
+  · exact WithLp.norm_fst_le (Euclidean 2) (WithLp.toLp 2 z)
+  · exact WithLp.norm_snd_le (Euclidean 2) (WithLp.toLp 2 z)
+
+theorem sourcePacket_joint_polynomial_decay_le_raw
+    (N : Nat) (z : WaveSpaceTime) :
+    (1+‖(WithLp.toLp 2 z : JointWaveSpaceTime)‖)⁻¹^N ≤ (1+‖z‖)⁻¹^N := by
+  apply pow_le_pow_left₀ (by positivity)
+  exact (inv_le_inv₀ (by positivity) (by positivity)).mpr
+    (add_le_add (le_refl (1:Real)) (sourcePacket_raw_norm_le_joint_norm z))
+
+#print axioms sourcePacket_polynomial_decay_mass
+#print axioms sourcePacket_rawSpaceTime_volume_isAddHaarMeasure
+#print axioms sourcePacket_raw_norm_le_joint_norm
+#print axioms sourcePacket_joint_polynomial_decay_le_raw
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+
+/-- The literal raw physical polynomial decay has a genuine finite moment
+for every exponent exceeding the actual space-time dimension three. -/
+theorem sourcePacket_rawSpaceTime_polynomial_decay_mass
+    (N : Nat) (hN : 3 < N) :
+    Measurable (fun z : WaveSpaceTime => (1+‖z‖)⁻¹^N) ∧
+    (∀ z : WaveSpaceTime,0 ≤ (1+‖z‖)⁻¹^N) ∧
+    Integrable (fun z : WaveSpaceTime => (1+‖z‖)⁻¹^N) (volume.prod volume) ∧
+    (∫⁻ z : WaveSpaceTime,ENNReal.ofReal ((1+‖z‖)⁻¹^N) ∂(volume.prod volume)) =
+      ENNReal.ofReal (∫ z : WaveSpaceTime,(1+‖z‖)⁻¹^N ∂(volume.prod volume)) ∧
+    (∫⁻ z : WaveSpaceTime,ENNReal.ofReal ((1+‖z‖)⁻¹^N) ∂(volume.prod volume)) < ⊤ := by
+  let : (volume : Measure WaveSpaceTime).IsAddHaarMeasure :=
+    sourcePacket_rawSpaceTime_volume_isAddHaarMeasure
+  have hd : Module.finrank Real WaveSpaceTime < N := by
+    simpa only [Module.finrank_prod,finrank_euclideanSpace,Fintype.card_fin,Module.finrank_self]
+      using hN
+  simpa only [Measure.volume_eq_prod] using
+    sourcePacket_polynomial_decay_mass (volume : Measure WaveSpaceTime) N hd
+
+/-- The actual joint Hilbert decay in raw physical coordinates is controlled
+by the literal finite raw moment, through the genuine norm comparison. -/
+theorem sourcePacket_joint_polynomial_decay_raw_mass_le
+    (N : Nat) (hN : 3 < N) :
+    (∫⁻ z : WaveSpaceTime,ENNReal.ofReal
+      ((1+‖(WithLp.toLp 2 z : JointWaveSpaceTime)‖)⁻¹^N) ∂(volume.prod volume)) ≤
+      ENNReal.ofReal (∫ z : WaveSpaceTime,(1+‖z‖)⁻¹^N ∂(volume.prod volume)) := by
+  have hm := sourcePacket_rawSpaceTime_polynomial_decay_mass N hN
+  calc
+    _ ≤ ∫⁻ z : WaveSpaceTime,ENNReal.ofReal ((1+‖z‖)⁻¹^N) ∂(volume.prod volume) :=
+      lintegral_mono (fun z => ENNReal.ofReal_le_ofReal
+        (sourcePacket_joint_polynomial_decay_le_raw N z))
+    _ = _ := hm.2.2.2.1
+
+#print axioms sourcePacket_rawSpaceTime_polynomial_decay_mass
+#print axioms sourcePacket_joint_polynomial_decay_raw_mass_le
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+
+/-- Four or more genuine physical-tail orders absorb the cutoff-error fourth
+budget into the fine core budget at every spatial scale and normal width
+at least one. This is a literal scale inequality, not an assumed error gain. -/
+theorem sourcePacket_physical_error_fourth_scale_le_core
+    (L h : Real) (hL : 1 ≤ L) (hh : 1 ≤ h) (P : Nat) (hP : 4 ≤ P) :
+    L^10*h*(L⁻¹)^(4*P) ≤ h^2/(L^4*Real.sqrt L⁻¹) := by
+  have hLp : 0 < L := by linarith
+  have hhp : 0 < h := by linarith
+  have hInv : 0 ≤ L⁻¹ := inv_nonneg.mpr hLp.le
+  have hInvOne : L⁻¹ ≤ 1 := (inv_le_one₀ hLp).mpr hL
+  have hpow : (L⁻¹)^(4*P) ≤ (L⁻¹)^16 :=
+    pow_le_pow_of_le_one hInv hInvOne (by omega)
+  have hreduce : L^10*h*(L⁻¹)^(4*P) ≤ L^10*h*(L⁻¹)^16 :=
+    mul_le_mul_of_nonneg_left hpow (mul_nonneg (pow_nonneg hLp.le _) hhp.le)
+  apply hreduce.trans
+  have hd : 0 < L^4*Real.sqrt L⁻¹ :=
+    mul_pos (pow_pos hLp _) (Real.sqrt_pos.mpr (inv_pos.mpr hLp))
+  apply (le_div_iff₀ hd).mpr
+  have hc : L^10*(L⁻¹)^16*L^4 = (L⁻¹)^2 := by
+    field_simp [hLp.ne']
+  have hs : Real.sqrt L⁻¹ ≤ 1 := Real.sqrt_le_one.mpr hInvOne
+  have hp2 : (L⁻¹)^2 ≤ 1 := by nlinarith
+  calc
+    _ = h*(L^10*(L⁻¹)^16*L^4)*Real.sqrt L⁻¹ := by ring
+    _ = h*(L⁻¹)^2*Real.sqrt L⁻¹ := by rw [hc]
+    _ ≤ h*1*1 :=
+      mul_le_mul (mul_le_mul_of_nonneg_left hp2 hhp.le) hs
+        (Real.sqrt_nonneg _) (mul_nonneg hhp.le (by norm_num))
+    _ ≤ h^2 := by nlinarith
+
+#print axioms sourcePacket_physical_error_fourth_scale_le_core
+end
+end Auto.Spherical.MSS
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open scoped BigOperators
+
+/-- Genuine Tonelli transfer of a finite family's reverse kernel masses
+through positive convolution. The projector test may vary with the output
+label; no cardinality estimate or integrability premise is introduced. -/
+theorem sourcePacket_finite_positive_convolution_reverse_mass_le
+    {I J X Z : Type*} [MeasurableSpace X] [MeasurableSpace Z]
+    (P : Finset I) (Q : Finset J) (μ : Measure Z) (ν : Measure X)
+    [SFinite μ] [SFinite ν]
+    (K : I → J → Z → ENNReal)
+    (hK : ∀ i ∈ P, ∀ j ∈ Q, Measurable (K i j))
+    (A : J → X → Z → ENNReal)
+    (hA : ∀ j ∈ Q, Measurable (Function.uncurry (A j)))
+    (g : X → ENNReal) (hg : Measurable g) (B M : ENNReal)
+    (hTest : ∀ j ∈ Q, ∀ z, (∫⁻ x,A j x z*g x ∂ν) ≤ B)
+    (hMass : (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z ∂μ) ≤ M) :
+    (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ x,
+      (∫⁻ z,A j x z*K i j z ∂μ)*g x ∂ν) ≤ B*M := by
+  classical
+  have hs (i : I) (hi : i ∈ P) (j : J) (hj : j ∈ Q) :
+      (∫⁻ x,(∫⁻ z,A j x z*K i j z ∂μ)*g x ∂ν) =
+      ∫⁻ z,K i j z*(∫⁻ x,A j x z*g x ∂ν) ∂μ := by
+    calc
+      _ = ∫⁻ x, ∫⁻ z,A j x z*K i j z*g x ∂μ ∂ν := by
+        apply lintegral_congr
+        intro x
+        exact (lintegral_mul_const _ (((hA j hj).comp
+          (measurable_const.prodMk measurable_id)).mul (hK i hi j hj))).symm
+      _ = ∫⁻ z, ∫⁻ x,A j x z*K i j z*g x ∂ν ∂μ :=
+        lintegral_lintegral_swap
+          (((hA j hj).mul ((hK i hi j hj).comp measurable_snd)).mul
+            (hg.comp measurable_fst)).aemeasurable
+      _ = _ := by
+        apply lintegral_congr
+        intro z
+        simp_rw [show ∀ x,A j x z*K i j z*g x = K i j z*(A j x z*g x) by
+          intro x; ring]
+        exact lintegral_const_mul _ (((hA j hj).comp
+          (measurable_id.prodMk measurable_const)).mul hg)
+  calc
+    _ = ∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z*(∫⁻ x,A j x z*g x ∂ν) ∂μ := by
+      apply Finset.sum_congr rfl
+      intro i hi
+      exact Finset.sum_congr rfl (fun j hj => hs i hi j hj)
+    _ ≤ ∑ i ∈ P, ∑ j ∈ Q, B*(∫⁻ z,K i j z ∂μ) := by
+      apply Finset.sum_le_sum
+      intro i hi
+      apply Finset.sum_le_sum
+      intro j hj
+      calc
+        _ ≤ ∫⁻ z,K i j z*B ∂μ :=
+          lintegral_mono (fun z => mul_le_mul_of_nonneg_left (hTest j hj z) (by positivity))
+        _ = _ := by rw [lintegral_mul_const _ (hK i hi j hj),mul_comm]
+    _ = B*(∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z ∂μ) := by simp only [Finset.mul_sum]
+    _ ≤ B*M := mul_le_mul_of_nonneg_left hMass (by positivity)
+
+#print axioms sourcePacket_finite_positive_convolution_reverse_mass_le
+end
+end Auto.Spherical.MSS

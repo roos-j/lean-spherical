@@ -7343,5 +7343,338 @@ end Auto.Spherical.MSS
 end
 -- END ScratchKakeyaPositiveReBridge
 
+/-! ### Actual translated-ray density for the supplied planar repair -/
+
+open MeasureTheory
+open scoped ENNReal Topology
+
+/-- The literal spacetime test kernel for a spatially smoothed straight-ray average. Its translated argument includes the ray intercept and direction, so the ensuing density estimates apply to the actual normalized source/ray chart. -/
+noncomputable def translatedRayTestKernel
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (p n : EuclideanSpace Real (Fin 2)) (z : EuclideanSpace Real (Fin 2) × Real) :
+    Complex := a z.2 * κ (p - z.2 • n - z.1)
+/-- Measurability of the actual translated test kernel. -/
+theorem translatedRayTestKernel_measurable
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (p n : EuclideanSpace Real (Fin 2)) :
+    Measurable (translatedRayTestKernel a κ p n) := by
+  have hc : Continuous (fun z : EuclideanSpace Real (Fin 2) × Real => p - z.2 • n - z.1) := by
+    fun_prop
+  exact (ha.comp measurable_snd).mul (hκ.comp hc.measurable)
+/-- Translation invariance and Tonelli give the exact ray test-kernel square energy, independent of intercept and direction. -/
+theorem translatedRayTestKernel_lintegral_sq
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (p n : EuclideanSpace Real (Fin 2)) :
+    (∫⁻ z, ‖translatedRayTestKernel a κ p n z‖ₑ ^ (2 : Real)
+      ∂(volume.prod μ)) =
+      (∫⁻ t, ‖a t‖ₑ ^ (2 : Real) ∂μ) *
+        ∫⁻ X : EuclideanSpace Real (Fin 2), ‖κ X‖ₑ ^ (2 : Real) := by
+  have hK := (translatedRayTestKernel_measurable a κ ha hκ p n).enorm.pow_const (2 : Real)
+  have hshift (t : Real) :
+      (∫⁻ X : EuclideanSpace Real (Fin 2), ‖κ (p - t • n - X)‖ₑ ^ (2 : Real)) =
+        ∫⁻ X : EuclideanSpace Real (Fin 2), ‖κ X‖ₑ ^ (2 : Real) := by
+    exact (volume.measurePreserving_sub_left (p - t • n)).lintegral_comp
+      (hκ.enorm.pow_const (2 : Real))
+  calc
+    _ = ∫⁻ t, ∫⁻ X : EuclideanSpace Real (Fin 2),
+        ‖translatedRayTestKernel a κ p n (X,t)‖ₑ ^ (2 : Real) ∂volume ∂μ := by
+      rw [lintegral_prod _ hK.aemeasurable]
+      exact lintegral_lintegral_swap hK.aemeasurable
+    _ = ∫⁻ t, ‖a t‖ₑ ^ (2 : Real) *
+        (∫⁻ X : EuclideanSpace Real (Fin 2), ‖κ X‖ₑ ^ (2 : Real)) ∂μ := by
+      apply lintegral_congr
+      intro t
+      simp only [translatedRayTestKernel, enorm_mul,
+        ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0:Real) ≤ 2)]
+      calc
+        _ = ‖a t‖ₑ ^ (2 : Real) * ∫⁻ X : EuclideanSpace Real (Fin 2),
+            ‖κ (p - t • n - X)‖ₑ ^ (2 : Real) :=
+          lintegral_const_mul _ ((hκ.comp
+            (show Continuous (fun X : EuclideanSpace Real (Fin 2) =>
+              p - t • n - X) by fun_prop).measurable).enorm.pow_const (2 : Real))
+        _ = _ := by rw [hshift]
+    _ = _ := lintegral_mul_const _ (ha.enorm.pow_const (2 : Real))
+/-- Genuine Cauchy bound for the literal kernel pairing, uniform in every ray intercept and direction. -/
+theorem translatedRayTestKernel_integral_mul_enorm_le
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (hg : AEMeasurable g (volume.prod μ))
+    (p n : EuclideanSpace Real (Fin 2)) :
+    ‖∫ z, translatedRayTestKernel a κ p n z * g z ∂(volume.prod μ)‖ₑ ≤
+      ((∫⁻ t, ‖a t‖ₑ ^ (2 : Real) ∂μ) *
+        (∫⁻ X : EuclideanSpace Real (Fin 2), ‖κ X‖ₑ ^ (2 : Real))) ^ (1/2 : Real) *
+      (∫⁻ z, ‖g z‖ₑ ^ (2 : Real) ∂(volume.prod μ)) ^ (1/2 : Real) := by
+  have hK := translatedRayTestKernel_measurable a κ ha hκ p n
+  have hh := ENNReal.lintegral_mul_le_Lp_mul_Lq (volume.prod μ)
+    Real.HolderConjugate.two_two hK.enorm.aemeasurable hg.enorm
+  calc
+    _ ≤ ∫⁻ z, ‖translatedRayTestKernel a κ p n z * g z‖ₑ ∂(volume.prod μ) :=
+      enorm_integral_le_lintegral_enorm _
+    _ = ∫⁻ z, ‖translatedRayTestKernel a κ p n z‖ₑ * ‖g z‖ₑ ∂(volume.prod μ) := by
+      simp only [enorm_mul]
+    _ ≤ _ := by
+      rw [translatedRayTestKernel_lintegral_sq μ a κ ha hκ p n] at hh
+      exact hh
+
+/-- The exact L2 norm of the actual translated ray test kernel is the product of its temporal and spatial factor norms. -/
+theorem translatedRayTestKernel_eLpNorm_two
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (p n : EuclideanSpace Real (Fin 2)) :
+    eLpNorm (translatedRayTestKernel a κ p n) 2 (volume.prod μ) =
+      eLpNorm a 2 μ * eLpNorm κ 2 volume := by
+  have hK := translatedRayTestKernel_measurable a κ ha hκ p n
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+      hK.aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+      ha.aestronglyMeasurable,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+      hκ.aestronglyMeasurable]
+  norm_num only [ENNReal.toReal_ofNat]
+  rw [translatedRayTestKernel_lintegral_sq μ a κ ha hκ p n,
+    ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:Real) ≤ 1/2)]
+/-- Finite L2 temporal and spatial factors give a genuine L2 ray test kernel. -/
+theorem translatedRayTestKernel_memLp_two
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (ha2 : MemLp a 2 μ) (hκ2 : MemLp κ 2 volume)
+    (p n : EuclideanSpace Real (Fin 2)) :
+    MemLp (translatedRayTestKernel a κ p n) 2 (volume.prod μ) := by
+  change eLpNorm (translatedRayTestKernel a κ p n) 2 (volume.prod μ) < ⊤
+  rw [translatedRayTestKernel_eLpNorm_two μ a κ ha hκ p n]
+  exact ENNReal.mul_lt_top ha2.eLpNorm_lt_top hκ2.eLpNorm_lt_top
+/-- The literal ray pairing is bounded by its uniform kernel L2 norm times the input L2 norm. -/
+theorem translatedRayTestKernel_integral_mul_le_L2
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (hg : AEStronglyMeasurable g (volume.prod μ))
+    (p n : EuclideanSpace Real (Fin 2)) :
+    ‖∫ z, translatedRayTestKernel a κ p n z * g z ∂(volume.prod μ)‖ₑ ≤
+      (eLpNorm a 2 μ * eLpNorm κ 2 volume) * eLpNorm g 2 (volume.prod μ) := by
+  have hh := translatedRayTestKernel_integral_mul_enorm_le μ a κ ha hκ g
+    hg.aemeasurable p n
+  have hmA := eLpNorm_eq_lintegral_rpow_enorm_toReal
+    (μ := μ) (p := (2 : ENNReal)) (by norm_num) (by norm_num) ha.aestronglyMeasurable
+  have hmK := eLpNorm_eq_lintegral_rpow_enorm_toReal
+    (μ := volume) (p := (2 : ENNReal)) (by norm_num) (by norm_num) hκ.aestronglyMeasurable
+  have hmG := eLpNorm_eq_lintegral_rpow_enorm_toReal
+    (p := (2 : ENNReal)) (by norm_num) (by norm_num) hg
+  norm_num only [ENNReal.toReal_ofNat] at hmA hmK hmG
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:Real) ≤ 1/2),
+    ← hmA, ← hmK, ← hmG] at hh
+  exact hh
+
+/-- The actual linear spatially smoothed ray field, written on raw product spacetime for the density argument. -/
+noncomputable def translatedRayPairing
+    (μ : Measure Real) (a : Real → Complex)
+    (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (p n : EuclideanSpace Real (Fin 2)) : Complex :=
+  ∫ z, translatedRayTestKernel a κ p n z * g z ∂(volume.prod μ)
+/-- L2 changes of input give uniformly bounded changes of every literal ray pairing. Integrability of both pairings is derived, so their difference is the actual difference integral. -/
+theorem translatedRayPairing_sub_enorm_le
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (ha2 : MemLp a 2 μ) (hκ2 : MemLp κ 2 volume)
+    (g h : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (hg : MemLp g 2 (volume.prod μ)) (hh : MemLp h 2 (volume.prod μ))
+    (p n : EuclideanSpace Real (Fin 2)) :
+    ‖translatedRayPairing μ a κ g p n - translatedRayPairing μ a κ h p n‖ₑ ≤
+      (eLpNorm a 2 μ * eLpNorm κ 2 volume) *
+        eLpNorm (g-h) 2 (volume.prod μ) := by
+  have hk := translatedRayTestKernel_memLp_two μ a κ ha hκ ha2 hκ2 p n
+  have hkg : MemLp (fun z => translatedRayTestKernel a κ p n z * g z)
+      1 (volume.prod μ) := hk.mul hg
+  have hkh : MemLp (fun z => translatedRayTestKernel a κ p n z * h z)
+      1 (volume.prod μ) := hk.mul hh
+  have hgi := memLp_one_iff_integrable.mp hkg
+  have hhi := memLp_one_iff_integrable.mp hkh
+  have heq : translatedRayPairing μ a κ g p n - translatedRayPairing μ a κ h p n =
+      ∫ z, translatedRayTestKernel a κ p n z * (g-h) z ∂(volume.prod μ) := by
+    unfold translatedRayPairing
+    rw [← integral_sub hgi hhi]
+    apply integral_congr_ae
+    filter_upwards with z
+    simp only [Pi.sub_apply, mul_sub]
+  rw [heq]
+  exact translatedRayTestKernel_integral_mul_le_L2 μ a κ ha hκ (g-h)
+    (hg.sub hh).aestronglyMeasurable p n
+/-- L2 input convergence gives uniform convergence of the actual smoothed ray field for an arbitrary parameterization of ray intercepts and directions. This supplies the missing density identification for the incidence-indexed weak maximal estimate in repair (9). -/
+theorem translatedRayPairing_tendstoUniformly_of_L2
+    {Y : Type*} (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (ha2 : MemLp a 2 μ) (hκ2 : MemLp κ 2 volume)
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (gSeq : Nat → EuclideanSpace Real (Fin 2) × Real → Complex)
+    (hg : MemLp g 2 (volume.prod μ))
+    (hSeq : ∀ j, MemLp (gSeq j) 2 (volume.prod μ))
+    (hConv : Filter.Tendsto
+      (fun j => eLpNorm (gSeq j - g) 2 (volume.prod μ)) Filter.atTop (𝓝 0))
+    (p n : Y → EuclideanSpace Real (Fin 2)) :
+    TendstoUniformly
+      (fun j y => translatedRayPairing μ a κ (gSeq j) (p y) (n y))
+      (fun y => translatedRayPairing μ a κ g (p y) (n y)) Filter.atTop := by
+  have hC : eLpNorm a 2 μ * eLpNorm κ 2 volume ≠ ⊤ :=
+    (ENNReal.mul_lt_top ha2.eLpNorm_lt_top hκ2.eLpNorm_lt_top).ne
+  have ht := ENNReal.Tendsto.const_mul hConv (Or.inr hC)
+  rw [mul_zero] at ht
+  apply EMetric.tendstoUniformly_iff.mpr
+  intro ε hε
+  filter_upwards [ht.eventually_lt_const hε] with j hj
+  intro y
+  rw [edist_comm, edist_eq_enorm_sub]
+  exact (translatedRayPairing_sub_enorm_le μ a κ ha hκ ha2 hκ2
+    (gSeq j) g (hSeq j) hg (p y) (n y)).trans_lt hj
+
+/-- Fatou extends a squared maximal bound from a genuine pointwise-convergent core on any fixed source measure; the transverse supremum may be uncountable. Core maximal measurability is explicit. -/
+theorem lintegral_iSup_sq_le_of_pointwise_limit
+    {Y B : Type*} [MeasurableSpace Y] (μ : Measure Y)
+    (Q : B → Y → Complex) (QSeq : Nat → B → Y → Complex)
+    (hConv : ∀ b y, Filter.Tendsto (fun j => QSeq j b y) Filter.atTop (𝓝 (Q b y)))
+    (hMeas : ∀ j, AEMeasurable
+      (fun y => ⨆ b, ENNReal.ofReal (‖QSeq j b y‖ ^ 2)) μ)
+    (C : ENNReal)
+    (hBound : ∀ j, (∫⁻ y, ⨆ b, ENNReal.ofReal (‖QSeq j b y‖ ^ 2) ∂μ) ≤ C) :
+    (∫⁻ y, ⨆ b, ENNReal.ofReal (‖Q b y‖ ^ 2) ∂μ) ≤ C := by
+  have hpoint (y : Y) :
+      (⨆ b, ENNReal.ofReal (‖Q b y‖ ^ 2)) ≤
+        Filter.atTop.liminf (fun j => ⨆ b, ENNReal.ofReal (‖QSeq j b y‖ ^ 2)) := by
+    apply iSup_le
+    intro b
+    have ht := ENNReal.tendsto_ofReal ((hConv b y).norm.pow 2)
+    calc
+      _ = Filter.atTop.liminf (fun j => ENNReal.ofReal (‖QSeq j b y‖ ^ 2)) :=
+        ht.liminf_eq.symm
+      _ ≤ _ := Filter.liminf_le_liminf
+        (Filter.Eventually.of_forall (fun j => le_iSup
+          (fun b => ENNReal.ofReal (‖QSeq j b y‖ ^ 2)) b))
+        (by isBoundedDefault) (by isBoundedDefault)
+  calc
+    _ ≤ ∫⁻ y, Filter.atTop.liminf
+        (fun j => ⨆ b, ENNReal.ofReal (‖QSeq j b y‖ ^ 2)) ∂μ := lintegral_mono hpoint
+    _ ≤ Filter.atTop.liminf
+        (fun j => ∫⁻ y, ⨆ b, ENNReal.ofReal (‖QSeq j b y‖ ^ 2) ∂μ) :=
+      lintegral_liminf_le' hMeas
+    _ ≤ Filter.atTop.liminf (fun _ : Nat => C) :=
+      Filter.liminf_le_liminf (Filter.Eventually.of_forall hBound)
+        (by isBoundedDefault) (by isBoundedDefault)
+    _ = C := Filter.liminf_const C
+
+/-- Exact Fubini identification of the L2 kernel pairing with the spatial convolution evaluated along the actual ray and integrated in time. -/
+theorem translatedRayPairing_eq_iterated
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (ha2 : MemLp a 2 μ) (hκ2 : MemLp κ 2 volume)
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (hg : MemLp g 2 (volume.prod μ))
+    (p n : EuclideanSpace Real (Fin 2)) :
+    translatedRayPairing μ a κ g p n =
+      ∫ t, a t * (∫ X : EuclideanSpace Real (Fin 2),
+        κ (p - t • n - X) * g (X,t)) ∂μ := by
+  have hk := translatedRayTestKernel_memLp_two μ a κ ha hκ ha2 hκ2 p n
+  have hkg : MemLp (fun z => translatedRayTestKernel a κ p n z * g z)
+      1 (volume.prod μ) := hk.mul hg
+  have hInt := memLp_one_iff_integrable.mp hkg
+  unfold translatedRayPairing
+  rw [integral_prod _ hInt, integral_integral_swap hInt]
+  apply integral_congr_ae
+  filter_upwards with t
+  simp only [translatedRayTestKernel, mul_assoc]
+  exact integral_const_mul _ _
+#print axioms translatedRayPairing_eq_iterated
+
+#print axioms lintegral_iSup_sq_le_of_pointwise_limit
+
+#print axioms translatedRayPairing_sub_enorm_le
+#print axioms translatedRayPairing_tendstoUniformly_of_L2
+
+#print axioms translatedRayTestKernel_eLpNorm_two
+#print axioms translatedRayTestKernel_integral_mul_le_L2
+
+#print axioms translatedRayTestKernel_lintegral_sq
+
+/-! ### Genuine L2 energy budgets for the actual ray density closure -/
+
+theorem eLpNorm_two_sq_eq_lintegral_norm_sq
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    (μ : Measure α) (f : α → E) (hf : AEStronglyMeasurable f μ) :
+    (eLpNorm f 2 μ)^2 = ∫⁻ x, ENNReal.ofReal (‖f x‖^2) ∂μ := by
+  have he := (Auto.LpSpaceFacts.lintegral_ofReal_norm_rpow_eq_eLpNorm_rpow
+    (μ:=μ) (by norm_num : (0:Real) < 2) f hf).symm
+  norm_num only [ENNReal.ofReal_ofNat, ENNReal.rpow_ofNat] at he
+  convert he using 1
+  apply lintegral_congr
+  intro x
+  rw [← ENNReal.ofReal_pow (norm_nonneg _)]
+
+/-- Centered L2 approximants with relative error at most one have a
+uniform actual square-energy budget, including the zero-energy case. -/
+theorem memLp_two_lintegral_sq_le_four_of_error_le
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    (μ : Measure α) (f g : α → E)
+    (hf : MemLp f 2 μ) (hg : MemLp g 2 μ)
+    (herr : eLpNorm (f-g) 2 μ ≤ eLpNorm g 2 μ) :
+    (∫⁻ x, ENNReal.ofReal (‖f x‖^2) ∂μ) ≤
+      4 * ∫⁻ x, ENNReal.ofReal (‖g x‖^2) ∂μ := by
+  have hn : eLpNorm f 2 μ ≤ 2 * eLpNorm g 2 μ := by
+    calc
+      _ = eLpNorm ((f-g)+g) 2 μ := by simp
+      _ ≤ eLpNorm (f-g) 2 μ + eLpNorm g 2 μ := eLpNorm_add_le (by norm_num)
+      _ ≤ eLpNorm g 2 μ + eLpNorm g 2 μ := add_le_add herr le_rfl
+      _ = _ := by rw [two_mul]
+  have hp := pow_le_pow_left₀ (bot_le : (0:ENNReal) ≤ eLpNorm f 2 μ) hn 2
+  rw [mul_pow, eLpNorm_two_sq_eq_lintegral_norm_sq μ f hf.aestronglyMeasurable,
+    eLpNorm_two_sq_eq_lintegral_norm_sq μ g hg.aestronglyMeasurable] at hp
+  rw [show (2:ENNReal)^2 = 4 by norm_num] at hp
+  exact hp
+#print axioms memLp_two_lintegral_sq_le_four_of_error_le
+
+/-- Real square-energy form of the genuine L2 core budget. -/
+theorem memLp_two_integral_sq_le_four_of_error_le
+    {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
+    (μ : Measure α) (f g : α → E)
+    (hf : MemLp f 2 μ) (hg : MemLp g 2 μ)
+    (herr : eLpNorm (f-g) 2 μ ≤ eLpNorm g 2 μ) :
+    (∫ x, ‖f x‖^2 ∂μ) ≤ 4 * ∫ x, ‖g x‖^2 ∂μ := by
+  have he := memLp_two_lintegral_sq_le_four_of_error_le μ f g hf hg herr
+  have hfi : Integrable (fun x => ‖f x‖^2) μ := hf.integrable_norm_pow (by norm_num)
+  have hgi : Integrable (fun x => ‖g x‖^2) μ := hg.integrable_norm_pow (by norm_num)
+  rw [← ofReal_integral_eq_lintegral_ofReal hfi
+      (Filter.Eventually.of_forall (fun x => sq_nonneg _)),
+    ← ofReal_integral_eq_lintegral_ofReal hgi
+      (Filter.Eventually.of_forall (fun x => sq_nonneg _))] at he
+  rw [← show ENNReal.ofReal (4:Real) = 4 by norm_num,
+    ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4)] at he
+  exact (ENNReal.ofReal_le_ofReal_iff (by positivity :
+    0 ≤ 4 * ∫ x, ‖g x‖^2 ∂μ)).mp he
+#print axioms memLp_two_integral_sq_le_four_of_error_le
+
+/-- A zero L2 input has identically zero actual translated-ray pairing. -/
+theorem translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero
+    (μ : Measure Real) [SFinite μ]
+    (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
+    (ha : Measurable a) (hκ : Measurable κ)
+    (g : EuclideanSpace Real (Fin 2) × Real → Complex)
+    (hg : AEStronglyMeasurable g (volume.prod μ))
+    (hzero : eLpNorm g 2 (volume.prod μ) = 0)
+    (p n : EuclideanSpace Real (Fin 2)) :
+    translatedRayPairing μ a κ g p n = 0 := by
+  have hh := translatedRayTestKernel_integral_mul_le_L2 μ a κ ha hκ g hg p n
+  rw [hzero, mul_zero] at hh
+  exact enorm_eq_zero.mp (le_antisymm hh bot_le)
+#print axioms translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero
+#print axioms translatedRayTestKernel_integral_mul_enorm_le
 
 end Auto.Spherical.MSS

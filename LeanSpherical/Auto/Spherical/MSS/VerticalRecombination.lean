@@ -4218,6 +4218,102 @@ theorem verticalRecombination_of_MSSVerticalCutoff
     (B : MSSVerticalCutoff) : verticalRecombination B :=
   aux_verticalRecombination_proof B
 
+theorem conicPlate_mono_gamma {scale γ γ₀ angularConstant : Real}
+    (hscale : 1 ≤ scale) (hγ : γ ≤ γ₀) (n : Int) (ν : Euclidean 2) :
+    conicPlate scale γ angularConstant n ν ⊆ conicPlate scale γ₀ angularConstant n ν := by
+  intro ζ hζ
+  exact ⟨hζ.1, hζ.2.1, hζ.2.2.1, hζ.2.2.2.1,
+    hζ.2.2.2.2.trans (mul_le_mul_of_nonneg_left
+      (Real.rpow_le_rpow_of_exponent_le hscale hγ) (by norm_num))⟩
+
+/-- The existing MSS spectral plate theorem and vertical recombination
+apply to arbitrary genuine joint-Schwartz spectra, at a positive normal
+width exponent below any prescribed loss cap. No half-wave realization
+or operator estimate is a hypothesis of this reuse theorem. -/
+theorem mss_spectral_plate_vertical_recombination_capped
+    (maxLevel : Real → Nat)
+    (angularConstant sectorRadius spacingLower spacingUpper : Real)
+    (hangular : 0 < angularConstant)
+    (hlevels : angularSeparationLevelData maxLevel sectorRadius spacingLower spacingUpper)
+    (B : MSSVerticalCutoff) (C₀ η cap : Real)
+    (hC₀ : 0 < C₀) (hη : 0 < η) (hcap : 0 < cap) :
+    ∃ γ : Real, 0 < γ ∧ γ < 1/10 ∧ γ ≤ cap ∧
+      ∃ C : Real, 0 < C ∧ ∀ scale : Real, 2 ≤ scale →
+      ∀ I J : Finset Int, (I.card : Real) ≤ C₀ * Real.sqrt scale →
+      ∀ ν : Int → Euclidean 2,
+      angularSectorGeometry scale J ν sectorRadius spacingLower spacingUpper →
+      ∀ P : Int → Int → SchwartzMap JointWaveSpaceTime Complex,
+      (∀ n ∈ I, ∀ j ∈ J,
+        Function.support (jointSchwartzRaw (P n j)) ⊆
+          conicPlate scale γ angularConstant n (ν j)) →
+      eLpNorm
+        (verticalRecombined (B.cutoff : Real → Complex) scale I
+          (fun n z => ∑ j ∈ J,
+            jointSchwartzRaw (FourierTransform.fourierInv (P n j)) z))
+        (4 : ENNReal) volume ≤
+      ENNReal.ofReal (C * scale ^ ((1/8 : Real) + η)) *
+        eLpNorm
+          (angularRadialSquareFunction I J
+            (fun n j => jointSchwartzRaw (FourierTransform.fourierInv (P n j))))
+          (4 : ENNReal) volume := by
+  classical
+  have hplate := plateOverlap_of_angularSectorGeometry maxLevel
+    angularConstant sectorRadius spacingLower spacingUpper hangular
+  obtain ⟨γ₀,hγ₀,hγ₀u,A,hA,hAest⟩ :=
+    (overlapSquareFunction_of_levelData maxLevel angularConstant
+      sectorRadius spacingLower spacingUpper) hplate hlevels η hη
+  let γ : Real := min (γ₀/2) cap
+  have hγ : 0 < γ := lt_min (by linarith) hcap
+  have hγ₀le : γ ≤ γ₀ := (min_le_left _ _).trans (by linarith)
+  have hγu : γ < 1/10 := lt_of_le_of_lt hγ₀le hγ₀u
+  obtain ⟨D,hD,hDest⟩ :=
+    (verticalRecombination_of_MSSVerticalCutoff B) (4 : ENNReal) C₀
+      (by norm_num) hC₀
+  refine ⟨γ,hγ,hγu,min_le_right _ _,D*A,mul_pos hD hA,?_⟩
+  intro scale hscale I J hI ν hgeometry P hP
+  let H : Int → SchwartzMap JointWaveSpaceTime Complex := fun n =>
+    ∑ j ∈ J, FourierTransform.fourierInv (P n j)
+  have hraw (n : Int) (z : WaveSpaceTime) :
+      jointSchwartzRaw (H n) z =
+        ∑ j ∈ J, jointSchwartzRaw (FourierTransform.fourierInv (P n j)) z := by
+    simp only [H, jointSchwartzRaw, sum_apply]
+  have hsquare :
+      verticalSquareFunction I (fun n => jointSchwartzRaw (H n)) =
+        aux_angularRadialRecombinedSquareFunction I J
+          (fun n j => jointSchwartzRaw (FourierTransform.fourierInv (P n j))) := by
+    funext z
+    simp only [verticalSquareFunction, aux_angularRadialRecombinedSquareFunction, hraw]
+  have hV := hDest scale hscale I hI H
+  have hgain : verticalRecombinationGain (4 : ENNReal) = (1/8 : Real) := by
+    norm_num [verticalRecombinationGain]
+  rw [hsquare,hgain] at hV
+  have hO := hAest scale hscale I J ν hgeometry P
+    (fun n hn j hj ζ hζ =>
+      conicPlate_mono_gamma (by linarith : 1 ≤ scale) hγ₀le n (ν j)
+        (hP n hn j hj hζ))
+  have hleft :
+      verticalRecombined (B.cutoff : Real → Complex) scale I
+        (fun n => jointSchwartzRaw (H n)) =
+      verticalRecombined (B.cutoff : Real → Complex) scale I
+        (fun n z => ∑ j ∈ J,
+          jointSchwartzRaw (FourierTransform.fourierInv (P n j)) z) := by
+    congr 1
+    funext n z
+    exact hraw n z
+  rw [hleft] at hV
+  calc
+    _ ≤ ENNReal.ofReal (D * scale ^ (1/8 : Real)) *
+        (ENNReal.ofReal (A * scale ^ η) *
+          eLpNorm (angularRadialSquareFunction I J
+            (fun n j => jointSchwartzRaw (FourierTransform.fourierInv (P n j)))) 4 volume) :=
+      hV.trans (mul_le_mul_right hO _)
+    _ = _ := by
+      rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity)]
+      congr 2
+      rw [Real.rpow_add (by linarith : 0 < scale)]
+      ring
+#print axioms mss_spectral_plate_vertical_recombination_capped
+
 end
 
 end Auto.Spherical.MSS

@@ -23,6 +23,7 @@ public import LeanSpherical.Auto.Spherical.PowerWeights.StrictUpper
 public import LeanSpherical.Auto.Spherical.LegendreAssouad
 public import Mathlib.MeasureTheory.Integral.IntervalIntegral.MeanValue
 public import Mathlib.Analysis.Calculus.ParametricIntervalIntegral
+public import Mathlib.Analysis.SpecialFunctions.ImproperIntegrals
 public import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
 public import LeanSpherical.Auto.Spherical.MSS.CircleHalfWaveDecomposition
 
@@ -4766,6 +4767,4761 @@ theorem exists_memLp_four_and_eLpNorm_iSup_circEndptWvContribution_of_posLocalSm
 
 
 
+
+section NormalizedCircleTemporalSpatialBridge
+open MeasureTheory Set Filter Metric
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped ENNReal BigOperators Topology
+
+/-! ### Fixed-profile temporal resolution for the actual normalized average
+
+This is the temporal reconstruction prerequisite of repair (9).
+The conormal prototype is fixed once, before its dyadic dilations.
+-/
+open scoped BigOperators
+/-- The true real temporal lowpass at dyadic frequency 2^n. -/
+def normalizedCircleTemporalLowpass (chi : SchwartzMap Real Complex) (n : Nat) :
+    SchwartzMap Real Complex :=
+  normalizedCircleThinNormalFrequencyProfile chi ((2 : Real) ^ n)
+    (pow_ne_zero n (by norm_num))
+
+theorem normalizedCircleTemporalLowpass_apply
+    (chi : SchwartzMap Real Complex) (n : Nat) (tau : Real) :
+    normalizedCircleTemporalLowpass chi n tau = chi (((2 : Real) ^ n)⁻¹ * tau) := by
+  exact normalizedCircleThinNormalFrequencyProfile_apply _ _ _ _
+
+/-- The one fixed temporal annular prototype. -/
+def normalizedCircleTemporalBandPrototype (chi : SchwartzMap Real Complex) :
+    SchwartzMap Real Complex := normalizedCircleTemporalLowpass chi 1 - chi
+
+/-- The n-th temporal band is the dilation of that same fixed prototype. -/
+def normalizedCircleTemporalBand (chi : SchwartzMap Real Complex) (n : Nat) :
+    SchwartzMap Real Complex :=
+  normalizedCircleTemporalLowpass (normalizedCircleTemporalBandPrototype chi) n
+
+theorem normalizedCircleTemporalBand_eq_lowpass_sub
+    (chi : SchwartzMap Real Complex) (n : Nat) :
+    normalizedCircleTemporalBand chi n =
+      normalizedCircleTemporalLowpass chi (n+1) - normalizedCircleTemporalLowpass chi n := by
+  ext tau
+  simp only [normalizedCircleTemporalBand, normalizedCircleTemporalLowpass_apply,
+    normalizedCircleTemporalBandPrototype, sub_apply,
+    normalizedCircleTemporalLowpass_apply, pow_succ, mul_inv_rev]
+  congr 1
+  ring_nf
+
+/-- Exact finite temporal reconstruction, with its genuine high lowpass. -/
+theorem normalizedCircleTemporal_finite_resolution
+    (chi : SchwartzMap Real Complex) (N : Nat) :
+    chi + ∑ n ∈ Finset.range N, normalizedCircleTemporalBand chi n =
+      normalizedCircleTemporalLowpass chi N := by
+  induction N with
+  | zero =>
+    ext tau
+    simp [normalizedCircleTemporalLowpass_apply]
+  | succ N hN =>
+    rw [Finset.sum_range_succ, normalizedCircleTemporalBand_eq_lowpass_sub, ← hN]
+    abel
+
+/-- The prototype vanishes on the unit temporal-frequency ball. -/
+theorem normalizedCircleTemporalBandPrototype_eq_zero_of_abs_le
+    (chi : SchwartzMap Real Complex)
+    (hchi : ∀ tau : Real, |tau| ≤ 1 → chi tau = 1)
+    {tau : Real} (htau : |tau| ≤ 1) :
+    normalizedCircleTemporalBandPrototype chi tau = 0 := by
+  simp only [normalizedCircleTemporalBandPrototype, sub_apply,
+    normalizedCircleTemporalLowpass_apply, pow_one]
+  rw [hchi tau htau, hchi _ (by rw [abs_mul]; norm_num; linarith [abs_nonneg tau])]
+  simp
+
+/-- The same prototype vanishes outside the fixed four-frequency ball. -/
+theorem normalizedCircleTemporalBandPrototype_eq_zero_of_four_le_abs
+    (chi : SchwartzMap Real Complex)
+    (hchi : ∀ tau : Real, 2 ≤ |tau| → chi tau = 0)
+    {tau : Real} (htau : 4 ≤ |tau|) :
+    normalizedCircleTemporalBandPrototype chi tau = 0 := by
+  simp only [normalizedCircleTemporalBandPrototype, sub_apply,
+    normalizedCircleTemporalLowpass_apply, pow_one]
+  rw [hchi tau (by linarith),
+    hchi _ (by rw [abs_mul]; norm_num; linarith)]
+  simp
+
+/-- Finite reconstruction is exact at the inverse temporal-kernel level. -/
+theorem normalizedCircleTemporal_inverse_finite_resolution
+    (chi : SchwartzMap Real Complex) (N : Nat) (v : Real) :
+    (FourierTransform.fourierInv (normalizedCircleTemporalLowpass chi N) :
+      SchwartzMap Real Complex) v =
+        (FourierTransform.fourierInv chi : SchwartzMap Real Complex) v +
+          ∑ n ∈ Finset.range N,
+            (FourierTransform.fourierInv (normalizedCircleTemporalBand chi n) :
+              SchwartzMap Real Complex) v := by
+  rw [← normalizedCircleTemporal_finite_resolution chi N, FourierTransform.fourierInv_add,
+    FourierTransform.fourierInv_sum]
+  simp
+
+/-- Finite reconstruction preserves the literal normalized incidence
+kernel, including its geometric Jacobian. -/
+theorem normalizedCircleFrequencyKernel_temporal_finite_resolution
+    (chi : SchwartzMap Real Complex) (N : Nat)
+    (eps : Real) (X omega : Euclidean 2) (u T : Real) :
+    normalizedCircleFrequencyKernel eps (normalizedCircleTemporalLowpass chi N) X omega u T =
+      normalizedCircleFrequencyKernel eps chi X omega u T +
+        ∑ n ∈ Finset.range N,
+          normalizedCircleFrequencyKernel eps (normalizedCircleTemporalBand chi n)
+            X omega u T := by
+  simp only [normalizedCircleFrequencyKernel, ← SchwartzMap.fourierInv_coe]
+  rw [normalizedCircleTemporal_inverse_finite_resolution]
+  simp only [mul_add, Finset.mul_sum]
+
+#print axioms normalizedCircleTemporal_finite_resolution
+#print axioms normalizedCircleFrequencyKernel_temporal_finite_resolution
+
+
+/-- Every fixed temporal Schwartz filter is integrable against the true
+radius-weighted circular average, even before restricting to positive radii. -/
+theorem normalizedCircleWeightedAverage_temporal_kernel_integrable
+    (t0 r : Real) (F : SchwartzMap (Euclidean 2) Complex)
+    (b : SchwartzMap Real Complex) (X : Euclidean 2) (s : Real) :
+    Integrable (fun tau : Real =>
+      ((t0+r*tau : Real) : Complex) *
+        ((FourierTransform.fourierInv b : SchwartzMap Real Complex) (s-tau) *
+          sphericalAverage 2 F (t0+r*tau) (r • X))) := by
+  let k : SchwartzMap Real Complex := FourierTransform.fourierInv b
+  have hw : Integrable (fun v : Real => (v : Complex) * k v) := by
+    apply (k.integrable_pow_mul volume 1).mono (by fun_prop)
+    filter_upwards [] with v
+    simp [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  have hbase := (k.integrable.const_mul ((t0+r*s : Real) : Complex)).sub
+    (hw.const_mul (r : Complex))
+  have hweight : Integrable (fun tau : Real =>
+      ((t0+r*tau : Real) : Complex) * k (s-tau)) := by
+    refine (hbase.comp_sub_left s).congr (Filter.Eventually.of_forall ?_)
+    intro tau
+    simp only [Pi.sub_apply]
+    push_cast
+    ring
+  have havg : Continuous (fun tau : Real =>
+      sphericalAverage 2 F (t0+r*tau) (r • X)) :=
+    (continuous_sphericalAverage_radial (F : Euclidean 2 → Complex)
+      F.continuous (r • X)).comp (by fun_prop)
+  have hb := hweight.bdd_mul havg.aestronglyMeasurable
+    (Filter.Eventually.of_forall (fun tau =>
+      norm_sphericalAverage_le_surfaceMass_mul 2 (F : Euclidean 2 → Complex)
+        (t0+r*tau) (r • X) (fun _ => F.norm_le_seminorm Complex _)))
+  refine hb.congr (Filter.Eventually.of_forall ?_)
+  intro tau
+  dsimp only [k]
+  ring
+
+/-- Exact finite temporal reconstruction for the actual normalized
+circular operator on the Schwartz core. The original positive-radius
+domain is retained on every term. No spatial projection is identified
+with a temporal filter here. -/
+theorem normalizedCircleFrequencyOperator_temporal_finite_resolution
+    (chi : SchwartzMap Real Complex) (N : Nat)
+    {t0 r : Real} (ht0 : 0 < t0) (hr : 0 < r)
+    (F : SchwartzMap (Euclidean 2) Complex)
+    (X : Euclidean 2) (s : Real) (hs : t0+r*s ≠ 0) :
+    normalizedCircleFrequencyOperator (r/t0) (normalizedCircleTemporalLowpass chi N)
+      {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s =
+        normalizedCircleFrequencyOperator (r/t0) chi
+          {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s +
+            ∑ n ∈ Finset.range N,
+              normalizedCircleFrequencyOperator (r/t0) (normalizedCircleTemporalBand chi n)
+                {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s := by
+  simp_rw [normalizedCircleFrequencyOperator_eq_temporal_average ht0 hr F _ X s hs,
+    ← SchwartzMap.fourierInv_coe]
+  rw [← Finset.mul_sum, ← mul_add]
+  congr 1
+  let Q (b : SchwartzMap Real Complex) (tau : Real) : Complex :=
+    ((t0+r*tau : Real) : Complex) *
+      ((FourierTransform.fourierInv b : SchwartzMap Real Complex) (s-tau) *
+        sphericalAverage 2 F (t0+r*tau) (r • X))
+  have hi (b : SchwartzMap Real Complex) :
+      IntegrableOn (Q b) {u : Real | 0 < t0+r*u} :=
+    (normalizedCircleWeightedAverage_temporal_kernel_integrable t0 r F b X s).integrableOn
+  have heq : Q (normalizedCircleTemporalLowpass chi N) =
+      Q chi + ∑ n ∈ Finset.range N, Q (normalizedCircleTemporalBand chi n) := by
+    funext tau
+    dsimp only [Q]
+    simp only [Pi.add_apply, Finset.sum_apply]
+    rw [normalizedCircleTemporal_inverse_finite_resolution]
+    simp only [add_mul, Finset.sum_mul, mul_add, Finset.mul_sum]
+  change (∫ tau in {u : Real | 0 < t0+r*u},
+      Q (normalizedCircleTemporalLowpass chi N) tau) =
+    (∫ tau in {u : Real | 0 < t0+r*u}, Q chi tau) +
+      ∑ n ∈ Finset.range N,
+        ∫ tau in {u : Real | 0 < t0+r*u}, Q (normalizedCircleTemporalBand chi n) tau
+  rw [heq]
+  simp only [Pi.add_apply, Finset.sum_apply]
+  rw [integral_add (hi chi) (integrable_finsetSum _ (fun n hn => hi _)),
+    integral_finsetSum _ (fun n hn => hi _)]
+
+#print axioms normalizedCircleWeightedAverage_temporal_kernel_integrable
+#print axioms normalizedCircleFrequencyOperator_temporal_finite_resolution
+
+
+/-- A fixed Schwartz temporal filter reconstructs every continuous
+function with at most linear growth. This includes the positive-radius
+weighted actual circular average. -/
+theorem normalizedCircleTemporal_rescaled_convolution_tendsto
+    (chi : SchwartzMap Real Complex) (hchi : chi 0 = 1)
+    (G : Real → Complex) (hG : Continuous G)
+    (M : Real) (hM : 0 ≤ M) (hbound : ∀ t : Real, ‖G t‖ ≤ M * (1+|t|))
+    (s : Real) :
+    Tendsto (fun N : Nat => ∫ v : Real,
+      (FourierTransform.fourierInv chi : SchwartzMap Real Complex) v *
+        G (s - ((2 : Real) ^ N)⁻¹ * v)) atTop (nhds (G s)) := by
+  let k : SchwartzMap Real Complex := FourierTransform.fourierInv chi
+  have hmass : (∫ v : Real, k v) = 1 := by
+    have hzero : (FourierTransform.fourier
+        (FourierTransform.fourierInv chi : SchwartzMap Real Complex) :
+          SchwartzMap Real Complex) 0 = chi 0 := by
+      rw [FourierTransform.fourier_fourierInv_eq]
+    rw [hchi] at hzero
+    rw [SchwartzMap.fourier_coe, Real.fourier_eq] at hzero
+    simpa only [k, inner_zero_right, neg_zero, Real.fourierChar.map_zero_eq_one,
+      one_smul] using hzero
+  have hweight : Integrable (fun v : Real => |v| * ‖k v‖) := by
+    simpa only [Real.norm_eq_abs, pow_one] using k.integrable_pow_mul volume 1
+  have hdomint : Integrable (fun v : Real =>
+      ‖k v‖ * (M * (1+|s|+|v|))) := by
+    have hi := (k.integrable.norm.mul_const (M*(1+|s|))).add (hweight.mul_const M)
+    refine hi.congr (Filter.Eventually.of_forall ?_)
+    intro v
+    dsimp only [Pi.add_apply]
+    ring
+  have hmeas (N : Nat) : AEStronglyMeasurable (fun v : Real =>
+      k v * G (s - ((2 : Real) ^ N)⁻¹ * v)) volume := by
+    exact (k.continuous.mul (hG.comp (by fun_prop))).aestronglyMeasurable
+  have hdom (N : Nat) : ∀ᵐ v : Real,
+      ‖k v * G (s - ((2 : Real) ^ N)⁻¹ * v)‖ ≤ ‖k v‖ * (M*(1+|s|+|v|)) := by
+    filter_upwards [] with v
+    have hp : 0 ≤ ((2 : Real) ^ N)⁻¹ := by positivity
+    have hpone : ((2 : Real) ^ N)⁻¹ ≤ 1 :=
+      inv_le_one_of_one_le₀ (one_le_pow₀ (by norm_num : (1 : Real) ≤ 2))
+    have harg : |s - ((2 : Real) ^ N)⁻¹ * v| ≤ |s|+|v| := by
+      calc
+        _ ≤ |s| + |((2 : Real) ^ N)⁻¹ * v| := abs_sub _ _
+        _ = |s| + ((2 : Real) ^ N)⁻¹ * |v| := by rw [abs_mul, abs_of_nonneg hp]
+        _ ≤ _ := by
+          exact add_le_add le_rfl (by simpa only [one_mul] using
+            mul_le_mul_of_nonneg_right hpone (abs_nonneg v))
+    rw [norm_mul]
+    refine mul_le_mul_of_nonneg_left ((hbound _).trans ?_) (norm_nonneg _)
+    have hh : 1+|s - ((2 : Real) ^ N)⁻¹ * v| ≤ 1+|s|+|v| := by linarith
+    exact mul_le_mul_of_nonneg_left hh hM
+  have hlim : ∀ᵐ v : Real,
+      Tendsto (fun N : Nat => k v * G (s - ((2 : Real) ^ N)⁻¹ * v))
+        atTop (nhds (k v * G s)) := by
+    filter_upwards [] with v
+    have hp : Tendsto (fun N : Nat => ((2 : Real) ^ N)⁻¹) atTop (nhds 0) := by
+      simpa only [inv_pow] using tendsto_pow_atTop_nhds_zero_of_lt_one
+        (by norm_num : (0 : Real) ≤ 2⁻¹) (by norm_num : (2 : Real)⁻¹ < 1)
+    have ha : Tendsto (fun N : Nat => s - ((2 : Real) ^ N)⁻¹ * v)
+        atTop (nhds s) := by
+      simpa using (tendsto_const_nhds (x := s)).sub (hp.mul_const v)
+    exact tendsto_const_nhds.mul (hG.continuousAt.tendsto.comp ha)
+  have ht := tendsto_integral_of_dominated_convergence
+    (fun v : Real => ‖k v‖ * (M*(1+|s|+|v|))) hmeas hdomint hdom hlim
+  simpa only [integral_mul_const, hmass, one_mul] using ht
+
+#print axioms normalizedCircleTemporal_rescaled_convolution_tendsto
+
+
+/-- The radius-weighted true circular average, extended by zero on the
+nonpositive-radius domain appearing in the exact coarea representation. -/
+def normalizedCircleWeightedPositiveAverage
+    (t0 r : Real) (F : SchwartzMap (Euclidean 2) Complex)
+    (X : Euclidean 2) (tau : Real) : Complex :=
+  if 0 < t0+r*tau then
+    ((t0+r*tau : Real) : Complex) * sphericalAverage 2 F (t0+r*tau) (r • X)
+  else 0
+
+theorem normalizedCircleWeightedPositiveAverage_eq_max
+    (t0 r : Real) (F : SchwartzMap (Euclidean 2) Complex)
+    (X : Euclidean 2) (tau : Real) :
+    normalizedCircleWeightedPositiveAverage t0 r F X tau =
+      ((max 0 (t0+r*tau) : Real) : Complex) *
+        sphericalAverage 2 F (max 0 (t0+r*tau)) (r • X) := by
+  by_cases hp : 0 < t0+r*tau
+  · simp [normalizedCircleWeightedPositiveAverage, hp, max_eq_right hp.le]
+  · simp [normalizedCircleWeightedPositiveAverage, hp,
+      max_eq_left (not_lt.mp hp)]
+
+/-- The positive-radius extension is continuous across the zero-radius
+boundary; the true radial Jacobian vanishes there. -/
+theorem continuous_normalizedCircleWeightedPositiveAverage
+    (t0 r : Real) (F : SchwartzMap (Euclidean 2) Complex) (X : Euclidean 2) :
+    Continuous (normalizedCircleWeightedPositiveAverage t0 r F X) := by
+  simp_rw [show normalizedCircleWeightedPositiveAverage t0 r F X =
+    (fun tau => ((max 0 (t0+r*tau) : Real) : Complex) *
+      sphericalAverage 2 F (max 0 (t0+r*tau)) (r • X)) from
+        funext (normalizedCircleWeightedPositiveAverage_eq_max t0 r F X)]
+  exact (by fun_prop : Continuous (fun tau : Real =>
+    ((max 0 (t0+r*tau) : Real) : Complex))).mul
+      ((continuous_sphericalAverage_radial (F : Euclidean 2 → Complex)
+        F.continuous (r • X)).comp (by fun_prop))
+
+/-- The actual positive-radius weighted average has a uniform-in-X linear
+growth bound in time, extracted only from the source Schwartz seminorm. -/
+theorem normalizedCircleWeightedPositiveAverage_linear_growth
+    (t0 r : Real) (F : SchwartzMap (Euclidean 2) Complex) :
+    ∃ M : Real, 0 ≤ M ∧ ∀ (X : Euclidean 2) (tau : Real),
+      ‖normalizedCircleWeightedPositiveAverage t0 r F X tau‖ ≤ M * (1+ |tau|) := by
+  let Q : Real := SchwartzMap.seminorm Complex 0 0 F * surfaceMass 2
+  have hQ : 0 ≤ Q := mul_nonneg (apply_nonneg _ _) (surfaceMass_pos (by norm_num : 0 < 2)).le
+  have hF (X : Euclidean 2) (tau : Real) :
+      ‖sphericalAverage 2 F (t0+r*tau) (r • X)‖ ≤ Q :=
+    norm_sphericalAverage_le_surfaceMass_mul 2 (F : Euclidean 2 → Complex)
+      (t0+r*tau) (r • X) (fun _ => F.norm_le_seminorm Complex _)
+  refine ⟨(|t0| + |r|)*Q, by positivity, ?_⟩
+  intro X tau
+  by_cases hp : 0 < t0+r*tau
+  · simp only [normalizedCircleWeightedPositiveAverage, ite_eq_left hp, norm_mul,
+      Complex.norm_real, Real.norm_eq_abs]
+    have hradius : |t0+r*tau| ≤ |t0| + |r| *|tau| := by
+      simpa only [abs_mul] using abs_add_le t0 (r*tau)
+    have hpoly : |t0| + |r| *|tau| ≤ (|t0| + |r|)*(1+ |tau|) := by
+      nlinarith [mul_nonneg (abs_nonneg t0) (abs_nonneg tau),
+        abs_nonneg r]
+    calc
+      _ ≤ |t0+r*tau| * Q :=
+        mul_le_mul_of_nonneg_left (hF X tau) (abs_nonneg _)
+      _ ≤ ((|t0| + |r|)*(1+ |tau|))*Q :=
+        mul_le_mul_of_nonneg_right (hradius.trans hpoly) hQ
+      _ = _ := by ring
+  · simp only [normalizedCircleWeightedPositiveAverage, ite_eq_right hp, norm_zero]
+    positivity
+
+#print axioms continuous_normalizedCircleWeightedPositiveAverage
+#print axioms normalizedCircleWeightedPositiveAverage_linear_growth
+
+
+/-- The literal normalized operator filters the positive-radius extension
+of the weighted actual average. The restriction in the coarea formula
+has not been silently extended to negative radii. -/
+theorem normalizedCircleFrequencyOperator_eq_positiveTemporalConvolution
+    {t0 r : Real} (ht0 : 0 < t0) (hr : 0 < r)
+    (F : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (X : Euclidean 2) (s : Real) (hs : t0+r*s ≠ 0) :
+    normalizedCircleFrequencyOperator (r/t0) b
+      {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s =
+        (((t0+r*s : Real) : Complex)⁻¹) *
+          ∫ tau : Real, (FourierTransform.fourierInv b : SchwartzMap Real Complex) (s-tau) *
+            normalizedCircleWeightedPositiveAverage t0 r F X tau := by
+  rw [normalizedCircleFrequencyOperator_eq_temporal_average ht0 hr F b X s hs]
+  have hS : MeasurableSet {tau : Real | 0 < t0+r*tau} := by
+    exact measurableSet_lt measurable_const (by fun_prop)
+  rw [← integral_indicator hS]
+  congr 1
+  apply integral_congr_ae
+  filter_upwards [] with tau
+  by_cases hp : 0 < t0+r*tau
+  · rw [Set.indicator_of_mem (show tau ∈ {tau : Real | 0 < t0+r*tau} from hp)]
+    simp only [normalizedCircleWeightedPositiveAverage, ite_eq_left hp,
+      ← SchwartzMap.fourierInv_coe]
+    ring
+  · rw [Set.indicator_of_notMem (show tau ∉ {tau : Real | 0 < t0+r*tau} from hp)]
+    simp only [normalizedCircleWeightedPositiveAverage, ite_eq_right hp, mul_zero]
+
+theorem normalizedCircleTemporalLowpass_eq_translatedDilatedCutoff
+    (chi : SchwartzMap Real Complex) (N : Nat) :
+    normalizedCircleTemporalLowpass chi N =
+      mssTranslatedDilatedCutoff chi (0 : Real) ((2 : Real)^N)
+        (pow_ne_zero N (by norm_num)) := by
+  ext tau
+  simp [normalizedCircleTemporalLowpass_apply, mssTranslatedDilatedCutoff_apply]
+
+/-- The actual dyadic temporal lowpasses converge to the actual circular
+average at every positive output radius. -/
+theorem normalizedCircleFrequencyOperator_temporal_lowpass_tendsto
+    (chi : SchwartzMap Real Complex) (hchi : chi 0 = 1)
+    {t0 r : Real} (ht0 : 0 < t0) (hr : 0 < r)
+    (F : SchwartzMap (Euclidean 2) Complex)
+    (X : Euclidean 2) (s : Real) (hs : 0 < t0+r*s) :
+    Tendsto (fun N : Nat =>
+      normalizedCircleFrequencyOperator (r/t0) (normalizedCircleTemporalLowpass chi N)
+        {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s)
+      atTop (nhds (sphericalAverage 2 F (t0+r*s) (r • X))) := by
+  obtain ⟨M, hM, hbound⟩ := normalizedCircleWeightedPositiveAverage_linear_growth t0 r F
+  have ht := normalizedCircleTemporal_rescaled_convolution_tendsto chi hchi
+    (normalizedCircleWeightedPositiveAverage t0 r F X)
+    (continuous_normalizedCircleWeightedPositiveAverage t0 r F X) M hM (hbound X) s
+  have heq (N : Nat) :
+      normalizedCircleFrequencyOperator (r/t0) (normalizedCircleTemporalLowpass chi N)
+        {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s =
+      (((t0+r*s : Real) : Complex)⁻¹) *
+        ∫ v : Real, (FourierTransform.fourierInv chi : SchwartzMap Real Complex) v *
+          normalizedCircleWeightedPositiveAverage t0 r F X
+            (s - ((2 : Real)^N)⁻¹*v) := by
+    rw [normalizedCircleFrequencyOperator_eq_positiveTemporalConvolution ht0 hr F
+      (normalizedCircleTemporalLowpass chi N) X s hs.ne',
+      normalizedCircleTemporalLowpass_eq_translatedDilatedCutoff,
+      mssTranslatedDilatedCutoff_raw_convolution_sub chi
+        (normalizedCircleWeightedPositiveAverage t0 r F X) 0 s
+        ((2 : Real)^N) (by positivity)]
+    simp only [inner_zero_left, Real.fourierChar.map_zero_eq_one,
+      one_smul, smul_eq_mul]
+  have hc : ((t0+r*s : Real) : Complex) ≠ 0 := by exact_mod_cast hs.ne'
+  have htarget : (((t0+r*s : Real) : Complex)⁻¹) *
+      normalizedCircleWeightedPositiveAverage t0 r F X s =
+        sphericalAverage 2 F (t0+r*s) (r • X) := by
+    simp only [normalizedCircleWeightedPositiveAverage, ite_eq_left hs,
+      ← mul_assoc, inv_mul_cancel₀ hc, one_mul]
+  simpa only [← heq, htarget] using
+    (tendsto_const_nhds (x := (((t0+r*s : Real) : Complex)⁻¹))).mul ht
+
+/-- Genuine pointwise temporal dyadic reconstruction of the actual
+average. Output coordinate cutoffs can be multiplied after this identity. -/
+theorem normalizedCircleAverage_temporal_resolution_tendsto
+    (chi : SchwartzMap Real Complex) (hchi : chi 0 = 1)
+    {t0 r : Real} (ht0 : 0 < t0) (hr : 0 < r)
+    (F : SchwartzMap (Euclidean 2) Complex)
+    (X : Euclidean 2) (s : Real) (hs : 0 < t0+r*s) :
+    Tendsto (fun N : Nat =>
+      normalizedCircleFrequencyOperator (r/t0) chi
+        {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s +
+          ∑ n ∈ Finset.range N,
+            normalizedCircleFrequencyOperator (r/t0) (normalizedCircleTemporalBand chi n)
+              {u : Real | 0 < t0+r*u} (fun omega u => F ((t0+r*u) • omega)) X s)
+      atTop (nhds (sphericalAverage 2 F (t0+r*s) (r • X))) := by
+  simpa only [normalizedCircleFrequencyOperator_temporal_finite_resolution
+    chi _ ht0 hr F X s hs.ne'] using
+      normalizedCircleFrequencyOperator_temporal_lowpass_tendsto chi hchi ht0 hr F X s hs
+
+#print axioms normalizedCircleFrequencyOperator_eq_positiveTemporalConvolution
+#print axioms normalizedCircleFrequencyOperator_temporal_lowpass_tendsto
+#print axioms normalizedCircleAverage_temporal_resolution_tendsto
+
+
+/-- The actual temporal derivative after removing the cyclic conormal
+frequency rho. Its Fourier symbol is exactly 2*pi*i*(tau-rho). -/
+def normalizedCircleTemporalShiftDerivative
+    (rho : Real) (F : SchwartzMap JointWaveSpaceTime Complex) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real))) F -
+    (((2*Real.pi*rho : Real) : Complex) * Complex.I) • F
+
+theorem fourier_normalizedCircleTemporalShiftDerivative_apply
+    (rho : Real) (F : SchwartzMap JointWaveSpaceTime Complex) (zeta : JointWaveSpaceTime) :
+    (FourierTransform.fourier (normalizedCircleTemporalShiftDerivative rho F) :
+      SchwartzMap JointWaveSpaceTime Complex) zeta =
+        (((2*Real.pi*(zeta.snd-rho) : Real) : Complex) * Complex.I) *
+          (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta := by
+  let v : JointWaveSpaceTime := WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real))
+  have hg : (fun z : JointWaveSpaceTime =>
+      inner Real z (WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real)))).HasTemperateGrowth :=
+    by fun_prop
+  rw [normalizedCircleTemporalShiftDerivative, sub_eq_add_neg, FourierTransform.fourier_add,
+    FourierTransform.fourier_neg, FourierTransform.fourier_smul,
+    ← sub_eq_add_neg, SchwartzMap.fourier_lineDerivOp_eq]
+  simp only [sub_apply, smul_apply, SchwartzMap.smulLeftCLM_apply_apply hg,
+    Complex.real_smul, smul_eq_mul]
+  have hv : inner Real zeta v = zeta.snd := by simp [v, WithLp.prod_inner_apply]
+  change (2*(Real.pi : Complex)*Complex.I) *
+    (((inner Real zeta v : Real) : Complex) *
+      (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta) -
+      (((2*Real.pi*rho : Real) : Complex)*Complex.I) *
+        (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta = _
+  rw [hv]
+  push_cast
+  ring
+
+theorem fourier_iterate_normalizedCircleTemporalShiftDerivative_apply
+    (N : Nat) (rho : Real) (F : SchwartzMap JointWaveSpaceTime Complex)
+    (zeta : JointWaveSpaceTime) :
+    (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative rho)^[N]) F) :
+      SchwartzMap JointWaveSpaceTime Complex) zeta =
+        ((((2*Real.pi*(zeta.snd-rho) : Real) : Complex) * Complex.I) ^ N) *
+          (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta := by
+  induction N with
+  | zero => simp
+  | succ N hN =>
+    rw [Function.iterate_succ_apply',
+      fourier_normalizedCircleTemporalShiftDerivative_apply, hN, pow_succ]
+    ring
+
+/-- Literal temporal offband control by the actual shifted derivatives,
+rather than an assumed Fourier-tail estimate. -/
+theorem normalizedCircle_temporal_shift_fourier_L2_tail
+    (N : Nat) (rho : Real) (F : SchwartzMap JointWaveSpaceTime Complex)
+    (S : Set JointWaveSpaceTime) (hS : MeasurableSet S) (g : Real) (hg : 0 < g)
+    (hgap : ∀ zeta ∈ S, g ≤ |zeta.snd-rho|) :
+    (∫ zeta in S,
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2) ≤
+      ((((2*Real.pi*g)^N)⁻¹)^2) *
+        ∫ z : JointWaveSpaceTime,
+          ‖(((normalizedCircleTemporalShiftDerivative rho)^[N]) F) z‖ ^ 2 := by
+  let G : SchwartzMap JointWaveSpaceTime Complex :=
+    ((normalizedCircleTemporalShiftDerivative rho)^[N]) F
+  let D : Real := (2*Real.pi*g)^N
+  have hD : 0 < D := by dsimp [D]; positivity
+  have hFi : Integrable (fun zeta : JointWaveSpaceTime =>
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2) :=
+    (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex).memLp 2 volume
+      |>.integrable_norm_pow (by norm_num)
+  have hGi : Integrable (fun zeta : JointWaveSpaceTime =>
+      ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2) :=
+    (FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex).memLp 2 volume
+      |>.integrable_norm_pow (by norm_num)
+  have hp : ∀ zeta ∈ S,
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2 ≤
+        D⁻¹ ^ 2 *
+          ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2 := by
+    intro zeta hzeta
+    have heq : ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ =
+        (2*Real.pi*|zeta.snd-rho|)^N *
+          ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖ := by
+      rw [show G = ((normalizedCircleTemporalShiftDerivative rho)^[N]) F from rfl,
+        fourier_iterate_normalizedCircleTemporalShiftDerivative_apply,
+        norm_mul, norm_pow, norm_mul, Complex.norm_I, mul_one, Complex.norm_real,
+        Real.norm_eq_abs, abs_mul, abs_mul,
+        abs_of_pos (by norm_num : (0 : Real) < 2), abs_of_pos Real.pi_pos]
+    have hmul : D *
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ≤
+      ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ := by
+      rw [heq]
+      dsimp only [D]
+      gcongr
+      exact hgap zeta hzeta
+    have hn : ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ≤
+        D⁻¹ * ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ := by
+      rw [← div_eq_inv_mul]
+      apply (le_div_iff₀ hD).mpr
+      simpa only [mul_comm] using hmul
+    calc
+      _ ≤ (D⁻¹ * ‖(FourierTransform.fourier G :
+          SchwartzMap JointWaveSpaceTime Complex) zeta‖)^2 :=
+        (sq_le_sq₀ (norm_nonneg _) (by positivity)).mpr hn
+      _ = _ := mul_pow _ _ _
+  calc
+    _ ≤ ∫ zeta in S, D⁻¹ ^ 2 *
+        ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2 :=
+      setIntegral_mono_on hFi.integrableOn ((hGi.const_mul _).integrableOn) hS hp
+    _ = D⁻¹ ^ 2 * (∫ zeta in S,
+        ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2) := by
+      rw [integral_const_mul]
+    _ ≤ D⁻¹ ^ 2 * (∫ zeta : JointWaveSpaceTime,
+        ‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) zeta‖ ^ 2) :=
+      mul_le_mul_of_nonneg_left (setIntegral_le_integral hGi
+        (Filter.Eventually.of_forall fun _ => sq_nonneg _)) (sq_nonneg _)
+    _ = _ := by rw [SchwartzMap.integral_norm_sq_fourier]
+
+#print axioms normalizedCircle_temporal_shift_fourier_L2_tail
+
+
+/-- The true cyclic-frequency conormal phase with arbitrary spatial
+incidence P. The actual normalized family uses P=normalizedCircleIncidence. -/
+def normalizedCircleTemporalPhase
+    (P : Euclidean 2 → Real) (rho : Real) (z : JointWaveSpaceTime) : Complex :=
+  Complex.exp (((2*Real.pi*rho*(z.snd-P z.fst) : Real) : Complex)*Complex.I)
+
+theorem norm_normalizedCircleTemporalPhase
+    (P : Euclidean 2 → Real) (rho : Real) (z : JointWaveSpaceTime) :
+    ‖normalizedCircleTemporalPhase P rho z‖ = 1 := by
+  rw [normalizedCircleTemporalPhase, Complex.norm_exp]
+  simp
+
+/-- The actual shifted temporal derivative cancels the temporal
+oscillation exactly, leaving only the true amplitude derivative. -/
+theorem normalizedCircleTemporalShiftDerivative_phase_mul_apply
+    (P : Euclidean 2 → Real) (rho : Real)
+    (F A : SchwartzMap JointWaveSpaceTime Complex)
+    (hF : ∀ z : JointWaveSpaceTime, F z = normalizedCircleTemporalPhase P rho z * A z)
+    (z : JointWaveSpaceTime) :
+    normalizedCircleTemporalShiftDerivative rho F z =
+      normalizedCircleTemporalPhase P rho z *
+        LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real))) A z := by
+  let v : JointWaveSpaceTime := WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real))
+  let L : WaveSpaceTime →L[Real] JointWaveSpaceTime :=
+    (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.toContinuousLinearMap
+  have hc : HasDerivAt (fun t : Real => WithLp.toLp 2 (z.fst,t)) v z.snd := by
+    exact L.hasFDerivAt.comp_hasDerivAt z.snd
+      ((hasDerivAt_const z.snd z.fst).prodMk (hasDerivAt_id z.snd))
+  have hline (Q : SchwartzMap JointWaveSpaceTime Complex) :
+      HasDerivAt (fun t : Real => Q (WithLp.toLp 2 (z.fst,t)))
+        (LineDeriv.lineDerivOp v Q z) z.snd := by
+    rw [SchwartzMap.lineDerivOp_apply_eq_fderiv]
+    exact (Q.hasFDerivAt z).comp_hasDerivAt z.snd hc
+  have hphase : HasDerivAt
+      (fun t : Real => normalizedCircleTemporalPhase P rho (WithLp.toLp 2 (z.fst,t)))
+      (normalizedCircleTemporalPhase P rho z *
+        (((2*Real.pi*rho : Real) : Complex)*Complex.I)) z.snd := by
+    have he : HasDerivAt (fun t : Real => 2*Real.pi*rho*(t-P z.fst))
+        (2*Real.pi*rho) z.snd := by
+      simpa using ((hasDerivAt_id z.snd).sub_const (P z.fst)).const_mul (2*Real.pi*rho)
+    simpa [normalizedCircleTemporalPhase, mul_assoc] using
+      (he.ofReal_comp.mul_const Complex.I).cexp
+  have heq : (fun t : Real => F (WithLp.toLp 2 (z.fst,t))) =
+      (fun t : Real => normalizedCircleTemporalPhase P rho
+        (WithLp.toLp 2 (z.fst,t)) * A (WithLp.toLp 2 (z.fst,t))) := by
+    funext t
+    exact hF _
+  have hder := hline F
+  rw [heq] at hder
+  have hval := hder.unique (hphase.mul (hline A))
+  change LineDeriv.lineDerivOp v F z -
+    (((2*Real.pi*rho : Real) : Complex)*Complex.I)*F z =
+      normalizedCircleTemporalPhase P rho z * LineDeriv.lineDerivOp v A z
+  have hz : WithLp.toLp 2 (z.fst,z.snd) = z := by
+    apply (WithLp.ext_iff 2).2
+    rfl
+  rw [hz] at hval
+  rw [hval, hF z]
+  ring
+
+/-- Arbitrarily repeated dephased time differentiation of the literal
+conormal phase has no rho growth: it differentiates only the amplitude. -/
+theorem normalizedCircleTemporalShiftDerivative_iterate_phase_mul_apply
+    (N : Nat) (P : Euclidean 2 → Real) (rho : Real)
+    (F A : SchwartzMap JointWaveSpaceTime Complex)
+    (hF : ∀ z : JointWaveSpaceTime, F z = normalizedCircleTemporalPhase P rho z * A z)
+    (z : JointWaveSpaceTime) :
+    ((normalizedCircleTemporalShiftDerivative rho)^[N]) F z =
+      normalizedCircleTemporalPhase P rho z *
+        ((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real))))^[N]) A z := by
+  induction N generalizing z with
+  | zero => simpa only [Function.iterate_zero, id_eq] using hF z
+  | succ N hN =>
+    rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
+    apply normalizedCircleTemporalShiftDerivative_phase_mul_apply
+    intro w
+    exact hN w
+
+/-- The shifted temporal residual moment is the fixed amplitude moment,
+with no conormal-frequency factor. -/
+theorem normalizedCircleTemporalShiftDerivative_iterate_phase_moment
+    (N : Nat) (P : Euclidean 2 → Real) (rho : Real)
+    (F A : SchwartzMap JointWaveSpaceTime Complex)
+    (hF : ∀ z : JointWaveSpaceTime, F z = normalizedCircleTemporalPhase P rho z * A z) :
+    (∫ z : JointWaveSpaceTime,
+      ‖((normalizedCircleTemporalShiftDerivative rho)^[N]) F z‖^2) =
+      ∫ z : JointWaveSpaceTime,
+        ‖((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))))^[N]) A z‖^2 := by
+  apply integral_congr_ae
+  filter_upwards [] with z
+  rw [normalizedCircleTemporalShiftDerivative_iterate_phase_mul_apply N P rho F A hF z,
+    norm_mul, norm_normalizedCircleTemporalPhase, one_mul]
+
+/-- Arbitrary genuine temporal offband decay of each actual conormal
+kernel, controlled by derivatives of its supplied smooth amplitude. -/
+theorem normalizedCircleTemporalPhase_fourier_L2_tail
+    (N : Nat) (P : Euclidean 2 → Real) (rho : Real)
+    (F A : SchwartzMap JointWaveSpaceTime Complex)
+    (hF : ∀ z : JointWaveSpaceTime, F z = normalizedCircleTemporalPhase P rho z * A z)
+    (S : Set JointWaveSpaceTime) (hS : MeasurableSet S) (g : Real) (hg : 0 < g)
+    (hgap : ∀ zeta ∈ S, g ≤ |zeta.snd-rho|) :
+    (∫ zeta in S,
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) ≤
+      ((((2*Real.pi*g)^N)⁻¹)^2) *
+        ∫ z : JointWaveSpaceTime,
+          ‖((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))))^[N]) A z‖^2 := by
+  rw [← normalizedCircleTemporalShiftDerivative_iterate_phase_moment N P rho F A hF]
+  exact normalizedCircle_temporal_shift_fourier_L2_tail N rho F S hS g hg hgap
+
+#print axioms normalizedCircleTemporalShiftDerivative_phase_mul_apply
+#print axioms normalizedCircleTemporalShiftDerivative_iterate_phase_moment
+#print axioms normalizedCircleTemporalPhase_fourier_L2_tail
+
+
+/-- True differentiation of a jointly smooth output-supported amplitude
+family in its time coordinate. -/
+def normalizedCircleSupportedTemporalDerivative
+    (S : Set WaveSpaceTime) (hS : IsClosed S)
+    (A : normalizedCircleSupportedAmplitudes S) : normalizedCircleSupportedAmplitudes S :=
+  ⟨fun q => fderiv Real A.val q normalizedCircleTemporalAmplitudeDirection,
+    (A.property.1.fderiv_right (by simp)).clm_apply contDiff_const, by
+      intro p z hz
+      have heq := normalizedCircleAmplitude_eq_zero_near_output_complement S hS
+        A.val A.property.2 (p,z) hz
+      have hd : fderiv Real A.val (p,z) = 0 := by
+        rw [heq.fderiv_eq]
+        simp
+      simp only [hd, zero_apply]⟩
+
+/-- A joint Schwartz function has the true directional time derivative
+along the raw fixed-X time fibre. -/
+theorem normalizedCircleSchwartz_timeSlice_hasDerivAt
+    (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    HasDerivAt (fun t : Real => F (WithLp.toLp 2 (z.fst,t)))
+      (LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))) F z) z.snd := by
+  let L : WaveSpaceTime →L[Real] JointWaveSpaceTime :=
+    (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.toContinuousLinearMap
+  have hc : HasDerivAt (fun t : Real => WithLp.toLp 2 (z.fst,t))
+      (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))) z.snd :=
+    L.hasFDerivAt.comp_hasDerivAt z.snd
+      ((hasDerivAt_const z.snd z.fst).prodMk (hasDerivAt_id z.snd))
+  rw [SchwartzMap.lineDerivOp_apply_eq_fderiv]
+  exact (F.hasFDerivAt z).comp_hasDerivAt z.snd hc
+
+theorem normalizedCircleSupportedTemporalDerivative_schwartz_apply
+    (S : Set WaveSpaceTime) (hS : IsClosed S)
+    (A : normalizedCircleSupportedAmplitudes S) (p : NormalizedCircleParameters)
+    (F : SchwartzMap JointWaveSpaceTime Complex)
+    (hF : ∀ z : JointWaveSpaceTime, F z = A.val (p,(z.fst,z.snd)))
+    (z : JointWaveSpaceTime) :
+    LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))) F z =
+      (normalizedCircleSupportedTemporalDerivative S hS A).val (p,(z.fst,z.snd)) := by
+  have hcurve : HasDerivAt
+      (fun t : Real => (p,(z.fst,t)) : Real → NormalizedCircleAmplitudeDomain)
+      normalizedCircleTemporalAmplitudeDirection z.snd := by
+    exact (hasDerivAt_const z.snd p).prodMk
+      ((hasDerivAt_const z.snd z.fst).prodMk (hasDerivAt_id z.snd))
+  have hA : HasFDerivAt A.val (fderiv Real A.val (p,(z.fst,z.snd))) (p,(z.fst,z.snd)) :=
+    (A.property.1.differentiable (by simp) (p,(z.fst,z.snd))).hasFDerivAt
+  have hd := hA.comp_hasDerivAt z.snd hcurve
+  have hf := normalizedCircleSchwartz_timeSlice_hasDerivAt F z
+  have heq : (fun t : Real => F (WithLp.toLp 2 (z.fst,t))) =
+      fun t : Real => A.val (p,(z.fst,t)) := by
+    funext t
+    exact hF _
+  rw [heq] at hf
+  exact hf.unique hd
+
+theorem normalizedCircleSupportedTemporalDerivative_iterate_schwartz_apply
+    (N : Nat) (S : Set WaveSpaceTime) (hS : IsClosed S)
+    (A : normalizedCircleSupportedAmplitudes S) (p : NormalizedCircleParameters)
+    (F : SchwartzMap JointWaveSpaceTime Complex)
+    (hF : ∀ z : JointWaveSpaceTime, F z = A.val (p,(z.fst,z.snd)))
+    (z : JointWaveSpaceTime) :
+    ((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))))^[N]) F z =
+      (((normalizedCircleSupportedTemporalDerivative S hS)^[N]) A).val
+        (p,(z.fst,z.snd)) := by
+  induction N generalizing z with
+  | zero => simpa only [Function.iterate_zero, id_eq] using hF z
+  | succ N hN =>
+    rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
+    exact normalizedCircleSupportedTemporalDerivative_schwartz_apply S hS _ p _ hN z
+
+/-- All true time-derivative moments of a compact smooth amplitude family
+are uniformly finite. The bound follows from the already proved actual
+zeroth-residual moment estimate applied to its differentiated amplitude. -/
+theorem normalizedCircleSupportedAmplitude_uniform_temporal_moment
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K, ‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K, ∀ z ∈ S,
+      1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ p ∈ K,
+      ∀ F : SchwartzMap JointWaveSpaceTime Complex,
+        (∀ z : JointWaveSpaceTime, F z = A.val (p,(z.fst,z.snd))) →
+        (∫ z : JointWaveSpaceTime,
+          ‖((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))))^[N]) F z‖^2) ≤ C := by
+  let B : normalizedCircleSupportedAmplitudes S :=
+    ((normalizedCircleSupportedTemporalDerivative S hS.isClosed)^[N]) A
+  obtain ⟨C, hC, hb⟩ := normalizedCircleSchwartzWaveOperator_uniform_residual_moment
+    S hS K hK B homega hsep 0 0 (by norm_num)
+  refine ⟨C, hC, ?_⟩
+  intro p hp F hF
+  let Q : SchwartzMap JointWaveSpaceTime Complex :=
+    ((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0 : Euclidean 2),(1 : Real))))^[N]) F
+  have hQ : jointSchwartzRaw Q =
+      fun w => normalizedCircleParameterPhase p 0 w * B.val (p,w) := by
+    funext w
+    change Q (WithLp.toLp 2 w) = _
+    rw [show Q (WithLp.toLp 2 w) =
+      B.val (p,((WithLp.toLp 2 w).fst,(WithLp.toLp 2 w).snd)) from
+        normalizedCircleSupportedTemporalDerivative_iterate_schwartz_apply
+          N S hS.isClosed A p F hF (WithLp.toLp 2 w)]
+    simp only [WithLp.toLp_fst, WithLp.toLp_snd, normalizedCircleParameterPhase,
+      normalizedCirclePhaseExponential, zero_mul, Complex.ofReal_zero,
+      zero_mul, Complex.exp_zero, one_mul]
+  have hh := hb p hp 1 (by norm_num) 0 (by norm_num) Q hQ
+  simpa only [Function.iterate_zero, id_eq, Nat.mul_zero, pow_zero, mul_one, Q] using hh
+
+/-- Actual compact-family temporal offband localization, uniformly in the
+cyclic conormal frequency and all geometric parameters. -/
+theorem normalizedCircleSupportedPhase_uniform_temporal_tail
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K, ‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K, ∀ z ∈ S,
+      1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ p ∈ K, ∀ rho : Real,
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+        (∀ z : JointWaveSpaceTime, Q z = A.val (p,(z.fst,z.snd))) →
+        (∀ z : JointWaveSpaceTime, F z =
+          normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2)
+            rho z * Q z) →
+        ∀ E : Set JointWaveSpaceTime, MeasurableSet E →
+        ∀ g : Real, 0 < g → (∀ zeta ∈ E, g ≤ |zeta.snd-rho|) →
+        (∫ zeta in E,
+          ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) ≤
+            C * (g^(2*N))⁻¹ := by
+  obtain ⟨C, hC, hb⟩ := normalizedCircleSupportedAmplitude_uniform_temporal_moment
+    S hS K hK A homega hsep N
+  refine ⟨C * ((2*Real.pi)^(2*N))⁻¹, by positivity, ?_⟩
+  intro p hp rho F Q hQ hF E hE g hg hgap
+  have ht := normalizedCircleTemporalPhase_fourier_L2_tail N _ rho F Q hF E hE g hg hgap
+  calc
+    _ ≤ (((2*Real.pi*g)^N)⁻¹)^2 * C :=
+      ht.trans (mul_le_mul_of_nonneg_left (hb p hp Q hQ) (sq_nonneg _))
+    _ = _ := by
+      simp only [← inv_pow, ← pow_mul, Nat.mul_comm N 2, mul_pow, mul_inv_rev]
+      ring
+
+#print axioms normalizedCircleSupportedAmplitude_uniform_temporal_moment
+#print axioms normalizedCircleSupportedPhase_uniform_temporal_tail
+
+
+/-- Exact cyclic/natural Fourier-frequency conversion for the actual
+normalized incidence phase. -/
+theorem normalizedCircleTemporalPhase_eq_actual_parameterPhase
+    (p : NormalizedCircleParameters) (rho : Real) (z : JointWaveSpaceTime) :
+    normalizedCircleTemporalPhase
+      (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) rho z =
+        normalizedCircleParameterPhase p (-2*Real.pi*rho) (z.fst,z.snd) := by
+  rw [normalizedCircleTemporalPhase, normalizedCircleParameterPhase,
+    normalizedCirclePhaseExponential]
+  congr 1
+  push_cast
+  ring
+
+/-- Away from comparable spatial and temporal scales, every frequency
+near the true temporal covector has a quantitative ordinary cone gap. -/
+theorem normalizedCircle_spatial_temporal_farband_gap
+    (mu nu rho : Real) (hmu : 0 < mu) (hnu : 0 < nu)
+    (hrhoLower : mu ≤ |rho|) (hrhoUpper : |rho| ≤ 4*mu)
+    (zeta : JointWaveSpaceTime)
+    (hseparate : (16*mu ≤ nu ∧ nu ≤ ‖zeta.fst‖) ∨
+      (16*nu ≤ mu ∧ ‖zeta.fst‖ ≤ 4*nu))
+    (htemporal : |zeta.snd-rho| ≤ max nu mu/4) :
+    mu/2 ≤ |zeta.snd|+‖zeta.fst‖ ∧
+      max nu mu/2 ≤ |(|zeta.snd|-‖zeta.fst‖)| := by
+  rcases hseparate with ⟨hscale,hspatial⟩ | ⟨hscale,hspatial⟩
+  · have hm : max nu mu = nu := max_eq_left (by linarith)
+    rw [hm] at htemporal ⊢
+    have htime : |zeta.snd| ≤ nu/2 := by
+      have hh : |zeta.snd| ≤ |zeta.snd-rho|+|rho| := by
+        simpa only [sub_add_cancel] using abs_add_le (zeta.snd-rho) rho
+      linarith
+    constructor
+    · linarith [abs_nonneg zeta.snd]
+    · have hh := neg_le_abs (|zeta.snd|-‖zeta.fst‖)
+      linarith
+  · have hm : max nu mu = mu := max_eq_right (by linarith)
+    rw [hm] at htemporal ⊢
+    have htime : 3*mu/4 ≤ |zeta.snd| := by
+      have hh : |rho| ≤ |zeta.snd|+|zeta.snd-rho| := by
+        simpa only [sub_sub_cancel] using abs_sub zeta.snd (zeta.snd-rho)
+      linarith
+    constructor
+    · linarith [norm_nonneg zeta.fst]
+    · have hh := le_abs_self (|zeta.snd|-‖zeta.fst‖)
+      linarith
+
+#print axioms normalizedCircleTemporalPhase_eq_actual_parameterPhase
+#print axioms normalizedCircle_spatial_temporal_farband_gap
+
+
+/-- Uniform genuine spatial offband Fourier-L2 decay for the actual
+compactly supported normalized incidence kernels. Temporal shift tails
+and wave residual tails cover the two complementary spectral regions.
+The low spatial ball is allowed in the second branch. -/
+theorem normalizedCircleSupportedPhase_uniform_spatial_offband_tail
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K, ‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K, ∀ z ∈ S,
+      1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (N : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ p ∈ K,
+      ∀ mu nu : Real, 1 ≤ mu → 0 < nu →
+      ∀ rho : Real, mu ≤ |rho| → |rho| ≤ 4*mu →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+        (∀ z : JointWaveSpaceTime, Q z = A.val (p,(z.fst,z.snd))) →
+        (∀ z : JointWaveSpaceTime, F z =
+          normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2)
+            rho z * Q z) →
+        ∀ E : Set JointWaveSpaceTime, MeasurableSet E →
+        ((16*mu ≤ nu ∧ ∀ zeta ∈ E, nu ≤ ‖zeta.fst‖) ∨
+          (16*nu ≤ mu ∧ ∀ zeta ∈ E, ‖zeta.fst‖ ≤ 4*nu)) →
+        (∫ zeta in E,
+          ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) ≤
+            C * ((max nu mu)^(2*N))⁻¹ := by
+  obtain ⟨Ct, hCt, htime⟩ := normalizedCircleSupportedPhase_uniform_temporal_tail
+    S hS K hK A homega hsep N
+  obtain ⟨Cw, hCw, hwave⟩ := normalizedCircleSchwartzWaveOperator_uniform_residual_moment
+    S hS K hK A homega hsep N (8*Real.pi) (by positivity)
+  let c : Real := (2*Real.pi)^2
+  have hc : 0 < c := by dsimp [c]; positivity
+  refine ⟨(4 : Real)^(2*N) * (Ct+Cw*(c^(2*N))⁻¹), by positivity, ?_⟩
+  intro p hp mu nu hmu hnu rho hrhoLower hrhoUpper F Q hQ hF E hE hseparate
+  let M : Real := max nu mu
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  have hM : 0 < M := lt_of_lt_of_le hmup (le_max_right nu mu)
+  let J : Set JointWaveSpaceTime := {zeta | M/4 ≤ |zeta.snd-rho|}
+  have hJ : MeasurableSet J := by
+    exact measurableSet_le measurable_const (by fun_prop)
+  have hfirst := htime p hp rho F Q hQ hF (E ∩ J) (hE.inter hJ) (M/4)
+    (by positivity) (fun zeta hzeta => hzeta.2)
+  have hgeom (zeta : JointWaveSpaceTime) (hzeta : zeta ∈ E \ J) :
+      mu/2 ≤ |zeta.snd|+‖zeta.fst‖ ∧ M/2 ≤ |(|zeta.snd|-‖zeta.fst‖)| := by
+    apply normalizedCircle_spatial_temporal_farband_gap mu nu rho hmup hnu
+      hrhoLower hrhoUpper zeta
+    · rcases hseparate with ⟨hs, hx⟩ | ⟨hs, hx⟩
+      · exact Or.inl ⟨hs, hx zeta hzeta.1⟩
+      · exact Or.inr ⟨hs, hx zeta hzeta.1⟩
+    · have hh : ¬ M/4 ≤ |zeta.snd-rho| := hzeta.2
+      exact (lt_of_not_ge hh).le
+  have hraw : jointSchwartzRaw F =
+      fun w => normalizedCircleParameterPhase p (-2*Real.pi*rho) w * A.val (p,w) := by
+    funext w
+    rw [jointSchwartzRaw, hF, normalizedCircleTemporalPhase_eq_actual_parameterPhase, hQ]
+    simp only [WithLp.toLp_fst, WithLp.toLp_snd]
+  have hrho : |-2*Real.pi*rho| ≤ (8*Real.pi)*mu := by
+    rw [abs_mul, abs_mul, abs_neg, abs_of_pos (by norm_num : (0 : Real) < 2),
+      abs_of_pos Real.pi_pos]
+    nlinarith [Real.pi_pos]
+  have hw := hwave p hp mu hmu (-2*Real.pi*rho) hrho F hraw
+  have hsecond := normalizedCircle_normal_gap_fourier_L2_tail N F (E \ J) (hE.diff hJ)
+    (mu/2) (M/2) (by positivity) (by positivity)
+    (fun zeta hzeta => (hgeom zeta hzeta).1)
+    (fun zeta hzeta => (hgeom zeta hzeta).2)
+  have hFi : Integrable (fun zeta : JointWaveSpaceTime =>
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) :=
+    (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex).memLp 2 volume
+      |>.integrable_norm_pow (by norm_num)
+  have ht : (∫ zeta in E ∩ J,
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) ≤
+        (4 : Real)^(2*N)*Ct*(M^(2*N))⁻¹ := by
+    refine hfirst.trans_eq ?_
+    simp only [div_pow, inv_div]
+    ring
+  have hw' : (∫ zeta in E \ J,
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) ≤
+        (4 : Real)^(2*N)*Cw*(c^(2*N))⁻¹*(M^(2*N))⁻¹ := by
+    calc
+      _ ≤ ((((c*(mu/2)*(M/2))^N)⁻¹)^2)*(Cw*mu^(2*N)) :=
+        hsecond.trans (mul_le_mul_of_nonneg_left hw (sq_nonneg _))
+      _ = _ := by
+        simp only [← inv_pow, ← pow_mul, Nat.mul_comm N 2]
+        have he : c*(mu/2)*(M/2) = c*mu*M/4 := by ring
+        rw [he]
+        simp only [mul_pow, div_eq_mul_inv, mul_inv_rev]
+        field_simp [pow_ne_zero (2*N) hmup.ne', pow_ne_zero (2*N) hM.ne',
+          pow_ne_zero (2*N) hc.ne']
+        ring_nf
+        rw [← mul_pow, mul_inv_cancel₀ hmup.ne', one_pow, one_mul]
+  calc
+    _ = (∫ zeta in E ∩ J,
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2) +
+      ∫ zeta in E \ J,
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) zeta‖^2 :=
+      (integral_inter_add_sdiff hJ hFi.integrableOn).symm
+    _ ≤ (4 : Real)^(2*N)*Ct*(M^(2*N))⁻¹ +
+        (4 : Real)^(2*N)*Cw*(c^(2*N))⁻¹*(M^(2*N))⁻¹ :=
+      add_le_add ht hw'
+    _ = _ := by dsimp only [M]; ring
+
+#print axioms normalizedCircleSupportedPhase_uniform_spatial_offband_tail
+
+end NormalizedCircleTemporalSpatialBridge
+
 end
 end FormerNamespace_1
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Exact dilation of the original conormal kernel into a fixed radial
+source coordinate. The visible conormal prefactor is retained. -/
+theorem normalizedCircleFrequencyKernel_conormal_source_integral
+    (epsilon : Real) (b : Real → Complex) (conormal : Real) (hconormal : 0 < conormal)
+    (X omega : Euclidean 2) (u T : Real) :
+    normalizedCircleFrequencyKernel epsilon (fun rho => b (rho/conormal)) X omega u T =
+      (((1+epsilon*u)/(1+epsilon*T):Real):Complex)*(conormal:Complex)*
+        ∫ v : Real,normalizedCirclePhaseExponential epsilon omega u
+          (-2*Real.pi*conormal*v) T X*b v := by
+  rw [normalizedCircleFrequencyKernel_rescale epsilon b hconormal X omega u T]
+  have hi : FourierTransform.fourierInv b
+      (conormal*(T-normalizedCircleIncidence epsilon X omega u)) =
+      ∫ v : Real,normalizedCirclePhaseExponential epsilon omega u (-2*Real.pi*conormal*v) T X*b v := by
+    rw [Real.fourierInv_eq]
+    apply integral_congr_ae
+    apply Filter.Eventually.of_forall
+    intro v
+    simp only [Real.fourierChar_apply,RCLike.inner_apply,conj_trivial,Circle.smul_def,smul_eq_mul,
+      normalizedCirclePhaseExponential]
+    congr 1
+    congr 1
+    push_cast
+    ring
+  rw [hi,Complex.real_smul]
+  ring
+
+/-- A measurable global source parameter agrees with the true source on
+its radial window. The bounded continuation is used only where the source
+cutoff is zero. -/
+def normalizedCircleSourceParameter
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64) (y : Euclidean 2) :
+    normalizedCircleRawJacobianParameterRegion :=
+  ⟨(epsilon,circleDirection (y 0),min (max (y 1) (-5)) 5),by
+    refine ⟨?_,?_,?_⟩
+    · have hb := abs_le.mp hepsilon
+      simpa only [Set.mem_Icc,neg_div] using hb
+    · exact mem_sphere_zero_iff_norm.mpr (norm_circleDirection _)
+    · exact ⟨le_min (le_max_right _ _) (by norm_num),min_le_right _ _⟩⟩
+
+theorem normalizedCircleSourceParameter_measurable
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64) :
+    Measurable (normalizedCircleSourceParameter epsilon hepsilon) := by
+  apply Measurable.subtype_mk
+  unfold circleDirection
+  fun_prop
+
+theorem normalizedCircleSourceParameter_eq_actual
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64) (y : Euclidean 2) (hy : |y 1| ≤ 5) :
+    (normalizedCircleSourceParameter epsilon hepsilon y).val =
+      (epsilon,circleDirection (y 0),y 1) := by
+  obtain ⟨hl,hu⟩ := abs_le.mp hy
+  simp only [normalizedCircleSourceParameter,max_eq_left hl,min_eq_left hu]
+
+/-- Literal pointwise radial reconstruction into the actual compact
+Jac/incidence phase family. Both source cutoffs and conormal dilation are
+retained before any source/output integral interchange. -/
+theorem normalizedCircleRawBandOutput_source_integrand_phase
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 1| ≤ 5)
+    (b : Real → Complex) (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (z : JointWaveSpaceTime) (y : Euclidean 2) :
+    chiOut (z.fst,z.snd)*chiSource y*
+      normalizedCircleFrequencyKernel epsilon (fun rho => b (rho/conormal))
+        z.fst (circleDirection (y 0)) (y 1) z.snd*f y =
+      ∫ v : Real,
+        normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+          (normalizedCircleSourceParameter epsilon hepsilon y) (-2*Real.pi*conormal*v) z*
+            ((conormal:Complex)*(chiSource y*f y*b v)) := by
+  by_cases hy : chiSource y = 0
+  · simp only [hy,mul_zero,zero_mul,integral_zero]
+  · have hp := normalizedCircleSourceParameter_eq_actual epsilon hepsilon y (hchiSource y hy)
+    rw [normalizedCircleFrequencyKernel_conormal_source_integral epsilon b conormal hconormal]
+    calc
+      _ = (chiOut (z.fst,z.snd)*chiSource y*
+        (((1+epsilon*(y 1))/(1+epsilon*z.snd):Real):Complex)*(conormal:Complex)*f y)*
+          (∫ v : Real,normalizedCirclePhaseExponential epsilon (circleDirection (y 0)) (y 1)
+            (-2*Real.pi*conormal*v) z.snd z.fst*b v) := by ring
+      _ = ∫ v : Real,(chiOut (z.fst,z.snd)*chiSource y*
+          (((1+epsilon*(y 1))/(1+epsilon*z.snd):Real):Complex)*(conormal:Complex)*f y)*
+            (normalizedCirclePhaseExponential epsilon (circleDirection (y 0)) (y 1)
+              (-2*Real.pi*conormal*v) z.snd z.fst*b v) := (integral_const_mul _ _).symm
+      _ = _ := by
+        apply integral_congr_ae
+        apply Filter.Eventually.of_forall
+        intro v
+        simp only
+        rw [normalizedCircleRawJacobianPhaseSchwartz_apply,hp]
+        simp only [normalizedCircleParameterPhase]
+        ring
+
+#print axioms normalizedCircleFrequencyKernel_conormal_source_integral
+#print axioms normalizedCircleSourceParameter_measurable
+#print axioms normalizedCircleRawBandOutput_source_integrand_phase
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+def normalizedCircleConormalSourceRectangle : Set (Euclidean 2) :=
+  {y | y 0 ∈ Icc (-4) 4 ∧ y 1 ∈ Icc (-5) 5}
+
+theorem normalizedCircleConormalSourceRectangle_measurable :
+    MeasurableSet normalizedCircleConormalSourceRectangle :=
+  (measurableSet_Icc.preimage (by fun_prop)).inter (measurableSet_Icc.preimage (by fun_prop))
+
+instance normalizedCircleConormalSourceRectangle_isFiniteMeasure :
+    IsFiniteMeasure (volume.restrict normalizedCircleConormalSourceRectangle) := by
+  have hs : normalizedCircleConormalSourceRectangle ⊆ closedBall (0:Euclidean 2) 9 := by
+    intro y hy
+    have h0 : |y 0| ≤ 4 := abs_le.mpr hy.1
+    have h1 : |y 1| ≤ 5 := abs_le.mpr hy.2
+    have hs0 : |y 0|^2 ≤ 4^2 := (sq_le_sq₀ (abs_nonneg _) (by norm_num)).mpr h0
+    have hs1 : |y 1|^2 ≤ 5^2 := (sq_le_sq₀ (abs_nonneg _) (by norm_num)).mpr h1
+    have hn := PiLp.norm_sq_eq_of_L2 (fun _ : Fin 2 => Real) y
+    simp only [Fin.sum_univ_two,Real.norm_eq_abs] at hn
+    rw [mem_closedBall,dist_zero_right]
+    nlinarith [norm_nonneg y]
+  constructor
+  rw [Measure.restrict_apply_univ]
+  exact (measure_mono hs).trans_lt (isCompact_closedBall (0:Euclidean 2) 9).measure_lt_top
+
+/-- A single genuine fixed source measure for angular/radial coordinates
+and the original conormal band coordinate, independent of both scales. -/
+def normalizedCircleConormalSourceMeasure : Measure (Euclidean 2 × Real) :=
+  (volume.restrict normalizedCircleConormalSourceRectangle).prod (volume.restrict (Icc (-4:Real) 4))
+
+instance normalizedCircleConormalSourceMeasure_isFiniteMeasure :
+    IsFiniteMeasure normalizedCircleConormalSourceMeasure := by
+  have : IsFiniteMeasure (volume.restrict (Icc (-4:Real) 4)) := by
+    constructor
+    rw [Measure.restrict_apply_univ,Real.volume_Icc]
+    exact ENNReal.ofReal_lt_top
+  unfold normalizedCircleConormalSourceMeasure
+  infer_instance
+
+def normalizedCircleConormalSourceCoordinate (q : Euclidean 2 × Real) : Real :=
+  min (max q.2 (-4)) 4
+
+theorem normalizedCircleConormalSourceCoordinate_measurable :
+    Measurable normalizedCircleConormalSourceCoordinate := by
+  unfold normalizedCircleConormalSourceCoordinate
+  fun_prop
+
+theorem normalizedCircleConormalSourceCoordinate_bounds (q : Euclidean 2 × Real) :
+    |normalizedCircleConormalSourceCoordinate q| ≤ 4 :=
+  abs_le.mpr ⟨le_min (le_max_right _ _) (by norm_num),min_le_right _ _⟩
+
+theorem normalizedCircleConormalSourceCoordinate_eq (y : Euclidean 2) (v : Real)
+    (hv : v ∈ Icc (-4:Real) 4) :
+    normalizedCircleConormalSourceCoordinate (y,v) = v := by
+  simp only [normalizedCircleConormalSourceCoordinate,max_eq_left hv.1,min_eq_left hv.2]
+
+def normalizedCircleConormalSourceDatum
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (f : Euclidean 2 → Complex) (q : Euclidean 2 × Real) : Complex :=
+  chiSource q.1*f q.1*b q.2
+
+theorem normalizedCircleConormalSourceDatum_measurable
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) :
+    Measurable (normalizedCircleConormalSourceDatum chiSource b f) := by
+  change Measurable (fun q : Euclidean 2 × Real => chiSource q.1*f q.1*b q.2)
+  have hc : Measurable (fun q : Euclidean 2 × Real => chiSource q.1) := by fun_prop
+  have hb : Measurable (fun q : Euclidean 2 × Real => b q.2) := by fun_prop
+  simpa only [normalizedCircleConormalSourceDatum,Pi.mul_def,Function.comp_def] using
+    (hc.mul (hf.comp measurable_fst)).mul hb
+
+theorem normalizedCircleConormalSourceDatum_integrable
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (f : Euclidean 2 → Complex) (hfi : Integrable f volume) :
+    Integrable (normalizedCircleConormalSourceDatum chiSource b f)
+      normalizedCircleConormalSourceMeasure := by
+  have hy : Integrable (fun y : Euclidean 2 => chiSource y*f y) volume := by
+    apply hfi.bdd_mul chiSource.continuous.aestronglyMeasurable
+    exact Filter.Eventually.of_forall (fun y => chiSource.norm_le_seminorm Complex y)
+  exact hy.integrableOn.mul_prod b.integrable.integrableOn
+
+#print axioms normalizedCircleConormalSourceRectangle_isFiniteMeasure
+#print axioms normalizedCircleConormalSourceDatum_integrable
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The fixed actual source field with original conormal dilation and
+actual angular/radial data. The continued coordinates agree on the true
+support of the input cutoffs. -/
+def normalizedCircleConormalSourcePhaseField
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (conormal : Real) (f : Euclidean 2 → Complex) (z : JointWaveSpaceTime) : Complex :=
+  ∫ q : Euclidean 2 × Real,
+    normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+      (normalizedCircleSourceParameter epsilon hepsilon q.1)
+      (-2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q) z*
+        ((conormal:Complex)*normalizedCircleConormalSourceDatum chiSource b f q)
+      ∂normalizedCircleConormalSourceMeasure
+
+theorem normalizedCircleConormalSourcePhaseField_integrable
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (conormal : Real) (f : Euclidean 2 → Complex) (hf : Measurable f)
+    (hfi : Integrable f volume) :
+    Integrable (normalizedCircleConormalSourcePhaseField epsilon hepsilon chiOut hcompact hchiOut
+      chiSource b conormal f) volume := by
+  have hp : Measurable (fun q : Euclidean 2 × Real =>
+      normalizedCircleSourceParameter epsilon hepsilon q.1) :=
+    (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hrho : Measurable (fun q : Euclidean 2 × Real =>
+      -2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q) :=
+    normalizedCircleConormalSourceCoordinate_measurable.const_mul _
+  exact (normalizedCircleRawJacobianPhase_source_projection_fubini normalizedCircleConormalSourceMeasure
+    chiOut hcompact hchiOut _ hp _ hrho
+    (normalizedCircleConormalSourceDatum chiSource b f)
+    (normalizedCircleConormalSourceDatum_measurable chiSource b f hf)
+    (normalizedCircleConormalSourceDatum_integrable chiSource b f hfi)
+    conormal (0:SchwartzMap JointWaveSpaceTime Complex) 0).1
+
+/-- The literal compact raw normalized conormal band is exactly the true
+fixed-source phase field. This uses genuine radial dilation and source
+Fubini, not a representation premise. -/
+theorem normalizedCircleRawBandOutput_eq_conormalSourcePhaseField
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume)
+    (z : JointWaveSpaceTime) :
+    normalizedCircleRawBandOutput epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f (z.fst,z.snd) =
+      normalizedCircleConormalSourcePhaseField epsilon hepsilon chiOut hcompact hchiOut
+        chiSource b conormal f z := by
+  let P : Euclidean 2 × Real → Complex := fun q =>
+    normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+      (normalizedCircleSourceParameter epsilon hepsilon q.1)
+      (-2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q) z*
+        ((conormal:Complex)*normalizedCircleConormalSourceDatum chiSource b f q)
+  have hp : Measurable (fun q : Euclidean 2 × Real =>
+      normalizedCircleSourceParameter epsilon hepsilon q.1) :=
+    (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hrho : Measurable (fun q : Euclidean 2 × Real =>
+      -2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q) :=
+    normalizedCircleConormalSourceCoordinate_measurable.const_mul _
+  have hi : Integrable P normalizedCircleConormalSourceMeasure :=
+    (normalizedCircleRawJacobianPhase_source_projection_fubini normalizedCircleConormalSourceMeasure
+      chiOut hcompact hchiOut _ hp _ hrho
+      (normalizedCircleConormalSourceDatum chiSource b f)
+      (normalizedCircleConormalSourceDatum_measurable chiSource b f hf)
+      (normalizedCircleConormalSourceDatum_integrable chiSource b f hfi)
+      conormal (0:SchwartzMap JointWaveSpaceTime Complex) 0).2.1 z
+  have hscale : (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne' : Real → Complex) =
+      (fun rho => b (rho/conormal)) := by
+    funext rho
+    rw [mssTranslatedDilatedCutoff_apply]
+    congr 1
+    simp only [sub_zero,smul_eq_mul,div_eq_mul_inv,mul_comm]
+  let J : Euclidean 2 → Complex := fun y => chiOut (z.fst,z.snd)*chiSource y*
+    normalizedCircleFrequencyKernel epsilon (fun rho => b (rho/conormal))
+      z.fst (circleDirection (y 0)) (y 1) z.snd*f y
+  have hJzero : ∀ y ∉ normalizedCircleConormalSourceRectangle,J y = 0 := by
+    intro y hy
+    have hzero : chiSource y = 0 := by
+      by_contra hne
+      have hh := hchiSource y hne
+      exact hy ⟨abs_le.mp hh.1,abs_le.mp hh.2⟩
+    simp only [J,hzero,mul_zero,zero_mul]
+  have hpoint (y : Euclidean 2) : J y =
+      ∫ v : Real in Icc (-4:Real) 4,P (y,v) := by
+    dsimp only [J]
+    rw [normalizedCircleRawBandOutput_source_integrand_phase epsilon hepsilon chiOut hcompact hchiOut
+      chiSource (fun y hy => (hchiSource y hy).2) b conormal hconormal f z y]
+    calc
+      _ = ∫ v : Real in Icc (-4:Real) 4,
+          normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+            (normalizedCircleSourceParameter epsilon hepsilon y) (-2*Real.pi*conormal*v) z*
+              ((conormal:Complex)*(chiSource y*f y*b v)) := by
+        exact (setIntegral_eq_integral_of_forall_compl_eq_zero (fun v hv => by
+          have hbv : b v = 0 := by
+            by_contra hne
+            exact hv (abs_le.mp (hb v hne))
+          simp only [hbv,mul_zero])).symm
+      _ = _ := by
+        apply integral_congr_ae
+        filter_upwards [ae_restrict_mem measurableSet_Icc] with v hv
+        simp only [P,normalizedCircleConormalSourceDatum,normalizedCircleConormalSourceCoordinate_eq y v hv]
+  calc
+    _ = ∫ y : Euclidean 2,J y := by
+      rw [normalizedCircleRawBandOutput,hscale,← integral_const_mul]
+      apply integral_congr_ae
+      exact Filter.Eventually.of_forall (fun y => by dsimp only [J]; ring)
+    _ = ∫ y : Euclidean 2 in normalizedCircleConormalSourceRectangle,J y :=
+      (setIntegral_eq_integral_of_forall_compl_eq_zero hJzero).symm
+    _ = ∫ y : Euclidean 2 in normalizedCircleConormalSourceRectangle,
+        ∫ v : Real in Icc (-4:Real) 4,P (y,v) :=
+      integral_congr_ae (Filter.Eventually.of_forall hpoint)
+    _ = ∫ q : Euclidean 2 × Real,P q ∂normalizedCircleConormalSourceMeasure :=
+      (integral_prod P hi).symm
+    _ = _ := rfl
+
+#print axioms normalizedCircleConormalSourcePhaseField_integrable
+#print axioms normalizedCircleRawBandOutput_eq_conormalSourcePhaseField
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The actual cutoff source datum has a true fourth moment on the fixed
+source measure; neither frequency scale enters its bound. -/
+theorem normalizedCircleConormalSourceDatum_memLp_four_and_moment
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hf4 : MemLp f 4 volume) :
+    MemLp (normalizedCircleConormalSourceDatum chiSource b f) 4 normalizedCircleConormalSourceMeasure ∧
+    (∫ q : Euclidean 2 × Real,‖normalizedCircleConormalSourceDatum chiSource b f q‖^4
+      ∂normalizedCircleConormalSourceMeasure) ≤
+      8*(SchwartzMap.seminorm Complex 0 0 chiSource*SchwartzMap.seminorm Complex 0 0 b)^4*
+        (∫ y : Euclidean 2,‖f y‖^4) := by
+  let C : Real := SchwartzMap.seminorm Complex 0 0 chiSource*SchwartzMap.seminorm Complex 0 0 b
+  have hC : 0 ≤ C := by dsimp [C]; positivity
+  have : IsFiniteMeasure (volume.restrict (Icc (-4:Real) 4)) := by
+    constructor
+    rw [Measure.restrict_apply_univ,Real.volume_Icc]
+    exact ENNReal.ofReal_lt_top
+  have hbase : MemLp (fun q : Euclidean 2 × Real => f q.1) 4 normalizedCircleConormalSourceMeasure :=
+    (hf4.restrict normalizedCircleConormalSourceRectangle).comp_fst _
+  have hpoint (q : Euclidean 2 × Real) :
+      ‖normalizedCircleConormalSourceDatum chiSource b f q‖ ≤ C*‖f q.1‖ := by
+    dsimp only [normalizedCircleConormalSourceDatum]
+    simp only [norm_mul]
+    calc
+      _ ≤ SchwartzMap.seminorm Complex 0 0 chiSource*‖f q.1‖*
+          SchwartzMap.seminorm Complex 0 0 b := by
+        gcongr
+        · exact chiSource.norm_le_seminorm Complex _
+        · exact b.norm_le_seminorm Complex _
+      _ = _ := by dsimp [C]; ring
+  have hmem : MemLp (normalizedCircleConormalSourceDatum chiSource b f) 4
+      normalizedCircleConormalSourceMeasure := by
+    apply (hbase.norm.const_mul C).mono'
+      (normalizedCircleConormalSourceDatum_measurable chiSource b f hf).aestronglyMeasurable
+    exact Filter.Eventually.of_forall hpoint
+  refine ⟨hmem,?_⟩
+  have hraw :
+      (∫ q : Euclidean 2 × Real,‖normalizedCircleConormalSourceDatum chiSource b f q‖^4
+        ∂normalizedCircleConormalSourceMeasure) ≤
+      C^4*(∫ q : Euclidean 2 × Real,‖f q.1‖^4 ∂normalizedCircleConormalSourceMeasure) := by
+    rw [← integral_const_mul]
+    apply integral_mono
+      (hmem.integrable_norm_pow (by norm_num))
+      ((hbase.integrable_norm_pow (by norm_num)).const_mul _)
+    intro q
+    have hp := pow_le_pow_left₀ (norm_nonneg _) (hpoint q) 4
+    simpa only [mul_pow] using hp
+  have hmass :
+      (∫ q : Euclidean 2 × Real,‖f q.1‖^4 ∂normalizedCircleConormalSourceMeasure) =
+        8*(∫ y : Euclidean 2 in normalizedCircleConormalSourceRectangle,‖f y‖^4) := by
+    have hm := integral_prod_mul
+      (μ := volume.restrict normalizedCircleConormalSourceRectangle)
+      (ν := volume.restrict (Icc (-4:Real) 4))
+      (fun y : Euclidean 2 => ‖f y‖^4) (fun _ : Real => (1:Real))
+    simp only [mul_one] at hm
+    norm_num [normalizedCircleConormalSourceMeasure,Measure.real,Real.volume_Icc,mul_comm] at hm ⊢
+    exact hm
+  have hrestrict :
+      (∫ y : Euclidean 2 in normalizedCircleConormalSourceRectangle,‖f y‖^4) ≤
+        ∫ y : Euclidean 2,‖f y‖^4 :=
+    setIntegral_le_integral (hf4.integrable_norm_pow (by norm_num))
+      (Filter.Eventually.of_forall (fun _ => by positivity))
+  calc
+    _ ≤ C^4*(∫ q : Euclidean 2 × Real,‖f q.1‖^4 ∂normalizedCircleConormalSourceMeasure) := hraw
+    _ = C^4*(8*(∫ y : Euclidean 2 in normalizedCircleConormalSourceRectangle,‖f y‖^4)) := by rw [hmass]
+    _ ≤ C^4*(8*(∫ y : Euclidean 2,‖f y‖^4)) := by gcongr
+    _ = _ := by dsimp [C]; ring
+
+/-- Every literal Schwartz multiplier may be passed through the actual
+normalized conormal source field. The resulting convolution is exactly
+against the original raw band output, with all genuine pairings supplied. -/
+theorem normalizedCircleRawBandOutput_projection_eq_source_integral
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume)
+    (m : SchwartzMap JointWaveSpaceTime Complex) (x : JointWaveSpaceTime) :
+    Integrable (fun q : Euclidean 2 × Real =>
+      mssSchwartzSpectralProjection m
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+          (normalizedCircleSourceParameter epsilon hepsilon q.1)
+          (-2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q)) x*
+        ((conormal:Complex)*normalizedCircleConormalSourceDatum chiSource b f q))
+      normalizedCircleConormalSourceMeasure ∧
+    (∫ q : Euclidean 2 × Real,
+      mssSchwartzSpectralProjection m
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+          (normalizedCircleSourceParameter epsilon hepsilon q.1)
+          (-2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q)) x*
+        ((conormal:Complex)*normalizedCircleConormalSourceDatum chiSource b f q)
+      ∂normalizedCircleConormalSourceMeasure) =
+      ∫ z : JointWaveSpaceTime,(FourierTransform.fourierInv m :
+        SchwartzMap JointWaveSpaceTime Complex) (x-z)*
+          normalizedCircleRawBandOutput epsilon
+            (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne')
+            chiOut chiSource f (z.fst,z.snd) := by
+  have hp : Measurable (fun q : Euclidean 2 × Real =>
+      normalizedCircleSourceParameter epsilon hepsilon q.1) :=
+    (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hrho : Measurable (fun q : Euclidean 2 × Real =>
+      -2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q) :=
+    normalizedCircleConormalSourceCoordinate_measurable.const_mul _
+  have hff := normalizedCircleRawJacobianPhase_source_projection_fubini normalizedCircleConormalSourceMeasure
+    chiOut hcompact hchiOut _ hp _ hrho
+    (normalizedCircleConormalSourceDatum chiSource b f)
+    (normalizedCircleConormalSourceDatum_measurable chiSource b f hf)
+    (normalizedCircleConormalSourceDatum_integrable chiSource b f hfi) conormal m x
+  refine ⟨hff.2.2.1,?_⟩
+  calc
+    _ = ∫ z : JointWaveSpaceTime,(FourierTransform.fourierInv m :
+        SchwartzMap JointWaveSpaceTime Complex) (x-z)*
+          normalizedCircleConormalSourcePhaseField epsilon hepsilon chiOut hcompact hchiOut
+            chiSource b conormal f z := hff.2.2.2.2
+    _ = _ := by
+      apply integral_congr_ae
+      apply Filter.Eventually.of_forall
+      intro z
+      simp only
+      rw [normalizedCircleRawBandOutput_eq_conormalSourcePhaseField epsilon hepsilon chiOut hcompact
+        hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi]
+
+#print axioms normalizedCircleConormalSourceDatum_memLp_four_and_moment
+#print axioms normalizedCircleRawBandOutput_projection_eq_source_integral
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- Literal joint convolution of the original compact raw band output. -/
+def normalizedCircleRawBandProjection
+    (epsilon : Real) (b : SchwartzMap Real Complex)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (f : Euclidean 2 → Complex) (m : SchwartzMap JointWaveSpaceTime Complex)
+    (x : JointWaveSpaceTime) : Complex :=
+  ∫ z : JointWaveSpaceTime,(FourierTransform.fourierInv m :
+    SchwartzMap JointWaveSpaceTime Complex) (x-z)*
+      normalizedCircleRawBandOutput epsilon b chiOut chiSource f (z.fst,z.snd)
+
+/-- The genuine compact-temporal normal defect of the original normalized
+band output has an L4 remainder estimate. The conormal source scale and
+output spatial scale remain independent; their exact prefactors are retained. -/
+theorem normalizedCircleRawBandProjection_wide_normal_defect_uniform_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (Q : Real) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (N : Nat) (D : Real) (hD : 0 ≤ D) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ (epsilon : Real) (_hepsilon : |epsilon| ≤ 1/64),
+      ∀ (mu : Real) (hmu : 1 ≤ mu) (conormal : Real) (hconormal : 0 < conormal),
+      conormal ≤ D*mu → ∀ (h : Real) (hh : 0 < h),
+      ∀ (f : Euclidean 2 → Complex),Measurable f → Integrable f volume → MemLp f 4 volume →
+      let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q
+        (lt_of_lt_of_le zero_lt_one hmu) hh hQ ha ht hbeta
+      let O := normalizedCircleRawBandProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f m
+      MemLp O 4 volume ∧
+      (∫ x : JointWaveSpaceTime,‖O x‖^4) ≤
+        C*conormal^4*mu^3*(h^(4*N))⁻¹*(∫ y : Euclidean 2,‖f y‖^4) := by
+  obtain ⟨C,hC,hsource⟩ :=
+    normalizedCircleBothSheetNormalDefectConormalSourceWideOperator_uniform_fourth
+      chiOut hcompact hchiOut a t beta Q hQ ha ht hbeta N 4 (by norm_num) D hD
+  let A : Real :=
+    8*(SchwartzMap.seminorm Complex 0 0 chiSource*SchwartzMap.seminorm Complex 0 0 b)^4
+  refine ⟨C*(normalizedCircleConormalSourceMeasure univ).toReal^3*A,by dsimp [A]; positivity,?_⟩
+  intro epsilon hepsilon mu hmu conormal hconormal hratio h hh f hf hfi hf4
+  let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q
+    (lt_of_lt_of_le zero_lt_one hmu) hh hQ ha ht hbeta
+  let p : Euclidean 2 × Real → normalizedCircleRawJacobianParameterRegion :=
+    fun q => normalizedCircleSourceParameter epsilon hepsilon q.1
+  have hp : Measurable p :=
+    (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  obtain ⟨hdatum4,hdatumMoment⟩ :=
+    normalizedCircleConormalSourceDatum_memLp_four_and_moment chiSource b f hf hf4
+  obtain ⟨hpair,hmem,hfour⟩ := hsource normalizedCircleConormalSourceMeasure
+    mu hmu conormal hconormal.le hratio h hh p hp
+    normalizedCircleConormalSourceCoordinate normalizedCircleConormalSourceCoordinate_measurable
+    normalizedCircleConormalSourceCoordinate_bounds
+    (normalizedCircleConormalSourceDatum chiSource b f)
+    (normalizedCircleConormalSourceDatum_measurable chiSource b f hf) hdatum4
+  let O := normalizedCircleRawBandProjection epsilon
+    (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f m
+  have heq :
+      normalizedCircleBothSheetNormalDefectConormalSourceWideOperator
+        normalizedCircleConormalSourceMeasure chiOut hcompact hchiOut a t beta Q hQ
+        mu conormal h (lt_of_lt_of_le zero_lt_one hmu) hh ha ht hbeta p
+        normalizedCircleConormalSourceCoordinate
+        (normalizedCircleConormalSourceDatum chiSource b f) = O := by
+    funext x
+    exact (normalizedCircleRawBandOutput_projection_eq_source_integral epsilon hepsilon
+      chiOut hcompact hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi m x).2
+  change MemLp O 4 volume ∧ _
+  refine ⟨by rw [← heq]; exact hmem,?_⟩
+  rw [heq] at hfour
+  calc
+    _ ≤ C*(normalizedCircleConormalSourceMeasure univ).toReal^3*conormal^4*
+        mu^3*(h^(4*N))⁻¹*
+        (∫ q,‖normalizedCircleConormalSourceDatum chiSource b f q‖^4
+          ∂normalizedCircleConormalSourceMeasure) := hfour
+    _ ≤ C*(normalizedCircleConormalSourceMeasure univ).toReal^3*conormal^4*
+        mu^3*(h^(4*N))⁻¹*(A*(∫ y : Euclidean 2,‖f y‖^4)) := by
+      apply mul_le_mul_of_nonneg_left hdatumMoment
+      positivity
+    _ = _ := by ring
+
+#print axioms normalizedCircleRawBandProjection_wide_normal_defect_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- With a positive normal-width exponent, the actual compact-temporal
+normal defect has arbitrarily rapid fourth-moment decay in the original
+conormal scale, uniformly on each fixed comparable spatial-scale window. -/
+theorem normalizedCircleRawBandProjection_wide_normal_defect_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (Q : Real) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (D E : Real) (hD : 0 ≤ D) (hE : 0 ≤ E)
+    (gamma : Real) (hgamma : 0 < gamma) (A : Real) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ (epsilon : Real) (_hepsilon : |epsilon| ≤ 1/64),
+      ∀ (mu : Real) (hmu : 1 ≤ mu) (conormal : Real) (hconormal : 1 ≤ conormal),
+      conormal ≤ D*mu → mu ≤ E*conormal →
+      ∀ (f : Euclidean 2 → Complex),Measurable f → Integrable f volume → MemLp f 4 volume →
+      let h := conormal^gamma
+      let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q
+        (lt_of_lt_of_le zero_lt_one hmu) (Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hconormal) gamma)
+        hQ ha ht hbeta
+      let O := normalizedCircleRawBandProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal (ne_of_gt (lt_of_lt_of_le zero_lt_one hconormal)))
+        chiOut chiSource f m
+      MemLp O 4 volume ∧
+      (∫ x : JointWaveSpaceTime,‖O x‖^4) ≤
+        C*conormal^(-A:Real)*(∫ y : Euclidean 2,‖f y‖^4) := by
+  obtain ⟨N,hN⟩ := exists_normalizedCircleBothSheetNormalDefectOrder gamma hgamma A
+  obtain ⟨C,hC,hactual⟩ := normalizedCircleRawBandProjection_wide_normal_defect_uniform_fourth
+    chiOut hcompact hchiOut chiSource hchiSource b hb a t beta Q hQ ha ht hbeta N D hD
+  refine ⟨C*E^3,by positivity,?_⟩
+  intro epsilon hepsilon mu hmu conormal hconormal hratio hreverse f hf hfi hf4
+  have hcp : 0 < conormal := lt_of_lt_of_le zero_lt_one hconormal
+  have hh : 0 < conormal^gamma := Real.rpow_pos_of_pos hcp _
+  obtain ⟨hmem,hfour⟩ := hactual epsilon hepsilon mu hmu conormal hcp hratio
+    (conormal^gamma) hh f hf hfi hf4
+  refine ⟨hmem,?_⟩
+  have hscale :
+      conormal^4*mu^3*((conormal^gamma)^(4*N))⁻¹ ≤
+        E^3*conormal^(-A:Real) := by
+    calc
+      _ ≤ conormal^4*(E*conormal)^3*((conormal^gamma)^(4*N))⁻¹ := by gcongr
+      _ = E^3*(conormal^(7:Nat)*((conormal^gamma)^(4*N))⁻¹) := by ring
+      _ ≤ E^3*conormal^(-A:Real) := mul_le_mul_of_nonneg_left (hN conormal hconormal) (by positivity)
+  calc
+    _ ≤ C*conormal^4*mu^3*((conormal^gamma)^(4*N))⁻¹*(∫ y : Euclidean 2,‖f y‖^4) := hfour
+    _ = C*(conormal^4*mu^3*((conormal^gamma)^(4*N))⁻¹)*(∫ y : Euclidean 2,‖f y‖^4) := by ring
+    _ ≤ C*(E^3*conormal^(-A:Real))*(∫ y : Euclidean 2,‖f y‖^4) := by
+      apply mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hscale hC)
+      exact integral_nonneg (fun _ => by positivity)
+    _ = _ := by ring
+
+#print axioms normalizedCircleRawBandProjection_wide_normal_defect_rapid_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- A fixed temporal profile representing the actual cyclic time derivative. -/
+def normalizedCircleTemporalDerivativeCutoff (t : SchwartzMap Real Complex) :
+    SchwartzMap Real Complex :=
+  SchwartzMap.smulLeftCLM Complex
+    (fun s : Real => (((2*Real.pi*s:Real):Complex)*Complex.I)) t
+
+theorem normalizedCircleTemporalDerivativeCutoff_apply
+    (t : SchwartzMap Real Complex) (s : Real) :
+    normalizedCircleTemporalDerivativeCutoff t s =
+      (((2*Real.pi*s:Real):Complex)*Complex.I)*t s := by
+  have hg : (fun s : Real => (((2*Real.pi*s:Real):Complex)*Complex.I)).HasTemperateGrowth := by fun_prop
+  exact SchwartzMap.smulLeftCLM_apply_apply hg t s
+
+theorem normalizedCircleTemporalDerivativeCutoff_support
+    (t : SchwartzMap Real Complex) (Q : Real)
+    (ht : ∀ s,t s ≠ 0 → |s| ≤ Q) :
+    ∀ s,normalizedCircleTemporalDerivativeCutoff t s ≠ 0 → |s| ≤ Q := by
+  intro s hs
+  apply ht s
+  intro hz
+  exact hs (by rw [normalizedCircleTemporalDerivativeCutoff_apply,hz,mul_zero])
+
+/-- The fixed derivative profile retains the exact output spatial dilation. -/
+theorem normalizedCircleCompactBothSheetNormalDefect_temporal_symbol
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h : Real) (hmu : mu ≠ 0) (z : JointWaveSpaceTime) :
+    (((2*Real.pi*z.snd:Real):Complex)*Complex.I)*
+      normalizedCircleCompactBothSheetNormalDefect a t beta mu h z =
+      (mu:Complex)*normalizedCircleCompactBothSheetNormalDefect a
+        (normalizedCircleTemporalDerivativeCutoff t) beta mu h z := by
+  unfold normalizedCircleCompactBothSheetNormalDefect
+  rw [normalizedCircleTemporalDerivativeCutoff_apply]
+  push_cast
+  field_simp [show (mu:Complex) ≠ 0 by exact_mod_cast hmu]
+
+/-- The original compact raw band has a genuine global L1 representative
+in the Hilbert space-time chart, using the actual source phase identity. -/
+theorem normalizedCircleRawBandOutput_integrable_hilbert_from_source
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume) :
+    Integrable (fun z : JointWaveSpaceTime => normalizedCircleRawBandOutput epsilon
+      (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne')
+      chiOut chiSource f (z.fst,z.snd)) volume := by
+  apply (normalizedCircleConormalSourcePhaseField_integrable epsilon hepsilon chiOut hcompact
+    hchiOut chiSource b conormal f hf hfi).congr
+  exact Filter.Eventually.of_forall (fun z =>
+    (normalizedCircleRawBandOutput_eq_conormalSourcePhaseField epsilon hepsilon
+      chiOut hcompact hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi z).symm)
+
+/-- Compact output cutoffs give literal raw band support in a fixed ball;
+no regularity of the original input is required. -/
+theorem normalizedCircleRawBandOutput_hilbert_norm_support
+    (epsilon : Real) (b : SchwartzMap Real Complex)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (f : Euclidean 2 → Complex) (z : JointWaveSpaceTime)
+    (hz : normalizedCircleRawBandOutput epsilon b chiOut chiSource f (z.fst,z.snd) ≠ 0) :
+    ‖z‖ ≤ 5 := by
+  have ho : chiOut (z.fst,z.snd) ≠ 0 := by
+    intro hzero
+    exact hz (by simp only [normalizedCircleRawBandOutput,hzero,zero_mul])
+  have hb := hchiOut _ ho
+  exact (normalizedCircleJointNorm_le_space_add_time z).trans (by linarith)
+
+#print axioms normalizedCircleTemporalDerivativeCutoff_apply
+#print axioms normalizedCircleCompactBothSheetNormalDefect_temporal_symbol
+#print axioms normalizedCircleRawBandOutput_integrable_hilbert_from_source
+#print axioms normalizedCircleRawBandOutput_hilbert_norm_support
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- A compact joint multiplier applied to the original raw band output
+has a genuine Schwartz representative, with its literal Fourier spectrum. -/
+theorem exists_normalizedCircleRawBandProjection_schwartz
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume)
+    (m : SchwartzMap JointWaveSpaceTime Complex)
+    (hm : HasCompactSupport (m : JointWaveSpaceTime → Complex)) :
+    ∃ H : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ xi,(FourierTransform.fourier H : SchwartzMap JointWaveSpaceTime Complex) xi =
+        m xi*FourierTransform.fourier
+          (fun z : JointWaveSpaceTime => normalizedCircleRawBandOutput epsilon
+            (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne')
+            chiOut chiSource f (z.fst,z.snd)) xi) ∧
+      (∀ x,H x = normalizedCircleRawBandProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f m x) := by
+  let G : JointWaveSpaceTime → Complex := fun z => normalizedCircleRawBandOutput epsilon
+    (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f (z.fst,z.snd)
+  have hi : Integrable G volume :=
+    normalizedCircleRawBandOutput_integrable_hilbert_from_source epsilon hepsilon chiOut hcompact
+      hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi
+  have hs : ∀ z,G z ≠ 0 → ‖z‖ ≤ 5 :=
+    normalizedCircleRawBandOutput_hilbert_norm_support epsilon _ chiOut hchiOut chiSource f
+  let S := sourcePacketCompactL1Spectrum m hm G hi 5 (by norm_num) hs
+  refine ⟨FourierTransform.fourierInv S,?_,?_⟩
+  · intro xi
+    rw [FourierTransform.fourier_fourierInv_eq]
+    exact sourcePacketCompactL1Spectrum_apply m hm G hi 5 (by norm_num) hs xi
+  · intro x
+    exact sourcePacketCompactL1Spectrum_inverse m hm G hi 5 (by norm_num) hs x
+
+/-- The derivative of the literal compact-temporal normal defect is
+exactly the corresponding fixed derivative profile, times the true
+spatial frequency scale. Genuine Schwartz representatives supply the
+derivative, rather than a formal differentiation of a source pairing. -/
+theorem exists_normalizedCircleRawBandNormalDefect_temporal_derivative
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (mu h Q : Real) (hmu : 0 < mu) (hh : 0 < h) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1) :
+    let t1 := normalizedCircleTemporalDerivativeCutoff t
+    let ht1 := normalizedCircleTemporalDerivativeCutoff_support t Q ht
+    let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q hmu hh hQ ha ht hbeta
+    let m1 := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t1 beta mu h Q hmu hh hQ ha ht1 hbeta
+    ∃ H H1 : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ x,H x = normalizedCircleRawBandProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f m x) ∧
+      (∀ x,H1 x = normalizedCircleRawBandProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f m1 x) ∧
+      LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H = (mu:Complex) • H1 := by
+  intro t1 ht1 m m1
+  have hm : HasCompactSupport (m : JointWaveSpaceTime → Complex) :=
+    normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport_wide a t beta mu h Q hmu hh hQ ha ht hbeta
+  have hm1 : HasCompactSupport (m1 : JointWaveSpaceTime → Complex) :=
+    normalizedCircleCompactBothSheetNormalDefect_hasCompactSupport_wide a t1 beta mu h Q hmu hh hQ ha ht1 hbeta
+  obtain ⟨H,hHfour,hH⟩ := exists_normalizedCircleRawBandProjection_schwartz epsilon hepsilon
+    chiOut hcompact hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi m hm
+  obtain ⟨H1,hH1four,hH1⟩ := exists_normalizedCircleRawBandProjection_schwartz epsilon hepsilon
+    chiOut hcompact hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi m1 hm1
+  refine ⟨H,H1,hH,hH1,?_⟩
+  have hg : (fun z : JointWaveSpaceTime =>
+      inner Real z (WithLp.toLp 2 ((0:Euclidean 2),(1:Real)))).HasTemperateGrowth := by fun_prop
+  have hfour :
+      FourierTransform.fourier (LineDeriv.lineDerivOp
+        (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H) =
+        FourierTransform.fourier ((mu:Complex) • H1) := by
+    ext xi
+    rw [SchwartzMap.fourier_lineDerivOp_eq,FourierTransform.fourier_smul]
+    simp only [smul_apply,SchwartzMap.smulLeftCLM_apply_apply hg,Complex.real_smul,smul_eq_mul]
+    rw [hHfour,hH1four]
+    have hv : inner Real xi (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) = xi.snd := by
+      simp [WithLp.prod_inner_apply]
+    rw [hv]
+    have hs := normalizedCircleCompactBothSheetNormalDefect_temporal_symbol a t beta mu h hmu.ne' xi
+    change (2*(Real.pi:Complex)*Complex.I)*((xi.snd:Complex)*
+      (normalizedCircleCompactBothSheetNormalDefect a t beta mu h xi*_)) =
+      (mu:Complex)*(normalizedCircleCompactBothSheetNormalDefect a t1 beta mu h xi*_)
+    rw [← mul_assoc (mu:Complex),← hs]
+    push_cast
+    ring
+  have hi := congrArg (fun P : SchwartzMap JointWaveSpaceTime Complex => FourierTransform.fourierInv P) hfour
+  simpa only [FourierTransform.fourierInv_fourier_eq] using hi
+
+#print axioms exists_normalizedCircleRawBandProjection_schwartz
+#print axioms exists_normalizedCircleRawBandNormalDefect_temporal_derivative
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- A genuine joint Schwartz field satisfies the scale-sensitive compact-time
+fourth-moment maximum bound. The proof uses actual time derivatives and
+Fubini on the true global fourth moments. -/
+theorem sourcePacket_schwartz_timeMax_fourth_le_scaled
+    (H : SchwartzMap JointWaveSpaceTime Complex) (mu : Real) (hmu : 0 < mu) :
+    let D := LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H
+    Measurable (fun X : Euclidean 2 =>
+      ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+    (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+      ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+      ENNReal.ofReal (8*mu*(∫ z : JointWaveSpaceTime,‖H z‖^4)+
+        8*mu⁻¹^3*(∫ z : JointWaveSpaceTime,‖D z‖^4)) := by
+  intro D
+  let F : Euclidean 2 × Real → Complex := fun q => H (WithLp.toLp 2 q)
+  let G : Euclidean 2 × Real → Complex := fun q => D (WithLp.toLp 2 q)
+  have hFc : Continuous F := H.continuous.comp (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.continuous
+  have hGc : Continuous G := D.continuous.comp (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.continuous
+  have hF : Integrable (fun q : Euclidean 2 × Real => ‖F q‖^4) (volume.prod volume) := by
+    have hi := (WithLp.volume_preserving_toLp (Euclidean 2) Real).integrable_comp_of_integrable
+      ((H.memLp 4 volume).integrable_norm_pow (by norm_num))
+    simpa only [F,Measure.volume_eq_prod,Function.comp_def] using hi
+  have hG : Integrable (fun q : Euclidean 2 × Real => ‖G q‖^4) (volume.prod volume) := by
+    have hi := (WithLp.volume_preserving_toLp (Euclidean 2) Real).integrable_comp_of_integrable
+      ((D.memLp 4 volume).integrable_norm_pow (by norm_num))
+    simpa only [G,Measure.volume_eq_prod,Function.comp_def] using hi
+  have hderiv (X : Euclidean 2) (T : Real) :
+      HasDerivAt (fun t : Real => F (X,t)) (G (X,T)) T := by
+    let L : WaveSpaceTime →L[Real] JointWaveSpaceTime :=
+      (WithLp.prodContinuousLinearEquiv 2 Real (Euclidean 2) Real).symm.toContinuousLinearMap
+    have hc : HasDerivAt (fun t : Real => WithLp.toLp 2 (X,t))
+        (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) T :=
+      L.hasFDerivAt.comp_hasDerivAt T
+        ((hasDerivAt_const T X).prodMk (hasDerivAt_id T))
+    dsimp only [F,G,D]
+    rw [SchwartzMap.lineDerivOp_apply_eq_fderiv]
+    exact (H.hasFDerivAt _).comp_hasDerivAt T hc
+  have hmeas : Measurable (fun X : Euclidean 2 =>
+      ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖F (X,r.1)‖^4)) := by
+    have hh : Measurable (⨆ r : Icc (-2:Real) 2,fun X : Euclidean 2 =>
+        ENNReal.ofReal (‖F (X,r.1)‖^4)) := by
+      apply measurable_iSup_of_lowerSemicontinuous
+      · intro r
+        exact (ENNReal.continuous_ofReal.comp
+          ((hFc.comp (continuous_id.prodMk continuous_const)).norm.pow 4)).measurable
+      · intro X
+        exact (ENNReal.continuous_ofReal.comp
+          ((hFc.comp (continuous_const.prodMk continuous_subtype_val)).norm.pow 4)).lowerSemicontinuous
+    convert hh using 1
+    funext X
+    exact (iSup_apply (f := fun r : Icc (-2:Real) 2 => fun X : Euclidean 2 =>
+      ENNReal.ofReal (‖F (X,r.1)‖^4)) (a := X)).symm
+  refine ⟨hmeas,?_⟩
+  let R : Euclidean 2 → Real := fun X =>
+    8*mu*(∫ T : Real,‖F (X,T)‖^4)+8*mu⁻¹^3*(∫ T : Real,‖G (X,T)‖^4)
+  have hRi : Integrable R volume :=
+    (hF.integral_prod_left.const_mul _).add (hG.integral_prod_left.const_mul _)
+  have hRp (X : Euclidean 2) : 0 ≤ R X := by dsimp [R]; positivity
+  have hpoint : ∀ᵐ X : Euclidean 2 ∂volume,
+      (⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖F (X,r.1)‖^4)) ≤ ENNReal.ofReal (R X) := by
+    filter_upwards [hF.prod_right_ae,hG.prod_right_ae] with X hFi hGi
+    apply iSup_le
+    intro r
+    apply ENNReal.ofReal_le_ofReal
+    have hp := timeSobolevFour (a := r.1) (b := r.1+mu⁻¹) (r := r.1)
+      (by linarith [inv_pos.mpr hmu] : r.1 < r.1+mu⁻¹)
+      ⟨le_rfl,by linarith [inv_pos.mpr hmu]⟩
+      (hFc.comp (continuous_const.prodMk continuous_id))
+      (hGc.comp (continuous_const.prodMk continuous_id)) (hderiv X)
+    have hlen : r.1+mu⁻¹-r.1 = mu⁻¹ := by ring
+    rw [hlen,inv_inv] at hp
+    have hIF :
+        (∫ T in r.1..r.1+mu⁻¹,‖F (X,T)‖^4) ≤ ∫ T : Real,‖F (X,T)‖^4 := by
+      rw [intervalIntegral.integral_of_le (by linarith [inv_pos.mpr hmu])]
+      exact setIntegral_le_integral hFi (Filter.Eventually.of_forall (fun _ => by positivity))
+    have hIG :
+        (∫ T in r.1..r.1+mu⁻¹,‖G (X,T)‖^4) ≤ ∫ T : Real,‖G (X,T)‖^4 := by
+      rw [intervalIntegral.integral_of_le (by linarith [inv_pos.mpr hmu])]
+      exact setIntegral_le_integral hGi (Filter.Eventually.of_forall (fun _ => by positivity))
+    exact hp.trans (add_le_add (mul_le_mul_of_nonneg_left hIF (by positivity))
+      (mul_le_mul_of_nonneg_left hIG (by positivity)))
+  have henergyF :
+      (∫ X : Euclidean 2,∫ T : Real,‖F (X,T)‖^4) = ∫ z : JointWaveSpaceTime,‖H z‖^4 := by
+    rw [← integral_prod _ hF]
+    simpa only [Measure.volume_eq_prod,F] using
+      (WithLp.volume_preserving_toLp (Euclidean 2) Real).integral_comp
+        (MeasurableEquiv.toLp 2 WaveSpaceTime).measurableEmbedding
+        (fun z : JointWaveSpaceTime => ‖H z‖^4)
+  have henergyG :
+      (∫ X : Euclidean 2,∫ T : Real,‖G (X,T)‖^4) = ∫ z : JointWaveSpaceTime,‖D z‖^4 := by
+    rw [← integral_prod _ hG]
+    simpa only [Measure.volume_eq_prod,G] using
+      (WithLp.volume_preserving_toLp (Euclidean 2) Real).integral_comp
+        (MeasurableEquiv.toLp 2 WaveSpaceTime).measurableEmbedding
+        (fun z : JointWaveSpaceTime => ‖D z‖^4)
+  calc
+    _ ≤ ∫⁻ X : Euclidean 2,ENNReal.ofReal (R X) := lintegral_mono_ae hpoint
+    _ = ENNReal.ofReal (∫ X : Euclidean 2,R X) :=
+      (ofReal_integral_eq_lintegral_ofReal hRi (Filter.Eventually.of_forall hRp)).symm
+    _ = _ := by
+      congr 1
+      rw [integral_add (hF.integral_prod_left.const_mul _) (hG.integral_prod_left.const_mul _)]
+      simp only [integral_const_mul]
+      rw [henergyF,henergyG]
+
+#print axioms sourcePacket_schwartz_timeMax_fourth_le_scaled
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+/-- The literal compact-temporal normal defect has arbitrarily rapid
+compact-time maximal fourth-moment decay. Its actual derivative is supplied
+by the fixed derivative profile and its genuine Schwartz representative. -/
+theorem normalizedCircleRawBandProjection_wide_normal_defect_timeMax_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (Q : Real) (hQ : 0 ≤ Q)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ht : ∀ tau,t tau ≠ 0 → |tau| ≤ Q)
+    (hbeta : ∀ s,|s| ≤ 1 → beta s = 1)
+    (D E : Real) (hD : 0 ≤ D) (hE : 0 ≤ E)
+    (gamma : Real) (hgamma : 0 < gamma) (A : Real) :
+    ∃ C : Real,0 ≤ C ∧
+      ∀ (epsilon : Real) (_hepsilon : |epsilon| ≤ 1/64),
+      ∀ (mu : Real) (hmu : 1 ≤ mu) (conormal : Real) (hconormal : 1 ≤ conormal),
+      conormal ≤ D*mu → mu ≤ E*conormal →
+      ∀ (f : Euclidean 2 → Complex),Measurable f → Integrable f volume → MemLp f 4 volume →
+      let h := conormal^gamma
+      let m := normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu h Q
+        (lt_of_lt_of_le zero_lt_one hmu)
+        (Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hconormal) gamma) hQ ha ht hbeta
+      let O := normalizedCircleRawBandProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal (ne_of_gt (lt_of_lt_of_le zero_lt_one hconormal)))
+        chiOut chiSource f m
+      Measurable (fun X : Euclidean 2 =>
+        ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖O (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖O (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+        ENNReal.ofReal (C*conormal^(-A:Real)*(∫ y : Euclidean 2,‖f y‖^4)) := by
+  let t1 := normalizedCircleTemporalDerivativeCutoff t
+  have ht1 : ∀ s,t1 s ≠ 0 → |s| ≤ Q :=
+    normalizedCircleTemporalDerivativeCutoff_support t Q ht
+  obtain ⟨C0,hC0,hzero⟩ := normalizedCircleRawBandProjection_wide_normal_defect_rapid_fourth
+    chiOut hcompact hchiOut chiSource hchiSource b hb a t beta Q hQ ha ht hbeta
+    D E hD hE gamma hgamma (A+1)
+  obtain ⟨C1,hC1,hone⟩ := normalizedCircleRawBandProjection_wide_normal_defect_rapid_fourth
+    chiOut hcompact hchiOut chiSource hchiSource b hb a t1 beta Q hQ ha ht1 hbeta
+    D E hD hE gamma hgamma (A+1)
+  refine ⟨8*(C0+E^4*C1),by positivity,?_⟩
+  intro epsilon hepsilon mu hmu conormal hconormal hratio hreverse f hf hfi hf4
+  have hcp : 0 < conormal := lt_of_lt_of_le zero_lt_one hconormal
+  have hmup : 0 < mu := lt_of_lt_of_le zero_lt_one hmu
+  have hh : 0 < conormal^gamma := Real.rpow_pos_of_pos hcp _
+  obtain ⟨H,H1,hH,hH1,hderiv⟩ := exists_normalizedCircleRawBandNormalDefect_temporal_derivative
+    epsilon hepsilon chiOut hcompact hchiOut chiSource hchiSource b hb conormal hcp f hf hfi
+    a t beta mu (conormal^gamma) Q hmup hh hQ ha ht hbeta
+  have hzero4 := (hzero epsilon hepsilon mu hmu conormal hconormal hratio hreverse f hf hfi hf4).2
+  have hone4 := (hone epsilon hepsilon mu hmu conormal hconormal hratio hreverse f hf hfi hf4).2
+  have hH4 : (∫ z : JointWaveSpaceTime,‖H z‖^4) ≤
+      C0*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4) := by
+    simpa only [hH] using hzero4
+  have hH14 : (∫ z : JointWaveSpaceTime,‖H1 z‖^4) ≤
+      C1*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4) := by
+    simpa only [hH1] using hone4
+  have hD4 :
+      (∫ z : JointWaveSpaceTime,‖LineDeriv.lineDerivOp
+        (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H z‖^4) =
+        mu^4*(∫ z : JointWaveSpaceTime,‖H1 z‖^4) := by
+    rw [hderiv]
+    simp only [smul_apply,norm_smul,Complex.norm_real,Real.norm_eq_abs,abs_of_pos hmup,mul_pow]
+    exact integral_const_mul _ _
+  have hscale : conormal⁻¹^3*mu^4 ≤ E^4*conormal := by
+    calc
+      _ ≤ conormal⁻¹^3*(E*conormal)^4 := by gcongr
+      _ = E^4*conormal := by field_simp
+  have hexp : conormal*conormal^(-(A+1):Real) = conormal^(-A:Real) := by
+    calc
+      _ = conormal^(1:Real)*conormal^(-(A+1):Real) := by rw [Real.rpow_one]
+      _ = conormal^((1:Real)+(-(A+1))) := (Real.rpow_add hcp _ _).symm
+      _ = _ := by congr 1; ring
+  have hmax := sourcePacket_schwartz_timeMax_fourth_le_scaled H conormal hcp
+  have hleft :
+      (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) =
+      (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖normalizedCircleRawBandProjection epsilon
+          (mssTranslatedDilatedCutoff b (0:Real) conormal hcp.ne') chiOut chiSource f
+          (normalizedCircleCompactBothSheetNormalDefectWideSchwartz a t beta mu (conormal^gamma) Q
+            hmup hh hQ ha ht hbeta) (WithLp.toLp 2 (X,r.1))‖^4)) := by
+    funext X
+    congr 1
+    funext r
+    rw [hH]
+  refine ⟨by rw [← hleft];exact hmax.1,?_⟩
+  rw [← hleft]
+  apply hmax.2.trans
+  apply ENNReal.ofReal_le_ofReal
+  rw [hD4]
+  calc
+    _ ≤ 8*conormal*(C0*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4))+
+        8*conormal⁻¹^3*(mu^4*(C1*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4))) := by
+      gcongr
+    _ = 8*conormal*(C0*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4))+
+        8*(conormal⁻¹^3*mu^4)*(C1*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4)) := by ring
+    _ ≤ 8*conormal*(C0*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4))+
+        8*(E^4*conormal)*(C1*conormal^(-(A+1):Real)*(∫ y : Euclidean 2,‖f y‖^4)) := by
+      gcongr
+    _ = (8*(C0+E^4*C1))*(conormal*conormal^(-(A+1):Real))*(∫ y : Euclidean 2,‖f y‖^4) := by ring
+    _ = _ := by rw [hexp]
+
+#print axioms normalizedCircleRawBandProjection_wide_normal_defect_timeMax_rapid_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ContDiff
+
+theorem mss_temporal_reciprocal_sq_integrable :
+    Integrable (fun t : Real => ((1+t^2)⁻¹)^2) := by
+  apply integrable_inv_one_add_sq.mono' (by fun_prop)
+  filter_upwards [] with t
+  have h0 : 0 ≤ (1+t^2)⁻¹ := by positivity
+  have h1 : (1+t^2)⁻¹ ≤ 1 := by
+    have hh := (inv_le_inv₀ (by positivity : 0 < 1+t^2) zero_lt_one).2
+      (by nlinarith : (1:Real) ≤ 1+t^2)
+    simpa only [inv_one] using hh
+  rw [Real.norm_eq_abs,abs_of_nonneg (sq_nonneg _)]
+  nlinarith [mul_nonneg h0 (sub_nonneg.mpr h1)]
+
+/-- The unbounded time-frequency Cauchy weight has genuine finite L2
+mass; its spatial factor is an actual finite-volume set. -/
+theorem mss_spatial_temporal_reciprocal_weight
+    (E : Set (Euclidean 2)) (hE : MeasurableSet E) (hEfin : volume E < ⊤) :
+    let D : JointWaveSpaceTime → Complex := by
+      classical
+      exact fun z => if z.fst ∈ E then (((1+z.snd^2)⁻¹:Real):Complex) else 0
+    MemLp D 2 volume ∧
+      (∫ z : JointWaveSpaceTime,‖D z‖^2) =
+        (volume E).toReal*(∫ t : Real,((1+t^2)⁻¹)^2) := by
+  classical
+  let D : JointWaveSpaceTime → Complex := fun z =>
+    if z.fst ∈ E then (((1+z.snd^2)⁻¹:Real):Complex) else 0
+  let f : Euclidean 2 → Real := E.indicator (fun _ => 1)
+  let g : Real → Real := fun t => ((1+t^2)⁻¹)^2
+  have hf : Integrable f := (integrable_indicator_iff hE).mpr (integrableOn_const hEfin.ne)
+  have hg : Integrable g := mss_temporal_reciprocal_sq_integrable
+  have hDZ : MeasurableSet {z : JointWaveSpaceTime | z.fst ∈ E} :=
+    hE.preimage (WithLp.fstL 2 Real (Euclidean 2) Real).continuous.measurable
+  have hD : Measurable D := (show Measurable (fun z : JointWaveSpaceTime =>
+      (((1+z.snd^2)⁻¹:Real):Complex)) by fun_prop).ite hDZ measurable_const
+  have he (p : WaveSpaceTime) : ‖D (WithLp.toLp 2 p)‖^2 = f p.1*g p.2 := by
+    by_cases hp : p.1 ∈ E
+    · simp only [D,WithLp.toLp_fst,WithLp.toLp_snd,hp,ite_true,f,
+        Set.indicator_of_mem hp,one_mul,g,Complex.norm_real,Real.norm_eq_abs,
+        abs_of_nonneg (by positivity : (0:Real) ≤ (1+p.2^2)⁻¹)]
+    · simp only [D,WithLp.toLp_fst,WithLp.toLp_snd,hp,ite_false,norm_zero,zero_pow
+        (by norm_num : (2:Nat) ≠ 0),f,Set.indicator_of_notMem hp,zero_mul]
+  have hpres : MeasurePreserving
+      (MeasurableEquiv.toLp 2 WaveSpaceTime) volume volume :=
+    WithLp.volume_preserving_toLp (Euclidean 2) Real
+  have hPair : Integrable (fun p : WaveSpaceTime => ‖D (WithLp.toLp 2 p)‖^2) := by
+    simpa only [he,Measure.volume_eq_prod] using hf.mul_prod hg
+  have hDi : Integrable (fun z : JointWaveSpaceTime => ‖D z‖^2) :=
+    (hpres.integrable_comp (hD.norm.pow_const 2).aestronglyMeasurable).mp hPair
+  refine ⟨(memLp_two_iff_integrable_sq_norm hD.aestronglyMeasurable).mpr hDi,?_⟩
+  calc
+    _ = ∫ p : WaveSpaceTime,‖D (WithLp.toLp 2 p)‖^2 :=
+      (hpres.integral_comp' (fun z : JointWaveSpaceTime => ‖D z‖^2)).symm
+    _ = (∫ x : Euclidean 2,f x)*(∫ t : Real,g t) := by
+      simp only [he,Measure.volume_eq_prod]
+      exact integral_prod_mul f g
+    _ = _ := by simp [f,integral_indicator hE,Measure.real,g]
+
+/-- True spatial-band fourth moment with no temporal support premise.
+The time weight is integrable over the entire real frequency axis. -/
+theorem integral_norm_four_fourierInv_spatial_band_le_weighted
+    (H : SchwartzMap JointWaveSpaceTime Complex)
+    (E : Set (Euclidean 2)) (hE : MeasurableSet E) (hEfin : volume E < ⊤)
+    (hsupp : ∀ z,H z ≠ 0 → z.fst ∈ E) :
+    (∫ x : JointWaveSpaceTime,
+      ‖(FourierTransform.fourierInv H : SchwartzMap JointWaveSpaceTime Complex) x‖^4) ≤
+      (volume E).toReal*(∫ t : Real,((1+t^2)⁻¹)^2)*
+        (∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2)*
+        (∫ z : JointWaveSpaceTime,‖H z‖^2) := by
+  classical
+  let w : JointWaveSpaceTime → Complex := fun z => ((1+z.snd^2:Real):Complex)
+  have hw : w.HasTemperateGrowth := by
+    have hp : (fun t : Real => ((1+t^2:Real):Complex)).HasTemperateGrowth := by fun_prop
+    exact hp.comp (WithLp.sndL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  let U : SchwartzMap JointWaveSpaceTime Complex := SchwartzMap.smulLeftCLM Complex w H
+  have hU (z : JointWaveSpaceTime) : U z = w z*H z := by
+    simp only [U,SchwartzMap.smulLeftCLM_apply_apply hw,smul_eq_mul]
+  let D : JointWaveSpaceTime → Complex := fun z =>
+    if z.fst ∈ E then (((1+z.snd^2)⁻¹:Real):Complex) else 0
+  obtain ⟨hD,hDmass⟩ := mss_spatial_temporal_reciprocal_weight E hE hEfin
+  have hfactor (z : JointWaveSpaceTime) : ‖H z‖ = ‖U z‖*‖D z‖ := by
+    by_cases hz : z.fst ∈ E
+    · rw [hU,norm_mul]
+      simp only [D,hz,ite_true,w,Complex.norm_real,Real.norm_eq_abs,
+        abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2),
+        abs_of_nonneg (by positivity : (0:Real) ≤ (1+z.snd^2)⁻¹)]
+      have hp : 1+z.snd^2 ≠ 0 := by positivity
+      field_simp
+    · have hHz : H z = 0 := by by_contra hnz; exact hz (hsupp z hnz)
+      simp only [hHz,hU,mul_zero,norm_zero,zero_mul]
+  have hUweight (z : JointWaveSpaceTime) :
+      ‖U z‖^2 = (1+z.snd^2)^2*‖H z‖^2 := by
+    rw [hU,norm_mul,mul_pow]
+    simp only [w,Complex.norm_real,Real.norm_eq_abs,
+      abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2)]
+  have hb := integral_norm_four_fourierInv_schwartz_le_weighted_l2_product
+    H (U : JointWaveSpaceTime → Complex) D (U.memLp 2 volume) hD
+    (Filter.Eventually.of_forall hfactor)
+  rw [hDmass] at hb
+  simpa only [hUweight] using hb
+
+#print axioms integral_norm_four_fourierInv_spatial_band_le_weighted
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ContDiff
+
+def mssSpatialTemporalComplementSymbol
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (mu : Real) (z : JointWaveSpaceTime) : Complex :=
+  a (mu⁻¹ • z.fst)*(1-t (mu⁻¹*z.snd))
+
+theorem mssSpatialTemporalComplementSymbol_temperate
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex) (mu : Real) :
+    (mssSpatialTemporalComplementSymbol a t mu).HasTemperateGrowth := by
+  have hs : (fun z : JointWaveSpaceTime => a (mu⁻¹ • z.fst)).HasTemperateGrowth :=
+    a.hasTemperateGrowth.comp (mu⁻¹ • WithLp.fstL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  have ht : (fun z : JointWaveSpaceTime => t (mu⁻¹*z.snd)).HasTemperateGrowth :=
+    t.hasTemperateGrowth.comp (mu⁻¹ • WithLp.sndL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  exact hs.mul ((show (fun _ : JointWaveSpaceTime => (1:Complex)).HasTemperateGrowth by fun_prop).sub ht)
+
+def mssSpatialTemporalComplementSpectrum
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex) (mu : Real)
+    (F : SchwartzMap JointWaveSpaceTime Complex) : SchwartzMap JointWaveSpaceTime Complex :=
+  SchwartzMap.smulLeftCLM Complex (mssSpatialTemporalComplementSymbol a t mu)
+    (FourierTransform.fourier F)
+
+theorem mssSpatialTemporalComplementSpectrum_apply
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex) (mu : Real)
+    (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    mssSpatialTemporalComplementSpectrum a t mu F z =
+      mssSpatialTemporalComplementSymbol a t mu z*
+        (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z := by
+  simp only [mssSpatialTemporalComplementSpectrum,SchwartzMap.smulLeftCLM_apply_apply
+    (mssSpatialTemporalComplementSymbol_temperate a t mu),smul_eq_mul]
+
+theorem mssSpatialTemporalComplementSymbol_norm_le
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (mu : Real) (z : JointWaveSpaceTime) :
+    ‖mssSpatialTemporalComplementSymbol a t mu z‖ ≤
+      SchwartzMap.seminorm Complex 0 0 a*(1+SchwartzMap.seminorm Complex 0 0 t) := by
+  rw [mssSpatialTemporalComplementSymbol,norm_mul]
+  apply mul_le_mul (a.norm_le_seminorm Complex _) _ (norm_nonneg _) (apply_nonneg _ _)
+  exact (norm_sub_le _ _).trans (by rw [norm_one]; exact add_le_add_right (t.norm_le_seminorm Complex _) 1)
+
+/-- The actual temporal complement has a large shifted Fourier gap and
+controls its polynomial time weight, on the entire unbounded region. -/
+theorem mssSpatialTemporalComplementSymbol_gap
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (mu q : Real) (hmu : 1 ≤ mu) (hq : |q| ≤ 64*mu)
+    (z : JointWaveSpaceTime) (hz : mssSpatialTemporalComplementSymbol a t mu z ≠ 0) :
+    64*mu ≤ |z.snd-q| ∧ |z.snd| ≤ 2*|z.snd-q| ∧
+      1+z.snd^2 ≤ 5*|z.snd-q|^2 := by
+  have hmup : 0 < mu := by linarith
+  have hcomp : (1:Complex)-t (mu⁻¹*z.snd) ≠ 0 := (mul_ne_zero_iff.mp hz).2
+  have hnot : ¬ |mu⁻¹*z.snd| ≤ 128 := by
+    intro h
+    exact hcomp (by rw [ht _ h,sub_self])
+  have hraw : 128 < mu⁻¹*|z.snd| := by
+    simpa only [abs_mul,abs_inv,abs_of_pos hmup] using lt_of_not_ge hnot
+  have hlarge : 128*mu < |z.snd| := by
+    have hh := mul_lt_mul_of_pos_left hraw hmup
+    simpa only [← mul_assoc,mul_inv_cancel₀ hmup.ne',one_mul,mul_comm] using hh
+  have htri : |z.snd| ≤ |z.snd-q|+|q| := by
+    simpa only [sub_add_cancel] using abs_add_le (z.snd-q) q
+  have hg : 64*mu ≤ |z.snd-q| := by linarith
+  have htau : |z.snd| ≤ 2*|z.snd-q| := by linarith
+  have hs : 1 ≤ |z.snd-q| := by linarith
+  have hsq := (sq_le_sq₀ (abs_nonneg _) (by positivity : (0:Real) ≤ 2*|z.snd-q|)).mpr htau
+  rw [sq_abs] at hsq
+  refine ⟨hg,htau,?_⟩
+  nlinarith [sq_nonneg (|z.snd-q|-1)]
+
+theorem mss_schwartz_fourier_energy_on_set_le
+    (H G : SchwartzMap JointWaveSpaceTime Complex) (E : Set JointWaveSpaceTime)
+    (_hE : MeasurableSet E) (B : Real) (hB : 0 ≤ B)
+    (hsupp : ∀ z,H z ≠ 0 → z ∈ E)
+    (hbound : ∀ z,‖H z‖ ≤ B*‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) z‖) :
+    (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤
+      B^2*(∫ z in E,‖(FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex) z‖^2) := by
+  have he : (∫ z in E,‖H z‖^2) = ∫ z : JointWaveSpaceTime,‖H z‖^2 :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero (fun z hz => by
+      have hh : H z = 0 := by by_contra hnz; exact hz (hsupp z hnz)
+      simp only [hh,norm_zero,zero_pow (by norm_num : (2:Nat) ≠ 0)])
+  rw [← he,← integral_const_mul]
+  apply integral_mono
+    ((H.memLp 2 volume).integrable_norm_pow (by norm_num)).integrableOn
+    (((((FourierTransform.fourier G : SchwartzMap JointWaveSpaceTime Complex).memLp 2 volume).integrable_norm_pow (by norm_num)).const_mul (B^2))).integrableOn
+  intro z
+  exact ((sq_le_sq₀ (norm_nonneg _) (mul_nonneg hB (norm_nonneg _))).mpr (hbound z)).trans_eq
+    (mul_pow _ _ _)
+
+def mssActualTemporalDerivativeSpectrum (j : Nat)
+    (H : SchwartzMap JointWaveSpaceTime Complex) : SchwartzMap JointWaveSpaceTime Complex :=
+  FourierTransform.fourier
+    (((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+      (FourierTransform.fourierInv H))
+
+theorem mssActualTemporalDerivativeSpectrum_apply
+    (j : Nat) (H : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    mssActualTemporalDerivativeSpectrum j H z =
+      ((((2*Real.pi*z.snd:Real):Complex)*Complex.I)^j)*H z := by
+  have hs : normalizedCircleTemporalShiftDerivative 0 =
+      LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) := by
+    funext F
+    simp only [normalizedCircleTemporalShiftDerivative,mul_zero,Complex.ofReal_zero,
+      zero_mul,zero_smul,sub_zero]
+  unfold mssActualTemporalDerivativeSpectrum
+  rw [← hs,fourier_iterate_normalizedCircleTemporalShiftDerivative_apply,
+    FourierTransform.fourier_fourierInv_eq,sub_zero]
+
+theorem norm_fourier_iterate_temporal_shift
+    (j : Nat) (q : Real) (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    ‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F) :
+      SchwartzMap JointWaveSpaceTime Complex) z‖ =
+      (2*Real.pi*|z.snd-q|)^j*
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+  rw [fourier_iterate_normalizedCircleTemporalShiftDerivative_apply,norm_mul,norm_pow,
+    norm_mul,Complex.norm_I,mul_one,Complex.norm_real,Real.norm_eq_abs,abs_mul,abs_mul,
+    abs_of_pos (by norm_num : (0:Real) < 2),abs_of_pos Real.pi_pos]
+
+#print axioms mssSpatialTemporalComplementSymbol_gap
+#print axioms mssActualTemporalDerivativeSpectrum_apply
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ContDiff
+
+def mssTemporalQuadraticWeightedSpectrum (H : SchwartzMap JointWaveSpaceTime Complex) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  SchwartzMap.smulLeftCLM Complex (fun z : JointWaveSpaceTime => ((1+z.snd^2:Real):Complex)) H
+
+theorem mssTemporalQuadraticWeightedSpectrum_apply
+    (H : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    mssTemporalQuadraticWeightedSpectrum H z = ((1+z.snd^2:Real):Complex)*H z := by
+  have hh : (fun z : JointWaveSpaceTime => ((1+z.snd^2:Real):Complex)).HasTemperateGrowth := by
+    have hp : (fun s : Real => ((1+s^2:Real):Complex)).HasTemperateGrowth := by fun_prop
+    exact hp.comp (WithLp.sndL 2 Real (Euclidean 2) Real).hasTemperateGrowth
+  simp only [mssTemporalQuadraticWeightedSpectrum,SchwartzMap.smulLeftCLM_apply_apply hh,smul_eq_mul]
+
+theorem norm_mssActualTemporalDerivativeSpectrum
+    (j : Nat) (H : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    ‖mssActualTemporalDerivativeSpectrum j H z‖ = (2*Real.pi*|z.snd|)^j*‖H z‖ := by
+  rw [mssActualTemporalDerivativeSpectrum_apply,norm_mul,norm_pow,norm_mul,
+    Complex.norm_I,mul_one,Complex.norm_real,Real.norm_eq_abs,abs_mul,abs_mul,
+    abs_of_pos (by norm_num : (0:Real) < 2),abs_of_pos Real.pi_pos]
+
+theorem mssTemporalComplement_derivative_spectral_bounds
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (mu q : Real) (hmu : 1 ≤ mu) (hq : |q| ≤ 64*mu)
+    (j : Nat) (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    let B := SchwartzMap.seminorm Complex 0 0 a*(1+SchwartzMap.seminorm Complex 0 0 t)
+    let H := mssActualTemporalDerivativeSpectrum j (mssSpatialTemporalComplementSpectrum a t mu F)
+    (‖H z‖ ≤ (B*2^j)*
+      ‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F) :
+        SchwartzMap JointWaveSpaceTime Complex) z‖) ∧
+    (‖mssTemporalQuadraticWeightedSpectrum H z‖ ≤ (5*B*2^j)*
+      ‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F) :
+        SchwartzMap JointWaveSpaceTime Complex) z‖) ∧
+    (H z ≠ 0 → mu ≤ |z.snd-q|) := by
+  dsimp only
+  let B := SchwartzMap.seminorm Complex 0 0 a*(1+SchwartzMap.seminorm Complex 0 0 t)
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialTemporalComplementSpectrum a t mu F)
+  have hB : 0 ≤ B := by dsimp only [B]; positivity
+  have he : ‖H z‖ = (2*Real.pi*|z.snd|)^j*
+      ‖mssSpatialTemporalComplementSymbol a t mu z‖*
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+    dsimp only [H]
+    rw [norm_mssActualTemporalDerivativeSpectrum,mssSpatialTemporalComplementSpectrum_apply,norm_mul]
+    ring
+  have hw : ‖mssTemporalQuadraticWeightedSpectrum H z‖ = (1+z.snd^2)*‖H z‖ := by
+    rw [mssTemporalQuadraticWeightedSpectrum_apply,norm_mul,Complex.norm_real,
+      Real.norm_eq_abs,abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2)]
+  by_cases hz : mssSpatialTemporalComplementSymbol a t mu z = 0
+  · have hHz : H z = 0 := by apply norm_eq_zero.mp; rw [he,hz,norm_zero]; ring
+    simp only [H,hHz,hw,norm_zero,mul_zero]
+    exact ⟨by positivity,by positivity,fun h => False.elim (h rfl)⟩
+  · obtain ⟨hg,htau,hweight⟩ := mssSpatialTemporalComplementSymbol_gap a t ht mu q hmu hq z hz
+    have hh : 2*Real.pi*|z.snd| ≤ 2*(2*Real.pi*|z.snd-q|) := by
+      nlinarith [Real.pi_pos]
+    have hb : ‖H z‖ ≤ (B*2^j)*(2*Real.pi*|z.snd-q|)^j*
+        ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+      rw [he]
+      calc
+        _ ≤ (2*(2*Real.pi*|z.snd-q|))^j*B*
+            ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+          gcongr
+          exact mssSpatialTemporalComplementSymbol_norm_le a t mu z
+        _ = _ := by rw [mul_pow]; ring
+    have hpi : 1 ≤ 2*Real.pi := by linarith [Real.pi_gt_three]
+    have hdsq : |z.snd-q|^2 ≤ (2*Real.pi*|z.snd-q|)^2 := by
+      apply pow_le_pow_left₀ (abs_nonneg _)
+      nlinarith [abs_nonneg (z.snd-q)]
+    have hw' : 1+z.snd^2 ≤ 5*(2*Real.pi*|z.snd-q|)^2 := by linarith
+    refine ⟨?_,?_,fun _ => by linarith⟩
+    · rw [norm_fourier_iterate_temporal_shift]
+      simpa only [H,B,mul_assoc] using hb
+    · rw [hw,norm_fourier_iterate_temporal_shift]
+      calc
+        _ ≤ (5*(2*Real.pi*|z.snd-q|)^2)*
+            ((B*2^j)*(2*Real.pi*|z.snd-q|)^j*
+              ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖) := by
+          exact mul_le_mul hw' hb (norm_nonneg _) (by positivity)
+        _ = _ := by rw [pow_add]; ring
+
+theorem mssTemporalComplement_derivative_weighted_energy_le
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (mu q : Real) (hmu : 1 ≤ mu) (hq : |q| ≤ 64*mu)
+    (j N : Nat) (F : SchwartzMap JointWaveSpaceTime Complex) :
+    let B := SchwartzMap.seminorm Complex 0 0 a*(1+SchwartzMap.seminorm Complex 0 0 t)
+    let H := mssActualTemporalDerivativeSpectrum j (mssSpatialTemporalComplementSpectrum a t mu F)
+    (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤
+      (B*2^j)^2*((((2*Real.pi*mu)^N)⁻¹)^2)*
+        (∫ z : JointWaveSpaceTime,‖(((normalizedCircleTemporalShiftDerivative q)^[N+j]) F) z‖^2) ∧
+    (∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2) ≤
+      (5*B*2^j)^2*((((2*Real.pi*mu)^N)⁻¹)^2)*
+        (∫ z : JointWaveSpaceTime,‖(((normalizedCircleTemporalShiftDerivative q)^[N+(j+2)]) F) z‖^2) := by
+  dsimp only
+  let B := SchwartzMap.seminorm Complex 0 0 a*(1+SchwartzMap.seminorm Complex 0 0 t)
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialTemporalComplementSpectrum a t mu F)
+  let E : Set JointWaveSpaceTime := {z | mu ≤ |z.snd-q|}
+  have hE : MeasurableSet E := by
+    apply measurableSet_le measurable_const
+    have hc : Continuous (fun z : JointWaveSpaceTime => |z.snd-q|) := by fun_prop
+    exact hc.measurable
+  have hmu' : 0 < mu := by linarith
+  have hb := mssTemporalComplement_derivative_spectral_bounds a t ht mu q hmu hq j F
+  have hB : 0 ≤ B := by dsimp only [B]; positivity
+  have h1 := mss_schwartz_fourier_energy_on_set_le H
+    (((normalizedCircleTemporalShiftDerivative q)^[j]) F) E hE (B*2^j) (by positivity)
+    (fun z hz => (hb z).2.2 hz) (fun z => (hb z).1)
+  have ht1 := normalizedCircle_temporal_shift_fourier_L2_tail N q
+    (((normalizedCircleTemporalShiftDerivative q)^[j]) F) E hE mu hmu'
+    (fun z hz => hz)
+  have h2 := mss_schwartz_fourier_energy_on_set_le (mssTemporalQuadraticWeightedSpectrum H)
+    (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F) E hE (5*B*2^j) (by positivity)
+    (by
+      intro z hz
+      have hh : H z ≠ 0 := by
+        intro hh
+        rw [mssTemporalQuadraticWeightedSpectrum_apply,hh,mul_zero] at hz
+        exact hz rfl
+      exact (hb z).2.2 hh)
+    (fun z => (hb z).2.1)
+  have ht2 := normalizedCircle_temporal_shift_fourier_L2_tail N q
+    (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F) E hE mu hmu'
+    (fun z hz => hz)
+  constructor
+  · refine h1.trans ?_
+    have hi := mul_le_mul_of_nonneg_left ht1 (by positivity : 0 ≤ (B*2^j)^2)
+    simpa only [B,Function.iterate_add_apply,mul_assoc] using hi
+  · have he : (∫ z : JointWaveSpaceTime,‖mssTemporalQuadraticWeightedSpectrum H z‖^2) =
+        ∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2 := by
+      congr 1
+      funext z
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,norm_mul,Complex.norm_real,
+        Real.norm_eq_abs,abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2),mul_pow]
+    rw [← he]
+    refine h2.trans ?_
+    have hi := mul_le_mul_of_nonneg_left ht2 (by positivity : 0 ≤ (5*B*2^j)^2)
+    simpa only [B,Function.iterate_add_apply,mul_assoc] using hi
+
+#print axioms mssTemporalComplement_derivative_weighted_energy_le
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ContDiff
+
+theorem mssTemporalComplement_derivative_spatial_support
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (mu : Real) (hmu : 0 < mu) (j : Nat)
+    (F : SchwartzMap JointWaveSpaceTime Complex)
+    (z : JointWaveSpaceTime)
+    (hz : mssActualTemporalDerivativeSpectrum j (mssSpatialTemporalComplementSpectrum a t mu F) z ≠ 0) :
+    z.fst ∈ closedBall (0:Euclidean 2) (4*mu) := by
+  rw [mssActualTemporalDerivativeSpectrum_apply,mssSpatialTemporalComplementSpectrum_apply] at hz
+  have ha' : a (mu⁻¹ • z.fst) ≠ 0 :=
+    (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hz).2).1 |> mul_ne_zero_iff.mp |>.1
+  have hh := ha _ ha'
+  rw [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos hmu] at hh
+  have hh' := mul_le_mul_of_nonneg_left hh hmu.le
+  rw [← mul_assoc,mul_inv_cancel₀ hmu.ne',one_mul] at hh'
+  simpa only [mem_closedBall,dist_zero_right,mul_comm] using hh'
+
+theorem mss_spatial_frequency_ball_volume
+    (mu : Real) (hmu : 0 < mu) :
+    (volume (closedBall (0:Euclidean 2) (4*mu))).toReal =
+      (16*(volume (ball (0:Euclidean 2) 1)).toReal)*mu^2 := by
+  have hd : Module.finrank Real (Euclidean 2) = 2 := by simp [Euclidean]
+  rw [Measure.addHaar_closedBall volume (0:Euclidean 2) (by positivity),
+    hd,ENNReal.toReal_mul,ENNReal.toReal_ofReal (by positivity)]
+  ring
+
+theorem mss_temporal_shift_factor_le
+    (mu : Real) (hmu : 0 < mu) (N : Nat) :
+    ((((2*Real.pi*mu)^N)⁻¹)^2) ≤ (mu^(2*N))⁻¹ := by
+  have hp : mu^N ≤ (2*Real.pi*mu)^N := by
+    apply pow_le_pow_left₀ hmu.le
+    nlinarith [Real.pi_gt_three]
+  have hi : ((2*Real.pi*mu)^N)⁻¹ ≤ (mu^N)⁻¹ :=
+    (inv_le_inv₀ (by positivity) (by positivity)).mpr hp
+  have hh := pow_le_pow_left₀ (by positivity : 0 ≤ ((2*Real.pi*mu)^N)⁻¹) hi 2
+  simpa only [← inv_pow,← pow_mul,Nat.mul_comm N 2] using hh
+
+/-- Arbitrary temporal-complement decay for a genuine compact smooth
+amplitude family. Neither its Fourier support nor the time-frequency
+axis is truncated. The shifted derivatives are actual derivatives. -/
+theorem normalizedCircleSupportedPhase_temporal_complement_uniform_fourth
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ mu q : Real,1 ≤ mu → |q| ≤ 64*mu →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+        (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+        (∀ z : JointWaveSpaceTime,F z =
+          normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+        (∫ z : JointWaveSpaceTime,
+          ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+            (FourierTransform.fourierInv (mssSpatialTemporalComplementSpectrum a t mu F))) z‖^4) ≤
+          C*(mu^(4*N))⁻¹ := by
+  let k := N+1
+  obtain ⟨C1,hC1,hb1⟩ := normalizedCircleSupportedAmplitude_uniform_temporal_moment
+    S hS K hK A homega hsep (k+j)
+  obtain ⟨C2,hC2,hb2⟩ := normalizedCircleSupportedAmplitude_uniform_temporal_moment
+    S hS K hK A homega hsep (k+(j+2))
+  let B := SchwartzMap.seminorm Complex 0 0 a*(1+SchwartzMap.seminorm Complex 0 0 t)
+  let V := 16*(volume (ball (0:Euclidean 2) 1)).toReal
+  let J := ∫ s : Real,((1+s^2)⁻¹)^2
+  let C := V*J*((5*B*2^j)^2*C2)*((B*2^j)^2*C1)
+  have hB : 0 ≤ B := by dsimp only [B]; positivity
+  have hV : 0 ≤ V := by dsimp only [V]; positivity
+  have hJ : 0 ≤ J := integral_nonneg (fun s => sq_nonneg _)
+  have hC : 0 ≤ C := by dsimp only [C]; positivity
+  refine ⟨C,hC,?_⟩
+  intro p hp mu q hmu hq F Q hQ hF
+  have hmup : 0 < mu := by linarith
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialTemporalComplementSpectrum a t mu F)
+  have hInv : (FourierTransform.fourierInv H : SchwartzMap JointWaveSpaceTime Complex) =
+      (((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+        (FourierTransform.fourierInv (mssSpatialTemporalComplementSpectrum a t mu F))) := by
+    exact FourierTransform.fourierInv_fourier_eq _
+  have hraw := integral_norm_four_fourierInv_spatial_band_le_weighted H
+    (closedBall (0:Euclidean 2) (4*mu)) measurableSet_closedBall measure_closedBall_lt_top
+    (fun z hz => mssTemporalComplement_derivative_spatial_support a t ha mu hmup j F z hz)
+  rw [mss_spatial_frequency_ball_volume mu hmup,hInv] at hraw
+  obtain ⟨hE1,hE2⟩ :=
+    mssTemporalComplement_derivative_weighted_energy_le a t ht mu q hmu hq j k F
+  have hR1 : (∫ z : JointWaveSpaceTime,
+      ‖(((normalizedCircleTemporalShiftDerivative q)^[k+j]) F) z‖^2) ≤ C1 := by
+    rw [normalizedCircleTemporalShiftDerivative_iterate_phase_moment (k+j) _ q F Q hF]
+    exact hb1 p hp Q hQ
+  have hR2 : (∫ z : JointWaveSpaceTime,
+      ‖(((normalizedCircleTemporalShiftDerivative q)^[k+(j+2)]) F) z‖^2) ≤ C2 := by
+    rw [normalizedCircleTemporalShiftDerivative_iterate_phase_moment (k+(j+2)) _ q F Q hF]
+    exact hb2 p hp Q hQ
+  have hD := mss_temporal_shift_factor_le mu hmup k
+  have he1 : (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤
+      ((B*2^j)^2*C1)*(mu^(2*k))⁻¹ := by
+    refine hE1.trans ?_
+    calc
+      _ ≤ (B*2^j)^2*(mu^(2*k))⁻¹*C1 := by
+        exact mul_le_mul (mul_le_mul_of_nonneg_left hD (sq_nonneg _)) hR1
+          (integral_nonneg (fun _ => sq_nonneg _)) (by positivity)
+      _ = _ := by ring
+  have he2 : (∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2) ≤
+      ((5*B*2^j)^2*C2)*(mu^(2*k))⁻¹ := by
+    refine hE2.trans ?_
+    calc
+      _ ≤ (5*B*2^j)^2*(mu^(2*k))⁻¹*C2 := by
+        exact mul_le_mul (mul_le_mul_of_nonneg_left hD (sq_nonneg _)) hR2
+          (integral_nonneg (fun _ => sq_nonneg _)) (by positivity)
+      _ = _ := by ring
+  have hscale : mu^2*((mu^(2*k))⁻¹)^2 ≤ (mu^(4*N))⁻¹ := by
+    have hm : 1 ≤ mu^2 := one_le_pow₀ hmu
+    have hpow : mu^(2*k) = mu^(2*N)*mu^2 := by
+      dsimp only [k]
+      rw [show 2*(N+1) = 2*N+2 by omega,pow_add]
+    have hh : mu^2*((mu^2)⁻¹)^2 ≤ 1 := by
+      have hm2 : 0 < mu^2 := by positivity
+      calc
+        _ = (mu^2)⁻¹ := by field_simp
+        _ ≤ 1 := (inv_le_one₀ hm2).mpr hm
+    calc
+      _ = (mu^2*((mu^2)⁻¹)^2)*((mu^(2*N))⁻¹)^2 := by
+        rw [hpow,mul_inv_rev,mul_pow]
+        ring
+      _ ≤ 1*((mu^(2*N))⁻¹)^2 := mul_le_mul_of_nonneg_right hh (sq_nonneg _)
+      _ = _ := by
+        rw [one_mul,← inv_pow,← pow_mul,show (2*N)*2 = 4*N by omega]
+        simp only [inv_pow]
+
+  calc
+    _ ≤ (V*mu^2)*J*
+        (((5*B*2^j)^2*C2)*(mu^(2*k))⁻¹)*
+        (((B*2^j)^2*C1)*(mu^(2*k))⁻¹) := by
+      refine hraw.trans ?_
+      exact mul_le_mul
+        (mul_le_mul_of_nonneg_left he2 (by positivity)) he1
+        (integral_nonneg (fun _ => sq_nonneg _)) (by positivity)
+    _ = C*(mu^2*((mu^(2*k))⁻¹)^2) := by dsimp only [C]; ring
+    _ ≤ C*(mu^(4*N))⁻¹ := mul_le_mul_of_nonneg_left hscale hC
+
+#print axioms normalizedCircleSupportedPhase_temporal_complement_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ContDiff
+
+/-- The actual spatial annular temporal complement of the supported
+Jacobian phase. The temporal frequency axis remains unbounded. -/
+def normalizedCircleRawJacobianTemporalComplement
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (mu : Real) (p : normalizedCircleRawJacobianParameterRegion) (q : Real) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  FourierTransform.fourierInv (mssSpatialTemporalComplementSpectrum a t mu
+    (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)))
+
+/-- The true actual Jacobian family has arbitrary rapid complement decay
+for every fixed number of actual time derivatives. All constants follow
+from the supplied compact smooth cutoff, including at epsilon zero. -/
+theorem normalizedCircleRawJacobianTemporalComplement_uniform_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ mu q : Real,1 ≤ mu → |q| ≤ 64*mu →
+        (∫ z : JointWaveSpaceTime,
+          ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+            (normalizedCircleRawJacobianTemporalComplement chiOut hcompact hchi a t mu p q)) z‖^4) ≤
+          C*(mu^(4*N))⁻¹ := by
+  obtain ⟨C,hC,hfour⟩ := normalizedCircleSupportedPhase_temporal_complement_uniform_fourth
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    normalizedCircleRawJacobianParameterRegion normalizedCircleRawJacobianParameterRegion_isCompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut)
+    (fun p hp => (normalizedCircleRawJacobianParameterRegion_bounds p hp).2.1)
+    (normalizedCircleRawJacobianParameterRegion_separation chiOut hchi) a t ha ht j N
+  refine ⟨C,hC,?_⟩
+  intro p mu q hmu hq
+  let Q := normalizedCircleSupportedAmplitudeSlice
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut) p.val
+  apply hfour p.val p.property mu q hmu hq
+    (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)) Q
+    (fun _ => rfl)
+  intro z
+  rw [normalizedCircleTemporalPhase_eq_actual_parameterPhase]
+  rfl
+
+theorem normalizedCircleRawJacobianTemporalComplement_measurable
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex) (mu : Real) :
+    Measurable (fun z : (normalizedCircleRawJacobianParameterRegion × Real) × JointWaveSpaceTime =>
+      normalizedCircleRawJacobianTemporalComplement chiOut hcompact hchi a t mu z.1.1 z.1.2 z.2) := by
+  let F : (normalizedCircleRawJacobianParameterRegion × Real) →
+      SchwartzMap JointWaveSpaceTime Complex :=
+    fun p => normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p.1 (-2*Real.pi*p.2)
+  have hF : Measurable (fun z : (normalizedCircleRawJacobianParameterRegion × Real) × JointWaveSpaceTime =>
+      F z.1 z.2) :=
+    (normalizedCircleRawJacobianPhaseSchwartz_measurable chiOut hcompact hchi).comp
+      (show Measurable (fun z : (normalizedCircleRawJacobianParameterRegion × Real) × JointWaveSpaceTime =>
+        ((z.1.1,-2*Real.pi*z.1.2),z.2)) by fun_prop)
+  exact measurable_spectralProjection_schwartz_family
+    (mssSpatialTemporalComplementSymbol a t mu) (mssSpatialTemporalComplementSymbol_temperate a t mu) F hF
+
+/-- Literal compact-time maxima of the actual unbounded temporal
+complement retain arbitrary rapid decay, with genuine measurable maxima. -/
+theorem normalizedCircleRawJacobianTemporalComplement_timeMax_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ mu q : Real,1 ≤ mu → |q| ≤ 64*mu →
+        let H := normalizedCircleRawJacobianTemporalComplement chiOut hcompact hchi a t mu p q
+        Measurable (fun X : Euclidean 2 =>
+          ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+        (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+          ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+            ENNReal.ofReal (C*(mu^(4*N))⁻¹) := by
+  obtain ⟨C0,hC0,h0⟩ := normalizedCircleRawJacobianTemporalComplement_uniform_fourth
+    chiOut hcompact hchi a t ha ht 0 N
+  obtain ⟨C1,hC1,h1⟩ := normalizedCircleRawJacobianTemporalComplement_uniform_fourth
+    chiOut hcompact hchi a t ha ht 1 N
+  refine ⟨8*C0+8*C1,by positivity,?_⟩
+  intro p mu q hmu hq H
+  obtain ⟨hm,hbound⟩ := sourcePacket_schwartz_timeMax_fourth_le_scaled H 1 (by norm_num)
+  refine ⟨hm,hbound.trans (ENNReal.ofReal_le_ofReal ?_)⟩
+  have hb0 := h0 p mu q hmu hq
+  have hb1 := h1 p mu q hmu hq
+  simp only [Function.iterate_zero,id_eq] at hb0
+  simp only [Function.iterate_one] at hb1
+  norm_num only [mul_one,one_mul,inv_one,one_pow] at *
+  nlinarith
+
+theorem normalizedCircleRawJacobianTemporalComplement_conormal_timeMax_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ mu nu v : Real,1 ≤ mu → 0 ≤ nu → nu ≤ 16*mu → |v| ≤ 4 →
+        let H := normalizedCircleRawJacobianTemporalComplement chiOut hcompact hchi a t mu p (nu*v)
+        (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+          ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+            ENNReal.ofReal (C*(mu^(4*N))⁻¹) := by
+  obtain ⟨C,hC,hb⟩ := normalizedCircleRawJacobianTemporalComplement_timeMax_rapid_fourth
+    chiOut hcompact hchi a t ha ht N
+  refine ⟨C,hC,?_⟩
+  intro p mu nu v hmu hnu hscale hv
+  apply (hb p mu (nu*v) hmu ?_).2
+  rw [abs_mul,abs_of_nonneg hnu]
+  nlinarith [mul_le_mul hscale hv (abs_nonneg v) (by linarith : (0:Real) ≤ 16*mu)]
+
+#print axioms normalizedCircleRawJacobianTemporalComplement_uniform_fourth
+#print axioms normalizedCircleRawJacobianTemporalComplement_measurable
+#print axioms normalizedCircleRawJacobianTemporalComplement_timeMax_rapid_fourth
+#print axioms normalizedCircleRawJacobianTemporalComplement_conormal_timeMax_rapid_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.Auxiliary Auto.Spherical.SurfaceMeasureDecay
+open scoped BigOperators ContDiff
+
+/-- On the true unbounded temporal complement both cone sheets are
+absent. This identity keeps the original signed normal multipliers. -/
+theorem mssSpatialTemporalComplementSymbol_both_sheet_absorption
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2)
+    (mu h : Real) (hmu : 1 ≤ mu) (hh : 0 < h) (hsmall : h ≤ 16*mu)
+    (z : JointWaveSpaceTime) :
+    mssSpatialTemporalComplementSymbol a t mu z*
+      (1-beta ((z.snd-‖z.fst‖)/h))*(1-beta ((z.snd+‖z.fst‖)/h)) =
+        mssSpatialTemporalComplementSymbol a t mu z := by
+  by_cases hz : mssSpatialTemporalComplementSymbol a t mu z = 0
+  · simp only [hz,zero_mul]
+  have hmup : 0 < mu := by linarith
+  have htau : 64*mu ≤ |z.snd| := by
+    simpa only [sub_zero] using
+      (mssSpatialTemporalComplementSymbol_gap a t ht mu 0 hmu (by simpa only [abs_zero] using (by positivity : (0:Real) ≤ 64*mu)) z hz).1
+  have ha' : a (mu⁻¹ • z.fst) ≠ 0 := (mul_ne_zero_iff.mp hz).1
+  have hx := ha _ ha'
+  rw [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos hmup] at hx
+  have hx' := mul_le_mul_of_nonneg_left hx hmup.le
+  rw [← mul_assoc,mul_inv_cancel₀ hmup.ne',one_mul] at hx'
+  have hbminus : beta ((z.snd-‖z.fst‖)/h) = 0 := by
+    by_contra hnz
+    have hb := hbeta _ hnz
+    rw [abs_div,abs_of_pos hh] at hb
+    have hgap := (div_le_iff₀ hh).mp hb
+    have htri : |z.snd| ≤ |z.snd-‖z.fst‖|+‖z.fst‖ := by
+      simpa only [sub_add_cancel,abs_of_nonneg (norm_nonneg _)] using
+        abs_add_le (z.snd-‖z.fst‖) ‖z.fst‖
+    nlinarith
+  have hbplus : beta ((z.snd+‖z.fst‖)/h) = 0 := by
+    by_contra hnz
+    have hb := hbeta _ hnz
+    rw [abs_div,abs_of_pos hh] at hb
+    have hgap := (div_le_iff₀ hh).mp hb
+    have htri : |z.snd| ≤ |z.snd+‖z.fst‖|+‖z.fst‖ := by
+      simpa only [add_sub_cancel_right,abs_of_nonneg (norm_nonneg _)] using
+        abs_sub (z.snd+‖z.fst‖) ‖z.fst‖
+    nlinarith
+  rw [hbminus,hbplus,sub_zero,mul_one,mul_one]
+
+/-- Exact compact-temporal plus unbounded-temporal decomposition of
+the original spatially annular both-sheet normal defect. -/
+theorem normalizedCircle_both_sheet_normal_defect_temporal_decomposition
+    (a : SchwartzMap (Euclidean 2) Complex) (t beta : SchwartzMap Real Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (ht : ∀ s,|s| ≤ 128 → t s = 1)
+    (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2)
+    (mu h : Real) (hmu : 1 ≤ mu) (hh : 0 < h) (hsmall : h ≤ 16*mu)
+    (z : JointWaveSpaceTime) :
+    a (mu⁻¹ • z.fst)*(1-beta ((z.snd-‖z.fst‖)/h))*(1-beta ((z.snd+‖z.fst‖)/h)) =
+      normalizedCircleCompactBothSheetNormalDefect a t beta mu h z+
+        mssSpatialTemporalComplementSymbol a t mu z := by
+  rw [← mssSpatialTemporalComplementSymbol_both_sheet_absorption
+    a t beta ha ht hbeta mu h hmu hh hsmall z]
+  unfold normalizedCircleCompactBothSheetNormalDefect mssSpatialTemporalComplementSymbol
+  simp only [div_eq_inv_mul]
+  ring
+
+#print axioms mssSpatialTemporalComplementSymbol_both_sheet_absorption
+#print axioms normalizedCircle_both_sheet_normal_defect_temporal_decomposition
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- Literal temporal complement of the spatially projected original
+compact raw band output. The spatial term keeps its genuine fixed-time
+integral; the subtracted joint multiplier is a true Schwartz tensor. -/
+def normalizedCircleRawBandTemporalComplementProjection
+    (epsilon : Real) (b : SchwartzMap Real Complex)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (f : Euclidean 2 → Complex)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (x : JointWaveSpaceTime) : Complex :=
+  (∫ Y : Euclidean 2,(FourierTransform.fourierInv a :
+    SchwartzMap (Euclidean 2) Complex) (x.fst-Y)*
+      normalizedCircleRawBandOutput epsilon b chiOut chiSource f (Y,x.snd))-
+  normalizedCircleRawBandProjection epsilon b chiOut chiSource f
+    (jointSchwartzExternalProduct a t) x
+
+/-- The unbounded temporal complement of the original raw conormal band
+is exactly the actual finite-source Schwartz complement. Both source
+integrability and the spatial/joint Fubini identities are proved. -/
+theorem normalizedCircleRawBandTemporalComplementProjection_eq_source_integral
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (conormal : Real) (hconormal : 0 < conormal)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume)
+    (a : SchwartzMap (Euclidean 2) Complex) (t : SchwartzMap Real Complex)
+    (X : Euclidean 2) (T : Real) :
+    Integrable (fun q : Euclidean 2 × Real =>
+      mssSchwartzTemporalComplementProjection a t
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+          (normalizedCircleSourceParameter epsilon hepsilon q.1)
+          (-2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q))
+        (WithLp.toLp 2 (X,T))*
+          ((conormal:Complex)*normalizedCircleConormalSourceDatum chiSource b f q))
+      normalizedCircleConormalSourceMeasure ∧
+    (∫ q : Euclidean 2 × Real,mssSchwartzTemporalComplementProjection a t
+      (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchiOut
+        (normalizedCircleSourceParameter epsilon hepsilon q.1)
+        (-2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q))
+      (WithLp.toLp 2 (X,T))*
+        ((conormal:Complex)*normalizedCircleConormalSourceDatum chiSource b f q)
+      ∂normalizedCircleConormalSourceMeasure) =
+      normalizedCircleRawBandTemporalComplementProjection epsilon
+        (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne')
+        chiOut chiSource f a t (WithLp.toLp 2 (X,T)) := by
+  have hp : Measurable (fun q : Euclidean 2 × Real =>
+      normalizedCircleSourceParameter epsilon hepsilon q.1) :=
+    (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hrho : Measurable (fun q : Euclidean 2 × Real =>
+      -2*Real.pi*conormal*normalizedCircleConormalSourceCoordinate q) :=
+    normalizedCircleConormalSourceCoordinate_measurable.const_mul _
+  have hff := normalizedCircleRawJacobianPhase_source_temporal_complement_fubini
+    normalizedCircleConormalSourceMeasure chiOut hcompact hchiOut _ hp _ hrho
+    (normalizedCircleConormalSourceDatum chiSource b f)
+    (normalizedCircleConormalSourceDatum_measurable chiSource b f hf)
+    (normalizedCircleConormalSourceDatum_integrable chiSource b f hfi) conormal a t X T
+  refine ⟨hff.1,?_⟩
+  unfold normalizedCircleRawBandTemporalComplementProjection normalizedCircleRawBandProjection
+  have hraw (Y : Euclidean 2) (S : Real) : normalizedCircleRawBandOutput epsilon
+      (mssTranslatedDilatedCutoff b (0:Real) conormal hconormal.ne') chiOut chiSource f (Y,S) =
+      normalizedCircleConormalSourcePhaseField epsilon hepsilon chiOut hcompact hchiOut
+        chiSource b conormal f (WithLp.toLp 2 (Y,S)) :=
+    normalizedCircleRawBandOutput_eq_conormalSourcePhaseField epsilon hepsilon chiOut hcompact
+      hchiOut chiSource hchiSource b hb conormal hconormal f hf hfi (WithLp.toLp 2 (Y,S))
+  simp_rw [hraw]
+  exact hff.2
+#print axioms normalizedCircleRawBandTemporalComplementProjection_eq_source_integral
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators Convolution
+
+private theorem mss_weighted_lintegral_four_le
+    {X : Type*} [MeasurableSpace X] (mu : Measure X)
+    (a b : X → ENNReal) (ha : Measurable a) (hb : Measurable b) :
+    (∫⁻ x,a x*b x ∂mu)^4 ≤ (∫⁻ x,a x ∂mu)^3*(∫⁻ x,a x*(b x)^4 ∂mu) := by
+  have hpq : Real.HolderConjugate (4/3) 4 := by
+    rw [Real.holderConjugate_iff]
+    norm_num
+  have hh := ENNReal.lintegral_mul_le_Lp_mul_Lq mu hpq
+    (ha.pow_const (3/4:Real)).aemeasurable
+    ((ha.pow_const (1/4:Real)).mul hb).aemeasurable
+  have hsplit (x : X) : a x^(3/4:Real)*(a x^(1/4:Real)*b x) = a x*b x := by
+    rw [← mul_assoc,← ENNReal.rpow_add_of_nonneg _ _ (by norm_num) (by norm_num)]
+    norm_num
+  have hfirst (x : X) : (a x^(3/4:Real))^(4/3:Real) = a x := by
+    rw [← ENNReal.rpow_mul]
+    norm_num
+  have hsecond (x : X) : (a x^(1/4:Real)*b x)^(4:Real) = a x*(b x)^4 := by
+    rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num),← ENNReal.rpow_mul]
+    norm_num [ENNReal.rpow_natCast]
+  simp only [Pi.mul_apply,hsplit,hfirst,hsecond] at hh
+  have hh4 := pow_le_pow_left' hh 4
+  rw [mul_pow] at hh4
+  simp only [← ENNReal.rpow_natCast,← ENNReal.rpow_mul] at hh4
+  norm_num at hh4
+  simpa only [ENNReal.rpow_natCast] using hh4
+
+theorem mssSchwartz_convolution_fourth_moment_le
+    {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
+    [FiniteDimensional Real V] [MeasurableSpace V] [BorelSpace V]
+    (K F : SchwartzMap V Complex) :
+    (∫ x : V,‖SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex) K F x‖^4) ≤
+      (∫ y : V,‖K y‖)^4*(∫ x : V,‖F x‖^4) := by
+  let C := SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex) K F
+  let a : V → ENNReal := fun y => ‖K y‖ₑ
+  let b : V → ENNReal := fun x => ‖F x‖ₑ
+  have ha : Measurable a := K.continuous.measurable.enorm
+  have hb : Measurable b := F.continuous.measurable.enorm
+  have hprod : Measurable (fun q : V × V => a q.2*(b (q.1-q.2))^4) :=
+    (ha.comp measurable_snd).mul ((hb.comp (measurable_fst.sub measurable_snd)).pow_const 4)
+  have hpoint (x : V) : ‖C x‖ₑ^4 ≤
+      (∫⁻ y : V,a y)^3*(∫⁻ y : V,a y*(b (x-y))^4) := by
+    have hh : ‖C x‖ₑ ≤ ∫⁻ y : V,a y*b (x-y) := by
+      dsimp only [C]
+      rw [SchwartzMap.convolution_apply]
+      change ‖∫ y : V,K y*F (x-y)‖ₑ ≤ _
+      simpa only [enorm_mul] using
+        enorm_integral_le_lintegral_enorm (fun y : V => K y*F (x-y))
+    refine (pow_le_pow_left' hh 4).trans ?_
+    exact mss_weighted_lintegral_four_le volume a (fun y => b (x-y)) ha
+      (hb.comp (measurable_const.sub measurable_id))
+  have hNN : (∫⁻ x : V,‖C x‖ₑ^4) ≤ (∫⁻ y : V,a y)^4*(∫⁻ x : V,(b x)^4) := by
+    calc
+      _ ≤ ∫⁻ x : V,(∫⁻ y : V,a y)^3*(∫⁻ y : V,a y*(b (x-y))^4) :=
+        lintegral_mono hpoint
+      _ = (∫⁻ y : V,a y)^3*(∫⁻ x : V,∫⁻ y : V,a y*(b (x-y))^4) :=
+        lintegral_const_mul _ hprod.lintegral_prod_right
+      _ = (∫⁻ y : V,a y)^3*(∫⁻ y : V,∫⁻ x : V,a y*(b (x-y))^4) := by
+        rw [lintegral_lintegral_swap hprod.aemeasurable]
+      _ = (∫⁻ y : V,a y)^3*((∫⁻ y : V,a y)*(∫⁻ x : V,(b x)^4)) := by
+        congr 1
+        calc
+          _ = ∫⁻ y : V,a y*(∫⁻ x : V,(b x)^4) := by
+            apply lintegral_congr
+            intro y
+            rw [show (∫⁻ x : V,a y*(b (x-y))^4) = a y*(∫⁻ x : V,(b (x-y))^4) from
+              lintegral_const_mul _ (show Measurable (fun x : V => (b (x-y))^4) from
+                (hb.comp (measurable_id.sub measurable_const)).pow_const 4)]
+            rw [(measurePreserving_sub_right (volume : Measure V) y).lintegral_comp (hb.pow_const 4)]
+          _ = _ := lintegral_mul_const _ ha
+      _ = _ := by ring
+  have hC : Integrable (fun x : V =>‖C x‖^4) := (C.memLp 4 volume).integrable_norm_pow (by norm_num)
+  have hF : Integrable (fun x : V =>‖F x‖^4) := (F.memLp 4 volume).integrable_norm_pow (by norm_num)
+  have hK : Integrable (fun x : V =>‖K x‖) := K.integrable.norm
+  have heC : ENNReal.ofReal (∫ x : V,‖C x‖^4) = ∫⁻ x : V,‖C x‖ₑ^4 := by
+    rw [ofReal_integral_eq_lintegral_ofReal hC (Filter.Eventually.of_forall (fun _ => by positivity))]
+    simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+  have heF : ENNReal.ofReal (∫ x : V,‖F x‖^4) = ∫⁻ x : V,(b x)^4 := by
+    rw [ofReal_integral_eq_lintegral_ofReal hF (Filter.Eventually.of_forall (fun _ => by positivity))]
+    simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm,b]
+  have heK : ENNReal.ofReal (∫ y : V,‖K y‖) = ∫⁻ y : V,a y := by
+    rw [ofReal_integral_eq_lintegral_ofReal hK (Filter.Eventually.of_forall (fun _ => by positivity))]
+    simp only [ofReal_norm,a]
+  apply (ENNReal.ofReal_le_ofReal_iff (by positivity :
+    (0:Real) ≤ (∫ y : V,‖K y‖)^4*(∫ x : V,‖F x‖^4))).mp
+  rw [heC,ENNReal.ofReal_mul (by positivity),ENNReal.ofReal_pow (by positivity),heK,heF]
+  exact hNN
+
+#print axioms mssSchwartz_convolution_fourth_moment_le
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators Convolution
+
+def mssJointTemporalBernsteinBump : ContDiffBump (0:JointWaveSpaceTime) :=
+  ⟨10,12,by norm_num,by norm_num⟩
+
+def mssJointTemporalBernsteinCutoff : SchwartzMap JointWaveSpaceTime Complex :=
+  (mssJointTemporalBernsteinBump.hasCompactSupport.comp_left (by rfl)).toSchwartzMap
+    (Complex.ofRealCLM.contDiff.comp mssJointTemporalBernsteinBump.contDiff)
+
+theorem mssJointTemporalBernsteinCutoff_eq_one (z : JointWaveSpaceTime) (hz : ‖z‖ ≤ 10) :
+    mssJointTemporalBernsteinCutoff z = 1 := by
+  change (mssJointTemporalBernsteinBump z:Complex) = 1
+  have hm : z ∈ closedBall (0:JointWaveSpaceTime) mssJointTemporalBernsteinBump.rIn := by
+    simpa only [mem_closedBall,dist_zero_right,mssJointTemporalBernsteinBump] using hz
+  rw [mssJointTemporalBernsteinBump.one_of_mem_closedBall hm]
+  norm_num
+
+def mssJointTemporalBernsteinProfile : SchwartzMap JointWaveSpaceTime Complex :=
+  SchwartzMap.smulLeftCLM Complex
+    (fun z : JointWaveSpaceTime => (((2*Real.pi*z.snd:Real):Complex)*Complex.I))
+    mssJointTemporalBernsteinCutoff
+
+theorem mssJointTemporalBernsteinProfile_apply (z : JointWaveSpaceTime) :
+    mssJointTemporalBernsteinProfile z =
+      (((2*Real.pi*z.snd:Real):Complex)*Complex.I)*mssJointTemporalBernsteinCutoff z := by
+  have hp : (fun s : Real => (((2*Real.pi*s:Real):Complex)*Complex.I)).HasTemperateGrowth := by fun_prop
+  exact SchwartzMap.smulLeftCLM_apply_apply
+    (hp.comp (WithLp.sndL 2 Real (Euclidean 2) Real).hasTemperateGrowth) _ z
+
+/-- True temporal Bernstein identity from the supplied joint Fourier
+support. The cutoff is fixed independently of the frequency scale. -/
+theorem mssJointTemporalBernstein_derivative_identity
+    (mu : Real) (hmu : 0 < mu) (H : SchwartzMap JointWaveSpaceTime Complex)
+    (hsupp : ∀ z,(FourierTransform.fourier H : SchwartzMap JointWaveSpaceTime Complex) z ≠ 0 →
+      ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ 6*mu) :
+    LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H =
+      (mu:Complex) • mssSchwartzSpectralProjection
+        (mssTranslatedDilatedCutoff mssJointTemporalBernsteinProfile 0 mu hmu.ne') H := by
+  let P := mssTranslatedDilatedCutoff mssJointTemporalBernsteinProfile 0 mu hmu.ne'
+  have hg : (fun z : JointWaveSpaceTime =>
+      inner Real z (WithLp.toLp 2 ((0:Euclidean 2),(1:Real)))).HasTemperateGrowth := by fun_prop
+  have hfour : FourierTransform.fourier
+      (LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H) =
+      FourierTransform.fourier ((mu:Complex) • mssSchwartzSpectralProjection P H) := by
+    ext z
+    rw [SchwartzMap.fourier_lineDerivOp_eq,FourierTransform.fourier_smul]
+    simp only [smul_apply,SchwartzMap.smulLeftCLM_apply_apply hg,Complex.real_smul,smul_eq_mul]
+    rw [mssSchwartzSpectralProjection_fourier]
+    have hv : inner Real z (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) = z.snd := by
+      simp [WithLp.prod_inner_apply]
+    rw [hv]
+    by_cases hz : (FourierTransform.fourier H : SchwartzMap JointWaveSpaceTime Complex) z = 0
+    · simp only [hz,mul_zero]
+    · have hb := hsupp z hz
+      have hzn : ‖z‖ ≤ 10*mu :=
+        by
+        have hn := WithLp.prod_norm_sq_eq_of_L2 z
+        rw [Real.norm_eq_abs] at hn
+        have hs1 := (sq_le_sq₀ (norm_nonneg _) (by positivity : (0:Real) ≤ 4*mu)).mpr hb.1
+        have hs2 := (sq_le_sq₀ (abs_nonneg _) (by positivity : (0:Real) ≤ 6*mu)).mpr hb.2
+        nlinarith [norm_nonneg z]
+      have hscale : ‖mu⁻¹ • z‖ ≤ 10 := by
+        rw [norm_smul,Real.norm_eq_abs,abs_of_pos (inv_pos.mpr hmu)]
+        exact (inv_mul_le_iff₀ hmu).mpr (by linarith)
+      have hp : (mu:Complex)*P z = (((2*Real.pi*z.snd:Real):Complex)*Complex.I) := by
+        dsimp only [P]
+        rw [mssTranslatedDilatedCutoff_apply,sub_zero,mssJointTemporalBernsteinProfile_apply,
+          mssJointTemporalBernsteinCutoff_eq_one _ hscale,mul_one]
+        change (mu:Complex)*(((2*Real.pi*(mu⁻¹*z.snd):Real):Complex)*Complex.I) = _
+        push_cast
+        field_simp [show (mu:Complex) ≠ 0 by exact_mod_cast hmu.ne']
+      rw [← mul_assoc (mu:Complex),hp]
+      push_cast
+      ring
+  have hi := congrArg (fun P : SchwartzMap JointWaveSpaceTime Complex => FourierTransform.fourierInv P) hfour
+  simpa only [FourierTransform.fourierInv_fourier_eq] using hi
+
+set_option maxHeartbeats 800000 in
+/-- The actual temporal derivative fourth moment is bounded by the true
+band width to the fourth power times the original fourth moment. -/
+theorem mssJointTemporalBernstein_uniform_fourth :
+    ∃ C : Real,0 ≤ C ∧ ∀ mu : Real,0 < mu →
+      ∀ H : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z,(FourierTransform.fourier H : SchwartzMap JointWaveSpaceTime Complex) z ≠ 0 →
+        ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ 6*mu) →
+      (∫ z : JointWaveSpaceTime,
+        ‖LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))) H z‖^4) ≤
+          C*mu^4*(∫ z : JointWaveSpaceTime,‖H z‖^4) := by
+  let C := (∫ z : JointWaveSpaceTime,
+    ‖(FourierTransform.fourierInv mssJointTemporalBernsteinProfile :
+      SchwartzMap JointWaveSpaceTime Complex) z‖)^4
+  refine ⟨C,by dsimp only [C]; positivity,?_⟩
+  intro mu hmu H hsupp
+  let P := mssTranslatedDilatedCutoff mssJointTemporalBernsteinProfile 0 mu hmu.ne'
+  have hconv : mssSchwartzSpectralProjection P H =
+      SchwartzMap.convolution (ContinuousLinearMap.mul Complex Complex) (FourierTransform.fourierInv P) H := by
+    ext z
+    rw [mssSchwartzSpectralProjection_apply,SchwartzMap.convolution_apply,convolution_mul_swap]
+  have hb := mssSchwartz_convolution_fourth_moment_le (FourierTransform.fourierInv P) H
+  rw [← hconv,mssTranslatedDilatedCutoff_inverse_kernel_mass
+    mssJointTemporalBernsteinProfile 0 mu hmu] at hb
+  rw [mssJointTemporalBernstein_derivative_identity mu hmu H hsupp]
+  simp only [smul_apply,norm_smul,Complex.norm_real,Real.norm_eq_abs,abs_of_pos hmu,mul_pow]
+  rw [integral_const_mul]
+  simpa only [C,mul_comm,mul_left_comm,mul_assoc] using
+    mul_le_mul_of_nonneg_left hb (by positivity : 0 ≤ mu^4)
+
+#print axioms mssJointTemporalBernstein_derivative_identity
+#print axioms mssJointTemporalBernstein_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- The true compact Fourier support of a principal term supplies its
+compact-time maximum bound. Only the actual undifferentiated fourth
+moment occurs on the right. -/
+theorem mssJointPrincipal_timeMax_fourth_le :
+    ∃ C : Real,0 ≤ C ∧ ∀ mu : Real,0 < mu →
+      ∀ H : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z,(FourierTransform.fourier H : SchwartzMap JointWaveSpaceTime Complex) z ≠ 0 →
+        ‖z.fst‖ ≤ 4*mu ∧ |z.snd| ≤ 6*mu) →
+      Measurable (fun X : Euclidean 2 =>
+        ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+          ENNReal.ofReal (C*mu*(∫ z : JointWaveSpaceTime,‖H z‖^4)) := by
+  obtain ⟨C,hC,hBernstein⟩ := mssJointTemporalBernstein_uniform_fourth
+  refine ⟨8+8*C,by positivity,?_⟩
+  intro mu hmu H hsupp
+  obtain ⟨hm,hmax⟩ := sourcePacket_schwartz_timeMax_fourth_le_scaled H mu hmu
+  refine ⟨hm,hmax.trans (ENNReal.ofReal_le_ofReal ?_)⟩
+  have hD := hBernstein mu hmu H hsupp
+  have hi : 0 ≤ mu⁻¹^3 := by positivity
+  have hmul := mul_le_mul_of_nonneg_left hD (by positivity : 0 ≤ 8*mu⁻¹^3)
+  have hs : 8*mu⁻¹^3*(C*mu^4*(∫ z : JointWaveSpaceTime,‖H z‖^4)) =
+      8*C*mu*(∫ z : JointWaveSpaceTime,‖H z‖^4) := by
+    field_simp
+  rw [hs] at hmul
+  nlinarith
+
+#print axioms mssJointPrincipal_timeMax_fourth_le
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- True spatial offband tails persist after any fixed number of
+dephased time derivatives: only the compact amplitude is differentiated. -/
+theorem normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ input output : Real,
+      1 ≤ input → 0 < output → ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+      (∀ z : JointWaveSpaceTime,F z =
+        normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+      ∀ E : Set JointWaveSpaceTime,MeasurableSet E →
+      ((64*input ≤ output ∧ ∀ z ∈ E,output/4 ≤ ‖z.fst‖) ∨
+        (16*output ≤ input ∧ ∀ z ∈ E,‖z.fst‖ ≤ 4*output)) →
+      (∫ z in E,‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F) :
+        SchwartzMap JointWaveSpaceTime Complex) z‖^2) ≤
+          C*((max output input)^(2*N))⁻¹ := by
+  let B := ((normalizedCircleSupportedTemporalDerivative S hS.isClosed)^[j]) A
+  obtain ⟨C,hC,hb⟩ := normalizedCircleSupportedPhase_uniform_spatial_offband_tail
+    S hS K hK B homega hsep N
+  refine ⟨4^(2*N)*C,by positivity,?_⟩
+  intro p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE hsep'
+  let Qj := ((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j]) Q
+  let Fj := ((normalizedCircleTemporalShiftDerivative q)^[j]) F
+  have hQj (z : JointWaveSpaceTime) : Qj z = B.val (p,(z.fst,z.snd)) :=
+    normalizedCircleSupportedTemporalDerivative_iterate_schwartz_apply j S hS.isClosed A p Q hQ z
+  have hFj (z : JointWaveSpaceTime) : Fj z =
+      normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Qj z :=
+    normalizedCircleTemporalShiftDerivative_iterate_phase_mul_apply j _ q F Q hF z
+  rcases hsep' with ⟨hs,hx⟩ | ⟨hs,hx⟩
+  · have hmax : max (output/4) input = output/4 := max_eq_left (by linarith)
+    have hmax' : max output input = output := max_eq_left (by linarith)
+    have ht := hb p hp input (output/4) hinput (by positivity) q hq0 hq1
+      Fj Qj hQj hFj E hE (Or.inl ⟨by linarith,hx⟩)
+    rw [hmax,hmax'] at *
+    refine ht.trans_eq ?_
+    simp only [div_pow,inv_div]
+    ring
+  · have hmax : max output input = input := max_eq_right (by linarith)
+    have ht := hb p hp input output hinput houtput q hq0 hq1
+      Fj Qj hQj hFj E hE (Or.inr ⟨hs,hx⟩)
+    rw [hmax] at *
+    refine ht.trans ?_
+    have hfour : (1:Real) ≤ 4^(2*N) := one_le_pow₀ (by norm_num)
+    nlinarith [mul_nonneg hC (by positivity : (0:Real) ≤ (input^(2*N))⁻¹)]
+
+theorem mss_temporal_covector_polynomial_bound
+    (M q tau : Real) (hM : 1 ≤ M) (hq : |q| ≤ 4*M) (j : Nat) :
+    (1+2*Real.pi*|tau|)^j ≤
+      (2^j*(1+8*Real.pi)^j)*(M^j+(2*Real.pi*|tau-q|)^j) := by
+  let Q := 1+8*Real.pi
+  have hQ : 1 ≤ Q := by dsimp only [Q]; linarith [Real.pi_pos]
+  have hMp : 0 ≤ M := by linarith
+  have htri : |tau| ≤ |tau-q|+|q| := by
+    simpa only [sub_add_cancel] using abs_add_le (tau-q) q
+  have hb : 1+2*Real.pi*|tau| ≤ Q*M+(2*Real.pi*|tau-q|) := by
+    dsimp only [Q]
+    nlinarith [Real.pi_pos]
+  have hp := pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+2*Real.pi*|tau|) hb j
+  have ha := add_pow_le (by positivity : 0 ≤ Q*M)
+    (by positivity : (0:Real) ≤ 2*Real.pi*|tau-q|) j
+  have ht : (2:Real)^(j-1) ≤ 2^j := by
+    exact pow_le_pow_right₀ (by norm_num) (Nat.sub_le j 1)
+  have hQj : 1 ≤ Q^j := one_le_pow₀ hQ
+  calc
+    _ ≤ (Q*M+(2*Real.pi*|tau-q|))^j := hp
+    _ ≤ 2^(j-1)*((Q*M)^j+(2*Real.pi*|tau-q|)^j) := ha
+    _ ≤ 2^j*((Q*M)^j+(2*Real.pi*|tau-q|)^j) := by gcongr
+    _ ≤ 2^j*(Q^j*M^j+Q^j*(2*Real.pi*|tau-q|)^j) := by
+      rw [mul_pow]
+      gcongr
+      nlinarith [pow_nonneg (by positivity : (0:Real) ≤ 2*Real.pi*|tau-q|) j]
+    _ = _ := by dsimp only [Q]; ring
+
+#print axioms normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+#print axioms mss_temporal_covector_polynomial_bound
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+def mssSpatialBandSpectrum
+    (a : SchwartzMap (Euclidean 2) Complex) (mu : Real)
+    (F : SchwartzMap JointWaveSpaceTime Complex) : SchwartzMap JointWaveSpaceTime Complex :=
+  mssSpatialTemporalComplementSpectrum a 0 mu F
+
+theorem mssSpatialBandSpectrum_apply
+    (a : SchwartzMap (Euclidean 2) Complex) (mu : Real)
+    (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    mssSpatialBandSpectrum a mu F z =
+      a (mu⁻¹ • z.fst)*(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z := by
+  simp only [mssSpatialBandSpectrum,mssSpatialTemporalComplementSpectrum_apply,
+    mssSpatialTemporalComplementSymbol,zero_apply,sub_zero,mul_one]
+
+/-- Actual spatial-band derivative spectra are controlled by dephased
+derivative spectra, with explicit polynomial dependence on the band scale. -/
+theorem mssSpatialBand_derivative_spectral_bounds
+    (a : SchwartzMap (Euclidean 2) Complex) (mu M q : Real)
+    (hM : 1 ≤ M) (hq : |q| ≤ 4*M) (j : Nat)
+    (F : SchwartzMap JointWaveSpaceTime Complex) (z : JointWaveSpaceTime) :
+    let c := fun k : Nat => SchwartzMap.seminorm Complex 0 0 a*2^k*(1+8*Real.pi)^k
+    let H := mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a mu F)
+    (‖H z‖ ≤ c j*(M^j*‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖+
+      ‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F) :
+        SchwartzMap JointWaveSpaceTime Complex) z‖)) ∧
+    (‖mssTemporalQuadraticWeightedSpectrum H z‖ ≤ c (j+2)*
+      (M^(j+2)*‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖+
+        ‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F) :
+          SchwartzMap JointWaveSpaceTime Complex) z‖)) := by
+  dsimp only
+  let B := SchwartzMap.seminorm Complex 0 0 a
+  let R := 1+2*Real.pi*|z.snd|
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a mu F)
+  have hB : 0 ≤ B := apply_nonneg _ _
+  have hR : 0 ≤ R := by dsimp only [R]; positivity
+  have hbase : 2*Real.pi*|z.snd| ≤ R := by dsimp only [R]; linarith
+  have hPi : 1 ≤ 2*Real.pi := by linarith [Real.pi_gt_three]
+  have hRtau : 1+z.snd^2 ≤ R^2 := by
+    have ht : |z.snd| ≤ 2*Real.pi*|z.snd| := by nlinarith [abs_nonneg z.snd]
+    have hs := pow_le_pow_left₀ (abs_nonneg z.snd) ht 2
+    dsimp only [R]
+    rw [sq_abs] at hs
+    nlinarith [Real.pi_pos,abs_nonneg z.snd]
+  have hnorm : ‖H z‖ ≤ B*R^j*
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+    dsimp only [H]
+    rw [norm_mssActualTemporalDerivativeSpectrum,mssSpatialBandSpectrum_apply,norm_mul,← mul_assoc]
+    calc
+      _ ≤ R^j*B*‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+        apply mul_le_mul_of_nonneg_right _ (norm_nonneg _)
+        exact mul_le_mul (pow_le_pow_left₀ (by positivity) hbase j)
+          (a.norm_le_seminorm Complex _) (norm_nonneg _) (by positivity)
+      _ = _ := by ring
+  have hweight : ‖mssTemporalQuadraticWeightedSpectrum H z‖ ≤
+      B*R^(j+2)*‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖ := by
+    rw [mssTemporalQuadraticWeightedSpectrum_apply,norm_mul,Complex.norm_real,
+      Real.norm_eq_abs,abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2)]
+    calc
+      _ ≤ R^2*(B*R^j*‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖) :=
+        mul_le_mul hRtau hnorm (norm_nonneg _) (by positivity)
+      _ = _ := by rw [pow_add]; ring
+  constructor
+  · refine hnorm.trans ?_
+    rw [norm_fourier_iterate_temporal_shift]
+    have hp := mss_temporal_covector_polynomial_bound M q z.snd hM hq j
+    have hm := mul_le_mul_of_nonneg_left hp hB
+    have hf := mul_le_mul_of_nonneg_right hm
+      (norm_nonneg ((FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z))
+    dsimp only [R] at *
+    nlinarith
+  · refine hweight.trans ?_
+    rw [norm_fourier_iterate_temporal_shift]
+    have hp := mss_temporal_covector_polynomial_bound M q z.snd hM hq (j+2)
+    have hm := mul_le_mul_of_nonneg_left hp hB
+    have hf := mul_le_mul_of_nonneg_right hm
+      (norm_nonneg ((FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z))
+    dsimp only [R] at *
+    nlinarith
+
+theorem mss_schwartz_squared_energy_le_pair
+    (H G0 Gj : SchwartzMap JointWaveSpaceTime Complex)
+    (E : Set JointWaveSpaceTime) (_hE : MeasurableSet E)
+    (C A : Real) (hC : 0 ≤ C) (hA : 0 ≤ A)
+    (hsupp : ∀ z,H z ≠ 0 → z ∈ E)
+    (hbound : ∀ z,‖H z‖ ≤ C*(A*‖G0 z‖+‖Gj z‖)) :
+    (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤
+      2*C^2*(A^2*(∫ z in E,‖G0 z‖^2)+(∫ z in E,‖Gj z‖^2)) := by
+  have he : (∫ z in E,‖H z‖^2) = ∫ z : JointWaveSpaceTime,‖H z‖^2 :=
+    setIntegral_eq_integral_of_forall_compl_eq_zero (fun z hz => by
+      have hh : H z = 0 := by by_contra hnz; exact hz (hsupp z hnz)
+      simp only [hh,norm_zero,zero_pow (by norm_num : (2:Nat) ≠ 0)])
+  have h0 : Integrable (fun z : JointWaveSpaceTime => ‖G0 z‖^2) :=
+    (G0.memLp 2 volume).integrable_norm_pow (by norm_num)
+  have hj : Integrable (fun z : JointWaveSpaceTime => ‖Gj z‖^2) :=
+    (Gj.memLp 2 volume).integrable_norm_pow (by norm_num)
+  rw [← he]
+  calc
+    _ ≤ ∫ z in E,2*C^2*(A^2*‖G0 z‖^2+‖Gj z‖^2) := by
+      apply integral_mono ((H.memLp 2 volume).integrable_norm_pow (by norm_num)).integrableOn
+        (((h0.const_mul (A^2)).add hj).const_mul (2*C^2)).integrableOn
+      intro z
+      have hb := (sq_le_sq₀ (norm_nonneg _) (by positivity : (0:Real) ≤ C*(A*‖G0 z‖+‖Gj z‖))).mpr
+        (hbound z)
+      have hs : (A*‖G0 z‖+‖Gj z‖)^2 ≤ 2*(A^2*‖G0 z‖^2+‖Gj z‖^2) := by
+        nlinarith [sq_nonneg (A*‖G0 z‖-‖Gj z‖)]
+      refine hb.trans ?_
+      rw [mul_pow]
+      have hm := mul_le_mul_of_nonneg_left hs (sq_nonneg C)
+      simpa only [Pi.add_apply,mul_assoc,mul_comm,mul_left_comm] using hm
+    _ = _ := by
+      rw [integral_const_mul,integral_add (h0.const_mul (A^2)).integrableOn hj.integrableOn,
+        integral_const_mul]
+
+#print axioms mssSpatialBand_derivative_spectral_bounds
+#print axioms mss_schwartz_squared_energy_le_pair
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- Genuine arbitrary-order spatial offband fourth-moment decay for
+every fixed true time derivative. The unrestricted temporal axis is
+controlled by its integrable Fourier Cauchy weight. -/
+theorem normalizedCircleSupportedPhase_spatial_offband_uniform_fourth
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ input output : Real,
+      1 ≤ input → 0 < output → (64*input ≤ output ∨ 16*output ≤ input) →
+      ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+      (∀ z : JointWaveSpaceTime,F z =
+        normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+      (∫ z : JointWaveSpaceTime,
+        ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+          (FourierTransform.fourierInv (mssSpatialBandSpectrum a output F))) z‖^4) ≤
+            C*((max output input)^(4*N))⁻¹ := by
+  let k := N+j+2
+  obtain ⟨C0,hC0,hb0⟩ := normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    S hS K hK A homega hsep 0 k
+  obtain ⟨Cj,hCj,hbj⟩ := normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    S hS K hK A homega hsep j k
+  obtain ⟨C2,hC2,hb2⟩ := normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    S hS K hK A homega hsep (j+2) k
+  let c := fun r : Nat => SchwartzMap.seminorm Complex 0 0 a*2^r*(1+8*Real.pi)^r
+  let D0 := 2*(c j)^2*(C0+Cj)
+  let D2 := 2*(c (j+2))^2*(C0+C2)
+  let V := 16*(volume (ball (0:Euclidean 2) 1)).toReal
+  let J := ∫ s : Real,((1+s^2)⁻¹)^2
+  let C := V*J*D2*D0
+  have hc (r : Nat) : 0 ≤ c r := by dsimp only [c]; positivity
+  have hD0 : 0 ≤ D0 := by dsimp only [D0]; positivity
+  have hD2 : 0 ≤ D2 := by dsimp only [D2]; positivity
+  have hV : 0 ≤ V := by dsimp only [V]; positivity
+  have hJ : 0 ≤ J := integral_nonneg (fun _ => sq_nonneg _)
+  have hC : 0 ≤ C := by dsimp only [C]; positivity
+  refine ⟨C,hC,?_⟩
+  intro p hp input output hinput houtput hseparate q hq0 hq1 F Q hQ hF
+  let M := max output input
+  have hM : 1 ≤ M := hinput.trans (le_max_right _ _)
+  have hMp : 0 < M := by linarith
+  have hqM : |q| ≤ 4*M := hq1.trans (by dsimp only [M]; gcongr; exact le_max_right _ _)
+  let E : Set JointWaveSpaceTime := {z | output/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*output}
+  have hE : MeasurableSet E := by
+    have hn : Continuous (fun z : JointWaveSpaceTime => ‖z.fst‖) := by fun_prop
+    exact ((isClosed_le continuous_const hn).inter (isClosed_le hn continuous_const)).measurableSet
+  have hsepE : (64*input ≤ output ∧ ∀ z ∈ E,output/4 ≤ ‖z.fst‖) ∨
+      (16*output ≤ input ∧ ∀ z ∈ E,‖z.fst‖ ≤ 4*output) := by
+    rcases hseparate with h | h
+    · exact Or.inl ⟨h,fun z hz => hz.1⟩
+    · exact Or.inr ⟨h,fun z hz => hz.2⟩
+  have ht0 := hb0 p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE hsepE
+  have htj := hbj p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE hsepE
+  have ht2 := hb2 p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE hsepE
+  simp only [Function.iterate_zero,id_eq] at ht0
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a output F)
+  have hsupp (z : JointWaveSpaceTime) (hz : H z ≠ 0) : z ∈ E := by
+    have hz' := hz
+    change mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a output F) z ≠ 0 at hz'
+    rw [mssActualTemporalDerivativeSpectrum_apply,mssSpatialBandSpectrum_apply] at hz'
+    have ha' : a (output⁻¹ • z.fst) ≠ 0 := (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hz').2).1
+    have hh := ha _ ha'
+    rw [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos houtput] at hh
+    have hlo := mul_le_mul_of_nonneg_left hh.1 houtput.le
+    have hhi := mul_le_mul_of_nonneg_left hh.2 houtput.le
+    rw [← mul_assoc,mul_inv_cancel₀ houtput.ne',one_mul] at hlo hhi
+    change output/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*output
+    constructor <;> linarith
+  have hb := mssSpatialBand_derivative_spectral_bounds a output M q hM hqM j F
+  have he0 := mss_schwartz_squared_energy_le_pair H
+    (FourierTransform.fourier F) (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F))
+    E hE (c j) (M^j) (hc j) (by positivity) hsupp (fun z => (hb z).1)
+  have he2 := mss_schwartz_squared_energy_le_pair (mssTemporalQuadraticWeightedSpectrum H)
+    (FourierTransform.fourier F) (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F))
+    E hE (c (j+2)) (M^(j+2)) (hc (j+2)) (by positivity)
+    (by
+      intro z hz
+      apply hsupp z
+      intro hzero
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,hzero,mul_zero] at hz
+      exact hz rfl)
+    (fun z => (hb z).2)
+  have hemass : (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤ D0*M^(2*j)*(M^(2*k))⁻¹ := by
+    refine he0.trans ?_
+    calc
+      _ ≤ 2*(c j)^2*((M^j)^2*(C0*(M^(2*k))⁻¹)+Cj*(M^(2*k))⁻¹) := by gcongr
+      _ ≤ 2*(c j)^2*((M^j)^2*(C0*(M^(2*k))⁻¹)+(M^j)^2*(Cj*(M^(2*k))⁻¹)) := by
+        apply mul_le_mul_of_nonneg_left
+        · exact add_le_add le_rfl (le_mul_of_one_le_left (by positivity) (one_le_pow₀ (one_le_pow₀ hM)))
+        · positivity
+      _ = _ := by dsimp only [D0]; simp only [← pow_mul,show j*2 = 2*j by omega]; ring
+  have heweight : (∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2) ≤
+      D2*M^(2*(j+2))*(M^(2*k))⁻¹ := by
+    have heq : (∫ z : JointWaveSpaceTime,‖mssTemporalQuadraticWeightedSpectrum H z‖^2) =
+        ∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2 := by
+      congr 1
+      funext z
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,norm_mul,Complex.norm_real,
+        Real.norm_eq_abs,abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2),mul_pow]
+    rw [← heq]
+    refine he2.trans ?_
+    calc
+      _ ≤ 2*(c (j+2))^2*((M^(j+2))^2*(C0*(M^(2*k))⁻¹)+C2*(M^(2*k))⁻¹) := by gcongr
+      _ ≤ 2*(c (j+2))^2*((M^(j+2))^2*(C0*(M^(2*k))⁻¹)+(M^(j+2))^2*(C2*(M^(2*k))⁻¹)) := by
+        apply mul_le_mul_of_nonneg_left
+        · exact add_le_add le_rfl (le_mul_of_one_le_left (by positivity) (one_le_pow₀ (one_le_pow₀ hM)))
+        · positivity
+      _ = _ := by dsimp only [D2]; simp only [← pow_mul,show (j+2)*2 = 2*(j+2) by omega]; ring
+  have hInv : (FourierTransform.fourierInv H : SchwartzMap JointWaveSpaceTime Complex) =
+      (((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+        (FourierTransform.fourierInv (mssSpatialBandSpectrum a output F))) :=
+    FourierTransform.fourierInv_fourier_eq _
+  have hraw := integral_norm_four_fourierInv_spatial_band_le_weighted H
+    (closedBall (0:Euclidean 2) (4*output)) measurableSet_closedBall measure_closedBall_lt_top
+    (fun z hz => by simpa only [mem_closedBall,dist_zero_right] using (hsupp z hz).2)
+  rw [mss_spatial_frequency_ball_volume output houtput,hInv] at hraw
+  have houtputM : output^2 ≤ M^2 :=
+    pow_le_pow_left₀ houtput.le (le_max_left output input) 2
+  have hscale : M^(4*j+6)*((M^(2*k))⁻¹)^2 ≤ (M^(4*N))⁻¹ := by
+    have hexp : (M^(2*k))⁻¹^2 = (M^(4*k))⁻¹ := by
+      rw [inv_pow,← pow_mul,show (2*k)*2 = 4*k by omega]
+    rw [hexp]
+    rw [← div_eq_mul_inv,← one_div (M^(4*N))]
+    apply (div_le_div_iff₀ (by positivity) (by positivity)).mpr
+    rw [one_mul,← pow_add]
+    apply pow_le_pow_right₀ hM
+    dsimp only [k]
+    omega
+  calc
+    _ ≤ (V*M^2)*J*(D2*M^(2*(j+2))*(M^(2*k))⁻¹)*(D0*M^(2*j)*(M^(2*k))⁻¹) := by
+      refine hraw.trans ?_
+      apply mul_le_mul
+      · apply mul_le_mul
+        · exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left houtputM hV) hJ
+        · exact heweight
+        · exact integral_nonneg (fun _ => by positivity)
+        · positivity
+      · exact hemass
+      · exact integral_nonneg (fun _ => sq_nonneg _)
+      · positivity
+    _ = C*(M^(4*j+6)*((M^(2*k))⁻¹)^2) := by
+      dsimp only [C]
+      rw [show 4*j+6 = 2+2*(j+2)+2*j by omega,pow_add,pow_add]
+      ring
+    _ ≤ C*(M^(4*N))⁻¹ := mul_le_mul_of_nonneg_left hscale hC
+
+#print axioms normalizedCircleSupportedPhase_spatial_offband_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- The literal spatial projection of one true Jacobian phase. -/
+def normalizedCircleRawJacobianSpatialBand
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (output : Real) (p : normalizedCircleRawJacobianParameterRegion) (q : Real) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  FourierTransform.fourierInv (mssSpatialBandSpectrum a output
+    (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)))
+
+/-- Actual spatial offband fourth tails and all fixed time derivatives,
+derived from the true normalized geometry and the supplied cutoff. -/
+theorem normalizedCircleRawJacobianSpatialBand_uniform_offband_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      (64*input ≤ output ∨ 16*output ≤ input) →
+      ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      (∫ z : JointWaveSpaceTime,
+        ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+          (normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q)) z‖^4) ≤
+            C*((max output input)^(4*N))⁻¹ := by
+  obtain ⟨C,hC,hfour⟩ := normalizedCircleSupportedPhase_spatial_offband_uniform_fourth
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    normalizedCircleRawJacobianParameterRegion normalizedCircleRawJacobianParameterRegion_isCompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut)
+    (fun p hp => (normalizedCircleRawJacobianParameterRegion_bounds p hp).2.1)
+    (normalizedCircleRawJacobianParameterRegion_separation chiOut hchi) a ha j N
+  refine ⟨C,hC,?_⟩
+  intro p input output hinput houtput hseparate q hq0 hq1
+  let Q := normalizedCircleSupportedAmplitudeSlice
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut) p.val
+  apply hfour p.val p.property input output hinput houtput hseparate q hq0 hq1
+    (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)) Q
+    (fun _ => rfl)
+  intro z
+  rw [normalizedCircleTemporalPhase_eq_actual_parameterPhase]
+  rfl
+
+/-- True compact-time spatial offband maxima retain arbitrary rapid
+decay in the larger of the input and output scales. -/
+theorem normalizedCircleRawJacobianSpatialBand_offband_timeMax_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      (64*input ≤ output ∨ 16*output ≤ input) →
+      ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      let H := normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q
+      Measurable (fun X : Euclidean 2 =>
+        ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+          ENNReal.ofReal (C*((max output input)^(4*N))⁻¹) := by
+  obtain ⟨C0,hC0,h0⟩ := normalizedCircleRawJacobianSpatialBand_uniform_offband_fourth
+    chiOut hcompact hchi a ha 0 N
+  obtain ⟨C1,hC1,h1⟩ := normalizedCircleRawJacobianSpatialBand_uniform_offband_fourth
+    chiOut hcompact hchi a ha 1 N
+  refine ⟨8*C0+8*C1,by positivity,?_⟩
+  intro p input output hinput houtput hseparate q hq0 hq1 H
+  obtain ⟨hm,hbound⟩ := sourcePacket_schwartz_timeMax_fourth_le_scaled H 1 (by norm_num)
+  refine ⟨hm,hbound.trans (ENNReal.ofReal_le_ofReal ?_)⟩
+  have hb0 := h0 p input output hinput houtput hseparate q hq0 hq1
+  have hb1 := h1 p input output hinput houtput hseparate q hq0 hq1
+  simp only [Function.iterate_zero,id_eq] at hb0
+  simp only [Function.iterate_one] at hb1
+  norm_num only [mul_one,one_mul,inv_one,one_pow] at *
+  nlinarith
+
+#print axioms normalizedCircleRawJacobianSpatialBand_uniform_offband_fourth
+#print axioms normalizedCircleRawJacobianSpatialBand_offband_timeMax_rapid_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- High output spatial frequencies need no positive lower bound on the
+actual temporal covector. This includes the true fixed temporal lowpass. -/
+theorem normalizedCircleSupportedPhase_uniform_high_spatial_tail
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ input output : Real,1 ≤ input → 64*input ≤ output →
+      ∀ q : Real,|q| ≤ 4*input →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+      (∀ z : JointWaveSpaceTime,F z =
+        normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+      ∀ E : Set JointWaveSpaceTime,MeasurableSet E → (∀ z ∈ E,output/4 ≤ ‖z.fst‖) →
+      (∫ z in E,‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖^2) ≤
+        C*(output^(2*N))⁻¹ := by
+  obtain ⟨Ct,hCt,htime⟩ := normalizedCircleSupportedPhase_uniform_temporal_tail S hS K hK A homega hsep N
+  obtain ⟨Cw,hCw,hwave⟩ := normalizedCircleSchwartzWaveOperator_uniform_residual_moment
+    S hS K hK A homega hsep N (8*Real.pi) (by positivity)
+  let c : Real := (2*Real.pi)^2
+  have hc : 0 < c := by dsimp only [c]; positivity
+  refine ⟨16^(2*N)*(Ct+Cw*(c^(2*N))⁻¹),by positivity,?_⟩
+  intro p hp input output hinput hscale q hq F Q hQ hF E hE hspatial
+  have hip : 0 < input := by linarith
+  have hop : 0 < output := by linarith
+  let J : Set JointWaveSpaceTime := {z | output/16 ≤ |z.snd-q|}
+  have hJ : MeasurableSet J := measurableSet_le measurable_const (by fun_prop)
+  have hfirst := htime p hp q F Q hQ hF (E ∩ J) (hE.inter hJ)
+    (output/16) (by positivity) (fun z hz => hz.2)
+  have hgeom (z : JointWaveSpaceTime) (hz : z ∈ E \ J) :
+      input/2 ≤ |z.snd|+‖z.fst‖ ∧ output/8 ≤ |(|z.snd|-‖z.fst‖)| := by
+    have htime : |z.snd| ≤ output/8 := by
+      have hg : |z.snd-q| < output/16 := lt_of_not_ge hz.2
+      have htri : |z.snd| ≤ |z.snd-q|+|q| := by
+        simpa only [sub_add_cancel] using abs_add_le (z.snd-q) q
+      linarith
+    have hx := hspatial z hz.1
+    constructor
+    · linarith [abs_nonneg z.snd]
+    · have hh := neg_le_abs (|z.snd|-‖z.fst‖)
+      linarith
+  have hraw : jointSchwartzRaw F =
+      fun w => normalizedCircleParameterPhase p (-2*Real.pi*q) w*A.val (p,w) := by
+    funext w
+    rw [jointSchwartzRaw,hF,normalizedCircleTemporalPhase_eq_actual_parameterPhase,hQ]
+    simp only [WithLp.toLp_fst,WithLp.toLp_snd]
+  have hq' : |-2*Real.pi*q| ≤ (8*Real.pi)*input := by
+    rw [abs_mul,abs_mul,abs_neg,abs_of_pos (by norm_num : (0:Real) < 2),abs_of_pos Real.pi_pos]
+    nlinarith [Real.pi_pos]
+  have hw := hwave p hp input hinput (-2*Real.pi*q) hq' F hraw
+  have hs := normalizedCircle_normal_gap_fourier_L2_tail N F (E \ J) (hE.diff hJ)
+    (input/2) (output/8) (by positivity) (by positivity)
+    (fun z hz => (hgeom z hz).1) (fun z hz => (hgeom z hz).2)
+  have hFi : Integrable (fun z : JointWaveSpaceTime =>
+      ‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖^2) :=
+    (FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex).memLp 2 volume
+      |>.integrable_norm_pow (by norm_num)
+  have ht : (∫ z in E ∩ J,‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖^2) ≤
+      16^(2*N)*Ct*(output^(2*N))⁻¹ := by
+    refine hfirst.trans_eq ?_
+    simp only [div_pow,inv_div]
+    ring
+  have hw' : (∫ z in E \ J,‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖^2) ≤
+      16^(2*N)*Cw*(c^(2*N))⁻¹*(output^(2*N))⁻¹ := by
+    calc
+      _ ≤ ((((c*(input/2)*(output/8))^N)⁻¹)^2)*(Cw*input^(2*N)) :=
+        hs.trans (mul_le_mul_of_nonneg_left hw (sq_nonneg _))
+      _ = _ := by
+        simp only [← inv_pow,← pow_mul,Nat.mul_comm N 2]
+        have he : c*(input/2)*(output/8) = c*input*output/16 := by ring
+        rw [he]
+        simp only [mul_pow,div_eq_mul_inv,mul_inv_rev]
+        field_simp [pow_ne_zero (2*N) hip.ne',pow_ne_zero (2*N) hop.ne',pow_ne_zero (2*N) hc.ne']
+        ring_nf
+        rw [← mul_pow,mul_inv_cancel₀ hip.ne',one_pow,one_mul]
+  calc
+    _ = (∫ z in E ∩ J,‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖^2)+
+        ∫ z in E \ J,‖(FourierTransform.fourier F : SchwartzMap JointWaveSpaceTime Complex) z‖^2 :=
+      (integral_inter_add_sdiff hJ hFi.integrableOn).symm
+    _ ≤ 16^(2*N)*Ct*(output^(2*N))⁻¹+16^(2*N)*Cw*(c^(2*N))⁻¹*(output^(2*N))⁻¹ :=
+      add_le_add ht hw'
+    _ = _ := by ring
+
+#print axioms normalizedCircleSupportedPhase_uniform_high_spatial_tail
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+theorem normalizedCircleSupportedPhase_uniform_shifted_high_spatial_tail
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ input output : Real,1 ≤ input → 64*input ≤ output →
+      ∀ q : Real,|q| ≤ 4*input →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+      (∀ z : JointWaveSpaceTime,F z =
+        normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+      ∀ E : Set JointWaveSpaceTime,MeasurableSet E → (∀ z ∈ E,output/4 ≤ ‖z.fst‖) →
+      (∫ z in E,‖(FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F) :
+        SchwartzMap JointWaveSpaceTime Complex) z‖^2) ≤ C*(output^(2*N))⁻¹ := by
+  let B := ((normalizedCircleSupportedTemporalDerivative S hS.isClosed)^[j]) A
+  obtain ⟨C,hC,hb⟩ := normalizedCircleSupportedPhase_uniform_high_spatial_tail S hS K hK B homega hsep N
+  refine ⟨C,hC,?_⟩
+  intro p hp input output hinput hscale q hq F Q hQ hF E hE hx
+  let Qj := ((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j]) Q
+  let Fj := ((normalizedCircleTemporalShiftDerivative q)^[j]) F
+  exact hb p hp input output hinput hscale q hq Fj Qj
+    (fun z => normalizedCircleSupportedTemporalDerivative_iterate_schwartz_apply j S hS.isClosed A p Q hQ z)
+    (fun z => normalizedCircleTemporalShiftDerivative_iterate_phase_mul_apply j _ q F Q hF z)
+    E hE hx
+#print axioms normalizedCircleSupportedPhase_uniform_shifted_high_spatial_tail
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- Genuine arbitrary-order spatial offband fourth-moment decay for
+every fixed true time derivative. The unrestricted temporal axis is
+controlled by its integrable Fourier Cauchy weight. -/
+theorem normalizedCircleSupportedPhase_high_spatial_uniform_fourth
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ input output : Real,
+      1 ≤ input → 0 < output → 64*input ≤ output →
+      ∀ q : Real,|q| ≤ 4*input →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+      (∀ z : JointWaveSpaceTime,F z =
+        normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+      (∫ z : JointWaveSpaceTime,
+        ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+          (FourierTransform.fourierInv (mssSpatialBandSpectrum a output F))) z‖^4) ≤
+            C*(output^(4*N))⁻¹ := by
+  let k := N+j+2
+  obtain ⟨C0,hC0,hb0⟩ := normalizedCircleSupportedPhase_uniform_shifted_high_spatial_tail
+    S hS K hK A homega hsep 0 k
+  obtain ⟨Cj,hCj,hbj⟩ := normalizedCircleSupportedPhase_uniform_shifted_high_spatial_tail
+    S hS K hK A homega hsep j k
+  obtain ⟨C2,hC2,hb2⟩ := normalizedCircleSupportedPhase_uniform_shifted_high_spatial_tail
+    S hS K hK A homega hsep (j+2) k
+  let c := fun r : Nat => SchwartzMap.seminorm Complex 0 0 a*2^r*(1+8*Real.pi)^r
+  let D0 := 2*(c j)^2*(C0+Cj)
+  let D2 := 2*(c (j+2))^2*(C0+C2)
+  let V := 16*(volume (ball (0:Euclidean 2) 1)).toReal
+  let J := ∫ s : Real,((1+s^2)⁻¹)^2
+  let C := V*J*D2*D0
+  have hc (r : Nat) : 0 ≤ c r := by dsimp only [c]; positivity
+  have hD0 : 0 ≤ D0 := by dsimp only [D0]; positivity
+  have hD2 : 0 ≤ D2 := by dsimp only [D2]; positivity
+  have hV : 0 ≤ V := by dsimp only [V]; positivity
+  have hJ : 0 ≤ J := integral_nonneg (fun _ => sq_nonneg _)
+  have hC : 0 ≤ C := by dsimp only [C]; positivity
+  refine ⟨C,hC,?_⟩
+  intro p hp input output hinput houtput hscale q hq1 F Q hQ hF
+  let M := output
+  have hM : 1 ≤ M := by dsimp only [M]; linarith
+  have hMp : 0 < M := by linarith
+  have hqM : |q| ≤ 4*M := hq1.trans (by dsimp only [M]; linarith)
+  let E : Set JointWaveSpaceTime := {z | output/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*output}
+  have hE : MeasurableSet E := by
+    have hn : Continuous (fun z : JointWaveSpaceTime => ‖z.fst‖) := by fun_prop
+    exact ((isClosed_le continuous_const hn).inter (isClosed_le hn continuous_const)).measurableSet
+  have ht0 := hb0 p hp input output hinput hscale q hq1 F Q hQ hF E hE (fun z hz => hz.1)
+  have htj := hbj p hp input output hinput hscale q hq1 F Q hQ hF E hE (fun z hz => hz.1)
+  have ht2 := hb2 p hp input output hinput hscale q hq1 F Q hQ hF E hE (fun z hz => hz.1)
+  simp only [Function.iterate_zero,id_eq] at ht0
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a output F)
+  have hsupp (z : JointWaveSpaceTime) (hz : H z ≠ 0) : z ∈ E := by
+    have hz' := hz
+    change mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a output F) z ≠ 0 at hz'
+    rw [mssActualTemporalDerivativeSpectrum_apply,mssSpatialBandSpectrum_apply] at hz'
+    have ha' : a (output⁻¹ • z.fst) ≠ 0 := (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hz').2).1
+    have hh := ha _ ha'
+    rw [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos houtput] at hh
+    have hlo := mul_le_mul_of_nonneg_left hh.1 houtput.le
+    have hhi := mul_le_mul_of_nonneg_left hh.2 houtput.le
+    rw [← mul_assoc,mul_inv_cancel₀ houtput.ne',one_mul] at hlo hhi
+    change output/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*output
+    constructor <;> linarith
+  have hb := mssSpatialBand_derivative_spectral_bounds a output M q hM hqM j F
+  have he0 := mss_schwartz_squared_energy_le_pair H
+    (FourierTransform.fourier F) (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F))
+    E hE (c j) (M^j) (hc j) (by positivity) hsupp (fun z => (hb z).1)
+  have he2 := mss_schwartz_squared_energy_le_pair (mssTemporalQuadraticWeightedSpectrum H)
+    (FourierTransform.fourier F) (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F))
+    E hE (c (j+2)) (M^(j+2)) (hc (j+2)) (by positivity)
+    (by
+      intro z hz
+      apply hsupp z
+      intro hzero
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,hzero,mul_zero] at hz
+      exact hz rfl)
+    (fun z => (hb z).2)
+  have hemass : (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤ D0*M^(2*j)*(M^(2*k))⁻¹ := by
+    refine he0.trans ?_
+    calc
+      _ ≤ 2*(c j)^2*((M^j)^2*(C0*(M^(2*k))⁻¹)+Cj*(M^(2*k))⁻¹) := by gcongr
+      _ ≤ 2*(c j)^2*((M^j)^2*(C0*(M^(2*k))⁻¹)+(M^j)^2*(Cj*(M^(2*k))⁻¹)) := by
+        apply mul_le_mul_of_nonneg_left
+        · exact add_le_add le_rfl (le_mul_of_one_le_left (by positivity) (one_le_pow₀ (one_le_pow₀ hM)))
+        · positivity
+      _ = _ := by dsimp only [D0]; simp only [← pow_mul,show j*2 = 2*j by omega]; ring
+  have heweight : (∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2) ≤
+      D2*M^(2*(j+2))*(M^(2*k))⁻¹ := by
+    have heq : (∫ z : JointWaveSpaceTime,‖mssTemporalQuadraticWeightedSpectrum H z‖^2) =
+        ∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2 := by
+      congr 1
+      funext z
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,norm_mul,Complex.norm_real,
+        Real.norm_eq_abs,abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2),mul_pow]
+    rw [← heq]
+    refine he2.trans ?_
+    calc
+      _ ≤ 2*(c (j+2))^2*((M^(j+2))^2*(C0*(M^(2*k))⁻¹)+C2*(M^(2*k))⁻¹) := by gcongr
+      _ ≤ 2*(c (j+2))^2*((M^(j+2))^2*(C0*(M^(2*k))⁻¹)+(M^(j+2))^2*(C2*(M^(2*k))⁻¹)) := by
+        apply mul_le_mul_of_nonneg_left
+        · exact add_le_add le_rfl (le_mul_of_one_le_left (by positivity) (one_le_pow₀ (one_le_pow₀ hM)))
+        · positivity
+      _ = _ := by dsimp only [D2]; simp only [← pow_mul,show (j+2)*2 = 2*(j+2) by omega]; ring
+  have hInv : (FourierTransform.fourierInv H : SchwartzMap JointWaveSpaceTime Complex) =
+      (((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+        (FourierTransform.fourierInv (mssSpatialBandSpectrum a output F))) :=
+    FourierTransform.fourierInv_fourier_eq _
+  have hraw := integral_norm_four_fourierInv_spatial_band_le_weighted H
+    (closedBall (0:Euclidean 2) (4*output)) measurableSet_closedBall measure_closedBall_lt_top
+    (fun z hz => by simpa only [mem_closedBall,dist_zero_right] using (hsupp z hz).2)
+  rw [mss_spatial_frequency_ball_volume output houtput,hInv] at hraw
+  have houtputM : output^2 ≤ M^2 := le_rfl
+  have hscale : M^(4*j+6)*((M^(2*k))⁻¹)^2 ≤ (M^(4*N))⁻¹ := by
+    have hexp : (M^(2*k))⁻¹^2 = (M^(4*k))⁻¹ := by
+      rw [inv_pow,← pow_mul,show (2*k)*2 = 4*k by omega]
+    rw [hexp]
+    rw [← div_eq_mul_inv,← one_div (M^(4*N))]
+    apply (div_le_div_iff₀ (by positivity) (by positivity)).mpr
+    rw [one_mul,← pow_add]
+    apply pow_le_pow_right₀ hM
+    dsimp only [k]
+    omega
+  calc
+    _ ≤ (V*M^2)*J*(D2*M^(2*(j+2))*(M^(2*k))⁻¹)*(D0*M^(2*j)*(M^(2*k))⁻¹) := by
+      refine hraw.trans ?_
+      apply mul_le_mul
+      · apply mul_le_mul
+        · exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left houtputM hV) hJ
+        · exact heweight
+        · exact integral_nonneg (fun _ => by positivity)
+        · positivity
+      · exact hemass
+      · exact integral_nonneg (fun _ => sq_nonneg _)
+      · positivity
+    _ = C*(M^(4*j+6)*((M^(2*k))⁻¹)^2) := by
+      dsimp only [C]
+      rw [show 4*j+6 = 2+2*(j+2)+2*j by omega,pow_add,pow_add]
+      ring
+    _ ≤ C*(M^(4*N))⁻¹ := mul_le_mul_of_nonneg_left hscale hC
+
+#print axioms normalizedCircleSupportedPhase_high_spatial_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- Actual spatial offband fourth tails and all fixed time derivatives,
+derived from the true normalized geometry and the supplied cutoff. -/
+theorem normalizedCircleRawJacobianSpatialBand_uniform_high_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      64*input ≤ output →
+      ∀ q : Real,|q| ≤ 4*input →
+      (∫ z : JointWaveSpaceTime,
+        ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+          (normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q)) z‖^4) ≤
+            C*(output^(4*N))⁻¹ := by
+  obtain ⟨C,hC,hfour⟩ := normalizedCircleSupportedPhase_high_spatial_uniform_fourth
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    normalizedCircleRawJacobianParameterRegion normalizedCircleRawJacobianParameterRegion_isCompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut)
+    (fun p hp => (normalizedCircleRawJacobianParameterRegion_bounds p hp).2.1)
+    (normalizedCircleRawJacobianParameterRegion_separation chiOut hchi) a ha j N
+  refine ⟨C,hC,?_⟩
+  intro p input output hinput houtput hscale q hq1
+  let Q := normalizedCircleSupportedAmplitudeSlice
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut) p.val
+  apply hfour p.val p.property input output hinput houtput hscale q hq1
+    (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)) Q
+    (fun _ => rfl)
+  intro z
+  rw [normalizedCircleTemporalPhase_eq_actual_parameterPhase]
+  rfl
+
+/-- True compact-time spatial offband maxima retain arbitrary rapid
+decay in the larger of the input and output scales. -/
+theorem normalizedCircleRawJacobianSpatialBand_high_timeMax_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      64*input ≤ output →
+      ∀ q : Real,|q| ≤ 4*input →
+      let H := normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q
+      Measurable (fun X : Euclidean 2 =>
+        ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+          ENNReal.ofReal (C*(output^(4*N))⁻¹) := by
+  obtain ⟨C0,hC0,h0⟩ := normalizedCircleRawJacobianSpatialBand_uniform_high_fourth
+    chiOut hcompact hchi a ha 0 N
+  obtain ⟨C1,hC1,h1⟩ := normalizedCircleRawJacobianSpatialBand_uniform_high_fourth
+    chiOut hcompact hchi a ha 1 N
+  refine ⟨8*C0+8*C1,by positivity,?_⟩
+  intro p input output hinput houtput hscale q hq1 H
+  obtain ⟨hm,hbound⟩ := sourcePacket_schwartz_timeMax_fourth_le_scaled H 1 (by norm_num)
+  refine ⟨hm,hbound.trans (ENNReal.ofReal_le_ofReal ?_)⟩
+  have hb0 := h0 p input output hinput houtput hscale q hq1
+  have hb1 := h1 p input output hinput houtput hscale q hq1
+  simp only [Function.iterate_zero,id_eq] at hb0
+  simp only [Function.iterate_one] at hb1
+  norm_num only [mul_one,one_mul,inv_one,one_pow] at *
+  nlinarith
+
+#print axioms normalizedCircleRawJacobianSpatialBand_uniform_high_fourth
+#print axioms normalizedCircleRawJacobianSpatialBand_high_timeMax_rapid_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+theorem normalizedCircleRawJacobianSpatialBand_eq_scaled_projection
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (output : Real) (houtput : output ≠ 0)
+    (p : normalizedCircleRawJacobianParameterRegion) (q : Real) :
+    normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q =
+      mssSchwartzSpatialProjection (mssTranslatedDilatedCutoff a 0 output houtput)
+        (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)) := by
+  have he : mssSpatialTemporalComplementSymbol a 0 output =
+      fun z : JointWaveSpaceTime => mssTranslatedDilatedCutoff a 0 output houtput z.fst := by
+    funext z
+    simp only [mssSpatialTemporalComplementSymbol,zero_apply,sub_zero,mul_one,
+      mssTranslatedDilatedCutoff_apply,sub_zero]
+  simp only [normalizedCircleRawJacobianSpatialBand,mssSpatialBandSpectrum,
+    mssSpatialTemporalComplementSpectrum,mssSchwartzSpatialProjection,he]
+
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+/-- An opaque Schwartz family with a genuine uniform bound has honest
+source pairings, continuous output, and the finite-source fourth-max transfer. -/
+theorem sourcePacket_schwartz_family_max_transfer_of_uniform_bound
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [SFinite nu]
+    (F : S → SchwartzMap JointWaveSpaceTime Complex)
+    (hF : Measurable (fun q : S × JointWaveSpaceTime => F q.1 q.2))
+    (B : Real) (hbound : ∀ s z,‖F s z‖ ≤ B)
+    (f : S → Complex) (hf : Measurable f) (hfi : Integrable f nu)
+    (L : ENNReal)
+    (hKm : ∀ᵐ s ∂nu,(∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+      ‖F s (WithLp.toLp 2 (X,r.1))‖ₑ^4) ≤ L) :
+    (∀ z,Integrable (fun s => F s z*f s) nu) ∧
+    Continuous (fun z : JointWaveSpaceTime => ∫ s,F s z*f s ∂nu) ∧
+    Measurable (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,
+      ‖∫ s,F s (WithLp.toLp 2 (X,r.1))*f s ∂nu‖ₑ^4) ∧
+    (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+      ‖∫ s,F s (WithLp.toLp 2 (X,r.1))*f s ∂nu‖ₑ^4) ≤
+        (nu univ)^3*L*(∫⁻ s,‖f s‖ₑ^4 ∂nu) := by
+  have hmeas (z : JointWaveSpaceTime) : AEStronglyMeasurable (fun s => F s z*f s) nu :=
+    ((hF.comp (measurable_id.prodMk measurable_const)).mul hf).aestronglyMeasurable
+  have hdom (z : JointWaveSpaceTime) : ∀ᵐ s ∂nu,‖F s z*f s‖ ≤ B*‖f s‖ :=
+    Filter.Eventually.of_forall (fun s => by
+      rw [norm_mul]
+      exact mul_le_mul_of_nonneg_right (hbound s z) (norm_nonneg _))
+  have hi (z : JointWaveSpaceTime) : Integrable (fun s => F s z*f s) nu :=
+    (hfi.norm.const_mul B).mono' (hmeas z) (hdom z)
+  have hO : Continuous (fun z : JointWaveSpaceTime => ∫ s,F s z*f s ∂nu) :=
+    continuous_of_dominated hmeas hdom (hfi.norm.const_mul B)
+      (Filter.Eventually.of_forall (fun s => (F s).continuous.mul continuous_const))
+  have hM := source_kernel_compactTime_fourth_max_measurable
+    (fun X : Euclidean 2 => fun T : Real => ∫ s,F s (WithLp.toLp 2 (X,T))*f s ∂nu)
+    (fun T => (hO.comp (by fun_prop : Continuous (fun X : Euclidean 2 => WithLp.toLp 2 (X,T)))).measurable)
+    (fun X => hO.comp (by fun_prop : Continuous (fun T : Real => WithLp.toLp 2 (X,T))))
+  exact ⟨hi,hO,hM,source_kernel_timeMax_fourth_moment_transfer_lintegral nu volume
+    (fun s X (r : Icc (-2:Real) 2) => F s (WithLp.toLp 2 (X,r.1)))
+    (fun X r => hF.comp (measurable_id.prodMk measurable_const))
+    (sourcePacket_schwartz_family_timeMax_fourth_measurable F hF) f hf L hKm⟩
+#print axioms sourcePacket_schwartz_family_max_transfer_of_uniform_bound
+theorem normalizedCircleRawJacobianSpatialBand_measurable
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (output : Real) :
+    Measurable (fun z : (normalizedCircleRawJacobianParameterRegion × Real) × JointWaveSpaceTime =>
+      normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output z.1.1 z.1.2 z.2) := by
+  simpa only [normalizedCircleRawJacobianSpatialBand,mssSpatialBandSpectrum,
+    normalizedCircleRawJacobianTemporalComplement] using
+    normalizedCircleRawJacobianTemporalComplement_measurable chiOut hcompact hchi a 0 output
+theorem normalizedCircleRawJacobianSpatialBand_norm_le
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex) (output : Real) (houtput : output ≠ 0)
+    (p : normalizedCircleRawJacobianParameterRegion) (q : Real) (z : JointWaveSpaceTime) :
+    ‖normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q z‖ ≤
+      (SchwartzMap.seminorm Complex 0 0 normalizedCircleFullJacobianAmplitudeSchwartz*
+        SchwartzMap.seminorm Complex 0 0 chiOut)*
+      (∫ Y : Euclidean 2,‖(FourierTransform.fourierInv
+        (mssTranslatedDilatedCutoff a 0 output houtput) : SchwartzMap (Euclidean 2) Complex) Y‖) := by
+  rw [normalizedCircleRawJacobianSpatialBand_eq_scaled_projection chiOut hcompact hchi a output houtput p q]
+  apply mssSchwartzSpatialProjection_norm_le
+  intro w
+  exact (normalizedCircleRawJacobianPhaseSchwartz_norm_le chiOut hcompact hchi p (-2*Real.pi*q) w).trans
+    (mul_le_mul_of_nonneg_left (chiOut.norm_le_seminorm Complex _) (apply_nonneg _ _))
+#print axioms normalizedCircleRawJacobianSpatialBand_measurable
+#print axioms normalizedCircleRawJacobianSpatialBand_norm_le
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- Genuine finite-source transfer of the actual spatial offband maximum.
+The lower frequency condition is imposed on the source measure, so an
+actual annular restriction may be used without changing its vanishing datum. -/
+theorem normalizedCircleSpatialBandSource_offband_timeMax_fourth
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [IsFiniteMeasure nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : S → normalizedCircleRawJacobianParameterRegion,Measurable p →
+      ∀ v : S → Real,Measurable v → (∀ᵐ s ∂nu,|v s| ≤ 4) →
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      (64*input ≤ output ∨ (16*output ≤ input ∧ ∀ᵐ s ∂nu,1 ≤ |v s|)) →
+      ∀ f : S → Complex,Measurable f → Integrable f nu →
+      let G := fun s => normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output (p s) (input*v s)
+      let O := fun z : JointWaveSpaceTime => ∫ s,G s z*((input:Complex)*f s) ∂nu
+      (∀ z,Integrable (fun s => G s z*((input:Complex)*f s)) nu) ∧
+      Continuous O ∧
+      Measurable (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ≤
+        (nu univ)^3*ENNReal.ofReal (C*input^4*((max output input)^(4*N))⁻¹)*
+          (∫⁻ s,‖f s‖ₑ^4 ∂nu) := by
+  obtain ⟨Co,hCo,hsourceOff⟩ := normalizedCircleRawJacobianSpatialBand_offband_timeMax_rapid_fourth
+    chiOut hcompact hchi a ha N
+  obtain ⟨Ch,hCh,hsourceHigh⟩ := normalizedCircleRawJacobianSpatialBand_high_timeMax_rapid_fourth
+    chiOut hcompact hchi a ha N
+  let C := Co+Ch
+  refine ⟨C,by dsimp only [C]; positivity,?_⟩
+  intro p hp v hv hvband input output hinput houtput hsep f hf hfi G O
+  have hinputp : 0 < input := by linarith
+  have hG : Measurable (fun z : S × JointWaveSpaceTime => G z.1 z.2) := by
+    have hmap : Measurable (fun z : S × JointWaveSpaceTime => ((p z.1,input*v z.1),z.2)) :=
+      ((hp.prodMk (hv.const_mul input)).comp measurable_fst).prodMk measurable_snd
+    simpa only [G,Function.comp_def] using
+      (normalizedCircleRawJacobianSpatialBand_measurable chiOut hcompact hchi a output).comp hmap
+  let W : S → Euclidean 2 → Icc (-2:Real) 2 → Complex :=
+    fun s X r => G s (WithLp.toLp 2 (X,r.1))
+  have hKm : ∀ᵐ s ∂nu,
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖W s X r‖ₑ^4) ≤
+        ENNReal.ofReal (C*((max output input)^(4*N))⁻¹) := by
+    rcases hsep with hhigh | ⟨hlow,hvlow⟩
+    · filter_upwards [hvband] with s hs
+      have hq1 : |input*v s| ≤ 4*input := by rw [abs_mul,abs_of_pos hinputp]; nlinarith
+      have hb := (hsourceHigh (p s) input output hinput houtput hhigh (input*v s) hq1).2
+      have hmax : max output input = output := max_eq_left (by linarith)
+      rw [hmax]
+      have hNN : (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖W s X r‖ₑ^4) ≤
+          ENNReal.ofReal (Ch*(output^(4*N))⁻¹) := by
+        simpa only [W,G,ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm] using hb
+      refine hNN.trans (ENNReal.ofReal_le_ofReal ?_)
+      dsimp only [C]
+      nlinarith [mul_nonneg hCo (by positivity : (0:Real) ≤ (output^(4*N))⁻¹)]
+    · filter_upwards [hvband,hvlow] with s hs hsl
+      have hq0 : input ≤ |input*v s| := by rw [abs_mul,abs_of_pos hinputp]; nlinarith
+      have hq1 : |input*v s| ≤ 4*input := by rw [abs_mul,abs_of_pos hinputp]; nlinarith
+      have hb := (hsourceOff (p s) input output hinput houtput (Or.inr hlow) (input*v s) hq0 hq1).2
+      have hNN : (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖W s X r‖ₑ^4) ≤
+          ENNReal.ofReal (Co*((max output input)^(4*N))⁻¹) := by
+        simpa only [W,G,ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm] using hb
+      refine hNN.trans (ENNReal.ofReal_le_ofReal ?_)
+      dsimp only [C]
+      nlinarith [mul_nonneg hCh (by positivity : (0:Real) ≤ ((max output input)^(4*N))⁻¹)]
+
+  obtain ⟨hi,hO,hM,hfour⟩ := sourcePacket_schwartz_family_max_transfer_of_uniform_bound nu G hG
+    _ (fun s z => normalizedCircleRawJacobianSpatialBand_norm_le chiOut hcompact hchi a output houtput.ne'
+      (p s) (input*v s) z)
+    (fun s => (input:Complex)*f s) (hf.const_mul _) (hfi.const_mul _) _ hKm
+  refine ⟨hi,hO,hM,?_⟩
+  refine hfour.trans_eq ?_
+  have he : (∫⁻ s,‖(input:Complex)*f s‖ₑ^4 ∂nu) =
+      (ENNReal.ofReal input)^4*(∫⁻ s,‖f s‖ₑ^4 ∂nu) := by
+    simp only [enorm_mul,mul_pow]
+    rw [lintegral_const_mul _ (hf.enorm.pow_const 4)]
+    simp only [← ofReal_norm,Complex.norm_real,Real.norm_eq_abs,abs_of_pos hinputp]
+  rw [he]
+  rw [ENNReal.ofReal_mul (by positivity),ENNReal.ofReal_mul (by positivity),
+    ENNReal.ofReal_mul (by positivity),ENNReal.ofReal_pow hinputp.le]
+  ring
+
+#print axioms normalizedCircleSpatialBandSource_offband_timeMax_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- The literal spatial Fourier projection of the actual normalized band,
+retaining the original fixed-time convolution integral. -/
+def normalizedCircleRawBandSpatialProjection
+    (epsilon : Real) (b : SchwartzMap Real Complex)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (chiSource : SchwartzMap (Euclidean 2) Complex) (f : Euclidean 2 → Complex)
+    (a : SchwartzMap (Euclidean 2) Complex) (x : JointWaveSpaceTime) : Complex :=
+  ∫ Y : Euclidean 2,(FourierTransform.fourierInv a : SchwartzMap (Euclidean 2) Complex) (x.fst-Y)*
+    normalizedCircleRawBandOutput epsilon b chiOut chiSource f (Y,x.snd)
+
+theorem normalizedCircleRawBandSpatialProjection_scaled_eq_source_integral
+    (epsilon : Real) (hepsilon : |epsilon| ≤ 1/64)
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (input output : Real) (hinput : 0 < input) (houtput : output ≠ 0)
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (hfi : Integrable f volume)
+    (a : SchwartzMap (Euclidean 2) Complex) (x : JointWaveSpaceTime) :
+    Integrable (fun s : Euclidean 2 × Real =>
+      normalizedCircleRawJacobianSpatialBand chiOut hcompact hchiOut a output
+        (normalizedCircleSourceParameter epsilon hepsilon s.1)
+        (input*normalizedCircleConormalSourceCoordinate s) x*
+          ((input:Complex)*normalizedCircleConormalSourceDatum chiSource b f s))
+        normalizedCircleConormalSourceMeasure ∧
+    (∫ s : Euclidean 2 × Real,
+      normalizedCircleRawJacobianSpatialBand chiOut hcompact hchiOut a output
+        (normalizedCircleSourceParameter epsilon hepsilon s.1)
+        (input*normalizedCircleConormalSourceCoordinate s) x*
+          ((input:Complex)*normalizedCircleConormalSourceDatum chiSource b f s)
+      ∂normalizedCircleConormalSourceMeasure) =
+      normalizedCircleRawBandSpatialProjection epsilon
+        (mssTranslatedDilatedCutoff b 0 input hinput.ne') chiOut chiSource f
+        (mssTranslatedDilatedCutoff a 0 output houtput) x := by
+  have hp : Measurable (fun s : Euclidean 2 × Real =>
+      normalizedCircleSourceParameter epsilon hepsilon s.1) :=
+    (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hrho : Measurable (fun s : Euclidean 2 × Real =>
+      -2*Real.pi*(input*normalizedCircleConormalSourceCoordinate s)) :=
+    (normalizedCircleConormalSourceCoordinate_measurable.const_mul input).const_mul (-2*Real.pi)
+  have hff := normalizedCircleRawJacobianPhase_source_spatial_projection_fubini
+    normalizedCircleConormalSourceMeasure chiOut hcompact hchiOut _ hp _ hrho
+    (normalizedCircleConormalSourceDatum chiSource b f)
+    (normalizedCircleConormalSourceDatum_measurable chiSource b f hf)
+    (normalizedCircleConormalSourceDatum_integrable chiSource b f hfi) input
+    (mssTranslatedDilatedCutoff a 0 output houtput) x.fst x.snd
+  have hx : WithLp.toLp 2 (x.fst,x.snd) = x := by
+    apply (WithLp.ext_iff 2).2
+    rfl
+  rw [hx] at hff
+  simp_rw [← normalizedCircleRawJacobianSpatialBand_eq_scaled_projection
+    chiOut hcompact hchiOut a output houtput] at hff
+  refine ⟨hff.1,?_⟩
+  unfold normalizedCircleRawBandSpatialProjection
+  have hraw (Y : Euclidean 2) :
+      normalizedCircleRawBandOutput epsilon (mssTranslatedDilatedCutoff b 0 input hinput.ne')
+        chiOut chiSource f (Y,x.snd) =
+      normalizedCircleConormalSourcePhaseField epsilon hepsilon chiOut hcompact hchiOut
+        chiSource b input f (WithLp.toLp 2 (Y,x.snd)) :=
+    normalizedCircleRawBandOutput_eq_conormalSourcePhaseField epsilon hepsilon chiOut hcompact
+      hchiOut chiSource hchiSource b hb input hinput f hf hfi (WithLp.toLp 2 (Y,x.snd))
+  simp_rw [hraw]
+  simpa only [normalizedCircleConormalSourcePhaseField,mul_assoc] using hff.2
+
+#print axioms normalizedCircleRawBandSpatialProjection_scaled_eq_source_integral
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- Actual original spatial LP output of a conormal band has a true
+compact-time fourth-maximal offband tail. The original conormal factor
+and the genuine prototype source restriction are retained explicitly. -/
+theorem normalizedCircleRawBandSpatialProjection_offband_timeMax_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → |v| ≤ 4)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → 1/4 ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ epsilon : Real,∀ _hepsilon : |epsilon| ≤ 1/64,
+      ∀ input output : Real,∀ hinput : 1 ≤ input,∀ houtput : 0 < output,
+      (64*input ≤ output ∨ (16*output ≤ input ∧ ∀ v,b v ≠ 0 → 1 ≤ |v|)) →
+      ∀ f : Euclidean 2 → Complex,Measurable f → Integrable f volume → MemLp f 4 volume →
+      let O := normalizedCircleRawBandSpatialProjection epsilon
+        (mssTranslatedDilatedCutoff b 0 input (ne_of_gt (lt_of_lt_of_le zero_lt_one hinput))) chiOut chiSource f
+        (mssTranslatedDilatedCutoff a 0 output houtput.ne')
+      Continuous O ∧
+      Measurable (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ≤
+        ENNReal.ofReal (C*input^4*((max output input)^(4*N))⁻¹*
+          (∫ y : Euclidean 2,‖f y‖^4)) := by
+  let E : Set (Euclidean 2 × Real) := {s | b s.2 ≠ 0}
+  let source := normalizedCircleConormalSourceMeasure
+  let sourceR := source.restrict E
+  have hE : MeasurableSet E := by
+    exact (measurableSet_eq_fun (b.continuous.measurable.comp measurable_snd) measurable_const).compl
+  obtain ⟨C0,hC0,hsource⟩ := normalizedCircleSpatialBandSource_offband_timeMax_fourth
+    sourceR chiOut hcompact hchiOut a ha N
+  let A : Real := 8*(SchwartzMap.seminorm Complex 0 0 chiSource*SchwartzMap.seminorm Complex 0 0 b)^4
+  let C := (source univ).toReal^3*C0*A
+  refine ⟨C,by dsimp only [C,A]; positivity,?_⟩
+  intro epsilon hepsilon input output hinput houtput hsep f hf hfi hf4 O
+  have hip : 0 < input := by linarith
+  let p : Euclidean 2 × Real → normalizedCircleRawJacobianParameterRegion :=
+    fun s => normalizedCircleSourceParameter epsilon hepsilon s.1
+  have hp : Measurable p := (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hv : ∀ᵐ s ∂sourceR,|normalizedCircleConormalSourceCoordinate s| ≤ 4 :=
+    Filter.Eventually.of_forall normalizedCircleConormalSourceCoordinate_bounds
+  have hmode : 64*input ≤ output ∨ (16*output ≤ input ∧
+      ∀ᵐ s ∂sourceR,1 ≤ |normalizedCircleConormalSourceCoordinate s|) := by
+    rcases hsep with hhigh | ⟨hlow,hblo⟩
+    · exact Or.inl hhigh
+    · refine Or.inr ⟨hlow,?_⟩
+      filter_upwards [ae_restrict_mem hE] with s hs
+      have hbs : b s.2 ≠ 0 := hs
+      have he := normalizedCircleConormalSourceCoordinate_eq s.1 s.2 (abs_le.mp (hb s.2 hbs))
+      rw [he]
+      exact hblo s.2 hbs
+
+  let datum := normalizedCircleConormalSourceDatum chiSource b f
+  have hdatum : Measurable datum := normalizedCircleConormalSourceDatum_measurable chiSource b f hf
+  have hdatumI : Integrable datum source := normalizedCircleConormalSourceDatum_integrable chiSource b f hfi
+  obtain ⟨hdatum4,hdatumMoment⟩ := normalizedCircleConormalSourceDatum_memLp_four_and_moment chiSource b f hf hf4
+  obtain ⟨_hpair,hcont,hmaxmeas,hmax⟩ := hsource p hp
+    normalizedCircleConormalSourceCoordinate normalizedCircleConormalSourceCoordinate_measurable hv
+    input output hinput houtput hmode datum hdatum hdatumI.integrableOn
+  let G := fun s => normalizedCircleRawJacobianSpatialBand chiOut hcompact hchiOut a output
+    (p s) (input*normalizedCircleConormalSourceCoordinate s)
+  let Op := fun z : JointWaveSpaceTime => ∫ s,G s z*((input:Complex)*datum s) ∂sourceR
+  have heq : Op = O := by
+    funext z
+    have hzero (s : Euclidean 2 × Real) (hs : s ∉ E) : G s z*((input:Complex)*datum s) = 0 := by
+      have hb0 : b s.2 = 0 := by simpa only [E,Set.mem_ofPred_eq,not_not] using hs
+      simp only [datum,normalizedCircleConormalSourceDatum,hb0,mul_zero]
+    change (∫ s in E,G s z*((input:Complex)*datum s) ∂source) = O z
+    rw [setIntegral_eq_integral_of_forall_compl_eq_zero hzero]
+    exact (normalizedCircleRawBandSpatialProjection_scaled_eq_source_integral epsilon hepsilon
+      chiOut hcompact hchiOut chiSource hchiSource b hb
+      input output hip houtput.ne' f hf hfi a z).2
+  have hdatumNN : (∫⁻ s,‖datum s‖ₑ^4 ∂sourceR) ≤
+      ENNReal.ofReal (A*(∫ y : Euclidean 2,‖f y‖^4)) := by
+    calc
+      _ ≤ ∫⁻ s,‖datum s‖ₑ^4 ∂source := lintegral_mono' Measure.restrict_le_self le_rfl
+      _ = ENNReal.ofReal (∫ s,‖datum s‖^4 ∂source) := by
+        rw [ofReal_integral_eq_lintegral_ofReal (hdatum4.integrable_norm_pow (by norm_num))
+          (Filter.Eventually.of_forall (fun _ => by positivity))]
+        simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+        rfl
+      _ ≤ _ := ENNReal.ofReal_le_ofReal hdatumMoment
+  have hmass : sourceR univ ≤ source univ := Measure.restrict_apply_le E univ
+  have hmassNN : (source univ)^3 = ENNReal.ofReal ((source univ).toReal^3) := by
+    rw [ENNReal.ofReal_pow ENNReal.toReal_nonneg,ENNReal.ofReal_toReal (measure_ne_top source univ)]
+  change Continuous Op at hcont
+  refine ⟨?_,?_,?_⟩
+  · rw [← heq]
+    exact hcont
+  · rw [← heq]
+    exact hmaxmeas
+  · rw [← heq]
+    refine hmax.trans ?_
+    calc
+      _ ≤ (source univ)^3*ENNReal.ofReal (C0*input^4*((max output input)^(4*N))⁻¹)*
+          ENNReal.ofReal (A*(∫ y : Euclidean 2,‖f y‖^4)) := by
+        apply mul_le_mul
+        · exact mul_le_mul_of_nonneg_right (pow_le_pow_left' hmass 3) (by positivity)
+        · exact hdatumNN
+        · positivity
+        · positivity
+      _ = _ := by
+        rw [hmassNN,← ENNReal.ofReal_mul (by positivity),← ENNReal.ofReal_mul (by positivity)]
+        congr 1
+        dsimp only [C]
+        ring
+
+#print axioms normalizedCircleRawBandSpatialProjection_offband_timeMax_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- Genuine arbitrary-order spatial offband fourth-moment decay for
+every fixed true time derivative. The unrestricted temporal axis is
+controlled by its integrable Fourier Cauchy weight. -/
+theorem normalizedCircleSupportedPhase_low_spatial_uniform_fourth
+    (S : Set WaveSpaceTime) (hS : IsCompact S)
+    (K : Set NormalizedCircleParameters) (hK : IsCompact K)
+    (A : normalizedCircleSupportedAmplitudes S)
+    (homega : ∀ p ∈ K,‖p.2.1‖ = 1)
+    (hsep : ∀ p ∈ K,∀ z ∈ S,1/2 ≤ ‖p.2.1+p.1 • (p.2.2 • p.2.1-z.1)‖)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p ∈ K,∀ input output : Real,
+      1 ≤ input → 0 < output → 16*output ≤ input →
+      ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      ∀ F Q : SchwartzMap JointWaveSpaceTime Complex,
+      (∀ z : JointWaveSpaceTime,Q z = A.val (p,(z.fst,z.snd))) →
+      (∀ z : JointWaveSpaceTime,F z =
+        normalizedCircleTemporalPhase (fun X => normalizedCircleIncidence p.1 X p.2.1 p.2.2) q z*Q z) →
+      (∫ z : JointWaveSpaceTime,
+        ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+          (FourierTransform.fourierInv (mssSpatialBandSpectrum a output F))) z‖^4) ≤
+            C*(input^(4*N))⁻¹ := by
+  let k := N+j+2
+  obtain ⟨C0,hC0,hb0⟩ := normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    S hS K hK A homega hsep 0 k
+  obtain ⟨Cj,hCj,hbj⟩ := normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    S hS K hK A homega hsep j k
+  obtain ⟨C2,hC2,hb2⟩ := normalizedCircleSupportedPhase_uniform_shifted_spatial_offband_tail
+    S hS K hK A homega hsep (j+2) k
+  let c := fun r : Nat => SchwartzMap.seminorm Complex 0 0 a*2^r*(1+8*Real.pi)^r
+  let D0 := 2*(c j)^2*(C0+Cj)
+  let D2 := 2*(c (j+2))^2*(C0+C2)
+  let V := 16*(volume (ball (0:Euclidean 2) 1)).toReal
+  let J := ∫ s : Real,((1+s^2)⁻¹)^2
+  let C := V*J*D2*D0
+  have hc (r : Nat) : 0 ≤ c r := by dsimp only [c]; positivity
+  have hD0 : 0 ≤ D0 := by dsimp only [D0]; positivity
+  have hD2 : 0 ≤ D2 := by dsimp only [D2]; positivity
+  have hV : 0 ≤ V := by dsimp only [V]; positivity
+  have hJ : 0 ≤ J := integral_nonneg (fun _ => sq_nonneg _)
+  have hC : 0 ≤ C := by dsimp only [C]; positivity
+  refine ⟨C,hC,?_⟩
+  intro p hp input output hinput houtput hscale q hq0 hq1 F Q hQ hF
+  let M := input
+  have hM : 1 ≤ M := hinput
+  have hMp : 0 < M := by linarith
+  have hqM : |q| ≤ 4*M := hq1
+  let E : Set JointWaveSpaceTime := {z | ‖z.fst‖ ≤ 4*output}
+  have hE : MeasurableSet E := by
+    have hn : Continuous (fun z : JointWaveSpaceTime => ‖z.fst‖) := by fun_prop
+    exact (isClosed_le hn continuous_const).measurableSet
+  have ht0 := hb0 p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE (Or.inr ⟨hscale,fun z hz => hz⟩)
+  have htj := hbj p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE (Or.inr ⟨hscale,fun z hz => hz⟩)
+  have ht2 := hb2 p hp input output hinput houtput q hq0 hq1 F Q hQ hF E hE (Or.inr ⟨hscale,fun z hz => hz⟩)
+  have hmax : max output input = input := max_eq_right (by linarith)
+  rw [hmax] at ht0 htj ht2
+  simp only [Function.iterate_zero,id_eq] at ht0
+  let H := mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a output F)
+  have hsupp (z : JointWaveSpaceTime) (hz : H z ≠ 0) : z ∈ E := by
+    have hz' := hz
+    change mssActualTemporalDerivativeSpectrum j (mssSpatialBandSpectrum a output F) z ≠ 0 at hz'
+    rw [mssActualTemporalDerivativeSpectrum_apply,mssSpatialBandSpectrum_apply] at hz'
+    have ha' : a (output⁻¹ • z.fst) ≠ 0 := (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hz').2).1
+    have hh := ha _ ha'
+    rw [norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos houtput] at hh
+    have hhi := mul_le_mul_of_nonneg_left hh houtput.le
+    rw [← mul_assoc,mul_inv_cancel₀ houtput.ne',one_mul] at hhi
+    change ‖z.fst‖ ≤ 4*output
+    nlinarith
+  have hb := mssSpatialBand_derivative_spectral_bounds a output M q hM hqM j F
+  have he0 := mss_schwartz_squared_energy_le_pair H
+    (FourierTransform.fourier F) (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j]) F))
+    E hE (c j) (M^j) (hc j) (by positivity) hsupp (fun z => (hb z).1)
+  have he2 := mss_schwartz_squared_energy_le_pair (mssTemporalQuadraticWeightedSpectrum H)
+    (FourierTransform.fourier F) (FourierTransform.fourier (((normalizedCircleTemporalShiftDerivative q)^[j+2]) F))
+    E hE (c (j+2)) (M^(j+2)) (hc (j+2)) (by positivity)
+    (by
+      intro z hz
+      apply hsupp z
+      intro hzero
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,hzero,mul_zero] at hz
+      exact hz rfl)
+    (fun z => (hb z).2)
+  have hemass : (∫ z : JointWaveSpaceTime,‖H z‖^2) ≤ D0*M^(2*j)*(M^(2*k))⁻¹ := by
+    refine he0.trans ?_
+    calc
+      _ ≤ 2*(c j)^2*((M^j)^2*(C0*(M^(2*k))⁻¹)+Cj*(M^(2*k))⁻¹) := by gcongr
+      _ ≤ 2*(c j)^2*((M^j)^2*(C0*(M^(2*k))⁻¹)+(M^j)^2*(Cj*(M^(2*k))⁻¹)) := by
+        apply mul_le_mul_of_nonneg_left
+        · exact add_le_add le_rfl (le_mul_of_one_le_left (by positivity) (one_le_pow₀ (one_le_pow₀ hM)))
+        · positivity
+      _ = _ := by dsimp only [D0]; simp only [← pow_mul,show j*2 = 2*j by omega]; ring
+  have heweight : (∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2) ≤
+      D2*M^(2*(j+2))*(M^(2*k))⁻¹ := by
+    have heq : (∫ z : JointWaveSpaceTime,‖mssTemporalQuadraticWeightedSpectrum H z‖^2) =
+        ∫ z : JointWaveSpaceTime,(1+z.snd^2)^2*‖H z‖^2 := by
+      congr 1
+      funext z
+      rw [mssTemporalQuadraticWeightedSpectrum_apply,norm_mul,Complex.norm_real,
+        Real.norm_eq_abs,abs_of_nonneg (by positivity : (0:Real) ≤ 1+z.snd^2),mul_pow]
+    rw [← heq]
+    refine he2.trans ?_
+    calc
+      _ ≤ 2*(c (j+2))^2*((M^(j+2))^2*(C0*(M^(2*k))⁻¹)+C2*(M^(2*k))⁻¹) := by gcongr
+      _ ≤ 2*(c (j+2))^2*((M^(j+2))^2*(C0*(M^(2*k))⁻¹)+(M^(j+2))^2*(C2*(M^(2*k))⁻¹)) := by
+        apply mul_le_mul_of_nonneg_left
+        · exact add_le_add le_rfl (le_mul_of_one_le_left (by positivity) (one_le_pow₀ (one_le_pow₀ hM)))
+        · positivity
+      _ = _ := by dsimp only [D2]; simp only [← pow_mul,show (j+2)*2 = 2*(j+2) by omega]; ring
+  have hInv : (FourierTransform.fourierInv H : SchwartzMap JointWaveSpaceTime Complex) =
+      (((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+        (FourierTransform.fourierInv (mssSpatialBandSpectrum a output F))) :=
+    FourierTransform.fourierInv_fourier_eq _
+  have hraw := integral_norm_four_fourierInv_spatial_band_le_weighted H
+    (closedBall (0:Euclidean 2) (4*output)) measurableSet_closedBall measure_closedBall_lt_top
+    (fun z hz => by simpa only [mem_closedBall,dist_zero_right,E,Set.mem_ofPred_eq] using (hsupp z hz))
+  rw [mss_spatial_frequency_ball_volume output houtput,hInv] at hraw
+  have houtputM : output^2 ≤ M^2 := pow_le_pow_left₀ houtput.le (by dsimp only [M]; linarith) 2
+  have hscale : M^(4*j+6)*((M^(2*k))⁻¹)^2 ≤ (M^(4*N))⁻¹ := by
+    have hexp : (M^(2*k))⁻¹^2 = (M^(4*k))⁻¹ := by
+      rw [inv_pow,← pow_mul,show (2*k)*2 = 4*k by omega]
+    rw [hexp]
+    rw [← div_eq_mul_inv,← one_div (M^(4*N))]
+    apply (div_le_div_iff₀ (by positivity) (by positivity)).mpr
+    rw [one_mul,← pow_add]
+    apply pow_le_pow_right₀ hM
+    dsimp only [k]
+    omega
+  calc
+    _ ≤ (V*M^2)*J*(D2*M^(2*(j+2))*(M^(2*k))⁻¹)*(D0*M^(2*j)*(M^(2*k))⁻¹) := by
+      refine hraw.trans ?_
+      apply mul_le_mul
+      · apply mul_le_mul
+        · exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left houtputM hV) hJ
+        · exact heweight
+        · exact integral_nonneg (fun _ => by positivity)
+        · positivity
+      · exact hemass
+      · exact integral_nonneg (fun _ => sq_nonneg _)
+      · positivity
+    _ = C*(M^(4*j+6)*((M^(2*k))⁻¹)^2) := by
+      dsimp only [C]
+      rw [show 4*j+6 = 2+2*(j+2)+2*j by omega,pow_add,pow_add]
+      ring
+    _ ≤ C*(M^(4*N))⁻¹ := mul_le_mul_of_nonneg_left hscale hC
+
+#print axioms normalizedCircleSupportedPhase_low_spatial_uniform_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+open scoped BigOperators ContDiff
+
+/-- Actual spatial offband fourth tails and all fixed time derivatives,
+derived from the true normalized geometry and the supplied cutoff. -/
+theorem normalizedCircleRawJacobianSpatialBand_uniform_low_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (j N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      16*output ≤ input →
+      ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      (∫ z : JointWaveSpaceTime,
+        ‖(((LineDeriv.lineDerivOp (WithLp.toLp 2 ((0:Euclidean 2),(1:Real))))^[j])
+          (normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q)) z‖^4) ≤
+            C*(input^(4*N))⁻¹ := by
+  obtain ⟨C,hC,hfour⟩ := normalizedCircleSupportedPhase_low_spatial_uniform_fourth
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    normalizedCircleRawJacobianParameterRegion normalizedCircleRawJacobianParameterRegion_isCompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut)
+    (fun p hp => (normalizedCircleRawJacobianParameterRegion_bounds p hp).2.1)
+    (normalizedCircleRawJacobianParameterRegion_separation chiOut hchi) a ha j N
+  refine ⟨C,hC,?_⟩
+  intro p input output hinput houtput hscale q hq0 hq1
+  let Q := normalizedCircleSupportedAmplitudeSlice
+    (tsupport (chiOut : WaveSpaceTime → Complex)) hcompact
+    (normalizedCircleRawJacobianSupportedAmplitude chiOut) p.val
+  apply hfour p.val p.property input output hinput houtput hscale q hq0 hq1
+    (normalizedCircleRawJacobianPhaseSchwartz chiOut hcompact hchi p (-2*Real.pi*q)) Q
+    (fun _ => rfl)
+  intro z
+  rw [normalizedCircleTemporalPhase_eq_actual_parameterPhase]
+  rfl
+
+/-- True compact-time spatial offband maxima retain arbitrary rapid
+decay in the larger of the input and output scales. -/
+theorem normalizedCircleRawJacobianSpatialBand_low_timeMax_rapid_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : normalizedCircleRawJacobianParameterRegion,
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      16*output ≤ input →
+      ∀ q : Real,input ≤ |q| → |q| ≤ 4*input →
+      let H := normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output p q
+      Measurable (fun X : Euclidean 2 =>
+        ⨆ r : Icc (-2:Real) 2,ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,
+        ENNReal.ofReal (‖H (WithLp.toLp 2 (X,r.1))‖^4)) ≤
+          ENNReal.ofReal (C*(input^(4*N))⁻¹) := by
+  obtain ⟨C0,hC0,h0⟩ := normalizedCircleRawJacobianSpatialBand_uniform_low_fourth
+    chiOut hcompact hchi a ha 0 N
+  obtain ⟨C1,hC1,h1⟩ := normalizedCircleRawJacobianSpatialBand_uniform_low_fourth
+    chiOut hcompact hchi a ha 1 N
+  refine ⟨8*C0+8*C1,by positivity,?_⟩
+  intro p input output hinput houtput hscale q hq0 hq1 H
+  obtain ⟨hm,hbound⟩ := sourcePacket_schwartz_timeMax_fourth_le_scaled H 1 (by norm_num)
+  refine ⟨hm,hbound.trans (ENNReal.ofReal_le_ofReal ?_)⟩
+  have hb0 := h0 p input output hinput houtput hscale q hq0 hq1
+  have hb1 := h1 p input output hinput houtput hscale q hq0 hq1
+  simp only [Function.iterate_zero,id_eq] at hb0
+  simp only [Function.iterate_one] at hb1
+  norm_num only [mul_one,one_mul,inv_one,one_pow] at *
+  nlinarith
+
+#print axioms normalizedCircleRawJacobianSpatialBand_uniform_low_fourth
+#print axioms normalizedCircleRawJacobianSpatialBand_low_timeMax_rapid_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- Genuine finite-source transfer of the actual spatial offband maximum.
+The lower frequency condition is imposed on the source measure, so an
+actual annular restriction may be used without changing its vanishing datum. -/
+theorem normalizedCircleSpatialBandSource_low_timeMax_fourth
+    {S : Type*} [MeasurableSpace S] (nu : Measure S) [IsFiniteMeasure nu]
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4)
+    (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ p : S → normalizedCircleRawJacobianParameterRegion,Measurable p →
+      ∀ v : S → Real,Measurable v → (∀ᵐ s ∂nu,|v s| ≤ 4) →
+      ∀ input output : Real,1 ≤ input → 0 < output →
+      16*output ≤ input → (∀ᵐ s ∂nu,1 ≤ |v s|) →
+      ∀ f : S → Complex,Measurable f → Integrable f nu →
+      let G := fun s => normalizedCircleRawJacobianSpatialBand chiOut hcompact hchi a output (p s) (input*v s)
+      let O := fun z : JointWaveSpaceTime => ∫ s,G s z*((input:Complex)*f s) ∂nu
+      (∀ z,Integrable (fun s => G s z*((input:Complex)*f s)) nu) ∧
+      Continuous O ∧
+      Measurable (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ≤
+        (nu univ)^3*ENNReal.ofReal (C*input^4*((max output input)^(4*N))⁻¹)*
+          (∫⁻ s,‖f s‖ₑ^4 ∂nu) := by
+  obtain ⟨Co,hCo,hsourceOff⟩ := normalizedCircleRawJacobianSpatialBand_low_timeMax_rapid_fourth
+    chiOut hcompact hchi a ha N
+  let C := Co
+  refine ⟨C,by dsimp only [C]; positivity,?_⟩
+  intro p hp v hv hvband input output hinput houtput hsep hvlow f hf hfi G O
+  have hinputp : 0 < input := by linarith
+  have hG : Measurable (fun z : S × JointWaveSpaceTime => G z.1 z.2) := by
+    have hmap : Measurable (fun z : S × JointWaveSpaceTime => ((p z.1,input*v z.1),z.2)) :=
+      ((hp.prodMk (hv.const_mul input)).comp measurable_fst).prodMk measurable_snd
+    simpa only [G,Function.comp_def] using
+      (normalizedCircleRawJacobianSpatialBand_measurable chiOut hcompact hchi a output).comp hmap
+  let W : S → Euclidean 2 → Icc (-2:Real) 2 → Complex :=
+    fun s X r => G s (WithLp.toLp 2 (X,r.1))
+  have hKm : ∀ᵐ s ∂nu,
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖W s X r‖ₑ^4) ≤
+        ENNReal.ofReal (C*((max output input)^(4*N))⁻¹) := by
+    filter_upwards [hvband,hvlow] with s hs hsl
+    have hq0 : input ≤ |input*v s| := by rw [abs_mul,abs_of_pos hinputp]; nlinarith
+    have hq1 : |input*v s| ≤ 4*input := by rw [abs_mul,abs_of_pos hinputp]; nlinarith
+    have hb := (hsourceOff (p s) input output hinput houtput hsep (input*v s) hq0 hq1).2
+    have hmax : max output input = input := max_eq_right (by linarith)
+    rw [hmax]
+    simpa only [C,W,G,ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm] using hb
+
+  obtain ⟨hi,hO,hM,hfour⟩ := sourcePacket_schwartz_family_max_transfer_of_uniform_bound nu G hG
+    _ (fun s z => normalizedCircleRawJacobianSpatialBand_norm_le chiOut hcompact hchi a output houtput.ne'
+      (p s) (input*v s) z)
+    (fun s => (input:Complex)*f s) (hf.const_mul _) (hfi.const_mul _) _ hKm
+  refine ⟨hi,hO,hM,?_⟩
+  refine hfour.trans_eq ?_
+  have he : (∫⁻ s,‖(input:Complex)*f s‖ₑ^4 ∂nu) =
+      (ENNReal.ofReal input)^4*(∫⁻ s,‖f s‖ₑ^4 ∂nu) := by
+    simp only [enorm_mul,mul_pow]
+    rw [lintegral_const_mul _ (hf.enorm.pow_const 4)]
+    simp only [← ofReal_norm,Complex.norm_real,Real.norm_eq_abs,abs_of_pos hinputp]
+  rw [he]
+  rw [ENNReal.ofReal_mul (by positivity),ENNReal.ofReal_mul (by positivity),
+    ENNReal.ofReal_mul (by positivity),ENNReal.ofReal_pow hinputp.le]
+  ring
+
+#print axioms normalizedCircleSpatialBandSource_low_timeMax_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary
+
+/-- Actual original spatial LP output of a conormal band has a true
+compact-time fourth-maximal offband tail. The original conormal factor
+and the genuine prototype source restriction are retained explicitly. -/
+theorem normalizedCircleRawBandSpatialProjection_low_timeMax_fourth
+    (chiOut : SchwartzMap WaveSpaceTime Complex)
+    (hcompact : HasCompactSupport (chiOut : WaveSpaceTime → Complex))
+    (hchiOut : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (chiSource : SchwartzMap (Euclidean 2) Complex)
+    (hchiSource : ∀ y,chiSource y ≠ 0 → |y 0| ≤ 4 ∧ |y 1| ≤ 5)
+    (b : SchwartzMap Real Complex) (hb : ∀ v,b v ≠ 0 → 1 ≤ |v| ∧ |v| ≤ 4)
+    (a : SchwartzMap (Euclidean 2) Complex)
+    (ha : ∀ xi,a xi ≠ 0 → ‖xi‖ ≤ 4) (N : Nat) :
+    ∃ C : Real,0 ≤ C ∧ ∀ epsilon : Real,∀ _hepsilon : |epsilon| ≤ 1/64,
+      ∀ input output : Real,∀ hinput : 1 ≤ input,∀ houtput : 0 < output,
+      16*output ≤ input →
+      ∀ f : Euclidean 2 → Complex,Measurable f → Integrable f volume → MemLp f 4 volume →
+      let O := normalizedCircleRawBandSpatialProjection epsilon
+        (mssTranslatedDilatedCutoff b 0 input (ne_of_gt (lt_of_lt_of_le zero_lt_one hinput))) chiOut chiSource f
+        (mssTranslatedDilatedCutoff a 0 output houtput.ne')
+      Continuous O ∧
+      Measurable (fun X : Euclidean 2 => ⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ∧
+      (∫⁻ X : Euclidean 2,⨆ r : Icc (-2:Real) 2,‖O (WithLp.toLp 2 (X,r.1))‖ₑ^4) ≤
+        ENNReal.ofReal (C*input^4*((max output input)^(4*N))⁻¹*
+          (∫ y : Euclidean 2,‖f y‖^4)) := by
+  let E : Set (Euclidean 2 × Real) := {s | b s.2 ≠ 0}
+  let source := normalizedCircleConormalSourceMeasure
+  let sourceR := source.restrict E
+  have hE : MeasurableSet E := by
+    exact (measurableSet_eq_fun (b.continuous.measurable.comp measurable_snd) measurable_const).compl
+  obtain ⟨C0,hC0,hsource⟩ := normalizedCircleSpatialBandSource_low_timeMax_fourth
+    sourceR chiOut hcompact hchiOut a ha N
+  let A : Real := 8*(SchwartzMap.seminorm Complex 0 0 chiSource*SchwartzMap.seminorm Complex 0 0 b)^4
+  let C := (source univ).toReal^3*C0*A
+  refine ⟨C,by dsimp only [C,A]; positivity,?_⟩
+  intro epsilon hepsilon input output hinput houtput hsep f hf hfi hf4 O
+  have hip : 0 < input := by linarith
+  let p : Euclidean 2 × Real → normalizedCircleRawJacobianParameterRegion :=
+    fun s => normalizedCircleSourceParameter epsilon hepsilon s.1
+  have hp : Measurable p := (normalizedCircleSourceParameter_measurable epsilon hepsilon).comp measurable_fst
+  have hv : ∀ᵐ s ∂sourceR,|normalizedCircleConormalSourceCoordinate s| ≤ 4 :=
+    Filter.Eventually.of_forall normalizedCircleConormalSourceCoordinate_bounds
+  have hmode : ∀ᵐ s ∂sourceR,1 ≤ |normalizedCircleConormalSourceCoordinate s| := by
+    filter_upwards [ae_restrict_mem hE] with s hs
+    have hbs : b s.2 ≠ 0 := hs
+    have he := normalizedCircleConormalSourceCoordinate_eq s.1 s.2 (abs_le.mp (hb s.2 hbs).2)
+    rw [he]
+    exact (hb s.2 hbs).1
+
+  let datum := normalizedCircleConormalSourceDatum chiSource b f
+  have hdatum : Measurable datum := normalizedCircleConormalSourceDatum_measurable chiSource b f hf
+  have hdatumI : Integrable datum source := normalizedCircleConormalSourceDatum_integrable chiSource b f hfi
+  obtain ⟨hdatum4,hdatumMoment⟩ := normalizedCircleConormalSourceDatum_memLp_four_and_moment chiSource b f hf hf4
+  obtain ⟨_hpair,hcont,hmaxmeas,hmax⟩ := hsource p hp
+    normalizedCircleConormalSourceCoordinate normalizedCircleConormalSourceCoordinate_measurable hv
+    input output hinput houtput hsep hmode datum hdatum hdatumI.integrableOn
+  let G := fun s => normalizedCircleRawJacobianSpatialBand chiOut hcompact hchiOut a output
+    (p s) (input*normalizedCircleConormalSourceCoordinate s)
+  let Op := fun z : JointWaveSpaceTime => ∫ s,G s z*((input:Complex)*datum s) ∂sourceR
+  have heq : Op = O := by
+    funext z
+    have hzero (s : Euclidean 2 × Real) (hs : s ∉ E) : G s z*((input:Complex)*datum s) = 0 := by
+      have hb0 : b s.2 = 0 := by simpa only [E,Set.mem_ofPred_eq,not_not] using hs
+      simp only [datum,normalizedCircleConormalSourceDatum,hb0,mul_zero]
+    change (∫ s in E,G s z*((input:Complex)*datum s) ∂source) = O z
+    rw [setIntegral_eq_integral_of_forall_compl_eq_zero hzero]
+    exact (normalizedCircleRawBandSpatialProjection_scaled_eq_source_integral epsilon hepsilon
+      chiOut hcompact hchiOut chiSource hchiSource b (fun v hv => (hb v hv).2)
+      input output hip houtput.ne' f hf hfi a z).2
+  have hdatumNN : (∫⁻ s,‖datum s‖ₑ^4 ∂sourceR) ≤
+      ENNReal.ofReal (A*(∫ y : Euclidean 2,‖f y‖^4)) := by
+    calc
+      _ ≤ ∫⁻ s,‖datum s‖ₑ^4 ∂source := lintegral_mono' Measure.restrict_le_self le_rfl
+      _ = ENNReal.ofReal (∫ s,‖datum s‖^4 ∂source) := by
+        rw [ofReal_integral_eq_lintegral_ofReal (hdatum4.integrable_norm_pow (by norm_num))
+          (Filter.Eventually.of_forall (fun _ => by positivity))]
+        simp only [ENNReal.ofReal_pow (norm_nonneg _),ofReal_norm]
+        rfl
+      _ ≤ _ := ENNReal.ofReal_le_ofReal hdatumMoment
+  have hmass : sourceR univ ≤ source univ := Measure.restrict_apply_le E univ
+  have hmassNN : (source univ)^3 = ENNReal.ofReal ((source univ).toReal^3) := by
+    rw [ENNReal.ofReal_pow ENNReal.toReal_nonneg,ENNReal.ofReal_toReal (measure_ne_top source univ)]
+  change Continuous Op at hcont
+  refine ⟨?_,?_,?_⟩
+  · rw [← heq]
+    exact hcont
+  · rw [← heq]
+    exact hmaxmeas
+  · rw [← heq]
+    refine hmax.trans ?_
+    calc
+      _ ≤ (source univ)^3*ENNReal.ofReal (C0*input^4*((max output input)^(4*N))⁻¹)*
+          ENNReal.ofReal (A*(∫ y : Euclidean 2,‖f y‖^4)) := by
+        apply mul_le_mul
+        · exact mul_le_mul_of_nonneg_right (pow_le_pow_left' hmass 3) (by positivity)
+        · exact hdatumNN
+        · positivity
+        · positivity
+      _ = _ := by
+        rw [hmassNN,← ENNReal.ofReal_mul (by positivity),← ENNReal.ofReal_mul (by positivity)]
+        congr 1
+        dsimp only [C]
+        ring
+
+#print axioms normalizedCircleRawBandSpatialProjection_low_timeMax_fourth
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory
+/-- Weighted fourth Holder inequality for the actual positive kernel integrals. -/
+theorem sourcePacket_weighted_fourth_lintegral_le
+    {X : Type*} [MeasurableSpace X] (mu : Measure X)
+    (a b : X → ENNReal) (ha : Measurable a) (hb : Measurable b) :
+    (∫⁻ x,a x*b x ∂mu)^4 ≤ (∫⁻ x,a x ∂mu)^3*(∫⁻ x,a x*(b x)^4 ∂mu) :=
+  mss_weighted_lintegral_four_le mu a b ha hb
+#print axioms sourcePacket_weighted_fourth_lintegral_le
+end
 end Auto.Spherical.MSS

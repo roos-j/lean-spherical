@@ -11,6 +11,7 @@ public import LeanSpherical.Auto.Spherical.LegendreAssouad
 public import LeanSpherical.Auto.Spherical.BRRS.TheoremOne
 public import LeanSpherical.Auto.Spherical.BRSRadial.MainTheorems
 public import LeanSpherical.Auto.Spherical.FLLRS.MainTheorems
+public import LeanSpherical.Auto.Spherical.FLLRS.Sec3SequenceBounds
 
 /-!
 # LeanSpherical
@@ -41,3 +42,16 @@ headline results with `#print axioms`.
 
 #check Auto.Spherical.SphericalMaximal.stein_spherical_maximal
 #print axioms Auto.Spherical.SphericalMaximal.stein_spherical_maximal
+
+#check Auto.Spherical.FLLRS.planar_spherical_maximal_endpoint
+#print axioms Auto.Spherical.FLLRS.planar_spherical_maximal_endpoint
+#check Auto.Spherical.FLLRS.full_spherical_maximal_endpoint
+#print axioms Auto.Spherical.FLLRS.full_spherical_maximal_endpoint
+#check Auto.Spherical.FLLRS.general_assouad_maximal_endpoint
+#print axioms Auto.Spherical.FLLRS.general_assouad_maximal_endpoint
+#print axioms Auto.Spherical.FLLRS.exists_synthesis_planar_shell_four_gain
+#print axioms Auto.Spherical.FLLRS.exists_synthesis_planar_shell_all_p_gain
+#check Auto.Spherical.FLLRS.sequence_iff
+#print axioms Auto.Spherical.FLLRS.sequence_iff
+#check Auto.Spherical.FLLRS.global_sequence_iff
+#print axioms Auto.Spherical.FLLRS.global_sequence_iff

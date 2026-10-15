@@ -2009,3 +2009,222 @@ theorem dyadicTimeScale_eq_inv_natPow (j : Nat) :
 end
 end FormerNamespace_1
 end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+/-- Translation of a genuine Schwartz inverse kernel differentiates
+through every integrable source datum, with global domination supplied by
+the kernel's actual Schwartz seminorms. -/
+theorem sourcePacket_schwartz_translate_integral_hasDerivAt
+    {S : Type*} [MeasurableSpace S] (mu : Measure S)
+    (k : SchwartzMap Real Complex) (P : S → Real) (hP : Measurable P)
+    (g : S → Complex) (hg : Measurable g) (hgi : Integrable g mu) :
+    (∀ t : Real,Integrable (fun s => k (t-P s)*g s) mu) ∧
+    Continuous (fun t : Real => ∫ s,k (t-P s)*g s ∂mu) ∧
+    Continuous (fun t : Real => ∫ s,SchwartzMap.derivCLM Complex Complex k (t-P s)*g s ∂mu) ∧
+    ∀ t : Real,HasDerivAt (fun t : Real => ∫ s,k (t-P s)*g s ∂mu)
+      (∫ s,SchwartzMap.derivCLM Complex Complex k (t-P s)*g s ∂mu) t := by
+  let dk := SchwartzMap.derivCLM Complex Complex k
+  let B0 := SchwartzMap.seminorm Complex 0 0 k
+  let B1 := SchwartzMap.seminorm Complex 0 0 dk
+  have hm (t : Real) : AEStronglyMeasurable (fun s => k (t-P s)*g s) mu :=
+    ((k.continuous.measurable.comp (measurable_const.sub hP)).mul hg).aestronglyMeasurable
+  have hdm (t : Real) : AEStronglyMeasurable (fun s => dk (t-P s)*g s) mu :=
+    ((dk.continuous.measurable.comp (measurable_const.sub hP)).mul hg).aestronglyMeasurable
+  have hb0 (t : Real) : ∀ᵐ s ∂mu,‖k (t-P s)*g s‖ ≤ B0*‖g s‖ :=
+    Filter.Eventually.of_forall (fun s => by
+      rw [norm_mul]
+      exact mul_le_mul_of_nonneg_right (k.norm_le_seminorm Complex _) (norm_nonneg _))
+  have hb1 (t : Real) : ∀ᵐ s ∂mu,‖dk (t-P s)*g s‖ ≤ B1*‖g s‖ :=
+    Filter.Eventually.of_forall (fun s => by
+      rw [norm_mul]
+      exact mul_le_mul_of_nonneg_right (dk.norm_le_seminorm Complex _) (norm_nonneg _))
+  have hi (t : Real) : Integrable (fun s => k (t-P s)*g s) mu :=
+    (hgi.norm.const_mul B0).mono' (hm t) (hb0 t)
+  have hcont := continuous_of_dominated hm hb0 (hgi.norm.const_mul B0)
+    (Filter.Eventually.of_forall (fun s => (k.continuous.comp (by fun_prop)).mul continuous_const))
+  have hdcont := continuous_of_dominated hdm hb1 (hgi.norm.const_mul B1)
+    (Filter.Eventually.of_forall (fun s => (dk.continuous.comp (by fun_prop)).mul continuous_const))
+  refine ⟨hi,hcont,hdcont,?_⟩
+  intro t
+  have hderiv (s : S) (v : Real) :
+      HasDerivAt (fun v => k (v-P s)*g s) (dk (v-P s)*g s) v := by
+    have hsub : HasDerivAt (fun w : Real => w-P s) 1 v := by
+      simpa only [id_eq] using (hasDerivAt_id v).sub_const (P s)
+    have hd : HasDerivAt (fun w : Real => k (w-P s)) (deriv k (v-P s)) v := by
+      simpa only [Function.comp_def,fderiv_apply_one_eq_deriv] using
+        k.differentiableAt.hasFDerivAt.comp_hasDerivAt v hsub
+    simpa only [dk,SchwartzMap.derivCLM_apply,mul_one] using hd.mul_const (g s)
+  have hd := hasDerivAt_integral_of_dominated_loc_of_deriv_le
+    (show (Set.univ : Set Real) ∈ nhds t from Filter.univ_mem)
+    (Filter.Eventually.of_forall hm) (hi t) (hdm t)
+    (Filter.Eventually.of_forall (fun s => fun v hv => by
+      rw [norm_mul]
+      exact mul_le_mul_of_nonneg_right (dk.norm_le_seminorm Complex _) (norm_nonneg _)))
+    (hgi.norm.const_mul B1)
+    (Filter.Eventually.of_forall (fun s => fun v hv => hderiv s v))
+  exact hd.2
+#print axioms sourcePacket_schwartz_translate_integral_hasDerivAt
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set
+open Auto.Spherical.SurfaceMeasureDecay
+open scoped FourierTransform
+
+def normalizedCircleFrequencyTimeDerivativeProfile (b : SchwartzMap Real Complex) :
+    SchwartzMap Real Complex :=
+  (2*Real.pi*Complex.I) • SchwartzMap.smulLeftCLM Complex
+    (fun r : Real => (r : Complex)) b
+
+theorem normalizedCircleFrequencyTimeDerivativeProfile_apply
+    (b : SchwartzMap Real Complex) (r : Real) :
+    normalizedCircleFrequencyTimeDerivativeProfile b r =
+      (2*Real.pi*Complex.I)*(r:Complex)*b r := by
+  simp only [normalizedCircleFrequencyTimeDerivativeProfile,smul_apply,smul_eq_mul,
+    SchwartzMap.smulLeftCLM_apply_apply (show (fun r : Real => (r:Complex)).HasTemperateGrowth by fun_prop)]
+  ring
+
+theorem normalizedCircleFrequencyTimeDerivativeProfile_gap
+    (b : SchwartzMap Real Complex) (hb : ∀ r : Real,|r| < 1/2 → b r = 0) :
+    ∀ r : Real,|r| < 1/2 → normalizedCircleFrequencyTimeDerivativeProfile b r = 0 := by
+  intro r hr
+  rw [normalizedCircleFrequencyTimeDerivativeProfile_apply,hb r hr,mul_zero]
+
+theorem normalizedCircleInverseBand_deriv
+    (b : SchwartzMap Real Complex) (mu : Real) (hmu : mu ≠ 0) :
+    SchwartzMap.derivCLM Complex Complex
+      (FourierTransform.fourierInv (mssTranslatedDilatedCutoff b 0 mu hmu)) =
+      (mu:Complex) • FourierTransform.fourierInv
+        (mssTranslatedDilatedCutoff (normalizedCircleFrequencyTimeDerivativeProfile b) 0 mu hmu) := by
+  let bm := mssTranslatedDilatedCutoff b (0:Real) mu hmu
+  let b1m := mssTranslatedDilatedCutoff (normalizedCircleFrequencyTimeDerivativeProfile b) (0:Real) mu hmu
+  have hid : SchwartzMap.derivCLM Complex Complex (FourierTransform.fourierInv bm) =
+      LineDeriv.lineDerivOp (1:Real) (FourierTransform.fourierInv bm) := by
+    ext x
+    rw [SchwartzMap.derivCLM_apply,SchwartzMap.lineDerivOp_apply_eq_fderiv,fderiv_apply_one_eq_deriv]
+  have hf : (2*Real.pi*Complex.I) • SchwartzMap.smulLeftCLM Complex
+      (fun r : Real => inner Real r (1:Real)) bm = (mu:Complex) • b1m := by
+    ext r
+    simp only [smul_apply,smul_eq_mul,
+      SchwartzMap.smulLeftCLM_apply_apply
+        (show (fun r : Real => inner Real r (1:Real)).HasTemperateGrowth by fun_prop),
+      bm,b1m,mssTranslatedDilatedCutoff_apply,sub_zero,smul_eq_mul,
+      normalizedCircleFrequencyTimeDerivativeProfile_apply]
+    simp only [RCLike.inner_apply,conj_trivial,Complex.real_smul]
+    push_cast
+    have hmuc : (mu:Complex) ≠ 0 := by exact_mod_cast hmu
+    field_simp [hmuc]
+  change SchwartzMap.derivCLM Complex Complex (FourierTransform.fourierInv bm) =
+    (mu:Complex) • FourierTransform.fourierInv b1m
+  rw [hid,SchwartzMap.lineDerivOp_fourierInv_eq,hf,FourierTransform.fourierInv_smul]
+
+#print axioms normalizedCircleInverseBand_deriv
+#print axioms normalizedCircleFrequencyTimeDerivativeProfile_gap
+end
+end Auto.Spherical.MSS
+
+
+namespace Auto.Spherical.MSS
+noncomputable section
+open MeasureTheory Set Filter
+open scoped Topology
+attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
+
+theorem sourcePacket_time_cutoff_quotient_contDiff
+    (chi : SchwartzMap Real Complex) (eps : Real)
+    (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0) :
+    ContDiff Real (⊤:ℕ∞) (fun t : Real => chi t*(((1+eps*t:Real):Complex))⁻¹) := by
+  rw [contDiff_iff_contDiffAt]
+  intro t
+  by_cases ht : t ∈ tsupport (chi : Real → Complex)
+  · have hd : ContDiff Real (⊤:ℕ∞) (fun t : Real => ((1+eps*t:Real):Complex)) :=
+      Complex.ofRealCLM.contDiff.comp (contDiff_const.add (contDiff_const.mul contDiff_id))
+    exact (chi.smooth (⊤:ℕ∞)).contDiffAt.mul
+      (hd.contDiffAt.inv (Complex.ofReal_ne_zero.mpr (hsep t ht)))
+  · have he : (fun t : Real => chi t*(((1+eps*t:Real):Complex))⁻¹) =ᶠ[nhds t]
+        (fun _ => (0:Complex)) := by
+      filter_upwards [notMem_tsupport_iff_eventuallyEq.mp ht] with u hu
+      simp only [hu,Pi.zero_apply,zero_mul]
+    exact contDiffAt_const.congr_of_eventuallyEq he
+
+def sourcePacketTimeCutoffQuotient
+    (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0) :
+    SchwartzMap Real Complex :=
+  (hcompact.mul_right (f' := fun t : Real => (((1+eps*t:Real):Complex))⁻¹)).toSchwartzMap
+    (sourcePacket_time_cutoff_quotient_contDiff chi eps hsep)
+
+theorem sourcePacketTimeCutoffQuotient_apply
+    (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0) (t : Real) :
+    sourcePacketTimeCutoffQuotient chi hcompact eps hsep t =
+      chi t*(((1+eps*t:Real):Complex))⁻¹ := rfl
+
+theorem sourcePacketTimeCutoffQuotient_hasDerivAt
+    (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0)
+    (t : Real) (ht : 1+eps*t ≠ 0) :
+    HasDerivAt (sourcePacketTimeCutoffQuotient chi hcompact eps hsep)
+      (deriv chi t*(((1+eps*t:Real):Complex))⁻¹+
+        chi t*(-(eps:Complex)/(((1+eps*t:Real):Complex))^2)) t := by
+  have hr : HasDerivAt (fun t : Real => 1+eps*t) eps t := by
+    simpa only [zero_add,mul_one,Pi.add_apply,id_eq] using!
+      (hasDerivAt_const t (1:Real)).add ((hasDerivAt_id t).const_mul eps)
+  have hc : HasDerivAt (fun t : Real => ((1+eps*t:Real):Complex)) (eps:Complex) t := by
+    simpa only [Function.comp_def,Complex.ofRealCLM_apply] using!
+      Complex.ofRealCLM.hasFDerivAt.comp_hasDerivAt t hr
+  change HasDerivAt (fun t : Real => chi t*(((1+eps*t:Real):Complex))⁻¹) _ t
+  simpa only [Pi.mul_apply,Pi.inv_apply,neg_div] using!
+    (chi.hasDerivAt t).mul (hc.inv (Complex.ofReal_ne_zero.mpr ht))
+
+theorem sourcePacketTimeCutoffQuotient_norm_deriv_le
+    (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0)
+    (t : Real) (ht : 1/2 ≤ 1+eps*t) (heps : |eps| ≤ 1) :
+    ‖sourcePacketTimeCutoffQuotient chi hcompact eps hsep t‖ ≤
+      2*SchwartzMap.seminorm Complex 0 0 chi ∧
+    ‖deriv (sourcePacketTimeCutoffQuotient chi hcompact eps hsep) t‖ ≤
+      2*SchwartzMap.seminorm Complex 0 0 (SchwartzMap.derivCLM Complex Complex chi)+
+      4*SchwartzMap.seminorm Complex 0 0 chi := by
+  have hden : 0 < 1+eps*t := by linarith
+  have hInv : (1+eps*t)⁻¹ ≤ 2 := by
+    simpa using (inv_le_inv₀ hden (by norm_num : (0:Real) < 1/2)).mpr ht
+  have hn : ‖((1+eps*t:Real):Complex)‖ = 1+eps*t := by
+    rw [Complex.norm_real,Real.norm_eq_abs,abs_of_pos hden]
+  have hnInv : ‖(((1+eps*t:Real):Complex))⁻¹‖ ≤ 2 := by
+    rw [norm_inv,hn]
+    exact hInv
+  have hnderiv : ‖-(eps:Complex)/(((1+eps*t:Real):Complex))^2‖ ≤ 4 := by
+    rw [norm_div,norm_neg,Complex.norm_real,Real.norm_eq_abs,norm_pow,hn,div_eq_mul_inv,← inv_pow]
+    have hsq : ((1+eps*t)⁻¹)^2 ≤ 4 := by nlinarith [inv_nonneg.mpr hden.le]
+    simpa only [one_mul] using mul_le_mul heps hsq (by positivity) (by norm_num)
+  constructor
+  · rw [sourcePacketTimeCutoffQuotient_apply,norm_mul]
+    calc
+      _ ≤ SchwartzMap.seminorm Complex 0 0 chi*2 :=
+        mul_le_mul (chi.norm_le_seminorm Complex _) hnInv (norm_nonneg _) (apply_nonneg _ _)
+      _ = _ := by ring
+  · rw [(sourcePacketTimeCutoffQuotient_hasDerivAt chi hcompact eps hsep t hden.ne').deriv]
+    refine (norm_add_le _ _).trans ?_
+    rw [norm_mul,norm_mul]
+    have hd : ‖deriv chi t‖ ≤ SchwartzMap.seminorm Complex 0 0
+        (SchwartzMap.derivCLM Complex Complex chi) :=
+      (SchwartzMap.derivCLM Complex Complex chi).norm_le_seminorm Complex t
+    have h0 := chi.norm_le_seminorm Complex t
+    calc
+      _ ≤ SchwartzMap.seminorm Complex 0 0 (SchwartzMap.derivCLM Complex Complex chi)*2+
+          SchwartzMap.seminorm Complex 0 0 chi*4 :=
+        add_le_add (mul_le_mul hd hnInv (norm_nonneg _) (apply_nonneg _ _))
+          (mul_le_mul h0 hnderiv (norm_nonneg _) (apply_nonneg _ _))
+      _ = _ := by ring
+
+#print axioms sourcePacketTimeCutoffQuotient_norm_deriv_le
+#print axioms sourcePacket_time_cutoff_quotient_contDiff
+end
+end Auto.Spherical.MSS

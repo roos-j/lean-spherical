@@ -3205,6 +3205,3710 @@ theorem spaceTimeFourier_temporalSchwartzHalfWave_eq_jointSchwartzModulatedAnnul
   exact spaceTimeFourier_spaceTimeFourierInv_jointSchwartzRaw
     (jointSchwartzModulatedAnnularProfile B vartheta rho) zeta
 
+/-! ### The normalized circular incidence family
+
+For the thin-annulus application of MSS (1993), Section 2 and Theorem 6.1,
+write `x = r X`, `y = (t₀ + r u) ω` and `ε = r / t₀`. Rationalization
+extends the exact incidence phase smoothly through `ε = 0`. In particular,
+no frequency-dependent approximation of the phase is made here.
+-/
+
+/-- Rationalized normalized distance from a thin annulus to a small output
+ball. For unit `ω` and nonzero `ε`, this is exactly
+`(‖(1 + ε * u) • ω - ε • X‖ - 1) / ε`. -/
+def normalizedCircleIncidence (ε : Real) (X ω : Euclidean 2) (u : Real) : Real :=
+  (2 * inner Real ω (u • ω - X) + ε * ‖u • ω - X‖ ^ 2) /
+    (‖ω + ε • (u • ω - X)‖ + 1)
+
+/-- The denominator used to remove the apparent singularity at zero scale
+is positive at every parameter value. -/
+theorem normalizedCircleIncidence_denominator_pos
+    (ε : Real) (X ω : Euclidean 2) (u : Real) :
+    0 < ‖ω + ε • (u • ω - X)‖ + 1 := by
+  positivity
+
+/-- Exact distance identity for the normalized incidence phase, including
+zero scale. This identity avoids dividing by the scale parameter. -/
+theorem normalizedCircleIncidence_mul_scale
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    ε * normalizedCircleIncidence ε X ω u =
+      ‖ω + ε • (u • ω - X)‖ - 1 := by
+  have hsq := norm_add_sq_real ω (ε • (u • ω - X))
+  rw [hω, real_inner_smul_right, norm_smul, Real.norm_eq_abs,
+    mul_pow, sq_abs] at hsq
+  have hden := ne_of_gt (normalizedCircleIncidence_denominator_pos ε X ω u)
+  unfold normalizedCircleIncidence
+  rw [← mul_div_assoc, div_eq_iff hden]
+  nlinarith
+
+/-- The normalized phase equals the actual circular distance quotient at
+every positive or negative nonzero scale. -/
+theorem normalizedCircleIncidence_eq_distance_quotient
+    {ε : Real} (hε : ε ≠ 0) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    normalizedCircleIncidence ε X ω u =
+      (‖(1 + ε * u) • ω - ε • X‖ - 1) / ε := by
+  apply (eq_div_iff hε).mpr
+  rw [mul_comm, normalizedCircleIncidence_mul_scale ε X ω u hω]
+  congr 2
+  module
+
+/-- At zero scale the family is the dual Radon incidence relation. -/
+theorem normalizedCircleIncidence_zero
+    (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    normalizedCircleIncidence 0 X ω u = u - inner Real ω X := by
+  simp only [normalizedCircleIncidence, zero_mul, zero_smul, add_zero,
+    inner_sub_right, real_inner_smul_right, real_inner_self_eq_norm_sq, hω]
+  ring
+
+/-- The exact physical distance after simultaneous output and input-annulus
+normalization. All radii remain in their original geometric meaning. -/
+theorem normalizedCircleIncidence_physical_distance
+    {t₀ : Real} (ht₀ : 0 < t₀) (r : Real)
+    (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    ‖(t₀ + r * u) • ω - r • X‖ =
+      t₀ + r * normalizedCircleIncidence (r / t₀) X ω u := by
+  have heq : (t₀ + r * u) • ω - r • X =
+      t₀ • (ω + (r / t₀) • (u • ω - X)) := by
+    rw [smul_add, smul_smul, mul_div_cancel₀ _ ht₀.ne']
+    module
+  rw [heq, norm_smul, Real.norm_eq_abs, abs_of_pos ht₀]
+  have h := normalizedCircleIncidence_mul_scale (r / t₀) X ω u hω
+  field_simp [ht₀.ne'] at h
+  nlinarith
+
+/-- Joint smoothness in all normalized parameters wherever the source and
+output points are distinct. In particular this includes zero scale. -/
+theorem normalizedCircleIncidence_contDiffAt
+    (z : Real × Euclidean 2 × Euclidean 2 × Real)
+    (hz : z.2.2.1 + z.1 • (z.2.2.2 • z.2.2.1 - z.2.1) ≠ 0) :
+    ContDiffAt Real (⊤ : ℕ∞)
+      (fun q : Real × Euclidean 2 × Euclidean 2 × Real =>
+        normalizedCircleIncidence q.1 q.2.1 q.2.2.1 q.2.2.2) z := by
+  let v : (Real × Euclidean 2 × Euclidean 2 × Real) → Euclidean 2 :=
+    fun q => q.2.2.2 • q.2.2.1 - q.2.1
+  have hv : ContDiff Real (⊤ : ℕ∞) v := by dsimp [v]; fun_prop
+  have hw : ContDiff Real (⊤ : ℕ∞)
+      (fun q : Real × Euclidean 2 × Euclidean 2 × Real => q.2.2.1) := by fun_prop
+  have he : ContDiff Real (⊤ : ℕ∞)
+      (fun q : Real × Euclidean 2 × Euclidean 2 × Real => q.1) := by fun_prop
+  have hn := (hw.add (he.smul hv)).contDiffAt.norm Real hz
+  exact (((contDiffAt_const.mul (hw.contDiffAt.inner Real hv.contDiffAt)).add
+    (he.contDiffAt.mul ((hv.norm_sq (𝕜 := Real)).contDiffAt))).div
+      (hn.add contDiffAt_const)
+      (ne_of_gt (normalizedCircleIncidence_denominator_pos z.1 z.2.1 z.2.2.1 z.2.2.2)))
+
+/-- A scale-independent separation bound for the normalized source and
+output. The hypothesis allows any fixed compact input/output coordinate box. -/
+theorem normalizedCircleIncidence_separation
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
+    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1 / 2) :
+    1 / 2 ≤ ‖ω + ε • (u • ω - X)‖ := by
+  have hv : ‖u • ω - X‖ ≤ |u| + ‖X‖ := by
+    simpa only [norm_smul, Real.norm_eq_abs, hω, mul_one] using norm_sub_le (u • ω) X
+  have htriangle := norm_sub_norm_le ω (ω + ε • (u • ω - X))
+  simp only [hω, sub_add_cancel_left, norm_neg, norm_smul, Real.norm_eq_abs] at htriangle
+  have hprod := mul_le_mul_of_nonneg_left hv (abs_nonneg ε)
+  linarith
+
+/-- Smoothness of the exact family on the full uniformly separated
+parameter region, including its limiting dual Radon member. -/
+theorem normalizedCircleIncidence_contDiffAt_of_small
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
+    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1 / 2) :
+    ContDiffAt Real (⊤ : ℕ∞)
+      (fun q : Real × Euclidean 2 × Euclidean 2 × Real =>
+        normalizedCircleIncidence q.1 q.2.1 q.2.2.1 q.2.2.2) (ε, X, ω, u) := by
+  apply normalizedCircleIncidence_contDiffAt
+  apply norm_pos_iff.mp
+  exact lt_of_lt_of_le (by norm_num : (0 : Real) < 1 / 2)
+    (normalizedCircleIncidence_separation ε X ω u hω hsmall)
+
+/-- Continuity of the exact incidence family at the limiting scale. This
+conclusion has no relation between the frequency and the scale parameters. -/
+theorem normalizedCircleIncidence_tendsto_zero
+    (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    Tendsto (fun ε : Real => normalizedCircleIncidence ε X ω u)
+      (𝓝 0) (𝓝 (u - inner Real ω X)) := by
+  have hc := (normalizedCircleIncidence_contDiffAt_of_small 0 X ω u hω
+    (by norm_num)).continuousAt
+  have hmap : ContinuousAt
+      (fun ε : Real => (ε, X, ω, u)) 0 := by fun_prop
+  simpa only [Function.comp_def, normalizedCircleIncidence_zero X ω u hω] using
+    hc.tendsto.comp hmap.tendsto
+
+/-- Every fixed number of joint phase derivatives is bounded uniformly on
+a compact set of separated normalized parameters. The scale may range
+through zero in this compact set. -/
+theorem normalizedCircleIncidence_uniform_derivatives
+    (K : Set (Real × Euclidean 2 × Euclidean 2 × Real)) (hK : IsCompact K)
+    (hsep : ∀ z ∈ K, z.2.2.1 + z.1 • (z.2.2.2 • z.2.2.1 - z.2.1) ≠ 0)
+    (n : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ z ∈ K,
+      ‖iteratedFDeriv Real n
+        (fun q : Real × Euclidean 2 × Euclidean 2 × Real =>
+          normalizedCircleIncidence q.1 q.2.1 q.2.2.1 q.2.2.2) z‖ ≤ C := by
+  have hc : ContinuousOn (iteratedFDeriv Real n
+      (fun q : Real × Euclidean 2 × Euclidean 2 × Real =>
+        normalizedCircleIncidence q.1 q.2.1 q.2.2.1 q.2.2.2)) K := by
+    intro z hz
+    exact ((normalizedCircleIncidence_contDiffAt z (hsep z hz)).continuousAt_iteratedFDeriv
+      (by simp)).continuousWithinAt
+  obtain ⟨C, hC⟩ := hK.exists_bound_of_continuousOn hc
+  exact ⟨max C 0, le_max_right _ _, fun z hz => (hC z hz).trans (le_max_left _ _)⟩
+
+/-- Unit spatial conormal to the exact circular incidence family. -/
+def normalizedCircleNormal (ε : Real) (X ω : Euclidean 2) (u : Real) : Euclidean 2 :=
+  ‖ω + ε • (u • ω - X)‖⁻¹ • (ω + ε • (u • ω - X))
+
+/-- The output conormal lies on the ordinary light cone for every scale;
+this is an exact identity, not only a limiting property. -/
+theorem norm_normalizedCircleNormal
+    (ε : Real) (X ω : Euclidean 2) (u : Real)
+    (hne : ω + ε • (u • ω - X) ≠ 0) :
+    ‖normalizedCircleNormal ε X ω u‖ = 1 := by
+  unfold normalizedCircleNormal
+  rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (inv_nonneg.mpr (norm_nonneg _)),
+    inv_mul_cancel₀ (norm_ne_zero_iff.mpr hne)]
+
+/-- At zero scale the exact normal is the original angular direction. -/
+theorem normalizedCircleNormal_zero
+    (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    normalizedCircleNormal 0 X ω u = ω := by
+  simp [normalizedCircleNormal, hω]
+
+/-- Differentiating the Euclidean norm along a nonzero smooth planar curve.
+This is the elementary derivative used for the normalized incidence jets. -/
+theorem hasDerivAt_planar_norm {f : Real → Euclidean 2} {f' : Euclidean 2}
+    {s : Real} (hf : HasDerivAt f f' s) (hne : f s ≠ 0) :
+    HasDerivAt (fun v => ‖f v‖) (inner Real (f s) f' / ‖f s‖) s := by
+  have h := hf.norm_sq.sqrt (pow_ne_zero 2 (norm_ne_zero_iff.mpr hne))
+  simpa only [Real.sqrt_sq (norm_nonneg _),
+    mul_div_mul_left _ _ (by norm_num : (2 : Real) ≠ 0)] using h
+
+/-- Spatial directional derivative of the normalized circular phase. Its
+negative gradient is the exact unit normal, including at zero scale. -/
+theorem normalizedCircleIncidence_hasDerivAt_spatial
+    (ε : Real) (X Y ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
+    (hne : ω + ε • (u • ω - X) ≠ 0) :
+    HasDerivAt (fun a : Real => normalizedCircleIncidence ε (X + a • Y) ω u)
+      (-inner Real (normalizedCircleNormal ε X ω u) Y) 0 := by
+  by_cases he : ε = 0
+  · subst ε
+    simp only [normalizedCircleIncidence_zero _ ω u hω,
+      normalizedCircleNormal_zero X ω u hω, inner_add_right, real_inner_smul_right]
+    convert (hasDerivAt_const 0 u).sub
+      ((hasDerivAt_const 0 (inner Real ω X)).add
+        ((hasDerivAt_id 0).mul_const (inner Real ω Y))) using 1 <;> first | rfl | simp
+  · have hv : HasDerivAt
+        (fun a : Real => ω + ε • (u • ω - (X + a • Y))) (-ε • Y) 0 := by
+      convert (hasDerivAt_const (0 : Real) ω).add
+        (((hasDerivAt_const (0 : Real) (u • ω)).sub
+          ((hasDerivAt_const (0 : Real) X).add
+            ((hasDerivAt_id (0 : Real)).smul_const Y))).const_smul ε)
+        using 1 <;> first | rfl | simp
+    have hn := hasDerivAt_planar_norm hv (by simpa using hne)
+    have hquot := (hn.sub_const 1).div_const ε
+    have hfun : (fun a : Real => normalizedCircleIncidence ε (X + a • Y) ω u) =
+        (fun a : Real => (‖ω + ε • (u • ω - (X + a • Y))‖ - 1) / ε) := by
+      funext a
+      apply (eq_div_iff he).mpr
+      simpa only [mul_comm] using normalizedCircleIncidence_mul_scale ε (X + a • Y) ω u hω
+    rw [hfun]
+    convert hquot using 1
+    simp only [zero_smul, add_zero, normalizedCircleNormal,
+      real_inner_smul_right, real_inner_smul_left]
+    field_simp
+
+/-- Radial-input derivative of the normalized incidence relation. -/
+theorem normalizedCircleIncidence_hasDerivAt_radial
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
+    (hne : ω + ε • (u • ω - X) ≠ 0) :
+    HasDerivAt (fun v : Real => normalizedCircleIncidence ε X ω v)
+      (inner Real (normalizedCircleNormal ε X ω u) ω) u := by
+  by_cases he : ε = 0
+  · subst ε
+    simp only [normalizedCircleIncidence_zero X ω _ hω,
+      normalizedCircleNormal_zero X ω u hω, real_inner_self_eq_norm_sq, hω, one_pow]
+    exact (hasDerivAt_id u).sub_const _
+  · have hv : HasDerivAt (fun v : Real => ω + ε • (v • ω - X)) (ε • ω) u := by
+      convert (hasDerivAt_const u ω).add
+        ((((hasDerivAt_id u).smul_const ω).sub_const X).const_smul ε)
+        using 1 <;> first | rfl | simp
+    have hn := hasDerivAt_planar_norm hv hne
+    have hquot := (hn.sub_const 1).div_const ε
+    have hfun : (fun v : Real => normalizedCircleIncidence ε X ω v) =
+        (fun v : Real => (‖ω + ε • (v • ω - X)‖ - 1) / ε) := by
+      funext v
+      apply (eq_div_iff he).mpr
+      simpa only [mul_comm] using normalizedCircleIncidence_mul_scale ε X ω v hω
+    rw [hfun]
+    convert hquot using 1
+    simp only [normalizedCircleNormal, real_inner_smul_right, real_inner_smul_left]
+    field_simp
+
+/-- The normalized displacement has a uniform upper bound on the same
+coordinate region used for its lower bound. -/
+theorem normalizedCircleIncidence_distance_le
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
+    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1 / 2) :
+    ‖ω + ε • (u • ω - X)‖ ≤ 3 / 2 := by
+  have hv : ‖u • ω - X‖ ≤ |u| + ‖X‖ := by
+    simpa only [norm_smul, Real.norm_eq_abs, hω, mul_one] using norm_sub_le (u • ω) X
+  have htriangle := norm_add_le ω (ε • (u • ω - X))
+  rw [hω, norm_smul, Real.norm_eq_abs] at htriangle
+  have hprod := mul_le_mul_of_nonneg_left hv (abs_nonneg ε)
+  linarith
+
+/-- The radial-input Jacobian is uniformly positive. Consequently the
+normalized circle is a graph in the radial input coordinate. -/
+theorem normalizedCircleIncidence_radial_jacobian_lower
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
+    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1 / 2) :
+    1 / 3 ≤ inner Real (normalizedCircleNormal ε X ω u) ω := by
+  let v := ω + ε • (u • ω - X)
+  have hvpos : 0 < ‖v‖ := lt_of_lt_of_le (by norm_num : (0 : Real) < 1 / 2)
+    (normalizedCircleIncidence_separation ε X ω u hω hsmall)
+  have hvupper : ‖v‖ ≤ 3 / 2 := normalizedCircleIncidence_distance_le ε X ω u hω hsmall
+  have hinner : |inner Real X ω| ≤ ‖X‖ := by
+    simpa only [hω, mul_one] using abs_real_inner_le_norm X ω
+  have hinner' : |u - inner Real X ω| ≤ |u| + ‖X‖ :=
+    (abs_sub u (inner Real X ω)).trans (add_le_add le_rfl hinner)
+  have habs : |ε * (u - inner Real X ω)| ≤ 1 / 2 := by
+    rw [abs_mul]
+    exact (mul_le_mul_of_nonneg_left hinner' (abs_nonneg ε)).trans hsmall
+  have hvinner : inner Real v ω = 1 + ε * (u - inner Real X ω) := by
+    simp [v, inner_add_left, real_inner_smul_left, inner_sub_left,
+      hω]
+  change 1 / 3 ≤ inner Real (‖v‖⁻¹ • v) ω
+  rw [real_inner_smul_left, ← div_eq_inv_mul, le_div_iff₀ hvpos, hvinner]
+  have := (abs_le.mp habs).1
+  linarith
+
+/-- Derivative of unit-vector normalization along a nonzero planar curve.
+The formula is the orthogonal projection of the velocity onto the tangent
+line, divided by the radius. -/
+theorem hasDerivAt_planar_normalize {f : Real → Euclidean 2} {f' : Euclidean 2}
+    {s : Real} (hf : HasDerivAt f f' s) (hne : f s ≠ 0) :
+    HasDerivAt (fun v => ‖f v‖⁻¹ • f v)
+      (‖f s‖⁻¹ • f' - (inner Real (f s) f' / ‖f s‖ ^ 3) • f s) s := by
+  have hn := hasDerivAt_planar_norm hf hne
+  have h := (hn.inv (norm_ne_zero_iff.mpr hne)).smul hf
+  convert h using 1
+  ext i
+  simp only [PiLp.sub_apply, PiLp.smul_apply, PiLp.add_apply, smul_eq_mul, Pi.inv_apply]
+  field_simp [norm_ne_zero_iff.mpr hne]
+  ring
+
+/-- Joint smoothness of the unit conormal away from incidence collisions. -/
+theorem normalizedCircleNormal_contDiffAt
+    (z : Real × Euclidean 2 × Euclidean 2 × Real)
+    (hz : z.2.2.1 + z.1 • (z.2.2.2 • z.2.2.1 - z.2.1) ≠ 0) :
+    ContDiffAt Real (⊤ : ℕ∞)
+      (fun q : Real × Euclidean 2 × Euclidean 2 × Real =>
+        normalizedCircleNormal q.1 q.2.1 q.2.2.1 q.2.2.2) z := by
+  let v : (Real × Euclidean 2 × Euclidean 2 × Real) → Euclidean 2 :=
+    fun q => q.2.2.1 + q.1 • (q.2.2.2 • q.2.2.1 - q.2.1)
+  have hv : ContDiff Real (⊤ : ℕ∞) v := by dsimp [v]; fun_prop
+  exact ((hv.contDiffAt.norm Real hz).inv (norm_ne_zero_iff.mpr hz)).smul hv.contDiffAt
+
+/-- Exact inverse normal coordinates on a normalized incidence circle. -/
+theorem normalizedCircle_inverse_displacement
+    (ε : Real) (X η : Euclidean 2) (s : Real) (hη : ‖η‖ = 1)
+    (hsep : η + ε • (s • η - -X) ≠ 0) :
+    let u := normalizedCircleIncidence ε (-X) η s
+    let ω := normalizedCircleNormal ε (-X) η s
+    ω + ε • (u • ω - X) = (1 + ε * s) • η := by
+  dsimp
+  let v := η + ε • (s • η - -X)
+  have hv : ‖v‖ ≠ 0 := norm_ne_zero_iff.mpr hsep
+  have hu := normalizedCircleIncidence_mul_scale ε (-X) η s hη
+  have hu' : 1 + ε * normalizedCircleIncidence ε (-X) η s = ‖v‖ := by
+    dsimp [v]; linarith
+  change ‖v‖⁻¹ • v + ε •
+    (normalizedCircleIncidence ε (-X) η s • (‖v‖⁻¹ • v) - X) =
+    (1 + ε * s) • η
+  calc
+    _ = (1 + ε * normalizedCircleIncidence ε (-X) η s) •
+        (‖v‖⁻¹ • v) - ε • X := by module
+    _ = v - ε • X := by rw [hu', smul_smul, mul_inv_cancel₀ hv, one_smul]
+    _ = (1 + ε * s) • η := by dsimp [v]; module
+
+/-- The inverse normal chart lies on the prescribed incidence level. -/
+theorem normalizedCircle_inverse_incidence
+    (ε : Real) (X η : Euclidean 2) (s : Real) (hη : ‖η‖ = 1)
+    (hsep : η + ε • (s • η - -X) ≠ 0) (hs : 0 < 1 + ε * s) :
+    normalizedCircleIncidence ε X
+      (normalizedCircleNormal ε (-X) η s)
+      (normalizedCircleIncidence ε (-X) η s) = s := by
+  have hω := norm_normalizedCircleNormal ε (-X) η s hsep
+  have hv := normalizedCircle_inverse_displacement ε X η s hη hsep
+  by_cases hε : ε = 0
+  · subst ε
+    rw [normalizedCircleNormal_zero _ _ _ hη,
+      normalizedCircleIncidence_zero _ _ _ hη,
+      normalizedCircleIncidence_zero _ _ _ hη, inner_neg_right]
+    ring
+  · have h := normalizedCircleIncidence_mul_scale ε X
+      (normalizedCircleNormal ε (-X) η s)
+      (normalizedCircleIncidence ε (-X) η s) hω
+    rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hs, hη] at h
+    apply mul_left_cancel₀ hε
+    nlinarith
+
+/-- In inverse normal coordinates the output normal is exactly the chosen
+unit direction. Thus the output conormal cone is the ordinary light cone,
+for every admissible scale, not merely at the limiting scale. -/
+theorem normalizedCircle_inverse_normal
+    (ε : Real) (X η : Euclidean 2) (s : Real) (hη : ‖η‖ = 1)
+    (hsep : η + ε • (s • η - -X) ≠ 0) (hs : 0 < 1 + ε * s) :
+    normalizedCircleNormal ε X
+      (normalizedCircleNormal ε (-X) η s)
+      (normalizedCircleIncidence ε (-X) η s) = η := by
+  have hv := normalizedCircle_inverse_displacement ε X η s hη hsep
+  unfold normalizedCircleNormal
+  change ‖normalizedCircleNormal ε (-X) η s +
+      ε • (normalizedCircleIncidence ε (-X) η s •
+        normalizedCircleNormal ε (-X) η s - X)‖⁻¹ •
+    (normalizedCircleNormal ε (-X) η s +
+      ε • (normalizedCircleIncidence ε (-X) η s •
+        normalizedCircleNormal ε (-X) η s - X)) = η
+  rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hs, hη, mul_one,
+    smul_smul, inv_mul_cancel₀ hs.ne', one_smul]
+
+theorem abs_normalizedCircleIncidence_le
+    (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1) :
+    |normalizedCircleIncidence ε X ω u| ≤ |u| + ‖X‖ := by
+  have hv : ‖u • ω - X‖ ≤ |u| + ‖X‖ := by
+    simpa only [norm_smul, Real.norm_eq_abs, hω, mul_one] using norm_sub_le (u • ω) X
+  by_cases hε : ε = 0
+  · subst ε
+    rw [normalizedCircleIncidence_zero _ _ _ hω]
+    have hi : |inner Real ω X| ≤ ‖X‖ := by
+      simpa only [hω, one_mul] using abs_real_inner_le_norm ω X
+    exact (abs_sub u (inner Real ω X)).trans (add_le_add le_rfl hi)
+  · have h := abs_norm_sub_norm_le (ω + ε • (u • ω - X)) ω
+    rw [hω, add_sub_cancel_left, norm_smul, Real.norm_eq_abs,
+      ← normalizedCircleIncidence_mul_scale ε X ω u hω, abs_mul] at h
+    exact (mul_le_mul_iff_right₀ (abs_pos.mpr hε)).mp
+      (h.trans (mul_le_mul_of_nonneg_left hv (abs_nonneg ε)))
+
+/-- The circular averaging family in exact normalized annular coordinates.
+The sphere variable parametrizes the physical circle by its output normal. -/
+def normalizedCircleAverage (ε : Real) (h : Euclidean 2 → Real → Complex)
+    (X : Euclidean 2) (s : Real) : Complex :=
+  ∫ η : Metric.sphere (0 : Euclidean 2) 1,
+    h (normalizedCircleNormal ε (-X) η s)
+      (normalizedCircleIncidence ε (-X) η s) ∂unitSurfaceMeasure 2
+
+/-- Physical source points expressed through the exact inverse normal chart. -/
+theorem normalizedCircle_source_coordinates {t₀ : Real} (ht₀ : 0 < t₀)
+    (r : Real) (X η : Euclidean 2) (s : Real) (hη : ‖η‖ = 1)
+    (hsep : η + (r / t₀) • (s • η - -X) ≠ 0) :
+    (t₀ + r * normalizedCircleIncidence (r / t₀) (-X) η s) •
+        normalizedCircleNormal (r / t₀) (-X) η s =
+      r • X + (t₀ + r * s) • η := by
+  have hv := normalizedCircle_inverse_displacement (r / t₀) X η s hη hsep
+  have heq : t₀ * (r / t₀) = r := by field_simp
+  have hh := congrArg (fun v : Euclidean 2 => t₀ • v) hv
+  simp only [smul_add, smul_sub, smul_smul, heq, mul_add, mul_one] at hh
+  simp only [← mul_assoc, heq] at hh
+  calc
+    _ = (t₀ • normalizedCircleNormal (r / t₀) (-X) η s +
+        ((r * normalizedCircleIncidence (r / t₀) (-X) η s) •
+          normalizedCircleNormal (r / t₀) (-X) η s - r • X)) + r • X := by module
+    _ = _ := by rw [hh]; module
+
+/-- Exact rescaling of a physical circular average, with no error term and
+no restriction on the frequency of the input. -/
+theorem sphericalAverage_eq_normalizedCircleAverage {t₀ : Real} (ht₀ : 0 < t₀)
+    (r : Real) (X : Euclidean 2) (s : Real) (f : Euclidean 2 → Complex)
+    (hsmall : |r / t₀| * (|s| + ‖X‖) ≤ 1 / 2) :
+    sphericalAverage 2 f (t₀ + r * s) (r • X) =
+      normalizedCircleAverage (r / t₀)
+        (fun ω u => f ((t₀ + r * u) • ω)) X s := by
+  unfold sphericalAverage normalizedCircleAverage
+  apply integral_congr_ae
+  filter_upwards [] with η
+  congr 1
+  apply (normalizedCircle_source_coordinates ht₀ r X η s
+    (mem_sphere_zero_iff_norm.mp η.2) ?_).symm
+  apply norm_pos_iff.mp
+  have h := normalizedCircleIncidence_separation (r / t₀) (-X) η s
+    (mem_sphere_zero_iff_norm.mp η.2) (by simpa using hsmall)
+  linarith
+
+/-- The limiting operator is the dual Radon transform. -/
+theorem normalizedCircleAverage_zero (h : Euclidean 2 → Real → Complex)
+    (X : Euclidean 2) (s : Real) :
+    normalizedCircleAverage 0 h X s =
+      ∫ η : Metric.sphere (0 : Euclidean 2) 1,
+        h η (s + inner Real (η : Euclidean 2) X) ∂unitSurfaceMeasure 2 := by
+  unfold normalizedCircleAverage
+  apply integral_congr_ae
+  filter_upwards [] with η
+  rw [normalizedCircleNormal_zero _ _ _ (mem_sphere_zero_iff_norm.mp η.2),
+    normalizedCircleIncidence_zero _ _ _ (mem_sphere_zero_iff_norm.mp η.2),
+    inner_neg_right, sub_neg_eq_add]
+
+/-- The exact radial Jacobian in the annular change of variables. -/
+theorem lintegral_affine_radial_change (t₀ : Real) {r : Real} (hr : 0 < r)
+    (G : Real → ℝ≥0∞) (hG : Measurable G) :
+    ENNReal.ofReal r * (∫⁻ u : Real, G (t₀ + r * u)) = ∫⁻ v : Real, G v := by
+  have hm : Measurable (fun v : Real => G (t₀ + v)) := by fun_prop
+  calc
+    _ = ∫⁻ v : Real, G (t₀ + v) ∂(ENNReal.ofReal r • Measure.map (r * ·) volume) := by
+      rw [lintegral_smul_measure, lintegral_map hm (by fun_prop), smul_eq_mul]
+    _ = ∫⁻ v : Real, G (t₀ + v) := by
+      rw [show ENNReal.ofReal r • Measure.map (r * ·) volume = volume by
+        simpa only [abs_of_pos hr] using Real.smul_map_volume_mul_left hr.ne']
+    _ = _ := lintegral_add_left_eq_self G t₀
+
+/-- The input annular-coordinate moment costs at most `2 / (t₀ * r)`.
+This is the input-side factor in the normalized weighted shell estimate. -/
+theorem normalizedCircle_input_moment_le {t₀ r : Real} (ht₀ : 0 < t₀) (hr : 0 < r)
+    (S : Set Real) (hS : MeasurableSet S) (hpositive : ∀ u ∈ S, t₀ / 2 ≤ t₀ + r * u)
+    (H : Euclidean 2 → ℝ≥0∞) (hH : Measurable H) :
+    ENNReal.ofReal (t₀ * r / 2) *
+      (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ u in S, H ((t₀ + r * u) • (ω : Euclidean 2))) ∂unitSurfaceMeasure 2) ≤
+      ∫⁻ x : Euclidean 2, H x := by
+  have hinner (ω : Metric.sphere (0 : Euclidean 2) 1) :
+      ENNReal.ofReal (t₀ * r / 2) *
+        (∫⁻ u in S, H ((t₀ + r * u) • (ω : Euclidean 2))) ≤
+      ∫⁻ v in Ioi (0 : Real), ENNReal.ofReal v * H (v • (ω : Euclidean 2)) := by
+    let G : Real → ℝ≥0∞ := (Ioi (0 : Real)).indicator
+      (fun v => ENNReal.ofReal v * H (v • (ω : Euclidean 2)))
+    have hG : Measurable G := by
+      exact Measurable.indicator (by fun_prop) measurableSet_Ioi
+    have hlocal : ENNReal.ofReal (t₀ / 2) *
+        (∫⁻ u in S, H ((t₀ + r * u) • (ω : Euclidean 2))) ≤
+        ∫⁻ u : Real, G (t₀ + r * u) := by
+      rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+      apply le_trans (setLIntegral_mono' hS ?_) (setLIntegral_le_lintegral _ _)
+      intro u hu
+      dsimp [G]
+      rw [indicator_of_mem (show t₀ + r * u ∈ Ioi (0 : Real) by
+        have := hpositive u hu; change 0 < t₀ + r * u; linarith)]
+      exact mul_le_mul' (ENNReal.ofReal_le_ofReal (hpositive u hu)) le_rfl
+    calc
+      _ = ENNReal.ofReal r * (ENNReal.ofReal (t₀ / 2) *
+          ∫⁻ u in S, H ((t₀ + r * u) • (ω : Euclidean 2))) := by
+        rw [← mul_assoc, ← ENNReal.ofReal_mul hr.le]
+        congr 2
+        ring
+      _ ≤ ENNReal.ofReal r * ∫⁻ u : Real, G (t₀ + r * u) :=
+        mul_le_mul' le_rfl hlocal
+      _ = ∫⁻ v : Real, G v := lintegral_affine_radial_change t₀ hr G hG
+      _ = _ := lintegral_indicator measurableSet_Ioi _
+  rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  apply le_trans (lintegral_mono hinner)
+  rw [lintegral_polar_unitSurfaceMeasure (by norm_num : 0 < 2)]
+  have hp : Measurable (fun q : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+      H (q.2.1 • (q.1 : Euclidean 2))) := by fun_prop
+  rw [lintegral_prod _ hp.aemeasurable]
+  apply lintegral_mono
+  intro ω
+  dsimp only
+  rw [lintegral_volumeIoiPow (2 - 1) (fun v : Real => H (v • (ω : Euclidean 2)))
+    (by fun_prop)]
+  norm_num
+
+/-- Planar polar integration with the literal radial Jacobian. -/
+theorem normalizedCircle_lintegral_polar
+    (H : Euclidean 2 → ℝ≥0∞) (hH : Measurable H) :
+    (∫⁻ y : Euclidean 2, H y) =
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ t in Ioi (0 : Real),
+          ENNReal.ofReal t * H (t • (ω : Euclidean 2))) ∂unitSurfaceMeasure 2 := by
+  rw [lintegral_polar_unitSurfaceMeasure (by norm_num : 0 < 2)]
+  rw [lintegral_prod _ (by fun_prop)]
+  apply lintegral_congr
+  intro ω
+  simpa using lintegral_volumeIoiPow 1
+    (fun t : Real => H (t • (ω : Euclidean 2))) (by fun_prop)
+
+/-- Centered polar integration identifies the weak circular kernel. -/
+theorem normalizedCircle_lintegral_centered
+    (F : Euclidean 2 → ℝ≥0∞) (G : Real → ℝ≥0∞)
+    (hF : Measurable F) (hG : Measurable G) (x : Euclidean 2) :
+    (∫⁻ t in Ioi (0 : Real), ENNReal.ofReal t *
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        G t * F (x + t • (ω : Euclidean 2)) ∂unitSurfaceMeasure 2) =
+      ∫⁻ y : Euclidean 2, G ‖y - x‖ * F y := by
+  have ht : (∫⁻ y : Euclidean 2, G ‖y - x‖ * F y) =
+      ∫⁻ z : Euclidean 2, G ‖z‖ * F (x + z) := by
+    simpa only [add_sub_cancel_left] using
+      (lintegral_add_left_eq_self (fun y : Euclidean 2 => G ‖y - x‖ * F y) x).symm
+  rw [ht, normalizedCircle_lintegral_polar _ (by fun_prop)]
+  have hfactor (t : Real) :
+      ENNReal.ofReal t * (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        G t * F (x + t • (ω : Euclidean 2)) ∂unitSurfaceMeasure 2) =
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        ENNReal.ofReal t * (G t * F (x + t • (ω : Euclidean 2))) ∂unitSurfaceMeasure 2 :=
+    (lintegral_const_mul' _ _ ENNReal.ofReal_ne_top).symm
+  simp_rw [hfactor]
+  rw [lintegral_lintegral_swap (by fun_prop)]
+  apply lintegral_congr
+  intro ω
+  apply setLIntegral_congr_fun measurableSet_Ioi
+  intro t ht
+  dsimp only
+  rw [norm_smul, Real.norm_eq_abs, abs_of_pos ht,
+    mem_sphere_zero_iff_norm.mp ω.2, mul_one]
+
+
+/-- Weak coarea identity for the circular averaging kernel. -/
+theorem normalizedCircle_lintegral_coarea
+    (F : Euclidean 2 → ℝ≥0∞) (G : Real → ℝ≥0∞)
+    (hF : Measurable F) (hG : Measurable G) (x : Euclidean 2) :
+    (∫⁻ t in Ioi (0 : Real), ENNReal.ofReal t *
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        G t * F (x + t • (ω : Euclidean 2)) ∂unitSurfaceMeasure 2) =
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ v in Ioi (0 : Real), ENNReal.ofReal v *
+          (G ‖v • (ω : Euclidean 2) - x‖ * F (v • (ω : Euclidean 2))))
+          ∂unitSurfaceMeasure 2 := by
+  rw [normalizedCircle_lintegral_centered F G hF hG x]
+  exact normalizedCircle_lintegral_polar _ (by fun_prop)
+
+/-- Affine radial change of variables with the positive-radius domain. -/
+theorem normalizedCircle_lintegral_radial_change
+    (t₀ : Real) {r : Real} (hr : 0 < r)
+    (H : Real → ℝ≥0∞) (hH : Measurable H) :
+    ENNReal.ofReal r *
+      (∫⁻ u in {u : Real | 0 < t₀ + r * u}, H (t₀ + r * u)) =
+      ∫⁻ t in Ioi (0 : Real), H t := by
+  have h := lintegral_affine_radial_change t₀ hr
+    ((Ioi (0 : Real)).indicator H) (hH.indicator measurableSet_Ioi)
+  rw [lintegral_indicator measurableSet_Ioi] at h
+  rw [← h]
+  congr 1
+  rw [← lintegral_indicator (show MeasurableSet {u : Real | 0 < t₀ + r * u} by
+    exact isOpen_lt continuous_const (by fun_prop) |>.measurableSet)]
+  apply lintegral_congr
+  intro u
+  simp only [indicator_apply, mem_ofPred_eq, mem_Ioi]
+
+
+/-- Complex-valued weak coarea, written with product measures so that no
+unjustified interchange of conditionally integrable expressions is used. -/
+theorem normalizedCircle_integral_coarea
+    (F : Euclidean 2 → Complex) (G : Real → Complex) (x : Euclidean 2) :
+    (∫ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+      G p.2.1 * F (x + p.2.1 • (p.1 : Euclidean 2))
+      ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1))) =
+    ∫ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+      G ‖p.2.1 • (p.1 : Euclidean 2) - x‖ * F (p.2.1 • (p.1 : Euclidean 2))
+      ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) := by
+  have hpolar (H : Euclidean 2 → Complex) :
+      (∫ y : Euclidean 2, H y) =
+        ∫ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+          H (p.2.1 • (p.1 : Euclidean 2))
+          ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) :=
+    Auto.RadialFourierTransform.integral_polar_unitSurfaceMeasure (by norm_num) H
+  calc
+    _ = ∫ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+        G ‖p.2.1 • (p.1 : Euclidean 2)‖ * F (x + p.2.1 • (p.1 : Euclidean 2))
+        ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) := by
+      apply integral_congr_ae
+      filter_upwards [] with p
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos p.2.2,
+        mem_sphere_zero_iff_norm.mp p.1.2, mul_one]
+    _ = ∫ z : Euclidean 2, G ‖z‖ * F (x + z) := (hpolar (fun z => G ‖z‖ * F (x + z))).symm
+    _ = ∫ y : Euclidean 2, G ‖y - x‖ * F y := by
+      simpa only [add_sub_cancel_left] using
+        integral_add_left_eq_self (fun y : Euclidean 2 => G ‖y - x‖ * F y) x
+    _ = _ := hpolar (fun y => G ‖y - x‖ * F y)
+
+
+/-- Physical radial frequencies become the exact normalized incidence
+frequency, without a restriction relating the scale to the frequency. -/
+theorem normalizedCircleIncidence_physical_radial_frequency
+    {t₀ r : Real} (ht₀ : 0 < t₀) (hr : r ≠ 0)
+    (X ω : Euclidean 2) (v : Real) (hω : ‖ω‖ = 1) :
+    (‖v • ω - r • X‖ - t₀) / r =
+      normalizedCircleIncidence (r / t₀) X ω ((v - t₀) / r) := by
+  have hv : t₀ + r * ((v - t₀) / r) = v := by field_simp; ring
+  have h := normalizedCircleIncidence_physical_distance ht₀ r X ω ((v - t₀) / r) hω
+  rw [hv] at h
+  rw [h]
+  field_simp
+  ring
+
+/-- Exact weak normalized kernel representation. The radial power measure
+contains the geometric radial Jacobian on both sides. -/
+theorem normalizedCircle_integral_kernel
+    {t₀ r : Real} (ht₀ : 0 < t₀) (hr : r ≠ 0)
+    (F : Euclidean 2 → Complex) (K : Real → Complex)
+    (X : Euclidean 2) (s : Real) :
+    (∫ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+      K (s - (p.2.1 - t₀) / r) * F (r • X + p.2.1 • (p.1 : Euclidean 2))
+      ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1))) =
+    ∫ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+      K (s - normalizedCircleIncidence (r / t₀) X (p.1 : Euclidean 2)
+        ((p.2.1 - t₀) / r)) * F (p.2.1 • (p.1 : Euclidean 2))
+      ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) := by
+  rw [normalizedCircle_integral_coarea F (fun t => K (s - (t - t₀) / r)) (r • X)]
+  apply integral_congr_ae
+  filter_upwards [] with p
+  rw [normalizedCircleIncidence_physical_radial_frequency ht₀ hr X p.1 p.2.1
+    (mem_sphere_zero_iff_norm.mp p.1.2)]
+
+/-- The conormal-frequency kernel of the normalized circular family.
+The geometric amplitude is displayed separately from the scalar
+inverse Fourier transform. -/
+def normalizedCircleFrequencyKernel (ε : Real) (b : Real → Complex)
+    (X ω : Euclidean 2) (u s : Real) : Complex :=
+  (((1 + ε * u) / (1 + ε * s) : Real) : Complex) *
+    FourierTransform.fourierInv b (s - normalizedCircleIncidence ε X ω u)
+
+theorem normalizedCircleFrequencyKernel_eq_oscillatory
+    (ε : Real) (b : Real → Complex)
+    (X ω : Euclidean 2) (u s : Real) :
+    normalizedCircleFrequencyKernel ε b X ω u s =
+      (((1 + ε * u) / (1 + ε * s) : Real) : Complex) *
+        ∫ ρ : Real,
+          (Real.fourierChar ((s - normalizedCircleIncidence ε X ω u) * ρ) : Complex) *
+            b ρ := by
+  rw [normalizedCircleFrequencyKernel, Real.fourierInv_eq]
+  simp only [RCLike.inner_apply, conj_trivial, mul_comm,
+    Circle.smul_def, smul_eq_mul]
+
+
+/-- Affine radial substitution for complex kernels. -/
+theorem normalizedCircle_integral_radial_change
+    (t₀ : Real) {r : Real} (hr : 0 < r) (H : Real → Complex) :
+    (r : Complex) *
+      (∫ u in {u : Real | 0 < t₀ + r * u}, H (t₀ + r * u)) =
+      ∫ t in Ioi (0 : Real), H t := by
+  have hchange (J : Real → Complex) :
+      (r : Complex) * (∫ u : Real, J (t₀ + r * u)) = ∫ t : Real, J t := by
+    have heq := Measure.integral_comp_mul_left (fun v : Real => J (t₀ + v)) r
+    rw [abs_of_pos (inv_pos.mpr hr), integral_add_left_eq_self] at heq
+    rw [heq]
+    change (r : Complex) * (((r⁻¹ : Real) : Complex) * _) = _
+    rw [← mul_assoc, ← Complex.ofReal_mul, mul_inv_cancel₀ hr.ne',
+      Complex.ofReal_one, one_mul]
+  have h := hchange ((Ioi (0 : Real)).indicator H)
+  rw [integral_indicator measurableSet_Ioi] at h
+  rw [← h]
+  congr 1
+  rw [← integral_indicator (show MeasurableSet {u : Real | 0 < t₀ + r * u} by
+    exact isOpen_lt continuous_const (by fun_prop) |>.measurableSet)]
+  apply integral_congr_ae
+  filter_upwards [] with u
+  simp only [indicator_apply, mem_ofPred_eq, mem_Ioi]
+
+
+/-- The weak coarea identity in terms of the actual circular-average
+operator. The hypotheses are the ordinary absolute-integrability conditions
+for the two applications of Fubini. -/
+theorem normalizedCircle_integral_average
+    (F : Euclidean 2 → Complex) (G : Real → Complex) (x : Euclidean 2)
+    (hleft : Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        G p.2.1 * F (x + p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)))
+    (hright : Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        G ‖p.2.1 • (p.1 : Euclidean 2) - x‖ * F (p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1))) :
+    (∫ t in Ioi (0 : Real), (t : Complex) * (G t * sphericalAverage 2 F t x)) =
+    ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+      (∫ v in Ioi (0 : Real), (v : Complex) *
+        (G ‖v • (ω : Euclidean 2) - x‖ * F (v • (ω : Euclidean 2))))
+      ∂unitSurfaceMeasure 2 := by
+  have h := normalizedCircle_integral_coarea F G x
+  rw [integral_prod_symm _ hleft, integral_prod _ hright] at h
+  simp_rw [integral_const_mul] at h
+  change (∫ t : Ioi (0 : Real), G t * sphericalAverage 2 F t x
+      ∂Measure.volumeIoiPow 1) = _ at h
+  rw [Auto.Spherical.Auxiliary.integral_volumeIoiPow_eq_setIntegral 1
+    (fun t => G t * sphericalAverage 2 F t x)] at h
+  simp only [pow_one] at h
+  rw [h]
+  apply integral_congr_ae
+  filter_upwards [] with ω
+  simpa only [pow_one] using
+    Auto.Spherical.Auxiliary.integral_volumeIoiPow_eq_setIntegral 1
+      (fun v => G ‖v • (ω : Euclidean 2) - x‖ * F (v • (ω : Euclidean 2)))
+
+
+/-- Rescaled weak kernel formula, including both radial Jacobians. -/
+theorem normalizedCircle_integral_average_rescaled
+    {t₀ r : Real} (ht₀ : 0 < t₀) (hr : 0 < r)
+    (F : Euclidean 2 → Complex) (K : Real → Complex) (X : Euclidean 2) (s : Real)
+    (hleft : Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        K (s - (p.2.1 - t₀) / r) * F (r • X + p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)))
+    (hright : Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        K (s - (‖p.2.1 • (p.1 : Euclidean 2) - r • X‖ - t₀) / r) *
+          F (p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1))) :
+    (∫ τ in {τ : Real | 0 < t₀ + r * τ},
+      ((t₀ + r * τ : Real) : Complex) *
+        (K (s - τ) * sphericalAverage 2 F (t₀ + r * τ) (r • X))) =
+    ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+      (∫ u in {u : Real | 0 < t₀ + r * u},
+        ((t₀ + r * u : Real) : Complex) *
+          (K (s - normalizedCircleIncidence (r / t₀) X ω u) *
+            F ((t₀ + r * u) • (ω : Euclidean 2))))
+      ∂unitSurfaceMeasure 2 := by
+  have hlin (u : Real) : (t₀ + r * u - t₀) / r = u := by field_simp; ring
+  have hout := normalizedCircle_integral_radial_change t₀ hr
+    (fun t => (t : Complex) *
+      (K (s - (t - t₀) / r) * sphericalAverage 2 F t (r • X)))
+  simp only [hlin] at hout
+  apply mul_left_cancel₀ (show (r : Complex) ≠ 0 by exact_mod_cast hr.ne')
+  rw [hout, normalizedCircle_integral_average F
+    (fun t => K (s - (t - t₀) / r)) (r • X) hleft hright,
+    ← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards [] with ω
+  have hin := normalizedCircle_integral_radial_change t₀ hr
+    (fun v => (v : Complex) *
+      (K (s - (‖v • (ω : Euclidean 2) - r • X‖ - t₀) / r) *
+        F (v • (ω : Euclidean 2))))
+  rw [← hin]
+  congr 1
+  apply setIntegral_congr_fun (show MeasurableSet {u : Real | 0 < t₀ + r * u} by
+    exact isOpen_lt continuous_const (by fun_prop) |>.measurableSet)
+  intro u hu
+  dsimp only
+  rw [normalizedCircleIncidence_physical_radial_frequency ht₀ hr.ne' X ω
+    (t₀ + r * u) (mem_sphere_zero_iff_norm.mp ω.2), hlin]
+
+
+/-- The radial-density amplitude is smooth across zero scale. -/
+theorem normalizedCircleAmplitude_contDiffAt
+    (z : Real × Real × Real) (hz : 1 + z.1 * z.2.2 ≠ 0) :
+    ContDiffAt Real (⊤ : ℕ∞)
+      (fun q : Real × Real × Real => (1 + q.1 * q.2.1) / (1 + q.1 * q.2.2)) z := by
+  exact (show ContDiffAt Real (⊤ : ℕ∞) (fun q : Real × Real × Real =>
+    1 + q.1 * q.2.1) z by fun_prop).div (by fun_prop) hz
+
+/-- Uniform symbol seminorms of the geometric amplitude on compact
+normalized parameter regions separated from a zero output radius. -/
+theorem normalizedCircleAmplitude_uniform_derivatives
+    (K : Set (Real × Real × Real)) (hK : IsCompact K)
+    (hsep : ∀ z ∈ K, 1 + z.1 * z.2.2 ≠ 0) (n : Nat) :
+    ∃ C : Real, 0 ≤ C ∧ ∀ z ∈ K,
+      ‖iteratedFDeriv Real n
+        (fun q : Real × Real × Real => (1 + q.1 * q.2.1) / (1 + q.1 * q.2.2)) z‖ ≤ C := by
+  have hc : ContinuousOn (iteratedFDeriv Real n
+      (fun q : Real × Real × Real => (1 + q.1 * q.2.1) / (1 + q.1 * q.2.2))) K := by
+    intro z hz
+    exact ((normalizedCircleAmplitude_contDiffAt z (hsep z hz)).continuousAt_iteratedFDeriv
+      (by simp)).continuousWithinAt
+  obtain ⟨C, hC⟩ := hK.exists_bound_of_continuousOn hc
+  exact ⟨max C 0, le_max_right _ _, fun z hz => (hC z hz).trans (le_max_left _ _)⟩
+
+/-- Uniform upper and lower bounds for the geometric amplitude on the
+normalized coordinate region. -/
+theorem normalizedCircleAmplitude_bounds (ε u s : Real)
+    (hsmall : |ε| * (|u| + |s|) ≤ 1 / 2) :
+    1 / 3 ≤ (1 + ε * u) / (1 + ε * s) ∧
+      (1 + ε * u) / (1 + ε * s) ≤ 3 := by
+  have hu : |ε * u| ≤ 1 / 2 := by
+    rw [abs_mul]
+    nlinarith [abs_nonneg ε, abs_nonneg u, abs_nonneg s]
+  have hs : |ε * s| ≤ 1 / 2 := by
+    rw [abs_mul]
+    nlinarith [abs_nonneg ε, abs_nonneg u, abs_nonneg s]
+  obtain ⟨hu₀, hu₁⟩ := abs_le.mp hu
+  obtain ⟨hs₀, hs₁⟩ := abs_le.mp hs
+  have hp : 0 < 1 + ε * s := by linarith
+  constructor
+  · apply (le_div_iff₀ hp).mpr
+    linarith
+  · apply (div_le_iff₀ hp).mpr
+    linarith
+
+
+/-- Cancellation of the output radial density in the normalized Fourier
+kernel leaves exactly the input polar Jacobian. -/
+theorem normalizedCircleFrequencyKernel_mul_radius
+    {t₀ r : Real} (ht₀ : 0 < t₀) (X ω : Euclidean 2) (u s : Real)
+    (hs : t₀ + r * s ≠ 0) (b : Real → Complex) :
+    ((t₀ + r * s : Real) : Complex) *
+      normalizedCircleFrequencyKernel (r / t₀) b X ω u s =
+    ((t₀ + r * u : Real) : Complex) *
+      FourierTransform.fourierInv b (s - normalizedCircleIncidence (r / t₀) X ω u) := by
+  have hd : 1 + r / t₀ * s ≠ 0 := by
+    intro h
+    apply hs
+    field_simp at h
+    nlinarith
+  have hc : (t₀ + r * s) * ((1 + r / t₀ * u) / (1 + r / t₀ * s)) =
+      t₀ + r * u := by
+    field_simp
+  rw [normalizedCircleFrequencyKernel, ← mul_assoc, ← Complex.ofReal_mul, hc]
+
+/-- The exact conormal-frequency representation of the temporally smoothed
+circular average. The two positive radial-density factors are explicit. -/
+theorem normalizedCircle_integral_frequencyKernel
+    {t₀ r : Real} (ht₀ : 0 < t₀) (hr : 0 < r)
+    (F : Euclidean 2 → Complex) (b : Real → Complex) (X : Euclidean 2) (s : Real)
+    (hs : t₀ + r * s ≠ 0)
+    (hleft : Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        FourierTransform.fourierInv b (s - (p.2.1 - t₀) / r) *
+          F (r • X + p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)))
+    (hright : Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        FourierTransform.fourierInv b
+          (s - (‖p.2.1 • (p.1 : Euclidean 2) - r • X‖ - t₀) / r) *
+          F (p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1))) :
+    (∫ τ in {τ : Real | 0 < t₀ + r * τ},
+      ((t₀ + r * τ : Real) : Complex) *
+        (FourierTransform.fourierInv b (s - τ) *
+          sphericalAverage 2 F (t₀ + r * τ) (r • X))) =
+    ((t₀ + r * s : Real) : Complex) *
+      ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫ u in {u : Real | 0 < t₀ + r * u},
+          normalizedCircleFrequencyKernel (r / t₀) b X ω u s *
+            F ((t₀ + r * u) • (ω : Euclidean 2)))
+        ∂unitSurfaceMeasure 2 := by
+  rw [normalizedCircle_integral_average_rescaled ht₀ hr F
+    (FourierTransform.fourierInv b) X s hleft hright, ← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards [] with ω
+  rw [← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards [] with u
+  simp only [← mul_assoc, normalizedCircleFrequencyKernel_mul_radius ht₀ X ω u s hs b]
+
+
+private theorem normalizedCircle_integrable_polar
+    (H : Euclidean 2 → Complex) (hH : Continuous H) (hI : Integrable H) :
+    Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        H (p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) := by
+  refine ⟨(show Continuous (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+    H (p.2.1 • (p.1 : Euclidean 2))) by fun_prop).aestronglyMeasurable, ?_⟩
+  rw [hasFiniteIntegral_iff_enorm] at *
+  change (∫⁻ p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+    ‖H (p.2.1 • (p.1 : Euclidean 2))‖ₑ
+      ∂((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow (2 - 1)))) < ⊤
+  rw [← lintegral_polar_unitSurfaceMeasure (by norm_num : 0 < 2) (fun y => ‖H y‖ₑ)]
+  exact hI.hasFiniteIntegral
+
+/-- Both Fubini hypotheses in the normalized kernel formula hold for
+Schwartz inputs and Schwartz one-dimensional kernels. -/
+theorem normalizedCircle_kernel_integrable
+    (t₀ r : Real) (F : SchwartzMap (Euclidean 2) Complex)
+    (K : SchwartzMap Real Complex) (X : Euclidean 2) (s : Real) :
+    Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        K (s - (p.2.1 - t₀) / r) * F (r • X + p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) ∧
+    Integrable
+      (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        K (s - (‖p.2.1 • (p.1 : Euclidean 2) - r • X‖ - t₀) / r) *
+          F (p.2.1 • (p.1 : Euclidean 2)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) := by
+  have hbound (v : Real) := K.norm_le_seminorm Real v
+  constructor
+  · have hI : Integrable (fun z : Euclidean 2 =>
+        K (s - (‖z‖ - t₀) / r) * F (r • X + z)) :=
+      (F.integrable.comp_add_left (r • X)).bdd_mul
+        (by exact (show Continuous (fun z : Euclidean 2 => K (s - (‖z‖ - t₀) / r)) by
+          fun_prop).aestronglyMeasurable)
+        (Filter.Eventually.of_forall (fun z => hbound _))
+    have hp := normalizedCircle_integrable_polar _ (by fun_prop) hI
+    apply hp.congr
+    filter_upwards [] with p
+    rw [norm_smul, Real.norm_eq_abs, abs_of_pos p.2.2,
+      mem_sphere_zero_iff_norm.mp p.1.2, mul_one]
+  · apply normalizedCircle_integrable_polar
+      (fun y => K (s - (‖y - r • X‖ - t₀) / r) * F y) (by fun_prop)
+    exact F.integrable.bdd_mul
+      (by exact (show Continuous (fun y : Euclidean 2 =>
+        K (s - (‖y - r • X‖ - t₀) / r)) by fun_prop).aestronglyMeasurable)
+      (Filter.Eventually.of_forall (fun y => hbound _))
+
+
+/-- Unconditional Schwartz-core version of the normalized conormal-frequency
+representation, with all change-of-variables and Fubini obligations proved. -/
+theorem normalizedCircle_schwartz_frequency_representation
+    {t₀ r : Real} (ht₀ : 0 < t₀) (hr : 0 < r)
+    (F : SchwartzMap (Euclidean 2) Complex) (b : SchwartzMap Real Complex)
+    (X : Euclidean 2) (s : Real) (hs : t₀ + r * s ≠ 0) :
+    (∫ τ in {τ : Real | 0 < t₀ + r * τ},
+      ((t₀ + r * τ : Real) : Complex) *
+        (FourierTransform.fourierInv (b : Real → Complex) (s - τ) *
+          sphericalAverage 2 F (t₀ + r * τ) (r • X))) =
+    ((t₀ + r * s : Real) : Complex) *
+      ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫ u in {u : Real | 0 < t₀ + r * u},
+          normalizedCircleFrequencyKernel (r / t₀) (b : Real → Complex) X ω u s *
+            F ((t₀ + r * u) • (ω : Euclidean 2)))
+        ∂unitSurfaceMeasure 2 := by
+  obtain ⟨hleft, hright⟩ := normalizedCircle_kernel_integrable t₀ r F
+    (FourierTransform.fourierInv b) X s
+  exact normalizedCircle_integral_frequencyKernel ht₀ hr F b X s hs
+    (by simpa only [SchwartzMap.fourierInv_coe] using hleft)
+    (by simpa only [SchwartzMap.fourierInv_coe] using hright)
+#print axioms normalizedCircle_schwartz_frequency_representation
+#print axioms normalizedCircleAmplitude_uniform_derivatives
+
+#print axioms sphericalAverage_eq_normalizedCircleAverage
+#print axioms normalizedCircle_input_moment_le
+
+
+#print axioms normalizedCircle_inverse_incidence
+#print axioms normalizedCircle_inverse_normal
+#print axioms normalizedCircleIncidence_mul_scale
+#print axioms normalizedCircleIncidence_zero
+#print axioms normalizedCircleIncidence_physical_distance
+#print axioms normalizedCircleIncidence_contDiffAt_of_small
+#print axioms normalizedCircleIncidence_tendsto_zero
+#print axioms normalizedCircleIncidence_uniform_derivatives
+#print axioms norm_normalizedCircleNormal
+#print axioms normalizedCircleIncidence_hasDerivAt_spatial
+#print axioms normalizedCircleIncidence_hasDerivAt_radial
+#print axioms normalizedCircleIncidence_radial_jacobian_lower
+#print axioms hasDerivAt_planar_normalize
+#print axioms normalizedCircleNormal_contDiffAt
+
+/-- The full signed radial Fourier line vanishes when the scalar kernel has
+both its zeroth and first Fourier moments zero at the line frequency.  This
+is the low spatial-frequency cancellation used by the normalized-family
+`L²` estimate; it is not a local-smoothing assertion. -/
+theorem normalizedCircle_signedRadialFourierLine_eq_zero
+    (k : SchwartzMap Real Complex) (R a : Real)
+    (hzero : FourierTransform.fourier (k : Real → Complex) (-a) = 0)
+    (hfirst : FourierTransform.fourier
+      (fun v : Real => (v : Complex) * k v) (-a) = 0) :
+    (∫ q : Real, (q : Complex) * k (R - q) *
+      (Real.fourierChar (-q * a) : Complex)) = 0 := by
+  have hweighted : Integrable (fun v : Real => (v : Complex) * k v) := by
+    apply (k.integrable_pow_mul volume 1).mono (by fun_prop)
+    filter_upwards [] with v
+    simp [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  have hchar (f : Real → Complex) (hf : Integrable f) :
+      Integrable (fun v : Real => (Real.fourierChar (v * a) : Complex) * f v) := by
+    apply hf.bdd_mul (show AEStronglyMeasurable
+      (fun v : Real => (Real.fourierChar (v * a) : Complex)) volume from
+        Continuous.aestronglyMeasurable (by fun_prop)) (c := 1)
+    filter_upwards [] with v
+    simp
+  have hz : (∫ v : Real, (Real.fourierChar (v * a) : Complex) * k v) = 0 := by
+    simpa only [Real.fourier_real_eq, Circle.smul_def, smul_eq_mul, mul_neg, neg_neg] using hzero
+  have hfst : (∫ v : Real, (Real.fourierChar (v * a) : Complex) *
+      ((v : Complex) * k v)) = 0 := by
+    simpa only [Real.fourier_real_eq, Circle.smul_def, smul_eq_mul, mul_neg, neg_neg] using hfirst
+  calc
+    _ = ∫ v : Real, ((R - v : Real) : Complex) * k v *
+        (Real.fourierChar (-(R - v) * a) : Complex) := by
+      simpa only [sub_sub_cancel] using
+        (integral_sub_left_eq_self
+          (fun q : Real => (q : Complex) * k (R - q) *
+            (Real.fourierChar (-q * a) : Complex)) volume R).symm
+    _ = ∫ v : Real, (Real.fourierChar (-R * a) : Complex) *
+        ((R : Complex) * ((Real.fourierChar (v * a) : Complex) * k v) -
+          (Real.fourierChar (v * a) : Complex) * ((v : Complex) * k v)) := by
+      apply integral_congr_ae
+      filter_upwards [] with v
+      rw [show -(R - v) * a = -R * a + v * a by ring,
+        Real.fourierChar.map_add_eq_mul]
+      simp only [Circle.coe_mul, Complex.ofReal_sub]
+      ring
+    _ = (Real.fourierChar (-R * a) : Complex) *
+        ((R : Complex) * (∫ v : Real, (Real.fourierChar (v * a) : Complex) * k v) -
+          ∫ v : Real, (Real.fourierChar (v * a) : Complex) * ((v : Complex) * k v)) := by
+      rw [integral_const_mul, integral_sub ((hchar _ k.integrable).const_mul _) (hchar _ hweighted),
+        integral_const_mul]
+    _ = 0 := by rw [hz, hfst]; simp
+
+/-- A gap around zero in the Fourier transform gives exact cancellation of
+the full signed radial line, including its radial Jacobian. -/
+theorem normalizedCircle_signedRadialFourierLine_of_gap
+    (k : SchwartzMap Real Complex) (R a μ : Real)
+    (hgap : ∀ v : Real, |v| < μ / 2 →
+      FourierTransform.fourier (k : Real → Complex) v = 0)
+    (ha : |a| < μ / 2) :
+    (∫ q : Real, (q : Complex) * k (R - q) *
+      (Real.fourierChar (-q * a) : Complex)) = 0 := by
+  have hnear : ∀ᶠ v in 𝓝 (-a), |v| < μ / 2 :=
+    (isOpen_lt continuous_abs continuous_const).mem_nhds (by simpa using ha)
+  have hlocal : FourierTransform.fourier (k : Real → Complex) =ᶠ[𝓝 (-a)]
+      (fun _ => (0 : Complex)) := hnear.mono fun v hv => hgap v hv
+  have hd0 : deriv (FourierTransform.fourier (k : Real → Complex)) (-a) = 0 := by
+    rw [hlocal.deriv_eq, deriv_const]
+  have hweighted : Integrable (fun v : Real => v • k v) := by
+    apply (k.integrable_pow_mul volume 1).mono (by fun_prop)
+    filter_upwards [] with v
+    simp [Real.norm_eq_abs]
+  have hd := (Real.hasDerivAt_fourier k.integrable hweighted (-a)).deriv
+  have heq : (fun v : Real => (-2 * Real.pi * Complex.I * v) • k v) =
+      (-2 * Real.pi * Complex.I) • (fun v : Real => (v : Complex) * k v) := by
+    funext v
+    simp only [Pi.smul_apply, smul_eq_mul]
+    ring
+  have hfactor : FourierTransform.fourier
+      ((-2 * Real.pi * Complex.I) • (fun v : Real => (v : Complex) * k v)) (-a) =
+      (-2 * Real.pi * Complex.I) * FourierTransform.fourier
+        (fun v : Real => (v : Complex) * k v) (-a) := by
+    simp only [Real.fourier_real_eq, Pi.smul_apply, Circle.smul_def, smul_eq_mul]
+    rw [← integral_const_mul]
+    apply integral_congr_ae
+    filter_upwards [] with v
+    ring
+  rw [heq, hfactor, hd0] at hd
+  have hc : (-2 * Real.pi * Complex.I : Complex) ≠ 0 := by
+    simp [Real.pi_ne_zero]
+  apply normalizedCircle_signedRadialFourierLine_eq_zero k R a
+    (hgap (-a) (by simpa using ha))
+  exact (mul_eq_zero.mp hd.symm).resolve_left hc
+
+/-- The scalar inverse kernel of a conormal bandpass has exact cancellation
+on every full signed radial Fourier line of lower spatial frequency. -/
+theorem normalizedCircle_signedRadialFourierLine_bandpass
+    (b : SchwartzMap Real Complex) (hgap : ∀ v : Real, |v| < 1 / 2 → b v = 0)
+    (R a : Real) {μ : Real} (hμ : 0 < μ) (ha : |a| < μ / 2) :
+    (∫ q : Real, (q : Complex) *
+      FourierTransform.fourierInv (fun ρ : Real => b (ρ / μ)) (R - q) *
+      (Real.fourierChar (-q * a) : Complex)) = 0 := by
+  let B : SchwartzMap Real Complex :=
+    (SchwartzMap.compCLMOfContinuousLinearEquiv Complex
+      (ContinuousLinearEquiv.smulLeft (Units.mk0 μ⁻¹ (inv_ne_zero hμ.ne')))) b
+  let k : SchwartzMap Real Complex := FourierTransform.fourierInv B
+  have hB (v : Real) : B v = b (v / μ) := by
+    simp [B, div_eq_mul_inv, mul_comm]
+  have hk (v : Real) : k v =
+      FourierTransform.fourierInv (fun ρ : Real => b (ρ / μ)) v := by
+    change FourierTransform.fourierInv B v = _
+    rw [SchwartzMap.fourierInv_coe]
+    rw [show (B : Real → Complex) = (fun ρ : Real => b (ρ / μ)) from funext hB]
+  have hkgap : ∀ v : Real, |v| < μ / 2 →
+      FourierTransform.fourier (k : Real → Complex) v = 0 := by
+    intro v hv
+    rw [← SchwartzMap.fourier_coe]
+    change (FourierTransform.fourier (FourierTransform.fourierInv B) :
+      SchwartzMap Real Complex) v = 0
+    rw [FourierTransform.fourier_fourierInv_eq, hB]
+    apply hgap
+    rw [abs_div, abs_of_pos hμ, div_lt_iff₀ hμ]
+    linarith
+  simpa only [hk] using normalizedCircle_signedRadialFourierLine_of_gap k R a μ hkgap ha
+
+#print axioms normalizedCircle_signedRadialFourierLine_bandpass
+
+/-- The physical radial-shell kernel in normalized spatial coordinates. -/
+def normalizedCircleRadialShellKernel (k : Real → Complex) (R : Real)
+    (Z : Euclidean 2) : Complex := (R : Complex)⁻¹ * k (R - ‖Z‖)
+
+private theorem normalizedCircle_integrable_radial_jacobian
+    (k : SchwartzMap Real Complex) (R : Real) :
+    Integrable (fun q : Real => (q : Complex) * k (R - q)) := by
+  have hweighted : Integrable (fun v : Real => (v : Complex) * k v) := by
+    apply (k.integrable_pow_mul volume 1).mono (by fun_prop)
+    filter_upwards [] with v
+    simp [norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  have hi := ((k.integrable.comp_sub_left R).const_mul (R : Complex)).sub
+    (hweighted.comp_sub_left R)
+  refine hi.congr (Filter.Eventually.of_forall ?_)
+  intro q
+  simp only [Pi.sub_apply]
+  push_cast
+  ring
+
+/-- Absolute polar integrability of the actual radial-shell Fourier kernel.
+The cusp of the norm at the spatial origin causes no integrability issue. -/
+theorem normalizedCircleRadialShellKernel_polar_integrable
+    (k : SchwartzMap Real Complex) (R : Real) (ξ : Euclidean 2) :
+    Integrable (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+      Real.fourierChar (inner Real (p.2.1 • (p.1 : Euclidean 2)) (-ξ)) •
+        ((R : Complex)⁻¹ * k (R - p.2.1)))
+      ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) := by
+  have hq := normalizedCircle_integrable_radial_jacobian k R
+  have hfinite : (∫⁻ q in Ioi (0 : Real),
+      ENNReal.ofReal q * ‖k (R - q)‖ₑ) < ⊤ := by
+    have hh := (hq.integrableOn (s := Ioi (0 : Real))).hasFiniteIntegral
+    rw [hasFiniteIntegral_iff_enorm] at hh
+    convert hh using 1
+    apply setLIntegral_congr_fun measurableSet_Ioi
+    intro q hqpos
+    dsimp only
+    have hn : ‖(q : Complex)‖ₑ = ENNReal.ofReal q := by
+      rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hqpos]
+    rw [enorm_mul, hn]
+  refine ⟨(show Continuous (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+    Real.fourierChar (inner Real (p.2.1 • (p.1 : Euclidean 2)) (-ξ)) •
+      ((R : Complex)⁻¹ * k (R - p.2.1))) by fun_prop).aestronglyMeasurable, ?_⟩
+  rw [hasFiniteIntegral_iff_enorm]
+  simp only [Circle.enorm_smul, enorm_mul]
+  rw [lintegral_prod _ (by fun_prop)]
+  simp_rw [lintegral_const_mul' (‖(R : Complex)⁻¹‖ₑ) _ (by finiteness)]
+  have hr : (∫⁻ q : Ioi (0 : Real), ‖k (R - q.1)‖ₑ ∂Measure.volumeIoiPow 1) < ⊤ := by
+    rw [lintegral_volumeIoiPow 1 (fun q : Real => ‖k (R - q)‖ₑ)
+      ((k.continuous.comp (by fun_prop)).measurable.enorm)]
+    simpa using hfinite
+  simp only [lintegral_const]
+  exact ENNReal.mul_lt_top (by finiteness)
+    (ENNReal.mul_lt_top hr (measure_lt_top _ _))
+
+/-- The exact Fourier multiplier of the physical normalized radial shell.
+This formula includes the radial Jacobian and the full surface mass. -/
+theorem normalizedCircleRadialShellKernel_fourier
+    (k : SchwartzMap Real Complex) (R : Real) (ξ : Euclidean 2) :
+    FourierTransform.fourier (normalizedCircleRadialShellKernel k R) ξ =
+      (R : Complex)⁻¹ * ∫ q in Ioi (0 : Real),
+        (q : Complex) * k (R - q) * surfaceFourier 2 (q • ξ) := by
+  have h := fourierInv_radial_eq_surfaceFourier_integral (by norm_num : 0 < 2)
+    (fun q : Real => (R : Complex)⁻¹ * k (R - q)) (-ξ)
+    (normalizedCircleRadialShellKernel_polar_integrable k R ξ)
+  rw [Real.fourierInv_eq_fourier_neg, neg_neg] at h
+  simp only [Nat.reduceSub] at h
+  change FourierTransform.fourier (normalizedCircleRadialShellKernel k R) ξ = _ at h
+  rw [Auto.Spherical.Auxiliary.integral_volumeIoiPow_eq_setIntegral 1
+    (fun q : Real => surfaceFourier 2 (-q • -ξ) *
+      ((R : Complex)⁻¹ * k (R - q)))] at h
+  rw [h, ← integral_const_mul]
+  apply setIntegral_congr_fun measurableSet_Ioi
+  intro q hq
+  simp only [pow_one, smul_neg, neg_smul, neg_neg]
+  ring
+
+#print axioms normalizedCircleRadialShellKernel_fourier
+
+private theorem normalizedCircle_surfaceFourier_line (q : Real) (ξ : Euclidean 2) :
+    surfaceFourier 2 (q • ξ) =
+      ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (Real.fourierChar (-q * inner Real (ω : Euclidean 2) ξ) : Complex)
+        ∂unitSurfaceMeasure 2 := by
+  unfold surfaceFourier surfacePhase
+  apply integral_congr_ae
+  filter_upwards [] with ω
+  rw [Real.fourierChar_apply]
+  simp only [inner_smul_right]
+  congr 1
+  push_cast
+  ring
+
+/-- Before restriction to positive radii, every low spatial-frequency
+radial shell multiplier cancels exactly. -/
+theorem normalizedCircle_fullRadialFourierLine_of_gap
+    (k : SchwartzMap Real Complex) (R μ : Real) (ξ : Euclidean 2)
+    (hgap : ∀ v : Real, |v| < μ / 2 →
+      FourierTransform.fourier (k : Real → Complex) v = 0)
+    (hξ : ‖ξ‖ < μ / 2) :
+    (∫ q : Real, (q : Complex) * k (R - q) * surfaceFourier 2 (q • ξ)) = 0 := by
+  let H : Metric.sphere (0 : Euclidean 2) 1 × Real → Complex := fun p =>
+    (p.2 : Complex) * k (R - p.2) *
+      (Real.fourierChar (-p.2 * inner Real (p.1 : Euclidean 2) ξ) : Complex)
+  have hbase := (integrable_const (1 : Complex) :
+    Integrable (fun _ : Metric.sphere (0 : Euclidean 2) 1 => (1 : Complex))
+      (unitSurfaceMeasure 2)).mul_prod (normalizedCircle_integrable_radial_jacobian k R)
+  have hH : Integrable H ((unitSurfaceMeasure 2).prod volume) := by
+    refine hbase.mono (show Continuous H from by dsimp [H]; fun_prop).aestronglyMeasurable ?_
+    filter_upwards [] with p
+    simp [H]
+  calc
+    _ = ∫ q : Real, ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+        H (ω, q) ∂unitSurfaceMeasure 2 := by
+      apply integral_congr_ae
+      filter_upwards [] with q
+      rw [normalizedCircle_surfaceFourier_line, ← integral_const_mul]
+    _ = ∫ ω : Metric.sphere (0 : Euclidean 2) 1, ∫ q : Real,
+        H (ω, q) ∂volume ∂unitSurfaceMeasure 2 := integral_integral_swap hH.swap
+    _ = 0 := by
+      apply integral_eq_zero_of_ae
+      filter_upwards [] with ω
+      have hω : ‖(ω : Euclidean 2)‖ = 1 := mem_sphere_zero_iff_norm.mp ω.2
+      have ha : |inner Real (ω : Euclidean 2) ξ| < μ / 2 :=
+        lt_of_le_of_lt (by simpa only [hω, one_mul] using
+          abs_real_inner_le_norm (ω : Euclidean 2) ξ) hξ
+      exact normalizedCircle_signedRadialFourierLine_of_gap k R
+        (inner Real (ω : Euclidean 2) ξ) μ hgap ha
+
+#print axioms normalizedCircle_fullRadialFourierLine_of_gap
+
+private theorem normalizedCircle_integrable_radial_surfaceFourier
+    (k : SchwartzMap Real Complex) (R : Real) (ξ : Euclidean 2) :
+    Integrable (fun q : Real =>
+      (q : Complex) * k (R - q) * surfaceFourier 2 (q • ξ)) := by
+  let M : Real := (unitSurfaceMeasure 2).real univ
+  have hM : 0 ≤ M := measureReal_nonneg
+  have hbase := (normalizedCircle_integrable_radial_jacobian k R).norm.const_mul M
+  refine hbase.mono (show Continuous (fun q : Real =>
+    (q : Complex) * k (R - q) * surfaceFourier 2 (q • ξ)) from
+      ((show Continuous (fun q : Real => (q : Complex) * k (R - q)) by fun_prop).mul
+        (continuous_surfaceFourier_radial 2 ξ))).aestronglyMeasurable ?_
+  filter_upwards [] with q
+  rw [norm_mul, Real.norm_eq_abs, abs_of_nonneg (mul_nonneg hM (norm_nonneg _))]
+  simpa only [mul_comm] using mul_le_mul_of_nonneg_left
+    (norm_surfaceFourier_le_surfaceMass 2 (q • ξ))
+    (norm_nonneg ((q : Complex) * k (R - q)))
+
+/-- Low spatial frequencies of the actual radial-shell kernel are bounded
+by the first absolute moment of its one-dimensional inverse kernel.  The
+full signed line cancels; only the negative-radius correction remains. -/
+theorem normalizedCircleRadialShellKernel_low_frequency
+    (k : SchwartzMap Real Complex) (R μ : Real) (hR : 0 < R) (ξ : Euclidean 2)
+    (hgap : ∀ v : Real, |v| < μ / 2 →
+      FourierTransform.fourier (k : Real → Complex) v = 0)
+    (hξ : ‖ξ‖ < μ / 2) :
+    ‖FourierTransform.fourier (normalizedCircleRadialShellKernel k R) ξ‖ ≤
+      ((unitSurfaceMeasure 2).real univ / R) *
+        ∫ v : Real, |v| * ‖k v‖ := by
+  let M : Real := (unitSurfaceMeasure 2).real univ
+  let F : Real → Complex := fun q =>
+    (q : Complex) * k (R - q) * surfaceFourier 2 (q • ξ)
+  have hM : 0 ≤ M := measureReal_nonneg
+  have hF : Integrable F := normalizedCircle_integrable_radial_surfaceFourier k R ξ
+  have hweighted : Integrable (fun v : Real => |v| * ‖k v‖) := by
+    simpa only [Real.norm_eq_abs, pow_one] using k.integrable_pow_mul volume 1
+  have hmajor := (hweighted.comp_sub_left R).const_mul M
+  have hcancel : (∫ q : Real, F q) = 0 :=
+    normalizedCircle_fullRadialFourierLine_of_gap k R μ ξ hgap hξ
+  have hsum := integral_add_compl (s := Ioi (0 : Real)) measurableSet_Ioi hF
+  rw [hcancel] at hsum
+  have hreverse : (∫ q in Ioi (0 : Real), F q) = -∫ q in Iic (0 : Real), F q := by
+    apply eq_neg_of_add_eq_zero_left
+    simpa only [compl_Ioi] using hsum
+  have hinner : ‖∫ q in Ioi (0 : Real), F q‖ ≤
+      M * ∫ v : Real, |v| * ‖k v‖ := by
+    rw [hreverse, norm_neg]
+    calc
+      _ ≤ ∫ q in Iic (0 : Real), ‖F q‖ := norm_integral_le_integral_norm _
+      _ ≤ ∫ q in Iic (0 : Real), M * (|R - q| * ‖k (R - q)‖) := by
+        apply setIntegral_mono_on hF.norm.integrableOn hmajor.integrableOn measurableSet_Iic
+        intro q hq
+        have hq' : q ≤ 0 := hq
+        have hqR : |q| ≤ |R - q| := by
+          rw [abs_of_nonpos hq', abs_of_pos (by linarith : 0 < R - q)]
+          linarith
+        dsimp [F]
+        rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs]
+        have hsf := norm_surfaceFourier_le_surfaceMass 2 (q • ξ)
+        calc
+          _ ≤ (|q| * ‖k (R - q)‖) * M :=
+            mul_le_mul_of_nonneg_left hsf (by positivity)
+          _ ≤ (|R - q| * ‖k (R - q)‖) * M := by gcongr
+          _ = _ := by ring
+      _ ≤ ∫ q : Real, M * (|R - q| * ‖k (R - q)‖) :=
+        setIntegral_le_integral hmajor (Filter.Eventually.of_forall (fun q => by positivity))
+      _ = M * ∫ v : Real, |v| * ‖k v‖ := by
+        rw [integral_const_mul, integral_sub_left_eq_self
+          (fun v : Real => |v| * ‖k v‖) volume R]
+  rw [normalizedCircleRadialShellKernel_fourier, norm_mul, norm_inv,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
+  change R⁻¹ * ‖∫ q in Ioi (0 : Real), F q‖ ≤ _
+  convert mul_le_mul_of_nonneg_left hinner (inv_nonneg.mpr hR.le) using 1
+  dsimp [M]
+  ring
+
+#print axioms normalizedCircleRadialShellKernel_low_frequency
+
+private theorem normalizedCircle_surfaceFourier_decay_positive :
+    ∃ C : Real, 0 < C ∧ ∀ ξ : Euclidean 2, 0 < ‖ξ‖ →
+      ‖surfaceFourier 2 ξ‖ ≤ C * ‖ξ‖ ^ (-(1 / 2 : Real)) := by
+  obtain ⟨C₀, hC₀, hdecay⟩ := exists_sharp_surfaceFourier_two_decay
+  let M : Real := (unitSurfaceMeasure 2).real univ
+  have hM : 0 ≤ M := measureReal_nonneg
+  refine ⟨C₀ + M + 1, by positivity, ?_⟩
+  intro ξ hξ
+  by_cases hlarge : 1 ≤ ‖ξ‖
+  · have h := hdecay ξ hlarge
+    rw [div_eq_mul_inv, ← Real.rpow_neg (norm_nonneg _)] at h
+    exact h.trans (mul_le_mul_of_nonneg_right (by linarith)
+      (Real.rpow_nonneg (norm_nonneg _) _))
+  · have hp : 1 ≤ ‖ξ‖ ^ (-(1 / 2 : Real)) :=
+      Real.one_le_rpow_of_pos_of_le_one_of_nonpos hξ (by linarith) (by norm_num)
+    calc
+      _ ≤ M := norm_surfaceFourier_le_surfaceMass 2 ξ
+      _ ≤ C₀ + M + 1 := by linarith
+      _ ≤ (C₀ + M + 1) * ‖ξ‖ ^ (-(1 / 2 : Real)) := by
+        simpa using mul_le_mul_of_nonneg_left hp (by positivity : 0 ≤ C₀ + M + 1)
+
+/-- High spatial frequencies of the actual radial-shell multiplier have
+the circle Fourier decay, with the first absolute moment controlling the
+part of the radial kernel away from its shell. -/
+theorem normalizedCircleRadialShellKernel_high_frequency :
+    ∃ C : Real, 0 < C ∧ ∀ (k : SchwartzMap Real Complex) (R μ : Real)
+      (ξ : Euclidean 2), 0 < R → 0 < μ → μ / 2 ≤ ‖ξ‖ →
+      ‖FourierTransform.fourier (normalizedCircleRadialShellKernel k R) ξ‖ ≤
+        (2 * C * (R * μ) ^ (-(1 / 2 : Real))) * (∫ v : Real, ‖k v‖) +
+        ((2 * C * (R * μ) ^ (-(1 / 2 : Real)) +
+          (unitSurfaceMeasure 2).real univ) / R) *
+            ∫ v : Real, |v| * ‖k v‖ := by
+  obtain ⟨C, hC, hdecay⟩ := normalizedCircle_surfaceFourier_decay_positive
+  refine ⟨C, hC, ?_⟩
+  intro k R μ ξ hR hμ hξ
+  let M : Real := (unitSurfaceMeasure 2).real univ
+  let a : Real := 2 * C * (R * μ) ^ (-(1 / 2 : Real))
+  let F : Real → Complex := fun q =>
+    (q : Complex) * k (R - q) * surfaceFourier 2 (q • ξ)
+  have hM : 0 ≤ M := measureReal_nonneg
+  have ha : 0 ≤ a := by dsimp [a]; positivity
+  have hA : 0 < R * μ := mul_pos hR hμ
+  have hweighted : Integrable (fun v : Real => |v| * ‖k v‖) := by
+    simpa only [Real.norm_eq_abs, pow_one] using k.integrable_pow_mul volume 1
+  have hF : Integrable F := normalizedCircle_integrable_radial_surfaceFourier k R ξ
+  have hmajor : Integrable (fun q : Real =>
+      (a * R) * ‖k (R - q)‖ + (a + M) * (|R - q| * ‖k (R - q)‖)) :=
+    ((k.integrable.norm.comp_sub_left R).const_mul (a * R)).add
+      ((hweighted.comp_sub_left R).const_mul (a + M))
+  have hpoint : ∀ q ∈ Ioi (0 : Real), ‖F q‖ ≤
+      (a * R) * ‖k (R - q)‖ + (a + M) * (|R - q| * ‖k (R - q)‖) := by
+    intro q hq
+    have hqpos : 0 < q := hq
+    dsimp [F]
+    rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hqpos]
+    by_cases hqlarge : R / 2 ≤ q
+    · have hnorm : R * μ / 4 ≤ ‖q • ξ‖ := by
+        rw [norm_smul, Real.norm_eq_abs, abs_of_pos hqpos]
+        nlinarith [mul_le_mul hqlarge hξ (by positivity : 0 ≤ μ / 2) hqpos.le]
+      have hnormpos : 0 < ‖q • ξ‖ := lt_of_lt_of_le (by positivity : 0 < R * μ / 4) hnorm
+      have hfour : (4 : Real) ^ (-(1 / 2 : Real)) = 1 / 2 := by
+        rw [Real.rpow_neg (by norm_num), ← Real.sqrt_eq_rpow]
+        rw [show (4 : Real) = 2 ^ (2 : Nat) by norm_num, Real.sqrt_sq (by norm_num)]
+        norm_num
+      have hrad : (R * μ / 4) ^ (-(1 / 2 : Real)) =
+          2 * (R * μ) ^ (-(1 / 2 : Real)) := by
+        rw [Real.div_rpow hA.le (by norm_num), hfour]
+        ring
+      have hsf : ‖surfaceFourier 2 (q • ξ)‖ ≤ a := by
+        calc
+          _ ≤ C * ‖q • ξ‖ ^ (-(1 / 2 : Real)) := hdecay _ hnormpos
+          _ ≤ C * (R * μ / 4) ^ (-(1 / 2 : Real)) :=
+            mul_le_mul_of_nonneg_left
+              (Real.rpow_le_rpow_of_nonpos (by positivity) hnorm (by norm_num)) hC.le
+          _ = a := by rw [hrad]; dsimp [a]; ring
+      have hqbound : q ≤ R + |R - q| := by
+        have hh := neg_le_abs (R - q)
+        linarith
+      calc
+        _ ≤ (q * ‖k (R - q)‖) * a := mul_le_mul_of_nonneg_left hsf (by positivity)
+        _ ≤ ((R + |R - q|) * ‖k (R - q)‖) * a := by gcongr
+        _ ≤ _ := by nlinarith [mul_nonneg hM (mul_nonneg (abs_nonneg (R - q)) (norm_nonneg (k (R - q))))]
+    · have hqbound : q ≤ |R - q| := by
+        rw [abs_of_pos (by linarith : 0 < R - q)]
+        linarith
+      calc
+        _ ≤ (q * ‖k (R - q)‖) * M := mul_le_mul_of_nonneg_left
+          (norm_surfaceFourier_le_surfaceMass 2 (q • ξ)) (by positivity)
+        _ ≤ (|R - q| * ‖k (R - q)‖) * M := by gcongr
+        _ ≤ _ := by nlinarith [mul_nonneg ha (mul_nonneg (abs_nonneg (R - q)) (norm_nonneg (k (R - q)))),
+          mul_nonneg (mul_nonneg ha hR.le) (norm_nonneg (k (R - q)))]
+  have hinner : ‖∫ q in Ioi (0 : Real), F q‖ ≤
+      (a * R) * (∫ v : Real, ‖k v‖) +
+        (a + M) * ∫ v : Real, |v| * ‖k v‖ := by
+    calc
+      _ ≤ ∫ q in Ioi (0 : Real), ‖F q‖ := norm_integral_le_integral_norm _
+      _ ≤ ∫ q in Ioi (0 : Real),
+          (a * R) * ‖k (R - q)‖ + (a + M) * (|R - q| * ‖k (R - q)‖) :=
+        setIntegral_mono_on hF.norm.integrableOn hmajor.integrableOn measurableSet_Ioi hpoint
+      _ ≤ ∫ q : Real,
+          (a * R) * ‖k (R - q)‖ + (a + M) * (|R - q| * ‖k (R - q)‖) :=
+        setIntegral_le_integral hmajor (Filter.Eventually.of_forall (fun q => by positivity))
+      _ = _ := by
+        rw [integral_add ((k.integrable.norm.comp_sub_left R).const_mul _)
+          ((hweighted.comp_sub_left R).const_mul _), integral_const_mul, integral_const_mul,
+          integral_sub_left_eq_self (fun v : Real => ‖k v‖) volume R,
+          integral_sub_left_eq_self (fun v : Real => |v| * ‖k v‖) volume R]
+  rw [normalizedCircleRadialShellKernel_fourier, norm_mul, norm_inv,
+    Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
+  change R⁻¹ * ‖∫ q in Ioi (0 : Real), F q‖ ≤ _
+  have hh := mul_le_mul_of_nonneg_left hinner (inv_nonneg.mpr hR.le)
+  convert hh using 1
+  dsimp [a, M]
+  field_simp
+
+#print axioms normalizedCircleRadialShellKernel_high_frequency
+
+/-- Uniform `L²` multiplier size for the actual normalized radial shell.
+The constant depends only on the fixed conormal bandpass.  This is the
+Plancherel prerequisite for the normalized family, and supplies no `L⁴`
+local-smoothing gain. -/
+theorem normalizedCircleRadialShellKernel_bandpass_multiplier
+    (b : SchwartzMap Real Complex) (hgap : ∀ v : Real, |v| < 1 / 2 → b v = 0) :
+    ∃ Cb : Real, 0 < Cb ∧ ∀ R μ : Real, 0 < R → 0 < μ → 1 ≤ R * μ →
+      ∀ ξ : Euclidean 2,
+        ‖FourierTransform.fourier
+          (normalizedCircleRadialShellKernel
+            (FourierTransform.fourierInv (fun ρ : Real => b (ρ / μ))) R) ξ‖ ≤
+          Cb * (R * μ) ^ (-(1 / 2 : Real)) := by
+  obtain ⟨C, hC, hhigh⟩ := normalizedCircleRadialShellKernel_high_frequency
+  let k₀ : SchwartzMap Real Complex := FourierTransform.fourierInv b
+  let K₀ : Real := ∫ v : Real, ‖k₀ v‖
+  let K₁ : Real := ∫ v : Real, |v| * ‖k₀ v‖
+  let M : Real := (unitSurfaceMeasure 2).real univ
+  have hK₀ : 0 ≤ K₀ := integral_nonneg (fun v => norm_nonneg _)
+  have hK₁ : 0 ≤ K₁ := integral_nonneg (fun v => by positivity)
+  have hM : 0 ≤ M := measureReal_nonneg
+  let Cb : Real := 2 * C * K₀ + (2 * C + M) * K₁ + 1
+  have hCb : 0 < Cb := by dsimp [Cb]; positivity
+  refine ⟨Cb, hCb, ?_⟩
+  intro R μ hR hμ hA ξ
+  let B : SchwartzMap Real Complex :=
+    (SchwartzMap.compCLMOfContinuousLinearEquiv Complex
+      (ContinuousLinearEquiv.smulLeft (Units.mk0 μ⁻¹ (inv_ne_zero hμ.ne')))) b
+  let k : SchwartzMap Real Complex := FourierTransform.fourierInv B
+  have hB (v : Real) : B v = b (v / μ) := by
+    simp [B, div_eq_mul_inv, mul_comm]
+  have hk (v : Real) : k v =
+      FourierTransform.fourierInv (fun ρ : Real => b (ρ / μ)) v := by
+    change FourierTransform.fourierInv B v = _
+    rw [SchwartzMap.fourierInv_coe,
+      show (B : Real → Complex) = (fun ρ : Real => b (ρ / μ)) from funext hB]
+  have hscale (v : Real) : k v = μ • k₀ (μ * v) := by
+    rw [hk]
+    have hd := fourierInv_comp_inv_smul (b : Real → Complex) hμ v
+    simpa only [div_eq_inv_mul, Module.finrank_self, pow_one,
+      SchwartzMap.fourierInv_coe, k₀, smul_eq_mul] using hd
+  have hmass : (∫ v : Real, ‖k v‖) = K₀ := by
+    simp_rw [hscale, norm_smul, Real.norm_eq_abs, abs_of_pos hμ]
+    rw [integral_const_mul, Measure.integral_comp_mul_left (fun v : Real => ‖k₀ v‖) μ]
+    simp only [abs_inv, abs_of_pos hμ, smul_eq_mul]
+    dsimp [K₀]
+    field_simp
+  have hmoment : (∫ v : Real, |v| * ‖k v‖) = μ⁻¹ * K₁ := by
+    have heq : (fun v : Real => |v| * ‖k v‖) =
+        (fun v : Real => |μ * v| * ‖k₀ (μ * v)‖) := by
+      funext v
+      rw [hscale, norm_smul, Real.norm_eq_abs, abs_of_pos hμ,
+        abs_mul, abs_of_pos hμ]
+      ring
+    rw [heq, Measure.integral_comp_mul_left (fun v : Real => |v| * ‖k₀ v‖) μ]
+    simp only [abs_inv, abs_of_pos hμ, smul_eq_mul, K₁]
+  have hkgap : ∀ v : Real, |v| < μ / 2 →
+      FourierTransform.fourier (k : Real → Complex) v = 0 := by
+    intro v hv
+    rw [← SchwartzMap.fourier_coe]
+    change (FourierTransform.fourier (FourierTransform.fourierInv B) :
+      SchwartzMap Real Complex) v = 0
+    rw [FourierTransform.fourier_fourierInv_eq, hB]
+    apply hgap
+    rw [abs_div, abs_of_pos hμ, div_lt_iff₀ hμ]
+    linarith
+  have hp : 0 ≤ (R * μ) ^ (-(1 / 2 : Real)) := by positivity
+  have hpone : (R * μ) ^ (-(1 / 2 : Real)) ≤ 1 :=
+    Real.rpow_le_one_of_one_le_of_nonpos hA (by norm_num)
+  have hinv : (R * μ)⁻¹ ≤ (R * μ) ^ (-(1 / 2 : Real)) := by
+    rw [← Real.rpow_neg_one]
+    exact Real.rpow_le_rpow_of_exponent_le hA (by norm_num)
+  change ‖FourierTransform.fourier (normalizedCircleRadialShellKernel
+    (FourierTransform.fourierInv (fun ρ : Real => b (ρ / μ))) R) ξ‖ ≤ _
+  rw [← show (k : Real → Complex) =
+    FourierTransform.fourierInv (fun ρ : Real => b (ρ / μ)) from funext hk]
+  by_cases hξ : μ / 2 ≤ ‖ξ‖
+  · have hh := hhigh k R μ ξ hR hμ hξ
+    rw [hmass, hmoment] at hh
+    have halgebra : ((2 * C * (R * μ) ^ (-(1 / 2 : Real)) + M) / R) *
+        (μ⁻¹ * K₁) =
+        (2 * C * (R * μ) ^ (-(1 / 2 : Real)) + M) * (R * μ)⁻¹ * K₁ := by
+      field_simp
+    change ‖FourierTransform.fourier (normalizedCircleRadialShellKernel k R) ξ‖ ≤ _
+    calc
+      _ ≤ (2 * C * (R * μ) ^ (-(1 / 2 : Real))) * K₀ +
+          (2 * C * (R * μ) ^ (-(1 / 2 : Real)) + M) * (R * μ)⁻¹ * K₁ := by
+        simpa only [← halgebra, M] using hh
+      _ ≤ (2 * C * (R * μ) ^ (-(1 / 2 : Real))) * K₀ +
+          (2 * C + M) * (R * μ)⁻¹ * K₁ := by
+        have hcoeff : 2 * C * (R * μ) ^ (-(1 / 2 : Real)) ≤ 2 * C := by
+          simpa using mul_le_mul_of_nonneg_left hpone (by positivity : 0 ≤ 2 * C)
+        have hnonneg : 0 ≤ (2 * C - 2 * C * (R * μ) ^ (-(1 / 2 : Real))) *
+            (R * μ)⁻¹ * K₁ :=
+          mul_nonneg (mul_nonneg (sub_nonneg.mpr hcoeff)
+            (inv_nonneg.mpr (mul_pos hR hμ).le)) hK₁
+        nlinarith
+      _ ≤ (2 * C * (R * μ) ^ (-(1 / 2 : Real))) * K₀ +
+          (2 * C + M) * (R * μ) ^ (-(1 / 2 : Real)) * K₁ := by gcongr
+      _ ≤ Cb * (R * μ) ^ (-(1 / 2 : Real)) := by
+        dsimp [Cb]
+        nlinarith
+  · have hh := normalizedCircleRadialShellKernel_low_frequency k R μ hR ξ hkgap
+      (lt_of_not_ge hξ)
+    rw [hmoment] at hh
+    have halgebra : (M / R) * (μ⁻¹ * K₁) = M * (R * μ)⁻¹ * K₁ := by
+      field_simp
+    calc
+      _ ≤ M * (R * μ)⁻¹ * K₁ := by simpa only [← halgebra, M] using hh
+      _ ≤ M * (R * μ) ^ (-(1 / 2 : Real)) * K₁ := by gcongr
+      _ ≤ Cb * (R * μ) ^ (-(1 / 2 : Real)) := by
+        dsimp [Cb]
+        nlinarith [mul_nonneg (mul_nonneg hC.le hK₀) hp,
+          mul_nonneg (mul_nonneg hC.le hK₁) hp]
+
+#print axioms normalizedCircleRadialShellKernel_bandpass_multiplier
+
+/-- Exact positive coarea in the normalized annular coordinates, including
+both radial Jacobians and a measurable output-time selector.  This is the
+low-frequency moment transport for the actual circular averaging family. -/
+theorem normalizedCircle_lintegral_coarea_rescaled
+    {a r : Real} (ha : 0 < a) (hr : 0 < r)
+    (F : Euclidean 2 → ℝ≥0∞) (G : Real → ℝ≥0∞)
+    (hF : Measurable F) (hG : Measurable G) (X : Euclidean 2) :
+    (∫⁻ s in {s : Real | 0 < a + r * s}, ENNReal.ofReal (a + r * s) *
+      ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+        G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2) =
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ u in {u : Real | 0 < a + r * u}, ENNReal.ofReal (a + r * u) *
+          (G (normalizedCircleIncidence (r / a) X (ω : Euclidean 2) u) *
+            F ((a + r * u) • (ω : Euclidean 2)))) ∂unitSurfaceMeasure 2 := by
+  let H : Real → ℝ≥0∞ := fun t => ENNReal.ofReal t *
+    ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+      G ((t - a) / r) * F (r • X + t • (η : Euclidean 2)) ∂unitSurfaceMeasure 2
+  have hHm : Measurable H := by
+    dsimp [H]
+    apply measurable_id.ennreal_ofReal.mul
+    exact (show Measurable (fun p : Real × Metric.sphere (0 : Euclidean 2) 1 =>
+      G ((p.1 - a) / r) * F (r • X + p.1 • (p.2 : Euclidean 2))) by
+        fun_prop).lintegral_prod_right
+  have hleft := normalizedCircle_lintegral_radial_change a hr H hHm
+  have hcancel (s : Real) : (a + r * s - a) / r = s := by field_simp; ring
+  have hleft' : ENNReal.ofReal r *
+      (∫⁻ s in {s : Real | 0 < a + r * s}, ENNReal.ofReal (a + r * s) *
+        ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2) =
+      ∫⁻ t in Ioi (0 : Real), H t := by
+    simpa only [H, hcancel] using hleft
+  have hphysical := normalizedCircle_lintegral_coarea F
+    (fun t : Real => G ((t - a) / r)) hF (by fun_prop) (r • X)
+  have hright (ω : Metric.sphere (0 : Euclidean 2) 1) :
+      ENNReal.ofReal r *
+        (∫⁻ u in {u : Real | 0 < a + r * u}, ENNReal.ofReal (a + r * u) *
+          (G (normalizedCircleIncidence (r / a) X (ω : Euclidean 2) u) *
+            F ((a + r * u) • (ω : Euclidean 2)))) =
+        ∫⁻ v in Ioi (0 : Real), ENNReal.ofReal v *
+          (G ((‖v • (ω : Euclidean 2) - r • X‖ - a) / r) *
+            F (v • (ω : Euclidean 2))) := by
+    have h := normalizedCircle_lintegral_radial_change a hr
+      (fun v : Real => ENNReal.ofReal v *
+        (G ((‖v • (ω : Euclidean 2) - r • X‖ - a) / r) *
+          F (v • (ω : Euclidean 2)))) (by fun_prop)
+    convert h using 1
+    congr 1
+    apply setLIntegral_congr_fun
+      ((isOpen_lt continuous_const (by fun_prop)).measurableSet)
+    intro u hu
+    dsimp only
+    rw [normalizedCircleIncidence_physical_radial_frequency ha hr.ne'
+      X (ω : Euclidean 2) (a + r * u) (mem_sphere_zero_iff_norm.mp ω.2), hcancel]
+  have hsame : ENNReal.ofReal r *
+      (∫⁻ s in {s : Real | 0 < a + r * s}, ENNReal.ofReal (a + r * s) *
+        ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2) =
+      ENNReal.ofReal r *
+        (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          (∫⁻ u in {u : Real | 0 < a + r * u}, ENNReal.ofReal (a + r * u) *
+            (G (normalizedCircleIncidence (r / a) X (ω : Euclidean 2) u) *
+              F ((a + r * u) • (ω : Euclidean 2)))) ∂unitSurfaceMeasure 2) := by
+    rw [hleft', ← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    exact hphysical.trans (lintegral_congr (fun ω => (hright ω).symm))
+  have hr0 : ENNReal.ofReal r ≠ 0 := (ENNReal.ofReal_pos.mpr hr).ne'
+  have h := congrArg (fun z : ℝ≥0∞ => (ENNReal.ofReal r)⁻¹ * z) hsame
+  simpa only [← mul_assoc, ENNReal.inv_mul_cancel hr0 ENNReal.ofReal_ne_top, one_mul] using h
+
+#print axioms normalizedCircle_lintegral_coarea_rescaled
+
+/-- Uniform positive moment transport on a normalized output-time window.
+The hypotheses say that the selected output radii are at least `a/2`, and
+the input is supported at radii at most `2a`.  No frequency cutoff or decay
+is used. -/
+theorem normalizedCircle_lintegral_positive_moment_le
+    {a r : Real} (ha : 0 < a) (hr : 0 < r)
+    (F : Euclidean 2 → ℝ≥0∞) (G : Real → ℝ≥0∞)
+    (hF : Measurable F) (hG : Measurable G) (X : Euclidean 2)
+    (hGone : ∀ s : Real, G s ≤ 1)
+    (hout : ∀ s : Real, G s ≠ 0 → a / 2 ≤ a + r * s)
+    (hin : ∀ (ω : Metric.sphere (0 : Euclidean 2) 1) (u : Real),
+      F ((a + r * u) • (ω : Euclidean 2)) ≠ 0 → a + r * u ≤ 2 * a) :
+    (∫⁻ s in {s : Real | 0 < a + r * s},
+      ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+        G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2) ≤
+      4 * ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ u in {u : Real | 0 < a + r * u},
+          F ((a + r * u) • (ω : Euclidean 2))) ∂unitSurfaceMeasure 2 := by
+  let S : Set Real := {u : Real | 0 < a + r * u}
+  have hS : MeasurableSet S := (isOpen_lt continuous_const (by fun_prop)).measurableSet
+  have hstart : (∫⁻ s in S, ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+      G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2) ≤
+      ENNReal.ofReal (2 / a) *
+        (∫⁻ s in S, ENNReal.ofReal (a + r * s) *
+          ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+            G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2) := by
+    rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    apply setLIntegral_mono' hS
+    intro s hs
+    by_cases hzero : G s = 0
+    · simp [hzero]
+    · have hcoeff : (1 : ℝ≥0∞) ≤ ENNReal.ofReal (2 / a) * ENNReal.ofReal (a + r * s) := by
+        rw [← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_one]
+        apply ENNReal.ofReal_le_ofReal
+        have hh := hout s hzero
+        have hscalar : 1 ≤ (2 / a) * (a + r * s) := by
+          rw [div_mul_eq_mul_div, le_div_iff₀ ha]
+          linarith
+        exact hscalar
+      simpa only [one_mul, mul_assoc] using mul_le_mul' hcoeff
+        (le_refl (∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          G s * F (r • X + (a + r * s) • (η : Euclidean 2)) ∂unitSurfaceMeasure 2))
+  have hinput : (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+      (∫⁻ u in S, ENNReal.ofReal (a + r * u) *
+        (G (normalizedCircleIncidence (r / a) X (ω : Euclidean 2) u) *
+          F ((a + r * u) • (ω : Euclidean 2)))) ∂unitSurfaceMeasure 2) ≤
+      ENNReal.ofReal (2 * a) *
+        (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          (∫⁻ u in S, F ((a + r * u) • (ω : Euclidean 2))) ∂unitSurfaceMeasure 2) := by
+    rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    apply lintegral_mono
+    intro ω
+    dsimp only
+    rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    apply setLIntegral_mono' hS
+    intro u hu
+    by_cases hzero : F ((a + r * u) • (ω : Euclidean 2)) = 0
+    · simp [hzero]
+    · calc
+        _ ≤ ENNReal.ofReal (2 * a) *
+            (1 * F ((a + r * u) • (ω : Euclidean 2))) :=
+          mul_le_mul' (ENNReal.ofReal_le_ofReal (hin ω u hzero))
+            (mul_le_mul' (hGone _) le_rfl)
+        _ = _ := by rw [one_mul]
+  change (∫⁻ s in S, _) ≤ _
+  apply hstart.trans
+  rw [normalizedCircle_lintegral_coarea_rescaled ha hr F G hF hG X]
+  have h := mul_le_mul' (le_refl (ENNReal.ofReal (2 / a))) hinput
+  have hcoeff : ENNReal.ofReal (2 / a) * ENNReal.ofReal (2 * a) = 4 := by
+    rw [← ENNReal.ofReal_mul (by positivity)]
+    have heq : (2 / a) * (2 * a) = 4 := by field_simp; ring
+    rw [heq]
+    norm_num
+  simpa only [← mul_assoc, hcoeff] using h
+
+#print axioms normalizedCircle_lintegral_positive_moment_le
+
+private theorem normalizedCircle_lintegral_jensen
+    (f : Metric.sphere (0 : Euclidean 2) 1 → ℝ≥0∞)
+    (hf : Measurable f) {p : Real} (hp : 1 ≤ p) :
+    (∫⁻ η, f η ∂unitSurfaceMeasure 2) ^ p ≤
+      (unitSurfaceMeasure 2 univ) ^ (p - 1) *
+        ∫⁻ η, f η ^ p ∂unitSurfaceMeasure 2 := by
+  rcases eq_or_lt_of_le hp with h | h
+  · rw [← h]
+    simp
+  let q : Real := Real.conjExponent p
+  have hconj : q.HolderConjugate p := (Real.HolderConjugate.conjExponent h).symm
+  have hp0 : 0 < p := by linarith
+  have hh := ENNReal.lintegral_mul_le_Lp_mul_Lq (unitSurfaceMeasure 2) hconj
+    (aemeasurable_const : AEMeasurable (fun _ => (1 : ℝ≥0∞)) (unitSurfaceMeasure 2))
+    hf.aemeasurable
+  simp only [Pi.mul_apply, one_mul, ENNReal.one_rpow, lintegral_const] at hh
+  have hpow := ENNReal.rpow_le_rpow hh hp0.le
+  rw [ENNReal.mul_rpow_of_nonneg _ _ hp0.le, ← ENNReal.rpow_mul,
+    ← ENNReal.rpow_mul, show (1 / p) * p = 1 by field_simp, ENNReal.rpow_one] at hpow
+  have hqp : (1 / q) * p = p - 1 := by
+    have hsum := hconj.one_div_add_one_div
+    have hq : 1 / q = 1 - 1 / p := by linarith
+    rw [hq]
+    field_simp
+  simpa only [hqp, one_mul] using hpow
+
+private theorem normalizedCircle_sphericalAverage_pointwise_moment
+    (f : Euclidean 2 → Complex) (hf : Measurable f) (t : Real) (x : Euclidean 2)
+    {p : Real} (hp : 1 ≤ p) :
+    ‖sphericalAverage 2 f t x‖ₑ ^ p ≤
+      (unitSurfaceMeasure 2 univ) ^ (p - 1) *
+        ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          ‖f (x + t • (η : Euclidean 2))‖ₑ ^ p ∂unitSurfaceMeasure 2 := by
+  unfold sphericalAverage
+  apply (ENNReal.rpow_le_rpow (enorm_integral_le_lintegral_enorm _) (by linarith)).trans
+  exact normalizedCircle_lintegral_jensen _ (by fun_prop) hp
+
+/-- Uniform spacetime `Lᵖ` moment bound for the actual circular averages
+after normalizing an input annulus.  It is the non-derivative low-frequency
+bound in the repair note, with all surface-mass factors retained. -/
+theorem normalizedCircle_sphericalAverage_moment_le
+    {a r : Real} (ha : 0 < a) (hr : 0 < r)
+    (f : Euclidean 2 → Complex) (hf : Measurable f)
+    (G : Real → ℝ≥0∞) (hG : Measurable G) (X : Euclidean 2)
+    {p : Real} (hp : 1 ≤ p) (hGone : ∀ s : Real, G s ≤ 1)
+    (hout : ∀ s : Real, G s ≠ 0 → a / 2 ≤ a + r * s)
+    (hin : ∀ (ω : Metric.sphere (0 : Euclidean 2) 1) (u : Real),
+      f ((a + r * u) • (ω : Euclidean 2)) ≠ 0 → a + r * u ≤ 2 * a) :
+    (∫⁻ s in {s : Real | 0 < a + r * s},
+      G s * ‖sphericalAverage 2 f (a + r * s) (r • X)‖ₑ ^ p) ≤
+      (4 * (unitSurfaceMeasure 2 univ) ^ (p - 1)) *
+        ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          (∫⁻ u in {u : Real | 0 < a + r * u},
+            ‖f ((a + r * u) • (ω : Euclidean 2))‖ₑ ^ p) ∂unitSurfaceMeasure 2 := by
+  let C : ℝ≥0∞ := (unitSurfaceMeasure 2 univ) ^ (p - 1)
+  have hC : C ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by linarith) (measure_ne_top _ _)
+  have hpoint (s : Real) : G s * ‖sphericalAverage 2 f (a + r * s) (r • X)‖ₑ ^ p ≤
+      C * ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+        G s * ‖f (r • X + (a + r * s) • (η : Euclidean 2))‖ₑ ^ p
+          ∂unitSurfaceMeasure 2 := by
+    rw [lintegral_const_mul' _ _ (ne_of_lt (lt_of_le_of_lt (hGone s) (by simp : (1 : ℝ≥0∞) < ⊤)))]
+    calc
+      _ ≤ G s * (C * ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          ‖f (r • X + (a + r * s) • (η : Euclidean 2))‖ₑ ^ p
+            ∂unitSurfaceMeasure 2) :=
+        mul_le_mul' (le_refl (G s))
+          (normalizedCircle_sphericalAverage_pointwise_moment f hf (a + r * s) (r • X) hp)
+      _ = _ := mul_left_comm _ _ _
+  have hpositive := normalizedCircle_lintegral_positive_moment_le ha hr
+    (fun y : Euclidean 2 => ‖f y‖ₑ ^ p) G (by fun_prop) hG X hGone hout
+    (fun ω u hnonzero => hin ω u (fun hzero => by
+      apply hnonzero
+      rw [hzero, enorm_zero, ENNReal.zero_rpow_of_pos (by linarith : 0 < p)]))
+  calc
+    _ ≤ ∫⁻ s in {s : Real | 0 < a + r * s}, C *
+        ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          G s * ‖f (r • X + (a + r * s) • (η : Euclidean 2))‖ₑ ^ p
+            ∂unitSurfaceMeasure 2 := lintegral_mono hpoint
+    _ = C * ∫⁻ s in {s : Real | 0 < a + r * s},
+        ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+          G s * ‖f (r • X + (a + r * s) • (η : Euclidean 2))‖ₑ ^ p
+            ∂unitSurfaceMeasure 2 := lintegral_const_mul' _ _ hC
+    _ ≤ C * (4 * ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ u in {u : Real | 0 < a + r * u},
+          ‖f ((a + r * u) • (ω : Euclidean 2))‖ₑ ^ p) ∂unitSurfaceMeasure 2) :=
+      mul_le_mul' le_rfl hpositive
+    _ = _ := by dsimp [C]; ring
+
+#print axioms normalizedCircle_sphericalAverage_moment_le
+
+/-- The same uniform moment estimate for the exact normalized circle
+operator, on the coordinate window where it equals the physical average. -/
+theorem normalizedCircleAverage_moment_le
+    {a r : Real} (ha : 0 < a) (hr : 0 < r)
+    (f : Euclidean 2 → Complex) (hf : Measurable f)
+    (G : Real → ℝ≥0∞) (hG : Measurable G) (X : Euclidean 2)
+    {p : Real} (hp : 1 ≤ p) (hGone : ∀ s : Real, G s ≤ 1)
+    (hout : ∀ s : Real, G s ≠ 0 → a / 2 ≤ a + r * s)
+    (hin : ∀ (ω : Metric.sphere (0 : Euclidean 2) 1) (u : Real),
+      f ((a + r * u) • (ω : Euclidean 2)) ≠ 0 → a + r * u ≤ 2 * a)
+    (hsmall : ∀ s : Real, G s ≠ 0 → |r / a| * (|s| + ‖X‖) ≤ 1 / 2) :
+    (∫⁻ s in {s : Real | 0 < a + r * s}, G s *
+      ‖normalizedCircleAverage (r / a)
+        (fun ω u => f ((a + r * u) • ω)) X s‖ₑ ^ p) ≤
+      (4 * (unitSurfaceMeasure 2 univ) ^ (p - 1)) *
+        ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          (∫⁻ u in {u : Real | 0 < a + r * u},
+            ‖f ((a + r * u) • (ω : Euclidean 2))‖ₑ ^ p) ∂unitSurfaceMeasure 2 := by
+  have heq : (∫⁻ s in {s : Real | 0 < a + r * s}, G s *
+      ‖normalizedCircleAverage (r / a) (fun ω u => f ((a + r * u) • ω)) X s‖ₑ ^ p) =
+      ∫⁻ s in {s : Real | 0 < a + r * s},
+        G s * ‖sphericalAverage 2 f (a + r * s) (r • X)‖ₑ ^ p := by
+    apply lintegral_congr
+    intro s
+    by_cases hzero : G s = 0
+    · simp [hzero]
+    · rw [sphericalAverage_eq_normalizedCircleAverage ha r X s f (hsmall s hzero)]
+  rw [heq]
+  exact normalizedCircle_sphericalAverage_moment_le ha hr f hf G hG X hp hGone hout hin
+
+#print axioms normalizedCircleAverage_moment_le
+
+/-- The zero-scale dual Radon operator has the same uniform moment bound.
+Together with the positive-scale estimate, this covers the compact smooth
+normalized family through its removable zero-scale limit. -/
+theorem normalizedCircleAverage_zero_moment_le
+    (h : Euclidean 2 → Real → Complex)
+    (hh : Measurable (fun p : Euclidean 2 × Real => h p.1 p.2))
+    (X : Euclidean 2) {p : Real} (hp : 1 ≤ p) :
+    (∫⁻ s : Real, ‖normalizedCircleAverage 0 h X s‖ₑ ^ p) ≤
+      (unitSurfaceMeasure 2 univ) ^ (p - 1) *
+        ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          (∫⁻ u : Real, ‖h (ω : Euclidean 2) u‖ₑ ^ p) ∂unitSurfaceMeasure 2 := by
+  let C : ℝ≥0∞ := (unitSurfaceMeasure 2 univ) ^ (p - 1)
+  have hC : C ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by linarith) (measure_ne_top _ _)
+  have hpoint (s : Real) : ‖normalizedCircleAverage 0 h X s‖ₑ ^ p ≤
+      C * ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+        ‖h (η : Euclidean 2) (s + inner Real (η : Euclidean 2) X)‖ₑ ^ p
+          ∂unitSurfaceMeasure 2 := by
+    rw [normalizedCircleAverage_zero]
+    apply (ENNReal.rpow_le_rpow (enorm_integral_le_lintegral_enorm _) (by linarith)).trans
+    apply normalizedCircle_lintegral_jensen _ _ hp
+    exact (hh.comp (show Measurable (fun η : Metric.sphere (0 : Euclidean 2) 1 =>
+      ((η : Euclidean 2), s + inner Real (η : Euclidean 2) X)) by fun_prop)).enorm
+  have hmeas : Measurable (fun z : Real × Metric.sphere (0 : Euclidean 2) 1 =>
+      ‖h (z.2 : Euclidean 2) (z.1 + inner Real (z.2 : Euclidean 2) X)‖ₑ ^ p) :=
+    ((hh.comp (show Measurable (fun z : Real × Metric.sphere (0 : Euclidean 2) 1 =>
+      ((z.2 : Euclidean 2), z.1 + inner Real (z.2 : Euclidean 2) X)) by
+        fun_prop)).enorm).pow_const p
+  calc
+    _ ≤ ∫⁻ s : Real, C * ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+        ‖h (η : Euclidean 2) (s + inner Real (η : Euclidean 2) X)‖ₑ ^ p
+          ∂unitSurfaceMeasure 2 := lintegral_mono hpoint
+    _ = C * ∫⁻ η : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ s : Real, ‖h (η : Euclidean 2) (s + inner Real (η : Euclidean 2) X)‖ₑ ^ p)
+          ∂unitSurfaceMeasure 2 := by
+      rw [lintegral_const_mul' _ _ hC, lintegral_lintegral_swap hmeas.aemeasurable]
+    _ = _ := by
+      congr 1
+      apply lintegral_congr
+      intro η
+      exact lintegral_add_right_eq_self (fun u : Real => ‖h (η : Euclidean 2) u‖ₑ ^ p)
+        (inner Real (η : Euclidean 2) X)
+
+#print axioms normalizedCircleAverage_zero_moment_le
+
+/-! ### The actual normalized circular ray chart
+
+For the supplied repair, Sections 4--5, use the exact intercept and unit
+normal parametrization at incidence time zero. The flow is `p-T*n`; no
+linearization in epsilon or frequency-dependent approximation is used.
+These identities serve the incidence-indexed packet and ray-energy proof.
+-/
+
+/-- Positive normal-direction coefficient for the exact normalized ray chart. -/
+def normalizedCircleRayCos (ε B : Real) : Real := Real.sqrt (1 - (ε * B)^2)
+/-- The rationalized radial offset of the exact ray, smooth at zero scale. -/
+def normalizedCircleRayOffset (ε B : Real) : Real :=
+  ε * B^2 / (1 + normalizedCircleRayCos ε B)
+/-- The actual ray intercept at normalized time zero, with transverse parameter `B`. -/
+def normalizedCircleRayTerminal (ε u B : Real) (ω V : Euclidean 2) : Euclidean 2 :=
+  (u + normalizedCircleRayOffset ε B) • ω + B • V
+/-- The actual unit normal carried along a normalized circular ray. -/
+def normalizedCircleRayNormal (ε B : Real) (ω V : Euclidean 2) : Euclidean 2 :=
+  normalizedCircleRayCos ε B • ω - (ε * B) • V
+
+/-- The normal-direction coefficient stays in `[1/2,1]` on the compact ray chart. -/
+theorem normalizedCircleRayCos_bounds (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    1/2 ≤ normalizedCircleRayCos ε B ∧ normalizedCircleRayCos ε B ≤ 1 := by
+  have hb0 := abs_nonneg (ε * B)
+  have hsq : (ε * B)^2 ≤ 1/4 := by nlinarith [sq_abs (ε * B)]
+  have hnon : 0 ≤ 1 - (ε * B)^2 := by linarith
+  have hcsq := Real.sq_sqrt hnon
+  have hc0 := Real.sqrt_nonneg (1 - (ε * B)^2)
+  dsimp [normalizedCircleRayCos]
+  constructor <;> nlinarith
+
+/-- Exact removable-scale identity used to identify the actual circular rays. -/
+theorem normalizedCircleRayOffset_identity (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    ε * normalizedCircleRayOffset ε B = 1 - normalizedCircleRayCos ε B := by
+  have hc := (normalizedCircleRayCos_bounds ε B hb).1
+  have hcsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
+    dsimp [normalizedCircleRayCos]
+    rw [Real.sq_sqrt]
+    · ring
+    · have := abs_nonneg (ε * B)
+      nlinarith [sq_abs (ε * B)]
+  have hden : 1 + normalizedCircleRayCos ε B ≠ 0 := by linarith
+  unfold normalizedCircleRayOffset
+  rw [← mul_div_assoc, div_eq_iff hden]
+  nlinarith [hcsq]
+
+/-- The ray direction is a unit vector for any orthonormal source frame. -/
+theorem norm_normalizedCircleRayNormal (ε B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
+    (horth : inner Real ω V = 0) :
+    ‖normalizedCircleRayNormal ε B ω V‖ = 1 := by
+  have hsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
+    dsimp [normalizedCircleRayCos]
+    rw [Real.sq_sqrt]
+    · ring
+    · have := abs_nonneg (ε * B)
+      nlinarith [sq_abs (ε * B)]
+  have hi : inner Real (normalizedCircleRayCos ε B • ω) ((-(ε * B)) • V) = 0 := by
+    simp [real_inner_smul_left, real_inner_smul_right, horth]
+  have hn := norm_add_sq_real (normalizedCircleRayCos ε B • ω) ((-(ε * B)) • V)
+  simp only [hi, norm_smul, Real.norm_eq_abs, hω, hV, mul_one, sq_abs,
+    neg_sq, mul_zero, add_zero] at hn
+  have he : normalizedCircleRayNormal ε B ω V =
+      normalizedCircleRayCos ε B • ω + (-(ε * B)) • V := by
+    simp [normalizedCircleRayNormal, sub_eq_add_neg]
+  rw [he]
+  apply (sq_eq_sq₀ (norm_nonneg _) (by norm_num : (0:Real) ≤ 1)).mp
+  nlinarith [hsq, hn]
+
+/-- The ray intercept lies on the actual normalized incidence surface at time zero. -/
+theorem normalizedCircleRayTerminal_vector (ε u B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) :
+    ω + ε • (u • ω - normalizedCircleRayTerminal ε u B ω V) =
+      normalizedCircleRayNormal ε B ω V := by
+  have hi := normalizedCircleRayOffset_identity ε B hb
+  unfold normalizedCircleRayTerminal normalizedCircleRayNormal
+  calc
+    _ = (1 - ε * normalizedCircleRayOffset ε B) • ω - (ε * B) • V := by module
+    _ = _ := by rw [show 1 - ε * normalizedCircleRayOffset ε B =
+        normalizedCircleRayCos ε B by linarith]
+
+/-- The curve `X(T)=p-T*n` lies on the actual incidence `F=T`, including at zero scale. This identifies the rays used in the packet localization for the supplied repair, Sections 4--5. -/
+theorem normalizedCircleRay_incidence (ε u B T : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hT : 0 < 1 + ε * T)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    normalizedCircleIncidence ε
+      (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V)
+      ω u = T := by
+  have hn := norm_normalizedCircleRayNormal ε B ω V hb hω hV horth
+  have hv : ω + ε • (u • ω -
+      (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V)) =
+      (1 + ε * T) • normalizedCircleRayNormal ε B ω V := by
+    have hh := normalizedCircleRayTerminal_vector ε u B ω V hb
+    calc
+      _ = (ω + ε • (u • ω - normalizedCircleRayTerminal ε u B ω V)) +
+          (ε * T) • normalizedCircleRayNormal ε B ω V := by module
+      _ = normalizedCircleRayNormal ε B ω V +
+          (ε * T) • normalizedCircleRayNormal ε B ω V := by rw [hh]
+      _ = _ := by module
+  by_cases he : ε = 0
+  · subst ε
+    rw [normalizedCircleIncidence_zero _ ω u hω]
+    simp [normalizedCircleRayTerminal, normalizedCircleRayOffset, normalizedCircleRayNormal,
+      normalizedCircleRayCos, inner_sub_right, inner_add_right, real_inner_smul_right,
+      horth, hω]
+  · have hm := normalizedCircleIncidence_mul_scale ε
+      (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V) ω u hω
+    rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hT, hn, mul_one] at hm
+    apply (mul_left_cancel₀ he)
+    linarith
+#print axioms normalizedCircleRay_incidence
+/-- The derivative of the actual positive normal coefficient in the transverse ray parameter. -/
+theorem normalizedCircleRayCos_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    HasDerivAt (normalizedCircleRayCos ε) (-(ε^2 * B) / normalizedCircleRayCos ε B) B := by
+  have hb0 := abs_nonneg (ε * B)
+  have hpos : 0 < 1 - (ε * B)^2 := by nlinarith [sq_abs (ε * B)]
+  have hd : HasDerivAt (fun b : Real => 1 - (ε * b)^2) (-(2 * ε^2 * B)) B := by
+    convert (hasDerivAt_const B (1:Real)).sub
+      (((hasDerivAt_id B).const_mul ε).pow 2) using 1
+    · funext b
+      simp only [Pi.sub_apply, Pi.pow_apply, id_eq]
+    · simp only [id_eq]
+      ring
+  unfold normalizedCircleRayCos
+  convert hd.sqrt hpos.ne' using 1
+  field_simp
+
+/-- The derivative of the rationalized radial offset, including zero scale. -/
+theorem normalizedCircleRayOffset_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    HasDerivAt (normalizedCircleRayOffset ε)
+      (ε * B / normalizedCircleRayCos ε B) B := by
+  have hc := (normalizedCircleRayCos_bounds ε B hb).1
+  have hcne : normalizedCircleRayCos ε B ≠ 0 := by linarith
+  have hden : 1 + normalizedCircleRayCos ε B ≠ 0 := by linarith
+  have hcsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
+    dsimp [normalizedCircleRayCos]
+    rw [Real.sq_sqrt]
+    · ring
+    · have := abs_nonneg (ε * B)
+      nlinarith [sq_abs (ε * B)]
+  have hd := ((((hasDerivAt_id B).pow 2).const_mul ε).div
+    ((hasDerivAt_const B (1:Real)).add
+      (normalizedCircleRayCos_hasDerivAt ε B hb)) hden)
+  have hd' : HasDerivAt (fun b : Real =>
+      ε * b^2 / (1 + normalizedCircleRayCos ε b))
+      ((ε * (2 * B) * (1 + normalizedCircleRayCos ε B) -
+        ε * B^2 * (-(ε^2 * B) / normalizedCircleRayCos ε B)) /
+          (1 + normalizedCircleRayCos ε B)^2) B := by
+    convert hd using 1 <;> simp
+    funext b
+    rfl
+  convert hd' using 1
+  · rfl
+  · field_simp [hcne, hden]
+    linear_combination -ε * B * hcsq
+
+/-- The actual transverse derivative of the ray intercept. -/
+theorem normalizedCircleRayTerminal_hasDerivAt (ε u B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) :
+    HasDerivAt (fun b => normalizedCircleRayTerminal ε u b ω V)
+      ((ε * B / normalizedCircleRayCos ε B) • ω + V) B := by
+  unfold normalizedCircleRayTerminal
+  convert (((hasDerivAt_const B u).add
+    (normalizedCircleRayOffset_hasDerivAt ε B hb)).smul_const ω).add
+      ((hasDerivAt_id B).smul_const V) using 1 <;> first | rfl | simp
+
+/-- The actual transverse derivative of the ray normal. -/
+theorem normalizedCircleRayNormal_hasDerivAt (ε B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) :
+    HasDerivAt (fun b => normalizedCircleRayNormal ε b ω V)
+      ((-(ε^2 * B) / normalizedCircleRayCos ε B) • ω - ε • V) B := by
+  unfold normalizedCircleRayNormal
+  convert ((normalizedCircleRayCos_hasDerivAt ε B hb).smul_const ω).sub
+    (((hasDerivAt_id B).const_mul ε).smul_const V) using 1 <;> first | rfl | simp
+
+#print axioms normalizedCircleRayCos_hasDerivAt
+#print axioms normalizedCircleRayOffset_hasDerivAt
+#print axioms normalizedCircleRayTerminal_hasDerivAt
+#print axioms normalizedCircleRayNormal_hasDerivAt
+
+/-- The transverse derivative of the actual intercept is uniformly bounded by two. -/
+theorem normalizedCircleRayTerminal_derivative_bound (ε B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    ‖(ε * B / normalizedCircleRayCos ε B) • ω + V‖ ≤ 2 := by
+  have hc := (normalizedCircleRayCos_bounds ε B hb).1
+  have hcpos : 0 < normalizedCircleRayCos ε B := by linarith
+  have hcoef : |ε * B / normalizedCircleRayCos ε B| ≤ 1 := by
+    rw [abs_div, abs_of_pos hcpos]
+    exact (div_le_one hcpos).mpr (hb.trans hc)
+  calc
+    _ ≤ ‖(ε * B / normalizedCircleRayCos ε B) • ω‖ + ‖V‖ := norm_add_le _ _
+    _ = |ε * B / normalizedCircleRayCos ε B| + 1 := by
+      rw [norm_smul, Real.norm_eq_abs, hω, hV, mul_one]
+    _ ≤ 2 := by linarith
+
+/-- The transverse derivative of the actual normal is at most twice the scale. -/
+theorem normalizedCircleRayNormal_derivative_bound (ε B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    ‖(-(ε^2 * B) / normalizedCircleRayCos ε B) • ω - ε • V‖ ≤ 2 * |ε| := by
+  have hc := (normalizedCircleRayCos_bounds ε B hb).1
+  have hcpos : 0 < normalizedCircleRayCos ε B := by linarith
+  have hcoef : |ε * B / normalizedCircleRayCos ε B| ≤ 1 := by
+    rw [abs_div, abs_of_pos hcpos]
+    exact (div_le_one hcpos).mpr (hb.trans hc)
+  have he : -(ε^2 * B) / normalizedCircleRayCos ε B =
+      -ε * (ε * B / normalizedCircleRayCos ε B) := by ring
+  calc
+    _ ≤ ‖(-(ε^2 * B) / normalizedCircleRayCos ε B) • ω‖ + ‖ε • V‖ :=
+      norm_sub_le _ _
+    _ = |ε| * |ε * B / normalizedCircleRayCos ε B| + |ε| := by
+      rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, hω, hV,
+        mul_one, mul_one, he, abs_mul, abs_neg]
+    _ ≤ |ε| * 1 + |ε| := by
+      have hp := mul_le_mul_of_nonneg_left hcoef (abs_nonneg ε)
+      linarith
+    _ = 2 * |ε| := by ring
+
+/-- The scalar determinant formula for the along/across coordinate derivatives. The literal derivative identity is proved below. -/
+theorem normalizedCircleRayCoordinate_determinant (ε u B : Real)
+    (hb : |ε * B| ≤ 1/2) :
+    normalizedCircleRayCos ε B * (1 + ε * u) -
+      (-(ε * B * (1 + ε * u)) / normalizedCircleRayCos ε B) * (ε * B) =
+        (1 + ε * u) / normalizedCircleRayCos ε B := by
+  have hc := (normalizedCircleRayCos_bounds ε B hb).1
+  have hcne : normalizedCircleRayCos ε B ≠ 0 := by linarith
+  have hcsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
+    dsimp [normalizedCircleRayCos]
+    rw [Real.sq_sqrt]
+    · ring
+    · have := abs_nonneg (ε * B)
+      nlinarith [sq_abs (ε * B)]
+  field_simp [hcne]
+  linear_combination (1 + ε * u) * hcsq
+
+#print axioms normalizedCircleRayTerminal_derivative_bound
+#print axioms normalizedCircleRayNormal_derivative_bound
+#print axioms normalizedCircleRayCoordinate_determinant
+
+/-- The exact normalized-circle normal is constant along the actual ray `p-T*n`. -/
+theorem normalizedCircleRayNormal_on_ray (ε u B T : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hT : 0 < 1 + ε * T)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    normalizedCircleNormal ε
+      (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V)
+      ω u = normalizedCircleRayNormal ε B ω V := by
+  have hn := norm_normalizedCircleRayNormal ε B ω V hb hω hV horth
+  have hv : ω + ε • (u • ω -
+      (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V)) =
+      (1 + ε * T) • normalizedCircleRayNormal ε B ω V := by
+    have hh := normalizedCircleRayTerminal_vector ε u B ω V hb
+    calc
+      _ = (ω + ε • (u • ω - normalizedCircleRayTerminal ε u B ω V)) +
+          (ε * T) • normalizedCircleRayNormal ε B ω V := by module
+      _ = normalizedCircleRayNormal ε B ω V +
+          (ε * T) • normalizedCircleRayNormal ε B ω V := by rw [hh]
+      _ = _ := by module
+  unfold normalizedCircleNormal
+  rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hT, hn, mul_one,
+    smul_smul, inv_mul_cancel₀ hT.ne', one_smul]
+
+/-- Actual intercept coordinates in the normal frame, used in the joint source/ray change of variables. -/
+theorem normalizedCircleRay_coordinates (ε u B : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
+    (horth : inner Real ω V = 0) :
+    inner Real (normalizedCircleRayTerminal ε u B ω V)
+        (normalizedCircleRayNormal ε B ω V) =
+      normalizedCircleRayCos ε B * u - normalizedCircleRayOffset ε B ∧
+    inner Real (normalizedCircleRayTerminal ε u B ω V)
+        ((ε * B) • ω + normalizedCircleRayCos ε B • V) =
+      (1 + ε * u) * B := by
+  have hcross : inner Real V ω = 0 := by rw [real_inner_comm, horth]
+  have hc := (normalizedCircleRayCos_bounds ε B hb).1
+  have hden : 1 + normalizedCircleRayCos ε B ≠ 0 := by linarith
+  have hmul : normalizedCircleRayOffset ε B * (1 + normalizedCircleRayCos ε B) =
+      ε * B^2 := by
+    unfold normalizedCircleRayOffset
+    exact div_mul_cancel₀ _ hden
+  have hi := normalizedCircleRayOffset_identity ε B hb
+  have hib := congrArg (fun z : Real => B * z) hi
+  constructor <;>
+    simp only [normalizedCircleRayTerminal, normalizedCircleRayNormal,
+      inner_add_left, inner_add_right, inner_sub_right, real_inner_smul_left,
+      real_inner_smul_right, real_inner_self_eq_norm_sq, hω, hV, horth, hcross]
+  · nlinarith [hmul]
+  · nlinarith [hib]
+
+/-- The transverse derivative of the actual along-normal intercept coordinate. -/
+theorem normalizedCircleRayCoordinateAlong_hasDerivAt (ε u B : Real)
+    (hb : |ε * B| ≤ 1/2) :
+    HasDerivAt (fun b => normalizedCircleRayCos ε b * u -
+      normalizedCircleRayOffset ε b)
+      (-(ε * B * (1 + ε * u)) / normalizedCircleRayCos ε B) B := by
+  convert ((normalizedCircleRayCos_hasDerivAt ε B hb).mul_const u).sub
+    (normalizedCircleRayOffset_hasDerivAt ε B hb) using 1
+  ring
+
+#print axioms normalizedCircleRayNormal_on_ray
+#print axioms normalizedCircleRay_coordinates
+#print axioms normalizedCircleRayCoordinateAlong_hasDerivAt
+
+/-- The determinant of the literal partial derivatives of the actual along/across coordinate map is `(1+epsilon*u)/C`. This is the two-coordinate minor in the joint ray parametrization, not an assumed measure-change formula. -/
+theorem normalizedCircleRayCoordinateJacobian_actual (ε u B : Real)
+    (hb : |ε * B| ≤ 1/2) :
+    deriv (fun v : Real => normalizedCircleRayCos ε B * v -
+          normalizedCircleRayOffset ε B) u *
+        deriv (fun b : Real => (1 + ε * u) * b) B -
+      deriv (fun b : Real => normalizedCircleRayCos ε b * u -
+          normalizedCircleRayOffset ε b) B *
+        deriv (fun v : Real => (1 + ε * v) * B) u =
+      (1 + ε * u) / normalizedCircleRayCos ε B := by
+  have h1 : HasDerivAt (fun v : Real => normalizedCircleRayCos ε B * v -
+      normalizedCircleRayOffset ε B) (normalizedCircleRayCos ε B) u := by
+    convert ((hasDerivAt_id u).const_mul (normalizedCircleRayCos ε B)).sub_const
+      (normalizedCircleRayOffset ε B) using 1 <;> simp
+  have h2 : HasDerivAt (fun b : Real => (1 + ε * u) * b) (1 + ε * u) B := by
+    simpa using (hasDerivAt_id B).const_mul (1 + ε * u)
+  have h4 : HasDerivAt (fun v : Real => (1 + ε * v) * B) (ε * B) u := by
+    convert ((hasDerivAt_const u (1:Real)).add
+      ((hasDerivAt_id u).const_mul ε)).mul_const B using 1 <;> simp
+  rw [h1.deriv, h2.deriv, (normalizedCircleRayCoordinateAlong_hasDerivAt ε u B hb).deriv,
+    h4.deriv]
+  exact normalizedCircleRayCoordinate_determinant ε u B hb
+
+/-- The actual coordinate determinant stays in `[1/2,3]` on the compact normalized chart. -/
+theorem normalizedCircleRayCoordinateJacobian_bounds (ε u B : Real)
+    (hb : |ε * B| ≤ 1/2) (hu : |ε * u| ≤ 1/2) :
+    1/2 ≤ (1 + ε * u) / normalizedCircleRayCos ε B ∧
+      (1 + ε * u) / normalizedCircleRayCos ε B ≤ 3 := by
+  have hc := normalizedCircleRayCos_bounds ε B hb
+  have hcpos : 0 < normalizedCircleRayCos ε B := by linarith [hc.1]
+  have hu' := abs_le.mp hu
+  constructor
+  · apply (le_div_iff₀ hcpos).mpr
+    nlinarith [hu'.1, hc.2]
+  · apply (div_le_iff₀ hcpos).mpr
+    nlinarith [hu'.2, hc.1]
+
+#print axioms normalizedCircleRayCoordinateJacobian_actual
+#print axioms normalizedCircleRayCoordinateJacobian_bounds
+
+open scoped Matrix
+
+/-- The actual along/across intercept coordinates of the normalized ray chart. -/
+def normalizedCircleRayCoordinateMap (ε : Real) (q : Real × Real) : Real × Real :=
+  (normalizedCircleRayCos ε q.2 * q.1 - normalizedCircleRayOffset ε q.2,
+    (1 + ε * q.1) * q.2)
+/-- The derivative matrix of the actual two-coordinate ray map. -/
+def normalizedCircleRayCoordinateDerivative (ε : Real) (q : Real × Real) :
+    (Real × Real) →L[Real] (Real × Real) :=
+  (Matrix.toLin (.finTwoProd Real) (.finTwoProd Real)
+    !![normalizedCircleRayCos ε q.2,
+      -(ε * q.2 * (1 + ε * q.1)) / normalizedCircleRayCos ε q.2;
+      ε * q.2, 1 + ε * q.1]).toContinuousLinearMap
+/-- The displayed matrix is the genuine Frechet derivative of the ray-coordinate map. -/
+theorem normalizedCircleRayCoordinateMap_hasFDerivAt (ε : Real) (q : Real × Real)
+    (hb : |ε * q.2| ≤ 1/2) :
+    HasFDerivAt (normalizedCircleRayCoordinateMap ε)
+      (normalizedCircleRayCoordinateDerivative ε q) q := by
+  unfold normalizedCircleRayCoordinateDerivative
+  rw [Matrix.toLin_finTwoProd_toContinuousLinearMap]
+  have hc := (normalizedCircleRayCos_hasDerivAt ε q.2 hb).comp_hasFDerivAt
+    q (hasFDerivAt_snd : HasFDerivAt Prod.snd (ContinuousLinearMap.snd Real Real Real) q)
+  have hl := (normalizedCircleRayOffset_hasDerivAt ε q.2 hb).comp_hasFDerivAt
+    q (hasFDerivAt_snd : HasFDerivAt Prod.snd (ContinuousLinearMap.snd Real Real Real) q)
+  convert! HasFDerivAt.prodMk (𝕜 := Real)
+    ((hc.mul hasFDerivAt_fst).sub hl)
+    (((hasFDerivAt_const (1:Real) q).add (hasFDerivAt_fst.const_mul ε)).mul hasFDerivAt_snd)
+    using 2 <;> simp only [smul_smul, Function.comp_apply, Pi.add_apply] <;> module
+/-- The determinant of the actual ray-coordinate differential is `(1+epsilon*u)/C`. -/
+theorem normalizedCircleRayCoordinateDerivative_det (ε : Real) (q : Real × Real)
+    (hb : |ε * q.2| ≤ 1/2) :
+    (normalizedCircleRayCoordinateDerivative ε q).det =
+      (1 + ε * q.1) / normalizedCircleRayCos ε q.2 := by
+  unfold normalizedCircleRayCoordinateDerivative
+  simp only [LinearMap.det_toContinuousLinearMap, LinearMap.det_toLin, Matrix.det_fin_two_of]
+  exact normalizedCircleRayCoordinate_determinant ε q.1 q.2 hb
+#print axioms normalizedCircleRayCoordinateMap_hasFDerivAt
+#print axioms normalizedCircleRayCoordinateDerivative_det
+/-- The physical source radius is recovered exactly from the intercept coordinates. -/
+theorem normalizedCircleRayCoordinateMap_radial_square (ε : Real) (q : Real × Real)
+    (hb : |ε * q.2| ≤ 1/2) :
+    (1 + ε * (normalizedCircleRayCoordinateMap ε q).1)^2 +
+      (ε * (normalizedCircleRayCoordinateMap ε q).2)^2 =
+        (1 + ε * q.1)^2 := by
+  have hc := (normalizedCircleRayCos_bounds ε q.2 hb).1
+  have hcsq : (normalizedCircleRayCos ε q.2)^2 + (ε * q.2)^2 = 1 := by
+    dsimp [normalizedCircleRayCos]
+    rw [Real.sq_sqrt]
+    · ring
+    · have := abs_nonneg (ε * q.2)
+      nlinarith [sq_abs (ε * q.2)]
+  have hi := normalizedCircleRayOffset_identity ε q.2 hb
+  have hlin : 1 + ε * (normalizedCircleRayCos ε q.2 * q.1 -
+      normalizedCircleRayOffset ε q.2) =
+      normalizedCircleRayCos ε q.2 * (1 + ε * q.1) := by nlinarith [hi]
+  dsimp [normalizedCircleRayCoordinateMap]
+  rw [hlin]
+  have hm := congrArg (fun z : Real => (1 + ε * q.1)^2 * z) hcsq
+  nlinarith [hm]
+
+/-- The actual ray-coordinate map is injective on the compact small-scale chart, including zero scale. -/
+theorem normalizedCircleRayCoordinateMap_injOn (ε : Real) :
+    InjOn (normalizedCircleRayCoordinateMap ε)
+      {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2} := by
+  intro q hq r hr hqr
+  by_cases he : ε = 0
+  · subst ε
+    simpa [normalizedCircleRayCoordinateMap, normalizedCircleRayCos,
+      normalizedCircleRayOffset] using hqr
+  have hsq : (1 + ε * q.1)^2 = (1 + ε * r.1)^2 := by
+    rw [← normalizedCircleRayCoordinateMap_radial_square ε q hq.2,
+      ← normalizedCircleRayCoordinateMap_radial_square ε r hr.2, hqr]
+  have hqpos : 0 < 1 + ε * q.1 := by linarith [(abs_le.mp hq.1).1]
+  have hrpos : 0 < 1 + ε * r.1 := by linarith [(abs_le.mp hr.1).1]
+  have ha : 1 + ε * q.1 = 1 + ε * r.1 :=
+    (sq_eq_sq₀ hqpos.le hrpos.le).mp hsq
+  have hfirst : q.1 = r.1 := by
+    apply mul_left_cancel₀ he
+    linarith
+  have hsecond : q.2 = r.2 := by
+    have hsnd := congrArg Prod.snd hqr
+    change (1 + ε * q.1) * q.2 = (1 + ε * r.1) * r.2 at hsnd
+    rw [← ha] at hsnd
+    exact mul_left_cancel₀ hqpos.ne' hsnd
+  exact Prod.ext hfirst hsecond
+
+/-- The genuine change-of-variables theorem gives a uniform factor-two integral bound for the radial/transverse ray chart. This supplies the coordinate part of the source-to-ray energy transfer; angular rotation and frame-volume transfer are separate. -/
+theorem normalizedCircleRayCoordinateMap_lintegral_le (ε : Real)
+    (G : Real × Real → ENNReal) :
+    (∫⁻ q in {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2},
+      G (normalizedCircleRayCoordinateMap ε q)) ≤ 2 * ∫⁻ p, G p := by
+  let D : Set (Real × Real) := {q | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2}
+  have hD : MeasurableSet D := by
+    have hu : Continuous (fun q : Real × Real => |ε * q.1|) := by fun_prop
+    have hb : Continuous (fun q : Real × Real => |ε * q.2|) := by fun_prop
+    exact (measurableSet_le hu.measurable measurable_const).inter
+      (measurableSet_le hb.measurable measurable_const)
+  have hchange := lintegral_image_eq_lintegral_abs_det_fderiv_mul
+    (volume : Measure (Real × Real)) hD
+    (fun q hq => (normalizedCircleRayCoordinateMap_hasFDerivAt ε q hq.2).hasFDerivWithinAt)
+    (normalizedCircleRayCoordinateMap_injOn ε) G
+  change (∫⁻ q in D, G (normalizedCircleRayCoordinateMap ε q)) ≤ _
+  calc
+    _ ≤ ∫⁻ q in D, 2 *
+        (ENNReal.ofReal |(normalizedCircleRayCoordinateDerivative ε q).det| *
+          G (normalizedCircleRayCoordinateMap ε q)) := by
+      apply lintegral_mono_ae
+      filter_upwards [ae_restrict_mem hD] with q hq
+      have hj := (normalizedCircleRayCoordinateJacobian_bounds ε q.1 q.2 hq.2 hq.1).1
+      have hdet := normalizedCircleRayCoordinateDerivative_det ε q hq.2
+      have hdpos : 0 ≤ (normalizedCircleRayCoordinateDerivative ε q).det := by
+        rw [hdet]
+        linarith
+      have hscalar : (1:Real) ≤ 2 * |(normalizedCircleRayCoordinateDerivative ε q).det| := by
+        rw [abs_of_nonneg hdpos, hdet]
+        linarith
+      have hENN : (1:ENNReal) ≤ 2 * ENNReal.ofReal
+          |(normalizedCircleRayCoordinateDerivative ε q).det| := by
+        have hh := ENNReal.ofReal_le_ofReal hscalar
+        rw [ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 2)] at hh
+        norm_num only [ENNReal.ofReal_one, ENNReal.ofReal_ofNat] at hh
+        exact hh
+      calc
+        _ = 1 * G (normalizedCircleRayCoordinateMap ε q) := by rw [one_mul]
+        _ ≤ (2 * ENNReal.ofReal |(normalizedCircleRayCoordinateDerivative ε q).det|) *
+            G (normalizedCircleRayCoordinateMap ε q) :=
+          mul_le_mul_of_nonneg_right hENN (by positivity)
+        _ = _ := by rw [mul_assoc]
+    _ = 2 * ∫⁻ q in D,
+        ENNReal.ofReal |(normalizedCircleRayCoordinateDerivative ε q).det| *
+          G (normalizedCircleRayCoordinateMap ε q) := by
+      rw [lintegral_const_mul' _ _ (by norm_num : (2:ENNReal) ≠ ⊤)]
+    _ = 2 * ∫⁻ p in normalizedCircleRayCoordinateMap ε '' D, G p := by rw [hchange]
+    _ ≤ _ := mul_le_mul_of_nonneg_left (setLIntegral_le_lintegral _ _) (by positivity)
+
+#print axioms normalizedCircleRayCoordinateMap_radial_square
+#print axioms normalizedCircleRayCoordinateMap_injOn
+#print axioms normalizedCircleRayCoordinateMap_lintegral_le
+
+/-! ### Joint transfer from the actual source coordinates to ray space -/
+
+/-- The standard positive quarter turn in the normalized circular source frame. -/
+def normalizedCircleQuarterTurn : Euclidean 2 ≃ₗᵢ[Real] Euclidean 2 := by
+  letI : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
+  exact (EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.rightAngleRotation
+/-- Applying the source quarter turn twice gives negation. -/
+theorem normalizedCircleQuarterTurn_sq (x : Euclidean 2) :
+    normalizedCircleQuarterTurn (normalizedCircleQuarterTurn x) = -x := by
+  let : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
+  exact (EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.rightAngleRotation_rightAngleRotation x
+/-- The source direction and its quarter turn are orthogonal. -/
+theorem normalizedCircleQuarterTurn_inner (x : Euclidean 2) :
+    inner Real x (normalizedCircleQuarterTurn x) = 0 := by
+  let : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
+  rw [real_inner_comm]
+  exact (EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.inner_rightAngleRotation_self x
+/-- The actual source-to-normal rotation at transverse parameter `B`, as a linear isometry. -/
+def normalizedCircleRayRotation (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    Euclidean 2 ≃ₗᵢ[Real] Euclidean 2 := by
+  let C := normalizedCircleRayCos ε B
+  let β := ε * B
+  have hsq : C^2 + β^2 = 1 := by
+    dsimp [C, β, normalizedCircleRayCos]
+    rw [Real.sq_sqrt]
+    · ring
+    · have := abs_nonneg (ε * B)
+      nlinarith [sq_abs (ε * B)]
+  let L : Euclidean 2 →ₗ[Real] Euclidean 2 :=
+    C • LinearMap.id - β • normalizedCircleQuarterTurn.toLinearMap
+  let Linv : Euclidean 2 →ₗ[Real] Euclidean 2 :=
+    C • LinearMap.id + β • normalizedCircleQuarterTurn.toLinearMap
+  have hnorm (x : Euclidean 2) : ‖L x‖ = ‖x‖ := by
+    apply (sq_eq_sq₀ (norm_nonneg _) (norm_nonneg _)).mp
+    change ‖C • x - β • normalizedCircleQuarterTurn x‖^2 = ‖x‖^2
+    rw [norm_sub_sq_real]
+    simp only [norm_smul, Real.norm_eq_abs, mul_pow, sq_abs,
+      real_inner_smul_left, real_inner_smul_right, normalizedCircleQuarterTurn_inner,
+      normalizedCircleQuarterTurn.norm_map, mul_zero, sub_zero]
+    rw [← add_mul, hsq, one_mul]
+  let Li : Euclidean 2 →ₗᵢ[Real] Euclidean 2 := { toLinearMap := L, norm_map' := hnorm }
+  refine LinearIsometryEquiv.ofLinearIsometry Li Linv ?_ ?_
+  · apply LinearMap.ext
+    intro x
+    change L (Linv x) = x
+    dsimp [L, Linv]
+    simp only [map_add, map_smul, normalizedCircleQuarterTurn_sq]
+    calc
+      _ = (C^2 + β^2) • x := by module
+      _ = x := by rw [hsq, one_smul]
+  · apply LinearMap.ext
+    intro x
+    change Linv (L x) = x
+    dsimp [L, Linv]
+    simp only [map_sub, map_smul, normalizedCircleQuarterTurn_sq]
+    calc
+      _ = (C^2 + β^2) • x := by module
+      _ = x := by rw [hsq, one_smul]
+/-- The rotation is the actual normalized ray normal in the standard perpendicular frame. -/
+theorem normalizedCircleRayRotation_apply (ε B : Real) (hb : |ε * B| ≤ 1/2)
+    (x : Euclidean 2) :
+    normalizedCircleRayRotation ε B hb x =
+      normalizedCircleRayNormal ε B x (normalizedCircleQuarterTurn x) := by
+  rfl
+#print axioms normalizedCircleQuarterTurn_sq
+#print axioms normalizedCircleQuarterTurn_inner
+#print axioms normalizedCircleRayRotation
+/-- A unit perpendicular pair gives an orthonormal planar frame. -/
+theorem normalizedCircle_frame_orthonormal (ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    Orthonormal Real ![ω,V] := by
+  have hcross : inner Real V ω = 0 := by rw [real_inner_comm, horth]
+  apply orthonormal_iff_ite.mpr
+  intro i j
+  fin_cases i <;> fin_cases j <;>
+    simp [hω, hV, horth, hcross]
+/-- The isometry from Cartesian coordinates to an actual unit perpendicular frame. -/
+def normalizedCircleOrthonormalFrame (ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    Euclidean 2 ≃ₗᵢ[Real] Euclidean 2 :=
+  (OrthonormalBasis.mk (normalizedCircle_frame_orthonormal ω V hω hV horth)
+    ((normalizedCircle_frame_orthonormal ω V hω hV horth).linearIndependent.span_eq_top_of_card_eq_finrank'
+      (by simp [Euclidean])).ge).repr.symm
+/-- The frame isometry is the literal coordinate linear combination. -/
+theorem normalizedCircleOrthonormalFrame_apply (ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
+    (x : Euclidean 2) :
+    normalizedCircleOrthonormalFrame ω V hω hV horth x = x 0 • ω + x 1 • V := by
+  unfold normalizedCircleOrthonormalFrame
+  rw [← OrthonormalBasis.sum_repr_symm]
+  simp [Fin.sum_univ_two, OrthonormalBasis.coe_mk]
+
+open MeasureTheory Set
+/-- The actual source-to-normal rotation on the unit direction circle. -/
+def normalizedCircleRayRotationSphere (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    Metric.sphere (0 : Euclidean 2) 1 ≃ᵐ Metric.sphere (0 : Euclidean 2) 1 :=
+  ((normalizedCircleRayRotation ε B hb).toHomeomorph.subtype
+    (p := fun x : Euclidean 2 => x ∈ Metric.sphere 0 1)
+    (q := fun x : Euclidean 2 => x ∈ Metric.sphere 0 1)
+    (fun x => by
+      simp only [mem_sphere_zero_iff_norm, LinearIsometryEquiv.coe_toHomeomorph]
+      rw [LinearIsometryEquiv.norm_map])).toMeasurableEquiv
+/-- The actual source-to-normal rotation preserves the repository's raw circle measure. -/
+theorem normalizedCircleRayRotationSphere_preserves (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+    Measure.map (normalizedCircleRayRotationSphere ε B hb) (unitSurfaceMeasure 2) =
+      unitSurfaceMeasure 2 := by
+  exact map_unitSurfaceMeasure_linearIsometry 2 (normalizedCircleRayRotation ε B hb)
+/-- The actual angular change of variables preserves nonnegative integrals. -/
+theorem normalizedCircleRayRotationSphere_lintegral (ε B : Real) (hb : |ε * B| ≤ 1/2)
+    (G : Metric.sphere (0 : Euclidean 2) 1 → ENNReal) :
+    (∫⁻ ω, G (normalizedCircleRayRotationSphere ε B hb ω) ∂unitSurfaceMeasure 2) =
+      ∫⁻ n, G n ∂unitSurfaceMeasure 2 := by
+  rw [← (normalizedCircleRayRotationSphere ε B hb).measurableEmbedding.lintegral_map]
+  rw [normalizedCircleRayRotationSphere_preserves]
+
+/-- The measure-compatible identification of two real coordinates with the Euclidean plane. -/
+def normalizedCircleCartesianMeasurableEquiv :
+    (Real × Real) ≃ᵐ Euclidean 2 :=
+  MeasurableEquiv.finTwoArrow.symm.trans (MeasurableEquiv.toLp 2 (Fin 2 → Real))
+
+/-- A unit perpendicular frame transfers Cartesian product volume exactly to planar volume. -/
+theorem normalizedCircle_frame_lintegral (ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
+    (G : Euclidean 2 → ENNReal) :
+    (∫⁻ p : Real × Real, G (p.1 • ω + p.2 • V)) = ∫⁻ x : Euclidean 2, G x := by
+  let F := normalizedCircleOrthonormalFrame ω V hω hV horth
+  let e : (Real × Real) ≃ᵐ Euclidean 2 :=
+    normalizedCircleCartesianMeasurableEquiv.trans F.toHomeomorph.toMeasurableEquiv
+  have hcart : MeasurePreserving normalizedCircleCartesianMeasurableEquiv
+      (volume : Measure (Real × Real)) (volume : Measure (Euclidean 2)) := by
+    exact (PiLp.volume_preserving_toLp (Fin 2)).comp
+      ((volume_preserving_finTwoArrow Real).symm MeasurableEquiv.finTwoArrow)
+  have hmp : MeasurePreserving e (volume : Measure (Real × Real))
+      (volume : Measure (Euclidean 2)) := F.measurePreserving.comp hcart
+  have heq : (fun p : Real × Real => p.1 • ω + p.2 • V) = e := by
+    funext p
+    change _ = F (normalizedCircleCartesianMeasurableEquiv p)
+    rw [normalizedCircleOrthonormalFrame_apply]
+    rfl
+  calc
+    _ = ∫⁻ p : Real × Real, G (e p) :=
+      lintegral_congr (fun p => congrArg G (congrFun heq p))
+    _ = _ := by rw [← e.measurableEmbedding.lintegral_map, hmp.map_eq]
+
+#print axioms normalizedCircleOrthonormalFrame_apply
+#print axioms normalizedCircleRayRotationSphere_lintegral
+#print axioms normalizedCircle_frame_lintegral
+
+/-- A unit perpendicular pair gives the literal inner-product decomposition of a planar vector. -/
+theorem normalizedCircle_frame_decomposition (ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
+    (x : Euclidean 2) :
+    (inner Real x ω) • ω + (inner Real x V) • V = x := by
+  let b := OrthonormalBasis.mk (normalizedCircle_frame_orthonormal ω V hω hV horth)
+    ((normalizedCircle_frame_orthonormal ω V hω hV horth).linearIndependent.span_eq_top_of_card_eq_finrank'
+      (by simp [Euclidean])).ge
+  simpa [b, Fin.sum_univ_two, OrthonormalBasis.coe_mk, real_inner_comm] using b.sum_repr' x
+
+/-- The actual ray intercept has the along/across coordinates of the proved ray-coordinate map. -/
+theorem normalizedCircleRayTerminal_normalFrame (ε u B : Real) (ω : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) :
+    normalizedCircleRayTerminal ε u B ω (normalizedCircleQuarterTurn ω) =
+      (normalizedCircleRayCoordinateMap ε (u,B)).1 •
+        normalizedCircleRayNormal ε B ω (normalizedCircleQuarterTurn ω) +
+      (normalizedCircleRayCoordinateMap ε (u,B)).2 •
+        normalizedCircleQuarterTurn
+          (normalizedCircleRayNormal ε B ω (normalizedCircleQuarterTurn ω)) := by
+  have hV : ‖normalizedCircleQuarterTurn ω‖ = 1 := by
+    rw [normalizedCircleQuarterTurn.norm_map, hω]
+  let n := normalizedCircleRayNormal ε B ω (normalizedCircleQuarterTurn ω)
+  have hn : ‖n‖ = 1 := norm_normalizedCircleRayNormal ε B ω
+    (normalizedCircleQuarterTurn ω) hb hω hV (normalizedCircleQuarterTurn_inner ω)
+  have hJn : normalizedCircleQuarterTurn n =
+      (ε * B) • ω + normalizedCircleRayCos ε B • normalizedCircleQuarterTurn ω := by
+    dsimp [n, normalizedCircleRayNormal]
+    simp only [map_sub, map_smul, normalizedCircleQuarterTurn_sq]
+    module
+  have hc := normalizedCircleRay_coordinates ε u B ω (normalizedCircleQuarterTurn ω)
+    hb hω hV (normalizedCircleQuarterTurn_inner ω)
+  have hcoordJ : inner Real
+      (normalizedCircleRayTerminal ε u B ω (normalizedCircleQuarterTurn ω))
+      (normalizedCircleQuarterTurn n) = (1 + ε * u) * B := by
+    rw [hJn]
+    exact hc.2
+  have hdecomp := normalizedCircle_frame_decomposition n (normalizedCircleQuarterTurn n) hn
+    (by rw [normalizedCircleQuarterTurn.norm_map, hn]) (normalizedCircleQuarterTurn_inner n)
+    (normalizedCircleRayTerminal ε u B ω (normalizedCircleQuarterTurn ω))
+  rw [show inner Real (normalizedCircleRayTerminal ε u B ω (normalizedCircleQuarterTurn ω)) n =
+    normalizedCircleRayCos ε B * u - normalizedCircleRayOffset ε B from hc.1, hcoordJ] at hdecomp
+  exact hdecomp.symm
+
+/-- The actual normalized circle source/ray parametrization transfers squared-energy integrals with a uniform factor two. The source variables are raw circle direction and radial/transverse coordinates; the target variables are a spatial ray intercept and raw normal direction. This is the complete measure bridge for the weak ray estimate used in the supplied repair, Sections 4--5, including epsilon zero. -/
+theorem normalizedCircle_source_ray_lintegral_le (ε : Real)
+    (G : Euclidean 2 → Euclidean 2 → ENNReal)
+    (hG : Measurable (Function.uncurry G)) :
+    (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+      (∫⁻ q in {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2},
+        G (normalizedCircleRayTerminal ε q.1 q.2 (ω : Euclidean 2)
+            (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+          (normalizedCircleRayNormal ε q.2 (ω : Euclidean 2)
+            (normalizedCircleQuarterTurn (ω : Euclidean 2))))
+      ∂unitSurfaceMeasure 2) ≤
+      2 * ∫⁻ n : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ p : Euclidean 2, G p (n : Euclidean 2)) ∂unitSurfaceMeasure 2 := by
+  let D : Set (Real × Real) := {q | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2}
+  have hD : MeasurableSet D := by
+    have hu : Continuous (fun q : Real × Real => |ε * q.1|) := by fun_prop
+    have hb : Continuous (fun q : Real × Real => |ε * q.2|) := by fun_prop
+    exact (measurableSet_le hu.measurable measurable_const).inter
+      (measurableSet_le hb.measurable measurable_const)
+  let K : (Real × Real) → Metric.sphere (0 : Euclidean 2) 1 → ENNReal :=
+    fun q ω => G (normalizedCircleRayTerminal ε q.1 q.2 (ω : Euclidean 2)
+      (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+      (normalizedCircleRayNormal ε q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+  let H : (Real × Real) → Metric.sphere (0 : Euclidean 2) 1 → ENNReal :=
+    fun q n => G ((normalizedCircleRayCoordinateMap ε q).1 • (n : Euclidean 2) +
+      (normalizedCircleRayCoordinateMap ε q).2 • normalizedCircleQuarterTurn (n : Euclidean 2))
+      (n : Euclidean 2)
+  have hK : Measurable (fun z : (Real × Real) × Metric.sphere (0 : Euclidean 2) 1 =>
+      K z.1 z.2) := by
+    change Measurable (Function.uncurry G ∘ (fun z : (Real × Real) ×
+      Metric.sphere (0 : Euclidean 2) 1 =>
+      (normalizedCircleRayTerminal ε z.1.1 z.1.2 (z.2 : Euclidean 2)
+        (normalizedCircleQuarterTurn (z.2 : Euclidean 2)),
+       normalizedCircleRayNormal ε z.1.2 (z.2 : Euclidean 2)
+        (normalizedCircleQuarterTurn (z.2 : Euclidean 2)))))
+    apply hG.comp
+    unfold normalizedCircleRayTerminal normalizedCircleRayNormal
+      normalizedCircleRayOffset normalizedCircleRayCos
+    have hj := normalizedCircleQuarterTurn.continuous
+    fun_prop
+  have hH : Measurable (fun z : (Real × Real) × Metric.sphere (0 : Euclidean 2) 1 =>
+      H z.1 z.2) := by
+    change Measurable (Function.uncurry G ∘ (fun z : (Real × Real) ×
+      Metric.sphere (0 : Euclidean 2) 1 =>
+      ((normalizedCircleRayCoordinateMap ε z.1).1 • (z.2 : Euclidean 2) +
+        (normalizedCircleRayCoordinateMap ε z.1).2 •
+          normalizedCircleQuarterTurn (z.2 : Euclidean 2), (z.2 : Euclidean 2))))
+    apply hG.comp
+    unfold normalizedCircleRayCoordinateMap normalizedCircleRayOffset normalizedCircleRayCos
+    have hj := normalizedCircleQuarterTurn.continuous
+    fun_prop
+  have hpoint (q : Real × Real) (hq : q ∈ D) :
+      (∫⁻ ω, K q ω ∂unitSurfaceMeasure 2) = ∫⁻ n, H q n ∂unitSurfaceMeasure 2 := by
+    have heq : K q = fun ω => H q (normalizedCircleRayRotationSphere ε q.2 hq.2 ω) := by
+      funext ω
+      have hω : ‖(ω : Euclidean 2)‖ = 1 := by
+        simpa only [Metric.mem_sphere, dist_zero_right] using ω.property
+      dsimp [K, H]
+      change G _ _ = G
+        ((normalizedCircleRayCoordinateMap ε q).1 • (normalizedCircleRayRotation ε q.2 hq.2
+            (ω : Euclidean 2)) +
+          (normalizedCircleRayCoordinateMap ε q).2 • normalizedCircleQuarterTurn
+            (normalizedCircleRayRotation ε q.2 hq.2 (ω : Euclidean 2)))
+        (normalizedCircleRayRotation ε q.2 hq.2 (ω : Euclidean 2))
+      rw [normalizedCircleRayRotation_apply,
+        ← normalizedCircleRayTerminal_normalFrame ε q.1 q.2 (ω : Euclidean 2) hq.2 hω]
+    rw [heq, normalizedCircleRayRotationSphere_lintegral]
+  change (∫⁻ ω, (∫⁻ q in D, K q ω) ∂unitSurfaceMeasure 2) ≤ _
+  calc
+    _ = ∫⁻ q in D, ∫⁻ ω, K q ω ∂unitSurfaceMeasure 2 :=
+      (lintegral_lintegral_swap hK.aemeasurable).symm
+    _ = ∫⁻ q in D, ∫⁻ n, H q n ∂unitSurfaceMeasure 2 := by
+      apply lintegral_congr_ae
+      filter_upwards [ae_restrict_mem hD] with q hq
+      exact hpoint q hq
+    _ = ∫⁻ n, (∫⁻ q in D, H q n) ∂unitSurfaceMeasure 2 :=
+      lintegral_lintegral_swap hH.aemeasurable
+    _ ≤ ∫⁻ n : Metric.sphere (0 : Euclidean 2) 1, 2 *
+        (∫⁻ p : Euclidean 2, G p (n : Euclidean 2)) ∂unitSurfaceMeasure 2 := by
+      apply lintegral_mono
+      intro n
+      have hn : ‖(n : Euclidean 2)‖ = 1 := by
+        simpa only [Metric.mem_sphere, dist_zero_right] using n.property
+      have hJ : ‖normalizedCircleQuarterTurn (n : Euclidean 2)‖ = 1 := by
+        rw [normalizedCircleQuarterTurn.norm_map, hn]
+      have htrans := normalizedCircleRayCoordinateMap_lintegral_le ε
+        (fun p : Real × Real => G (p.1 • (n : Euclidean 2) +
+          p.2 • normalizedCircleQuarterTurn (n : Euclidean 2)) (n : Euclidean 2))
+      have hframe := normalizedCircle_frame_lintegral (n : Euclidean 2)
+        (normalizedCircleQuarterTurn (n : Euclidean 2)) hn hJ
+        (normalizedCircleQuarterTurn_inner (n : Euclidean 2))
+        (fun p => G p (n : Euclidean 2))
+      simpa only [D, H, hframe] using htrans
+    _ = _ := by rw [lintegral_const_mul' _ _ (by norm_num : (2:ENNReal) ≠ ⊤)]
+#print axioms normalizedCircleRayTerminal_normalFrame
+#print axioms normalizedCircle_source_ray_lintegral_le
+
+/-- Sections 4--5 of the supplied repair: invert the exact incidence relation into its straight ray. The transverse coordinate is the physical perpendicular output coordinate divided by the actual distance; positivity selects the forward normal branch, including epsilon zero. -/
+theorem normalizedCircleRay_inverse
+    (ε u : Real) (X ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
+    (hsep : ω + ε • (u • ω - X) ≠ 0)
+    (ha : 0 < 1 + ε * (u - inner Real X ω))
+    (hb : |ε * (inner Real X V / ‖ω + ε • (u • ω - X)‖)| ≤ 1/2) :
+    let B := inner Real X V / ‖ω + ε • (u • ω - X)‖
+    let s := normalizedCircleIncidence ε X ω u
+    X = normalizedCircleRayTerminal ε u B ω V -
+      s • normalizedCircleRayNormal ε B ω V := by
+  let D := ‖ω + ε • (u • ω - X)‖
+  let A := inner Real X ω
+  let Z := inner Real X V
+  let B := Z / D
+  let a := 1 + ε * (u - A)
+  let s := normalizedCircleIncidence ε X ω u
+  have hD : 0 < D := norm_pos_iff.mpr hsep
+  have hDec := normalizedCircle_frame_decomposition ω V hω hV horth X
+  have hq : ω + ε • (u • ω - X) = a • ω - (ε * Z) • V := by
+    rw [← hDec]
+    dsimp [A,Z,a]
+    module
+  have hsq : D^2 = a^2 + (ε * Z)^2 := by
+    have hh := norm_sub_sq_real (a • ω) ((ε * Z) • V)
+    simp only [norm_smul, Real.norm_eq_abs, hω, hV, mul_one, sq_abs,
+      real_inner_smul_left, real_inner_smul_right, horth, mul_zero, sub_zero] at hh
+    dsimp [D]
+    rw [hq, hh]
+  have hC0 : 0 < normalizedCircleRayCos ε B := by
+    have hc := (normalizedCircleRayCos_bounds ε B hb).1
+    linarith
+  have hCsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
+    unfold normalizedCircleRayCos
+    rw [Real.sq_sqrt (by nlinarith [sq_abs (ε * B), abs_nonneg (ε * B)])]
+    ring
+  have hBD : B * D = Z := div_mul_cancel₀ Z hD.ne'
+  have hC : normalizedCircleRayCos ε B * D = a := by
+    have hh : (normalizedCircleRayCos ε B * D)^2 = a^2 := by
+      rw [← hBD] at hsq
+      linear_combination hsq + D^2 * hCsq
+    have hp : 0 < normalizedCircleRayCos ε B * D := mul_pos hC0 hD
+    change 0 < a at ha
+    nlinarith [sq_nonneg (normalizedCircleRayCos ε B * D - a)]
+  have hs : ε * s = D - 1 :=
+    normalizedCircleIncidence_mul_scale ε X ω u hω
+  change X = normalizedCircleRayTerminal ε u B ω V -
+    s • normalizedCircleRayNormal ε B ω V
+  by_cases he : ε = 0
+  · subst ε
+    have hD0 : D = 1 := by simp [D,hω]
+    have hB0 : B = Z := by simp [B,hD0]
+    have hs0 : s = u - A := by
+      dsimp [s,A]
+      rw [normalizedCircleIncidence_zero X ω u hω, real_inner_comm]
+    rw [normalizedCircleRayTerminal, normalizedCircleRayNormal, hB0, hs0]
+    simp only [normalizedCircleRayOffset, normalizedCircleRayCos, zero_mul, sub_zero,
+      zero_pow (by norm_num : 2 ≠ 0), Real.sqrt_one, zero_div, add_zero, zero_smul, one_smul]
+    calc
+      X = A • ω + Z • V := hDec.symm
+      _ = u • ω + Z • V - (u - A) • ω := by module
+  · have hoff := normalizedCircleRayOffset_identity ε B hb
+    have hA : u + normalizedCircleRayOffset ε B - s * normalizedCircleRayCos ε B = A := by
+      dsimp [a] at hC
+      apply mul_left_cancel₀ he
+      linear_combination hoff - hC - normalizedCircleRayCos ε B * hs
+    have hZ : B + s * (ε * B) = Z := by linear_combination B * hs + hBD
+    rw [normalizedCircleRayTerminal, normalizedCircleRayNormal]
+    calc
+      X = A • ω + Z • V := hDec.symm
+      _ = (u + normalizedCircleRayOffset ε B - s * normalizedCircleRayCos ε B) • ω +
+        (B + s * (ε * B)) • V := by rw [hA,hZ]
+      _ = _ := by module
+
+/-- Exact inverse-ray coordinates throughout a uniformly separated compact box. -/
+theorem normalizedCircleRay_inverse_of_small
+    (ε u : Real) (X ω V : Euclidean 2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
+    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1/4) :
+    let B := inner Real X V / ‖ω + ε • (u • ω - X)‖
+    let s := normalizedCircleIncidence ε X ω u
+    X = normalizedCircleRayTerminal ε u B ω V -
+      s • normalizedCircleRayNormal ε B ω V := by
+  have hsmall' : |ε| * (|u| + ‖X‖) ≤ 1/2 := by linarith
+  have hD := normalizedCircleIncidence_separation ε X ω u hω hsmall'
+  have hDp : 0 < ‖ω + ε • (u • ω - X)‖ := by linarith
+  apply normalizedCircleRay_inverse ε u X ω V hω hV horth
+    (norm_pos_iff.mp hDp)
+  · have hA : |inner Real X ω| ≤ ‖X‖ := by
+      simpa [hω] using abs_real_inner_le_norm X ω
+    have huA : |u - inner Real X ω| ≤ |u| + ‖X‖ :=
+      (abs_sub u (inner Real X ω)).trans (add_le_add le_rfl hA)
+    have hab : |ε * (u - inner Real X ω)| ≤ 1/4 := by
+      rw [abs_mul]
+      exact (mul_le_mul_of_nonneg_left huA (abs_nonneg ε)).trans hsmall
+    have hh := (abs_le.mp hab).1
+    linarith
+  · have hZ : |inner Real X V| ≤ ‖X‖ := by
+      simpa [hV] using abs_real_inner_le_norm X V
+    rw [abs_mul, abs_div, abs_of_pos hDp, ← mul_div_assoc]
+    apply (div_le_iff₀ hDp).mpr
+    have hh : |ε| * |inner Real X V| ≤ 1/4 := by
+      calc
+        _ ≤ |ε| * ‖X‖ := mul_le_mul_of_nonneg_left hZ (abs_nonneg ε)
+        _ ≤ |ε| * (|u| + ‖X‖) :=
+          mul_le_mul_of_nonneg_left (le_add_of_nonneg_left (abs_nonneg u)) (abs_nonneg ε)
+        _ ≤ _ := hsmall
+    linarith
+/-- The admissible transverse ray parameter interval is convex at every scale. -/
+theorem normalizedCircleRay_domain_convex (ε : Real) :
+    Convex Real {b : Real | |ε * b| ≤ 1/2} := by
+  have h := (convex_Icc (- (1/2 : Real)) (1/2)).smul_preimage ε
+  convert h using 1
+  ext b
+  simp only [Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_Icc, smul_eq_mul, abs_le]
+/-- Uniform transverse Lipschitz bound for the actual normalized ray intercept. -/
+theorem normalizedCircleRayTerminal_lipschitz
+    (ε u B B₀ : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hb₀ : |ε * B₀| ≤ 1/2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    ‖normalizedCircleRayTerminal ε u B ω V -
+      normalizedCircleRayTerminal ε u B₀ ω V‖ ≤ 2 * |B - B₀| := by
+  have hh := Convex.norm_image_sub_le_of_norm_hasDerivWithin_le
+    (fun b (hb' : |ε*b| ≤ 1/2) =>
+      (normalizedCircleRayTerminal_hasDerivAt ε u b ω V hb').hasDerivWithinAt)
+    (fun b (hb' : |ε*b| ≤ 1/2) =>
+      normalizedCircleRayTerminal_derivative_bound ε b ω V hb' hω hV)
+    (normalizedCircleRay_domain_convex ε) hb₀ hb
+  simpa only [Real.norm_eq_abs] using hh
+/-- Actual ray normals vary with a Lipschitz constant proportional to the geometric scale. -/
+theorem normalizedCircleRayNormal_lipschitz
+    (ε B B₀ : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hb₀ : |ε * B₀| ≤ 1/2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    ‖normalizedCircleRayNormal ε B ω V -
+      normalizedCircleRayNormal ε B₀ ω V‖ ≤ 2 * |ε| * |B - B₀| := by
+  have hh := Convex.norm_image_sub_le_of_norm_hasDerivWithin_le
+    (fun b (hb' : |ε*b| ≤ 1/2) =>
+      (normalizedCircleRayNormal_hasDerivAt ε b ω V hb').hasDerivWithinAt)
+    (fun b (hb' : |ε*b| ≤ 1/2) =>
+      normalizedCircleRayNormal_derivative_bound ε b ω V hb' hω hV)
+    (normalizedCircleRay_domain_convex ε) hb₀ hb
+  simpa only [Real.norm_eq_abs] using hh
+/-- Exact ray geometry converts transverse-coordinate and incidence-level errors into spatial distance. This is the geometric localization bridge for the source Fourier cubes in repair (9). -/
+theorem normalizedCircleRay_distance_le
+    (ε u B B₀ s T : Real) (ω V : Euclidean 2)
+    (hb : |ε * B| ≤ 1/2) (hb₀ : |ε * B₀| ≤ 1/2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    ‖(normalizedCircleRayTerminal ε u B ω V -
+        s • normalizedCircleRayNormal ε B ω V) -
+      (normalizedCircleRayTerminal ε u B₀ ω V -
+        T • normalizedCircleRayNormal ε B₀ ω V)‖ ≤
+      (2 + 2 * |ε| * |s|) * |B - B₀| + |s - T| := by
+  let p := normalizedCircleRayTerminal ε u B ω V
+  let p₀ := normalizedCircleRayTerminal ε u B₀ ω V
+  let n := normalizedCircleRayNormal ε B ω V
+  let n₀ := normalizedCircleRayNormal ε B₀ ω V
+  have heq : (p - s • n) - (p₀ - T • n₀) =
+      (p-p₀) - s • (n-n₀) - (s-T) • n₀ := by module
+  have hn₀ : ‖n₀‖ = 1 := norm_normalizedCircleRayNormal ε B₀ ω V hb₀ hω hV horth
+  change ‖(p - s • n) - (p₀ - T • n₀)‖ ≤ _
+  rw [heq]
+  calc
+    _ ≤ ‖p-p₀‖ + ‖s • (n-n₀)‖ + ‖(s-T) • n₀‖ :=
+      (norm_sub_le _ _).trans (add_le_add (norm_sub_le _ _) le_rfl)
+    _ = ‖p-p₀‖ + |s| * ‖n-n₀‖ + |s-T| := by
+      rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, hn₀, mul_one]
+    _ ≤ 2 * |B-B₀| + |s| * (2 * |ε| * |B-B₀|) + |s-T| := by
+      gcongr
+      · exact normalizedCircleRayTerminal_lipschitz ε u B B₀ ω V hb hb₀ hω hV
+      · exact normalizedCircleRayNormal_lipschitz ε B B₀ ω V hb hb₀ hω hV
+    _ = _ := by ring
+#print axioms normalizedCircleRay_inverse_of_small
+#print axioms normalizedCircleRay_distance_le
+
+/-! ### Exact covector gaps and anchored-ray geometry
+
+For Sections 4--5 of the supplied independent repair, retain the actual
+radial and transverse source covectors. Their mismatch controls the actual
+ray tube, uniformly across both conormal signs and epsilon zero.
+-/
+
+private theorem circle_scalar_radial_gap (ρ ρ₀ c c₀ E : ℝ)
+    (hc : 1/2 ≤ c) (hc₀ : 1/2 ≤ c₀)
+    (hfirst : |ρ*c - ρ₀*c₀| ≤ E)
+    (hnorm : abs (|ρ| - |ρ₀|) ≤ E) :
+    |ρ - ρ₀| ≤ 2*E := by
+  have hE : 0 ≤ E := (abs_nonneg _).trans hfirst
+  by_cases hρ : 0 ≤ ρ
+  · by_cases hρ₀ : 0 ≤ ρ₀
+    · simpa [abs_of_nonneg hρ, abs_of_nonneg hρ₀] using
+        hnorm.trans (by linarith : E ≤ 2*E)
+    · have hρ₀' : ρ₀ ≤ 0 := le_of_not_ge hρ₀
+      have hp := mul_nonneg hρ (sub_nonneg.mpr hc)
+      have hp₀ := mul_nonpos_of_nonpos_of_nonneg hρ₀' (sub_nonneg.mpr hc₀)
+      have hsign : 0 ≤ ρ*c - ρ₀*c₀ := by nlinarith
+      rw [abs_of_nonneg (by linarith : 0 ≤ ρ-ρ₀)]
+      rw [abs_of_nonneg hsign] at hfirst
+      nlinarith
+  · have hρ' : ρ ≤ 0 := le_of_not_ge hρ
+    by_cases hρ₀ : 0 ≤ ρ₀
+    · have hp := mul_nonpos_of_nonpos_of_nonneg hρ' (sub_nonneg.mpr hc)
+      have hp₀ := mul_nonneg hρ₀ (sub_nonneg.mpr hc₀)
+      have hsign : ρ*c - ρ₀*c₀ ≤ 0 := by nlinarith
+      rw [abs_of_nonpos (by linarith : ρ-ρ₀ ≤ 0)]
+      rw [abs_of_nonpos hsign] at hfirst
+      nlinarith
+    · have hρ₀' : ρ₀ ≤ 0 := le_of_not_ge hρ₀
+      have hn : |ρ-ρ₀| = abs (|ρ| - |ρ₀|) := by
+        rw [abs_of_nonpos hρ', abs_of_nonpos hρ₀']
+        simpa only [neg_sub_neg] using (abs_sub_comm ρ ρ₀)
+      rw [hn]
+      exact hnorm.trans (by linarith)
+
+/-- Actual input covector mismatch controls the difference between scaled ray normals, including zero curvature and both conormal signs. -/
+theorem normalizedCircleRay_covector_norm_gap
+    (ε a ρ ρ₀ B B₀ : Real) (ω V : Euclidean 2)
+    (ha : |ε| ≤ a) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    ‖ρ • normalizedCircleRayNormal ε B ω V -
+        ρ₀ • normalizedCircleRayNormal ε B₀ ω V‖ ≤
+      |ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
+        |a * (ρ*B - ρ₀*B₀)| := by
+  have he : ρ • normalizedCircleRayNormal ε B ω V -
+      ρ₀ • normalizedCircleRayNormal ε B₀ ω V =
+      (ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀) • ω -
+        (ε * (ρ*B - ρ₀*B₀)) • V := by
+    unfold normalizedCircleRayNormal
+    module
+  rw [he]
+  refine (norm_sub_le _ _).trans ?_
+  simp only [norm_smul, Real.norm_eq_abs, hω, hV, mul_one, abs_mul]
+  have ha₀ : 0 ≤ a := (abs_nonneg ε).trans ha
+  rw [abs_of_nonneg ha₀]
+  gcongr
+
+/-- On the compact actual ray chart, the radial frequency error is controlled by the two input covector coordinates. No sign restriction on the radial frequencies is needed. -/
+theorem normalizedCircleRay_covector_radial_gap
+    (ε a ρ ρ₀ B B₀ : Real) (ω V : Euclidean 2)
+    (ha : |ε| ≤ a) (hb : |ε*B| ≤ 1/2) (hb₀ : |ε*B₀| ≤ 1/2)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    |ρ-ρ₀| ≤ 2 * (|ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
+        |a * (ρ*B - ρ₀*B₀)|) := by
+  have hn := normalizedCircleRay_covector_norm_gap ε a ρ ρ₀ B B₀ ω V ha hω hV
+  have hh := (abs_norm_sub_norm_le
+    (ρ • normalizedCircleRayNormal ε B ω V)
+    (ρ₀ • normalizedCircleRayNormal ε B₀ ω V)).trans hn
+  simp only [norm_smul, Real.norm_eq_abs,
+    norm_normalizedCircleRayNormal ε B ω V hb hω hV horth,
+    norm_normalizedCircleRayNormal ε B₀ ω V hb₀ hω hV horth, mul_one] at hh
+  exact circle_scalar_radial_gap ρ ρ₀
+    (normalizedCircleRayCos ε B) (normalizedCircleRayCos ε B₀) _
+    (normalizedCircleRayCos_bounds ε B hb).1
+    (normalizedCircleRayCos_bounds ε B₀ hb₀).1
+    (by linarith [abs_nonneg (a * (ρ*B - ρ₀*B₀))]) hh
+#print axioms normalizedCircleRay_covector_norm_gap
+#print axioms normalizedCircleRay_covector_radial_gap
+
+/-- The actual transverse ray intercept is controlled by input covector mismatch at nonzero band frequency. -/
+theorem normalizedCircleRay_covector_transverse_gap
+    (ε a ρ ρ₀ B B₀ μ : Real) (ω V : Euclidean 2)
+    (haε : |ε| ≤ a) (ha : 1/2 ≤ a)
+    (hb : |ε*B| ≤ 1/2) (hb₀ : |ε*B₀| ≤ 1/2)
+    (hB : |B| ≤ 8) (hρ₀ : μ/2 ≤ |ρ₀|)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    μ * |B-B₀| ≤ 36 *
+      (|ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
+        |a * (ρ*B - ρ₀*B₀)|) := by
+  let E := |ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
+    |a * (ρ*B - ρ₀*B₀)|
+  have hE : 0 ≤ E := add_nonneg (abs_nonneg _) (abs_nonneg _)
+  have hr := normalizedCircleRay_covector_radial_gap ε a ρ ρ₀ B B₀ ω V
+    haε hb hb₀ hω hV horth
+  change |ρ-ρ₀| ≤ 2*E at hr
+  have hc : |ρ*B - ρ₀*B₀| ≤ 2*E := by
+    have hp := mul_le_mul_of_nonneg_right ha (abs_nonneg (ρ*B-ρ₀*B₀))
+    have hh : |a*(ρ*B-ρ₀*B₀)| ≤ E := by
+      dsimp [E]; linarith [abs_nonneg (ρ * normalizedCircleRayCos ε B -
+        ρ₀ * normalizedCircleRayCos ε B₀)]
+    rw [abs_mul, abs_of_nonneg (by linarith : 0 ≤ a)] at hh
+    linarith
+  have hId : ρ₀*(B-B₀) = (ρ*B-ρ₀*B₀) - (ρ-ρ₀)*B := by ring
+  have hh : |ρ₀| *|B-B₀| ≤ |ρ*B-ρ₀*B₀| + |ρ-ρ₀| *|B| := by
+    rw [← abs_mul, hId]
+    exact (abs_sub _ _).trans_eq (by rw [abs_mul])
+  have hprod : |ρ-ρ₀| *|B| ≤ 16*E := by
+    have hp := mul_le_mul hr hB (abs_nonneg B) (by positivity : 0 ≤ 2*E)
+    nlinarith
+  have hμp := mul_le_mul_of_nonneg_right hρ₀ (abs_nonneg (B-B₀))
+  change μ * |B-B₀| ≤ 36*E
+  nlinarith
+#print axioms normalizedCircleRay_covector_transverse_gap
+
+/-- The source covector mismatch and scalar incidence mismatch control the distance to the actual anchored ray at packet scale. -/
+theorem normalizedCircleRay_covector_tube_gap
+    (ε a ρ ρ₀ B B₀ L u s T : Real) (ω V : Euclidean 2)
+    (haε : |ε| ≤ a) (ha : 1/2 ≤ a)
+    (hb : |ε*B| ≤ 1/2) (hb₀ : |ε*B₀| ≤ 1/2)
+    (hB : |B| ≤ 8) (hL : 0 < L) (hρ₀ : L^2/2 ≤ |ρ₀|)
+    (hε : |ε| ≤ 1/64) (hs : |s| ≤ 8)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    L * ‖(normalizedCircleRayTerminal ε u B ω V -
+        s • normalizedCircleRayNormal ε B ω V) -
+      (normalizedCircleRayTerminal ε u B₀ ω V -
+        T • normalizedCircleRayNormal ε B₀ ω V)‖ ≤
+      108 * ((|ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
+        |a * (ρ*B - ρ₀*B₀)|) / L) + L * |s-T| := by
+  let E := |ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
+    |a * (ρ*B - ρ₀*B₀)|
+  have hg := normalizedCircleRay_covector_transverse_gap ε a ρ ρ₀ B B₀ (L^2)
+    ω V haε ha hb hb₀ hB hρ₀ hω hV horth
+  change L^2 * |B-B₀| ≤ 36*E at hg
+  have hscaled : L * |B-B₀| ≤ 36*(E/L) := by
+    rw [← mul_div_assoc]
+    apply (le_div_iff₀ hL).2
+    nlinarith [hg]
+  have hd := normalizedCircleRay_distance_le ε u B B₀ s T ω V
+    hb hb₀ hω hV horth
+  have hp := mul_le_mul hε hs (abs_nonneg s) (by norm_num : (0:Real) ≤ 1/64)
+  have hcoef : 2 + 2*|ε| *|s| ≤ 3 := by nlinarith
+  have hsmall : ‖(normalizedCircleRayTerminal ε u B ω V -
+        s • normalizedCircleRayNormal ε B ω V) -
+      (normalizedCircleRayTerminal ε u B₀ ω V -
+        T • normalizedCircleRayNormal ε B₀ ω V)‖ ≤ 3*|B-B₀| + |s-T| :=
+    hd.trans (by gcongr)
+  have hh := mul_le_mul_of_nonneg_left hsmall hL.le
+  change L * _ ≤ 108*(E/L) + L*|s-T|
+  nlinarith
+#print axioms normalizedCircleRay_covector_tube_gap
+
+
+#print axioms normalizedCircleRay_inverse
+
+/-- Rectangular source version of the actual source/ray integral transport, on the compact radial and transverse windows used for the weak incidence maximal estimate. -/
+theorem normalizedCircle_source_ray_rectangle_lintegral_le
+    (ε : Real) (hε : |ε| ≤ 1/32)
+    (G : Euclidean 2 → Euclidean 2 → ENNReal)
+    (hG : Measurable (Function.uncurry G)) :
+    (∫⁻ B in Icc (-8 : Real) 8,
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ u in Icc (-4 : Real) 4,
+          G (normalizedCircleRayTerminal ε u B (ω : Euclidean 2)
+              (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+            (normalizedCircleRayNormal ε B (ω : Euclidean 2)
+              (normalizedCircleQuarterTurn (ω : Euclidean 2))))
+        ∂unitSurfaceMeasure 2) ≤
+      2 * ∫⁻ n : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ p : Euclidean 2, G p (n : Euclidean 2)) ∂unitSurfaceMeasure 2 := by
+  let K : Metric.sphere (0 : Euclidean 2) 1 → (Real × Real) → ENNReal :=
+    fun ω q => G (normalizedCircleRayTerminal ε q.1 q.2 (ω : Euclidean 2)
+      (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+      (normalizedCircleRayNormal ε q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+  have hm : Measurable (fun z : (Real × Metric.sphere (0 : Euclidean 2) 1) × Real =>
+      K z.1.2 (z.2,z.1.1)) := by
+    change Measurable (Function.uncurry G ∘ (fun z :
+      (Real × Metric.sphere (0 : Euclidean 2) 1) × Real =>
+      (normalizedCircleRayTerminal ε z.2 z.1.1 (z.1.2 : Euclidean 2)
+        (normalizedCircleQuarterTurn (z.1.2 : Euclidean 2)),
+       normalizedCircleRayNormal ε z.1.1 (z.1.2 : Euclidean 2)
+        (normalizedCircleQuarterTurn (z.1.2 : Euclidean 2)))))
+    apply hG.comp
+    unfold normalizedCircleRayTerminal normalizedCircleRayNormal
+      normalizedCircleRayOffset normalizedCircleRayCos
+    have hj := normalizedCircleQuarterTurn.continuous
+    fun_prop
+  have hInner : Measurable (fun z : Real × Metric.sphere (0 : Euclidean 2) 1 =>
+      ∫⁻ u in Icc (-4 : Real) 4, K z.2 (u,z.1)) :=
+    hm.lintegral_prod_right'
+  have hK (ω : Metric.sphere (0 : Euclidean 2) 1) : Measurable (K ω) := by
+    dsimp [K]
+    change Measurable (Function.uncurry G ∘ (fun q : Real × Real =>
+      (normalizedCircleRayTerminal ε q.1 q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)),
+       normalizedCircleRayNormal ε q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)))))
+    apply hG.comp
+    unfold normalizedCircleRayTerminal normalizedCircleRayNormal
+      normalizedCircleRayOffset normalizedCircleRayCos
+    have hj := normalizedCircleQuarterTurn.continuous
+    fun_prop
+  have hsub : Icc (-4 : Real) 4 ×ˢ Icc (-8 : Real) 8 ⊆
+      {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2} := by
+    intro q hq
+    have hu : |q.1| ≤ 4 := abs_le.mpr hq.1
+    have hb : |q.2| ≤ 8 := abs_le.mpr hq.2
+    constructor
+    · rw [abs_mul]
+      have hh := mul_le_mul hε hu (abs_nonneg q.1) (by norm_num : (0:Real) ≤ 1/32)
+      linarith
+    · rw [abs_mul]
+      have hh := mul_le_mul hε hb (abs_nonneg q.2) (by norm_num : (0:Real) ≤ 1/32)
+      linarith
+  change (∫⁻ B in Icc (-8 : Real) 8, ∫⁻ ω,
+    (∫⁻ u in Icc (-4 : Real) 4, K ω (u,B)) ∂unitSurfaceMeasure 2) ≤ _
+  calc
+    _ = ∫⁻ ω, (∫⁻ B in Icc (-8 : Real) 8,
+        ∫⁻ u in Icc (-4 : Real) 4, K ω (u,B)) ∂unitSurfaceMeasure 2 :=
+      lintegral_lintegral_swap hInner.aemeasurable
+    _ = ∫⁻ ω, (∫⁻ q in Icc (-4 : Real) 4 ×ˢ Icc (-8 : Real) 8, K ω q)
+        ∂unitSurfaceMeasure 2 := by
+      apply lintegral_congr
+      intro ω
+      rw [← lintegral_prod_symm (K ω) (hK ω).aemeasurable,
+        Measure.prod_restrict, ← Measure.volume_eq_prod]
+    _ ≤ ∫⁻ ω, (∫⁻ q in {q : Real × Real | |ε*q.1| ≤ 1/2 ∧ |ε*q.2| ≤ 1/2}, K ω q)
+        ∂unitSurfaceMeasure 2 := by
+      apply lintegral_mono
+      intro ω
+      exact lintegral_mono_set hsub
+    _ ≤ _ := normalizedCircle_source_ray_lintegral_le ε G hG
+#print axioms normalizedCircle_source_ray_rectangle_lintegral_le
+
+/-- The literal cosine/sine circle parametrization, using the existing volume-compatible Cartesian identification of the Euclidean plane. -/
+noncomputable def normalizedCirclePolarDirection (θ : Real) : Euclidean 2 :=
+  normalizedCircleCartesianMeasurableEquiv (Real.cos θ, Real.sin θ)
+/-- Continuity of the actual angular source parametrization. -/
+theorem normalizedCirclePolarDirection_continuous :
+    Continuous normalizedCirclePolarDirection := by
+  have heq : normalizedCirclePolarDirection = fun θ =>
+      Real.cos θ • EuclideanSpace.basisFun (Fin 2) Real 0 +
+        Real.sin θ • EuclideanSpace.basisFun (Fin 2) Real 1 := by
+    funext θ
+    ext i
+    fin_cases i <;>
+      simp [normalizedCirclePolarDirection, normalizedCircleCartesianMeasurableEquiv,
+        EuclideanSpace.basisFun_apply]
+  rw [heq]
+  fun_prop
+/-- The polar direction lies on the actual unit circle. -/
+theorem norm_normalizedCirclePolarDirection (θ : Real) :
+    ‖normalizedCirclePolarDirection θ‖ = 1 := by
+  have hh : ‖normalizedCirclePolarDirection θ‖^2 = 1 := by
+    rw [EuclideanSpace.real_norm_sq_eq]
+    simp [normalizedCirclePolarDirection, normalizedCircleCartesianMeasurableEquiv,
+      Fin.sum_univ_two, Real.cos_sq_add_sin_sq]
+  nlinarith [norm_nonneg (normalizedCirclePolarDirection θ)]
+/-- The ordinary planar polar map is radial multiplication of the actual cosine/sine direction. -/
+theorem normalizedCircleCartesian_polar_symm (q : Real × Real) :
+    normalizedCircleCartesianMeasurableEquiv (polarCoord.symm q) =
+      q.1 • normalizedCirclePolarDirection q.2 := by
+  rcases q with ⟨r,θ⟩
+  ext i
+  fin_cases i <;>
+    simp [polarCoord_symm_apply, normalizedCirclePolarDirection,
+      normalizedCircleCartesianMeasurableEquiv]
+/-- Exact planar polar integration in the same Euclidean coordinates as the normalized circle operator. -/
+theorem normalizedCircle_polar_lintegral (F : Euclidean 2 → ENNReal) :
+    (∫⁻ X : Euclidean 2, F X) =
+      ∫⁻ q in Ioi (0 : Real) ×ˢ Ioo (-Real.pi) Real.pi,
+        ENNReal.ofReal q.1 * F (q.1 • normalizedCirclePolarDirection q.2) := by
+  have hcart : MeasurePreserving normalizedCircleCartesianMeasurableEquiv
+      (volume : Measure (Real × Real)) (volume : Measure (Euclidean 2)) :=
+    (PiLp.volume_preserving_toLp (Fin 2)).comp
+      ((volume_preserving_finTwoArrow Real).symm MeasurableEquiv.finTwoArrow)
+  have heq := hcart.lintegral_comp_emb
+    normalizedCircleCartesianMeasurableEquiv.measurableEmbedding F
+  rw [← heq, ← lintegral_comp_polarCoord_symm]
+  simp only [polarCoord_target, normalizedCircleCartesian_polar_symm, smul_eq_mul]
+
+/-- Exact raw surface measure to angular Lebesgue measure transport. Comparing genuine sphere polar coordinates with ordinary planar polar coordinates retains the full circle mass, so no probability normalization or implicit factor is introduced. This is the angular atlas measure bridge for repair (9). -/
+theorem normalizedCircle_unitSurface_lintegral_angle
+    (H : Euclidean 2 → ENNReal) (hH : Measurable H) :
+    (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+      H (ω : Euclidean 2) ∂unitSurfaceMeasure 2) =
+      ∫⁻ θ in Ioo (-Real.pi) Real.pi, H (normalizedCirclePolarDirection θ) := by
+  let R : Real → ENNReal := fun r => if r < 1 then 1 else 0
+  have hR : Measurable R := by
+    dsimp [R]
+    exact measurable_const.ite measurableSet_Iio measurable_const
+  let B : ENNReal := ∫⁻ r : Ioi (0 : Real), R r ∂Measure.volumeIoiPow 1
+  have hB : B = ENNReal.ofReal (1/2 : Real) := by
+    let one : Ioi (0 : Real) := ⟨1, by norm_num⟩
+    change (∫⁻ r : Ioi (0 : Real), (Iio one).indicator (fun _ => (1:ENNReal)) r
+      ∂Measure.volumeIoiPow 1) = _
+    rw [lintegral_indicator measurableSet_Iio]
+    simp only [lintegral_one, Measure.restrict_apply_univ]
+    rw [Measure.volumeIoiPow_apply_Iio]
+    congr 1
+    norm_num [one]
+  let F : Euclidean 2 → ENNReal := fun X =>
+    if ‖X‖ < 1 then H (‖X‖⁻¹ • X) else 0
+  have hN : Measurable (fun X : Euclidean 2 => ‖X‖⁻¹ • X) :=
+    measurable_norm.inv.smul measurable_id
+  have hF : Measurable F := by
+    dsimp [F]
+    exact (hH.comp hN).ite (measurableSet_lt measurable_norm measurable_const) measurable_const
+  have hFr (r : Real) (hr : 0 < r) (ω : Euclidean 2) (hω : ‖ω‖ = 1) :
+      F (r • ω) = H ω * R r := by
+    have hn : ‖r • ω‖ = r := by rw [norm_smul, Real.norm_eq_abs, abs_of_pos hr, hω, mul_one]
+    have hnor : ‖r • ω‖⁻¹ • (r • ω) = ω := by
+      rw [hn, smul_smul, inv_mul_cancel₀ hr.ne', one_smul]
+    dsimp [F,R]
+    rw [hnor, hn]
+    split_ifs <;> simp
+  have hSphere :
+      (∫⁻ X : Euclidean 2, F X) =
+        B * ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          H (ω : Euclidean 2) ∂unitSurfaceMeasure 2 := by
+    have hm : Measurable (fun q : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        F (q.2.1 • (q.1 : Euclidean 2))) := by
+      apply hF.comp
+      have hh : Continuous (fun q : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
+        q.2.1 • (q.1 : Euclidean 2)) := by fun_prop
+      exact hh.measurable
+    calc
+      _ = ∫⁻ q : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real),
+          F (q.2.1 • (q.1 : Euclidean 2)) ∂
+            ((unitSurfaceMeasure 2).prod (Measure.volumeIoiPow 1)) :=
+        lintegral_polar_unitSurfaceMeasure (by norm_num : 0 < 2) F
+      _ = ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          (∫⁻ r : Ioi (0 : Real), F (r.1 • (ω : Euclidean 2))
+            ∂Measure.volumeIoiPow 1) ∂unitSurfaceMeasure 2 :=
+        lintegral_prod _ hm.aemeasurable
+      _ = ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+          H (ω : Euclidean 2) * B ∂unitSurfaceMeasure 2 := by
+        apply lintegral_congr
+        intro ω
+        have hω : ‖(ω : Euclidean 2)‖ = 1 := by
+          simpa only [Metric.mem_sphere, dist_zero_right] using ω.property
+        rw [lintegral_congr (fun r : Ioi (0 : Real) => hFr r.1 r.2 (ω : Euclidean 2) hω)]
+        exact lintegral_const_mul _ (hR.comp measurable_subtype_coe)
+      _ = _ := by
+        calc
+          _ = (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+              H (ω : Euclidean 2) ∂unitSurfaceMeasure 2) * B :=
+            lintegral_mul_const _ (hH.comp measurable_subtype_coe)
+          _ = _ := mul_comm _ _
+  have hAngle :
+      (∫⁻ X : Euclidean 2, F X) =
+        B * ∫⁻ θ in Ioo (-Real.pi) Real.pi, H (normalizedCirclePolarDirection θ) := by
+    have hc : Continuous (fun q : Real × Real =>
+        q.1 • normalizedCirclePolarDirection q.2) :=
+      continuous_fst.smul (normalizedCirclePolarDirection_continuous.comp continuous_snd)
+    have hm : Measurable (fun q : Real × Real =>
+        ENNReal.ofReal q.1 * F (q.1 • normalizedCirclePolarDirection q.2)) :=
+      measurable_fst.ennreal_ofReal.mul (hF.comp hc.measurable)
+    have hRad :
+        (∫⁻ r in Ioi (0 : Real), ENNReal.ofReal r * R r) = B := by
+      simpa only [pow_one] using (lintegral_volumeIoiPow 1 R hR).symm
+    calc
+      _ = ∫⁻ q in Ioi (0 : Real) ×ˢ Ioo (-Real.pi) Real.pi,
+          ENNReal.ofReal q.1 * F (q.1 • normalizedCirclePolarDirection q.2) :=
+        normalizedCircle_polar_lintegral F
+      _ = ∫⁻ θ in Ioo (-Real.pi) Real.pi,
+          ∫⁻ r in Ioi (0 : Real),
+            ENNReal.ofReal r * F (r • normalizedCirclePolarDirection θ) := by
+        rw [Measure.volume_eq_prod]
+        exact setLIntegral_prod_symm _ hm.aemeasurable
+      _ = ∫⁻ θ in Ioo (-Real.pi) Real.pi,
+          H (normalizedCirclePolarDirection θ) * B := by
+        apply lintegral_congr
+        intro θ
+        calc
+          _ = ∫⁻ r in Ioi (0 : Real),
+              H (normalizedCirclePolarDirection θ) * (ENNReal.ofReal r * R r) := by
+            apply lintegral_congr_ae
+            filter_upwards [ae_restrict_mem measurableSet_Ioi] with r hr
+            rw [hFr r hr _ (norm_normalizedCirclePolarDirection θ)]
+            ring
+          _ = H (normalizedCirclePolarDirection θ) * B := by
+            calc
+              _ = H (normalizedCirclePolarDirection θ) *
+                  ∫⁻ r in Ioi (0 : Real), ENNReal.ofReal r * R r :=
+                lintegral_const_mul _ (measurable_id.ennreal_ofReal.mul hR)
+              _ = _ := by rw [hRad]
+      _ = _ := by
+        calc
+          _ = (∫⁻ θ in Ioo (-Real.pi) Real.pi,
+              H (normalizedCirclePolarDirection θ)) * B :=
+            lintegral_mul_const _
+              (hH.comp normalizedCirclePolarDirection_continuous.measurable)
+          _ = _ := mul_comm _ _
+  have hEq := hSphere.symm.trans hAngle
+  have hunit : (2:ENNReal) * B = 1 := by
+    rw [hB, show (2:ENNReal) = ENNReal.ofReal (2:Real) by simp,
+      ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 2)]
+    norm_num
+  have hh := congrArg (fun v : ENNReal => 2 * v) hEq
+  simpa only [← mul_assoc, hunit, one_mul] using hh
+
+/-- The literal cosine/sine parametrization pushes angular Lebesgue measure on the principal interval to ambient raw circle surface measure. -/
+theorem normalizedCircle_unitSurface_map_angle :
+    Measure.map (fun ω : Metric.sphere (0 : Euclidean 2) 1 => (ω : Euclidean 2))
+      (unitSurfaceMeasure 2) =
+      Measure.map normalizedCirclePolarDirection
+        (volume.restrict (Ioo (-Real.pi) Real.pi)) := by
+  apply Measure.ext_of_lintegral
+  intro H hH
+  rw [lintegral_map hH measurable_subtype_coe,
+    lintegral_map hH normalizedCirclePolarDirection_continuous.measurable]
+  exact normalizedCircle_unitSurface_lintegral_angle H hH
+/-- Exact Bochner angular representation of the raw circle integral, including the nonintegrable case. This lets the actual atlas packet kernel use Euclidean source Fourier cubes. -/
+theorem normalizedCircle_unitSurface_integral_angle
+    (F : Euclidean 2 → Complex) (hF : Measurable F) :
+    (∫ ω : Metric.sphere (0 : Euclidean 2) 1,
+      F (ω : Euclidean 2) ∂unitSurfaceMeasure 2) =
+      ∫ θ in Ioo (-Real.pi) Real.pi, F (normalizedCirclePolarDirection θ) := by
+  calc
+    _ = ∫ X : Euclidean 2, F X ∂Measure.map
+        (fun ω : Metric.sphere (0 : Euclidean 2) 1 => (ω : Euclidean 2))
+          (unitSurfaceMeasure 2) :=
+      (integral_map measurable_subtype_coe.aemeasurable hF.aestronglyMeasurable).symm
+    _ = ∫ X : Euclidean 2, F X ∂Measure.map normalizedCirclePolarDirection
+        (volume.restrict (Ioo (-Real.pi) Real.pi)) := by
+      rw [normalizedCircle_unitSurface_map_angle]
+    _ = _ := integral_map normalizedCirclePolarDirection_continuous.measurable.aemeasurable
+      hF.aestronglyMeasurable
+/-- The polar source parametrization is the standard orthonormal-basis cosine/sine formula used by the MSS angular charts. -/
+theorem normalizedCirclePolarDirection_eq_basis (θ : Real) :
+    normalizedCirclePolarDirection θ =
+      Real.cos θ • EuclideanSpace.basisFun (Fin 2) Real 0 +
+        Real.sin θ • EuclideanSpace.basisFun (Fin 2) Real 1 := by
+  ext i
+  fin_cases i <;>
+    simp [normalizedCirclePolarDirection, normalizedCircleCartesianMeasurableEquiv,
+      EuclideanSpace.basisFun_apply]
+#print axioms normalizedCircle_unitSurface_map_angle
+#print axioms normalizedCircle_unitSurface_integral_angle
+
+#print axioms normalizedCircle_unitSurface_lintegral_angle
+
+#print axioms normalizedCircle_polar_lintegral
+
+/-- Source/ray transport on any radial source window of half-width at most eight. This includes the enlarged analysis source window needed after Fourier-cube projection, while retaining the same uniform factor two. -/
+theorem normalizedCircle_source_ray_window_lintegral_le
+    (ε : Real) (hε : |ε| ≤ 1/32) (U : Real) (hU : U ≤ 8)
+    (G : Euclidean 2 → Euclidean 2 → ENNReal)
+    (hG : Measurable (Function.uncurry G)) :
+    (∫⁻ B in Icc (-8 : Real) 8,
+      ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ u in Icc (-U) U,
+          G (normalizedCircleRayTerminal ε u B (ω : Euclidean 2)
+              (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+            (normalizedCircleRayNormal ε B (ω : Euclidean 2)
+              (normalizedCircleQuarterTurn (ω : Euclidean 2))))
+        ∂unitSurfaceMeasure 2) ≤
+      2 * ∫⁻ n : Metric.sphere (0 : Euclidean 2) 1,
+        (∫⁻ p : Euclidean 2, G p (n : Euclidean 2)) ∂unitSurfaceMeasure 2 := by
+  let K : Metric.sphere (0 : Euclidean 2) 1 → (Real × Real) → ENNReal :=
+    fun ω q => G (normalizedCircleRayTerminal ε q.1 q.2 (ω : Euclidean 2)
+      (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+      (normalizedCircleRayNormal ε q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)))
+  have hm : Measurable (fun z : (Real × Metric.sphere (0 : Euclidean 2) 1) × Real =>
+      K z.1.2 (z.2,z.1.1)) := by
+    change Measurable (Function.uncurry G ∘ (fun z :
+      (Real × Metric.sphere (0 : Euclidean 2) 1) × Real =>
+      (normalizedCircleRayTerminal ε z.2 z.1.1 (z.1.2 : Euclidean 2)
+        (normalizedCircleQuarterTurn (z.1.2 : Euclidean 2)),
+       normalizedCircleRayNormal ε z.1.1 (z.1.2 : Euclidean 2)
+        (normalizedCircleQuarterTurn (z.1.2 : Euclidean 2)))))
+    apply hG.comp
+    unfold normalizedCircleRayTerminal normalizedCircleRayNormal
+      normalizedCircleRayOffset normalizedCircleRayCos
+    have hj := normalizedCircleQuarterTurn.continuous
+    fun_prop
+  have hInner : Measurable (fun z : Real × Metric.sphere (0 : Euclidean 2) 1 =>
+      ∫⁻ u in Icc (-U) U, K z.2 (u,z.1)) :=
+    hm.lintegral_prod_right'
+  have hK (ω : Metric.sphere (0 : Euclidean 2) 1) : Measurable (K ω) := by
+    dsimp [K]
+    change Measurable (Function.uncurry G ∘ (fun q : Real × Real =>
+      (normalizedCircleRayTerminal ε q.1 q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)),
+       normalizedCircleRayNormal ε q.2 (ω : Euclidean 2)
+        (normalizedCircleQuarterTurn (ω : Euclidean 2)))))
+    apply hG.comp
+    unfold normalizedCircleRayTerminal normalizedCircleRayNormal
+      normalizedCircleRayOffset normalizedCircleRayCos
+    have hj := normalizedCircleQuarterTurn.continuous
+    fun_prop
+  have hsub : Icc (-U) U ×ˢ Icc (-8 : Real) 8 ⊆
+      {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2} := by
+    intro q hq
+    have hu : |q.1| ≤ U := abs_le.mpr hq.1
+    have hb : |q.2| ≤ 8 := abs_le.mpr hq.2
+    constructor
+    · rw [abs_mul]
+      have hh := mul_le_mul hε hu (abs_nonneg q.1) (by norm_num : (0:Real) ≤ 1/32)
+      nlinarith
+    · rw [abs_mul]
+      have hh := mul_le_mul hε hb (abs_nonneg q.2) (by norm_num : (0:Real) ≤ 1/32)
+      linarith
+  change (∫⁻ B in Icc (-8 : Real) 8, ∫⁻ ω,
+    (∫⁻ u in Icc (-U) U, K ω (u,B)) ∂unitSurfaceMeasure 2) ≤ _
+  calc
+    _ = ∫⁻ ω, (∫⁻ B in Icc (-8 : Real) 8,
+        ∫⁻ u in Icc (-U) U, K ω (u,B)) ∂unitSurfaceMeasure 2 :=
+      lintegral_lintegral_swap hInner.aemeasurable
+    _ = ∫⁻ ω, (∫⁻ q in Icc (-U) U ×ˢ Icc (-8 : Real) 8, K ω q)
+        ∂unitSurfaceMeasure 2 := by
+      apply lintegral_congr
+      intro ω
+      rw [← lintegral_prod_symm (K ω) (hK ω).aemeasurable,
+        Measure.prod_restrict, ← Measure.volume_eq_prod]
+    _ ≤ ∫⁻ ω, (∫⁻ q in {q : Real × Real | |ε*q.1| ≤ 1/2 ∧ |ε*q.2| ≤ 1/2}, K ω q)
+        ∂unitSurfaceMeasure 2 := by
+      apply lintegral_mono
+      intro ω
+      exact lintegral_mono_set hsub
+    _ ≤ _ := normalizedCircle_source_ray_lintegral_le ε G hG
+#print axioms normalizedCircle_source_ray_window_lintegral_le
+
+/-! ### Literal thin normal projection and temporal tails
+
+The supplied repair's Sections 4--5 use the existing thin-cone MSS
+recombination. Retain the actual normal-frequency projector kernel and
+its temporal moments instead of assuming exact cone support of a compact
+time cutoff.
+-/
+
+/-- The actual normal-frequency cutoff dilated to width h. -/
+def normalizedCircleThinNormalFrequencyProfile
+    (β : SchwartzMap Real Complex) (h : Real) (hh : h ≠ 0) :
+    SchwartzMap Real Complex :=
+  (SchwartzMap.compCLMOfContinuousLinearEquiv Complex
+    (ContinuousLinearEquiv.smulLeft (Units.mk0 h⁻¹ (inv_ne_zero hh)))) β
+theorem normalizedCircleThinNormalFrequencyProfile_apply
+    (β : SchwartzMap Real Complex) (h : Real) (hh : h ≠ 0) (τ : Real) :
+    normalizedCircleThinNormalFrequencyProfile β h hh τ = β (h⁻¹ * τ) := by
+  simp [normalizedCircleThinNormalFrequencyProfile]
+theorem normalizedCircleThinNormalFrequencyProfile_inverse
+    (β : SchwartzMap Real Complex) (h : Real) (hh : 0 < h) (t : Real) :
+    (𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h hh.ne') :
+      SchwartzMap Real Complex) t = (h : Complex) * (𝓕⁻ β : SchwartzMap Real Complex) (h*t) := by
+  rw [SchwartzMap.fourierInv_coe]
+  change 𝓕⁻ (fun τ : Real => β (h⁻¹ * τ)) t = _
+  simpa only [smul_eq_mul, Module.finrank_self, pow_one, Complex.real_smul, SchwartzMap.fourierInv_coe] using
+    (fourierInv_comp_inv_smul (β : Real → Complex) hh t)
+
+/-- The literal spatial-cube multiplier times the thin cone-normal cutoff. -/
+def normalizedCircleThinNormalProjectorSymbol
+    (B : SchwartzMap (Euclidean 2) Complex) (β : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : h ≠ 0) :
+    SchwartzMap JointWaveSpaceTime Complex :=
+  jointSchwartzModulatedAnnularProfile B
+    (𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h hh)) rho
+
+theorem normalizedCircleThinNormalProjectorSymbol_apply
+    (B : SchwartzMap (Euclidean 2) Complex) (β : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real) (h : Real) (hh : h ≠ 0)
+    (z : WaveSpaceTime) :
+    normalizedCircleThinNormalProjectorSymbol B β rho h hh (WithLp.toLp 2 z) =
+      B z.1 * β (h⁻¹ * (z.2 - rho z.1)) := by
+  rw [normalizedCircleThinNormalProjectorSymbol, jointSchwartzModulatedAnnularProfile_apply]
+  rw [← SchwartzMap.fourier_coe, FourierTransform.fourier_fourierInv_eq]
+  rw [normalizedCircleThinNormalFrequencyProfile_apply]
+
+/-- Exact physical kernel of the actual narrow normal-frequency multiplier:
+the temporal scaled inverse profile times the literal half-wave cube kernel. -/
+theorem normalizedCircleThinNormalProjector_inverse
+    (B : SchwartzMap (Euclidean 2) Complex) (β : SchwartzMap Real Complex)
+    (rho : SchwartzMap (Euclidean 2) Real)
+    (hrho : ∀ xi ∈ Function.support (B : Euclidean 2 → Complex), rho xi = ‖xi‖)
+    (h : Real) (hh : 0 < h) (z : WaveSpaceTime) :
+    spaceTimeFourierInv
+      (jointSchwartzRaw (normalizedCircleThinNormalProjectorSymbol B β rho h hh.ne')) z =
+      ((h : Complex) * (𝓕⁻ β : SchwartzMap Real Complex) (h*z.2)) *
+        FourierTransform.fourierInv
+          (fun xi : Euclidean 2 => B xi * halfWaveMultiplier WaveSign.plus z.2 xi) z.1 := by
+  rw [normalizedCircleThinNormalProjectorSymbol,
+    spaceTimeFourierInv_jointSchwModulatedAnnProf_eq_halfWave_of_eq_norm_on_supp
+      B (𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h hh.ne')) rho hrho z,
+    normalizedCircleThinNormalFrequencyProfile_inverse β h hh z.2]
+#print axioms normalizedCircleThinNormalFrequencyProfile_inverse
+#print axioms normalizedCircleThinNormalProjectorSymbol_apply
+#print axioms normalizedCircleThinNormalProjector_inverse
+
+/-- Every polynomial temporal moment of an actual Schwartz profile is finite. -/
+theorem normalizedCircle_temporal_schwartz_weight_integrable
+    (f : SchwartzMap Real Complex) (J : Nat) :
+    Integrable (fun t : Real => (1+|t|)^J * ‖f t‖) := by
+  have hupper : Integrable (fun t : Real =>
+      (2 : Real)^(J-1) * (‖f t‖ + |t|^J * ‖f t‖)) := by
+    exact (f.integrable.norm.add
+      (by simpa only [Real.norm_eq_abs] using f.integrable_pow_mul volume J)).const_mul _
+  apply hupper.mono (by fun_prop)
+  filter_upwards with t
+  simp only [Real.norm_eq_abs]
+  rw [abs_of_nonneg (show 0 ≤ (1+|t|)^J * ‖f t‖ by positivity),
+    abs_of_nonneg (show 0 ≤ (2:Real)^(J-1) * (‖f t‖ + |t|^J * ‖f t‖) by positivity)]
+  have hp := add_pow_le (by norm_num : (0:Real) ≤ 1) (abs_nonneg t) J
+  simp only [one_pow] at hp
+  have hh := mul_le_mul_of_nonneg_right hp (norm_nonneg (f t))
+  convert hh using 1
+  ring
+
+/-- All weighted temporal L1 moments of the literal thin normal-projector
+kernel stay uniform as its normal frequency width increases. -/
+theorem normalizedCircleThinNormalProjector_temporal_weighted_mass_le
+    (β : SchwartzMap Real Complex) (J : Nat)
+    (h : Real) (hh : 1 ≤ h) :
+    (∫ t : Real, (1+|t|)^J *
+      ‖(𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h (by linarith : h ≠ 0)) :
+        SchwartzMap Real Complex) t‖) ≤
+      ∫ t : Real, (1+|t|)^J * ‖(𝓕⁻ β : SchwartzMap Real Complex) t‖ := by
+  have hp : 0 < h := by linarith
+  let f : SchwartzMap Real Complex := 𝓕⁻ β
+  let G : Real → Real := fun t => (1+|t|)^J * ‖f t‖
+  have hG : Integrable G := normalizedCircle_temporal_schwartz_weight_integrable f J
+  have hscale : Integrable (fun t : Real => h * G (h*t)) :=
+    (hG.comp_mul_left' hp.ne').const_mul h
+  have hleft := normalizedCircle_temporal_schwartz_weight_integrable
+    (𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h (by linarith : h ≠ 0))) J
+  calc
+    _ ≤ ∫ t : Real, h * G (h*t) := by
+      apply integral_mono hleft hscale
+      intro t
+      dsimp only
+      rw [normalizedCircleThinNormalFrequencyProfile_inverse β h hp t]
+      simp only [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hp]
+      have ht : |t| ≤ |h*t| := by
+        rw [abs_mul, abs_of_pos hp]
+        nlinarith [abs_nonneg t]
+      change (1+|t|)^J * (h * ‖f (h*t)‖) ≤ h * ((1+|h*t|)^J * ‖f (h*t)‖)
+      have hw := pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+|t|) (by linarith : 1+|t| ≤ 1+|h*t|) J
+      nlinarith [mul_le_mul_of_nonneg_right hw (mul_nonneg hp.le (norm_nonneg (f (h*t))))]
+    _ = ∫ t : Real, G t := by
+      rw [integral_const_mul, Measure.integral_comp_mul_left,
+        abs_of_pos (inv_pos.mpr hp), smul_eq_mul, ← mul_assoc,
+        mul_inv_cancel₀ hp.ne', one_mul]
+    _ = _ := rfl
+#print axioms normalizedCircle_temporal_schwartz_weight_integrable
+#print axioms normalizedCircleThinNormalProjector_temporal_weighted_mass_le
+
+
+/-- The part of the literal temporal projector outside a fixed time
+window has arbitrarily many powers of the normal-frequency width. -/
+theorem normalizedCircleThinNormalProjector_temporal_tail_mass_le
+    (β : SchwartzMap Real Complex) (D J : Nat)
+    (h : Real) (hh : 1 ≤ h) :
+    h^J * (∫ t : Real in {t | 1 ≤ |t|}, (1+|t|)^D *
+      ‖(𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h (by linarith : h ≠ 0)) :
+        SchwartzMap Real Complex) t‖) ≤
+      ∫ t : Real, (1+|t|)^(J+D) * ‖(𝓕⁻ β : SchwartzMap Real Complex) t‖ := by
+  have hp : 0 < h := by linarith
+  let f : SchwartzMap Real Complex := 𝓕⁻ β
+  let G : Real → Real := fun t => (1+|t|)^(J+D) * ‖f t‖
+  let K : Real → Real := fun t => h^J * ((1+|t|)^D *
+    ‖(𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h hp.ne') :
+      SchwartzMap Real Complex) t‖)
+  have hG : Integrable G := normalizedCircle_temporal_schwartz_weight_integrable f (J+D)
+  have hscale : Integrable (fun t : Real => h * G (h*t)) :=
+    (hG.comp_mul_left' hp.ne').const_mul h
+  have hK : Integrable K :=
+    (normalizedCircle_temporal_schwartz_weight_integrable
+      (𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h hp.ne')) D).const_mul _
+  have hset : MeasurableSet {t : Real | 1 ≤ |t|} :=
+    measurableSet_le measurable_const continuous_abs.measurable
+  have hpoint (t : Real) (ht : 1 ≤ |t|) : K t ≤ h * G (h*t) := by
+    dsimp only [K,G]
+    rw [normalizedCircleThinNormalFrequencyProfile_inverse β h hp t]
+    simp only [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hp]
+    have hht : |h*t| = h*|t| := by rw [abs_mul, abs_of_pos hp]
+    have hw : |t| ≤ |h*t| := by rw [hht]; nlinarith [abs_nonneg t]
+    have hhwt : h ≤ 1+|h*t| := by rw [hht]; nlinarith
+    have hJ := pow_le_pow_left₀ hp.le hhwt J
+    have hD := pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+|t|)
+      (by linarith : 1+|t| ≤ 1+|h*t|) D
+    have hprod := mul_le_mul hJ hD (by positivity : (0:Real) ≤ (1+|t|)^D)
+      (by positivity : (0:Real) ≤ (1+|h*t|)^J)
+    rw [← pow_add] at hprod
+    have hm := mul_le_mul_of_nonneg_right hprod
+      (mul_nonneg hp.le (norm_nonneg (f (h*t))))
+    nlinarith
+  calc
+    _ = ∫ t : Real in {t | 1 ≤ |t|}, K t := by
+      rw [integral_const_mul]
+    _ ≤ ∫ t : Real in {t | 1 ≤ |t|}, h * G (h*t) :=
+      setIntegral_mono_on hK.integrableOn hscale.integrableOn hset
+        (by intro t ht; exact hpoint t ht)
+    _ ≤ ∫ t : Real, h * G (h*t) :=
+      setIntegral_le_integral hscale (Filter.Eventually.of_forall (by intro t; dsimp [G]; positivity))
+    _ = ∫ t : Real, G t := by
+      rw [integral_const_mul, Measure.integral_comp_mul_left,
+        abs_of_pos (inv_pos.mpr hp), smul_eq_mul, ← mul_assoc,
+        mul_inv_cancel₀ hp.ne', one_mul]
+    _ = _ := rfl
+#print axioms normalizedCircleThinNormalProjector_temporal_tail_mass_le
+
+/-! ### Actual compact-core ray bounds and time-window covariance -/
+
+/-- Every point in the actual source/output analysis core has uniformly
+bounded, exact inverse-ray coordinates, including epsilon zero. -/
+theorem normalizedCircleRay_actual_chart_bounds
+    (ε u : Real) (X ω V : Euclidean 2)
+    (hε : |ε| ≤ 1/64) (hu : |u| ≤ 5) (hX : ‖X‖ ≤ 3)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    let B := inner Real X V / ‖ω + ε • (u • ω - X)‖
+    let s := normalizedCircleIncidence ε X ω u
+    |B| ≤ 8 ∧ |ε*B| ≤ 1/2 ∧ |s| ≤ 8 ∧
+      1/2 ≤ 1+ε*u ∧ |ε| ≤ 1+ε*u ∧
+      X = normalizedCircleRayTerminal ε u B ω V -
+        s • normalizedCircleRayNormal ε B ω V := by
+  let D := ‖ω + ε • (u • ω - X)‖
+  let B := inner Real X V / D
+  let s := normalizedCircleIncidence ε X ω u
+  change |B| ≤ 8 ∧ |ε*B| ≤ 1/2 ∧ |s| ≤ 8 ∧
+    1/2 ≤ 1+ε*u ∧ |ε| ≤ 1+ε*u ∧
+    X = normalizedCircleRayTerminal ε u B ω V -
+      s • normalizedCircleRayNormal ε B ω V
+  have hp := mul_le_mul hε (add_le_add hu hX)
+    (add_nonneg (abs_nonneg u) (norm_nonneg X)) (by norm_num : (0:Real) ≤ 1/64)
+  have hsmall : |ε| * (|u| + ‖X‖) ≤ 1/4 := by nlinarith
+  have hD : 1/2 ≤ D := normalizedCircleIncidence_separation ε X ω u hω (by linarith)
+  have hDp : 0 < D := by linarith
+  have hi : |inner Real X V| ≤ ‖X‖ := by
+    simpa only [hV, mul_one] using abs_real_inner_le_norm X V
+  have hB : |B| ≤ 8 := by
+    dsimp only [B]
+    rw [abs_div, abs_of_pos hDp]
+    apply (div_le_iff₀ hDp).2
+    linarith
+  have hεB : |ε*B| ≤ 1/2 := by
+    rw [abs_mul]
+    have hh := mul_le_mul hε hB (abs_nonneg B) (by norm_num : (0:Real) ≤ 1/64)
+    linarith
+  have hs : |s| ≤ 8 := (abs_normalizedCircleIncidence_le ε X ω u hω).trans
+    (by linarith)
+  have hepu : |ε*u| ≤ 5/64 := by
+    rw [abs_mul]
+    have hh := mul_le_mul hε hu (abs_nonneg u) (by norm_num : (0:Real) ≤ 1/64)
+    nlinarith
+  have hepuLower := (abs_le.mp hepu).1
+  refine ⟨hB,hεB,hs,by linarith,by linarith,?_⟩
+  exact normalizedCircleRay_inverse_of_small ε u X ω V hω hV horth hsmall
+#print axioms normalizedCircleRay_actual_chart_bounds
+
+/-- Exact covariance of the actual ray normal coefficient under doubling
+curvature and halving normalized source coordinates. -/
+theorem normalizedCircleRayCos_double_half (ε B : Real) :
+    normalizedCircleRayCos (2*ε) (B/2) = normalizedCircleRayCos ε B := by
+  unfold normalizedCircleRayCos
+  congr 2
+  ring
+
+theorem normalizedCircleRayOffset_double_half (ε B : Real) :
+    normalizedCircleRayOffset (2*ε) (B/2) = normalizedCircleRayOffset ε B / 2 := by
+  unfold normalizedCircleRayOffset
+  rw [normalizedCircleRayCos_double_half]
+  ring
+
+/-- The true ray normal stays identical under the time-window dilation. -/
+theorem normalizedCircleRayNormal_double_half (ε B : Real) (ω V : Euclidean 2) :
+    normalizedCircleRayNormal (2*ε) (B/2) ω V = normalizedCircleRayNormal ε B ω V := by
+  unfold normalizedCircleRayNormal
+  rw [normalizedCircleRayCos_double_half, show (2*ε)*(B/2) = ε*B by ring]
+
+/-- The true ray intercept has the exact factor one half under the
+time-window dilation used for the L2 density extension. -/
+theorem normalizedCircleRayTerminal_double_half (ε u B : Real) (ω V : Euclidean 2) :
+    normalizedCircleRayTerminal (2*ε) (u/2) (B/2) ω V =
+      (1/2 : Real) • normalizedCircleRayTerminal ε u B ω V := by
+  unfold normalizedCircleRayTerminal
+  rw [normalizedCircleRayOffset_double_half]
+  module
+
+/-- Exact covariance of the complete incidence ray, including the affine
+time coordinate, with no small-curvature or nonzero-scale assumption. -/
+theorem normalizedCircleRay_double_half (ε u B T : Real) (ω V : Euclidean 2) :
+    normalizedCircleRayTerminal (2*ε) (u/2) (B/2) ω V -
+      (T/2) • normalizedCircleRayNormal (2*ε) (B/2) ω V =
+        (1/2 : Real) • (normalizedCircleRayTerminal ε u B ω V -
+          T • normalizedCircleRayNormal ε B ω V) := by
+  rw [normalizedCircleRayTerminal_double_half, normalizedCircleRayNormal_double_half]
+  module
+#print axioms normalizedCircleRay_double_half
+
+/-! ### Exact angular-chart mass and maximal-parameter window -/
+
+theorem normalizedCirclePolarDirection_add_two_pi (θ : Real) :
+    normalizedCirclePolarDirection (θ+2*Real.pi) = normalizedCirclePolarDirection θ := by
+  simp [normalizedCirclePolarDirection, Real.cos_add_two_pi, Real.sin_add_two_pi]
+/-- The enlarged angular analysis chart covers the actual raw circle
+with uniformly bounded multiplicity. -/
+theorem normalizedCircle_unitSurface_lintegral_chart_window_le
+    (H : Euclidean 2 → ENNReal) (hH : Measurable H) :
+    (∫⁻ θ in Icc (-4 : Real) 4, H (normalizedCirclePolarDirection θ)) ≤
+      3 * ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
+        H (ω : Euclidean 2) ∂unitSurfaceMeasure 2 := by
+  let f : Real → ENNReal := fun θ => H (normalizedCirclePolarDirection θ)
+  let F : Real → ENNReal := (Icc (-Real.pi) Real.pi).indicator f
+  have hf : Measurable f := hH.comp normalizedCirclePolarDirection_continuous.measurable
+  have hF : Measurable F := hf.indicator measurableSet_Icc
+  have hper (θ : Real) : f (θ+2*Real.pi) = f θ := by
+    dsimp [f]; rw [normalizedCirclePolarDirection_add_two_pi]
+  have hneg (θ : Real) : f (θ-2*Real.pi) = f θ := by
+    simpa only [sub_add_cancel] using (hper (θ-2*Real.pi)).symm
+  have hpoint (θ : Real) :
+      (Icc (-4 : Real) 4).indicator f θ ≤
+        F θ + F (θ+2*Real.pi) + F (θ-2*Real.pi) := by
+    by_cases ht : θ ∈ Icc (-4 : Real) 4
+    · rw [Set.indicator_of_mem ht]
+      by_cases hl : θ ≤ -Real.pi
+      · have hi : θ+2*Real.pi ∈ Icc (-Real.pi) Real.pi := by
+          constructor <;> nlinarith [ht.1,ht.2,Real.pi_gt_three]
+        have he : F (θ+2*Real.pi) = f θ := by
+          dsimp only [F]
+          rw [Set.indicator_of_mem hi]; exact hper θ
+        rw [← he]
+        exact (le_add_self : F (θ+2*Real.pi) ≤ F θ + F (θ+2*Real.pi)).trans le_self_add
+      · by_cases hr : θ ≤ Real.pi
+        · have hi : θ ∈ Icc (-Real.pi) Real.pi := ⟨le_of_lt (lt_of_not_ge hl),hr⟩
+          have he : F θ = f θ := Set.indicator_of_mem hi f
+          rw [← he]
+          exact (le_self_add : F θ ≤ F θ + F (θ+2*Real.pi)).trans le_self_add
+        · have hi : θ-2*Real.pi ∈ Icc (-Real.pi) Real.pi := by
+            constructor <;> nlinarith [ht.1,ht.2,Real.pi_gt_three]
+          have he : F (θ-2*Real.pi) = f θ := by
+            dsimp only [F]
+            rw [Set.indicator_of_mem hi]; exact hneg θ
+          rw [← he]
+          exact le_add_self
+    · rw [Set.indicator_of_notMem ht]
+      exact bot_le
+  calc
+    _ = ∫⁻ θ, (Icc (-4 : Real) 4).indicator f θ :=
+      (lintegral_indicator measurableSet_Icc f).symm
+    _ ≤ ∫⁻ θ, F θ + F (θ+2*Real.pi) + F (θ-2*Real.pi) := lintegral_mono hpoint
+    _ = (∫⁻ θ, F θ) + (∫⁻ θ, F (θ+2*Real.pi)) + (∫⁻ θ, F (θ-2*Real.pi)) := by
+      have ha : Measurable (fun θ : Real => F (θ+2*Real.pi)) := hF.comp (by fun_prop)
+      have hadd : Measurable (fun θ : Real => F θ + F (θ+2*Real.pi)) := hF.add ha
+      have h1 : (∫⁻ θ : Real, F θ + F (θ+2*Real.pi) + F (θ-2*Real.pi)) =
+          (∫⁻ θ : Real, F θ + F (θ+2*Real.pi)) + (∫⁻ θ : Real, F (θ-2*Real.pi)) := by
+        simpa only [Pi.add_apply] using lintegral_add_left hadd (fun θ => F (θ-2*Real.pi))
+      have h2 : (∫⁻ θ : Real, F θ + F (θ+2*Real.pi)) =
+          (∫⁻ θ : Real, F θ) + (∫⁻ θ : Real, F (θ+2*Real.pi)) := by
+        simpa only [Pi.add_apply] using lintegral_add_left hF (fun θ => F (θ+2*Real.pi))
+      rw [h1,h2]
+    _ = 3 * ∫⁻ θ, F θ := by
+      rw [lintegral_add_right_eq_self F (2*Real.pi)]
+      have hm : (∫⁻ θ : Real, F (θ-2*Real.pi)) = ∫⁻ θ, F θ := by
+        simpa only [sub_eq_add_neg] using lintegral_add_right_eq_self F (-(2*Real.pi))
+      rw [hm]
+      ring
+    _ = _ := by
+      congr 1
+      change (∫⁻ θ, (Icc (-Real.pi) Real.pi).indicator f θ) = _
+      rw [lintegral_indicator measurableSet_Icc f,
+        ← restrict_Ioo_eq_restrict_Icc]
+      exact (normalizedCircle_unitSurface_lintegral_angle H hH).symm
+#print axioms normalizedCircle_unitSurface_lintegral_chart_window_le
+
+/-- The actual compact-core transverse intercept lies in the precise
+interval [-4,4] used by the genuine weak ray maximal estimate. -/
+theorem normalizedCircleRay_actual_transverse_bound_four
+    (ε u : Real) (X ω V : Euclidean 2)
+    (hε : |ε| ≤ 1/64) (hu : |u| ≤ 5) (hX : ‖X‖ ≤ 3)
+    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    |inner Real X V / ‖ω + ε • (u • ω - X)‖| ≤ 4 := by
+  let D := ‖ω + ε • (u • ω - X)‖
+  have hv : ‖u • ω - X‖ ≤ |u| + ‖X‖ := by
+    simpa only [norm_smul, Real.norm_eq_abs, hω, mul_one] using norm_sub_le (u • ω) X
+  have hn : 1 ≤ D + |ε| * (|u| + ‖X‖) := by
+    have hh := norm_sub_le (ω + ε • (u • ω - X)) (ε • (u • ω - X))
+    simp only [add_sub_cancel_right, hω, norm_smul, Real.norm_eq_abs] at hh
+    exact hh.trans (by dsimp [D]; gcongr)
+  have hp := mul_le_mul hε (add_le_add hu hX)
+    (add_nonneg (abs_nonneg u) (norm_nonneg X)) (by norm_num : (0:Real) ≤ 1/64)
+  have hD : 7/8 ≤ D := by nlinarith
+  have hDp : 0 < D := by linarith
+  have hi : |inner Real X V| ≤ ‖X‖ := by
+    simpa only [hV, mul_one] using abs_real_inner_le_norm X V
+  change |inner Real X V / D| ≤ 4
+  rw [abs_div, abs_of_pos hDp]
+  apply (div_le_iff₀ hDp).2
+  linarith
+#print axioms normalizedCircleRay_actual_transverse_bound_four
+
+/-- The source antipodal chart is exactly the ordinary incidence chart
+with reflected output, so the physical atlas needs no different phase. -/
+theorem normalizedCircleIncidence_antipodal (ε : Real) (X ω : Euclidean 2) (u : Real) :
+    normalizedCircleIncidence ε X (-ω) u = normalizedCircleIncidence ε (-X) ω u := by
+  have hv : u • (-ω) - X = -(u • ω - (-X)) := by module
+  have hn : -ω + ε • (u • (-ω) - X) = -(ω + ε • (u • ω - (-X))) := by module
+  unfold normalizedCircleIncidence
+  rw [hn, hv, norm_neg, norm_neg, inner_neg_neg]
+/-- The corresponding true unit-normal direction transforms by the
+same fixed reflection on the source/output antipodal atlas. -/
+theorem normalizedCircleNormal_antipodal (ε : Real) (X ω : Euclidean 2) (u : Real) :
+    normalizedCircleNormal ε X (-ω) u = -normalizedCircleNormal ε (-X) ω u := by
+  have hn : -ω + ε • (u • (-ω) - X) = -(ω + ε • (u • ω - (-X))) := by module
+  unfold normalizedCircleNormal
+  rw [hn, norm_neg, smul_neg]
+#print axioms normalizedCircleIncidence_antipodal
+#print axioms normalizedCircleNormal_antipodal
+
+
 
 end
 end Auto.Spherical.MSS
