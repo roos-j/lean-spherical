@@ -6444,16 +6444,6 @@ theorem rescaledCompactSynthesis_lowpass_frequency_L1_tail {d : ℕ}
   simpa only [rescaledCompactSynthesisKernel_eq_dilate φ hk,
     fourier_compactDyadicDilate] using hb n
 
-#print axioms rescaledCompactSynthesisKernel_eq_dilate
-#print axioms rescaledCompactSynthesisKernel_support
-#print axioms rescaledCompactSynthesis_annular_frequency_L1_tail
-#print axioms rescaledCompactSynthesis_lowpass_frequency_L1_tail
-#print axioms compactDyadicConvolution_L1_off_diagonal
-#print axioms inverseFourier_schwartz_profile_L1_off_diagonal
-#print axioms inverseFourier_schwartz_profile_lowpass_L1_tail
-#print axioms compactSynthesis_annular_frequency_L1_tail
-#print axioms compactSynthesis_lowpass_frequency_L1_tail
-
 /-- Uniform Mikhlin bounds for arbitrary finite signed dyadic dilates of
 a Schwartz frequency profile vanishing at the origin. -/
 theorem signed_dyadic_schwartz_mikhlin {d : ℕ}
@@ -6904,8 +6894,6 @@ theorem sphericalAverage_compactSynthesis_rescaled
       have hn := norm_sub_le X Y
       linarith
     rw [Auto.Spherical.MSS.sphericalAverage_eq_normalizedCircleAverage ha r (X - Y) s f hb]
-
-#print axioms sphericalAverage_compactSynthesis_rescaled
 
 /-- The compact resolution passes through every spherical average. This
 provides the pointwise limit needed after the uniform finite-sum estimates. -/
@@ -8596,7 +8584,7 @@ with the unconditional low-frequency estimate. -/
 theorem resolution_frequency_sums_moment_bound_ge_two {d : Nat} (hd : 0 < d)
     (φ : SchwartzMap (Euclidean d) Complex) {p : Real} (hp : 2 ≤ p)
     (k₀ : Nat) (r H : ENNReal) (hr : r < 1) (hH : H ≠ ⊤)
-    (hHigh : ∀ (ν : Measure (Euclidean d)), ν ≤ powerWeightedVolume d (1-(d:Real)) →
+    (hHigh : ∀ (ν : Measure (Euclidean d)), ν ≤ powerWeightedVolume d (1 - (d : Real)) →
       ∀ (E : Set Real), E ⊆ Icc 1 2 →
       ∀ (L : Finset Nat), (∀ k ∈ L, k₀ ≤ k) → ∀ n : Nat,
       ∀ f : SchwartzMap (Euclidean d) Complex,
@@ -8661,7 +8649,7 @@ theorem localized_resolution_moment_bound_ge_two {d : Nat} (hd : 0 < d)
     (φ : SchwartzMap (Euclidean d) Complex) (hmass : ∫ x, φ x = 1)
     {p : Real} (hp : 2 ≤ p) (k₀ : Nat)
     (r H : ENNReal) (hr : r < 1) (hH : H ≠ ⊤)
-    (hHigh : ∀ (ν : Measure (Euclidean d)), ν ≤ powerWeightedVolume d (1-(d:Real)) →
+    (hHigh : ∀ (ν : Measure (Euclidean d)), ν ≤ powerWeightedVolume d (1 - (d : Real)) →
       ∀ (E : Set Real), E ⊆ Icc 1 2 →
       ∀ (L : Finset Nat), (∀ k ∈ L, k₀ ≤ k) → ∀ n : Nat,
       ∀ f : SchwartzMap (Euclidean d) Complex,
@@ -8754,7 +8742,7 @@ theorem localized_resolution_moment_bound_ge_two {d : Nat} (hd : 0 < d)
 
 /-- Any sufficiently small punctured ball is the union of its actual dyadic shells. -/
 theorem inner_ball_subset_negative_shells_from {d : Nat} (k₀ : Nat)
-    {x : Euclidean d} (hx : ‖x‖ ≤ (2:Real)^(-(k₀:Int))) (hx₀ : x ≠ 0) :
+    {x : Euclidean d} (hx : ‖x‖ ≤ (2 : Real) ^ (-(k₀ : Int))) (hx₀ : x ≠ 0) :
     x ∈ ⋃ k : Nat, dyadicSpatialShell d (-((k+k₀:Nat):Int)-1) := by
   obtain ⟨j,hj⟩ := exists_mem_Ioc_zpow (norm_pos_iff.mpr hx₀)
     (by norm_num : (1:Real) < 2)
@@ -8962,7 +8950,8 @@ private theorem synthesis_two_coefficient (C : ℝ) (i : ℕ) :
     norm_num
   rw [div_pow,hs,div_eq_mul_inv,ENNReal.ofReal_mul (sq_nonneg _)]
   have hh : ENNReal.ofReal (((2:ℝ)^i)⁻¹) = (2:ENNReal)^(-(i:ℝ)) := by
-    rw [ENNReal.ofReal_inv_of_pos (by positivity : (0:ℝ) < 2^i),ENNReal.ofReal_pow (by norm_num : (0:ℝ) ≤ 2)]
+    rw [ENNReal.ofReal_inv_of_pos (by positivity : (0 : ℝ) < 2^i),
+      ENNReal.ofReal_pow (by norm_num : (0 : ℝ) ≤ 2)]
     norm_num only [ENNReal.ofReal_ofNat]
     rw [← ENNReal.rpow_natCast,← ENNReal.rpow_neg_one,← ENNReal.rpow_mul]
     congr 1
@@ -8985,8 +8974,8 @@ private theorem synthesis_two_coefficient (C : ℝ) (i : ℕ) :
 theorem synthesis_fixed_and_derivative_two_bound {N : ℕ}
     (φ : SchwartzMap (Euclidean 2) ℂ)
     (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
-      (fun ξ => 𝓕 φ ξ-1) (fun ξ => ‖ξ‖^N))
-    (hN : (1:ℝ)/2 ≤ N) :
+      (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
+    (hN : (1 : ℝ) / 2 ≤ N) :
     ∃ A₁ A₂ : ENNReal,A₁ ≠ ⊤ ∧ A₂ ≠ ⊤ ∧
       ∀ j : ℕ,0 < j → ∀ t : ℝ,t ∈ Icc 1 2 → ∀ f : SchwartzMap (Euclidean 2) ℂ,
       (∫⁻ x,‖sphericalAverage 2 (compactConvolution (compactSynthesisKernel φ j) f) t x‖ₑ^(2:ℝ)) ≤
@@ -9018,24 +9007,25 @@ theorem synthesis_fixed_and_derivative_two_bound {N : ℕ}
       change ‖(1/2:ℝ) • (normalizedRadiusDerivative (compactSynthesisKernel φ 1) f i t x)‖ₑ^2 ≤
         ‖normalizedRadiusDerivative (compactSynthesisKernel φ 1) f i t x‖ₑ^2
       rw [enorm_smul]
-      norm_num only [Real.enorm_eq_ofReal,Real.norm_eq_abs,abs_of_nonneg (by norm_num : (0:ℝ) ≤ 1/2),
+      norm_num only [Real.enorm_eq_ofReal, Real.norm_eq_abs,
+        abs_of_nonneg (by norm_num : (0 : ℝ) ≤ 1/2),
         ENNReal.ofReal_div_of_pos (by norm_num : (0:ℝ) < 2),ENNReal.ofReal_one,
         ENNReal.ofReal_ofNat,mul_pow]
       exact mul_le_of_le_one_left (by positivity)
         (pow_le_one₀ (by positivity)
-          (by simpa only [one_div] using (ENNReal.inv_le_one.mpr (show (1:ENNReal) ≤ 2 by norm_num))))
+          (by simpa only [one_div] using
+            (ENNReal.inv_le_one.mpr (show (1 : ENNReal) ≤ 2 by norm_num))))
     have hb := hm.trans (hb₂ i t ht f)
     change (∫⁻ x,‖normalizedSynthesisRadiusDerivative φ f (i+1) t x‖ₑ^2) ≤
       ENNReal.ofReal ((C₂/((2:ℝ)^i)^(((2:ℝ)-1)/2))^2)*(∫⁻ x,‖f x‖ₑ^2) at hb
     rw [synthesis_two_coefficient] at hb
     simpa only [ENNReal.rpow_two,Nat.succ_eq_add_one] using hb
-#print axioms synthesis_fixed_and_derivative_two_bound
 theorem synthesis_intervalCover_two_bound {N : ℕ}
     (φ : SchwartzMap (Euclidean 2) ℂ)
     (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
       (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
-    (hN : ((2 : ℝ) - 1) / 2 ≤ N)  :
-    ∃ A : ℝ≥0∞, A ≠ ∞ ∧ ∀ (j k : ℕ), 0 < j →
+    (hN : ((2 : ℝ) - 1) / 2 ≤ N) :
+     ∃ A : ℝ≥0∞, A ≠ ∞ ∧ ∀ (j k : ℕ), 0 < j →
       ∀ (E : Set ℝ) (I : Finset ℝ) (a b : ℝ → ℝ),
       (∀ i ∈ I, a i ≤ b i) → (∀ i ∈ I, Icc (a i) (b i) ⊆ Icc 1 2) →
       (∀ t ∈ E, ∃ i ∈ I, t ∈ Icc (a i) (b i)) →
@@ -9045,7 +9035,8 @@ theorem synthesis_intervalCover_two_bound {N : ℕ}
         (⨆ t : E,
           ‖sphericalAverage 2 (compactConvolution (compactSynthesisKernel φ j) f) t x‖ₑ) ^ (2:ℝ)) ≤
         A * I.card * (2 : ℝ≥0∞) ^ (-(j:ℝ)) * ∫⁻ x, ‖f x‖ₑ ^ (2:ℝ) := by
-  obtain ⟨A₁,A₂,hA₁,hA₂,hbounds⟩ := synthesis_fixed_and_derivative_two_bound φ hflat (by norm_num at hN ⊢; exact hN)
+  obtain ⟨A₁,A₂,hA₁,hA₂,hbounds⟩ := synthesis_fixed_and_derivative_two_bound φ hflat
+    (by norm_num at hN ⊢; exact hN)
   refine ⟨(2:ENNReal)^(2:ℝ)*(A₁+A₂),ENNReal.mul_ne_top (by norm_num)
     (ENNReal.add_ne_top.mpr ⟨hA₁,hA₂⟩),?_⟩
   intro j k hj E I a b hab hJ hcover hlen f
@@ -9058,7 +9049,8 @@ theorem synthesis_intervalCover_two_bound {N : ℕ}
   have hfixed (t : ℝ) (ht : t ∈ Icc (1 : ℝ) 2) :
       (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (((2 : ℝ) ^ k)⁻¹),
         ‖sphericalAverage 2 g t x‖ₑ ^ (2:ℝ)) ≤ A₁ * W := by
-    simpa only [W, mul_assoc] using ((lintegral_mono' Measure.restrict_le_self le_rfl).trans (hbounds j hj t ht f).1)
+    simpa only [W, mul_assoc] using
+      ((lintegral_mono' Measure.restrict_le_self le_rfl).trans (hbounds j hj t ht f).1)
   have hderivative (t : ℝ) (ht : t ∈ Icc (1 : ℝ) 2) :
       (∫⁻ x in Metric.closedBall (0 : Euclidean 2) (((2 : ℝ) ^ k)⁻¹),
         ‖(((2 : ℝ) ^ j)⁻¹) • sphericalRadiusDerivative g t x‖ₑ ^ (2:ℝ)) ≤ A₂ * W := by
@@ -9084,8 +9076,8 @@ theorem synthesis_finiteCover_two_bound {N : ℕ}
     (φ : SchwartzMap (Euclidean 2) ℂ)
     (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
       (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
-    (hN : ((2 : ℝ) - 1) / 2 ≤ N)  :
-    ∃ A : ℝ≥0∞, A ≠ ∞ ∧ ∀ (j k : ℕ), 0 < j →
+    (hN : ((2 : ℝ) - 1) / 2 ≤ N) :
+     ∃ A : ℝ≥0∞, A ≠ ∞ ∧ ∀ (j k : ℕ), 0 < j →
       ∀ (E : Set ℝ), E ⊆ Icc 1 2 → ∀ (I : Finset ℝ),
       IsIntervalCover E (((2 : ℝ) ^ j)⁻¹) I →
       ∀ (f : SchwartzMap (Euclidean 2) ℂ),
@@ -9224,9 +9216,9 @@ second moment, including the frequency/spatial diagonal. -/
 theorem synthesis_planar_shell_two_bound {N : ℕ}
     (φ : SchwartzMap (Euclidean 2) ℂ)
     (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
-      (fun ξ => 𝓕 φ ξ-1) (fun ξ => ‖ξ‖^N))
-    (hN : (1:ℝ)/2 ≤ N)
-    (hφ : ∀ x,(1:ℝ)/8 < ‖x‖ → φ x = 0) :
+      (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
+    (hN : (1 : ℝ) / 2 ≤ N)
+    (hφ : ∀ x, (1 : ℝ) / 8 < ‖x‖ → φ x = 0) :
     ∃ A : ENNReal,A ≠ ⊤ ∧ ∀ (E : Set ℝ),E ⊆ Icc 1 2 →
       ∀ (j k : ℕ),4 ≤ k → k ≤ j → ∀ f : SchwartzMap (Euclidean 2) ℂ,
       (∫⁻ x in euclideanAnnulus 2 ((((2:ℝ)^k)⁻¹)/2) (((2:ℝ)^k)⁻¹),
@@ -9266,15 +9258,13 @@ theorem synthesis_planar_shell_two_bound {N : ℕ}
         (2:ENNReal)^((j:ℝ)-k+1)*(2:ENNReal)^(-(j:ℝ)))*
           (∫⁻ x,‖f x‖ₑ^(2:ℝ)) := by ring
     _ = _ := by rw [he]; ring
-
-#print axioms synthesis_planar_shell_two_bound
 /-- True spatial dilation and thin input shells pass a normalized-window
 fourth-moment gain to the full weighted planar output shell. -/
 theorem synthesis_planar_shell_four_of_normalized_windows
     (φ : SchwartzMap (Euclidean 2) ℂ)
-    (hφ : ∀ x,(1:ℝ)/8 < ‖x‖ → φ x = 0)
+    (hφ : ∀ x, (1 : ℝ) / 8 < ‖x‖ → φ x = 0)
     (C δ : ℝ) (hC : 0 ≤ C)
-    (hNorm : ∀ (k n : ℕ),7 ≤ k → ∀ a ∈ Icc (1:ℝ) 2,
+    (hNorm : ∀ (k n : ℕ), 7 ≤ k → ∀ a ∈ Icc (1 : ℝ) 2,
       ∀ g : SchwartzMap (Euclidean 2) ℂ,
       (∫⁻ X in closedBall (0:Euclidean 2) 1,(⨆ s : Icc (-1:ℝ) 1,
         ‖sphericalAverage 2 (compactConvolution (compactSynthesisKernel φ (k+n)) g)
@@ -9329,7 +9319,8 @@ theorem synthesis_planar_shell_four_of_normalized_windows
       have hxn : ‖x‖ ≤ R := by simpa only [mem_closedBall,dist_zero_right] using hxR
       have hxb : R⁻¹ • x ∈ closedBall (0:Euclidean 2) 1 := by
         simp only [mem_closedBall,dist_zero_right,norm_smul,Real.norm_eq_abs,abs_inv,abs_of_pos hR]
-        exact (mul_le_mul_of_nonneg_left hxn (inv_nonneg.mpr hR.le)).trans_eq (inv_mul_cancel₀ hR.ne')
+        exact (mul_le_mul_of_nonneg_left hxn (inv_nonneg.mpr hR.le)).trans_eq
+          (inv_mul_cancel₀ hR.ne')
       dsimp only [G]
       rw [Set.indicator_of_mem hxb]
       apply ENNReal.rpow_le_rpow _ (by norm_num : (0:ℝ) ≤ 4)
@@ -9404,8 +9395,7 @@ theorem synthesis_planar_shell_four_of_normalized_windows
   calc
     _ = (24*ENNReal.ofReal C)*((2:ENNReal)^(k:ℝ)*ENNReal.ofReal R)*D*
         (∫⁻ x,‖f x‖ₑ^(4:ℝ)) := by ring
-    _ = _ := by rw [hscale]; dsimp only [D]; ring
-#print axioms synthesis_planar_shell_four_of_normalized_windows
+    _ = _ := by rw [hscale]; dsimp only [D]; ring_nf
 
 theorem finite_constant_le_fourth (A : ENNReal) (hA : A ≠ ⊤) :
     ∃ B : Real, 0 < B ∧ A ≤ ENNReal.ofReal B^(4:Real) := by
@@ -9421,16 +9411,17 @@ theorem finite_constant_le_fourth (A : ENNReal) (hA : A ≠ ⊤) :
   calc
     A.toReal ≤ B := by dsimp [B]; linarith
     _ ≤ B^4 := by
-      have hh := mul_le_mul_of_nonneg_left (show (1:Real) ≤ B^(3:Nat) from one_le_pow₀ hB) (by linarith : 0 ≤ B)
+      have hh := mul_le_mul_of_nonneg_left
+        (show (1 : Real) ≤ B^(3 : Nat) from one_le_pow₀ hB) (by linarith : 0 ≤ B)
       simpa only [pow_succ,pow_zero,mul_one,one_mul,mul_comm] using hh
 
 /-- The independent repair's scalar fourth-moment gain suffices for the
 weighted local planar core. All synthesis and maximal operators are literal. -/
 theorem planar_local_core_of_synthesis_shell_four_gain {N : Nat}
     (φ : SchwartzMap (Euclidean 2) Complex) (hmass : ∫ x, φ x = 1)
-    (hflat : Asymptotics.IsBigO (𝓝 (0:Euclidean 2))
-      (fun ξ => 𝓕 φ ξ-1) (fun ξ => ‖ξ‖^N))
-    (hN : (1:Real)/2 ≤ N) (hφ : ∀ x,(1:Real)/8 < ‖x‖ → φ x = 0)
+    (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
+      (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
+    (hN : (1 : Real) / 2 ≤ N) (hφ : ∀ x, (1 : Real) / 8 < ‖x‖ → φ x = 0)
     {p σ B₄ : Real} (hp₂ : 2 < p) (hp₄ : p < 4) (hσ : 0 < σ) (hB₄ : 0 < B₄)
     (k₀ : Nat) (hk₀ : 4 ≤ k₀)
     (hFour : ∀ k : Nat,k₀ ≤ k → ∀ n : Nat,∀ g : SchwartzMap (Euclidean 2) Complex,
@@ -9524,8 +9515,8 @@ theorem planar_local_core_of_synthesis_shell_four_gain {N : Nat}
 /-- The proved local planar weighted core gives the all-radius bound by the
 existing dilation and global-to-local theorem. -/
 theorem planar_global_strongType_of_local_core {p B : Real} (hp : 2 < p)
-    (hCore : SchwartzCoreMomentBound (powerWeightedVolume 2 (1-(2:Real)))
-      (Icc (1:Real) 2) p B) :
+    (hCore : SchwartzCoreMomentBound (powerWeightedVolume 2 (1 - (2 : Real)))
+      (Icc (1 : Real) 2) p B) :
     HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType 2 (Ioi (0:Real))
       p (1-(2:Real)) := by
   obtain ⟨C,_,hC⟩ := uniform_normalized_bound_of_core (d := 2) (by norm_num)
@@ -9573,13 +9564,14 @@ theorem sphericalAverage_compactSynthesis_physical_rescaled
   change (∫ z : Euclidean 2,H z) = _
   simpa only [H,rescaledCompactSynthesisKernel_apply,K,r,smul_sub,smul_mul_assoc] using hscale.symm
 
-open Auto.Spherical.MSS Auto.LittlewoodPaley in
 set_option maxHeartbeats 2000000 in
+-- The kernel reconstruction and weighted rescaling require a larger elaboration budget.
+open Auto.Spherical.MSS Auto.LittlewoodPaley in
 /-- Repair Proposition 3.1 at four: the literal compact synthesis has
 positive decay at the relative scale 2^(j-k), uniformly in the shell. -/
 theorem exists_synthesis_planar_shell_four_gain
-    (φ : SchwartzMap (Euclidean 2) Complex) (hmass : ∫ x,φ x = 1)
-    (hφ : ∀ x,(1:Real)/8 < ‖x‖ → φ x = 0) :
+    (φ : SchwartzMap (Euclidean 2) Complex) (hmass : ∫ x, φ x = 1)
+    (hφ : ∀ x, (1 : Real) / 8 < ‖x‖ → φ x = 0) :
     ∃ D : Real,0 ≤ D ∧ ∀ k n : Nat,7 ≤ k → ∀ E : Set Real,E ⊆ Icc 1 2 →
       ∀ g : SchwartzMap (Euclidean 2) Complex,
       (∫⁻ x in euclideanAnnulus 2 ((((2:Real)^k)⁻¹)/2) (((2:Real)^k)⁻¹),
@@ -9754,191 +9746,6 @@ theorem full_spherical_maximal_endpoint {d : ℕ} (hd : 2 ≤ d) {p : ℝ}
     field_simp
     ring
   linarith
-
-#print axioms planar_spherical_maximal_endpoint
-#print axioms exists_synthesis_planar_shell_four_gain
-#print axioms sphericalAverage_compactSynthesis_physical_rescaled
-#print axioms finite_constant_le_fourth
-#print axioms planar_local_core_of_synthesis_shell_four_gain
-#print axioms planar_global_strongType_of_local_core
-#print axioms compact_synthesis_two_four_shell_gain
-#print axioms uniform_core_moment_bound_of_inner_ball
-#print axioms resolution_frequency_sums_moment_bound_ge_two
-#print axioms localized_resolution_moment_bound_ge_two
-#print axioms inner_ball_moment_of_finite_shells_from
-#print axioms finite_lp_power_le_square_power
-#print axioms schwartz_sum_moments_le_square_moment
-#print axioms compactAnalysis_annular_sum_moment_bound
-#print axioms resolution_piece_moment_of_scalar_shells_ge_two
-#print axioms dyadic_synthesis_low_ratio
-#print axioms low_resolution_piece_moment_bound_ge_two
-
-#print axioms full_spherical_maximal_endpoint
-#print axioms global_assouad_weighted_bound_three_le
-#print axioms global_assouad_weighted_bound_of_dimension_lt
-#print axioms global_assouad_normalized_strongType_of_dimension_lt
-#print axioms global_assouad_weighted_bound_lt_two
-#print axioms global_assouad_normalized_strongType_lt_two
-#print axioms uniform_local_assouad_core_bound
-#print axioms uniform_normalized_bound_of_core
-#print axioms UnweightedMaximalBound.normalized_block
-#print axioms local_assouad_weighted_bound_lt_two
-#print axioms local_assouad_schwartz_core_bound
-#print axioms uniform_truncated_core_bound
-#print axioms assouad_core_improvement
-#print axioms core_improvement_of_split_bounds
-#print axioms core_constant_of_sublinear_improvement
-#print axioms inner_ball_moment_of_finite_shells
-#print axioms localized_resolution_moment_bound
-#print axioms localized_resolution_frequency_split
-#print axioms resolution_frequency_sums_moment_bound
-#print axioms low_resolution_piece_moment_bound
-#print axioms high_resolution_piece_moment_bound
-#print axioms finite_geometric_maximal_moment_bound
-#print axioms synthesis_high_frequency_square_maximal
-#print axioms measurable_disjoint_indicator_maximal_norm
-#print axioms finite_maximal_sum_moment_bound
-#print axioms sphericalAverage_compact_resolution
-#print axioms compactAnalysis_annular_square_moment_bound
-#print axioms compactAnalysis_annular_support
-#print axioms compactAnalysis_square_moment_bound
-#print axioms compactConvolution_moment_bound
-#print axioms cancellative_dyadic_square_moment_bound
-#print axioms schwartz_square_moment_of_signed
-#print axioms signed_dyadic_convolution_Lp_bound
-#print axioms signed_dyadic_schwartz_mikhlin
-#print axioms schwartz_weighted_derivative_min_bound
-#print axioms finite_dyadic_min_sum_le
-#print axioms synthesis_low_frequency_square_maximal
-#print axioms synthesis_low_frequency_diagonal_maximal
-#print axioms synthesis_low_frequency_moment_bound
-#print axioms synthesis_sequence_square_bound
-#print axioms synthesis_sequence_moment_add_le
-#print axioms schwartz_square_interpolation
-#print axioms square_interpolation_balance
-#print axioms schwartz_square_interpolation_at_scale
-#print axioms square_envelope_low_moment_le
-#print axioms square_envelope_high_moment_le
-#print axioms exists_schwartz_square_envelope_split
-#print axioms continuous_schwartzSquareEnvelope
-#print axioms contDiff_schwartz_square_sum
-#print axioms high_amplitude_moment_le
-#print axioms exists_schwartz_variable_amplitude_split
-#print axioms synthesis_sequence_supremum_bound
-#print axioms spherical_maximal_moment_core_extension
-#print axioms tendsto_moment_of_uniform_compact_error
-#print axioms tendsto_sphericalAverage_of_uniform_error
-#print axioms synthesis_envelope_weighted_moment_bound
-#print axioms synthesis_envelope_annular_support
-#print axioms exists_schwartz_uniform_approximation
-#print axioms disjoint_indicator_sum_norm_le
-#print axioms norm_sphericalAverage_le_nonnegative_majorant
-#print axioms synthesis_envelope_moment_bound
-#print axioms synthesis_envelope_le_dyadicBallMaximal
-#print axioms finiteSchwartzEnvelope_bounded
-#print axioms continuous_finiteSchwartzEnvelope
-#print axioms synthesis_convolution_le_dyadicBallMaximal
-#print axioms compactDyadicConvolution_le_dyadicBallMaximal
-#print axioms dyadicBallMaximal_mono_of_bounded
-#print axioms Auto.HardyLittlewoodMaximal.dyadic_ball_maximal_lintegral_bound_of_bounded
-#print axioms synthesis_assouad_diagonal_maximal
-#print axioms negative_dyadicSpatialShell_subset_annulus
-#print axioms pairwiseDisjoint_negative_dyadicSpatialShell
-#print axioms disjoint_indicator_maximal_moment
-#print axioms synthesis_assouad_diagonal_sum
-#print axioms synthesis_assouad_endpoint_decay
-#print axioms endpoint_dyadic_decay_identity
-#print axioms dyadic_cover_factor
-#print axioms synthesis_assouad_weighted_bound
-#print axioms thin_window_cover_of_assouad
-#print axioms dyadic_radius_grid_cover
-#print axioms dyadic_annulus_weight_moment_le
-#print axioms synthesis_thinWindow_Lp_bound
-#print axioms spherical_radius_window_reassembly
-#print axioms measurable_schwartz_radius_supremum
-#print axioms synthesis_highFrequency_support
-#print axioms exists_schwartz_shell_localization
-#print axioms thin_shell_sum_moments_le
-#print axioms thin_shell_overlap_card_le
-#print axioms exists_schwartz_shell_cutoff
-#print axioms sphericalAverage_smoothInput_congr_on_shell
-#print axioms synthesis_finiteCover_Lp_bound
-#print axioms intervalCover_clip
-#print axioms synthesis_intervalCover_Lp_bound
-#print axioms finite_interval_cover_maximal_moment
-#print axioms short_interval_moment_bound
-#print axioms sphericalAverage_interval_moment_bound
-#print axioms interval_supremum_moment_bound
-#print axioms synthesis_finiteRadius_derivative_Lp_bound
-#print axioms normalizedRadiusDerivative_dyadic_Lp_bound
-#print axioms normalizedRadiusDerivative_intermediate_bound
-#print axioms normalizedRadiusDerivative_L2_bound
-#print axioms normalizedRadiusDerivative_L1_bound
-#print axioms smoothed_sphericalRadiusDerivative_L2_bound
-#print axioms exists_surfaceRadiusSymbol_weighted_bound
-#print axioms smoothed_sphericalRadiusDerivative_smallBall_L1_bound
-#print axioms integral_norm_fderiv_compactDyadicConvolution_le
-#print axioms sphericalRadiusDerivative_smallBall_L1_bound
-#print axioms synthesis_finiteRadius_Lp_bound
-#print axioms smoothed_sphericalAverage_dyadic_Lp_bound
-#print axioms smoothed_sphericalAverage_intermediate_bound
-#print axioms schwartz_one_two_moment_interpolation
-#print axioms smoothed_sphericalAverage_L2_moment_bound
-#print axioms smoothed_sphericalAverage_L2_bound
-#print axioms surfaceFourier_hasTemperateGrowth
-#print axioms exists_smoothed_surface_multiplier_bound
-#print axioms exists_surfaceFourier_weighted_bound
-#print axioms schwartz_norm_le_rpow_of_flat
-#print axioms smoothed_sphericalAverage_smallBall_L1_bound
-#print axioms sphericalAverage_smallBall_L1_bound
-#print axioms sphere_smallBall_incidence_bound
-#print axioms synthesis_low_frequency_bound
-#print axioms smoothed_maximal_smallBall_bound
-#print axioms smoothed_maximal_pointwise_bound
-#print axioms sphericalAverage_convolution_rpow_le
-#print axioms exists_smoothed_sphere_kernel_enorm_bound
-#print axioms weighted_lintegral_rpow_le
-#print axioms exists_smoothed_sphere_kernel_bound
-#print axioms exists_compact_littlewoodPaley_resolution
-#print axioms exists_compact_resolution_profile
-#print axioms compact_kernel_resolution_sum
-#print axioms compactSynthesisKernel_succ
-#print axioms compactSynthesisKernel_radial
-#print axioms compact_kernel_resolution
-#print axioms compact_kernel_telescoping
-#print axioms compactConvolution_radial
-#print axioms fourier_compactDualDifference_isBigO
-#print axioms fourier_compactDualLowpass_sub_one_isBigO
-#print axioms fourier_dilate_sub_one_isBigO
-#print axioms fourier_correctedProfile_sub_mass_isBigO
-#print axioms norm_fourier_sub_mass_le_of_directional_moments
-#print axioms directionalMoment_correctedProfile_eq_zero
-#print axioms exists_radial_moment_profile
-#print axioms exists_radial_unitMass_kernel
-#print axioms kernelMoment_correctedProfile_eq_zero
-#print axioms integral_correctedProfile
-#print axioms kernelMoment_momentCorrection_eq_zero
-#print axioms kernelMoment_compactDyadicDilate
-#print axioms compact_resolution_tendsto
-#print axioms tendsto_compactConvolution_dilate
-#print axioms integral_compactDyadicDilate
-#print axioms integral_compactDualDifference
-#print axioms compactLowpass_telescoping
-#print axioms truncated_bound_of_uniformAssouadDimension
-#print axioms middleInput_exterior_bound_of_uniformAssouadDimension
-#print axioms highInput_bound_of_uniformAssouadDimension
-#print axioms highInput_weighted_pointwise
-#print axioms highInput_maximal_conjugation
-#print axioms lowInput_bound_of_uniformAssouadDimension
-#print axioms unweighted_bound_of_uniformAssouadDimension
-#print axioms lowInput_weighted_moment_of_unweighted
-#print axioms HasUniformAssouadExponent.closedBlock_cover
-#print axioms HasUniformAssouadExponent.block_upperMinkowski
-#print axioms hasUniformAssouadExponent_iff_coveringNumber
-#print axioms hasUniformAssouadExponent_one
-#print axioms hasUniformAssouadExponent_of_dimension_lt
-#print axioms uniformAssouadDimension_mono
-#print axioms general_assouad_maximal_endpoint
 
 end
 

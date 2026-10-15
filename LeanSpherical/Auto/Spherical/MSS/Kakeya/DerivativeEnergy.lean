@@ -272,7 +272,7 @@ theorem finiteTensorTubeMultiplierAngularDeriv_eq_shiftedDerivativeTimeIntegral
   rw [shiftedDerivativeTimeSchwartz_apply]
   unfold timeWeighted
   rw [Real.inner_apply]
-  ring
+  ring_nf
 
 /-- The removable scaled derivative has the literal product identity at every
 local coordinate once the width is nonzero. -/
@@ -351,7 +351,7 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_positive
               ((-Real.sin (r * u) : Real) : Complex) by push_cast; ring]
         rw [hscale]
         push_cast
-        ring
+        ring_nf
     _ = _ := by
       exact integral_const_mul (-Complex.I *
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex)) _
@@ -427,7 +427,7 @@ theorem shiftedCharted_lobeAngularDeriv_eq_scaledPhaseAnalysis_negative
               ((-Real.sin (r * u) : Real) : Complex) by push_cast; ring]
         rw [hscale]
         push_cast
-        ring
+        ring_nf
     _ = _ := by
       exact integral_const_mul (Complex.I *
         (((2 * Real.pi) * (stationaryRadialSign n * ‖xi‖) * r : Real) : Complex)) _
@@ -820,7 +820,7 @@ theorem shiftedCappedTelescopingCutoffProfile_dyadic_reflectedNegative_eventuall
     _ = shiftedDyadicPositiveProfile n (r, -v) + shiftedDyadicNegativeProfile n (r, -v) := by
       have hsplit := shiftedCappedTelescopingCutoff_dyadic_local_eq_lobes
         heps K n k hk 0 (-v) hr
-      convert hsplit using 1; ring
+      convert hsplit using 1; ring_nf
     _ = shiftedDyadicNegativeProfile n (r, -v) := by
       rw [shiftedDyadicPositiveProfile_reflect_eq_zero_of_neg_five_eighth_le n r
         (le_of_lt hv)]
@@ -880,7 +880,7 @@ theorem shiftedCappedTelescopingCutoffProfile_terminal_reflectedNegative_eventua
         shiftedCappedTerminalNegativeProfile n c (r, -v) := by
       have hsplit := shiftedCappedTelescopingCutoff_terminal_local_eq_lobes
         K n 0 (-v) hc hcdef hr
-      convert hsplit using 1; ring
+      convert hsplit using 1; ring_nf
     _ = shiftedCappedTerminalNegativeProfile n c (r, -v) := by
       rw [shiftedCappedTerminalPositiveProfile_reflect_eq_zero_of_neg_five_eighth_le n c r hc
         (le_of_lt hv)]
@@ -3549,7 +3549,7 @@ theorem shiftedCentralParametricProfile_nonneg_le_one
     fixedCentralCircleUnitShellBump.le_one
   constructor
   · exact mul_nonneg hpre.1 hbnonneg
-  · exact mul_le_one₀ hpre.2 hbnonneg hble
+  · exact (mul_le_of_le_one_left hbnonneg hpre.2).trans hble
 
 theorem abs_shiftedCentralParametricProfile_le_one
     (n : Nat) (rho u : Real) :
@@ -4658,7 +4658,7 @@ theorem shiftedCharted_centralMultiplierDerivRaw_eq_affine_twoTerms
       dsimp only [u, c]
       rw [htheta]
       field_simp [ne_of_gt hr]
-      ring
+      ring_nf
 
 /-- The literal physical phase component transports to the scaled-phase
 central energy, with exactly the squared Fourier-derivative scalar. -/

@@ -16,6 +16,7 @@
 | complete | 2026-10-15 06:30:43 EDT | Introduction Theorems 1.1-1.4 | Finite-p statements, definitions and endpoints match; build and four axiom audits pass. |
 | complete | 2026-10-15 06:56:28 EDT | Whole project | Precommit build passes all 3516 jobs after the generated-file notice repair. |
 | complete | 2026-10-15 07:01:55 EDT | Whole project | Post-refactor build passes all 3516 jobs; FLLRS spelling and report references are consistent. |
+| complete | 2026-10-15 07:54:26 EDT | Warning cleanup | 3516 jobs pass; FLLRS/MSS logs are quiet with standard linters; seven axiom audits standard. |
 
 ## Main theorem overview
 

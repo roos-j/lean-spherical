@@ -150,7 +150,7 @@ theorem scratch_integrable_sq_lightRayKernel_spaceTime
                 integral_const_mul,
                 integral_lightRayKernel_spatial_eq_decayProfile hdelta (2 * N) omega y t]
     rw [htime]
-    letI : IsFiniteMeasure ((volume : Measure Real).restrict lightRayTimeInterval) := by
+    let : IsFiniteMeasure ((volume : Measure Real).restrict lightRayTimeInterval) := by
       unfold lightRayTimeInterval
       infer_instance
     exact integrable_const _
@@ -209,7 +209,7 @@ theorem scratch_integral_lightRayKernel_mul_norm_eq_lightRayAverage
     _ = lightRayAverage delta N omega y g := rfl
 
 /-- A null modification of the space-time input leaves every literal tube
-integral unchanged, once the displayed product integrals are defined.  This
+integral unchanged, once the displayed product integrals are defined. This
 is much simpler here than for spherical averages because the input is not
 pulled back to a lower-dimensional fibre. -/
 theorem scratch_lightRayAverage_eq_of_ae_eq_of_integrable
@@ -448,7 +448,7 @@ theorem scratch_eLpNorm_ofReal_eq_of_nonneg
       exact ENNReal.toReal_ofReal (hF x)
     rw [eLpNorm_of_not_aestronglyMeasurable hFm, eLpNorm_of_not_aestronglyMeasurable hG]
 
-/-- A compact Fatou package for raw nonnegative envelopes.  The sequence is
+/-- A compact Fatou package for raw nonnegative envelopes. The sequence is
 kept explicit so a later light-ray argument can provide its own genuine
 pointwise comparison rather than using an abstract `Lp` extension. -/
 theorem scratch_eLpNorm_liminf_le_of_uniform
@@ -516,7 +516,7 @@ theorem scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     _ ≤ K := scratch_eLpNorm_liminf_le_of_uniform hp0 hptop hmeas hbound
 
 /-- Joint Schwartz profiles, pulled back along the `WithLp` coordinate
-equivalence, are dense in raw space-time `L²`.  This is the concrete core
+equivalence, are dense in raw space-time `L²`. This is the concrete core
 needed for a later Fatou lift; it is not an abstract replacement of the raw
 light-ray operator. -/
 theorem scratch_exists_jointSchwartzRaw_eLpNorm_sub_lt
@@ -578,7 +578,7 @@ theorem scratch_exists_jointSchwartzRaw_eLpNorm_sub_lt
   exact hsubbound
 
 /-- Summable `L²` approximation errors give the a.e. convergence required by
-the literal Fatou lift.  This is the standard fast-subsequence conversion,
+the literal Fatou lift. This is the standard fast-subsequence conversion,
 recorded separately so that a finite-tensor density theorem need only supply
 geometrically summable errors. -/
 theorem scratch_ae_tendsto_of_tsum_eLpNorm_sub_ne_top
@@ -661,7 +661,7 @@ theorem scratch_ae_tendsto_jointSchwartzRaw_of_fast_approximation
   simpa only [one_mul] using hpsi n
 
 /-- For nonzero `L²` data, joint Schwartz approximation may be normalized at
-the scale of the input norm.  This is the useful form for a homogeneous
+the scale of the input norm. This is the useful form for a homogeneous
 strong estimate. -/
 theorem scratch_exists_fast_jointSchwartzRaw_approximation_scaled
     (g : WaveSpaceTime -> Complex) (hg : MemLp g 2 volume)
@@ -758,7 +758,7 @@ theorem scratch_ae_tendsto_jointSchwartzRaw_of_scaled_approximation
     (eLpNorm g 2 volume) hg.eLpNorm_ne_top
   exact hpsi
 
-/-- A literal pointwise Fatou principle for light-ray maxima.  No measurable
+/-- A literal pointwise Fatou principle for light-ray maxima. No measurable
 argmax is used: after fixing `y`, compact directional continuity picks one
 maximizing direction for `g`, and ordinary Fatou is applied on the full
 space-time slab at that one direction. -/
@@ -905,7 +905,7 @@ theorem scratch_lightRayMaximal_ofReal_le_liminf_of_ae_tendsto_memLp
       omega y g hg
   · exact hconv
 
-/-- Generic literal-operator closure principle.  `core n` may be any
+/-- Generic literal-operator closure principle. `core n` may be any
 positive bandlimited/finite-tensor core; the theorem only asks for the three
 facts the final Kakeya proof must establish: raw core bounds, a uniform input
 norm bound, and the genuine raw pointwise Fatou comparison. -/
@@ -934,7 +934,8 @@ theorem scratch_lightRayMaximal_bound_of_liminf_core
   rw [<- hmainEq]
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     (p := (2 : ENNReal)) (by norm_num) (by norm_num) hfatou
-    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g hg).ennreal_ofReal.aestronglyMeasurable)
+    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g
+      hg).ennreal_ofReal.aestronglyMeasurable)
   · intro n
     exact (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN
       (core n) (hcoreMem n)).ennreal_ofReal
@@ -956,7 +957,7 @@ theorem scratch_lightRayMaximal_bound_of_liminf_core
       _ <= A * B := mul_le_mul_right (hcoreNorm n) A
 
 /-- Strong estimates on any sequentially a.e.-dense core lift to the literal
-light-ray maximal operator.  This is the final density interface: a caller
+light-ray maximal operator. This is the final density interface: a caller
 only has to provide core membership, the core estimate, a uniform norm bound,
 and a genuine a.e. convergent approximation. -/
 theorem scratch_lightRayMaximal_bound_of_ae_tendsto_core
@@ -1020,7 +1021,7 @@ theorem scratch_lightRayMaximal_bound_of_jointSchwartzStrong_nonzero
     hdelta N hN g hg A hstrong psi hpsi
 
 /-- A strong bound on the raw joint-Schwartz core already implies the literal
-`HasLightRayMaximalEstimate`.  The proof handles null representatives exactly
+`HasLightRayMaximalEstimate`. The proof handles null representatives exactly
 via full-slab integrability, and loses only the harmless factor `2` in the
 existential constant while passing to a geometrically fast dense sequence. -/
 theorem scratch_hasLightRayMaximalEstimate_of_jointSchwartzStrong
@@ -1080,7 +1081,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_jointSchwartzStrong
         simpa only [L] using hfactor
 
 /-- The purely approximation-theoretic interface needed for a finite tensor
-core.  It contains no maximal operator: it says only that the core is dense
+core. It contains no maximal operator: it says only that the core is dense
 in `L²` after restricting to the time slab actually used by a light ray. -/
 def scratch_HasLightRaySlabL2DenseCore
     (Core : (WaveSpaceTime -> Complex) -> Prop) : Prop :=
@@ -1092,7 +1093,7 @@ def scratch_HasLightRaySlabL2DenseCore
             ENNReal.ofReal epsilon
 
 /-- A homogeneous strong estimate on any core satisfying the preceding
-slab-density property implies the literal maximal estimate.  This packages
+slab-density property implies the literal maximal estimate. This packages
 the exact noncircular bridge required of the finite compact-frequency tensor
 model. -/
 theorem scratch_hasLightRayMaximalEstimate_of_slabDenseCore
@@ -1192,7 +1193,7 @@ theorem scratch_hasLightRayMaximalEstimate_of_slabDenseCore
         simpa only [L] using hfactor
 
 /-- Final raw-operator lift once a genuine pointwise Fatou comparison has
-been supplied.  Its core consists of literal pullbacks of joint Schwartz
+been supplied. Its core consists of literal pullbacks of joint Schwartz
 profiles, and its conclusion is the original unmodified continuum supremum.
 
 The separate `hfatou` hypothesis is deliberate: it is exactly the one
@@ -1225,7 +1226,8 @@ theorem scratch_lightRayMaximal_bound_of_liminf_jointSchwartzCore
   rw [<- hmainEq]
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     (p := (2 : ENNReal)) (by norm_num) (by norm_num) hfatou
-    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g hg).ennreal_ofReal.aestronglyMeasurable)
+    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g
+      hg).ennreal_ofReal.aestronglyMeasurable)
   · intro n
     let core : WaveSpaceTime -> Complex := jointSchwartzRaw (psi n)
     have hcore : MemLp core 2 volume :=
@@ -1252,9 +1254,9 @@ theorem scratch_lightRayMaximal_bound_of_liminf_jointSchwartzCore
       _ <= A * eLpNorm g 2 volume :=
         mul_le_mul_right (by simpa only [core] using hpsiNorm n) A
 
-/-- Pointwise Fatou bridge for a *signed* linear tube model.  The core
+/-- Pointwise Fatou bridge for a *signed* linear tube model. The core
 estimate need only control the nonnegative envelope `P core`; it is not
-assumed to be the raw positive `lightRayMaximal`.  The caller supplies the
+assumed to be the raw positive `lightRayMaximal`. The caller supplies the
 one substantive analytic identification: the signed tube transform of the
 target `F` is the literal positive light-ray average, and it converges at
 each fixed direction and endpoint along the core sequence. -/
@@ -1297,7 +1299,7 @@ theorem scratch_lightRayMaximal_ofReal_le_liminf_of_signedCore
       filter_upwards with n
       exact hdom n omega y
 
-/-- `L²` closure for a signed tube envelope.  This is intentionally separate
+/-- `L²` closure for a signed tube envelope. This is intentionally separate
 from the raw-positive-core closure above: the strong estimate is on `P`,
 while the literal light-ray maximum enters only through the signed Fatou
 comparison. -/
@@ -1325,7 +1327,8 @@ theorem scratch_lightRayMaximal_bound_of_signedCore_liminf
   rw [<- hmainEq]
   apply scratch_eLpNorm_le_of_ae_le_liminf_of_uniform
     (p := (2 : ENNReal)) (by norm_num) (by norm_num) hfatou hPmeas
-    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g hg).ennreal_ofReal.aestronglyMeasurable)
+    (hF := (scratch_measurable_lightRayMaximal_of_memLp hdelta N hN g
+      hg).ennreal_ofReal.aestronglyMeasurable)
   intro n
   calc
     eLpNorm (P (core n)) 2 volume <= A * eLpNorm (core n) 2 volume :=
@@ -1333,7 +1336,7 @@ theorem scratch_lightRayMaximal_bound_of_signedCore_liminf
     _ <= A * B := mul_le_mul_right (hcoreNorm n) A
 
 /-- Passing from a complex-valued function to its nonnegative magnitude,
-viewed again as a complex-valued function, preserves `Lᵖ` membership.  This
+viewed again as a complex-valued function, preserves `Lᵖ` membership. This
 is the small bookkeeping step needed before a signed tube operator can be
 applied to the positive data underlying a literal light-ray average. -/
 theorem scratch_memLp_complex_of_norm
@@ -1373,9 +1376,9 @@ theorem scratch_eLpNorm_positiveSlab_eq
 /-- The signed-envelope version of the final slab-density lift.
 
 `T` is a signed linear (or otherwise signed) tube model and `P` is the
-nonnegative endpoint envelope controlled by the finite tensor theorem.  The
+nonnegative endpoint envelope controlled by the finite tensor theorem. The
 strong core hypothesis is deliberately about `P`, *not* about the literal
-positive `lightRayMaximal`.  The two extra analytic hypotheses are exactly
+positive `lightRayMaximal`. The two extra analytic hypotheses are exactly
 what connects them:
 
 * `hidentify` says that applying `T` to the positive slab datum
@@ -1563,7 +1566,7 @@ def scratch_InnerSlabCompactFrequencyTensorCore
     f = scratch_innerSlabCompactFrequencyTensor q a
 
 /-- The signed-envelope lift specialized to the actual finite compact-frequency
-tensor core.  Thus the sole remaining operator-specific estimate is the
+tensor core. Thus the sole remaining operator-specific estimate is the
 finite-tensor `hstrong` premise below; no positivity assertion for the raw
 maximal operator is used. -/
 theorem scratch_hasLightRayMaximalEstimate_of_innerSlabCompactFrequencyTensorCore
@@ -1919,7 +1922,7 @@ theorem norm_sub_applyInnerSlabCutoff_le_indicators
     rw [Set.indicator_of_mem hzout, Set.indicator_of_notMem hzboundary]
     simp [hbzero]
   · have hzt : z.2 ∈ lightRayTimeInterval := by
-      simpa only [outsideTimeSlab, Set.mem_setOf_eq, not_not] using hzout
+      simpa only [outsideTimeSlab, Set.mem_ofPred_eq, not_not] using hzout
     by_cases hzero : u z = 0
     · simp [hzero]
     · have hzB : z.1 ∈ B := huB (Function.mem_support.mpr hzero)
@@ -1949,7 +1952,7 @@ theorem norm_sub_applyInnerSlabCutoff_le_indicators
         simp [hbone]
 
 theorem eLpNorm_sub_applyInnerSlabCutoff_le
-    (B : Set (Euclidean 2)) (hB : MeasurableSet B)
+    (B : Set (Euclidean 2))
     (u : WaveSpaceTime → Complex) (huB : Function.support u ⊆
       {z : WaveSpaceTime | z.1 ∈ B})
     (hu : AEStronglyMeasurable u volume)
@@ -2032,7 +2035,7 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_sub_lt_with_radius
   have hvusub : eLpNorm (v - u) 2 volume ≤
       eLpNorm (outsideTimeSlab.indicator v) 2 volume +
         eLpNorm ((slabBoundary B η).indicator v) 2 volume := by
-    simpa only [u] using eLpNorm_sub_applyInnerSlabCutoff_le B hB v hR
+    simpa only [u] using eLpNorm_sub_applyInnerSlabCutoff_le B v hR
       hvMem.aestronglyMeasurable hη hηhalf
   have houtside : eLpNorm (outsideTimeSlab.indicator v) 2 volume ≤
       eLpNorm (h - v) 2 volume :=
@@ -2085,7 +2088,7 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_sub_lt
   exact ⟨u, hucompact, husmooth, husupport.trans (timeClosedBall_subset_innerSlab hr), huerror⟩
 
 /-- The inner-slab smoothing argument is exponent-agnostic once the boundary
-absolute-continuity estimate is taken at the desired exponent.  This `L⁴`
+absolute-continuity estimate is taken at the desired exponent. This `L⁴`
 specialization is used by the nonnegative square-core density route. -/
 theorem exists_slabBoundary_eLpNorm_four_small
     (B : Set (Euclidean 2)) (hB : MeasurableSet B)
@@ -2111,7 +2114,7 @@ theorem exists_slabBoundary_eLpNorm_four_small
     exact min_le_left _ _
 
 theorem eLpNorm_four_sub_applyInnerSlabCutoff_le
-    (B : Set (Euclidean 2)) (hB : MeasurableSet B)
+    (B : Set (Euclidean 2))
     (u : WaveSpaceTime → Complex) (huB : Function.support u ⊆
       {z : WaveSpaceTime | z.1 ∈ B})
     (hu : AEStronglyMeasurable u volume)
@@ -2159,7 +2162,7 @@ theorem eLpNorm_four_outsideTimeSlab_indicator_le_sub
     exact le_top
 
 /-- Inner-slab `C_c^∞` density at `L⁴`, retaining a strict common time
-margin.  This is the square-root stage of positive-core density. -/
+margin. This is the square-root stage of positive-core density. -/
 theorem exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
     (h : WaveSpaceTime → Complex) (hh : MemLp h 4 volume)
     (hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab → h z = 0)
@@ -2196,7 +2199,7 @@ theorem exists_innerSlab_smoothCompact_eLpNorm_four_sub_lt_with_radius
   have hvusub : eLpNorm (v - u) 4 volume ≤
       eLpNorm (outsideTimeSlab.indicator v) 4 volume +
         eLpNorm ((slabBoundary B η).indicator v) 4 volume := by
-    simpa only [u] using eLpNorm_four_sub_applyInnerSlabCutoff_le B hB v hR
+    simpa only [u] using eLpNorm_four_sub_applyInnerSlabCutoff_le B v hR
       hvMem.aestronglyMeasurable hη hηhalf
   have houtside : eLpNorm (outsideTimeSlab.indicator v) 4 volume ≤
       eLpNorm (h - v) 4 volume :=
@@ -2263,33 +2266,6 @@ open scoped TensorProduct BigOperators Nat
 open ContinuousMap
 open MeasureTheory
 
-#check TensorProduct.induction_on
-#check ContinuousMap.tensorHom
-#check ContinuousMap.tensorHom_tmul
-#check ContinuousMap.prodMul
-#check ContinuousMap.prodMul_apply
-#check ContinuousMap.exists_mem_subalgebra_near_continuousMap_of_separatesPoints
-#check ContinuousMap.exists_mem_subalgebra_near_continuous_of_separatesPoints
-#check _root_.separatesPoints_continuous_of_t35Space
-#check LinearMap.range
-#check AlgHom.range
-#check TensorProduct.map
-#check TensorProduct.map_tmul
-#check TensorProduct.lift
-#check TensorProduct.lift.tmul
-#check Algebra.TensorProduct.lift
-#check Algebra.TensorProduct.lift_tmul
-#check Algebra.TensorProduct.includeLeft
-#check Algebra.TensorProduct.includeRight
-#check Algebra.TensorProduct.tmul_mul_tmul
-#check ContinuousMap.compStarAlgHom'
-#check ContinuousMap.compRightAlgHom
-#check ContinuousMap.fst
-#check ContinuousMap.snd
-#check ContinuousMap.comp_apply
-#check ContinuousMap.coe_comp
-#check Commute.all
-
 section Auto.Spherical.MSS
 
 noncomputable def tensorAlgHom (X Y : Type*) [TopologicalSpace X] [TopologicalSpace Y] :
@@ -2350,10 +2326,7 @@ theorem tensorAlgHom_exists_finite_sum (X Y : Type*) [TopologicalSpace X] [Topol
     ∃ (ι : Type) (_ : Fintype ι)
       (u : ι → C(X, Real)) (v : ι → C(Y, Real)),
       tensorAlgHom X Y z = ∑ i : ι, ContinuousMap.prodMul (u i) (v i) := by
-  induction z using TensorProduct.induction_on with
-  | zero =>
-      refine ⟨Empty, inferInstance, Empty.elim, Empty.elim, ?_⟩
-      simp
+  induction z using TensorProduct.inductionOn with
   | tmul x y =>
       refine ⟨Unit, inferInstance, fun _ => x, fun _ => y, ?_⟩
       have h : tensorAlgHom X Y (x ⊗ₜ[Real] y) = ContinuousMap.prodMul x y := by
@@ -2365,8 +2338,8 @@ theorem tensorAlgHom_exists_finite_sum (X Y : Type*) [TopologicalSpace X] [Topol
   | add x y hx hy =>
       rcases hx with ⟨ι, hι, u, v, huv⟩
       rcases hy with ⟨κ, hκ, u', v', hu'v'⟩
-      letI : Fintype ι := hι
-      letI : Fintype κ := hκ
+      let : Fintype ι := hι
+      let : Fintype κ := hκ
       refine ⟨Sum ι κ, inferInstance, Sum.elim u u', Sum.elim v v', ?_⟩
       calc
         tensorAlgHom X Y (x + y) = tensorAlgHom X Y x + tensorAlgHom X Y y := by
@@ -2433,7 +2406,7 @@ theorem exists_smooth_compact_factor_near_closedBall
     exact hclose
 
 /-- Cut off a continuous factor defined on an outer closed ball, then smooth it
-without enlarging its support.  Unlike
+without enlarging its support. Unlike
 `exists_smooth_compact_factor_near_closedBall`, this records the cut-off
 function itself; this is the form needed when a Stone--Weierstrass sum has to
 remain small on the collar where the target vanishes. -/
@@ -2488,10 +2461,10 @@ private theorem eq_zero_of_support_subset
   by_contra hne
   exact hx (hfs hne)
 
-/-- The concrete compact-product corollary of Stone--Weierstrass.  A
+/-- The concrete compact-product corollary of Stone--Weierstrass. A
 continuous function supported in an inner product of balls is uniformly
 approximated on the whole ambient product by a finite sum of separated,
-compactly supported continuous factors.  The cutoffs are essential: they
+compactly supported continuous factors. The cutoffs are essential: they
 make the approximation global without asking a Tietze extension to preserve
 the cancellations of the tensor sum outside the compact product. -/
 theorem exists_finite_continuous_compact_separated_uniform_close
@@ -2514,9 +2487,9 @@ theorem exists_finite_continuous_compact_separated_uniform_close
       ∀ p : E × F, dist (∑ i : ι, H i p.1 * K i p.2) (f p) < epsilon := by
   let X := Metric.closedBall cE RE
   let Y := Metric.closedBall cF RF
-  letI : CompactSpace X := isCompact_iff_compactSpace.mp
+  let : CompactSpace X := isCompact_iff_compactSpace.mp
     (by simpa only [X] using isCompact_closedBall cE RE)
-  letI : CompactSpace Y := isCompact_iff_compactSpace.mp
+  let : CompactSpace Y := isCompact_iff_compactSpace.mp
     (by simpa only [Y] using isCompact_closedBall cF RF)
   let fC : C(X × Y, Real) :=
     ⟨fun p => f (p.1, p.2),
@@ -2525,7 +2498,7 @@ theorem exists_finite_continuous_compact_separated_uniform_close
           (continuous_subtype_val.comp continuous_snd))⟩
   obtain ⟨z, hz⟩ := exists_tensorAlgHom_near X Y fC hepsilon
   obtain ⟨ι, hι, u, v, huv⟩ := tensorAlgHom_exists_finite_sum X Y z
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   choose H U hHcont hHcompact hHsupp hHform hUdiff hUcompact hUsupp hUclose using
     fun i : ι => exists_smooth_cutoff_extension_uniform_close E cE hrE hrERE
       (u i) (by positivity : (0 : Real) < 1)
@@ -2614,7 +2587,7 @@ theorem exists_finite_continuous_compact_separated_uniform_close
     simp [hsumzero, hfzero, hepsilon]
 
 /-- A finite separated continuous sum can be smoothed factor by factor while
-retaining a prescribed global uniform error.  The deliberately explicit
+retaining a prescribed global uniform error. The deliberately explicit
 `M` hypotheses make the lemma reusable with any compact-factor construction;
 for compactly supported continuous factors the required bounds follow from
 `Continuous.bounded_above_of_compact_support`. -/
@@ -2758,7 +2731,7 @@ theorem exists_finite_smooth_separated_uniform_close
     hHcont hKcont hHcompact hKcompact M hM hcard hHbound hKbound hepsilon
 
 /-- Smooth compact tensor density on a product of finite-dimensional real
-spaces.  This is the source-ready tensor bridge: first use the preceding
+spaces. This is the source-ready tensor bridge: first use the preceding
 compact-product Stone--Weierstrass result, then smooth the finitely many
 factors with a quantitatively allocated error. -/
 theorem exists_finite_smooth_compact_separated_uniform_close
@@ -2785,7 +2758,7 @@ theorem exists_finite_smooth_compact_separated_uniform_close
   obtain ⟨ι, hι, H, K, hH, hK, hHK⟩ :=
     exists_finite_continuous_compact_separated_uniform_close E F cE cF
       hrE hrERE hrF hrFRF f hfcont hfsupp heps2
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   obtain ⟨U, V, hU, hV, hUV⟩ :=
     exists_finite_smooth_separated_uniform_close E F ι H K
       (fun i => (hH i).1) (fun i => (hK i).1)
@@ -2805,7 +2778,7 @@ theorem exists_finite_smooth_compact_separated_uniform_close
       _ < epsilon := by linarith [hUV p, hHK p]
 
 /-- The elementary uniform-to-`L²` conversion used by the slab tensor
-density argument.  It is deliberately stated for an arbitrary finite-measure
+density argument. It is deliberately stated for an arbitrary finite-measure
 support set, so the tensor construction and the measure estimate stay
 decoupled. -/
 theorem eLpNorm_two_sub_le_of_support_subset_and_uniform
@@ -2877,8 +2850,8 @@ theorem exists_finite_smooth_compact_separated_uniform_close_complex
   obtain ⟨ιi, hιi, Ui, Vi, hUi, hVi, hcloseI⟩ :=
     exists_finite_smooth_compact_separated_uniform_close E F cE cF
       hrE hrERE hrF hrFRF (fun p => (f p).im) (Complex.continuous_im.comp hfcont) himsupp hepshalf
-  letI : Fintype ιr := hιr
-  letI : Fintype ιi := hιi
+  let : Fintype ιr := hιr
+  let : Fintype ιi := hιi
   let U : Sum ιr ιi → E → Complex := Sum.elim
     (fun i x => (Ur i x : Complex)) (fun i x => (Ui i x : Complex))
   let V : Sum ιr ιi → F → Complex := Sum.elim
@@ -3035,25 +3008,6 @@ theorem exists_finite_smooth_compact_separated_uniform_close_complex
       _ < epsilon := by linarith
 
 end Auto.Spherical.MSS
-#check Fin.sum_univ_succ
-#check Fin.sum_univ_zero
-#check Fin.sum_univ_two
-#check Metric.isClosed_closedBall
-#check IsClosed.isClosedEmbedding_subtypeVal
-#check ContinuousMap.exists_extension
-#check ContDiffBump
-#check ContDiffBump.one_of_mem_closedBall
-#check ContDiffBump.zero_of_le_dist
-#check ContDiffBump.hasCompactSupport
-#check ContDiffBump.contDiff
-#check ContDiffBump.le_one
-#check ContDiffBump.nonneg'
-#check Continuous.exists_contDiff_approx
-#check isCompact_closedBall
-#check isCompact_iff_compactSpace
-#check ContinuousMap.restrict
-#check ContinuousMap.norm_coe_le_norm
-#check norm_sum_le
 end
 -- END ScratchTensorDensity
 
@@ -3098,7 +3052,7 @@ theorem eLpNorm_two_prod_mul_eq
     norm_num
 
 /-- A finite separated physical tensor with a compact-frequency spatial
-factor.  The definition is deliberately independent of the Kakeya operator,
+factor. The definition is deliberately independent of the Kakeya operator,
 so it can be used as the approximation core in the signed-envelope lift. -/
 noncomputable def compactFrequencyTensor
     {ι : Type*} [Fintype ι]
@@ -3116,7 +3070,7 @@ noncomputable def smoothSpatialTensor
   fun z => ∑ i, U i z.1 * a i z.2
 
 /-- Replacing the spatial factors of a finite tensor in `L²` has exactly the
-expected product-norm cost.  This is the quantitative composition point
+expected product-norm cost. This is the quantitative composition point
 between the compact-product tensor theorem and Plancherel compact-frequency
 density. -/
 theorem eLpNorm_compactFrequencyTensor_sub_smoothSpatialTensor_le
@@ -3284,7 +3238,7 @@ theorem exists_compactFrequencySchwartz_eLpNorm_fourierInv_sub_le_of_realSmoothC
   exact ⟨q, hqcompact, hqclose⟩
 
 /-- Finite compact-frequency tensor replacement, with caller-controlled
-per-factor real error budgets.  The RHS is precisely the Fubini product
+per-factor real error budgets. The RHS is precisely the Fubini product
 cost; choosing the budgets after inspecting the finitely many time factors
 gives an arbitrary prescribed total `L²` error. -/
 theorem exists_compactFrequencyTensor_near_smoothRealSpatialTensor
@@ -3338,7 +3292,7 @@ theorem exists_compactFrequencyTensor_near_smoothSpatialTensor
   simpa only using hqerr i
 
 /-- Finite families of finite `ENNReal` weights admit strictly positive real
-budgets with arbitrarily small weighted total.  This removes the usual
+budgets with arbitrarily small weighted total. This removes the usual
 informal finite-error-allocation step from the tensor-density argument. -/
 theorem exists_positive_real_budgets
     {ι : Type*} [Fintype ι] (B : ι → ENNReal)
@@ -3384,7 +3338,7 @@ theorem exists_positive_real_budgets
         _ < epsilon := by linarith
 
 /-- The budgeted finite-replacement theorem in its customary arbitrary-error
-form.  No dependence on the number or sizes of the time factors is hidden:
+form. No dependence on the number or sizes of the time factors is hidden:
 it is discharged by `exists_positive_real_budgets`. -/
 theorem exists_compactFrequencyTensor_eLpNorm_sub_lt_smoothSpatialTensor
     {ι : Type*} [Fintype ι]
@@ -3410,7 +3364,7 @@ theorem exists_compactFrequencyTensor_eLpNorm_sub_lt_smoothSpatialTensor
   exact ⟨q, hqcompact, hqclose.trans_lt hbudget⟩
 
 /-- Every finite compact-frequency/Schwartz-time tensor is an actual `L²`
-input.  This discharges the `MemLp` component required by the slab-density
+input. This discharges the `MemLp` component required by the slab-density
 predicate, independently of the signed tube estimate. -/
 theorem memLp_compactFrequencyTensor
     {ι : Type*} [Fintype ι]
@@ -3452,7 +3406,7 @@ theorem memLp_compactFrequencyTensor
     simp [b, compactFrequencyTensor]
   rwa [hbsum] at hsum
 
-/-- The abstract slab-density shape used by the signed-envelope closure.  It
+/-- The abstract slab-density shape used by the signed-envelope closure. It
 is definitionally the same quantifier pattern as
 `scratch_HasLightRaySlabL2DenseCore`, but leaves the restriction operator a
 parameter so this file stays independent of the other scratch modules. -/
@@ -3465,9 +3419,9 @@ def HasL2DenseCoreAfter
         Core f ∧ MemLp f 2 volume ∧
           eLpNorm (R g - f) 2 volume < ENNReal.ofReal epsilon
 
-/-- The final finite-tensor density transfer.  A smooth compact separated
+/-- The final finite-tensor density transfer. A smooth compact separated
 slab core is dense iff its spatial factors may be replaced by the actual
-finite compact-frequency tensor core.  The only core-specific inputs are
+finite compact-frequency tensor core. The only core-specific inputs are
 membership of the resulting tensor and the declaration that it belongs to
 the intended `Core`; the quantitative replacement itself is proved above. -/
 theorem hasL2DenseCoreAfter_of_smoothSeparatedSlabDensity
@@ -3495,7 +3449,7 @@ theorem hasL2DenseCoreAfter_of_smoothSeparatedSlabDensity
   have hepshalf : 0 < epsilon / 2 := by positivity
   obtain ⟨ι, hι, U, a, hU, ha, hsmoothMem, hsmoothErr⟩ :=
     hsmooth g hg (epsilon / 2) hepshalf
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   have haMem : ∀ i, MemLp (a i) 2 volume := by
     intro i
     exact (ha i).2.1.continuous.memLp_of_hasCompactSupport (ha i).1
@@ -3549,10 +3503,10 @@ theorem hasL2DenseCoreAfter_of_smoothSeparatedSlabDensity
         simpa only [f] using hqerr)
     _ = ENNReal.ofReal epsilon := by
       rw [← ENNReal.ofReal_add hepshalf.le hepshalf.le]
-      ring
+      ring_nf
 
 /-- The actual finite compact-frequency core for the compact-time outer
-estimate.  A common inner radius is retained rather than weakened to mere
+estimate. A common inner radius is retained rather than weakened to mere
 membership of the light-ray slab, since the differentiated outer term needs
 that margin uniformly over all temporal factors. -/
 def InnerSlabCompactFrequencyTensorCore
@@ -3577,7 +3531,7 @@ private theorem scratch_timeClosedBall_subset_lightRayTimeInterval {r : Real}
   constructor <;> linarith [abs_lt.mp hdist]
 
 /-- Compact-frequency replacement preserves a common strict inner-slab
-margin.  This is the density interface consumed by the signed envelope
+margin. This is the density interface consumed by the signed envelope
 closure: the remaining input `hsmooth` is only finite separated smooth
 density with the same margin. -/
 theorem hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDensity
@@ -3599,7 +3553,7 @@ theorem hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDen
   have hepshalf : 0 < epsilon / 2 := by positivity
   obtain ⟨ι, hι, U, a, r, hrpos, hrlt, hU, ha, hsmoothMem, hsmoothErr⟩ :=
     hsmooth g hg (epsilon / 2) hepshalf
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   have haMem : ∀ i, MemLp (a i) 2 volume := by
     intro i
     exact (ha i).2.1.continuous.memLp_of_hasCompactSupport (ha i).1
@@ -3655,7 +3609,7 @@ theorem hasL2DenseInnerSlabCompactFrequencyTensorCoreAfter_of_smoothSeparatedDen
         simpa only [f] using hqerr)
     _ = ENNReal.ofReal epsilon := by
       rw [← ENNReal.ofReal_add hepshalf.le hepshalf.le]
-      ring
+      ring_nf
 
 end
 
@@ -3833,7 +3787,7 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
     exists_finite_smooth_compact_separated_uniform_close_complex
       (Euclidean 2) Real (0 : Euclidean 2) (3 / 2 : Real)
       hrE hrERE hr hrRF u hucont husupport halphapos
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   have hUSupport : ∀ i, Function.support (U i) ⊆
       Metric.closedBall (0 : Euclidean 2) RE := fun i => (hU i).2.2
   have haSupport : ∀ i, Function.support (a i) ⊆
@@ -3892,7 +3846,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_lightRayTimeRestriction
   have hzero : ∀ z : WaveSpaceTime, z ∈ outsideTimeSlab → h z = 0 := by
     intro z hz
     dsimp only [h]
-    simp only [outsideTimeSlab, Set.mem_setOf_eq] at hz
+    simp only [outsideTimeSlab, Set.mem_ofPred_eq] at hz
     simp [scratch_lightRayTimeRestriction, hz]
   have hepshalf : 0 < epsilon / 2 := by positivity
   obtain ⟨r0, hr0pos, hr0lt, u, hucompact, hucont, husupport, huerr⟩ :=
@@ -3940,7 +3894,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_lightRayTimeRestriction
   obtain ⟨ι, hι, U, a, hU, ha, hvmem, hverr⟩ :=
     exists_finite_smooth_separated_innerSlab_eLpNorm_sub_lt
       hrEpos hrERE hr0pos hr0r hrlt u hucont.continuous huProdSupport hepshalf
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   refine ⟨ι, inferInstance, U, a, r, ?_, hrlt, hU, ha, hvmem, ?_⟩
   · dsimp only [r]
     positivity
@@ -3966,7 +3920,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_lightRayTimeRestriction
         ENNReal.add_lt_add huerr hverr
       _ = ENNReal.ofReal epsilon := by
         rw [← ENNReal.ofReal_add hepshalf.le hepshalf.le]
-        ring
+        ring_nf
 
 /-- The locally packaged compact-frequency core and the final signed-closure
 core are definitionally the same tensors; this explicit bridge keeps the
@@ -3977,7 +3931,7 @@ theorem innerSlabCompactFrequencyTensorCore_iff
       scratch_InnerSlabCompactFrequencyTensorCore f := by
   constructor
   · rintro ⟨ι, hι, q, a, r, hq, hrpos, hrlt, ha, hf⟩
-    letI : Fintype ι := hι
+    let : Fintype ι := hι
     refine ⟨ι, inferInstance, q, a, r, hq, hrpos, hrlt, ha, ?_⟩
     calc
       f = compactFrequencyTensor q
@@ -3987,7 +3941,7 @@ theorem innerSlabCompactFrequencyTensorCore_iff
         simp only [compactFrequencyTensor,
           scratch_innerSlabCompactFrequencyTensor]
   · rintro ⟨ι, hι, q, a, r, hq, hrpos, hrlt, ha, hf⟩
-    letI : Fintype ι := hι
+    let : Fintype ι := hι
     refine ⟨ι, inferInstance, q, a, r, hq, hrpos, hrlt, ha, ?_⟩
     calc
       f = scratch_innerSlabCompactFrequencyTensor q a := hf
@@ -4015,7 +3969,7 @@ theorem scratch_hasLightRaySlabL2DenseCore_innerSlabCompactFrequencyTensor :
   obtain ⟨f, hcore, hfmem, hferr⟩ := hlocal g hg epsilon hepsilon
   exact ⟨f, (innerSlabCompactFrequencyTensorCore_iff f).mp hcore, hfmem, hferr⟩
 
-/-- All non-Kakeya bookkeeping for a signed tube envelope.  The four fields
+/-- All non-Kakeya bookkeeping for a signed tube envelope. The four fields
 are pointwise/measurability identities; the `L²` strong estimate is kept out
 of the structure so it remains the unique analytic theorem required below. -/
 structure InnerSlabFiniteTensorSignedEnvelopeModel where
@@ -4054,7 +4008,7 @@ def HasInnerSlabFiniteTensorSignedEnvelopeL2Estimate
           eLpNorm f 2 volume
 
 /-- Complete literal maximal lift from the actual finite compact-frequency
-inner-slab tensor core.  After constructing `model` from the signed tube
+inner-slab tensor core. After constructing `model` from the signed tube
 operator, its sole hypothesis is the finite-core signed-envelope `L²`
 estimate; density, the `|g|` reduction, and Fatou are all discharged here. -/
 theorem hasLightRayMaximalEstimate_of_innerSlabFiniteTensorSignedEnvelope
@@ -4290,7 +4244,7 @@ theorem lightRayDecayProfile_le_tsum_smoothDyadicSpatialCore
     exact hsum.le_tsum (k + 1) (fun j _ => smoothDyadicSpatialCore_nonneg _ _ _)
 
 /-- The literal light-ray kernel with its polynomial tail replaced by the
-`k`th smooth dyadic spatial core.  The normalization remains at the original
+`k`th smooth dyadic spatial core. The normalization remains at the original
 width here; the later dilation identity will rewrite it as a width
 `2^k * δ` tube kernel. -/
 noncomputable def smoothDyadicLightRayKernel
@@ -4752,7 +4706,7 @@ open scoped BigOperators ENNReal Topology
 noncomputable section
 
 /-- A finite dyadic expansion separates into an untouched narrow block and
-a uniformly bounded broad block.  The latter is absorbed by the full
+a uniformly bounded broad block. The latter is absorbed by the full
 geometric mass, so this plugs directly into any finite narrow-core bound. -/
 theorem scratch_sum_range_dyadic_narrow_broad_le
     (M k0 : Nat) (C r B : Real)
@@ -4856,7 +4810,7 @@ noncomputable def scratch_smoothTubeCore
     (z : WaveSpaceTime) : Real :=
   (rho⁻¹) ^ 2 * b (rho⁻¹ • (z.1 + z.2 • omega - y))
 
-/-- A direction-free spatial envelope at broad width.  The factor `8` absorbs
+/-- A direction-free spatial envelope at broad width. The factor `8` absorbs
 the entire light-ray displacement over the fixed time interval. -/
 noncomputable def scratch_broadRadialEnvelope
     (b : Euclidean 2 → Real) (rho : Real) (y x : Euclidean 2) : Real :=
@@ -4931,7 +4885,7 @@ theorem scratch_smoothTubeCore_le_broadRadialEnvelope
     exact mul_le_mul_of_nonneg_left (hble_one _) (sq_nonneg _)
 
 /-- The direction-free broad envelope is itself dominated by a fixed positive
-zero-direction light-ray weight.  Positivity of that weight is useful for the
+zero-direction light-ray weight. Positivity of that weight is useful for the
 weighted Cauchy step. -/
 theorem scratch_broadRadialEnvelope_le_zeroDirectionLightRayKernel
     (b : Euclidean 2 → Real)
@@ -5034,7 +4988,7 @@ noncomputable def scratch_zeroDirectionPositiveEnvelope
     lightRayKernel rho N 0 x (y, 0) * G x t
 
 /-- Pointwise broad-width domination survives the spatial and time
-integrations.  All hypotheses are ordinary integrability facts for the two
+integrations. All hypotheses are ordinary integrability facts for the two
 nonnegative integrands. -/
 theorem scratch_positiveSmoothTubeAverage_le_zeroDirectionPositiveEnvelope
     (b : Euclidean 2 → Real)
@@ -5131,7 +5085,7 @@ theorem scratch_integral_sq_positiveSmoothTubeAverage_le
       rw [integral_const_mul]
 
 /-- Cauchy--Schwarz on a finite parameter measure, integrated in the terminal
-variable.  This is the time step needed after broad-width domination. -/
+variable. This is the time step needed after broad-width domination. -/
 theorem scratch_integral_sq_timeAverage_le
     {α : Type*} [MeasurableSpace α] (mu : Measure α) [IsFiniteMeasure mu]
     (F : Euclidean 2 → α → Complex)
@@ -5222,7 +5176,7 @@ theorem scratch_integral_sq_spatialKernel_le
       rw [integral_const_mul]
     _ = A ^ 2 * ∫ x : Euclidean 2, ‖f x‖ ^ 2 := by ring
 
-/-- The exact finite-time/spatial `L²` closure.  Its hypotheses isolate only
+/-- The exact finite-time/spatial `L²` closure. Its hypotheses isolate only
 the routine Fubini and slice-energy obligations for a positive kernel. -/
 theorem scratch_integral_sq_time_spatialKernel_le
     {α : Type*} [MeasurableSpace α] (mu : Measure α) [IsFiniteMeasure mu]
@@ -5462,7 +5416,7 @@ theorem scratch_positiveSchwartzCore_nonneg
   rw [scratch_positiveSchwartzCore_apply]
   exact Complex.normSq_nonneg _
 
-/-- The reflected conjugate of a frequency profile.  Its inverse transform is
+/-- The reflected conjugate of a frequency profile. Its inverse transform is
 the pointwise conjugate of the inverse transform of the original profile. -/
 noncomputable def scratch_reflectedConjSchwartz
     (q : SchwartzMap (Euclidean 2) Complex) :
@@ -5722,7 +5676,7 @@ theorem scratch_exists_compact_frequency_profile_with_nonzero_inverse_center :
     exact_mod_cast b.integral_pos.ne'
 
 /-- A real nonnegative Schwartz core, positive on a ball, whose complexified
-version has compact Fourier support.  It is obtained as the squared modulus
+version has compact Fourier support. It is obtained as the squared modulus
 of the inverse transform of a compact smooth frequency bump. -/
 theorem scratch_exists_positive_bandlimited_schwartzCore :
     ∃ q : SchwartzMap (Euclidean 2) Complex, ∃ c r : Real,
@@ -5764,7 +5718,7 @@ open scoped ENNReal Topology EuclideanSpace
 noncomputable section
 
 /-- A broad tube core with polynomial spatial decay has a direction-free
-zero-direction envelope.  Unlike the compact-bump version, this applies to
+zero-direction envelope. Unlike the compact-bump version, this applies to
 positive bandlimited Schwartz cores. -/
 theorem scratch_smoothTubeCore_le_zeroDirectionLightRayKernel_of_decay
     (b : Euclidean 2 → Real) (K : Nat) {A : Real} (hA : 0 ≤ A)
@@ -5956,7 +5910,7 @@ theorem scratch_integral_sq_positiveSmoothTubeAverage_le_of_decay
       rw [integral_const_mul]
 
 /-- Every real Schwartz core is bounded above by a finite multiple of every
-polynomial light-ray decay profile.  This is the exact certificate consumed
+polynomial light-ray decay profile. This is the exact certificate consumed
 by the noncompact broad-width envelope. -/
 theorem scratch_schwartz_le_lightRayDecayProfile
     (b : SchwartzMap (Euclidean 2) Real) (K : Nat) :
@@ -6135,7 +6089,7 @@ theorem scratch_exists_integral_sq_broadWidth_positiveBandlimitedCore_le
       (mul_nonneg (pow_nonneg (by norm_num) _) hA) hpoint hcore_nonneg henv_nonneg
       (by simpa only [b] using hcoreSq) henvSq)
 
-/-- The dyadic width tail has a literal first broad scale.  Below it are the
+/-- The dyadic width tail has a literal first broad scale. Below it are the
 finitely many narrow scales for the Fourier/TT* argument. -/
 theorem scratch_exists_dyadic_broadWidthStart
     {delta : Real} (hdelta : 0 < delta) :
@@ -6206,7 +6160,7 @@ theorem canonicalPositiveCore_zero_pos :
   exact Complex.normSq_pos.mpr canonicalInverseFrequencyBump_zero_ne_zero
 
 /-- The positive bandlimited core is uniformly bounded below on a closed
-neighborhood of the origin.  The closed-ball form is arranged for dyadic
+neighborhood of the origin. The closed-ball form is arranged for dyadic
 physical rescaling. -/
 theorem exists_canonicalPositiveCore_lower_closedBall :
     ∃ c r : Real, 0 < c ∧ 0 < r ∧
@@ -6507,7 +6461,7 @@ theorem canonicalBandlimited_profile_le_coefficient_core_of_norm_le
           canonicalBandlimitedDyadicCore r j u := hproduct
 
 /-- The literal polynomial light-ray profile is dominated by a summable family
-of positive, normalized, bandlimited Schwartz cores.  This is the physical
+of positive, normalized, bandlimited Schwartz cores. This is the physical
 tail bridge needed before applying the compact-frequency Kakeya estimate to
 each summand. -/
 theorem lightRayDecayProfile_le_tsum_canonicalBandlimitedDyadicCore
@@ -6588,7 +6542,7 @@ open scoped BigOperators ENNReal Topology
 noncomputable section
 
 /-- The canonical bandlimited dyadic coefficient is exactly a fixed multiple
-of a geometric sequence.  This is the interface needed to feed it into the
+of a geometric sequence. This is the interface needed to feed it into the
 finite narrow/broad tail reducer. -/
 theorem scratch_canonicalBandlimitedDyadicCoefficient_eq_geometric
     (N : Nat) (c r : Real) (j : Nat) :
@@ -6898,7 +6852,7 @@ open Filter MeasureTheory Set
 noncomputable section
 
 /-- A width bounded below by a fixed multiple of the base scale has no worse
-logarithmic loss.  This is the elementary transfer used for the narrow
+logarithmic loss. This is the elementary transfer used for the narrow
 members of the positive dyadic core decomposition. -/
 theorem one_add_abs_log_width_le_of_mul_le
     {c delta rho : Real} (hc : 0 < c) (hdelta : 0 < delta) (hdeltaOne : delta ≤ 1)
@@ -6937,7 +6891,7 @@ open scoped BigOperators Convolution FourierTransform EuclideanSpace Pointwise
 noncomputable section
 
 /-- The compact multiplier whose inverse transform is the canonical positive
-core at physical tube width `rho`.  It is the `j = 0` member of the
+core at physical tube width `rho`. It is the `j = 0` member of the
 canonical dyadic family after choosing the base radius `2 / rho`. -/
 noncomputable def scratch_canonicalBandlimitedTubeMultiplier
     (rho : Real) (hrho : 0 < rho) : SchwartzMap (Euclidean 2) Complex :=
@@ -7005,7 +6959,7 @@ theorem scratch_rescaledCanonicalDyadicCore_eq_smoothTubeCore
   ring
 
 /-- The literal polynomial light-ray kernel is pointwise dominated by
-positive canonical bandlimited tube cores.  The `j`th term has physical
+positive canonical bandlimited tube cores. The `j`th term has physical
 width `delta / canonicalBandlimitedDyadicScale r j`; this is the form that
 splits into finitely many narrow scales and a broad tail. -/
 theorem lightRayKernel_le_tsum_canonicalBandlimitedTubeCore
@@ -7051,7 +7005,7 @@ theorem lightRayKernel_le_tsum_canonicalBandlimitedTubeCore
             scratch_rescaledCanonicalDyadicCore_eq_smoothTubeCore hdelta hr]
 
 /-- A compact frequency multiplier is a *finite* radial sum: one low
-frequency piece plus finitely many homogeneous bands.  The low piece is
+frequency piece plus finitely many homogeneous bands. The low piece is
 essential, since a ball-supported multiplier need not vanish at frequency
 zero. -/
 theorem scratch_bandlimitedMultiplier_eq_lowpass_add_finiteBands
@@ -7083,7 +7037,7 @@ theorem scratch_bandlimitedMultiplier_eq_lowpass_add_finiteBands
       rw [← finiteIntegerDyadicMultiplierResolution]
 
 /-- There is always a finite upper radial cutoff covering the compact
-canonical tube multiplier.  This deliberately makes no claim that the
+canonical tube multiplier. This deliberately makes no claim that the
 homogeneous bands alone reconstruct the multiplier at zero frequency. -/
 theorem scratch_exists_canonicalBandlimitedTube_finiteRadialResolution
     (C : lpCutoffs 2) {rho : Real} (hrho : 0 < rho) :
@@ -7113,7 +7067,7 @@ theorem scratch_exists_canonicalBandlimitedTube_finiteRadialResolution
     _ = (2 : Real) ^ ((0 : Int) + n) := by norm_num).le
 
 /-- Source-ready finite radial resolution at the canonical logarithmic band
-level.  There is a central lowpass term and exactly
+level. There is a central lowpass term and exactly
 `kakeyaRadialBandLevel rho` homogeneous terms. -/
 theorem scratch_canonicalBandlimitedTube_finiteRadialResolution_at_level
     (C : lpCutoffs 2) {rho : Real} (hrho : 0 < rho)
@@ -7169,7 +7123,7 @@ theorem scratch_canonicalFrequencyBump_hasCompactSupport :
     (canonicalFrequencyBump_zero_of_two_le_norm x htwo)
 
 /-- The entire broad tail can use the existing positive-bandlimited
-broad-width reduction with the canonical frequency bump.  In particular it
+broad-width reduction with the canonical frequency bump. In particular it
 does not require a signed full-band estimate. -/
 theorem scratch_exists_broadWidth_envelope_canonicalPositiveCore
     (K : Nat) {rho : Real} (hrho : (1 / 2 : Real) ≤ rho)
@@ -7193,7 +7147,7 @@ theorem scratch_exists_broadWidth_envelope_canonicalPositiveCore
 
 /-- On every narrow canonical tube width, the number of required radial
 frequency bands has the same logarithmic size as the original width
-`delta`.  This combines the compact multiplier support radius `4/rho`, the
+`delta`. This combines the compact multiplier support radius `4/rho`, the
 canonical scale relation, and the fixed-multiple log transfer. -/
 theorem scratch_exists_canonicalNarrowRadialBandCount_log_delta_bound
     {delta r : Real} (hdelta : 0 < delta) (hdeltaOne : delta ≤ 1)
@@ -7232,7 +7186,7 @@ theorem scratch_exists_canonicalNarrowRadialBandCount_log_delta_bound
       mul_le_mul_of_nonneg_left hlog hA0.le
     _ = (A0 * (1 + |Real.log c|)) * (1 + |Real.log delta|) := by ring
 
-/-- The preceding count is also bounded by the final `log^(3/2)` loss.  This
+/-- The preceding count is also bounded by the final `log^(3/2)` loss. This
 is useful when a finite radial-band estimate is inserted into the endpoint
 envelope with the target exponent already fixed. -/
 theorem scratch_exists_canonicalNarrowRadialBandCount_log_threeHalves_bound
@@ -7289,7 +7243,7 @@ theorem scratch_smoothTubeCore_eq_re_canonicalBandlimitedTubePhysicalCore
   exact scratch_canonicalBandlimitedTubePhysicalCore_re_eq hrho _
 
 /-- The positive canonical tube average of a real-valued input is the real
-part of the corresponding compact-frequency signed tube field.  The measure
+part of the corresponding compact-frequency signed tube field. The measure
 is left generic so this applies both to the literal slab integral and to any
 finite-tensor localization. -/
 theorem integral_smoothTubeCore_eq_re_integral_canonicalBandlimitedTube
@@ -7319,7 +7273,7 @@ theorem integral_smoothTubeCore_eq_re_integral_canonicalBandlimitedTube
         integral_re hG
 
 /-- Hence the literal positive canonical tube average is bounded by the
-norm of its signed compact-frequency tube field.  Crucially this uses only
+norm of its signed compact-frequency tube field. Crucially this uses only
 the real-part identity, not a false assertion that the complex kernel itself
 is real-valued. -/
 theorem integral_smoothTubeCore_le_norm_integral_canonicalBandlimitedTube
@@ -7348,7 +7302,9 @@ end
 open MeasureTheory
 open scoped ENNReal Topology
 
-/-- The literal spacetime test kernel for a spatially smoothed straight-ray average. Its translated argument includes the ray intercept and direction, so the ensuing density estimates apply to the actual normalized source/ray chart. -/
+/-- The literal spacetime test kernel for a spatially smoothed straight-ray average. Its
+  translated argument includes the ray intercept and direction, so the ensuing density estimates
+  apply to the actual normalized source/ray chart. -/
 noncomputable def translatedRayTestKernel
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
     (p n : EuclideanSpace Real (Fin 2)) (z : EuclideanSpace Real (Fin 2) × Real) :
@@ -7362,7 +7318,8 @@ theorem translatedRayTestKernel_measurable
   have hc : Continuous (fun z : EuclideanSpace Real (Fin 2) × Real => p - z.2 • n - z.1) := by
     fun_prop
   exact (ha.comp measurable_snd).mul (hκ.comp hc.measurable)
-/-- Translation invariance and Tonelli give the exact ray test-kernel square energy, independent of intercept and direction. -/
+/-- Translation invariance and Tonelli give the exact ray test-kernel square energy, independent
+  of intercept and direction. -/
 theorem translatedRayTestKernel_lintegral_sq
     (μ : Measure Real) [SFinite μ]
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
@@ -7397,7 +7354,8 @@ theorem translatedRayTestKernel_lintegral_sq
               p - t • n - X) by fun_prop).measurable).enorm.pow_const (2 : Real))
         _ = _ := by rw [hshift]
     _ = _ := lintegral_mul_const _ (ha.enorm.pow_const (2 : Real))
-/-- Genuine Cauchy bound for the literal kernel pairing, uniform in every ray intercept and direction. -/
+/-- Genuine Cauchy bound for the literal kernel pairing, uniform in every ray intercept and
+  direction. -/
 theorem translatedRayTestKernel_integral_mul_enorm_le
     (μ : Measure Real) [SFinite μ]
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
@@ -7421,7 +7379,8 @@ theorem translatedRayTestKernel_integral_mul_enorm_le
       rw [translatedRayTestKernel_lintegral_sq μ a κ ha hκ p n] at hh
       exact hh
 
-/-- The exact L2 norm of the actual translated ray test kernel is the product of its temporal and spatial factor norms. -/
+/-- The exact L2 norm of the actual translated ray test kernel is the product of its temporal and
+  spatial factor norms. -/
 theorem translatedRayTestKernel_eLpNorm_two
     (μ : Measure Real) [SFinite μ]
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
@@ -7473,14 +7432,16 @@ theorem translatedRayTestKernel_integral_mul_le_L2
     ← hmA, ← hmK, ← hmG] at hh
   exact hh
 
-/-- The actual linear spatially smoothed ray field, written on raw product spacetime for the density argument. -/
+/-- The actual linear spatially smoothed ray field, written on raw product spacetime for the
+  density argument. -/
 noncomputable def translatedRayPairing
     (μ : Measure Real) (a : Real → Complex)
     (κ : EuclideanSpace Real (Fin 2) → Complex)
     (g : EuclideanSpace Real (Fin 2) × Real → Complex)
     (p n : EuclideanSpace Real (Fin 2)) : Complex :=
   ∫ z, translatedRayTestKernel a κ p n z * g z ∂(volume.prod μ)
-/-- L2 changes of input give uniformly bounded changes of every literal ray pairing. Integrability of both pairings is derived, so their difference is the actual difference integral. -/
+/-- L2 changes of input give uniformly bounded changes of every literal ray pairing. Integrability
+  of both pairings is derived, so their difference is the actual difference integral. -/
 theorem translatedRayPairing_sub_enorm_le
     (μ : Measure Real) [SFinite μ]
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
@@ -7509,7 +7470,9 @@ theorem translatedRayPairing_sub_enorm_le
   rw [heq]
   exact translatedRayTestKernel_integral_mul_le_L2 μ a κ ha hκ (g-h)
     (hg.sub hh).aestronglyMeasurable p n
-/-- L2 input convergence gives uniform convergence of the actual smoothed ray field for an arbitrary parameterization of ray intercepts and directions. This supplies the missing density identification for the incidence-indexed weak maximal estimate in repair (9). -/
+/-- L2 input convergence gives uniform convergence of the actual smoothed ray field for an
+  arbitrary parameterization of ray intercepts and directions. This supplies the missing density
+  identification for the incidence-indexed weak maximal estimate in repair (9). -/
 theorem translatedRayPairing_tendstoUniformly_of_L2
     {Y : Type*} (μ : Measure Real) [SFinite μ]
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
@@ -7537,7 +7500,9 @@ theorem translatedRayPairing_tendstoUniformly_of_L2
   exact (translatedRayPairing_sub_enorm_le μ a κ ha hκ ha2 hκ2
     (gSeq j) g (hSeq j) hg (p y) (n y)).trans_lt hj
 
-/-- Fatou extends a squared maximal bound from a genuine pointwise-convergent core on any fixed source measure; the transverse supremum may be uncountable. Core maximal measurability is explicit. -/
+/-- Fatou extends a squared maximal bound from a genuine pointwise-convergent core on any fixed
+  source measure; the transverse supremum may be uncountable. Core maximal measurability is
+  explicit. -/
 theorem lintegral_iSup_sq_le_of_pointwise_limit
     {Y B : Type*} [MeasurableSpace Y] (μ : Measure Y)
     (Q : B → Y → Complex) (QSeq : Nat → B → Y → Complex)
@@ -7571,7 +7536,8 @@ theorem lintegral_iSup_sq_le_of_pointwise_limit
         (by isBoundedDefault) (by isBoundedDefault)
     _ = C := Filter.liminf_const C
 
-/-- Exact Fubini identification of the L2 kernel pairing with the spatial convolution evaluated along the actual ray and integrated in time. -/
+/-- Exact Fubini identification of the L2 kernel pairing with the spatial convolution evaluated
+  along the actual ray and integrated in time. -/
 theorem translatedRayPairing_eq_iterated
     (μ : Measure Real) [SFinite μ]
     (a : Real → Complex) (κ : EuclideanSpace Real (Fin 2) → Complex)
@@ -7593,17 +7559,6 @@ theorem translatedRayPairing_eq_iterated
   filter_upwards with t
   simp only [translatedRayTestKernel, mul_assoc]
   exact integral_const_mul _ _
-#print axioms translatedRayPairing_eq_iterated
-
-#print axioms lintegral_iSup_sq_le_of_pointwise_limit
-
-#print axioms translatedRayPairing_sub_enorm_le
-#print axioms translatedRayPairing_tendstoUniformly_of_L2
-
-#print axioms translatedRayTestKernel_eLpNorm_two
-#print axioms translatedRayTestKernel_integral_mul_le_L2
-
-#print axioms translatedRayTestKernel_lintegral_sq
 
 /-! ### Genuine L2 energy budgets for the actual ray density closure -/
 
@@ -7625,7 +7580,7 @@ theorem memLp_two_lintegral_sq_le_four_of_error_le
     {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
     (μ : Measure α) (f g : α → E)
     (hf : MemLp f 2 μ) (hg : MemLp g 2 μ)
-    (herr : eLpNorm (f-g) 2 μ ≤ eLpNorm g 2 μ) :
+    (herr : eLpNorm (f - g) 2 μ ≤ eLpNorm g 2 μ) :
     (∫⁻ x, ENNReal.ofReal (‖f x‖^2) ∂μ) ≤
       4 * ∫⁻ x, ENNReal.ofReal (‖g x‖^2) ∂μ := by
   have hn : eLpNorm f 2 μ ≤ 2 * eLpNorm g 2 μ := by
@@ -7639,14 +7594,13 @@ theorem memLp_two_lintegral_sq_le_four_of_error_le
     eLpNorm_two_sq_eq_lintegral_norm_sq μ g hg.aestronglyMeasurable] at hp
   rw [show (2:ENNReal)^2 = 4 by norm_num] at hp
   exact hp
-#print axioms memLp_two_lintegral_sq_le_four_of_error_le
 
 /-- Real square-energy form of the genuine L2 core budget. -/
 theorem memLp_two_integral_sq_le_four_of_error_le
     {α E : Type*} [MeasurableSpace α] [NormedAddCommGroup E]
     (μ : Measure α) (f g : α → E)
     (hf : MemLp f 2 μ) (hg : MemLp g 2 μ)
-    (herr : eLpNorm (f-g) 2 μ ≤ eLpNorm g 2 μ) :
+    (herr : eLpNorm (f - g) 2 μ ≤ eLpNorm g 2 μ) :
     (∫ x, ‖f x‖^2 ∂μ) ≤ 4 * ∫ x, ‖g x‖^2 ∂μ := by
   have he := memLp_two_lintegral_sq_le_four_of_error_le μ f g hf hg herr
   have hfi : Integrable (fun x => ‖f x‖^2) μ := hf.integrable_norm_pow (by norm_num)
@@ -7659,7 +7613,6 @@ theorem memLp_two_integral_sq_le_four_of_error_le
     ← ENNReal.ofReal_mul (by norm_num : (0:Real) ≤ 4)] at he
   exact (ENNReal.ofReal_le_ofReal_iff (by positivity :
     0 ≤ 4 * ∫ x, ‖g x‖^2 ∂μ)).mp he
-#print axioms memLp_two_integral_sq_le_four_of_error_le
 
 /-- A zero L2 input has identically zero actual translated-ray pairing. -/
 theorem translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero
@@ -7674,7 +7627,5 @@ theorem translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero
   have hh := translatedRayTestKernel_integral_mul_le_L2 μ a κ ha hκ g hg p n
   rw [hzero, mul_zero] at hh
   exact enorm_eq_zero.mp (le_antisymm hh bot_le)
-#print axioms translatedRayPairing_eq_zero_of_eLpNorm_two_eq_zero
-#print axioms translatedRayTestKernel_integral_mul_enorm_le
 
 end Auto.Spherical.MSS

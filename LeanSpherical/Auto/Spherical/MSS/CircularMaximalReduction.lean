@@ -1702,7 +1702,7 @@ private theorem iSup_norm_eq_toReal_iSup_ennreal_norm_of_continuous
     (hab : a ≤ b) (hF : Continuous (Function.uncurry F)) (x : X) :
     (⨆ r : Icc a b, ‖F r.1 x‖) =
       (⨆ r : Icc a b, ENNReal.ofReal ‖F r.1 x‖).toReal := by
-  letI : Nonempty (Icc a b) := ⟨⟨a, le_rfl, hab⟩⟩
+  let : Nonempty (Icc a b) := ⟨⟨a, le_rfl, hab⟩⟩
   have hnorm : Continuous (fun r : Real => ‖F r x‖) := by
     exact (hF.comp (continuous_id.prodMk
       (continuous_const : Continuous fun _ : Real => x))).norm
@@ -2066,7 +2066,6 @@ theorem sourcePacket_schwartz_translate_integral_hasDerivAt
     (hgi.norm.const_mul B1)
     (Filter.Eventually.of_forall (fun s => fun v hv => hderiv s v))
   exact hd.2
-#print axioms sourcePacket_schwartz_translate_integral_hasDerivAt
 end
 end Auto.Spherical.MSS
 
@@ -2087,7 +2086,8 @@ theorem normalizedCircleFrequencyTimeDerivativeProfile_apply
     normalizedCircleFrequencyTimeDerivativeProfile b r =
       (2*Real.pi*Complex.I)*(r:Complex)*b r := by
   simp only [normalizedCircleFrequencyTimeDerivativeProfile,smul_apply,smul_eq_mul,
-    SchwartzMap.smulLeftCLM_apply_apply (show (fun r : Real => (r:Complex)).HasTemperateGrowth by fun_prop)]
+    SchwartzMap.smulLeftCLM_apply_apply
+      (show (fun r : Real => (r : Complex)).HasTemperateGrowth by fun_prop)]
   ring
 
 theorem normalizedCircleFrequencyTimeDerivativeProfile_gap
@@ -2101,13 +2101,16 @@ theorem normalizedCircleInverseBand_deriv
     SchwartzMap.derivCLM Complex Complex
       (FourierTransform.fourierInv (mssTranslatedDilatedCutoff b 0 mu hmu)) =
       (mu:Complex) • FourierTransform.fourierInv
-        (mssTranslatedDilatedCutoff (normalizedCircleFrequencyTimeDerivativeProfile b) 0 mu hmu) := by
+        (mssTranslatedDilatedCutoff
+          (normalizedCircleFrequencyTimeDerivativeProfile b) 0 mu hmu) := by
   let bm := mssTranslatedDilatedCutoff b (0:Real) mu hmu
-  let b1m := mssTranslatedDilatedCutoff (normalizedCircleFrequencyTimeDerivativeProfile b) (0:Real) mu hmu
+  let b1m := mssTranslatedDilatedCutoff
+    (normalizedCircleFrequencyTimeDerivativeProfile b) (0 : Real) mu hmu
   have hid : SchwartzMap.derivCLM Complex Complex (FourierTransform.fourierInv bm) =
       LineDeriv.lineDerivOp (1:Real) (FourierTransform.fourierInv bm) := by
     ext x
-    rw [SchwartzMap.derivCLM_apply,SchwartzMap.lineDerivOp_apply_eq_fderiv,fderiv_apply_one_eq_deriv]
+    rw [SchwartzMap.derivCLM_apply, SchwartzMap.lineDerivOp_apply_eq_fderiv,
+      fderiv_apply_one_eq_deriv]
   have hf : (2*Real.pi*Complex.I) • SchwartzMap.smulLeftCLM Complex
       (fun r : Real => inner Real r (1:Real)) bm = (mu:Complex) • b1m := by
     ext r
@@ -2124,8 +2127,6 @@ theorem normalizedCircleInverseBand_deriv
     (mu:Complex) • FourierTransform.fourierInv b1m
   rw [hid,SchwartzMap.lineDerivOp_fourierInv_eq,hf,FourierTransform.fourierInv_smul]
 
-#print axioms normalizedCircleInverseBand_deriv
-#print axioms normalizedCircleFrequencyTimeDerivativeProfile_gap
 end
 end Auto.Spherical.MSS
 
@@ -2138,7 +2139,7 @@ attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.to
 
 theorem sourcePacket_time_cutoff_quotient_contDiff
     (chi : SchwartzMap Real Complex) (eps : Real)
-    (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0) :
+    (hsep : ∀ t ∈ tsupport (chi : Real → Complex), 1 + eps * t ≠ 0) :
     ContDiff Real (⊤:ℕ∞) (fun t : Real => chi t*(((1+eps*t:Real):Complex))⁻¹) := by
   rw [contDiff_iff_contDiffAt]
   intro t
@@ -2155,24 +2156,24 @@ theorem sourcePacket_time_cutoff_quotient_contDiff
 
 def sourcePacketTimeCutoffQuotient
     (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
-    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0) :
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex), 1 + eps * t ≠ 0) :
     SchwartzMap Real Complex :=
   (hcompact.mul_right (f' := fun t : Real => (((1+eps*t:Real):Complex))⁻¹)).toSchwartzMap
     (sourcePacket_time_cutoff_quotient_contDiff chi eps hsep)
 
 theorem sourcePacketTimeCutoffQuotient_apply
     (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
-    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0) (t : Real) :
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex), 1 + eps * t ≠ 0) (t : Real) :
     sourcePacketTimeCutoffQuotient chi hcompact eps hsep t =
       chi t*(((1+eps*t:Real):Complex))⁻¹ := rfl
 
 theorem sourcePacketTimeCutoffQuotient_hasDerivAt
     (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
-    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0)
-    (t : Real) (ht : 1+eps*t ≠ 0) :
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex), 1 + eps * t ≠ 0)
+    (t : Real) (ht : 1 + eps * t ≠ 0) :
     HasDerivAt (sourcePacketTimeCutoffQuotient chi hcompact eps hsep)
       (deriv chi t*(((1+eps*t:Real):Complex))⁻¹+
-        chi t*(-(eps:Complex)/(((1+eps*t:Real):Complex))^2)) t := by
+        chi t*(-(eps:Complex)/(((1 + eps*t:Real):Complex))^2)) t := by
   have hr : HasDerivAt (fun t : Real => 1+eps*t) eps t := by
     simpa only [zero_add,mul_one,Pi.add_apply,id_eq] using!
       (hasDerivAt_const t (1:Real)).add ((hasDerivAt_id t).const_mul eps)
@@ -2185,8 +2186,8 @@ theorem sourcePacketTimeCutoffQuotient_hasDerivAt
 
 theorem sourcePacketTimeCutoffQuotient_norm_deriv_le
     (chi : SchwartzMap Real Complex) (hcompact : HasCompactSupport (chi : Real → Complex))
-    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex),1+eps*t ≠ 0)
-    (t : Real) (ht : 1/2 ≤ 1+eps*t) (heps : |eps| ≤ 1) :
+    (eps : Real) (hsep : ∀ t ∈ tsupport (chi : Real → Complex), 1 + eps * t ≠ 0)
+    (t : Real) (ht : 1 / 2 ≤ 1 + eps * t) (heps : |eps| ≤ 1) :
     ‖sourcePacketTimeCutoffQuotient chi hcompact eps hsep t‖ ≤
       2*SchwartzMap.seminorm Complex 0 0 chi ∧
     ‖deriv (sourcePacketTimeCutoffQuotient chi hcompact eps hsep) t‖ ≤
@@ -2224,7 +2225,5 @@ theorem sourcePacketTimeCutoffQuotient_norm_deriv_le
           (mul_le_mul h0 hnderiv (norm_nonneg _) (apply_nonneg _ _))
       _ = _ := by ring
 
-#print axioms sourcePacketTimeCutoffQuotient_norm_deriv_le
-#print axioms sourcePacket_time_cutoff_quotient_contDiff
 end
 end Auto.Spherical.MSS

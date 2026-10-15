@@ -2347,7 +2347,7 @@ private theorem aux_active_pair_witness_spec
         n n' indices directions k Z pair).1 +
         (aux_active_pair_witness scale angularConstant normalShift normalShift'
           n n' indices directions k Z pair).2 = Z := by
-  rw [aux_active_pair_witness, dif_pos hpair]
+  rw [aux_active_pair_witness, dite_eq_left hpair]
   exact Classical.choose_spec
       (aux_active_pair_exists_witness scale angularConstant normalShift normalShift'
     n n' indices directions k Z pair hpair)
@@ -4849,7 +4849,7 @@ theorem sum_angularSeparationPairs_range_succ_of_levelData
   rw [Finset.sum_eq_single_of_mem k hkRange]
   · have hkClass : angularSeparationClass k pair.1 pair.2 :=
       ((mem_angularSeparationPairs_iff indices k pair).mp hk.2).2.2
-    rw [if_pos hkClass]
+    rw [ite_eq_left hkClass]
   · intro j hj hne
     have hjLevel : j ≤ maxLevel scale :=
       Nat.le_of_lt_succ (Finset.mem_range.mp hj)

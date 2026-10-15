@@ -3408,7 +3408,7 @@ private theorem jointVertical_top_constant_le_scale_quarter
 
 private theorem jointVertical_verticalRecombinationGain_top :
     verticalRecombinationGain ⊤ = 1 / 4 := by
-  rw [verticalRecombinationGain, if_pos rfl]
+  rw [verticalRecombinationGain, ite_eq_left rfl]
 
 private theorem jointVertical_ennreal_sqrt_card_top_constant_le_vertical_gain_top
     {scale C0 A : Real} (indices : Finset Int)
@@ -3970,7 +3970,7 @@ private theorem jointVertical_ennreal_prefactor_sqrt_card_interpolation_le_scale
 private theorem jointVertical_verticalRecombinationGain_finite
     (p : ENNReal) (hpfin : p ≠ ⊤) :
     verticalRecombinationGain p = 1 / 4 - 1 / (2 * p.toReal) := by
-  rw [verticalRecombinationGain, if_neg hpfin]
+  rw [verticalRecombinationGain, ite_eq_right hpfin]
 
 private theorem jointVertical_ennreal_prefactor_sqrt_card_interpolation_le_vertical_gain_finite
     {scale C0 A D : Real} (indices : Finset Int) (p : ENNReal)
@@ -3989,7 +3989,7 @@ private theorem jointVertical_ennreal_prefactor_sqrt_card_interpolation_le_verti
 
 private theorem jointVertical_verticalRecombinationGain_two :
     verticalRecombinationGain (2 : ENNReal) = 0 := by
-  rw [verticalRecombinationGain, if_neg (by norm_num : (2 : ENNReal) ≠ ⊤)]
+  rw [verticalRecombinationGain, ite_eq_right (by norm_num : (2 : ENNReal) ≠ ⊤)]
   norm_num
 
 private theorem jointVertical_vertical_recombination_exponent_cases
@@ -4312,7 +4312,6 @@ theorem mss_spectral_plate_vertical_recombination_capped
       congr 2
       rw [Real.rpow_add (by linarith : 0 < scale)]
       ring
-#print axioms mss_spectral_plate_vertical_recombination_capped
 
 end
 

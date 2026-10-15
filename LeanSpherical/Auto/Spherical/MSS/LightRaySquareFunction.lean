@@ -476,7 +476,7 @@ private theorem aux_integrable_sq_lightRayKernel_spaceTime
             lightRayDecayProfile (2 * N) u :=
               aux_integral_sq_lightRayKernel_spatial_eq hδ N ω y t
     rw [htime]
-    letI : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
+    let : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
       unfold lightRayTimeInterval
       infer_instance
     exact integrable_const _
@@ -859,7 +859,7 @@ theorem aux_lightRayMaximal_eq_csSup_denseDirections_of_continuity
       sSup (Set.range (fun n : Nat =>
         lightRayAverage δ N (aux_lightRayDirectionDenseSequence n).1 y g)) := by
   let F : aux_lightRayDirection → Real := fun ω => lightRayAverage δ N ω.1 y g
-  have hFcont : Continuous F := (hcont y).restrict
+  have hFcont : Continuous F := (hcont y).domRestrict
   have himage : F '' Set.univ =
       ((fun ω : Euclidean 2 => lightRayAverage δ N ω y g) ''
         unitLightRayDirections) := by
@@ -1159,7 +1159,7 @@ theorem aux_exists_lightRayDenseFiniteApproximation_of_continuity
     ⟨ω, hω, hmax⟩
   let ω₀ : aux_lightRayDirection := ⟨ω, hω⟩
   let F : aux_lightRayDirection → Real := fun ω' => lightRayAverage δ N ω'.1 y g
-  have hFcont : Continuous F := (hcont y).restrict
+  have hFcont : Continuous F := (hcont y).domRestrict
   have hFat : ContinuousAt F ω₀ := hFcont.continuousAt
   rcases (Metric.continuousAt_iff.mp hFat η hη) with ⟨ε, hε, hclose⟩
   rcases aux_exists_finiteNet_lightRayDirectionDenseSequence ε hε with
@@ -2688,7 +2688,7 @@ private theorem integral_lightRayEnergy_transpose
         (∫ z : WaveSpaceTime,
           lightRayKernel δ N ω y z * ‖g z‖
           ∂continuumLightRayMeasure) := by
-  letI : SFinite continuumLightRayMeasure := by
+  let : SFinite continuumLightRayMeasure := by
     unfold continuumLightRayMeasure
     infer_instance
   calc
@@ -2766,7 +2766,7 @@ theorem continuumFineKernelWeightedPairing_le_lightRayMaximal
       ∂continuumLightRayMeasure) ≤
       A * ∫ y : Euclidean 2,
         ‖input y‖ ^ 2 * lightRayMaximal δ N g y := by
-  letI : SFinite continuumLightRayMeasure := by
+  let : SFinite continuumLightRayMeasure := by
     unfold continuumLightRayMeasure
     infer_instance
   have hpoint : ∀ z : WaveSpaceTime,
@@ -2934,7 +2934,7 @@ theorem continuumFineKernelFiniteSumWeightedPairing_le_lightRayMaximal
       ∂continuumLightRayMeasure) ≤
       A * ∫ y : Euclidean 2,
         (∑ i ∈ s, ‖input i y‖ ^ 2) * lightRayMaximal δ N g y := by
-  letI : SFinite continuumLightRayMeasure := by
+  let : SFinite continuumLightRayMeasure := by
     unfold continuumLightRayMeasure
     infer_instance
   have hpacket : ∀ i ∈ s,
@@ -3181,7 +3181,7 @@ theorem continuumFineKernelWeightedPairing_le_of_lightRayL2Energy
       A * (∫ y : Euclidean 2, ‖input y‖ ^ 4) ^ ((2 : Real)⁻¹) *
         (B * ∫ z : WaveSpaceTime, ‖g z‖ ^ 2
           ∂continuumLightRayMeasure) ^ ((2 : Real)⁻¹) := by
-  letI : SFinite continuumLightRayMeasure := by
+  let : SFinite continuumLightRayMeasure := by
     unfold continuumLightRayMeasure
     infer_instance
   have hinputSqMeas : AEStronglyMeasurable (fun y : Euclidean 2 =>

@@ -1475,7 +1475,6 @@ theorem eLpNorm_four_finset_sum_sub_le_sum_of_eq_add_of_tail_bounds
     {ι : Type*} (indices : Finset ι)
     (main tail full : ι → WaveSpaceTime → Complex)
     (hdecomp : ∀ i ∈ indices, full i = main i + tail i)
-    (htailMeas : ∀ i ∈ indices, AEStronglyMeasurable (tail i) volume)
     (E : ι → ENNReal)
     (hE : ∀ i ∈ indices, eLpNorm (tail i) 4 volume ≤ E i) :
     eLpNorm ((∑ i ∈ indices, full i) - ∑ i ∈ indices, main i) 4 volume ≤
@@ -5261,7 +5260,7 @@ private theorem exists_scratchWavefront_shearedNormalTail_derivative_weightedEnv
           ‖iteratedFDeriv Real i
             (scratchJointNormalDifference D.radialTime scale hscale :
               JointWaveSpaceTime → Real) z‖ ≤ B i := by
-    simpa only [B, dif_pos hi] using
+    simpa only [B, dite_eq_left hi] using
       (exists_scratchJointNormalDifference_iteratedFDeriv_uniform_bound
         D.radialTime i hi).choose_spec.2
   let R : Real := ∑ i ∈ Finset.range (r + 1), max 1 (B i)

@@ -851,9 +851,8 @@ theorem sectorAnnularCutoff_nonneg (xi : Euclidean 2) :
 theorem sectorAnnularCutoff_le_one (xi : Euclidean 2) :
     sectorAnnularCutoff xi ≤ 1 := by
   unfold sectorAnnularCutoff
-  apply mul_le_one₀ outerSectorRadialBump.le_one
-  · exact sub_nonneg.mpr innerSectorRadialBump.le_one
-  · exact sub_le_self _ (innerSectorRadialBump.nonneg' xi)
+  exact (mul_le_of_le_one_left (sub_nonneg.mpr innerSectorRadialBump.le_one)
+    outerSectorRadialBump.le_one).trans (sub_le_self _ (innerSectorRadialBump.nonneg' xi))
 
 theorem chartBufferedBump_nonneg (j : Fin 4) (xi : Euclidean 2) :
     0 ≤ chartBufferedBump j xi := by
@@ -894,25 +893,18 @@ theorem chartOrderedWeight_nonneg (j : Fin 4) (xi : Euclidean 2) :
 
 theorem chartOrderedWeight_le_one (j : Fin 4) (xi : Euclidean 2) :
     chartOrderedWeight j xi ≤ 1 := by
+  have h01 := (mul_le_of_le_one_left (one_sub_chartBufferedBump_nonneg 1 xi)
+    (one_sub_chartBufferedBump_le_one 0 xi)).trans (one_sub_chartBufferedBump_le_one 1 xi)
+  have h012 := (mul_le_of_le_one_left (one_sub_chartBufferedBump_nonneg 2 xi) h01).trans
+    (one_sub_chartBufferedBump_le_one 2 xi)
   fin_cases j
   · simpa [chartOrderedWeight] using chartBufferedBump_le_one 0 xi
-  · exact mul_le_one₀ (one_sub_chartBufferedBump_le_one 0 xi)
-      (chartBufferedBump_nonneg 1 xi) (chartBufferedBump_le_one 1 xi)
-  · apply mul_le_one₀
-    · exact mul_le_one₀ (one_sub_chartBufferedBump_le_one 0 xi)
-        (one_sub_chartBufferedBump_nonneg 1 xi)
-        (one_sub_chartBufferedBump_le_one 1 xi)
-    · exact chartBufferedBump_nonneg 2 xi
-    · exact chartBufferedBump_le_one 2 xi
-  · apply mul_le_one₀
-    · apply mul_le_one₀
-      · exact mul_le_one₀ (one_sub_chartBufferedBump_le_one 0 xi)
-          (one_sub_chartBufferedBump_nonneg 1 xi)
-          (one_sub_chartBufferedBump_le_one 1 xi)
-      · exact one_sub_chartBufferedBump_nonneg 2 xi
-      · exact one_sub_chartBufferedBump_le_one 2 xi
-    · exact chartBufferedBump_nonneg 3 xi
-    · exact chartBufferedBump_le_one 3 xi
+  · exact (mul_le_of_le_one_left (chartBufferedBump_nonneg 1 xi)
+      (one_sub_chartBufferedBump_le_one 0 xi)).trans (chartBufferedBump_le_one 1 xi)
+  · exact (mul_le_of_le_one_left (chartBufferedBump_nonneg 2 xi) h01).trans
+      (chartBufferedBump_le_one 2 xi)
+  · exact (mul_le_of_le_one_left (chartBufferedBump_nonneg 3 xi) h012).trans
+      (chartBufferedBump_le_one 3 xi)
 
 theorem norm_chartAnnularMultiplier_le_one (j : Fin 4) (xi : Euclidean 2) :
     ‖chartAnnularMultiplier j xi‖ ≤ 1 := by
@@ -920,8 +912,8 @@ theorem norm_chartAnnularMultiplier_le_one (j : Fin 4) (xi : Euclidean 2) :
   rw [norm_mul, Complex.norm_real, Complex.norm_real,
     Real.norm_of_nonneg (sectorAnnularCutoff_nonneg xi),
     Real.norm_of_nonneg (chartOrderedWeight_nonneg j xi)]
-  exact mul_le_one₀ (sectorAnnularCutoff_le_one xi)
-    (chartOrderedWeight_nonneg j xi) (chartOrderedWeight_le_one j xi)
+  exact (mul_le_of_le_one_left (chartOrderedWeight_nonneg j xi)
+    (sectorAnnularCutoff_le_one xi)).trans (chartOrderedWeight_le_one j xi)
 
 theorem norm_chartAnnularMultiplierSchwartz_le_one (j : Fin 4) (xi : Euclidean 2) :
     ‖chartAnnularMultiplierSchwartz j xi‖ ≤ 1 := by
@@ -1594,7 +1586,7 @@ private theorem integral_norm_sq_finiteTensorRadialBandAngularDeriv_le_low_sourc
   have hE : Integrable E volume := by
     dsimp [E, shiftedFiberSourceEnergy]
     exact hfreq.integral_prod_left
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp [μ]
     infer_instance
   have hone : Integrable (fun _ : Real => (1 : Real)) μ := integrable_const _

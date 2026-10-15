@@ -421,7 +421,7 @@ theorem eLpNorm_mul_le_four_four_two
     (f g : X -> Complex)
     (hf : AEStronglyMeasurable f μ) (hg : AEStronglyMeasurable g μ) :
     eLpNorm (f * g) 2 μ ≤ eLpNorm f 4 μ * eLpNorm g 4 μ := by
-  letI : ENNReal.HolderTriple (4 : ENNReal) 4 2 :=
+  let : ENNReal.HolderTriple (4 : ENNReal) 4 2 :=
     ENNReal.HolderTriple.of_toReal (p := 4) (q := 4) (r := 2)
       ⟨by norm_num, by norm_num, by norm_num⟩
   change eLpNorm (fun x => f x * g x) 2 μ ≤ eLpNorm f 4 μ * eLpNorm g 4 μ
@@ -1057,7 +1057,7 @@ theorem integral_fourierInv_kernel_sub_mul_eq_fourierInv_reflected_mul
   unfold fourierCubeSourceKernel fourierCubeKernel
   rw [fourierInv_testNeg_eq_testNeg_fourierInv, testNeg_apply]
   congr 1
-  abel
+  abel_nf
 
 end
 
@@ -1146,7 +1146,7 @@ theorem integral_kernel_translated_tensor_eq_smoothTubeBand_reflected
   filter_upwards with x
   simp only [SchwartzMap.fourierInv_coe]
   congr 3
-  abel
+  abel_nf
 
 /-- The same source-kernel identity when compactness is supplied by the
 kernel multiplier rather than by the input packet.  This is the density-safe
@@ -1175,7 +1175,7 @@ theorem integral_kernel_translated_tensor_eq_smoothTubeBand_reflected_left
   filter_upwards with x
   simp only [SchwartzMap.fourierInv_coe]
   congr 3
-  abel
+  abel_nf
 
 end
 
@@ -1231,7 +1231,7 @@ theorem nonnegativeSquareInnerSlabCompactFrequencyTensorCore_to_signedCore
     (hf : NonnegativeSquareInnerSlabCompactFrequencyTensorCore f) :
     scratch_InnerSlabCompactFrequencyTensorCore f := by
   rcases hf with ⟨ι, hι, q, a, r, hq, hrpos, hrlt, ha, rfl⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   exact nonnegativeSquareInnerSlabTensor_mem_innerSlabCompactFrequencyTensorCore
     q a r hq hrpos hrlt ha
 
@@ -1543,7 +1543,7 @@ theorem pointwiseNormSquare_mem_nonnegativeSquareInnerSlabCore
     (hu : scratch_InnerSlabCompactFrequencyTensorCore u) :
     NonnegativeSquareInnerSlabCompactFrequencyTensorCore (pointwiseNormSquare u) := by
   rcases hu with ⟨ι, hι, q, a, r, hq, hrpos, hrlt, ha, hu⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   refine ⟨ι, inferInstance, q, a, r, hq, hrpos, hrlt, ha, ?_⟩
   funext z
   rw [pointwiseNormSquare_apply, hu]
@@ -1752,7 +1752,7 @@ theorem exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
     exists_finite_smooth_compact_separated_uniform_close_complex
       (Euclidean 2) Real (0 : Euclidean 2) (3 / 2 : Real)
       hrE hrERE hr hrRF u hucont husupport halphapos
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   have hUSupport : ∀ i, Function.support (U i) ⊆
       Metric.closedBall (0 : Euclidean 2) RE := fun i => (hU i).2.2
   have haSupport : ∀ i, Function.support (a i) ⊆
@@ -1851,7 +1851,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
   obtain ⟨ι, hι, U, a, hU, ha, hvmem, hverr⟩ :=
     exists_finite_smooth_separated_innerSlab_eLpNorm_four_sub_lt
       hrEpos hrERE hr0pos hr0r hrlt u hucont.continuous huProdSupport hepshalf
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   refine ⟨ι, inferInstance, U, a, r, ?_, hrlt, hU, ha, hvmem, ?_⟩
   · dsimp only [r]
     positivity
@@ -1875,7 +1875,7 @@ theorem exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
         ENNReal.add_lt_add huerr hverr
       _ = ENNReal.ofReal epsilon := by
         rw [← ENNReal.ofReal_add hepshalf.le hepshalf.le]
-        ring
+        ring_nf
 
 end
 
@@ -1916,7 +1916,7 @@ theorem pointwiseNormSquare_mem_nonnegativeSquareInnerSlabSchwartzTensorCore
     (hu : InnerSlabSchwartzTensorCore u) :
     NonnegativeSquareInnerSlabSchwartzTensorCore (pointwiseNormSquare u) := by
   rcases hu with ⟨ι, hι, q, a, r, hrpos, hrlt, ha, hu⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   refine ⟨ι, inferInstance, q, a, r, hrpos, hrlt, ha, ?_⟩
   funext z
   rw [pointwiseNormSquare_apply,
@@ -1946,7 +1946,7 @@ theorem nonnegativeSquareInnerSlabSchwartzTensorCore_to_signedCore
     (hf : NonnegativeSquareInnerSlabSchwartzTensorCore f) :
     InnerSlabSchwartzTensorCore f := by
   rcases hf with ⟨ι, hι, q, a, r, hrpos, hrlt, ha, rfl⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   refine ⟨ι × ι, inferInstance,
     (fun ij : ι × ι => crossFrequencyMultiplier (q ij.1) (q ij.2)),
     (fun ij : ι × ι => timeCrossProduct (a ij.1) (a ij.2)),
@@ -2018,7 +2018,7 @@ theorem hasPositiveSlabL2DenseCore_nonnegativeSquareInnerSlabSchwartzTensor :
       z ∈ outsideTimeSlab → v z = 0 := by
     intro z hz
     dsimp only [v, positiveSlabSquareRoot, positiveSlabDatum]
-    simp only [outsideTimeSlab, Set.mem_setOf_eq] at hz
+    simp only [outsideTimeSlab, Set.mem_ofPred_eq] at hz
     simp [scratch_lightRayTimeRestriction, hz]
   let D : ENNReal := 1 + 2 * eLpNorm v 4 volume
   have hDtop : D ≠ ⊤ := by
@@ -2039,7 +2039,7 @@ theorem hasPositiveSlabL2DenseCore_nonnegativeSquareInnerSlabSchwartzTensor :
   obtain ⟨ι, hι, U, a, r, hrpos, hrlt, hU, ha, hu, huerr⟩ :=
     exists_smoothSeparated_innerSlabTensor_near_slabSupported_four
       v hv hvzero hetapos
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   let u : WaveSpaceTime → Complex := smoothSpatialTensor U a
   have hucore : InnerSlabSchwartzTensorCore u := by
     dsimp only [u]
@@ -4585,7 +4585,7 @@ noncomputable def canonicalReflectedSquareUnitWiring_of_scaleBridge
   hpiece := by
     intro delta hdelta N j f hf omega y
     rcases hf with ⟨ι, hι, q, a, timeRadius, htimePos, htimeLt, ha, hf⟩
-    letI : Fintype ι := hι
+    let : Fintype ι := hι
     subst f
     obtain ⟨hS, hfull, hinner, houter, hpositive, hpositiveMeas⟩ :=
       hbridge hdelta N j q a htimeLt ha omega y
@@ -4718,7 +4718,7 @@ theorem eLpNorm_canonicalReflectedUnitFiniteEnvelope_le_of_weightedScaleBounds
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
     (w : CanonicalReflectedScalePositiveUnitWiring c r)
     (delta : Real) (N : Nat) (f : WaveSpaceTime -> Complex)
-    (hf : InnerSlabSchwartzTensorCore f) (M : Nat) (cost : Nat -> Real)
+    (M : Nat) (cost : Nat -> Real)
     (hcost : forall j, j ∈ Finset.range M -> 0 <= cost j)
     (hbound : forall j, j ∈ Finset.range M ->
       eLpNorm (fun y =>
@@ -4806,7 +4806,7 @@ theorem hasCanonicalDyadicUnitNarrowBroadFiniteEnvelopeL2Estimate_of_weightedSca
   refine ⟨k0, cost, hnarrow, hbroad, ?_⟩
   intro f hf M
   exact eLpNorm_canonicalReflectedUnitFiniteEnvelope_le_of_weightedScaleBounds
-    hc hr w delta N f hf M cost
+    hc hr w delta N f M cost
     (fun j hj => hcost j)
     (fun j hj => hscaleBound f hf M j hj)
 

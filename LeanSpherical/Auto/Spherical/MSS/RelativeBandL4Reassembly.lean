@@ -1226,7 +1226,7 @@ private theorem aux_restrictedRelativeBandpass_pow_four_le_sum_radius_blocks
           (4 : Nat) := by
   classical
   by_cases hnonempty : (dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)).Nonempty
-  · letI : Nonempty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
+  · let : Nonempty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
       hnonempty.to_subtype
     unfold restrictedRelativeBandpassSphericalMaximal
     rw [ENNReal.iSup_pow]
@@ -1251,7 +1251,7 @@ private theorem aux_restrictedRelativeBandpass_pow_four_le_sum_radius_blocks
             (E ∩ Icc ((2 : Real) ^ k'.1) ((2 : Real) ^ (k'.1 + 1))) C.cutoff j f x) ^
               (4 : Nat) := by
       rw [ENNReal.ofReal_pow (norm_nonneg _)]
-      letI : Nonempty ↥((E ∩ Icc ((2 : Real) ^ k'.1) ((2 : Real) ^ (k'.1 + 1))) ∩
+      let : Nonempty ↥((E ∩ Icc ((2 : Real) ^ k'.1) ((2 : Real) ^ (k'.1 + 1))) ∩
         Ioi (0 : Real)) := ⟨s⟩
       unfold restrictedRelativeBandpassSphericalMaximal
       rw [ENNReal.iSup_pow]
@@ -1286,7 +1286,7 @@ private theorem aux_restrictedRelativeBandpass_pow_four_le_sum_radius_blocks
           (by intro ell hell; exact bot_le) k'.2
   · have hempty : dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real) = ∅ :=
       Set.not_nonempty_iff_eq_empty.mp hnonempty
-    letI : IsEmpty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
+    let : IsEmpty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
       ⟨fun r => by
         have hr : r.1 ∈ (∅ : Set Real) := by
           rw [← hempty]
@@ -1920,7 +1920,7 @@ private theorem aux_circleEndpointTimeDerivativeSchwartzOutput_apply
           𝓕 (f : Euclidean 2 → Complex) xi := by
       rw [show 2 * Real.pi * (t * ‖xi‖) = Real.pi * t * ‖xi‖ * 2 by ring]
       unfold circleEndpointBandpassMultiplierTimeDerivative
-      ring
+      ring_nf
 
 /-- The literal product-rule time derivative of the moving-fat endpoint
 packet. -/
@@ -4722,7 +4722,7 @@ private theorem aux_l2_restrictedRelativeBandpass_sq_le_sum_radius_blocks
           (2 : Nat) := by
   classical
   by_cases hnonempty : (dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)).Nonempty
-  · letI : Nonempty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
+  · let : Nonempty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
       hnonempty.to_subtype
     unfold restrictedRelativeBandpassSphericalMaximal
     rw [ENNReal.iSup_pow]
@@ -4747,7 +4747,7 @@ private theorem aux_l2_restrictedRelativeBandpass_sq_le_sum_radius_blocks
             (E ∩ Icc ((2 : Real) ^ k'.1) ((2 : Real) ^ (k'.1 + 1))) C.cutoff j f x) ^
               (2 : Nat) := by
       rw [ENNReal.ofReal_pow (norm_nonneg _)]
-      letI : Nonempty ↥((E ∩ Icc ((2 : Real) ^ k'.1) ((2 : Real) ^ (k'.1 + 1))) ∩
+      let : Nonempty ↥((E ∩ Icc ((2 : Real) ^ k'.1) ((2 : Real) ^ (k'.1 + 1))) ∩
         Ioi (0 : Real)) := ⟨s⟩
       unfold restrictedRelativeBandpassSphericalMaximal
       rw [ENNReal.iSup_pow]
@@ -4783,7 +4783,7 @@ private theorem aux_l2_restrictedRelativeBandpass_sq_le_sum_radius_blocks
           (by intro ell hell; exact bot_le) k'.2
   · have hempty : dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real) = ∅ :=
       Set.not_nonempty_iff_eq_empty.mp hnonempty
-    letI : IsEmpty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
+    let : IsEmpty ↥(dyadicRadiusBlockUnion E K ∩ Ioi (0 : Real)) :=
       ⟨fun r => by
         have hr : r.1 ∈ (∅ : Set Real) := by
           rw [← hempty]
@@ -6522,7 +6522,7 @@ private theorem aux_integrable_norm_sq_circleRelativeBandFatUnitSlabDyadicOutput
       (∫ x : Euclidean 2, ‖D t x‖ ^ 2) ≤ B * R * E := by
     simpa only [D, E, R] using hDbound j k ⟨t, ht⟩ f
   let ν : Measure Real := volume.restrict (Icc (1 : Real) 2)
-  letI : IsFiniteMeasure ν := by
+  let : IsFiniteMeasure ν := by
     dsimp only [ν]
     infer_instance
   have hFmeas : AEStronglyMeasurable (fun p : Real × Euclidean 2 =>
@@ -6861,7 +6861,7 @@ private theorem aux_circleRelativeBandFatUnitSlabMaximal_sq_le_sum_five_dyadic_s
           ENNReal.ofReal
             (‖circleRelativeBandFatUnitSlabDyadicOutput C j (j - 2 + i) t f x‖ ^ 2)) := by
   classical
-  letI : Nonempty CircleRelativeBandLocalTime :=
+  let : Nonempty CircleRelativeBandLocalTime :=
     ⟨⟨1, by norm_num⟩⟩
   let U : Nat → ENNReal := fun i =>
     ⨆ t : CircleRelativeBandLocalTime,
@@ -7499,7 +7499,7 @@ theorem exists_mssTinyAnnularJointCubeSpectrum_reconstruction
     (S : SchwartzMap JointWaveSpaceTime Complex)
     (hS : HasCompactSupport (S : JointWaveSpaceTime → Complex))
     (H : JointWaveSpaceTime → Complex)
-    (hLiteral : ∀ z,S z = a (mu⁻¹ • z.fst)*H z) :
+    (hLiteral : ∀ z, S z = a (mu⁻¹ • z.fst) * H z) :
     ∃ N : Nat,∀ z : JointWaveSpaceTime,
       (∑ j ∈ mssJointLatticeLabels N,
         mssTranslatedDilatedCutoff
@@ -7535,15 +7535,6 @@ theorem exists_mssTinyAnnularJointCubeSpectrum_reconstruction
       by_cases hz : S z = 0
       · simp only [hz,mul_zero]
       · rw [hPartition z hz,one_mul]
-
-#print axioms exists_mssTinyAnnularJointCubeSpectrum_reconstruction
-
-#print axioms mssTinyAnnularJointCubeProfile_cutoff_factorization_spatial_band
-#print axioms mssTinyAnnularJointCubeProfile_uniform_spatial_band_packet_rectangle
-
-#print axioms mssTinyAnnularJointCubeProfile_cutoff_factorization
-#print axioms mssSpatialAnnularAmplitude_uniform_derivative
-#print axioms mssTinyAnnularJointCubeProfile_uniform_packet_rectangle
 end
 end Auto.Spherical.MSS
 
@@ -7565,11 +7556,11 @@ theorem mssTinyAnnularJointCubeProfile_norm_support
 including when the conormal cube width uses a different scale. -/
 theorem mssTinyAnnularJointCubeProfile_symbol_spatial_annulus
     (a : SchwartzMap (Euclidean 2) Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
     (L mu : Real) (hL : 0 < L) (hmu : 0 < mu)
     (c z : JointWaveSpaceTime) (H : JointWaveSpaceTime → Complex)
     (hnz : mssTranslatedDilatedCutoff
-      (mssTinyAnnularJointCubeProfile a (mu/L) (div_pos hmu hL) c)
+      (mssTinyAnnularJointCubeProfile a (mu / L) (div_pos hmu hL) c)
       (L • c) L hL.ne' z * H z ≠ 0) :
     mu/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*mu := by
   rw [mssTinyAnnularJointCubeProfile_cutoff_factorization_spatial_band a L mu hL hmu c z] at hnz
@@ -7586,7 +7577,7 @@ theorem mssTinyAnnularJointCubeProfile_symbol_spatial_annulus
 private theorem mss_normalized_direction_error_two
     (rho radius : Real) (hrho : 0 < rho) (_hradius : 0 ≤ radius)
     (omega xi : Euclidean 2) (homega : ‖omega‖ = 1) (hxi0 : xi ≠ 0)
-    (hxi : ‖xi-rho • omega‖ ≤ radius) :
+    (hxi : ‖xi - rho • omega‖ ≤ radius) :
     ‖(‖xi‖)⁻¹ • xi-omega‖ ≤ 2*radius/rho := by
   have hnorm : 0 < ‖xi‖ := norm_pos_iff.mpr hxi0
   have hcenter : ‖rho • omega‖ = rho := by
@@ -7619,15 +7610,15 @@ private theorem mss_normalized_direction_error_two
 the actual packet width, while W is the spatial recombination square root.
 The annular inequalities are supplied by the literal spatial multiplier. -/
 theorem normalizedCircle_tiny_cube_mem_conicPlate_comparable
-    (W L rho r gamma : Real) (hW : 4 ≤ W) (hL : 0 < L) (hLW : L ≤ 4*W)
-    (hr : 0 ≤ r) (hrsmall : r ≤ 1/16) (hrho : 0 < rho)
+    (W L rho r gamma : Real) (hW : 4 ≤ W) (hL : 0 < L) (hLW : L ≤ 4 * W)
+    (hr : 0 ≤ r) (hrsmall : r ≤ 1 / 16) (hrho : 0 < rho)
     (omega direction : Euclidean 2) (homega : ‖omega‖ = 1)
     (c z : JointWaveSpaceTime) (hc : c.fst = rho • omega)
-    (hangle : ‖omega-direction‖ ≤ (2*W)⁻¹)
-    (hcube : ‖z-c‖ ≤ L*r)
-    (hradial : W^2/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*W^2)
-    (m : Int) (hvertical : |z.snd/W-(m:Real)| ≤ r*L/W+1/2)
-    (hnormal : |z.snd-‖z.fst‖| ≤ 2*(W^2)^gamma) :
+    (hangle : ‖omega - direction‖ ≤ (2 * W)⁻¹)
+    (hcube : ‖z - c‖ ≤ L * r)
+    (hradial : W ^ 2 / 4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4 * W ^ 2)
+    (m : Int) (hvertical : |z.snd / W - (m : Real)| ≤ r * L / W + 1 / 2)
+    (hnormal : |z.snd - ‖z.fst‖| ≤ 2 * (W ^ 2) ^ gamma) :
     (z.fst,z.snd) ∈ conicPlate (W^2) gamma 5 m direction := by
   have hWp : 0 < W := by linarith
   have hspatial : ‖z.fst-rho • omega‖ ≤ L*r := by
@@ -7676,8 +7667,8 @@ theorem normalizedCircle_tiny_cube_mem_conicPlate_comparable
 when their width L differs from the recombination width W by a factor four. -/
 theorem mssTinyCubeFatVertical_absorbs_joint_cube_comparable
     (q : SchwartzMap JointWaveSpaceTime Complex)
-    (hq : ∀ v,q v ≠ 0 → ‖v‖ ≤ 1/16)
-    (W L : Real) (hW : 0 < W) (hL : 0 < L) (hLW : L ≤ 4*W)
+    (hq : ∀ v, q v ≠ 0 → ‖v‖ ≤ 1 / 16)
+    (W L : Real) (hW : 0 < W) (hL : 0 < L) (hLW : L ≤ 4 * W)
     (c z : JointWaveSpaceTime) :
     mssTinyCubeFatVerticalSchwartz (z.snd/W-(round (c.snd/W):Real))*
       mssTranslatedDilatedCutoff q c L hL.ne' z =
@@ -7701,14 +7692,12 @@ theorem mssTinyCubeFatVertical_absorbs_joint_cube_comparable
       linarith
     rw [mssTinyCubeFatVerticalSchwartz_eq_one _ hb,one_mul]
 
-#print axioms mssTinyCubeFatVertical_absorbs_joint_cube_comparable
-
 
 /-- Halving the plate exponent absorbs every fixed frequency ratio at
 most sixteen, with one uniform high-frequency threshold. -/
 theorem mss_comparable_frequency_normal_width_le
     (mu nu gamma gammaPlate : Real) (hmu : 16 ≤ mu) (hnu : 0 ≤ nu)
-    (hcomparable : nu ≤ 16*mu) (hgamma : 0 ≤ gamma) (hplate : 2*gamma ≤ gammaPlate) :
+    (hcomparable : nu ≤ 16 * mu) (hgamma : 0 ≤ gamma) (hplate : 2 * gamma ≤ gammaPlate) :
     nu^gamma ≤ mu^gammaPlate := by
   have hmup : 0 < mu := by linarith
   calc
@@ -7718,11 +7707,6 @@ theorem mss_comparable_frequency_normal_width_le
       (Real.rpow_le_rpow (by norm_num) hmu hgamma) (Real.rpow_nonneg hmup.le _)
     _ = mu^(gamma+gamma) := (Real.rpow_add hmup _ _).symm
     _ ≤ mu^gammaPlate := Real.rpow_le_rpow_of_exponent_le (by linarith) (by linarith)
-
-#print axioms mss_comparable_frequency_normal_width_le
-
-#print axioms mssTinyAnnularJointCubeProfile_symbol_spatial_annulus
-#print axioms normalizedCircle_tiny_cube_mem_conicPlate_comparable
 end
 end Auto.Spherical.MSS
 
@@ -7737,12 +7721,12 @@ noncomputable section
 center in a fixed radial range, where the true norm carrier is literal. -/
 theorem mssTinyAnnularJointCubeProfile_live_center_bounds
     (a : SchwartzMap (Euclidean 2) Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
-    (W L : Real) (hW : 64 ≤ W) (hL : 0 < L) (hLW : L ≤ 4*W)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (W L : Real) (hW : 64 ≤ W) (hL : 0 < L) (hLW : L ≤ 4 * W)
     (c z : JointWaveSpaceTime)
     (hnz : mssTranslatedDilatedCutoff
-      (mssTinyAnnularJointCubeProfile a (W^2/L)
-        (div_pos (by positivity : 0 < W^2) hL) c)
+      (mssTinyAnnularJointCubeProfile a (W ^ 2 / L)
+        (div_pos (by positivity : 0 < W ^ 2) hL) c)
       (L • c) L hL.ne' z ≠ 0) :
     W^2/8 ≤ ‖(L • c).fst‖ ∧
       ‖(L • c).fst‖ ≤ 5*W^2 ∧ L/‖(L • c).fst‖ ≤ 1/2 := by
@@ -7771,8 +7755,6 @@ theorem mssTinyAnnularJointCubeProfile_live_center_bounds
   refine ⟨hlower,hupper,(div_le_iff₀ hcenter).mpr ?_⟩
   have hgrowth := mul_nonneg (sub_nonneg.mpr hW) hWp.le
   nlinarith
-
-#print axioms mssTinyAnnularJointCubeProfile_live_center_bounds
 end
 end Auto.Spherical.MSS
 
@@ -7785,7 +7767,7 @@ open scoped BigOperators
 /-- Literal plate geometry bounds cube multiplicity for independent
 packet and recombination widths. Only their fixed ratio enters the count. -/
 theorem normalizedCircle_output_cube_plate_card_uniform_comparable
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (N : Nat) (hN : Module.finrank Real JointWaveSpaceTime < N)
     (R a D V K : Real) (hR : 0 ≤ R) (ha : 0 ≤ a)
@@ -7801,6 +7783,7 @@ theorem normalizedCircle_output_cube_plate_card_uniform_comparable
         |(L • (z i : JointWaveSpaceTime)).snd-sigma*rho i| ≤ D*W ∧
         |(L • (z i : JointWaveSpaceTime)).snd/W-(m:Real)| ≤ V) →
       (I.card:Real) ≤ C := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   let B : Real := R*a+D+2*V
   have hB : 0 ≤ B := by dsimp [B]; positivity
@@ -7825,7 +7808,6 @@ theorem normalizedCircle_output_cube_plate_card_uniform_comparable
     _ ≤ L⁻¹*(B*W) := mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hL.le)
     _ = B*(W/L) := by ring
     _ ≤ B*K := mul_le_mul_of_nonneg_left hratio hB
-#print axioms normalizedCircle_output_cube_plate_card_uniform_comparable
 end
 end Auto.Spherical.MSS
 
@@ -7840,10 +7822,10 @@ theorem sourcePacket_finite_square_energy_four_norm
     {κ X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
     (μ : Measure X) (ν : Measure Y)
     (I : Finset κ) (F : κ → X → Complex)
-    (hE : MemLp (fun x => ∑ i ∈ I,‖F i x‖^2) 2 μ)
+    (hE : MemLp (fun x => ∑ i ∈ I, ‖F i x‖ ^ 2) 2 μ)
     (G : Y → Complex) (hG : MemLp G 4 ν)
     (C : Real) (hC : 0 ≤ C)
-    (hb : (∫ x,(∑ i ∈ I,‖F i x‖^2)^2 ∂μ) ≤ C*(∫ y,‖G y‖^4 ∂ν)) :
+    (hb : (∫ x, (∑ i ∈ I, ‖F i x‖ ^ 2) ^ 2 ∂μ) ≤ C * (∫ y, ‖G y‖ ^ 4 ∂ν)) :
     MemLp (fun x => Real.sqrt (∑ i ∈ I,‖F i x‖^2)) 4 μ ∧
       eLpNorm (fun x => Real.sqrt (∑ i ∈ I,‖F i x‖^2)) 4 μ ≤
         ENNReal.ofReal (C^(1/4:Real))*eLpNorm G 4 ν := by
@@ -7879,7 +7861,6 @@ theorem sourcePacket_finite_square_energy_four_norm
     _ ≤ (C*(∫ y,‖G y‖^4 ∂ν))^(1/4:Real) :=
       Real.rpow_le_rpow hSI hb (by positivity)
     _ = _ := Real.mul_rpow hC hGI
-#print axioms sourcePacket_finite_square_energy_four_norm
 end
 end Auto.Spherical.MSS
 
@@ -7895,11 +7876,11 @@ annulus and tiny output cubes, has the global fine square-energy gain after
 the full signed normal projection. All varying cube-profile constants and
 the finite source reconstruction are derived from the actual data. -/
 theorem exists_normalizedCircle_actual_annular_spectral_square_gain
-    {ιO : Type*} [Fintype ιO]
+    {ιO : Type*} [Finite ιO]
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex) (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z,χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ y,χsrc y ≠ 0 → |y 0| ≤ 7/2 ∧ |y 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ y, χsrc y ≠ 0 → |y 0| ≤ 7 / 2 ∧ |y 1| ≤ 9 / 2)
     (b : SchwartzMap Real Complex) (B : Real) (hB : 0 ≤ B)
     (hb : ∀ r : Real,b r ≠ 0 → 1/2 ≤ |r| ∧ |r| ≤ B)
     (a phi : SchwartzMap (Euclidean 2) Complex)
@@ -7918,7 +7899,8 @@ theorem exists_normalizedCircle_actual_annular_spectral_square_gain
       ∀ outputs : Finset κO,
       (∀ j ∈ outputs,(Real.sqrt mu)/rho j ≤ 1/2 ∧ (Real.sqrt mu)^2 ≤ A*rho j ∧
         ((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).fst = rho j•nu j ∧
-        |(sigma j).toReal*rho j-((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).snd| ≤ D*(Real.sqrt mu)) →
+        |(sigma j).toReal*rho j-((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).snd| ≤ D*(Real.sqrt
+          mu)) →
       ∀ F : SchwartzMap (Euclidean 2) Complex,
       HasCompactSupport (FourierTransform.fourier F : Euclidean 2 → Complex) →
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
@@ -7942,6 +7924,7 @@ theorem exists_normalizedCircle_actual_annular_spectral_square_gain
           2 (volume.prod volume) ∧
         (∫ o : WaveSpaceTime,(∑ j ∈ outputs,‖H j (WithLp.toLp 2 o)‖^2)^2
           ∂(volume.prod volume)) ≤ C*mu^(-7/4+2*gamma:Real)*(∫ y : Euclidean 2,‖F y‖^4) := by
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   let basisS := (EuclideanSpace.basisFun (Fin 2) Real).toBasis
   obtain ⟨Jdecay,hscale⟩ := exists_circle_globalPacket_scale_and_tailOrder gamma hgamma
@@ -7950,7 +7933,8 @@ theorem exists_normalizedCircle_actual_annular_spectral_square_gain
     (B+1) A D (by linarith) hA hD Jdecay
   obtain ⟨M,hM,hprofile⟩ := mssTinyAnnularJointCubeProfile_uniform_spatial_band_packet_rectangle
     a mssLatticeSynthesisPrototype mssSignedConormalRadialProfile K S
-  obtain ⟨C₁,hC₁,hinput⟩ := latticeFourierCubeSchwartz_square_energy_integral mssLatticeAnalysisPrototype
+  obtain ⟨C₁,hC₁,hinput⟩ := latticeFourierCubeSchwartz_square_energy_integral
+    mssLatticeAnalysisPrototype
   refine ⟨2*C₀*M^4*C₁,by positivity,?_⟩
   intro ε mu heps hsmall hmu spatialMu hSpatial κO zO hzO sigma rho hrho nu hnu
     outputs hcenter F hF
@@ -8020,7 +8004,6 @@ theorem exists_normalizedCircle_actual_annular_spectral_square_gain
     simpa only [proj,mul_assoc] using hf
   · simpa only [hT] using hmT
   · simpa only [hT] using hbT
-#print axioms exists_normalizedCircle_actual_annular_spectral_square_gain
 end
 end Auto.Spherical.MSS
 
@@ -8033,9 +8016,9 @@ spatial annulus, so their principal projections and actual product defect
 reconstruct every original Fourier carrier exactly. -/
 theorem normalizedCircle_two_sheet_symbol_reconstruction
     (a : Euclidean 2 → Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖)
-    (beta : Real → Complex) (hbeta : ∀ s,beta s ≠ 0 → |s| ≤ 2)
-    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h) (hsmall : 16*h ≤ mu)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖)
+    (beta : Real → Complex) (hbeta : ∀ s, beta s ≠ 0 → |s| ≤ 2)
+    (mu h : Real) (hmu : 0 < mu) (hh : 0 < h) (hsmall : 16 * h ≤ mu)
     (xi : Euclidean 2) (tau : Real) (G : Complex) :
     a (mu⁻¹•xi)*G =
       a (mu⁻¹•xi)*beta (h⁻¹*(tau-‖xi‖))*G +
@@ -8076,7 +8059,6 @@ theorem normalizedCircle_two_sheet_symbol_reconstruction
           (1-beta (h⁻¹*(tau+‖xi‖)))*G -
         (a (mu⁻¹•xi)*beta (h⁻¹*(tau-‖xi‖))*beta (h⁻¹*(tau+‖xi‖)))*G := by ring
     _ = _ := by rw [hcross,zero_mul,sub_zero]
-#print axioms normalizedCircle_two_sheet_symbol_reconstruction
 end
 end Auto.Spherical.MSS
 
@@ -8102,10 +8084,10 @@ the packet square-function estimate. All bounds come from one live symbol
 point, without a cardinality or packet-support assumption. -/
 theorem mssTinyPrincipalCubeLive_center_geometry
     (a : SchwartzMap (Euclidean 2) Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
-    (beta : SchwartzMap Real Complex) (hbeta : ∀ t,beta t ≠ 0 → |t| ≤ 2)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (beta : SchwartzMap Real Complex) (hbeta : ∀ t, beta t ≠ 0 → |t| ≤ 2)
     (W L h sigma : Real) (hW : 64 ≤ W) (hL : 0 < L)
-    (hLW : L ≤ 4*W) (hWL : W ≤ 8*L) (hh : 0 < h) (hhL : h ≤ L)
+    (hLW : L ≤ 4 * W) (hWL : W ≤ 8 * L) (hh : 0 < h) (hhL : h ≤ L)
     (hsigma : |sigma| = 1)
     (j : MSSJointLatticeLabel)
     (hj : mssTinyPrincipalCubeLive a beta L W h sigma hL j) :
@@ -8199,8 +8181,8 @@ theorem exists_mssTinyPrincipalLiveCube_reconstruction
     (S : SchwartzMap JointWaveSpaceTime Complex)
     (hS : HasCompactSupport (S : JointWaveSpaceTime → Complex))
     (H : JointWaveSpaceTime → Complex)
-    (hLiteral : ∀ z,S z =
-      beta (h⁻¹*(z.snd-sigma*‖z.fst‖))*a ((W^2)⁻¹ • z.fst)*H z) :
+    (hLiteral : ∀ z, S z =
+      beta (h⁻¹ * (z.snd - sigma * ‖z.fst‖)) * a ((W ^ 2)⁻¹ • z.fst) * H z) :
     ∃ N : Nat,∀ z : JointWaveSpaceTime,
       (∑ j ∈ @Finset.filter MSSJointLatticeLabel
           (mssTinyPrincipalCubeLive a beta L W h sigma hL) (Classical.decPred _)
@@ -8242,10 +8224,10 @@ theorem exists_mssTinyPrincipalLiveCube_reconstruction
 the FULL thin-projected annular cube with its principal multiplier piece. -/
 theorem mssTinyPrincipalCubeLive_projector_absorption
     (a : SchwartzMap (Euclidean 2) Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
-    (beta : SchwartzMap Real Complex) (hbeta : ∀ t,beta t ≠ 0 → |t| ≤ 2)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (beta : SchwartzMap Real Complex) (hbeta : ∀ t, beta t ≠ 0 → |t| ≤ 2)
     (W L h sigma : Real) (hW : 64 ≤ W) (hL : 0 < L)
-    (hLW : L ≤ 4*W) (hWL : W ≤ 8*L) (hh : 0 < h) (hhL : h ≤ L)
+    (hLW : L ≤ 4 * W) (hWL : W ≤ 8 * L) (hh : 0 < h) (hhL : h ≤ L)
     (hsigma : |sigma| = 1)
     (j : MSSJointLatticeLabel)
     (hj : mssTinyPrincipalCubeLive a beta L W h sigma hL j) :
@@ -8293,12 +8275,6 @@ theorem mssTinyPrincipalCubeLive_projector_absorption
       a L (W^2) hL (sq_pos_of_pos hWp) _ z
   rw [hp,hFact]
   ring
-
-#print axioms mssTinyPrincipalCubeLive_projector_absorption
-
-#print axioms exists_mssTinyPrincipalLiveCube_reconstruction
-
-#print axioms mssTinyPrincipalCubeLive_center_geometry
 end
 end Auto.Spherical.MSS
 
@@ -8313,7 +8289,7 @@ noncomputable section
 without any assumption on the size of the output cube family. -/
 theorem mss_int_vertical_card_le_thirteen_mul
     (W : Real) (hW : 64 ≤ W) (I : Finset Int)
-    (hI : ∀ m ∈ I,|(m:Real)| ≤ 6*W) : (I.card:Real) ≤ 13*W := by
+    (hI : ∀ m ∈ I, |(m : Real)| ≤ 6 * W) : (I.card:Real) ≤ 13*W := by
   let n : Nat := ⌈6*W⌉₊
   let B : Finset Int := Finset.Icc (-(n:Int)) (n:Int)
   have hceil : 6*W ≤ (n:Real) := Nat.le_ceil _
@@ -8344,10 +8320,10 @@ theorem mss_int_vertical_card_le_thirteen_mul
 one fixed interval of length proportional to the recombination width. -/
 theorem mssTinyPrincipalCubeLive_vertical_label_bound
     (a : SchwartzMap (Euclidean 2) Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
-    (beta : SchwartzMap Real Complex) (hbeta : ∀ t,beta t ≠ 0 → |t| ≤ 2)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (beta : SchwartzMap Real Complex) (hbeta : ∀ t, beta t ≠ 0 → |t| ≤ 2)
     (W L h sigma : Real) (hW : 64 ≤ W) (hL : 0 < L)
-    (hLW : L ≤ 4*W) (hWL : W ≤ 8*L) (hh : 0 < h) (hhL : h ≤ L)
+    (hLW : L ≤ 4 * W) (hWL : W ≤ 8 * L) (hh : 0 < h) (hhL : h ≤ L)
     (hsigma : |sigma| = 1)
     (j : MSSJointLatticeLabel)
     (hj : mssTinyPrincipalCubeLive a beta L W h sigma hL j) :
@@ -8382,22 +8358,18 @@ theorem mssTinyPrincipalCubeLive_vertical_label_bound
 the existing spectral vertical recombination theorem. -/
 theorem mssTinyPrincipalLiveCube_vertical_image_card
     (a : SchwartzMap (Euclidean 2) Complex)
-    (ha : ∀ xi,a xi ≠ 0 → (1/4:Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
-    (beta : SchwartzMap Real Complex) (hbeta : ∀ t,beta t ≠ 0 → |t| ≤ 2)
+    (ha : ∀ xi, a xi ≠ 0 → (1 / 4 : Real) ≤ ‖xi‖ ∧ ‖xi‖ ≤ 4)
+    (beta : SchwartzMap Real Complex) (hbeta : ∀ t, beta t ≠ 0 → |t| ≤ 2)
     (W L h sigma : Real) (hW : 64 ≤ W) (hL : 0 < L)
-    (hLW : L ≤ 4*W) (hWL : W ≤ 8*L) (hh : 0 < h) (hhL : h ≤ L)
+    (hLW : L ≤ 4 * W) (hWL : W ≤ 8 * L) (hh : 0 < h) (hhL : h ≤ L)
     (hsigma : |sigma| = 1) (I : Finset MSSJointLatticeLabel)
-    (hLive : ∀ j ∈ I,mssTinyPrincipalCubeLive a beta L W h sigma hL j) :
+    (hLive : ∀ j ∈ I, mssTinyPrincipalCubeLive a beta L W h sigma hL j) :
     ((I.image (fun j => round (((L/64) • mssJointLatticePoint j).snd/W))).card:Real) ≤ 13*W := by
   apply mss_int_vertical_card_le_thirteen_mul W hW
   intro m hm
   obtain ⟨j,hj,rfl⟩ := Finset.mem_image.mp hm
   exact mssTinyPrincipalCubeLive_vertical_label_bound
     a ha beta hbeta W L h sigma hW hL hLW hWL hh hhL hsigma j (hLive j hj)
-
-#print axioms mss_int_vertical_card_le_thirteen_mul
-#print axioms mssTinyPrincipalCubeLive_vertical_label_bound
-#print axioms mssTinyPrincipalLiveCube_vertical_image_card
 end
 end Auto.Spherical.MSS
 
@@ -8432,7 +8404,7 @@ when each literal Fourier symbol is absorbed by its assigned cutoff. -/
 theorem sourcePacket_verticalRecombined_eq_of_symbol_absorption
     (beta : Real → Complex) (scale : Real) (I : Finset Int)
     (H : Int → SchwartzMap JointWaveSpaceTime Complex)
-    (habs : ∀ n ∈ I,∀ z : JointWaveSpaceTime,
+    (habs : ∀ n ∈ I, ∀ z : JointWaveSpaceTime,
       beta ((Real.sqrt scale)⁻¹*z.snd-(n:Real))*
         (FourierTransform.fourier (H n) : SchwartzMap JointWaveSpaceTime Complex) z =
           (FourierTransform.fourier (H n) : SchwartzMap JointWaveSpaceTime Complex) z) :
@@ -8443,8 +8415,6 @@ theorem sourcePacket_verticalRecombined_eq_of_symbol_absorption
   exact Finset.sum_congr rfl (fun n hn =>
     congrFun (sourcePacket_verticalProjection_eq_of_symbol_absorption beta scale n (H n)
       (habs n hn)) z)
-#print axioms sourcePacket_verticalProjection_eq_of_symbol_absorption
-#print axioms sourcePacket_verticalRecombined_eq_of_symbol_absorption
 end
 end Auto.Spherical.MSS
 
@@ -8458,13 +8428,13 @@ attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.to
 /-- The literal tiny cube and signed normal symbol give its assigned
 positive plate and its fixed fat vertical plateau simultaneously. -/
 theorem sourcePacket_tiny_cube_vertical_and_plate
-    (W L rho gamma : Real) (hW : 4 ≤ W) (hL : 0 < L) (hLW : L ≤ 4*W)
+    (W L rho gamma : Real) (hW : 4 ≤ W) (hL : 0 < L) (hLW : L ≤ 4 * W)
     (hrho : 0 < rho) (omega direction : Euclidean 2) (homega : ‖omega‖ = 1)
     (c z : JointWaveSpaceTime) (hc : c.fst = rho • omega)
-    (hangle : ‖omega-direction‖ ≤ (2*W)⁻¹)
-    (hcube : ‖z-c‖ ≤ L/16)
-    (hradial : W^2/4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4*W^2)
-    (hnormal : |z.snd-‖z.fst‖| ≤ 2*(W^2)^gamma) :
+    (hangle : ‖omega - direction‖ ≤ (2 * W)⁻¹)
+    (hcube : ‖z - c‖ ≤ L / 16)
+    (hradial : W ^ 2 / 4 ≤ ‖z.fst‖ ∧ ‖z.fst‖ ≤ 4 * W ^ 2)
+    (hnormal : |z.snd - ‖z.fst‖| ≤ 2 * (W ^ 2) ^ gamma) :
     (z.fst,z.snd) ∈ conicPlate (W^2) gamma 5 (round (c.snd/W)) direction ∧
       mssTinyCubeFatVerticalSchwartz (z.snd/W-(round (c.snd/W):Real)) = 1 := by
   have hWp : 0 < W := by linarith
@@ -8482,7 +8452,8 @@ theorem sourcePacket_tiny_cube_vertical_and_plate
   refine ⟨?_,mssTinyCubeFatVerticalSchwartz_eq_one _ ?_⟩
   · exact normalizedCircle_tiny_cube_mem_conicPlate_comparable
       W L rho (1/16) gamma hW hL hLW (by norm_num) (by norm_num) hrho
-      omega direction homega c z hc hangle (by simpa only [div_eq_mul_inv,one_div,one_mul] using hcube)
+      omega direction homega c z hc hangle (by simpa only [div_eq_mul_inv,one_div,one_mul] using
+        hcube)
       hradial (round (c.snd/W)) (by convert hv using 1; ring) hnormal
   · have hh : L/(16*W) ≤ 1/4 := (div_le_iff₀ (by positivity)).mpr (by linarith)
     linarith
@@ -8490,7 +8461,7 @@ theorem sourcePacket_tiny_cube_vertical_and_plate
 /-- Unique joint labels reconstruct the original Schwartz field exactly. -/
 theorem sourcePacket_unique_group_sum
     {κ : Type*} (I : Finset κ) (V J : Finset Int) (label : κ → Int × Int)
-    (hlabel : ∀ i ∈ I,label i ∈ V ×ˢ J)
+    (hlabel : ∀ i ∈ I, label i ∈ V ×ˢ J)
     (H : κ → SchwartzMap JointWaveSpaceTime Complex) :
     (∑ m ∈ V,∑ j ∈ J,∑ i ∈ I.filter (fun i => label i = (m,j)),H i) =
       ∑ i ∈ I,H i := by
@@ -8505,7 +8476,7 @@ theorem sourcePacket_unique_group_spectral_support
     {κ : Type*} (I : Finset κ) (V J : Finset Int)
     (label : κ → Int × Int) (H : κ → SchwartzMap JointWaveSpaceTime Complex)
     (scale gamma : Real) (direction : Int → Euclidean 2)
-    (hplate : ∀ i ∈ I,∀ z : JointWaveSpaceTime,
+    (hplate : ∀ i ∈ I, ∀ z : JointWaveSpaceTime,
       (FourierTransform.fourier (H i) : SchwartzMap JointWaveSpaceTime Complex) z ≠ 0 →
         (z.fst,z.snd) ∈ conicPlate scale gamma 5 (label i).1 (direction (label i).2))
     (habs : ∀ i ∈ I,∀ z : JointWaveSpaceTime,
@@ -8547,10 +8518,6 @@ theorem sourcePacket_unique_group_spectral_support
     intro i hi
     obtain ⟨hi,hij⟩ := Finset.mem_filter.mp hi
     simpa only [hij] using habs i hi z
-
-#print axioms sourcePacket_tiny_cube_vertical_and_plate
-#print axioms sourcePacket_unique_group_sum
-#print axioms sourcePacket_unique_group_spectral_support
 end
 end Auto.Spherical.MSS
 
@@ -8566,9 +8533,9 @@ attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.to
 in the actual square-function norm. -/
 theorem sourcePacket_unique_group_square_norm
     {κ : Type*} (I : Finset κ) (V J : Finset Int) (label : κ → Int × Int)
-    (hlabel : ∀ i ∈ I,label i ∈ V ×ˢ J)
+    (hlabel : ∀ i ∈ I, label i ∈ V ×ˢ J)
     (C : Real) (hC : 0 ≤ C)
-    (hcard : ∀ a ∈ V ×ˢ J,((I.filter (fun i => label i = a)).card:Real) ≤ C)
+    (hcard : ∀ a ∈ V ×ˢ J, ((I.filter (fun i => label i = a)).card : Real) ≤ C)
     (H : κ → SchwartzMap JointWaveSpaceTime Complex) :
     eLpNorm (angularRadialSquareFunction V J
       (fun m j => jointSchwartzRaw (∑ i ∈ I.filter (fun i => label i = (m,j)),H i)))
@@ -8608,8 +8575,6 @@ theorem sourcePacket_unique_group_square_norm
   have he : (fun z => Real.sqrt C*S z) = (Real.sqrt C) • S := rfl
   rw [he,eLpNorm_const_smul] at hb
   simpa only [Real.enorm_eq_ofReal_abs,abs_of_nonneg (Real.sqrt_nonneg _),S] using hb
-
-#print axioms sourcePacket_unique_group_square_norm
 end
 end Auto.Spherical.MSS
 
@@ -8711,8 +8676,6 @@ theorem sourcePacket_unique_group_recombination
       rw [← mul_assoc,← ENNReal.ofReal_mul (by positivity)]
       congr 2
       ring
-
-#print axioms sourcePacket_unique_group_recombination
 end
 end Auto.Spherical.MSS
 
@@ -8747,7 +8710,7 @@ theorem sourcePacket_finite_square_norm_mono
 count turn full positive-cone cubes into MSS plates. Every cube is
 assigned exactly once; all constants are independent of the family. -/
 theorem sourcePacket_positive_cube_recombination
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (N : Nat) (hN : Module.finrank Real JointWaveSpaceTime < N)
     (eta cap : Real) (heta : 0 < eta) (hcap : 0 < cap) :
@@ -8771,6 +8734,7 @@ theorem sourcePacket_positive_cube_recombination
         ENNReal.ofReal (C*(W^2)^((1/8:Real)+eta)) *
           eLpNorm (fun z : WaveSpaceTime => Real.sqrt (∑ i ∈ I,‖jointSchwartzRaw (H i) z‖^2))
             4 volume := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨gamma,hgamma,hgu,hgc,C₀,hC₀,hrecomb⟩ :=
     sourcePacket_unique_group_recombination eta cap heta hcap
@@ -8908,8 +8872,6 @@ theorem sourcePacket_positive_cube_recombination
       rw [← mul_assoc,← ENNReal.ofReal_mul (by positivity)]
       congr 2
       ring
-
-#print axioms sourcePacket_positive_cube_recombination
 end
 end Auto.Spherical.MSS
 
@@ -8987,10 +8949,6 @@ theorem sourcePacketNegSchwartz_square_norm
   rw [he] at hb
   simpa only [Measure.volume_eq_prod,Function.comp_def,jointSchwartzRaw,
     sourcePacketNegSchwartz_apply,WithLp.toLp_neg] using hb
-
-#print axioms sourcePacketNegSchwartz_fourier
-#print axioms sourcePacketNegSchwartz_raw_norm
-#print axioms sourcePacketNegSchwartz_square_norm
 end
 end Auto.Spherical.MSS
 
@@ -9006,7 +8964,7 @@ attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.to
 sheet. The negative sheet is transported by exact full reflection,
 which preserves the actual norm and fixed integer lattice. -/
 theorem sourcePacket_signed_cube_recombination
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (N : Nat) (hN : Module.finrank Real JointWaveSpaceTime < N)
     (eta cap : Real) (heta : 0 < eta) (hcap : 0 < cap) :
@@ -9030,6 +8988,7 @@ theorem sourcePacket_signed_cube_recombination
         ENNReal.ofReal (C*(W^2)^((1/8:Real)+eta)) *
           eLpNorm (fun z : WaveSpaceTime => Real.sqrt (∑ i ∈ I,‖jointSchwartzRaw (H i) z‖^2))
             4 volume := by
+  let : Fintype ι := Fintype.ofFinite ι
   obtain ⟨gamma,hgamma,hgu,hgc,C,hC,hpos⟩ :=
     sourcePacket_positive_cube_recombination basis N hN eta cap heta hcap
   refine ⟨gamma,hgamma,hgu,hgc,C,hC,?_⟩
@@ -9084,8 +9043,6 @@ theorem sourcePacket_signed_cube_recombination
     rw [sourcePacketNegSchwartz_sum,sourcePacketNegSchwartz_raw_norm,
       sourcePacketNegSchwartz_square_norm] at hb
     exact hb
-
-#print axioms sourcePacket_signed_cube_recombination
 end
 end Auto.Spherical.MSS
 
@@ -9102,8 +9059,8 @@ source reconstruction and conic recombination are all constructed from
 the literal operator; no operator or square-function bound is assumed. -/
 theorem exists_normalizedCircle_principal_spectral_gain
     (χout : SchwartzMap WaveSpaceTime Complex) (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z,χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ y,χsrc y ≠ 0 → |y 0| ≤ 7/2 ∧ |y 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ y, χsrc y ≠ 0 → |y 0| ≤ 7 / 2 ∧ |y 1| ≤ 9 / 2)
     (b : SchwartzMap Real Complex) (B : Real) (hB : 0 ≤ B)
     (hb : ∀ r : Real,b r ≠ 0 → 1/2 ≤ |r| ∧ |r| ≤ B)
     (a : SchwartzMap (Euclidean 2) Complex)
@@ -9326,8 +9283,6 @@ theorem exists_normalizedCircle_principal_spectral_gain
       have he : (-7/4+2*gamma:Real)*(1/4) = -7/16+gamma/2 := by ring
       rw [he]
       ring
-
-#print axioms exists_normalizedCircle_principal_spectral_gain
 end
 end Auto.Spherical.MSS
 
@@ -9339,7 +9294,7 @@ noncomputable section
 all comparable source/output frequencies, with a fixed positive margin. -/
 theorem normalizedCircle_principal_gain_scale_le
     (mu nu gamma : Real) (hmu : 1 ≤ mu) (_hnu : 0 < nu)
-    (hcomparable : mu ≤ 64*nu) (hg : 0 ≤ gamma) (hgu : gamma ≤ 1/256) :
+    (hcomparable : mu ≤ 64 * nu) (hg : 0 ≤ gamma) (hgu : gamma ≤ 1 / 256) :
     mu^((1/8:Real)+1/128)*nu^(-7/16+gamma/2:Real) ≤
       (64:Real)^(7/16:Real)*mu^(-9/32:Real) := by
   have hmup : 0 < mu := by linarith
@@ -9370,8 +9325,6 @@ theorem normalizedCircle_principal_gain_scale_le
       apply Real.rpow_le_rpow_of_exponent_le hmu
       dsimp [e]
       linarith
-
-#print axioms normalizedCircle_principal_gain_scale_le
 end
 end Auto.Spherical.MSS
 
@@ -9383,7 +9336,7 @@ noncomputable section
 principal sheets throughout the comparable high-frequency regime. -/
 theorem normalizedCircle_principal_normal_width_small
     (mu nu gamma : Real) (hmu : 4096 ≤ mu) (hnu : 1 ≤ nu)
-    (hcomparable : nu ≤ 16*mu) (hgu : gamma ≤ 1/256) :
+    (hcomparable : nu ≤ 16 * mu) (hgu : gamma ≤ 1 / 256) :
     16*nu^gamma ≤ mu := by
   have hmup : 0 < mu := by linarith
   have hnup : 0 < nu := by linarith
@@ -9397,8 +9350,6 @@ theorem normalizedCircle_principal_normal_width_small
     rw [mul_pow,Real.sq_sqrt hnup.le,Real.sq_sqrt hmup.le]
     nlinarith
   nlinarith [Real.sq_sqrt hmup.le]
-
-#print axioms normalizedCircle_principal_normal_width_small
 end
 end Auto.Spherical.MSS
 
@@ -9413,8 +9364,8 @@ the planar L4 decay exponent 1/4. The positive normal exponent is
 selected by the actual MSS plate theorem. -/
 theorem exists_normalizedCircle_principal_spectral_gain_one_thirty_second
     (χout : SchwartzMap WaveSpaceTime Complex) (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z,χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ y,χsrc y ≠ 0 → |y 0| ≤ 7/2 ∧ |y 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ y, χsrc y ≠ 0 → |y 0| ≤ 7 / 2 ∧ |y 1| ≤ 9 / 2)
     (b : SchwartzMap Real Complex) (B : Real) (hB : 0 ≤ B)
     (hb : ∀ r : Real,b r ≠ 0 → 1/2 ≤ |r| ∧ |r| ≤ B)
     (a : SchwartzMap (Euclidean 2) Complex)
@@ -9452,8 +9403,6 @@ theorem exists_normalizedCircle_principal_spectral_gain_one_thirty_second
     _ ≤ C₀*((64:Real)^(7/16:Real)*mu^(-9/32:Real)) :=
       mul_le_mul_of_nonneg_left hh hC₀
     _ = _ := by ring
-
-#print axioms exists_normalizedCircle_principal_spectral_gain_one_thirty_second
 end
 end Auto.Spherical.MSS
 
@@ -9490,7 +9439,7 @@ theorem sourcePacket_joint_fourth_moment_le_of_raw_norm
     (H : SchwartzMap JointWaveSpaceTime Complex)
     (F : SchwartzMap (Euclidean 2) Complex) (A : Real) (hA : 0 ≤ A)
     (hb : eLpNorm (jointSchwartzRaw H) 4 volume ≤
-      ENNReal.ofReal A*eLpNorm F 4 volume) :
+      ENNReal.ofReal A * eLpNorm F 4 volume) :
     (∫ Z : JointWaveSpaceTime,‖H Z‖^4) ≤ A^4*(∫ y : Euclidean 2,‖F y‖^4) := by
   rw [sourcePacket_joint_raw_four_norm] at hb
   have hp := pow_le_pow_left₀ (by positivity) hb 4
@@ -9501,8 +9450,5 @@ theorem sourcePacket_joint_fourth_moment_le_of_raw_norm
     ← ENNReal.ofReal_mul (pow_nonneg hA _)] at hp
   exact (ENNReal.ofReal_le_ofReal_iff (mul_nonneg (pow_nonneg hA _)
     (integral_nonneg (fun y => pow_nonneg (norm_nonneg _) _)))).mp hp
-
-#print axioms sourcePacket_joint_raw_four_norm
-#print axioms sourcePacket_joint_fourth_moment_le_of_raw_norm
 end
 end Auto.Spherical.MSS

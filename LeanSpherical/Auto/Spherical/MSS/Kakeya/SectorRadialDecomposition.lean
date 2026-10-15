@@ -2024,12 +2024,12 @@ theorem kakeyaRadialPhysicalField_reassembly_indexed
     apply Finset.sum_congr rfl
     intro i hi
     unfold kakeyaRadialPhysicalIndexedPiece
-    rw [if_neg (ne_of_lt (Finset.mem_range.mp hi))]
+    rw [ite_eq_right (ne_of_lt (Finset.mem_range.mp hi))]
     rfl
   have hlast : kakeyaRadialPhysicalIndexedPiece C m rho L theta x =
       FourierTransform.fourierInv (kakeyaRadialLowpassPiece C (m theta)) x := by
     unfold kakeyaRadialPhysicalIndexedPiece
-    rw [if_pos rfl]
+    rw [ite_eq_left rfl]
     rfl
   calc
     FourierTransform.fourierInv (kakeyaRadialLowpassPiece C (m theta)) x +
@@ -2093,9 +2093,9 @@ theorem sum_kakeyaRadialLowpassBandEnergyBound
   · apply Finset.sum_congr rfl
     intro i hi
     unfold kakeyaRadialLowpassBandEnergyBound
-    rw [if_neg (ne_of_lt (Finset.mem_range.mp hi))]
+    rw [ite_eq_right (ne_of_lt (Finset.mem_range.mp hi))]
   · unfold kakeyaRadialLowpassBandEnergyBound
-    rw [if_pos rfl]
+    rw [ite_eq_left rfl]
 
 /-- The concrete lowpass-plus-bands form of finite radial maximal
 reassembly.  The only analytic input is a supplied maximal-square bound for
@@ -2133,12 +2133,12 @@ theorem lintegral_iSup_sq_kakeyaRadialPhysicalField_le_lowpass_and_band_bounds
     intro i hi
     by_cases hlast : i = L
     · subst i
-      simpa only [L, kakeyaRadialPhysicalIndexedPiece, if_pos,
+      simpa only [L, kakeyaRadialPhysicalIndexedPiece, ite_eq_left,
         kakeyaRadialLowpassPhysicalField] using hlowMeas
     · have hlt : i < L := by
         have hle := Finset.mem_range.mp hi
         omega
-      simpa only [L, kakeyaRadialPhysicalIndexedPiece, if_neg hlast,
+      simpa only [L, kakeyaRadialPhysicalIndexedPiece, ite_eq_right hlast,
         kakeyaRadialBandPhysicalField] using
         hbandMeas i (Finset.mem_range.mpr hlt)
   have hbound : ∀ i ∈ Finset.range (L + 1),
@@ -2148,13 +2148,13 @@ theorem lintegral_iSup_sq_kakeyaRadialPhysicalField_le_lowpass_and_band_bounds
     by_cases hlast : i = L
     · subst i
       simpa only [B, L, kakeyaRadialLowpassBandEnergyBound,
-        kakeyaRadialPhysicalIndexedPiece, if_pos,
+        kakeyaRadialPhysicalIndexedPiece, ite_eq_left,
         kakeyaRadialLowpassPhysicalField] using hlowBound
     · have hlt : i < L := by
         have hle := Finset.mem_range.mp hi
         omega
       simpa only [B, L, kakeyaRadialLowpassBandEnergyBound,
-        kakeyaRadialPhysicalIndexedPiece, if_neg hlast,
+        kakeyaRadialPhysicalIndexedPiece, ite_eq_right hlast,
         kakeyaRadialBandPhysicalField] using
         hbandBound i (Finset.mem_range.mpr hlt)
   have h := lintegral_iSup_sq_kakeyaRadialPhysicalField_le_of_indexed_bounds

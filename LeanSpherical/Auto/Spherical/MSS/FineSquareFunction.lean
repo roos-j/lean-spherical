@@ -52,8 +52,8 @@ noncomputable section
 attribute [local instance] Classical.propDecidable
 
 /-- Uniform natural-scale symbol bounds for the actual fine angular/radial
-packet profiles.  After rescaling a packet to a cube of side `sqrt scale`,
-every derivative has a scale-independent `L¹` bound.  This is the quantitative
+packet profiles. After rescaling a packet to a cube of side `sqrt scale`,
+every derivative has a scale-independent `L¹` bound. This is the quantitative
 fixed-smooth-cutoff condition used by the MSS fine-square argument; merely
 knowing that each individual profile is Schwartz permits scale-dependent
 chirps and is not sufficient. -/
@@ -69,7 +69,7 @@ structure MSSFineSpatialProfileUniformRegularity
         A * (Real.sqrt scale) ^ 2 * ((Real.sqrt scale)⁻¹) ^ r
 
 /-- Uniform natural-scale profile regularity supplies the older polynomial
-regularity interface with the scale exponent fixed to one.  This is a direct
+regularity interface with the scale exponent fixed to one. This is a direct
 normalization consequence, not a localization or square-function estimate. -/
 def MSSFineSpatialProfileUniformRegularity.toPolynomialRegularity
     {D : MSSWavefrontKernelData}
@@ -103,11 +103,11 @@ def MSSFineSpatialProfileUniformRegularity.toPolynomialRegularity
       rw [Real.sq_sqrt (by linarith : 0 ≤ scale)]
       ring
 
-/-- The structured fine square-function target in the MSS blueprint.  The
+/-- The structured fine square-function target in the MSS blueprint. The
 angular data record the finite sector atlas and exact synthesis, the uniform
 profile certificate is the fixed-smooth-cutoff condition at the natural
 `sqrt scale` packet scale, and the time cutoff is supported in the fixed
-light-ray slab used by the maximal estimate.  These are structural data, not
+light-ray slab used by the maximal estimate. These are structural data, not
 hidden kernel, cube-square-function, or maximal-function conclusions. -/
 def mssFineSquareFunctionEstimate (D : MSSWavefrontKernelData)
     (_A : MSSFineAngularData D.toMSSWavefrontCutoffData)
@@ -122,7 +122,7 @@ def mssFineSquareFunctionEstimate (D : MSSWavefrontKernelData)
           eLpNorm (f : Euclidean 2 → Complex) (4 : ENNReal) volume
 
 /-- The literal fine-cube multiplier vanishes on the central ball removed by
-the radial--time amplitude.  This permits the half-wave phase to be extended
+the radial--time amplitude. This permits the half-wave phase to be extended
 smoothly through the origin when packaging the multiplier as a Schwartz map. -/
 private theorem mssFineCubeSymbol_zero_near_zero
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -234,7 +234,7 @@ theorem hasCompactSupport_mssFineCubeSchwartzSymbol
   exact mssFineCubeSymbol_hasCompactSupport D cubes hscale n nu cube z
 
 /-- Modulating a compact frequency symbol by the plane wave that removes a
-candidate light-ray translation.  This generic helper is kept private; the
+candidate light-ray translation. This generic helper is kept private; the
 public specialization below is the literal MSS residual symbol. -/
 noncomputable def mssFinePlaneWaveResidualSymbol
     (q : SchwartzMap (Euclidean 2) Complex)
@@ -269,7 +269,7 @@ private theorem fourierInv_eq_fourierCubeKernel_mssFinePlaneWaveResidualSymbol_s
   exact fourierInv_mssFinePlaneWaveResidualSymbol_shift q hqcompact t omega x
 
 /-- The literal fine-cube multiplier after removing translation along its
-assigned light ray.  Uniform residual seminorm estimates for this symbol are
+assigned light ray. Uniform residual seminorm estimates for this symbol are
 exactly the remaining analytic input for light-ray localization. -/
 noncomputable def mssFineCubeResidualSymbol
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -315,7 +315,7 @@ private theorem mssFineCubeResidualSymbol_apply_phaseMismatch
   ring_nf
 
 /-- A nonzero literal fine profile remains in the fixed radial annulus of the
-rescaled amplitude.  This separates the harmless support bookkeeping from
+rescaled amplitude. This separates the harmless support bookkeeping from
 the later phase derivative estimates. -/
 private theorem mssFineSpatialProfile_norm_bounds_of_ne_zero
     (D : MSSWavefrontKernelData) {scale : Real} (hscale : 2 ≤ scale)
@@ -344,7 +344,7 @@ private theorem mssFineSpatialProfile_norm_bounds_of_ne_zero
       _ = 2 * scale := by ring
 
 /-- The topological support of every literal fine profile stays in a closed
-annular ray-sector container.  Unlike `angularSector` itself, this container
+annular ray-sector container. Unlike `angularSector` itself, this container
 is closed at the origin; its positive radial lower bound still excludes the
 origin on the relevant support. -/
 private theorem mssFineSpatialProfile_tsupport_subset_closed_raySector
@@ -399,7 +399,7 @@ private theorem mssFineSpatialProfile_tsupport_subset_closed_raySector
     _ = (D.angularConstant * scale ^ (-(1 / 2 : Real))) * ‖xi‖ := by ring
 
 /-- The first phase-mismatch derivative bound extends from nonzero profile
-values to the support of every profile derivative.  The closed annular
+values to the support of every profile derivative. The closed annular
 ray-sector container is exactly what makes this extension legitimate. -/
 private theorem aux_norm_fderiv_mssFinePhaseMismatch_plus_le_of_spatialProfile_tsupport
     (D : MSSWavefrontKernelData) (scale : Real) (n nu : Int)
@@ -998,7 +998,7 @@ private theorem exists_mssFinePhaseCanonicalCutoffDerivativeBound
                     C (k - i) * ((Real.sqrt scale)⁻¹) ^ k := by rw [hpows]
 
 /-- The literal fine-cube residual has packet-scale `L¹` derivative bounds
-through every fixed finite order.  The estimate is obtained by first pairing
+through every fixed finite order. The estimate is obtained by first pairing
 the phase with the canonical cutoff in `L∞`, and then pairing that product
 with the uniformly regular fine profile in `L¹`. -/
 private theorem exists_mssCanonicalCubeResidualDerivativeIntegralBound
@@ -1320,7 +1320,7 @@ private theorem exists_mssCanonicalCubeResidual_scaledDerivativeIntegralBound
 
 /-- On the support of an actual MSS packet profile, the plus-sheet phase
 gradient differs from the packet ray direction by precisely the angular
-aperture.  This is the first-order nonstationary-phase input for the literal
+aperture. This is the first-order nonstationary-phase input for the literal
 residual symbol. -/
 private theorem aux_norm_fderiv_mssFinePhaseMismatch_plus_le_of_spatialProfile_ne_zero
     (D : MSSWavefrontKernelData) (scale : Real) (n nu : Int)
@@ -1353,7 +1353,7 @@ private theorem aux_norm_fderiv_mssFinePhaseMismatch_plus_le_of_spatialProfile_n
     _ ≤ D.angularConstant * scale ^ (-(1 / 2 : Real)) := hangular
 
 /-- Higher frequency derivatives of the plus-sheet phase mismatch have their
-radial natural scale wherever an actual MSS spatial profile is nonzero.  The
+radial natural scale wherever an actual MSS spatial profile is nonzero. The
 linear ray term disappears from orders at least two. -/
 private theorem aux_exists_mssFinePhaseMismatch_higherDerivative_bound
     (r : Nat) (hr : 2 ≤ r) :
@@ -1396,7 +1396,7 @@ private theorem aux_exists_mssFinePhaseMismatch_higherDerivative_bound
 
 /-- Fourier integration by parts bounds each physical seminorm of the
 literal fine-cube residual by its actual frequency-side derivative integrals.
-This is exact and scale-free.  It is a useful unscaled estimate, but the
+This is exact and scale-free. It is a useful unscaled estimate, but the
 natural-scale light-ray argument uses the scale-aware refinement below. -/
 theorem mssFineCubeResidualSymbol_fourierInv_seminorm_le_derivativeIntegrals
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -1436,7 +1436,7 @@ theorem mssFineCubeResidualSymbol_fourierInv_seminorm_le_derivativeIntegrals
     rw [Finset.sum_product, Finset.sum_range_one] at h
     simpa [Real.fourierInv_eq_fourier_neg] using h
 
-/-- The generic unscaled Fourier integration-by-parts bound.  It is kept
+/-- The generic unscaled Fourier integration-by-parts bound. It is kept
 private because the literal MSS specialization above and the scale-aware
 version below are the intended public interfaces. -/
 private theorem fourierInv_seminorm_le_derivativeIntegrals
@@ -1466,9 +1466,9 @@ private theorem fourierInv_seminorm_le_derivativeIntegrals
     simpa [Real.fourierInv_eq_fourier_neg] using h
 
 /-- Rescaling the frequency variable before Fourier integration by parts
-keeps every derivative at its natural scale.  In dimension two the physical
+keeps every derivative at its natural scale. In dimension two the physical
 seminorm loses exactly `R⁻¹ ^ N`; the Jacobian cancels the `R²` size of a
-frequency cube.  This is the scale-aware form needed for fine MSS packets. -/
+frequency cube. This is the scale-aware form needed for fine MSS packets. -/
 theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
     (q : SchwartzMap (Euclidean 2) Complex) (N : Nat) {R : Real} (hR : 0 < R) :
     SchwartzMap.seminorm Complex N 0
@@ -1604,7 +1604,7 @@ theorem fourierInv_seminorm_le_scaled_derivativeIntegrals
               rw [hunit, one_mul]
 
 /-- Exact translation from the literal fine-cube half-wave kernel to the
-inverse Fourier transform of its residual symbol.  No decay estimate is used
+inverse Fourier transform of its residual symbol. No decay estimate is used
 here. -/
 theorem mssFineCubeHalfWaveKernel_eq_residual_shifted
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -1638,7 +1638,7 @@ theorem mssFineCubeHalfWaveKernel_eq_residual_shifted
   congr 2
   module
 
-/-- The fixed Schwartz time cutoff has a uniform pointwise bound.  This is
+/-- The fixed Schwartz time cutoff has a uniform pointwise bound. This is
 the time-amplitude input in the residual-decay bridge and is automatic; no
 light-ray localization hypothesis is needed for it. -/
 theorem exists_uniform_mssFineTime_norm_bound (D : MSSWavefrontKernelData) :
@@ -1653,7 +1653,7 @@ theorem exists_uniform_mssFineTime_norm_bound (D : MSSWavefrontKernelData) :
 
 /-- Explicit inverse-Fourier residual seminorm bounds on the physical time
 slab imply literal light-ray decay of the actual fine-cube half-wave kernel.
-Outside that slab the outer time cutoff makes the kernel zero.  This is the
+Outside that slab the outer time cutoff makes the kernel zero. This is the
 reusable nonstationary-phase endpoint: proving the displayed uniform
 seminorm bounds from the fixed cutoff data remains the substantive task. -/
 theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_seminorm
@@ -1733,7 +1733,7 @@ theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_seminorm
       (lightRayKernel_nonneg hδ N (D.directions scale nu) y z)
 
 /-- Unweighted frequency-side residual derivative-integral bounds on the
-physical time slab imply literal light-ray decay.  This asks for a stronger
+physical time slab imply literal light-ray decay. This asks for a stronger
 single-scale bound than the natural packet estimates usually provide; the
 scale-aware theorem below is the interface used by the literal MSS route. -/
 theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_derivativeIntegrals
@@ -1787,7 +1787,7 @@ theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_derivativeI
     exact hsemi'.trans (hderivativeZero scale hscale n hn nu hnu cube hcube z hz)
 
 /-- Natural-scale frequency-side residual derivative bounds on the physical
-time slab imply literal light-ray decay.  The derivative integral of order
+time slab imply literal light-ray decay. The derivative integral of order
 `j` is weighted by the fine-cube width to the power `j`; this is the
 scale-invariant form supplied by the packet product and phase estimates. -/
 theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_scDerivIntegrals
@@ -1897,7 +1897,7 @@ theorem norm_mssFineCubeHalfWaveKernel_le_lightRayKernel_of_residual_scDerivInte
     simpa only [R] using hseminorm
 
 /-- Each literal fine-cube half-wave kernel is integrable in its source
-variable.  This is automatic from its compact smooth frequency multiplier;
+variable. This is automatic from its compact smooth frequency multiplier;
 it does not use any packet membership or ray-localization hypothesis. -/
 theorem integrable_mssFineCubeHalfWaveKernel
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -1929,7 +1929,7 @@ theorem integrable_mssFineCubeHalfWaveKernel
       hsource.const_mul (D.radialTime.time z.2)
 
 /-- The literal fine-cube packet equals integration against its actual
-half-wave source kernel.  Thus the corresponding two fields in
+half-wave source kernel. Thus the corresponding two fields in
 `MSSFineCubeKernelLocalization` are proved structural consequences rather
 than additional localization assumptions. -/
 theorem mssFineCubePacket_eq_integral_mssFineCubeHalfWaveKernel
@@ -2002,7 +2002,7 @@ theorem mssFineCubePacket_eq_integral_mssFineCubeHalfWaveKernel
           ring
 
 /-- A literal light-ray pointwise bound supplies the only non-structural
-field of fine-cube localization.  The source integrability and representation
+field of fine-cube localization. The source integrability and representation
 are automatic from the compact smooth multiplier above, while the mass bound
 comes from integrating the light-ray majorant. -/
 theorem mssFineCubeKernelLocalization_of_lightRayDominance
@@ -2143,7 +2143,7 @@ theorem exists_mssCanonicalFineCubeKernelLocalization
       · exact hlight
 
 /-- The logarithmic loss at a fine cube's natural physical width is absorbed
-by an arbitrary positive power of the MSS scale.  This is the exact
+by an arbitrary positive power of the MSS scale. This is the exact
 scale-loss conversion used after taking the fourth root of the light-ray
 maximal bound. -/
 theorem exists_lightRayWidth_log_rpow_bound {w : Real} (hw : 0 < w) :
@@ -2248,7 +2248,7 @@ private theorem exists_lightRayWidth_log_three_halves_le_square_scale
   rw [hpow]
   exact hsquare
 
-/-- A permissible literal dual test for the light-ray estimate.  Besides the
+/-- A permissible literal dual test for the light-ray estimate. Besides the
 ambient `L²` condition demanded by the maximal estimate, it has literal slab
 support, a uniform bound, and compact spatial support. -/
 structure LightRayBoundedCompactTest (g : WaveSpaceTime → Complex) : Prop where
@@ -2342,7 +2342,7 @@ theorem LightRayBoundedCompactTest.integrable_mul_norm_of_continuous
       norm_num
 
 /-- A literal fine cube packet is jointly continuous in physical space and
-time.  The inverse Fourier integral is controlled by the integrable Schwartz
+time. The inverse Fourier integral is controlled by the integrable Schwartz
 frequency product, uniformly in the unimodular half-wave phase. -/
 theorem continuous_mssFineCubePacket
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -2654,7 +2654,7 @@ theorem exists_uniform_lightRayMaximal_sq_bound_on_boundedCompactTests
     _ = K ^ 2 * ∫ z : WaveSpaceTime, ‖g z‖ ^ 2 := by
       rw [← hslabEnergy]
 
-/-- Norm-form restatement of the width-uniform squared light-ray bound.  This
+/-- Norm-form restatement of the width-uniform squared light-ray bound. This
 is the form consumed directly by the Cauchy--Schwarz/truncated-duality
 closure. -/
 theorem exists_uniform_lightRayMaximal_norm_sq_bound_on_boundedCompactTests
@@ -2694,7 +2694,7 @@ theorem exists_uniform_lightRayMaximal_norm_sq_bound_on_boundedCompactTests
 
 /-- The global energy of the normalized cube inputs is exactly the squared
 Fourier-cube square function of the enlarged analysis family, up to the
-explicit normalization factor.  This is only finite algebra; it does not use
+explicit normalization factor. This is only finite algebra; it does not use
 an `L⁴` cube multiplier estimate. -/
 theorem continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -2803,7 +2803,7 @@ theorem integral_sq_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
       integral_const_mul _ _
 
 /-- The fourth moment of the finite global analysis-cube energy is
-integrable for every Schwartz input.  This uses only finiteness and the
+integrable for every Schwartz input. This uses only finiteness and the
 Schwartz representatives of the enlarged cube projections, not an `L⁴`
 multiplier estimate. -/
 theorem integrable_sq_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
@@ -2858,7 +2858,7 @@ theorem integrable_sq_continuumFineCubeSquareEnergy_mssFineNormalizedCubeInput
 
 /-- An averaged Rademacher fourth-moment estimate for the enlarged analysis
 cutoffs supplies the uniform `L²` bound for the global normalized cube
-energy.  The Rademacher estimate remains an explicit analytic hypothesis;
+energy. The Rademacher estimate remains an explicit analytic hypothesis;
 this theorem only performs the finite cube-energy conversion. -/
 theorem exists_uniform_mssFineNormalizedCubeEnergy_L2_bound_of_analysis_average
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -2976,9 +2976,9 @@ theorem mssFineCubeContinuumRegularity_of_localization_of_boundedCompactTest
     (hg : LightRayBoundedCompactTest g) :
     MSSFineCubeContinuumRegularity D cubes N kernelConstant massConstant scale f g := by
   classical
-  letI : MeasurableSpace (Euclidean 2) :=
+  let : MeasurableSpace (Euclidean 2) :=
     WithLp.measurableSpace 2 (Fin 2 → Real)
-  letI : BorelSpace (Euclidean 2) := PiLp.borelSpace 2
+  let : BorelSpace (Euclidean 2) := PiLp.borelSpace 2
   let delta : Real := (cubes.cubeWidth * Real.sqrt scale)⁻¹
   have hdelta : 0 < delta := by
     simpa [delta] using (cubeWidth_inv_mul_sqrt_pos_lt_half hwidth hscale).1
@@ -2986,7 +2986,7 @@ theorem mssFineCubeContinuumRegularity_of_localization_of_boundedCompactTest
     simpa [delta] using (cubeWidth_inv_mul_sqrt_pos_lt_half hwidth hscale).2
   have hNone : 1 < N := by omega
   have hNtwo : 2 < N := by omega
-  letI : SFinite continuumLightRayMeasure := by
+  let : SFinite continuumLightRayMeasure := by
     unfold continuumLightRayMeasure
     infer_instance
   have hmeasureLe : continuumLightRayMeasure ≤ (volume : Measure WaveSpaceTime) := by
@@ -3392,7 +3392,7 @@ theorem integrable_mul_norm_of_integrable_continuumLightRayMeasure_of_slab
   exact (congrFun hproductIndicator z).symm
 
 /-- The continuum MSS packet transposition estimate, expressed against
-ambient volume for an admissible truncated light-ray test.  All spatial
+ambient volume for an admissible truncated light-ray test. All spatial
 cube-energy and maximal-function terms remain exactly those supplied by the
 continuum estimate. -/
 theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient
@@ -3432,7 +3432,7 @@ theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient
 
 Unlike `mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient`, the
 packet-cardinality and reverse-overlap constants are supplied before the test
-function.  Consequently its coefficient is uniform over every admissible
+function. Consequently its coefficient is uniform over every admissible
 bounded compact light-ray test, as required by truncated duality. -/
 theorem mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambient_of_uniformBounds
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -3697,7 +3697,7 @@ theorem exists_uniform_mssFineCubePacketSquarePairing_le_lightRayCubeEnergy_ambi
       D cubes N kernelConstant massConstant localization B R hcardReal hoverlap hscale
       hwidth hN f⟩
 
-/-- An abstract monotone-exhaustion closure.  The equality hypothesis is the
+/-- An abstract monotone-exhaustion closure. The equality hypothesis is the
 precise measure-theoretic content supplied by bounded compact truncations;
 stating it at the `lintegral` level avoids a hidden prior integrability
 assumption on `F`. -/
@@ -3855,7 +3855,7 @@ private theorem lintegral_sq_norm_le_of_integral_le
   rw [← hconvert]
   exact ENNReal.ofReal_le_ofReal hC
 
-/-- A non-circular truncated-duality closure for the MSS square.  The raw
+/-- A non-circular truncated-duality closure for the MSS square. The raw
 pairing is required only on literal slab-supported bounded compact tests.
 The supplied sequence normally consists of spatial-ball and height
 truncations of `F`; its saturation is explicit, so the theorem never assumes
@@ -3898,9 +3898,9 @@ theorem integrable_sq_of_saturating_weighted_lightRay_tests
       hQmeas hQnonneg hQsq hQbound hHLE hraw (g n) (htest n) (hlower n))
 
 /-- Bounded height and spatial-ball truncations supply the literal tests
-needed by the non-circular duality closure.  The test at level `n` agrees
+needed by the non-circular duality closure. The test at level `n` agrees
 with `F` only where `F ≤ n` and `‖x‖ ≤ n`, so both the test and its weighted
-pairing are bounded on a compact slab.  No prior `L²` assumption on `F` is
+pairing are bounded on a compact slab. No prior `L²` assumption on `F` is
 used. -/
 theorem exists_saturating_lightRayBoundedCompactTests_of_measurable_nonneg_slab
     (F : WaveSpaceTime → Real) (hFmeas : Measurable F)
@@ -3966,7 +3966,7 @@ theorem exists_saturating_lightRayBoundedCompactTests_of_measurable_nonneg_slab
       change z.1 ∈ Metric.closedBall (0 : Euclidean 2) (n : Real) ∧
         z.2 ∈ lightRayTimeInterval
       constructor
-      · simpa only [Set.mem_setOf_eq, Metric.mem_closedBall, dist_zero_right] using hzE.2.1
+      · simpa only [Set.mem_ofPred_eq, Metric.mem_closedBall, dist_zero_right] using hzE.2.1
       · change z ∈ slab ∧ ‖z.1‖ ≤ (n : Real) ∧ F z ≤ (n : Real) at hzE
         simpa only [slab, Set.mem_prod, Set.mem_univ, true_and] using hzE.1
     refine
@@ -4064,7 +4064,7 @@ theorem exists_saturating_lightRayBoundedCompactTests_of_measurable_nonneg_slab
       lintegral_iSup hphiMeas hphiMono
 
 /-- The fixed-scale truncated-duality closure with all structural constants
-supplied in advance.  Keeping `Cq`, `Ch`, `B`, and `R` as inputs is what lets
+supplied in advance. Keeping `Cq`, `Ch`, `B`, and `R` as inputs is what lets
 the subsequent slab wrapper choose them before the scale and Schwartz input. -/
 private theorem mssFineCubePacketSquareFunction_fourthMoment_of_explicit_uniform_constants
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -4246,10 +4246,10 @@ private theorem mssFineCubePacketSquareFunction_fourthMoment_of_explicit_uniform
       hsaturates')
 
 /-- Conditional fixed-scale fourth-moment closure for the MSS fine cube
-packet square.  The analysis-cube Rademacher estimate, the literal
+packet square. The analysis-cube Rademacher estimate, the literal
 kernel-localization/transposition data, regularity for every bounded compact
 test, and the monotone truncation saturation are all retained as explicit
-hypotheses.  In particular, this does not assert an unconditional fine-square
+hypotheses. In particular, this does not assert an unconditional fine-square
 estimate. -/
 theorem mssFineCubePacketSquareFunction_fourthMoment_of_analysisAverage_and_saturating_tests
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -4403,7 +4403,7 @@ theorem mssFineCubePacketSquareFunction_fourthMoment_of_analysisAverage_and_satu
       hsaturates')
 
 /-- Fixed-scale fourth-moment closure with the test exhaustion supplied
-internally.  Joint continuity gives the required measurability, while literal
+internally. Joint continuity gives the required measurability, while literal
 time-slab support and nonnegativity produce the bounded compact saturating
 tests. -/
 theorem mssFineCubePacketSqFn_fourthMoment_of_analysisAverage_slab_and_universal_regularity
@@ -4453,7 +4453,7 @@ theorem mssFineCubePacketSqFn_fourthMoment_of_analysisAverage_slab_and_universal
 
 /-- The literal kernel localization, a fixed time slab, and the averaged
 analysis-cube fourth-moment input yield the fixed-scale fourth-moment closure
-without a separately supplied regularity package.  The result remains
+without a separately supplied regularity package. The result remains
 conditional on precisely those three analytic inputs. -/
 theorem mssFineCubePacketSquareFunction_fourthMoment_of_analysisAverage_slab
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -4479,7 +4479,7 @@ theorem mssFineCubePacketSquareFunction_fourthMoment_of_analysisAverage_slab
 
 /-- The literal localization, fixed time slab, and averaged analysis-cube
 input choose all structural fourth-moment constants before the MSS scale and
-Schwartz input.  The remaining scale dependence is displayed solely in the
+Schwartz input. The remaining scale dependence is displayed solely in the
 natural light-ray logarithm. -/
 private theorem exists_uniform_mssFineCubePacketSquareFunction_fourthMoment_of_analysisAverage_slab
     (D : MSSWavefrontKernelData) (cubes : MSSCubeDecomposition D)
@@ -4615,7 +4615,7 @@ theorem exists_uniform_mssFineCubePacketSquareFunction_fourthMoment_of_analysis_
 
 /-- A scale-uniform fourth-moment bound for the literal cube-packet square
 function is exactly the remaining measure-theoretic input for the structured
-MSS fine-square estimate.  This theorem performs only the fourth-root
+MSS fine-square estimate. This theorem performs only the fourth-root
 conversion and the already proved packet-synthesis rewrite; it introduces no
 additional analytic assertion. -/
 theorem mssFineSquareFunctionEstimate_of_uniform_packet_fourthMoment
@@ -5846,12 +5846,6 @@ theorem sourcePacket_normalized_oscillatory_integral_decay
     hdecay Φ P hP hbound y δ (ρ₀ * δ ^ 2) hδ hδone hρ₀ L hL S hS (-ξ)
 
 
-#print axioms sourcePacketNormalizedRemainder_uniform_derivatives
-#print axioms sourcePacketNormalizedAmplitude_uniform_fourier_decay
-#print axioms sourcePacket_affine_amplitude_uniform_rectangle
-#print axioms sourcePacket_normalized_oscillatory_integral_decay
-
-
 
 /-- The literal tensor product of two fixed packet profiles in Hilbert
 product coordinates. It is used for the output cube, source cube, and
@@ -6109,10 +6103,6 @@ theorem sourcePacket_schwartz_oscillatory_integral_decay
   exact hd.trans (mul_le_mul_of_nonneg_left hprof hC₀)
 
 
-#print axioms sourcePacketSchwartzExternalProduct_apply
-#print axioms sourcePacket_schwartz_oscillatory_integral_decay
-
-
 
 /-- The exact Euclidean representative of all three linear mismatches left
 by the normalized Taylor expansion. The Fourier normalization is retained. -/
@@ -6210,7 +6200,8 @@ abbrev NormalizedCircleFineAmplitudeParameters :=
 
 def normalizedCircleFinePacketAmplitudeShift :
     NormalizedCircleFinePacketSpace →L[Real] NormalizedCircleFineAmplitudeParameters :=
-  (WithLp.prodContinuousLinearEquiv 2 Real (Real × (WaveSpaceTime × Euclidean 2)) Real).symm.toContinuousLinearMap.comp
+  (WithLp.prodContinuousLinearEquiv 2 Real (Real × (WaveSpaceTime × Euclidean 2))
+    Real).symm.toContinuousLinearMap.comp
     (normalizedCircleFinePacketShift.prod normalizedCircleFinePacketRadial)
 
 theorem normalizedCircleFinePacketAmplitudeShift_apply (z : NormalizedCircleFinePacketSpace) :
@@ -6311,13 +6302,10 @@ theorem normalizedCircle_trueCutoff_phase_substitution
   · simp only [hi, zero_mul, mul_zero]
   obtain ⟨hX, hT⟩ := hχout q.2.1 ho
   obtain ⟨hθ, hu⟩ := hχsrc q.2.2 hi
-  rw [normalizedCircleCompactFullPhaseSchwartz_eq_actual q hε (by linarith [hX]) hT hθ (by linarith [hu]),
-    normalizedCircleFullJacobianAmplitudeSchwartz_eq_actual q hε (by linarith [hX]) hT hθ (by linarith [hu])]
-
-
-#print axioms sourcePacketDualMismatch_inner
-#print axioms normalizedCircleFinePacketAmplitudeShift_norm_le
-#print axioms normalizedCircle_trueCutoff_phase_substitution
+  rw [normalizedCircleCompactFullPhaseSchwartz_eq_actual q hε (by linarith [hX]) hT hθ (by
+    linarith [hu]),
+    normalizedCircleFullJacobianAmplitudeSchwartz_eq_actual q hε (by linarith [hX]) hT hθ (by
+      linarith [hu])]
 
 /-! ## Literal normalized source/output/conormal packets
 
@@ -6635,7 +6623,8 @@ theorem normalizedCircle_trueCutoff_packetPhase_substitution
           (circleDirection (c.2.2 0)) (c.2.2 1)) : Real) : Complex) * Complex.I) *
         (χout c.2.1 * χsrc c.2.2 *
           (((1 + c.1 * (c.2.2 1)) / (1 + c.1 * c.2.1.2) : Real) : Complex)) := by
-  have h := normalizedCircle_trueCutoff_phase_substitution_on_analysis_core χout χsrc hχout hχsrc c hε
+  have h := normalizedCircle_trueCutoff_phase_substitution_on_analysis_core χout χsrc hχout hχsrc
+    c hε
     (-(2 * Real.pi) * ρ)
   have hP : ρ * normalizedCircleFinePacketCompactPhase c =
       (-(2 * Real.pi) * ρ) * normalizedCircleCompactFullPhaseSchwartz c := by
@@ -6763,7 +6752,7 @@ theorem normalizedCircleFinePacketKernel_eq_shifted
   apply integral_congr_ae
   filter_upwards with s
   dsimp [normalizedCircleFinePacketPhysicalIntegrand]
-  ring
+  ring_nf
 
 
 /-- Exact Fubini passage from the joint six-dimensional Hilbert packet
@@ -6917,9 +6906,6 @@ theorem normalizedCircleFinePacketKernel_decay
     b Γ q m ε δ ρ₀ hε hδ ζ η o y]
   exact hd ε δ ρ₀ hδ hδone hρ₀ ζ η o y
 
-#print axioms normalizedCircleFinePacketKernel_eq_normalized
-#print axioms normalizedCircleFinePacketKernel_decay
-
 /-! ## Exact actual packet covectors on the analysis core
 
 The three components of the canonical joint mismatch are computed from
@@ -6971,7 +6957,12 @@ theorem normalizedCircleFinePacketDualMismatch_inner_output
       -normalizedCircleFullOutputInsertion v := by
     simp [normalizedCircleFinePacketShift_apply, normalizedCircleFullOutputInsertion]
   rw [normalizedCircleFinePacketDual_shift, hshift, map_neg] at h
-  simp [WithLp.prod_inner_apply, normalizedCircleFinePacketRadial_apply] at h
+  simp only [WithLp.prod_inner_apply, WithLp.ofLp_fst, WithLp.ofLp_snd, RCLike.inner_apply,
+    conj_trivial,
+    inner_zero_left, add_zero, mul_neg, WithLp.toLp_fst, WithLp.toLp_snd, WithLp.zero_fst,
+    inner_zero_right, neg_mul,
+    sub_neg_eq_add, normalizedCircleFinePacketRadial_apply, WithLp.zero_snd, mul_zero, sub_zero,
+    zero_mul] at h
   change 2 * Real.pi * inner Real v
     (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).fst = _ at h
   simp only [WithLp.prod_inner_apply, Real.inner_apply, WithLp.ofLp_fst,
@@ -7001,7 +6992,11 @@ theorem normalizedCircleFinePacketDualMismatch_inner_source
     rw [normalizedCircleFinePacketFrequencyCovector_apply]
     simp [normalizedCircleFullSourceInsertion]
   rw [hν] at h
-  simp [WithLp.prod_inner_apply, normalizedCircleFinePacketRadial_apply] at h
+  simp only [WithLp.prod_inner_apply, WithLp.ofLp_fst, inner_zero_left, WithLp.ofLp_snd,
+    RCLike.inner_apply,
+    conj_trivial, mul_zero, add_zero, zero_add, neg_mul, sub_neg_eq_add,
+    normalizedCircleFinePacketRadial_apply,
+    WithLp.toLp_snd, sub_zero, zero_mul] at h
   change 2 * Real.pi * inner Real w
     (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.fst = _ at h
   linarith
@@ -7021,7 +7016,11 @@ theorem normalizedCircleFinePacketDualMismatch_radial
       (WithLp.toLp 2 ((0 : JointWaveSpaceTime), WithLp.toLp 2 ((0 : Euclidean 2), (1 : Real)))) =
       0 := by simp [normalizedCircleFinePacketShift_apply]
   rw [hshift, map_zero, map_zero] at h
-  simp [WithLp.prod_inner_apply, normalizedCircleFinePacketRadial_apply] at h
+  simp only [WithLp.prod_inner_apply, WithLp.ofLp_fst, inner_zero_left, WithLp.ofLp_snd,
+    RCLike.inner_apply,
+    conj_trivial, mul_one, zero_add, mul_zero, sub_self, normalizedCircleFinePacketRadial_apply,
+    WithLp.toLp_snd,
+    sub_zero] at h
   change 2 * Real.pi *
     (normalizedCircleFinePacketDualMismatch ε δ ρ₀ ζ η o y).snd.snd = _ at h
   exact (eq_div_iff (by positivity : (2 * Real.pi : Real) ≠ 0)).mpr (by linarith)
@@ -7111,7 +7110,8 @@ theorem normalizedCircleFinePacketOutputGradient_actual
       (normalizedCircleFullOutputInsertion v) 0 := by
     simpa using ((hasDerivAt_id (0 : Real)).smul_const
       (normalizedCircleFullOutputInsertion v)).const_add c
-  have hd := (normalizedCircleFinePacketCompactPhase.differentiableAt (x := c)).hasFDerivAt.comp_hasDerivAt_of_eq
+  have hd := (normalizedCircleFinePacketCompactPhase.differentiableAt (x :=
+    c)).hasFDerivAt.comp_hasDerivAt_of_eq
     (0 : Real) hline (by simp)
   have hderiv := hd.unique hp
   rw [real_inner_comm, normalizedCircleFinePacketOutputGradient,
@@ -7136,7 +7136,8 @@ theorem normalizedCircleFinePacketSourceGradient_hasDerivAt
       (normalizedCircleFullSourceInsertion w) 0 := by
     simpa using ((hasDerivAt_id (0 : Real)).smul_const
       (normalizedCircleFullSourceInsertion w)).const_add c
-  have hd := (normalizedCircleFinePacketCompactPhase.differentiableAt (x := c)).hasFDerivAt.comp_hasDerivAt_of_eq
+  have hd := (normalizedCircleFinePacketCompactPhase.differentiableAt (x :=
+    c)).hasFDerivAt.comp_hasDerivAt_of_eq
     (0 : Real) hline (by simp)
   have he : inner Real w (normalizedCircleFinePacketSourceGradient c) =
       (fderiv Real normalizedCircleFinePacketCompactPhase c)
@@ -7371,15 +7372,9 @@ theorem normalizedCircleFinePacketKernel_actual_product_decay
   exact (mul_le_mul_of_nonneg_right hw (norm_nonneg _)).trans
     (hd ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y)
 
-#print axioms normalizedCircleFinePacketDualMismatch_actual_output
-#print axioms normalizedCircleFinePacketDualMismatch_actual_source
-#print axioms normalizedCircleFinePacketDualMismatch_actual_radial
-#print axioms normalizedCircleFinePacketKernel_actual_product_decay
-
 /-- The actual compact source and output cutoffs give physical packet tails.
 These estimates retain the genuine inverse Fourier kernels outside the phase
 shield and do not apply ray geometry to the artificial phase extension. -/
-
 theorem normalizedCircleFineSource_box_norm
     (z : Euclidean 2) (hθ : |z 0| ≤ 7 / 2) (hu : |z 1| ≤ 9 / 2) :
     ‖z‖ ≤ 6 := by
@@ -7423,7 +7418,8 @@ theorem normalizedCircleFineSource_tail_weight
         calc
           _ = ‖(y + δ • w) + (y - (y + δ • w))‖ := by congr 1; abel
           _ ≤ _ := norm_add_le _ _
-      _ ≤ _ := by simpa [he, norm_smul, abs_of_nonneg hδ] using add_le_add_right hzn ‖y - (y + δ • w)‖
+      _ ≤ _ := by simpa [he, norm_smul, abs_of_nonneg hδ] using add_le_add_right hzn ‖y - (y + δ •
+        w)‖
   have hbase : 1 + ‖y‖ ≤ 15 * δ * (1 + ‖w‖) := by nlinarith [norm_nonneg w]
   have hp : (1 + ‖y‖) ^ N ≤ 15 ^ N * δ ^ N * (1 + ‖w‖) ^ N := by
     simpa only [mul_pow] using pow_le_pow_left₀ (by positivity) hbase N
@@ -7485,7 +7481,8 @@ theorem normalizedCircleFinePacketSourceTailEnvelope_integrable
     ((1 + ‖z.fst‖) ^ N * ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.fst‖) *
       ‖Γ z.snd‖
   have hHI : Integrable H volume := by
-    apply (hI.integrable_comp_emb (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)).measurableEmbedding).mp
+    apply (hI.integrable_comp_emb (MeasurableEquiv.toLp 2 (Euclidean 2 ×
+      Real)).measurableEmbedding).mp
     change Integrable (fun z : Euclidean 2 × Real =>
       ((1 + ‖z.1‖) ^ N * ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.1‖) * ‖Γ z.2‖) volume
     rw [Measure.volume_eq_prod]
@@ -7495,7 +7492,8 @@ theorem normalizedCircleFinePacketSourceTailEnvelope_integrable
       volume volume :=
     WithLp.volume_preserving_toLp JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
   apply (hO.integrable_comp_emb
-    (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real))).measurableEmbedding).mp
+    (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 ×
+      Real))).measurableEmbedding).mp
   change Integrable (fun z : JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real) =>
     ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) z.1‖ * H z.2) volume
   rw [Measure.volume_eq_prod]
@@ -7571,7 +7569,7 @@ theorem normalizedCircleFinePacketNormalizedKernel_source_tail
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) :
-    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, ∀ hδ : 0 < δ,
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, 0 < δ →
       ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
       ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
       (4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
@@ -7684,7 +7682,8 @@ theorem normalizedCircleFineOutput_tail_weight
         calc
           _ = ‖(o - δ • v) + (o - (o - δ • v))‖ := by congr 1; abel
           _ ≤ _ := norm_add_le _ _
-      _ ≤ _ := by simpa [he, norm_smul, abs_of_nonneg hδ] using add_le_add_right hzn ‖o - (o - δ • v)‖
+      _ ≤ _ := by simpa [he, norm_smul, abs_of_nonneg hδ] using add_le_add_right hzn ‖o - (o - δ •
+        v)‖
   have hbase : 1 + ‖o‖ ≤ 9 * δ * (1 + ‖v‖) := by nlinarith [norm_nonneg v]
   have hp : (1 + ‖o‖) ^ N ≤ 9 ^ N * δ ^ N * (1 + ‖v‖) ^ N := by
     simpa only [mul_pow] using pow_le_pow_left₀ (by positivity) hbase N
@@ -7716,7 +7715,8 @@ theorem normalizedCircleFinePacketOutputTailEnvelope_integrable
   let H : WithLp 2 (Euclidean 2 × Real) → Real := fun z =>
     ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.fst‖ * ‖Γ z.snd‖
   have hHI : Integrable H volume := by
-    apply (hI.integrable_comp_emb (MeasurableEquiv.toLp 2 (Euclidean 2 × Real)).measurableEmbedding).mp
+    apply (hI.integrable_comp_emb (MeasurableEquiv.toLp 2 (Euclidean 2 ×
+      Real)).measurableEmbedding).mp
     change Integrable (fun z : Euclidean 2 × Real =>
       ‖(𝓕⁻ m : SchwartzMap (Euclidean 2) Complex) z.1‖ * ‖Γ z.2‖) volume
     rw [Measure.volume_eq_prod]
@@ -7726,7 +7726,8 @@ theorem normalizedCircleFinePacketOutputTailEnvelope_integrable
       volume volume :=
     WithLp.volume_preserving_toLp JointWaveSpaceTime (WithLp 2 (Euclidean 2 × Real))
   apply (hO.integrable_comp_emb
-    (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real))).measurableEmbedding).mp
+    (MeasurableEquiv.toLp 2 (JointWaveSpaceTime × WithLp 2 (Euclidean 2 ×
+      Real))).measurableEmbedding).mp
   change Integrable (fun z : JointWaveSpaceTime × WithLp 2 (Euclidean 2 × Real) =>
     ((1 + ‖z.1‖) ^ N * ‖(𝓕⁻ q : SchwartzMap JointWaveSpaceTime Complex) z.1‖) * H z.2) volume
   rw [Measure.volume_eq_prod]
@@ -7802,7 +7803,7 @@ theorem normalizedCircleFinePacketNormalizedKernel_output_tail
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex) (N : Nat) :
-    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, ∀ hδ : 0 < δ,
+    ∃ C : Real, 0 ≤ C ∧ ∀ ε δ ρ₀ : Real, 0 < δ →
       ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
       ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
       (3 ≤ ‖o.fst‖ ∨ 2 ≤ |o.snd|) →
@@ -8077,6 +8078,7 @@ theorem sourcePacketPlanarDecay_scaled_mass
   rw [← mul_assoc, mul_inv_cancel₀ (pow_ne_zero 2 hL.ne'), one_mul]
 
 set_option maxHeartbeats 500000 in
+-- The nested parameter integrals and geometric estimates need additional elaboration steps.
 /-- Positive spatial convolution of two rapidly decaying ray profiles. A
 bounded time shift permits distinct directions, with the exact mismatch
 factor retained for absorption into the packet's spectral decay. -/
@@ -8141,16 +8143,12 @@ theorem sourcePacket_bounded_time_ray_convolution
     (∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z) * C
   simpa only [mul_comm C (∫ Z : Euclidean 2, sourcePacketPlanarDecay N Z)] using hwint
 
-#print axioms normalizedCircleFinePacketKernel_source_tail_with_dual_decay
-#print axioms normalizedCircleFinePacketKernel_output_tail_with_dual_decay
-#print axioms sourcePacket_bounded_time_ray_convolution
-
 theorem sourcePacket_shared_weight_geometric_mean
     (a b c k H CA CB : Real) (N : Nat)
     (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c) (hk : 0 ≤ k)
     (hH : 0 ≤ H) (hCA : 0 ≤ CA) (hCB : 0 ≤ CB)
-    (hA : a ^ (2*N) * b ^ (2*N) * k ≤ CA * H)
-    (hB : a ^ (2*N) * c ^ (2*N) * k ≤ CB * H) :
+    (hA : a ^ (2 * N) * b ^ (2 * N) * k ≤ CA * H)
+    (hB : a ^ (2 * N) * c ^ (2 * N) * k ≤ CB * H) :
     a ^ (2*N) * b ^ N * c ^ N * k ≤ (CA + CB + 1) * H := by
   have hp := mul_le_mul hA hB (by positivity) (by positivity)
   have hpow (x : Real) : x ^ (2*N) = (x^N)^2 := by
@@ -8170,9 +8168,8 @@ theorem sourcePacket_shared_weight_geometric_mean
 theorem normalizedCircleFinePacketKernel_joint_physical_tail_with_dual_decay
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
-    (b Γ : SchwartzMap Real Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2) (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤
+      7 / 2 ∧ |z 1| ≤ 9 / 2) (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
     (N M : Nat) (R : Real) (hR : 0 ≤ R) :
@@ -8205,8 +8202,6 @@ theorem normalizedCircleFinePacketKernel_joint_physical_tail_with_dual_decay
     (by simpa only [mul_assoc] using hA ε δ ρ hε hδ hδone hρ ζ η o y hsource)
     (by simpa only [mul_assoc] using hB ε δ ρ hε hδ hδone hρ ζ η o y hout)
   simpa only [mul_assoc] using h
-
-#print axioms normalizedCircleFinePacketKernel_joint_physical_tail_with_dual_decay
 
 
 theorem normalizedCircleFinePacketActualInputGradient_inverse_ray
@@ -8252,12 +8247,10 @@ theorem normalizedCircleFinePacketActualInputGradient_inverse_ray
     ring
   · exact hi
 
-#print axioms normalizedCircleFinePacketActualInputGradient_inverse_ray
-
 
 theorem normalizedCircleFinePacketActualNormal_inverse_ray
     (ε : Real) (o : JointWaveSpaceTime) (y : Euclidean 2)
-    (hε : |ε| ≤ 1/64) (hX : ‖o.fst‖ ≤ 3) (hu : |y 1| ≤ 5) :
+    (hε : |ε| ≤ 1 / 64) (hX : ‖o.fst‖ ≤ 3) (hu : |y 1| ≤ 5) :
     let B := inner Real o.fst (circleDirectionDeriv (y 0)) /
       ‖circleDirection (y 0) + ε • (y 1 • circleDirection (y 0) - o.fst)‖
     normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1) =
@@ -8282,8 +8275,6 @@ theorem normalizedCircleFinePacketActualNormal_inverse_ray
   change normalizedCircleNormal ε o.fst omega (y 1) = normalizedCircleRayNormal ε B omega V
   rw [hc.2.2.2.2.2]
   exact normalizedCircleRayNormal_on_ray ε (y 1) B s omega V hc.2.1 hs homega hV ho
-
-#print axioms normalizedCircleFinePacketActualNormal_inverse_ray
 
 
 def normalizedCircleFinePacketRayInputGradient (ε a B : Real) : Euclidean 2 :=
@@ -8323,8 +8314,6 @@ theorem normalizedCircleFinePacketSource_closest_anchor
   have hcoord := normalizedCircleFinePacketRayInputGradient_gap_coordinates ε a ρ B η
   linarith
 
-#print axioms normalizedCircleFinePacketSource_closest_anchor
-
 
 theorem normalizedCircleFinePacket_quarter_band_ray_gaps
     (ε a ρ ρA B BA L u s T : Real) (omega V : Euclidean 2)
@@ -8347,7 +8336,7 @@ theorem normalizedCircleFinePacket_quarter_band_ray_gaps
   have hrad := normalizedCircleRay_covector_radial_gap ε a ρ ρA B BA omega V
     haε hb hbA homega hV horth
   have htrans := normalizedCircleRay_covector_transverse_gap ε a ρ ρA B BA (L^2/2)
-    omega V haε ha hb hbA hB (by convert hρA using 1 <;> ring) homega hV horth
+    omega V haε ha hb hbA hB (by convert hρA using 1 ; ring) homega hV horth
   change |ρ - ρA| ≤ 2 * E at hrad
   change L^2/2 * |B - BA| ≤ 36 * E at htrans
   have htr : L^2 * |B - BA| ≤ 72 * E := by nlinarith
@@ -8367,8 +8356,6 @@ theorem normalizedCircleFinePacket_quarter_band_ray_gaps
   have h := mul_le_mul_of_nonneg_left hh hL.le
   change L * _ ≤ 216 * (E / L) + L * |s - T|
   nlinarith
-
-#print axioms normalizedCircleFinePacket_quarter_band_ray_gaps
 
 
 theorem normalizedCircleFinePacket_anchor_radial_ray_weights
@@ -8436,9 +8423,6 @@ theorem sourcePacket_product_weight_trade
     _ ≤ cr ^ N * ct ^ (2 * N) * (C * L) :=
       mul_le_mul_of_nonneg_left hK (by positivity)
     _ = _ := by ring
-
-#print axioms normalizedCircleFinePacket_anchor_radial_ray_weights
-#print axioms sourcePacket_product_weight_trade
 
 /-- A fixed real Schwartz phase and a fixed Schwartz cutoff amplitude give
 uniform joint-dual decay of the literal normalized packet integral. The
@@ -8511,9 +8495,7 @@ theorem sourcePacket_schwartz_oscillatory_integral_profile_control
     dsimp [g]
     ring
   rw [heq] at hd
-  convert hd.trans (mul_le_mul_of_nonneg_left hprof hC₀) using 1 <;> ring
-
-#print axioms sourcePacket_schwartz_oscillatory_integral_profile_control
+  convert hd.trans (mul_le_mul_of_nonneg_left hprof hC₀) using 1 ; ring
 
 /-- Uniform joint covector decay of the normalized kernel, with the true
 source/output cutoffs and radial band amplitude. No derivative or
@@ -8545,7 +8527,8 @@ theorem normalizedCircleFinePacketNormalizedKernel_profile_control
   have hξ := sourcePacketDualMismatch_inner normalizedCircleFinePacketCompactPhase
     c δ ρ₀ 0 normalizedCircleFinePacketShift normalizedCircleFinePacketRadial
     (normalizedCircleFinePacketFrequencyCovector ζ η)
-  have hd := hdecay (normalizedCircleFinePacketProfile q m Γ) c (WithLp.toLp 2 (c, ρ₀ * δ ^ 2)) δ ρ₀ 0 hδ hδone hρ₀
+  have hd := hdecay (normalizedCircleFinePacketProfile q m Γ) c (WithLp.toLp 2 (c, ρ₀ * δ ^ 2)) δ
+    ρ₀ 0 hδ hδone hρ₀
     normalizedCircleFinePacketShift normalizedCircleFinePacketShift_norm_le
     normalizedCircleFinePacketRadial normalizedCircleFinePacketRadial_norm_le
     normalizedCircleFinePacketAmplitudeShift normalizedCircleFinePacketAmplitudeShift_norm_le
@@ -8568,8 +8551,6 @@ theorem normalizedCircleFinePacketNormalizedKernel_profile_control
         (normalizedCircleFinePacketProfile q m Γ) := by
     convert mul_le_mul_of_nonneg_left hd (le_of_lt (inv_pos.mpr hδ)) using 1 <;> ring
   exact he
-
-#print axioms normalizedCircleFinePacketNormalizedKernel_profile_control
 
 /-- Uniform decay of the literal packet kernel in its source, output,
 and incidence mismatches, derived from the actual normalized family. -/
@@ -8597,8 +8578,6 @@ theorem normalizedCircleFinePacketKernel_profile_control
   rw [normalizedCircleFinePacketKernel_eq_normalized χout χsrc hχout hχsrc
     b Γ q m ε δ ρ₀ hε hδ ζ η o y]
   exact hd Γ q m ε δ ρ₀ hδ hδone hρ₀ ζ η o y
-
-#print axioms normalizedCircleFinePacketKernel_profile_control
 
 /-- Factorized localization of the literal normalized packet on the actual
 analysis core. The spectral centers have the cyclic Fourier signs of the
@@ -8640,8 +8619,6 @@ theorem normalizedCircleFinePacketKernel_actual_product_profile_control
   rw [hxo, hxs, hxr, abs_mul, abs_neg, abs_of_pos (inv_pos.mpr hδ)] at hw
   exact (mul_le_mul_of_nonneg_right hw (norm_nonneg _)).trans
     (hd Γ q m ε δ ρ₀ hε hδ hδone hρ₀ ζ η o y)
-
-#print axioms normalizedCircleFinePacketKernel_actual_product_profile_control
 
 
 /-- Every analysis-source covector has one actual compact ray anchor that
@@ -8753,9 +8730,7 @@ theorem normalizedCircleFinePacketKernel_anchored_product_profile_control
       ρ • normalizedCircleFinePacketActualInputGradient ε o y))])
     (by dsimp [H]; have hh := mul_nonneg hLp.le (abs_nonneg (s-o.snd)); linarith)
     (by positivity) (by positivity) (norm_nonneg _) (by norm_num) (by norm_num)
-    hw.1 hw.2 (by convert hk using 1 <;> ring) using 1 <;> ring
-
-#print axioms normalizedCircleFinePacketKernel_anchored_product_profile_control
+    hw.1 hw.2 (by convert hk using 1 ; ring) using 1 ; ring
 
 
 /-- Every analysis-source covector has one actual compact ray anchor that
@@ -8793,9 +8768,7 @@ theorem normalizedCircleFinePacketKernel_anchored_product_decay
   obtain ⟨ρA,BA,hAlo,hAhi,hBA,hcanonical,hpacket⟩ := hdec ε L hε hL η y hθ hu
   refine ⟨ρA,BA,hAlo,hAhi,hBA,?_⟩
   intro ρ hlo hhi ζ o hX hT
-  convert hpacket Γ q m ρ hlo hhi ζ o hX hT using 1 <;> ring
-
-#print axioms normalizedCircleFinePacketKernel_anchored_product_decay
+  convert hpacket Γ q m ρ hlo hhi ζ o hX hT using 1 ; ring
 
 
 theorem normalizedCircleFinePacket_anchor_normal_gap
@@ -8858,15 +8831,12 @@ theorem sourcePacket_output_center_normal_gap
   apply (mul_le_mul_iff_right₀ hL).mp
   convert hmul using 1 <;> ring
 
-#print axioms normalizedCircleFinePacket_anchor_normal_gap
-#print axioms sourcePacket_output_center_normal_gap
-
 
 theorem normalizedCircleFinePacket_projector_direction_weight
     (ε a ρ ρA B BA L D A g : Real) (omega V ν : Euclidean 2)
     (ζ : JointWaveSpaceTime) (ρout : Real)
-    (haε : |ε| ≤ a) (hb : |ε * B| ≤ 1/2) (hbA : |ε * BA| ≤ 1/2)
-    (hL : 0 < L) (hρ : L^2/4 ≤ |ρ|)
+    (haε : |ε| ≤ a) (hb : |ε * B| ≤ 1 / 2) (hbA : |ε * BA| ≤ 1 / 2) (hL : 0 < L) (hρ : L ^ 2 / 4 ≤
+      |ρ|)
     (homega : ‖omega‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real omega V = 0)
     (hν : ‖ν‖ = 1) (hcenter : ζ.fst = ρout • ν)
     (hD : |ρout - ζ.snd| ≤ D * L) (hD0 : 0 ≤ D) (hA : 0 ≤ A)
@@ -8906,8 +8876,6 @@ theorem normalizedCircleFinePacket_projector_direction_weight
   nlinarith [mul_nonneg hGG hgg, mul_nonneg hA hGG, mul_nonneg hA hgg,
     mul_nonneg (mul_nonneg hA hD0) hGG, mul_nonneg (mul_nonneg hA hD0) hgg,
     mul_nonneg hc (mul_nonneg hGG hgg)]
-
-#print axioms normalizedCircleFinePacket_projector_direction_weight
 
 
 theorem sourcePacket_ray_projection_weight_trade
@@ -8954,11 +8922,9 @@ theorem sourcePacket_ray_projection_weight_trade
   rw [div_eq_mul_inv, mul_inv, mul_inv, mul_inv, inv_pow, inv_pow, inv_pow, inv_pow]
   ring
 
-#print axioms sourcePacket_ray_projection_weight_trade
-
 
 theorem sourcePacket_radial_output_lattice_sum_uniform
-    {ι E : Type*} [Fintype ι] [NormedAddCommGroup E] [NormedSpace Real E]
+    {ι E : Type*} [Finite ι] [NormedAddCommGroup E] [NormedSpace Real E]
     [FiniteDimensional Real E]
     (b : Module.Basis ι Real E) (N : Nat) (hdim : Module.finrank Real E < N)
     (hN : 2 < N) :
@@ -8967,6 +8933,7 @@ theorem sourcePacket_radial_output_lattice_sum_uniform
       Function.Injective z → ∀ I : Finset Int, ∀ J : Finset κ,
       (∑ n ∈ I, ∑ j ∈ J,
         (1 + |(n:Real)-t|)⁻¹ ^ N * (1 + ‖(z j : E) + x n‖)⁻¹ ^ N) ≤ C := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨Cr,hCr,hrad⟩ := mss_integer_decay_finite_sum_uniform N hN
   obtain ⟨Co,hCo,hout⟩ := mss_basis_lattice_decay_finite_sum_uniform b N hdim
@@ -8985,13 +8952,11 @@ theorem sourcePacket_radial_output_lattice_sum_uniform
     _ = (∑ n ∈ I, (1 + |(n:Real)-t|)⁻¹ ^ N) * Co := by rw [Finset.sum_mul]
     _ ≤ Cr * Co := mul_le_mul_of_nonneg_right (hrad t I) hCo
 
-#print axioms sourcePacket_radial_output_lattice_sum_uniform
-
 
 theorem sourcePacket_drop_extra_positive_weights
     (a b r t k H : Real) (N : Nat)
     (ha : 1 ≤ a) (hb : 1 ≤ b) (hr : 1 ≤ r) (ht : 1 ≤ t) (hk : 0 ≤ k)
-    (hK : a ^ (2*N) * b ^ (2*N) * r ^ N * t ^ (2*N) * k ≤ H) :
+    (hK : a ^ (2 * N) * b ^ (2 * N) * r ^ N * t ^ (2 * N) * k ≤ H) :
     k ≤ H * a⁻¹ ^ N * r⁻¹ ^ N * t⁻¹ ^ N := by
   have ha0 : 0 < a := by linarith
   have hr0 : 0 < r := by linarith
@@ -9007,16 +8972,15 @@ theorem sourcePacket_drop_extra_positive_weights
         gcongr
   have hD : 0 < a^N * r^N * t^N := by positivity
   have hh : k ≤ H / (a^N * r^N * t^N) :=
-    (le_div_iff₀ hD).mpr (by convert hweighted using 1 <;> ring)
+    (le_div_iff₀ hD).mpr (by convert hweighted using 1 ; ring)
   convert hh using 1
   rw [div_eq_mul_inv, mul_inv, mul_inv, inv_pow, inv_pow, inv_pow]
   ring
-#print axioms sourcePacket_drop_extra_positive_weights
 
 open Module in
 theorem normalizedCircleQuarterTurn_circleDirection (theta : Real) :
     normalizedCircleQuarterTurn (circleDirection theta) = circleDirectionDeriv theta := by
-  letI : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
+  let : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
   apply ext_inner_right Real
   intro y
   change inner Real ((EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.rightAngleRotation
@@ -9031,8 +8995,6 @@ theorem normalizedCircleQuarterTurn_circleDirection (theta : Real) :
   simp [circleDirection, circleDirectionDeriv, inner_add_left,
     real_inner_smul_left, EuclideanSpace.inner_single_left]
   ring
-
-#print axioms normalizedCircleQuarterTurn_circleDirection
 
 
 /-- Weighted L1 moments are controlled by a finite genuine Schwartz
@@ -9076,7 +9038,8 @@ theorem sourcePacket_schwartz_weighted_L1_rectangle
     · calc
         _ ≤ (2:Real)^N := by gcongr; linarith
         _ ≤ _ := by
-          exact (le_add_of_nonneg_right (mul_nonneg (by positivity : (0:Real) ≤ 2^N) (pow_nonneg hr N))).trans_eq (by ring)
+          exact (le_add_of_nonneg_right (mul_nonneg (by positivity : (0:Real) ≤ 2^N) (pow_nonneg
+            hr N))).trans_eq (by ring)
     · calc
         _ ≤ (2*r)^N := by gcongr; linarith
         _ = 2^N*r^N := by rw [mul_pow]
@@ -9089,24 +9052,22 @@ theorem sourcePacket_schwartz_weighted_L1_rectangle
       intro x
       have hh := mul_le_mul_of_nonneg_right (hb ‖x‖ (norm_nonneg x)) (norm_nonneg (Φ x))
       change (1+‖x‖)^N*‖Φ x‖ ≤ (2:Real)^N*(‖Φ x‖+‖x‖^N*‖Φ x‖)
-      convert hh using 1 <;> ring
+      convert hh using 1 ; ring
     _ = (2:Real)^N*((∫ x : E, ‖Φ x‖)+(∫ x : E, ‖x‖^N*‖Φ x‖)) := by
       rw [integral_const_mul,integral_add Φ.integrable.norm (Φ.integrable_pow_mul volume N)]
     _ ≤ (2:Real)^N*(4*c₀*U) := by gcongr; linarith
     _ = _ := by ring
-#print axioms sourcePacket_schwartz_weighted_L1_rectangle
 
 /-- The source and output shielding errors have uniform physical decay
 controlled by the actual joint packet-profile seminorms. -/
 theorem normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_control
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
-    (b : SchwartzMap Real Complex) (N : Nat) :
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2) (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤
+      7 / 2 ∧ |z 1| ≤ 9 / 2) (b : SchwartzMap Real Complex) (N : Nat) :
     ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧
       ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
-      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real, ∀ hδ : 0 < δ,
+      ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real, 0 < δ →
       ∀ ζ : JointWaveSpaceTime, ∀ η : Euclidean 2,
       ∀ o : JointWaveSpaceTime, ∀ y : Euclidean 2,
       ((4 ≤ |y 0| ∨ 5 ≤ |y 1|) →
@@ -9163,7 +9124,8 @@ theorem normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_contro
       (by filter_upwards with x
           simpa only [norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hw] using hp x)
     have hI : w*‖∫ x, I x‖ ≤ D*δ^N*(∫ x, (1+‖x‖)^N*‖Φ x‖) := by
-      simpa only [integral_const_mul,norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hw] using hh
+      simpa only [integral_const_mul,norm_mul,Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg hw]
+        using hh
     have hi := hI.trans (mul_le_mul_of_nonneg_left (hL1 Φ) (by positivity : 0 ≤ D*δ^N))
     rw [normalizedCircleFinePacketNormalizedKernel_eq_integral,norm_mul,norm_mul,
       Complex.norm_exp_ofReal_mul_I,mul_one,Complex.norm_real,Real.norm_eq_abs,
@@ -9182,7 +9144,6 @@ theorem normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_contro
         ε δ ρ hδ.le ζ η o y ho x).trans
           (mul_le_mul_of_nonneg_left (hoenv x) (by positivity : 0 ≤ Co*δ^N)))
     exact hh.trans (by gcongr; exact le_add_of_nonneg_left hCs)
-#print axioms normalizedCircleFinePacketNormalizedKernel_physical_tails_profile_control
 
 theorem sourcePacket_profile_rectangle_mono
     {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
@@ -9201,9 +9162,8 @@ theorem sourcePacket_profile_rectangle_mono
 theorem normalizedCircleFinePacketKernel_physical_tails_profile_control
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
-    (b : SchwartzMap Real Complex) (N : Nat) :
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2) (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤
+      7 / 2 ∧ |z 1| ≤ 9 / 2) (b : SchwartzMap Real Complex) (N : Nat) :
     ∃ K : Nat, ∃ C : Real, 0 ≤ C ∧
       ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
       ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real, |ε| ≤ 1/64 → ∀ hδ : 0 < δ,
@@ -9234,9 +9194,8 @@ family, rather than using separate constants for each spectral packet. -/
 theorem normalizedCircleFinePacketKernel_mixed_tails_profile_control
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
-    (b : SchwartzMap Real Complex)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2) (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤
+      7 / 2 ∧ |z 1| ≤ 9 / 2) (b : SchwartzMap Real Complex)
     (N M : Nat) (R : Real) (hR : 0 ≤ R) :
     ∃ K S : Nat, ∃ C : Real, 0 ≤ C ∧
       ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
@@ -9275,7 +9234,7 @@ theorem normalizedCircleFinePacketKernel_mixed_tails_profile_control
   have hA : a^(2*N)*k ≤ CA*(δ⁻¹*U) := by
     have hh := (hfreq Γ q m ε δ ρ hε hδ hδone hρ ζ η o y).trans
       (mul_le_mul_of_nonneg_left hUa (by positivity : 0 ≤ CA*δ⁻¹))
-    convert hh using 1 <;> ring
+    convert hh using 1 ; ring
   have ht := hphys Γ q m ε δ ρ hε hδ ζ η o y
   have htail (v : Real) (hv : 1 ≤ v)
       (htv : v^(2*(N+M))*k ≤ CB*δ⁻¹*δ^(2*(N+M))*
@@ -9284,17 +9243,17 @@ theorem normalizedCircleFinePacketKernel_mixed_tails_profile_control
     have hB : v^(2*(N+M))*k ≤ CB*(δ⁻¹*U)*δ^(2*(N+M)) := by
       have hh := htv.trans (mul_le_mul_of_nonneg_left hUb
         (by positivity : 0 ≤ CB*δ⁻¹*δ^(2*(N+M))))
-      convert hh using 1 <;> ring
+      convert hh using 1 ; ring
     have hh := sourcePacket_weighted_geometric_mean_tail a v k (δ⁻¹*U) δ CA CB N M
       (show (0:Real) ≤ 1+‖normalizedCircleFinePacketDualMismatch ε δ ρ ζ η o y‖ by positivity) hv
-      (norm_nonneg (normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y)) (by positivity) hδ.le hδone hCA hCB hA hB
-    convert hh using 1 <;> ring
+      (norm_nonneg (normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η o y)) (by
+        positivity) hδ.le hδone hCA hCB hA hB
+    convert hh using 1 ; ring
   constructor
   · intro hy
     exact htail (1+‖y‖) (le_add_of_nonneg_right (norm_nonneg _)) (ht.1 hy)
   · intro ho'
     exact htail (1+‖o‖) (le_add_of_nonneg_right (norm_nonneg _)) (ht.2 ho')
-#print axioms normalizedCircleFinePacketKernel_mixed_tails_profile_control
 
 /-- Joint source/output measurability of the actual packet follows from
 the proved normalized integral representation, including the zero-epsilon sheet. -/
@@ -9338,7 +9297,7 @@ theorem normalizedCircleFinePacketKernel_measurable
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε δ ρ : Real) (hε : |ε| ≤ 1/64) (hδ : 0 < δ)
+    (ε δ ρ : Real) (hε : |ε| ≤ 1 / 64) (hδ : 0 < δ)
     (ζ : JointWaveSpaceTime) (η : Euclidean 2) :
     Measurable (fun oy : JointWaveSpaceTime × Euclidean 2 =>
       normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η oy.1 oy.2) := by
@@ -9351,8 +9310,6 @@ theorem normalizedCircleFinePacketKernel_measurable
       b Γ q m ε δ ρ hε hδ ζ η oy.1 oy.2
   rw [heq]
   exact normalizedCircleFinePacketNormalizedKernel_measurable χout χsrc b Γ q m ε δ ρ ζ η
-
-#print axioms normalizedCircleFinePacketKernel_measurable
 
 /-- The actual coordinate norms controlling the bounded shielding core. -/
 theorem sourcePacket_joint_norm_le_coordinates (o : JointWaveSpaceTime) :
@@ -9389,18 +9346,16 @@ theorem sourcePacket_source_core_weight_le_ten (y : Euclidean 2)
     1+‖y‖ ≤ 10 := by
   have hn := sourcePacket_source_norm_le_coordinates y
   linarith
-#print axioms sourcePacket_joint_norm_le_coordinates
-#print axioms sourcePacket_source_norm_le_coordinates
 
-/-- Genuine physical decay in both analysis variables retains the frequency mismatch decay even when only one variable is outside its core. -/
+/-- Genuine physical decay in both analysis variables retains the frequency mismatch decay even
+  when only one variable is outside its core. -/
 theorem sourcePacket_three_weight_physical_tail
     (a v w k H C : Real) (N : Nat)
     (ha : 1 ≤ a) (hv : 1 ≤ v) (hw : 1 ≤ w)
     (hk : 0 ≤ k) (hH : 0 ≤ H) (hC : 0 ≤ C)
     (S O : Prop) (hOutside : S ∨ O)
-    (hSource : S → a^(2*N)*v^(2*N)*k ≤ C*H)
-    (hOutput : O → a^(2*N)*w^(2*N)*k ≤ C*H)
-    (hvs : ¬S → v ≤ 10) (hwo : ¬O → w ≤ 6) :
+    (hSource : S → a ^ (2 * N) * v ^ (2 * N) * k ≤ C * H)
+    (hOutput : O → a ^ (2 * N) * w ^ (2 * N) * k ≤ C * H) (hvs : ¬S → v ≤ 10) (hwo : ¬O → w ≤ 6) :
     a^N*v^N*w^N*k ≤ ((10^N+6^N+2)*C+1)*H := by
   have hap : a^N ≤ a^(2*N) := pow_le_pow_right₀ ha (by omega)
   have hvp : v^N ≤ v^(2*N) := pow_le_pow_right₀ hv (by omega)
@@ -9435,7 +9390,6 @@ theorem sourcePacket_three_weight_physical_tail
         have hc : (10:Real)^N*C ≤ (10^N+6^N+2)*C+1 := by
           nlinarith [mul_nonneg (show (0:Real) ≤ 6^N by positivity) hC]
         simpa only [mul_assoc] using mul_le_mul_of_nonneg_right hc hH
-#print axioms sourcePacket_three_weight_physical_tail
 
 /-- Outside either genuine analysis core, the literal normalized kernel
 has simultaneous summable source/output physical decay and retained joint
@@ -9443,9 +9397,8 @@ covector decay. The fixed cutoff margins supply every inverse scale power. -/
 theorem normalizedCircleFinePacketKernel_analysis_error_profile_control
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
-    (b : SchwartzMap Real Complex) (N M : Nat) (R : Real) (hR : 0 ≤ R) :
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2) (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤
+      7 / 2 ∧ |z 1| ≤ 9 / 2) (b : SchwartzMap Real Complex) (N M : Nat) (R : Real) (hR : 0 ≤ R) :
     ∃ K S : Nat, ∃ C : Real, 0 ≤ C ∧
       ∀ Γ : SchwartzMap Real Complex, ∀ q : SchwartzMap JointWaveSpaceTime Complex,
       ∀ m : SchwartzMap (Euclidean 2) Complex, ∀ ε δ ρ : Real,
@@ -9492,7 +9445,6 @@ theorem normalizedCircleFinePacketKernel_analysis_error_profile_control
     (by dsimp [w]; exact le_add_of_nonneg_right (norm_nonneg _))
     (norm_nonneg _) (by dsimp [H]; positivity) hC _ _ hout hSource hOutput hvbound hwbound
   convert hb using 1; dsimp [a,v,w,k,H,U]; ring
-#print axioms normalizedCircleFinePacketKernel_analysis_error_profile_control
 
 
 

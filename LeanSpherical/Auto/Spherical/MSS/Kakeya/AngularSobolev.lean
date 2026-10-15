@@ -261,6 +261,7 @@ private theorem continuousAt_parametric_deriv
   exact hd.continuousAt.clm_apply continuousAt_const
 
 set_option maxHeartbeats 2000000 in
+-- The nested parameter integrals and geometric estimates need additional elaboration steps.
 /-- Continuity of the actual rotational determinant at each point of the
 zero-scale family. All entries are derivatives of the exact phase and its
 spatial gradient, rather than separately specified jet data. -/
@@ -370,7 +371,7 @@ theorem normalizedCircleRotationalMatrix_uniform_isUnit
   exact ne_of_gt (lt_trans (by norm_num : (0 : Real) < 1 / 2) (hε z hz))
 
 /-- The time-reflected planar conormal chart, parametrized by direction
-and nonzero conormal frequency.  The literal phase `ρ * (F - T)` has time
+and nonzero conormal frequency. The literal phase `ρ * (F - T)` has time
 component `-ρ`; `actualCircleConormalChart` records that convention. -/
 def circleConormalChart (θ τ : Real) : Euclidean 2 × Real :=
   (-τ • circleDirection θ, τ)
@@ -411,7 +412,7 @@ theorem circleConormalCurvatureMatrix_uniform_lower (θ τ : Real) (hτ : 1 / 2 
   nlinarith [sq_abs τ]
 
 /-- The inverse normal chart parametrizes the time-reflected output
-conormal on the incidence level.  Its curvature is the scale-independent
+conormal on the incidence level. Its curvature is the scale-independent
 curvature computed by `circleConormalCurvatureMatrix_uniform_lower`.
 The literal phase-gradient convention is bridged below. -/
 theorem normalizedCircle_output_conormal_chart (ε : Real) (X : Euclidean 2)
@@ -436,10 +437,8 @@ theorem normalizedCircle_output_conormal_chart (ε : Real) (X : Euclidean 2)
     by rw [normalizedCircle_inverse_normal ε X (circleDirection θ) s
       (norm_circleDirection θ) hsep hs]; rfl⟩
 
-#print axioms normalizedCircle_output_conormal_chart
-
 /-- The literal output conormal of the phase `ρ * (F - T)`, in the sign
-convention of the shell-rescaling note, Section 5.3.  Its time component
+convention of the shell-rescaling note, Section 5.3. Its time component
 is negative, consistently with the spatial derivative of the incidence. -/
 def actualCircleConormalChart (θ ρ : Real) : Euclidean 2 × Real :=
   (-ρ • circleDirection θ, -ρ)
@@ -471,7 +470,7 @@ theorem hasDerivAt_actualCircleConormalChart_angle_second (θ ρ : Real) :
     (hasDerivAt_const θ 0)
 
 /-- Directional differentiation of the exact incidence phase gives the
-literal spacetime covector `(-ρ * n, -ρ)`.  This proves the sign bridge
+literal spacetime covector `(-ρ * n, -ρ)`. This proves the sign bridge
 for the actual phase, rather than just identifying a cone as a set. -/
 theorem normalizedCircle_phase_hasDerivAt_spacetime
     (ε : Real) (X Y ω : Euclidean 2) (u s v ρ : Real) (hω : ‖ω‖ = 1)
@@ -493,7 +492,7 @@ theorem normalizedCircle_phase_hasDerivAt_spacetime
   ring
 
 /-- The inverse normal parametrization of the incidence level gives the
-actual output conormal of `ρ * (F - T)`.  The established inverse identities
+actual output conormal of `ρ * (F - T)`. The established inverse identities
 are preserved, with the time reflection made explicit. -/
 theorem normalizedCircle_actual_output_conormal_chart (ε : Real) (X : Euclidean 2)
     (s θ ρ : Real) (hsmall : |ε| * (|s| + ‖X‖) ≤ 1 / 2) :
@@ -509,7 +508,7 @@ theorem normalizedCircle_actual_output_conormal_chart (ε : Real) (X : Euclidean
   exact Prod.ext hspatial rfl
 
 /-- Columns are the actual angular tangent, radial tangent, and angular
-second derivative.  The last row records the literal time covector `-ρ`. -/
+second derivative. The last row records the literal time covector `-ρ`. -/
 def actualCircleConormalCurvatureMatrix (θ ρ : Real) : Matrix (Fin 3) (Fin 3) Real :=
   !![(-ρ • circleDirectionDeriv θ) 0, (-circleDirection θ) 0,
       (-ρ • circleDirectionDeriv2 θ) 0;
@@ -534,20 +533,14 @@ theorem det_actualCircleConormalCurvatureMatrix (θ ρ : Real) :
 
 /-- Uniform cinematic curvature for the literal phase-gradient chart on a
 unit conormal annulus, as required by Section 5.3 of the shell-rescaling
-argument.  This is a curvature statement, not a projection-rank assertion. -/
+argument. This is a curvature statement, not a projection-rank assertion. -/
 theorem actualCircleConormalCurvatureMatrix_uniform_lower
     (θ ρ : Real) (hρ : 1 / 2 ≤ |ρ|) :
     1 / 4 ≤ |(actualCircleConormalCurvatureMatrix θ ρ).det| := by
   rw [det_actualCircleConormalCurvatureMatrix_eq_neg, abs_neg]
   exact circleConormalCurvatureMatrix_uniform_lower θ ρ hρ
 
-#print axioms actualCircleConormalChart_eq_time_reflection
-#print axioms normalizedCircle_phase_hasDerivAt_spacetime
-#print axioms normalizedCircle_actual_output_conormal_chart
-#print axioms det_actualCircleConormalCurvatureMatrix
-#print axioms actualCircleConormalCurvatureMatrix_uniform_lower
-
-/-- The angular input derivative of the exact normalized incidence.  This
+/-- The angular input derivative of the exact normalized incidence. This
 formula includes zero scale and supplies the second actual input covector
 in the cinematic-rank calculation of the shell-rescaling note, Section 5.3. -/
 theorem normalizedCircleIncidence_hasDerivAt_angle
@@ -636,7 +629,7 @@ theorem normalizedCircleRotatingPoint_separated
   exact hC hinner
 
 /-- Actual input covectors of the phase `ρ * (F - T)`, with the input
-base coordinates fixed.  Both entries are derivatives of the exact
+base coordinates fixed. Both entries are derivatives of the exact
 incidence, rather than independently supplied coefficient functions.
 The fibre variables are ordered `(ρ, B)`. -/
 def normalizedCircleInputCotangentFibre (ε A θ u : Real) (q : Real × Real) : Real × Real :=
@@ -644,7 +637,7 @@ def normalizedCircleInputCotangentFibre (ε A θ u : Real) (q : Real × Real) : 
   (-q.1 * deriv (fun v => normalizedCircleIncidence ε X (circleDirection θ) v) u,
     -q.1 * deriv (fun b => normalizedCircleIncidence ε X (circleDirection b) u) θ)
 
-/-- Explicit formula for the actual input-cotangent fibre map.  The
+/-- Explicit formula for the actual input-cotangent fibre map. The
 radial and angular derivative theorems discharge its connection to the
 normalized incidence in the canonical relation. -/
 theorem normalizedCircleInputCotangentFibre_eq
@@ -675,9 +668,6 @@ theorem normalizedCircleInputCotangentFibre_eq
   apply Prod.ext <;> dsimp only
   · ring
   · ring
-
-#print axioms normalizedCircleIncidence_hasDerivAt_angle
-#print axioms normalizedCircleInputCotangentFibre_eq
 
 /-- The exact displacement radius in rotating coordinates. -/
 def normalizedCircleFibreRadius (ε A θ u B : Real) : Real :=
@@ -726,7 +716,7 @@ theorem hasDerivAt_normalizedCircleFibreRadius
   ring
 
 /-- Columns are the actual derivatives in conormal frequency and
-transverse spatial position of the input-cotangent fibre map.  Together
+transverse spatial position of the input-cotangent fibre map. Together
 with its two unchanged input base coordinates, a nonzero determinant here
 is the concrete four-dimensional minor in Section 5.3 of the source note. -/
 def normalizedCircleInputCotangentFibreJacobian
@@ -825,10 +815,6 @@ theorem det_normalizedCircleInputCotangentFibreJacobian
   rw [hDsq]
   ring
 
-#print axioms hasDerivAt_normalizedCircleFibreRadius
-#print axioms normalizedCircleInputCotangentFibreJacobian_eq
-#print axioms det_normalizedCircleInputCotangentFibreJacobian
-
 /-- The same normalized coordinate smallness used for the phase bounds
 controls all three factors in the actual input-projection minor. -/
 theorem normalizedCircleInputCotangentFibre_coordinate_bounds
@@ -863,7 +849,7 @@ theorem normalizedCircleInputCotangentFibre_coordinate_bounds
       (norm_circleDirection θ) hsmall
 
 /-- Quantitative nondegeneracy of the actual input-cotangent projection
-minor from Section 5.3 of the shell-rescaling note.  Together with the
+minor from Section 5.3 of the shell-rescaling note. Together with the
 two unchanged input base coordinates, this is the concrete minor needed
 for its rank-four condition. -/
 theorem normalizedCircleInputCotangentFibreJacobian_uniform_lower
@@ -900,9 +886,6 @@ theorem normalizedCircleInputCotangentFibreJacobian_isUnit
   have h := normalizedCircleInputCotangentFibreJacobian_uniform_lower
     ε A θ u ρ B hsmall
   exact lt_of_lt_of_le (div_pos (abs_pos.mpr hρ) (by norm_num)) h
-
-#print axioms normalizedCircleInputCotangentFibreJacobian_uniform_lower
-#print axioms normalizedCircleInputCotangentFibreJacobian_isUnit
 
 
 /-- The Laplacian transforms exactly under a nonzero affine homothety. -/
@@ -1138,12 +1121,6 @@ theorem normalizedCirclePhaseExponential_waveOperator_norm_le
   apply (div_le_iff₀ (by linarith : 0 < ‖ω + ε • (u • ω - X)‖)).mpr
   nlinarith [mul_nonneg (abs_nonneg ε) (abs_nonneg ρ)]
 
-#print axioms laplacian_affine_homothety
-#print axioms laplacian_affine_complex_exponential
-#print axioms laplacian_normalizedCirclePhaseExponential
-#print axioms normalizedCirclePhaseExponential_waveOperator
-#print axioms normalizedCirclePhaseExponential_waveOperator_norm_le
-
 
 /-- Local smoothness of the actual incidence exponential on the separated
 source/output region. -/
@@ -1178,10 +1155,12 @@ theorem fderiv_normalizedCirclePhaseExponential_apply
       ((hasDerivAt_id (0 : Real)).smul_const Y) using 1 <;> first | rfl | simp
   have hchain := hsmooth.differentiableAt (by simp) |>.hasFDerivAt
     |>.comp_hasDerivAt_of_eq 0 hline (by simp)
-  have hp := ((normalizedCircleIncidence_hasDerivAt_spatial ε X Y ω u hω hsep).sub_const s).const_mul ρ
+  have hp := ((normalizedCircleIncidence_hasDerivAt_spatial ε X Y ω u hω hsep).sub_const
+    s).const_mul ρ
   have hactual := (hp.ofReal_comp.mul_const Complex.I).cexp
   have heq := hchain.unique hactual
-  simpa only [zero_smul, add_zero, normalizedCirclePhaseExponential, Function.comp_def, mul_neg, neg_mul] using heq
+  simpa only [zero_smul, add_zero, normalizedCirclePhaseExponential, Function.comp_def, mul_neg,
+    neg_mul] using heq
 
 /-- Product rule with the actual incidence phase. Its leading squared frequency
 is canceled, and the cutoff cost is an explicit first-degree frequency polynomial. -/
@@ -1223,9 +1202,6 @@ theorem laplacian_normalizedCirclePhaseExponential_mul_cancelled
   rw [← Finset.mul_sum]
   ring
 
-#print axioms fderiv_normalizedCirclePhaseExponential_apply
-#print axioms laplacian_normalizedCirclePhaseExponential_mul_cancelled
-
 
 
 /-- The local second-derivative product rule needed by the temporal wave term. -/
@@ -1250,7 +1226,8 @@ theorem hasDerivAt_normalizedCirclePhaseExponential_temporal
       (normalizedCirclePhaseExponential ε ω u ρ s X * ((-ρ : Real) : Complex) *
         Complex.I) s := by
   dsimp [normalizedCirclePhaseExponential]
-  convert ((((hasDerivAt_const s (normalizedCircleIncidence ε X ω u)).sub (hasDerivAt_id s)).const_mul ρ).ofReal_comp.mul_const Complex.I).cexp using 1 <;>
+  convert ((((hasDerivAt_const s (normalizedCircleIncidence ε X ω u)).sub (hasDerivAt_id
+    s)).const_mul ρ).ofReal_comp.mul_const Complex.I).cexp using 1 <;>
     simp [mul_assoc]
 
 /-- The frequency-independent first transport operator on actual output amplitudes. -/
@@ -1264,7 +1241,7 @@ def normalizedCircleAmplitudeTransport (ε : Real) (ω : Euclidean 2)
     (((ε / ‖ω + ε • (u • ω - z.1)‖ : Real) : Complex) * Complex.I) * A z
 
 /-- The actual wave operator on a smooth cutoff incidence exponential has
-frequency degree at most one after dephasing.  The amplitude is arbitrary and
+frequency degree at most one after dephasing. The amplitude is arbitrary and
 may include all compact spatial, temporal, and source cutoff factors. -/
 theorem normalizedCircleWaveOperator_phase_mul
     (A : WaveSpaceTime → Complex) (ε : Real) (X ω : Euclidean 2) (u ρ s : Real)
@@ -1322,8 +1299,6 @@ theorem normalizedCircleWaveOperator_phase_mul
         linear_combination hs]
   push_cast
   ring
-
-#print axioms normalizedCircleWaveOperator_phase_mul
 
 section NormalCircleWaveFrequencyTail
 open MeasureTheory
@@ -1531,7 +1506,7 @@ theorem normalizedCircle_normal_gap_fourier_pointwise
   exact mul_le_mul_of_nonneg_right
     (pow_le_pow_left₀ (by positivity) hcoeff N) (norm_nonneg _)
 
-/-- Uniform off-cone L2 tail for a fixed output region.  The right-hand side
+/-- Uniform off-cone L2 tail for a fixed output region. The right-hand side
 is the actual iterated wave residual, with no local-smoothing hypothesis. -/
 theorem normalizedCircle_normal_gap_fourier_L2_tail
     (N : Nat) (F : SchwartzMap JointWaveSpaceTime Complex)
@@ -1589,10 +1564,6 @@ theorem normalizedCircle_normal_gap_fourier_L2_tail
         (Filter.Eventually.of_forall fun _ => sq_nonneg _)) (sq_nonneg _)
     _ = _ := by rw [SchwartzMap.integral_norm_sq_fourier]
 
-#print axioms normalizedCircleSchwartzWaveOperator_apply
-#print axioms fourier_iterate_normalizedCircleSchwartzWaveOperator_apply
-#print axioms normalizedCircle_normal_gap_fourier_L2_tail
-
 end NormalCircleWaveFrequencyTail
 
 
@@ -1634,7 +1605,7 @@ theorem normalizedCirclePhaseExponential_joint_contDiffAt
   exact hX.mul ht
 
 /-- Multiplication by a compact output cutoff makes the actual incidence phase
-globally smooth.  The only geometric hypothesis is separation on the cutoff support. -/
+globally smooth. The only geometric hypothesis is separation on the cutoff support. -/
 theorem normalizedCircleLocalizedPhase_contDiff
     (A : SchwartzMap JointWaveSpaceTime Complex) (ε : Real) (ω : Euclidean 2) (u ρ : Real)
     (hsep : ∀ z ∈ tsupport (A : JointWaveSpaceTime → Complex),
@@ -1644,7 +1615,8 @@ theorem normalizedCircleLocalizedPhase_contDiff
   rw [contDiff_iff_contDiffAt]
   intro z
   by_cases hz : z ∈ tsupport (A : JointWaveSpaceTime → Complex)
-  · exact (normalizedCirclePhaseExponential_joint_contDiffAt ε ω u ρ z (hsep z hz)).mul (A.smooth (⊤ : ℕ∞)).contDiffAt
+  · exact (normalizedCirclePhaseExponential_joint_contDiffAt ε ω u ρ z (hsep z hz)).mul (A.smooth
+    (⊤ : ℕ∞)).contDiffAt
   · have hzero : (A : JointWaveSpaceTime → Complex) =ᶠ[𝓝 z] 0 :=
       notMem_tsupport_iff_eventuallyEq.mp hz
     have heq : (fun q : JointWaveSpaceTime =>
@@ -1677,7 +1649,7 @@ theorem normalizedCircleLocalizedPhaseSchwartz_apply
       normalizedCirclePhaseExponential ε ω u ρ z.snd z.fst * A z := rfl
 
 /-- Exact wave residual of the genuinely joint-Schwartz, compactly cutoff
-actual incidence exponential.  Every amplitude derivative is taken on the
+actual incidence exponential. Every amplitude derivative is taken on the
 supplied Schwartz cutoff, and the frequency enters only linearly. -/
 theorem normalizedCircleLocalizedPhaseSchwartz_waveOperator_apply
     (A : SchwartzMap JointWaveSpaceTime Complex)
@@ -1710,8 +1682,6 @@ theorem normalizedCircleLocalizedPhaseSchwartz_waveOperator_apply
   rw [normalizedCircleSchwartzWaveOperator_apply, heq,
     normalizedCircleWaveOperator_phase_mul (jointSchwartzRaw A) ε X ω u ρ s hω hsepX
       hAX.contDiffAt hAt.contDiffAt, normalizedCircleSchwartzWaveOperator_apply]
-
-#print axioms normalizedCircleLocalizedPhaseSchwartz_waveOperator_apply
 
 end NormalCircleLocalizedWaveKernel
 
@@ -1784,7 +1754,8 @@ def normalizedCircleRegularizedCurvature (q : NormalizedCircleAmplitudeDomain) :
 theorem normalizedCircleRegularizedNormal_contDiff :
     ContDiff Real (⊤ : ℕ∞) normalizedCircleRegularizedNormal :=
   (normalizedCircleRegularizedInverseNorm_contDiff.comp
-    normalizedCircleAmplitudeDisplacement_contDiff).smul normalizedCircleAmplitudeDisplacement_contDiff
+    normalizedCircleAmplitudeDisplacement_contDiff).smul
+      normalizedCircleAmplitudeDisplacement_contDiff
 
 theorem normalizedCircleRegularizedCurvature_contDiff :
     ContDiff Real (⊤ : ℕ∞) normalizedCircleRegularizedCurvature := by
@@ -1833,7 +1804,8 @@ theorem normalizedCircleJointAmplitudeWave_contDiff
       ![normalizedCircleTemporalAmplitudeDirection, normalizedCircleTemporalAmplitudeDirection])
   simpa only [iteratedFDeriv_two_apply,
     Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons] using
-    (ContDiff.sum (s := Finset.univ) fun i hi' => hi (normalizedCircleSpatialAmplitudeDirection i)).sub
+    (ContDiff.sum (s := Finset.univ) fun i hi' => hi (normalizedCircleSpatialAmplitudeDirection
+      i)).sub
       (hi normalizedCircleTemporalAmplitudeDirection)
 
 theorem normalizedCircleJointAmplitudeTransport_contDiff
@@ -2077,10 +2049,6 @@ theorem normalizedCircleResidualPolynomial_eq_iterate
   | succ N hN =>
     rw [normalizedCircleResidualPolynomial_succ, hN, Function.iterate_succ_apply']
 
-#print axioms normalizedCircleAmplitudeWaveLinear
-#print axioms normalizedCircleAmplitudeTransportLinear
-#print axioms normalizedCircleResidualPolynomial_eq_iterate
-
 
 def normalizedCircleSpatialAmplitudeEmbedding :
     Euclidean 2 →L[Real] NormalizedCircleAmplitudeDomain :=
@@ -2152,7 +2120,8 @@ theorem iteratedDeriv_two_normalizedCircleAmplitude_temporal_slice
     (p : NormalizedCircleParameters) (X : Euclidean 2) (s : Real) :
     iteratedDeriv 2 (fun t => A (p, (X, t))) s =
       iteratedFDeriv Real 2 A (p, (X, s))
-        ![normalizedCircleTemporalAmplitudeDirection, normalizedCircleTemporalAmplitudeDirection] := by
+        ![normalizedCircleTemporalAmplitudeDirection, normalizedCircleTemporalAmplitudeDirection]
+          := by
   let c : NormalizedCircleAmplitudeDomain := (p, (X, 0))
   have hL (t : Real) : normalizedCircleTemporalAmplitudeEmbedding t = (0, (0, t)) := rfl
   have hpoint (t : Real) :
@@ -2267,7 +2236,8 @@ theorem normalizedCircleWaveOperator_parameterPhase_supported
         (A.property.1.of_le (m := 2) (by simp)).comp
           (by fun_prop : ContDiff Real 2 (fun t : Real => (p, (X, t))))
     change normalizedCircleWaveOperator
-      (fun w => normalizedCirclePhaseExponential p.1 p.2.1 p.2.2 ρ w.2 w.1 * A.val (p, w)) (X, s) = _
+      (fun w => normalizedCirclePhaseExponential p.1 p.2.1 p.2.2 ρ w.2 w.1 * A.val (p, w)) (X, s)
+        = _
     rw [normalizedCircleWaveOperator_phase_mul (fun w => A.val (p, w))
       p.1 X p.2.1 p.2.2 ρ s hω hsep hAX.contDiffAt hAt.contDiffAt,
       ← normalizedCircleJointAmplitudeWave_eq_actual A.val A.property.1 p X s,
@@ -2386,7 +2356,7 @@ theorem integrable_normalizedCircleWaveOperator_iterate_parameterPhase_norm_sq
   rw [heq]
   exact hc.integrable_of_hasCompactSupport hcomp
 
-/-- Actual uniform cutoff residual growth at frequency μ.  The constant is
+/-- Actual uniform cutoff residual growth at frequency μ. The constant is
 obtained from the proved frequency-independent coefficients on compact K×S;
 no residual envelope or local-smoothing estimate is assumed. -/
 theorem normalizedCircleWaveOperator_uniform_residual_moment
@@ -2502,12 +2472,6 @@ theorem normalizedCircleSchwartzWaveOperator_uniform_residual_moment
   rw [normalizedCircleSchwartzWaveOperator_iterate_moment_raw, hF]
   exact hbound p hp μ hμ ρ hρ
 
-#print axioms normalizedCircleWaveOperator_iterate_parameterPhase
-#print axioms normalizedCircleResidualPolynomial_uniform_bound
-#print axioms integrable_normalizedCircleWaveOperator_iterate_parameterPhase_norm_sq
-#print axioms normalizedCircleWaveOperator_uniform_residual_moment
-#print axioms normalizedCircleSchwartzWaveOperator_uniform_residual_moment
-
 
 /-- Physical output support of a fixed compact joint-Schwartz cutoff. -/
 def normalizedCircleFixedOutputSupport
@@ -2564,7 +2528,7 @@ theorem normalizedCircleLocalizedPhaseSchwartz_uniform_residual_moment
   rfl
 
 /-- Every order of normal-cone localization follows uniformly from the
-actual cutoff residuals.  The bound depends on the gap, independently of μ. -/
+actual cutoff residuals. The bound depends on the gap, independently of μ. -/
 theorem normalizedCircleSupportedPhase_uniform_normal_tail
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (K : Set NormalizedCircleParameters) (hK : IsCompact K)
@@ -2632,10 +2596,6 @@ theorem normalizedCircleLocalizedPhaseSchwartz_uniform_normal_tail
   refine ⟨C, hC, ?_⟩
   intro p hp μ hμ ρ hρ hsep E hE g hg hsize hgap
   exact hb p hp μ hμ ρ hρ _ rfl E hE g hg hsize hgap
-
-#print axioms normalizedCircleLocalizedPhaseSchwartz_uniform_residual_moment
-#print axioms normalizedCircleSupportedPhase_uniform_normal_tail
-#print axioms normalizedCircleLocalizedPhaseSchwartz_uniform_normal_tail
 
 end NormalizedCircleResidualGrowth
 
@@ -2979,7 +2939,8 @@ theorem normalizedCircleFullPhaseShield_tsupport_subset :
     calc
       ‖q.2.2‖ ≤ |q.2.2 0| + |q.2.2 1| := by
         conv_lhs => rw [hy]
-        simpa only [norm_smul, Real.norm_eq_abs, (EuclideanSpace.basisFun (Fin 2) Real).norm_eq_one, mul_one]
+        simpa only [norm_smul, Real.norm_eq_abs, (EuclideanSpace.basisFun (Fin 2)
+          Real).norm_eq_one, mul_one]
           using norm_add_le
             ((q.2.2 0) • (EuclideanSpace.basisFun (Fin 2) Real) 0)
             ((q.2.2 1) • (EuclideanSpace.basisFun (Fin 2) Real) 1)
@@ -3153,7 +3114,8 @@ theorem normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual
     (ε : Real) (z : NormalizedCircleFullPhaseSpace)
     (hε : |ε| ≤ 1 / 64) (hX : ‖z.1.1‖ < 2) (hT : |z.1.2| < 2)
     (hθ : |z.2 0| < 4) (hu : |z.2 1| < 4) :
-    (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε, w)) =ᶠ[𝓝 z]
+    (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε, w))
+      =ᶠ[𝓝 z]
       (fun w : NormalizedCircleFullPhaseSpace =>
         normalizedCircleIncidence ε w.1.1 (circleDirection (w.2 0)) (w.2 1) - w.1.2) := by
   have hXn : {w : NormalizedCircleFullPhaseSpace | ‖w.1.1‖ < 2} ∈ 𝓝 z :=
@@ -3173,21 +3135,13 @@ theorem normalizedCircleCompactFullPhaseSchwartz_slice_jet
     (hε : |ε| ≤ 1 / 64) (hX : ‖z.1.1‖ < 2) (hT : |z.1.2| < 2)
     (hθ : |z.2 0| < 4) (hu : |z.2 1| < 4) (N : Nat) :
     iteratedFDeriv Real N
-        (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε, w)) z =
+        (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε,
+          w)) z =
       iteratedFDeriv Real N
         (fun w : NormalizedCircleFullPhaseSpace =>
           normalizedCircleIncidence ε w.1.1 (circleDirection (w.2 0)) (w.2 1) - w.1.2) z :=
-  ((normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual ε z hε hX hT hθ hu).iteratedFDeriv Real N).eq_of_nhds
-
-#print axioms mssSchwartzSpectralProjection_apply
-#print axioms mssSchwartzSpectralProjection_fourier_support
-#print axioms mssTranslatedDilatedCutoff_fourierInv
-#print axioms mssSchwartzSpectralProjection_rescaled
-#print axioms mssTranslatedDilatedCutoff_inverse_kernel_mass
-#print axioms normalizedCircleProjectedPhase_rescaled
-#print axioms normalizedCircleCompactFullPhaseSchwartz_eq_actual
-#print axioms normalizedCircleCompactFullPhase_uniform_derivatives
-#print axioms normalizedCircleCompactFullPhaseSchwartz_slice_jet
+  ((normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual ε z hε hX hT hθ
+    hu).iteratedFDeriv Real N).eq_of_nhds
 
 /-- The literal radial source/output Jacobian in full phase coordinates. -/
 def normalizedCircleFullJacobian (q : NormalizedCircleFullPhaseDomain) : Real :=
@@ -3265,8 +3219,6 @@ theorem normalizedCircleFullJacobianAmplitudeSchwartz_eq_actual
     normalizedCircleFullPhaseShield_eq_one q hε hX hT hθ hu]
   simp only [Complex.ofReal_one, one_mul]
 
-#print axioms normalizedCircleFullJacobianAmplitudeSchwartz_eq_actual
-
 
 section MSSSchwartzProjectionPlateau
 variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
@@ -3332,14 +3284,11 @@ theorem normalizedCircleFrequencyKernel_phaseExponential
   push_cast
   ring
 
-#print axioms mssSchwartz_inverse_kernel_convolution_eq_self
-#print axioms mssSchwartz_inverse_kernel_convolution_fourierInv
-#print axioms normalizedCircleFrequencyKernel_phaseExponential
-
 
 /-- The full shielding cutoff is exactly one on the genuine small-family
 output/source region. In particular its angular plateau contains [-pi,pi]. -/
-theorem normalizedCircleFullPhaseShield_eq_one_on_analysis_core (q : NormalizedCircleFullPhaseDomain)
+theorem normalizedCircleFullPhaseShield_eq_one_on_analysis_core (q :
+  NormalizedCircleFullPhaseDomain)
     (hε : |q.1| ≤ 1 / 64) (hX : ‖q.2.1.1‖ ≤ 3) (hT : |q.2.1.2| ≤ 2)
     (hθ : |q.2.2 0| ≤ 4) (hu : |q.2.2 1| ≤ 5) :
     normalizedCircleFullPhaseShield q = 1 := by
@@ -3391,7 +3340,8 @@ theorem normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual_on_analysis
     (ε : Real) (z : NormalizedCircleFullPhaseSpace)
     (hε : |ε| ≤ 1 / 64) (hX : ‖z.1.1‖ < 3) (hT : |z.1.2| < 2)
     (hθ : |z.2 0| < 4) (hu : |z.2 1| < 5) :
-    (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε, w)) =ᶠ[𝓝 z]
+    (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε, w))
+      =ᶠ[𝓝 z]
       (fun w : NormalizedCircleFullPhaseSpace =>
         normalizedCircleIncidence ε w.1.1 (circleDirection (w.2 0)) (w.2 1) - w.1.2) := by
   have hXn : {w : NormalizedCircleFullPhaseSpace | ‖w.1.1‖ < 3} ∈ 𝓝 z :=
@@ -3411,11 +3361,13 @@ theorem normalizedCircleCompactFullPhaseSchwartz_slice_jet_on_analysis_core
     (hε : |ε| ≤ 1 / 64) (hX : ‖z.1.1‖ < 3) (hT : |z.1.2| < 2)
     (hθ : |z.2 0| < 4) (hu : |z.2 1| < 5) (N : Nat) :
     iteratedFDeriv Real N
-        (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε, w)) z =
+        (fun w : NormalizedCircleFullPhaseSpace => normalizedCircleCompactFullPhaseSchwartz (ε,
+          w)) z =
       iteratedFDeriv Real N
         (fun w : NormalizedCircleFullPhaseSpace =>
           normalizedCircleIncidence ε w.1.1 (circleDirection (w.2 0)) (w.2 1) - w.1.2) z :=
-  ((normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual_on_analysis_core ε z hε hX hT hθ hu).iteratedFDeriv Real N).eq_of_nhds
+  ((normalizedCircleCompactFullPhaseSchwartz_eventuallyEq_actual_on_analysis_core ε z hε hX hT hθ
+    hu).iteratedFDeriv Real N).eq_of_nhds
 section MSSRawPacketConvolutionTransforms
 variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace Real V]
   [FiniteDimensional Real V] [MeasurableSpace V] [BorelSpace V]
@@ -3514,10 +3466,6 @@ theorem mssTranslatedDilatedCutoff_raw_convolution_add
 
 end MSSRawPacketConvolutionTransforms
 
-#print axioms normalizedCircleCompactFullPhaseSchwartz_slice_jet_on_analysis_core
-#print axioms mssTranslatedDilatedCutoff_raw_convolution_sub
-#print axioms mssTranslatedDilatedCutoff_raw_convolution_add
-
 end NormalizedCircleOutputPacketBridge
 
 section NormalizedCircleSourceSchurMass
@@ -3543,7 +3491,8 @@ theorem normalizedCircle_cap_decay_lintegral :
       ENNReal.ofReal ((1 + L * ‖(ω : Euclidean 2) - ν‖)⁻¹ ^ 2) ≤
         ∑' n : Nat, (B n).indicator (fun _ => a n) ω := by
     obtain ⟨n, hnlo, hnhi⟩ := exists_nat_pow_near
-      (by have := norm_nonneg ((ω : Euclidean 2) - ν); nlinarith : 1 ≤ 1 + L * ‖(ω : Euclidean 2) - ν‖)
+      (by have := norm_nonneg ((ω : Euclidean 2) - ν); nlinarith : 1 ≤ 1 + L * ‖(ω : Euclidean 2)
+        - ν‖)
       (by norm_num : (1 : Real) < 2)
     have hmem : ω ∈ B n := by
       dsimp [B]
@@ -3843,7 +3792,8 @@ theorem normalizedCircleSchurRadialJacobian_decay_lintegral :
     _ ≤ ∫⁻ s : Real, 3 * ENNReal.ofReal ((1 + L * |s - T|)⁻¹ ^ 3) :=
       by simpa only [Measure.restrict_univ] using lintegral_mono_set (Set.subset_univ _)
     _ = _ := by
-      rw [lintegral_const_mul' _ _ (by norm_num), normalizedCircleSchurRadialDecay_lintegral L hLp T]
+      rw [lintegral_const_mul' _ _ (by norm_num), normalizedCircleSchurRadialDecay_lintegral L hLp
+        T]
       ring
 
 
@@ -3955,7 +3905,8 @@ theorem normalizedCircle_source_packet_schur_mass :
       ENNReal.ofReal L *
         (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
           ∫⁻ u in Icc (-6 : Real) 6,
-            ENNReal.ofReal ((1 + L * |normalizedCircleIncidence ε X (ω : Euclidean 2) u - T|)⁻¹ ^ 4) *
+            ENNReal.ofReal ((1 + L * |normalizedCircleIncidence ε X (ω : Euclidean 2) u - T|)⁻¹ ^
+              4) *
             ENNReal.ofReal ((1 + L * ‖normalizedCircleNormal ε X (ω : Euclidean 2) u - ν‖)⁻¹ ^ 2)
             ∂volume ∂unitSurfaceMeasure 2) ≤ C * ENNReal.ofReal L⁻¹ := by
   obtain ⟨B, hB, hcap⟩ := normalizedCircle_cap_decay_lintegral
@@ -4106,25 +4057,14 @@ theorem normalizedCircleSourceCovector_closest_anchor
       _ ≤ _ := abs_sub _ _
   dsimp only [f] at hmin'
   nlinarith
-
-#print axioms normalizedCircleSourceCovector_closest_anchor
-
-#print axioms normalizedCircle_source_normal_incidence_identity
-#print axioms normalizedCircle_source_normal_incidence_jacobian_bounds
-#print axioms normalizedCircle_normal_incidence_lintegral_change
-#print axioms normalizedCircle_normal_incidence_lintegral_jacobian
-#print axioms normalizedCircle_radon_normal_incidence_lintegral_change
-#print axioms normalizedCircle_cap_decay_lintegral
-#print axioms normalizedCircleSchurRadialJacobian_decay_lintegral
-#print axioms normalizedCircle_source_packet_schur_mass
 end NormalizedCircleSourceSchurMass
 
 
 
 /-- Fine-packet localization for the normalized circular family in MSS
 Section 6: the exact output normal differs from the input unit direction
-only by the transverse displacement.  The radial coordinate does not
-contribute to this error.  The estimate is uniform through zero scale. -/
+only by the transverse displacement. The radial coordinate does not
+contribute to this error. The estimate is uniform through zero scale. -/
 theorem normalizedCircleNormal_sub_input_le
     (ε : Real) (X ω : Euclidean 2) (u : Real) (hω : ‖ω‖ = 1)
     (hsmall : |ε| * (|u| + ‖X‖) ≤ 1 / 2) :
@@ -4176,7 +4116,7 @@ theorem normalizedCircleNormal_sub_input_le
 
 /-- An input sector of width `δ` remains in a sector of width `5 * δ`
 in the exact output normal whenever the normalized spatial displacement
-is at most `δ`.  This is the directional prerequisite for the fine-packet
+is at most `δ`. This is the directional prerequisite for the fine-packet
 construction in MSS Section 6; it does not assert a square-function bound. -/
 theorem normalizedCircleNormal_sub_sector_le
     (ε : Real) (X ω ω₀ : Euclidean 2) (u δ : Real) (hω : ‖ω‖ = 1)
@@ -4192,7 +4132,7 @@ theorem normalizedCircleNormal_sub_sector_le
     _ ≤ 5 * δ := by linarith
 
 /-- Exact quadratic cone-normal defect for the normalized circular
-conormal.  Two unit directions satisfy this identity without replacing
+conormal. Two unit directions satisfy this identity without replacing
 the incidence phase by a Taylor polynomial. -/
 theorem normalizedCircleNormal_null_defect_eq
     (ε : Real) (X ω ω₀ : Euclidean 2) (u : Real)
@@ -4210,7 +4150,7 @@ theorem normalizedCircleNormal_null_defect_eq
   nlinarith
 
 /-- The actual conormal `(-ρ n, ρ)` lies in an ordinary straight cone
-plate about the input-sector direction.  Its null-normal defect is
+plate about the input-sector direction. Its null-normal defect is
 quadratic in the sector width, and its spatial angular spread is linear.
 At `δ = μ^(-1/2)` and `|ρ|` comparable to `μ`, these are respectively
 bounded normal thickness and tangential width comparable to `√μ`, as
@@ -4245,7 +4185,7 @@ theorem normalizedCircleConormal_sector_plate_enclosure
     nlinarith [mul_le_mul_of_nonneg_left hnormal (abs_nonneg ρ)]
 
 /-- Every spatial component tangent to the central cone direction obeys
-the linear-width bound from the exact conormal plate enclosure.  The
+the linear-width bound from the exact conormal plate enclosure. The
 formulation allows an arbitrary tangent vector, including nonunit ones. -/
 theorem normalizedCircleConormal_sector_tangential_le
     (ε : Real) (X ω ω₀ Y : Euclidean 2) (u δ ρ : Real)
@@ -4263,21 +4203,6 @@ theorem normalizedCircleConormal_sector_tangential_le
   rw [hinner]
   exact (abs_real_inner_le_norm _ _).trans
     (mul_le_mul_of_nonneg_right hplate (norm_nonneg Y))
-
-#print axioms normalizedCircleNormal_sub_input_le
-#print axioms normalizedCircleNormal_sub_sector_le
-#print axioms normalizedCircleNormal_null_defect_eq
-#print axioms normalizedCircleConormal_sector_plate_enclosure
-#print axioms normalizedCircleConormal_sector_tangential_le
-
-
-#print axioms det_circleConormalCurvatureMatrix
-#print axioms circleConormalCurvatureMatrix_uniform_lower
-
-
-#print axioms normalizedCircleRotationalDeterminant_zero
-#print axioms normalizedCircleRotationalDeterminant_uniform_lower
-#print axioms normalizedCircleRotationalMatrix_uniform_isUnit
 
 end
 end Auto.Spherical.MSS
@@ -4487,7 +4412,7 @@ private theorem integrable_tubeCircleIntegrandDeriv
       ring
 
 /-- Differentiation under the time integral for one literal compact-frequency
-smooth tube band.  Both the integrability and the dominating function are
+smooth tube band. Both the integrability and the dominating function are
 obtained solely from Schwartz decay. -/
 theorem hasDerivAt_scratch_smoothTubeBand_circle
     (q : SchwartzMap (Euclidean 2) Complex)
@@ -4866,7 +4791,7 @@ private theorem norm_fourierChar_eq_one (u : Real) :
   norm_num
 
 /-- Parameter differentiation commutes with the literal inverse spatial
-Fourier integral for a finite compact-frequency tensor.  The proof uses the
+Fourier integral for a finite compact-frequency tensor. The proof uses the
 Schwartz-derived integrable bound above, rather than treating Fourier
 inversion as a formal operation. -/
 theorem hasDerivAt_fourierInv_scratch_finiteTensorTubeMultiplier_circle
@@ -4948,7 +4873,7 @@ noncomputable section
 
 /-- Once differentiation under inverse spatial Fourier transform is available,
 the literal physical angular derivative is exactly the inverse transform of
-the differentiated characteristic multiplier.  This is an equality of the
+the differentiated characteristic multiplier. This is an equality of the
 two derivative formulas, obtained by uniqueness rather than a second Fubini
 calculation. -/
 theorem finiteTensorTubeBandAngularDeriv_eq_fourierInv_of_hasDerivAt
@@ -4981,7 +4906,7 @@ theorem finiteTensorTubeBandAngularDeriv_eq_fourierInv_of_hasDerivAt
   exact hphysical.unique hfreq
 
 /-- The unconditional finite-tensor Fourier/physical angular derivative
-identification.  The inverse-Fourier differentiation is supplied by the
+identification. The inverse-Fourier differentiation is supplied by the
 Schwartz-dominated transport theorem; the conclusion is then just the
 uniqueness bridge above. -/
 theorem finiteTensorTubeBandAngularDeriv_eq_fourierInv
@@ -5023,7 +4948,7 @@ the derivative weight. -/
 def h1Energy (s : Finset Int) (c : Int → Complex) : Real :=
   ∑ n ∈ s, (Int.natAbs n : Real) ^ 2 * ‖c n‖ ^ 2
 
-/-- The finite critical angular energy.  Under finite Fourier Parseval this
+/-- The finite critical angular energy. Under finite Fourier Parseval this
 is the squared `H^{1/2}` norm (up to the harmless zeroth-order term). -/
 def halfEnergy (s : Finset Int) (c : Int → Complex) : Real :=
   ∑ n ∈ s, (1 + (Int.natAbs n : Real)) * ‖c n‖ ^ 2
@@ -5051,7 +4976,7 @@ theorem halfDerivative_cross_sq_le
       _ ≤ ‖c n‖ ^ 2 * ((Int.natAbs n : Real) ^ 2 * ‖c n‖ ^ 2) := le_rfl
 
 /-- The finite critical angular energy is controlled by the geometric mean
-of the `L²` and first-derivative energies.  This is the exact interpolation
+of the `L²` and first-derivative energies. This is the exact interpolation
 step needed after the two TT* Schur estimates. -/
 theorem halfEnergy_le_l2_add_sqrt_mul
     (s : Finset Int) (c : Int → Complex) :
@@ -5098,7 +5023,7 @@ theorem halfEnergy_le_l2_add_sqrt_mul
       rfl
 
 /-- The literal angular phase after spatial Plancherel in the light-ray
-`TT*` calculation.  Unlike the Fourier-in-angle phase, it has no extra
+`TT*` calculation. Unlike the Fourier-in-angle phase, it has no extra
 linear `sigma * theta` term. -/
 def circleTTStarPhase (xi1 xi2 theta : Real) : Real :=
   xi1 * Real.cos theta + xi2 * Real.sin theta
@@ -5159,7 +5084,7 @@ def outerCircleShellPhaseDeriv (rho u : Real) : Real :=
   -Real.sin (rho * u) / rho
 
 /-- A fixed smooth guard which is one on the rescaled shell `[1/2,2]` and
-vanishes outside the slightly larger interval `(1/4,9/4)`.  It lets us replace
+vanishes outside the slightly larger interval `(1/4,9/4)`. It lets us replace
 the local circle derivative by a globally nonvanishing smooth extension
 without changing it on the integral. -/
 noncomputable def outerCircleUnitShellGuard : ContDiffBump (5 / 4 : Real) :=
@@ -5214,19 +5139,19 @@ theorem fixedOuterCircleUnitShellAmplitude_eventuallyEq_zero_right :
   rw [fixedOuterCircleUnitShellBump.zero_of_le_dist hu.le]
   rfl
 
-/-- A global smooth nonzero extension of the circle-shell derivative.  The
+/-- A global smooth nonzero extension of the circle-shell derivative. The
 constant negative value off the guard is deliberately chosen with the same
 sign as the circle derivative on the positive outer shell. -/
 noncomputable def outerCircleShellDerivativeExtension (rho u : Real) : Real :=
   outerCircleUnitShellGuard u * outerCircleShellPhaseDeriv rho u -
     (1 - outerCircleUnitShellGuard u)
 
-/-- The removable-singularity version of the rescaled circle derivative.  It
+/-- The removable-singularity version of the rescaled circle derivative. It
 is continuous jointly in `(rho,u)` all the way through `rho = 0`. -/
 noncomputable def outerCircleScaledDerivative (rho u : Real) : Real :=
   -u * Real.sinc (rho * u)
 
-/-- A jointly continuous version of the guarded derivative extension.  For
+/-- A jointly continuous version of the guarded derivative extension. For
 positive `rho` it agrees pointwise with the extension used in the IBP chain. -/
 noncomputable def outerCircleUniformDerivativeExtension (rho u : Real) : Real :=
   outerCircleUnitShellGuard u * outerCircleScaledDerivative rho u -
@@ -5307,7 +5232,7 @@ theorem hasDerivAt_deriv_outerCircleScaledDerivative
   simpa [Function.comp_def, mul_assoc, mul_comm, mul_left_comm] using hcos.const_mul (-1)
 
 /-- A full angular derivative jet for the removable-singularity circle
-derivative.  Only its zeroth member uses `sinc`; every positive derivative is
+derivative. Only its zeroth member uses `sinc`; every positive derivative is
 an elementary trigonometric expression with a nonnegative power of `rho`. -/
 noncomputable def outerCircleScaledDerivativeJet : Nat → Real × Real → Real
   | 0 => fun p => outerCircleScaledDerivative p.1 p.2
@@ -5350,7 +5275,7 @@ theorem hasDerivAt_outerCircleScaledDerivativeJet
         hg.differentiable_iteratedDeriv (n + 1) (by
           change (((n + 1 : Nat) : ℕ∞) : WithTop ℕ∞) <
             ((⊤ : ℕ∞) : WithTop ℕ∞)
-          exact WithTop.coe_lt_coe.mpr (ENat.coe_lt_top (n + 1)))
+          exact WithTop.coe_lt_coe.mpr (ENat.natCast_lt_top (n + 1)))
       have hbase : HasDerivAt (iteratedDeriv (n + 1) g)
           (iteratedDeriv (n + 2) g (rho * u)) (rho * u) := by
         simpa only [iteratedDeriv_succ] using (hdiff (rho * u)).hasDerivAt
@@ -5427,7 +5352,7 @@ theorem continuous_outerCircleUniformDerivativeExtensionDu_joint :
   exact ((hguard.mul continuous_outerCircleScaledDerivative_joint).add
     ((outerCircleUnitShellGuard.continuous.comp continuous_snd).mul hcos)).add hguard
 
-/-- The derivative in the second coordinate of a jointly defined family.  We
+/-- The derivative in the second coordinate of a jointly defined family. We
 write it through `fderiv` because that formulation is stable under joint
 `ContDiff` and hence under arbitrary fixed finite iteration. -/
 noncomputable def partialDerivSnd
@@ -5496,7 +5421,7 @@ theorem hasDerivAt_slice_partialDerivSnd
 
 /-- A family is `HasJointSndSmooth n` when its first `n` derivatives in the
 second (angular) coordinate can be chosen jointly continuous in both
-parameters.  No derivative in the shell-width parameter is requested. -/
+parameters. No derivative in the shell-width parameter is requested. -/
 def HasJointSndSmooth
     {E : Type*} [NormedAddCommGroup E] [NormedSpace Real E] :
     Nat → (Real × Real → E) → Prop
@@ -5664,7 +5589,7 @@ theorem hasJointSndSmooth_outerCircleScaledDerivative
       hasDerivAt_outerCircleScaledDerivativeJet 0 n)
 
 /-- The guarded circle derivative extension inherits arbitrary finite joint
-angular regularity.  This is the exact replacement for a nonexistent global
+angular regularity. This is the exact replacement for a nonexistent global
 `ContDiff` API for `Real.sinc`. -/
 theorem hasJointSndSmooth_outerCircleUniformDerivativeExtension
     (n : Nat) :
@@ -5747,7 +5672,7 @@ theorem parametricNonstationaryIBPAmplitude_eq_slice
       rw [ih rho v]
 
 /-- Repeated nonlinear IBP consumes exactly one jointly controlled angular
-derivative at each stage.  This is the finite-order continuity induction used
+derivative at each stage. This is the finite-order continuity induction used
 for uniform shell constants; it deliberately makes no smoothness demand in
 the shell-width coordinate. -/
 theorem hasJointSndSmooth_parametricNonstationaryIBPAmplitude
@@ -5788,7 +5713,7 @@ theorem hasJointSndSmooth_parametricNonstationaryIBPAmplitude
       rw [hQeq]
       exact hQ'
 
-/-- The joint version of the nonlinear quotient-amplitude recursion.  Its
+/-- The joint version of the nonlinear quotient-amplitude recursion. Its
 slice at a fixed first coordinate will be the ordinary
 `nonstationaryIBPAmplitude` used by the verified IBP chain. -/
 noncomputable def jointNonstationaryIBPAmplitude
@@ -5869,7 +5794,7 @@ theorem contDiff_outerCircleShellDerivativeExtension (rho : Real) :
     (contDiff_const.sub outerCircleUnitShellGuard.contDiff)
 
 /-- The global extension never vanishes when the guard support stays in the
-positive sine arc.  This is exactly the hypothesis required by the existing
+positive sine arc. This is exactly the hypothesis required by the existing
 automatic `HasNonstationaryPhaseIBPChain` constructor. -/
 theorem outerCircleShellDerivativeExtension_ne_zero
     {rho u : Real} (hrho : 0 < rho) (hrho_small : 9 * rho / 4 < Real.pi) :
@@ -5970,7 +5895,7 @@ theorem outerCircleWidthClamp_eq
     outerCircleWidthClamp rhoMax rho = rho := by
   simp [outerCircleWidthClamp, min_eq_left hrho_le, max_eq_right hrho]
 
-/-- A globally safe version of the removable circle derivative extension.  It
+/-- A globally safe version of the removable circle derivative extension. It
 agrees with the true extension on the dyadic width range, while its width
 parameter is clamped outside that range solely to make global inversion legal. -/
 noncomputable def safeOuterCircleUniformDerivativeExtension
@@ -6044,7 +5969,7 @@ theorem continuous_outerCircleShellPhaseDeriv (rho : Real) :
   fun_prop
 
 /-- On the fixed unit annulus in the rescaled variable, the circular shell
-phase is genuinely nonstationary provided `2 * rho < pi`.  This is the
+phase is genuinely nonstationary provided `2 * rho < pi`. This is the
 order-one fact replacing the apparent Airy degeneracy after the `TT*`
 reorganization. -/
 theorem outerCircleShellPhaseDeriv_ne_on_unitAnnulus
@@ -6063,7 +5988,7 @@ theorem outerCircleShellPhaseDeriv_ne_on_unitAnnulus
     (Real.sin_pos_of_pos_of_lt_pi harg_pos harg_lt).ne') (ne_of_gt hrho)
 
 /-- On the rescaled outer shell, the removable-singularity extension remains
-nonzero even at `rho = 0`.  This is the denominator fact needed for a uniform
+nonzero even at `rho = 0`. This is the denominator fact needed for a uniform
 family of quotient amplitudes. -/
 theorem outerCircleUniformDerivativeExtension_ne_zero_on_unitAnnulus
     {rho u : Real} (hrho : 0 ≤ rho) (hrho_small : 2 * rho < Real.pi)
@@ -6114,7 +6039,7 @@ theorem norm_rescaledNonstationaryShell_of_chain_abs
     _ = rho * (1 / |freq|) ^ N * ((b - a) * M) := by ring
 
 /-- A rescaled nonstationary shell has exactly the expected power decay in
-the dimensionless parameter `R`.  This is only a wrapper around the verified
+the dimensionless parameter `R`. This is only a wrapper around the verified
 nonlinear integration-by-parts chain: after putting an angular shell of width
 `rho` in unit coordinates, the outer Jacobian is the leading factor `rho`
 and the phase frequency is `R = lambda * rho^2`. -/
@@ -6143,7 +6068,7 @@ theorem norm_rescaledNonstationaryShell_of_chain
       rw [abs_of_pos hR, inv_eq_one_div]
       ring
 
-/-- Source-ready outer-circle shell estimate.  It is the generic nonlinear
+/-- Source-ready outer-circle shell estimate. It is the generic nonlinear
 IBP theorem applied to the *literal* rescaled circle phase on the fixed shell
 `u in [1/2, 2]`; the dyadic application sets `R = |t - t'| * lambda * rho^2`.
 The supplied chain is the honest local quotient-derivative datum, avoiding a
@@ -6171,7 +6096,7 @@ theorem norm_outerCircleUnitShell_of_chain
   · exact hbound
 
 /-- Removing the critical-value constant identifies the normalized shell
-oscillation with the literal circle oscillation.  This is the exact equality
+oscillation with the literal circle oscillation. This is the exact equality
 used when `lambda` is the length of the spatial Fourier variable and `tau`
 is the `TT*` time gap. -/
 theorem norm_intervalIntegral_literalCircleShell_eq_normalized
@@ -6214,7 +6139,7 @@ theorem norm_intervalIntegral_literalCircleShell_eq_normalized
   rw [Complex.norm_exp_ofReal_mul_I, one_mul]
 
 /-- The literal angular circle kernel on one outer shell has rapid decay in
-the exact dimensionless quantity `|tau| * |lambda| * rho^2`.  No cubic/Airy
+the exact dimensionless quantity `|tau| * |lambda| * rho^2`. No cubic/Airy
 estimate is used: after `TT*`, the fixed-unit-shell circle derivative is
 nonzero and the existing nonlinear-IBP chain applies. -/
 theorem norm_literalOuterCircleUnitShell_of_chain
@@ -6290,9 +6215,9 @@ theorem norm_rescaledNonstationaryShell_of_contDiff_abs
       hM hbound
 
 /-- The preceding shell estimate can be fed directly by the library's
-smooth-amplitude chain constructor.  The global nonvanishing derivative is
+smooth-amplitude chain constructor. The global nonvanishing derivative is
 normally supplied by a smooth extension which agrees with the rescaled circle
-phase derivative on the shell support.  Thus the only shell-specific analytic
+phase derivative on the shell support. Thus the only shell-specific analytic
 input left here is the uniform bound on the final quotient amplitude. -/
 theorem norm_rescaledNonstationaryShell_of_contDiff
     {a b R rho M : Real} {phase phaseDeriv : Real → Real}
@@ -6319,7 +6244,7 @@ theorem norm_rescaledNonstationaryShell_of_contDiff
         phaseDeriv F hphaseDeriv hphaseDeriv_ne hF hFleft hFright N)
       hM hbound
 
-/-- The automatic-chain version for the literal outer circle shell.  A fixed
+/-- The automatic-chain version for the literal outer circle shell. A fixed
 smooth rescaled cutoff `F` now produces the nonlinear chain from existing
 library code; the remaining quantitative datum is only a uniform bound on
 the resulting quotient amplitude. -/
@@ -6424,7 +6349,7 @@ theorem exists_uniform_norm_bound_of_jointContinuous
 
 /-- A jointly smooth, globally nonzero denominator family gives one uniform
 bound for the final nonlinear quotient amplitude at every prescribed finite
-IBP order.  This is the reusable arbitrary-`N` compactness step; it does not
+IBP order. This is the reusable arbitrary-`N` compactness step; it does not
 lose a power of the dyadic shell width. -/
 theorem exists_uniform_nonstationaryIBPAmplitude_bound_of_jointContDiff
     {rhoMax a b : Real} (hrhoMax : 0 ≤ rhoMax) (hab : a ≤ b)
@@ -6446,7 +6371,7 @@ theorem exists_uniform_nonstationaryIBPAmplitude_bound_of_jointContDiff
   exact hbound rho hrho u hu
 
 /-- The actual fixed outer-shell cutoff has a uniformly bounded final
-nonlinear quotient amplitude at every prescribed finite order.  The proof
+nonlinear quotient amplitude at every prescribed finite order. The proof
 uses only angular jets, so the removable `sinc` singularity creates no
 shell-width loss. -/
 theorem exists_uniform_outerCircleFinalAmplitude_bound_fixedBump
@@ -6503,7 +6428,7 @@ theorem exists_uniform_outerCircleFinalAmplitude_bound_fixedBump
   exact hbound rho ⟨hrho.1.le, hrho.2⟩ u hu
 
 /-- The literal fixed outer-circle shell has uniform rapid decay at every
-fixed IBP order.  This is the completed shell estimate needed before the
+fixed IBP order. This is the completed shell estimate needed before the
 dyadic `TT*` summation: its constant is independent of the shell width. -/
 theorem exists_uniform_literalOuterCircleUnitShell_fixedBump
     {rhoMax : Real} {N : Nat}
@@ -6534,7 +6459,7 @@ theorem exists_uniform_literalOuterCircleUnitShell_fixedBump
     hM.le (hbound rho hrho)
 
 /-- Circle-specialized transfer of the arbitrary-order joint-smooth family
-lemma.  A smooth nonzero extension in the shell-width parameter which agrees
+lemma. A smooth nonzero extension in the shell-width parameter which agrees
 with the literal guarded circle derivative for positive widths supplies the
 previously missing uniform final-amplitude bound. -/
 theorem exists_uniform_outerCircleFinalAmplitude_bound_of_jointContDiffExtension
@@ -6562,7 +6487,7 @@ theorem exists_uniform_outerCircleFinalAmplitude_bound_of_jointContDiffExtension
 
 /-- Conditional only on the explicit joint-smooth circle derivative extension,
 the fixed rescaled bump has a uniform literal shell estimate at every fixed
-IBP order.  Thus the cutoff family itself contributes no hidden `rho` loss. -/
+IBP order. Thus the cutoff family itself contributes no hidden `rho` loss. -/
 theorem exists_uniform_literalOuterCircleUnitShell_fixedBump_of_jointContDiffExtension
     {rhoMax : Real} {N : Nat}
     (hrhoMax : 0 ≤ rhoMax) (hrhoMax_small : 9 * rhoMax / 4 < Real.pi)
@@ -6653,7 +6578,7 @@ theorem jointContinuous_fixedOuterCircleUnitShellAmplitude_order_zero :
   exact contDiff_fixedOuterCircleUnitShellAmplitude.continuous.comp continuous_snd
 
 /-- Consequently the complete uniform shell package applies to the fixed
-rescaled bump at order zero.  Higher orders require the joint regularity of
+rescaled bump at order zero. Higher orders require the joint regularity of
 the `sin (rho*u) / rho` quotient family, isolated above. -/
 theorem exists_uniform_literalOuterCircleUnitShell_fixedBump_order_zero
     {rhoMax : Real} (hrhoMax : 0 ≤ rhoMax)
@@ -6693,7 +6618,7 @@ open scoped BigOperators
 noncomputable section
 
 /-- A finite family with jointly continuous angular jets supplies the literal
-phase-adapted IBP chain on each fixed parameter slice.  This deliberately
+phase-adapted IBP chain on each fixed parameter slice. This deliberately
 uses no smoothness in the parameter coordinate. -/
 theorem hasNonstationaryPhaseIBPChain_parametric_of_jointSndSmooth
     {D : Real × Real → Real} {F : Real × Real → Complex} {rho a b : Real}
@@ -6758,7 +6683,7 @@ theorem hasNonstationaryPhaseIBPChain_parametric_of_jointSndSmooth
     simpa [iteratedDeriv] using hvalue
 
 /-- Uniform final quotient-amplitude bounds only require finite jointly
-continuous angular jets.  In particular, parameter-dependent shell
+continuous angular jets. In particular, parameter-dependent shell
 amplitudes are allowed: no artificial global `ContDiff` assertion in the
 shell-width variable is used. -/
 theorem exists_uniform_outerCircleFinalAmplitude_bound_of_jointSndSmoothFamily
@@ -6809,7 +6734,7 @@ theorem exists_uniform_outerCircleFinalAmplitude_bound_of_jointSndSmoothFamily
 
 /-- The arbitrary-order outer-circle IBP estimate extends verbatim to a
 parameter-dependent amplitude family whose angular jets are jointly
-continuous.  The endpoint hypothesis is deliberately slice-wise, which is
+continuous. The endpoint hypothesis is deliberately slice-wise, which is
 the exact condition supplied by a fixed bump multiplied by the removable
 circle derivative. -/
 theorem exists_uniform_literalOuterCircleUnitShell_bound_of_jointSndSmoothFamily
@@ -6898,7 +6823,7 @@ theorem exists_uniform_literalOuterCircleUnitShell_bound_of_jointSndSmoothFamily
         (continuous_outerCircleShellPhase rho) hphaseDeriv_cont hchain hM.le hlast
 
 /-- The bounded normalized factor occurring when an angular derivative hits
-the circle phase.  It is `-sin (rho*u)/rho`, expressed through the removable
+the circle phase. It is `-sin (rho*u)/rho`, expressed through the removable
 `sinc` representative so that its angular jets remain uniform as
 `rho → 0`. -/
 noncomputable def outerCirclePhaseDerivativeProductAmplitude
@@ -6940,7 +6865,7 @@ theorem outerCirclePhaseDerivativeProductAmplitude_eventuallyEq_zero_right
 
 /-- A green uniform outer-shell bound for the actual normalized product
 amplitude that arises from differentiating the angular phase in both legs of
-the `TT*` kernel.  This is the analytic ingredient whose physical prefactor
+the `TT*` kernel. This is the analytic ingredient whose physical prefactor
 is `(lambda * rho)^2`; it is not a fictitious rho-independent cutoff. -/
 theorem exists_uniform_literalOuterCircleUnitShell_phaseDerivativeProduct
     {rhoMax : Real} {N : Nat}
@@ -7094,7 +7019,7 @@ noncomputable section
 definitionally aligned with the normed additive structure. -/
 attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup
 
-/-- A rescaled outer angular localization.  This is the literal cutoff that
+/-- A rescaled outer angular localization. This is the literal cutoff that
 vanishes at the unit-shell endpoints after `theta = alpha + rho*u`. -/
 noncomputable def outerCircleLocalizedAngular
     (F : Real → Complex) (alpha rho theta : Real) : Complex :=
@@ -7110,7 +7035,7 @@ theorem hasDerivAt_fixedOuterCircleUnitShellAmplitude
   exact (hdiff u).hasDerivAt
 
 /-- Exact Leibniz rule for the physical angular derivative of a rescaled
-outer cutoff.  The two summands are precisely the cutoff-derivative and
+outer cutoff. The two summands are precisely the cutoff-derivative and
 phase/transport terms controlled by the two outer E1 Schur packages. -/
 theorem hasDerivAt_outerCircleLocalizedAngular
     {F : Real → Complex} {alpha rho theta u : Real} {F' : Complex}
@@ -7178,7 +7103,7 @@ def signedSmoothTubeOperator
     (g : WaveSpaceTime → Complex) (theta : Real) (y : Euclidean 2) : Complex :=
   ∫ z, K theta y z * g z ∂μ
 
-/-- The candidate angular derivative of a signed smooth tube operator.  The
+/-- The candidate angular derivative of a signed smooth tube operator. The
 derivative relation is an explicit hypothesis below, so differentiation under
 the integral is never silently assumed. -/
 def signedSmoothTubeAngularDerivative
@@ -7188,7 +7113,7 @@ def signedSmoothTubeAngularDerivative
   ∫ z, dK theta y z * g z ∂μ
 
 /-- A shell cutoff which is literally zero at the left endpoint makes the
-associated signed tube operator zero there.  This is the exact endpoint fact
+associated signed tube operator zero there. This is the exact endpoint fact
 provided by the rescaled compact bump used for the angular shells. -/
 theorem signedSmoothTubeOperator_eq_zero_of_kernel_eq_zero
     (μ : Measure WaveSpaceTime)
@@ -7200,11 +7125,11 @@ theorem signedSmoothTubeOperator_eq_zero_of_kernel_eq_zero
   simp [signedSmoothTubeOperator, hK]
 
 /-- Continuous shellwise `L²` product-Sobolev estimate for the literal signed
-smooth tube operator.  These are exactly the analytic hypotheses needed by a
+smooth tube operator. These are exactly the analytic hypotheses needed by a
 scaled angular `H¹` argument: joint continuity of the operator and its
 angular derivative, an honest pointwise derivative identity, integrability of
 the left slice and of the product, plus quantitative bounds for those two
-terms.  No global quadratic model is used. -/
+terms. No global quadratic model is used. -/
 theorem signedSmoothTubeShell_iSupL2_le_scaledProduct
     (μ : Measure WaveSpaceTime)
     (K dK : Real → Euclidean 2 → WaveSpaceTime → Complex)
@@ -7243,7 +7168,7 @@ theorem signedSmoothTubeShell_iSupL2_le_scaledProduct
   exact add_le_add hbase (mul_le_mul_of_nonneg_left hproduct (by norm_num))
 
 /-- The endpoint-zero version is the one used by a genuine smooth angular
-shell cutoff.  It has no mean-value or `rho⁻¹` loss: the product form of the
+shell cutoff. It has no mean-value or `rho⁻¹` loss: the product form of the
 one-dimensional Sobolev estimate gives exactly the critical geometric mean of
 the shell `L²` and angular-derivative `L²` energies. -/
 theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN
@@ -7289,7 +7214,7 @@ theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN
   simpa using ENNReal.ofReal_le_ofReal
     (mul_le_mul_of_nonneg_left hproduct (by norm_num : (0 : Real) ≤ 2))
 
-/-- The scale algebra behind the endpoint-zero angular Sobolev bound.  If the
+/-- The scale algebra behind the endpoint-zero angular Sobolev bound. If the
 shell and differentiated-shell energies are reciprocal at scale `q`, their
 geometric mean has no `q` loss. -/
 theorem sqrt_mul_le_energy_of_reciprocal_scaled_bounds
@@ -7331,7 +7256,7 @@ theorem integrable_norm_mul_norm_of_memLp_two
   change Integrable ((fun x => ‖F x‖) * fun x => ‖D x‖) μ
   exact hF.norm.integrable_mul hD.norm
 
-/-- Explicit energy-form Cauchy--Schwarz.  This is the exact bridge from
+/-- Explicit energy-form Cauchy--Schwarz. This is the exact bridge from
 two continuous `TT*` `L²` estimates to the product hypothesis in the
 endpoint-zero angular Sobolev estimate. -/
 theorem integral_norm_mul_norm_le_sqrt_mul_of_energy_bounds
@@ -7378,7 +7303,7 @@ theorem intervalIntegral_integral_eq_integral_productShell
           ((volume.restrict (Icc a b)).prod volume) :=
       (integral_prod _ hH).symm
 
-/-- Concrete product-shell formulation of the Cauchy step.  Thus a pair of
+/-- Concrete product-shell formulation of the Cauchy step. Thus a pair of
 continuous `TT*` energy bounds for `F` and its angular derivative immediately
 discharges both the integrability and numerical product hypotheses required
 by the endpoint-zero shell theorem. -/
@@ -7415,7 +7340,7 @@ theorem angularShell_product_bound_of_memLp_energy
     (fun p : Real × Euclidean 2 => D p.1 p.2) hF hD hE0 hE1
 
 /-- A concrete continuous signed-operator shell bound at the critical
-reciprocal scale.  In applications `q = λ * ρ`: the undifferentiated and
+reciprocal scale. In applications `q = λ * ρ`: the undifferentiated and
 angular-derivative `L²` energies have bounds `q⁻¹ * E` and `q * E`, so the
 endpoint-zero cutoff gives a uniform `2 * E` maximal-shell bound. -/
 theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN_reciprocalScale
@@ -7458,9 +7383,9 @@ theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN_reciprocalScale
     (sqrt_mul_le_energy_of_reciprocal_scaled_bounds hE hq hE0 hE1 hE1_nonneg)
     (by norm_num)
 
-/-- Fully continuous shell endpoint from two `TT*` energy estimates.  This
+/-- Fully continuous shell endpoint from two `TT*` energy estimates. This
 has no standalone Cauchy/product premise: `MemLp` on the literal product
-shell and the two displayed energies supply it automatically.  The remaining
+shell and the two displayed energies supply it automatically. The remaining
 inputs are only the honest differentiation and endpoint-cutoff facts for the
 signed smooth tube kernel. -/
 theorem signedSmoothTubeShell_iSupL2_le_endpointZeroGN_of_memLp_energy
@@ -7525,7 +7450,7 @@ open scoped BigOperators Convolution FourierTransform EuclideanSpace
 noncomputable section
 
 /-- Parameter differentiation for inverse spatial Fourier integrals with a
-global integrable derivative majorant.  The hypotheses are phrased after the
+global integrable derivative majorant. The hypotheses are phrased after the
 Fourier character so no implicit Fubini interchange is used. -/
 theorem hasDerivAt_fourierInv_of_dominated
     (m dm : Real → Euclidean 2 → Complex) (theta : Real)
@@ -7641,7 +7566,7 @@ theorem surjective_circleDirectionSubtype :
   exact hxi_eq.symm
 
 /-- The literal maximal function can be indexed by the concrete real circle
-parametrization.  This is only a set-theoretic reindexing; no continuity or
+parametrization. This is only a set-theoretic reindexing; no continuity or
 measurability assertion is used here. -/
 theorem lightRayMaximal_eq_realCircleSup
     (delta : Real) (N : Nat) (g : WaveSpaceTime -> Complex) (y : Euclidean 2) :
@@ -7751,7 +7676,7 @@ product rule, matching the calculus APIs used below. -/
 attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup
 
 /-- Endpoint-zero continuous angular Sobolev bound in the exact energy form
-needed by one physical pseudodifferential shell.  The two energy estimates
+needed by one physical pseudodifferential shell. The two energy estimates
 are intentionally inputs: Plancherel and the central/outer TT* packages
 discharge them for the concrete shell fields. -/
 theorem endpointZeroAngularSobolev_of_memLp_energy
@@ -7800,7 +7725,7 @@ theorem endpointZeroAngularSobolev_of_memLp_energy
       exact mul_le_mul_of_nonneg_left hcross (by norm_num)
 
 /-- Reciprocal shell scaling turns the endpoint-zero energy estimate into a
-scale-free maximal bound.  In the outer-circle application `q = lambda*rho`.
+scale-free maximal bound. In the outer-circle application `q = lambda*rho`.
 The only multiplicative loss left is the finite number of shell pieces. -/
 theorem endpointZeroAngularSobolev_of_reciprocal_energy
     {F D : Real → Euclidean 2 → Complex} {lo hi E E0 E1 q : Real}
@@ -7833,7 +7758,7 @@ theorem endpointZeroAngularSobolev_of_reciprocal_energy
     exact (integral_nonneg fun _ => sq_nonneg _).trans hE1
   · norm_num
 
-/-- The literal outer-shell frequency multiplier.  The centre may vary with
+/-- The literal outer-shell frequency multiplier. The centre may vary with
 frequency; this is a pseudodifferential multiplier in the spatial variable,
 not a sharp physical-angle restriction. -/
 noncomputable def outerFiniteTensorPseudodifferentialMultiplier
@@ -7847,7 +7772,7 @@ noncomputable def outerFiniteTensorPseudodifferentialMultiplier
       (circleDirection r) xi)
     (alpha xi) rho theta
 
-/-- Its exact angular derivative on the Fourier side.  The first term is
+/-- Its exact angular derivative on the Fourier side. The first term is
 the characteristic multiplier derivative and the second is the rescaled
 cutoff derivative; these are precisely the phase and cutoff E1 energies
 already bounded by the outer TT* package. -/
@@ -7892,7 +7817,7 @@ theorem hasDerivAt_outerFiniteTensorPseudodifferentialMultiplier
     outerFiniteTensorPseudodifferentialMultiplierDeriv, u] using h
 
 /-- The literal physical outer shell field: inverse spatial Fourier transform
-of the frequency-dependent smooth cutoff multiplier.  It is a genuine
+of the frequency-dependent smooth cutoff multiplier. It is a genuine
 physical-space field, despite its frequency-dependent angular centre. -/
 noncomputable def outerFiniteTensorPseudodifferentialShellField
     {ι : Type*} (s : Finset ι)
@@ -7917,7 +7842,7 @@ noncomputable def outerFiniteTensorPseudodifferentialShellFieldDeriv
       s q hqcompact a alpha rho theta xi) y
 
 /-- Differentiation under inverse spatial Fourier transform for one literal
-outer pseudodifferential shell.  The supplied hypotheses are the exact
+outer pseudodifferential shell. The supplied hypotheses are the exact
 measurability, integrability, and uniform derivative-majorant obligations;
 the multiplier derivative above discharges the only calculus premise. -/
 theorem hasDerivAt_outerFiniteTensorPseudodifferentialShellField_of_dominated
@@ -7961,7 +7886,7 @@ theorem hasDerivAt_outerFiniteTensorPseudodifferentialShellField_of_dominated
         (Real.fourierChar (inner Real xi y) : Complex)
 
 /-- The fixed outer bump is already zero on the whole left half-line needed
-for a common physical angular endpoint.  This is stronger than its usual
+for a common physical angular endpoint. This is stronger than its usual
 vanishing merely at the rescaled shell endpoint. -/
 private theorem fixedOuterCircleUnitShellAmplitude_eq_zero_of_nonpos
     {u : Real} (hu : u ≤ 0) :
@@ -7975,7 +7900,7 @@ private theorem fixedOuterCircleUnitShellAmplitude_eq_zero_of_nonpos
     · linarith
 
 /-- A wide common left endpoint works for every frequency-dependent angular
-centre bounded below by `-4`.  The only division fact needed is positivity
+centre bounded below by `-4`. The only division fact needed is positivity
 of the shell width. -/
 private theorem outer_shell_quotient_nonpos_at_neg_five
     {center rho : Real} (hcenter : -4 < center) (hrho : 0 < rho) :
@@ -8003,7 +7928,7 @@ theorem outerFiniteTensorPseudodifferentialMultiplier_eq_zero_at_negFive
   · exact outer_shell_quotient_nonpos_at_neg_five (halpha xi) hrho
 
 /-- The associated physical pseudodifferential shell field has the same
-common endpoint zero.  This is the exact endpoint hypothesis for the
+common endpoint zero. This is the exact endpoint hypothesis for the
 continuous angular product-Sobolev inequality. -/
 theorem outerFiniteTensorPseudodifferentialShellField_eq_zero_at_negFive
     {ι : Type*} (s : Finset ι)
@@ -8047,7 +7972,7 @@ theorem outerFinTensorPseudodifferentialShellField_measPolarAngle_eq_zero_at_neg
   exact neg_four_lt_measurablePolarAngle
 
 /-- The physical endpoint-GN component for one smooth outer pseudodifferential
-shell.  The input fields are the literal inverse Fourier transforms of the
+shell. The input fields are the literal inverse Fourier transforms of the
 frequency-dependent multiplier and its true angular derivative; the analytic
 continuity, `L²`, and Plancherel/TT* energy obligations remain explicit. -/
 theorem outerFiniteTensorPseudodifferentialShell_endpointZeroSobolev
@@ -8177,9 +8102,6 @@ theorem measurable_spectralProjection_schwartz_family
     funext q
     simp only [H,SchwartzMap.smulLeftCLM_apply_apply hm,smul_eq_mul,Pi.mul_apply]
   exact measurable_fourierInv_schwartz_family H hH
-#print axioms measurable_spectralProjection_schwartz_family
-#print axioms measurable_fourier_schwartz_family
-#print axioms measurable_fourierInv_schwartz_family
 end
 end
 end Auto.Spherical.MSS
@@ -8215,7 +8137,6 @@ theorem normalizedCircle_supported_source_chart_phase_measurable
   have hM : Measurable M := by dsimp [M]; unfold circleDirection; fun_prop
   have h := (normalizedCircle_supported_phase_family_measurable S A).comp hM
   simpa only [M,Function.comp_def] using h
-#print axioms normalizedCircle_supported_source_chart_phase_measurable
 end
 end Auto.Spherical.MSS
 
@@ -8279,7 +8200,7 @@ def normalizedCircleSupportedPhaseSchwartz
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S) (p : NormalizedCircleParameters)
     (rho : Real)
-    (hsep : ∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0) :
+    (hsep : ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0) :
     SchwartzMap JointWaveSpaceTime Complex :=
   normalizedCircleLocalizedPhaseSchwartz
     (normalizedCircleSupportedAmplitudeSlice S hS A p)
@@ -8295,7 +8216,7 @@ theorem normalizedCircleSupportedPhaseSchwartz_apply
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S) (p : NormalizedCircleParameters)
     (rho : Real)
-    (hsep : ∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0)
+    (hsep : ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0)
     (z : JointWaveSpaceTime) :
     normalizedCircleSupportedPhaseSchwartz S hS A p rho hsep z =
       normalizedCircleParameterPhase p rho (z.fst,z.snd) *
@@ -8305,14 +8226,11 @@ theorem normalizedCircleSupportedPhaseSchwartz_raw
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S) (p : NormalizedCircleParameters)
     (rho : Real)
-    (hsep : ∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0) :
+    (hsep : ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0) :
     jointSchwartzRaw (normalizedCircleSupportedPhaseSchwartz S hS A p rho hsep) =
       (fun z => normalizedCircleParameterPhase p rho z*A.val (p,z)) := by
   funext z
   rfl
-#print axioms normalizedCircleSupportedAmplitudeSlice_hasCompactSupport
-#print axioms normalizedCircleSupportedPhaseSchwartz_apply
-#print axioms normalizedCircleSupportedPhaseSchwartz_raw
 end
 end Auto.Spherical.MSS
 namespace Auto.Spherical.MSS
@@ -8325,7 +8243,7 @@ def normalizedCircleSupportedPhaseFamily
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S)
     (K : Set NormalizedCircleParameters)
-    (hsep : ∀ p ∈ K,∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0)
+    (hsep : ∀ p ∈ K, ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0)
     (q : K × Real) : SchwartzMap JointWaveSpaceTime Complex :=
   normalizedCircleSupportedPhaseSchwartz S hS A q.1.1 q.2 (hsep q.1.1 q.1.2)
 
@@ -8333,7 +8251,7 @@ theorem normalizedCircleSupportedPhaseFamily_apply
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S)
     (K : Set NormalizedCircleParameters)
-    (hsep : ∀ p ∈ K,∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0)
+    (hsep : ∀ p ∈ K, ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0)
     (q : K × Real) (z : JointWaveSpaceTime) :
     normalizedCircleSupportedPhaseFamily S hS A K hsep q z =
       normalizedCircleParameterPhase q.1.1 q.2 (z.fst,z.snd) *
@@ -8345,7 +8263,7 @@ theorem normalizedCircleSupportedPhaseFamily_measurable
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S)
     (K : Set NormalizedCircleParameters)
-    (hsep : ∀ p ∈ K,∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0) :
+    (hsep : ∀ p ∈ K, ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0) :
     Measurable (fun q : (K × Real) × JointWaveSpaceTime =>
       normalizedCircleSupportedPhaseFamily S hS A K hsep q.1 q.2) := by
   let M : (K × Real) × JointWaveSpaceTime →
@@ -8362,7 +8280,7 @@ theorem normalizedCircleSupportedPhaseFamily_projection_measurable
     (S : Set WaveSpaceTime) (hS : IsCompact S)
     (A : normalizedCircleSupportedAmplitudes S)
     (K : Set NormalizedCircleParameters)
-    (hsep : ∀ p ∈ K,∀ z ∈ S,p.2.1+p.1•(p.2.2•p.2.1-z.1) ≠ 0)
+    (hsep : ∀ p ∈ K, ∀ z ∈ S, p.2.1 + p.1 • (p.2.2 • p.2.1 - z.1) ≠ 0)
     (m : JointWaveSpaceTime → Complex) (hm : m.HasTemperateGrowth) :
     Measurable (fun q : (K × Real) × JointWaveSpaceTime =>
       (FourierTransform.fourierInv
@@ -8373,8 +8291,6 @@ theorem normalizedCircleSupportedPhaseFamily_projection_measurable
   exact measurable_spectralProjection_schwartz_family m hm
     (normalizedCircleSupportedPhaseFamily S hS A K hsep)
     (normalizedCircleSupportedPhaseFamily_measurable S hS A K hsep)
-#print axioms normalizedCircleSupportedPhaseFamily_measurable
-#print axioms normalizedCircleSupportedPhaseFamily_projection_measurable
 end
 end Auto.Spherical.MSS
 
@@ -8405,8 +8321,8 @@ def normalizedCircleRawJacobianSupportedAmplitude
 
 theorem normalizedCircleRawJacobianSupportedAmplitude_eq_actual
     (chiOut : SchwartzMap WaveSpaceTime Complex)
-    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
-    (p : NormalizedCircleParameters) (hepsilon : |p.1| ≤ 1/64) (hu : |p.2.2| ≤ 5)
+    (hchi : ∀ z, chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (p : NormalizedCircleParameters) (hepsilon : |p.1| ≤ 1 / 64) (hu : |p.2.2| ≤ 5)
     (z : WaveSpaceTime) :
     (normalizedCircleRawJacobianSupportedAmplitude chiOut).val (p,z) =
       chiOut z*(((1+p.1*p.2.2)/(1+p.1*z.2):Real):Complex) := by
@@ -8439,7 +8355,7 @@ theorem normalizedCircleRawJacobianParameterRegion_bounds
 
 theorem normalizedCircleRawJacobianParameterRegion_separation
     (chiOut : SchwartzMap WaveSpaceTime Complex)
-    (hchi : ∀ z,chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
+    (hchi : ∀ z, chiOut z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2)
     (p : NormalizedCircleParameters) (hp : p ∈ normalizedCircleRawJacobianParameterRegion)
     (z : WaveSpaceTime) (hz : z ∈ tsupport (chiOut : WaveSpaceTime → Complex)) :
     1/2 ≤ ‖p.2.1+p.1•(p.2.2•p.2.1-z.1)‖ := by
@@ -8465,8 +8381,5 @@ theorem normalizedCircleRawJacobianParameterRegion_separation
     (-(p.1•(p.2.2•p.2.1-z.1)))
   simp only [add_neg_cancel_right,norm_neg,homega] at hn
   linarith
-
-#print axioms normalizedCircleRawJacobianSupportedAmplitude_eq_actual
-#print axioms normalizedCircleRawJacobianParameterRegion_separation
 end
 end Auto.Spherical.MSS

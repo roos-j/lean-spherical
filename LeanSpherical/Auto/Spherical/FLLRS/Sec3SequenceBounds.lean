@@ -515,7 +515,7 @@ theorem le_limsup_entropyLogQuotient_of_power_lower {F : ℝ≥0 → ℝ≥0∞}
     exact hu.frequently hev.frequently
   -- conclude
   by_contra hlt
-  push_neg at hlt
+  push Not at hlt
   obtain ⟨z, hz1, hz2⟩ := EReal.lt_iff_exists_real_btwn.mp hlt
   have hzs : z < s := EReal.coe_lt_coe_iff.mp hz2
   have := hη (s - z) (by linarith)
@@ -1027,7 +1027,7 @@ theorem sequence_interior_bound {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < �
     rw [div_lt_iff₀ hμ1]; nlinarith
   have hp1 : 1 < p := by
     have : 0 < 1 / (μ + 1) := by positivity
-    by_contra h; push_neg at h; nlinarith
+    by_contra h; push Not at h; nlinarith
   have hα : -(d : ℝ) < α := by
     have : 1 - (d : ℝ) ≤ sequenceLowerEndpoint d μ p := le_max_left _ _
     linarith
@@ -1290,7 +1290,8 @@ theorem sequence_shell_bound {d N : ℕ} (hd : 2 ≤ d)
   · -- low frequencies: `lem:k>j` and the weight comparison
     have hball : euclideanAnnulus d ((((2 : ℝ) ^ k)⁻¹) / 2) (((2 : ℝ) ^ k)⁻¹) ⊆
         Metric.closedBall (0 : Euclidean d) (((2 : ℝ) ^ k)⁻¹) := fun x hx => hx.1
-    have hcmp := setLIntegral_powerWeightedVolume_le_of_le (R := ((2 : ℝ) ^ k)⁻¹) (by omega : 0 < d) ha_ge
+    have hcmp := setLIntegral_powerWeightedVolume_le_of_le
+      (R := ((2 : ℝ) ^ k)⁻¹) (by omega : 0 < d) ha_ge
       measurableSet_closedBall (subset_refl _) G hGm
     have hlow := hb₂ (sequenceSet μ) hE k (k - j) (by omega) f
     rw [show k - (k - j) = j by omega] at hlow
@@ -1679,7 +1680,7 @@ theorem lintegral_powerWeightedVolume_le_of_vanish {d : ℕ} {α β r : ℝ} (h�
   simp only [Pi.mul_apply, radialPowerWeight]
   by_cases hx : ‖x‖ < r
   · rw [hvan x hx]; simp
-  · push_neg at hx
+  · push Not at hx
     have hxpos : 0 < ‖x‖ := hr.trans_le hx
     have hne : ENNReal.ofReal ‖x‖ ≠ 0 := by simpa using hxpos
     have hsplit : ENNReal.ofReal ‖x‖ ^ β =
@@ -2482,7 +2483,7 @@ theorem normalizedSphericalAverage_ofReal {d : ℕ} (g : Euclidean d → ℝ) (t
 least `c` times its normalized surface measure. -/
 theorem le_realSphericalAverage_of_cap {d : ℕ} (hd : 0 < d) (g : Euclidean d → ℝ)
     (t : ℝ) (x : Euclidean d) (A : Set (Metric.sphere (0 : Euclidean d) 1))
-    (hA : MeasurableSet A) {c : ℝ} (hc : 0 ≤ c)
+    (hA : MeasurableSet A) {c : ℝ}
     (hgi : Integrable (fun ω : Metric.sphere (0 : Euclidean d) 1 =>
       g (x + t • (ω : Euclidean d))) (unitSurfaceMeasure d))
     (hg0 : ∀ ω : Metric.sphere (0 : Euclidean d) 1, 0 ≤ g (x + t • (ω : Euclidean d)))
@@ -2593,7 +2594,7 @@ theorem criticalInput_moment_le {n : ℕ} (hn : 1 ≤ n) :
   have hn' : (0 : ℝ) < n := by exact_mod_cast hn
   set p : ℝ := ((n : ℝ) + 1) / n with hpdef
   have hp : 0 < p := by positivity
-  haveI : Nonempty (Fin n) := ⟨⟨0, hn⟩⟩
+  have : Nonempty (Fin n) := ⟨⟨0, hn⟩⟩
   set Kb : ℝ := Real.sqrt Real.pi ^ n / Real.Gamma (n / 2 + 1) with hKb
   have hKb0 : 0 ≤ Kb := by
     rw [hKb]; exact div_nonneg (by positivity) (Real.Gamma_pos_of_pos (by positivity)).le
@@ -2620,7 +2621,8 @@ theorem criticalInput_moment_le {n : ℕ} (hn : 1 ≤ n) :
     apply (ENNReal.ofReal_le_ofReal hgeo).trans
     rw [Finset.mul_sum, ENNReal.ofReal_sum_of_nonneg (fun j _ => by
       apply mul_nonneg (by positivity)
-      exact mul_nonneg (Real.rpow_nonneg (criticalAmp_pos n k j).le _) (Set.indicator_nonneg (fun _ _ => zero_le_one) y))]
+      exact mul_nonneg (Real.rpow_nonneg (criticalAmp_pos n k j).le _)
+        (Set.indicator_nonneg (fun _ _ => zero_le_one) y))]
     apply Finset.sum_le_sum
     intro j _
     by_cases hy : y ∈ criticalTube n k j
@@ -2905,10 +2907,10 @@ theorem criticalInput_average_lower {n : ℕ} (hn : 1 ≤ n) {μ : ℝ} (hμ : 0
         _ = 1 / 2 := by norm_num
     have hcapm := unitSurfaceMeasure_sphericalCap_real_lower hn (norm_southPole n)
       (h := r / 64) (by positivity) (by linarith)
-    have havg := le_realSphericalAverage_of_cap (d := n + 1) (by omega)
+    have havg := le_realSphericalAverage_of_cap (d := n + 1) (c := 1) (by omega)
       ((criticalTube n k j).indicator 1) t x _
       (measurableSet_sphericalCap n (southPole n) (r / 64))
-      zero_le_one (hind j)
+      (hind j)
       (fun ω => Set.indicator_nonneg (fun _ _ => zero_le_one) _)
       (fun ω hω => by rw [Set.indicator_of_mem (hcap j hj ω hω)]; simp)
     have hlamj := criticalAmp_pos n k j
@@ -2958,7 +2960,7 @@ theorem sequence_critical_unbounded {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0
     have := surfaceMass_pos (d := n) (by omega)
     have := surfaceMass_pos (d := n + 1) (by omega)
     positivity
-  haveI : Nonempty (Fin n) := ⟨⟨0, by omega⟩⟩
+  have : Nonempty (Fin n) := ⟨⟨0, by omega⟩⟩
   set Kb : ℝ := Real.sqrt Real.pi ^ n / Real.Gamma (n / 2 + 1) with hKb
   have hKbpos : 0 < Kb := by
     rw [hKb]; exact div_pos (by positivity) (Real.Gamma_pos_of_pos (by positivity))
@@ -3179,9 +3181,9 @@ theorem realSphericalAverage_unitBall_lower {n : ℕ} (hn : 1 ≤ n) {t : ℝ} (
           congr 1; field_simp
       _ ≤ 1 / 100 + t * h := by gcongr
       _ ≤ 1 := by rw [hh]; field_simp; linarith
-  have havg := le_realSphericalAverage_of_cap (d := n + 1) (by omega)
+  have havg := le_realSphericalAverage_of_cap (d := n + 1) (c := 1) (by omega)
     ((Metric.closedBall (0 : Euclidean (n + 1)) 1).indicator 1) t x _
-    (measurableSet_sphericalCap n v h) zero_le_one hint
+    (measurableSet_sphericalCap n v h) hint
     (fun ω => Set.indicator_nonneg (fun _ _ => zero_le_one) _)
     (fun ω hω => by rw [Set.indicator_of_mem (hcap ω hω)]; simp)
   have hcapm := unitSurfaceMeasure_sphericalCap_real_lower (by omega) hvn hh0 hh1
@@ -3214,7 +3216,8 @@ theorem volume_shell_lower {n : ℕ} {r ε : ℝ} (hε : 0 < ε) (hεr : ε ≤ 
     exact mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by linarith) (by linarith) n)
       (by linarith)
   rw [← ENNReal.ofReal_pow (by linarith), ← ENNReal.ofReal_pow (by linarith),
-    ← ENNReal.ofReal_mul (pow_nonneg (by linarith) _), ← ENNReal.ofReal_mul (pow_nonneg (by linarith) _),
+    ← ENNReal.ofReal_mul (pow_nonneg (by linarith) _),
+    ← ENNReal.ofReal_mul (pow_nonneg (by linarith) _),
     ← ENNReal.ofReal_sub _ (by positivity)]
   apply ENNReal.ofReal_le_ofReal
   have : V * (2 * ε * (r - ε) ^ n) ≤ V * ((r + ε) ^ (n + 1) - (r - ε) ^ (n + 1)) :=
@@ -3277,7 +3280,7 @@ theorem globalShell_disjoint {n : ℕ} {μ : ℝ} (hμ : 0 < μ) (k : ℕ) {j j'
 
 /-- Lower bound for the shell count: `N_k ≥ (100μ)^{1/(μ+1)} 2^{k/(μ+1)} / 2` once
 the right side is at least `2`. -/
-theorem globalShellCount_lower {μ : ℝ} (hμ : 0 < μ) {k : ℕ}
+theorem globalShellCount_lower {μ : ℝ} {k : ℕ}
     (hk : 4 ≤ (100 * μ * (2 : ℝ) ^ k) ^ (1 / (μ + 1))) :
     (100 * μ * (2 : ℝ) ^ k) ^ (1 / (μ + 1)) / 2 ≤ globalShellCount μ k := by
   unfold globalShellCount
@@ -3309,7 +3312,7 @@ theorem globalShell_moment_lower {n : ℕ} (hn : 1 ≤ n) {μ p α : ℝ} (hμ :
   have hr2 : r ≤ 2 ^ (k + 1) := by rw [hr, pow_succ]; nlinarith [hjm.2]
   have hrmem : r ∈ globalSequenceSet μ ∩ Ioi 0 :=
     ⟨⟨k, 1 + (j : ℝ) ^ (-μ), ⟨j, hj, rfl⟩, by rw [hr]; norm_cast⟩, by
-      show (0 : ℝ) < r; linarith⟩
+      change (0 : ℝ) < r; linarith⟩
   set c3 : ℝ := surfaceMass n * (1 / 8) ^ n / surfaceMass (n + 1) with hc3
   have hσ : 0 < surfaceMass (n + 1) := surfaceMass_pos (by omega)
   have hσn : 0 < surfaceMass n := surfaceMass_pos (by omega)
@@ -3452,7 +3455,7 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
     linarith
   have hp1 : 1 < p := by
     have : 0 < n * (p - 1) := by have := one_div_pos.mpr hμ1; rw [hαeq] at hα0; linarith
-    by_contra h; push_neg at h; nlinarith
+    by_contra h; push Not at h; nlinarith
   have hp0 : 0 < p := by linarith
   have hexp0 : α + n - n * p = -(1 / (μ + 1)) := by rw [hαeq]; ring
   rintro ⟨C, hC, hb⟩
@@ -3504,7 +3507,8 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
       Tendsto.const_mul_atTop (by positivity)
         (tendsto_pow_atTop_atTop_of_one_lt (by norm_num))
     exact (tendsto_rpow_atTop (by positivity)).comp h1
-  obtain ⟨k₁, hk₁⟩ := ((hT.eventually_ge_atTop 4).and (eventually_ge_atTop 1)).exists_forall_of_atTop
+  obtain ⟨k₁, hk₁⟩ :=
+    ((hT.eventually_ge_atTop 4).and (eventually_ge_atTop 1)).exists_forall_of_atTop
   have hscale : ∀ k, k₁ ≤ k → ENNReal.ofReal c5 ≤
       ∫⁻ x in ⋃ j ∈ Finset.Icc 1 (globalShellCount μ k), globalShell n μ k j, G x ∂w := by
     intro k hk
@@ -3516,7 +3520,8 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
       rcases lt_or_gt_of_ne hne with h | h
       · exact globalShell_disjoint hμ k hj.1 h hj'.2
       · exact (globalShell_disjoint hμ k hj'.1 h hj.2).symm
-    rw [lintegral_biUnion_finset hdisj (fun j _ => measurableSet_ball.diff measurableSet_closedBall)]
+    rw [lintegral_biUnion_finset hdisj
+      (fun j _ => measurableSet_ball.diff measurableSet_closedBall)]
     have hshell : ∀ j ∈ Finset.Icc 1 (globalShellCount μ k),
         ENNReal.ofReal (c4 * (2 : ℝ) ^ ((k : ℝ) * (α + n - n * p))) ≤
           ∫⁻ x in globalShell n μ k j, G x ∂w :=
@@ -3525,7 +3530,7 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
     rw [Finset.sum_const, Nat.card_Icc, add_tsub_cancel_right, nsmul_eq_mul,
       ← ENNReal.ofReal_natCast, ← ENNReal.ofReal_mul (Nat.cast_nonneg _)]
     apply ENNReal.ofReal_le_ofReal
-    have hN := globalShellCount_lower hμ hk4
+    have hN := globalShellCount_lower hk4
     have hsplit : (100 * μ * (2 : ℝ) ^ k) ^ (1 / (μ + 1)) =
         (100 * μ) ^ (1 / (μ + 1)) * (2 : ℝ) ^ ((k : ℝ) * (1 / (μ + 1))) := by
       rw [Real.mul_rpow (by positivity) (by positivity), ← Real.rpow_natCast,
@@ -3603,7 +3608,9 @@ theorem globalSequenceSet_inter_window_subset {μ : ℝ} (hμ : 0 ≤ μ) (c : P
   set k : ℤ := ⌈L - (D : ℝ) / 2⌉ - 1
   have hk1 : (k : ℝ) < L - (D : ℝ) / 2 := by
     have := Int.ceil_lt_add_one (L - (D : ℝ) / 2); push_cast [k]; linarith
-  have hk2 : L - (D : ℝ) / 2 ≤ (k : ℝ) + 1 := by push_cast [k]; linarith [Int.le_ceil (L - (D : ℝ) / 2)]
+  have hk2 : L - (D : ℝ) / 2 ≤ (k : ℝ) + 1 := by
+    push_cast [k]
+    linarith [Int.le_ceil (L - (D : ℝ) / 2)]
   rintro t ⟨⟨m, s, hs, rfl⟩, hI⟩
   have hsI := sequenceSet_subset_Icc hμ hs
   have hs1 : 1 < s := by
@@ -3865,7 +3872,8 @@ theorem global_sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : �
               (dilateRadiusSet v (sequenceSet μ)) (g : Euclidean d → ℂ))
             (ENNReal.ofReal p) (powerWeightedVolume d a) := by
             apply eLpNorm_mono_enorm
-              (measurable_restrictedNormalizedSphericalMaximal _ _ g.continuous).aestronglyMeasurable
+              (measurable_restrictedNormalizedSphericalMaximal
+                _ _ g.continuous).aestronglyMeasurable
             intro x
             simp only [enorm_eq_self, Pi.add_apply]
             exact (restrictedNormalizedSphericalMaximal_mono hsub _ x).trans
@@ -3912,7 +3920,7 @@ theorem global_sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < 
   have hμ1 : 0 < μ + 1 := by linarith
   have hp1 : 1 < p := by
     have : 0 < 1 / (μ + 1) := by positivity
-    by_contra h; push_neg at h; nlinarith
+    by_contra h; push Not at h; nlinarith
   have hEpos : globalSequenceSet μ ⊆ Ioi 0 := by
     rintro t ⟨k, s, hs, rfl⟩; exact mul_pos (by positivity) (sequenceSet_subset_Ioi hμ.le hs)
   constructor
@@ -4451,7 +4459,8 @@ theorem schwartz_strong_q_top_moment_on_support
     exact (mul_le_mul' le_rfl (measure_mono hsub)).trans
       ((mul_meas_ge_le_lintegral₀ ((hTmeas g).ennreal_ofReal.pow_const q) _).trans
         (hstrong g hg))
-  obtain ⟨low, high, hlow, hhigh, hsplit⟩ := Auto.Spherical.Auxiliary.exists_schwartz_smooth_low_high_family f
+  obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
+    Auto.Spherical.Auxiliary.exists_schwartz_smooth_low_high_family f
   have hlowD (t : ℝ) : low t ∈ D := by
     intro x hx
     rw [hlow t x, hf x hx, smul_zero]
@@ -4467,7 +4476,8 @@ theorem schwartz_strong_q_top_moment_on_support
     (fun t => by ext x; exact hsplit t x)
     (fun t ht x => Auto.Spherical.Auxiliary.smooth_low_norm_le_half_height f (low t) ht (hlow t) x)
     (Auto.Spherical.Auxiliary.measurable_smooth_high_profile_lintegrals f low high hlow hhigh q)
-    _ (Auto.Spherical.Auxiliary.smooth_bump_schwartz_high_q_weighted_tail f low high hlow hhigh hq hqp)
+    _ (Auto.Spherical.Auxiliary.smooth_bump_schwartz_high_q_weighted_tail
+      f low high hlow hhigh hq hqp)
   have heq : (fun y => ENNReal.ofReal ((T f y) ^ p)) =
       fun y => ENNReal.ofReal (T f y) ^ p := by
     funext y
@@ -4605,7 +4615,8 @@ theorem compactConvolution_norm_le_of_bound {d : ℕ}
       _ = _ := lintegral_mul_const _ K.continuous.measurable.enorm
   rw [← ofReal_norm, ← ofReal_integral_norm_eq_lintegral_enorm K.integrable,
     ← ENNReal.ofReal_mul (integral_nonneg fun _ => norm_nonneg _)] at hh
-  exact (ENNReal.ofReal_le_ofReal_iff (mul_nonneg (integral_nonneg fun _ => norm_nonneg _) ha)).mp hh
+  exact (ENNReal.ofReal_le_ofReal_iff
+    (mul_nonneg (integral_nonneg fun _ => norm_nonneg _) ha)).mp hh
 
 
 /-- Source `eq:pge2part`, one short radius interval: for `p ≥ 2` the supremum
@@ -7678,98 +7689,10 @@ theorem lightRayTube_bush_chord_proximity {d : ℕ} {a a' b u v w : Euclidean d}
 /- End of the deprecated Wolff development. The corresponding axiom checks
 are retained below for the later deletion audit. -/
 
-#print axioms unit_chord_direction_separation
-#print axioms lightRayTube_displacement_two_widths
-#print axioms lightRayTube_bush_chord_proximity
-#print axioms unit_chord_time_identity
-#print axioms unit_chord_time_separation
-#print axioms tubeDecayProfile_antitone_radius
-#print axioms min_tubeDecayProfile
-#print axioms min_tubeDecayProfile_far
-#print axioms lightRayTube_smooth_overlap_far
-#print axioms dyadic_profile_volume_coefficient
-#print axioms lightRayTube_smooth_overlap
-#print axioms exists_dyadic_profile_layer
-#print axioms min_tubeDecayProfile_le_tsum_intersections
-#print axioms bush_cardinality_le_smooth_multiplicity
-#print axioms exists_bush_decay_parameters
-#print axioms tubeDecayProfile_uniform_bush
-#print axioms tubeDecayProfile_polynomial_tail
-#print axioms bush_radius_le_power
-#print axioms tubeDecayProfile_admissible_bush
-#print axioms mss_bush_cutoff_bounds
-#print axioms tubeDecayProfile_logarithmic_bush
-#print axioms subpowerAssouadCoverBound_one
-#print axioms planar_rs_q4_full_interval
-#print axioms tubeDecayProfile_bandlimited_majorant
-#print axioms tubeDecayProfile_eq_mss
-#print axioms mss_lightRayTube_eq
-#print axioms mss_lightRayKernel_eq_tubeDecayProfile
-#print axioms tubeDecayProfile_le_one
-#print axioms tubeDecayProfile_le_dyadic_tail
-#print axioms tubeDecayProfile_le_layers
-#print axioms tubeDecayProfile_bush_extraction
-#print axioms profile_le_truncated_layers
-#print axioms finite_weighted_bush_extraction
-#print axioms lightRayTube_bush_extraction
-#print axioms finite_bush_extraction
-#print axioms lightRayTube_intersection_subset
-#print axioms lightRayTube_intersection_volume
-#print axioms lightRayTube_intersection_volume_cubic
-#print axioms isClosed_lightRayTube
-
-#print axioms lightRayTube_displacement
-#print axioms lightRayTube_intersection_time
-#print axioms lightRayTube_intersection_space
-
 
 end
 
 /-! ## Axiom audit -/
-
-#print axioms sequenceSet_subset_Icc
-#print axioms sequenceSet_gap_bounds
-#print axioms succ_rpow_neg_ge
-#print axioms sequenceSet_cover_global
-#print axioms sequenceSet_cover_min
-#print axioms sequenceSet_legendreAssouad_le
-#print axioms sequenceSet_minkowski_le
-#print axioms sequenceSet_legendreAssouad_ge
-#print axioms sequenceSet_minkowski_ge
-#print axioms sequenceSet_minkowski_eq
-#print axioms sequenceSet_legendreAssouad_eq
-#print axioms sequence_implicitCondition_iff
-#print axioms sequence_strictCondition_iff
-#print axioms frs_strict_strongType_three_le
-#print axioms frs_strict_strongType_two_le
-#print axioms sequence_interior_bound
-#print axioms sequence_necessary
-#print axioms sequence_shell_bound
-#print axioms sequence_diagonal_maximal
-#print axioms sequence_resolution_piece_bound
-#print axioms sequence_localized_resolution_moment_bound
-#print axioms sequence_core_improvement
-#print axioms sequence_lower_endpoint_bound
-#print axioms criticalInput_moment_le
-#print axioms planar_sphericalCap_real_lower
-#print axioms schwartz_strong_q_top_moment_on_support
-#print axioms schwartz_strong_q_top_moment_on_support_scaled
-#print axioms exists_smoothed_interval_dyadic_bound_gt_two_sharp
-#print axioms exists_smoothed_interval_dyadic_bound_ge_two_sharp
-#print axioms criticalInput_average_lower
-#print axioms sequence_critical_unbounded
-#print axioms global_sequence_unbounded_upper
-#print axioms globalSequenceSet_minkowski_eq
-#print axioms globalSequenceSet_legendreAssouad_eq
-#print axioms global_sequence_lower_endpoint_bound
-#print axioms global_sequence_iff
-#print axioms exists_sequence_piece_bound
-#print axioms sequence_block_bound
-#print axioms sequence_near_truncated_bound
-#print axioms sequence_near_origin_bound
-#print axioms farInput_bound_of_unweighted
-#print axioms sequence_upper_endpoint_bound
-#print axioms sequence_iff
 
 end Auto.Spherical.FLLRS
 
@@ -7788,7 +7711,8 @@ theorem compactSynthesis_uniform_max_top
       ∀ f : SchwartzMap (Euclidean 2) Complex,∀ a : Real,0 ≤ a →
       (∀ x,‖f x‖ ≤ a) → ∀ x : Euclidean 2,
       (⨆ t : Icc (1:Real) 2,
-        ‖sphericalAverage 2 (compactConvolution (compactSynthesisKernel φ j) f) t x‖ₑ).toReal ≤ B*a := by
+        ‖sphericalAverage 2
+          (compactConvolution (compactSynthesisKernel φ j) f) t x‖ₑ).toReal ≤ B*a := by
   let M : Real := ∫ y,‖compactSynthesisKernel φ 1 y‖
   let B : Real := M*surfaceMass 2+1
   have hM : 0 ≤ M := integral_nonneg (fun _ => norm_nonneg _)
@@ -7816,7 +7740,9 @@ theorem compactSynthesis_uniform_max_top
     dsimp only [B]
     nlinarith
   have hh : (⨆ t : Icc (1:Real) 2,
-        ‖sphericalAverage 2 (compactConvolution (compactSynthesisKernel φ (i+1)) f) t x‖ₑ) ≤ ENNReal.ofReal (B*a) := by
+        ‖sphericalAverage 2
+          (compactConvolution (compactSynthesisKernel φ (i+1)) f) t x‖ₑ) ≤
+          ENNReal.ofReal (B*a) := by
     apply iSup_le
     intro t
     simpa only [ofReal_norm] using ENNReal.ofReal_le_ofReal (hav t)
@@ -7863,7 +7789,8 @@ theorem synthesis_planar_shell_above_four_of_four_gain
     rw [compactConvolution_add_right]
     have hcoe : ((compactConvolution K g+compactConvolution K h :
         SchwartzMap (Euclidean 2) Complex) : Euclidean 2 → Complex) =
-      (compactConvolution K g : Euclidean 2 → Complex)+(compactConvolution K h : Euclidean 2 → Complex) := rfl
+      (compactConvolution K g : Euclidean 2 → Complex)+
+        (compactConvolution K h : Euclidean 2 → Complex) := rfl
     rw [hcoe]
     simpa only [ofReal_norm] using
       Auto.Spherical.Auxiliary.toReal_iSup_ennreal_norm_sphericalAverage_add_le
@@ -7891,9 +7818,9 @@ theorem synthesis_planar_shell_above_four_of_four_gain
 quantitative scalar synthesis estimate for every finite p greater than two. -/
 theorem synthesis_planar_shell_all_p_of_four_gain {N : ℕ}
     (φ : SchwartzMap (Euclidean 2) Complex)
-    (hflat : Asymptotics.IsBigO (𝓝 (0:Euclidean 2))
-      (fun ξ => 𝓕 φ ξ-1) (fun ξ => ‖ξ‖^N))
-    (hN : (1:Real)/2 ≤ N) (hφ : ∀ x,(1:Real)/8 < ‖x‖ → φ x = 0)
+    (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
+      (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
+    (hN : (1 : Real) / 2 ≤ N) (hφ : ∀ x, (1 : Real) / 8 < ‖x‖ → φ x = 0)
     (A₄ : ENNReal) (hA₄ : A₄ ≠ ⊤) {δ : Real} (hδ : 0 < δ)
     (hFour : ∀ k : ℕ,7 ≤ k → ∀ n : ℕ,∀ g : SchwartzMap (Euclidean 2) Complex,
       (∫⁻ x in euclideanAnnulus 2 ((((2:Real)^k)⁻¹)/2) (((2:Real)^k)⁻¹),
@@ -7967,10 +7894,10 @@ theorem synthesis_planar_shell_all_p_of_four_gain {N : ℕ}
 /-- Independent repair Proposition 3.1: the actual planar compact-synthesis
 shell operator has positive uniform dyadic decay for every finite p>2. -/
 theorem exists_synthesis_planar_shell_all_p_gain {N : ℕ}
-    (φ : SchwartzMap (Euclidean 2) Complex) (hmass : ∫ x,φ x = 1)
-    (hflat : Asymptotics.IsBigO (𝓝 (0:Euclidean 2))
-      (fun ξ => 𝓕 φ ξ-1) (fun ξ => ‖ξ‖^N))
-    (hN : (1:Real)/2 ≤ N) (hφ : ∀ x,(1:Real)/8 < ‖x‖ → φ x = 0)
+    (φ : SchwartzMap (Euclidean 2) Complex) (hmass : ∫ x, φ x = 1)
+    (hflat : Asymptotics.IsBigO (𝓝 (0 : Euclidean 2))
+      (fun ξ => 𝓕 φ ξ - 1) (fun ξ => ‖ξ‖ ^ N))
+    (hN : (1 : Real) / 2 ≤ N) (hφ : ∀ x, (1 : Real) / 8 < ‖x‖ → φ x = 0)
     {p : Real} (hp : 2 < p) :
     let e : Real := if p < 4 then (p-2)/32 else 1/16
     0 < e ∧ ∃ A : ENNReal,A ≠ ⊤ ∧ ∀ k : ℕ,7 ≤ k → ∀ n : ℕ,
@@ -7999,11 +7926,5 @@ theorem exists_synthesis_planar_shell_all_p_gain {N : ℕ}
   intro t
   exact le_iSup (fun s : Icc (1:Real) 2 => ‖sphericalAverage 2
     (compactConvolution (compactSynthesisKernel φ (k+n)) g) s x‖ₑ) ⟨t.1,hE t.2⟩
-#print axioms exists_synthesis_planar_shell_all_p_gain
-
-#print axioms synthesis_planar_shell_all_p_of_four_gain
-
-#print axioms compactSynthesis_uniform_max_top
-#print axioms synthesis_planar_shell_above_four_of_four_gain
 end
 end Auto.Spherical.FLLRS

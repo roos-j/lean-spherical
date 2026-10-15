@@ -1958,7 +1958,7 @@ theorem cappedTelescopingCutoff_eq_dyadic
     (eps R : Real) (K i : Nat) (hi : i < K + 1) (u : Real) :
     cappedTelescopingCutoff eps R K i u = telescopingShellCutoff eps i u := by
   unfold cappedTelescopingCutoff
-  rw [if_neg (Nat.ne_of_lt hi)]
+  rw [ite_eq_right (Nat.ne_of_lt hi)]
 
 theorem hasDerivAt_cappedTelescopingCutoff
     (eps R : Real) (K i : Nat) (u : Real) :
@@ -1975,7 +1975,7 @@ theorem hasDerivAt_cappedTelescopingCutoff
       telescopingShellCutoff eps i by
       funext v
       unfold cappedTelescopingCutoff
-      rw [if_neg hi]]
+      rw [ite_eq_right hi]]
     exact hasDerivAt_telescopingShellCutoff eps i u
 
 /-- Exact finite capped-telescope identity. -/

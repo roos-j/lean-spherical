@@ -1616,14 +1616,11 @@ theorem radialTimeReconstruction_eq_verticalRecombined
         (fun n => verticalProjection verticalCutoff scale n
           (conicOperator scale a ϑ (radialPiece radialCutoff scale n f))) := rfl
 
-/-- The honest finite-family Minkowski estimate for vertical recombination.
-It makes no claim about the norm of a vertical projection; those individual
-measurability hypotheses are kept explicit. -/
+/-- The finite-family Minkowski estimate for the literal vertical projections.
+The extended norm inequality needs no measurability premise. -/
 theorem eLpNorm_verticalRecombined_le_sum
     (verticalCutoff : Real → Complex) (scale : Real) (indices : Finset Int)
     (H : Int → WaveSpaceTime → Complex) (p : ENNReal)
-    (hmeas : ∀ n ∈ indices,
-      AEStronglyMeasurable (verticalProjection verticalCutoff scale n (H n)) volume)
     (hp : 1 ≤ p) :
     eLpNorm (verticalRecombined verticalCutoff scale indices H) p volume ≤
       ∑ n ∈ indices, eLpNorm (verticalProjection verticalCutoff scale n (H n)) p volume := by
@@ -1641,8 +1638,6 @@ recombination costs at most the cardinality of its index family. -/
 theorem eLpNorm_verticalRecombined_le_card_nsmul_of_bound
     (verticalCutoff : Real → Complex) (scale : Real) (indices : Finset Int)
     (H : Int → WaveSpaceTime → Complex) (p B : ENNReal)
-    (hmeas : ∀ n ∈ indices,
-      AEStronglyMeasurable (verticalProjection verticalCutoff scale n (H n)) volume)
     (hp : 1 ≤ p)
     (hbound : ∀ n ∈ indices,
       eLpNorm (verticalProjection verticalCutoff scale n (H n)) p volume ≤ B) :
@@ -1651,7 +1646,7 @@ theorem eLpNorm_verticalRecombined_le_card_nsmul_of_bound
   calc
     eLpNorm (verticalRecombined verticalCutoff scale indices H) p volume ≤
         ∑ n ∈ indices, eLpNorm (verticalProjection verticalCutoff scale n (H n)) p volume :=
-      eLpNorm_verticalRecombined_le_sum verticalCutoff scale indices H p hmeas hp
+      eLpNorm_verticalRecombined_le_sum verticalCutoff scale indices H p hp
     _ ≤ ∑ _n ∈ indices, B :=
       Finset.sum_le_sum fun n hn => hbound n hn
     _ = indices.card • B := by simp
@@ -1661,9 +1656,6 @@ family gives a completely concrete scale-dependent finite count. -/
 theorem eLpNorm_verticalRecombined_relevantRadialIndexEnumeration_le_of_bound
     (verticalCutoff : Real → Complex) (scale : Real)
     (H : Int → WaveSpaceTime → Complex) (p B : ENNReal)
-    (hmeas : ∀ n ∈ relevantRadialIndexEnumeration scale,
-      AEStronglyMeasurable
-        (verticalProjection verticalCutoff scale n (H n)) volume)
     (hp : 1 ≤ p)
     (hbound : ∀ n ∈ relevantRadialIndexEnumeration scale,
       eLpNorm (verticalProjection verticalCutoff scale n (H n)) p volume ≤ B) :
@@ -1676,7 +1668,7 @@ theorem eLpNorm_verticalRecombined_relevantRadialIndexEnumeration_le_of_bound
         (verticalRecombined verticalCutoff scale (relevantRadialIndexEnumeration scale) H)
         p volume ≤ (relevantRadialIndexEnumeration scale).card • B :=
       eLpNorm_verticalRecombined_le_card_nsmul_of_bound verticalCutoff scale
-        (relevantRadialIndexEnumeration scale) H p B hmeas hp hbound
+        (relevantRadialIndexEnumeration scale) H p B hp hbound
     _ ≤ (2 * ⌈Real.sqrt scale⌉₊ + 7) • B :=
       nsmul_le_nsmul_left (by positivity : 0 ≤ B)
         (card_relevantRadialIndexEnumeration_le_two_mul_natCeil_sqrt_add_seven scale)
@@ -1747,13 +1739,6 @@ theorem eLpNorm_verticalRecombined_le_of_tendsto_eLpNorm
     (verticalCutoff : Real → Complex) (scale : Real) (indices : Finset Int)
     (H : Int → WaveSpaceTime → Complex)
     (packets : Nat → Int → WaveSpaceTime → Complex) (A : ENNReal) (hA : A ≠ ∞)
-    (houtput_meas : AEStronglyMeasurable
-      (verticalRecombined verticalCutoff scale indices H) volume)
-    (hpacket_output_meas : ∀ k, AEStronglyMeasurable
-      (verticalRecombined verticalCutoff scale indices (packets k)) volume)
-    (hsquare_meas : AEStronglyMeasurable (verticalSquareFunction indices H) volume)
-    (hpacket_square_meas : ∀ k, AEStronglyMeasurable
-      (verticalSquareFunction indices (packets k)) volume)
     (hpacket_bound : ∀ k,
       eLpNorm (verticalRecombined verticalCutoff scale indices (packets k))
           (4 : ENNReal) volume ≤

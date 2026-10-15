@@ -2658,7 +2658,7 @@ private theorem rta_exists_scratchSmoothNormalRadialFactor_iteratedFDeriv_unifor
       (rta_exists_scratch_scaledNormalExtension_iteratedFDeriv_uniform_bound D i hi).choose
     else 0
   have hCrho_nonneg {i : Nat} (hi : 1 ≤ i) : 0 ≤ Crho i := by
-    simp only [Crho, dif_pos hi]
+    simp only [Crho, dite_eq_left hi]
     exact (rta_exists_scratch_scaledNormalExtension_iteratedFDeriv_uniform_bound D i
         hi).choose_spec.1
   have hCrho {i : Nat} (hi : 1 ≤ i) (scale : Real) (hscale : 0 < scale)
@@ -2666,7 +2666,7 @@ private theorem rta_exists_scratchSmoothNormalRadialFactor_iteratedFDeriv_unifor
       ‖iteratedFDeriv Real i
         (rta_scratchScaledNormalExtension D scale hscale : Euclidean 2 → Real) xi‖ ≤
         Crho i := by
-    simpa only [Crho, dif_pos hi] using
+    simpa only [Crho, dite_eq_left hi] using
       (rta_exists_scratch_scaledNormalExtension_iteratedFDeriv_uniform_bound D i hi).choose_spec.2
         scale hscale hscaleone xi
   let Cf : Real := ∑ i ∈ Finset.range (k + 1), max 1 (Crho i)
@@ -2986,7 +2986,7 @@ private theorem rta_exists_scale_pow_mul_norm_iteratedFDeriv_sheared_time_le_sum
       ‖iteratedFDeriv Real i
         (rta_scratchJointNormalDifference D scale hscale : JointWaveSpaceTime → Real) z‖ ≤ Cq i :=
             by
-    simpa only [Cq, dif_pos hi] using
+    simpa only [Cq, dite_eq_left hi] using
       (rta_exists_scratchJointNormalDifference_iteratedFDeriv_uniform_bound D i hi).choose_spec.2
         scale hscale hscaleone z
   let Cinner : Real := ∑ i ∈ Finset.range (k + 1), max 1 (Cq i)
@@ -3232,7 +3232,7 @@ private theorem rta_scratchBracket_exists_smoothNormalRadialFactor_iteratedFDeri
       ‖iteratedFDeriv Real i
         (rta_scratchScaledNormalExtension D scale hscale : Euclidean 2 → Real) xi‖ ≤
         Crho i := by
-    simpa only [Crho, dif_pos hi] using
+    simpa only [Crho, dite_eq_left hi] using
       (rta_exists_scratch_scaledNormalExtension_iteratedFDeriv_uniform_bound D i hi).choose_spec.2
         scale hscale hscaleone xi
   let Cf : Real := ∑ i ∈ Finset.range (k + 1), max 1 (Crho i)

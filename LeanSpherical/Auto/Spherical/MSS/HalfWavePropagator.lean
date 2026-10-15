@@ -34,9 +34,9 @@ public import Mathlib.MeasureTheory.SpecificCodomains.WithLp
 # Mockenhaupt--Seeger--Sogge local smoothing: basic objects
 
 This module uses Mathlib's unitary Fourier convention
-`exp (-2π i ⟪x, ξ⟫)` for the forward transform.  Consequently a half-wave
+`exp (-2π i ⟪x, ξ⟫)` for the forward transform. Consequently a half-wave
 travelling at physical speed one has multiplier
-`exp (± 2π i t ‖ξ‖)`.  The definitions below isolate this normalization and
+`exp (± 2π i t ‖ξ‖)`. The definitions below isolate this normalization and
 the numerical MSS gain before the geometric local-smoothing proof.
 -/
 
@@ -80,7 +80,7 @@ noncomputable def halfWaveMultiplierTimeDerivative
     halfWaveMultiplier σ t ξ
 
 /-- At each fixed frequency, the half-wave multiplier has its expected
-time derivative.  This is the pointwise input for scale-sensitive temporal
+time derivative. This is the pointwise input for scale-sensitive temporal
 sampling; no frequency regularity at the origin is asserted here. -/
 theorem hasDerivAt_halfWaveMultiplier_time
     (σ : WaveSign) (t : Real) (ξ : Euclidean 2) :
@@ -139,7 +139,7 @@ theorem halfWaveMultiplier_add (σ : WaveSign) (s t : Real) (ξ : Euclidean 2) :
   push_cast
   ring
 
-/-- Away from the origin, the half-wave phase is smooth in frequency.  The
+/-- Away from the origin, the half-wave phase is smooth in frequency. The
 origin is handled separately after a Littlewood--Paley cutoff has removed a
 neighborhood of zero. -/
 theorem halfWaveMultiplier_contDiffAt_of_ne_zero (σ : WaveSign) (t : Real)
@@ -190,7 +190,7 @@ theorem dyadicHalfWave_zero (χ : SchwartzMap (Euclidean 2) Complex)
   simp only [dyadicHalfWave, dyadicProjection, halfWaveMultiplier_zero,
     one_mul]
 
-/-- The frequency symbol of one cutoff half-wave.  Although the raw
+/-- The frequency symbol of one cutoff half-wave. Although the raw
 half-wave phase is nonsmooth at frequency zero, this product is smooth there
 because the dyadic band-pass vanishes on a neighborhood of zero. -/
 def dyadicHalfWaveSymbol (χ : SchwartzMap (Euclidean 2) Complex)
@@ -234,7 +234,7 @@ theorem hasCompactSupport_dyadicHalfWaveSymbol (C : lpCutoffs 2)
     dyadicBandpass_eq_zero_of_le_norm C hnorm
   simp [dyadicHalfWaveSymbol, hband]
 
-/-- The cutoff half-wave symbol as a Schwartz multiplier.  This packages the
+/-- The cutoff half-wave symbol as a Schwartz multiplier. This packages the
 removable nonsmoothness at zero for use with the existing Plancherel API. -/
 noncomputable def dyadicHalfWaveSchwartzSymbol (C : lpCutoffs 2)
     (σ : WaveSign) (j : Nat) (t : Real) : SchwartzMap (Euclidean 2) Complex :=
@@ -264,7 +264,7 @@ theorem norm_dyadicHalfWaveSchwartzSymbol_le_two (C : lpCutoffs 2)
   exact norm_dyadicBandpassMultiplier_le_two C j ξ
 
 /-- Plancherel gives the scale-uniform initial-time `L²` estimate for one
-dyadic Littlewood--Paley piece.  The factor four is only the elementary
+dyadic Littlewood--Paley piece. The factor four is only the elementary
 bound on the difference of the two cutoff values. -/
 theorem integral_norm_sq_dyadicProjection_le_four (C : lpCutoffs 2)
     (j : Nat) (f : SchwartzMap (Euclidean 2) Complex) :
@@ -294,7 +294,7 @@ theorem integral_norm_sq_dyadicHalfWave_zero_le_four (C : lpCutoffs 2)
   rw [dyadicHalfWave_zero]
   exact integral_norm_sq_dyadicProjection_le_four C j f
 
-/-- The `L²` endpoint for a frequency-localized half-wave.  Unimodularity of
+/-- The `L²` endpoint for a frequency-localized half-wave. Unimodularity of
 the propagation phase and Plancherel make the bound uniform in time and in
 the dyadic scale. -/
 theorem fixedTimeL2Endpoint (C : lpCutoffs 2) (σ : WaveSign) (j : Nat) (t : Real)
@@ -317,7 +317,7 @@ theorem fixedTimeL2Endpoint (C : lpCutoffs 2) (σ : WaveSign) (j : Nat) (t : Rea
       norm_num
 
 /-- Blueprint-facing name for the proved fixed-time part of the MSS `L²`
-endpoint.  The subsequent space--time integration is recorded separately as
+endpoint. The subsequent space--time integration is recorded separately as
 `localL2Endpoint`, since it requires a joint-measurability/Fubini layer. -/
 theorem l2Endpoint (C : lpCutoffs 2) (σ : WaveSign) (j : Nat) (t : Real)
     (f : SchwartzMap (Euclidean 2) Complex) :
@@ -325,7 +325,7 @@ theorem l2Endpoint (C : lpCutoffs 2) (σ : WaveSign) (j : Nat) (t : Real)
       4 * ∫ x : Euclidean 2, ‖f x‖ ^ 2 :=
   fixedTimeL2Endpoint C σ j t f
 
-/-- The physical convolution kernel of a cutoff half-wave.  The annular
+/-- The physical convolution kernel of a cutoff half-wave. The annular
 cutoff makes its frequency symbol Schwartz, so this is a genuine Schwartz
 kernel even though the raw radial phase is nonsmooth at frequency zero. -/
 noncomputable def dyadicHalfWaveKernel (C : lpCutoffs 2) (σ : WaveSign)
@@ -380,7 +380,7 @@ theorem dyadicHalfWaveSymbol_eq_levelZero_scaled (C : lpCutoffs 2)
   rw [halfWaveMultiplier_eq_levelZero_scaled,
     dyadicBandpassMultiplier_eq_levelZero_scaled]
 
-/-- Exact physical-space scaling of the cutoff half-wave kernel.  Its
+/-- Exact physical-space scaling of the cutoff half-wave kernel. Its
 dyadic-scale dependence is entirely the Euclidean dilation; the remaining
 parameter is the rescaled time `2^j t`. -/
 theorem dyadicHalfWaveKernel_eq_levelZero_scaled (C : lpCutoffs 2)
@@ -462,7 +462,7 @@ theorem dyadicHalfWave_eq_convolution (C : lpCutoffs 2) (σ : WaveSign)
       (dyadicHalfWaveSchwartzSymbol C σ j t) f x
 
 /-- The physical `L∞` estimate for one cutoff half-wave, with its literal
-kernel `L¹` norm.  This is the exact Young endpoint; a uniform numerical
+kernel `L¹` norm. This is the exact Young endpoint; a uniform numerical
 bound on that kernel norm is the separate oscillatory kernel estimate. -/
 theorem norm_dyadicHalfWave_le_kernelL1 (C : lpCutoffs 2) (σ : WaveSign)
     (j : Nat) (t : Real) (f : SchwartzMap (Euclidean 2) Complex)
@@ -483,7 +483,7 @@ theorem norm_dyadicHalfWave_le_kernelL1 (C : lpCutoffs 2) (σ : WaveSign)
     norm_fourierInv_schwartz_multiplier_le
       (dyadicHalfWaveSchwartzSymbol C σ j t) f hfbound x
 
-/-- Physical-space fixed-time `L∞` endpoint for a dyadic half-wave.  The
+/-- Physical-space fixed-time `L∞` endpoint for a dyadic half-wave. The
 constant is exactly the `L¹` norm of the corresponding physical kernel. -/
 theorem fixedTimePhysicalLInfinityEndpoint (C : lpCutoffs 2) (σ : WaveSign)
     (j : Nat) (t : Real) (f : SchwartzMap (Euclidean 2) Complex)
@@ -491,7 +491,7 @@ theorem fixedTimePhysicalLInfinityEndpoint (C : lpCutoffs 2) (σ : WaveSign)
     ‖dyadicHalfWave C.cutoff σ j t f x‖ ≤ A * dyadicHalfWaveKernelL1 C σ j t := by
   exact norm_dyadicHalfWave_le_kernelL1 C σ j t f hfbound x
 
-/-- Scale-explicit form of the physical fixed-time endpoint.  This is an
+/-- Scale-explicit form of the physical fixed-time endpoint. This is an
 exact reduction of the dyadic kernel bound to the level-zero kernel at time
 `2^j t`; it does not assert a numerical oscillatory-kernel estimate. -/
 theorem fixedTimePhysicalLInfinityEndpoint_scaled (C : lpCutoffs 2)
@@ -516,7 +516,7 @@ theorem fixedTimePhysicalLInfinityEndpoint_of_kernelL1_le (C : lpCutoffs 2)
     _ ≤ A * B := mul_le_mul_of_nonneg_left hkernel hA
 
 /-- The compact cutoff half-wave symbol has an integrable physical-space
-kernel.  This is the qualitative kernel fact supplied directly by the
+kernel. This is the qualitative kernel fact supplied directly by the
 Schwartz calculus; obtaining a numerical bound on this norm over a time
 range requires a separate oscillatory-kernel estimate. -/
 theorem waveKernelL1 (C : lpCutoffs 2) (σ : WaveSign) (j : Nat) (t : Real) :
@@ -669,7 +669,7 @@ theorem fourierInv_cancelled_laplacian_eq_cone_quadratic
   ring
 
 /-- The quadratic weight measuring distance to the planar wave cone at time
-`s`.  Dividing the radial discrepancy `‖x‖² - s²` by `s` makes the resulting
+`s`. Dividing the radial discrepancy `‖x‖² - s²` by `s` makes the resulting
 reciprocal weight have mass of order `s`. -/
 def coneWeight (s : Real) (x : Euclidean 2) : Real :=
   1 + ((‖x‖ ^ 2 - s ^ 2) / s) ^ 2
@@ -899,7 +899,7 @@ private theorem weighted_cauchy_schwarz
       ring_nf
 
 /-- A conditional weighted-`L²` estimate implies the planar wave-kernel
-`L¹` bound needed for the sharp half-wave endpoint.  The only hypothesis is
+`L¹` bound needed for the sharp half-wave endpoint. The only hypothesis is
 integrability of the cone-weighted energy; the Fourier-side cancellation is
 supplied separately. -/
 theorem integral_norm_le_coneWeightedEnergy
@@ -1355,7 +1355,7 @@ private theorem integral_cone_moment_le_cancelled
 
 /-- Plancherel converts the physical cone-weighted energy of `𝓕⁻ q` into
 the ordinary energy of `q` plus the scaled energy of the cancelled wave
-Laplacian.  This is the bridge from Fourier-side phase calculus to the sharp
+Laplacian. This is the bridge from Fourier-side phase calculus to the sharp
 kernel estimate. -/
 theorem integral_coneWeightedEnergy_fourierInv_le
     (q : SchwartzMap (Euclidean 2) Complex) (s : Real) (hs : 0 < s) :
@@ -1482,7 +1482,7 @@ theorem integral_norm_sq_levelZero_dyadicHalfWaveSchwartzSymbol_le
 /-- A uniform level-zero cone-weighted energy bound for both wave signs.
 
 This is the precise Fourier-side cancellation input needed for the sharp
-physical kernel endpoint.  It is deliberately separated from the
+physical kernel endpoint. It is deliberately separated from the
 physical-space Cauchy--Schwarz and scaling argument. -/
 def HasUniformConeWeightedKernelEnergy (C : lpCutoffs 2) : Prop :=
   ∃ A : Real, 0 < A ∧ ∀ (σ : WaveSign) (s : Real), 2 ≤ s →
@@ -1550,7 +1550,7 @@ theorem hasUniformConeWeightedKernelEnergy_of_cancelledEnergyBound
   · exact hR
 
 /-- The level-zero cutoff half-wave has uniformly bounded cone-weighted
-physical energy.  Its proof is the Fourier-side phase cancellation above,
+physical energy. Its proof is the Fourier-side phase cancellation above,
 combined with Plancherel. -/
 theorem hasUniformConeWeightedKernelEnergy (C : lpCutoffs 2) :
     HasUniformConeWeightedKernelEnergy C := by
@@ -1766,7 +1766,7 @@ theorem lInfinityEndpoint (C : lpCutoffs 2) (σ : WaveSign) (j : Nat)
       2 * ∫ ξ : Euclidean 2, ‖𝓕 (f : Euclidean 2 → Complex) ξ‖ :=
   fixedTimeFourierL1Endpoint C σ j t f x
 
-/-- The square of a fixed-time cutoff half-wave is integrable.  This is the
+/-- The square of a fixed-time cutoff half-wave is integrable. This is the
 Schwartz regularity input needed to apply product-measure Fubini. -/
 theorem integrable_norm_sq_dyadicHalfWave (C : lpCutoffs 2) (σ : WaveSign)
     (j : Nat) (t : Real) (f : SchwartzMap (Euclidean 2) Complex) :
@@ -1805,7 +1805,7 @@ def dyadicHalfWaveSpaceTime (χ : SchwartzMap (Euclidean 2) Complex)
     Euclidean 2 × Real → Complex :=
   fun z => dyadicHalfWave χ σ j z.2 f z.1
 
-/-- A cutoff half-wave is jointly continuous in space and time.  The proof
+/-- A cutoff half-wave is jointly continuous in space and time. The proof
 uses compact frequency support to turn the inverse Fourier integral into a
 continuous parametric integral. -/
 theorem continuous_dyadicHalfWaveSpaceTime (C : lpCutoffs 2) (σ : WaveSign)
@@ -1875,7 +1875,7 @@ theorem aestronglyMeasurable_dyadicHalfWaveSpaceTime (C : lpCutoffs 2)
   (continuous_dyadicHalfWaveSpaceTime C σ j f).aestronglyMeasurable
 
 /-- The local square of a cutoff half-wave is integrable on the unit time
-slab.  This is the Fubini regularity part of the local `L²` endpoint. -/
+slab. This is the Fubini regularity part of the local `L²` endpoint. -/
 theorem integrable_norm_sq_dyadicHalfWaveSpaceTime (C : lpCutoffs 2)
     (σ : WaveSign) (j : Nat) (f : SchwartzMap (Euclidean 2) Complex) :
     Integrable (fun z : Euclidean 2 × Real =>
@@ -1922,7 +1922,7 @@ theorem integrable_norm_sq_dyadicHalfWaveSpaceTime (C : lpCutoffs 2)
   exact hFint
 
 /-- Fubini upgrades the uniform fixed-time Plancherel estimate to the local
-space--time square-integral estimate.  The time interval has length one. -/
+space--time square-integral estimate. The time interval has length one. -/
 theorem integral_norm_sq_dyadicHalfWaveSpaceTime_le_four (C : lpCutoffs 2)
     (σ : WaveSign) (j : Nat) (f : SchwartzMap (Euclidean 2) Complex) :
     (∫ z : Euclidean 2 × Real,
@@ -1985,7 +1985,7 @@ theorem integral_norm_sq_dyadicHalfWaveSpaceTime_le_four (C : lpCutoffs 2)
       rw [integral_const, smul_eq_mul, hνuniv, one_mul]
 
 /-- The full space--time `L²` endpoint in the form interpolated in the MSS
-argument.  This is a target predicate rather than a claim: the source-checked
+argument. This is a target predicate rather than a claim: the source-checked
 fixed-time Plancherel theorem is `l2Endpoint`; passing it through Fubini
 requires the remaining joint-measurability layer. -/
 def localL2Endpoint (C : lpCutoffs 2) : Prop :=
@@ -2049,7 +2049,7 @@ theorem localL2Endpoint_proof (C : lpCutoffs 2) : localL2Endpoint C := by
 
 /-- A positive local-smoothing gain for the planar half-wave at exponent `p`.
 
-This is the precise form required by the Bourgain reduction.  It is only a
+This is the precise form required by the Bourgain reduction. It is only a
 definition here; proving it is the geometric Mockenhaupt--Seeger--Sogge part
 of this development. -/
 def HasPositiveLocalSmoothingGain (χ : SchwartzMap (Euclidean 2) Complex)
@@ -2063,7 +2063,7 @@ def HasPositiveLocalSmoothingGain (χ : SchwartzMap (Euclidean 2) Complex)
             ((j : Real) * (1 / 2 - 1 / p - ρ))) *
             eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume
 
-/-- The MSS gain, in its piecewise form on the full real line.  The intended
+/-- The MSS gain, in its piecewise form on the full real line. The intended
 range is `2 < p < ∞`. -/
 def mssGain (p : Real) : Real :=
   if p ≤ 4 then (1 / 2) * (1 / 2 - 1 / p) else 1 / (2 * p)
@@ -2091,12 +2091,12 @@ theorem mssGain_pos {p : Real} (hp : 2 < p) : 0 < mssGain p := by
       rw [div_lt_div_iff₀ hp0 (by norm_num : (0 : Real) < 2)]
       simpa using hp
     positivity
-  · rw [mssGain, if_neg hfour]
+  · rw [mssGain, ite_eq_right hfour]
     have hp0 : 0 < p := lt_trans (by norm_num) hp
     positivity
 
 /-- The exact continuous local-smoothing assertion in the introductory MSS
-theorem.  It is packaged as a proposition so that the geometric proof and
+theorem. It is packaged as a proposition so that the geometric proof and
 the later Bourgain reduction have a common, normalization-sensitive target. -/
 def localSmoothing (χ : SchwartzMap (Euclidean 2) Complex)
     (p η : Real) : Prop :=
@@ -2109,7 +2109,7 @@ def localSmoothing (χ : SchwartzMap (Euclidean 2) Complex)
             ((j : Real) * (1 / 2 - 1 / p - mssGain p + η))) *
             eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume
 
-/-- The `p = 4` endpoint form of the MSS local-smoothing theorem.  At this
+/-- The `p = 4` endpoint form of the MSS local-smoothing theorem. At this
 exponent `mssGain_four` turns the power in `localSmoothing` into
 `1 / 8 + η`, exactly as in the blueprint. -/
 def p4LocalSmoothing (χ : SchwartzMap (Euclidean 2) Complex) : Prop :=
@@ -2168,7 +2168,7 @@ def MaximalSeparated (j : Nat) (T : Finset Real) : Prop :=
   ∀ t ∈ Icc (1 : Real) 2, ∃ s ∈ T, |t - s| < dyadicTimeScale j
 
 /-- The exact discretized full-time local-smoothing assertion from the
-introductory blueprint.  `ENNReal` powers encode the outer `ℓ^p` norm without
+introductory blueprint. `ENNReal` powers encode the outer `ℓ^p` norm without
 introducing an artificial finiteness hypothesis on individual norms. -/
 def discreteLocalSmoothing (χ : SchwartzMap (Euclidean 2) Complex)
     (p η : Real) : Prop :=
@@ -2199,7 +2199,7 @@ noncomputable def spaceTimeFourierInv (G : WaveSpaceTime → Complex) :
   fun z => 𝓕⁻ (fun τ : Real => 𝓕⁻ (fun η : Euclidean 2 => G (η, τ)) z.1) z.2
 
 /-- The Hilbert coordinate model for genuinely joint Schwartz space--time
-data.  The raw product `WaveSpaceTime` does not itself carry the joint inner
+data. The raw product `WaveSpaceTime` does not itself carry the joint inner
 product structure needed by `SchwartzMap`; `WithLp 2` supplies that structure
 without changing the underlying product coordinates. -/
 abbrev JointWaveSpaceTime := WithLp 2 WaveSpaceTime
@@ -2583,7 +2583,7 @@ theorem jointRadialShear_proper
       nlinarith [norm_nonneg (jointRadialShear rho z)]
 
 /-- Precompose a joint Schwartz spectral profile with the smooth radial shear
-`(ξ, τ) ↦ (ξ, τ - rho ξ)`.  This is a spectral Schwartz construction only. -/
+`(ξ, τ) ↦ (ξ, τ - rho ξ)`. This is a spectral Schwartz construction only. -/
 noncomputable def jointSchwartzPrecompRadialShear
     (rho : SchwartzMap (Euclidean 2) Real)
     (Q : SchwartzMap JointWaveSpaceTime Complex) :
@@ -2645,7 +2645,7 @@ noncomputable def jointSchwartzRaw
   fun z => G (WithLp.toLp 2 z)
 
 /-- The `WithLp` product coordinate map is volume preserving for the global
-Haar/Borel measure selected by the joint Fourier transform.  The explicit
+Haar/Borel measure selected by the joint Fourier transform. The explicit
 argument through Borel measurability avoids identifying that measure structure
 definitionally with `WithLp.measurableSpace`. -/
 private theorem aux_jointWaveSpaceTime_volumePreserving_toLp :
@@ -2666,11 +2666,11 @@ private theorem aux_jointWaveSpaceTime_volumePreserving_toLp :
       (volume.prod volume)
           ((WithLp.toLp 2 : Euclidean 2 × Real → JointWaveSpaceTime) ⁻¹' s) =
         μ s := by
-    letI : MeasurableSpace JointWaveSpaceTime :=
+    let : MeasurableSpace JointWaveSpaceTime :=
       WithLp.measurableSpace 2 (Euclidean 2 × Real)
-    letI : BorelSpace JointWaveSpaceTime :=
+    let : BorelSpace JointWaveSpaceTime :=
       WithLp.borelSpace 2 (Euclidean 2) Real
-    letI : MeasureSpace JointWaveSpaceTime := { volume := μ }
+    let : MeasureSpace JointWaveSpaceTime := { volume := μ }
     have hs' : MeasurableSet s := by
       rwa [BorelSpace.measurable_eq (α := JointWaveSpaceTime)]
     have hpres := WithLp.volume_preserving_toLp (Euclidean 2) Real
@@ -3178,7 +3178,7 @@ theorem spaceTimeFourierInv_jointSchwModulatedAnnProf_eq_halfWave_of_eq_norm_on_
 
 /-- The iterated space--time Fourier transform of the supplied
 temporal-Schwartz positive annular half-wave is its joint modulated annular
-profile.  This is a spectral identity, with no conic-support assertion. -/
+profile. This is a spectral identity, with no conic-support assertion. -/
 theorem spaceTimeFourier_temporalSchwartzHalfWave_eq_jointSchwartzModulatedAnnularProfile
     (B : SchwartzMap (Euclidean 2) Complex)
     (vartheta : SchwartzMap Real Complex)
@@ -4154,30 +4154,9 @@ theorem normalizedCircle_schwartz_frequency_representation
   exact normalizedCircle_integral_frequencyKernel ht₀ hr F b X s hs
     (by simpa only [SchwartzMap.fourierInv_coe] using hleft)
     (by simpa only [SchwartzMap.fourierInv_coe] using hright)
-#print axioms normalizedCircle_schwartz_frequency_representation
-#print axioms normalizedCircleAmplitude_uniform_derivatives
-
-#print axioms sphericalAverage_eq_normalizedCircleAverage
-#print axioms normalizedCircle_input_moment_le
-
-
-#print axioms normalizedCircle_inverse_incidence
-#print axioms normalizedCircle_inverse_normal
-#print axioms normalizedCircleIncidence_mul_scale
-#print axioms normalizedCircleIncidence_zero
-#print axioms normalizedCircleIncidence_physical_distance
-#print axioms normalizedCircleIncidence_contDiffAt_of_small
-#print axioms normalizedCircleIncidence_tendsto_zero
-#print axioms normalizedCircleIncidence_uniform_derivatives
-#print axioms norm_normalizedCircleNormal
-#print axioms normalizedCircleIncidence_hasDerivAt_spatial
-#print axioms normalizedCircleIncidence_hasDerivAt_radial
-#print axioms normalizedCircleIncidence_radial_jacobian_lower
-#print axioms hasDerivAt_planar_normalize
-#print axioms normalizedCircleNormal_contDiffAt
 
 /-- The full signed radial Fourier line vanishes when the scalar kernel has
-both its zeroth and first Fourier moments zero at the line frequency.  This
+both its zeroth and first Fourier moments zero at the line frequency. This
 is the low spatial-frequency cancellation used by the normalized-family
 `L²` estimate; it is not a local-smoothing assertion. -/
 theorem normalizedCircle_signedRadialFourierLine_eq_zero
@@ -4298,8 +4277,6 @@ theorem normalizedCircle_signedRadialFourierLine_bandpass
     linarith
   simpa only [hk] using normalizedCircle_signedRadialFourierLine_of_gap k R a μ hkgap ha
 
-#print axioms normalizedCircle_signedRadialFourierLine_bandpass
-
 /-- The physical radial-shell kernel in normalized spatial coordinates. -/
 def normalizedCircleRadialShellKernel (k : Real → Complex) (R : Real)
     (Z : Euclidean 2) : Complex := (R : Complex)⁻¹ * k (R - ‖Z‖)
@@ -4376,8 +4353,6 @@ theorem normalizedCircleRadialShellKernel_fourier
   simp only [pow_one, smul_neg, neg_smul, neg_neg]
   ring
 
-#print axioms normalizedCircleRadialShellKernel_fourier
-
 private theorem normalizedCircle_surfaceFourier_line (q : Real) (ξ : Euclidean 2) :
     surfaceFourier 2 (q • ξ) =
       ∫ ω : Metric.sphere (0 : Euclidean 2) 1,
@@ -4428,8 +4403,6 @@ theorem normalizedCircle_fullRadialFourierLine_of_gap
       exact normalizedCircle_signedRadialFourierLine_of_gap k R
         (inner Real (ω : Euclidean 2) ξ) μ hgap ha
 
-#print axioms normalizedCircle_fullRadialFourierLine_of_gap
-
 private theorem normalizedCircle_integrable_radial_surfaceFourier
     (k : SchwartzMap Real Complex) (R : Real) (ξ : Euclidean 2) :
     Integrable (fun q : Real =>
@@ -4448,7 +4421,7 @@ private theorem normalizedCircle_integrable_radial_surfaceFourier
     (norm_nonneg ((q : Complex) * k (R - q)))
 
 /-- Low spatial frequencies of the actual radial-shell kernel are bounded
-by the first absolute moment of its one-dimensional inverse kernel.  The
+by the first absolute moment of its one-dimensional inverse kernel. The
 full signed line cancels; only the negative-radius correction remains. -/
 theorem normalizedCircleRadialShellKernel_low_frequency
     (k : SchwartzMap Real Complex) (R μ : Real) (hR : 0 < R) (ξ : Euclidean 2)
@@ -4504,8 +4477,6 @@ theorem normalizedCircleRadialShellKernel_low_frequency
   convert mul_le_mul_of_nonneg_left hinner (inv_nonneg.mpr hR.le) using 1
   dsimp [M]
   ring
-
-#print axioms normalizedCircleRadialShellKernel_low_frequency
 
 private theorem normalizedCircle_surfaceFourier_decay_positive :
     ∃ C : Real, 0 < C ∧ ∀ ξ : Euclidean 2, 0 < ‖ξ‖ →
@@ -4588,7 +4559,8 @@ theorem normalizedCircleRadialShellKernel_high_frequency :
       calc
         _ ≤ (q * ‖k (R - q)‖) * a := mul_le_mul_of_nonneg_left hsf (by positivity)
         _ ≤ ((R + |R - q|) * ‖k (R - q)‖) * a := by gcongr
-        _ ≤ _ := by nlinarith [mul_nonneg hM (mul_nonneg (abs_nonneg (R - q)) (norm_nonneg (k (R - q))))]
+        _ ≤ _ := by nlinarith [mul_nonneg hM (mul_nonneg (abs_nonneg (R - q)) (norm_nonneg (k (R -
+          q))))]
     · have hqbound : q ≤ |R - q| := by
         rw [abs_of_pos (by linarith : 0 < R - q)]
         linarith
@@ -4596,7 +4568,8 @@ theorem normalizedCircleRadialShellKernel_high_frequency :
         _ ≤ (q * ‖k (R - q)‖) * M := mul_le_mul_of_nonneg_left
           (norm_surfaceFourier_le_surfaceMass 2 (q • ξ)) (by positivity)
         _ ≤ (|R - q| * ‖k (R - q)‖) * M := by gcongr
-        _ ≤ _ := by nlinarith [mul_nonneg ha (mul_nonneg (abs_nonneg (R - q)) (norm_nonneg (k (R - q)))),
+        _ ≤ _ := by nlinarith [mul_nonneg ha (mul_nonneg (abs_nonneg (R - q)) (norm_nonneg (k (R -
+          q)))),
           mul_nonneg (mul_nonneg ha hR.le) (norm_nonneg (k (R - q)))]
   have hinner : ‖∫ q in Ioi (0 : Real), F q‖ ≤
       (a * R) * (∫ v : Real, ‖k v‖) +
@@ -4622,10 +4595,8 @@ theorem normalizedCircleRadialShellKernel_high_frequency :
   dsimp [a, M]
   field_simp
 
-#print axioms normalizedCircleRadialShellKernel_high_frequency
-
 /-- Uniform `L²` multiplier size for the actual normalized radial shell.
-The constant depends only on the fixed conormal bandpass.  This is the
+The constant depends only on the fixed conormal bandpass. This is the
 Plancherel prerequisite for the normalized family, and supplies no `L⁴`
 local-smoothing gain. -/
 theorem normalizedCircleRadialShellKernel_bandpass_multiplier
@@ -4738,10 +4709,8 @@ theorem normalizedCircleRadialShellKernel_bandpass_multiplier
         nlinarith [mul_nonneg (mul_nonneg hC.le hK₀) hp,
           mul_nonneg (mul_nonneg hC.le hK₁) hp]
 
-#print axioms normalizedCircleRadialShellKernel_bandpass_multiplier
-
 /-- Exact positive coarea in the normalized annular coordinates, including
-both radial Jacobians and a measurable output-time selector.  This is the
+both radial Jacobians and a measurable output-time selector. This is the
 low-frequency moment transport for the actual circular averaging family. -/
 theorem normalizedCircle_lintegral_coarea_rescaled
     {a r : Real} (ha : 0 < a) (hr : 0 < r)
@@ -4808,11 +4777,9 @@ theorem normalizedCircle_lintegral_coarea_rescaled
   have h := congrArg (fun z : ℝ≥0∞ => (ENNReal.ofReal r)⁻¹ * z) hsame
   simpa only [← mul_assoc, ENNReal.inv_mul_cancel hr0 ENNReal.ofReal_ne_top, one_mul] using h
 
-#print axioms normalizedCircle_lintegral_coarea_rescaled
-
 /-- Uniform positive moment transport on a normalized output-time window.
 The hypotheses say that the selected output radii are at least `a/2`, and
-the input is supported at radii at most `2a`.  No frequency cutoff or decay
+the input is supported at radii at most `2a`. No frequency cutoff or decay
 is used. -/
 theorem normalizedCircle_lintegral_positive_moment_le
     {a r : Real} (ha : 0 < a) (hr : 0 < r)
@@ -4885,8 +4852,6 @@ theorem normalizedCircle_lintegral_positive_moment_le
     norm_num
   simpa only [← mul_assoc, hcoeff] using h
 
-#print axioms normalizedCircle_lintegral_positive_moment_le
-
 private theorem normalizedCircle_lintegral_jensen
     (f : Metric.sphere (0 : Euclidean 2) 1 → ℝ≥0∞)
     (hf : Measurable f) {p : Real} (hp : 1 ≤ p) :
@@ -4925,7 +4890,7 @@ private theorem normalizedCircle_sphericalAverage_pointwise_moment
   exact normalizedCircle_lintegral_jensen _ (by fun_prop) hp
 
 /-- Uniform spacetime `Lᵖ` moment bound for the actual circular averages
-after normalizing an input annulus.  It is the non-derivative low-frequency
+after normalizing an input annulus. It is the non-derivative low-frequency
 bound in the repair note, with all surface-mass factors retained. -/
 theorem normalizedCircle_sphericalAverage_moment_le
     {a r : Real} (ha : 0 < a) (hr : 0 < r)
@@ -4975,8 +4940,6 @@ theorem normalizedCircle_sphericalAverage_moment_le
       mul_le_mul' le_rfl hpositive
     _ = _ := by dsimp [C]; ring
 
-#print axioms normalizedCircle_sphericalAverage_moment_le
-
 /-- The same uniform moment estimate for the exact normalized circle
 operator, on the coordinate window where it equals the physical average. -/
 theorem normalizedCircleAverage_moment_le
@@ -5006,8 +4969,6 @@ theorem normalizedCircleAverage_moment_le
     · rw [sphericalAverage_eq_normalizedCircleAverage ha r X s f (hsmall s hzero)]
   rw [heq]
   exact normalizedCircle_sphericalAverage_moment_le ha hr f hf G hG X hp hGone hout hin
-
-#print axioms normalizedCircleAverage_moment_le
 
 /-- The zero-scale dual Radon operator has the same uniform moment bound.
 Together with the positive-scale estimate, this covers the compact smooth
@@ -5051,8 +5012,6 @@ theorem normalizedCircleAverage_zero_moment_le
       exact lintegral_add_right_eq_self (fun u : Real => ‖h (η : Euclidean 2) u‖ₑ ^ p)
         (inner Real (η : Euclidean 2) X)
 
-#print axioms normalizedCircleAverage_zero_moment_le
-
 /-! ### The actual normalized circular ray chart
 
 For the supplied repair, Sections 4--5, use the exact intercept and unit
@@ -5074,7 +5033,7 @@ def normalizedCircleRayNormal (ε B : Real) (ω V : Euclidean 2) : Euclidean 2 :
   normalizedCircleRayCos ε B • ω - (ε * B) • V
 
 /-- The normal-direction coefficient stays in `[1/2,1]` on the compact ray chart. -/
-theorem normalizedCircleRayCos_bounds (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+theorem normalizedCircleRayCos_bounds (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     1/2 ≤ normalizedCircleRayCos ε B ∧ normalizedCircleRayCos ε B ≤ 1 := by
   have hb0 := abs_nonneg (ε * B)
   have hsq : (ε * B)^2 ≤ 1/4 := by nlinarith [sq_abs (ε * B)]
@@ -5085,7 +5044,7 @@ theorem normalizedCircleRayCos_bounds (ε B : Real) (hb : |ε * B| ≤ 1/2) :
   constructor <;> nlinarith
 
 /-- Exact removable-scale identity used to identify the actual circular rays. -/
-theorem normalizedCircleRayOffset_identity (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+theorem normalizedCircleRayOffset_identity (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     ε * normalizedCircleRayOffset ε B = 1 - normalizedCircleRayCos ε B := by
   have hc := (normalizedCircleRayCos_bounds ε B hb).1
   have hcsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
@@ -5101,7 +5060,7 @@ theorem normalizedCircleRayOffset_identity (ε B : Real) (hb : |ε * B| ≤ 1/2)
 
 /-- The ray direction is a unit vector for any orthonormal source frame. -/
 theorem norm_normalizedCircleRayNormal (ε B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
+    (hb : |ε * B| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
     (horth : inner Real ω V = 0) :
     ‖normalizedCircleRayNormal ε B ω V‖ = 1 := by
   have hsq : (normalizedCircleRayCos ε B)^2 + (ε * B)^2 = 1 := by
@@ -5124,7 +5083,7 @@ theorem norm_normalizedCircleRayNormal (ε B : Real) (ω V : Euclidean 2)
 
 /-- The ray intercept lies on the actual normalized incidence surface at time zero. -/
 theorem normalizedCircleRayTerminal_vector (ε u B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) :
     ω + ε • (u • ω - normalizedCircleRayTerminal ε u B ω V) =
       normalizedCircleRayNormal ε B ω V := by
   have hi := normalizedCircleRayOffset_identity ε B hb
@@ -5134,9 +5093,10 @@ theorem normalizedCircleRayTerminal_vector (ε u B : Real) (ω V : Euclidean 2)
     _ = _ := by rw [show 1 - ε * normalizedCircleRayOffset ε B =
         normalizedCircleRayCos ε B by linarith]
 
-/-- The curve `X(T)=p-T*n` lies on the actual incidence `F=T`, including at zero scale. This identifies the rays used in the packet localization for the supplied repair, Sections 4--5. -/
+/-- The curve `X(T)=p-T*n` lies on the actual incidence `F=T`, including at zero scale. This
+  identifies the rays used in the packet localization for the supplied repair, Sections 4--5. -/
 theorem normalizedCircleRay_incidence (ε u B T : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hT : 0 < 1 + ε * T)
+    (hb : |ε * B| ≤ 1 / 2) (hT : 0 < 1 + ε * T)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
     normalizedCircleIncidence ε
       (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V)
@@ -5163,9 +5123,8 @@ theorem normalizedCircleRay_incidence (ε u B T : Real) (ω V : Euclidean 2)
     rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hT, hn, mul_one] at hm
     apply (mul_left_cancel₀ he)
     linarith
-#print axioms normalizedCircleRay_incidence
 /-- The derivative of the actual positive normal coefficient in the transverse ray parameter. -/
-theorem normalizedCircleRayCos_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+theorem normalizedCircleRayCos_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     HasDerivAt (normalizedCircleRayCos ε) (-(ε^2 * B) / normalizedCircleRayCos ε B) B := by
   have hb0 := abs_nonneg (ε * B)
   have hpos : 0 < 1 - (ε * B)^2 := by nlinarith [sq_abs (ε * B)]
@@ -5181,7 +5140,7 @@ theorem normalizedCircleRayCos_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/2) 
   field_simp
 
 /-- The derivative of the rationalized radial offset, including zero scale. -/
-theorem normalizedCircleRayOffset_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+theorem normalizedCircleRayOffset_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     HasDerivAt (normalizedCircleRayOffset ε)
       (ε * B / normalizedCircleRayCos ε B) B := by
   have hc := (normalizedCircleRayCos_bounds ε B hb).1
@@ -5201,7 +5160,9 @@ theorem normalizedCircleRayOffset_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/
       ((ε * (2 * B) * (1 + normalizedCircleRayCos ε B) -
         ε * B^2 * (-(ε^2 * B) / normalizedCircleRayCos ε B)) /
           (1 + normalizedCircleRayCos ε B)^2) B := by
-    convert hd using 1 <;> simp
+    convert hd using 1 <;>
+      simp only [Pi.pow_apply, id_eq, Pi.add_apply, Nat.reduceSub, pow_one, mul_one,
+        zero_add, Nat.cast_ofNat]
     funext b
     rfl
   convert hd' using 1
@@ -5211,7 +5172,7 @@ theorem normalizedCircleRayOffset_hasDerivAt (ε B : Real) (hb : |ε * B| ≤ 1/
 
 /-- The actual transverse derivative of the ray intercept. -/
 theorem normalizedCircleRayTerminal_hasDerivAt (ε u B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) :
     HasDerivAt (fun b => normalizedCircleRayTerminal ε u b ω V)
       ((ε * B / normalizedCircleRayCos ε B) • ω + V) B := by
   unfold normalizedCircleRayTerminal
@@ -5221,21 +5182,16 @@ theorem normalizedCircleRayTerminal_hasDerivAt (ε u B : Real) (ω V : Euclidean
 
 /-- The actual transverse derivative of the ray normal. -/
 theorem normalizedCircleRayNormal_hasDerivAt (ε B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) :
     HasDerivAt (fun b => normalizedCircleRayNormal ε b ω V)
       ((-(ε^2 * B) / normalizedCircleRayCos ε B) • ω - ε • V) B := by
   unfold normalizedCircleRayNormal
   convert ((normalizedCircleRayCos_hasDerivAt ε B hb).smul_const ω).sub
     (((hasDerivAt_id B).const_mul ε).smul_const V) using 1 <;> first | rfl | simp
 
-#print axioms normalizedCircleRayCos_hasDerivAt
-#print axioms normalizedCircleRayOffset_hasDerivAt
-#print axioms normalizedCircleRayTerminal_hasDerivAt
-#print axioms normalizedCircleRayNormal_hasDerivAt
-
 /-- The transverse derivative of the actual intercept is uniformly bounded by two. -/
 theorem normalizedCircleRayTerminal_derivative_bound (ε B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    (hb : |ε * B| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
     ‖(ε * B / normalizedCircleRayCos ε B) • ω + V‖ ≤ 2 := by
   have hc := (normalizedCircleRayCos_bounds ε B hb).1
   have hcpos : 0 < normalizedCircleRayCos ε B := by linarith
@@ -5250,7 +5206,7 @@ theorem normalizedCircleRayTerminal_derivative_bound (ε B : Real) (ω V : Eucli
 
 /-- The transverse derivative of the actual normal is at most twice the scale. -/
 theorem normalizedCircleRayNormal_derivative_bound (ε B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    (hb : |ε * B| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
     ‖(-(ε^2 * B) / normalizedCircleRayCos ε B) • ω - ε • V‖ ≤ 2 * |ε| := by
   have hc := (normalizedCircleRayCos_bounds ε B hb).1
   have hcpos : 0 < normalizedCircleRayCos ε B := by linarith
@@ -5270,9 +5226,10 @@ theorem normalizedCircleRayNormal_derivative_bound (ε B : Real) (ω V : Euclide
       linarith
     _ = 2 * |ε| := by ring
 
-/-- The scalar determinant formula for the along/across coordinate derivatives. The literal derivative identity is proved below. -/
+/-- The scalar determinant formula for the along/across coordinate derivatives. The literal
+  derivative identity is proved below. -/
 theorem normalizedCircleRayCoordinate_determinant (ε u B : Real)
-    (hb : |ε * B| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) :
     normalizedCircleRayCos ε B * (1 + ε * u) -
       (-(ε * B * (1 + ε * u)) / normalizedCircleRayCos ε B) * (ε * B) =
         (1 + ε * u) / normalizedCircleRayCos ε B := by
@@ -5287,13 +5244,9 @@ theorem normalizedCircleRayCoordinate_determinant (ε u B : Real)
   field_simp [hcne]
   linear_combination (1 + ε * u) * hcsq
 
-#print axioms normalizedCircleRayTerminal_derivative_bound
-#print axioms normalizedCircleRayNormal_derivative_bound
-#print axioms normalizedCircleRayCoordinate_determinant
-
 /-- The exact normalized-circle normal is constant along the actual ray `p-T*n`. -/
 theorem normalizedCircleRayNormal_on_ray (ε u B T : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hT : 0 < 1 + ε * T)
+    (hb : |ε * B| ≤ 1 / 2) (hT : 0 < 1 + ε * T)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
     normalizedCircleNormal ε
       (normalizedCircleRayTerminal ε u B ω V - T • normalizedCircleRayNormal ε B ω V)
@@ -5313,9 +5266,10 @@ theorem normalizedCircleRayNormal_on_ray (ε u B T : Real) (ω V : Euclidean 2)
   rw [hv, norm_smul, Real.norm_eq_abs, abs_of_pos hT, hn, mul_one,
     smul_smul, inv_mul_cancel₀ hT.ne', one_smul]
 
-/-- Actual intercept coordinates in the normal frame, used in the joint source/ray change of variables. -/
+/-- Actual intercept coordinates in the normal frame, used in the joint source/ray change of
+  variables. -/
 theorem normalizedCircleRay_coordinates (ε u B : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
+    (hb : |ε * B| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
     (horth : inner Real ω V = 0) :
     inner Real (normalizedCircleRayTerminal ε u B ω V)
         (normalizedCircleRayNormal ε B ω V) =
@@ -5341,7 +5295,7 @@ theorem normalizedCircleRay_coordinates (ε u B : Real) (ω V : Euclidean 2)
 
 /-- The transverse derivative of the actual along-normal intercept coordinate. -/
 theorem normalizedCircleRayCoordinateAlong_hasDerivAt (ε u B : Real)
-    (hb : |ε * B| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) :
     HasDerivAt (fun b => normalizedCircleRayCos ε b * u -
       normalizedCircleRayOffset ε b)
       (-(ε * B * (1 + ε * u)) / normalizedCircleRayCos ε B) B := by
@@ -5349,13 +5303,11 @@ theorem normalizedCircleRayCoordinateAlong_hasDerivAt (ε u B : Real)
     (normalizedCircleRayOffset_hasDerivAt ε B hb) using 1
   ring
 
-#print axioms normalizedCircleRayNormal_on_ray
-#print axioms normalizedCircleRay_coordinates
-#print axioms normalizedCircleRayCoordinateAlong_hasDerivAt
-
-/-- The determinant of the literal partial derivatives of the actual along/across coordinate map is `(1+epsilon*u)/C`. This is the two-coordinate minor in the joint ray parametrization, not an assumed measure-change formula. -/
+/-- The determinant of the literal partial derivatives of the actual along/across coordinate map
+  is `(1+epsilon*u)/C`. This is the two-coordinate minor in the joint ray parametrization, not an
+  assumed measure-change formula. -/
 theorem normalizedCircleRayCoordinateJacobian_actual (ε u B : Real)
-    (hb : |ε * B| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) :
     deriv (fun v : Real => normalizedCircleRayCos ε B * v -
           normalizedCircleRayOffset ε B) u *
         deriv (fun b : Real => (1 + ε * u) * b) B -
@@ -5378,7 +5330,7 @@ theorem normalizedCircleRayCoordinateJacobian_actual (ε u B : Real)
 
 /-- The actual coordinate determinant stays in `[1/2,3]` on the compact normalized chart. -/
 theorem normalizedCircleRayCoordinateJacobian_bounds (ε u B : Real)
-    (hb : |ε * B| ≤ 1/2) (hu : |ε * u| ≤ 1/2) :
+    (hb : |ε * B| ≤ 1 / 2) (hu : |ε * u| ≤ 1 / 2) :
     1/2 ≤ (1 + ε * u) / normalizedCircleRayCos ε B ∧
       (1 + ε * u) / normalizedCircleRayCos ε B ≤ 3 := by
   have hc := normalizedCircleRayCos_bounds ε B hb
@@ -5389,9 +5341,6 @@ theorem normalizedCircleRayCoordinateJacobian_bounds (ε u B : Real)
     nlinarith [hu'.1, hc.2]
   · apply (div_le_iff₀ hcpos).mpr
     nlinarith [hu'.2, hc.1]
-
-#print axioms normalizedCircleRayCoordinateJacobian_actual
-#print axioms normalizedCircleRayCoordinateJacobian_bounds
 
 open scoped Matrix
 
@@ -5408,7 +5357,7 @@ def normalizedCircleRayCoordinateDerivative (ε : Real) (q : Real × Real) :
       ε * q.2, 1 + ε * q.1]).toContinuousLinearMap
 /-- The displayed matrix is the genuine Frechet derivative of the ray-coordinate map. -/
 theorem normalizedCircleRayCoordinateMap_hasFDerivAt (ε : Real) (q : Real × Real)
-    (hb : |ε * q.2| ≤ 1/2) :
+    (hb : |ε * q.2| ≤ 1 / 2) :
     HasFDerivAt (normalizedCircleRayCoordinateMap ε)
       (normalizedCircleRayCoordinateDerivative ε q) q := by
   unfold normalizedCircleRayCoordinateDerivative
@@ -5423,17 +5372,15 @@ theorem normalizedCircleRayCoordinateMap_hasFDerivAt (ε : Real) (q : Real × Re
     using 2 <;> simp only [smul_smul, Function.comp_apply, Pi.add_apply] <;> module
 /-- The determinant of the actual ray-coordinate differential is `(1+epsilon*u)/C`. -/
 theorem normalizedCircleRayCoordinateDerivative_det (ε : Real) (q : Real × Real)
-    (hb : |ε * q.2| ≤ 1/2) :
+    (hb : |ε * q.2| ≤ 1 / 2) :
     (normalizedCircleRayCoordinateDerivative ε q).det =
       (1 + ε * q.1) / normalizedCircleRayCos ε q.2 := by
   unfold normalizedCircleRayCoordinateDerivative
   simp only [LinearMap.det_toContinuousLinearMap, LinearMap.det_toLin, Matrix.det_fin_two_of]
   exact normalizedCircleRayCoordinate_determinant ε q.1 q.2 hb
-#print axioms normalizedCircleRayCoordinateMap_hasFDerivAt
-#print axioms normalizedCircleRayCoordinateDerivative_det
 /-- The physical source radius is recovered exactly from the intercept coordinates. -/
 theorem normalizedCircleRayCoordinateMap_radial_square (ε : Real) (q : Real × Real)
-    (hb : |ε * q.2| ≤ 1/2) :
+    (hb : |ε * q.2| ≤ 1 / 2) :
     (1 + ε * (normalizedCircleRayCoordinateMap ε q).1)^2 +
       (ε * (normalizedCircleRayCoordinateMap ε q).2)^2 =
         (1 + ε * q.1)^2 := by
@@ -5453,7 +5400,8 @@ theorem normalizedCircleRayCoordinateMap_radial_square (ε : Real) (q : Real × 
   have hm := congrArg (fun z : Real => (1 + ε * q.1)^2 * z) hcsq
   nlinarith [hm]
 
-/-- The actual ray-coordinate map is injective on the compact small-scale chart, including zero scale. -/
+/-- The actual ray-coordinate map is injective on the compact small-scale chart, including zero
+  scale. -/
 theorem normalizedCircleRayCoordinateMap_injOn (ε : Real) :
     InjOn (normalizedCircleRayCoordinateMap ε)
       {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2} := by
@@ -5479,7 +5427,9 @@ theorem normalizedCircleRayCoordinateMap_injOn (ε : Real) :
     exact mul_left_cancel₀ hqpos.ne' hsnd
   exact Prod.ext hfirst hsecond
 
-/-- The genuine change-of-variables theorem gives a uniform factor-two integral bound for the radial/transverse ray chart. This supplies the coordinate part of the source-to-ray energy transfer; angular rotation and frame-volume transfer are separate. -/
+/-- The genuine change-of-variables theorem gives a uniform factor-two integral bound for the
+  radial/transverse ray chart. This supplies the coordinate part of the source-to-ray energy
+  transfer; angular rotation and frame-volume transfer are separate. -/
 theorem normalizedCircleRayCoordinateMap_lintegral_le (ε : Real)
     (G : Real × Real → ENNReal) :
     (∫⁻ q in {q : Real × Real | |ε * q.1| ≤ 1/2 ∧ |ε * q.2| ≤ 1/2},
@@ -5528,10 +5478,6 @@ theorem normalizedCircleRayCoordinateMap_lintegral_le (ε : Real)
     _ = 2 * ∫⁻ p in normalizedCircleRayCoordinateMap ε '' D, G p := by rw [hchange]
     _ ≤ _ := mul_le_mul_of_nonneg_left (setLIntegral_le_lintegral _ _) (by positivity)
 
-#print axioms normalizedCircleRayCoordinateMap_radial_square
-#print axioms normalizedCircleRayCoordinateMap_injOn
-#print axioms normalizedCircleRayCoordinateMap_lintegral_le
-
 /-! ### Joint transfer from the actual source coordinates to ray space -/
 
 /-- The standard positive quarter turn in the normalized circular source frame. -/
@@ -5542,7 +5488,8 @@ def normalizedCircleQuarterTurn : Euclidean 2 ≃ₗᵢ[Real] Euclidean 2 := by
 theorem normalizedCircleQuarterTurn_sq (x : Euclidean 2) :
     normalizedCircleQuarterTurn (normalizedCircleQuarterTurn x) = -x := by
   let : Fact (Module.finrank Real (Euclidean 2) = 2) := ⟨by simp [Euclidean]⟩
-  exact (EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.rightAngleRotation_rightAngleRotation x
+  exact (EuclideanSpace.basisFun (Fin 2)
+    Real).toBasis.orientation.rightAngleRotation_rightAngleRotation x
 /-- The source direction and its quarter turn are orthogonal. -/
 theorem normalizedCircleQuarterTurn_inner (x : Euclidean 2) :
     inner Real x (normalizedCircleQuarterTurn x) = 0 := by
@@ -5550,7 +5497,7 @@ theorem normalizedCircleQuarterTurn_inner (x : Euclidean 2) :
   rw [real_inner_comm]
   exact (EuclideanSpace.basisFun (Fin 2) Real).toBasis.orientation.inner_rightAngleRotation_self x
 /-- The actual source-to-normal rotation at transverse parameter `B`, as a linear isometry. -/
-def normalizedCircleRayRotation (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+def normalizedCircleRayRotation (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     Euclidean 2 ≃ₗᵢ[Real] Euclidean 2 := by
   let C := normalizedCircleRayCos ε B
   let β := ε * B
@@ -5591,14 +5538,10 @@ def normalizedCircleRayRotation (ε B : Real) (hb : |ε * B| ≤ 1/2) :
       _ = (C^2 + β^2) • x := by module
       _ = x := by rw [hsq, one_smul]
 /-- The rotation is the actual normalized ray normal in the standard perpendicular frame. -/
-theorem normalizedCircleRayRotation_apply (ε B : Real) (hb : |ε * B| ≤ 1/2)
-    (x : Euclidean 2) :
+theorem normalizedCircleRayRotation_apply (ε B : Real) (hb : |ε * B| ≤ 1 / 2) (x : Euclidean 2) :
     normalizedCircleRayRotation ε B hb x =
       normalizedCircleRayNormal ε B x (normalizedCircleQuarterTurn x) := by
   rfl
-#print axioms normalizedCircleQuarterTurn_sq
-#print axioms normalizedCircleQuarterTurn_inner
-#print axioms normalizedCircleRayRotation
 /-- A unit perpendicular pair gives an orthonormal planar frame. -/
 theorem normalizedCircle_frame_orthonormal (ω V : Euclidean 2)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
@@ -5613,7 +5556,8 @@ def normalizedCircleOrthonormalFrame (ω V : Euclidean 2)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
     Euclidean 2 ≃ₗᵢ[Real] Euclidean 2 :=
   (OrthonormalBasis.mk (normalizedCircle_frame_orthonormal ω V hω hV horth)
-    ((normalizedCircle_frame_orthonormal ω V hω hV horth).linearIndependent.span_eq_top_of_card_eq_finrank'
+    ((normalizedCircle_frame_orthonormal ω V hω hV
+      horth).linearIndependent.span_eq_top_of_card_eq_finrank'
       (by simp [Euclidean])).ge).repr.symm
 /-- The frame isometry is the literal coordinate linear combination. -/
 theorem normalizedCircleOrthonormalFrame_apply (ω V : Euclidean 2)
@@ -5626,7 +5570,7 @@ theorem normalizedCircleOrthonormalFrame_apply (ω V : Euclidean 2)
 
 open MeasureTheory Set
 /-- The actual source-to-normal rotation on the unit direction circle. -/
-def normalizedCircleRayRotationSphere (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+def normalizedCircleRayRotationSphere (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     Metric.sphere (0 : Euclidean 2) 1 ≃ᵐ Metric.sphere (0 : Euclidean 2) 1 :=
   ((normalizedCircleRayRotation ε B hb).toHomeomorph.subtype
     (p := fun x : Euclidean 2 => x ∈ Metric.sphere 0 1)
@@ -5635,13 +5579,13 @@ def normalizedCircleRayRotationSphere (ε B : Real) (hb : |ε * B| ≤ 1/2) :
       simp only [mem_sphere_zero_iff_norm, LinearIsometryEquiv.coe_toHomeomorph]
       rw [LinearIsometryEquiv.norm_map])).toMeasurableEquiv
 /-- The actual source-to-normal rotation preserves the repository's raw circle measure. -/
-theorem normalizedCircleRayRotationSphere_preserves (ε B : Real) (hb : |ε * B| ≤ 1/2) :
+theorem normalizedCircleRayRotationSphere_preserves (ε B : Real) (hb : |ε * B| ≤ 1 / 2) :
     Measure.map (normalizedCircleRayRotationSphere ε B hb) (unitSurfaceMeasure 2) =
       unitSurfaceMeasure 2 := by
   exact map_unitSurfaceMeasure_linearIsometry 2 (normalizedCircleRayRotation ε B hb)
 /-- The actual angular change of variables preserves nonnegative integrals. -/
-theorem normalizedCircleRayRotationSphere_lintegral (ε B : Real) (hb : |ε * B| ≤ 1/2)
-    (G : Metric.sphere (0 : Euclidean 2) 1 → ENNReal) :
+theorem normalizedCircleRayRotationSphere_lintegral (ε B : Real) (hb : |ε * B| ≤ 1 / 2) (G :
+  Metric.sphere (0 : Euclidean 2) 1 → ENNReal) :
     (∫⁻ ω, G (normalizedCircleRayRotationSphere ε B hb ω) ∂unitSurfaceMeasure 2) =
       ∫⁻ n, G n ∂unitSurfaceMeasure 2 := by
   rw [← (normalizedCircleRayRotationSphere ε B hb).measurableEmbedding.lintegral_map]
@@ -5676,23 +5620,20 @@ theorem normalizedCircle_frame_lintegral (ω V : Euclidean 2)
       lintegral_congr (fun p => congrArg G (congrFun heq p))
     _ = _ := by rw [← e.measurableEmbedding.lintegral_map, hmp.map_eq]
 
-#print axioms normalizedCircleOrthonormalFrame_apply
-#print axioms normalizedCircleRayRotationSphere_lintegral
-#print axioms normalizedCircle_frame_lintegral
-
 /-- A unit perpendicular pair gives the literal inner-product decomposition of a planar vector. -/
 theorem normalizedCircle_frame_decomposition (ω V : Euclidean 2)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
     (x : Euclidean 2) :
     (inner Real x ω) • ω + (inner Real x V) • V = x := by
   let b := OrthonormalBasis.mk (normalizedCircle_frame_orthonormal ω V hω hV horth)
-    ((normalizedCircle_frame_orthonormal ω V hω hV horth).linearIndependent.span_eq_top_of_card_eq_finrank'
+    ((normalizedCircle_frame_orthonormal ω V hω hV
+      horth).linearIndependent.span_eq_top_of_card_eq_finrank'
       (by simp [Euclidean])).ge
   simpa [b, Fin.sum_univ_two, OrthonormalBasis.coe_mk, real_inner_comm] using b.sum_repr' x
 
 /-- The actual ray intercept has the along/across coordinates of the proved ray-coordinate map. -/
 theorem normalizedCircleRayTerminal_normalFrame (ε u B : Real) (ω : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hω : ‖ω‖ = 1) :
+    (hb : |ε * B| ≤ 1 / 2) (hω : ‖ω‖ = 1) :
     normalizedCircleRayTerminal ε u B ω (normalizedCircleQuarterTurn ω) =
       (normalizedCircleRayCoordinateMap ε (u,B)).1 •
         normalizedCircleRayNormal ε B ω (normalizedCircleQuarterTurn ω) +
@@ -5723,7 +5664,11 @@ theorem normalizedCircleRayTerminal_normalFrame (ε u B : Real) (ω : Euclidean 
     normalizedCircleRayCos ε B * u - normalizedCircleRayOffset ε B from hc.1, hcoordJ] at hdecomp
   exact hdecomp.symm
 
-/-- The actual normalized circle source/ray parametrization transfers squared-energy integrals with a uniform factor two. The source variables are raw circle direction and radial/transverse coordinates; the target variables are a spatial ray intercept and raw normal direction. This is the complete measure bridge for the weak ray estimate used in the supplied repair, Sections 4--5, including epsilon zero. -/
+/-- The actual normalized circle source/ray parametrization transfers squared-energy integrals
+  with a uniform factor two. The source variables are raw circle direction and radial/transverse
+  coordinates; the target variables are a spatial ray intercept and raw normal direction. This is
+  the complete measure bridge for the weak ray estimate used in the supplied repair, Sections
+  4--5, including epsilon zero. -/
 theorem normalizedCircle_source_ray_lintegral_le (ε : Real)
     (G : Euclidean 2 → Euclidean 2 → ENNReal)
     (hG : Measurable (Function.uncurry G)) :
@@ -5818,16 +5763,16 @@ theorem normalizedCircle_source_ray_lintegral_le (ε : Real)
         (fun p => G p (n : Euclidean 2))
       simpa only [D, H, hframe] using htrans
     _ = _ := by rw [lintegral_const_mul' _ _ (by norm_num : (2:ENNReal) ≠ ⊤)]
-#print axioms normalizedCircleRayTerminal_normalFrame
-#print axioms normalizedCircle_source_ray_lintegral_le
 
-/-- Sections 4--5 of the supplied repair: invert the exact incidence relation into its straight ray. The transverse coordinate is the physical perpendicular output coordinate divided by the actual distance; positivity selects the forward normal branch, including epsilon zero. -/
+/-- Sections 4--5 of the supplied repair: invert the exact incidence relation into its straight
+  ray. The transverse coordinate is the physical perpendicular output coordinate divided by the
+  actual distance; positivity selects the forward normal branch, including epsilon zero. -/
 theorem normalizedCircleRay_inverse
     (ε u : Real) (X ω V : Euclidean 2)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
     (hsep : ω + ε • (u • ω - X) ≠ 0)
     (ha : 0 < 1 + ε * (u - inner Real X ω))
-    (hb : |ε * (inner Real X V / ‖ω + ε • (u • ω - X)‖)| ≤ 1/2) :
+    (hb : |ε * (inner Real X V / ‖ω + ε • (u • ω - X)‖)| ≤ 1 / 2) :
     let B := inner Real X V / ‖ω + ε • (u • ω - X)‖
     let s := normalizedCircleIncidence ε X ω u
     X = normalizedCircleRayTerminal ε u B ω V -
@@ -5899,7 +5844,7 @@ theorem normalizedCircleRay_inverse
 theorem normalizedCircleRay_inverse_of_small
     (ε u : Real) (X ω V : Euclidean 2)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0)
-    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1/4) :
+    (hsmall : |ε| * (|u| + ‖X‖) ≤ 1 / 4) :
     let B := inner Real X V / ‖ω + ε • (u • ω - X)‖
     let s := normalizedCircleIncidence ε X ω u
     X = normalizedCircleRayTerminal ε u B ω V -
@@ -5939,8 +5884,7 @@ theorem normalizedCircleRay_domain_convex (ε : Real) :
 /-- Uniform transverse Lipschitz bound for the actual normalized ray intercept. -/
 theorem normalizedCircleRayTerminal_lipschitz
     (ε u B B₀ : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hb₀ : |ε * B₀| ≤ 1/2)
-    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    (hb : |ε * B| ≤ 1 / 2) (hb₀ : |ε * B₀| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
     ‖normalizedCircleRayTerminal ε u B ω V -
       normalizedCircleRayTerminal ε u B₀ ω V‖ ≤ 2 * |B - B₀| := by
   have hh := Convex.norm_image_sub_le_of_norm_hasDerivWithin_le
@@ -5953,8 +5897,7 @@ theorem normalizedCircleRayTerminal_lipschitz
 /-- Actual ray normals vary with a Lipschitz constant proportional to the geometric scale. -/
 theorem normalizedCircleRayNormal_lipschitz
     (ε B B₀ : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hb₀ : |ε * B₀| ≤ 1/2)
-    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
+    (hb : |ε * B| ≤ 1 / 2) (hb₀ : |ε * B₀| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
     ‖normalizedCircleRayNormal ε B ω V -
       normalizedCircleRayNormal ε B₀ ω V‖ ≤ 2 * |ε| * |B - B₀| := by
   have hh := Convex.norm_image_sub_le_of_norm_hasDerivWithin_le
@@ -5964,11 +5907,12 @@ theorem normalizedCircleRayNormal_lipschitz
       normalizedCircleRayNormal_derivative_bound ε b ω V hb' hω hV)
     (normalizedCircleRay_domain_convex ε) hb₀ hb
   simpa only [Real.norm_eq_abs] using hh
-/-- Exact ray geometry converts transverse-coordinate and incidence-level errors into spatial distance. This is the geometric localization bridge for the source Fourier cubes in repair (9). -/
+/-- Exact ray geometry converts transverse-coordinate and incidence-level errors into spatial
+  distance. This is the geometric localization bridge for the source Fourier cubes in repair (9). -/
 theorem normalizedCircleRay_distance_le
     (ε u B B₀ s T : Real) (ω V : Euclidean 2)
-    (hb : |ε * B| ≤ 1/2) (hb₀ : |ε * B₀| ≤ 1/2)
-    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    (hb : |ε * B| ≤ 1 / 2) (hb₀ : |ε * B₀| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner
+      Real ω V = 0) :
     ‖(normalizedCircleRayTerminal ε u B ω V -
         s • normalizedCircleRayNormal ε B ω V) -
       (normalizedCircleRayTerminal ε u B₀ ω V -
@@ -5993,8 +5937,6 @@ theorem normalizedCircleRay_distance_le
       · exact normalizedCircleRayTerminal_lipschitz ε u B B₀ ω V hb hb₀ hω hV
       · exact normalizedCircleRayNormal_lipschitz ε B B₀ ω V hb hb₀ hω hV
     _ = _ := by ring
-#print axioms normalizedCircleRay_inverse_of_small
-#print axioms normalizedCircleRay_distance_le
 
 /-! ### Exact covector gaps and anchored-ray geometry
 
@@ -6004,8 +5946,8 @@ ray tube, uniformly across both conormal signs and epsilon zero.
 -/
 
 private theorem circle_scalar_radial_gap (ρ ρ₀ c c₀ E : ℝ)
-    (hc : 1/2 ≤ c) (hc₀ : 1/2 ≤ c₀)
-    (hfirst : |ρ*c - ρ₀*c₀| ≤ E)
+    (hc : 1 / 2 ≤ c) (hc₀ : 1 / 2 ≤ c₀)
+    (hfirst : |ρ * c - ρ₀ * c₀| ≤ E)
     (hnorm : abs (|ρ| - |ρ₀|) ≤ E) :
     |ρ - ρ₀| ≤ 2*E := by
   have hE : 0 ≤ E := (abs_nonneg _).trans hfirst
@@ -6035,7 +5977,8 @@ private theorem circle_scalar_radial_gap (ρ ρ₀ c c₀ E : ℝ)
       rw [hn]
       exact hnorm.trans (by linarith)
 
-/-- Actual input covector mismatch controls the difference between scaled ray normals, including zero curvature and both conormal signs. -/
+/-- Actual input covector mismatch controls the difference between scaled ray normals, including
+  zero curvature and both conormal signs. -/
 theorem normalizedCircleRay_covector_norm_gap
     (ε a ρ ρ₀ B B₀ : Real) (ω V : Euclidean 2)
     (ha : |ε| ≤ a) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
@@ -6056,11 +5999,12 @@ theorem normalizedCircleRay_covector_norm_gap
   rw [abs_of_nonneg ha₀]
   gcongr
 
-/-- On the compact actual ray chart, the radial frequency error is controlled by the two input covector coordinates. No sign restriction on the radial frequencies is needed. -/
+/-- On the compact actual ray chart, the radial frequency error is controlled by the two input
+  covector coordinates. No sign restriction on the radial frequencies is needed. -/
 theorem normalizedCircleRay_covector_radial_gap
     (ε a ρ ρ₀ B B₀ : Real) (ω V : Euclidean 2)
-    (ha : |ε| ≤ a) (hb : |ε*B| ≤ 1/2) (hb₀ : |ε*B₀| ≤ 1/2)
-    (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
+    (ha : |ε| ≤ a) (hb : |ε * B| ≤ 1 / 2) (hb₀ : |ε * B₀| ≤ 1 / 2) (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1)
+      (horth : inner Real ω V = 0) :
     |ρ-ρ₀| ≤ 2 * (|ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
         |a * (ρ*B - ρ₀*B₀)|) := by
   have hn := normalizedCircleRay_covector_norm_gap ε a ρ ρ₀ B B₀ ω V ha hω hV
@@ -6075,15 +6019,13 @@ theorem normalizedCircleRay_covector_radial_gap
     (normalizedCircleRayCos_bounds ε B hb).1
     (normalizedCircleRayCos_bounds ε B₀ hb₀).1
     (by linarith [abs_nonneg (a * (ρ*B - ρ₀*B₀))]) hh
-#print axioms normalizedCircleRay_covector_norm_gap
-#print axioms normalizedCircleRay_covector_radial_gap
 
-/-- The actual transverse ray intercept is controlled by input covector mismatch at nonzero band frequency. -/
+/-- The actual transverse ray intercept is controlled by input covector mismatch at nonzero band
+  frequency. -/
 theorem normalizedCircleRay_covector_transverse_gap
     (ε a ρ ρ₀ B B₀ μ : Real) (ω V : Euclidean 2)
-    (haε : |ε| ≤ a) (ha : 1/2 ≤ a)
-    (hb : |ε*B| ≤ 1/2) (hb₀ : |ε*B₀| ≤ 1/2)
-    (hB : |B| ≤ 8) (hρ₀ : μ/2 ≤ |ρ₀|)
+    (haε : |ε| ≤ a) (ha : 1 / 2 ≤ a)
+    (hb : |ε * B| ≤ 1 / 2) (hb₀ : |ε * B₀| ≤ 1 / 2) (hB : |B| ≤ 8) (hρ₀ : μ / 2 ≤ |ρ₀|)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
     μ * |B-B₀| ≤ 36 *
       (|ρ * normalizedCircleRayCos ε B - ρ₀ * normalizedCircleRayCos ε B₀| +
@@ -6111,15 +6053,15 @@ theorem normalizedCircleRay_covector_transverse_gap
   have hμp := mul_le_mul_of_nonneg_right hρ₀ (abs_nonneg (B-B₀))
   change μ * |B-B₀| ≤ 36*E
   nlinarith
-#print axioms normalizedCircleRay_covector_transverse_gap
 
-/-- The source covector mismatch and scalar incidence mismatch control the distance to the actual anchored ray at packet scale. -/
+/-- The source covector mismatch and scalar incidence mismatch control the distance to the actual
+  anchored ray at packet scale. -/
 theorem normalizedCircleRay_covector_tube_gap
     (ε a ρ ρ₀ B B₀ L u s T : Real) (ω V : Euclidean 2)
-    (haε : |ε| ≤ a) (ha : 1/2 ≤ a)
-    (hb : |ε*B| ≤ 1/2) (hb₀ : |ε*B₀| ≤ 1/2)
-    (hB : |B| ≤ 8) (hL : 0 < L) (hρ₀ : L^2/2 ≤ |ρ₀|)
-    (hε : |ε| ≤ 1/64) (hs : |s| ≤ 8)
+    (haε : |ε| ≤ a) (ha : 1 / 2 ≤ a)
+    (hb : |ε * B| ≤ 1 / 2) (hb₀ : |ε * B₀| ≤ 1 / 2) (hB : |B| ≤ 8) (hL : 0 < L) (hρ₀ : L ^ 2 / 2 ≤
+      |ρ₀|)
+    (hε : |ε| ≤ 1 / 64) (hs : |s| ≤ 8)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
     L * ‖(normalizedCircleRayTerminal ε u B ω V -
         s • normalizedCircleRayNormal ε B ω V) -
@@ -6148,15 +6090,11 @@ theorem normalizedCircleRay_covector_tube_gap
   have hh := mul_le_mul_of_nonneg_left hsmall hL.le
   change L * _ ≤ 108*(E/L) + L*|s-T|
   nlinarith
-#print axioms normalizedCircleRay_covector_tube_gap
 
-
-#print axioms normalizedCircleRay_inverse
-
-/-- Rectangular source version of the actual source/ray integral transport, on the compact radial and transverse windows used for the weak incidence maximal estimate. -/
+/-- Rectangular source version of the actual source/ray integral transport, on the compact radial
+  and transverse windows used for the weak incidence maximal estimate. -/
 theorem normalizedCircle_source_ray_rectangle_lintegral_le
-    (ε : Real) (hε : |ε| ≤ 1/32)
-    (G : Euclidean 2 → Euclidean 2 → ENNReal)
+    (ε : Real) (hε : |ε| ≤ 1 / 32) (G : Euclidean 2 → Euclidean 2 → ENNReal)
     (hG : Measurable (Function.uncurry G)) :
     (∫⁻ B in Icc (-8 : Real) 8,
       ∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
@@ -6231,9 +6169,9 @@ theorem normalizedCircle_source_ray_rectangle_lintegral_le
       intro ω
       exact lintegral_mono_set hsub
     _ ≤ _ := normalizedCircle_source_ray_lintegral_le ε G hG
-#print axioms normalizedCircle_source_ray_rectangle_lintegral_le
 
-/-- The literal cosine/sine circle parametrization, using the existing volume-compatible Cartesian identification of the Euclidean plane. -/
+/-- The literal cosine/sine circle parametrization, using the existing volume-compatible Cartesian
+  identification of the Euclidean plane. -/
 noncomputable def normalizedCirclePolarDirection (θ : Real) : Euclidean 2 :=
   normalizedCircleCartesianMeasurableEquiv (Real.cos θ, Real.sin θ)
 /-- Continuity of the actual angular source parametrization. -/
@@ -6266,7 +6204,8 @@ theorem normalizedCircleCartesian_polar_symm (q : Real × Real) :
   fin_cases i <;>
     simp [polarCoord_symm_apply, normalizedCirclePolarDirection,
       normalizedCircleCartesianMeasurableEquiv]
-/-- Exact planar polar integration in the same Euclidean coordinates as the normalized circle operator. -/
+/-- Exact planar polar integration in the same Euclidean coordinates as the normalized circle
+  operator. -/
 theorem normalizedCircle_polar_lintegral (F : Euclidean 2 → ENNReal) :
     (∫⁻ X : Euclidean 2, F X) =
       ∫⁻ q in Ioi (0 : Real) ×ˢ Ioo (-Real.pi) Real.pi,
@@ -6280,7 +6219,10 @@ theorem normalizedCircle_polar_lintegral (F : Euclidean 2 → ENNReal) :
   rw [← heq, ← lintegral_comp_polarCoord_symm]
   simp only [polarCoord_target, normalizedCircleCartesian_polar_symm, smul_eq_mul]
 
-/-- Exact raw surface measure to angular Lebesgue measure transport. Comparing genuine sphere polar coordinates with ordinary planar polar coordinates retains the full circle mass, so no probability normalization or implicit factor is introduced. This is the angular atlas measure bridge for repair (9). -/
+/-- Exact raw surface measure to angular Lebesgue measure transport. Comparing genuine sphere
+  polar coordinates with ordinary planar polar coordinates retains the full circle mass, so no
+  probability normalization or implicit factor is introduced. This is the angular atlas measure
+  bridge for repair (9). -/
 theorem normalizedCircle_unitSurface_lintegral_angle
     (H : Euclidean 2 → ENNReal) (hH : Measurable H) :
     (∫⁻ ω : Metric.sphere (0 : Euclidean 2) 1,
@@ -6401,7 +6343,8 @@ theorem normalizedCircle_unitSurface_lintegral_angle
   have hh := congrArg (fun v : ENNReal => 2 * v) hEq
   simpa only [← mul_assoc, hunit, one_mul] using hh
 
-/-- The literal cosine/sine parametrization pushes angular Lebesgue measure on the principal interval to ambient raw circle surface measure. -/
+/-- The literal cosine/sine parametrization pushes angular Lebesgue measure on the principal
+  interval to ambient raw circle surface measure. -/
 theorem normalizedCircle_unitSurface_map_angle :
     Measure.map (fun ω : Metric.sphere (0 : Euclidean 2) 1 => (ω : Euclidean 2))
       (unitSurfaceMeasure 2) =
@@ -6412,7 +6355,8 @@ theorem normalizedCircle_unitSurface_map_angle :
   rw [lintegral_map hH measurable_subtype_coe,
     lintegral_map hH normalizedCirclePolarDirection_continuous.measurable]
   exact normalizedCircle_unitSurface_lintegral_angle H hH
-/-- Exact Bochner angular representation of the raw circle integral, including the nonintegrable case. This lets the actual atlas packet kernel use Euclidean source Fourier cubes. -/
+/-- Exact Bochner angular representation of the raw circle integral, including the nonintegrable
+  case. This lets the actual atlas packet kernel use Euclidean source Fourier cubes. -/
 theorem normalizedCircle_unitSurface_integral_angle
     (F : Euclidean 2 → Complex) (hF : Measurable F) :
     (∫ ω : Metric.sphere (0 : Euclidean 2) 1,
@@ -6428,7 +6372,8 @@ theorem normalizedCircle_unitSurface_integral_angle
       rw [normalizedCircle_unitSurface_map_angle]
     _ = _ := integral_map normalizedCirclePolarDirection_continuous.measurable.aemeasurable
       hF.aestronglyMeasurable
-/-- The polar source parametrization is the standard orthonormal-basis cosine/sine formula used by the MSS angular charts. -/
+/-- The polar source parametrization is the standard orthonormal-basis cosine/sine formula used by
+  the MSS angular charts. -/
 theorem normalizedCirclePolarDirection_eq_basis (θ : Real) :
     normalizedCirclePolarDirection θ =
       Real.cos θ • EuclideanSpace.basisFun (Fin 2) Real 0 +
@@ -6437,16 +6382,12 @@ theorem normalizedCirclePolarDirection_eq_basis (θ : Real) :
   fin_cases i <;>
     simp [normalizedCirclePolarDirection, normalizedCircleCartesianMeasurableEquiv,
       EuclideanSpace.basisFun_apply]
-#print axioms normalizedCircle_unitSurface_map_angle
-#print axioms normalizedCircle_unitSurface_integral_angle
 
-#print axioms normalizedCircle_unitSurface_lintegral_angle
-
-#print axioms normalizedCircle_polar_lintegral
-
-/-- Source/ray transport on any radial source window of half-width at most eight. This includes the enlarged analysis source window needed after Fourier-cube projection, while retaining the same uniform factor two. -/
+/-- Source/ray transport on any radial source window of half-width at most eight. This includes
+  the enlarged analysis source window needed after Fourier-cube projection, while retaining the
+  same uniform factor two. -/
 theorem normalizedCircle_source_ray_window_lintegral_le
-    (ε : Real) (hε : |ε| ≤ 1/32) (U : Real) (hU : U ≤ 8)
+    (ε : Real) (hε : |ε| ≤ 1 / 32) (U : Real) (hU : U ≤ 8)
     (G : Euclidean 2 → Euclidean 2 → ENNReal)
     (hG : Measurable (Function.uncurry G)) :
     (∫⁻ B in Icc (-8 : Real) 8,
@@ -6522,7 +6463,6 @@ theorem normalizedCircle_source_ray_window_lintegral_le
       intro ω
       exact lintegral_mono_set hsub
     _ ≤ _ := normalizedCircle_source_ray_lintegral_le ε G hG
-#print axioms normalizedCircle_source_ray_window_lintegral_le
 
 /-! ### Literal thin normal projection and temporal tails
 
@@ -6548,7 +6488,8 @@ theorem normalizedCircleThinNormalFrequencyProfile_inverse
       SchwartzMap Real Complex) t = (h : Complex) * (𝓕⁻ β : SchwartzMap Real Complex) (h*t) := by
   rw [SchwartzMap.fourierInv_coe]
   change 𝓕⁻ (fun τ : Real => β (h⁻¹ * τ)) t = _
-  simpa only [smul_eq_mul, Module.finrank_self, pow_one, Complex.real_smul, SchwartzMap.fourierInv_coe] using
+  simpa only [smul_eq_mul, Module.finrank_self, pow_one, Complex.real_smul,
+    SchwartzMap.fourierInv_coe] using
     (fourierInv_comp_inv_smul (β : Real → Complex) hh t)
 
 /-- The literal spatial-cube multiplier times the thin cone-normal cutoff. -/
@@ -6585,9 +6526,6 @@ theorem normalizedCircleThinNormalProjector_inverse
     spaceTimeFourierInv_jointSchwModulatedAnnProf_eq_halfWave_of_eq_norm_on_supp
       B (𝓕⁻ (normalizedCircleThinNormalFrequencyProfile β h hh.ne')) rho hrho z,
     normalizedCircleThinNormalFrequencyProfile_inverse β h hh z.2]
-#print axioms normalizedCircleThinNormalFrequencyProfile_inverse
-#print axioms normalizedCircleThinNormalProjectorSymbol_apply
-#print axioms normalizedCircleThinNormalProjector_inverse
 
 /-- Every polynomial temporal moment of an actual Schwartz profile is finite. -/
 theorem normalizedCircle_temporal_schwartz_weight_integrable
@@ -6636,15 +6574,14 @@ theorem normalizedCircleThinNormalProjector_temporal_weighted_mass_le
         rw [abs_mul, abs_of_pos hp]
         nlinarith [abs_nonneg t]
       change (1+|t|)^J * (h * ‖f (h*t)‖) ≤ h * ((1+|h*t|)^J * ‖f (h*t)‖)
-      have hw := pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+|t|) (by linarith : 1+|t| ≤ 1+|h*t|) J
+      have hw := pow_le_pow_left₀ (by positivity : (0:Real) ≤ 1+|t|) (by linarith : 1+|t| ≤
+        1+|h*t|) J
       nlinarith [mul_le_mul_of_nonneg_right hw (mul_nonneg hp.le (norm_nonneg (f (h*t))))]
     _ = ∫ t : Real, G t := by
       rw [integral_const_mul, Measure.integral_comp_mul_left,
         abs_of_pos (inv_pos.mpr hp), smul_eq_mul, ← mul_assoc,
         mul_inv_cancel₀ hp.ne', one_mul]
     _ = _ := rfl
-#print axioms normalizedCircle_temporal_schwartz_weight_integrable
-#print axioms normalizedCircleThinNormalProjector_temporal_weighted_mass_le
 
 
 /-- The part of the literal temporal projector outside a fixed time
@@ -6693,13 +6630,15 @@ theorem normalizedCircleThinNormalProjector_temporal_tail_mass_le
       setIntegral_mono_on hK.integrableOn hscale.integrableOn hset
         (by intro t ht; exact hpoint t ht)
     _ ≤ ∫ t : Real, h * G (h*t) :=
-      setIntegral_le_integral hscale (Filter.Eventually.of_forall (by intro t; dsimp [G]; positivity))
+      setIntegral_le_integral hscale (Filter.Eventually.of_forall (by
+        intro t
+        dsimp [G]
+        positivity))
     _ = ∫ t : Real, G t := by
       rw [integral_const_mul, Measure.integral_comp_mul_left,
         abs_of_pos (inv_pos.mpr hp), smul_eq_mul, ← mul_assoc,
         mul_inv_cancel₀ hp.ne', one_mul]
     _ = _ := rfl
-#print axioms normalizedCircleThinNormalProjector_temporal_tail_mass_le
 
 /-! ### Actual compact-core ray bounds and time-window covariance -/
 
@@ -6707,7 +6646,7 @@ theorem normalizedCircleThinNormalProjector_temporal_tail_mass_le
 bounded, exact inverse-ray coordinates, including epsilon zero. -/
 theorem normalizedCircleRay_actual_chart_bounds
     (ε u : Real) (X ω V : Euclidean 2)
-    (hε : |ε| ≤ 1/64) (hu : |u| ≤ 5) (hX : ‖X‖ ≤ 3)
+    (hε : |ε| ≤ 1 / 64) (hu : |u| ≤ 5) (hX : ‖X‖ ≤ 3)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) (horth : inner Real ω V = 0) :
     let B := inner Real X V / ‖ω + ε • (u • ω - X)‖
     let s := normalizedCircleIncidence ε X ω u
@@ -6747,7 +6686,6 @@ theorem normalizedCircleRay_actual_chart_bounds
   have hepuLower := (abs_le.mp hepu).1
   refine ⟨hB,hεB,hs,by linarith,by linarith,?_⟩
   exact normalizedCircleRay_inverse_of_small ε u X ω V hω hV horth hsmall
-#print axioms normalizedCircleRay_actual_chart_bounds
 
 /-- Exact covariance of the actual ray normal coefficient under doubling
 curvature and halving normalized source coordinates. -/
@@ -6787,7 +6725,6 @@ theorem normalizedCircleRay_double_half (ε u B T : Real) (ω V : Euclidean 2) :
           T • normalizedCircleRayNormal ε B ω V) := by
   rw [normalizedCircleRayTerminal_double_half, normalizedCircleRayNormal_double_half]
   module
-#print axioms normalizedCircleRay_double_half
 
 /-! ### Exact angular-chart mass and maximal-parameter window -/
 
@@ -6862,13 +6799,12 @@ theorem normalizedCircle_unitSurface_lintegral_chart_window_le
       rw [lintegral_indicator measurableSet_Icc f,
         ← restrict_Ioo_eq_restrict_Icc]
       exact (normalizedCircle_unitSurface_lintegral_angle H hH).symm
-#print axioms normalizedCircle_unitSurface_lintegral_chart_window_le
 
 /-- The actual compact-core transverse intercept lies in the precise
 interval [-4,4] used by the genuine weak ray maximal estimate. -/
 theorem normalizedCircleRay_actual_transverse_bound_four
     (ε u : Real) (X ω V : Euclidean 2)
-    (hε : |ε| ≤ 1/64) (hu : |u| ≤ 5) (hX : ‖X‖ ≤ 3)
+    (hε : |ε| ≤ 1 / 64) (hu : |u| ≤ 5) (hX : ‖X‖ ≤ 3)
     (hω : ‖ω‖ = 1) (hV : ‖V‖ = 1) :
     |inner Real X V / ‖ω + ε • (u • ω - X)‖| ≤ 4 := by
   let D := ‖ω + ε • (u • ω - X)‖
@@ -6888,7 +6824,6 @@ theorem normalizedCircleRay_actual_transverse_bound_four
   rw [abs_div, abs_of_pos hDp]
   apply (div_le_iff₀ hDp).2
   linarith
-#print axioms normalizedCircleRay_actual_transverse_bound_four
 
 /-- The source antipodal chart is exactly the ordinary incidence chart
 with reflected output, so the physical atlas needs no different phase. -/
@@ -6905,8 +6840,6 @@ theorem normalizedCircleNormal_antipodal (ε : Real) (X ω : Euclidean 2) (u : R
   have hn : -ω + ε • (u • (-ω) - X) = -(ω + ε • (u • ω - (-X))) := by module
   unfold normalizedCircleNormal
   rw [hn, norm_neg, smul_neg]
-#print axioms normalizedCircleIncidence_antipodal
-#print axioms normalizedCircleNormal_antipodal
 
 
 

@@ -717,7 +717,7 @@ private theorem aux_lipschitz_extension_eq_temporal_physical_convolution
     Tbar (hg₂.toLp g) =
       (aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
         K g hK hg B hB hgB).toLp (aux_temporalPhysicalConvolution K g) := by
-  letI : Fact (1 ≤ (2 : ENNReal)) := ⟨by norm_num⟩
+  let : Fact (1 ≤ (2 : ENNReal)) := ⟨by norm_num⟩
   let hP : MemLp (aux_temporalPhysicalConvolution K g) 2 volume :=
     aux_memLp_two_temporalPhysicalConvolution_of_integrable_of_norm_le
       K g hK hg B hB hgB
@@ -852,7 +852,7 @@ private theorem aux_finiteTemporalCoreSchwartz_apply
         (aux_finiteTemporalSchwartzCoordLift indices G n) t)]
     apply Finset.sum_congr rfl
     intro i _
-    simp only [aux_finiteTemporalSchwartzCoordLift, dif_pos i.2]
+    simp only [aux_finiteTemporalSchwartzCoordLift, dite_eq_left i.2]
   have hcore :
       verticalTemporalSchwartzCoreRecombined indices m
         (aux_finiteTemporalSchwartzCoordLift indices G) t =
@@ -885,7 +885,7 @@ private theorem aux_integral_norm_sq_finiteTemporalSchwartzCoordLift_eq
       ∫ t : Real, ‖aux_finiteTemporalSchwartzCoordLift indices G n t‖ ^ (2 : Nat))]
     apply Finset.sum_congr rfl
     intro i _
-    simp only [aux_finiteTemporalSchwartzCoordLift, dif_pos i.2]
+    simp only [aux_finiteTemporalSchwartzCoordLift, dite_eq_left i.2]
   rw [← aux_integral_norm_sq_finiteTemporalSchwartzCoords_eq G]
   exact hsum.symm
 
@@ -1701,7 +1701,7 @@ private theorem aux_finiteTemporalHardLow_norm_le_half_height
   by_cases hx : ‖g x‖ < t / 2
   · simpa [aux_finiteTemporalHardLow, hx] using hx.le
   · have hx' : x ∉ {x | ‖g x‖ < t / 2} := by
-      simpa only [Set.mem_setOf_eq] using hx
+      simpa only [Set.mem_ofPred_eq] using hx
     rw [aux_finiteTemporalHardLow, Set.indicator_of_notMem hx', norm_zero]
     positivity
 
@@ -2701,7 +2701,7 @@ private theorem aux_verticalSchwartzCoreRecombined_singletonCommonSpatial_apply
   rw [Finset.sum_eq_single n]
   · simp
   · intro k hk hkn
-    rw [if_neg hkn, verticalTemporalSchwartzMultiplier_zero]
+    rw [ite_eq_right hkn, verticalTemporalSchwartzMultiplier_zero]
     change (0 : Complex) * F n z.1 = 0
     exact zero_mul _
   · intro hnot
@@ -3898,7 +3898,7 @@ theorem mss_two_four_coefficient
           ((ENNReal.ofReal 2) ^ (-(4 : Real)) * (ENNReal.ofReal p)⁻¹ +
             (ENNReal.ofReal (4 - p))⁻¹))) ^ p⁻¹ *
       eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume := by
-  letI : SFinite localSmoothingMeasure := by
+  let : SFinite localSmoothingMeasure := by
     rw [localSmoothingMeasure]
     infer_instance
   let D : Set (SchwartzMap (Euclidean 2) Complex) := Set.univ
@@ -4052,7 +4052,7 @@ theorem mss_four_top_coefficient
           (B4 * (ENNReal.ofReal Btop)⁻¹) ^ (4 : Real) *
           ((ENNReal.ofReal (p - 4))⁻¹ * (ENNReal.ofReal 4) ^ (p - 4)))) ^ p⁻¹ *
       eLpNorm (f : Euclidean 2 → Complex) (ENNReal.ofReal p) volume := by
-  letI : SFinite localSmoothingMeasure := by
+  let : SFinite localSmoothingMeasure := by
     rw [localSmoothingMeasure]
     infer_instance
   let D : Set (SchwartzMap (Euclidean 2) Complex) := Set.univ
@@ -4097,7 +4097,8 @@ theorem mss_four_top_coefficient
                   eLpNorm (dyadicHalfWaveSpaceTime C.cutoff σ j g)
                     (ENNReal.ofReal 4) localSmoothingMeasure := by
                     rw [eLpNorm_congr_ae
-                      (localDyadicHalfWaveMagnitude_ae_eq C σ j g), eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j g)]
+                      (localDyadicHalfWaveMagnitude_ae_eq C σ j g),
+                      eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j g)]
               _ ≤ B4 * eLpNorm (g : Euclidean 2 → Complex) (ENNReal.ofReal 4) volume :=
                 hstrong4 g
               _ = B4 * eLpNorm (eval g) (ENNReal.ofReal 4) volume := rfl
@@ -4394,7 +4395,7 @@ theorem p4LocalSmoothing_to_localSmoothing_two_four
         ENNReal.ofReal b * eLpNorm (g : Euclidean 2 → Complex) (ENNReal.ofReal 4) volume := by
     intro g
     convert hA_bound j hj g σ using 1;
-      dsimp only [b]; rw [mssGain_four]; ring
+      dsimp only [b]; rw [mssGain_four]; ring_nf
   have hs : 0 < b⁻¹ * b⁻¹ := by positivity
   have hinterp := mss_two_four_coefficient C σ j hp2 hp4 (ENNReal.ofReal b)
     hstrong4 (b⁻¹ * b⁻¹) hs f
@@ -4441,7 +4442,8 @@ theorem p4LocalSmoothing_to_localSmoothing_two_four
         localSmoothingMeasure =
         eLpNorm (localDyadicHalfWaveMagnitude C σ j f) (ENNReal.ofReal p)
           localSmoothingMeasure := by
-            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f), eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f)]
+            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f),
+              eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f)]
     _ ≤ (sourceOutputTwoPairMarcinkiewiczMomentCoefficient p 2 4
           ((ENNReal.ofReal 2) ^ (2 : Real)) ((ENNReal.ofReal b) ^ (4 : Real))
           ((ENNReal.ofReal (b⁻¹ * b⁻¹)) ^ ((2 : Real) - p) * H)
@@ -4581,7 +4583,7 @@ theorem p4LocalSmoothing_to_localSmoothing_four_top
         ENNReal.ofReal b4 * eLpNorm (g : Euclidean 2 → Complex) (ENNReal.ofReal 4) volume := by
     intro g
     convert hA_bound j hj g σ using 1;
-      dsimp only [b4]; rw [mssGain_four]; ring
+      dsimp only [b4]; rw [mssGain_four]; ring_nf
   have hTop : ∀ (g : SchwartzMap (Euclidean 2) Complex) (a : Real), 0 ≤ a →
       (∀ x, ‖g x‖ ≤ a) → ∀ z,
         localDyadicHalfWaveMagnitude C σ j g z ≤ btop * a := by
@@ -4631,7 +4633,8 @@ theorem p4LocalSmoothing_to_localSmoothing_four_top
         localSmoothingMeasure =
         eLpNorm (localDyadicHalfWaveMagnitude C σ j f) (ENNReal.ofReal p)
           localSmoothingMeasure := by
-            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f), eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f)]
+            rw [eLpNorm_congr_ae (localDyadicHalfWaveMagnitude_ae_eq C σ j f),
+              eLpNorm_norm _ (aestronglyMeasurable_dyadicHalfWaveSpaceTime C σ j f)]
     _ ≤ ENNReal.ofReal btop *
         (ENNReal.ofReal p * ((ENNReal.ofReal 2) ^ (4 : Real) *
           (ENNReal.ofReal b4 * (ENNReal.ofReal btop)⁻¹) ^ (4 : Real) * H)) ^ p⁻¹ *

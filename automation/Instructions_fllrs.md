@@ -2,6 +2,28 @@
 
 # FLLRS formalization
 
+## Diagnostic and warning cleanup (recorded 2026-10-15T07:09:01-04:00)
+
+The user requests removal of unnecessary axiom-print commands and fixes
+for Lean/linter warnings in the new formalization. Fix warning causes;
+do not disable or suppress linters. Preserve the main theorem statements
+and proof validity; remove redundant helper assumptions with their callers.
+Cover FLLRS and its MSS development, verify the whole
+build, and run final axiom audits separately from production modules.
+Then commit and push; the subject MUST retain the [codex] tag. The earlier
+exact unprefixed subject applied only to the previous formalization commit.
+Keep the established coauthor attribution. No new files are authorized.
+
+Verified 2026-10-15T07:54:26-04:00: the full build passes all 3516 jobs.
+All 31 FLLRS/MSS module logs and the root module are free of warnings,
+errors and informational messages, with the standard linters enabled.
+Removed 1263 production axiom-print/check commands. Deprecated APIs,
+formatting, instance declarations and noisy tactics were repaired;
+redundant helper assumptions were removed with their callers updated.
+No warning suppressions were introduced. All seven headline statements
+are unchanged, and separate axiom audits report only propext,
+Classical.choice and Quot.sound.
+
 ## Refactor verified before publication (2026-10-15T07:01:55-04:00)
 
 The Lean folder, namespaces and imports use FLLRS. The effort reports are
@@ -58,10 +80,10 @@ All declaration names below are in Auto.Spherical.FLLRS.
 
 | Source | Declaration | Location |
 | --- | --- | --- |
-| Introduction Theorem 1.1, thm:newfull, TeX494 | full_spherical_maximal_endpoint | LeanSpherical/Auto/Spherical/FLLRS/MainTheorems.lean:9739 |
-| Introduction Theorem 1.2, thm:newfullga, TeX518 | general_assouad_maximal_endpoint | LeanSpherical/Auto/Spherical/FLLRS/MainTheorems.lean:9712 |
-| Introduction Theorem 1.3, thm:sequences, TeX756 | sequence_iff | LeanSpherical/Auto/Spherical/FLLRS/Sec3SequenceBounds.lean:6690 |
-| Introduction Theorem 1.4, unlabelled, TeX906 | global_sequence_iff | LeanSpherical/Auto/Spherical/FLLRS/Sec3SequenceBounds.lean:3904 |
+| Introduction Theorem 1.1, thm:newfull, TeX494 | full_spherical_maximal_endpoint | LeanSpherical/Auto/Spherical/FLLRS/MainTheorems.lean:9731 |
+| Introduction Theorem 1.2, thm:newfullga, TeX518 | general_assouad_maximal_endpoint | LeanSpherical/Auto/Spherical/FLLRS/MainTheorems.lean:9704 |
+| Introduction Theorem 1.3, thm:sequences, TeX756 | sequence_iff | LeanSpherical/Auto/Spherical/FLLRS/Sec3SequenceBounds.lean:6701 |
+| Introduction Theorem 1.4, unlabelled, TeX906 | global_sequence_iff | LeanSpherical/Auto/Spherical/FLLRS/Sec3SequenceBounds.lean:3912 |
 
 Theorem 1.1 is strengthened from the paper's d>=3 to d>=2. The other
 statements have the same parameter ranges and strict/inclusive endpoints.

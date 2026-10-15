@@ -70,7 +70,7 @@ theorem outerCircleProfileFourierCharProductKernel_neg_frequency_eq_swap
   congr 1
   apply intervalIntegral.integral_congr
   intro u hu
-  ring
+  ring_nf
 
 /-- A self-conjugate amplitude makes the Fourier-character kernel norm
 symmetric in its two time variables, at either frequency sign. -/
@@ -2440,7 +2440,7 @@ theorem shiftedCharted_finiteTensorMultiplier_eq_ttstarAnalysis
   congr 1
   rw [Real.inner_apply,
     inner_circleDirection_shifted_stationary_phase hpolar n hn rho u]
-  ring
+  ring_nf
 
 /-- Multiplying the preceding literal multiplier by a local real lobe gives
 exactly the parametric Fourier-character analysis amplitude used by the
@@ -4321,7 +4321,7 @@ theorem integral_affine_comp_eq
         fun u => F (c + r * u) by
           funext u
           dsimp only [G]
-          ring]
+          ring_nf]
 
 /-- The compactly supported lobe form used by the angular shell calculation.
 The left-hand side may be integrated over any angular interval; it is bounded
@@ -4634,7 +4634,7 @@ theorem integral_norm_sq_reflected_affine_lobe_restrict_le
           ring
         rw [harg]
         congr 2
-        ring
+        ring_nf
   have hHzero : ∀ u, u ∉ Icc (1 / 2 : Real) 2 -> H u = 0 := by
     intro u hu
     dsimp only [H]

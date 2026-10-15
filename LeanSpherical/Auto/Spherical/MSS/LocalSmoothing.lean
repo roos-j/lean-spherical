@@ -667,9 +667,7 @@ private theorem mssRecombination_eLpNorm_auxSquare_sub_le_pairCard_mul
       simp [Nat.cast_mul, mul_assoc]
 
 private theorem mssRecombination_eLpNorm_right_le_left_add_difference
-    (left right : WaveSpaceTime → Real)
-    (hleft : AEStronglyMeasurable left volume)
-    (hright : AEStronglyMeasurable right volume) :
+    (left right : WaveSpaceTime → Real) :
     eLpNorm right (4 : ENNReal) volume ≤
       eLpNorm left (4 : ENNReal) volume +
         eLpNorm (left - right) (4 : ENNReal) volume := by
@@ -1458,12 +1456,6 @@ private theorem mssRecombination_aux_bound
   have hWSquareMeas :=
     mssRecombination_aestronglyMeasurable_angularRadialSquareFunction
       I J W hWMeas
-  have hRawAuxMeas :=
-    mssRecombination_aestronglyMeasurable_auxAngularRadialRecombined
-      I J Raw hRawMeas
-  have hWAuxMeas :=
-    mssRecombination_aestronglyMeasurable_auxAngularRadialRecombined
-      I J W hWMeas
   have hSquareDiff :
       eLpNorm
           (angularRadialSquareFunction I J Raw -
@@ -1489,7 +1481,7 @@ private theorem mssRecombination_aux_bound
               angularRadialSquareFunction I J W) (4 : ENNReal) volume :=
         mssRecombination_eLpNorm_right_le_left_add_difference
           (angularRadialSquareFunction I J Raw)
-          (angularRadialSquareFunction I J W) hRawSquareMeas hWSquareMeas
+          (angularRadialSquareFunction I J W)
       _ ≤ eLpNorm (angularRadialSquareFunction I J Raw) (4 : ENNReal) volume +
             errorBudget := add_le_add_right hSquareError _
   have hAuxDiff := mssRecombination_eLpNorm_auxSquare_sub_le_pairCard_mul
@@ -1542,7 +1534,7 @@ private theorem mssRecombination_aux_bound
             (4 : ENNReal) volume :=
         mssRecombination_eLpNorm_right_le_left_add_difference
           (aux_angularRadialRecombinedSquareFunction I J W)
-          (aux_angularRadialRecombinedSquareFunction I J Raw) hWAuxMeas hRawAuxMeas
+          (aux_angularRadialRecombinedSquareFunction I J Raw)
       _ ≤ eLpNorm (aux_angularRadialRecombinedSquareFunction I J W)
             (4 : ENNReal) volume +
           ENNReal.ofReal (Cpair * scale) * errorBudget :=
@@ -3161,7 +3153,7 @@ private theorem mssP4FineAngularIndex_abs_le_radius
     {scale : Real} (hscale : 2 ≤ scale) {nu : Int}
     (hnu : nu ∈ mssP4FineAngularIndices scale) :
     |nu| ≤ (mssP4FineIndexRadius scale : Int) := by
-  rw [mssP4FineAngularIndices, if_pos hscale, Finset.mem_map] at hnu
+  rw [mssP4FineAngularIndices, ite_eq_left hscale, Finset.mem_map] at hnu
   rcases hnu with ⟨k, hk, rfl⟩
   have hk' : k < 2 * mssP4FineIndexRadius scale + 1 :=
     Finset.mem_range.mp hk
@@ -3213,7 +3205,7 @@ private theorem sum_mssP4Fine_unitLattice_eq_one
       mssUnitLatticeTransitionPiece (t - (nu : Real)) = 1 := by
   classical
   let N : Nat := mssP4FineIndexRadius scale
-  rw [mssP4FineAngularIndices, if_pos hscale, Finset.sum_map]
+  rw [mssP4FineAngularIndices, ite_eq_left hscale, Finset.sum_map]
   change ∑ k ∈ Finset.range (2 * N + 1),
       mssUnitLatticeTransitionPiece
         (t - (((k : Int) - (N : Int) : Int) : Real)) = 1
@@ -3226,7 +3218,7 @@ private theorem sum_mssP4Fine_unitLattice_eq_one
             apply Finset.sum_congr rfl
             intro k hk
             push_cast
-            ring
+            ring_nf
     _ = 1 := by
       simpa only [N] using
         (mss_finite_unitLatticeTransition_partition N (by simpa only [N] using ht))
@@ -3248,7 +3240,7 @@ private theorem mssP4FineTildeChiReal_eq_one_of_chiReal_ne_zero
     {q : Fin 4} {r : Fin 193} {scale : Real} {nu : Int} {xi : Euclidean 2}
     (hscale : 2 ≤ scale) (h : mssP4FineChiReal q r scale nu xi ≠ 0) :
     mssP4FineTildeChiReal q r scale nu xi = 1 := by
-  rw [mssP4FineChiReal, if_pos hscale] at h
+  rw [mssP4FineChiReal, ite_eq_left hscale] at h
   let eta : Euclidean 2 := scale⁻¹ • xi
   have hfac : Auto.Spherical.MSS.sectorAnnularCutoff eta ≠ 0 ∧
       mssP4ChiChartGate q eta ≠ 0 ∧
@@ -3261,7 +3253,7 @@ private theorem mssP4FineTildeChiReal_eq_one_of_chiReal_ne_zero
     rcases mul_ne_zero_iff.mp h with ⟨hab, hc⟩
     rcases mul_ne_zero_iff.mp hab with ⟨ha, hb⟩
     exact ⟨ha, hb, hc⟩
-  rw [mssP4FineTildeChiReal, if_pos hscale]
+  rw [mssP4FineTildeChiReal, ite_eq_left hscale]
   change mssP4FineTildeRadialGate eta * mssP4TildeChiChartGate q eta *
       mssP4FineOuterLatticeBump
         (mssP4FineCoordinate q r scale xi - nu) = 1
@@ -3285,7 +3277,7 @@ private theorem mssP4FineChiReal_nonneg
     (q : Fin 4) (r : Fin 193) {scale : Real} (hscale : 2 ≤ scale)
     (nu : Int) (xi : Euclidean 2) :
     0 ≤ mssP4FineChiReal q r scale nu xi := by
-  rw [mssP4FineChiReal, if_pos hscale]
+  rw [mssP4FineChiReal, ite_eq_left hscale]
   exact mul_nonneg
     (mul_nonneg (Auto.Spherical.MSS.sectorAnnularCutoff_nonneg _)
       (by
@@ -3297,16 +3289,12 @@ private theorem mssP4FineChiReal_le_one
     (q : Fin 4) (r : Fin 193) {scale : Real} (hscale : 2 ≤ scale)
     (nu : Int) (xi : Euclidean 2) :
     mssP4FineChiReal q r scale nu xi ≤ 1 := by
-  rw [mssP4FineChiReal, if_pos hscale]
-  apply mul_le_one₀
-  · apply mul_le_one₀
-    · exact Auto.Spherical.MSS.sectorAnnularCutoff_le_one _
-    · unfold mssP4ChiChartGate
-      exact Real.smoothTransition.nonneg _
-    · unfold mssP4ChiChartGate
-      exact Real.smoothTransition.le_one _
-  · exact mssUnitLatticeTransitionPiece_nonneg _
-  · exact mssUnitLatticeTransitionPiece_le_one _
+  rw [mssP4FineChiReal, ite_eq_left hscale]
+  refine (mul_le_of_le_one_left (mssUnitLatticeTransitionPiece_nonneg _) ?_).trans
+    (mssUnitLatticeTransitionPiece_le_one _)
+  exact (mul_le_of_le_one_left (Real.smoothTransition.nonneg _)
+    (Auto.Spherical.MSS.sectorAnnularCutoff_le_one _)).trans
+    (Real.smoothTransition.le_one _)
 
 private theorem mssP4FineChi_norm_le_one
     (q : Fin 4) (r : Fin 193) {scale : Real} (hscale : 2 ≤ scale)
@@ -3694,7 +3682,7 @@ private theorem mssP4FineChi_support (q : Fin 4) (r : Fin 193)
         Function.mem_support.mp hxi
       unfold mssP4FineChi at hxi0
       exact Complex.ofReal_ne_zero.mp hxi0
-    rw [mssP4FineChiReal, if_pos hscale] at hreal
+    rw [mssP4FineChiReal, ite_eq_left hscale] at hreal
     let eta : Euclidean 2 := scale⁻¹ • xi
     have hfac : mssP4ChiChartGate q eta ≠ 0 ∧
         mssUnitLatticeTransitionPiece
@@ -3736,7 +3724,7 @@ private theorem mssP4FineTildeChi_support (q : Fin 4) (r : Fin 193)
         Function.mem_support.mp hxi
       unfold mssP4FineTildeChi at hxi0
       exact Complex.ofReal_ne_zero.mp hxi0
-    rw [mssP4FineTildeChiReal, if_pos hscale] at hreal
+    rw [mssP4FineTildeChiReal, ite_eq_left hscale] at hreal
     let eta : Euclidean 2 := scale⁻¹ • xi
     have hfac : mssP4TildeChiChartGate q eta ≠ 0 ∧
         mssP4FineOuterLatticeBump
@@ -3916,7 +3904,7 @@ private theorem mssP4FineRegularChiReal_eq_mssP4FineChiReal
   funext xi
   by_cases hscale : 2 ≤ scale
   · rw [mssP4FineRegularChiReal, mssP4FineChiReal,
-      if_pos hscale, if_pos hscale]
+      ite_eq_left hscale, ite_eq_left hscale]
     let eta : Euclidean 2 := scale⁻¹ • xi
     by_cases hcarrier :
         Auto.Spherical.MSS.sectorAnnularCutoff eta *
@@ -3958,7 +3946,7 @@ private theorem mssP4FineRegularChiReal_contDiff (q : Fin 4) (r : Fin 193)
         mssUnitLatticeTransitionPiece
           (mssP4FineRegularCoordinate q r scale xi - nu)
     else 0)
-  simp only [if_pos hscale]
+  simp only [ite_eq_left hscale]
   exact
     ((Auto.Spherical.MSS.contDiff_sectorAnnularCutoff.comp
       (contDiff_id.const_smul scale⁻¹)).mul
@@ -3983,7 +3971,7 @@ private theorem mssP4FineRegularChiReal_compact (q : Fin 4) (r : Fin 193)
         mssUnitLatticeTransitionPiece
           (mssP4FineRegularCoordinate q r scale xi - nu)
     else 0)
-  simp only [if_pos hscale]
+  simp only [ite_eq_left hscale]
   exact hann.mul_right.mul_right
 
 private noncomputable def mssP4FineRegularChiSchwartz (q : Fin 4) (r : Fin 193)
@@ -4268,7 +4256,7 @@ private theorem mssP4FineChiReal_contDiff (q : Fin 4) (r : Fin 193)
     (scale : Real) (nu : Int) (hscale : 2 ≤ scale) :
     ContDiff Real (⊤ : ℕ∞) (mssP4FineChiReal q r scale nu) := by
   unfold mssP4FineChiReal
-  simp only [if_pos hscale]
+  simp only [ite_eq_left hscale]
   exact
     ((Auto.Spherical.MSS.contDiff_sectorAnnularCutoff.comp
       (contDiff_id.const_smul scale⁻¹)).mul
@@ -4281,7 +4269,7 @@ private theorem mssP4FineTildeChiReal_contDiff (q : Fin 4) (r : Fin 193)
     (scale : Real) (nu : Int) (hscale : 2 ≤ scale) :
     ContDiff Real (⊤ : ℕ∞) (mssP4FineTildeChiReal q r scale nu) := by
   unfold mssP4FineTildeChiReal
-  simp only [if_pos hscale]
+  simp only [ite_eq_left hscale]
   change ContDiff Real (⊤ : ℕ∞) (fun xi : Euclidean 2 =>
     mssP4FineTildeRadialGate (scale⁻¹ • xi) *
       mssP4TildeChiChartGate q (scale⁻¹ • xi) *
@@ -4304,7 +4292,7 @@ private theorem mssP4FineChiReal_compact (q : Fin 4) (r : Fin 193)
     Auto.Spherical.MSS.hasCompactSupport_sectorAnnularCutoff.comp_smul
       (c := scale⁻¹) (inv_ne_zero hscalePos.ne')
   unfold mssP4FineChiReal
-  simp only [if_pos hscale]
+  simp only [ite_eq_left hscale]
   change HasCompactSupport (fun xi : Euclidean 2 =>
     Auto.Spherical.MSS.sectorAnnularCutoff (scale⁻¹ • xi) *
       mssP4ChiChartGate q (scale⁻¹ • xi) *
@@ -4325,7 +4313,7 @@ private theorem mssP4FineTildeChiReal_compact (q : Fin 4) (r : Fin 193)
       (mssP4FineOuterRadialBump.hasCompactSupport.comp_smul
         (c := scale⁻¹) (inv_ne_zero hscalePos.ne')).mul_right
   unfold mssP4FineTildeChiReal
-  simp only [if_pos hscale]
+  simp only [ite_eq_left hscale]
   change HasCompactSupport (fun xi : Euclidean 2 =>
     mssP4FineTildeRadialGate (scale⁻¹ • xi) *
       mssP4TildeChiChartGate q (scale⁻¹ • xi) *
@@ -4552,7 +4540,7 @@ private theorem sum_mssP4FineChi_eq_one_on_coarseAmplitude
     sum_mssP4Fine_unitLattice_eq_one hscale hcoord
   have hreal : ∑ nu ∈ mssP4FineAngularIndices scale,
       mssP4FineChiReal q r scale nu xi = 1 := by
-    simp_rw [mssP4FineChiReal, if_pos hscale]
+    simp_rw [mssP4FineChiReal, ite_eq_left hscale]
     change ∑ nu ∈ mssP4FineAngularIndices scale,
         Auto.Spherical.MSS.sectorAnnularCutoff eta *
           mssP4ChiChartGate q eta *
@@ -4746,10 +4734,10 @@ private theorem mssP4FineSpatialProfile_apply
           (mssP4FineRadialTimeCutoffs C q r).radial
             ((Real.sqrt scale)⁻¹ * ‖xi‖ - n)) := by
   by_cases hscale : 2 ≤ scale
-  · simp only [mssP4FineSpatialProfile, dif_pos hscale]
+  · simp only [mssP4FineSpatialProfile, dite_eq_left hscale]
     simpa only [mssP4FineRadialTimeCutoffs_amplitude_apply] using
       (mssP4FineSpatialProfileAux_apply C q r scale n nu (by linarith) xi)
-  · rw [mssP4FineSpatialProfile, dif_neg hscale]
+  · rw [mssP4FineSpatialProfile, dite_eq_right hscale]
     simp [mssP4FineChi, mssP4FineChiReal, hscale]
 
 /-- A total Schwartz realization of the scaled normal coordinate.  Only the
@@ -4774,7 +4762,7 @@ private theorem mssP4FineNormalCoordinate_apply
   by_cases hzero : scale = 0
   · subst scale
     simp [mssP4FineNormalCoordinate]
-  · rw [mssP4FineNormalCoordinate, dif_neg hzero]
+  · rw [mssP4FineNormalCoordinate, dite_eq_right hzero]
     dsimp
     change scale • (mssP4FineRadialTimeCutoffs C q r).normalExtension
       (scale⁻¹ • xi) = _
@@ -4924,7 +4912,7 @@ private theorem mssP4FineRawRadialProfile_apply
     mssP4FineRawRadialProfile C q r scale n xi =
       (mssP4FineRadialTimeCutoffs C q r).radial
         ((Real.sqrt scale)⁻¹ * ‖xi‖ - n) := by
-  rw [mssP4FineRawRadialProfile, dif_pos hscale,
+  rw [mssP4FineRawRadialProfile, dite_eq_left hscale,
     mssRawRadialSchwartzProfile_apply]
 
 /-- The raw radial and enlarged angular Schwartz realizations required by
@@ -5068,7 +5056,7 @@ private theorem mssP4FineNormalizedRegularProfile_formula
             ((Real.sqrt scale)⁻¹ • y) - (n : Real) := by rw [hscalar]
   rw [mssP4FineNormalizedRegularProfile_apply,
     mssP4FineRegularSpatialProfileAux_apply,
-    mssP4FineRegularChiReal, if_pos hscale, hsmul, hcoord,
+    mssP4FineRegularChiReal, ite_eq_left hscale, hsmul, hcoord,
     mssP4FineSmoothNormalRadialFactor, hnormal,
     mssP4FineNormalizedCarrier, mssP4FineNormalizedLatticeFactor,
     mssP4FineNormalizedNormalFactor, mssP4FineNormalizedCoarseFactor,
@@ -5086,7 +5074,7 @@ private theorem mssP4FineNormalizedRegularProfile_eq_spatialProfile
       mssP4FineSpatialProfile C q r scale n nu (Real.sqrt scale • y) := by
   rw [mssP4FineNormalizedRegularProfile_apply,
     mssP4FineRegularSpatialProfileAux_eq]
-  simp only [mssP4FineSpatialProfile, dif_pos hscale]
+  simp only [mssP4FineSpatialProfile, dite_eq_left hscale]
 
 private theorem mssP4FineNormalizedCarrier_contDiff
     (q : Fin 4) (R : Real) :
@@ -5957,7 +5945,7 @@ private theorem mssP4PositiveL4
             ENNReal.ofReal
               ((K * (2 : Real) ^ a) * (2 : Real) ^ ((j : Real) * a))
           rw [hscalePow]
-          ring
+          ring_nf
 
 /-- The reflected-conjugate cutoff is the correct frequency-side symmetry
 for the negative half-wave.  It preserves the Littlewood--Paley cutoff
@@ -6698,7 +6686,8 @@ theorem schwartz_sublinear_q_top_moment_on_support
     exact (mul_le_mul' le_rfl (measure_mono hsub)).trans
       ((mul_meas_ge_le_lintegral₀ ((hTmeas g).ennreal_ofReal.pow_const q) _).trans
         (hstrong g hg))
-  obtain ⟨low, high, hlow, hhigh, hsplit⟩ := Auto.Spherical.Auxiliary.exists_schwartz_smooth_low_high_family f
+  obtain ⟨low, high, hlow, hhigh, hsplit⟩ :=
+    Auto.Spherical.Auxiliary.exists_schwartz_smooth_low_high_family f
   have hlowD (t : ℝ) : low t ∈ D := by
     intro x hx
     rw [hlow t x, hf x hx, smul_zero]
@@ -6714,7 +6703,8 @@ theorem schwartz_sublinear_q_top_moment_on_support
     (fun t => by ext x; exact hsplit t x)
     (fun t ht x => Auto.Spherical.Auxiliary.smooth_low_norm_le_half_height f (low t) ht (hlow t) x)
     (Auto.Spherical.Auxiliary.measurable_smooth_high_profile_lintegrals f low high hlow hhigh q)
-    _ (Auto.Spherical.Auxiliary.smooth_bump_schwartz_high_q_weighted_tail f low high hlow hhigh hq hqp)
+    _ (Auto.Spherical.Auxiliary.smooth_bump_schwartz_high_q_weighted_tail
+      f low high hlow hhigh hq hqp)
   have heq : (fun y => ENNReal.ofReal ((T f y) ^ p)) =
       fun y => ENNReal.ofReal (T f y) ^ p := by
     funext y
@@ -6858,13 +6848,6 @@ theorem schwartz_sublinear_frequency_gain_all_gt_two
       simpa only [C, schwartzInterpolationMomentGain, ite_eq_right hp4,
         mul_assoc, mul_left_comm, mul_comm] using hb
 
-#print axioms schwartzInterpolationMomentGain_pos
-#print axioms schwartz_sublinear_frequency_gain_all_gt_two
-#print axioms schwartz_sublinear_two_four_interpolation
-#print axioms schwartz_sublinear_two_four_gain_moment
-#print axioms schwartz_sublinear_two_four_frequency_gain_moment
-#print axioms schwartz_sublinear_q_top_moment_on_support
-#print axioms schwartz_sublinear_q_top_moment_on_support_scaled
 
 /-- Exact conormal-frequency dilation for the normalized circular family. -/
 theorem normalizedCircleFrequencyKernel_rescale
@@ -6881,6 +6864,7 @@ theorem normalizedCircleFrequencyKernel_rescale
     congrArg (fun z : Complex => (((1 + ε * u) / (1 + ε * s) : Real) : Complex) * z) hd
 
 set_option maxHeartbeats 400000 in
+-- The weighted seminorm expansion and incidence denominator estimate require this budget.
 /-- Uniform rapid decay away from the exact normalized incidence surface. -/
 theorem normalizedCircleFrequencyKernel_uniform_decay
     (b : SchwartzMap Real Complex) (N : Nat) :
@@ -7018,8 +7002,6 @@ theorem normalizedCircleFrequencyKernel_radial_mass
       dsimp only [G]
       rw [normalizedCircle_inverseKernel_lintegral b hμ s, ← mul_assoc]
       norm_num
-#print axioms normalizedCircleFrequencyKernel_uniform_decay
-#print axioms normalizedCircleFrequencyKernel_radial_mass
 
 /-- The literal conormal-frequency operator on a radial source region.
 The angular measure is the existing, unnormalized circle surface measure.
@@ -7074,7 +7056,6 @@ theorem normalizedCircleFrequencyOperator_enorm_le
       lintegral_mono hinner
     _ = _ := by simp only [lintegral_const, M]; ac_rfl
 
-#print axioms normalizedCircleFrequencyOperator_enorm_le
 
 /-- A finite real top-endpoint constant for the normalized kernel family,
 uniform over its frequency, source region, and geometric parameters. -/
@@ -7112,7 +7093,6 @@ theorem normalizedCircleFrequencyOperator_uniform_top
     (ENNReal.ofReal_le_ofReal_iff (mul_nonneg hM ha)).mp hb
   exact hn.trans (by nlinarith)
 
-#print axioms normalizedCircleFrequencyOperator_uniform_top
 
 /-- Source localization for the exact normalized operator. Restricting to a
 smaller radial region preserves the operator whenever the source vanishes
@@ -7159,8 +7139,6 @@ theorem normalizedCircleFrequencyOperator_eq_temporal_average
   simpa only [normalizedCircleFrequencyOperator, ← mul_assoc, inv_mul_cancel₀ hc,
     one_mul] using hh.symm
 
-#print axioms normalizedCircleFrequencyOperator_restrict_source
-#print axioms normalizedCircleFrequencyOperator_eq_temporal_average
 
 
 
@@ -7421,7 +7399,7 @@ theorem normalizedCircleFrequencyOperator_eq_radialShellConvolution
     congr 1
     funext u
     congr 2
-    ring
+    ring_nf
   rw [hrad]
   have hp : Integrable
       (fun p : Metric.sphere (0 : Euclidean 2) 1 × Ioi (0 : Real) =>
@@ -7613,9 +7591,6 @@ theorem normalizedCircleFrequencyOperator_uniform_two_moment
       rw [← mul_assoc, ← ENNReal.ofReal_mul (sq_nonneg B)]
     _ ≤ _ := mul_le_mul' (ENNReal.ofReal_le_ofReal hcoef) le_rfl
 
-#print axioms normalizedCircleFrequencyOperator_eq_radialShellConvolution
-#print axioms normalizedCircle_source_positive_moment_le
-#print axioms normalizedCircleFrequencyOperator_uniform_two_moment
 
 /-- The principal angular coordinate of a planar direction. -/
 def normalizedCircleSourceAngle (ω : Euclidean 2) : Real :=
@@ -7732,6 +7707,7 @@ def normalizedCircleSourceCubePacketKernel
         ∂((unitSurfaceMeasure 2).prod (volume.restrict S))
 
 set_option maxHeartbeats 2500000 in
+-- Elaborating the source-cube Fubini argument unfolds the full parametric kernel.
 /-- Every literal source-cube packet is integration of its actual inverse
 kernel against the source.  Compact radial support, bounded cutoffs, and
 Schwartz input discharge all Fubini conditions. -/
@@ -7773,7 +7749,8 @@ theorem normalizedCircleSourceCubePacket_eq_integral
         W p.1 *
           fourierCubeSourceKernel m (normalizedCirclePhysicalSourceChart p.1.1 p.1.2) p.2 * f p.2)
       (ν.prod volume) := by
-    have hdom := (hW.norm.mul_prod (f.integrable (μ := (volume : Measure (Euclidean 2)))).norm).const_mul
+    have hdom :=
+      (hW.norm.mul_prod (f.integrable (μ := (volume : Measure (Euclidean 2)))).norm).const_mul
       (SchwartzMap.seminorm Complex 0 0 km)
     apply hdom.mono' ((hW.aestronglyMeasurable.comp_fst.mul
       hkmeas.aestronglyMeasurable).mul f.continuous.aestronglyMeasurable.comp_snd)
@@ -7821,12 +7798,10 @@ theorem normalizedCircleSourceCubePacket_eq_integral
       change (∫ p : Metric.sphere (0 : Euclidean 2) 1 × Real,
         W p * fourierCubeSourceKernel m (normalizedCirclePhysicalSourceChart p.1 p.2) y * f y ∂ν) =
           (∫ p : Metric.sphere (0 : Euclidean 2) 1 × Real,
-            W p * fourierCubeSourceKernel m (normalizedCirclePhysicalSourceChart p.1 p.2) y ∂ν) * f y
+            W p * fourierCubeSourceKernel m
+              (normalizedCirclePhysicalSourceChart p.1 p.2) y ∂ν) * f y
       rw [integral_mul_const]
 
-#print axioms circleDirection_normalizedCircleSourceAngle
-#print axioms normalizedCircleSourceCube_weight_integrable
-#print axioms normalizedCircleSourceCubePacket_eq_integral
 
 /-- Source Fourier cubes at the actual natural scale sqrt μ, using the
 existing translated/dilated Schwartz cutoff and standard integer lattice. -/
@@ -8184,9 +8159,11 @@ theorem normalizedCircleSourceSlope_separation
     exact (normalizedCircleSourceSlope_hasDerivAt ε u b hb').continuousAt.continuousWithinAt
   have hdiff : DifferentiableOn Real (normalizedCircleSourceSlope ε u) (interior D) := by
     intro b hb'
-    exact (normalizedCircleSourceSlope_hasDerivAt ε u b (show b ∈ D from interior_subset hb')).differentiableAt.differentiableWithinAt
+    exact (normalizedCircleSourceSlope_hasDerivAt ε u b
+      (show b ∈ D from interior_subset hb')).differentiableAt.differentiableWithinAt
   have hlow : ∀ b ∈ interior D, (1 / 2 : Real) ≤ deriv (normalizedCircleSourceSlope ε u) b :=
-    fun b hb' => normalizedCircleSourceSlope_derivative_lower ε u b (show b ∈ D from interior_subset hb') hu
+    fun b hb' => normalizedCircleSourceSlope_derivative_lower ε u b
+      (show b ∈ D from interior_subset hb') hu
   have hgrow := hD.mul_sub_le_image_sub_of_le_deriv hcont hdiff hlow
   rcases le_total B₀ B with h | h
   · have hh := hgrow B₀ hb₀ B hb h
@@ -8203,11 +8180,6 @@ theorem normalizedCircleSourceSlope_separation
       simpa only [div_eq_mul_inv, mul_comm, one_mul] using hh
     exact hh'.trans (le_abs_self _)
 
-#print axioms normalizedCircleSourceCubeCutoff_apply
-#print axioms normalizedCircleSourceAngle_contDiffAt_of_side
-#print axioms normalizedCircleAtlasLift_partition
-#print axioms normalizedCircleSource_derivatives_on_ray
-#print axioms normalizedCircleSourceSlope_separation
 
 /-- The actual transverse strip selected by the ratio of input covectors. -/
 def normalizedCircleSourceStripCenter (ε u q : Real) : Real :=
@@ -8465,9 +8437,6 @@ theorem normalizedCircleSourcePacketPhase_transverse_gradient_gap
   exact normalizedCircleSourceStrip_directional_gap ε u B (ξ 0) (ξ 1) ρ μ hμ hu hb hξ hq
 
 
-#print axioms normalizedCircleSourceStripCenter_inverse
-#print axioms normalizedCircleSourceStrip_covector_gap
-#print axioms normalizedCircleSourcePacketPhase_transverse_gradient_gap
 
 /-! ## Actual half-wave cube envelopes for thin normal projection -/
 section NormalizedHalfWaveCubeEnvelope
@@ -8594,8 +8563,6 @@ theorem mss_normalizedAmplitude_parameter_polynomial_rectangle
     _ ≤ (C₀ * (1 + |a|) ^ d) * 2 ^ (N + l + K) * U := by gcongr; norm_num
     _ = _ := by ring
 
-#print axioms mss_phaseExponential_parameter_polynomial
-#print axioms mss_normalizedAmplitude_parameter_polynomial_rectangle
 
 /-- Every Fourier tail of a genuine fixed-Schwartz-phase packet has a
 polynomial budget in the unrestricted conormal parameter. -/
@@ -8676,7 +8643,6 @@ theorem mss_fixedPhase_oscillatory_integral_parameter_polynomial
     rho₀ T hδ.ne' L S η ξ hξ Φ, norm_mul, Complex.norm_exp_ofReal_mul_I, one_mul]
   exact hdecay
 
-#print axioms mss_fixedPhase_oscillatory_integral_parameter_polynomial
 
 /-- The fixed annular norm extension has the literal unit-normal derivative. -/
 theorem mssAnnularNormExtension_fderiv_unit (nu : Euclidean 2) (hnu : ‖nu‖ = 1) :
@@ -8705,7 +8671,8 @@ theorem mss_halfWave_cube_normalized_integral_time_polynomial
             ‖∫ w : Euclidean 2,
               Complex.exp (((2 * Real.pi *
                 (inner Real (rho • nu + lambda • w) X +
-                  t * ‖rho • nu + lambda • w‖) : Real) : Complex) * Complex.I) * phi w‖ ≤ C * (1 + |t|) ^ d := by
+                  t * ‖rho • nu + lambda • w‖) : Real) : Complex) * Complex.I) * phi w‖ ≤
+            C * (1 + |t|) ^ d := by
   obtain ⟨d, C, hC, hdecay⟩ := mss_fixedPhase_oscillatory_integral_parameter_polynomial
     mssAnnularNormExtension phi N
   refine ⟨d, C * (1 + 2 * Real.pi * A) ^ d, by positivity, ?_⟩
@@ -8723,7 +8690,8 @@ theorem mss_halfWave_cube_normalized_integral_time_polynomial
     rw [heq, abs_mul, abs_div, abs_of_pos hrho, abs_pow, abs_of_pos hlambda,
       abs_mul, abs_of_pos (by positivity : 0 < 2 * Real.pi)]
     have hratio : lambda ^ 2 / rho ≤ A := (div_le_iff₀ hrho).mpr hparabolic
-    exact (mul_le_mul_of_nonneg_left hratio (by positivity : 0 ≤ 2 * Real.pi * |t|)).trans_eq (by ring)
+    exact (mul_le_mul_of_nonneg_left hratio
+      (by positivity : 0 ≤ 2 * Real.pi * |t|)).trans_eq (by ring)
   have hpoly : (1 + |rho0 * delta ^ 2|) ^ d ≤
       (1 + 2 * Real.pi * A) ^ d * (1 + |t|) ^ d := by
     rw [← mul_pow]
@@ -8791,7 +8759,6 @@ theorem mss_halfWave_cube_normalized_integral_time_polynomial
   simpa only [xi, norm_smul, Real.norm_eq_abs, abs_of_pos hlambda, mul_assoc] using hd'
 
 
-#print axioms mss_halfWave_cube_normalized_integral_time_polynomial
 
 /-- The literal spatial inverse-Fourier half-wave kernel of a translated
 and dilated compact cube prototype. -/
@@ -8861,7 +8828,6 @@ theorem mssSpatialHalfWaveCubeKernel_uniform_time_polynomial
   exact (mul_le_mul_of_nonneg_left hdec (sq_nonneg lambda)).trans_eq (by ring)
 
 
-#print axioms mssSpatialHalfWaveCubeKernel_uniform_time_polynomial
 
 /-- The literal half-wave cube kernel retains the library's cyclic Fourier
 character normalization. -/
@@ -8903,10 +8869,6 @@ theorem mssSpatialHalfWaveCubeKernel_uniform_decay
         (1 + lambda * ‖X + t • nu‖)⁻¹ ^ N := by gcongr
     _ = _ := by ring
 
-#print axioms mssAnnularNormExtension_fderiv_unit
-#print axioms mssSpatialHalfWaveCubeKernel_rescaled
-#print axioms mssSpatialHalfWaveCubeKernel_eq_fourier_character
-#print axioms mssSpatialHalfWaveCubeKernel_uniform_decay
 
 
 /-- The actual half-wave cube has spatial L1 mass with only polynomial
@@ -8959,7 +8921,6 @@ theorem mssSpatialHalfWaveCubeKernel_spatial_mass_time_polynomial
       rw [ENNReal.ofReal_mul hC, ENNReal.ofReal_mul hC]
       ring
 
-#print axioms mssSpatialHalfWaveCubeKernel_spatial_mass_time_polynomial
 
 /-- A genuine Schwartz norm carrier on the annulus of one actual frequency
 cube. It is used to construct the narrow normal projector as Schwartz data. -/
@@ -9039,8 +9000,6 @@ theorem mssSpatialHalfWaveCubeKernel_eq_halfWave_inverse
   rw [hp, Complex.exp_add]
   ring
 
-#print axioms mssSpatialHalfWaveCubeNormCarrier_eq_norm_on_support
-#print axioms mssSpatialHalfWaveCubeKernel_eq_halfWave_inverse
 
 /-- Exact normal-projector factorization for a literal translated spatial
 cube and its genuinely generated annular norm carrier. -/
@@ -9147,9 +9106,6 @@ theorem mssThinNormalCubeProjector_uniform_L1
       lintegral_const_mul' _ _ hC
     _ ≤ _ := mul_le_mul' le_rfl htemp
 
-#print axioms mssThinNormalCubeProjector_inverse
-#print axioms mssThinNormalCubeProjector_spatial_mass
-#print axioms mssThinNormalCubeProjector_uniform_L1
 
 /-- The actual narrow normal projector has arbitrarily rapid L1 mass decay
 outside a fixed time window. No packet-tail envelope is assumed. -/
@@ -9198,7 +9154,6 @@ theorem mssThinNormalCubeProjector_time_tail_L1
       ring
     _ ≤ _ := mul_le_mul' le_rfl htemp
 
-#print axioms mssThinNormalCubeProjector_time_tail_L1
 
 /-- Both cone sheets have the same literal projector factorization. The
 chosen Schwartz carrier is multiplied by the true half-wave sign. -/
@@ -9256,7 +9211,8 @@ theorem mssSignedThinNormalCubeProjector_spatial_mass
           ‖spaceTimeFourierInv (jointSchwartzRaw
             (normalizedCircleThinNormalProjectorSymbol
               (mssTranslatedDilatedCutoff phi (rho • nu) lambda hlambda.ne')
-              beta (sigma.toReal • mssSpatialHalfWaveCubeNormCarrier rho hrho.ne') h hp.ne')) (X,t)‖ₑ) ≤
+              beta (sigma.toReal • mssSpatialHalfWaveCubeNormCarrier rho hrho.ne')
+              h hp.ne')) (X,t)‖ₑ) ≤
           C * ENNReal.ofReal ((1 + |t|) ^ d *
             ‖(FourierTransform.fourierInv
               (normalizedCircleThinNormalFrequencyProfile beta h hp.ne') :
@@ -9272,7 +9228,8 @@ theorem mssSignedThinNormalCubeProjector_spatial_mass
         ‖mssSpatialHalfWaveCubeKernel phi rho lambda nu X (sigma.toReal * t)‖ₑ := by
       apply lintegral_congr
       intro X
-      rw [mssSignedThinNormalCubeProjector_inverse phi hphi beta sigma rho lambda hrho hlambda hsmall
+      rw [mssSignedThinNormalCubeProjector_inverse
+        phi hphi beta sigma rho lambda hrho hlambda hsmall
         nu hnu h hp X t, enorm_mul]
     _ = ‖f t‖ₑ * ∫⁻ X : Euclidean 2,
         ‖mssSpatialHalfWaveCubeKernel phi rho lambda nu X (sigma.toReal * t)‖ₑ :=
@@ -9372,10 +9329,6 @@ theorem mssSignedThinNormalCubeProjector_time_tail_L1
     _ ≤ _ := mul_le_mul' le_rfl htemp
 
 
-#print axioms mssSignedThinNormalCubeProjector_inverse
-#print axioms mssSignedThinNormalCubeProjector_spatial_mass
-#print axioms mssSignedThinNormalCubeProjector_uniform_L1
-#print axioms mssSignedThinNormalCubeProjector_time_tail_L1
 
 /-- On a fixed time window, the literal signed thin projector is dominated
 by a positive matched-ray spatial envelope, with only the normal width h. -/
@@ -9424,7 +9377,6 @@ theorem mssSignedThinNormalCubeProjector_bounded_time_envelope
       exact mul_le_mul hb hk (norm_nonneg _) (by positivity)
     _ = _ := by ring
 
-#print axioms mssSignedThinNormalCubeProjector_bounded_time_envelope
 
 end NormalizedHalfWaveCubeEnvelope
 
@@ -9549,8 +9501,5 @@ theorem normalizedCircleFrequencyOperator_uniform_two_moment_time_two
       rw [← mul_assoc, ← ENNReal.ofReal_mul (sq_nonneg B)]
     _ ≤ _ := mul_le_mul' (ENNReal.ofReal_le_ofReal hcoef) le_rfl
 
-#print axioms normalizedCircleFrequencyOperator_eq_radialShellConvolution
-#print axioms normalizedCircle_source_positive_moment_le
-#print axioms normalizedCircleFrequencyOperator_uniform_two_moment_time_two
 end
 end Auto.Spherical.MSS

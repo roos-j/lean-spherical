@@ -115,7 +115,7 @@ theorem le_two_mul_inv_one_add_sq_of_central_outer
         mul_le_mul_of_nonneg_left hinv hC
       _ = (2 * C) * (1 + x ^ 2)⁻¹ := by ring
 
-/-- A literal time-kernel version of the central/outer splice.  The outer
+/-- A literal time-kernel version of the central/outer splice. The outer
 hypothesis is exactly the order-two circle IBP decay with
 `x = Λ * |t - s|`. -/
 theorem norm_le_quadraticTimeEnvelope_of_central_outer
@@ -144,7 +144,7 @@ theorem norm_le_quadraticTimeEnvelope_of_central_outer
       rw [habs_sq]
       ring
 
-/-- Its mass on any oriented finite interval is at most `π / Λ`.  This is the
+/-- Its mass on any oriented finite interval is at most `π / Λ`. This is the
 row/column estimate that converts a second-order circle-shell envelope into
 a continuous Schur bound. -/
 theorem intervalIntegral_quadraticTimeEnvelope_le_pi_div
@@ -173,7 +173,7 @@ theorem intervalIntegral_quadraticTimeEnvelope_le_pi_div
     _ ≤ Real.pi := hbound
 
 /-- A continuous signed kernel with the quadratic time envelope has the
-displayed Schur row bound.  The input `hL_integrable` is the ordinary Fubini
+displayed Schur row bound. The input `hL_integrable` is the ordinary Fubini
 datum supplied by the literal smooth time kernel; the estimate itself uses
 only its norm majorant. -/
 theorem intervalIntegral_norm_le_of_quadraticTimeEnvelope
@@ -212,7 +212,7 @@ theorem intervalIntegral_norm_le_of_quadraticTimeEnvelope
       mul_le_mul_of_nonneg_left
         (intervalIntegral_quadraticTimeEnvelope_le_pi_div hLambda) hArho
 
-/-- The matching column estimate.  It is the row theorem applied to the
+/-- The matching column estimate. It is the row theorem applied to the
 transposed kernel, using the symmetry of the time-difference envelope. -/
 theorem intervalIntegral_norm_le_of_quadraticTimeEnvelope_column
     {a b A rho Lambda s : Real} (hab : a ≤ b)
@@ -229,7 +229,7 @@ theorem intervalIntegral_norm_le_of_quadraticTimeEnvelope_column
     rw [quadraticTimeEnvelope_symm]
     exact hbound u hu
 
-/-- The source-ready outer-circle Schur row estimate.  A central width bound
+/-- The source-ready outer-circle Schur row estimate. A central width bound
 and order-two circle IBP off the time diagonal produce the exact
 `O((λρ)⁻¹)` row mass when `Λ = λρ²`. -/
 theorem intervalIntegral_norm_le_of_central_outer
@@ -337,7 +337,7 @@ theorem integral_quadraticTimeEnvelope_univ_eq_pi_div
   rw [div_eq_mul_inv]
   ring
 
-/-- The same whole-line quadratic envelope is integrable.  This deliberately
+/-- The same whole-line quadratic envelope is integrable. This deliberately
 keeps the translation and dilation steps separate so subsequent Schur bounds
 can use it as an ordinary Bochner-integrable majorant. -/
 theorem integrable_quadraticTimeEnvelope_univ
@@ -358,7 +358,7 @@ theorem integrable_quadraticTimeEnvelope_univ
   ring
 
 /-- Whole-line row Schur estimate for a complex time kernel dominated by the
-quadratic central/outer envelope.  The ordinary integrability hypothesis is
+quadratic central/outer envelope. The ordinary integrability hypothesis is
 kept explicit, which is exactly what the later Fubini/TT* layer supplies. -/
 theorem integral_norm_le_of_quadraticTimeEnvelope_univ
     {A rho Lambda t : Real} (hLambda : 0 < Lambda) (_hArho : 0 ≤ A * rho)
@@ -450,7 +450,7 @@ open Auto.Spherical.MSS
 noncomputable section
 
 /-- Complex-valued whole-line quadratic Schur, reduced to the existing
-nonnegative symmetric-kernel theorem.  The three product-integrability
+nonnegative symmetric-kernel theorem. The three product-integrability
 hypotheses are deliberately explicit: they are precisely the Fubini facts
 that must be supplied by a concrete time profile and kernel. -/
 theorem norm_integral_integral_le_of_symmetricSchur
@@ -513,7 +513,7 @@ open scoped BigOperators
 noncomputable section
 
 /-- The normalized time `TT*` kernel associated to an arbitrary fixed-shell
-product-amplitude family.  The amplitude may depend smoothly on the shell
+product-amplitude family. The amplitude may depend smoothly on the shell
 width; this is needed for the phase-derivative term. -/
 noncomputable def outerCircleProfileProductTimeKernel
     (A : Real × Real → Complex) (rho lambda t s : Real) : Complex :=
@@ -764,7 +764,7 @@ theorem norm_outerCircleProfileProductTimeKernel_symm
   exact Complex.norm_conj _
 
 /-- Global row and column Schur bounds for a fixed smooth product-amplitude
-family.  This is the reusable E0 input for the lobe, cutoff-derivative, and
+family. This is the reusable E0 input for the lobe, cutoff-derivative, and
 phase-derivative energies. -/
 theorem exists_outerCircleProfileProductTimeKernel_global_row_column_schur
     {rhoMax : Real} (hrhoMax : 0 ≤ rhoMax)
@@ -856,7 +856,7 @@ theorem exists_outerCircleProfileProductTimeKernel_global_row_column_schur
     exact hpoint t s
 
 /-- Fixed-frequency quadratic E0 bound for the arbitrary smooth product
-amplitude.  The Fubini hypotheses are left explicit just as in the concrete
+amplitude. The Fubini hypotheses are left explicit just as in the concrete
 finite-tensor wrapper. -/
 theorem exists_outerCircleProfileProductTimeKernel_quadratic_E0
     {rhoMax : Real} (hrhoMax : 0 ≤ rhoMax)
@@ -1051,7 +1051,7 @@ open scoped BigOperators FourierTransform
 noncomputable section
 
 /-- The literal Fourier-character `TT*` kernel associated to an arbitrary
-real smooth lobe.  Its product amplitude is `f^2`, exactly as obtained by
+real smooth lobe. Its product amplitude is `f^2`, exactly as obtained by
 pairing the angular analysis amplitude with its conjugate. -/
 noncomputable def outerCircleRealProfileFourierCharProductKernel
     (f : Real -> Real) (rho lambda t s : Real) : Complex :=
@@ -1060,7 +1060,7 @@ noncomputable def outerCircleRealProfileFourierCharProductKernel
       (Real.fourierChar (-(t - s) * lambda * Real.cos (rho * u)) : Complex)
 
 /-- Reversing the raw exponential frequency is exactly the same as swapping
-the two time variables.  This is the sign bridge required by the library
+the two time variables. This is the sign bridge required by the library
 Fourier-character convention. -/
 theorem outerCircleProfileProductTimeKernel_neg_frequency_eq_swap
     (A : Real × Real -> Complex) (rho lambda t s : Real) :
@@ -1070,10 +1070,10 @@ theorem outerCircleProfileProductTimeKernel_neg_frequency_eq_swap
   congr 1
   apply intervalIntegral.integral_congr
   intro u hu
-  ring
+  ring_nf
 
 /-- Exact normalization bridge from `Real.fourierChar` to the raw exponential
-kernel.  The negative `2*pi` is forced by the Fourier convention. -/
+kernel. The negative `2*pi` is forced by the Fourier convention. -/
 theorem outerCircleRealProfileFourierCharProductKernel_eq
     (f : Real -> Real) (rho lambda t s : Real) :
     outerCircleRealProfileFourierCharProductKernel f rho lambda t s =
@@ -1182,7 +1182,7 @@ theorem exists_outerCircleRealProfileFourierCharProductKernel_global_row_column_
             (Real.pi / (((2 * Real.pi) * lambda) * rho ^ 2)) := hmass
 
 /-- Fixed-frequency complex Schur estimate for the literal Fourier-character
-kernel of an arbitrary real lobe.  Fubini hypotheses remain explicit so this
+kernel of an arbitrary real lobe. Fubini hypotheses remain explicit so this
 is directly usable with finite compact tensor time profiles. -/
 theorem exists_outerCircleRealProfileFourierCharProductKernel_quadratic_E0
     {rhoMax : Real} (hrhoMax : 0 ≤ rhoMax)
@@ -1375,7 +1375,7 @@ open scoped BigOperators FourierTransform
 noncomputable section
 
 /-- Literal Fourier-character time kernel for an arbitrary joint smooth
-product amplitude.  This is the parametric counterpart of the fixed-lobe
+product amplitude. This is the parametric counterpart of the fixed-lobe
 kernel and is tailored to shifted-partition preweights. -/
 noncomputable def outerCircleProfileFourierCharProductKernel
     (A : Real × Real -> Complex) (rho lambda t s : Real) : Complex :=
@@ -1677,7 +1677,7 @@ open Auto.OneDimStationaryPhase
 noncomputable section
 
 /-- The literal outer-circle `TT*` time kernel after the angular shell change
-of variables `theta = rho*u`.  The time difference is the only `t,s`
+of variables `theta = rho*u`. The time difference is the only `t,s`
 dependence, and the phase is the actual circular phase. -/
 def outerCircleTTStarTimeKernel (rho lambda t s : Real) : Complex :=
   (rho : Complex) * ∫ u in (1 / 2 : Real)..2,
@@ -1692,7 +1692,7 @@ theorem norm_fixedOuterCircleUnitShellAmplitude_le_one (u : Real) :
   exact fixedOuterCircleUnitShellBump.le_one
 
 /-- The central part of the literal outer circle kernel costs only its shell
-width.  No stationary-phase assertion is used here. -/
+width. No stationary-phase assertion is used here. -/
 theorem norm_outerCircleTTStarTimeKernel_le_central
     {rho lambda t s : Real} (hrho : 0 ≤ rho) :
     ‖outerCircleTTStarTimeKernel rho lambda t s‖ ≤ rho * (3 / 2 : Real) := by
@@ -1715,7 +1715,7 @@ theorem norm_outerCircleTTStarTimeKernel_le_central
     _ = rho * (3 / 2 : Real) := by norm_num
 
 /-- The literal outer circle time kernel is continuous in its second time
-variable.  Compactness of the fixed angular shell, rather than any decay
+variable. Compactness of the fixed angular shell, rather than any decay
 estimate, supplies the needed parameter-integral continuity. -/
 theorem continuous_outerCircleTTStarTimeKernel_right
     (rho lambda t : Real) :
@@ -1826,7 +1826,7 @@ theorem exists_outerCircleTTStarTimeKernel_outer_quadratic
           ((lambda * rho ^ 2 * |t - s|) ^ 2)⁻¹ := by ring
 
 /-- The actual outer circle kernel has uniform continuous Schur row and
-column envelopes.  The only displayed analytic data not supplied by circle
+column envelopes. The only displayed analytic data not supplied by circle
 IBP are interval integrability of the literal kernel slices; smooth compact
 amplitude/Fubini proves those in the eventual source transfer. -/
 theorem exists_outerCircleTTStarTimeKernel_row_column_schur
@@ -1897,7 +1897,7 @@ theorem exists_outerCircleTTStarTimeKernel_row_column_schur
           · exact inv_nonneg.mpr (sq_nonneg _)
 
 /-- Every literal time slice of the fixed-bump circle kernel is interval
-integrable.  This discharges the only auxiliary measurability hypothesis in
+integrable. This discharges the only auxiliary measurability hypothesis in
 the continuous row-envelope lemma. -/
 theorem intervalIntegrable_outerCircleTTStarTimeKernel_right
     (rho lambda t a b : Real) :
@@ -1915,7 +1915,7 @@ theorem intervalIntegrable_outerCircleTTStarTimeKernel_left
     (μ := volume) a b
 
 /-- A completely literal fixed-bump circle shell has uniform row and column
-Schur envelopes.  The bound is of size `(lambda * rho)⁻¹`, since the kernel
+Schur envelopes. The bound is of size `(lambda * rho)⁻¹`, since the kernel
 has central size `rho` and its decay turns on at the time scale
 `(lambda * rho^2)⁻¹`. -/
 theorem exists_outerCircleTTStarTimeKernel_row_column_schur_unconditional
@@ -1937,7 +1937,7 @@ theorem exists_outerCircleTTStarTimeKernel_row_column_schur_unconditional
     (fun t => intervalIntegrable_outerCircleTTStarTimeKernel_right rho lambda t a b)
     (fun s => intervalIntegrable_outerCircleTTStarTimeKernel_left rho lambda s a b)
 
-/-- The actual `TT*` angular weight for the fixed shell cutoff.  The cutoff
+/-- The actual `TT*` angular weight for the fixed shell cutoff. The cutoff
 is real valued, so this is literally `chi * conj chi`, written as a square. -/
 noncomputable def outerCircleTTStarProductAmplitude (u : Real) : Complex :=
   fixedOuterCircleUnitShellAmplitude u ^ 2
@@ -2061,7 +2061,7 @@ theorem exists_uniform_literalOuterCircleUnitShell_productAmplitude
     outerCircleTTStarProductAmplitude_eventuallyEq_zero_right
     hM.le (hbound rho hrho)
 
-/-- The genuine fixed-shell time `TT*` kernel.  Its angular density is
+/-- The genuine fixed-shell time `TT*` kernel. Its angular density is
 exactly the product of the analysis cutoff with its conjugate. -/
 def outerCircleTTStarProductTimeKernel (rho lambda t s : Real) : Complex :=
   (rho : Complex) * ∫ u in (1 / 2 : Real)..2,
@@ -2208,7 +2208,7 @@ theorem intervalIntegrable_outerCircleTTStarProductTimeKernel_left
     (μ := volume) a b
 
 /-- Continuous Schur rows and columns for the genuine `chi * conj chi`
-circle shell kernel.  This is the precise scalar kernel estimate required by
+circle shell kernel. This is the precise scalar kernel estimate required by
 the fixed-frequency `TT*` step. -/
 theorem exists_outerCircleTTStarProductTimeKernel_row_column_schur
     {rhoMax a b : Real} (hrhoMax : 0 ≤ rhoMax)
@@ -2281,7 +2281,7 @@ theorem star_outerCircleTTStarProductAmplitude (u : Real) :
   unfold outerCircleTTStarProductAmplitude fixedOuterCircleUnitShellAmplitude
   simp
 
-/-- The exact complex `TT*` kernel is Hermitian.  Consequently its norm
+/-- The exact complex `TT*` kernel is Hermitian. Consequently its norm
 majorant is a symmetric nonnegative real kernel. -/
 theorem outerCircleTTStarProductTimeKernel_swap_eq_star
     (rho lambda t s : Real) :
@@ -2328,10 +2328,10 @@ theorem outerCircleTTStarProductTimeKernel_neg_frequency_eq_swap
   filter_upwards with u
   intro hu
   congr 2
-  ring
+  ring_nf
 
 /-- The literal shell Schur envelope depends on frequency only through its
-absolute value.  This is the normalization bridge for the library Fourier
+absolute value. This is the normalization bridge for the library Fourier
 phase, whose convention has the opposite sign. -/
 theorem norm_outerCircleTTStarProductTimeKernel_neg_frequency
     (rho lambda t s : Real) :
@@ -2351,7 +2351,7 @@ noncomputable def outerCircleTTStarProductNormKernel
   fun t s => ‖outerCircleTTStarProductTimeKernel rho lambda t s‖
 
 /-- The source-level symmetric Schur calculation applied to the literal
-circle shell.  The three displayed product-integrability hypotheses are the
+circle shell. The three displayed product-integrability hypotheses are the
 ordinary Fubini data for the finite-tensor spectral input; the row mass itself
 is furnished unconditionally by the circle IBP shell estimate. -/
 theorem exists_outerCircleTTStarProductTimeKernel_quadratic_norm_schur
@@ -2383,7 +2383,7 @@ theorem exists_outerCircleTTStarProductTimeKernel_quadratic_norm_schur
       hrhoMax hrhoMax_small hab with ⟨B, hB, hschur⟩
   refine ⟨B, hB, ?_⟩
   intro rho hrho lambda hlambda h hsq hquad hleft hright
-  letI : IsFiniteMeasure (outerCircleTimeIntervalMeasure a b) := by
+  let : IsFiniteMeasure (outerCircleTimeIntervalMeasure a b) := by
     unfold outerCircleTimeIntervalMeasure
     infer_instance
   apply Auto.Spherical.MSS.aux_kernelQuadratic_le_of_symmetricSchur
@@ -2427,7 +2427,7 @@ open MeasureTheory Set
 noncomputable section
 
 /-- The literal smooth outer-circle product kernel has globally integrable
-rows and columns with the exact all-time Schur mass.  This is the all-`ℝ`
+rows and columns with the exact all-time Schur mass. This is the all-`ℝ`
 version of the finite-interval estimate: it is tailored to the Schwartz time
 profiles in the fixed-frequency finite-tensor Fourier identity. -/
 theorem exists_outerCircleTTStarProductTimeKernel_global_row_column_schur
@@ -2529,7 +2529,7 @@ open scoped BigOperators FourierTransform
 noncomputable section
 
 /-- Exact normalization bridge from the library Fourier character to the
-`Complex.exp` convention of the outer-circle time kernel.  Since
+`Complex.exp` convention of the outer-circle time kernel. Since
 `Real.fourierChar x = exp(2π i x)`, the negative Fourier phase is represented
 by the existing positive-exponential kernel at frequency `-2π * lambda`. -/
 theorem norm_outerCircleTTStarProductTimeKernel_fourierChar_neg
@@ -2576,7 +2576,7 @@ noncomputable def ttstarKernel
     (A : U → T → Complex) (t s : T) : Complex :=
   ∫ u, A u t * starRingEnd Complex (A u s) ∂mu
 
-/-- Exact continuous `TT*` factorization.  The hypotheses are only the
+/-- Exact continuous `TT*` factorization. The hypotheses are only the
 Fubini/integrability statements needed to legitimately rearrange the three
 integrals; in the finite-tensor Schwartz model they are supplied by compact
 time localization and joint continuity. -/
@@ -2690,7 +2690,7 @@ noncomputable def outerShellFiniteTensorAnalysis
       outerShellFiniteTensorTimeData s0 q a alpha lambda t
 
 /-- Pointwise exact finite-tensor `TT*` expansion at a centered outer-circle
-shell point.  The Fourier phase has already been rewritten to the literal
+shell point. The Fourier phase has already been rewritten to the literal
 rescaled cosine phase, so it matches the circle product kernel used by the
 whole-line Schur theorem. -/
 theorem outerShellFiniteTensorAnalysis_ttstar
@@ -2717,7 +2717,7 @@ theorem outerShellFiniteTensorAnalysis_ttstar
   ring
 
 /-- The literal product `TT*` kernel in the library Fourier-character
-normalization.  It is the kernel obtained after integrating the pointwise
+normalization. It is the kernel obtained after integrating the pointwise
 finite-tensor identity over the rescaled outer shell. -/
 noncomputable def outerCircleFourierCharProductKernel
     (rho lambda t s : Real) : Complex :=
@@ -2825,7 +2825,7 @@ theorem outerCircleFourierCharAnalysis_ttstarKernel_eq
   exact outerCircleFourierCharAnalysisAmplitude_ttstar_integrand rho lambda u t s
 
 /-- Exact all-time continuous `TT*` factorization for the literal
-Fourier-character outer shell.  It takes the precise Fubini data used by the
+Fourier-character outer shell. It takes the precise Fubini data used by the
 generic factorization theorem and returns the actual product time kernel,
 with no phase normalization left implicit. -/
 theorem outerCircleFourierCharAnalysis_ttstar_factorization
@@ -2966,7 +2966,7 @@ theorem outerShellFiniteTensor_localized_ttstar_factorization
     _ = _ := hbase
 
 /-- Exact (not merely norm-level) normalization bridge for the product
-kernel.  The `-2*pi` is forced by the library Fourier character. -/
+kernel. The `-2*pi` is forced by the library Fourier character. -/
 theorem outerCircleFourierCharProductKernel_eq
     (rho lambda t s : Real) :
     outerCircleFourierCharProductKernel rho lambda t s =
@@ -2981,7 +2981,7 @@ theorem outerCircleFourierCharProductKernel_eq
   ring_nf
 
 /-- The Fourier-character kernel has the same norm as the positive-frequency
-Airy-convention product kernel.  This is the precise sign bridge used by the
+Airy-convention product kernel. This is the precise sign bridge used by the
 global Schur estimate. -/
 theorem norm_outerCircleFourierCharProductKernel_eq_positive
     (rho lambda t s : Real) :
@@ -2989,7 +2989,7 @@ theorem norm_outerCircleFourierCharProductKernel_eq_positive
       ‖outerCircleTTStarProductTimeKernel rho ((2 * Real.pi) * lambda) t s‖ := by
   rw [outerCircleFourierCharProductKernel_eq]
   convert norm_outerCircleTTStarProductTimeKernel_neg_frequency rho
-    ((2 * Real.pi) * lambda) t s using 1; ring
+    ((2 * Real.pi) * lambda) t s using 1; ring_nf
 
 /-- Global all-time Schur rows/columns in the library Fourier normalization.
 The conclusion retains the exact `2*pi` parameter, so no normalization is
@@ -3050,7 +3050,7 @@ theorem exists_outerCircleFourierCharProductKernel_global_row_column_schur
             (Real.pi / (((2 * Real.pi) * lambda) * rho ^ 2)) := hmass
 
 /-- Fixed-frequency `E₀` Schur bound for the exact Fourier-character outer
-circle product kernel.  All product-integrability inputs are exposed rather
+circle product kernel. All product-integrability inputs are exposed rather
 than inferred: the finite Schwartz-tensor application supplies them through
 its concrete Fubini calculation. -/
 theorem exists_outerCircleFourierCharProductKernel_quadratic_E0
@@ -3115,7 +3115,7 @@ theorem exists_outerCircleFourierCharProductKernel_quadratic_E0
   exact hschur
 
 /-- The preceding `E₀` estimate instantiated at the actual finite
-Schwartz-tensor time datum.  This is the clean fixed-frequency API intended
+Schwartz-tensor time datum. This is the clean fixed-frequency API intended
 for the subsequent integration in `xi`; its four displayed Fubini premises
 are the only remaining analytic bookkeeping, not hidden assumptions. -/
 theorem exists_outerShellFiniteTensor_quadratic_E0
@@ -3151,7 +3151,7 @@ theorem exists_outerShellFiniteTensor_quadratic_E0
   exact hmain rho hrho lambda hlambda H hHsq hquad hleft hright hcomplex
 
 /-- Actual fixed-frequency outer-shell `E₀`: the left side is the literal
-cutoff angular energy written as a complex positive quadratic form.  The
+cutoff angular energy written as a complex positive quadratic form. The
 preceding factorization theorem discharges its displayed equality from the
 finite-tensor Fubini hypotheses; the remaining four integrability inputs are
 exactly those required by the global complex Schur wrapper. -/
@@ -3329,7 +3329,7 @@ theorem outerCircleParametricRealProfileFourierCharAnalysis_ttstarKernel_eq
     g rho lambda u t s
 
 /-- Exact all-time `TT*` factorization for a joint carrier/coordinate lobe
-profile.  This is the direct analytic interface for a shifted smooth
+profile. This is the direct analytic interface for a shifted smooth
 partition preweight. -/
 theorem outerCircleParametricRealProfileFourierCharAnalysis_ttstar_factorization
     (g : Real × Real -> Real) (rho lambda : Real) (H : Real -> Complex)
@@ -3638,7 +3638,7 @@ theorem shiftedOuterParametricPhaseProfile_eventuallyEq_zero_right
   filter_upwards [shiftedOuterParametricProfile_eventuallyEq_zero_right n hright rho] with u hu
   simp [shiftedOuterParametricPhaseProfile, hu]
 
-/-- Exact normalized phase profile.  Since
+/-- Exact normalized phase profile. Since
 `outerCircleScaledDerivative r u = -sin(r*u)/r`, the physical angular phase
 derivative is the displayed profile times the separate scale `lambda*r`. -/
 noncomputable def shiftedOuterParametricScaledPhaseProfile
@@ -3688,7 +3688,7 @@ open scoped BigOperators
 noncomputable section
 
 /-- All Fubini data for one finite-core time profile and one real parametric
-angular amplitude.  Keeping these five hypotheses explicit makes the
+angular amplitude. Keeping these five hypotheses explicit makes the
 fixed-frequency Schur theorem valid before the final compact-core/density
 transport has been installed. -/
 structure ParametricRealProfileTTStarFubini
@@ -3749,7 +3749,7 @@ theorem ParametricRealProfileTTStarFubini.factorization
     g rho lambda H h.hpoint h.hpointStar h.htriple h.hkernel h.hrhs
 
 /-- Uniform fixed-frequency `E₀` for one shifted patch and one arbitrary
-smooth normalized lobe.  The result is formulated in the exact local
+smooth normalized lobe. The result is formulated in the exact local
 `TT*` energy that later Plancherel transports to the physical shell field. -/
 theorem exists_shiftedOuterParametricProfile_quadratic_E0
     {rhoMax : Real} (hrhoMax : 0 ≤ rhoMax)
@@ -3840,7 +3840,7 @@ theorem exists_shiftedOuterParametricProfile_cutoff_E1
   simpa [g] using hschur rho hrho lambda hlambda H hFubini.hHsq hFubini.hquad
     hFubini.hleftSq hFubini.hrightSq hFubini.hcomplex
 
-/-- The exact removable phase-factor contribution to `E₁`.  The weighted time
+/-- The exact removable phase-factor contribution to `E₁`. The weighted time
 profile `W` is left explicit; compact time support later gives `W=tH` the
 same `L²` size as `H`. -/
 theorem exists_shiftedOuterParametricProfile_phaseFactor_E1
@@ -3921,7 +3921,7 @@ theorem shiftedCappedTelescopingCutoff_eq_profile
       shiftedCappedTelescopingCutoffProfile eps K n i (theta - alpha) := by
   unfold shiftedCappedTelescopingCutoffProfile shiftedCappedTelescopingCutoff
   rw [shiftedStationaryPreweight_eq_profile]
-  congr 1 <;> ring
+  congr 1 <;> ring_nf
 
 theorem contDiff_cappedTelescopingCutoff
     (eps R : Real) (K i : Nat) :
@@ -3936,7 +3936,7 @@ theorem contDiff_cappedTelescopingCutoff
   · rw [show cappedTelescopingCutoff eps R K i = telescopingShellCutoff eps i by
       funext u
       unfold cappedTelescopingCutoff
-      rw [if_neg hi]]
+      rw [ite_eq_right hi]]
     exact contDiff_telescopingShellCutoff eps i
 
 theorem contDiff_shiftedCappedTelescopingCutoffProfile
@@ -4009,7 +4009,7 @@ theorem shiftedCappedTelescopingCutoffProfile_eq_zero_at_globalCommonLeft
   exact shiftedCappedTelescopingCutoff_eq_zero_at_globalCommonLeft heps K n i hi
     (C.angle j xi) hn (C.angle_lower j hj xi) hscale
 
-/-- Endpoint-zero GN closure for one literal shifted chart/shell field.  The
+/-- Endpoint-zero GN closure for one literal shifted chart/shell field. The
 spatial continuity, dominated differentiation, and Plancherel energies are
 explicit inputs; the conclusion is exactly the `B jni` format consumed by
 the finite shifted capped reassembly. -/
@@ -4084,7 +4084,7 @@ open scoped BigOperators FourierTransform EuclideanSpace
 noncomputable section
 
 /-- A concrete slice-Schwartz realization of one literal chart/shift/capped
-shell field and its supplied angular derivative.  The four integrability
+shell field and its supplied angular derivative. The four integrability
 fields are the only Fubini obligations at the spatial Plancherel stage. -/
 structure ShiftedCappedShellSchwartzSlices
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -4274,7 +4274,7 @@ open Auto.Spherical.SurfaceMeasureDecay
 
 noncomputable section
 
-/-- The closed scaled annulus is measurable.  Keeping this local avoids making
+/-- The closed scaled annulus is measurable. Keeping this local avoids making
 the elementary set-theoretic fact another dependency of the sector package. -/
 theorem measurableSet_scaledDyadicFrequencyAnnulus (lambda : Real) :
     MeasurableSet (scaledDyadicFrequencyAnnulus lambda) := by
@@ -4402,7 +4402,7 @@ noncomputable section
 /-- The precise annular Fubini interface needed by the physical endpoint.
 `e0` and `e1` are the fixed-frequency angular energies after the signed
 TT* calculation; `h` is the time energy of the finite tensor at frequency
-`xi`.  The two representation equalities are deliberately literal: they are
+`xi`. The two representation equalities are deliberately literal: they are
 the only remaining multiplier/Fubini bridge between a concrete shell field
 and the fibre estimates. -/
 structure AnnularShellFiberEnergyWitness
@@ -4488,7 +4488,7 @@ theorem shiftedCappedShell_frequency_bounds_of_annular_fiber_witness
 
 /-- One literal chart/shift/capped-shell field obeys the endpoint-zero
 maximal estimate as soon as its signed fixed-frequency TT* energies satisfy
-the annular witness interface.  Thus the analytic work left below this
+the annular witness interface. Thus the analytic work left below this
 theorem is only to construct the slice multipliers and prove the two stated
 Fubini identities; the shell and annular scale bookkeeping is closed here. -/
 theorem shiftedChartedCappedTelescopingField_endpointZeroSobolev_of_annular_fiber_witness
@@ -4582,7 +4582,7 @@ open scoped BigOperators FourierTransform EuclideanSpace
 noncomputable section
 
 /- A fixed angular slice of the multiplier is compact and smooth in spatial
-frequency.  This is the first concrete replacement for the old abstract
+frequency. This is the first concrete replacement for the old abstract
 `ShiftedCappedShellSchwartzSlices` input. -/
 theorem contDiff_shiftedChartedCappedTelescopingMultiplier_slice
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -4753,7 +4753,7 @@ theorem hasCompactSupport_finiteTensorTubeMultiplierAngularDeriv_slice
   exact (hqcompact l).mul_right
 
 /-- The raw frequency multiplier of the literal physical angular derivative
-field.  Naming it lets the compact-Schwartz realization below be used in the
+field. Naming it lets the compact-Schwartz realization below be used in the
 parametric Plancherel transport. -/
 noncomputable def shiftedChartedCappedTelescopingMultiplierDerivRaw
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -4915,7 +4915,7 @@ noncomputable section
 
 /-- A continuous inverse-Fourier field is jointly square-integrable on a
 compact angular interval as soon as its Schwartz multiplier family has
-joint square-integrable frequency energy.  The proof uses slice-wise
+joint square-integrable frequency energy. The proof uses slice-wise
 Plancherel and `integrable_prod_iff`; it does not assume the desired
 physical integrability as an input. -/
 theorem integrable_sq_fourierInvParametricField_of_continuous_frequency
@@ -4977,7 +4977,7 @@ theorem integrable_sq_fourierInvParametricField_of_continuous_frequency
   · exact hnorm
 
 /-- Local version of
-`integrable_sq_fourierInvParametricField_of_continuous_frequency`.  The
+`integrable_sq_fourierInvParametricField_of_continuous_frequency`. The
 physical inverse-Fourier field only needs to be continuous on the compact
 angular interval being integrated; imposing global continuity in the angular
 parameter is artificial for a cutoff shell. -/
@@ -5047,7 +5047,7 @@ theorem integrable_sq_fourierInvParametricField_of_continuousOn_frequency
 
 /-- Joint square-integrability in frequency follows from joint continuity
 and a single compact spatial-frequency support, after restricting the angular
-parameter to a compact interval.  This is tailored to charted finite-tensor
+parameter to a compact interval. This is tailored to charted finite-tensor
 multipliers: angular cutoffs do not enlarge the common spatial support. -/
 theorem integrable_sq_compactInterval_of_continuous_commonSupport
     (m : Real -> Euclidean 2 -> Complex) (lo hi : Real) (K : Set (Euclidean 2))
@@ -5303,7 +5303,7 @@ theorem norm_sq_finiteTensorTubeMultiplierAngularDeriv_le_compactTimeEnergy
     unfold scratch_lightRayTimePhase timeWeighted
     simp only [Circle.smul_def, smul_eq_mul, starRingEnd_apply, star_trivial,
       Real.inner_apply]
-    ring
+    ring_nf
   have hident : finiteTensorTubeMultiplierAngularDeriv s q a theta xi =
       (inner Real (circleDirectionDeriv theta) xi) • ∫ t : Real, W t := by
     rw [finiteTensorTubeMultiplierAngularDeriv_eq_weighted_timeFourier
@@ -5414,7 +5414,7 @@ theorem lowpassFiniteTensorAngularDerivativeRaw_eq_zero_of_two_le_norm
   rw [intDyadicLowpass_eq_zero_of_le_norm C hscale, zero_mul]
 
 /-- The angular multiplier family after multiplication by the fixed canonical
-tube multiplier.  The canonical factor is independent of angle, so its
+tube multiplier. The canonical factor is independent of angle, so its
 angular derivative is just the corresponding factor times the raw derivative. -/
 noncomputable def canonicalFiniteTensorCircleMultiplierFamily
     {ι : Type*} (rho : Real) (hrho : 0 < rho)
@@ -5448,7 +5448,7 @@ theorem kakeyaRadialLowpassParametricMultiplier_canonicalFiniteTensor_eq
   simp only [smul_eq_mul]
 
 /-- A canonical Schwartz realization of each raw finite-tensor angular
-derivative slice.  The construction is pointwise in the angle but its
+derivative slice. The construction is pointwise in the angle but its
 application is definitionally the literal derivative multiplier. -/
 noncomputable def finiteTensorTubeMultiplierAngularDerivSlice
     {ι : Type*} (s : Finset ι)
@@ -5556,7 +5556,7 @@ theorem integrable_sq_canonicalLowpassFiniteTensorAngularDerivativeFamily
       C rho hrho s q hqcompact a theta xi hxi
 
 /-- A global angular-uniform frequency majorant for the literal finite-tensor
-derivative.  This exposes the domination fact used to obtain physical joint
+derivative. This exposes the domination fact used to obtain physical joint
 continuity by dominated inverse Fourier integration. -/
 theorem norm_finiteTensorTubeMultiplierAngularDeriv_le_bound
     {ι : Type*} (s : Finset ι)
@@ -5691,7 +5691,7 @@ theorem integrable_canonicalLowpassFiniteTensorAngularDerivative_majorant
         finiteTensorTubeMultiplierAngularDerivBound s q a xi) :=
   (integrable_finiteTensorTubeMultiplierAngularDerivBound s q a).const_mul _
 
-/-- Source-style lowpass maximal-square closure.  All energy hypotheses are
+/-- Source-style lowpass maximal-square closure. All energy hypotheses are
 now discharged by the finite compact-time tensor; the remaining assumptions
 are only the standard physical regularity package for the displayed concrete
 Schwartz derivative family `dm`. -/
@@ -5830,7 +5830,7 @@ theorem hasFiniteCoreLowpassAngularTraceEnergyBound
   have hE : Integrable E volume := by
     dsimp [E]
     exact hfreq.integral_prod_left
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp [μ]
     infer_instance
   have hone : Integrable (fun _ : Real => (1 : Real)) μ := integrable_const _
@@ -6181,7 +6181,7 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivRaw_eq_zero_of_not_mem_sup
   simp
 
 /-- Frequency square-integrability of the literal shifted multiplier on any
-compact angular interval.  This discharges the frequency half of the
+compact angular interval. This discharges the frequency half of the
 parametric Plancherel record from joint continuity and one common support. -/
 theorem integrable_sq_shiftedChartedCappedTelescopingMultiplier_frequency
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -6246,7 +6246,7 @@ noncomputable section
 
 /-- A parameterized inverse spatial Fourier integral is continuous on a
 parameter set when its raw multiplier is jointly continuous and supported in
-one compact frequency set there.  This is the local compact-support version:
+one compact frequency set there. This is the local compact-support version:
 no global angular majorant is required. -/
 theorem continuousOn_uncurry_fourierInv_of_continuous_commonSupport
     (m : Real -> Euclidean 2 -> Complex) (lo hi : Real)
@@ -6304,7 +6304,7 @@ open scoped BigOperators FourierTransform EuclideanSpace
 noncomputable section
 
 /-- The canonical compact-Schwartz realization of each raw shifted multiplier
-slice.  Its coercion is definitionally the literal multiplier. -/
+slice. Its coercion is definitionally the literal multiplier. -/
 noncomputable def shiftedChartedCappedTelescopingMultiplierSlice
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
     (C : SmoothAngularFrequencyChartFamily kappa charts active) (j : kappa)
@@ -6360,7 +6360,7 @@ theorem shiftedChartedCappedTelescopingMultiplierDerivSlice_apply
 
 /-- The literal shifted field and its literal derivative admit a fully
 concrete `ShiftedCappedShellSchwartzSlices` record once the two inverse-Fourier
-families are continuous on the compact angular interval.  All four
+families are continuous on the compact angular interval. All four
 integrability fields are derived, not postulated. -/
 noncomputable def shiftedChartedCappedTelescopingSchwartzSlices
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -6495,7 +6495,7 @@ noncomputable section
 
 /-- Local differentiation under inverse Fourier transform for a jointly
 continuous parametric multiplier and its jointly continuous derivative with
-one common compact frequency support.  Unlike the earlier global dominated
+one common compact frequency support. Unlike the earlier global dominated
 wrapper, the majorant is built locally from compactness of
 `Icc (theta - 1) (theta + 1) × K`; hence smooth compact shell multipliers
 need no separately postulated global derivative bound. -/
@@ -6586,7 +6586,7 @@ open scoped BigOperators FourierTransform EuclideanSpace
 noncomputable section
 
 /-- Global version of the compact-frequency inverse-Fourier continuity
-lemma.  It is obtained from Mathlib's `ContinuousOn` parametric-integral
+lemma. It is obtained from Mathlib's `ContinuousOn` parametric-integral
 theorem with the parameter set equal to `univ`; this is the form required by
 the endpoint-zero Sobolev closure. -/
 theorem continuous_uncurry_fourierInv_of_continuous_commonSupport
@@ -6683,7 +6683,7 @@ theorem hasDerivAt_shiftedChartedCappedTelescopingMultiplier
   exact h
 
 /-- The literal physical shifted shell field differentiates to the literal
-inverse transform of its raw product-rule multiplier.  The common-support
+inverse transform of its raw product-rule multiplier. The common-support
 derivative foundation supplies all domination locally. -/
 theorem hasDerivAt_shiftedChartedCappedTelescopingField
     {kappa iota : Type*} {charts : Finset kappa} {active : Set (Euclidean 2)}
@@ -6960,7 +6960,7 @@ open scoped BigOperators
 noncomputable section
 
 /-- Compact time restriction makes every continuous two-time integrand
-Bochner integrable.  This is the basic Fubini fact used below. -/
+Bochner integrable. This is the basic Fubini fact used below. -/
 theorem integrable_restrict_Icc_prod_of_continuous
     {E : Type*} [NormedAddCommGroup E] {a b : Real}
     (f : Real × Real → E) (hf : Continuous f) :
@@ -7390,7 +7390,7 @@ theorem exists_fullCircleRayTimeKernel_symmetricSchur_bound :
   ring
 
 
-/-- Literal full-circle compact-time analysis.  For spatial Fourier data at
+/-- Literal full-circle compact-time analysis. For spatial Fourier data at
 frequency `ξ`, this is the multiplier of the straight-ray integral along
 `p - t • ω`; the terminal point contributes only its unit-modulus Fourier
 character. -/
@@ -7525,8 +7525,8 @@ theorem fullCircleRayTimeAnalysis_eq_finiteTensorMultiplier
 
 /-- Full-circle averaging of the existing physical straight-ray transform
 gains `lambda^(-1/2)` in squared `L²` energy for spatial frequencies above
-`lambda`.  The finite tensor is not diagonalized: all cross terms survive
-the time `TT*`, Fubini, and spatial Plancherel steps.  This is the averaged
+`lambda`. The finite tensor is not diagonalized: all cross terms survive
+the time `TT*`, Fubini, and spatial Plancherel steps. This is the averaged
 ray energy needed before the one-dimensional cotangent Sobolev step in the
 source's Section 5 packet argument. -/
 theorem exists_fullCircle_finiteTensor_ray_energy_decay :
@@ -7663,7 +7663,7 @@ theorem scratch_finiteTensorTubeBand_eq_actual_ray_integral
   ring
 
 /-- The flat normalized-incidence source has coordinates `(theta,u)`;
-`B` is its transverse cotangent parameter.  Its terminal point therefore
+`B` is its transverse cotangent parameter. Its terminal point therefore
 depends on `B`, as required by the source's Section 5 characteristic rays. -/
 def flatIncidenceFiniteTensorRay
     {ι : Type*} (s : Finset ι)
@@ -7673,7 +7673,7 @@ def flatIncidenceFiniteTensorRay
   scratch_finiteTensorTubeBand s q hqcompact a (circleDirection theta)
     (u • circleDirection theta + B • circleDirectionDeriv theta)
 
-/-- Exact incidence-indexed ray integral at `eps = 0`.  This identifies the
+/-- Exact incidence-indexed ray integral at `eps = 0`. This identifies the
 actual two-dimensional source and its additional cotangent variable without
 replacing it by a maximal operator at a fixed spatial terminal point. -/
 theorem flatIncidenceFiniteTensorRay_eq_actual_integral
@@ -7691,18 +7691,6 @@ theorem flatIncidenceFiniteTensorRay_eq_actual_integral
   rw [show u • circleDirection theta + B • circleDirectionDeriv theta -
       t • circleDirection theta =
       (u - t) • circleDirection theta + B • circleDirectionDeriv theta by module]
-
-#print axioms flatIncidenceFiniteTensorRay_eq_actual_integral
-#print axioms scratch_finiteTensorTubeBand_eq_actual_ray_integral
-#print axioms exists_fullCircle_finiteTensor_ray_energy_decay
-#print axioms exists_fullCircleRayTimeAnalysis_energy_decay
-#print axioms fullCircleRayTimeAnalysis_ttstar
-#print axioms exists_fullCircleRayTimeKernel_symmetricSchur_bound
-#print axioms fullCircle_halfEnvelope_row_le
-#print axioms fullCircle_halfEnvelope_integral_le
-#print axioms fullCircle_halfEnvelope_integral_eq
-#print axioms exists_fullCircle_surfaceFourier_decay_envelope
-#print axioms fullCircleRayTimeKernel_eq_angular_TTStar
 end
 end Auto.Spherical.MSS
 
@@ -7717,7 +7705,7 @@ structures used by the directional derivative APIs. -/
 attribute [local instance 2000] NormedAddCommGroup.toAddCommGroup NormedSpace.toModule
 
 /-- Spatial Bernstein in the exact directional energy form needed for the
-cotangent Sobolev step of the source's Section 5 ray estimate.  The operator
+cotangent Sobolev step of the source's Section 5 ray estimate. The operator
 is the actual directional derivative of the inverse Fourier transform;
 the frequency multiplier and spatial Plancherel are proved below. -/
 theorem fullCircleRay_spatialDerivative_energy_le_Bernstein
@@ -7812,8 +7800,6 @@ theorem hasDerivAt_flatIncidenceFiniteTensorRay_transverse
     convert (((hasDerivAt_id B).smul_const (circleDirectionDeriv theta)).const_add
       (u • circleDirection theta)) using 1 <;> simp
   exact (G.hasFDerivAt _).comp_hasDerivAt B hpath
-#print axioms hasDerivAt_flatIncidenceFiniteTensorRay_transverse
-#print axioms fullCircleRay_spatialDerivative_energy_le_Bernstein
 end
 end Auto.Spherical.MSS
 
@@ -7823,7 +7809,7 @@ namespace Auto.Spherical.MSS
 noncomputable section
 
 /-- Product Sobolev on the actual source measure, including circle-angle
-times radial-source measure.  It does not identify that source with spatial
+times radial-source measure. It does not identify that source with spatial
 terminal points. -/
 theorem sourceCotangent_productSobolev
     {X : Type*} [MeasurableSpace X] [TopologicalSpace X] [BorelSpace X]
@@ -7854,7 +7840,8 @@ theorem sourceCotangent_productSobolev
           ((hF.comp (continuous_const.prodMk continuous_id)).norm.pow 2)).measurable
       · intro x
         exact (ENNReal.continuous_ofReal.comp
-          ((hF.comp (continuous_subtype_val.prodMk continuous_const)).norm.pow 2)).lowerSemicontinuous
+          ((hF.comp (continuous_subtype_val.prodMk continuous_const)).norm.pow
+            2)).lowerSemicontinuous
     have heq : (fun x : X => ⨆ B : Icc lo hi, ENNReal.ofReal (‖F B.1 x‖ ^ 2)) =
         ⨆ B : Icc lo hi, fun x : X => ENNReal.ofReal (‖F B.1 x‖ ^ 2) := by
       funext x
@@ -7889,7 +7876,6 @@ theorem sourceCotangent_productSobolev
       exact mul_le_mul_of_nonneg_left
         (integral_norm_mul_norm_le_sqrt_mul_of_energy_bounds (ν.prod μ) _ _ hFm hDm hE0 hE1)
         (by norm_num)
-#print axioms sourceCotangent_productSobolev
 end
 end Auto.Spherical.MSS
 
@@ -8063,8 +8049,10 @@ theorem exists_fullCircle_finiteTensor_ray_energy_decay_centered :
       have h := hdecay (-2) 2 (by norm_num) ξ hξpos
         (scratch_finiteTensorTimeData s q a ξ)
         (continuous_scratch_finiteTensorTimeData s q a ξ)
+      have hsqrt : Real.sqrt 4 = 2 := by
+        nlinarith [Real.sq_sqrt (show (0 : Real) ≤ 4 by norm_num), Real.sqrt_nonneg (4 : Real)]
       simp only [fullCircleRayTimeAnalysis_centered_eq_finiteTensorMultiplier s q hqcompact a ha,
-        htime, show (2 : Real) - (-2) = 4 by norm_num, show Real.sqrt 4 = 2 by nlinarith [Real.sq_sqrt (show (0 : Real) ≤ 4 by norm_num), Real.sqrt_nonneg (4 : Real)]] at h
+        htime, show (2 : Real) - (-2) = 4 by norm_num, hsqrt] at h
       apply h.trans
       apply mul_le_mul_of_nonneg_right _ (integral_nonneg (fun t => sq_nonneg _))
       rw [mul_comm C 2]
@@ -8109,11 +8097,6 @@ theorem exists_fullCircle_finiteTensor_ray_energy_decay_centered :
       congr 1
       exact (integral_prod _ (integrable_sq_scratch_finiteTensorTimeData_product s q a)).symm
     _ = _ := by rw [finiteTensorFrequencyTimeEnergy_eq_integral_norm_sq_physical]
-
-
-
-#print axioms exists_fullCircle_finiteTensor_ray_energy_decay_centered
-#print axioms norm_sq_finiteTensorTubeMultiplier_le_centered_time_energy
 end
 end Auto.Spherical.MSS
 open MeasureTheory Set Metric
@@ -8182,7 +8165,8 @@ theorem integrable_fullCircle_finiteTensor_multiplier_sq_centered
   have hE : Integrable E volume :=
     (integrable_sq_scratch_finiteTensorTimeData_product s q a).integral_prod_left
   apply ((hE.const_mul 4).comp_snd (unitSurfaceMeasure 2)).mono'
-  · exact ((continuous_fullCircle_finiteTensor_multiplier s q hqcompact a).norm.pow 2).aestronglyMeasurable
+  · exact ((continuous_fullCircle_finiteTensor_multiplier s q hqcompact a).norm.pow
+    2).aestronglyMeasurable
   · filter_upwards [] with p
     rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
     exact norm_sq_finiteTensorTubeMultiplier_le_centered_time_energy
@@ -8207,8 +8191,6 @@ theorem fullCircle_finiteTensor_multiplier_support_upper
     by_contra hne
     exact hR (hq i hi (Function.mem_support.mpr hne))
   simp only [hz, zero_mul]
-#print axioms fullCircleRay_spatialDerivative_energy_eq_frequency
-#print axioms integrable_fullCircle_finiteTensor_multiplier_sq_centered
 end
 end Auto.Spherical.MSS
 
@@ -8326,8 +8308,6 @@ theorem exists_fullCircle_finiteTensor_spatialDerivative_energy_decay_centered :
           ∂(volume.prod volume)) :=
       mul_le_mul_of_nonneg_left (hdecay ι s q hqcompact a ha lambda hlambda hql) (sq_nonneg _)
     _ = _ := by ring
-
-#print axioms exists_fullCircle_finiteTensor_spatialDerivative_energy_decay_centered
 end
 end Auto.Spherical.MSS
 
@@ -8440,8 +8420,6 @@ theorem normalizedCircleSingleTensorRay_hasDerivAt
     have h := (G.hasFDerivAt (p b t)).comp_hasDerivAt b hp
     convert h.const_mul (a t) using 1 <;> simp only [DG, SchwartzMap.fderivCLM_apply, p,
       Function.comp_apply]
-#print axioms normalizedCircleSingleTensorRay_hasDerivAt
-#print axioms normalizedCircleRayVelocity_norm_le
 end
 end Auto.Spherical.MSS
 open MeasureTheory Set Filter Metric
@@ -8531,8 +8509,6 @@ theorem rayTimeWeightedSchwartz_apply (a : SchwartzMap Real Complex) (t : Real) 
     rayTimeWeightedSchwartz a t = (t : Complex) * a t := by
   rw [rayTimeWeightedSchwartz, SchwartzMap.smulLeftCLM_apply_apply (by fun_prop)]
   exact Complex.real_smul
-#print axioms actualSingleTensorRayGradient_eq_fderiv
-#print axioms rayTimeWeightedSchwartz_apply
 end
 end Auto.Spherical.MSS
 
@@ -8605,7 +8581,8 @@ theorem normalizedCircleFiniteTensorRay_eq_smoothTube
     (a : ι → SchwartzMap Real Complex) (eps u B : Real) (omega V : Euclidean 2) :
     normalizedCircleFiniteTensorRay s q a eps u B omega V =
       scratch_finiteTensorTubeBand s q hqcompact a
-        (normalizedCircleRayNormal eps B omega V) (normalizedCircleRayTerminal eps u B omega V) := by
+        (normalizedCircleRayNormal eps B omega V) (normalizedCircleRayTerminal eps u B omega V) :=
+          by
   unfold normalizedCircleFiniteTensorRay scratch_finiteTensorTubeBand
   apply Finset.sum_congr rfl
   intro i hi
@@ -8632,7 +8609,8 @@ theorem actualFiniteTensorRayGradient_eq_fderiv
   have h : HasFDerivAt (scratch_finiteTensorTubeBand s q hqcompact a n)
       (actualFiniteTensorRayGradient s q a n p) p := by
     unfold scratch_finiteTensorTubeBand actualFiniteTensorRayGradient
-    exact HasFDerivAt.fun_sum (fun i hi => actualSingleTensorRay_hasFDerivAt (q i) (hqcompact i) (a i) n p)
+    exact HasFDerivAt.fun_sum (fun i hi => actualSingleTensorRay_hasFDerivAt (q i) (hqcompact i)
+      (a i) n p)
   exact h.fderiv.symm
 
 theorem normalizedCircleFiniteTensorRayDeriv_eq_actual_gradients
@@ -8651,14 +8629,11 @@ theorem normalizedCircleFiniteTensorRayDeriv_eq_actual_gradients
     Finset.sum_sub_distrib]
 
 theorem rayTimeWeightedSchwartz_support_subset (a : SchwartzMap Real Complex) :
-    Function.support (rayTimeWeightedSchwartz a : Real → Complex) ⊆ Function.support (a : Real → Complex) := by
+    Function.support (rayTimeWeightedSchwartz a : Real → Complex) ⊆ Function.support (a : Real →
+      Complex) := by
   intro t ht
   by_contra ha
   exact ht (by simp [rayTimeWeightedSchwartz_apply, Function.notMem_support.mp ha])
-
-#print axioms normalizedCircleFiniteTensorRay_hasDerivAt
-#print axioms normalizedCircleFiniteTensorRayDeriv_eq_actual_gradients
-#print axioms actualFiniteTensorRayGradient_eq_fderiv
 end
 end Auto.Spherical.MSS
 open Auto.Spherical.SurfaceMeasureDecay
@@ -8699,7 +8674,6 @@ theorem norm_sq_realLinearMap_apply_le_coordinate_energy
     _ ≤ ‖V‖ ^ 2 * (2 * (‖L e0‖ ^ 2 + ‖L e1‖ ^ 2)) :=
       mul_le_mul_of_nonneg_left hs (sq_nonneg _)
     _ = _ := by ring
-#print axioms norm_sq_realLinearMap_apply_le_coordinate_energy
 end
 end Auto.Spherical.MSS
 
@@ -8764,8 +8738,6 @@ theorem normalizedCircleFiniteTensorRayDeriv_norm_sq_le_gradient_coordinates
   exact norm_sq_realLinearMap_difference_le_coordinate_energy _ _ _ _
     (normalizedCircleRayTerminal_derivative_bound eps B omega V hB homega hV)
     (normalizedCircleRayNormal_derivative_bound eps B omega V hB homega hV)
-
-#print axioms normalizedCircleFiniteTensorRayDeriv_norm_sq_le_gradient_coordinates
 end
 end Auto.Spherical.MSS
 
@@ -8817,8 +8789,6 @@ theorem rayTimeWeighted_finiteTensorPhysicalTimeData_energy_le
         (integrable_sq_finiteTensorPhysicalTimeData s q (fun i => rayTimeWeightedSchwartz (a i)))
         ((integrable_sq_finiteTensorPhysicalTimeData s q a).const_mul 4) hp
     _ = _ := integral_const_mul _ _
-
-#print axioms rayTimeWeighted_finiteTensorPhysicalTimeData_energy_le
 end
 end Auto.Spherical.MSS
 
@@ -8828,7 +8798,8 @@ noncomputable section
 theorem continuous_actualSingleTensorRayGradient_centered
     (q : SchwartzMap (Euclidean 2) Complex) (a : SchwartzMap Real Complex)
     (ha : Function.support (a : Real → Complex) ⊆ Icc (-2 : Real) 2) :
-    Continuous (fun z : Euclidean 2 × Euclidean 2 => actualSingleTensorRayGradient q a z.1 z.2) := by
+    Continuous (fun z : Euclidean 2 × Euclidean 2 => actualSingleTensorRayGradient q a z.1 z.2) :=
+      by
   let DG := SchwartzMap.fderivCLM Real (Euclidean 2) Complex (FourierTransform.fourierInv q)
   have hf : Continuous (fun z : (Euclidean 2 × Euclidean 2) × Real =>
       a z.2 • DG (z.1.2 - z.2 • z.1.1)) :=
@@ -8852,15 +8823,18 @@ theorem continuous_actualFiniteTensorRayGradient_centered
     {ι : Type*} (s : Finset ι)
     (q : ι → SchwartzMap (Euclidean 2) Complex) (a : ι → SchwartzMap Real Complex)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) :
-    Continuous (fun z : Euclidean 2 × Euclidean 2 => actualFiniteTensorRayGradient s q a z.1 z.2) := by
+    Continuous (fun z : Euclidean 2 × Euclidean 2 => actualFiniteTensorRayGradient s q a z.1 z.2)
+      := by
   unfold actualFiniteTensorRayGradient
-  exact continuous_finsetSum _ (fun i hi => continuous_actualSingleTensorRayGradient_centered (q i) (a i) (ha i))
+  exact continuous_finsetSum _ (fun i hi => continuous_actualSingleTensorRayGradient_centered (q
+    i) (a i) (ha i))
 
 theorem continuous_scratch_smoothTubeBand_joint_centered
     (q : SchwartzMap (Euclidean 2) Complex)
     (hqcompact : HasCompactSupport (q : Euclidean 2 → Complex)) (a : SchwartzMap Real Complex)
     (ha : Function.support (a : Real → Complex) ⊆ Icc (-2 : Real) 2) :
-    Continuous (fun z : Euclidean 2 × Euclidean 2 => scratch_smoothTubeBand q hqcompact a z.1 z.2) := by
+    Continuous (fun z : Euclidean 2 × Euclidean 2 => scratch_smoothTubeBand q hqcompact a z.1 z.2)
+      := by
   let G : SchwartzMap (Euclidean 2) Complex := FourierTransform.fourierInv q
   have hf : Continuous (fun z : (Euclidean 2 × Euclidean 2) × Real =>
       a z.2 * G (z.1.2 - z.2 • z.1.1)) :=
@@ -8888,13 +8862,11 @@ theorem continuous_scratch_finiteTensorTubeBand_joint_centered
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
     (a : ι → SchwartzMap Real Complex)
     (ha : ∀ i, Function.support (a i : Real → Complex) ⊆ Icc (-2 : Real) 2) :
-    Continuous (fun z : Euclidean 2 × Euclidean 2 => scratch_finiteTensorTubeBand s q hqcompact a z.1 z.2) := by
+    Continuous (fun z : Euclidean 2 × Euclidean 2 => scratch_finiteTensorTubeBand s q hqcompact a
+      z.1 z.2) := by
   unfold scratch_finiteTensorTubeBand
   exact continuous_finsetSum _ (fun i hi =>
     continuous_scratch_smoothTubeBand_joint_centered (q i) (hqcompact i) (a i) (ha i))
-
-#print axioms continuous_scratch_finiteTensorTubeBand_joint_centered
-#print axioms continuous_actualFiniteTensorRayGradient_centered
 end
 end Auto.Spherical.MSS
 
@@ -9009,7 +8981,8 @@ theorem integrable_sq_finiteTensor_ray_slice
     (q : ι → SchwartzMap (Euclidean 2) Complex)
     (hqcompact : ∀ i, HasCompactSupport (q i : Euclidean 2 → Complex))
     (a : ι → SchwartzMap Real Complex) (n : Euclidean 2) :
-    Integrable (fun p : Euclidean 2 => ‖scratch_finiteTensorTubeBand s q hqcompact a n p‖ ^ 2) volume := by
+    Integrable (fun p : Euclidean 2 => ‖scratch_finiteTensorTubeBand s q hqcompact a n p‖ ^ 2)
+      volume := by
   let M := scratch_finiteTensorTubeMultiplier s q hqcompact a n
   have heq : scratch_finiteTensorTubeBand s q hqcompact a n =
       (FourierTransform.fourierInv M : SchwartzMap (Euclidean 2) Complex) := by
@@ -9017,7 +8990,8 @@ theorem integrable_sq_finiteTensor_ray_slice
     simpa only [M, SchwartzMap.fourierInv_coe] using
       scratch_finiteTensorTubeBand_eq_fourierInv s q hqcompact a n p
   rw [heq]
-  exact (memLp_two_iff_integrable_sq_norm (FourierTransform.fourierInv M).continuous.aestronglyMeasurable).mp
+  exact (memLp_two_iff_integrable_sq_norm (FourierTransform.fourierInv
+    M).continuous.aestronglyMeasurable).mp
     ((FourierTransform.fourierInv M).memLp 2 volume)
 
 theorem fullCircle_finiteTensor_ray_lintegral_eq_real_centered
@@ -9044,7 +9018,8 @@ theorem fullCircle_finiteTensor_ray_lintegral_eq_real_centered
     (Filter.Eventually.of_forall (fun n => integral_nonneg (fun p => sq_nonneg _)))]
   apply lintegral_congr
   intro n
-  exact (ofReal_integral_eq_lintegral_ofReal (integrable_sq_finiteTensor_ray_slice s q hqcompact a n)
+  exact (ofReal_integral_eq_lintegral_ofReal (integrable_sq_finiteTensor_ray_slice s q hqcompact a
+    n)
     (Filter.Eventually.of_forall (fun p => sq_nonneg _))).symm
 
 theorem integrable_sq_finiteTensor_ray_derivative_slice
@@ -9147,18 +9122,14 @@ theorem fullCircle_finiteTensor_ray_derivative_lintegral_eq_real_centered
           ‖fderiv Real (scratch_finiteTensorTubeBand s q hqcompact a n) p V‖ ^ 2)
         ∂unitSurfaceMeasure 2) := by
   rw [ofReal_integral_eq_lintegral_ofReal
-    (integrable_fullCircle_finiteTensor_ray_derivative_energy_centered s q hqcompact a ha hR hqu V hV)
+    (integrable_fullCircle_finiteTensor_ray_derivative_energy_centered s q hqcompact a ha hR hqu V
+      hV)
     (Filter.Eventually.of_forall (fun n => integral_nonneg (fun p => sq_nonneg _)))]
   apply lintegral_congr
   intro n
   exact (ofReal_integral_eq_lintegral_ofReal
     (integrable_sq_finiteTensor_ray_derivative_slice s q hqcompact a n V)
     (Filter.Eventually.of_forall (fun p => sq_nonneg _))).symm
-
-#print axioms fullCircle_finiteTensor_ray_derivative_lintegral_eq_real_centered
-#print axioms fullCircle_finiteTensor_ray_lintegral_eq_real_centered
-#print axioms normalizedCircleFiniteTensorRay_lintegral_transfer
-#print axioms normalizedCircleFiniteTensorRayDeriv_lintegral_transfer
 end
 end Auto.Spherical.MSS
 
@@ -9191,7 +9162,6 @@ theorem normalizedCircleRay_cutoff_coefficient_continuous
         (by norm_num : (0 : Real) ≤ 1 / 32)
       nlinarith
     rw [max_eq_right (normalizedCircleRayCos_bounds eps B hb).1]
-#print axioms normalizedCircleRay_cutoff_coefficient_continuous
 end
 end Auto.Spherical.MSS
 
@@ -9264,14 +9234,17 @@ theorem fullCircle_gradientCoordinate_lintegral_eq_real_pair
           ‖fderiv Real (scratch_finiteTensorTubeBand s q hqcompact a n) p
             (EuclideanSpace.single (1 : Fin 2) 1)‖ ^ 2) ∂unitSurfaceMeasure 2)) := by
   let K : Fin 2 → sphere (0 : Euclidean 2) 1 → Euclidean 2 → ENNReal :=
-    fun j n p => ENNReal.ofReal (‖actualFiniteTensorRayGradient s q a n p (EuclideanSpace.single j 1)‖ ^ 2)
+    fun j n p => ENNReal.ofReal (‖actualFiniteTensorRayGradient s q a n p (EuclideanSpace.single j
+      1)‖ ^ 2)
   have hK (j : Fin 2) : Measurable (Function.uncurry (K j)) :=
     (ENNReal.continuous_ofReal.comp
       (((continuous_actualFiniteTensorRayGradient_centered s q a ha).comp
-        ((continuous_subtype_val.comp continuous_fst).prodMk continuous_snd)).clm_apply continuous_const |>.norm.pow 2)).measurable
+        ((continuous_subtype_val.comp continuous_fst).prodMk continuous_snd)).clm_apply
+          continuous_const |>.norm.pow 2)).measurable
   have hsplit :
       (∫⁻ n : sphere (0 : Euclidean 2) 1,
-        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q a n p))
+        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q a n
+          p))
         ∂unitSurfaceMeasure 2) =
       (∫⁻ n : sphere (0 : Euclidean 2) 1, (∫⁻ p : Euclidean 2, K 0 n p) ∂unitSurfaceMeasure 2) +
       (∫⁻ n : sphere (0 : Euclidean 2) 1, (∫⁻ p : Euclidean 2, K 1 n p) ∂unitSurfaceMeasure 2) := by
@@ -9283,8 +9256,10 @@ theorem fullCircle_gradientCoordinate_lintegral_eq_real_pair
         apply lintegral_congr
         intro p
         exact ENNReal.ofReal_add
-          (sq_nonneg (‖actualFiniteTensorRayGradient s q a n p (EuclideanSpace.single (0 : Fin 2) 1)‖))
-          (sq_nonneg (‖actualFiniteTensorRayGradient s q a n p (EuclideanSpace.single (1 : Fin 2) 1)‖))
+          (sq_nonneg (‖actualFiniteTensorRayGradient s q a n p (EuclideanSpace.single (0 : Fin 2)
+            1)‖))
+          (sq_nonneg (‖actualFiniteTensorRayGradient s q a n p (EuclideanSpace.single (1 : Fin 2)
+            1)‖))
       _ = _ := nested_lintegral_add_of_measurable (unitSurfaceMeasure 2) volume (K 0) (K 1) (hK 0)
   rw [hsplit]
   simp only [K, actualFiniteTensorRayGradient_eq_fderiv s q hqcompact a]
@@ -9306,10 +9281,12 @@ theorem fullCircle_gradientCoordinate_lintegral_add_mul
       (actualFiniteTensorRayGradientCoordinateEnergy s q a n p +
         eps ^ 2 * actualFiniteTensorRayGradientCoordinateEnergy s q b n p)) ∂unitSurfaceMeasure 2) =
       (∫⁻ n : sphere (0 : Euclidean 2) 1,
-        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q a n p))
+        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q a n
+          p))
         ∂unitSurfaceMeasure 2) +
       ENNReal.ofReal (eps ^ 2) * ∫⁻ n : sphere (0 : Euclidean 2) 1,
-        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q b n p))
+        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q b n
+          p))
         ∂unitSurfaceMeasure 2 := by
   have hc (c : ι → SchwartzMap Real Complex)
       (hcs : ∀ i, Function.support (c i : Real → Complex) ⊆ Icc (-2 : Real) 2) :
@@ -9327,7 +9304,6 @@ theorem fullCircle_gradientCoordinate_lintegral_add_mul
     fun n p => ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q b n p)
   have hA : Measurable (Function.uncurry A) := hc a ha
   have hB : Measurable (Function.uncurry B) := hc b hb
-
   calc
     _ = ∫⁻ n : sphere (0 : Euclidean 2) 1,
         (∫⁻ p : Euclidean 2, A n p + ENNReal.ofReal (eps ^ 2) * B n p) ∂unitSurfaceMeasure 2 := by
@@ -9402,17 +9378,20 @@ theorem exists_normalizedCircle_source_ray_derivative_energy_decay_centered :
   obtain ⟨C, hC, hbound⟩ := exists_fullCircle_finiteTensor_spatialDerivative_energy_decay_centered
   refine ⟨128 * C, by positivity, ?_⟩
   intro ι s q hqcompact a ha eps lambda R heps hlambda hR hql hqu
-  let E := ∫ p : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a p‖ ^ 2 ∂(volume.prod volume)
+  let E := ∫ p : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q a p‖ ^ 2 ∂(volume.prod
+    volume)
   let A := 2 * C * R ^ 2 / Real.sqrt lambda * E
   have hE : 0 ≤ E := integral_nonneg (fun p => sq_nonneg _)
   have hA : 0 ≤ A := by dsimp [A]; positivity
   have hpair (b : ι → SchwartzMap Real Complex)
       (hb : ∀ i, Function.support (b i : Real → Complex) ⊆ Icc (-2 : Real) 2) :
       (∫⁻ n : sphere (0 : Euclidean 2) 1,
-        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q b n p))
+        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q b n
+          p))
         ∂unitSurfaceMeasure 2) ≤
         ENNReal.ofReal (2 * C * R ^ 2 / Real.sqrt lambda *
-          ∫ p : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q b p‖ ^ 2 ∂(volume.prod volume)) := by
+          ∫ p : Euclidean 2 × Real, ‖finiteTensorPhysicalTimeData s q b p‖ ^ 2 ∂(volume.prod
+            volume)) := by
     rw [fullCircle_gradientCoordinate_lintegral_eq_real_pair s q hqcompact b hb hR hqu]
     apply ENNReal.ofReal_le_ofReal
     have h0 := hbound ι s q hqcompact b hb lambda R hlambda hR hql hqu
@@ -9430,7 +9409,8 @@ theorem exists_normalizedCircle_source_ray_derivative_energy_decay_centered :
       ENNReal.ofReal (4 * A) := by
     apply (hpair (fun i => rayTimeWeightedSchwartz (a i)) htw).trans
     apply ENNReal.ofReal_le_ofReal
-    convert mul_le_mul_of_nonneg_left (rayTimeWeighted_finiteTensorPhysicalTimeData_energy_le s q a ha)
+    convert mul_le_mul_of_nonneg_left (rayTimeWeighted_finiteTensorPhysicalTimeData_energy_le s q
+      a ha)
       (by positivity : 0 ≤ 2 * C * R ^ 2 / Real.sqrt lambda) using 1
     dsimp [A, E]
     ring
@@ -9442,14 +9422,16 @@ theorem exists_normalizedCircle_source_ray_derivative_energy_decay_centered :
               (fun i => rayTimeWeightedSchwartz (a i)) n p)) ∂unitSurfaceMeasure 2 :=
       normalizedCircleFiniteTensorRayDeriv_lintegral_transfer s q a ha eps
     _ = 32 * ((∫⁻ n : sphere (0 : Euclidean 2) 1,
-        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q a n p))
+        (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q a n
+          p))
         ∂unitSurfaceMeasure 2) + ENNReal.ofReal (eps ^ 2) *
         ∫⁻ n : sphere (0 : Euclidean 2) 1,
           (∫⁻ p : Euclidean 2, ENNReal.ofReal (actualFiniteTensorRayGradientCoordinateEnergy s q
             (fun i => rayTimeWeightedSchwartz (a i)) n p)) ∂unitSurfaceMeasure 2) := by
       rw [fullCircle_gradientCoordinate_lintegral_add_mul s q a _ ha htw eps]
     _ ≤ 32 * (ENNReal.ofReal A + ENNReal.ofReal (eps ^ 2) * ENNReal.ofReal (4 * A)) :=
-      mul_le_mul_of_nonneg_left (add_le_add hp0 (mul_le_mul_of_nonneg_left hp1 (by positivity))) (by positivity)
+      mul_le_mul_of_nonneg_left (add_le_add hp0 (mul_le_mul_of_nonneg_left hp1 (by positivity)))
+        (by positivity)
     _ ≤ _ := by
       rw [← ENNReal.ofReal_mul (sq_nonneg eps),
         ← ENNReal.ofReal_add hA (mul_nonneg (sq_nonneg eps) (by positivity : 0 ≤ 4 * A)),
@@ -9462,11 +9444,6 @@ theorem exists_normalizedCircle_source_ray_derivative_energy_decay_centered :
         32 * (A + eps ^ 2 * (4 * A)) ≤ 64 * A := by
           nlinarith [mul_le_mul_of_nonneg_right hs hA]
         _ = _ := by dsimp [A, E]; ring
-
-#print axioms exists_normalizedCircle_source_ray_energy_decay_centered
-#print axioms exists_normalizedCircle_source_ray_derivative_energy_decay_centered
-#print axioms fullCircle_gradientCoordinate_lintegral_eq_real_pair
-#print axioms fullCircle_gradientCoordinate_lintegral_add_mul
 end
 end Auto.Spherical.MSS
 
@@ -9501,7 +9478,6 @@ theorem continuous_normalizedCircleSourceChart (eps : Real) :
       linarith)
   exact (hC.smul homega |>.sub ((continuous_const.mul hB).smul hV)).prodMk
     ((hu.add hoff).smul homega |>.add (hB.smul hV))
-#print axioms continuous_normalizedCircleSourceChart
 end
 end Auto.Spherical.MSS
 
@@ -9522,7 +9498,8 @@ def cutoffNormalizedCircleFiniteTensorRayDeriv
     {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
     (a : ι → SchwartzMap Real Complex) (eps : Real) (chi chiPrime : Real → Real)
     (B : Real) (x : sphere (0 : Euclidean 2) 1 × Real) : Complex :=
-  chiPrime B • normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1) +
+  chiPrime B • normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn
+    x.1) +
     actualFiniteTensorRayGradient s q a
       (normalizedCircleRayNormal eps B x.1 (normalizedCircleQuarterTurn x.1))
       (normalizedCircleRayTerminal eps x.2 B x.1 (normalizedCircleQuarterTurn x.1))
@@ -9539,8 +9516,10 @@ theorem cutoffNormalizedCircleFiniteTensorRayDeriv_eq
     (a : ι → SchwartzMap Real Complex) (eps : Real) (chi chiPrime : Real → Real)
     (B : Real) (x : sphere (0 : Euclidean 2) 1 × Real) :
     cutoffNormalizedCircleFiniteTensorRayDeriv s q a eps chi chiPrime B x =
-      chiPrime B • normalizedCircleFiniteTensorRay s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1) +
-      chi B • normalizedCircleFiniteTensorRayDeriv s q a eps x.2 B x.1 (normalizedCircleQuarterTurn x.1) := by
+      chiPrime B • normalizedCircleFiniteTensorRay s q a eps x.2 B x.1
+        (normalizedCircleQuarterTurn x.1) +
+      chi B • normalizedCircleFiniteTensorRayDeriv s q a eps x.2 B x.1
+        (normalizedCircleQuarterTurn x.1) := by
   rw [normalizedCircleFiniteTensorRayDeriv_eq_actual_gradients]
   unfold cutoffNormalizedCircleFiniteTensorRayDeriv
   have h1 : -eps * (chi B * (eps * B / normalizedCircleRayCos eps B)) =
@@ -9556,7 +9535,8 @@ theorem continuous_cutoffNormalizedCircleFiniteTensorRay
     (eps : Real) {chi : Real → Real} (hchi : Continuous chi) :
     Continuous (Function.uncurry (cutoffNormalizedCircleFiniteTensorRay s q a eps chi)) := by
   have hQ : Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
-      normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1)) := by
+      normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn
+        z.2.1)) := by
     convert (continuous_scratch_finiteTensorTubeBand_joint_centered s q hqcompact a ha).comp
       (continuous_normalizedCircleSourceChart eps) using 1
     funext z
@@ -9572,9 +9552,11 @@ theorem continuous_cutoffNormalizedCircleFiniteTensorRayDeriv
     {eps : Real} (heps : |eps| ≤ 1 / 32)
     {chi chiPrime : Real → Real} (hchi : Continuous chi) (hchiPrime : Continuous chiPrime)
     (hchisupp : ∀ B, chi B ≠ 0 → |B| ≤ 6) :
-    Continuous (Function.uncurry (cutoffNormalizedCircleFiniteTensorRayDeriv s q a eps chi chiPrime)) := by
+    Continuous (Function.uncurry (cutoffNormalizedCircleFiniteTensorRayDeriv s q a eps chi
+      chiPrime)) := by
   have hQ : Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
-      normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn z.2.1)) := by
+      normalizedCircleFiniteTensorRay s q a eps z.2.2 z.1 z.2.1 (normalizedCircleQuarterTurn
+        z.2.1)) := by
     convert (continuous_scratch_finiteTensorTubeBand_joint_centered s q hqcompact a ha).comp
       (continuous_normalizedCircleSourceChart eps) using 1
     funext z
@@ -9582,7 +9564,8 @@ theorem continuous_cutoffNormalizedCircleFiniteTensorRayDeriv
       z.2.1 (normalizedCircleQuarterTurn z.2.1)
   have hG := (continuous_actualFiniteTensorRayGradient_centered s q a ha).comp
     (continuous_normalizedCircleSourceChart eps)
-  have htw : ∀ i, Function.support (rayTimeWeightedSchwartz (a i) : Real → Complex) ⊆ Icc (-2 : Real) 2 :=
+  have htw : ∀ i, Function.support (rayTimeWeightedSchwartz (a i) : Real → Complex) ⊆ Icc (-2 :
+    Real) 2 :=
     fun i => (rayTimeWeightedSchwartz_support_subset (a i)).trans (ha i)
   have hGt := (continuous_actualFiniteTensorRayGradient_centered s q
     (fun i => rayTimeWeightedSchwartz (a i)) htw).comp (continuous_normalizedCircleSourceChart eps)
@@ -9591,7 +9574,8 @@ theorem continuous_cutoffNormalizedCircleFiniteTensorRayDeriv
   have hV := normalizedCircleQuarterTurn.continuous.comp homega
   have hc := (normalizedCircleRay_cutoff_coefficient_continuous hchi hchisupp heps).comp
     (continuous_fst : Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) => z.1))
-  have hb := hchi.comp (continuous_fst : Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) => z.1))
+  have hb := hchi.comp (continuous_fst : Continuous (fun z : Real × (sphere (0 : Euclidean 2) 1 ×
+    Real) => z.1))
   exact (((hchiPrime.comp continuous_fst).smul hQ).add
     (hG.clm_apply ((hc.smul homega).add (hb.smul hV)))).sub
     (hGt.clm_apply (((continuous_const.mul hc).smul homega).sub
@@ -9612,10 +9596,12 @@ theorem cutoffNormalizedCircleFiniteTensorRay_hasDerivAt
       rw [abs_mul]
       have h := mul_le_mul heps hB (abs_nonneg B) (by norm_num : (0 : Real) ≤ 1/32)
       nlinarith
-    have hn : ‖(x.1 : Euclidean 2)‖ = 1 := by simpa only [mem_sphere_zero_iff_norm] using x.1.property
+    have hn : ‖(x.1 : Euclidean 2)‖ = 1 := by simpa only [mem_sphere_zero_iff_norm] using
+      x.1.property
     have hd := (hchiDeriv B).smul
       (normalizedCircleFiniteTensorRay_hasDerivAt s q a eps x.2 B x.1
-        (normalizedCircleQuarterTurn x.1) heB hn (by simpa only [LinearIsometryEquiv.norm_map] using hn))
+        (normalizedCircleQuarterTurn x.1) heB hn (by simpa only [LinearIsometryEquiv.norm_map]
+          using hn))
     convert hd using 1 <;> first | rfl | simp only [add_comm]
   · have hnear : chi =ᶠ[nhds B] fun _ => 0 := by
       have hlt : 6 < |B| := lt_of_not_ge hB
@@ -9629,10 +9615,6 @@ theorem cutoffNormalizedCircleFiniteTensorRay_hasDerivAt
     apply (hasDerivAt_const B (0 : Complex)).congr_of_eventuallyEq
     filter_upwards [hnear] with b hb
     simp only [cutoffNormalizedCircleFiniteTensorRay, hb, zero_smul]
-
-#print axioms continuous_cutoffNormalizedCircleFiniteTensorRay
-#print axioms continuous_cutoffNormalizedCircleFiniteTensorRayDeriv
-#print axioms cutoffNormalizedCircleFiniteTensorRay_hasDerivAt
 end
 end Auto.Spherical.MSS
 
@@ -9670,7 +9652,6 @@ theorem rectangle_lintegral_le_normalizedCircle_regime
       have h1 := mul_le_mul heps hu (abs_nonneg z.1) (by norm_num : (0 : Real) ≤ 1/32)
       have h2 := mul_le_mul heps hb (abs_nonneg z.2) (by norm_num : (0 : Real) ≤ 1/32)
       constructor <;> rw [abs_mul] <;> nlinarith
-#print axioms rectangle_lintegral_le_normalizedCircle_regime
 end
 end Auto.Spherical.MSS
 
@@ -9714,8 +9695,6 @@ theorem sourceCotangent_productSobolev_of_lintegral_energy
   obtain ⟨hDm, he1⟩ := memLp_two_and_integral_le_of_lintegral_sq_le _
     hD.aestronglyMeasurable hE1 hb1
   exact sourceCotangent_productSobolev mu hlohi hF hD hderiv hzero hFm hDm he0 he1
-#print axioms memLp_two_and_integral_le_of_lintegral_sq_le
-#print axioms sourceCotangent_productSobolev_of_lintegral_energy
 end
 end Auto.Spherical.MSS
 
@@ -9728,6 +9707,7 @@ open MeasureTheory Set Metric
 open Auto.Spherical.SurfaceMeasureDecay
 
 set_option maxHeartbeats 1000000 in
+-- The nested parameter integrals and geometric estimates need additional elaboration steps.
 theorem measurable_normalizedCircleFiniteTensorRayDeriv
     {ι : Type*} (s : Finset ι) (q : ι → SchwartzMap (Euclidean 2) Complex)
     (a : ι → SchwartzMap Real Complex)
@@ -9738,24 +9718,30 @@ theorem measurable_normalizedCircleFiniteTensorRayDeriv
         (normalizedCircleQuarterTurn z.2.1)) := by
   have hG := ((continuous_actualFiniteTensorRayGradient_centered s q a ha).comp
     (continuous_normalizedCircleSourceChart eps)).measurable
-  have htw : ∀ i, Function.support (rayTimeWeightedSchwartz (a i) : Real → Complex) ⊆ Icc (-2 : Real) 2 :=
+  have htw : ∀ i, Function.support (rayTimeWeightedSchwartz (a i) : Real → Complex) ⊆ Icc (-2 :
+    Real) 2 :=
     fun i => (rayTimeWeightedSchwartz_support_subset (a i)).trans (ha i)
   have hGt := ((continuous_actualFiniteTensorRayGradient_centered s q
-    (fun i => rayTimeWeightedSchwartz (a i)) htw).comp (continuous_normalizedCircleSourceChart eps)).measurable
+    (fun i => rayTimeWeightedSchwartz (a i)) htw).comp (continuous_normalizedCircleSourceChart
+      eps)).measurable
   have homega : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
-      (z.2.1 : Euclidean 2)) := (continuous_subtype_val.comp (continuous_fst.comp continuous_snd)).measurable
+      (z.2.1 : Euclidean 2)) := (continuous_subtype_val.comp (continuous_fst.comp
+        continuous_snd)).measurable
   have hV := normalizedCircleQuarterTurn.continuous.measurable.comp homega
   have hcoeff : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
       eps * z.1 / normalizedCircleRayCos eps z.1) :=
-    (measurable_const.mul measurable_fst).div ((normalizedCircleRayCos_continuous eps).measurable.comp measurable_fst)
+    (measurable_const.mul measurable_fst).div ((normalizedCircleRayCos_continuous
+      eps).measurable.comp measurable_fst)
   have hcoefft : Measurable (fun z : Real × (sphere (0 : Euclidean 2) 1 × Real) =>
       -(eps ^ 2 * z.1) / normalizedCircleRayCos eps z.1) :=
-    (measurable_const.mul measurable_fst |>.neg).div ((normalizedCircleRayCos_continuous eps).measurable.comp measurable_fst)
+    (measurable_const.mul measurable_fst |>.neg).div ((normalizedCircleRayCos_continuous
+      eps).measurable.comp measurable_fst)
   have happly : Measurable (fun z : ((Euclidean 2) →L[Real] Complex) × Euclidean 2 => z.1 z.2) :=
     (continuous_fst.clm_apply continuous_snd).measurable
   simp only [normalizedCircleFiniteTensorRayDeriv_eq_actual_gradients]
   exact (happly.comp (hG.prodMk ((hcoeff.smul homega).add hV))).sub
-    (happly.comp (hGt.prodMk ((hcoefft.smul homega).sub ((measurable_const : Measurable (fun _ : Real × (sphere (0 : Euclidean 2) 1 × Real) => eps)).smul hV))))
+    (happly.comp (hGt.prodMk ((hcoefft.smul homega).sub ((measurable_const : Measurable (fun _ :
+      Real × (sphere (0 : Euclidean 2) 1 × Real) => eps)).smul hV))))
 
 theorem sourceCotangent_rectangle_product_lintegral_le_regime
     {X : Type*} [MeasurableSpace X] (mu : Measure X) [SFinite mu]
@@ -9769,13 +9755,12 @@ theorem sourceCotangent_rectangle_product_lintegral_le_regime
   have hperm : Measurable (fun z : Real × (X × Real) => K z.2.1 (z.2.2,z.1)) :=
     hK.comp (measurable_snd.fst.prodMk (measurable_snd.snd.prodMk measurable_fst))
   rw [lintegral_prod _ hperm.aemeasurable]
-  have heq (B : Real) : (∫⁻ z : X × Real, K z.1 (z.2,B) ∂mu.prod (volume.restrict (Icc (-4 : Real) 4))) =
+  have heq (B : Real) : (∫⁻ z : X × Real, K z.1 (z.2,B) ∂mu.prod (volume.restrict (Icc (-4 : Real)
+    4))) =
       ∫⁻ x, (∫⁻ u in Icc (-4 : Real) 4, K x (u,B)) ∂mu :=
-    lintegral_prod _ (hK.comp (measurable_fst.prodMk (measurable_snd.prodMk measurable_const))).aemeasurable
+    lintegral_prod _ (hK.comp (measurable_fst.prodMk (measurable_snd.prodMk
+      measurable_const))).aemeasurable
   simp only [heq]
   exact rectangle_lintegral_le_normalizedCircle_regime mu eps heps K hK
-
-#print axioms measurable_normalizedCircleFiniteTensorRayDeriv
-#print axioms sourceCotangent_rectangle_product_lintegral_le_regime
 end
 end Auto.Spherical.MSS

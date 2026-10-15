@@ -2489,7 +2489,7 @@ private theorem aux_norm_iteratedDeriv_timeEulerFactor_le
       t⁻¹ * rho ≤ 1 * 16 := mul_le_mul hinvle hrhotop hrho (by norm_num)
       _ = 16 := by norm_num
   · have hkpos : 0 < k := Nat.pos_of_ne_zero hk0
-    simp only [if_neg hk0]
+    simp only [ite_eq_right hk0]
     by_cases hk1 : k = 1
     · subst k
       simp only [ite_true, norm_mul, Complex.norm_real,
@@ -4252,7 +4252,7 @@ private theorem scaled_circleRelativeBandFatMiddleOutput_eq_relativeMultiplierAt
     unfold aux_circleRelativeBandUnitDifferenceRaw
     norm_num
     simp only [smul_smul]
-    congr 1; ring
+    congr 1; ring_nf
   rw [hraw]
   simp only [_root_.Auto.MikhlinHormander.dyadicFrequencyScale,
     ]
@@ -4368,7 +4368,7 @@ private theorem
       aux_circleRelativeBandUnitDifferenceRawTimeDerivative
     norm_num
     simp only [smul_smul]
-    ring
+    ring_nf
   calc
     ((((2 : Real) ^ k) ^ (r + 1) : Real) : Complex) *
         aux_circleRelativeBandFatMiddleOutputTimeDerivative C j k t.1 f x =
@@ -4849,7 +4849,6 @@ theorem mss_fourierInv_seminorm_rectangle_le
   exact (Seminorm.le_def.mp hBound q).trans
     (mul_le_mul_of_nonneg_left
       (Seminorm.le_def.mp (Finset.sup_mono hs) q) C.coe_nonneg)
-#print axioms mss_fourierInv_seminorm_rectangle_le
 
 theorem sourcePacketSchwartzExternalProduct_rectangle_le
     {E F : Type*} [NormedAddCommGroup E] [NormedSpace Real E]
@@ -4892,7 +4891,6 @@ theorem sourcePacketSchwartzExternalProduct_rectangle_le
       rw [show N+2*K = N+(K+K) by omega,pow_add,pow_add]
       dsimp [U,V]
       ring
-#print axioms sourcePacketSchwartzExternalProduct_rectangle_le
 
 theorem normalizedCircleFinePacketProfile_rectangle_le
     (m : SchwartzMap (Euclidean 2) Complex) (Γ : SchwartzMap Real Complex)
@@ -4922,7 +4920,6 @@ theorem normalizedCircleFinePacketProfile_rectangle_le
         (fun p => SchwartzMap.seminorm Complex p.1 p.2) q) :=
       mul_le_mul_of_nonneg_left (hInv q) hD
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketProfile_rectangle_le
 
 def mssJointCubeProfile
     (φ : SchwartzMap JointWaveSpaceTime Complex)
@@ -5014,8 +5011,8 @@ theorem mssJointCubeProfile_uniform_seminorm
         hh.trans (Finset.sum_le_sum (fun j hj => by
           have hjle : j ≤ i := Nat.le_of_lt_succ (Finset.mem_range.mp hj)
           gcongr
-          exact haBound j (hjle.trans hi) v
-          exact hbBound (i-j) ((Nat.sub_le _ _).trans hi) v))
+          · exact haBound j (hjle.trans hi) v
+          · exact hbBound (i-j) ((Nat.sub_le _ _).trans hi) v))
       _ = (2:Real)^i*A*B := by
         rw [← Finset.sum_mul, ← Finset.sum_mul, ← Nat.cast_sum, Nat.sum_range_choose]
         norm_num
@@ -5026,7 +5023,6 @@ theorem mssJointCubeProfile_uniform_seminorm
     (by positivity) hBudget
   change SchwartzMap.seminorm Complex k n (mssJointCubeProfile φ W β c d) ≤ _ at hs
   exact hs.trans (le_of_eq (by dsimp [U]; simp only [zero_add]; ring))
-#print axioms mssJointCubeProfile_uniform_seminorm
 /-- Fixed output cube prototypes preserve uniform Schwartz seminorms
 when the actual angular/radial factor has uniform natural-scale
 derivative bounds. The bound precedes every source profile and frequency
@@ -5066,14 +5062,12 @@ theorem mssJointCubeProfile_family_uniform_rectangle
     (W i) B hB (fun r hr x => hBD r (hr.trans hpN) i x) c d
   exact hsemi.trans (mul_le_mul_of_nonneg_right
     (Finset.single_le_sum (fun q hq => hD q) hp) hB)
-#print axioms mssJointCubeProfile_family_uniform_rectangle
 
 /-- The actual normalized packet has a reverse lattice sum controlled by one
 incidence ray. Output and signed conormal labels are independent; the bound
 uses genuine summable lattice weights and the proved profile seminorm budget. -/
-
 theorem normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -5086,7 +5080,8 @@ theorem normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
       ∀ η y : Euclidean 2, |y 0| < 4 → |y 1| < 5 →
       ∃ ρA BA : Real, L^2/4 ≤ |ρA| ∧ |ρA| ≤ R*L^2 ∧ |BA| ≤ 4 ∧
       ∀ Γ : SchwartzMap Real Complex, ∀ m : SchwartzMap (Euclidean 2) Complex,
-      ∀ {κ : Type*}, ∀ q : κ → SchwartzMap JointWaveSpaceTime Complex, ∀ z : κ → Submodule.span Int (Set.range basis),
+      ∀ {κ : Type*}, ∀ q : κ → SchwartzMap JointWaveSpaceTime Complex, ∀ z : κ → Submodule.span Int
+        (Set.range basis),
       Function.Injective z → ∀ I : Finset Int, ∀ J : Finset κ,
       ∀ M : Real, 0 ≤ M →
       (∀ j ∈ J, (Finset.Iic (K,S)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
@@ -5101,6 +5096,7 @@ theorem normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
         (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
         normalizedCircleRayTerminal ε (y 1) BA
           (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖)⁻¹ ^ N := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hkernel⟩ := normalizedCircleFinePacketKernel_anchored_product_profile_control
     χout χsrc hχout hχsrc b N R hR
@@ -5128,7 +5124,7 @@ theorem normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
       (L • (z j : JointWaveSpaceTime)) o hX hT
     have hk : _ ≤ (C₀*M)*L := hk₀.trans (by
       have hh := mul_le_mul_of_nonneg_left (hprof j hj) (mul_nonneg hC₀ hLp.le)
-      convert hh using 1 <;> ring)
+      convert hh using 1 ; ring)
     let A := 1 + ‖L⁻¹ • (L • (z j : JointWaveSpaceTime) - (L*(n:Real)) • v)‖
     let B := 1 + ‖L⁻¹ • (η - (L*(n:Real)) • normalizedCircleFinePacketActualInputGradient ε o y)‖
     let rad := 1 + |L*(n:Real)-ρA|/L
@@ -5159,7 +5155,7 @@ theorem normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
     dsimp [A, rad] at hd
     rw [hrad, hlin] at hd
     dsimp [W]
-    convert hd using 1 <;> ring
+    convert hd using 1 ; ring
   calc
     _ ≤ ∑ n ∈ I, ∑ j ∈ J, C₀*M*L*tube⁻¹^N * W n j := by
       apply Finset.sum_le_sum
@@ -5171,14 +5167,12 @@ theorem normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
       mul_le_mul_of_nonneg_left (hsum (ρA/L) x z hz I J) (by positivity)
     _ = _ := by ring
 
-#print axioms normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
-
 
 /-- The literal signed thin normal projector preserves the common incidence
 ray after summing genuine independent conormal and output lattice labels.
 The output directions are tied to the actual spatial spectral centers. -/
 theorem normalizedCircleFinePacketKernel_thin_projected_core_sum
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -5228,6 +5222,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum
           (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
           normalizedCircleRayTerminal ε (y 1) BA
             (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖)⁻¹^N := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hkernel⟩ := normalizedCircleFinePacketKernel_anchored_product_profile_control
     χout χsrc hχout hχsrc b N R hR
@@ -5272,7 +5267,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum
     (1+|(n:Real)-ρA/L|)⁻¹^N * (1+‖(z j : JointWaveSpaceTime)+x n‖)⁻¹^N
   let tube := 1+L*‖o.fst+o.snd•nA-pA‖
   let target := 1+L*‖X+T•nA-pA‖
-  have htube : 1 ≤ tube := by dsimp [tube]; exact le_add_of_nonneg_right (mul_nonneg hLp.le (norm_nonneg _))
+  have htube : 1 ≤ tube := by dsimp [tube]; exact le_add_of_nonneg_right (mul_nonneg hLp.le
+    (norm_nonneg _))
   have htarget : 0 ≤ target := by dsimp [target]; positivity
   have hp (n : Int) (hn : n ∈ I) (j : κ) (hj : j ∈ J) :
       target^N *
@@ -5294,8 +5290,10 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum
     let shift := 1+L*‖(X-o.fst)+(T-o.snd)•eff‖
     have hout : 1 ≤ outwt := by dsimp [outwt]; exact le_add_of_nonneg_right (norm_nonneg _)
     have hsrc : 1 ≤ srcwt := by dsimp [srcwt]; exact le_add_of_nonneg_right (norm_nonneg _)
-    have hrad : 1 ≤ rad := by dsimp [rad]; exact le_add_of_nonneg_right (div_nonneg (abs_nonneg _) hLp.le)
-    have hshift : 1 ≤ shift := by dsimp [shift]; exact le_add_of_nonneg_right (mul_nonneg hLp.le (norm_nonneg _))
+    have hrad : 1 ≤ rad := by dsimp [rad]; exact le_add_of_nonneg_right (div_nonneg (abs_nonneg _)
+      hLp.le)
+    have hshift : 1 ≤ shift := by dsimp [shift]; exact le_add_of_nonneg_right (mul_nonneg hLp.le
+      (norm_nonneg _))
     have heff : ‖eff‖ = 1 := by
       dsimp [eff]
       cases sigma j <;> simpa [WaveSign.toReal] using hnu j
@@ -5333,7 +5331,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum
     have hk₀ := hpacket Γ (q j) m ρ (hband n hn).1 (hband n hn).2 ζ o hX hS
     have hk : _ ≤ (C₀*M)*L := hk₀.trans (by
       have hh' := mul_le_mul_of_nonneg_left (hprof j hj) (mul_nonneg hC₀ hLp.le)
-      convert hh' using 1 <;> ring)
+      convert hh' using 1 ; ring)
     have hw := sourcePacket_ray_projection_weight_trade outwt srcwt rad tube shift target
       ‖normalizedCircleFinePacketKernel χout χsrc b Γ (q j) m ε L⁻¹ ρ hδ ζ η o y‖
       (C₀*M) L c N hout hsrc hrad htube hshift htarget (norm_nonneg _) hc htarget' hk
@@ -5395,7 +5393,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum
     _ ≤ (c^N*C₀*M*C₂*h*L^3*tube⁻¹^N)*C₁ :=
       mul_le_mul_of_nonneg_left (hsum (ρA/L) x z hz I J) (by positivity)
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_sum
 
 
 /-- Positive core envelope of the literal output spectral projector applied
@@ -5414,7 +5411,7 @@ def normalizedCircleFinePacketCoreConvolutionPositiveKernel
     ENNReal.ofReal (‖spaceTimeFourierInv (jointSchwartzRaw P) (X-Z,T-S)‖ *
       ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε δ ρ hδ ζ η (WithLp.toLp 2 (Z,S)) y‖)
 theorem normalizedCircleFinePacketKernel_thin_projected_core_mass
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -5443,7 +5440,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass
         (L • (z j : JointWaveSpaceTime)).fst = rho j • nu j ∧
         |(sigma j).toReal*rho j - (L • (z j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 0 < h,
-
       ∀ X : Euclidean 2, ∀ T : Real, |T| < 2 →
       (∑ n ∈ I, ∑ j ∈ J,
         normalizedCircleFinePacketCoreConvolutionPositiveKernel
@@ -5460,6 +5456,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass
           (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
           normalizedCircleRayTerminal ε (y 1) BA
             (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖)⁻¹^N) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hcore⟩ := normalizedCircleFinePacketKernel_thin_projected_core_sum
     basis χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
@@ -5484,7 +5481,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass
   have hFm (n : Int) (hn : n ∈ I) (j : κ) (hj : j ∈ J) : Measurable (F n j) := by
     have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw (P j))) := by
       have heq : spaceTimeFourierInv (jointSchwartzRaw (P j)) =
-          fun o : WaveSpaceTime => (𝓕⁻ (P j) : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+          fun o : WaveSpaceTime => (𝓕⁻ (P j) : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp
+            2 o) := by
         funext o
         simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw (P j) o
       rw [heq]
@@ -5518,7 +5516,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass
     dsimp [D₀]
     rw [one_div]
     ring
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_mass
 
 /-- Positive reverse envelopes are tested directly against the genuine
 width L^-1 incidence-ray field, with the exact L^-1 normalization. -/
@@ -5565,9 +5562,8 @@ theorem outputCore_ennreal_kernel_lintegral_le_rayPositiveField
       · rw [Set.indicator_of_notMem (show z ∉ {z : WaveSpaceTime | ‖z.1‖ < 3 ∧ |z.2| < 2} from hz)]
         exact bot_le
     _ = _ := lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
-#print axioms outputCore_ennreal_kernel_lintegral_le_rayPositiveField
 theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -5596,8 +5592,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass
         (L • (z j : JointWaveSpaceTime)).fst = rho j • nu j ∧
         |(sigma j).toReal*rho j - (L • (z j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 0 < h,
-
-
       ∀ g : WaveSpaceTime → Complex,
       (∫⁻ o : WaveSpaceTime,
         {o : WaveSpaceTime | ‖o.1‖ < 3 ∧ |o.2| < 2}.indicator
@@ -5615,8 +5609,11 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass
             ENNReal.ofReal ‖g o‖) o ∂(volume.prod volume)) ≤
       ENNReal.ofReal (C*M*h/L) *
         polynomialRayPositiveField (L⁻¹) N g
-          (normalizedCircleRayTerminal ε (y 1) BA (circleDirection (y 0)) (circleDirectionDeriv (y 0)))
-          (normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0))) := by
+          (normalizedCircleRayTerminal ε (y 1) BA (circleDirection (y 0)) (circleDirectionDeriv (y
+            0)))
+          (normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0))) :=
+            by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C,hC,hmass⟩ := normalizedCircleFinePacketKernel_thin_projected_core_mass
     basis χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
@@ -5632,16 +5629,16 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass
     (normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0)))
     (by intro o hX hT
         exact hpacket Γ m q z hz sigma rho hrho nu hnu I J M hM hprof hband hcenter h hh o.1 o.2 hT)
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_tested_mass
 
 
 theorem sourcePacket_row_weight_trade
     (a b d v w k H c : Real)
     (ha : 1 ≤ a) (hb : 1 ≤ b) (hd : 1 ≤ d) (hv : 1 ≤ v) (hw : 1 ≤ w)
-    (hk : 0 ≤ k) (hc : 0 ≤ c) (hva : v ≤ a) (hwa : w ≤ c*a)
-    (hK : a^6*b^6*d^6*k ≤ H) :
+    (hk : 0 ≤ k) (hva : v ≤ a) (hwa : w ≤ c * a)
+    (hK : a ^ 6 * b ^ 6 * d ^ 6 * k ≤ H) :
     k ≤ c^2*H*v⁻¹^3*b⁻¹^3*d⁻¹^4*w⁻¹^2 := by
-  have hw' : w^2 ≤ c^2*a^2 := by simpa only [mul_pow] using pow_le_pow_left₀ (by linarith : 0 ≤ w) hwa 2
+  have hw' : w^2 ≤ c^2*a^2 := by
+    simpa only [mul_pow] using pow_le_pow_left₀ (by linarith : 0 ≤ w) hwa 2
   have hva' : v^3 ≤ a^3 := pow_le_pow_left₀ (by linarith) hva 3
   have hb' : b^3 ≤ b^6 := pow_le_pow_right₀ hb (by norm_num)
   have hd' : d^4 ≤ d^6 := pow_le_pow_right₀ hd (by norm_num)
@@ -5654,7 +5651,7 @@ theorem sourcePacket_row_weight_trade
       _ ≤ c^2*H := mul_le_mul_of_nonneg_left hK (sq_nonneg c)
   have hpos : 0 < v^3*b^3*d^4*w^2 := by positivity
   have hh : k ≤ c^2*H/(v^3*b^3*d^4*w^2) :=
-    (le_div_iff₀ hpos).mpr (by convert hprod using 1 <;> ring)
+    (le_div_iff₀ hpos).mpr (by convert hprod using 1 ; ring)
   convert hh using 1
   simp only [div_eq_mul_inv,mul_inv,inv_pow]
   ring
@@ -5663,7 +5660,7 @@ theorem sourcePacket_row_weight_trade
 packets have an actual circle-cap/incidence envelope, without a cube-count
 assumption. It is the pointwise input needed by the exact coarea Schur mass. -/
 theorem normalizedCircleFinePacketKernel_source_row_envelope
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real (Euclidean 2))
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -5691,6 +5688,7 @@ theorem normalizedCircleFinePacketKernel_source_row_envelope
       C*M*L *
         (1+L*|normalizedCircleIncidence ε o.fst (circleDirection (y 0)) (y 1)-o.snd|)⁻¹^4 *
         (1+L*‖normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1)-ν‖)⁻¹^2 := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hkernel⟩ := normalizedCircleFinePacketKernel_actual_product_profile_control
     χout χsrc hχout hχsrc b 6 R hR
@@ -5759,16 +5757,16 @@ theorem normalizedCircleFinePacketKernel_source_row_envelope
     simp only [inv_inv] at hk₀
     have hk : _ ≤ C₀*M*L := hk₀.trans (by
       have hh := mul_le_mul_of_nonneg_left hprof (by positivity : 0 ≤ C₀*L)
-      convert hh using 1 <;> ring)
+      convert hh using 1 ; ring)
     have hw := sourcePacket_row_weight_trade outwt srcwt phase vertical cap _ (C₀*M*L) c
-      hout hsrc hphase hvert hcap (norm_nonneg _) hc hvertical hcap_out hk
+      hout hsrc hphase hvert hcap (norm_nonneg _) hvertical hcap_out hk
     have hlin : L⁻¹•(L•(z j : Euclidean 2)-ρ•input) = (z j : Euclidean 2)+x n := by
       dsimp [ρ,x]
       simp only [smul_sub,smul_smul,← mul_assoc,inv_mul_cancel₀ hLp.ne',one_smul,one_mul]
       simp only [sub_eq_add_neg,neg_smul]
     dsimp [srcwt,vertical,W] at hw ⊢
     rw [hlin] at hw
-    convert hw using 1 <;> ring
+    convert hw using 1 ; ring
   calc
     _ ≤ ∑ n ∈ I, ∑ j ∈ J, c^2*C₀*M*L*phase⁻¹^4*cap⁻¹^2 * W n j := by
       apply Finset.sum_le_sum
@@ -5779,10 +5777,9 @@ theorem normalizedCircleFinePacketKernel_source_row_envelope
     _ ≤ (c^2*C₀*M*L*phase⁻¹^4*cap⁻¹^2)*C₁ :=
       mul_le_mul_of_nonneg_left (hsum (ζ.snd/L) x z hz I J) (by positivity)
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketKernel_source_row_envelope
 
 theorem normalizedCircleFinePacketKernel_source_row_mass
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real (Euclidean 2))
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -5801,13 +5798,13 @@ theorem normalizedCircleFinePacketKernel_source_row_mass
       ∀ {κ : Type*}, ∀ z : κ → Submodule.span Int (Set.range basis), Function.Injective z →
       ∀ I : Finset Int, ∀ J : Finset κ,
       (∀ n ∈ I, L^2/4 ≤ |L*(n:Real)| ∧ |L*(n:Real)| ≤ R*L^2) →
-
       ∀ o : JointWaveSpaceTime, ‖o.fst‖ < 3 → |o.snd| < 2 →
       (∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
         ∑ n ∈ I, ∑ j ∈ J,
           ENNReal.ofReal ‖normalizedCircleFinePacketKernel χout χsrc b Γ q m ε L⁻¹ (L*(n:Real))
             (by exact inv_pos.mpr (lt_of_lt_of_le (by norm_num) hL))
             ζ (L•(z j : Euclidean 2)) o y‖) ≤ ENNReal.ofReal (C*M/L) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hrow⟩ := normalizedCircleFinePacketKernel_source_row_envelope
     basis χout χsrc hχout hχsrc b R D hR hD
@@ -5820,7 +5817,8 @@ theorem normalizedCircleFinePacketKernel_source_row_mass
   let E : Euclidean 2 → ENNReal := fun y =>
     normalizedCircleSourceSchurEnvelope ε o.fst o.snd L ν (circleDirection (y 0)) (y 1)
   have hset : MeasurableSet {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5} :=
-    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|)) measurable_const).inter
+    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|))
+      measurable_const).inter
       (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 1|)) measurable_const)
   have hpoint (y : Euclidean 2) (hy : |y 0| < 4 ∧ |y 1| < 5) :
       (∑ n ∈ I, ∑ j ∈ J,
@@ -5842,13 +5840,14 @@ theorem normalizedCircleFinePacketKernel_source_row_mass
       intro n hn
       exact (ENNReal.ofReal_sum_of_nonneg (fun j hj => norm_nonneg _)).symm
     rw [hsum]
-    let A : Real := (1+L*|normalizedCircleIncidence ε o.fst (circleDirection (y 0)) (y 1)-o.snd|)⁻¹^4
+    let A : Real := (1+L*|normalizedCircleIncidence ε o.fst (circleDirection (y 0)) (y
+      1)-o.snd|)⁻¹^4
     let B : Real := (1+L*‖normalizedCircleNormal ε o.fst (circleDirection (y 0)) (y 1)-ν‖)⁻¹^2
     have hA0 : 0 ≤ A := by dsimp [A]; positivity
     change _ ≤ ENNReal.ofReal (C₀*M)*(ENNReal.ofReal L*(ENNReal.ofReal A*ENNReal.ofReal B))
     rw [← ENNReal.ofReal_mul hA0,← ENNReal.ofReal_mul hLp.le,
       ← ENNReal.ofReal_mul (mul_nonneg hC₀ hM)]
-    convert hh using 1 <;> congr 1 <;> dsimp [A,B] <;> ring
+    convert hh using 1 ; congr 1 ; dsimp [A,B] ; ring
   calc
     _ ≤ ∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
         ENNReal.ofReal (C₀*M)*(ENNReal.ofReal L*E y) := by
@@ -5865,7 +5864,6 @@ theorem normalizedCircleFinePacketKernel_source_row_mass
       rw [← ENNReal.ofReal_mul (mul_nonneg hC₀ hM)]
       congr 1
       ring
-#print axioms normalizedCircleFinePacketKernel_source_row_mass
 
 theorem normalizedCircleFinePacketCoreConvolutionPositiveKernel_measurable
     (P : SchwartzMap JointWaveSpaceTime Complex)
@@ -5876,14 +5874,15 @@ theorem normalizedCircleFinePacketCoreConvolutionPositiveKernel_measurable
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε δ ρ : Real) (hε : |ε| ≤ 1/64) (hδ : 0 < δ)
+    (ε δ ρ : Real) (hε : |ε| ≤ 1 / 64) (hδ : 0 < δ)
     (ζ : JointWaveSpaceTime) (η : Euclidean 2) :
     Measurable (fun oy : WaveSpaceTime × Euclidean 2 =>
       normalizedCircleFinePacketCoreConvolutionPositiveKernel P χout χsrc b Γ q m
         ε δ ρ hδ ζ η oy.1.1 oy.1.2 oy.2) := by
   have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw P)) := by
     have heq : spaceTimeFourierInv (jointSchwartzRaw P) =
-        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o)
+          := by
       funext o
       simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw P o
     rw [heq]
@@ -5907,7 +5906,6 @@ theorem normalizedCircleFinePacketCoreConvolutionPositiveKernel_measurable
       ∫⁻ S : Real in Ioo (-2) 2, ∫⁻ Z : Euclidean 2 in Metric.ball 0 3, F ((oy,S),Z)) :=
     hInner.lintegral_prod_right
   exact hOuter
-#print axioms normalizedCircleFinePacketCoreConvolutionPositiveKernel_measurable
 
 /-- Literal signed normal projection of one actual packet, with the analysis
 output restricted to the geometric core. -/
@@ -5967,14 +5965,15 @@ theorem normalizedCircleFinePacketCoreConvolutionKernel_measurable
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε δ ρ : Real) (hε : |ε| ≤ 1/64) (hδ : 0 < δ)
+    (ε δ ρ : Real) (hε : |ε| ≤ 1 / 64) (hδ : 0 < δ)
     (ζ : JointWaveSpaceTime) (η : Euclidean 2) :
     Measurable (fun oy : WaveSpaceTime × Euclidean 2 =>
       normalizedCircleFinePacketCoreConvolutionKernel P χout χsrc b Γ q m
         ε δ ρ hδ ζ η oy.1.1 oy.1.2 oy.2) := by
   have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw P)) := by
     have heq : spaceTimeFourierInv (jointSchwartzRaw P) =
-        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o)
+          := by
       funext o
       simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw P o
     rw [heq]
@@ -5999,18 +5998,18 @@ theorem normalizedCircleFinePacketCoreConvolutionKernel_measurable
     simpa only [F,Function.comp_def,Pi.mul_def] using hhF
   have hInner : Measurable (fun z : (WaveSpaceTime × Euclidean 2) × Real =>
       ∫ Z : Euclidean 2 in Metric.ball 0 3, F (z,Z)) :=
-    (hF.stronglyMeasurable.integral_prod_right' (ν := volume.restrict (Metric.ball (0 : Euclidean 2) 3))).measurable
+    (hF.stronglyMeasurable.integral_prod_right' (ν := volume.restrict (Metric.ball (0 : Euclidean
+      2) 3))).measurable
   have hOuter : Measurable (fun oy : WaveSpaceTime × Euclidean 2 =>
       ∫ S : Real in Ioo (-2) 2, ∫ Z : Euclidean 2 in Metric.ball 0 3, F ((oy,S),Z)) :=
-    (hInner.stronglyMeasurable.integral_prod_right' (ν := volume.restrict (Ioo (-2 : Real) 2))).measurable
+    (hInner.stronglyMeasurable.integral_prod_right' (ν := volume.restrict (Ioo (-2 : Real)
+      2))).measurable
   exact hOuter
-#print axioms normalizedCircleFinePacketCoreConvolutionKernel_enorm_le
-#print axioms normalizedCircleFinePacketCoreConvolutionKernel_measurable
 
 /-- Genuine normal projection retains the normalized source-row L^-1
 mass. The temporal normal width contributes no row loss. -/
 theorem normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real (Euclidean 2))
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -6047,6 +6046,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
             χout χsrc b Γ q m ε L⁻¹ (L*(n:Real))
             (by exact inv_pos.mpr (lt_of_lt_of_le (by norm_num) hL))
             ζ (L•(z j : Euclidean 2)) X T y) ≤ ENNReal.ofReal (C*M/L) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hrow⟩ := normalizedCircleFinePacketKernel_source_row_mass
     basis χout χsrc hχout hχsrc b R D hR hD
@@ -6082,12 +6082,14 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
         (WithLp.toLp 2 oy.1,oy.2)) by fun_prop)).norm)
   have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw P)) := by
     have heq : spaceTimeFourierInv (jointSchwartzRaw P) =
-        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o)
+          := by
       funext o
       simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw P o
     rw [heq]
     fun_prop
-  let B : WaveSpaceTime → ENNReal := fun o => ENNReal.ofReal ‖spaceTimeFourierInv (jointSchwartzRaw P) o‖
+  let B : WaveSpaceTime → ENNReal := fun o => ENNReal.ofReal ‖spaceTimeFourierInv (jointSchwartzRaw
+    P) o‖
   have hB : Measurable B := ENNReal.measurable_ofReal.comp hInv.norm.measurable
   have hnuCap : ‖sigma.toReal•nu‖ = 1 := by
     cases sigma <;> simp [WaveSign.toReal,hnu]
@@ -6108,7 +6110,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     have hsum :
         (∫⁻ y, ∑ n ∈ I, ∑ j ∈ J, F n j o y ∂μ) =
           ∑ n ∈ I, ∑ j ∈ J, ∫⁻ y, F n j o y ∂μ := by
-      rw [lintegral_finsetSum I (fun n hn => Finset.measurable_sum J (fun j hj => hsingle n hn j hj))]
+      rw [lintegral_finsetSum I (fun n hn => Finset.measurable_sum J (fun j hj => hsingle n hn j
+        hj))]
       apply Finset.sum_congr rfl
       intro n hn
       exact lintegral_finsetSum J (fun j hj => hsingle n hn j hj)
@@ -6156,13 +6159,12 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
       rw [← ENNReal.ofReal_mul (by positivity : 0 ≤ C₀*M/L)]
       congr 1
       ring
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
 
 /-- The reverse tested core packet mass is controlled by one genuinely
 measurable Cartesian source weight. Its null set is common to every input
 covector, so no measurable closest-anchor choice is needed. -/
 theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -6213,10 +6215,12 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight
                     (L•(z j : JointWaveSpaceTime)) η o.1 o.2 y)*
                   ENNReal.ofReal ‖g o‖) o ∂(volume.prod volume)) ≤
             ENNReal.ofReal (C*M*h/L)*ENNReal.ofReal (w y) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C,hC,hpacket⟩ := normalizedCircleFinePacketKernel_thin_projected_core_tested_mass
     basis χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
-  obtain ⟨Cw,hCw,hweight⟩ := exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight N hN
+  obtain ⟨Cw,hCw,hweight⟩ := exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight N
+    hN
   refine ⟨K,S,C,Cw,hC,hCw,?_⟩
   intro ε L hε hL g hg hgsupp
   have hLp : 0 < L := by linarith
@@ -6226,7 +6230,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight
   refine ⟨w,hw,hwn,hwm,hwsq,?_⟩
   intro Γ m κ q z hz sigma rho hrho nu hnu I J M hM hprof hband hcenter h hh
   have hset : MeasurableSet {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5} :=
-    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|)) measurable_const).inter
+    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|))
+      measurable_const).inter
       (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 1|)) measurable_const)
   filter_upwards [hwRay,ae_restrict_mem hset] with y hy hycore
   intro η
@@ -6236,7 +6241,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight
   rw [normalizedCircleQuarterTurn_circleDirection] at hray
   exact (hb Γ m q z hz sigma rho hrho nu hnu I J M hM hprof hband hcenter h hh g).trans
     (mul_le_mul_of_nonneg_left hray (by positivity))
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_common_weight
 
 /-- The conormal radial labels are combined inside each source-cube kernel
 before integrating its one analysis input. -/
@@ -6266,7 +6270,7 @@ theorem normalizedCircleFinePacketCoreOperator_measurable
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε L : Real) (hε : |ε| ≤ 1/64) (hL : 0 < L) (ζ : JointWaveSpaceTime)
+    (ε L : Real) (hε : |ε| ≤ 1 / 64) (hL : 0 < L) (ζ : JointWaveSpaceTime)
     (η : κ → Euclidean 2) (f : κ → Euclidean 2 → Complex)
     (hf : ∀ j ∈ J, Measurable (f j)) :
     Measurable (normalizedCircleFinePacketCoreOperator I J P χout χsrc b Γ q m
@@ -6324,8 +6328,6 @@ theorem normalizedCircleFinePacketCoreOperator_enorm_le
         _ ≤ _ := Finset.sum_le_sum (fun n hn =>
           normalizedCircleFinePacketCoreConvolutionKernel_enorm_le
             P χout χsrc b Γ q m ε L⁻¹ (L*(n:Real)) (inv_pos.mpr hL) ζ (η j) o.1 o.2 y)
-#print axioms normalizedCircleFinePacketCoreOperator_measurable
-#print axioms normalizedCircleFinePacketCoreOperator_enorm_le
 
 /-- A proved positive source-row mass bounds the literal core operator.
 This elementary bound is used only to establish genuine compact-core
@@ -6344,7 +6346,7 @@ theorem normalizedCircleFinePacketCoreOperator_enorm_le_of_source_row
     (B : ENNReal) (o : WaveSpaceTime)
     (hrow : (∑ j ∈ J, ∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
       ∑ n ∈ I, normalizedCircleFinePacketCoreConvolutionPositiveKernel
-        P χout χsrc b Γ q m ε L⁻¹ (L*(n:Real)) (inv_pos.mpr hL) ζ (η j)
+        P χout χsrc b Γ q m ε L⁻¹ (L * (n : Real)) (inv_pos.mpr hL) ζ (η j)
           o.1 o.2 y) ≤ B) :
     ‖normalizedCircleFinePacketCoreOperator I J P χout χsrc b Γ q m
       ε L hL ζ η f o‖ₑ ≤ ENNReal.ofReal C*B := by
@@ -6375,7 +6377,6 @@ theorem normalizedCircleFinePacketCoreOperator_enorm_le_of_source_row
       simp_rw [mul_comm _ (ENNReal.ofReal C)]
       exact lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
     _ ≤ _ := mul_le_mul_of_nonneg_left hrow (by positivity)
-#print axioms normalizedCircleFinePacketCoreOperator_enorm_le_of_source_row
 
 /-- Genuine compact-output integrability of the literal finite core
 operator. The finite input seminorm sum supplies membership only; the
@@ -6391,7 +6392,7 @@ theorem normalizedCircleFinePacketCoreOperator_memLp_of_source_row
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε L : Real) (hε : |ε| ≤ 1/64) (hL : 0 < L) (ζ : JointWaveSpaceTime)
+    (ε L : Real) (hε : |ε| ≤ 1 / 64) (hL : 0 < L) (ζ : JointWaveSpaceTime)
     (η : κ → Euclidean 2) (f : κ → SchwartzMap (Euclidean 2) Complex)
     (B : ENNReal) (hB : B ≠ ⊤)
     (hrow : ∀ o : WaveSpaceTime,
@@ -6416,7 +6417,6 @@ theorem normalizedCircleFinePacketCoreOperator_memLp_of_source_row
     normalizedCircleFinePacketCoreOperator_enorm_le_of_source_row
       I J P χout χsrc b Γ q m ε L hL ζ η
       (fun j => (f j : Euclidean 2 → Complex)) C hC hfC B o (hrow o))
-#print axioms normalizedCircleFinePacketCoreOperator_memLp_of_source_row
 
 theorem normalizedCircleFinePacketCorePositive_source_sum_lintegral_eq
     {κ : Type*} (I : Finset Int) (J : Finset κ)
@@ -6428,7 +6428,7 @@ theorem normalizedCircleFinePacketCorePositive_source_sum_lintegral_eq
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε L : Real) (hε : |ε| ≤ 1/64) (hL : 0 < L) (ζ : JointWaveSpaceTime)
+    (ε L : Real) (hε : |ε| ≤ 1 / 64) (hL : 0 < L) (ζ : JointWaveSpaceTime)
     (η : κ → Euclidean 2) (o : WaveSpaceTime) :
     (∑ j ∈ J, ∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
       ∑ n ∈ I, normalizedCircleFinePacketCoreConvolutionPositiveKernel
@@ -6461,7 +6461,6 @@ theorem normalizedCircleFinePacketCorePositive_source_sum_lintegral_eq
     lintegral_finsetSum I (fun n hn => hm n j)
   simp_rw [hi]
   exact Finset.sum_comm
-#print axioms normalizedCircleFinePacketCorePositive_source_sum_lintegral_eq
 
 theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq
     {κ : Type*} (I : Finset Int) (J : Finset κ)
@@ -6473,7 +6472,7 @@ theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq
     (b Γ : SchwartzMap Real Complex)
     (q : κ → SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε L : Real) (hε : |ε| ≤ 1/64) (hL : 0 < L)
+    (ε L : Real) (hε : |ε| ≤ 1 / 64) (hL : 0 < L)
     (ζ : κ → JointWaveSpaceTime) (η y : Euclidean 2)
     (g : WaveSpaceTime → ENNReal) (hg : Measurable g) :
     (∑ j ∈ J, ∫⁻ o : WaveSpaceTime in {o | ‖o.1‖ < 3 ∧ |o.2| < 2},
@@ -6498,8 +6497,10 @@ theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq
     have hh := (hK.comp hMap).mul hg
     simpa only [F,Function.comp_def,Pi.mul_def] using hh
   have hset : MeasurableSet {o : WaveSpaceTime | ‖o.1‖ < 3 ∧ |o.2| < 2} :=
-    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o.1‖)) measurable_const).inter
-      (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|)) measurable_const)
+    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o.1‖))
+      measurable_const).inter
+      (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|))
+        measurable_const)
   calc
     _ = ∑ j ∈ J, ∑ n ∈ I, ∫⁻ o : WaveSpaceTime in {o | ‖o.1‖ < 3 ∧ |o.2| < 2},
         F n j o ∂(volume.prod volume) := by
@@ -6522,13 +6523,12 @@ theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq
       congr 1
       funext o'
       simp only [F,Finset.sum_mul]
-#print axioms normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq
 
 /-- Actual finite normalized packets obey the source-square/reverse-ray
 pairing. Conormal radial labels are combined inside each source kernel,
 and the displayed coefficient contains no label count. -/
 theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -6582,10 +6582,13 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing
           ENNReal.ofReal (C*M^2*h/L^2)*
             ∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
               (∑ i ∈ inputs, ‖f i y‖ₑ^2)*ENNReal.ofReal (w y) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   obtain ⟨KS,SS,CS,hCS,hrow⟩ := normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     basisS χout χsrc hχout hχsrc b phi hphi beta R A D (by linarith) hA hD
-  obtain ⟨KO,SO,CO,Cw,hCO,hCw,hreverse⟩ := normalizedCircleFinePacketKernel_thin_projected_core_common_weight
+  obtain ⟨KO,SO,CO,Cw,hCO,hCw,hreverse⟩ :=
+    normalizedCircleFinePacketKernel_thin_projected_core_common_weight
     basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
   refine ⟨max KS KO,max SS SO,CS*CO,Cw,mul_nonneg hCS hCO,hCw,?_⟩
   intro ε L heps hsmall hL Γ m κS κO zS hzS zO hzO q sigma rho hrho nu hnu
@@ -6665,10 +6668,9 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing
       ENNReal.ofReal (CS*CO*M^2*h/L^2) := by
     rw [← ENNReal.ofReal_mul (by positivity : 0 ≤ CS*M/L)]
     congr 1
-    field_simp <;> ring
+    field_simp
   rw [hc] at hb
   exact hb
-#print axioms normalizedCircleFinePacketCoreOperator_weighted_square_pairing
 
 theorem normalizedCircle_output_core_finite_measure :
     IsFiniteMeasure ((volume.prod volume : Measure WaveSpaceTime).restrict
@@ -6677,11 +6679,11 @@ theorem normalizedCircle_output_core_finite_measure :
     (Metric.isBounded_ball (x := (0 : Euclidean 2)) (r := 3)).prod
       (Metric.isBounded_ball (x := (0 : Real)) (r := 2)) |>.subset (by
         intro o ho
-        simpa only [mem_prod,mem_ball,dist_zero_right,Real.norm_eq_abs] using (show ‖o.1‖ < 3 ∧ |o.2| < 2 from ho))
+        simpa only [mem_prod,mem_ball,dist_zero_right,Real.norm_eq_abs] using (show ‖o.1‖ < 3 ∧
+          |o.2| < 2 from ho))
   refine ⟨?_⟩
   simpa only [Measure.restrict_apply_univ] using
     (hbounded.measure_lt_top (μ := (volume.prod volume : Measure WaveSpaceTime)))
-#print axioms normalizedCircle_output_core_finite_measure
 theorem sourcePacket_finite_square_energy_memLp
     {X ι : Type*} [MeasurableSpace X] (J : Finset ι)
     (μ : Measure X) (T : ι → X → Complex)
@@ -6695,7 +6697,6 @@ theorem sourcePacket_finite_square_energy_memLp
     rw [show (4 : ENNReal) = 2*2 by norm_num,ENNReal.div_eq_inv_mul,← mul_assoc,
       ENNReal.inv_mul_cancel (by norm_num) (by norm_num),one_mul]
   rwa [hdiv] at hh
-#print axioms sourcePacket_finite_square_energy_memLp
 
 theorem finite_complex_enorm_sq_sum_eq_ofReal
     {I : Type*} (P : Finset I) (f : I → Complex) :
@@ -6719,7 +6720,7 @@ theorem finite_complex_square_energy_weight_lintegral
 theorem finite_complex_square_energy_self_pairing_lintegral
     {J X : Type*} [MeasurableSpace X]
     (P : Finset J) (ν : Measure X) (T : J → X → Complex)
-    (hT : ∀ j ∈ P,Measurable (T j)) :
+    (hT : ∀ j ∈ P, Measurable (T j)) :
     (∑ j ∈ P,∫⁻ x,‖T j x‖ₑ^2*
         ENNReal.ofReal (∑ i ∈ P,‖T i x‖^2) ∂ν) =
       ∫⁻ x,ENNReal.ofReal ((∑ j ∈ P,‖T j x‖^2)^2) ∂ν := by
@@ -6739,7 +6740,7 @@ theorem finite_complex_square_energy_self_pairing_lintegral
 theorem real_square_energy_indicator_complex_test
     {X : Type*} [MeasurableSpace X]
     (ν : Measure X) (A : Set X) (hA : MeasurableSet A)
-    (E : X → Real) (hE : Measurable E) (hEn : ∀ x,0 ≤ E x)
+    (E : X → Real) (hE : Measurable E) (hEn : ∀ x, 0 ≤ E x)
     (hElp : MemLp E 2 (ν.restrict A)) :
     Measurable (A.indicator (fun x => (E x:Complex))) ∧
     MemLp (A.indicator (fun x => (E x:Complex))) 2 ν ∧
@@ -6760,16 +6761,11 @@ theorem real_square_energy_indicator_complex_test
   · simp only [indicator_of_mem hx,Complex.norm_real,Real.norm_eq_abs,
       abs_of_nonneg (hEn x)]
   · simp only [indicator_of_notMem hx,norm_zero,zero_pow (by norm_num : (2:Nat) ≠ 0)]
-
-#print axioms finite_complex_enorm_sq_sum_eq_ofReal
-#print axioms finite_complex_square_energy_weight_lintegral
-#print axioms finite_complex_square_energy_self_pairing_lintegral
-#print axioms real_square_energy_indicator_complex_test
 /-- A genuine fourth-moment gain for the literal normalized finite core packet family.
 The test is its actual output square energy; every membership premise is proved
 from the true packet source row mass. No label count enters the coefficient. -/
 theorem normalizedCircleFinePacketCoreOperator_fourth_moment
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -6801,7 +6797,6 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -6817,8 +6812,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
       C*M^4*h^2/(L^4*Real.sqrt L⁻¹)*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
-  obtain ⟨KP,SP,CP,Cw,hCP,hCw,hpair⟩ := normalizedCircleFinePacketCoreOperator_weighted_square_pairing
+  obtain ⟨KP,SP,CP,Cw,hCP,hCw,hpair⟩ :=
+    normalizedCircleFinePacketCoreOperator_weighted_square_pairing
     basisS basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
   obtain ⟨KR,SR,CR,hCR,hrow⟩ := normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     basisS χout χsrc hχout hχsrc b phi hphi beta R A D (by linarith) hA hD
@@ -6844,9 +6842,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
   let Q : Euclidean 2 → Real := fun y => ∑ i ∈ inputs, ‖f i y‖^2
   let E : WaveSpaceTime → Real := fun o => ∑ j ∈ outputs, ‖T j o‖^2
   have hΩ : MeasurableSet Ω :=
-    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o.1‖)) measurable_const).inter
-      (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|)) measurable_const)
-  haveI : IsFiniteMeasure ν := normalizedCircle_output_core_finite_measure
+    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o.1‖))
+      measurable_const).inter
+      (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|))
+        measurable_const)
+  have : IsFiniteMeasure ν := normalizedCircle_output_core_finite_measure
   have hprofP (j : κO) (hj : j ∈ outputs) :
       (Finset.Iic (KP,SP)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
         (normalizedCircleFinePacketProfile (q j) m Γ) ≤ M :=
@@ -6873,7 +6873,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
       (q j) m ε L hε hLp (L•(zO j : JointWaveSpaceTime)) (fun i => L•(zS i : Euclidean 2))
       (fun i => (f i : Euclidean 2 → Complex)) (fun i hi => (f i).continuous.measurable)
   have hT4 (j : κO) (hj : j ∈ outputs) : MemLp (T j) 4 ν :=
-    normalizedCircleFinePacketCoreOperator_memLp_of_source_row I inputs ν (P j) χout χsrc hχout hχsrc
+    normalizedCircleFinePacketCoreOperator_memLp_of_source_row I inputs ν (P j) χout χsrc hχout
+      hχsrc
       b Γ (q j) m ε L hε hLp (L•(zO j : JointWaveSpaceTime))
       (fun i => L•(zS i : Euclidean 2)) f (ENNReal.ofReal (CR*M/L)) ENNReal.ofReal_ne_top
         (hrowT j hj) 4
@@ -6881,7 +6882,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
   have hQ : MemLp Q 2 μ := sourcePacket_finite_square_energy_memLp inputs μ
     (fun i => (f i : Euclidean 2 → Complex)) (fun i hi => (f i).memLp 4 volume |>.restrict _)
   have hEm : Measurable E := Finset.measurable_sum outputs (fun j hj => (hTm j hj).norm.pow_const 2)
-  have hQm : Measurable Q := Finset.measurable_sum inputs (fun i hi => (f i).continuous.measurable.norm.pow_const 2)
+  have hQm : Measurable Q := Finset.measurable_sum inputs (fun i hi => (f
+    i).continuous.measurable.norm.pow_const 2)
   have hEn (o : WaveSpaceTime) : 0 ≤ E o := Finset.sum_nonneg (fun j hj => sq_nonneg _)
   have hQn (y : Euclidean 2) : 0 ≤ Q y := Finset.sum_nonneg (fun i hi => sq_nonneg _)
   let g : WaveSpaceTime → Complex := Ω.indicator (fun o => (E o : Complex))
@@ -6895,7 +6897,6 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
     exact hmem.2.le
   obtain ⟨w,hw,hwn,hwm,hwsq,hweighted⟩ := hpair ε L heps hsmall hL Γ m zS hzS zO hzO q
     sigma rho hrho nu hnu I inputs outputs M hM hprofP hband hcenter h hh f g hgm hg hgsupp
-
   have hwsq' : (∫ y : Euclidean 2,w y^2 ∂μ) ≤
       (Cw/Real.sqrt L⁻¹)*(∫ o : WaveSpaceTime,E o^2 ∂ν) := by
     change (∫ o : WaveSpaceTime,‖g o‖^2 ∂(volume.prod volume)) =
@@ -6931,12 +6932,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment
     CP^2*Cw*M^4*h^2/(L^4*Real.sqrt L⁻¹)*(∫ y,Q y^2 ∂μ)
   convert hs using 1
   field_simp
-#print axioms normalizedCircleFinePacketCoreOperator_fourth_moment
 /-- The analysis core remains spatial radius 3 and time radius 2, while
 this literal reverse packet bound permits the larger target time margin.
 The additional projector time range is bounded by 6. -/
 theorem normalizedCircleFinePacketKernel_thin_projected_core_sum_four
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -6986,6 +6986,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum_four
           (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
           normalizedCircleRayTerminal ε (y 1) BA
             (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖)⁻¹^N := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hkernel⟩ := normalizedCircleFinePacketKernel_anchored_product_profile_control
     χout χsrc hχout hχsrc b N R hR
@@ -7030,7 +7031,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum_four
     (1+|(n:Real)-ρA/L|)⁻¹^N * (1+‖(z j : JointWaveSpaceTime)+x n‖)⁻¹^N
   let tube := 1+L*‖o.fst+o.snd•nA-pA‖
   let target := 1+L*‖X+T•nA-pA‖
-  have htube : 1 ≤ tube := by dsimp [tube]; exact le_add_of_nonneg_right (mul_nonneg hLp.le (norm_nonneg _))
+  have htube : 1 ≤ tube := by dsimp [tube]; exact le_add_of_nonneg_right (mul_nonneg hLp.le
+    (norm_nonneg _))
   have htarget : 0 ≤ target := by dsimp [target]; positivity
   have hp (n : Int) (hn : n ∈ I) (j : κ) (hj : j ∈ J) :
       target^N *
@@ -7052,8 +7054,10 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum_four
     let shift := 1+L*‖(X-o.fst)+(T-o.snd)•eff‖
     have hout : 1 ≤ outwt := by dsimp [outwt]; exact le_add_of_nonneg_right (norm_nonneg _)
     have hsrc : 1 ≤ srcwt := by dsimp [srcwt]; exact le_add_of_nonneg_right (norm_nonneg _)
-    have hrad : 1 ≤ rad := by dsimp [rad]; exact le_add_of_nonneg_right (div_nonneg (abs_nonneg _) hLp.le)
-    have hshift : 1 ≤ shift := by dsimp [shift]; exact le_add_of_nonneg_right (mul_nonneg hLp.le (norm_nonneg _))
+    have hrad : 1 ≤ rad := by dsimp [rad]; exact le_add_of_nonneg_right (div_nonneg (abs_nonneg _)
+      hLp.le)
+    have hshift : 1 ≤ shift := by dsimp [shift]; exact le_add_of_nonneg_right (mul_nonneg hLp.le
+      (norm_nonneg _))
     have heff : ‖eff‖ = 1 := by
       dsimp [eff]
       cases sigma j <;> simpa [WaveSign.toReal] using hnu j
@@ -7091,7 +7095,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum_four
     have hk₀ := hpacket Γ (q j) m ρ (hband n hn).1 (hband n hn).2 ζ o hX hS
     have hk : _ ≤ (C₀*M)*L := hk₀.trans (by
       have hh' := mul_le_mul_of_nonneg_left (hprof j hj) (mul_nonneg hC₀ hLp.le)
-      convert hh' using 1 <;> ring)
+      convert hh' using 1 ; ring)
     have hw := sourcePacket_ray_projection_weight_trade outwt srcwt rad tube shift target
       ‖normalizedCircleFinePacketKernel χout χsrc b Γ (q j) m ε L⁻¹ ρ hδ ζ η o y‖
       (C₀*M) L c N hout hsrc hrad htube hshift htarget (norm_nonneg _) hc htarget' hk
@@ -7153,12 +7157,11 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_sum_four
     _ ≤ (c^N*C₀*M*C₂*h*L^3*tube⁻¹^N)*C₁ :=
       mul_le_mul_of_nonneg_left (hsum (ρA/L) x z hz I J) (by positivity)
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_sum_four
 /-- Positive reverse masses on the enlarged time margin are global in
 output space. The original analysis core and actual circle geometry are
 unchanged; no spatial truncation enters the constants. -/
 theorem normalizedCircleFinePacketKernel_thin_projected_core_mass_four
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -7187,7 +7190,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass_four
         (L • (z j : JointWaveSpaceTime)).fst = rho j • nu j ∧
         |(sigma j).toReal*rho j - (L • (z j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 0 < h,
-
       ∀ X : Euclidean 2, ∀ T : Real, |T| < 4 →
       (∑ n ∈ I, ∑ j ∈ J,
         normalizedCircleFinePacketCoreConvolutionPositiveKernel
@@ -7204,6 +7206,7 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass_four
           (circleDirection (y 0)) (circleDirectionDeriv (y 0)) -
           normalizedCircleRayTerminal ε (y 1) BA
             (circleDirection (y 0)) (circleDirectionDeriv (y 0))‖)⁻¹^N) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hcore⟩ := normalizedCircleFinePacketKernel_thin_projected_core_sum_four
     basis χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
@@ -7228,7 +7231,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass_four
   have hFm (n : Int) (hn : n ∈ I) (j : κ) (hj : j ∈ J) : Measurable (F n j) := by
     have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw (P j))) := by
       have heq : spaceTimeFourierInv (jointSchwartzRaw (P j)) =
-          fun o : WaveSpaceTime => (𝓕⁻ (P j) : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+          fun o : WaveSpaceTime => (𝓕⁻ (P j) : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp
+            2 o) := by
         funext o
         simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw (P j) o
       rw [heq]
@@ -7262,7 +7266,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_mass_four
     dsimp [D₀]
     rw [one_div]
     ring
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_mass_four
 
 theorem outputMargin_ennreal_kernel_lintegral_le_rayPositiveField
     (L C : Real) (hL : 0 < L) (hC : 0 ≤ C) (N : Nat)
@@ -7307,10 +7310,9 @@ theorem outputMargin_ennreal_kernel_lintegral_le_rayPositiveField
       · rw [Set.indicator_of_notMem (show z ∉ {z : WaveSpaceTime | |z.2| < 4} from hz)]
         exact bot_le
     _ = _ := lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
-#print axioms outputMargin_ennreal_kernel_lintegral_le_rayPositiveField
 
 theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass_four
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -7339,8 +7341,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass_four
         (L • (z j : JointWaveSpaceTime)).fst = rho j • nu j ∧
         |(sigma j).toReal*rho j - (L • (z j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 0 < h,
-
-
       ∀ g : WaveSpaceTime → Complex,
       (∫⁻ o : WaveSpaceTime,
         {o : WaveSpaceTime | |o.2| < 4}.indicator
@@ -7358,8 +7358,11 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass_four
             ENNReal.ofReal ‖g o‖) o ∂(volume.prod volume)) ≤
       ENNReal.ofReal (C*M*h/L) *
         polynomialRayPositiveField (L⁻¹) N g
-          (normalizedCircleRayTerminal ε (y 1) BA (circleDirection (y 0)) (circleDirectionDeriv (y 0)))
-          (normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0))) := by
+          (normalizedCircleRayTerminal ε (y 1) BA (circleDirection (y 0)) (circleDirectionDeriv (y
+            0)))
+          (normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0))) :=
+            by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C,hC,hmass⟩ := normalizedCircleFinePacketKernel_thin_projected_core_mass_four
     basis χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
@@ -7375,13 +7378,12 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_tested_mass_four
     (normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0)))
     (by intro o hT
         exact hpacket Γ m q z hz sigma rho hrho nu hnu I J M hM hprof hband hcenter h hh o.1 o.2 hT)
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_tested_mass_four
 
 /-- The reverse tested core packet mass is controlled by one genuinely
 measurable Cartesian source weight. Its null set is common to every input
 covector, so no measurable closest-anchor choice is needed. -/
 theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -7432,10 +7434,12 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
                     (L•(z j : JointWaveSpaceTime)) η o.1 o.2 y)*
                   ENNReal.ofReal ‖g o‖) o ∂(volume.prod volume)) ≤
             ENNReal.ofReal (C*M*h/L)*ENNReal.ofReal (w y) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C,hC,hpacket⟩ := normalizedCircleFinePacketKernel_thin_projected_core_tested_mass_four
     basis χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
-  obtain ⟨Cw,hCw,hweight⟩ := exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight_four N hN
+  obtain ⟨Cw,hCw,hweight⟩ :=
+    exists_normalizedCircle_cartesian_polynomialRayPositive_real_weight_four N hN
   refine ⟨K,S,C,Cw,hC,hCw,?_⟩
   intro ε L hε hL g hg hgsupp
   have hLp : 0 < L := by linarith
@@ -7445,7 +7449,8 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
   refine ⟨w,hw,hwn,hwm,hwsq,?_⟩
   intro Γ m κ q z hz sigma rho hrho nu hnu I J M hM hprof hband hcenter h hh
   have hset : MeasurableSet {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5} :=
-    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|)) measurable_const).inter
+    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|))
+      measurable_const).inter
       (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 1|)) measurable_const)
   filter_upwards [hwRay,ae_restrict_mem hset] with y hy hycore
   intro η
@@ -7455,7 +7460,6 @@ theorem normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
   rw [normalizedCircleQuarterTurn_circleDirection] at hray
   exact (hb Γ m q z hz sigma rho hrho nu hnu I J M hM hprof hband hcenter h hh g).trans
     (mul_le_mul_of_nonneg_left hray (by positivity))
-#print axioms normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
 theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq_time_four
     {κ : Type*} (I : Finset Int) (J : Finset κ)
     (P : κ → SchwartzMap JointWaveSpaceTime Complex)
@@ -7466,7 +7470,7 @@ theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq_time_fou
     (b Γ : SchwartzMap Real Complex)
     (q : κ → SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε L : Real) (hε : |ε| ≤ 1/64) (hL : 0 < L)
+    (ε L : Real) (hε : |ε| ≤ 1 / 64) (hL : 0 < L)
     (ζ : κ → JointWaveSpaceTime) (η y : Euclidean 2)
     (g : WaveSpaceTime → ENNReal) (hg : Measurable g) :
     (∑ j ∈ J, ∫⁻ o : WaveSpaceTime in {o | |o.2| < 4},
@@ -7514,7 +7518,6 @@ theorem normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq_time_fou
       congr 1
       funext o'
       simp only [F,Finset.sum_mul]
-#print axioms normalizedCircleFinePacketCorePositive_reverse_sum_lintegral_eq_time_four
 
 /- The actual thin-projected packet pairing is global in space on the
 larger time slab. Its common source weight comes from the genuine time-four
@@ -7523,7 +7526,7 @@ incidence-ray maximal estimate. -/
 pairing. Conormal radial labels are combined inside each source kernel,
 and the displayed coefficient contains no label count. -/
 theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_time_four
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -7577,10 +7580,13 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_time_four
           ENNReal.ofReal (C*M^2*h/L^2)*
             ∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
               (∑ i ∈ inputs, ‖f i y‖ₑ^2)*ENNReal.ofReal (w y) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   obtain ⟨KS,SS,CS,hCS,hrow⟩ := normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     basisS χout χsrc hχout hχsrc b phi hphi beta R A D (by linarith) hA hD
-  obtain ⟨KO,SO,CO,Cw,hCO,hCw,hreverse⟩ := normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
+  obtain ⟨KO,SO,CO,Cw,hCO,hCw,hreverse⟩ :=
+    normalizedCircleFinePacketKernel_thin_projected_core_common_weight_four
     basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
   refine ⟨max KS KO,max SS SO,CS*CO,Cw,mul_nonneg hCS hCO,hCw,?_⟩
   intro ε L heps hsmall hL Γ m κS κO zS hzS zO hzO q sigma rho hrho nu hnu
@@ -7664,7 +7670,6 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_time_four
     field_simp
   rw [hc] at hb
   exact hb
-#print axioms normalizedCircleFinePacketCoreOperator_weighted_square_pairing_time_four
 
 
 theorem normalizedCircle_output_window_finite_measure (R T : Real) :
@@ -7679,13 +7684,12 @@ theorem normalizedCircle_output_window_finite_measure (R T : Real) :
   refine ⟨?_⟩
   simpa only [Measure.restrict_apply_univ] using
     (hbounded.measure_lt_top (μ := (volume.prod volume : Measure WaveSpaceTime)))
-#print axioms normalizedCircle_output_window_finite_measure
 
 theorem finite_complex_square_energy_indicator_self_pairing_lintegral
     {J X : Type*} [MeasurableSpace X]
     (P : Finset J) (ν : Measure X) (A B : Set X)
     (hA : MeasurableSet A) (hAB : A ⊆ B)
-    (T : J → X → Complex) (hT : ∀ j ∈ P,Measurable (T j)) :
+    (T : J → X → Complex) (hT : ∀ j ∈ P, Measurable (T j)) :
     (∑ j ∈ P,∫⁻ x : X in B, ‖T j x‖ₑ^2*
       ENNReal.ofReal ‖A.indicator (fun x => ((∑ i ∈ P, ‖T i x‖^2 : Real) : Complex)) x‖ ∂ν) =
         ∫⁻ x : X in A, ENNReal.ofReal ((∑ j ∈ P,‖T j x‖^2)^2) ∂ν := by
@@ -7710,13 +7714,12 @@ theorem finite_complex_square_energy_indicator_self_pairing_lintegral
         ‖T j x‖ₑ^2*ENNReal.ofReal (∑ i ∈ P,‖T i x‖^2) ∂ν :=
       Finset.sum_congr rfl hs
     _ = _ := finite_complex_square_energy_self_pairing_lintegral P (ν.restrict A) T hT
-#print axioms finite_complex_square_energy_indicator_self_pairing_lintegral
 /-- The actual normalized packet square energy has a uniform fourth
 moment on every spatial ball in the larger time margin. Membership is
 proved from the real source-row bound, and the constant is independent of
 the output ball radius. -/
 theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_four
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -7748,7 +7751,6 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex, ∀ Rout : Real,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -7766,8 +7768,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
       C*M^4*h^2/(L^4*Real.sqrt L⁻¹)*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
-  obtain ⟨KP,SP,CP,Cw,hCP,hCw,hpair⟩ := normalizedCircleFinePacketCoreOperator_weighted_square_pairing_time_four
+  obtain ⟨KP,SP,CP,Cw,hCP,hCw,hpair⟩ :=
+    normalizedCircleFinePacketCoreOperator_weighted_square_pairing_time_four
     basisS basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
   obtain ⟨KR,SR,CR,hCR,hrow⟩ := normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     basisS χout χsrc hχout hχsrc b phi hphi beta R A D (by linarith) hA hD
@@ -7776,7 +7781,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
     I inputs outputs M hM hprof hband hcenter h hh f Rout
   have hLp : 0 < L := by linarith
   have hε : |ε| ≤ 1/64 := by
-    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by norm_num)
+    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by
+      norm_num)
   have hhp : 0 < h := by linarith
   let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
     normalizedCircleThinNormalProjectorSymbol
@@ -7794,9 +7800,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
   let Q : Euclidean 2 → Real := fun y => ∑ i ∈ inputs, ‖f i y‖^2
   let E : WaveSpaceTime → Real := fun o => ∑ j ∈ outputs, ‖T j o‖^2
   have hΩ : MeasurableSet Ω :=
-    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o.1‖)) measurable_const).inter
-      (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|)) measurable_const)
-  haveI : IsFiniteMeasure ν := normalizedCircle_output_window_finite_measure Rout 4
+    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o.1‖))
+      measurable_const).inter
+      (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|))
+        measurable_const)
+  have : IsFiniteMeasure ν := normalizedCircle_output_window_finite_measure Rout 4
   have hprofP (j : κO) (hj : j ∈ outputs) :
       (Finset.Iic (KP,SP)).sup (fun p => SchwartzMap.seminorm Complex p.1 p.2)
         (normalizedCircleFinePacketProfile (q j) m Γ) ≤ M :=
@@ -7823,7 +7831,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
       (q j) m ε L hε hLp (L•(zO j : JointWaveSpaceTime)) (fun i => L•(zS i : Euclidean 2))
       (fun i => (f i : Euclidean 2 → Complex)) (fun i hi => (f i).continuous.measurable)
   have hT4 (j : κO) (hj : j ∈ outputs) : MemLp (T j) 4 ν :=
-    normalizedCircleFinePacketCoreOperator_memLp_of_source_row I inputs ν (P j) χout χsrc hχout hχsrc
+    normalizedCircleFinePacketCoreOperator_memLp_of_source_row I inputs ν (P j) χout χsrc hχout
+      hχsrc
       b Γ (q j) m ε L hε hLp (L•(zO j : JointWaveSpaceTime))
       (fun i => L•(zS i : Euclidean 2)) f (ENNReal.ofReal (CR*M/L)) ENNReal.ofReal_ne_top
         (hrowT j hj) 4
@@ -7831,7 +7840,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
   have hQ : MemLp Q 2 μ := sourcePacket_finite_square_energy_memLp inputs μ
     (fun i => (f i : Euclidean 2 → Complex)) (fun i hi => (f i).memLp 4 volume |>.restrict _)
   have hEm : Measurable E := Finset.measurable_sum outputs (fun j hj => (hTm j hj).norm.pow_const 2)
-  have hQm : Measurable Q := Finset.measurable_sum inputs (fun i hi => (f i).continuous.measurable.norm.pow_const 2)
+  have hQm : Measurable Q := Finset.measurable_sum inputs (fun i hi => (f
+    i).continuous.measurable.norm.pow_const 2)
   have hEn (o : WaveSpaceTime) : 0 ≤ E o := Finset.sum_nonneg (fun j hj => sq_nonneg _)
   have hQn (y : Euclidean 2) : 0 ≤ Q y := Finset.sum_nonneg (fun i hi => sq_nonneg _)
   let g : WaveSpaceTime → Complex := Ω.indicator (fun o => (E o : Complex))
@@ -7845,7 +7855,6 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
     exact hmem.2.le
   obtain ⟨w,hw,hwn,hwm,hwsq,hweighted⟩ := hpair ε L heps hsmall hL Γ m zS hzS zO hzO q
     sigma rho hrho nu hnu I inputs outputs M hM hprofP hband hcenter h hh f g hgm hg hgsupp
-
   have hwsq' : (∫ y : Euclidean 2,w y^2 ∂μ) ≤
       (Cw/Real.sqrt L⁻¹)*(∫ o : WaveSpaceTime,E o^2 ∂ν) := by
     change (∫ o : WaveSpaceTime,‖g o‖^2 ∂(volume.prod volume)) =
@@ -7880,13 +7889,12 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_fou
     CP^2*Cw*M^4*h^2/(L^4*Real.sqrt L⁻¹)*(∫ y,Q y^2 ∂μ)
   convert hs using 1
   field_simp
-#print axioms normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_four
 /-- Spatial-ball exhaustion turns the literal normalized core packet
 estimate into a genuine global-in-space fourth moment on the time-four
 slab. This is the fine square-energy gain, before spectral recombination
 and the separately required outer-time tails. -/
 theorem normalizedCircleFinePacketCoreOperator_global_spatial_fourth_moment_time_four
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -7918,7 +7926,6 @@ theorem normalizedCircleFinePacketCoreOperator_global_spatial_fourth_moment_time
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -7936,15 +7943,19 @@ theorem normalizedCircleFinePacketCoreOperator_global_spatial_fourth_moment_time
       C*M^4*h^2/(L^4*Real.sqrt L⁻¹)*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
-  obtain ⟨K,S,C,hC,hball⟩ := normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_four
+  obtain ⟨K,S,C,hC,hball⟩ :=
+    normalizedCircleFinePacketCoreOperator_fourth_moment_on_spatial_ball_four
     basisS basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD
   refine ⟨K,S,C,hC,?_⟩
   intro ε L heps hsmall hL Γ m κS κO zS hzS zO hzO q sigma rho hrho nu hnu
     I inputs outputs M hM hprof hband hcenter h hh f
   have hLp : 0 < L := by linarith
   have hε : |ε| ≤ 1/64 := by
-    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by norm_num)
+    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by
+      norm_num)
   have hhp : 0 < h := by linarith
   let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
     normalizedCircleThinNormalProjectorSymbol
@@ -7980,10 +7991,8 @@ theorem normalizedCircleFinePacketCoreOperator_global_spatial_fourth_moment_time
     (W*(∫ y : Euclidean 2,Q y^2 ∂μ)) (mul_nonneg hW hQsq)
     (fun n => (hballs n).1) (fun n => (hballs n).2)
   exact ht
-#print axioms normalizedCircleFinePacketCoreOperator_global_spatial_fourth_moment_time_four
 /-- The global input square energy of literal translated fixed-prototype
 Schwartz Fourier cubes has a uniform fourth-moment bound. -/
-
 theorem latticeFourierCubeSchwartz_square_energy_integral
     (phi : SchwartzMap (Euclidean 2) Complex) :
     ∃ C : Real, 0 ≤ C ∧
@@ -7995,7 +8004,8 @@ theorem latticeFourierCubeSchwartz_square_energy_integral
         C*(∫ y : Euclidean 2,‖f y‖^4) := by
   classical
   obtain ⟨A,hA,hbound⟩ := latticeFourierCubeSquareFunction_lintegral_four phi
-  let D : Real := ∫ v : Euclidean 2, ‖(FourierTransform.fourierInv phi : SchwartzMap (Euclidean 2) Complex) v‖
+  let D : Real := ∫ v : Euclidean 2, ‖(FourierTransform.fourierInv phi : SchwartzMap (Euclidean 2)
+    Complex) v‖
   have hD : 0 ≤ D := integral_nonneg (fun v => norm_nonneg _)
   refine ⟨A^2*D^2,mul_nonneg (sq_nonneg _) (sq_nonneg _),?_⟩
   intro f L hL I
@@ -8038,12 +8048,13 @@ theorem latticeFourierCubeSchwartz_square_energy_integral
   rw [hmass,← ENNReal.ofReal_pow hA 2,← ENNReal.ofReal_pow hD 2,
     ← ENNReal.ofReal_mul (sq_nonneg A)] at hb
   apply (ENNReal.ofReal_le_ofReal_iff (mul_nonneg
-    (mul_nonneg (sq_nonneg _) (sq_nonneg _)) (integral_nonneg (fun y => pow_nonneg (norm_nonneg _) 4)))).mp
+    (mul_nonneg (sq_nonneg _) (sq_nonneg _)) (integral_nonneg (fun y => pow_nonneg (norm_nonneg _)
+      4)))).mp
   rw [ENNReal.ofReal_mul (mul_nonneg (sq_nonneg _) (sq_nonneg _)),
     ofReal_integral_eq_lintegral_ofReal hQi (Filter.Eventually.of_forall (fun y => sq_nonneg _)),
-    ofReal_integral_eq_lintegral_ofReal hfi (Filter.Eventually.of_forall (fun y => pow_nonneg (norm_nonneg _) 4))]
+    ofReal_integral_eq_lintegral_ofReal hfi (Filter.Eventually.of_forall (fun y => pow_nonneg
+      (norm_nonneg _) 4))]
   exact hb
-#print axioms latticeFourierCubeSchwartz_square_energy_integral
 
 
 
@@ -8070,13 +8081,12 @@ theorem normalizedCircleSourceIntegerLatticePoint_injective :
   have he : (q i : Real) = (r i : Real) := by
     simpa [normalizedCircleSourceIntegerLatticePoint,standardLatticePoint] using hi
   exact_mod_cast he
-#print axioms normalizedCircleSourceIntegerLatticePoint_injective
 /-- The literal normalized finite packet family, with one fixed joint
 output profile and genuine lattice analysis cubes of a single original
 source, has the fine fourth-moment gain. All profile constants are fixed
 before the scale, source, and live labels. -/
 theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_fourth_moment_time_four
-    {ιO : Type*} [Fintype ιO]
+    {ιO : Type*} [Finite ιO]
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -8122,6 +8132,7 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_fourth_moment_time_
       (∫ o : WaveSpaceTime,(∑ j ∈ outputs, ‖T j o‖^2)^2
         ∂((volume.prod volume).restrict {o : WaveSpaceTime | |o.2| < 4})) ≤
       C*h^2/(L^4*Real.sqrt L⁻¹)*(∫ y : Euclidean 2,‖Fsrc y‖^4) := by
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   let basisS := (EuclideanSpace.basisFun (Fin 2) Real).toBasis
   obtain ⟨K,S,C₀,hC₀,hcore⟩ :=
@@ -8159,11 +8170,10 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_fourth_moment_time_
     convert hb using 1
     · simp only [normalizedCircleSourceIntegerLatticePoint_coe,f]
     · ring
-#print axioms normalizedCircleFinePacketCoreOperator_fixed_lattice_fourth_moment_time_four
 /-- The literal raw normalized packet kernels have count-free reverse
 analysis mass L^-1, before applying any output normal projector. -/
 theorem normalizedCircleFinePacketKernel_reverse_analysis_mass
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -8188,8 +8198,10 @@ theorem normalizedCircleFinePacketKernel_reverse_analysis_mass
             ε L⁻¹ (L*(n:Real)) (inv_pos.mpr (lt_of_lt_of_le (by norm_num) hL))
             (L•(z j : JointWaveSpaceTime)) η (WithLp.toLp 2 (Z,S)) y‖) ≤
         ENNReal.ofReal (C*M/L) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
-  obtain ⟨K,S,C₀,hC₀,hpacket⟩ := normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
+  obtain ⟨K,S,C₀,hC₀,hpacket⟩ :=
+    normalizedCircleFinePacketKernel_reverse_lattice_sum_profile_control
     basis χout χsrc hχout hχsrc b N hdim hN R hR
   let D₀ : Real := ∫ Z : Euclidean 2, lightRayDecayProfile N Z
   have hD₀ : 0 ≤ D₀ := integral_nonneg (fun Z => by dsimp [lightRayDecayProfile]; positivity)
@@ -8198,7 +8210,8 @@ theorem normalizedCircleFinePacketKernel_reverse_analysis_mass
   have hLp : 0 < L := by linarith
   have hδ : 0 < L⁻¹ := inv_pos.mpr hLp
   obtain ⟨ρA,BA,hAlo,hAhi,hBA,hraw⟩ := hpacket ε L hε hL η y hθ hu
-  let pA := normalizedCircleRayTerminal ε (y 1) BA (circleDirection (y 0)) (circleDirectionDeriv (y 0))
+  let pA := normalizedCircleRayTerminal ε (y 1) BA (circleDirection (y 0)) (circleDirectionDeriv (y
+    0))
   let nA := normalizedCircleRayNormal ε BA (circleDirection (y 0)) (circleDirectionDeriv (y 0))
   let F : Int → κ → WaveSpaceTime → Real := fun n j o =>
     ‖normalizedCircleFinePacketKernel χout χsrc b Γ (q j) m ε L⁻¹ (L*(n:Real)) hδ
@@ -8206,7 +8219,8 @@ theorem normalizedCircleFinePacketKernel_reverse_analysis_mass
   have hFm (n : Int) (hn : n ∈ I) (j : κ) (hj : j ∈ J) : Measurable (F n j) := by
     have hm := normalizedCircleFinePacketKernel_measurable χout χsrc hχout hχsrc
       b Γ (q j) m ε L⁻¹ (L*(n:Real)) hε hδ (L•(z j : JointWaveSpaceTime)) η
-    exact (hm.comp (show Measurable (fun o : WaveSpaceTime => (WithLp.toLp 2 o,y)) by fun_prop)).norm
+    exact (hm.comp (show Measurable (fun o : WaveSpaceTime => (WithLp.toLp 2 o,y)) by
+      fun_prop)).norm
   have hFn (n : Int) (hn : n ∈ I) (j : κ) (hj : j ∈ J) (o : WaveSpaceTime) :
       0 ≤ F n j o := norm_nonneg _
   have hb := reverse_convolution_finite_family_output_core_lintegral_le I J
@@ -8220,10 +8234,8 @@ theorem normalizedCircleFinePacketKernel_reverse_analysis_mass
   convert hb using 1
   congr 1
   dsimp [D₀]
-  simp only [zero_smul,add_zero,sub_self,norm_zero,mul_zero,add_zero,one_div,one_pow,mul_one]
-  field_simp <;> simp
-
-#print axioms normalizedCircleFinePacketKernel_reverse_analysis_mass
+  simp only [zero_smul,add_zero,sub_self,norm_zero,mul_zero,add_zero,one_div]
+  field_simp ; simp
 
 
 
@@ -8236,8 +8248,8 @@ theorem finite_family_positive_convolution_reverse_mass_le
     (A : J → X → Z → ENNReal)
     (hA : ∀ j ∈ Q, Measurable (Function.uncurry (A j)))
     (g : X → ENNReal) (hg : Measurable g) (B M : ENNReal)
-    (hTest : ∀ j ∈ Q, ∀ z, (∫⁻ x,A j x z*g x ∂ν) ≤ B)
-    (hMass : (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z ∂μ) ≤ M) :
+    (hTest : ∀ j ∈ Q, ∀ z, (∫⁻ x, A j x z * g x ∂ν) ≤ B)
+    (hMass : (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z, K i j z ∂μ) ≤ M) :
     (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ x,
       (∫⁻ z,A j x z*K i j z ∂μ)*g x ∂ν) ≤ B*M := by
   classical
@@ -8277,7 +8289,6 @@ theorem finite_family_positive_convolution_reverse_mass_le
         _ = _ := by rw [lintegral_mul_const _ (hK i hi j hj),mul_comm]
     _ = B*(∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z ∂μ) := by simp only [Finset.mul_sum]
     _ ≤ B*M := mul_le_mul_of_nonneg_left hMass (by positivity)
-#print axioms finite_family_positive_convolution_reverse_mass_le
 
 
 
@@ -8290,7 +8301,7 @@ theorem normalizedCircleFinePacketCoreConvolutionPositiveKernel_prod_integral
     (b Γ : SchwartzMap Real Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε δ ρ : Real) (hε : |ε| ≤ 1/64) (hδ : 0 < δ)
+    (ε δ ρ : Real) (hε : |ε| ≤ 1 / 64) (hδ : 0 < δ)
     (ζ : JointWaveSpaceTime) (η y X : Euclidean 2) (T : Real) :
     normalizedCircleFinePacketCoreConvolutionPositiveKernel P χout χsrc b Γ q m
       ε δ ρ hδ ζ η X T y =
@@ -8301,7 +8312,8 @@ theorem normalizedCircleFinePacketCoreConvolutionPositiveKernel_prod_integral
         ∂((volume.restrict (ball (0:Euclidean 2) 3)).prod (volume.restrict (Ioo (-2:Real) 2))) := by
   have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw P)) := by
     have heq : spaceTimeFourierInv (jointSchwartzRaw P) =
-        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+        fun o : WaveSpaceTime => (𝓕⁻ P : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o)
+          := by
       funext o
       simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw P o
     rw [heq]
@@ -8326,7 +8338,6 @@ theorem normalizedCircleFinePacketCoreConvolutionPositiveKernel_prod_integral
     (ν := volume.restrict (Ioo (-2:Real) 2)) F hF.aemeasurable
   simpa only [F,normalizedCircleFinePacketCoreConvolutionPositiveKernel,
     ENNReal.ofReal_mul (norm_nonneg _)] using he.symm
-#print axioms normalizedCircleFinePacketCoreConvolutionPositiveKernel_prod_integral
 
 theorem finite_family_positive_convolution_reverse_mass_le_of_ae_test
     {I J X Z : Type*} [MeasurableSpace X] [MeasurableSpace Z]
@@ -8337,8 +8348,8 @@ theorem finite_family_positive_convolution_reverse_mass_le_of_ae_test
     (A : J → X → Z → ENNReal)
     (hA : ∀ j ∈ Q, Measurable (Function.uncurry (A j)))
     (g : X → ENNReal) (hg : Measurable g) (B M : ENNReal)
-    (hTest : ∀ j ∈ Q, ∀ᵐ z ∂μ, (∫⁻ x,A j x z*g x ∂ν) ≤ B)
-    (hMass : (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z ∂μ) ≤ M) :
+    (hTest : ∀ j ∈ Q, ∀ᵐ z ∂μ, (∫⁻ x, A j x z * g x ∂ν) ≤ B)
+    (hMass : (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z, K i j z ∂μ) ≤ M) :
     (∑ i ∈ P, ∑ j ∈ Q, ∫⁻ x,
       (∫⁻ z,A j x z*K i j z ∂μ)*g x ∂ν) ≤ B*M := by
   classical
@@ -8380,7 +8391,6 @@ theorem finite_family_positive_convolution_reverse_mass_le_of_ae_test
         _ = _ := by rw [lintegral_mul_const _ (hK i hi j hj),mul_comm]
     _ = B*(∑ i ∈ P, ∑ j ∈ Q, ∫⁻ z,K i j z ∂μ) := by simp only [Finset.mul_sum]
     _ ≤ B*M := mul_le_mul_of_nonneg_left hMass (by positivity)
-#print axioms finite_family_positive_convolution_reverse_mass_le_of_ae_test
 
 
 
@@ -8388,7 +8398,7 @@ theorem finite_family_positive_convolution_reverse_mass_le_of_ae_test
 reverse tested packet mass. Individual projector L2 testing occurs before
 the conormal/output label sums, so no label cardinality enters. -/
 theorem normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
-    {ι : Type*} [Fintype ι]
+    {ι : Type*} [Finite ι]
     (basis : Module.Basis ι Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -8422,6 +8432,7 @@ theorem normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
           (L•(z j : JointWaveSpaceTime)) η x.1 x.2 y*ENNReal.ofReal ‖g x‖ ∂(volume.prod volume)) ≤
         ENNReal.ofReal (C*M*(h⁻¹)^Jdecay*
           Real.sqrt (∫ x : WaveSpaceTime,‖g x‖^2 ∂(volume.prod volume))) := by
+  let : Fintype ι := Fintype.ofFinite ι
   classical
   obtain ⟨K,S,C₀,hC₀,hraw⟩ := normalizedCircleFinePacketKernel_reverse_analysis_mass
     basis χout χsrc hχout hχsrc b N hdim hN R hR
@@ -8451,7 +8462,8 @@ theorem normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
   have hAA (j : κ) (hj : j ∈ outputs) : Measurable (Function.uncurry (AA j)) := by
     have hInv : Continuous (spaceTimeFourierInv (jointSchwartzRaw (P j))) := by
       have heq : spaceTimeFourierInv (jointSchwartzRaw (P j)) =
-          fun o : WaveSpaceTime => (𝓕⁻ (P j) : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp 2 o) := by
+          fun o : WaveSpaceTime => (𝓕⁻ (P j) : SchwartzMap JointWaveSpaceTime Complex) (WithLp.toLp
+            2 o) := by
         funext o
         simpa only [SchwartzMap.fourierInv_coe] using spaceTimeFourierInv_jointSchwartzRaw (P j) o
       rw [heq]
@@ -8505,10 +8517,10 @@ theorem normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
   rw [hc] at hb
   simp_rw [← hPos] at hb
   exact hb
-#print axioms normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
-/-- Actual packet Schur testing on the time exterior has arbitrary normal-width decay. The constant source weight is the genuine L2 norm of the test. -/
+/-- Actual packet Schur testing on the time exterior has arbitrary normal-width decay. The constant
+  source weight is the genuine L2 norm of the test. -/
 theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -8555,11 +8567,15 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
             ∂(volume.prod volume)) ≤
           ENNReal.ofReal (C*M^2*(h⁻¹)^Jdecay/L)*
             ∫⁻ y : Euclidean 2 in {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5},
-              (∑ i ∈ inputs, ‖f i y‖ₑ^2)*ENNReal.ofReal (Real.sqrt (∫ o : WaveSpaceTime, ‖g o‖^2 ∂(volume.prod volume))) := by
+              (∑ i ∈ inputs, ‖f i y‖ₑ^2)*ENNReal.ofReal (Real.sqrt (∫ o : WaveSpaceTime, ‖g o‖^2
+                ∂(volume.prod volume))) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   obtain ⟨KS,SS,CS,hCS,hrow⟩ := normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     basisS χout χsrc hχout hχsrc b phi hphi beta R A D (by linarith) hA hD
-  obtain ⟨KO,SO,CO,hCO,hreverse⟩ := normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
+  obtain ⟨KO,SO,CO,hCO,hreverse⟩ :=
+    normalizedCircleFinePacketKernel_core_projected_exterior_tested_mass
     basisO χout χsrc hχout hχsrc b phi beta N hdim hN R hR Jdecay
   refine ⟨max KS KO,max SS SO,CS*CO,mul_nonneg hCS hCO,?_⟩
   intro ε L heps hsmall hL Γ m κS κO zS hzS zO hzO q sigma rho hrho nu hnu
@@ -8620,7 +8636,8 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
     exact hh
   have hCore : ∀ᵐ y ∂μ, |y 0| < 4 ∧ |y 1| < 5 := by
     apply ae_restrict_mem
-    exact (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|)) measurable_const).inter
+    exact (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|))
+      measurable_const).inter
       (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 1|)) measurable_const)
   have hRev : ∀ᵐ y ∂μ, ∀ i ∈ inputs,
       (∑ j ∈ outputs, ∫⁻ o, KK j i o y*ENNReal.ofReal ‖g o‖ ∂ν) ≤
@@ -8668,7 +8685,6 @@ theorem normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
     field_simp
   rw [hc] at hb
   exact hb
-#print axioms normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
 /-- Any positive normal-width exponent admits an exterior time-tail order
 whose fourth-moment contribution is below the principal packet scale. -/
 theorem exists_circle_normalWidth_temporalTailOrder
@@ -8688,7 +8704,6 @@ theorem exists_circle_normalWidth_temporalTailOrder
     rw [← Real.rpow_neg hp.le,← Real.rpow_natCast,← Real.rpow_mul hp.le]
   rw [he,← Real.rpow_add hp]
   exact Real.rpow_le_rpow_of_exponent_le hmu hexp
-#print axioms exists_circle_normalWidth_temporalTailOrder
 
 /-- Literal L=sqrt(mu), h=mu^gamma conversion, including the genuine
 arbitrary-order exterior absorption. -/
@@ -8733,10 +8748,10 @@ theorem exists_circle_globalPacket_scale_and_tailOrder
     simpa only [Real.rpow_neg_one,div_eq_mul_inv,mul_comm] using hJ mu hmu
   rw [hcore]
   nlinarith
-#print axioms exists_circle_globalPacket_scale_and_tailOrder
-/-- The literal packet square energy has a count-free arbitrary-power time-exterior bound on every bounded target. Genuine membership is proved before the moment estimate. -/
+/-- The literal packet square energy has a count-free arbitrary-power time-exterior bound on every
+  bounded target. Genuine membership is proved before the moment estimate. -/
 theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exterior
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -8768,7 +8783,6 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex, ∀ Rout : Real,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -8786,8 +8800,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
       C*M^4*(h⁻¹)^(2*Jdecay)/L^2*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
-  obtain ⟨KP,SP,CP,hCP,hpair⟩ := normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
+  obtain ⟨KP,SP,CP,hCP,hpair⟩ :=
+    normalizedCircleFinePacketCoreOperator_weighted_square_pairing_exterior
     basisS basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD Jdecay
   obtain ⟨KR,SR,CR,hCR,hrow⟩ := normalizedCircleFinePacketKernel_thin_projected_core_source_row_mass
     basisS χout χsrc hχout hχsrc b phi hphi beta R A D (by linarith) hA hD
@@ -8796,7 +8813,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
     I inputs outputs M hM hprof hband hcenter h hh f Rout
   have hLp : 0 < L := by linarith
   have hε : |ε| ≤ 1/64 := by
-    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by norm_num)
+    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by
+      norm_num)
   have hhp : 0 < h := by linarith
   let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
     normalizedCircleThinNormalProjectorSymbol
@@ -8814,13 +8832,15 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
   let Q : Euclidean 2 → Real := fun y => ∑ i ∈ inputs, ‖f i y‖^2
   let E : WaveSpaceTime → Real := fun o => ∑ j ∈ outputs, ‖T j o‖^2
   have hΩ : MeasurableSet Ω :=
-    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o‖)) measurable_const).inter
-      (measurableSet_le measurable_const (by fun_prop : Measurable (fun o : WaveSpaceTime => |o.2|)))
+    (measurableSet_lt (by fun_prop : Measurable (fun o : WaveSpaceTime => ‖o‖))
+      measurable_const).inter
+      (measurableSet_le measurable_const (by fun_prop : Measurable (fun o : WaveSpaceTime =>
+        |o.2|)))
   have hbounded : Bornology.IsBounded Ω := (Metric.isBounded_ball
     (x := (0 : WaveSpaceTime)) (r := Rout)).subset (by
       intro o ho
       simpa only [mem_ball,dist_zero_right] using ho.1)
-  haveI : IsFiniteMeasure ν := ⟨by
+  have : IsFiniteMeasure ν := ⟨by
     simpa only [ν,Measure.restrict_apply_univ] using
       hbounded.measure_lt_top (μ := (volume.prod volume : Measure WaveSpaceTime))⟩
   have hprofP (j : κO) (hj : j ∈ outputs) :
@@ -8849,7 +8869,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
       (q j) m ε L hε hLp (L•(zO j : JointWaveSpaceTime)) (fun i => L•(zS i : Euclidean 2))
       (fun i => (f i : Euclidean 2 → Complex)) (fun i hi => (f i).continuous.measurable)
   have hT4 (j : κO) (hj : j ∈ outputs) : MemLp (T j) 4 ν :=
-    normalizedCircleFinePacketCoreOperator_memLp_of_source_row I inputs ν (P j) χout χsrc hχout hχsrc
+    normalizedCircleFinePacketCoreOperator_memLp_of_source_row I inputs ν (P j) χout χsrc hχout
+      hχsrc
       b Γ (q j) m ε L hε hLp (L•(zO j : JointWaveSpaceTime))
       (fun i => L•(zS i : Euclidean 2)) f (ENNReal.ofReal (CR*M/L)) ENNReal.ofReal_ne_top
         (hrowT j hj) 4
@@ -8857,7 +8878,8 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
   have hQ : MemLp Q 2 μ := sourcePacket_finite_square_energy_memLp inputs μ
     (fun i => (f i : Euclidean 2 → Complex)) (fun i hi => (f i).memLp 4 volume |>.restrict _)
   have hEm : Measurable E := Finset.measurable_sum outputs (fun j hj => (hTm j hj).norm.pow_const 2)
-  have hQm : Measurable Q := Finset.measurable_sum inputs (fun i hi => (f i).continuous.measurable.norm.pow_const 2)
+  have hQm : Measurable Q := Finset.measurable_sum inputs (fun i hi => (f
+    i).continuous.measurable.norm.pow_const 2)
   have hEn (o : WaveSpaceTime) : 0 ≤ E o := Finset.sum_nonneg (fun j hj => sq_nonneg _)
   have hQn (y : Euclidean 2) : 0 ≤ Q y := Finset.sum_nonneg (fun i hi => sq_nonneg _)
   let g : WaveSpaceTime → Complex := Ω.indicator (fun o => (E o : Complex))
@@ -8905,12 +8927,11 @@ theorem normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exteri
   field_simp
   rw [pow_mul]
   ring
-#print axioms normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exterior
 
 
 /-- Bounded-target exhaustion gives a genuine fourth moment on the full time exterior. -/
 theorem normalizedCircleFinePacketCoreOperator_global_exterior_fourth_moment
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -8942,7 +8963,6 @@ theorem normalizedCircleFinePacketCoreOperator_global_exterior_fourth_moment
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -8960,15 +8980,19 @@ theorem normalizedCircleFinePacketCoreOperator_global_exterior_fourth_moment
       C*M^4*(h⁻¹)^(2*Jdecay)/L^2*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
-  obtain ⟨K,S,C,hC,hball⟩ := normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exterior
+  obtain ⟨K,S,C,hC,hball⟩ :=
+    normalizedCircleFinePacketCoreOperator_fourth_moment_on_norm_ball_exterior
     basisS basisO χout χsrc hχout hχsrc b phi hphi beta N hdim hN R A D hR hA hD Jdecay
   refine ⟨K,S,C,hC,?_⟩
   intro ε L heps hsmall hL Γ m κS κO zS hzS zO hzO q sigma rho hrho nu hnu
     I inputs outputs M hM hprof hband hcenter h hh f
   have hLp : 0 < L := by linarith
   have hε : |ε| ≤ 1/64 := by
-    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by norm_num)
+    exact (show |ε| ≤ 1/128 from by simpa only [abs_of_nonneg heps] using hsmall).trans (by
+      norm_num)
   have hhp : 0 < h := by linarith
   let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
     normalizedCircleThinNormalProjectorSymbol
@@ -9000,14 +9024,15 @@ theorem normalizedCircleFinePacketCoreOperator_global_exterior_fourth_moment
     have hn := hball ε L heps hsmall hL Γ m zS hzS zO hzO q sigma rho hrho nu hnu
       I inputs outputs M hM hprof hband hcenter h hh f (n:Real)
     exact hn
-  have ht := memLp_two_set_of_uniform_norm_ball_integral (volume.prod volume) {o : WaveSpaceTime | 4 ≤ |o.2|} E hEm
+  have ht := memLp_two_set_of_uniform_norm_ball_integral (volume.prod volume) {o : WaveSpaceTime |
+    4 ≤ |o.2|} E hEm
     (W*(∫ y : Euclidean 2,Q y^2 ∂μ)) (mul_nonneg hW hQsq)
     (fun n => (hballs n).1) (fun n => (hballs n).2)
   exact ht
-#print axioms normalizedCircleFinePacketCoreOperator_global_exterior_fourth_moment
-/-- The literal thin-projected analysis-core packet family has a genuine global square-energy fourth moment. Core and exterior memberships are both proved before reassembly. -/
+/-- The literal thin-projected analysis-core packet family has a genuine global square-energy
+  fourth moment. Core and exterior memberships are both proved before reassembly. -/
 theorem normalizedCircleFinePacketCoreOperator_global_fourth_moment
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
@@ -9039,7 +9064,6 @@ theorem normalizedCircleFinePacketCoreOperator_global_fourth_moment
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -9057,6 +9081,8 @@ theorem normalizedCircleFinePacketCoreOperator_global_fourth_moment
       C*M^4*(h^2/(L^4*Real.sqrt L⁻¹)+(h⁻¹)^(2*Jdecay)/L^2)*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂(volume.restrict {y : Euclidean 2 | |y 0| < 4 ∧ |y 1| < 5})) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   obtain ⟨K₀,S₀,C₀,hC₀,hcore⟩ :=
     normalizedCircleFinePacketCoreOperator_global_spatial_fourth_moment_time_four
@@ -9112,14 +9138,13 @@ theorem normalizedCircleFinePacketCoreOperator_global_fourth_moment
     _ ≤ (C₀+C₁)*M^4*h^2/(L^4*Real.sqrt L⁻¹)*(∫ y,Q y^2 ∂μ)+
         (C₀+C₁)*M^4*(h⁻¹)^(2*Jdecay)/L^2*(∫ y,Q y^2 ∂μ) := by gcongr <;> linarith
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketCoreOperator_global_fourth_moment
 
 /-- The literal normalized finite packet family, with one fixed joint
 output profile and genuine lattice analysis cubes of a single original
 source, has the fine fourth-moment gain. All profile constants are fixed
 before the scale, source, and live labels. -/
 theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_fourth_moment
-    {ιO : Type*} [Fintype ιO]
+    {ιO : Type*} [Finite ιO]
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -9165,6 +9190,7 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_fourth_momen
       (∫ o : WaveSpaceTime,(∑ j ∈ outputs, ‖T j o‖^2)^2
         ∂(volume.prod volume)) ≤
       C*(h^2/(L^4*Real.sqrt L⁻¹)+(h⁻¹)^(2*Jdecay)/L^2)*(∫ y : Euclidean 2,‖Fsrc y‖^4) := by
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   let basisS := (EuclideanSpace.basisFun (Fin 2) Real).toBasis
   obtain ⟨K,S,C₀,hC₀,hcore⟩ :=
@@ -9202,14 +9228,13 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_fourth_momen
     convert hb using 1
     · simp only [normalizedCircleSourceIntegerLatticePoint_coe,f]
     · ring
-#print axioms normalizedCircleFinePacketCoreOperator_fixed_lattice_global_fourth_moment
 
 /-- The literal normalized finite packet family, with one fixed joint
 output profile and genuine lattice analysis cubes of a single original
 source, has the fine fourth-moment gain. All profile constants are fixed
 before the scale, source, and live labels. -/
 theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_mu_gain
-    {ιO : Type*} [Fintype ιO]
+    {ιO : Type*} [Finite ιO]
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
@@ -9230,10 +9255,12 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_mu_gain
       ∀ sigma : κO → WaveSign, ∀ rho : κO → Real, ∀ hrho : ∀ j, 0 < rho j,
       ∀ nu : κO → Euclidean 2, (∀ j, ‖nu j‖ = 1) →
       ∀ I : Finset Int, ∀ inputs : Finset (Fin 2 → Int), ∀ outputs : Finset κO,
-      (∀ n ∈ I, (Real.sqrt mu)^2/4 ≤ |(Real.sqrt mu)*(n:Real)| ∧ |(Real.sqrt mu)*(n:Real)| ≤ R*(Real.sqrt mu)^2) →
+      (∀ n ∈ I, (Real.sqrt mu)^2/4 ≤ |(Real.sqrt mu)*(n:Real)| ∧ |(Real.sqrt mu)*(n:Real)| ≤
+        R*(Real.sqrt mu)^2) →
       (∀ j ∈ outputs, (Real.sqrt mu)/rho j ≤ 1/2 ∧ (Real.sqrt mu)^2 ≤ A*rho j ∧
         ((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).fst = rho j•nu j ∧
-        |(sigma j).toReal*rho j-((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).snd| ≤ D*(Real.sqrt mu)) →
+        |(sigma j).toReal*rho j-((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).snd| ≤ D*(Real.sqrt
+          mu)) →
       ∀ Fsrc : SchwartzMap (Euclidean 2) Complex,
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
@@ -9243,17 +9270,20 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_mu_gain
           (mu^gamma) (ne_of_gt (lt_of_lt_of_le (by norm_num) (Real.one_le_rpow hmu hgamma.le)))
       let f : (Fin 2 → Int) → SchwartzMap (Euclidean 2) Complex := fun i =>
         fourierCubeProjectedSchwartz
-          (translatedDilatedSchwartzCutoff psi ((Real.sqrt mu)•standardLatticePoint i) (Real.sqrt mu)
+          (translatedDilatedSchwartzCutoff psi ((Real.sqrt mu)•standardLatticePoint i) (Real.sqrt
+            mu)
             (ne_of_gt (lt_of_lt_of_le (by norm_num) (Real.one_le_sqrt.mpr hmu)))) Fsrc
       let T : κO → WaveSpaceTime → Complex := fun j =>
         normalizedCircleFinePacketCoreOperator I inputs (P j) χout χsrc b Γ q m
-          ε (Real.sqrt mu) (lt_of_lt_of_le (by norm_num) (Real.one_le_sqrt.mpr hmu)) ((Real.sqrt mu)•(zO j : JointWaveSpaceTime))
+          ε (Real.sqrt mu) (lt_of_lt_of_le (by norm_num) (Real.one_le_sqrt.mpr hmu)) ((Real.sqrt
+            mu)•(zO j : JointWaveSpaceTime))
           (fun i => (Real.sqrt mu)•standardLatticePoint i) (fun i => (f i : Euclidean 2 → Complex))
       MemLp (fun o : WaveSpaceTime => ∑ j ∈ outputs, ‖T j o‖^2) 2
         (volume.prod volume) ∧
       (∫ o : WaveSpaceTime,(∑ j ∈ outputs, ‖T j o‖^2)^2
         ∂(volume.prod volume)) ≤
       C*mu^(-7/4+2*gamma:Real)*(∫ y : Euclidean 2,‖Fsrc y‖^4) := by
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   obtain ⟨J,hscale⟩ := exists_circle_globalPacket_scale_and_tailOrder gamma hgamma
   obtain ⟨C,hC,hglobal⟩ :=
@@ -9270,7 +9300,6 @@ theorem normalizedCircleFinePacketCoreOperator_fixed_lattice_global_mu_gain
     _ ≤ C*(2*mu^(-7/4+2*gamma:Real))*(∫ y : Euclidean 2,‖Fsrc y‖^4) :=
       mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hcoefficient hC) hSource
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketCoreOperator_fixed_lattice_global_mu_gain
 
 /-- Genuine product-measure Fubini identifies the nested physical
 analysis-core projection with its literal restricted raw output integral. -/
@@ -9278,12 +9307,12 @@ theorem normalizedCircleFinePacketCoreConvolutionKernel_eq_raw
     (P : SchwartzMap JointWaveSpaceTime Complex)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z,χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z,χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
     (b Γ : SchwartzMap Real Complex) (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε δ ρ : Real) (hε : |ε| ≤ 1/64) (hδ : 0 < δ) (hδone : δ ≤ 1)
-    (R : Real) (hρ : |ρ*δ^2| ≤ R) (ζ : JointWaveSpaceTime) (η y : Euclidean 2)
+    (ε δ ρ : Real) (hε : |ε| ≤ 1 / 64) (hδ : 0 < δ) (hδone : δ ≤ 1)
+    (R : Real) (hρ : |ρ * δ ^ 2| ≤ R) (ζ : JointWaveSpaceTime) (η y : Euclidean 2)
     (x : WaveSpaceTime) :
     normalizedCircleFinePacketCoreConvolutionKernel P χout χsrc b Γ q m ε δ ρ hδ ζ η x.1 x.2 y =
       ∫ o : WaveSpaceTime in {o : WaveSpaceTime | ‖o.1‖ < 3 ∧ |o.2| < 2},
@@ -9305,7 +9334,6 @@ theorem normalizedCircleFinePacketCoreConvolutionKernel_eq_raw
   change (∫ S : Real in Ioo (-2) 2,∫ Z : Euclidean 2 in ball 0 3,F (Z,S)) = _
   rw [hset,← Measure.prod_restrict]
   exact (integral_prod_symm F hir).symm
-#print axioms normalizedCircleFinePacketCoreConvolutionKernel_eq_raw
 
 /-- Exact ordinary-integral reconstruction of the full finite normalized
 packet operator. Every exchanged source integral is genuinely integrable,
@@ -9315,12 +9343,12 @@ theorem normalizedCircleFinePacketFullOperator_core_error
     (P : SchwartzMap JointWaveSpaceTime Complex)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z,χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z,χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
     (b Γ : SchwartzMap Real Complex) (q : SchwartzMap JointWaveSpaceTime Complex)
     (m : SchwartzMap (Euclidean 2) Complex)
-    (ε L : Real) (hε : |ε| ≤ 1/64) (hL : 1 ≤ L)
-    (R : Real) (hband : ∀ n ∈ I,|L*(n:Real)| ≤ R*L^2)
+    (ε L : Real) (hε : |ε| ≤ 1 / 64) (hL : 1 ≤ L)
+    (R : Real) (hband : ∀ n ∈ I, |L * (n : Real)| ≤ R * L ^ 2)
     (ζ : JointWaveSpaceTime) (η : κ → Euclidean 2)
     (f : κ → SchwartzMap (Euclidean 2) Complex) (x : WaveSpaceTime) :
     normalizedCircleFinePacketFullOperator I J P χout χsrc b Γ q m ε L
@@ -9341,7 +9369,8 @@ theorem normalizedCircleFinePacketFullOperator_core_error
       _ = _ := by field_simp [hLp.ne']
   let Ys : Set (Euclidean 2) := {y | |y 0| < 4 ∧ |y 1| < 5}
   have hYs : MeasurableSet Ys :=
-    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|)) measurable_const).inter
+    (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 0|))
+      measurable_const).inter
       (measurableSet_lt (by fun_prop : Measurable (fun y : Euclidean 2 => |y 1|)) measurable_const)
   have hsingle (i : κ) (hi : i ∈ J) :
       (∫ y : Euclidean 2,(∑ n ∈ I,normalizedCircleFinePacketFullConvolutionKernel
@@ -9396,19 +9425,18 @@ theorem normalizedCircleFinePacketFullOperator_core_error
     normalizedCircleFinePacketErrorOperator
   rw [← Finset.sum_add_distrib]
   exact Finset.sum_congr rfl hsingle
-#print axioms normalizedCircleFinePacketFullOperator_core_error
 
 /-- The full literal projected packet, including every physical-margin error,
 has the genuine global fine fourth-moment bound. Both packet memberships
 and their exact ordinary-integral reconstruction are proved. -/
 theorem normalizedCircleFinePacketFullOperator_global_fourth_moment
-    {ιS ιO : Type*} [Fintype ιS] [Fintype ιO]
+    {ιS ιO : Type*} [Finite ιS] [Finite ιO]
     (basisS : Module.Basis ιS Real (Euclidean 2))
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
     (b : SchwartzMap Real Complex)
     (phi : SchwartzMap (Euclidean 2) Complex)
     (hphi : Function.support (phi : Euclidean 2 → Complex) ⊆ closedBall 0 1)
@@ -9434,7 +9462,6 @@ theorem normalizedCircleFinePacketFullOperator_global_fourth_moment
         |(sigma j).toReal*rho j-(L•(zO j : JointWaveSpaceTime)).snd| ≤ D*L) →
       ∀ h : Real, ∀ hh : 1 ≤ h,
       ∀ f : κS → SchwartzMap (Euclidean 2) Complex,
-
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
           (mssTranslatedDilatedCutoff phi (rho j•nu j) L
@@ -9452,6 +9479,8 @@ theorem normalizedCircleFinePacketFullOperator_global_fourth_moment
       C*M^4*(h^2/(L^4*Real.sqrt L⁻¹)+(h⁻¹)^(2*Jdecay)/L^2)*
         (∫ y : Euclidean 2,(∑ i ∈ inputs, ‖f i y‖^2)^2
           ∂volume) := by
+  let : Fintype ιS := Fintype.ofFinite ιS
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   have ho : ∀ z,χout z ≠ 0 → ‖z.1‖ ≤ 3 ∧ |z.2| ≤ 2 := by
     intro z hz
@@ -9552,17 +9581,16 @@ theorem normalizedCircleFinePacketFullOperator_global_fourth_moment
   calc
     _ ≤ 8*(C₀*M^4*c*(∫ y,Q y^2))+8*(C₁*M^4*c*(∫ y,Q y^2)) := by gcongr
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketFullOperator_global_fourth_moment
 
 /-- The full literal packet family is estimated using the global source
 lattice square function; the actual input is analyzed once. -/
 theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_fourth_moment
-    {ιO : Type*} [Fintype ιO]
+    {ιO : Type*} [Finite ιO]
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
     (b Γ : SchwartzMap Real Complex)
     (m psi : SchwartzMap (Euclidean 2) Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
@@ -9603,6 +9631,7 @@ theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_fourth_momen
       (∫ o : WaveSpaceTime,(∑ j ∈ outputs, ‖T j o‖^2)^2
         ∂(volume.prod volume)) ≤
       C*(h^2/(L^4*Real.sqrt L⁻¹)+(h⁻¹)^(2*Jdecay)/L^2)*(∫ y : Euclidean 2,‖Fsrc y‖^4) := by
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   let basisS := (EuclideanSpace.basisFun (Fin 2) Real).toBasis
   obtain ⟨K,S,C₀,hC₀,hcore⟩ :=
@@ -9632,19 +9661,18 @@ theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_fourth_momen
     convert hb using 1
     · simp only [normalizedCircleSourceIntegerLatticePoint_coe,f]
     · ring
-#print axioms normalizedCircleFinePacketFullOperator_fixed_lattice_global_fourth_moment
 
 /-- The literal normalized finite packet family, with one fixed joint
 output profile and genuine lattice analysis cubes of a single original
 source, has the fine fourth-moment gain. All profile constants are fixed
 before the scale, source, and live labels. -/
 theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_mu_gain
-    {ιO : Type*} [Fintype ιO]
+    {ιO : Type*} [Finite ιO]
     (basisO : Module.Basis ιO Real JointWaveSpaceTime)
     (χout : SchwartzMap WaveSpaceTime Complex)
     (χsrc : SchwartzMap (Euclidean 2) Complex)
-    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5/2 ∧ |z.2| ≤ 3/2)
-    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7/2 ∧ |z 1| ≤ 9/2)
+    (hχout : ∀ z, χout z ≠ 0 → ‖z.1‖ ≤ 5 / 2 ∧ |z.2| ≤ 3 / 2)
+    (hχsrc : ∀ z, χsrc z ≠ 0 → |z 0| ≤ 7 / 2 ∧ |z 1| ≤ 9 / 2)
     (b Γ : SchwartzMap Real Complex)
     (m psi : SchwartzMap (Euclidean 2) Complex)
     (q : SchwartzMap JointWaveSpaceTime Complex)
@@ -9660,10 +9688,12 @@ theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_mu_gain
       ∀ sigma : κO → WaveSign, ∀ rho : κO → Real, ∀ hrho : ∀ j, 0 < rho j,
       ∀ nu : κO → Euclidean 2, (∀ j, ‖nu j‖ = 1) →
       ∀ I : Finset Int, ∀ inputs : Finset (Fin 2 → Int), ∀ outputs : Finset κO,
-      (∀ n ∈ I, (Real.sqrt mu)^2/4 ≤ |(Real.sqrt mu)*(n:Real)| ∧ |(Real.sqrt mu)*(n:Real)| ≤ R*(Real.sqrt mu)^2) →
+      (∀ n ∈ I, (Real.sqrt mu)^2/4 ≤ |(Real.sqrt mu)*(n:Real)| ∧ |(Real.sqrt mu)*(n:Real)| ≤
+        R*(Real.sqrt mu)^2) →
       (∀ j ∈ outputs, (Real.sqrt mu)/rho j ≤ 1/2 ∧ (Real.sqrt mu)^2 ≤ A*rho j ∧
         ((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).fst = rho j•nu j ∧
-        |(sigma j).toReal*rho j-((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).snd| ≤ D*(Real.sqrt mu)) →
+        |(sigma j).toReal*rho j-((Real.sqrt mu)•(zO j : JointWaveSpaceTime)).snd| ≤ D*(Real.sqrt
+          mu)) →
       ∀ Fsrc : SchwartzMap (Euclidean 2) Complex,
       let P : κO → SchwartzMap JointWaveSpaceTime Complex := fun j =>
         normalizedCircleThinNormalProjectorSymbol
@@ -9673,17 +9703,20 @@ theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_mu_gain
           (mu^gamma) (ne_of_gt (lt_of_lt_of_le (by norm_num) (Real.one_le_rpow hmu hgamma.le)))
       let f : (Fin 2 → Int) → SchwartzMap (Euclidean 2) Complex := fun i =>
         fourierCubeProjectedSchwartz
-          (translatedDilatedSchwartzCutoff psi ((Real.sqrt mu)•standardLatticePoint i) (Real.sqrt mu)
+          (translatedDilatedSchwartzCutoff psi ((Real.sqrt mu)•standardLatticePoint i) (Real.sqrt
+            mu)
             (ne_of_gt (lt_of_lt_of_le (by norm_num) (Real.one_le_sqrt.mpr hmu)))) Fsrc
       let T : κO → WaveSpaceTime → Complex := fun j =>
         normalizedCircleFinePacketFullOperator I inputs (P j) χout χsrc b Γ q m
-          ε (Real.sqrt mu) (lt_of_lt_of_le (by norm_num) (Real.one_le_sqrt.mpr hmu)) ((Real.sqrt mu)•(zO j : JointWaveSpaceTime))
+          ε (Real.sqrt mu) (lt_of_lt_of_le (by norm_num) (Real.one_le_sqrt.mpr hmu)) ((Real.sqrt
+            mu)•(zO j : JointWaveSpaceTime))
           (fun i => (Real.sqrt mu)•standardLatticePoint i) (fun i => (f i : Euclidean 2 → Complex))
       MemLp (fun o : WaveSpaceTime => ∑ j ∈ outputs, ‖T j o‖^2) 2
         (volume.prod volume) ∧
       (∫ o : WaveSpaceTime,(∑ j ∈ outputs, ‖T j o‖^2)^2
         ∂(volume.prod volume)) ≤
       C*mu^(-7/4+2*gamma:Real)*(∫ y : Euclidean 2,‖Fsrc y‖^4) := by
+  let : Fintype ιO := Fintype.ofFinite ιO
   classical
   obtain ⟨J,hscale⟩ := exists_circle_globalPacket_scale_and_tailOrder gamma hgamma
   obtain ⟨C,hC,hglobal⟩ :=
@@ -9700,7 +9733,6 @@ theorem normalizedCircleFinePacketFullOperator_fixed_lattice_global_mu_gain
     _ ≤ C*(2*mu^(-7/4+2*gamma:Real))*(∫ y : Euclidean 2,‖Fsrc y‖^4) :=
       mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hcoefficient hC) hSource
     _ = _ := by ring
-#print axioms normalizedCircleFinePacketFullOperator_fixed_lattice_global_mu_gain
 
 end
 end FormerNamespace_1

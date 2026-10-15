@@ -87,7 +87,7 @@ theorem norm_sq_integral_le_two_mul_integral_norm_sq_of_support_finiteCoreTimeSl
     ‖∫ t : Real, H t‖ ^ 2 ≤ 2 * ∫ t : Real, ‖H t‖ ^ 2 := by
   let S : Set Real := finiteCoreTimeSlab
   let μ : Measure Real := volume.restrict S
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp [μ, S, finiteCoreTimeSlab]
     infer_instance
   have hHsqR : Integrable (fun t : Real => ‖H t‖ ^ 2) μ := hHsq.restrict
@@ -980,7 +980,7 @@ theorem scratch_integral_sq_zeroDirectionLightRayComplexEnvelope_le
         (∫ u : Euclidean 2, lightRayDecayProfile N u) ^ 2 *
           ∫ t in lightRayTimeInterval,
             ∫ x : Euclidean 2, ‖scratch_normInput g x t‖ ^ 2 := by
-  letI : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
+  let : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
     unfold lightRayTimeInterval
     infer_instance
   simpa only [scratch_zeroDirectionLightRayComplexEnvelope, scratch_normInput] using
@@ -1100,7 +1100,7 @@ theorem scratch_integrable_sq_zeroDirectionLightRayEnvelope
       2 (volume.restrict lightRayTimeInterval)) :
     Integrable (fun y : Euclidean 2 =>
       scratch_zeroDirectionLightRayEnvelope rho N y g ^ 2) volume := by
-  letI : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
+  let : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
     unfold lightRayTimeInterval
     infer_instance
   have hcomplex : Integrable (fun y : Euclidean 2 =>
@@ -1351,7 +1351,7 @@ theorem canonicalTubeSignedScale_apply_of_pos
         (delta / canonicalBandlimitedDyadicScale r j)
         (div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j))
         omega y f := by
-  simp only [canonicalTubeSignedScale, dif_pos hdelta]
+  simp only [canonicalTubeSignedScale, dite_eq_left hdelta]
 
 /-- The literal scale field discharges the signed physical identification in
 the broad adapter by reflexivity; no Fourier-evenness assertion is used. -/
@@ -1582,7 +1582,7 @@ theorem integrable_sq_innerSlabSchwartzTensorCore
     {f : WaveSpaceTime → Complex} (hf : InnerSlabSchwartzTensorCore f) :
     Integrable (fun z : WaveSpaceTime => ‖f z‖ ^ 2) volume := by
   rcases hf with ⟨ι, hι, q, a, radius, hradiusPos, hradiusLt, ha, rfl⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   change Integrable (fun z : canonicalSignedBroadScaleE2 × Real =>
     ‖scratch_innerSlabCompactFrequencyTensor q a z‖ ^ 2) (volume.prod volume)
   simpa only [scratch_innerSlabCompactFrequencyTensor,
@@ -1740,7 +1740,7 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_of_canonicalTube
               rw [← ENNReal.ofReal_mul hcoeffC]
         _ = ENNReal.ofReal
               (canonicalBandlimitedDyadicCoefficient N c r j * (C * D N)) *
-                eLpNorm f 2 volume := by ring
+                eLpNorm f 2 volume := by ring_nf
 
 /-- Fully assembled broad-scale clause with its natural explicit inputs: the
 literal signed canonical convolution, routine canonical-kernel Fubini data,
@@ -1848,7 +1848,7 @@ theorem memLp_two_innerSlabSchwartzTensorCore
     {f : WaveSpaceTime → Complex} (hf : InnerSlabSchwartzTensorCore f) :
     MemLp f 2 volume := by
   rcases hf with ⟨ι, hι, q, a, r, hrpos, hrlt, ha, rfl⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   exact memLp_two_scratch_innerSlabCompactFrequencyTensor q a
 
 /-- The fixed zero-direction spatial kernel, with terminal variable first.
@@ -2891,7 +2891,7 @@ theorem hasCanonicalZeroDirectionPositiveEnvelopeL2Bound_innerSlabSchwartzTensor
   intro rho hrho f hf
   have hfull := integrable_sq_innerSlabSchwartzTensorCore hf
   rcases hf with ⟨ι, hι, q, a, r, hrpos, hrlt, ha, hf⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   subst f
   exact eLpNorm_zeroDirectionPositiveEnvelope_le_canonicalConstant
     hrho N (by omega)
@@ -2911,7 +2911,7 @@ theorem hasCanonicalDyadicUnitSignedBroadScaleL2Estimate_innerSlabSchwartzTensor
     hasCanonicalZeroDirectionPositiveEnvelopeL2Bound_innerSlabSchwartzTensor
   intro delta hdelta N f hf j omega y rho hrho
   rcases hf with ⟨ι, hι, q, a, radius, hradiusPos, hradiusLt, ha, hf⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   subst f
   exact canonicalTubeSignedBroadRegularity_innerSlabSchwartzTensor
     hrho N omega.1 y
@@ -3024,7 +3024,7 @@ theorem integrable_sq_lightRayKernel_spaceTime
             lightRayDecayProfile (2 * N) u :=
               integral_sq_lightRayKernel_spatial_eq hdelta N omega y t
     rw [htime]
-    letI : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
+    let : IsFiniteMeasure (volume.restrict lightRayTimeInterval) := by
       unfold lightRayTimeInterval
       infer_instance
     exact integrable_const _
@@ -3218,7 +3218,7 @@ theorem tendsto_positiveNormLightRayLinear_of_geometric_L2
     filter_upwards with z
     dsimp only [K, R]
     simp only [← Complex.ofReal_mul, ← Complex.ofReal_sub]
-    ring
+    ring_nf
   have hzero : Tendsto (fun n =>
       positiveNormLightRayLinear delta N F omega y -
         positiveNormLightRayLinear delta N (core n) omega y) atTop (nhds 0) := by
@@ -3586,7 +3586,7 @@ noncomputable def canonicalReflectedSquareUnitWiringGT_of_scaleBridge
   hpiece := by
     intro delta hdelta N j f hf omega y
     rcases hf with ⟨ι, hι, q, a, timeRadius, htimePos, htimeLt, ha, hf⟩
-    letI : Fintype ι := hι
+    let : Fintype ι := hι
     subst f
     obtain ⟨hS, hfull, hinner, houter, hpositive, hpositiveMeas⟩ :=
       hbridge hdelta N j q a htimeLt ha omega y
@@ -3829,7 +3829,7 @@ theorem aemeasurable_canonicalReflectedSquareDyadicKernel_mul_input
       canonicalReflectedSquareDyadicKernel c r delta N j omega y z *
         canonicalSquareInput f z) scratchLightRayMeasure := by
   rcases hf with ⟨ι, hι, q, a, timeRadius, htimePos, htimeLt, ha, rfl⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   have hinput : Continuous (canonicalSquareInput
       (nonnegativeSquareInnerSlabTensor q a)) := by
     unfold canonicalSquareInput
@@ -4351,7 +4351,7 @@ theorem hasCanonicalReflectedSquareScaleBridge_canonicalTubeSignedScale
     {r : Real} (hr : 0 < r) :
     HasCanonicalReflectedSquareScaleBridge r hr (canonicalTubeSignedScale r hr) := by
   intro delta hdelta N j ι hι q a timeRadius htimeRadius ha omega y
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   let rho : Real := delta / canonicalBandlimitedDyadicScale r j
   let hrho : 0 < rho :=
     div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
@@ -4652,7 +4652,7 @@ theorem continuous_canonicalTubeSignedScale_of_pos
     Continuous (fun p : concreteScaleBridgeE2 × concreteScaleBridgeE2 =>
       canonicalTubeSignedScale r hr delta N f j p.1 p.2) := by
   rcases hf with ⟨ι, hι, q, a, timeRadius, htimeRadiusPos, htimeRadiusLt, ha, rfl⟩
-  letI : Fintype ι := hι
+  let : Fintype ι := hι
   let rho : Real := delta / canonicalBandlimitedDyadicScale r j
   let hrho : 0 < rho :=
     div_pos hdelta (canonicalBandlimitedDyadicScale_pos hr j)
@@ -4703,7 +4703,7 @@ theorem measurable_canonicalReflectedUnitScaleEnvelope_canonicalTubeSignedScale
         (canonicalTubeSignedScale r hr) delta N f j = fun _ => 0 := by
       funext y
       unfold canonicalReflectedUnitScaleEnvelope
-      simp only [canonicalTubeSignedScale, dif_neg hdelta, norm_zero,
+      simp only [canonicalTubeSignedScale, dite_eq_right hdelta, norm_zero,
         ENNReal.ofReal_zero]
       apply le_antisymm
       · apply iSup_le
@@ -4855,7 +4855,7 @@ theorem hasCanonicalTubeSignedScaleBroadCost
       (mem_unitLightRayDirections_iff omega.1).mp omega.2 |>.le
     have hreg : CanonicalTubeSignedBroadRegularity rho hrho0 N omega.1 y f := by
       rcases hf with ⟨ι, hι, q, a, radius, hradiusPos, hradiusLt, ha, hfEq⟩
-      letI : Fintype ι := hι
+      let : Fintype ι := hι
       subst f
       exact canonicalTubeSignedBroadRegularity_innerSlabSchwartzTensor
         hrho N omega.1 y homega q a
@@ -4952,7 +4952,7 @@ theorem hasCanonicalTubeSignedScaleBroadCost
         _ = ENNReal.ofReal
               (canonicalBandlimitedDyadicCoefficient N c r j *
                 (C * canonicalZeroDirectionL2Constant N)) *
-                  eLpNorm f 2 volume := by ring
+                  eLpNorm f 2 volume := by ring_nf
 
 /-- The raw broad theorem instantiates the literal thresholded physical
 wiring definitionally; its fixed-direction field is never used here. -/
@@ -4992,7 +4992,7 @@ theorem eLpNorm_canonicalReflectedUnitFiniteEnvelope_le_of_weightedScaleBounds_g
     {c r : Real} (hc : 0 < c) (hr : 0 < r)
     (w : CanonicalReflectedScalePositiveUnitWiringGT c r)
     (delta : Real) (N : Nat) (f : WaveSpaceTime → Complex)
-    (hf : InnerSlabSchwartzTensorCore f) (M : Nat) (cost : Nat → Real)
+    (M : Nat) (cost : Nat → Real)
     (hcost : ∀ j, j ∈ Finset.range M → 0 ≤ cost j)
     (hbound : ∀ j, j ∈ Finset.range M →
       eLpNorm (fun y =>
@@ -5065,13 +5065,13 @@ theorem hasCanonicalDyadicUnitNarrowBroadFiniteEnvelopeL2EstimateGT_of_scaleCost
   refine ⟨k0, cost, ?_, ?_, ?_⟩
   · intro j hj
     dsimp only [cost]
-    rw [if_pos hj]
+    rw [ite_eq_left hj]
   · intro j hj
     dsimp only [cost]
-    rw [if_neg (not_lt.mpr hj)]
+    rw [ite_eq_right (not_lt.mpr hj)]
   · intro f hf M
     apply eLpNorm_canonicalReflectedUnitFiniteEnvelope_le_of_weightedScaleBounds_gt
-      hc hr w delta N f hf M cost
+      hc hr w delta N f M cost
     · intro j hj
       dsimp only [cost]
       split_ifs with hsmall
