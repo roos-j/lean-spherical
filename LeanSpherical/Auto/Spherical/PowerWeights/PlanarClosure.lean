@@ -100,7 +100,6 @@ private theorem finite_basic_mem_internal_typeSet {d : ℕ} {E : Set ℝ}
     {C : ℝ} (hC : 0 < C)
     (hbound : ∀ f : SchwartzMap (ℝ^d) ℂ,
       MemLp (f : (ℝ^d) → ℂ) p (powerWeight d α) →
-      MemLp (M E (f : (ℝ^d) → ℂ)) p (powerWeight d α) ∧
         eLpNorm (M E (f : (ℝ^d) → ℂ)) p (powerWeight d α) ≤
           ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p (powerWeight d α)) :
     q ∈ restrictedNormalizedSphericalMaximalPowerWeightTypeSet d E := by
@@ -121,7 +120,10 @@ private theorem finite_basic_mem_internal_typeSet {d : ℕ} {E : Set ℝ}
     have hfweight : MemLp (f : (ℝ^d) → ℂ) p (powerWeightedVolume d α) := by
       rw [← hp_eq]
       exact hf
-    obtain ⟨hM, hnorm⟩ := hbound f (by rw [hmeasure]; exact hfweight)
+    have hnorm := hbound f (by rw [hmeasure]; exact hfweight)
+    have hM : MemLp (M E (f : (ℝ^d) → ℂ)) p (powerWeight d α) := by
+      exact hnorm.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+        (by simpa only [hmeasure] using hfweight.eLpNorm_lt_top))
     refine ⟨?_, ?_⟩
     · simpa only [hp_eq, ← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal,
         ← hmeasure] using hM
@@ -166,7 +168,7 @@ private theorem internal_subset_typeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
   · simp only [ENNReal.toReal_inv, ENNReal.toReal_ofReal hp0.le]
     ext <;> field_simp
   · intro f hfvol
-    exact hraw (f : (ℝ^d) → ℂ) hfvol
+    exact (hraw (f : (ℝ^d) → ℂ) hfvol).2
 
 /-- **Theorem 1.1 of arXiv:2602.17613 in every dimension at least two.**
 

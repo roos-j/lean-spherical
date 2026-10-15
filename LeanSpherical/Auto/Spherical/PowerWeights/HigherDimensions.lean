@@ -699,8 +699,6 @@ private theorem finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeight
     {C : ℝ} (hC : 0 < C)
     (hbound : ∀ f : SchwartzMap (ℝ^d) ℂ,
       MemLp (f : (ℝ^d) → ℂ) p (_root_.Spherical.PowerWeights.powerWeight d α) →
-        MemLp (M E (f : (ℝ^d) → ℂ)) p
-            (_root_.Spherical.PowerWeights.powerWeight d α) ∧
           eLpNorm (M E (f : (ℝ^d) → ℂ)) p
               (_root_.Spherical.PowerWeights.powerWeight d α) ≤
             ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p
@@ -723,9 +721,11 @@ private theorem finite_basic_mem_restrictedNormalizedSphericalMaximalPowerWeight
     have hfweight : MemLp (f : (ℝ^d) → ℂ) p (powerWeightedVolume d α) := by
       rw [← hp_eq]
       exact hf
-    obtain ⟨hM, hnorm⟩ := hbound f (by
-      rw [hmeasure]
-      exact hfweight)
+    have hnorm := hbound f (by rw [hmeasure]; exact hfweight)
+    have hM : MemLp (M E (f : (ℝ^d) → ℂ)) p
+        (_root_.Spherical.PowerWeights.powerWeight d α) := by
+      exact hnorm.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+        (by simpa only [hmeasure] using hfweight.eLpNorm_lt_top))
     constructor
     · simpa only [hp_eq, ← restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal,
         ← hmeasure] using hM
@@ -768,13 +768,11 @@ private theorem restrictedNormalizedSphericalMaximalPowerWeightTypeSet_subset_ty
   · simp only [ENNReal.toReal_inv, ENNReal.toReal_ofReal hp0.le]
     ext <;> field_simp
   · intro f hfvol
-    change MemLp (_root_.Spherical.M E (f : (ℝ^d) → ℂ)) (ENNReal.ofReal p)
-        (powerWeightedVolume d α) ∧
-      eLpNorm (_root_.Spherical.M E (f : (ℝ^d) → ℂ)) (ENNReal.ofReal p)
+    change eLpNorm (_root_.Spherical.M E (f : (ℝ^d) → ℂ)) (ENNReal.ofReal p)
         (powerWeightedVolume d α) ≤
         ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) (ENNReal.ofReal p)
           (powerWeightedVolume d α)
-    exact hraw (f : (ℝ^d) → ℂ) hfvol
+    exact (hraw (f : (ℝ^d) → ℂ) hfvol).2
 
 theorem powerWeightEntropyImplicitCondition_iff_real
     {d : ℕ} {E : Set ℝ} {p α : ℝ}

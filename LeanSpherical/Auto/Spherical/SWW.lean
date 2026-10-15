@@ -1992,7 +1992,7 @@ theorem ae_forall_integrable_sphere_restricted_of_memLp {d : ℕ} {p : ℝ≥0�
 
 /-- The Seeger--Wainger--Wright theorem together with the absolute convergence
 of the spherical means which defines the maximal function pointwise. -/
-theorem eLpNorm_restrictedSphericalMaximal_le_of_memLp {d : ℕ} {p : ℝ≥0∞}
+theorem memLp_and_eLpNorm_restrictedSphericalMaximal_le_of_memLp {d : ℕ} {p : ℝ≥0∞}
     (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
     (hp : ENNReal.ofReal (criticalExponent d E) < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
@@ -2010,13 +2010,49 @@ theorem eLpNorm_restrictedSphericalMaximal_le_of_memLp {d : ℕ} {p : ℝ≥0∞
 
 /-- Stein's spherical maximal theorem together with the absolute convergence of
 the spherical means which defines the maximal function pointwise. -/
-theorem eLpNorm_sphericalMaximal_le_of_memLp {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
+theorem memLp_and_eLpNorm_sphericalMaximal_le_of_memLp {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
     (hp : (d : ENNReal) / (d - 1) < p) :
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
       ∀ᵐ x ∂volume, ∀ t ∈ Ioi (0 : ℝ),
         Integrable (fun y : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (y : ℝ^d)))
             (_root_.Spherical.unitSphereMeasure d) ∧
       MemLp (M (Ioi (0 : ℝ)) f) p volume ∧
+      eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ ENNReal.ofReal C * eLpNorm f p volume := by
+  have hcrit : ENNReal.ofReal (criticalExponent d (Ioi (0 : ℝ))) < p := by
+    have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
+    have hden : (0 : ℝ) < (d : ℝ) - 1 := by linarith
+    have hsub : ENNReal.ofReal ((d : ℝ) - 1) = (d : ENNReal) - 1 := by
+      rw [ENNReal.ofReal_sub _ (by norm_num : (0 : ℝ) ≤ 1)]
+      norm_num
+    rw [criticalExponent_full d hd, ENNReal.ofReal_div_of_pos hden, hsub]
+    simpa using hp
+  exact memLp_and_eLpNorm_restrictedSphericalMaximal_le_of_memLp hd (fun x hx => hx) hcrit
+
+/-- The Seeger--Wainger--Wright theorem together with the absolute convergence
+of the spherical means which defines the maximal function pointwise. -/
+theorem eLpNorm_restrictedSphericalMaximal_le_of_memLp {d : ℕ} {p : ℝ≥0∞}
+    (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 0)
+    (hp : ENNReal.ofReal (criticalExponent d E) < p) :
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      ∀ᵐ x ∂volume, ∀ t ∈ E,
+        Integrable (fun y : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (y : ℝ^d)))
+            (_root_.Spherical.unitSphereMeasure d) ∧
+      eLpNorm (M E f) p volume ≤ ENNReal.ofReal C * eLpNorm f p volume := by
+  obtain ⟨C, hC⟩ := eLpNorm_restrictedSphericalMaximal_le hd hE hp
+  refine ⟨C, fun f hf => ?_⟩
+  obtain ⟨_, hbound⟩ := hC f hf
+  filter_upwards [ae_forall_integrable_sphere_restricted_of_memLp hd hE hp hf] with x hx
+  intro t ht
+  exact ⟨hx t ⟨ht, hE ht⟩, hbound⟩
+
+/-- Stein's spherical maximal theorem together with the absolute convergence of
+the spherical means which defines the maximal function pointwise. -/
+theorem eLpNorm_sphericalMaximal_le_of_memLp {d : ℕ} {p : ENNReal} (hd : 2 ≤ d)
+    (hp : (d : ENNReal) / (d - 1) < p) :
+    ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
+      ∀ᵐ x ∂volume, ∀ t ∈ Ioi (0 : ℝ),
+        Integrable (fun y : Metric.sphere (0 : ℝ^d) 1 => f (x + t • (y : ℝ^d)))
+            (_root_.Spherical.unitSphereMeasure d) ∧
       eLpNorm (M (Ioi (0 : ℝ)) f) p volume ≤ ENNReal.ofReal C * eLpNorm f p volume := by
   have hcrit : ENNReal.ofReal (criticalExponent d (Ioi (0 : ℝ))) < p := by
     have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
@@ -2150,9 +2186,10 @@ Schwartz function.  This is the same argument as the raw version above, keeping
 the Schwartz witness instead of forgetting it. -/
 private theorem exists_schwartz_counterexample_of_not_strongType
     {d : ℕ} {E : Set ℝ} {p : ℝ≥0∞}
-    (_hp0 : 0 < p) (hptop : p ≠ ∞)
+    (hp0 : 0 < p) (hptop : p ≠ ∞)
     (hnot : ¬ HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p.toReal 0) :
     ∀ C : ℝ, ∃ f : SchwartzMap (ℝ^d) ℂ,
+      0 < eLpNorm (f : (ℝ^d) → ℂ) p volume ∧
       eLpNorm (M E (f : (ℝ^d) → ℂ)) p volume ≥
         ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
   intro C
@@ -2163,7 +2200,19 @@ private theorem exists_schwartz_counterexample_of_not_strongType
       ENNReal.ofReal K * eLpNorm (f : (ℝ^d) → ℂ) p volume <
         eLpNorm (restrictedNormalizedSphericalMaximal d E (f : (ℝ^d) → ℂ)) p volume
   · rcases hlarge with ⟨f, hlarge⟩
-    refine ⟨f, ?_⟩
+    have hfpos : 0 < eLpNorm (f : (ℝ^d) → ℂ) p volume := by
+      by_contra h
+      have hz := (eLpNorm_eq_zero_iff hp0.ne').mp (le_antisymm (le_of_not_gt h) bot_le)
+      have hfzero : (f : (ℝ^d) → ℂ) = 0 :=
+        (Continuous.ae_eq_iff_eq volume f.continuous continuous_zero).mp hz
+      have hmaxzero : restrictedNormalizedSphericalMaximal d E (0 : (ℝ^d) → ℂ) = 0 := by
+        funext x
+        simp [Auto.Spherical.PowerWeights.restrictedNormalizedSphericalMaximal,
+          Auto.Spherical.SurfaceMeasureDecay.normalizedSphericalAverage,
+          Auto.Spherical.SurfaceMeasureDecay.sphericalAverage]
+      rw [hfzero, hmaxzero] at hlarge
+      simp at hlarge
+    refine ⟨f, hfpos, ?_⟩
     change eLpNorm (_root_.Spherical.restrictedSphericalMaximal E (f : (ℝ^d) → ℂ))
         p volume ≥ ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume
     rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal E f]
@@ -2950,6 +2999,7 @@ theorem eLpNorm_restricted_ge_schwartz
     (hEne : E.Nonempty) (hE : E ⊆ Ioi 0) (hp0 : 0 < p)
     (hp : p < ENNReal.ofReal (criticalExponent d E)) :
     ∀ C : ℝ, ∃ f : SchwartzMap (ℝ^d) ℂ,
+      0 < eLpNorm (f : (ℝ^d) → ℂ) p volume ∧
       eLpNorm (M E (f : (ℝ^d) → ℂ)) p volume ≥
         ENNReal.ofReal C * eLpNorm (f : (ℝ^d) → ℂ) p volume := by
   have hptop := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hp.le

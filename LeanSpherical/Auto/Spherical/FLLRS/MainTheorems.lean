@@ -11,6 +11,7 @@ public import LeanSpherical.Auto.Spherical.PowerWeights.PositiveWeights
 public import LeanSpherical.Auto.Spherical.SWW
 public import LeanSpherical.Auto.Spherical.BRRS.Basic
 public import LeanSpherical.Auto.Spherical.RS.SingleScaleQ4
+public import LeanSpherical.Auto.Spherical.RS.TypeSetCharacterization
 public import LeanSpherical.Auto.Spherical.MSS.BourgainCircularMaximal
 
 /-!
@@ -9746,6 +9747,243 @@ theorem full_spherical_maximal_endpoint {d : ℕ} (hd : 2 ≤ d) {p : ℝ}
     field_simp
     ring
   linarith
+
+end
+
+/-! ## Public logarithmic Assouad dimension and critical-weight estimates -/
+
+noncomputable section
+open MeasureTheory Set Metric Filter
+open Auto.FractalDimensions Auto.Spherical.LegendreAssouad Auto.Spherical.RS
+open Auto.Spherical.SurfaceMeasureDecay Auto.Spherical.Auxiliary Auto.Spherical.PowerWeights
+open _root_.Spherical _root_.Spherical.PowerWeights
+open scoped ENNReal NNReal
+
+/-- The logarithmic covering exponents in the public dimension are nonempty. -/
+theorem public_assouad_exponents_nonempty (E : Set ℝ) :
+    {s : ℝ | 0 ≤ s ∧ ∃ C : ℝ, 0 < C ∧ ∀ c : Ioi 0, ∀ δ R : ℝ≥0,
+      0 < δ → δ ≤ R → R ≤ 1 →
+      (_root_.Spherical.N (E ∩ logBall c R) δ : ENNReal) ≤
+        ENNReal.ofReal (C * ((R : ℝ) / δ) ^ s)}.Nonempty := by
+  refine ⟨1, zero_le_one, 5, by norm_num, ?_⟩
+  intro c δ R hδ hδR _
+  have hδr : 0 < (δ : ℝ) := hδ
+  have hsub : logDilationSet (E ∩ logBall c R) ⊆
+      Icc (logRadius c - R) (logRadius c + R) := by
+    rintro u ⟨t, ht, rfl⟩
+    have hh := abs_le.mp ht.2.2
+    dsimp [logRadius]
+    exact ⟨by linarith [hh.1], by linarith [hh.2]⟩
+  have hRr : (0 : ℝ) ≤ R := R.2
+  obtain ⟨ι, hι, hc⟩ := exists_intervalCover_of_subset_Icc hδr
+    (by linarith) hsub
+  have hcover : Metric.IsCover δ (logDilationSet (E ∩ logBall c R)) (ι : Set ℝ) := by
+    intro u hu
+    obtain ⟨a, ha, hua⟩ := Set.mem_iUnion₂.mp (hι hu)
+    refine ⟨a, ha, ?_⟩
+    change edist u a ≤ (δ : ENNReal)
+    rw [edist_dist, Real.dist_eq, ← ENNReal.ofReal_coe_nnreal]
+    apply ENNReal.ofReal_le_ofReal
+    rw [abs_le]
+    constructor <;> linarith [hua.1, hua.2, δ.2]
+  have hn : (ι.card : ℝ) ≤ 5 * ((R : ℝ) / δ) := by
+    have hratio : 1 ≤ (R : ℝ) / δ :=
+      (le_div_iff₀ hδr).mpr (by simpa using (show (δ : ℝ) ≤ R from hδR))
+    have hceil := Nat.ceil_lt_add_one
+      (show 0 ≤ (logRadius c + R - (logRadius c - R)) / (δ : ℝ) from
+        div_nonneg (by linarith) hδr.le)
+    have heq : (logRadius c + R - (logRadius c - R)) / (δ : ℝ) =
+        2 * ((R : ℝ) / δ) := by ring
+    rw [heq] at hc hceil
+    linarith
+  have hN : _root_.Spherical.N (E ∩ logBall c R) δ ≤ (ι.card : ENat) := by
+    simpa [Spherical.N, Spherical.entropyNumber] using hcover.externalCoveringNumber_le_encard
+  calc
+    (_root_.Spherical.N (E ∩ logBall c R) δ : ENNReal) ≤ (ι.card : ENNReal) := by
+      exact_mod_cast hN
+    _ ≤ ENNReal.ofReal (5 * ((R : ℝ) / δ) ^ (1 : ℝ)) := by
+      simpa using ENNReal.ofReal_le_ofReal hn
+
+/-- Public logarithmic Assouad exponents provide the uniform physical covers
+used in FLLRS, with constants independent of the dilation block. -/
+theorem uniformAssouadDimension_le_assouadDimension (E : Set ℝ) :
+    uniformAssouadDimension E ≤ _root_.Spherical.assouadDimension E := by
+  apply le_csInf (public_assouad_exponents_nonempty E)
+  rintro γ ⟨hγ, C, hC, hcov⟩
+  apply csInf_le ⟨0, fun _ h => h.1⟩
+  refine ⟨hγ, C * 8 ^ γ, by positivity, ?_⟩
+  intro T hT δ a b hδ _ ha hab hb hδab
+  let A := radiusSlice E T ∩ Icc a b
+  have hA : A ⊆ Icc (1 : ℝ) 2 :=
+    inter_subset_left.trans (radiusSlice_subset_Icc hT)
+  let r : ℝ≥0 := ⟨δ / 8, by positivity⟩
+  let R : ℝ≥0 := ⟨b - a, by linarith⟩
+  let c : PositiveRadius := ⟨(a + b) / 2, by change 0 < (a + b) / 2; linarith⟩
+  let cT : PositiveRadius := ⟨T * c.1, mul_pos hT c.2⟩
+  have hr : 0 < r := by change 0 < δ / 8; positivity
+  have hrR : r ≤ R := by change δ / 8 ≤ b - a; linarith
+  have hR1 : R ≤ 1 := by change b - a ≤ 1; linarith
+  have hN := hcov cT r R hr hrR hR1
+  have heq : _root_.Spherical.N (dilateRadiusSet T⁻¹ E ∩ logBall c R) r =
+      _root_.Spherical.N (E ∩ logBall cT R) r := by
+    simp only [entropyNumber_eq_multiplicativeEntropy, logBall_eq_multiplicativeInterval]
+    have hh := localMultiplicativeEntropy_dilateRadiusSet E cT (2 * R) (2 * r)
+      (inv_pos.mpr hT)
+    have hc : (⟨T⁻¹ * cT.1, mul_pos (inv_pos.mpr hT) cT.2⟩ : PositiveRadius) = c := by
+      apply Subtype.ext
+      dsimp [cT]
+      field_simp
+    rw [hc] at hh
+    exact hh
+  have hsub : A ⊆ dilateRadiusSet T⁻¹ E ∩ logBall c R := by
+    intro t ht
+    refine ⟨?_, lt_of_lt_of_le one_pos (hA ht).1, ?_⟩
+    · rcases ht.1 with ⟨u, hu, rfl⟩
+      exact ⟨u, hu.1, rfl⟩
+    · have h1 := abs_log2_sub_le (hA ht).1
+        (show (1 : ℝ) ≤ (a + b) / 2 by linarith)
+      have h2 : |t - (a + b) / 2| ≤ (b - a) / 2 := by
+        rw [abs_le]
+        constructor <;> linarith [ht.2.1, ht.2.2]
+      change |Real.log t / Real.log 2 - Real.log ((a + b) / 2) / Real.log 2| ≤ b - a
+      linarith
+  have hNab : (_root_.Spherical.N A r : ENNReal) ≤
+      ENNReal.ofReal (C * 8 ^ γ * ((b - a) / δ) ^ γ) := by
+    have hh : (_root_.Spherical.N A r : ENNReal) ≤
+        (_root_.Spherical.N (dilateRadiusSet T⁻¹ E ∩ logBall c R) r : ENNReal) := by
+      exact_mod_cast human_N_mono hsub r
+    rw [heq] at hh
+    refine (hh.trans hN).trans_eq ?_
+    congr 1
+    change C * ((b - a) / (δ / 8)) ^ γ = _
+    rw [show (b - a) / (δ / 8) = 8 * ((b - a) / δ) by ring,
+      Real.mul_rpow (by norm_num) (by positivity)]
+    ring
+  have hNtop : _root_.Spherical.N A r ≠ ⊤ := by
+    intro ht
+    rw [ht] at hNab
+    simp at hNab
+  obtain ⟨n, hn⟩ := ENat.ne_top_iff_exists.mp hNtop
+  rw [← hn] at hNab
+  have hnX : (n : ℝ) ≤ C * 8 ^ γ * ((b - a) / δ) ^ γ := by
+    apply (ENNReal.ofReal_le_ofReal_iff (by positivity)).mp
+    simpa using hNab
+  obtain ⟨ι, hι, hcard⟩ := exists_isIntervalCover_of_human_N_le hA r
+    (m := n) (by rw [← hn])
+  refine ⟨ι, ?_, (by exact_mod_cast hcard : (ι.card : ℝ) ≤ n).trans hnX⟩
+  change IsIntervalCover A (8 * (δ / 8)) ι at hι
+  simpa only [show 8 * (δ / 8) = δ by ring] using hι
+
+
+/-- The weighted infinity estimate follows from the probability normalization
+of spherical averages and positivity of the power-weight measure on open sets. -/
+theorem eLpNorm_sphericalMaximal_powerWeight_top_le_schwartzMap
+    {d : ℕ} (hd : 1 ≤ d) (E : Set ℝ) (α : ℝ)
+    (f : SchwartzMap (Euclidean d) ℂ) :
+    eLpNorm (_root_.Spherical.M E f) ⊤ (powerWeight d α) ≤
+      eLpNorm f ⊤ (powerWeight d α) := by
+  let μ := powerWeightedVolume d α
+  let : μ.IsOpenPosMeasure := powerWeightedVolume_isOpenPosMeasure hd α
+  change eLpNorm (_root_.Spherical.M E f) ⊤ μ ≤ eLpNorm f ⊤ μ
+  by_cases htop : eLpNorm f ⊤ μ = ⊤
+  · rw [htop]; exact le_top
+  have hae : ∀ᵐ x ∂μ, ‖f x‖ ≤ (eLpNorm f ⊤ μ).toReal := by
+    filter_upwards [enorm_ae_le_eLpNormEssSup f μ] with x hx
+    rw [← eLpNorm_exponent_top f.continuous.aestronglyMeasurable] at hx
+    exact (ENNReal.ofReal_le_iff_le_toReal htop).mp (by simpa only [ofReal_norm] using hx)
+  have hb : ∀ x, ‖f x‖ ≤ (eLpNorm f ⊤ μ).toReal := by
+    intro x
+    have hx : x ∈ closure {y | ‖f y‖ ≤ (eLpNorm f ⊤ μ).toReal} := by
+      rw [(Measure.dense_of_ae hae).closure_eq]
+      trivial
+    rwa [(isClosed_le f.continuous.norm continuous_const).closure_eq] at hx
+  change eLpNorm (_root_.Spherical.restrictedSphericalMaximal E (f : Euclidean d → ℂ)) ⊤ μ ≤ _
+  rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal,
+    eLpNorm_exponent_top
+      (measurable_restrictedNormalizedSphericalMaximal_schwartz E f).aestronglyMeasurable]
+  apply eLpNormEssSup_le_of_ae_enorm_bound
+  filter_upwards with x
+  simp only [enorm_eq_self]
+  calc
+    _ ≤ normalizedSphericalMaximal d f x :=
+      restrictedNormalizedSphericalMaximal_le_normalizedSphericalMaximal d E f x
+    _ ≤ ENNReal.ofReal (eLpNorm f ⊤ μ).toReal :=
+      normalizedSphericalMaximal_le_of_norm_le (by omega) f x hb
+    _ = _ := ENNReal.ofReal_toReal htop
+
+/-- FLLRS Theorem 1.1, in the public Schwartz formulation, including infinity. -/
+theorem eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap
+    {d : ℕ} (hd : 2 ≤ d) {p : ℝ≥0∞} (hp : (d : ℝ≥0∞) / (d - 1) < p) :
+    ∃ C : ℝ, ∀ f : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (_root_.Spherical.M (Ioi 0) f) p (powerWeight d (1 - d)) ≤
+        ENNReal.ofReal C * eLpNorm f p (powerWeight d (1 - d)) := by
+  by_cases hptop : p = ⊤
+  · subst p
+    exact ⟨1, fun f => by simpa using
+      eLpNorm_sphericalMaximal_powerWeight_top_le_schwartzMap (by omega) (Ioi 0) (1 - d) f⟩
+  have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
+  have hden : 0 < (d : ℝ) - 1 := by linarith
+  have hsub : ENNReal.ofReal ((d : ℝ) - 1) = (d : ENNReal) - 1 := by
+    rw [ENNReal.ofReal_sub _ (by norm_num : (0 : ℝ) ≤ 1)]
+    norm_num
+  have hp' : (d : ℝ) / ((d : ℝ) - 1) < p.toReal := by
+    apply (ENNReal.ofReal_lt_iff_lt_toReal (by positivity) hptop).mp
+    simpa only [ENNReal.ofReal_div_of_pos hden, hsub, ENNReal.ofReal_natCast] using hp
+  obtain ⟨C, hC, hbound⟩ := full_spherical_maximal_endpoint hd hp'
+  refine ⟨C, fun f => ?_⟩
+  rw [ENNReal.ofReal_toReal hptop] at hbound
+  by_cases hf : MemLp f p (powerWeightedVolume d (1 - (d : ℝ)))
+  · exact (hbound f hf).2
+  · have ht : eLpNorm f p (powerWeightedVolume d (1 - (d : ℝ))) = ⊤ := by
+      by_contra h
+      exact hf (lt_top_iff_ne_top.mpr h)
+    change _ ≤ ENNReal.ofReal C * eLpNorm f p (powerWeightedVolume d (1 - (d : ℝ)))
+    rw [ht, ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr hC)]
+    exact le_top
+
+/-- FLLRS Theorem 1.2, using the public logarithmic Assouad dimension.
+The operator automatically restricts an arbitrary dilation set to positive radii. -/
+theorem eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap
+    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} {p : ℝ≥0∞}
+    (hp : ENNReal.ofReal (_root_.Spherical.assouadDimension E / ((d : ℝ) - 1) + 1) < p) :
+    ∃ C : ℝ, ∀ f : SchwartzMap (Euclidean d) ℂ,
+      eLpNorm (_root_.Spherical.M E f) p (powerWeight d (1 - d)) ≤
+        ENNReal.ofReal C * eLpNorm f p (powerWeight d (1 - d)) := by
+  by_cases hptop : p = ⊤
+  · subst p
+    exact ⟨1, fun f => by simpa using
+      eLpNorm_sphericalMaximal_powerWeight_top_le_schwartzMap (by omega) E (1 - d) f⟩
+  have hdreal : (2 : ℝ) ≤ d := by exact_mod_cast hd
+  have hden : 0 < (d : ℝ) - 1 := by linarith
+  have hdim0 : 0 ≤ _root_.Spherical.assouadDimension E :=
+    (uniformAssouadDimension_nonneg E).trans (uniformAssouadDimension_le_assouadDimension E)
+  have hp' := (ENNReal.ofReal_lt_iff_lt_toReal (by positivity) hptop).mp hp
+  have hdim := (uniformAssouadDimension_mono (E := E ∩ Ioi 0) inter_subset_left).trans
+    (uniformAssouadDimension_le_assouadDimension E)
+  have hthreshold : 1 + uniformAssouadDimension (E ∩ Ioi 0) / ((d : ℝ) - 1) < p.toReal := by
+    have := div_le_div_of_nonneg_right hdim hden.le
+    linarith
+  obtain ⟨C, hC, hbound⟩ := general_assouad_maximal_endpoint hd
+    (E := E ∩ Ioi 0) inter_subset_right hthreshold
+  rw [ENNReal.ofReal_toReal hptop] at hbound
+  have hM (f : Euclidean d → ℂ) : _root_.Spherical.M (E ∩ Ioi 0) f =
+      _root_.Spherical.M E f := by
+    funext x
+    change (⨆ t ∈ (E ∩ Ioi (0 : ℝ)) ∩ Ioi 0,
+      ENNReal.ofReal ‖_root_.Spherical.sphericalAverage t f x‖) = _
+    rw [inter_assoc, inter_self]
+    rfl
+  refine ⟨C, fun f => ?_⟩
+  by_cases hf : MemLp f p (powerWeightedVolume d (1 - (d : ℝ)))
+  · have hh := (hbound f hf).2
+    rw [hM] at hh
+    exact hh
+  · have ht : eLpNorm f p (powerWeightedVolume d (1 - (d : ℝ))) = ⊤ := by
+      by_contra h
+      exact hf (lt_top_iff_ne_top.mpr h)
+    change _ ≤ ENNReal.ofReal C * eLpNorm f p (powerWeightedVolume d (1 - (d : ℝ)))
+    rw [ht, ENNReal.mul_top (ENNReal.ofReal_ne_zero_iff.mpr hC)]
+    exact le_top
 
 end
 

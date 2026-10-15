@@ -2,6 +2,29 @@
 
 # FLLRS formalization
 
+## Public statement adaptation (2026-10-15T15:14:53-04:00)
+
+Adapt Auto-side proofs to the current Definitions.lean and Theorems.lean.
+Add Auto counterparts of the two critical power-weight Schwartz estimates,
+with exactly the public hypotheses, including arbitrary E and p=infinity.
+Do not modify any non-Auto Lean file; do not commit. Reuse existing files.
+The raw request is recorded in automation/raw.md. First repair the changed
+interfaces, then bridge logarithmic Assouad dimension to the FLLRS dimension,
+then prove the two wrappers and verify the whole build and their axioms.
+
+Verified 2026-10-15T15:44:05-04:00: all 3516 build jobs pass.
+The two new declarations in Auto.Spherical.FLLRS are
+`eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap` and
+`eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap`,
+both in LeanSpherical/Auto/Spherical/FLLRS/MainTheorems.lean. The module
+has 9990 lines and no diagnostics. The public statements were checked
+verbatim in memory with their two placeholder proofs replaced by these
+applications. All ten axiom audits (including both in-memory public wrappers,
+SWW results, the type-set closure results and the dimension comparison)
+report only propext, Classical.choice and Quot.sound. No non-Auto Lean
+file was modified. The user's two public placeholders remain untouched.
+No commits were made; no recurring task facility was available.
+
 ## Diagnostic and warning cleanup (recorded 2026-10-15T07:09:01-04:00)
 
 The user requests removal of unnecessary axiom-print commands and fixes

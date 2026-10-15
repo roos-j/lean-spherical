@@ -6674,23 +6674,22 @@ theorem mem_typeSet_of_hasFractalSphericalStrongType {d : ℕ} (hd : 0 < d) {E :
   · simpa using ENNReal.ofReal_le_ofReal hq
   · rw [ENNReal.toReal_inv, ENNReal.toReal_inv, ENNReal.toReal_ofReal (by linarith),
       ENNReal.toReal_ofReal (by linarith)]
-  · refine ⟨(memLp_M_iff hd hE f _).2 (hb f).1, ?_⟩
-    rw [eLpNorm_M_eq hd hE f]
+  · rw [eLpNorm_M_eq hd hE f]
     exact (hb f).2
 
 /-- Conversely, a finite-exponent point of the human type set is an Auto strong-type point. -/
 theorem hasFractalSphericalStrongType_of_typeSet_bound {d : ℕ} (hd : 0 < d) {E : Set ℝ}
     (hE : E ⊆ Ioi (0 : ℝ)) {p q : ℝ≥0∞} (hp : p ≠ ⊤) (hq : q ≠ ⊤) {C : ℝ} (hC : 0 < C)
     (hb : ∀ f : SchwartzMap (Euclidean d) ℂ,
-      MemLp (_root_.Spherical.M E (f : Euclidean d → ℂ)) q volume ∧
         eLpNorm (_root_.Spherical.M E (f : Euclidean d → ℂ)) q volume ≤
           ENNReal.ofReal C * eLpNorm (f : Euclidean d → ℂ) p volume) :
     HasFractalSphericalStrongType d E p.toReal q.toReal := by
   refine ⟨C, hC, fun f => ?_⟩
   rw [ENNReal.ofReal_toReal hp, ENNReal.ofReal_toReal hq]
-  refine ⟨(memLp_M_iff hd hE f _).1 (hb f).1, ?_⟩
-  rw [← eLpNorm_M_eq hd hE f]
-  exact (hb f).2
+  have hnorm := hb f
+  rw [eLpNorm_M_eq hd hE f] at hnorm
+  exact ⟨hnorm.trans_lt
+    (ENNReal.mul_lt_top ENNReal.ofReal_lt_top (f.memLp p volume).eLpNorm_lt_top), hnorm⟩
 
 /-- The maximal function over the empty set of radii vanishes. -/
 theorem M_empty {d : ℕ} (f : Euclidean d → ℂ) :
@@ -6705,7 +6704,7 @@ theorem mem_typeSet_empty {d : ℕ} {p q : ℝ≥0∞} (hp : 1 ≤ p) (hq : 1 �
     (p⁻¹.toReal, q⁻¹.toReal) ∈ _root_.Spherical.RestrictedDilations.typeSet d (∅ : Set ℝ) := by
   refine ⟨p, q, hp, hq, rfl, 1, one_pos, fun f => ?_⟩
   rw [M_empty]
-  exact ⟨MemLp.zero, by simp⟩
+  simp
 
 /-- The trivial `L^∞` estimate: `(0,0)` belongs to the type set. -/
 theorem zero_mem_typeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi (0 : ℝ)) :
@@ -6716,8 +6715,8 @@ theorem zero_mem_typeSet {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E ⊆ Ioi 
     (p := ⊤) ENNReal.ofReal_lt_top
   refine ⟨⊤, ⊤, le_top, le_top, by simp, max C 1, lt_max_of_lt_right one_pos, fun f => ?_⟩
   obtain ⟨x, hx⟩ := (hC f (f.memLp ⊤ volume)).exists
-  obtain ⟨-, hmem, hle⟩ := hx t ht
-  refine ⟨hmem, hle.trans ?_⟩
+  obtain ⟨-, hle⟩ := hx t ht
+  refine hle.trans ?_
   gcongr
   exact le_max_left _ _
 
@@ -6865,9 +6864,9 @@ theorem typeSet_subset_closure_fractalTypeSet {d : ℕ} (hd : 2 ≤ d) {E : Set 
         rfl rfl (Q1_mem_Q d _ _)
     simpa [Q1] using hQ1
   · subst hpt
-    exact (not_typeSet_bound_top_left hd0 hE hEne hq hqt hC fun f => (hb f).2).elim
+    exact (not_typeSet_bound_top_left hd0 hE hEne hq hqt hC hb).elim
   · subst hqt
-    exact (not_typeSet_bound_top_right hd0 hE hEne hp hpt hC fun f => (hb f).2).elim
+    exact (not_typeSet_bound_top_right hd0 hE hEne hp hpt hC hb).elim
   · have hp1 : 1 ≤ p.toReal := by simpa using ENNReal.toReal_mono hpt hp
     have hq1 : 1 ≤ q.toReal := by simpa using ENNReal.toReal_mono hqt hq
     apply subset_closure
