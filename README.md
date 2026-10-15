@@ -19,6 +19,7 @@ and Thm. 2 of [AHRS](https://arxiv.org/abs/1909.05389) (sharpness examples)
 * Legendre-Assouad function characterization: Thm. 1.2 of [BRRS '25](https://arxiv.org/abs/2501.12805)
 * Fractal local smoothing on radial functions: Thm. 1.1 of [BRRS '25](https://arxiv.org/abs/2501.12805)
 * Spherical maximal functions on radial functions: Thm. 1.1 of [BRS '24](https://arxiv.org/abs/2412.09390)
+* Endpoint estimates for power weights, [FLLRS '26](https://arxiv.org/pdf/2610.18316)
 
 ### Palomar
 
@@ -66,22 +67,20 @@ Only the definitions necessary to state the main theorems and the statements of 
 These are located in [`Definitions.lean`](https://github.com/roos-j/lean-spherical/blob/master/LeanSpherical/Definitions.lean).
 and [`Theorems.lean`](https://github.com/roos-j/lean-spherical/blob/master/LeanSpherical/Theorems.lean), respectively.
 
+Stein's theorem:
 The formalization proceeded in several stages. First, Stein's spherical maximal theorem and its necessary prerequisites were formalized. Many of these prerequisites are not currently in Mathlib, though some of them are contained in existing projects such as the [Carleson project](https://github.com/fpvandoorn/carleson). These include Marcinkiewicz interpolation, weak (1,1) boundedness of the Hardy-Littlewood maximal function, Fourier decay of the surface measure of the sphere, and other basic things.
 
-The next stage began an attempt to autoformalize arXiv:1909.05389 and successfully finished the lower bounds Thm. 2. The process was paused before Thm. 1 could be finished, but Thm. 1 of arXiv:1909.05389 was completed in a later session with Claude/opus-5. 
+AHRS: The next stage began an attempt to autoformalize arXiv:1909.05389 and successfully finished the lower bounds Thm. 2. The process was paused before Thm. 1 could be finished, but Thm. 1 of arXiv:1909.05389 was completed in a later session with Claude/opus-5. 
 
-In the next stage, the main theorem of [arXiv:2602.17613](https://arxiv.org/abs/2602.17613) was formalized, with the additional assumption `d >= 3`. This took a single session with Codex/gpt-5.6-terra-ultra that ran for ~25h.
+FRS, `d >= 3`: In the next stage, the main theorem of [arXiv:2602.17613](https://arxiv.org/abs/2602.17613) was formalized, with the additional assumption `d >= 3`. This took a single session with Codex/gpt-5.6-terra-ultra that ran for ~25h.
 
 At this point the formalization had grown to about ~180k lines of code.
 
-In the next stage, Bourgain's circular maximal theorem was formalized. This is a significantly deeper result than anything that had been done so far in this repository. The first step was to generate a blueprint using gpt-5.6-sol-pro. It was given the instructions to follow the standard argument via Mockenhaupt-Seeger-Sogge's local smoothing estimate for the wave equation. It then took several days worth of running Codex/5.6-terra-ultra continuously before the MSS theorem, and Bourgain's theorem were both formalized. Perhaps unsurprisingly, the main bottleneck were the combinatorial Kakeya-type estimates for plates.
+Bourgain: In the next stage, Bourgain's circular maximal theorem was formalized. This is a significantly deeper result than anything that had been done so far in this repository. The first step was to generate a blueprint using gpt-5.6-sol-pro. It was given the instructions to follow the standard argument via Mockenhaupt-Seeger-Sogge's local smoothing estimate for the wave equation. It then took several days worth of running Codex/5.6-terra-ultra continuously before the MSS theorem, and Bourgain's theorem were both formalized. Perhaps unsurprisingly, the main bottleneck were the combinatorial Kakeya-type estimates for plates.
 
-In a final stage, the remaining theorems in the repository were also generalized to the planar case. The main obstruction here was the type set characterization theorem of Fraccaroli-Roos-Seeger which relies on an input from an older paper of Duoandikoetxea-Vega that had to be formalized as well to fully finish the planar case. This was done using Claude/opus-5-high and took about 6 hours. 
+FRS, `d=2`: In a final stage, the remaining theorems in the repository were also generalized to the planar case. The main obstruction here was the type set characterization theorem of Fraccaroli-Roos-Seeger which relies on an input from an older paper of Duoandikoetxea-Vega that had to be formalized as well to fully finish the planar case. This was done using Claude/opus-5-high and took about 6 hours. 
 
-A drawback of autoformalization is that the generated code contains a lot of bloat in the form of unnecessary abstractions, wrappers and redundancies (for example, the repository contains several redundant versions of various interpolation theorems). It is also not written at an appropriate level of generality. 
-
-Lean certifies correctness[^2] of the human-written theorems, so the machine-generated proofs never have to be trusted or reviewed by a human[^1].
-
+FLLRS: The bulk of the paper was formalized by Claude Opus 5.5 Medium, but it was not able to complete the case `d = 2, gamma = 1` which requires local smoothing and is not detailed in the source paper. This estimate was originally proved in  an earlier paper by J. Lee. The remaining task was completed by Codex/GPT-6.1 Sol Ultra, which was instructed to follow a certain simplification of the original argument. (Likely the Ultra setting was not needed for this task.)
 
 ### ToDo
 
@@ -99,7 +98,3 @@ Lean certifies correctness[^2] of the human-written theorems, so the machine-gen
   - Convex duality for the Legendre transform
   - Fourier transform of radial functions
   - Basic facts on fractal dimensions including Minkowski dimension, Assouad dimension, Assouad spectrum, Legendre-Assouad function
-
-[^1]: Within reason. The code still had to be reviewed sufficiently to ensure that coding agents followed instructions and did not attempt to act adverserially, for example by writing adverserial meta programs or otherwise trying to compromise the user's system. The degree to which machine-generated code has to be looked at can be further minimized by relying on a correctness judge like [Lean Comparator](https://github.com/leanprover/comparator).
-
-[^2]: Assuming soundness of the Lean 4 kernel, [a non-trivial assumption](https://github.com/leanprover/lean4/issues/14576).
