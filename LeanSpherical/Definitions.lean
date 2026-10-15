@@ -180,6 +180,10 @@ def generalizedInverse (f : ℝ → ℝ) (s : ℝ) : ℝ := sSup {ρ : ℝ | 0 �
 @[inherit_doc generalizedInverse]
 scoped notation f "†" => generalizedInverse f
 
+/-- The Assouad dimension of a dilation set. -/
+def assouadDimension (E : Set ℝ) : ℝ :=
+  sInf {s : ℝ | 0 ≤ s ∧ ∃ C : ℝ, 0 < C ∧ ∀ c : Ioi 0, ∀ δ R : ℝ≥0,
+    0 < δ → δ ≤ R → R ≤ 1 → N (E ∩ logBall c R) δ ≤ ENNReal.ofReal (C * (R / δ) ^ s) }
 end FractalDimensions
 
 namespace RestrictedDilations
@@ -217,7 +221,7 @@ def strongTypeRegion (d : ℕ) (β γ : ℝ) : Set (ℝ × ℝ) :=
 def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
   {z | ∃ p q : ℝ≥0∞, 1 ≤ p ∧ 1 ≤ q ∧ z = (ENNReal.toReal p⁻¹, ENNReal.toReal q⁻¹) ∧
     ∃ C : ℝ, 0 < C ∧ ∀ f : 𝓢(ℝ^d, ℂ),
-      MemLp (M E f) q volume ∧ eLpNorm (M E f) q volume ≤ ENNReal.ofReal C * eLpNorm f p volume}
+      eLpNorm (M E f) q volume ≤ ENNReal.ofReal C * eLpNorm f p volume}
 
 end RestrictedDilations
 
@@ -237,7 +241,7 @@ for finite `p` and take a union with the point `(0, 0)` representing the (trivia
 def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
   {(0, 0)} ∪ {q | ∃ α : ℝ, ∃ p : ℝ≥0∞, 1 ≤ p ∧ q = (ENNReal.toReal p⁻¹, α * (ENNReal.toReal p⁻¹)) ∧
     ∃ C : ℝ, 0 < C ∧ ∀ f : 𝓢(ℝ^d, ℂ), MemLp f p (powerWeight d α) →
-      MemLp (M E f) p (powerWeight d α) ∧ eLpNorm (M E f) p (powerWeight d α)
+      eLpNorm (M E f) p (powerWeight d α)
         ≤ ENNReal.ofReal C * eLpNorm f p (powerWeight d α)}
 
 /-- The lower endpoint function in Thm. 1.1, arXiv:2602.17613 -/

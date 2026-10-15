@@ -11,6 +11,7 @@ public import LeanSpherical.Auto.Spherical.AHRS.TheoremOne
 public import LeanSpherical.Auto.Spherical.SWW
 public import LeanSpherical.Auto.Spherical.PowerWeights.PlanarClosure
 public import LeanSpherical.Auto.Spherical.RS.TypeSetCharacterization
+public import LeanSpherical.Auto.Spherical.FLLRS.MainTheorems
 
 /-!
 # Main theorems
@@ -40,7 +41,6 @@ theorem eLpNorm_sphericalMaximal_le {d : ℕ} {p : ℝ≥0∞} (hd : 2 ≤ d)
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
       ∀ᵐ x ∂volume, ∀ t ∈ Ioi (0 : ℝ),
         Integrable (fun y : unitSphere d ↦ f (x + t • (y : ℝ^d))) (unitSphereMeasure d) ∧
-      MemLp (M (Ioi 0) f) p volume ∧
       eLpNorm (M (Ioi 0) f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Auto.Spherical.SWW.eLpNorm_sphericalMaximal_le_of_memLp hd hp
 
@@ -70,7 +70,6 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
     ∃ C : ℝ, ∀ f : (ℝ^d) → ℂ, MemLp f p volume →
       ∀ᵐ x ∂volume, ∀ t ∈ E,
         Integrable (fun y : unitSphere d ↦ f (x + t • (y : ℝ^d))) (unitSphereMeasure d) ∧
-      MemLp (M E f) p volume ∧
       eLpNorm (M E f) p volume ≤ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Auto.Spherical.SWW.eLpNorm_restrictedSphericalMaximal_le_of_memLp
     hd hE hp
@@ -79,7 +78,7 @@ theorem eLpNorm_restrictedSphericalMaximal_le {d : ℕ} {p : ℝ≥0∞}
 theorem eLpNorm_restrictedSphericalMaximal_ge_of_lt_criticalExponent {d : ℕ} {p : ℝ≥0∞}
     (hd : 2 ≤ d) {E : Set ℝ} (hEne : E.Nonempty) (hE : E ⊆ Ioi 0)
     (hp0 : 0 < p) (hp : p < ENNReal.ofReal (criticalExponent d E)) :
-    ∀ C : ℝ, ∃ f : 𝓢(ℝ^d, ℂ),
+    ∀ C : ℝ, ∃ f : 𝓢(ℝ^d, ℂ), 0 < eLpNorm f p volume ∧
       eLpNorm (M E f) p volume ≥ (ENNReal.ofReal C) * eLpNorm f p volume :=
   Auto.Spherical.SWW.eLpNorm_restricted_ge_schwartz hd hEne hE hp0 hp
 
@@ -119,11 +118,40 @@ end RestrictedDilations
 
 namespace PowerWeights
 
-/-- Thm. 1.1 of arXiv:2602.17613 for `d ≥ 2`. -/
+variable {d : ℕ}
+
+/-- Thm. 1.1 of FRS, arXiv:2602.17613 for `d ≥ 2`. -/
 theorem closure_typeSet_eq
-    {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
+    (hd : 2 ≤ d) {E : Set ℝ} (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) :
     closure (typeSet d E) = admissibleRegion d E :=
   Auto.Spherical.PowerWeights.closure_typeSet_eq hd hE hEpos
+
+/-- Boundedness of full spherical maximal function at the critical power weight.
+Thm. 1.1 of FLLRS, arXiv:2610.18316.
+
+**Implementation notes:** We choose to state the a priori bound for Schwartz
+functions which is equivalent to the claimed boundedness.
+-/
+theorem eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap
+    (hd : 2 ≤ d) {p : ℝ≥0∞} (hp : (d : ℝ≥0∞) / (d - 1) < p) :
+    ∃ C : ℝ, ∀ f : 𝓢(ℝ^d, ℂ),
+      eLpNorm (M (Ioi 0) f) p (powerWeight d (1 - d)) ≤
+        (ENNReal.ofReal C) * eLpNorm f p (powerWeight d (1 - d)) :=
+  Auto.Spherical.FLLRS.eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap hd hp
+
+/-- Boundedness of restricted spherical maximal function at the critical power weight.
+Thm. 1.2 of FLLRS, arXiv:2610.18316.
+
+**Implementation notes:** We choose to state the a priori bound for Schwartz
+functions which is equivalent to the claimed boundedness.
+-/
+theorem eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap
+    (hd : 2 ≤ d) {E : Set ℝ}
+    {p : ℝ≥0∞} (hp : ENNReal.ofReal (assouadDimension E / ((d : ℝ) - 1) + 1) < p) :
+    ∃ C : ℝ, ∀ f : 𝓢(ℝ^d, ℂ),
+      eLpNorm (M E f) p (powerWeight d (1 - d)) ≤
+        (ENNReal.ofReal C) * eLpNorm f p (powerWeight d (1 - d)) :=
+  Auto.Spherical.FLLRS.eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap hd hp
 
 end PowerWeights
 
