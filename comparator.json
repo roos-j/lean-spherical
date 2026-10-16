@@ -1,0 +1,15 @@
+{
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
+  "theorem_names": [
+    "Spherical.PowerWeights.eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap",
+    "Spherical.PowerWeights.eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap",
+    "Spherical.PowerWeights.convexSeq_powerWeight_iff",
+    "Spherical.PowerWeights.globalConvexSeq_powerWeight_iff"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound"
+  ]
+}
