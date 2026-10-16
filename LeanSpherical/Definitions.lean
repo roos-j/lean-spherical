@@ -223,6 +223,16 @@ def typeSet (d : ℕ) (E : Set ℝ) : Set (ℝ × ℝ) :=
     ∃ C : ℝ, 0 < C ∧ ∀ f : 𝓢(ℝ^d, ℂ),
       eLpNorm (M E f) q volume ≤ ENNReal.ofReal C * eLpNorm f p volume}
 
+section SpecialDilationSets
+
+/-- The usual convex sequence example in `[1, 2]`. This will only be used for `0 < μ`. -/
+def convexSeq (μ : ℝ) : Set ℝ := { x | ∃ n : ℕ, 1 ≤ n ∧ x = 1 + n ^ (-μ) }
+
+/-- Given a (local) dilation set `E`, this is the global dilation set `⋃ k ∈ ℤ, 2^k E`. -/
+def toGlobalSet (E : Set ℝ) : Set ℝ := ⋃ k : ℤ, (fun x : ℝ ↦ (2 : ℝ) ^ k * x) '' E
+
+end SpecialDilationSets
+
 end RestrictedDilations
 
 namespace PowerWeights

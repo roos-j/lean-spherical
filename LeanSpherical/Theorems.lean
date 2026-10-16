@@ -11,7 +11,7 @@ public import LeanSpherical.Auto.Spherical.AHRS.TheoremOne
 public import LeanSpherical.Auto.Spherical.SWW
 public import LeanSpherical.Auto.Spherical.PowerWeights.PlanarClosure
 public import LeanSpherical.Auto.Spherical.RS.TypeSetCharacterization
-public import LeanSpherical.Auto.Spherical.FLLRS.MainTheorems
+public import LeanSpherical.Auto.Spherical.FLLRS.Sec3SequenceBounds
 
 /-!
 # Main theorems
@@ -126,11 +126,19 @@ theorem closure_typeSet_eq
     closure (typeSet d E) = admissibleRegion d E :=
   Auto.Spherical.PowerWeights.closure_typeSet_eq hd hE hEpos
 
-/-- Boundedness of full spherical maximal function at the critical power weight.
-Thm. 1.1 of FLLRS, arXiv:2610.18316.
+section FLLRS
+
+open RestrictedDilations
+
+/-!
+## Main theorems from FLLRS, arXiv:2610.18316.
 
 **Implementation notes:** We choose to state the a priori bound for Schwartz
 functions which is equivalent to the claimed boundedness.
+-/
+
+/-- Boundedness of full spherical maximal function at the critical power weight.
+Thm. 1.1 of FLLRS, arXiv:2610.18316.
 -/
 theorem eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap
     (hd : 2 ≤ d) {p : ℝ≥0∞} (hp : (d : ℝ≥0∞) / (d - 1) < p) :
@@ -140,11 +148,7 @@ theorem eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap
   Auto.Spherical.FLLRS.eLpNorm_sphericalMaximal_powerWeight_critical_le_schwartzMap hd hp
 
 /-- Boundedness of restricted spherical maximal function at the critical power weight.
-Thm. 1.2 of FLLRS, arXiv:2610.18316.
-
-**Implementation notes:** We choose to state the a priori bound for Schwartz
-functions which is equivalent to the claimed boundedness.
--/
+Thm. 1.2 of FLLRS, arXiv:2610.18316. -/
 theorem eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap
     (hd : 2 ≤ d) {E : Set ℝ}
     {p : ℝ≥0∞} (hp : ENNReal.ofReal (assouadDimension E / ((d : ℝ) - 1) + 1) < p) :
@@ -152,6 +156,39 @@ theorem eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap
       eLpNorm (M E f) p (powerWeight d (1 - d)) ≤
         (ENNReal.ofReal C) * eLpNorm f p (powerWeight d (1 - d)) :=
   Auto.Spherical.FLLRS.eLpNorm_restrictedSphericalMaximal_powerWeight_critical_le_schwartzMap hd hp
+
+/-- Power weight bounds for the sequence sets.
+Thm. 1.3 of FLLRS, arXiv:2610.18316.
+
+**Implementation note:** We express boundedness of the maximal operator equivalently
+as membership of the corresponding pair in the type set.
+ -/
+theorem convexSeq_powerWeight_iff
+    (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ) {p : ℝ} {p₀ : ℝ}
+    (hp₀ : p₀ = 1 + 1 / ((μ + 1) * (d - 1))) (hpp₀ : p₀ < p)
+    {α : ℝ} :
+    (p⁻¹, α / p) ∈ typeSet d (convexSeq μ) ↔
+      d / (d - 1) < p ∧ 1 - d ≤ α ∧ α ≤ (d - 1) * (p - 1) - 1 / (μ + 1) ∨
+      p = d / (d - 1) ∧ 1 - d < α ∧ α ≤ (d - 1) * (d / (d - 1) - 1) - 1 / (μ + 1) ∨
+      p < d / (d - 1) ∧
+        1 - d + (d - (d - 1) * p) / μ ≤ α ∧ α ≤ (d - 1) * (p - 1) - 1 / (μ + 1) :=
+  Auto.Spherical.FLLRS.convexSeq_powerWeight_iff hd hμ hp₀ hpp₀
+
+/-- Power weight bounds for the globalized sequence sets.
+Thm. 1.4 of FLLRS, arXiv:2610.18316.
+
+**Implementation note:** We express boundedness of the maximal operator equivalently
+as membership of the corresponding pair in the type set.
+-/
+theorem globalConvexSeq_powerWeight_iff
+    (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ) {p : ℝ} {p₀ : ℝ}
+    (hp₀ : p₀ = 1 + 1 / ((μ + 1) * (d - 1))) (hpp₀ : p₀ < p)
+    {α : ℝ} :
+    (p⁻¹, α / p) ∈ typeSet d (toGlobalSet (convexSeq μ)) ↔
+      α < (d - 1) * (p - 1) - (μ + 1)⁻¹ ∧ (p⁻¹, α / p) ∈ typeSet d (convexSeq μ) :=
+  Auto.Spherical.FLLRS.globalConvexSeq_powerWeight_iff hd hμ hp₀ hpp₀
+
+end FLLRS
 
 end PowerWeights
 
