@@ -25,19 +25,15 @@ the source's top-level section boundary, because that file approaches the
 
 namespace Auto.Spherical.FLLRS
 
+open _root_.Spherical.RestrictedDilations
 open Set Auto.FractalDimensions
 
 noncomputable section
 
 /-! ## The sequence sets `E^μ` (`eq:defEmu`) -/
 
-/-- Source `eq:defEmu`: the sequence set `E^μ = {1 + n^{-μ} : n ∈ ℕ}`, with
-the natural numbers starting at one. -/
-def sequenceSet (μ : ℝ) : Set ℝ :=
-  {t | ∃ n : ℕ, 1 ≤ n ∧ t = 1 + (n : ℝ) ^ (-μ)}
-
 theorem mem_sequenceSet {μ t : ℝ} :
-    t ∈ sequenceSet μ ↔ ∃ n : ℕ, 1 ≤ n ∧ t = 1 + (n : ℝ) ^ (-μ) := Iff.rfl
+    t ∈ convexSeq μ ↔ ∃ n : ℕ, 1 ≤ n ∧ t = 1 + (n : ℝ) ^ (-μ) := Iff.rfl
 
 /-- For `μ ≥ 0` and `n ≥ 1`, `n^{-μ} ∈ (0,1]`. -/
 theorem rpow_neg_mem_Ioc {μ : ℝ} (hμ : 0 ≤ μ) {n : ℕ} (hn : 1 ≤ n) :
@@ -48,16 +44,16 @@ theorem rpow_neg_mem_Ioc {μ : ℝ} (hμ : 0 ≤ μ) {n : ℕ} (hn : 1 ≤ n) :
 
 /-- Source `eq:defEmu`: `E^μ ⊆ [1,2]` (in fact `⊆ (1,2]`). -/
 theorem sequenceSet_subset_Icc {μ : ℝ} (hμ : 0 ≤ μ) :
-    sequenceSet μ ⊆ Icc 1 2 := by
+    convexSeq μ ⊆ Icc 1 2 := by
   rintro t ⟨n, hn, rfl⟩
   have h := rpow_neg_mem_Ioc hμ hn
   exact ⟨by linarith [h.1], by linarith [h.2]⟩
 
 theorem sequenceSet_subset_Ioi {μ : ℝ} (hμ : 0 ≤ μ) :
-    sequenceSet μ ⊆ Ioi 0 := fun _ ht =>
+    convexSeq μ ⊆ Ioi 0 := fun _ ht =>
   lt_of_lt_of_le zero_lt_one (sequenceSet_subset_Icc hμ ht).1
 
-theorem sequenceSet_nonempty (μ : ℝ) : (sequenceSet μ).Nonempty :=
+theorem sequenceSet_nonempty (μ : ℝ) : (convexSeq μ).Nonempty :=
   ⟨1 + ((1 : ℕ) : ℝ) ^ (-μ), 1, le_rfl, rfl⟩
 
 /-- The derivative of `x ↦ x^{-μ}` on the positive half-line. -/
@@ -144,7 +140,7 @@ whole set `E^μ` is covered by at most `6 δ^{-1/(μ+1)}` intervals of length
 points lie in an interval of length `N^{-μ} ≤ δ^{μ/(μ+1)}`. -/
 theorem sequenceSet_cover_global {μ : ℝ} (hμ : 0 < μ) {δ : ℝ} (hδ : 0 < δ)
     (hδ1 : δ ≤ 1) :
-    ∃ ι : Finset ℝ, IsIntervalCover (sequenceSet μ) δ ι ∧
+    ∃ ι : Finset ℝ, IsIntervalCover (convexSeq μ) δ ι ∧
       (ι.card : ℝ) ≤ 6 * δ ^ (-(1 / (μ + 1))) := by
   set s : ℝ := δ ^ (-(1 / (μ + 1))) with hs
   have hμ1 : 0 < μ + 1 := by linarith
@@ -204,10 +200,10 @@ theorem sequenceSet_cover_global {μ : ℝ} (hμ : 0 < μ) {δ : ℝ} (hδ : 0 <
 `min(2^{j-k}, 2^{j/(μ+1)})` (up to constants) is the source estimate. -/
 theorem sequenceSet_cover_min {μ : ℝ} (hμ : 0 < μ) {δ a b : ℝ} (hδ : 0 < δ)
     (hδ1 : δ ≤ 1) (hab : a ≤ b) {S : Set ℝ} (hS : S ⊆ Icc a b) :
-    ∃ ι : Finset ℝ, IsIntervalCover (sequenceSet μ ∩ S) δ ι ∧
+    ∃ ι : Finset ℝ, IsIntervalCover (convexSeq μ ∩ S) δ ι ∧
       (ι.card : ℝ) ≤ 6 * min ((b - a) / δ + 1) (δ ^ (-(1 / (μ + 1)))) := by
   obtain ⟨ι₁, h₁, hc₁⟩ := exists_intervalCover_of_subset_Icc
-    (F := sequenceSet μ ∩ S) hδ hab (inter_subset_right.trans hS)
+    (F := convexSeq μ ∩ S) hδ hab (inter_subset_right.trans hS)
   obtain ⟨ι₂, h₂, hc₂⟩ := sequenceSet_cover_global hμ hδ hδ1
   have hq : 0 ≤ (b - a) / δ := div_nonneg (by linarith) hδ.le
   have hc₁' : (ι₁.card : ℝ) ≤ 6 * ((b - a) / δ + 1) := by
@@ -270,9 +266,9 @@ theorem log_two_half_bounds : (1 / 3 : ℝ) ≤ Real.log 2 / 2 ∧ Real.log 2 / 
 diameter `D ≥ δ`: at most `78 min(D/δ, δ^{-1/(μ+1)})` cells. -/
 theorem sequenceSet_localEntropy_le {μ : ℝ} (hμ : 0 < μ) (c : PositiveRadius)
     {D δ : ℝ≥0} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hδD : δ ≤ D) :
-    ((localMultiplicativeEntropy (sequenceSet μ) c D δ : ℕ∞) : ℝ≥0∞) ≤
+    ((localMultiplicativeEntropy (convexSeq μ) c D δ : ℕ∞) : ℝ≥0∞) ≤
       ENNReal.ofReal (78 * min ((D : ℝ) / δ) ((δ : ℝ) ^ (-(1 / (μ + 1))))) := by
-  set F := sequenceSet μ ∩ multiplicativeInterval c D
+  set F := convexSeq μ ∩ multiplicativeInterval c D
   have hF : F ⊆ Icc 1 2 := inter_subset_left.trans (sequenceSet_subset_Icc hμ.le)
   have hδr : (0 : ℝ) < δ := hδ
   have hδ1r : (δ : ℝ) ≤ 1 := hδ1
@@ -330,7 +326,7 @@ theorem sequenceSet_localEntropy_le {μ : ℝ} (hμ : 0 < μ) (c : PositiveRadiu
       exact hι ⟨hr.1, hr.2, hF hr⟩
   obtain ⟨ι, hι, hc⟩ := hcard
   have hent := multiplicativeEntropy_le_card_of_intervalCover hF hεpos hscale hι
-  calc ((localMultiplicativeEntropy (sequenceSet μ) c D δ : ℕ∞) : ℝ≥0∞)
+  calc ((localMultiplicativeEntropy (convexSeq μ) c D δ : ℕ∞) : ℝ≥0∞)
       ≤ ((ι.card : ℕ∞) : ℝ≥0∞) := ENat.toENNReal_mono hent
     _ = ENNReal.ofReal (ι.card : ℝ) := by simp
     _ ≤ _ := ENNReal.ofReal_le_ofReal hc
@@ -411,7 +407,7 @@ theorem sequence_profile_real_bound {μ ρ δ D : ℝ} (hμ : 0 < μ) (hδ : 0 <
 `0 < δ ≤ 1`. -/
 theorem sequenceSet_profile_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) {δ : ℝ≥0}
     (hδ : 0 < δ) (hδ1 : δ ≤ 1) :
-    multiplicativeLegendreAssouadProfile (sequenceSet μ) ρ δ ≤
+    multiplicativeLegendreAssouadProfile (convexSeq μ) ρ δ ≤
       78 * (δ : ℝ≥0∞) ^ (-sequenceLegendreAssouad μ ρ) := by
   have hδr : (0 : ℝ) < δ := hδ
   unfold multiplicativeLegendreAssouadProfile
@@ -429,7 +425,7 @@ theorem sequenceSet_profile_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) {δ : ℝ≥
     rw [← ENNReal.ofReal_rpow_of_pos hδr, ENNReal.ofReal_coe_nnreal]
   rw [hcoe, hcoe']
   calc ENNReal.ofReal ((D.1 : ℝ) ^ (-ρ)) *
-        ((localMultiplicativeEntropy (sequenceSet μ) c D.1 δ : ℕ∞) : ℝ≥0∞)
+        ((localMultiplicativeEntropy (convexSeq μ) c D.1 δ : ℕ∞) : ℝ≥0∞)
       ≤ ENNReal.ofReal ((D.1 : ℝ) ^ (-ρ)) *
         ENNReal.ofReal (78 * min ((D.1 : ℝ) / δ) ((δ : ℝ) ^ (-(1 / (μ + 1))))) :=
         mul_le_mul' le_rfl hent
@@ -444,7 +440,7 @@ theorem sequenceSet_profile_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) {δ : ℝ≥
 
 /-- Introduction, line 739: `ν♯_{E^μ}(ρ) ≤ max(1/(μ+1), (μρ+1)/(μ+1), ρ)`. -/
 theorem sequenceSet_legendreAssouad_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
-    multiplicativeLegendreAssouadExponent (sequenceSet μ) ρ ≤
+    multiplicativeLegendreAssouadExponent (convexSeq μ) ρ ≤
       (sequenceLegendreAssouad μ ρ : EReal) := by
   apply multiplicativeLegendreAssouadExponent_le_of_profile_power_bound
     (A := 78) (by norm_num)
@@ -455,9 +451,9 @@ theorem sequenceSet_legendreAssouad_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
 
 /-- Introduction, line 737: `β(E^μ) ≤ 1/(μ+1)`. -/
 theorem sequenceSet_minkowski_le {μ : ℝ} (hμ : 0 < μ) :
-    multiplicativeMinkowskiExponent (sequenceSet μ) ≤ ((1 / (μ + 1) : ℝ) : EReal) := by
+    multiplicativeMinkowskiExponent (convexSeq μ) ≤ ((1 / (μ + 1) : ℝ) : EReal) := by
   have h := (multiplicativeMinkowskiExponent_le_multiplicativeLegendreAssouadExponent
-    (sequenceSet μ) 0).trans (sequenceSet_legendreAssouad_le hμ 0)
+    (convexSeq μ) 0).trans (sequenceSet_legendreAssouad_le hμ 0)
   have hval : sequenceLegendreAssouad μ 0 = 1 / (μ + 1) := by
     have hμ1 : 0 < μ + 1 := by linarith
     simp only [sequenceLegendreAssouad, mul_zero, zero_add]
@@ -599,7 +595,7 @@ theorem sequencePackingRadii_card {μ : ℝ} (hμ : 0 < μ) {N : ℕ} (hN : 1 �
 /-- The packing points lie in `E^μ` and in the multiplicative interval about
 `1` of diameter `4 N^{-μ}`. -/
 theorem sequencePackingRadii_mem {μ : ℝ} (hμ : 0 < μ) {N : ℕ} (hN : 1 ≤ N) :
-    ∀ r ∈ sequencePackingRadii μ N, (r : ℝ) ∈ sequenceSet μ ∩
+    ∀ r ∈ sequencePackingRadii μ N, (r : ℝ) ∈ convexSeq μ ∩
       multiplicativeInterval ⟨1, one_pos⟩ (4 * (N : ℝ) ^ (-μ)).toNNReal := by
   intro r hr
   obtain ⟨n, hn, rfl⟩ := Finset.mem_image.mp hr
@@ -728,7 +724,7 @@ theorem sequencePacking_real_identity {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) {N : 
 /-- The packing estimate: at scale `δ_N`, the window about `1` of diameter
 `4N^{-μ}` has local entropy at least `N + 1`. -/
 theorem sequenceSet_localEntropy_ge {μ : ℝ} (hμ : 0 < μ) {N : ℕ} (hN : 1 ≤ N) :
-    ((N + 1 : ℕ) : ℕ∞) ≤ localMultiplicativeEntropy (sequenceSet μ) ⟨1, one_pos⟩
+    ((N + 1 : ℕ) : ℕ∞) ≤ localMultiplicativeEntropy (convexSeq μ) ⟨1, one_pos⟩
       (4 * (N : ℝ) ^ (-μ)).toNNReal (sequencePackingScale μ N).toNNReal := by
   rw [← sequencePackingRadii_card hμ hN]
   apply finset_card_le_localMultiplicativeEntropy_of_radius_isSeparated
@@ -778,7 +774,7 @@ theorem sequencePacking_weighted_lower {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) {N :
     ENNReal.ofReal ((4 : ℝ) ^ (-ρ) * (μ * (3 : ℝ) ^ (-(μ + 1)) / 4) ^ ((μ * ρ + 1) / (μ + 1))) *
         (((sequencePackingScale μ N).toNNReal : ℝ≥0) : ℝ≥0∞) ^ (-((μ * ρ + 1) / (μ + 1))) ≤
       (((4 * (N : ℝ) ^ (-μ)).toNNReal : ℝ≥0) : ℝ≥0∞) ^ (-ρ) *
-        ((localMultiplicativeEntropy (sequenceSet μ) ⟨1, one_pos⟩
+        ((localMultiplicativeEntropy (convexSeq μ) ⟨1, one_pos⟩
           (4 * (N : ℝ) ^ (-μ)).toNNReal (sequencePackingScale μ N).toNNReal : ℕ∞) : ℝ≥0∞) := by
   have hN0 : (0 : ℝ) < N := by exact_mod_cast hN
   have hδ := sequencePackingScale_pos hμ hN
@@ -801,7 +797,7 @@ theorem sequencePacking_weighted_lower {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) {N :
 valid for every real `ρ`. -/
 theorem sequenceSet_legendreAssouad_ge {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
     (((μ * ρ + 1) / (μ + 1) : ℝ) : EReal) ≤
-      multiplicativeLegendreAssouadExponent (sequenceSet μ) ρ := by
+      multiplicativeLegendreAssouadExponent (convexSeq μ) ρ := by
   unfold multiplicativeLegendreAssouadExponent
   apply le_limsup_entropyLogQuotient_of_power_lower
     (c := (4 : ℝ) ^ (-ρ) * (μ * (3 : ℝ) ^ (-(μ + 1)) / 4) ^ ((μ * ρ + 1) / (μ + 1)))
@@ -818,7 +814,7 @@ theorem sequenceSet_legendreAssouad_ge {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
 
 /-- Introduction, line 737: the lower bound `β(E^μ) ≥ 1/(μ+1)`. -/
 theorem sequenceSet_minkowski_ge {μ : ℝ} (hμ : 0 < μ) :
-    ((1 / (μ + 1) : ℝ) : EReal) ≤ multiplicativeMinkowskiExponent (sequenceSet μ) := by
+    ((1 / (μ + 1) : ℝ) : EReal) ≤ multiplicativeMinkowskiExponent (convexSeq μ) := by
   unfold multiplicativeMinkowskiExponent
   have hs : (μ * 0 + 1) / (μ + 1) = 1 / (μ + 1) := by ring
   apply le_limsup_entropyLogQuotient_of_power_lower
@@ -838,14 +834,14 @@ theorem sequenceSet_minkowski_ge {μ : ℝ} (hμ : 0 < μ) :
 
 /-- Introduction, line 737: `β(E^μ) = 1/(μ+1)`. -/
 theorem sequenceSet_minkowski_eq {μ : ℝ} (hμ : 0 < μ) :
-    multiplicativeMinkowskiExponent (sequenceSet μ) = ((1 / (μ + 1) : ℝ) : EReal) :=
+    multiplicativeMinkowskiExponent (convexSeq μ) = ((1 / (μ + 1) : ℝ) : EReal) :=
   le_antisymm (sequenceSet_minkowski_le hμ) (sequenceSet_minkowski_ge hμ)
 
 /-- Introduction, line 739: the Legendre--Assouad function of `E^μ`,
 `ν♯(ρ) = max(1/(μ+1), (μρ+1)/(μ+1), ρ)`; on `0 ≤ ρ ≤ 1` this equals
 `μρ/(μ+1) + 1/(μ+1)` as stated in the source. -/
 theorem sequenceSet_legendreAssouad_eq {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
-    multiplicativeLegendreAssouadExponent (sequenceSet μ) ρ =
+    multiplicativeLegendreAssouadExponent (convexSeq μ) ρ =
       (sequenceLegendreAssouad μ ρ : EReal) := by
   apply le_antisymm (sequenceSet_legendreAssouad_le hμ ρ)
   have hβ := (sequenceSet_minkowski_ge hμ).trans
@@ -894,7 +890,7 @@ open Auto.Spherical.PowerWeights in
 iff `p ≥ p(μ)` and `L(p) ≤ α ≤ U(p)`. -/
 theorem sequence_implicitCondition_iff {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ)
     (p α : ℝ) :
-    powerWeightEntropyImplicitCondition d (sequenceSet μ) p α ↔
+    powerWeightEntropyImplicitCondition d (convexSeq μ) p α ↔
       1 / (μ + 1) ≤ ((d : ℝ) - 1) * (p - 1) ∧
         sequenceLowerEndpoint d μ p ≤ α ∧ α ≤ sequenceUpperEndpoint d μ p := by
   have hd' : (1 : ℝ) < d := by exact_mod_cast (show 1 < d by omega)
@@ -925,8 +921,8 @@ theorem sequence_implicitCondition_iff {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ 
 condition for `E^μ` holds iff `p > p(μ)` and `L(p) < α < U(p)`. -/
 theorem sequence_strictCondition_iff {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ)
     (p α : ℝ) :
-    max ((α : EReal) + multiplicativeMinkowskiExponent (sequenceSet μ))
-        (multiplicativeLegendreAssouadExponent (sequenceSet μ)
+    max ((α : EReal) + multiplicativeMinkowskiExponent (convexSeq μ))
+        (multiplicativeLegendreAssouadExponent (convexSeq μ)
           (((d : ℝ) - 1) * (p - 2) - α)) < (↑(((d : ℝ) - 1) * (p - 1)) : EReal) ↔
       1 / (μ + 1) < ((d : ℝ) - 1) * (p - 1) ∧
         sequenceLowerEndpoint d μ p < α ∧ α < sequenceUpperEndpoint d μ p := by
@@ -1012,9 +1008,9 @@ theorem sequence_interior_bound {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < �
     (hL : sequenceLowerEndpoint d μ p < α) (hU : α < sequenceUpperEndpoint d μ p) :
     ∃ C : ℝ, 0 < C ∧ ∀ f : Euclidean d → ℂ,
       MemLp f (ENNReal.ofReal p) (powerWeightedVolume d α) →
-      MemLp (_root_.Spherical.M (sequenceSet μ) f) (ENNReal.ofReal p)
+      MemLp (_root_.Spherical.M (convexSeq μ) f) (ENNReal.ofReal p)
           (powerWeightedVolume d α) ∧
-        eLpNorm (_root_.Spherical.M (sequenceSet μ) f) (ENNReal.ofReal p)
+        eLpNorm (_root_.Spherical.M (convexSeq μ) f) (ENNReal.ofReal p)
           (powerWeightedVolume d α) ≤
           ENNReal.ofReal C * eLpNorm f (ENNReal.ofReal p) (powerWeightedVolume d α) := by
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
@@ -1063,7 +1059,7 @@ theorem WeightedMaximalBound.strongType {d : ℕ} {E : Set ℝ} {p α : ℝ}
 the FRS necessary condition (arXiv:2602.17613, Thm. 1.1) evaluated with the
 exponents of `E^μ`. -/
 theorem sequence_necessary {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ) {p α : ℝ}
-    (hp : 1 ≤ p) (h : WeightedMaximalBound d (sequenceSet μ) p α) :
+    (hp : 1 ≤ p) (h : WeightedMaximalBound d (convexSeq μ) p α) :
     1 / (μ + 1) ≤ ((d : ℝ) - 1) * (p - 1) ∧
       sequenceLowerEndpoint d μ p ≤ α ∧ α ≤ sequenceUpperEndpoint d μ p :=
   (sequence_implicitCondition_iff hd hμ p α).mp
@@ -1148,7 +1144,7 @@ theorem sequence_lambda_exponent_le {d : ℕ} {μ p : ℝ} (hμ : 0 < μ)
 intervals of length `2^{-j}`, `k ≤ j` (Section 3.1, lines 1324-1331). -/
 theorem sequenceSet_window_cover {μ : ℝ} (hμ : 0 < μ) {j k : ℕ} (hkj : k ≤ j) (c : ℝ) :
     ∃ J : Finset ℝ, IsIntervalCover
-        (sequenceSet μ ∩ {t | |t - c| ≤ (((2 : ℝ) ^ k)⁻¹) / 2}) (((2 : ℝ) ^ j)⁻¹) J ∧
+        (convexSeq μ ∩ {t | |t - c| ≤ (((2 : ℝ) ^ k)⁻¹) / 2}) (((2 : ℝ) ^ j)⁻¹) J ∧
       (J.card : ℝ≥0∞) ≤ 12 * (2 : ℝ≥0∞) ^ (min ((j : ℝ) - k) ((j : ℝ) / (μ + 1))) := by
   have hμ1 : 0 < μ + 1 := by linarith
   have hδ : (0 : ℝ) < ((2 : ℝ) ^ j)⁻¹ := by positivity
@@ -1218,14 +1214,14 @@ theorem sequence_shell_bound {d N : ℕ} (hd : 2 ≤ d)
     (hκ : 0 < ((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1)) :
     ∃ A : ℝ≥0∞, A ≠ ∞ ∧ ∀ (j k : ℕ), 4 ≤ k → ∀ f : SchwartzMap (Euclidean d) ℂ,
       (∫⁻ x in euclideanAnnulus d ((((2 : ℝ) ^ k)⁻¹) / 2) (((2 : ℝ) ^ k)⁻¹),
-        (⨆ t : sequenceSet μ,
+        (⨆ t : convexSeq μ,
           ‖sphericalAverage d (compactConvolution (compactSynthesisKernel φ j) f) t x‖ₑ) ^ p
           ∂powerWeightedVolume d (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ)) ≤
         A * (2 : ℝ≥0∞) ^ (-(min ((d : ℝ) - ((d : ℝ) - 1) * p)
             (((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1)) * |(j : ℝ) - (μ + 1) / μ * k|)) *
           ∫⁻ x, ‖f x‖ₑ ^ p := by
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
-  have hE : sequenceSet μ ⊆ Icc 1 2 := sequenceSet_subset_Icc hμ.le
+  have hE : convexSeq μ ⊆ Icc 1 2 := sequenceSet_subset_Icc hμ.le
   obtain ⟨A₁, hA₁, hb₁⟩ := synthesis_thinWindow_Lp_bound hd φ hflat hN hφ hp₁ hp₂
   obtain ⟨A₂, hA₂, hb₂⟩ := synthesis_low_frequency_moment_bound (by omega : 0 < d) φ hp₁.le
   set θ := (d : ℝ) - ((d : ℝ) - 1) * p with hθdef
@@ -1243,10 +1239,10 @@ theorem sequence_shell_bound {d N : ℕ} (hd : 2 ≤ d)
   refine ⟨W * A₁ * 12 + A₂, ENNReal.add_ne_top.mpr
     ⟨ENNReal.mul_ne_top (ENNReal.mul_ne_top hW hA₁) (by norm_num), hA₂⟩, ?_⟩
   intro j k hk f
-  set G : Euclidean d → ℝ≥0∞ := fun x => (⨆ t : sequenceSet μ,
+  set G : Euclidean d → ℝ≥0∞ := fun x => (⨆ t : convexSeq μ,
     ‖sphericalAverage d (compactConvolution (compactSynthesisKernel φ j) f) t x‖ₑ) ^ p
   have hGm : Measurable G :=
-    (measurable_schwartz_radius_supremum _ (sequenceSet μ)).pow_const p
+    (measurable_schwartz_radius_supremum _ (convexSeq μ)).pow_const p
   have hkr : (4 : ℝ) ≤ k := by exact_mod_cast hk
   have hAk : (μ + 1) / μ * (k : ℝ) = k + k / μ := by field_simp
   rcases le_or_gt k j with hkj | hjk
@@ -1258,7 +1254,7 @@ theorem sequence_shell_bound {d N : ℕ} (hd : 2 ≤ d)
       norm_num at hh ⊢
       exact hh
     set m : ℝ := min ((j : ℝ) - k) ((j : ℝ) / (μ + 1))
-    have hu := hb₁ j k (by omega) hkj hsmall (sequenceSet μ) hE I
+    have hu := hb₁ j k (by omega) hkj hsmall (convexSeq μ) hE I
       (fun m hm => (hI m hm).1) (fun t ht => hgrid t (hE ht))
       (12 * (2 : ℝ≥0∞) ^ m) (fun c _ => sequenceSet_window_cover hμ hkj _) f
     have hw := dyadic_annulus_weight_moment_le G hGm a k
@@ -1293,7 +1289,7 @@ theorem sequence_shell_bound {d N : ℕ} (hd : 2 ≤ d)
     have hcmp := setLIntegral_powerWeightedVolume_le_of_le
       (R := ((2 : ℝ) ^ k)⁻¹) (by omega : 0 < d) ha_ge
       measurableSet_closedBall (subset_refl _) G hGm
-    have hlow := hb₂ (sequenceSet μ) hE k (k - j) (by omega) f
+    have hlow := hb₂ (convexSeq μ) hE k (k - j) (by omega) f
     rw [show k - (k - j) = j by omega] at hlow
     have hkj' : ((k - j : ℕ) : ℝ) = (k : ℝ) - j := by
       rw [Nat.cast_sub hjk.le]
@@ -1349,7 +1345,7 @@ theorem sequence_diagonal_maximal {d N : ℕ} (hd : 2 ≤ d)
       (∀ k ∈ L, (2 : ℝ≥0∞) ^ (-(min ((d : ℝ) - ((d : ℝ) - 1) * p)
           (((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1)) * |((ρ k : ℕ) : ℝ) - (μ + 1) / μ * k|)) ≤ Q) →
       ∀ f : ℕ → SchwartzMap (Euclidean d) ℂ,
-      (∫⁻ x, (⨆ t : sequenceSet μ, ‖∑ k ∈ L, (dyadicSpatialShell d (-(k : ℤ) - 1)).indicator
+      (∫⁻ x, (⨆ t : convexSeq μ, ‖∑ k ∈ L, (dyadicSpatialShell d (-(k : ℤ) - 1)).indicator
         (sphericalAverage d (compactConvolution (compactSynthesisKernel φ (ρ k)) (f k)) t)
         x‖ₑ) ^ p ∂powerWeightedVolume d (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ)) ≤
         A * Q * ∫⁻ x, ∑ k ∈ L, ‖f k x‖ₑ ^ p := by
@@ -1358,7 +1354,7 @@ theorem sequence_diagonal_maximal {d N : ℕ} (hd : 2 ≤ d)
   intro L hL ρ Q hQ f
   rw [disjoint_indicator_maximal_moment _ L
     (fun k : ℕ => dyadicSpatialShell d (-(k : ℤ) - 1))
-    (fun k (t : sequenceSet μ) => sphericalAverage d
+    (fun k (t : convexSeq μ) => sphericalAverage d
       (compactConvolution (compactSynthesisKernel φ (ρ k)) (f k)) t)
     (fun k => measurableSet_dyadicSpatialShell d (-(k : ℤ) - 1))
     (pairwiseDisjoint_negative_dyadicSpatialShell d)
@@ -1370,7 +1366,7 @@ theorem sequence_diagonal_maximal {d N : ℕ} (hd : 2 ≤ d)
   apply Finset.sum_le_sum
   intro k hk
   calc _ ≤ ∫⁻ x in euclideanAnnulus d ((((2 : ℝ) ^ k)⁻¹) / 2) (((2 : ℝ) ^ k)⁻¹),
-        (⨆ t : sequenceSet μ, ‖sphericalAverage d
+        (⨆ t : convexSeq μ, ‖sphericalAverage d
           (compactConvolution (compactSynthesisKernel φ (ρ k)) (f k)) t x‖ₑ) ^ p
           ∂powerWeightedVolume d (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) :=
         lintegral_mono_set (negative_dyadicSpatialShell_subset_annulus d k)
@@ -1737,7 +1733,7 @@ theorem sequence_resolution_piece_bound {d N : ℕ} (hd : 2 ≤ d)
         ν ≤ powerWeightedVolume d (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) →
       ∀ B : ℝ, 0 < B →
         CoreMomentBoundAt (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) ν
-          (sequenceSet μ) p B →
+          (convexSeq μ) p B →
       ∀ (L : Finset ℕ), (∀ k ∈ L, 4 ≤ k) → ∀ (ρ : ℕ → ℕ), Set.InjOn ρ (↑L : Set ℕ) →
       ∀ Q : ℝ, 0 < Q →
       (∀ k ∈ L, (2 : ℝ≥0∞) ^ (-(min ((d : ℝ) - ((d : ℝ) - 1) * p)
@@ -1745,7 +1741,7 @@ theorem sequence_resolution_piece_bound {d N : ℕ} (hd : 2 ≤ d)
             ENNReal.ofReal Q) →
       ∀ f : SchwartzMap (Euclidean d) ℂ,
       (∀ x, ‖x‖ < 1 / 8 → f x = 0) → (∀ x, 8 < ‖x‖ → f x = 0) →
-      (∫⁻ x, (⨆ t : sequenceSet μ, ‖localizedResolutionPiece φ L ρ f t x‖ₑ) ^ p ∂ν) ≤
+      (∫⁻ x, (⨆ t : convexSeq μ, ‖localizedResolutionPiece φ L ρ f t x‖ₑ) ^ p ∂ν) ≤
         A * ENNReal.ofReal Q ^ (p / 2) * ENNReal.ofReal B ^ (1 - p / 2) *
           ∫⁻ x, ‖f x‖ₑ ^ p ∂powerWeightedVolume d
             (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) := by
@@ -1777,7 +1773,7 @@ theorem sequence_resolution_piece_bound {d N : ℕ} (hd : 2 ≤ d)
       (ENNReal.rpow_ne_top_of_nonneg (by linarith) ENNReal.ofReal_ne_top)) hP
   intro ν hν B hB hcore L hL ρ hρ Q hQ hQb f hinner houter
   have hs := compactAnalysis_annular_support φ f hφ hinner houter
-  have hh := hsq ν (sequenceSet μ) B hB hcore L ρ
+  have hh := hsq ν (convexSeq μ) B hB hcore L ρ
     (fun k => dyadicSpatialShell d (-(k : ℤ) - 1))
     (fun k => measurableSet_dyadicSpatialShell d (-(k : ℤ) - 1))
     (pairwiseDisjoint_negative_dyadicSpatialShell d)
@@ -1898,10 +1894,10 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
         ν ≤ powerWeightedVolume d (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) →
       ∀ B : ℝ, 0 < B →
         CoreMomentBoundAt (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) ν
-          (sequenceSet μ) p B →
+          (convexSeq μ) p B →
       ∀ (L : Finset ℕ), (∀ k ∈ L, 4 ≤ k) → ∀ f : SchwartzMap (Euclidean d) ℂ,
       (∀ x, ‖x‖ < 1 / 8 → f x = 0) → (∀ x, 8 < ‖x‖ → f x = 0) →
-      (∫⁻ x, (⨆ t : sequenceSet μ, ‖∑ k ∈ L, (dyadicSpatialShell d (-(k : ℤ) - 1)).indicator
+      (∫⁻ x, (⨆ t : convexSeq μ, ‖∑ k ∈ L, (dyadicSpatialShell d (-(k : ℤ) - 1)).indicator
         (sphericalAverage d f t) x‖ₑ) ^ p ∂ν) ≤
           A * ENNReal.ofReal B ^ (1 - p / 2) *
             ∫⁻ x, ‖f x‖ₑ ^ p ∂powerWeightedVolume d
@@ -1930,7 +1926,7 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
   set Q := ∫⁻ x, ‖f x‖ₑ ^ p ∂powerWeightedVolume d a
   -- the high family `F(k)+n`
   have hhigh : ∀ (I : Finset ℕ) (Lf : ℕ → Finset ℕ), (∀ n ∈ I, Lf n ⊆ L) →
-      (∫⁻ x, (∑ n ∈ I, ⨆ t : sequenceSet μ,
+      (∫⁻ x, (∑ n ∈ I, ⨆ t : convexSeq μ,
         ‖localizedResolutionPiece φ (Lf n) (fun k => sequencePeak μ k + n) f t x‖ₑ) ^ p ∂ν) ≤
         A * b * Q := by
     intro I Lf hLf
@@ -1951,7 +1947,7 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
   -- the low family `F(k)-m`
   have hlow : ∀ (I : Finset ℕ) (Lf : ℕ → Finset ℕ), (∀ m ∈ I, Lf m ⊆ L) →
       (∀ m ∈ I, ∀ k ∈ Lf m, m ≤ sequencePeak μ k) →
-      (∫⁻ x, (∑ m ∈ I, ⨆ t : sequenceSet μ,
+      (∫⁻ x, (∑ m ∈ I, ⨆ t : convexSeq μ,
         ‖localizedResolutionPiece φ (Lf m) (fun k => sequencePeak μ k - m) f t x‖ₑ) ^ p ∂ν) ≤
         A * b * Q := by
     intro I Lf hLf hpeak
@@ -1978,7 +1974,7 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
     simp only [zero_mul, zero_div, ENNReal.rpow_zero, mul_one]
     ring
   -- Fatou along the frequency truncations
-  let Fj := fun J (t : sequenceSet μ) (x : Euclidean d) =>
+  let Fj := fun J (t : convexSeq μ) (x : Euclidean d) =>
     ∑ k ∈ L, (dyadicSpatialShell d (-(k : ℤ) - 1)).indicator
       (fun y => ∑ j ∈ Finset.range (J + 1),
         sphericalAverage d (compactResolutionPiece φ j f) t y) x
@@ -1986,7 +1982,7 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
   · intro J
     apply measurable_disjoint_indicator_maximal_norm L
       (fun k => dyadicSpatialShell d (-(k : ℤ) - 1))
-      (fun _ (t : sequenceSet μ) y => ∑ j ∈ Finset.range (J + 1),
+      (fun _ (t : convexSeq μ) y => ∑ j ∈ Finset.range (J + 1),
         sphericalAverage d (compactResolutionPiece φ j f) t y)
       (fun k => measurableSet_dyadicSpatialShell d (-(k : ℤ) - 1))
       (pairwiseDisjoint_negative_dyadicSpatialShell d)
@@ -2009,17 +2005,17 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
     · simp only [Set.indicator_of_notMem hx]
       exact tendsto_const_nhds
   · intro J
-    let Hs := fun x => ∑ n ∈ Finset.range (J + 1), ⨆ t : sequenceSet μ,
+    let Hs := fun x => ∑ n ∈ Finset.range (J + 1), ⨆ t : convexSeq μ,
       ‖localizedResolutionPiece φ (L.filter (fun k => sequencePeak μ k + n ≤ J))
         (fun k => sequencePeak μ k + n) f t x‖ₑ
     let Ds := fun x => ∑ m ∈ Finset.range (L.sup (sequencePeak μ) + 1),
-      ⨆ t : sequenceSet μ,
+      ⨆ t : convexSeq μ,
       ‖localizedResolutionPiece φ
         (L.filter (fun k => 0 < m ∧ m ≤ sequencePeak μ k ∧ sequencePeak μ k - m ≤ J))
         (fun k => sequencePeak μ k - m) f t x‖ₑ
     have hHs : Measurable Hs := Finset.measurable_sum _ (fun n _ =>
       measurable_localizedResolutionPiece_maximal φ _ _ f _)
-    have hpoint (x : Euclidean d) : (⨆ t : sequenceSet μ, ‖Fj J t x‖ₑ) ≤ Hs x + Ds x := by
+    have hpoint (x : Euclidean d) : (⨆ t : convexSeq μ, ‖Fj J t x‖ₑ) ≤ Hs x + Ds x := by
       apply iSup_le
       intro t
       dsimp only [Fj]
@@ -2027,9 +2023,9 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
       apply (enorm_add_le _ _).trans
       apply add_le_add
       · exact (enorm_sum_le _ _).trans (Finset.sum_le_sum (fun n _ =>
-          le_iSup (fun t : sequenceSet μ => ‖localizedResolutionPiece φ _ _ f t x‖ₑ) t))
+          le_iSup (fun t : convexSeq μ => ‖localizedResolutionPiece φ _ _ f t x‖ₑ) t))
       · exact (enorm_sum_le _ _).trans (Finset.sum_le_sum (fun m _ =>
-          le_iSup (fun t : sequenceSet μ => ‖localizedResolutionPiece φ _ _ f t x‖ₑ) t))
+          le_iSup (fun t : convexSeq μ => ‖localizedResolutionPiece φ _ _ f t x‖ₑ) t))
     have hbH := hhigh (Finset.range (J + 1))
       (fun n => L.filter (fun k => sequencePeak μ k + n ≤ J))
       (fun n _ => Finset.filter_subset _ _)
@@ -2053,7 +2049,7 @@ theorem sequence_localized_resolution_moment_bound {d N : ℕ} (hd : 2 ≤ d)
 `M_{E^μ}` is bounded on `L^p` for `p > p(μ) = 1 + β(E^μ)/(d-1)`. -/
 theorem sequence_unweighted_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) :
-    ∃ U : ℝ, UnweightedMaximalBound d (sequenceSet μ) p U := by
+    ∃ U : ℝ, UnweightedMaximalBound d (convexSeq μ) p U := by
   have hd1 : 0 < (d : ℝ) - 1 := by
     have : (2 : ℝ) ≤ d := by exact_mod_cast hd
     linarith
@@ -2062,12 +2058,12 @@ theorem sequence_unweighted_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0
     unfold sequenceCriticalExponent at hp
     have : 0 < 1 / ((μ + 1) * ((d : ℝ) - 1)) := by positivity
     linarith
-  have hβ : _root_.Spherical.upperMinkowskiExponent (sequenceSet μ) = 1 / (μ + 1) := by
+  have hβ : _root_.Spherical.upperMinkowskiExponent (convexSeq μ) = 1 / (μ + 1) := by
     rw [upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal,
       sequenceSet_minkowski_eq hμ, EReal.toReal_coe]
-  have hcritical : _root_.Spherical.RestrictedDilations.criticalExponent d (sequenceSet μ) < p := by
+  have hcritical : _root_.Spherical.RestrictedDilations.criticalExponent d (convexSeq μ) < p := by
     unfold _root_.Spherical.RestrictedDilations.criticalExponent
-    change 1 + _root_.Spherical.upperMinkowskiExponent (sequenceSet μ) / ((d : ℝ) - 1) < p
+    change 1 + _root_.Spherical.upperMinkowskiExponent (convexSeq μ) / ((d : ℝ) - 1) < p
     rw [hβ]
     unfold sequenceCriticalExponent at hp
     rw [div_div]; exact hp
@@ -2081,18 +2077,18 @@ theorem sequence_core_improvement {d : ℕ} (hd : 2 ≤ d) {μ p U : ℝ} (hμ :
     (hθ : 0 < (d : ℝ) - ((d : ℝ) - 1) * p)
     (hκ : 0 < ((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1))
     (ha0 : 1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ ≤ 0)
-    (hU : UnweightedMaximalBound d (sequenceSet μ) p U) :
+    (hU : UnweightedMaximalBound d (convexSeq μ) p U) :
     ∃ K : ℝ, 0 ≤ K ∧ ∀ ν : Measure (Euclidean d),
       ν ≤ powerWeightedVolume d (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) →
       ∀ B : ℝ, 0 < B →
       CoreMomentBoundAt (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) ν
-        (sequenceSet μ) p B →
+        (convexSeq μ) p B →
       CoreMomentBoundAt (1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ) ν
-        (sequenceSet μ) p (K * (1 + B ^ (1 - p / 2))) := by
+        (convexSeq μ) p (K * (1 + B ^ (1 - p / 2))) := by
   set a := 1 - (d : ℝ) + ((d : ℝ) - ((d : ℝ) - 1) * p) / μ with hadef
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
-  have hEI : sequenceSet μ ⊆ Icc 1 2 := sequenceSet_subset_Icc hμ.le
-  have hEpos : sequenceSet μ ⊆ Ioi 0 := sequenceSet_subset_Ioi hμ.le
+  have hEI : convexSeq μ ⊆ Icc 1 2 := sequenceSet_subset_Icc hμ.le
+  have hEpos : convexSeq μ ⊆ Ioi 0 := sequenceSet_subset_Ioi hμ.le
   obtain ⟨φ, _, hmass, hφ, _, hflat⟩ := exists_compact_resolution_profile d (d + 1) (by omega)
   have hN : ((d : ℝ) - 1) / 2 ≤ (d + 1 : ℕ) := by push_cast; linarith
   obtain ⟨D, hD, hinner⟩ := sequence_localized_resolution_moment_bound hd φ hmass hflat hN
@@ -2108,7 +2104,7 @@ theorem sequence_core_improvement {d : ℕ} (hd : 2 ≤ d) {μ p U : ℝ} (hμ :
     (ENNReal.mul_ne_top hM hAL) (ENNReal.mul_ne_top hM hAG)
     (ENNReal.mul_ne_top hM hAH) hD
   refine ⟨K, hK, ?_⟩
-  have hb' := hb (sequenceSet μ)
+  have hb' := hb (convexSeq μ)
     (fun f hf => by
       simpa only [mul_assoc] using spherical_moment_le_of_normalized
         (by omega) _ hEpos f _ (by linarith : 0 ≤ p) _ (hlow _ hEI hU f hf))
@@ -2129,7 +2125,7 @@ theorem sequence_core_improvement {d : ℕ} (hd : 2 ≤ d) {μ p U : ℝ} (hμ :
 `L^p(|x|^{L(p)})`, `L(p) = 1-d+(d-(d-1)p)/μ`, for every weighted `L^p` input. -/
 theorem sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) (hpd : p < (d : ℝ) / ((d : ℝ) - 1)) :
-    WeightedMaximalBound d (sequenceSet μ) p (sequenceLowerEndpoint d μ p) := by
+    WeightedMaximalBound d (convexSeq μ) p (sequenceLowerEndpoint d μ p) := by
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
   have hn : 0 < (d : ℝ) - 1 := by linarith
   have hμ1 : 0 < μ + 1 := by linarith
@@ -2168,14 +2164,14 @@ theorem sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
   obtain ⟨U, hU⟩ := sequence_unweighted_bound hd hμ hp
   obtain ⟨K, hK, himprove⟩ := sequence_core_improvement hd hμ hp₁ hp₂ hθ hκ ha0 hU
   set Bst := max (2 * (1 + K)) ((2 * K) ^ (1 / (1 - (1 - p / 2))))
-  have hcore : CoreMomentBoundAt a (powerWeightedVolume d a) (sequenceSet μ) p Bst := by
+  have hcore : CoreMomentBoundAt a (powerWeightedVolume d a) (convexSeq μ) p Bst := by
     intro f
     apply lintegral_le_of_exterior_ball_bounds _ (powerWeightedVolume_singleton_zero (by omega) _)
       _ ((measurable_schwartz_radius_supremum f _).pow_const p)
     intro r hr
     have hh := core_constant_of_sublinear_improvement_at
       ((powerWeightedVolume d a).restrict (Metric.closedBall (0 : Euclidean d) r)ᶜ)
-      (sequenceSet μ) p hK (by linarith : 1 - p / 2 < 1)
+      (convexSeq μ) p hK (by linarith : 1 - p / 2 < 1)
       (truncated_core_bound_of_unweighted_at hd hp₁ hr ha0 (sequenceSet_subset_Icc hμ.le) hU)
       (himprove _ Measure.restrict_le_self)
     exact hh f
@@ -2773,7 +2769,7 @@ theorem criticalInput_average_lower {n : ℕ} (hn : 1 ≤ n) {μ : ℝ} (hμ : 0
     {x : Euclidean (n + 1)}
     (hx : x ∈ horizontalSlab n ((2 : ℝ) ^ (-(k : ℝ)) / 64) ((2 : ℝ) ^ (-(k : ℝ)) / 2)
       ((2 : ℝ) ^ (-(k : ℝ)))) :
-    ∃ t ∈ sequenceSet μ,
+    ∃ t ∈ convexSeq μ,
       m * (surfaceMass n / surfaceMass (n + 1) * (1 / 128) ^ n *
         (2 : ℝ) ^ ((k : ℝ) * (n / (n + 1)))) ≤
         realSphericalAverage (n + 1) (criticalInput n k m) t x := by
@@ -2940,7 +2936,7 @@ corrected second example of the source (see `ErrorReport_fllrs.md`): with `m`
 bumps the input moment is `O(m)` (`eq:normfk`) while the output moment is
 `≳ m^p` (`eq:Mfknorm`), `p = d/(d-1) > 1`. -/
 theorem sequence_critical_unbounded {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ) :
-    ¬ WeightedMaximalBound d (sequenceSet μ) ((d : ℝ) / ((d : ℝ) - 1)) (1 - (d : ℝ)) := by
+    ¬ WeightedMaximalBound d (convexSeq μ) ((d : ℝ) / ((d : ℝ) - 1)) (1 - (d : ℝ)) := by
   obtain ⟨n, rfl⟩ : ∃ n, d = n + 1 := ⟨d - 1, by omega⟩
   have hn : 1 ≤ n := by omega
   have hn1 : 1 ≤ n := by omega
@@ -3005,7 +3001,7 @@ theorem sequence_critical_unbounded {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0
         (ne_top_of_le_ne_top (ENNReal.mul_ne_top hK (by simp)) (hin k m))
     obtain ⟨hMmem, hMbd⟩ := hb f hfmem
     -- moment form of the assumed bound
-    have hmom : (∫⁻ x, (_root_.Spherical.M (sequenceSet μ) f x) ^ p ∂w) ≤
+    have hmom : (∫⁻ x, (_root_.Spherical.M (convexSeq μ) f x) ^ p ∂w) ≤
         ENNReal.ofReal C ^ p * ∫⁻ x, ‖f x‖ₑ ^ p ∂w := by
       rw [eLpNorm_eq_eLpNorm' (by simpa using hp0) ENNReal.ofReal_ne_top hMmem.aestronglyMeasurable,
         eLpNorm_eq_eLpNorm' (by simpa using hp0) ENNReal.ofReal_ne_top hfmem.aestronglyMeasurable,
@@ -3024,14 +3020,14 @@ theorem sequence_critical_unbounded {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0
     set L : ℝ := (m : ℝ) * (c0 * (2 : ℝ) ^ ((k : ℝ) * (n / (n + 1)))) with hL
     have hL0 : 0 ≤ L := by positivity
     have hpoint : ∀ x ∈ V, ENNReal.ofReal (L ^ p) ≤
-        (_root_.Spherical.M (sequenceSet μ) f x) ^ p := by
+        (_root_.Spherical.M (convexSeq μ) f x) ^ p := by
       intro x hx
       obtain ⟨t, ht, havg⟩ := criticalInput_average_lower hn hμ hk4 hmk hη.le hx
-      have ht0 : t ∈ sequenceSet μ ∩ Ioi 0 := ⟨ht, sequenceSet_subset_Ioi hμ.le ht⟩
-      have hM : ENNReal.ofReal L ≤ _root_.Spherical.M (sequenceSet μ) f x := by
-        rw [show _root_.Spherical.M (sequenceSet μ) f = _ from
+      have ht0 : t ∈ convexSeq μ ∩ Ioi 0 := ⟨ht, sequenceSet_subset_Ioi hμ.le ht⟩
+      have hM : ENNReal.ofReal L ≤ _root_.Spherical.M (convexSeq μ) f x := by
+        rw [show _root_.Spherical.M (convexSeq μ) f = _ from
           restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal _ _]
-        refine le_trans ?_ (le_iSup (fun r : ↥(sequenceSet μ ∩ Ioi (0 : ℝ)) =>
+        refine le_trans ?_ (le_iSup (fun r : ↥(convexSeq μ ∩ Ioi (0 : ℝ)) =>
           ENNReal.ofReal ‖normalizedSphericalAverage (n + 1) f r.1 x‖) ⟨t, ht0⟩)
         apply ENNReal.ofReal_le_ofReal
         rw [hf, normalizedSphericalAverage_ofReal, Complex.norm_real, Real.norm_eq_abs]
@@ -3093,9 +3089,9 @@ theorem sequence_critical_unbounded {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0
     calc ENNReal.ofReal ((m : ℝ) ^ p * c1)
         ≤ ENNReal.ofReal (L ^ p) * w V := by rw [hsplit]; gcongr
       _ = ∫⁻ x in V, ENNReal.ofReal (L ^ p) ∂w := (setLIntegral_const _ _).symm
-      _ ≤ ∫⁻ x in V, (_root_.Spherical.M (sequenceSet μ) f x) ^ p ∂w :=
+      _ ≤ ∫⁻ x in V, (_root_.Spherical.M (convexSeq μ) f x) ^ p ∂w :=
           setLIntegral_mono' hVm hpoint
-      _ ≤ ∫⁻ x, (_root_.Spherical.M (sequenceSet μ) f x) ^ p ∂w :=
+      _ ≤ ∫⁻ x, (_root_.Spherical.M (convexSeq μ) f x) ^ p ∂w :=
           setLIntegral_le_lintegral _ _
       _ ≤ ENNReal.ofReal C ^ p * ∫⁻ x, ‖f x‖ₑ ^ p ∂w := hmom
       _ ≤ ENNReal.ofReal C ^ p * (K * m) := mul_le_mul' le_rfl (hin k m)
@@ -3127,12 +3123,8 @@ theorem sequence_critical_unbounded {d : ℕ} (hd : 2 ≤ d) {μ : ℝ} (hμ : 0
 
 /-! ## Section 3.3: the global operator at `α = U(p)` -/
 
-/-- The global dilation set `𝓔^μ = ⋃_{k ∈ ℤ} 2^k E^μ` (introduction, line 906). -/
-def globalSequenceSet (μ : ℝ) : Set ℝ :=
-  {t | ∃ k : ℤ, ∃ s ∈ sequenceSet μ, t = (2 : ℝ) ^ k * s}
-
-theorem sequenceSet_subset_global (μ : ℝ) : sequenceSet μ ⊆ globalSequenceSet μ :=
-  fun s hs => ⟨0, s, hs, by simp⟩
+theorem sequenceSet_subset_global (μ : ℝ) : convexSeq μ ⊆ toGlobalSet (convexSeq μ) :=
+  fun s hs => Set.mem_iUnion.mpr ⟨0, s, hs, by simp⟩
 
 /-- A sphere of radius `t ≥ 1` whose centre lies within `1/100` of distance `t`
 from the origin meets the unit ball in a cap of chordal radius `1/(2t)`; hence
@@ -3300,7 +3292,7 @@ theorem globalShell_moment_lower {n : ℕ} (hn : 1 ≤ n) {μ p α : ℝ} (hμ :
         (Real.sqrt Real.pi ^ (n + 1) / Real.Gamma ((n + 1 : ℕ) / 2 + 1) / 100) *
         (1 / 2) ^ (α + n) * (2 : ℝ) ^ ((k : ℝ) * (α + n - n * p))) ≤
       ∫⁻ x in globalShell n μ k j,
-        (_root_.Spherical.M (globalSequenceSet μ)
+        (_root_.Spherical.M (toGlobalSet (convexSeq μ))
           (fun y => (((Metric.closedBall (0 : Euclidean (n + 1)) 1).indicator 1 y : ℝ) : ℂ))
           x) ^ p ∂powerWeightedVolume (n + 1) α := by
   set r : ℝ := (2 : ℝ) ^ k * (1 + (j : ℝ) ^ (-μ)) with hr
@@ -3310,8 +3302,8 @@ theorem globalShell_moment_lower {n : ℕ} (hn : 1 ≤ n) {μ p α : ℝ} (hμ :
       _ ≤ 2 ^ k := pow_le_pow_right₀ (by norm_num) hk
   have hr1 : 2 ^ k ≤ r := by rw [hr]; nlinarith [hjm.1]
   have hr2 : r ≤ 2 ^ (k + 1) := by rw [hr, pow_succ]; nlinarith [hjm.2]
-  have hrmem : r ∈ globalSequenceSet μ ∩ Ioi 0 :=
-    ⟨⟨k, 1 + (j : ℝ) ^ (-μ), ⟨j, hj, rfl⟩, by rw [hr]; norm_cast⟩, by
+  have hrmem : r ∈ toGlobalSet (convexSeq μ) ∩ Ioi 0 :=
+    ⟨Set.mem_iUnion.mpr ⟨k, 1 + (j : ℝ) ^ (-μ), ⟨j, hj, rfl⟩, by rw [hr]; norm_cast⟩, by
       change (0 : ℝ) < r; linarith⟩
   set c3 : ℝ := surfaceMass n * (1 / 8) ^ n / surfaceMass (n + 1) with hc3
   have hσ : 0 < surfaceMass (n + 1) := surfaceMass_pos (by omega)
@@ -3319,7 +3311,7 @@ theorem globalShell_moment_lower {n : ℕ} (hn : 1 ≤ n) {μ p α : ℝ} (hμ :
   have hc3pos : 0 < c3 := by rw [hc3]; positivity
   -- pointwise lower bound on the shell
   have hpoint : ∀ x ∈ globalShell n μ k j, ENNReal.ofReal ((c3 * (2 : ℝ) ^ (-(k * n : ℝ))) ^ p) ≤
-      (_root_.Spherical.M (globalSequenceSet μ)
+      (_root_.Spherical.M (toGlobalSet (convexSeq μ))
         (fun y => (((Metric.closedBall (0 : Euclidean (n + 1)) 1).indicator 1 y : ℝ) : ℂ))
         x) ^ p := by
     intro x hx
@@ -3343,11 +3335,11 @@ theorem globalShell_moment_lower {n : ℕ} (hn : 1 ≤ n) {μ p α : ℝ} (hμ :
       exact pow_le_pow_left₀ (by positivity)
         (one_div_le_one_div_of_le (by positivity) h4r) n
     have hM : ENNReal.ofReal (c3 * (2 : ℝ) ^ (-(k * n : ℝ))) ≤
-        _root_.Spherical.M (globalSequenceSet μ)
+        _root_.Spherical.M (toGlobalSet (convexSeq μ))
           (fun y => (((Metric.closedBall (0 : Euclidean (n + 1)) 1).indicator 1 y : ℝ) : ℂ)) x := by
-      rw [show _root_.Spherical.M (globalSequenceSet μ) _ = _ from
+      rw [show _root_.Spherical.M (toGlobalSet (convexSeq μ)) _ = _ from
         restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal _ _]
-      refine le_trans ?_ (le_iSup (fun t : ↥(globalSequenceSet μ ∩ Ioi (0 : ℝ)) =>
+      refine le_trans ?_ (le_iSup (fun t : ↥(toGlobalSet (convexSeq μ) ∩ Ioi (0 : ℝ)) =>
         ENNReal.ofReal ‖normalizedSphericalAverage (n + 1) _ t.1 x‖) ⟨r, hrmem⟩)
       apply ENNReal.ofReal_le_ofReal
       rw [normalizedSphericalAverage_ofReal, Complex.norm_real, Real.norm_eq_abs]
@@ -3436,7 +3428,7 @@ theorem globalShell_subset {n : ℕ} {μ : ℝ} (hμ : 0 < μ) {k j : ℕ} (hj :
 weighted moment of `M 1_{B(0,1)}`, so every scale contributes a fixed amount. -/
 theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) :
-    ¬ WeightedMaximalBound d (globalSequenceSet μ) p (sequenceUpperEndpoint d μ p) := by
+    ¬ WeightedMaximalBound d (toGlobalSet (convexSeq μ)) p (sequenceUpperEndpoint d μ p) := by
   obtain ⟨n, rfl⟩ : ∃ n, d = n + 1 := ⟨d - 1, by omega⟩
   have hn : 1 ≤ n := by omega
   have hn' : (0 : ℝ) < n := by exact_mod_cast (show 0 < n by omega)
@@ -3478,7 +3470,7 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
       hfint]
     exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hwB.ne
   obtain ⟨hMmem, hMbd⟩ := hb f hfmem
-  have hmom : (∫⁻ x, (_root_.Spherical.M (globalSequenceSet μ) f x) ^ p ∂w) ≤
+  have hmom : (∫⁻ x, (_root_.Spherical.M (toGlobalSet (convexSeq μ)) f x) ^ p ∂w) ≤
       ENNReal.ofReal C ^ p * w B := by
     rw [eLpNorm_eq_eLpNorm' (by simpa using hp0) ENNReal.ofReal_ne_top
         hMmem.aestronglyMeasurable,
@@ -3490,7 +3482,7 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
       ENNReal.mul_rpow_of_nonneg _ _ hp0.le, ← ENNReal.rpow_mul,
       one_div_mul_cancel hp0.ne', ENNReal.rpow_one, hfint] at h
     simpa only [enorm_eq_self] using h
-  set G := fun x => (_root_.Spherical.M (globalSequenceSet μ) f x) ^ p
+  set G := fun x => (_root_.Spherical.M (toGlobalSet (convexSeq μ)) f x) ^ p
   -- the contribution of one scale
   set c4 : ℝ := (surfaceMass n * (1 / 8) ^ n / surfaceMass (n + 1)) ^ p *
     (Real.sqrt Real.pi ^ (n + 1) / Real.Gamma ((n + 1 : ℕ) / 2 + 1) / 100) *
@@ -3598,9 +3590,9 @@ theorem global_sequence_unbounded_upper {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
 consecutive dyadic copies `2^k E^μ`, `2^{k+1} E^μ` of the sequence set. -/
 theorem globalSequenceSet_inter_window_subset {μ : ℝ} (hμ : 0 ≤ μ) (c : PositiveRadius)
     {D : ℝ≥0} (hD : D ≤ 1) :
-    ∃ k : ℤ, globalSequenceSet μ ∩ multiplicativeInterval c D ⊆
-      (dilateRadiusSet ((2 : ℝ) ^ k) (sequenceSet μ) ∩ multiplicativeInterval c D) ∪
-        (dilateRadiusSet ((2 : ℝ) ^ (k + 1)) (sequenceSet μ) ∩ multiplicativeInterval c D) := by
+    ∃ k : ℤ, toGlobalSet (convexSeq μ) ∩ multiplicativeInterval c D ⊆
+      (dilateRadiusSet ((2 : ℝ) ^ k) (convexSeq μ) ∩ multiplicativeInterval c D) ∪
+        (dilateRadiusSet ((2 : ℝ) ^ (k + 1)) (convexSeq μ) ∩ multiplicativeInterval c D) := by
   have hlog2 : 0 < Real.log 2 := Real.log_pos one_lt_two
   have hDr : (D : ℝ) ≤ 1 := by exact_mod_cast hD
   set L := logRadius c
@@ -3611,7 +3603,8 @@ theorem globalSequenceSet_inter_window_subset {μ : ℝ} (hμ : 0 ≤ μ) (c : P
   have hk2 : L - (D : ℝ) / 2 ≤ (k : ℝ) + 1 := by
     push_cast [k]
     linarith [Int.le_ceil (L - (D : ℝ) / 2)]
-  rintro t ⟨⟨m, s, hs, rfl⟩, hI⟩
+  rintro t ⟨ht, hI⟩
+  obtain ⟨m, s, hs, rfl⟩ := Set.mem_iUnion.mp ht
   have hsI := sequenceSet_subset_Icc hμ hs
   have hs1 : 1 < s := by
     obtain ⟨j, hj, rfl⟩ := hs
@@ -3638,28 +3631,28 @@ theorem globalSequenceSet_inter_window_subset {μ : ℝ} (hμ : 0 ≤ μ) (c : P
 /-- The localized entropy of `𝓔^μ` is at most twice the bound for `E^μ`. -/
 theorem globalSequenceSet_localEntropy_le {μ : ℝ} (hμ : 0 < μ) (c : PositiveRadius)
     {D δ : ℝ≥0} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hδD : δ ≤ D) (hD : D ≤ 1) :
-    ((localMultiplicativeEntropy (globalSequenceSet μ) c D δ : ℕ∞) : ℝ≥0∞) ≤
+    ((localMultiplicativeEntropy (toGlobalSet (convexSeq μ)) c D δ : ℕ∞) : ℝ≥0∞) ≤
       2 * ENNReal.ofReal (78 * min ((D : ℝ) / δ) ((δ : ℝ) ^ (-(1 / (μ + 1))))) := by
   obtain ⟨k, hk⟩ := globalSequenceSet_inter_window_subset hμ.le c hD
   have hpiece : ∀ m : ℤ, ((multiplicativeEntropy
-      (dilateRadiusSet ((2 : ℝ) ^ m) (sequenceSet μ) ∩ multiplicativeInterval c D) δ : ℕ∞) :
+      (dilateRadiusSet ((2 : ℝ) ^ m) (convexSeq μ) ∩ multiplicativeInterval c D) δ : ℕ∞) :
         ℝ≥0∞) ≤ ENNReal.ofReal (78 * min ((D : ℝ) / δ) ((δ : ℝ) ^ (-(1 / (μ + 1))))) := by
     intro m
     have ha : (0 : ℝ) < 2 ^ m := by positivity
     set c' : PositiveRadius := ⟨((2 : ℝ) ^ m)⁻¹ * c.1, mul_pos (inv_pos.mpr ha) c.2⟩
     have hc : (⟨(2 : ℝ) ^ m * c'.1, mul_pos ha c'.2⟩ : PositiveRadius) = c := by
       apply Subtype.ext; simp [c', ha.ne']
-    have heq := dilateRadiusSet_inter_multiplicativeInterval (sequenceSet μ) c' D ha
+    have heq := dilateRadiusSet_inter_multiplicativeInterval (convexSeq μ) c' D ha
     rw [hc] at heq
     rw [← heq, multiplicativeEntropy_dilateRadiusSet _ _ ha]
     exact sequenceSet_localEntropy_le hμ c' hδ hδ1 hδD
   unfold localMultiplicativeEntropy
-  calc ((multiplicativeEntropy (globalSequenceSet μ ∩ multiplicativeInterval c D) δ : ℕ∞) :
+  calc ((multiplicativeEntropy (toGlobalSet (convexSeq μ) ∩ multiplicativeInterval c D) δ : ℕ∞) :
         ℝ≥0∞)
       ≤ ((multiplicativeEntropy
-          (dilateRadiusSet ((2 : ℝ) ^ k) (sequenceSet μ) ∩ multiplicativeInterval c D) δ +
+          (dilateRadiusSet ((2 : ℝ) ^ k) (convexSeq μ) ∩ multiplicativeInterval c D) δ +
         multiplicativeEntropy
-          (dilateRadiusSet ((2 : ℝ) ^ (k + 1)) (sequenceSet μ) ∩ multiplicativeInterval c D) δ :
+          (dilateRadiusSet ((2 : ℝ) ^ (k + 1)) (convexSeq μ) ∩ multiplicativeInterval c D) δ :
           ℕ∞) : ℝ≥0∞) :=
         ENat.toENNReal_mono ((multiplicativeEntropy_mono hk δ).trans
           (multiplicativeEntropy_union_le _ _ _))
@@ -3668,7 +3661,7 @@ theorem globalSequenceSet_localEntropy_le {μ : ℝ} (hμ : 0 < μ) (c : Positiv
 
 /-- Upper bound for the Legendre--Assouad exponent of `𝓔^μ`. -/
 theorem globalSequenceSet_legendreAssouad_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
-    multiplicativeLegendreAssouadExponent (globalSequenceSet μ) ρ ≤
+    multiplicativeLegendreAssouadExponent (toGlobalSet (convexSeq μ)) ρ ≤
       (sequenceLegendreAssouad μ ρ : EReal) := by
   apply multiplicativeLegendreAssouadExponent_le_of_profile_power_bound
     (A := 2 * 78) (by norm_num)
@@ -3691,7 +3684,7 @@ theorem globalSequenceSet_legendreAssouad_le {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ
     rw [← ENNReal.ofReal_rpow_of_pos hδr, ENNReal.ofReal_coe_nnreal]
   rw [hcoe, hcoe']
   calc ENNReal.ofReal ((D.1 : ℝ) ^ (-ρ)) *
-        ((localMultiplicativeEntropy (globalSequenceSet μ) c D.1 δ : ℕ∞) : ℝ≥0∞)
+        ((localMultiplicativeEntropy (toGlobalSet (convexSeq μ)) c D.1 δ : ℕ∞) : ℝ≥0∞)
       ≤ ENNReal.ofReal ((D.1 : ℝ) ^ (-ρ)) *
         (2 * ENNReal.ofReal (78 * min ((D.1 : ℝ) / δ) ((δ : ℝ) ^ (-(1 / (μ + 1)))))) :=
         mul_le_mul' le_rfl hent
@@ -3717,10 +3710,10 @@ theorem limsup_entropyLogQuotient_mono {F G : ℝ≥0 → ℝ≥0∞} (h : ∀ �
 
 /-- The exponents of `𝓔^μ` coincide with those of `E^μ`. -/
 theorem globalSequenceSet_minkowski_eq {μ : ℝ} (hμ : 0 < μ) :
-    multiplicativeMinkowskiExponent (globalSequenceSet μ) = ((1 / (μ + 1) : ℝ) : EReal) := by
+    multiplicativeMinkowskiExponent (toGlobalSet (convexSeq μ)) = ((1 / (μ + 1) : ℝ) : EReal) := by
   apply le_antisymm
   · have h := (multiplicativeMinkowskiExponent_le_multiplicativeLegendreAssouadExponent
-      (globalSequenceSet μ) 0).trans (globalSequenceSet_legendreAssouad_le hμ 0)
+      (toGlobalSet (convexSeq μ)) 0).trans (globalSequenceSet_legendreAssouad_le hμ 0)
     have hval : sequenceLegendreAssouad μ 0 = 1 / (μ + 1) := by
       have hμ1 : 0 < μ + 1 := by linarith
       simp only [sequenceLegendreAssouad, mul_zero, zero_add]
@@ -3732,7 +3725,7 @@ theorem globalSequenceSet_minkowski_eq {μ : ℝ} (hμ : 0 < μ) :
         (sequenceSet_subset_global μ) δ))
 
 theorem globalSequenceSet_legendreAssouad_eq {μ : ℝ} (hμ : 0 < μ) (ρ : ℝ) :
-    multiplicativeLegendreAssouadExponent (globalSequenceSet μ) ρ =
+    multiplicativeLegendreAssouadExponent (toGlobalSet (convexSeq μ)) ρ =
       (sequenceLegendreAssouad μ ρ : EReal) := by
   apply le_antisymm (globalSequenceSet_legendreAssouad_le hμ ρ)
   rw [← sequenceSet_legendreAssouad_eq hμ ρ]
@@ -3759,8 +3752,8 @@ theorem dilateRadiusSet_dilateRadiusSet (a b : ℝ) (E : Set ℝ) :
 /-- The normalized blocks of `𝓔^μ` lie in the union of two dilates of `E^μ`. -/
 theorem normalizedRadiusBlock_globalSequenceSet_subset {μ : ℝ} (hμ : 0 ≤ μ) {R : ℝ}
     (hR : 0 < R) :
-    ∃ a b : ℝ, 0 < a ∧ 0 < b ∧ normalizedRadiusBlock (globalSequenceSet μ) R ⊆
-      dilateRadiusSet a (sequenceSet μ) ∪ dilateRadiusSet b (sequenceSet μ) := by
+    ∃ a b : ℝ, 0 < a ∧ 0 < b ∧ normalizedRadiusBlock (toGlobalSet (convexSeq μ)) R ⊆
+      dilateRadiusSet a (convexSeq μ) ∪ dilateRadiusSet b (convexSeq μ) := by
   set c : PositiveRadius := ⟨Real.sqrt 2 * R, mul_pos (by positivity) hR⟩
   have hwin : Icc R (2 * R) ⊆ multiplicativeInterval c 1 := by
     intro t ht
@@ -3790,7 +3783,7 @@ the uniform local bounds for the normalized blocks of `𝓔^μ` (two dilates of
 `E^μ`) and the global unweighted SWW bound give the global weighted bound. -/
 theorem global_sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) (hpd : p < (d : ℝ) / ((d : ℝ) - 1)) :
-    WeightedMaximalBound d (globalSequenceSet μ) p (sequenceLowerEndpoint d μ p) := by
+    WeightedMaximalBound d (toGlobalSet (convexSeq μ)) p (sequenceLowerEndpoint d μ p) := by
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
   have hn : 0 < (d : ℝ) - 1 := by linarith
   have hμ1 : 0 < μ + 1 := by linarith
@@ -3823,22 +3816,25 @@ theorem global_sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : �
   -- the local constant for `E^μ` on the Schwartz core
   obtain ⟨C, hC, hcore⟩ := hloc.strongType
   -- the unweighted global SWW bound
-  have hβ : _root_.Spherical.upperMinkowskiExponent (globalSequenceSet μ) = 1 / (μ + 1) := by
+  have hβ : _root_.Spherical.upperMinkowskiExponent (toGlobalSet (convexSeq μ)) = 1 / (μ + 1) := by
     rw [upperMinkowskiExponent_eq_multiplicativeMinkowskiExponent_toReal,
       globalSequenceSet_minkowski_eq hμ, EReal.toReal_coe]
-  have hEpos : globalSequenceSet μ ⊆ Ioi 0 := by
-    rintro t ⟨k, s, hs, rfl⟩; exact mul_pos (by positivity) (sequenceSet_subset_Ioi hμ.le hs)
+  have hEpos : toGlobalSet (convexSeq μ) ⊆ Ioi 0 := by
+    intro t ht
+    obtain ⟨k, s, hs, rfl⟩ := Set.mem_iUnion.mp ht
+    exact mul_pos (by positivity) (sequenceSet_subset_Ioi hμ.le hs)
   have hcritical :
-      _root_.Spherical.RestrictedDilations.criticalExponent d (globalSequenceSet μ) < p := by
+      _root_.Spherical.RestrictedDilations.criticalExponent d (toGlobalSet (convexSeq μ)) < p := by
     unfold _root_.Spherical.RestrictedDilations.criticalExponent
-    change 1 + _root_.Spherical.upperMinkowskiExponent (globalSequenceSet μ) / ((d : ℝ) - 1) < p
+    change 1 + _root_.Spherical.upperMinkowskiExponent (toGlobalSet (convexSeq μ)) /
+      ((d : ℝ) - 1) < p
     rw [hβ]
     unfold sequenceCriticalExponent at hp
     rw [div_div]; exact hp
   obtain ⟨U, hU⟩ := Auto.Spherical.SWW.eLpNorm_restrictedSphericalMaximal_le hd hEpos
     ((ENNReal.ofReal_lt_ofReal_iff (by linarith)).mpr hcritical)
   have hunweighted : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d
-      (globalSequenceSet μ) p 0 := by
+      (toGlobalSet (convexSeq μ)) p 0 := by
     refine ⟨|U| + 1, by positivity, ?_⟩
     intro f hf
     have hh := hU f (by simpa only [powerWeightedVolume_zero] using hf)
@@ -3852,7 +3848,7 @@ theorem global_sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : �
     exact ENNReal.ofReal_le_ofReal (by linarith [le_abs_self U])
   -- the global-to-local principle
   have hglobal : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d
-      (globalSequenceSet μ) p a := by
+      (toGlobalSet (convexSeq μ)) p a := by
     apply hasRestrNormdSphMaxPowerWeightStrongType_of_unif_normd_local_and_unweighted
       (C := 2 * C) (by omega) _ hp1.le ha0 hunweighted
     intro R hR g hg
@@ -3862,14 +3858,14 @@ theorem global_sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : �
     have h2 := restrictedNormalizedSphericalMaximal_dilateRadiusSet_bound (by omega)
       (by linarith) hv hcore g hg
     have hle : eLpNorm (restrictedNormalizedSphericalMaximal d
-        (normalizedRadiusBlock (globalSequenceSet μ) R) (g : Euclidean d → ℂ))
+        (normalizedRadiusBlock (toGlobalSet (convexSeq μ)) R) (g : Euclidean d → ℂ))
         (ENNReal.ofReal p) (powerWeightedVolume d a) ≤
         ENNReal.ofReal (2 * C) * eLpNorm (g : Euclidean d → ℂ) (ENNReal.ofReal p)
           (powerWeightedVolume d a) := by
       calc _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d
-              (dilateRadiusSet u (sequenceSet μ)) (g : Euclidean d → ℂ) +
+              (dilateRadiusSet u (convexSeq μ)) (g : Euclidean d → ℂ) +
             restrictedNormalizedSphericalMaximal d
-              (dilateRadiusSet v (sequenceSet μ)) (g : Euclidean d → ℂ))
+              (dilateRadiusSet v (convexSeq μ)) (g : Euclidean d → ℂ))
             (ENNReal.ofReal p) (powerWeightedVolume d a) := by
             apply eLpNorm_mono_enorm
               (measurable_restrictedNormalizedSphericalMaximal
@@ -3879,10 +3875,10 @@ theorem global_sequence_lower_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : �
             exact (restrictedNormalizedSphericalMaximal_mono hsub _ x).trans
               (restrictedNormalizedSphericalMaximal_union_le _ _ _ x)
         _ ≤ eLpNorm (restrictedNormalizedSphericalMaximal d
-              (dilateRadiusSet u (sequenceSet μ)) (g : Euclidean d → ℂ))
+              (dilateRadiusSet u (convexSeq μ)) (g : Euclidean d → ℂ))
               (ENNReal.ofReal p) (powerWeightedVolume d a) +
             eLpNorm (restrictedNormalizedSphericalMaximal d
-              (dilateRadiusSet v (sequenceSet μ)) (g : Euclidean d → ℂ))
+              (dilateRadiusSet v (convexSeq μ)) (g : Euclidean d → ℂ))
               (ENNReal.ofReal p) (powerWeightedVolume d a) :=
             eLpNorm_add_le
               (by simpa using ENNReal.ofReal_le_ofReal hp1.le)
@@ -3911,8 +3907,8 @@ theorem sequenceCriticalExponent_lt_iff {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (h
 is bounded on `L^p(|x|^α)`. -/
 theorem global_sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) :
-    WeightedMaximalBound d (globalSequenceSet μ) p α ↔
-      α < sequenceUpperEndpoint d μ p ∧ WeightedMaximalBound d (sequenceSet μ) p α := by
+    WeightedMaximalBound d (toGlobalSet (convexSeq μ)) p α ↔
+      α < sequenceUpperEndpoint d μ p ∧ WeightedMaximalBound d (convexSeq μ) p α := by
   have hd2 : 2 ≤ d := by omega
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
   have hn : 0 < (d : ℝ) - 1 := by linarith
@@ -3921,8 +3917,10 @@ theorem global_sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < 
   have hp1 : 1 < p := by
     have : 0 < 1 / (μ + 1) := by positivity
     by_contra h; push Not at h; nlinarith
-  have hEpos : globalSequenceSet μ ⊆ Ioi 0 := by
-    rintro t ⟨k, s, hs, rfl⟩; exact mul_pos (by positivity) (sequenceSet_subset_Ioi hμ.le hs)
+  have hEpos : toGlobalSet (convexSeq μ) ⊆ Ioi 0 := by
+    intro t ht
+    obtain ⟨k, s, hs, rfl⟩ := Set.mem_iUnion.mp ht
+    exact mul_pos (by positivity) (sequenceSet_subset_Ioi hμ.le hs)
   constructor
   · intro h
     have hα : -(d : ℝ) < α := neg_dim_lt_alpha_of_restrictedStrongType (by omega)
@@ -3943,8 +3941,8 @@ theorem global_sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < 
         linarith
       have hstrictE := (sequence_strictCondition_iff hd2 hμ p α).mpr ⟨hcrit, hLlt, hαU⟩
       rw [sequenceSet_minkowski_eq hμ, sequenceSet_legendreAssouad_eq hμ] at hstrictE
-      have hstrict : max ((α : EReal) + multiplicativeMinkowskiExponent (globalSequenceSet μ))
-          (multiplicativeLegendreAssouadExponent (globalSequenceSet μ)
+      have hstrict : max ((α : EReal) + multiplicativeMinkowskiExponent (toGlobalSet (convexSeq μ)))
+          (multiplicativeLegendreAssouadExponent (toGlobalSet (convexSeq μ))
             (((d : ℝ) - 1) * (p - 2) - α)) < (↑(((d : ℝ) - 1) * (p - 1)) : EReal) := by
         rw [globalSequenceSet_minkowski_eq hμ, globalSequenceSet_legendreAssouad_eq hμ]
         exact hstrictE
@@ -3962,8 +3960,8 @@ theorem global_sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < 
         exact absurd hloc (sequence_critical_unbounded (by omega) hμ)
       · rw [sequenceLowerEndpoint_of_ge hd2 hμ hpd.le]
         apply general_assouad_maximal_endpoint hd2 hEpos
-        have hγ := uniformAssouadDimension_le_one (globalSequenceSet μ)
-        have : 1 + uniformAssouadDimension (globalSequenceSet μ) / ((d : ℝ) - 1) ≤
+        have hγ := uniformAssouadDimension_le_one (toGlobalSet (convexSeq μ))
+        have : 1 + uniformAssouadDimension (toGlobalSet (convexSeq μ)) / ((d : ℝ) - 1) ≤
             (d : ℝ) / ((d : ℝ) - 1) := by
           rw [show (d : ℝ) / ((d : ℝ) - 1) = 1 + 1 / ((d : ℝ) - 1) by field_simp; ring]
           gcongr
@@ -5577,22 +5575,22 @@ theorem exists_sequence_piece_bound {d N : ℕ} (hd : 2 ≤ d)
 
 /-- The radii of `E^μ` within `2^{-s}` of the accumulation point. -/
 def sequenceLowTimes (μ : ℝ) (s : ℕ) : Set ℝ :=
-  sequenceSet μ ∩ Icc 1 (1 + ((2 : ℝ) ^ s)⁻¹)
+  convexSeq μ ∩ Icc 1 (1 + ((2 : ℝ) ^ s)⁻¹)
 
 /-- The dyadic radius block `E^μ ∩ (1 + 2^{-J-1}, 1 + 2^{-J}]` (the source's
 `I_l`, reindexed by the distance to `1`). -/
 def sequenceBlock (μ : ℝ) (J : ℕ) : Set ℝ :=
-  sequenceSet μ ∩ Ioc (1 + ((2 : ℝ) ^ (J + 1))⁻¹) (1 + ((2 : ℝ) ^ J)⁻¹)
+  convexSeq μ ∩ Ioc (1 + ((2 : ℝ) ^ (J + 1))⁻¹) (1 + ((2 : ℝ) ^ J)⁻¹)
 
-theorem sequenceLowTimes_subset (μ : ℝ) (s : ℕ) : sequenceLowTimes μ s ⊆ sequenceSet μ :=
+theorem sequenceLowTimes_subset (μ : ℝ) (s : ℕ) : sequenceLowTimes μ s ⊆ convexSeq μ :=
   inter_subset_left
 
-theorem sequenceBlock_subset (μ : ℝ) (J : ℕ) : sequenceBlock μ J ⊆ sequenceSet μ :=
+theorem sequenceBlock_subset (μ : ℝ) (J : ℕ) : sequenceBlock μ J ⊆ convexSeq μ :=
   inter_subset_left
 
 /-- Every radius of `E^μ` lies either within `2^{-s}` of `1` or in a block
 `J < s`. -/
-theorem sequenceSet_low_or_block {μ : ℝ} (hμ : 0 ≤ μ) {t : ℝ} (ht : t ∈ sequenceSet μ)
+theorem sequenceSet_low_or_block {μ : ℝ} (hμ : 0 ≤ μ) {t : ℝ} (ht : t ∈ convexSeq μ)
     (s : ℕ) : t ∈ sequenceLowTimes μ s ∨ ∃ J, J < s ∧ t ∈ sequenceBlock μ J := by
   classical
   have htI := sequenceSet_subset_Icc hμ ht
@@ -5663,7 +5661,7 @@ theorem sequenceBlock_interval_cover {μ : ℝ} (hμ : 0 < μ) {J s : ℕ} (hJs 
       (I.card : ℝ≥0∞) ≤ 12 * (2 : ℝ≥0∞) ^ ((s : ℝ) - (J + 1)) := by
   set c : ℝ := 1 + 3 * ((2 : ℝ) ^ (J + 2))⁻¹
   obtain ⟨I, hI, hcard⟩ := sequenceSet_window_cover hμ hJs c
-  have hsub : sequenceBlock μ J ⊆ sequenceSet μ ∩ {t | |t - c| ≤ (((2 : ℝ) ^ (J + 1))⁻¹) / 2} := by
+  have hsub : sequenceBlock μ J ⊆ convexSeq μ ∩ {t | |t - c| ≤ (((2 : ℝ) ^ (J + 1))⁻¹) / 2} := by
     rintro t ⟨ht, hlo, hhi⟩
     refine ⟨ht, ?_⟩
     have e1 : ((2 : ℝ) ^ (J + 1))⁻¹ = 2 * ((2 : ℝ) ^ (J + 2))⁻¹ := by
@@ -5829,7 +5827,7 @@ theorem rpow_inv_mul_two_rpow_rpow (X : ℝ≥0∞) (e : ℝ) {p : ℝ} (hp : 0 
   congr 2
   field_simp
 
-theorem sequenceSet_exists_block {μ : ℝ} (hμ : 0 ≤ μ) {t : ℝ} (ht : t ∈ sequenceSet μ) :
+theorem sequenceSet_exists_block {μ : ℝ} (hμ : 0 ≤ μ) {t : ℝ} (ht : t ∈ convexSeq μ) :
     ∃ J, t ∈ sequenceBlock μ J := by
   have hu : 0 < t - 1 := by
     obtain ⟨n, hn, rfl⟩ := ht
@@ -5892,7 +5890,7 @@ theorem sequence_near_truncated_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
     (hPi : ∀ m g y, ‖y‖ ≤ ((2 : ℝ) ^ (m + 1))⁻¹ → P m g y = 0)
     (hPo : ∀ m g y, 2 * ((2 : ℝ) ^ m)⁻¹ ≤ ‖y‖ → P m g y = 0) :
     ∃ B : ℝ≥0∞, B ≠ ∞ ∧ ∀ (N : ℕ) (g : SchwartzMap (Euclidean d) ℂ),
-      (∫⁻ x, (⨆ t : sequenceSet μ, ‖∑ m ∈ Finset.Ico 4 N,
+      (∫⁻ x, (⨆ t : convexSeq μ, ‖∑ m ∈ Finset.Ico 4 N,
           (sphericalAverage d (compactConvolution (compactDyadicDilate K₀ 0) (P m g)) t x +
             ∑ s ∈ Finset.range N,
               sphericalAverage d (compactConvolution (compactDyadicDilate 𝒦 s) (P m g)) t x)‖ₑ) ^
@@ -5971,7 +5969,7 @@ theorem sequence_near_truncated_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
   have hZm (J : ℕ) : Measurable (Z J) := Finset.measurable_sum _ fun k _ => hXm J k
   -- pointwise reduction
   have hpoint (x : Euclidean d) :
-      (⨆ t : sequenceSet μ, ‖∑ m ∈ Finset.Ico 4 N,
+      (⨆ t : convexSeq μ, ‖∑ m ∈ Finset.Ico 4 N,
           (sphericalAverage d (compactConvolution (compactDyadicDilate K₀ 0) (P m g)) t x +
             ∑ s ∈ Finset.range N,
               sphericalAverage d (compactConvolution (compactDyadicDilate 𝒦 s) (P m g)) t x)‖ₑ) ^
@@ -6303,7 +6301,7 @@ for `d ≥ 3` and `U(p) > 0`. -/
 theorem sequence_near_origin_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0 < μ)
     (hp : 1 < p) (hα : 0 < ((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1)) :
     ∃ B : ℝ≥0∞, B ≠ ∞ ∧ ∀ g : SchwartzMap (Euclidean d) ℂ, (∀ y, 1 / 16 < ‖y‖ → g y = 0) →
-      (∫⁻ x, (⨆ t : sequenceSet μ, ‖sphericalAverage d g t x‖ₑ) ^ p) ≤
+      (∫⁻ x, (⨆ t : convexSeq μ, ‖sphericalAverage d g t x‖ₑ) ^ p) ≤
         B * ∫⁻ y, ‖g y‖ₑ ^ p ∂powerWeightedVolume d (((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1)) := by
   classical
   obtain ⟨φ, hmass, K₀, 𝒦, hK₀, h𝒦, hflat, hRes0, hResS⟩ :=
@@ -6316,7 +6314,7 @@ theorem sequence_near_origin_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 
   refine ⟨B, hB, ?_⟩
   intro g hg
   have hp0 : 0 < p := by linarith
-  let Fj : ℕ → sequenceSet μ → Euclidean d → ℂ := fun N t x => ∑ m ∈ Finset.Ico 4 N,
+  let Fj : ℕ → convexSeq μ → Euclidean d → ℂ := fun N t x => ∑ m ∈ Finset.Ico 4 N,
     (sphericalAverage d (compactConvolution (compactDyadicDilate K₀ 0) (P m g)) t x +
       ∑ s ∈ Finset.range N,
         sphericalAverage d (compactConvolution (compactDyadicDilate 𝒦 s) (P m g)) t x)
@@ -6345,11 +6343,11 @@ theorem sequence_near_origin_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 
     simp only [hsplit, Finset.sum_add_distrib, Finset.sum_range_succ', hRes0, hResS]
     rw [hFG, Finset.sum_comm (s := Finset.range N), Finset.sum_add_distrib]
     ring
-  apply maximal_moment_le_of_tendsto volume (fun (t : sequenceSet μ) x => sphericalAverage d g t x)
+  apply maximal_moment_le_of_tendsto volume (fun (t : convexSeq μ) x => sphericalAverage d g t x)
     Fj hp0 _ _ _ (fun N => hbound N g)
   · intro N
-    have : (fun x => ⨆ t : sequenceSet μ, ‖Fj N t x‖ₑ) =
-        fun x => ⨆ t : sequenceSet μ, ‖sphericalAverage d (GN N) t x‖ₑ := by
+    have : (fun x => ⨆ t : convexSeq μ, ‖Fj N t x‖ₑ) =
+        fun x => ⨆ t : convexSeq μ, ‖sphericalAverage d (GN N) t x‖ₑ := by
       funext x; simp only [Fj, hFG]
     rw [this]
     exact measurable_schwartz_radius_supremum _ _
@@ -6574,7 +6572,7 @@ and `p > p(μ)`, the local maximal operator `M_{E^μ}` is bounded on
 input. -/
 theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) :
-    WeightedMaximalBound d (sequenceSet μ) p (sequenceUpperEndpoint d μ p) := by
+    WeightedMaximalBound d (convexSeq μ) p (sequenceUpperEndpoint d μ p) := by
   have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
   have hn : 0 < (d : ℝ) - 1 := by linarith
   have hμ1 : 0 < μ + 1 := by linarith
@@ -6593,8 +6591,8 @@ theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
   set α := sequenceUpperEndpoint d μ p with hαdef
   have hαeq : α = ((d : ℝ) - 1) * (p - 1) - 1 / (μ + 1) := rfl
   have hα0 : 0 < α := hα
-  have hEI : sequenceSet μ ⊆ Icc 1 2 := sequenceSet_subset_Icc hμ.le
-  have hEpos : sequenceSet μ ⊆ Ioi 0 := sequenceSet_subset_Ioi hμ.le
+  have hEI : convexSeq μ ⊆ Icc 1 2 := sequenceSet_subset_Icc hμ.le
+  have hEpos : convexSeq μ ⊆ Ioi 0 := sequenceSet_subset_Ioi hμ.le
   obtain ⟨U, hU⟩ := sequence_unweighted_bound (by omega) hμ hp
   have hU' := hU.mono_const (le_max_left U 1)
   have hU0 : 0 < max U 1 := lt_of_lt_of_le one_pos (le_max_right _ _)
@@ -6604,7 +6602,7 @@ theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
   set K : ℝ≥0∞ := 2 ^ p * (ENNReal.ofReal ((3 : ℝ) ^ α) * Bn +
     Mσ * ((ENNReal.ofReal ((65 : ℝ) ^ α) * ENNReal.ofReal (max U 1) ^ p) * 2 ^ p))
   have hK : K ≠ ∞ := by finiteness
-  have hcore : CoreMomentBoundAt α (powerWeightedVolume d α) (sequenceSet μ) p K.toReal := by
+  have hcore : CoreMomentBoundAt α (powerWeightedVolume d α) (convexSeq μ) p K.toReal := by
     intro g
     rw [ENNReal.ofReal_toReal hK]
     set w := powerWeightedVolume d α
@@ -6623,14 +6621,14 @@ theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
     have hNrn (y) : ‖Nr y‖ ≤ ‖g y‖ := by
       rw [hNr, norm_mul]
       exact mul_le_of_le_one_left (norm_nonneg _) (hχn y)
-    have hnearw : (∫⁻ x, (⨆ t : sequenceSet μ, ‖sphericalAverage d Nr t x‖ₑ) ^ p ∂w) ≤
+    have hnearw : (∫⁻ x, (⨆ t : convexSeq μ, ‖sphericalAverage d Nr t x‖ₑ) ^ p ∂w) ≤
         ENNReal.ofReal ((3 : ℝ) ^ α) * Bn * Q := by
-      have hF := (measurable_schwartz_radius_supremum Nr (sequenceSet μ)).pow_const p
+      have hF := (measurable_schwartz_radius_supremum Nr (convexSeq μ)).pow_const p
       rw [show w = powerWeightedVolume d α from rfl, powerWeightedVolume,
         lintegral_withDensity_eq_lintegral_mul _ (measurable_radialPowerWeight d α) hF]
       calc
         _ ≤ ∫⁻ x, ENNReal.ofReal ((3 : ℝ) ^ α) *
-            (⨆ t : sequenceSet μ, ‖sphericalAverage d Nr t x‖ₑ) ^ p := by
+            (⨆ t : convexSeq μ, ‖sphericalAverage d Nr t x‖ₑ) ^ p := by
           apply lintegral_mono
           intro x
           simp only [Pi.mul_apply]
@@ -6638,12 +6636,12 @@ theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
           · apply mul_le_mul' _ le_rfl
             rw [radialPowerWeight, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hα0.le]
             exact ENNReal.ofReal_le_ofReal (Real.rpow_le_rpow (norm_nonneg _) hx hα0.le)
-          · have h0 : ∀ t : sequenceSet μ, sphericalAverage d Nr t x = 0 := fun t =>
+          · have h0 : ∀ t : convexSeq μ, sphericalAverage d Nr t x = 0 := fun t =>
               sphericalAverage_eq_zero_of_far Nr hNrs (by linarith [(hEI t.2).1])
                 (by linarith [(hEI t.2).2])
             simp [h0, ENNReal.zero_rpow_of_pos hp0]
         _ = ENNReal.ofReal ((3 : ℝ) ^ α) *
-            ∫⁻ x, (⨆ t : sequenceSet μ, ‖sphericalAverage d Nr t x‖ₑ) ^ p :=
+            ∫⁻ x, (⨆ t : convexSeq μ, ‖sphericalAverage d Nr t x‖ₑ) ^ p :=
           lintegral_const_mul _ hF
         _ ≤ ENNReal.ofReal ((3 : ℝ) ^ α) * (Bn * ∫⁻ y, ‖Nr y‖ₑ ^ p ∂w) :=
           mul_le_mul' le_rfl (hnear Nr hNrs)
@@ -6662,12 +6660,12 @@ theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
       have : ‖1 - χ y‖ ≤ 2 := (norm_sub_le _ _).trans (by
         rw [norm_one]; linarith [hχn y])
       exact mul_le_mul_of_nonneg_right this (norm_nonneg _)
-    have hfarw : (∫⁻ x, (⨆ t : sequenceSet μ, ‖sphericalAverage d Fa t x‖ₑ) ^ p ∂w) ≤
+    have hfarw : (∫⁻ x, (⨆ t : convexSeq μ, ‖sphericalAverage d Fa t x‖ₑ) ^ p ∂w) ≤
         Mσ * ((ENNReal.ofReal ((65 : ℝ) ^ α) * ENNReal.ofReal (max U 1) ^ p) * (2 ^ p * Q)) := by
       apply spherical_moment_le_of_normalized (by omega) _ hEpos Fa w hp0.le
       have h := farInput_bound_of_unweighted hEI hp0 hα0 hU0 hU' Fa hFas
-      have hMeq : _root_.Spherical.M (sequenceSet μ) (Fa : Euclidean d → ℂ) =
-          restrictedNormalizedSphericalMaximal d (sequenceSet μ) Fa := by
+      have hMeq : _root_.Spherical.M (convexSeq μ) (Fa : Euclidean d → ℂ) =
+          restrictedNormalizedSphericalMaximal d (convexSeq μ) Fa := by
         change _root_.Spherical.restrictedSphericalMaximal _ _ = _
         rw [restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal]
       rw [← hMeq]
@@ -6700,7 +6698,7 @@ theorem sequence_upper_endpoint_bound {d : ℕ} (hd : 2 ≤ d) {μ p : ℝ} (hμ
 `U(p) = (d-1)(p-1) - 1/(μ+1)`. -/
 theorem sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < μ)
     (hp : sequenceCriticalExponent d μ < p) :
-    WeightedMaximalBound d (sequenceSet μ) p α ↔
+    WeightedMaximalBound d (convexSeq μ) p α ↔
       ((d : ℝ) / ((d : ℝ) - 1) < p ∧ 1 - (d : ℝ) ≤ α ∧ α ≤ sequenceUpperEndpoint d μ p) ∨
       (p = (d : ℝ) / ((d : ℝ) - 1) ∧ 1 - (d : ℝ) < α ∧ α ≤ sequenceUpperEndpoint d μ p) ∨
       (p < (d : ℝ) / ((d : ℝ) - 1) ∧
@@ -6743,8 +6741,8 @@ theorem sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < μ)
       · rw [sequenceLowerEndpoint_of_ge hd2 hμ hgt.le] at hαL
         rw [← hαL]
         apply general_assouad_maximal_endpoint hd2 (sequenceSet_subset_Ioi hμ.le)
-        have hγ := uniformAssouadDimension_le_one (sequenceSet μ)
-        have : uniformAssouadDimension (sequenceSet μ) / ((d : ℝ) - 1) ≤ 1 / ((d : ℝ) - 1) :=
+        have hγ := uniformAssouadDimension_le_one (convexSeq μ)
+        have : uniformAssouadDimension (convexSeq μ) / ((d : ℝ) - 1) ≤ 1 / ((d : ℝ) - 1) :=
           div_le_div_of_nonneg_right hγ hn.le
         have hpd : 1 + 1 / ((d : ℝ) - 1) = (d : ℝ) / ((d : ℝ) - 1) := by field_simp; ring
         linarith
@@ -6756,6 +6754,105 @@ theorem sequence_iff {d : ℕ} (hd : 2 ≤ d) {μ p α : ℝ} (hμ : 0 < μ)
       · rw [← hαL]
         exact sequence_lower_endpoint_bound hd2 hμ hp hlt
     · exact sequence_interior_bound hd2 hμ hp hαL hαU
+/-- Finite positive type-set coordinates are equivalent to the all-input weighted bound. -/
+theorem mem_powerWeight_typeSet_iff {d : ℕ} (hd : 2 ≤ d) {E : Set ℝ}
+    (hE : E.Nonempty) (hEpos : E ⊆ Ioi 0) {p α : ℝ} (hp : 1 < p) :
+    (p⁻¹, α / p) ∈ _root_.Spherical.PowerWeights.typeSet d E ↔
+      WeightedMaximalBound d E p α := by
+  have hp0 : 0 < p := by linarith
+  constructor
+  · intro h
+    rcases h with h | ⟨a, q, hq, heq, C, hC, hb⟩
+    · have hz := congrArg Prod.fst (Set.mem_singleton_iff.mp h)
+      change p⁻¹ = 0 at hz
+      exact (inv_ne_zero hp0.ne' hz).elim
+    have hqp : q.toReal = p := by
+      have hh := congrArg Prod.fst heq
+      simp only [ENNReal.toReal_inv] at hh
+      exact inv_injective hh.symm
+    have hqtop : q ≠ ⊤ := by
+      intro ht
+      simp [ht] at hqp
+      linarith
+    have hqeq : q = ENNReal.ofReal p := by
+      rw [← hqp, ENNReal.ofReal_toReal hqtop]
+    have ha : a = α := by
+      have hh := congrArg Prod.snd heq
+      simp only [ENNReal.toReal_inv, hqp, ← div_eq_mul_inv] at hh
+      exact (div_left_inj' hp0.ne').mp hh.symm
+    subst a
+    subst q
+    have hcore : HasRestrictedNormalizedSphericalMaximalPowerWeightStrongType d E p α := by
+      refine ⟨C, hC, ?_⟩
+      intro f hf
+      have hn := hb f hf
+      have hM : _root_.Spherical.M E (f : Euclidean d → ℂ) =
+          restrictedNormalizedSphericalMaximal d E (f : Euclidean d → ℂ) :=
+        restrictedSphericalMaximal_eq_restrictedNormalizedSphericalMaximal E _
+      rw [hM] at hn
+      exact ⟨hn.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf.eLpNorm_lt_top), hn⟩
+    have hα := neg_dim_lt_alpha_of_restrictedStrongType (by omega : 0 < d)
+      ⟨hE.some, hE.some_mem, hEpos hE.some_mem⟩ hp.le hcore
+    exact weighted_bound_of_normalized_strongType (by omega) E hp hα hcore
+  · rintro ⟨C, hC, hb⟩
+    refine Or.inr ⟨α, ENNReal.ofReal p, ?_, ?_, C, hC, fun f hf => (hb f hf).2⟩
+    · simpa only [ENNReal.ofReal_one] using ENNReal.ofReal_le_ofReal hp.le
+    · simp [ENNReal.toReal_inv, ENNReal.toReal_ofReal hp0.le, div_eq_mul_inv]
+
+/-- FLLRS Theorem 1.3, in the public power-weight type-set coordinates. -/
+theorem convexSeq_powerWeight_iff {d : ℕ}
+    (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ) {p : ℝ} {p₀ : ℝ}
+    (hp₀ : p₀ = 1 + 1 / ((μ + 1) * (d - 1))) (hpp₀ : p₀ < p)
+    {α : ℝ} :
+    (p⁻¹, α / p) ∈ _root_.Spherical.PowerWeights.typeSet d (convexSeq μ) ↔
+      d / (d - 1) < p ∧ 1 - d ≤ α ∧ α ≤ (d - 1) * (p - 1) - 1 / (μ + 1) ∨
+      p = d / (d - 1) ∧ 1 - d < α ∧
+        α ≤ (d - 1) * (d / (d - 1) - 1) - 1 / (μ + 1) ∨
+      p < d / (d - 1) ∧
+        1 - d + (d - (d - 1) * p) / μ ≤ α ∧ α ≤ (d - 1) * (p - 1) - 1 / (μ + 1) := by
+  have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
+  have hd1 : 0 < (d : ℝ) - 1 := by linarith
+  have hp : 1 < p := by
+    rw [hp₀] at hpp₀
+    have : 0 < 1 / ((μ + 1) * ((d : ℝ) - 1)) := by positivity
+    linarith
+  rw [mem_powerWeight_typeSet_iff hd (sequenceSet_nonempty μ) (sequenceSet_subset_Ioi hμ.le) hp]
+  have hcrit : sequenceCriticalExponent d μ < p := by
+    simpa [sequenceCriticalExponent, hp₀] using hpp₀
+  rw [sequence_iff hd hμ hcrit]
+  simp only [sequenceUpperEndpoint]
+  constructor <;> rintro (h | h | h)
+  all_goals first
+    | exact Or.inl h
+    | exact Or.inr (Or.inr h)
+    | exact Or.inr (Or.inl (by simpa [h.1] using h))
+
+/-- FLLRS Theorem 1.4, in the public power-weight type-set coordinates. -/
+theorem globalConvexSeq_powerWeight_iff {d : ℕ}
+    (hd : 2 ≤ d) {μ : ℝ} (hμ : 0 < μ) {p : ℝ} {p₀ : ℝ}
+    (hp₀ : p₀ = 1 + 1 / ((μ + 1) * (d - 1))) (hpp₀ : p₀ < p)
+    {α : ℝ} :
+    (p⁻¹, α / p) ∈ _root_.Spherical.PowerWeights.typeSet d (toGlobalSet (convexSeq μ)) ↔
+      α < (d - 1) * (p - 1) - (μ + 1)⁻¹ ∧
+        (p⁻¹, α / p) ∈ _root_.Spherical.PowerWeights.typeSet d (convexSeq μ) := by
+  have hd' : (2 : ℝ) ≤ d := by exact_mod_cast hd
+  have hd1 : 0 < (d : ℝ) - 1 := by linarith
+  have hp : 1 < p := by
+    rw [hp₀] at hpp₀
+    have : 0 < 1 / ((μ + 1) * ((d : ℝ) - 1)) := by positivity
+    linarith
+  have hcrit : sequenceCriticalExponent d μ < p := by
+    simpa [sequenceCriticalExponent, hp₀] using hpp₀
+  have hE : (toGlobalSet (convexSeq μ)).Nonempty :=
+    (sequenceSet_nonempty μ).mono (sequenceSet_subset_global μ)
+  have hEpos : toGlobalSet (convexSeq μ) ⊆ Ioi 0 := by
+    intro t ht
+    obtain ⟨k, s, hs, rfl⟩ := Set.mem_iUnion.mp ht
+    exact mul_pos (by positivity) (sequenceSet_subset_Ioi hμ.le hs)
+  rw [mem_powerWeight_typeSet_iff hd hE hEpos hp,
+    mem_powerWeight_typeSet_iff hd (sequenceSet_nonempty μ) (sequenceSet_subset_Ioi hμ.le) hp]
+  simpa only [sequenceUpperEndpoint, one_div] using global_sequence_iff hd hμ hcrit
+
 end
 
 /-! ## Retained earlier auxiliary development
